@@ -408,3 +408,80 @@ Deleted: `puzzles/binairo.gd` and its `.uid`.
 - Blender 5.1 exporter option names: the export script is written against
   the `export_scene.gltf` operator and verified by running it once against a
   cube from the command line before the pass is called done.
+
+## Amendment A: island concept (2026-09-13, after Task 4)
+
+The user supplied a concept image, kept at `docs/art/concept-binairo-island.png`:
+a Binairo board of chunky cream stone tiles on a mossy stone platform that
+floats over blue water among small cliffs and trees, seen almost top-down with
+mild perspective. Sun cells are cream tiles with an orange sun emblem; moon
+cells are dark slate tiles with an ivory crescent; empty cells carry a small
+diamond mark. Givens are not visually distinct in the concept; the game keeps
+a slightly darker tile for them so locked cells stay discoverable.
+
+This amendment supersedes the earlier sections where they disagree. Tasks
+already complete (1 to 4) are patched by a delta task rather than redone.
+
+### Camera (replaces the pitch and FOV in section 1)
+
+Pitch 68 degrees below horizontal, vertical FOV 30 degrees. The fit routine is
+unchanged. `PuzzleBase3D` gains `board_margin() -> float` (default 0) and
+`board_aabb()` grows the XZ extent by that margin and extends downward by the
+platform depth, so the platform is framed with the tiles.
+
+### Slots (replaces the slot table in section 2 and the contract table in section 3)
+
+| slot | placeholder | size (x, y, z) | colour | outline | footprint rule |
+|---|---|---|---|---|---|
+| `tile` | 4-sided prism, 45 degrees | 0.94, 0.14, 0.94 | `STONE` | yes | inside 1 x 1, under 0.6 |
+| `emblem_sun` | CylinderMesh 32 | r 0.22, h 0.05 | `SUN` | yes | inside 1 x 1, under 0.6 |
+| `emblem_moon` | CylinderMesh 32 | r 0.18, h 0.05 | `MOON` | yes | inside 1 x 1, under 0.6 |
+| `empty_mark` | 4-sided prism, not rotated (a diamond) | 0.14, 0.03, 0.14 | `MARK` | no | inside 1 x 1, under 0.6 |
+| `platform` | BoxMesh | 1, 0.6, 1 | `ROCK` | no | unit slab; the board scales it to (cols + 1, 1, rows + 1) |
+| `water` | PlaneMesh | 60 x 60 | `WATER` | no | unbounded; flat at y = 0 |
+
+`token_circle`, `token_square`, `given_ring` and `table` are removed. Emblems
+sit on the tile top. The Blender contract exempts `platform` and `water` from
+the footprint rule and notes that `platform` is a 1 x 1 slab stretched by the
+board, so its material should be a plain colour (moss trim can come later as
+per-size models).
+
+### Palette additions (section 5)
+
+| name | hex | use |
+|---|---|---|
+| `STONE` | `ede2cc` | tile face, sun and empty cells |
+| `STONE_GIVEN` | `dccfb3` | locked sun tile |
+| `SLATE` | `3f4652` | moon tile |
+| `SLATE_GIVEN` | `2f353e` | locked moon tile |
+| `SUN` | `f5a623` | sun emblem |
+| `MOON` | `f6f1e6` | crescent emblem |
+| `MARK` | `cbbd9f` | empty-cell diamond |
+| `MOSS` | `7fa84a` | reserved for platform trim models |
+| `ROCK` | `b9ab92` | platform stone |
+| `WATER` | `2f8fd6` | water plane |
+
+`SKY_TOP` becomes `bfe3f5` (light blue) and `SKY_HORIZON` becomes `e8f2f7`,
+so the world reads as island daylight while the UI keeps its paper and ink.
+`WOOD` stays defined for the palette test but nothing uses it.
+
+### Stage (section 1)
+
+No table. The stage holds the camera rig, sun, sky, and a `water` plane at
+y = -4. Boards bring their own `platform`.
+
+### Binairo (section 4)
+
+Per cell: one `tile`, one `emblem_sun`, one `emblem_moon`, one `empty_mark`,
+visibility driven by cell state. Tile tint: empty or sun on `STONE`
+(`STONE_GIVEN` when locked), moon on `SLATE` (`SLATE_GIVEN` when locked); a
+cell in a broken line lerps 35 percent toward `BAD`. One `platform` under the
+board, top at y = 0, scaled to (n + 1, 1, n + 1). Placing an emblem pops it
+in over 0.18 s. Share glyphs are 🌞 for sun and 🌙 for moon.
+`board_margin()` returns 0.5.
+
+### Verification note
+
+The earlier acceptance check "cream sky visible behind the menu" was
+ambiguous: a cream sky behind a 90 percent cream panel is indistinguishable
+from an opaque panel. With blue sky and water the check is unambiguous.

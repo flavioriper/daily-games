@@ -8,7 +8,7 @@
 
 **Tech Stack:** Godot 4.7 (GDScript, Compatibility renderer), Blender 5.1 glTF exporter, Python 3 for the Blender-side script.
 
-**Spec:** `docs/superpowers/specs/2026-09-13-3d-toon-pipeline-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-13-3d-toon-pipeline-design.md` (read its final section, "Amendment A", which supersedes earlier sections on camera, slots, palette, stage and Binairo visuals)
 
 ## Global Constraints
 
@@ -860,6 +860,247 @@ git commit -m "feat: model library with primitive placeholders per slot"
 
 ---
 
+### Task 4b: Island concept delta (amendment A)
+
+**Files:**
+- Modify: `core/palette.gd`
+- Modify: `core/placeholders.gd`
+- Modify: `core/models.gd`
+- Modify: `assets/models/README.md`
+- Modify: `tests/test_palette.gd`
+- Modify: `tests/test_models.gd`
+
+**Interfaces:**
+- Consumes: `core/toon.gd` (`material`, `add_outline`).
+- Produces: palette constants `STONE, STONE_GIVEN, SLATE, SLATE_GIVEN, SUN, MOON, MARK, MOSS, ROCK, WATER`; new `SKY_TOP`/`SKY_HORIZON` values; `Models.SLOTS == ["tile", "emblem_sun", "emblem_moon", "empty_mark", "platform", "water"]`; `Models.UNBOUNDED == ["platform", "water"]`.
+
+Spec authority: `docs/superpowers/specs/2026-09-13-3d-toon-pipeline-design.md`, section "Amendment A". The concept image is `docs/art/concept-binairo-island.png`.
+
+- [ ] **Step 1: Update the palette test**
+
+In `tests/test_palette.gd`, add a call `_test_island_colours(t)` to `run` and the function:
+
+```gdscript
+static func _test_island_colours(t) -> void:
+	var constants: Dictionary = Pal.get_script_constant_map()
+	for name in ["STONE", "STONE_GIVEN", "SLATE", "SLATE_GIVEN", "SUN", "MOON", "MARK", "MOSS", "ROCK", "WATER"]:
+		t.check(constants.has(name), "palette defines %s" % name)
+	# Orange on cream is a hue contrast, not a luminance one; 1.4 keeps it from drifting to beige.
+	t.check(Pal.contrast(Pal.SUN, Pal.STONE) >= 1.4, "sun emblem reads on a stone tile, got %.2f" % Pal.contrast(Pal.SUN, Pal.STONE))
+	t.check(Pal.contrast(Pal.MOON, Pal.SLATE) >= 7.0, "crescent reads on a slate tile, got %.2f" % Pal.contrast(Pal.MOON, Pal.SLATE))
+	t.check(Pal.contrast(Pal.STONE, Pal.SLATE) >= 5.0, "sun and moon tiles are far apart, got %.2f" % Pal.contrast(Pal.STONE, Pal.SLATE))
+	t.check(Pal.STONE_GIVEN != Pal.STONE and Pal.SLATE_GIVEN != Pal.SLATE, "locked tiles differ from placed tiles")
+```
+
+`get_script_constant_map()` is the reliable way to ask a GDScript for its constants.
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `godot --headless --path . --script res://tests/run_tests.gd 2>&1 | grep -E "palette|failed=" | head -6`
+Expected: `FAIL [palette] palette defines STONE` and similar; `failed=` greater than 0.
+
+- [ ] **Step 3: Add the colours**
+
+In `core/palette.gd`, change the two sky lines and add the island block after `AMBIENT`:
+
+```gdscript
+const SKY_TOP     := Color("bfe3f5")
+const SKY_HORIZON := Color("e8f2f7")
+const AMBIENT     := Color("f3e4d4")
+
+# Island world (docs/art/concept-binairo-island.png)
+const STONE       := Color("ede2cc")
+const STONE_GIVEN := Color("dccfb3")
+const SLATE       := Color("3f4652")
+const SLATE_GIVEN := Color("2f353e")
+const SUN         := Color("f5a623")
+const MOON        := Color("f6f1e6")
+const MARK        := Color("cbbd9f")
+const MOSS        := Color("7fa84a")
+const ROCK        := Color("b9ab92")
+const WATER       := Color("2f8fd6")
+```
+
+- [ ] **Step 4: Update the model test**
+
+Replace `tests/test_models.gd` entirely:
+
+```gdscript
+extends RefCounted
+
+const Models = preload("res://core/models.gd")
+
+static func run(t) -> void:
+	_test_slots(t)
+	_test_fallback(t)
+	_test_tint_and_height(t)
+
+## Root-space min/max of every face vertex under `root`, outline shells excluded.
+static func _bounds(root: Node3D) -> Array:
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	for mi in Models.meshes(root):
+		for p in mi.mesh.get_faces():
+			var w: Vector3 = mi.transform * p
+			lo = lo.min(w)
+			hi = hi.max(w)
+	return [lo, hi]
+
+static func _test_slots(t) -> void:
+	t.eq(Models.SLOTS, ["tile", "emblem_sun", "emblem_moon", "empty_mark", "platform", "water"], "slot list matches amendment A")
+	for slot in Models.SLOTS:
+		var node = Models.instance(slot)
+		t.check(node is Node3D, "%s yields a Node3D" % slot)
+		var ms = Models.meshes(node)
+		t.check(ms.size() >= 1, "%s has a mesh" % slot)
+		var b := _bounds(node)
+		var lo: Vector3 = b[0]
+		var hi: Vector3 = b[1]
+		t.check(absf(lo.y) < 0.001, "%s base sits at y=0 (min y %.3f)" % [slot, lo.y])
+		if not slot in Models.UNBOUNDED:
+			t.check(lo.x >= -0.5 and hi.x <= 0.5 and lo.z >= -0.5 and hi.z <= 0.5,
+				"%s fits a 1x1 footprint (%s .. %s)" % [slot, lo, hi])
+			t.check(hi.y <= 0.6, "%s is under 0.6 tall" % slot)
+		var wants_outline: bool = slot in ["tile", "emblem_sun", "emblem_moon"]
+		for mi in ms:
+			var has_outline := mi.get_node_or_null("Outline") != null
+			t.check(has_outline == wants_outline, "%s outline present=%s" % [slot, has_outline])
+		node.free()
+	var platform = Models.instance("platform")
+	var pb := _bounds(platform)
+	t.check(is_equal_approx(pb[1].x - pb[0].x, 1.0) and is_equal_approx(pb[1].z - pb[0].z, 1.0), "platform is a unit slab the board scales")
+	platform.free()
+
+static func _test_fallback(t) -> void:
+	t.check(not Models.has_model("no_such_thing"), "has_model is false for a missing file")
+	var unknown = Models.instance("no_such_thing")
+	t.check(unknown is Node3D and Models.meshes(unknown).size() == 1, "unknown slot falls back to a placeholder")
+	unknown.free()
+	var a = Models.instance("tile")
+	var b = Models.instance("tile")
+	t.check(a != b, "instances are distinct nodes")
+	a.free()
+	b.free()
+
+static func _test_tint_and_height(t) -> void:
+	var tok = Models.instance("emblem_sun")
+	Models.tint(tok, Color("d9605a"))
+	var over = Models.meshes(tok)[0].get_surface_override_material(0)
+	t.check(over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")), "tint swaps the toon colour")
+	tok.free()
+	var tile = Models.instance("tile")
+	t.check(is_equal_approx(Models.height(tile), 0.14), "tile placeholder is 0.14 tall, measured %.3f" % Models.height(tile))
+	tile.free()
+	var platform = Models.instance("platform")
+	t.check(is_equal_approx(Models.height(platform), 0.6), "platform placeholder is 0.6 deep, measured %.3f" % Models.height(platform))
+	platform.free()
+```
+
+- [ ] **Step 5: Run to verify it fails**
+
+Run: `godot --headless --path . --script res://tests/run_tests.gd 2>&1 | grep -E "models|failed=" | head -6`
+Expected: `FAIL [models] slot list matches amendment A` and others; `failed=` greater than 0.
+
+- [ ] **Step 6: Update placeholders and the library**
+
+Replace the `make` function and constants in `core/placeholders.gd` (keep the header comment, `Toon` and `Pal` preloads, and the `_prism`/`_cylinder` helpers):
+
+```gdscript
+const TILE_H := 0.14
+const EMBLEM_H := 0.05
+const PLATFORM_H := 0.6
+
+static func make(slot: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = slot
+	var mi := MeshInstance3D.new()
+	mi.name = "Mesh"
+	var color := Color.MAGENTA
+	var height := 0.4
+	var outline := true
+	match slot:
+		"tile":
+			mi.mesh = _prism(0.47, TILE_H)
+			mi.rotation.y = PI / 4.0
+			color = Pal.STONE
+			height = TILE_H
+		"emblem_sun":
+			mi.mesh = _cylinder(0.22, EMBLEM_H, 32)
+			color = Pal.SUN
+			height = EMBLEM_H
+		"emblem_moon":
+			mi.mesh = _cylinder(0.18, EMBLEM_H, 32)
+			color = Pal.MOON
+			height = EMBLEM_H
+		"empty_mark":
+			# A four-sided prism left unrotated reads as a small diamond.
+			mi.mesh = _prism(0.07, 0.03)
+			color = Pal.MARK
+			height = 0.03
+			outline = false
+		"platform":
+			# Unit slab; the board scales it to (cols + 1, 1, rows + 1).
+			var box := BoxMesh.new()
+			box.size = Vector3(1.0, PLATFORM_H, 1.0)
+			mi.mesh = box
+			color = Pal.ROCK
+			height = PLATFORM_H
+			outline = false
+		"water":
+			var plane := PlaneMesh.new()
+			plane.size = Vector2(60.0, 60.0)
+			mi.mesh = plane
+			color = Pal.WATER
+			height = 0.0
+			outline = false
+		_:
+			# Unknown slot: a small magenta block so the gap is obvious on screen.
+			mi.mesh = _prism(0.2, 0.4)
+	mi.position.y = height * 0.5
+	mi.set_surface_override_material(0, Toon.material(color))
+	if outline:
+		Toon.add_outline(mi)
+	root.add_child(mi)
+	return root
+```
+
+Remove the old `TOKEN_H` constant. In `core/models.gd` replace the `SLOTS` line and add `UNBOUNDED`:
+
+```gdscript
+const SLOTS := ["tile", "emblem_sun", "emblem_moon", "empty_mark", "platform", "water"]
+## Slots exempt from the 1 x 1 footprint rule.
+const UNBOUNDED := ["platform", "water"]
+```
+
+Replace the table in `assets/models/README.md` with:
+
+```markdown
+| slot | what it is |
+|---|---|
+| `tile` | one board cell, 1 x 1 footprint, about 0.14 tall |
+| `emblem_sun` | sun emblem laid on a tile top (Binairo "sun") |
+| `emblem_moon` | crescent emblem laid on a tile top (Binairo "moon") |
+| `empty_mark` | small diamond laid on an empty tile |
+| `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
+| `water` | flat water plane far below the platform |
+
+Concept reference: `docs/art/concept-binairo-island.png`.
+```
+
+- [ ] **Step 7: Run tests to verify they pass**
+
+Run: `godot --headless --path . --script res://tests/run_tests.gd 2>&1 | tail -3`
+Expected: `failed=0`, pristine output.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add core/palette.gd core/placeholders.gd core/models.gd assets/models/README.md tests/test_palette.gd tests/test_models.gd
+git commit -m "feat: island concept slots and colours (sun/moon emblems, platform, water)"
+```
+
+---
+
 ### Task 5: Stage, camera rig, main scene, renderer settings
 
 **Files:**
@@ -873,11 +1114,13 @@ git commit -m "feat: model library with primitive placeholders per slot"
 - Modify: `tests/_shot.gd`, `tests/_win.gd`, `tests/_tap.gd` (`_initialize` only)
 
 **Interfaces:**
-- Consumes: `core/models.gd` (`instance("table")`), palette.
+- Consumes: `core/models.gd` (`instance("water")`), palette (`SKY_TOP`, `SKY_HORIZON`, `AMBIENT`, `PAPER`).
 - Produces:
   - `world/camera_rig.gd`: `var camera: Camera3D`, `func fit(aabb: AABB, rect: Rect2) -> void`
   - `world/stage.gd`: group `"stage"`, `func mount(board: Node3D)`, `func unmount(board: Node3D)`, `func fit_camera(aabb: AABB, rect: Rect2)`
   - `world/main.tscn` with the menu at `UI/Menu`.
+
+Spec authority: sections 1 and 6, as changed by "Amendment A" (camera pitch 68, FOV 30, water instead of a table, blue sky).
 
 - [ ] **Step 1: Write the camera rig**
 
@@ -892,9 +1135,9 @@ extends Node3D
 ## Projection needs a live viewport, so this is verified by the win and
 ## screenshot harnesses rather than by headless tests.
 
-@export var pitch_deg: float = 55.0
+@export var pitch_deg: float = 68.0
 @export var yaw_deg: float = 0.0
-@export var fov_deg: float = 35.0
+@export var fov_deg: float = 30.0
 ## Fraction of the rect's shorter side kept clear around the board.
 @export var margin: float = 0.06
 
@@ -982,17 +1225,20 @@ Create `world/stage.gd`:
 ```gdscript
 extends Node3D
 
-## The cozy diorama every board sits in: camera rig, warm sun, sky, table.
-## Boards find this through the "stage" group and mount their Node3D here.
+## The island diorama every board floats in: camera rig, warm sun, blue sky,
+## water far below. Boards find this through the "stage" group, mount their
+## Node3D here, and bring their own stone platform.
 
 const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const CameraRig = preload("res://world/camera_rig.gd")
 
+const WATER_DEPTH := 4.0
+
 var rig: Node3D
 var sun: DirectionalLight3D
 var anchor: Node3D
-var table: Node3D
+var water: Node3D
 
 func _ready() -> void:
 	add_to_group("stage")
@@ -1016,7 +1262,7 @@ func _ready() -> void:
 	sky_mat.sky_top_color = Pal.SKY_TOP
 	sky_mat.sky_horizon_color = Pal.SKY_HORIZON
 	sky_mat.ground_horizon_color = Pal.SKY_HORIZON
-	sky_mat.ground_bottom_color = Pal.SKY_HORIZON
+	sky_mat.ground_bottom_color = Pal.WATER
 	sky_mat.sun_angle_max = 0.0
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
@@ -1033,11 +1279,10 @@ func _ready() -> void:
 	world_env.environment = env
 	add_child(world_env)
 
-	table = Models.instance("table")
-	table.name = "Table"
-	# The table model's origin is at its base; sink it so its top is y = 0.
-	table.position = Vector3(0.0, -Models.height(table), 0.0)
-	add_child(table)
+	water = Models.instance("water")
+	water.name = "Water"
+	water.position = Vector3(0.0, -WATER_DEPTH, 0.0)
+	add_child(water)
 
 	anchor = Node3D.new()
 	anchor.name = "BoardAnchor"
@@ -1097,7 +1342,7 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=1
-environment/defaults/default_clear_color=Color(0.976, 0.949, 0.906, 1)
+environment/defaults/default_clear_color=Color(0.749, 0.89, 0.961, 1)
 ```
 
 - [ ] **Step 4: Let the diorama show through the menu and host**
@@ -1114,7 +1359,7 @@ and at the top of `_build_list`, right after `add_child(_list_root)`, add:
 
 ```gdscript
 	var paper := ColorRect.new()
-	paper.color = Color(Pal.PAPER, 0.9)
+	paper.color = Color(Pal.PAPER, 0.82)
 	paper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_list_root.add_child(paper)
@@ -1145,15 +1390,16 @@ godot --path . --resolution 540x960 --script res://tests/_win.gd 2>&1 | tail -14
 godot --path . --resolution 540x960 --script res://tests/_shot.gd 2>&1 | tail -3
 ```
 
-Expected: `failed=0`; `winnable=10/10` (Binairo is still 2D here); `/tmp/shot_menu.png` and `/tmp/shot_binairo.png` written. Open `/tmp/shot_menu.png` and confirm the cream sky and wooden table are visible behind the translucent menu panel and no black background remains. Any `SHADER ERROR` or `ERROR:` in the output is a failure.
+Expected: `failed=0`; `winnable=10/10` (Binairo is still 2D here); `/tmp/shot_menu.png` and `/tmp/shot_binairo.png` written. Open `/tmp/shot_menu.png`: the menu panel is translucent paper and the light blue sky shows through it as a bluish tint; no black background remains. Open `/tmp/shot_binairo.png`: the 2D board sits over the same blue backdrop. If the screenshot looks pure cream or black behind the UI, the 3D world is not rendering: check that `world/main.tscn` is the main scene, the camera is `current`, and the `WorldEnvironment` is in the tree. Any `SHADER ERROR` or `ERROR:` in the output is a failure.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add project.godot world/ ui/menu.gd ui/puzzle_host.gd tests/_shot.gd tests/_win.gd tests/_tap.gd
-git add -A '*.uid'
-git commit -m "feat: 3D stage with camera rig, warm sun and sky under the 2D UI"
+git commit -m "feat: island stage with camera rig, warm sun, blue sky and water under the 2D UI"
 ```
+
+Stage any `*.uid` files Godot generated (check `git status --short`) in the same commit.
 
 ---
 
@@ -1168,6 +1414,7 @@ git commit -m "feat: 3D stage with camera rig, warm sun and sky under the 2D UI"
 - Produces, on `core/puzzle_base_3d.gd` (extends `res://core/puzzle_base.gd`):
   - `var board: Node3D`
   - overridables `board_size() -> Vector2i` (cols, rows), `board_height() -> float`, `plane_height() -> float`, `on_board_press(hit: Vector3)`, `on_board_drag(hit: Vector3)`, `on_board_release(hit: Vector3)`
+  - overridables `board_margin() -> float` (default 0) and `board_depth() -> float` (default 0), both folded into `board_aabb()`
   - `board_aabb() -> AABB`, `viewport_rect() -> Rect2`, `local_to_board(local: Vector2) -> Variant`, `board_to_local(world: Vector3) -> Vector2`, `is_3d() -> bool` (true), `_refit()`
 - `core/puzzle_base.gd` gains `func is_3d() -> bool: return false`.
 
@@ -1231,9 +1478,17 @@ func _exit_tree() -> void:
 			_stage.unmount(board)
 		board.queue_free()
 
+## Extra world units framed around the tiles on each side (a platform lip).
+func board_margin() -> float: return 0.0
+## Depth framed below the tile plane (the platform's thickness).
+func board_depth() -> float: return 0.0
+
 func board_aabb() -> AABB:
 	var s := board_size()
-	return BoardMath.board_aabb(s.x, s.y, board_height())
+	var box := BoardMath.board_aabb(s.x, s.y, board_height())
+	var m := board_margin()
+	var d := board_depth()
+	return AABB(box.position - Vector3(m, d, m), box.size + Vector3(2.0 * m, d, 2.0 * m))
 
 ## This control's rectangle in viewport pixels, the space the camera projects into.
 func viewport_rect() -> Rect2:
@@ -1429,8 +1684,10 @@ git commit -m "refactor: Binairo rule feedback lives in the generator as bad_lin
 - Modify: `tests/_tap.gd`
 
 **Interfaces:**
-- Consumes: `core/puzzle_base_3d.gd`, `core/models.gd`, `core/board_math.gd`, `core/placeholders.gd` (`TOKEN_H`), `binairo_gen.gd` (`generate`, `is_valid_complete`, `bad_lines`).
+- Consumes: `core/puzzle_base_3d.gd` (`board`, `on_board_press`, `board_to_local`, `_refit`, `board_size`, `board_height`, `plane_height`, `board_margin`, `board_depth`), `core/models.gd` (`instance`, `tint`, `height`), `core/board_math.gd` (inherited `BoardMath` const), `core/placeholders.gd` (`TILE_H`, `EMBLEM_H`, `PLATFORM_H`), `binairo_gen.gd` (`generate`, `is_valid_complete`, `bad_lines`).
 - Produces: `puzzles/binairo3d.gd` with the `PuzzleBase` interface plus `var n: int`, `var _grid`, `var _given`, `var _solution`, `func cell_to_local(r: int, c: int) -> Vector2`.
+
+Spec authority: section 4 as changed by "Amendment A" (sun and moon emblems on stone tiles, slate for moon, empty diamond mark, stone platform under the board). Concept image: `docs/art/concept-binairo-island.png`. Cell value 0 is sun, 1 is moon, -1 empty.
 
 - [ ] **Step 1: Write the board**
 
@@ -1439,9 +1696,10 @@ Create `puzzles/binairo3d.gd`:
 ```gdscript
 extends "res://core/puzzle_base_3d.gd"
 
-## Binairo on the 3D stage. Tap a tile to cycle empty -> circle -> square ->
-## empty. Tiles in a line that already breaks a rule blush, so the player
-## learns the rules by touching rather than by reading them.
+## Binairo on the island stage. Tap a tile to cycle empty -> sun -> moon ->
+## empty. Sun cells are cream stone with an orange sun; moon cells turn slate
+## with an ivory crescent. Tiles in a line that already breaks a rule blush,
+## so the player learns the rules by touching rather than by reading them.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 const Pal = preload("res://core/palette.gd")
@@ -1449,6 +1707,8 @@ const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
 
 const POP_TIME := 0.18
+const BAD_BLEND := 0.35
+const PLATFORM_LIP := 0.5
 
 var n: int = 6
 var _grid: Array = []
@@ -1457,19 +1717,23 @@ var _solution: Array = []
 var _bad: Dictionary = {"rows": {}, "cols": {}}
 
 var _tile_h: float = Placeholders.TILE_H
-var _tiles: Array = []     # [r][c] -> Node3D
-var _circles: Array = []   # [r][c] -> Node3D
-var _squares: Array = []   # [r][c] -> Node3D
+var _platform: Node3D
+var _tiles: Array = []    # [r][c] -> Node3D
+var _suns: Array = []     # [r][c] -> Node3D
+var _moons: Array = []    # [r][c] -> Node3D
+var _marks: Array = []    # [r][c] -> Node3D
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
 
 func rules() -> String:
-	return "Fill every cell. Never three alike in a line, an equal count of each per line, and no two lines identical."
+	return "Fill every cell with a sun or a moon. Never three alike in a line, an equal count of each per line, and no two lines identical."
 
 func board_size() -> Vector2i: return Vector2i(n, n)
-func board_height() -> float: return _tile_h + Placeholders.TOKEN_H + 0.1
+func board_height() -> float: return _tile_h + Placeholders.EMBLEM_H + 0.1
 func plane_height() -> float: return _tile_h
+func board_margin() -> float: return PLATFORM_LIP
+func board_depth() -> float: return Placeholders.PLATFORM_H
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var min_clues := 0
@@ -1499,7 +1763,7 @@ func reset_board() -> void:
 		for c in n:
 			if not _given[r][c]:
 				_grid[r][c] = -1
-			_show_token(r, c, false)
+			_show_cell(r, c, false)
 	moves = 0
 	_recheck()
 
@@ -1510,7 +1774,7 @@ func share_glyphs() -> String:
 	var out := ""
 	for r in n:
 		for c in n:
-			out += "🟦" if _grid[r][c] == 0 else "🟧"
+			out += "🌞" if _grid[r][c] == 0 else "🌙"
 		out += "\n"
 	return out
 
@@ -1521,12 +1785,20 @@ func _build_scene() -> void:
 		board.remove_child(child)
 		child.free()
 	_tiles = []
-	_circles = []
-	_squares = []
+	_suns = []
+	_moons = []
+	_marks = []
+
+	_platform = Models.instance("platform")
+	_platform.scale = Vector3(n + 2.0 * PLATFORM_LIP, 1.0, n + 2.0 * PLATFORM_LIP)
+	_platform.position = Vector3(0.0, -Placeholders.PLATFORM_H, 0.0)
+	board.add_child(_platform)
+
 	for r in n:
 		var tile_row := []
-		var circle_row := []
-		var square_row := []
+		var sun_row := []
+		var moon_row := []
+		var mark_row := []
 		for c in n:
 			var at := BoardMath.cell_center(r, c, n, n, 0.0)
 			var tile := Models.instance("tile")
@@ -1536,51 +1808,60 @@ func _build_scene() -> void:
 			if r == 0 and c == 0:
 				_tile_h = Models.height(tile)
 			var top := at + Vector3(0.0, _tile_h, 0.0)
-			var circle := Models.instance("token_circle")
-			circle.position = top
-			board.add_child(circle)
-			circle_row.append(circle)
-			var square := Models.instance("token_square")
-			square.position = top
-			board.add_child(square)
-			square_row.append(square)
-			if _given[r][c]:
-				var ring := Models.instance("given_ring")
-				ring.position = top
-				board.add_child(ring)
+			var sun := Models.instance("emblem_sun")
+			sun.position = top
+			board.add_child(sun)
+			sun_row.append(sun)
+			var moon := Models.instance("emblem_moon")
+			moon.position = top
+			board.add_child(moon)
+			moon_row.append(moon)
+			var mark := Models.instance("empty_mark")
+			mark.position = top
+			board.add_child(mark)
+			mark_row.append(mark)
 		_tiles.append(tile_row)
-		_circles.append(circle_row)
-		_squares.append(square_row)
+		_suns.append(sun_row)
+		_moons.append(moon_row)
+		_marks.append(mark_row)
 	for r in n:
 		for c in n:
-			_show_token(r, c, false)
+			_show_cell(r, c, false)
 
-func _show_token(r: int, c: int, pop: bool) -> void:
+func _show_cell(r: int, c: int, pop: bool) -> void:
 	var v: int = _grid[r][c]
-	var circle: Node3D = _circles[r][c]
-	var square: Node3D = _squares[r][c]
-	circle.visible = v == 0
-	square.visible = v == 1
-	circle.scale = Vector3.ONE
-	square.scale = Vector3.ONE
+	var sun: Node3D = _suns[r][c]
+	var moon: Node3D = _moons[r][c]
+	var mark: Node3D = _marks[r][c]
+	sun.visible = v == 0
+	moon.visible = v == 1
+	mark.visible = v == -1
+	sun.scale = Vector3.ONE
+	moon.scale = Vector3.ONE
 	if pop and v != -1:
-		var token: Node3D = circle if v == 0 else square
-		token.scale = Vector3.ONE * 0.01
+		var emblem: Node3D = sun if v == 0 else moon
+		emblem.scale = Vector3.ONE * 0.01
 		var tw := create_tween()
-		tw.tween_property(token, "scale", Vector3.ONE, POP_TIME) \
+		tw.tween_property(emblem, "scale", Vector3.ONE, POP_TIME) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _tile_colour(r: int, c: int) -> Color:
+	var moon: bool = _grid[r][c] == 1
+	var locked: bool = _given[r][c]
+	var base: Color
+	if moon:
+		base = Pal.SLATE_GIVEN if locked else Pal.SLATE
+	else:
+		base = Pal.STONE_GIVEN if locked else Pal.STONE
+	if _bad.rows.has(r) or _bad.cols.has(c):
+		return base.lerp(Pal.BAD, BAD_BLEND)
+	return base
 
 func _recheck() -> void:
 	_bad = Gen.bad_lines(_grid)
 	for r in n:
 		for c in n:
-			var bad: bool = _bad.rows.has(r) or _bad.cols.has(c)
-			var col: Color
-			if bad:
-				col = Pal.BAD_TILE.lerp(Pal.SURFACE_HI, 0.3) if _given[r][c] else Pal.BAD_TILE
-			else:
-				col = Pal.SURFACE_HI if _given[r][c] else Pal.SURFACE
-			Models.tint(_tiles[r][c], col)
+			Models.tint(_tiles[r][c], _tile_colour(r, c))
 
 # --- input ---
 
@@ -1592,10 +1873,10 @@ func on_board_press(hit: Vector3) -> void:
 	var r := cell.y
 	if _given[r][c]:
 		return
-	# empty -> 0 -> 1 -> empty
+	# empty -> sun -> moon -> empty
 	var v: int = _grid[r][c]
 	_grid[r][c] = 0 if v == -1 else (1 if v == 0 else -1)
-	_show_token(r, c, true)
+	_show_cell(r, c, true)
 	_recheck()
 	note_move()
 
@@ -1607,9 +1888,10 @@ func cell_to_local(r: int, c: int) -> Vector2:
 
 - [ ] **Step 2: Swap the registry entry and delete the 2D board**
 
-In `ui/registry.gd`, change the binairo entry's script:
+In `ui/registry.gd`, change the binairo entry's script and blurb:
 
 ```gdscript
+		"blurb": "Suns and moons. Never three alike in a line.",
 		"script": "res://puzzles/binairo3d.gd",
 ```
 
@@ -1648,7 +1930,7 @@ func _solve_binairo() -> void:
 			if _puzzle._given[r][c]:
 				continue
 			var target: int = _puzzle._solution[r][c]
-			# empty -> 0 is one tap, empty -> 1 is two.
+			# empty -> sun is one tap, empty -> moon is two.
 			for k in (1 if target == 0 else 2):
 				_tap_local(_puzzle.cell_to_local(r, c))
 ```
@@ -1685,17 +1967,18 @@ godot --path . --resolution 540x960 --script res://tests/_win.gd 2>&1 | tail -14
 godot --path . --resolution 540x960 --script res://tests/_shot.gd 2>&1 | tail -3
 ```
 
-Expected: `failed=0`; `winnable=10/10` with the binairo line reading `camera fit=true`; `/tmp/shot_binairo.png` shows a 6 by 6 board of cream tiles with teal and terracotta tokens, dark outlines, lavender-tinted shadows on the wood, fully inside the board slot below the rules text. `/tmp/won_binairo.png` shows the solved overlay.
+Expected: `failed=0`; `winnable=10/10` with the binairo line reading `camera fit=true`; `/tmp/shot_binairo.png` shows a 6 by 6 board of cream stone tiles on a stone platform over blue water, seen nearly top-down: locked cells show orange sun discs on cream or ivory discs on slate, empty cells show a small diamond, dark outlines around tiles and emblems, and the whole platform sits inside the board slot below the rules text. `/tmp/won_binairo.png` shows the solved board with every tile either cream-with-sun or slate-with-moon and the solved overlay on top. Compare against `docs/art/concept-binairo-island.png` for the overall read (placeholders are primitives, so expect discs instead of rays and crescents).
 
-If `winnable` drops below 10 for binairo with `solved=false`: taps are landing on the wrong cells. Print `_puzzle.cell_to_local(0, 0)` and `_puzzle.local_to_board(_puzzle.cell_to_local(0, 0))` from the harness; the second should be near `BoardMath.cell_center(0, 0, n, n, 0.12)`. A mismatch means the canvas transform is applied on one side only.
+If `winnable` drops below 10 for binairo with `solved=false`: taps are landing on the wrong cells. Print `_puzzle.cell_to_local(0, 0)` and `_puzzle.local_to_board(_puzzle.cell_to_local(0, 0))` from the harness; the second should be near `BoardMath.cell_center(0, 0, n, n, 0.14)`. A mismatch means the canvas transform is applied on one side only.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add puzzles/binairo3d.gd ui/registry.gd tests/_win.gd tests/_tap.gd
-git add -A '*.uid'
-git commit -m "feat: Binairo as the first 3D toon board, win suite drives it by projection"
+git commit -m "feat: Binairo as the first 3D board, suns and moons on stone over water"
 ```
+
+Stage any `*.uid` files Godot generated in the same commit.
 
 ---
 
@@ -1850,11 +2133,16 @@ shader, adds the outline, and places it. Nothing else to configure.
 
 | slot | footprint (X by Y in Blender) | max height (Z) | notes |
 |---|---|---|---|
-| `tile` | 1.0 x 1.0, use about 0.92 | 0.12 | pieces sit on its top face |
-| `token_circle` | inside 0.8 x 0.8 | 0.6 | the "circle" state in Binairo |
-| `token_square` | inside 0.8 x 0.8 | 0.6 | the "square" state in Binairo |
-| `given_ring` | inside 1.0 x 1.0 | 0.1 | lies on a tile to mark a clue |
-| `table` | any, about 14 x 14 | any | the game sinks it so its top is at 0 |
+| `tile` | 1.0 x 1.0, use about 0.94 | 0.14 | emblems sit on its top face |
+| `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
+| `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
+| `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
+| `platform` | exactly 1.0 x 1.0 | 0.6 | a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
+| `water` | any, about 60 x 60 | flat | the water plane far below the platform |
+
+Concept reference: `docs/art/concept-binairo-island.png`. Moss trim and
+cliffs around the platform come later as separate models once the platform
+shape is settled.
 
 The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
 
@@ -1935,7 +2223,7 @@ OUT = ROOT / "assets" / "models"
 TOLERANCE = 0.001
 FOOTPRINT = 1.0
 MAX_HEIGHT = 0.6
-UNBOUNDED = {"table"}
+UNBOUNDED = {"platform", "water"}
 
 
 def world_bounds(obj):
@@ -2090,7 +2378,7 @@ cube.name = "Tile"
 # Sit the base on Z = 0 and apply it into the mesh so the origin rule holds.
 cube.location.z = 0.45
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-cube.scale = (1.0, 1.0, 0.1333)
+cube.scale = (1.0, 1.0, 0.1556)
 bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 bpy.ops.object.shade_smooth()
 mat = bpy.data.materials.new("Cream")
@@ -2112,7 +2400,7 @@ godot --path . --resolution 540x960 --script res://tests/_win.gd 2>&1 | grep -E 
 godot --path . --resolution 540x960 --script res://tests/_shot.gd 2>&1 | tail -1
 ```
 
-Expected: binairo `PASS` with `camera fit=true`, `winnable=10/10`, and `/tmp/shot_binairo.png` shows the imported cube tiles (visually a slightly different tile from the placeholder prism: sharper corners). Then remove the test export so the repo ships placeholders only:
+Expected: binairo `PASS` with `camera fit=true`, `winnable=10/10`, and `/tmp/shot_binairo.png` shows the imported cube tiles (a slightly different tile from the placeholder prism: sharper corners, 0.14 tall). Then remove the test export so the repo ships placeholders only:
 
 ```bash
 git status --short assets/
