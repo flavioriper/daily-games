@@ -6,7 +6,9 @@ extends "res://core/puzzle_base_3d.gd"
 ## near slope and the moon face on the far slope, both hidden inside the
 ## platform. A tap rolls the prism a third of a turn toward the player so the
 ## next face comes up: empty -> sun -> moon -> empty. The grid changes at
-## once; the roll is only how the change is shown. Tiles in a line that
+## once; the roll is only how the change is shown. The pivot's angle is the
+## only visual state; the emblems on the two buried faces are merely made
+## invisible between rolls so they cost no draw calls. Tiles in a line that
 ## already breaks a rule blush, so the player learns the rules by touching.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
@@ -80,6 +82,7 @@ func reset_board() -> void:
 				_grid[r][c] = -1
 			_turns[r][c] = FACE[_grid[r][c]]
 			_cells[r][c].rotation.x = _target_angle(r, c)
+			_show_faces(r, c, false)
 	moves = 0
 	_recolour()
 
@@ -156,12 +159,25 @@ func _build_scene() -> void:
 		_marks.append(mark_row)
 		_turns.append(turn_row)
 		_rolls.append(roll_row)
+	for r in n:
+		for c in n:
+			_show_faces(r, c, false)
 
 ## Pivot angle that puts the cell's current face up. Rolling always goes the
 ## same way (toward the player), so the angle keeps counting down rather than
 ## unwinding when a cell comes back round to empty.
 func _target_angle(r: int, c: int) -> float:
 	return -_turns[r][c] * THIRD
+
+## Emblem visibility. At rest only the face-up emblem shows; the other two
+## are inside the platform and would only cost draw calls (three emblems and
+## their outlines per cell add up on an 8 x 8 board). While a roll is in
+## motion every emblem shows, since two faces are above the platform at once.
+func _show_faces(r: int, c: int, rolling: bool) -> void:
+	var up: int = _turns[r][c] % 3
+	_marks[r][c].visible = rolling or up == 0
+	_suns[r][c].visible = rolling or up == 1
+	_moons[r][c].visible = rolling or up == 2
 
 ## Ends a roll in progress at once, snapping to the face it was turning to.
 func _settle(r: int, c: int) -> void:
@@ -171,12 +187,15 @@ func _settle(r: int, c: int) -> void:
 	tw.kill()
 	_rolls[r][c] = null
 	_cells[r][c].rotation.x = _target_angle(r, c)
+	_show_faces(r, c, false)
 
 func _roll(r: int, c: int) -> void:
 	var pivot: Node3D = _cells[r][c]
+	_show_faces(r, c, true)
 	var tw := pivot.create_tween()
-	tw.tween_method(func(a: float): pivot.rotation.x = a, pivot.rotation.x, _target_angle(r, c), ROLL_TIME) \
+	tw.tween_property(pivot, "rotation:x", _target_angle(r, c), ROLL_TIME) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.finished.connect(_show_faces.bind(r, c, false))
 	_rolls[r][c] = tw
 
 ## Face colours: stone for the empty and sun faces and the caps, slate for

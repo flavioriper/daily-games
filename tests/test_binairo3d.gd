@@ -99,10 +99,14 @@ static func _test_faces_carry_emblems(t, p) -> void:
 		var emblem: Node3D = pair[0]
 		var face: int = pair[1]
 		var want := Basis(Vector3.RIGHT, face * THIRD) * Vector3(0.0, apothem, 0.0)
-		if not emblem.position.is_equal_approx(want) or not is_equal_approx(wrapf(emblem.rotation.x - face * THIRD, -PI, PI), 0.0) or not emblem.visible:
+		if not emblem.position.is_equal_approx(want) or not is_equal_approx(wrapf(emblem.rotation.x - face * THIRD, -PI, PI), 0.0):
 			all_ok = false
 	t.check(all_ok, "mark, sun and moon stand on faces 0, 1, 2 at one apothem from the axis")
 	t.check(p._suns[r][c].position.z > 0.1, "sun face is on the near side, toward the player")
+	# The two faces inside the platform are hidden at rest: they cannot be
+	# seen and would only cost draw calls.
+	t.check(p._marks[r][c].visible and not p._suns[r][c].visible and not p._moons[r][c].visible,
+		"at rest only the face-up emblem is visible")
 
 static func _face_colour(p, r: int, c: int, face: String) -> Color:
 	for mi in Models.meshes(p._tiles[r][c]):
@@ -140,10 +144,22 @@ static func _test_tap_rolls(t, p) -> void:
 	var first: Tween = p._rolls[r][c]
 	t.check(first != null and first.is_running(), "a roll tween is running")
 	t.check(is_equal_approx(p._target_angle(r, c), -THIRD), "roll target is one third turn toward the player")
+	t.check(p._marks[r][c].visible and p._suns[r][c].visible, "both faces in motion are visible during the roll")
+
+	# Drive the roll to its end: the pivot lands on the sun face and the
+	# faces now hidden inside the platform go invisible again.
+	first.custom_step(p.ROLL_TIME * 0.5)
+	t.check(pivot.rotation.x < -0.2 and pivot.rotation.x > -THIRD, "halfway, the prism is between faces (%.3f)" % pivot.rotation.x)
+	first.custom_step(p.ROLL_TIME)
+	t.check(is_equal_approx(pivot.rotation.x, -THIRD), "the roll lands exactly on the sun face (%.3f)" % pivot.rotation.x)
+	t.check(not first.is_running(), "the roll tween finished")
+	t.check(p._suns[r][c].visible and not p._marks[r][c].visible and not p._moons[r][c].visible,
+		"after the roll only the sun emblem is visible")
 
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], 1, "second tap sets the grid to moon")
-	t.check(not first.is_valid() or not first.is_running(), "first roll was killed")
+	t.check(is_equal_approx(p._rolls[r][c].get_total_elapsed_time(), 0.0) or p._rolls[r][c] != first, "a finished roll is left alone by settle")
+	t.check(not first.is_valid() or not first.is_running(), "first roll is no longer running")
 	t.check(is_equal_approx(p._target_angle(r, c), -2.0 * THIRD), "second roll continues in the same direction")
 	var second: Tween = p._rolls[r][c]
 	t.check(second != null and second != first and second.is_running(), "a new roll tween is running")

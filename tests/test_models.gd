@@ -3,6 +3,9 @@ extends RefCounted
 const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
 
+## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
+const HEIGHT_BUDGET := {"tile": 0.75, "emblem_sun": 0.08, "emblem_moon": 0.08, "empty_mark": 0.04, "rim_edge": 0.12, "rim_corner": 0.12}
+
 static func run(t) -> void:
 	_test_slots(t)
 	_test_rim(t)
@@ -35,7 +38,8 @@ static func _test_slots(t) -> void:
 		if not slot in Models.UNBOUNDED:
 			t.check(lo.x >= -0.5 and hi.x <= 0.5 and lo.z >= -0.5 and hi.z <= 0.5,
 				"%s fits a 1x1 footprint (%s .. %s)" % [slot, lo, hi])
-			t.check(hi.y <= 0.75, "%s is under 0.75 tall" % slot)
+			var budget: float = HEIGHT_BUDGET.get(slot, 0.6)
+			t.check(hi.y <= budget + 0.001, "%s is under %.2f tall (got %.3f)" % [slot, budget, hi.y])
 		var wants_outline: bool = slot in ["tile", "emblem_sun", "emblem_moon"]
 		for mi in ms:
 			var has_outline := mi.get_node_or_null("Outline") != null
@@ -67,6 +71,17 @@ static func _test_rim(t) -> void:
 ## cell state, each its own named material so the game can colour them apart
 ## (amendment B). The caps are the two triangular ends.
 static func _test_trilon(t) -> void:
+	# The placeholder must keep the same contract as the export, since it is
+	# what renders when the .glb is missing and what the headless tests see
+	# on a fresh clone before the models are imported.
+	var stand_in = Placeholders.make("tile")
+	var stand_names := Models.surface_names(stand_in)
+	stand_names.sort()
+	t.eq(stand_names, ["Cap", "Face_Empty", "Face_Moon", "Face_Sun"], "placeholder tile has the four named faces")
+	t.check(absf(Models.height(stand_in) - Placeholders.TILE_H) < 0.001, "placeholder tile is exactly TILE_H tall")
+	t.check(Models.meshes(stand_in)[0].get_node_or_null("Outline") != null, "placeholder tile has an outline shell")
+	stand_in.free()
+
 	var tile = Models.instance("tile")
 	var names := Models.surface_names(tile)
 	names.sort()

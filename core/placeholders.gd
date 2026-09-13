@@ -21,6 +21,10 @@ const TILE_H := TILE_SIDE * 0.8660254037844386
 ## Axis to any face. Bevelling shaves the prism's bounds but never moves its
 ## faces, so the game places the axis from this constant, not from the mesh.
 const TILE_APOTHEM := TILE_H / 3.0
+## At 0.12 the sun's ray tips on the near slope sit about 5 mm under the
+## platform top, hidden only because that slope faces away from a camera
+## pitched steeper than 60 degrees. A bigger sun, a lower camera or a smaller
+## rise would show ray tips through the stone.
 const TILE_RISE := 0.12
 const EMBLEM_H := 0.05
 const PLATFORM_H := 0.6

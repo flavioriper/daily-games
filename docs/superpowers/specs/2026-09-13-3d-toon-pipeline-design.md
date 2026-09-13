@@ -268,7 +268,7 @@ Scene contents, built in `build`:
   materials cover every combination, all served from the toon cache.
 - One `token_circle` and one `token_square` per cell, sitting on the tile top,
   visibility toggled by cell state. Placing a token runs a 0.18 second pop
-  (superseded by the card flip in Amendment B)
+  (superseded by the trilon roll in Amendment B)
   tween (scale 0 to 1, back ease). Removal hides immediately.
 - One `given_ring` per given cell, resting on the tile.
 
@@ -435,14 +435,13 @@ platform depth, so the platform is framed with the tiles.
 | slot | placeholder | size (x, y, z) | colour | outline | footprint rule |
 |---|---|---|---|---|---|
 | `tile` | 4-sided prism, 45 degrees | 0.94, 0.14, 0.94 | `STONE` | yes | inside 1 x 1, under 0.6 |
-
-(The `tile` row is superseded by the trilon in Amendment B.)
-
 | `emblem_sun` | CylinderMesh 32 | r 0.22, h 0.05 | `SUN` | yes | inside 1 x 1, under 0.6 |
 | `emblem_moon` | CylinderMesh 32 | r 0.18, h 0.05 | `MOON` | yes | inside 1 x 1, under 0.6 |
 | `empty_mark` | 4-sided prism, not rotated (a diamond) | 0.14, 0.03, 0.14 | `MARK` | no | inside 1 x 1, under 0.6 |
 | `platform` | BoxMesh | 1, 0.6, 1 | `ROCK` | no | unit slab; the board scales it to (cols + 1, 1, rows + 1) |
 | `water` | PlaneMesh | 60 x 60 | `WATER` | no | unbounded; flat at y = 0 |
+
+The `tile` row is superseded by the trilon in Amendment B.
 
 `token_circle`, `token_square`, `given_ring` and `table` are removed. Emblems
 sit on the tile top. The Blender contract exempts `platform` and `water` from
@@ -481,7 +480,7 @@ visibility driven by cell state. Tile tint: empty or sun on `STONE`
 (`STONE_GIVEN` when locked), moon on `SLATE` (`SLATE_GIVEN` when locked); a
 cell in a broken line lerps 35 percent toward `BAD`. One `platform` under the
 board, top at y = 0, scaled to (n + 1, 1, n + 1). Placing an emblem pops it
-in over 0.18 s (superseded by the card flip in Amendment B). Share glyphs are
+in over 0.18 s (superseded by the trilon roll in Amendment B). Share glyphs are
 🌞 for sun and 🌙 for moon.
 `board_margin()` returns 0.5.
 
@@ -505,7 +504,7 @@ a later change has something to compare against.
 - Outline width 0.02 world units at `distance_scale` 0 (`shaders/outline.gdshader`).
 - Camera pitch 68 degrees, FOV 30 degrees (`world/camera_rig.gd`).
 
-## Amendment B: island pieces and the card flip (2026-09-13, after Task 9)
+## Amendment B: island pieces and the trilon roll (2026-09-13, after Task 9)
 
 The first pass at the concept used primitive stand-ins. This pass fills the
 slots with real models and adds the interaction the user asked for: a tapped
@@ -567,13 +566,22 @@ locked) on the empty and sun faces and the caps, slate on the moon face,
 all blushed toward `BAD` on a broken line. The card flip and `core/flip.gd`
 from the first cut of this amendment are gone.
 
-Geometry that keeps the roll clean: the flat face is 0.84 wide, so the
-visible slopes reach 0.98 at the platform surface and neighbours never
-touch; a rolling prism's edges sweep two apothems (0.485) from an axis
-0.12 below the platform top, clearing the neighbours' resting slopes by
-about 0.05 and rising 0.36 above the platform at most, which
-`board_height()` frames. The pivot height comes from the design constants,
-not the mesh: bevelling shaves the prism's bounds but never moves its faces.
+Geometry that keeps the roll clean: the flat face is 0.84 wide and the
+prism narrows toward its apex, so at the platform surface, 0.12 below the
+face, each cell is 0.70 wide and neighbours never touch. The axis sits one
+apothem (0.2425) below the face, 0.1225 below the platform top. A rolling
+prism's edges sweep two apothems (0.485) from the axis: they rise 0.36 above
+the platform at most, which `board_height()` frames, and stay about 0.14
+clear of a resting neighbour's nearest edge, 0.63 away. The pivot height
+comes from the design constants, not the mesh: bevelling shaves the prism's
+bounds but never moves its faces.
+
+Draw calls: a trilon with three emblems is about 20 draws per cell on the
+compatibility renderer once outlines and shadows are counted, so the two
+emblems buried in the platform are made invisible between rolls (all three
+show while a roll is in motion). Measure an 8 x 8 board on a phone before
+shipping; if it is still heavy, the next step is a two-material tile, since
+the empty face, sun face and caps always share a colour today.
 
 ### Test runner (section 6)
 
