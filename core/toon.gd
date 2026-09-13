@@ -7,16 +7,22 @@ extends RefCounted
 
 const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
+const WIND_SHADER := preload("res://shaders/toon_wind.gdshader")
 const Pal = preload("res://core/palette.gd")
 
 const OUTLINE_NODE := "Outline"
 ## A Blender material whose name ends in this gets toon shading but no
 ## outline shell (the table, ground, anything that should not read as a piece).
 const FLAT_SUFFIX := "_flat"
+## A Blender material whose name contains this bends in the wind
+## (toon_wind.gdshader). It must also end in FLAT_SUFFIX, since the outline
+## shell would not follow the sway.
+const SWAY_MARK := "_sway"
 
 static var _ramp: GradientTexture1D
 static var _outline: ShaderMaterial
 static var _cache: Dictionary = {}
+static var _wind_cache: Dictionary = {}
 
 ## Three hard bands: tinted shadow, half light, full light.
 static func ramp() -> GradientTexture1D:
@@ -41,6 +47,22 @@ static func material(albedo: Color) -> ShaderMaterial:
 	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 	_cache[key] = m
 	return m
+
+## Toon material that sways in the wind; same ramp and tint, its own cache.
+static func wind_material(albedo: Color) -> ShaderMaterial:
+	var key := albedo.to_html()
+	if _wind_cache.has(key):
+		return _wind_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = WIND_SHADER
+	m.set_shader_parameter("albedo", albedo)
+	m.set_shader_parameter("ramp", ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_wind_cache[key] = m
+	return m
+
+static func sways(name: String) -> bool:
+	return name.contains(SWAY_MARK)
 
 static func outline() -> ShaderMaterial:
 	if _outline == null:
@@ -83,7 +105,8 @@ static func _apply_mesh(mi: MeshInstance3D) -> void:
 	for i in mi.mesh.get_surface_count():
 		var src: Material = mi.get_active_material(i)
 		if src is StandardMaterial3D:
-			mi.set_surface_override_material(i, material(src.albedo_color))
+			var toon := wind_material(src.albedo_color) if sways(src.resource_name) else material(src.albedo_color)
+			mi.set_surface_override_material(i, toon)
 		if src == null or not src.resource_name.ends_with(FLAT_SUFFIX):
 			wants_outline = true
 	if wants_outline:

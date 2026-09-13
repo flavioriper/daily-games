@@ -8,6 +8,8 @@ static func run(t) -> void:
 	_test_flat_gets_no_outline(t)
 	_test_shader_material_left_alone(t)
 	_test_apply_twice_is_idempotent(t)
+	_test_sway_gets_wind(t)
+	_test_wind_cache(t)
 
 static func _mesh_with(mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -73,3 +75,33 @@ static func _test_apply_twice_is_idempotent(t) -> void:
 			shells += 1
 	t.eq(shells, 1, "second apply_to adds no second shell")
 	mi.free()
+
+## A `_sway` material bends in the wind (polish spec, section 4): it gets the
+## wind shader, everything else the plain toon shader, and since a swaying
+## mesh must also be `_flat` it gets no outline.
+static func _test_sway_gets_wind(t) -> void:
+	var grass := StandardMaterial3D.new()
+	grass.albedo_color = Color("a3c95e")
+	grass.resource_name = "Grass_sway_flat"
+	var mi := _mesh_with(grass)
+	Toon.apply_to(mi)
+	var over = mi.get_surface_override_material(0)
+	t.check(over is ShaderMaterial and over.shader == Toon.WIND_SHADER, "_sway surface gets the wind shader")
+	t.check(over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("a3c95e")), "wind material keeps the base colour")
+	t.check(over != null and over.get_shader_parameter("ramp") is GradientTexture1D, "wind material shares the toon ramp")
+	t.check(mi.get_node_or_null("Outline") == null, "_sway_flat mesh gets no outline")
+	mi.free()
+	var moss := StandardMaterial3D.new()
+	moss.resource_name = "Moss_flat"
+	var still := _mesh_with(moss)
+	Toon.apply_to(still)
+	t.check(still.get_surface_override_material(0).shader == Toon.TOON_SHADER, "a plain _flat surface keeps the toon shader")
+	still.free()
+	t.check(Toon.sways("Petal_sway_flat") and not Toon.sways("Petal_flat"), "sways() reads the _sway mark")
+
+static func _test_wind_cache(t) -> void:
+	var a = Toon.wind_material(Color("a3c95e"))
+	var b = Toon.wind_material(Color("a3c95e"))
+	var c = Toon.material(Color("a3c95e"))
+	t.check(a == b, "same colour returns the cached wind material")
+	t.check(a != c, "wind and plain toon materials of one colour are different objects")
