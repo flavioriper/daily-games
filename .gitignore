@@ -8,3 +8,6 @@
 
 # Local session history from the Remember plugin, not project state
 .remember/
+
+# Blender backups
+*.blend1

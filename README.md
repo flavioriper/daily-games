@@ -12,8 +12,8 @@ before committing to a lineup.
 godot --path .          # portrait, 1080x1920, touch emulated from mouse
 ```
 
-Every prototype is reachable from the menu. Deliberately unfinished art: flat
-colours, one font, no assets, so we are judging mechanics rather than polish.
+Every prototype is reachable from the menu. Boards sit on a 3D toon-shaded stage. Models are primitive placeholders until
+Blender exports land in `assets/models/` (see `docs/art/blender-contract.md`).
 
 ## Tests
 
@@ -56,9 +56,14 @@ puzzles/    <id>_gen.gd is pure logic and headless-testable
 ui/         menu, puzzle host shell, registry
 tests/      unit suites plus the win and screenshot harnesses
 docs/       the 75-candidate catalog and build notes
+world/      3D stage: camera rig, sun, sky, table; main scene
+shaders/    toon and outline spatial shaders
+assets/     models/<slot>.glb from Blender, placeholders otherwise
+tools/      blender_export.py, run inside Blender
 ```
 
 ## Docs
 
 - `docs/brainstorm/specs/` — small spec for each of 75 candidate mechanics
 - `docs/brainstorm/prototypes.md` — what building these ten actually taught
+- `docs/art/blender-contract.md` — modelling rules and export for 3D pieces
