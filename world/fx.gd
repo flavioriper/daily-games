@@ -23,6 +23,7 @@ var _next_puff := 0
 var _next_sparkle := 0
 static var _star: ImageTexture
 
+## Build the two emitter pools (puffs and sparkles) and name the node.
 func _ready() -> void:
 	name = "Fx"
 	for i in PUFF_POOL:
@@ -59,6 +60,12 @@ func _fire(p: CPUParticles3D, at: Vector3, colour: Color) -> void:
 	p.color = colour
 	p.restart()
 
+## Build a one-shot emitter with the given parameters.
+## nm: emitter name; amount: particle count; life: lifetime in seconds;
+## spread: cone spread in degrees; v0/v1: min and max initial velocity;
+## gravity: gravity vector; size: particle size in world units.
+## Every emitter bursts all at once, shrinks its particles to nothing over
+## their lifetime, and casts no shadow.
 static func _emitter(nm: String, amount: int, life: float, spread: float, v0: float, v1: float, gravity: Vector3, size: float) -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.name = nm
