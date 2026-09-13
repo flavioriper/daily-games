@@ -15,6 +15,7 @@ var _entries: Array = []
 var _idx := 0
 var _frames := 0
 var _results: Array = []
+var _fit_ok := true
 
 func _initialize() -> void:
 	_entries = load("res://ui/registry.gd").PUZZLES
@@ -41,6 +42,7 @@ func _process(_delta: float) -> bool:
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 	elif slot == 12:
 		_puzzle = _host._puzzle
+		_fit_ok = true
 		_solve(_entries[_idx].id)
 	elif slot == 20:
 		var solved: bool = _puzzle.is_solved()
@@ -49,7 +51,7 @@ func _process(_delta: float) -> bool:
 		root.get_texture().get_image().save_png("/tmp/won_%s.png" % _entries[_idx].id)
 		_results.append({
 			"id": _entries[_idx].id, "solved": solved, "done": done, "overlay": overlay,
-			"ok": solved and done and overlay, "note": _note(_entries[_idx].id),
+			"ok": solved and done and overlay and _fit_ok, "note": _note(_entries[_idx].id),
 		})
 	elif slot == 26:
 		_host.closed.emit()
@@ -58,7 +60,7 @@ func _process(_delta: float) -> bool:
 
 func _note(id: String) -> String:
 	match id:
-		"binairo": return "%d moves" % _puzzle.moves
+		"binairo": return "%d moves, camera fit=%s" % [_puzzle.moves, _fit_ok]
 		"mastermind": return "cracked in %d guesses" % _puzzle._guesses.size()
 		"balance": return "weights %s" % [_puzzle._guess]
 		"pipes": return "%d turns" % _puzzle.moves
@@ -87,6 +89,13 @@ func _solve(id: String) -> void:
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
+	# Camera fit check: every cell centre must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in n:
+		for c in n:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
 	for r in n:
 		for c in n:
 			if _puzzle.is_done():
@@ -94,10 +103,9 @@ func _solve_binairo() -> void:
 			if _puzzle._given[r][c]:
 				continue
 			var target: int = _puzzle._solution[r][c]
-			# empty -> 0 is one tap, empty -> 1 is two.
+			# empty -> sun is one tap, empty -> moon is two.
 			for k in (1 if target == 0 else 2):
-				_tap_local(Vector2(_puzzle._origin.x + (c + 0.5) * _puzzle._cell,
-					_puzzle._origin.y + (r + 0.5) * _puzzle._cell))
+				_tap_local(_puzzle.cell_to_local(r, c))
 
 func _solve_mastermind() -> void:
 	var length: int = _puzzle.length

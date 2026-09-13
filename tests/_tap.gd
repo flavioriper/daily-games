@@ -16,7 +16,7 @@ func _process(_delta: float) -> bool:
 	if _frames == 40:
 		var host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = host._puzzle
-		print("grid n=", _puzzle.n, " cell=", _puzzle._cell, " origin=", _puzzle._origin)
+		print("grid n=", _puzzle.n, " slot=", _puzzle.size)
 		# Tap every empty cell in row 0 three times: empty -> 0 -> 1 -> empty.
 		# Then leave row 1 tapped once so we can see both glyph states.
 		for c in _puzzle.n:
@@ -28,7 +28,7 @@ func _process(_delta: float) -> bool:
 		print("after taps, moves=", _puzzle.moves)
 		print("row0=", _puzzle._grid[0])
 		print("row1=", _puzzle._grid[1])
-		print("bad_rows=", _puzzle._bad_rows.keys())
+		print("bad_rows=", _puzzle._bad.rows.keys())
 	if _frames == 60:
 		var img := root.get_texture().get_image()
 		img.save_png("/tmp/shot_tapped.png")
@@ -37,8 +37,7 @@ func _process(_delta: float) -> bool:
 	return false
 
 func _tap(r: int, c: int) -> void:
-	var local: Vector2 = _puzzle._origin + Vector2(c + 0.5, r + 0.5) * _puzzle._cell
-	var at: Vector2 = _puzzle.get_global_transform_with_canvas() * local
+	var at: Vector2 = _puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(r, c)
 	for pressed in [true, false]:
 		var ev := InputEventScreenTouch.new()
 		ev.index = 0

@@ -7,8 +7,8 @@ const PUZZLES := [
 	{
 		"id": "binairo",
 		"title": "Binairo",
-		"blurb": "Fill the grid. Never three alike in a line.",
-		"script": "res://puzzles/binairo.gd",
+		"blurb": "Suns and moons. Never three alike in a line.",
+		"script": "res://puzzles/binairo3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{
