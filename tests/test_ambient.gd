@@ -20,6 +20,7 @@ static func run_in_tree(t) -> void:
 	_test_refresh(t, stage.ambient)
 	_test_splash(t, stage.ambient)
 	_test_fit_to(t, stage.ambient)
+	_test_camera_breath(t, stage)
 	Motion.reduce = false
 	root.remove_child(stage)
 	stage.free()
@@ -70,3 +71,32 @@ static func _test_fit_to(t, ambient) -> void:
 	var p: CPUParticles3D = ambient.pollen
 	t.check(p.position.is_equal_approx(Vector3(0.0, 1.5, 0.0)), "pollen floats one cell above the board's top (%s)" % p.position)
 	t.check(p.emission_box_extents.is_equal_approx(Vector3(4.0, 0.2, 4.0)), "pollen volume is the board plus a one-cell margin, 0.4 tall (%s)" % p.emission_box_extents)
+
+## Camera breath (polish spec, section 4): a slow, tiny drift of camera and
+## target together, a fraction of the fitted distance, off under reduce-motion.
+static func _test_camera_breath(t, stage) -> void:
+	var rig = stage.rig
+	var cam: Camera3D = rig.camera
+	rig._distance = 10.0
+	rig._target = Vector3.ZERO
+	rig._place()
+	var still := cam.global_position
+	rig._process(2.0)
+	var moved := cam.global_position
+	var shift := (moved - still).length()
+	t.check(shift > 0.001, "the camera has drifted after two seconds (%.4f)" % shift)
+	t.check(shift <= 10.0 * rig.BREATH * 1.7, "the drift is a fraction of the distance (%.4f)" % shift)
+	t.check(rig.breath_offset().length() > 0.0, "breath_offset reports the drift")
+	# The target moves with the camera, so the view direction is unchanged.
+	var dir_still: Vector3 = rig.view_offset_dir()
+	var dir_now: Vector3 = (cam.global_position - (rig._target + rig.breath_offset())).normalized()
+	t.check(dir_now.is_equal_approx(dir_still), "camera and target drift together; the view direction holds")
+	Motion.reduce = true
+	rig._process(0.1)
+	t.check(rig.breath_offset().is_zero_approx(), "reduce-motion zeroes the breath")
+	t.check(cam.global_position.is_equal_approx(still), "reduce-motion puts the camera back on its fitted spot")
+	Motion.reduce = false
+	rig.breathing = false
+	rig._process(1.0)
+	t.check(rig.breath_offset().is_zero_approx(), "breathing=false also stills the camera")
+	rig.breathing = true

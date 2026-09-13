@@ -3,6 +3,7 @@ extends Node3D
 ## Fixed-direction board camera. The direction never changes (pitch below the
 ## horizontal, yaw around Y); fit() only moves the camera along that direction
 ## and slides its target so a given AABB fills a given screen rect.
+## Between fits a tiny breath drifts camera and target together (see BREATH).
 ## Projection needs a live viewport, so this is verified by the win and
 ## screenshot harnesses rather than by headless tests.
 
@@ -11,6 +12,17 @@ extends Node3D
 @export var fov_deg: float = 30.0
 ## Fraction of the rect's shorter side kept clear around the board.
 @export var margin: float = 0.06
+
+const Motion = preload("res://core/motion.gd")
+
+## Camera breath: camera and target drift together by this fraction of the
+## fitted distance on two slow sine loops (8 s across, 11 s up), for a
+## handheld-diorama calm. Off under reduce-motion or when breathing is false.
+## Try-and-keep per the polish spec: drop it if the strip reads as wobble.
+const BREATH := 0.002
+var breathing := true
+var _breath := Vector3.ZERO
+var _breath_t := 0.0
 
 var camera: Camera3D
 var _target := Vector3.ZERO
@@ -33,8 +45,26 @@ func view_offset_dir() -> Vector3:
 	return Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)).normalized()
 
 func _place() -> void:
-	camera.global_position = _target + view_offset_dir() * _distance
-	camera.look_at(_target, Vector3.UP)
+	camera.global_position = _target + _breath + view_offset_dir() * _distance
+	camera.look_at(_target + _breath, Vector3.UP)
+
+## The breath offset applied on top of the fitted position.
+func breath_offset() -> Vector3:
+	return _breath
+
+func _process(delta: float) -> void:
+	if not breathing or Motion.reduce:
+		if not _breath.is_zero_approx():
+			_breath = Vector3.ZERO
+			_place()
+		return
+	_breath_t += delta
+	var dir := view_offset_dir()
+	var right := Vector3.UP.cross(dir).normalized()
+	var up := dir.cross(right)
+	var a := _distance * BREATH
+	_breath = right * (sin(_breath_t * TAU / 8.0) * a) + up * (0.6 * sin(_breath_t * TAU / 11.0) * a)
+	_place()
 
 ## Frames `aabb` inside `rect` (viewport pixels): binary-search the distance
 ## until every corner projects inside the margin-shrunk rect, then slide the
