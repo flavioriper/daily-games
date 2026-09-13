@@ -17,6 +17,7 @@ func _initialize() -> void:
 		"toon": "res://tests/test_toon.gd",
 		"motion": "res://tests/test_motion.gd",
 		"ambient": "res://tests/test_ambient.gd",
+		"fx": "res://tests/test_fx.gd",
 		"models": "res://tests/test_models.gd",
 		"platform": "res://tests/test_platform.gd",
 		"binairo": "res://tests/test_binairo.gd",
