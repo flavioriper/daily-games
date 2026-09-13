@@ -10,7 +10,18 @@ extends RefCounted
 const Toon = preload("res://core/toon.gd")
 const Pal = preload("res://core/palette.gd")
 
-const TILE_H := 0.14
+## The tile is a trilon: an equilateral three-sided prism lying along X with
+## one face up. TILE_SIDE is the width of each face across the axis, TILE_LEN
+## its length along the axis, TILE_H the prism's height (side * sqrt(3) / 2),
+## and TILE_RISE how far the flat face stands above the platform at rest. The
+## rest of the prism hangs inside the platform, hidden by its top surface.
+const TILE_SIDE := 0.84
+const TILE_LEN := 0.94
+const TILE_H := TILE_SIDE * 0.8660254037844386
+## Axis to any face. Bevelling shaves the prism's bounds but never moves its
+## faces, so the game places the axis from this constant, not from the mesh.
+const TILE_APOTHEM := TILE_H / 3.0
+const TILE_RISE := 0.12
 const EMBLEM_H := 0.05
 const PLATFORM_H := 0.6
 const RIM_H := 0.04
@@ -25,10 +36,13 @@ static func make(slot: String) -> Node3D:
 	var outline := true
 	match slot:
 		"tile":
-			mi.mesh = _prism(0.47, TILE_H)
-			mi.rotation.y = PI / 4.0
-			color = Pal.STONE
-			height = TILE_H
+			# Named surfaces so the game can colour each face apart; the
+			# per-face vertices mean the outline hull opens along the edges,
+			# which the Blender export avoids. Base (the apex edge) at y = 0.
+			mi.mesh = _trilon()
+			root.add_child(mi)
+			Toon.apply_to(root)
+			return root
 		"emblem_sun":
 			mi.mesh = _cylinder(0.22, EMBLEM_H, 32)
 			color = Pal.SUN
@@ -84,6 +98,52 @@ static func make(slot: String) -> Node3D:
 		Toon.add_outline(mi)
 	root.add_child(mi)
 	return root
+
+## Three-sided prism along X, flat face up, apex edge at y = 0, one surface
+## per face: Face_Empty on top, Face_Sun sloping down toward +Z (the player),
+## Face_Moon toward -Z, Cap for both triangular ends.
+static func _trilon() -> ArrayMesh:
+	var hl := TILE_LEN * 0.5
+	var hs := TILE_SIDE * 0.5
+	var a0 := Vector3(-hl, 0.0, 0.0)
+	var a1 := Vector3(hl, 0.0, 0.0)
+	var n0 := Vector3(-hl, TILE_H, hs)
+	var n1 := Vector3(hl, TILE_H, hs)
+	var f0 := Vector3(-hl, TILE_H, -hs)
+	var f1 := Vector3(hl, TILE_H, -hs)
+	var slope := Vector3(0.0, -0.5, 0.8660254037844386)
+	var mesh := ArrayMesh.new()
+	_surface(mesh, "Face_Empty", Pal.STONE, [[f0, f1, n1, n0]], Vector3.UP)
+	_surface(mesh, "Face_Sun", Pal.STONE, [[a0, a1, n1, n0]], slope)
+	_surface(mesh, "Face_Moon", Pal.SLATE, [[a0, a1, f1, f0]], Vector3(0.0, slope.y, -slope.z))
+	_surface(mesh, "Cap", Pal.STONE, [[a1, n1, f1], [a0, n0, f0]], Vector3.ZERO)
+	return mesh
+
+## One surface holding the given polygons, each wound so `normal` (or, for
+## ZERO, the polygon's own outward direction along X) faces the front.
+static func _surface(mesh: ArrayMesh, name: String, color: Color, polys: Array, normal: Vector3) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for poly in polys:
+		var pts: Array = poly
+		var nrm := normal
+		if nrm == Vector3.ZERO:
+			nrm = Vector3.RIGHT if pts[0].x > 0.0 else Vector3.LEFT
+		# Godot's front faces wind clockwise seen from outside, so the
+		# cross product of a front-facing triangle points against the normal.
+		var cross: Vector3 = (pts[1] - pts[0]).cross(pts[2] - pts[0])
+		if cross.dot(nrm) > 0.0:
+			pts = pts.duplicate()
+			pts.reverse()
+		for i in range(1, pts.size() - 1):
+			for v in [pts[0], pts[i], pts[i + 1]]:
+				st.set_normal(nrm)
+				st.add_vertex(v)
+	st.commit(mesh)
+	var mat := StandardMaterial3D.new()
+	mat.resource_name = name
+	mat.albedo_color = color
+	mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
 
 ## Square prism of half-width `half` and height `h`, built as a four-sided
 ## cylinder so the side vertices are shared. Rotate 45 degrees to align faces.

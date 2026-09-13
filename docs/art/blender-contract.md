@@ -9,7 +9,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 
 | slot | footprint (X by Y in Blender) | max height (Z) | notes |
 |---|---|---|---|
-| `tile` | 1.0 x 1.0, use about 0.94 | 0.14 | emblems sit on its top face |
+| `tile` | 1.0 x 1.0, use 0.94 along X by 0.84 across Y | 0.75 | a trilon: an equilateral three-sided prism lying along X, flat face up, lowest edge at Z = 0. Four materials the game colours by name: `Face_Empty` (up at rest), `Face_Sun` (sloping toward -Y, the player), `Face_Moon` (toward +Y), `Cap` (both ends). Emblems are placed on the faces by the game |
 | `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
 | `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
 | `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
@@ -56,12 +56,14 @@ leaves a gap in the ring. `water` is unbounded.
    nothing else needed. The game replaces every material with the toon shader
    using that base colour. Textures export fine but are ignored by the toon
    shader for now.
-6. **One material on slots the game recolours.** A slot the game tints by
-   state — today only `tile` — must have a single material. Tinting replaces
-   *every* surface's material with one colour, so a tile with a separate moss
-   trim material would go monochrome the moment it is tinted. Slots that are
-   never tinted (`emblem_sun`, `emblem_moon`, `empty_mark`, `rim_edge`,
-   `rim_corner`, `platform`, `water`) may use as many materials as they like.
+6. **Named materials on slots the game recolours.** The game recolours by
+   material *name*, one colour per name, so a recoloured slot must carry
+   exactly the names the game expects: `tile` has `Face_Empty`, `Face_Sun`,
+   `Face_Moon` and `Cap`, and nothing else (an extra material would never be
+   coloured and would keep its Blender colour). Do not split one face over
+   two materials. Slots that are never tinted (`emblem_sun`, `emblem_moon`,
+   `empty_mark`, `rim_edge`, `rim_corner`, `platform`, `water`) may use as
+   many materials as they like.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
    no outline. Use it for any surface that should not read as a piece. The
    `platform`, `water`, `empty_mark`, `rim_edge` and `rim_corner` materials
@@ -84,7 +86,7 @@ leaves a gap in the ring. `water` is unbounded.
 ## Building the pieces
 
 The Binairo pieces are not hand-modelled: `tools/build_pieces.py` builds all
-six with bmesh (tile, both emblems, empty mark, both rim pieces), following
+six with bmesh (the trilon tile, both emblems, empty mark, both rim pieces), following
 every rule above, and saves `art/pieces.blend` as a by-product for looking at
 them (the `.blend` is git-ignored; the script is the source). Each piece is a
 flat outline extruded to height, bevelled on every edge, then each flat face

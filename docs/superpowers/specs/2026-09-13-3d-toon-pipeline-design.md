@@ -435,6 +435,9 @@ platform depth, so the platform is framed with the tiles.
 | slot | placeholder | size (x, y, z) | colour | outline | footprint rule |
 |---|---|---|---|---|---|
 | `tile` | 4-sided prism, 45 degrees | 0.94, 0.14, 0.94 | `STONE` | yes | inside 1 x 1, under 0.6 |
+
+(The `tile` row is superseded by the trilon in Amendment B.)
+
 | `emblem_sun` | CylinderMesh 32 | r 0.22, h 0.05 | `SUN` | yes | inside 1 x 1, under 0.6 |
 | `emblem_moon` | CylinderMesh 32 | r 0.18, h 0.05 | `MOON` | yes | inside 1 x 1, under 0.6 |
 | `empty_mark` | 4-sided prism, not rotated (a diamond) | 0.14, 0.03, 0.14 | `MARK` | no | inside 1 x 1, under 0.6 |
@@ -521,7 +524,7 @@ thin band and the face reads as one toon tone.
 
 | slot | shape | size | materials |
 |---|---|---|---|
-| `tile` | square, bevel 0.045 x 3 segments | 0.94 x 0.94 x 0.14 | `Stone` (single; tinted) |
+| `tile` | trilon: equilateral three-sided prism along X, side 0.84, length 0.94, flat face up, bevel 0.035 x 2 | 0.94 x 0.84 x 0.73 | `Face_Empty`, `Face_Sun`, `Face_Moon`, `Cap`; coloured by name |
 | `emblem_sun` | disc r 0.16 plus 8 tapered rays to r 0.29 | inside 0.56, h 0.05 | `Sun` |
 | `emblem_moon` | crescent: disc r 0.215 minus disc r 0.19 offset (0.105, 0.07), horns to the upper right | inside 0.43, h 0.05 | `Moon` |
 | `empty_mark` | diamond, half 0.07 | 0.13 x 0.13 x 0.03 | `Mark_flat` |
@@ -542,18 +545,35 @@ second one mirrored along its length for variety) and a `rim_corner` at each
 corner. `Platform.LIP` is 0.5, one rim piece deep;
 `board_margin()` returns it. Binairo no longer lays its own slab.
 
-### Card flip (section 4)
+### Trilon roll (section 4)
 
-Each Binairo cell hangs under a pivot at half tile height: the tile below it,
-the emblems and mark on top. A tap changes the grid at once, then
-`core/flip.gd` turns the pivot about X to edge-on over half of 0.32 s while
-lifting it 0.3 so the trailing edge clears the platform, swaps the face
-(emblem visibility and tile colour) at the midpoint, and turns back to flat
-from the other side as it sets down. Tile colour follows the face being shown,
-not the grid, so a tile keeps its old colour until the midpoint; the broken-
-line blush still follows the grid. A tap on a cell mid-flip settles that flip
-first (kill tween, flat pivot, face applied), then starts the next, so the
-card never turns from a face it never showed. Reset settles every cell.
+The user asked for the piece to be "a triangle with 3 faces": each Binairo
+cell is a trilon, an equilateral three-sided stone prism lying along X on a
+pivot through its axis, with one face per state. At rest the empty face (with
+the diamond) is up and stands `TILE_RISE` (0.12) above the platform; the sun
+face waits on the near slope and the moon face on the far slope, both inside
+the platform, where its top surface hides them. Each emblem stands on the
+centre of its own face, one apothem (`TILE_APOTHEM`, side * sqrt(3) / 6) from
+the axis and pointing along the face normal, so nothing is ever toggled:
+the pivot's angle alone says which face is up.
+
+A tap changes the grid at once and rolls the pivot a third of a turn about X
+toward the player over 0.3 s (cubic ease out), the old face going over the
+far side and the new one rising from the near side. The turn count only ever
+grows, so empty -> sun -> moon -> empty is one full turn, never an unwind. A
+tap on a cell mid-roll snaps that roll home first. Reset snaps every cell.
+Face colours are set by material name: stone (`STONE`, `STONE_GIVEN` when
+locked) on the empty and sun faces and the caps, slate on the moon face,
+all blushed toward `BAD` on a broken line. The card flip and `core/flip.gd`
+from the first cut of this amendment are gone.
+
+Geometry that keeps the roll clean: the flat face is 0.84 wide, so the
+visible slopes reach 0.98 at the platform surface and neighbours never
+touch; a rolling prism's edges sweep two apothems (0.485) from an axis
+0.12 below the platform top, clearing the neighbours' resting slopes by
+about 0.05 and rising 0.36 above the platform at most, which
+`board_height()` frames. The pivot height comes from the design constants,
+not the mesh: bevelling shaves the prism's bounds but never moves its faces.
 
 ### Test runner (section 6)
 

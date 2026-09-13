@@ -1,10 +1,12 @@
 extends RefCounted
 
 const Models = preload("res://core/models.gd")
+const Placeholders = preload("res://core/placeholders.gd")
 
 static func run(t) -> void:
 	_test_slots(t)
 	_test_rim(t)
+	_test_trilon(t)
 	_test_fallback(t)
 	_test_tint_and_height(t)
 
@@ -33,7 +35,7 @@ static func _test_slots(t) -> void:
 		if not slot in Models.UNBOUNDED:
 			t.check(lo.x >= -0.5 and hi.x <= 0.5 and lo.z >= -0.5 and hi.z <= 0.5,
 				"%s fits a 1x1 footprint (%s .. %s)" % [slot, lo, hi])
-			t.check(hi.y <= 0.6, "%s is under 0.6 tall" % slot)
+			t.check(hi.y <= 0.75, "%s is under 0.75 tall" % slot)
 		var wants_outline: bool = slot in ["tile", "emblem_sun", "emblem_moon"]
 		for mi in ms:
 			var has_outline := mi.get_node_or_null("Outline") != null
@@ -61,6 +63,43 @@ static func _test_rim(t) -> void:
 	t.check(cb[1].y <= 0.12 + 0.001, "rim_corner is under 0.12 tall (%.3f)" % cb[1].y)
 	corner.free()
 
+## The tile is a three-sided prism lying along X: flat face up, one face per
+## cell state, each its own named material so the game can colour them apart
+## (amendment B). The caps are the two triangular ends.
+static func _test_trilon(t) -> void:
+	var tile = Models.instance("tile")
+	var names := Models.surface_names(tile)
+	names.sort()
+	t.eq(names, ["Cap", "Face_Empty", "Face_Moon", "Face_Sun"], "tile surfaces are the three faces and the caps")
+	# Bevels shave up to a few hundredths off the sharp edges, hence the slack.
+	var b := _bounds(tile)
+	t.check(absf((b[1].x - b[0].x) - Placeholders.TILE_LEN) < 0.01, "tile runs %.2f along X (got %.3f)" % [Placeholders.TILE_LEN, b[1].x - b[0].x])
+	t.check(absf((b[1].z - b[0].z) - Placeholders.TILE_SIDE) < 0.05, "tile is about %.2f wide across Z (got %.3f)" % [Placeholders.TILE_SIDE, b[1].z - b[0].z])
+	# The flat face is up: the widest extent in Z is at the top, the apex at the base.
+	var top_w := 0.0
+	var base_w := 0.0
+	for mi in Models.meshes(tile):
+		for p in mi.mesh.get_faces():
+			var w: Vector3 = mi.transform * p
+			if w.y > b[1].y - 0.01:
+				top_w = maxf(top_w, absf(w.z))
+			if w.y < b[0].y + 0.02:
+				base_w = maxf(base_w, absf(w.z))
+	t.check(top_w > 0.3 and base_w < 0.1, "flat face on top (half-width %.2f), apex at the base (half-width %.2f)" % [top_w, base_w])
+	Models.tint_named(tile, "Face_Moon", Color("3f4652"))
+	var moon_hits := 0
+	var other_hits := 0
+	for mi in Models.meshes(tile):
+		for i in mi.mesh.get_surface_count():
+			var over = mi.get_surface_override_material(i)
+			var moon := Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("3f4652")) if over != null else false
+			if mi.mesh.surface_get_material(i).resource_name == "Face_Moon":
+				moon_hits += 1 if moon else 0
+			else:
+				other_hits += 1 if moon else 0
+	t.check(moon_hits >= 1 and other_hits == 0, "tint_named colours only the named face (moon=%d, others=%d)" % [moon_hits, other_hits])
+	tile.free()
+
 static func _test_fallback(t) -> void:
 	t.check(not Models.has_model("no_such_thing"), "has_model is false for a missing file")
 	var unknown = Models.instance("no_such_thing")
@@ -79,13 +118,8 @@ static func _test_tint_and_height(t) -> void:
 	t.check(over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")), "tint swaps the toon colour")
 	tok.free()
 	var tile = Models.instance("tile")
-	t.check(is_equal_approx(Models.height(tile), 0.14), "tile is 0.14 tall, measured %.3f" % Models.height(tile))
-	# Tinting replaces every surface with one colour, so a tile with a second
-	# material would go monochrome the moment it is tinted (contract rule 6).
-	var surfaces := 0
-	for mi in Models.meshes(tile):
-		surfaces += mi.mesh.get_surface_count()
-	t.eq(surfaces, 1, "tile has a single material surface")
+	t.check(absf(Models.height(tile) - Placeholders.TILE_H) < 0.03,
+		"tile is an equilateral prism about %.3f tall, measured %.3f" % [Placeholders.TILE_H, Models.height(tile)])
 	tile.free()
 	var platform = Models.instance("platform")
 	t.check(is_equal_approx(Models.height(platform), 0.6), "platform placeholder is 0.6 deep, measured %.3f" % Models.height(platform))

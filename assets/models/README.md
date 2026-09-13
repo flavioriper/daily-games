@@ -6,7 +6,7 @@ any that are missing:
 
 | slot | what it is |
 |---|---|
-| `tile` | one board cell, 1 x 1 footprint, about 0.14 tall |
+| `tile` | one board cell: a three-sided prism along X, 0.94 long, 0.84 across, flat face up, faces named `Face_Empty` / `Face_Sun` / `Face_Moon` plus `Cap` |
 | `emblem_sun` | sun emblem laid on a tile top (Binairo "sun") |
 | `emblem_moon` | crescent emblem laid on a tile top (Binairo "moon") |
 | `empty_mark` | small diamond laid on an empty tile |
@@ -15,10 +15,9 @@ any that are missing:
 | `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
 | `water` | flat water plane far below the platform |
 
-`tile` must have a **single material**: the game tints it by cell state and
-that replaces every surface's material with one colour, so a second material
-(a moss trim, say) would go monochrome. The other slots are never tinted and
-may use several materials.
+`tile` is recoloured **by material name** (`Face_Empty`, `Face_Sun`,
+`Face_Moon`, `Cap`), so it must carry exactly those four. The other slots are
+never tinted and may use several materials.
 
 The `platform`, `water`, `empty_mark`, `rim_edge` and `rim_corner` materials
 must be named with the `_flat` suffix (for example `Rock_flat`), or they get

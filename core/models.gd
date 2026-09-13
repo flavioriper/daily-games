@@ -54,6 +54,27 @@ static func tint(root: Node, color: Color) -> void:
 		for i in mi.mesh.get_surface_count():
 			mi.set_surface_override_material(i, Toon.material(color))
 
+## Recolours only the surfaces whose imported material is called `name`
+## (the glTF material name survives on the mesh surface; overrides do not
+## touch it). Used for slots with one material per face, like the tile.
+static func tint_named(root: Node, name: String, color: Color) -> void:
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src != null and src.resource_name == name:
+				mi.set_surface_override_material(i, Toon.material(color))
+
+## Distinct imported material names under `root`, in first-seen order.
+static func surface_names(root: Node) -> Array[String]:
+	var out: Array[String] = []
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			var nm := src.resource_name if src != null else ""
+			if not out.has(nm):
+				out.append(nm)
+	return out
+
 ## Height of the model above its base, measured from the mesh bounds.
 static func height(root: Node) -> float:
 	var top := 0.0
