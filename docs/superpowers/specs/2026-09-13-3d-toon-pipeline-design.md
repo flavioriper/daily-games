@@ -21,8 +21,8 @@ Decisions already taken with the user:
 - Tilted perspective camera, not isometric, not top-down.
 - One renderer (Compatibility / OpenGL) on every platform so the Mac
   screenshots show what the phone shows.
-- Outlines by inverted hull (second material pass, front faces culled,
-  vertices pushed along normals). No screen-space post-process.
+- Outlines by inverted hull (a second draw of the mesh with front faces
+  culled and vertices pushed along normals). No screen-space post-process.
 
 ## Non-goals
 
@@ -112,8 +112,11 @@ rig is verified end to end rather than unit tested.
   step on `1 - dot(NORMAL, VIEW)` written to `EMISSION`.
 - `light()`: `t = ndl * 0.5 + 0.5` scaled by `ATTENUATION`, banded through
   the ramp, then
-  `DIFFUSE_LIGHT += LIGHT_COLOR * ALBEDO * mix(shadow_tint, 1, band)`.
-  Tinted shadows instead of darkened ones are what make the look cozy.
+  `DIFFUSE_LIGHT += LIGHT_COLOR / PI * mix(shadow_tint, 1, band)`.
+  No `ALBEDO` factor here: the Compatibility scene shader multiplies
+  `diffuse_light` by albedo afterwards (verified in `scene.glsl`), and
+  `LIGHT_COLOR` arrives as colour times energy times PI. Tinted shadows
+  instead of darkened ones are what make the look cozy.
 - `render_mode cull_back, depth_draw_opaque`. Nothing here needs depth or
   screen textures, so it runs on Compatibility.
 
@@ -125,6 +128,12 @@ rig is verified end to end rather than unit tested.
   if far pieces look thin).
 - `vertex()`: `VERTEX += NORMAL * width * (1 + distance_scale * view_dist)`.
 
+The outline is attached as a child `MeshInstance3D` named `Outline` that
+shares the parent's mesh, uses the outline material as `material_override`,
+and has shadow casting off. Not `material_overlay` and not `next_pass`: both
+draw the inflated hull into the shadow map too, so every piece would cast a
+fattened shadow (found and fixed the same way in the peeplet project).
+
 Inverted hull needs smooth shading with shared vertices. That rule goes in
 the Blender contract, and the placeholder primitives already satisfy it.
 
@@ -132,18 +141,21 @@ the Blender contract, and the placeholder primitives already satisfy it.
 
 - `ramp() -> GradientTexture1D`: three constant steps at offsets 0, 0.35,
   0.7 with values 0.45, 0.8, 1.0. Built once and cached.
-- `material(albedo: Color) -> ShaderMaterial`: toon material with the shared
-  outline as `next_pass`. Cached per albedo (dictionary keyed by
-  `Color.to_html()`), so tinting a hundred tiles the same colour costs one
-  material.
-- `flat(albedo: Color) -> ShaderMaterial`: unshaded matte, no outline. For the
-  table top and anything whose Blender material name ends in `_flat`.
+- `material(albedo: Color) -> ShaderMaterial`: toon material. Cached per
+  albedo (dictionary keyed by `Color.to_html()`), so tinting a hundred tiles
+  the same colour costs one material.
+- `flat(albedo: Color) -> ShaderMaterial`: unshaded matte. For the table top
+  and anything whose Blender material name ends in `_flat`.
+- `outline() -> ShaderMaterial`: the one shared outline material.
+- `add_outline(mesh_instance: MeshInstance3D)`: adds the `Outline` shell
+  child described above. Idempotent: a second call finds the existing shell.
 - `apply_to(root: Node)`: walks `MeshInstance3D` descendants. For each surface
   whose material is a `StandardMaterial3D`, sets a surface override to
   `material(albedo_color)`, or `flat(albedo_color)` when the source material
-  name ends in `_flat`. Materials that are already `ShaderMaterial` are left
-  alone. This is how a plain Blender export becomes toon at load time with no
-  editor import configuration.
+  name ends in `_flat`. A mesh gets an outline shell unless every surface is
+  flat. Materials that are already `ShaderMaterial` are left alone. This is
+  how a plain Blender export becomes toon at load time with no editor import
+  configuration.
 
 ### Model library (`core/models.gd`, static)
 
@@ -317,10 +329,11 @@ Chrome changes in `ui/puzzle_host.gd` and `ui/menu.gd`:
   edges and outside the board, `cell_center` round-trips through
   `world_to_cell`, AABB encloses every cell centre.
 - `test_toon.gd`: `material()` returns a `ShaderMaterial` with the requested
-  albedo and an outline `next_pass`; the same colour returns the same
-  instance; `flat()` has no `next_pass`; `apply_to` converts a
-  `StandardMaterial3D` surface to toon with its albedo preserved and honours
-  the `_flat` suffix; `ShaderMaterial` surfaces are untouched.
+  albedo; the same colour returns the same instance; `apply_to` converts a
+  `StandardMaterial3D` surface to toon with its albedo preserved, adds one
+  `Outline` shell with shadow casting off, honours the `_flat` suffix by
+  using the flat material and adding no shell, and leaves `ShaderMaterial`
+  surfaces untouched; calling `apply_to` twice adds no second shell.
 - `test_models.gd`: an unknown slot falls back to a placeholder; every slot in
   `SLOTS` yields a `Node3D`; every placeholder except `table` has an AABB
   inside a 1 by 1 footprint with its base at y = 0.
