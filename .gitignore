@@ -14,6 +14,8 @@
 
 # Blender by-product of tools/build_pieces.py; the script is the source
 art/*.blend
+# Mascots are modelled by hand, so their .blend IS the source: keep it
+!art/mascot_*.blend
 
 # Python bytecode from running the tools
 __pycache__/

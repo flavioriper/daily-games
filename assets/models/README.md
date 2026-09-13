@@ -14,6 +14,7 @@ any that are missing:
 | `rim_corner` | moss square, 0.5 x 0.5, on a platform corner (outward corner at +X +Z) |
 | `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
 | `water` | flat water plane far below the platform |
+| `mascot_pom` | POM the puppy, an assembly of 15 layered parts, one mesh per layer (not yet placed by any board) |
 
 `tile` is recoloured **by material name** (`Face_Empty`, `Face_Sun`,
 `Face_Moon`, `Cap`), so it must carry exactly those four. The other slots are
@@ -23,8 +24,11 @@ The `platform`, `water`, `empty_mark`, `rim_edge` and `rim_corner` materials
 must be named with the `_flat` suffix (for example `Rock_flat`), or they get
 an outline shell the design does not want on them.
 
-The files here are generated: `tools/build_models.sh` rebuilds them from
-`tools/build_pieces.py`, exports through the contract checks and re-imports.
+The Binairo pieces here are generated: `tools/build_models.sh` rebuilds them
+from `tools/build_pieces.py`, exports through the contract checks and
+re-imports. The mascots are not: they are modelled by hand in
+`art/mascot_<name>.blend` (tracked in git) and exported from there as a
+collection, one `.glb` holding every layer.
 
 Full rules: `docs/art/blender-contract.md`.
 Concept reference: `docs/art/concept-binairo-island.png`.

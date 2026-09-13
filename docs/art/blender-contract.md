@@ -17,11 +17,15 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
+| `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
 the moss trim; `core/platform.gd` lays one `rim_edge` per cell along each side
 and a `rim_corner` at each corner, so the lip is exactly one rim piece deep
 (`Platform.LIP`, 0.5). Cliffs and the rest of the island come later.
+
+Mascots are a family rather than a row: any slot starting with `mascot_` gets
+the same generous budget, so a new character needs no change to the exporter.
 
 The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
 The export script enforces each slot's footprint and height budget from this
@@ -83,6 +87,70 @@ leaves a gap in the ring. `water` is unbounded.
     Selected Objects, Materials: Export, no cameras, no lights, no animation.
     File name is the slot name. The script below does all of this.
 
+## Assemblies
+
+A piece made of several objects — today the mascots — exports as a *collection*
+instead of an object. The collection name is the slot name (`Mascot_Pom`
+writes `mascot_pom.glb`), and every mesh inside it goes into that one file.
+
+Why not one mesh: each coloured region is its own object with its own
+material, so a layer can be recoloured, retextured, hidden or animated without
+touching the rest. Parts overlap as closed solids rather than sharing an edge,
+which keeps every part a clean closed smooth surface — the shape the
+inverted-hull outline wants.
+
+This is a rule, not a preference: **one mesh per layer**. Never merge two
+layers into one mesh and never give one mesh two materials. A layer that is
+its own object can be UV-unwrapped and textured on its own later; a merged one
+cannot. Two lobes of the *same* layer (one material, like the muzzle) may share
+a mesh. Add a detail as a new object with a new material, not as new faces on
+an existing part.
+
+The rules change in two places:
+
+* **Rule 2 applies to the assembly, not to each part.** The union of the parts
+  has its lowest vertex at Z = 0 and its footprint centred on X = Y = 0. Parts
+  sit wherever they belong and all share the assembly's origin; the exporter
+  measures the union.
+* **Rule 6 does not apply.** An assembly is never tinted by state, so it may
+  carry as many materials as it has layers. Rule 7 still does: give a face
+  detail that should not read as its own piece a `_flat` material, as
+  `Pom_Mouth_flat`, `Pom_Tongue_flat`, `Pom_Eye_flat` and `Pom_Cheek_flat`
+  do.
+
+Everything else holds per part: transforms applied, smooth with shared
+vertices, no parent, no `.001` names, plain-colour Principled materials.
+
+## Mascots
+
+Mascots are **modelled by hand in Blender**, not generated. The `.blend` is the
+source and is tracked in git (`art/mascot_<name>.blend`, un-ignored in
+`.gitignore`); open it, move the parts, and re-export. Never write a script
+that rebuilds a mascot from scratch — it would overwrite the hand edits.
+
+`art/mascot_pom.blend` holds POM as 15 layers: `Pom_Body` (the cream egg),
+`Pom_Cap` (the orange coat: a copy of the body mesh pushed out 0.012 by a
+Displace modifier and cut by a Boolean with the `Pom_Cap_Cutter` ellipsoid, so
+the cream face-and-belly oval is a shape the cutter moves and scales; copy the
+body mesh into it again after reshaping the body), `Pom_Ear_L/R`,
+`Pom_Eye_L/R` (closed happy arcs), `Pom_Muzzle` (two lobes, one layer),
+`Pom_Nose`, `Pom_Mouth`, `Pom_Tongue`, `Pom_Cheek_L/R`, `Pom_Foot_L/R`,
+`Pom_Tail`. The cutter lives in a `Pom_Helpers` collection so it never
+exports. Concept reference: the mascot
+sheet in `~/Downloads/chars.png`.
+
+```bash
+/Applications/Blender.app/Contents/MacOS/Blender -b art/mascot_pom.blend \
+  --python tools/blender_export.py -- Mascot_Pom
+godot --headless --path . --import
+godot --path . --resolution 720x720 --script res://tests/_shot_model.gd -- mascot_pom
+open /tmp/shot_model_mascot_pom.png
+```
+
+`tests/_shot_model.gd` previews any slot on the real stage — toon materials,
+outlines, island light — with the camera at eye level instead of the board's
+top-down pitch.
+
 ## Building the pieces
 
 The Binairo pieces are not hand-modelled: `tools/build_pieces.py` builds all
@@ -113,8 +181,9 @@ it is not in git):
   --python tools/blender_export.py -- Tile Emblem_Sun Emblem_Moon
 ```
 
-The names are Blender *object* names; each is lowercased to form the slot name
-(`Emblem_Sun` writes `emblem_sun.glb`). With no names it exports the selected
+The names are Blender *object* names, or a *collection* name for an assembly;
+each is lowercased to form the slot name (`Emblem_Sun` writes `emblem_sun.glb`,
+the `Mascot_Pom` collection writes `mascot_pom.glb`). With no names it exports the selected
 objects; with nothing selected, every top-level mesh. Each object prints one
 line, `OK` with the output path or `SKIP` with the rule it broke, preceded by
 a `WARN` line when the slot name is not one the game loads, and the process
