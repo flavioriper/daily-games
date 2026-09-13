@@ -25,7 +25,10 @@ func _ready() -> void:
 	sun = DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.light_color = Color("fff1dc")
-	sun.light_energy = 1.2
+	# The toon shader adds LIGHT_COLOR / PI (= colour x energy) for a fully lit
+	# band and the pipeline adds ambient x albedo, so these two sum to 1.0 and a
+	# lit face comes out at roughly its albedo instead of clipping.
+	sun.light_energy = 0.8
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.directional_shadow_max_distance = 40.0
@@ -46,7 +49,7 @@ func _ready() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Pal.AMBIENT
-	env.ambient_light_energy = 0.6
+	env.ambient_light_energy = 0.2
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.glow_enabled = false
 	var world_env := WorldEnvironment.new()
