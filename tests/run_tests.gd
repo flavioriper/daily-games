@@ -7,6 +7,7 @@ extends SceneTree
 
 var _t
 var _tree_suites: Array = []
+var _init_done := false
 
 func _initialize() -> void:
 	_t = load("res://tests/t.gd").new()
@@ -42,8 +43,14 @@ func _initialize() -> void:
 			script.run(_t)
 		if _has_static(script, "run_in_tree"):
 			_tree_suites.append([suite_name, script])
+	_init_done = true
 
 func _process(_delta: float) -> bool:
+	if not _init_done:
+		# _initialize aborted on a script error; a green exit here would hide it.
+		print("\nFAIL runner: _initialize did not complete")
+		quit(1)
+		return true
 	for pair in _tree_suites:
 		_t.current = pair[0]
 		pair[1].run_in_tree(_t)

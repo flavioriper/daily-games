@@ -268,6 +268,7 @@ Scene contents, built in `build`:
   materials cover every combination, all served from the toon cache.
 - One `token_circle` and one `token_square` per cell, sitting on the tile top,
   visibility toggled by cell state. Placing a token runs a 0.18 second pop
+  (superseded by the card flip in Amendment B)
   tween (scale 0 to 1, back ease). Removal hides immediately.
 - One `given_ring` per given cell, resting on the tile.
 
@@ -477,7 +478,8 @@ visibility driven by cell state. Tile tint: empty or sun on `STONE`
 (`STONE_GIVEN` when locked), moon on `SLATE` (`SLATE_GIVEN` when locked); a
 cell in a broken line lerps 35 percent toward `BAD`. One `platform` under the
 board, top at y = 0, scaled to (n + 1, 1, n + 1). Placing an emblem pops it
-in over 0.18 s. Share glyphs are 🌞 for sun and 🌙 for moon.
+in over 0.18 s (superseded by the card flip in Amendment B). Share glyphs are
+🌞 for sun and 🌙 for moon.
 `board_margin()` returns 0.5.
 
 ### Verification note
@@ -534,18 +536,20 @@ colours from the glTF material, not from `palette.gd`.
 
 `core/platform.gd` builds the platform for any board: the stretched
 `platform` slab as before, plus a ring of rim pieces resting on its lip at
-y = 0: one `rim_edge` per cell along each side (turned so the outward side
-faces out; every second one mirrored along its length for variety) and a
-`rim_corner` at each corner. `Platform.LIP` is 0.5, one rim piece deep;
+y = 0: one `rim_edge` per cell along each side (turned so its outward side,
+Godot +Z in the model and Blender -Y when authored, faces the water; every
+second one mirrored along its length for variety) and a `rim_corner` at each
+corner. `Platform.LIP` is 0.5, one rim piece deep;
 `board_margin()` returns it. Binairo no longer lays its own slab.
 
 ### Card flip (section 4)
 
 Each Binairo cell hangs under a pivot at half tile height: the tile below it,
 the emblems and mark on top. A tap changes the grid at once, then
-`core/flip.gd` turns the pivot about X to edge-on over half of 0.32 s,
-swaps the face (emblem visibility and tile colour) at the midpoint, and turns
-back to flat from the other side. Tile colour follows the face being shown,
+`core/flip.gd` turns the pivot about X to edge-on over half of 0.32 s while
+lifting it 0.3 so the trailing edge clears the platform, swaps the face
+(emblem visibility and tile colour) at the midpoint, and turns back to flat
+from the other side as it sets down. Tile colour follows the face being shown,
 not the grid, so a tile keeps its old colour until the midpoint; the broken-
 line blush still follows the grid. A tap on a cell mid-flip settles that flip
 first (kill tween, flat pivot, face applied), then starts the next, so the

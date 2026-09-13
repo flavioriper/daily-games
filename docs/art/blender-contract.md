@@ -13,8 +13,8 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
 | `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
 | `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
-| `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side at +Y |
-| `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at +X +Y |
+| `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side (toward the water) at **-Y** in Blender, which is +Z in Godot |
+| `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 
@@ -25,9 +25,11 @@ and a `rim_corner` at each corner, so the lip is exactly one rim piece deep
 
 The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
 The export script enforces each slot's footprint and height budget from this
-table (an unlisted slot falls back to 1.0 x 1.0 x 0.6). `platform` is checked
-for an exact 1 x 1 footprint and left free in height, because the board scales
-it by (cols + 1, rows + 1); `water` is unbounded.
+table (an unlisted slot falls back to 1.0 x 1.0 x 0.6). Slots the board tiles
+edge to edge are checked for an *exact* footprint, not a maximum: `platform`
+(1 x 1, height free, because the board scales it by (cols + 1, rows + 1)),
+`rim_edge` (1 x 0.5) and `rim_corner` (0.5 x 0.5), since a short rim piece
+leaves a gap in the ring. `water` is unbounded.
 
 ## Rules
 
@@ -35,6 +37,8 @@ it by (cols + 1, rows + 1); `water` is unbounded.
 2. **Origin at the centre of the base.** The lowest vertex is at Z = 0 and
    the footprint is centred on X = Y = 0. Blender is Z-up; the glTF exporter
    converts to Godot's Y-up for you, so model with Z as up and do nothing else.
+   For directional pieces remember the mapping: Blender (x, y, z) becomes
+   Godot (x, z, -y), so Blender -Y is Godot +Z (toward the player).
 3. **Apply transforms.** Rotation (0, 0, 0), scale (1, 1, 1) before export.
 4. **Shade smooth with shared vertices, everywhere.** No split edges, no
    flat shading. For a hard-edged look, add a small Bevel modifier (width
@@ -99,7 +103,8 @@ overwritten.
 
 `tools/blender_export.py` checks the rules and exports. Inside Blender, open
 the Scripting tab, load the file and run it with the objects selected, or
-from a shell:
+from a shell (`art/pieces.blend` exists once `tools/build_models.sh` has run;
+it is not in git):
 
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender -b art/pieces.blend \

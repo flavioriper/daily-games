@@ -15,6 +15,11 @@ plain-colour Principled materials, `_flat` names on surfaces that must not get
 an outline. Pieces are built with bmesh so the script is the source of truth;
 the .blend is a by-product for looking at them.
 
+Axes: Blender is Z-up and the glTF exporter maps Blender (x, y, z) to Godot
+(x, z, -y). The rim pieces are directional, and "outward" (away from the
+tiles, toward the water) is Godot +Z, which is Blender -Y. Build directional
+features on the -Y side.
+
 Shape recipe ("chunky"): a flat polygon extruded to height, every edge
 bevelled, then each original flat face inset by a hair. The inset matters
 under toon shading: with shared smooth vertices, the bevel tilts the normals
@@ -132,9 +137,8 @@ def add_prism(bm, outline, height, mat_index, bevel, segments, inset, z0=0.0):
         bres = bmesh.ops.bevel(bm, geom=island_edges, offset=bevel, offset_type="OFFSET",
                                segments=segments, profile=0.5, affect="EDGES", clamp_overlap=True)
         bevel_faces = set(bres["faces"])
-        flats = [f for f in island_faces if f.is_valid and f not in bevel_faces]
-        # The bevel replaces the island's faces with new ones; collect the flat
-        # faces again from the bevel result's neighbourhood.
+        # The bevel replaces the island's faces with new ones, so the flat
+        # faces are whatever borders the bevel strip and is not part of it.
         flats = list({f for bf in bevel_faces for e in bf.edges for f in e.link_faces if f not in bevel_faces})
     else:
         bevel_faces = set()
@@ -207,17 +211,18 @@ def build_tile():
 
 def build_sun():
     bm = new_bm()
-    add_prism(bm, circle(0.16, 32), EMBLEM_H, 0, bevel=0.014, segments=2, inset=0.01)
+    add_prism(bm, circle(0.16, 28), EMBLEM_H, 0, bevel=0.014, segments=2, inset=0.01)
     for i in range(8):
         ang = 2 * math.pi * i / 8 + math.pi / 8
-        # Fat rays: the 0.02 outline eats a strip off every side.
-        add_prism(bm, ray(ang, 0.195, 0.29, 0.1, 0.062), EMBLEM_H, 0, bevel=0.012, segments=2, inset=0.008)
+        # Fat rays: the 0.02 outline eats a strip off every side. One bevel
+        # segment (a chamfer) is enough at this size and halves the vertices.
+        add_prism(bm, ray(ang, 0.195, 0.29, 0.1, 0.062), EMBLEM_H, 0, bevel=0.012, segments=1, inset=0.008)
     return finish(bm, "Emblem_Sun", [material("Sun", SUN)])
 
 
 def build_moon():
     bm = new_bm()
-    add_prism(bm, crescent(0.215, 0.19, (0.105, 0.07), n=32), EMBLEM_H, 0, bevel=0.012, segments=2, inset=0.008)
+    add_prism(bm, crescent(0.215, 0.19, (0.105, 0.07), n=28), EMBLEM_H, 0, bevel=0.012, segments=2, inset=0.008)
     return finish(bm, "Emblem_Moon", [material("Moon", MOON)])
 
 
@@ -247,25 +252,27 @@ def add_tufts(bm, rng, box, count, flower_at):
         r = rng.uniform(0.07, 0.11)
         x = rng.uniform(x0 + r, x1 - r)
         y = rng.uniform(y0 + r, y1 - r)
-        z = RIM_H + r * 0.5 - 0.035
-        add_blob(bm, (x, y, z), r, 0.5, 1)
+        # Blob bottom exactly on the slab base, so nothing pokes below z = 0
+        # and finish() has no reason to lift the slab.
+        add_blob(bm, (x, y, r * 0.5), r, 0.5, 1)
     fx, fy = flower_at
     add_flower(bm, (fx, fy, RIM_H + 0.045))
 
 
 def build_rim_edge():
-    # 1 along X, 0.5 along Y, outward side at +Y.
+    # 1 along X, 0.5 along Y, outward side at -Y (Godot +Z). The flower sits
+    # on the outer half so it shows against the water, not against the tiles.
     bm = new_bm()
     add_prism(bm, [(-0.5, -0.25), (0.5, -0.25), (0.5, 0.25), (-0.5, 0.25)], RIM_H, 0, bevel=0.008, segments=2, inset=0.01)
-    add_tufts(bm, random.Random(11), (-0.5, 0.5, -0.25, 0.25), 4, (0.22, 0.12))
+    add_tufts(bm, random.Random(11), (-0.5, 0.5, -0.25, 0.25), 4, (0.22, -0.12))
     return finish(bm, "Rim_Edge", rim_materials())
 
 
 def build_rim_corner():
-    # 0.5 by 0.5, outward corner at +X +Y.
+    # 0.5 by 0.5, outward corner at +X -Y (Godot +X +Z).
     bm = new_bm()
     add_prism(bm, square(0.25), RIM_H, 0, bevel=0.008, segments=2, inset=0.01)
-    add_tufts(bm, random.Random(5), (-0.25, 0.25, -0.25, 0.25), 2, (0.1, 0.11))
+    add_tufts(bm, random.Random(5), (-0.25, 0.25, -0.25, 0.25), 2, (0.1, -0.11))
     return finish(bm, "Rim_Corner", rim_materials())
 
 

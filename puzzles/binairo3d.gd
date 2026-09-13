@@ -120,7 +120,7 @@ func _build_scene() -> void:
 			# its own centre; the tile hangs below it, the emblems rest on top.
 			var pivot := Node3D.new()
 			pivot.name = "cell_%d_%d" % [r, c]
-			pivot.position = BoardMath.cell_center(r, c, n, n, _tile_h * 0.5)
+			pivot.position = _rest(r, c)
 			board.add_child(pivot)
 			cell_row.append(pivot)
 			tile.position = Vector3(0.0, -_tile_h * 0.5, 0.0)
@@ -161,6 +161,10 @@ func _apply_face(r: int, c: int) -> void:
 	_marks[r][c].visible = v == -1
 	Models.tint(_tiles[r][c], _tile_colour(r, c))
 
+## Where a cell's pivot rests: the cell centre, half a tile up.
+func _rest(r: int, c: int) -> Vector3:
+	return BoardMath.cell_center(r, c, n, n, _tile_h * 0.5)
+
 ## Ends a flip in progress at once, showing the face it was turning to.
 func _settle(r: int, c: int) -> void:
 	var tw: Tween = _flips[r][c]
@@ -169,6 +173,7 @@ func _settle(r: int, c: int) -> void:
 	tw.kill()
 	_flips[r][c] = null
 	_cells[r][c].rotation.x = 0.0
+	_cells[r][c].position = _rest(r, c)
 	_apply_face(r, c)
 
 ## Colour for the face the tile is showing (not the grid: mid-flip the tile

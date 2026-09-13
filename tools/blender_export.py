@@ -33,6 +33,10 @@ LIMITS = {
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact check
+# Slots the board tiles edge to edge, so the footprint must be exact, not
+# merely within budget: the platform is stretched by (cols + 1, rows + 1) and
+# the rim pieces are laid one per cell, where a short piece leaves a gap.
+EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5)}
 
 
 def world_bounds(obj, mesh):
@@ -83,11 +87,14 @@ def problems(obj):
         elif mod.type == "BEVEL" and getattr(mod, "harden_normals", False):
             found.append("Bevel with Harden Normals writes split normals, turn it off")
     slot = obj.name.lower()
-    if slot == "platform":
-        # The board scales the platform by (cols + 1, rows + 1), so a unit
-        # footprint is the whole contract; its height is free.
-        if abs((hi.x - lo.x) - 1.0) > TOLERANCE or abs((hi.y - lo.y) - 1.0) > TOLERANCE:
-            found.append("platform footprint must be exactly 1 x 1 (got %.2f x %.2f)" % (hi.x - lo.x, hi.y - lo.y))
+    if slot in EXACT:
+        exact_x, exact_y = EXACT[slot]
+        if abs((hi.x - lo.x) - exact_x) > TOLERANCE or abs((hi.y - lo.y) - exact_y) > TOLERANCE:
+            found.append("%s footprint must be exactly %.1f x %.1f (got %.2f x %.2f)" % (slot, exact_x, exact_y, hi.x - lo.x, hi.y - lo.y))
+        # The platform's height is free (the board never stacks on it); the
+        # rim pieces keep the height budget from LIMITS.
+        if slot in LIMITS and hi.z - lo.z > LIMITS[slot][2] + TOLERANCE:
+            found.append("height %.2f exceeds %.2f" % (hi.z - lo.z, LIMITS[slot][2]))
     elif slot not in UNBOUNDED:
         limit_x, limit_y, limit_z = LIMITS.get(slot, DEFAULT_LIMIT)
         if hi.x - lo.x > limit_x + TOLERANCE or hi.y - lo.y > limit_y + TOLERANCE:

@@ -93,8 +93,10 @@ static func _test_tap_flips(t, p) -> void:
 	t.check(not first.is_valid() or not first.is_running(), "first tween was killed")
 	var second: Tween = p._flips[r][c]
 	t.check(second != null and second != first and second.is_running(), "a new flip tween is running")
+	t.check(p._cells[r][c].position.is_equal_approx(p._rest(r, c)), "settling puts the pivot back at rest before the next flip")
 	var tint: Color = Models.meshes(p._tiles[r][c])[0].get_surface_override_material(0).get_shader_parameter("albedo")
-	t.check(tint.is_equal_approx(Pal.STONE), "tile keeps the shown face's colour until the midpoint")
+	var stone_family := tint.is_equal_approx(Pal.STONE) or tint.is_equal_approx(Pal.STONE.lerp(Pal.BAD, p.BAD_BLEND))
+	t.check(stone_family, "tile keeps the shown face's stone colour until the midpoint (got %s)" % tint.to_html(false))
 
 static func _test_locked_cell(t, p) -> void:
 	var cell := _find_cell(p, true)
@@ -114,11 +116,11 @@ static func _test_reset_settles(t, p) -> void:
 		for c in p.n:
 			if p._shown[r][c] != p._grid[r][c]:
 				all_shown = false
-			if not is_zero_approx(p._cells[r][c].rotation.x):
+			if not is_zero_approx(p._cells[r][c].rotation.x) or not p._cells[r][c].position.is_equal_approx(p._rest(r, c)):
 				all_flat = false
 			var tw: Tween = p._flips[r][c]
 			if tw != null and tw.is_valid() and tw.is_running():
 				none_running = false
 	t.check(all_shown, "reset shows every cell's grid value at once")
-	t.check(all_flat, "reset leaves every pivot flat")
+	t.check(all_flat, "reset leaves every pivot flat and at rest")
 	t.check(none_running, "reset leaves no flip running")

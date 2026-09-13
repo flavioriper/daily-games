@@ -14,3 +14,6 @@
 
 # Blender by-product of tools/build_pieces.py; the script is the source
 art/*.blend
+
+# Python bytecode from running the tools
+__pycache__/
