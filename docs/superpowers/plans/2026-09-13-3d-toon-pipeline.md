@@ -2045,7 +2045,9 @@ and as the first line of `_ready`:
 
 The host is a child of the menu, so it inherits the theme.
 
-- [ ] **Step 3: Paper card behind 2D boards and a warm overlay**
+- [ ] **Step 3: Paper card behind 2D boards, paper panel behind header and rules, warm overlay**
+
+The header and rules text sit directly over the water on 3D boards and are unreadable there, so the chrome column above the board gets its own translucent paper panel.
 
 In `ui/puzzle_host.gd`:
 
@@ -2054,6 +2056,45 @@ Add a field:
 ```gdscript
 var _card: Panel
 ```
+
+Add a helper after `setup`:
+
+```gdscript
+## Translucent paper behind chrome that would otherwise sit on the water.
+static func _paper_panel(alpha: float, radius: int) -> Panel:
+	var panel := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(Pal.PAPER, alpha)
+	sb.set_corner_radius_all(radius)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return panel
+```
+
+In `_ready`, the header and rules go inside a `PanelContainer`-like wrapper: right before `var header := HBoxContainer.new()`, add
+
+```gdscript
+	var top := _paper_panel(0.88, 28)
+	top.custom_minimum_size = Vector2(0, 0)
+	root.add_child(top)
+	var top_col := VBoxContainer.new()
+	top_col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	top_col.offset_left = 24
+	top_col.offset_right = -24
+	top_col.offset_top = 16
+	top_col.offset_bottom = -16
+	top_col.add_theme_constant_override("separation", 12)
+	top.add_child(top_col)
+```
+
+then change `root.add_child(header)` to `top_col.add_child(header)` and `root.add_child(_rules_label)` to `top_col.add_child(_rules_label)`. Because `Panel` does not size to its children, size it explicitly: after `top_col.add_child(_rules_label)` add
+
+```gdscript
+	top_col.resized.connect(func(): top.custom_minimum_size = Vector2(0, top_col.get_combined_minimum_size().y + 32))
+	top.custom_minimum_size = Vector2(0, 110 + 34 * 3 + 12 + 32)
+```
+
+(the second line is a first-frame estimate: one header row plus three rules lines; the signal handler replaces it once the label lays out).
 
 In `_ready`, right after `_board_holder = Control.new()` ... `root.add_child(_board_holder)`, add:
 
@@ -2092,7 +2133,7 @@ godot --path . --resolution 540x960 --script res://tests/_win.gd 2>&1 | tail -3
 godot --path . --resolution 540x960 --script res://tests/_shot.gd 2>&1 | tail -2
 ```
 
-Expected: `failed=0`, `winnable=10/10`. Open `/tmp/shot_menu.png`, `/tmp/shot_binairo.png`, `/tmp/shot_pipes.png`, `/tmp/won_binairo.png`: buttons are rounded cream cards with dark text; the Pipes board sits on a paper card while Binairo sits directly on the wood; the solved overlay is translucent paper with dark text.
+Expected: `failed=0`, `winnable=10/10`. Open `/tmp/shot_menu.png`, `/tmp/shot_binairo.png`, `/tmp/shot_pipes.png`, `/tmp/won_binairo.png`: buttons are rounded cream cards with dark text; the title and rules sit on a translucent paper panel and are readable over the water; the Pipes board sits on a paper card while Binairo sits directly on its stone platform; the solved overlay is translucent paper with dark text. The Binairo board must still fit its slot (the header panel changes the slot height, and the win suite's `camera fit=true` confirms the refit).
 
 - [ ] **Step 5: Commit**
 
