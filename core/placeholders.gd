@@ -10,8 +10,9 @@ extends RefCounted
 const Toon = preload("res://core/toon.gd")
 const Pal = preload("res://core/palette.gd")
 
-const TILE_H := 0.12
-const TOKEN_H := 0.18
+const TILE_H := 0.14
+const EMBLEM_H := 0.05
+const PLATFORM_H := 0.6
 
 static func make(slot: String) -> Node3D:
 	var root := Node3D.new()
@@ -23,34 +24,38 @@ static func make(slot: String) -> Node3D:
 	var outline := true
 	match slot:
 		"tile":
-			mi.mesh = _prism(0.46, TILE_H)
+			mi.mesh = _prism(0.47, TILE_H)
 			mi.rotation.y = PI / 4.0
-			color = Pal.SURFACE
+			color = Pal.STONE
 			height = TILE_H
-		"token_circle":
-			mi.mesh = _cylinder(0.30, TOKEN_H, 32)
-			color = Pal.ACCENT
-			height = TOKEN_H
-		"token_square":
-			mi.mesh = _prism(0.25, TOKEN_H)
-			mi.rotation.y = PI / 4.0
-			color = Pal.ACCENT_2
-			height = TOKEN_H
-		"given_ring":
-			var torus := TorusMesh.new()
-			torus.inner_radius = 0.38
-			torus.outer_radius = 0.44
-			torus.rings = 48
-			torus.ring_segments = 12
-			mi.mesh = torus
-			color = Pal.TEXT_DIM
-			height = torus.outer_radius - torus.inner_radius
-		"table":
+		"emblem_sun":
+			mi.mesh = _cylinder(0.22, EMBLEM_H, 32)
+			color = Pal.SUN
+			height = EMBLEM_H
+		"emblem_moon":
+			mi.mesh = _cylinder(0.18, EMBLEM_H, 32)
+			color = Pal.MOON
+			height = EMBLEM_H
+		"empty_mark":
+			# A four-sided prism left unrotated reads as a small diamond.
+			mi.mesh = _prism(0.07, 0.03)
+			color = Pal.MARK
+			height = 0.03
+			outline = false
+		"platform":
+			# Unit slab; the board scales it to (cols + 1, 1, rows + 1).
 			var box := BoxMesh.new()
-			box.size = Vector3(14.0, 0.4, 14.0)
+			box.size = Vector3(1.0, PLATFORM_H, 1.0)
 			mi.mesh = box
-			color = Pal.WOOD
-			height = 0.4
+			color = Pal.ROCK
+			height = PLATFORM_H
+			outline = false
+		"water":
+			var plane := PlaneMesh.new()
+			plane.size = Vector2(60.0, 60.0)
+			mi.mesh = plane
+			color = Pal.WATER
+			height = 0.0
 			outline = false
 		_:
 			# Unknown slot: a small magenta block so the gap is obvious on screen.

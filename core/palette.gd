@@ -20,9 +20,21 @@ const BAD_TILE    := Color("f2cfc9")
 const WOOD        := Color("c8a17a")
 const OUTLINE     := Color("3b2f28")
 const SHADOW_TINT := Color("b7a6c4")
-const SKY_TOP     := Color("f9f2e7")
-const SKY_HORIZON := Color("f3d9c4")
+const SKY_TOP     := Color("bfe3f5")
+const SKY_HORIZON := Color("e8f2f7")
 const AMBIENT     := Color("f3e4d4")
+
+# Island world (docs/art/concept-binairo-island.png)
+const STONE       := Color("ede2cc")
+const STONE_GIVEN := Color("dccfb3")
+const SLATE       := Color("3f4652")
+const SLATE_GIVEN := Color("2f353e")
+const SUN         := Color("f5a623")
+const MOON        := Color("f6f1e6")
+const MARK        := Color("cbbd9f")
+const MOSS        := Color("7fa84a")
+const ROCK        := Color("b9ab92")
+const WATER       := Color("2f8fd6")
 
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.

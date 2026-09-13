@@ -6,10 +6,11 @@ any that are missing:
 
 | slot | what it is |
 |---|---|
-| `tile` | one board cell, 1 x 1 footprint |
-| `token_circle` | the "circle" token in Binairo |
-| `token_square` | the "square" token in Binairo |
-| `given_ring` | ring laid over a locked clue cell |
-| `table` | the surface the board sits on |
+| `tile` | one board cell, 1 x 1 footprint, about 0.14 tall |
+| `emblem_sun` | sun emblem laid on a tile top (Binairo "sun") |
+| `emblem_moon` | crescent emblem laid on a tile top (Binairo "moon") |
+| `empty_mark` | small diamond laid on an empty tile |
+| `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
+| `water` | flat water plane far below the platform |
 
-Modelling rules and the export script: `docs/art/blender-contract.md`.
+Concept reference: `docs/art/concept-binairo-island.png`.
