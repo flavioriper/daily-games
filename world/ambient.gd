@@ -109,6 +109,7 @@ static func speck_mesh(texture: Texture2D = null) -> QuadMesh:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true
 	m.vertex_color_use_as_albedo = true
 	m.albedo_color = Color.WHITE
 	if texture != null:
