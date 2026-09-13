@@ -6,6 +6,7 @@ func _initialize() -> void:
 		"palette": "res://tests/test_palette.gd",
 		"board_math": "res://tests/test_board_math.gd",
 		"toon": "res://tests/test_toon.gd",
+		"models": "res://tests/test_models.gd",
 		"binairo": "res://tests/test_binairo.gd",
 		"mastermind": "res://tests/test_mastermind.gd",
 		"balance": "res://tests/test_balance.gd",
