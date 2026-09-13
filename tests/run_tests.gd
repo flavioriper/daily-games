@@ -4,6 +4,7 @@ func _initialize() -> void:
 	var t = load("res://tests/t.gd").new()
 	var suites := {
 		"palette": "res://tests/test_palette.gd",
+		"board_math": "res://tests/test_board_math.gd",
 		"binairo": "res://tests/test_binairo.gd",
 		"mastermind": "res://tests/test_mastermind.gd",
 		"balance": "res://tests/test_balance.gd",
