@@ -35,6 +35,8 @@ const MARK        := Color("cbbd9f")
 const MOSS        := Color("7fa84a")
 const ROCK        := Color("b9ab92")
 const WATER       := Color("2f8fd6")
+const WATER_HI    := Color("5fb0e8")   # water stripes and splash ring
+const FOCUS       := Color("7fd1ff")   # focus ring on the last tapped cell
 
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.

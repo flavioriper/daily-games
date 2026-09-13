@@ -17,6 +17,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
+| `focus_ring` | inside 0.92 x 0.92 | 0.02 | flat square frame around one cell; the game gives it a translucent unshaded material, so its Blender material is only a placeholder |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are

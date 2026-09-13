@@ -14,6 +14,7 @@ any that are missing:
 | `rim_corner` | moss square, 0.5 x 0.5, on a platform corner (outward corner at +X +Z) |
 | `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
 | `water` | flat water plane far below the platform |
+| `focus_ring` | flat translucent frame the board slides onto the last tapped cell; unshaded, no outline, never tinted |
 | `mascot_pom` | POM the puppy, an assembly of 15 layered parts, one mesh per layer (not yet placed by any board) |
 
 `tile` is recoloured **by material name** (`Face_Empty`, `Face_Sun`,

@@ -2,6 +2,7 @@ extends RefCounted
 
 const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
+const Pal = preload("res://core/palette.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
 const HEIGHT_BUDGET := {"tile": 0.75, "emblem_sun": 0.08, "emblem_moon": 0.08, "empty_mark": 0.04, "rim_edge": 0.12, "rim_corner": 0.12}
@@ -12,6 +13,7 @@ static func run(t) -> void:
 	_test_trilon(t)
 	_test_fallback(t)
 	_test_tint_and_height(t)
+	_test_focus_ring(t)
 
 ## Root-space min/max of every face vertex under `root`, outline shells excluded.
 static func _bounds(root: Node3D) -> Array:
@@ -25,7 +27,7 @@ static func _bounds(root: Node3D) -> Array:
 	return [lo, hi]
 
 static func _test_slots(t) -> void:
-	t.eq(Models.SLOTS, ["tile", "emblem_sun", "emblem_moon", "empty_mark", "rim_edge", "rim_corner", "platform", "water"], "slot list matches amendment B")
+	t.eq(Models.SLOTS, ["tile", "emblem_sun", "emblem_moon", "empty_mark", "rim_edge", "rim_corner", "platform", "water", "focus_ring"], "slot list matches the polish spec")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
@@ -139,3 +141,25 @@ static func _test_tint_and_height(t) -> void:
 	var platform = Models.instance("platform")
 	t.check(is_equal_approx(Models.height(platform), 0.6), "platform placeholder is 0.6 deep, measured %.3f" % Models.height(platform))
 	platform.free()
+
+## The focus ring is a flat translucent frame around one cell (polish spec,
+## section 6): it sits on y = 0, fits the cell, gets no outline and carries
+## its own material instance so one ring's alpha tween never touches another.
+static func _test_focus_ring(t) -> void:
+	var a = Models.instance("focus_ring")
+	var b = Models.instance("focus_ring")
+	var ms := Models.meshes(a)
+	t.eq(ms.size(), 1, "focus ring is one mesh")
+	var bounds := _bounds(a)
+	t.check(is_zero_approx(bounds[0].y) and bounds[1].y <= 0.02, "focus ring is flat on y=0 (%.3f .. %.3f)" % [bounds[0].y, bounds[1].y])
+	t.check(bounds[1].x <= Placeholders.FOCUS_OUTER + 0.001 and bounds[0].x >= -Placeholders.FOCUS_OUTER - 0.001, "focus ring spans the cell (%.3f)" % bounds[1].x)
+	var mat = ms[0].material_override
+	t.check(mat is StandardMaterial3D, "focus ring carries a StandardMaterial3D override")
+	if mat is StandardMaterial3D:
+		t.check(mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED, "focus ring is unshaded")
+		t.check(mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "focus ring is alpha blended")
+		t.check(Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b).is_equal_approx(Pal.FOCUS), "focus ring is FOCUS blue")
+	t.check(Models.meshes(b)[0].material_override != mat, "each ring has its own material instance")
+	t.check(ms[0].get_node_or_null("Outline") == null, "focus ring has no outline")
+	a.free()
+	b.free()

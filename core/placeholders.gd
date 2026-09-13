@@ -29,6 +29,9 @@ const TILE_RISE := 0.12
 const EMBLEM_H := 0.05
 const PLATFORM_H := 0.6
 const RIM_H := 0.04
+## The focus ring: a flat square frame around one cell (polish spec, section 6).
+const FOCUS_OUTER := 0.46
+const FOCUS_INNER := 0.40
 
 static func make(slot: String) -> Node3D:
 	var root := Node3D.new()
@@ -93,6 +96,13 @@ static func make(slot: String) -> Node3D:
 			color = Pal.WATER
 			height = 0.0
 			outline = false
+		"focus_ring":
+			# Flat frame of four top-facing quads, one draw call, no thickness:
+			# it is light on the stone, not a piece. Unshaded, translucent,
+			# no outline, never tinted. Models._dress gives it its material.
+			mi.mesh = _ring_mesh(FOCUS_OUTER, FOCUS_INNER)
+			root.add_child(mi)
+			return root
 		_:
 			# Unknown slot: a small magenta block so the gap is obvious on screen.
 			mi.mesh = _prism(0.2, 0.4)
@@ -162,3 +172,33 @@ static func _cylinder(radius: float, h: float, segments: int) -> CylinderMesh:
 	cyl.radial_segments = segments
 	cyl.rings = 0
 	return cyl
+
+## Translucent unshaded material for the focus ring. A fresh instance each
+## call, so a ring can tween its alpha without touching another ring.
+static func focus_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = Color(Pal.FOCUS, 0.9)
+	return m
+
+## Four bars of a square frame as top-facing quads on y = 0. Godot front
+## faces wind clockwise seen from the front, so seen from above (x right,
+## z down) each quad goes x0z0, x1z0, x1z1, x0z1.
+static func _ring_mesh(outer: float, inner: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var bars := [
+		[-outer, outer, -outer, -inner],   # far bar
+		[-outer, outer, inner, outer],     # near bar
+		[-outer, -inner, -inner, inner],   # left bar
+		[inner, outer, -inner, inner],     # right bar
+	]
+	for b in bars:
+		var p := [Vector3(b[0], 0.0, b[2]), Vector3(b[1], 0.0, b[2]), Vector3(b[1], 0.0, b[3]), Vector3(b[0], 0.0, b[3])]
+		for tri in [[0, 1, 2], [0, 2, 3]]:
+			for i in tri:
+				st.set_normal(Vector3.UP)
+				st.add_vertex(p[i])
+	return st.commit()

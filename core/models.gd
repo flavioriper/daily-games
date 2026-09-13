@@ -10,7 +10,7 @@ const Placeholders = preload("res://core/placeholders.gd")
 const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
 ## same names with their footprint rules.
-const SLOTS := ["tile", "emblem_sun", "emblem_moon", "empty_mark", "rim_edge", "rim_corner", "platform", "water"]
+const SLOTS := ["tile", "emblem_sun", "emblem_moon", "empty_mark", "rim_edge", "rim_corner", "platform", "water", "focus_ring"]
 ## Slots exempt from the 1 x 1 footprint rule.
 const UNBOUNDED := ["platform", "water"]
 
@@ -23,19 +23,22 @@ static func has_model(slot: String) -> bool:
 	return ResourceLoader.exists(path_for(slot))
 
 static func instance(slot: String) -> Node3D:
+	var node: Node3D
 	if has_model(slot):
 		var scene: PackedScene = _scenes.get(slot)
 		if scene == null:
 			scene = load(path_for(slot))
 			if scene == null:
 				push_warning("Models: %s exists but did not load (not imported?); using placeholder" % path_for(slot))
-				return Placeholders.make(slot)
+		if scene != null:
 			_scenes[slot] = scene
-		var node := scene.instantiate() as Node3D
-		node.name = slot
-		Toon.apply_to(node)
-		return node
-	return Placeholders.make(slot)
+			node = scene.instantiate() as Node3D
+			node.name = slot
+			Toon.apply_to(node)
+	if node == null:
+		node = Placeholders.make(slot)
+	_dress(slot, node)
+	return node
 
 ## Every renderable mesh under `root`, outline shells excluded.
 static func meshes(root: Node) -> Array[MeshInstance3D]:
@@ -82,3 +85,11 @@ static func height(root: Node) -> float:
 		var box: AABB = mi.transform * mi.mesh.get_aabb()
 		top = maxf(top, box.end.y)
 	return top
+
+## Slot-specific materials the toon step cannot infer from a colour, applied
+## to the export and the placeholder alike so the two never look different.
+static func _dress(slot: String, node: Node3D) -> void:
+	match slot:
+		"focus_ring":
+			for mi in meshes(node):
+				mi.material_override = Placeholders.focus_material()
