@@ -20,6 +20,7 @@ func build(_rng: RandomNumberGenerator, _difficulty: int) -> void: pass
 func is_solved() -> bool: return false
 func share_glyphs() -> String: return ""
 func reset_board() -> void: pass
+func is_3d() -> bool: return false
 # -------------------
 
 func start(rng: RandomNumberGenerator, difficulty: int) -> void:
