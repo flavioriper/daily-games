@@ -13,6 +13,7 @@ const Pal = preload("res://core/palette.gd")
 const TILE_H := 0.14
 const EMBLEM_H := 0.05
 const PLATFORM_H := 0.6
+const RIM_H := 0.04
 
 static func make(slot: String) -> Node3D:
 	var root := Node3D.new()
@@ -41,6 +42,23 @@ static func make(slot: String) -> Node3D:
 			mi.mesh = _prism(0.07, 0.03)
 			color = Pal.MARK
 			height = 0.03
+			outline = false
+		"rim_edge":
+			# Moss strip along one cell of the platform lip: 1 along X, 0.5 along Z,
+			# outward side at +Z. Flat, so a BoxMesh is fine here.
+			var strip := BoxMesh.new()
+			strip.size = Vector3(1.0, RIM_H, 0.5)
+			mi.mesh = strip
+			color = Pal.MOSS
+			height = RIM_H
+			outline = false
+		"rim_corner":
+			# Moss square on a platform corner, outward corner at +X +Z.
+			var square := BoxMesh.new()
+			square.size = Vector3(0.5, RIM_H, 0.5)
+			mi.mesh = square
+			color = Pal.MOSS
+			height = RIM_H
 			outline = false
 		"platform":
 			# Unit slab; the board scales it to (cols + 1, 1, rows + 1).

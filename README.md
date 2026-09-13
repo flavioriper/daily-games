@@ -12,8 +12,9 @@ before committing to a lineup.
 godot --path .          # portrait, 1080x1920, touch emulated from mouse
 ```
 
-Every prototype is reachable from the menu. Boards sit on a 3D toon-shaded stage. Models are primitive placeholders until
-Blender exports land in `assets/models/` (see `docs/art/blender-contract.md`).
+Every prototype is reachable from the menu. Boards sit on a 3D toon-shaded stage. Binairo's pieces are Blender exports
+in `assets/models/`, rebuilt with `tools/build_models.sh`; any slot without an export falls back to a primitive
+placeholder (see `docs/art/blender-contract.md`).
 
 ## Tests
 

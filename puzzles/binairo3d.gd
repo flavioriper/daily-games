@@ -2,17 +2,20 @@ extends "res://core/puzzle_base_3d.gd"
 
 ## Binairo on the island stage. Tap a tile to cycle empty -> sun -> moon ->
 ## empty. Sun cells are cream stone with an orange sun; moon cells turn slate
-## with an ivory crescent. Tiles in a line that already breaks a rule blush,
-## so the player learns the rules by touching rather than by reading them.
+## with an ivory crescent. Each cell hangs under a pivot and flips like a card
+## on a tap: the grid changes at once, the face it shows swaps at the flip's
+## midpoint. Tiles in a line that already breaks a rule blush, so the player
+## learns the rules by touching rather than by reading them.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
+const Platform = preload("res://core/platform.gd")
+const Flip = preload("res://core/flip.gd")
 
-const POP_TIME := 0.18
+const FLIP_TIME := 0.32
 const BAD_BLEND := 0.35
-const PLATFORM_LIP := 0.5
 
 var n: int = 6
 var _grid: Array = []
@@ -21,11 +24,13 @@ var _solution: Array = []
 var _bad: Dictionary = {"rows": {}, "cols": {}}
 
 var _tile_h: float = Placeholders.TILE_H
-var _platform: Node3D
+var _cells: Array = []    # [r][c] -> Node3D pivot at half tile height
 var _tiles: Array = []    # [r][c] -> Node3D
 var _suns: Array = []     # [r][c] -> Node3D
 var _moons: Array = []    # [r][c] -> Node3D
 var _marks: Array = []    # [r][c] -> Node3D
+var _shown: Array = []    # [r][c] -> value the cell currently displays
+var _flips: Array = []    # [r][c] -> Tween or null
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
@@ -36,7 +41,7 @@ func rules() -> String:
 func board_size() -> Vector2i: return Vector2i(n, n)
 func board_height() -> float: return _tile_h + Placeholders.EMBLEM_H + 0.1
 func plane_height() -> float: return _tile_h
-func board_margin() -> float: return PLATFORM_LIP
+func board_margin() -> float: return Platform.LIP
 func board_depth() -> float: return Placeholders.PLATFORM_H
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
@@ -65,9 +70,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 func reset_board() -> void:
 	for r in n:
 		for c in n:
+			_settle(r, c)
 			if not _given[r][c]:
 				_grid[r][c] = -1
-			_show_cell(r, c, false)
+			_apply_face(r, c)
 	moves = 0
 	_recheck()
 
@@ -88,69 +94,87 @@ func _build_scene() -> void:
 	for child in board.get_children():
 		board.remove_child(child)
 		child.free()
+	_cells = []
 	_tiles = []
 	_suns = []
 	_moons = []
 	_marks = []
+	_shown = []
+	_flips = []
 
-	_platform = Models.instance("platform")
-	_platform.scale = Vector3(n + 2.0 * PLATFORM_LIP, 1.0, n + 2.0 * PLATFORM_LIP)
-	_platform.position = Vector3(0.0, -Placeholders.PLATFORM_H, 0.0)
-	board.add_child(_platform)
+	board.add_child(Platform.build(n, n))
 
 	for r in n:
+		var cell_row := []
 		var tile_row := []
 		var sun_row := []
 		var moon_row := []
 		var mark_row := []
+		var shown_row := []
+		var flip_row := []
 		for c in n:
-			var at := BoardMath.cell_center(r, c, n, n, 0.0)
 			var tile := Models.instance("tile")
-			tile.position = at
-			board.add_child(tile)
-			tile_row.append(tile)
 			if r == 0 and c == 0:
 				_tile_h = Models.height(tile)
-			var top := at + Vector3(0.0, _tile_h, 0.0)
+			# The pivot sits at half tile height so a flip turns the tile about
+			# its own centre; the tile hangs below it, the emblems rest on top.
+			var pivot := Node3D.new()
+			pivot.name = "cell_%d_%d" % [r, c]
+			pivot.position = BoardMath.cell_center(r, c, n, n, _tile_h * 0.5)
+			board.add_child(pivot)
+			cell_row.append(pivot)
+			tile.position = Vector3(0.0, -_tile_h * 0.5, 0.0)
+			pivot.add_child(tile)
+			tile_row.append(tile)
+			var top := Vector3(0.0, _tile_h * 0.5, 0.0)
 			var sun := Models.instance("emblem_sun")
 			sun.position = top
-			board.add_child(sun)
+			pivot.add_child(sun)
 			sun_row.append(sun)
 			var moon := Models.instance("emblem_moon")
 			moon.position = top
-			board.add_child(moon)
+			pivot.add_child(moon)
 			moon_row.append(moon)
 			var mark := Models.instance("empty_mark")
 			mark.position = top
-			board.add_child(mark)
+			pivot.add_child(mark)
 			mark_row.append(mark)
+			shown_row.append(-1)
+			flip_row.append(null)
+		_cells.append(cell_row)
 		_tiles.append(tile_row)
 		_suns.append(sun_row)
 		_moons.append(moon_row)
 		_marks.append(mark_row)
+		_shown.append(shown_row)
+		_flips.append(flip_row)
 	for r in n:
 		for c in n:
-			_show_cell(r, c, false)
+			_apply_face(r, c)
 
-func _show_cell(r: int, c: int, pop: bool) -> void:
+## Makes the cell show its grid value: emblem visibility and tile colour.
+func _apply_face(r: int, c: int) -> void:
 	var v: int = _grid[r][c]
-	var sun: Node3D = _suns[r][c]
-	var moon: Node3D = _moons[r][c]
-	var mark: Node3D = _marks[r][c]
-	sun.visible = v == 0
-	moon.visible = v == 1
-	mark.visible = v == -1
-	sun.scale = Vector3.ONE
-	moon.scale = Vector3.ONE
-	if pop and v != -1:
-		var emblem: Node3D = sun if v == 0 else moon
-		emblem.scale = Vector3.ONE * 0.01
-		var tw := create_tween()
-		tw.tween_property(emblem, "scale", Vector3.ONE, POP_TIME) \
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_shown[r][c] = v
+	_suns[r][c].visible = v == 0
+	_moons[r][c].visible = v == 1
+	_marks[r][c].visible = v == -1
+	Models.tint(_tiles[r][c], _tile_colour(r, c))
 
+## Ends a flip in progress at once, showing the face it was turning to.
+func _settle(r: int, c: int) -> void:
+	var tw: Tween = _flips[r][c]
+	if tw == null or not tw.is_valid() or not tw.is_running():
+		return
+	tw.kill()
+	_flips[r][c] = null
+	_cells[r][c].rotation.x = 0.0
+	_apply_face(r, c)
+
+## Colour for the face the tile is showing (not the grid: mid-flip the tile
+## still wears its old face) with the blush of a broken line on top.
 func _tile_colour(r: int, c: int) -> Color:
-	var moon: bool = _grid[r][c] == 1
+	var moon: bool = _shown[r][c] == 1
 	var locked: bool = _given[r][c]
 	var base: Color
 	if moon:
@@ -177,10 +201,13 @@ func on_board_press(hit: Vector3) -> void:
 	var r := cell.y
 	if _given[r][c]:
 		return
+	# A tap mid-flip finishes that flip first, so the card never turns from
+	# a face it never showed.
+	_settle(r, c)
 	# empty -> sun -> moon -> empty
 	var v: int = _grid[r][c]
 	_grid[r][c] = 0 if v == -1 else (1 if v == 0 else -1)
-	_show_cell(r, c, true)
+	_flips[r][c] = Flip.start(_cells[r][c], _apply_face.bind(r, c), FLIP_TIME)
 	_recheck()
 	note_move()
 

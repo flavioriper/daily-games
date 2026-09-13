@@ -28,6 +28,8 @@ LIMITS = {
     "emblem_sun": (0.6, 0.6, 0.08),
     "emblem_moon": (0.6, 0.6, 0.08),
     "empty_mark": (0.2, 0.2, 0.04),
+    "rim_edge": (1.0, 0.5, 0.12),
+    "rim_corner": (0.5, 0.5, 0.12),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact check

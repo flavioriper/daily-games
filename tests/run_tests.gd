@@ -1,13 +1,24 @@
 extends SceneTree
 
+## Headless test runner. Each suite's run(t) executes during _initialize, before
+## the root enters the tree, which is fine for pure logic. A suite that needs a
+## live tree (nodes with _ready, node-bound tweens) also defines
+## run_in_tree(t); those run on the first process frame.
+
+var _t
+var _tree_suites: Array = []
+
 func _initialize() -> void:
-	var t = load("res://tests/t.gd").new()
+	_t = load("res://tests/t.gd").new()
 	var suites := {
 		"palette": "res://tests/test_palette.gd",
 		"board_math": "res://tests/test_board_math.gd",
 		"toon": "res://tests/test_toon.gd",
 		"models": "res://tests/test_models.gd",
+		"platform": "res://tests/test_platform.gd",
+		"flip": "res://tests/test_flip.gd",
 		"binairo": "res://tests/test_binairo.gd",
+		"binairo3d": "res://tests/test_binairo3d.gd",
 		"mastermind": "res://tests/test_mastermind.gd",
 		"balance": "res://tests/test_balance.gd",
 		"pipes": "res://tests/test_pipes.gd",
@@ -19,12 +30,29 @@ func _initialize() -> void:
 		"nonogram": "res://tests/test_nonogram.gd",
 	}
 	for suite_name in suites:
-		t.current = suite_name
+		_t.current = suite_name
 		var script = load(suites[suite_name])
-		if script == null:
-			t.failed += 1
+		# A suite with a parse error still loads as a GDScript object, but
+		# calling into it aborts _initialize before quit() and hangs the run.
+		if script == null or not script.can_instantiate():
+			_t.failed += 1
 			print("  FAIL [%s] could not load suite" % suite_name)
 			continue
-		script.run(t)
-	print("\npassed=%d failed=%d" % [t.passed, t.failed])
-	quit(1 if t.failed > 0 else 0)
+		if _has_static(script, "run"):
+			script.run(_t)
+		if _has_static(script, "run_in_tree"):
+			_tree_suites.append([suite_name, script])
+
+func _process(_delta: float) -> bool:
+	for pair in _tree_suites:
+		_t.current = pair[0]
+		pair[1].run_in_tree(_t)
+	print("\npassed=%d failed=%d" % [_t.passed, _t.failed])
+	quit(1 if _t.failed > 0 else 0)
+	return true
+
+static func _has_static(script: Script, method: String) -> bool:
+	for m in script.get_script_method_list():
+		if m.name == method:
+			return true
+	return false

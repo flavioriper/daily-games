@@ -11,3 +11,6 @@
 
 # Blender backups
 *.blend1
+
+# Blender by-product of tools/build_pieces.py; the script is the source
+art/*.blend

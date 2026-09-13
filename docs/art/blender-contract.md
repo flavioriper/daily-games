@@ -13,12 +13,15 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
 | `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
 | `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
+| `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side at +Y |
+| `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at +X +Y |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 
-Concept reference: `docs/art/concept-binairo-island.png`. Moss trim and
-cliffs around the platform come later as separate models once the platform
-shape is settled.
+Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
+the moss trim; `core/platform.gd` lays one `rim_edge` per cell along each side
+and a `rim_corner` at each corner, so the lip is exactly one rim piece deep
+(`Platform.LIP`, 0.5). Cliffs and the rest of the island come later.
 
 The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
 The export script enforces each slot's footprint and height budget from this
@@ -53,14 +56,14 @@ it by (cols + 1, rows + 1); `water` is unbounded.
    state — today only `tile` — must have a single material. Tinting replaces
    *every* surface's material with one colour, so a tile with a separate moss
    trim material would go monochrome the moment it is tinted. Slots that are
-   never tinted (`emblem_sun`, `emblem_moon`, `empty_mark`, `platform`,
-   `water`) may use as many materials as they like.
+   never tinted (`emblem_sun`, `emblem_moon`, `empty_mark`, `rim_edge`,
+   `rim_corner`, `platform`, `water`) may use as many materials as they like.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
    no outline. Use it for any surface that should not read as a piece. The
-   `platform`, `water` and `empty_mark` materials **must** carry the suffix
-   (for example `Rock_flat`); without it they get an outline shell the design
-   does not want on them. A mesh keeps its outline unless *every* one of its
-   material names ends in `_flat`.
+   `platform`, `water`, `empty_mark`, `rim_edge` and `rim_corner` materials
+   **must** carry the suffix (for example `Rock_flat`, `Moss_flat`); without
+   it they get an outline shell the design does not want on them. A mesh
+   keeps its outline unless *every* one of its material names ends in `_flat`.
 8. **No parent.** Export objects with no parent. The exporter measures world
    space but moves the object in parent space, so a parented object exports
    somewhere other than where it was checked; clear the parent (Alt+P, Clear
@@ -73,6 +76,24 @@ it by (cols + 1, rows + 1); `water` is unbounded.
 10. **Export settings.** glTF Binary (`.glb`), +Y Up, Apply Modifiers,
     Selected Objects, Materials: Export, no cameras, no lights, no animation.
     File name is the slot name. The script below does all of this.
+
+## Building the pieces
+
+The Binairo pieces are not hand-modelled: `tools/build_pieces.py` builds all
+six with bmesh (tile, both emblems, empty mark, both rim pieces), following
+every rule above, and saves `art/pieces.blend` as a by-product for looking at
+them (the `.blend` is git-ignored; the script is the source). Each piece is a
+flat outline extruded to height, bevelled on every edge, then each flat face
+inset by a hair: with shared smooth vertices the bevel tilts the normals along
+a face's rim, and the inset keeps that tilt in a thin band so the face reads
+as one toon tone. Rebuild, export and re-import in one go:
+
+```bash
+tools/build_models.sh
+```
+
+To change a shape, edit the script and rerun; hand edits in the `.blend` are
+overwritten.
 
 ## Export script
 
