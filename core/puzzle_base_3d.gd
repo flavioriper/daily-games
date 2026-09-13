@@ -33,6 +33,7 @@ func _ready() -> void:
 	if _stage != null:
 		_stage.mount(board)
 	else:
+		push_warning("PuzzleBase3D: no Stage in group 'stage'; board %s will not render and taps will miss" % board.name)
 		add_child(board)
 	resized.connect(_refit)
 	_refit()

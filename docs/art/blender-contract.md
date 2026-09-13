@@ -13,7 +13,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
 | `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
 | `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
-| `platform` | exactly 1.0 x 1.0 | 0.6 | a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
+| `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 
 Concept reference: `docs/art/concept-binairo-island.png`. Moss trim and
@@ -22,8 +22,9 @@ shape is settled.
 
 The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
 The export script enforces each slot's footprint and height budget from this
-table (an unlisted slot falls back to 1.0 x 1.0 x 0.6; `platform` and `water`
-are unbounded).
+table (an unlisted slot falls back to 1.0 x 1.0 x 0.6). `platform` is checked
+for an exact 1 x 1 footprint and left free in height, because the board scales
+it by (cols + 1, rows + 1); `water` is unbounded.
 
 ## Rules
 
@@ -39,17 +40,39 @@ are unbounded).
    split vertices at export. Reason: the outline draws a second copy of the
    mesh pushed out along the vertex normals; split vertices leave visible
    gaps at every corner. The exporter rejects meshes with custom split
-   normals or an Edge Split / Weighted Normal / Smooth by Angle modifier.
+   normals or an Edge Split / Weighted Normal / Smooth by Angle modifier,
+   and a Bevel with **Harden Normals** on, which writes split normals the
+   moment the modifier is applied. It measures the modifier result, not the
+   cage, so a Solidify or Displace that grows the mesh past its budget is
+   caught too.
 5. **Materials are colours.** One Principled BSDF per material, Base Color set,
    nothing else needed. The game replaces every material with the toon shader
    using that base colour. Textures export fine but are ignored by the toon
    shader for now.
-6. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
-   no outline. Use it for the table and any surface that should not read as a
-   piece.
-7. **Export settings.** glTF Binary (`.glb`), +Y Up, Apply Modifiers,
-   Selected Objects, Materials: Export, no cameras, no lights, no animation.
-   File name is the slot name. The script below does all of this.
+6. **One material on slots the game recolours.** A slot the game tints by
+   state — today only `tile` — must have a single material. Tinting replaces
+   *every* surface's material with one colour, so a tile with a separate moss
+   trim material would go monochrome the moment it is tinted. Slots that are
+   never tinted (`emblem_sun`, `emblem_moon`, `empty_mark`, `platform`,
+   `water`) may use as many materials as they like.
+7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
+   no outline. Use it for any surface that should not read as a piece. The
+   `platform`, `water` and `empty_mark` materials **must** carry the suffix
+   (for example `Rock_flat`); without it they get an outline shell the design
+   does not want on them. A mesh keeps its outline unless *every* one of its
+   material names ends in `_flat`.
+8. **No parent.** Export objects with no parent. The exporter measures world
+   space but moves the object in parent space, so a parented object exports
+   somewhere other than where it was checked; clear the parent (Alt+P, Clear
+   Parent and Keep Transform) first. The exporter rejects parented objects.
+9. **No `.001` suffixes.** Blender's automatic duplicate suffix on an *object*
+   name breaks the slot lookup (`Tile.001` exports as `tile.001.glb`, which
+   the game never loads — the exporter prints a `WARN` for it), and on a
+   *material* name it breaks the `_flat` check (`Rock_flat.001` does not end
+   in `_flat`, so it gets an unwanted outline). Rename before exporting.
+10. **Export settings.** glTF Binary (`.glb`), +Y Up, Apply Modifiers,
+    Selected Objects, Materials: Export, no cameras, no lights, no animation.
+    File name is the slot name. The script below does all of this.
 
 ## Export script
 
@@ -59,13 +82,15 @@ from a shell:
 
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender -b art/pieces.blend \
-  --python tools/blender_export.py -- tile token_circle token_square
+  --python tools/blender_export.py -- Tile Emblem_Sun Emblem_Moon
 ```
 
-With no names it exports the selected objects; with nothing selected, every
-top-level mesh. Object names are lowercased to form the slot name. Each
-object prints one line, `OK` with the output path or `SKIP` with the rule it
-broke, and the process exits non-zero if anything was skipped.
+The names are Blender *object* names; each is lowercased to form the slot name
+(`Emblem_Sun` writes `emblem_sun.glb`). With no names it exports the selected
+objects; with nothing selected, every top-level mesh. Each object prints one
+line, `OK` with the output path or `SKIP` with the rule it broke, preceded by
+a `WARN` line when the slot name is not one the game loads, and the process
+exits non-zero if anything was skipped.
 
 ## Seeing it in the game
 

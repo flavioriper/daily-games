@@ -13,4 +13,14 @@ any that are missing:
 | `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
 | `water` | flat water plane far below the platform |
 
+`tile` must have a **single material**: the game tints it by cell state and
+that replaces every surface's material with one colour, so a second material
+(a moss trim, say) would go monochrome. The other slots are never tinted and
+may use several materials.
+
+The `platform`, `water` and `empty_mark` materials must be named with the
+`_flat` suffix (for example `Rock_flat`), or they get an outline shell the
+design does not want on them.
+
+Full rules: `docs/art/blender-contract.md`.
 Concept reference: `docs/art/concept-binairo-island.png`.

@@ -485,3 +485,17 @@ in over 0.18 s. Share glyphs are 🌞 for sun and 🌙 for moon.
 The earlier acceptance check "cream sky visible behind the menu" was
 ambiguous: a cream sky behind a 90 percent cream panel is indistinguishable
 from an opaque panel. With blue sky and water the check is unambiguous.
+
+### Tuned constants (as built)
+
+The numbers that were settled by looking at the screen rather than derived, so
+a later change has something to compare against.
+
+- Toon ramp: three constant bands at offsets 0 / 0.42 / 0.70 with values 0 /
+  0.55 / 1.0 (`core/toon.gd`).
+- Sun energy 0.46 and ambient energy 0.115, calibrated against a lit `STONE`
+  tile face reading within 12 percent of `ede2cc` (`world/stage.gd`).
+- Menu paper panel alpha 0.82 (`ui/menu.gd`); host header panel alpha 0.88
+  (`ui/puzzle_host.gd`).
+- Outline width 0.02 world units at `distance_scale` 0 (`shaders/outline.gdshader`).
+- Camera pitch 68 degrees, FOV 30 degrees (`world/camera_rig.gd`).

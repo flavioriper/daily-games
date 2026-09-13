@@ -56,7 +56,7 @@ puzzles/    <id>_gen.gd is pure logic and headless-testable
 ui/         menu, puzzle host shell, registry
 tests/      unit suites plus the win and screenshot harnesses
 docs/       the 75-candidate catalog and build notes
-world/      3D stage: camera rig, sun, sky, table; main scene
+world/      3D stage: camera rig, sun, sky, water; main scene
 shaders/    toon and outline spatial shaders
 assets/     models/<slot>.glb from Blender, placeholders otherwise
 tools/      blender_export.py, run inside Blender
