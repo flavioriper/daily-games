@@ -15,12 +15,16 @@ const REDUCED_TIME := 0.15
 static var reduce: bool = false
 static var settings_path: String = "user://settings.cfg"
 
+## Loads `reduce` from settings_path, section [motion], key reduce. A missing
+## or unreadable file is treated as reduce = false.
 static func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	reduce = false
 	if cfg.load(settings_path) == OK:
 		reduce = bool(cfg.get_value("motion", "reduce", false))
 
+## Saves `reduce` to settings_path, section [motion], key reduce. Keeps any
+## other sections already in the file.
 static func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(settings_path)  # keeps other sections; a missing file is fine
@@ -111,5 +115,6 @@ static func stop(tw: Tween) -> void:
 	if tw != null and tw.is_valid():
 		tw.kill()
 
+## Returns true if `tw` is valid and running; null-safe.
 static func running(tw: Tween) -> bool:
 	return tw != null and tw.is_valid() and tw.is_running()
