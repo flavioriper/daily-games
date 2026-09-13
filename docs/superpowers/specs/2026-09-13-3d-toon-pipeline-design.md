@@ -144,18 +144,16 @@ the Blender contract, and the placeholder primitives already satisfy it.
 - `material(albedo: Color) -> ShaderMaterial`: toon material. Cached per
   albedo (dictionary keyed by `Color.to_html()`), so tinting a hundred tiles
   the same colour costs one material.
-- `flat(albedo: Color) -> ShaderMaterial`: unshaded matte. For the table top
-  and anything whose Blender material name ends in `_flat`.
 - `outline() -> ShaderMaterial`: the one shared outline material.
 - `add_outline(mesh_instance: MeshInstance3D)`: adds the `Outline` shell
   child described above. Idempotent: a second call finds the existing shell.
 - `apply_to(root: Node)`: walks `MeshInstance3D` descendants. For each surface
   whose material is a `StandardMaterial3D`, sets a surface override to
-  `material(albedo_color)`, or `flat(albedo_color)` when the source material
-  name ends in `_flat`. A mesh gets an outline shell unless every surface is
-  flat. Materials that are already `ShaderMaterial` are left alone. This is
-  how a plain Blender export becomes toon at load time with no editor import
-  configuration.
+  `material(albedo_color)`. A mesh gets an outline shell unless every surface
+  material name ends in `_flat` (toon shading stays; only the outline is
+  skipped, so the table still receives the pieces' shadows). Materials that
+  are already `ShaderMaterial` are left alone. This is how a plain Blender
+  export becomes toon at load time with no editor import configuration.
 
 ### Model library (`core/models.gd`, static)
 
@@ -174,11 +172,14 @@ the Blender contract, and the placeholder primitives already satisfy it.
   | `token_circle` | CylinderMesh | r 0.30, h 0.18 | `ACCENT` |
   | `token_square` | BoxMesh | 0.50, 0.18, 0.50 | `ACCENT_2` |
   | `given_ring` | TorusMesh | inner 0.38, outer 0.44 | `TEXT_DIM` |
-  | `table` | BoxMesh | 14, 0.4, 14 | `WOOD`, flat |
+  | `table` | BoxMesh | 14, 0.4, 14 | `WOOD`, no outline |
 
-  Every placeholder has its origin at the centre of its base so it sits on
-  y = 0 of whatever it is placed on, the same rule the contract gives to
-  Blender models.
+  Square pieces are four-sided `CylinderMesh` prisms turned 45 degrees
+  rather than `BoxMesh`: a `BoxMesh` has split flat normals and the outline
+  hull opens at every corner, while cylinder sides share vertices. Every
+  placeholder is a `Node3D` root whose origin is at the centre of its base, so
+  it sits on y = 0 of whatever it is placed on, the same rule the contract
+  gives to Blender models.
 
 ## 3. Blender contract
 
@@ -197,8 +198,8 @@ follows it, dropping the file in `assets/models/` is the entire integration.
   Use Auto Smooth or Weighted Normal for hard-edge looks.
 - Materials: plain Principled BSDF, base colour only. No textures needed. The
   game replaces every material with the toon shader using that base colour.
-  Name a material with the suffix `_flat` to get an unshaded matte with no
-  outline instead.
+  Name a material with the suffix `_flat` to skip the outline on that mesh
+  (the table, ground, anything that should not read as a piece).
 - Export: glTF Binary (`.glb`), +Y up, Apply Modifiers, Selected Objects,
   Materials export, no cameras, no lights, no animations. File name equals
   the slot name from the table above.
@@ -309,8 +310,11 @@ Chrome changes in `ui/puzzle_host.gd` and `ui/menu.gd`:
 
 - Opaque background rects removed.
 - Host draws a `PAPER` card with rounded corners behind the board slot only
-  when the puzzle is not a `PuzzleBase3D`, so 2D boards keep contrast.
-- Solved overlay becomes `PAPER` at 85 percent alpha with `GOOD` text.
+  when the puzzle reports `is_3d()` false, so 2D boards keep contrast.
+- A code-built `Theme` (`ui/theme.gd`) gives buttons rounded paper cards with
+  ink text and labels the ink colour, set on the menu so the host inherits it.
+- Solved overlay becomes `PAPER` at 85 percent alpha with `TEXT` ink (sage on
+  paper is too light for body text).
 - Menu list sits on a `PAPER` panel at 90 percent alpha.
 
 ## 6. Project settings and tests
@@ -332,8 +336,8 @@ Chrome changes in `ui/puzzle_host.gd` and `ui/menu.gd`:
   albedo; the same colour returns the same instance; `apply_to` converts a
   `StandardMaterial3D` surface to toon with its albedo preserved, adds one
   `Outline` shell with shadow casting off, honours the `_flat` suffix by
-  using the flat material and adding no shell, and leaves `ShaderMaterial`
-  surfaces untouched; calling `apply_to` twice adds no second shell.
+  adding no shell, and leaves `ShaderMaterial` surfaces untouched; calling
+  `apply_to` twice adds no second shell.
 - `test_models.gd`: an unknown slot falls back to a placeholder; every slot in
   `SLOTS` yields a `Node3D`; every placeholder except `table` has an AABB
   inside a 1 by 1 footprint with its base at y = 0.
@@ -372,6 +376,7 @@ core/models.gd
 core/placeholders.gd
 core/board_math.gd
 core/puzzle_base_3d.gd
+ui/theme.gd
 puzzles/binairo3d.gd
 assets/models/README.md    points to the contract; .glb files land here
 docs/art/blender-contract.md
