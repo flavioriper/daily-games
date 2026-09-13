@@ -1,0 +1,10 @@
+# Godot 4 generated files
+.godot/
+/android/
+*.translation
+
+# macOS
+.DS_Store
+
+# Local session history from the Remember plugin, not project state
+.remember/

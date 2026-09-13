@@ -1,0 +1,195 @@
+extends RefCounted
+
+## Binairo / Takuzu generator and solver.
+##
+## Grid representation: Array of rows, each an Array of int, where -1 is empty.
+## Rules enforced: no three of the same in a line, each line balanced 50/50,
+## and no two rows (or two columns) identical.
+##
+## Generation is the build-then-strip shape: make a full valid solution, then
+## remove clues one at a time, keeping a removal only while the solver still
+## reports exactly one solution. The result is minimal by construction --
+## removing clues only ever loosens constraints, so a clue proven load-bearing
+## at any point stays load-bearing.
+
+static func solve_count(grid: Array, limit: int) -> int:
+	var n: int = grid.size()
+	var g: Array = []
+	for r in n:
+		g.append((grid[r] as Array).duplicate())
+	# Reject clue sets that already break a rule.
+	for r in n:
+		for c in n:
+			if g[r][c] != -1 and not _partial_ok(g, r, c, n):
+				return 0
+	return _search(g, n, limit)
+
+static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0) -> Dictionary:
+	assert(n % 2 == 0, "Binairo needs an even board size")
+	var sol: Array = _random_solution(rng, n)
+	var puzzle: Array = []
+	for r in n:
+		puzzle.append((sol[r] as Array).duplicate())
+
+	var cells: Array = []
+	for r in n:
+		for c in n:
+			cells.append(r * n + c)
+	_shuffle(cells, rng)
+
+	var clues: int = n * n
+	for idx in cells:
+		if min_clues > 0 and clues <= min_clues:
+			break
+		var r: int = idx / n
+		var c: int = idx % n
+		var kept = puzzle[r][c]
+		puzzle[r][c] = -1
+		if solve_count(puzzle, 2) == 1:
+			clues -= 1
+		else:
+			puzzle[r][c] = kept
+	return {"solution": sol, "puzzle": puzzle, "clues": clues}
+
+static func is_valid_complete(g: Array) -> bool:
+	var n: int = g.size()
+	if n == 0 or n % 2 != 0:
+		return false
+	var half: int = n / 2
+	for r in n:
+		if (g[r] as Array).size() != n:
+			return false
+		for c in n:
+			if g[r][c] != 0 and g[r][c] != 1:
+				return false
+	# Balance.
+	for i in n:
+		var rc := 0
+		var cc := 0
+		for j in n:
+			rc += int(g[i][j])
+			cc += int(g[j][i])
+		if rc != half or cc != half:
+			return false
+	# No three in a line.
+	for r in n:
+		for c in n - 2:
+			if g[r][c] == g[r][c + 1] and g[r][c + 1] == g[r][c + 2]:
+				return false
+	for c in n:
+		for r in n - 2:
+			if g[r][c] == g[r + 1][c] and g[r + 1][c] == g[r + 2][c]:
+				return false
+	# Distinct lines.
+	for a in n:
+		for b in range(a + 1, n):
+			if g[a] == g[b]:
+				return false
+			var ca := []
+			var cb := []
+			for i in n:
+				ca.append(g[i][a])
+				cb.append(g[i][b])
+			if ca == cb:
+				return false
+	return true
+
+# --- internals ---
+
+static func _search(g: Array, n: int, limit: int) -> int:
+	var br := -1
+	var bc := -1
+	for r in n:
+		for c in n:
+			if g[r][c] == -1:
+				br = r
+				bc = c
+				break
+		if br != -1:
+			break
+	if br == -1:
+		return 1 if is_valid_complete(g) else 0
+	var found := 0
+	for v in [0, 1]:
+		g[br][bc] = v
+		if _partial_ok(g, br, bc, n):
+			found += _search(g, n, limit - found)
+			if found >= limit:
+				g[br][bc] = -1
+				return found
+		g[br][bc] = -1
+	return found
+
+static func _partial_ok(g: Array, r: int, c: int, n: int) -> bool:
+	var half: int = n / 2
+	# Three-in-a-line, only windows touching (r, c).
+	for s in range(maxi(0, c - 2), mini(c, n - 3) + 1):
+		if g[r][s] != -1 and g[r][s] == g[r][s + 1] and g[r][s + 1] == g[r][s + 2]:
+			return false
+	for s in range(maxi(0, r - 2), mini(r, n - 3) + 1):
+		if g[s][c] != -1 and g[s][c] == g[s + 1][c] and g[s + 1][c] == g[s + 2][c]:
+			return false
+	# Balance cannot already be exceeded.
+	var r0 := 0
+	var r1 := 0
+	var c0 := 0
+	var c1 := 0
+	for j in n:
+		if g[r][j] == 0: r0 += 1
+		elif g[r][j] == 1: r1 += 1
+		if g[j][c] == 0: c0 += 1
+		elif g[j][c] == 1: c1 += 1
+	if r0 > half or r1 > half or c0 > half or c1 > half:
+		return false
+	# A completed line must not duplicate another completed line.
+	if r0 + r1 == n:
+		for i in n:
+			if i != r and not (g[i] as Array).has(-1) and g[i] == g[r]:
+				return false
+	if c0 + c1 == n:
+		var col := []
+		for i in n:
+			col.append(g[i][c])
+		for j in n:
+			if j == c:
+				continue
+			var other := []
+			var full := true
+			for i in n:
+				if g[i][j] == -1:
+					full = false
+					break
+				other.append(g[i][j])
+			if full and other == col:
+				return false
+	return true
+
+static func _random_solution(rng: RandomNumberGenerator, n: int) -> Array:
+	var g: Array = []
+	for r in n:
+		var row: Array = []
+		for c in n:
+			row.append(-1)
+		g.append(row)
+	_fill(g, 0, n, rng)
+	return g
+
+static func _fill(g: Array, idx: int, n: int, rng: RandomNumberGenerator) -> bool:
+	if idx == n * n:
+		return is_valid_complete(g)
+	var r: int = idx / n
+	var c: int = idx % n
+	var vals := [0, 1] if rng.randf() < 0.5 else [1, 0]
+	for v in vals:
+		g[r][c] = v
+		if _partial_ok(g, r, c, n) and _fill(g, idx + 1, n, rng):
+			return true
+	g[r][c] = -1
+	return false
+
+static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
