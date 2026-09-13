@@ -23,7 +23,8 @@ never tinted and may use several materials.
 
 The `platform`, `water`, `empty_mark`, `rim_edge` and `rim_corner` materials
 must be named with the `_flat` suffix (for example `Rock_flat`), or they get
-an outline shell the design does not want on them.
+an outline shell the design does not want on them. The rim's grass, petals
+and pollen also carry `_sway` so they wave in the wind; the moss does not.
 
 The Binairo pieces here are generated: `tools/build_models.sh` rebuilds them
 from `tools/build_pieces.py`, exports through the contract checks and

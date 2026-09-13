@@ -3,6 +3,7 @@ extends RefCounted
 const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
 const Pal = preload("res://core/palette.gd")
+const Toon = preload("res://core/toon.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
 const HEIGHT_BUDGET := {"tile": 0.75, "emblem_sun": 0.08, "emblem_moon": 0.08, "empty_mark": 0.04, "rim_edge": 0.12, "rim_corner": 0.12}
@@ -14,6 +15,7 @@ static func run(t) -> void:
 	_test_fallback(t)
 	_test_tint_and_height(t)
 	_test_focus_ring(t)
+	_test_rim_sways(t)
 
 ## Root-space min/max of every face vertex under `root`, outline shells excluded.
 static func _bounds(root: Node3D) -> Array:
@@ -163,3 +165,23 @@ static func _test_focus_ring(t) -> void:
 	t.check(ms[0].get_node_or_null("Outline") == null, "focus ring has no outline")
 	a.free()
 	b.free()
+
+## The rim's tufts, petals and pollen sway (polish spec, section 4); the moss
+## slab stays still. Checked on the export, since that is what the game shows.
+static func _test_rim_sways(t) -> void:
+	if not Models.has_model("rim_edge"):
+		return
+	for slot in ["rim_edge", "rim_corner"]:
+		var piece = Models.instance(slot)
+		var names := Models.surface_names(piece)
+		t.check(names.has("Moss_flat"), "%s keeps a still Moss_flat surface" % slot)
+		for mat in ["Grass_sway_flat", "Petal_sway_flat", "Pollen_sway_flat"]:
+			t.check(names.has(mat), "%s carries %s" % [slot, mat])
+		var wind := 0
+		for mi in Models.meshes(piece):
+			for i in mi.mesh.get_surface_count():
+				var over = mi.get_surface_override_material(i)
+				if over != null and over.shader == Toon.WIND_SHADER:
+					wind += 1
+		t.eq(wind, 3, "%s has three swaying surfaces" % slot)
+		piece.free()

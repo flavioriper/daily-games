@@ -13,8 +13,8 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
 | `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
 | `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
-| `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side (toward the water) at **-Y** in Blender, which is +Z in Godot |
-| `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot |
+| `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side (toward the water) at **-Y** in Blender, which is +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
+| `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 | `focus_ring` | inside 0.92 x 0.92 | 0.02 | flat square frame around one cell; the game gives it a translucent unshaded material, so its Blender material is only a placeholder |
@@ -87,6 +87,14 @@ leaves a gap in the ring. `water` is unbounded.
 10. **Export settings.** glTF Binary (`.glb`), +Y Up, Apply Modifiers,
     Selected Objects, Materials: Export, no cameras, no lights, no animation.
     File name is the slot name. The script below does all of this.
+11. **`_sway` marker.** A material whose name contains `_sway` bends in the
+    game's wind (`shaders/toon_wind.gdshader`): vertices above local Z 0.03
+    lean sideways, more the higher they are, so keep the planted part of a
+    tuft below that height. Use it for grass, petals, leaves. Until the
+    outline follows the wind, a `_sway` material must also end in `_flat`
+    (`Grass_sway_flat`), and `core/toon.gd` reads the mark anywhere in the
+    name. The rim pieces carry `Grass_sway_flat`, `Petal_sway_flat` and
+    `Pollen_sway_flat` beside a still `Moss_flat`.
 
 ## Assemblies
 

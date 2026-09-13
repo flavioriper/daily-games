@@ -12,7 +12,8 @@ Run headless, then hand the objects to the exporter in the same session:
 Every piece follows docs/art/blender-contract.md: metric units, one unit per
 cell, origin at the centre of the base, smooth shading with shared vertices,
 plain-colour Principled materials, `_flat` names on surfaces that must not get
-an outline. Pieces are built with bmesh so the script is the source of truth;
+an outline and `_sway` on the ones that wave in the wind. Pieces are built
+with bmesh so the script is the source of truth;
 the .blend is a by-product for looking at them.
 
 Axes: Blender is Z-up and the glTF exporter maps Blender (x, y, z) to Godot
@@ -260,8 +261,10 @@ def build_mark():
 
 
 def rim_materials():
-    return [material("Moss_flat", MOSS), material("Grass_flat", GRASS),
-            material("Petal_flat", PETAL), material("Pollen_flat", POLLEN)]
+    # The tufts, petals and pollen sway in the game's wind (a `_sway` name,
+    # contract rule 11); the moss slab stays still.
+    return [material("Moss_flat", MOSS), material("Grass_sway_flat", GRASS),
+            material("Petal_sway_flat", PETAL), material("Pollen_sway_flat", POLLEN)]
 
 
 def add_flower(bm, centre):
