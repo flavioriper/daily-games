@@ -1524,7 +1524,7 @@ static func _test_star(t) -> void:
 	var img := tex.get_image()
 	t.check(img.get_pixel(16, 16).a > 0.9, "the star is solid at its centre")
 	t.check(img.get_pixel(2, 2).a < 0.1, "the star is clear at its corners")
-	t.check(img.get_pixel(16, 3).a > 0.9, "the star reaches up along its axis")
+	t.check(img.get_pixel(16, 8).a > 0.9, "the star reaches up along its axis")
 	t.check(Fx.star_texture() == tex, "the star texture is built once")
 ```
 

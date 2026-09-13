@@ -19,3 +19,6 @@ art/*.blend
 
 # Python bytecode from running the tools
 __pycache__/
+
+# Subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/
