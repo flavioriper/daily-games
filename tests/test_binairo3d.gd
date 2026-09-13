@@ -13,6 +13,7 @@ const BoardMath = preload("res://core/board_math.gd")
 const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
+const Motion = preload("res://core/motion.gd")
 
 const THIRD := TAU / 3.0
 
@@ -31,6 +32,7 @@ static func run_in_tree(t) -> void:
 	_test_faces_carry_emblems(t, p)
 	_test_face_colours(t, p)
 	_test_tap_rolls(t, p)
+	_test_neighbour_bob(t, p)
 	_test_locked_cell(t, p)
 	_test_reset_snaps(t, p)
 
@@ -146,15 +148,24 @@ static func _test_tap_rolls(t, p) -> void:
 	t.check(is_equal_approx(p._target_angle(r, c), -THIRD), "roll target is one third turn toward the player")
 	t.check(p._marks[r][c].visible and p._suns[r][c].visible, "both faces in motion are visible during the roll")
 
-	# Drive the roll to its end: the pivot lands on the sun face and the
-	# faces now hidden inside the platform go invisible again.
-	first.custom_step(p.ROLL_TIME * 0.5)
-	t.check(pivot.rotation.x < -0.2 and pivot.rotation.x > -THIRD, "halfway, the prism is between faces (%.3f)" % pivot.rotation.x)
+	var lift: Tween = p._hops[r][c]
+	t.check(Motion.running(lift), "a lift rides along the roll")
+	# Drive the roll to its end. The back ease is already overshooting at the
+	# half, so the between-faces check steps a quarter.
+	first.custom_step(p.ROLL_TIME * 0.25)
+	t.check(pivot.rotation.x < -0.2 and pivot.rotation.x > -THIRD, "a quarter in, the prism is between faces (%.3f)" % pivot.rotation.x)
+	lift.custom_step(p.ROLL_TIME * 0.25)
+	t.check(pivot.position.y > p._rest_y + 0.01, "the prism has lifted off its axis (%.3f)" % (pivot.position.y - p._rest_y))
+	first.custom_step(p.ROLL_TIME * 0.25)
+	t.check(pivot.rotation.x < -THIRD, "halfway, the prism has rolled past the face and is springing back (%.3f)" % pivot.rotation.x)
 	first.custom_step(p.ROLL_TIME)
+	lift.custom_step(p.ROLL_TIME)
 	t.check(is_equal_approx(pivot.rotation.x, -THIRD), "the roll lands exactly on the sun face (%.3f)" % pivot.rotation.x)
+	t.check(is_equal_approx(pivot.position.y, p._rest_y), "the lift lands back on the axis (%.4f)" % pivot.position.y)
 	t.check(not first.is_running(), "the roll tween finished")
 	t.check(p._suns[r][c].visible and not p._marks[r][c].visible and not p._moons[r][c].visible,
 		"after the roll only the sun emblem is visible")
+	t.eq(p.fx.last_cue, "land", "landing fires the land cue and its dust")
 
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], 1, "second tap sets the grid to moon")
@@ -168,6 +179,34 @@ static func _test_tap_rolls(t, p) -> void:
 	t.eq(p._grid[r][c], -1, "third tap empties the cell")
 	t.check(is_equal_approx(p._target_angle(r, c), -TAU), "third roll completes the turn rather than unwinding")
 
+## A tap ripples through the neighbours: the side cells dip and return a
+## beat later, the diagonals half as deep and later still. A rolling cell is
+## skipped, so no cell ever runs two height tweens.
+static func _test_neighbour_bob(t, p) -> void:
+	var cell := _find_cell(p, false)
+	var r := cell.y
+	var c := cell.x
+	var side := Vector2i(c + 1, r) if c + 1 < p.n else Vector2i(c - 1, r)
+	var diag := Vector2i(side.x, r + 1) if r + 1 < p.n else Vector2i(side.x, r - 1)
+	_tap(p, r, c)
+	var sb: Tween = p._bobs[side.y][side.x]
+	var db: Tween = p._bobs[diag.y][diag.x]
+	t.check(Motion.running(sb), "a side neighbour bobs")
+	t.check(Motion.running(db), "a diagonal neighbour bobs")
+	t.check(p._bobs[r][c] == null, "the tapped cell itself does not bob; it rolls")
+	sb.custom_step(p.BOB_LAG + p.BOB_TIME * 0.5)
+	db.custom_step(p.BOB_LAG_DIAG + p.BOB_TIME * 0.5)
+	var side_y: float = p._cells[side.y][side.x].position.y
+	var diag_y: float = p._cells[diag.y][diag.x].position.y
+	t.check(side_y < p._rest_y - 0.015, "at its deepest the side neighbour is down %.3f" % (p._rest_y - side_y))
+	t.check(diag_y < p._rest_y and diag_y > side_y, "the diagonal dips, but half as far (%.3f)" % (p._rest_y - diag_y))
+	sb.custom_step(p.BOB_TIME)
+	db.custom_step(p.BOB_TIME)
+	t.check(is_equal_approx(p._cells[side.y][side.x].position.y, p._rest_y), "the side neighbour returns to rest")
+	t.check(is_equal_approx(p._cells[diag.y][diag.x].position.y, p._rest_y), "the diagonal returns to rest")
+	# Tidy: land the roll so later tests start from a resting board.
+	p._settle(r, c)
+
 static func _test_locked_cell(t, p) -> void:
 	var cell := _find_cell(p, true)
 	var r := cell.y
@@ -177,6 +216,11 @@ static func _test_locked_cell(t, p) -> void:
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], before, "tapping a given cell changes nothing")
 	t.check(p._rolls[r][c] == null and is_equal_approx(p._cells[r][c].rotation.x, angle), "a given cell never rolls")
+	t.check(Motion.running(p._bobs[r][c]), "a given cell answers a tap with a dip")
+	p._bobs[r][c].custom_step(p.BOB_TIME * 0.5)
+	t.check(p._cells[r][c].position.y < p._rest_y, "the dip goes down")
+	p._bobs[r][c].custom_step(p.BOB_TIME)
+	t.check(is_equal_approx(p._cells[r][c].position.y, p._rest_y), "the dip returns to rest")
 
 static func _test_reset_snaps(t, p) -> void:
 	p.reset_board()

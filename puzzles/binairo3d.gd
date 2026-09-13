@@ -6,18 +6,29 @@ extends "res://core/puzzle_base_3d.gd"
 ## near slope and the moon face on the far slope, both hidden inside the
 ## platform. A tap rolls the prism a third of a turn toward the player so the
 ## next face comes up: empty -> sun -> moon -> empty. The grid changes at
-## once; the roll is only how the change is shown. The pivot's angle is the
-## only visual state; the emblems on the two buried faces are merely made
-## invisible between rolls so they cost no draw calls. Tiles in a line that
-## already breaks a rule blush, so the player learns the rules by touching.
+## once; the roll is only how the change is shown, with a settle, a lift and a
+## puff of dust on landing, and the neighbours bob as if the stone were soft.
+## The pivot's angle is the only visual state; the emblems on the two buried
+## faces are merely made invisible between rolls so they cost no draw calls.
+## Tiles in a line that already breaks a rule blush, so the player learns the
+## rules by touching. Motion: docs/superpowers/specs/2026-09-13-binairo-polish-design.md.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
 const Platform = preload("res://core/platform.gd")
+const Motion = preload("res://core/motion.gd")
+const Fx = preload("res://world/fx.gd")
 
-const ROLL_TIME := 0.3
+## Roll and bob timings (polish spec, section 2).
+const ROLL_TIME := 0.34        # one third of a turn, settle included
+const ROLL_TIME_TWO := 0.42    # two thirds in one roll (reset)
+const ROLL_LIFT := 0.04
+const BOB_DIP := 0.02
+const BOB_TIME := 0.35
+const BOB_LAG := 0.04
+const BOB_LAG_DIAG := 0.07
 const THIRD := TAU / 3.0
 const BAD_BLEND := 0.35
 ## Face index per cell value: empty up, then sun, then moon.
@@ -36,7 +47,11 @@ var _suns: Array = []     # [r][c] -> Node3D
 var _moons: Array = []    # [r][c] -> Node3D
 var _marks: Array = []    # [r][c] -> Node3D
 var _turns: Array = []    # [r][c] -> thirds of a turn rolled so far
-var _rolls: Array = []    # [r][c] -> Tween or null
+var _rest_y: float = 0.0  # pivot height at rest: the prism's axis
+var _rolls: Array = []    # [r][c] -> Tween or null, the roll in flight
+var _hops: Array = []     # [r][c] -> the lift riding along the roll
+var _bobs: Array = []     # [r][c] -> a neighbour bob or a given's dip
+var fx: Node3D            # pooled one-shot particles, a child of the board
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
@@ -110,8 +125,13 @@ func _build_scene() -> void:
 	_marks = []
 	_turns = []
 	_rolls = []
+	_hops = []
+	_bobs = []
 
 	board.add_child(Platform.build(n, n))
+	fx = Fx.new()
+	board.add_child(fx)
+	_rest_y = Placeholders.TILE_RISE - Placeholders.TILE_APOTHEM
 
 	for r in n:
 		var cell_row := []
@@ -121,6 +141,8 @@ func _build_scene() -> void:
 		var mark_row := []
 		var turn_row := []
 		var roll_row := []
+		var hop_row := []
+		var bob_row := []
 		for c in n:
 			var tile := Models.instance("tile")
 			if r == 0 and c == 0:
@@ -151,6 +173,8 @@ func _build_scene() -> void:
 			moon_row.append(moon)
 			turn_row.append(FACE[_grid[r][c]])
 			roll_row.append(null)
+			hop_row.append(null)
+			bob_row.append(null)
 			pivot.rotation.x = -turn_row[c] * THIRD
 		_cells.append(cell_row)
 		_tiles.append(tile_row)
@@ -159,6 +183,8 @@ func _build_scene() -> void:
 		_marks.append(mark_row)
 		_turns.append(turn_row)
 		_rolls.append(roll_row)
+		_hops.append(hop_row)
+		_bobs.append(bob_row)
 	for r in n:
 		for c in n:
 			_show_faces(r, c, false)
@@ -179,24 +205,64 @@ func _show_faces(r: int, c: int, rolling: bool) -> void:
 	_suns[r][c].visible = rolling or up == 1
 	_moons[r][c].visible = rolling or up == 2
 
-## Ends a roll in progress at once, snapping to the face it was turning to.
+## Ends every motion on cell (r, c) at once: the prism snaps to the face it
+## was turning to and back onto its axis, buried faces hidden.
 func _settle(r: int, c: int) -> void:
-	var tw: Tween = _rolls[r][c]
-	if tw == null or not tw.is_valid() or not tw.is_running():
-		return
-	tw.kill()
+	Motion.stop(_rolls[r][c])
+	Motion.stop(_hops[r][c])
+	Motion.stop(_bobs[r][c])
 	_rolls[r][c] = null
-	_cells[r][c].rotation.x = _target_angle(r, c)
+	_hops[r][c] = null
+	_bobs[r][c] = null
+	var pivot: Node3D = _cells[r][c]
+	pivot.rotation.x = _target_angle(r, c)
+	pivot.position.y = _rest_y
 	_show_faces(r, c, false)
 
-func _roll(r: int, c: int) -> void:
+## Rolls cell (r, c) `thirds` faces toward the player after `delay`, with the
+## settle and the lift that make it a hop rather than a grind. All three
+## emblems show while it turns; _on_roll_landed hides the buried two again.
+func _roll(r: int, c: int, thirds := 1, delay := 0.0) -> void:
 	var pivot: Node3D = _cells[r][c]
 	_show_faces(r, c, true)
-	var tw := pivot.create_tween()
-	tw.tween_property(pivot, "rotation:x", _target_angle(r, c), ROLL_TIME) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.finished.connect(_show_faces.bind(r, c, false))
+	var time := ROLL_TIME if thirds == 1 else ROLL_TIME_TWO
+	var tw: Tween = Motion.settle(pivot, "rotation:x", _target_angle(r, c), time, delay, true)
+	tw.finished.connect(_on_roll_landed.bind(r, c))
 	_rolls[r][c] = tw
+	Motion.stop(_hops[r][c])
+	_hops[r][c] = Motion.hop(pivot, ROLL_LIFT, time, delay, _rest_y)
+	fx.cue("roll")
+
+## The roll has landed: buried faces go invisible and dust rises from the
+## near edge, where the arriving face touched down.
+func _on_roll_landed(r: int, c: int) -> void:
+	_show_faces(r, c, false)
+	var pivot: Node3D = _cells[r][c]
+	fx.puff(Vector3(pivot.position.x, Placeholders.TILE_RISE, pivot.position.z + Placeholders.TILE_SIDE * 0.5))
+	fx.cue("land")
+
+## The eight cells around a tapped one dip and return: the sides a beat after
+## the tap, the diagonals half as deep and a beat later, like a soft surface.
+## A rolling cell is left alone, so no cell ever runs two height tweens.
+func _bob_neighbours(r: int, c: int) -> void:
+	for dr in [-1, 0, 1]:
+		for dc in [-1, 0, 1]:
+			if dr == 0 and dc == 0:
+				continue
+			var rr: int = r + dr
+			var cc: int = c + dc
+			if rr < 0 or cc < 0 or rr >= n or cc >= n:
+				continue
+			if Motion.running(_rolls[rr][cc]):
+				continue
+			var diagonal: bool = dr != 0 and dc != 0
+			_dip(rr, cc, BOB_DIP * (0.5 if diagonal else 1.0), BOB_LAG_DIAG if diagonal else BOB_LAG)
+
+## A dip and return on one cell, replacing any bob already on it.
+func _dip(r: int, c: int, depth: float, delay := 0.0) -> void:
+	Motion.stop(_bobs[r][c])
+	_cells[r][c].position.y = _rest_y
+	_bobs[r][c] = Motion.hop(_cells[r][c], -depth, BOB_TIME, delay, _rest_y)
 
 ## Face colours: stone for the empty and sun faces and the caps, slate for
 ## the moon face, darker when the cell is a given, blushed on a broken line.
@@ -225,6 +291,8 @@ func on_board_press(hit: Vector3) -> void:
 	var c := cell.x
 	var r := cell.y
 	if _given[r][c]:
+		# Stone stays stone: the cell answers with a dip and nothing rolls.
+		_dip(r, c, BOB_DIP)
 		return
 	# A tap mid-roll snaps that roll home first, so the next one starts from
 	# a face, never from between two.
@@ -234,6 +302,7 @@ func on_board_press(hit: Vector3) -> void:
 	_grid[r][c] = 0 if v == -1 else (1 if v == 0 else -1)
 	_turns[r][c] += 1
 	_roll(r, c)
+	_bob_neighbours(r, c)
 	_recolour()
 	note_move()
 
