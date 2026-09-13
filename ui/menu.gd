@@ -3,10 +3,12 @@ extends Control
 const Pal = preload("res://core/palette.gd")
 const Registry = preload("res://ui/registry.gd")
 const Host = preload("res://ui/puzzle_host.gd")
+const CozyTheme = preload("res://ui/theme.gd")
 
 var _list_root: Control
 
 func _ready() -> void:
+	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_list()
 

@@ -18,6 +18,7 @@ var _rules_label: Label
 var _board_holder: Control
 var _overlay: Control
 var _overlay_label: Label
+var _card: Panel
 
 func setup(entry: Dictionary, difficulty: int) -> void:
 	_entry = entry
@@ -36,9 +37,26 @@ func _ready() -> void:
 	add_child(root)
 
 	# --- header ---
+	# A PanelContainer sizes itself to its child's minimum size, so the paper
+	# behind the header and rules always fits the text (a plain Panel does
+	# not size to its children and needs manual, loop-prone bookkeeping).
+	var top := PanelContainer.new()
+	var top_sb := StyleBoxFlat.new()
+	top_sb.bg_color = Color(Pal.PAPER, 0.88)
+	top_sb.set_corner_radius_all(28)
+	top_sb.content_margin_left = 24
+	top_sb.content_margin_right = 24
+	top_sb.content_margin_top = 16
+	top_sb.content_margin_bottom = 16
+	top.add_theme_stylebox_override("panel", top_sb)
+	root.add_child(top)
+	var top_col := VBoxContainer.new()
+	top_col.add_theme_constant_override("separation", 12)
+	top.add_child(top_col)
+
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 20)
-	root.add_child(header)
+	top_col.add_child(header)
 
 	var back := Button.new()
 	back.text = "<"
@@ -66,12 +84,21 @@ func _ready() -> void:
 	_rules_label.add_theme_font_size_override("font_size", 34)
 	_rules_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
 	_rules_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(_rules_label)
+	top_col.add_child(_rules_label)
 
 	# --- board ---
 	_board_holder = Control.new()
 	_board_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_board_holder)
+
+	_card = Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Pal.PAPER
+	sb.set_corner_radius_all(32)
+	_card.add_theme_stylebox_override("panel", sb)
+	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board_holder.add_child(_card)
 
 	# --- footer ---
 	var footer := HBoxContainer.new()
@@ -99,7 +126,7 @@ func _ready() -> void:
 
 func _build_overlay() -> void:
 	_overlay = ColorRect.new()
-	(_overlay as ColorRect).color = Color(0, 0, 0, 0.72)
+	(_overlay as ColorRect).color = Color(Pal.PAPER, 0.85)
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.visible = false
 	add_child(_overlay)
@@ -109,7 +136,7 @@ func _build_overlay() -> void:
 	_overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_overlay_label.add_theme_font_size_override("font_size", 56)
-	_overlay_label.add_theme_color_override("font_color", Pal.GOOD)
+	_overlay_label.add_theme_color_override("font_color", Pal.TEXT)
 	_overlay_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_overlay.add_child(_overlay_label)
 
@@ -131,6 +158,7 @@ func _spawn(the_seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = the_seed
 	_puzzle.start(rng, _difficulty)
+	_card.visible = not _puzzle.is_3d()
 	_rules_label.text = _puzzle.rules()
 	_overlay.visible = false
 	_update_stats()
