@@ -193,3 +193,51 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 		var tmp = arr[i]
 		arr[i] = arr[j]
 		arr[j] = tmp
+
+## Rule feedback for a partial grid: which rows and columns already break a
+## rule (three alike in a row, more than half of one symbol, or two identical
+## complete lines). Boards tint these so players learn the rules by touch.
+static func bad_lines(grid: Array) -> Dictionary:
+	var n: int = grid.size()
+	var rows := {}
+	var cols := {}
+	var half: int = n / 2
+	for i in n:
+		var row := []
+		var col := []
+		for j in n:
+			row.append(grid[i][j])
+			col.append(grid[j][i])
+		if _line_bad(row, half):
+			rows[i] = true
+		if _line_bad(col, half):
+			cols[i] = true
+	for a in n:
+		for b in range(a + 1, n):
+			if not (grid[a] as Array).has(-1) and grid[a] == grid[b]:
+				rows[a] = true
+				rows[b] = true
+			var ca := []
+			var cb := []
+			for i in n:
+				ca.append(grid[i][a])
+				cb.append(grid[i][b])
+			if not ca.has(-1) and ca == cb:
+				cols[a] = true
+				cols[b] = true
+	return {"rows": rows, "cols": cols}
+
+static func _line_bad(line: Array, half: int) -> bool:
+	var zeros := 0
+	var ones := 0
+	for v in line:
+		if v == 0:
+			zeros += 1
+		elif v == 1:
+			ones += 1
+	if zeros > half or ones > half:
+		return true
+	for i in range(line.size() - 2):
+		if line[i] != -1 and line[i] == line[i + 1] and line[i + 1] == line[i + 2]:
+			return true
+	return false

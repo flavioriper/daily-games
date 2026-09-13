@@ -10,6 +10,7 @@ static func run(t) -> void:
 	_test_determinism(t)
 	_test_minimality(t)
 	_test_min_clues(t)
+	_test_bad_lines(t)
 
 static func _grid(rows: Array) -> Array:
 	# Rows given as strings of 0/1/. for readability.
@@ -106,3 +107,24 @@ static func _test_min_clues(t) -> void:
 	var out: Dictionary = Gen.generate(rng, 6, 20)
 	t.check(out.clues >= 20, "min_clues floor respected -- got %d" % out.clues)
 	t.eq(Gen.solve_count(out.puzzle, 3), 1, "easier puzzle is still uniquely solvable")
+
+static func _test_bad_lines(t) -> void:
+	var clean: Dictionary = Gen.bad_lines(_grid(GOOD))
+	t.check(clean.rows.is_empty() and clean.cols.is_empty(), "a valid grid has no bad lines")
+
+	var empty: Dictionary = Gen.bad_lines(_grid(["......", "......", "......", "......", "......", "......"]))
+	t.check(empty.rows.is_empty() and empty.cols.is_empty(), "an empty grid has no bad lines")
+
+	var triple: Dictionary = Gen.bad_lines(_grid(["000...", "......", "......", "......", "......", "......"]))
+	t.check(triple.rows.has(0) and triple.rows.size() == 1, "three in a row flags only that row")
+	t.check(triple.cols.is_empty(), "three in a row flags no column")
+
+	var too_many: Dictionary = Gen.bad_lines(_grid(["1.1.11", "1.....", "......", "1.....", "1.....", "......"]))
+	t.check(too_many.rows.has(0), "four ones in a six-row is over half")
+	t.check(too_many.cols.has(0), "four ones in a six-column is over half")
+
+	var twin_rows: Dictionary = Gen.bad_lines(_grid(["010011", "010011", "......", "......", "......", "......"]))
+	t.check(twin_rows.rows.has(0) and twin_rows.rows.has(1), "identical complete rows flag both rows")
+
+	var partial_twins: Dictionary = Gen.bad_lines(_grid(["01001.", "01001.", "......", "......", "......", "......"]))
+	t.check(not partial_twins.rows.has(0), "incomplete rows are never compared")
