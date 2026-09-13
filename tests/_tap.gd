@@ -5,8 +5,9 @@ var _menu: Node
 var _puzzle: Node
 
 func _initialize() -> void:
-	_menu = load("res://ui/menu.tscn").instantiate()
-	root.add_child(_menu)
+	var main: Node = load("res://world/main.tscn").instantiate()
+	root.add_child(main)
+	_menu = main.get_node("UI/Menu")
 
 func _process(_delta: float) -> bool:
 	_frames += 1

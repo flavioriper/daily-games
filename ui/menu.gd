@@ -8,17 +8,18 @@ var _list_root: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Pal.BG
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
 	_build_list()
 
 func _build_list() -> void:
 	_list_root = Control.new()
 	_list_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_list_root)
+
+	var paper := ColorRect.new()
+	paper.color = Color(Pal.PAPER, 0.82)
+	paper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_list_root.add_child(paper)
 
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
