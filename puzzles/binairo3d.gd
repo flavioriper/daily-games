@@ -30,7 +30,23 @@ const BOB_TIME := 0.35
 const BOB_LAG := 0.04
 const BOB_LAG_DIAG := 0.07
 const THIRD := TAU / 3.0
-const BAD_BLEND := 0.35
+## Blush toward BAD on a broken line: 6/16, so it and every quantised level
+## of the fade land on the 16-step grid _paint uses (polish spec, section 2).
+const BAD_BLEND := 0.375
+const BLUSH_STEPS := 16
+const BLUSH_IN := 0.25
+const BLUSH_OUT := 0.4
+const BLUSH_BEATS := 0.8
+const BLUSH_BEAT_EXTRA := 0.125
+## Focus ring on the last tapped cell.
+const FOCUS_HOLD := 2.5
+const FOCUS_FADE := 0.5
+const FOCUS_MOVE := 0.15
+const FOCUS_POP := 0.15
+const FOCUS_PULSE := 1.2
+const FOCUS_ALPHA := 0.9
+const FOCUS_ALPHA_LOW := 0.6
+const FOCUS_LIFT := 0.005
 ## Face index per cell value: empty up, then sun, then moon.
 const FACE := {-1: 0, 0: 1, 1: 2}
 
@@ -52,6 +68,17 @@ var _rolls: Array = []    # [r][c] -> Tween or null, the roll in flight
 var _hops: Array = []     # [r][c] -> the lift riding along the roll
 var _bobs: Array = []     # [r][c] -> a neighbour bob or a given's dip
 var fx: Node3D            # pooled one-shot particles, a child of the board
+var _fades: Array = []         # [r][c] -> a blush fade in flight
+var _blend: Array = []         # [r][c] -> painted blend toward BAD, on the grid
+var _blend_target: Array = []  # [r][c] -> the blend the cell is heading for
+var _ring: Node3D
+var _ring_mat: StandardMaterial3D
+var _ring_tw: Tween     # pop, slide or fade
+var _ring_pulse: Tween  # the loop while shown
+var _ring_hold: Tween   # the pause before the fade
+## The last tapped cell as (col, row); (-1, -1) before the first tap. The
+## working-line card in the HUD reads this.
+var focus_cell := Vector2i(-1, -1)
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
@@ -90,6 +117,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_refit()
 
 func reset_board() -> void:
+	_focus_clear()
 	for r in n:
 		for c in n:
 			_settle(r, c)
@@ -127,11 +155,20 @@ func _build_scene() -> void:
 	_rolls = []
 	_hops = []
 	_bobs = []
+	_fades = []
+	_blend = []
+	_blend_target = []
 
 	board.add_child(Platform.build(n, n))
 	fx = Fx.new()
 	board.add_child(fx)
 	_rest_y = Placeholders.TILE_RISE - Placeholders.TILE_APOTHEM
+	_ring = Models.instance("focus_ring")
+	_ring.name = "FocusRing"
+	_ring.visible = false
+	_ring_mat = Models.meshes(_ring)[0].material_override
+	board.add_child(_ring)
+	focus_cell = Vector2i(-1, -1)
 
 	for r in n:
 		var cell_row := []
@@ -143,6 +180,9 @@ func _build_scene() -> void:
 		var roll_row := []
 		var hop_row := []
 		var bob_row := []
+		var fade_row := []
+		var blend_row := []
+		var target_row := []
 		for c in n:
 			var tile := Models.instance("tile")
 			if r == 0 and c == 0:
@@ -175,6 +215,9 @@ func _build_scene() -> void:
 			roll_row.append(null)
 			hop_row.append(null)
 			bob_row.append(null)
+			fade_row.append(null)
+			blend_row.append(0.0)
+			target_row.append(0.0)
 			pivot.rotation.x = -turn_row[c] * THIRD
 		_cells.append(cell_row)
 		_tiles.append(tile_row)
@@ -185,9 +228,13 @@ func _build_scene() -> void:
 		_rolls.append(roll_row)
 		_hops.append(hop_row)
 		_bobs.append(bob_row)
+		_fades.append(fade_row)
+		_blend.append(blend_row)
+		_blend_target.append(target_row)
 	for r in n:
 		for c in n:
 			_show_faces(r, c, false)
+			_paint(0.0, r, c)
 
 ## Pivot angle that puts the cell's current face up. Rolling always goes the
 ## same way (toward the player), so the angle keeps counting down rather than
@@ -264,23 +311,121 @@ func _dip(r: int, c: int, depth: float, delay := 0.0) -> void:
 	_cells[r][c].position.y = _rest_y
 	_bobs[r][c] = Motion.hop(_cells[r][c], -depth, BOB_TIME, delay, _rest_y)
 
-## Face colours: stone for the empty and sun faces and the caps, slate for
-## the moon face, darker when the cell is a given, blushed on a broken line.
+# --- focus ring ---
+
+## Moves the focus to cell (r, c): the ring pops in on a first tap, slides
+## from the previous cell otherwise, pulses while shown, and fades after
+## FOCUS_HOLD without a tap. It lives on the board, never on a pivot.
+func _focus(r: int, c: int) -> void:
+	var at := BoardMath.cell_center(r, c, n, n, Placeholders.TILE_RISE + FOCUS_LIFT)
+	var shown := _ring.visible and focus_cell.x >= 0
+	focus_cell = Vector2i(c, r)
+	Motion.stop(_ring_tw)
+	Motion.stop(_ring_hold)
+	if Motion.reduce:
+		Motion.stop(_ring_pulse)
+		_ring.position = at
+		_ring.scale = Vector3.ONE
+		_ring_mat.albedo_color.a = FOCUS_ALPHA
+		_ring.visible = true
+	elif shown:
+		_ring_tw = _ring.create_tween().set_parallel(true)
+		_ring_tw.tween_property(_ring, "position", at, FOCUS_MOVE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if not Motion.running(_ring_pulse):
+			# A tap during the fade: bring the ring back up and pulse again.
+			_ring_tw.tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, FOCUS_MOVE)
+			_ring_tw.finished.connect(_start_pulse)
+	else:
+		Motion.stop(_ring_pulse)
+		_ring.position = at
+		_ring.scale = Vector3(0.8, 1.0, 0.8)
+		_ring_mat.albedo_color.a = 0.0
+		_ring.visible = true
+		_ring_tw = _ring.create_tween().set_parallel(true)
+		_ring_tw.tween_property(_ring, "scale", Vector3.ONE, FOCUS_POP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_ring_tw.tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, FOCUS_POP)
+		_ring_tw.finished.connect(_start_pulse)
+	_ring_hold = _ring.create_tween()
+	_ring_hold.tween_interval(FOCUS_HOLD)
+	_ring_hold.tween_callback(_focus_fade)
+	fx.cue("focus")
+
+## The breathing loop: a little larger and dimmer, then back, while shown.
+func _start_pulse() -> void:
+	Motion.stop(_ring_pulse)
+	if Motion.reduce or not _ring.visible:
+		return
+	var half := FOCUS_PULSE * 0.5
+	_ring_pulse = _ring.create_tween().set_loops()
+	_ring_pulse.tween_property(_ring, "scale", Vector3(1.04, 1.0, 1.04), half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_ring_pulse.parallel().tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA_LOW, half).set_trans(Tween.TRANS_SINE)
+	_ring_pulse.tween_property(_ring, "scale", Vector3.ONE, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_ring_pulse.parallel().tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, half).set_trans(Tween.TRANS_SINE)
+
+## Fades the ring out and hides it.
+func _focus_fade() -> void:
+	Motion.stop(_ring_pulse)
+	Motion.stop(_ring_tw)
+	if Motion.reduce or not _ring.visible:
+		_ring.visible = false
+		_ring_mat.albedo_color.a = 0.0
+		return
+	_ring_tw = _ring.create_tween()
+	_ring_tw.tween_property(_ring_mat, "albedo_color:a", 0.0, FOCUS_FADE)
+	_ring_tw.tween_callback(func() -> void: _ring.visible = false)
+
+## Drops the focus: reset, a new puzzle, a solve.
+func _focus_clear() -> void:
+	Motion.stop(_ring_hold)
+	focus_cell = Vector2i(-1, -1)
+	_focus_fade()
+
+## Rule feedback. Cells whose line just broke fade toward the rose blend and
+## give two heartbeats; cells whose line was fixed fade back. A cell already
+## heading for the right blend is left alone, beats and all.
 func _recolour() -> void:
 	_bad = Gen.bad_lines(_grid)
 	for r in n:
 		for c in n:
-			var locked: bool = _given[r][c]
-			var stone: Color = Pal.STONE_GIVEN if locked else Pal.STONE
-			var slate: Color = Pal.SLATE_GIVEN if locked else Pal.SLATE
-			if _bad.rows.has(r) or _bad.cols.has(c):
-				stone = stone.lerp(Pal.BAD, BAD_BLEND)
-				slate = slate.lerp(Pal.BAD, BAD_BLEND)
-			var tile: Node3D = _tiles[r][c]
-			Models.tint_named(tile, "Face_Empty", stone)
-			Models.tint_named(tile, "Face_Sun", stone)
-			Models.tint_named(tile, "Face_Moon", slate)
-			Models.tint_named(tile, "Cap", stone)
+			var target := BAD_BLEND if (_bad.rows.has(r) or _bad.cols.has(c)) else 0.0
+			if is_equal_approx(_blend_target[r][c], target):
+				continue
+			_blend_target[r][c] = target
+			Motion.stop(_fades[r][c])
+			_fades[r][c] = _fade_blend(r, c, _blend[r][c], target)
+
+## The fade from one blend to another. Blushing in gets two heartbeats past
+## the target; fading out is plain. Under reduce-motion _paint lands at once.
+func _fade_blend(r: int, c: int, from: float, to: float) -> Tween:
+	var setter := _paint.bind(r, c)
+	if to > from:
+		var tw: Tween = Motion.fade(board, setter, from, to, BLUSH_IN, BLUSH_STEPS)
+		if tw == null:
+			return null
+		var beat := BLUSH_BEATS * 0.25
+		for i in 2:
+			tw.tween_method(setter, to, to + BLUSH_BEAT_EXTRA, beat).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_method(setter, to + BLUSH_BEAT_EXTRA, to, beat).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		fx.cue("blush_in")
+		return tw
+	fx.cue("blush_out")
+	return Motion.fade(board, setter, from, to, BLUSH_OUT, BLUSH_STEPS)
+
+## Face colours at a blend toward BAD: stone for the empty and sun faces and
+## the caps, slate for the moon face, darker when the cell is a given. The
+## blend snaps to the 16-step grid, so a fade never asks the toon cache for
+## more than 17 colours per base.
+func _paint(blend: float, r: int, c: int) -> void:
+	blend = roundf(blend * BLUSH_STEPS) / BLUSH_STEPS
+	_blend[r][c] = blend
+	var locked: bool = _given[r][c]
+	var stone: Color = (Pal.STONE_GIVEN if locked else Pal.STONE).lerp(Pal.BAD, blend)
+	var slate: Color = (Pal.SLATE_GIVEN if locked else Pal.SLATE).lerp(Pal.BAD, blend)
+	var tile: Node3D = _tiles[r][c]
+	Models.tint_named(tile, "Face_Empty", stone)
+	Models.tint_named(tile, "Face_Sun", stone)
+	Models.tint_named(tile, "Face_Moon", slate)
+	Models.tint_named(tile, "Cap", stone)
 
 # --- input ---
 
@@ -291,6 +436,7 @@ func on_board_press(hit: Vector3) -> void:
 	var c := cell.x
 	var r := cell.y
 	if _given[r][c]:
+		_focus(r, c)
 		# Stone stays stone: the cell answers with a dip and nothing rolls.
 		_dip(r, c, BOB_DIP)
 		return
@@ -302,6 +448,7 @@ func on_board_press(hit: Vector3) -> void:
 	_grid[r][c] = 0 if v == -1 else (1 if v == 0 else -1)
 	_turns[r][c] += 1
 	_roll(r, c)
+	_focus(r, c)
 	_bob_neighbours(r, c)
 	_recolour()
 	note_move()

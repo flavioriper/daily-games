@@ -33,6 +33,8 @@ static func run_in_tree(t) -> void:
 	_test_face_colours(t, p)
 	_test_tap_rolls(t, p)
 	_test_neighbour_bob(t, p)
+	_test_focus_ring(t, p)
+	_test_blush_pulse(t, p)
 	_test_locked_cell(t, p)
 	_test_reset_snaps(t, p)
 
@@ -206,6 +208,90 @@ static func _test_neighbour_bob(t, p) -> void:
 	t.check(is_equal_approx(p._cells[diag.y][diag.x].position.y, p._rest_y), "the diagonal returns to rest")
 	# Tidy: land the roll so later tests start from a resting board.
 	p._settle(r, c)
+	# Tidy: this test and _test_tap_rolls both tap _find_cell(p, false), the
+	# same deterministic cell, so the focus ring is left shown (mid-pop) on
+	# it. Put it back to its unshown, freshly-built state so the focus-ring
+	# test below starts from "no tap yet".
+	Motion.stop(p._ring_tw)
+	Motion.stop(p._ring_pulse)
+	Motion.stop(p._ring_hold)
+	p._ring.visible = false
+	p._ring.scale = Vector3.ONE
+	p._ring_mat.albedo_color.a = p.FOCUS_ALPHA
+	p.focus_cell = Vector2i(-1, -1)
+
+## The focus ring (polish spec, section 2): it pops onto the first tapped
+## cell, slides to the next, pulses while shown, and fades after a pause.
+## Given cells take the focus too, since "look at this line" is a gesture.
+static func _test_focus_ring(t, p) -> void:
+	var a := _find_cell(p, false)
+	var g := _find_cell(p, true)
+	var ring: Node3D = p._ring
+	t.check(ring != null and ring.get_parent() == p.board and not ring.visible, "the ring exists, under the board, hidden at first")
+	t.check(p.focus_cell == Vector2i(-1, -1), "no focus before the first tap")
+	_tap(p, a.y, a.x)
+	t.check(p.focus_cell == Vector2i(a.x, a.y), "focus_cell is the tapped cell as (col, row)")
+	var want := BoardMath.cell_center(a.y, a.x, p.n, p.n, Placeholders.TILE_RISE + 0.005)
+	t.check(ring.visible and ring.position.is_equal_approx(want), "the ring shows on the tapped cell (%s)" % ring.position)
+	t.check(Motion.running(p._ring_tw), "the ring pops in")
+	p._ring_tw.custom_step(p.FOCUS_POP)
+	t.check(ring.scale.is_equal_approx(Vector3.ONE) and is_equal_approx(p._ring_mat.albedo_color.a, p.FOCUS_ALPHA), "the pop ends at full size and alpha")
+	t.check(Motion.running(p._ring_pulse), "the ring pulses once shown")
+	t.check(Motion.running(p._ring_hold), "the hold timer is running")
+	_tap(p, g.y, g.x)
+	t.check(p.focus_cell == Vector2i(g.x, g.y), "a tap on a given cell takes the focus")
+	t.check(p._grid[g.y][g.x] != -1 and p._rolls[g.y][g.x] == null, "and rolls nothing")
+	t.check(Motion.running(p._ring_tw), "the ring slides")
+	p._ring_tw.custom_step(p.FOCUS_MOVE)
+	var want_g := BoardMath.cell_center(g.y, g.x, p.n, p.n, Placeholders.TILE_RISE + 0.005)
+	t.check(ring.position.is_equal_approx(want_g), "the slide lands on the given cell")
+	t.check(Motion.running(p._ring_pulse), "the pulse keeps going through a slide")
+	p._ring_hold.custom_step(p.FOCUS_HOLD + 0.01)
+	t.check(Motion.running(p._ring_tw) and not Motion.running(p._ring_pulse), "after the hold the ring fades and stops pulsing")
+	p._ring_tw.custom_step(p.FOCUS_FADE + 0.01)
+	t.check(not ring.visible, "the faded ring hides")
+	t.check(is_zero_approx(p._ring_mat.albedo_color.a), "the fade ends fully clear")
+	# Tidy for later tests.
+	p._settle(a.y, a.x)
+	p._focus_clear()
+
+## Blush (polish spec, section 2): a newly broken line fades to the rose
+## blend with two heartbeats past it, a fixed line fades back, and every
+## level sits on the 16-step grid so the material cache stays bounded.
+static func _test_blush_pulse(t, p) -> void:
+	var saved: Array = (p._grid[0] as Array).duplicate()
+	for c in 3:
+		p._grid[0][c] = 0
+	p._recolour()
+	var base := Pal.STONE_GIVEN if p._given[0][0] else Pal.STONE
+	var fade: Tween = p._fades[0][0]
+	t.check(Motion.running(fade), "a broken row starts a blush fade on its cells")
+	t.check(is_equal_approx(p._blend_target[0][0], p.BAD_BLEND), "the cell heads for BAD_BLEND")
+	fade.custom_step(p.BLUSH_IN)
+	t.check(is_equal_approx(p._blend[0][0], p.BAD_BLEND), "after the fade in the cell sits on BAD_BLEND (%.3f)" % p._blend[0][0])
+	fade.custom_step(p.BLUSH_BEATS * 0.25)
+	t.check(p._blend[0][0] > p.BAD_BLEND, "a heartbeat pushes past the blend (%.3f)" % p._blend[0][0])
+	t.check(is_equal_approx(p._blend[0][0] * p.BLUSH_STEPS, roundf(p._blend[0][0] * p.BLUSH_STEPS)), "mid-beat the blend is on the 16-step grid")
+	fade.custom_step(p.BLUSH_BEATS)
+	t.check(not Motion.running(fade), "the blush comes to rest")
+	var blushed := _face_colour(p, 0, 0, "Face_Empty")
+	t.check(blushed.is_equal_approx(base.lerp(Pal.BAD, p.BAD_BLEND)), "at rest the face is exactly the blushed stone (%s)" % blushed.to_html(false))
+	for c in p.n:
+		if Motion.running(p._fades[0][c]):
+			p._fades[0][c].custom_step(5.0)
+	p._grid[0] = saved
+	p._recolour()
+	var out: Tween = p._fades[0][0]
+	t.check(Motion.running(out), "fixing the row fades the blush out")
+	out.custom_step(p.BLUSH_OUT * 0.5)
+	t.check(p._blend[0][0] > 0.0 and p._blend[0][0] < p.BAD_BLEND, "halfway out the blush is partway (%.3f)" % p._blend[0][0])
+	out.custom_step(p.BLUSH_OUT)
+	t.check(is_zero_approx(p._blend[0][0]), "the fade out ends at no blush")
+	t.check(_face_colour(p, 0, 0, "Face_Empty").is_equal_approx(base), "the face is exactly its stone again")
+	for r in p.n:
+		for c in p.n:
+			if Motion.running(p._fades[r][c]):
+				p._fades[r][c].custom_step(5.0)
 
 static func _test_locked_cell(t, p) -> void:
 	var cell := _find_cell(p, true)
