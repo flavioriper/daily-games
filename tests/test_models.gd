@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_test_tint_and_height(t)
 	_test_focus_ring(t)
 	_test_rim_sways(t)
+	_test_water_material(t)
 
 ## Root-space min/max of every face vertex under `root`, outline shells excluded.
 static func _bounds(root: Node3D) -> Array:
@@ -185,3 +186,12 @@ static func _test_rim_sways(t) -> void:
 					wind += 1
 		t.eq(wind, 3, "%s has three swaying surfaces" % slot)
 		piece.free()
+
+## The water slot always wears the water shader (polish spec, section 4),
+## placeholder or export, so the stage never shows a plain toon plane.
+static func _test_water_material(t) -> void:
+	var water = Models.instance("water")
+	var over = Models.meshes(water)[0].get_surface_override_material(0)
+	t.check(over is ShaderMaterial and over.shader == Toon.WATER_SHADER, "water slot carries the water shader")
+	t.check(over == Toon.water(), "the water material is the shared instance Ambient drives")
+	water.free()

@@ -8,6 +8,7 @@ extends RefCounted
 const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
 const WIND_SHADER := preload("res://shaders/toon_wind.gdshader")
+const WATER_SHADER := preload("res://shaders/water.gdshader")
 const Pal = preload("res://core/palette.gd")
 
 const OUTLINE_NODE := "Outline"
@@ -23,6 +24,7 @@ static var _ramp: GradientTexture1D
 static var _outline: ShaderMaterial
 static var _cache: Dictionary = {}
 static var _wind_cache: Dictionary = {}
+static var _water: ShaderMaterial
 
 ## Three hard bands: tinted shadow, half light, full light.
 static func ramp() -> GradientTexture1D:
@@ -60,6 +62,20 @@ static func wind_material(albedo: Color) -> ShaderMaterial:
 	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 	_wind_cache[key] = m
 	return m
+
+## The one water material. Shared so Ambient can drive its splash uniforms
+## and every water surface shows the same ring.
+static func water() -> ShaderMaterial:
+	if _water == null:
+		_water = ShaderMaterial.new()
+		_water.shader = WATER_SHADER
+		_water.set_shader_parameter("base_color", Pal.WATER)
+		_water.set_shader_parameter("band_color", Pal.WATER_HI)
+		_water.set_shader_parameter("sparkle_color", Pal.MOON)
+		_water.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+		_water.set_shader_parameter("splash_origin", Vector3.ZERO)
+		_water.set_shader_parameter("splash_age", -1.0)
+	return _water
 
 static func sways(name: String) -> bool:
 	return name.contains(SWAY_MARK)

@@ -1,12 +1,15 @@
 extends Node3D
 
 ## The island diorama every board floats in: camera rig, warm sun, blue sky,
-## water far below. Boards find this through the "stage" group, mount their
+## water far below, and the Ambient node that keeps the world moving. Boards
+## find this through the "stage" group, mount their
 ## Node3D here, and bring their own stone platform.
 
 const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const CameraRig = preload("res://world/camera_rig.gd")
+const Ambient = preload("res://world/ambient.gd")
+const Motion = preload("res://core/motion.gd")
 
 const WATER_DEPTH := 4.0
 
@@ -14,8 +17,10 @@ var rig: Node3D
 var sun: DirectionalLight3D
 var anchor: Node3D
 var water: Node3D
+var ambient: Node3D
 
 func _ready() -> void:
+	Motion.load_settings()
 	add_to_group("stage")
 
 	rig = CameraRig.new()
@@ -68,6 +73,10 @@ func _ready() -> void:
 	anchor.name = "BoardAnchor"
 	add_child(anchor)
 
+	ambient = Ambient.new()
+	ambient.name = "Ambient"
+	add_child(ambient)
+
 func mount(board: Node3D) -> void:
 	anchor.add_child(board)
 
@@ -77,3 +86,8 @@ func unmount(board: Node3D) -> void:
 
 func fit_camera(aabb: AABB, rect: Rect2) -> void:
 	rig.fit(aabb, rect)
+	ambient.fit_to(aabb)
+
+## Rings the water under a board that has just landed.
+func splash(origin: Vector3) -> void:
+	ambient.splash(origin)

@@ -93,3 +93,7 @@ static func _dress(slot: String, node: Node3D) -> void:
 		"focus_ring":
 			for mi in meshes(node):
 				mi.material_override = Placeholders.focus_material()
+		"water":
+			for mi in meshes(node):
+				for i in mi.mesh.get_surface_count():
+					mi.set_surface_override_material(i, Toon.water())
