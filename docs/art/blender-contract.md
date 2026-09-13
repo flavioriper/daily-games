@@ -21,6 +21,9 @@ cliffs around the platform come later as separate models once the platform
 shape is settled.
 
 The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
+The export script enforces each slot's footprint and height budget from this
+table (an unlisted slot falls back to 1.0 x 1.0 x 0.6; `platform` and `water`
+are unbounded).
 
 ## Rules
 
@@ -29,11 +32,14 @@ The list lives in code as `SLOTS` in `core/models.gd`. New puzzles add rows.
    the footprint is centred on X = Y = 0. Blender is Z-up; the glTF exporter
    converts to Godot's Y-up for you, so model with Z as up and do nothing else.
 3. **Apply transforms.** Rotation (0, 0, 0), scale (1, 1, 1) before export.
-4. **Shade smooth with shared vertices.** No split edges, no flat shading,
-   no Edge Split modifier. Hard-edge looks come from Shade Auto Smooth
-   (Smooth by Angle) or Weighted Normal instead. Reason: the outline draws a
-   second copy of the mesh pushed out along the vertex normals; split
-   vertices leave visible gaps at every corner.
+4. **Shade smooth with shared vertices, everywhere.** No split edges, no
+   flat shading. For a hard-edged look, add a small Bevel modifier (width
+   about 0.02, 2 segments) and stay smooth. Never use Auto Smooth / Smooth by
+   Angle, Weighted Normal, Edge Split, or custom split normals — all of them
+   split vertices at export. Reason: the outline draws a second copy of the
+   mesh pushed out along the vertex normals; split vertices leave visible
+   gaps at every corner. The exporter rejects meshes with custom split
+   normals or an Edge Split / Weighted Normal / Smooth by Angle modifier.
 5. **Materials are colours.** One Principled BSDF per material, Base Color set,
    nothing else needed. The game replaces every material with the toon shader
    using that base colour. Textures export fine but are ignored by the toon

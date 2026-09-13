@@ -20,9 +20,16 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "models"
 TOLERANCE = 0.001
-FOOTPRINT = 1.0
-MAX_HEIGHT = 0.6
-UNBOUNDED = {"platform", "water"}
+
+# (max footprint x, max footprint y, max height), from the contract table
+LIMITS = {
+    "tile": (1.0, 1.0, 0.14),
+    "emblem_sun": (0.6, 0.6, 0.08),
+    "emblem_moon": (0.6, 0.6, 0.08),
+    "empty_mark": (0.2, 0.2, 0.04),
+}
+DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
+UNBOUNDED = {"platform", "water"}  # unchanged
 
 
 def world_bounds(obj):
@@ -55,12 +62,20 @@ def problems(obj):
         found.append("origin not at footprint centre (off by %.3f, %.3f)" % (centre_x, centre_y))
     if not all(p.use_smooth for p in obj.data.polygons):
         found.append("not shaded smooth")
+    if obj.data.has_custom_normals:
+        found.append("custom split normals (clear them: Mesh > Normals > Clear Custom Split Normals Data)")
+    for mod in obj.modifiers:
+        if mod.type in ("EDGE_SPLIT", "WEIGHTED_NORMAL"):
+            found.append("%s modifier splits vertices, remove it" % mod.type)
+        elif mod.type == "NODES" and mod.node_group and mod.node_group.name.startswith("Smooth by Angle"):
+            found.append("Smooth by Angle modifier splits vertices, remove it")
     slot = obj.name.lower()
     if slot not in UNBOUNDED:
-        if hi.x - lo.x > FOOTPRINT + TOLERANCE or hi.y - lo.y > FOOTPRINT + TOLERANCE:
-            found.append("footprint %.2f x %.2f exceeds 1 x 1" % (hi.x - lo.x, hi.y - lo.y))
-        if hi.z - lo.z > MAX_HEIGHT + TOLERANCE:
-            found.append("height %.2f exceeds %.1f" % (hi.z - lo.z, MAX_HEIGHT))
+        limit_x, limit_y, limit_z = LIMITS.get(slot, DEFAULT_LIMIT)
+        if hi.x - lo.x > limit_x + TOLERANCE or hi.y - lo.y > limit_y + TOLERANCE:
+            found.append("footprint %.2f x %.2f exceeds %.1f x %.1f" % (hi.x - lo.x, hi.y - lo.y, limit_x, limit_y))
+        if hi.z - lo.z > limit_z + TOLERANCE:
+            found.append("height %.2f exceeds %.2f" % (hi.z - lo.z, limit_z))
     return found
 
 
