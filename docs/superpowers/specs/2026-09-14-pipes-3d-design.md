@@ -307,7 +307,7 @@ readable with nothing moving.
 | moment | motion | cue |
 |---|---|---|
 | entrance | the platform rises from -0.5 in 0.5 s and rings the water (as Binairo); pads pop from scale 0.01 with `stagger(r + c, 0.02)`; pieces drop from +0.6 with `settle` after 0.25 s, same stagger; the two valves pop last; then the flood wave runs and the source jet starts | `enter` |
-| turn | the pivot's `rotation.y` settles to `-rot * PI / 2` in `TURN_TIME`, **essential** (it is the state change); the piece squashes 0.08 over 0.18 s; a puff at the hub; the collars glint (a 0.12 s scale pulse to 1.06 and back) | `turn` |
+| turn | the pivot's `rotation.y` settles to `-rot * PI / 2` in `TURN_TIME`, **essential** (it is the state change); the piece squashes 0.08 over 0.18 s, which carries the turn's tactility on its own; a puff at the hub | `turn` |
 | flood in | every newly-live cell fades `Steel` → `PIPE_WET` and `Collar` → `PIPE_WET_HI` over 0.25 s and its `wet` uniform 0 → 1, each with `stagger(depth, FLOW_STEP)` by BFS depth from the source, so the water visibly races outward from the valve; a bubble sparkle at the first four newly-wet hubs | `flow` |
 | flood out | newly-dry cells fade the other way with `stagger(depth_before, 0.02)`, a shorter wave; their jets stop | `drain_out` |
 | leak starts | a jet at that mouth and one puff where it lands | `leak` |
@@ -356,6 +356,29 @@ whose newly-live depth spread saturated the old 0.6 s cap; after the fix,
 3/30 still saturate the new, longer 1.2 s cap (a few genuinely long runs
 taking the full 1.2 s is expected and left alone, per the controller's
 ruling not to keep raising the cap to force it to zero).
+
+Amendment (2026-09-14, Task 4 fix round 1): the turn row's "collars glint"
+is dropped from the table above and not implemented. `Motion.squash` already
+scales the whole piece on every turn; a second, independent 1.06 scale pulse
+on the collar layer of a piece that is simultaneously being squashed would
+compound two scale animations on the same object and fight rather than add.
+The squash alone carries the turn's tactility.
+
+Amendment (2026-09-14, Task 4 fix round 2): the jet emitter
+(`world/fx.gd`'s `Jet_%d` loop) moved from `amount 10, lifetime 0.5, spread
+12, velocity 0.2-0.5, gravity -4, size 0.045` to `amount 30, lifetime 0.4,
+spread 12, velocity 0.2-0.5, gravity -4, size 0.6`. At the original size a
+jet was invisible at gameplay zoom (1080 x 1920, no cropping): sized
+correctly per the arithmetic but rendering as 2-3 five-pixel specks, and
+raising size alone to 0.10-0.32 still read as nothing at the source and
+drain's spawn height, where the jet sits close to the incoming pipe's own
+geometry -- confirmed with color and `visibility_aabb` overrides that ruled
+out contrast and culling as the cause before raising size further. Only
+past roughly 0.5 does the splash clearly read there. `Fx.JET_POOL` and
+`MAX_LEAKS` are unchanged; only the emitter's own physical parameters moved.
+Checked against the busiest case (source, several leaks and the drain
+jetting at once) so the larger particles read as water pouring rather than
+a firehose hiding the pipe or pad underneath.
 
 ## 5. The model library and the art pipeline
 

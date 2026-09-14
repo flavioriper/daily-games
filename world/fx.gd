@@ -44,7 +44,17 @@ func _ready() -> void:
 	for i in JET_POOL:
 		# _emitter builds a one-shot burst; a jet is the same emitter left
 		# running, aimed down, so it reads as water falling rather than dust.
-		var j := _emitter("Jet_%d" % i, 10, 0.5, 12.0, 0.2, 0.5, Vector3(0.0, -4.0, 0.0), 0.045)
+		# Amount and size raised well past _emitter's usual dust-puff range
+		# (task 4, fix round 2): at 0.045/amount 10 a jet was 2-3 five-pixel
+		# specks alive at once at 1080x1920 -- invisible against the pad and
+		# the incoming pipe it sits next to. Judged on screen at gameplay
+		# zoom (no cropping): 0.045-0.32 stayed invisible at the source and
+		# drain's valve height, where the spawn point sits close to the
+		# incoming pipe's own geometry; only past ~0.5 does the splash read
+		# clearly there, so 0.6/amount 30 is the value that actually works,
+		# checked with the busiest case (source + several leaks + drain, all
+		# at once) so it reads as water, not a firehose.
+		var j := _emitter("Jet_%d" % i, 30, 0.4, 12.0, 0.2, 0.5, Vector3(0.0, -4.0, 0.0), 0.6)
 		j.one_shot = false
 		j.explosiveness = 0.0
 		j.direction = Vector3.DOWN
