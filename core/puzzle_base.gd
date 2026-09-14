@@ -28,7 +28,7 @@ func is_3d() -> bool: return false
 
 # --- optional, for the HUD (docs/superpowers/specs/2026-09-14-binairo-hud-design.md,
 # section 3). Defaults mean "unsupported"; the HUD hides what a puzzle lacks. ---
-## Which optional actions this puzzle supports: any of "undo", "hint", "check", "lines".
+## Which optional actions this puzzle supports: any of "undo", "hint", "check", "lines", "palette".
 func capabilities() -> Array[String]: return []
 func can_undo() -> bool: return false
 ## Reverts the last move. True when something was undone.
@@ -41,6 +41,11 @@ func check() -> int: return -1
 ## {} when nothing is focused, else {"row": {"index": r, "cells": [...]},
 ## "col": {"index": c, "cells": [...]}} with cells -1 empty, 0 sun, 1 moon.
 func line_state() -> Dictionary: return {}
+## The colour tray's entries in order, [] when unsupported:
+## {"colour": Color, "mark": int (1..7, the pip count), "enabled": bool}.
+func palette() -> Array[Dictionary]: return []
+## The player chose tray entry `i`. True when a peg was placed.
+func pick(_i: int) -> bool: return false
 # -------------------
 
 func start(rng: RandomNumberGenerator, difficulty: int) -> void:

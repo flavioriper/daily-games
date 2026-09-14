@@ -112,3 +112,6 @@ static func parchment_card() -> StyleBoxFlat:
 	var sb := card(Color(Pal.PARCHMENT, 0.96), 12, Pal.LINE, 0, 24)
 	sb.set_border_width_all(3)
 	return sb
+
+static func wood_card() -> StyleBoxFlat:
+	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)

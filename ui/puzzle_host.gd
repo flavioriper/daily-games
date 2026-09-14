@@ -104,6 +104,7 @@ func _ready() -> void:
 	action_bar.name = "ActionBar"
 	action_bar.reset.connect(_on_reset)
 	action_bar.check.connect(_on_check)
+	action_bar.pick.connect(_on_pick)
 	root.add_child(action_bar)
 	footer = Label.new()
 	footer.theme_type_variation = "Motto"
@@ -213,8 +214,15 @@ func _on_hint() -> void:
 func _on_check() -> void:
 	if is_instance_valid(_puzzle):
 		var wrong: int = _puzzle.check()
-		if wrong == 0:
+		# A winning Check ends the game under the solved card; only a clean
+		# check on a live board earns the "All good" squash.
+		if wrong == 0 and not _puzzle.is_done():
 			action_bar.all_good()
+		_refresh()
+
+func _on_pick(i: int) -> void:
+	if is_instance_valid(_puzzle):
+		_puzzle.pick(i)
 		_refresh()
 
 func _on_reset() -> void:
