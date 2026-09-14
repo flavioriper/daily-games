@@ -46,15 +46,6 @@ const BLUSH_IN := 0.25
 const BLUSH_OUT := 0.4
 const BLUSH_BEATS := 0.8
 const BLUSH_BEAT_EXTRA := 0.125
-## Focus ring on the last tapped cell.
-const FOCUS_HOLD := 2.5
-const FOCUS_FADE := 0.5
-const FOCUS_MOVE := 0.15
-const FOCUS_POP := 0.15
-const FOCUS_PULSE := 1.2
-const FOCUS_ALPHA := 0.9
-const FOCUS_ALPHA_LOW := 0.6
-const FOCUS_LIFT := 0.005
 ## Entrance, reset wave and solved wave (polish spec, section 2).
 const ENTER_DROP := 0.5
 const ENTER_PLATFORM := 0.5
@@ -100,12 +91,6 @@ var _blend: Array = []         # [r][c] -> painted blend toward BAD, on the grid
 var _blend_target: Array = []  # [r][c] -> the blend the cell is heading for
 var _hinted: Array = []        # [r][c] -> filled by a hint, so locked like a given
 var _wobbles: Array = []       # [r][c] -> the Check shake in flight
-var _ring: Node3D
-var _ring_mat: StandardMaterial3D
-var _ring_tw: Tween       # pop, slide or fade
-var _ring_pulse: Tween    # the scale breath while shown
-var _ring_pulse_a: Tween  # the alpha breath while shown, on the material
-var _ring_hold: Tween     # the pause before the fade
 ## The last tapped cell as (col, row); (-1, -1) before the first tap. The
 ## working-line card in the HUD reads this.
 var focus_cell := Vector2i(-1, -1)
@@ -342,10 +327,6 @@ func _stop_all() -> void:
 		for row in rows:
 			for tw in row:
 				Motion.stop(tw)
-	Motion.stop(_ring_tw)
-	Motion.stop(_ring_pulse)
-	Motion.stop(_ring_pulse_a)
-	Motion.stop(_ring_hold)
 
 func _build_scene() -> void:
 	_stop_all()
@@ -368,11 +349,6 @@ func _build_scene() -> void:
 	fx = Fx.new()
 	board.add_child(fx)
 	_rest_y = Placeholders.TILE_RISE - Placeholders.TILE_HALF
-	_ring = Models.instance("focus_ring")
-	_ring.name = "FocusRing"
-	_ring.visible = false
-	_ring_mat = Models.meshes(_ring)[0].material_override
-	board.add_child(_ring)
 	focus_cell = Vector2i(-1, -1)
 
 	for r in n:
@@ -534,76 +510,19 @@ func _dip(r: int, c: int, depth: float, delay := 0.0) -> void:
 	_cells[r][c].position.y = _rest_y
 	_bobs[r][c] = Motion.hop(_cells[r][c], -depth, BOB_TIME, delay, _rest_y)
 
-# --- focus ring ---
+# --- focus ---
 
-## Moves the focus to cell (r, c): the ring pops in on a first tap, slides
-## from the previous cell otherwise, pulses while shown, and fades after
-## FOCUS_HOLD without a tap. It lives on the board, never on a pivot.
+## Moves the focus to cell (r, c). Nothing is drawn on the board for it: the
+## focus exists so the HUD's working-line card knows which row and column the
+## player is working on, and so a tap has a sound.
 func _focus(r: int, c: int) -> void:
-	var at := BoardMath.cell_center(r, c, n, n, Placeholders.TILE_RISE + FOCUS_LIFT)
-	var shown := _ring.visible and focus_cell.x >= 0
 	focus_cell = Vector2i(c, r)
-	Motion.stop(_ring_tw)
-	Motion.stop(_ring_hold)
-	if Motion.reduce:
-		_stop_pulse()
-		_ring.position = at
-		_ring.scale = Vector3.ONE
-		_ring_mat.albedo_color.a = FOCUS_ALPHA
-		_ring.visible = true
-	elif shown:
-		_ring_tw = Motion.slide(_ring, "position", _ring.position, at, FOCUS_MOVE, 0.0, false)
-		if not Motion.running(_ring_pulse):
-			# A tap during the fade: bring the ring back up and pulse again.
-			_ring_tw.parallel().tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, FOCUS_MOVE)
-			_ring_tw.finished.connect(_start_pulse)
-	else:
-		_stop_pulse()
-		_ring.position = at
-		_ring.scale = Vector3(0.8, 1.0, 0.8)
-		_ring_mat.albedo_color.a = 0.0
-		_ring.visible = true
-		_ring_tw = _ring.create_tween().set_parallel(true)
-		_ring_tw.tween_property(_ring, "scale", Vector3.ONE, FOCUS_POP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_ring_tw.tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, FOCUS_POP)
-		_ring_tw.finished.connect(_start_pulse)
-	_ring_hold = _ring.create_tween()
-	_ring_hold.tween_interval(FOCUS_HOLD)
-	_ring_hold.tween_callback(_focus_fade)
 	fx.cue("focus")
 	focus_changed.emit()
 
-## The breathing loop: a little larger and dimmer, then back, while shown.
-func _start_pulse() -> void:
-	_stop_pulse()
-	if Motion.reduce or not _ring.visible:
-		return
-	_ring_pulse = Motion.pulse(_ring, "scale", Vector3.ONE, Vector3(1.04, 1.0, 1.04), FOCUS_PULSE)
-	_ring_pulse_a = Motion.pulse(_ring, "albedo_color:a", FOCUS_ALPHA, FOCUS_ALPHA_LOW, FOCUS_PULSE, _ring_mat)
-
-func _stop_pulse() -> void:
-	Motion.stop(_ring_pulse)
-	Motion.stop(_ring_pulse_a)
-	_ring_pulse = null
-	_ring_pulse_a = null
-
-## Fades the ring out and hides it.
-func _focus_fade() -> void:
-	_stop_pulse()
-	Motion.stop(_ring_tw)
-	if Motion.reduce or not _ring.visible:
-		_ring.visible = false
-		_ring_mat.albedo_color.a = 0.0
-		return
-	_ring_tw = _ring.create_tween()
-	_ring_tw.tween_property(_ring_mat, "albedo_color:a", 0.0, FOCUS_FADE)
-	_ring_tw.tween_callback(func() -> void: _ring.visible = false)
-
 ## Drops the focus: reset, a new puzzle, a solve.
 func _focus_clear() -> void:
-	Motion.stop(_ring_hold)
 	focus_cell = Vector2i(-1, -1)
-	_focus_fade()
 	focus_changed.emit()
 
 # --- entrance and solve ---
@@ -700,18 +619,18 @@ func _fade_blend(r: int, c: int, from: float, to: float) -> Tween:
 func _paint(blend: float, r: int, c: int) -> void:
 	blend = roundf(blend * BLUSH_STEPS) / BLUSH_STEPS
 	_blend[r][c] = blend
+	# Nothing here depends on the state any more: the moon faces carry their
+	# own slate slab in the model, so a cube is already black on the side it is
+	# about to bring up and no colour changes when a roll lands. What is left
+	# is whether the cell is locked, and the blush when its line breaks a rule.
 	var locked: bool = _given[r][c]
-	var moon: bool = _grid[r][c] == 1
-	var base: Color
-	if moon:
-		base = Pal.SLATE_GIVEN if locked else Pal.SLATE
-	else:
-		base = Pal.STONE_GIVEN if locked else Pal.STONE
-	# By name, not Models.tint: only the stone body takes the state colour and
-	# the blush. The sun and the moon are inlaid layers of the same model and
-	# keep the colours they were modelled with, or a moon cell would paint its
-	# own crescent slate and show nothing.
-	Models.tint_named(_tiles[r][c], "Stone", base.lerp(Pal.BAD, blend))
+	var stone: Color = Pal.STONE_GIVEN if locked else Pal.STONE
+	var slate: Color = Pal.SLATE_GIVEN if locked else Pal.SLATE
+	# By name, not Models.tint: the sun and the crescent are layers of the same
+	# model and keep the colours they were modelled with, or a moon cell would
+	# paint its own crescent slate and show nothing.
+	Models.tint_named(_tiles[r][c], "Stone", stone.lerp(Pal.BAD, blend))
+	Models.tint_named(_tiles[r][c], "Slate_flat", slate.lerp(Pal.BAD, blend))
 
 # --- input ---
 

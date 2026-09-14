@@ -14,7 +14,6 @@ static func run(t) -> void:
 	_test_cube(t)
 	_test_fallback(t)
 	_test_tint_and_height(t)
-	_test_focus_ring(t)
 	_test_rim_sways(t)
 	_test_water_material(t)
 
@@ -30,7 +29,7 @@ static func _bounds(root: Node3D) -> Array:
 	return [lo, hi]
 
 static func _test_slots(t) -> void:
-	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "focus_ring"], "slot list matches the polish spec")
+	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water"], "slot list matches the polish spec")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
@@ -45,12 +44,16 @@ static func _test_slots(t) -> void:
 				"%s fits a 1x1 footprint (%s .. %s)" % [slot, lo, hi])
 			var budget: float = HEIGHT_BUDGET.get(slot, 0.6)
 			t.check(hi.y <= budget + 0.001, "%s is under %.2f tall (got %.3f)" % [slot, budget, hi.y])
-		# Every layer of the tile assembly -- the stone body and both inlaid
-		# symbols -- is a piece, so all of them carry an outline.
-		var wants_outline: bool = slot == "tile"
+		# Which layers are pieces and so carry an outline shell. The tile's
+		# slate moon faces are not one: the body already draws the cell's
+		# silhouette, and a second shell inside it would read as a seam.
+		var outlined: Array = {"tile": ["Stone", "Sun", "Moon"]}.get(slot, [])
 		for mi in ms:
+			var src: Material = mi.mesh.surface_get_material(0)
+			var mat_name: String = src.resource_name if src != null else ""
 			var has_outline := mi.get_node_or_null("Outline") != null
-			t.check(has_outline == wants_outline, "%s outline present=%s" % [slot, has_outline])
+			t.check(has_outline == (mat_name in outlined),
+				"%s/%s outline present=%s" % [slot, mat_name, has_outline])
 		node.free()
 	var platform = Models.instance("platform")
 	var pb := _bounds(platform)
@@ -85,13 +88,17 @@ static func _test_cube(t) -> void:
 	# what renders when the .glb is missing and what the headless tests see
 	# on a fresh clone before the models are imported.
 	var stand_in = Placeholders.make("tile")
-	t.eq(Models.surface_names(stand_in), ["Stone", "Sun", "Moon"], "placeholder tile carries the same three layers")
+	var stand_in_layers := Models.surface_names(stand_in)
+	stand_in_layers.sort()
+	t.eq(stand_in_layers, ["Moon", "Slate_flat", "Stone", "Sun"], "placeholder tile carries the same four layers")
 	t.check(absf(Models.height(stand_in) - Placeholders.TILE_SIDE) < 0.001, "placeholder tile is exactly TILE_SIDE tall")
 	t.check(Models.meshes(stand_in)[0].get_node_or_null("Outline") != null, "placeholder tile has an outline shell")
 	stand_in.free()
 
 	var tile = Models.instance("tile")
-	t.eq(Models.surface_names(tile), ["Stone", "Sun", "Moon"], "tile is one mesh per layer: body, sun, moon")
+	var layers := Models.surface_names(tile)
+	layers.sort()
+	t.eq(layers, ["Moon", "Slate_flat", "Stone", "Sun"], "tile is one mesh per layer: body, slate moon faces, sun, moon")
 	# Bevels shave a few hundredths off the sharp edges, hence the slack. The
 	# inlaid symbols stand EMBLEM_PROUD out of the two wall pairs, so the
 	# assembly is that much wider than the cube on X and Z; nothing sits on the
@@ -153,7 +160,7 @@ static func _test_tint_and_height(t) -> void:
 		var over = mi.get_surface_override_material(0)
 		if over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")):
 			painted += 1
-	t.eq(painted, 1, "tint_named swaps the toon colour on the stone body alone")
+	t.eq(painted, 1, "tint_named swaps the toon colour on the named layer alone")
 	Models.tint(tile, Color("d9605a"))
 	var all_painted := true
 	for mi in Models.meshes(tile):
@@ -165,28 +172,6 @@ static func _test_tint_and_height(t) -> void:
 	var platform = Models.instance("platform")
 	t.check(is_equal_approx(Models.height(platform), 0.6), "platform placeholder is 0.6 deep, measured %.3f" % Models.height(platform))
 	platform.free()
-
-## The focus ring is a flat translucent frame around one cell (polish spec,
-## section 6): it sits on y = 0, fits the cell, gets no outline and carries
-## its own material instance so one ring's alpha tween never touches another.
-static func _test_focus_ring(t) -> void:
-	var a = Models.instance("focus_ring")
-	var b = Models.instance("focus_ring")
-	var ms := Models.meshes(a)
-	t.eq(ms.size(), 1, "focus ring is one mesh")
-	var bounds := _bounds(a)
-	t.check(is_zero_approx(bounds[0].y) and bounds[1].y <= 0.02, "focus ring is flat on y=0 (%.3f .. %.3f)" % [bounds[0].y, bounds[1].y])
-	t.check(bounds[1].x <= Placeholders.FOCUS_OUTER + 0.001 and bounds[0].x >= -Placeholders.FOCUS_OUTER - 0.001, "focus ring spans the cell (%.3f)" % bounds[1].x)
-	var mat = ms[0].material_override
-	t.check(mat is StandardMaterial3D, "focus ring carries a StandardMaterial3D override")
-	if mat is StandardMaterial3D:
-		t.check(mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED, "focus ring is unshaded")
-		t.check(mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "focus ring is alpha blended")
-		t.check(Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b).is_equal_approx(Pal.FOCUS), "focus ring is FOCUS blue")
-	t.check(Models.meshes(b)[0].material_override != mat, "each ring has its own material instance")
-	t.check(ms[0].get_node_or_null("Outline") == null, "focus ring has no outline")
-	a.free()
-	b.free()
 
 ## The rim's tufts, petals and pollen sway (polish spec, section 4); the moss
 ## slab stays still. Checked on the export, since that is what the game shows.

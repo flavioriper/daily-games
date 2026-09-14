@@ -544,3 +544,40 @@ near wall, so the sun inlaid there shows only the top arc of its rays, reading
 as a row of orange beads along the bottom of each visible wall strip rather
 than as a sun. It is correct and it is what "all faces on" means at this
 camera; whether it is wanted is a look question, not a bug.
+
+## Amendment E: slate on the face, and no focus ring (2026-09-14)
+
+Two calls from the user, looking at the die from Amendment D on the real
+board.
+
+**The moon faces are already black.** Amendment C had the game tint the whole
+cube by the state that is up, so a cell turned slate when its roll landed.
+`art/tile.blend` now carries a fourth layer, `Moon_Face` (`Slate_flat`): a slab
+on each of the two moon walls, covering the flat part of the face inside the
+body's 0.024 bevel and standing 0.0015 proud. A cube is therefore already black
+on the side it is about to bring up, and **no colour changes when a roll
+lands**. What `_paint` still says is only whether the cell is locked --
+`Stone`/`STONE_GIVEN` on the body, `SLATE`/`SLATE_GIVEN` on the slabs -- plus
+the blush and the Check flash, which take both layers together.
+
+Amendment C's reason for tinting the whole cube stands and is now moot: colours
+could not be consistent on a rotating cube *because they were applied per
+state*. Fixed to the model, they rotate with it, which is the same trick that
+made the symbols work. The cost is that a cell's walls no longer say what it
+holds -- the slate shows on a wall of an empty cell, the same way its sun does.
+That is what a die looks like.
+
+The slab is `_flat`, so it carries no outline shell: the body already draws the
+cell's silhouette and a second shell inside it would read as a seam.
+
+**The focus ring is gone.** The translucent blue frame that popped onto the
+last tapped cell, slid between cells and pulsed is removed outright, along with
+the `focus_ring` slot, its placeholder, `Placeholders.focus_material`,
+`_ring_mesh` and `Pal.FOCUS`. Sections 2 and 6 of this spec are withdrawn to
+that extent. What survives is `focus_cell` and the `focus_changed` signal,
+which the HUD's working-line card reads; `_focus` now only records the cell,
+cues the tap sound and emits. Given cells still take the focus.
+
+**Cost.** 646 draw calls and 4.36 ms idle at 1080x1920 before this amendment,
+717 and 4.89 ms after, against the section 7 budget of 8 ms. The slab adds two
+per cell, its own pass and its shadow; the ring gave back one.

@@ -36,7 +36,6 @@ const MOSS        := Color("7fa84a")
 const ROCK        := Color("b9ab92")
 const WATER       := Color("2f8fd6")
 const WATER_HI    := Color("5fb0e8")   # water stripes and splash ring
-const FOCUS       := Color("7fd1ff")   # focus ring on the last tapped cell
 const SUN_DEEP    := Color("d88a12")   # primary button's bottom edge
 const PARCHMENT   := Color("f3e9d2")   # rules card
 

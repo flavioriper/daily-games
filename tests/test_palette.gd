@@ -33,7 +33,7 @@ static func _test_categorical(t) -> void:
 static func _test_island_colours(t) -> void:
 	var pal_script: Script = load("res://core/palette.gd")
 	var constants: Dictionary = pal_script.get_script_constant_map()
-	for name in ["STONE", "STONE_GIVEN", "SLATE", "SLATE_GIVEN", "SUN", "MOON", "MARK", "MOSS", "ROCK", "WATER", "FOCUS", "WATER_HI"]:
+	for name in ["STONE", "STONE_GIVEN", "SLATE", "SLATE_GIVEN", "SUN", "MOON", "MARK", "MOSS", "ROCK", "WATER", "WATER_HI"]:
 		t.check(constants.has(name), "palette defines %s" % name)
 	# Orange on cream is a hue contrast, not a luminance one; 1.4 keeps it from drifting to beige.
 	t.check(Pal.contrast(Pal.SUN, Pal.STONE) >= 1.4, "sun emblem reads on a stone tile, got %.2f" % Pal.contrast(Pal.SUN, Pal.STONE))
@@ -41,4 +41,3 @@ static func _test_island_colours(t) -> void:
 	t.check(Pal.contrast(Pal.STONE, Pal.SLATE) >= 5.0, "sun and moon tiles are far apart, got %.2f" % Pal.contrast(Pal.STONE, Pal.SLATE))
 	t.check(Pal.STONE_GIVEN != Pal.STONE and Pal.SLATE_GIVEN != Pal.SLATE, "locked tiles differ from placed tiles")
 	t.check(Pal.contrast(Pal.WATER_HI, Pal.WATER) >= 1.3, "water stripes read on the water, got %.2f" % Pal.contrast(Pal.WATER_HI, Pal.WATER))
-	t.check(Pal.FOCUS != Pal.WATER_HI and Pal.FOCUS != Pal.CAT[5], "focus blue is its own colour")

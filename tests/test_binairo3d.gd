@@ -42,7 +42,7 @@ static func run_in_tree(t) -> void:
 	_test_cube_colours(t, p)
 	_test_tap_rolls(t, p)
 	_test_neighbour_bob(t, p)
-	_test_focus_ring(t, p)
+	_test_focus(t, p)
 	_test_blush_pulse(t, p)
 	_test_locked_cell(t, p)
 	_test_reset_wave(t, p)
@@ -152,8 +152,10 @@ static func _layer_points(root: Node3D, name: String) -> PackedVector3Array:
 static func _test_faces_carry_symbols(t, p) -> void:
 	var cell := _find_cell(p, false)
 	var tile: Node3D = p._tiles[cell.y][cell.x]
-	t.eq(Models.surface_names(tile), ["Stone", "Sun", "Moon"],
-		"the tile is one mesh per layer: the stone body, the sun, the moon")
+	var layers := Models.surface_names(tile)
+	layers.sort()
+	t.eq(layers, ["Moon", "Slate_flat", "Stone", "Sun"],
+		"the tile is one mesh per layer: the stone body, the slate moon faces, the sun, the moon")
 	var half := Placeholders.TILE_HALF
 	var centre := Vector3(0.0, half, 0.0)
 	var want := half + Placeholders.EMBLEM_PROUD
@@ -181,26 +183,39 @@ static func _test_faces_carry_symbols(t, p) -> void:
 	t.check(upright, "each symbol comes out flat on top, %.3f proud, when the cube rolls to its face" % Placeholders.EMBLEM_PROUD)
 	t.check(bare, "and an empty face is bare stone, with both symbols down on the walls")
 
-static func _cube_colour(p, r: int, c: int) -> Color:
-	var mi: MeshInstance3D = Models.meshes(p._tiles[r][c])[0]
-	return Color(mi.get_surface_override_material(0).get_shader_parameter("albedo"))
+## The toon colour a named layer of cell (r, c) is painted with.
+static func _layer_colour(p, r: int, c: int, name: String) -> Color:
+	for mi in Models.meshes(p._tiles[r][c]):
+		var src := mi.mesh.surface_get_material(0)
+		if src != null and src.resource_name == name:
+			return Color(mi.get_surface_override_material(0).get_shader_parameter("albedo"))
+	return Color.MAGENTA
 
+static func _cube_colour(p, r: int, c: int) -> Color:
+	return _layer_colour(p, r, c, "Stone")
+
+## Colour says whether a cell is locked, and nothing else. The moon faces carry
+## their own slate slab in the model, so a cube is already black on the side it
+## is about to bring up and a roll changes no colour at all -- which is what
+## Amendment E replaced Amendment C's whole-cube tint with. The stone body of a
+## sun cell, a moon cell and an empty cell are therefore the same colour.
 static func _test_cube_colours(t, p) -> void:
-	# The whole cube takes the colour of the state that is up, not one face:
-	# a cube that rotates cannot hold a colour on a face, since a moon face
-	# lands on the front wall while an empty face is up (amendment C).
 	var blend: float = p.BAD_BLEND
 	var free := _find_cell(p, false)
 	var empty := _cube_colour(p, free.y, free.x)
 	t.check(p._grid[free.y][free.x] == -1, "setup: the free cell is empty")
 	t.check(empty.is_equal_approx(Pal.STONE) or empty.is_equal_approx(Pal.STONE.lerp(Pal.BAD, blend)),
-		"an empty cell is stone (got %s)" % empty.to_html(false))
+		"a free cell's body is stone (got %s)" % empty.to_html(false))
 	var locked := _find_cell(p, true)
 	var given := _cube_colour(p, locked.y, locked.x)
-	var moon: bool = p._grid[locked.y][locked.x] == 1
-	var want: Color = (Pal.SLATE_GIVEN if moon else Pal.STONE_GIVEN)
-	t.check(given.is_equal_approx(want) or given.is_equal_approx(want.lerp(Pal.BAD, blend)),
-		"a given cell is the darker %s (got %s)" % ["slate" if moon else "stone", given.to_html(false)])
+	t.check(given.is_equal_approx(Pal.STONE_GIVEN) or given.is_equal_approx(Pal.STONE_GIVEN.lerp(Pal.BAD, blend)),
+		"a given cell's body is the darker stone whatever it holds (got %s)" % given.to_html(false))
+	var slab := _layer_colour(p, locked.y, locked.x, "Slate_flat")
+	t.check(slab.is_equal_approx(Pal.SLATE_GIVEN) or slab.is_equal_approx(Pal.SLATE_GIVEN.lerp(Pal.BAD, blend)),
+		"and its moon faces are the darker slate (got %s)" % slab.to_html(false))
+	var free_slab := _layer_colour(p, free.y, free.x, "Slate_flat")
+	t.check(free_slab.is_equal_approx(Pal.SLATE) or free_slab.is_equal_approx(Pal.SLATE.lerp(Pal.BAD, blend)),
+		"a free cell's moon faces are slate before anything is placed there (got %s)" % free_slab.to_html(false))
 
 static func _test_tap_rolls(t, p) -> void:
 	var cell := _find_cell(p, false)
@@ -227,7 +242,7 @@ static func _test_tap_rolls(t, p) -> void:
 	t.check(spin.basis.is_equal_approx(Basis(Vector3.RIGHT, QUARTER)), "the roll lands exactly on the sun face")
 	t.check(is_equal_approx(spin.position.y, 0.0), "and back down flat on the platform (%.4f)" % spin.position.y)
 	t.check(not first.is_running(), "the roll tween finished")
-	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.STONE), "a sun leaves the cube stone")
+	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.STONE), "a sun leaves the body stone")
 	t.eq(p.fx.last_cue, "land", "landing fires the land cue and its dust")
 
 	_tap(p, r, c)
@@ -238,7 +253,7 @@ static func _test_tap_rolls(t, p) -> void:
 	var second: Tween = p._rolls[r][c]
 	t.check(second != null and second != first and second.is_running(), "a new roll tween is running")
 	second.custom_step(p.ROLL_TIME * 2.0)
-	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.SLATE), "a moon turns the whole cube slate")
+	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.STONE), "and a moon leaves it stone too: the slate is on the face, not the cube")
 
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], -1, "third tap empties the cell")
@@ -272,49 +287,31 @@ static func _test_neighbour_bob(t, p) -> void:
 	# Tidy: land the roll so later tests start from a resting board.
 	p._settle(r, c)
 	# Tidy: this test and _test_tap_rolls both tap _find_cell(p, false), the
-	# same deterministic cell, so the focus ring is left shown (mid-pop) on
-	# it. Put it back to its unshown, freshly-built state so the focus-ring
-	# test below starts from "no tap yet".
-	Motion.stop(p._ring_tw)
-	Motion.stop(p._ring_pulse)
-	Motion.stop(p._ring_pulse_a)
-	Motion.stop(p._ring_hold)
-	p._ring.visible = false
-	p._ring.scale = Vector3.ONE
-	p._ring_mat.albedo_color.a = p.FOCUS_ALPHA
+	# same deterministic cell, so the focus is left on it. Put it back so the
+	# focus test below starts from "no tap yet".
 	p.focus_cell = Vector2i(-1, -1)
 
-## The focus ring (polish spec, section 2): it pops onto the first tapped
-## cell, slides to the next, pulses while shown, and fades after a pause.
-## Given cells take the focus too, since "look at this line" is a gesture.
-static func _test_focus_ring(t, p) -> void:
+## The focus. Nothing is drawn on the board for it any more: it exists so the
+## HUD's working-line card knows which row and column the player is on, so the
+## test is about focus_cell and the signal, not about a ring. Given cells take
+## the focus too, since "look at this line" is a gesture.
+static func _test_focus(t, p) -> void:
 	var a := _find_cell(p, false)
 	var g := _find_cell(p, true)
-	var ring: Node3D = p._ring
-	t.check(ring != null and ring.get_parent() == p.board and not ring.visible, "the ring exists, under the board, hidden at first")
+	var fired := [0]
+	var count := func() -> void: fired[0] += 1
+	p.focus_changed.connect(count)
 	t.check(p.focus_cell == Vector2i(-1, -1), "no focus before the first tap")
+	t.eq(p.line_state(), {}, "and no working line to show")
 	_tap(p, a.y, a.x)
 	t.check(p.focus_cell == Vector2i(a.x, a.y), "focus_cell is the tapped cell as (col, row)")
-	var want := BoardMath.cell_center(a.y, a.x, p.n, p.n, Placeholders.TILE_RISE + 0.005)
-	t.check(ring.visible and ring.position.is_equal_approx(want), "the ring shows on the tapped cell (%s)" % ring.position)
-	t.check(Motion.running(p._ring_tw), "the ring pops in")
-	p._ring_tw.custom_step(p.FOCUS_POP)
-	t.check(ring.scale.is_equal_approx(Vector3.ONE) and is_equal_approx(p._ring_mat.albedo_color.a, p.FOCUS_ALPHA), "the pop ends at full size and alpha")
-	t.check(Motion.running(p._ring_pulse), "the ring pulses once shown")
-	t.check(Motion.running(p._ring_hold), "the hold timer is running")
+	t.eq(fired[0], 1, "the tap tells the HUD the working line moved")
+	t.check(not p.line_state().is_empty(), "and there is a working line to show")
 	_tap(p, g.y, g.x)
 	t.check(p.focus_cell == Vector2i(g.x, g.y), "a tap on a given cell takes the focus")
 	t.check(p._grid[g.y][g.x] != -1 and p._rolls[g.y][g.x] == null, "and rolls nothing")
-	t.check(Motion.running(p._ring_tw), "the ring slides")
-	p._ring_tw.custom_step(p.FOCUS_MOVE)
-	var want_g := BoardMath.cell_center(g.y, g.x, p.n, p.n, Placeholders.TILE_RISE + 0.005)
-	t.check(ring.position.is_equal_approx(want_g), "the slide lands on the given cell")
-	t.check(Motion.running(p._ring_pulse), "the pulse keeps going through a slide")
-	p._ring_hold.custom_step(p.FOCUS_HOLD + 0.01)
-	t.check(Motion.running(p._ring_tw) and not Motion.running(p._ring_pulse), "after the hold the ring fades and stops pulsing")
-	p._ring_tw.custom_step(p.FOCUS_FADE + 0.01)
-	t.check(not ring.visible, "the faded ring hides")
-	t.check(is_zero_approx(p._ring_mat.albedo_color.a), "the fade ends fully clear")
+	t.eq(fired[0], 2, "which is a move of the working line too")
+	p.focus_changed.disconnect(count)
 	# Tidy for later tests.
 	p._settle(a.y, a.x)
 	p._focus_clear()
@@ -351,16 +348,11 @@ static func _test_blush_pulse(t, p) -> void:
 	t.check(p._blend[0][0] > 0.0 and p._blend[0][0] < p.BAD_BLEND, "halfway out the blush is partway (%.3f)" % p._blend[0][0])
 	out.custom_step(p.BLUSH_OUT)
 	t.check(is_zero_approx(p._blend[0][0]), "the fade out ends at no blush")
-	# The cell is back to whatever the puzzle gave it, so the base it returns
-	# to is that state's colour, not necessarily the sun's stone.
-	var moon: bool = p._grid[0][0] == 1
-	var locked: bool = p._given[0][0]
-	var rest: Color
-	if moon:
-		rest = Pal.SLATE_GIVEN if locked else Pal.SLATE
-	else:
-		rest = Pal.STONE_GIVEN if locked else Pal.STONE
-	t.check(_cube_colour(p, 0, 0).is_equal_approx(rest), "the cube is exactly its resting stone again")
+	# The body returns to the stone the cell is entitled to. Which state it
+	# holds no longer enters into it: slate lives on the moon faces of the
+	# model, not on the cube.
+	var rest: Color = Pal.STONE_GIVEN if p._given[0][0] else Pal.STONE
+	t.check(_cube_colour(p, 0, 0).is_equal_approx(rest), "the body is exactly its resting stone again")
 	for r in p.n:
 		for c in p.n:
 			if Motion.running(p._fades[r][c]):
@@ -426,9 +418,6 @@ static func _test_reset_wave(t, p) -> void:
 					none_running = false
 	t.check(all_home, "after the wave every cube shows its grid face and rests flat on the platform")
 	t.check(none_running, "the wave leaves nothing running")
-	if Motion.running(p._ring_tw):
-		p._ring_tw.custom_step(5.0)
-	t.check(not p._ring.visible, "reset hides the ring")
 
 ## On a solve every prism hops once, row by row from the far edge, after the
 ## last roll has had time to land.

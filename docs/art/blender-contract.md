@@ -9,12 +9,11 @@ shader, adds the outline, and places it. Nothing else to configure.
 
 | slot | footprint (X by Y in Blender) | max height (Z) | notes |
 |---|---|---|---|
-| `tile` | 1.0 x 1.0, reaches 0.87 x 0.87 | 0.9 | an **assembly**: a cube of side 0.84 standing on the platform, base at Z = 0, carrying its symbols the way a die carries its pips. `Tile_Body` (material `Stone`) is tinted by the game with the state that is up -- a cube that rotates cannot hold a colour on one face, since a moon face lands on the front wall while an empty face is up. `Sun` and `Moon` are inlaid in opposite pairs of walls, 0.05 thick with 0.015 standing proud, and keep their own colours. The top and bottom faces are bare: that is the empty state |
+| `tile` | 1.0 x 1.0, reaches 0.87 x 0.87 | 0.9 | an **assembly** of four layers: a cube of side 0.84 standing on the platform, base at Z = 0, carrying its symbols the way a die carries its pips. `Tile_Body` (material `Stone`) and `Moon_Face` (`Slate_flat`, a slab on each of the two moon walls, inside the body's bevel and 0.0015 proud) are the two the game tints, by whether the cell is locked. `Sun` and `Moon` are inlaid in opposite pairs of walls, 0.05 thick with 0.015 standing proud. The top and bottom faces are bare: that is the empty state. No layer's colour depends on which face is up, so a roll changes no colour |
 | `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side (toward the water) at **-Y** in Blender, which is +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
 | `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
-| `focus_ring` | inside 0.92 x 0.92 | 0.02 | flat square frame around one cell; the game gives it a translucent unshaded material, so its Blender material is only a placeholder |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
@@ -60,16 +59,16 @@ leaves a gap in the ring. `water` is unbounded.
    shader for now.
 6. **Named materials on slots the game recolours.** The game recolours by
    material *name*, one colour per name, so a recoloured slot must carry
-   exactly the names the game expects: the `tile` layer the game tints is
-   called `Stone`, and every other material on that slot keeps the colour it
-   was modelled with. That is deliberate for `Sun` and `Moon` -- they must not
-   take the cube's state colour, or a moon cell would paint its own crescent
-   slate and show nothing. Slots that are never tinted (`rim_edge`,
+   exactly the names the game expects: the `tile` layers the game tints are
+   called `Stone` and `Slate_flat`, and every other material on that slot
+   keeps the colour it was modelled with. That is deliberate for `Sun` and
+   `Moon` -- they must not be tinted, or a moon cell would paint its own
+   crescent slate and show nothing. Slots that are never tinted (`rim_edge`,
    `rim_corner`, `platform`, `water`) may use as many materials as they like.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
    no outline. Use it for any surface that should not read as a piece. The
-   `platform`, `water`, `rim_edge` and `rim_corner` materials
-   **must** carry the suffix (for example `Rock_flat`, `Moss_flat`); without
+   `platform`, `water`, `rim_edge`, `rim_corner` and the tile's `Slate_flat`
+   materials **must** carry the suffix (for example `Rock_flat`, `Moss_flat`); without
    it they get an outline shell the design does not want on them. A mesh
    keeps its outline unless *every* one of its material names ends in `_flat`.
 8. **No parent.** Export objects with no parent. The exporter measures world

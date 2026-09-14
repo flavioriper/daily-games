@@ -10,7 +10,7 @@ const Placeholders = preload("res://core/placeholders.gd")
 const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
 ## same names with their footprint rules.
-const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "focus_ring"]
+const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water"]
 ## Slots exempt from the 1 x 1 footprint rule.
 const UNBOUNDED := ["platform", "water"]
 
@@ -92,9 +92,6 @@ static func height(root: Node) -> float:
 ## to the export and the placeholder alike so the two never look different.
 static func _dress(slot: String, node: Node3D) -> void:
 	match slot:
-		"focus_ring":
-			for mi in meshes(node):
-				mi.material_override = Placeholders.focus_material()
 		"water":
 			for mi in meshes(node):
 				for i in mi.mesh.get_surface_count():

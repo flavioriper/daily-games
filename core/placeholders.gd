@@ -29,11 +29,13 @@ const TILE_RISE := TILE_SIDE
 ## cube is 0.84 wide, so two facing inlays spend 0.03 of the 0.16 gap.
 const EMBLEM_H := 0.05
 const EMBLEM_PROUD := 0.015
+## The slate slab on each moon face: a cube is already black on the side it is
+## about to bring up, so a roll changes no colour. It covers the flat part of
+## the face, inside the body's 0.024 bevel, and sits a hair off the stone.
+const PANEL_H := 0.03
+const PANEL_PROUD := 0.0015
 const PLATFORM_H := 0.6
 const RIM_H := 0.04
-## The focus ring: a flat square frame around one cell (polish spec, section 6).
-const FOCUS_OUTER := 0.46
-const FOCUS_INNER := 0.38
 
 static func make(slot: String) -> Node3D:
 	var root := Node3D.new()
@@ -86,13 +88,6 @@ static func make(slot: String) -> Node3D:
 			color = Pal.WATER
 			height = 0.0
 			outline = false
-		"focus_ring":
-			# Flat frame of four top-facing quads, one draw call, no thickness:
-			# it is light on the stone, not a piece. Unshaded, translucent,
-			# no outline, never tinted. Models._dress gives it its material.
-			mi.mesh = _ring_mesh(FOCUS_OUTER, FOCUS_INNER)
-			root.add_child(mi)
-			return root
 		_:
 			# Unknown slot: a small magenta block so the gap is obvious on screen.
 			mi.mesh = _prism(0.2, 0.4)
@@ -145,6 +140,25 @@ static func _add_inlays(root: Node3D) -> void:
 		["Moon", Pal.MOON, 0.18, Vector3.RIGHT, Basis(Vector3.BACK, -PI * 0.5)],
 		["Moon", Pal.MOON, 0.18, Vector3.LEFT, Basis(Vector3.BACK, PI * 0.5)],
 	]
+	# The slate slab under each crescent goes on first, so the crescent that
+	# shares its face is drawn over it rather than buried in it.
+	# Covers the flat part of the face, inside the export's 0.024 bevel. A
+	# BoxMesh is fine here where it is not for the cube: the slab carries no
+	# outline, so its split flat normals open no hull. Axis-aligned, so it
+	# needs no turn and its AABB stays tight for Models.height.
+	var panel := (TILE_HALF - 0.024) * 2.0
+	for n in [Vector3.RIGHT, Vector3.LEFT]:
+		var slab := BoxMesh.new()
+		slab.size = Vector3(PANEL_H, panel, panel)
+		var slab_mat := StandardMaterial3D.new()
+		slab_mat.resource_name = "Slate_flat"
+		slab_mat.albedo_color = Pal.SLATE
+		slab.material = slab_mat
+		var slab_mi := MeshInstance3D.new()
+		slab_mi.name = "Slate_%s" % ("right" if n == Vector3.RIGHT else "left")
+		slab_mi.mesh = slab
+		slab_mi.position = centre + n * (TILE_HALF + PANEL_PROUD - PANEL_H * 0.5)
+		root.add_child(slab_mi)
 	for i in inlays.size():
 		var inlay: Array = inlays[i]
 		var mesh := _cylinder(inlay[2], EMBLEM_H, 24)
@@ -198,33 +212,3 @@ static func _cylinder(radius: float, h: float, segments: int) -> CylinderMesh:
 	cyl.radial_segments = segments
 	cyl.rings = 0
 	return cyl
-
-## Translucent unshaded material for the focus ring. A fresh instance each
-## call, so a ring can tween its alpha without touching another ring.
-static func focus_material() -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.albedo_color = Color(Pal.FOCUS, 0.9)
-	return m
-
-## Four bars of a square frame as top-facing quads on y = 0. Godot front
-## faces wind clockwise seen from the front, so seen from above (x right,
-## z down) each quad goes x0z0, x1z0, x1z1, x0z1.
-static func _ring_mesh(outer: float, inner: float) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var bars := [
-		[-outer, outer, -outer, -inner],   # far bar
-		[-outer, outer, inner, outer],     # near bar
-		[-outer, -inner, -inner, inner],   # left bar
-		[inner, outer, -inner, inner],     # right bar
-	]
-	for b in bars:
-		var p := [Vector3(b[0], 0.0, b[2]), Vector3(b[1], 0.0, b[2]), Vector3(b[1], 0.0, b[3]), Vector3(b[0], 0.0, b[3])]
-		for tri in [[0, 1, 2], [0, 2, 3]]:
-			for i in tri:
-				st.set_normal(Vector3.UP)
-				st.add_vertex(p[i])
-	return st.commit()
