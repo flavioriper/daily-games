@@ -19,6 +19,9 @@ void vertex() {
 	h *= h;
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float ph = TIME * sway_speed + wp.x * 0.9 + wp.z * 0.7;
-	VERTEX.x += sin(ph) * sway_amount * h * motion_scale;
+	// A piece mirrored with scale.x = -1 (every other rim edge) would lean the
+	// other way in world space; flip undoes the mirror so neighbours lean together.
+	float flip = sign(determinant(mat3(MODEL_MATRIX)));
+	VERTEX.x += flip * sin(ph) * sway_amount * h * motion_scale;
 	VERTEX.z += cos(ph * 0.8) * sway_amount * 0.6 * h * motion_scale;
 }

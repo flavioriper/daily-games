@@ -152,6 +152,10 @@ on every spawn, and runs the entrance (section 5). It loses the timer
 `rules_card`, `action_bar`, `settings_sheet`) so tests and harnesses can
 reach them.
 
+Amendment: the panels share a base script, `ui/hud/panel.gd`, which owns
+`_inner`, the minimum-size plumbing and `enter()`. `ui/hud/line_card.gd` is a
+plain `PanelContainer` inside the action bar, not a panel of its own.
+
 ## 3. Puzzle capabilities
 
 `core/puzzle_base.gd` grows optional hooks. Defaults mean "unsupported", so
@@ -326,6 +330,9 @@ the middle), `check` (one polyline), `leaf` (two arcs closed into a polygon
 plus a midrib polyline), `island` (a mound polygon, a trunk polyline, a
 canopy circle). Circles and arcs come from helpers with 24 segments.
 
+Amendment (2026-09-14): the Motto variation is `SURFACE` with a 4 px `OUTLINE`
+outline, not `TEXT_DIM`, which vanished against the sky.
+
 ## 5. Motion: new recipes, entrance, press, badge
 
 `core/motion.gd` additions. Every recipe keeps the contract: returns the
@@ -480,6 +487,11 @@ Harnesses:
   1080 x 1920 is read back and judged against the concept.
 - **`tests/_shot_anim.gd`** unchanged; its idle frames judge the wind fix.
 
+Amendment (2026-09-14): the user suspended new tests for this sub-project. No
+new suites were written; the existing suite, the win harness (which now
+presses Hint and Check) and the screenshot harness are the checks. The tests
+described above remain the intended coverage when testing resumes.
+
 ## 9. Performance
 
 The HUD adds `Control`s, one `_draw` per icon button and per line card, and
@@ -487,6 +499,15 @@ the badge's looping tween. Budget unchanged from the parent spec: idle frame
 time at or under 8 ms at 1080 x 1920 on the Mac, draw calls at most 20 above
 sub-project 1's 755 at rest. Measured numbers are recorded here when the
 sub-project is called done, along with the `60c7256` baseline.
+
+Amendment (2026-09-14): measured from `_shot_anim.gd` on the Mac at
+1080 x 1920: `idle frames=391 mean_ms=5.11 max_draw_calls=836`. Mean frame
+time is well inside budget. Draw calls are not: the `60c7256` baseline (before
+the HUD), measured the same way with a throwaway `tests/_draw_calls.gd` in a
+worktree on that commit, is `draw_calls=751`, so the HUD adds about 85 draw
+calls against a budgeted 20 (755 + 20 = 775 versus the measured 836). The gap
+is left as a known overage for a later pass rather than fixed in this
+sub-project.
 
 ## 10. Files
 
@@ -505,6 +526,12 @@ footer for Binairo), `core/puzzle_base.gd`, `core/motion.gd`,
 `shaders/toon_wind.gdshader`, `tests/_win.gd`, `tests/_shot.gd`,
 `tests/run_tests.gd`, `tests/test_motion.gd`, `tests/test_binairo3d.gd`,
 `tests/test_palette.gd`, `tests/test_ambient.gd`, `README.md`.
+
+Amendment (2026-09-14): `ui/hud/panel.gd` is also new (see the amendment
+under section 2). Struck from New: `tests/test_icons.gd`,
+`tests/test_progress.gd`, `tests/test_theme.gd`, `tests/test_hud.gd` and
+`tests/stub_puzzle.gd` — the user suspended new tests before they were
+written (see the amendment under section 8).
 
 ## 11. What sub-project 3 relies on from here
 
