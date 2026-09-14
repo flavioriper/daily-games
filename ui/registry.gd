@@ -17,7 +17,9 @@ const PUZZLES := [
 		"id": "mastermind",
 		"title": "Code Break",
 		"blurb": "Crack the hidden row from the feedback.",
-		"script": "res://puzzles/mastermind.gd",
+		"motto": "Crack the hidden code",
+		"footer": "Small puzzles · Brighter days",
+		"script": "res://puzzles/codebreak3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

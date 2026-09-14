@@ -63,7 +63,7 @@ func _process(_delta: float) -> bool:
 func _note(id: String) -> String:
 	match id:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
-		"mastermind": return "cracked in %d guesses" % _puzzle._guesses.size()
+		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s" % [_puzzle._guess]
 		"pipes": return "%d turns" % _puzzle.moves
 		"untangle": return "%d crossings" % _puzzle._crossings
@@ -115,18 +115,18 @@ func _solve_binairo() -> void:
 
 func _solve_mastermind() -> void:
 	var length: int = _puzzle.length
-	var palette: int = _puzzle.palette
-	var slot_w: float = (_puzzle.size.x * 0.72) / float(length)
-	var y: float = _puzzle._row_h * 0.5
+	# Camera fit check: every socket centre must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for g in _puzzle.max_guesses:
+		for s in length:
+			if not slot.has_point(_puzzle.cell_to_local(g, s)):
+				_fit_ok = false
+	# The HUD's tray fills the active row with the code, then the real Check.
+	var tray = _host.action_bar.tray
 	for s in length:
-		var taps: int = (int(_puzzle._code[s]) - int(_puzzle._current[s])) % palette
-		if taps < 0:
-			taps += palette
-		for k in taps:
-			_tap_local(Vector2(slot_w * (s + 0.5), y))
-	# Press the real Check button rather than calling the handler.
-	var btn: Button = _puzzle._check
-	_tap_global(btn.get_global_transform_with_canvas() * (btn.size * 0.5))
+		_press(tray.buttons[int(_puzzle._code[s])])
+	_press(_host.action_bar.check_button)
 
 func _solve_balance() -> void:
 	for i in _puzzle.shapes:
