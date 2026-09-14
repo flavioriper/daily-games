@@ -12,6 +12,9 @@ const Toon = preload("res://core/toon.gd")
 
 static func run_in_tree(t) -> void:
 	var root: Node = (Engine.get_main_loop() as SceneTree).root
+	# A throwaway path: Stage._ready() calls Motion.load_settings(), and the
+	# developer's real user://settings.cfg must never leak into this suite.
+	Motion.settings_path = "user://_test_settings.cfg"
 	Motion.reduce = false
 	var stage: Node3D = Stage.new()
 	root.add_child(stage)
@@ -21,9 +24,10 @@ static func run_in_tree(t) -> void:
 	_test_splash(t, stage.ambient)
 	_test_fit_to(t, stage.ambient)
 	_test_camera_breath(t, stage)
-	Motion.reduce = false
 	root.remove_child(stage)
 	stage.free()
+	Motion.settings_path = "user://settings.cfg"
+	Motion.reduce = false
 
 static func _test_stage_owns_ambient(t, stage) -> void:
 	t.check(stage.ambient != null and stage.ambient.get_parent() == stage, "stage creates an Ambient child")

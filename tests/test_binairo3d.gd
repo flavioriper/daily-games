@@ -19,8 +19,14 @@ const THIRD := TAU / 3.0
 
 static func run_in_tree(t) -> void:
 	var root: Node = (Engine.get_main_loop() as SceneTree).root
+	# A throwaway path: Stage._ready() calls Motion.load_settings(), and the
+	# developer's real user://settings.cfg must never leak into this suite.
+	Motion.settings_path = "user://_test_settings.cfg"
 	var stage: Node3D = Stage.new()
 	root.add_child(stage)
+	# This suite steps decorative tweens by hand (bobs, fades, the ring); under
+	# reduce those recipes return null, so pin it false regardless of settings.
+	Motion.reduce = false
 	var p = Binairo3D.new()
 	root.add_child(p)
 	var rng := RandomNumberGenerator.new()
@@ -45,6 +51,8 @@ static func run_in_tree(t) -> void:
 	p.free()
 	root.remove_child(stage)
 	stage.free()
+	Motion.settings_path = "user://settings.cfg"
+	Motion.reduce = false
 
 static func _find_cell(p, locked: bool) -> Vector2i:
 	for r in p.n:
