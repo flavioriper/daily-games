@@ -19,6 +19,10 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # one .glb each.
 "$BLENDER" -b art/codebreak.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Socket Peg Pip Lid
+# Pipes: seven hand-modelled collections in one .blend, one .glb each.
+"$BLENDER" -b art/pipes.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Pipe_Pad Pipe_Cap Pipe_Straight \
+  Pipe_Elbow Pipe_Tee Pipe_Cross Valve
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

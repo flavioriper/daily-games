@@ -22,6 +22,8 @@ art/*.blend
 !art/tree.blend
 # So are Code Break's socket, peg, pip and lid
 !art/codebreak.blend
+# So are the Pipes pad, pipe shapes and valve
+!art/pipes.blend
 
 # Python bytecode from running the tools
 __pycache__/

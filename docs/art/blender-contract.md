@@ -51,7 +51,13 @@ leaves a gap in the ring. `water` is unbounded.
    the footprint is centred on X = Y = 0. Blender is Z-up; the glTF exporter
    converts to Godot's Y-up for you, so model with Z as up and do nothing else.
    For directional pieces remember the mapping: Blender (x, y, z) becomes
-   Godot (x, z, -y), so Blender -Y is Godot +Z (toward the player).
+   Godot (x, z, -y), so Blender -Y is Godot +Z (toward the player). A piece
+   that only opens on some sides (Pipes' `pipe_cap`, `pipe_elbow`,
+   `pipe_tee`) cannot satisfy this by the bounding box: its hub, the true
+   pivot, must sit at the origin, but its mass leans toward whichever sides
+   are open. For exactly those slots the exporter checks that the origin
+   falls inside the footprint instead of at its centre; every other slot
+   still needs the centred footprint.
 3. **Apply transforms.** Rotation (0, 0, 0), scale (1, 1, 1) before export.
 4. **Shade smooth with shared vertices, everywhere.** No split edges, no
    flat shading. For a hard-edged look, add a small Bevel modifier (width

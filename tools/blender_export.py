@@ -62,6 +62,15 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # merely within budget: the platform is stretched by (cols + 1, rows + 1) and
 # the rim pieces are laid one per cell, where a short piece leaves a gap.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5)}
+# Pipes pieces with an odd or adjacent-only set of openings (a dead end, an
+# elbow, a T) are genuinely lopsided: their mass leans toward the open sides,
+# so their footprint cannot be centred on the hub that must sit at the world
+# origin for the piece to rotate correctly and for its arms to reach the cell
+# edge. A cap's hub reaches back 0.15 (TUBE_R) but its one arm reaches forward
+# 0.498 (ARM_LEN) -- no rearrangement of dimensions the spec fixes closes that
+# gap. These slots get the origin-within-footprint check instead of
+# origin-at-footprint-centre (see placement_problems).
+DIRECTIONAL = {"pipe_cap", "pipe_elbow", "pipe_tee"}
 
 
 def limit_for(slot):
@@ -119,10 +128,18 @@ def placement_problems(slot, lo, hi, origin):
     found = []
     if abs(lo.z - origin.z) > TOLERANCE:
         found.append("base not at origin height (lowest vertex %.3f above origin)" % (lo.z - origin.z))
-    centre_x = (lo.x + hi.x) * 0.5 - origin.x
-    centre_y = (lo.y + hi.y) * 0.5 - origin.y
-    if abs(centre_x) > TOLERANCE or abs(centre_y) > TOLERANCE:
-        found.append("origin not at footprint centre (off by %.3f, %.3f)" % (centre_x, centre_y))
+    if slot in DIRECTIONAL:
+        # The hub, not the bounding-box centroid, must sit at the origin: that
+        # is the piece's true pivot and the point its arms measure out from.
+        if not (lo.x - TOLERANCE <= origin.x <= hi.x + TOLERANCE
+                and lo.y - TOLERANCE <= origin.y <= hi.y + TOLERANCE):
+            found.append("origin (the hub) falls outside the footprint (%.3f, %.3f) not in %s..%s" %
+                (origin.x, origin.y, (lo.x, lo.y), (hi.x, hi.y)))
+    else:
+        centre_x = (lo.x + hi.x) * 0.5 - origin.x
+        centre_y = (lo.y + hi.y) * 0.5 - origin.y
+        if abs(centre_x) > TOLERANCE or abs(centre_y) > TOLERANCE:
+            found.append("origin not at footprint centre (off by %.3f, %.3f)" % (centre_x, centre_y))
     if slot in EXACT:
         exact_x, exact_y = EXACT[slot]
         if abs((hi.x - lo.x) - exact_x) > TOLERANCE or abs((hi.y - lo.y) - exact_y) > TOLERANCE:
