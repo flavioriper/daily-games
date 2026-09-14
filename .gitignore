@@ -18,6 +18,8 @@ art/*.blend
 !art/mascot_*.blend
 # So is the tile cube, hand-modelled since the trilon was replaced
 !art/tile.blend
+# So is the tree, hand-modelled scenery
+!art/tree.blend
 
 # Python bytecode from running the tools
 __pycache__/

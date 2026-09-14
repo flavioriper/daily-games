@@ -14,6 +14,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
+| `tree` | up to 1.4 x 1.4 | 2.0 | island scenery, an **assembly**: `Tree_Trunk` (`Bark`), `Tree_Canopy` (`Leaf`, three overlapping blobs in one mesh, one layer) and `Tree_Bloom` (`Bloom_flat`). Still, not `_sway`: the wind shader reaches full strength 0.10 above the base, so a whole canopy would shimmy rather than bend, and `_sway` would cost it its outline |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are

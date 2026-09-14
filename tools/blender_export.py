@@ -32,6 +32,9 @@ LIMITS = {
     "tile": (1.0, 1.0, 0.9),
     "rim_edge": (1.0, 0.5, 0.12),
     "rim_corner": (0.5, 0.5, 0.12),
+    # Island scenery: a tree stands well above a piece, so it gets the
+    # mascot footprint and its own taller budget.
+    "tree": (1.4, 1.4, 2.0),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
