@@ -170,7 +170,22 @@ func share_glyphs() -> String:
 
 # --- scene ---
 
+## Kills every tween the previous board still tracks, so a rebuild never
+## inherits a roll, hop, bob or blush aimed at nodes that are about to go.
+func _stop_all() -> void:
+	for tw in _entrance:
+		Motion.stop(tw)
+	_entrance = []
+	for rows in [_rolls, _hops, _bobs, _fades]:
+		for row in rows:
+			for tw in row:
+				Motion.stop(tw)
+	Motion.stop(_ring_tw)
+	Motion.stop(_ring_pulse)
+	Motion.stop(_ring_hold)
+
 func _build_scene() -> void:
+	_stop_all()
 	for child in board.get_children():
 		board.remove_child(child)
 		child.free()
@@ -481,7 +496,7 @@ func _recolour() -> void:
 func _fade_blend(r: int, c: int, from: float, to: float) -> Tween:
 	var setter := _paint.bind(r, c)
 	if to > from:
-		var tw: Tween = Motion.fade(board, setter, from, to, BLUSH_IN, BLUSH_STEPS)
+		var tw: Tween = Motion.fade(_tiles[r][c], setter, from, to, BLUSH_IN, BLUSH_STEPS)
 		if tw == null:
 			return null
 		var beat := BLUSH_BEATS * 0.25
@@ -491,7 +506,7 @@ func _fade_blend(r: int, c: int, from: float, to: float) -> Tween:
 		fx.cue("blush_in")
 		return tw
 	fx.cue("blush_out")
-	return Motion.fade(board, setter, from, to, BLUSH_OUT, BLUSH_STEPS)
+	return Motion.fade(_tiles[r][c], setter, from, to, BLUSH_OUT, BLUSH_STEPS)
 
 ## Face colours at a blend toward BAD: stone for the empty and sun faces and
 ## the caps, slate for the moon face, darker when the cell is a given. The

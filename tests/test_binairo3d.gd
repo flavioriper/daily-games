@@ -39,6 +39,7 @@ static func run_in_tree(t) -> void:
 	_test_locked_cell(t, p)
 	_test_reset_wave(t, p)
 	_test_solved_wave(t, p)
+	_test_rebuild_kills_fades(t, p)
 
 	root.remove_child(p)
 	p.free()
@@ -407,3 +408,29 @@ static func _test_solved_wave(t, p) -> void:
 				rested = false
 	t.check(rested, "after the wave every prism rests on its axis")
 	t.eq(p.fx.last_cue, "solved", "the solve fires its cue")
+
+## A second build() on the same board must not inherit the first board's
+## blush fades: they used to live on `board`, which a rebuild keeps, and
+## repainted the new tiles. Now they live on the tile and the rebuild kills
+## everything it still tracks.
+static func _test_rebuild_kills_fades(t, p) -> void:
+	var saved: Array = (p._grid[0] as Array).duplicate()
+	for c in 3:
+		p._grid[0][c] = 0
+	p._recolour()
+	var old: Tween = p._fades[0][0]
+	t.check(Motion.running(old), "setup: a blush fade is running on the old board")
+	p._grid[0] = saved
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	p.build(rng, 0)
+	t.check(not Motion.running(old), "the rebuild killed the old fade")
+	for tw in p._entrance:
+		tw.custom_step(5.0)
+	t.check(is_zero_approx(p._blend[0][0]) and is_zero_approx(p._blend_target[0][0]), "the new board starts unblushed (%.3f)" % p._blend[0][0])
+	var any_running := false
+	for r in p.n:
+		for c in p.n:
+			if Motion.running(p._fades[r][c]):
+				any_running = true
+	t.check(not any_running, "no fade runs on a fresh board")
