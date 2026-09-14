@@ -272,9 +272,13 @@ static func _layer(node_name: String, mesh: Mesh, mat_name: String, colour: Colo
 static func _socket() -> Node3D:
 	var root := Node3D.new()
 	root.name = "socket"
-	var body := BoxMesh.new()
-	body.size = Vector3(SOCKET_SIDE, SOCKET_H, SOCKET_SIDE)
-	root.add_child(_layer("Socket_Body", body, "Stone", Pal.STONE, Vector3(0.0, SOCKET_H * 0.5, 0.0)))
+	# A square piece is a four-sided cylinder prism turned 45 degrees, not a
+	# BoxMesh: a BoxMesh's split flat normals would open the outline hull at
+	# every corner (see the file header).
+	var body := _layer("Socket_Body", _prism(SOCKET_SIDE * 0.5, SOCKET_H), "Stone", Pal.STONE,
+		Vector3(0.0, SOCKET_H * 0.5, 0.0))
+	body.rotation.y = PI * 0.25
+	root.add_child(body)
 	root.add_child(_layer("Socket_Well", _cylinder(WELL_R, WELL_PROUD * 2.0, 32), "Well_flat", Pal.MARK,
 		Vector3(0.0, SOCKET_H, 0.0)))
 	Toon.apply_to(root)
@@ -329,9 +333,12 @@ static func _pip() -> Node3D:
 static func _lid() -> Node3D:
 	var root := Node3D.new()
 	root.name = "lid"
-	var body := BoxMesh.new()
-	body.size = Vector3(SOCKET_SIDE, LID_H, SOCKET_SIDE)
-	root.add_child(_layer("Lid_Body", body, "Lid", Pal.STONE_GIVEN, Vector3(0.0, LID_H * 0.5, 0.0)))
+	# Same square-prism reasoning as _socket(): a BoxMesh would open the
+	# outline hull at every corner.
+	var body := _layer("Lid_Body", _prism(SOCKET_SIDE * 0.5, LID_H), "Lid", Pal.STONE_GIVEN,
+		Vector3(0.0, LID_H * 0.5, 0.0))
+	body.rotation.y = PI * 0.25
+	root.add_child(body)
 	root.add_child(_layer("Lid_Knob", _cylinder(KNOB_R, KNOB_H, 24), "Knob", Pal.WOOD,
 		Vector3(0.0, LID_H + KNOB_H * 0.5, 0.0)))
 	Toon.apply_to(root)
