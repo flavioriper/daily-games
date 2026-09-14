@@ -12,6 +12,10 @@ any that are missing:
 | `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
 | `water` | flat water plane far below the platform |
 | `mascot_pom` | POM the puppy, an assembly of 15 layered parts, one mesh per layer (not yet placed by any board) |
+| `socket` | Code Break's slab: `Stone` body tinted by whether its row is active, plus a `Well_flat` disc; the feedback slab hides the well |
+| `peg` | a colour peg: `Shell` dome tinted per colour, seven `Mark_flat` pip layers of which the game shows one |
+| `pip` | a feedback pip: `Well_flat` disc and a `Pip` ball tinted slate or cream, hidden until scored |
+| `lid` | the stone lid over one code slot, `Lid` body and wooden `Knob` |
 
 `tile` is recoloured **by material name**: its `Stone` body and `Slate_flat`
 moon faces take the colour the cell is entitled to -- darker when it is a
@@ -29,7 +33,8 @@ The rim pieces here are generated: `tools/build_models.sh` rebuilds them from
 The tile and the mascots are not: they are modelled by hand in `art/tile.blend`
 and `art/mascot_<name>.blend` (both tracked in git) and exported from there as
 a collection, one `.glb` holding every layer. The same script exports the tile
-in the same run.
+in the same run. Code Break's four pieces are hand-modelled too, in
+`art/codebreak.blend`, one collection per slot.
 
 Full rules: `docs/art/blender-contract.md`.
 Concept reference: `docs/art/concept-binairo-island.png`.

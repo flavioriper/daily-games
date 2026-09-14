@@ -20,6 +20,8 @@ art/*.blend
 !art/tile.blend
 # So is the tree, hand-modelled scenery
 !art/tree.blend
+# So are Code Break's socket, peg, pip and lid
+!art/codebreak.blend
 
 # Python bytecode from running the tools
 __pycache__/

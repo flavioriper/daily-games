@@ -15,6 +15,10 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 | `tree` | up to 1.4 x 1.4 | 2.0 | island scenery, an **assembly**: `Tree_Trunk` (`Bark`), `Tree_Canopy` (`Leaf`, three overlapping blobs in one mesh, one layer) and `Tree_Bloom` (`Bloom_flat`). Still, not `_sway`: the wind shader reaches full strength 0.10 above the base, so a whole canopy would shimmy rather than bend, and `_sway` would cost it its outline |
+| `socket` | 0.94 x 0.94 | 0.15 | Code Break's slab, an **assembly**: `Socket_Body` (`Stone`, tinted by whether its row is active) and `Socket_Well` (`Well_flat`, a disc laid 0.0015 proud on top). The feedback slab is a socket with its well hidden |
+| `peg` | 0.6 across | 0.5 | a colour peg, an **assembly**: `Peg_Body` (`Shell`, tinted per colour) and `Peg_Mark_1` … `Peg_Mark_7` (`Mark_flat`, one to seven pips on the crown in die layouts); the game shows the one mark matching the colour |
+| `pip` | 0.2 across | 0.2 | a feedback pip, an **assembly**: `Pip_Well` (`Well_flat`) and `Pip_Ball` (`Pip`, tinted slate or cream, hidden until scored) |
+| `lid` | 0.94 x 0.94 | 0.3 | the stone lid over one code slot: `Lid_Body` (`Lid`) and `Lid_Knob` (`Knob`) |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
@@ -65,7 +69,9 @@ leaves a gap in the ring. `water` is unbounded.
    keeps the colour it was modelled with. That is deliberate for `Sun` and
    `Moon` -- they must not be tinted, or a moon cell would paint its own
    crescent slate and show nothing. Slots that are never tinted (`rim_edge`,
-   `rim_corner`, `platform`, `water`) may use as many materials as they like.
+   `rim_corner`, `platform`, `water`) may use as many materials as they like;
+   the `socket` tints `Stone`, the `peg` tints `Shell` and `Mark_flat`, the
+   `pip` tints `Pip`.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
    no outline. Use it for any surface that should not read as a piece. The
    `platform`, `water`, `rim_edge`, `rim_corner` and the tile's `Slate_flat`
