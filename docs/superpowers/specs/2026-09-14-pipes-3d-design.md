@@ -549,6 +549,34 @@ water, pollen and the Fx pools about 12 — roughly 430, plus the HUD. The flow
 shader runs on 54 small tubes and the jets are at most five emitters of ten
 particles. Measured numbers are recorded here when the branch is merged.
 
+Amendment (2026-09-14): measured on the Mac at 1080 x 1920 with a throwaway
+copy of `_shot_anim.gd` opening Pipes directly at difficulty 2 (the 6 x 9,
+54-cell board — `_shot_anim.gd` itself hardcodes Binairo at whatever
+difficulty the host defaults to, so the copy built the host with `setup(entry,
+2)` in place of `menu._open`): `idle mean_ms=5.35 max_draw_calls=939`
+scrambled, just after the entrance settled, with the board's own leak jets
+running; `mean_ms=5.48 max_draw_calls=945` driven to solved (every cell's
+`_rot` set to the spanning tree's own 0, the same configuration
+`_win.gd`'s `_solve_pipes` turns every piece back to), all 54 water tubes fed
+and the drain jet live. Frame time is inside the 8 ms budget in both states.
+Draw calls are not: both states land at roughly 2.2x the section 8 estimate
+and over the 855 ceiling, by 84 (scrambled) and 90 (solved) calls. Checked
+against the likely cause the task called out — an extra outline shell on a
+layer that should end `_flat` — and ruled it out: `tests/test_models.gd`'s
+outlined-layer table passes, and a live sample piece's tree shows exactly the
+shape it should (`Pipe_Water` with no `Outline` child, `Pipe_Shell` and
+`Pipe_Collar` each with one). The excess instead looks like the estimate
+having under-counted: the board's own mesh instances alone (pads, pieces,
+valves, platform and rim) come to 420, well past the 430 the estimate gave
+for the *whole* scene including the HUD, and the live `RENDER_TOTAL_
+DRAW_CALLS_IN_FRAME` comes in at a bit over 2x that mesh count, consistent
+with the directional light's shadow pass drawing every shadow-casting mesh a
+second time (outlines are `cast_shadow = 0` and do not get this second
+pass; shells, collars, water tubes and pad bodies do). This budget miss is
+reported as-is, not adjusted for; no attempt was made to reduce the draw
+count, since that is tuning work outside this task's scope. Suite
+`passed=1245 failed=0`, win harness 10/10.
+
 ## Files
 
 New: `puzzles/pipes3d.gd`, `shaders/pipe_flow.gdshader`, `art/pipes.blend`,
