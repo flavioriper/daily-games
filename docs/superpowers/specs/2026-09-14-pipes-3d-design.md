@@ -78,7 +78,7 @@ connected run reads as one continuous pipe.
 | `pipe_elbow` | 1.0 x 1.0 | 0.33 | two adjacent arms |
 | `pipe_tee` | 1.0 x 1.0 | 0.33 | three arms |
 | `pipe_cross` | 1.0 x 1.0 | 0.33 | four arms |
-| `valve` | 0.6 x 0.6 | 0.06 | `Valve_Ring` → `Metal` (tinted), an annulus 0.20 → 0.30 standing 0.05 on the pad top; `Valve_Bolts` → `Bolt_flat`, four discs of radius 0.035 inlaid 0.0015 proud on the diagonals |
+| `valve` | 0.6 x 0.6 | 0.10 | `Valve_Ring` → `Metal` (tinted), a torus of inner radius 0.20 and outer 0.30, so it stands 0.10 with its lowest point on the pad top; `Valve_Bolts` → `Bolt_flat`, four discs of radius 0.035 inlaid 0.0015 proud on the pad diagonals at radius 0.36, clear of the ring |
 
 The three layers every pipe piece carries:
 
@@ -98,8 +98,11 @@ band between two collars is also what the concept's chrome pipes already
 show, so the opaque build is the faithful one as well as the cheap one.
 
 **Placement.** Per cell a `pivot` at the cell centre with y = 0 — this is the
-node that turns and dips — and under it the pad at y = 0 and the piece at
-y = `PAD_H`. The source and drain cells add a `valve` at y = `PAD_H`, whose
+node that dips under a tap — carrying the pad at y = 0 and a `spin` node at
+y = `PAD_H`, which is the node that turns and holds the piece. Splitting the
+two means only the pipe rotates: the pad and the valve stay put however they
+are later modelled, instead of relying on both staying four-fold symmetric.
+The source and drain cells add a `valve` at y = `PAD_H`, whose
 ring (inner radius 0.20) clears the hub (radius 0.16), so nothing collides and
 the cell reads as the concept's bolted blue fixture. Piece choice comes from
 the popcount of the cell's mask and, for two arms, whether they are opposite
@@ -119,6 +122,8 @@ direction `Gen.rotate_mask` already means by one step.
 
 Pads are `STONE`; a hint-locked pad is `STONE_GIVEN` (Binairo's "given"
 colour, reused); the source and drain pads are `WATER`, their rings `STEEL_HI`.
+The water blue wins over the given colour, so a hint spent on the source or
+the drain leaves that pad blue — the valve already says the cell is fixed.
 Shell and collar tints change through `Motion.fade` on an 8-step grid, so the
 toon material cache holds at most nine colours per material name per
 direction. The water tube's wetness is one `wet` uniform on that cell's own
@@ -148,9 +153,9 @@ const MOUTH_AT := 0.47        # the mouth collar's centre along the arm
 const CORE_R := 0.115         # the water tube
 const VALVE_IN := 0.20
 const VALVE_OUT := 0.30
-const VALVE_H := 0.05
+const VALVE_H := VALVE_OUT - VALVE_IN   # a torus is that tall
 const BOLT_R := 0.035
-const BOLT_AT := 0.25         # bolt centres, on the pad diagonals
+const BOLT_AT := 0.36         # bolt centres, on the pad diagonals, outside the ring
 ```
 
 Board constants in the puzzle: `SOURCE := Vector2i(0, 0)`, `HINTS := 3`,
@@ -378,7 +383,7 @@ session through the MCP as a remote control, never by a generator script.
 Bevel 0.02 with 2 segments, smooth shading. Base colours are the dry ones
 above, converted to linear. Exporter budgets added to `LIMITS`:
 `pipe_pad` (1.0, 1.0, 0.15), the five pipe shapes (1.0, 1.0, 0.35), `valve`
-(0.65, 0.65, 0.08).
+(0.65, 0.65, 0.12).
 
 Export and import:
 
@@ -413,7 +418,7 @@ unchanged.
 No new test files. Updated:
 
 - `tests/test_models.gd`: the `SLOTS` expectation, `HEIGHT_BUDGET` rows
-  (`pipe_pad` 0.15, the five shapes 0.35, `valve` 0.08) and the outlined-layer
+  (`pipe_pad` 0.15, the five shapes 0.35, `valve` 0.12) and the outlined-layer
   table (`pipe_pad: [Stone]`, each pipe shape `[Steel, Collar]`,
   `valve: [Metal]`).
 - `tests/_win.gd`: `_solve_pipes` taps through `cell_to_local(r, c)` instead
