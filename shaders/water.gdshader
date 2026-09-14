@@ -35,7 +35,7 @@ void fragment() {
 	float wx = sin(p.y * 2.3 + t * 0.4) * 1.7;
 	float wz = sin(p.x * 1.9 - t * 0.3) * 1.7;
 	float s = sin(p.x * 7.3 + wx + t * 1.3) * sin(p.y * 6.1 + wz - t * 0.9);
-	float spark = step(0.985, s);
+	float spark = step(0.995, s);
 	vec3 col = mix(base_color.rgb, band_color.rgb, band);
 	col = mix(col, sparkle_color.rgb, spark);
 	if (splash_age >= 0.0 && splash_age < 2.0) {

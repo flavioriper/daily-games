@@ -31,7 +31,7 @@ const PLATFORM_H := 0.6
 const RIM_H := 0.04
 ## The focus ring: a flat square frame around one cell (polish spec, section 6).
 const FOCUS_OUTER := 0.46
-const FOCUS_INNER := 0.40
+const FOCUS_INNER := 0.38
 
 static func make(slot: String) -> Node3D:
 	var root := Node3D.new()
