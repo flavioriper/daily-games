@@ -27,6 +27,7 @@ static func run_in_tree(t) -> void:
 	rng.seed = 7
 	p.build(rng, 0)
 
+	_test_entrance(t, p)
 	_test_platform_under_board(t, p)
 	_test_prism_geometry(t, p)
 	_test_faces_carry_emblems(t, p)
@@ -36,7 +37,8 @@ static func run_in_tree(t) -> void:
 	_test_focus_ring(t, p)
 	_test_blush_pulse(t, p)
 	_test_locked_cell(t, p)
-	_test_reset_snaps(t, p)
+	_test_reset_wave(t, p)
+	_test_solved_wave(t, p)
 
 	root.remove_child(p)
 	p.free()
@@ -62,6 +64,32 @@ static func _chain(node: Node3D, stop: Node) -> Transform3D:
 		xf = (n as Node3D).transform * xf
 		n = n.get_parent()
 	return xf
+
+## The board arrives (polish spec, section 2): the platform rises from below,
+## then the prisms pop in along a diagonal wave from the far-left corner.
+## Stepping every entrance tween to its end leaves a resting board.
+static func _test_entrance(t, p) -> void:
+	var platform: Node3D = p.board.get_node("Platform")
+	t.check(is_equal_approx(platform.position.y, -p.ENTER_DROP), "the platform starts below the surface (%.2f)" % platform.position.y)
+	t.check(p._cells[0][0].scale.x < 0.05, "the prisms start tiny")
+	t.check(p._entrance.size() >= p.n * p.n + 1, "one entrance tween per prism plus the platform (%d)" % p._entrance.size())
+	# The far-left prism pops first, the near-right one last.
+	var first_pop: float = p.ENTER_PLATFORM + Motion.stagger(0, p.ENTER_STAGGER)
+	var last_pop: float = p.ENTER_PLATFORM + Motion.stagger(2 * (p.n - 1), p.ENTER_STAGGER)
+	for tw in p._entrance:
+		tw.custom_step(first_pop + p.ENTER_POP * 0.5)
+	t.check(p._cells[0][0].scale.x > 0.5, "half a pop after the platform lands, the far-left prism is well on its way (%.2f)" % p._cells[0][0].scale.x)
+	t.check(p._cells[p.n - 1][p.n - 1].scale.x < 0.05, "the near-right prism has not started (%.2f)" % p._cells[p.n - 1][p.n - 1].scale.x)
+	t.check(is_equal_approx(platform.position.y, 0.0), "the platform has landed")
+	for tw in p._entrance:
+		tw.custom_step(last_pop + p.ENTER_POP + 1.0)
+	var all_home := true
+	for r in p.n:
+		for c in p.n:
+			if not p._cells[r][c].scale.is_equal_approx(Vector3.ONE):
+				all_home = false
+	t.check(all_home, "every prism ends at scale one")
+	t.eq(p.fx.last_cue, "enter", "the entrance fires its cue")
 
 static func _test_platform_under_board(t, p) -> void:
 	var platform: Node = p.board.get_node_or_null("Platform")
@@ -308,8 +336,33 @@ static func _test_locked_cell(t, p) -> void:
 	p._bobs[r][c].custom_step(p.BOB_TIME)
 	t.check(is_equal_approx(p._cells[r][c].position.y, p._rest_y), "the dip returns to rest")
 
-static func _test_reset_snaps(t, p) -> void:
+## Reset rolls every filled free cell forward to empty in a wave from the
+## near-left corner and gives the givens a little hop; the grid clears at once.
+static func _test_reset_wave(t, p) -> void:
+	var free := _find_cell(p, false)
+	# Earlier tests have rolled this cell an unknown number of times; tap it
+	# round to a sun so the two-thirds roll is what reset has to do.
+	var guard := 0
+	while p._grid[free.y][free.x] != 0 and guard < 3:
+		_tap(p, free.y, free.x)
+		p._settle(free.y, free.x)
+		guard += 1
+	t.eq(p._grid[free.y][free.x], 0, "setup: a sun is placed")
+	var turns_before: int = p._turns[free.y][free.x]
+	var given := _find_cell(p, true)
 	p.reset_board()
+	t.eq(p._grid[free.y][free.x], -1, "reset clears the grid at once")
+	t.eq(p.moves, 0, "reset zeroes the move count")
+	t.check(p.focus_cell == Vector2i(-1, -1), "reset drops the focus")
+	t.check(Motion.running(p._rolls[free.y][free.x]), "the placed cell rolls home")
+	t.check(Motion.running(p._bobs[given.y][given.x]), "a given hops to say it stays")
+	t.eq(p._turns[free.y][free.x], turns_before + 2, "a sun rolls two more thirds forward to reach empty, never back")
+	t.eq(p._turns[free.y][free.x] % 3, 0, "and lands on the empty face")
+	for r in p.n:
+		for c in p.n:
+			for tw in [p._rolls[r][c], p._hops[r][c], p._bobs[r][c]]:
+				if Motion.running(tw):
+					tw.custom_step(5.0)
 	var all_home := true
 	var none_running := true
 	for r in p.n:
@@ -319,8 +372,38 @@ static func _test_reset_snaps(t, p) -> void:
 			var want := -float(state + 1 if state >= 0 else 0) * THIRD
 			if not is_equal_approx(wrapf(pivot.rotation.x - want, -PI, PI), 0.0):
 				all_home = false
-			var tw: Tween = p._rolls[r][c]
-			if tw != null and tw.is_valid() and tw.is_running():
-				none_running = false
-	t.check(all_home, "reset snaps every prism to the face for its grid value")
-	t.check(none_running, "reset leaves no roll running")
+			if not is_equal_approx(pivot.position.y, p._rest_y):
+				all_home = false
+			for tw in [p._rolls[r][c], p._hops[r][c], p._bobs[r][c]]:
+				if Motion.running(tw):
+					none_running = false
+	t.check(all_home, "after the wave every prism shows its grid face and rests on its axis")
+	t.check(none_running, "the wave leaves nothing running")
+	if Motion.running(p._ring_tw):
+		p._ring_tw.custom_step(5.0)
+	t.check(not p._ring.visible, "reset hides the ring")
+
+## On a solve every prism hops once, row by row from the far edge, after the
+## last roll has had time to land.
+static func _test_solved_wave(t, p) -> void:
+	for r in p.n:
+		for c in p.n:
+			p._grid[r][c] = p._solution[r][c]
+	p.note_move()
+	t.check(p.is_done(), "setup: the board is solved")
+	t.check(Motion.running(p._bobs[0][0]) and Motion.running(p._bobs[p.n - 1][p.n - 1]), "every prism has a solve hop scheduled")
+	p._bobs[0][0].custom_step(p.ROLL_TIME + p.SOLVE_TIME * 0.5)
+	p._bobs[p.n - 1][0].custom_step(p.ROLL_TIME + p.SOLVE_TIME * 0.5)
+	t.check(p._cells[0][0].position.y > p._rest_y + 0.05, "the far row is up first (%.3f)" % (p._cells[0][0].position.y - p._rest_y))
+	t.check(p._cells[p.n - 1][0].position.y < p._cells[0][0].position.y, "the near row lags behind")
+	for r in p.n:
+		for c in p.n:
+			if Motion.running(p._bobs[r][c]):
+				p._bobs[r][c].custom_step(5.0)
+	var rested := true
+	for r in p.n:
+		for c in p.n:
+			if not is_equal_approx(p._cells[r][c].position.y, p._rest_y):
+				rested = false
+	t.check(rested, "after the wave every prism rests on its axis")
+	t.eq(p.fx.last_cue, "solved", "the solve fires its cue")

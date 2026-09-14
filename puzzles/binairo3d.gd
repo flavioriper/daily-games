@@ -47,8 +47,22 @@ const FOCUS_PULSE := 1.2
 const FOCUS_ALPHA := 0.9
 const FOCUS_ALPHA_LOW := 0.6
 const FOCUS_LIFT := 0.005
+## Entrance, reset wave and solved wave (polish spec, section 2).
+const ENTER_DROP := 0.5
+const ENTER_PLATFORM := 0.5
+const ENTER_POP := 0.25
+const ENTER_STAGGER := 0.03
+const RESET_STAGGER := 0.02
+const RESET_HOP := 0.03
+const SOLVE_HOP := 0.08
+const SOLVE_TIME := 0.4
+const SOLVE_STAGGER := 0.04
 ## Face index per cell value: empty up, then sun, then moon.
 const FACE := {-1: 0, 0: 1, 1: 2}
+
+func _ready() -> void:
+	super()
+	solved.connect(_on_solved)
 
 var n: int = 6
 var _grid: Array = []
@@ -79,6 +93,7 @@ var _ring_hold: Tween   # the pause before the fade
 ## The last tapped cell as (col, row); (-1, -1) before the first tap. The
 ## working-line card in the HUD reads this.
 var focus_cell := Vector2i(-1, -1)
+var _entrance: Array = []  # tweens of the board entrance, killed by reset
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
@@ -115,19 +130,32 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_scene()
 	_recolour()
 	_refit()
+	_enter()
 
+## Reset as a wave: every filled free cell rolls forward to empty (a sun takes
+## two thirds, a moon one) with a stagger from the near-left corner, and the
+## givens hop a little to say they stay. The grid, the count and the blush
+## change at once; only the prisms take their time.
 func reset_board() -> void:
+	_stop_entrance()
 	_focus_clear()
 	for r in n:
 		for c in n:
 			_settle(r, c)
-			if not _given[r][c]:
-				_grid[r][c] = -1
-			_turns[r][c] = FACE[_grid[r][c]]
-			_cells[r][c].rotation.x = _target_angle(r, c)
-			_show_faces(r, c, false)
+			var delay := Motion.stagger((n - 1 - r) + c, RESET_STAGGER)
+			if _given[r][c]:
+				_bobs[r][c] = Motion.hop(_cells[r][c], RESET_HOP, BOB_TIME, delay, _rest_y)
+				continue
+			var v: int = _grid[r][c]
+			if v == -1:
+				continue
+			_grid[r][c] = -1
+			var thirds := 2 if v == 0 else 1
+			_turns[r][c] += thirds
+			_roll(r, c, thirds, delay)
 	moves = 0
 	_recolour()
+	fx.cue("reset")
 
 func is_solved() -> bool:
 	return Gen.is_valid_complete(_grid)
@@ -379,6 +407,60 @@ func _focus_clear() -> void:
 	Motion.stop(_ring_hold)
 	focus_cell = Vector2i(-1, -1)
 	_focus_fade()
+
+# --- entrance and solve ---
+
+## The board arrives: the platform rises from below and rings the water, then
+## the prisms pop in along a diagonal wave from the far-left corner. Taps are
+## accepted throughout; scale, rotation and height are separate properties.
+func _enter() -> void:
+	_stop_entrance()
+	var platform: Node3D = board.get_node("Platform")
+	platform.position.y = -ENTER_DROP
+	var rise: Tween = Motion.settle(platform, "position:y", 0.0, ENTER_PLATFORM)
+	if rise != null:
+		_entrance.append(rise)
+		var splash := board.create_tween()
+		splash.tween_interval(ENTER_PLATFORM * 0.9)
+		splash.tween_callback(_splash)
+		_entrance.append(splash)
+	for r in n:
+		for c in n:
+			var pivot: Node3D = _cells[r][c]
+			pivot.scale = Vector3.ONE * 0.01
+			var pop: Tween = Motion.settle(pivot, "scale", Vector3.ONE, ENTER_POP, ENTER_PLATFORM + Motion.stagger(r + c, ENTER_STAGGER))
+			if pop != null:
+				_entrance.append(pop)
+	fx.cue("enter")
+
+## Cuts the entrance short: everything lands where it was going.
+func _stop_entrance() -> void:
+	for tw in _entrance:
+		Motion.stop(tw)
+	_entrance = []
+	if _cells.is_empty():
+		return
+	var platform: Node3D = board.get_node_or_null("Platform")
+	if platform != null:
+		platform.position.y = 0.0
+	for r in n:
+		for c in n:
+			_cells[r][c].scale = Vector3.ONE
+
+## Rings the water under the board, when there is a stage to ask.
+func _splash() -> void:
+	if _stage != null and is_instance_valid(_stage) and _stage.has_method("splash"):
+		_stage.splash(board.global_position)
+
+## Every prism hops once, row by row from the far edge, once the last roll
+## has landed. The celebration in sub-project 3 builds on this.
+func _on_solved() -> void:
+	_focus_clear()
+	for r in n:
+		for c in n:
+			Motion.stop(_bobs[r][c])
+			_bobs[r][c] = Motion.hop(_cells[r][c], SOLVE_HOP, SOLVE_TIME, ROLL_TIME + Motion.stagger(r, SOLVE_STAGGER), _rest_y)
+	fx.cue("solved")
 
 ## Rule feedback. Cells whose line just broke fade toward the rose blend and
 ## give two heartbeats; cells whose line was fixed fade back. A cell already

@@ -2,8 +2,9 @@ extends SceneTree
 
 ## Walks every registered prototype, screenshots it, and moves on.
 ## Reusable as puzzles get added.
+## The slot is long enough for a board's entrance to finish before the shot.
 
-const SLOT := 40
+const SLOT := 120
 
 var _menu: Node
 var _host: Node
@@ -28,11 +29,11 @@ func _process(_delta: float) -> bool:
 	if local == 5:
 		_menu._open(_entries[_idx])
 		_host = _menu.get_child(_menu.get_child_count() - 1)
-	elif local == 30:
+	elif local == 100:
 		var img := root.get_texture().get_image()
 		img.save_png("/tmp/shot_%s.png" % _entries[_idx].id)
 		print("saved /tmp/shot_%s.png" % _entries[_idx].id)
-	elif local == 36:
+	elif local == 110:
 		_host.closed.emit()
 		_idx += 1
 	return false
