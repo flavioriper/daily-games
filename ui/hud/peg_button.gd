@@ -36,7 +36,11 @@ func _ready() -> void:
 func set_entry(colour_: Color, mark_: int, enabled: bool) -> void:
 	colour = colour_
 	mark = mark_
-	disabled = not enabled
+	set_enabled(enabled)
+
+## Takes or refuses picks, as every other HUD button does.
+func set_enabled(on: bool) -> void:
+	disabled = not on
 	queue_redraw()
 
 func _squish() -> void:

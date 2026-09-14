@@ -61,7 +61,7 @@ headless tests see the same contract.
 | slot | footprint | height | layers (object → material) |
 |---|---|---|---|
 | `socket` | 0.94 x 0.94 | 0.12 | `Socket_Body` → `Stone` (tinted); `Socket_Well` → `Well_flat`, a disc of radius 0.3 laid 0.0015 proud on the top, the tile's slate-slab trick. The feedback slab is a socket with its well hidden |
-| `peg` | 0.6 across | 0.44 | `Peg_Body` → `Shell` (tinted per colour), a dome; `Peg_Mark_1` … `Peg_Mark_7` → `Mark_flat`, one to seven pips laid out like die faces on the crown (7 is a ring of six plus one), each 0.07 across, 0.0015 proud. The game shows the one mark matching the colour index and tints it a darker shade of the peg's colour |
+| `peg` | 0.6 across | 0.44 | `Peg_Body` → `Shell` (tinted per colour), a dome; `Peg_Mark_1` … `Peg_Mark_7` → `Mark_flat`, one to seven pips laid out like die faces on the crown (7 is a ring of six plus one), each 0.07 across, 0.012 thick, rotated to the crown's normal and centred on the surface, so 0.006 stands proud, the tile-inlay treatment. The game shows the one mark matching the colour index and tints it a darker shade of the peg's colour |
 | `pip` | 0.2 across | 0.16 | `Pip_Well` → `Well_flat`, a disc of radius 0.1; `Pip_Ball` → `Pip` (tinted), a sphere of radius 0.08 resting in it, hidden until the row is scored |
 | `lid` | 0.94 x 0.94 | 0.24 | `Lid_Body` → `Lid`, a 0.16 slab; `Lid_Knob` → `Knob`, a small wooden knob on top |
 
@@ -239,12 +239,12 @@ static func vanish(node: Node3D, lift: float, time: float, delay := 0.0) -> Twee
 | moment | motion | cue |
 |---|---|---|
 | entrance | platform rises from -0.5 in 0.5 s and rings the water (as Binairo); sockets and feedback slabs pop from scale 0.01 with `stagger(r + c, 0.02)` after the platform; lids drop from +0.6 with `settle` after a further 0.3 s, `stagger(s, 0.06)` | `enter` |
-| place | the peg appears 0.5 above its socket and settles to `SOCKET_H` in 0.3 s; **essential** (it is the state change); a small puff at the socket on landing | `place` |
+| place | the peg appears 0.5 above its socket and settles to `SOCKET_H` in 0.3 s; **essential** (it is the state change); a small puff at the socket on landing | `place`, then `land` |
 | pop / undo of a place | `vanish(peg, 0.25, 0.22)` | `pop` / `undo` |
 | full row pick | every peg in the row hops 0.05 in 0.25 s | `full` |
 | tap elsewhere | the socket's pivot dips 0.02 in 0.35 s | `focus` |
 | incomplete Check | empty sockets wobble (`Motion.wobble(pivot, 0.1, 0.4)`) | `check` |
-| score | the row's pivots dip 0.03 together, then each hit's ball pops from scale 0.01 in 0.25 s with `stagger(k, 0.06)`; a sparkle over the feedback slab when `exact > 0`; the row fades to `STONE_GIVEN` and the next row fades to `STONE` and starts breathing | `score` |
+| score | the row's pivots dip 0.03 together, then each hit's ball pops from scale 0.01 in 0.25 s with `stagger(k, 0.06)`; a sparkle over the feedback slab when `exact > 0`; the row fades to `STONE_GIVEN` and the next row fades to `STONE` and starts breathing; locked slots re-place silently (the drop's `place` cue is suppressed, the puff on landing stays) | `score` |
 | lid off | slides 1.3 toward the far edge in 0.4 s (`slide`, sine), falls to `-WATER_DEPTH` in 0.5 s ease-in, hides, and rings the water at its last position (`stage.splash`); the code peg under it pops from scale 0.01 as the slide ends | `lid` |
 | hint | lid off for that slot; the code peg drops into the active row with a sparkle | `hint` |
 | win | lids off with `stagger(s, 0.12)`; the winning row's pegs hop 0.08 in 0.4 s with `stagger(s, 0.05)` | `solved` |
@@ -300,16 +300,18 @@ godot --path . --resolution 720x720 --script res://tests/_shot_model.gd -- peg
 ## 6. Code structure
 
 `puzzles/codebreak3d.gd` (`extends "res://core/puzzle_base_3d.gd"`), sections
-in this order, mirroring Binairo: constants; state; `puzzle_id / title / rules
-/ board_*`; `build`, `reset_board`, `is_solved`, `share_glyphs`; capabilities
-(`capabilities`, `can_undo`, `undo`, `hints_left`, `hint`, `check`, `palette`,
-`pick`); scene building (`_build_scene`, `_make_cell`, `_make_feedback`,
-`_make_code_slot`); pieces (`_place`, `_vanish_peg`, `_show_mark`,
-`_score_row`, `_activate_row`, `_lid_away`, `_lid_back`); tints (`_tint_row`);
-motion helpers (`_dip`, `_settle`, `_stop_all`, `_enter`, `_stop_entrance`,
-`_splash`, `_on_solved`, `_lose`); input (`on_board_press`, `cell_to_local`,
-`slot_to_local`). `puzzles/mastermind.gd` is deleted; `mastermind_gen.gd`
-stays as is.
+in this order, mirroring Binairo: constants; state; `puzzle_id / title /
+rules / board_*`; `build`, `reset_board`, `is_solved`, `share_glyphs`;
+capabilities (`capabilities`, `_open`, `_active`, `palette`, `pick`,
+`_free_slot`, `can_undo`, `undo`, `hints_left`, `hint`, `check`); scene
+(`_stop_all`, `_build_scene`, `_cell`, `_code_pos`, `_pip_offset`,
+`_make_peg`); pieces (`_place`, `_on_peg_landed`, `_clear_peg`,
+`_vanish_peg`, `_score_row`, `_activate_row`, `_paint`, `_lid_away`,
+`_on_lid_sunk`, `_show_code_peg`, `_lid_back`); motion helpers (`_dip`,
+`_settle`, `_enter`, `_pop_in`, `_stop_entrance`, `_splash`, `_on_solved`,
+`_lose`); input (`on_board_press`, `cell_to_local`). The scene is built in one
+function, as Binairo's is. `puzzles/mastermind.gd` is deleted;
+`mastermind_gen.gd` stays as is.
 
 ## 7. Verification
 
@@ -339,7 +341,10 @@ merged.
 
 Amendment (2026-09-14): measured on the Mac at 1080 x 1920 with a throwaway
 copy of `_shot_anim.gd` opening Code Break: `idle mean_ms=3.62
-max_draw_calls=393`. Suite `passed=1192 failed=0`, win harness 10/10.
+max_draw_calls=393` with four pegs placed; `mean_ms=4.36 max_draw_calls=489`
+with seven rows scored and the eighth filled, the fullest board at rest. Both
+inside the 8 ms and 855 budget. Suite `passed=1192 failed=0`, win harness
+10/10.
 
 ## Files
 

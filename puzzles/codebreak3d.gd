@@ -19,6 +19,7 @@ const Placeholders = preload("res://core/placeholders.gd")
 const Platform = preload("res://core/platform.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx = preload("res://world/fx.gd")
+const Stage = preload("res://world/stage.gd")
 
 const CODE_ROW := 0
 const HINTS := 3
@@ -47,7 +48,7 @@ const WOBBLE_ANGLE := 0.1
 const WOBBLE_TIME := 0.4
 const LID_SLIDE := 1.3
 const LID_SLIDE_TIME := 0.4
-const LID_FALL := 4.0          # Stage.WATER_DEPTH: the lid sinks to the water
+const LID_FALL := Stage.WATER_DEPTH   # the lid sinks to the water
 const LID_FALL_TIME := 0.5
 const LID_STAGGER := 0.12
 const LID_DROP := 0.6
@@ -64,6 +65,9 @@ const ENTER_LIDS := 0.3
 const RESET_STAGGER := 0.02
 const SPARKLE_LIFT := 0.1
 const LOCKED_STAGGER := 0.05
+## Room the camera's fit leaves above a seated peg, so its outline is never
+## clipped by the top of the board's frame (spec section 1, Camera).
+const FRAME_SLACK := 0.04
 
 var length: int = 4
 var palette_size: int = 6
@@ -115,7 +119,7 @@ func rules() -> String:
 func board_size() -> Vector2i: return Vector2i(length + 1, max_guesses + 1)
 ## A socket with a peg on it; nothing stands higher at rest. A placed peg
 ## drops from PLACE_DROP above, which the camera's margin absorbs.
-func board_height() -> float: return Placeholders.SOCKET_H + Placeholders.PEG_H + 0.04
+func board_height() -> float: return Placeholders.SOCKET_H + Placeholders.PEG_H + FRAME_SLACK
 func plane_height() -> float: return Placeholders.SOCKET_H
 func board_margin() -> float: return Platform.LIP
 func board_depth() -> float: return Placeholders.PLATFORM_H
@@ -487,8 +491,9 @@ func _make_peg(colour: int) -> Node3D:
 
 ## Drops a peg of `colour` onto socket (g, s), replacing whatever is there at
 ## once. The drop is the state change, so it is essential and survives
-## reduce-motion shortened.
-func _place(g: int, s: int, colour: int, delay := 0.0) -> void:
+## reduce-motion shortened. `cue` false places silently: a row that activates
+## re-places its locked pegs, which is one event, not one per slot.
+func _place(g: int, s: int, colour: int, delay := 0.0, cue := true) -> void:
 	_clear_peg(g, s)
 	var peg := _make_peg(colour)
 	peg.name = "peg"
@@ -501,7 +506,8 @@ func _place(g: int, s: int, colour: int, delay := 0.0) -> void:
 		_peg_tw[g][s] = tw
 	else:
 		_on_peg_landed(g, s)
-	fx.cue("place")
+	if cue:
+		fx.cue("place")
 
 func _on_peg_landed(g: int, s: int) -> void:
 	fx.puff(_cell(g, s, Placeholders.SOCKET_H))
@@ -525,6 +531,9 @@ func _vanish_peg(g: int, s: int, delay := 0.0) -> void:
 	Motion.stop(_peg_tw[g][s])
 	_peg_tw[g][s] = null
 	_pegs[g][s] = null
+	# The tween stays untracked on purpose: the slot has already forgotten the
+	# peg, and the tween is bound to the peg, so it dies with it and its
+	# `finished` is what frees it.
 	var tw: Tween = Motion.vanish(peg, POP_LIFT, POP_TIME, delay)
 	if tw == null:
 		peg.queue_free()
@@ -580,7 +589,7 @@ func _activate_row(g: int, instant := false) -> void:
 	for s in length:
 		if _locked[s] and _row[s] == -1:
 			_row[s] = _code[s]
-			_place(g, s, int(_code[s]), Motion.stagger(s, LOCKED_STAGGER))
+			_place(g, s, int(_code[s]), Motion.stagger(s, LOCKED_STAGGER), false)
 
 ## The socket's tint at a blend from STONE (0) to STONE_GIVEN (1), snapped to
 ## the 8-step grid so a fade asks the toon cache for at most nine colours.
