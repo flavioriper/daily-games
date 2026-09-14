@@ -64,6 +64,35 @@ static func hop(node: Node, height: float, time: float, delay := 0.0, base := NA
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	return tw
 
+## Rolls a cube through a sequence of quarter turns without letting it cut
+## into the floor it stands on. `turns` is one [from: Basis, axis: Vector3,
+## angle: float] per quarter turn, played in order, so a two-face roll tumbles
+## twice instead of sliding. Between turns the cube sits flat on the face it
+## just landed on: its centre rides `half * sqrt(2) * cos(45 degrees - turned)`
+## above `base`, which comes to exactly `half` at the start and end of every
+## turn, so the cube pivots on the bottom edge it rolls over. The roll is the
+## state change itself, so it is essential: under reduce-motion it still
+## turns, shortened and linear.
+static func roll(node: Node3D, turns: Array, half: float, base: float, time: float, delay := 0.0) -> Tween:
+	var count := turns.size()
+	var radius := half * sqrt(2.0)
+	var play := func(t: float) -> void:
+		var i := clampi(int(floorf(t)), 0, count - 1)
+		var turn: Array = turns[i]
+		var angle: float = turn[2] * (t - i)
+		node.basis = Basis(turn[1], angle) * (turn[0] as Basis)
+		# The back ease overshoots the last turn; clamping the lift at a
+		# quarter keeps that overshoot from driving the cube into the floor.
+		var turned := clampf(absf(angle), 0.0, PI * 0.5)
+		node.position.y = base + radius * cos(PI * 0.25 - turned) - half
+	var tw := node.create_tween()
+	if reduce:
+		tw.tween_method(play, 0.0, float(count), REDUCED_TIME).set_delay(delay).set_trans(Tween.TRANS_LINEAR)
+	else:
+		tw.tween_method(play, 0.0, float(count), time).set_delay(delay) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
+
 ## Flattens y by `amount` and widens the other axes by half of it, then
 ## springs back. A Node3D squashes in x and z; a Control in x, around its
 ## pivot_offset.

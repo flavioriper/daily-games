@@ -1,8 +1,9 @@
 extends RefCounted
 
-## Binairo on the stage: every cell is a three-sided prism (a trilon) on a
-## pivot through its axis. The faces carry empty, sun and moon; a tap rolls
-## the prism a third of a turn toward the player so the next face comes up.
+## Binairo on the stage: every cell is a cube on a pivot through its centre,
+## standing on the platform. Its six faces carry empty, sun and moon twice
+## each, on opposite pairs, so a tap rolls the cube a quarter turn -- about X,
+## then Z, then X -- and the next state is always one turn away.
 ## The grid changes at once, the roll is only visual, and a second tap mid-roll
 ## snaps the first roll home before starting the next. Needs a live tree
 ## (PuzzleBase3D mounts in _ready), so this runs from run_in_tree.
@@ -15,7 +16,7 @@ const Models = preload("res://core/models.gd")
 const Placeholders = preload("res://core/placeholders.gd")
 const Motion = preload("res://core/motion.gd")
 
-const THIRD := TAU / 3.0
+const QUARTER := TAU / 4.0
 
 static func run_in_tree(t) -> void:
 	var root: Node = (Engine.get_main_loop() as SceneTree).root
@@ -35,9 +36,9 @@ static func run_in_tree(t) -> void:
 
 	_test_entrance(t, p)
 	_test_platform_under_board(t, p)
-	_test_prism_geometry(t, p)
+	_test_cube_geometry(t, p)
 	_test_faces_carry_emblems(t, p)
-	_test_face_colours(t, p)
+	_test_cube_colours(t, p)
 	_test_tap_rolls(t, p)
 	_test_neighbour_bob(t, p)
 	_test_focus_ring(t, p)
@@ -97,7 +98,7 @@ static func _test_entrance(t, p) -> void:
 		for c in p.n:
 			if not p._cells[r][c].scale.is_equal_approx(Vector3.ONE):
 				all_home = false
-	t.check(all_home, "every prism ends at scale one")
+	t.check(all_home, "every cube ends at scale one")
 	t.eq(p.fx.last_cue, "enter", "the entrance fires its cue")
 
 static func _test_platform_under_board(t, p) -> void:
@@ -105,10 +106,12 @@ static func _test_platform_under_board(t, p) -> void:
 	t.check(platform != null and platform.get_node_or_null("Slab") != null, "board carries a Platform with a Slab")
 	t.check(platform != null and platform.get_child_count() == 1 + 4 * p.n + 4, "platform has a full moss rim")
 
-static func _test_prism_geometry(t, p) -> void:
-	# At rest the flat face sits TILE_RISE above the platform (the tap plane)
-	# and the prism's axis, the pivot, is one apothem below it. The rest of the
-	# prism hangs inside the platform.
+static func _test_cube_geometry(t, p) -> void:
+	# The cube stands on the platform: its top face is TILE_RISE (a full side)
+	# above it and is the tap plane, its base sits on the platform with
+	# nothing hanging below, and the pivot is its centre, half a side down.
+	# This is the whole point of the cube -- a trilon buried in the stone
+	# showed only its horizontal top face at the camera's 68-degree pitch.
 	var cell := _find_cell(p, false)
 	var pivot: Node3D = p._cells[cell.y][cell.x]
 	var lo := INF
@@ -119,108 +122,122 @@ static func _test_prism_geometry(t, p) -> void:
 			var y: float = (xf * v).y
 			lo = minf(lo, y)
 			hi = maxf(hi, y)
-	t.check(absf(hi - Placeholders.TILE_RISE) < 0.005, "flat face rests at y=%.2f (got %.3f)" % [Placeholders.TILE_RISE, hi])
-	t.check(lo < -0.5, "the apex hangs inside the platform (min y %.3f)" % lo)
-	t.check(is_equal_approx(p.plane_height(), Placeholders.TILE_RISE), "taps land on the flat face")
-	var axis := BoardMath.cell_center(cell.y, cell.x, p.n, p.n, Placeholders.TILE_RISE - Placeholders.TILE_APOTHEM)
-	t.check(pivot.position.is_equal_approx(axis), "pivot sits on the prism axis (%s vs %s)" % [pivot.position, axis])
+	t.check(absf(hi - Placeholders.TILE_RISE) < 0.005, "top face rests at y=%.2f (got %.3f)" % [Placeholders.TILE_RISE, hi])
+	t.check(absf(lo) < 0.02, "the cube stands on the platform rather than inside it (min y %.3f)" % lo)
+	t.check(absf((hi - lo) - Placeholders.TILE_SIDE) < 0.02, "and shows a full side of wall (%.3f)" % (hi - lo))
+	t.check(is_equal_approx(p.plane_height(), Placeholders.TILE_RISE), "taps land on the top face")
+	var centre := BoardMath.cell_center(cell.y, cell.x, p.n, p.n, Placeholders.TILE_RISE - Placeholders.TILE_HALF)
+	t.check(pivot.position.is_equal_approx(centre), "pivot sits at the cube's centre (%s vs %s)" % [pivot.position, centre])
 
 static func _test_faces_carry_emblems(t, p) -> void:
-	# Face 0 (up at rest) carries the empty mark, face 1 the sun on the near
-	# side (+Z), face 2 the moon on the far side. Each emblem stands on its
-	# face's centre and points along its normal, so all three stay visible and
-	# only the pivot's angle says which one is up.
+	# Six faces, one emblem each, every state on an opposite pair: faces 0 and
+	# 3 carry the empty mark, 1 and 4 the sun, 2 and 5 the moon. Face f is the
+	# one up after f quarter turns, so it wears the inverse of that
+	# orientation -- put the cube at _orient(f) and the emblem must come out
+	# upright, on top, half a side from the centre. That invariant is what
+	# lets every tap be a single quarter turn.
 	var cell := _find_cell(p, false)
 	var r := cell.y
 	var c := cell.x
-	var apothem := Placeholders.TILE_APOTHEM
-	var checks := [[p._marks[r][c], 0], [p._suns[r][c], 1], [p._moons[r][c], 2]]
-	var all_ok := true
-	for pair in checks:
-		var emblem: Node3D = pair[0]
-		var face: int = pair[1]
-		var want := Basis(Vector3.RIGHT, face * THIRD) * Vector3(0.0, apothem, 0.0)
-		if not emblem.position.is_equal_approx(want) or not is_equal_approx(wrapf(emblem.rotation.x - face * THIRD, -PI, PI), 0.0):
-			all_ok = false
-	t.check(all_ok, "mark, sun and moon stand on faces 0, 1, 2 at one apothem from the axis")
-	t.check(p._suns[r][c].position.z > 0.1, "sun face is on the near side, toward the player")
-	# The two faces inside the platform are hidden at rest: they cannot be
-	# seen and would only cost draw calls.
-	t.check(p._marks[r][c].visible and not p._suns[r][c].visible and not p._moons[r][c].visible,
-		"at rest only the face-up emblem is visible")
+	var half := Placeholders.TILE_HALF
+	var emblems: Array = p._faces[r][c]
+	t.eq(emblems.size(), p.FACES, "a cell carries one emblem per cube face")
+	var upright := true
+	var slots_ok := true
+	for f in p.FACES:
+		var emblem: Node3D = emblems[f]
+		var orient: Basis = p._orient(f)
+		if not (orient * emblem.basis).is_equal_approx(Basis.IDENTITY):
+			upright = false
+		if not (orient * emblem.position).is_equal_approx(Vector3(0.0, half, 0.0)):
+			upright = false
+		if emblem.name != "face_%d_%s" % [f, p.EMBLEM[posmod(f, 3)]]:
+			slots_ok = false
+	t.check(upright, "every face's emblem comes up upright and on top once the cube rolls to it")
+	t.check(slots_ok, "the six faces carry mark, sun, moon twice round")
+	# Only the face that is up shows: the other five are on the cube's walls
+	# and underside, where an emblem would read as a second answer.
+	var shown := []
+	for f in p.FACES:
+		if (emblems[f] as Node3D).visible:
+			shown.append(f)
+	t.eq(shown, [posmod(p._turns[r][c], p.FACES)], "at rest only the emblem on the face that is up is visible")
 
-static func _face_colour(p, r: int, c: int, face: String) -> Color:
-	for mi in Models.meshes(p._tiles[r][c]):
-		for i in mi.mesh.get_surface_count():
-			if mi.mesh.surface_get_material(i).resource_name == face:
-				return Color(mi.get_surface_override_material(i).get_shader_parameter("albedo"))
-	return Color.MAGENTA
+static func _cube_colour(p, r: int, c: int) -> Color:
+	var mi: MeshInstance3D = Models.meshes(p._tiles[r][c])[0]
+	return Color(mi.get_surface_override_material(0).get_shader_parameter("albedo"))
 
-static func _test_face_colours(t, p) -> void:
-	var free := _find_cell(p, false)
-	var moon := _face_colour(p, free.y, free.x, "Face_Moon")
-	var sun := _face_colour(p, free.y, free.x, "Face_Sun")
-	var empty := _face_colour(p, free.y, free.x, "Face_Empty")
-	var cap := _face_colour(p, free.y, free.x, "Cap")
+static func _test_cube_colours(t, p) -> void:
+	# The whole cube takes the colour of the state that is up, not one face:
+	# a cube that rotates cannot hold a colour on a face, since a moon face
+	# lands on the front wall while an empty face is up (amendment C).
 	var blend: float = p.BAD_BLEND
-	var slate_ok := moon.is_equal_approx(Pal.SLATE) or moon.is_equal_approx(Pal.SLATE.lerp(Pal.BAD, blend))
-	var stone_ok := (sun.is_equal_approx(Pal.STONE) or sun.is_equal_approx(Pal.STONE.lerp(Pal.BAD, blend))) and sun.is_equal_approx(empty) and sun.is_equal_approx(cap)
-	t.check(slate_ok, "moon face is slate on a free cell (got %s)" % moon.to_html(false))
-	t.check(stone_ok, "sun, empty and cap faces are stone on a free cell")
+	var free := _find_cell(p, false)
+	var empty := _cube_colour(p, free.y, free.x)
+	t.check(p._grid[free.y][free.x] == -1, "setup: the free cell is empty")
+	t.check(empty.is_equal_approx(Pal.STONE) or empty.is_equal_approx(Pal.STONE.lerp(Pal.BAD, blend)),
+		"an empty cell is stone (got %s)" % empty.to_html(false))
 	var locked := _find_cell(p, true)
-	var lmoon := _face_colour(p, locked.y, locked.x, "Face_Moon")
-	var lcap := _face_colour(p, locked.y, locked.x, "Cap")
-	t.check(lmoon.is_equal_approx(Pal.SLATE_GIVEN) or lmoon.is_equal_approx(Pal.SLATE_GIVEN.lerp(Pal.BAD, blend)), "given cell's moon face is the darker slate")
-	t.check(lcap.is_equal_approx(Pal.STONE_GIVEN) or lcap.is_equal_approx(Pal.STONE_GIVEN.lerp(Pal.BAD, blend)), "given cell's caps are the darker stone")
+	var given := _cube_colour(p, locked.y, locked.x)
+	var moon: bool = p._grid[locked.y][locked.x] == 1
+	var want: Color = (Pal.SLATE_GIVEN if moon else Pal.STONE_GIVEN)
+	t.check(given.is_equal_approx(want) or given.is_equal_approx(want.lerp(Pal.BAD, blend)),
+		"a given cell is the darker %s (got %s)" % ["slate" if moon else "stone", given.to_html(false)])
 
 static func _test_tap_rolls(t, p) -> void:
 	var cell := _find_cell(p, false)
 	var r := cell.y
 	var c := cell.x
-	var pivot: Node3D = p._cells[r][c]
-	t.check(p._grid[r][c] == -1 and is_zero_approx(pivot.rotation.x), "cell starts empty with face 0 up")
+	var spin: Node3D = p._spins[r][c]
+	var emblems: Array = p._faces[r][c]
+	t.check(p._grid[r][c] == -1 and spin.basis.is_equal_approx(Basis.IDENTITY), "cell starts empty with face 0 up")
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], 0, "tap sets the grid to sun at once")
-	t.check(is_zero_approx(pivot.rotation.x), "the prism has not moved before the roll's first frame")
+	t.check(spin.basis.is_equal_approx(Basis.IDENTITY), "the cube has not moved before the roll's first frame")
 	var first: Tween = p._rolls[r][c]
 	t.check(first != null and first.is_running(), "a roll tween is running")
-	t.check(is_equal_approx(p._target_angle(r, c), -THIRD), "roll target is one third turn toward the player")
-	t.check(p._marks[r][c].visible and p._suns[r][c].visible, "both faces in motion are visible during the roll")
+	t.check(p._target_basis(r, c).is_equal_approx(Basis(Vector3.RIGHT, QUARTER)),
+		"roll target is one quarter turn toward the player")
+	t.check((emblems[0] as Node3D).visible and (emblems[1] as Node3D).visible,
+		"both faces the roll passes over the top are visible while it turns")
+	t.check(not (emblems[2] as Node3D).visible, "and the faces it does not touch stay hidden")
 
-	var lift: Tween = p._hops[r][c]
-	t.check(Motion.running(lift), "a lift rides along the roll")
 	# Drive the roll to its end. The back ease is already overshooting at the
 	# half, so the between-faces check steps a quarter.
 	first.custom_step(p.ROLL_TIME * 0.25)
-	t.check(pivot.rotation.x < -0.2 and pivot.rotation.x > -THIRD, "a quarter in, the prism is between faces (%.3f)" % pivot.rotation.x)
-	lift.custom_step(p.ROLL_TIME * 0.25)
-	t.check(pivot.position.y > p._rest_y + 0.01, "the prism has lifted off its axis (%.3f)" % (pivot.position.y - p._rest_y))
+	t.check(spin.basis.y.z > 0.1 and spin.basis.y.y > 0.1, "a quarter in, the cube is between faces (up %s)" % spin.basis.y)
+	t.check(spin.position.y > 0.01, "and has lifted onto the edge it pivots on (%.3f)" % spin.position.y)
 	first.custom_step(p.ROLL_TIME * 0.25)
-	t.check(pivot.rotation.x < -THIRD, "halfway, the prism has rolled past the face and is springing back (%.3f)" % pivot.rotation.x)
+	t.check(spin.basis.y.y < -0.001, "halfway, the cube has rolled past the face and is springing back (up %s)" % spin.basis.y)
 	first.custom_step(p.ROLL_TIME)
-	lift.custom_step(p.ROLL_TIME)
-	t.check(is_equal_approx(pivot.rotation.x, -THIRD), "the roll lands exactly on the sun face (%.3f)" % pivot.rotation.x)
-	t.check(is_equal_approx(pivot.position.y, p._rest_y), "the lift lands back on the axis (%.4f)" % pivot.position.y)
+	t.check(spin.basis.is_equal_approx(Basis(Vector3.RIGHT, QUARTER)), "the roll lands exactly on the sun face")
+	t.check(is_equal_approx(spin.position.y, 0.0), "and back down flat on the platform (%.4f)" % spin.position.y)
 	t.check(not first.is_running(), "the roll tween finished")
-	t.check(p._suns[r][c].visible and not p._marks[r][c].visible and not p._moons[r][c].visible,
-		"after the roll only the sun emblem is visible")
+	var shown := []
+	for f in p.FACES:
+		if (emblems[f] as Node3D).visible:
+			shown.append(f)
+	t.eq(shown, [1], "after the roll only the sun emblem is visible")
+	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.STONE), "a sun leaves the cube stone")
 	t.eq(p.fx.last_cue, "land", "landing fires the land cue and its dust")
 
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], 1, "second tap sets the grid to moon")
 	t.check(is_equal_approx(p._rolls[r][c].get_total_elapsed_time(), 0.0) or p._rolls[r][c] != first, "a finished roll is left alone by settle")
 	t.check(not first.is_valid() or not first.is_running(), "first roll is no longer running")
-	t.check(is_equal_approx(p._target_angle(r, c), -2.0 * THIRD), "second roll continues in the same direction")
+	t.check(p._target_basis(r, c).is_equal_approx(p._orient(2)), "the second roll turns about Z, the next axis round")
 	var second: Tween = p._rolls[r][c]
 	t.check(second != null and second != first and second.is_running(), "a new roll tween is running")
+	second.custom_step(p.ROLL_TIME * 2.0)
+	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.SLATE), "a moon turns the whole cube slate")
 
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], -1, "third tap empties the cell")
-	t.check(is_equal_approx(p._target_angle(r, c), -TAU), "third roll completes the turn rather than unwinding")
+	t.check(p._target_basis(r, c).is_equal_approx(p._orient(3)), "the third roll rolls on rather than unwinding")
+	t.check(not p._orient(3).is_equal_approx(Basis.IDENTITY), "and lands on the cube's other empty face")
+	t.check(p._orient(p.FACES).is_equal_approx(Basis.IDENTITY), "six quarter turns come back to where the cube started")
+	p._settle(r, c)
 
-## A tap ripples through the neighbours: the side cells dip and return a
-## beat later, the diagonals half as deep and later still. A rolling cell is
-## skipped, so no cell ever runs two height tweens.
 static func _test_neighbour_bob(t, p) -> void:
 	var cell := _find_cell(p, false)
 	var r := cell.y
@@ -312,8 +329,8 @@ static func _test_blush_pulse(t, p) -> void:
 	t.check(is_equal_approx(p._blend[0][0] * p.BLUSH_STEPS, roundf(p._blend[0][0] * p.BLUSH_STEPS)), "mid-beat the blend is on the 16-step grid")
 	fade.custom_step(p.BLUSH_BEATS)
 	t.check(not Motion.running(fade), "the blush comes to rest")
-	var blushed := _face_colour(p, 0, 0, "Face_Empty")
-	t.check(blushed.is_equal_approx(base.lerp(Pal.BAD, p.BAD_BLEND)), "at rest the face is exactly the blushed stone (%s)" % blushed.to_html(false))
+	var blushed := _cube_colour(p, 0, 0)
+	t.check(blushed.is_equal_approx(base.lerp(Pal.BAD, p.BAD_BLEND)), "at rest the cube is exactly the blushed stone (%s)" % blushed.to_html(false))
 	for c in p.n:
 		if Motion.running(p._fades[0][c]):
 			p._fades[0][c].custom_step(5.0)
@@ -325,7 +342,16 @@ static func _test_blush_pulse(t, p) -> void:
 	t.check(p._blend[0][0] > 0.0 and p._blend[0][0] < p.BAD_BLEND, "halfway out the blush is partway (%.3f)" % p._blend[0][0])
 	out.custom_step(p.BLUSH_OUT)
 	t.check(is_zero_approx(p._blend[0][0]), "the fade out ends at no blush")
-	t.check(_face_colour(p, 0, 0, "Face_Empty").is_equal_approx(base), "the face is exactly its stone again")
+	# The cell is back to whatever the puzzle gave it, so the base it returns
+	# to is that state's colour, not necessarily the sun's stone.
+	var moon: bool = p._grid[0][0] == 1
+	var locked: bool = p._given[0][0]
+	var rest: Color
+	if moon:
+		rest = Pal.SLATE_GIVEN if locked else Pal.SLATE
+	else:
+		rest = Pal.STONE_GIVEN if locked else Pal.STONE
+	t.check(_cube_colour(p, 0, 0).is_equal_approx(rest), "the cube is exactly its resting stone again")
 	for r in p.n:
 		for c in p.n:
 			if Motion.running(p._fades[r][c]):
@@ -366,11 +392,11 @@ static func _test_reset_wave(t, p) -> void:
 	t.check(p.focus_cell == Vector2i(-1, -1), "reset drops the focus")
 	t.check(Motion.running(p._rolls[free.y][free.x]), "the placed cell rolls home")
 	t.check(Motion.running(p._bobs[given.y][given.x]), "a given hops to say it stays")
-	t.eq(p._turns[free.y][free.x], turns_before + 2, "a sun rolls two more thirds forward to reach empty, never back")
-	t.eq(p._turns[free.y][free.x] % 3, 0, "and lands on the empty face")
+	t.eq(p._turns[free.y][free.x], turns_before + 2, "a sun rolls two more quarters forward to reach empty, never back")
+	t.eq(p._turns[free.y][free.x] % 3, 0, "and lands on an empty face")
 	for r in p.n:
 		for c in p.n:
-			for tw in [p._rolls[r][c], p._hops[r][c], p._bobs[r][c]]:
+			for tw in [p._rolls[r][c], p._bobs[r][c]]:
 				if Motion.running(tw):
 					tw.custom_step(5.0)
 	var all_home := true
@@ -378,16 +404,18 @@ static func _test_reset_wave(t, p) -> void:
 	for r in p.n:
 		for c in p.n:
 			var pivot: Node3D = p._cells[r][c]
+			var spin: Node3D = p._spins[r][c]
 			var state: int = p._grid[r][c]
-			var want := -float(state + 1 if state >= 0 else 0) * THIRD
-			if not is_equal_approx(wrapf(pivot.rotation.x - want, -PI, PI), 0.0):
+			if posmod(p._turns[r][c], 3) != p.FACE[state]:
 				all_home = false
-			if not is_equal_approx(pivot.position.y, p._rest_y):
+			if not spin.basis.is_equal_approx(p._orient(p._turns[r][c])):
 				all_home = false
-			for tw in [p._rolls[r][c], p._hops[r][c], p._bobs[r][c]]:
+			if not is_equal_approx(spin.position.y, 0.0) or not is_equal_approx(pivot.position.y, p._rest_y):
+				all_home = false
+			for tw in [p._rolls[r][c], p._bobs[r][c]]:
 				if Motion.running(tw):
 					none_running = false
-	t.check(all_home, "after the wave every prism shows its grid face and rests on its axis")
+	t.check(all_home, "after the wave every cube shows its grid face and rests flat on the platform")
 	t.check(none_running, "the wave leaves nothing running")
 	if Motion.running(p._ring_tw):
 		p._ring_tw.custom_step(5.0)

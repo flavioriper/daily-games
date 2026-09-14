@@ -431,3 +431,70 @@ node, not on `board` (see the amendment under section 2).
 `Fx.sparkle`, `Fx.cue`, `Motion.wobble`, the focus ring's notion of "last
 tapped cell" (the working-line card reads the same cell), and
 `Ambient.refresh()` for the settings toggle.
+
+## Amendment C: the cell is a cube, not a trilon (2026-09-14)
+
+The trilon is withdrawn. On screen a cell read as a flat card, and the cause
+is geometric rather than a bug: at the board camera's 68-degree pitch the
+prism's two sloped faces are back-facing (normal dot view = -0.14) and its
+caps are edge-on, so at rest a cell rendered **only its horizontal top face**.
+Every horizontal face lands in the same top band of the three-step toon ramp
+(N dot L = 0.77, past the 0.70 offset), so an entire cell measured one flat
+`(251, 224, 184)` with no gradient anywhere; the only depth cue left was a
+5-pixel shadow sliver in the gap between tiles. Burying the prism deeper could
+not help, because a deeper prism shows the same single face.
+
+The cell is now a cube of side `TILE_SIDE` standing **on** the platform rather
+than hanging inside it, so its walls face the camera and fall in a lower ramp
+band than its top.
+
+* **Two faces per state.** Six faces, three states: the empty mark on the top
+  and bottom faces, the sun on the near and far ones, the moon on the left and
+  right. The duplication is load-bearing, not decoration. A cube has only four
+  faces around any one axis and the state cycle is three long, so a single-axis
+  roll cannot work; the axis has to alternate. With each state on an opposite
+  pair, the next state is always exactly one quarter turn away, whichever
+  alternating axis comes next.
+* **The roll.** Quarter turn per tap, axis alternating with the step count:
+  an even step turns about X (the cube rolls toward the player), an odd step
+  about Z (it rolls to the left). Composed from the identity this gives
+  `face up = steps % FACES` and `state up = steps % 3`, and six taps compose
+  back to the identity exactly. `_orient(steps)` rebuilds the orientation from
+  that table every time rather than multiplying onto the live basis, so no
+  number of rolls accumulates drift, and negative steps (undo) wrap the same
+  way.
+* **Pivot on the edge, not a spin in place.** A cube turning about its centre
+  would cut its lower corners through the platform, so `Motion.roll` lifts the
+  centre to `half * sqrt(2) * cos(45 degrees - turned)`, which is exactly
+  `half` at the start and end of every quarter turn and peaks 0.17 up at
+  45 degrees. This replaces the trilon's fixed `ROLL_LIFT` hop. A multi-step
+  roll (reset's two) plays as one tween of consecutive tumbles, so it sits
+  flat on the intermediate face on the way past.
+* **Colour belongs to the cube, not a face.** The named per-face materials are
+  gone; the tile carries one `Stone` material and the game tints the whole
+  cube by the state that is up, slate for a moon and stone otherwise. Per-face
+  colours cannot be consistent on a cube that rotates: at steps 3 and 4 a moon
+  face lands on the front wall while an empty or sun face is up, so identical
+  cells would show different coloured walls. The colour changes when the roll
+  lands, under cover of the dust puff.
+* **Node split.** The roll moved off the cell pivot onto a new `spin` child.
+  The pivot keeps the hop, the dip and the Check wobble (which drives
+  `rotation.z`); a wobble on the same node would clobber the orientation the
+  roll left behind.
+* **Emblem visibility.** At rest only the emblem on the face that is up shows.
+  With the cube standing proud of the platform its walls are in view, so a
+  visible side emblem would read as a second answer; while a roll is in flight
+  only the faces it passes over the top show, never the pair on the roll axis.
+* **The model.** `tile.glb` is now hand-modelled in the tracked
+  `art/tile.blend` (contract, "Building the pieces"), and
+  `tools/build_pieces.py` no longer writes a `Tile`.
+* **Cost.** One surface per cube instead of four and one visible emblem
+  instead of three: idle at 1080x1920 went from 4.95 ms to 3.96 ms, 512 draw
+  calls at the peak of a roll.
+
+Still open: the wall-to-top contrast is gentle. A flat wall normal measures
+`(228, 197, 169)` against a `(251, 224, 184)` top, about 10 percent, because
+the ramp's shadow band is a hue shift toward `SHADOW_TINT` rather than a
+darkening. Sharpening it means either a darker `shadow_tint` for the tile's
+material alone or a change to the shared ramp, which would move the look of
+every piece in the game; it is the user's call, not a fix to slip in here.

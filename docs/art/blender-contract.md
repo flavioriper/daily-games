@@ -9,7 +9,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 
 | slot | footprint (X by Y in Blender) | max height (Z) | notes |
 |---|---|---|---|
-| `tile` | 1.0 x 1.0, use 0.94 along X by 0.84 across Y | 0.75 | a trilon: an equilateral three-sided prism lying along X, flat face up, lowest edge at Z = 0. Four materials the game colours by name: `Face_Empty` (up at rest), `Face_Sun` (sloping toward -Y, the player), `Face_Moon` (toward +Y), `Cap` (both ends). Emblems are placed on the faces by the game |
+| `tile` | 1.0 x 1.0, use 0.84 x 0.84 | 0.9 | a cube of side 0.84 standing on the platform, base at Z = 0. One material, `Stone`, which the game tints by the state that is up: a cube that rotates cannot hold a colour on one face, since a moon face lands on the front wall while an empty face is up. Emblems are placed on all six faces by the game, each state on an opposite pair |
 | `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
 | `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
 | `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
@@ -63,10 +63,9 @@ leaves a gap in the ring. `water` is unbounded.
    shader for now.
 6. **Named materials on slots the game recolours.** The game recolours by
    material *name*, one colour per name, so a recoloured slot must carry
-   exactly the names the game expects: `tile` has `Face_Empty`, `Face_Sun`,
-   `Face_Moon` and `Cap`, and nothing else (an extra material would never be
-   coloured and would keep its Blender colour). Do not split one face over
-   two materials. Slots that are never tinted (`emblem_sun`, `emblem_moon`,
+   exactly the names the game expects: `tile` has `Stone` and nothing else
+   (an extra material would never be coloured and would keep its Blender
+   colour). Slots that are never tinted (`emblem_sun`, `emblem_moon`,
    `empty_mark`, `rim_edge`, `rim_corner`, `platform`, `water`) may use as
    many materials as they like.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
@@ -162,21 +161,35 @@ top-down pitch.
 
 ## Building the pieces
 
-The Binairo pieces are not hand-modelled: `tools/build_pieces.py` builds all
-six with bmesh (the trilon tile, both emblems, empty mark, both rim pieces), following
+The **tile is hand-modelled** and its `.blend` is the source, like a mascot:
+`art/tile.blend` is tracked in git (un-ignored in `.gitignore`) and holds one
+object, `Tile` — a 0.84 cube, every face inset by 0.03, a Bevel modifier at
+0.024 with two segments and Harden Normals off, shaded smooth, one `Stone`
+material. Open it, change the cube, re-export. `tools/build_pieces.py` must
+never write a `Tile` again or the next run would overwrite those hand edits.
+
+The rest of the Binairo pieces are still procedural: `tools/build_pieces.py`
+builds five with bmesh (both emblems, empty mark, both rim pieces), following
 every rule above, and saves `art/pieces.blend` as a by-product for looking at
 them (the `.blend` is git-ignored; the script is the source). Each piece is a
 flat outline extruded to height, bevelled on every edge, then each flat face
 inset by a hair: with shared smooth vertices the bevel tilts the normals along
 a face's rim, and the inset keeps that tilt in a thin band so the face reads
-as one toon tone. Rebuild, export and re-import in one go:
+as one toon tone. Rebuild both, export and re-import in one go:
 
 ```bash
 tools/build_models.sh
 ```
 
-To change a shape, edit the script and rerun; hand edits in the `.blend` are
-overwritten.
+To change a procedural shape, edit the script and rerun; hand edits in
+`art/pieces.blend` are overwritten. To change the tile, edit
+`art/tile.blend` and re-export it alone:
+
+```bash
+/Applications/Blender.app/Contents/MacOS/Blender -b art/tile.blend \
+  --python tools/blender_export.py -- Tile
+godot --headless --path . --import
+```
 
 ## Export script
 

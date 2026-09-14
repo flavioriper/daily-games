@@ -6,12 +6,12 @@ const Pal = preload("res://core/palette.gd")
 const Toon = preload("res://core/toon.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
-const HEIGHT_BUDGET := {"tile": 0.75, "emblem_sun": 0.08, "emblem_moon": 0.08, "empty_mark": 0.04, "rim_edge": 0.12, "rim_corner": 0.12}
+const HEIGHT_BUDGET := {"tile": 0.9, "emblem_sun": 0.08, "emblem_moon": 0.08, "empty_mark": 0.04, "rim_edge": 0.12, "rim_corner": 0.12}
 
 static func run(t) -> void:
 	_test_slots(t)
 	_test_rim(t)
-	_test_trilon(t)
+	_test_cube(t)
 	_test_fallback(t)
 	_test_tint_and_height(t)
 	_test_focus_ring(t)
@@ -72,52 +72,53 @@ static func _test_rim(t) -> void:
 	t.check(cb[1].y <= 0.12 + 0.001, "rim_corner is under 0.12 tall (%.3f)" % cb[1].y)
 	corner.free()
 
-## The tile is a three-sided prism lying along X: flat face up, one face per
-## cell state, each its own named material so the game can colour them apart
-## (amendment B). The caps are the two triangular ends.
-static func _test_trilon(t) -> void:
+## The tile is a cube standing on the platform, one state per face and each
+## state on two opposite faces, so a tap is one quarter turn (amendment C).
+## One material for the whole cube: a rotating cube cannot hold a colour on
+## one face, so the game tints the cube by the state that is up.
+static func _test_cube(t) -> void:
 	# The placeholder must keep the same contract as the export, since it is
 	# what renders when the .glb is missing and what the headless tests see
 	# on a fresh clone before the models are imported.
 	var stand_in = Placeholders.make("tile")
-	var stand_names := Models.surface_names(stand_in)
-	stand_names.sort()
-	t.eq(stand_names, ["Cap", "Face_Empty", "Face_Moon", "Face_Sun"], "placeholder tile has the four named faces")
-	t.check(absf(Models.height(stand_in) - Placeholders.TILE_H) < 0.001, "placeholder tile is exactly TILE_H tall")
+	t.eq(Models.surface_names(stand_in), ["Stone"], "placeholder tile has one named surface")
+	t.check(absf(Models.height(stand_in) - Placeholders.TILE_SIDE) < 0.001, "placeholder tile is exactly TILE_SIDE tall")
 	t.check(Models.meshes(stand_in)[0].get_node_or_null("Outline") != null, "placeholder tile has an outline shell")
 	stand_in.free()
 
 	var tile = Models.instance("tile")
-	var names := Models.surface_names(tile)
-	names.sort()
-	t.eq(names, ["Cap", "Face_Empty", "Face_Moon", "Face_Sun"], "tile surfaces are the three faces and the caps")
-	# Bevels shave up to a few hundredths off the sharp edges, hence the slack.
+	t.eq(Models.surface_names(tile), ["Stone"], "tile is one surface, so one draw call per cell")
+	# Bevels shave a few hundredths off the sharp edges, hence the slack.
 	var b := _bounds(tile)
-	t.check(absf((b[1].x - b[0].x) - Placeholders.TILE_LEN) < 0.01, "tile runs %.2f along X (got %.3f)" % [Placeholders.TILE_LEN, b[1].x - b[0].x])
-	t.check(absf((b[1].z - b[0].z) - Placeholders.TILE_SIDE) < 0.05, "tile is about %.2f wide across Z (got %.3f)" % [Placeholders.TILE_SIDE, b[1].z - b[0].z])
-	# The flat face is up: the widest extent in Z is at the top, the apex at the base.
+	var side := Placeholders.TILE_SIDE
+	for pair in [["X", b[1].x - b[0].x], ["Y", b[1].y - b[0].y], ["Z", b[1].z - b[0].z]]:
+		t.check(absf((pair[1] as float) - side) < 0.02,
+			"tile is about %.2f along %s (got %.3f)" % [side, pair[0], pair[1]])
+	t.check(b[0].y > -0.001 and absf(b[0].x + b[1].x) < 0.02 and absf(b[0].z + b[1].z) < 0.02,
+		"tile stands on y = 0, centred on x and z (%s .. %s)" % [b[0], b[1]])
+	# A cube is what makes a cell read as an object: at the board camera's
+	# 68-degree pitch its walls face the camera, where the trilon showed only
+	# its horizontal top face. So the widest extent in Z must reach the top
+	# and the base alike, not taper to an apex.
 	var top_w := 0.0
 	var base_w := 0.0
 	for mi in Models.meshes(tile):
-		for p in mi.mesh.get_faces():
-			var w: Vector3 = mi.transform * p
+		for poly in mi.mesh.get_faces():
+			var w: Vector3 = mi.transform * poly
 			if w.y > b[1].y - 0.01:
 				top_w = maxf(top_w, absf(w.z))
 			if w.y < b[0].y + 0.02:
 				base_w = maxf(base_w, absf(w.z))
-	t.check(top_w > 0.3 and base_w < 0.1, "flat face on top (half-width %.2f), apex at the base (half-width %.2f)" % [top_w, base_w])
-	Models.tint_named(tile, "Face_Moon", Color("3f4652"))
-	var moon_hits := 0
-	var other_hits := 0
+	t.check(top_w > 0.3 and base_w > 0.3,
+		"walls run straight up: half-width %.2f at the top, %.2f at the base" % [top_w, base_w])
+	Models.tint(tile, Color("3f4652"))
+	var hits := 0
 	for mi in Models.meshes(tile):
 		for i in mi.mesh.get_surface_count():
 			var over = mi.get_surface_override_material(i)
-			var moon := Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("3f4652")) if over != null else false
-			if mi.mesh.surface_get_material(i).resource_name == "Face_Moon":
-				moon_hits += 1 if moon else 0
-			else:
-				other_hits += 1 if moon else 0
-	t.check(moon_hits >= 1 and other_hits == 0, "tint_named colours only the named face (moon=%d, others=%d)" % [moon_hits, other_hits])
+			if over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("3f4652")):
+				hits += 1
+	t.eq(hits, Models.meshes(tile).size(), "tint colours the whole cube, state by state")
 	tile.free()
 
 static func _test_fallback(t) -> void:
@@ -138,8 +139,8 @@ static func _test_tint_and_height(t) -> void:
 	t.check(over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")), "tint swaps the toon colour")
 	tok.free()
 	var tile = Models.instance("tile")
-	t.check(absf(Models.height(tile) - Placeholders.TILE_H) < 0.03,
-		"tile is an equilateral prism about %.3f tall, measured %.3f" % [Placeholders.TILE_H, Models.height(tile)])
+	t.check(absf(Models.height(tile) - Placeholders.TILE_SIDE) < 0.03,
+		"tile is a cube about %.3f tall, measured %.3f" % [Placeholders.TILE_SIDE, Models.height(tile)])
 	tile.free()
 	var platform = Models.instance("platform")
 	t.check(is_equal_approx(Models.height(platform), 0.6), "platform placeholder is 0.6 deep, measured %.3f" % Models.height(platform))

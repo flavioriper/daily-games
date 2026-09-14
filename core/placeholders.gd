@@ -10,22 +10,20 @@ extends RefCounted
 const Toon = preload("res://core/toon.gd")
 const Pal = preload("res://core/palette.gd")
 
-## The tile is a trilon: an equilateral three-sided prism lying along X with
-## one face up. TILE_SIDE is the width of each face across the axis, TILE_LEN
-## its length along the axis, TILE_H the prism's height (side * sqrt(3) / 2),
-## and TILE_RISE how far the flat face stands above the platform at rest. The
-## rest of the prism hangs inside the platform, hidden by its top surface.
+## The tile is a cube standing on the platform, one state per face and every
+## state on two opposite faces, so a quarter roll always brings the next state
+## up. TILE_SIDE is the cube's side (its footprint and its height), TILE_HALF
+## the distance from its centre to any face, and TILE_RISE how far its top
+## face stands above the platform -- a full side, since the cube sits on top
+## rather than hanging inside the stone. The trilon it replaced showed only
+## its horizontal top face at the board camera's 68-degree pitch, so a cell
+## read as a flat card; a cube's side walls face the camera and land in a
+## different band of the toon ramp, which is what makes it read as an object.
 const TILE_SIDE := 0.84
-const TILE_LEN := 0.94
-const TILE_H := TILE_SIDE * 0.8660254037844386
-## Axis to any face. Bevelling shaves the prism's bounds but never moves its
-## faces, so the game places the axis from this constant, not from the mesh.
-const TILE_APOTHEM := TILE_H / 3.0
-## At 0.12 the sun's ray tips on the near slope sit about 5 mm under the
-## platform top, hidden only because that slope faces away from a camera
-## pitched steeper than 60 degrees. A bigger sun, a lower camera or a smaller
-## rise would show ray tips through the stone.
-const TILE_RISE := 0.12
+## Centre to any face. Bevelling shaves the cube's bounds but never moves its
+## faces, so the game places the centre from this constant, not from the mesh.
+const TILE_HALF := TILE_SIDE * 0.5
+const TILE_RISE := TILE_SIDE
 const EMBLEM_H := 0.05
 const PLATFORM_H := 0.6
 const RIM_H := 0.04
@@ -43,10 +41,10 @@ static func make(slot: String) -> Node3D:
 	var outline := true
 	match slot:
 		"tile":
-			# Named surfaces so the game can colour each face apart; the
+			# One surface the game tints by the state that is up; the
 			# per-face vertices mean the outline hull opens along the edges,
-			# which the Blender export avoids. Base (the apex edge) at y = 0.
-			mi.mesh = _trilon()
+			# which the Blender export avoids. Base at y = 0.
+			mi.mesh = _cube()
 			root.add_child(mi)
 			Toon.apply_to(root)
 			return root
@@ -113,36 +111,42 @@ static func make(slot: String) -> Node3D:
 	root.add_child(mi)
 	return root
 
-## Three-sided prism along X, flat face up, apex edge at y = 0, one surface
-## per face: Face_Empty on top, Face_Sun sloping down toward +Z (the player),
-## Face_Moon toward -Z, Cap for both triangular ends.
-static func _trilon() -> ArrayMesh:
-	var hl := TILE_LEN * 0.5
-	var hs := TILE_SIDE * 0.5
-	var a0 := Vector3(-hl, 0.0, 0.0)
-	var a1 := Vector3(hl, 0.0, 0.0)
-	var n0 := Vector3(-hl, TILE_H, hs)
-	var n1 := Vector3(hl, TILE_H, hs)
-	var f0 := Vector3(-hl, TILE_H, -hs)
-	var f1 := Vector3(hl, TILE_H, -hs)
-	var slope := Vector3(0.0, -0.5, 0.8660254037844386)
+## The tile cube, base at y = 0, centred on X and Z. One surface named
+## `Stone`, like the export: the game tints the whole cube by the state that
+## is up, because a cube that rotates cannot keep a colour on one face -- a
+## moon face lands on the front wall while an empty face is up.
+static func _cube() -> ArrayMesh:
+	var s := TILE_HALF
+	var h := TILE_SIDE
+	# Corners, named bottom/top then left/right and far/near.
+	var bfl := Vector3(-s, 0.0, -s)
+	var bfr := Vector3(s, 0.0, -s)
+	var bnr := Vector3(s, 0.0, s)
+	var bnl := Vector3(-s, 0.0, s)
+	var tfl := Vector3(-s, h, -s)
+	var tfr := Vector3(s, h, -s)
+	var tnr := Vector3(s, h, s)
+	var tnl := Vector3(-s, h, s)
 	var mesh := ArrayMesh.new()
-	_surface(mesh, "Face_Empty", Pal.STONE, [[f0, f1, n1, n0]], Vector3.UP)
-	_surface(mesh, "Face_Sun", Pal.STONE, [[a0, a1, n1, n0]], slope)
-	_surface(mesh, "Face_Moon", Pal.SLATE, [[a0, a1, f1, f0]], Vector3(0.0, slope.y, -slope.z))
-	_surface(mesh, "Cap", Pal.STONE, [[a1, n1, f1], [a0, n0, f0]], Vector3.ZERO)
+	_surface(mesh, "Stone", Pal.STONE, [
+		[[tfl, tfr, tnr, tnl], Vector3.UP],        # empty, up
+		[[bfl, bfr, bnr, bnl], Vector3.DOWN],      # empty, down
+		[[bnl, bnr, tnr, tnl], Vector3.BACK],      # sun, toward the player
+		[[bfl, bfr, tfr, tfl], Vector3.FORWARD],   # sun, away
+		[[bfr, bnr, tnr, tfr], Vector3.RIGHT],     # moon, right
+		[[bfl, bnl, tnl, tfl], Vector3.LEFT],      # moon, left
+	])
 	return mesh
 
-## One surface holding the given polygons, each wound so `normal` (or, for
-## ZERO, the polygon's own outward direction along X) faces the front.
-static func _surface(mesh: ArrayMesh, name: String, color: Color, polys: Array, normal: Vector3) -> void:
+
+## One surface holding the given faces, each a [points, normal] pair wound so
+## its normal faces the front.
+static func _surface(mesh: ArrayMesh, name: String, color: Color, faces: Array) -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for poly in polys:
-		var pts: Array = poly
-		var nrm := normal
-		if nrm == Vector3.ZERO:
-			nrm = Vector3.RIGHT if pts[0].x > 0.0 else Vector3.LEFT
+	for face in faces:
+		var pts: Array = face[0]
+		var nrm: Vector3 = face[1]
 		# Godot's front faces wind clockwise seen from outside, so the
 		# cross product of a front-facing triangle points against the normal.
 		var cross: Vector3 = (pts[1] - pts[0]).cross(pts[2] - pts[0])

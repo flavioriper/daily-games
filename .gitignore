@@ -16,6 +16,8 @@
 art/*.blend
 # Mascots are modelled by hand, so their .blend IS the source: keep it
 !art/mascot_*.blend
+# So is the tile cube, hand-modelled since the trilon was replaced
+!art/tile.blend
 
 # Python bytecode from running the tools
 __pycache__/

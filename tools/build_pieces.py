@@ -1,11 +1,15 @@
-"""Build every Binairo island piece procedurally and save art/pieces.blend.
+"""Build the procedural Binairo island pieces and save art/pieces.blend.
+
+The tile is NOT here: it is a cube modelled by hand in art/tile.blend
+(see docs/art/blender-contract.md). This script must never write a Tile
+again, or the next run would overwrite those hand edits.
 
 Run headless, then hand the objects to the exporter in the same session:
 
     /Applications/Blender.app/Contents/MacOS/Blender -b \
         --python tools/build_pieces.py \
         --python tools/blender_export.py -- \
-        Tile Emblem_Sun Emblem_Moon Empty_Mark Rim_Edge Rim_Corner
+        Emblem_Sun Emblem_Moon Empty_Mark Rim_Edge Rim_Corner
 
 (tools/build_models.sh does exactly that and re-imports in Godot.)
 
@@ -50,11 +54,9 @@ GRASS = "a3c95e"  # tufts lighter than the moss so they read as mounds, not dirt
 PETAL = "f6f1e6"
 POLLEN = "f5a623"
 
-# The tile is a trilon: an equilateral three-sided prism lying along X, flat
-# face up, one material per face so the game colours them apart.
+# The tile is not built here: it is a hand-modelled cube in art/tile.blend.
+# TILE_SIDE stays because the emblems are sized against a tile face.
 TILE_SIDE = 0.84
-TILE_LEN = 0.94
-TILE_H = TILE_SIDE * math.sqrt(3) / 2
 EMBLEM_H = 0.05
 MARK_H = 0.03
 RIM_H = 0.03
@@ -209,34 +211,6 @@ def new_bm():
 
 # --- pieces ----------------------------------------------------------------
 
-def build_tile():
-    """Trilon. Built as a triangle in the local XY plane extruded along local
-    Z, then the axes are cycled so the extrusion runs along Blender X and the
-    triangle stands in the YZ plane with its flat edge on top (+Z). Faces are
-    then sorted onto four materials by their normals: Face_Empty up,
-    Face_Sun toward -Y (Godot +Z, the player), Face_Moon toward +Y, Cap at
-    the ends. Bevel strips join whichever face they lean toward."""
-    bm = new_bm()
-    h = TILE_H
-    triangle = [(0.0, 0.0), (TILE_SIDE / 2, h), (-TILE_SIDE / 2, h)]
-    add_prism(bm, triangle, TILE_LEN, 0, bevel=0.035, segments=2, inset=0.02)
-    for v in bm.verts:
-        lx, ly, lz = v.co
-        v.co = Vector((lz, lx, ly))
-    bm.normal_update()
-    targets = [
-        Vector((0.0, 0.0, 1.0)),                                   # Face_Empty
-        Vector((0.0, -math.cos(math.radians(30)), -0.5)),          # Face_Sun (-Y side)
-        Vector((0.0, math.cos(math.radians(30)), -0.5)),           # Face_Moon (+Y side)
-        Vector((1.0, 0.0, 0.0)), Vector((-1.0, 0.0, 0.0)),         # Cap
-    ]
-    for f in bm.faces:
-        best = max(range(len(targets)), key=lambda i: f.normal.dot(targets[i]))
-        f.material_index = min(best, 3)
-    return finish(bm, "Tile", [material("Face_Empty", STONE), material("Face_Sun", STONE),
-                               material("Face_Moon", SLATE), material("Cap", STONE)])
-
-
 def build_sun():
     bm = new_bm()
     add_prism(bm, circle(0.16, 28), EMBLEM_H, 0, bevel=0.014, segments=2, inset=0.01)
@@ -316,7 +290,7 @@ def clear_scene():
 
 def main():
     clear_scene()
-    objs = [build_tile(), build_sun(), build_moon(), build_mark(), build_rim_edge(), build_rim_corner()]
+    objs = [build_sun(), build_moon(), build_mark(), build_rim_edge(), build_rim_corner()]
     for i, obj in enumerate(objs):
         obj.location = (0.0, 0.0, 0.0)
     bpy.context.view_layer.update()
