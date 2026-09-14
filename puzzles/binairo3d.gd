@@ -95,6 +95,8 @@ var _ring_hold: Tween     # the pause before the fade
 ## working-line card in the HUD reads this.
 var focus_cell := Vector2i(-1, -1)
 var _entrance: Array = []  # tweens of the board entrance, killed by reset
+## Taps on free cells as (r, c, previous value), newest last. Undo pops it.
+var _history: Array[Vector3i] = []
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
@@ -128,6 +130,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 			given_row.append(v != -1)
 		_grid.append(row)
 		_given.append(given_row)
+	_history = []
 	_build_scene()
 	_recolour()
 	_refit()
@@ -154,6 +157,7 @@ func reset_board() -> void:
 			var thirds := 2 if v == 0 else 1
 			_turns[r][c] += thirds
 			_roll(r, c, thirds, delay)
+	_history = []
 	moves = 0
 	_recolour()
 	fx.cue("reset")
@@ -168,6 +172,43 @@ func share_glyphs() -> String:
 			out += "🌞" if _grid[r][c] == 0 else "🌙"
 		out += "\n"
 	return out
+
+func capabilities() -> Array[String]:
+	return ["undo", "hint", "check", "lines"]
+
+func can_undo() -> bool:
+	return not is_done() and not _history.is_empty()
+
+## Reverts the last tap: the prism rolls one third away from the player, the
+## only unwinding roll in the game (HUD spec, section 3). Counts no move; no
+## state in the history was solved, or the game would have ended there.
+func undo() -> bool:
+	if is_done() or _history.is_empty():
+		return false
+	var last: Vector3i = _history.pop_back()
+	var r := last.x
+	var c := last.y
+	_settle(r, c)
+	_grid[r][c] = last.z
+	_turns[r][c] -= 1
+	_roll(r, c, -1)
+	fx.cue("undo")
+	_focus(r, c)
+	_bob_neighbours(r, c)
+	_recolour()
+	moved.emit()
+	return true
+
+## The focused row and column for the working-line card, or {} without a focus.
+func line_state() -> Dictionary:
+	if focus_cell.x < 0:
+		return {}
+	var r := focus_cell.y
+	var c := focus_cell.x
+	var col := []
+	for i in n:
+		col.append(_grid[i][c])
+	return {"row": {"index": r, "cells": (_grid[r] as Array).duplicate()}, "col": {"index": c, "cells": col}}
 
 # --- scene ---
 
@@ -292,7 +333,7 @@ func _target_angle(r: int, c: int) -> float:
 ## their outlines per cell add up on an 8 x 8 board). While a roll is in
 ## motion every emblem shows, since two faces are above the platform at once.
 func _show_faces(r: int, c: int, rolling: bool) -> void:
-	var up: int = _turns[r][c] % 3
+	var up: int = posmod(_turns[r][c], 3)
 	_marks[r][c].visible = rolling or up == 0
 	_suns[r][c].visible = rolling or up == 1
 	_moons[r][c].visible = rolling or up == 2
@@ -314,23 +355,25 @@ func _settle(r: int, c: int) -> void:
 ## Rolls cell (r, c) `thirds` faces toward the player after `delay`, with the
 ## settle and the lift that make it a hop rather than a grind. All three
 ## emblems show while it turns; _on_roll_landed hides the buried two again.
+## A negative `thirds` rolls away from the player (undo).
 func _roll(r: int, c: int, thirds := 1, delay := 0.0) -> void:
 	var pivot: Node3D = _cells[r][c]
 	_show_faces(r, c, true)
-	var time := ROLL_TIME if thirds == 1 else ROLL_TIME_TWO
+	var time := ROLL_TIME if absi(thirds) == 1 else ROLL_TIME_TWO
 	var tw: Tween = Motion.settle(pivot, "rotation:x", _target_angle(r, c), time, delay, true)
-	tw.finished.connect(_on_roll_landed.bind(r, c))
+	tw.finished.connect(_on_roll_landed.bind(r, c, thirds < 0))
 	_rolls[r][c] = tw
 	Motion.stop(_hops[r][c])
 	_hops[r][c] = Motion.hop(pivot, ROLL_LIFT, time, delay, _rest_y)
 	fx.cue("roll")
 
 ## The roll has landed: buried faces go invisible and dust rises from the
-## near edge, where the arriving face touched down.
-func _on_roll_landed(r: int, c: int) -> void:
+## edge the arriving face touched down on: the near edge for a forward roll,
+## the far edge for an undo.
+func _on_roll_landed(r: int, c: int, away := false) -> void:
 	_show_faces(r, c, false)
 	var pivot: Node3D = _cells[r][c]
-	fx.puff(Vector3(pivot.position.x, Placeholders.TILE_RISE, pivot.position.z + Placeholders.TILE_SIDE * 0.5))
+	fx.puff(Vector3(pivot.position.x, Placeholders.TILE_RISE, pivot.position.z + Placeholders.TILE_SIDE * (-0.5 if away else 0.5)))
 	fx.cue("land")
 
 ## The eight cells around a tapped one dip and return: the sides a beat after
@@ -393,6 +436,7 @@ func _focus(r: int, c: int) -> void:
 	_ring_hold.tween_interval(FOCUS_HOLD)
 	_ring_hold.tween_callback(_focus_fade)
 	fx.cue("focus")
+	focus_changed.emit()
 
 ## The breathing loop: a little larger and dimmer, then back, while shown.
 func _start_pulse() -> void:
@@ -425,6 +469,7 @@ func _focus_clear() -> void:
 	Motion.stop(_ring_hold)
 	focus_cell = Vector2i(-1, -1)
 	_focus_fade()
+	focus_changed.emit()
 
 # --- entrance and solve ---
 
@@ -545,6 +590,7 @@ func on_board_press(hit: Vector3) -> void:
 	_settle(r, c)
 	# empty -> sun -> moon -> empty
 	var v: int = _grid[r][c]
+	_history.append(Vector3i(r, c, v))
 	_grid[r][c] = 0 if v == -1 else (1 if v == 0 else -1)
 	_turns[r][c] += 1
 	_roll(r, c)

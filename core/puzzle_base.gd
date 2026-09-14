@@ -6,9 +6,13 @@ extends Control
 
 signal solved
 signal moved
+## A board that tracks a focused cell emits this when the focus moves or clears.
+signal focus_changed
 
 var moves: int = 0
 var elapsed: float = 0.0
+var hints_used: int = 0
+var checks: int = 0
 var _running: bool = false
 var _done: bool = false
 
@@ -21,11 +25,29 @@ func is_solved() -> bool: return false
 func share_glyphs() -> String: return ""
 func reset_board() -> void: pass
 func is_3d() -> bool: return false
+
+# --- optional, for the HUD (docs/superpowers/specs/2026-09-14-binairo-hud-design.md,
+# section 3). Defaults mean "unsupported"; the HUD hides what a puzzle lacks. ---
+## Which optional actions this puzzle supports: any of "undo", "hint", "check", "lines".
+func capabilities() -> Array[String]: return []
+func can_undo() -> bool: return false
+## Reverts the last move. True when something was undone.
+func undo() -> bool: return false
+func hints_left() -> int: return 0
+## Fills one cell from the solution. True when a cell was filled.
+func hint() -> bool: return false
+## Marks the cells that differ from the solution. Returns how many; -1 when unsupported.
+func check() -> int: return -1
+## {} when nothing is focused, else {"row": {"index": r, "cells": [...]},
+## "col": {"index": c, "cells": [...]}} with cells -1 empty, 0 sun, 1 moon.
+func line_state() -> Dictionary: return {}
 # -------------------
 
 func start(rng: RandomNumberGenerator, difficulty: int) -> void:
 	moves = 0
 	elapsed = 0.0
+	hints_used = 0
+	checks = 0
 	_done = false
 	build(rng, difficulty)
 	_running = true
@@ -38,6 +60,11 @@ func _process(delta: float) -> void:
 func note_move() -> void:
 	moves += 1
 	moved.emit()
+	check_solved()
+
+## Ends the puzzle if the board is solved. note_move calls this; hints and
+## undos call it directly because they do not count as moves.
+func check_solved() -> void:
 	if not _done and is_solved():
 		_done = true
 		_running = false
