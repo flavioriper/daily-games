@@ -32,6 +32,9 @@ godot --path . --resolution 540x960 --script res://tests/_shot.gd
 godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd
 ```
 
+Reduce-motion is read from `user://settings.cfg`, section `[motion]`, key
+`reduce`; a missing file defaults to full motion.
+
 ## The puzzles
 
 | Puzzle | Gesture | Uniqueness proof |
@@ -54,14 +57,18 @@ handing it over. That is what the bulk of the test suite covers.
 ## Layout
 
 ```
-core/       shared: puzzle interface, daily seeding, palette, shape helpers
+core/       shared: puzzle interface, daily seeding, palette, shape helpers,
+            motion.gd (tween recipes, reduce-motion)
 puzzles/    <id>_gen.gd is pure logic and headless-testable
             <id>.gd is the board and its touch handling
 ui/         menu, puzzle host shell, registry
 tests/      unit suites plus the win and screenshot harnesses
 docs/       the 75-candidate catalog and build notes
-world/      3D stage: camera rig, sun, sky, water; main scene
-shaders/    toon and outline spatial shaders
+world/      3D stage: camera rig, sun, sky, water; main scene; ambient.gd
+            (grass sway, pollen, water splash, camera breath) and fx.gd
+            (one-shot particles: dust, sparkle)
+shaders/    toon and outline spatial shaders, plus the wind (toon_wind) and
+            water shaders and the shared toon_lit include
 assets/     models/<slot>.glb from Blender, placeholders otherwise
 tools/      blender_export.py, run inside Blender
 ```

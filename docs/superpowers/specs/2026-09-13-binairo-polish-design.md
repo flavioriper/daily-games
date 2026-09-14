@@ -122,6 +122,14 @@ Reduce-motion behaviour, applied inside every recipe:
   `reduce`. Sub-project 2 adds the toggle; sub-project 1 only reads and
   writes it and defaults to `false`.
 
+Amendment (final review): `Stage._ready()` calls `Motion.load_settings()`, so
+any headless suite that builds a `Stage` reads (and can be overwritten by)
+the developer's real `user://settings.cfg`. `tests/test_ambient.gd` and
+`tests/test_binairo3d.gd` now point `Motion.settings_path` at a throwaway
+`user://_test_settings.cfg` before creating the stage and restore
+`user://settings.cfg` after teardown, the same pattern `tests/test_motion.gd`
+already used for its own settings round-trip test.
+
 ### 2. Board effects: `puzzles/binairo3d.gd`
 
 The grid still changes at once on tap; every effect below is only how the
@@ -149,6 +157,25 @@ grows. The only unwinding roll is undo, which belongs to sub-project 2.
 Face visibility during the overshoot is safe: rotating a further 8 percent
 past the landing face tilts the *next* buried face up by about 10 degrees,
 still well inside the platform.
+
+Amendment (final review): `_settle` kills the roll, the lift and the bob and
+snaps rotation and height home; it does not touch the blush. The blush's
+blend and its fade belong to the board-wide `_blend_target` bookkeeping in
+`_recolour` / `_fade_blend`, not to per-cell settle, so tapping a cell mid-fade
+leaves the fade running.
+
+Amendment (final review): the solved wave's hops are delayed by
+`ROLL_TIME + stagger(r, SOLVE_STAGGER)`, not `stagger(r, 0.04)` alone, so the
+last roll's own lift has landed before its row's solve hop starts.
+
+Amendment (final review): blush fades are created on the cell's tile node
+(`_tiles[r][c]`), not on `board`. A fade built on `board` outlives
+`_build_scene`, which frees the board's children but not `board` itself, so a
+second `build()` on the same instance left stale fades running and
+repainting the new board's tiles. `_build_scene` now also calls `_stop_all()`
+as its first line, killing every tween the previous board still tracks
+(entrance, rolls, hops, bobs, fades and the focus ring) before the arrays
+that back them are reset.
 
 ### 3. One-shot particles: `world/fx.gd`
 
@@ -258,6 +285,14 @@ stays `true`. The interactive 20-second live check the plan's Step 3
 describes was not run on 2026-09-13; this decision rests on the strip
 frames alone, so a live look on a phone is still owed.
 
+Amendment (final review): the splash ring is 0.3 world units wide
+(`step(abs(d - splash_age * 3.0), 0.15)`, a band 0.15 either side of the
+ring's radius). The dashes and sparkles are tuned to read at cell scale
+rather than as snowfall over cloud smears: dashes at
+`dot(p, vec2(0.80, 0.45)) * 4.0` and `dot(p, vec2(-0.35, 0.90)) * 1.2` (were
+1.6 and 0.5), threshold 1.25 unchanged; sparkles at `p.x * 2.4 + wx` and
+`p.y * 2.0 + wz` (were 7.3 and 6.1), threshold 0.998 (was 0.995).
+
 ### 5. Palette additions (`core/palette.gd`)
 
 | name | hex | use |
@@ -286,6 +321,11 @@ Dust uses `STONE`, sparkle uses `SUN`, pollen uses `MOON`.
   needs no change, since `_flat` is still the suffix.
 - `project.godot` gains the `[shader_globals]` entry for `motion_scale`.
 
+Amendment (final review): the focus ring's inner half-size is 0.38
+(`Placeholders.FOCUS_INNER`), not 0.40 — widened in Task 11 so the ring's
+bars read at 540 px. The placeholder is four flat quads at y = 0
+(`Placeholders._ring_mesh`), not four thin boxes 0.01 thick.
+
 ### 7. Performance budget
 
 Measured with `tests/_shot_anim.gd` (below), which prints
@@ -307,6 +347,11 @@ on the daily's first Binairo puzzle: `idle frames=398 mean_ms=5.03
 max_draw_calls=755`. Comfortably under the 8 ms budget; the draw-call
 baseline comparison against Task 7 was not run (recorded as optional), so
 755 is the number to compare future changes against.
+
+Amendment (final review): live particles peak at 76, not 64: 24 pollen plus
+the puff pool (4 emitters at `amount` 8, 32 live particles if every emitter
+fires at once) and the sparkle pool (2 emitters at `amount` 10, 20 live
+particles), not one particle per emitter.
 
 ### 8. Testing
 
@@ -375,6 +420,10 @@ include), `tools/build_pieces.py`, `assets/models/rim_edge.glb`,
 `assets/models/README.md`, `project.godot`, `tests/run_tests.gd` (registers
 the new suite), `tests/_shot.gd` (longer slot), `tests/test_binairo3d.gd`, `tests/test_toon.gd`,
 `tests/test_models.gd`, `README.md` (the new harness).
+
+Amendment (final review): `tests/test_palette.gd` is also modified (the
+focus-ring and water palette additions). Blush fades are created on the tile
+node, not on `board` (see the amendment under section 2).
 
 ### 10. What sub-project 2 relies on from here
 
