@@ -27,6 +27,9 @@ godot --path . --resolution 540x960 --script res://tests/_win.gd
 
 # Screenshot every prototype to /tmp/shot_<id>.png
 godot --path . --resolution 540x960 --script res://tests/_shot.gd
+
+# Animation strip for Binairo (entrance, tap, roll, idle) plus draw calls and frame time
+godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd
 ```
 
 ## The puzzles

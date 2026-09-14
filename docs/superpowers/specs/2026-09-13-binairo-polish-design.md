@@ -85,13 +85,17 @@ static func save_settings() -> void
 # decorative motion is skipped under reduce.
 static func settle(node: Node3D, property: String, target, time: float,
                    delay := 0.0, essential := false) -> Tween
-static func hop(node: Node3D, height: float, time: float, delay := 0.0) -> Tween
+static func hop(node: Node3D, height: float, time: float, delay := 0.0, base := NAN) -> Tween
 static func squash(node: Node3D, amount := 0.12, time := 0.18, delay := 0.0) -> Tween
 static func wobble(node: Node3D, angle := 0.12, time := 0.45) -> Tween
-static func fade(setter: Callable, from: float, to: float, time: float,
+static func fade(node: Node, setter: Callable, from: float, to: float, time: float,
                  steps := 16, delay := 0.0) -> Tween
 static func stagger(index: int, per: float, cap := 0.6) -> float
 ```
+
+Amendment (Task 11): `fade` gained a leading `node: Node` parameter, since the
+tween needs a node to live on. `hop` gained a trailing `base := NAN`, the
+resting height, for nodes that may already be mid-hop.
 
 - `settle` tweens `property` to `target` with `TRANS_BACK`, `EASE_OUT`: it
   overshoots by roughly a tenth of the distance and springs back.
@@ -132,7 +136,7 @@ face colour home.
 | Neighbour bob | On a tap, the four side neighbours dip and return; the four diagonals dip half as much, a beat later. A cell that is rolling is skipped; starting a roll on a bobbing cell kills the bob first, so no cell ever runs two `position:y` tweens. Given cells bob too; stone is stone. | dip 0.02, 0.35 s, side lag 0.04 s, diagonal lag 0.07 s | none |
 | Dust puff | When a roll lands, `Fx.puff` at the cell's near edge (the arriving face's leading edge touches down on the player's side): stone-coloured specks rise, arc and shrink to nothing. | 6 to 8 specks, 0.4 s, at `(x, TILE_RISE, z + TILE_SIDE / 2)` | `land` |
 | Focus glow | One `focus_ring` model, child of `board`, sitting flat at `TILE_RISE + 0.005` around the last tapped cell. First tap: pops in (scale 0.8 to 1, alpha 0 to 0.9). Later taps: slides to the new cell. While shown it pulses. After a pause with no tap it fades and hides. Reset, new puzzle and solve all fade it. It never parents to a pivot, so it never rolls. A tap on a given cell moves the ring too and dips that cell 0.02 (it is solid), but rolls nothing and bobs no neighbours; this is the "look at this line" gesture the working-line card in sub-project 2 reads. | pop 0.15 s, slide 0.15 s, pulse scale 1.00 to 1.04 and alpha 0.9 to 0.6 over 1.2 s looping, fade after 2.5 s over 0.5 s | `focus` |
-| Blush pulse | `_recolour()` computes a target blend per cell (0 or `BAD_BLEND`). Cells whose blend changed run `Motion.fade` toward it, calling `_paint(r, c, blend)` which tints the four named faces at that blend. A newly broken line, after the fade in, gives two heartbeats to `BAD_BLEND + 0.15` and back. A fixed line fades back. A new recolour kills a running fade. | in 0.25 s, beats 0.8 s total, out 0.4 s, 16 quantisation steps | `blush_in`, `blush_out` |
+| Blush pulse | `_recolour()` computes a target blend per cell (0 or `BAD_BLEND`). Cells whose blend changed run `Motion.fade` toward it, calling `_paint(r, c, blend)` which tints the four named faces at that blend. A newly broken line, after the fade in, gives two heartbeats to `BAD_BLEND + 0.15` and back. A fixed line fades back. A new recolour kills a running fade. `_blend_target` tracks the blend each cell is heading for, so a still-broken line's beats are not restarted by an unrelated recolour elsewhere on the board. | `BAD_BLEND` 0.375 (6/16), heartbeat adds 0.125 (2/16) so every level sits on the 16-step grid; in 0.25 s, beats 0.8 s total, out 0.4 s, 16 quantisation steps | `blush_in`, `blush_out` |
 | Board entrance | After `_build_scene`, the `Platform` node starts 0.5 below and settles to y 0 (`TRANS_BACK`). As it breaks the surface, `Ambient.splash(centre)` rings the water; the board reaches `Ambient` through the stage it is mounted on (`_stage.ambient`), and skips the call when there is no stage. Every pivot starts at scale 0.01 and pops to 1 with `TRANS_BACK`, delayed by `stagger(r + c, 0.03)` after the platform lands: a diagonal wave from the far-left corner (row 0, column 0). Taps are accepted throughout; scale, rotation and position are separate properties and never fight. Reset during the entrance kills the entrance tweens and snaps scales to 1. | platform 0.5 s, pop 0.25 s, 8 x 8 board fully in at about 1.2 s | `enter` |
 | Reset wave | `reset_board()` rolls every free, non-empty cell *forward* to empty (sun takes two thirds, moon one) with a diagonal stagger from the near-left corner (row n-1, column 0). These rolls are essential motion, so reduce-motion shortens rather than skips them. Given cells hop a little at their stagger time to say they stay. The grid, `moves` and the blush update at once, as today; only the prisms take their time. Replaces the instant snap. | one third 0.30 s, two thirds 0.42 s, stagger 0.02 s per diagonal, given hop 0.03 | `reset` |
 | Solved wave | On `solved`, every pivot hops once, row by row from the top (row 0). The focus ring fades. This is the base sub-project 3 builds the celebration on. | hop 0.08 over 0.4 s, `stagger(r, 0.04)` | `solved` |
@@ -210,8 +214,9 @@ re-exported with `tools/build_models.sh`. Limit, recorded in the contract:
 the outline shell shares the mesh but not the wind, so a `_sway` material
 must also be `_flat` for now.
 
-**Water.** `shaders/water.gdshader`, unshaded, on the `water` slot (the
-`Models.instance("water")` path applies it whether the slot is the
+**Water.** `shaders/water.gdshader`, lit with the same two-band step as the
+toon shader, so the platform's shadow still falls on it, on the `water` slot
+(the `Models.instance("water")` path applies it whether the slot is the
 placeholder plane or a future `.glb`):
 
 - Base `WATER`. Two slow sine fields over world xz, summed and cut with
@@ -243,6 +248,13 @@ reduce-motion. Flagged try-and-keep: if the animation shot strip reads as
 wobble instead of calm, the offset is removed and the spec amended.
 `fit()` is unaffected, since the offset is applied after fitting and is
 tiny compared with the 6 percent margin.
+
+Amendment (Task 11): decision kept. Judged from the `_shot_anim.gd` idle
+frames (2026-09-13) — the board sits in the same place against the fixed
+HUD between the two idle frames a second apart, the only visible changes
+are grass lean, water pattern and pollen position, and 0.2 percent of the
+camera distance is imperceptible as motion at 1080 x 1920. `breathing`
+stays `true`.
 
 ### 5. Palette additions (`core/palette.gd`)
 
@@ -288,6 +300,12 @@ window, on the 8 x 8 board at 1080 x 1920 on the Mac:
 - Tween count peaks during the entrance at one per cell plus one; that is
   fine, tweens are cheap.
 
+Measured (2026-09-13) with `tests/_shot_anim.gd` at 1080 x 1920, vsync off,
+on the daily's first Binairo puzzle: `idle frames=398 mean_ms=5.03
+max_draw_calls=755`. Comfortably under the 8 ms budget; the draw-call
+baseline comparison against Task 7 was not run (recorded as optional), so
+755 is the number to compare future changes against.
+
 ### 8. Testing
 
 Headless suites (`godot --headless --path . --script res://tests/run_tests.gd`):
@@ -317,6 +335,13 @@ Headless suites (`godot --headless --path . --script res://tests/run_tests.gd`):
   `water` slot's surface material is the water shader.
 - **`tests/test_platform.gd`.** Unchanged in intent; the rim material names
   it may assert on follow the rename.
+- **`tests/test_ambient.gd`.** `Ambient` and camera breath: `refresh()` sets
+  `motion_scale` from `Motion.reduce`, `fit_to` sizes the pollen emitter to
+  the board AABB, `splash()` drives `splash_age` deterministically, and
+  `CameraRig`'s breath offset is off under reduce-motion.
+- **`tests/test_fx.gd`.** The `Fx` pools: `puff` and `sparkle` round-robin
+  their emitters, materials are cached per colour, and both are no-ops
+  under reduce-motion.
 
 Visual and end-to-end harnesses:
 
@@ -337,7 +362,8 @@ Visual and end-to-end harnesses:
 
 New: `core/motion.gd`, `world/fx.gd`, `world/ambient.gd`,
 `shaders/toon_lit.gdshaderinc`, `shaders/toon_wind.gdshader`,
-`shaders/water.gdshader`, `tests/test_motion.gd`, `tests/_shot_anim.gd`.
+`shaders/water.gdshader`, `tests/test_motion.gd`, `tests/_shot_anim.gd`,
+`tests/test_ambient.gd`, `tests/test_fx.gd`.
 
 Modified: `puzzles/binairo3d.gd`, `core/toon.gd`, `core/models.gd`,
 `core/placeholders.gd`, `core/palette.gd`, `world/stage.gd`,
