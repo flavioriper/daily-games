@@ -57,6 +57,12 @@ const RESET_HOP := 0.03
 const SOLVE_HOP := 0.08
 const SOLVE_TIME := 0.4
 const SOLVE_STAGGER := 0.04
+## Hint and check (HUD spec, section 3).
+const HINTS := 3
+const CHECK_BLEND := 0.5     # 8/16: the flash a wrong cell gives on Check
+const CHECK_IN := 0.15
+const CHECK_OUT := 0.45
+const SPARKLE_LIFT := 0.1
 ## Face index per cell value: empty up, then sun, then moon.
 const FACE := {-1: 0, 0: 1, 1: 2}
 
@@ -85,6 +91,8 @@ var fx: Node3D            # pooled one-shot particles, a child of the board
 var _fades: Array = []         # [r][c] -> a blush fade in flight
 var _blend: Array = []         # [r][c] -> painted blend toward BAD, on the grid
 var _blend_target: Array = []  # [r][c] -> the blend the cell is heading for
+var _hinted: Array = []        # [r][c] -> filled by a hint, so locked like a given
+var _wobbles: Array = []       # [r][c] -> the Check shake in flight
 var _ring: Node3D
 var _ring_mat: StandardMaterial3D
 var _ring_tw: Tween       # pop, slide or fade
@@ -102,7 +110,7 @@ func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
 
 func rules() -> String:
-	return "Fill every cell with a sun or a moon. Never three alike in a line, an equal count of each per line, and no two lines identical."
+	return "Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical."
 
 func board_size() -> Vector2i: return Vector2i(n, n)
 ## A rolling prism's edge rises one circumradius (two apothems) above the axis.
@@ -146,6 +154,11 @@ func reset_board() -> void:
 	for r in n:
 		for c in n:
 			_settle(r, c)
+			if _hinted[r][c]:
+				# A hint is not a clue: reset gives the cell back to the player.
+				_hinted[r][c] = false
+				_given[r][c] = false
+				_paint(_blend[r][c], r, c)
 			var delay := Motion.stagger((n - 1 - r) + c, RESET_STAGGER)
 			if _given[r][c]:
 				_bobs[r][c] = Motion.hop(_cells[r][c], RESET_HOP, BOB_TIME, delay, _rest_y)
@@ -199,6 +212,103 @@ func undo() -> bool:
 	moved.emit()
 	return true
 
+func hints_left() -> int:
+	return HINTS - hints_used
+
+## Fills one cell from the solution with a sparkle and locks it (HUD spec,
+## section 3): a wrong filled cell first, else the empty cell with the most
+## filled cells in its row and column. Three per puzzle; reset does not
+## refund them. Counts no move but can finish the puzzle.
+func hint() -> bool:
+	if is_done() or hints_left() <= 0:
+		return false
+	var cell := _hint_cell()
+	if cell.x < 0:
+		return false
+	var r := cell.y
+	var c := cell.x
+	_settle(r, c)
+	var kept: Array[Vector3i] = []
+	for h in _history:
+		if h.x != r or h.y != c:
+			kept.append(h)
+	_history = kept
+	var old: int = _grid[r][c]
+	var target: int = _solution[r][c]
+	_grid[r][c] = target
+	var thirds: int = posmod(FACE[target] - FACE[old], 3)
+	_turns[r][c] += thirds
+	_roll(r, c, thirds)
+	_given[r][c] = true
+	_hinted[r][c] = true
+	_paint(_blend[r][c], r, c)
+	fx.sparkle(BoardMath.cell_center(r, c, n, n, Placeholders.TILE_RISE + SPARKLE_LIFT))
+	fx.cue("hint")
+	hints_used += 1
+	_focus(r, c)
+	_recolour()
+	moved.emit()
+	check_solved()
+	return true
+
+## The cell a hint fills, as (col, row); (-1, -1) when nothing qualifies.
+func _hint_cell() -> Vector2i:
+	for r in n:
+		for c in n:
+			if not _given[r][c] and _grid[r][c] != -1 and _grid[r][c] != _solution[r][c]:
+				return Vector2i(c, r)
+	var best := Vector2i(-1, -1)
+	var best_score := -1
+	for r in n:
+		for c in n:
+			if _grid[r][c] != -1:
+				continue
+			var score := 0
+			for j in n:
+				if _grid[r][j] != -1:
+					score += 1
+				if _grid[j][c] != -1:
+					score += 1
+			if score > best_score:
+				best_score = score
+				best = Vector2i(c, r)
+	return best
+
+## Marks every filled free cell that differs from the solution with a wobble
+## and a flash (HUD spec, section 3). Returns how many; the press is counted
+## in `checks`. Solving stays automatic; this only points.
+func check() -> int:
+	if is_done():
+		return 0
+	checks += 1
+	var wrong := 0
+	for r in n:
+		for c in n:
+			if _given[r][c] or _grid[r][c] == -1 or _grid[r][c] == _solution[r][c]:
+				continue
+			wrong += 1
+			Motion.stop(_wobbles[r][c])
+			_cells[r][c].rotation.z = 0.0
+			_wobbles[r][c] = Motion.wobble(_cells[r][c])
+			_flash(r, c)
+	fx.cue("check" if wrong > 0 else "check_ok")
+	return wrong
+
+## A quick blush to CHECK_BLEND and back to whatever blend the cell's line
+## is heading for. Replaces the cell's running fade; _blend_target is not
+## touched, so a later _recolour does not restart it.
+func _flash(r: int, c: int) -> void:
+	Motion.stop(_fades[r][c])
+	var setter := _paint.bind(r, c)
+	var back: float = _blend_target[r][c]
+	var tw: Tween = Motion.fade(_tiles[r][c], setter, _blend[r][c], CHECK_BLEND, CHECK_IN, BLUSH_STEPS)
+	if tw == null:
+		setter.call(back)
+		_fades[r][c] = null
+		return
+	tw.tween_method(setter, CHECK_BLEND, back, CHECK_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_fades[r][c] = tw
+
 ## The focused row and column for the working-line card, or {} without a focus.
 func line_state() -> Dictionary:
 	if focus_cell.x < 0:
@@ -218,7 +328,7 @@ func _stop_all() -> void:
 	for tw in _entrance:
 		Motion.stop(tw)
 	_entrance = []
-	for rows in [_rolls, _hops, _bobs, _fades]:
+	for rows in [_rolls, _hops, _bobs, _fades, _wobbles]:
 		for row in rows:
 			for tw in row:
 				Motion.stop(tw)
@@ -244,6 +354,8 @@ func _build_scene() -> void:
 	_fades = []
 	_blend = []
 	_blend_target = []
+	_hinted = []
+	_wobbles = []
 
 	board.add_child(Platform.build(n, n))
 	fx = Fx.new()
@@ -269,6 +381,8 @@ func _build_scene() -> void:
 		var fade_row := []
 		var blend_row := []
 		var target_row := []
+		var hinted_row := []
+		var wobble_row := []
 		for c in n:
 			var tile := Models.instance("tile")
 			if r == 0 and c == 0:
@@ -304,6 +418,8 @@ func _build_scene() -> void:
 			fade_row.append(null)
 			blend_row.append(0.0)
 			target_row.append(0.0)
+			hinted_row.append(false)
+			wobble_row.append(null)
 			pivot.rotation.x = -turn_row[c] * THIRD
 		_cells.append(cell_row)
 		_tiles.append(tile_row)
@@ -317,6 +433,8 @@ func _build_scene() -> void:
 		_fades.append(fade_row)
 		_blend.append(blend_row)
 		_blend_target.append(target_row)
+		_hinted.append(hinted_row)
+		_wobbles.append(wobble_row)
 	for r in n:
 		for c in n:
 			_show_faces(r, c, false)
@@ -344,11 +462,14 @@ func _settle(r: int, c: int) -> void:
 	Motion.stop(_rolls[r][c])
 	Motion.stop(_hops[r][c])
 	Motion.stop(_bobs[r][c])
+	Motion.stop(_wobbles[r][c])
 	_rolls[r][c] = null
 	_hops[r][c] = null
 	_bobs[r][c] = null
+	_wobbles[r][c] = null
 	var pivot: Node3D = _cells[r][c]
 	pivot.rotation.x = _target_angle(r, c)
+	pivot.rotation.z = 0.0
 	pivot.position.y = _rest_y
 	_show_faces(r, c, false)
 
