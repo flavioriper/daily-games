@@ -25,7 +25,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `pipe_elbow` | 1.0 x 1.0 | 0.38 | a pipe with two adjacent openings, modelled `UP \| RIGHT`; same three layers as `pipe_cap` |
 | `pipe_tee` | 1.0 x 1.0 | 0.38 | a pipe with three openings, modelled `UP \| RIGHT \| DOWN`; same three layers as `pipe_cap` |
 | `pipe_cross` | 1.0 x 1.0 | 0.38 | a pipe with all four openings, modelled `UP \| RIGHT \| DOWN \| LEFT`; same three layers as `pipe_cap` |
-| `valve` | 0.65 x 0.65 | 0.12 | the bolted ring the source and the drain wear: `Valve_Ring` (`Metal`, a torus around the cell's hub) and `Valve_Bolts` (`Bolt_flat`, four bolts inlaid in the pad on the diagonals outside the ring) |
+| `valve` | 0.65 x 0.65 | 0.12 | the bolted ring the source and the drain wear: `Valve_Ring` (`Metal`, a torus around the cell's hub) and `Valve_Bolts` (`Bolt_flat`, four bolts resting proud on the pad on the diagonals outside the ring, not inlaid -- the valve has no slab of its own to sink into) |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
@@ -51,13 +51,16 @@ leaves a gap in the ring. `water` is unbounded.
    the footprint is centred on X = Y = 0. Blender is Z-up; the glTF exporter
    converts to Godot's Y-up for you, so model with Z as up and do nothing else.
    For directional pieces remember the mapping: Blender (x, y, z) becomes
-   Godot (x, z, -y), so Blender -Y is Godot +Z (toward the player). A piece
-   that only opens on some sides (Pipes' `pipe_cap`, `pipe_elbow`,
-   `pipe_tee`) cannot satisfy this by the bounding box: its hub, the true
-   pivot, must sit at the origin, but its mass leans toward whichever sides
-   are open. For exactly those slots the exporter checks that the origin
-   falls inside the footprint instead of at its centre; every other slot
-   still needs the centred footprint.
+   Godot (x, z, -y), so Blender -Y is Godot +Z (toward the player). A shape
+   whose openings cancel (an opposite pair, or all four) keeps its mass
+   centred on its hub and satisfies this normally. One whose openings do
+   not cancel (Pipes' `pipe_cap`, `pipe_elbow`, `pipe_tee` -- a dead end, an
+   elbow, a T) cannot: its hub, the true pivot, must still sit at the
+   origin, but its mass leans toward whichever sides are open, so its
+   bounding box cannot be centred there. For exactly those slots the
+   exporter checks that the footprint still fits the 1 x 1 cell around the
+   origin instead of being centred within it; every other slot still needs
+   the centred footprint.
 3. **Apply transforms.** Rotation (0, 0, 0), scale (1, 1, 1) before export.
 4. **Shade smooth with shared vertices, everywhere.** No split edges, no
    flat shading. For a hard-edged look, add a small Bevel modifier (width

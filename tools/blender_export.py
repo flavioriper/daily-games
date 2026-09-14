@@ -62,15 +62,18 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # merely within budget: the platform is stretched by (cols + 1, rows + 1) and
 # the rim pieces are laid one per cell, where a short piece leaves a gap.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5)}
-# Pipes pieces with an odd or adjacent-only set of openings (a dead end, an
-# elbow, a T) are genuinely lopsided: their mass leans toward the open sides,
-# so their footprint cannot be centred on the hub that must sit at the world
-# origin for the piece to rotate correctly and for its arms to reach the cell
-# edge. A cap's hub reaches back 0.15 (TUBE_R) but its one arm reaches forward
-# 0.498 (ARM_LEN) -- no rearrangement of dimensions the spec fixes closes that
-# gap. These slots get the origin-within-footprint check instead of
-# origin-at-footprint-centre (see placement_problems).
-DIRECTIONAL = {"pipe_cap", "pipe_elbow", "pipe_tee"}
+# A shape whose openings cancel (an opposite pair, or all four) keeps its
+# mass centred on its hub, and must pass the strict origin-at-centre check
+# below -- pipe_straight and pipe_cross stay off this set on purpose. One
+# whose openings do not cancel (a dead end, an elbow, a T) cannot: its hub,
+# which must sit at the world origin for the piece to rotate correctly and
+# for its open arms to reach the cell edge, is not the centroid of its
+# lopsided footprint. A cap's hub reaches back 0.15 (TUBE_R) but its one arm
+# reaches forward 0.498 (ARM_LEN) -- no rearrangement of dimensions the spec
+# fixes closes that gap. These slots get a cell-containment check instead of
+# origin-at-footprint-centre (see placement_problems): the footprint must
+# still fit the 1 x 1 cell around the origin, just not be centred within it.
+LOPSIDED = {"pipe_cap", "pipe_elbow", "pipe_tee"}
 
 
 def limit_for(slot):
@@ -128,13 +131,19 @@ def placement_problems(slot, lo, hi, origin):
     found = []
     if abs(lo.z - origin.z) > TOLERANCE:
         found.append("base not at origin height (lowest vertex %.3f above origin)" % (lo.z - origin.z))
-    if slot in DIRECTIONAL:
-        # The hub, not the bounding-box centroid, must sit at the origin: that
-        # is the piece's true pivot and the point its arms measure out from.
-        if not (lo.x - TOLERANCE <= origin.x <= hi.x + TOLERANCE
-                and lo.y - TOLERANCE <= origin.y <= hi.y + TOLERANCE):
-            found.append("origin (the hub) falls outside the footprint (%.3f, %.3f) not in %s..%s" %
-                (origin.x, origin.y, (lo.x, lo.y), (hi.x, hi.y)))
+    if slot in LOPSIDED:
+        # The hub, not the bounding-box centroid, sits at the origin, so the
+        # footprint cannot be centred -- but it must still fit the 1 x 1 cell
+        # around the origin, the same bound a centred slot gets from centring
+        # plus its span check together. Origin-inside-the-bbox alone is not
+        # enough: it only bounds the pivot, not whether the piece bleeds into
+        # a neighbour's cell (a cap with y in [-0.05, 0.85] has span 0.9, under
+        # budget, and its origin inside, but overhangs by 0.35).
+        limit_x, limit_y, _ = limit_for(slot)
+        if (lo.x < origin.x - limit_x * 0.5 - TOLERANCE or hi.x > origin.x + limit_x * 0.5 + TOLERANCE
+                or lo.y < origin.y - limit_y * 0.5 - TOLERANCE or hi.y > origin.y + limit_y * 0.5 + TOLERANCE):
+            found.append("footprint (%.3f, %.3f) .. (%.3f, %.3f) overhangs the %.1f x %.1f cell around the origin" %
+                (lo.x, lo.y, hi.x, hi.y, limit_x, limit_y))
     else:
         centre_x = (lo.x + hi.x) * 0.5 - origin.x
         centre_y = (lo.y + hi.y) * 0.5 - origin.y
