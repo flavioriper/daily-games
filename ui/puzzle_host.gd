@@ -1,96 +1,95 @@
 extends Control
 
-## Shell around any PuzzleBase: header, rules, board, footer, solved overlay.
-## Puzzles never draw chrome themselves, so they stay comparable.
+## Shell around any PuzzleBase: the concept HUD (top bar, day card, rules
+## card, board slot, action bar, motto footer), the solved overlay and the
+## settings sheet. Puzzles never draw chrome themselves, so they stay
+## comparable; the host asks each puzzle what it supports
+## (PuzzleBase.capabilities) and the panels hide the rest.
+## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md.
 
 signal closed
 
 const Pal = preload("res://core/palette.gd")
 const DailySeed = preload("res://core/daily.gd")
+const Progress = preload("res://core/progress.gd")
+const Motion = preload("res://core/motion.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const TopBar = preload("res://ui/hud/top_bar.gd")
+const DayCard = preload("res://ui/hud/day_card.gd")
+const RulesCard = preload("res://ui/hud/rules_card.gd")
+const ActionBar = preload("res://ui/hud/action_bar.gd")
+const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+
+const MARGIN := 40
+const GAP := 20
+## Entrance delays per panel (spec section 5).
+const ENTER_TOP := 0.0
+const ENTER_CARDS := 0.1
+const ENTER_ACTIONS := 0.2
+const ENTER_FOOTER := 0.3
+const ENTER_FOOTER_FADE := 0.25
 
 var _puzzle: Control
 var _entry: Dictionary
 var _difficulty: int = 0
 
-var _title_label: Label
-var _stats_label: Label
-var _rules_label: Label
+var top_bar: Control
+var day_card: Control
+var rules_card: Control
+var action_bar: Control
+var settings_sheet: Control
+var footer: Label
 var _board_holder: Control
+var _card: Panel
 var _overlay: Control
 var _overlay_label: Label
-var _card: Panel
 
 func setup(entry: Dictionary, difficulty: int) -> void:
 	_entry = entry
 	_difficulty = difficulty
 
 func _ready() -> void:
+	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
+	var insets := _safe_insets()
+	var margins := MarginContainer.new()
+	margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margins.add_theme_constant_override("margin_left", MARGIN)
+	margins.add_theme_constant_override("margin_right", MARGIN)
+	margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
+	margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
+	add_child(margins)
 	var root := VBoxContainer.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 24)
-	root.offset_left = 40
-	root.offset_right = -40
-	root.offset_top = 80
-	root.offset_bottom = -60
-	add_child(root)
+	root.add_theme_constant_override("separation", GAP)
+	margins.add_child(root)
 
-	# --- header ---
-	# A PanelContainer sizes itself to its child's minimum size, so the paper
-	# behind the header and rules always fits the text (a plain Panel does
-	# not size to its children and needs manual, loop-prone bookkeeping).
-	var top := PanelContainer.new()
-	var top_sb := StyleBoxFlat.new()
-	top_sb.bg_color = Color(Pal.PAPER, 0.88)
-	top_sb.set_corner_radius_all(28)
-	top_sb.content_margin_left = 24
-	top_sb.content_margin_right = 24
-	top_sb.content_margin_top = 16
-	top_sb.content_margin_bottom = 16
-	top.add_theme_stylebox_override("panel", top_sb)
-	root.add_child(top)
-	var top_col := VBoxContainer.new()
-	top_col.add_theme_constant_override("separation", 12)
-	top.add_child(top_col)
+	# --- top bar ---
+	top_bar = TopBar.new(_entry.get("title", ""), _entry.get("motto", ""))
+	top_bar.name = "TopBar"
+	top_bar.back.connect(func() -> void: closed.emit())
+	top_bar.undo.connect(_on_undo)
+	top_bar.hint.connect(_on_hint)
+	top_bar.settings.connect(_open_settings)
+	root.add_child(top_bar)
 
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 20)
-	top_col.add_child(header)
+	# --- cards row ---
+	var cards := HBoxContainer.new()
+	cards.add_theme_constant_override("separation", GAP)
+	root.add_child(cards)
+	day_card = DayCard.new()
+	day_card.name = "DayCard"
+	cards.add_child(day_card)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cards.add_child(spacer)
+	rules_card = RulesCard.new()
+	rules_card.name = "RulesCard"
+	cards.add_child(rules_card)
 
-	var back := Button.new()
-	back.text = "<"
-	back.custom_minimum_size = Vector2(110, 110)
-	back.add_theme_font_size_override("font_size", 48)
-	back.pressed.connect(func(): closed.emit())
-	header.add_child(back)
-
-	_title_label = Label.new()
-	_title_label.text = _entry.get("title", "")
-	_title_label.add_theme_font_size_override("font_size", 52)
-	_title_label.add_theme_color_override("font_color", Pal.TEXT)
-	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	header.add_child(_title_label)
-
-	_stats_label = Label.new()
-	_stats_label.add_theme_font_size_override("font_size", 36)
-	_stats_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
-	_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	header.add_child(_stats_label)
-
-	# --- rules ---
-	_rules_label = Label.new()
-	_rules_label.add_theme_font_size_override("font_size", 34)
-	_rules_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
-	_rules_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	top_col.add_child(_rules_label)
-
-	# --- board ---
+	# --- board slot ---
 	_board_holder = Control.new()
 	_board_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_board_holder)
-
 	_card = Panel.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Pal.PAPER
@@ -100,29 +99,40 @@ func _ready() -> void:
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_board_holder.add_child(_card)
 
-	# --- footer ---
-	var footer := HBoxContainer.new()
-	footer.add_theme_constant_override("separation", 20)
+	# --- action bar and footer ---
+	action_bar = ActionBar.new()
+	action_bar.name = "ActionBar"
+	action_bar.reset.connect(_on_reset)
+	action_bar.check.connect(_on_check)
+	root.add_child(action_bar)
+	footer = Label.new()
+	footer.theme_type_variation = "Motto"
+	footer.text = String(_entry.get("footer", "")).to_upper()
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer.visible = footer.text != ""
 	root.add_child(footer)
 
-	var reset := Button.new()
-	reset.text = "Reset"
-	reset.custom_minimum_size = Vector2(0, 120)
-	reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	reset.add_theme_font_size_override("font_size", 40)
-	reset.pressed.connect(_on_reset)
-	footer.add_child(reset)
-
-	var again := Button.new()
-	again.text = "New"
-	again.custom_minimum_size = Vector2(0, 120)
-	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	again.add_theme_font_size_override("font_size", 40)
-	again.pressed.connect(_on_new)
-	footer.add_child(again)
-
 	_build_overlay()
+	settings_sheet = SettingsSheet.new()
+	settings_sheet.name = "SettingsSheet"
+	settings_sheet.reduce_changed.connect(_on_reduce_changed)
+	settings_sheet.new_puzzle.connect(_on_new)
+	add_child(settings_sheet)
+
 	_spawn(DailySeed.seed_for(_entry.id, _difficulty))
+	_enter()
+
+## Safe-area insets (top, bottom) in viewport units. Only phones report one
+## that matters; the desktop's value describes the screen, not the window.
+func _safe_insets() -> Vector2:
+	if not OS.has_feature("mobile"):
+		return Vector2.ZERO
+	var win := DisplayServer.window_get_size()
+	if win.y <= 0:
+		return Vector2.ZERO
+	var safe := DisplayServer.get_display_safe_area()
+	var k := get_viewport_rect().size.y / float(win.y)
+	return Vector2(maxf(0.0, float(safe.position.y)) * k, maxf(0.0, float(win.y - safe.end.y)) * k)
 
 func _build_overlay() -> void:
 	_overlay = ColorRect.new()
@@ -130,21 +140,39 @@ func _build_overlay() -> void:
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.visible = false
 	add_child(_overlay)
-
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", CozyTheme.paper_card())
+	card.set_anchors_preset(Control.PRESET_CENTER)
+	card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	card.grow_vertical = Control.GROW_DIRECTION_BOTH
+	card.custom_minimum_size.x = 640
+	_overlay.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	card.add_child(col)
+	var title := Label.new()
+	title.theme_type_variation = "CardTitle"
+	title.text = "Solved"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
 	_overlay_label = Label.new()
-	_overlay_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay_label.theme_type_variation = "CardBody"
 	_overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_overlay_label.add_theme_font_size_override("font_size", 56)
-	_overlay_label.add_theme_color_override("font_color", Pal.TEXT)
 	_overlay_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_overlay.add_child(_overlay_label)
-
+	col.add_child(_overlay_label)
 	var tap := Button.new()
 	tap.flat = true
 	tap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	tap.pressed.connect(func(): _overlay.visible = false)
+	tap.pressed.connect(func() -> void: _overlay.visible = false)
 	_overlay.add_child(tap)
+
+## The HUD arrives: top bar first, cards, then the action bar and the footer.
+func _enter() -> void:
+	top_bar.enter(ENTER_TOP)
+	day_card.enter(ENTER_CARDS)
+	rules_card.enter(ENTER_CARDS)
+	action_bar.enter(ENTER_ACTIONS)
+	Motion.appear(footer, 0.0, 1.0, ENTER_FOOTER_FADE, ENTER_FOOTER)
 
 func _spawn(the_seed: int) -> void:
 	if is_instance_valid(_puzzle):
@@ -154,37 +182,66 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_board_holder.add_child(_puzzle)
 	_puzzle.solved.connect(_on_solved)
-	_puzzle.moved.connect(_update_stats)
+	_puzzle.moved.connect(_refresh)
+	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = the_seed
 	_puzzle.start(rng, _difficulty)
 	_card.visible = not _puzzle.is_3d()
-	_rules_label.text = _puzzle.rules()
 	_overlay.visible = false
-	_update_stats()
+	Progress.touch()
+	day_card.set_day(Progress.day(), Progress.island_name())
+	_refresh()
+
+## Every panel re-reads the puzzle.
+func _refresh() -> void:
+	var p = _puzzle if is_instance_valid(_puzzle) else null
+	top_bar.refresh(p)
+	rules_card.refresh(p)
+	action_bar.refresh(p)
+
+func _on_undo() -> void:
+	if is_instance_valid(_puzzle):
+		_puzzle.undo()
+		_refresh()
+
+func _on_hint() -> void:
+	if is_instance_valid(_puzzle):
+		_puzzle.hint()
+		_refresh()
+
+func _on_check() -> void:
+	if is_instance_valid(_puzzle):
+		var wrong: int = _puzzle.check()
+		if wrong == 0:
+			action_bar.all_good()
+		_refresh()
 
 func _on_reset() -> void:
 	if is_instance_valid(_puzzle):
 		_puzzle.reset_board()
 		_overlay.visible = false
-		_update_stats()
+		_refresh()
 
 func _on_new() -> void:
 	# Prototype affordance only. The shipped game gets one puzzle per day.
 	_spawn(randi())
 
+func _open_settings() -> void:
+	settings_sheet.open()
+
+## The reduce-motion toggle: persist, still the world, refresh the chrome.
+func _on_reduce_changed(on: bool) -> void:
+	Motion.reduce = on
+	Motion.save_settings()
+	var stage: Node = get_tree().get_first_node_in_group("stage")
+	if stage != null and stage.get("ambient") != null:
+		stage.ambient.refresh()
+	_refresh()
+
 func _on_solved() -> void:
-	_overlay_label.text = "Solved\n%.1fs  ·  %d moves\n\n%s" % [
+	_overlay_label.text = "%.1fs  ·  %d moves\n\n%s" % [
 		_puzzle.elapsed, _puzzle.moves, _puzzle.share_glyphs()
 	]
 	_overlay.visible = true
-
-func _update_stats() -> void:
-	if is_instance_valid(_puzzle):
-		_stats_label.text = "%d" % _puzzle.moves
-
-func _process(_delta: float) -> void:
-	if is_instance_valid(_puzzle) and not _puzzle.is_done():
-		_stats_label.text = "%02d:%02d · %d" % [
-			int(_puzzle.elapsed) / 60, int(_puzzle.elapsed) % 60, _puzzle.moves
-		]
+	_refresh()

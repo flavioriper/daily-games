@@ -8,6 +8,8 @@ const PUZZLES := [
 		"id": "binairo",
 		"title": "Binairo",
 		"blurb": "Suns and moons. Never three alike in a line.",
+		"motto": "Balance brings harmony",
+		"footer": "Think · Balance · Complete",
 		"script": "res://puzzles/binairo3d.gd",
 		"difficulties": [0, 1, 2],
 	},
