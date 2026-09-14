@@ -7,7 +7,9 @@ const Toon = preload("res://core/toon.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
 const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
-	"socket": 0.15, "peg": 0.5, "pip": 0.2, "lid": 0.3}
+	"socket": 0.15, "peg": 0.5, "pip": 0.2, "lid": 0.3,
+	"pipe_pad": 0.15, "pipe_cap": 0.38, "pipe_straight": 0.38, "pipe_elbow": 0.38,
+	"pipe_tee": 0.38, "pipe_cross": 0.38, "valve": 0.12}
 
 static func run(t) -> void:
 	_test_slots(t)
@@ -30,8 +32,9 @@ static func _bounds(root: Node3D) -> Array:
 	return [lo, hi]
 
 static func _test_slots(t) -> void:
-	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid"],
-		"slot list matches the polish and codebreak specs")
+	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
+		"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve"],
+		"slot list matches the polish, codebreak and pipes specs")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
@@ -50,7 +53,10 @@ static func _test_slots(t) -> void:
 		# slate moon faces are not one: the body already draws the cell's
 		# silhouette, and a second shell inside it would read as a seam.
 		var outlined: Array = {"tile": ["Stone", "Sun", "Moon"], "socket": ["Stone"], "peg": ["Shell"],
-			"pip": ["Pip"], "lid": ["Lid", "Knob"]}.get(slot, [])
+			"pip": ["Pip"], "lid": ["Lid", "Knob"], "pipe_pad": ["Stone"],
+			"pipe_cap": ["Steel", "Collar"], "pipe_straight": ["Steel", "Collar"],
+			"pipe_elbow": ["Steel", "Collar"], "pipe_tee": ["Steel", "Collar"],
+			"pipe_cross": ["Steel", "Collar"], "valve": ["Metal"]}.get(slot, [])
 		for mi in ms:
 			var src: Material = mi.mesh.surface_get_material(0)
 			var mat_name: String = src.resource_name if src != null else ""

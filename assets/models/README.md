@@ -16,6 +16,13 @@ any that are missing:
 | `peg` | a colour peg: `Shell` dome tinted per colour, seven `Mark_flat` pip layers of which the game shows one |
 | `pip` | a feedback pip: `Well_flat` disc and a `Pip` ball tinted slate or cream, hidden until scored |
 | `lid` | the stone lid over one code slot, `Lid` body and wooden `Knob` |
+| `pipe_pad` | Pipes's bevelled slab a pipe rests on, `Stone` body |
+| `pipe_cap` | a pipe with one opening, modelled opening `UP`: `Steel` shell, `Collar` rings and a `Flow_flat` water tube that `_dress` gives its own flow material |
+| `pipe_straight` | a pipe with two opposite openings, modelled `UP \| DOWN`; same three layers as `pipe_cap` |
+| `pipe_elbow` | a pipe with two adjacent openings, modelled `UP \| RIGHT`; same three layers as `pipe_cap` |
+| `pipe_tee` | a pipe with three openings, modelled `UP \| RIGHT \| DOWN`; same three layers as `pipe_cap` |
+| `pipe_cross` | a pipe with all four openings, modelled `UP \| RIGHT \| DOWN \| LEFT`; same three layers as `pipe_cap` |
+| `valve` | the bolted ring the source and the drain wear: `Metal` torus and four `Bolt_flat` bolts inlaid in the pad |
 
 `tile` is recoloured **by material name**: its `Stone` body and `Slate_flat`
 moon faces take the colour the cell is entitled to -- darker when it is a

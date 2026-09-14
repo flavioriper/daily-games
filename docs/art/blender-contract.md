@@ -19,6 +19,13 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `peg` | 0.6 across | 0.5 | a colour peg, an **assembly**: `Peg_Body` (`Shell`, tinted per colour) and `Peg_Mark_1` … `Peg_Mark_7` (`Mark_flat`, one to seven pips on the crown in die layouts, each disc 0.012 thick, rotated onto the crown's normal and centred on the surface so 0.006 stands proud, the tile's inlay treatment); the game shows the one mark matching the colour |
 | `pip` | 0.2 across | 0.2 | a feedback pip, an **assembly**: `Pip_Well` (`Well_flat`) and `Pip_Ball` (`Pip`, tinted slate or cream, hidden until scored) |
 | `lid` | 0.94 x 0.94 | 0.3 | the stone lid over one code slot: `Lid_Body` (`Lid`) and `Lid_Knob` (`Knob`) |
+| `pipe_pad` | 1.0 x 1.0 | 0.15 | Pipes's bevelled slab: `Pad_Body` (`Stone`), the surface a pipe piece rests on |
+| `pipe_cap` | 1.0 x 1.0 | 0.38 | a pipe with one opening, modelled opening `UP`; an **assembly** of `Pipe_Shell` (`Steel`, the hub and two shell segments per open arm either side of a sight hole), `Pipe_Collar` (`Collar`, a ring at each side of every hole plus one at each open mouth) and `Pipe_Water` (`Flow_flat`, the tube running every open arm's full length plus a hub ball, dry grey until `Models._dress` swaps in a fresh `Toon.pipe_flow()` material) |
+| `pipe_straight` | 1.0 x 1.0 | 0.38 | a pipe with two opposite openings, modelled `UP \| DOWN`; same three layers as `pipe_cap` |
+| `pipe_elbow` | 1.0 x 1.0 | 0.38 | a pipe with two adjacent openings, modelled `UP \| RIGHT`; same three layers as `pipe_cap` |
+| `pipe_tee` | 1.0 x 1.0 | 0.38 | a pipe with three openings, modelled `UP \| RIGHT \| DOWN`; same three layers as `pipe_cap` |
+| `pipe_cross` | 1.0 x 1.0 | 0.38 | a pipe with all four openings, modelled `UP \| RIGHT \| DOWN \| LEFT`; same three layers as `pipe_cap` |
+| `valve` | 0.65 x 0.65 | 0.12 | the bolted ring the source and the drain wear: `Valve_Ring` (`Metal`, a torus around the cell's hub) and `Valve_Bolts` (`Bolt_flat`, four bolts inlaid in the pad on the diagonals outside the ring) |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are

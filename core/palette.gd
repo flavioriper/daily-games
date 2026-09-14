@@ -48,6 +48,15 @@ const PEGS := [
 ]
 const WOOD_DEEP    := Color("9c7350")   # the colour tray's bottom edge
 
+# Pipes (docs/art/concept-pipes.png): chrome when dry, lit blue when fed. The
+# water inside the tube is WATER / WATER_HI, already defined above, and its
+# bubbles are MOON.
+const STEEL       := Color("aebecb")   # dry pipe shell
+const STEEL_HI    := Color("cfdce6")   # dry collar, and the valve rings
+const PIPE_WET    := Color("4fa8ef")   # fed pipe shell
+const PIPE_WET_HI := Color("9ad3ff")   # fed collar
+const FLOW_DRY    := Color("6b7a88")   # the water tube with nothing in it
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

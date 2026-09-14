@@ -10,7 +10,11 @@ const Placeholders = preload("res://core/placeholders.gd")
 const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
 ## same names with their footprint rules.
-const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid"]
+const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
+	"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve"]
+## The five pipe shapes. They all carry the same three layers, so anything
+## that dresses or tints one dresses or tints all of them.
+const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
 ## Slots exempt from the 1 x 1 footprint rule.
 const UNBOUNDED := ["platform", "water"]
 
@@ -57,17 +61,34 @@ static func tint(root: Node, color: Color) -> void:
 		for i in mi.mesh.get_surface_count():
 			mi.set_surface_override_material(i, Toon.material(color))
 
+## Overrides every surface under `root` whose imported material is called
+## `name` with `mat`. The glTF material name survives on the mesh surface and
+## an override does not touch it, so this is repeatable.
+static func set_material_named(root: Node, name: String, mat: Material) -> void:
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src != null and src.resource_name == name:
+				mi.set_surface_override_material(i, mat)
+
+## The override applied to the first surface named `name`, or null when the
+## name is absent or nothing has overridden it. Pipes reads back the flow
+## material _dress gave its piece this way.
+static func material_named(root: Node, name: String) -> Material:
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src != null and src.resource_name == name:
+				return mi.get_surface_override_material(i)
+	return null
+
 ## Recolours only the surfaces whose imported material is called `name`
 ## (the glTF material name survives on the mesh surface; overrides do not
 ## touch it). Used for assemblies where only some layers are tinted: the
 ## tile's `Stone` body takes the state colour while its inlaid `Sun` and
 ## `Moon` keep the colours they were modelled with.
 static func tint_named(root: Node, name: String, color: Color) -> void:
-	for mi in meshes(root):
-		for i in mi.mesh.get_surface_count():
-			var src := mi.mesh.surface_get_material(i)
-			if src != null and src.resource_name == name:
-				mi.set_surface_override_material(i, Toon.material(color))
+	set_material_named(root, name, Toon.material(color))
 
 ## Distinct imported material names under `root`, in first-seen order.
 static func surface_names(root: Node) -> Array[String]:
@@ -105,3 +126,7 @@ static func _dress(slot: String, node: Node3D) -> void:
 			for mi in meshes(node):
 				for i in mi.mesh.get_surface_count():
 					mi.set_surface_override_material(i, Toon.water())
+		"pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross":
+			# Each pipe instance gets its own flow material: the board drives
+			# `wet` per cell as the flood reaches it.
+			set_material_named(node, "Flow_flat", Toon.pipe_flow())

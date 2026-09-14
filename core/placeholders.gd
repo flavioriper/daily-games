@@ -60,6 +60,52 @@ const LID_H := 0.16
 const KNOB_R := 0.09
 const KNOB_H := 0.08
 
+## Pipes pieces (pipes spec, section 1). A pad is a bevelled slab; a pipe is a
+## hub with an arm to each opening, each arm two shell segments with a real
+## hole between two collars, and one water tube running the whole length that
+## shows through that hole and at every open mouth; the valve is a bolted ring
+## laid on the pad around the hub.
+const PAD_SIDE := 0.94
+const PAD_H := 0.12
+const TUBE_R := 0.15
+## The tube's axis, in the piece's own space. It sits at the collar radius,
+## not the tube radius, so the flange rings rest exactly on y = 0 and the
+## pipe is carried 0.025 clear of the pad on them. Putting the axis at
+## TUBE_R instead would sink every collar 0.025 into the pad and break the
+## contract's base-at-y=0 rule.
+const TUBE_Y := 0.175
+## Two thousandths short of the cell edge, so the contract's 1 x 1 footprint
+## check has no float-rounding argument with a rotated cylinder's end cap. The
+## 0.004 left between two facing mouths is well under a pixel on the board.
+const ARM_LEN := 0.498
+## The hub ball matches the tube, so the joint is a clean rounded corner and
+## its lowest point is the tube's.
+const HUB_R := TUBE_R
+## The sight hole runs from GAP_IN to GAP_OUT along every arm.
+const GAP_IN := 0.20
+const GAP_OUT := 0.32
+const COLLAR_R := 0.175
+const COLLAR_W := 0.06
+const MOUTH_AT := 0.468
+const CORE_R := 0.115
+const VALVE_IN := 0.20
+const VALVE_OUT := 0.30
+## A torus of that inner and outer radius stands (outer - inner) tall.
+const VALVE_H := VALVE_OUT - VALVE_IN
+const BOLT_R := 0.035
+const BOLT_AT := 0.36    # bolt centres, on the pad diagonals, clear of the ring
+const BOLT_PROUD := 0.0015
+## Direction bits, the same 1=up 2=right 4=down 8=left as puzzles/pipes_gen.gd.
+## Kept here so the placeholders need not preload a puzzle script.
+const BIT_UP := 1
+const BIT_RIGHT := 2
+const BIT_DOWN := 4
+const BIT_LEFT := 8
+## The yaw that turns the reference arm (pointing at -Z, the UP bit) onto each
+## direction. Same convention as the board's own rotation: clockwise on screen
+## is negative about +Y.
+const ARM_YAW := {BIT_UP: 0.0, BIT_RIGHT: -PI * 0.5, BIT_DOWN: PI, BIT_LEFT: PI * 0.5}
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -68,6 +114,13 @@ static func make(slot: String) -> Node3D:
 		"peg": return _peg()
 		"pip": return _pip()
 		"lid": return _lid()
+		"pipe_pad": return _pad()
+		"pipe_cap": return _pipe("pipe_cap", BIT_UP)
+		"pipe_straight": return _pipe("pipe_straight", BIT_UP | BIT_DOWN)
+		"pipe_elbow": return _pipe("pipe_elbow", BIT_UP | BIT_RIGHT)
+		"pipe_tee": return _pipe("pipe_tee", BIT_UP | BIT_RIGHT | BIT_DOWN)
+		"pipe_cross": return _pipe("pipe_cross", BIT_UP | BIT_RIGHT | BIT_DOWN | BIT_LEFT)
+		"valve": return _valve()
 	var root := Node3D.new()
 	root.name = slot
 	var mi := MeshInstance3D.new()
@@ -342,5 +395,111 @@ static func _lid() -> Node3D:
 	root.add_child(body)
 	root.add_child(_layer("Lid_Knob", _cylinder(KNOB_R, KNOB_H, 24), "Knob", Pal.WOOD,
 		Vector3(0.0, LID_H + KNOB_H * 0.5, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+# --- Pipes pieces ---
+
+## One mesh from several primitives, each placed by its own transform:
+## `parts` is an Array of {"mesh": Mesh, "xform": Transform3D}. A layer that
+## is several lobes (a pipe's hub and its tube segments) must still be one
+## mesh, as docs/art/blender-contract.md requires, so its outline is one
+## shell. append_from transforms the normals it finds, so nothing here calls
+## generate_normals: welding a cylinder's caps to its sides would ruin the
+## shading.
+static func _merge(parts: Array) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for part in parts:
+		var m: Mesh = part["mesh"]
+		for i in m.get_surface_count():
+			st.append_from(m, i, part["xform"])
+	return st.commit()
+
+## A ball of `radius`, smooth enough to read as a rounded hub.
+static func _ball(radius: float) -> SphereMesh:
+	var s := SphereMesh.new()
+	s.radius = radius
+	s.height = radius * 2.0
+	s.radial_segments = 16
+	s.rings = 8
+	return s
+
+## `mesh` (standing along +Y) turned to lie along -Z -- the reference arm --
+## and slid `out` down it at the tube's axis height.
+static func _along(mesh: Mesh, out: float) -> Dictionary:
+	return {"mesh": mesh, "xform": Transform3D(Basis(Vector3.RIGHT, -PI * 0.5),
+		Vector3(0.0, TUBE_Y, -out))}
+
+## The same part turned from the reference arm onto the arm at `yaw`.
+static func _yawed(part: Dictionary, yaw: float) -> Dictionary:
+	return {"mesh": part["mesh"],
+		"xform": Transform3D(Basis(Vector3.UP, yaw), Vector3.ZERO) * part["xform"]}
+
+## Bevelled slab one cell wide, the surface a pipe rests on. A square piece is
+## a four-sided prism turned 45 degrees, not a BoxMesh (see the file header).
+static func _pad() -> Node3D:
+	var root := Node3D.new()
+	root.name = "pipe_pad"
+	var body := _layer("Pad_Body", _prism(PAD_SIDE * 0.5, PAD_H), "Stone", Pal.STONE,
+		Vector3(0.0, PAD_H * 0.5, 0.0))
+	body.rotation.y = PI * 0.25
+	root.add_child(body)
+	Toon.apply_to(root)
+	return root
+
+## A pipe piece for `mask`, the set of direction bits it opens on, in the
+## orientation the shape is modelled in. Three layers: the shell (hub plus two
+## segments per arm, the sight hole between them), the collars (a ring each
+## side of every hole plus one at the mouth) and the water tube (the full
+## length of every arm plus a hub ball), which shows through the holes and at
+## every open mouth. Models._dress swaps the tube's material for a fresh
+## pipe_flow one, here and on the Blender export alike.
+static func _pipe(slot: String, mask: int) -> Node3D:
+	var root := Node3D.new()
+	root.name = slot
+	var at_hub := Transform3D(Basis(), Vector3(0.0, TUBE_Y, 0.0))
+	var shell: Array = [{"mesh": _ball(HUB_R), "xform": at_hub}]
+	var collar: Array = []
+	var water: Array = [{"mesh": _ball(CORE_R), "xform": at_hub}]
+	for bit in [BIT_UP, BIT_RIGHT, BIT_DOWN, BIT_LEFT]:
+		if mask & bit == 0:
+			continue
+		var yaw: float = ARM_YAW[bit]
+		shell.append(_yawed(_along(_cylinder(TUBE_R, GAP_IN, 16), GAP_IN * 0.5), yaw))
+		shell.append(_yawed(_along(_cylinder(TUBE_R, ARM_LEN - GAP_OUT, 16),
+			(GAP_OUT + ARM_LEN) * 0.5), yaw))
+		for d in [GAP_IN, GAP_OUT, MOUTH_AT]:
+			collar.append(_yawed(_along(_cylinder(COLLAR_R, COLLAR_W, 16), d), yaw))
+		water.append(_yawed(_along(_cylinder(CORE_R, ARM_LEN, 16), ARM_LEN * 0.5), yaw))
+	root.add_child(_layer("Pipe_Shell", _merge(shell), "Steel", Pal.STEEL, Vector3.ZERO))
+	root.add_child(_layer("Pipe_Collar", _merge(collar), "Collar", Pal.STEEL_HI, Vector3.ZERO))
+	root.add_child(_layer("Pipe_Water", _merge(water), "Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The bolted ring the source and the drain wear: a torus around the cell's
+## hub, clear of it, with four bolts inlaid in the pad outside the ring.
+static func _valve() -> Node3D:
+	var root := Node3D.new()
+	root.name = "valve"
+	var ring := TorusMesh.new()
+	ring.inner_radius = VALVE_IN
+	ring.outer_radius = VALVE_OUT
+	ring.rings = 24
+	ring.ring_segments = 12
+	root.add_child(_layer("Valve_Ring", ring, "Metal", Pal.STEEL_HI,
+		Vector3(0.0, VALVE_H * 0.5, 0.0)))
+	var bolts: Array = []
+	var d := BOLT_AT / sqrt(2.0)
+	# Centred at BOLT_PROUD, not at 0, so the bolt's own base lands on y = 0:
+	# the valve is measured on its own here, with no pad body underneath it to
+	# bury the other half of a centred disc into (contrast the tile's inlays,
+	# which sink into the cube that carries them).
+	for at in [Vector3(d, BOLT_PROUD, d), Vector3(-d, BOLT_PROUD, d),
+			Vector3(d, BOLT_PROUD, -d), Vector3(-d, BOLT_PROUD, -d)]:
+		bolts.append({"mesh": _cylinder(BOLT_R, BOLT_PROUD * 2.0, 16),
+			"xform": Transform3D(Basis(), at)})
+	root.add_child(_layer("Valve_Bolts", _merge(bolts), "Bolt_flat", Pal.MARK, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root

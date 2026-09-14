@@ -9,6 +9,7 @@ const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
 const WIND_SHADER := preload("res://shaders/toon_wind.gdshader")
 const WATER_SHADER := preload("res://shaders/water.gdshader")
+const PIPE_SHADER := preload("res://shaders/pipe_flow.gdshader")
 const Pal = preload("res://core/palette.gd")
 
 const OUTLINE_NODE := "Outline"
@@ -76,6 +77,21 @@ static func water() -> ShaderMaterial:
 		_water.set_shader_parameter("splash_origin", Vector3.ZERO)
 		_water.set_shader_parameter("splash_age", -1.0)
 	return _water
+
+## A fresh pipe-flow material, one per pipe instance. Deliberately not shared
+## the way water() is: every cell drives its own `wet` as the flood reaches it,
+## and the win drives its own `flow_speed`.
+static func pipe_flow() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = PIPE_SHADER
+	m.set_shader_parameter("dry_color", Pal.FLOW_DRY)
+	m.set_shader_parameter("base_color", Pal.WATER)
+	m.set_shader_parameter("band_color", Pal.WATER_HI)
+	m.set_shader_parameter("bubble_color", Pal.MOON)
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	m.set_shader_parameter("wet", 0.0)
+	m.set_shader_parameter("flow_speed", 1.0)
+	return m
 
 static func sways(name: String) -> bool:
 	return name.contains(SWAY_MARK)

@@ -41,6 +41,16 @@ LIMITS = {
     "peg": (0.7, 0.7, 0.5),
     "pip": (0.3, 0.3, 0.2),
     "lid": (1.0, 1.0, 0.3),
+    # Pipes pieces (docs/superpowers/specs/2026-09-14-pipes-3d-design.md,
+    # section 1): a pad, the five pipe shapes whose arms reach the cell edge,
+    # and a bolted valve ring.
+    "pipe_pad": (1.0, 1.0, 0.15),
+    "pipe_cap": (1.0, 1.0, 0.38),
+    "pipe_straight": (1.0, 1.0, 0.38),
+    "pipe_elbow": (1.0, 1.0, 0.38),
+    "pipe_tee": (1.0, 1.0, 0.38),
+    "pipe_cross": (1.0, 1.0, 0.38),
+    "valve": (0.65, 0.65, 0.12),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
