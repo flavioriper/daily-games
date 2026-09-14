@@ -78,7 +78,7 @@ connected run reads as one continuous pipe.
 | `pipe_elbow` | 1.0 x 1.0 | 0.35 | two adjacent arms |
 | `pipe_tee` | 1.0 x 1.0 | 0.35 | three arms |
 | `pipe_cross` | 1.0 x 1.0 | 0.35 | four arms |
-| `valve` | 0.6 x 0.6 | 0.10 | `Valve_Ring` → `Metal` (tinted), a torus of inner radius 0.20 and outer 0.30, so it stands 0.10 with its lowest point on the pad top; `Valve_Bolts` → `Bolt_flat`, four discs of radius 0.035 inlaid 0.0015 proud on the pad diagonals at radius 0.36, clear of the ring |
+| `valve` | 0.6 x 0.6 | 0.10 | `Valve_Ring` → `Metal` (tinted), a torus of inner radius 0.20 and outer 0.30, so it stands 0.10 with its lowest point on the pad top; `Valve_Bolts` → `Bolt_flat`, four discs of radius 0.035 and thickness 0.003 resting on the pad diagonals at radius 0.36, clear of the ring. They sit on the pad rather than inlaid half into it: the valve is its own model with no slab of its own, and the contract puts every model's base at y = 0 |
 
 The three layers every pipe piece carries:
 
