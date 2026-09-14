@@ -41,6 +41,8 @@ static func motion_scale() -> float:
 ## pollen. Call after the flag changes.
 func refresh() -> void:
 	RenderingServer.global_shader_parameter_set(GLOBAL, motion_scale())
+	if pollen == null:
+		return
 	var on := not Motion.reduce
 	if on and not pollen.emitting:
 		pollen.restart()
@@ -59,9 +61,12 @@ func fit_to(aabb: AABB) -> void:
 func splash(origin: Vector3) -> void:
 	if Motion.reduce:
 		return
-	Toon.water().set_shader_parameter("splash_origin", origin)
+	var mat := Toon.water()
+	if mat == null:
+		return
+	mat.set_shader_parameter("splash_origin", origin)
 	_splash_age = 0.0
-	Toon.water().set_shader_parameter("splash_age", _splash_age)
+	mat.set_shader_parameter("splash_age", _splash_age)
 	set_process(true)
 
 func splash_age() -> float:
@@ -71,11 +76,14 @@ func _process(delta: float) -> void:
 	if _splash_age < 0.0:
 		set_process(false)
 		return
+	var mat := Toon.water()
+	if mat == null:
+		return
 	_splash_age += delta
 	if _splash_age >= SPLASH_TIME:
 		_splash_age = -1.0
 		set_process(false)
-	Toon.water().set_shader_parameter("splash_age", _splash_age)
+	mat.set_shader_parameter("splash_age", _splash_age)
 
 func _make_pollen() -> CPUParticles3D:
 	var p := CPUParticles3D.new()

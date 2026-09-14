@@ -9,7 +9,6 @@ const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const CameraRig = preload("res://world/camera_rig.gd")
 const Ambient = preload("res://world/ambient.gd")
-const Motion = preload("res://core/motion.gd")
 
 const WATER_DEPTH := 4.0
 
@@ -20,7 +19,6 @@ var water: Node3D
 var ambient: Node3D
 
 func _ready() -> void:
-	Motion.load_settings()
 	add_to_group("stage")
 
 	rig = CameraRig.new()

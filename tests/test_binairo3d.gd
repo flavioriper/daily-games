@@ -19,8 +19,8 @@ const THIRD := TAU / 3.0
 
 static func run_in_tree(t) -> void:
 	var root: Node = (Engine.get_main_loop() as SceneTree).root
-	# A throwaway path: Stage._ready() calls Motion.load_settings(), and the
-	# developer's real user://settings.cfg must never leak into this suite.
+	# A throwaway path: nothing in this suite should touch the developer's
+	# real user://settings.cfg.
 	Motion.settings_path = "user://_test_settings.cfg"
 	var stage: Node3D = Stage.new()
 	root.add_child(stage)

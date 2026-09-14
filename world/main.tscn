@@ -1,9 +1,11 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
+[ext_resource type="Script" path="res://world/main.gd" id="0_main"]
 [ext_resource type="PackedScene" path="res://world/stage.tscn" id="1_stage"]
 [ext_resource type="PackedScene" path="res://ui/menu.tscn" id="2_menu"]
 
 [node name="Main" type="Node"]
+script = ExtResource("0_main")
 
 [node name="Stage" parent="." instance=ExtResource("1_stage")]
 

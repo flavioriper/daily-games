@@ -41,12 +41,16 @@ func _ready() -> void:
 func puff(at: Vector3, colour: Color = Pal.STONE) -> void:
 	if Motion.reduce:
 		return
+	if puffs.is_empty():
+		return
 	_fire(puffs[_next_puff], at, colour)
 	_next_puff = (_next_puff + 1) % PUFF_POOL
 
 ## Small stars floating up from `at`.
 func sparkle(at: Vector3, colour: Color = Pal.SUN) -> void:
 	if Motion.reduce:
+		return
+	if sparkles.is_empty():
 		return
 	_fire(sparkles[_next_sparkle], at, colour)
 	_next_sparkle = (_next_sparkle + 1) % SPARKLE_POOL
