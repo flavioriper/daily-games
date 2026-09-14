@@ -33,7 +33,9 @@ const PUZZLES := [
 		"id": "pipes",
 		"title": "Pipes",
 		"blurb": "Turn every piece until nothing leaks.",
-		"script": "res://puzzles/pipes.gd",
+		"motto": "Make the water flow",
+		"footer": "Think · Connect · Flow",
+		"script": "res://puzzles/pipes3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

@@ -65,7 +65,7 @@ func _note(id: String) -> String:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s" % [_puzzle._guess]
-		"pipes": return "%d turns" % _puzzle.moves
+		"pipes": return "%d turns, camera fit=%s, hud=%s" % [_puzzle.moves, _fit_ok, _hud_ok]
 		"untangle": return "%d crossings" % _puzzle._crossings
 		"shikaku": return "%d rectangles" % _puzzle._rects.size()
 		"tents": return "%d tents placed" % _puzzle._solution_tents.size()
@@ -139,15 +139,36 @@ func _solve_balance() -> void:
 			_tap_local(Vector2(_puzzle._answer_w * (i + 0.5), _puzzle._answer_y + 100.0))
 
 func _solve_pipes() -> void:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every cell centre must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for y in h:
+		for x in w:
+			if not slot.has_point(_puzzle.cell_to_local(y, x)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint (turns and locks a cell), then one tap
+	# undone. The tap must land on a cell the hint cannot have taken, and a
+	# hint always takes the first wrong cell in reading order, so walk
+	# backwards to the last cell it did not lock.
+	_press(_host.top_bar.hint_button)
+	var free_cell := Vector2i(-1, -1)
+	for y in range(h - 1, -1, -1):
+		for x in range(w - 1, -1, -1):
+			if free_cell.x < 0 and not _puzzle._locked.has(Vector2i(x, y)):
+				free_cell = Vector2i(x, y)
+	_tap_local(_puzzle.cell_to_local(free_cell.y, free_cell.x))
+	_press(_host.top_bar.undo_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.moves == 1 and not _puzzle.can_undo()
 	# rot 0 everywhere is the configuration the spanning tree was built in.
-	for y in _puzzle.h:
-		for x in _puzzle.w:
+	for y in h:
+		for x in w:
 			if _puzzle.is_done():
 				return
 			var taps: int = (4 - int(_puzzle._rot[y][x])) % 4
 			for k in taps:
-				_tap_local(Vector2(_puzzle._origin.x + (x + 0.5) * _puzzle._cell,
-					_puzzle._origin.y + (y + 0.5) * _puzzle._cell))
+				_tap_local(_puzzle.cell_to_local(y, x))
 
 func _solve_untangle() -> void:
 	for i in _puzzle._pos.size():
