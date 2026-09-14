@@ -251,6 +251,7 @@ static func _test_neighbour_bob(t, p) -> void:
 	# test below starts from "no tap yet".
 	Motion.stop(p._ring_tw)
 	Motion.stop(p._ring_pulse)
+	Motion.stop(p._ring_pulse_a)
 	Motion.stop(p._ring_hold)
 	p._ring.visible = false
 	p._ring.scale = Vector3.ONE

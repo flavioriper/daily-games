@@ -5,6 +5,7 @@ extends RefCounted
 ## null when reduce-motion skipped it, so callers can chain `finished` and
 ## headless tests can drive it with custom_step (see tests/test_motion.gd).
 ## Spec: docs/superpowers/specs/2026-09-13-binairo-polish-design.md, section 1.
+## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 6.
 
 ## Essential motion under reduce-motion: this long, linear, no overshoot.
 const REDUCED_TIME := 0.15
@@ -49,12 +50,13 @@ static func settle(node: Node3D, property: String, target, time: float, delay :=
 
 ## Lifts position.y by `height` and comes back down; a negative height dips.
 ## `base` is the resting height; it defaults to the node's current height,
-## so pass it explicitly for a node that may already be mid-hop.
-static func hop(node: Node3D, height: float, time: float, delay := 0.0, base := NAN) -> Tween:
+## so pass it explicitly for a node that may already be mid-hop. Works on a
+## Node3D or a Control (both have a `position` with a y).
+static func hop(node: Node, height: float, time: float, delay := 0.0, base := NAN) -> Tween:
 	if reduce:
 		return null
 	if is_nan(base):
-		base = node.position.y
+		base = node.get("position").y
 	var tw := node.create_tween()
 	tw.tween_property(node, "position:y", base + height, time * 0.5).set_delay(delay) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -62,12 +64,18 @@ static func hop(node: Node3D, height: float, time: float, delay := 0.0, base := 
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	return tw
 
-## Flattens y by `amount` and widens x and z by half of it, then springs back.
-static func squash(node: Node3D, amount := 0.12, time := 0.18, delay := 0.0) -> Tween:
+## Flattens y by `amount` and widens the other axes by half of it, then
+## springs back. A Node3D squashes in x and z; a Control in x, around its
+## pivot_offset.
+static func squash(node: Node, amount := 0.12, time := 0.18, delay := 0.0) -> Tween:
 	if reduce:
 		return null
-	var base := node.scale
-	var squashed := Vector3(base.x * (1.0 + amount * 0.5), base.y * (1.0 - amount), base.z * (1.0 + amount * 0.5))
+	var base = node.get("scale")
+	var squashed
+	if base is Vector2:
+		squashed = Vector2(base.x * (1.0 + amount * 0.5), base.y * (1.0 - amount))
+	else:
+		squashed = Vector3(base.x * (1.0 + amount * 0.5), base.y * (1.0 - amount), base.z * (1.0 + amount * 0.5))
 	var tw := node.create_tween()
 	tw.tween_property(node, "scale", squashed, time * 0.4).set_delay(delay) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -109,6 +117,48 @@ static func fade(node: Node, setter: Callable, from: float, to: float, time: flo
 ## Delay for the i-th element of a wave: `per` seconds apart, never past `cap`.
 static func stagger(index: int, per: float, cap := 0.6) -> float:
 	return minf(index * per, cap)
+
+## Puts `property` at `from` at once, then eases it to `to`: with `overshoot`
+## the back ease (it passes `to` a little and springs home), otherwise sine
+## in-out. Decorative: under reduce-motion `to` is set and null returned.
+static func slide(node: Node, property: String, from, to, time: float, delay := 0.0, overshoot := true) -> Tween:
+	if reduce:
+		node.set_indexed(property, to)
+		return null
+	node.set_indexed(property, from)
+	var tw := node.create_tween()
+	var step := tw.tween_property(node, property, to, time).set_delay(delay)
+	if overshoot:
+		step.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		step.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return tw
+
+## Breathes `property` of `target` (the node itself by default) between `rest`
+## and `peak` forever, sine in-out, one cycle per `period`. The caller keeps
+## and kills the tween. Under reduce-motion `rest` is set and null returned.
+static func pulse(node: Node, property: String, rest, peak, period: float, target: Object = null) -> Tween:
+	if target == null:
+		target = node
+	if reduce:
+		target.set_indexed(property, rest)
+		return null
+	var half := period * 0.5
+	var tw := node.create_tween().set_loops()
+	tw.tween_property(target, property, peak, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(target, property, rest, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return tw
+
+## Fades a CanvasItem's modulate alpha from `from` to `to`. Under
+## reduce-motion `to` is set and null returned.
+static func appear(item: CanvasItem, from: float, to: float, time: float, delay := 0.0) -> Tween:
+	if reduce:
+		item.modulate.a = to
+		return null
+	item.modulate.a = from
+	var tw := item.create_tween()
+	tw.tween_property(item, "modulate:a", to, time).set_delay(delay)
+	return tw
 
 ## Kills `tw` if it is still alive. Null-safe.
 static func stop(tw: Tween) -> void:

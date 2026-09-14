@@ -87,9 +87,10 @@ var _blend: Array = []         # [r][c] -> painted blend toward BAD, on the grid
 var _blend_target: Array = []  # [r][c] -> the blend the cell is heading for
 var _ring: Node3D
 var _ring_mat: StandardMaterial3D
-var _ring_tw: Tween     # pop, slide or fade
-var _ring_pulse: Tween  # the loop while shown
-var _ring_hold: Tween   # the pause before the fade
+var _ring_tw: Tween       # pop, slide or fade
+var _ring_pulse: Tween    # the scale breath while shown
+var _ring_pulse_a: Tween  # the alpha breath while shown, on the material
+var _ring_hold: Tween     # the pause before the fade
 ## The last tapped cell as (col, row); (-1, -1) before the first tap. The
 ## working-line card in the HUD reads this.
 var focus_cell := Vector2i(-1, -1)
@@ -182,6 +183,7 @@ func _stop_all() -> void:
 				Motion.stop(tw)
 	Motion.stop(_ring_tw)
 	Motion.stop(_ring_pulse)
+	Motion.stop(_ring_pulse_a)
 	Motion.stop(_ring_hold)
 
 func _build_scene() -> void:
@@ -366,20 +368,19 @@ func _focus(r: int, c: int) -> void:
 	Motion.stop(_ring_tw)
 	Motion.stop(_ring_hold)
 	if Motion.reduce:
-		Motion.stop(_ring_pulse)
+		_stop_pulse()
 		_ring.position = at
 		_ring.scale = Vector3.ONE
 		_ring_mat.albedo_color.a = FOCUS_ALPHA
 		_ring.visible = true
 	elif shown:
-		_ring_tw = _ring.create_tween().set_parallel(true)
-		_ring_tw.tween_property(_ring, "position", at, FOCUS_MOVE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_ring_tw = Motion.slide(_ring, "position", _ring.position, at, FOCUS_MOVE, 0.0, false)
 		if not Motion.running(_ring_pulse):
 			# A tap during the fade: bring the ring back up and pulse again.
-			_ring_tw.tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, FOCUS_MOVE)
+			_ring_tw.parallel().tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, FOCUS_MOVE)
 			_ring_tw.finished.connect(_start_pulse)
 	else:
-		Motion.stop(_ring_pulse)
+		_stop_pulse()
 		_ring.position = at
 		_ring.scale = Vector3(0.8, 1.0, 0.8)
 		_ring_mat.albedo_color.a = 0.0
@@ -395,19 +396,21 @@ func _focus(r: int, c: int) -> void:
 
 ## The breathing loop: a little larger and dimmer, then back, while shown.
 func _start_pulse() -> void:
-	Motion.stop(_ring_pulse)
+	_stop_pulse()
 	if Motion.reduce or not _ring.visible:
 		return
-	var half := FOCUS_PULSE * 0.5
-	_ring_pulse = _ring.create_tween().set_loops()
-	_ring_pulse.tween_property(_ring, "scale", Vector3(1.04, 1.0, 1.04), half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_ring_pulse.parallel().tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA_LOW, half).set_trans(Tween.TRANS_SINE)
-	_ring_pulse.tween_property(_ring, "scale", Vector3.ONE, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_ring_pulse.parallel().tween_property(_ring_mat, "albedo_color:a", FOCUS_ALPHA, half).set_trans(Tween.TRANS_SINE)
+	_ring_pulse = Motion.pulse(_ring, "scale", Vector3.ONE, Vector3(1.04, 1.0, 1.04), FOCUS_PULSE)
+	_ring_pulse_a = Motion.pulse(_ring, "albedo_color:a", FOCUS_ALPHA, FOCUS_ALPHA_LOW, FOCUS_PULSE, _ring_mat)
+
+func _stop_pulse() -> void:
+	Motion.stop(_ring_pulse)
+	Motion.stop(_ring_pulse_a)
+	_ring_pulse = null
+	_ring_pulse_a = null
 
 ## Fades the ring out and hides it.
 func _focus_fade() -> void:
-	Motion.stop(_ring_pulse)
+	_stop_pulse()
 	Motion.stop(_ring_tw)
 	if Motion.reduce or not _ring.visible:
 		_ring.visible = false
