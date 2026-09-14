@@ -275,16 +275,21 @@ the source, the leaks and the drain, below.
 the existing one-shot puffs and sparkles.
 
 ```gdscript
-const JET_POOL := 5
+const JET_POOL := 6
 ## A steady fall of water droplets from `at`, until stop_jet(handle) is called.
 ## Returns a pool index, or -1 when the pool is exhausted or reduce-motion is on.
 func jet(at: Vector3, colour: Color = Pal.WATER_HI) -> int
 func stop_jet(handle: int) -> void
 ```
 
-The emitters are `CPUParticles3D` with `one_shot = false`, amount 10, lifetime
-0.5, gravity (0, -4, 0), a narrow spread and the speck mesh, tinted `WATER_HI`.
-Five is enough for the source plus up to four leaks.
+The emitters are `CPUParticles3D` with `one_shot = false`, tinted `WATER_HI`,
+using `Fx.droplet_texture()`'s soft round falloff on the speck mesh rather
+than a plain untextured quad (an untextured quad reads as a flat block of
+colour once large enough to see at all, not as water; see the section 4
+amendments for the round that found this out on screen). Amount 40, lifetime
+0.45, a wide 55-degree spread and gravity (0, -4, 0), so the drops scatter
+outward and fall rather than dribbling straight down in one narrow column.
+Six is enough for the source, the drain and up to four leaks.
 
 - **The source jet** runs for the whole puzzle at the source valve's ring: the
   water arriving that the player is asked to route.
@@ -308,16 +313,16 @@ readable with nothing moving.
 |---|---|---|
 | entrance | the platform rises from -0.5 in 0.5 s and rings the water (as Binairo); pads pop from scale 0.01 with `stagger(r + c, 0.02)`; pieces drop from +0.6 with `settle` after 0.25 s, same stagger; the two valves pop last; then the flood wave runs and the source jet starts | `enter` |
 | turn | the pivot's `rotation.y` settles to `-rot * PI / 2` in `TURN_TIME`, **essential** (it is the state change); the piece squashes 0.08 over 0.18 s, which carries the turn's tactility on its own; a puff at the hub | `turn` |
-| flood in | every newly-live cell fades `Steel` → `PIPE_WET` and `Collar` → `PIPE_WET_HI` over 0.25 s and its `wet` uniform 0 → 1, each with `stagger(depth, FLOW_STEP)` by BFS depth from the source, so the water visibly races outward from the valve; a bubble sparkle at the first four newly-wet hubs | `flow` |
-| flood out | newly-dry cells fade the other way with `stagger(depth_before, 0.02)`, a shorter wave; their jets stop | `drain_out` |
+| flood in | every newly-live cell fades `Steel` → `PIPE_WET` and `Collar` → `PIPE_WET_HI` over 0.25 s and its `wet` uniform 0 → 1, each delayed `(depth - shallowest newly-wet depth) * FLOW_STEP` and clamped to `FLOW_CAP` (1.2 s), so the water visibly races outward from wherever it actually entered instead of from absolute depth zero; a bubble sparkle at the first four newly-wet hubs | `flow` |
+| flood out | newly-dry cells fade the other way, delayed `(depth_before - shallowest newly-dry depth) * FLOW_OUT_STEP` and clamped to the same `FLOW_CAP`, a shorter wave; their jets stop | `drain_out` |
 | leak starts | a jet at that mouth and one puff where it lands | `leak` |
 | drain fed | a jet into the drain ring, a sparkle, the ring pulses its scale once | `drain` |
 | tap on a locked cell | the pivot dips 0.02 over 0.35 s | `focus` |
 | undo | the turn runs backwards, same recipe | `undo` |
-| hint | the chosen piece turns to its solved angle, a sparkle over it, its pad fades to `STONE_GIVEN` over 0.3 s | `hint` |
+| hint | the chosen piece turns to its solved angle, a sparkle over it, its pad fades to `STONE_GIVEN` over 0.25 s (`FADE_TIME`) | `hint` |
 | win | every piece hops 0.08 in 0.4 s in a wave from the source, `stagger(depth, 0.05)`; every cell's `flow_speed` goes to `WIN_FLOW` for 1.2 s and eases back; the drain jets hard; the water rings under the board | `solved` |
 | reset | pieces turn back to `_rot0` with `stagger(r + c, 0.02)`; the water drains from the far cells inward; hinted pads fade back to `STONE` | `reset` |
-| idle | the flow bands and bubbles scroll in every fed pipe, and the source jet falls. The only always-on motion; both stop under reduce-motion, since both are scaled by the `motion_scale` global | — |
+| idle | the flow bands and bubbles scroll in every fed pipe, and the source jet falls, joined by the drain's jet once it is first fed. The only always-on motion; all three stop under reduce-motion, the bands/bubbles because they are scaled by the `motion_scale` global, the jets because `Fx.jet()` itself refuses to start under reduce-motion | — |
 
 `_settle(x, y)` ends every tween on a cell (pivot rotation and y, piece
 scale, the fades and the flow tween) at its target, as Binairo's does; a tap
@@ -344,16 +349,17 @@ from 5 to 6 to give the drain its own permanent slot alongside the source and
 `MAX_LEAKS`'s four.
 
 Amendment (2026-09-14, Task 4 fix round 1): the flood wave's stagger in
-`_flood` is now measured from the shallowest newly-wet (or newly-dry) depth
-in the batch that just changed, not from absolute depth zero, and capped by
-a new local `FLOW_CAP := 1.2` (applied with `minf`, on top of -- not instead
-of -- `Motion.stagger`'s own shared 0.6 s cap, which is untouched since
-Binairo and Code Break also use it). A connecting tap deep in the board now
-races outward from where the water actually enters instead of the far half
-of the batch all sharing the same saturated 0.6 s delay. Measured headless
+`_flood` no longer calls `Motion.stagger` at all. It is measured from the
+shallowest newly-wet (or newly-dry) depth in the batch that just changed,
+not from absolute depth zero, and clamped with `minf` against a new local
+`FLOW_CAP := 1.2` instead of `Motion.stagger`'s own shared 0.6 s cap.
+`Motion.stagger` itself is untouched, only because Binairo and Code Break
+still call it -- Pipes no longer does. A connecting tap deep in the board
+now races outward from where the water actually enters instead of the far
+half of the batch all sharing the same saturated delay. Measured headless
 across 30 random 6x9 boards: 10/30 used to have at least one connecting tap
-whose newly-live depth spread saturated the old 0.6 s cap; after the fix,
-3/30 still saturate the new, longer 1.2 s cap (a few genuinely long runs
+whose newly-live depth spread saturated the old, shared 0.6 s cap; after the
+fix, 3/30 still saturate the new, local 1.2 s cap (a few genuinely long runs
 taking the full 1.2 s is expected and left alone, per the controller's
 ruling not to keep raising the cap to force it to zero).
 

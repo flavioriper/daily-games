@@ -42,11 +42,14 @@ const FADE_TIME := 0.25
 const FADE_STEPS := 8
 const FLOW_STEP := 0.045
 const FLOW_OUT_STEP := 0.02
-## The flood wave's own cap, applied on top of Motion.stagger's shared 0.6 s
-## one (never raised here: it is shared with Binairo and Code Break). Staggers
-## are measured from the shallowest newly-wet (or newly-dry) depth, not from
-## zero, so a long run started deep in the board still races visibly instead
-## of saturating the shared cap; see the spec's section 4 amendments.
+## The flood wave's own cap. _flood no longer calls Motion.stagger at all for
+## the wet/dry delays; it clamps its own, longer cap instead of Motion.
+## stagger's shared 0.6 s one (that function itself is untouched, since
+## Binairo and Code Break still call it). Delays are measured from the
+## shallowest newly-wet (or newly-dry) depth in the batch, not from zero, so
+## a long run started deep in the board still races visibly instead of
+## the far half all sharing one saturated delay; see the spec's section 4
+## amendments.
 const FLOW_CAP := 1.2
 const WIN_FLOW := 2.4
 const WIN_FLOW_TIME := 1.2
