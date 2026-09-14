@@ -13,9 +13,10 @@ const Pal = preload("res://core/palette.gd")
 
 const PUFF_POOL := 4
 const SPARKLE_POOL := 2
-## Water that keeps pouring, unlike the one-shot puffs: the source valve plus
-## up to four leaking mouths (puzzles/pipes3d.gd MAX_LEAKS).
-const JET_POOL := 5
+## Water that keeps pouring, unlike the one-shot puffs: the source valve, the
+## drain once it is fed, plus up to four leaking mouths (puzzles/pipes3d.gd
+## MAX_LEAKS).
+const JET_POOL := 6
 const STAR_SIZE := 32
 
 var puffs: Array[CPUParticles3D] = []

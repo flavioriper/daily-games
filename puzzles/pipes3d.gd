@@ -42,6 +42,12 @@ const FADE_TIME := 0.25
 const FADE_STEPS := 8
 const FLOW_STEP := 0.045
 const FLOW_OUT_STEP := 0.02
+## The flood wave's own cap, applied on top of Motion.stagger's shared 0.6 s
+## one (never raised here: it is shared with Binairo and Code Break). Staggers
+## are measured from the shallowest newly-wet (or newly-dry) depth, not from
+## zero, so a long run started deep in the board still races visibly instead
+## of saturating the shared cap; see the spec's section 4 amendments.
+const FLOW_CAP := 1.2
 const WIN_FLOW := 2.4
 const WIN_FLOW_TIME := 1.2
 const WIN_HOP := 0.08
@@ -54,7 +60,7 @@ const PIECE_DROP := 0.6
 const PIECE_DELAY := 0.25
 const SPARKLE_LIFT := 0.12
 ## At most this many mouths pour at once, which leaves Fx.JET_POOL one emitter
-## for the source.
+## for the source and one for the drain.
 const MAX_LEAKS := 4
 
 func _ready() -> void:
@@ -84,6 +90,7 @@ var _fade_tw: Dictionary = {}
 var _leak_jets: Dictionary = {}  # Vector2i -> an Fx jet handle
 var _leak_at: Dictionary = {}    # Vector2i -> the world point that handle is aimed at
 var _source_jet: int = -1
+var _drain_jet: int = -1
 var _entrance: Array = []
 var fx: Node3D               # pooled particles and jets, a child of the board
 
@@ -295,9 +302,11 @@ func _stop_all() -> void:
 		for cell in _leak_jets:
 			fx.stop_jet(_leak_jets[cell])
 		fx.stop_jet(_source_jet)
+		fx.stop_jet(_drain_jet)
 	_leak_jets.clear()
 	_leak_at.clear()
 	_source_jet = -1
+	_drain_jet = -1
 
 func _build_scene() -> void:
 	_stop_all()
@@ -415,6 +424,24 @@ func _flood() -> void:
 	var before: Dictionary = _live.duplicate()
 	_recompute_live()
 	var drain_was: bool = before.has(drain())
+	# Staggered from the shallowest newly-wet (or newly-dry) depth, not from
+	# absolute zero, so a run that starts deep in the board still visibly
+	# races from where the water actually enters instead of the whole tail
+	# saturating Motion.stagger's shared 0.6 s cap at once. FLOW_CAP is this
+	# board's own, longer cap, applied on top.
+	var wet_base: int = -1
+	var dry_base: int = -1
+	for y in h:
+		for x in w:
+			var cell := Vector2i(x, y)
+			if _live.has(cell) and not before.has(cell):
+				var d: int = int(_live[cell])
+				if wet_base < 0 or d < wet_base:
+					wet_base = d
+			elif before.has(cell) and not _live.has(cell):
+				var d2: int = int(before[cell])
+				if dry_base < 0 or d2 < dry_base:
+					dry_base = d2
 	for y in h:
 		for x in w:
 			var cell := Vector2i(x, y)
@@ -422,12 +449,15 @@ func _flood() -> void:
 			if now == before.has(cell):
 				continue
 			if now:
-				_set_wet(cell, 1.0, Motion.stagger(int(_live[cell]), FLOW_STEP))
+				_set_wet(cell, 1.0, minf((int(_live[cell]) - wet_base) * FLOW_STEP, FLOW_CAP))
 			else:
-				_set_wet(cell, 0.0, Motion.stagger(int(before[cell]), FLOW_OUT_STEP))
+				_set_wet(cell, 0.0, minf((int(before[cell]) - dry_base) * FLOW_OUT_STEP, FLOW_CAP))
 	_run_jets()
 	if _live.has(drain()) and not drain_was:
 		fx.sparkle(_cell_at(drain(), Placeholders.PAD_H + SPARKLE_LIFT), Pal.WATER_HI)
+		var ring: Node3D = _pivots[drain()].get_node_or_null("valve")
+		if ring != null:
+			Motion.squash(ring, SQUASH, SQUASH_TIME)
 		fx.cue("drain")
 	else:
 		fx.cue("flow")
@@ -481,6 +511,13 @@ func _run_jets() -> void:
 	if _source_jet < 0:
 		_source_jet = fx.jet(_cell_at(source(), Placeholders.PAD_H + Placeholders.VALVE_H),
 			Pal.WATER_HI)
+	if _live.has(drain()):
+		if _drain_jet < 0:
+			_drain_jet = fx.jet(_cell_at(drain(), Placeholders.PAD_H + Placeholders.VALVE_H),
+				Pal.WATER_HI)
+	elif _drain_jet >= 0:
+		fx.stop_jet(_drain_jet)
+		_drain_jet = -1
 	var want: Dictionary = {}
 	for leak in _leaks():
 		want[leak["cell"]] = leak["at"]

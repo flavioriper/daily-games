@@ -332,6 +332,31 @@ shadow on the chrome rather than as an empty pipe; the darker value reads
 unambiguously as a hole with nothing in it, in both the still and lit
 orientations checked.
 
+Amendment (2026-09-14, Task 4 fix round 1): the drain fed moment was missing
+its jet and its ring pulse -- only the sparkle and the `drain` cue fired. It
+now also starts a jet (`_drain_jet`, mirroring `_source_jet`: started in
+`_run_jets` while the drain is in `_live`, stopped and released the same way
+otherwise, and in `_stop_all`) at the drain ring's height
+(`Placeholders.PAD_H + Placeholders.VALVE_H`, the same formula the source
+jet uses), and pulses the drain's valve ring once with `Motion.squash` at the
+same dry-to-fed transition the sparkle already fires on. `Fx.JET_POOL` moved
+from 5 to 6 to give the drain its own permanent slot alongside the source and
+`MAX_LEAKS`'s four.
+
+Amendment (2026-09-14, Task 4 fix round 1): the flood wave's stagger in
+`_flood` is now measured from the shallowest newly-wet (or newly-dry) depth
+in the batch that just changed, not from absolute depth zero, and capped by
+a new local `FLOW_CAP := 1.2` (applied with `minf`, on top of -- not instead
+of -- `Motion.stagger`'s own shared 0.6 s cap, which is untouched since
+Binairo and Code Break also use it). A connecting tap deep in the board now
+races outward from where the water actually enters instead of the far half
+of the batch all sharing the same saturated 0.6 s delay. Measured headless
+across 30 random 6x9 boards: 10/30 used to have at least one connecting tap
+whose newly-live depth spread saturated the old 0.6 s cap; after the fix,
+3/30 still saturate the new, longer 1.2 s cap (a few genuinely long runs
+taking the full 1.2 s is expected and left alone, per the controller's
+ruling not to keep raising the cap to force it to zero).
+
 ## 5. The model library and the art pipeline
 
 `core/models.gd`:
