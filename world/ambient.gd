@@ -28,9 +28,11 @@ func _ready() -> void:
 	set_process(false)
 
 ## Declares the global if project.godot has not (a stripped test project),
-## never twice: RenderingServer errors on a duplicate.
+## never twice: RenderingServer errors on a duplicate. The project settings
+## are the source of truth; asking the RenderingServer for its list is an
+## editor-only call that errors at runtime on the Compatibility renderer.
 static func _ensure_global() -> void:
-	if not RenderingServer.global_shader_parameter_get_list().has(GLOBAL):
+	if not ProjectSettings.has_setting("shader_globals/" + GLOBAL):
 		RenderingServer.global_shader_parameter_add(GLOBAL, RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 1.0)
 
 ## 1 when the world moves, 0 under reduce-motion.
