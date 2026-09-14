@@ -27,6 +27,7 @@ var last_cue := ""
 var _next_puff := 0
 var _next_sparkle := 0
 static var _star: ImageTexture
+static var _droplet: ImageTexture
 
 ## Build the two emitter pools (puffs and sparkles) and name the node.
 func _ready() -> void:
@@ -44,21 +45,23 @@ func _ready() -> void:
 	for i in JET_POOL:
 		# _emitter builds a one-shot burst; a jet is the same emitter left
 		# running, aimed down, so it reads as water falling rather than dust.
-		# Amount and size raised well past _emitter's usual dust-puff range
-		# (task 4, fix round 2): at 0.045/amount 10 a jet was 2-3 five-pixel
-		# specks alive at once at 1080x1920 -- invisible against the pad and
-		# the incoming pipe it sits next to. Judged on screen at gameplay
-		# zoom (no cropping): 0.045-0.32 stayed invisible at the source and
-		# drain's valve height, where the spawn point sits close to the
-		# incoming pipe's own geometry; only past ~0.5 does the splash read
-		# clearly there, so 0.6/amount 30 is the value that actually works,
-		# checked with the busiest case (source + several leaks + drain, all
-		# at once) so it reads as water, not a firehose.
-		var j := _emitter("Jet_%d" % i, 30, 0.4, 12.0, 0.2, 0.5, Vector3(0.0, -4.0, 0.0), 0.6)
+		# Task 4 fix round 2 tried fixing invisibility with size alone (up to
+		# 0.6) on the plain untextured quad _emitter gives every pool -- that
+		# just becomes a big flat square, since an untextured quad has no
+		# soft edge at any size. Round 3 fixes it properly: droplet_texture()
+		# gives the quad a soft round falloff so it reads as a drop rather
+		# than a block of colour, size comes back down under a cell (0.16,
+		# against a 0.15 pipe radius), amount goes up for density, and spread
+		# widens from a narrow dribble so the drops scatter outward instead
+		# of stacking into one column. The spawn point itself was also moved
+		# clear of the pipe's own geometry (puzzles/pipes3d.gd's JET_OUT/
+		# JET_LIFT), which is what actually let a small droplet be seen at
+		# the steep board camera in the first place.
+		var j := _emitter("Jet_%d" % i, 40, 0.45, 55.0, 0.5, 1.0, Vector3(0.0, -4.0, 0.0), 0.16)
 		j.one_shot = false
 		j.explosiveness = 0.0
 		j.direction = Vector3.DOWN
-		j.mesh = Ambient.speck_mesh()
+		j.mesh = Ambient.speck_mesh(droplet_texture())
 		add_child(j)
 		jets.append(j)
 
@@ -152,3 +155,22 @@ static func star_texture() -> ImageTexture:
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	_star = ImageTexture.create_from_image(img)
 	return _star
+
+## A soft round droplet, drawn the same way as star_texture(): white so the
+## particle colour tints it, alpha falling off toward the edge. The jet pool
+## uses this instead of a plain untextured quad (task 4 fix round 3): a flat
+## quad with a hard edge reads as a solid coloured square once it is drawn
+## large enough to see at all; a soft circular falloff reads as a drop.
+static func droplet_texture() -> ImageTexture:
+	if _droplet != null:
+		return _droplet
+	var img := Image.create(STAR_SIZE, STAR_SIZE, false, Image.FORMAT_RGBA8)
+	for y in STAR_SIZE:
+		for x in STAR_SIZE:
+			var u := (x + 0.5) / STAR_SIZE * 2.0 - 1.0
+			var v := (y + 0.5) / STAR_SIZE * 2.0 - 1.0
+			var d := sqrt(u * u + v * v)
+			var a := clampf((1.0 - d) / 0.3, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	_droplet = ImageTexture.create_from_image(img)
+	return _droplet

@@ -62,6 +62,17 @@ const SPARKLE_LIFT := 0.12
 ## At most this many mouths pour at once, which leaves Fx.JET_POOL one emitter
 ## for the source and one for the drain.
 const MAX_LEAKS := 4
+## How far past a leak's own arm end, and how much higher than the tube's
+## own centre, its jet is born (task 4 fix round 3). A jet spawned at the
+## tube's own surface sits inside the pipe's silhouette at the steep board
+## camera and is swallowed by it whatever size it is drawn; born this far
+## clear, the droplets fall through open air before they reach the stone.
+const JET_OUT := 0.22
+const JET_LIFT := 0.16
+## How much higher than the source/drain's own ring height their jet spawns
+## (task 4 fix round 3), for the same reason: VALVE_H alone sits inside the
+## incoming pipe's curve into the ring.
+const JET_VALVE_LIFT := 0.45
 
 func _ready() -> void:
 	super()
@@ -280,8 +291,8 @@ func _leaks() -> Array:
 				continue
 			var d: Vector2i = Gen.DELTA[bit]
 			out.append({"cell": cell,
-				"at": _cell_at(cell, Placeholders.PAD_H + Placeholders.TUBE_Y)
-					+ Vector3(d.x, 0.0, d.y) * Placeholders.ARM_LEN})
+				"at": _cell_at(cell, Placeholders.PAD_H + Placeholders.TUBE_Y + JET_LIFT)
+					+ Vector3(d.x, 0.0, d.y) * (Placeholders.ARM_LEN + JET_OUT)})
 			break
 		if out.size() >= MAX_LEAKS:
 			break
@@ -509,11 +520,11 @@ func _run_jets() -> void:
 	if fx == null:
 		return
 	if _source_jet < 0:
-		_source_jet = fx.jet(_cell_at(source(), Placeholders.PAD_H + Placeholders.VALVE_H),
+		_source_jet = fx.jet(_cell_at(source(), Placeholders.PAD_H + Placeholders.VALVE_H + JET_VALVE_LIFT),
 			Pal.WATER_HI)
 	if _live.has(drain()):
 		if _drain_jet < 0:
-			_drain_jet = fx.jet(_cell_at(drain(), Placeholders.PAD_H + Placeholders.VALVE_H),
+			_drain_jet = fx.jet(_cell_at(drain(), Placeholders.PAD_H + Placeholders.VALVE_H + JET_VALVE_LIFT),
 				Pal.WATER_HI)
 	elif _drain_jet >= 0:
 		fx.stop_jet(_drain_jet)

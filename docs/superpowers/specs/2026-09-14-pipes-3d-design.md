@@ -357,25 +357,50 @@ whose newly-live depth spread saturated the old 0.6 s cap; after the fix,
 taking the full 1.2 s is expected and left alone, per the controller's
 ruling not to keep raising the cap to force it to zero).
 
-Amendment (2026-09-14, Task 4 fix round 1): the turn row's "collars glint"
+Amendment (2026-09-14, Task 4 fix round 2): the turn row's "collars glint"
 is dropped from the table above and not implemented. `Motion.squash` already
 scales the whole piece on every turn; a second, independent 1.06 scale pulse
 on the collar layer of a piece that is simultaneously being squashed would
 compound two scale animations on the same object and fight rather than add.
 The squash alone carries the turn's tactility.
 
-Amendment (2026-09-14, Task 4 fix round 2): the jet emitter
-(`world/fx.gd`'s `Jet_%d` loop) moved from `amount 10, lifetime 0.5, spread
-12, velocity 0.2-0.5, gravity -4, size 0.045` to `amount 30, lifetime 0.4,
-spread 12, velocity 0.2-0.5, gravity -4, size 0.6`. At the original size a
-jet was invisible at gameplay zoom (1080 x 1920, no cropping): sized
-correctly per the arithmetic but rendering as 2-3 five-pixel specks, and
-raising size alone to 0.10-0.32 still read as nothing at the source and
-drain's spawn height, where the jet sits close to the incoming pipe's own
-geometry -- confirmed with color and `visibility_aabb` overrides that ruled
-out contrast and culling as the cause before raising size further. Only
-past roughly 0.5 does the splash clearly read there. `Fx.JET_POOL` and
-`MAX_LEAKS` are unchanged; only the emitter's own physical parameters moved.
+Amendment (2026-09-14, Task 4 fix round 3, supersedes round 2's jet
+amendment below): the jet emitter's fix went through two attempts.
+
+Round 2 tried fixing invisibility with `world/fx.gd`'s `Jet_%d` loop's
+`size` alone (10 -> 30 `amount`, 0.045 -> 0.6 `size`, everything else
+unchanged), reasoning that a jet spawned at the source/drain's ring height
+sits inside the incoming pipe's own silhouette at the steep board camera and
+needs to be large enough to clear it. On screen at 1080 x 1920 this rendered
+as flat, opaque, cell-wide blue squares -- a rendering glitch, not water.
+The particle mesh (`Ambient.speck_mesh()`, an untextured `QuadMesh`) has a
+hard edge at any size; there is no size on an untextured quad that reads as
+a droplet rather than a block of colour.
+
+Round 3 fixes it properly, four changes together:
+- `Fx` gained `droplet_texture()` (`world/fx.gd`, alongside `star_texture()`,
+  same cached-static pattern): a soft round falloff, white so the particle
+  colour tints it. The jet pool's mesh is now `Ambient.speck_mesh(droplet_texture())`
+  instead of the untextured quad, so a droplet has a soft edge instead of a
+  hard one.
+- Size came back down under a cell: `0.16`, against `Placeholders.TUBE_R`'s
+  `0.15` pipe radius.
+- `amount` went to `40` (up from the original `10`) for density, `spread`
+  widened from `12` to `55` degrees so the drops scatter rather than
+  stacking into one column, and initial velocity went from `0.2-0.5` to
+  `0.5-1.0` so they arc clear of the mouth before gravity takes them.
+  `lifetime` moved to `0.45` and `gravity` is unchanged at `(0, -4, 0)`.
+- The spawn point itself moved clear of the pipe's own geometry, which is
+  what actually made a modestly-sized droplet visible at the steep board
+  camera in the first place (`puzzles/pipes3d.gd`): leaks now spawn
+  `JET_OUT := 0.22` further out along the leaking arm and `JET_LIFT := 0.16`
+  higher than the tube's own centre; the source and drain's valve jets spawn
+  `JET_VALVE_LIFT := 0.45` higher than `VALVE_H`, clear of the incoming
+  pipe's curve into the ring.
+
+`Fx.JET_POOL` and `MAX_LEAKS` are unchanged in both rounds; only the
+emitter's own parameters and (in round 3) its spawn offsets and texture
+moved.
 Checked against the busiest case (source, several leaks and the drain
 jetting at once) so the larger particles read as water pouring rather than
 a firehose hiding the pipe or pad underneath.
