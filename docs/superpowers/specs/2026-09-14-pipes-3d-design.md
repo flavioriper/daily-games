@@ -325,6 +325,13 @@ mid-motion settles first. `_stop_all()` kills every tracked tween and stops
 every jet before a rebuild or a reset. Particles come from the pooled `Fx`
 node the board owns.
 
+Amendment (2026-09-14, Task 4): `Pal.FLOW_DRY` moved from `6b7a88` to
+`3c4550`. On screen the old value sat close enough to `Pal.STEEL` /
+`STEEL_HI` (the chrome shell and collar) that a dry sight hole read as a
+shadow on the chrome rather than as an empty pipe; the darker value reads
+unambiguously as a hole with nothing in it, in both the still and lit
+orientations checked.
+
 ## 5. The model library and the art pipeline
 
 `core/models.gd`:

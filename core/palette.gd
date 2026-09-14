@@ -55,7 +55,10 @@ const STEEL       := Color("aebecb")   # dry pipe shell
 const STEEL_HI    := Color("cfdce6")   # dry collar, and the valve rings
 const PIPE_WET    := Color("4fa8ef")   # fed pipe shell
 const PIPE_WET_HI := Color("9ad3ff")   # fed collar
-const FLOW_DRY    := Color("6b7a88")   # the water tube with nothing in it
+const FLOW_DRY    := Color("3c4550")   # the water tube with nothing in it -- darkened
+	# from 6b7a88 (task 4): the old value sat close enough to STEEL/STEEL_HI
+	# that a dry sight hole read as a shadow on the chrome rather than as an
+	# empty pipe; see the spec's section 4 amendments.
 
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
