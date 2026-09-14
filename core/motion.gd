@@ -5,7 +5,7 @@ extends RefCounted
 ## null when reduce-motion skipped it, so callers can chain `finished` and
 ## headless tests can drive it with custom_step (see tests/test_motion.gd).
 ## Spec: docs/superpowers/specs/2026-09-13-binairo-polish-design.md, section 1.
-## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 6.
+## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 5.
 
 ## Essential motion under reduce-motion: this long, linear, no overshoot.
 const REDUCED_TIME := 0.15

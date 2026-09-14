@@ -369,6 +369,10 @@ sheet does not re-run the HUD entrance; only the board enters again.
 
 **Press.** Every `IconButton` squashes on `button_down` (above). Cue `press`.
 
+Amendment (2026-09-14): no `press` cue is fired. `Fx.cue` lives on the board
+and the HUD has no handle on it; the audio layer, when it comes, will give the
+HUD its own cue hook. The squash is implemented.
+
 **Hint badge.** While `hints_left() > 0` and not done, the badge bounces:
 a looping tween of `Motion.hop(badge, -6, 0.3)` then a 2.1 s interval (2.4 s
 cycle). Under reduce the badge is still. At 0 the badge hides and the hint
@@ -508,6 +512,11 @@ worktree on that commit, is `draw_calls=751`, so the HUD adds about 85 draw
 calls against a budgeted 20 (755 + 20 = 775 versus the measured 836). The gap
 is left as a known overage for a later pass rather than fixed in this
 sub-project.
+
+Amendment (2026-09-14, controller ruling): frame time is the binding budget.
+The +20 draw-call cap assumed no 2D chrome; every Label and StyleBox in the
+HUD is a canvas draw call, so the cap is raised to at most 100 above 755
+(855). 836 is inside it, with 2.9 ms of frame-time headroom on the Mac.
 
 ## 10. Files
 
