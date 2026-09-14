@@ -254,10 +254,13 @@ uniform float wet = 0.0;                  // 0 dry, 1 running
 uniform float flow_speed = 1.0;           // the win bumps this to WIN_FLOW
 ```
 
-The fragment shader runs a phase `p = UV.y * 6.0 - TIME * flow_speed *
-motion_scale`, steps `sin(p)` into hard bands, scatters bubble dots by
-warping a second sine pair the way `water.gdshader` scatters its sparkles, and
-mixes the result from `dry_color` toward that water colour by `wet`. Bands and
+The fragment shader takes `along`, the model-space distance from the hub
+along whichever arm (`max(|local_pos.x|, |local_pos.z|)`, not a UV map, so
+bands travel outward along every arm from one shared origin), and runs a
+phase `p = along * 42.0 - TIME * flow_speed * motion_scale * 4.5`, steps
+`sin(p)` into hard bands, scatters bubble dots by warping a second sine pair
+the way `water.gdshader` scatters its sparkles, and mixes the result from
+`dry_color` toward that water colour by `wet`. Bands and
 bubbles fade in with `wet`, so a dry tube is a flat grey hole and a fed one is
 water with visible current and bubbles travelling along it. Nothing reads
 depth or screen, so it runs on `gl_compatibility`.
@@ -301,7 +304,8 @@ Six is enough for the source, the drain and up to four leaks.
   none, so the pool never overflows. On solve every leak is gone by
   definition.
 - **The drain** takes a jet of its own the moment its cell first goes live,
-  pouring down into the ring, plus one sparkle and cue `drain`.
+  pouring down into the ring, plus one sparkle, one scale pulse on the
+  drain's own valve ring, and cue `drain`.
 
 ### The motion table
 
@@ -313,14 +317,14 @@ readable with nothing moving.
 |---|---|---|
 | entrance | the platform rises from -0.5 in 0.5 s and rings the water (as Binairo); pads pop from scale 0.01 with `stagger(r + c, 0.02)`; pieces drop from +0.6 with `settle` after 0.25 s, same stagger; the two valves pop last; then the flood wave runs and the source jet starts | `enter` |
 | turn | the pivot's `rotation.y` settles to `-rot * PI / 2` in `TURN_TIME`, **essential** (it is the state change); the piece squashes 0.08 over 0.18 s, which carries the turn's tactility on its own; a puff at the hub | `turn` |
-| flood in | every newly-live cell fades `Steel` → `PIPE_WET` and `Collar` → `PIPE_WET_HI` over 0.25 s and its `wet` uniform 0 → 1, each delayed `(depth - shallowest newly-wet depth) * FLOW_STEP` and clamped to `FLOW_CAP` (1.2 s), so the water visibly races outward from wherever it actually entered instead of from absolute depth zero; a bubble sparkle at the first four newly-wet hubs | `flow` |
+| flood in | every newly-live cell fades `Steel` → `PIPE_WET` and `Collar` → `PIPE_WET_HI` over 0.25 s and its `wet` uniform 0 → 1, each delayed `(depth - shallowest newly-wet depth) * FLOW_STEP` and clamped to `FLOW_CAP` (1.2 s), so the water visibly races outward from wherever it actually entered instead of from absolute depth zero | `flow` |
 | flood out | newly-dry cells fade the other way, delayed `(depth_before - shallowest newly-dry depth) * FLOW_OUT_STEP` and clamped to the same `FLOW_CAP`, a shorter wave; their jets stop | `drain_out` |
 | leak starts | a jet at that mouth and one puff where it lands | `leak` |
 | drain fed | a jet into the drain ring, a sparkle, the ring pulses its scale once | `drain` |
 | tap on a locked cell | the pivot dips 0.02 over 0.35 s | `focus` |
 | undo | the turn runs backwards, same recipe | `undo` |
 | hint | the chosen piece turns to its solved angle, a sparkle over it, its pad fades to `STONE_GIVEN` over 0.25 s (`FADE_TIME`) | `hint` |
-| win | every piece hops 0.08 in 0.4 s in a wave from the source, `stagger(depth, 0.05)`; every cell's `flow_speed` goes to `WIN_FLOW` for 1.2 s and eases back; the drain jets hard; the water rings under the board | `solved` |
+| win | every piece hops 0.08 in 0.4 s in a wave from the source, `stagger(depth, 0.05)`; every cell's `flow_speed` goes to `WIN_FLOW` for 1.2 s and eases back; the drain (already jetting continuously since it was first fed) and the water ring under the board carry the rest | `solved` |
 | reset | pieces turn back to `_rot0` with `stagger(r + c, 0.02)`; the water drains from the far cells inward; hinted pads fade back to `STONE` | `reset` |
 | idle | the flow bands and bubbles scroll in every fed pipe, and the source jet falls, joined by the drain's jet once it is first fed. The only always-on motion; all three stop under reduce-motion, the bands/bubbles because they are scaled by the `motion_scale` global, the jets because `Fx.jet()` itself refuses to start under reduce-motion | — |
 
@@ -341,9 +345,10 @@ Amendment (2026-09-14, Task 4 fix round 1): the drain fed moment was missing
 its jet and its ring pulse -- only the sparkle and the `drain` cue fired. It
 now also starts a jet (`_drain_jet`, mirroring `_source_jet`: started in
 `_run_jets` while the drain is in `_live`, stopped and released the same way
-otherwise, and in `_stop_all`) at the drain ring's height
-(`Placeholders.PAD_H + Placeholders.VALVE_H`, the same formula the source
-jet uses), and pulses the drain's valve ring once with `Motion.squash` at the
+otherwise, and in `_stop_all`) at the drain ring's height, the same formula
+the source jet uses (fix round 3 later raised both further clear of the
+incoming pipe's own geometry -- see that amendment below for the current
+formula), and pulses the drain's valve ring once with `Motion.squash` at the
 same dry-to-fed transition the sparkle already fires on. `Fx.JET_POOL` moved
 from 5 to 6 to give the drain its own permanent slot alongside the source and
 `MAX_LEAKS`'s four.
@@ -410,6 +415,19 @@ moved.
 Checked against the busiest case (source, several leaks and the drain
 jetting at once) so the larger particles read as water pouring rather than
 a firehose hiding the pipe or pad underneath.
+
+Amendment (2026-09-14, Task 4 fix round 5): two promises above are dropped
+rather than implemented, per the controller's ruling. The "flood in" row no
+longer says "a bubble sparkle at the first four newly-wet hubs" -- it was
+never achievable as written (`Fx.SPARKLE_POOL` is 2, shared with Binairo and
+Code Break, not 4), and the bubbles travelling inside every fed tube are
+already `pipe_flow.gdshader`'s job; a sparkle on top of the tint wave would
+be noise over the moment the sight-hole design already carries. The "win"
+row no longer says "the drain jets hard" -- the drain jet has been running
+continuously since it was first fed, so there is no "start" left to make
+emphatic at solve time, and making an already-running jet pour harder would
+need a new `Fx` API to modulate a live emitter, a feature rather than a
+tune. Neither was ever implemented; the table now says what the game does.
 
 ## 5. The model library and the art pipeline
 
