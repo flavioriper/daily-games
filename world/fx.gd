@@ -13,10 +13,14 @@ const Pal = preload("res://core/palette.gd")
 
 const PUFF_POOL := 4
 const SPARKLE_POOL := 2
+## Water that keeps pouring, unlike the one-shot puffs: the source valve plus
+## up to four leaking mouths (puzzles/pipes3d.gd MAX_LEAKS).
+const JET_POOL := 5
 const STAR_SIZE := 32
 
 var puffs: Array[CPUParticles3D] = []
 var sparkles: Array[CPUParticles3D] = []
+var jets: Array[CPUParticles3D] = []
 ## The most recent audio cue name. A later audio layer plays these.
 var last_cue := ""
 var _next_puff := 0
@@ -36,6 +40,16 @@ func _ready() -> void:
 		s.mesh = Ambient.speck_mesh(star_texture())
 		add_child(s)
 		sparkles.append(s)
+	for i in JET_POOL:
+		# _emitter builds a one-shot burst; a jet is the same emitter left
+		# running, aimed down, so it reads as water falling rather than dust.
+		var j := _emitter("Jet_%d" % i, 10, 0.5, 12.0, 0.2, 0.5, Vector3(0.0, -4.0, 0.0), 0.045)
+		j.one_shot = false
+		j.explosiveness = 0.0
+		j.direction = Vector3.DOWN
+		j.mesh = Ambient.speck_mesh()
+		add_child(j)
+		jets.append(j)
 
 ## Stone dust rising from `at` and shrinking away.
 func puff(at: Vector3, colour: Color = Pal.STONE) -> void:
@@ -54,6 +68,26 @@ func sparkle(at: Vector3, colour: Color = Pal.SUN) -> void:
 		return
 	_fire(sparkles[_next_sparkle], at, colour)
 	_next_sparkle = (_next_sparkle + 1) % SPARKLE_POOL
+
+## Water falling from `at` until stop_jet releases it. Returns a handle into
+## the pool, or -1 when reduce-motion is on or every emitter is already busy;
+## a caller that gets -1 simply shows no jet, which is why the tints carry the
+## state on their own.
+func jet(at: Vector3, colour: Color = Pal.WATER_HI) -> int:
+	if Motion.reduce:
+		return -1
+	for i in jets.size():
+		if not jets[i].emitting:
+			jets[i].position = at
+			jets[i].color = colour
+			jets[i].emitting = true
+			return i
+	return -1
+
+## Releases the emitter `handle` took. Safe with -1 and with a stale handle.
+func stop_jet(handle: int) -> void:
+	if handle >= 0 and handle < jets.size():
+		jets[handle].emitting = false
 
 ## Audio hook. Effects name their sound here; nothing plays yet.
 func cue(cue_name: String) -> void:
