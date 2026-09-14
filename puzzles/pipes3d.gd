@@ -82,6 +82,7 @@ var _turn_tw: Dictionary = {}
 var _dip_tw: Dictionary = {}
 var _fade_tw: Dictionary = {}
 var _leak_jets: Dictionary = {}  # Vector2i -> an Fx jet handle
+var _leak_at: Dictionary = {}    # Vector2i -> the world point that handle is aimed at
 var _source_jet: int = -1
 var _entrance: Array = []
 var fx: Node3D               # pooled particles and jets, a child of the board
@@ -180,6 +181,9 @@ func undo() -> bool:
 	_flood()
 	moved.emit()
 	fx.cue("undo")
+	# Undo counts no move, so it asks the base class itself (puzzle_base.gd:
+	# "hints and undos call it directly because they do not count as moves").
+	check_solved()
 	return true
 
 func hints_left() -> int:
@@ -292,6 +296,7 @@ func _stop_all() -> void:
 			fx.stop_jet(_leak_jets[cell])
 		fx.stop_jet(_source_jet)
 	_leak_jets.clear()
+	_leak_at.clear()
 	_source_jet = -1
 
 func _build_scene() -> void:
@@ -427,32 +432,31 @@ func _flood() -> void:
 	else:
 		fx.cue("flow")
 
+## Applies wetness `t` to cell's pipe at once: the shell and the collar tints
+## and the flow material's `wet` uniform. The one place that touches those
+## three surfaces, shared by the tweened fade and the instant set below.
+func _apply_wet(cell: Vector2i, t: float) -> void:
+	_wet[cell] = t
+	var piece: Node3D = _pieces[cell]
+	Models.tint_named(piece, "Steel", Pal.STEEL.lerp(Pal.PIPE_WET, t))
+	Models.tint_named(piece, "Collar", Pal.STEEL_HI.lerp(Pal.PIPE_WET_HI, t))
+	var mat: ShaderMaterial = _flow[cell]
+	if mat != null:
+		mat.set_shader_parameter("wet", t)
+
 ## Fades one cell between dry and fed: the shell and the collar tints on an
 ## 8-step grid, and the flow material's `wet` uniform, all on one tween.
 func _set_wet(cell: Vector2i, target: float, delay := 0.0) -> void:
 	var from: float = float(_wet.get(cell, 0.0))
 	Motion.stop(_fade_tw.get(cell))
-	var piece: Node3D = _pieces[cell]
-	var mat: ShaderMaterial = _flow[cell]
-	var setter := func(t: float) -> void:
-		_wet[cell] = t
-		Models.tint_named(piece, "Steel", Pal.STEEL.lerp(Pal.PIPE_WET, t))
-		Models.tint_named(piece, "Collar", Pal.STEEL_HI.lerp(Pal.PIPE_WET_HI, t))
-		if mat != null:
-			mat.set_shader_parameter("wet", t)
-	_fade_tw[cell] = Motion.fade(piece, setter, from, target, FADE_TIME, FADE_STEPS, delay)
+	var setter := func(t: float) -> void: _apply_wet(cell, t)
+	_fade_tw[cell] = Motion.fade(_pieces[cell], setter, from, target, FADE_TIME, FADE_STEPS, delay)
 
 ## The same state change with no motion, for the build and for _settle.
 func _set_wet_now(cell: Vector2i, target: float) -> void:
 	Motion.stop(_fade_tw.get(cell))
 	_fade_tw.erase(cell)
-	_wet[cell] = target
-	var piece: Node3D = _pieces[cell]
-	Models.tint_named(piece, "Steel", Pal.STEEL.lerp(Pal.PIPE_WET, target))
-	Models.tint_named(piece, "Collar", Pal.STEEL_HI.lerp(Pal.PIPE_WET_HI, target))
-	var mat: ShaderMaterial = _flow[cell]
-	if mat != null:
-		mat.set_shader_parameter("wet", target)
+	_apply_wet(cell, target)
 
 ## Fades a pad from one stone colour to another on the same 8-step grid as the
 ## pipes. Both ends are passed in because `_locked` has usually already moved
@@ -467,7 +471,10 @@ func _fade_pad(cell: Vector2i, from: Color, to: Color) -> void:
 
 ## Points every jet at where water is actually leaving a pipe: one at the
 ## source valve for the whole puzzle, and one at each fed mouth that meets
-## nothing.
+## nothing. A cell whose open mouth has moved (a neighbour's turn met or
+## unmet it) is stopped and restarted at the new point, since Fx.jet only
+## sets its position once and then just runs; leaving it in place would pour
+## water from a mouth that no longer leaks, or one that no longer exists.
 func _run_jets() -> void:
 	if fx == null:
 		return
@@ -478,17 +485,22 @@ func _run_jets() -> void:
 	for leak in _leaks():
 		want[leak["cell"]] = leak["at"]
 	for cell in _leak_jets.keys():
-		if not want.has(cell):
+		if not want.has(cell) or want[cell] != _leak_at[cell]:
 			fx.stop_jet(_leak_jets[cell])
 			_leak_jets.erase(cell)
+			_leak_at.erase(cell)
+	var leaked := false
 	for cell in want:
 		if _leak_jets.has(cell):
 			continue
+		leaked = true
 		var handle: int = fx.jet(want[cell], Pal.WATER_HI)
 		if handle < 0:
 			continue
 		_leak_jets[cell] = handle
+		_leak_at[cell] = want[cell]
 		fx.puff(want[cell], Pal.WATER_HI)
+	if leaked:
 		fx.cue("leak")
 
 ## Turns a cell's piece to where its rotation now says, with a squash on the
