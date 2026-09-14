@@ -90,6 +90,21 @@ static func material_named(root: Node, name: String) -> Material:
 static func tint_named(root: Node, name: String, color: Color) -> void:
 	set_material_named(root, name, Toon.material(color))
 
+## Turns off shadow casting on the mesh instance whose imported material is
+## called `name`. For a layer whose shadow cannot contribute a single visible
+## pixel -- it sits wholly inside another layer's silhouette, or is too thin
+## to throw anything -- this is a pure saving: one fewer shadow-pass draw
+## call per instance, with nothing lost on screen. Applied at the layer's own
+## mesh instance (one mesh per layer, per the Blender contract), so it never
+## touches a sibling layer sharing the same node.
+static func set_shadow_off_named(root: Node, name: String) -> void:
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src != null and src.resource_name == name:
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				break
+
 ## Distinct imported material names under `root`, in first-seen order.
 static func surface_names(root: Node) -> Array[String]:
 	var out: Array[String] = []
@@ -130,3 +145,18 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# Each pipe instance gets its own flow material: the board drives
 			# `wet` per cell as the flood reaches it.
 			set_material_named(node, "Flow_flat", Toon.pipe_flow())
+			# The inner tube sits entirely inside the shell's own silhouette,
+			# at the collar radius -- its shadow can never show past the
+			# shell's, so casting one at all is pure waste (task 6 fix 1/3).
+			set_shadow_off_named(node, "Flow_flat")
+			# The flange ring's radius is close to the shell's, on the same
+			# axis, so most of its shadow was already swallowed by the
+			# shell's. Screenshotted both ways before keeping this one: the
+			# ribbed relief reads the same, since it comes from the toon
+			# ramp's own shading on the ring geometry, not from a cast shadow
+			# (task 6 fix 3/3, the judgment call).
+			set_shadow_off_named(node, "Collar")
+		"valve":
+			# The bolts are a 3 mm-tall disc lying flat on the pad -- too thin
+			# to throw a shadow anyone would ever see (task 6 fix 2/3).
+			set_shadow_off_named(node, "Bolt_flat")

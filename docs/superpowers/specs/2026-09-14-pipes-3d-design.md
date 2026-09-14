@@ -553,29 +553,48 @@ Amendment (2026-09-14): measured on the Mac at 1080 x 1920 with a throwaway
 copy of `_shot_anim.gd` opening Pipes directly at difficulty 2 (the 6 x 9,
 54-cell board — `_shot_anim.gd` itself hardcodes Binairo at whatever
 difficulty the host defaults to, so the copy built the host with `setup(entry,
-2)` in place of `menu._open`): `idle mean_ms=5.35 max_draw_calls=939`
-scrambled, just after the entrance settled, with the board's own leak jets
-running; `mean_ms=5.48 max_draw_calls=945` driven to solved (every cell's
-`_rot` set to the spanning tree's own 0, the same configuration
-`_win.gd`'s `_solve_pipes` turns every piece back to), all 54 water tubes fed
-and the drain jet live. Frame time is inside the 8 ms budget in both states.
-Draw calls are not: both states land at roughly 2.2x the section 8 estimate
-and over the 855 ceiling, by 84 (scrambled) and 90 (solved) calls. Checked
-against the likely cause the task called out — an extra outline shell on a
-layer that should end `_flat` — and ruled it out: `tests/test_models.gd`'s
-outlined-layer table passes, and a live sample piece's tree shows exactly the
-shape it should (`Pipe_Water` with no `Outline` child, `Pipe_Shell` and
-`Pipe_Collar` each with one). The excess instead looks like the estimate
-having under-counted: the board's own mesh instances alone (pads, pieces,
-valves, platform and rim) come to 420, well past the 430 the estimate gave
-for the *whole* scene including the HUD, and the live `RENDER_TOTAL_
-DRAW_CALLS_IN_FRAME` comes in at a bit over 2x that mesh count, consistent
-with the directional light's shadow pass drawing every shadow-casting mesh a
-second time (outlines are `cast_shadow = 0` and do not get this second
-pass; shells, collars, water tubes and pad bodies do). This budget miss is
-reported as-is, not adjusted for; no attempt was made to reduce the draw
-count, since that is tuning work outside this task's scope. Suite
-`passed=1245 failed=0`, win harness 10/10.
+2)` in place of `menu._open`). First pass, before any fix: `idle
+mean_ms=5.35 max_draw_calls=939` scrambled, just after the entrance settled,
+with the board's own leak jets running; `mean_ms=5.48 max_draw_calls=945`
+driven to solved (every cell's `_rot` set to the spanning tree's own 0, the
+same configuration `_win.gd`'s `_solve_pipes` turns every piece back to),
+all 54 water tubes fed and the drain jet live. Frame time was inside the
+8 ms budget in both states; draw calls were not, by 84 (scrambled) and 90
+(solved) calls over the 855 ceiling. Checked against the likely cause the
+task called out — an extra outline shell on a layer that should end
+`_flat` — and ruled it out: `tests/test_models.gd`'s outlined-layer table
+passes, and a live sample piece's tree showed exactly the shape it should
+(`Pipe_Water` with no `Outline` child, `Pipe_Shell` and `Pipe_Collar` each
+with one).
+
+The real cause: `core/toon.gd`'s `add_outline` turns shadow casting off for
+the outline shell only, so every other mesh instance — including several
+whose shadow can never show a visible pixel — was drawn twice per frame,
+once in colour and once into the directional shadow map. Three layers were
+switched to `cast_shadow = SHADOW_CASTING_SETTING_OFF` at `core/models.gd`'s
+`_dress` (a new `Models.set_shadow_off_named` helper, applied to the export
+and the placeholder alike), measured one at a time:
+
+- `Pipe_Water`, the inner tube: sits entirely inside `Pipe_Shell`'s own
+  silhouette at the collar radius, so its shadow could never fall outside
+  the shell's. Saved 54 draw calls in both states (one per cell) —
+  939 → 885 scrambled, 945 → 891 solved.
+- `Valve_Bolts`: a 3 mm-tall disc lying flat on the pad, too thin to cast a
+  visible shadow. Saved 2 draw calls (one per valve) — 885 → 883, 891 → 889.
+- `Pipe_Collar`, the flange ring: radius close to the shell's, on the same
+  axis, so most of its shadow should already sit inside the shell's. This
+  one was a look question rather than an unambiguous waste, so it was
+  screenshotted both ways at 1080 x 1920 before deciding: the ribbed relief
+  reads the same either way, since it comes from the toon ramp's own
+  shading on the ring geometry, not from a cast shadow. Kept off. Saved 54
+  more draw calls — 883 → 829, 889 → 835.
+
+Final, with all three changes: `mean_ms=5.27 max_draw_calls=829` scrambled,
+`mean_ms=5.34 max_draw_calls=835` solved. Both states now sit inside the
+8 ms and 855 budget. Nothing else was touched to get there — no outline,
+layer or rim removed, no budget raised. Suite `passed=1245 failed=0`, win
+harness 10/10. Screenshot at `/tmp/p6_shadows.png` (not tracked; the fix's
+own review artifact).
 
 ## Files
 
