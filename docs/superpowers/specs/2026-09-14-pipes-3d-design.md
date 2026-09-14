@@ -73,18 +73,18 @@ connected run reads as one continuous pipe.
 | slot | footprint | height | layers (object → material) |
 |---|---|---|---|
 | `pipe_pad` | 0.94 x 0.94 | 0.12 | `Pad_Body` → `Stone` (tinted) |
-| `pipe_cap` | 1.0 x 1.0 | 0.33 | the three pipe layers below, one arm |
-| `pipe_straight` | 1.0 x 1.0 | 0.33 | two opposite arms |
-| `pipe_elbow` | 1.0 x 1.0 | 0.33 | two adjacent arms |
-| `pipe_tee` | 1.0 x 1.0 | 0.33 | three arms |
-| `pipe_cross` | 1.0 x 1.0 | 0.33 | four arms |
+| `pipe_cap` | 1.0 x 1.0 | 0.35 | the three pipe layers below, one arm |
+| `pipe_straight` | 1.0 x 1.0 | 0.35 | two opposite arms |
+| `pipe_elbow` | 1.0 x 1.0 | 0.35 | two adjacent arms |
+| `pipe_tee` | 1.0 x 1.0 | 0.35 | three arms |
+| `pipe_cross` | 1.0 x 1.0 | 0.35 | four arms |
 | `valve` | 0.6 x 0.6 | 0.10 | `Valve_Ring` → `Metal` (tinted), a torus of inner radius 0.20 and outer 0.30, so it stands 0.10 with its lowest point on the pad top; `Valve_Bolts` → `Bolt_flat`, four discs of radius 0.035 inlaid 0.0015 proud on the pad diagonals at radius 0.36, clear of the ring |
 
 The three layers every pipe piece carries:
 
 | object | material | outline | what it is |
 |---|---|---|---|
-| `Pipe_Shell` | `Steel` (tinted) | yes | the closed hub blob (radius `TUBE_R` + 0.01) plus, per arm, two tube segments of radius `TUBE_R`: an inner one from 0.0 to 0.20 and an outer one from 0.32 to 0.50. All lobes joined into one mesh, so the outline is a single hull |
+| `Pipe_Shell` | `Steel` (tinted) | yes | the closed hub ball (radius `TUBE_R`) plus, per arm, two tube segments of radius `TUBE_R`: an inner one from 0.0 to 0.20 and an outer one from 0.32 to 0.50. All lobes joined into one mesh, so the outline is a single hull |
 | `Pipe_Collar` | `Collar` (tinted) | yes | raised rings of radius `COLLAR_R` and width `COLLAR_W`, one at 0.20 and one at 0.32 framing the gap, one at 0.47 at the mouth. Joined into one mesh |
 | `Pipe_Water` | `Flow_flat` | no | the inner tube, radius `CORE_R`, running the full 0.0 to 0.50 of every arm, plus a hub sphere. Its own `pipe_flow` material per cell (section 4) |
 
@@ -103,7 +103,7 @@ y = `PAD_H`, which is the node that turns and holds the piece. Splitting the
 two means only the pipe rotates: the pad and the valve stay put however they
 are later modelled, instead of relying on both staying four-fold symmetric.
 The source and drain cells add a `valve` at y = `PAD_H`, whose
-ring (inner radius 0.20) clears the hub (radius 0.16), so nothing collides and
+ring (inner radius 0.20) clears the hub (radius 0.15), so nothing collides and
 the cell reads as the concept's bolted blue fixture. Piece choice comes from
 the popcount of the cell's mask and, for two arms, whether they are opposite
 (`pipe_straight`) or adjacent (`pipe_elbow`). A piece is modelled in its
@@ -129,8 +129,8 @@ toon material cache holds at most nine colours per material name per
 direction. The water tube's wetness is one `wet` uniform on that cell's own
 material, so it costs the cache nothing.
 
-**Camera.** `board_size()` is `(w, h)`, `board_height()` 0.5 (a piece stands 0.325
-over a 0.12 pad, so the collar top is 0.445 and nothing is higher at rest), `plane_height()` `PAD_H` (taps land on
+**Camera.** `board_size()` is `(w, h)`, `board_height()` 0.5 (a piece stands 0.35
+over a 0.12 pad, so the collar top is 0.47 and nothing is higher at rest), `plane_height()` `PAD_H` (taps land on
 the pad tops), `board_margin()` `Platform.LIP`, `board_depth()`
 `Placeholders.PLATFORM_H`. At 1080 x 1920 the hard 6 x 9 board gives cells of
 roughly 120 px; the whole pad is the tap target.
@@ -142,9 +142,12 @@ const PAD_SIDE := 0.94
 const PAD_H := 0.12
 const TUBE_R := 0.15          # outer radius of the pipe
 const ARM_LEN := 0.5          # centre to cell edge
-# The tube's axis is at local y = TUBE_R, so a piece placed at PAD_H rests
-# its lowest point on the pad top and its axis lands at world 0.27.
-const HUB_R := TUBE_R + 0.01
+## The tube's axis, in the piece's own space. It sits at the collar radius,
+## not the tube radius, so the flange rings rest exactly on y = 0 and the pipe
+## is carried 0.025 clear of the pad on them. At TUBE_R every collar would
+## sink 0.025 into the pad and break the contract's base-at-y=0 rule.
+const TUBE_Y := 0.175
+const HUB_R := TUBE_R   # a clean rounded corner, no lower than the tube
 const GAP_IN := 0.20          # sight gap starts here along the arm
 const GAP_OUT := 0.32         # and ends here
 const COLLAR_R := 0.175
@@ -382,7 +385,7 @@ const FLOW_DRY    := Color("6b7a88")   # the water tube with nothing in it
 session through the MCP as a remote control, never by a generator script.
 Bevel 0.02 with 2 segments, smooth shading. Base colours are the dry ones
 above, converted to linear. Exporter budgets added to `LIMITS`:
-`pipe_pad` (1.0, 1.0, 0.15), the five pipe shapes (1.0, 1.0, 0.35), `valve`
+`pipe_pad` (1.0, 1.0, 0.15), the five pipe shapes (1.0, 1.0, 0.38), `valve`
 (0.65, 0.65, 0.12).
 
 Export and import:
@@ -418,7 +421,7 @@ unchanged.
 No new test files. Updated:
 
 - `tests/test_models.gd`: the `SLOTS` expectation, `HEIGHT_BUDGET` rows
-  (`pipe_pad` 0.15, the five shapes 0.35, `valve` 0.12) and the outlined-layer
+  (`pipe_pad` 0.15, the five shapes 0.38, `valve` 0.12) and the outlined-layer
   table (`pipe_pad: [Stone]`, each pipe shape `[Steel, Collar]`,
   `valve: [Metal]`).
 - `tests/_win.gd`: `_solve_pipes` taps through `cell_to_local(r, c)` instead
