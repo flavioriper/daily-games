@@ -48,6 +48,11 @@ const WELL_PROUD := 0.0015
 const PEG_R := 0.3
 const PEG_H := 0.44
 const MARK_R := 0.035
+## A pip is a disc rotated onto the dome's outward normal and centred on the
+## surface, MARK_THICK thick, so half of it stands proud and half is buried:
+## the tile's inlay treatment, which keeps an off-centre pip a full circle
+## instead of the crescent a flat disc laid on a sloping crown becomes.
+const MARK_THICK := 0.012
 const MARK_SPREAD := 0.11
 const PIP_WELL_R := 0.1
 const PIP_R := 0.08
@@ -56,6 +61,13 @@ const KNOB_R := 0.09
 const KNOB_H := 0.08
 
 static func make(slot: String) -> Node3D:
+	# The Code Break pieces are assemblies with a layer per material, built
+	# before the single-mesh slots below allocate their node and mesh.
+	match slot:
+		"socket": return _socket()
+		"peg": return _peg()
+		"pip": return _pip()
+		"lid": return _lid()
 	var root := Node3D.new()
 	root.name = slot
 	var mi := MeshInstance3D.new()
@@ -74,23 +86,6 @@ static func make(slot: String) -> Node3D:
 			_add_inlays(root)
 			Toon.apply_to(root)
 			return root
-		"socket":
-			# root and mi are unused here: _socket() builds its own assembly.
-			root.free()
-			mi.free()
-			return _socket()
-		"peg":
-			root.free()
-			mi.free()
-			return _peg()
-		"pip":
-			root.free()
-			mi.free()
-			return _pip()
-		"lid":
-			root.free()
-			mi.free()
-			return _lid()
 		"rim_edge":
 			# Moss strip along one cell of the platform lip: 1 along X, 0.5 along Z,
 			# outward side at +Z. Flat, so a BoxMesh is fine here.
@@ -299,19 +294,25 @@ static func _peg() -> Node3D:
 	Toon.apply_to(root)
 	return root
 
-## `count` pip discs merged into one mesh, each resting on the dome's crown
-## at its own height: the dome is an ellipsoid of semi-axes PEG_R and PEG_H / 2.
+## `count` pip discs merged into one mesh, each inlaid in the dome's crown:
+## the dome is an ellipsoid of semi-axes PEG_R and PEG_H / 2, whose outward
+## normal at (x, y, z) runs along (x / a^2, (y - b) / b^2, z / a^2), and each
+## disc turns its up axis onto that normal with its mid-plane on the surface
+## point, so MARK_THICK / 2 stands proud and the rest is buried. Laid flat
+## instead, a disc at the pip spread would dip 0.015 into the crown and read
+## as a crescent; Mark_flat carries no outline, so the buried half is unseen.
 static func _pips_mesh(count: int) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var disc := _cylinder(MARK_R, WELL_PROUD * 2.0, 16)
+	var disc := _cylinder(MARK_R, MARK_THICK, 16)
 	var a := PEG_R
 	var b := PEG_H * 0.5
 	for p in Shapes.PIPS[count - 1]:
 		var off: Vector2 = (p as Vector2) * MARK_SPREAD
 		var d := off.length()
 		var y := b + b * sqrt(maxf(0.0, 1.0 - (d * d) / (a * a)))
-		st.append_from(disc, 0, Transform3D(Basis.IDENTITY, Vector3(off.x, y, off.y)))
+		var n := Vector3(off.x / (a * a), (y - b) / (b * b), off.y / (a * a)).normalized()
+		st.append_from(disc, 0, Transform3D(Basis(Quaternion(Vector3.UP, n)), Vector3(off.x, y, off.y)))
 	return st.commit()
 
 ## Well disc with a ball resting in it; the ball hides until the row is scored.

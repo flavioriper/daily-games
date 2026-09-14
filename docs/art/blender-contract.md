@@ -16,7 +16,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 | `tree` | up to 1.4 x 1.4 | 2.0 | island scenery, an **assembly**: `Tree_Trunk` (`Bark`), `Tree_Canopy` (`Leaf`, three overlapping blobs in one mesh, one layer) and `Tree_Bloom` (`Bloom_flat`). Still, not `_sway`: the wind shader reaches full strength 0.10 above the base, so a whole canopy would shimmy rather than bend, and `_sway` would cost it its outline |
 | `socket` | 0.94 x 0.94 | 0.15 | Code Break's slab, an **assembly**: `Socket_Body` (`Stone`, tinted by whether its row is active) and `Socket_Well` (`Well_flat`, a disc laid 0.0015 proud on top). The feedback slab is a socket with its well hidden |
-| `peg` | 0.6 across | 0.5 | a colour peg, an **assembly**: `Peg_Body` (`Shell`, tinted per colour) and `Peg_Mark_1` … `Peg_Mark_7` (`Mark_flat`, one to seven pips on the crown in die layouts); the game shows the one mark matching the colour |
+| `peg` | 0.6 across | 0.5 | a colour peg, an **assembly**: `Peg_Body` (`Shell`, tinted per colour) and `Peg_Mark_1` … `Peg_Mark_7` (`Mark_flat`, one to seven pips on the crown in die layouts, each disc 0.012 thick, rotated onto the crown's normal and centred on the surface so 0.006 stands proud, the tile's inlay treatment); the game shows the one mark matching the colour |
 | `pip` | 0.2 across | 0.2 | a feedback pip, an **assembly**: `Pip_Well` (`Well_flat`) and `Pip_Ball` (`Pip`, tinted slate or cream, hidden until scored) |
 | `lid` | 0.94 x 0.94 | 0.3 | the stone lid over one code slot: `Lid_Body` (`Lid`) and `Lid_Knob` (`Knob`) |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
