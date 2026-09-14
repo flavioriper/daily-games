@@ -9,10 +9,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 
 | slot | footprint (X by Y in Blender) | max height (Z) | notes |
 |---|---|---|---|
-| `tile` | 1.0 x 1.0, use 0.84 x 0.84 | 0.9 | a cube of side 0.84 standing on the platform, base at Z = 0. One material, `Stone`, which the game tints by the state that is up: a cube that rotates cannot hold a colour on one face, since a moon face lands on the front wall while an empty face is up. Emblems are placed on all six faces by the game, each state on an opposite pair |
-| `emblem_sun` | inside 0.6 x 0.6 | 0.08 | orange sun with rays, lies flat on a tile |
-| `emblem_moon` | inside 0.6 x 0.6 | 0.08 | ivory crescent, lies flat on a tile |
-| `empty_mark` | inside 0.2 x 0.2 | 0.04 | small diamond on an empty tile |
+| `tile` | 1.0 x 1.0, reaches 0.87 x 0.87 | 0.9 | an **assembly**: a cube of side 0.84 standing on the platform, base at Z = 0, carrying its symbols the way a die carries its pips. `Tile_Body` (material `Stone`) is tinted by the game with the state that is up -- a cube that rotates cannot hold a colour on one face, since a moon face lands on the front wall while an empty face is up. `Sun` and `Moon` are inlaid in opposite pairs of walls, 0.05 thick with 0.015 standing proud, and keep their own colours. The top and bottom faces are bare: that is the empty state |
 | `rim_edge` | exactly 1.0 x 0.5 | 0.12 | moss strip on one cell of the platform lip; runs along X, outward side (toward the water) at **-Y** in Blender, which is +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
 | `rim_corner` | exactly 0.5 x 0.5 | 0.12 | moss square on a platform corner; outward corner at **+X -Y** in Blender, +X +Z in Godot; materials Moss_flat plus Grass_sway_flat, Petal_sway_flat, Pollen_sway_flat |
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
@@ -63,14 +60,15 @@ leaves a gap in the ring. `water` is unbounded.
    shader for now.
 6. **Named materials on slots the game recolours.** The game recolours by
    material *name*, one colour per name, so a recoloured slot must carry
-   exactly the names the game expects: `tile` has `Stone` and nothing else
-   (an extra material would never be coloured and would keep its Blender
-   colour). Slots that are never tinted (`emblem_sun`, `emblem_moon`,
-   `empty_mark`, `rim_edge`, `rim_corner`, `platform`, `water`) may use as
-   many materials as they like.
+   exactly the names the game expects: the `tile` layer the game tints is
+   called `Stone`, and every other material on that slot keeps the colour it
+   was modelled with. That is deliberate for `Sun` and `Moon` -- they must not
+   take the cube's state colour, or a moon cell would paint its own crescent
+   slate and show nothing. Slots that are never tinted (`rim_edge`,
+   `rim_corner`, `platform`, `water`) may use as many materials as they like.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
    no outline. Use it for any surface that should not read as a piece. The
-   `platform`, `water`, `empty_mark`, `rim_edge` and `rim_corner` materials
+   `platform`, `water`, `rim_edge` and `rim_corner` materials
    **must** carry the suffix (for example `Rock_flat`, `Moss_flat`); without
    it they get an outline shell the design does not want on them. A mesh
    keeps its outline unless *every* one of its material names ends in `_flat`.
@@ -200,12 +198,12 @@ it is not in git):
 
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender -b art/pieces.blend \
-  --python tools/blender_export.py -- Tile Emblem_Sun Emblem_Moon
+  --python tools/blender_export.py -- Rim_Edge Rim_Corner
 ```
 
 The names are Blender *object* names, or a *collection* name for an assembly;
-each is lowercased to form the slot name (`Emblem_Sun` writes `emblem_sun.glb`,
-the `Mascot_Pom` collection writes `mascot_pom.glb`). With no names it exports the selected
+each is lowercased to form the slot name (`Rim_Edge` writes `rim_edge.glb`,
+the `Tile` collection writes `tile.glb`). With no names it exports the selected
 objects; with nothing selected, every top-level mesh. Each object prints one
 line, `OK` with the output path or `SKIP` with the rule it broke, preceded by
 a `WARN` line when the slot name is not one the game loads, and the process

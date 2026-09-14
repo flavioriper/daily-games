@@ -1,15 +1,16 @@
 """Build the procedural Binairo island pieces and save art/pieces.blend.
 
-The tile is NOT here: it is a cube modelled by hand in art/tile.blend
-(see docs/art/blender-contract.md). This script must never write a Tile
-again, or the next run would overwrite those hand edits.
+The tile is NOT here, and neither are the sun and the moon: the cube and the
+symbols inlaid in its faces are modelled by hand in art/tile.blend and export
+together as one assembly (see docs/art/blender-contract.md). This script must
+never write a Tile again, or the next run would overwrite those hand edits.
 
 Run headless, then hand the objects to the exporter in the same session:
 
     /Applications/Blender.app/Contents/MacOS/Blender -b \
         --python tools/build_pieces.py \
         --python tools/blender_export.py -- \
-        Emblem_Sun Emblem_Moon Empty_Mark Rim_Edge Rim_Corner
+        Rim_Edge Rim_Corner
 
 (tools/build_models.sh does exactly that and re-imports in Godot.)
 
@@ -45,20 +46,14 @@ BLEND = ROOT / "art" / "pieces.blend"
 
 # Palette (core/palette.gd), sRGB hex.
 STONE = "ede2cc"
-SUN = "f5a623"
-MOON = "f6f1e6"
-MARK = "cbbd9f"
 SLATE = "3f4652"
 MOSS = "7fa84a"
 GRASS = "a3c95e"  # tufts lighter than the moss so they read as mounds, not dirt
 PETAL = "f6f1e6"
 POLLEN = "f5a623"
 
-# The tile is not built here: it is a hand-modelled cube in art/tile.blend.
-# TILE_SIDE stays because the emblems are sized against a tile face.
-TILE_SIDE = 0.84
-EMBLEM_H = 0.05
-MARK_H = 0.03
+# The tile is not built here: it is a hand-modelled cube, sun and moon in
+# art/tile.blend.
 RIM_H = 0.03
 RIM_MAX = 0.12
 
@@ -85,45 +80,6 @@ def material(name, hex_rgb):
 
 def square(half):
     return [(-half, -half), (half, -half), (half, half), (-half, half)]
-
-
-def diamond(half):
-    return [(0.0, -half), (half, 0.0), (0.0, half), (-half, 0.0)]
-
-
-def circle(radius, n, cx=0.0, cy=0.0):
-    return [(cx + radius * math.cos(2 * math.pi * i / n), cy + radius * math.sin(2 * math.pi * i / n)) for i in range(n)]
-
-
-def ray(angle, r0, r1, w0, w1):
-    """Tapered ray from radius r0 (width w0) to r1 (width w1), pointing at angle."""
-    ca, sa = math.cos(angle), math.sin(angle)
-    def at(r, w):
-        return (r * ca - w * sa, r * sa + w * ca)
-    return [at(r0, -w0 / 2), at(r1, -w1 / 2), at(r1, w1 / 2), at(r0, w0 / 2)]
-
-
-def crescent(r_out, r_in, d, tip=0.012, n=48):
-    """Outer disc minus an inner disc whose centre is offset by vector d.
-    Horns are blunted by `tip` so the bevel has something to hold on to."""
-    dv = Vector(d)
-    dist = dv.length
-    u = dv / dist
-    perp = Vector((-u.y, u.x))
-    a = (r_out ** 2 - r_in ** 2 + dist ** 2) / (2 * dist)
-    h = math.sqrt(r_out ** 2 - a ** 2)
-    theta_o = math.atan2(h, a) + tip / r_out
-    theta_i = math.atan2(h, a - dist) + tip / r_in
-    pts = []
-    for i in range(n + 1):
-        th = theta_o + (2 * math.pi - 2 * theta_o) * i / n
-        p = (math.cos(th) * u + math.sin(th) * perp) * r_out
-        pts.append((p.x, p.y))
-    for i in range(n + 1):
-        th = (2 * math.pi - theta_i) - (2 * math.pi - 2 * theta_i) * i / n
-        p = dv + (math.cos(th) * u + math.sin(th) * perp) * r_in
-        pts.append((p.x, p.y))
-    return pts
 
 
 # --- bmesh building --------------------------------------------------------
@@ -211,29 +167,6 @@ def new_bm():
 
 # --- pieces ----------------------------------------------------------------
 
-def build_sun():
-    bm = new_bm()
-    add_prism(bm, circle(0.16, 28), EMBLEM_H, 0, bevel=0.014, segments=2, inset=0.01)
-    for i in range(8):
-        ang = 2 * math.pi * i / 8 + math.pi / 8
-        # Fat rays: the 0.02 outline eats a strip off every side. One bevel
-        # segment (a chamfer) is enough at this size and halves the vertices.
-        add_prism(bm, ray(ang, 0.195, 0.29, 0.1, 0.062), EMBLEM_H, 0, bevel=0.012, segments=1, inset=0.008)
-    return finish(bm, "Emblem_Sun", [material("Sun", SUN)])
-
-
-def build_moon():
-    bm = new_bm()
-    add_prism(bm, crescent(0.215, 0.19, (0.105, 0.07), n=28), EMBLEM_H, 0, bevel=0.012, segments=2, inset=0.008)
-    return finish(bm, "Emblem_Moon", [material("Moon", MOON)])
-
-
-def build_mark():
-    bm = new_bm()
-    add_prism(bm, diamond(0.07), MARK_H, 0, bevel=0.008, segments=2, inset=0.006)
-    return finish(bm, "Empty_Mark", [material("Mark_flat", MARK)])
-
-
 def rim_materials():
     # The tufts, petals and pollen sway in the game's wind (a `_sway` name,
     # contract rule 11); the moss slab stays still.
@@ -290,7 +223,7 @@ def clear_scene():
 
 def main():
     clear_scene()
-    objs = [build_sun(), build_moon(), build_mark(), build_rim_edge(), build_rim_corner()]
+    objs = [build_rim_edge(), build_rim_corner()]
     for i, obj in enumerate(objs):
         obj.location = (0.0, 0.0, 0.0)
     bpy.context.view_layer.update()

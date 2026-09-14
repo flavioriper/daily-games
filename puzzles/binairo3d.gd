@@ -12,9 +12,10 @@ extends "res://core/puzzle_base_3d.gd"
 ## the orientation they started from. The grid changes at once; the roll is
 ## only how the change is shown, with a settle, the pivot-on-the-edge lift and
 ## a puff of dust on landing, and the neighbours bob as if the stone were
-## soft. The cube's orientation is the only visual state; the emblems on the
-## five faces that are not up are made invisible between rolls, so they cost
-## no draw calls and no cell ever shows two answers at once.
+## soft. The cube's orientation is the only visual state: the sun and the moon
+## are modelled into art/tile.blend, inlaid on their opposite pairs of faces
+## like the pips of a die, and the empty state is a bare stone face. Nothing is
+## placed or hidden at run time -- the cube shows whatever it is turned to.
 ## Tiles in a line that already breaks a rule blush, so the player learns the
 ## rules by touching. Motion: docs/superpowers/specs/2026-09-13-binairo-polish-design.md.
 
@@ -70,12 +71,10 @@ const CHECK_BLEND := 0.5     # 8/16: the flash a wrong cell gives on Check
 const CHECK_IN := 0.15
 const CHECK_OUT := 0.45
 const SPARKLE_LIFT := 0.1
-## Face index per cell value: empty up, then sun, then moon.
+## Face index per cell value: empty up, then sun, then moon. Face f shows
+## state `f % 3`, so faces 0 and 3 are the bare empty pair, 1 and 4 carry the
+## sun and 2 and 5 the moon -- the pairing the tile model is built around.
 const FACE := {-1: 0, 0: 1, 1: 2}
-## The emblem slot each state carries, indexed by that face index. Face f
-## shows state `f % 3`, so faces 0 and 3 are the empty pair, 1 and 4 the sun
-## pair and 2 and 5 the moon pair.
-const EMBLEM := ["empty_mark", "emblem_sun", "emblem_moon"]
 
 func _ready() -> void:
 	super()
@@ -91,7 +90,6 @@ var _cube_h: float = Placeholders.TILE_SIDE
 var _cells: Array = []    # [r][c] -> Node3D pivot at the cube's centre
 var _spins: Array = []    # [r][c] -> Node3D under the pivot, holds the roll
 var _tiles: Array = []    # [r][c] -> Node3D
-var _faces: Array = []    # [r][c] -> [Node3D], one emblem per cube face
 var _turns: Array = []    # [r][c] -> quarter turns rolled so far
 var _rest_y: float = 0.0  # pivot height at rest: the cube's centre
 var _rolls: Array = []    # [r][c] -> Tween or null, the roll in flight
@@ -122,10 +120,11 @@ func rules() -> String:
 	return "Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical."
 
 func board_size() -> Vector2i: return Vector2i(n, n)
-## The resting cube plus the emblem on top. A roll lifts the cube by about
-## 0.17 for the length of a tap, which the camera's margin absorbs; framing
-## for the peak instead would shrink the board for good.
-func board_height() -> float: return Placeholders.TILE_RISE + Placeholders.EMBLEM_H + 0.05
+## The resting cube. Its top face is bare stone, so nothing stands above
+## TILE_RISE; a roll lifts the cube by about 0.17 for the length of a tap,
+## which the camera's margin absorbs. Framing for the peak instead would
+## shrink the board for good.
+func board_height() -> float: return Placeholders.TILE_RISE + 0.05
 func plane_height() -> float: return Placeholders.TILE_RISE
 func board_margin() -> float: return Platform.LIP
 func board_depth() -> float: return Placeholders.PLATFORM_H
@@ -356,7 +355,6 @@ func _build_scene() -> void:
 	_cells = []
 	_spins = []
 	_tiles = []
-	_faces = []
 	_turns = []
 	_rolls = []
 	_bobs = []
@@ -381,7 +379,6 @@ func _build_scene() -> void:
 		var cell_row := []
 		var spin_row := []
 		var tile_row := []
-		var face_row := []
 		var turn_row := []
 		var roll_row := []
 		var bob_row := []
@@ -414,24 +411,6 @@ func _build_scene() -> void:
 			tile.position = Vector3(0.0, -(_cube_h - half), 0.0)
 			spin.add_child(tile)
 			tile_row.append(tile)
-			# One emblem per face. Face f is the one up after f quarter turns,
-			# so its emblem wears the inverse of that orientation: once the
-			# cube gets there the emblem is upright and on top. Each state
-			# sits on two opposite faces, which is what lets every tap be a
-			# single quarter turn.
-			var emblems: Array[Node3D] = []
-			for f in FACES:
-				var slot: String = EMBLEM[posmod(f, 3)]
-				var emblem := Models.instance(slot)
-				# Each state is on two faces, so two emblems per cell share a
-				# slot name; number them, or Godot renames the second.
-				emblem.name = "face_%d_%s" % [f, slot]
-				var inv := _orient(f).inverse()
-				emblem.basis = inv
-				emblem.position = inv * Vector3(0.0, half, 0.0)
-				spin.add_child(emblem)
-				emblems.append(emblem)
-			face_row.append(emblems)
 			turn_row.append(FACE[_grid[r][c]])
 			roll_row.append(null)
 			bob_row.append(null)
@@ -444,7 +423,6 @@ func _build_scene() -> void:
 		_cells.append(cell_row)
 		_spins.append(spin_row)
 		_tiles.append(tile_row)
-		_faces.append(face_row)
 		_turns.append(turn_row)
 		_rolls.append(roll_row)
 		_bobs.append(bob_row)
@@ -455,7 +433,6 @@ func _build_scene() -> void:
 		_wobbles.append(wobble_row)
 	for r in n:
 		for c in n:
-			_show_faces(r, c)
 			_paint(0.0, r, c)
 
 ## The axis of the `step`-th quarter turn, in the board's space. It alternates
@@ -480,25 +457,9 @@ static func _orient(steps: int) -> Basis:
 func _target_basis(r: int, c: int) -> Basis:
 	return _orient(_turns[r][c])
 
-## Emblem visibility. At rest only the emblem on the face that is up shows:
-## the other five are on the cube's walls and underside, where an emblem would
-## read as a second answer and cost a draw call for nothing (six emblems and
-## their outlines per cell add up on an 8 x 8 board). `rolling` is the signed
-## number of quarter turns in flight; every face the roll passes over the top
-## shows for its duration, and no others -- the pair on the roll axis stays on
-## the cube's walls the whole way.
-func _show_faces(r: int, c: int, rolling := 0) -> void:
-	var k: int = _turns[r][c]
-	var shown := {}
-	for i in absi(rolling) + 1:
-		shown[posmod(k - signi(rolling) * i, FACES)] = true
-	var emblems: Array = _faces[r][c]
-	for f in FACES:
-		emblems[f].visible = shown.has(f)
-
 ## Ends every motion on cell (r, c) at once: the cube snaps to the face it was
-## turning to and back down onto the platform, the faces that are not up
-## hidden and its colour caught up with the state.
+## turning to and back down onto the platform, its colour caught up with the
+## state.
 func _settle(r: int, c: int) -> void:
 	Motion.stop(_rolls[r][c])
 	Motion.stop(_bobs[r][c])
@@ -512,18 +473,15 @@ func _settle(r: int, c: int) -> void:
 	var pivot: Node3D = _cells[r][c]
 	pivot.rotation.z = 0.0
 	pivot.position.y = _rest_y
-	_show_faces(r, c)
 	_paint(_blend[r][c], r, c)
 
 ## Rolls cell (r, c) on by `steps` quarter turns after `delay`, one tumble per
 ## step, with the settle and the pivot-on-the-edge lift that make it a roll
-## rather than a spin in place. The emblems the roll passes over show while it
-## turns; _on_roll_landed hides them again. Negative `steps` roll back the way
-## the cube came (undo). `_turns` is already at the destination when this is
-## called, so the roll starts from `_turns - steps`.
+## rather than a spin in place. Negative `steps` roll back the way the cube
+## came (undo). `_turns` is already at the destination when this is called, so
+## the roll starts from `_turns - steps`.
 func _roll(r: int, c: int, steps := 1, delay := 0.0) -> void:
 	var spin: Node3D = _spins[r][c]
-	_show_faces(r, c, steps)
 	var d := signi(steps)
 	var count := absi(steps)
 	var turns := []
@@ -539,12 +497,11 @@ func _roll(r: int, c: int, steps := 1, delay := 0.0) -> void:
 	_rolls[r][c] = tw
 	fx.cue("roll")
 
-## The roll has landed: the faces that are not up go invisible, the cube takes
-## the colour of its new state, and dust rises from the bottom edge it rolled
-## over -- the near edge rolling toward the player, the left edge rolling
-## left, the opposite one when an undo takes it back.
+## The roll has landed: the cube takes the colour of its new state, and dust
+## rises from the bottom edge it rolled over -- the near edge rolling toward
+## the player, the left edge rolling left, the opposite one when an undo takes
+## it back.
 func _on_roll_landed(r: int, c: int, steps := 1) -> void:
-	_show_faces(r, c)
 	_paint(_blend[r][c], r, c)
 	var d := signi(steps)
 	var last: int = _turns[r][c] - (1 if d > 0 else 0)
@@ -750,7 +707,11 @@ func _paint(blend: float, r: int, c: int) -> void:
 		base = Pal.SLATE_GIVEN if locked else Pal.SLATE
 	else:
 		base = Pal.STONE_GIVEN if locked else Pal.STONE
-	Models.tint(_tiles[r][c], base.lerp(Pal.BAD, blend))
+	# By name, not Models.tint: only the stone body takes the state colour and
+	# the blush. The sun and the moon are inlaid layers of the same model and
+	# keep the colours they were modelled with, or a moon cell would paint its
+	# own crescent slate and show nothing.
+	Models.tint_named(_tiles[r][c], "Stone", base.lerp(Pal.BAD, blend))
 
 # --- input ---
 

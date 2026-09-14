@@ -498,3 +498,49 @@ the ramp's shadow band is a hue shift toward `SHADOW_TINT` rather than a
 darkening. Sharpening it means either a darker `shadow_tint` for the tile's
 material alone or a change to the shared ramp, which would move the look of
 every piece in the game; it is the user's call, not a fix to slip in here.
+
+## Amendment D: the symbols are modelled into the cube (2026-09-14)
+
+The sun and the moon are no longer separate models the board places on a
+cube's faces at build time. They are inlaid in `art/tile.blend` itself, the way
+a die carries its pips, and `tile.glb` exports as an assembly of three layers:
+`Tile_Body` (`Stone`), `Sun` and `Moon`. This is the user's call, taken in
+full knowledge of what Amendment C decided about emblem visibility.
+
+* **All six faces, always.** Amendment C's emblem-visibility rule is
+  withdrawn. Every face carries its symbol at all times, so a cell showing
+  empty on top also shows a sun on its near and far walls. That is the point:
+  a die reads as a die, and the quarter turn shows the next symbol swinging up
+  into view. `_show_faces`, the `_faces` array and the `EMBLEM` slot table are
+  gone from `puzzles/binairo3d.gd`; nothing is placed or hidden at run time.
+* **No empty mark.** The old diamond is dropped. The empty state is a bare
+  stone face on the cube's top and bottom pair, which is why the assembly is
+  exactly `TILE_SIDE` tall and no code needed to re-seat the cube.
+* **Inlaid, not proud.** Each symbol is a closed solid 0.05 thick sunk into
+  the wall so 0.015 stands out. Cells are a unit apart and the cube is 0.84
+  wide, so two facing inlays spend 0.03 of the 0.16 gap. The assembly's
+  footprint grows to 0.87 x 0.87, still inside the slot's 1.0 budget.
+* **Orientation is the model's job, not the code's.** Face `f` is up after `f`
+  quarter turns, so its symbol is baked wearing `_orient(f)` inverted; rolling
+  the cube to `_orient(f)` brings that symbol out flat on top. Two lobes of one
+  layer share one mesh, which the contract allows.
+* **Tinting by name.** `_paint` now calls `Models.tint_named(tile, "Stone", …)`
+  rather than `Models.tint`. Painting every surface turned a moon cell's own
+  crescent slate and showed nothing; the state colour, the blush and the Check
+  flash all belong to the body alone.
+* **Cost.** Six draw calls per cell instead of four, since both symbols and
+  their outline shells are always drawn. Measured on the same 6 x 6 board at
+  1080x1920: 512 draw calls and 3.76 ms idle before, 646 and 4.36 ms after,
+  against the section 7 budget of 8 ms. The lever if an 8 x 8 board bites is
+  renaming the materials `Sun_flat`/`Moon_flat` to drop the outline shells.
+* **Slots removed.** `emblem_sun`, `emblem_moon` and `empty_mark` had one
+  consumer and are gone from `Models.SLOTS`, the exporter table,
+  `tools/build_pieces.py`, `tools/build_models.sh`, the contract and
+  `assets/models/README.md`. `Placeholders.make("tile")` builds the same
+  three-layer assembly with plain discs so the no-`.glb` fallback still reads.
+
+Still open: at the board's 68-degree pitch the cube in front hides most of a
+near wall, so the sun inlaid there shows only the top arc of its rays, reading
+as a row of orange beads along the bottom of each visible wall strip rather
+than as a sun. It is correct and it is what "all faces on" means at this
+camera; whether it is wanted is a look question, not a bug.

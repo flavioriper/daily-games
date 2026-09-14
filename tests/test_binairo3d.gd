@@ -2,8 +2,9 @@ extends RefCounted
 
 ## Binairo on the stage: every cell is a cube on a pivot through its centre,
 ## standing on the platform. Its six faces carry empty, sun and moon twice
-## each, on opposite pairs, so a tap rolls the cube a quarter turn -- about X,
-## then Z, then X -- and the next state is always one turn away.
+## each, on opposite pairs -- modelled into the cube, not placed on it -- so a
+## tap rolls the cube a quarter turn, about X, then Z, then X, and the next
+## state is always one turn away.
 ## The grid changes at once, the roll is only visual, and a second tap mid-roll
 ## snaps the first roll home before starting the next. Needs a live tree
 ## (PuzzleBase3D mounts in _ready), so this runs from run_in_tree.
@@ -37,7 +38,7 @@ static func run_in_tree(t) -> void:
 	_test_entrance(t, p)
 	_test_platform_under_board(t, p)
 	_test_cube_geometry(t, p)
-	_test_faces_carry_emblems(t, p)
+	_test_faces_carry_symbols(t, p)
 	_test_cube_colours(t, p)
 	_test_tap_rolls(t, p)
 	_test_neighbour_bob(t, p)
@@ -129,39 +130,56 @@ static func _test_cube_geometry(t, p) -> void:
 	var centre := BoardMath.cell_center(cell.y, cell.x, p.n, p.n, Placeholders.TILE_RISE - Placeholders.TILE_HALF)
 	t.check(pivot.position.is_equal_approx(centre), "pivot sits at the cube's centre (%s vs %s)" % [pivot.position, centre])
 
-static func _test_faces_carry_emblems(t, p) -> void:
-	# Six faces, one emblem each, every state on an opposite pair: faces 0 and
-	# 3 carry the empty mark, 1 and 4 the sun, 2 and 5 the moon. Face f is the
-	# one up after f quarter turns, so it wears the inverse of that
-	# orientation -- put the cube at _orient(f) and the emblem must come out
-	# upright, on top, half a side from the centre. That invariant is what
-	# lets every tap be a single quarter turn.
+## Every vertex of the layers under `root` whose imported material is `name`,
+## in root space. Models.meshes leaves the outline shells out.
+static func _layer_points(root: Node3D, name: String) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for mi in Models.meshes(root):
+		var src := mi.mesh.surface_get_material(0)
+		if src == null or src.resource_name != name:
+			continue
+		for v in mi.mesh.get_faces():
+			out.append(mi.transform * v)
+	return out
+
+## The sun and the moon are modelled into the cube itself (art/tile.blend),
+## inlaid on opposite pairs of faces the way a die carries its pips: the sun on
+## the near and far faces, the moon on the left and right, the top and bottom
+## bare for the empty state. Face f is the one up after f quarter turns, so
+## rolling the cube to _orient(f) has to bring face f's symbol out flat on top,
+## and nothing else with it. That invariant is what lets every tap be a single
+## quarter turn, and it is now a property of the model rather than of code.
+static func _test_faces_carry_symbols(t, p) -> void:
 	var cell := _find_cell(p, false)
-	var r := cell.y
-	var c := cell.x
+	var tile: Node3D = p._tiles[cell.y][cell.x]
+	t.eq(Models.surface_names(tile), ["Stone", "Sun", "Moon"],
+		"the tile is one mesh per layer: the stone body, the sun, the moon")
 	var half := Placeholders.TILE_HALF
-	var emblems: Array = p._faces[r][c]
-	t.eq(emblems.size(), p.FACES, "a cell carries one emblem per cube face")
+	var centre := Vector3(0.0, half, 0.0)
+	var want := half + Placeholders.EMBLEM_PROUD
+	var sun := _layer_points(tile, "Sun")
+	var moon := _layer_points(tile, "Moon")
+	t.check(sun.size() > 0 and moon.size() > 0, "both symbols are carried by the model")
 	var upright := true
-	var slots_ok := true
+	var bare := true
 	for f in p.FACES:
-		var emblem: Node3D = emblems[f]
 		var orient: Basis = p._orient(f)
-		if not (orient * emblem.basis).is_equal_approx(Basis.IDENTITY):
+		var sun_top := -INF
+		for v in sun:
+			sun_top = maxf(sun_top, (orient * (v - centre)).y)
+		var moon_top := -INF
+		for v in moon:
+			moon_top = maxf(moon_top, (orient * (v - centre)).y)
+		var up := sun_top if posmod(f, 3) == 1 else moon_top
+		var down := moon_top if posmod(f, 3) == 1 else sun_top
+		if posmod(f, 3) == 0:
+			# An empty face: bare stone up top, both symbols down on the walls.
+			if maxf(sun_top, moon_top) > half - 0.05:
+				bare = false
+		elif absf(up - want) > 0.003 or down > half - 0.05:
 			upright = false
-		if not (orient * emblem.position).is_equal_approx(Vector3(0.0, half, 0.0)):
-			upright = false
-		if emblem.name != "face_%d_%s" % [f, p.EMBLEM[posmod(f, 3)]]:
-			slots_ok = false
-	t.check(upright, "every face's emblem comes up upright and on top once the cube rolls to it")
-	t.check(slots_ok, "the six faces carry mark, sun, moon twice round")
-	# Only the face that is up shows: the other five are on the cube's walls
-	# and underside, where an emblem would read as a second answer.
-	var shown := []
-	for f in p.FACES:
-		if (emblems[f] as Node3D).visible:
-			shown.append(f)
-	t.eq(shown, [posmod(p._turns[r][c], p.FACES)], "at rest only the emblem on the face that is up is visible")
+	t.check(upright, "each symbol comes out flat on top, %.3f proud, when the cube rolls to its face" % Placeholders.EMBLEM_PROUD)
+	t.check(bare, "and an empty face is bare stone, with both symbols down on the walls")
 
 static func _cube_colour(p, r: int, c: int) -> Color:
 	var mi: MeshInstance3D = Models.meshes(p._tiles[r][c])[0]
@@ -189,7 +207,6 @@ static func _test_tap_rolls(t, p) -> void:
 	var r := cell.y
 	var c := cell.x
 	var spin: Node3D = p._spins[r][c]
-	var emblems: Array = p._faces[r][c]
 	t.check(p._grid[r][c] == -1 and spin.basis.is_equal_approx(Basis.IDENTITY), "cell starts empty with face 0 up")
 	_tap(p, r, c)
 	t.eq(p._grid[r][c], 0, "tap sets the grid to sun at once")
@@ -198,9 +215,6 @@ static func _test_tap_rolls(t, p) -> void:
 	t.check(first != null and first.is_running(), "a roll tween is running")
 	t.check(p._target_basis(r, c).is_equal_approx(Basis(Vector3.RIGHT, QUARTER)),
 		"roll target is one quarter turn toward the player")
-	t.check((emblems[0] as Node3D).visible and (emblems[1] as Node3D).visible,
-		"both faces the roll passes over the top are visible while it turns")
-	t.check(not (emblems[2] as Node3D).visible, "and the faces it does not touch stay hidden")
 
 	# Drive the roll to its end. The back ease is already overshooting at the
 	# half, so the between-faces check steps a quarter.
@@ -213,11 +227,6 @@ static func _test_tap_rolls(t, p) -> void:
 	t.check(spin.basis.is_equal_approx(Basis(Vector3.RIGHT, QUARTER)), "the roll lands exactly on the sun face")
 	t.check(is_equal_approx(spin.position.y, 0.0), "and back down flat on the platform (%.4f)" % spin.position.y)
 	t.check(not first.is_running(), "the roll tween finished")
-	var shown := []
-	for f in p.FACES:
-		if (emblems[f] as Node3D).visible:
-			shown.append(f)
-	t.eq(shown, [1], "after the roll only the sun emblem is visible")
 	t.check(_cube_colour(p, r, c).is_equal_approx(Pal.STONE), "a sun leaves the cube stone")
 	t.eq(p.fx.last_cue, "land", "landing fires the land cue and its dust")
 

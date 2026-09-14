@@ -27,10 +27,9 @@ TOLERANCE = 0.001
 
 # (max footprint x, max footprint y, max height), from the contract table
 LIMITS = {
-    "tile": (1.0, 1.0, 0.9),  # a cube, side 0.84, standing on the platform
-    "emblem_sun": (0.6, 0.6, 0.08),
-    "emblem_moon": (0.6, 0.6, 0.08),
-    "empty_mark": (0.2, 0.2, 0.04),
+    # An assembly: the cube body, side 0.84, standing on the platform, plus
+    # the sun and moon inlaid in its walls, which reach 0.87 across.
+    "tile": (1.0, 1.0, 0.9),
     "rim_edge": (1.0, 0.5, 0.12),
     "rim_corner": (0.5, 0.5, 0.12),
 }

@@ -6,7 +6,7 @@ const Pal = preload("res://core/palette.gd")
 const Toon = preload("res://core/toon.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
-const HEIGHT_BUDGET := {"tile": 0.9, "emblem_sun": 0.08, "emblem_moon": 0.08, "empty_mark": 0.04, "rim_edge": 0.12, "rim_corner": 0.12}
+const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12}
 
 static func run(t) -> void:
 	_test_slots(t)
@@ -30,7 +30,7 @@ static func _bounds(root: Node3D) -> Array:
 	return [lo, hi]
 
 static func _test_slots(t) -> void:
-	t.eq(Models.SLOTS, ["tile", "emblem_sun", "emblem_moon", "empty_mark", "rim_edge", "rim_corner", "platform", "water", "focus_ring"], "slot list matches the polish spec")
+	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "focus_ring"], "slot list matches the polish spec")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
@@ -45,7 +45,9 @@ static func _test_slots(t) -> void:
 				"%s fits a 1x1 footprint (%s .. %s)" % [slot, lo, hi])
 			var budget: float = HEIGHT_BUDGET.get(slot, 0.6)
 			t.check(hi.y <= budget + 0.001, "%s is under %.2f tall (got %.3f)" % [slot, budget, hi.y])
-		var wants_outline: bool = slot in ["tile", "emblem_sun", "emblem_moon"]
+		# Every layer of the tile assembly -- the stone body and both inlaid
+		# symbols -- is a piece, so all of them carry an outline.
+		var wants_outline: bool = slot == "tile"
 		for mi in ms:
 			var has_outline := mi.get_node_or_null("Outline") != null
 			t.check(has_outline == wants_outline, "%s outline present=%s" % [slot, has_outline])
@@ -73,27 +75,33 @@ static func _test_rim(t) -> void:
 	corner.free()
 
 ## The tile is a cube standing on the platform, one state per face and each
-## state on two opposite faces, so a tap is one quarter turn (amendment C).
-## One material for the whole cube: a rotating cube cannot hold a colour on
-## one face, so the game tints the cube by the state that is up.
+## state on two opposite faces, so a tap is one quarter turn (amendment C). It
+## is an assembly of three layers: a `Stone` body the game tints by the state
+## that is up -- a rotating cube cannot hold a colour on one face -- and the
+## `Sun` and `Moon` inlaid in its walls, which keep their modelled colours.
+## The top and bottom faces are bare, which is how the empty state reads.
 static func _test_cube(t) -> void:
 	# The placeholder must keep the same contract as the export, since it is
 	# what renders when the .glb is missing and what the headless tests see
 	# on a fresh clone before the models are imported.
 	var stand_in = Placeholders.make("tile")
-	t.eq(Models.surface_names(stand_in), ["Stone"], "placeholder tile has one named surface")
+	t.eq(Models.surface_names(stand_in), ["Stone", "Sun", "Moon"], "placeholder tile carries the same three layers")
 	t.check(absf(Models.height(stand_in) - Placeholders.TILE_SIDE) < 0.001, "placeholder tile is exactly TILE_SIDE tall")
 	t.check(Models.meshes(stand_in)[0].get_node_or_null("Outline") != null, "placeholder tile has an outline shell")
 	stand_in.free()
 
 	var tile = Models.instance("tile")
-	t.eq(Models.surface_names(tile), ["Stone"], "tile is one surface, so one draw call per cell")
-	# Bevels shave a few hundredths off the sharp edges, hence the slack.
+	t.eq(Models.surface_names(tile), ["Stone", "Sun", "Moon"], "tile is one mesh per layer: body, sun, moon")
+	# Bevels shave a few hundredths off the sharp edges, hence the slack. The
+	# inlaid symbols stand EMBLEM_PROUD out of the two wall pairs, so the
+	# assembly is that much wider than the cube on X and Z; nothing sits on the
+	# top or bottom face, so its height is the cube's side exactly.
 	var b := _bounds(tile)
 	var side := Placeholders.TILE_SIDE
-	for pair in [["X", b[1].x - b[0].x], ["Y", b[1].y - b[0].y], ["Z", b[1].z - b[0].z]]:
-		t.check(absf((pair[1] as float) - side) < 0.02,
-			"tile is about %.2f along %s (got %.3f)" % [side, pair[0], pair[1]])
+	var wide := side + 2.0 * Placeholders.EMBLEM_PROUD
+	for pair in [["X", b[1].x - b[0].x, wide], ["Y", b[1].y - b[0].y, side], ["Z", b[1].z - b[0].z, wide]]:
+		t.check(absf((pair[1] as float) - (pair[2] as float)) < 0.02,
+			"tile is about %.2f along %s (got %.3f)" % [pair[2], pair[0], pair[1]])
 	t.check(b[0].y > -0.001 and absf(b[0].x + b[1].x) < 0.02 and absf(b[0].z + b[1].z) < 0.02,
 		"tile stands on y = 0, centred on x and z (%s .. %s)" % [b[0], b[1]])
 	# A cube is what makes a cell read as an object: at the board camera's
@@ -118,7 +126,7 @@ static func _test_cube(t) -> void:
 			var over = mi.get_surface_override_material(i)
 			if over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("3f4652")):
 				hits += 1
-	t.eq(hits, Models.meshes(tile).size(), "tint colours the whole cube, state by state")
+	t.eq(hits, Models.meshes(tile).size(), "tint colours every layer of the tile at once")
 	tile.free()
 
 static func _test_fallback(t) -> void:
@@ -133,14 +141,26 @@ static func _test_fallback(t) -> void:
 	b.free()
 
 static func _test_tint_and_height(t) -> void:
-	var tok = Models.instance("emblem_sun")
-	Models.tint(tok, Color("d9605a"))
-	var over = Models.meshes(tok)[0].get_surface_override_material(0)
-	t.check(over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")), "tint swaps the toon colour")
-	tok.free()
 	var tile = Models.instance("tile")
 	t.check(absf(Models.height(tile) - Placeholders.TILE_SIDE) < 0.03,
 		"tile is a cube about %.3f tall, measured %.3f" % [Placeholders.TILE_SIDE, Models.height(tile)])
+	# tint_named touches one layer by material name; the inlaid sun and moon
+	# keep the colours they were modelled with, which is why the tile can be a
+	# multi-material assembly and still take a state colour.
+	Models.tint_named(tile, "Stone", Color("d9605a"))
+	var painted := 0
+	for mi in Models.meshes(tile):
+		var over = mi.get_surface_override_material(0)
+		if over != null and Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")):
+			painted += 1
+	t.eq(painted, 1, "tint_named swaps the toon colour on the stone body alone")
+	Models.tint(tile, Color("d9605a"))
+	var all_painted := true
+	for mi in Models.meshes(tile):
+		var over = mi.get_surface_override_material(0)
+		if over == null or not Color(over.get_shader_parameter("albedo")).is_equal_approx(Color("d9605a")):
+			all_painted = false
+	t.check(all_painted, "tint swaps the toon colour on every layer")
 	tile.free()
 	var platform = Models.instance("platform")
 	t.check(is_equal_approx(Models.height(platform), 0.6), "platform placeholder is 0.6 deep, measured %.3f" % Models.height(platform))

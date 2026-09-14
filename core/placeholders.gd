@@ -24,7 +24,11 @@ const TILE_SIDE := 0.84
 ## faces, so the game places the centre from this constant, not from the mesh.
 const TILE_HALF := TILE_SIDE * 0.5
 const TILE_RISE := TILE_SIDE
+## The sun and moon are sunk into the cube's walls: EMBLEM_H thick, of which
+## only EMBLEM_PROUD stands out of the face. Cells are a unit apart and the
+## cube is 0.84 wide, so two facing inlays spend 0.03 of the 0.16 gap.
 const EMBLEM_H := 0.05
+const EMBLEM_PROUD := 0.015
 const PLATFORM_H := 0.6
 const RIM_H := 0.04
 ## The focus ring: a flat square frame around one cell (polish spec, section 6).
@@ -41,27 +45,15 @@ static func make(slot: String) -> Node3D:
 	var outline := true
 	match slot:
 		"tile":
-			# One surface the game tints by the state that is up; the
-			# per-face vertices mean the outline hull opens along the edges,
-			# which the Blender export avoids. Base at y = 0.
+			# The cube body, one surface the game tints by the state that is
+			# up, plus the sun and moon inlaid the way art/tile.blend carries
+			# them. The per-face vertices mean the outline hull opens along
+			# the edges, which the Blender export avoids. Base at y = 0.
 			mi.mesh = _cube()
 			root.add_child(mi)
+			_add_inlays(root)
 			Toon.apply_to(root)
 			return root
-		"emblem_sun":
-			mi.mesh = _cylinder(0.22, EMBLEM_H, 32)
-			color = Pal.SUN
-			height = EMBLEM_H
-		"emblem_moon":
-			mi.mesh = _cylinder(0.18, EMBLEM_H, 32)
-			color = Pal.MOON
-			height = EMBLEM_H
-		"empty_mark":
-			# A four-sided prism left unrotated reads as a small diamond.
-			mi.mesh = _prism(0.07, 0.03)
-			color = Pal.MARK
-			height = 0.03
-			outline = false
 		"rim_edge":
 			# Moss strip along one cell of the platform lip: 1 along X, 0.5 along Z,
 			# outward side at +Z. Flat, so a BoxMesh is fine here.
@@ -138,6 +130,36 @@ static func _cube() -> ArrayMesh:
 	])
 	return mesh
 
+
+## The sun and moon sunk into the cube's walls, each state on an opposite
+## pair: the sun on the near and far faces, the moon on the left and right,
+## the top and bottom left bare for the empty state. Plain discs stand in for
+## the modelled emblems -- the placeholder only has to say which state is up.
+static func _add_inlays(root: Node3D) -> void:
+	var centre := Vector3(0.0, TILE_HALF, 0.0)
+	var depth := TILE_HALF + EMBLEM_PROUD - EMBLEM_H * 0.5
+	# A cylinder stands on +Y, so each inlay turns that axis onto its face.
+	var inlays := [
+		["Sun", Pal.SUN, 0.22, Vector3.BACK, Basis(Vector3.RIGHT, PI * 0.5)],
+		["Sun", Pal.SUN, 0.22, Vector3.FORWARD, Basis(Vector3.RIGHT, -PI * 0.5)],
+		["Moon", Pal.MOON, 0.18, Vector3.RIGHT, Basis(Vector3.BACK, -PI * 0.5)],
+		["Moon", Pal.MOON, 0.18, Vector3.LEFT, Basis(Vector3.BACK, PI * 0.5)],
+	]
+	for i in inlays.size():
+		var inlay: Array = inlays[i]
+		var mesh := _cylinder(inlay[2], EMBLEM_H, 24)
+		# On the mesh, not as an override: Toon.apply_to and Models.tint_named
+		# both read the surface material's name, as they do on the export.
+		var mat := StandardMaterial3D.new()
+		mat.resource_name = inlay[0]
+		mat.albedo_color = inlay[1]
+		mesh.material = mat
+		var mi := MeshInstance3D.new()
+		mi.name = "%s_%d" % [inlay[0], i]
+		mi.mesh = mesh
+		mi.basis = inlay[4]
+		mi.position = centre + (inlay[3] as Vector3) * depth
+		root.add_child(mi)
 
 ## One surface holding the given faces, each a [points, normal] pair wound so
 ## its normal faces the front.

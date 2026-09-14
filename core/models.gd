@@ -10,7 +10,7 @@ const Placeholders = preload("res://core/placeholders.gd")
 const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
 ## same names with their footprint rules.
-const SLOTS := ["tile", "emblem_sun", "emblem_moon", "empty_mark", "rim_edge", "rim_corner", "platform", "water", "focus_ring"]
+const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "focus_ring"]
 ## Slots exempt from the 1 x 1 footprint rule.
 const UNBOUNDED := ["platform", "water"]
 
@@ -59,7 +59,9 @@ static func tint(root: Node, color: Color) -> void:
 
 ## Recolours only the surfaces whose imported material is called `name`
 ## (the glTF material name survives on the mesh surface; overrides do not
-## touch it). Used for slots with one material per face, like the tile.
+## touch it). Used for assemblies where only some layers are tinted: the
+## tile's `Stone` body takes the state colour while its inlaid `Sun` and
+## `Moon` keep the colours they were modelled with.
 static func tint_named(root: Node, name: String, color: Color) -> void:
 	for mi in meshes(root):
 		for i in mi.mesh.get_surface_count():
