@@ -337,6 +337,10 @@ one visible mark each, 40 pips, 5 lids, the platform and rim, the stage and
 the HUD: about 600. Measured numbers are recorded here when the branch is
 merged.
 
+Amendment (2026-09-14): measured on the Mac at 1080 x 1920 with a throwaway
+copy of `_shot_anim.gd` opening Code Break: `idle mean_ms=3.62
+max_draw_calls=393`. Suite `passed=1192 failed=0`, win harness 10/10.
+
 ## Files
 
 New: `puzzles/codebreak3d.gd`, `ui/hud/palette_tray.gd`, `ui/hud/peg_button.gd`,
