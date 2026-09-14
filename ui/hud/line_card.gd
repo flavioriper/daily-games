@@ -11,7 +11,7 @@ const Pal = preload("res://core/palette.gd")
 const MIN_WIDTH := 420.0
 const DOT_R := 9.0
 const DOT_GAP := 8.0
-const LABEL_W := 110.0
+const LABEL_W := 170.0
 const COUNT_W := 80.0
 
 var lines: Array[Dictionary] = []

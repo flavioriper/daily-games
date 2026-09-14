@@ -109,8 +109,12 @@ static func _leaf() -> Dictionary:
 		pts.append(a.lerp(b, t) + perp * sin(t * PI) * 0.22)
 	return {"polys": [pts], "lines": [PackedVector2Array([a, a.lerp(b, 0.85)])]}
 
+## A low island: a mound with a round tree on it and a wave beneath.
 static func _island() -> Dictionary:
-	var mound := PackedVector2Array([Vector2(0.08, 0.86), Vector2(0.2, 0.66), Vector2(0.4, 0.58), Vector2(0.6, 0.58), Vector2(0.8, 0.66), Vector2(0.92, 0.86)])
-	var trunk := PackedVector2Array([Vector2(0.5, 0.6), Vector2(0.5, 0.36)])
-	var canopy := circle(Vector2(0.5, 0.26), 0.18)
-	return {"polys": [mound, canopy], "lines": [trunk]}
+	var mound := PackedVector2Array([Vector2(0.06, 0.8), Vector2(0.2, 0.64), Vector2(0.4, 0.58), Vector2(0.6, 0.58), Vector2(0.8, 0.64), Vector2(0.94, 0.8)])
+	var trunk := PackedVector2Array([Vector2(0.5, 0.6), Vector2(0.5, 0.44)])
+	var canopy_big := circle(Vector2(0.5, 0.3), 0.15)
+	var canopy_left := circle(Vector2(0.37, 0.37), 0.11)
+	var canopy_right := circle(Vector2(0.63, 0.37), 0.11)
+	var wave := PackedVector2Array([Vector2(0.06, 0.9), Vector2(0.2, 0.86), Vector2(0.34, 0.9), Vector2(0.48, 0.86), Vector2(0.62, 0.9), Vector2(0.76, 0.86), Vector2(0.9, 0.9)])
+	return {"polys": [mound, canopy_big, canopy_left, canopy_right], "lines": [trunk, wave]}

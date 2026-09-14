@@ -24,6 +24,7 @@ func _init() -> void:
 func _make_inner() -> Container:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	return row
 
 func _build() -> void:

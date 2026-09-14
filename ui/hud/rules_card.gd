@@ -35,11 +35,21 @@ func set_rules(text: String) -> void:
 		_list.remove_child(child)
 		child.free()
 	for sentence in split_sentences(text):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var dot := Label.new()
+		dot.theme_type_variation = "CardBody"
+		dot.text = "•"
+		dot.custom_minimum_size.x = 30
+		dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		row.add_child(dot)
 		var l := Label.new()
 		l.theme_type_variation = "CardBody"
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.text = "•  " + sentence
-		_list.add_child(l)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.text = sentence
+		row.add_child(l)
+		_list.add_child(row)
 
 ## "One. Two three." -> ["One", "Two three"].
 static func split_sentences(text: String) -> Array[String]:
