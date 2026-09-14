@@ -28,14 +28,14 @@ void fragment() {
 	float t = TIME * motion_scale;
 	vec2 p = world_pos.xz;
 	// Elongated dashes along one direction, broken up by a slow cross fade.
-	float s1 = sin(dot(p, vec2(0.80, 0.45)) * 1.6 + t * 0.35);
-	float s2 = sin(dot(p, vec2(-0.35, 0.90)) * 0.5 - t * 0.2);
+	float s1 = sin(dot(p, vec2(0.80, 0.45)) * 4.0 + t * 0.35);
+	float s2 = sin(dot(p, vec2(-0.35, 0.90)) * 1.2 - t * 0.2);
 	float band = step(1.25, s1 + 0.4 * s2);
 	// Sparkles: warp the two sine phases so the dots scatter instead of gridding.
 	float wx = sin(p.y * 2.3 + t * 0.4) * 1.7;
 	float wz = sin(p.x * 1.9 - t * 0.3) * 1.7;
-	float s = sin(p.x * 7.3 + wx + t * 1.3) * sin(p.y * 6.1 + wz - t * 0.9);
-	float spark = step(0.995, s);
+	float s = sin(p.x * 2.4 + wx + t * 1.3) * sin(p.y * 2.0 + wz - t * 0.9);
+	float spark = step(0.998, s);
 	vec3 col = mix(base_color.rgb, band_color.rgb, band);
 	col = mix(col, sparkle_color.rgb, spark);
 	if (splash_age >= 0.0 && splash_age < 2.0) {
