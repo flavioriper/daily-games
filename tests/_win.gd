@@ -16,6 +16,7 @@ var _idx := 0
 var _frames := 0
 var _results: Array = []
 var _fit_ok := true
+var _hud_ok := true
 
 func _initialize() -> void:
 	_entries = load("res://ui/registry.gd").PUZZLES
@@ -43,6 +44,7 @@ func _process(_delta: float) -> bool:
 	elif slot == 12:
 		_puzzle = _host._puzzle
 		_fit_ok = true
+		_hud_ok = true
 		_solve(_entries[_idx].id)
 	elif slot == 20:
 		var solved: bool = _puzzle.is_solved()
@@ -51,7 +53,7 @@ func _process(_delta: float) -> bool:
 		root.get_texture().get_image().save_png("/tmp/won_%s.png" % _entries[_idx].id)
 		_results.append({
 			"id": _entries[_idx].id, "solved": solved, "done": done, "overlay": overlay,
-			"ok": solved and done and overlay and _fit_ok, "note": _note(_entries[_idx].id),
+			"ok": solved and done and overlay and _fit_ok and _hud_ok, "note": _note(_entries[_idx].id),
 		})
 	elif slot == 26:
 		_host.closed.emit()
@@ -60,7 +62,7 @@ func _process(_delta: float) -> bool:
 
 func _note(id: String) -> String:
 	match id:
-		"binairo": return "%d moves, camera fit=%s" % [_puzzle.moves, _fit_ok]
+		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses" % _puzzle._guesses.size()
 		"balance": return "weights %s" % [_puzzle._guess]
 		"pipes": return "%d turns" % _puzzle.moves
@@ -96,6 +98,10 @@ func _solve_binairo() -> void:
 		for c in n:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
+	# The HUD's own buttons: one hint (fills and locks a cell) and one check.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for r in n:
 		for c in n:
 			if _puzzle.is_done():
@@ -160,6 +166,10 @@ func _to_global(p: Vector2) -> Vector2:
 
 func _tap_local(local: Vector2) -> void:
 	_tap_global(_to_global(local))
+
+## Presses a HUD button through a touch at its centre, like a player would.
+func _press(btn: Button) -> void:
+	_tap_global(btn.get_global_transform_with_canvas() * (btn.size * 0.5))
 
 func _tap_global(at: Vector2) -> void:
 	for pressed in [true, false]:

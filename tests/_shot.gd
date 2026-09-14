@@ -1,14 +1,17 @@
 extends SceneTree
 
-## Walks every registered prototype, screenshots it, and moves on.
-## Reusable as puzzles get added.
-## The slot is long enough for a board's entrance to finish before the shot.
+## Walks every registered prototype, screenshots it, and moves on. Keyed on
+## elapsed seconds rather than frames, so the shot lands after the board's
+## entrance at any frame rate.
 
-const SLOT := 120
+const OPEN_AT := 0.1
+const SHOT_AT := 2.0
+const CLOSE_AT := 2.2
 
 var _menu: Node
 var _host: Node
-var _frames := 0
+var _t := 0.0
+var _phase := 0  # 0 about to open, 1 open, 2 shot taken
 var _idx := 0
 var _entries: Array = []
 
@@ -18,22 +21,24 @@ func _initialize() -> void:
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
 
-func _process(_delta: float) -> bool:
-	_frames += 1
-	var local := _frames % SLOT
+func _process(delta: float) -> bool:
+	_t += delta
 	if _idx >= _entries.size():
-		var img := root.get_texture().get_image()
-		img.save_png("/tmp/shot_menu.png")
+		root.get_texture().get_image().save_png("/tmp/shot_menu.png")
 		print("saved /tmp/shot_menu.png")
 		return true
-	if local == 5:
+	if _phase == 0 and _t >= OPEN_AT:
 		_menu._open(_entries[_idx])
 		_host = _menu.get_child(_menu.get_child_count() - 1)
-	elif local == 100:
-		var img := root.get_texture().get_image()
-		img.save_png("/tmp/shot_%s.png" % _entries[_idx].id)
-		print("saved /tmp/shot_%s.png" % _entries[_idx].id)
-	elif local == 110:
+		_phase = 1
+	elif _phase == 1 and _t >= SHOT_AT:
+		var path := "/tmp/shot_%s.png" % _entries[_idx].id
+		root.get_texture().get_image().save_png(path)
+		print("saved " + path)
+		_phase = 2
+	elif _phase == 2 and _t >= CLOSE_AT:
 		_host.closed.emit()
 		_idx += 1
+		_phase = 0
+		_t = 0.0
 	return false

@@ -16,6 +16,9 @@ Every prototype is reachable from the menu. Boards sit on a 3D toon-shaded stage
 in `assets/models/`, rebuilt with `tools/build_models.sh`; any slot without an export falls back to a primitive
 placeholder (see `docs/art/blender-contract.md`).
 
+The HUD around every board is the concept chrome: wordmark, back / undo / hint / settings, day card, rules card,
+working-line card, Reset and Check; Binairo has real undo, hint (three) and check.
+
 ## Tests
 
 ```bash
@@ -23,6 +26,7 @@ placeholder (see `docs/art/blender-contract.md`).
 godot --headless --path . --script res://tests/run_tests.gd
 
 # End-to-end: drive every puzzle to its solved state through real touch events
+# (also presses Binairo's Hint and Check buttons through the HUD)
 godot --path . --resolution 540x960 --script res://tests/_win.gd
 
 # Screenshot every prototype to /tmp/shot_<id>.png
@@ -33,7 +37,7 @@ godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd
 ```
 
 Reduce-motion is read from `user://settings.cfg`, section `[motion]`, key
-`reduce`; a missing file defaults to full motion.
+`reduce`; a missing file defaults to full motion. The settings sheet (gear button) toggles it in the game.
 
 ## The puzzles
 
@@ -61,7 +65,7 @@ core/       shared: puzzle interface, daily seeding, palette, shape helpers,
             motion.gd (tween recipes, reduce-motion)
 puzzles/    <id>_gen.gd is pure logic and headless-testable
             <id>.gd is the board and its touch handling
-ui/         menu, puzzle host shell, registry
+ui/         menu, puzzle host shell, registry, theme (fonts, cards, buttons), icons; ui/hud/ the HUD panels
 tests/      unit suites plus the win and screenshot harnesses
 docs/       the 75-candidate catalog and build notes
 world/      3D stage: camera rig, sun, sky, water; main scene; ambient.gd
@@ -69,7 +73,7 @@ world/      3D stage: camera rig, sun, sky, water; main scene; ambient.gd
             (one-shot particles: dust, sparkle)
 shaders/    toon and outline spatial shaders, plus the wind (toon_wind) and
             water shaders and the shared toon_lit include
-assets/     models/<slot>.glb from Blender, placeholders otherwise
+assets/     models/<slot>.glb from Blender, placeholders otherwise; fonts/ Fredoka and Nunito (OFL)
 tools/      blender_export.py, run inside Blender
 ```
 
