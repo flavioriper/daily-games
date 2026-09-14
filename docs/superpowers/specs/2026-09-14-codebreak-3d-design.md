@@ -255,8 +255,8 @@ static func vanish(node: Node3D, lift: float, time: float, delay := 0.0) -> Twee
 peg position and scale) at its target, as Binairo's does; a tap mid-motion
 settles first. `_stop_all()` kills every tracked tween before a rebuild or a
 reset. The board keeps arrays of tweens per cell (`_dips`, `_wobbles`,
-`_pegs_tw`), per row (`_breaths`, `_fades`), per lid (`_lids_tw`) and the
-entrance list.
+`_peg_tw`, `_breath_tw`, `_fades`), per pip (`_pip_tw`), per lid (`_lid_tw`,
+`_code_tw`) and the entrance list.
 
 Particles use the pooled `Fx` node (four puffs, two sparkles): a place fires
 one puff; a reset wave fires none.
@@ -305,7 +305,7 @@ in this order, mirroring Binairo: constants; state; `puzzle_id / title / rules
 (`capabilities`, `can_undo`, `undo`, `hints_left`, `hint`, `check`, `palette`,
 `pick`); scene building (`_build_scene`, `_make_cell`, `_make_feedback`,
 `_make_code_slot`); pieces (`_place`, `_vanish_peg`, `_show_mark`,
-`_score_row`, `_activate_row`, `_lid_off`, `_lid_back`); tints (`_tint_row`);
+`_score_row`, `_activate_row`, `_lid_away`, `_lid_back`); tints (`_tint_row`);
 motion helpers (`_dip`, `_settle`, `_stop_all`, `_enter`, `_stop_entrance`,
 `_splash`, `_on_solved`, `_lose`); input (`on_board_press`, `cell_to_local`,
 `slot_to_local`). `puzzles/mastermind.gd` is deleted; `mastermind_gen.gd`
