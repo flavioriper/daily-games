@@ -35,6 +35,12 @@ LIMITS = {
     # Island scenery: a tree stands well above a piece, so it gets the
     # mascot footprint and its own taller budget.
     "tree": (1.4, 1.4, 2.0),
+    # Code Break pieces (docs/superpowers/specs/2026-09-14-codebreak-3d-design.md,
+    # section 1): a slab, a dome, a pip and a lid, all inside one cell.
+    "socket": (1.0, 1.0, 0.15),
+    "peg": (0.7, 0.7, 0.5),
+    "pip": (0.3, 0.3, 0.2),
+    "lid": (1.0, 1.0, 0.3),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of

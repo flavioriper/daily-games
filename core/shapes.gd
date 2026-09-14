@@ -38,3 +38,22 @@ static func draw_shape(ci: CanvasItem, kind: int, centre: Vector2, r: float, col
 			ci.draw_colored_polygon(sp, col)
 		Kind.BAR:
 			ci.draw_rect(Rect2(centre - Vector2(r, r * 0.34), Vector2(r * 2, r * 0.68)), col, true)
+
+## Die-face layouts for one to seven pips, as offsets in units of a spread:
+## the peg models emboss these on their crowns and the tray buttons draw them.
+## Seven is a ring of six around one.
+const PIPS := [
+	[Vector2(0, 0)],
+	[Vector2(-1, -1), Vector2(1, 1)],
+	[Vector2(-1, -1), Vector2(0, 0), Vector2(1, 1)],
+	[Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)],
+	[Vector2(-1, -1), Vector2(1, -1), Vector2(0, 0), Vector2(-1, 1), Vector2(1, 1)],
+	[Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(1, 0), Vector2(-1, 1), Vector2(1, 1)],
+	[Vector2(0, 0), Vector2(1, 0), Vector2(0.5, 0.87), Vector2(-0.5, 0.87), Vector2(-1, 0), Vector2(-0.5, -0.87), Vector2(0.5, -0.87)],
+]
+
+## Draws `count` pips (1..7) of radius `r` around `centre`, `spread` apart.
+static func draw_pips(ci: CanvasItem, count: int, centre: Vector2, spread: float, r: float, col: Color) -> void:
+	var layout: Array = PIPS[clampi(count, 1, PIPS.size()) - 1]
+	for p in layout:
+		ci.draw_circle(centre + (p as Vector2) * spread, r, col)

@@ -6,7 +6,8 @@ const Pal = preload("res://core/palette.gd")
 const Toon = preload("res://core/toon.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
-const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12}
+const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
+	"socket": 0.15, "peg": 0.5, "pip": 0.2, "lid": 0.3}
 
 static func run(t) -> void:
 	_test_slots(t)
@@ -29,7 +30,8 @@ static func _bounds(root: Node3D) -> Array:
 	return [lo, hi]
 
 static func _test_slots(t) -> void:
-	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water"], "slot list matches the polish spec")
+	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid"],
+		"slot list matches the polish and codebreak specs")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
@@ -47,7 +49,8 @@ static func _test_slots(t) -> void:
 		# Which layers are pieces and so carry an outline shell. The tile's
 		# slate moon faces are not one: the body already draws the cell's
 		# silhouette, and a second shell inside it would read as a seam.
-		var outlined: Array = {"tile": ["Stone", "Sun", "Moon"]}.get(slot, [])
+		var outlined: Array = {"tile": ["Stone", "Sun", "Moon"], "socket": ["Stone"], "peg": ["Shell"],
+			"pip": ["Pip"], "lid": ["Lid", "Knob"]}.get(slot, [])
 		for mi in ms:
 			var src: Material = mi.mesh.surface_get_material(0)
 			var mat_name: String = src.resource_name if src != null else ""

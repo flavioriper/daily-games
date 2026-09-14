@@ -189,6 +189,22 @@ static func appear(item: CanvasItem, from: float, to: float, time: float, delay 
 	tw.tween_property(item, "modulate:a", to, time).set_delay(delay)
 	return tw
 
+## Lifts `node` by `lift` while it shrinks to nothing, then hides it. The
+## caller frees the node on `finished` if it wants it gone. Decorative: under
+## reduce-motion the node is hidden at once and null returned.
+static func vanish(node: Node3D, lift: float, time: float, delay := 0.0) -> Tween:
+	if reduce:
+		node.visible = false
+		return null
+	var tw := node.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(node, "position:y", node.position.y + lift, time).set_delay(delay) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", Vector3.ONE * 0.01, time).set_delay(delay) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(func() -> void: node.visible = false)
+	return tw
+
 ## Kills `tw` if it is still alive. Null-safe.
 static func stop(tw: Tween) -> void:
 	if tw != null and tw.is_valid():

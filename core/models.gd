@@ -10,7 +10,7 @@ const Placeholders = preload("res://core/placeholders.gd")
 const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
 ## same names with their footprint rules.
-const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water"]
+const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid"]
 ## Slots exempt from the 1 x 1 footprint rule.
 const UNBOUNDED := ["platform", "water"]
 
@@ -79,6 +79,15 @@ static func surface_names(root: Node) -> Array[String]:
 			if not out.has(nm):
 				out.append(nm)
 	return out
+
+## Shows or hides the mesh node called `node_name` under `root`. The outline
+## shell is a child of its mesh, so it follows. No-op when the name is absent.
+## Code Break uses it for the peg marks (one of seven shown), the feedback
+## slab's well and the pip balls.
+static func set_layer_visible(root: Node, node_name: String, on: bool) -> void:
+	var node := root.find_child(node_name, true, false)
+	if node is Node3D:
+		(node as Node3D).visible = on
 
 ## Height of the model above its base, measured from the mesh bounds.
 static func height(root: Node) -> float:

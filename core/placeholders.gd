@@ -9,6 +9,7 @@ extends RefCounted
 
 const Toon = preload("res://core/toon.gd")
 const Pal = preload("res://core/palette.gd")
+const Shapes = preload("res://core/shapes.gd")
 
 ## The tile is a cube standing on the platform, one state per face and every
 ## state on two opposite faces, so a quarter roll always brings the next state
@@ -37,6 +38,23 @@ const PANEL_PROUD := 0.0015
 const PLATFORM_H := 0.6
 const RIM_H := 0.04
 
+## Code Break pieces (codebreak spec, section 1). The socket is a slab with a
+## well disc laid proud on top; the peg an ellipsoid dome with its pip mark on
+## the crown; the pip a well disc with a ball in it; the lid a slab with a knob.
+const SOCKET_SIDE := 0.94
+const SOCKET_H := 0.12
+const WELL_R := 0.3
+const WELL_PROUD := 0.0015
+const PEG_R := 0.3
+const PEG_H := 0.44
+const MARK_R := 0.035
+const MARK_SPREAD := 0.11
+const PIP_WELL_R := 0.1
+const PIP_R := 0.08
+const LID_H := 0.16
+const KNOB_R := 0.09
+const KNOB_H := 0.08
+
 static func make(slot: String) -> Node3D:
 	var root := Node3D.new()
 	root.name = slot
@@ -56,6 +74,23 @@ static func make(slot: String) -> Node3D:
 			_add_inlays(root)
 			Toon.apply_to(root)
 			return root
+		"socket":
+			# root and mi are unused here: _socket() builds its own assembly.
+			root.free()
+			mi.free()
+			return _socket()
+		"peg":
+			root.free()
+			mi.free()
+			return _peg()
+		"pip":
+			root.free()
+			mi.free()
+			return _pip()
+		"lid":
+			root.free()
+			mi.free()
+			return _lid()
 		"rim_edge":
 			# Moss strip along one cell of the platform lip: 1 along X, 0.5 along Z,
 			# outward side at +Z. Flat, so a BoxMesh is fine here.
@@ -212,3 +247,92 @@ static func _cylinder(radius: float, h: float, segments: int) -> CylinderMesh:
 	cyl.radial_segments = segments
 	cyl.rings = 0
 	return cyl
+
+# --- Code Break pieces ---
+
+## A mesh instance carrying one layer: `mesh` with a material named
+## `mat_name` set on the mesh itself, where Toon.apply_to, Models.tint_named
+## and Models.surface_names read it, as they do on an export.
+static func _layer(node_name: String, mesh: Mesh, mat_name: String, colour: Color, at: Vector3) -> MeshInstance3D:
+	var mat := StandardMaterial3D.new()
+	mat.resource_name = mat_name
+	mat.albedo_color = colour
+	if mesh is PrimitiveMesh:
+		(mesh as PrimitiveMesh).material = mat
+	else:
+		(mesh as ArrayMesh).surface_set_material(0, mat)
+	var mi := MeshInstance3D.new()
+	mi.name = node_name
+	mi.mesh = mesh
+	mi.position = at
+	return mi
+
+## Stone slab with a well disc on top. The feedback slab is this with the
+## well hidden.
+static func _socket() -> Node3D:
+	var root := Node3D.new()
+	root.name = "socket"
+	var body := BoxMesh.new()
+	body.size = Vector3(SOCKET_SIDE, SOCKET_H, SOCKET_SIDE)
+	root.add_child(_layer("Socket_Body", body, "Stone", Pal.STONE, Vector3(0.0, SOCKET_H * 0.5, 0.0)))
+	root.add_child(_layer("Socket_Well", _cylinder(WELL_R, WELL_PROUD * 2.0, 32), "Well_flat", Pal.MARK,
+		Vector3(0.0, SOCKET_H, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## Dome with seven mark layers on its crown; the game shows one.
+static func _peg() -> Node3D:
+	var root := Node3D.new()
+	root.name = "peg"
+	var dome := SphereMesh.new()
+	dome.radius = PEG_R
+	dome.height = PEG_H
+	dome.radial_segments = 32
+	dome.rings = 16
+	root.add_child(_layer("Peg_Body", dome, "Shell", Pal.PEGS[0], Vector3(0.0, PEG_H * 0.5, 0.0)))
+	for k in range(1, Shapes.PIPS.size() + 1):
+		root.add_child(_layer("Peg_Mark_%d" % k, _pips_mesh(k), "Mark_flat", Pal.PEGS[0].darkened(0.35), Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## `count` pip discs merged into one mesh, each resting on the dome's crown
+## at its own height: the dome is an ellipsoid of semi-axes PEG_R and PEG_H / 2.
+static func _pips_mesh(count: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var disc := _cylinder(MARK_R, WELL_PROUD * 2.0, 16)
+	var a := PEG_R
+	var b := PEG_H * 0.5
+	for p in Shapes.PIPS[count - 1]:
+		var off: Vector2 = (p as Vector2) * MARK_SPREAD
+		var d := off.length()
+		var y := b + b * sqrt(maxf(0.0, 1.0 - (d * d) / (a * a)))
+		st.append_from(disc, 0, Transform3D(Basis.IDENTITY, Vector3(off.x, y, off.y)))
+	return st.commit()
+
+## Well disc with a ball resting in it; the ball hides until the row is scored.
+static func _pip() -> Node3D:
+	var root := Node3D.new()
+	root.name = "pip"
+	root.add_child(_layer("Pip_Well", _cylinder(PIP_WELL_R, WELL_PROUD * 2.0, 24), "Well_flat", Pal.MARK,
+		Vector3(0.0, WELL_PROUD, 0.0)))
+	var ball := SphereMesh.new()
+	ball.radius = PIP_R
+	ball.height = PIP_R * 2.0
+	ball.radial_segments = 16
+	ball.rings = 8
+	root.add_child(_layer("Pip_Ball", ball, "Pip", Pal.MOON, Vector3(0.0, PIP_R, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## Stone lid with a wooden knob, covering one code slot.
+static func _lid() -> Node3D:
+	var root := Node3D.new()
+	root.name = "lid"
+	var body := BoxMesh.new()
+	body.size = Vector3(SOCKET_SIDE, LID_H, SOCKET_SIDE)
+	root.add_child(_layer("Lid_Body", body, "Lid", Pal.STONE_GIVEN, Vector3(0.0, LID_H * 0.5, 0.0)))
+	root.add_child(_layer("Lid_Knob", _cylinder(KNOB_R, KNOB_H, 24), "Knob", Pal.WOOD,
+		Vector3(0.0, LID_H + KNOB_H * 0.5, 0.0)))
+	Toon.apply_to(root)
+	return root

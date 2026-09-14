@@ -39,6 +39,15 @@ const WATER_HI    := Color("5fb0e8")   # water stripes and splash ring
 const SUN_DEEP    := Color("d88a12")   # primary button's bottom edge
 const PARCHMENT   := Color("f3e9d2")   # rules card
 
+# Code Break pegs (docs/art/concept-codebreak.png): red, yellow, blue, green,
+# purple, pink, orange. Index order is the difficulty's palette order; every
+# peg also carries a pip mark, so colour never stands alone.
+const PEGS := [
+	Color("e5484d"), Color("f7c948"), Color("3d8bfd"), Color("3fb950"),
+	Color("9b6cf6"), Color("f472b6"), Color("fb8c3c"),
+]
+const WOOD_DEEP    := Color("9c7350")   # the colour tray's bottom edge
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [
