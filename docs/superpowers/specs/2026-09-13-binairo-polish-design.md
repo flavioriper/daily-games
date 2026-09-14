@@ -254,7 +254,9 @@ frames (2026-09-13) — the board sits in the same place against the fixed
 HUD between the two idle frames a second apart, the only visible changes
 are grass lean, water pattern and pollen position, and 0.2 percent of the
 camera distance is imperceptible as motion at 1080 x 1920. `breathing`
-stays `true`.
+stays `true`. The interactive 20-second live check the plan's Step 3
+describes was not run on 2026-09-13; this decision rests on the strip
+frames alone, so a live look on a phone is still owed.
 
 ### 5. Palette additions (`core/palette.gd`)
 
