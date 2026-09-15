@@ -5,7 +5,7 @@ extends RefCounted
 ## draws one into a CanvasItem during that item's draw call.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
-const NAMES := ["chevron_left", "undo", "reset", "bulb", "gear", "check", "leaf", "island"]
+const NAMES := ["chevron_left", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -30,6 +30,8 @@ static func shape(name: String) -> Dictionary:
 			return _leaf()
 		"island":
 			return _island()
+		"help":
+			return _help()
 	return {"polys": [], "lines": []}
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw
@@ -118,3 +120,10 @@ static func _island() -> Dictionary:
 	var canopy_right := circle(Vector2(0.63, 0.37), 0.11)
 	var wave := PackedVector2Array([Vector2(0.06, 0.9), Vector2(0.2, 0.86), Vector2(0.34, 0.9), Vector2(0.48, 0.86), Vector2(0.62, 0.9), Vector2(0.76, 0.86), Vector2(0.9, 0.9)])
 	return {"polys": [mound, canopy_big, canopy_left, canopy_right], "lines": [trunk, wave]}
+
+## A question mark: the hook runs from 9 o'clock over the top and down into a
+## short stem, with a dot beneath.
+static func _help() -> Dictionary:
+	var hook := arc(Vector2(0.5, 0.36), 0.18, PI, PI * 2.5, 16)
+	hook.append(Vector2(0.5, 0.66))
+	return {"polys": [circle(Vector2(0.5, 0.86), 0.07, 12)], "lines": [hook]}

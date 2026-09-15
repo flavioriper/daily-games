@@ -1,8 +1,8 @@
 extends Control
 
-## Shell around any PuzzleBase: the concept HUD (top bar, day card, rules
-## card, board slot, action bar, motto footer), the solved overlay and the
-## settings sheet. Puzzles never draw chrome themselves, so they stay
+## Shell around any PuzzleBase: the concept HUD (top bar, day card, help
+## card, board slot, action bar, motto footer), the solved overlay, the rules
+## sheet and the settings sheet. Puzzles never draw chrome themselves, so they stay
 ## comparable; the host asks each puzzle what it supports
 ## (PuzzleBase.capabilities) and the panels hide the rest.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md.
@@ -16,9 +16,10 @@ const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const TopBar = preload("res://ui/hud/top_bar.gd")
 const DayCard = preload("res://ui/hud/day_card.gd")
-const RulesCard = preload("res://ui/hud/rules_card.gd")
+const HelpCard = preload("res://ui/hud/help_card.gd")
 const ActionBar = preload("res://ui/hud/action_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const RulesSheet = preload("res://ui/hud/rules_sheet.gd")
 
 const MARGIN := 40
 const GAP := 20
@@ -35,9 +36,10 @@ var _difficulty: int = 0
 
 var top_bar: Control
 var day_card: Control
-var rules_card: Control
+var help_card: Control
 var action_bar: Control
 var settings_sheet: Control
+var rules_sheet: Control
 var footer: Label
 var _board_holder: Control
 var _card: Panel
@@ -82,9 +84,10 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cards.add_child(spacer)
-	rules_card = RulesCard.new()
-	rules_card.name = "RulesCard"
-	cards.add_child(rules_card)
+	help_card = HelpCard.new()
+	help_card.name = "HelpCard"
+	help_card.open.connect(_open_rules)
+	cards.add_child(help_card)
 
 	# --- board slot ---
 	_board_holder = Control.new()
@@ -114,6 +117,9 @@ func _ready() -> void:
 	root.add_child(footer)
 
 	_build_overlay()
+	rules_sheet = RulesSheet.new()
+	rules_sheet.name = "RulesSheet"
+	add_child(rules_sheet)
 	settings_sheet = SettingsSheet.new()
 	settings_sheet.name = "SettingsSheet"
 	settings_sheet.reduce_changed.connect(_on_reduce_changed)
@@ -171,7 +177,7 @@ func _build_overlay() -> void:
 func _enter() -> void:
 	top_bar.enter(ENTER_TOP)
 	day_card.enter(ENTER_CARDS)
-	rules_card.enter(ENTER_CARDS)
+	help_card.enter(ENTER_CARDS)
 	action_bar.enter(ENTER_ACTIONS)
 	Motion.appear(footer, 0.0, 1.0, ENTER_FOOTER_FADE, ENTER_FOOTER)
 
@@ -198,7 +204,7 @@ func _spawn(the_seed: int) -> void:
 func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	top_bar.refresh(p)
-	rules_card.refresh(p)
+	rules_sheet.refresh(p)
 	action_bar.refresh(p)
 
 func _on_undo() -> void:
@@ -237,6 +243,9 @@ func _on_new() -> void:
 
 func _open_settings() -> void:
 	settings_sheet.open()
+
+func _open_rules() -> void:
+	rules_sheet.open()
 
 ## The reduce-motion toggle: persist, still the world, refresh the chrome.
 func _on_reduce_changed(on: bool) -> void:

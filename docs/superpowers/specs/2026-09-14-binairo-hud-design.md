@@ -156,6 +156,20 @@ Amendment: the panels share a base script, `ui/hud/panel.gd`, which owns
 `_inner`, the minimum-size plumbing and `enter()`. `ui/hud/line_card.gd` is a
 plain `PanelContainer` inside the action bar, not a panel of its own.
 
+Amendment (2026-09-15): the rules leave the cards row so the board can take
+the room. `ui/hud/rules_card.gd` is gone; `ui/hud/help_card.gd` (a panel
+holding one `IconButton`, `help` glyph, "How to play", signal `open`) stands
+at the right of the day card and the host opens `ui/hud/rules_sheet.gd`, a
+parchment sheet with a "How to play" heading, the same bullets and a Got it
+button. Both sheets extend `ui/hud/sheet.gd`, which owns the scrim, the card
+and the slide; the slide moves a full-rect wrapper rather than the card, so
+a card whose height is still settling is never frozen at a stale height.
+`IconButton` widens its `custom_minimum_size` to fit its glyph and label.
+The host's fields are now `help_card` and `rules_sheet`. The camera rig's
+`fit` re-centres the board inside the distance search (it used to re-centre
+only between three passes and stopped about a quarter too far out on deep
+boards), so every board frames tight to its slot.
+
 ## 3. Puzzle capabilities
 
 `core/puzzle_base.gd` grows optional hooks. Defaults mean "unsupported", so

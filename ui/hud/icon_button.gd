@@ -72,12 +72,26 @@ func _ready() -> void:
 	button_down.connect(squish)
 	resized.connect(_layout)
 	_apply_look()
+	_fit_content()
 	_refresh_badge()
 	_layout()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and _label != null:
 		_apply_look()
+		_fit_content()
+
+## A Button measures only its own text, and this one keeps its text empty, so
+## widen custom_minimum_size to the glyph-and-label row plus the stylebox
+## padding: a labelled button never clips its label. A wider minimum set by
+## the host stands. (Button's own C++ measure ignores a script
+## _get_minimum_size, hence the custom minimum.)
+func _fit_content() -> void:
+	if _row == null:
+		return
+	var style := get_theme_stylebox("normal")
+	var pad := style.get_minimum_size().x if style != null else 0.0
+	custom_minimum_size.x = maxf(custom_minimum_size.x, _row.get_combined_minimum_size().x + pad)
 
 ## Enable or disable, dimming the icon and label with the theme's disabled colour.
 func set_enabled(on: bool) -> void:
@@ -89,6 +103,7 @@ func set_label(text_: String) -> void:
 	if _label != null:
 		_label.text = text_
 		_label.visible = text_ != ""
+		_fit_content()
 
 ## The press squish: flatter and wider, then springs back. Restarts cleanly
 ## when mashed.

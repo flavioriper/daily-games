@@ -67,38 +67,43 @@ func _process(delta: float) -> void:
 	_place()
 
 ## Frames `aabb` inside `rect` (viewport pixels): binary-search the distance
-## until every corner projects inside the margin-shrunk rect, then slide the
-## target so the projected centre lands on the rect centre. Three passes
-## converge well past a pixel.
+## until every corner projects inside the margin-shrunk rect, re-centring the
+## board at every step. The centring has to happen inside the search: under
+## perspective the near edge grows faster than the far edge as the camera
+## closes in, so a box centred at one distance hangs low at a nearer one, and
+## a search that only re-centres between passes stops a quarter too far out
+## on a deep board.
 func fit(aabb: AABB, rect: Rect2) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0 or not is_inside_tree():
 		return
 	var inner := rect.grow(-minf(rect.size.x, rect.size.y) * margin)
 	_target = aabb.get_center()
-	for _pass in 3:
-		_distance = _search_distance(aabb, inner)
-		_place()
-		var box := _projected(aabb)
-		if box.size == Vector2.ZERO:
-			return
-		var delta := box.get_center() - inner.get_center()
-		var per_px := _world_per_pixel()
-		var b := camera.global_transform.basis
-		_target += b.x * delta.x * per_px - b.y * delta.y * per_px
-		_place()
-
-func _search_distance(aabb: AABB, inner: Rect2) -> float:
 	var lo := 0.5
 	var hi := 200.0
 	for _i in 28:
 		_distance = (lo + hi) * 0.5
-		_place()
-		var box := _projected(aabb)
+		var box := _centred_box(aabb, inner)
 		if box.size != Vector2.ZERO and inner.encloses(box):
 			hi = _distance
 		else:
 			lo = _distance
-	return hi
+	_distance = hi
+	_centred_box(aabb, inner)
+
+## Places the camera at _distance, slides the target so the projected box
+## sits on `inner`'s centre, and returns the box from there; a zero rect when
+## a corner is behind the camera.
+func _centred_box(aabb: AABB, inner: Rect2) -> Rect2:
+	_place()
+	var box := _projected(aabb)
+	if box.size == Vector2.ZERO:
+		return box
+	var delta := box.get_center() - inner.get_center()
+	var per_px := _world_per_pixel()
+	var b := camera.global_transform.basis
+	_target += b.x * delta.x * per_px - b.y * delta.y * per_px
+	_place()
+	return _projected(aabb)
 
 ## Screen bounding box of the AABB corners, or a zero rect when any corner is
 ## behind the camera.
