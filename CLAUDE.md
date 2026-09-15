@@ -54,6 +54,11 @@ export stays on the non-gradle path.
 - To debug the wiring: `Analytics.validate = true` posts to GA4's validation
   endpoint and prints the verdict instead of recording; `Analytics.debug_mode`
   puts events in the console's DebugView.
+- `tools/analytics_secret.sh <secret>` installs the secret in both places that
+  need it (the untracked file and the `ANALYTICS_API_SECRET` repo secret) and
+  then sends one DebugView-tagged event, so the wiring is visible rather than
+  assumed. GA4's collect endpoint answers 204 to everything, so DebugView is
+  the only proof a secret actually works.
 
 ## CI
 

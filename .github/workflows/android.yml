@@ -129,7 +129,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$CREDENTIALS" ]; then
-            echo "::warning::no FIREBASE_SERVICE_ACCOUNT; the APK is on this run as an artifact, but nothing was distributed"
+            echo "::warning::no FIREBASE_SERVICE_ACCOUNT; the APK was built and signed, but nothing was distributed"
             exit 0
           fi
           echo "$CREDENTIALS" > /tmp/service-account.json

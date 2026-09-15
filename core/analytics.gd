@@ -60,6 +60,15 @@ static func start(host: Node) -> void:
 	host.add_child(n)
 	_node = n
 
+## True once an API secret was found and telemetry is live. Tools ask this
+## rather than reading into the state above.
+static func started() -> bool:
+	return _node != null and is_instance_valid(_node)
+
+## This install's id, as it reaches GA4. Empty until start() finds a secret.
+static func instance_id() -> String:
+	return _instance_id
+
 ## Silences telemetry again. Harnesses that build the real main scene call
 ## this so a probe run never reports itself as a player.
 static func stop() -> void:
