@@ -366,15 +366,13 @@ func _solve_horse() -> void:
 		for c in w:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
-	# The HUD's own buttons: one hint (builds and pins a fence), then one
-	# check, which shows where the horse can still get to.
+	# The HUD's hint builds and pins one fence of the generator's pen; the
+	# rest are built by hand, then the pen is submitted through the Check
+	# button, which is what ends the day on this board.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
-	# Build the generator's own pen, fence by fence.
 	for cell in _puzzle._solution_walls:
-		if _puzzle.is_done():
-			return
 		if _puzzle._walls.has(cell):
 			continue
 		_tap_local(_puzzle.cell_to_local(cell.y, cell.x))
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1

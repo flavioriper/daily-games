@@ -1,24 +1,28 @@
 extends "res://core/puzzle_base_3d.gd"
 
 ## Enclose the Horse on the island stage. The board is a meadow of turf cells
-## with a few ponds sunk into it, a horse standing somewhere on it and a
-## couple of apples lying about. Tap a grass cell to build a fence on it, tap
-## the fence to take it down again. The horse walks up, down, left and right,
-## never through a fence or a pond; the pen is closed once it can no longer
-## reach the edge of the meadow. Every cell it can still reach is penned and
-## worth a point, an apple in the pen three more.
+## cut up by streams and pools of water, with a few boulders lying on it, a
+## horse standing somewhere on it and some apples about. Tap a grass cell to
+## build a fence on it, tap the fence to take it down again. The horse walks
+## up, down, left and right, never through a fence, a boulder or water; the
+## pen is closed once it can no longer reach the edge of the meadow. Every
+## cell it can still reach is penned and worth a point, an apple in the pen
+## three more.
+##
+## The meadow the horse can reach is always shown: it is trampled to a pale
+## wheat, the rest of the grass stays green. Build a fence and the wheat
+## recedes to what the horse can still get to; take one down and it floods
+## back. So the player reads the pen off the board, the way the original
+## enclose.horse shows it, and the status card keeps the count.
 ##
 ## The daily framing: the fences come from a limited stock, and the day sets
 ## a target -- the score of a pen the generator itself managed to close within
-## that stock. The puzzle is solved the moment the horse is penned with at
-## least the target's worth of meadow. A bigger pen is a better day, and the
-## player can keep rebuilding until the stock is spent the way they like.
-##
-## Tapping the horse shows where it can get to: the reachable meadow goes
-## pale, and any edge cell it reaches blushes rose -- that is where the pen
-## is open. Check does the same and counts those gaps. The stock and the pen
-## are read off the status card in the action row.
-## Design: agreed in chat on 2026-09-15 (no spec file by request).
+## that stock. When the horse is penned with at least that much meadow the
+## player submits (the Check button, relabelled), which ends the day; until
+## then they may keep rebuilding for a bigger pen. Submitting an open pen
+## flashes the edge cells the horse can still reach.
+## Design: agreed in chat on 2026-09-15 (no spec file by request); revised the
+## same day against a screenshot of the original.
 
 const Gen = preload("res://puzzles/horse_gen.gd")
 const Pal = preload("res://core/palette.gd")
@@ -33,49 +37,61 @@ const Fx = preload("res://world/fx.gd")
 const POP_TIME := 0.22
 const VANISH_LIFT := 0.12
 const VANISH_TIME := 0.16
-## A refused tap (a pond, an apple, a hinted fence, an empty stock) dips.
+## A refused tap (water, a boulder, an apple, a hinted fence, an empty stock).
 const DIP := 0.04
 const DIP_TIME := 0.3
 const HINTS := 3
 const SPARKLE_LIFT := 0.3
-## The reach preview: the meadow the horse can get to goes pale, holds, and
-## fades back. Quantised so the toon material cache stays bounded.
+## The trampled meadow following the horse's reach as fences go up and come
+## down. One tween moves every changing cell at once, quantised so the toon
+## material cache stays bounded.
 const REACH_STEPS := 16
-const REACH_IN := 0.25
-const REACH_HOLD := 1.1
-const REACH_OUT := 0.45
+const REACH_TIME := 0.35
+## Submitting an open pen: the edge cells the horse reaches blush and fade.
+const GAP_IN := 0.15
+const GAP_HOLD := 0.6
+const GAP_OUT := 0.45
 const ENTER_DROP := 0.5
 const ENTER_PLATFORM := 0.5
 const ENTER_POP := 0.25
-const ENTER_STAGGER := 0.025
+const ENTER_STAGGER := 0.02
 const SOLVE_HOP := 0.18
 const SOLVE_TIME := 0.5
 const SOLVE_STAGGER := 0.04
-## A pond's surface sits this far below the turf top.
+## A pond's surface sits this far above the platform, below the turf top.
 const POND_TOP := 0.04
 
-var w: int = 7
-var h: int = 7
+var w: int = 8
+var h: int = 10
 var _water: Dictionary = {}          # Vector2i -> true
+var _stones: Dictionary = {}         # Vector2i -> true, a boulder on the grass
+var _blocked: Dictionary = {}        # water and stones together
 var _horse := Vector2i(-1, -1)
 var _apples: Dictionary = {}         # Vector2i -> true
 var _budget: int = 8
 var _target: int = 0
 var _solution_walls: Array = []
-var _walls: Dictionary = {}          # Vector2i -> true, a fence the player built
+var _walls: Dictionary = {}          # Vector2i -> true, a fence standing
 var _locked: Dictionary = {}         # Vector2i -> true, a fence a hint built
+var _submitted := false
 
 var fx: Node3D
 var _pads: Array = []                # [r][c] -> Node3D pivot
-var _pad_models: Array = []          # [r][c] -> turf model, or null on a pond
+var _pad_models: Array = []          # [r][c] -> turf model, or null on water
 var _horse_pivot: Node3D
 var _apple_nodes: Dictionary = {}    # Vector2i -> Node3D
+var _stone_nodes: Dictionary = {}    # Vector2i -> Node3D
 var _fences: Dictionary = {}         # Vector2i -> Node3D pivot
 var _fence_tw: Dictionary = {}       # Vector2i -> a dip or pop in flight
 var _pad_tw: Dictionary = {}         # Vector2i -> a dip in flight
+## The wheat on every turf cell, 0 green to 1 trampled: where it is painted
+## now, where it is heading, and where it started its current move.
+var _reach_now: Dictionary = {}
+var _reach_target: Dictionary = {}
+var _reach_from: Dictionary = {}
 var _reach_tw: Tween
-var _reach_cells: Dictionary = {}    # Vector2i -> true when it is a gap on the edge
-var _reach_blend := 0.0
+var _gap_tw: Tween
+var _gap_cells: Array = []
 var _horse_tw: Tween
 var _entrance: Array = []
 ## One entry per tap that can be taken back: the cell and whether it held a
@@ -90,10 +106,10 @@ func puzzle_id() -> String: return "horse"
 func title() -> String: return "Horse Pen"
 
 func rules() -> String:
-	return ("Tap grass to build a fence, and tap a fence to take it down. "
-		+ "The horse walks up, down, left and right, never through a fence or a pond. "
-		+ "Pen it in before it reaches the edge, with at least the target's worth of meadow. "
-		+ "Grass counts one, an apple counts three.")
+	return ("Tap grass to build a fence. "
+		+ "The horse walks up, down, left and right, never through fences, boulders or water. "
+		+ "The pale meadow is where it can still go: cut it off from the edge, keep the target, and submit. "
+		+ "Grass counts one, an apple three.")
 
 func board_size() -> Vector2i: return Vector2i(w, h)
 func board_height() -> float: return Placeholders.TURF_H + Placeholders.HORSE_H
@@ -102,16 +118,24 @@ func board_margin() -> float: return Platform.LIP
 func board_depth() -> float: return Placeholders.PLATFORM_H
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var ponds := 2
+	var streams := 3
+	var pools := 1
+	var stones := 2
 	var apples := 2
 	match difficulty:
-		0: w = 7; h = 7; _budget = 8; ponds = 2; apples = 2
-		1: w = 8; h = 8; _budget = 10; ponds = 3; apples = 3
-		_: w = 9; h = 9; _budget = 12; ponds = 4; apples = 3
-	var out: Dictionary = Gen.generate(rng, w, h, _budget, ponds, apples)
+		0: w = 8; h = 10; _budget = 7; streams = 3; pools = 1; stones = 2; apples = 2
+		1: w = 9; h = 12; _budget = 9; streams = 3; pools = 2; stones = 3; apples = 3
+		_: w = 10; h = 13; _budget = 10; streams = 4; pools = 2; stones = 4; apples = 3
+	var out: Dictionary = Gen.generate(rng, w, h, _budget, streams, pools, stones, apples)
 	_water = {}
 	for c in out.water:
 		_water[c] = true
+	_stones = {}
+	for c in out.stones:
+		_stones[c] = true
+	_blocked = _water.duplicate()
+	for c in _stones:
+		_blocked[c] = true
 	_apples = {}
 	for c in out.apples:
 		_apples[c] = true
@@ -120,6 +144,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_solution_walls = out.solution_walls
 	_walls = {}
 	_locked = {}
+	_submitted = false
 	_history = []
 	_build_scene()
 	_recolour()
@@ -129,22 +154,26 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## Every fence comes down at once. Hints are unpinned but not refunded.
 func reset_board() -> void:
 	_stop_entrance()
-	_end_reach()
+	_end_gaps()
 	for cell in _walls.keys():
 		_drop_fence(cell)
 	_walls = {}
 	_locked = {}
+	_submitted = false
 	_history = []
 	moves = 0
 	_recolour()
 	fx.cue("reset")
 
+## Solved means submitted with a closed pen worth the target. Closing the pen
+## alone does not end the day: the player may keep building for more meadow.
 func is_solved() -> bool:
-	if _horse.x < 0:
+	if _horse.x < 0 or not _submitted:
 		return false
-	return Gen.is_valid_solution(_horse, w, h, _water, _walls, _apples, _budget, _target)
+	return Gen.is_valid_solution(_horse, w, h, _blocked, _walls, _apples, _budget, _target)
 
 func share_glyphs() -> String:
+	var reach: Dictionary = _reach().cells
 	var out := ""
 	for y in h:
 		for x in w:
@@ -153,10 +182,14 @@ func share_glyphs() -> String:
 				out += "🐴"
 			elif _water.has(c):
 				out += "🟦"
+			elif _stones.has(c):
+				out += "⬜"
 			elif _walls.has(c):
 				out += "🟫"
 			elif _apples.has(c):
 				out += "🍎"
+			elif reach.has(c):
+				out += "🟨"
 			else:
 				out += "🟩"
 		out += "\n"
@@ -166,22 +199,23 @@ func share_glyphs() -> String:
 
 ## Where the horse can get to right now.
 func _reach() -> Dictionary:
-	return Gen.reach(_horse, w, h, _water, _walls)
+	return Gen.reach(_horse, w, h, _blocked, _walls)
 
-## The pen's score: every reachable cell, apples counting extra. Read by the
-## status card and the win harness.
+## The score of everything the horse can reach, apples counting extra. Read
+## by the status card and the win harness.
 func score() -> int:
 	return Gen.score_of(_reach().cells, _apples)
 
-## The stock, then the pen against the target -- but only once there is a
-## pen: while the horse is loose the whole meadow is "reachable", and that
-## number would only mislead, so the card names the target instead.
+## Two lines for the status card: the stock and the target, then how much the
+## horse can reach and whether it is penned.
 func status_text() -> String:
 	var r := _reach()
-	if r.escaped:
-		return "Fences %d / %d  ·  Target %d  ·  Horse loose" % [_walls.size(), _budget, _target]
-	var penned := Gen.score_of(r.cells, _apples)
-	return "Fences %d / %d  ·  Penned %d / %d  ·  Horse penned" % [_walls.size(), _budget, penned, _target]
+	var reach := Gen.score_of(r.cells, _apples)
+	var state := "horse loose" if r.escaped else ("penned, submit" if reach >= _target else "penned, too small")
+	return "Fences %d / %d  ·  Target %d\nMeadow %d  ·  %s" % [_walls.size(), _budget, _target, reach, state]
+
+func check_label() -> String:
+	return "Submit"
 
 # --- scene ---
 
@@ -193,6 +227,7 @@ func _stop_all() -> void:
 		for key in store:
 			Motion.stop(store[key])
 	Motion.stop(_reach_tw)
+	Motion.stop(_gap_tw)
 	Motion.stop(_horse_tw)
 
 func _build_scene() -> void:
@@ -203,11 +238,14 @@ func _build_scene() -> void:
 	_pads = []
 	_pad_models = []
 	_apple_nodes = {}
+	_stone_nodes = {}
 	_fences = {}
 	_fence_tw = {}
 	_pad_tw = {}
-	_reach_cells = {}
-	_reach_blend = 0.0
+	_reach_now = {}
+	_reach_target = {}
+	_reach_from = {}
+	_gap_cells = []
 
 	board.add_child(Platform.build(w, h))
 	fx = Fx.new()
@@ -229,7 +267,13 @@ func _build_scene() -> void:
 				var pad := Models.instance("turf_pad")
 				pivot.add_child(pad)
 				model_row.append(pad)
-				if _apples.has(cell):
+				_reach_now[cell] = 0.0
+				if _stones.has(cell):
+					var stone := _boulder()
+					stone.position.y = Placeholders.TURF_H
+					pivot.add_child(stone)
+					_stone_nodes[cell] = stone
+				elif _apples.has(cell):
 					var apple := Models.instance("apple")
 					apple.position.y = Placeholders.TURF_H
 					pivot.add_child(apple)
@@ -258,6 +302,17 @@ func _pond() -> Node3D:
 			mi.set_surface_override_material(i, Toon.water())
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return pond
+
+## A boulder: Light Up's wall block with its numerals hidden, in the grey of
+## Shikaku's dry-stone walls so it reads as rock on grass, not as a court wall.
+func _boulder() -> Node3D:
+	var block := Models.instance("wall_block")
+	block.name = "boulder"
+	for d in range(0, 5):
+		Models.set_layer_visible(block, "Block_Num_%d" % d, false)
+	Models.tint_named(block, "Block", Pal.WALL_STONE)
+	block.scale = Vector3(0.8, 0.9, 0.8)
+	return block
 
 # --- fences ---
 
@@ -307,45 +362,84 @@ func _drop_fence(cell: Vector2i) -> void:
 
 # --- colour ---
 
-## Repaints the fences by whether a hint built them. The meadow keeps its
-## colour except during a reach preview, which paints over it and back.
+## Repaints everything the state has moved under: the fences by whether a
+## hint built them, and the meadow by where the horse can now get to.
 func _recolour() -> void:
 	for cell in _fences:
 		Models.tint_named(_fences[cell], "Timber", Pal.TIMBER_LOCK if _locked.has(cell) else Pal.TIMBER)
-
-## Shows where the horse can get to: the reachable meadow goes pale, and any
-## edge cell it reaches blushes rose. Holds a moment, then fades back.
-func _show_reach() -> void:
-	_end_reach()
-	var r := _reach()
-	_reach_cells = {}
-	for c in r.cells:
-		_reach_cells[c] = false
-	for g in r.gaps:
-		_reach_cells[g] = true
-	var tw := board.create_tween()
-	tw.tween_method(_paint_reach, 0.0, 1.0, REACH_IN)
-	tw.tween_interval(REACH_HOLD)
-	tw.tween_method(_paint_reach, 1.0, 0.0, REACH_OUT)
-	_reach_tw = tw
-
-## Puts the meadow back to plain turf at once.
-func _end_reach() -> void:
+	var reach: Dictionary = _reach().cells
+	var moving := false
+	for cell in _reach_now:
+		var target := 1.0 if reach.has(cell) else 0.0
+		_reach_target[cell] = target
+		if not is_equal_approx(float(_reach_now[cell]), target):
+			moving = true
+	if not moving:
+		return
+	# Every changing cell moves together from where it is painted now; a cell
+	# that changes its mind mid-fade simply starts again from where it got to.
 	Motion.stop(_reach_tw)
-	_reach_tw = null
-	if not _reach_cells.is_empty():
-		_paint_reach(0.0)
-	_reach_cells = {}
+	_reach_from = _reach_now.duplicate()
+	_reach_tw = Motion.fade(board, _paint_reach, 0.0, 1.0, REACH_TIME, REACH_STEPS)
 
-func _paint_reach(blend: float) -> void:
-	blend = roundf(blend * REACH_STEPS) / REACH_STEPS
-	_reach_blend = blend
-	for cell in _reach_cells:
-		var pad = _pad_models[cell.y][cell.x]
-		if pad == null:
+## Progress `t` of the current move: every cell sits at the matching point
+## between where it started and where it is heading.
+func _paint_reach(t: float) -> void:
+	t = clampf(t, 0.0, 1.0)
+	for cell in _reach_now:
+		var from: float = _reach_from.get(cell, _reach_now[cell])
+		var to: float = _reach_target.get(cell, from)
+		var blend := lerpf(from, to, t)
+		blend = roundf(blend * REACH_STEPS) / REACH_STEPS
+		if is_equal_approx(blend, float(_reach_now[cell])):
 			continue
-		var target: Color = Pal.BAD if _reach_cells[cell] else Pal.TURF_REACH
-		Models.tint_named(pad, "Turf", Pal.TURF.lerp(target, blend))
+		_reach_now[cell] = blend
+		_paint_cell(cell, blend)
+
+## One turf cell at a wheat blend, over the base the cell is entitled to: a
+## boulder's cell is darker, like the cell a tree stands on.
+func _paint_cell(cell: Vector2i, blend: float) -> void:
+	var pad = _pad_models[cell.y][cell.x]
+	if pad == null:
+		return
+	var base: Color = Pal.TURF_TREE if _stones.has(cell) else Pal.TURF
+	var wheat: Color = Pal.TURF_REACH
+	if _gap_cells.has(cell):
+		# A flashing gap: rose over the wheat, by the gap tween's own blend.
+		wheat = wheat.lerp(Pal.BAD, _gap_blend)
+	Models.tint_named(pad, "Turf", base.lerp(wheat, blend))
+
+var _gap_blend := 0.0
+
+## Submitting an open pen: the edge cells the horse can still reach blush
+## rose over their wheat, hold, and fade back.
+func _flash_gaps(gaps: Array) -> void:
+	_end_gaps()
+	_gap_cells = gaps.duplicate()
+	var tw := board.create_tween()
+	tw.tween_method(_paint_gaps, 0.0, 1.0, GAP_IN)
+	tw.tween_interval(GAP_HOLD)
+	tw.tween_method(_paint_gaps, 1.0, 0.0, GAP_OUT)
+	tw.finished.connect(_end_gaps)
+	_gap_tw = tw
+
+func _end_gaps() -> void:
+	Motion.stop(_gap_tw)
+	_gap_tw = null
+	if _gap_cells.is_empty():
+		return
+	_gap_blend = 0.0
+	var cells := _gap_cells
+	_gap_cells = []
+	for cell in cells:
+		if _reach_now.has(cell):
+			_paint_cell(cell, _reach_now[cell])
+
+func _paint_gaps(blend: float) -> void:
+	_gap_blend = roundf(blend * REACH_STEPS) / REACH_STEPS
+	for cell in _gap_cells:
+		if _reach_now.has(cell):
+			_paint_cell(cell, _reach_now[cell])
 
 # --- input ---
 
@@ -354,10 +448,10 @@ func on_board_press(hit: Vector3) -> void:
 	if not Gen.in_bounds(cell, w, h):
 		return
 	if cell == _horse:
-		_show_reach()
+		_wobble_horse()
 		fx.cue("horse")
 		return
-	if _water.has(cell) or _apples.has(cell):
+	if _blocked.has(cell) or _apples.has(cell):
 		_dip_pad(cell)
 		fx.cue("locked")
 		return
@@ -376,6 +470,7 @@ func on_board_press(hit: Vector3) -> void:
 			return
 		_history.append(Vector3i(cell.x, cell.y, 0))
 		_walls[cell] = true
+	_end_gaps()
 	_set_fence(cell)
 	_recolour()
 	note_move()
@@ -393,8 +488,7 @@ func capabilities() -> Array[String]:
 func can_undo() -> bool:
 	return not is_done() and not _history.is_empty()
 
-## Takes back the last tap. Counts no move; no state in the history was
-## solved, or the game would have ended there.
+## Takes back the last tap. Counts no move.
 func undo() -> bool:
 	if is_done() or _history.is_empty():
 		return false
@@ -404,6 +498,7 @@ func undo() -> bool:
 		_walls[cell] = true
 	else:
 		_walls.erase(cell)
+	_end_gaps()
 	_set_fence(cell)
 	_recolour()
 	fx.cue("undo")
@@ -415,8 +510,8 @@ func hints_left() -> int:
 
 ## Builds one fence of the generator's own pen and pins it: the first of them
 ## not already standing. Refused when the stock is spent. Three per puzzle;
-## reset unpins them but does not refund them. Counts no move but can finish
-## the puzzle.
+## reset unpins them but does not refund them. Counts no move; the day still
+## ends only on submit.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
@@ -436,30 +531,36 @@ func hint() -> bool:
 	_history = kept
 	_walls[target] = true
 	_locked[target] = true
+	_end_gaps()
 	_set_fence(target)
 	fx.sparkle(BoardMath.cell_center(target.y, target.x, w, h, Placeholders.TURF_H + SPARKLE_LIFT))
 	fx.cue("hint")
 	hints_used += 1
 	_recolour()
 	moved.emit()
-	check_solved()
 	return true
 
-## Shows the horse's reach and counts the edge cells it gets to -- the gaps in
-## the pen. A closed pen that is still short of the target counts as one
-## thing wrong, and the horse shakes its head about it.
+## Submit. An open pen flashes the edge cells the horse still reaches and
+## counts them; a closed pen short of the target counts as one thing wrong
+## and the horse shakes its head; a closed pen worth the target ends the day.
 func check() -> int:
 	if is_done():
 		return 0
 	checks += 1
 	var r := _reach()
-	_show_reach()
-	var wrong: int = r.gaps.size()
-	if wrong == 0 and Gen.score_of(r.cells, _apples) < _target:
-		wrong = 1
+	if r.escaped:
+		_flash_gaps(r.gaps)
 		_wobble_horse()
-	fx.cue("check" if wrong > 0 else "check_ok")
-	return wrong
+		fx.cue("check")
+		return r.gaps.size()
+	if Gen.score_of(r.cells, _apples) < _target:
+		_wobble_horse()
+		fx.cue("check")
+		return 1
+	_submitted = true
+	fx.cue("check_ok")
+	check_solved()
+	return 0
 
 # --- motion on one cell ---
 
@@ -485,7 +586,7 @@ func _wobble_horse() -> void:
 # --- entrance and solve ---
 
 ## The board arrives: the platform rises out of the water, the meadow pops in
-## along a diagonal wave, then the horse and the apples land on it.
+## along a diagonal wave, then the horse, the boulders and the apples land.
 func _enter() -> void:
 	_stop_entrance()
 	var platform: Node3D = board.get_node("Platform")
@@ -501,8 +602,9 @@ func _enter() -> void:
 		for c in w:
 			_pop_in(_pads[r][c], ENTER_PLATFORM + Motion.stagger(r + c, ENTER_STAGGER))
 	_pop_in(_horse_pivot, ENTER_PLATFORM + ENTER_POP + Motion.stagger(_horse.x + _horse.y, ENTER_STAGGER))
-	for cell in _apple_nodes:
-		_pop_in(_apple_nodes[cell], ENTER_PLATFORM + ENTER_POP + Motion.stagger(cell.x + cell.y, ENTER_STAGGER))
+	for store in [_apple_nodes, _stone_nodes]:
+		for cell in store:
+			_pop_in(store[cell], ENTER_PLATFORM + ENTER_POP + Motion.stagger(cell.x + cell.y, ENTER_STAGGER))
 	fx.cue("enter")
 
 func _pop_in(node: Node3D, delay: float) -> void:
@@ -525,6 +627,9 @@ func _stop_entrance() -> void:
 		_horse_pivot.scale = Vector3.ONE
 	for cell in _apple_nodes:
 		(_apple_nodes[cell] as Node3D).scale = Vector3.ONE
+	for cell in _stone_nodes:
+		# The boulder keeps the squat it was given.
+		(_stone_nodes[cell] as Node3D).scale = Vector3(0.8, 0.9, 0.8)
 
 ## Rings the water under the board, when there is a stage to ask.
 func _splash() -> void:
@@ -534,7 +639,7 @@ func _splash() -> void:
 ## The horse kicks up its heels and every fence in the pen hops once, in the
 ## order they were built: the pen is closed.
 func _on_solved() -> void:
-	_end_reach()
+	_end_gaps()
 	Motion.stop(_horse_tw)
 	_horse_tw = Motion.hop(_horse_pivot, SOLVE_HOP, SOLVE_TIME, 0.0, Placeholders.TURF_H)
 	var i := 0

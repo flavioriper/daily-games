@@ -25,6 +25,7 @@ var reset_button: Button
 var check_button: Button
 var _row: HBoxContainer
 var _all_good: Tween
+var _check_label := "Check"
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -68,6 +69,9 @@ func refresh(puzzle) -> void:
 	status_card.refresh(puzzle if status_card.visible else null)
 	check_button.visible = caps.has("check")
 	check_button.set_enabled(not done)
+	_check_label = puzzle.check_label() if puzzle != null else "Check"
+	if not Motion.running(_all_good):
+		check_button.set_label(_check_label)
 	line_card.refresh(puzzle)
 
 ## A clean check: the button says so for a moment and squashes.
@@ -77,4 +81,4 @@ func all_good() -> void:
 	check_button.squish()
 	_all_good = check_button.create_tween()
 	_all_good.tween_interval(ALL_GOOD_TIME)
-	_all_good.tween_callback(func() -> void: check_button.set_label("Check"))
+	_all_good.tween_callback(func() -> void: check_button.set_label(_check_label))
