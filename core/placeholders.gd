@@ -115,6 +115,87 @@ const BIT_LEFT := 8
 ## is negative about +Y.
 const ARM_YAW := {BIT_UP: 0.0, BIT_RIGHT: -PI * 0.5, BIT_DOWN: PI, BIT_LEFT: PI * 0.5}
 
+## Balance pieces (balance spec, section 1). A scale is three slots the board
+## composes so the beam can actually turn: a stand whose fulcrum cap centre is
+## the pivot, a beam hung under that pivot, and a pan hung under each beam end.
+## Weights are set on a plinth: two stone pads, the far one carrying a stack of
+## discs, the near one the carved numeral.
+const SCALE_BASE_R := 0.34
+const SCALE_BASE_H := 0.10
+const SCALE_POST_R := 0.075
+## Fulcrum height: the centre of Stand_Cap, and the height the board puts the
+## beam pivot at. Tall enough that a fully tilted pan still clears the stone:
+## the pan floor rests at SCALE_POST_H - PAN_DROP and a tilted end drops
+## SCALE_ARM * sin(TILT_MAX) below that, which must stay above zero.
+const SCALE_POST_H := 0.95
+## The fulcrum collar, the ring the board turns green the moment its scale
+## sits level. Wider than BEAM_HUB_R and set just under the pivot rather than
+## on it: a ball at the fulcrum would sit concentric with the beam's hub and,
+## being the smaller of the two, would never show a pixel of that green.
+const SCALE_CAP_R := 0.17
+const SCALE_CAP_H := 0.10
+## Centre of the collar, a touch below the fulcrum so it rings the hub.
+const SCALE_CAP_Y := 0.88
+## Beam half-span; a pan hangs at each end.
+const SCALE_ARM := 1.55
+const BEAM_THICK := 0.075
+const BEAM_WIDE := 0.10
+const BEAM_HUB_R := 0.13
+## How far the dish floor hangs below the hang point the beam end carries.
+const PAN_DROP := 0.34
+const PAN_R := 0.56
+const PAN_LIP := 0.06
+const CORD_R := 0.03
+## Tokens are the shapes being weighed: one model per core/shapes.gd kind, so
+## the silhouette carries the meaning and the colour only reinforces it.
+const TOKEN_R := 0.17
+const TOKEN_H := 0.30
+## Spacing of the tokens sitting in a pan, up to three across.
+const TOKEN_GAP := 0.37
+## The plinth spans two cells: the far pad takes the stack, the near pad the
+## numeral, so each tap half is a whole cell rather than half of one.
+const PLINTH_PAD := 0.92
+const PLINTH_HALF := 0.5
+const PLINTH_H := 0.14
+const DISC_R := 0.26
+const DISC_H := 0.075
+## Air between stacked discs. Wide enough that the outline draws a line
+## between every pair, so a stack of six is countable rather than reading as
+## one tall cylinder -- the stack is the weight, so it has to be countable.
+const DISC_GAP := 0.02
+const NUM_W := 0.34
+const NUM_H := 0.5
+const NUM_BAR := 0.055
+const NUM_PROUD := 0.0015
+## Which of the seven bars each digit lights, in the usual a-to-g naming:
+## a top, b top-right, c bottom-right, d bottom, e bottom-left, f top-left,
+## g middle, plus `i`, a centred full-height stroke used only by the one.
+## Seven-segment puts the 1 on the right edge, where on a wide stone pad it
+## reads as a stray bar rather than a numeral. Zero never appears -- a weight
+## is at least one.
+const NUM_SEGMENTS := {
+	1: ["i"],
+	2: ["a", "b", "g", "e", "d"],
+	3: ["a", "b", "g", "c", "d"],
+	4: ["f", "g", "b", "c"],
+	5: ["a", "f", "g", "c", "d"],
+	6: ["a", "f", "g", "e", "c", "d"],
+	7: ["a", "b", "c"],
+	8: ["a", "b", "c", "d", "e", "f", "g"],
+	9: ["a", "b", "c", "d", "f", "g"],
+}
+
+## Untangle pieces. A node is a mooring post on the platform; an edge is a
+## rope, which is NOT a model slot -- it is a tube the board rebuilds from its
+## rope simulation every frame it moves, so it can sag and whip.
+const POST_R := 0.16
+const POST_H := 0.55
+const POST_CAP_R := 0.21
+const POST_CAP_H := 0.10
+## Where a rope is made fast, just under the cap.
+const ROPE_Y := POST_H - 0.05
+const ROPE_R := 0.045
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -130,6 +211,14 @@ static func make(slot: String) -> Node3D:
 		"pipe_tee": return _pipe("pipe_tee", BIT_UP | BIT_RIGHT | BIT_DOWN)
 		"pipe_cross": return _pipe("pipe_cross", BIT_UP | BIT_RIGHT | BIT_DOWN | BIT_LEFT)
 		"valve": return _valve()
+		"scale_stand": return _scale_stand()
+		"scale_beam": return _scale_beam()
+		"scale_pan": return _scale_pan()
+		"plinth": return _plinth()
+		"weight_disc": return _weight_disc()
+		"post": return _post()
+	if slot.begins_with("token_"):
+		return _token(slot)
 	var root := Node3D.new()
 	root.name = slot
 	var mi := MeshInstance3D.new()
@@ -511,5 +600,205 @@ static func _valve() -> Node3D:
 		bolts.append({"mesh": _cylinder(BOLT_R, BOLT_PROUD * 2.0, 16),
 			"xform": Transform3D(Basis(), at)})
 	root.add_child(_layer("Valve_Bolts", _merge(bolts), "Bolt_flat", Pal.MARK, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Balance pieces ---
+
+## The stand: a stone foot and post as two lobes of one mesh (one layer, as
+## the contract allows), and the metal fulcrum cap the beam turns on. The
+## cap's centre is the pivot, so the board puts its beam node at SCALE_POST_H.
+static func _scale_stand() -> Node3D:
+	var root := Node3D.new()
+	root.name = "scale_stand"
+	var body: Array = [
+		{"mesh": _cylinder(SCALE_BASE_R, SCALE_BASE_H, 24),
+			"xform": Transform3D(Basis(), Vector3(0.0, SCALE_BASE_H * 0.5, 0.0))},
+		{"mesh": _cylinder(SCALE_POST_R, SCALE_POST_H, 16),
+			"xform": Transform3D(Basis(), Vector3(0.0, SCALE_POST_H * 0.5, 0.0))},
+	]
+	root.add_child(_layer("Stand_Body", _merge(body), "Stone", Pal.STONE, Vector3.ZERO))
+	# Its own material name, not the beam hub's `Metal`: the board turns the
+	# cap green the moment its scale sits level, and must not paint the hub.
+	root.add_child(_layer("Stand_Cap", _cylinder(SCALE_CAP_R, SCALE_CAP_H, 24), "Cap",
+		Pal.STEEL_HI, Vector3(0.0, SCALE_CAP_Y, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## The beam: a wooden arm through a metal hub. Modelled base at Z = 0 like
+## every other slot, rather than pivot-at-origin -- the board hangs it at
+## -BEAM_HUB_R under its turning node, which lands the hub's centre exactly on
+## the fulcrum. That keeps the contract's origin rule intact for a part whose
+## true pivot is in its middle, with no exporter exception.
+static func _scale_beam() -> Node3D:
+	var root := Node3D.new()
+	root.name = "scale_beam"
+	var arm := BoxMesh.new()
+	arm.size = Vector3(SCALE_ARM * 2.0, BEAM_THICK, BEAM_WIDE)
+	root.add_child(_layer("Beam_Arm", arm, "Wood", Pal.WOOD, Vector3(0.0, BEAM_HUB_R, 0.0)))
+	root.add_child(_layer("Beam_Hub", _ball(BEAM_HUB_R), "Metal", Pal.STEEL_HI,
+		Vector3(0.0, BEAM_HUB_R, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## A hanging pan: a shallow dish with three cords meeting PAN_DROP above its
+## floor. Modelled base at Z = 0 for the same reason as the beam; the board
+## hangs it at -PAN_DROP so the cords' meeting point sits on the beam's end.
+static func _scale_pan() -> Node3D:
+	var root := Node3D.new()
+	root.name = "scale_pan"
+	root.add_child(_layer("Pan_Dish", _cylinder(PAN_R, PAN_LIP, 28), "Pan", Pal.STEEL,
+		Vector3(0.0, PAN_LIP * 0.5, 0.0)))
+	var cords: Array = []
+	var apex := Vector3(0.0, PAN_DROP, 0.0)
+	for k in 3:
+		var a := TAU * float(k) / 3.0
+		var foot := Vector3(cos(a) * (PAN_R - CORD_R * 3.0), PAN_LIP,
+			sin(a) * (PAN_R - CORD_R * 3.0))
+		var run := apex - foot
+		cords.append({"mesh": _cylinder(CORD_R, run.length(), 8),
+			"xform": Transform3D(Basis(Quaternion(Vector3.UP, run.normalized())),
+				foot + run * 0.5)})
+	# `_flat`, so no outline shell: a cord is 0.018 across and the shell, which
+	# pushes a second copy out along the normals, would close over it entirely.
+	root.add_child(_layer("Pan_Cords", _merge(cords), "Cord_flat", Pal.STEEL_HI, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The plinth: two stone pads as one mesh, a cell apart -- the far one the
+## disc stack rises from, the near one carrying the numeral -- so the board's
+## two tap halves are visibly two pads rather than an invisible split down the
+## middle of one slab. Nine numeral layers lie on the near pad and the board
+## shows the one matching the weight, the way a peg shows one of its marks.
+static func _plinth() -> Node3D:
+	var root := Node3D.new()
+	root.name = "plinth"
+	var pads: Array = []
+	for z in [-PLINTH_HALF, PLINTH_HALF]:
+		# A square pad is a four-sided prism turned 45 degrees, not a BoxMesh
+		# (see the file header): the two pads are lobes of one layer.
+		pads.append({"mesh": _prism(PLINTH_PAD * 0.5, PLINTH_H),
+			"xform": Transform3D(Basis(Vector3.UP, PI * 0.25),
+				Vector3(0.0, PLINTH_H * 0.5, z))})
+	root.add_child(_layer("Plinth_Body", _merge(pads), "Stone", Pal.STONE, Vector3.ZERO))
+	root.add_child(_layer("Plinth_Well", _cylinder(DISC_R + 0.03, WELL_PROUD * 2.0, 28),
+		"Well_flat", Pal.MARK, Vector3(0.0, PLINTH_H, -PLINTH_HALF)))
+	for d in range(1, 10):
+		root.add_child(_layer("Plinth_Num_%d" % d, _digit_mesh(d), "Num_flat", Pal.SLATE,
+			Vector3(0.0, PLINTH_H, PLINTH_HALF)))
+	Toon.apply_to(root)
+	return root
+
+## One digit lying flat on the near pad, as seven-segment bars: the
+## placeholder's stand-in for the carved numerals the .blend will hold. The
+## board camera looks from +Z, so -Z is up the screen and segment `a` goes
+## there. Num_flat carries no outline, so the bars' split normals cost
+## nothing.
+static func _digit_mesh(d: int) -> ArrayMesh:
+	var thin := NUM_PROUD * 2.0
+	var y := NUM_PROUD
+	var half_h := NUM_H * 0.5
+	var quarter := NUM_H * 0.25
+	var across := Vector3(NUM_W, thin, NUM_BAR)
+	var down := Vector3(NUM_BAR, thin, half_h)
+	var bars := {
+		"a": [across, Vector3(0.0, y, -half_h)],
+		"g": [across, Vector3(0.0, y, 0.0)],
+		"d": [across, Vector3(0.0, y, half_h)],
+		"f": [down, Vector3(-NUM_W * 0.5, y, -quarter)],
+		"b": [down, Vector3(NUM_W * 0.5, y, -quarter)],
+		"e": [down, Vector3(-NUM_W * 0.5, y, quarter)],
+		"c": [down, Vector3(NUM_W * 0.5, y, quarter)],
+		"i": [Vector3(NUM_BAR, thin, NUM_H), Vector3(0.0, y, 0.0)],
+	}
+	var parts: Array = []
+	for seg in NUM_SEGMENTS[clampi(d, 1, 9)]:
+		var spec: Array = bars[seg]
+		var box := BoxMesh.new()
+		box.size = spec[0]
+		parts.append({"mesh": box, "xform": Transform3D(Basis(), spec[1])})
+	return _merge(parts)
+
+## One unit of weight: a stone disc the board tints by its shape's colour and
+## stacks on the plinth's far pad.
+static func _weight_disc() -> Node3D:
+	var root := Node3D.new()
+	root.name = "weight_disc"
+	root.add_child(_layer("Disc_Body", _cylinder(DISC_R, DISC_H, 24), "Disc", Pal.CAT[0],
+		Vector3(0.0, DISC_H * 0.5, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## A weight token, one per core/shapes.gd kind in the same index order, so
+## shape index 0 is a ball as Kind.CIRCLE is a circle. Each is a single layer
+## the board tints; the silhouette is what a colour-blind player reads, so the
+## five shapes are told apart from above at the board's pitch, not by hue.
+static func _token(slot: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = slot
+	var mesh: Mesh
+	match slot:
+		"token_ball":
+			var s := SphereMesh.new()
+			s.radius = TOKEN_R
+			s.height = TOKEN_H
+			s.radial_segments = 24
+			s.rings = 12
+			# Merged rather than used raw, only to lift it onto its base: a
+			# SphereMesh is centred on its origin and would hang half below.
+			mesh = _merge([{"mesh": s,
+				"xform": Transform3D(Basis(), Vector3(0.0, TOKEN_H * 0.5, 0.0))}])
+		"token_cube":
+			# Turned 45 degrees so its flat faces are axis-aligned: a square
+			# from above, where token_gem's four sides read point-on.
+			mesh = _merge([{"mesh": _prism(TOKEN_R * 0.86, TOKEN_H),
+				"xform": Transform3D(Basis(Vector3.UP, PI * 0.25),
+					Vector3(0.0, TOKEN_H * 0.5, 0.0))}])
+		"token_prism":
+			mesh = _merge([{"mesh": _cylinder(TOKEN_R * 1.15, TOKEN_H, 3),
+				"xform": Transform3D(Basis(), Vector3(0.0, TOKEN_H * 0.5, 0.0))}])
+		"token_gem":
+			# A four-sided bipyramid: shapes.gd's diamond in the round, and
+			# the only token whose silhouette narrows toward the top.
+			var lower := CylinderMesh.new()
+			lower.top_radius = TOKEN_R
+			lower.bottom_radius = 0.0
+			lower.height = TOKEN_H * 0.4
+			lower.radial_segments = 4
+			lower.rings = 0
+			var upper := CylinderMesh.new()
+			upper.top_radius = 0.0
+			upper.bottom_radius = TOKEN_R
+			upper.height = TOKEN_H * 0.6
+			upper.radial_segments = 4
+			upper.rings = 0
+			mesh = _merge([
+				{"mesh": lower, "xform": Transform3D(Basis(), Vector3(0.0, TOKEN_H * 0.2, 0.0))},
+				{"mesh": upper, "xform": Transform3D(Basis(), Vector3(0.0, TOKEN_H * 0.7, 0.0))},
+			])
+		_:
+			# token_cross: two bars crossing, shapes.gd's plus in the round.
+			var long_arm := BoxMesh.new()
+			long_arm.size = Vector3(TOKEN_R * 2.0, TOKEN_H, TOKEN_R * 0.76)
+			var short_arm := BoxMesh.new()
+			short_arm.size = Vector3(TOKEN_R * 0.76, TOKEN_H, TOKEN_R * 2.0)
+			var at := Transform3D(Basis(), Vector3(0.0, TOKEN_H * 0.5, 0.0))
+			mesh = _merge([{"mesh": long_arm, "xform": at}, {"mesh": short_arm, "xform": at}])
+	root.add_child(_layer("Token_Body", mesh, "Token", Pal.CAT[0], Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Untangle pieces ---
+
+## A mooring post: a wooden shaft with a wider cap the rope is made fast
+## under. The cap is its own layer so the board can colour it -- held, or too
+## close to its neighbour -- without touching the shaft.
+static func _post() -> Node3D:
+	var root := Node3D.new()
+	root.name = "post"
+	root.add_child(_layer("Post_Body", _cylinder(POST_R, POST_H, 20), "Wood", Pal.WOOD,
+		Vector3(0.0, POST_H * 0.5, 0.0)))
+	root.add_child(_layer("Post_Cap", _cylinder(POST_CAP_R, POST_CAP_H, 20), "Cap", Pal.ACCENT,
+		Vector3(0.0, POST_H, 0.0)))
 	Toon.apply_to(root)
 	return root

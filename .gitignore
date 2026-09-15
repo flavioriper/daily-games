@@ -24,6 +24,11 @@ art/*.blend
 !art/codebreak.blend
 # So are the Pipes pad, pipe shapes and valve
 !art/pipes.blend
+# Balance: ten hand-modelled collections (the scale's three parts, the plinth,
+# the weight disc and the five shape tokens).
+!art/balance.blend
+# Untangle: the mooring post. The rope is not a model -- the board builds it.
+!art/untangle.blend
 
 # Python bytecode from running the tools
 __pycache__/

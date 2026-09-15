@@ -11,10 +11,16 @@ const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
 ## same names with their footprint rules.
 const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
-	"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve"]
+	"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve",
+	"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
+	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
+## Balance's weight tokens, in core/shapes.gd's kind order: shape index 0 is a
+## ball as Kind.CIRCLE is a circle. They all carry the same single layer, so
+## anything that tints one tints all of them.
+const TOKENS := ["token_ball", "token_cube", "token_prism", "token_gem", "token_cross"]
 ## Slots exempt from the 1 x 1 footprint rule.
 const UNBOUNDED := ["platform", "water"]
 
@@ -164,3 +170,9 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# The bolts are a 3 mm-tall disc lying flat on the pad -- too thin
 			# to throw a shadow anyone would ever see (task 6 fix 2/3).
 			set_shadow_off_named(node, "Bolt_flat")
+		"plinth":
+			# The numeral bars and the stack's well are 3 mm-tall inlays lying
+			# flat on the pad, the same waste as the valve's bolts: a shadow
+			# pass each, for a shadow no pixel of which could ever show.
+			set_shadow_off_named(node, "Num_flat")
+			set_shadow_off_named(node, "Well_flat")

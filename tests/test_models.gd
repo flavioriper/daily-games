@@ -9,7 +9,17 @@ const Toon = preload("res://core/toon.gd")
 const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
 	"socket": 0.15, "peg": 0.5, "pip": 0.2, "lid": 0.3,
 	"pipe_pad": 0.15, "pipe_cap": 0.38, "pipe_straight": 0.38, "pipe_elbow": 0.38,
-	"pipe_tee": 0.38, "pipe_cross": 0.38, "valve": 0.12}
+	"pipe_tee": 0.38, "pipe_cross": 0.38, "valve": 0.12,
+	"scale_stand": 1.1, "scale_beam": 0.3, "scale_pan": 0.4, "plinth": 0.2,
+	"weight_disc": 0.1, "token_ball": 0.35, "token_cube": 0.35, "token_prism": 0.35,
+	"token_gem": 0.35, "token_cross": 0.35, "post": 0.7}
+
+## Footprint budget (X by Z) for the slots that are not one cell. Balance's
+## scale spans its whole band by design -- the beam reaches a pan each way and
+## the pan is wider than a cell -- and its plinth covers the two cells whose
+## taps add and remove a disc. Anything absent here is held to the 1 x 1 rule.
+const FOOTPRINT := {"scale_beam": Vector2(3.2, 0.3), "scale_pan": Vector2(1.3, 1.3),
+	"plinth": Vector2(1.0, 2.0)}
 
 ## Every layer (material name) each slot must carry, sorted, matching
 ## docs/art/blender-contract.md's table exactly. Where `_test_slots` used to
@@ -25,6 +35,11 @@ const LAYERS := {"tile": ["Moon", "Slate_flat", "Stone", "Sun"],
 	"platform": [""], "water": [""],
 	"socket": ["Stone", "Well_flat"], "peg": ["Mark_flat", "Shell"], "pip": ["Pip", "Well_flat"],
 	"lid": ["Knob", "Lid"], "pipe_pad": ["Stone"],
+	"scale_stand": ["Cap", "Stone"], "scale_beam": ["Metal", "Wood"],
+	"scale_pan": ["Cord_flat", "Pan"],
+	"plinth": ["Num_flat", "Stone", "Well_flat"], "weight_disc": ["Disc"],
+	"token_ball": ["Token"], "token_cube": ["Token"], "token_prism": ["Token"],
+	"token_gem": ["Token"], "token_cross": ["Token"], "post": ["Cap", "Wood"],
 	"pipe_cap": ["Collar", "Flow_flat", "Steel"], "pipe_straight": ["Collar", "Flow_flat", "Steel"],
 	"pipe_elbow": ["Collar", "Flow_flat", "Steel"], "pipe_tee": ["Collar", "Flow_flat", "Steel"],
 	"pipe_cross": ["Collar", "Flow_flat", "Steel"], "valve": ["Bolt_flat", "Metal"]}
@@ -51,8 +66,10 @@ static func _bounds(root: Node3D) -> Array:
 
 static func _test_slots(t) -> void:
 	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
-		"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve"],
-		"slot list matches the polish, codebreak and pipes specs")
+		"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve",
+		"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
+		"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post"],
+		"slot list matches the polish, codebreak, pipes, balance and untangle specs")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
@@ -66,8 +83,10 @@ static func _test_slots(t) -> void:
 		var hi: Vector3 = b[1]
 		t.check(absf(lo.y) < 0.001, "%s base sits at y=0 (min y %.3f)" % [slot, lo.y])
 		if not slot in Models.UNBOUNDED:
-			t.check(lo.x >= -0.5 and hi.x <= 0.5 and lo.z >= -0.5 and hi.z <= 0.5,
-				"%s fits a 1x1 footprint (%s .. %s)" % [slot, lo, hi])
+			var foot: Vector2 = FOOTPRINT.get(slot, Vector2.ONE)
+			t.check(lo.x >= -foot.x * 0.5 - 0.001 and hi.x <= foot.x * 0.5 + 0.001
+					and lo.z >= -foot.y * 0.5 - 0.001 and hi.z <= foot.y * 0.5 + 0.001,
+				"%s fits a %.1fx%.1f footprint (%s .. %s)" % [slot, foot.x, foot.y, lo, hi])
 			var budget: float = HEIGHT_BUDGET.get(slot, 0.6)
 			t.check(hi.y <= budget + 0.001, "%s is under %.2f tall (got %.3f)" % [slot, budget, hi.y])
 		# Which layers are pieces and so carry an outline shell. The tile's
@@ -77,7 +96,12 @@ static func _test_slots(t) -> void:
 			"pip": ["Pip"], "lid": ["Lid", "Knob"], "pipe_pad": ["Stone"],
 			"pipe_cap": ["Steel", "Collar"], "pipe_straight": ["Steel", "Collar"],
 			"pipe_elbow": ["Steel", "Collar"], "pipe_tee": ["Steel", "Collar"],
-			"pipe_cross": ["Steel", "Collar"], "valve": ["Metal"]}.get(slot, [])
+			"pipe_cross": ["Steel", "Collar"], "valve": ["Metal"],
+			"scale_stand": ["Stone", "Cap"], "scale_beam": ["Wood", "Metal"],
+			"scale_pan": ["Pan"], "plinth": ["Stone"], "weight_disc": ["Disc"],
+			"token_ball": ["Token"], "token_cube": ["Token"], "token_prism": ["Token"],
+			"token_gem": ["Token"], "token_cross": ["Token"],
+			"post": ["Wood", "Cap"]}.get(slot, [])
 		# Held past node.free() below: a pipe's Flow_flat override is a fresh
 		# ShaderMaterial with no other owner (Models._dress, one per instance so
 		# each cell drives its own `wet`). Under the headless dummy renderer only,

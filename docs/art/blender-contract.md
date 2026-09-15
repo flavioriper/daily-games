@@ -26,6 +26,13 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `pipe_tee` | 1.0 x 1.0 | 0.38 | a pipe with three openings, modelled `UP \| RIGHT \| DOWN`; same three layers as `pipe_cap` |
 | `pipe_cross` | 1.0 x 1.0 | 0.38 | a pipe with all four openings, modelled `UP \| RIGHT \| DOWN \| LEFT`; same three layers as `pipe_cap` |
 | `valve` | 0.65 x 0.65 | 0.12 | the bolted ring the source and the drain wear: `Valve_Ring` (`Metal`, a torus around the cell's hub) and `Valve_Bolts` (`Bolt_flat`, four bolts resting proud on the pad on the diagonals outside the ring, not inlaid -- the valve has no slab of its own to sink into) |
+| `scale_stand` | 0.7 x 0.7 | 1.1 | Balance's scale post, an **assembly**: `Stand_Body` (`Stone`, the foot and the column as two lobes of one mesh) and `Stand_Cap` (`Cap`, a collar ringing the pivot just under it, which the board turns green the moment that scale sits level -- keep it wider than `scale_beam`'s hub or the green never shows) |
+| `scale_beam` | 3.2 x 0.3 | 0.3 | the balance arm, an **assembly**: `Beam_Arm` (`Wood`) and `Beam_Hub` (`Metal`). Modelled **base at Z = 0** like every other slot, not pivot-at-origin: the board hangs it at -0.13 (the hub radius) under the node that turns, which puts the hub's centre on the fulcrum. Wider than a cell by design -- the arm reaches a pan each way |
+| `scale_pan` | 1.3 x 1.3 | 0.4 | a hanging pan, an **assembly**: `Pan_Dish` (`Pan`) and `Pan_Cords` (`Cord_flat`, three cords meeting at the hang point; `_flat` because a 0.03 cord is thinner than the outline shell would be). Also base at Z = 0: the board hangs it at -0.34 (`PAN_DROP`) so the cords' meeting point lands on the beam's end |
+| `plinth` | 1.0 x 2.0 | 0.2 | where a weight is set, an **assembly**: `Plinth_Body` (`Stone`, two pads a cell apart as one layer), `Plinth_Well` (`Well_flat`, the disc the stack rises from, on the far pad) and `Plinth_Num_1` … `Plinth_Num_9` (`Num_flat`, carved numerals on the near pad; the board shows the one matching the weight). Two cells deep on purpose: the far pad's tap adds a disc and the near pad's takes one away, so each is a whole cell of tap target |
+| `weight_disc` | 0.65 x 0.65 | 0.12 | one unit of weight: `Disc_Body` (`Disc`, tinted by its shape's colour). The board stacks these, so keep it thin and keep the gap between two visible -- the stack's height is the number the player reads |
+| `token_ball`, `token_cube`, `token_prism`, `token_gem`, `token_cross` | 0.5 x 0.5 | 0.35 | the five shapes being weighed, in `core/shapes.gd`'s kind order (circle, square, triangle, diamond, plus). One layer each, `Token_Body` (`Token`, tinted). The silhouette is what a colour-blind player reads, so keep the five distinct from above **and** from the side -- Balance is the one board the camera looks at from 44 degrees, not 68 |
+| `post` | 0.5 x 0.5 | 0.7 | Untangle's mooring post, an **assembly**: `Post_Body` (`Wood`, a tapered shaft with a cleat collar at the rope height and a foot on the stone, three lobes of one layer) and `Post_Cap` (`Cap`, tinted by the board -- held, crowded, hinted or plain -- so it must stay its own layer). Untangle's **ropes are not a slot**: the board rebuilds each one as a tube from its own Verlet simulation every frame it moves, so there is nothing to model or export |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
@@ -43,6 +50,12 @@ edge to edge are checked for an *exact* footprint, not a maximum: `platform`
 (1 x 1, height free, because the board scales it by (cols + 1, rows + 1)),
 `rim_edge` (1 x 0.5) and `rim_corner` (0.5 x 0.5), since a short rim piece
 leaves a gap in the ring. `water` is unbounded.
+
+Most slots are one cell, but the budget is the rule, not the cell: Balance's
+`scale_beam`, `scale_pan` and `plinth` are larger than 1 x 1 on purpose,
+because a balance arm and its pans span a band of the board rather than a
+square of it. A piece bigger than a cell still obeys every other rule --
+centred on the origin, base at Z = 0.
 
 ## Rules
 

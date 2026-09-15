@@ -64,9 +64,9 @@ func _note(id: String) -> String:
 	match id:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
-		"balance": return "weights %s" % [_puzzle._guess]
+		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
 		"pipes": return "%d turns, camera fit=%s, hud=%s" % [_puzzle.moves, _fit_ok, _hud_ok]
-		"untangle": return "%d crossings" % _puzzle._crossings
+		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
 		"shikaku": return "%d rectangles" % _puzzle._rects.size()
 		"tents": return "%d tents placed" % _puzzle._solution_tents.size()
 		"lightup": return "%d bulbs" % _puzzle._bulbs().size()
@@ -129,14 +129,24 @@ func _solve_mastermind() -> void:
 	_press(_host.action_bar.check_button)
 
 func _solve_balance() -> void:
+	# Camera fit check: both pads of every plinth must project inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
 	for i in _puzzle.shapes:
-		if i == int(_puzzle._anchor.shape):
-			continue
+		for add in [true, false]:
+			if not slot.has_point(_puzzle.pad_to_local(i, add)):
+				_fit_ok = false
+	# The HUD's hint reveals and locks one shape; the rest are dialled in on
+	# the board, one tap per disc. A locked shape already reads its true
+	# weight, so its loop never runs.
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	for i in _puzzle.shapes:
 		var target: int = int(_puzzle._secret[i])
 		var guard := 0
 		while int(_puzzle._guess[i]) != target and guard < 12:
 			guard += 1
-			_tap_local(Vector2(_puzzle._answer_w * (i + 0.5), _puzzle._answer_y + 100.0))
+			_tap_local(_puzzle.pad_to_local(i, int(_puzzle._guess[i]) < target))
 
 func _solve_pipes() -> void:
 	var w: int = _puzzle.w
@@ -177,14 +187,23 @@ func _solve_pipes() -> void:
 				_tap_local(_puzzle.cell_to_local(y, x))
 
 func _solve_untangle() -> void:
+	# Camera fit check: every post must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for i in _puzzle.nodes:
+		if not slot.has_point(_puzzle.node_to_local(i)):
+			_fit_ok = false
+	# One hint through the HUD; it pins a post on its untangled spot.
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
 	for i in _puzzle._pos.size():
 		# Stop the moment it is won -- further taps land on the solved
 		# overlay's dismiss button, which is correct behaviour, not a bug.
 		if _puzzle.is_done():
 			return
-		var from: Vector2 = _puzzle._to_screen(_puzzle._pos[i])
-		var to: Vector2 = _puzzle._to_screen(_puzzle._planar[i])
-		_drag_local(from, to)
+		if _puzzle._locked[i]:
+			continue
+		_drag_local(_puzzle.node_to_local(i), _puzzle.planar_to_local(i))
 
 # --- input helpers (viewport-local coordinates) ---
 

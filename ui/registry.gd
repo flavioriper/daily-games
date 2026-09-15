@@ -26,7 +26,9 @@ const PUZZLES := [
 		"id": "balance",
 		"title": "Balance",
 		"blurb": "Work out what each shape weighs.",
-		"script": "res://puzzles/balance.gd",
+		"motto": "Find the weight of things",
+		"footer": "Weigh · Reason · Settle",
+		"script": "res://puzzles/balance3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{
@@ -42,7 +44,9 @@ const PUZZLES := [
 		"id": "untangle",
 		"title": "Untangle",
 		"blurb": "Drag the dots until no lines cross.",
-		"script": "res://puzzles/untangle.gd",
+		"motto": "Every knot comes undone",
+		"footer": "Drag · Loosen · Untangle",
+		"script": "res://puzzles/untangle3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

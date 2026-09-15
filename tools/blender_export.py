@@ -51,6 +51,26 @@ LIMITS = {
     "pipe_tee": (1.0, 1.0, 0.38),
     "pipe_cross": (1.0, 1.0, 0.38),
     "valve": (0.65, 0.65, 0.12),
+    # Balance pieces (the design agreed 2026-09-15). Three of these are the
+    # first slots that are deliberately bigger than a cell, so their budgets
+    # are the piece's real span rather than the usual 1 x 1: a beam reaches a
+    # pan's hang point each way, a pan's dish is wider than a cell, and a
+    # plinth covers the two cells whose taps add and remove a disc. All stay
+    # centred on the origin, so none of them needs a LOPSIDED exemption.
+    "scale_stand": (0.7, 0.7, 1.1),
+    "scale_beam": (3.2, 0.3, 0.3),
+    "scale_pan": (1.3, 1.3, 0.4),
+    "plinth": (1.0, 2.0, 0.2),
+    "weight_disc": (0.65, 0.65, 0.12),
+    "token_ball": (0.5, 0.5, 0.35),
+    "token_cube": (0.5, 0.5, 0.35),
+    "token_prism": (0.5, 0.5, 0.35),
+    "token_gem": (0.5, 0.5, 0.35),
+    "token_cross": (0.5, 0.5, 0.35),
+    # Untangle: the mooring post a rope is made fast to. The rope itself is
+    # not a slot -- the board rebuilds it as a tube from its own simulation
+    # every frame it moves, so there is nothing to export.
+    "post": (0.5, 0.5, 0.7),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
