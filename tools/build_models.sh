@@ -41,6 +41,11 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # which is why that one carries a zero numeral as well.
 "$BLENDER" -b art/tents.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Turf_Pad Camp_Tree Tent Cairn
+# Light Up: two hand-modelled collections -- the block of stone that stops the
+# light and the lantern that makes it. The court's flagstones are Shikaku's
+# `plot_pad` and the chip that rules a cell out is Tents' `cairn`.
+"$BLENDER" -b art/lightup.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Wall_Block Lantern
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

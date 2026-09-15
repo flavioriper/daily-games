@@ -33,6 +33,10 @@ art/*.blend
 !art/shikaku.blend
 # Tents: the turf cell, the conifer, the tent and the cairn.
 !art/tents.blend
+# Light Up: the wall block with its carved numerals, and the lantern. The
+# court's flagstones are Shikaku's plot_pad and the chip that rules a cell out
+# is Tents' cairn, so neither is modelled here.
+!art/lightup.blend
 
 # Python bytecode from running the tools
 __pycache__/

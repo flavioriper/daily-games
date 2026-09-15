@@ -69,7 +69,7 @@ func _note(id: String) -> String:
 		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
 		"shikaku": return "%d plots, camera fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, camera fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
-		"lightup": return "%d bulbs" % _puzzle._bulbs().size()
+		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
 		"oneline": return "%d lines traced" % _puzzle._done_edges.size()
 		"nonogram": return "%dx%d picture" % [_puzzle.w, _puzzle.h]
 	return ""
@@ -291,10 +291,23 @@ func _solve_tents() -> void:
 		_tap_local(_puzzle.cell_to_local(t.y, t.x))
 
 func _solve_lightup() -> void:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every cell centre must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in h:
+		for c in w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint (lights and pins a lantern), then one check.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for b in _puzzle._solution_bulbs:
 		if _puzzle.is_done():
 			return
-		_tap_local(_cell_centre(_puzzle._origin, _puzzle._cell, b.x, b.y))
+		_tap_local(_puzzle.cell_to_local(b.y, b.x))
 
 func _solve_oneline() -> void:
 	var Gen = load("res://puzzles/oneline_gen.gd")

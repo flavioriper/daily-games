@@ -88,6 +88,12 @@ LIMITS = {
     "camp_tree": (0.7, 0.7, 0.8),
     "tent": (0.7, 0.7, 0.45),
     "cairn": (0.5, 0.5, 0.3),
+    # Light Up (the design agreed 2026-09-15): the block of stone that stops
+    # the light, carrying its clue on its crown, and the lantern the player
+    # sets down. The court's floor is Shikaku's `plot_pad` and the chip that
+    # rules a cell out is Tents' `cairn`, so neither needs a row of its own.
+    "wall_block": (1.0, 1.0, 0.44),
+    "lantern": (0.6, 0.6, 0.55),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of

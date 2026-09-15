@@ -84,6 +84,30 @@ const PEBBLE      := Color("a89a84")   # the cairn that rules a cell out
 const BARK        := Color("8a6a4a")
 const LEAF        := Color("6ba845")
 
+# Light Up (the design agreed 2026-09-15): a walled court of flagstones with
+# rough blocks of stone standing in it, and a lantern on every cell the player
+# lights. A stone in the dark is a cold grey; lamplight warms it, which is the
+# whole rule made visible. The lit globe is the island's own SUN, and a
+# lantern a hint lit wears SUN_DEEP, the language every board uses for a given.
+## Cold and warm are far apart on purpose. The first pass had the unlit stone
+## at b4ab97, one and a half stops off the lamplight, and the toon ramp ate the
+## whole difference under the island sun -- lit and unlit cells came out the
+## same cream on the stage. These sit nearly three stops apart, which survives
+## the ramp, and the blocks went down to match so a wall still reads as
+## something other than an unlit floor. The unlit stone is also the one cool
+## colour on the island: against the warm lamplight the difference is a change
+## of temperature as well as of value, which is how light has always been
+## painted, and it keeps a dark court from reading as mud under the stage's
+## warm ambient.
+const FLAGSTONE   := Color("8a9199")   # a court stone no lamp reaches
+const LAMPLIGHT   := Color("f8e3ad")   # the pool of light a lantern casts
+const BLOCK_STONE := Color("4a4740")   # the blocks that stop the light
+const BLOCK_NUM   := STONE             # the numeral carved into a block's crown
+const LANTERN     := Color("5a5248")   # the lantern's iron foot and cap
+## The chip that rules a cell out: cool slate, so it is never read as a small
+## block of the court's own warm stone.
+const CHIP        := SLATE
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

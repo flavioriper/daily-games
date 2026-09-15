@@ -15,7 +15,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
 	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post",
 	"plot_pad", "wall_edge", "wall_post", "clue_stone",
-	"turf_pad", "camp_tree", "tent", "cairn"]
+	"turf_pad", "camp_tree", "tent", "cairn",
+	"wall_block", "lantern"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -184,6 +185,11 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# *receive* the trees' and tents' shadows, which is the shadow
 			# work that carries this board.
 			set_shadow_off_named(node, "Turf")
+		"wall_block":
+			# The carved numeral is a flat inlay lying on the block's crown,
+			# the same waste as the clue stone's: a shadow pass per instance,
+			# for a shadow no pixel of which could ever show.
+			set_shadow_off_named(node, "Num_flat")
 		"clue_stone":
 			# The carved numeral is a 3 mm-tall inlay lying flat on the
 			# marker's crown, the same waste as the plinth's: a shadow pass

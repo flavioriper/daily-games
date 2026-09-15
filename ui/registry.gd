@@ -71,7 +71,9 @@ const PUZZLES := [
 		"id": "lightup",
 		"title": "Light Up",
 		"blurb": "Light every cell, and no bulb may see another.",
-		"script": "res://puzzles/lightup.gd",
+		"motto": "Let there be light",
+		"footer": "Place · Light · Reveal",
+		"script": "res://puzzles/lightup3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

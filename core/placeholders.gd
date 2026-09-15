@@ -253,6 +253,46 @@ const PINE_TRUNK_H := 0.20
 const CAIRN_R := 0.115
 const CAIRN_H := 0.18
 
+## Light Up pieces (the design agreed 2026-09-15). A court cell is Shikaku's
+## own `plot_pad` flagstone -- the same island masonry, tinted cold where no
+## lamp reaches it and warm where one does. A `wall_block` is the rough stone
+## that stops the light, carrying its numeral on its crown the way a clue
+## stone does. A `lantern` is what the player sets down to light a cell, and
+## the chip that rules a cell out is Tents' own `cairn`, tinted slate.
+##
+## The block is deliberately shorter than a Binairo cube: it has to read as
+## solid from the board's 68-degree pitch without hiding the cell behind it,
+## and a tap meant for a block that lands on the cell beyond is only ever a
+## refusal, so the parallax it costs (0.16 of a cell) buys nothing back.
+const BLOCK_SIDE := 0.92
+const BLOCK_H := 0.40
+const BLOCK_NUM_W := 0.24
+const BLOCK_NUM_H := 0.32
+const BLOCK_NUM_BAR := 0.045
+## The lantern: a glass globe sunk into a broad iron foot, and nothing on top
+## of it. Two passes were spent learning that: the first capped the globe with
+## a disc wider than it, the second with a narrow finial, and from the board's
+## 68-degree pitch both covered the glass -- the lantern read as a dark blob
+## with an amber rim, the same mistake the cairn's stacked pebbles made. What
+## a piece means has to be in its silhouette from above, and what this one
+## means is the light, so the light gets the whole silhouette. The foot is
+## wider than the globe instead, which shows as a dark ring around it: that is
+## what says the lamp is standing on the stone rather than resting loose on it.
+## Sized up from a first look on the stage, where a globe 0.38 across read as
+## a bead dropped on the cell: it is the piece the puzzle is solved with, so it
+## carries about half the cell, the way a tent does on Tents' meadow.
+const LANTERN_FOOT_R := 0.26
+const LANTERN_FOOT_H := 0.05
+const LANTERN_GLOBE_R := 0.24
+const LANTERN_GLOBE_TALL := 1.05
+## How far the globe sinks into the foot. The contract's assembly rule: parts
+## overlap as closed solids rather than meeting at a tangent, which is all a
+## sphere resting exactly on a disc does -- and a tangent point is where an
+## outline hull opens.
+const LANTERN_SINK := 0.03
+const LANTERN_GLOBE_Y := LANTERN_FOOT_H + LANTERN_GLOBE_R * LANTERN_GLOBE_TALL - LANTERN_SINK
+const LANTERN_H := LANTERN_GLOBE_Y + LANTERN_GLOBE_R * LANTERN_GLOBE_TALL
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -282,6 +322,8 @@ static func make(slot: String) -> Node3D:
 		"camp_tree": return _camp_tree()
 		"tent": return _tent()
 		"cairn": return _cairn()
+		"wall_block": return _wall_block()
+		"lantern": return _lantern()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -1031,5 +1073,38 @@ static func _cairn() -> Node3D:
 		pebbles.append({"mesh": _ball(radius),
 			"xform": Transform3D(squat, Vector3(cos(a) * spread, radius * 0.7, sin(a) * spread))})
 	root.add_child(_layer("Cairn_Body", _merge(pebbles), "Pebble", Pal.PEBBLE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Light Up pieces ---
+
+## A wall block: the rough stone that stops the light, carrying five carved
+## numerals of which the board shows the one its clue stands for. Numbered
+## zero through four, because a wall touches at most four cells. An unnumbered
+## wall shows none of them and is just stone.
+static func _wall_block() -> Node3D:
+	var root := Node3D.new()
+	root.name = "wall_block"
+	root.add_child(_layer("Block_Body", _bar(BLOCK_SIDE, BLOCK_SIDE, BLOCK_H),
+		"Block", Pal.BLOCK_STONE, Vector3.ZERO))
+	for d in range(0, 5):
+		root.add_child(_layer("Block_Num_%d" % d,
+			_digit_mesh(d, BLOCK_NUM_W, BLOCK_NUM_H, BLOCK_NUM_BAR), "Num_flat",
+			Pal.BLOCK_NUM, Vector3(0.0, BLOCK_H, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## A lantern: a glass globe in an iron foot, the glass its own layer so the
+## board can warm or blush it without touching the ironwork.
+static func _lantern() -> Node3D:
+	var root := Node3D.new()
+	root.name = "lantern"
+	root.add_child(_layer("Lantern_Iron",
+		_cylinder(LANTERN_FOOT_R, LANTERN_FOOT_H, 20), "Iron", Pal.LANTERN,
+		Vector3(0.0, LANTERN_FOOT_H * 0.5, 0.0)))
+	var globe := Basis().scaled(Vector3(1.0, LANTERN_GLOBE_TALL, 1.0))
+	root.add_child(_layer("Lantern_Glass", _merge([{"mesh": _ball(LANTERN_GLOBE_R),
+		"xform": Transform3D(globe, Vector3(0.0, LANTERN_GLOBE_Y, 0.0))}]),
+		"Glass", Pal.SUN, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root
