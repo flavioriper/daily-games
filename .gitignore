@@ -43,6 +43,8 @@ art/*.blend
 # Horse Pen: the horse, the fence and the apple, each cut down from a
 # BlenderKit asset in Blender and kept as the source.
 !art/horse.blend
+# Snake Apple: the snake head cut from a BlenderKit asset, and the burrow.
+!art/snake.blend
 
 # Python bytecode from running the tools
 __pycache__/

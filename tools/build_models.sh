@@ -58,6 +58,10 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # pond is Shikaku's plot_pad under the water material.
 "$BLENDER" -b art/horse.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Horse Fence Apple
+# Snake Apple: the head, cut from a BlenderKit snake, and the burrow, built in
+# the live session. The body is a tube the board builds along its cells.
+"$BLENDER" -b art/snake.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Snake_Head Burrow
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

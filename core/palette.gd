@@ -149,6 +149,15 @@ const STEM        := Color("6b4a2e")
 const APPLE_LEAF  := Color("5fa04a")
 const TURF_REACH  := Color("dde08a")   # meadow the horse can still reach
 
+# Snake Apple (the design agreed 2026-09-15): the same meadow, boulders and
+# apples as Horse Pen, with a green snake on it and an earth burrow that goes
+# mossy once it is open.
+const SCALE       := Color("5cb85c")   # the snake's skin, head and body alike
+const SCALE_BELLY := Color("d9e8a8")
+const TONGUE      := Color("e0607a")
+const EARTH       := Color("8a6a4a")   # the burrow's rim while apples remain
+const HOLE        := Color("2a231e")   # the dark of the burrow
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

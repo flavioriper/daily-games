@@ -103,6 +103,15 @@ const PUZZLES := [
 		"script": "res://puzzles/horse3d.gd",
 		"difficulties": [0, 1, 2],
 	},
+	{
+		"id": "snake",
+		"title": "Snake Apple",
+		"blurb": "Eat every apple, then slip into the burrow.",
+		"motto": "Room to wriggle",
+		"footer": "Slide · Eat · Burrow",
+		"script": "res://puzzles/snake3d.gd",
+		"difficulties": [0, 1, 2],
+	},
 ]
 
 static func find(id: String) -> Dictionary:

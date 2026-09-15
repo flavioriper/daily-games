@@ -112,6 +112,12 @@ LIMITS = {
     "horse": (0.9, 0.9, 0.9),
     "fence": (1.0, 0.3, 0.5),
     "apple": (0.45, 0.45, 0.45),
+    # Snake Apple (the design agreed 2026-09-15): the snake's head, cut from
+    # a BlenderKit snake and facing +X with its neck at the origin, and the
+    # burrow it goes home to. The body is not a slot: the board builds it as
+    # a tube along the snake's cells, the way Untangle builds its ropes.
+    "snake_head": (0.9, 0.9, 0.5),
+    "burrow": (1.0, 1.0, 0.14),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -138,7 +144,10 @@ EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5
 # fixes closes that gap. These slots get a cell-containment check instead of
 # origin-at-footprint-centre (see placement_problems): the footprint must
 # still fit the 1 x 1 cell around the origin, just not be centred within it.
-LOPSIDED = {"pipe_cap", "pipe_elbow", "pipe_tee"}
+# Snake Apple's head is lopsided the same way: the back of the skull, where
+# the board's body tube runs in, is the pivot and sits at the origin, and the
+# head reaches forward from it along +X.
+LOPSIDED = {"pipe_cap", "pipe_elbow", "pipe_tee", "snake_head"}
 
 
 def limit_for(slot):

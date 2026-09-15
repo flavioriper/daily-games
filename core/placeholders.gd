@@ -326,6 +326,16 @@ const FENCE_RAIL_H := 0.07
 const APPLE_R := 0.17
 const APPLE_STEM_H := 0.09
 
+## Snake Apple pieces (the design agreed 2026-09-15). The head faces +X with
+## the back of the skull at the origin, so the body tube the board builds
+## along the snake's cells runs straight into it; SNAKE_HEAD_H frames the
+## camera. The burrow is a ring of dug earth around a dark disc.
+const SNAKE_HEAD_L := 0.5
+const SNAKE_HEAD_W := 0.4
+const SNAKE_HEAD_H := 0.4
+const BURROW_R := 0.42
+const BURROW_RIM_H := 0.1
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -362,6 +372,8 @@ static func make(slot: String) -> Node3D:
 		"horse": return _horse()
 		"fence": return _fence()
 		"apple": return _apple()
+		"snake_head": return _snake_head()
+		"burrow": return _burrow()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -1241,5 +1253,41 @@ static func _apple() -> Node3D:
 		Vector3(0.0, top - 0.02 + APPLE_STEM_H * 0.5, 0.0)))
 	root.add_child(_layer("Apple_Leaf", _bar(0.13, 0.06, 0.006), "Leaf_flat", Pal.APPLE_LEAF,
 		Vector3(0.08, top + 0.02, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+# --- Snake Apple pieces ---
+
+## The snake's head: a squashed ball reaching forward along +X from the
+## origin, with two flat eyes on top. The board's tube meets it at the back.
+static func _snake_head() -> Node3D:
+	var root := Node3D.new()
+	root.name = "snake_head"
+	var squash := Basis().scaled(Vector3(SNAKE_HEAD_L / SNAKE_HEAD_W, SNAKE_HEAD_H / SNAKE_HEAD_W, 1.0))
+	root.add_child(_layer("Snake_Head", _merge([{"mesh": _ball(SNAKE_HEAD_W * 0.5),
+		"xform": Transform3D(squash, Vector3(SNAKE_HEAD_L * 0.4, SNAKE_HEAD_H * 0.5, 0.0))}]),
+		"Scale", Pal.SCALE, Vector3.ZERO))
+	var eyes: Array = []
+	for z in [-SNAKE_HEAD_W * 0.28, SNAKE_HEAD_W * 0.28]:
+		eyes.append({"mesh": _bar(0.07, 0.07, 0.004),
+			"xform": Transform3D(Basis(), Vector3(SNAKE_HEAD_L * 0.5, SNAKE_HEAD_H - 0.01, z))})
+	root.add_child(_layer("Snake_Eye", _merge(eyes), "Eye_flat", Pal.HORSE_EYE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The burrow: a ring of dug earth around the dark of the hole.
+static func _burrow() -> Node3D:
+	var root := Node3D.new()
+	root.name = "burrow"
+	var ring := TorusMesh.new()
+	ring.inner_radius = BURROW_R * 0.6
+	ring.outer_radius = BURROW_R
+	ring.rings = 24
+	ring.ring_segments = 10
+	root.add_child(_layer("Burrow_Rim", _merge([{"mesh": ring,
+		"xform": Transform3D(Basis().scaled(Vector3(1.0, BURROW_RIM_H / (BURROW_R * 0.4), 1.0)),
+			Vector3(0.0, BURROW_RIM_H * 0.5, 0.0))}]), "Earth", Pal.EARTH, Vector3.ZERO))
+	root.add_child(_layer("Burrow_Hole", _cylinder(BURROW_R * 0.62, 0.004, 24), "Hole_flat", Pal.HOLE,
+		Vector3(0.0, 0.002, 0.0)))
 	Toon.apply_to(root)
 	return root

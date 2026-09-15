@@ -73,6 +73,7 @@ func _note(id: String) -> String:
 		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"horse": return "%d fences, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
+		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
 
 # --- per-puzzle solvers, all driven through touch ---
@@ -90,6 +91,7 @@ func _solve(id: String) -> void:
 		"oneline": _solve_oneline()
 		"nonogram": _solve_nonogram()
 		"horse": _solve_horse()
+		"snake": _solve_snake()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -376,3 +378,29 @@ func _solve_horse() -> void:
 		_tap_local(_puzzle.cell_to_local(cell.y, cell.x))
 	_press(_host.action_bar.check_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+
+func _solve_snake() -> void:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every meadow cell centre must project inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in h:
+		for c in w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint (the solver's next move), then one
+	# check, which must find the day still finishable.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	# Then the solver's own way home from wherever the hint left the snake,
+	# one tap on the cell ahead of the head per move.
+	var Gen = load("res://puzzles/snake_gen.gd")
+	var path: Array = Gen.solve(w, h, _puzzle._walls, _puzzle._apples, _puzzle._hole,
+		_puzzle._snake, _puzzle._eaten)
+	for d in path:
+		if _puzzle.is_done():
+			return
+		var ahead: Vector2i = _puzzle._snake[0] + d
+		_tap_local(_puzzle.cell_to_local(ahead.y, ahead.x))

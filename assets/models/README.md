@@ -26,6 +26,8 @@ any that are missing:
 | `horse` | Horse Pen's horse in profile facing +X: `Hide` body, `Mane` mane and tail, `Eye_flat` eyes; cut down from a BlenderKit asset in `art/horse.blend` |
 | `fence` | one cell of timber fence along X, `Timber`, exactly a cell long so runs meet post to post |
 | `apple` | the meadow's bonus: `Fruit` with a flat `Stem_flat` and `Leaf_flat` |
+| `snake_head` | Snake Apple's head facing +X, neck at the origin: `Scale` and `Eye_flat`; the body is a tube the board builds |
+| `burrow` | the snake's burrow: `Earth` rim (mossy once open) around a `Hole_flat` disc |
 
 `tile` is recoloured **by material name**: its `Stone` body and `Slate_flat`
 moon faces take the colour the cell is entitled to -- darker when it is a

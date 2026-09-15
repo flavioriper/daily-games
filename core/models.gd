@@ -18,7 +18,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"turf_pad", "camp_tree", "tent", "cairn",
 	"wall_block", "lantern",
 	"mosaic_tile", "plank",
-	"horse", "fence", "apple"]
+	"horse", "fence", "apple",
+	"snake_head", "burrow"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -206,6 +207,9 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# own, where no pixel of them can show.
 			set_shadow_off_named(node, "Leaf_flat")
 			set_shadow_off_named(node, "Stem_flat")
+		"burrow":
+			# The hole is a disc lying flat in the rim's own shadow.
+			set_shadow_off_named(node, "Hole_flat")
 		"clue_stone":
 			# The carved numeral is a 3 mm-tall inlay lying flat on the
 			# marker's crown, the same waste as the plinth's: a shadow pass
