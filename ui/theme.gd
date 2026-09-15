@@ -115,3 +115,12 @@ static func parchment_card() -> StyleBoxFlat:
 
 static func wood_card() -> StyleBoxFlat:
 	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)
+
+## Dark wood with a thick deeper edge: the plank the wordmark and the day
+## card sit on.
+static func plank_card() -> StyleBoxFlat:
+	return card(Pal.PLAQUE, 18, Pal.PLAQUE_DEEP, 10, 20)
+
+## The trough carved into the colour tray, holding the buttons.
+static func wood_channel() -> StyleBoxFlat:
+	return card(Pal.WOOD_DEEP, 20, Pal.WOOD_DEEP.darkened(0.25), 4, 10)

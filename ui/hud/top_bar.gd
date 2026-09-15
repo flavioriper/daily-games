@@ -15,6 +15,9 @@ const Icons = preload("res://ui/icons.gd")
 
 const BUTTON := Vector2(110, 110)
 const LEAF := 36.0
+const NAIL_R := 6.0
+const NAIL_INSET := 18.0
+const LEAF_INSET := 10.0
 const BADGE_HOP := -6.0
 const BADGE_HOP_TIME := 0.3
 const BADGE_CYCLE := 2.4
@@ -30,6 +33,7 @@ var hint_button: Button
 var settings_button: Button
 var _title: Label
 var _motto: Label
+var _plaque: PanelContainer
 var _bounce: Tween
 
 func _init(title := "", motto := "", back_shown := true) -> void:
@@ -50,11 +54,20 @@ func _build() -> void:
 		var blank := Control.new()
 		blank.custom_minimum_size = BUTTON
 		_inner.add_child(blank)
+	# The plaque hugs the title and motto and stays centred between the
+	# buttons: the CenterContainer takes the expanding slot the words used to.
+	var centre := CenterContainer.new()
+	centre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inner.add_child(centre)
+	_plaque = PanelContainer.new()
+	_plaque.name = "Plaque"
+	_plaque.add_theme_stylebox_override("panel", CozyTheme.plank_card())
+	_plaque.draw.connect(_draw_plaque)
+	centre.add_child(_plaque)
 	var words := VBoxContainer.new()
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.alignment = BoxContainer.ALIGNMENT_CENTER
 	words.add_theme_constant_override("separation", 0)
-	_inner.add_child(words)
+	_plaque.add_child(words)
 	var title_row := HBoxContainer.new()
 	title_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	title_row.add_theme_constant_override("separation", 4)
@@ -84,6 +97,16 @@ func _button(icon: String, sig: Signal) -> Button:
 	b.pressed.connect(func() -> void: sig.emit())
 	_inner.add_child(b)
 	return b
+
+## Two nail heads at the plaque's top corners and a second leaf at its
+## bottom-left, mirrored (a negative-width rect flips the icon). The first
+## leaf stays at the title's top-right.
+func _draw_plaque() -> void:
+	var w := _plaque.size.x
+	var h := _plaque.size.y
+	for x in [NAIL_INSET, w - NAIL_INSET]:
+		_plaque.draw_circle(Vector2(x, NAIL_INSET), NAIL_R, Pal.OUTLINE)
+	Icons.paint(_plaque, "leaf", Rect2(Vector2(LEAF_INSET + LEAF, h - LEAF - LEAF_INSET), Vector2(-LEAF, LEAF)), Pal.MOSS)
 
 func refresh(puzzle) -> void:
 	var caps: Array = puzzle.capabilities() if puzzle != null else []

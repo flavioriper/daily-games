@@ -1,6 +1,6 @@
 extends "res://ui/hud/panel.gd"
 
-## The slate day card: an island icon, "Day N" and the island's name. The host
+## The wooden day card: an island icon, "Day N" and the island's name. The host
 ## sets both from core/progress.gd on every spawn.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 2.
 
@@ -17,7 +17,7 @@ func _init() -> void:
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 func _build() -> void:
-	(_inner as PanelContainer).add_theme_stylebox_override("panel", CozyTheme.slate_card())
+	(_inner as PanelContainer).add_theme_stylebox_override("panel", CozyTheme.plank_card())
 	_inner.custom_minimum_size.x = MIN_WIDTH
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
