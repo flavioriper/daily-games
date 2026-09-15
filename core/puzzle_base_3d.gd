@@ -20,6 +20,10 @@ func board_size() -> Vector2i: return Vector2i(1, 1)
 func board_height() -> float: return 0.5
 ## Height of the surface taps land on (the tile tops).
 func plane_height() -> float: return 0.0
+## Camera pitch this board wants, in degrees above the horizontal; NAN takes
+## the island's own. Only a board whose pieces mean something by their height
+## should move it (see Stage.fit_camera).
+func board_pitch() -> float: return NAN
 func on_board_press(_hit: Vector3) -> void: pass
 func on_board_drag(_hit: Vector3) -> void: pass
 func on_board_release(_hit: Vector3) -> void: pass
@@ -63,7 +67,7 @@ func viewport_rect() -> Rect2:
 func _refit() -> void:
 	if _stage == null or not is_inside_tree():
 		return
-	_stage.fit_camera(board_aabb(), viewport_rect())
+	_stage.fit_camera(board_aabb(), viewport_rect(), board_pitch())
 
 func _camera() -> Camera3D:
 	return get_viewport().get_camera_3d()

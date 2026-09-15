@@ -11,6 +11,9 @@ const CameraRig = preload("res://world/camera_rig.gd")
 const Ambient = preload("res://world/ambient.gd")
 
 const WATER_DEPTH := 4.0
+## The island's own camera pitch, the one a board gets unless it asks for
+## another. Matches world/camera_rig.gd's export default.
+const DEFAULT_PITCH := 68.0
 
 var rig: Node3D
 var sun: DirectionalLight3D
@@ -82,7 +85,16 @@ func unmount(board: Node3D) -> void:
 	if board.get_parent() == anchor:
 		anchor.remove_child(board)
 
-func fit_camera(aabb: AABB, rect: Rect2) -> void:
+## Frames `aabb` in `rect`. `pitch` is the angle the board wants the camera
+## held at, in degrees above the horizontal; NAN means the island's own. Most
+## boards lie flat and read best from the default steep pitch, but a board
+## whose pieces carry their meaning in their height -- Balance, whose beams
+## tilt and whose discs stack -- needs the camera lower or that meaning
+## projects to nothing. The rig keeps the angle it is given, so every board
+## passes its own on every fit rather than relying on the last one to have
+## put it back.
+func fit_camera(aabb: AABB, rect: Rect2, pitch := NAN) -> void:
+	rig.pitch_deg = DEFAULT_PITCH if is_nan(pitch) else pitch
 	rig.fit(aabb, rect)
 	ambient.fit_to(aabb)
 
