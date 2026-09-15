@@ -20,9 +20,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -32,7 +32,7 @@ jobs:
       # rest do not.
       - name: Cache Godot
         id: godot-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/godot
@@ -123,12 +123,6 @@ jobs:
           godot --headless --path . --export-debug Android build/android/peeplet-daily.apk
           test -s build/android/peeplet-daily.apk
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: peeplet-daily-apk
-          path: build/android/peeplet-daily.apk
-          retention-days: 14
-
       - name: Distribute to testers
         env:
           CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -146,3 +140,13 @@ jobs:
             --project peeplet-daily \
             --release-notes "$(git log -1 --pretty='%h %s')" \
             --testers "$TESTERS"
+
+      # A copy to download by hand. The account-wide artifact quota is not this
+      # repo's problem to fail over, so a rejection here is only a note.
+      - name: Keep a copy on the run
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: peeplet-daily-apk
+          path: build/android/peeplet-daily.apk
+          retention-days: 14
