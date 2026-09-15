@@ -6,6 +6,7 @@ extends RefCounted
 
 const Toon = preload("res://core/toon.gd")
 const Placeholders = preload("res://core/placeholders.gd")
+const Pal = preload("res://core/palette.gd")
 
 const DIR := "res://assets/models/"
 ## The model names the game asks for. docs/art/blender-contract.md lists the
@@ -19,7 +20,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"wall_block", "lantern",
 	"mosaic_tile", "plank",
 	"horse", "fence", "apple",
-	"snake_head", "burrow"]
+	"snake_head", "burrow",
+	"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -221,3 +223,19 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# pass each, for a shadow no pixel of which could ever show.
 			set_shadow_off_named(node, "Num_flat")
 			set_shadow_off_named(node, "Well_flat")
+		"lid":
+			# From above the knob has to read as the dark hole in the concept's
+			# lids, not a pale wooden stud; the model keeps its own colour.
+			tint_named(node, "Knob", Pal.BARK)
+		"deck":
+			# A strip laid on the bank casts into a 0.1 gap nobody sees.
+			set_shadow_off_named(node, "Deck")
+		"boulder":
+			set_shadow_off_named(node, "Moss_flat")
+		"daisy":
+			set_shadow_off_named(node, "Petal_flat")
+			set_shadow_off_named(node, "Centre_flat")
+			set_shadow_off_named(node, "Stem_flat")
+		"signpost":
+			set_shadow_off_named(node, "Paper_flat")
+			set_shadow_off_named(node, "Ink_flat")

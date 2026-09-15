@@ -45,6 +45,8 @@ art/*.blend
 !art/horse.blend
 # Snake Apple: the snake head cut from a BlenderKit asset, and the burrow.
 !art/snake.blend
+# Code Break's screen: the deck strip and the scenery around the dock.
+!art/scenery.blend
 
 # Python bytecode from running the tools
 __pycache__/

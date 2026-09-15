@@ -62,6 +62,10 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # the live session. The body is a tube the board builds along its cells.
 "$BLENDER" -b art/snake.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Snake_Head Burrow
+# Code Break's screen: the deck strip and six scenery pieces, modelled in the
+# live session into one .blend.
+"$BLENDER" -b art/scenery.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Deck Pier_Post Boulder Bush Daisy Tuft Signpost
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

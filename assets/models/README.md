@@ -28,6 +28,13 @@ any that are missing:
 | `apple` | the meadow's bonus: `Fruit` with a flat `Stem_flat` and `Leaf_flat` |
 | `snake_head` | Snake Apple's head facing +X, neck at the origin: `Scale` and `Eye_flat`; the body is a tube the board builds |
 | `burrow` | the snake's burrow: `Earth` rim (mossy once open) around a `Hole_flat` disc |
+| `deck` | one strip of Code Break's dock along X, `Deck` planks with a seam gap; the board stretches it |
+| `pier_post` | a log at the deck's far edge, `Bark`, standing in the river |
+| `boulder` | a rock beside the deck: `Rock` body, `Moss_flat` cap |
+| `bush` | a cluster of leaf blobs, `Leaf` |
+| `daisy` | a flower on the bank: `Petal_flat`, `Centre_flat`, `Stem_flat` |
+| `tuft` | three grass blades, `Grass_sway_flat`, scattered as one MultiMesh |
+| `signpost` | the hanging sign: `Bark` post, `Timber` plank, `Paper_flat` sheet, `Ink_flat` words |
 
 `tile` is recoloured **by material name**: its `Stone` body and `Slate_flat`
 moon faces take the colour the cell is entitled to -- darker when it is a

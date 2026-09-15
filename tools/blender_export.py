@@ -118,6 +118,19 @@ LIMITS = {
     # a tube along the snake's cells, the way Untangle builds its ropes.
     "snake_head": (0.9, 0.9, 0.5),
     "burrow": (1.0, 1.0, 0.14),
+    # Code Break's screen (docs/superpowers/specs/2026-09-15-codebreak-screen-design.md):
+    # the deck strip the board is laid on -- exactly a cell long because the
+    # board stretches it along X, and tiled edge to edge along Y with half a
+    # gap at each edge, so its depth is budgeted, not exact -- and the
+    # scenery around it. The signpost is wider than a cell on purpose: the
+    # plank hangs from an arm beside the post.
+    "deck": (1.0, 1.0, 0.62),
+    "pier_post": (0.4, 0.4, 2.1),
+    "boulder": (1.0, 1.0, 0.6),
+    "bush": (1.0, 1.0, 0.7),
+    "daisy": (0.3, 0.3, 0.25),
+    "tuft": (0.3, 0.3, 0.25),
+    "signpost": (1.4, 0.4, 1.8),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -132,7 +145,7 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # stretched along X alone, so its length must be exact while its thickness is
 # the artist's to choose inside the LIMITS row.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5),
-    "wall_edge": (1.0, None), "plank": (1.0, None), "fence": (1.0, None)}
+    "wall_edge": (1.0, None), "plank": (1.0, None), "fence": (1.0, None), "deck": (1.0, None)}
 # A shape whose openings cancel (an opposite pair, or all four) keeps its
 # mass centred on its hub, and must pass the strict origin-at-centre check
 # below -- pipe_straight and pipe_cross stay off this set on purpose. One

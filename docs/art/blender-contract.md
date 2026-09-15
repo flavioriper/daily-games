@@ -48,6 +48,13 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `apple` | 0.45 x 0.45 | 0.45 | the bonus lying on the meadow, from BlenderKit's Lowpoly Apples: `Apple_Fruit` (`Fruit`), `Apple_Stem` (`Stem_flat`) and `Apple_Leaf` (`Leaf_flat`); stem and leaf are both thinner than the outline shell, which would swallow them whole, so neither carries one |
 | `snake_head` | 0.9 x 0.9 | 0.5 | Snake Apple's head, cut from a BlenderKit snake (`art/snake.blend`): `Snake_Skull` (`Scale`, the board's body tube is the same colour) and `Snake_Eye` (`Eye_flat`). Faces **+X** with the back of the head at the origin, so the tube the board builds along the snake's cells runs into it. The **body is not a slot**: the board rebuilds it as a tube from its cells every frame it moves, as Untangle does its ropes |
 | `burrow` | 1.0 x 1.0 | 0.14 | where the snake goes home: `Burrow_Rim` (`Earth`, a ring of dug earth the board turns mossy once every apple is eaten) and `Burrow_Hole` (`Hole_flat`, the dark disc inside it) |
+| `deck` | **exactly 1.0** x up to 1.0 | 0.6 | one strip of Code Break's dock, running along X: `Deck_Planks` (`Deck`), two planks side by side as one layer with a 0.06 gap between them and 0.03 at each edge, so the outline shells meet in the gaps and draw the seams. The board stretches it along X and lays one per unit of depth, edge to edge |
+| `pier_post` | 0.4 x 0.4 | 2.1 | a round log with a rounded top, `Pier_Body` (`Bark`); stands in the river at the deck's far edge and reaches above the deck |
+| `boulder` | 1.0 x 1.0 | 0.6 | a rounded stone beside the deck: `Rock_Body` (`Rock`) and `Rock_Moss` (`Moss_flat`), a cap on top. Placed at varied yaw and scale, one flattened as POM's seat |
+| `bush` | 1.0 x 1.0 | 0.7 | `Bush_Leaves` (`Leaf`), four or five overlapping blobs as one layer, the lowest touching the ground |
+| `daisy` | 0.3 x 0.3 | 0.25 | `Daisy_Petals` (`Petal_flat`), `Daisy_Centre` (`Centre_flat`), `Daisy_Stem` (`Stem_flat`); all flat, a petal being thinner than an outline shell |
+| `tuft` | 0.3 x 0.3 | 0.25 | `Tuft_Blades` (`Grass_sway_flat`), three blades as one layer; the scenery scatters it as one MultiMesh, and the wind shader sways each instance |
+| `signpost` | 1.4 x 0.4 | 1.8 | a post with an arm at the **left** end, `Sign_Post` (`Bark`); a plank hanging from the arm, `Sign_Board` (`Timber`); `Sign_Paper` (`Paper_flat`) on the plank's face, on Blender **-Y** (Godot +Z); `Sign_Words` (`Ink_flat`), the words as mesh on the paper. Wider than a cell on purpose; the footprint is still centred on the origin |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are

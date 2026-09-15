@@ -59,6 +59,24 @@ const PIP_R := 0.08
 const LID_H := 0.16
 const KNOB_R := 0.09
 const KNOB_H := 0.08
+## The socket's well is a real recess WELL_DEPTH deep (spec 2026-09-15,
+## section 1), so a peg seats that far below the socket's top.
+const WELL_DEPTH := 0.03
+const PEG_SEAT := SOCKET_H - WELL_DEPTH
+## Code Break's screen: the plank deck the board is laid on and the scenery
+## around it (spec 2026-09-15, sections 1 and 2).
+const DECK_H := PLATFORM_H
+const DECK_PLANK_W := 0.44
+const DECK_GAP := 0.06
+const PIER_R := 0.2
+const PIER_H := 2.1
+const BOULDER_W := 0.9
+const BOULDER_H := 0.6
+const BUSH_R := 0.3
+const DAISY_R := 0.15
+const DAISY_H := 0.25
+const TUFT_H := 0.25
+const SIGN_POST_H := 1.8
 
 ## Pipes pieces (pipes spec, section 1). A pad is a bevelled slab; a pipe is a
 ## hub with an arm to each opening, each arm two shell segments with a real
@@ -374,6 +392,13 @@ static func make(slot: String) -> Node3D:
 		"apple": return _apple()
 		"snake_head": return _snake_head()
 		"burrow": return _burrow()
+		"deck": return _deck()
+		"pier_post": return _pier_post()
+		"boulder": return _boulder()
+		"bush": return _bush()
+		"daisy": return _daisy()
+		"tuft": return _tuft()
+		"signpost": return _signpost()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -1156,6 +1181,113 @@ static func _lantern() -> Node3D:
 	root.add_child(_layer("Lantern_Glass", _merge([{"mesh": _ball(LANTERN_GLOBE_R),
 		"xform": Transform3D(globe, Vector3(0.0, LANTERN_GLOBE_Y, 0.0))}]),
 		"Glass", Pal.SUN, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Code Break's screen: the dock and the scenery ---
+
+## One strip of deck, a cell deep, two planks side by side as one layer with
+## a gap between them and half a gap at each edge, so the outline shells meet
+## in the gaps and draw the seams. The board stretches it along X, so the
+## planks run along X and nothing about the cross-section changes.
+static func _deck() -> Node3D:
+	var root := Node3D.new()
+	root.name = "deck"
+	var off := (DECK_PLANK_W + DECK_GAP) * 0.5
+	root.add_child(_layer("Deck_Planks", _merge([
+		{"mesh": _bar(1.0, DECK_PLANK_W, DECK_H), "xform": Transform3D(Basis(), Vector3(0.0, 0.0, -off))},
+		{"mesh": _bar(1.0, DECK_PLANK_W, DECK_H), "xform": Transform3D(Basis(), Vector3(0.0, 0.0, off))},
+	]), "Deck", Pal.DECK, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## A round log with a rounded top: the posts at the deck's far edge, which
+## stand in the river and reach above the deck.
+static func _pier_post() -> Node3D:
+	var root := Node3D.new()
+	root.name = "pier_post"
+	var shaft := PIER_H - PIER_R
+	root.add_child(_layer("Pier_Body", _merge([
+		{"mesh": _cylinder(PIER_R, shaft, 16), "xform": Transform3D(Basis(), Vector3(0.0, shaft * 0.5, 0.0))},
+		{"mesh": _ball(PIER_R), "xform": Transform3D(Basis(), Vector3(0.0, shaft, 0.0))},
+	]), "Bark", Pal.BARK, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## A rounded stone with a moss cap. The rock is the tinted layer; the moss is
+## flat so it reads as a patch, not a second stone.
+static func _boulder() -> Node3D:
+	var root := Node3D.new()
+	root.name = "boulder"
+	var r := BOULDER_H * 0.5
+	var squash := Basis().scaled(Vector3(BOULDER_W * 0.5 / r, 1.0, BOULDER_W * 0.425 / r))
+	root.add_child(_layer("Rock_Body", _merge([{"mesh": _ball(r),
+		"xform": Transform3D(squash, Vector3(0.0, r, 0.0))}]),
+		"Rock", Pal.BOULDER, Vector3.ZERO))
+	root.add_child(_layer("Rock_Moss", _cylinder(BOULDER_W * 0.28, 0.01, 16), "Moss_flat", Pal.MOSS,
+		Vector3(0.0, BOULDER_H - 0.02, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## Five leaf blobs as one layer; the lowest touches the ground.
+static func _bush() -> Node3D:
+	var root := Node3D.new()
+	root.name = "bush"
+	var blobs: Array = []
+	for p in [Vector3(0.0, 0.4, 0.0), Vector3(-0.18, 0.3, 0.1), Vector3(0.18, 0.3, -0.12),
+			Vector3(0.05, 0.32, 0.18), Vector3(-0.08, 0.3, -0.18)]:
+		blobs.append({"mesh": _ball(BUSH_R), "xform": Transform3D(Basis(), p)})
+	root.add_child(_layer("Bush_Leaves", _merge(blobs), "Leaf", Pal.LEAF, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## Eight petals round a sun-coloured centre on a thin green stem. All three
+## layers are flat: a petal is thinner than an outline shell.
+static func _daisy() -> Node3D:
+	var root := Node3D.new()
+	root.name = "daisy"
+	var petals: Array = []
+	var head_y := DAISY_H - 0.02
+	for i in 8:
+		var a := TAU * i / 8.0
+		var out := Vector3(cos(a), 0.0, sin(a)) * DAISY_R * 0.6
+		petals.append({"mesh": _cylinder(DAISY_R * 0.4, 0.01, 10),
+			"xform": Transform3D(Basis(), out + Vector3(0.0, head_y, 0.0))})
+	root.add_child(_layer("Daisy_Petals", _merge(petals), "Petal_flat", Pal.MOON, Vector3.ZERO))
+	root.add_child(_layer("Daisy_Centre", _cylinder(DAISY_R * 0.3, 0.02, 10), "Centre_flat", Pal.SUN,
+		Vector3(0.0, head_y + 0.01, 0.0)))
+	root.add_child(_layer("Daisy_Stem", _cylinder(0.012, head_y, 8), "Stem_flat", Pal.LEAF,
+		Vector3(0.0, head_y * 0.5, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## Three grass blades as one swaying layer; the scenery scatters hundreds of
+## these as one MultiMesh.
+static func _tuft() -> Node3D:
+	var root := Node3D.new()
+	root.name = "tuft"
+	var blades: Array = []
+	for i in 3:
+		var a := TAU * i / 3.0
+		blades.append({"mesh": _bar(0.06, 0.02, TUFT_H),
+			"xform": Transform3D(Basis(Vector3.UP, a), Vector3(cos(a), 0.0, sin(a)) * 0.06)})
+	root.add_child(_layer("Tuft_Blades", _merge(blades), "Grass_sway_flat", Pal.TURF_TREE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## A post with an arm, a plank hanging from it, a sheet of paper on the plank
+## and the words on the paper. The footprint is centred on the origin, as the
+## exporter demands of the model: post at the left end, plank reaching right.
+static func _signpost() -> Node3D:
+	var root := Node3D.new()
+	root.name = "signpost"
+	root.add_child(_layer("Sign_Post", _merge([
+		{"mesh": _bar(0.12, 0.12, SIGN_POST_H), "xform": Transform3D(Basis(), Vector3(-0.64, 0.0, 0.0))},
+		{"mesh": _bar(1.28, 0.08, 0.08), "xform": Transform3D(Basis(), Vector3(0.0, SIGN_POST_H - 0.08, 0.0))},
+	]), "Bark", Pal.BARK, Vector3.ZERO))
+	root.add_child(_layer("Sign_Board", _bar(1.0, 0.06, 0.7), "Timber", Pal.TIMBER, Vector3(0.2, 0.9, 0.0)))
+	root.add_child(_layer("Sign_Paper", _bar(0.86, 0.01, 0.56), "Paper_flat", Pal.PARCHMENT, Vector3(0.2, 0.97, 0.035)))
+	root.add_child(_layer("Sign_Words", _bar(0.6, 0.01, 0.3), "Ink_flat", Pal.TEXT, Vector3(0.2, 1.1, 0.045)))
 	Toon.apply_to(root)
 	return root
 
