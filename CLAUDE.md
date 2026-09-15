@@ -34,3 +34,23 @@ debug-signed. Machine-local setup it depends on: the Android SDK at
 `/opt/homebrew/share/android-commandlinetools` and `~/.android/debug.keystore`,
 both wired into Godot's editor settings, plus the 4.7 Android export
 templates. `build/` is ignored -- it is output.
+
+## Analytics
+
+Gameplay events go to Firebase (project `peeplet-daily`) over the GA4
+Measurement Protocol, in `core/analytics.gd`. No native SDK, so the Android
+export stays on the non-gradle path.
+
+- **Nothing sends unless `Analytics.start()` runs**, and only `world/main.gd`
+  calls it. Tests and harnesses build the same screens and stay silent; keep
+  it that way rather than making this an autoload.
+- The API secret lives in `analytics_secret.cfg` beside `project.godot`:
+  untracked, packed by the preset's `include_filter`, overridable with
+  `GA_API_SECRET`. Missing secret means the game runs untracked, not broken.
+- Events: `game_open`, `puzzle_start`, `puzzle_complete`, `puzzle_abandon`,
+  `hint_used`, `undo_used`, `check_used`, `board_reset`, `rules_opened`,
+  `new_puzzle`, `reduce_motion`. Board events carry puzzle_id, difficulty,
+  day, seconds, moves, hints, checks.
+- To debug the wiring: `Analytics.validate = true` posts to GA4's validation
+  endpoint and prints the verdict instead of recording; `Analytics.debug_mode`
+  puts events in the console's DebugView.

@@ -58,3 +58,7 @@ art/assets/
 
 # Android export output; tools/deploy_android.sh rebuilds it
 /build/
+
+# The GA4 Measurement Protocol secret the game ships with: machine-local,
+# packed by the export preset, never in git.
+analytics_secret.cfg

@@ -20,6 +20,9 @@ out="build/android/peeplet-daily.apk"
 
 mkdir -p build/android
 
+# The game runs untracked without this file, which is easy to miss.
+[[ -f analytics_secret.cfg ]] || echo "warning: no analytics_secret.cfg, this build reports nothing"
+
 # The export reads the .godot import cache, so make sure it is current.
 "$godot_bin" --headless --path . --import >/dev/null
 "$godot_bin" --headless --path . --export-debug Android "$out"

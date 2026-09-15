@@ -12,6 +12,7 @@ signal closed
 const Pal = preload("res://core/palette.gd")
 const DailySeed = preload("res://core/daily.gd")
 const Progress = preload("res://core/progress.gd")
+const Analytics = preload("res://core/analytics.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
@@ -69,7 +70,7 @@ func _ready() -> void:
 	# --- top bar ---
 	top_bar = TopBar.new(_entry.get("title", ""), _entry.get("motto", ""))
 	top_bar.name = "TopBar"
-	top_bar.back.connect(func() -> void: closed.emit())
+	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(_open_settings)
@@ -187,6 +188,11 @@ func _spawn(the_seed: int) -> void:
 	_overlay.visible = false
 	Progress.touch()
 	day_card.set_day(Progress.day(), Progress.island_name())
+	Analytics.track("puzzle_start", {
+		"puzzle_id": _entry.get("id", ""),
+		"difficulty": _difficulty,
+		"day": Progress.day(),
+	})
 	_refresh()
 
 ## Every panel re-reads the puzzle.
@@ -198,12 +204,18 @@ func _refresh() -> void:
 
 func _on_undo() -> void:
 	if is_instance_valid(_puzzle):
-		_puzzle.undo()
+		if _puzzle.undo():
+			Analytics.track("undo_used", {"puzzle_id": _entry.get("id", "")})
 		_refresh()
 
 func _on_hint() -> void:
 	if is_instance_valid(_puzzle):
-		_puzzle.hint()
+		if _puzzle.hint():
+			Analytics.track("hint_used", {
+				"puzzle_id": _entry.get("id", ""),
+				"difficulty": _difficulty,
+				"hints": _puzzle.hints_used,
+			})
 		_refresh()
 
 func _on_check() -> void:
@@ -213,6 +225,11 @@ func _on_check() -> void:
 		# check on a live board earns the "All good" squash.
 		if wrong == 0 and not _puzzle.is_done():
 			action_bar.all_good()
+		Analytics.track("check_used", {
+			"puzzle_id": _entry.get("id", ""),
+			"difficulty": _difficulty,
+			"wrong": wrong,
+		})
 		_refresh()
 
 func _on_pick(i: int) -> void:
@@ -224,21 +241,25 @@ func _on_reset() -> void:
 	if is_instance_valid(_puzzle):
 		_puzzle.reset_board()
 		_overlay.visible = false
+		Analytics.track("board_reset", {"puzzle_id": _entry.get("id", "")})
 		_refresh()
 
 func _on_new() -> void:
 	# Prototype affordance only. The shipped game gets one puzzle per day.
+	Analytics.track("new_puzzle", {"puzzle_id": _entry.get("id", "")})
 	_spawn(randi())
 
 func _open_settings() -> void:
 	settings_sheet.open()
 
 func _open_rules() -> void:
+	Analytics.track("rules_opened", {"puzzle_id": _entry.get("id", "")})
 	rules_sheet.open()
 
 ## The settings sheet has already persisted the toggle and stilled the world;
 ## the chrome re-reads it.
 func _on_reduce_changed(_on: bool) -> void:
+	Analytics.track("reduce_motion", {"on": _on})
 	_refresh()
 
 func _on_solved() -> void:
@@ -246,4 +267,25 @@ func _on_solved() -> void:
 		_puzzle.elapsed, _puzzle.moves, _puzzle.share_glyphs()
 	]
 	_overlay.visible = true
+	Analytics.track("puzzle_complete", _stats())
 	_refresh()
+
+## Leaving a board unsolved is the signal that it was too hard, too long
+## or too dull, so it is worth an event of its own.
+func _on_back() -> void:
+	if is_instance_valid(_puzzle) and not _puzzle.is_done():
+		Analytics.track("puzzle_abandon", _stats())
+	closed.emit()
+
+## What a board-level event carries: which puzzle, how hard, and how far
+## the player had got.
+func _stats() -> Dictionary:
+	return {
+		"puzzle_id": _entry.get("id", ""),
+		"difficulty": _difficulty,
+		"day": Progress.day(),
+		"seconds": _puzzle.elapsed,
+		"moves": _puzzle.moves,
+		"hints": _puzzle.hints_used,
+		"checks": _puzzle.checks,
+	}

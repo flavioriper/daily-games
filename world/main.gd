@@ -6,6 +6,14 @@ extends Node
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 6.
 
 const Motion = preload("res://core/motion.gd")
+const Progress = preload("res://core/progress.gd")
+const Analytics = preload("res://core/analytics.gd")
 
 func _enter_tree() -> void:
 	Motion.load_settings()
+
+## Telemetry wakes up here and nowhere else, so only a real launch counts;
+## tests and harnesses build these screens without ever starting it.
+func _ready() -> void:
+	Analytics.start(self)
+	Analytics.track("game_open", {"day": Progress.day()})
