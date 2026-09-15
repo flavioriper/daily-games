@@ -122,6 +122,10 @@ func _draw() -> void:
 	if w == 0 or _clues.is_empty():
 		return
 	_cell = minf(size.x / float(w), size.y / float(h))
+	# The HUD's VBox hands the board a zero height on the frame it lays out;
+	# a zero cell means a zero font size, which the text server rejects.
+	if _cell <= 0.0:
+		return
 	var board := Vector2(_cell * w, _cell * h)
 	_origin = (size - board) * 0.5
 

@@ -112,6 +112,9 @@ func _draw() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	_cell = minf(size.x / float(w), size.y / float(h))
+	# Same zero-height layout frame as Shikaku: no room means no font size.
+	if _cell <= 0.0:
+		return
 	var board := Vector2(_cell * w, _cell * h)
 	_origin = (size - board) * 0.5
 
