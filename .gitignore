@@ -37,6 +37,9 @@ art/*.blend
 # court's flagstones are Shikaku's plot_pad and the chip that rules a cell out
 # is Tents' cairn, so neither is modelled here.
 !art/lightup.blend
+# Nonogram's mosaic tile and One Line's plank. Both boards borrow everything
+# else they stand on from Shikaku, Tents and Untangle.
+!art/grids.blend
 
 # Python bytecode from running the tools
 __pycache__/

@@ -46,6 +46,12 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # `plot_pad` and the chip that rules a cell out is Tents' `cairn`.
 "$BLENDER" -b art/lightup.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Wall_Block Lantern
+# Nonogram and One Line: two hand-modelled collections in one .blend -- the
+# slate tile a filled cell carries and one cell's length of plank. Everything
+# else those two boards stand on is borrowed: Shikaku's plot_pad and
+# clue_stone, Tents' cairn, Untangle's post.
+"$BLENDER" -b art/grids.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Mosaic_Tile Plank
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

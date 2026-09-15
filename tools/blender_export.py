@@ -94,6 +94,16 @@ LIMITS = {
     # rules a cell out is Tents' `cairn`, so neither needs a row of its own.
     "wall_block": (1.0, 1.0, 0.44),
     "lantern": (0.6, 0.6, 0.55),
+    # Nonogram and One Line (the designs agreed 2026-09-15): the slate tile a
+    # filled cell carries, and one cell's length of plank. The nonogram's
+    # sockets are Shikaku's `plot_pad`, its clues are `clue_stone` and its
+    # ruled-out marks are Tents' `cairn`; One Line's posts are Untangle's
+    # `post`. Only these two are new. `plank` is modelled exactly one cell
+    # long because the board stretches it along X to span two posts, and a
+    # board's lines run diagonally as well as straight, so there is no single
+    # length to model -- the same arrangement `wall_edge` has.
+    "mosaic_tile": (1.0, 1.0, 0.16),
+    "plank": (1.0, 0.34, 0.14),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -108,7 +118,7 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # stretched along X alone, so its length must be exact while its thickness is
 # the artist's to choose inside the LIMITS row.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5),
-    "wall_edge": (1.0, None)}
+    "wall_edge": (1.0, None), "plank": (1.0, None)}
 # A shape whose openings cancel (an opposite pair, or all four) keeps its
 # mass centred on its hub, and must pass the strict origin-at-centre check
 # below -- pipe_straight and pipe_cross stay off this set on purpose. One

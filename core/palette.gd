@@ -108,6 +108,31 @@ const LANTERN     := Color("5a5248")   # the lantern's iron foot and cap
 ## block of the court's own warm stone.
 const CHIP        := SLATE
 
+# Nonogram (the design agreed 2026-09-15): a mosaic floor being laid. A cell
+# is an empty socket of pale stone; a filled one carries a slate tile, and the
+# finished grid is the picture in relief. A cell the player has ruled out goes
+# a shade darker and takes a pebble mark, so the ruling-out reads twice.
+const SOCKET      := STONE        # an empty cell
+## A shade the eye can actually catch against SOCKET, which STONE_GIVEN was
+## not, and still nowhere near the slate of a laid tile -- a ruled-out cell
+## must never be mistaken for a filled one.
+const SOCKET_OUT  := Color("c9b998")  # a cell the player has ruled out
+const MOSAIC      := SLATE        # a laid tile: the picture
+## A tile a hint laid. Teal rather than a darker slate, for the reason Light
+## Up's lantern collar is pale stone: two neighbouring darks are the one thing
+## the toon ramp will not keep, and a given has to be visible or the player
+## cannot tell why the cell refuses to budge.
+const MOSAIC_LOCK := ACCENT
+
+# One Line (the design agreed 2026-09-15): a jetty of mooring posts with a
+# plank between each pair. A line not yet walked is a dark stone ford; walking
+# it lays a warm plank over it. Dark to light, the same language Light Up's
+# floor speaks, and for the same measured reason -- a pale-on-pale difference
+# does not survive the ramp under the island sun.
+const PLANK_BARE := SLATE
+const PLANK_LAID := WOOD
+const POST_SPENT := STONE_GIVEN   # a post with no line left to walk
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

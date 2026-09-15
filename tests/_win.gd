@@ -70,8 +70,8 @@ func _note(id: String) -> String:
 		"shikaku": return "%d plots, camera fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, camera fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
 		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
-		"oneline": return "%d lines traced" % _puzzle._done_edges.size()
-		"nonogram": return "%dx%d picture" % [_puzzle.w, _puzzle.h]
+		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
+		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 	return ""
 
 # --- per-puzzle solvers, all driven through touch ---
@@ -246,9 +246,6 @@ func _drag_local(from_local: Vector2, to_local: Vector2) -> void:
 	up.position = b
 	root.push_input(up, true)
 
-func _cell_centre(origin: Vector2, cell: float, x: int, y: int) -> Vector2:
-	return Vector2(origin.x + (x + 0.5) * cell, origin.y + (y + 0.5) * cell)
-
 func _solve_shikaku() -> void:
 	var w: int = _puzzle.w
 	var h: int = _puzzle.h
@@ -310,20 +307,49 @@ func _solve_lightup() -> void:
 		_tap_local(_puzzle.cell_to_local(b.y, b.x))
 
 func _solve_oneline() -> void:
+	# Camera fit check: every post must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for n in _puzzle._nodes:
+		if not slot.has_point(_puzzle.node_to_local(n)):
+			_fit_ok = false
 	var Gen = load("res://puzzles/oneline_gen.gd")
 	var trail: Array = Gen.find_path(_puzzle._edges, _puzzle._nodes)
 	if trail.is_empty():
 		return
-	_tap_local(_puzzle._screen(trail[0]))
+	# The HUD's own buttons: one hint (which takes the starting post, since
+	# the stroke has not begun), then one check, which must find nothing
+	# stranded on a board nobody has walked yet.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	# The hint takes the first odd-degree post, which is the same post
+	# Gen.find_path begins its trail at, so this tap lands on the post the
+	# stroke is already standing on and does nothing. It is here so the walk
+	# below reads as the whole trail rather than the whole trail bar one.
+	_tap_local(_puzzle.node_to_local(trail[0]))
 	for i in range(1, trail.size()):
 		if _puzzle.is_done():
 			return
-		_tap_local(_puzzle._screen(trail[i]))
+		_tap_local(_puzzle.node_to_local(trail[i]))
 
 func _solve_nonogram() -> void:
-	for y in _puzzle.h:
-		for x in _puzzle.w:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every grid cell centre must project inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in h:
+		for c in w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint (lays and pins a tile), then one check.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	for y in h:
+		for x in w:
 			if _puzzle.is_done():
 				return
 			if int(_puzzle._bitmap[y][x]) == 1:
-				_tap_local(_cell_centre(_puzzle._origin, _puzzle._cell, x, y))
+				_tap_local(_puzzle.cell_to_local(y, x))

@@ -24,6 +24,7 @@ func _initialize() -> void:
 func _process(delta: float) -> bool:
 	_t += delta
 	if _idx >= _entries.size():
+		RenderingServer.force_draw()
 		root.get_texture().get_image().save_png("/tmp/shot_menu.png")
 		print("saved /tmp/shot_menu.png")
 		return true
@@ -33,6 +34,10 @@ func _process(delta: float) -> bool:
 		_phase = 1
 	elif _phase == 1 and _t >= SHOT_AT:
 		var path := "/tmp/shot_%s.png" % _entries[_idx].id
+		# The viewport texture is whatever was last drawn, and a windowed run
+		# that loses focus stops drawing: without this, late entries in the
+		# walk were saved carrying an earlier board's frame.
+		RenderingServer.force_draw()
 		root.get_texture().get_image().save_png(path)
 		print("saved " + path)
 		_phase = 2

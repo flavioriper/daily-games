@@ -293,6 +293,23 @@ const LANTERN_SINK := 0.03
 const LANTERN_GLOBE_Y := LANTERN_FOOT_H + LANTERN_GLOBE_R * LANTERN_GLOBE_TALL - LANTERN_SINK
 const LANTERN_H := LANTERN_GLOBE_Y + LANTERN_GLOBE_R * LANTERN_GLOBE_TALL
 
+## Nonogram pieces (the design agreed 2026-09-15). A cell is Shikaku's own
+## `plot_pad`, standing in as an empty socket; a filled cell carries a slate
+## `mosaic_tile` laid in it, and a cell the player has ruled out carries
+## Tents' `cairn`. The clues are `clue_stone` again, one stone per number on a
+## margin of bare platform -- which is why the grid can be at most nine wide:
+## a run of ten would need a numeral the stone does not carry.
+const MOSAIC_SIDE := 0.80
+const MOSAIC_H := 0.12
+
+## One Line pieces (the design agreed 2026-09-15). The nodes are Untangle's
+## own mooring posts. The line between two of them is a `plank`, modelled
+## exactly one cell long and stretched to its span the way Shikaku's
+## `wall_edge` is -- a board's lines run both orthogonally and diagonally, so
+## there is no one length to model.
+const PLANK_W := 0.34
+const PLANK_H := 0.10
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -324,6 +341,8 @@ static func make(slot: String) -> Node3D:
 		"cairn": return _cairn()
 		"wall_block": return _wall_block()
 		"lantern": return _lantern()
+		"mosaic_tile": return _mosaic_tile()
+		"plank": return _plank()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -1106,5 +1125,30 @@ static func _lantern() -> Node3D:
 	root.add_child(_layer("Lantern_Glass", _merge([{"mesh": _ball(LANTERN_GLOBE_R),
 		"xform": Transform3D(globe, Vector3(0.0, LANTERN_GLOBE_Y, 0.0))}]),
 		"Glass", Pal.SUN, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Nonogram and One Line pieces ---
+
+## One tile of the mosaic: the slate square a filled cell carries, and so the
+## thing the finished picture is actually made of. Smaller than its socket, so
+## the pale stone shows as a grout line around every tile and the picture reads
+## as laid rather than painted.
+static func _mosaic_tile() -> Node3D:
+	var root := Node3D.new()
+	root.name = "mosaic_tile"
+	root.add_child(_layer("Mosaic_Body", _bar(MOSAIC_SIDE, MOSAIC_SIDE, MOSAIC_H),
+		"Mosaic", Pal.MOSAIC, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## One cell's length of plank, running along X. The board stretches it along
+## its length to span two posts, so the placeholder is a plain bar: nothing
+## about it changes shape when it is stretched.
+static func _plank() -> Node3D:
+	var root := Node3D.new()
+	root.name = "plank"
+	root.add_child(_layer("Plank_Body", _bar(1.0, PLANK_W, PLANK_H),
+		"Plank", Pal.PLANK_BARE, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root

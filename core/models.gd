@@ -16,7 +16,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post",
 	"plot_pad", "wall_edge", "wall_post", "clue_stone",
 	"turf_pad", "camp_tree", "tent", "cairn",
-	"wall_block", "lantern"]
+	"wall_block", "lantern",
+	"mosaic_tile", "plank"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -185,6 +186,14 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# *receive* the trees' and tents' shadows, which is the shadow
 			# work that carries this board.
 			set_shadow_off_named(node, "Turf")
+		"plank":
+			# A plank lies flat on the deck, so its shadow falls right at its
+			# own edge and is all but swallowed by the plank itself. There are
+			# 27 of them on the hardest board, which is 27 shadow-pass draw
+			# calls for a sliver nobody can see; the posts still cast theirs,
+			# and those are the shadows that give the jetty its depth. Same
+			# reasoning as Untangle's ropes and Tents' turf.
+			set_shadow_off_named(node, "Plank")
 		"wall_block":
 			# The carved numeral is a flat inlay lying on the block's crown,
 			# the same waste as the clue stone's: a shadow pass per instance,
