@@ -624,6 +624,13 @@ static func _peg() -> Node3D:
 	root.add_child(_layer("Peg_Body", dome, "Shell", Pal.PEGS[0], Vector3(0.0, PEG_H * 0.5, 0.0)))
 	for k in range(1, Shapes.PIPS.size() + 1):
 		root.add_child(_layer("Peg_Mark_%d" % k, _pips_mesh(k), "Mark_flat", Pal.PEGS[0].darkened(0.35), Vector3.ZERO))
+	# The glossy highlight, a flat patch on the dome's upper-left as the
+	# player sees it (-X, -Z), half buried like the marks.
+	var shine := _ball(0.05)
+	var at := Vector3(-0.5 * PEG_R, PEG_H * 0.5 + 0.7071 * PEG_H * 0.5, -0.5 * PEG_R)
+	root.add_child(_layer("Peg_Shine", _merge([{"mesh": shine,
+		"xform": Transform3D(Basis().scaled(Vector3(1.0, 0.35, 0.6)), at)}]),
+		"Shine_flat", Pal.MOON, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root
 
