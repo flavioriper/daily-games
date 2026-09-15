@@ -1,16 +1,18 @@
 extends "res://core/puzzle_base_3d.gd"
 
 ## Code Break on the island stage. Eight guess rows of socket slabs stand on
-## the platform under a shielded code row: the code's pegs sit hidden under
+## a plank dock under a shielded code row: the code's pegs sit hidden under
 ## stone lids on row 0 and the guesses fill rows 1 to 8 from the far edge
 ## toward the player. A colour picked on the HUD's tray drops a peg into the
 ## first empty slot of the active row; a tap on a placed peg pops it out;
 ## Check scores the row on its feedback slab -- a slate pip per right colour
 ## in the right place, a cream pip per right colour in the wrong place -- and
 ## the next row takes the lighter tint and starts to breathe. When the game
-## ends the lids slide off the far edge into the sea. Every peg is a tinted
+## ends the lids slide off the far edge into the river. Every peg is a tinted
 ## dome carrying one of seven pip marks, so colour never stands alone.
-## Spec: docs/superpowers/specs/2026-09-14-codebreak-3d-design.md.
+## Spec: docs/superpowers/specs/2026-09-14-codebreak-3d-design.md,
+## docs/superpowers/specs/2026-09-15-codebreak-screen-design.md for the dock
+## and scenery.
 
 const Gen = preload("res://puzzles/mastermind_gen.gd")
 const Pal = preload("res://core/palette.gd")
@@ -20,6 +22,7 @@ const Platform = preload("res://core/platform.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx = preload("res://world/fx.gd")
 const Stage = preload("res://world/stage.gd")
+const CodebreakScenery = preload("res://puzzles/codebreak_scenery.gd")
 
 const CODE_ROW := 0
 const HINTS := 3
@@ -46,9 +49,13 @@ const BALL_POP := 0.25
 const BALL_STAGGER := 0.06
 const WOBBLE_ANGLE := 0.1
 const WOBBLE_TIME := 0.4
-const LID_SLIDE := 1.3
+const LID_SLIDE := 2.7
 const LID_SLIDE_TIME := 0.4
-const LID_FALL := Stage.WATER_DEPTH   # the lid sinks to the water
+## Deck top to the river's surface: a lid that slides off falls this far.
+const RIVER_DROP := 1.4
+const LID_FALL := RIVER_DROP
+## Where the entrance splash rings the river, in board space.
+const SPLASH_AT := Vector3(0.0, 0.0, -7.0)
 const LID_FALL_TIME := 0.5
 const LID_STAGGER := 0.12
 const LID_DROP := 0.6
@@ -119,7 +126,7 @@ func rules() -> String:
 func board_size() -> Vector2i: return Vector2i(length + 1, max_guesses + 1)
 ## A socket with a peg on it; nothing stands higher at rest. A placed peg
 ## drops from PLACE_DROP above, which the camera's margin absorbs.
-func board_height() -> float: return Placeholders.SOCKET_H + Placeholders.PEG_H + FRAME_SLACK
+func board_height() -> float: return Placeholders.PEG_SEAT + Placeholders.PEG_H + FRAME_SLACK
 func plane_height() -> float: return Placeholders.SOCKET_H
 func board_margin() -> float: return Platform.LIP
 func board_depth() -> float: return Placeholders.PLATFORM_H
@@ -215,8 +222,8 @@ func pick(i: int) -> bool:
 			if peg == null:
 				continue
 			Motion.stop(_peg_tw[g][s])
-			peg.position.y = Placeholders.SOCKET_H
-			_peg_tw[g][s] = Motion.hop(peg, NUDGE_HOP, NUDGE_TIME, 0.0, Placeholders.SOCKET_H)
+			peg.position.y = Placeholders.PEG_SEAT
+			_peg_tw[g][s] = Motion.hop(peg, NUDGE_HOP, NUDGE_TIME, 0.0, Placeholders.PEG_SEAT)
 		fx.cue("full")
 		return false
 	_row[slot] = i
@@ -364,7 +371,7 @@ func _build_scene() -> void:
 	_code_tw = []
 
 	var size := board_size()
-	board.add_child(Platform.build(size.x, size.y))
+	board.add_child(CodebreakScenery.dock(size.x, size.y))
 	fx = Fx.new()
 	board.add_child(fx)
 
@@ -497,10 +504,10 @@ func _place(g: int, s: int, colour: int, delay := 0.0, cue := true) -> void:
 	_clear_peg(g, s)
 	var peg := _make_peg(colour)
 	peg.name = "peg"
-	peg.position = Vector3(0.0, Placeholders.SOCKET_H + PLACE_DROP, 0.0)
+	peg.position = Vector3(0.0, Placeholders.PEG_SEAT + PLACE_DROP, 0.0)
 	_breaths[g][s].add_child(peg)
 	_pegs[g][s] = peg
-	var tw: Tween = Motion.settle(peg, "position:y", Placeholders.SOCKET_H, PLACE_TIME, delay, true)
+	var tw: Tween = Motion.settle(peg, "position:y", Placeholders.PEG_SEAT, PLACE_TIME, delay, true)
 	if tw != null:
 		tw.finished.connect(_on_peg_landed.bind(g, s))
 		_peg_tw[g][s] = tw
@@ -510,7 +517,7 @@ func _place(g: int, s: int, colour: int, delay := 0.0, cue := true) -> void:
 		fx.cue("place")
 
 func _on_peg_landed(g: int, s: int) -> void:
-	fx.puff(_cell(g, s, Placeholders.SOCKET_H))
+	fx.puff(_cell(g, s, Placeholders.PEG_SEAT))
 	fx.cue("land")
 
 ## Removes the peg on (g, s) at once, no motion.
@@ -676,16 +683,16 @@ func _settle(g: int, s: int) -> void:
 	pivot.rotation.z = 0.0
 	var peg: Node3D = _pegs[g][s]
 	if peg != null:
-		peg.position.y = Placeholders.SOCKET_H
+		peg.position.y = Placeholders.PEG_SEAT
 		peg.scale = Vector3.ONE
 
 ## The board arrives: the platform rises and rings the water, the sockets and
 ## slabs pop in along a diagonal wave, then the lids drop onto the code row.
 func _enter() -> void:
 	_stop_entrance()
-	var platform: Node3D = board.get_node("Platform")
-	platform.position.y = -ENTER_DROP
-	var rise: Tween = Motion.settle(platform, "position:y", 0.0, ENTER_PLATFORM)
+	var dock: Node3D = board.get_node("Dock")
+	dock.position.y = -ENTER_DROP
+	var rise: Tween = Motion.settle(dock, "position:y", 0.0, ENTER_PLATFORM)
 	if rise != null:
 		_entrance.append(rise)
 		var splash := board.create_tween()
@@ -721,9 +728,9 @@ func _stop_entrance() -> void:
 	_entrance = []
 	if _pivots.is_empty():
 		return
-	var platform: Node3D = board.get_node_or_null("Platform")
-	if platform != null:
-		platform.position.y = 0.0
+	var dock: Node3D = board.get_node_or_null("Dock")
+	if dock != null:
+		dock.position.y = 0.0
 	for g in max_guesses:
 		for s in length:
 			_pivots[g][s].scale = Vector3.ONE
@@ -735,7 +742,7 @@ func _stop_entrance() -> void:
 ## Rings the water under the board, when there is a stage to ask.
 func _splash() -> void:
 	if _stage != null and is_instance_valid(_stage) and _stage.has_method("splash"):
-		_stage.splash(board.global_position)
+		_stage.splash(board.to_global(SPLASH_AT))
 
 ## The guess matched: the lids slide off one by one and the winning row's
 ## pegs hop in a wave. Its sockets keep the active tint; the breathing stops.
@@ -752,8 +759,8 @@ func _on_solved() -> void:
 		if peg == null:
 			continue
 		Motion.stop(_peg_tw[g][s])
-		peg.position.y = Placeholders.SOCKET_H
-		_peg_tw[g][s] = Motion.hop(peg, SOLVE_HOP, SOLVE_TIME, Motion.stagger(s, SOLVE_STAGGER), Placeholders.SOCKET_H)
+		peg.position.y = Placeholders.PEG_SEAT
+		_peg_tw[g][s] = Motion.hop(peg, SOLVE_HOP, SOLVE_TIME, Motion.stagger(s, SOLVE_STAGGER), Placeholders.PEG_SEAT)
 	fx.cue("solved")
 
 ## Out of guesses: the lids slide off to show the code, the timer stops, and
