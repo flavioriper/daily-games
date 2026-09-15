@@ -14,15 +14,18 @@ const Placeholders = preload("res://core/placeholders.gd")
 ## depth of a rim piece.
 const LIP := 0.5
 
-static func build(cols: int, rows: int) -> Node3D:
+## `slab` is the model stretched under the rim; "" lays the rim alone, for a
+## board that brings its own floor (Code Break's plank deck).
+static func build(cols: int, rows: int, slab := "platform") -> Node3D:
 	var root := Node3D.new()
 	root.name = "Platform"
 
-	var slab := Models.instance("platform")
-	slab.name = "Slab"
-	slab.scale = Vector3(cols + 2.0 * LIP, 1.0, rows + 2.0 * LIP)
-	slab.position = Vector3(0.0, -Placeholders.PLATFORM_H, 0.0)
-	root.add_child(slab)
+	if slab != "":
+		var slab_node := Models.instance(slab)
+		slab_node.name = "Slab"
+		slab_node.scale = Vector3(cols + 2.0 * LIP, 1.0, rows + 2.0 * LIP)
+		slab_node.position = Vector3(0.0, -Placeholders.PLATFORM_H, 0.0)
+		root.add_child(slab_node)
 
 	var hx := cols * 0.5
 	var hz := rows * 0.5
