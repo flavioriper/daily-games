@@ -94,6 +94,15 @@ const PUZZLES := [
 		"script": "res://puzzles/nonogram3d.gd",
 		"difficulties": [0, 1, 2],
 	},
+	{
+		"id": "horse",
+		"title": "Horse Pen",
+		"blurb": "Fence the horse in, and keep as much meadow as you can.",
+		"motto": "Pen the wandering horse",
+		"footer": "Fence · Enclose · Keep",
+		"script": "res://puzzles/horse3d.gd",
+		"difficulties": [0, 1, 2],
+	},
 ]
 
 static func find(id: String) -> Dictionary:

@@ -52,6 +52,12 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # clue_stone, Tents' cairn, Untangle's post.
 "$BLENDER" -b art/grids.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Mosaic_Tile Plank
+# Horse Pen: three collections in one .blend, each begun from a BlenderKit
+# asset and cut down to the contract in the live Blender session -- the horse,
+# one cell of timber fence, and an apple. The meadow is Tents' turf_pad and a
+# pond is Shikaku's plot_pad under the water material.
+"$BLENDER" -b art/horse.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Horse Fence Apple
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

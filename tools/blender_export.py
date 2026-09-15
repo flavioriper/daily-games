@@ -104,6 +104,14 @@ LIMITS = {
     # length to model -- the same arrangement `wall_edge` has.
     "mosaic_tile": (1.0, 1.0, 0.16),
     "plank": (1.0, 0.34, 0.14),
+    # Horse Pen (the design agreed 2026-09-15): the horse, standing in profile
+    # along X on one cell; one cell's length of timber fence, exactly a cell
+    # long so a run of fences reads as one unbroken rail; and an apple. The
+    # meadow is Tents' `turf_pad` and a pond is Shikaku's `plot_pad` wearing
+    # the water material, so neither needs a row.
+    "horse": (0.9, 0.9, 0.9),
+    "fence": (1.0, 0.3, 0.5),
+    "apple": (0.45, 0.45, 0.45),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -118,7 +126,7 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # stretched along X alone, so its length must be exact while its thickness is
 # the artist's to choose inside the LIMITS row.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5),
-    "wall_edge": (1.0, None), "plank": (1.0, None)}
+    "wall_edge": (1.0, None), "plank": (1.0, None), "fence": (1.0, None)}
 # A shape whose openings cancel (an opposite pair, or all four) keeps its
 # mass centred on its hub, and must pass the strict origin-at-centre check
 # below -- pipe_straight and pipe_cross stay off this set on purpose. One

@@ -40,9 +40,16 @@ art/*.blend
 # Nonogram's mosaic tile and One Line's plank. Both boards borrow everything
 # else they stand on from Shikaku, Tents and Untangle.
 !art/grids.blend
+# Horse Pen: the horse, the fence and the apple, each cut down from a
+# BlenderKit asset in Blender and kept as the source.
+!art/horse.blend
 
 # Python bytecode from running the tools
 __pycache__/
 
 # Subagent-driven-development scratch (ledger, briefs, review packages)
 .superpowers/
+
+# BlenderKit keeps a local copy of every downloaded asset beside the .blend
+# it was pulled into; the cut-down model in the tracked .blend is the source.
+art/assets/

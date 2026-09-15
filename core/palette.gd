@@ -133,6 +133,22 @@ const PLANK_BARE := SLATE
 const PLANK_LAID := WOOD
 const POST_SPENT := STONE_GIVEN   # a post with no line left to walk
 
+# Horse Pen (the design agreed 2026-09-15): a meadow of Tents' turf with a
+# few ponds sunk into it, a chestnut horse standing on it, a couple of apples
+# lying about, and the timber fences the player builds. A fence a hint built
+# is duller timber, the language every board uses for a given. The meadow the
+# horse can reach is shown, on demand, as trampled grass: paler and yellower
+# than the turf, far enough off it to survive the toon ramp.
+const HIDE        := Color("a8683c")   # the horse's coat
+const MANE        := Color("4b3222")   # mane and tail
+const HORSE_EYE   := Color("2a2622")
+const TIMBER      := Color("c49a63")   # a fence the player built
+const TIMBER_LOCK := Color("a1825a")   # a fence a hint built, so it reads as given
+const FRUIT       := Color("e04a3f")
+const STEM        := Color("6b4a2e")
+const APPLE_LEAF  := Color("5fa04a")
+const TURF_REACH  := Color("dde08a")   # meadow the horse can still reach
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

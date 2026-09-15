@@ -16,7 +16,8 @@ const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
 	"plot_pad": 0.15, "wall_edge": 0.25, "wall_post": 0.3, "clue_stone": 0.24,
 	"turf_pad": 0.12, "camp_tree": 0.8, "tent": 0.45, "cairn": 0.3,
 	"wall_block": 0.44, "lantern": 0.55,
-	"mosaic_tile": 0.16, "plank": 0.14}
+	"mosaic_tile": 0.16, "plank": 0.14,
+	"horse": 0.9, "fence": 0.5, "apple": 0.45}
 
 ## Footprint budget (X by Z) for the slots that are not one cell. Balance's
 ## scale spans its whole band by design -- the beam reaches a pan each way and
@@ -27,7 +28,8 @@ const FOOTPRINT := {"scale_beam": Vector2(3.2, 0.3), "scale_pan": Vector2(1.3, 1
 	"wall_post": Vector2(0.3, 0.3), "clue_stone": Vector2(0.7, 0.7),
 	"camp_tree": Vector2(0.7, 0.7), "tent": Vector2(0.7, 0.7),
 	"cairn": Vector2(0.5, 0.5), "lantern": Vector2(0.6, 0.6),
-	"plank": Vector2(1.0, 0.34)}
+	"plank": Vector2(1.0, 0.34),
+	"horse": Vector2(0.9, 0.9), "fence": Vector2(1.0, 0.3), "apple": Vector2(0.45, 0.45)}
 
 ## Every layer (material name) each slot must carry, sorted, matching
 ## docs/art/blender-contract.md's table exactly. Where `_test_slots` used to
@@ -56,7 +58,9 @@ const LAYERS := {"tile": ["Moon", "Slate_flat", "Stone", "Sun"],
 	"turf_pad": ["Turf"], "camp_tree": ["Bark", "Leaf"],
 	"tent": ["Canvas", "Door_flat"], "cairn": ["Pebble"],
 	"wall_block": ["Block", "Num_flat"], "lantern": ["Glass", "Iron"],
-	"mosaic_tile": ["Mosaic"], "plank": ["Plank"]}
+	"mosaic_tile": ["Mosaic"], "plank": ["Plank"],
+	"horse": ["Eye_flat", "Hide", "Mane"], "fence": ["Timber"],
+	"apple": ["Fruit", "Leaf_flat", "Stem_flat"]}
 
 static func run(t) -> void:
 	_test_slots(t)
@@ -86,7 +90,8 @@ static func _test_slots(t) -> void:
 		"plot_pad", "wall_edge", "wall_post", "clue_stone",
 		"turf_pad", "camp_tree", "tent", "cairn",
 		"wall_block", "lantern",
-		"mosaic_tile", "plank"],
+		"mosaic_tile", "plank",
+		"horse", "fence", "apple"],
 		"slot list matches every board's design")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
@@ -125,7 +130,9 @@ static func _test_slots(t) -> void:
 			"turf_pad": ["Turf"], "camp_tree": ["Bark", "Leaf"],
 			"tent": ["Canvas"], "cairn": ["Pebble"],
 			"wall_block": ["Block"], "lantern": ["Glass", "Iron"],
-			"mosaic_tile": ["Mosaic"], "plank": ["Plank"]}.get(slot, [])
+			"mosaic_tile": ["Mosaic"], "plank": ["Plank"],
+			"horse": ["Hide", "Mane"], "fence": ["Timber"],
+			"apple": ["Fruit"]}.get(slot, [])
 		# Held past node.free() below: a pipe's Flow_flat override is a fresh
 		# ShaderMaterial with no other owner (Models._dress, one per instance so
 		# each cell drives its own `wet`). Under the headless dummy renderer only,

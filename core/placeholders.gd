@@ -310,6 +310,22 @@ const MOSAIC_H := 0.12
 const PLANK_W := 0.34
 const PLANK_H := 0.10
 
+## Horse Pen pieces (the design agreed 2026-09-15). The meadow is Tents' turf
+## and a pond is Shikaku's plot_pad sunk under the water material, so the new
+## slots are the horse itself, standing in profile along X so the board camera
+## sees its silhouette; one cell's length of timber fence, exactly a cell long
+## so a run of fences reads as one rail; and an apple. The export cuts each
+## down from a BlenderKit asset; these are the stand-ins.
+const HORSE_L := 0.9
+const HORSE_W := 0.28
+const HORSE_H := 0.88
+const FENCE_H := 0.42
+const FENCE_T := 0.06
+const FENCE_POST := 0.08
+const FENCE_RAIL_H := 0.07
+const APPLE_R := 0.17
+const APPLE_STEM_H := 0.09
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -343,6 +359,9 @@ static func make(slot: String) -> Node3D:
 		"lantern": return _lantern()
 		"mosaic_tile": return _mosaic_tile()
 		"plank": return _plank()
+		"horse": return _horse()
+		"fence": return _fence()
+		"apple": return _apple()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -1150,5 +1169,77 @@ static func _plank() -> Node3D:
 	root.name = "plank"
 	root.add_child(_layer("Plank_Body", _bar(1.0, PLANK_W, PLANK_H),
 		"Plank", Pal.PLANK_BARE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Horse Pen pieces ---
+
+## A blocky horse in profile, facing +X: body, neck, head and four legs as one
+## `Hide` layer; mane and tail as one `Mane` layer; two eyes as a flat layer.
+## Only the silhouette matters -- the export is a real horse.
+static func _horse() -> Node3D:
+	var root := Node3D.new()
+	root.name = "horse"
+	var leg_h := HORSE_H * 0.42
+	var body_h := HORSE_H * 0.34
+	var hide: Array = [
+		{"mesh": _bar(0.62, HORSE_W, body_h),
+			"xform": Transform3D(Basis(), Vector3(-0.08, leg_h, 0.0))},
+		{"mesh": _bar(0.2, HORSE_W * 0.7, HORSE_H * 0.36),
+			"xform": Transform3D(Basis(Vector3.BACK, -0.5), Vector3(0.26, leg_h + body_h * 0.5, 0.0))},
+		{"mesh": _bar(0.26, HORSE_W * 0.72, 0.16),
+			"xform": Transform3D(Basis(), Vector3(0.32, HORSE_H - 0.16, 0.0))},
+	]
+	for x in [-0.32, -0.16, 0.06, 0.2]:
+		for z in [-HORSE_W * 0.3, HORSE_W * 0.3]:
+			hide.append({"mesh": _bar(0.09, 0.09, leg_h + 0.02),
+				"xform": Transform3D(Basis(), Vector3(x, 0.0, z))})
+	root.add_child(_layer("Horse_Body", _merge(hide), "Hide", Pal.HIDE, Vector3.ZERO))
+	var mane: Array = [
+		{"mesh": _bar(0.22, 0.06, 0.08),
+			"xform": Transform3D(Basis(Vector3.BACK, -0.5), Vector3(0.2, HORSE_H - 0.1, 0.0))},
+		{"mesh": _bar(0.06, 0.06, 0.34),
+			"xform": Transform3D(Basis(), Vector3(-0.42, leg_h - 0.1, 0.0))},
+	]
+	root.add_child(_layer("Horse_Mane", _merge(mane), "Mane", Pal.MANE, Vector3.ZERO))
+	var eyes: Array = []
+	for z in [-HORSE_W * 0.36, HORSE_W * 0.36]:
+		eyes.append({"mesh": _bar(0.04, 0.006, 0.04),
+			"xform": Transform3D(Basis(), Vector3(0.38, HORSE_H - 0.1, z))})
+	root.add_child(_layer("Horse_Eye", _merge(eyes), "Eye_flat", Pal.HORSE_EYE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## One cell of timber fence along X: two rails between a post at each end, one
+## `Timber` layer. Exactly a cell long, posts included, so a run of fences
+## meets post to post.
+static func _fence() -> Node3D:
+	var root := Node3D.new()
+	root.name = "fence"
+	var parts: Array = []
+	for x in [-0.5 + FENCE_POST * 0.5, 0.5 - FENCE_POST * 0.5]:
+		parts.append({"mesh": _bar(FENCE_POST, FENCE_POST, FENCE_H),
+			"xform": Transform3D(Basis(), Vector3(x, 0.0, 0.0))})
+	for y in [FENCE_H * 0.36, FENCE_H * 0.72]:
+		parts.append({"mesh": _bar(1.0, FENCE_T, FENCE_RAIL_H),
+			"xform": Transform3D(Basis(), Vector3(0.0, y, 0.0))})
+	root.add_child(_layer("Fence_Timber", _merge(parts), "Timber", Pal.TIMBER, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## An apple: a squat ball, a stem and one flat leaf. Stem and leaf are `_flat`:
+## both are thinner than the outline shell, which would swallow them whole.
+static func _apple() -> Node3D:
+	var root := Node3D.new()
+	root.name = "apple"
+	var squat := Basis().scaled(Vector3(1.0, 0.92, 1.0))
+	var top := APPLE_R * 0.92 * 2.0
+	root.add_child(_layer("Apple_Fruit", _merge([{"mesh": _ball(APPLE_R),
+		"xform": Transform3D(squat, Vector3(0.0, APPLE_R * 0.92, 0.0))}]),
+		"Fruit", Pal.FRUIT, Vector3.ZERO))
+	root.add_child(_layer("Apple_Stem", _cylinder(0.018, APPLE_STEM_H, 8), "Stem_flat", Pal.STEM,
+		Vector3(0.0, top - 0.02 + APPLE_STEM_H * 0.5, 0.0)))
+	root.add_child(_layer("Apple_Leaf", _bar(0.13, 0.06, 0.006), "Leaf_flat", Pal.APPLE_LEAF,
+		Vector3(0.08, top + 0.02, 0.0)))
 	Toon.apply_to(root)
 	return root

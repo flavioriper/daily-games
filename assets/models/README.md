@@ -23,6 +23,9 @@ any that are missing:
 | `pipe_tee` | a pipe with three openings, modelled `UP \| RIGHT \| DOWN`; same three layers as `pipe_cap` |
 | `pipe_cross` | a pipe with all four openings, modelled `UP \| RIGHT \| DOWN \| LEFT`; same three layers as `pipe_cap` |
 | `valve` | the bolted ring the source and the drain wear: `Metal` torus and four `Bolt_flat` bolts inlaid in the pad |
+| `horse` | Horse Pen's horse in profile facing +X: `Hide` body, `Mane` mane and tail, `Eye_flat` eyes; cut down from a BlenderKit asset in `art/horse.blend` |
+| `fence` | one cell of timber fence along X, `Timber`, exactly a cell long so runs meet post to post |
+| `apple` | the meadow's bonus: `Fruit` with a flat `Stem_flat` and `Leaf_flat` |
 
 `tile` is recoloured **by material name**: its `Stone` body and `Slate_flat`
 moon faces take the colour the cell is entitled to -- darker when it is a

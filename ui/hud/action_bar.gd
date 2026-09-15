@@ -12,6 +12,7 @@ signal pick(index: int)
 
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const LineCard = preload("res://ui/hud/line_card.gd")
+const StatusCard = preload("res://ui/hud/status_card.gd")
 const PaletteTray = preload("res://ui/hud/palette_tray.gd")
 
 const BUTTON := Vector2(260, 130)
@@ -19,6 +20,7 @@ const ALL_GOOD_TIME := 1.2
 
 var tray: PanelContainer
 var line_card: PanelContainer
+var status_card: PanelContainer
 var reset_button: Button
 var check_button: Button
 var _row: HBoxContainer
@@ -44,6 +46,9 @@ func _build() -> void:
 	_inner.add_child(_row)
 	line_card = LineCard.new()
 	_row.add_child(line_card)
+	status_card = StatusCard.new()
+	status_card.visible = false
+	_row.add_child(status_card)
 	reset_button = IconButton.new("reset", "Reset", "DarkButton")
 	reset_button.custom_minimum_size = BUTTON
 	reset_button.pressed.connect(func() -> void: reset.emit())
@@ -59,6 +64,8 @@ func refresh(puzzle) -> void:
 	tray.visible = caps.has("palette")
 	tray.refresh(puzzle if tray.visible else null)
 	line_card.visible = caps.has("lines")
+	status_card.visible = caps.has("status")
+	status_card.refresh(puzzle if status_card.visible else null)
 	check_button.visible = caps.has("check")
 	check_button.set_enabled(not done)
 	line_card.refresh(puzzle)

@@ -72,6 +72,7 @@ func _note(id: String) -> String:
 		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
 		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
+		"horse": return "%d fences, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 	return ""
 
 # --- per-puzzle solvers, all driven through touch ---
@@ -88,6 +89,7 @@ func _solve(id: String) -> void:
 		"lightup": _solve_lightup()
 		"oneline": _solve_oneline()
 		"nonogram": _solve_nonogram()
+		"horse": _solve_horse()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -353,3 +355,26 @@ func _solve_nonogram() -> void:
 				return
 			if int(_puzzle._bitmap[y][x]) == 1:
 				_tap_local(_puzzle.cell_to_local(y, x))
+
+func _solve_horse() -> void:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every meadow cell centre must project inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in h:
+		for c in w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint (builds and pins a fence), then one
+	# check, which shows where the horse can still get to.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	# Build the generator's own pen, fence by fence.
+	for cell in _puzzle._solution_walls:
+		if _puzzle.is_done():
+			return
+		if _puzzle._walls.has(cell):
+			continue
+		_tap_local(_puzzle.cell_to_local(cell.y, cell.x))
