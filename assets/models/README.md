@@ -41,7 +41,11 @@ The tile and the mascots are not: they are modelled by hand in `art/tile.blend`
 and `art/mascot_<name>.blend` (both tracked in git) and exported from there as
 a collection, one `.glb` holding every layer. The same script exports the tile
 in the same run. Code Break's four pieces are hand-modelled too, in
-`art/codebreak.blend`, one collection per slot.
+`art/codebreak.blend`, one collection per slot. So are Pipes' seven in
+`art/pipes.blend`, Balance's ten in `art/balance.blend`, Untangle's post in
+`art/untangle.blend` and Shikaku's four in `art/shikaku.blend` (the plot
+floor, the dry-stone wall, the corner post and the marker stone, whose nine
+numerals are real glyphs converted to meshes rather than segment bars).
 
 Full rules: `docs/art/blender-contract.md`.
 Concept reference: `docs/art/concept-binairo-island.png`.

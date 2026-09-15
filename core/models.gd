@@ -13,7 +13,8 @@ const DIR := "res://assets/models/"
 const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
 	"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve",
 	"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
-	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post"]
+	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post",
+	"plot_pad", "wall_edge", "wall_post", "clue_stone"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -170,6 +171,11 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# The bolts are a 3 mm-tall disc lying flat on the pad -- too thin
 			# to throw a shadow anyone would ever see (task 6 fix 2/3).
 			set_shadow_off_named(node, "Bolt_flat")
+		"clue_stone":
+			# The carved numeral is a 3 mm-tall inlay lying flat on the
+			# marker's crown, the same waste as the plinth's: a shadow pass
+			# per instance, for a shadow no pixel of which could ever show.
+			set_shadow_off_named(node, "Num_flat")
 		"plinth":
 			# The numeral bars and the stack's well are 3 mm-tall inlays lying
 			# flat on the pad, the same waste as the valve's bolts: a shadow

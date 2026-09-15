@@ -52,8 +52,10 @@ const PUZZLES := [
 	{
 		"id": "shikaku",
 		"title": "Shikaku",
-		"blurb": "Cut the grid into numbered rectangles.",
-		"script": "res://puzzles/shikaku.gd",
+		"blurb": "Cut the field into numbered plots.",
+		"motto": "Every plot has its number",
+		"footer": "Divide · Count · Enclose",
+		"script": "res://puzzles/shikaku3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

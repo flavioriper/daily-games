@@ -60,6 +60,17 @@ const FLOW_DRY    := Color("3c4550")   # the water tube with nothing in it -- da
 	# that a dry sight hole read as a shadow on the chrome rather than as an
 	# empty pipe; see the spec's section 4 amendments.
 
+# Shikaku (the design agreed 2026-09-15): a field of plot floors divided by
+# dry-stone walls. A claimed plot's floor is tilled earth, a bare cell is the
+# island's own stone, and every wall and corner post is rock.
+const PLOT_BARE  := STONE        # a cell no rectangle has claimed yet
+const PLOT_SOIL  := Color("d3b98d")   # a claimed plot's tilled floor
+const PLOT_LOCK  := Color("c0a475")   # a plot a hint fixed, so it reads as given
+## Deeper than ROCK on purpose: a wall has to read as raised stone against
+## the tilled earth beside it, and at b9ab92 the two sat at the same lightness
+## so a plot looked bounded by pale tape rather than by a wall.
+const WALL_STONE := Color("8f8471")   # the dry-stone walls and their corner posts
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

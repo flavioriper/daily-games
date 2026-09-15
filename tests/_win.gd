@@ -67,7 +67,7 @@ func _note(id: String) -> String:
 		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
 		"pipes": return "%d turns, camera fit=%s, hud=%s" % [_puzzle.moves, _fit_ok, _hud_ok]
 		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
-		"shikaku": return "%d rectangles" % _puzzle._rects.size()
+		"shikaku": return "%d plots, camera fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents placed" % _puzzle._solution_tents.size()
 		"lightup": return "%d bulbs" % _puzzle._bulbs().size()
 		"oneline": return "%d lines traced" % _puzzle._done_edges.size()
@@ -250,14 +250,26 @@ func _cell_centre(origin: Vector2, cell: float, x: int, y: int) -> Vector2:
 	return Vector2(origin.x + (x + 0.5) * cell, origin.y + (y + 0.5) * cell)
 
 func _solve_shikaku() -> void:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every cell centre must project inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in h:
+		for c in w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint (draws and pins a plot), then one check.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	# Drag each solution rectangle corner to corner, exactly as a player would.
-	for r in _puzzle._solution:
+	for rect in _puzzle._solution:
 		if _puzzle.is_done():
 			return
-		var a := _cell_centre(_puzzle._origin, _puzzle._cell, r.position.x, r.position.y)
-		var b := _cell_centre(_puzzle._origin, _puzzle._cell,
-			r.position.x + r.size.x - 1, r.position.y + r.size.y - 1)
-		_drag_local(a, b)
+		_drag_local(_puzzle.cell_to_local(rect.position.y, rect.position.x),
+			_puzzle.cell_to_local(rect.position.y + rect.size.y - 1,
+				rect.position.x + rect.size.x - 1))
 
 func _solve_tents() -> void:
 	for t in _puzzle._solution_tents:

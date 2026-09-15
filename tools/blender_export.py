@@ -71,6 +71,16 @@ LIMITS = {
     # not a slot -- the board rebuilds it as a tube from its own simulation
     # every frame it moves, so there is nothing to export.
     "post": (0.5, 0.5, 0.7),
+    # Shikaku (the design agreed 2026-09-15): a plot floor, the dry-stone wall
+    # that divides two plots, the block that closes a corner, and the marker
+    # stone carrying the clue's numeral. `wall_edge` is modelled exactly one
+    # cell long because the board stretches it along X to cover a whole run of
+    # seam, the way the platform slab is stretched -- a short one would leave
+    # a gap at the end of every run.
+    "plot_pad": (1.0, 1.0, 0.15),
+    "wall_edge": (1.0, 0.25, 0.25),
+    "wall_post": (0.3, 0.3, 0.3),
+    "clue_stone": (0.7, 0.7, 0.24),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -81,7 +91,11 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # Slots the board tiles edge to edge, so the footprint must be exact, not
 # merely within budget: the platform is stretched by (cols + 1, rows + 1) and
 # the rim pieces are laid one per cell, where a short piece leaves a gap.
-EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5)}
+# A None dimension is not fixed, only budgeted: Shikaku's `wall_edge` is
+# stretched along X alone, so its length must be exact while its thickness is
+# the artist's to choose inside the LIMITS row.
+EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5),
+    "wall_edge": (1.0, None)}
 # A shape whose openings cancel (an opposite pair, or all four) keeps its
 # mass centred on its hub, and must pass the strict origin-at-centre check
 # below -- pipe_straight and pipe_cross stay off this set on purpose. One
@@ -170,11 +184,19 @@ def placement_problems(slot, lo, hi, origin):
         if abs(centre_x) > TOLERANCE or abs(centre_y) > TOLERANCE:
             found.append("origin not at footprint centre (off by %.3f, %.3f)" % (centre_x, centre_y))
     if slot in EXACT:
-        exact_x, exact_y = EXACT[slot]
-        if abs((hi.x - lo.x) - exact_x) > TOLERANCE or abs((hi.y - lo.y) - exact_y) > TOLERANCE:
-            found.append("%s footprint must be exactly %.1f x %.1f (got %.2f x %.2f)" % (slot, exact_x, exact_y, hi.x - lo.x, hi.y - lo.y))
+        exact = EXACT[slot]
+        span = (hi.x - lo.x, hi.y - lo.y)
+        for axis in (0, 1):
+            if exact[axis] is None:
+                # Free along this axis: budgeted like any other slot instead.
+                if slot in LIMITS and span[axis] > LIMITS[slot][axis] + TOLERANCE:
+                    found.append("%s span %.2f exceeds %.2f on %s" %
+                        (slot, span[axis], LIMITS[slot][axis], "XY"[axis]))
+            elif abs(span[axis] - exact[axis]) > TOLERANCE:
+                found.append("%s must be exactly %.2f on %s (got %.2f)" %
+                    (slot, exact[axis], "XY"[axis], span[axis]))
         # The platform's height is free (the board never stacks on it); the
-        # rim pieces keep the height budget from LIMITS.
+        # rim pieces and the walls keep the height budget from LIMITS.
         if slot in LIMITS and hi.z - lo.z > LIMITS[slot][2] + TOLERANCE:
             found.append("height %.2f exceeds %.2f" % (hi.z - lo.z, LIMITS[slot][2]))
     elif slot not in UNBOUNDED:

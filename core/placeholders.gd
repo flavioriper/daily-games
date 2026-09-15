@@ -196,6 +196,34 @@ const POST_CAP_H := 0.10
 const ROPE_Y := POST_H - 0.05
 const ROPE_R := 0.045
 
+## Shikaku pieces (the design agreed 2026-09-15). A cell is a plot floor slab
+## lying on the platform; a rectangle the player has drawn is ringed by
+## dry-stone walls standing on those slabs, and the clue is a numbered marker
+## stone in the middle of its cell. A wall stands where two different plots
+## meet, so the board lays one `wall_edge` per run of seam -- scaled along its
+## length, the way the platform slab is scaled -- and one `wall_post` wherever
+## runs meet or end.
+const PLOT_SIDE := 0.96
+const PLOT_H := 0.10
+## A wall is one piece long and sits across the seam, resting on the floor
+## slabs either side; WALL_T is its thickness, so half of it laps each slab.
+const WALL_T := 0.14
+const WALL_H := 0.20
+## The corner block, a little wider and taller than the walls it closes, so a
+## corner reads as a corner rather than as two bars crossing.
+const WALL_POST := 0.20
+const WALL_POST_H := 0.24
+## The clue: a low hexagonal marker stone with its numeral carved on top. Six
+## sides so it is neither the square of a Binairo cube nor the circle of a
+## pipe collar -- the board's pieces are told apart by silhouette first.
+const CLUE_R := 0.31
+const CLUE_H := 0.18
+## The numeral lying on the marker's crown, smaller than the plinth's since
+## the stone it sits on is a third of a plinth pad.
+const CLUE_NUM_W := 0.24
+const CLUE_NUM_H := 0.32
+const CLUE_NUM_BAR := 0.045
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -217,6 +245,10 @@ static func make(slot: String) -> Node3D:
 		"plinth": return _plinth()
 		"weight_disc": return _weight_disc()
 		"post": return _post()
+		"plot_pad": return _plot_pad()
+		"wall_edge": return _wall_edge()
+		"wall_post": return _wall_post()
+		"clue_stone": return _clue_stone()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -694,22 +726,22 @@ static func _plinth() -> Node3D:
 ## board camera looks from +Z, so -Z is up the screen and segment `a` goes
 ## there. Num_flat carries no outline, so the bars' split normals cost
 ## nothing.
-static func _digit_mesh(d: int) -> ArrayMesh:
+static func _digit_mesh(d: int, w := NUM_W, h := NUM_H, bar := NUM_BAR) -> ArrayMesh:
 	var thin := NUM_PROUD * 2.0
 	var y := NUM_PROUD
-	var half_h := NUM_H * 0.5
-	var quarter := NUM_H * 0.25
-	var across := Vector3(NUM_W, thin, NUM_BAR)
-	var down := Vector3(NUM_BAR, thin, half_h)
+	var half_h := h * 0.5
+	var quarter := h * 0.25
+	var across := Vector3(w, thin, bar)
+	var down := Vector3(bar, thin, half_h)
 	var bars := {
 		"a": [across, Vector3(0.0, y, -half_h)],
 		"g": [across, Vector3(0.0, y, 0.0)],
 		"d": [across, Vector3(0.0, y, half_h)],
-		"f": [down, Vector3(-NUM_W * 0.5, y, -quarter)],
-		"b": [down, Vector3(NUM_W * 0.5, y, -quarter)],
-		"e": [down, Vector3(-NUM_W * 0.5, y, quarter)],
-		"c": [down, Vector3(NUM_W * 0.5, y, quarter)],
-		"i": [Vector3(NUM_BAR, thin, NUM_H), Vector3(0.0, y, 0.0)],
+		"f": [down, Vector3(-w * 0.5, y, -quarter)],
+		"b": [down, Vector3(w * 0.5, y, -quarter)],
+		"e": [down, Vector3(-w * 0.5, y, quarter)],
+		"c": [down, Vector3(w * 0.5, y, quarter)],
+		"i": [Vector3(bar, thin, h), Vector3(0.0, y, 0.0)],
 	}
 	var parts: Array = []
 	for seg in NUM_SEGMENTS[clampi(d, 1, 9)]:
@@ -800,5 +832,61 @@ static func _post() -> Node3D:
 		Vector3(0.0, POST_H * 0.5, 0.0)))
 	root.add_child(_layer("Post_Cap", _cylinder(POST_CAP_R, POST_CAP_H, 20), "Cap", Pal.ACCENT,
 		Vector3(0.0, POST_H, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+# --- Shikaku pieces ---
+
+## A rectangular bar with shared smooth vertices, base at y = 0 and centred
+## on the origin: a four-sided prism turned 45 degrees and then stretched,
+## never a BoxMesh (see the file header), so the outline hull closes at its
+## corners. `length` runs along X, `width` along Z.
+static func _bar(length: float, width: float, height: float) -> ArrayMesh:
+	var basis := Basis(Vector3.UP, PI * 0.25).scaled(Vector3(length, height, width))
+	return _merge([{"mesh": _prism(0.5, 1.0),
+		"xform": Transform3D(basis, Vector3(0.0, height * 0.5, 0.0))}])
+
+## One cell's floor. Tinted by whether a rectangle has claimed the cell, so
+## its single layer carries the `Stone` name every tinted slab uses.
+static func _plot_pad() -> Node3D:
+	var root := Node3D.new()
+	root.name = "plot_pad"
+	root.add_child(_layer("Pad_Body", _bar(PLOT_SIDE, PLOT_SIDE, PLOT_H),
+		"Stone", Pal.PLOT_BARE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## One cell's length of dry-stone wall, running along X. The board scales it
+## along its length to cover a whole run of seam, so the placeholder is a
+## plain bar: nothing about it changes shape when it is stretched.
+static func _wall_edge() -> Node3D:
+	var root := Node3D.new()
+	root.name = "wall_edge"
+	root.add_child(_layer("Wall_Body", _bar(1.0, WALL_T, WALL_H),
+		"Wall", Pal.WALL_STONE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The block that closes a corner, a junction or the end of a wall run. Its
+## own layer name matches the walls' so tinting one tints both.
+static func _wall_post() -> Node3D:
+	var root := Node3D.new()
+	root.name = "wall_post"
+	root.add_child(_layer("Post_Block", _bar(WALL_POST, WALL_POST, WALL_POST_H),
+		"Wall", Pal.WALL_STONE, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The clue: a hexagonal marker stone carrying nine carved numerals, of which
+## the board shows the one matching its area, the way a plinth shows a weight.
+static func _clue_stone() -> Node3D:
+	var root := Node3D.new()
+	root.name = "clue_stone"
+	root.add_child(_layer("Clue_Body", _cylinder(CLUE_R, CLUE_H, 6), "Stone", Pal.STONE_GIVEN,
+		Vector3(0.0, CLUE_H * 0.5, 0.0)))
+	for d in range(1, 10):
+		root.add_child(_layer("Clue_Num_%d" % d,
+			_digit_mesh(d, CLUE_NUM_W, CLUE_NUM_H, CLUE_NUM_BAR), "Num_flat", Pal.SLATE,
+			Vector3(0.0, CLUE_H, 0.0)))
 	Toon.apply_to(root)
 	return root

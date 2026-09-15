@@ -29,6 +29,8 @@ art/*.blend
 !art/balance.blend
 # Untangle: the mooring post. The rope is not a model -- the board builds it.
 !art/untangle.blend
+# Shikaku's plot floor, dry-stone wall, corner post and marker stone.
+!art/shikaku.blend
 
 # Python bytecode from running the tools
 __pycache__/

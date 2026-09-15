@@ -31,6 +31,11 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # board rebuilds each one as a tube from its own simulation.
 "$BLENDER" -b art/untangle.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Post
+# Shikaku: four hand-modelled collections -- the plot floor, the dry-stone
+# wall, the block that closes a corner, and the marker stone with its nine
+# carved numerals.
+"$BLENDER" -b art/shikaku.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Plot_Pad Wall_Edge Wall_Post Clue_Stone
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2
