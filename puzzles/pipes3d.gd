@@ -101,6 +101,7 @@ var _flow: Dictionary = {}   # Vector2i -> that piece's pipe_flow ShaderMaterial
 var _turn_tw: Dictionary = {}
 var _dip_tw: Dictionary = {}
 var _fade_tw: Dictionary = {}
+var _pad_fade_tw: Dictionary = {}  # Vector2i -> the tween _fade_pad started on that pad
 var _leak_jets: Dictionary = {}  # Vector2i -> an Fx jet handle
 var _leak_at: Dictionary = {}    # Vector2i -> the world point that handle is aimed at
 var _source_jet: int = -1
@@ -145,7 +146,6 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_scene()
 	_recompute_live()
 	_paint_all()
-	_run_jets()
 	_enter()
 	# _ready framed the default 5 x 7; the difficulty may have changed it.
 	_refit()
@@ -283,6 +283,14 @@ func _meets(cell: Vector2i, bit: int) -> bool:
 ## {"cell": Vector2i, "at": Vector3} at that mouth, nearest the source first
 ## and at most MAX_LEAKS of them. Water pouring onto the stone is the feedback
 ## that shows where the network is still broken.
+## Narrowed from the spec's prose ("each gets a jet at that mouth"): at most
+## one leak, and so one jet, per cell -- the `break` right after a cell's
+## first unmatched opening is found stops it looking for a second one on the
+## same cell. A cross with three open, unmatched mouths shows one jet, not
+## three. That is the right trade against MAX_LEAKS's four-slot budget (a
+## handful of pathological cells could otherwise burn the whole pool on one
+## cell and starve every other leak on the board); see the spec's section 4
+## for the amendment recording this.
 func _leaks() -> Array:
 	var cells: Array = _live.keys()
 	cells.sort_custom(_nearer_source)
@@ -296,7 +304,7 @@ func _leaks() -> Array:
 			out.append({"cell": cell,
 				"at": _cell_at(cell, Placeholders.PAD_H + Placeholders.TUBE_Y + JET_LIFT)
 					+ Vector3(d.x, 0.0, d.y) * (Placeholders.ARM_LEN + JET_OUT)})
-			break
+			break  # one jet per cell -- see the docstring above
 		if out.size() >= MAX_LEAKS:
 			break
 	return out
@@ -307,8 +315,12 @@ func _nearer_source(a: Vector2i, b: Vector2i) -> bool:
 	return a.y * w + a.x < b.y * w + b.x
 
 func _stop_all() -> void:
-	_stop_entrance()
-	for d in [_turn_tw, _dip_tw, _fade_tw]:
+	# false: a rebuild's own teardown, not a genuine interruption -- _live,
+	# _mask and w/h may already belong to the next board (build() reassigns
+	# them before calling _build_scene), so running the old jets here against
+	# the new dimensions is what to avoid.
+	_stop_entrance(false)
+	for d in [_turn_tw, _dip_tw, _fade_tw, _pad_fade_tw]:
 		for key in d:
 			Motion.stop(d[key])
 		d.clear()
@@ -374,7 +386,13 @@ func _build_scene() -> void:
 	for cell in [source(), drain()]:
 		var valve := Models.instance("valve")
 		valve.position.y = Placeholders.PAD_H
-		_pivots[cell].add_child(valve)
+		# Parented to the pad, not the pivot (finding 1): the pad's own scale
+		# hides the valve along with everything else on it before the
+		# entrance reaches this cell, and _enter() gives the valve its own
+		# further-delayed pop so it still lands last, after the piece, not
+		# with the pad. Position is still expressed in the shared pivot-space
+		# height, since the pad carries no offset of its own.
+		_pads[cell].add_child(valve)
 
 ## The shape a mask needs: the number of openings, with two split by whether
 ## they face each other. A maskless cell cannot occur on a spanning tree of
@@ -469,12 +487,15 @@ func _flood() -> void:
 	_run_jets()
 	if _live.has(drain()) and not drain_was:
 		fx.sparkle(_cell_at(drain(), Placeholders.PAD_H + SPARKLE_LIFT), Pal.WATER_HI)
-		var ring: Node3D = _pivots[drain()].get_node_or_null("valve")
+		var ring: Node3D = _pads[drain()].get_node_or_null("valve")
 		if ring != null:
 			Motion.squash(ring, SQUASH, SQUASH_TIME)
 		fx.cue("drain")
-	else:
+	elif dry_base >= 0:
+		fx.cue("drain_out")
+	elif wet_base >= 0:
 		fx.cue("flow")
+	# else: the tap changed nothing live -- no cue, per the motion table.
 
 ## Applies wetness `t` to cell's pipe at once: the shell and the collar tints
 ## and the flow material's `wet` uniform. The one place that touches those
@@ -509,9 +530,10 @@ func _fade_pad(cell: Vector2i, from: Color, to: Color) -> void:
 	if from == to:
 		return
 	var pad: Node3D = _pads[cell]
+	Motion.stop(_pad_fade_tw.get(cell))
 	var setter := func(t: float) -> void:
 		Models.tint_named(pad, "Stone", from.lerp(to, t))
-	Motion.fade(pad, setter, 0.0, 1.0, FADE_TIME, FADE_STEPS)
+	_pad_fade_tw[cell] = Motion.fade(pad, setter, 0.0, 1.0, FADE_TIME, FADE_STEPS)
 
 ## Points every jet at where water is actually leaving a pipe: one at the
 ## source valve for the whole puzzle, and one at each fed mouth that meets
@@ -603,7 +625,7 @@ func on_board_press(hit: Vector3) -> void:
 ## The board arrives: the platform rises out of the water, the pads pop in on
 ## a diagonal wave and the pipes drop onto them a beat later.
 func _enter() -> void:
-	_stop_entrance()
+	_stop_entrance(false)
 	var platform: Node3D = board.get_node("Platform")
 	platform.position.y = -ENTER_DROP
 	var rise: Tween = Motion.settle(platform, "position:y", 0.0, ENTER_PLATFORM)
@@ -628,24 +650,65 @@ func _enter() -> void:
 				ENTER_PLATFORM + PIECE_DELAY + wave)
 			if drop != null:
 				_entrance.append(drop)
+			# The two valves pop last (spec section 4's motion table): after
+			# this cell's own piece has landed, not with the pad. A valve is
+			# the pad's own child (finding 1), so it is already hidden by the
+			# pad's 0.01 scale before the pad pops; giving it its own local
+			# 0.01 -> 1 pop, delayed past the piece's landing, keeps it hidden
+			# through the pad's pop too and brings it in on its own beat.
+			var valve: Node3D = pad.get_node_or_null("valve")
+			if valve != null:
+				valve.scale = Vector3.ONE * 0.01
+				var valve_pop: Tween = Motion.settle(valve, "scale", Vector3.ONE, ENTER_POP,
+					ENTER_PLATFORM + PIECE_DELAY + wave + ENTER_POP)
+				if valve_pop != null:
+					_entrance.append(valve_pop)
+	# The source jet is held back so it does not start pouring before the
+	# board it pours onto -- and the valve it pours from -- have arrived
+	# (finding 1). Held until the last valve would have popped: the deepest
+	# stagger, plus the piece drop it waits on, plus its own pop. Under
+	# reduce-motion every entrance tween above already set its target at
+	# once, and Fx.jet itself refuses to start under reduce-motion anyway, so
+	# there is nothing to hold back.
+	if Motion.reduce:
+		_run_jets()
+	else:
+		var jets_delay: float = ENTER_PLATFORM + PIECE_DELAY \
+			+ Motion.stagger((w - 1) + (h - 1), ENTER_STAGGER) + ENTER_POP * 2.0
+		var jets_tw := board.create_tween()
+		jets_tw.tween_interval(jets_delay)
+		jets_tw.tween_callback(_run_jets)
+		_entrance.append(jets_tw)
 	fx.cue("enter")
 
-## Cuts the entrance short: everything lands where it was going.
-func _stop_entrance() -> void:
+## Cuts the entrance short: everything lands where it was going. A valve pops
+## on its own delayed tween now (finding 1's fix round 2: it must land after
+## the piece, not with the pad), so its scale is settled here explicitly
+## alongside its pad's -- a Reset or a tap mid-entrance never leaves one at
+## scale 0.01. `also_run_jets` is false only from a rebuild's own teardown
+## (_stop_all), where _live may already be stale against the next board's
+## dimensions; every other caller (a tap, a reset) wants the jets caught up
+## at once.
+func _stop_entrance(also_run_jets := true) -> void:
 	for tw in _entrance:
 		Motion.stop(tw)
 	_entrance = []
 	for cell in _pads:
-		_pads[cell].scale = Vector3.ONE
+		var pad: Node3D = _pads[cell]
+		pad.scale = Vector3.ONE
 		_spins[cell].position.y = Placeholders.PAD_H
+		var valve: Node3D = pad.get_node_or_null("valve")
+		if valve != null:
+			valve.scale = Vector3.ONE
 	var platform: Node3D = board.get_node_or_null("Platform")
 	if platform != null:
 		platform.position.y = 0.0
+	if also_run_jets:
+		_run_jets()
 
 func _splash() -> void:
-	var stage := get_tree().get_first_node_in_group("stage")
-	if stage != null:
-		stage.splash(board.global_position)
+	if _stage != null and is_instance_valid(_stage) and _stage.has_method("splash"):
+		_stage.splash(board.global_position)
 
 ## Every cell's flow speed at once; the win races the water for a moment.
 func _set_flow_speed(s: float) -> void:

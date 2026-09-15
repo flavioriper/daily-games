@@ -88,6 +88,15 @@ const COLLAR_R := 0.175
 const COLLAR_W := 0.06
 const MOUTH_AT := 0.468
 const CORE_R := 0.115
+## The shell's own cap at the mouth (r = TUBE_R) is the pipe's visible rim
+## and stays exactly at ARM_LEN. The water tube's cap (r = CORE_R) and the
+## mouth collar's outward cap (r = COLLAR_R) both land exactly on that same
+## plane by construction (MOUTH_AT + COLLAR_W / 2 == ARM_LEN) -- three
+## coplanar front-facing discs that z-fight over their shared inner radius.
+## Both are pulled back by this much so only the shell's rim is left on the
+## mouth plane; the committed .glb has no caps here at all, so this only
+## shows on a fresh clone before the export is imported.
+const CAP_CLEAR := 0.002
 const VALVE_IN := 0.20
 const VALVE_OUT := 0.30
 ## A torus of that inner and outer radius stands (outer - inner) tall.
@@ -469,9 +478,10 @@ static func _pipe(slot: String, mask: int) -> Node3D:
 		shell.append(_yawed(_along(_cylinder(TUBE_R, GAP_IN, 16), GAP_IN * 0.5), yaw))
 		shell.append(_yawed(_along(_cylinder(TUBE_R, ARM_LEN - GAP_OUT, 16),
 			(GAP_OUT + ARM_LEN) * 0.5), yaw))
-		for d in [GAP_IN, GAP_OUT, MOUTH_AT]:
+		for d in [GAP_IN, GAP_OUT, MOUTH_AT - CAP_CLEAR]:
 			collar.append(_yawed(_along(_cylinder(COLLAR_R, COLLAR_W, 16), d), yaw))
-		water.append(_yawed(_along(_cylinder(CORE_R, ARM_LEN, 16), ARM_LEN * 0.5), yaw))
+		var water_len := ARM_LEN - CAP_CLEAR
+		water.append(_yawed(_along(_cylinder(CORE_R, water_len, 16), water_len * 0.5), yaw))
 	root.add_child(_layer("Pipe_Shell", _merge(shell), "Steel", Pal.STEEL, Vector3.ZERO))
 	root.add_child(_layer("Pipe_Collar", _merge(collar), "Collar", Pal.STEEL_HI, Vector3.ZERO))
 	root.add_child(_layer("Pipe_Water", _merge(water), "Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))

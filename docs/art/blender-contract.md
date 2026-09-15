@@ -87,7 +87,14 @@ leaves a gap in the ring. `water` is unbounded.
    crescent slate and show nothing. Slots that are never tinted (`rim_edge`,
    `rim_corner`, `platform`, `water`) may use as many materials as they like;
    the `socket` tints `Stone`, the `peg` tints `Shell` and `Mark_flat`, the
-   `pip` tints `Pip`.
+   `pip` tints `Pip`. Everything above keys on the *material* name, never the
+   object name: several pipe pieces modelled in the same file each export an
+   object literally called `Pipe_Shell`, and Blender's own uniquifying keeps
+   only the first one bare, so the rest come back as `Pipe_Shell.001`,
+   `.002` and so on (`Pipe_Shell_001` … `_004` once Godot's importer
+   sanitizes the dot). Harmless today because nothing reads an object's name,
+   but a future helper that keyed on one instead of on the mesh's material
+   would be surprised by the suffix.
 7. **`_flat` suffix.** A material named like `Wood_flat` gets toon shading but
    no outline. Use it for any surface that should not read as a piece. The
    `platform`, `water`, `rim_edge`, `rim_corner` and the tile's `Slate_flat`

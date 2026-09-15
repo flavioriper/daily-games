@@ -1,7 +1,8 @@
 extends Node3D
 
-## One-shot particle effects a board fires at a point: a dust puff when a
-## prism lands, a sparkle for a hint. Emitters are pooled and picked
+## Particle effects a board fires at a point: one-shot bursts (a dust puff
+## when a prism lands, a sparkle for a hint) and continuous jets (water that
+## keeps falling until told to stop). Emitters are pooled and picked
 ## round-robin, so taps in quick succession never steal each other's puff.
 ## Board-local: the board adds this as its own child. cue() is the audio
 ## hook; it only records the name until sounds exist. Spec:
@@ -13,9 +14,8 @@ const Pal = preload("res://core/palette.gd")
 
 const PUFF_POOL := 4
 const SPARKLE_POOL := 2
-## Water that keeps pouring, unlike the one-shot puffs: the source valve, the
-## drain once it is fed, plus up to four leaking mouths (puzzles/pipes3d.gd
-## MAX_LEAKS).
+## Water that keeps pouring, unlike the one-shot puffs: two permanent
+## emitters (a source and a drain) plus four transient ones (leaking mouths).
 const JET_POOL := 6
 const STAR_SIZE := 32
 
@@ -29,7 +29,8 @@ var _next_sparkle := 0
 static var _star: ImageTexture
 static var _droplet: ImageTexture
 
-## Build the two emitter pools (puffs and sparkles) and name the node.
+## Build the three emitter pools (puffs, sparkles and the continuous jets)
+## and name the node.
 func _ready() -> void:
 	name = "Fx"
 	for i in PUFF_POOL:

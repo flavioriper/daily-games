@@ -11,6 +11,24 @@ const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
 	"pipe_pad": 0.15, "pipe_cap": 0.38, "pipe_straight": 0.38, "pipe_elbow": 0.38,
 	"pipe_tee": 0.38, "pipe_cross": 0.38, "valve": 0.12}
 
+## Every layer (material name) each slot must carry, sorted, matching
+## docs/art/blender-contract.md's table exactly. Where `_test_slots` used to
+## only assert `size() >= 1` (a slot with a mesh at all), this instead checks
+## the full set: a wholly missing layer, or a misnamed `_flat` layer, now
+## fails here instead of only showing up later as a pipe that never turns
+## blue or a valve with the wrong shadow. `platform` and `water` are plain,
+## untinted primitives with no named layer of their own -- surface_names
+## reports one surface with an empty resource name for both.
+const LAYERS := {"tile": ["Moon", "Slate_flat", "Stone", "Sun"],
+	"rim_edge": ["Grass_sway_flat", "Moss_flat", "Petal_sway_flat", "Pollen_sway_flat"],
+	"rim_corner": ["Grass_sway_flat", "Moss_flat", "Petal_sway_flat", "Pollen_sway_flat"],
+	"platform": [""], "water": [""],
+	"socket": ["Stone", "Well_flat"], "peg": ["Mark_flat", "Shell"], "pip": ["Pip", "Well_flat"],
+	"lid": ["Knob", "Lid"], "pipe_pad": ["Stone"],
+	"pipe_cap": ["Collar", "Flow_flat", "Steel"], "pipe_straight": ["Collar", "Flow_flat", "Steel"],
+	"pipe_elbow": ["Collar", "Flow_flat", "Steel"], "pipe_tee": ["Collar", "Flow_flat", "Steel"],
+	"pipe_cross": ["Collar", "Flow_flat", "Steel"], "valve": ["Bolt_flat", "Metal"]}
+
 static func run(t) -> void:
 	_test_slots(t)
 	_test_rim(t)
@@ -40,6 +58,9 @@ static func _test_slots(t) -> void:
 		t.check(node is Node3D, "%s yields a Node3D" % slot)
 		var ms = Models.meshes(node)
 		t.check(ms.size() >= 1, "%s has a mesh" % slot)
+		var got_layers := Models.surface_names(node)
+		got_layers.sort()
+		t.eq(got_layers, LAYERS[slot], "%s carries exactly its modelled layers" % slot)
 		var b := _bounds(node)
 		var lo: Vector3 = b[0]
 		var hi: Vector3 = b[1]
@@ -57,12 +78,26 @@ static func _test_slots(t) -> void:
 			"pipe_cap": ["Steel", "Collar"], "pipe_straight": ["Steel", "Collar"],
 			"pipe_elbow": ["Steel", "Collar"], "pipe_tee": ["Steel", "Collar"],
 			"pipe_cross": ["Steel", "Collar"], "valve": ["Metal"]}.get(slot, [])
+		# Held past node.free() below: a pipe's Flow_flat override is a fresh
+		# ShaderMaterial with no other owner (Models._dress, one per instance so
+		# each cell drives its own `wet`). Under the headless dummy renderer only,
+		# freeing the node while that override's refcount is its sole reference
+		# races the engine's own teardown and logs a spurious
+		# "Parameter material is null" (material_get_instance_shader_parameters);
+		# it never happens under the real GL renderer. Keeping a script-side
+		# reference alive until after free() returns avoids the race without
+		# touching Models._dress or sharing the per-cell material it hands out.
+		var overrides: Array = []
 		for mi in ms:
 			var src: Material = mi.mesh.surface_get_material(0)
 			var mat_name: String = src.resource_name if src != null else ""
 			var has_outline := mi.get_node_or_null("Outline") != null
 			t.check(has_outline == (mat_name in outlined),
 				"%s/%s outline present=%s" % [slot, mat_name, has_outline])
+			for i in mi.mesh.get_surface_count():
+				var ov := mi.get_surface_override_material(i)
+				if ov != null:
+					overrides.append(ov)
 		node.free()
 	var platform = Models.instance("platform")
 	var pb := _bounds(platform)

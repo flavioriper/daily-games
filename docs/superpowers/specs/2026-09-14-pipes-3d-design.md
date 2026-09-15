@@ -429,6 +429,16 @@ emphatic at solve time, and making an already-running jet pour harder would
 need a new `Fx` API to modulate a live emitter, a feature rather than a
 tune. Neither was ever implemented; the table now says what the game does.
 
+Amendment (2026-09-14, final fix wave, finding 7): "a leak is a live cell
+with an opening that faces a wall or an unmatched neighbour... each gets a
+jet at that mouth" is narrower in the implementation than the prose above
+suggests. `_leaks()` stops at the first unmatched opening it finds on a
+cell, so a cross with three open, unmatched mouths shows one jet, not three.
+That is deliberate against `MAX_LEAKS`'s four-slot pool budget -- a single
+pathological cell could otherwise exhaust it and starve every other leak on
+the board -- and is now recorded in `_leaks()`'s own docstring
+(`puzzles/pipes3d.gd`).
+
 ## 5. The model library and the art pipeline
 
 `core/models.gd`:

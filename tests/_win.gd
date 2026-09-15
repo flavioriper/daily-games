@@ -160,7 +160,13 @@ func _solve_pipes() -> void:
 				free_cell = Vector2i(x, y)
 	_tap_local(_puzzle.cell_to_local(free_cell.y, free_cell.x))
 	_press(_host.top_bar.undo_button)
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.moves == 1 and not _puzzle.can_undo()
+	# If the hint (or the tap it left in place to undo) happened to solve the
+	# board outright, undo() returns false at once and can_undo() is false
+	# only because is_done() is -- neither says the undo actually ran. Check
+	# is_done() first, and only then assert undo popped its entry.
+	_hud_ok = _puzzle.hints_used == 1
+	if not _puzzle.is_done():
+		_hud_ok = _hud_ok and _puzzle._history.is_empty() and _puzzle.moves == 1
 	# rot 0 everywhere is the configuration the spanning tree was built in.
 	for y in h:
 		for x in w:

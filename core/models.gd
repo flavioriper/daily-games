@@ -136,26 +136,30 @@ static func height(root: Node) -> float:
 ## Slot-specific materials the toon step cannot infer from a colour, applied
 ## to the export and the placeholder alike so the two never look different.
 static func _dress(slot: String, node: Node3D) -> void:
+	# GDScript's match cannot take PIPES as a pattern, so the five shape names
+	# live here as a plain `in` check instead of a third listing alongside
+	# SLOTS and PIPES itself.
+	if slot in PIPES:
+		# Each pipe instance gets its own flow material: the board drives
+		# `wet` per cell as the flood reaches it.
+		set_material_named(node, "Flow_flat", Toon.pipe_flow())
+		# The inner tube sits entirely inside the shell's own silhouette,
+		# at the collar radius -- its shadow can never show past the
+		# shell's, so casting one at all is pure waste (task 6 fix 1/3).
+		set_shadow_off_named(node, "Flow_flat")
+		# The flange ring's radius is close to the shell's, on the same
+		# axis, so most of its shadow was already swallowed by the
+		# shell's. Screenshotted both ways before keeping this one: the
+		# ribbed relief reads the same, since it comes from the toon
+		# ramp's own shading on the ring geometry, not from a cast shadow
+		# (task 6 fix 3/3, the judgment call).
+		set_shadow_off_named(node, "Collar")
+		return
 	match slot:
 		"water":
 			for mi in meshes(node):
 				for i in mi.mesh.get_surface_count():
 					mi.set_surface_override_material(i, Toon.water())
-		"pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross":
-			# Each pipe instance gets its own flow material: the board drives
-			# `wet` per cell as the flood reaches it.
-			set_material_named(node, "Flow_flat", Toon.pipe_flow())
-			# The inner tube sits entirely inside the shell's own silhouette,
-			# at the collar radius -- its shadow can never show past the
-			# shell's, so casting one at all is pure waste (task 6 fix 1/3).
-			set_shadow_off_named(node, "Flow_flat")
-			# The flange ring's radius is close to the shell's, on the same
-			# axis, so most of its shadow was already swallowed by the
-			# shell's. Screenshotted both ways before keeping this one: the
-			# ribbed relief reads the same, since it comes from the toon
-			# ramp's own shading on the ring geometry, not from a cast shadow
-			# (task 6 fix 3/3, the judgment call).
-			set_shadow_off_named(node, "Collar")
 		"valve":
 			# The bolts are a 3 mm-tall disc lying flat on the pad -- too thin
 			# to throw a shadow anyone would ever see (task 6 fix 2/3).
