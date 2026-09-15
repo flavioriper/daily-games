@@ -14,6 +14,7 @@ const DailySeed = preload("res://core/daily.gd")
 const Progress = preload("res://core/progress.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
 const TopBar = preload("res://ui/hud/top_bar.gd")
 const DayCard = preload("res://ui/hud/day_card.gd")
 const HelpCard = preload("res://ui/hud/help_card.gd")
@@ -53,7 +54,7 @@ func setup(entry: Dictionary, difficulty: int) -> void:
 func _ready() -> void:
 	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var insets := _safe_insets()
+	var insets := SafeArea.insets(self)
 	var margins := MarginContainer.new()
 	margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margins.add_theme_constant_override("margin_left", MARGIN)
@@ -128,18 +129,6 @@ func _ready() -> void:
 
 	_spawn(DailySeed.seed_for(_entry.id, _difficulty))
 	_enter()
-
-## Safe-area insets (top, bottom) in viewport units. Only phones report one
-## that matters; the desktop's value describes the screen, not the window.
-func _safe_insets() -> Vector2:
-	if not OS.has_feature("mobile"):
-		return Vector2.ZERO
-	var win := DisplayServer.window_get_size()
-	if win.y <= 0:
-		return Vector2.ZERO
-	var safe := DisplayServer.get_display_safe_area()
-	var k := get_viewport_rect().size.y / float(win.y)
-	return Vector2(maxf(0.0, float(safe.position.y)) * k, maxf(0.0, float(win.y - safe.end.y)) * k)
 
 func _build_overlay() -> void:
 	_overlay = ColorRect.new()
@@ -247,13 +236,9 @@ func _open_settings() -> void:
 func _open_rules() -> void:
 	rules_sheet.open()
 
-## The reduce-motion toggle: persist, still the world, refresh the chrome.
-func _on_reduce_changed(on: bool) -> void:
-	Motion.reduce = on
-	Motion.save_settings()
-	var stage: Node = get_tree().get_first_node_in_group("stage")
-	if stage != null and stage.get("ambient") != null:
-		stage.ambient.refresh()
+## The settings sheet has already persisted the toggle and stilled the world;
+## the chrome re-reads it.
+func _on_reduce_changed(_on: bool) -> void:
 	_refresh()
 
 func _on_solved() -> void:

@@ -7,6 +7,8 @@ extends SceneTree
 const OPEN_AT := 0.1
 const SHOT_AT := 2.0
 const CLOSE_AT := 2.2
+## After the last close the menu replays its entrance; the menu shot waits it out.
+const MENU_AT := 1.5
 
 var _menu: Node
 var _host: Node
@@ -24,6 +26,8 @@ func _initialize() -> void:
 func _process(delta: float) -> bool:
 	_t += delta
 	if _idx >= _entries.size():
+		if _t < MENU_AT:
+			return false
 		RenderingServer.force_draw()
 		root.get_texture().get_image().save_png("/tmp/shot_menu.png")
 		print("saved /tmp/shot_menu.png")

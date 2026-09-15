@@ -170,6 +170,24 @@ The host's fields are now `help_card` and `rules_sheet`. The camera rig's
 only between three passes and stopped about a quarter too far out on deep
 boards), so every board frames tight to its slot.
 
+Amendment (2026-09-15, the menu): the menu takes the theme, as the goal
+foresaw. `ui/menu.gd` now lays out, over the bare island (no paper scrim),
+a `TopBar` without its back button (a blank of the button's size keeps the
+wordmark centred against the gear), the `DayCard`, a scrolling column of
+`ui/hud/puzzle_card.gd` (a panel: paper card, a lettered medallion in a
+`Palette.CAT` colour with the buttons' deeper bottom edge, title, blurb
+wrapped to the card, a sun chevron pill; a flat Button over the paper
+squashes and tints it on press and emits `open`) and the motto footer, with
+the HUD's entrance choreography (top bar, day card, cards in a capped
+stagger, footer) replayed on every return from a puzzle. Opening the menu
+counts the day (`Progress.touch()`), so the card never reads Day 0. The
+settings sheet applies the reduce-motion toggle itself (persist, still the
+world) and takes a `show_new` flag so the menu can leave out the prototype
+row; both screens only refresh their chrome on `reduce_changed`. The
+safe-area insets moved to `ui/safe_area.gd`. `Icons` gained
+`chevron_right`. `tests/_shot.gd` waits out the menu's re-entrance before
+its final shot.
+
 ## 3. Puzzle capabilities
 
 `core/puzzle_base.gd` grows optional hooks. Defaults mean "unsupported", so

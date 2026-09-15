@@ -21,6 +21,9 @@ const BADGE_CYCLE := 2.4
 
 var title_text := ""
 var motto_text := ""
+## False on the menu, which has nowhere to go back to: a blank of the button's
+## size stands in so the wordmark stays centred between it and the gear.
+var with_back := true
 var back_button: Button
 var undo_button: Button
 var hint_button: Button
@@ -29,9 +32,10 @@ var _title: Label
 var _motto: Label
 var _bounce: Tween
 
-func _init(title := "", motto := "") -> void:
+func _init(title := "", motto := "", back_shown := true) -> void:
 	title_text = title
 	motto_text = motto
+	with_back = back_shown
 	enter_from = Vector2(0, -80)
 
 func _make_inner() -> Container:
@@ -40,7 +44,12 @@ func _make_inner() -> Container:
 	return row
 
 func _build() -> void:
-	back_button = _button("chevron_left", back)
+	if with_back:
+		back_button = _button("chevron_left", back)
+	else:
+		var blank := Control.new()
+		blank.custom_minimum_size = BUTTON
+		_inner.add_child(blank)
 	var words := VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	words.alignment = BoxContainer.ALIGNMENT_CENTER

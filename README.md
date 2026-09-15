@@ -16,8 +16,9 @@ Every prototype is reachable from the menu. Boards sit on a 3D toon-shaded stage
 in `assets/models/`, rebuilt with `tools/build_models.sh`; any slot without an export falls back to a primitive
 placeholder (see `docs/art/blender-contract.md`).
 
-The HUD around every board is the concept chrome: wordmark, back / undo / hint / settings, day card, rules card,
-working-line card, Reset and Check; Binairo has real undo, hint (three) and check.
+The HUD around every board is the concept chrome: wordmark, back / undo / hint / settings, day card, How to play,
+working-line card, Reset and Check; Binairo has real undo, hint (three) and check. The menu wears the same chrome:
+wordmark, day card, a paper card per puzzle and the settings gear.
 
 ## Tests
 

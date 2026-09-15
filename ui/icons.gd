@@ -5,7 +5,7 @@ extends RefCounted
 ## draws one into a CanvasItem during that item's draw call.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
-const NAMES := ["chevron_left", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help"]
+const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -16,6 +16,8 @@ static func shape(name: String) -> Dictionary:
 	match name:
 		"chevron_left":
 			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.62, 0.18), Vector2(0.34, 0.5), Vector2(0.62, 0.82)])]}
+		"chevron_right":
+			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.38, 0.18), Vector2(0.66, 0.5), Vector2(0.38, 0.82)])]}
 		"undo":
 			return _arrow_arc(false)
 		"reset":
