@@ -55,3 +55,6 @@ __pycache__/
 # BlenderKit keeps a local copy of every downloaded asset beside the .blend
 # it was pulled into; the cut-down model in the tracked .blend is the source.
 art/assets/
+
+# Android export output; tools/deploy_android.sh rebuilds it
+/build/

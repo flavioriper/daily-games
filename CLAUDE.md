@@ -21,3 +21,16 @@ follow when touching a model:
 - **Preview on the real stage** with `tests/_shot_model.gd` (toon shader,
   outlines) before calling a model done; Blender's viewport colours are not
   what the game shows.
+
+## Playing on an Android phone
+
+The game ships as a native APK through Firebase App Distribution (project
+`peeplet-daily`, package `com.peeplet.daily`). Run `tools/deploy_android.sh`
+to export and distribute; the build lands in the Firebase App Tester app on
+the phone. Nothing deploys on push.
+
+The export is the non-gradle (prebuilt template) path, arm64-v8a only,
+debug-signed. Machine-local setup it depends on: the Android SDK at
+`/opt/homebrew/share/android-commandlinetools` and `~/.android/debug.keystore`,
+both wired into Godot's editor settings, plus the 4.7 Android export
+templates. `build/` is ignored -- it is output.
