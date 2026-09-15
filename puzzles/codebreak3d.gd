@@ -21,7 +21,6 @@ const Placeholders = preload("res://core/placeholders.gd")
 const Platform = preload("res://core/platform.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx = preload("res://world/fx.gd")
-const Stage = preload("res://world/stage.gd")
 const CodebreakScenery = preload("res://puzzles/codebreak_scenery.gd")
 
 const CODE_ROW := 0
@@ -72,6 +71,14 @@ const ENTER_LIDS := 0.3
 const RESET_STAGGER := 0.02
 const SPARKLE_LIFT := 0.1
 const LOCKED_STAGGER := 0.05
+## The scenery's entrance and POM's motion (spec 2026-09-15, sections 3 and 4).
+const ENTER_PROPS := 0.3
+const PROP_STAGGER := 0.03
+const ENTER_POM := 0.9
+const POM_BREATH := 0.03
+const POM_PERIOD := 3.0
+const POM_HOP := 0.15
+const POM_HOP_TIME := 0.4
 ## Room the camera's fit leaves above a seated peg, so its outline is never
 ## clipped by the top of the board's frame (spec section 1, Camera).
 const FRAME_SLACK := 0.04
@@ -100,6 +107,8 @@ var _pips: Array = []         # [g][k] -> pip model on the slab
 var _lids: Array = []         # [s] -> lid over code slot s
 var _lid_gone: Array = []     # [s] -> true once the lid has slid off
 var _code_pegs: Array = []    # [s] -> the code peg, hidden until revealed
+var _props: Array[Node3D] = []   # scenery pivots that pop in on the entrance
+var _pom: Node3D                 # POM's pivot, or null without the model
 # --- tweens ---
 var _dips: Array = []         # [g][s]
 var _wobbles: Array = []      # [g][s]
@@ -111,6 +120,8 @@ var _pip_tw: Array = []       # [g][k]
 var _lid_tw: Array = []       # [s]
 var _code_tw: Array = []      # [s]
 var _entrance: Array = []     # the board entrance, killed by reset
+var _pom_tw: Tween            # the breath, on POM's model
+var _pom_hop_tw: Tween        # the win hop, on POM's pivot
 
 func _ready() -> void:
 	super()
@@ -158,6 +169,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## row takes the active tint again. Hints already used stay used.
 func reset_board() -> void:
 	_stop_entrance()
+	if _pom != null:
+		Motion.stop(_pom_hop_tw)
+		_pom_hop_tw = null
+		_pom.position.y = CodebreakScenery.POM_REST_Y
 	for g in max_guesses:
 		for s in length:
 			_settle(g, s)
@@ -338,6 +353,10 @@ func _stop_all() -> void:
 	for tw in _entrance:
 		Motion.stop(tw)
 	_entrance = []
+	Motion.stop(_pom_tw)
+	Motion.stop(_pom_hop_tw)
+	_pom_tw = null
+	_pom_hop_tw = null
 	for rows in [_dips, _wobbles, _peg_tw, _breath_tw, _fades, _pip_tw]:
 		for row in rows:
 			for tw in row:
@@ -372,6 +391,13 @@ func _build_scene() -> void:
 
 	var size := board_size()
 	board.add_child(CodebreakScenery.dock(size.x, size.y))
+	var scene: Dictionary = CodebreakScenery.build(size.x)
+	board.add_child(scene.root)
+	_props = scene.props
+	_pom = scene.pom
+	if _pom != null:
+		var model: Node3D = _pom.get_child(0)
+		_pom_tw = Motion.pulse(model, "scale:y", model.scale.y, model.scale.y * (1.0 + POM_BREATH), POM_PERIOD)
 	fx = Fx.new()
 	board.add_child(fx)
 
@@ -713,6 +739,10 @@ func _enter() -> void:
 			ENTER_PLATFORM + ENTER_LIDS + Motion.stagger(s, LID_RETURN_STAGGER))
 		if drop != null:
 			_entrance.append(drop)
+	for i in _props.size():
+		_pop_in(_props[i], ENTER_PLATFORM + ENTER_PROPS + Motion.stagger(i, PROP_STAGGER))
+	if _pom != null:
+		_pop_in(_pom, ENTER_PLATFORM + ENTER_POM)
 	fx.cue("enter")
 
 func _pop_in(node: Node3D, delay: float) -> void:
@@ -731,6 +761,10 @@ func _stop_entrance() -> void:
 	var dock: Node3D = board.get_node_or_null("Dock")
 	if dock != null:
 		dock.position.y = 0.0
+	for prop in _props:
+		prop.scale = Vector3.ONE
+	if _pom != null:
+		_pom.scale = Vector3.ONE
 	for g in max_guesses:
 		for s in length:
 			_pivots[g][s].scale = Vector3.ONE
@@ -761,6 +795,10 @@ func _on_solved() -> void:
 		Motion.stop(_peg_tw[g][s])
 		peg.position.y = Placeholders.PEG_SEAT
 		_peg_tw[g][s] = Motion.hop(peg, SOLVE_HOP, SOLVE_TIME, Motion.stagger(s, SOLVE_STAGGER), Placeholders.PEG_SEAT)
+	if _pom != null:
+		Motion.stop(_pom_hop_tw)
+		_pom.position.y = CodebreakScenery.POM_REST_Y
+		_pom_hop_tw = Motion.hop(_pom, POM_HOP, POM_HOP_TIME, 0.0, CodebreakScenery.POM_REST_Y)
 	fx.cue("solved")
 
 ## Out of guesses: the lids slide off to show the code, the timer stops, and
