@@ -54,3 +54,24 @@ export stays on the non-gradle path.
 - To debug the wiring: `Analytics.validate = true` posts to GA4's validation
   endpoint and prints the verdict instead of recording; `Analytics.debug_mode`
   puts events in the console's DebugView.
+
+## CI
+
+`.github/workflows/android.yml` runs on push to `main` (and on demand from the
+Actions tab): tests, then the APK, then Firebase App Distribution. The suite
+gates it -- the job stops on a non-zero failure count before anything reaches
+a phone. Each run stamps `version/code` with the run number so two builds are
+never the same version.
+
+Three repo secrets feed it, and the build says so when one is missing:
+
+- `ANDROID_DEBUG_KEYSTORE` -- base64 of `~/.android/debug.keystore`. It must
+  be *that* key: Android will not install a build over one signed differently.
+- `ANALYTICS_API_SECRET` -- the GA4 Measurement Protocol secret. Absent, the
+  build warns and reports nothing.
+- `FIREBASE_SERVICE_ACCOUNT` -- JSON key with App Distribution Admin. Absent,
+  the APK is still attached to the run as an artifact.
+
+CI gets its Android SDK path into Godot by appending to the editor settings
+file that `--import` generates, rather than writing one by hand; the appended
+keys win over the defaults above them.

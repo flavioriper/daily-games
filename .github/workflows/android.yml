@@ -1,0 +1,148 @@
+name: android
+
+# Push to main builds the APK and drops it in App Tester. Nothing else deploys
+# from this repo. The same build can be run by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7"
+  APP_ID: "1:881491152475:android:0e88e9f9a22583fdd0b97e"
+  TESTERS: "flavioriper@gmail.com"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # The engine and the Android templates are ~450 MB together and change
+      # only with the engine version, so the first run pays for them and the
+      # rest do not.
+      - name: Cache Godot
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-stable-android
+
+      - name: Install Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p ~/godot "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          curl -sSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv "$HOME/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" ~/godot/godot
+          chmod +x ~/godot/godot
+          # Only the Android templates; the full pack is 1.2 GB.
+          curl -sSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q -j -o /tmp/templates.tpz 'templates/android_*' \
+            -d "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+
+      - name: Put Godot on PATH
+        run: echo "$HOME/godot" >> "$GITHUB_PATH"
+
+      # The debug keystore has to be the one this project always signs with:
+      # Android refuses to install a build signed by a different key over the
+      # copy already on the phone.
+      - name: Restore the signing key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::ANDROID_DEBUG_KEYSTORE secret is missing"
+            exit 1
+          fi
+          echo "$KEYSTORE" | base64 -d > "$HOME/debug.keystore"
+
+      - name: Restore the analytics secret
+        env:
+          API_SECRET: ${{ secrets.ANALYTICS_API_SECRET }}
+        run: |
+          if [ -n "$API_SECRET" ]; then
+            printf '[analytics]\napi_secret="%s"\n' "$API_SECRET" > analytics_secret.cfg
+          else
+            echo "::warning::no ANALYTICS_API_SECRET; this build reports nothing"
+          fi
+
+      # Importing also makes Godot write its editor settings, so the SDK and
+      # keystore lines below go into a file the engine itself generated rather
+      # than one hand-rolled here.
+      - name: Import resources
+        run: godot --headless --path . --import
+
+      - name: Point Godot at the SDK and the key
+        run: |
+          set -euo pipefail
+          settings="$HOME/.config/godot/editor_settings-${GODOT_VERSION}.tres"
+          test -f "$settings"
+          cat >> "$settings" <<EOF
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Tests
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/run_tests.gd | tee /tmp/tests.log
+          # The runner reports its own tally; a non-zero failure count stops
+          # the build here, before anything reaches a phone.
+          grep -q "failed=0" /tmp/tests.log
+
+      # Every build gets its own version code, so App Distribution and the
+      # phone can tell two of them apart.
+      - name: Stamp the build
+        run: |
+          set -euo pipefail
+          sed -i "s|^version/code=.*|version/code=${GITHUB_RUN_NUMBER}|" export_presets.cfg
+          sed -i "s|^version/name=.*|version/name=\"0.1.${GITHUB_RUN_NUMBER}\"|" export_presets.cfg
+
+      - name: Export the APK
+        run: |
+          set -euo pipefail
+          mkdir -p build/android
+          godot --headless --path . --export-debug Android build/android/peeplet-daily.apk
+          test -s build/android/peeplet-daily.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: peeplet-daily-apk
+          path: build/android/peeplet-daily.apk
+          retention-days: 14
+
+      - name: Distribute to testers
+        env:
+          CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CREDENTIALS" ]; then
+            echo "::warning::no FIREBASE_SERVICE_ACCOUNT; the APK is on this run as an artifact, but nothing was distributed"
+            exit 0
+          fi
+          echo "$CREDENTIALS" > /tmp/service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/service-account.json
+          npx --yes firebase-tools@15 appdistribution:distribute \
+            build/android/peeplet-daily.apk \
+            --app "$APP_ID" \
+            --project peeplet-daily \
+            --release-notes "$(git log -1 --pretty='%h %s')" \
+            --testers "$TESTERS"
