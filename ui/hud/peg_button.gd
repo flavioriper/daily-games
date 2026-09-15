@@ -11,7 +11,8 @@ const Shapes = preload("res://core/shapes.gd")
 
 const SIDE := 110.0
 const DISC := 0.42
-const SHADE := 0.25
+const SHADE := 0.3
+const SHINE := 0.9
 const MARK_SHADE := 0.35
 const RING := 4.0
 const DIM := 0.45
@@ -58,5 +59,10 @@ func _draw() -> void:
 	# over it, leaving a dark crescent along the bottom.
 	draw_circle(centre, r, Color(colour.darkened(SHADE), alpha))
 	draw_circle(centre - Vector2(0.0, r * 0.1), r * 0.88, fill)
+	# The glossy highlight: a large spot upper-left and a small one above it,
+	# the same place the peg model's Shine layer sits.
+	var shine := Color(Pal.MOON, SHINE * alpha)
+	draw_circle(centre + Vector2(-0.38, -0.42) * r, r * 0.2, shine)
+	draw_circle(centre + Vector2(-0.12, -0.6) * r, r * 0.09, shine)
 	Shapes.draw_pips(self, mark, centre - Vector2(0.0, r * 0.12), r * 0.3, r * 0.1,
 		Color(colour.darkened(MARK_SHADE), alpha))

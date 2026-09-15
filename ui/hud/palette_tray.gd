@@ -16,10 +16,16 @@ var _row: HBoxContainer
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", CozyTheme.wood_card())
+	# The trough: a darker inset the buttons sit in, so the tray reads as
+	# carved rather than painted.
+	var channel := PanelContainer.new()
+	channel.name = "Channel"
+	channel.add_theme_stylebox_override("panel", CozyTheme.wood_channel())
+	add_child(channel)
 	_row = HBoxContainer.new()
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_row.add_theme_constant_override("separation", GAP)
-	add_child(_row)
+	channel.add_child(_row)
 
 ## Rebuilds the buttons when the palette's size changes (a new puzzle), then
 ## updates every entry's colour, mark and enabled state.
