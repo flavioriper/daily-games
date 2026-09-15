@@ -405,9 +405,10 @@ func _build_scene() -> void:
 		pivot.position = BoardMath.cell_center(clue.pos.y, clue.pos.x, w, h, Placeholders.PLOT_H)
 		board.add_child(pivot)
 		var stone := Models.instance("clue_stone")
-		# One carved numeral of the nine is shown, the way a plinth shows a
-		# weight. MAX_AREA keeps the generator inside that range.
-		for d in range(1, 10):
+		# One carved numeral is shown, the way a plinth shows a weight.
+		# MAX_AREA keeps the generator inside 1..9; the stone's zero, which
+		# Tents' row counts need, is hidden here like any other unused digit.
+		for d in range(0, 10):
 			Models.set_layer_visible(stone, "Clue_Num_%d" % d, d == int(clue.area))
 		pivot.add_child(stone)
 		_clue_pivots.append(pivot)

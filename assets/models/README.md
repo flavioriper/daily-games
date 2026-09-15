@@ -45,7 +45,9 @@ in the same run. Code Break's four pieces are hand-modelled too, in
 `art/pipes.blend`, Balance's ten in `art/balance.blend`, Untangle's post in
 `art/untangle.blend` and Shikaku's four in `art/shikaku.blend` (the plot
 floor, the dry-stone wall, the corner post and the marker stone, whose nine
-numerals are real glyphs converted to meshes rather than segment bars).
+numerals are real glyphs converted to meshes rather than segment bars) and
+Tents' four in `art/tents.blend` (the turf cell, the conifer, the tent and the
+cairn; its row and column counts reuse Shikaku's marker stone).
 
 Full rules: `docs/art/blender-contract.md`.
 Concept reference: `docs/art/concept-binairo-island.png`.

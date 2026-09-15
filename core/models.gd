@@ -14,7 +14,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve",
 	"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
 	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post",
-	"plot_pad", "wall_edge", "wall_post", "clue_stone"]
+	"plot_pad", "wall_edge", "wall_post", "clue_stone",
+	"turf_pad", "camp_tree", "tent", "cairn"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -171,6 +172,18 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# The bolts are a 3 mm-tall disc lying flat on the pad -- too thin
 			# to throw a shadow anyone would ever see (task 6 fix 2/3).
 			set_shadow_off_named(node, "Bolt_flat")
+		"turf_pad":
+			# A field cell is a flat slab, flush with the cells around it and
+			# 0.08 above the stone margin at the field's edge. Its own shadow
+			# either falls on a neighbour at the same height, where nothing
+			# can see it, or is a sub-pixel sliver in a 0.04 seam -- and the
+			# pad's outline already draws the boundary that sliver would.
+			# Off, then, for the same reason Pipes drops its water tube's:
+			# one fewer shadow-pass draw call per cell, 64 of them on the
+			# hard board, with nothing lost on screen. The pads still
+			# *receive* the trees' and tents' shadows, which is the shadow
+			# work that carries this board.
+			set_shadow_off_named(node, "Turf")
 		"clue_stone":
 			# The carved numeral is a 3 mm-tall inlay lying flat on the
 			# marker's crown, the same waste as the plinth's: a shadow pass

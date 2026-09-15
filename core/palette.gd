@@ -71,6 +71,19 @@ const PLOT_LOCK  := Color("c0a475")   # a plot a hint fixed, so it reads as give
 ## so a plot looked bounded by pale tape rather than by a wall.
 const WALL_STONE := Color("8f8471")   # the dry-stone walls and their corner posts
 
+# Tents (the design agreed 2026-09-15): a meadow of turf cells with a conifer
+# standing on some of them, a canvas tent pitched beside each, and a pebble
+# cairn marking the ground the player has ruled out. The row and column counts
+# are Shikaku's own marker stones, laid on the stone margin around the field.
+const TURF        := Color("93b85c")   # a field cell
+const TURF_TREE   := Color("7fa550")   # the cell a tree stands on, so it reads as fixed
+const CANVAS      := Color("f2e4c9")   # tent canvas
+const CANVAS_LOCK := Color("d9c8a6")   # a tent a hint pitched, so it reads as given
+const TENT_DOOR   := Color("6b5a44")   # the shaded doorway
+const PEBBLE      := Color("a89a84")   # the cairn that rules a cell out
+const BARK        := Color("8a6a4a")
+const LEAF        := Color("6ba845")
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

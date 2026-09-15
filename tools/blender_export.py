@@ -81,6 +81,13 @@ LIMITS = {
     "wall_edge": (1.0, 0.25, 0.25),
     "wall_post": (0.3, 0.3, 0.3),
     "clue_stone": (0.7, 0.7, 0.24),
+    # Tents (the design agreed 2026-09-15): the turf cell, the conifer a tent
+    # is pitched beside, the tent, and the cairn that rules a cell out. The
+    # row and column counts are `clue_stone` again, laid on the stone margin.
+    "turf_pad": (1.0, 1.0, 0.12),
+    "camp_tree": (0.7, 0.7, 0.8),
+    "tent": (0.7, 0.7, 0.45),
+    "cairn": (0.5, 0.5, 0.3),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of

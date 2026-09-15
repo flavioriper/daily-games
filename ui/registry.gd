@@ -62,7 +62,9 @@ const PUZZLES := [
 		"id": "tents",
 		"title": "Tents",
 		"blurb": "One tent beside every tree.",
-		"script": "res://puzzles/tents.gd",
+		"motto": "A camp for every tree",
+		"footer": "Pitch · Count · Rest",
+		"script": "res://puzzles/tents3d.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

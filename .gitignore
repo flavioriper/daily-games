@@ -31,6 +31,8 @@ art/*.blend
 !art/untangle.blend
 # Shikaku's plot floor, dry-stone wall, corner post and marker stone.
 !art/shikaku.blend
+# Tents: the turf cell, the conifer, the tent and the cairn.
+!art/tents.blend
 
 # Python bytecode from running the tools
 __pycache__/

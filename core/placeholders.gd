@@ -174,6 +174,7 @@ const NUM_PROUD := 0.0015
 ## reads as a stray bar rather than a numeral. Zero never appears -- a weight
 ## is at least one.
 const NUM_SEGMENTS := {
+	0: ["a", "b", "c", "d", "e", "f"],
 	1: ["i"],
 	2: ["a", "b", "g", "e", "d"],
 	3: ["a", "b", "g", "c", "d"],
@@ -224,6 +225,34 @@ const CLUE_NUM_W := 0.24
 const CLUE_NUM_H := 0.32
 const CLUE_NUM_BAR := 0.045
 
+## Tents pieces (the design agreed 2026-09-15). A field cell is a turf slab; a
+## conifer stands on some of them; a ridge tent is pitched on a cell the player
+## claims, and a pebble cairn marks one they have ruled out. The row and column
+## counts reuse `clue_stone`, laid on the stone margin the board keeps around
+## the field, which is why that slot carries a zero numeral as well.
+const TURF_SIDE := 0.96
+const TURF_H := 0.08
+## The tent: a ridge of canvas with a shaded doorway on the near end. Wide
+## enough to read beside a tree and low enough not to hide the cell behind it.
+const TENT_W := 0.62
+const TENT_L := 0.66
+const TENT_H := 0.40
+const TENT_DOOR_W := 0.22
+const TENT_DOOR_H := 0.24
+const TENT_DOOR_PROUD := 0.0015
+## The conifer. Two layers, a trunk and a canopy of three stacked cones, the
+## same split the island's scenery `tree` carries.
+const PINE_R := 0.30
+const PINE_H := 0.76
+const PINE_TRUNK_R := 0.055
+const PINE_TRUNK_H := 0.20
+## The pebbles that rule a cell out. Sized up from a first look on the stage,
+## where a smaller mark read as litter on the grass rather than as something
+## the player had left: it is the piece the puzzle is actually solved with, so
+## it has to carry as well as a tent does.
+const CAIRN_R := 0.115
+const CAIRN_H := 0.18
+
 static func make(slot: String) -> Node3D:
 	# The Code Break pieces are assemblies with a layer per material, built
 	# before the single-mesh slots below allocate their node and mesh.
@@ -249,6 +278,10 @@ static func make(slot: String) -> Node3D:
 		"wall_edge": return _wall_edge()
 		"wall_post": return _wall_post()
 		"clue_stone": return _clue_stone()
+		"turf_pad": return _turf_pad()
+		"camp_tree": return _camp_tree()
+		"tent": return _tent()
+		"cairn": return _cairn()
 	if slot.begins_with("token_"):
 		return _token(slot)
 	var root := Node3D.new()
@@ -744,7 +777,7 @@ static func _digit_mesh(d: int, w := NUM_W, h := NUM_H, bar := NUM_BAR) -> Array
 		"i": [Vector3(bar, thin, h), Vector3(0.0, y, 0.0)],
 	}
 	var parts: Array = []
-	for seg in NUM_SEGMENTS[clampi(d, 1, 9)]:
+	for seg in NUM_SEGMENTS[clampi(d, 0, 9)]:
 		var spec: Array = bars[seg]
 		var box := BoxMesh.new()
 		box.size = spec[0]
@@ -884,9 +917,119 @@ static func _clue_stone() -> Node3D:
 	root.name = "clue_stone"
 	root.add_child(_layer("Clue_Body", _cylinder(CLUE_R, CLUE_H, 6), "Stone", Pal.STONE_GIVEN,
 		Vector3(0.0, CLUE_H * 0.5, 0.0)))
-	for d in range(1, 10):
+	# Zero included: a Shikaku clue is never 0, but a Tents row count often is
+	# and both read their number off this stone.
+	for d in range(0, 10):
 		root.add_child(_layer("Clue_Num_%d" % d,
 			_digit_mesh(d, CLUE_NUM_W, CLUE_NUM_H, CLUE_NUM_BAR), "Num_flat", Pal.SLATE,
 			Vector3(0.0, CLUE_H, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+# --- Tents pieces ---
+
+## One field cell's turf.
+static func _turf_pad() -> Node3D:
+	var root := Node3D.new()
+	root.name = "turf_pad"
+	root.add_child(_layer("Turf_Body", _bar(TURF_SIDE, TURF_SIDE, TURF_H),
+		"Turf", Pal.TURF, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The conifer a tent is pitched beside: a trunk and a canopy of three cones,
+## each starting a little inside the one below so the tiers read as steps from
+## the board's own pitch, where a single smooth cone is just a green circle.
+static func _camp_tree() -> Node3D:
+	var root := Node3D.new()
+	root.name = "camp_tree"
+	root.add_child(_layer("Tree_Trunk", _cylinder(PINE_TRUNK_R, PINE_TRUNK_H, 12), "Bark", Pal.BARK,
+		Vector3(0.0, PINE_TRUNK_H * 0.5, 0.0)))
+	var cones: Array = []
+	var tiers := 3
+	var span := PINE_H - PINE_TRUNK_H * 0.5
+	for i in tiers:
+		var t := float(i) / float(tiers)
+		# Each tier overhangs the one above it, so the silhouette from above is
+		# three rings rather than one disc.
+		var radius: float = PINE_R * (1.0 - t * 0.5)
+		var base: float = PINE_TRUNK_H * 0.5 + span * t * 0.78
+		var tall: float = span * (0.48 if i < tiers - 1 else 1.0 - t * 0.78)
+		var cone := CylinderMesh.new()
+		cone.top_radius = radius * 0.22
+		cone.bottom_radius = radius
+		cone.height = tall
+		cone.radial_segments = 12
+		cone.rings = 0
+		cones.append({"mesh": cone,
+			"xform": Transform3D(Basis(), Vector3(0.0, base + tall * 0.5, 0.0))})
+	root.add_child(_layer("Tree_Canopy", _merge(cones), "Leaf", Pal.LEAF, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## A triangular prism: a ridge `length` long along Z, `width` across and
+## `height` tall, resting on its flat base with the ridge line over the
+## centre. Built from explicit vertices rather than from a cylinder, because
+## Godot clamps CylinderMesh.radial_segments to four -- a three-segment
+## "prism" comes out square, which is what first laid this tent on a corner.
+##
+## Per-face vertices, not shared ones: six shared vertices would average the
+## base's downward normal into the slopes and the canvas would shade black.
+## The cost is that the outline hull opens along the ridge, the same
+## concession the tile placeholder makes -- the Blender export models it
+## properly, smooth with a bevel.
+static func _wedge(length: float, width: float, height: float) -> ArrayMesh:
+	var hx := width * 0.5
+	var hz := length * 0.5
+	# The base, near-left round to far-left, then the near and far ridge ends.
+	var at := [Vector3(-hx, 0.0, hz), Vector3(hx, 0.0, hz), Vector3(hx, 0.0, -hz),
+		Vector3(-hx, 0.0, -hz), Vector3(0.0, height, hz), Vector3(0.0, height, -hz)]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# The base, the two gables, then the two slopes. Wound clockwise seen from
+	# outside, which is Godot's front face: counter-clockwise points every
+	# normal inward instead, and the outline shell then closes over the piece
+	# and the tent renders as a black blob.
+	for tri in [[0, 3, 2], [0, 2, 1], [0, 1, 4], [3, 5, 2],
+			[1, 2, 5], [1, 5, 4], [0, 4, 5], [0, 5, 3]]:
+		for i in [tri[0], tri[2], tri[1]]:
+			st.add_vertex(at[i])
+	st.generate_normals()
+	return st.commit()
+
+## A ridge tent: a wedge of canvas with a shaded doorway inlaid in the gable
+## facing the player, so the board camera looks into the tent rather than at
+## a blank wall.
+static func _tent() -> Node3D:
+	var root := Node3D.new()
+	root.name = "tent"
+	root.add_child(_layer("Tent_Canvas", _wedge(TENT_L, TENT_W, TENT_H),
+		"Canvas", Pal.CANVAS, Vector3.ZERO))
+	# Centred on the gable plane, so half of it stands proud and half is
+	# buried: the inlay treatment the tile's emblems use.
+	root.add_child(_layer("Tent_Door", _bar(TENT_DOOR_W, TENT_DOOR_PROUD * 2.0, TENT_DOOR_H),
+		"Door_flat", Pal.TENT_DOOR, Vector3(0.0, 0.0, TENT_L * 0.5)))
+	Toon.apply_to(root)
+	return root
+
+## Three pebbles: the mark for a cell the player has ruled out. Laid in a
+## triangle on the turf rather than stacked into a cairn -- at the board's
+## 68-degree pitch a stack hides its own top pebble behind the two under it
+## and the whole mark reads as one grey smudge, where three pebbles side by
+## side read as three.
+static func _cairn() -> Node3D:
+	var root := Node3D.new()
+	root.name = "cairn"
+	var squat := Basis().scaled(Vector3(1.0, 0.7, 1.0))
+	var pebbles: Array = []
+	var spread := CAIRN_R * 1.15
+	for i in 3:
+		# One pebble toward the player, two behind it, so the mark has a
+		# direction and does not read as a circle of stones.
+		var a := TAU * (float(i) / 3.0 + 0.25)
+		var radius: float = CAIRN_R * (1.0 if i == 0 else 0.86)
+		pebbles.append({"mesh": _ball(radius),
+			"xform": Transform3D(squat, Vector3(cos(a) * spread, radius * 0.7, sin(a) * spread))})
+	root.add_child(_layer("Cairn_Body", _merge(pebbles), "Pebble", Pal.PEBBLE, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root

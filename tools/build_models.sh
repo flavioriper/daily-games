@@ -36,6 +36,11 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # carved numerals.
 "$BLENDER" -b art/shikaku.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Plot_Pad Wall_Edge Wall_Post Clue_Stone
+# Tents: four hand-modelled collections -- the turf cell, the conifer, the
+# tent and the cairn. The row and column counts are Shikaku's `clue_stone`,
+# which is why that one carries a zero numeral as well.
+"$BLENDER" -b art/tents.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Turf_Pad Camp_Tree Tent Cairn
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2
