@@ -371,3 +371,91 @@ mascot_pom}.glb`, `tools/blender_export.py`, `tools/build_models.sh`,
   measurement to `idle mean_ms=5.31 max_draw_calls=850`, at last under the
   855 budget. Binairo unchanged at `idle mean_ms=4.58 max_draw_calls=723`.
   Suite `passed=1553 failed=0`, win harness `12/12`.
+
+### Fix wave (branch review, 2026-09-15)
+
+- Section 1's plank arithmetic is wrong as written: the two lobes are
+  **0.44** wide, not 0.47, so the strip reads 0.03 + 0.44 + 0.06 + 0.44 +
+  0.03 = 1.0 (`Placeholders.DECK_PLANK_W`). The built model is right; only
+  the spec's number was.
+- Section 1's pier-post clearance names the wrong lid positions. The
+  feedback column offsets the row, so the lid centres are x = -2, -1, 0, 1
+  at `length = 4` and -2.5, -1.5, -0.5, 0.5, 1.5 at `length = 5`, not
+  ±0.5/±1.5 or 0/±1/±2. The posts still clear them: at `length = 4` the
+  outer lid reaches -2.47 and the post at -2.7 starts at -2.5; at
+  `length = 5` `_spread` pushes the posts to ±3.2 and ±4.3 and the outer lid
+  reaches -2.97 against a post starting at -3.0. Either way the gap is 0.03,
+  which is what the section meant to claim.
+- POM's new layers are named for POM, not for the part: the materials are
+  `Pom_Arm`, `Pom_Pack` and `Pom_Map_flat`, following the `Pom_*` convention
+  the other seventeen layers already keep, rather than the spec's bare
+  `Arm`, `Pack` and `Map_flat`.
+- Section 6's documentation rows were not delivered with the branch and are
+  delivered now: `docs/art/blender-contract.md` gains `Peg_Shine` on the
+  `peg` row, says on the `socket` row that `Socket_Well` is the floor of the
+  recess rather than a disc laid proud on the slab, counts POM at 18 layers
+  and lists `Pom_Arms`, `Pom_Pack` and `Pom_Map`, and adds `Pom_Map_flat` to
+  the flat-layer example; `assets/models/README.md` mentions the peg's
+  `Shine_flat` highlight and calls POM's map moon-white, which is what it
+  was modelled in.
+- The socket's recess rim carried a scattering of dark pixels at 8x
+  magnification: the outline shell folding at the boolean seam. A 0.03-deep
+  recess cut by a straight cylinder clamps both rim bevels to 0.015, less
+  than the 0.02 the shell is pushed out, and offsetting a concave fillet by
+  more than its own radius folds it. `Socket_Cutter` is a countersink now --
+  0.30 at the floor, opening at 45 degrees and breaking the top face at 0.33
+  -- so the rim turns through 45 degrees instead of 90, the fillet radius is
+  near 0.048, and nothing on the wall stands steeper than 45 degrees. The
+  well reads the same, a shade wider at the mouth and a shade narrower on
+  the floor.
+- POM's rest height took the seat's flattening but not its scale, so POM's
+  base sat 0.168 inside the rock. `CodebreakScenery.build()` measures the
+  seat from the boulder table the way the lantern's is measured and returns
+  it as `pom_rest_y`; the board keeps it in `_pom_rest_y` and the const is
+  gone.
+- The feedback slab's pips sat at `SOCKET_H + WELL_PROUD`, which was the top
+  of the slab before the well became a recess; they sit at
+  `PEG_SEAT + WELL_PROUD` now, on the recess floor.
+- The far treeline is gone. Its canopies fell behind the top bar and only
+  the trunks showed, for about 24 draw calls (empty board 850 with them, 826
+  without). The far bank alone stops the river.
+- The HUD plaque hugged its words, so the second leaf -- painted on the
+  plaque rather than laid out in it -- landed under the first word of a wide
+  motto, on the menu and on Binairo. A `MarginContainer` keeps
+  `LEAF + 2 * LEAF_INSET` down each side, which is the room the drawn leaves
+  need; the plaque grows by 112 px and still clears the gear on the menu and
+  the row's buttons on every board.
+- `world/scenery.gd`: `deck()` takes its strip height from
+  `Placeholders.DECK_H`, the deck's own constant, rather than borrowing the
+  platform's, and its doc comment states the precondition that `z1 - z0` is
+  a whole number of strips; `scatter()` warns when a model has more than one
+  layer, since it only ever scatters the first.
+- **The budget was measured on an empty board.** `tests/_shot_anim.gd` only
+  tapped a board that had `_given`, so Code Break was measured with no pegs
+  on it, while section 9's baseline and estimate both speak of the fullest
+  board. The probe now drives Code Break to that state through the HUD --
+  seven monochrome rows guessed and scored, the eighth filled -- and
+  `-- mastermind empty` skips the fill, so both numbers come from the same
+  committed probe. Two shadow cuts followed, on the valve-bolt argument:
+  the peg's `Shine_flat` and `Mark_flat` (half buried in the dome and a
+  0.012 inlay on its crown; thirty-two pegs on the fullest board) and every
+  `_flat` layer of any `mascot_` slot (mouth, tongue, eyes, cheeks, POM's
+  map, all inside the mascot's own silhouette), the latter as one rule for
+  the prefix rather than a case per character. Measured at 1080 x 1920 on
+  the Mac, treeline already gone: full board `idle mean_ms=6.23
+  max_draw_calls=1069` before, `idle mean_ms=5.98 max_draw_calls=998` after;
+  empty board `idle mean_ms=5.19 max_draw_calls=826` before, `idle
+  mean_ms=5.16 max_draw_calls=819` after.
+- **The fullest board is 143 draw calls over the 855 ceiling and this
+  branch does not close it.** The frame time is fine (5.98 ms against 8).
+  The gap is the scenery's, not the board's: the pegs and pips of a full
+  board cost 179 calls, about what they cost before this pass plus the new
+  shine, while the dressing added roughly 446 to the empty board. The pier
+  posts were looked at as the next cut and kept -- their shadows fall on the
+  deck, where they show, not on the water, so the reasoning offered for them
+  does not hold. What is left that is free, unmeasured: `Pip_Well` and
+  `Socket_Well` are 0.003 discs lying in a recess (about 32 calls each) and
+  the lid's knob about 4. Even all three would leave the board near 930, so
+  meeting 855 at the fullest board is a scenery decision -- how many
+  boulders, bushes and daisies the screen keeps -- and it is the user's to
+  make, not one to take quietly in a fix wave.

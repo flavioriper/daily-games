@@ -11,9 +11,9 @@ any that are missing:
 | `rim_corner` | moss square, 0.5 x 0.5, on a platform corner (outward corner at +X +Z) |
 | `platform` | 1 x 1 stone slab the board stretches to its size, top at y = 0 |
 | `water` | flat water plane far below the platform |
-| `mascot_pom` | POM the puppy, an assembly of 18 layered parts, one mesh per layer, with arms, a moss backpack and a parchment map; Code Break seats it on a boulder beside its top rows |
+| `mascot_pom` | POM the puppy, an assembly of 18 layered parts, one mesh per layer, with arms, a moss backpack and a moon-white map; Code Break seats it on a boulder beside its top rows |
 | `socket` | Code Break's slab: `Stone` body tinted by whether its row is active, plus a `Well_flat` disc; the feedback slab hides the well |
-| `peg` | a colour peg: `Shell` dome tinted per colour, seven `Mark_flat` pip layers of which the game shows one |
+| `peg` | a colour peg: `Shell` dome tinted per colour, seven `Mark_flat` pip layers of which the game shows one, and a `Shine_flat` highlight patch on the dome's upper-left |
 | `pip` | a feedback pip: `Well_flat` disc and a `Pip` ball tinted slate or cream, hidden until scored |
 | `lid` | the stone lid over one code slot, `Lid` body and wooden `Knob` |
 | `pipe_pad` | Pipes's bevelled slab a pipe rests on, `Stone` body |

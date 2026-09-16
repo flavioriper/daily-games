@@ -15,8 +15,8 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `platform` | exactly 1.0 x 1.0 (enforced) | 0.6, a guide |  a unit stone slab; the board stretches it to (cols + 1, rows + 1), so keep the material a plain colour |
 | `water` | any, about 60 x 60 | flat | the water plane far below the platform |
 | `tree` | up to 1.4 x 1.4 | 2.0 | island scenery, an **assembly**: `Tree_Trunk` (`Bark`), `Tree_Canopy` (`Leaf`, three overlapping blobs in one mesh, one layer) and `Tree_Bloom` (`Bloom_flat`). Still, not `_sway`: the wind shader reaches full strength 0.10 above the base, so a whole canopy would shimmy rather than bend, and `_sway` would cost it its outline |
-| `socket` | 0.94 x 0.94 | 0.15 | Code Break's slab, an **assembly**: `Socket_Body` (`Stone`, tinted by whether its row is active) and `Socket_Well` (`Well_flat`, a disc laid 0.0015 proud on top). The feedback slab is a socket with its well hidden |
-| `peg` | 0.6 across | 0.5 | a colour peg, an **assembly**: `Peg_Body` (`Shell`, tinted per colour) and `Peg_Mark_1` … `Peg_Mark_7` (`Mark_flat`, one to seven pips on the crown in die layouts, each disc 0.012 thick, rotated onto the crown's normal and centred on the surface so 0.006 stands proud, the tile's inlay treatment); the game shows the one mark matching the colour |
+| `socket` | 0.94 x 0.94 | 0.15 | Code Break's slab, an **assembly**: `Socket_Body` (`Stone`, tinted by whether its row is active) and `Socket_Well` (`Well_flat`, the floor of the well rather than a disc laid proud on the slab: `Socket_Body` carries a 0.03 recess cut into its crown by a countersunk Boolean, and the disc sits in it at Z 0.09, 0.0015 proud of the floor, so a peg seats below the slab's top). The feedback slab is a socket with its well hidden |
+| `peg` | 0.6 across | 0.5 | a colour peg, an **assembly**: `Peg_Body` (`Shell`, tinted per colour), `Peg_Mark_1` … `Peg_Mark_7` (`Mark_flat`, one to seven pips on the crown in die layouts, each disc 0.012 thick, rotated onto the crown's normal and centred on the surface so 0.006 stands proud, the tile's inlay treatment) and `Peg_Shine` (`Shine_flat`, a small cream patch on the dome's upper-left, half buried in it so it reads as a highlight rather than a sticker, and no outline); the game shows the one mark matching the colour |
 | `pip` | 0.2 across | 0.2 | a feedback pip, an **assembly**: `Pip_Well` (`Well_flat`) and `Pip_Ball` (`Pip`, tinted slate or cream, hidden until scored) |
 | `lid` | 0.94 x 0.94 | 0.3 | the stone lid over one code slot: `Lid_Body` (`Lid`) and `Lid_Knob` (`Knob`) |
 | `pipe_pad` | 1.0 x 1.0 | 0.15 | Pipes's bevelled slab: `Pad_Body` (`Stone`), the surface a pipe piece rests on |
@@ -185,8 +185,8 @@ The rules change in two places:
 * **Rule 6 does not apply.** An assembly is never tinted by state, so it may
   carry as many materials as it has layers. Rule 7 still does: give a face
   detail that should not read as its own piece a `_flat` material, as
-  `Pom_Mouth_flat`, `Pom_Tongue_flat`, `Pom_Eye_flat` and `Pom_Cheek_flat`
-  do.
+  `Pom_Mouth_flat`, `Pom_Tongue_flat`, `Pom_Eye_flat`, `Pom_Cheek_flat` and
+  `Pom_Map_flat` do.
 
 Everything else holds per part: transforms applied, smooth with shared
 vertices, no parent, no `.001` names, plain-colour Principled materials.
@@ -198,15 +198,17 @@ source and is tracked in git (`art/mascot_<name>.blend`, un-ignored in
 `.gitignore`); open it, move the parts, and re-export. Never write a script
 that rebuilds a mascot from scratch — it would overwrite the hand edits.
 
-`art/mascot_pom.blend` holds POM as 15 layers: `Pom_Body` (the cream egg),
+`art/mascot_pom.blend` holds POM as 18 layers: `Pom_Body` (the cream egg),
 `Pom_Cap` (the orange coat: a copy of the body mesh pushed out 0.012 by a
 Displace modifier and cut by a Boolean with the `Pom_Cap_Cutter` ellipsoid, so
 the cream face-and-belly oval is a shape the cutter moves and scales; copy the
 body mesh into it again after reshaping the body), `Pom_Ear_L/R`,
 `Pom_Eye_L/R` (closed happy arcs), `Pom_Muzzle` (two lobes, one layer),
 `Pom_Nose`, `Pom_Mouth`, `Pom_Tongue`, `Pom_Cheek_L/R`, `Pom_Foot_L/R`,
-`Pom_Tail`. The cutter lives in a `Pom_Helpers` collection so it never
-exports. Concept reference: the mascot
+`Pom_Tail`, `Pom_Arms` (`Pom_Arm`, both arms as two lobes of one layer),
+`Pom_Pack` (`Pom_Pack`, the moss backpack) and `Pom_Map` (`Pom_Map_flat`,
+the map held up in the right paw). The cutter lives in a `Pom_Helpers`
+collection so it never exports. Concept reference: the mascot
 sheet in `~/Downloads/chars.png`.
 
 ```bash
