@@ -31,6 +31,10 @@ const WOODS: Array[Color] = [Pal.DECK, Pal.WOOD, Pal.BARK, Pal.TIMBER, Pal.PLAQU
 ## glTF round-trips a colour through linear floats, so an exported model's
 ## wood comes back near its palette value rather than exactly on it.
 const WOOD_TOL := 0.012
+## The palette's leaf greens. Same hook-up as the woods: a layer that arrives
+## in one of these colours gets the soft painted treatment (eased ramp, eased
+## sky rim) with no grain -- Leaf's turn in docs/art/shading-direction.md.
+const LEAVES: Array[Color] = [Pal.LEAF, Pal.LEAF_LIGHT]
 ## How much longer one side must be before it counts as the grain's
 ## direction. Barely more than a tie, so that a strip modelled one unit long
 ## and stretched by the board at runtime -- the deck's, whose modelled length
@@ -49,6 +53,8 @@ const LINE_COOL := 0.12
 ## upper edges catch bounced light rather than a drawn highlight.
 const WOOD_RIM_SOFT := 0.12
 const WOOD_RIM_STRENGTH := 0.24
+const LEAF_RIM_SOFT := 0.12
+const LEAF_RIM_STRENGTH := 0.18
 
 static var _ramp: GradientTexture1D
 static var _soft_ramp: GradientTexture1D
@@ -57,6 +63,7 @@ static var _line_cache: Dictionary = {}
 static var _cache: Dictionary = {}
 static var _wind_cache: Dictionary = {}
 static var _wood_cache: Dictionary = {}
+static var _soft_cache: Dictionary = {}
 static var _water: ShaderMaterial
 static var _ghost_cache: Dictionary = {}
 static var _tex_cache: Dictionary = {}
@@ -141,11 +148,38 @@ static func wood_material(albedo: Color, axis := Vector3.UP) -> ShaderMaterial:
 	_wood_cache[key] = m
 	return m
 
+## True when `c` is one of the palette's leaf greens, within the tolerance a
+## glTF round-trip costs.
+static func is_leaf(c: Color) -> bool:
+	for l in LEAVES:
+		if absf(c.r - l.r) < WOOD_TOL and absf(c.g - l.g) < WOOD_TOL and absf(c.b - l.b) < WOOD_TOL:
+			return true
+	return false
+
+## The soft painted treatment without a grain: the eased ramp, the eased
+## sky-tinted rim, the shared shadow tint. Cached per colour.
+static func soft_material(albedo: Color) -> ShaderMaterial:
+	var key := albedo.to_html()
+	if _soft_cache.has(key):
+		return _soft_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = TOON_SHADER
+	m.set_shader_parameter("albedo", albedo)
+	m.set_shader_parameter("ramp", soft_ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	m.set_shader_parameter("rim_soft", LEAF_RIM_SOFT)
+	m.set_shader_parameter("rim_strength", LEAF_RIM_STRENGTH)
+	m.set_shader_parameter("rim_color", Pal.SKY_TOP)
+	_soft_cache[key] = m
+	return m
+
 ## The material a surface of `mi` should wear: a wood colour gets the grain,
 ## with its axis read off the mesh's own bounds; everything else gets the
 ## flat toon material. Every recolouring path goes through here, so a tinted
 ## plank keeps its grain.
 static func material_for(mi: MeshInstance3D, albedo: Color) -> ShaderMaterial:
+	if is_leaf(albedo):
+		return soft_material(albedo)
 	if mi == null or mi.mesh == null or not is_wood(albedo):
 		return material(albedo)
 	return wood_material(albedo, grain_axis(mi.mesh.get_aabb().size))

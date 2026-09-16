@@ -1,0 +1,27 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://shaders/toon_wind.gdshader" id="1_d4kf5"]
+
+[sub_resource type="Gradient" id="Gradient_4okmw"]
+interpolation_mode = 1
+offsets = PackedFloat32Array(0, 0.42, 0.7)
+colors = PackedColorArray(0, 0, 0, 1, 0.55, 0.55, 0.55, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ywf7k"]
+gradient = SubResource("Gradient_4okmw")
+width = 64
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_d4kf5")
+shader_parameter/albedo = Color(0.41960785, 0.65882355, 0.27058825, 1)
+shader_parameter/ramp = SubResource("GradientTexture1D_ywf7k")
+shader_parameter/shadow_tint = Color(0.7176471, 0.6509804, 0.76862746, 1)
+shader_parameter/rim_strength = null
+shader_parameter/rim_width = null
+shader_parameter/rim_color = null
+shader_parameter/rim_soft = null
+shader_parameter/sway_base = null
+shader_parameter/sway_height = null
+shader_parameter/sway_amount = null
+shader_parameter/sway_speed = null

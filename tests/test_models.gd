@@ -131,7 +131,8 @@ static func _test_slots(t) -> void:
 		"snake_head", "burrow",
 		"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost",
 		"title_sign",
-		"mascot_camper", "camp_sign"],
+		"mascot_camper", "camp_sign",
+		"oak", "grass_clump"],
 		"slot list matches every board's design")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)

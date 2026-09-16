@@ -1,0 +1,38 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://shaders/toon_wood.gdshader" id="1_83yf3"]
+
+[sub_resource type="Gradient" id="Gradient_qe06o"]
+offsets = PackedFloat32Array(0, 0.37, 0.47, 0.66, 0.74, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.55, 0.55, 1, 0.55, 0.55, 0.55, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_23v5p"]
+gradient = SubResource("Gradient_qe06o")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_83yf3")
+shader_parameter/albedo = Color(0.5411765, 0.41568628, 0.2901961, 1)
+shader_parameter/ramp = SubResource("GradientTexture1D_23v5p")
+shader_parameter/shadow_tint = Color(0.7176471, 0.6509804, 0.76862746, 1)
+shader_parameter/rim_strength = 0.24
+shader_parameter/rim_width = null
+shader_parameter/rim_color = Color(0.7490196, 0.8901961, 0.9607843, 1)
+shader_parameter/rim_soft = 0.12
+shader_parameter/grain_axis = Vector3(0, 1, 0)
+shader_parameter/grain_heart = null
+shader_parameter/grain_scale = null
+shader_parameter/grain_width = null
+shader_parameter/grain_cover = null
+shader_parameter/grain_wobble = null
+shader_parameter/grain_soft = null
+shader_parameter/grain_soft_min = null
+shader_parameter/grain_streak_tint = null
+shader_parameter/grain_zone_tint = null
+shader_parameter/grain_knot_tint = null
+shader_parameter/grain_knot_cell = null
+shader_parameter/grain_knot_chance = null
+shader_parameter/grain_knot_size = null
+shader_parameter/grain_wash = null
+shader_parameter/grain_warm = null
+shader_parameter/grain_cool = null

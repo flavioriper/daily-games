@@ -99,6 +99,15 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
   --python tools/blender_export.py -- Mascot_Camper
 "$BLENDER" -b art/camp_sign.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Camp_Sign
+# Two pieces of the peeplet project's valley, brought over as geometry and
+# dressed by this project's toon pipeline: the broadleaf oak (its source is
+# art/peeplet_trees.blend, cut down in the live session into art/oak.blend --
+# trunk on Bark, leaf cards on Leaf_flat with their baked smooth normals) and
+# the grass clump the campsite's turf is scattered from.
+"$BLENDER" -b art/oak.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Oak
+"$BLENDER" -b art/grass_clump.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Grass_Clump
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

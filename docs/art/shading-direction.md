@@ -46,3 +46,10 @@ cel look (hard bands, the shared dark outline) until their turn.
   its own); a lit lip where the edge faces up and a soft shade where it
   faces down give the board its thickness. The trays keep their rounded
   StyleBox shape; the cut is opt-in.
+- **Leaf** (2026-09-16). The palette's leaf greens (`LEAF`, `LEAF_LIGHT`)
+  take the same eased ramp and sky-tinted rim as wood, without the grain,
+  through `Toon.soft_material`; `Toon.material_for` routes them there by
+  colour the way it routes wood. A crown built from leaf cards (the oak,
+  brought over from the peeplet project's geometry) stays `_flat`, so it
+  wears no shell, and keeps its baked smooth-proxy normals so the band
+  reads across the whole crown rather than card by card.

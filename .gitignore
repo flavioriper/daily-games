@@ -52,6 +52,11 @@ art/*.blend
 # the live session, so this .blend is the source of all twelve signs.
 !art/sign.blend
 !art/camp_sign.blend
+# Two pieces of the peeplet project's valley, brought over as geometry: the
+# copy of its trees.blend they were cut from, and the two cut-down sources.
+!art/peeplet_trees.blend
+!art/oak.blend
+!art/grass_clump.blend
 
 # Python bytecode from running the tools
 __pycache__/

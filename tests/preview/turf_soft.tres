@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://shaders/toon.gdshader" id="1_rcdmv"]
+
+[sub_resource type="Gradient" id="Gradient_qe06o"]
+offsets = PackedFloat32Array(0, 0.37, 0.47, 0.66, 0.74, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.55, 0.55, 1, 0.55, 0.55, 0.55, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_23v5p"]
+gradient = SubResource("Gradient_qe06o")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_rcdmv")
+shader_parameter/albedo = Color(0.36925492, 0.5797647, 0.23811767, 1)
+shader_parameter/ramp = SubResource("GradientTexture1D_23v5p")
+shader_parameter/shadow_tint = Color(0.7176471, 0.6509804, 0.76862746, 1)
+shader_parameter/rim_strength = 0.18
+shader_parameter/rim_width = null
+shader_parameter/rim_color = Color(0.7490196, 0.8901961, 0.9607843, 1)
+shader_parameter/rim_soft = 0.12

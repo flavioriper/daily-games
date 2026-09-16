@@ -158,6 +158,11 @@ LIMITS = {
     # textured mesh rather than flat-colour layers -- see the contract's
     # "Textured props" section.
     "camp_sign": (2.0, 1.0, 0.5),
+    # Peeplet's broadleaf, brought over as geometry only (art/oak.blend, from
+    # the peeplet project's trees.blend) and dressed by this project's toon
+    # pipeline; and the grass clump that field is scattered from.
+    "oak": (1.4, 1.4, 2.0),
+    "grass_clump": (0.5, 0.5, 0.45),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -241,7 +246,12 @@ def mesh_problems(obj):
         return ["mesh has no vertices"]
     if not all(p.use_smooth for p in mesh.polygons):
         found.append("not shaded smooth")
-    if mesh.has_custom_normals:
+    # Custom normals break the outline shell, which extrudes along them. A
+    # layer with no shell (every material `_flat`) may keep them: the oak's
+    # leaf cards carry normals baked from a smooth proxy so the toon band
+    # sweeps the crown as one mass instead of per-card speckle.
+    outlined = any(not (m and m.name.endswith("_flat")) for m in mesh.materials) or not mesh.materials
+    if mesh.has_custom_normals and outlined:
         found.append("custom split normals (clear them: Mesh > Normals > Clear Custom Split Normals Data)")
     for mod in obj.modifiers:
         if mod.type in ("EDGE_SPLIT", "WEIGHTED_NORMAL"):

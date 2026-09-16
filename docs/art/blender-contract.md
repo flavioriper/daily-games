@@ -66,6 +66,8 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `title_sign` | unbounded | unbounded | the menu's and HUD's title board, an **assembly**: `Sign_Plank` (`Plank`, Pal.PLAQUE, so core/toon.gd grains it at runtime), `Sign_Leaves` (`Leaf`, both sprigs in one mesh -- two lobes of one layer), `Sign_Screws` (`Screw_flat`, both heads). Chrome, not a piece: it is drawn in its own SubViewport at whatever size the Control layout gives it, so no cell footprint applies -- but it still keeps the base-at-Z=0 and centred-footprint rules. The title and motto are **not** modelled here: ui/hud/sign_view.gd extrudes them with TextMesh from the display face, so the words stay data |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
 | `camp_sign` | 2.0 x 1.0 | 0.5 | the menu's fence diorama: grass mounds, a fence, a bird, a backpack and two post stubs, one **textured** mesh (`Camp_Sign_flat`, so no outline) cut down from a Meshy export in `art/camp_sign.blend`. Its own plank was cut out; `world/camp.gd` lays a lettered plank across the stubs |
+| `oak` | 1.4 x 1.4 | 2.0 | a broadleaf from the peeplet project (`art/oak.blend`, cut from `art/peeplet_trees.blend`), an **assembly**: `Oak_Trunk` (`Bark`, the wood grain and its own-colour line) and `Oak_Canopy` (`Leaf_flat`, thousands of leaf cards given a hair of thickness so they read from both sides; no shell, and it keeps its baked smooth-proxy normals so the soft band sweeps the crown as one mass). The scenery scales it up like the conifer |
+| `grass_clump` | 0.5 x 0.5 | 0.45 | the peeplet valley's grass tuft (`art/grass_clump.blend`): `Clump_Blades` (`Grass_sway_flat`), blades thickened the same way; scattered as a MultiMesh like `tuft`, which it is meant to replace where a field should read as grass rather than sprigs |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
 the moss trim; `core/platform.gd` lays one `rim_edge` per cell along each side
@@ -116,7 +118,10 @@ centred on the origin, base at Z = 0.
    gaps at every corner. The exporter rejects meshes with custom split
    normals or an Edge Split / Weighted Normal / Smooth by Angle modifier,
    and a Bevel with **Harden Normals** on, which writes split normals the
-   moment the modifier is applied. It measures the modifier result, not the
+   moment the modifier is applied. The one exception is a layer with no shell at all (every material
+   `_flat`), which may keep custom normals: the oak's leaf cards
+   (`art/oak.blend`) carry normals baked from a smooth proxy so the toon
+   band sweeps the crown as one mass instead of per-card speckle. It measures the modifier result, not the
    cage, so a Solidify or Displace that grows the mesh past its budget is
    caught too.
 5. **Materials are colours.** One Principled BSDF per material, Base Color set,
