@@ -13,14 +13,24 @@ uniform vec4 shadow_tint : source_color = vec4(0.72, 0.65, 0.77, 1.0);
 uniform float rim_strength : hint_range(0.0, 1.0) = 0.18;
 uniform float rim_width : hint_range(0.0, 1.0) = 0.30;
 uniform vec4 rim_color : source_color = vec4(1.0);
+// How far the rim's edge eases, in facing units. Zero is the hard step the
+// cel look started with; the soft painted materials (wood first,
+// docs/art/shading-direction.md) set a small value so the edge light reads
+// as bounced sky rather than a drawn line.
+uniform float rim_soft : hint_range(0.0, 0.5) = 0.0;
 
 #ifdef WOOD_GRAIN
-// Wood grain, cel. Rings around the piece's own axis with the heart of the
-// log sitting off the surface, which is what turns a flat-sawn face's rings
-// into cathedral figure and wraps a round post in bands. Four flat tones:
-// the wood, a slightly darker zone on some rings, a thin dark streak along
-// each ring, and a knot's dark core. Every edge is a hard step with one
-// pixel of box-filter coverage, never a gradient.
+// Wood grain, painted. Rings around the piece's own axis with the heart of
+// the log sitting off the surface, which is what turns a flat-sawn face's
+// rings into cathedral figure and wraps a round post in bands. Four tones,
+// each a tint rather than a plain darkening so the figure shifts hue the way
+// paint does: the wood, a slightly darker zone on some rings, a streak along
+// each ring, and a knot's core. Edges are soft brush edges a few pixels
+// wide, never a one-pixel step and never a long gradient
+// (docs/art/shading-direction.md: hand-painted feel, soft cel).
+//
+// Under the figure a slow wash drifts the whole surface between a warmer and
+// a cooler brown, so no two hand-widths of one plank are the same colour.
 //
 // Streaks break: a slow noise along each line sets its width, and where
 // that reaches zero the streak tapers to a point, so the figure is long
@@ -45,12 +55,24 @@ uniform float grain_scale = 14.0;                         // rings per world uni
 uniform float grain_width : hint_range(0.0, 0.5) = 0.10;  // streak half-width, in rings
 uniform float grain_cover : hint_range(0.0, 1.0) = 0.66;  // how much of a ring carries a streak
 uniform float grain_wobble = 0.45;                        // rings a line wanders
-uniform float grain_darken : hint_range(0.0, 1.0) = 0.72;
-uniform float grain_zone_darken : hint_range(0.0, 1.0) = 0.94;
+// Edge softness: pixels of brush edge on every streak, zone and knot, with a
+// floor in ring units so a close-up keeps a soft edge too.
+uniform float grain_soft = 1.8;
+uniform float grain_soft_min = 0.03;
+// The tones, as multipliers on the wood. Each is a little cooler or redder
+// than a plain darkening of the base, which is what keeps a dark streak from
+// reading as ink.
+uniform vec3 grain_streak_tint = vec3(0.80, 0.73, 0.70);
+uniform vec3 grain_zone_tint = vec3(0.965, 0.935, 0.93);
+uniform vec3 grain_knot_tint = vec3(0.70, 0.61, 0.58);
 uniform vec2 grain_knot_cell = vec2(2.0, 0.6);            // lattice cell, along x across, world units
 uniform float grain_knot_chance : hint_range(0.0, 1.0) = 0.33;
 uniform float grain_knot_size = 0.055;                    // core half-length, world units
-uniform float grain_knot_darken : hint_range(0.0, 1.0) = 0.64;
+// The wash: how far the surface drifts toward the warm and cool tints, and
+// the two tints themselves.
+uniform float grain_wash : hint_range(0.0, 1.0) = 1.0;
+uniform vec3 grain_warm = vec3(1.05, 0.99, 0.92);
+uniform vec3 grain_cool = vec3(0.95, 0.97, 1.05);
 
 void vertex() {
 	vec3 s = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
@@ -76,8 +98,8 @@ float wood_band(float d, float hw, float w) {
 	return clamp(min(hw, d + 0.5 * w) - max(-hw, d - 0.5 * w), 0.0, w) / w;
 }
 
-// Albedo multiplier at local point p.
-float wood_figure(vec3 p) {
+// Albedo multiplier at local point p, as a colour.
+vec3 wood_figure(vec3 p) {
 	vec3 ax = normalize(grain_axis);
 	// A reference never parallel to the axis, so the cross products below
 	// give a stable pair of axes across the log.
@@ -115,7 +137,7 @@ float wood_figure(vec3 p) {
 	float e = length(to_knot / (grain_knot_size * vec2(2.0, 1.0)));
 	float bulge = 1.0 - clamp(e / 3.5, 0.0, 1.0);
 	r += has_knot * bulge * bulge * (3.0 - 2.0 * bulge) * 2.6;
-	float knot_core = has_knot * wood_band(e, 1.0, max(fwidth(e), 0.001));
+	float knot_core = has_knot * wood_band(e, 1.0, max(fwidth(e) * grain_soft, 0.15));
 
 	// Streaks: a thin band around each ring's centre, drawn where a slow
 	// noise along the ring says so and tapering where it fades.
@@ -123,7 +145,7 @@ float wood_figure(vec3 p) {
 	float ring = floor(r);
 	float presence = wood_noise(vec2(along * 1.3, ring * 0.71 + 17.0));
 	float hw = grain_width * smoothstep(1.0 - grain_cover, 1.0 - grain_cover + 0.3, presence);
-	float w = max(fwidth(r), 0.0008);
+	float w = max(fwidth(r) * grain_soft, grain_soft_min);
 	float streak = wood_band(d, hw, w);
 
 	// Zones: some rings are a shade darker across their whole width, bounded
@@ -137,9 +159,17 @@ float wood_figure(vec3 p) {
 	float zp = step(0.5, wood_hash(vec2(zid + 1.0, 23.0)));
 	float zone = mix(mix(zm, z0, clamp(zf / w + 0.5, 0.0, 1.0)), zp, clamp((zf - 1.0) / w + 0.5, 0.0, 1.0));
 
-	float tone = mix(1.0, grain_zone_darken, zone);
-	tone *= mix(1.0, grain_darken, streak);
-	return mix(tone, grain_knot_darken, knot_core);
+	// The wash, on the same (along, arc) chart as the knots: a broad drift
+	// between the cool and the warm tint, and a finer one in value.
+	float n_fine = wood_noise(kp * grain_knot_cell * 2.8 + 53.0);
+	float n_broad = wood_noise(kp * grain_knot_cell * 0.9 + 77.0);
+	float warmth = clamp(0.5 + (n_broad - 0.5) * 1.4 + (n_fine - 0.5) * 0.8, 0.0, 1.0);
+	vec3 tone = mix(vec3(1.0), mix(grain_cool, grain_warm, warmth), grain_wash);
+	tone *= 1.0 + (n_fine - 0.5) * 0.08 * grain_wash;
+
+	tone *= mix(vec3(1.0), grain_zone_tint, zone);
+	tone *= mix(vec3(1.0), grain_streak_tint, streak);
+	return mix(tone, tone * grain_knot_tint, knot_core);
 }
 #endif
 
@@ -152,7 +182,11 @@ void fragment() {
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
 	float facing = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
-	float rim = step(1.0 - rim_width, 1.0 - facing);
+	// A smoothstep of width rim_soft about the rim's edge; at rim_soft 0 the
+	// divisor makes it the hard step. (smoothstep itself is undefined when
+	// both edges coincide, hence the clamp form.)
+	float k = clamp(((1.0 - facing) - (1.0 - rim_width)) / max(rim_soft, 1e-4) * 0.5 + 0.5, 0.0, 1.0);
+	float rim = k * k * (3.0 - 2.0 * k);
 	EMISSION = rim_color.rgb * base * rim * rim_strength;
 }
 

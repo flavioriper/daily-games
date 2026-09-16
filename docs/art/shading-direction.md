@@ -20,3 +20,17 @@ painted cel style. Read this before touching any of them. Set on 2026-09-16.
 - **Minimal specular.** Avoid the shiny "mobile 3D asset" look.
 - **Depth through colour.** Distant objects become softer and lighter rather
   than relying entirely on realistic fog.
+
+## Where it stands
+
+Materials are brought over one at a time; the rest still wear the original
+cel look (hard bands, the shared dark outline) until their turn.
+
+- **Wood** (2026-09-16), in three dimensions and in the HUD. The mechanism
+  the next material reuses lives in `core/toon.gd`: `soft_ramp()` for eased
+  bands, `line()` for an outline shell in the layer's own deepened colour at
+  the thinner line width, and the include's `rim_soft` uniform for an eased,
+  sky-tinted rim. The grain itself (`toon_lit.gdshaderinc`,
+  `wood_grain_2d.gdshader`) draws its streaks, zones and knots as tints with
+  a brush-soft edge over a slow warm-to-cool wash. Palette hexes were left
+  alone: ten exported models carry them as their wood key.

@@ -38,8 +38,22 @@ const WOOD_TOL := 0.012
 ## no winner at all falls back to standing rings.
 const GRAIN_LEAD := 1.02
 
+## The line a soft painted layer wears instead of the shared dark outline
+## (docs/art/shading-direction.md: no harsh black outlines). Wood is the
+## first material on it: its line is its own colour, deepened and cooled a
+## little, and thinner than the ink line.
+const LINE_WIDTH := 0.014
+const LINE_DEEPEN := 0.45
+const LINE_COOL := 0.12
+## Wood's rim: eased rather than stepped, and tinted with the sky so the
+## upper edges catch bounced light rather than a drawn highlight.
+const WOOD_RIM_SOFT := 0.12
+const WOOD_RIM_STRENGTH := 0.24
+
 static var _ramp: GradientTexture1D
+static var _soft_ramp: GradientTexture1D
 static var _outline: ShaderMaterial
+static var _line_cache: Dictionary = {}
 static var _cache: Dictionary = {}
 static var _wind_cache: Dictionary = {}
 static var _wood_cache: Dictionary = {}
@@ -57,6 +71,24 @@ static func ramp() -> GradientTexture1D:
 		_ramp.gradient = g
 		_ramp.width = 64
 	return _ramp
+
+## The same three bands with each edge eased over a short run instead of
+## stepping: clear light and shadow, soft terminator. The wood material
+## samples it; every other material keeps ramp(). Wide enough that the
+## shader's nearest sampling never shows a stair inside the ease.
+static func soft_ramp() -> GradientTexture1D:
+	if _soft_ramp == null:
+		var g := Gradient.new()
+		g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_LINEAR
+		g.offsets = PackedFloat32Array([0.0, 0.37, 0.47, 0.66, 0.74, 1.0])
+		var dark := Color(0, 0, 0)
+		var half := Color(0.55, 0.55, 0.55)
+		var lit := Color(1, 1, 1)
+		g.colors = PackedColorArray([dark, dark, half, half, lit, lit])
+		_soft_ramp = GradientTexture1D.new()
+		_soft_ramp.gradient = g
+		_soft_ramp.width = 256
+	return _soft_ramp
 
 static func material(albedo: Color) -> ShaderMaterial:
 	var key := albedo.to_html()
@@ -98,8 +130,11 @@ static func wood_material(albedo: Color, axis := Vector3.UP) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = WOOD_SHADER
 	m.set_shader_parameter("albedo", albedo)
-	m.set_shader_parameter("ramp", ramp())
+	m.set_shader_parameter("ramp", soft_ramp())
 	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	m.set_shader_parameter("rim_soft", WOOD_RIM_SOFT)
+	m.set_shader_parameter("rim_strength", WOOD_RIM_STRENGTH)
+	m.set_shader_parameter("rim_color", Pal.SKY_TOP)
 	m.set_shader_parameter("grain_axis", axis)
 	_wood_cache[key] = m
 	return m
@@ -181,17 +216,37 @@ static func outline() -> ShaderMaterial:
 		_outline.set_shader_parameter("color", Pal.OUTLINE)
 	return _outline
 
+## The colour of a painted layer's line: the layer's own colour deepened,
+## then pulled a little toward the shadow tint so it cools the way a painted
+## shadow does instead of going to black.
+static func line_color(albedo: Color) -> Color:
+	return albedo.darkened(LINE_DEEPEN).lerp(Pal.SHADOW_TINT, LINE_COOL)
+
+## The outline shell material for a layer of colour `albedo`, in its own
+## line colour and at the thinner line width. Cached per colour.
+static func line(albedo: Color) -> ShaderMaterial:
+	var key := albedo.to_html()
+	if _line_cache.has(key):
+		return _line_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = OUTLINE_SHADER
+	m.set_shader_parameter("color", line_color(albedo))
+	m.set_shader_parameter("width", LINE_WIDTH)
+	_line_cache[key] = m
+	return m
+
 ## Adds the inverted-hull shell as a child of `mi`, sharing its mesh. Safe to
 ## call twice. The shell casts no shadow, otherwise every piece would throw a
-## fattened silhouette onto the table.
-static func add_outline(mi: MeshInstance3D) -> MeshInstance3D:
+## fattened silhouette onto the table. `shell_material` picks the line; the
+## default is the shared dark outline.
+static func add_outline(mi: MeshInstance3D, shell_material: ShaderMaterial = null) -> MeshInstance3D:
 	var existing := mi.get_node_or_null(OUTLINE_NODE)
 	if existing != null:
 		return existing
 	var shell := MeshInstance3D.new()
 	shell.name = OUTLINE_NODE
 	shell.mesh = mi.mesh
-	shell.material_override = outline()
+	shell.material_override = shell_material if shell_material != null else outline()
 	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.add_child(shell)
 	return shell
@@ -208,16 +263,22 @@ static func apply_to(root: Node) -> void:
 			continue
 		apply_to(child)
 
+## A wood layer's shell wears the wood's own line (line()); anything else
+## keeps the shared dark outline. One mesh is one layer (the Blender
+## contract), so the first wood surface's colour speaks for the mesh.
 static func _apply_mesh(mi: MeshInstance3D) -> void:
 	if mi.mesh == null:
 		return
 	var wants_outline := false
+	var shell: ShaderMaterial = null
 	for i in mi.mesh.get_surface_count():
 		var src: Material = mi.get_active_material(i)
 		if src is StandardMaterial3D:
 			var toon := wind_material(src.albedo_color) if sways(src.resource_name) else material_for(mi, src.albedo_color)
 			mi.set_surface_override_material(i, toon)
+			if shell == null and toon.shader == WOOD_SHADER:
+				shell = line(src.albedo_color)
 		if src == null or not src.resource_name.ends_with(FLAT_SUFFIX):
 			wants_outline = true
 	if wants_outline:
-		add_outline(mi)
+		add_outline(mi, shell)

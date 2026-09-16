@@ -44,8 +44,19 @@ static func _test_apply_converts_and_outlines(t) -> void:
 	t.check(shell is MeshInstance3D, "outline shell added")
 	t.check(shell != null and shell.mesh == mi.mesh, "shell shares the mesh")
 	t.check(shell != null and shell.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "shell casts no shadow")
-	t.check(shell != null and shell.material_override == Toon.outline(), "shell uses the shared outline material")
+	t.check(shell != null and shell.material_override == Toon.line(Color("c8a17a")), "a wood shell wears the wood's own line")
+	t.check(shell != null and shell.material_override != Toon.outline(), "and not the shared dark outline")
+	var line_col: Color = Toon.line_color(Color("c8a17a"))
+	t.check(line_col.get_luminance() < Color("c8a17a").get_luminance() and line_col.get_luminance() > Color(Toon.Pal.OUTLINE).get_luminance(), "the line is deeper than the wood and lighter than ink")
 	root.free()
+	var stone := StandardMaterial3D.new()
+	stone.albedo_color = Color("ede2cc")
+	stone.resource_name = "Stone"
+	var rock := _mesh_with(stone)
+	Toon.apply_to(rock)
+	var rock_shell = rock.get_node_or_null("Outline")
+	t.check(rock_shell != null and rock_shell.material_override == Toon.outline(), "a non-wood shell keeps the shared outline material")
+	rock.free()
 
 static func _test_flat_gets_no_outline(t) -> void:
 	var std := StandardMaterial3D.new()
