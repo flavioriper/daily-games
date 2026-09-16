@@ -95,7 +95,7 @@ func _build_list() -> void:
 	scroll.add_child(col)
 	for i in Registry.PUZZLES.size():
 		var entry: Dictionary = Registry.PUZZLES[i]
-		var card := PuzzleCard.new(entry, Pal.CAT[i % Pal.CAT.size()])
+		var card := PuzzleCard.new(entry)
 		card.name = "Card_" + entry.id
 		card.open.connect(_open.bind(entry))
 		col.add_child(card)

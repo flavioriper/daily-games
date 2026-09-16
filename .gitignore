@@ -47,6 +47,10 @@ art/*.blend
 !art/snake.blend
 # Code Break's screen: the deck strip and the scenery around the dock.
 !art/scenery.blend
+# The menu's carved title sign: one plank, leaves and screws, with the title
+# and motto as Text objects tools/build_signs.py swaps per puzzle. Modelled in
+# the live session, so this .blend is the source of all twelve signs.
+!art/sign.blend
 
 # Python bytecode from running the tools
 __pycache__/

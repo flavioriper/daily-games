@@ -22,6 +22,29 @@ follow when touching a model:
   outlines) before calling a model done; Blender's viewport colours are not
   what the game shows.
 
+## Art: the menu's title signs
+
+Each of the twelve menu cards *is* a carved wood sign, rendered from one
+source: `art/sign.blend`. Five layers, one mesh and one material each, per the
+contract above: plank, title, motto, leaves, screws.
+
+- **Never edit the twelve PNGs.** They are output. To change how every sign
+  looks, edit `art/sign.blend` in the live Blender session and re-render:
+  `Blender -b art/sign.blend --python tools/build_signs.py`,
+  then `godot --headless --path . --import`.
+- **The words come from `ui/registry.gd`**, not from the .blend. The tool reads
+  every entry's `title` and `motto`, so adding a puzzle there and re-running is
+  all a new sign takes. The Text objects in the .blend only hold whatever was
+  rendered last.
+- **Titles shrink to fit; the plank never stretches**, so the column stays
+  even. The tool prints a `FIT` line when a title had to come down (Code Break
+  90%, Snake Apple 85%). What binds the width is the leaf sprigs at x = +-0.79,
+  not the plank's edge.
+- Fredoka is a variable font and Blender only loads its Light instance, so the
+  lettering's weight comes from the Text objects' `offset` (a faux-bold), not
+  from a weight axis. Pushing that offset too far closes the counter of an "A"
+  into a sliver.
+
 ## Art: shading direction
 
 The look everything aims for is in `docs/art/shading-direction.md`: soft

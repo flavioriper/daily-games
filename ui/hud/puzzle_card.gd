@@ -1,65 +1,65 @@
 extends "res://ui/hud/panel.gd"
 
-## One puzzle on the menu: a paper card with a lettered medallion in the
-## puzzle's own colour, the title, the blurb wrapped to the card, and a sun
-## chevron pill as the play affordance. The whole card is the button: a flat
-## Button lies over the paper and squashes it on press. Emits open; the menu
-## decides what that means.
+## One puzzle on the menu: its carved wood sign, and nothing else. The sign
+## carries the title and the motto as modelled lettering, so the card needs no
+## label of its own; the whole board is the button and squashes on press.
+## Emits open; the menu decides what that means.
+##
+## The signs are rendered from art/sign.blend by tools/build_signs.py, one per
+## entry in ui/registry.gd, into assets/signs/<id>.png. They are all cut to the
+## same frame, so every card in the column comes out the same shape.
 
 signal open
 
-const Icons = preload("res://ui/icons.gd")
-
-const MEDALLION := 88.0
-const PILL := 72.0
-const MIN_HEIGHT := 148.0
-const LETTER_SIZE := 44
-const LETTER_OUTLINE := 6
-const EDGE := 4.0
+const DIR := "res://assets/signs/"
+## The frame tools/build_signs.py renders: the plank plus the leaf sprigs that
+## reach past it. The card is as tall as its width divided by this, so a sign
+## is never squeezed. It cannot be left to TextureRect's own
+## EXPAND_FIT_WIDTH_PROPORTIONAL: that reports no minimum height until it has
+## been given a width, and the menu's VBox asks for the minimum first, so
+## every card came out zero-high.
+const ASPECT := 1024.0 / 372.0
 const SQUASH := 0.06
 const SQUASH_TIME := 0.18
 const PRESS_TINT := Color(0.93, 0.91, 0.88)
 
 var entry: Dictionary
-var colour: Color
+var _sign: TextureRect
 var _tap: Button
 var _press_tw: Tween
 
-func _init(the_entry: Dictionary, the_colour: Color) -> void:
+func _init(the_entry: Dictionary) -> void:
 	entry = the_entry
-	colour = the_colour
 	enter_from = Vector2(0, 60)
 
+func _make_inner() -> Container:
+	var box := MarginContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return box
+
 func _build() -> void:
-	var card := _inner as PanelContainer
-	card.add_theme_stylebox_override("panel", CozyTheme.paper_card())
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.custom_minimum_size.y = MIN_HEIGHT
-	card.resized.connect(func() -> void: card.pivot_offset = card.size * 0.5)
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 22)
-	card.add_child(row)
-	row.add_child(_medallion())
-	var words := VBoxContainer.new()
-	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.alignment = BoxContainer.ALIGNMENT_CENTER
-	words.add_theme_constant_override("separation", 2)
-	row.add_child(words)
-	var title := Label.new()
-	title.theme_type_variation = "CardTitle"
-	title.text = String(entry.get("title", ""))
-	words.add_child(title)
-	var blurb := Label.new()
-	blurb.theme_type_variation = "CardBody"
-	blurb.add_theme_color_override("font_color", Pal.TEXT_DIM)
-	blurb.text = String(entry.get("blurb", ""))
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	blurb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.add_child(blurb)
-	row.add_child(_pill())
-	# The tap surface lies over the paper, drawn by nothing: the paper itself
+	_inner.resized.connect(func() -> void: _inner.pivot_offset = _inner.size * 0.5)
+	resized.connect(_fit_sign)
+	var tex: Texture2D = load(DIR + String(entry.get("id", "")) + ".png") as Texture2D
+	if tex != null:
+		_sign = TextureRect.new()
+		_sign.texture = tex
+		_sign.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_sign.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_sign.stretch_mode = TextureRect.STRETCH_SCALE
+		_inner.add_child(_sign)
+		_fit_sign()
+	else:
+		# A stripped project with no signs rendered still gets a usable menu,
+		# the way CozyTheme falls back to the engine font.
+		var label := Label.new()
+		label.theme_type_variation = "CardTitle"
+		label.text = String(entry.get("title", ""))
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.custom_minimum_size.y = 148.0
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_inner.add_child(label)
+	# The tap surface lies over the sign, drawn by nothing: the board itself
 	# answers the press.
 	_tap = Button.new()
 	_tap.flat = true
@@ -72,46 +72,13 @@ func _build() -> void:
 	_tap.pressed.connect(func() -> void: open.emit())
 	add_child(_tap)
 
-## A disc in the puzzle's colour with a darker bottom edge, the buttons'
-## language, and the title's initial on it in the wordmark's outlined white.
-func _medallion() -> Control:
-	var disc := Control.new()
-	disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	disc.custom_minimum_size = Vector2(MEDALLION, MEDALLION)
-	disc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	disc.draw.connect(func() -> void:
-		var c := disc.size * 0.5
-		var r := MEDALLION * 0.5 - EDGE * 0.5
-		disc.draw_circle(c + Vector2(0.0, EDGE), r, colour.darkened(0.3), true, -1.0, true)
-		disc.draw_circle(c, r, colour, true, -1.0, true))
-	var letter := Label.new()
-	letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	letter.theme_type_variation = "Badge"
-	letter.add_theme_font_size_override("font_size", LETTER_SIZE)
-	letter.add_theme_color_override("font_outline_color", Pal.OUTLINE)
-	letter.add_theme_constant_override("outline_size", LETTER_OUTLINE)
-	letter.text = String(entry.get("title", "?")).left(1).to_upper()
-	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	letter.offset_bottom = -EDGE
-	disc.add_child(letter)
-	return disc
-
-## The play affordance: a sun pill with the primary button's deep edge and a
-## chevron pointing into the puzzle.
-func _pill() -> Control:
-	var pill := Control.new()
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pill.custom_minimum_size = Vector2(PILL, PILL)
-	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var style := CozyTheme.card(Pal.SUN, int(PILL * 0.5), Pal.SUN_DEEP, int(EDGE) + 2, 0)
-	pill.draw.connect(func() -> void:
-		pill.draw_style_box(style, Rect2(Vector2.ZERO, pill.size))
-		var glyph := Rect2(Vector2.ZERO, pill.size).grow(-PILL * 0.2)
-		glyph.position.y -= EDGE * 0.5
-		Icons.paint(pill, "chevron_right", glyph, Pal.TEXT))
-	return pill
+## Keeps the sign at the rendered frame's aspect as the list's width changes.
+func _fit_sign() -> void:
+	if _sign == null:
+		return
+	var want := roundf(size.x / ASPECT)
+	if want > 0.0 and absf(_sign.custom_minimum_size.y - want) > 0.5:
+		_sign.custom_minimum_size.y = want
 
 func _press() -> void:
 	Motion.stop(_press_tw)
