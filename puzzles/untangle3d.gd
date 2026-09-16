@@ -23,6 +23,7 @@ const Platform = preload("res://core/platform.gd")
 const Motion = preload("res://core/motion.gd")
 const Toon = preload("res://core/toon.gd")
 const Fx = preload("res://world/fx.gd")
+const Scenery = preload("res://world/scenery.gd")
 
 const HINTS := 3
 ## Half a cell of stone is left around the posts so a post on the very edge of
@@ -303,6 +304,7 @@ func _build_scene() -> void:
 	for i in nodes:
 		var post := Models.instance("post")
 		post.name = "post_%d" % i
+		Scenery.seed_grain(post, float(i))
 		board.add_child(post)
 		_posts.append(post)
 		_lift_tw.append(null)

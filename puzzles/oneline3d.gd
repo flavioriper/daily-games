@@ -31,6 +31,7 @@ const Placeholders = preload("res://core/placeholders.gd")
 const Platform = preload("res://core/platform.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx = preload("res://world/fx.gd")
+const Scenery = preload("res://world/scenery.gd")
 
 ## Cells between neighbouring lattice posts.
 const SPACING := 2
@@ -266,6 +267,7 @@ func _build_scene() -> void:
 		var post := Models.instance("post")
 		post.name = "post_%d" % n
 		post.position = _world_of(n)
+		Scenery.seed_grain(post, float(n))
 		board.add_child(post)
 		_posts[n] = post
 
@@ -281,6 +283,7 @@ func _build_scene() -> void:
 		pivot.rotation.y = atan2(-(b.z - a.z), b.x - a.x)
 		board.add_child(pivot)
 		var model := Models.instance("plank")
+		Scenery.seed_grain(model, float(e) + 0.5)
 		pivot.add_child(model)
 		_planks.append(pivot)
 		_plank_models.append(model)

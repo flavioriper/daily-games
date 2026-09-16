@@ -62,7 +62,7 @@ func _build() -> void:
 	_plaque = PanelContainer.new()
 	_plaque.name = "Plaque"
 	_plaque.add_theme_stylebox_override("panel", CozyTheme.plank_card())
-	_plaque.material = CozyTheme.wood_grain()
+	_plaque.material = CozyTheme.wood_grain(5.0)
 	_plaque.draw.connect(_draw_plaque)
 	centre.add_child(_plaque)
 	# Room down each side for the two leaves, which are painted on the plaque

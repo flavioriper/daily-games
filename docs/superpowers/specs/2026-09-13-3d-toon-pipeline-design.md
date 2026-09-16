@@ -590,3 +590,58 @@ node-bound tween) define `run_in_tree(t)`, which the runner calls on the
 first process frame; `run(t)` still executes during `_initialize`, before the
 root enters the tree. The runner also skips a suite that fails to parse
 instead of calling into it, which used to hang the run.
+
+## Amendment C: wood grain (2026-09-16)
+
+Every surface that arrives in one of the palette's woods (`DECK`, `WOOD`,
+`BARK`, `TIMBER`) wears `toon_wood.gdshader`, which is the shared lit body
+of section 2 with a `WOOD_GRAIN` block switched on; `Toon.material_for`
+does the hook-up from the base colour, so neither models nor boards learned
+a new mark. The HUD's wood panels wear the same figure as a `canvas_item`
+material (`wood_grain_2d.gdshader`) that multiplies whatever the stylebox
+drew.
+
+### The figure (section 2)
+
+Rings around the piece's own axis with the heart of the log off the
+surface: cathedral figure on a flat face, bands along a post. Four flat
+tones, every edge a hard step with one pixel of box-filter coverage:
+
+- the wood;
+- a zone a shade darker (0.94) on a hashed half of the rings, bounded by
+  the streak lines;
+- a thin streak (0.72) along each ring. Its width is set by a slow noise
+  along the ring and tapers to nothing where that fades, so the figure is
+  long dashes, not stripes;
+- a knot's core (0.64), a 2:1 oval on a jittered lattice over the surface
+  charted as (along, arc around the axis), present in a third of the cells.
+  The knot bulges the ring coordinate so the lines nearby fold around it.
+
+Rings wander by two octaves of hash-based value noise, never a sine: the
+first cut's sine made every line wave in step.
+
+### Units and variation
+
+The grain is measured in world units: the vertex stage scales the local
+position by the model's own scale read off `MODEL_MATRIX`, so the deck
+strip modelled one unit long and stretched tenfold by the board gets true
+along-length figure, and every piece shares one ring spacing (14 per unit).
+Rotation is not applied, so a board that turns keeps its grain.
+
+Which log a piece came from is `grain_seed`, an `instance uniform` (these
+render on the Compatibility renderer in 4.7; probed before relying on it).
+`Scenery.seed_grain(node, seed)` sets it on every mesh under a node, and is
+called from something fixed at placement -- the deck strip's index, a
+prop's position, a One Line post or plank's index, a Balance beam's row --
+never a live transform an entrance might still be moving. The material
+stays shared, so the cache and the draw count are what they were.
+
+The HUD's `CozyTheme.wood_grain(seed)` caches one material per seed; the
+plaque, the day card and each tray and trough pass their own, so four
+panels no longer show one corner of one figure.
+
+### Not done
+
+The reference plank's dark outer border and notched ends. The cards have
+their own rounded, thick-bottom language and the 3D pieces get the outline
+shell, so neither wanted a second edge treatment.

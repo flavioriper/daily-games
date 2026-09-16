@@ -19,6 +19,7 @@ const Platform = preload("res://core/platform.gd")
 const Motion = preload("res://core/motion.gd")
 const Shapes = preload("res://core/shapes.gd")
 const Fx = preload("res://world/fx.gd")
+const Scenery = preload("res://world/scenery.gd")
 
 ## The board is as wide as a scale needs and no wider: a beam reaches
 ## SCALE_ARM each way and its pan another PAN_R, which is 2.17 -- inside this
@@ -358,6 +359,7 @@ func _build_scale(i: int) -> void:
 
 	var beam := Models.instance("scale_beam")
 	beam.position.y = -Placeholders.BEAM_HUB_R
+	Scenery.seed_grain(beam, float(i))
 	pivot.add_child(beam)
 
 	var pans: Array = []

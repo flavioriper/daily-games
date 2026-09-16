@@ -16,7 +16,7 @@ const GRAIN_SHADER := preload("res://shaders/wood_grain_2d.gdshader")
 
 static var _theme: Theme
 static var _fonts: Dictionary = {}
-static var _grain: ShaderMaterial
+static var _grain: Dictionary = {}
 
 ## The shared theme, built once.
 static func make() -> Theme:
@@ -116,16 +116,19 @@ static func parchment_card() -> StyleBoxFlat:
 	sb.set_border_width_all(3)
 	return sb
 
-## The grain the wood panels wear, as a Control `material`. One shared
-## instance: it darkens whatever the stylebox drew rather than painting a
-## colour of its own, so the tray, its trough and the plaque can all take the
-## same one and each keeps its own wood. Put it on the panel, never on a
+## The grain the wood panels wear, as a Control `material`. It darkens
+## whatever the stylebox drew rather than painting a colour of its own, so a
+## tray, its trough and the plaque each keep their own wood. `seed` picks the
+## log: one material per seed, cached, so panels that would otherwise show
+## the same corner of the same figure do not. Put it on the panel, never on a
 ## panel with children that draw themselves -- the material catches those too.
-static func wood_grain() -> ShaderMaterial:
-	if _grain == null:
-		_grain = ShaderMaterial.new()
-		_grain.shader = GRAIN_SHADER
-	return _grain
+static func wood_grain(seed := 0.0) -> ShaderMaterial:
+	if not _grain.has(seed):
+		var m := ShaderMaterial.new()
+		m.shader = GRAIN_SHADER
+		m.set_shader_parameter("grain_seed", seed)
+		_grain[seed] = m
+	return _grain[seed]
 
 static func wood_card() -> StyleBoxFlat:
 	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)

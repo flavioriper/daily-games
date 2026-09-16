@@ -53,8 +53,19 @@ static func deck(x0: float, x1: float, z0: float, z1: float) -> Node3D:
 		strip.name = "deck_%d" % i
 		strip.position = Vector3((x0 + x1) * 0.5, -Placeholders.DECK_H, z0 + 0.5 + i)
 		strip.scale.x = x1 - x0
+		seed_grain(strip, float(i))
 		root.add_child(strip)
 	return root
+
+## Which log a wooden piece was cut from. Shifts the grain shader's figure on
+## every mesh under `node`, so ten strips of one deck mesh do not repeat, and
+## as an instance parameter, so the material stays shared. Seed it from
+## something fixed at placement -- an index, the spot a prop was put -- never
+## from a live transform an entrance might still be moving. Harmless on a
+## mesh that is not wood: its material has no such parameter to read.
+static func seed_grain(node: Node, seed: float) -> void:
+	for mi in Models.meshes(node):
+		mi.set_instance_shader_parameter("grain_seed", seed)
 
 ## One library model at `at`, turned `yaw` about Y and scaled, under a pivot.
 ## The pivot carries position and yaw and the model the scale, so an
@@ -67,6 +78,7 @@ static func prop(slot: String, at: Vector3, yaw := 0.0, scale := Vector3.ONE) ->
 	pivot.rotation.y = yaw
 	var model := Models.instance(slot)
 	model.scale = scale
+	seed_grain(model, fposmod(at.x * 3.7 + at.z * 5.3 + yaw, 97.0))
 	pivot.add_child(model)
 	return pivot
 
