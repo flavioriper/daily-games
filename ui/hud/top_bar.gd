@@ -64,10 +64,18 @@ func _build() -> void:
 	_plaque.add_theme_stylebox_override("panel", CozyTheme.plank_card())
 	_plaque.draw.connect(_draw_plaque)
 	centre.add_child(_plaque)
+	# Room down each side for the two leaves, which are painted on the plaque
+	# itself rather than laid out in it: without the margin the bottom-left
+	# one landed under the first word of a wide motto.
+	var room := int(LEAF + 2.0 * LEAF_INSET)
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left", room)
+	pad.add_theme_constant_override("margin_right", room)
+	_plaque.add_child(pad)
 	var words := VBoxContainer.new()
 	words.alignment = BoxContainer.ALIGNMENT_CENTER
 	words.add_theme_constant_override("separation", 0)
-	_plaque.add_child(words)
+	pad.add_child(words)
 	var title_row := HBoxContainer.new()
 	title_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	title_row.add_theme_constant_override("separation", 4)
@@ -99,8 +107,9 @@ func _button(icon: String, sig: Signal) -> Button:
 	return b
 
 ## Two nail heads at the plaque's top corners and a second leaf at its
-## bottom-left, mirrored (a negative-width rect flips the icon). The first
-## leaf stays at the title's top-right.
+## bottom-left, mirrored (a negative-width rect flips the icon). It sits in
+## the side margin _build keeps for it, clear of the motto. The first leaf
+## stays at the title's top-right.
 func _draw_plaque() -> void:
 	var w := _plaque.size.x
 	var h := _plaque.size.y
