@@ -51,6 +51,19 @@ LIMITS = {
     "pipe_tee": (1.0, 1.0, 0.38),
     "pipe_cross": (1.0, 1.0, 0.38),
     "valve": (0.65, 0.65, 0.12),
+    # Pipes' island (docs/superpowers/specs/2026-09-15-pipes-iso-design.md,
+    # section 9): the block the island is built out of, the pump that lifts
+    # water a level, and the tank and pool at the two ends of a run. The block
+    # is exact rather than budgeted -- see EXACT below. The pump is a pipe
+    # stood on end and so is two arms tall where a lying piece is one: its hub
+    # is a whole arm up, which is the only way a down mouth reaching ARM_LEN
+    # lands on the base instead of under it. The drain is given the pipes' own
+    # 0.38 and not the 0.3 the spec's table guessed, because the arm it wears
+    # puts a mouth collar at TUBE_Y + COLLAR_R like every other piece.
+    "block": (1.0, 1.0, 1.02),
+    "pump": (1.0, 1.0, 1.0),
+    "source_tank": (1.0, 1.0, 0.6),
+    "drain_pool": (1.0, 1.0, 0.38),
     # Balance pieces (the design agreed 2026-09-15). Three of these are the
     # first slots that are deliberately bigger than a cell, so their budgets
     # are the piece's real span rather than the usual 1 x 1: a beam reaches a
@@ -155,7 +168,7 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # the artist's to choose inside the LIMITS row.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5),
     "wall_edge": (1.0, None), "plank": (1.0, None), "fence": (1.0, None), "deck": (1.0, None),
-    "channel": (1.0, 1.0)}
+    "channel": (1.0, 1.0), "block": (1.0, 1.0)}
 # A shape whose openings cancel (an opposite pair, or all four) keeps its
 # mass centred on its hub, and must pass the strict origin-at-centre check
 # below -- pipe_straight and pipe_cross stay off this set on purpose. One
@@ -170,7 +183,11 @@ EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5
 # Snake Apple's head is lopsided the same way: the back of the skull, where
 # the board's body tube runs in, is the pivot and sits at the origin, and the
 # head reaches forward from it along +X.
-LOPSIDED = {"pipe_cap", "pipe_elbow", "pipe_tee", "snake_head"}
+# The island's source and drain are lopsided for the pipe's own reason: each
+# wears one arm of pipe, reaching the cell edge on +Y in Blender (Godot +Z)
+# with its body centred on the hub, so its bounding box cannot be centred on
+# the origin the board turns it about.
+LOPSIDED = {"pipe_cap", "pipe_elbow", "pipe_tee", "snake_head", "source_tank", "drain_pool"}
 
 
 def limit_for(slot):
