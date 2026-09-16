@@ -52,4 +52,6 @@ func _set_reduce(on: bool) -> void:
 	var stage: Node = get_tree().get_first_node_in_group("stage")
 	if stage != null and stage.get("ambient") != null:
 		stage.ambient.refresh()
+	if stage != null and stage.get("backdrop") != null:
+		stage.backdrop.refresh()
 	reduce_changed.emit(on)

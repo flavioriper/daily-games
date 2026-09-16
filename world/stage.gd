@@ -9,17 +9,32 @@ const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
 const CameraRig = preload("res://world/camera_rig.gd")
 const Ambient = preload("res://world/ambient.gd")
+const Backdrop = preload("res://world/backdrop.gd")
 
 const WATER_DEPTH := 4.0
 ## The island's own camera pitch, the one a board gets unless it asks for
 ## another. Matches world/camera_rig.gd's export default.
 const DEFAULT_PITCH := 68.0
+## The water was one 60 by 60 sheet filling the whole frame, which is what the
+## camera saw behind every board. The landscape fills that now and the water is
+## cut back to the pond in the middle of it. What the player sees as the pond's
+## edge is the meadow's basin rising out of the water, not this plane's rim, so
+## the plane only has to be wide enough to fill the basin and narrow enough that
+## its corners stay under ground that is above the water line. It is a fixed
+## size for that reason rather than sized off the board: it is the terrain's
+## pond, not the board's. The pond is also what keeps Ambient.splash alive --
+## the ring is drawn by the shared water material.
+const POND := 30.0
+## The placeholder water plane is modelled this big (core/placeholders.gd), so
+## a pond is a fraction of it.
+const WATER_PLANE := 60.0
 
 var rig: Node3D
 var sun: DirectionalLight3D
 var anchor: Node3D
 var water: Node3D
 var ambient: Node3D
+var backdrop: Node3D
 
 func _ready() -> void:
 	add_to_group("stage")
@@ -65,6 +80,14 @@ func _ready() -> void:
 	world_env.environment = env
 	add_child(world_env)
 
+	# The landscape goes down before the water, so the pond draws over it.
+	backdrop = Backdrop.new()
+	backdrop.name = "Backdrop"
+	# Before add_child: the meadow is sunk on _ready so its basin's water line
+	# meets the pond, and it needs to know how deep the pond is to do that.
+	backdrop.water_depth = WATER_DEPTH
+	add_child(backdrop)
+
 	water = Models.instance("water")
 	water.name = "Water"
 	water.position = Vector3(0.0, -WATER_DEPTH, 0.0)
@@ -103,6 +126,15 @@ func fit_camera(aabb: AABB, rect: Rect2, pitch := NAN, projection := Camera3D.PR
 		rig.yaw_deg = yaw
 	rig.fit(aabb, rect)
 	ambient.fit_to(aabb)
+	_fit_ground(aabb)
+
+## Sits the pond and the landscape under the board being framed, so a board
+## mounted off the origin still lands in the middle of the basin.
+func _fit_ground(aabb: AABB) -> void:
+	var c := aabb.get_center()
+	water.position = Vector3(c.x, -WATER_DEPTH, c.z)
+	water.scale = Vector3(POND / WATER_PLANE, 1.0, POND / WATER_PLANE)
+	backdrop.fit_to(aabb)
 
 ## Swings the view a quarter turn per step, so a board asks the stage rather
 ## than reaching into the rig. Returns the tween, or null off-tree.

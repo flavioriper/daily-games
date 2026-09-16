@@ -64,3 +64,8 @@ art/assets/
 # The GA4 Measurement Protocol secret the game ships with: machine-local,
 # packed by the export preset, never in git.
 analytics_secret.cfg
+# The Ghibli-style painted landscape the whole game sits in: the meadow with
+# its basin, the grass baked down from the original hair particles, and the
+# cloud, tree and blossom cards. Not rebuildable by a script -- the source file
+# came in by hand and was cut to the contract in the live session.
+!art/landscape.blend

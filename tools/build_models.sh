@@ -73,6 +73,18 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # live session into one .blend.
 "$BLENDER" -b art/scenery.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Deck Pier_Post Boulder Bush Daisy Tuft Signpost
+# The backdrop the whole game sits in: a Ghibli-style painted landscape. The
+# meadow is two meshes -- the rolling ground, with a basin sculpted in it for
+# the pond, and 4626 blades of grass baked down from the original hair
+# particles -- and the tree clumps and blossom are painted alpha cards the
+# stage billboards. None of it obeys the cell footprint rules, so the slots are
+# UNBOUNDED in blender_export.py.
+# `Cloud` is in the .blend and is deliberately NOT exported: the board camera
+# looks down at 68 degrees and never has sky in frame, so the card renders
+# nothing (see world/backdrop.gd). Add it back to this line if the pitch ever
+# drops far enough to raise a horizon.
+"$BLENDER" -b art/landscape.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Meadow Foliage Blossom
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

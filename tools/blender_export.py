@@ -159,7 +159,11 @@ DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # them, so a new character needs no new row here.
 MASCOT_PREFIX = "mascot_"
 MASCOT_LIMIT = (1.4, 1.4, 1.4)
-UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact check
+# The backdrop pieces (art/landscape.blend) are scenery the camera never gets
+# near, sized in tens of units rather than cells, so no footprint budget
+# applies -- only the origin and base rules every slot keeps.
+BACKDROP = {"meadow", "cloud", "foliage", "blossom"}
+UNBOUNDED = {"platform", "water"} | BACKDROP  # no maximum; platform has its own exact check
 # Slots the board tiles edge to edge, so the footprint must be exact, not
 # merely within budget: the platform is stretched by (cols + 1, rows + 1) and
 # the rim pieces are laid one per cell, where a short piece leaves a gap.
