@@ -459,3 +459,13 @@ mascot_pom}.glb`, `tools/blender_export.py`, `tools/build_models.sh`,
   meeting 855 at the fullest board is a scenery decision -- how many
   boulders, bushes and daisies the screen keeps -- and it is the user's to
   make, not one to take quietly in a fix wave.
+- **Ruling on the ceiling (controller, 2026-09-15):** the fullest board's 998
+  calls at 5.98 ms are accepted for now. The HUD spec's own 2026-09-14 ruling
+  made frame time the binding budget and the 855-call cap a proxy that was
+  raised once already; the fullest board is a rare state with two
+  milliseconds of headroom on the Mac. Closing the 143 calls is a scenery
+  decision (which boulders, bushes and daisies stay) or a MultiMesh pass over
+  the repeated props (about 80 calls), and either is the user's call. Owed
+  before this is treated as settled: a look at the fullest board on a phone
+  through `tools/deploy_android.sh`, since draw calls weigh more on mobile
+  GLES than on the Mac.
