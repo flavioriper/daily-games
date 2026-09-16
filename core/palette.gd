@@ -92,6 +92,7 @@ const TENT_DOOR   := Color("6b5a44")   # the shaded doorway
 const PEBBLE      := Color("a89a84")   # the cairn that rules a cell out
 const BARK        := Color("8a6a4a")
 const LEAF        := Color("6ba845")
+const LEAF_LIGHT  := Color("9dc063")   # the sunlit patches on the round tree's crown
 
 # Light Up (the design agreed 2026-09-15): a walled court of flagstones with
 # rough blocks of stone standing in it, and a lantern on every cell the player
