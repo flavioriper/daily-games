@@ -72,7 +72,7 @@ func _note(id: String) -> String:
 		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
 		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
-		"horse": return "%d fences, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
+		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
 
@@ -368,8 +368,8 @@ func _solve_horse() -> void:
 		for c in w:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
-	# The HUD's hint builds and pins one fence of the generator's pen; the
-	# rest are built by hand, then the pen is submitted through the Check
+	# The HUD's hint drops and pins one bale of the generator's pen; the rest
+	# are dropped by hand, then the pen is submitted through the Check
 	# button, which is what ends the day on this board.
 	_press(_host.top_bar.hint_button)
 	for cell in _puzzle._solution_walls:

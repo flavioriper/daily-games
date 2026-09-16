@@ -97,9 +97,9 @@ const PUZZLES := [
 	{
 		"id": "horse",
 		"title": "Horse Pen",
-		"blurb": "Fence the horse in, and keep as much meadow as you can.",
+		"blurb": "Pen the horse in with hay bales, and keep as much meadow as you can.",
 		"motto": "Pen the wandering horse",
-		"footer": "Fence · Enclose · Keep",
+		"footer": "Bale · Enclose · Keep",
 		"script": "res://puzzles/horse3d.gd",
 		"difficulties": [0, 1, 2],
 	},
