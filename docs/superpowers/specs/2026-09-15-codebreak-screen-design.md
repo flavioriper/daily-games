@@ -323,3 +323,46 @@ Modified: `puzzles/codebreak3d.gd`, `core/platform.gd`, `core/placeholders.gd`,
 mascot_pom}.glb`, `tools/blender_export.py`, `tools/build_models.sh`,
 `.gitignore`, `docs/art/blender-contract.md`, `assets/models/README.md`,
 `tests/test_models.gd`, `tests/_shot_anim.gd`.
+
+## Amendments (implementation, 2026-09-15)
+
+- The `daisy` has three layers, not two: `Daisy_Stem` (`Stem_flat`) reaches
+  the ground, since the contract puts every base at Z = 0.
+- The placeholder socket keeps its well disc on top; only the export carries
+  the recess. The tests read layers and bounds, not holes.
+- The `deck` slot is exact along X only (`EXACT["deck"] = (1.0, None)`); its
+  depth is 0.94, the planks plus half a gap at each edge, so adjacent strips
+  leave the same seam the two planks do.
+- Sign words: modelled at Fredoka size 0.11, legible in the model render,
+  not legible in the 1080 x 1920 board shot (about 45 x 35 px). Ruling: the
+  words stay; on the board they read as writing on a notice, which is what
+  the concept's sign is, and a carved leaf would say nothing. One Blender
+  edit to the `Signpost` collection flips it if wanted.
+- Signpost: the plank hangs 0.06 under the arm and the paper is inset (the
+  first pass left the plank floating 0.47 below the arm); union bounds
+  unchanged.
+- Boulder: reworked once after review, from an 80-face sphere with a flat
+  pentagon of moss to a finer rock (ico sphere at subdivisions 3, one
+  applied subdivision level, jitter) with a smooth lobed moss cap; layers,
+  names and budgets unchanged; `boulder.glb` is 61 KB.
+- BlenderKit: the free rock tried arrived as one welded 9997-face formation
+  that could not be separated into layers; the boulder is hand-built.
+- POM: the map is held in the right paw beside the muzzle, face up at 60
+  degrees, in MOON rather than PARCHMENT, because under the muzzle it was
+  hidden at the board's 68-degree pitch and parchment vanished into the
+  body's cream; arms are radius 0.12 from the shoulders; the assembly's
+  footprint extremes are unchanged (nose -0.5885, tail 0.5885, ears
+  ±0.6289). The far arm stays hidden by the body at the board's pitch.
+  POM's seat boulder moved from x 4.6 to 4.9 so it and POM stand clear of
+  the deck's edge.
+- `puzzles/codebreak3d.gd` no longer preloads `world/stage.gd`: nothing read
+  `Stage.WATER_DEPTH` once the lids fell to the river.
+- Measured on the Mac at 1080 x 1920 with `tests/_shot_anim.gd -- mastermind`:
+  first pass `idle mean_ms=5.54 max_draw_calls=890`, over the 855-call
+  budget though well under the 8 ms mean. `DAISIES` cut from ten entries to
+  six and `TREES` from five to three in `puzzles/codebreak_scenery.gd`
+  (balanced left/right rather than a plain truncation); re-measured
+  `idle mean_ms=5.40 max_draw_calls=862`, seven calls over the 855 budget
+  still, flagged here rather than cut further without a review. Binairo
+  unchanged at `idle mean_ms=4.58 max_draw_calls=723`. Suite
+  `passed=1553 failed=0`, win harness `12/12`.

@@ -6,9 +6,9 @@ extends SceneTree
 ## Judge the ambience by eye and the budget by the numbers
 ## (polish spec, section 7: idle mean under 8 ms at 1080 x 1920 on the Mac).
 ##
-##     godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd
+##     godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd [-- <puzzle id>]
 ##
-## Saves /tmp/anim_binairo_<n>.png for n = 0..5.
+## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
 const TAP_AT := 1.6
@@ -24,10 +24,15 @@ var _tapped := false
 var _shot := 0
 var _idle: Array[float] = []
 var _draws := 0
+var _id := ""
+var _entry: Dictionary = {}
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	var args := OS.get_cmdline_user_args()
+	if args.size() > 0:
+		_id = args[0]
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -38,18 +43,25 @@ func _process(delta: float) -> bool:
 		if _t >= 0.0:
 			_opened = true
 			_t = 0.0
-			_menu._open(load("res://ui/registry.gd").PUZZLES[0])
+			var entries: Array = load("res://ui/registry.gd").PUZZLES
+			_entry = entries[0]
+			for e in entries:
+				if e.id == _id:
+					_entry = e
+			_menu._open(_entry)
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 			_puzzle = _host._puzzle
 		return false
 	if not _tapped and _t >= TAP_AT:
 		_tapped = true
-		_tap_first_free()
+		# The tap walks Binairo's givens; a board without them idles instead.
+		if _puzzle.get("_given") != null:
+			_tap_first_free()
 	if _t >= IDLE_FROM and _t <= IDLE_TO:
 		_idle.append(delta * 1000.0)
 		_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 	if _shot < SHOTS.size() and _t >= SHOTS[_shot]:
-		var path := "/tmp/anim_binairo_%d.png" % _shot
+		var path := "/tmp/anim_%s_%d.png" % [_entry.id, _shot]
 		root.get_texture().get_image().save_png(path)
 		print("saved %s at t=%.2f" % [path, _t])
 		_shot += 1
