@@ -22,6 +22,13 @@ follow when touching a model:
   outlines) before calling a model done; Blender's viewport colours are not
   what the game shows.
 
+## Art: shading direction
+
+The look everything aims for is in `docs/art/shading-direction.md`: soft
+painted cel, no harsh black outlines, warm muted pastels, diffuse and
+painterly surfaces, soft coloured shadows, minimal specular, depth through
+colour rather than fog. Read it before touching a shader, palette or light.
+
 ## Playing on an Android phone
 
 The game ships as a native APK through Firebase App Distribution (project
