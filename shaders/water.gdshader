@@ -91,16 +91,35 @@ void fragment() {
 	col = mix(col, shallow_color.rgb, smoothstep(0.55, 0.85, mottle) * 0.25);
 
 	// 3. Foam curls. The constant ramps in the source are hard cuts, which is
-	// what makes them read as painted rather than as a gradient. The 0.3 world-
-	// scale factor (against the mottle and streak layers' 0.06 and 0.1) is
-	// tuned rather than ported: at the source's own conversion the curls only
-	// ever showed one soft lobe near the board, because the low pitch now
-	// puts the whole pond in frame and the near-centre foam disc that
-	// splash_origin sits in is only a few units wide. The threshold window is
-	// narrower and higher than the source's for the same reason -- it isolates
-	// the curl field's crests instead of half of it.
-	float curl = magic(p * foam_scale * 0.3 + vec2(t * 0.02, t * 0.015), 0.5);
-	float curl_mask = smoothstep(0.64, 0.68, curl) * smoothstep(0.30, 0.22, r);
+	// what makes them read as painted rather than as a gradient. Three things
+	// changed from a literal port, all against the same reference frame
+	// (docs/art/shading-direction.md's target painting, not the first pass's
+	// own screenshot):
+	// - The radial weight used to be strongest at the pond's own middle
+	//   (smoothstep(0.30, 0.22, r)), which is backwards: the reference's open
+	//   water is its clearest part and the foam gathers toward the shore.
+	//   Flipped to build outward instead. The endpoints are much smaller than
+	//   r's own 0-1 range because stage.gd's _fit_ground recentres the pond
+	//   under whichever board is on screen every time it fits the camera --
+	//   the true rim at r=1 (pond_radius world units out) is never in frame
+	//   for any board; what's actually visible sits within about a tenth of
+	//   that, so that is the span the gradient has to work in.
+	// - A single-sided threshold (as the source ramp does it) shades in
+	//   everything past the cutoff, which is a filled plateau, not a stroke.
+	//   Band-passing symmetrically around one curl value keeps only its
+	//   crest, the way the streak layer already isolates a slice of its wave.
+	// - The magic field's own iterated-sin construction repeats on a regular
+	//   lattice once thresholded this narrowly -- it grids. Warping the
+	//   sample point with the same value noise used for the mottle, at a
+	//   scale close to the curl field's own, breaks that lattice up into
+	//   irregular strokes without touching magic() itself.
+	vec2 curl_warp = vec2(noise2(p * 0.3 + vec2(11.0, 3.0)),
+		noise2(p * 0.3 + vec2(3.0, 11.0))) * 2.0 - 1.0;
+	vec2 curl_p = p + curl_warp * 2.2;
+	float curl = magic(curl_p * foam_scale * 0.35 + vec2(t * 0.02, t * 0.015), 0.5);
+	float curl_band = smoothstep(0.60, 0.64, curl) * smoothstep(0.68, 0.64, curl);
+	float shore_weight = smoothstep(0.02, 0.12, r);
+	float curl_mask = curl_band * shore_weight;
 	col = mix(col, foam_color.rgb, curl_mask);
 
 	// 4. Streak dashes: a wave field half-mixed with noise, through a narrow
@@ -110,10 +129,13 @@ void fragment() {
 	// raised past the source: at the source's numbers the noise only ever
 	// bent the wave's phase, never enough to break it, so the dash read as one
 	// continuous ring all the way round the pond. Faster, stronger noise
-	// folds the wave back on itself and pinches it into separate strokes.
-	float wave = sin((p.x * 0.55 + p.y * 0.35) * streak_scale * 0.1
+	// folds the wave back on itself and pinches it into separate strokes. The
+	// wave's own frequency (0.18, against the source-matched 0.1) is raised
+	// too, and the accept window narrowed from a 0.07-wide plateau to a
+	// 0.02-wide one, for more, thinner dashes rather than fewer, fatter ones.
+	float wave = sin((p.x * 0.55 + p.y * 0.35) * streak_scale * 0.18
 		- t * 0.10 + noise2(p * 0.4 + t * 0.01) * 5.0) * 0.5 + 0.5;
-	float streak = smoothstep(0.532, 0.56, wave) * smoothstep(0.66, 0.63, wave);
+	float streak = smoothstep(0.55, 0.575, wave) * smoothstep(0.615, 0.59, wave);
 	col = mix(col, foam_color.rgb, streak * 0.9);
 
 	if (splash_age >= 0.0 && splash_age < 2.0) {

@@ -185,7 +185,11 @@ static func water() -> ShaderMaterial:
 		_water.shader = WATER_SHADER
 		_water.set_shader_parameter("base_color", Pal.WATER)
 		_water.set_shader_parameter("shallow_color", Pal.WATER_HI)
-		_water.set_shader_parameter("foam_color", Pal.MOON)
+		# foam_color is left at the shader's own near-white default: Pal.MOON is
+		# a warm cream tuned for the moon glyph and the pollen, and over the
+		# water's blue it read as beige scum rather than foam. Foam on water is
+		# near-white, which is what the shader already carries -- nothing here
+		# needs to override it.
 		_water.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 		_water.set_shader_parameter("splash_origin", Vector3.ZERO)
 		_water.set_shader_parameter("splash_age", -1.0)
