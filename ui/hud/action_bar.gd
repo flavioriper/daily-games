@@ -1,26 +1,38 @@
 extends "res://ui/hud/panel.gd"
 
-## The bottom rows: the colour tray above (palette puzzles only), then the
-## working-line card, Reset in slate and Check in sun. Whatever the puzzle
-## does not support is hidden and the rest takes its space.
+## The bottom rows: the trays above (a colour tray on palette puzzles, a piece
+## tray on puzzles that hand out pieces), then the working-line card, the view
+## buttons, Reset in slate and Check in sun. Whatever the puzzle does not
+## support is hidden and the rest takes its space.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, sections 2 and 5;
-## docs/superpowers/specs/2026-09-14-codebreak-3d-design.md, section 3.
+## docs/superpowers/specs/2026-09-14-codebreak-3d-design.md, section 3;
+## docs/superpowers/specs/2026-09-15-pipes-iso-design.md, section 5.
 
 signal reset
 signal check
 signal pick(index: int)
+signal piece_pick(index: int)
+signal turn_view
+## True on the press, false on the release: peek lasts as long as the hold.
+signal peek(on: bool)
 
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const LineCard = preload("res://ui/hud/line_card.gd")
 const StatusCard = preload("res://ui/hud/status_card.gd")
 const PaletteTray = preload("res://ui/hud/palette_tray.gd")
+const PieceTray = preload("res://ui/hud/piece_tray.gd")
 
 const BUTTON := Vector2(260, 130)
+## The view buttons carry no label, so they need only the glyph's width.
+const VIEW_BUTTON := Vector2(150, 130)
 const ALL_GOOD_TIME := 1.2
 
 var tray: PanelContainer
+var piece_tray: PanelContainer
 var line_card: PanelContainer
 var status_card: PanelContainer
+var turn_button: Button
+var peek_button: Button
 var reset_button: Button
 var check_button: Button
 var _row: HBoxContainer
@@ -41,6 +53,11 @@ func _build() -> void:
 	tray.visible = false
 	tray.pick.connect(func(i: int) -> void: pick.emit(i))
 	_inner.add_child(tray)
+	piece_tray = PieceTray.new()
+	piece_tray.name = "PieceTray"
+	piece_tray.visible = false
+	piece_tray.pick.connect(func(i: int) -> void: piece_pick.emit(i))
+	_inner.add_child(piece_tray)
 	_row = HBoxContainer.new()
 	_row.add_theme_constant_override("separation", 20)
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -50,6 +67,16 @@ func _build() -> void:
 	status_card = StatusCard.new()
 	status_card.visible = false
 	_row.add_child(status_card)
+	turn_button = IconButton.new("turn", "", "DarkButton")
+	turn_button.custom_minimum_size = VIEW_BUTTON
+	turn_button.pressed.connect(func() -> void: turn_view.emit())
+	_row.add_child(turn_button)
+	peek_button = IconButton.new("eye", "", "DarkButton")
+	peek_button.custom_minimum_size = VIEW_BUTTON
+	# Peek is a hold, not a press: it lasts exactly as long as the finger.
+	peek_button.button_down.connect(func() -> void: peek.emit(true))
+	peek_button.button_up.connect(func() -> void: peek.emit(false))
+	_row.add_child(peek_button)
 	reset_button = IconButton.new("reset", "Reset", "DarkButton")
 	reset_button.custom_minimum_size = BUTTON
 	reset_button.pressed.connect(func() -> void: reset.emit())
@@ -64,6 +91,11 @@ func refresh(puzzle) -> void:
 	var done: bool = puzzle != null and puzzle.is_done()
 	tray.visible = caps.has("palette")
 	tray.refresh(puzzle if tray.visible else null)
+	piece_tray.visible = caps.has("pieces")
+	piece_tray.refresh(puzzle if piece_tray.visible else null)
+	var view: bool = caps.has("view")
+	turn_button.visible = view
+	peek_button.visible = view
 	line_card.visible = caps.has("lines")
 	status_card.visible = caps.has("status")
 	status_card.refresh(puzzle if status_card.visible else null)
