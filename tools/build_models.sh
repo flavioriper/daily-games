@@ -52,12 +52,14 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # clue_stone, Tents' cairn, Untangle's post.
 "$BLENDER" -b art/grids.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Mosaic_Tile Plank
-# Horse Pen: three collections in one .blend, each begun from a BlenderKit
-# asset and cut down to the contract in the live Blender session -- the horse,
-# one cell of timber fence, and an apple. The meadow is Tents' turf_pad and a
-# pond is Shikaku's plot_pad under the water material.
+# Horse Pen: seven collections in one .blend. The horse, one cell of timber
+# fence and an apple were each begun from a BlenderKit asset and cut down to
+# the contract in the live Blender session; the polish pass added the hay bale
+# that replaced the fence on the board, the water channel that replaced the
+# pond, and the wheat tuft and flower the board scatters as MultiMeshes. The
+# meadow itself is Tents' turf_pad and a boulder is Code Break's rock.
 "$BLENDER" -b art/horse.blend --python-exit-code 1 \
-  --python tools/blender_export.py -- Horse Fence Apple
+  --python tools/blender_export.py -- Horse Fence Apple Bale Channel Stalk Flower
 # Snake Apple: the head, cut from a BlenderKit snake, and the burrow, built in
 # the live session. The body is a tube the board builds along its cells.
 "$BLENDER" -b art/snake.blend --python-exit-code 1 \
