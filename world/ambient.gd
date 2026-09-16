@@ -18,6 +18,11 @@ const POLLEN_AMOUNT := 24
 const POLLEN_LIFETIME := 6.0
 
 var pollen: CPUParticles3D
+## Whether the motes belong on this screen at all. A board turns them off
+## (Stage.show_setting): in game it stands against flat colour with nothing in
+## the air, while the menu campsite keeps them. Reduce-motion stills them
+## independently, so refresh() honours both.
+var pollen_wanted := true
 var _splash_age := -1.0
 
 func _ready() -> void:
@@ -45,11 +50,16 @@ func refresh() -> void:
 	RenderingServer.global_shader_parameter_set(GLOBAL, motion_scale())
 	if pollen == null:
 		return
-	var on := not Motion.reduce
+	var on := pollen_wanted and not Motion.reduce
 	if on and not pollen.emitting:
 		pollen.restart()
 	pollen.emitting = on
 	pollen.visible = on
+
+## Puts the motes on this screen or takes them off; see pollen_wanted.
+func show_pollen(on: bool) -> void:
+	pollen_wanted = on
+	refresh()
 
 ## Sizes the pollen volume to a board: its footprint plus a one-cell margin,
 ## one cell above its top, 0.4 tall. The stage calls this from fit_camera.

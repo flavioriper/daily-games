@@ -51,6 +51,8 @@ func _ready() -> void:
 	_stage = get_tree().get_first_node_in_group("stage")
 	if _stage != null:
 		_stage.mount(board)
+		# Nothing behind a board for now but flat colour; see Stage.show_setting.
+		_stage.show_setting(false)
 	else:
 		push_warning("PuzzleBase3D: no Stage in group 'stage'; board %s will not render and taps will miss" % board.name)
 		add_child(board)
@@ -58,6 +60,9 @@ func _ready() -> void:
 	_refit()
 
 func _exit_tree() -> void:
+	if _stage != null and is_instance_valid(_stage):
+		# Handed back the way it was found: the menu campsite keeps its island.
+		_stage.show_setting(true)
 	if is_instance_valid(board):
 		if _stage != null and is_instance_valid(_stage):
 			_stage.unmount(board)

@@ -214,8 +214,10 @@ func _request_fit() -> void:
 ## and on every return from a puzzle. Opening the app is what counts a day.
 func _show_list() -> void:
 	_list_root.visible = true
-	if _stage != null and not camp.is_inside_tree():
-		_stage.mount(camp)
+	if _stage != null:
+		if not camp.is_inside_tree():
+			_stage.mount(camp)
+		_stage.show_setting(true)
 	Progress.touch()
 	camp.set_day(Progress.day(), Progress.island_name())
 	show_page(_page)

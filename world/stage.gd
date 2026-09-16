@@ -41,6 +41,10 @@ const POND := 48.0
 ## The placeholder water plane is modelled this big (core/placeholders.gd), so
 ## a pond is a fraction of it.
 const WATER_PLANE := 60.0
+## What stands behind a board once show_setting has taken the setting away:
+## the HUD's own paper, so the screen in game is the board, its chrome and
+## nothing else.
+const FLAT_BG := Pal.PAPER
 
 var rig: Node3D
 var sun: DirectionalLight3D
@@ -48,6 +52,9 @@ var anchor: Node3D
 var water: Node3D
 var ambient: Node3D
 var backdrop: Node3D
+## The stage's own Environment, kept so show_setting can swap the sky behind a
+## board for flat colour.
+var env: Environment
 ## The face angle the last fit used, so a turn can re-lean where it lands.
 var _face := DEFAULT_FACE
 ## The board-local box and rect the last fit used. Kept local rather than the
@@ -88,9 +95,12 @@ func _ready() -> void:
 	sky_mat.sun_angle_max = 0.0
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
-	var env := Environment.new()
+	env = Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
+	# Only in view when show_setting has taken the sky away; the sky material
+	# is left in place so putting it back is one enum.
+	env.background_color = FLAT_BG
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Pal.AMBIENT
 	env.ambient_light_energy = 0.115  # calibrated with sun.light_energy; see above
@@ -132,6 +142,28 @@ func mount(board: Node3D) -> void:
 func unmount(board: Node3D) -> void:
 	if board.get_parent() == anchor:
 		anchor.remove_child(board)
+
+## Shows or hides the whole setting a mounted thing stands in: the painted
+## landscape (world/backdrop.gd), the pond, the sky behind them, and the motes
+## in the air. On is the menu campsite; off is a board, which for now floats
+## against FLAT_BG with nothing else on screen but itself and the HUD. Whoever
+## mounts says which it wants.
+##
+## Nothing is torn down and nothing stops being fitted -- the backdrop is only
+## hidden and is still re-centred on every fit -- so bringing the island back
+## behind the boards is this one flag rather than a rebuild. The sun and the
+## ambient light are untouched: they are a measured pair (see above) and the
+## light never came from the sky anyway (AMBIENT_SOURCE_COLOR), so a board is
+## lit identically with the setting gone.
+func show_setting(on: bool) -> void:
+	if backdrop != null:
+		backdrop.visible = on
+	if water != null:
+		water.visible = on
+	if env != null:
+		env.background_mode = Environment.BG_SKY if on else Environment.BG_COLOR
+	if ambient != null:
+		ambient.show_pollen(on)
 
 ## Leans the board anchor toward the camera until the board's face is seen at
 ## `face` degrees above the horizontal. The axis is the camera's own right, so
