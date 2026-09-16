@@ -9,6 +9,7 @@ const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
 const WIND_SHADER := preload("res://shaders/toon_wind.gdshader")
 const WATER_SHADER := preload("res://shaders/water.gdshader")
+const GHOST_SHADER := preload("res://shaders/toon_ghost.gdshader")
 const PIPE_SHADER := preload("res://shaders/pipe_flow.gdshader")
 const Pal = preload("res://core/palette.gd")
 
@@ -26,6 +27,7 @@ static var _outline: ShaderMaterial
 static var _cache: Dictionary = {}
 static var _wind_cache: Dictionary = {}
 static var _water: ShaderMaterial
+static var _ghost_cache: Dictionary = {}
 
 ## Three hard bands: tinted shadow, half light, full light.
 static func ramp() -> GradientTexture1D:
@@ -62,6 +64,22 @@ static func wind_material(albedo: Color) -> ShaderMaterial:
 	m.set_shader_parameter("ramp", ramp())
 	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 	_wind_cache[key] = m
+	return m
+
+## The same toon look, see-through: what Pipes' peek swaps the ground for
+## while the button is held. Cached per colour and alpha like material(),
+## since a board swaps a handful of them on every press.
+static func ghost(albedo: Color, alpha := 0.35) -> ShaderMaterial:
+	var key := "%s@%.2f" % [albedo.to_html(), alpha]
+	if _ghost_cache.has(key):
+		return _ghost_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = GHOST_SHADER
+	m.set_shader_parameter("albedo", albedo)
+	m.set_shader_parameter("ramp", ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	m.set_shader_parameter("alpha", alpha)
+	_ghost_cache[key] = m
 	return m
 
 ## The one water material. Shared so Ambient can drive its splash uniforms

@@ -65,7 +65,8 @@ func _note(id: String) -> String:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
-		"pipes": return "%d turns, camera fit=%s, hud=%s" % [_puzzle.moves, _fit_ok, _hud_ok]
+		"pipes": return "%d pieces, %d drains, camera fit=%s, hud=%s" % [
+			_puzzle._placed.size(), _puzzle._drains.size(), _fit_ok, _hud_ok]
 		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
 		"shikaku": return "%d plots, camera fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, camera fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
@@ -152,43 +153,100 @@ func _solve_balance() -> void:
 			guard += 1
 			_tap_local(_puzzle.pad_to_local(i, int(_puzzle._guess[i]) < target))
 
+## Pipes: build the generator's own pipeline through the gestures a player
+## uses. The piece is chosen in the tray and placed by tapping an open mouth
+## next door, then turned by tapping it until it is facing the right way --
+## so this proves the tray, the ray picking and the orientation cycle, not
+## just the rules.
 func _solve_pipes() -> void:
-	var w: int = _puzzle.w
-	var h: int = _puzzle.h
-	# Camera fit check: every cell centre must project inside the board slot.
+	const Gen = preload("res://puzzles/pipes_iso_gen.gd")
+	# Camera fit check: every column's crown must project inside the slot.
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
 	_fit_ok = true
-	for y in h:
-		for x in w:
-			if not slot.has_point(_puzzle.cell_to_local(y, x)):
+	for z in _puzzle.rows:
+		for x in _puzzle.cols:
+			if not slot.has_point(_puzzle.cell_to_local(z, x)):
 				_fit_ok = false
-	# The HUD's own buttons: one hint (turns and locks a cell), then one tap
-	# undone. The tap must land on a cell the hint cannot have taken, and a
-	# hint always takes the first wrong cell in reading order, so walk
-	# backwards to the last cell it did not lock.
+	# The HUD's own buttons: one hint (places and pins a piece) and one turn.
 	_press(_host.top_bar.hint_button)
-	var free_cell := Vector2i(-1, -1)
-	for y in range(h - 1, -1, -1):
-		for x in range(w - 1, -1, -1):
-			if free_cell.x < 0 and not _puzzle._locked.has(Vector2i(x, y)):
-				free_cell = Vector2i(x, y)
-	_tap_local(_puzzle.cell_to_local(free_cell.y, free_cell.x))
-	_press(_host.top_bar.undo_button)
-	# If the hint (or the tap it left in place to undo) happened to solve the
-	# board outright, undo() returns false at once and can_undo() is false
-	# only because is_done() is -- neither says the undo actually ran. Check
-	# is_done() first, and only then assert undo popped its entry.
+	_press(_host.action_bar.turn_button)
 	_hud_ok = _puzzle.hints_used == 1
-	if not _puzzle.is_done():
-		_hud_ok = _hud_ok and _puzzle._history.is_empty() and _puzzle.moves == 1
-	# rot 0 everywhere is the configuration the spanning tree was built in.
-	for y in h:
-		for x in w:
+	var solution: Dictionary = _puzzle._solution
+	for _pass in 60:
+		var moved_any := false
+		for cell in solution:
 			if _puzzle.is_done():
 				return
-			var taps: int = (4 - int(_puzzle._rot[y][x])) % 4
-			for k in taps:
-				_tap_local(_puzzle.cell_to_local(y, x))
+			var want: Dictionary = solution[cell]
+			if _puzzle.mask_at(cell) == int(want.mask):
+				continue
+			if _puzzle.filled(cell):
+				# Something is standing there facing the wrong way: turn it.
+				if _turn_pipe(cell, int(want.mask)):
+					moved_any = true
+				continue
+			# Grow it out of a neighbour that already has a mouth facing this
+			# cell, which is the only way to reach a cell that hangs.
+			for bit in Gen.bits(int(want.mask)):
+				var neighbour: Vector3i = cell + Gen.STEP[bit]
+				if not _puzzle.filled(neighbour):
+					continue
+				if _puzzle.mask_at(neighbour) & Gen.OPPOSITE[bit] == 0:
+					continue
+				_select_piece(String(want.kind))
+				if not _aim_tap("mouth", neighbour, Gen.OPPOSITE[bit]):
+					break
+				if _puzzle.filled(cell):
+					moved_any = true
+					_turn_pipe(cell, int(want.mask))
+				break
+		if not moved_any:
+			break
+
+## Taps a placed piece until it is showing `mask`, the way a player turns one.
+func _turn_pipe(cell: Vector3i, mask: int) -> bool:
+	for _i in 14:
+		if _puzzle.mask_at(cell) == mask:
+			return true
+		if not _aim_tap("piece", cell, 0):
+			return false
+	return _puzzle.mask_at(cell) == mask
+
+## Taps `what` (a "mouth" or a "piece") using the whole of the player's
+## toolkit: turn the island until the thing is the first thing under the
+## finger, and if all four stops hide it, hold peek and try them again. On an
+## isometric board a cell one step nearer the camera in x, y and z sits
+## exactly in front of another, and a mouth down in a hollow is behind the
+## ground from every side -- which is what turning and peek are for. False
+## when nothing reaches it.
+func _aim_tap(what: String, cell: Vector3i, bit: int) -> bool:
+	for peeking in [false, true]:
+		_puzzle.peek(peeking)
+		for _stop in 4:
+			var at: Vector2 = _puzzle.mouth_to_local(cell, bit) if what == "mouth" else _puzzle.hub_to_local(cell)
+			var hit: Dictionary = _puzzle._pick(at)
+			if String(hit.get("what", "")) == what and hit.get("cell") == cell \
+					and (what != "mouth" or int(hit.get("bit", -1)) == bit):
+				_tap_local(at)
+				_puzzle.peek(false)
+				return true
+			_puzzle.turn_view()
+			# The turn is a 0.35 s tween and this harness taps inside one
+			# frame, so the fit is snapped to the stop it is heading for.
+			_puzzle._refit()
+	_puzzle.peek(false)
+	return false
+
+## Chooses a kind in the piece tray, through the tray's own button.
+func _select_piece(kind: String) -> void:
+	var index: int = _puzzle.tray_index(kind)
+	if index < 0:
+		return
+	var tray = _host.action_bar.piece_tray
+	if tray != null and index < tray.buttons.size():
+		_press(tray.buttons[index])
+	else:
+		_puzzle.pick(index)
 
 func _solve_untangle() -> void:
 	# Camera fit check: every post must project inside the board slot.

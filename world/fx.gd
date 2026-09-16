@@ -55,7 +55,7 @@ func _ready() -> void:
 		# against a 0.15 pipe radius), amount goes up for density, and spread
 		# widens from a narrow dribble so the drops scatter outward instead
 		# of stacking into one column. The spawn point itself was also moved
-		# clear of the pipe's own geometry (puzzles/pipes3d.gd's JET_OUT/
+		# clear of the pipe's own geometry (puzzles/pipes_iso.gd's JET_OUT/
 		# JET_LIFT), which is what actually let a small droplet be seen at
 		# the steep board camera in the first place.
 		var j := _emitter("Jet_%d" % i, 40, 0.45, 55.0, 0.5, 1.0, Vector3(0.0, -4.0, 0.0), 0.16)
