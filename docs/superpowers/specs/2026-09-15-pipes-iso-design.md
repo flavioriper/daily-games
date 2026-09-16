@@ -312,3 +312,66 @@ below are the scene.
 * `tests/_shot.gd` windowed for the look, `tests/_shot_anim.gd -- pipes` for
   the entrance, the idle frame time and the draw calls. The ceiling is the
   855 draw calls Code Break's screen set.
+
+## 12. Amendments, as built (2026-09-15)
+
+Everything above is what was agreed; these are the places the build changed
+the design, and why. They are the record now.
+
+**Route length is a target, not a bound (section 8).** A drop is two cells at
+least -- an elbow over the edge and an elbow on the crown below, or it is not a
+drop -- a climb is three, and once the route is long enough it still has to
+reach a column far from the source and finish on a step along the level. So the
+walk overshoots. Measured over forty seeds a difficulty: 5..11, 8..13 and
+12..22 pieces against a table asking 5..8, 8..12 and 12..18, with no day
+failing to generate. A two-drain day spends four of its pieces on the branch
+rather than adding them on top. The table is what the walk aims at; the suite
+allows four pieces of slack.
+
+**The fixtures' reference mouth is S, not N (section 2).** Both are modelled
+with their arm toward Blender -Y, which is Godot +Z, and the board turns them
+from there -- and only through the four turns that keep them upright, since the
+same mouth can be reached by tipping the piece on its side, which would stand
+the tank's orb underneath it. The generator therefore has to hand every fixture
+a horizontal mouth, which is why the walk only ever finishes on a step along
+the level.
+
+**The ground is merged per level, and the crowns with it (section 7).** Merging
+the crowns by colour alone left them hanging in the air through the entrance,
+over blocks that had not arrived. Each level is a node carrying its own earth
+mesh and its own crowns, one mesh per colour, so a level pops with everything
+that stands on it. That is four meshes a level rather than one plus three for
+the whole island -- about thirty draw calls instead of thirteen, which the
+budget has room for.
+
+**The board is framed by the terrain's real height, not the difficulty's
+(section 6).** A day whose columns all come out three high would otherwise be
+framed inside five levels of sky and sit small in the middle of it. A tower of
+straights built past the terrain's top can leave the frame; the camera not
+jumping while a piece is placed is worth more.
+
+**Picking stops at the ground, and peek lifts that (section 5).** A tap on a
+cliff face used to turn a pipe hidden behind it, because only the crowns were
+tested and not the walls. The ray is marched through the heightfield and
+nothing behind the ground can be tapped -- unless peek is held, when the ground
+is see-through and so is the cutoff. What the player can see, the player can
+reach, which also means a mouth down in a hollow is reached by holding peek
+rather than by turning: at pitch 35 and yaw 45 the view is almost exactly the
+(1, 1, 1) diagonal, so a cell one step nearer the camera in all three axes sits
+exactly in front of another. `tests/_win.gd` plays it that way -- turn first,
+then peek -- which is what proved the two tools are between them enough.
+
+**Model budgets that moved (section 9).** `block` is 1.015 tall, not 1.0: the
+earth stays a full unit cube, because shortening it to make room for the turf
+cap would open a seam of sky in every wall, so the cap stands 0.015 proud of
+the crown instead. `pump` is 1.0 tall (two arms) and its hub sits at `ARM_LEN`
+rather than `TUBE_Y` -- an arm reaching a full arm's length down from a hub
+0.175 up would end below the base, which the contract forbids -- so the board
+hangs that one model at -`PUMP_HUB`. `drain_pool` is 0.38, the pipes' own
+budget, because its arm puts a mouth collar at 0.35.
+
+**The tray is in the action bar, not down the right-hand side of the board.**
+The concept's mock had no bottom bar; the real HUD does, and Code Break's
+colour tray already lives there in a carved wooden trough. The piece tray is
+the same trough with the kinds' icons over their counts, and the turn and peek
+buttons sit in the row beside Reset.
