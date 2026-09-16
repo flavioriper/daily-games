@@ -35,6 +35,16 @@ static func make() -> Theme:
 	theme.set_constant("shadow_offset_x", "Motto", 1)
 	theme.set_constant("shadow_offset_y", "Motto", 2)
 	_label(theme, "CardTitle", display(600), 40, Pal.TEXT)
+	# The menu's puzzle cards: a chunky name and a quiet one-line blurb, sized
+	# for three cards across a 1080 screen.
+	_label(theme, "CardName", display(700), 32, Pal.TEXT)
+	_label(theme, "CardBlurb", body(500), 22, Pal.TEXT_DIM)
+	# The motto under the menu's title letters: the Motto face, larger, on
+	# two lines over the sky.
+	_label(theme, "TitleMotto", body(800, 2), 28, Pal.SURFACE)
+	theme.set_color("font_shadow_color", "TitleMotto", Color(Pal.OUTLINE, 0.5))
+	theme.set_constant("shadow_offset_x", "TitleMotto", 1)
+	theme.set_constant("shadow_offset_y", "TitleMotto", 2)
 	_label(theme, "CardBody", body(500), 30, Pal.TEXT)
 	_label(theme, "OnSlateTitle", display(600), 40, Pal.MOON)
 	_label(theme, "OnSlateBody", body(500), 30, Pal.MOON)

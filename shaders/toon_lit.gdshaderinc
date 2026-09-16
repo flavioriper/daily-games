@@ -5,6 +5,12 @@
 // also gets the grain block below; nothing else pays for it.
 
 uniform vec4 albedo : source_color = vec4(1.0);
+// A painted texture under the same ramp, multiplied into the albedo. The
+// default is a white texel, so every flat-colour material is unchanged; a
+// textured prop (the menu's camper and its fence sign, cut down from Meshy
+// exports) sets it and keeps its paint while still being lit, banded and
+// outlined by the scene. core/toon.gd textured_material() is the one caller.
+uniform sampler2D albedo_tex : source_color, hint_default_white, filter_linear_mipmap;
 // Red channel = lit factor across NdotL remapped to 0..1. Nearest filtering
 // keeps the bands hard. core/toon.gd ramp() builds the default.
 uniform sampler2D ramp : filter_nearest, repeat_disable, hint_default_white;
@@ -174,7 +180,7 @@ vec3 wood_figure(vec3 p) {
 #endif
 
 void fragment() {
-	vec3 base = albedo.rgb;
+	vec3 base = albedo.rgb * texture(albedo_tex, UV).rgb;
 #ifdef WOOD_GRAIN
 	base *= wood_figure(grain_pos);
 #endif

@@ -91,6 +91,14 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # puzzle costs a registry line rather than an export.
 "$BLENDER" -b art/sign.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Title_Sign
+# The first screen's two textured props, each cut down from a Meshy export in
+# the live session (welded, decimated, one Base Color image, base at zero):
+# the camper standing on the path and the fence diorama along the frame's
+# bottom edge. See the contract's "Textured props" section.
+"$BLENDER" -b art/mascot_camper.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Mascot_Camper
+"$BLENDER" -b art/camp_sign.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Camp_Sign
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

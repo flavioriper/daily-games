@@ -26,14 +26,13 @@ const BADGE_HOP := -6.0
 const BADGE_HOP_TIME := 0.3
 const BADGE_CYCLE := 2.4
 
-## Overridable before the row enters the tree. The menu gives its own sign more
-## than SIGN_HEIGHT because it carries one button rather than four, and the
-## app's title should not read smaller than an entry in its list.
+## Overridable before the row enters the tree, for a row with fewer buttons
+## than a puzzle's and so more width to give its sign.
 var sign_height := SIGN_HEIGHT
 var title_text := ""
 var motto_text := ""
-## False on the menu, which has nowhere to go back to: a blank of the button's
-## size stands in so the sign stays centred between it and the gear.
+## False for a row with nowhere to go back to: a blank of the button's size
+## stands in so the sign stays centred between it and the gear.
 var with_back := true
 var back_button: Button
 var undo_button: Button

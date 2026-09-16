@@ -34,7 +34,7 @@ const PUZZLES := [
 	{
 		"id": "pipes",
 		"title": "Pipes",
-		"blurb": "Build the pipeline. Water won't climb without a pump.",
+		"blurb": "Route the water. It won't climb without a pump.",
 		"motto": "Make the water flow",
 		"footer": "Think · Connect · Flow",
 		"script": "res://puzzles/pipes_iso.gd",
@@ -97,7 +97,7 @@ const PUZZLES := [
 	{
 		"id": "horse",
 		"title": "Horse Pen",
-		"blurb": "Pen the horse in with hay bales, and keep as much meadow as you can.",
+		"blurb": "Pen the horse in with hay bales. Keep the meadow.",
 		"motto": "Pen the wandering horse",
 		"footer": "Bale · Enclose · Keep",
 		"script": "res://puzzles/horse3d.gd",

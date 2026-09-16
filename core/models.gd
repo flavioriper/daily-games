@@ -23,7 +23,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"horse", "fence", "apple", "bale", "channel", "stalk", "flower",
 	"snake_head", "burrow",
 	"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost",
-	"title_sign"]
+	"title_sign",
+	"mascot_camper", "camp_sign"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]

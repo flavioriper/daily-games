@@ -42,44 +42,53 @@ If draw calls are the reason to hesitate, say so out loud and measure it
 against the budget in `docs/art/blender-contract.md`. Do not quietly trade the
 model away for a picture of it.
 
-## Art: the menu's title signs
+## Art: the title signs and the first screen
 
-Every menu card *is* a carved wood sign, and the same board is the title in
-every HUD row -- each puzzle's, and the menu's own "Daily". It is a real model
-on screen, not a picture of one: `assets/models/title_sign.glb`, instanced
-through `Models.instance("title_sign")` so it takes the toon shader, the grain
-on its plank, its own cast shadow and the outline pass.
+Every puzzle's HUD row carries a carved wood sign as its title. It is a real
+model on screen, not a picture of one: `assets/models/title_sign.glb`,
+instanced through `Models.instance("title_sign")` so it takes the toon shader,
+the grain on its plank, its own cast shadow and the outline pass.
 
 - **The board is modelled; the words are data.** `art/sign.blend` holds three
   layers (plank, leaf sprigs, screws) exported as the `Title_Sign` collection
   by `tools/build_models.sh`. The title and motto are **not** in the .blend:
-  `ui/hud/sign_view.gd` extrudes them with `TextMesh` in the display face, so a
-  new puzzle costs a registry line and no export at all. The Text objects still
-  in the .blend are there to design against, nothing more.
-- **`ui/hud/sign_view.gd` is a SubViewport** with its own `World3D`, camera and
-  light. It draws **on demand**, not per frame: thirteen live signs on
-  UPDATE_WHEN_VISIBLE cost 18.6 ms of process time on the menu against a ~5 ms
-  idle baseline. Call `redraw()` after anything that changes what it shows --
-  `set_words()` and the resize refit already do.
-- **Light it the way `world/stage.gd` lights the game**: its 0.46 sun over
-  0.115 ambient is *measured* against a rendered frame, not derived, because
-  gl_compatibility renders brighter than the shader maths predicts. At the
-  obvious values the plank blows out to pale pine and the leaves go yellow.
-- **The camera is tilted ~9 degrees off dead-on.** Straight down the board's
-  normal an orthographic camera sees only front faces, so the lettering's
-  extrusion is edge-on and the whole sign reads flat. `TextMesh` has no bevel
-  to catch light the way the Blender text did, so the depth has to be shown.
-- **Outline shells get their own thin materials here**, at `LINE_WIDTH` 0.005
-  rather than Toon's 0.014: a sign is drawn far larger than a stage piece, so
-  the world-space shells read several times too thick, and a leaf in the shared
-  ink line becomes the harsh black edge `docs/art/shading-direction.md` rules
-  out. Build fresh materials -- `Toon.line()` caches per colour and those are
-  shared with every piece on the stage.
-- **Titles shrink to fit; the plank never stretches**, so the column stays
-  even. What binds the width is the leaf sprigs at x = +-0.79, not the plank's
-  edge. How tall a sign stands is `top_bar.sign_height`: a puzzle's row can
-  only afford 180 (four buttons leave about 496px at 1080 wide), and the menu
-  overrides it to 250 since it shares its row with one button.
+  `ui/hud/sign_view.gd` extrudes them with `TextMesh` through
+  `core/lettering.gd`, so a new puzzle costs a registry line and no export.
+- **Every model in the HUD stands in a `ui/hud/model_view.gd`**: a SubViewport
+  with its own `World3D`, the stage's calibrated light (0.46 sun over 0.115
+  ambient, *measured* against a rendered frame because gl_compatibility
+  renders brighter than the shader maths predicts) and an orthographic camera
+  framed on a box. It draws **on demand**, not per frame: over a dozen live at
+  once on the menu, and on UPDATE_WHEN_VISIBLE they cost 18.6 ms against a
+  ~5 ms idle baseline. Call `redraw()` after anything that changes what one
+  shows. The sign, the menu's title letters (`title_view.gd`) and the cards'
+  dioramas (`card_scene.gd`) are its three users.
+- **Outline shells get their own thin materials here** (`Lettering.outline`,
+  0.005 rather than Toon's 0.014): a sign is drawn far larger than a stage
+  piece, so the world-space shells read several times too thick. Never set a
+  width on `Toon.line()`'s materials; those are shared with the stage.
+- **TextMesh cannot extrude every glyph.** The display face's digits 8 and 9
+  cross themselves at weight 700 and vanish; `core/lettering.gd` drops a line
+  that carries a digit to weight 550, the heaviest that extrudes all ten.
+  Upper-case everything that goes on a board.
+
+**The first screen (`ui/menu.gd`) is a campsite, not a list.** `world/camp.gd`
+is mounted on the stage in place of a board: turf and a path, the river with
+a dock, the camper (`mascot_camper`, cut down from a Meshy export), tent,
+trees, the day sign lettered live, and the fence diorama (`camp_sign`) that
+closes the frame at the bottom with the footer motto on a plank. The menu
+frames `camp.hero_box()` in the screen above the cards and stands the fence
+where the footer slot's rays meet the ground, after every layout change.
+
+- **The menu camera pitches 15 degrees, not the boards' 7** (`fit_camera`'s
+  `pitch`): at 7 the only way to hold the camp in the top third is to aim
+  under it, which puts the camera below the grass.
+- **The camp stands at y 2** (`Camp.LIFT`): the backdrop's hills ring is a flat
+  plateau at about y 1.4, and the menu camera stands out over that ring where
+  a board's never does. At y 0 the camp's feet and its fence are buried in it.
+- **Cards come in pages of nine**, turned with the buttons under the grid, not
+  a scroll. Each card's picture is a live diorama of that puzzle's own pieces
+  (`ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder.
 
 ## Art: shading direction
 

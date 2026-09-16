@@ -51,6 +51,7 @@ art/*.blend
 # and motto as Text objects tools/build_signs.py swaps per puzzle. Modelled in
 # the live session, so this .blend is the source of all twelve signs.
 !art/sign.blend
+!art/camp_sign.blend
 
 # Python bytecode from running the tools
 __pycache__/

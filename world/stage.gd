@@ -143,7 +143,7 @@ func _lean(face: float) -> void:
 	var right := Vector3.UP.cross(rig.view_offset_dir())
 	if right.length_squared() < 1e-6:
 		right = Vector3.RIGHT
-	anchor.transform.basis = Basis(right.normalized(), deg_to_rad(face - CAMERA_PITCH))
+	anchor.transform.basis = Basis(right.normalized(), deg_to_rad(face - rig.pitch_deg))
 
 ## The world box a fit or a re-fit should use for `local` -- the board's own
 ## box -- under whichever lean is currently in effect. Perspective needs only
@@ -161,7 +161,7 @@ func _lean(face: float) -> void:
 func _fit_box(local: AABB) -> AABB:
 	if not rig.orthographic:
 		return anchor.transform * local
-	var tilt := deg_to_rad(_face - CAMERA_PITCH)
+	var tilt := deg_to_rad(_face - rig.pitch_deg)
 	var box := AABB()
 	for k in 4:
 		var right: Vector3 = rig.right_at(rig.yaw_deg + 90.0 * k)
@@ -180,9 +180,14 @@ func _fit_box(local: AABB) -> AABB:
 ## every other board wants depth. `yaw` is the exception -- NAN leaves the
 ## rig's own yaw where it is, which is what a board that turns needs, or every
 ## re-fit would undo the turn.
-func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PROJECTION_PERSPECTIVE, yaw := NAN) -> void:
+## `pitch` is the camera's own, CAMERA_PITCH for every board. The menu is the
+## one caller that asks for another: it frames the campsite in the top of the
+## screen, and at 7 degrees the only way to hold a box that high in the frame
+## is to aim under it, which puts the camera below the ground. Its camp does
+## not lean either way -- it passes the same pitch as its face.
+func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PROJECTION_PERSPECTIVE, yaw := NAN, pitch := CAMERA_PITCH) -> void:
 	rig.orthographic = projection == Camera3D.PROJECTION_ORTHOGONAL
-	rig.pitch_deg = CAMERA_PITCH
+	rig.pitch_deg = pitch
 	if not is_nan(yaw):
 		rig.yaw_deg = yaw
 	# Before the box is measured: the lean is what puts the board where the

@@ -59,6 +59,8 @@ static var _wind_cache: Dictionary = {}
 static var _wood_cache: Dictionary = {}
 static var _water: ShaderMaterial
 static var _ghost_cache: Dictionary = {}
+static var _tex_cache: Dictionary = {}
+static var _mean_cache: Dictionary = {}
 
 ## Three hard bands: tinted shadow, half light, full light.
 static func ramp() -> GradientTexture1D:
@@ -147,6 +149,50 @@ static func material_for(mi: MeshInstance3D, albedo: Color) -> ShaderMaterial:
 	if mi == null or mi.mesh == null or not is_wood(albedo):
 		return material(albedo)
 	return wood_material(albedo, grain_axis(mi.mesh.get_aabb().size))
+
+## The toon look over a painted texture: the same ramp and shadow tint, the
+## texture multiplied into a white albedo. For a prop that arrives already
+## painted -- the menu's camper and its fence sign, both cut down from Meshy
+## exports in Blender -- where flat palette layers would throw the paint away.
+## The soft ramp, since paint wants a brushed terminator rather than a hard
+## band (docs/art/shading-direction.md). Cached per texture.
+static func textured_material(tex: Texture2D) -> ShaderMaterial:
+	var key := tex.get_rid()
+	if _tex_cache.has(key):
+		return _tex_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = TOON_SHADER
+	m.set_shader_parameter("albedo", Color.WHITE)
+	m.set_shader_parameter("albedo_tex", tex)
+	m.set_shader_parameter("ramp", soft_ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_tex_cache[key] = m
+	return m
+
+## The mean colour of a texture, so a painted layer's outline can be its own
+## colour deepened (line()) rather than the shared ink. Read once off an 8 by
+## 8 shrink of the image; a texture the CPU cannot decode falls back to the
+## palette's bark, which is what most of the painted props are anyway.
+static func texture_mean(tex: Texture2D) -> Color:
+	var key := tex.get_rid()
+	if _mean_cache.has(key):
+		return _mean_cache[key]
+	var mean := Pal.BARK
+	var img := tex.get_image()
+	if img != null:
+		img = img.duplicate()
+		if img.is_compressed():
+			img.decompress()
+		if not img.is_compressed() and img.get_width() > 0:
+			img.resize(8, 8, Image.INTERPOLATE_BILINEAR)
+			var sum := Color(0, 0, 0, 0)
+			for y in 8:
+				for x in 8:
+					sum += img.get_pixel(x, y)
+			mean = sum / 64.0
+			mean.a = 1.0
+	_mean_cache[key] = mean
+	return mean
 
 ## Toon material that sways in the wind; same ramp and tint, its own cache.
 static func wind_material(albedo: Color) -> ShaderMaterial:
@@ -278,10 +324,21 @@ static func _apply_mesh(mi: MeshInstance3D) -> void:
 	for i in mi.mesh.get_surface_count():
 		var src: Material = mi.get_active_material(i)
 		if src is StandardMaterial3D:
-			var toon := wind_material(src.albedo_color) if sways(src.resource_name) else material_for(mi, src.albedo_color)
+			var sm := src as StandardMaterial3D
+			var toon: ShaderMaterial
+			if sm.albedo_texture != null:
+				# A painted layer keeps its paint and wears a line in its own
+				# mean colour, the way a wood layer wears its own.
+				toon = textured_material(sm.albedo_texture)
+				if shell == null:
+					shell = line(texture_mean(sm.albedo_texture))
+			elif sways(sm.resource_name):
+				toon = wind_material(sm.albedo_color)
+			else:
+				toon = material_for(mi, sm.albedo_color)
 			mi.set_surface_override_material(i, toon)
 			if shell == null and toon.shader == WOOD_SHADER:
-				shell = line(src.albedo_color)
+				shell = line(sm.albedo_color)
 		if src == null or not src.resource_name.ends_with(FLAT_SUFFIX):
 			wants_outline = true
 	if wants_outline:

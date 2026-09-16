@@ -65,6 +65,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `signpost` | 1.4 x 0.4 | 1.8 | a post with an arm at the **left** end, `Sign_Post` (`Bark`); a plank hanging from the arm, `Sign_Board` (`Timber`); `Sign_Paper` (`Paper_flat`) on the plank's face, on Blender **-Y** (Godot +Z); `Sign_Words` (`Ink_flat`), the words as mesh on the paper. Wider than a cell on purpose; the footprint is still centred on the origin |
 | `title_sign` | unbounded | unbounded | the menu's and HUD's title board, an **assembly**: `Sign_Plank` (`Plank`, Pal.PLAQUE, so core/toon.gd grains it at runtime), `Sign_Leaves` (`Leaf`, both sprigs in one mesh -- two lobes of one layer), `Sign_Screws` (`Screw_flat`, both heads). Chrome, not a piece: it is drawn in its own SubViewport at whatever size the Control layout gives it, so no cell footprint applies -- but it still keeps the base-at-Z=0 and centred-footprint rules. The title and motto are **not** modelled here: ui/hud/sign_view.gd extrudes them with TextMesh from the display face, so the words stay data |
 | `mascot_<name>` | up to 1.4 x 1.4 | 1.4 | a character, e.g. `mascot_pom`; an **assembly**, see below |
+| `camp_sign` | 2.0 x 1.0 | 0.5 | the menu's fence diorama: grass mounds, a fence, a bird, a backpack and two post stubs, one **textured** mesh (`Camp_Sign_flat`, so no outline) cut down from a Meshy export in `art/camp_sign.blend`. Its own plank was cut out; `world/camp.gd` lays a lettered plank across the stubs |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
 the moss trim; `core/platform.gd` lays one `rim_edge` per cell along each side
@@ -211,9 +212,28 @@ The rules change in two places:
 Everything else holds per part: transforms applied, smooth with shared
 vertices, no parent, no `.001` names, plain-colour Principled materials.
 
+## Textured props
+
+The toon step replaces a Principled material's base colour with a flat toon
+colour and, by default, ignores its textures. A material with an image on its
+Base Color is the exception (since 2026-09-16): `core/toon.gd` puts the toon
+ramp *over* the texture (`textured_material`) and lines the mesh in the
+texture's mean colour, so a prop that arrives already painted keeps its paint
+while still being lit, banded and outlined by the scene. The two so far are
+the menu's camper (`art/mascot_camper.blend`, `Mascot_Camper`) and its fence
+diorama (`art/camp_sign.blend`, `Camp_Sign`), both cut down from Meshy exports:
+one mesh each rather than one mesh per layer, which is the trade -- a Meshy
+model's regions are in its paint, not its topology, and splitting it would
+throw the paint away. Everything else in this contract still applies: welded
+smooth shading (the outline hull needs shared normals), no custom split
+normals, base at Z 0, origin at the footprint centre, one Base Color image
+only (drop the normal and roughness maps; the toon look has no use for them),
+decimated to a few tens of thousands of triangles. Textured layers are the
+exception, not the rule: a piece the game tints stays flat-coloured.
+
 ## Mascots
 
-Mascots are **modelled by hand in Blender**, not generated. The `.blend` is the
+Mascots are **modelled by hand in Blender**, not generated (the camper above is the one exception, and it is a prop that is never tinted). The `.blend` is the
 source and is tracked in git (`art/mascot_<name>.blend`, un-ignored in
 `.gitignore`); open it, move the parts, and re-export. Never write a script
 that rebuilds a mascot from scratch — it would overwrite the hand edits.

@@ -35,6 +35,9 @@ any that are missing:
 | `daisy` | a flower on the bank: `Petal_flat`, `Centre_flat`, `Stem_flat` |
 | `tuft` | three grass blades, `Grass_sway_flat`, scattered as one MultiMesh |
 | `signpost` | the hanging sign: `Bark` post, `Timber` plank, `Paper_flat` sheet, `Ink_flat` words |
+| `title_sign` | the HUD title board: plank, leaf sprigs and screws; the words are TextMesh (`ui/hud/sign_view.gd`) |
+| `mascot_camper` | the menu's camper, one textured mesh (`Camper_Tex`) cut down from a Meshy export in `art/mascot_camper.blend`; lit through the textured toon path |
+| `camp_sign` | the menu's fence diorama, one textured mesh (`Camp_Sign_flat`) from `art/camp_sign.blend`; `world/camp.gd` letters a plank across its post stubs |
 
 `tile` is recoloured **by material name**: its `Stone` body and `Slate_flat`
 moon faces take the colour the cell is entitled to -- darker when it is a

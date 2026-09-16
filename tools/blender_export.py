@@ -153,6 +153,11 @@ LIMITS = {
     "daisy": (0.3, 0.3, 0.25),
     "tuft": (0.3, 0.3, 0.25),
     "signpost": (1.4, 0.4, 1.8),
+    # The menu's campsite (2026-09-16): the fence-and-sign diorama that closes
+    # the first screen at the bottom. A Meshy model cut down in Blender, one
+    # textured mesh rather than flat-colour layers -- see the contract's
+    # "Textured props" section.
+    "camp_sign": (2.0, 1.0, 0.5),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
