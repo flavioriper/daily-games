@@ -17,8 +17,7 @@ func _init() -> void:
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 func _build() -> void:
-	(_inner as PanelContainer).add_theme_stylebox_override("panel", CozyTheme.plank_card())
-	_inner.material = CozyTheme.wood_grain(6.0)
+	CozyTheme.plank(_inner, 6.0)
 	_inner.custom_minimum_size.x = MIN_WIDTH
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)

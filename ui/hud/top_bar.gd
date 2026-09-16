@@ -17,7 +17,7 @@ const Wordmark = preload("res://ui/hud/wordmark.gd")
 const BUTTON := Vector2(110, 110)
 const LEAF := 36.0
 const NAIL_R := 8.0
-const NAIL_INSET := 22.0
+const NAIL_INSET := 27.0
 const NAIL_GLINT := 0.35
 const LEAF_INSET := 10.0
 const BADGE_HOP := -6.0
@@ -63,8 +63,9 @@ func _build() -> void:
 	_inner.add_child(centre)
 	_plaque = PanelContainer.new()
 	_plaque.name = "Plaque"
-	_plaque.add_theme_stylebox_override("panel", CozyTheme.plank_card())
-	_plaque.material = CozyTheme.wood_grain(5.0)
+	# A hewn sign rather than another rounded card: the grain shader cuts the
+	# board's silhouette and rim from the plaque's size.
+	CozyTheme.plank(_plaque, 5.0)
 	_plaque.draw.connect(_draw_plaque)
 	centre.add_child(_plaque)
 	# Room down each side for the two leaves, which are painted on the plaque

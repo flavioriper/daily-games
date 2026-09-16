@@ -37,4 +37,11 @@ cel look (hard bands, the shared dark outline) until their turn.
   since 2026-09-16) is a sawn plank rather than a log's face: straight grain
   along the panel and a few dark splits tapering to points, each with a lit
   lower lip, over the same wash. Signs and trays are boards; the stage's
-  posts and frames are logs.
+  posts and frames are logs. The signs (the wordmark plaque, the day card)
+  are also *cut* by that shader rather than by a StyleBox: the panel hands
+  its size over as an instance uniform (`CozyTheme.plank()`), and the shader
+  carves a hewn silhouette from a signed distance field, the edge wandering
+  in slow lobes and fine nicks with a chamfer knocked off each corner, a
+  dark rim that follows every bump and thickens where the edge faces down,
+  and a lit lip inside the rim where it faces up. The trays keep their
+  rounded StyleBox shape; the cut is opt-in.
