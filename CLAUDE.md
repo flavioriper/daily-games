@@ -22,7 +22,33 @@ follow when touching a model:
   outlines) before calling a model done; Blender's viewport colours are not
   what the game shows.
 
+## Art: never bake a model down to an image
+
+**A model ships as a model.** Never render a `.blend` to a PNG, an atlas or a
+sprite sheet and put that on screen in place of the geometry -- not for HUD
+chrome, not for menu cards, not for a title, not for anything. Export the
+`.glb` through `tools/blender_export.py` and put the real thing in the scene.
+
+**Why:** a baked image throws away everything the model was modelled for. It
+cannot be lit by the scene, cannot take the toon shader or the outline pass,
+cannot be recoloured or textured per layer (which is the entire point of the
+one-mesh-per-layer rule above), cannot animate or be turned, and goes soft as
+soon as it is drawn larger than the resolution it was baked at. It also freezes
+the art at one camera and one light, so it stops matching the game the moment
+either of those changes -- and it will, this game has already re-pitched its
+camera once.
+
+If draw calls are the reason to hesitate, say so out loud and measure it
+against the budget in `docs/art/blender-contract.md`. Do not quietly trade the
+model away for a picture of it.
+
 ## Art: the menu's title signs
+
+> **This pipeline breaks the rule above and is owed a rework.** The signs are
+> pre-rendered PNGs, which is exactly what "never bake a model down to an
+> image" forbids. `art/sign.blend` is sound -- five proper layers -- but it has
+> to reach the screen as geometry, not as `assets/signs/*.png`. Treat what
+> follows as a description of the current state, not as a pattern to copy.
 
 Each of the twelve menu cards *is* a carved wood sign, and the same board is
 the title in every HUD row -- each puzzle's, and the menu's own "Daily". All
