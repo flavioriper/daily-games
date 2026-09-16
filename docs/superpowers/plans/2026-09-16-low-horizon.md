@@ -604,6 +604,48 @@ git add docs/superpowers/plans/2026-09-16-low-horizon.md
 git commit -m "docs(art): the framing verdict for all twelve leaning boards"
 ```
 
+#### Verdict
+
+Rendered with `godot --path . --resolution 1080x1920 --script res://tests/_shot.gd`
+(windowed; the harness saved `/tmp/shot_<id>.png` thirteen times, menu
+included). `project.godot` came back unchanged, so there was nothing to
+revert.
+
+| board | readable | toppling | in landscape | verdict |
+| --- | --- | --- | --- | --- |
+| Binairo | yes | no | yes | reads clean |
+| Code Break | yes | no | **no** | sky is a flat, uniform blue with no horizon gradient or hills band; the bridge, rocks, sign and NPC that dress this board's own scene fill the frame right up to the sky, so the shared landscape never shows |
+| Balance | yes | no | yes | reads clean; the shallower 44° face keeps the tilting beams and stacked discs legible |
+| Pipes | yes | no | yes | reads clean; the orthographic blocks stay parallel and the hills read past their edge |
+| Untangle | yes | not falling, but wrong | yes | the mooring posts are round pegs with only a thin wood-grain rim for a base; at the 61° lean they sit flush with the board's face instead of standing off it, so the "post" reads as a flat disc, not a toppled one |
+| Shikaku | yes | no | yes | reads clean |
+| Tents | yes | not falling, but unclear | yes | the conifers are squat three-tier green mounds with no visible trunk or height cue; they don't look toppled, but they don't read as trees standing in a place either — worth a close look, not just a lean check |
+| Light Up | yes | **can't tell** | yes | the harness opens every board unsolved and no bulb is placed by default, so no lantern is on screen to judge — this board needs a render with lanterns actually placed before its toppling risk can be answered |
+| One Line | yes | no | yes | reads clean |
+| Nonogram | yes | no | yes | reads clean |
+| Horse Pen | yes (grid) | not falling, but wrong | **no** | the entire background, from the top edge down, is the board's own solid olive meadow texture — no sky, no horizon, no hills anywhere in frame, the steepest lean of any board (72° face, 65° lean) fills the shot with the board itself; the horse token itself renders as a flat top-down side sprite pancaked onto its tile, not a standing 3D piece, so there is nothing raised that could even be seen toppling |
+| Snake Apple | yes | no | yes | reads clean |
+
+All twelve grids read: cells and clues are distinguishable in every shot, so
+per Step 4 this is a **continue**, not a retreat to Tasks 5-7.
+
+Ranked worst first, for Task 8:
+
+1. **Horse Pen** — no landscape at all behind the board (solid meadow texture
+   to the frame's top edge), and its horse token is a flat sprite lying on
+   the tile rather than a piece with height. Two separate problems, both on
+   this one board.
+2. **Code Break** — the shared landscape's hills and horizon never appear;
+   only a flat sky color shows above this board's own bridge-and-riverbank
+   set, which crowds the frame to its top edge.
+3. **Untangle** — the mooring posts lost their standing-post read at the new
+   lean; they sit flush with the board's face as flat discs.
+4. **Tents** — the conifers render as low, trunk-less green tiers; not
+   visibly toppled, but not visibly standing either. Needs a closer look
+   before ruling it fine.
+5. **Light Up** — untested: this pass never rendered a placed lantern, so its
+   toppling risk (named explicitly in the brief) is still an open question.
+
 ---
 
 ### Task 5: Port the lake

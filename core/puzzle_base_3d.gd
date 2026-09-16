@@ -20,9 +20,12 @@ func board_size() -> Vector2i: return Vector2i(1, 1)
 func board_height() -> float: return 0.5
 ## Height of the surface taps land on (the tile tops).
 func plane_height() -> float: return 0.0
-## Camera pitch this board wants, in degrees above the horizontal; NAN takes
-## the island's own. Only a board whose pieces mean something by their height
-## should move it (see Stage.fit_camera).
+## The angle this board's face wants to be seen at, in degrees above the
+## horizontal; NAN takes the island's own (Stage.DEFAULT_FACE). The camera
+## itself never moves off Stage.CAMERA_PITCH -- the board leans to bring its
+## face around to that angle instead. Only a board whose pieces mean
+## something by their height should ask for a shallower one and lean less
+## (see Stage.fit_camera): Balance, whose beams tilt and whose discs stack.
 func board_pitch() -> float: return NAN
 ## Camera projection this board wants, a Camera3D.PROJECTION_* value. Depth is
 ## the default; a board of stacked blocks reads as a diorama only when its
