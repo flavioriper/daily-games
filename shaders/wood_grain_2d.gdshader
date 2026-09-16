@@ -1,38 +1,46 @@
 shader_type canvas_item;
 
-// The HUD's wood, grained. Set as a Control's `material` so it modulates the
-// StyleBoxFlat the panel already draws: the rounded corners, the thick bottom
-// edge and the antialiasing all come for free, and the darker edge grains
-// along with the face because every tone is a multiply on whatever colour
-// was drawn rather than a colour of its own. The same painted figure as the
-// 3D wood (shaders/toon_lit.gdshaderinc) -- broken streaks, tinted zones, a
-// knot, all with soft brush edges, over a slow warm-to-cool wash -- measured
-// in the panel's pixels instead of world units. `grain_seed` picks the log:
+// The HUD's wood, as a plank. Set as a Control's `material` so it modulates
+// the StyleBoxFlat the panel already draws: the rounded corners, the deep rim
+// and the antialiasing all come for free, and the rim grains along with the
+// face because every tone is a multiply on whatever colour was drawn rather
+// than a colour of its own. The figure is a sawn board seen face on: fine
+// straight grain running along the panel with a slight wander, a few dark
+// splits that taper to a point at both ends and catch the light on their
+// lower lip, all with soft brush edges, over a slow warm-to-cool wash. It is
+// measured in the panel's pixels. `grain_seed` picks the board:
 // CozyTheme.wood_grain(seed) caches one material per seed so the plaque, the
-// day card and the trays do not share one corner figure.
+// day card and the trays do not share their splits. The 3D wood
+// (shaders/toon_lit.gdshaderinc) keeps its log figure of rings and knots;
+// docs/art/shading-direction.md records the split.
 
 varying vec2 grain_pos;
 uniform float grain_seed = 0.0;
-// The heart of the log, in pixels from the panel's top-left corner. Far
-// below the card, so its rings cross the face as long shallow arcs.
-uniform vec2 grain_heart = vec2(60.0, 520.0);
-uniform float grain_period = 11.0;   // pixels between rings
-uniform float grain_width : hint_range(0.0, 0.5) = 0.09;   // streak half-width, in rings
-uniform float grain_cover : hint_range(0.0, 1.0) = 0.6;
-uniform float grain_wobble = 0.4;    // rings a line wanders
-// Brush edge, in pixels, with a floor in ring units.
-uniform float grain_soft = 1.6;
-uniform float grain_soft_min = 0.03;
-// The tones, as multipliers, each a little cooler or redder than a plain
-// darkening so a streak reads as a stroke rather than ink.
-uniform vec3 grain_streak_tint = vec3(0.84, 0.78, 0.76);
-uniform vec3 grain_zone_tint = vec3(0.965, 0.935, 0.93);
-uniform vec3 grain_knot_tint = vec3(0.78, 0.71, 0.69);
-uniform vec2 grain_knot_cell = vec2(220.0, 70.0);   // pixels, along x across
-uniform float grain_knot_chance : hint_range(0.0, 1.0) = 0.4;
-uniform float grain_knot_size = 5.0;               // core half-length, pixels
-// The wash between a warmer and a cooler brown, and how much of it shows.
+// Fine grain: pixels between lines, how far a line wanders in pixels, its
+// half-width in pixels, how much of its length shows, and its tint.
+uniform float grain_period = 9.0;
+uniform float grain_wobble = 1.6;
+uniform float grain_width = 0.7;
+uniform float grain_cover : hint_range(0.0, 1.0) = 0.45;
+uniform vec3 grain_streak_tint = vec3(0.90, 0.86, 0.85);
+// Brush edge, in pixels.
+uniform float grain_soft = 1.4;
+// Splits. Each cell of the lattice (pixels, along x by across) may hold one,
+// `crack_chance` of the time, starting anywhere in the cell and running up to
+// `crack_length` of a cell's width, `crack_width` pixels wide at its middle.
+uniform vec2 crack_cell = vec2(300.0, 34.0);
+uniform float crack_chance : hint_range(0.0, 1.0) = 0.5;
+uniform float crack_length : hint_range(0.0, 1.0) = 0.8;
+uniform float crack_width = 2.6;
+uniform float crack_wobble = 1.5;
+uniform vec3 crack_tint = vec3(0.55, 0.47, 0.42);
+// The lit lower lip of a split: how far below, and how much lighter.
+uniform float crack_lip = 1.5;
+uniform vec3 crack_lip_tint = vec3(1.08, 1.06, 1.03);
+// The wash between a warmer and a cooler brown, how much of it shows, and
+// the size of its patches in pixels.
 uniform float grain_wash : hint_range(0.0, 1.0) = 1.0;
+uniform float wash_scale = 140.0;
 uniform vec3 grain_warm = vec3(1.05, 0.99, 0.92);
 uniform vec3 grain_cool = vec3(0.95, 0.97, 1.05);
 
@@ -58,55 +66,54 @@ float wood_band(float d, float hw, float w) {
 	return clamp(min(hw, d + 0.5 * w) - max(-hw, d - 0.5 * w), 0.0, w) / w;
 }
 
+// Coverage at p of the split that lives in lattice `cell`, if it has one:
+// a spindle, widest in the middle and pointed at both ends, wandering a
+// little up and down along its run. `w` is the brush width.
+float crack_at(vec2 p, vec2 cell, float w) {
+	float has = step(wood_hash(cell + vec2(11.0, 3.0)), crack_chance);
+	float len = crack_cell.x * crack_length * mix(0.35, 1.0, wood_hash(cell + 17.0));
+	float x0 = (cell.x + wood_hash(cell + 23.0)) * crack_cell.x;
+	float y0 = (cell.y + mix(0.2, 0.8, wood_hash(cell + 29.0))) * crack_cell.y;
+	float v = 2.0 * (p.x - x0) / len - 1.0;
+	float hw = has * crack_width * mix(0.6, 1.0, wood_hash(cell + 31.0)) * max(1.0 - v * v, 0.0);
+	float y = y0 + (wood_noise(vec2(p.x / 40.0, cell.y * 7.0 + 5.0)) - 0.5) * 2.0 * crack_wobble;
+	return wood_band(abs(p.y - y), hw, w);
+}
+
+// The splits at p: its own cell's and the one from the cell to the left,
+// which may run this far.
+float cracks_at(vec2 p, float w) {
+	vec2 cell = floor(p / crack_cell);
+	return max(crack_at(p, cell, w), crack_at(p, cell - vec2(1.0, 0.0), w));
+}
+
 void fragment() {
-	vec2 heart = grain_heart
-		+ (vec2(wood_hash(vec2(grain_seed, 3.1)), wood_hash(vec2(grain_seed, 7.3))) - 0.5) * 120.0;
-	vec2 p = grain_pos + vec2(grain_seed * 137.0, 0.0);
-	float radius = length(grain_pos - heart);
+	vec2 p = grain_pos + vec2(grain_seed * 137.0, grain_seed * 71.0);
+	float w = max(fwidth(grain_pos.y), 0.5) * grain_soft;
 
-	// Ring coordinate, wandering along the grain in two octaves.
-	float r = radius / grain_period;
-	vec2 np = vec2(p.x, radius) / grain_period;
-	r += (wood_noise(np * vec2(0.09, 0.3)) - 0.5) * 2.0 * grain_wobble;
-	r += (wood_noise(np * vec2(0.27, 0.7) + 31.0) - 0.5) * 0.7 * grain_wobble;
-
-	// Knots on a jittered lattice; the bulge folds the rings around the core.
-	vec2 kp = p / grain_knot_cell;
-	vec2 kc = floor(kp);
-	float has_knot = step(wood_hash(kc + 41.0), grain_knot_chance);
-	vec2 jitter = (vec2(wood_hash(kc + 5.0), wood_hash(kc + 9.0)) - 0.5) * 0.5;
-	vec2 to_knot = (kp - kc - 0.5 - jitter) * grain_knot_cell;
-	float e = length(to_knot / (grain_knot_size * vec2(2.0, 1.0)));
-	float bulge = 1.0 - clamp(e / 3.5, 0.0, 1.0);
-	r += has_knot * bulge * bulge * (3.0 - 2.0 * bulge) * 2.6;
-	float knot_core = has_knot * wood_band(e, 1.0, max(fwidth(e) * grain_soft, 0.15));
-
-	// Streaks, tapering where the noise along the ring fades.
-	float d = abs(fract(r) - 0.5);
-	float ring = floor(r);
-	float presence = wood_noise(vec2(p.x / grain_period * 0.13, ring * 0.71 + 17.0));
+	// Fine grain: lines along the board, wandering, present in stretches.
+	float r = p.y / grain_period
+		+ (wood_noise(vec2(p.x / 60.0, p.y / grain_period * 0.5)) - 0.5) * 2.0 * grain_wobble / grain_period;
+	float d = abs(fract(r) - 0.5) * grain_period;
+	float presence = wood_noise(vec2(p.x / 90.0, floor(r) * 0.73 + 17.0));
 	float hw = grain_width * smoothstep(1.0 - grain_cover, 1.0 - grain_cover + 0.3, presence);
-	float w = max(fwidth(r) * grain_soft, grain_soft_min);
 	float streak = wood_band(d, hw, w);
 
-	// Zones bounded by the streak lines, blended across the boundary.
-	float zr = r + 0.5;
-	float zid = floor(zr);
-	float zf = fract(zr);
-	float z0 = step(0.5, wood_hash(vec2(zid, 23.0)));
-	float zm = step(0.5, wood_hash(vec2(zid - 1.0, 23.0)));
-	float zp = step(0.5, wood_hash(vec2(zid + 1.0, 23.0)));
-	float zone = mix(mix(zm, z0, clamp(zf / w + 0.5, 0.0, 1.0)), zp, clamp((zf - 1.0) / w + 0.5, 0.0, 1.0));
+	// Splits, and the lit lip just below each.
+	float crack = cracks_at(p, w);
+	float lip = cracks_at(p - vec2(0.0, crack_lip), w) * (1.0 - crack);
 
-	// The wash, on the knot lattice's chart: a broad drift between the cool
-	// and the warm tint, and a finer one in value.
-	float n_fine = wood_noise(kp * grain_knot_cell / grain_period * 0.25 + 53.0);
-	float n_broad = wood_noise(kp * grain_knot_cell / grain_period * 0.08 + 77.0);
+	// The wash: broad patches stretched along the grain, and a finer drift
+	// in value.
+	vec2 q = p / wash_scale;
+	float n_broad = wood_noise(q * vec2(0.5, 1.4) + 77.0);
+	float n_fine = wood_noise(q * vec2(1.6, 4.0) + 53.0);
 	float warmth = clamp(0.5 + (n_broad - 0.5) * 1.4 + (n_fine - 0.5) * 0.8, 0.0, 1.0);
 	vec3 tone = mix(vec3(1.0), mix(grain_cool, grain_warm, warmth), grain_wash);
 	tone *= 1.0 + (n_fine - 0.5) * 0.08 * grain_wash;
 
-	tone *= mix(vec3(1.0), grain_zone_tint, zone);
 	tone *= mix(vec3(1.0), grain_streak_tint, streak);
-	COLOR.rgb *= mix(tone, tone * grain_knot_tint, knot_core);
+	tone *= mix(vec3(1.0), crack_lip_tint, lip);
+	tone *= mix(vec3(1.0), crack_tint, crack);
+	COLOR.rgb *= tone;
 }

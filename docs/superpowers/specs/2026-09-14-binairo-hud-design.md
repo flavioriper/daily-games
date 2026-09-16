@@ -379,6 +379,17 @@ grain has room to darken it); the day card shares it. The top bar's nails
 are 8 px with a `SURFACE` glint. Reference: the user's painted mock of the
 Binairo screen (sign on a plank, cream letters standing off the wood).
 
+Amendment (2026-09-16, later): the HUD wood's figure in
+`shaders/wood_grain_2d.gdshader` is a sawn plank, after the same mock:
+fine straight grain along the panel (9 px period, wandering 1.6 px, showing
+in stretches), dark splits on a 300 x 34 px lattice (one per cell half the
+time, up to 0.8 of a cell long, 2.6 px wide at the middle, tapering to
+points, wobbling 1.5 px) each with a lighter lip 1.5 px below, over the
+warm-to-cool wash in 140 px patches. Rings and knots are gone from the HUD;
+the 3D wood keeps them (`docs/art/shading-direction.md`). `plank_card()`'s
+face is `PLAQUE` lerped 0.35 toward `WOOD`. The plaque, the day card and
+both trays share the shader, so all of them are boards.
+
 ## 5. Motion: new recipes, entrance, press, badge
 
 `core/motion.gd` additions. Every recipe keeps the contract: returns the

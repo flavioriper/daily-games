@@ -135,10 +135,10 @@ static func wood_card() -> StyleBoxFlat:
 	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)
 
 ## Wood with a deep rim all round and a thicker foot: the plank the wordmark
-## and the day card hang from. The face is a shade up from PLAQUE so the
-## grain has room to darken it.
+## and the day card hang from. The face sits a third of the way from PLAQUE
+## toward the trays' WOOD: a warmer tan, with room for the grain to darken.
 static func plank_card() -> StyleBoxFlat:
-	var sb := card(Pal.PLAQUE.lightened(0.08), 16, Pal.PLAQUE_DEEP, 12, 22)
+	var sb := card(Pal.PLAQUE.lerp(Pal.WOOD, 0.35), 16, Pal.PLAQUE_DEEP, 12, 22)
 	sb.border_width_left = 6
 	sb.border_width_right = 6
 	sb.border_width_top = 6

@@ -30,7 +30,11 @@ cel look (hard bands, the shared dark outline) until their turn.
   the next material reuses lives in `core/toon.gd`: `soft_ramp()` for eased
   bands, `line()` for an outline shell in the layer's own deepened colour at
   the thinner line width, and the include's `rim_soft` uniform for an eased,
-  sky-tinted rim. The grain itself (`toon_lit.gdshaderinc`,
-  `wood_grain_2d.gdshader`) draws its streaks, zones and knots as tints with
-  a brush-soft edge over a slow warm-to-cool wash. Palette hexes were left
-  alone: ten exported models carry them as their wood key.
+  sky-tinted rim. The grain itself (`toon_lit.gdshaderinc`) draws its
+  streaks, zones and knots as tints with a brush-soft edge over a slow
+  warm-to-cool wash. Palette hexes were left alone: ten exported models
+  carry them as their wood key. The HUD's wood (`wood_grain_2d.gdshader`,
+  since 2026-09-16) is a sawn plank rather than a log's face: straight grain
+  along the panel and a few dark splits tapering to points, each with a lit
+  lower lip, over the same wash. Signs and trays are boards; the stage's
+  posts and frames are logs.
