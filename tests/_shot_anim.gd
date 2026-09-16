@@ -6,7 +6,11 @@ extends SceneTree
 ## Judge the ambience by eye and the budget by the numbers
 ## (polish spec, section 7: idle mean under 8 ms at 1080 x 1920 on the Mac).
 ##
-##     godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd [-- <puzzle id>]
+##     godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd [-- <puzzle id> [empty]]
+##
+## Code Break is filled to its fullest board before the idle window, since
+## that is the state the budget is written against; `empty` after the id
+## measures the bare board instead, so both numbers come from this one probe.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -25,6 +29,7 @@ var _shot := 0
 var _idle: Array[float] = []
 var _draws := 0
 var _id := ""
+var _empty := false   # skip the fill and measure the bare board
 var _entry: Dictionary = {}
 
 func _initialize() -> void:
@@ -33,6 +38,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_id = args[0]
+	_empty = args.size() > 1 and args[1] == "empty"
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -54,8 +60,10 @@ func _process(delta: float) -> bool:
 		return false
 	if not _tapped and _t >= TAP_AT:
 		_tapped = true
-		# The tap walks Binairo's givens; a board without them idles instead.
-		if _puzzle.get("_given") != null:
+		if _entry.id == "mastermind" and not _empty:
+			_fill_mastermind()
+		elif _puzzle.get("_given") != null:
+			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
 	if _t >= IDLE_FROM and _t <= IDLE_TO:
 		_idle.append(delta * 1000.0)
@@ -88,3 +96,32 @@ func _tap_first_free() -> void:
 				ev.position = at
 				root.push_input(ev, true)
 			return
+
+## Code Break's fullest board: seven rows guessed and scored, the eighth
+## filled and waiting on Check. Every row is one colour, and at difficulty 0
+## the day's code has no repeats, so no monochrome row can win and the eighth
+## row is still there to fill. Driven through the HUD the way tests/_win.gd
+## drives it, so the board reaches the state by playing rather than by having
+## its arrays written.
+func _fill_mastermind() -> void:
+	var tray = _host.action_bar.tray
+	var check: Button = _host.action_bar.check_button
+	for g in 7:
+		var colour: Button = tray.buttons[g % tray.buttons.size()]
+		for s in _puzzle.length:
+			_press(colour)
+		_press(check)
+	for s in _puzzle.length:
+		_press(tray.buttons[0])
+
+## Presses a HUD button through a touch at its centre, like a player would.
+func _press(btn: Button) -> void:
+	_tap_global(btn.get_global_transform_with_canvas() * (btn.size * 0.5))
+
+func _tap_global(at: Vector2) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventScreenTouch.new()
+		ev.index = 0
+		ev.pressed = pressed
+		ev.position = at
+		root.push_input(ev, true)

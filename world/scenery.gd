@@ -41,7 +41,9 @@ static func water(size: Vector2, centre: Vector3) -> MeshInstance3D:
 ## `x1` and z from `z0` to `z1`: one strip per unit of z, each stretched
 ## along x. The strip is modelled exactly one unit long so the stretch is a
 ## plain scale, and its planks run along x so nothing about their
-## cross-section changes.
+## cross-section changes. `z1 - z0` must be a whole number of strips, since
+## that is what the run is counted in; a fraction would leave a gap or an
+## overhang at the far end.
 static func deck(x0: float, x1: float, z0: float, z1: float) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Deck"
@@ -49,7 +51,7 @@ static func deck(x0: float, x1: float, z0: float, z1: float) -> Node3D:
 	for i in strips:
 		var strip := Models.instance("deck")
 		strip.name = "deck_%d" % i
-		strip.position = Vector3((x0 + x1) * 0.5, -Placeholders.PLATFORM_H, z0 + 0.5 + i)
+		strip.position = Vector3((x0 + x1) * 0.5, -Placeholders.DECK_H, z0 + 0.5 + i)
 		strip.scale.x = x1 - x0
 		root.add_child(strip)
 	return root
@@ -75,6 +77,8 @@ static func prop(slot: String, at: Vector3, yaw := 0.0, scale := Vector3.ONE) ->
 static func scatter(slot: String, transforms: Array[Transform3D]) -> MultiMeshInstance3D:
 	var sample := Models.instance(slot)
 	var layers := Models.meshes(sample)
+	if layers.size() > 1:
+		push_warning("Scenery.scatter: %s has %d layers; only the first is scattered" % [slot, layers.size()])
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	var mmi := MultiMeshInstance3D.new()

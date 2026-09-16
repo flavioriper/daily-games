@@ -169,6 +169,15 @@ static func _dress(slot: String, node: Node3D) -> void:
 		# (task 6 fix 3/3, the judgment call).
 		set_shadow_off_named(node, "Collar")
 		return
+	if slot.begins_with("mascot_"):
+		# A mascot's flat layers -- the mouth, the tongue, the eyes, the
+		# cheeks, the map POM holds -- are all laid on or inside its own
+		# body, so every one of their shadows falls where the body's
+		# silhouette already is. One rule for every mascot rather than a
+		# case each: a new character gets this for nothing.
+		for surface in surface_names(node):
+			if surface.ends_with(Toon.FLAT_SUFFIX):
+				set_shadow_off_named(node, surface)
 	match slot:
 		"water":
 			for mi in meshes(node):
@@ -223,6 +232,15 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# pass each, for a shadow no pixel of which could ever show.
 			set_shadow_off_named(node, "Num_flat")
 			set_shadow_off_named(node, "Well_flat")
+		"peg":
+			# The shine is a patch half buried in the dome and the mark a
+			# 0.012 inlay on its crown; neither can throw a shadow that
+			# shows past the dome's own. The fullest board carries
+			# thirty-two pegs, so that is sixty-four shadow-pass draw calls
+			# for nothing -- the same argument as the valve's bolts and the
+			# wall block's numeral.
+			set_shadow_off_named(node, "Shine_flat")
+			set_shadow_off_named(node, "Mark_flat")
 		"lid":
 			# From above the knob has to read as the dark hole in the concept's
 			# lids, not a pale wooden stud; the model keeps its own colour.
