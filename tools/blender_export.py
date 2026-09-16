@@ -162,7 +162,7 @@ MASCOT_LIMIT = (1.4, 1.4, 1.4)
 # The backdrop pieces (art/landscape.blend) are scenery the camera never gets
 # near, sized in tens of units rather than cells, so no footprint budget
 # applies -- only the origin and base rules every slot keeps.
-BACKDROP = {"meadow", "cloud", "foliage", "blossom"}
+BACKDROP = {"meadow", "cloud", "foliage", "blossom", "hills"}
 UNBOUNDED = {"platform", "water"} | BACKDROP  # no maximum; platform has its own exact check
 # Slots the board tiles edge to edge, so the footprint must be exact, not
 # merely within budget: the platform is stretched by (cols + 1, rows + 1) and
