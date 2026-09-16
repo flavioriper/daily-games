@@ -159,8 +159,12 @@ func board_size() -> Vector2i: return Vector2i(cols, rows)
 ## would sit small in the middle of it.
 func board_height() -> float: return float(_tallest()) + 1.0
 
-## The tallest column on the island.
+## The tallest column on the island. The base fits the camera once in
+## _ready(), before build() has laid any terrain, so an island that does not
+## exist yet is framed by the difficulty's own ceiling.
 func _tallest() -> int:
+	if _heights.is_empty():
+		return levels
 	var top := 1
 	for z in rows:
 		for x in cols:
@@ -206,30 +210,24 @@ func build(_rng: RandomNumberGenerator, difficulty: int) -> void:
 ## back to the first stop. Hints are unpinned but not refunded.
 func reset_board() -> void:
 	_stop_entrance()
+	# Every piece goes back into the tray on its way off the island, which is
+	# the only place the count it came from is still known.
 	for cell in _placed.keys():
+		var kind := String(_placed[cell].kind)
+		_tray[kind] = int(_tray.get(kind, 0)) + 1
 		_free_piece(cell)
 	_placed = {}
 	_locked = {}
 	_turned = {}
 	_history = []
+	_crown_colour = {}
 	moves = 0
-	for kind in _tray_kinds:
-		_tray[kind] = _stock(kind)
 	if _stop != 0:
 		_stop = 0
 		_refit()
 	_rebuild_crowns()
 	_reflow(true)
 	fx.cue("reset")
-
-## How many of `kind` the day handed out: what the tray holds plus what is
-## standing on the island.
-func _stock(kind: String) -> int:
-	var count := int(_tray.get(kind, 0))
-	for cell in _placed:
-		if String(_placed[cell].kind) == kind:
-			count += 1
-	return count
 
 func is_solved() -> bool:
 	return Gen.is_solved(_all_pieces(), _source, _drains)
@@ -444,75 +442,84 @@ func _build_scene() -> void:
 	_buds = null
 	_rebuild_buds()
 
-## The island: every block's earth layer merged into one mesh per level, and
-## every column's crown merged into one mesh per colour. A six-by-six board
-## five levels tall is 180 cubes, which instanced would be 180 draw calls and
-## as many again in outlines; merged it is a handful. Per level rather than
-## all at once so the entrance can still bring the island in from the bottom
-## up, which is the one thing the merge would otherwise cost.
+## The island: one node per level, carrying that level's blocks merged into a
+## single earth mesh and the crowns that end on it merged into one mesh per
+## colour. A six-by-six board five levels tall is 180 cubes, which instanced
+## would be 180 draw calls and as many again in outlines; merged it is a
+## handful. Per level rather than all in one mesh so the entrance can still
+## bring the island in from the bottom up -- and the crowns belong to their
+## level rather than to a mesh of their own, or they would hang in the air
+## over blocks that had not arrived yet.
 func _build_ground() -> void:
 	_ground = Node3D.new()
 	_ground.name = "Ground"
 	board.add_child(_ground)
 	var sample := Models.instance("block")
-	var earth := _layer_of(sample, "Earth")
-	var grass := _layer_of(sample, "Grass")
+	_earth = _layer_of(sample, "Earth")
+	_crown = _layer_of(sample, "Grass")
+	sample.free()
 	_level_nodes = []
+	_crown_nodes = []
 	for y in levels:
+		var node := Node3D.new()
+		node.name = "Level_%d" % y
+		_ground.add_child(node)
+		_level_nodes.append(node)
 		var parts: Array = []
 		for z in rows:
 			for x in cols:
 				if y >= Gen.height_at(_heights, x, z):
 					continue
-				parts.append({"mesh": earth.mesh,
-					"xform": Transform3D(Basis(), _block_at(x, y, z)) * earth.xform})
-		var mesh := _merge(parts)
+				parts.append({"mesh": _earth.mesh,
+					"xform": Transform3D(Basis(), _block_at(x, y, z)) * _earth.xform})
 		var mi := MeshInstance3D.new()
-		mi.name = "Level_%d" % y
-		mi.mesh = mesh
+		mi.name = "Earth"
+		mi.mesh = _merge(parts)
 		mi.material_override = Toon.material(Pal.EARTH)
-		if mesh != null:
+		if mi.mesh != null:
 			Toon.add_outline(mi)
-		_ground.add_child(mi)
-		_level_nodes.append(mi)
-	_crown_nodes = []
-	for i in 3:
-		var mi := MeshInstance3D.new()
-		mi.name = ["Crowns_Grass", "Crowns_Stone", "Crowns_Given"][i]
-		_ground.add_child(mi)
-		_crown_nodes.append(mi)
-	_crown = grass
-	sample.free()
+		node.add_child(mi)
+		var row: Array = []
+		for i in 3:
+			var crown := MeshInstance3D.new()
+			crown.name = ["Crown_Grass", "Crown_Stone", "Crown_Given"][i]
+			# The cap is flush with its block's crown and inset inside it, so
+			# the earth's own outline already draws the cell's edge; a shell of
+			# its own would only double that line. Nothing stands under a
+			# crown, so it casts nothing either.
+			crown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			node.add_child(crown)
+			row.append(crown)
+		_crown_nodes.append(row)
 	_rebuild_crowns()
 
-## The crown layer's mesh and where it sits inside a block.
+## The block's two layers and where each sits inside it.
+var _earth: Dictionary = {}
 var _crown: Dictionary = {}
 
-## The crowns, three merged meshes by what the column is carrying: plain
+## The crowns, merged per level and per what the column is carrying: plain
 ## grass, the pale stone of a pad under a piece, or the given stone under a
 ## piece a hint placed. Rebuilt when a crown changes, which is a placement or
 ## a hint -- not a frame.
 func _rebuild_crowns() -> void:
 	if _crown_nodes.is_empty():
 		return
-	var parts := [[], [], []]
+	var parts: Array = []
+	for y in levels:
+		parts.append([[], [], []])
 	for z in rows:
 		for x in cols:
 			var col := Vector2i(x, z)
 			var h := Gen.height_at(_heights, x, z)
 			var which := int(_crown_colour.get(col, CROWN_GRASS))
-			parts[which].append({"mesh": _crown.mesh,
+			parts[h - 1][which].append({"mesh": _crown.mesh,
 				"xform": Transform3D(Basis(), _block_at(x, h - 1, z)) * _crown.xform})
 	var colours := [Pal.TURF, Pal.STONE, Pal.STONE_GIVEN]
-	for i in 3:
-		var mi: MeshInstance3D = _crown_nodes[i]
-		var shell := mi.get_node_or_null(Toon.OUTLINE_NODE)
-		if shell != null:
-			mi.remove_child(shell)
-			shell.queue_free()
-		mi.mesh = _merge(parts[i])
-		mi.material_override = Toon.material(colours[i])
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for y in levels:
+		for i in 3:
+			var mi: MeshInstance3D = _crown_nodes[y][i]
+			mi.mesh = _merge(parts[y][i])
+			mi.material_override = Toon.material(colours[i])
 	_paint_ground()
 
 ## Where the block at level `y` over column (x, z) sits: a block is a unit
@@ -559,17 +566,17 @@ static func _merge(parts: Array) -> ArrayMesh:
 ## The outline shells go with it -- a dark line round ghosted ground reads as
 ## a hole cut in the island.
 func _paint_ground() -> void:
-	var sets := [[_level_nodes, Pal.EARTH]]
 	var colours := [Pal.TURF, Pal.STONE, Pal.STONE_GIVEN]
-	for i in _crown_nodes.size():
-		sets.append([[_crown_nodes[i]], colours[i]])
-	for entry in sets:
-		for node in entry[0]:
-			var mi: MeshInstance3D = node
-			mi.material_override = Toon.ghost(entry[1], PEEK_ALPHA) if _peeking else Toon.material(entry[1])
-			var shell := mi.get_node_or_null(Toon.OUTLINE_NODE)
-			if shell != null:
-				(shell as MeshInstance3D).visible = not _peeking
+	for y in _level_nodes.size():
+		_paint_mesh((_level_nodes[y] as Node3D).get_node("Earth"), Pal.EARTH)
+		for i in 3:
+			_paint_mesh(_crown_nodes[y][i], colours[i])
+
+func _paint_mesh(mi: MeshInstance3D, colour: Color) -> void:
+	mi.material_override = Toon.ghost(colour, PEEK_ALPHA) if _peeking else Toon.material(colour)
+	var shell := mi.get_node_or_null(Toon.OUTLINE_NODE)
+	if shell != null:
+		(shell as MeshInstance3D).visible = not _peeking
 
 ## The tank on its high block and a pool at every drain, each turned so its
 ## one mouth faces the pipeline. Both stand on a crown, so they are turned
@@ -1165,9 +1172,9 @@ func _enter() -> void:
 		splash.tween_callback(_splash)
 		_entrance.append(splash)
 	for y in _level_nodes.size():
-		var mi: MeshInstance3D = _level_nodes[y]
-		mi.scale = Vector3(1.0, 0.01, 1.0)
-		var pop: Tween = Motion.settle(mi, "scale", Vector3.ONE, ENTER_POP,
+		var node: Node3D = _level_nodes[y]
+		node.scale = Vector3(1.0, 0.01, 1.0)
+		var pop: Tween = Motion.settle(node, "scale", Vector3.ONE, ENTER_POP,
 			ENTER_TIME * 0.5 + Motion.stagger(y, ENTER_LEVEL))
 		if pop != null:
 			_entrance.append(pop)
@@ -1186,8 +1193,8 @@ func _stop_entrance() -> void:
 	_entrance = []
 	if _ground != null and is_instance_valid(_ground):
 		_ground.position.y = 0.0
-		for mi in _level_nodes:
-			(mi as MeshInstance3D).scale = Vector3.ONE
+		for node in _level_nodes:
+			(node as Node3D).scale = Vector3.ONE
 	for cell in _fixtures:
 		var pivot: Node3D = _fixtures[cell]
 		if is_instance_valid(pivot):

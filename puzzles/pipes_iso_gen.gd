@@ -37,21 +37,23 @@ const VERTICAL := U | D
 const KINDS := ["straight", "elbow", "tee", "pump"]
 ## The mouth set each kind's model is modelled with. Must keep agreeing with
 ## core/placeholders.gd and art/pipes.blend.
+## The two fixtures are in here as well: each is modelled with one mouth
+## toward Blender -Y, which is Godot +Z (see the contract's `source_tank` and
+## `drain_pool` rows), so S is their reference and the board turns them onto
+## whichever side the day chose.
 const REFERENCE := {
 	"straight": N | S,
 	"elbow": N | E,
 	"tee": N | E | S,
 	"pump": U | D,
+	"source": S,
+	"drain": S,
 }
 const SLOT := {
 	"straight": "pipe_straight", "elbow": "pipe_elbow",
 	"tee": "pipe_tee", "pump": "pump",
 	"source": "source_tank", "drain": "drain_pool",
 }
-## The two fixtures carry one mouth, modelled toward N like every other piece,
-## and they stand on a crown: the board turns them about the vertical only, so
-## the generator must hand them a horizontal mouth (see `_walk`).
-const FIXTURE_REFERENCE := N
 ## The fixtures the generator places and the player cannot move.
 const FIXTURES := ["source", "drain"]
 
@@ -121,10 +123,18 @@ static func rotate_mask(mask: int, basis: Basis) -> int:
 ## [{"mask": int, "basis": Basis}], in the stable order of rotations(). The
 ## board cycles a piece through these, and the generator asks the same
 ## question when it needs a piece that connects.
-static func orientations(reference: int) -> Array[Dictionary]:
+##
+## With `upright`, only the turns that leave the piece standing the way it was
+## modelled are considered -- and the filter has to come before the mouth sets
+## are deduplicated, or a piece that could reach a side either by turning or
+## by being tipped over would be offered the tipped basis and then have the
+## whole mouth set thrown away as a duplicate.
+static func orientations(reference: int, upright := false) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var seen: Dictionary = {}
 	for basis in rotations():
+		if upright and basis.y.dot(Vector3.UP) < 0.9:
+			continue
 		var mask := rotate_mask(reference, basis)
 		if seen.has(mask):
 			continue
@@ -139,13 +149,13 @@ static func orientations(reference: int) -> Array[Dictionary]:
 static var _by_kind: Dictionary = {}
 static func kind_orientations(kind: String) -> Array[Dictionary]:
 	if not _by_kind.has(kind):
-		var all := orientations(int(REFERENCE.get(kind, 0)))
+		var all := orientations(int(REFERENCE.get(kind, 0)), kind in FIXTURES)
 		if kind == "pump":
-			var upright: Array[Dictionary] = []
+			var vertical_only: Array[Dictionary] = []
 			for o in all:
 				if int(o.mask) == VERTICAL:
-					upright.append(o)
-			all = upright
+					vertical_only.append(o)
+			all = vertical_only
 		_by_kind[kind] = all
 	return _by_kind[kind]
 

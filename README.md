@@ -47,7 +47,7 @@ Reduce-motion is read from `user://settings.cfg`, section `[motion]`, key
 | Binairo | tap-cycle | backtracking count to 2 |
 | Code Break | tap-cycle | — calibration, not uniqueness |
 | Balance | tap-cycle | brute force over the domain |
-| Pipes | tap-rotate | free by construction |
+| Pipes | tap-a-mouth, tap-to-turn | the generator floods its own route |
 | Untangle | drag | — any planar embedding wins |
 | Shikaku | drag rect | exact cover count to 2 |
 | Tents | tap-cycle | matching search count to 2 |
@@ -58,6 +58,13 @@ Reduce-motion is read from `user://settings.cfg`, section `[motion]`, key
 A daily puzzle that turns out to have two answers is the worst bug this product
 can ship, so every generator proves its instance is uniquely solvable before
 handing it over. That is what the bulk of the test suite covers.
+
+Two boards are scored rather than proved unique, and say so: Horse Pen sets a
+target -- the score of a pen the generator itself closed inside the stock of
+bales -- and beating it is the point, and Pipes asks only that the pipeline
+reach every drain without leaking, so any route that does counts. Both still
+verify their own reference answer with the board's own rules before shipping a
+day.
 
 ## Layout
 

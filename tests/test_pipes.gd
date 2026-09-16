@@ -11,6 +11,7 @@ const Gen = preload("res://puzzles/pipes_iso_gen.gd")
 static func run(t) -> void:
 	_test_rotations(t)
 	_test_masks(t)
+	_test_fixture_turns(t)
 	_test_standing(t)
 	_test_flow(t)
 	_test_generate(t)
@@ -172,3 +173,20 @@ static func _test_fixture_mouths(t, out: Dictionary) -> void:
 	t.eq(int(out.source_mask) & Gen.VERTICAL, 0, "the source's mouth is horizontal")
 	for drain in out.drains:
 		t.eq(int(out.drain_masks[drain]) & Gen.VERTICAL, 0, "a drain's mouth is horizontal")
+
+## The tank and the pool stand on a crown, so the four turns they are offered
+## are the four horizontal ones -- a turn that reached the same mouth by
+## tipping the piece would stand its orb underneath it.
+static func _test_fixture_turns(t) -> void:
+	for kind in Gen.FIXTURES:
+		var all := Gen.kind_orientations(kind)
+		t.eq(all.size(), 4, "a %s is turned four ways" % kind)
+		var masks: Array = []
+		for o in all:
+			var basis: Basis = o.basis
+			t.check(basis.y.dot(Vector3.UP) > 0.9, "a %s is never tipped over" % kind)
+			masks.append(int(o.mask))
+		masks.sort()
+		t.eq(masks, [Gen.N, Gen.E, Gen.S, Gen.W], "and its mouth reaches all four sides")
+		t.eq(Gen.rotate_mask(int(Gen.REFERENCE[kind]), Gen.basis_for(kind, Gen.N)), Gen.N,
+			"the turn a %s is given really points its mouth there" % kind)
