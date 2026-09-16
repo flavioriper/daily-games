@@ -24,6 +24,14 @@ func plane_height() -> float: return 0.0
 ## the island's own. Only a board whose pieces mean something by their height
 ## should move it (see Stage.fit_camera).
 func board_pitch() -> float: return NAN
+## Camera projection this board wants, a Camera3D.PROJECTION_* value. Depth is
+## the default; a board of stacked blocks reads as a diorama only when its
+## parallel edges stay parallel, so it asks for PROJECTION_ORTHOGONAL.
+func board_projection() -> int: return Camera3D.PROJECTION_PERSPECTIVE
+## Camera yaw this board wants, in degrees around Y; NAN leaves the rig's yaw
+## alone. A board that can be turned must return NAN, or the re-fit that
+## follows every resize would snap the view back to where it started.
+func board_yaw() -> float: return NAN
 func on_board_press(_hit: Vector3) -> void: pass
 func on_board_drag(_hit: Vector3) -> void: pass
 func on_board_release(_hit: Vector3) -> void: pass
@@ -67,7 +75,7 @@ func viewport_rect() -> Rect2:
 func _refit() -> void:
 	if _stage == null or not is_inside_tree():
 		return
-	_stage.fit_camera(board_aabb(), viewport_rect(), board_pitch())
+	_stage.fit_camera(board_aabb(), viewport_rect(), board_pitch(), board_projection(), board_yaw())
 
 func _camera() -> Camera3D:
 	return get_viewport().get_camera_3d()
@@ -79,6 +87,18 @@ func local_to_board(local: Vector2) -> Variant:
 		return null
 	var vp := get_global_transform_with_canvas() * local
 	return BoardMath.ray_plane(cam.project_ray_origin(vp), cam.project_ray_normal(vp), plane_height())
+
+## The picking ray through a control-local position, as
+## [origin: Vector3, direction: Vector3], or [] when there is no camera. Where
+## local_to_board answers with the one point on the board plane, this hands
+## back the ray itself, for a board whose pieces stand at many heights and has
+## to march the ray through its own cells to find out what was tapped.
+func local_ray(local: Vector2) -> Array:
+	var cam := _camera()
+	if cam == null:
+		return []
+	var vp := get_global_transform_with_canvas() * local
+	return [cam.project_ray_origin(vp), cam.project_ray_normal(vp)]
 
 ## Control-local position of a world point; the inverse of local_to_board.
 func board_to_local(world: Vector3) -> Vector2:

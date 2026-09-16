@@ -90,13 +90,24 @@ func unmount(board: Node3D) -> void:
 ## boards lie flat and read best from the default steep pitch, but a board
 ## whose pieces carry their meaning in their height -- Balance, whose beams
 ## tilt and whose discs stack -- needs the camera lower or that meaning
-## projects to nothing. The rig keeps the angle it is given, so every board
-## passes its own on every fit rather than relying on the last one to have
-## put it back.
-func fit_camera(aabb: AABB, rect: Rect2, pitch := NAN) -> void:
+## projects to nothing. The rig keeps what it is given, so every board passes
+## its own on every fit rather than relying on the last one to have put it
+## back. `projection` is the same story for perspective against parallel:
+## Pipes wants its blocks parallel, every other board wants depth. `yaw` is
+## the exception -- NAN leaves the rig's own yaw where it is, which is what a
+## board that turns needs, or every re-fit would undo the turn.
+func fit_camera(aabb: AABB, rect: Rect2, pitch := NAN, projection := Camera3D.PROJECTION_PERSPECTIVE, yaw := NAN) -> void:
+	rig.orthographic = projection == Camera3D.PROJECTION_ORTHOGONAL
 	rig.pitch_deg = DEFAULT_PITCH if is_nan(pitch) else pitch
+	if not is_nan(yaw):
+		rig.yaw_deg = yaw
 	rig.fit(aabb, rect)
 	ambient.fit_to(aabb)
+
+## Swings the view a quarter turn per step, so a board asks the stage rather
+## than reaching into the rig. Returns the tween, or null off-tree.
+func turn(steps: int) -> Tween:
+	return rig.turn(steps)
 
 ## Rings the water under a board that has just landed.
 func splash(origin: Vector3) -> void:
