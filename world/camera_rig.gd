@@ -11,7 +11,10 @@ extends Node3D
 
 @export var pitch_deg: float = 68.0
 @export var yaw_deg: float = 0.0
-@export var fov_deg: float = 30.0
+## Wide enough that a 7-degree pitch leaves sky above the horizon: the frame
+## spans pitch +/- fov/2, so at 30 degrees the horizon sat exactly on the top
+## edge and no sky showed at all.
+@export var fov_deg: float = 40.0
 ## Fraction of the rect's shorter side kept clear around the board.
 @export var margin: float = 0.06
 ## Parallel projection instead of perspective, for a board that reads as a

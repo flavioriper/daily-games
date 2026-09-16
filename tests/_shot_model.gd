@@ -33,11 +33,15 @@ func _process(_delta: float) -> bool:
 		_model = Models.instance(_slot)
 		_stage.mount(_model)
 		_stage.rig.pitch_deg = PITCH
+		# A model is not a board: it should stand up, not lean, so the stage's
+		# lean is undone and the rig is fitted directly rather than through
+		# Stage.fit_camera, which would re-pitch and re-lean.
+		_stage.anchor.transform.basis = Basis()
 	elif _frames == 5:
 		var box := AABB(_model.position, Vector3.ZERO)
 		for mi in Models.meshes(_model):
 			box = box.merge(mi.transform * mi.mesh.get_aabb())
-		_stage.fit_camera(box, root.get_visible_rect())
+		_stage.rig.fit(box, root.get_visible_rect())
 	elif _frames == FRAMES:
 		var path := "/tmp/shot_model_%s.png" % _slot
 		root.get_texture().get_image().save_png(path)
