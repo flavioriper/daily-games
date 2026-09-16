@@ -184,8 +184,8 @@ static func water() -> ShaderMaterial:
 		_water = ShaderMaterial.new()
 		_water.shader = WATER_SHADER
 		_water.set_shader_parameter("base_color", Pal.WATER)
-		_water.set_shader_parameter("band_color", Pal.WATER_HI)
-		_water.set_shader_parameter("sparkle_color", Pal.MOON)
+		_water.set_shader_parameter("shallow_color", Pal.WATER_HI)
+		_water.set_shader_parameter("foam_color", Pal.MOON)
 		_water.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 		_water.set_shader_parameter("splash_origin", Vector3.ZERO)
 		_water.set_shader_parameter("splash_age", -1.0)
