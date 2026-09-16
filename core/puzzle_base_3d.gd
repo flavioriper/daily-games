@@ -28,10 +28,14 @@ func board_pitch() -> float: return NAN
 ## the default; a board of stacked blocks reads as a diorama only when its
 ## parallel edges stay parallel, so it asks for PROJECTION_ORTHOGONAL.
 func board_projection() -> int: return Camera3D.PROJECTION_PERSPECTIVE
-## Camera yaw this board wants, in degrees around Y; NAN leaves the rig's yaw
-## alone. A board that can be turned must return NAN, or the re-fit that
-## follows every resize would snap the view back to where it started.
-func board_yaw() -> float: return NAN
+## Camera yaw this board wants, in degrees around Y. Zero is the island's own,
+## which is what every board that does not care should say: the rig keeps
+## whatever it was last given, so a board that left the yaw alone would inherit
+## the 45 degrees Pipes' island is looked at from and come out standing on its
+## corner. A board that can be turned answers with the stop it is showing, so
+## that the re-fit after a resize agrees with where the turn left the camera;
+## NAN still means "leave it alone" for anything that wants that.
+func board_yaw() -> float: return 0.0
 func on_board_press(_hit: Vector3) -> void: pass
 func on_board_drag(_hit: Vector3) -> void: pass
 func on_board_release(_hit: Vector3) -> void: pass
