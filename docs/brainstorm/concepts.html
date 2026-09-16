@@ -285,7 +285,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
 <!-- ============================ HORSE PEN ============================ -->
 <section class="tab-panel" id="tab-horse">
-  <h2>Horse Pen · a meadow, not a board <span class="pill blue">polish · 2026-09-15</span><span class="pill rose">concept, nothing built</span></h2>
+  <h2>Horse Pen · a meadow, not a board <span class="pill blue">polish · 2026-09-15</span><span class="pill">built · 2026-09-15</span></h2>
   <p class="lede">Today the board is a fenced plate floating on the sea. The polish makes it the meadow itself: grass to every edge of the screen, streams with banks cut through it, boulders, apples and the horse in the middle, and hay bales instead of rails to close the gaps. Rules, scoring, target, hints and submit stay exactly as they are. Everything on this page is look, motion and words.</p>
 
   <div class="hero">
@@ -426,7 +426,21 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Pieces.</b> The bale, the rock, the horse tints and scale, the standing wheat.</li>
     <li><b>Motion and words.</b> Entrance, place and remove, bloom; status text, blurb, footer, rules.</li>
   </ol>
-  <p style="color:var(--muted);font-size:14px">Verify with the suite, the win harness and <code>tests/_shot.gd</code> windowed on the real stage. Nothing here has been started.</p>
+  <p style="color:var(--muted);font-size:14px">Verify with the suite, the win harness and <code>tests/_shot.gd</code> windowed on the real stage.</p>
+
+  <h3>11. What was built <span class="pill">amendments · 2026-09-15</span></h3>
+  <p>All nine open decisions went the way of the recommendation, except the
+  horse's colour. Four things were settled against the stage rather than on
+  the page; they are the record now, the same way the rest of this tab is.</p>
+  <table>
+    <tr><th style="width:22%">Item</th><th>As built</th></tr>
+    <tr><td class="k">Horse</td><td><b>Chestnut with a flaxen mane and tail</b>, not cream. The horse always stands on ground it can reach, which is always the pale wheat, and cream against <code>TURF_REACH</code> measures a WCAG contrast of 1.10 — the toon ramp then paints the two the same and the horse reads as a pale lump (screenshotted, then measured). Chestnut measures 4.67 against the wheat and 2.86 against the green, and the cream went to the mane and tail, where the coat is behind it. It is scaled off its own mesh bounds to fill 0.9 of a cell, so a re-cut export needs no code change; in <code>art/horse.blend</code> the mane became a crest as wide as the neck and the tail twice as long, because at 72° a fin and a nub contribute nothing.</td></tr>
+    <tr><td class="k">The grid</td><td>No lines were drawn. The field's pads are 0.96 across with a 0.04 seam, and a slab of the ring's darker turf lies under the field at the channels' floor: what shows in those seams <em>is</em> the faint garden-plot grid, and the same 0.02 slot runs round the field as its whole boundary. The pads' own hard outlines are hidden instead. One fewer mesh than a drawn grid, and the boundary and the grid are then the same thing.</td></tr>
+    <tr><td class="k">Streams leaving the field</td><td>A water cell on the border shows no bank lip on its outward side, and the ring's own turf face — flush with the field's top — is the bank there. No scenery channel cells outside the field: the ring is one solid slab of turf, so any cut laid on it would have its water buried inside it, and the camera frames the field plus six per cent anyway.</td></tr>
+    <tr><td class="k">Boulders</td><td>Code Break's <code>boulder</code> (rounded, mossed) at 0.8 of a cell, rather than a new <code>rock</code> slot: it is already exactly what §4 asked for, and the repo shares a slot wherever two boards want the same piece (the meadow is Tents' <code>turf_pad</code>).</td></tr>
+  </table>
+  <p style="font-size:14.5px">Measured on the stage at 1080 × 1920: idle 3.58 ms, 377 draw calls — well inside the 855 ceiling, with the platform's fifty-odd rim pieces gone and five ground slabs and two MultiMeshes in their place. Suite 1586/0, win harness 12/12. Three commits on <code>feat/horse-meadow</code>: the scene and the pieces, the words, and the four models.</p>
+  <p style="font-size:14.5px">Left on the table: the horse's silhouette from directly above is still a lump with a bright stripe on it. A grazing pose — the neck bent down and the head reaching forward onto the grass — would read as a horse in plan at any size, and would suit a meadow. It needs a vertex-level bend of a 3,865-vertex mesh with no rig, so it was not attempted in this pass.</p>
 </section>
 </main>
 

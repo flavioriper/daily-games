@@ -19,7 +19,7 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"turf_pad", "camp_tree", "tent", "cairn",
 	"wall_block", "lantern",
 	"mosaic_tile", "plank",
-	"horse", "fence", "apple",
+	"horse", "fence", "apple", "bale", "channel", "stalk", "flower",
 	"snake_head", "burrow",
 	"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost"]
 ## The five pipe shapes. They all carry the same three layers, so anything
@@ -218,6 +218,20 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# own, where no pixel of them can show.
 			set_shadow_off_named(node, "Leaf_flat")
 			set_shadow_off_named(node, "Stem_flat")
+		"channel":
+			# The cut is filled with the stage's own water, so a splash rings
+			# it and it catches the same bands and sparkle as the sea around
+			# the island. The surface is flat and lies below its own banks:
+			# its shadow could not show a pixel, and the banks' shadows
+			# falling into the water are what give the cut its depth.
+			set_material_named(node, "Water_flat", Toon.water())
+			set_shadow_off_named(node, "Water_flat")
+		"bale":
+			# A strap stands 0.012 proud of the straw, lying along it: its
+			# shadow falls inside the bale's own silhouette. The straw keeps
+			# its shadow -- a bale having one is half the reason it replaced
+			# the see-through fence.
+			set_shadow_off_named(node, "Straps")
 		"burrow":
 			# The hole is a disc lying flat in the rim's own shadow.
 			set_shadow_off_named(node, "Hole_flat")

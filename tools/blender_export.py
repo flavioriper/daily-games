@@ -112,6 +112,15 @@ LIMITS = {
     "horse": (0.9, 0.9, 0.9),
     "fence": (1.0, 0.3, 0.5),
     "apple": (0.45, 0.45, 0.45),
+    # Horse Pen's polish pass (docs/brainstorm/concepts.html, the Horse Pen
+    # tab): the hay bale that replaced the see-through fence, the water
+    # channel that replaced the pond -- tiled edge to edge along a stream, so
+    # its footprint is exact, not merely budgeted -- and the two pieces the
+    # board scatters as MultiMeshes, a tuft of wheat and a flower.
+    "bale": (0.8, 0.8, 0.5),
+    "channel": (1.0, 1.0, 0.1),
+    "stalk": (0.3, 0.3, 0.32),
+    "flower": (0.25, 0.25, 0.08),
     # Snake Apple (the design agreed 2026-09-15): the snake's head, cut from
     # a BlenderKit snake and facing +X with its neck at the origin, and the
     # burrow it goes home to. The body is not a slot: the board builds it as
@@ -145,7 +154,8 @@ UNBOUNDED = {"platform", "water"}  # no maximum; platform has its own exact chec
 # stretched along X alone, so its length must be exact while its thickness is
 # the artist's to choose inside the LIMITS row.
 EXACT = {"platform": (1.0, 1.0), "rim_edge": (1.0, 0.5), "rim_corner": (0.5, 0.5),
-    "wall_edge": (1.0, None), "plank": (1.0, None), "fence": (1.0, None), "deck": (1.0, None)}
+    "wall_edge": (1.0, None), "plank": (1.0, None), "fence": (1.0, None), "deck": (1.0, None),
+    "channel": (1.0, 1.0)}
 # A shape whose openings cancel (an opposite pair, or all four) keeps its
 # mass centred on its hub, and must pass the strict origin-at-centre check
 # below -- pipe_straight and pipe_cross stay off this set on purpose. One

@@ -2,18 +2,19 @@ extends RefCounted
 
 ## Enclose the Horse. A meadow cut up by streams and pools of water, with a
 ## few boulders lying on it, a horse standing somewhere and some apples about.
-## The player builds fences on grass cells, from a limited stock, until the
-## horse -- which walks up, down, left and right, never through a fence, a
+## The player drops hay bales on grass cells, from a limited stock, until the
+## horse -- which walks up, down, left and right, never through a bale, a
 ## boulder or water -- can no longer reach the edge of the meadow. Every cell
 ## it can still reach is penned and scores a point; an apple in the pen scores
-## three more. The water and the boulders do most of the enclosing; the
-## fences close the gaps. That is the whole sport: the fewer gaps you need to
-## close, the more meadow you keep.
+## three more. The water and the boulders do most of the enclosing; the bales
+## close the gaps. That is the whole sport: the fewer gaps you need to close,
+## the more meadow you keep.
 ##
 ## The daily framing: the generator searches for a pen it can close within the
-## fence budget and sets that pen's score as the target. The player must pen
-## at least that much using no more fences than the budget, then submit.
-## Beating the target is allowed and is the point.
+## stock of bales and sets that pen's score as the target. The player must pen
+## at least that much using no more bales than the budget, then submit.
+## Beating the target is allowed and is the point. The `walls` a pen is closed
+## with are those bales throughout; the name predates the piece.
 
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 const APPLE_POINTS := 3
@@ -36,8 +37,8 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, budget: int,
 		if best.is_empty() or int(best.score) < MIN_TARGET:
 			continue
 		# Apples lie inside the pen the search found, never beside it: a cell
-		# beside the pen is one of its fences, and a fence cannot stand on an
-		# apple, so an apple there would leave the reference pen unbuildable.
+		# beside the pen is one of its bales, and a bale cannot be dropped on
+		# an apple, so an apple there would leave the reference pen unbuildable.
 		# Inside, they are the bait the target is counted with.
 		var apple_set: Dictionary = {}
 		var spots: Array = []
@@ -86,10 +87,11 @@ static func _lay_meadow(rng: RandomNumberGenerator, w: int, h: int,
 					d = turn
 			var n := c + d
 			if not in_bounds(n, w, h):
-				d = Vector2i(-d.y, d.x)
-				n = c + d
-				if not in_bounds(n, w, h):
-					break
+				# The stream runs off the meadow rather than turning along
+				# the edge: a channel that leaves the field is a wall the pen
+				# can lean on and reads as a stream going somewhere, where a
+				# bounced one read as a puddle with corners.
+				break
 			c = n
 	for _p in pools:
 		var seed := Vector2i(rng.randi_range(0, w - 1), rng.randi_range(0, h - 1))
@@ -138,8 +140,8 @@ static func _lay_meadow(rng: RandomNumberGenerator, w: int, h: int,
 	return {"w": w, "h": h, "water": water.keys(), "stones": stone_set.keys(),
 		"horse": horse, "apples": []}
 
-## The fences that close `pen`: every cell beside it that is neither in it
-## nor blocked. Border cells count -- a fence may stand on the edge.
+## The bales that close `pen`: every cell beside it that is neither in it nor
+## blocked. Border cells count -- a bale may stand on the edge.
 static func walls_for(pen: Dictionary, blocked: Dictionary, w: int, h: int) -> Dictionary:
 	var walls: Dictionary = {}
 	for c in pen:
@@ -159,7 +161,7 @@ static func score_of(pen: Dictionary, apples: Dictionary) -> int:
 
 ## Grows pens out from the horse, many times over, and keeps the best one the
 ## budget can close. Each growth step takes the cheapest of a few random
-## frontier cells -- the one that adds the fewest new fences -- which is what
+## frontier cells -- the one that adds the fewest new bales -- which is what
 ## makes the pens follow the water rather than sprawl across open grass.
 static func _best_pen(rng: RandomNumberGenerator, meadow: Dictionary, budget: int) -> Dictionary:
 	var w: int = meadow.w
@@ -199,7 +201,7 @@ static func _best_pen(rng: RandomNumberGenerator, meadow: Dictionary, budget: in
 			_consider(best, pen, walls, apples, budget)
 	return best
 
-## Takes `c` into the pen, keeping the fence set and the frontier current.
+## Takes `c` into the pen, keeping the bale set and the frontier current.
 static func _absorb(c: Vector2i, pen: Dictionary, walls: Dictionary, frontier: Dictionary,
 		blocked: Dictionary, w: int, h: int) -> void:
 	pen[c] = true
@@ -223,7 +225,7 @@ static func _consider(best: Dictionary, pen: Dictionary, walls: Dictionary, appl
 		best["walls"] = walls.keys()
 
 ## Where the horse can get to from `horse`, walking orthogonally over cells
-## that are neither blocked nor fenced. `escaped` is whether that includes a
+## that are neither blocked nor baled. `escaped` is whether that includes a
 ## border cell; `gaps` lists the border cells it reaches, which is where the
 ## pen is open.
 static func reach(horse: Vector2i, w: int, h: int, blocked: Dictionary, walls: Dictionary) -> Dictionary:
