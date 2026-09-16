@@ -46,6 +46,12 @@ var ambient: Node3D
 var backdrop: Node3D
 ## The face angle the last fit used, so a turn can re-lean where it lands.
 var _face := DEFAULT_FACE
+## The board-local box and rect the last fit used. Kept local rather than the
+## world box that fit actually used: a turn changes the lean, and only the
+## local box survives a change of lean -- the world box would still be the
+## shape the old lean produced.
+var _last_local_aabb := AABB()
+var _last_rect := Rect2()
 
 func _ready() -> void:
 	add_to_group("stage")
@@ -131,6 +137,30 @@ func _lean(face: float) -> void:
 		right = Vector3.RIGHT
 	anchor.transform.basis = Basis(right.normalized(), deg_to_rad(face - CAMERA_PITCH))
 
+## The world box a fit or a re-fit should use for `local` -- the board's own
+## box -- under whichever lean is currently in effect. Perspective needs only
+## the box the current lean produces, so this is exactly `anchor.transform *
+## local`. Orthographic needs more: `_fit_ortho` takes the size that fits the
+## worst of the four quarter stops so the board reads as one constant size
+## across a turn, and that guarantee only holds if the box it measures is the
+## same at every stop. A leaning board's box is not -- each stop leans about a
+## different horizontal axis -- so this unions the box across all four
+## instead of handing over just the one the board happens to be standing on.
+## The union is identical no matter which stop it is taken from, since
+## stepping by 90 degrees four times maps the set of stops onto itself; the
+## cost is a fit a little looser than the tightest possible one, which is the
+## trade worth making so the board does not swell and shrink as it turns.
+func _fit_box(local: AABB) -> AABB:
+	if not rig.orthographic:
+		return anchor.transform * local
+	var tilt := deg_to_rad(_face - CAMERA_PITCH)
+	var box := AABB()
+	for k in 4:
+		var right: Vector3 = rig.right_at(rig.yaw_deg + 90.0 * k)
+		var world := Transform3D(Basis(right, tilt), anchor.transform.origin) * local
+		box = world if k == 0 else box.merge(world)
+	return box
+
 ## Frames `aabb` -- the board's own, board-local box -- in `rect`. `face` is
 ## the angle the board's face wants to be seen at, in degrees above the
 ## horizontal; NAN means the island's own. The camera no longer moves to find
@@ -150,7 +180,11 @@ func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PRO
 	# Before the box is measured: the lean is what puts the board where the
 	# rig has to frame it.
 	_lean(DEFAULT_FACE if is_nan(face) else face)
-	var world := anchor.transform * aabb
+	# Kept board-local so a later turn can re-derive the world box under
+	# whatever lean it re-takes; see _last_local_aabb.
+	_last_local_aabb = aabb
+	_last_rect = rect
+	var world := _fit_box(aabb)
 	rig.fit(world, rect)
 	ambient.fit_to(world)
 	_fit_ground(world)
@@ -164,13 +198,19 @@ func _fit_ground(aabb: AABB) -> void:
 	backdrop.fit_to(aabb)
 
 ## Swings the view a quarter turn per step, so a board asks the stage rather
-## than reaching into the rig. The lean is measured from the camera's right,
-## so it has to be re-taken where the turn lands. Returns the tween, or null
-## off-tree.
+## than reaching into the rig. CameraRig.turn only swings the yaw and re-
+## places the camera; it does not re-fit, because a turn changes the lean and
+## only Stage knows the lean and the board-local box it acts on. So this
+## re-leans first, at the yaw the turn landed on, and only then re-fits from
+## a world box freshly taken through that lean -- re-fitting from the box the
+## old lean produced (or before re-leaning at all) would frame a shape the
+## board is no longer showing. Returns the tween, or null off-tree.
 func turn(steps: int) -> Tween:
 	var tw: Tween = rig.turn(steps)
 	if tw != null:
-		tw.tween_callback(func() -> void: _lean(_face))
+		tw.tween_callback(func() -> void:
+			_lean(_face)
+			rig.fit(_fit_box(_last_local_aabb), _last_rect))
 	return tw
 
 ## Rings the water under a board that has just landed.

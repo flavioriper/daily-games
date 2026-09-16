@@ -45,7 +45,7 @@ Kept, deliberately:
 
 The frame spans `pitch - fov/2` to `pitch + fov/2` below the horizontal, so
 the horizon sits about `0.5 - pitch/fov` down the frame. The old numbers put
-it at -1.27 (far off the top); 7 and 40 put it at 0.325. The source painting's
+it at -1.77 (far off the top); 7 and 40 put it at 0.325. The source painting's
 own 3.24 and 39.6 were measured off its camera; 7 is steeper on purpose,
 because a portrait phone frame spends its top and bottom on the HUD and the
 extra three degrees buy that room back.

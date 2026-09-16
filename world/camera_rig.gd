@@ -11,9 +11,12 @@ extends Node3D
 
 @export var pitch_deg: float = 68.0
 @export var yaw_deg: float = 0.0
-## Wide enough that a 7-degree pitch leaves sky above the horizon: the frame
-## spans pitch +/- fov/2, so at 30 degrees the horizon sat exactly on the top
-## edge and no sky showed at all.
+## The frame spans pitch +/- fov/2, so the horizon (at 0.5 - pitch/fov down
+## the frame) already shows at our 7-degree pitch with a 30-degree field --
+## 26.7% down, not off the top. Widening to 40 buys two things instead: it
+## pushes the horizon further down the frame, to 32.5%, giving more sky and
+## less of the frame spent on foreground board; and it widens the field, so
+## more landscape flanks the board on either side at the same pitch.
 @export var fov_deg: float = 40.0
 ## Fraction of the rect's shorter side kept clear around the board.
 @export var margin: float = 0.06
@@ -40,10 +43,6 @@ var _breath_t := 0.0
 var camera: Camera3D
 var _target := Vector3.ZERO
 var _distance := 10.0
-## The last fit's arguments, so a turn can re-frame the board it left.
-var _last_aabb := AABB()
-var _last_rect := Rect2()
-var _fitted := false
 
 func _ready() -> void:
 	camera = Camera3D.new()
@@ -59,6 +58,13 @@ func _ready() -> void:
 ## Unit vector from the target toward the camera: toward +Z (the player) and up.
 func view_offset_dir() -> Vector3:
 	return _dir_at(yaw_deg)
+
+## The camera's right at an arbitrary yaw, so Stage can lean the board at a
+## turn's other three stops -- to union their boxes for the ortho no-swell
+## fit -- without moving the camera to any of them first.
+func right_at(yaw_deg_at: float) -> Vector3:
+	var right := Vector3.UP.cross(_dir_at(yaw_deg_at))
+	return right.normalized() if right.length_squared() > 1e-6 else Vector3.RIGHT
 
 ## The same vector at an arbitrary yaw, so the ortho fit can measure the board
 ## at the three stops it is not standing on without moving the camera there.
@@ -106,16 +112,14 @@ func _process(delta: float) -> void:
 	_place()
 
 ## Frames `aabb` inside `rect` (viewport pixels). Perspective searches for the
-## distance; orthographic solves for the size (see _fit_ortho). The arguments
-## are kept so turn() can re-fit at the stop it lands on without the board
-## having to hand them over again.
+## distance; orthographic solves for the size (see _fit_ortho). Does not keep
+## its arguments for turn() to reuse: a turn changes the board's lean, which
+## changes the world box this has to frame, and only Stage knows the lean and
+## the board-local box it acts on, so Stage re-fits explicitly instead.
 func fit(aabb: AABB, rect: Rect2) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0 or not is_inside_tree():
 		return
 	_apply_projection()
-	_last_aabb = aabb
-	_last_rect = rect
-	_fitted = true
 	if orthographic:
 		_fit_ortho(aabb, rect)
 	else:
@@ -178,12 +182,16 @@ func _ortho_size(aabb: AABB, rect: Rect2, yaw: float) -> float:
 	var vh: float = camera.get_viewport().get_visible_rect().size.y
 	return height / (1.0 - 2.0 * margin) * vh / rect.size.y
 
-## Swings the view a quarter turn per step and re-fits where it lands. The
-## camera is re-placed on every step of the tween, not just at the end, so the
-## board turns rather than jumping. The turn is the state change itself, so it
-## is essential the way Motion.roll is: under reduce-motion it still turns,
-## shortened and linear. The yaw is folded back into 0..360 at the end so
-## repeated turns cannot drift it off into the thousands.
+## Swings the view a quarter turn per step and re-places the camera at every
+## step, not just at the end, so the board turns rather than jumping. It does
+## not re-fit where it lands: a turn changes the board's lean (Stage's, not
+## this rig's), which changes the world box that would have to be framed, and
+## this rig knows neither the lean nor the board-local box it acts on. Stage
+## is this method's only caller; it re-leans and re-fits itself once the
+## callback below has folded the yaw back into 0..360 -- which happens here,
+## rather than left to drift, so repeated turns cannot carry it off into the
+## thousands. The turn is the state change itself, so it is essential the way
+## Motion.roll is: under reduce-motion it still turns, shortened and linear.
 func turn(steps: int) -> Tween:
 	if not is_inside_tree():
 		return null
@@ -200,9 +208,7 @@ func turn(steps: int) -> Tween:
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func() -> void:
 		yaw_deg = fposmod(to, 360.0)
-		if _fitted:
-			fit(_last_aabb, _last_rect)
-		elif camera != null:
+		if camera != null:
 			_place())
 	return tw
 
