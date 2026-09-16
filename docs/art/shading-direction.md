@@ -41,7 +41,8 @@ cel look (hard bands, the shared dark outline) until their turn.
   are also *cut* by that shader rather than by a StyleBox: the panel hands
   its size over as an instance uniform (`CozyTheme.plank()`), and the shader
   carves a hewn silhouette from a signed distance field, the edge wandering
-  in slow lobes and fine nicks with a chamfer knocked off each corner, a
-  dark rim that follows every bump and thickens where the edge faces down,
-  and a lit lip inside the rim where it faces up. The trays keep their
-  rounded StyleBox shape; the cut is opt-in.
+  in slow lobes and fine nicks with a chamfer knocked off each corner. No
+  line is drawn round it (2026-09-16: the painted grain carries the edge on
+  its own); a lit lip where the edge faces up and a soft shade where it
+  faces down give the board its thickness. The trays keep their rounded
+  StyleBox shape; the cut is opt-in.

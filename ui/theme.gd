@@ -128,7 +128,8 @@ static func wood_grain(seed := 0.0) -> ShaderMaterial:
 		var m := ShaderMaterial.new()
 		m.shader = GRAIN_SHADER
 		m.set_shader_parameter("grain_seed", seed)
-		# The plank's rim, as the multiply that takes the face to PLAQUE_DEEP.
+		# The plank's rim, should one be asked for (it is off by default), as
+		# the multiply that takes the face to PLAQUE_DEEP.
 		var face := plank_face()
 		m.set_shader_parameter("rim_tint", Vector3(
 			Pal.PLAQUE_DEEP.r / face.r, Pal.PLAQUE_DEEP.g / face.g, Pal.PLAQUE_DEEP.b / face.b))
@@ -145,7 +146,7 @@ static func plank_face() -> Color:
 
 ## The face colour over the whole rect, and nothing else: the board the
 ## wordmark and the day card hang from is cut by the grain shader, which
-## draws the hewn edge, the rim and its lit lip itself. Use through plank().
+## draws the hewn edge and its lit lip itself, with no rim. Use through plank().
 static func plank_card() -> StyleBoxFlat:
 	return card(plank_face(), 0, Pal.PLAQUE_DEEP, 0, 22)
 

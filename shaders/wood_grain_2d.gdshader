@@ -52,11 +52,14 @@ uniform vec3 grain_cool = vec3(0.95, 0.97, 1.05);
 // what the trays want. A panel that sets it to its size in pixels
 // (CozyTheme.plank() does, on every resize) gets a board instead: a box
 // resting `edge_inset` pixels inside the rect, its edge wandering in slow
-// lobes and fine nicks, a chamfer of seeded size knocked off each corner, a
-// dark rim that follows every bump and thickens where the edge faces down,
-// and a lit lip just inside the rim where the edge faces up. The rim is a
-// multiply like every other tone here: `rim_tint` is the rim colour over the
-// face colour, so the face the stylebox drew stays the only colour that is
+// lobes and fine nicks, a chamfer of seeded size knocked off each corner.
+// No line is drawn round it: the painted grain carries the edge, with a lit
+// lip where the edge faces up and a soft shade where it faces down for the
+// board's thickness (docs/art/shading-direction.md: depth through colour, no
+// outlines). A dark rim following the cut is still available through `rim`
+// and `rim_foot` (extra where the edge faces down) and is off at zero. Every
+// one of these is a multiply like the grain: `rim_tint` is the rim colour
+// over the face colour, so the face the stylebox drew stays the only colour
 // chosen outright.
 instance uniform vec2 plank_size = vec2(0.0);
 uniform float edge_inset = 8.0;
@@ -66,11 +69,14 @@ uniform float bump_amp = 5.2;
 uniform float chip_len = 18.0;
 uniform float chip_amp = 0.9;
 uniform float bite = 16.0;
-uniform float rim = 6.0;
-uniform float rim_foot = 6.0;
+uniform float rim = 0.0;
+uniform float rim_foot = 0.0;
 uniform vec3 rim_tint = vec3(0.64, 0.59, 0.54);
 uniform float bevel = 3.5;
 uniform vec3 bevel_tint = vec3(1.12, 1.10, 1.06);
+// The underside shade: how far in it reaches, in pixels, and its tint.
+uniform float shade = 10.0;
+uniform vec3 shade_tint = vec3(0.90, 0.89, 0.90);
 
 void vertex() {
 	grain_pos = VERTEX;
@@ -176,12 +182,16 @@ void fragment() {
 		float d = plank_sd(grain_pos, p);
 		vec2 g = vec2(dFdx(d), dFdy(d));
 		g /= max(length(g), 1e-4);
-		float rim_w = rim + rim_foot * clamp(g.y, 0.0, 1.0);
-		float rim_mask = smoothstep(-rim_w - w, -rim_w + w, d);
+		float up = clamp(-g.y, 0.0, 1.0);
+		float down = clamp(g.y, 0.0, 1.0);
+		float rim_w = rim + rim_foot * down;
+		float rim_mask = rim_w > 0.0 ? smoothstep(-rim_w - w, -rim_w + w, d) : 0.0;
 		float bevel_mask = smoothstep(-rim_w - bevel - w, -rim_w - bevel + w, d)
-			* (1.0 - rim_mask) * clamp(-g.y, 0.0, 1.0);
+			* (1.0 - rim_mask) * up;
+		float shade_mask = smoothstep(-rim_w - shade, -rim_w, d) * (1.0 - rim_mask) * down;
 		tone *= mix(vec3(1.0), rim_tint, rim_mask);
 		tone *= mix(vec3(1.0), bevel_tint, bevel_mask);
+		tone *= mix(vec3(1.0), shade_tint, shade_mask);
 		float aa = max(fwidth(d), 0.5);
 		COLOR.a *= 1.0 - smoothstep(-aa, aa, d);
 	}
