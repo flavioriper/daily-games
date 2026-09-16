@@ -142,21 +142,44 @@ const PLANK_BARE := SLATE
 const PLANK_LAID := WOOD
 const POST_SPENT := STONE_GIVEN   # a post with no line left to walk
 
-# Horse Pen (the design agreed 2026-09-15): a meadow of Tents' turf with a
-# few ponds sunk into it, a chestnut horse standing on it, a couple of apples
-# lying about, and the timber fences the player builds. A fence a hint built
-# is duller timber, the language every board uses for a given. The meadow the
-# horse can reach is shown, on demand, as trampled grass: paler and yellower
-# than the turf, far enough off it to survive the toon ramp.
-const HIDE        := Color("a8683c")   # the horse's coat
-const MANE        := Color("4b3222")   # mane and tail
+# Horse Pen (the design agreed 2026-09-15, polished 2026-09-15 against
+# enclose.horse -- docs/brainstorm/concepts.html, the Horse Pen tab): a meadow
+# that runs off every edge of the screen, cut by water channels with earth
+# banks, with boulders and apples lying on it, a cream horse standing on it
+# and the hay bales the player drops. A bale a hint dropped is older, darker
+# straw, the language every board uses for a given. The meadow the horse can
+# reach is shown as trampled wheat: paler and yellower than the turf, far
+# enough off it to survive the toon ramp.
+## A chestnut coat with a flaxen mane and tail. Cream was the proposal and it
+## lost on the stage: the horse always stands on ground it can reach, which is
+## always the pale wheat, and cream against TURF_REACH measures a contrast of
+## 1.10 -- the toon ramp then paints the two the same and the horse reads as a
+## pale lump. Chestnut measures 4.67 against the wheat and 2.86 against the
+## green, so it reads wherever it stands, and the pale mane and tail put the
+## cream back where it has the coat behind it to show against.
+const HIDE        := Color("8a4f2a")   # the horse's chestnut coat
+const MANE        := Color("f4ead3")   # its flaxen mane and tail
 const HORSE_EYE   := Color("2a2622")
-const TIMBER      := Color("c49a63")   # a fence the player built
-const TIMBER_LOCK := Color("a1825a")   # a fence a hint built, so it reads as given
+const TIMBER      := Color("c49a63")   # timber, kept for the fence model
+const TIMBER_LOCK := Color("a1825a")
 const FRUIT       := Color("e04a3f")
 const STEM        := Color("6b4a2e")
 const APPLE_LEAF  := Color("5fa04a")
 const TURF_REACH  := Color("dde08a")   # meadow the horse can still reach
+## The bale that closes a gap. Gold on green grass, and with its two dark
+## straps and its outline it still reads on the pale wheat -- which the timber
+## fence it replaces never did, being two rails and two posts of mostly air.
+const STRAW       := Color("e8bc5a")
+const STRAW_LOCK  := Color("bd9440")   # a bale a hint dropped: older straw
+const STRAP       := Color("53412d")   # the two straps round a bale
+## The ring of meadow beyond the field: darker, so the lighter field and its
+## faint plot lines are the whole boundary -- no wall, no lip, because an edge
+## cell is open and open is the point of the game.
+const TURF_RING   := Color("6f9243")
+const TURF_LINE   := Color("a7c96f")   # the faint lines on the field
+const WHEAT       := Color("cfc267")   # the standing wheat on a cell the horse can reach
+const CUT_EARTH   := Color("9c7850")   # the banks of a water channel
+const BLOOM       := Color("ee7fa7")   # the flowers that open over a closed pen
 
 # Snake Apple (the design agreed 2026-09-15): the same meadow, boulders and
 # apples as Horse Pen, with a green snake on it and an earth burrow that goes

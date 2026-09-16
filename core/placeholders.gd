@@ -344,6 +344,36 @@ const FENCE_RAIL_H := 0.07
 const APPLE_R := 0.17
 const APPLE_STEM_H := 0.09
 
+## Horse Pen's polish pass (docs/brainstorm/concepts.html, the Horse Pen tab).
+## The fence gave way to a hay bale, the pond to a cut channel with banks, and
+## the reach tint gained standing wheat that rises out of the turf where the
+## horse can still walk; a closed pen blooms with flowers.
+##
+## The bale is the piece the puzzle is solved with, so it carries about
+## three-quarters of the cell and stands high enough to have a top, a front
+## and a shadow -- which is exactly what the two rails and two posts of the
+## fence never had.
+const BALE_W := 0.72
+const BALE_H := 0.45
+const BALE_STRAP_W := 0.07
+const BALE_STRAP_PROUD := 0.012
+const BALE_STRAP_AT := 0.19
+## The channel's water lies CHANNEL_TOP above the ground, so 0.06 under the
+## turf top, and its bank lips stand the turf's own height. The cell is
+## exactly one unit across (the turf pad is 0.96 with a seam), so two channels
+## side by side read as one cut rather than as two puddles.
+const CHANNEL_TOP := 0.02
+const BANK_W := 0.14
+## One tuft of wheat: three blades, planted below the wind shader's 0.03
+## threshold so the blade bends and the root does not.
+const STALK_H := 0.30
+const STALK_W := 0.026
+const STALK_ROOT := 0.03
+## A flower lying open on the grass: a rosette seen from the board's own
+## steep pitch, so it needs no stem.
+const FLOWER_R := 0.055
+const FLOWER_H := 0.05
+
 ## Snake Apple pieces (the design agreed 2026-09-15). The head faces +X with
 ## the back of the skull at the origin, so the body tube the board builds
 ## along the snake's cells runs straight into it; SNAKE_HEAD_H frames the
@@ -390,6 +420,10 @@ static func make(slot: String) -> Node3D:
 		"horse": return _horse()
 		"fence": return _fence()
 		"apple": return _apple()
+		"bale": return _bale()
+		"channel": return _channel()
+		"stalk": return _stalk()
+		"flower": return _flower()
 		"snake_head": return _snake_head()
 		"burrow": return _burrow()
 		"deck": return _deck()
@@ -1392,6 +1426,88 @@ static func _apple() -> Node3D:
 		Vector3(0.0, top - 0.02 + APPLE_STEM_H * 0.5, 0.0)))
 	root.add_child(_layer("Apple_Leaf", _bar(0.13, 0.06, 0.006), "Leaf_flat", Pal.APPLE_LEAF,
 		Vector3(0.08, top + 0.02, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## A hay bale: a square bale with two straps over it. The straps are two lobes
+## of one layer and each wraps the bale as a closed band, so what shows is the
+## dark line over the top and down both sides -- the detail that keeps a run of
+## bales from reading as one gold smear on the pale wheat.
+static func _bale() -> Node3D:
+	var root := Node3D.new()
+	root.name = "bale"
+	root.add_child(_layer("Bale_Straw", _bar(BALE_W, BALE_W, BALE_H),
+		"Straw", Pal.STRAW, Vector3.ZERO))
+	var straps: Array = []
+	for x in [-BALE_STRAP_AT, BALE_STRAP_AT]:
+		straps.append({"mesh": _bar(BALE_STRAP_W, BALE_W + BALE_STRAP_PROUD * 2.0,
+			BALE_H + BALE_STRAP_PROUD), "xform": Transform3D(Basis(), Vector3(x, 0.0, 0.0))})
+	root.add_child(_layer("Bale_Straps", _merge(straps), "Straps", Pal.STRAP, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## One cell of water channel: the surface sunk under the turf top, and a bank
+## lip along each of the four sides. The board shows a lip only where that
+## neighbour is not water, so a stream reads as one cut with continuous banks
+## and two streams that meet read as one. Every lip carries the same `Bank`
+## material, so tinting one tints them all, and each is its own mesh because
+## the board hides them one at a time.
+static func _channel() -> Node3D:
+	var root := Node3D.new()
+	root.name = "channel"
+	root.add_child(_layer("Channel_Water", _bar(1.0, 1.0, CHANNEL_TOP),
+		"Water_flat", Pal.WATER, Vector3.ZERO))
+	var edge := 0.5 - BANK_W * 0.5
+	for side in [["N", Vector3(0.0, 0.0, -edge), 1.0, BANK_W],
+			["S", Vector3(0.0, 0.0, edge), 1.0, BANK_W],
+			["E", Vector3(edge, 0.0, 0.0), BANK_W, 1.0],
+			["W", Vector3(-edge, 0.0, 0.0), BANK_W, 1.0]]:
+		root.add_child(_layer("Channel_Bank_%s" % side[0],
+			_bar(side[2], side[3], TURF_H), "Bank", Pal.CUT_EARTH, side[1]))
+	Toon.apply_to(root)
+	return root
+
+## A tuft of wheat: three blades as one layer, leaning apart. `_sway` so the
+## meadow moves in the same wind as the rim's grass, `_flat` because the
+## outline shell would swallow a blade and cannot follow the sway anyway.
+static func _stalk() -> Node3D:
+	var root := Node3D.new()
+	root.name = "stalk"
+	var blades: Array = []
+	for lean in [[-0.07, -0.16], [0.0, 0.02], [0.07, 0.15]]:
+		# A shear, not a rotation: the blade leans and its root stays flat on
+		# the turf, which is both what rule 2 asks (lowest vertex at Z = 0)
+		# and what a blade of grass does.
+		var basis := Basis(Vector3.RIGHT, Vector3(lean[1], 1.0, 0.0), Vector3.BACK)
+		blades.append({"mesh": _bar(STALK_W, STALK_W, STALK_H),
+			"xform": Transform3D(basis, Vector3(lean[0], 0.0, 0.0))})
+	root.add_child(_layer("Stalk_Blades", _merge(blades), "Stalk_sway_flat",
+		Pal.WHEAT, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## A flower open on the grass: five petals round a low crown, one layer and no
+## outline. Flat on purpose -- from the board's steep pitch a stem would only
+## lift the bloom off the cell it belongs to.
+static func _flower() -> Node3D:
+	var root := Node3D.new()
+	root.name = "flower"
+	var petals: Array = []
+	# Each ball is squashed so that its own underside lands exactly on Z = 0:
+	# the bloom lies open on the grass rather than hovering over it.
+	var petal_r := FLOWER_R * 0.62
+	var petal_h := FLOWER_H * 0.5
+	for i in 5:
+		var a := TAU * i / 5.0
+		petals.append({"mesh": _ball(petal_r),
+			"xform": Transform3D(Basis().scaled(Vector3(1.0, petal_h / petal_r, 1.0)),
+				Vector3(cos(a) * FLOWER_R * 0.55, petal_h, sin(a) * FLOWER_R * 0.55))})
+	var crown_r := FLOWER_R * 0.5
+	var crown_h := FLOWER_H * 0.6
+	petals.append({"mesh": _ball(crown_r),
+		"xform": Transform3D(Basis().scaled(Vector3(1.0, crown_h / crown_r, 1.0)),
+			Vector3(0.0, crown_h, 0.0))})
+	root.add_child(_layer("Flower_Bloom", _merge(petals), "Bloom_flat", Pal.BLOOM, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root
 
