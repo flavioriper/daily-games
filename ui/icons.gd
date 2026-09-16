@@ -60,7 +60,9 @@ static func paint(ci: CanvasItem, name: String, rect: Rect2, colour: Color, hole
 	var xf := Transform2D(0.0, rect.size, 0.0, rect.position)
 	for poly in s.polys:
 		ci.draw_colored_polygon(xf * poly, colour)
-	var width := STROKE * rect.size.x
+	# A mirrored rect (negative width) flips the icon through the transform;
+	# the stroke itself still has to be a positive width.
+	var width := STROKE * absf(rect.size.x)
 	for line in s.lines:
 		ci.draw_polyline(xf * line, colour, width, true)
 	if hole.a > 0.0 and s.has("hole"):
