@@ -8,6 +8,7 @@ extends RefCounted
 const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
 const WIND_SHADER := preload("res://shaders/toon_wind.gdshader")
+const WOOD_SHADER := preload("res://shaders/toon_wood.gdshader")
 const WATER_SHADER := preload("res://shaders/water.gdshader")
 const GHOST_SHADER := preload("res://shaders/toon_ghost.gdshader")
 const PIPE_SHADER := preload("res://shaders/pipe_flow.gdshader")
@@ -22,10 +23,26 @@ const FLAT_SUFFIX := "_flat"
 ## shell would not follow the sway.
 const SWAY_MARK := "_sway"
 
+## The palette's woods. A surface that arrives in one of these colours gets
+## the grain shader instead of the flat one, and that is the whole hook-up:
+## a placeholder and an exported .glb both reach here as a base colour, so
+## neither the models nor the boards had to learn a new mark.
+const WOODS: Array[Color] = [Pal.DECK, Pal.WOOD, Pal.BARK, Pal.TIMBER]
+## glTF round-trips a colour through linear floats, so an exported model's
+## wood comes back near its palette value rather than exactly on it.
+const WOOD_TOL := 0.012
+## How much longer one side must be before it counts as the grain's
+## direction. Barely more than a tie, so that a strip modelled one unit long
+## and stretched by the board at runtime -- the deck's, whose modelled length
+## only just beats its width -- still grains along its length. A piece with
+## no winner at all falls back to standing rings.
+const GRAIN_LEAD := 1.02
+
 static var _ramp: GradientTexture1D
 static var _outline: ShaderMaterial
 static var _cache: Dictionary = {}
 static var _wind_cache: Dictionary = {}
+static var _wood_cache: Dictionary = {}
 static var _water: ShaderMaterial
 static var _ghost_cache: Dictionary = {}
 
@@ -52,6 +69,49 @@ static func material(albedo: Color) -> ShaderMaterial:
 	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 	_cache[key] = m
 	return m
+
+## True when `c` is one of the palette's woods, within the tolerance a glTF
+## round-trip costs.
+static func is_wood(c: Color) -> bool:
+	for w in WOODS:
+		if absf(c.r - w.r) < WOOD_TOL and absf(c.g - w.g) < WOOD_TOL and absf(c.b - w.b) < WOOD_TOL:
+			return true
+	return false
+
+## The axis a mesh of these local bounds grains along: a plank's length, a
+## post's height. Read from the mesh rather than set per colour, because one
+## wood serves both the mooring post standing up and the scale beam lying
+## down, and the grain has to follow the piece, not the palette.
+static func grain_axis(size: Vector3) -> Vector3:
+	if size.x > size.y * GRAIN_LEAD and size.x > size.z * GRAIN_LEAD:
+		return Vector3.RIGHT
+	if size.z > size.x * GRAIN_LEAD and size.z > size.y * GRAIN_LEAD:
+		return Vector3.BACK
+	return Vector3.UP
+
+## Toon material with wood grain running along `axis`, in the mesh's own
+## space. Cached per colour and axis, like material().
+static func wood_material(albedo: Color, axis := Vector3.UP) -> ShaderMaterial:
+	var key := "%s@%s" % [albedo.to_html(), axis]
+	if _wood_cache.has(key):
+		return _wood_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = WOOD_SHADER
+	m.set_shader_parameter("albedo", albedo)
+	m.set_shader_parameter("ramp", ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	m.set_shader_parameter("grain_axis", axis)
+	_wood_cache[key] = m
+	return m
+
+## The material a surface of `mi` should wear: a wood colour gets the grain,
+## with its axis read off the mesh's own bounds; everything else gets the
+## flat toon material. Every recolouring path goes through here, so a tinted
+## plank keeps its grain.
+static func material_for(mi: MeshInstance3D, albedo: Color) -> ShaderMaterial:
+	if mi == null or mi.mesh == null or not is_wood(albedo):
+		return material(albedo)
+	return wood_material(albedo, grain_axis(mi.mesh.get_aabb().size))
 
 ## Toon material that sways in the wind; same ramp and tint, its own cache.
 static func wind_material(albedo: Color) -> ShaderMaterial:
@@ -155,7 +215,7 @@ static func _apply_mesh(mi: MeshInstance3D) -> void:
 	for i in mi.mesh.get_surface_count():
 		var src: Material = mi.get_active_material(i)
 		if src is StandardMaterial3D:
-			var toon := wind_material(src.albedo_color) if sways(src.resource_name) else material(src.albedo_color)
+			var toon := wind_material(src.albedo_color) if sways(src.resource_name) else material_for(mi, src.albedo_color)
 			mi.set_surface_override_material(i, toon)
 		if src == null or not src.resource_name.ends_with(FLAT_SUFFIX):
 			wants_outline = true

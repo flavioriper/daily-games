@@ -12,8 +12,11 @@ const BODY_PATH := "res://assets/fonts/Nunito-Variable.ttf"
 ## The OpenType 'wght' axis tag: the four ASCII bytes packed big-endian.
 const WGHT := 0x77676874
 
+const GRAIN_SHADER := preload("res://shaders/wood_grain_2d.gdshader")
+
 static var _theme: Theme
 static var _fonts: Dictionary = {}
+static var _grain: ShaderMaterial
 
 ## The shared theme, built once.
 static func make() -> Theme:
@@ -112,6 +115,17 @@ static func parchment_card() -> StyleBoxFlat:
 	var sb := card(Color(Pal.PARCHMENT, 0.96), 12, Pal.LINE, 0, 24)
 	sb.set_border_width_all(3)
 	return sb
+
+## The grain the wood panels wear, as a Control `material`. One shared
+## instance: it darkens whatever the stylebox drew rather than painting a
+## colour of its own, so the tray, its trough and the plaque can all take the
+## same one and each keeps its own wood. Put it on the panel, never on a
+## panel with children that draw themselves -- the material catches those too.
+static func wood_grain() -> ShaderMaterial:
+	if _grain == null:
+		_grain = ShaderMaterial.new()
+		_grain.shader = GRAIN_SHADER
+	return _grain
 
 static func wood_card() -> StyleBoxFlat:
 	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)

@@ -18,6 +18,7 @@ func _init() -> void:
 
 func _build() -> void:
 	(_inner as PanelContainer).add_theme_stylebox_override("panel", CozyTheme.plank_card())
+	_inner.material = CozyTheme.wood_grain()
 	_inner.custom_minimum_size.x = MIN_WIDTH
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)

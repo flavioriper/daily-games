@@ -78,10 +78,12 @@ static func meshes(root: Node) -> Array[MeshInstance3D]:
 	return out
 
 ## Recolours every surface under `root` with the toon material for `color`.
+## Through material_for, so a wood colour keeps its grain and reads the axis
+## off the mesh it is going onto.
 static func tint(root: Node, color: Color) -> void:
 	for mi in meshes(root):
 		for i in mi.mesh.get_surface_count():
-			mi.set_surface_override_material(i, Toon.material(color))
+			mi.set_surface_override_material(i, Toon.material_for(mi, color))
 
 ## Overrides every surface under `root` whose imported material is called
 ## `name` with `mat`. The glTF material name survives on the mesh surface and
@@ -109,8 +111,15 @@ static func material_named(root: Node, name: String) -> Material:
 ## touch it). Used for assemblies where only some layers are tinted: the
 ## tile's `Stone` body takes the state colour while its inlaid `Sun` and
 ## `Moon` keep the colours they were modelled with.
+## The loop is set_material_named's, not a call to it: the material depends
+## on the mesh it lands on (material_for reads the grain axis from its
+## bounds), so it has to be resolved inside the walk rather than built once.
 static func tint_named(root: Node, name: String, color: Color) -> void:
-	set_material_named(root, name, Toon.material(color))
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src != null and src.resource_name == name:
+				mi.set_surface_override_material(i, Toon.material_for(mi, color))
 
 ## Turns off shadow casting on the mesh instance whose imported material is
 ## called `name`. For a layer whose shadow cannot contribute a single visible

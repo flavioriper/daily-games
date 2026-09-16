@@ -19,11 +19,13 @@ var _row: HBoxContainer
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", CozyTheme.wood_card())
+	material = CozyTheme.wood_grain()
 	# The same trough the colour tray has, so the two trays read as one part
 	# of the HUD seen on different boards.
 	var channel := PanelContainer.new()
 	channel.name = "Channel"
 	channel.add_theme_stylebox_override("panel", CozyTheme.wood_channel())
+	channel.material = CozyTheme.wood_grain()
 	add_child(channel)
 	_row = HBoxContainer.new()
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER

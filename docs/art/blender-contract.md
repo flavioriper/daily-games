@@ -120,7 +120,8 @@ centred on the origin, base at Z = 0.
 5. **Materials are colours.** One Principled BSDF per material, Base Color set,
    nothing else needed. The game replaces every material with the toon shader
    using that base colour. Textures export fine but are ignored by the toon
-   shader for now.
+   shader for now -- the one figured surface in the game, wood grain, is
+   procedural and keyed on the colour (rule 12).
 6. **Named materials on slots the game recolours.** The game recolours by
    material *name*, one colour per name, so a recoloured slot must carry
    exactly the names the game expects: the `tile` layers the game tints are
@@ -164,6 +165,16 @@ centred on the origin, base at Z = 0.
     (`Grass_sway_flat`), and `core/toon.gd` reads the mark anywhere in the
     name. The rim pieces carry `Grass_sway_flat`, `Petal_sway_flat` and
     `Pollen_sway_flat` beside a still `Moss_flat`.
+12. **Wood grains itself.** A surface that arrives in one of the palette's
+    woods (`DECK`, `WOOD`, `BARK`, `TIMBER`) gets the grain shader instead of
+    the flat one -- no marker, no material name to remember, because the
+    colour is the mark. What you do owe it is a mesh with a length: the grain
+    runs along the object's longest local side (`core/toon.gd grain_axis`),
+    so a plank modelled long in X grains along X and a post tall in Z
+    (Blender) grains up its height. A wood layer modelled near-square has no
+    length to read and falls back to standing rings, which is fine for a knob
+    and wrong for a board -- if a plank comes out with its grain crossing it,
+    the mesh is the thing to look at, not the shader.
 
 ## Assemblies
 

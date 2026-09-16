@@ -16,11 +16,13 @@ var _row: HBoxContainer
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", CozyTheme.wood_card())
+	material = CozyTheme.wood_grain()
 	# The trough: a darker inset the buttons sit in, so the tray reads as
 	# carved rather than painted.
 	var channel := PanelContainer.new()
 	channel.name = "Channel"
 	channel.add_theme_stylebox_override("panel", CozyTheme.wood_channel())
+	channel.material = CozyTheme.wood_grain()
 	add_child(channel)
 	_row = HBoxContainer.new()
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
