@@ -35,7 +35,7 @@ const MARK        := Color("cbbd9f")
 const MOSS        := Color("7fa84a")
 const ROCK        := Color("b9ab92")
 const WATER       := Color("2f8fd6")
-const WATER_HI    := Color("5fb0e8")   # water stripes and splash ring
+const WATER_HI    := Color("5fb0e8")   # water's shallow-depth band and splash ring
 const SUN_DEEP    := Color("d88a12")   # primary button's bottom edge
 const PARCHMENT   := Color("f3e9d2")   # rules card
 

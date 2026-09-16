@@ -28,8 +28,15 @@ uniform vec4 deep_color : source_color = vec4(0.13, 0.42, 0.74, 1.0);
 // The foam curls and the streak dashes, both near-white.
 uniform vec4 foam_color : source_color = vec4(0.96, 0.98, 0.99, 1.0);
 uniform vec4 shadow_tint : source_color = vec4(0.72, 0.65, 0.77, 1.0);
-// World units from the pond's middle to its rim, for the depth gradient.
+// World units from the pond's middle to its rim, for the depth gradient. If
+// this is ever 0, length(p) / 0 is inf, which clamp() pins to 1 -- the water
+// degrades to a uniform shore_color instead of producing a NaN.
 uniform float pond_radius = 15.0;
+// World-space centre of the depth gradient. world/stage.gd sets this to the
+// water plane's own position every time a board's fit re-centres the pond;
+// it is not the same uniform as splash_origin, which the splash ring alone
+// uses and which stays put for the life of one splash.
+uniform vec3 pond_center = vec3(0.0);
 // The source's own field scales, in the source's units.
 uniform float mottle_scale = 3.3;
 uniform float foam_scale = 4.4;
@@ -78,12 +85,26 @@ void fragment() {
 
 	// 1. Depth gradient: the source uses a quadratic-sphere gradient in object
 	// space, which on a flat disc is the squared distance from the middle.
-	float r = clamp(length(p - splash_origin.xz * 0.0) / pond_radius, 0.0, 1.0);
-	float depth = 1.0 - r * r;
-	vec3 col = mix(shore_color.rgb, shallow_color.rgb,
-		smoothstep(0.15, 0.359, depth));
-	col = mix(col, base_color.rgb, smoothstep(0.359, 0.673, depth));
-	col = mix(col, deep_color.rgb, smoothstep(0.673, 1.0, depth));
+	// The four breakpoints below are measured, not the source's own literal
+	// stops (0.15 / 0.359 / 0.673 / 1.0 on 1 - r*r): those assumed r would
+	// range meaningfully across 0..1, but pond_center was wrong and
+	// stage.gd's _fit_ground recentres the pond on every fit, so the true
+	// rim (r = 1, pond_radius world units out) is never in the frame for any
+	// board. r, painted straight to ALBEDO as vec3(r) on a rendered Binairo
+	// and Horse Pen frame and sampled with Python, showed the pond's visible
+	// pixels sitting at r of 0 to ~0.10 (p99 0.01 on Binairo's round pond, p99.9
+	// 0.33 -- Horse Pen's scattered channel cells reach a little further
+	// out, 0 to ~0.35 at the very corners) with the overwhelming majority
+	// under 0.1. On the old breakpoints, 1 - r*r never left [0.99, 1.0], an
+	// 0.01-wide sliver against stops spread across 0.85 -- every smoothstep
+	// saturated to the same edge and the whole pond rendered as deep_color,
+	// which is exactly what a from-orbit pixel sample of the previous
+	// version found. Written directly against r now instead of 1 - r*r, so
+	// the breakpoints can sit in the range that is actually reachable.
+	float r = clamp(length(p - pond_center.xz) / pond_radius, 0.0, 1.0);
+	vec3 col = mix(deep_color.rgb, base_color.rgb, smoothstep(0.0, 0.03, r));
+	col = mix(col, shallow_color.rgb, smoothstep(0.03, 0.06, r));
+	col = mix(col, shore_color.rgb, smoothstep(0.06, 0.10, r));
 
 	// 2. Mottle: broad, slow, and barely there -- it only breaks the gradient
 	// up so the lake is not a smooth wash.

@@ -7,6 +7,7 @@ extends Node3D
 
 const Pal = preload("res://core/palette.gd")
 const Models = preload("res://core/models.gd")
+const Toon = preload("res://core/toon.gd")
 const CameraRig = preload("res://world/camera_rig.gd")
 const Ambient = preload("res://world/ambient.gd")
 const Backdrop = preload("res://world/backdrop.gd")
@@ -24,16 +25,14 @@ const CAMERA_PITCH := 7.0
 ## which is what keeps every piece in core/placeholders.gd readable: the face
 ## angle here is the pitch the pieces were cut for.
 const DEFAULT_FACE := 68.0
-## The water was one 60 by 60 sheet filling the whole frame, which is what the
-## camera saw behind every board. The landscape fills that now and the water is
-## cut back to the pond in the middle of it. What the player sees as the pond's
-## edge is the meadow's basin rising out of the water, not this plane's rim, so
-## the plane only has to be wide enough to fill the basin and narrow enough that
-## its corners stay under ground that is above the water line. It is a fixed
-## size for that reason rather than sized off the board: it is the terrain's
-## pond, not the board's. The pond is also what keeps Ambient.splash alive --
-## the ring is drawn by the shared water material.
-const POND := 30.0
+## The pond's width in world units. It was 30 when the pond sat in a basin
+## under a board seen from 68 degrees and only had to fill that basin. At 7
+## degrees the water runs from the near bank to the hills, so it is sized to
+## reach them instead. What the player reads as the near edge is still the
+## meadow's basin rising out of it, not this plane's rim. The pond is also what
+## keeps Ambient.splash alive -- the ring is drawn by the shared water
+## material.
+const POND := 90.0
 ## The placeholder water plane is modelled this big (core/placeholders.gd), so
 ## a pond is a fraction of it.
 const WATER_PLANE := 60.0
@@ -109,6 +108,10 @@ func _ready() -> void:
 	water.name = "Water"
 	water.position = Vector3(0.0, -WATER_DEPTH, 0.0)
 	add_child(water)
+	# So the depth gradient spans the new pond rather than a third of it.
+	var wm := Toon.water()
+	if wm != null:
+		wm.set_shader_parameter("pond_radius", POND * 0.5)
 
 	anchor = Node3D.new()
 	anchor.name = "BoardAnchor"
@@ -195,6 +198,11 @@ func _fit_ground(aabb: AABB) -> void:
 	var c := aabb.get_center()
 	water.position = Vector3(c.x, -WATER_DEPTH, c.z)
 	water.scale = Vector3(POND / WATER_PLANE, 1.0, POND / WATER_PLANE)
+	# The depth gradient is centred on pond_center, not the world origin, so it
+	# has to follow the pond every time a board's fit re-centres it.
+	var wm := Toon.water()
+	if wm != null:
+		wm.set_shader_parameter("pond_center", water.position)
 	backdrop.fit_to(aabb)
 
 ## Swings the view a quarter turn per step, so a board asks the stage rather
