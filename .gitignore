@@ -57,6 +57,8 @@ art/*.blend
 !art/peeplet_trees.blend
 !art/oak.blend
 !art/grass_clump.blend
+# And the BlenderKit grass field the grass_patch is baked from
+!art/grassfield.blend
 
 # Python bytecode from running the tools
 __pycache__/

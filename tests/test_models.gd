@@ -29,7 +29,7 @@ const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
 	"deck": 0.62, "pier_post": 2.1, "boulder": 0.6, "bush": 0.7, "daisy": 0.25,
 	"tuft": 0.25, "signpost": 1.8,
 	# The menu's two textured props (the contract's "Textured props" section).
-	"mascot_camper": 1.4, "camp_sign": 0.5}
+	"mascot_camper": 1.4, "mascot_scout": 1.4, "camp_sign": 0.5}
 
 ## Footprint budget (X by Z) for the slots that are not one cell. Balance's
 ## scale spans its whole band by design -- the beam reaches a pan each way and
@@ -46,7 +46,8 @@ const FOOTPRINT := {"scale_beam": Vector2(3.2, 0.3), "scale_pan": Vector2(1.3, 1
 	"snake_head": Vector2(0.9, 0.9),
 	"pier_post": Vector2(0.4, 0.4), "daisy": Vector2(0.3, 0.3), "tuft": Vector2(0.3, 0.3),
 	"signpost": Vector2(1.4, 0.4),
-	"mascot_camper": Vector2(1.4, 1.4), "camp_sign": Vector2(2.0, 1.0)}
+	"mascot_camper": Vector2(1.4, 1.4), "mascot_scout": Vector2(1.4, 1.4),
+	"camp_sign": Vector2(2.0, 1.0)}
 
 ## Every layer (material name) each slot must carry, sorted, matching
 ## docs/art/blender-contract.md's table exactly. Where `_test_slots` used to
@@ -64,7 +65,8 @@ const LAYERS := {"tile": ["Moon", "Slate_flat", "Stone", "Sun"],
 	# The menu's camper and fence diorama: one painted layer each, cut down
 	# from Meshy exports. The diorama's is _flat, so no outline rings its
 	# grass blades.
-	"mascot_camper": ["Camper_Tex"], "camp_sign": ["Camp_Sign_flat"],
+	"mascot_camper": ["Camper_Tex"], "mascot_scout": ["Map_sway", "Scout_Tex"],
+	"camp_sign": ["Camp_Sign_flat"],
 	"rim_edge": ["Grass_sway_flat", "Moss_flat", "Petal_sway_flat", "Pollen_sway_flat"],
 	"rim_corner": ["Grass_sway_flat", "Moss_flat", "Petal_sway_flat", "Pollen_sway_flat"],
 	"platform": [""], "water": [""],
@@ -131,8 +133,8 @@ static func _test_slots(t) -> void:
 		"snake_head", "burrow",
 		"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost",
 		"title_sign",
-		"mascot_camper", "camp_sign",
-		"oak", "grass_clump"],
+		"mascot_camper", "mascot_scout", "camp_sign",
+		"oak", "grass_clump", "grass_patch"],
 		"slot list matches every board's design")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
@@ -186,7 +188,10 @@ static func _test_slots(t) -> void:
 			# leaves the shared one. Its screws are the only _flat layer.
 			"title_sign": ["Leaf", "Plank"],
 			# The camper wears a line in its paint's own mean colour.
-			"mascot_camper": ["Camper_Tex"]}.get(slot, [])
+			"mascot_camper": ["Camper_Tex"],
+			# The scout's map is a painted sway layer, the first of those: it
+			# wears a line that leans with it (Toon.wind_line).
+			"mascot_scout": ["Scout_Tex", "Map_sway"]}.get(slot, [])
 		# Held past node.free() below: a pipe's Flow_flat override is a fresh
 		# ShaderMaterial with no other owner (Models._dress, one per instance so
 		# each cell drives its own `wet`). Under the headless dummy renderer only,

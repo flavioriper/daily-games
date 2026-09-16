@@ -19,8 +19,9 @@ const OUTLINE_NODE := "Outline"
 ## outline shell (the table, ground, anything that should not read as a piece).
 const FLAT_SUFFIX := "_flat"
 ## A Blender material whose name contains this bends in the wind
-## (toon_wind.gdshader). It must also end in FLAT_SUFFIX, since the outline
-## shell would not follow the sway.
+## (toon_wind.gdshader). A painted one gets wind_textured_material and a line
+## that leans with it (wind_line); the flat-coloured sway layers -- grass,
+## petals, wheat -- carry FLAT_SUFFIX as well and wear no line at all.
 const SWAY_MARK := "_sway"
 
 ## The palette's woods. A surface that arrives in one of these colours gets
@@ -67,6 +68,8 @@ static var _soft_cache: Dictionary = {}
 static var _water: ShaderMaterial
 static var _ghost_cache: Dictionary = {}
 static var _tex_cache: Dictionary = {}
+static var _wind_tex_cache: Dictionary = {}
+static var _wind_line_cache: Dictionary = {}
 static var _mean_cache: Dictionary = {}
 
 ## Three hard bands: tinted shadow, half light, full light.
@@ -203,6 +206,24 @@ static func textured_material(tex: Texture2D) -> ShaderMaterial:
 	_tex_cache[key] = m
 	return m
 
+## The toon look over a painted texture that also bends in the wind: the same
+## white albedo and soft ramp as textured_material, on the sway shader. The
+## scout's map is the first of these -- every sway layer before it was a flat
+## colour, because grass and petals carry no paint. Its own cache, since a
+## texture can be wanted both still (the scout's body) and moving.
+static func wind_textured_material(tex: Texture2D) -> ShaderMaterial:
+	var key := tex.get_rid()
+	if _wind_tex_cache.has(key):
+		return _wind_tex_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = WIND_SHADER
+	m.set_shader_parameter("albedo", Color.WHITE)
+	m.set_shader_parameter("albedo_tex", tex)
+	m.set_shader_parameter("ramp", soft_ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_wind_tex_cache[key] = m
+	return m
+
 ## The mean colour of a texture, so a painted layer's outline can be its own
 ## colour deepened (line()) rather than the shared ink. Read once off an 8 by
 ## 8 shrink of the image; a texture the CPU cannot decode falls back to the
@@ -319,6 +340,23 @@ static func line(albedo: Color) -> ShaderMaterial:
 	_line_cache[key] = m
 	return m
 
+## The line for a layer that sways: line()'s colour and width on a hull that
+## leans by the same maths as the layer (outline.gdshader). Its own cache, so
+## setting the sway on one of these never reaches a still layer that happens
+## to share the colour -- the scout's map and his body take their mean colour
+## from the same paint.
+static func wind_line(albedo: Color) -> ShaderMaterial:
+	var key := albedo.to_html()
+	if _wind_line_cache.has(key):
+		return _wind_line_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = OUTLINE_SHADER
+	m.set_shader_parameter("color", line_color(albedo))
+	m.set_shader_parameter("width", LINE_WIDTH)
+	m.set_shader_parameter("sway_amount", 0.02)
+	_wind_line_cache[key] = m
+	return m
+
 ## Adds the inverted-hull shell as a child of `mi`, sharing its mesh. Safe to
 ## call twice. The shell casts no shadow, otherwise every piece would throw a
 ## fattened silhouette onto the table. `shell_material` picks the line; the
@@ -362,10 +400,14 @@ static func _apply_mesh(mi: MeshInstance3D) -> void:
 			var toon: ShaderMaterial
 			if sm.albedo_texture != null:
 				# A painted layer keeps its paint and wears a line in its own
-				# mean colour, the way a wood layer wears its own.
-				toon = textured_material(sm.albedo_texture)
+				# mean colour, the way a wood layer wears its own -- and if it
+				# is marked to sway, both of them lean together.
+				var swaying := sways(sm.resource_name)
+				toon = wind_textured_material(sm.albedo_texture) if swaying \
+					else textured_material(sm.albedo_texture)
 				if shell == null:
-					shell = line(texture_mean(sm.albedo_texture))
+					var ink := texture_mean(sm.albedo_texture)
+					shell = wind_line(ink) if swaying else line(ink)
 			elif sways(sm.resource_name):
 				toon = wind_material(sm.albedo_color)
 			else:

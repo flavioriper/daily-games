@@ -99,6 +99,15 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
   --python tools/blender_export.py -- Mascot_Camper
 "$BLENDER" -b art/camp_sign.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Camp_Sign
+# The scout, the map-reading character the first screen is being rebuilt
+# around: another Meshy export cut down in the live session -- welded, its
+# normal and metal/rough maps dropped, decimated 890k triangles to 30k, its
+# paint at 1024 like the camper's, and scaled to the mascot budget (the map
+# held out front makes depth the binding axis, not height). Two layers, not
+# one: the map is cut out onto `Map_sway` so the wind can move it, and the
+# body carries the `Blink` and `Mouth` shape keys world/mascot.gd drives.
+"$BLENDER" -b art/mascot_scout.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Mascot_Scout
 # Two pieces of the peeplet project's valley, brought over as geometry and
 # dressed by this project's toon pipeline: the broadleaf oak (its source is
 # art/peeplet_trees.blend, cut down in the live session into art/oak.blend --
@@ -108,6 +117,14 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
   --python tools/blender_export.py -- Oak
 "$BLENDER" -b art/grass_clump.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Grass_Clump
+# The grass of the BlenderKit grass field (the same author's sibling of the
+# landscape's lake scene, appended into art/grassfield.blend as its own
+# scene): its terrain's hair settings copied onto a half-cell emitter, the
+# strands converted to curves and ribboned by the Grass_Ribbon node group,
+# baked to Grass_Patch_Blades. The emitter and strands stay in Grass_Source
+# for a re-bake; only the Grass_Patch collection exports.
+"$BLENDER" -b art/grassfield.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Grass_Patch
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

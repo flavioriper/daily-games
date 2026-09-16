@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ct81gdvrdnmxg"
-path="res://.godot/imported/blossom_flowers.png-a02871d90ce142ee5363ecd2d8735245.ctex"
+uid="uid://bi5b2e12j3vfp"
+path="res://.godot/imported/mascot_scout_scout_color.png-ea4e87512109a93ab17140ab2f011c99.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "87ecb7cb999687f76fb379ea65ab4a4e"
+"md5": "43ebac815353c3c3fd0727fb9794b1b7"
 }
 
 [deps]
 
-source_file="res://assets/models/blossom_flowers.png"
-dest_files=["res://.godot/imported/blossom_flowers.png-a02871d90ce142ee5363ecd2d8735245.ctex"]
+source_file="res://assets/models/mascot_scout_scout_color.png"
+dest_files=["res://.godot/imported/mascot_scout_scout_color.png-ea4e87512109a93ab17140ab2f011c99.ctex"]
 
 [params]
 

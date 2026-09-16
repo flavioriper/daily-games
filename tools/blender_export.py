@@ -163,6 +163,10 @@ LIMITS = {
     # pipeline; and the grass clump that field is scattered from.
     "oak": (1.4, 1.4, 2.0),
     "grass_clump": (0.5, 0.5, 0.45),
+    # The BlenderKit grass field's own strands (art/grassfield.blend), baked
+    # from a half-cell emitter carrying the source terrain's hair settings;
+    # the children fan out past the emitter, hence the wider footprint.
+    "grass_patch": (0.8, 0.8, 0.45),
 }
 DEFAULT_LIMIT = (1.0, 1.0, 0.6)  # unknown slots
 # Mascots are assemblies and stand taller than a piece; one budget for all of
@@ -253,6 +257,9 @@ def mesh_problems(obj):
     outlined = any(not (m and m.name.endswith("_flat")) for m in mesh.materials) or not mesh.materials
     if mesh.has_custom_normals and outlined:
         found.append("custom split normals (clear them: Mesh > Normals > Clear Custom Split Normals Data)")
+    if obj.data.shape_keys and obj.modifiers:
+        found.append("shape keys and modifiers together; apply the modifiers "
+                     "(the glTF writer drops shape keys when it applies them)")
     for mod in obj.modifiers:
         if mod.type in ("EDGE_SPLIT", "WEIGHTED_NORMAL"):
             found.append("%s modifier splits vertices, remove it" % mod.type)
@@ -358,6 +365,17 @@ def warnings(name):
     return []
 
 
+# Blender's glTF writer cannot do both jobs at once: "Apply Modifiers" bakes
+# the evaluated mesh and silently drops every shape key with it. A piece with
+# shape keys therefore exports unapplied, which is safe because mesh_problems
+# refuses the combination of shape keys and modifiers in the first place.
+def apply_modifiers(objs):
+    return not any(o.data.shape_keys for o in objs if o.type == "MESH")
+
+
+# Only this scene: a .blend that keeps a BlenderKit scene appended beside the
+# game's own (art/landscape.blend, art/grassfield.blend) would otherwise ship
+# whatever happens to be selected over there.
 def export(obj):
     slot = obj.name.lower()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -375,11 +393,12 @@ def export(obj):
             filepath=str(path),
             export_format="GLB",
             use_selection=True,
-            export_apply=True,
+            export_apply=apply_modifiers([obj] + list(obj.children_recursive)),
             export_yup=True,
             export_cameras=False,
             export_lights=False,
             export_animations=False,
+            use_active_scene=True,
         )
     finally:
         obj.location = parked
@@ -402,11 +421,12 @@ def export_assembly(coll):
         filepath=str(path),
         export_format="GLB",
         use_selection=True,
-        export_apply=True,
+        export_apply=apply_modifiers(meshes),
         export_yup=True,
         export_cameras=False,
         export_lights=False,
         export_animations=False,
+        use_active_scene=True,
     )
     return path
 

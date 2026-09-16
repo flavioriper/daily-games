@@ -68,6 +68,7 @@ shader, adds the outline, and places it. Nothing else to configure.
 | `camp_sign` | 2.0 x 1.0 | 0.5 | the menu's fence diorama: grass mounds, a fence, a bird, a backpack and two post stubs, one **textured** mesh (`Camp_Sign_flat`, so no outline) cut down from a Meshy export in `art/camp_sign.blend`. Its own plank was cut out; `world/camp.gd` lays a lettered plank across the stubs |
 | `oak` | 1.4 x 1.4 | 2.0 | a broadleaf from the peeplet project (`art/oak.blend`, cut from `art/peeplet_trees.blend`), an **assembly**: `Oak_Trunk` (`Bark`, the wood grain and its own-colour line) and `Oak_Canopy` (`Leaf_flat`, thousands of leaf cards given a hair of thickness so they read from both sides; no shell, and it keeps its baked smooth-proxy normals so the soft band sweeps the crown as one mass). The scenery scales it up like the conifer |
 | `grass_clump` | 0.5 x 0.5 | 0.45 | the peeplet valley's grass tuft (`art/grass_clump.blend`): `Clump_Blades` (`Grass_sway_flat`), blades thickened the same way; scattered as a MultiMesh like `tuft`, which it is meant to replace where a field should read as grass rather than sprigs |
+| `grass_patch` | 0.8 x 0.8 | 0.45 | the grass of BlenderKit's "Stylized Anime Grass Field Landscape" (`art/grassfield.blend`, the same author's sibling of the landscape's lake scene): `Grass_Patch_Blades` (`Grass_sway_flat`), 80 strands baked from the source terrain's own hair settings on a half-cell emitter, each a three-point ribbon tapering from the source's root width to a closed tip, the children fanning out past the emitter as the hair's negative clump has them. Solidified a hair like the clump. Scatter as a MultiMesh; a tuft standing alone reads as a handful of blades, a field of them as the painting's grass |
 
 Concept reference: `docs/art/concept-binairo-island.png`. The rim pieces are
 the moss trim; `core/platform.gd` lays one `rim_edge` per cell along each side
@@ -224,12 +225,35 @@ colour and, by default, ignores its textures. A material with an image on its
 Base Color is the exception (since 2026-09-16): `core/toon.gd` puts the toon
 ramp *over* the texture (`textured_material`) and lines the mesh in the
 texture's mean colour, so a prop that arrives already painted keeps its paint
-while still being lit, banded and outlined by the scene. The two so far are
-the menu's camper (`art/mascot_camper.blend`, `Mascot_Camper`) and its fence
-diorama (`art/camp_sign.blend`, `Camp_Sign`), both cut down from Meshy exports:
+while still being lit, banded and outlined by the scene. The three so far are
+the menu's camper (`art/mascot_camper.blend`, `Mascot_Camper`), its fence
+diorama (`art/camp_sign.blend`, `Camp_Sign`) and the scout reading his map
+(`art/mascot_scout.blend`, `Mascot_Scout`), all cut down from Meshy exports:
 one mesh each rather than one mesh per layer, which is the trade -- a Meshy
 model's regions are in its paint, not its topology, and splitting it would
-throw the paint away. Everything else in this contract still applies: welded
+throw the paint away.
+
+A layer is worth cutting out of one of these when it has to *move* on its
+own. The scout's map is the only one so far: a Meshy character arrives as one
+fused shell, so the map was found by the one thing that tells paper from a
+paw -- a sheet is thin, and a ray fired back from it hits its own far side a
+couple of centimetres away -- and separated onto `Map_sway`, which is the
+mark `core/toon.gd` reads as wind. Its line leans with it: since 2026-09-16
+`outline.gdshader` carries the same sway as `toon_wind.gdshader`, off by
+default (`sway_amount` 0), because a hull that stays put peels away from the
+layer it rings. Before that every sway layer was `_flat` and wore no line.
+
+**A face moves by shape keys, not by cutting it up.** An eye or a mouth cut
+out of a fused shell tears at the seam and leaves a hole to cap; a morph
+target cannot. The scout carries two, `Blink` and `Mouth`, built by
+displacing vertices rather than sculpting -- the eye domes squash to a fifth
+of their height, the mouth cavity collapses onto the lip line and draws in
+across. Drive them from `world/mascot.gd`, which sets each value on the layer
+*and* on its outline shell: a shell is a second instance of the same mesh and
+keeps its own blend-shape values. One export rule comes with them: Blender's
+glTF writer drops every shape key when it applies modifiers, so a mesh with
+shape keys exports unapplied and `tools/blender_export.py` refuses the two
+together. Everything else in this contract still applies: welded
 smooth shading (the outline hull needs shared normals), no custom split
 normals, base at Z 0, origin at the footprint centre, one Base Color image
 only (drop the normal and roughness maps; the toon look has no use for them),

@@ -24,8 +24,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"snake_head", "burrow",
 	"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost",
 	"title_sign",
-	"mascot_camper", "camp_sign",
-	"oak", "grass_clump"]
+	"mascot_camper", "mascot_scout", "camp_sign",
+	"oak", "grass_clump", "grass_patch"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -141,6 +141,26 @@ static func set_shadow_off_named(root: Node, name: String) -> void:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				break
 
+## Sets wind parameters on a swaying layer and on its outline shell at once.
+## The shell is a second instance of the layer's own mesh (Toon.add_outline),
+## so a line left on the shader's defaults peels away from a layer given
+## different ones. Both materials are Toon's caches, shared by every instance
+## of the slot -- which is what we want: one paper, one wind.
+static func set_sway(root: Node, name: String, params: Dictionary) -> void:
+	for mi in meshes(root):
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src == null or src.resource_name != name:
+				continue
+			var mats: Array[Material] = [mi.get_surface_override_material(i)]
+			var shell := mi.get_node_or_null(Toon.OUTLINE_NODE)
+			if shell is MeshInstance3D:
+				mats.append((shell as MeshInstance3D).material_override)
+			for mat in mats:
+				if mat is ShaderMaterial:
+					for key in params:
+						(mat as ShaderMaterial).set_shader_parameter(key, params[key])
+
 ## Distinct imported material names under `root`, in first-seen order.
 static func surface_names(root: Node) -> Array[String]:
 	var out: Array[String] = []
@@ -201,6 +221,14 @@ static func _dress(slot: String, node: Node3D) -> void:
 			if surface.ends_with(Toon.FLAT_SUFFIX):
 				set_shadow_off_named(node, surface)
 	match slot:
+		"mascot_scout":
+			# The map he reads is held at the paws and free at its corners, so
+			# the sway is masked by height: the shader's `h` is zero at the
+			# paper's bottom edge (local y 0.18) and squared on the way up, so
+			# the grip barely moves while the top corners flutter. A centimetre
+			# at the tip on a mascot 1.07 tall -- paper, not a flag.
+			set_sway(node, "Map_sway", {"sway_base": 0.18, "sway_height": 0.45,
+				"sway_amount": 0.012, "sway_speed": 1.1})
 		"water":
 			for mi in meshes(node):
 				for i in mi.mesh.get_surface_count():
