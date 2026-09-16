@@ -357,12 +357,17 @@ mascot_pom}.glb`, `tools/blender_export.py`, `tools/build_models.sh`,
   the deck's edge.
 - `puzzles/codebreak3d.gd` no longer preloads `world/stage.gd`: nothing read
   `Stage.WATER_DEPTH` once the lids fell to the river.
-- Measured on the Mac at 1080 x 1920 with `tests/_shot_anim.gd -- mastermind`:
-  first pass `idle mean_ms=5.54 max_draw_calls=890`, over the 855-call
-  budget though well under the 8 ms mean. `DAISIES` cut from ten entries to
-  six and `TREES` from five to three in `puzzles/codebreak_scenery.gd`
-  (balanced left/right rather than a plain truncation); re-measured
-  `idle mean_ms=5.40 max_draw_calls=862`, seven calls over the 855 budget
-  still, flagged here rather than cut further without a review. Binairo
-  unchanged at `idle mean_ms=4.58 max_draw_calls=723`. Suite
-  `passed=1553 failed=0`, win harness `12/12`.
+- Measured on the Mac at 1080 x 1920 with `tests/_shot_anim.gd -- mastermind`,
+  in three passes: as built, `idle mean_ms=5.54 max_draw_calls=890`, over
+  the 855-call budget though well under the 8 ms mean. `DAISIES` cut from
+  ten entries to six and `TREES` from five to three in
+  `puzzles/codebreak_scenery.gd` (balanced left/right rather than a plain
+  truncation) brought it to `idle mean_ms=5.40 max_draw_calls=862`, still
+  seven over. Bushes cast no shadow now (`core/models.gd`'s `_dress`, a
+  `Leaf` blob against the bank throws a sliver under its own silhouette at
+  the board's pitch, the same reasoning as Tents' turf) and the two
+  far-bank `BUSHES` entries are gone, behind the river where the trees
+  already close the horizon; six bushes remain, and this brought the final
+  measurement to `idle mean_ms=5.31 max_draw_calls=850`, at last under the
+  855 budget. Binairo unchanged at `idle mean_ms=4.58 max_draw_calls=723`.
+  Suite `passed=1553 failed=0`, win harness `12/12`.

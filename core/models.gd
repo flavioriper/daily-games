@@ -239,3 +239,9 @@ static func _dress(slot: String, node: Node3D) -> void:
 		"signpost":
 			set_shadow_off_named(node, "Paper_flat")
 			set_shadow_off_named(node, "Ink_flat")
+		"bush":
+			# A leaf blob sits on the bank, where its shadow from the board's
+			# steep camera is a sliver under its own silhouette; six of them
+			# on Code Break's screen are six shadow-pass draw calls for
+			# nothing anyone sees. Same reasoning as Tents' turf.
+			set_shadow_off_named(node, "Leaf")
