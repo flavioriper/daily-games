@@ -12,11 +12,13 @@ signal settings
 
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
+const Wordmark = preload("res://ui/hud/wordmark.gd")
 
 const BUTTON := Vector2(110, 110)
 const LEAF := 36.0
-const NAIL_R := 6.0
-const NAIL_INSET := 18.0
+const NAIL_R := 8.0
+const NAIL_INSET := 22.0
+const NAIL_GLINT := 0.35
 const LEAF_INSET := 10.0
 const BADGE_HOP := -6.0
 const BADGE_HOP_TIME := 0.3
@@ -31,7 +33,7 @@ var back_button: Button
 var undo_button: Button
 var hint_button: Button
 var settings_button: Button
-var _title: Label
+var _title: Control
 var _motto: Label
 var _plaque: PanelContainer
 var _bounce: Tween
@@ -81,9 +83,7 @@ func _build() -> void:
 	title_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	title_row.add_theme_constant_override("separation", 4)
 	words.add_child(title_row)
-	_title = Label.new()
-	_title.theme_type_variation = "Wordmark"
-	_title.text = title_text.to_upper()
+	_title = Wordmark.new(title_text.to_upper())
 	title_row.add_child(_title)
 	var leaf := Control.new()
 	leaf.custom_minimum_size = Vector2(LEAF, LEAF)
@@ -107,15 +107,17 @@ func _button(icon: String, sig: Signal) -> Button:
 	_inner.add_child(b)
 	return b
 
-## Two nail heads at the plaque's top corners and a second leaf at its
-## bottom-left, mirrored (a negative-width rect flips the icon). It sits in
-## the side margin _build keeps for it, clear of the motto. The first leaf
-## stays at the title's top-right.
+## Two nail heads at the plaque's top corners, each with a glint up and to
+## the left, and a second leaf at its bottom-left, mirrored (a negative-width
+## rect flips the icon). It sits in the side margin _build keeps for it,
+## clear of the motto. The first leaf stays at the title's top-right.
 func _draw_plaque() -> void:
 	var w := _plaque.size.x
 	var h := _plaque.size.y
 	for x in [NAIL_INSET, w - NAIL_INSET]:
-		_plaque.draw_circle(Vector2(x, NAIL_INSET), NAIL_R, Pal.OUTLINE)
+		var c := Vector2(x, NAIL_INSET)
+		_plaque.draw_circle(c, NAIL_R, Pal.OUTLINE)
+		_plaque.draw_circle(c - Vector2.ONE * NAIL_R * NAIL_GLINT, NAIL_R * NAIL_GLINT, Color(Pal.SURFACE, 0.55))
 	Icons.paint(_plaque, "leaf", Rect2(Vector2(LEAF_INSET + LEAF, h - LEAF - LEAF_INSET), Vector2(-LEAF, LEAF)), Pal.MOSS)
 
 func refresh(puzzle) -> void:

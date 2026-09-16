@@ -365,6 +365,20 @@ canopy circle). Circles and arcs come from helpers with 24 segments.
 Amendment (2026-09-14): the Motto variation is `SURFACE` with a 4 px `OUTLINE`
 outline, not `TEXT_DIM`, which vanished against the sky.
 
+Amendment (2026-09-16): the title is cut-out lettering, not an outlined
+label. `ui/hud/wordmark.gd` draws the display face (700, 76 px) in passes
+that batch into one draw call: a soft shadow past the foot (a 4 px faint
+outline under a fainter solid), a 7 px extrusion graded from `WOOD` toward
+`PLAQUE_DEEP`, then the `SURFACE_HI` face over a `SURFACE` pass one pixel up
+so only the top edges catch the light. The `Wordmark` variation is gone from
+the theme. The Motto variation drops its outline for a `1, 2` px shadow in
+`OUTLINE` at 0.45 and 2 px glyph spacing (`CozyTheme.body(weight, spacing)`);
+the footer mottos wear the same. `plank_card()` gains a 6 px `PLAQUE_DEEP` rim
+on every side (foot 12 px, radius 16, face `PLAQUE` lightened 0.08 so the
+grain has room to darken it); the day card shares it. The top bar's nails
+are 8 px with a `SURFACE` glint. Reference: the user's painted mock of the
+Binairo screen (sign on a plank, cream letters standing off the wood).
+
 ## 5. Motion: new recipes, entrance, press, badge
 
 `core/motion.gd` additions. Every recipe keeps the contract: returns the

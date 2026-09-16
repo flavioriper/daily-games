@@ -29,12 +29,11 @@ static func make() -> Theme:
 	theme.set_font("font", "Button", body(700))
 	_button(theme, "Button", Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	# Label variations.
-	_label(theme, "Wordmark", display(700), 72, Pal.SURFACE)
-	theme.set_color("font_outline_color", "Wordmark", Pal.OUTLINE)
-	theme.set_constant("outline_size", "Wordmark", 8)
-	_label(theme, "Motto", body(700), 24, Pal.SURFACE)
-	theme.set_color("font_outline_color", "Motto", Pal.OUTLINE)
-	theme.set_constant("outline_size", "Motto", 4)
+	# The title itself is ui/hud/wordmark.gd, drawn rather than themed.
+	_label(theme, "Motto", body(700, 2), 24, Pal.SURFACE)
+	theme.set_color("font_shadow_color", "Motto", Color(Pal.OUTLINE, 0.45))
+	theme.set_constant("shadow_offset_x", "Motto", 1)
+	theme.set_constant("shadow_offset_y", "Motto", 2)
 	_label(theme, "CardTitle", display(600), 40, Pal.TEXT)
 	_label(theme, "CardBody", body(500), 30, Pal.TEXT)
 	_label(theme, "OnSlateTitle", display(600), 40, Pal.MOON)
@@ -51,14 +50,15 @@ static func make() -> Theme:
 static func display(weight: int) -> FontVariation:
 	return _font(DISPLAY_PATH, weight)
 
-## The body face at a weight (Nunito).
-static func body(weight: int) -> FontVariation:
-	return _font(BODY_PATH, weight)
+## The body face at a weight (Nunito), optionally letter-spaced by `spacing`
+## pixels between glyphs.
+static func body(weight: int, spacing := 0) -> FontVariation:
+	return _font(BODY_PATH, weight, spacing)
 
 ## A cached FontVariation over the file at `path` with the wght axis set. A
 ## missing file (a stripped test project) falls back to the engine font.
-static func _font(path: String, weight: int) -> FontVariation:
-	var key := "%s|%d" % [path, weight]
+static func _font(path: String, weight: int, spacing := 0) -> FontVariation:
+	var key := "%s|%d|%d" % [path, weight, spacing]
 	if _fonts.has(key):
 		return _fonts[key]
 	var fv := FontVariation.new()
@@ -67,6 +67,7 @@ static func _font(path: String, weight: int) -> FontVariation:
 		base = load(path) as Font
 	fv.base_font = base if base != null else ThemeDB.fallback_font
 	fv.variation_opentype = {WGHT: weight}
+	fv.spacing_glyph = spacing
 	_fonts[key] = fv
 	return fv
 
@@ -133,10 +134,15 @@ static func wood_grain(seed := 0.0) -> ShaderMaterial:
 static func wood_card() -> StyleBoxFlat:
 	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)
 
-## Dark wood with a thick deeper edge: the plank the wordmark and the day
-## card sit on.
+## Wood with a deep rim all round and a thicker foot: the plank the wordmark
+## and the day card hang from. The face is a shade up from PLAQUE so the
+## grain has room to darken it.
 static func plank_card() -> StyleBoxFlat:
-	return card(Pal.PLAQUE, 18, Pal.PLAQUE_DEEP, 10, 20)
+	var sb := card(Pal.PLAQUE.lightened(0.08), 16, Pal.PLAQUE_DEEP, 12, 22)
+	sb.border_width_left = 6
+	sb.border_width_right = 6
+	sb.border_width_top = 6
+	return sb
 
 ## The trough carved into the colour tray, holding the buttons.
 static func wood_channel() -> StyleBoxFlat:
