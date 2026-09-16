@@ -13,6 +13,7 @@ const DIR := "res://assets/models/"
 ## same names with their footprint rules.
 const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
 	"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve",
+	"block", "pump", "source_tank", "drain_pool",
 	"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
 	"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post",
 	"plot_pad", "wall_edge", "wall_post", "clue_stone",
@@ -25,6 +26,13 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
+## Every slot with a water tube in it. The island's pump, tank and drain carry
+## the pipe's own `Steel`, `Collar` and `Flow_flat` layers precisely so the
+## flood wets them like any other piece, and this is the list that dresses
+## them. They are not in PIPES and must not be: that is the set of *shapes* a
+## piece can take, the five the tray cycles through, and a pump or a drain is
+## not one of them.
+const FLOWING := PIPES + ["pump", "source_tank", "drain_pool"]
 ## Balance's weight tokens, in core/shapes.gd's kind order: shape index 0 is a
 ## ball as Kind.CIRCLE is a circle. They all carry the same single layer, so
 ## anything that tints one tints all of them.
@@ -150,12 +158,13 @@ static func height(root: Node) -> float:
 ## Slot-specific materials the toon step cannot infer from a colour, applied
 ## to the export and the placeholder alike so the two never look different.
 static func _dress(slot: String, node: Node3D) -> void:
-	# GDScript's match cannot take PIPES as a pattern, so the five shape names
-	# live here as a plain `in` check instead of a third listing alongside
-	# SLOTS and PIPES itself.
-	if slot in PIPES:
-		# Each pipe instance gets its own flow material: the board drives
-		# `wet` per cell as the flood reaches it.
+	# GDScript's match cannot take FLOWING as a pattern, so the names live
+	# here as a plain `in` check instead of a third listing alongside SLOTS
+	# and FLOWING itself. No return: the five shapes have no case below, and
+	# the drain has one, so this falls through to the match either way.
+	if slot in FLOWING:
+		# Each piece gets its own flow material: the board drives `wet` per
+		# cell as the flood reaches it.
 		set_material_named(node, "Flow_flat", Toon.pipe_flow())
 		# The inner tube sits entirely inside the shell's own silhouette,
 		# at the collar radius -- its shadow can never show past the
@@ -168,7 +177,6 @@ static func _dress(slot: String, node: Node3D) -> void:
 		# ramp's own shading on the ring geometry, not from a cast shadow
 		# (task 6 fix 3/3, the judgment call).
 		set_shadow_off_named(node, "Collar")
-		return
 	if slot.begins_with("mascot_"):
 		# A mascot's flat layers -- the mouth, the tongue, the eyes, the
 		# cheeks, the map POM holds -- are all laid on or inside its own
@@ -224,6 +232,15 @@ static func _dress(slot: String, node: Node3D) -> void:
 			# the island. The surface is flat and lies below its own banks:
 			# its shadow could not show a pixel, and the banks' shadows
 			# falling into the water are what give the cut its depth.
+			set_material_named(node, "Water_flat", Toon.water())
+			set_shadow_off_named(node, "Water_flat")
+		"drain_pool":
+			# The basin is filled with the stage's own water, so a splash rings
+			# it and it catches the same bands and sparkle as the sea the
+			# island stands in -- the channel's arrangement exactly. The
+			# surface lies well under its own rim: its shadow could not show a
+			# pixel, and the rim's shadow falling into it is what gives the
+			# basin its depth.
 			set_material_named(node, "Water_flat", Toon.water())
 			set_shadow_off_named(node, "Water_flat")
 		"bale":

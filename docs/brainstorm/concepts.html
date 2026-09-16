@@ -127,7 +127,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 <main>
 <!-- ============================ PIPES ============================ -->
 <section class="tab-panel active" id="tab-pipes">
-  <h2>Pipes · make the water flow <span class="pill blue">concept · 2026-09-15</span><span class="pill rose">spec only, nothing built</span></h2>
+  <h2>Pipes · make the water flow <span class="pill blue">concept · 2026-09-15</span><span class="pill">built · 2026-09-15</span></h2>
   <p class="lede">A floating voxel island seen from the corner. Water starts in a glowing tank on a high block and has to reach the pool at the drain. The player builds the pipeline from a tray of pieces, over ledges and down cliff faces. Water runs level and downhill on its own; every climb needs a pump. Tall ground hides part of the route, so you turn the island to see behind it.</p>
 
   <div class="hero">
@@ -280,7 +280,28 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Art and motion.</b> The four models in Blender through the contract; water carried over; entrance (island rises, blocks pop in by height, tank lights, tray slides in); win (drains ripple, pumps whir, camera does one slow full turn).</li>
     <li><b>Scenery.</b> Later, with the rest of the islands.</li>
   </ol>
-  <p style="color:var(--muted);font-size:14px">Each sub-project gets its own spec and plan. Nothing here has been started.</p>
+  <h3>11. What was built <span class="pill">2026-09-15</span></h3>
+  <p>Every open decision in §9 went the way of the recommendation: no cross in
+  the tray, two drains on hard through a tee, 0/1/2 spares, long-press to
+  remove, an orthographic camera for this board only, the standing rule as
+  written, scenery deferred, and the id and title kept. The three sub-projects
+  landed as one branch rather than three -- the rules, the island and the art
+  in five commits on <code>feat/pipes-iso</code> -- and the spec at
+  <code>docs/superpowers/specs/2026-09-15-pipes-iso-design.md</code> carries a
+  section of amendments recording where the build changed the design: the route
+  length is a target rather than a bound, the fixtures' reference mouth is S,
+  the ground is merged per level so the crowns arrive with their blocks, the
+  camera is framed by the terrain's real height, picking stops at the ground
+  (and peek lifts that, which is how a mouth in a hollow is reached), and the
+  piece tray sits in the action bar because the real HUD has a bottom bar this
+  mock does not.</p>
+  <p>Measured at 1080 × 1920: idle 3.0 ms, 144 draw calls -- an island of up to
+  180 blocks costs about thirty of them, merged. Suite 2052/0, and the win
+  harness plays the board to solved through the tray, ray picking, orientation
+  cycling, turning and peek at all three difficulties. The old pad board and
+  its spanning-tree generator are deleted; the <code>pipes</code> id, its
+  progress and its analytics carry on.</p>
+  <p style="color:var(--muted);font-size:14px">Sub-project 4, the scenery, is still deferred, with the rest of the islands.</p>
 </section>
 
 <!-- ============================ HORSE PEN ============================ -->

@@ -122,7 +122,10 @@ const VALVE_H := VALVE_OUT - VALVE_IN
 const BOLT_R := 0.035
 const BOLT_AT := 0.36    # bolt centres, on the pad diagonals, clear of the ring
 const BOLT_PROUD := 0.0015
-## Direction bits, the same 1=up 2=right 4=down 8=left as puzzles/pipes_gen.gd.
+## Direction bits for the pipe shapes as they are modelled: 1=up 2=right
+## 4=down 8=left, in the board plane. The island board has its own six-way
+## set in puzzles/pipes_iso_gen.gd; these four are only about which arms of a
+## pipe model are open.
 ## Kept here so the placeholders need not preload a puzzle script.
 const BIT_UP := 1
 const BIT_RIGHT := 2
@@ -132,6 +135,60 @@ const BIT_LEFT := 8
 ## direction. Same convention as the board's own rotation: clockwise on screen
 ## is negative about +Y.
 const ARM_YAW := {BIT_UP: 0.0, BIT_RIGHT: -PI * 0.5, BIT_DOWN: PI, BIT_LEFT: PI * 0.5}
+
+## Pipes' island (pipes-iso spec, sections 1 and 9). The board is no longer a
+## flat pad of cells: it is a heap of unit blocks with pipe pieces standing on
+## and between them, fed by a source tank and emptying into a drain pool.
+## A block is the unit everything else on that island is measured in: exactly
+## one cell across and one level tall, because the board tiles it edge to edge
+## in three dimensions and a block 0.98 across would leave a seam of sky in
+## every wall.
+const ISLAND_SIDE := 1.0
+## The turf cap on a block's crown, inlaid the way the tile's symbols are:
+## ISLAND_TURF_H thick, of which only ISLAND_TURF_PROUD stands above the cube.
+## Inset, so a lip of earth rings it and the outline draws a line at every
+## cell edge -- a field of crowns whose turf ran to the edge would read as one
+## green sheet with no cells in it. The earth under it stays a full unit cube
+## rather than stopping short of the cap: the blocks are stacked a unit apart,
+## and a cube shorter than a unit would open that seam of sky in every wall.
+## On any block but a crown the proud part of the cap is inside the block
+## above, where nothing can see it.
+const ISLAND_TURF_SIDE := 0.94
+const ISLAND_TURF_H := 0.09
+const ISLAND_TURF_PROUD := 0.015
+## The pump is a pipe standing on end, and the one piece whose hub is not at
+## TUBE_Y: an arm reaching ARM_LEN down from a hub at TUBE_Y would end at
+## -0.323, which the contract's base-at-zero rule forbids. Its hub sits a
+## whole arm up instead, so the down mouth lands exactly on y = 0 and the
+## piece stands 2 * ARM_LEN tall. The board reads the height from here and
+## hangs the model at -PUMP_HUB under its pivot, where every other piece is
+## hung at -TUBE_Y.
+const PUMP_HUB := ARM_LEN
+## The brass housing round the hub, and the ring the board lights while the
+## run is climbing. The ring is wider than the housing, so it still reads as a
+## ring from the board's own pitch instead of only in profile.
+const PUMP_CASE_R := 0.26
+const PUMP_CASE_H := 0.30
+const PUMP_RING_IN := PUMP_CASE_R - 0.02
+const PUMP_RING_OUT := PUMP_CASE_R + 0.04
+## The source tank: a stone cap over a block's crown with a lit orb sunk into
+## it. The cap is deep enough to bury the arm's inner collars, which reach
+## TUBE_Y + COLLAR_R: a shallower one let two grey slivers show through its
+## crown, which read as a crack in the stone rather than as pipework.
+const TANK_SIDE := 0.8
+const TANK_H := 0.38
+const TANK_ORB_R := 0.2
+## The orb's centre, set so its crown lands exactly on the slot's 0.6 budget.
+## It is sunk to just under its equator, so the stone holds it rather than
+## carrying it.
+const TANK_ORB_Y := 0.4
+## The drain pool: a stone rim round a basin the arm pours into. The water
+## surface lies well under the rim's top, so the rim's own shadow falling into
+## it is what gives the basin its depth -- the channel's arrangement.
+const POOL_R := 0.42
+const POOL_IN := 0.32
+const POOL_H := 0.24
+const POOL_FLOOR := 0.12
 
 ## Balance pieces (balance spec, section 1). A scale is three slots the board
 ## composes so the beam can actually turn: a stand whose fulcrum cap centre is
@@ -399,6 +456,10 @@ static func make(slot: String) -> Node3D:
 		"pipe_tee": return _pipe("pipe_tee", BIT_UP | BIT_RIGHT | BIT_DOWN)
 		"pipe_cross": return _pipe("pipe_cross", BIT_UP | BIT_RIGHT | BIT_DOWN | BIT_LEFT)
 		"valve": return _valve()
+		"block": return _block()
+		"pump": return _pump()
+		"source_tank": return _source_tank()
+		"drain_pool": return _drain_pool()
 		"scale_stand": return _scale_stand()
 		"scale_beam": return _scale_beam()
 		"scale_pan": return _scale_pan()
@@ -769,16 +830,15 @@ static func _pad() -> Node3D:
 	Toon.apply_to(root)
 	return root
 
-## A pipe piece for `mask`, the set of direction bits it opens on, in the
-## orientation the shape is modelled in. Three layers: the shell (hub plus two
-## segments per arm, the sight hole between them), the collars (a ring each
-## side of every hole plus one at the mouth) and the water tube (the full
-## length of every arm plus a hub ball), which shows through the holes and at
-## every open mouth. Models._dress swaps the tube's material for a fresh
-## pipe_flow one, here and on the Blender export alike.
-static func _pipe(slot: String, mask: int) -> Node3D:
-	var root := Node3D.new()
-	root.name = slot
+## The parts of a pipe piece opening on `mask`, one Array of {"mesh", "xform"}
+## per layer: the shell (the hub plus two segments per arm, the sight hole
+## between them), the collars (a ring each side of every hole plus one at the
+## mouth) and the water tube (the full length of every arm plus a hub ball),
+## which shows through the holes and at every open mouth. Kept apart from the
+## piece that carries them because the island's pump, tank and drain wear the
+## same three layers -- the pump's turned upright, the tank's and the drain's
+## a single arm -- and a pipe's proportions should be derived in one place.
+static func _pipe_parts(mask: int) -> Dictionary:
 	var at_hub := Transform3D(Basis(), Vector3(0.0, TUBE_Y, 0.0))
 	var shell: Array = [{"mesh": _ball(HUB_R), "xform": at_hub}]
 	var collar: Array = []
@@ -794,9 +854,26 @@ static func _pipe(slot: String, mask: int) -> Node3D:
 			collar.append(_yawed(_along(_cylinder(COLLAR_R, COLLAR_W, 16), d), yaw))
 		var water_len := ARM_LEN - CAP_CLEAR
 		water.append(_yawed(_along(_cylinder(CORE_R, water_len, 16), water_len * 0.5), yaw))
-	root.add_child(_layer("Pipe_Shell", _merge(shell), "Steel", Pal.STEEL, Vector3.ZERO))
-	root.add_child(_layer("Pipe_Collar", _merge(collar), "Collar", Pal.STEEL_HI, Vector3.ZERO))
-	root.add_child(_layer("Pipe_Water", _merge(water), "Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))
+	return {"shell": shell, "collar": collar, "water": water}
+
+## Every part of `parts` carried by one more transform, so a piece built in the
+## pipe's own lying-down space can be stood on end without rebuilding it.
+static func _carried(parts: Array, xform: Transform3D) -> Array:
+	var out: Array = []
+	for part in parts:
+		out.append({"mesh": part["mesh"], "xform": xform * part["xform"]})
+	return out
+
+## A pipe piece for `mask`, the set of direction bits it opens on, in the
+## orientation the shape is modelled in. Models._dress swaps the tube's
+## material for a fresh pipe_flow one, here and on the Blender export alike.
+static func _pipe(slot: String, mask: int) -> Node3D:
+	var root := Node3D.new()
+	root.name = slot
+	var parts := _pipe_parts(mask)
+	root.add_child(_layer("Pipe_Shell", _merge(parts["shell"]), "Steel", Pal.STEEL, Vector3.ZERO))
+	root.add_child(_layer("Pipe_Collar", _merge(parts["collar"]), "Collar", Pal.STEEL_HI, Vector3.ZERO))
+	root.add_child(_layer("Pipe_Water", _merge(parts["water"]), "Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root
 
@@ -823,6 +900,110 @@ static func _valve() -> Node3D:
 		bolts.append({"mesh": _cylinder(BOLT_R, BOLT_PROUD * 2.0, 16),
 			"xform": Transform3D(Basis(), at)})
 	root.add_child(_layer("Valve_Bolts", _merge(bolts), "Bolt_flat", Pal.MARK, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+# --- Pipes' island pieces ---
+
+## One block of the island: a cube of earth wearing a turf cap on its crown.
+## The cube is the unit the board tiles in all three directions, so it is the
+## full 1 x 1 x 1 and nothing is allowed to shave it; the cap is inlaid in its
+## crown the way the tile's symbols are inlaid in its walls, inset so a lip of
+## earth rings the turf and standing only ISLAND_TURF_PROUD above the cube, the
+## hair that keeps the two crowns off each other without pushing the piece up
+## into the block above.
+static func _block() -> Node3D:
+	var root := Node3D.new()
+	root.name = "block"
+	root.add_child(_layer("Block_Earth", _bar(ISLAND_SIDE, ISLAND_SIDE, ISLAND_SIDE),
+		"Earth", Pal.EARTH, Vector3.ZERO))
+	root.add_child(_layer("Block_Grass", _bar(ISLAND_TURF_SIDE, ISLAND_TURF_SIDE, ISLAND_TURF_H),
+		"Grass", Pal.TURF, Vector3(0.0, ISLAND_SIDE + ISLAND_TURF_PROUD - ISLAND_TURF_H, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## The pump: the straight pipe stood on end, with a brass housing round its
+## hub and a ring the board lights while the run is climbing. It carries the
+## pipe's own three layers under its own node names, so the flood wets it
+## exactly as it wets any other piece, and its two mouths are the ones the
+## pieces above and below it meet.
+static func _pump() -> Node3D:
+	var root := Node3D.new()
+	root.name = "pump"
+	# The straight is modelled lying down with its hub at TUBE_Y; this turns
+	# its -Z arm up and its +Z arm down and lifts the hub to PUMP_HUB, which
+	# puts the down mouth exactly on y = 0. See PUMP_HUB for why the hub is
+	# not at TUBE_Y like every other piece's.
+	var upright := Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0.0, PUMP_HUB, -TUBE_Y))
+	var parts := _pipe_parts(BIT_UP | BIT_DOWN)
+	root.add_child(_layer("Pump_Shell", _merge(_carried(parts["shell"], upright)),
+		"Steel", Pal.STEEL, Vector3.ZERO))
+	root.add_child(_layer("Pump_Collar", _merge(_carried(parts["collar"], upright)),
+		"Collar", Pal.STEEL_HI, Vector3.ZERO))
+	root.add_child(_layer("Pump_Water", _merge(_carried(parts["water"], upright)),
+		"Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))
+	root.add_child(_layer("Pump_Housing", _cylinder(PUMP_CASE_R, PUMP_CASE_H, 20),
+		"Brass", Pal.SUN_DEEP, Vector3(0.0, PUMP_HUB, 0.0)))
+	var ring := TorusMesh.new()
+	ring.inner_radius = PUMP_RING_IN
+	ring.outer_radius = PUMP_RING_OUT
+	ring.rings = 24
+	ring.ring_segments = 10
+	# Modelled dark, the way Light Up's lantern iron is: the board tints this
+	# ring while water is climbing the run, and a ring already amber would have
+	# nothing left to say when the pump comes on.
+	root.add_child(_layer("Pump_Ring", ring, "Lit", Pal.LANTERN, Vector3(0.0, PUMP_HUB, 0.0)))
+	Toon.apply_to(root)
+	return root
+
+## The source: a stone cap standing on a block's crown with a lit orb sunk
+## into it, and one arm's worth of pipe reaching out of its side at the hub
+## height every other piece uses, so the mouth the player taps is a mouth like
+## any other. The arm is modelled pointing at Godot +Z (Blender -Y) and the
+## board turns the whole piece onto whichever side the generator chose.
+static func _source_tank() -> Node3D:
+	var root := Node3D.new()
+	root.name = "source_tank"
+	root.add_child(_layer("Tank_Body", _bar(TANK_SIDE, TANK_SIDE, TANK_H),
+		"Stone", Pal.STONE, Vector3.ZERO))
+	root.add_child(_layer("Tank_Orb", _ball(TANK_ORB_R), "Glass", Pal.SUN,
+		Vector3(0.0, TANK_ORB_Y, 0.0)))
+	var parts := _pipe_parts(BIT_DOWN)
+	root.add_child(_layer("Tank_Shell", _merge(parts["shell"]), "Steel", Pal.STEEL, Vector3.ZERO))
+	root.add_child(_layer("Tank_Collar", _merge(parts["collar"]), "Collar", Pal.STEEL_HI, Vector3.ZERO))
+	root.add_child(_layer("Tank_Water", _merge(parts["water"]), "Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))
+	Toon.apply_to(root)
+	return root
+
+## The drain: a stone rim round a basin, with the same one arm as the tank
+## pouring into it. The rim and the basin floor are two lobes of one layer;
+## the surface between them is the stage's own water, which Models._dress
+## swaps in as it does for the channel, and it stays dark until the flood
+## reaches the mouth.
+static func _drain_pool() -> Node3D:
+	var root := Node3D.new()
+	root.name = "drain_pool"
+	var rim := TorusMesh.new()
+	rim.inner_radius = POOL_IN
+	rim.outer_radius = POOL_R
+	rim.rings = 24
+	rim.ring_segments = 10
+	# The torus stands (outer - inner) tall on its own, so it is stretched to
+	# the rim's height, and the floor is a disc filling everything inside it.
+	var stand := Basis().scaled(Vector3(1.0, POOL_H / (POOL_R - POOL_IN), 1.0))
+	root.add_child(_layer("Pool_Rim", _merge([
+		{"mesh": rim, "xform": Transform3D(stand, Vector3(0.0, POOL_H * 0.5, 0.0))},
+		{"mesh": _cylinder(POOL_R - 0.02, POOL_FLOOR, 24),
+			"xform": Transform3D(Basis(), Vector3(0.0, POOL_FLOOR * 0.5, 0.0))},
+	]), "Stone", Pal.STONE, Vector3.ZERO))
+	# Wider than the rim's mouth, so the basin reads as full to its edge rather
+	# than as a disc floating in a hole.
+	root.add_child(_layer("Pool_Water", _cylinder(POOL_IN + 0.01, 0.02, 24), "Water_flat", Pal.WATER,
+		Vector3(0.0, POOL_FLOOR + 0.01, 0.0)))
+	var parts := _pipe_parts(BIT_DOWN)
+	root.add_child(_layer("Pool_Shell", _merge(parts["shell"]), "Steel", Pal.STEEL, Vector3.ZERO))
+	root.add_child(_layer("Pool_Collar", _merge(parts["collar"]), "Collar", Pal.STEEL_HI, Vector3.ZERO))
+	root.add_child(_layer("Pool_Water_Tube", _merge(parts["water"]), "Flow_flat", Pal.FLOW_DRY, Vector3.ZERO))
 	Toon.apply_to(root)
 	return root
 

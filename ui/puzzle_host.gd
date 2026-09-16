@@ -110,6 +110,9 @@ func _ready() -> void:
 	action_bar.reset.connect(_on_reset)
 	action_bar.check.connect(_on_check)
 	action_bar.pick.connect(_on_pick)
+	action_bar.piece_pick.connect(_on_pick)
+	action_bar.turn_view.connect(_on_turn_view)
+	action_bar.peek.connect(_on_peek)
 	root.add_child(action_bar)
 	footer = Label.new()
 	footer.theme_type_variation = "Motto"
@@ -235,6 +238,22 @@ func _on_check() -> void:
 func _on_pick(i: int) -> void:
 	if is_instance_valid(_puzzle):
 		_puzzle.pick(i)
+		_refresh()
+
+## Turning is a look, not a move, so it never touches the move count; it is
+## tracked because the point of the third dimension is whether players use it.
+func _on_turn_view() -> void:
+	if is_instance_valid(_puzzle):
+		_puzzle.turn_view()
+		Analytics.track("view_turn", {"puzzle_id": _entry.get("id", "")})
+		_refresh()
+
+## Only the press is worth an event: the release always follows it.
+func _on_peek(on: bool) -> void:
+	if is_instance_valid(_puzzle):
+		_puzzle.peek(on)
+		if on:
+			Analytics.track("peek_used", {"puzzle_id": _entry.get("id", "")})
 		_refresh()
 
 func _on_reset() -> void:

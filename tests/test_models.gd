@@ -10,6 +10,12 @@ const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,
 	"socket": 0.15, "peg": 0.5, "pip": 0.2, "lid": 0.3,
 	"pipe_pad": 0.15, "pipe_cap": 0.38, "pipe_straight": 0.38, "pipe_elbow": 0.38,
 	"pipe_tee": 0.38, "pipe_cross": 0.38, "valve": 0.12,
+	# The island's four. A block is the unit the board tiles, plus the hair of
+	# turf cap standing proud of its crown; a pump is a pipe on end, so it is
+	# two arms tall instead of one; and a drain takes the pipes' own 0.38
+	# rather than the 0.3 the spec's table guessed, because the arm it wears
+	# puts a mouth collar at TUBE_Y + COLLAR_R like every other piece.
+	"block": 1.02, "pump": 1.0, "source_tank": 0.6, "drain_pool": 0.38,
 	"scale_stand": 1.1, "scale_beam": 0.3, "scale_pan": 0.4, "plinth": 0.2,
 	"weight_disc": 0.1, "token_ball": 0.35, "token_cube": 0.35, "token_prism": 0.35,
 	"token_gem": 0.35, "token_cross": 0.35, "post": 0.7,
@@ -61,6 +67,10 @@ const LAYERS := {"tile": ["Moon", "Slate_flat", "Stone", "Sun"],
 	"pipe_cap": ["Collar", "Flow_flat", "Steel"], "pipe_straight": ["Collar", "Flow_flat", "Steel"],
 	"pipe_elbow": ["Collar", "Flow_flat", "Steel"], "pipe_tee": ["Collar", "Flow_flat", "Steel"],
 	"pipe_cross": ["Collar", "Flow_flat", "Steel"], "valve": ["Bolt_flat", "Metal"],
+	"block": ["Earth", "Grass"],
+	"pump": ["Brass", "Collar", "Flow_flat", "Lit", "Steel"],
+	"source_tank": ["Collar", "Flow_flat", "Glass", "Steel", "Stone"],
+	"drain_pool": ["Collar", "Flow_flat", "Steel", "Stone", "Water_flat"],
 	"plot_pad": ["Stone"], "wall_edge": ["Wall"], "wall_post": ["Wall"],
 	"clue_stone": ["Num_flat", "Stone"],
 	"turf_pad": ["Turf"], "camp_tree": ["Bark", "Leaf"],
@@ -99,6 +109,7 @@ static func _bounds(root: Node3D) -> Array:
 static func _test_slots(t) -> void:
 	t.eq(Models.SLOTS, ["tile", "rim_edge", "rim_corner", "platform", "water", "socket", "peg", "pip", "lid",
 		"pipe_pad", "pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross", "valve",
+		"block", "pump", "source_tank", "drain_pool",
 		"scale_stand", "scale_beam", "scale_pan", "plinth", "weight_disc",
 		"token_ball", "token_cube", "token_prism", "token_gem", "token_cross", "post",
 		"plot_pad", "wall_edge", "wall_post", "clue_stone",
@@ -136,6 +147,9 @@ static func _test_slots(t) -> void:
 			"pipe_cap": ["Steel", "Collar"], "pipe_straight": ["Steel", "Collar"],
 			"pipe_elbow": ["Steel", "Collar"], "pipe_tee": ["Steel", "Collar"],
 			"pipe_cross": ["Steel", "Collar"], "valve": ["Metal"],
+			"block": ["Earth", "Grass"], "pump": ["Steel", "Collar", "Brass", "Lit"],
+			"source_tank": ["Stone", "Glass", "Steel", "Collar"],
+			"drain_pool": ["Stone", "Steel", "Collar"],
 			"scale_stand": ["Stone", "Cap"], "scale_beam": ["Wood", "Metal"],
 			"scale_pan": ["Pan"], "plinth": ["Stone"], "weight_disc": ["Disc"],
 			"token_ball": ["Token"], "token_cube": ["Token"], "token_prism": ["Token"],

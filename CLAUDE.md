@@ -49,8 +49,10 @@ export stays on the non-gradle path.
   `GA_API_SECRET`. Missing secret means the game runs untracked, not broken.
 - Events: `game_open`, `puzzle_start`, `puzzle_complete`, `puzzle_abandon`,
   `hint_used`, `undo_used`, `check_used`, `board_reset`, `rules_opened`,
-  `new_puzzle`, `reduce_motion`. Board events carry puzzle_id, difficulty,
-  day, seconds, moves, hints, checks.
+  `new_puzzle`, `reduce_motion`, and on a board that can be turned,
+  `view_turn` and `peek_used`. Board events carry puzzle_id, difficulty,
+  day, seconds, moves, hints, checks; the last two tell us whether Pipes'
+  third dimension is a puzzle or a nuisance.
 - To debug the wiring: `Analytics.validate = true` posts to GA4's validation
   endpoint and prints the verdict instead of recording; `Analytics.debug_mode`
   puts events in the console's DebugView.

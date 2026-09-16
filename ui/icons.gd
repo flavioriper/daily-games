@@ -5,10 +5,14 @@ extends RefCounted
 ## draws one into a CanvasItem during that item's draw call.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
-const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help"]
+const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
+	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
+## The two directions a pipe's tube runs in these icons.
+const RIGHT := Vector2(1.0, 0.0)
+const DOWN := Vector2(0.0, 1.0)
 
 ## The geometry of one icon: {"polys": [...], "lines": [...]} and, for the
 ## gear, "hole". Unknown names give an empty shape.
@@ -34,6 +38,18 @@ static func shape(name: String) -> Dictionary:
 			return _island()
 		"help":
 			return _help()
+		"pipe_straight":
+			return _pipe_straight()
+		"pipe_elbow":
+			return _pipe_elbow()
+		"pipe_tee":
+			return _pipe_tee()
+		"pipe_pump":
+			return _pipe_pump()
+		"turn":
+			return _turn()
+		"eye":
+			return _eye()
 	return {"polys": [], "lines": []}
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw
@@ -129,3 +145,84 @@ static func _help() -> Dictionary:
 	var hook := arc(Vector2(0.5, 0.36), 0.18, PI, PI * 2.5, 16)
 	hook.append(Vector2(0.5, 0.66))
 	return {"polys": [circle(Vector2(0.5, 0.86), 0.07, 12)], "lines": [hook]}
+
+## A pipe's open end: a short flange across the tube at `at`, so a bar reads
+## as a pipe rather than a line. `dir` is the tube's own direction there.
+static func _collar(at: Vector2, dir: Vector2) -> PackedVector2Array:
+	var across := Vector2(-dir.y, dir.x) * 0.17
+	var along := dir * 0.05
+	return PackedVector2Array([at + across - along, at + across + along, at - across + along, at - across - along])
+
+## A disc the width of the stroke, dropped on a corner or a branch: a
+## polyline's segments meet in a notch there, and this fills it.
+static func _joint(at: Vector2) -> PackedVector2Array:
+	return circle(at, STROKE * 0.5, 12)
+
+## A tube straight across, collared at both ends.
+static func _pipe_straight() -> Dictionary:
+	var a := Vector2(0.1, 0.5)
+	var b := Vector2(0.9, 0.5)
+	return {"polys": [_collar(a, RIGHT), _collar(b, RIGHT)], "lines": [PackedVector2Array([a, b])]}
+
+## A tube that turns a right angle: in from the left, out at the bottom.
+static func _pipe_elbow() -> Dictionary:
+	var a := Vector2(0.12, 0.26)
+	var corner := Vector2(0.78, 0.26)
+	var b := Vector2(0.78, 0.86)
+	return {
+		"polys": [_collar(a, RIGHT), _collar(b, DOWN), _joint(corner)],
+		"lines": [PackedVector2Array([a, corner, b])],
+	}
+
+## A tube across with a stub down from its middle.
+static func _pipe_tee() -> Dictionary:
+	var a := Vector2(0.1, 0.32)
+	var b := Vector2(0.9, 0.32)
+	var stem := Vector2(0.5, 0.32)
+	var c := Vector2(0.5, 0.88)
+	return {
+		"polys": [_collar(a, RIGHT), _collar(b, RIGHT), _collar(c, DOWN), _joint(stem)],
+		"lines": [PackedVector2Array([a, b]), PackedVector2Array([stem, c])],
+	}
+
+## A tube standing up with a barrel in the middle: the pump that pushes water
+## uphill.
+static func _pipe_pump() -> Dictionary:
+	var a := Vector2(0.5, 0.08)
+	var b := Vector2(0.5, 0.92)
+	var barrel := PackedVector2Array([
+		Vector2(0.3, 0.28), Vector2(0.7, 0.28), Vector2(0.82, 0.5),
+		Vector2(0.7, 0.72), Vector2(0.3, 0.72), Vector2(0.18, 0.5),
+	])
+	return {"polys": [_collar(a, DOWN), _collar(b, DOWN), barrel], "lines": [PackedVector2Array([a, b])]}
+
+## A quarter turn: a block with an arrow sweeping over it, coming down on the
+## right the way the island swings round. The sweep stops well above the
+## block -- brought any lower, the two fuse into a blob at button size.
+static func _turn() -> Dictionary:
+	var c := Vector2(0.5, 0.54)
+	var block := PackedVector2Array([Vector2(0.3, 0.58), Vector2(0.7, 0.58), Vector2(0.7, 0.92), Vector2(0.3, 0.92)])
+	var to := PI * 1.8
+	var sweep := arc(c, 0.34, PI * 1.2, to)
+	var end: Vector2 = sweep[sweep.size() - 1]
+	# The head follows the arc's tangent where it stops, so the arrow reads as
+	# still travelling rather than stuck on.
+	var along := Vector2(-sin(to), cos(to))
+	var across := Vector2(-along.y, along.x)
+	var head := PackedVector2Array([
+		end + along * 0.15, end + across * 0.11 - along * 0.02, end - across * 0.11 - along * 0.02,
+	])
+	return {"polys": [block, head], "lines": [sweep]}
+
+## An almond outline with a filled pupil: hold to see through the scenery.
+static func _eye() -> Dictionary:
+	var a := Vector2(0.08, 0.5)
+	var b := Vector2(0.92, 0.5)
+	var lid := PackedVector2Array()
+	for i in SEGMENTS + 1:
+		var t := float(i) / SEGMENTS
+		lid.append(a.lerp(b, t) - Vector2(0.0, sin(t * PI) * 0.27))
+	for i in SEGMENTS + 1:
+		var t := 1.0 - float(i) / SEGMENTS
+		lid.append(a.lerp(b, t) + Vector2(0.0, sin(t * PI) * 0.27))
+	return {"polys": [circle(Vector2(0.5, 0.5), 0.15)], "lines": [lid]}

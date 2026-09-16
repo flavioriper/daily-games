@@ -34,10 +34,10 @@ const PUZZLES := [
 	{
 		"id": "pipes",
 		"title": "Pipes",
-		"blurb": "Turn every piece until nothing leaks.",
+		"blurb": "Build the pipeline. Water won't climb without a pump.",
 		"motto": "Make the water flow",
 		"footer": "Think · Connect · Flow",
-		"script": "res://puzzles/pipes3d.gd",
+		"script": "res://puzzles/pipes_iso.gd",
 		"difficulties": [0, 1, 2],
 	},
 	{

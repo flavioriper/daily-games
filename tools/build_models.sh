@@ -19,10 +19,15 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # one .glb each.
 "$BLENDER" -b art/codebreak.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Socket Peg Pip Lid
-# Pipes: seven hand-modelled collections in one .blend, one .glb each.
+# Pipes: eleven hand-modelled collections in one .blend, one .glb each. The
+# island rework added the four at the end: the block the terrain is built out
+# of, the pump that lifts water a level, and the tank and pool the day's route
+# runs between. The pump is the straight stood on end and both fixtures wear a
+# copy of the cap's one arm, so all three are cut from the pipe shapes already
+# in this file rather than modelled again.
 "$BLENDER" -b art/pipes.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Pipe_Pad Pipe_Cap Pipe_Straight \
-  Pipe_Elbow Pipe_Tee Pipe_Cross Valve
+  Pipe_Elbow Pipe_Tee Pipe_Cross Valve Block Pump Source_Tank Drain_Pool
 # Balance: ten hand-modelled collections in one .blend, one .glb each.
 "$BLENDER" -b art/balance.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Scale_Stand Scale_Beam Scale_Pan Plinth \
