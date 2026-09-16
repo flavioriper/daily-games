@@ -48,52 +48,55 @@ const BLOSSOMS := 70
 ## a cloud card projected between y = -1926 and y = -6746 on a 1920-tall frame,
 ## so none of this was worth its draw call. The camera sits at 7 degrees now
 ## (world/stage.gd), the horizon is about a third of the way down the frame,
-## and the hills, the bank behind them and three cloud cards are what fills it.
-const SKY_SHADER := preload("res://shaders/backdrop_sky.gdshader")
+## and the hills and three cloud cards are what fills it.
+##
+## The procedural cloud bank (shaders/backdrop_sky.gdshader) that the spec
+## called for behind the hills was cut after this same round of measurement:
+## every position and size tried (including one that stretched its card far
+## past the frame in every direction) still contributed nothing a pixel diff
+## could find with the card hidden versus shown, at any point in the visible
+## sky. The card sat behind the frame's own visible slice of it almost
+## entirely inside the alpha ramp's own fade-to-nothing band. Cut rather than
+## reworked further, on the same grounds the source cloud card itself was cut
+## for a day before this task: a draw call nobody can see is not worth having.
 const CLOUD_SHADER := preload("res://shaders/backdrop_cloud.gdshader")
-## How far out the hills ring stands and how big it is drawn. hills.glb is a
-## 200x200 patch (its own local space) with a hole of local radius ~29 cut
-## through its middle for the meadow to sit in. The meadow's own SPREAD (2.4)
-## has nothing to do with this number -- it sizes a painted texture to the
-## frame -- and copying it here put the hole's world radius at 29 * 2.4 = 70,
-## a 44-unit gap of nothing past the meadow's own ~26-unit reach. A first guess
-## of 0.75 (hole at 29 * 0.75 = ~22, just inside the meadow) turned out to sit
-## entirely under the water once world/stage.gd's POND grew to 90 in this same
-## task: the pond is centred on the same point as the hills and now reaches a
-## 45-unit radius, so a 22-unit-radius ring was fully submerged and never broke
-## the surface. 1.6 puts the hole at 29 * 1.6 = ~46, a hair past the pond's own
-## rim, so the ring's inner (and tallest) lip rises right at the water's edge
-## instead of under it. Confirmed on a rendered frame with the hills painted a
-## flag colour so the thin band at the horizon was actually visible (see
-## _build_hills's own comment for the colour decision), checked against
-## Binairo, Horse Pen and Code Break.
-const HILLS_SPREAD := 1.6
-## The cloud bank: one card, wide enough to fill the frame's width at the
-## distance it stands, and stood beyond the hills.
-const BANK_SIZE := Vector2(400.0, 120.0)
-const BANK_AT := Vector3(0.0, 8.0, -150.0)
-## Three cloud cards between the hills and the bank. cloud.glb's card is
+## How far out the hills ring stands and how big it is drawn. hills.glb is
+## mostly a flat plateau (measured: every vertex outside one 30-degree wedge
+## sits at exactly the same height, verified by walking the raw mesh and
+## bucketing by angle) with a small, irrelevant dip-and-rise confined to that
+## one wedge, which never faces this camera at any yaw the stage uses. So the
+## ring's screen height comes entirely from perspective foreshortening of a
+## flat disc's near and far edge, not from any rolling silhouette -- and that
+## puts a hard ceiling on how tall a band tuning alone can produce: bringing
+## the ring's near edge from a world radius of 46 (spread 1.6, this task's
+## first pass) down to 29 (spread 1.0) only grew the visible band from 20px to
+## ~47px on a rendered Binairo frame (measured column walk, see _build_hills).
+## Below spread ~0.85 the ring's hole shrinks past the meadow's own ~26-unit
+## reach and the two meshes interpenetrate -- confirmed on a render, spread
+## 0.4 buries the whole board under the ring. 0.9 (hole at 29 * 0.9 = ~26,
+## matching the meadow almost exactly) is as close as the ring can stand
+## without overlapping it, which is also as tall as this specific mesh reads
+## from this camera. The colour carries the rest of the read (see
+## _build_hills's own comment).
+const HILLS_SPREAD := 0.9
+## Three cloud cards past the hills, low enough that their feet meet the
+## hills' own top line instead of floating in open sky. cloud.glb's card is
 ## modelled 56.3 units tall with its origin at the *bottom* edge, not the
-## middle, so the source painting's own spread (-60 to 75 on X, scale 0.9-1.3,
-## the card's foot at y = 14-22) put almost the whole card above the top of
-## the frame: a rendered Binairo frame showed the foot barely inside frame and
-## the card's own middle already unprojecting to screen_y < 0. Narrowed on X
-## to what actually projects inside the frame width on Binairo (the closest
-## camera and so the tightest fit -- a farther board like Horse Pen only pulls
-## them further toward the centre, never out), and scaled down and lowered so
-## the whole 56.3-unit card -- foot to crown -- lands between the HUD's lower
-## edge and the horizon rather than mostly above the top of frame. Checked on
-## Binairo, Horse Pen and Code Break together.
+## middle. A first pass put the feet at y = 9-11, which read as three cards
+## with a hard straight cut at the bottom, floating well above the hills
+## band; unprojecting the hills' own top edge (~0.35 of the frame down, on
+## Binairo, Horse Pen and Code Break alike) and solving for the y that lands
+## a foot there gave y = 1 for all three, confirmed on a rendered frame: the
+## cut now falls behind the hills' own silhouette instead of into open sky.
 const CLOUD_SPOTS := [
-	Vector3(-15.0, 10.0, -90.0),
-	Vector3(8.0, 11.0, -100.0),
-	Vector3(22.0, 9.0, -85.0),
+	Vector3(-15.0, 1.0, -90.0),
+	Vector3(8.0, 1.0, -100.0),
+	Vector3(22.0, 1.0, -85.0),
 ]
 const CLOUD_SCALES := [0.2, 0.24, 0.18]
 
 var meadow: Node3D
 var hills: Node3D
-var sky: MeshInstance3D
 var clouds: Array[Node3D] = []
 var clumps: Array[Node3D] = []
 var blossoms: MultiMeshInstance3D
@@ -110,12 +113,11 @@ func _ready() -> void:
 	_build_clumps()
 	blossoms = _build_blossoms()
 	hills = _build_hills()
-	sky = _build_sky()
 	_build_clouds()
 
-## Nothing to do: every moving thing in the landscape -- the grass, the three
-## cloud cards and the bank behind them -- reads the motion_scale shader global
-## that world/ambient.gd owns. Kept so the settings sheet can call it without
+## Nothing to do: every moving thing in the landscape -- the grass and the
+## three cloud cards -- reads the motion_scale shader global that
+## world/ambient.gd owns. Kept so the settings sheet can call it without
 ## knowing that, and so a later moving piece has somewhere to go.
 func refresh() -> void:
 	pass
@@ -290,6 +292,15 @@ func _build_blossoms() -> MultiMeshInstance3D:
 ## silhouette. hills.glb's own import (gltf/embedded_image_handling=0) no
 ## longer extracts that texture at all, so the duplicate is gone rather than
 ## merely unused.
+##
+## The tint itself was first mixed to (0.86, 0.92, 0.95), a few percent off
+## the sky colour -- "depth through colour" read, on a rendered frame, as
+## "depth through erasure": an 8% luminance difference against the sky, an
+## 18-to-47px band depending on HILLS_SPREAD (see that constant's own
+## comment), together making the ring all but invisible. Pulled back to a
+## cooler, muted sage that measures roughly 23 points of luminance against
+## the sky (#9eb899 against #dfeff7, sampled off a rendered Binairo column) --
+## distinctly land, not more sky, at whatever height the ring actually reads.
 func _build_hills() -> Node3D:
 	var node := _instance("hills")
 	if node == null:
@@ -304,30 +315,11 @@ func _build_hills() -> Node3D:
 	for mi in _meshes(node):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var m := _flat(mi.mesh.surface_get_material(0), false)
-		# No texture survives the import now, but _flat() would carry one
-		# across if the source ever grew one back; null it explicitly so the
-		# hills always read as colour, never as a second meadow.
 		m.albedo_texture = null
-		# Lighter and cooler than the near meadow, so distance reads as colour.
-		m.albedo_color = Color(0.86, 0.92, 0.95)
+		m.albedo_color = Color(0.62, 0.72, 0.60)
 		mi.set_surface_override_material(0, m)
 	add_child(node)
 	return node
-
-## One wide card of procedural cloud bank behind the hills.
-func _build_sky() -> MeshInstance3D:
-	var q := QuadMesh.new()
-	q.size = BANK_SIZE
-	var mi := MeshInstance3D.new()
-	mi.name = "CloudBank"
-	mi.mesh = q
-	var sm := ShaderMaterial.new()
-	sm.shader = SKY_SHADER
-	mi.set_surface_override_material(0, sm)
-	mi.position = BANK_AT
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
-	return mi
 
 ## The painting's three cloud cards, drifting on the motion_scale global.
 func _build_clouds() -> void:

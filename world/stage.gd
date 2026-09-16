@@ -27,12 +27,17 @@ const CAMERA_PITCH := 7.0
 const DEFAULT_FACE := 68.0
 ## The pond's width in world units. It was 30 when the pond sat in a basin
 ## under a board seen from 68 degrees and only had to fill that basin. At 7
-## degrees the water runs from the near bank to the hills, so it is sized to
-## reach them instead. What the player reads as the near edge is still the
-## meadow's basin rising out of it, not this plane's rim. The pond is also what
-## keeps Ambient.splash alive -- the ring is drawn by the shared water
-## material.
-const POND := 90.0
+## degrees the water runs from the near bank toward the hills, so it grew --
+## but not all the way to them. A first pass grew it to 90 (radius 45), which
+## reached past world/backdrop.gd's HILLS_SPREAD-scaled ring entirely and
+## drowned the ring's near edge, squeezing the whole visible hills band down
+## to a measured 20px on a rendered frame. 48 (radius 24) sits just inside the
+## ring's own near edge (HILLS_SPREAD 0.9 puts that at ~26) instead of past
+## it, which is what actually let the hills band grow on a rendered frame.
+## What the player reads as the near edge is still the meadow's basin rising
+## out of it, not this plane's rim. The pond is also what keeps Ambient.splash
+## alive -- the ring is drawn by the shared water material.
+const POND := 48.0
 ## The placeholder water plane is modelled this big (core/placeholders.gd), so
 ## a pond is a fraction of it.
 const WATER_PLANE := 60.0
