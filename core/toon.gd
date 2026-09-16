@@ -27,7 +27,7 @@ const SWAY_MARK := "_sway"
 ## the grain shader instead of the flat one, and that is the whole hook-up:
 ## a placeholder and an exported .glb both reach here as a base colour, so
 ## neither the models nor the boards had to learn a new mark.
-const WOODS: Array[Color] = [Pal.DECK, Pal.WOOD, Pal.BARK, Pal.TIMBER]
+const WOODS: Array[Color] = [Pal.DECK, Pal.WOOD, Pal.BARK, Pal.TIMBER, Pal.PLAQUE]
 ## glTF round-trips a colour through linear floats, so an exported model's
 ## wood comes back near its palette value rather than exactly on it.
 const WOOD_TOL := 0.012

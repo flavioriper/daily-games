@@ -54,6 +54,10 @@ const FOOTPRINT := {"scale_beam": Vector2(3.2, 0.3), "scale_pan": Vector2(1.3, 1
 ## untinted primitives with no named layer of their own -- surface_names
 ## reports one surface with an empty resource name for both.
 const LAYERS := {"tile": ["Moon", "Slate_flat", "Stone", "Sun"],
+	# The menu and HUD title board. Its lettering is not a layer here: the
+	# title and motto are TextMesh, extruded in the game from the display
+	# face, so the words stay data rather than thirteen exports.
+	"title_sign": ["Leaf", "Plank", "Screw_flat"],
 	"rim_edge": ["Grass_sway_flat", "Moss_flat", "Petal_sway_flat", "Pollen_sway_flat"],
 	"rim_corner": ["Grass_sway_flat", "Moss_flat", "Petal_sway_flat", "Pollen_sway_flat"],
 	"platform": [""], "water": [""],
@@ -118,7 +122,8 @@ static func _test_slots(t) -> void:
 		"mosaic_tile", "plank",
 		"horse", "fence", "apple", "bale", "channel", "stalk", "flower",
 		"snake_head", "burrow",
-		"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost"],
+		"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost",
+		"title_sign"],
 		"slot list matches every board's design")
 	for slot in Models.SLOTS:
 		var node = Models.instance(slot)
@@ -167,7 +172,10 @@ static func _test_slots(t) -> void:
 			"stalk": [], "flower": [],
 			"snake_head": ["Scale"], "burrow": ["Earth"],
 			"deck": ["Deck"], "pier_post": ["Bark"], "boulder": ["Rock"], "bush": ["Leaf"],
-			"daisy": [], "tuft": [], "signpost": ["Bark", "Timber"]}.get(slot, [])
+			"daisy": [], "tuft": [], "signpost": ["Bark", "Timber"],
+			# The title board: the plank wears wood's own coloured line and the
+			# leaves the shared one. Its screws are the only _flat layer.
+			"title_sign": ["Leaf", "Plank"]}.get(slot, [])
 		# Held past node.free() below: a pipe's Flow_flat override is a fresh
 		# ShaderMaterial with no other owner (Models._dress, one per instance so
 		# each cell drives its own `wet`). Under the headless dummy renderer only,

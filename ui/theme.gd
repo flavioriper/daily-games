@@ -29,7 +29,7 @@ static func make() -> Theme:
 	theme.set_font("font", "Button", body(700))
 	_button(theme, "Button", Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	# Label variations.
-	# The title itself is ui/hud/wordmark.gd, drawn rather than themed.
+	# The title itself is ui/hud/sign_view.gd: a modelled board, not a Control.
 	_label(theme, "Motto", body(700, 2), 24, Pal.SURFACE)
 	theme.set_color("font_shadow_color", "Motto", Color(Pal.OUTLINE, 0.45))
 	theme.set_constant("shadow_offset_x", "Motto", 1)
@@ -144,8 +144,8 @@ static func wood_card() -> StyleBoxFlat:
 static func plank_face() -> Color:
 	return Pal.PLAQUE.lerp(Pal.WOOD, 0.35)
 
-## The face colour over the whole rect, and nothing else: the board the
-## wordmark and the day card hang from is cut by the grain shader, which
+## The face colour over the whole rect, and nothing else: the board the day
+## card hangs from is cut by the grain shader, which
 ## draws the hewn edge and its lit lip itself, with no rim. Use through plank().
 static func plank_card() -> StyleBoxFlat:
 	return card(plank_face(), 0, Pal.PLAQUE_DEEP, 0, 22)

@@ -44,41 +44,42 @@ model away for a picture of it.
 
 ## Art: the menu's title signs
 
-> **This pipeline breaks the rule above and is owed a rework.** The signs are
-> pre-rendered PNGs, which is exactly what "never bake a model down to an
-> image" forbids. `art/sign.blend` is sound -- five proper layers -- but it has
-> to reach the screen as geometry, not as `assets/signs/*.png`. Treat what
-> follows as a description of the current state, not as a pattern to copy.
+Every menu card *is* a carved wood sign, and the same board is the title in
+every HUD row -- each puzzle's, and the menu's own "Daily". It is a real model
+on screen, not a picture of one: `assets/models/title_sign.glb`, instanced
+through `Models.instance("title_sign")` so it takes the toon shader, the grain
+on its plank, its own cast shadow and the outline pass.
 
-Each of the twelve menu cards *is* a carved wood sign, and the same board is
-the title in every HUD row -- each puzzle's, and the menu's own "Daily". All
-thirteen are rendered from one source: `art/sign.blend`. Five layers, one mesh
-and one material each, per the contract above: plank, title, motto, leaves,
-screws.
-
-- **Never edit the twelve PNGs.** They are output. To change how every sign
-  looks, edit `art/sign.blend` in the live Blender session and re-render:
-  `Blender -b art/sign.blend --python tools/build_signs.py`,
-  then `godot --headless --path . --import`.
-- **The words come from `ui/registry.gd`**, not from the .blend. The tool reads
-  every entry's `title` and `motto`, so adding a puzzle there and re-running is
-  all a new sign takes. The menu's own sign is `daily.png`, read the same way
-  from `ui/menu.gd`'s `TITLE` and `MOTTO`. The Text objects in the .blend only
-  hold whatever was rendered last.
-- **`ui/hud/top_bar.gd` hangs the sign by id** and falls back to the drawn
-  plaque (`ui/hud/wordmark.gd`, `CozyTheme.plank`) when there is no PNG for it,
-  so a stripped project still shows a title. How tall it stands is
-  `sign_height`: a puzzle's row can only afford 180 (four buttons leave it
-  about 496px at 1080 wide), and the menu overrides it to 250 because it shares
-  its row with one button.
+- **The board is modelled; the words are data.** `art/sign.blend` holds three
+  layers (plank, leaf sprigs, screws) exported as the `Title_Sign` collection
+  by `tools/build_models.sh`. The title and motto are **not** in the .blend:
+  `ui/hud/sign_view.gd` extrudes them with `TextMesh` in the display face, so a
+  new puzzle costs a registry line and no export at all. The Text objects still
+  in the .blend are there to design against, nothing more.
+- **`ui/hud/sign_view.gd` is a SubViewport** with its own `World3D`, camera and
+  light. It draws **on demand**, not per frame: thirteen live signs on
+  UPDATE_WHEN_VISIBLE cost 18.6 ms of process time on the menu against a ~5 ms
+  idle baseline. Call `redraw()` after anything that changes what it shows --
+  `set_words()` and the resize refit already do.
+- **Light it the way `world/stage.gd` lights the game**: its 0.46 sun over
+  0.115 ambient is *measured* against a rendered frame, not derived, because
+  gl_compatibility renders brighter than the shader maths predicts. At the
+  obvious values the plank blows out to pale pine and the leaves go yellow.
+- **The camera is tilted ~9 degrees off dead-on.** Straight down the board's
+  normal an orthographic camera sees only front faces, so the lettering's
+  extrusion is edge-on and the whole sign reads flat. `TextMesh` has no bevel
+  to catch light the way the Blender text did, so the depth has to be shown.
+- **Outline shells get their own thin materials here**, at `LINE_WIDTH` 0.005
+  rather than Toon's 0.014: a sign is drawn far larger than a stage piece, so
+  the world-space shells read several times too thick, and a leaf in the shared
+  ink line becomes the harsh black edge `docs/art/shading-direction.md` rules
+  out. Build fresh materials -- `Toon.line()` caches per colour and those are
+  shared with every piece on the stage.
 - **Titles shrink to fit; the plank never stretches**, so the column stays
-  even. The tool prints a `FIT` line when a title had to come down (Code Break
-  90%, Snake Apple 85%). What binds the width is the leaf sprigs at x = +-0.79,
-  not the plank's edge.
-- Fredoka is a variable font and Blender only loads its Light instance, so the
-  lettering's weight comes from the Text objects' `offset` (a faux-bold), not
-  from a weight axis. Pushing that offset too far closes the counter of an "A"
-  into a sliver.
+  even. What binds the width is the leaf sprigs at x = +-0.79, not the plank's
+  edge. How tall a sign stands is `top_bar.sign_height`: a puzzle's row can
+  only afford 180 (four buttons leave about 496px at 1080 wide), and the menu
+  overrides it to 250 since it shares its row with one button.
 
 ## Art: shading direction
 

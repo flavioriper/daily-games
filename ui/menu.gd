@@ -1,7 +1,7 @@
 extends Control
 
-## The first screen: the wordmark and the day card over the island, one paper
-## card per puzzle beneath, and the motto footer, all in the HUD's own theme
+## The first screen: the title sign and the day card over the island, one
+## carved sign per puzzle beneath, and the motto footer, all in the HUD's own theme
 ## and motion. Opening a card hands the puzzle to a PuzzleHost and hides the
 ## list; the host's close shows it again. The host is always this node's last
 ## child while it lives, which the harnesses rely on.
@@ -19,9 +19,6 @@ const DayCard = preload("res://ui/hud/day_card.gd")
 const PuzzleCard = preload("res://ui/hud/puzzle_card.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 
-## The menu's own sign, rendered from TITLE and MOTTO below by
-## tools/build_signs.py.
-const SIGN := "daily"
 ## Taller than a puzzle's row allows: this one only shares its row with the
 ## settings button, and the first screen's own name should carry more weight
 ## than the signs listed beneath it.
@@ -73,8 +70,8 @@ func _build_list() -> void:
 	root.add_theme_constant_override("separation", GAP)
 	margins.add_child(root)
 
-	# --- wordmark and settings ---
-	top_bar = TopBar.new(SIGN, TITLE, MOTTO, false)
+	# --- title sign and settings ---
+	top_bar = TopBar.new(TITLE, MOTTO, false)
 	top_bar.name = "TopBar"
 	top_bar.sign_height = SIGN_HEIGHT
 	top_bar.settings.connect(func() -> void: settings_sheet.open())

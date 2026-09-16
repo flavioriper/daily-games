@@ -85,6 +85,12 @@ BLENDER=${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}
 # blender_export.py.
 "$BLENDER" -b art/landscape.blend --python-exit-code 1 \
   --python tools/blender_export.py -- Meadow Foliage Blossom Hills Cloud
+# The menu and HUD title board: one plank, its leaf sprigs and its two screws.
+# The lettering is not in here -- ui/hud/sign_view.gd extrudes the title and
+# motto with TextMesh in the display face, so the words stay data and a new
+# puzzle costs a registry line rather than an export.
+"$BLENDER" -b art/sign.blend --python-exit-code 1 \
+  --python tools/blender_export.py -- Title_Sign
 if ! godot --headless --path . --import > /tmp/godot_import.log 2>&1; then
   echo "godot --import failed; see /tmp/godot_import.log" >&2
   tail -20 /tmp/godot_import.log >&2

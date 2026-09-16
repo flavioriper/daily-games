@@ -163,7 +163,12 @@ MASCOT_LIMIT = (1.4, 1.4, 1.4)
 # near, sized in tens of units rather than cells, so no footprint budget
 # applies -- only the origin and base rules every slot keeps.
 BACKDROP = {"meadow", "cloud", "foliage", "blossom", "hills"}
-UNBOUNDED = {"platform", "water"} | BACKDROP  # no maximum; platform has its own exact check
+# The menu and HUD title board (art/sign.blend). It is chrome, not a piece on
+# a board: it is drawn in its own SubViewport at whatever size the Control
+# layout gives it, so the cell footprint rules mean nothing to it. It still
+# keeps the origin and base rules every slot keeps.
+SIGNS = {"title_sign"}
+UNBOUNDED = {"platform", "water"} | BACKDROP | SIGNS  # no maximum; platform has its own exact check
 # Slots the board tiles edge to edge, so the footprint must be exact, not
 # merely within budget: the platform is stretched by (cols + 1, rows + 1) and
 # the rim pieces are laid one per cell, where a short piece leaves a gap.

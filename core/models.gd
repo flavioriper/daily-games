@@ -22,7 +22,8 @@ const SLOTS := ["tile", "rim_edge", "rim_corner", "platform", "water", "socket",
 	"mosaic_tile", "plank",
 	"horse", "fence", "apple", "bale", "channel", "stalk", "flower",
 	"snake_head", "burrow",
-	"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost"]
+	"deck", "pier_post", "boulder", "bush", "daisy", "tuft", "signpost",
+	"title_sign"]
 ## The five pipe shapes. They all carry the same three layers, so anything
 ## that dresses or tints one dresses or tints all of them.
 const PIPES := ["pipe_cap", "pipe_straight", "pipe_elbow", "pipe_tee", "pipe_cross"]
@@ -37,8 +38,10 @@ const FLOWING := PIPES + ["pump", "source_tank", "drain_pool"]
 ## ball as Kind.CIRCLE is a circle. They all carry the same single layer, so
 ## anything that tints one tints all of them.
 const TOKENS := ["token_ball", "token_cube", "token_prism", "token_gem", "token_cross"]
-## Slots exempt from the 1 x 1 footprint rule.
-const UNBOUNDED := ["platform", "water"]
+## Slots exempt from the 1 x 1 footprint rule. The title board is chrome drawn
+## in its own SubViewport at whatever size the Control layout gives it, so a
+## cell footprint means nothing to it.
+const UNBOUNDED := ["platform", "water", "title_sign"]
 
 static var _scenes: Dictionary = {}
 

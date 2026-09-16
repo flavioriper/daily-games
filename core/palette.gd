@@ -50,11 +50,11 @@ const WOOD_DEEP    := Color("9c7350")   # the colour tray's bottom edge
 
 # Code Break's screen (docs/art/concept-codebreak-screen.png): the plank dock
 # the board is laid on, the turf bank under it, the boulders beside it, and
-# the plaques the wordmark and the day card sit on.
+# the wood the title signs and the day card are cut from.
 const DECK        := Color("b5825a")   # deck planks
 const BANK        := Color("8cb050")   # the turf bank and the far bank
 const BOULDER     := Color("9ba5ad")   # a rock beside the deck, cool against the turf
-const PLAQUE      := Color("9c6b45")   # the wordmark's and day card's wood
+const PLAQUE      := Color("9c6b45")   # the title sign's and day card's wood
 const PLAQUE_DEEP := Color("6e4a2f")   # its bottom edge
 
 # Pipes (docs/art/concept-pipes.png): chrome when dry, lit blue when fed. The
