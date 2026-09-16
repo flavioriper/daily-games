@@ -66,21 +66,17 @@ const DAISIES := [
 	[-4.3, -2.0, 0.0, 1.0], [-4.3, 1.6, 0.8, 1.2], [-5.0, 3.6, 1.6, 1.0],
 	[4.3, -1.9, 0.4, 1.1], [4.2, 0.7, 1.2, 1.0], [4.9, 3.2, 2.0, 1.2],
 ]
-const TREES := [
-	[-5.5, -11.0, 0.3, 1.2], [0.5, -11.3, 2.5, 1.3], [6.0, -11.1, 1.9, 1.2],
-]
 const SIGN := [-4.7, -2.5, 0.44, 1.0]
 const LANTERN_SCALE := 1.5
 const POM_SCALE := 1.2
 const POM_YAW := -0.52   # about 30 degrees, face toward the board on its left
-## A boulder's top at scale s is BANK_TOP + BOULDER_H * s; POM's seat is
-## flattened, so this is where its pivot rests.
-const POM_REST_Y := BANK_TOP + Placeholders.BOULDER_H * SEAT_POM_FLAT
 const TUFT_COUNT := 200
 const TUFT_SEED := 20260915
 
 ## Everything around the dock: the banks and river, the props in entrance
 ## order, and POM. `cols` widens the prop tables for the five-slot board.
+## `pom_rest_y` comes back with the rest because only this table knows how
+## high POM's seat stands: the lantern's boulder is read the same way.
 static func build(cols: int) -> Dictionary:
 	var root := Node3D.new()
 	root.name = "Scenery"
@@ -117,14 +113,16 @@ static func build(cols: int) -> Dictionary:
 	Models.tint_named(lantern.get_child(0), "Glass", Pal.SUN)
 	props.append(lantern)
 	props.append(_prop(root, "signpost", Vector3(_spread(SIGN[0], dx), BANK_TOP, SIGN[1]), SIGN[2], SIGN[3]))
-	for t in TREES:
-		props.append(_prop(root, "tree", Vector3(_spread(t[0], dx), BANK_TOP, t[1]), t[2], t[3]))
 
+	# A boulder's top at scale s is BANK_TOP + BOULDER_H * s, and POM's seat is
+	# flattened as well as scaled, so both factors have to be read off the
+	# table -- with the scale alone POM sank 0.168 into the rock.
+	var seat: Array = BOULDERS[SEAT_POM]
+	var pom_rest_y := BANK_TOP + Placeholders.BOULDER_H * float(seat[3]) * SEAT_POM_FLAT
 	var pom: Node3D = null
 	if Models.has_model("mascot_pom"):
-		var seat: Array = BOULDERS[SEAT_POM]
-		pom = _prop(root, "mascot_pom", Vector3(_spread(seat[0], dx), POM_REST_Y, seat[1]), POM_YAW, POM_SCALE)
-	return {"root": root, "props": props, "pom": pom}
+		pom = _prop(root, "mascot_pom", Vector3(_spread(seat[0], dx), pom_rest_y, seat[1]), POM_YAW, POM_SCALE)
+	return {"root": root, "props": props, "pom": pom, "pom_rest_y": pom_rest_y}
 
 ## Pushes an x outward for a wider board: props keep their distance from the
 ## deck's edge, not from the origin.

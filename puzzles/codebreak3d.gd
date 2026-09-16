@@ -109,6 +109,7 @@ var _lid_gone: Array = []     # [s] -> true once the lid has slid off
 var _code_pegs: Array = []    # [s] -> the code peg, hidden until revealed
 var _props: Array[Node3D] = []   # scenery pivots that pop in on the entrance
 var _pom: Node3D                 # POM's pivot, or null without the model
+var _pom_rest_y := 0.0           # the top of POM's seat, measured by the scenery
 # --- tweens ---
 var _dips: Array = []         # [g][s]
 var _wobbles: Array = []      # [g][s]
@@ -172,7 +173,7 @@ func reset_board() -> void:
 	if _pom != null:
 		Motion.stop(_pom_hop_tw)
 		_pom_hop_tw = null
-		_pom.position.y = CodebreakScenery.POM_REST_Y
+		_pom.position.y = _pom_rest_y
 	for g in max_guesses:
 		for s in length:
 			_settle(g, s)
@@ -395,6 +396,7 @@ func _build_scene() -> void:
 	board.add_child(scene.root)
 	_props = scene.props
 	_pom = scene.pom
+	_pom_rest_y = scene.pom_rest_y
 	if _pom != null:
 		var model: Node3D = _pom.get_child(0)
 		_pom_tw = Motion.pulse(model, "scale:y", model.scale.y, model.scale.y * (1.0 + POM_BREATH), POM_PERIOD)
@@ -459,7 +461,7 @@ func _build_scene() -> void:
 		for k in length:
 			var pip := Models.instance("pip")
 			pip.name = "pip_%d" % k
-			pip.position = _pip_offset(k, Placeholders.SOCKET_H + Placeholders.WELL_PROUD)
+			pip.position = _pip_offset(k, Placeholders.PEG_SEAT + Placeholders.WELL_PROUD)
 			Models.set_layer_visible(pip, "Pip_Ball", false)
 			slab.add_child(pip)
 			pips.append(pip)
@@ -797,8 +799,8 @@ func _on_solved() -> void:
 		_peg_tw[g][s] = Motion.hop(peg, SOLVE_HOP, SOLVE_TIME, Motion.stagger(s, SOLVE_STAGGER), Placeholders.PEG_SEAT)
 	if _pom != null:
 		Motion.stop(_pom_hop_tw)
-		_pom.position.y = CodebreakScenery.POM_REST_Y
-		_pom_hop_tw = Motion.hop(_pom, POM_HOP, POM_HOP_TIME, 0.0, CodebreakScenery.POM_REST_Y)
+		_pom.position.y = _pom_rest_y
+		_pom_hop_tw = Motion.hop(_pom, POM_HOP, POM_HOP_TIME, 0.0, _pom_rest_y)
 	fx.cue("solved")
 
 ## Out of guesses: the lids slide off to show the code, the timer stops, and
