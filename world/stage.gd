@@ -208,7 +208,7 @@ func _fit_ground(aabb: AABB) -> void:
 	var wm := Toon.water()
 	if wm != null:
 		wm.set_shader_parameter("pond_center", water.position)
-	backdrop.fit_to(aabb)
+	backdrop.fit_to(aabb, rig.yaw_deg)
 
 ## Swings the view a quarter turn per step, so a board asks the stage rather
 ## than reaching into the rig. CameraRig.turn only swings the yaw and re-
@@ -217,13 +217,18 @@ func _fit_ground(aabb: AABB) -> void:
 ## re-leans first, at the yaw the turn landed on, and only then re-fits from
 ## a world box freshly taken through that lean -- re-fitting from the box the
 ## old lean produced (or before re-leaning at all) would frame a shape the
-## board is no longer showing. Returns the tween, or null off-tree.
+## board is no longer showing. A turn also changes rig.yaw_deg, which
+## backdrop.fit_to reads to keep the hills ring's rolling wedge facing the
+## camera, so this re-runs that too rather than leaving the ring at whatever
+## way it faced before the turn. Returns the tween, or null off-tree.
 func turn(steps: int) -> Tween:
 	var tw: Tween = rig.turn(steps)
 	if tw != null:
 		tw.tween_callback(func() -> void:
 			_lean(_face)
-			rig.fit(_fit_box(_last_local_aabb), _last_rect))
+			var world := _fit_box(_last_local_aabb)
+			rig.fit(world, _last_rect)
+			backdrop.fit_to(world, rig.yaw_deg))
 	return tw
 
 ## Rings the water under a board that has just landed.

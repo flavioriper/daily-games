@@ -61,24 +61,44 @@ const BLOSSOMS := 70
 ## for a day before this task: a draw call nobody can see is not worth having.
 const CLOUD_SHADER := preload("res://shaders/backdrop_cloud.gdshader")
 ## How far out the hills ring stands and how big it is drawn. hills.glb is
-## mostly a flat plateau (measured: every vertex outside one 30-degree wedge
-## sits at exactly the same height, verified by walking the raw mesh and
-## bucketing by angle) with a small, irrelevant dip-and-rise confined to that
-## one wedge, which never faces this camera at any yaw the stage uses. So the
-## ring's screen height comes entirely from perspective foreshortening of a
-## flat disc's near and far edge, not from any rolling silhouette -- and that
-## puts a hard ceiling on how tall a band tuning alone can produce: bringing
-## the ring's near edge from a world radius of 46 (spread 1.6, this task's
-## first pass) down to 29 (spread 1.0) only grew the visible band from 20px to
-## ~47px on a rendered Binairo frame (measured column walk, see _build_hills).
-## Below spread ~0.85 the ring's hole shrinks past the meadow's own ~26-unit
-## reach and the two meshes interpenetrate -- confirmed on a render, spread
-## 0.4 buries the whole board under the ring. 0.9 (hole at 29 * 0.9 = ~26,
+## mostly a flat plateau -- every vertex outside one wedge sits at exactly the
+## same height, verified by walking the raw mesh -- with a real rolling
+## dip-and-rise confined to that one wedge, measured at 37.9 to 57.9 degrees
+## of azimuth in the mesh's own space (20 degrees wide). A flat plateau's
+## screen height comes only from perspective foreshortening of its near and
+## far edge, which is why a first pass (before the wedge was turned to face
+## the camera; see HILLS_WEDGE_DEG and _build_hills) put a hard ceiling on the
+## band no matter how HILLS_SPREAD and POND were tuned: bringing the ring's
+## near edge from a world radius of 46 (spread 1.6) down to 29 (spread 1.0)
+## only grew the flat band from 20px to ~47px on a rendered frame. Below
+## spread ~0.85 the ring's hole shrinks past the meadow's own ~26-unit reach
+## and the two meshes interpenetrate -- confirmed on a render, spread 0.4
+## buries the whole board under the ring. 0.9 (hole at 29 * 0.9 = ~26,
 ## matching the meadow almost exactly) is as close as the ring can stand
-## without overlapping it, which is also as tall as this specific mesh reads
-## from this camera. The colour carries the rest of the read (see
-## _build_hills's own comment).
+## without overlapping it.
 const HILLS_SPREAD := 0.9
+## The wedge's azimuth is 20 degrees wide -- narrower than the ~23.1-degree
+## horizontal FOV this camera actually has (40-degree vertical FOV, Godot
+## keeps height, so horizontal = 2*atan(tan(20deg) * 1080/1920) at this
+## resolution) -- so it does not need to roll all the way round the ring, it
+## only needs to be pointed at whoever is looking. fit_to() rotates the ring
+## about Y, on every fit and every turn, so the wedge's centre (47.9 degrees
+## in the mesh's own space) always faces the camera's current yaw, offset by
+## HILLS_FACE_OFFSET_DEG (see that constant).
+const HILLS_WEDGE_DEG := 47.9
+## Aiming the wedge's centre dead at the camera puts its steepest, most
+## rolling section directly behind the board -- the board's own footprint
+## covers most of the frame's width, so the only part of the wedge that ever
+## cleared it was its flat, near-plateau tail at each edge (measured: 6px of
+## top-edge variation at the frame's sides on a rendered Binairo frame, no
+## better than the un-rotated ring). This offset moves the wedge's steepest
+## section into the strip past the board's edge instead, where it can
+## actually be seen. Found by rendering Binairo (the tightest camera) at a
+## sweep of offsets and measuring the hills band's own top-edge y from x = 0
+## to 160 at each one: -11 to -13 degrees all gave ~38px of variation there,
+## against 6-22px everywhere else tried, so -12 sits in the middle of that
+## plateau rather than at an edge of it.
+const HILLS_FACE_OFFSET_DEG := -12.0
 ## Three cloud cards past the hills, low enough that their feet meet the
 ## hills' own top line instead of floating in open sky. cloud.glb's card is
 ## modelled 56.3 units tall with its origin at the *bottom* edge, not the
@@ -123,11 +143,33 @@ func refresh() -> void:
 	pass
 
 ## Slides the whole landscape under the board so a big board does not run off
-## the edge of a meadow centred on the world origin. The stage calls this from
-## fit_camera, next to Ambient.fit_to.
-func fit_to(aabb: AABB) -> void:
+## the edge of a meadow centred on the world origin, and turns the hills ring
+## to keep its one rolling wedge facing whichever way the camera is currently
+## looking. The stage calls this from fit_camera, next to Ambient.fit_to, and
+## again from turn()'s callback, since a turn changes the camera's yaw without
+## going through fit_camera at all.
+##
+## Turning the ring to face the player is not something anything else in the
+## stage does -- a board or a piece stands in a place, and a place does not
+## spin to be seen. The landscape is not a place; it is a painted backdrop, no
+## different in kind from the foliage cards and the cloud cards that already
+## billboard for the same reason (world/backdrop.gd's own _flat(), billboard
+## param). Rotating the whole ring is that same trick at the scale of terrain.
+func fit_to(aabb: AABB, yaw_deg: float = 0.0) -> void:
 	var c := aabb.get_center()
 	position = Vector3(c.x, 0.0, c.z)
+	if hills != null:
+		hills.rotation.y = deg_to_rad(HILLS_WEDGE_DEG - _facing_azimuth_deg(yaw_deg) - HILLS_FACE_OFFSET_DEG)
+
+## The world-space azimuth (atan2(z, x), degrees) the camera is currently
+## looking toward, projected onto the ground plane. CameraRig's own dir_at()
+## returns the unit vector from the target *toward* the camera; the camera
+## looks the other way, and pitch's vertical component does not change which
+## way is "toward the horizon" on the ground, so the direction it looks along
+## the ground is simply -(sin(yaw), cos(yaw)) in (x, z).
+static func _facing_azimuth_deg(yaw_deg: float) -> float:
+	var yaw := deg_to_rad(yaw_deg)
+	return rad_to_deg(atan2(-cos(yaw), -sin(yaw)))
 
 func _instance(slot: String) -> Node3D:
 	var path := DIR + slot + ".glb"
