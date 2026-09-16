@@ -19,6 +19,13 @@ const DayCard = preload("res://ui/hud/day_card.gd")
 const PuzzleCard = preload("res://ui/hud/puzzle_card.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 
+## The menu's own sign, rendered from TITLE and MOTTO below by
+## tools/build_signs.py.
+const SIGN := "daily"
+## Taller than a puzzle's row allows: this one only shares its row with the
+## settings button, and the first screen's own name should carry more weight
+## than the signs listed beneath it.
+const SIGN_HEIGHT := 250.0
 const TITLE := "Daily"
 const MOTTO := "Small puzzles · Brighter days"
 const FOOTER := "Pick one · Play · Come back tomorrow"
@@ -67,8 +74,9 @@ func _build_list() -> void:
 	margins.add_child(root)
 
 	# --- wordmark and settings ---
-	top_bar = TopBar.new(TITLE, MOTTO, false)
+	top_bar = TopBar.new(SIGN, TITLE, MOTTO, false)
 	top_bar.name = "TopBar"
+	top_bar.sign_height = SIGN_HEIGHT
 	top_bar.settings.connect(func() -> void: settings_sheet.open())
 	root.add_child(top_bar)
 	top_bar.refresh(null)

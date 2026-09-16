@@ -1,8 +1,13 @@
 extends "res://ui/hud/panel.gd"
 
-## The HUD's top row: back, the wordmark (title in the display face with a
-## leaf, the motto beneath), then undo, hint with its bouncing count badge,
-## and settings. Emits one signal per button; the host decides what they do.
+## The HUD's top row: back, the puzzle's carved sign (the same board the menu
+## cards are cut from, rendered by tools/build_signs.py), then undo, hint with
+## its bouncing count badge, and settings. Emits one signal per button; the
+## host decides what they do.
+##
+## With no sign rendered for this id the row falls back to the drawn plaque it
+## used to be -- wordmark, motto, leaf and nails -- so a stripped project still
+## has a readable title.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, sections 2 and 5.
 
 signal back
@@ -14,6 +19,14 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const Wordmark = preload("res://ui/hud/wordmark.gd")
 
+const SIGN_DIR := "res://assets/signs/"
+## How tall the sign stands in the row. The board is wide (the frame
+## tools/build_signs.py renders is 1024x372), so height is what the row can
+## afford to give it; the width follows, and KEEP_ASPECT_CENTERED shrinks the
+## whole board rather than squeezing it when the slot is narrower than that.
+## 180 is all a puzzle's row can use: four buttons and their separations leave
+## about 496px between them at 1080 wide, and 496 / (1024/372) is 180.
+const SIGN_HEIGHT := 180.0
 const BUTTON := Vector2(110, 110)
 const LEAF := 36.0
 const NAIL_R := 8.0
@@ -24,6 +37,12 @@ const BADGE_HOP := -6.0
 const BADGE_HOP_TIME := 0.3
 const BADGE_CYCLE := 2.4
 
+## Which sign to hang: a registry id, or "daily" for the menu's own.
+var sign_id := ""
+## Overridable before the row enters the tree. The menu gives its own sign more
+## than SIGN_HEIGHT because it carries one button rather than four, and the
+## app's title should not read smaller than an entry in its list.
+var sign_height := SIGN_HEIGHT
 var title_text := ""
 var motto_text := ""
 ## False on the menu, which has nowhere to go back to: a blank of the button's
@@ -33,12 +52,14 @@ var back_button: Button
 var undo_button: Button
 var hint_button: Button
 var settings_button: Button
+var _sign: TextureRect
 var _title: Control
 var _motto: Label
 var _plaque: PanelContainer
 var _bounce: Tween
 
-func _init(title := "", motto := "", back_shown := true) -> void:
+func _init(sign := "", title := "", motto := "", back_shown := true) -> void:
+	sign_id = sign
 	title_text = title
 	motto_text = motto
 	with_back = back_shown
@@ -56,8 +77,31 @@ func _build() -> void:
 		var blank := Control.new()
 		blank.custom_minimum_size = BUTTON
 		_inner.add_child(blank)
-	# The plaque hugs the title and motto and stays centred between the
-	# buttons: the CenterContainer takes the expanding slot the words used to.
+	var tex: Texture2D = load(SIGN_DIR + sign_id + ".png") as Texture2D
+	if tex != null:
+		_sign = TextureRect.new()
+		_sign.texture = tex
+		_sign.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_sign.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_sign.custom_minimum_size = Vector2(0.0, sign_height)
+		_sign.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_sign.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_inner.add_child(_sign)
+		_add_buttons()
+		return
+	_build_plaque()
+	_add_buttons()
+
+## The row's buttons, after whatever carries the title.
+func _add_buttons() -> void:
+	undo_button = _button("undo", undo)
+	hint_button = _button("bulb", hint)
+	settings_button = _button("gear", settings)
+
+## The drawn plaque: what the row was before the signs were modelled, kept as
+## the fallback. The plaque hugs the title and motto and stays centred between
+## the buttons: the CenterContainer takes the expanding slot the words used to.
+func _build_plaque() -> void:
 	var centre := CenterContainer.new()
 	centre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inner.add_child(centre)
@@ -97,9 +141,6 @@ func _build() -> void:
 	_motto.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_motto.visible = motto_text != ""
 	words.add_child(_motto)
-	undo_button = _button("undo", undo)
-	hint_button = _button("bulb", hint)
-	settings_button = _button("gear", settings)
 
 func _button(icon: String, sig: Signal) -> Button:
 	var b := IconButton.new(icon)

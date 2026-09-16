@@ -68,7 +68,7 @@ func _ready() -> void:
 	margins.add_child(root)
 
 	# --- top bar ---
-	top_bar = TopBar.new(_entry.get("title", ""), _entry.get("motto", ""))
+	top_bar = TopBar.new(_entry.get("id", ""), _entry.get("title", ""), _entry.get("motto", ""))
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)

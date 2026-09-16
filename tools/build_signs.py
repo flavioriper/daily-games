@@ -5,8 +5,9 @@ Run from a shell:
     /Applications/Blender.app/Contents/MacOS/Blender -b art/sign.blend \
         --python tools/build_signs.py
 
-Every puzzle in ui/registry.gd gets assets/signs/<id>.png: the sign's plank,
-leaves and screws exactly as modelled, with the title and motto swapped in.
+Every puzzle in ui/registry.gd gets assets/signs/<id>.png, and the menu's own
+TITLE and MOTTO get assets/signs/daily.png: the sign's plank, leaves and screws
+exactly as modelled, with the title and motto swapped in.
 The .blend is the source -- this only sets two Text bodies and renders, so the
 board itself can only be changed by editing art/sign.blend.
 
@@ -25,6 +26,11 @@ import bpy
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "signs"
 REGISTRY = ROOT / "ui" / "registry.gd"
+# The menu's own sign. Its words are not a registry entry -- they are the
+# first screen's TITLE and MOTTO -- so they are read from there rather than
+# spelled a second time here.
+MENU = ROOT / "ui" / "menu.gd"
+MENU_ID = "daily"
 
 # The widest the lettering may run, in Blender units. What binds is not the
 # plank (1.90 across, 1.58 of it flat inside the corner radius) but the leaf
@@ -52,6 +58,18 @@ def entries(text):
         if len(got) == 3:
             out.append((got["id"], got["title"], got["motto"]))
     return out
+
+
+def menu_entry(text):
+    """The menu's own (id, title, motto), from its TITLE and MOTTO constants."""
+    got = {}
+    for key in ("TITLE", "MOTTO"):
+        m = re.search(r'const %s\s*:=\s*"((?:[^"\\]|\\.)*)"' % key, text)
+        if m:
+            got[key] = m.group(1)
+    if len(got) != 2:
+        return None
+    return (MENU_ID, got["TITLE"], got["MOTTO"])
 
 
 def width_of(ob):
@@ -85,6 +103,11 @@ def main():
     if not puzzles:
         sys.stderr.write("no puzzles found in %s\n" % REGISTRY)
         sys.exit(1)
+    menu = menu_entry(MENU.read_text())
+    if menu is None:
+        sys.stderr.write("no TITLE/MOTTO found in %s\n" % MENU)
+        sys.exit(1)
+    puzzles.append(menu)
 
     for pid, title_text, motto_text in puzzles:
         t_ratio = fit(title, title_text.upper(), BASE_TITLE, MAX_TITLE_W)
