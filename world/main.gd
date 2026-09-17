@@ -8,12 +8,18 @@ extends Node
 const Motion = preload("res://core/motion.gd")
 const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
+const Backend = preload("res://core/backend.gd")
+const Locale = preload("res://core/locale.gd")
 
 func _enter_tree() -> void:
 	Motion.load_settings()
+	Locale.apply()
 
 ## Telemetry wakes up here and nowhere else, so only a real launch counts;
 ## tests and harnesses build these screens without ever starting it.
 func _ready() -> void:
 	Analytics.start(self)
 	Analytics.track("game_open", {"day": Progress.day()})
+	# The backend wakes here and nowhere else, same as telemetry: the suite
+	# and the harnesses build these screens and stay offline.
+	Backend.start(self)

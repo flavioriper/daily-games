@@ -81,3 +81,11 @@ analytics_secret.cfg
 # cloud, tree and blossom cards. Not rebuildable by a script -- the source file
 # came in by hand and was cut to the contract in the live session.
 !art/landscape.blend
+
+server/functions/node_modules/
+server/functions/lib/
+server/.firebase/
+# Dropped by the Firebase emulator suite on every run; not project state.
+# The glob, because the suite names a new one for every service it starts
+# (firebase-debug.log turned up the first time the functions emulator ran).
+server/*.log

@@ -19,3 +19,13 @@ static func rng(puzzle_id: String, round_index: int, dt: Dictionary = {}) -> Ran
 	var r := RandomNumberGenerator.new()
 	r.seed = seed_for(puzzle_id, round_index, dt)
 	return r
+
+## FNV-1a, 32 bit. server/functions/src/index.ts computes the same hash over
+## the same string, so a phone that has never reached the network derives the
+## same day's content as the one that was published.
+static func fnv1a(s: String) -> int:
+	var h := 0x811c9dc5
+	for b in s.to_utf8_buffer():
+		h ^= b
+		h = (h * 0x01000193) & 0xFFFFFFFF
+	return h

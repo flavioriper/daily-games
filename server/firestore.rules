@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The day's published content, and the crowd's rolled-up tally.
+    match /days/{day}/turns/{game} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      // The answer for a game whose answer must not leak. Server only.
+      match /secret/{doc} {
+        allow read, write: if false;
+      }
+
+      // A player reads their own submit and no one else's.
+      match /submits/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+
+      // Aggregation internals. Clients read tally/current instead.
+      match /shards/{shard} {
+        allow read, write: if false;
+      }
+
+      match /tally/{doc} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+    }
+
+    // Reserved for the leaderboard. A player reads their own row and no
+    // one else's: today it holds only a lastSubmitMs, but whatever the
+    // leaderboard adds should be exposed by a decision, not by default.
+    match /players/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

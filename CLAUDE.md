@@ -122,7 +122,10 @@ the footer slot's rays meet the ground, after every layout change.
   a board's never does. At y 0 the camp's feet and its fence are buried in it.
 - **Cards come in pages of nine**, turned with the buttons under the grid, not
   a scroll. Each card's picture is a live diorama of that puzzle's own pieces
-  (`ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder.
+  (`ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder. A
+  full page of nine measures 318 draw calls against the 855 budget, on this
+  Mac at phone resolution -- the cards are what a page costs, so a page, not
+  the whole registry, is the unit to measure against the budget.
 
 ## Art: shading direction
 
@@ -159,9 +162,13 @@ export stays on the non-gradle path.
 - Events: `game_open`, `puzzle_start`, `puzzle_complete`, `puzzle_abandon`,
   `hint_used`, `undo_used`, `check_used`, `board_reset`, `rules_opened`,
   `new_puzzle`, `reduce_motion`, and on a board that can be turned,
-  `view_turn` and `peek_used`. Board events carry puzzle_id, difficulty,
-  day, seconds, moves, hints, checks; the last two tell us whether Pipes'
-  third dimension is a puzzle or a nuisance.
+  `view_turn` and `peek_used`. A daily turn adds `turn_lock`, `turn_reveal`,
+  `turn_share` and `crowd_reveal_opened`. Board events carry puzzle_id,
+  difficulty, day, seconds, moves, hints, checks; the last two tell us
+  whether Pipes' third dimension is a puzzle or a nuisance.
+- **`locale` rides on every event**, stamped by `Analytics.track()` beside
+  `session_id` and `engagement_time_msec` on whatever it is handed, so any
+  event can be split by language without a caller remembering to pass it.
 - To debug the wiring: `Analytics.validate = true` posts to GA4's validation
   endpoint and prints the verdict instead of recording; `Analytics.debug_mode`
   puts events in the console's DebugView.
@@ -170,6 +177,82 @@ export stays on the non-gradle path.
   then sends one DebugView-tagged event, so the wiring is visible rather than
   assumed. GA4's collect endpoint answers 204 to everything, so DebugView is
   the only proof a secret actually works.
+
+## Turns and the backend
+
+A **turn** is one committed input a day, an immediate reveal and a graded
+result -- never a pass or a fail. Turns sit on the camp grid as cards beside
+the boards (`ui/registry.gd` says `"kind": "turn"`), and cost a
+`core/turn_base.gd` subclass plus a registry line, the way a puzzle costs a
+`PuzzleBase3D`. Both stand on `core/stage_view.gd`, which owns the stage
+mounting, the camera fit and the picking maths; `PuzzleBase` extends it too,
+because GDScript is single-inheritance.
+
+**The live backend is not provisioned, and that is expected.** Cloud
+Firestore is not enabled in `peeplet-daily`, there is no Firebase Web app for
+it yet, and `core/backend.gd`'s `API_KEY` is still the placeholder
+`PASTE_WEB_API_KEY_HERE`. A build run against the real project will fail to
+sign in every time; that is not a bug to chase, it is the project waiting on
+the repo owner to provision it. Everything below this point is verified
+against the local emulator suite, not the live project.
+
+`core/backend.gd` is the only way out of the game. It is static and woken by
+`world/main.gd` alone, exactly like `Analytics` -- **unstarted means offline**,
+which is how the suite and the harnesses build these screens without touching
+the network, and why neither is an autoload.
+
+- Identity is **Firebase Auth anonymous** over the Identity Toolkit REST API,
+  not an install id: a security rule cannot verify an unsigned id, and the
+  leaderboard is coming. It upgrades in place to a real account later.
+- Reads go straight to **Firestore's REST API**; writes go to one Cloud
+  Function. Every document a client reads carries a **single `json` field**,
+  which is what keeps Firestore's typed values from becoming a decoder.
+- There is **no percentile endpoint**: the tally ships the 101-bucket
+  histogram and `Backend.percentile()` does the arithmetic on the device.
+  Instant reveal, works offline, and "the number moves if you come back" is
+  just a second read.
+- A submit is queued to disk before it is sent and flushed on the next
+  launch. The server keys on uid, day and game, so a double flush is
+  harmless. Nothing waits on the network, and in particular **nothing blocks
+  Lock**. `submitTurn` itself only accepts a submit dated today or yesterday
+  in UTC -- yesterday stays open so the offline queue can still flush after
+  the day rolls over mid-queue.
+- Server lives in `server/` (Cloud Functions v2, TypeScript, Node 22).
+  `tools/deploy_functions.sh` deploys the functions and the rules; it is not
+  in CI yet, and it has not been run against `peeplet-daily` for the reason
+  above. `server/.gdignore` keeps Godot out of `node_modules`.
+- `tools/_backend_probe.gd` drives the whole path against the emulator suite
+  and prints what came back. It is a harness, not a suite entry.
+
+Running the emulator suite locally has three traps worth knowing before you
+lose an hour to them. The Firestore emulator needs **JDK 21+**; the `java` on
+this Mac's `PATH` is Homebrew's 17, and firebase-tools refuses to start
+against it, so every emulator command runs prefixed with
+`PATH="/opt/homebrew/opt/openjdk/bin:$PATH"`. The suite itself is started
+`--project demo-peeplet` -- the `demo-` prefix is what forces the emulator
+into fully offline mode with no real credentials touched -- which is why
+`core/backend.gd` reads a `FIREBASE_PROJECT` environment override alongside
+`FIREBASE_EMULATOR`, rather than hardcoding the project id it addresses.
+And **`firebase functions:shell` cannot invoke a v2 `onSchedule` function** in
+CLI 15.14.0: it prints "Successfully invoked function" and does nothing. To
+trigger `publishDay` or `rollupTally` by hand, wrap the body in a temporary
+`onRequest` function and curl it, or write to Firestore directly over the
+emulator's REST API; this has already cost two implementers an afternoon
+each.
+
+`core/locale.gd` picks between `en`, `pt` and `es` and does the number
+formatting `TranslationServer` does not. Only the turn flow's strings are
+keyed (`locale/turn.csv`); the twelve boards are still hardcoded English, and
+`GUESS_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
+own blurbs get keyed. Upper-case accented capitals turned out to be fine:
+`ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228
+faces, in the same 3,600-5,600-faces-per-glyph range as `GUESS` at 22,356) --
+the only glyphs that need the weight dropped to 550 are digits 8 and 9. That
+was measured once with a throwaway probe; there is no need to re-run it for
+a new accented title.
+
+Roadmap: `docs/brainstorm/single-turn-roadmap.md`. Phase 0's design:
+`docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md`.
 
 ## CI
 
