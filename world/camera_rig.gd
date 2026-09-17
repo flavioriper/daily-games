@@ -144,6 +144,10 @@ func _place() -> void:
 func breath_offset() -> Vector3:
 	return _breath
 
+## How far the camera stands from the fitted target, in world units.
+func distance() -> float:
+	return _distance
+
 func _process(delta: float) -> void:
 	if not breathing or Motion.reduce:
 		if not _breath.is_zero_approx():

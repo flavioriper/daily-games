@@ -20,6 +20,8 @@ extends Node3D
 
 const Pal = preload("res://core/palette.gd")
 const Camp = preload("res://world/camp.gd")
+const Stage = preload("res://world/stage.gd")
+const SoftFocus = preload("res://world/soft_focus.gd")
 
 ## Where the camera stands and what it holds in the middle of the frame, in
 ## the camp's ground plane: aimed at Camp.HERO_CENTRE, the spot the menu's
@@ -85,6 +87,8 @@ func _build_light() -> void:
 	world_env.name = "Env"
 	world_env.environment = env
 	add_child(world_env)
+	# The campsite's grade over the board's pair, exactly as the menu sets it.
+	Stage.grade_camp(sun, env)
 
 func _build_camera() -> void:
 	var cam := Camera3D.new()
@@ -93,3 +97,10 @@ func _build_camera() -> void:
 	cam.current = true
 	add_child(cam)
 	cam.look_at_from_position(CAM_AT, CAM_LOOK, Vector3.UP)
+	# The campsite's soft focus, focused where the menu focuses it: on the
+	# scout's plane. In the editor it hangs off whichever camera is drawing,
+	# so the blur there follows the editor camera's own distance.
+	var focus := SoftFocus.new()
+	cam.add_child(focus)
+	focus.focus(CAM_AT.distance_to(CAM_LOOK))
+	focus.visible = true

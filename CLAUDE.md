@@ -95,6 +95,21 @@ the footer slot's rays meet the ground, after every layout change.
   `unproject_position` is right: anything that needs a ray or a pixel size
   on the menu asks the rig (`ray_origin`, `ray_normal`,
   `pixels_per_unit_at`), never `Camera3D` directly.
+- **The campsite has its own light and a soft focus; boards do not.**
+  `Stage.show_setting(true)` applies `grade_camp` (a warmer, slightly
+  stronger sun over warmer bounce, wider shadow blur, saturation and
+  contrast through the Environment's adjustments, a soft bloom, a deeper
+  sky overhead) and shows `world/soft_focus.gd`, a full-screen quad that
+  blurs by view distance past the framed thing by reading the screen
+  texture's mip levels, since Compatibility has no depth of field.
+  `show_setting(false)` restores the boards' measured pair and hides the
+  pass, so a piece is lit exactly as calibrated. On Compatibility the
+  screen and depth textures only exist during the transparent pass, so the
+  quad is `blend_mix` with a low `render_priority`; anything that must stay
+  in front of the blur has to draw in the opaque pass (the clouds went to
+  alpha scissor for this). Measured on this Mac at phone resolution: the
+  soft focus is 2.8 ms a frame, the grade 1.2 ms; if a phone drops frames on
+  the menu, the soft focus's visibility is the first lever.
 - **Instance shader parameters are scarce.** Any mesh given a
   `set_instance_shader_parameter` reserves a 16-item block of the global
   shader buffer, whether or not its material declares such a uniform, and on

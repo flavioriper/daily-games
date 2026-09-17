@@ -11,6 +11,7 @@ const Toon = preload("res://core/toon.gd")
 const CameraRig = preload("res://world/camera_rig.gd")
 const Ambient = preload("res://world/ambient.gd")
 const Backdrop = preload("res://world/backdrop.gd")
+const SoftFocus = preload("res://world/soft_focus.gd")
 
 const WATER_DEPTH := 4.0
 ## The camera's own pitch, in degrees above the horizontal, and the only one
@@ -45,6 +46,26 @@ const WATER_PLANE := 60.0
 ## the HUD's own paper, so the screen in game is the board, its chrome and
 ## nothing else.
 const FLAT_BG := Pal.PAPER
+## The board's light, the measured pair (see _ready), and the campsite's
+## grade over it (see grade_camp). Godot's colour adjustments, glow and
+## shadow blur all run on gl_compatibility; depth of field does not (probed
+## 2026-09-17), so the campsite's blur is its own pass, world/soft_focus.gd.
+const BOARD_SUN := Color("fff1dc")
+const BOARD_SUN_ENERGY := 0.46
+const BOARD_AMBIENT_ENERGY := 0.115
+const CAMP_SUN := Color("ffe4bd")
+const CAMP_SUN_ENERGY := 0.48
+const CAMP_AMBIENT := Color("f8e2c6")
+const CAMP_AMBIENT_ENERGY := 0.12
+const CAMP_SHADOW_BLUR := 2.5
+const CAMP_SATURATION := 1.18
+const CAMP_CONTRAST := 1.08
+const CAMP_GLOW := 0.25
+const CAMP_BLOOM := 0.12
+const CAMP_GLOW_THRESHOLD := 0.9
+## The campsite's sky, deeper overhead than the boards' pale one so the
+## strip's top corner reads as a summer sky rather than as paper.
+const CAMP_SKY_TOP := Color("9fd2f3")
 
 var rig: Node3D
 var sun: DirectionalLight3D
@@ -52,6 +73,9 @@ var anchor: Node3D
 var water: Node3D
 var ambient: Node3D
 var backdrop: Node3D
+## The campsite's depth of field (world/soft_focus.gd), on the camera and
+## shown with the setting.
+var soft_focus: MeshInstance3D
 ## The stage's own Environment, kept so show_setting can swap the sky behind a
 ## board for flat colour.
 var env: Environment
@@ -70,16 +94,20 @@ func _ready() -> void:
 	rig = CameraRig.new()
 	rig.name = "CameraRig"
 	add_child(rig)
+	soft_focus = SoftFocus.new()
+	rig.camera.add_child(soft_focus)
 
 	sun = DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.light_color = Color("fff1dc")
+	sun.light_color = BOARD_SUN
 	# Calibrated against a lit STONE tile face in /tmp/shot_binairo.png: at 0.46
 	# / 0.115 (4:1) it renders #fbe0b8 against the #ede2cc albedo, every channel
 	# inside 12 percent and none clipping. The gl_compatibility pipeline is
 	# brighter than the shader maths alone predicts, so these are measured, not
 	# derived; re-measure if the sun colour or the ambient colour changes.
-	sun.light_energy = 0.46
+	# The campsite departs from the pair on purpose (grade_camp); a board
+	# always comes back to it (grade_board).
+	sun.light_energy = BOARD_SUN_ENERGY
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.directional_shadow_max_distance = 40.0
@@ -103,7 +131,7 @@ func _ready() -> void:
 	env.background_color = FLAT_BG
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Pal.AMBIENT
-	env.ambient_light_energy = 0.115  # calibrated with sun.light_energy; see above
+	env.ambient_light_energy = BOARD_AMBIENT_ENERGY  # calibrated with the sun; see above
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.glow_enabled = false
 	var world_env := WorldEnvironment.new()
@@ -164,6 +192,54 @@ func show_setting(on: bool) -> void:
 		env.background_mode = Environment.BG_SKY if on else Environment.BG_COLOR
 	if ambient != null:
 		ambient.show_pollen(on)
+	if soft_focus != null:
+		soft_focus.visible = on
+	if sun != null and env != null:
+		if on:
+			grade_camp(sun, env)
+		else:
+			grade_board(sun, env)
+
+## The board's light: the measured pair above, nothing else. Restored whenever
+## a board is mounted, so a piece reads exactly as it was calibrated to.
+static func grade_board(light: DirectionalLight3D, environment: Environment) -> void:
+	light.light_color = BOARD_SUN
+	light.light_energy = BOARD_SUN_ENERGY
+	light.shadow_blur = 1.0
+	environment.ambient_light_color = Pal.AMBIENT
+	environment.ambient_light_energy = BOARD_AMBIENT_ENERGY
+	environment.adjustment_enabled = false
+	environment.glow_enabled = false
+	_sky_top(environment, Pal.SKY_TOP)
+
+## The campsite's light, the concept banner's afternoon: a warmer, slightly
+## stronger sun over warmer bounce, shadows blurred wider, colours pushed a
+## little richer through the environment's adjustments, and a soft bloom
+## that lets the lit faces breathe. All of it post or light-side, so no
+## material changes; the preview scene grades its own rig through this too.
+static func grade_camp(light: DirectionalLight3D, environment: Environment) -> void:
+	light.light_color = CAMP_SUN
+	light.light_energy = CAMP_SUN_ENERGY
+	light.shadow_blur = CAMP_SHADOW_BLUR
+	environment.ambient_light_color = CAMP_AMBIENT
+	environment.ambient_light_energy = CAMP_AMBIENT_ENERGY
+	environment.adjustment_enabled = true
+	environment.adjustment_brightness = 1.0
+	environment.adjustment_contrast = CAMP_CONTRAST
+	environment.adjustment_saturation = CAMP_SATURATION
+	environment.glow_enabled = true
+	environment.glow_normalized = false
+	environment.glow_intensity = CAMP_GLOW
+	environment.glow_strength = 1.0
+	environment.glow_bloom = CAMP_BLOOM
+	environment.glow_hdr_threshold = CAMP_GLOW_THRESHOLD
+	environment.glow_hdr_scale = 2.0
+	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	_sky_top(environment, CAMP_SKY_TOP)
+
+static func _sky_top(environment: Environment, colour: Color) -> void:
+	if environment.sky != null and environment.sky.sky_material is ProceduralSkyMaterial:
+		(environment.sky.sky_material as ProceduralSkyMaterial).sky_top_color = colour
 
 ## Leans the board anchor toward the camera until the board's face is seen at
 ## `face` degrees above the horizontal. The axis is the camera's own right, so
@@ -237,6 +313,7 @@ func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PRO
 	_last_rect = rect
 	var world := _fit_box(aabb)
 	rig.fit(world, rect)
+	soft_focus.focus(rig.distance())
 	ambient.fit_to(world)
 	_fit_ground(world)
 

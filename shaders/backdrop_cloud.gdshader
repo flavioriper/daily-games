@@ -32,4 +32,10 @@ void fragment() {
 	vec4 c = texture(albedo, UV);
 	ALBEDO = c.rgb;
 	ALPHA = c.a;
+	// Cut rather than blended, so the card draws in the opaque pass and the
+	// campsite's soft focus (shaders/soft_focus.gdshader) reaches it: a
+	// blended card draws after the screen copy that pass reads and would stay
+	// sharp against blurred hills. The soft focus gives the edge back its
+	// softness; clouds are only ever seen at that distance.
+	ALPHA_SCISSOR_THRESHOLD = 0.5;
 }
