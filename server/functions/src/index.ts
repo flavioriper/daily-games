@@ -46,26 +46,74 @@ export const GAMES: Record<string, (day: number) => unknown> = {
   }),
 };
 
+/** The longest string a guess may be. A guess is client data written under
+ *  the player's own document, and anonymous sign-up is free and
+ *  self-service, so anything unbounded here is a free blob store. */
+export const GUESS_MAX_CHARS = 64;
+
+/** A guess is a number, a short string, a bool, or nothing at all. It goes to
+ *  the server untouched and comes back to the client untouched, so this is
+ *  the only place its shape is decided. */
+export function validGuess(g: unknown): boolean {
+  if (g === null || g === undefined) return true;
+  if (typeof g === "boolean") return true;
+  if (typeof g === "number") return Number.isFinite(g);
+  return typeof g === "string" && g.length <= GUESS_MAX_CHARS;
+}
+
 function turnDoc(day: number, game: string) {
   return db.doc(`days/${day}/turns/${game}`);
 }
 
-/** Tomorrow's content, written a day ahead so a missed night is not a blank day. */
+/**
+ * Today's content and tomorrow's. Tomorrow is the point -- a day published a
+ * night ahead means a missed night is not a blank day -- and today is the
+ * repair: a run that threw, a paused scheduler or a first deploy landing
+ * after 03:00 would otherwise leave a day nobody can write, since a v2
+ * scheduled function cannot be hand-triggered.
+ *
+ * create(), never set(): a day already published is left exactly as it is.
+ * Rewriting one would change the answer under players who had already
+ * locked, for any game whose content is drawn rather than derived. An
+ * ALREADY_EXISTS is the normal case and is swallowed; anything else throws,
+ * so a genuine write failure fails the run instead of passing for a skip.
+ */
 export const publishDay = onSchedule("0 3 * * *", async () => {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + 1);
-  const day = dayKey(d);
-  for (const [game, make] of Object.entries(GAMES)) {
-    await turnDoc(day, game).set({json: JSON.stringify(make(day))});
-  }
+  await publishDays(new Date());
 });
+
+/** The body of publishDay, apart from it so a harness can run the real thing:
+ *  `functions:shell` cannot invoke a v2 scheduled function. */
+export async function publishDays(now: Date): Promise<void> {
+  const tomorrow = new Date(now.getTime() + 86400000);
+  for (const day of [dayKey(now), dayKey(tomorrow)]) {
+    for (const [game, make] of Object.entries(GAMES)) {
+      const doc = turnDoc(day, game);
+      try {
+        await doc.create({json: JSON.stringify(make(day))});
+      } catch (e) {
+        if (!(await doc.get()).exists) throw e;
+      }
+    }
+  }
+}
 
 /**
  * One submit per player per game per day, written once. A repeat answers with
  * what is already stored rather than an error, which is what makes the
  * client's retry and its offline flush safe.
+ *
+ * maxInstances is the bill's ceiling. This is a public endpoint, and even a
+ * request carrying a garbage token costs an invocation and a verifyIdToken
+ * round trip before the 401, so a flood has to shed load rather than scale
+ * spend. Concurrency stays at the v2 default: raising it above one needs a
+ * whole CPU, and the instance ceiling is what actually bounds the cost.
  */
-export const submitTurn = onRequest({cors: false}, async (req, res) => {
+export const submitTurn = onRequest({
+  cors: false,
+  maxInstances: 10,
+  memory: "256MiB",
+}, async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({error: "POST only"});
     return;
@@ -106,6 +154,10 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
     res.status(400).json({error: "bad score"});
     return;
   }
+  if (!validGuess(body.guess)) {
+    res.status(400).json({error: "bad guess"});
+    return;
+  }
   const locale: Locale = LOCALES.includes(body.locale as Locale) ?
     (body.locale as Locale) : "en";
   const theDay = day as number;
@@ -134,18 +186,33 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
   }
   await player.set({lastSubmitMs: now}, {merge: true});
 
+  // The submit and its place in the histogram are one write or neither. A
+  // shard increment that threw after a successful create used to 500 with
+  // the submit standing: the client retries, the retry takes the
+  // idempotency path above, answers ok, and the queue drops the item -- so
+  // the histogram stays one short for that day, silently and forever.
+  const shard = turnDoc(theDay, game).collection("shards")
+    .doc(String(Math.floor(Math.random() * SHARDS)));
   try {
-    await submit.create({
-      score: theScore,
-      guess: body.guess ?? null,
-      locale,
-      at: FieldValue.serverTimestamp(),
+    await db.runTransaction(async (tx) => {
+      tx.create(submit, {
+        score: theScore,
+        guess: body.guess ?? null,
+        locale,
+        at: FieldValue.serverTimestamp(),
+      });
+      tx.set(shard, {
+        count: FieldValue.increment(1),
+        histogram: {[String(theScore)]: FieldValue.increment(1)},
+        byLocale: {[locale]: FieldValue.increment(1)},
+      }, {merge: true});
     });
   } catch {
     // Either the player already submitted, or the write genuinely failed.
     // The document itself is the only trustworthy answer: do not reason
     // from the error object, and never report the caller's own just-sent
-    // score as though it were the stored one.
+    // score as though it were the stored one. A failure here counted
+    // nothing, because the transaction rolled the create back with it.
     const existing = await submit.get();
     if (!existing.exists) {
       res.status(500).json({error: "write failed"});
@@ -154,13 +221,6 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
     res.json({ok: true, created: false, score: existing.get("score")});
     return;
   }
-
-  const shard = Math.floor(Math.random() * SHARDS);
-  await turnDoc(theDay, game).collection("shards").doc(String(shard)).set({
-    count: FieldValue.increment(1),
-    histogram: {[String(theScore)]: FieldValue.increment(1)},
-    byLocale: {[locale]: FieldValue.increment(1)},
-  }, {merge: true});
 
   res.json({ok: true, created: true, score: theScore});
 });

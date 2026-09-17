@@ -30,9 +30,11 @@ service cloud.firestore {
       }
     }
 
-    // Reserved for the leaderboard.
+    // Reserved for the leaderboard. A player reads their own row and no
+    // one else's: today it holds only a lastSubmitMs, but whatever the
+    // leaderboard adds should be exposed by a decision, not by default.
     match /players/{uid} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
     }
 
