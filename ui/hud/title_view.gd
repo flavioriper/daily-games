@@ -10,10 +10,13 @@ const Lettering = preload("res://core/lettering.gd")
 
 const EM := 0.5
 const FACE_DEPTH := 0.05
-const BLOCK_DEPTH := 0.24
+## A thin edge of wood behind the face, not a block: the concept banner's name
+## is white with a dark rim a tenth of its height, and a deep block seen from
+## above turned the whole word caramel.
+const BLOCK_DEPTH := 0.1
 ## From the front, a little right and above: the letters' tops and left sides
 ## show as wood.
-const DIR := Vector3(0.20, 0.32, 1.0)
+const DIR := Vector3(0.14, 0.24, 1.0)
 const FRAME := 1.14
 const LINE_WIDTH := 0.007
 
@@ -23,7 +26,7 @@ var _block: MeshInstance3D
 func _init() -> void:
 	super()
 	light_from(Vector3(-3.0, 4.0, 5.0), Vector3.ZERO)
-	_block = Lettering.line("", EM, BLOCK_DEPTH, Pal.PLAQUE, 700, HORIZONTAL_ALIGNMENT_LEFT, LINE_WIDTH)
+	_block = Lettering.line("", EM, BLOCK_DEPTH, Pal.PLAQUE_DEEP, 700, HORIZONTAL_ALIGNMENT_LEFT, LINE_WIDTH)
 	_face = Lettering.line("", EM, FACE_DEPTH, Pal.SURFACE, 700, HORIZONTAL_ALIGNMENT_LEFT, LINE_WIDTH)
 	# The face sits on the block's front, sunk a hair so the two never seam.
 	_face.position.z = BLOCK_DEPTH * 0.5 + FACE_DEPTH * 0.5 - 0.004

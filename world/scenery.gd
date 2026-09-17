@@ -58,14 +58,40 @@ static func deck(x0: float, x1: float, z0: float, z1: float) -> Node3D:
 	return root
 
 ## Which log a wooden piece was cut from. Shifts the grain shader's figure on
-## every mesh under `node`, so ten strips of one deck mesh do not repeat, and
-## as an instance parameter, so the material stays shared. Seed it from
+## every wood mesh under `node`, so ten strips of one deck mesh do not repeat,
+## and as an instance parameter, so the material stays shared. Seed it from
 ## something fixed at placement -- an index, the spot a prop was put -- never
-## from a live transform an entrance might still be moving. Harmless on a
-## mesh that is not wood: its material has no such parameter to read.
+## from a live transform an entrance might still be moving.
+##
+## Only the wood layers are touched. Setting an instance parameter on any
+## mesh makes the renderer reserve it a block of the global shader buffer,
+## whether or not its material has such a parameter to read, and on
+## gl_compatibility that buffer is a uniform buffer the GPU caps -- 64 KB
+## here, sixteen 16-byte items a block, so 256 meshes in the whole game at
+## once (measured 2026-09-17: the campsite's leaves, stones and daisies all
+## seeded pushed the menu over it and the extra meshes drew unlit). A leaf has
+## no grain; it must not pay for one.
 static func seed_grain(node: Node, seed: float) -> void:
 	for mi in Models.meshes(node):
-		mi.set_instance_shader_parameter("grain_seed", seed)
+		if _is_wood(mi):
+			mi.set_instance_shader_parameter("grain_seed", seed)
+
+## Whether any surface of `mi` wears the wood shader.
+static func _is_wood(mi: MeshInstance3D) -> bool:
+	var mats: Array[Material] = []
+	if mi.material_override != null:
+		mats.append(mi.material_override)
+	elif mi.mesh != null:
+		for i in mi.mesh.get_surface_count():
+			var m: Material = mi.get_surface_override_material(i)
+			if m == null:
+				m = mi.mesh.surface_get_material(i)
+			if m != null:
+				mats.append(m)
+	for m in mats:
+		if m is ShaderMaterial and (m as ShaderMaterial).shader == Toon.WOOD_SHADER:
+			return true
+	return false
 
 ## One library model at `at`, turned `yaw` about Y and scaled, under a pivot.
 ## The pivot carries position and yaw and the model the scale, so an

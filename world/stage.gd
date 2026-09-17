@@ -217,8 +217,14 @@ func _fit_box(local: AABB) -> AABB:
 ## screen, and at 7 degrees the only way to hold a box that high in the frame
 ## is to aim under it, which puts the camera below the ground. Its camp does
 ## not lean either way -- it passes the same pitch as its face.
-func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PROJECTION_PERSPECTIVE, yaw := NAN, pitch := CAMERA_PITCH) -> void:
+## `shift_fov` turns the rig into a shift lens (world/camera_rig.gd,
+## shift_fov_deg): the horizontal field across `rect`, with the camera aimed
+## straight at the box and the frame slid so the box lands in the rect. The
+## menu asks for it, so its campsite is drawn as the concept banner draws it;
+## a board passes 0 and gets the ordinary perspective.
+func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PROJECTION_PERSPECTIVE, yaw := NAN, pitch := CAMERA_PITCH, shift_fov := 0.0) -> void:
 	rig.orthographic = projection == Camera3D.PROJECTION_ORTHOGONAL
+	rig.shift_fov_deg = shift_fov
 	rig.pitch_deg = pitch
 	if not is_nan(yaw):
 		rig.yaw_deg = yaw

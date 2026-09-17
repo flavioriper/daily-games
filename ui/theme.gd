@@ -41,10 +41,14 @@ static func make() -> Theme:
 	_label(theme, "CardBlurb", body(500), 22, Pal.TEXT_DIM)
 	# The motto under the menu's title letters: the Motto face, larger, on
 	# two lines over the sky.
-	_label(theme, "TitleMotto", body(800, 2), 28, Pal.SURFACE)
-	theme.set_color("font_shadow_color", "TitleMotto", Color(Pal.OUTLINE, 0.5))
-	theme.set_constant("shadow_offset_x", "TitleMotto", 1)
-	theme.set_constant("shadow_offset_y", "TitleMotto", 2)
+	_label(theme, "TitleMotto", body(800, 2), 30, Pal.SURFACE)
+	# Cream over a lit campsite needs an edge to read: a wood-dark outline, the
+	# way the concept banner letters it, and a soft shadow under that.
+	theme.set_color("font_outline_color", "TitleMotto", Pal.PLAQUE_DEEP)
+	theme.set_constant("outline_size", "TitleMotto", 8)
+	theme.set_color("font_shadow_color", "TitleMotto", Color(Pal.OUTLINE, 0.35))
+	theme.set_constant("shadow_offset_x", "TitleMotto", 2)
+	theme.set_constant("shadow_offset_y", "TitleMotto", 4)
 	_label(theme, "CardBody", body(500), 30, Pal.TEXT)
 	_label(theme, "OnSlateTitle", display(600), 40, Pal.MOON)
 	_label(theme, "OnSlateBody", body(500), 30, Pal.MOON)

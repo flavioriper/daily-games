@@ -25,6 +25,21 @@ extends Node3D
 ## every fit through Stage.fit_camera, so fit() re-applies it rather than
 ## trusting whatever the last board left behind.
 @export var orthographic: bool = false
+## A shift lens, for a thing framed in one part of the screen rather than its
+## middle: the horizontal field of view across the fitted rect, in degrees, or
+## 0 for the ordinary perspective above. Under the ordinary perspective the
+## camera's axis runs through the screen's centre, so holding a box in the top
+## quarter of the frame means aiming well under it -- the box is then drawn far
+## off-axis and steeply from above, and the only way to keep that mild is a
+## narrow field, which flattens it. With the shift the axis aims straight at the
+## box and the frustum is slid so that spot lands where the rect is, the way a
+## tilt-shift lens holds a building upright: the rect is drawn exactly as a
+## camera pointed at it would draw it, whatever the rest of the frame shows.
+## Implemented as Camera3D's frustum projection with an offset. Godot 4.7's
+## project_position and project_ray_normal ignore that offset's scaling with
+## depth (unproject_position does not), so this rig derives rays and pixel
+## sizes itself under a shift; see ray_normal and pixels_per_unit_at.
+@export var shift_fov_deg: float = 0.0
 
 ## How long a quarter turn takes, in seconds.
 const TURN_TIME := 0.35
@@ -43,6 +58,9 @@ var _breath_t := 0.0
 var camera: Camera3D
 var _target := Vector3.ZERO
 var _distance := 10.0
+## The rect the shift lens was last fitted to, in viewport pixels; the frustum
+## offset is derived from where its centre sits in the viewport.
+var _shift_rect := Rect2()
 
 func _ready() -> void:
 	camera = Camera3D.new()
@@ -87,7 +105,36 @@ func _view_basis(yaw_deg_at: float) -> Basis:
 func _apply_projection() -> void:
 	if camera == null:
 		return
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL if orthographic else Camera3D.PROJECTION_PERSPECTIVE
+	if orthographic:
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	elif shifted():
+		_apply_shift()
+	else:
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = fov_deg
+
+## Whether the shift lens is in effect: a field was asked for and a rect to
+## hold has been fitted.
+func shifted() -> bool:
+	return shift_fov_deg > 0.0 and _shift_rect.size.x > 0.0 and _shift_rect.size.y > 0.0
+
+## The frustum that draws _shift_rect as a camera of shift_fov_deg pointed at
+## its centre would. Camera3D's frustum `size` is the near plane's height
+## (keep_aspect KEEP_HEIGHT) and its offset slides that plane in the same
+## units, so: the near plane is wide enough that the rect's share of it spans
+## the field, and it is slid by the rect centre's distance from the viewport's
+## centre, as a fraction of the plane.
+func _apply_shift() -> void:
+	var vs := camera.get_viewport().get_visible_rect().size
+	var width := 2.0 * camera.near * tan(deg_to_rad(shift_fov_deg) * 0.5) * vs.x / _shift_rect.size.x
+	var height := width * vs.y / vs.x
+	# Sliding the frustum toward +x or +y moves the axis's image the other
+	# way, and screen y runs down: the axis lands at 0.5 - ox/width across and
+	# 0.5 + oy/height down.
+	var c := _shift_rect.get_center()
+	var offset := Vector2((0.5 - c.x / vs.x) * width, (c.y / vs.y - 0.5) * height)
+	camera.keep_aspect = Camera3D.KEEP_HEIGHT
+	camera.set_frustum(height, offset, camera.near, camera.far)
 
 func _place() -> void:
 	camera.global_position = _target + _breath + view_offset_dir() * _distance
@@ -119,10 +166,13 @@ func _process(delta: float) -> void:
 func fit(aabb: AABB, rect: Rect2) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0 or not is_inside_tree():
 		return
+	_shift_rect = rect if shift_fov_deg > 0.0 else Rect2()
 	_apply_projection()
 	if orthographic:
 		_fit_ortho(aabb, rect)
 	else:
+		# The shift lens searches the distance the same way: the frustum is
+		# fixed by the rect, so only how far back the camera stands is open.
 		_fit_perspective(aabb, rect)
 
 ## Binary-searches the distance until every corner projects inside the
@@ -241,9 +291,42 @@ func _projected(aabb: AABB) -> Rect2:
 
 ## World units per viewport pixel on the plane through the target, using the
 ## vertical FOV (Godot keeps height by default). Orthographically the plane
-## does not matter and the camera's size is that height already.
+## does not matter and the camera's size is that height already. Under the
+## shift lens neither formula holds, so it is measured off the projection.
 func _world_per_pixel() -> float:
 	var vh := camera.get_viewport().get_visible_rect().size.y
 	if orthographic:
 		return camera.size / maxf(vh, 1.0)
+	if shifted():
+		return 1.0 / pixels_per_unit_at(_target)
 	return 2.0 * _distance * tan(deg_to_rad(camera.fov) * 0.5) / maxf(vh, 1.0)
+
+## How many viewport pixels one world unit covers at `point`, measured along
+## `along` (a unit vector; the camera's right when left out). Reliable under
+## every projection, unlike a formula in the FOV, because unproject_position
+## is the one Camera3D helper that reads the real projection matrix in
+## frustum mode.
+func pixels_per_unit_at(point: Vector3, along := Vector3.ZERO) -> float:
+	var dir: Vector3 = camera.global_transform.basis.x if along.is_zero_approx() else along.normalized()
+	var px := camera.unproject_position(point + dir).distance_to(camera.unproject_position(point))
+	return maxf(px, 1e-6)
+
+## The world-space ray through viewport pixel `px`: origin, then direction.
+## Camera3D's own project_ray_* pair mis-scales the frustum offset, so under a
+## shift the ray is taken through the projection matrix's inverse instead.
+func ray_origin(px: Vector2) -> Vector3:
+	if not shifted():
+		return camera.project_ray_origin(px)
+	return camera.global_position
+
+func ray_normal(px: Vector2) -> Vector3:
+	if not shifted():
+		return camera.project_ray_normal(px)
+	var vs := camera.get_viewport().get_visible_rect().size
+	var ndc := Vector2(px.x / vs.x * 2.0 - 1.0, 1.0 - px.y / vs.y * 2.0)
+	var inv := camera.get_camera_projection().inverse()
+	var a4 := inv * Vector4(ndc.x, ndc.y, -1.0, 1.0)
+	var b4 := inv * Vector4(ndc.x, ndc.y, 1.0, 1.0)
+	var a := Vector3(a4.x, a4.y, a4.z) / a4.w
+	var b := Vector3(b4.x, b4.y, b4.z) / b4.w
+	return (camera.global_transform.basis * (b - a)).normalized()

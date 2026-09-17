@@ -73,16 +73,35 @@ the grain on its plank, its own cast shadow and the outline pass.
   Upper-case everything that goes on a board.
 
 **The first screen (`ui/menu.gd`) is a campsite, not a list.** `world/camp.gd`
-is mounted on the stage in place of a board: turf and a path, the river with
-a dock, the camper (`mascot_camper`, cut down from a Meshy export), tent,
-trees, the day sign lettered live, and the fence diorama (`camp_sign`) that
-closes the frame at the bottom with the footer motto on a plank. The menu
-frames `camp.hero_box()` in the screen above the cards and stands the fence
-where the footer slot's rays meet the ground, after every layout change.
+is mounted on the stage in place of a board, staged the way the concept
+banner (`docs/art/concept-menu-banner.png`) frames it: the scout
+(`mascot_scout`, alive through `world/mascot.gd`) reading his map on the
+dock with the river behind him, the day sign lettered live at his left, the
+lantern between them on the path, the tent and the tree line behind, the
+"A puzzle a brighter you" board at the dock's corner, and the fence diorama
+(`camp_sign`) that closes the frame at the bottom with the footer motto on a
+plank. `tests/preview_tree.tscn` mounts the same `Camp` under a fixed
+camera, so the editor shows the real thing. The menu frames
+`camp.hero_box()` in the screen above the cards and stands the fence where
+the footer slot's rays meet the ground, after every layout change.
 
-- **The menu camera pitches 15 degrees, not the boards' 7** (`fit_camera`'s
-  `pitch`): at 7 the only way to hold the camp in the top third is to aim
-  under it, which puts the camera below the grass.
+- **The menu camera is a shift lens** (`CameraRig.shift_fov_deg`, passed as
+  `fit_camera`'s `shift_fov`): aimed straight at the camp at 12 degrees, 54
+  degrees across the hero strip, with the frustum slid so the strip lands at
+  the top of the screen. The ordinary perspective had to aim under the camp
+  through a narrow field to hold it up there, which flattened and shrank it.
+  It is Godot's frustum projection with an offset, and in 4.7
+  `project_position` and `project_ray_normal` mis-scale that offset while
+  `unproject_position` is right: anything that needs a ray or a pixel size
+  on the menu asks the rig (`ray_origin`, `ray_normal`,
+  `pixels_per_unit_at`), never `Camera3D` directly.
+- **Instance shader parameters are scarce.** Any mesh given a
+  `set_instance_shader_parameter` reserves a 16-item block of the global
+  shader buffer, whether or not its material declares such a uniform, and on
+  gl_compatibility that buffer is a uniform buffer the GPU caps: 64 KB on
+  this Mac, so 256 meshes in the whole game at once, and GLES3 only promises
+  16 KB. `Scenery.seed_grain` therefore seeds only wood; do not hand
+  per-instance parameters to leaves, stones or anything else in bulk.
 - **The camp stands at y 2** (`Camp.LIFT`): the backdrop's hills ring is a flat
   plateau at about y 1.4, and the menu camera stands out over that ring where
   a board's never does. At y 0 the camp's feet and its fence are buried in it.
