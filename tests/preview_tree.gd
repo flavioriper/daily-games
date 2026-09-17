@@ -22,6 +22,7 @@ const Pal = preload("res://core/palette.gd")
 const Camp = preload("res://world/camp.gd")
 const Stage = preload("res://world/stage.gd")
 const SoftFocus = preload("res://world/soft_focus.gd")
+const Ambient = preload("res://world/ambient.gd")
 
 ## Where the camera stands and what it holds in the middle of the frame, in
 ## the camp's ground plane: aimed at Camp.HERO_CENTRE, the spot the menu's
@@ -97,6 +98,10 @@ func _build_light() -> void:
 	add_child(world_env)
 	# The campsite's grade over the board's pair, exactly as the menu sets it.
 	Stage.grade_camp(sun, env)
+	# And its weather: the menu turns this on through Stage.show_setting, which
+	# this preview does not go through, so the editor would otherwise show a
+	# still camp (world/ambient.gd, WIND_GLOBAL).
+	Ambient.set_wind_global(true)
 
 func _build_camera() -> void:
 	var cam := Camera3D.new()

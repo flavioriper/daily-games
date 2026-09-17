@@ -17,6 +17,10 @@ uniform float distance_scale : hint_range(0.0, 0.2) = 0.0;
 // A shell is a second instance of the layer's own mesh, so a line that stays
 // put while its layer leans peels off it. sway_amount is 0 by default, which
 // is every other line in the game: no lean, and the branch costs a multiply.
+// The gust rides over it out of the same include, so a line never lags the
+// blade it rings; at sway_amount 0 it too comes to nothing.
+#include "res://shaders/wind.gdshaderinc"
+
 global uniform float motion_scale;
 uniform float sway_base = 0.03;
 uniform float sway_height = 0.07;
@@ -35,6 +39,7 @@ void vertex() {
 	VERTEX += normalize(NORMAL) * width * (1.0 + distance_scale * view_dist);
 	VERTEX.x += flip * sin(ph) * sway_amount * h * motion_scale;
 	VERTEX.z += cos(ph * 0.8) * sway_amount * 0.6 * h * motion_scale;
+	VERTEX += gust_lean(MODEL_MATRIX, wp, TIME, sway_amount) * h * motion_scale;
 }
 
 void fragment() {

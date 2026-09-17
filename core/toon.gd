@@ -14,6 +14,7 @@ const WIND_SHADER := preload("res://shaders/toon_wind.gdshader")
 const WOOD_SHADER := preload("res://shaders/toon_wood.gdshader")
 const WATER_SHADER := preload("res://shaders/water.gdshader")
 const GHOST_SHADER := preload("res://shaders/toon_ghost.gdshader")
+const CARD_SHADER := preload("res://shaders/card_wind.gdshader")
 const PIPE_SHADER := preload("res://shaders/pipe_flow.gdshader")
 const Pal = preload("res://core/palette.gd")
 
@@ -69,6 +70,7 @@ static var _ghost_cache: Dictionary = {}
 static var _tex_cache: Dictionary = {}
 static var _wind_tex_cache: Dictionary = {}
 static var _wind_line_cache: Dictionary = {}
+static var _card_cache: Dictionary = {}
 static var _mean_cache: Dictionary = {}
 
 ## Three bands -- tinted shadow, half light, full light -- with each edge
@@ -234,18 +236,81 @@ static func texture_mean(tex: Texture2D) -> Color:
 	_mean_cache[key] = mean
 	return mean
 
+## The four parameters that shape a lean: where on the layer it starts, how
+## far up it reaches full, how far the tip goes (in the layer's own local
+## units, so the model's scale carries it) and how fast the flutter under the
+## gust runs. Left empty, a material keeps the shader's defaults, which are a
+## moss tuft's -- right for a board's rim and far too small for anything the
+## size of a bush. SWAY_* below are the shapes the camp asks for.
+const SWAY_KEYS := ["sway_base", "sway_height", "sway_amount", "sway_speed"]
+## A blade of grass: planted at the soil, bending over most of its length.
+const SWAY_BLADE := {"sway_base": 0.02, "sway_height": 0.30, "sway_amount": 0.055, "sway_speed": 1.5}
+## A tree crown: nothing below the first branch, the whole crown leaning
+## above it, and slower than the grass -- a heavier thing takes longer to go
+## over and longer to come back.
+const SWAY_CROWN := {"sway_base": 0.15, "sway_height": 1.00, "sway_amount": 0.030, "sway_speed": 0.7}
+## A bush: low, and stiffer than grass for its size.
+const SWAY_BUSH := {"sway_base": -0.35, "sway_height": 0.60, "sway_amount": 0.028, "sway_speed": 1.1}
+## A painted card standing in the lawn: it leans across the picture only
+## (card_wind.gdshader), so the amount is read in the card's own height.
+const SWAY_CARD := {"sway_base": 0.0, "sway_height": 0.45, "sway_amount": 0.05, "sway_speed": 1.3}
+
 ## The painted material that sways in the wind; same ramp, rim and tint,
-## its own cache.
-static func wind_material(albedo: Color) -> ShaderMaterial:
-	var key := albedo.to_html()
+## its own cache. `sway` shapes the lean (SWAY_KEYS) and is part of the key,
+## so one green can be both a blade and a crown.
+static func wind_material(albedo: Color, sway: Dictionary = {}) -> ShaderMaterial:
+	var key := albedo.to_html() + _sway_key(sway)
 	if _wind_cache.has(key):
 		return _wind_cache[key]
 	var m := ShaderMaterial.new()
 	m.shader = WIND_SHADER
 	m.set_shader_parameter("albedo", albedo)
+	_set_sway(m, sway)
 	_soften(m)
 	_wind_cache[key] = m
 	return m
+
+## A painted card that turns to the camera and blows with everything else
+## (card_wind.gdshader): the camp's blossoms and the leaf sheets in its tree
+## line. Unshaded, like the standard billboard material it replaces -- these
+## are painted images, already lit by whoever painted them.
+static func card_material(tex: Texture2D, sway: Dictionary = SWAY_CARD) -> ShaderMaterial:
+	var key := str(tex.get_rid()) + _sway_key(sway)
+	if _card_cache.has(key):
+		return _card_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = CARD_SHADER
+	m.set_shader_parameter("albedo_tex", tex)
+	_set_sway(m, sway)
+	_card_cache[key] = m
+	return m
+
+## A stable cache key for a sway shape, so two materials asking for the same
+## lean share one material and two asking for different leans never collide.
+static func _sway_key(sway: Dictionary) -> String:
+	if sway.is_empty():
+		return ""
+	var parts := PackedStringArray()
+	for k in SWAY_KEYS:
+		parts.append(("%.4f" % float(sway[k])) if sway.has(k) else "-")
+	return "|" + "/".join(parts)
+
+## The sway shape onto a material, skipping whatever it does not name so the
+## shader's own default stands.
+static func _set_sway(m: ShaderMaterial, sway: Dictionary) -> void:
+	for k in SWAY_KEYS:
+		if sway.has(k):
+			m.set_shader_parameter(k, sway[k])
+
+## The sway shape a material is wearing, so a shell can be given the same one
+## (line_for). Empty for anything that does not lean.
+static func _sway_of(m: ShaderMaterial) -> Dictionary:
+	var out := {}
+	for k in SWAY_KEYS:
+		var v = m.get_shader_parameter(k)
+		if v != null:
+			out[k] = v
+	return out
 
 ## The same painted look, see-through and without the wash: what Pipes' peek
 ## swaps the ground for while the button is held. Cached per colour and alpha
@@ -350,8 +415,8 @@ static func line(albedo: Color) -> ShaderMaterial:
 ## setting the sway on one of these never reaches a still layer that happens
 ## to share the colour -- the scout's map and his body take their mean colour
 ## from the same paint.
-static func wind_line(albedo: Color) -> ShaderMaterial:
-	var key := albedo.to_html()
+static func wind_line(albedo: Color, sway: Dictionary = {}) -> ShaderMaterial:
+	var key := albedo.to_html() + _sway_key(sway)
 	if _wind_line_cache.has(key):
 		return _wind_line_cache[key]
 	var m := ShaderMaterial.new()
@@ -359,6 +424,7 @@ static func wind_line(albedo: Color) -> ShaderMaterial:
 	m.set_shader_parameter("color", line_color(albedo))
 	m.set_shader_parameter("width", LINE_WIDTH)
 	m.set_shader_parameter("sway_amount", 0.02)
+	_set_sway(m, sway)
 	_wind_line_cache[key] = m
 	return m
 
@@ -380,7 +446,9 @@ static func line_for(mi: MeshInstance3D) -> ShaderMaterial:
 			var tex = sm.get_shader_parameter("albedo_tex")
 			var colour: Color = texture_mean(tex) if tex is Texture2D \
 				else Color(sm.get_shader_parameter("albedo"))
-			return wind_line(colour) if sm.shader == WIND_SHADER else line(colour)
+			# The shell is a second instance of the layer's own mesh, so it
+			# has to lean by the layer's own shape or it peels off it.
+			return wind_line(colour, _sway_of(sm)) if sm.shader == WIND_SHADER else line(colour)
 	elif m is StandardMaterial3D:
 		var std := m as StandardMaterial3D
 		return line(texture_mean(std.albedo_texture) if std.albedo_texture != null else std.albedo_color)

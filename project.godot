@@ -61,3 +61,7 @@ motion_scale={
 "type": "float",
 "value": 1.0
 }
+wind_gust={
+"type": "float",
+"value": 0.0
+}

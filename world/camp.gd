@@ -31,7 +31,11 @@ const Mascot = preload("res://world/mascot.gd")
 
 ## The blossom and the foliage sheet are cards cut from the grass field, not
 ## library slots: they are painted planes with holes in them, so they wear an
-## alpha billboard material instead of a toon one.
+## alpha billboard material instead of a toon one. The paint comes off the two
+## .tres materials (which is also what keeps their textures imported lossless,
+## detect_3d off); the material the cards actually wear is built from it by
+## Toon.card_material, which turns them to the camera the same way and leans
+## them in the same gust as the grass they stand in.
 const BLOSSOM := preload("res://assets/models/blossom.glb")
 const FOLIAGE := preload("res://assets/models/foliage.glb")
 const CARD_FLOWERS := preload("res://assets/models/card_flowers.tres")
@@ -114,15 +118,60 @@ const ISLAND_EM := 0.21
 const DAY_TEXT_X := -0.6
 const DAY_MAX_W := 2.1
 
-## The ground cover, dense enough that no bare turf shows in the frame the
-## way none shows in the painted one: the grass field, the blossom cards
-## and the low bushes are each one MultiMesh, so the count costs fill rate
-## and never a draw call. Placed from one seeded generator so the field is
-## the same every launch.
-const GRASS := 620
-const BLOSSOMS := 64
+## The ground cover, dense enough that no bare turf shows anywhere the camera
+## reaches -- not in the hero strip and not on the long lawn the cards stand
+## on, which is half the screen. Each field is one MultiMesh, so the count
+## costs fill rate and vertices and never a draw call. Placed from one seeded
+## generator so the field is the same every launch.
+##
+## Two grasses, because the bill is in triangles: the patch is 480 of them
+## and the clump 98, both about 0.4 tall. The patch goes where the camera is
+## close and the eye is -- the hero strip, the bank, the lawn the cards stand
+## on -- and the clump fills everything else and thickens the gaps between
+## the patches, at a fifth of the cost per tuft. At these counts the lawn is
+## about 1.0 M triangles, against 0.30 M for the 620 patches that covered a
+## third of it before.
+const GRASS := 1150          # grass_patch, the hero strip and the bank
+const GRASS_FILL := 2000     # grass_clump over the same ground, filling between
+## The lawn under the cards. 1200 rather than 650 because the two measure the
+## same: the cost here is fill, not count, and a few hundred blades this near
+## the lens already cover the screen (measured 2026-09-17 at 1080x1920, three
+## runs each -- none 10.9 ms, 650 13.0, 1200 13.2). So take the fuller one.
+const NEAR_GRASS := 1200     # grass_patch on the lawn the cards stand on
+const FAR_GRASS := 700       # grass_clump on the far bank, across the river
+const BLOSSOMS := 130
 const BUSHES := 14
 const GRASS_SEED := 20260916
+## Where each field is sown. The middle ground is the camp itself, out past
+## both frame edges in the hero strip, where the camera looks along the
+## ground and one tuft closes a lot of it.
+##
+## The near lawn -- what the shift lens shows below the cards -- is a
+## different problem and gets its own small, dense field. It looks nothing
+## like the wide band it appears to be: the menu camera stands at about
+## (0, 2.7, 10.8) in the camp's space and the bottom of the screen is it
+## looking almost straight down, so the whole lawn under the cards is the
+## wedge from (x -2.9..3.4, z 7.9) at the top of it to (x -0.9..0.9, z 10.5)
+## at the bottom -- some eleven square units, measured by casting the rig's
+## rays at the screen's own pixels. Sown wide, almost every tuft lands off
+## screen and still costs its vertices, because a MultiMesh is culled as one
+## thing and never per instance. Sown to the wedge with a margin for a wider
+## phone, the same count is several times denser where it shows and cheaper
+## everywhere else. It also gets the fuller patch mesh at near full size:
+## seen down the blade rather than across it, a tuft closes far less ground
+## than the same tuft does in the hero strip.
+const LAWN_MIN := Vector2(-13.0, -9.0)
+const LAWN_MAX := Vector2(9.5, 9.5)
+const NEAR_MIN := Vector2(-7.0, 7.0)
+const NEAR_MAX := Vector2(7.0, 12.5)
+## The far bank, across the river: its ground box is centred at x 25.6 and is
+## 24 wide, and only its near third is ever in frame.
+const FAR_MIN := Vector2(13.8, -14.0)
+const FAR_MAX := Vector2(30.0, 16.0)
+## How far clear of the path's edge a tuft stands. Wide, because the path
+## crossing the picture is the one line that holds the camp together and a
+## lawn this dense closes over a narrow gap.
+const PATH_PAD := 0.5
 ## The canopy that frames the frame: an oak crown hanging into each top
 ## corner from a branch out of shot, between the camera and the camp, dark
 ## and soft in the soft focus's near band, the way the painted frame's
@@ -233,7 +282,7 @@ func _build_props() -> void:
 			[3.2, 11.6, 1.7, 0.9]]:
 		add_child(Scenery.prop("boulder", Vector3(b[0], 0.0, b[1]), b[2], Vector3.ONE * float(b[3])))
 	for b in [[-4.2, 2.4, 0.4, 1.8], [-1.8, -2.6, 1.1, 1.6], [-5.6, 0.4, 2.2, 1.4], [0.8, -0.8, 0.6, 1.3]]:
-		add_child(_tree("bush", Vector3(b[0], 0.0, b[1]), b[2], float(b[3])))
+		add_child(_tree("bush", Vector3(b[0], 0.0, b[1]), b[2], float(b[3]), Pal.CAMP_LEAF, Toon.SWAY_BUSH))
 	for d in [[-1.6, 6.2], [-4.0, 5.0], [-0.9, 1.2], [-4.6, 3.0], [-3.0, 6.6], [-1.4, -1.0],
 			[-2.4, 8.6], [-4.8, 7.8]]:
 		add_child(Scenery.prop("daisy", Vector3(d[0], 0.0, d[1]), d[0] * 1.3, Vector3.ONE * 1.2))
@@ -246,17 +295,45 @@ func _build_props() -> void:
 	for f in [[-11.2, -9.8, 0.62], [-9.0, -9.6, 0.56], [-6.6, -9.2, 0.5], [-4.4, -9.0, 0.48],
 			[-1.6, -9.6, 0.54], [1.2, -9.4, 0.52], [3.6, -9.8, 0.5], [6.2, -10.2, 0.56]]:
 		sheets.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * float(f[2])), Vector3(f[0], 0.0, f[1])))
-	add_child(_cards(FOLIAGE, CARD_FOLIAGE, sheets, "foliage_field"))
+	add_child(_cards(FOLIAGE, CARD_FOLIAGE, sheets, "foliage_field", Toon.SWAY_CROWN))
 
 ## A tree or a bush placed as a prop, its leaf layer taken a step deeper than
 ## the library's LEAF: the painted frame's greens are forest, not lime. The
 ## oak's crown is the `Leaf_flat` layer, the conifer's and the bush's `Leaf`;
 ## tint_named re-lines whichever shell there is.
-static func _tree(slot: String, at: Vector3, yaw: float, s: float, leaf := Pal.CAMP_LEAF) -> Node3D:
+##
+## The crown then goes over to the wind shader, so a gust crossing the lawn
+## takes the trees with it instead of leaving them standing in it. `sway` is
+## the shape of the lean: a crown's by default, a bush's for a bush. The
+## amount is in the model's own units and the prop's scale carries it, so one
+## shape fits a sapling and the oak alike.
+static func _tree(slot: String, at: Vector3, yaw: float, s: float, leaf := Pal.CAMP_LEAF,
+		sway := Toon.SWAY_CROWN) -> Node3D:
 	var pivot := Scenery.prop(slot, at, yaw, Vector3.ONE * s)
 	Models.tint_named(pivot, "Leaf", leaf)
 	Models.tint_named(pivot, "Leaf_flat", leaf)
+	_blow(pivot, leaf, sway)
 	return pivot
+
+## The leaf layers named here are the ones a tree or a bush blows by. Only
+## the leaves: a trunk that bent with its crown would tear out of the ground.
+const LEAF_LAYERS := ["Leaf", "Leaf_flat"]
+
+## Puts `root`'s leaf layers on the wind shader in colour `leaf` with the
+## given lean, and re-lines each shell so the outline goes over with its
+## layer (Toon.line_for reads the sway back off it). Found by the layer's
+## imported material name, the same way Models.tint_named recolours them.
+static func _blow(root: Node, leaf: Color, sway: Dictionary) -> void:
+	var wind := Toon.wind_material(leaf, sway)
+	for mi in Models.meshes(root):
+		var hit := false
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src != null and LEAF_LAYERS.has(src.resource_name):
+				mi.set_surface_override_material(i, wind)
+				hit = true
+		if hit:
+			Toon.reline(mi)
 
 ## The little hanging sign at the dock's far corner, re-lettered: its
 ## modelled words are Code Break's, so that layer is hidden and three lines
@@ -278,7 +355,8 @@ func _signpost() -> Node3D:
 ## its alpha billboard material, one draw call for every blossom or leaf
 ## sheet in the camp. The billboard turns each instance to the camera on its
 ## own, so the scatter reads exactly as the placed cards did.
-static func _cards(scene: PackedScene, mat: Material, transforms: Array[Transform3D], name: String) -> MultiMeshInstance3D:
+static func _cards(scene: PackedScene, mat: StandardMaterial3D, transforms: Array[Transform3D],
+		name: String, sway := Toon.SWAY_CARD) -> MultiMeshInstance3D:
 	var sample := scene.instantiate() as Node3D
 	var layers := Models.meshes(sample)
 	var mm := MultiMesh.new()
@@ -291,45 +369,57 @@ static func _cards(scene: PackedScene, mat: Material, transforms: Array[Transfor
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = name
 	mmi.multimesh = mm
-	mmi.material_override = mat
+	mmi.material_override = Toon.card_material(mat.albedo_texture, sway)
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sample.free()
 	return mmi
 
-## The ground cover, three MultiMeshes over the turf: the grass field of
-## baked strands, the blossom cards among it, and a line of low bushes along
-## the bank and the path. Dense, the way the painted frame leaves no bare
-## ground, and kept off the water, the path, the dock and the scout's feet.
+## The ground cover, five MultiMeshes over the turf: the patch grass through
+## the near and middle ground, the cheap clump filling in behind and between
+## it and carrying on across the river, the blossom cards among them, and a
+## line of low bushes along the bank and the path. Dense, the way the painted
+## frame leaves no bare ground, and kept off the water, the path, the dock and
+## the scout's feet.
 func _build_grass() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GRASS_SEED
-	var grass: Array[Transform3D] = []
-	var guard := 0
-	while grass.size() < GRASS and guard < GRASS * 40:
-		guard += 1
-		var x := rng.randf_range(-9.0, 7.5)
-		var z := rng.randf_range(-8.0, 13.0)
-		if not _on_turf(x, z, 0.25):
-			continue
-		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35))
-		grass.append(Transform3D(basis, Vector3(x, 0.0, z)))
 	# The patch arrives in the library's LEAF lime; here it sways in the
-	# camp's own deeper green, on the same wind shader.
-	var lawn := Scenery.scatter("grass_patch", grass)
-	lawn.material_override = Toon.wind_material(Pal.CAMP_GRASS)
+	# camp's own deeper green, bending over most of a blade's length rather
+	# than the moss tuft's tip the shader defaults to (Toon.SWAY_BLADE).
+	var blade := Toon.wind_material(Pal.CAMP_GRASS, Toon.SWAY_BLADE)
+	var lawn := Scenery.scatter("grass_patch", _sow(rng, GRASS, LAWN_MIN, LAWN_MAX, PATH_PAD, 0.7, 1.25))
+	lawn.material_override = blade
 	add_child(lawn)
+	# The clump is a fifth of the patch's triangles at the same height, so it
+	# is what actually closes the lawn: scattered over the same ground, it
+	# fills the gaps the patches leave at a fifth of the cost per tuft.
+	var fill := Scenery.scatter("grass_clump", _sow(rng, GRASS_FILL, LAWN_MIN, LAWN_MAX, PATH_PAD, 0.6, 1.15))
+	fill.name = "grass_fill"
+	fill.material_override = blade
+	add_child(fill)
+	# The near lawn, in the patch mesh, for the reason at NEAR_MIN.
+	var near := Scenery.scatter("grass_patch", _sow(rng, NEAR_GRASS, NEAR_MIN, NEAR_MAX, PATH_PAD, 0.55, 1.0))
+	near.name = "grass_near"
+	near.material_override = blade
+	add_child(near)
+	# And across the river, so the far bank reads as meadow rather than as a
+	# flat green shelf behind the water.
+	var far := Scenery.scatter("grass_clump", _sow(rng, FAR_GRASS, FAR_MIN, FAR_MAX, 0.0, 0.9, 1.7, true))
+	far.name = "grass_far"
+	far.material_override = blade
+	add_child(far)
 
 	# The blossom card is half a unit tall, the grass patch up to 0.55 at its
 	# largest, so a blossom stands at least as tall as the grass around it or
 	# it is buried. Two in three go in the strip between the scout's plane
 	# and the cards, where the frame shows the most turf.
 	var blossoms: Array[Transform3D] = []
-	guard = 0
+	var guard := 0
 	while blossoms.size() < BLOSSOMS and guard < BLOSSOMS * 40:
 		guard += 1
 		var front := blossoms.size() % 3 != 0
-		var x := rng.randf_range(-8.0, 7.5) if front else rng.randf_range(-9.0, 1.2)
-		var z := rng.randf_range(5.4, 10.0) if front else rng.randf_range(-6.0, 5.4)
+		var x := rng.randf_range(-10.0, 8.5) if front else rng.randf_range(-11.0, 1.2)
+		var z := rng.randf_range(5.4, 17.0) if front else rng.randf_range(-8.0, 5.4)
 		if not _on_turf(x, z, 0.5):
 			continue
 		blossoms.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * rng.randf_range(1.0, 1.45)), Vector3(x, 0.0, z)))
@@ -348,8 +438,35 @@ func _build_grass() -> void:
 		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3.ONE * rng.randf_range(1.0, 1.7))
 		bushes.append(Transform3D(basis, at))
 	var field := Scenery.scatter("bush", bushes)
-	field.material_override = Toon.material(Pal.CAMP_LEAF)
+	field.material_override = Toon.wind_material(Pal.CAMP_LEAF, Toon.SWAY_BUSH)
 	add_child(field)
+
+## `count` tufts scattered on open turf between `lo` and `hi`, each turned at
+## random and scaled somewhere in `smin`..`smax`. `pad` is how far clear of
+## the path they stand. The guard is what stops a range that is mostly water
+## or path from spinning: a field simply comes out shorter.
+static func _sow(rng: RandomNumberGenerator, count: int, lo: Vector2, hi: Vector2,
+		pad: float, smin: float, smax: float, far := false) -> Array[Transform3D]:
+	var out: Array[Transform3D] = []
+	var guard := 0
+	while out.size() < count and guard < count * 12:
+		guard += 1
+		var x := rng.randf_range(lo.x, hi.x)
+		var z := rng.randf_range(lo.y, hi.y)
+		if far:
+			if not _on_far_bank(x, z):
+				continue
+		elif not _on_turf(x, z, pad):
+			continue
+		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3.ONE * rng.randf_range(smin, smax))
+		out.append(Transform3D(basis, Vector3(x, 0.0, z)))
+	return out
+
+## Whether a spot is on the far bank's turf: its ground box runs x 13.6..37.6
+## and z -26..20 (see _build_ground), and nothing there has to dodge a path.
+static func _on_far_bank(x: float, z: float) -> bool:
+	return x > LAND_EDGE + 12.2 and x < LAND_EDGE + 35.0 and z > -25.0 and z < 19.0
+
 
 ## Whether a spot is open turf: off the water, `pad` clear of the path's edge,
 ## outside the dock and off the scout's feet.

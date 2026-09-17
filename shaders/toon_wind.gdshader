@@ -6,7 +6,15 @@ render_mode cull_back, depth_draw_opaque, specular_disabled;
 // and roots stay planted. Materials named with `_sway` get this (core/toon.gd).
 // motion_scale is the project-wide global that reduce-motion sets to 0.
 // Spec: docs/superpowers/specs/2026-09-13-binairo-polish-design.md, section 4.
+//
+// Over that flutter rides a gust: a band travelling across the world along
+// wind_dir that pushes everything it crosses the same way at once, so a field
+// reads as weather rather than as a shimmer. It is gated on the wind_gust
+// global, which is 0 everywhere by default and 1 only while the campsite is
+// on the stage (world/stage.gd show_setting) -- a board's rim grass keeps
+// exactly the flutter it was calibrated with.
 #include "res://shaders/toon_lit.gdshaderinc"
+#include "res://shaders/wind.gdshaderinc"
 
 global uniform float motion_scale;
 uniform float sway_base = 0.03;    // local y of the moss top; below it nothing moves
@@ -24,4 +32,5 @@ void vertex() {
 	float flip = sign(determinant(mat3(MODEL_MATRIX)));
 	VERTEX.x += flip * sin(ph) * sway_amount * h * motion_scale;
 	VERTEX.z += cos(ph * 0.8) * sway_amount * 0.6 * h * motion_scale;
+	VERTEX += gust_lean(MODEL_MATRIX, wp, TIME, sway_amount) * h * motion_scale;
 }

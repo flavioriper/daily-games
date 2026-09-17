@@ -12,6 +12,12 @@ const Pal = preload("res://core/palette.gd")
 
 ## Global shader parameter, declared in project.godot [shader_globals].
 const GLOBAL := "motion_scale"
+## The second global: how hard the world is blowing. 0 on a board, where the
+## rim grass keeps the flutter it was calibrated with, and 1 on the campsite,
+## where gusts cross the lawn (shaders/wind.gdshaderinc). Separate from
+## motion_scale on purpose -- reduce-motion stills everything, and this only
+## says whether this screen has weather.
+const WIND_GLOBAL := "wind_gust"
 const SPLASH_TIME := 2.0
 const SPLASH_SPEED := 3.0
 const POLLEN_AMOUNT := 24
@@ -23,10 +29,13 @@ var pollen: CPUParticles3D
 ## the air, while the menu campsite keeps them. Reduce-motion stills them
 ## independently, so refresh() honours both.
 var pollen_wanted := true
+## Whether this screen has weather; see WIND_GLOBAL. Stage.show_setting sets it.
+var wind_wanted := false
 var _splash_age := -1.0
 
 func _ready() -> void:
 	_ensure_global()
+	set_wind_global(false)
 	pollen = _make_pollen()
 	add_child(pollen)
 	refresh()
@@ -40,6 +49,14 @@ static func _ensure_global() -> void:
 	if not ProjectSettings.has_setting("shader_globals/" + GLOBAL):
 		RenderingServer.global_shader_parameter_add(GLOBAL, RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 1.0)
 
+## Declares the wind global if the project has not (a stripped test project),
+## and sets it. Static, because the editor preview (tests/preview_tree.gd)
+## stands the camp up without a Stage and still wants its weather.
+static func set_wind_global(on: bool) -> void:
+	if not ProjectSettings.has_setting("shader_globals/" + WIND_GLOBAL):
+		RenderingServer.global_shader_parameter_add(WIND_GLOBAL, RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	RenderingServer.global_shader_parameter_set(WIND_GLOBAL, 1.0 if on else 0.0)
+
 ## 1 when the world moves, 0 under reduce-motion.
 static func motion_scale() -> float:
 	return 0.0 if Motion.reduce else 1.0
@@ -48,6 +65,7 @@ static func motion_scale() -> float:
 ## pollen. Call after the flag changes.
 func refresh() -> void:
 	RenderingServer.global_shader_parameter_set(GLOBAL, motion_scale())
+	set_wind_global(wind_wanted and not Motion.reduce)
 	if pollen == null:
 		return
 	var on := pollen_wanted and not Motion.reduce
@@ -59,6 +77,11 @@ func refresh() -> void:
 ## Puts the motes on this screen or takes them off; see pollen_wanted.
 func show_pollen(on: bool) -> void:
 	pollen_wanted = on
+	refresh()
+
+## Puts the weather on this screen or takes it off; see wind_wanted.
+func show_wind(on: bool) -> void:
+	wind_wanted = on
 	refresh()
 
 ## Sizes the pollen volume to a board: its footprint plus a one-cell margin,

@@ -212,6 +212,10 @@ func show_setting(on: bool) -> void:
 		env.background_mode = Environment.BG_SKY if on else Environment.BG_COLOR
 	if ambient != null:
 		ambient.show_pollen(on)
+		# The weather belongs to the setting, like the motes and the sky: a
+		# board is a board on a table, and its rim grass was calibrated
+		# against the flutter alone.
+		ambient.show_wind(on)
 	if soft_focus != null:
 		soft_focus.visible = on
 	if sun != null and env != null:
