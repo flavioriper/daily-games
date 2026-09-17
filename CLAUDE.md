@@ -162,9 +162,13 @@ export stays on the non-gradle path.
 - Events: `game_open`, `puzzle_start`, `puzzle_complete`, `puzzle_abandon`,
   `hint_used`, `undo_used`, `check_used`, `board_reset`, `rules_opened`,
   `new_puzzle`, `reduce_motion`, and on a board that can be turned,
-  `view_turn` and `peek_used`. Board events carry puzzle_id, difficulty,
-  day, seconds, moves, hints, checks; the last two tell us whether Pipes'
-  third dimension is a puzzle or a nuisance.
+  `view_turn` and `peek_used`. A daily turn adds `turn_lock`, `turn_reveal`,
+  `turn_share` and `crowd_reveal_opened`. Board events carry puzzle_id,
+  difficulty, day, seconds, moves, hints, checks; the last two tell us
+  whether Pipes' third dimension is a puzzle or a nuisance.
+- **`locale` rides on every event**, stamped by `Analytics.track()` beside
+  `session_id` and `engagement_time_msec` on whatever it is handed, so any
+  event can be split by language without a caller remembering to pass it.
 - To debug the wiring: `Analytics.validate = true` posts to GA4's validation
   endpoint and prints the verdict instead of recording; `Analytics.debug_mode`
   puts events in the console's DebugView.

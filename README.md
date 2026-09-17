@@ -49,7 +49,8 @@ rather than the live project (`peeplet-daily` has no Firestore enabled yet):
 
 ```bash
     # JDK 21+ is required; this Mac's default `java` is 17
-    PATH="/opt/homebrew/opt/openjdk/bin:$PATH" \
+    # firebase.json lives in server/, so the emulator is started from there
+    cd server && PATH="/opt/homebrew/opt/openjdk/bin:$PATH" \
       firebase emulators:start --only auth,firestore,functions --project demo-peeplet
 
     FIREBASE_EMULATOR=127.0.0.1 FIREBASE_PROJECT=demo-peeplet \
