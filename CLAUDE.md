@@ -137,7 +137,7 @@ colour rather than fog. Read it before touching a shader, palette or light.
 ## Playing on an Android phone
 
 The game ships as a native APK through Firebase App Distribution (project
-`peeplet-daily`, package `com.peeplet.daily`). Run `tools/deploy_android.sh`
+`daily-games-420bf`, package `com.peeplet.daily`). Run `tools/deploy_android.sh`
 to export and distribute; the build lands in the Firebase App Tester app on
 the phone. Nothing deploys on push.
 
@@ -149,7 +149,7 @@ templates. `build/` is ignored -- it is output.
 
 ## Analytics
 
-Gameplay events go to Firebase (project `peeplet-daily`) over the GA4
+Gameplay events go to Firebase (project `daily-games-420bf`) over the GA4
 Measurement Protocol, in `core/analytics.gd`. No native SDK, so the Android
 export stays on the non-gradle path.
 
@@ -188,13 +188,15 @@ the boards (`ui/registry.gd` says `"kind": "turn"`), and cost a
 mounting, the camera fit and the picking maths; `PuzzleBase` extends it too,
 because GDScript is single-inheritance.
 
-**The live backend is not provisioned, and that is expected.** Cloud
-Firestore is not enabled in `peeplet-daily`, there is no Firebase Web app for
-it yet, and `core/backend.gd`'s `API_KEY` is still the placeholder
-`PASTE_WEB_API_KEY_HERE`. A build run against the real project will fail to
-sign in every time; that is not a bug to chase, it is the project waiting on
-the repo owner to provision it. Everything below this point is verified
-against the local emulator suite, not the live project.
+**The live project is `daily-games-420bf`** (provisioned 2026-09-17; it
+replaced `peeplet-daily`, which now holds nothing this game uses). Firestore
+is a `nam5` multi-region database with the rules from `server/` released,
+anonymous sign-in is on, and `core/backend.gd`'s `API_KEY` is the project's
+Web app key. The three functions deploy with `tools/deploy_functions.sh`
+once the project is on Blaze; until they are deployed, a live build signs in
+and reads, but its submits are queued and refused, and the crowd line says
+the camp is out of reach. Everything below was verified against the local
+emulator suite first.
 
 `core/backend.gd` is the only way out of the game. It is static and woken by
 `world/main.gd` alone, exactly like `Analytics` -- **unstarted means offline**,
@@ -262,14 +264,20 @@ gates it -- the job stops on a non-zero failure count before anything reaches
 a phone. Each run stamps `version/code` with the run number so two builds are
 never the same version.
 
-Three repo secrets feed it, and the build says so when one is missing:
+Two repo secrets feed it, and the build says so when one is missing:
 
 - `ANDROID_DEBUG_KEYSTORE` -- base64 of `~/.android/debug.keystore`. It must
   be *that* key: Android will not install a build over one signed differently.
 - `ANALYTICS_API_SECRET` -- the GA4 Measurement Protocol secret. Absent, the
   build warns and reports nothing.
-- `FIREBASE_SERVICE_ACCOUNT` -- JSON key with App Distribution Admin. Absent,
-  the APK is still attached to the run as an artifact.
+
+App Distribution itself needs no secret. The organisation the Firebase project
+sits in forbids service-account keys, so the run signs in to Google keylessly
+(Workload Identity Federation): the job's `id-token` is exchanged for the
+`app-distribution` service account through the `github` identity pool, and
+only runs from this repository are allowed to. `tools/ci_identity.sh` is the
+one-time setup on the Google side; a failed sign-in fails the job rather than
+warning, because there is no longer a missing secret to excuse it.
 
 CI gets its Android SDK path into Godot by appending to the editor settings
 file that `--import` generates, rather than writing one by hand; the appended

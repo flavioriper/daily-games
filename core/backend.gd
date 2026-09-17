@@ -15,9 +15,9 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md,
 ## section 3.
 
-const PROJECT := "peeplet-daily"
+const PROJECT := "daily-games-420bf"
 ## A public client key, the same kind that sits in every Firebase web app.
-const API_KEY := "PASTE_WEB_API_KEY_HERE"
+const API_KEY := "AIzaSyCwpr8lI-wwJ_CE74KxjKZt_6HQdKGaNxc"
 const REGION := "us-central1"
 
 const CACHE_DIR := "user://backend_cache"

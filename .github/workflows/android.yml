@@ -13,12 +13,18 @@ concurrency:
 
 env:
   GODOT_VERSION: "4.7"
-  APP_ID: "1:881491152475:android:0e88e9f9a22583fdd0b97e"
+  APP_ID: "1:260608109943:android:cc54665867638bf150c572"
   TESTERS: "flavioriper@gmail.com"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # id-token lets the run prove who it is to Google (Workload Identity
+    # Federation), so App Distribution needs no stored key. The organisation
+    # the Firebase project sits in forbids service-account keys outright.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
 
@@ -123,21 +129,24 @@ jobs:
           godot --headless --path . --export-debug Android build/android/peeplet-daily.apk
           test -s build/android/peeplet-daily.apk
 
+      # Keyless: the run's own GitHub token is exchanged for the App
+      # Distribution service account through the `github` identity pool in
+      # the Firebase project; tools/ci_identity.sh is the one-time setup.
+      # The step fails loudly if the exchange does; there is no secret whose
+      # absence could make "nothing distributed" a warning any more.
+      - name: Sign in to Google
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/260608109943/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: app-distribution@daily-games-420bf.iam.gserviceaccount.com
+
       - name: Distribute to testers
-        env:
-          CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           set -euo pipefail
-          if [ -z "$CREDENTIALS" ]; then
-            echo "::warning::no FIREBASE_SERVICE_ACCOUNT; the APK was built and signed, but nothing was distributed"
-            exit 0
-          fi
-          echo "$CREDENTIALS" > /tmp/service-account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/service-account.json
           npx --yes firebase-tools@15 appdistribution:distribute \
             build/android/peeplet-daily.apk \
             --app "$APP_ID" \
-            --project peeplet-daily \
+            --project daily-games-420bf \
             --release-notes "$(git log -1 --pretty='%h %s')" \
             --testers "$TESTERS"
 

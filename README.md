@@ -45,7 +45,7 @@ Reduce-motion is read from `user://settings.cfg`, section `[motion]`, key
 A turn's identity, content and crowd tally come from Firestore and one Cloud
 Function in `server/`; unstarted means offline, so the commands above never
 touch this. To drive the real path locally, against the emulator suite
-rather than the live project (`peeplet-daily` has no Firestore enabled yet):
+rather than the live project (`daily-games-420bf`):
 
 ```bash
     # JDK 21+ is required; this Mac's default `java` is 17

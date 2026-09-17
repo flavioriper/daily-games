@@ -17,8 +17,8 @@ const ENDPOINT := "https://www.google-analytics.com/mp/collect"
 ## Validates a payload and reports what is wrong with it instead of recording
 ## it. See `validate`.
 const DEBUG_ENDPOINT := "https://www.google-analytics.com/debug/mp/collect"
-## The Firebase Android app in project peeplet-daily.
-const APP_ID := "1:881491152475:android:0e88e9f9a22583fdd0b97e"
+## The Firebase Android app in project daily-games-420bf.
+const APP_ID := "1:260608109943:android:cc54665867638bf150c572"
 ## Deliberately not in git: written by hand beside project.godot and packed by
 ## the export preset's include_filter. The secret comes from GA4 Admin ->
 ## Data Streams -> the app stream -> Measurement Protocol API secrets.

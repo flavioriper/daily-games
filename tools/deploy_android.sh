@@ -14,7 +14,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
 godot_bin="${GODOT:-godot}"
-app_id="1:881491152475:android:0e88e9f9a22583fdd0b97e"
+app_id="1:260608109943:android:cc54665867638bf150c572"
 testers="${TESTERS:-flavioriper@gmail.com}"
 out="build/android/peeplet-daily.apk"
 
@@ -38,6 +38,6 @@ git checkout -- project.godot 2>/dev/null || true
 
 firebase appdistribution:distribute "$out" \
   --app "$app_id" \
-  --project peeplet-daily \
+  --project daily-games-420bf \
   --release-notes "$(git log -1 --pretty='%h %s')" \
   --testers "$testers"
