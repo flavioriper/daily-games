@@ -88,7 +88,17 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
     res.status(400).json({error: "unknown game"});
     return;
   }
-  if (!Number.isInteger(day) || (day as number) < 20260101) {
+  if (!Number.isInteger(day)) {
+    res.status(400).json({error: "bad day"});
+    return;
+  }
+  // Only today or yesterday (UTC): create-once bounds nothing when the
+  // caller picks the day, since every new day key is a fresh document. A
+  // stale offline flush past that window is refused, not retried forever.
+  const nowForDay = new Date();
+  const today = dayKey(nowForDay);
+  const yesterday = dayKey(new Date(nowForDay.getTime() - 86400000));
+  if (day !== today && day !== yesterday) {
     res.status(400).json({error: "bad day"});
     return;
   }
@@ -101,7 +111,20 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
   const theDay = day as number;
   const theScore = score as number;
 
-  // One submit a second per player, whatever they are submitting to.
+  // A repeat answers with what is already stored rather than an error or a
+  // rate limit, which is what makes the client's retry and its offline
+  // flush safe -- reading back your own stored score is something the
+  // security rules already entitle the player to.
+  const submit = turnDoc(theDay, game).collection("submits").doc(uid);
+  const already = await submit.get();
+  if (already.exists) {
+    res.json({ok: true, created: false, score: already.get("score")});
+    return;
+  }
+
+  // One submit a second per player, whatever they are submitting to. This
+  // only bounds *new* submits; it must not stand between a retry and its
+  // own already-stored answer, checked above.
   const player = db.doc(`players/${uid}`);
   const now = Date.now();
   const seen = await player.get();
@@ -111,7 +134,6 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
   }
   await player.set({lastSubmitMs: now}, {merge: true});
 
-  const submit = turnDoc(theDay, game).collection("submits").doc(uid);
   try {
     await submit.create({
       score: theScore,
@@ -120,9 +142,16 @@ export const submitTurn = onRequest({cors: false}, async (req, res) => {
       at: FieldValue.serverTimestamp(),
     });
   } catch {
-    // Already there: two flushes raced, or the player is retrying.
+    // Either the player already submitted, or the write genuinely failed.
+    // The document itself is the only trustworthy answer: do not reason
+    // from the error object, and never report the caller's own just-sent
+    // score as though it were the stored one.
     const existing = await submit.get();
-    res.json({ok: true, created: false, score: existing.get("score") ?? theScore});
+    if (!existing.exists) {
+      res.status(500).json({error: "write failed"});
+      return;
+    }
+    res.json({ok: true, created: false, score: existing.get("score")});
     return;
   }
 
