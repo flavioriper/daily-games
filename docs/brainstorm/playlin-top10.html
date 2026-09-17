@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlin 40 · the top ten, taken apart</title>
+<style>
+@font-face{font-family:"Fredoka";src:url("../../assets/fonts/Fredoka-Variable.ttf") format("truetype");font-weight:300 700}
+@font-face{font-family:"Nunito";src:url("../../assets/fonts/Nunito-Variable.ttf") format("truetype");font-weight:200 1000}
+
+:root{
+  --paper:#f6efe2; --card:#fffaf1; --ink:#2f2a25; --muted:#6f655b; --line:#e3d8c6;
+  --wood:#8a5a3a; --sun:#f2b544; --rose:#e4707a; --sky:#3f7fd6;
+  --display:"Fredoka",-apple-system,"SF Pro Rounded",sans-serif;
+  --body:"Nunito",-apple-system,"SF Pro Text",sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--body)}
+a{color:var(--sky)}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:.2px}
+
+/* ---------- masthead ---------- */
+header{padding:40px 28px 26px;border-bottom:3px solid var(--ink)}
+header .wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
+header h1{margin:0;font-size:46px;line-height:1.02}
+header h1 small{display:block;font:700 13px/1 var(--body);letter-spacing:2.4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+header p{margin:12px 0 0;max-width:640px;color:var(--muted);font-size:17px}
+header .stamp{font-family:var(--display);text-align:right;color:var(--muted);font-size:14px;line-height:1.4}
+header .stamp b{display:block;color:var(--ink);font-size:20px}
+
+main{max-width:1180px;margin:0 auto;padding:0 24px 90px}
+
+/* ---------- the ledger ---------- */
+.ledger{margin:34px 0 10px;border-top:1px solid var(--ink)}
+.ledger a{display:grid;grid-template-columns:64px 44px 1fr 90px 70px;align-items:center;gap:12px;
+  padding:9px 6px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink);font-size:15px}
+.ledger a:hover{background:var(--card)}
+.ledger .rank{font-family:var(--display);font-size:26px;font-weight:600;line-height:1}
+.ledger .move{font-weight:800;font-size:12px}
+.ledger .up{color:#2f8f5b}.ledger .down{color:#c8443f}.ledger .new{background:#ffe1b3;color:#8a4b00;border-radius:999px;padding:2px 7px;font-size:10px;letter-spacing:.6px}
+.ledger .name b{font-weight:800}.ledger .name span{color:var(--muted);font-size:13px;margin-left:8px}
+.ledger .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.ledger .num b{color:var(--ink)}
+.ledger .head{font:800 11px/1 var(--body);letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);padding:8px 6px 6px;border-bottom:1px solid var(--ink)}
+.ledger .head span:last-child,.ledger .head span:nth-child(4){text-align:right}
+
+/* ---------- dossiers ---------- */
+.dossier{display:grid;grid-template-columns:330px 1fr;gap:40px;align-items:start;margin-top:70px;padding-top:26px;border-top:1px solid var(--ink);position:relative}
+.dossier:nth-of-type(even){grid-template-columns:1fr 330px}
+.dossier:nth-of-type(even) .shot{order:2}
+.dossier .index{position:absolute;top:-30px;left:0;font-family:var(--display);font-size:64px;font-weight:600;line-height:1;color:var(--accent,#333);letter-spacing:-2px}
+.dossier:nth-of-type(even) .index{left:auto;right:0}
+.dossier h2{margin:34px 0 2px;font-size:34px;line-height:1.05}
+.dossier h2 span{font:600 15px/1 var(--body);color:var(--muted);display:block;margin-top:6px}
+.dossier .lede{font-size:17.5px;margin:10px 0 18px;max-width:640px}
+.facts{display:grid;grid-template-columns:118px 1fr;gap:8px 16px;font-size:15px}
+.facts dt{font:800 11px/1.5 var(--body);letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.facts dd{margin:0}
+.facts dd p{margin:0 0 4px}
+.facts .caveat{color:#8a4b00}
+.sources{margin-top:14px;font-size:13px;color:var(--muted)}
+.sources a{margin-right:10px;white-space:nowrap}
+
+/* ---------- phone mocks ---------- */
+.shot{position:sticky;top:20px;margin:0}
+.phone{width:330px;aspect-ratio:360/648;border-radius:34px;overflow:hidden;background:#000;
+  box-shadow:0 22px 50px rgba(40,30,20,.28),inset 0 0 0 7px #24211e}
+.phone svg{display:block;width:100%;height:100%}
+.phone svg text{font-family:var(--body)}
+.phone svg .d{font-family:var(--display);font-weight:600}
+.phone svg .k{font-size:10px;font-weight:800;letter-spacing:1.4px}
+.shot figcaption{margin:10px 4px 0;font-size:13px;color:var(--muted);line-height:1.45}
+
+/* ---------- patterns ---------- */
+section.patterns{margin-top:80px;padding-top:26px;border-top:3px solid var(--ink)}
+section.patterns h2{font-size:34px;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 1px 0 var(--line)}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}
+th{background:#efe5d3;font-weight:800;font-size:12px;letter-spacing:1.2px;text-transform:uppercase}
+tr:last-child td{border-bottom:0}
+td.k{white-space:nowrap;font-weight:700}
+.dots{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--ink);display:inline-block}
+.dots i.o{background:transparent;border:1.5px solid var(--line)}
+.note{background:#fff4d6;border-left:4px solid var(--sun);padding:12px 16px;border-radius:8px;margin:22px 0 0;font-size:15.5px}
+.note b{font-family:var(--display);font-weight:600;font-size:17px}
+
+@media (max-width:860px){
+  .dossier,.dossier:nth-of-type(even){grid-template-columns:1fr}
+  .dossier:nth-of-type(even) .shot{order:0}
+  .shot{position:static}
+  .ledger a{grid-template-columns:44px 36px 1fr 60px 50px}
+  header .wrap{grid-template-columns:1fr}
+  header .stamp{text-align:left}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1><small>Field notes · competitive reference</small>The Playlin 40, top ten, taken apart</h1>
+      <p>How each game on the chart actually plays: the loop, the score, the share card, and what keeps people coming back. Each mock is an illustrative redraw of the game's core screen, not a screenshot.</p>
+    </div>
+    <div class="stamp"><b>Week of 14 Sep 2026</b>playlin.io/charts · captured 17 Sep<br>WKS = weeks on chart · PEAK = best rank</div>
+  </div>
+</header>
+
+<main>
+
+<nav class="ledger" aria-label="Chart index">
+  <div class="head" style="display:grid;grid-template-columns:64px 44px 1fr 90px 70px;gap:12px"><span>#</span><span></span><span>Game</span><span>Wks</span><span>Peak</span></div>
+  <a href="#krillion"><span class="rank">1</span><span class="move">—</span><span class="name"><b>Krillion</b><span>rare-answer trivia</span></span><span class="num">6</span><span class="num"><b>1</b></span></a>
+  <a href="#size-it-up"><span class="rank">2</span><span class="move new">NEW</span><span class="name"><b>Size It Up</b><span>GriddleLink Games</span></span><span class="num">1</span><span class="num"><b>2</b></span></a>
+  <a href="#number-waffle"><span class="rank">3</span><span class="move down">▼1</span><span class="name"><b>Number Waffle</b><span>Waffle Studio</span></span><span class="num">19</span><span class="num"><b>1</b></span></a>
+  <a href="#songless"><span class="rank">4</span><span class="move down">▼1</span><span class="name"><b>Songless</b><span>Lessgames</span></span><span class="num">9</span><span class="num"><b>1</b></span></a>
+  <a href="#dartwords"><span class="rank">5</span><span class="move down">▼1</span><span class="name"><b>Dartwords</b><span>The Game Band</span></span><span class="num">2</span><span class="num"><b>4</b></span></a>
+  <a href="#four-by-three"><span class="rank">6</span><span class="move down">▼1</span><span class="name"><b>4 × 3</b><span>Hank Green</span></span><span class="num">12</span><span class="num"><b>3</b></span></a>
+  <a href="#loopy-river"><span class="rank">7</span><span class="move up">▲2</span><span class="name"><b>Loopy River</b><span>Inkwell Games</span></span><span class="num">12</span><span class="num"><b>7</b></span></a>
+  <a href="#magnitudle"><span class="rank">8</span><span class="move up">▲4</span><span class="name"><b>Magnitudle</b><span>GriddleLink Games</span></span><span class="num">4</span><span class="num"><b>8</b></span></a>
+  <a href="#vexle"><span class="rank">9</span><span class="move down">▼2</span><span class="name"><b>Vexle</b><span>VEXLE</span></span><span class="num">9</span><span class="num"><b>2</b></span></a>
+  <a href="#poople"><span class="rank">10</span><span class="move down">▼4</span><span class="name"><b>Poople</b><span>Elias Furst</span></span><span class="num">15</span><span class="num"><b>1</b></span></a>
+</nav>
+
+<!-- ============================================================ 1 KRILLION -->
+<article class="dossier" id="krillion" style="--accent:#ff4d5e">
+  <div class="index">01</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Krillion mock: a prompt card over an ocean depth gauge">
+      <defs><linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e4a80"/><stop offset=".45" stop-color="#0d2547"/><stop offset="1" stop-color="#03091a"/></linearGradient></defs>
+      <rect width="360" height="648" fill="url(#sea)"/>
+      <text x="22" y="44" class="k" fill="#9fc4ff">DIVE #64</text>
+      <text x="338" y="44" class="k" fill="#9fc4ff" text-anchor="end">PROMPT 3 / 7</text>
+      <rect x="22" y="56" width="316" height="6" rx="3" fill="rgba(255,255,255,.18)"/>
+      <rect x="22" y="56" width="188" height="6" rx="3" fill="#ffb347"/>
+      <text x="338" y="76" font-size="11" fill="#ffb347" font-weight="800" text-anchor="end">12 s</text>
+      <rect x="22" y="88" width="316" height="96" rx="16" fill="#fff"/>
+      <text x="40" y="114" class="k" fill="#7a89a3">GEOGRAPHY</text>
+      <text x="40" y="142" font-size="18" font-weight="800" fill="#14213d">Name a country that has</text>
+      <text x="40" y="166" font-size="18" font-weight="800" fill="#14213d">nuclear weapons</text>
+      <rect x="22" y="198" width="316" height="48" rx="12" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.35)"/>
+      <text x="40" y="229" font-size="18" fill="#fff">Pakistan<tspan fill="#ffb347">|</tspan></text>
+      <rect x="258" y="206" width="70" height="32" rx="8" fill="#ff4d5e"/>
+      <text x="293" y="227" class="k" fill="#fff" text-anchor="middle">DIVE</text>
+      <!-- depth gauge -->
+      <rect x="0" y="270" width="360" height="47" fill="rgba(255,255,255,.04)"/>
+      <rect x="0" y="317" width="360" height="132" fill="rgba(255,255,255,.02)"/>
+      <line x1="56" y1="270" x2="56" y2="600" stroke="rgba(255,255,255,.35)" stroke-width="2"/>
+      <g fill="#9fc4ff" font-size="11">
+        <line x1="50" y1="270" x2="62" y2="270" stroke="#9fc4ff"/><text x="70" y="274">0 m · surface</text>
+        <line x1="50" y1="317" x2="62" y2="317" stroke="#9fc4ff"/><text x="70" y="321">1,000 m · twilight zone</text>
+        <line x1="50" y1="449" x2="62" y2="449" stroke="#9fc4ff"/><text x="70" y="453">3,800 m · Titanic</text>
+        <line x1="50" y1="600" x2="62" y2="600" stroke="#9fc4ff"/><text x="70" y="604">7,000 m · trench floor</text>
+      </g>
+      <line x1="56" y1="270" x2="56" y2="348" stroke="#ffb347" stroke-width="4"/>
+      <circle cx="56" cy="348" r="7" fill="#ffb347"/>
+      <text x="70" y="352" font-size="12" font-weight="800" fill="#ffb347">1,650 m · you</text>
+      <!-- last tier chip -->
+      <rect x="150" y="520" width="188" height="66" rx="14" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.2)"/>
+      <text x="166" y="543" class="k" fill="#9fc4ff">PROMPT 2 · “CYGNET”</text>
+      <text x="166" y="568" class="d" font-size="18" fill="#fff">DEEP CUT · 85 <tspan font-size="12" fill="#9fc4ff">+850 m</tspan></text>
+    </svg></div>
+    <figcaption>One prompt at a time under a timer. The score is drawn as a dive: 10 m per point, real landmarks on the way down.</figcaption>
+  </figure>
+  <div>
+    <h2>Krillion <span>no credited developer · krillion.io</span></h2>
+    <p class="lede">Seven prompts a day, one typed answer each, scored by how few other players gave the same valid answer. Rare sinks you deeper.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Seven category prompts ("Name a word for a baby animal"), identical for everyone, reset 04:00 UTC. One answer per prompt under a countdown. Blank, timed out or rejected answers score zero.</dd>
+      <dt>Scoring</dt><dd>Six rarity tiers by share of players who wrote the same thing: Plankton 10, Too Clever 15, Schooler 30, Rare 60, Deep Cut 85, One in a Krillion 100. A perfect day is 700 points, 7,000 m. "Too Clever" catches the second-most-obvious answer, so the game is a read on the crowd, not a quiz.</dd>
+      <dt>Share</dt><dd>Depth reached and tier list per prompt. Grading needs everyone's answers, which is why it is one attempt a day.</dd>
+      <dt>Retention</dt><dd>Daily Dive, Unlimited, Archive, Themed Packs, My Krillion stats, Friends, merch shop. Dive #64 on 17 Sep puts launch around mid-July 2026.</dd>
+      <dt>Why it charts</dt><dd>Same prompts for everyone gives comparison, rarity scoring removes wrong-answer shame, and the depth meter turns a number into a picture people post.</dd>
+      <dt>Caveats</dt><dd class="caveat">Timer reported as 15, 20 or 25 s by different sources. One clone site lists a doubling 4 to 100 point scale. The official site is a JavaScript app and could not be read directly.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/krillion/">Playlin</a><a href="https://krillion.io/">krillion.io</a><a href="https://krillionguide.com/en">KrillionGuide</a><a href="https://krilliongame.com/krillion-tiers/">tiers guide</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 2 SIZE IT UP -->
+<article class="dossier" id="size-it-up" style="--accent:#e84a3a">
+  <div class="index">02</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Size It Up mock: resize a whale silhouette next to a human at true scale">
+      <rect width="360" height="648" fill="#fff6f3"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#e84a3a">SIZE IT UP</text>
+      <text x="338" y="46" class="k" fill="#8a7f78" text-anchor="end">ROUND 2 / 5</text>
+      <g transform="translate(22,60)"><rect width="56" height="4" rx="2" fill="#e84a3a"/><rect x="64" width="56" height="4" rx="2" fill="#e84a3a" opacity=".45"/><rect x="128" width="56" height="4" rx="2" fill="#e9dcd6"/><rect x="192" width="56" height="4" rx="2" fill="#e9dcd6"/><rect x="256" width="60" height="4" rx="2" fill="#e9dcd6"/></g>
+      <rect x="22" y="80" width="316" height="400" rx="18" fill="#eef4f8" stroke="#d8e3ea"/>
+      <line x1="40" y1="430" x2="320" y2="430" stroke="#b9c9d4" stroke-dasharray="4 4"/>
+      <!-- human reference -->
+      <g fill="#33475b">
+        <circle cx="70" cy="376" r="7"/>
+        <path d="M63 385h14l3 22h-4l-2-10v33h-3v-20h-2v20h-3v-33l-2 10h-4z"/>
+      </g>
+      <text x="70" y="450" font-size="11" font-weight="800" fill="#33475b" text-anchor="middle">Human · 1.7 m</text>
+      <!-- whale target -->
+      <g opacity=".92">
+        <path d="M110 405c20-30 90-38 150-28 16 3 30 8 44 6l14-10-4 20 8 18-14-8c-14-2-30 6-50 7-60 4-130-2-148-5z" fill="#4a90e2"/>
+        <rect x="104" y="366" width="216" height="64" fill="none" stroke="#e84a3a" stroke-dasharray="6 4" stroke-width="1.5"/>
+        <g fill="#fff" stroke="#e84a3a" stroke-width="2"><circle cx="104" cy="366" r="6"/><circle cx="320" cy="366" r="6"/><circle cx="104" cy="430" r="6"/><circle cx="320" cy="430" r="8"/></g>
+      </g>
+      <text x="212" y="352" font-size="11" font-weight="800" fill="#e84a3a" text-anchor="middle">drag to resize</text>
+      <text x="212" y="450" font-size="11" font-weight="800" fill="#4a90e2" text-anchor="middle">Blue whale · ? m</text>
+      <text x="180" y="120" font-size="14" fill="#6f7f8f" text-anchor="middle">How long is a blue whale</text>
+      <text x="180" y="138" font-size="14" fill="#6f7f8f" text-anchor="middle">next to a person?</text>
+      <rect x="110" y="500" width="140" height="46" rx="23" fill="#e84a3a"/>
+      <text x="180" y="529" class="d" font-size="16" fill="#fff" text-anchor="middle">LOCK IN</text>
+      <rect x="22" y="566" width="316" height="54" rx="12" fill="#fff" stroke="#eadcd6"/>
+      <text x="38" y="588" class="k" fill="#8a7f78">ROUND 1 · GIRAFFE vs HUMAN</text>
+      <text x="38" y="608" font-size="14" fill="#2f2a25">Off by 9% · <tspan font-weight="800" fill="#2f8f5b">90 / 100</tspan></text>
+      <rect x="230" y="596" width="90" height="8" rx="4" fill="#eadcd6"/><rect x="230" y="596" width="81" height="8" rx="4" fill="#2f8f5b"/>
+    </svg></div>
+    <figcaption>A reference at true scale, a silhouette to resize, one lock-in. No timer, no fail state.</figcaption>
+  </figure>
+  <div>
+    <h2>Size It Up <span>GriddleLink Games (SideQuestTeej) · magnitudle.com/size-it-up</span></h2>
+    <p class="lede">Resize a silhouette until it matches its real size relative to a reference object shown at true scale. Five rounds, closer earns more.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Each round shows one reference at correct scale and one target. Drag a handle to resize (pan and zoom only move the view), press Lock In, the true size and round score appear. No timer.</dd>
+      <dt>Scoring</dt><dd>Up to 100 per round, 500 max, "a closer size estimate earns more points". No win or lose.</dd>
+      <dt>Share</dt><dd>Streaks, statistics and leaderboards advertised on the Magnitudle hub. Guest play works, an account carries progress across devices.</dd>
+      <dt>Retention</dt><dd>Original, Pop Culture and Geography variants, a free filterable archive, unlimited practice. Free, optional account. Monetisation is a Buy Me a Coffee link.</dd>
+      <dt>Why it charts</dt><dd>Playlin: it "turns those wonderfully pointless 'wait, how big is that?' questions into an actual game". Under two minutes, ratio thinking rather than exact numbers. Debuted at #2 in its first week.</dd>
+      <dt>Caveats</dt><dd class="caveat">Per-round thresholds (within 6% = 100, 12% = 90, 20% = 78, 33% = 62, 2× = 45, 3× = 30, 5× or worse = 0) and the five-block coloured share card appear only on clone sites.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/size-it-up/">Playlin</a><a href="https://magnitudle.com/size-it-up">official</a><a href="https://magnitudle.com/faq">FAQ</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 3 NUMBER WAFFLE -->
+<article class="dossier" id="number-waffle" style="--accent:#d9a521">
+  <div class="index">03</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Number Waffle mock: a waffle-shaped grid of digits with swap counter">
+      <rect width="360" height="648" fill="#fff8e6"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#b8860b">NUMBER WAFFLE</text>
+      <text x="338" y="46" class="k" fill="#8a7a55" text-anchor="end">#142</text>
+      <rect x="22" y="62" width="150" height="34" rx="17" fill="#fff" stroke="#ecdcb5"/>
+      <text x="40" y="84" class="k" fill="#8a7a55">SWAPS LEFT</text>
+      <text x="152" y="86" class="d" font-size="18" fill="#2f2a25" text-anchor="end">14</text>
+      <text x="338" y="88" font-size="18" fill="#e3d4b2" text-anchor="end" letter-spacing="2">★★★★★</text>
+      <!-- grid: origin 28,112 cell 40 gap 4; holes at odd,odd -->
+      <g font-size="20" font-weight="800" text-anchor="middle">
+        <!-- row 0 -->
+        <rect x="28" y="112" width="40" height="40" rx="8" fill="#6aaa64"/><text x="48" y="139" fill="#fff">3</text>
+        <rect x="72" y="112" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="92" y="139" fill="#4a4036">7</text>
+        <rect x="116" y="112" width="40" height="40" rx="8" fill="#6aaa64"/><text x="136" y="139" fill="#fff">1</text>
+        <rect x="160" y="112" width="40" height="40" rx="8" fill="#c9b458"/><text x="180" y="139" fill="#fff">4</text>
+        <rect x="204" y="112" width="40" height="40" rx="8" fill="#6aaa64"/><text x="224" y="139" fill="#fff">6</text>
+        <rect x="248" y="112" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="268" y="139" fill="#4a4036">2</text>
+        <rect x="292" y="112" width="40" height="40" rx="8" fill="#6aaa64"/><text x="312" y="139" fill="#fff">5</text>
+        <!-- row 1 -->
+        <rect x="28" y="156" width="40" height="40" rx="8" fill="#6aaa64"/><text x="48" y="183" fill="#fff">5</text>
+        <rect x="116" y="156" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="136" y="183" fill="#4a4036">6</text>
+        <rect x="204" y="156" width="40" height="40" rx="8" fill="#6aaa64"/><text x="224" y="183" fill="#fff">3</text>
+        <rect x="292" y="156" width="40" height="40" rx="8" fill="#c9b458"/><text x="312" y="183" fill="#fff">1</text>
+        <!-- row 2 -->
+        <rect x="28" y="200" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="48" y="227" fill="#4a4036">2</text>
+        <rect x="72" y="200" width="40" height="40" rx="8" fill="#6aaa64"/><text x="92" y="227" fill="#fff">4</text>
+        <rect x="116" y="200" width="40" height="40" rx="8" fill="#6aaa64"/><text x="136" y="227" fill="#fff">7</text>
+        <rect x="160" y="200" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="180" y="227" fill="#4a4036">1</text>
+        <rect x="204" y="200" width="40" height="40" rx="8" fill="#c9b458"/><text x="224" y="227" fill="#fff">5</text>
+        <rect x="248" y="200" width="40" height="40" rx="8" fill="#6aaa64"/><text x="268" y="227" fill="#fff">3</text>
+        <rect x="292" y="200" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="312" y="227" fill="#4a4036">6</text>
+        <!-- row 3 -->
+        <rect x="28" y="244" width="40" height="40" rx="8" fill="#6aaa64"/><text x="48" y="271" fill="#fff">7</text>
+        <rect x="116" y="244" width="40" height="40" rx="8" fill="#6aaa64"/><text x="136" y="271" fill="#fff">2</text>
+        <rect x="204" y="244" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="224" y="271" fill="#4a4036">4</text>
+        <rect x="292" y="244" width="40" height="40" rx="8" fill="#6aaa64"/><text x="312" y="271" fill="#fff">3</text>
+        <!-- row 4 -->
+        <rect x="28" y="288" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="48" y="315" fill="#4a4036">4</text>
+        <rect x="72" y="288" width="40" height="40" rx="8" fill="#6aaa64"/><text x="92" y="315" fill="#fff">1</text>
+        <rect x="116" y="288" width="40" height="40" rx="8" fill="#c9b458"/><text x="136" y="315" fill="#fff">5</text>
+        <rect x="160" y="288" width="40" height="40" rx="8" fill="#6aaa64"/><text x="180" y="315" fill="#fff">2</text>
+        <rect x="204" y="288" width="40" height="40" rx="8" fill="#6aaa64"/><text x="224" y="315" fill="#fff">7</text>
+        <rect x="248" y="288" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="268" y="315" fill="#4a4036">6</text>
+        <rect x="292" y="288" width="40" height="40" rx="8" fill="#6aaa64"/><text x="312" y="315" fill="#fff">3</text>
+        <!-- row 5 -->
+        <rect x="28" y="332" width="40" height="40" rx="8" fill="#6aaa64"/><text x="48" y="359" fill="#fff">1</text>
+        <rect x="116" y="332" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="136" y="359" fill="#4a4036">3</text>
+        <rect x="204" y="332" width="40" height="40" rx="8" fill="#6aaa64"/><text x="224" y="359" fill="#fff">2</text>
+        <rect x="292" y="332" width="40" height="40" rx="8" fill="#6aaa64"/><text x="312" y="359" fill="#fff">7</text>
+        <!-- row 6 -->
+        <rect x="28" y="376" width="40" height="40" rx="8" fill="#6aaa64"/><text x="48" y="403" fill="#fff">6</text>
+        <rect x="72" y="376" width="40" height="40" rx="8" fill="#c9b458"/><text x="92" y="403" fill="#fff">3</text>
+        <rect x="116" y="376" width="40" height="40" rx="8" fill="#6aaa64"/><text x="136" y="403" fill="#fff">4</text>
+        <rect x="160" y="376" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="180" y="403" fill="#4a4036">7</text>
+        <rect x="204" y="376" width="40" height="40" rx="8" fill="#6aaa64"/><text x="224" y="403" fill="#fff">1</text>
+        <rect x="248" y="376" width="40" height="40" rx="8" fill="#6aaa64"/><text x="268" y="403" fill="#fff">5</text>
+        <rect x="292" y="376" width="40" height="40" rx="8" fill="#e6dfd0"/><text x="312" y="403" fill="#4a4036">2</text>
+      </g>
+      <!-- sum clues in the holes -->
+      <g font-size="11" font-weight="800" text-anchor="middle" fill="#8a7a55">
+        <circle cx="92" cy="176" r="13" fill="#fff" stroke="#d9c79b"/><text x="92" y="180">12</text>
+        <circle cx="180" cy="264" r="13" fill="#fff" stroke="#d9c79b"/><text x="180" y="268">9</text>
+        <circle cx="268" cy="352" r="13" fill="#fff" stroke="#d9c79b"/><text x="268" y="356">14</text>
+      </g>
+      <!-- swap gesture -->
+      <path d="M92 240 C 120 262, 150 262, 176 244" fill="none" stroke="#b8860b" stroke-width="3" stroke-dasharray="5 4"/>
+      <circle cx="92" cy="240" r="5" fill="#b8860b"/><path d="M176 244l-8-8 2 12z" fill="#b8860b"/>
+      <text x="180" y="448" font-size="12" fill="#8a7a55" text-anchor="middle">Drag a number onto another to swap them</text>
+      <rect x="22" y="470" width="316" height="72" rx="14" fill="#fff" stroke="#ecdcb5"/>
+      <g font-size="12" fill="#4a4036">
+        <rect x="38" y="486" width="14" height="14" rx="3" fill="#6aaa64"/><text x="60" y="497">right place</text>
+        <rect x="150" y="486" width="14" height="14" rx="3" fill="#c9b458"/><text x="172" y="497">in a row or column</text>
+        <circle cx="45" cy="521" r="7" fill="#fff" stroke="#d9c79b"/><text x="60" y="525">circle = sum of the numbers it points to</text>
+      </g>
+      <text x="180" y="580" class="k" fill="#8a7a55" text-anchor="middle">EVERY PUZZLE SOLVES IN 15 · YOU GET 20</text>
+      <text x="180" y="602" font-size="12" fill="#b8860b" text-anchor="middle">one star per swap left over</text>
+    </svg></div>
+    <figcaption>Waffle's swap mechanic with digits: rows and columns must run 1 to 7. Every spare swap at the end is a star.</figcaption>
+  </figure>
+  <div>
+    <h2>Number Waffle <span>Waffle Studio Ltd (James Robinson) · wafflegame.net/numberwaffle</span></h2>
+    <p class="lede">The numeric sibling of Waffle: swap digits on a waffle-shaped grid until every row and column holds 1 to 7, in as few swaps as possible.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Drag any number onto another to swap. Twenty swaps to spend, every puzzle solvable in fifteen. No timer. Ends when solved or when swaps run out ("Oh dear. No stars this time, I'm afraid"). New puzzle at midnight, GMT or local by choice.</dd>
+      <dt>Scoring</dt><dd>One star per swap remaining, max five. Fail is zero stars. Green digits sit in the right place, circle clues hold the sum of the digits they point to.</dd>
+      <dt>Share</dt><dd>Share and copy button. Stats panel: played, total stars, current and best streak, star distribution 0 to 5. Optional account syncs across devices.</dd>
+      <dt>Retention</dt><dd>Part of the Waffle hub with Daily Waffle, weekly Deluxe, supporters-only Royale, ad-gated Archive, puzzle packs of ten, a timed Challenge, and spin-offs. Free with ads, supporters lose the ads.</dd>
+      <dt>Why it charts</dt><dd>Playlin: "feels like Sudoku, KenKen, and Waffle got mashed together". It inherits Waffle's audience (around 510,000 weekly players in 2024) and its star-per-spare-swap tension.</dd>
+      <dt>Caveats</dt><dd class="caveat">Exact share text not found. Launch date not found, 19 chart weeks implies roughly May 2026. The mock's grid layout is illustrative.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/number-waffle/">Playlin</a><a href="https://wafflegame.net/numberwaffle">official</a><a href="https://wafflegame.net/">Waffle hub</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 4 SONGLESS -->
+<article class="dossier" id="songless" style="--accent:#1a1a1a">
+  <div class="index">04</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Songless mock: a play button, a growing clip bar and six guess rows">
+      <rect width="360" height="648" fill="#111"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#fff">SONGLESS</text>
+      <g class="k"><text x="200" y="46" fill="#fff">ALL</text><text x="240" y="46" fill="#666">ROCK</text><text x="292" y="46" fill="#666">HIP HOP</text></g>
+      <rect x="200" y="52" width="24" height="2" fill="#fff"/>
+      <circle cx="180" cy="140" r="36" fill="#fff"/>
+      <path d="M170 124l26 16-26 16z" fill="#111"/>
+      <!-- clip bar in six steps -->
+      <g>
+        <rect x="30" y="204" width="46" height="10" rx="3" fill="#fff"/>
+        <rect x="80" y="204" width="46" height="10" rx="3" fill="#fff"/>
+        <rect x="130" y="204" width="46" height="10" rx="3" fill="#333"/>
+        <rect x="180" y="204" width="46" height="10" rx="3" fill="#333"/>
+        <rect x="230" y="204" width="46" height="10" rx="3" fill="#333"/>
+        <rect x="280" y="204" width="50" height="10" rx="3" fill="#333"/>
+      </g>
+      <g font-size="10" font-weight="800" fill="#888" text-anchor="middle">
+        <text x="53" y="230">0.1s</text><text x="103" y="230">0.5s</text><text x="153" y="230">1s</text><text x="203" y="230">2s</text><text x="253" y="230">5s</text><text x="305" y="230">FULL</text>
+      </g>
+      <text x="180" y="254" font-size="12" fill="#aaa" text-anchor="middle">you can hear 0.5 s</text>
+      <!-- guesses -->
+      <g font-size="14">
+        <rect x="22" y="272" width="316" height="40" rx="10" fill="#1f1f1f"/><text x="38" y="297" fill="#ddd">Starboy · The Weeknd</text><text x="322" y="298" fill="#ff5c5c" font-weight="800" text-anchor="end">✕</text>
+        <rect x="22" y="320" width="316" height="40" rx="10" fill="#1f1f1f"/><text x="38" y="345" fill="#ddd">Levitating · Dua Lipa</text><text x="322" y="346" fill="#ff5c5c" font-weight="800" text-anchor="end">✕</text>
+        <rect x="22" y="368" width="316" height="40" rx="10" fill="#fff"/><text x="38" y="393" fill="#111">Blin<tspan fill="#888">|</tspan></text>
+        <rect x="22" y="412" width="316" height="34" rx="8" fill="#2a2a2a"/><text x="38" y="434" fill="#fff" font-weight="800">Blinding Lights · The Weeknd</text>
+        <rect x="22" y="454" width="316" height="40" rx="10" fill="none" stroke="#333" stroke-dasharray="4 4"/>
+        <rect x="22" y="502" width="316" height="40" rx="10" fill="none" stroke="#333" stroke-dasharray="4 4"/>
+        <rect x="22" y="550" width="316" height="40" rx="10" fill="none" stroke="#333" stroke-dasharray="4 4"/>
+      </g>
+      <rect x="22" y="602" width="150" height="34" rx="17" fill="none" stroke="#555"/><text x="97" y="624" class="k" fill="#ccc" text-anchor="middle">SKIP · +0.5 s</text>
+      <rect x="188" y="602" width="150" height="34" rx="17" fill="#fff"/><text x="263" y="624" class="k" fill="#111" text-anchor="middle">SUBMIT</text>
+    </svg></div>
+    <figcaption>Heardle's shape: a tenth of a second to start, more clip for every miss, six tries, autocomplete titles.</figcaption>
+  </figure>
+  <div>
+    <h2>Songless <span>Lessgames · lessgames.com/songless</span></h2>
+    <p class="lede">Name the song from a clip that starts at 0.1 seconds and grows with every wrong guess or skip. A separate daily song per genre channel.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Pick All, Rock or Hip Hop. Listen, type a guess with autocomplete. Each miss or skip unlocks a longer clip, roughly 0.1, 0.5, 1, 2, 5 s then the full song. Six guesses, no timer. Ends on the right title or a sixth miss with the answer revealed.</dd>
+      <dt>Scoring</dt><dd>Win by naming it within six. Measured in guesses used, no points.</dd>
+      <dt>Share</dt><dd>A spoiler-free summary to share, Wordle-style once a day. Local streak, best streak, games played, win rate. No account.</dd>
+      <dt>Retention</dt><dd>Daily per genre, free, no signup. Sister games Wordless, Clueless and More/Less on the same hub. Archives exist only on companion and clone sites.</dd>
+      <dt>Why it charts</dt><dd>Playlin: "nailing a song from 0.1 seconds feels like a superpower". It fills the hole Heardle left when it closed in 2022.</dd>
+      <dt>Caveats</dt><dd class="caveat">The official page is a JavaScript app that returned no text, so rules come from Playlin and directories. Sources disagree on whether skips spend a guess and whether the first clip is 0.1 or 0.5 s. A $1.99 iOS "Songless" app is third-party.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/songless/">Playlin</a><a href="https://lessgames.com/songless">official</a><a href="https://seekdle.com/game/songless/">Seekdle</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 5 DARTWORDS -->
+<article class="dossier" id="dartwords" style="--accent:#d9480f">
+  <div class="index">05</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Dartwords mock: a dartboard with guessed words landing nearer the bullseye as they get closer in meaning">
+      <rect width="360" height="648" fill="#fff3e0"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#d9480f">DARTWORDS</text>
+      <text x="338" y="46" class="k" fill="#8a5a3a" text-anchor="end">7 DARTS LEFT</text>
+      <g transform="translate(180,230)">
+        <circle r="112" fill="#f4dcc0"/><circle r="90" fill="#fff"/><circle r="68" fill="#f4dcc0"/><circle r="46" fill="#fff"/><circle r="24" fill="#f4dcc0"/><circle r="10" fill="#d9480f"/>
+        <g stroke="#e9c9a3" stroke-width="1"><line x1="-112" y1="0" x2="112" y2="0"/><line x1="0" y1="-112" x2="0" y2="112"/></g>
+        <!-- darts: far, mid, near -->
+        <g stroke-linecap="round">
+          <line x1="-96" y1="34" x2="-118" y2="70" stroke="#4a4036" stroke-width="3"/><circle cx="-96" cy="34" r="4" fill="#4a4036"/>
+          <line x1="44" y1="-46" x2="66" y2="-84" stroke="#4a4036" stroke-width="3"/><circle cx="44" cy="-46" r="4" fill="#4a4036"/>
+          <line x1="14" y1="24" x2="34" y2="64" stroke="#4a4036" stroke-width="3"/><circle cx="14" cy="24" r="4" fill="#4a4036"/>
+        </g>
+        <g font-size="12" font-weight="800" fill="#4a4036">
+          <text x="-124" y="84" text-anchor="end">ocean</text>
+          <text x="72" y="-90">storm</text>
+          <text x="40" y="78">thunder</text>
+        </g>
+      </g>
+      <text x="180" y="360" font-size="11" fill="#8a5a3a" text-anchor="middle">closer in meaning lands closer to the bullseye</text>
+      <!-- Darty -->
+      <g transform="translate(46,440)">
+        <path d="M0 0l16-30 16 30-16 8z" fill="#d9480f"/>
+        <rect x="12" y="8" width="8" height="26" fill="#4a4036"/>
+        <path d="M6 40l10-10 10 10z" fill="#f2b544"/>
+        <circle cx="12" cy="-10" r="3" fill="#fff"/><circle cx="20" cy="-10" r="3" fill="#fff"/><circle cx="13" cy="-10" r="1.4" fill="#111"/><circle cx="21" cy="-10" r="1.4" fill="#111"/>
+      </g>
+      <path d="M96 392h232a12 12 0 0 1 12 12v56a12 12 0 0 1-12 12H112l-16 14v-14a12 12 0 0 1-12-12v-56a12 12 0 0 1 12-12z" fill="#fff" stroke="#e9c9a3"/>
+      <text x="112" y="418" font-size="13" fill="#2f2a25">Warmer! Louder than a storm,</text>
+      <text x="112" y="437" font-size="13" fill="#2f2a25">and you can't hold it. Hint from Darty.</text>
+      <text x="112" y="458" font-size="10" fill="#8a5a3a">far: language model · close: hand-written</text>
+      <rect x="22" y="500" width="240" height="48" rx="12" fill="#fff" stroke="#e9c9a3"/>
+      <text x="40" y="531" font-size="18" fill="#2f2a25">lightning<tspan fill="#d9480f">|</tspan></text>
+      <rect x="270" y="500" width="68" height="48" rx="12" fill="#d9480f"/>
+      <text x="304" y="530" class="k" fill="#fff" text-anchor="middle">THROW</text>
+      <text x="180" y="588" font-size="12" fill="#8a5a3a" text-anchor="middle">one secret word · ten darts · no opening clue</text>
+      <text x="180" y="610" class="k" fill="#c8443f" text-anchor="middle">TIP JAR</text>
+    </svg></div>
+    <figcaption>Twenty Questions with a dartboard: each guess lands by semantic distance and a Clippy-style dart talks back.</figcaption>
+  </figure>
+  <div>
+    <h2>Dartwords <span>The Game Band (Blaseball) · dartwords.com</span></h2>
+    <p class="lede">Guess one secret word in ten darts with no opening clue. Every guess is thrown at a board and lands nearer the bullseye the closer its meaning is, while Darty, a talking dart, drops a conversational hint.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Free-text word input, one secret word a day, ten darts, no timer found. Broad early hints come from a local language model trained on a dictionary, close-in hints are hand-written. Ends on the word or the tenth dart.</dd>
+      <dt>Scoring</dt><dd>Win is the bullseye within ten. Loss screen and any scoring beyond darts used: not found.</dd>
+      <dt>Share</dt><dd>Share text, streaks, stats: not found beyond an unattributed snippet saying results are shareable.</dd>
+      <dt>Retention</dt><dd>Daily only, free with a tip jar. No archive, unlimited or accounts found. Launched 17 or 18 August 2026 and reached #4 in its second chart week.</dd>
+      <dt>Why it charts</dt><dd>A studio with a cult following, a mascot you can blame, and a guessing feel instead of a letter grid. Covered by The Verge and others at launch.</dd>
+      <dt>Caveats</dt><dd class="caveat">"No category, definition or first letter" comes only from a guide site. The mock's hint text and words are invented.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/dartwords/">Playlin</a><a href="https://www.dartwords.com/">official</a><a href="https://thegameband.com/blog/introducing-dartwords">Game Band blog</a><a href="https://www.theverge.com/entertainment/981014/dartwords-clippy-word-game">The Verge</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 6 FOUR BY THREE -->
+<article class="dossier" id="four-by-three" style="--accent:#7b5cd6">
+  <div class="index">06</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="4 by 3 mock: a solved yellow group above remaining word tiles and a scoring ledger">
+      <rect width="360" height="648" fill="#fbfbf7"/>
+      <text x="22" y="46" class="d" font-size="22" fill="#2f2a25">4 × 3</text>
+      <text x="200" y="46" class="k" fill="#8a7f78" text-anchor="end">0:47</text>
+      <rect x="216" y="28" width="122" height="28" rx="14" fill="#2f2a25"/>
+      <text x="277" y="47" class="k" fill="#fff" text-anchor="middle">SCORE 100</text>
+      <!-- solved group -->
+      <rect x="22" y="76" width="316" height="54" rx="12" fill="#f9df6d"/>
+      <text x="180" y="98" class="k" fill="#6b5a10" text-anchor="middle">___FLY</text>
+      <text x="180" y="118" font-size="15" font-weight="800" fill="#2f2a25" text-anchor="middle">DRAGON · BUTTER · FIRE</text>
+      <!-- remaining tiles 3 cols 100x56 gap 8 origin 26,146 -->
+      <g font-size="15" font-weight="800" text-anchor="middle" fill="#2f2a25">
+        <rect x="26" y="146" width="100" height="56" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="3"/><text x="76" y="180">FIRE</text>
+        <rect x="130" y="146" width="100" height="56" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="3"/><text x="180" y="180">CLOCK</text>
+        <rect x="234" y="146" width="100" height="56" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="3"/><text x="284" y="180">WATER</text>
+        <rect x="26" y="210" width="100" height="56" rx="10" fill="#efece4"/><text x="76" y="244">MARKET</text>
+        <rect x="130" y="210" width="100" height="56" rx="10" fill="#efece4"/><text x="180" y="244">BIRTH</text>
+        <rect x="234" y="210" width="100" height="56" rx="10" fill="#efece4"/><text x="284" y="244">FORE</text>
+        <rect x="26" y="274" width="100" height="56" rx="10" fill="#efece4"/><text x="76" y="308">SIDE</text>
+        <rect x="130" y="274" width="204" height="56" rx="10" fill="none" stroke="#e3ddd0" stroke-dasharray="4 4"/>
+        <text x="232" y="308" font-size="11" fill="#a89f94" font-weight="700">FIRE stays: it belongs to all four groups</text>
+      </g>
+      <g class="k" text-anchor="middle">
+        <rect x="26" y="350" width="96" height="36" rx="18" fill="none" stroke="#cfc8bb"/><text x="74" y="373" fill="#6f655b">SHUFFLE</text>
+        <rect x="132" y="350" width="96" height="36" rx="18" fill="none" stroke="#cfc8bb"/><text x="180" y="373" fill="#6f655b">DESELECT</text>
+        <rect x="238" y="350" width="96" height="36" rx="18" fill="#7b5cd6"/><text x="286" y="373" fill="#fff">SUBMIT</text>
+      </g>
+      <!-- scoring ledger -->
+      <rect x="22" y="406" width="316" height="186" rx="14" fill="#fff" stroke="#e3ddd0"/>
+      <text x="40" y="430" class="k" fill="#8a7f78">HOW THE SCORE MOVES</text>
+      <g font-size="12.5" fill="#2f2a25">
+        <text x="40" y="454">Every win starts at</text><text x="320" y="454" text-anchor="end" font-weight="800">100</text>
+        <text x="40" y="474">Each mistake</text><text x="320" y="474" text-anchor="end" font-weight="800" fill="#c8443f">−15</text>
+        <text x="40" y="494">Hub found first</text><text x="320" y="494" text-anchor="end" font-weight="800" fill="#2f8f5b">+20</text>
+        <text x="40" y="514">Purple (hardest) group first</text><text x="320" y="514" text-anchor="end" font-weight="800" fill="#2f8f5b">+15</text>
+        <text x="40" y="534">Under 90 seconds</text><text x="320" y="534" text-anchor="end" font-weight="800" fill="#2f8f5b">+30</text>
+        <text x="40" y="554">Hub last in every guess</text><text x="320" y="554" text-anchor="end" font-weight="800" fill="#c8443f">−100</text>
+        <text x="40" y="578" font-size="11" fill="#8a7f78">perfect game 200 + one point per streak day</text>
+      </g>
+      <text x="180" y="620" font-size="11" fill="#7b5cd6" font-weight="800" text-anchor="middle">CALL IT (beta): tap the hub, one chance</text>
+    </svg></div>
+    <figcaption>Connections with a hub word shared by all four groups, and a scoring meta deep enough to argue about.</figcaption>
+  </figure>
+  <div>
+    <h2>4 × 3 <span>Hank Green · hankgreen.com/fourbythree</span></h2>
+    <p class="lede">Nine words, four groups of three, and one hub word that belongs to all four. Find the groups, then the hub is revealed.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Tap three words and submit, with shuffle and deselect. A correct group locks and clears while the hub stays on the board. A timer runs, hidden by default, with no cap. The optional "Call It" beta lets you name the hub once, wrong means the board fails.</dd>
+      <dt>Scoring</dt><dd>Wins start at 100. −15 per mistake, −30 for a slip with two groups left. Bonuses: hub first or middle +20, blue first +5, purple first +15, reverse rainbow +30, under 90 s +30, efficient twelve-click solve +5, +1 per streak day. Hub last in every guess is "Rule Breaker", −100. Perfect is 200 plus streak. Gold and silver plaques under 90 and 120 s.</dd>
+      <dt>Share</dt><dd>Results as image or emoji text. Stats: win rate, streak, completed. History lives on the device only, movable with a transfer code.</dd>
+      <dt>Retention</dt><dd>Free archive back to 11 June 2026 that does not touch today's game, a community builder with 150+ rated puzzles, accessibility toggles, no accounts, no monetisation found.</dd>
+      <dt>Why it charts</dt><dd>Connections' familiarity, a scoring layer for hardcore solvers, and a creator with an enormous audience.</dd>
+      <dt>Caveats</dt><dd class="caveat">Mistake cap and the loss condition without Call It: not found. The mock's word set is invented to illustrate the hub rule.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/hank-green-4x3/">Playlin</a><a href="https://www.hankgreen.com/fourbythree/index.html">official</a><a href="https://www.hankgreen.com/fourbythree/scoring.html">scoring</a><a href="https://boingboing.net/2026/06/29/hank-green-made-a-connections-variant-for-hardcore-puzzlers.html">Boing Boing</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 7 LOOPY RIVER -->
+<article class="dossier" id="loopy-river" style="--accent:#2b6cb0">
+  <div class="index">07</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Loopy River mock: a grid with a river path drawn through cells around island walls">
+      <rect width="360" height="648" fill="#f4efe4"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#2b4c7e">LOOPY RIVER</text>
+      <text x="338" y="46" class="k" fill="#6f655b" text-anchor="end">THU · MEDIUM</text>
+      <text x="338" y="66" font-size="12" fill="#2b4c7e" font-weight="800" text-anchor="end">1:12</text>
+      <!-- 6x6 grid origin 36,100 cell 48 -->
+      <rect x="36" y="100" width="288" height="288" rx="6" fill="#fff" stroke="#cbbfa8"/>
+      <g stroke="#e3d8c6">
+        <line x1="84" y1="100" x2="84" y2="388"/><line x1="132" y1="100" x2="132" y2="388"/><line x1="180" y1="100" x2="180" y2="388"/><line x1="228" y1="100" x2="228" y2="388"/><line x1="276" y1="100" x2="276" y2="388"/>
+        <line x1="36" y1="148" x2="324" y2="148"/><line x1="36" y1="196" x2="324" y2="196"/><line x1="36" y1="244" x2="324" y2="244"/><line x1="36" y1="292" x2="324" y2="292"/><line x1="36" y1="340" x2="324" y2="340"/>
+      </g>
+      <!-- islands -->
+      <rect x="136" y="200" width="40" height="40" rx="8" fill="#8a6f57"/><circle cx="156" cy="212" r="6" fill="#6aaa64"/>
+      <rect x="184" y="296" width="40" height="40" rx="8" fill="#8a6f57"/><circle cx="212" cy="308" r="6" fill="#6aaa64"/>
+      <!-- river -->
+      <polyline points="60,124 300,124 300,172 60,172 60,220 108,220 108,268 60,268 60,364 156,364 156,268 204,268" fill="none" stroke="#4fa8ef" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="60,124 300,124 300,172 60,172 60,220 108,220 108,268 60,268 60,364 156,364 156,268 204,268" fill="none" stroke="#9fd2ff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="14 18"/>
+      <circle cx="204" cy="268" r="9" fill="#fff" stroke="#2b6cb0" stroke-width="3"/>
+      <!-- x marks -->
+      <g stroke="#c8443f" stroke-width="2.5" stroke-linecap="round"><path d="M246 214l12 12M258 214l-12 12"/><path d="M294 310l12 12M306 310l-12 12"/></g>
+      <text x="180" y="414" font-size="12" fill="#6f655b" text-anchor="middle">drag to draw · drag back to erase · tap to mark ✕</text>
+      <g class="k" text-anchor="middle">
+        <rect x="36" y="436" width="88" height="38" rx="19" fill="none" stroke="#2b6cb0"/><text x="80" y="460" fill="#2b6cb0">UNDO</text>
+        <rect x="136" y="436" width="88" height="38" rx="19" fill="#2b6cb0"/><text x="180" y="460" fill="#fff">CHECK</text>
+        <rect x="236" y="436" width="88" height="38" rx="19" fill="none" stroke="#2b6cb0"/><text x="280" y="460" fill="#2b6cb0">RESET</text>
+      </g>
+      <rect x="22" y="498" width="316" height="72" rx="14" fill="#fff" stroke="#e3d8c6"/>
+      <text x="40" y="522" class="k" fill="#6f655b">THE RULE</text>
+      <text x="40" y="544" font-size="13" fill="#2f2a25">One river through every cell exactly once.</text>
+      <text x="40" y="562" font-size="13" fill="#2f2a25">No forks, no dead ends, no crossings, one loop.</text>
+      <text x="180" y="604" font-size="11" fill="#6f655b" text-anchor="middle">Mon Tue easy · Wed Thu medium · Fri Sat hard · Sun challenge</text>
+    </svg></div>
+    <figcaption>A pen-and-paper loop puzzle with one solution. No points, only the clock.</figcaption>
+  </figure>
+  <div>
+    <h2>Loopy River <span>Inkwell Games (formerly Lazy River) · inkwellgames.com/games/loopy-river</span></h2>
+    <p class="lede">Draw one continuous river that passes through every cell of a grid exactly once, around walls and islands. Pure deduction, no guessing.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Drag between cells to draw, drag back to erase, tap to mark an X on impossible paths. Undo, Check and Reset buttons. A timer runs. One puzzle a day at midnight, no guess count. Ends when a single closed loop covers every cell.</dd>
+      <dt>Scoring</dt><dd>No points. Solved means one loop with no branches, forks, dead ends or crossings. Difficulty steps up through the week from Monday beginner to Sunday challenge.</dd>
+      <dt>Share</dt><dd>Share card, streaks, stats: not found. Subscribers can replay and track their times.</dd>
+      <dt>Retention</dt><dd>Free daily with accounts. Subscription at $5.99 a month or $49.99 a year unlocks the archive (since 4 May 2026), replays, early access and solving aids. Weekend puzzles vanish for non-subscribers on Monday. Part of a four-game daily set with Mosaic and others.</dd>
+      <dt>Why it charts</dt><dd>A sub-two-minute logic puzzle with exactly one answer, sitting inside a daily ritual of sibling games.</dd>
+      <dt>Caveats</dt><dd class="caveat">Grid size not found. "Exactly two connections per cell" comes only from a guide site. Inkwell's blog says "no account required" and "free means free", which sits awkwardly beside the paywalled archive.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/loopy-river/">Playlin</a><a href="https://inkwellgames.com/games/loopy-river">official</a><a href="https://inkwellgames.com/games/loopy-river/intro">guide</a><a href="https://inkwellgames.com/faq">FAQ</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 8 MAGNITUDLE -->
+<article class="dossier" id="magnitudle" style="--accent:#d63a2f">
+  <div class="index">08</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Magnitudle mock: one estimation question, a number field with scale buttons, and a log-scale result">
+      <rect width="360" height="648" fill="#fff"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#d63a2f">MAGNITUDLE</text>
+      <text x="338" y="46" class="k" fill="#8a7f78" text-anchor="end">DAY 212 · STREAK 12</text>
+      <rect x="22" y="72" width="316" height="104" rx="16" fill="#fff4f2" stroke="#f3d3ce"/>
+      <text x="40" y="98" class="k" fill="#c8443f">TODAY'S QUESTION</text>
+      <text x="40" y="126" font-size="17" font-weight="800" fill="#2f2a25">How many commercial flights</text>
+      <text x="40" y="148" font-size="17" font-weight="800" fill="#2f2a25">take off worldwide on an</text>
+      <text x="40" y="170" font-size="17" font-weight="800" fill="#2f2a25">average day?</text>
+      <rect x="22" y="196" width="316" height="56" rx="12" fill="#fff" stroke="#cfc8bb" stroke-width="2"/>
+      <text x="40" y="232" class="d" font-size="24" fill="#2f2a25">250,000</text>
+      <text x="320" y="230" font-size="18" fill="#8a7f78" text-anchor="end">✎</text>
+      <g class="k" text-anchor="middle">
+        <rect x="22" y="264" width="56" height="30" rx="8" fill="#f2ece2"/><text x="50" y="284" fill="#2f2a25">×1K</text>
+        <rect x="87" y="264" width="56" height="30" rx="8" fill="#f2ece2"/><text x="115" y="284" fill="#2f2a25">×1M</text>
+        <rect x="152" y="264" width="56" height="30" rx="8" fill="#f2ece2"/><text x="180" y="284" fill="#2f2a25">×1B</text>
+        <rect x="217" y="264" width="56" height="30" rx="8" fill="#f2ece2"/><text x="245" y="284" fill="#2f2a25">×1T</text>
+        <rect x="282" y="264" width="56" height="30" rx="8" fill="#f2ece2"/><text x="310" y="284" fill="#2f2a25">×1Q</text>
+      </g>
+      <rect x="22" y="310" width="316" height="48" rx="24" fill="#d63a2f"/>
+      <text x="180" y="340" class="d" font-size="16" fill="#fff" text-anchor="middle">SUBMIT · ONE GUESS</text>
+      <!-- result -->
+      <rect x="22" y="384" width="316" height="184" rx="16" fill="#fbfaf6" stroke="#e3ddd0"/>
+      <text x="40" y="410" class="k" fill="#8a7f78">AFTER SUBMIT · LOG SCALE</text>
+      <line x1="46" y1="470" x2="316" y2="470" stroke="#cfc8bb" stroke-width="2"/>
+      <g font-size="10" fill="#8a7f78" text-anchor="middle" font-weight="800">
+        <line x1="46" y1="464" x2="46" y2="476" stroke="#8a7f78"/><text x="46" y="492">1K</text>
+        <line x1="113" y1="464" x2="113" y2="476" stroke="#8a7f78"/><text x="113" y="492">10K</text>
+        <line x1="181" y1="464" x2="181" y2="476" stroke="#8a7f78"/><text x="181" y="492">100K</text>
+        <line x1="248" y1="464" x2="248" y2="476" stroke="#8a7f78"/><text x="248" y="492">1M</text>
+        <line x1="316" y1="464" x2="316" y2="476" stroke="#8a7f78"/><text x="316" y="492">10M</text>
+      </g>
+      <circle cx="181" cy="470" r="8" fill="#2f8f5b"/><text x="181" y="446" font-size="11" font-weight="800" fill="#2f8f5b" text-anchor="middle">answer ≈100K</text>
+      <circle cx="208" cy="470" r="8" fill="#d63a2f"/><text x="222" y="446" font-size="11" font-weight="800" fill="#d63a2f" text-anchor="start">you</text>
+      <text x="40" y="524" class="d" font-size="26" fill="#2f2a25">90 <tspan font-size="13" class="k" fill="#8a7f78">/ 100</tspan></text>
+      <text x="40" y="548" font-size="12" fill="#6f655b">within a factor of 3 · one order off would be 70 to 80</text>
+      <text x="180" y="604" font-size="11" fill="#8a7f78" text-anchor="middle">Survival mode keeps asking until you miss by too much</text>
+    </svg></div>
+    <figcaption>A Fermi question, a single number, a logarithmic score. Being in the right ballpark is enough to feel clever.</figcaption>
+  </figure>
+  <div>
+    <h2>Magnitudle <span>GriddleLink Games (SideQuestTeej) · magnitudle.com</span></h2>
+    <p class="lede">One real-world "how many, how big" question a day. Type a number, get scored on how close your order of magnitude lands.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Numeric input with ×1K to ×1Q scale buttons and a notepad. One question, one guess, no timer. Submit reveals the answer. Survival mode chains questions until you miss by too much.</dd>
+      <dt>Scoring</dt><dd>Logarithmic, out of 100. Within a factor of 2 to 3 is 90 to 100, one order of magnitude off is 70 to 80, two orders 50 to 60, three or more below 50. No pass or fail, only a score. Formula not published.</dd>
+      <dt>Share</dt><dd>Streak counter on the home page, history page, badges, global leaderboards for Daily, Survival and Size It Up for permanent accounts. Playlin says results compare against other players. Share text format not found.</dd>
+      <dt>Retention</dt><dd>Free, ungated archive of every past puzzle across all variants. Guest play with local progress, optional account. No ads or premium, a Buy Me a Coffee link. A blog of Fermi-problem explainers.</dd>
+      <dt>Why it charts</dt><dd>One guess, no clue trail, and a forgiving log curve mean anyone with a sensible anchor gets a respectable number. Quick and argument-provoking. The Size It Up spin-off debuted at #2 the same week.</dd>
+      <dt>Caveats</dt><dd class="caveat">Survival specifics (weekly, 10 lives, 15 s per question) come from a third-party listing. The mock's question and answer are illustrative.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/magnitudle/">Playlin</a><a href="https://magnitudle.com/">official</a><a href="https://magnitudle.com/blog/how-does-magnitudle-scoring-work">scoring blog</a><a href="https://magnitudle.com/archive">archive</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 9 VEXLE -->
+<article class="dossier" id="vexle" style="--accent:#f2b544">
+  <div class="index">09</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Vexle mock: a hand-drawn Brazil flag beside the real one, with a percent score and grade sticker">
+      <rect width="360" height="648" fill="#14161c"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#fff">VEXLE</text>
+      <text x="338" y="46" class="k" fill="#9aa0ad" text-anchor="end">DAY 79 · DRAW MODE</text>
+      <text x="22" y="82" class="k" fill="#9aa0ad">YOUR DRAW</text>
+      <text x="338" y="82" class="k" fill="#9aa0ad" text-anchor="end">BRAZIL</text>
+      <!-- hand drawn -->
+      <rect x="22" y="92" width="150" height="106" rx="6" fill="#fff"/>
+      <path d="M28 98 Q100 92 166 100 L164 190 Q100 196 30 190 Z" fill="#2f9e44"/>
+      <path d="M96 106 L152 146 L98 186 L42 148 Z" fill="#f7d33d" stroke="#e5b800" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M78 146 c2-18 16-24 24-22 12 2 20 12 18 24 -2 12-14 20-24 18 -12-2-20-10-18-20z" fill="#2b4fa3"/>
+      <path d="M78 140 q22-10 42 4" stroke="#fff" stroke-width="3" fill="none"/>
+      <!-- actual -->
+      <rect x="188" y="92" width="150" height="106" rx="6" fill="#009c3b"/>
+      <path d="M263 102 L326 145 L263 188 L200 145 Z" fill="#ffdf00"/>
+      <circle cx="263" cy="145" r="24" fill="#002776"/>
+      <path d="M241 140 q22-8 44 6" stroke="#fff" stroke-width="3" fill="none"/>
+      <!-- sticker -->
+      <g transform="translate(180,300) rotate(-6)">
+        <rect x="-78" y="-64" width="156" height="128" rx="18" fill="#f2b544"/>
+        <rect x="-70" y="-56" width="140" height="112" rx="14" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="6 5"/>
+        <text x="0" y="-6" class="d" font-size="44" fill="#14161c" text-anchor="middle">78%</text>
+        <text x="0" y="24" class="k" fill="#14161c" text-anchor="middle">GRADE B</text>
+        <text x="0" y="44" font-size="10" fill="#14161c" text-anchor="middle" font-weight="800">colour regions in the right place</text>
+      </g>
+      <!-- tools -->
+      <g transform="translate(0,410)">
+        <circle cx="52" cy="0" r="14" fill="#009c3b" stroke="#fff" stroke-width="3"/><circle cx="92" cy="0" r="14" fill="#ffdf00"/><circle cx="132" cy="0" r="14" fill="#002776"/><circle cx="172" cy="0" r="14" fill="#fff"/>
+        <rect x="204" y="-14" width="28" height="28" rx="6" fill="#2a2d36"/><circle cx="218" cy="0" r="4" fill="#fff"/>
+        <rect x="240" y="-14" width="28" height="28" rx="6" fill="#2a2d36"/><rect x="250" y="-6" width="10" height="12" fill="#fff"/>
+        <rect x="276" y="-14" width="28" height="28" rx="6" fill="#2a2d36"/><text x="290" y="5" font-size="13" fill="#fff" text-anchor="middle">↶</text>
+        <text x="180" y="34" font-size="10" fill="#9aa0ad" text-anchor="middle" font-weight="800">brush · fill · shape · undo</text>
+      </g>
+      <rect x="22" y="470" width="316" height="52" rx="12" fill="#1f222b"/>
+      <text x="40" y="491" class="k" fill="#9aa0ad">WORLD MAP</text>
+      <text x="40" y="511" font-size="12" fill="#fff">85% or better fills the country in on your map</text>
+      <rect x="22" y="532" width="152" height="40" rx="20" fill="none" stroke="#3a3f4b"/><text x="98" y="557" class="k" fill="#fff" text-anchor="middle">BUILD MODE</text>
+      <rect x="186" y="532" width="152" height="40" rx="20" fill="#f2b544"/><text x="262" y="557" class="k" fill="#14161c" text-anchor="middle">REVEAL</text>
+      <text x="180" y="604" font-size="11" fill="#9aa0ad" text-anchor="middle">36 flag packs · sticker book · stroke replay videos</text>
+    </svg></div>
+    <figcaption>Draw the flag from memory, then see it beside the real one. The percent is forgiving, the side-by-side is the joke.</figcaption>
+  </figure>
+  <div>
+    <h2>Vexle <span>VEXLE (David Lawal) · vexle.org · launched 30 Jun 2026</span></h2>
+    <p class="lede">Draw today's country flag from memory on a blank canvas and get a similarity score, or build it from coloured regions in six Wordle-style tries.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Draw mode: brush, fill and shape tools, undo and clear, no timer found, press Reveal to see your sketch beside the real flag with a percent match. Build mode: paint numbered regions, up to six attempts with per-attempt feedback. Draw Battle: private lobby up to six players, timed, last one standing.</dd>
+      <dt>Scoring</dt><dd>Percent based on "getting the major color regions in the right places, not artistic skill". Daily draw earns an S to F grade. 85% or better fills that country in on your world map. Build mode feedback: right colour right spot, right colour wrong spot, colour not on the flag.</dd>
+      <dt>Share</dt><dd>The grade is "raised up the flagpole and stamped into a collectible sticker". Share cards carry your sticker, "Share my map" exports the world map, stroke-by-stroke replay videos. Streaks with cross-device sync, a stats page.</dd>
+      <dt>Retention</dt><dd>36 themed flag packs (one free), daily bounties of three wanted flags that grant premium access, optional sign-in, ads, premium removes ads and unlocks past dailies and packs. iOS app rated 4.9.</dd>
+      <dt>Why it charts</dt><dd>Drawing a flag from memory is instantly funny and shareable. The reveal makes failure entertaining, and the sticker book and map turn it into a collection.</dd>
+      <dt>Caveats</dt><dd class="caveat">Grade thresholds not found. A $19 one-off premium price appears only in search snippets. The mock's drawing and score are invented.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/vexle/">Playlin</a><a href="https://vexle.org/">official</a><a href="https://vexle.org/faq">FAQ</a><a href="https://vexle.org/changelog">changelog</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ 10 POOPLE -->
+<article class="dossier" id="poople" style="--accent:#6b4a2b">
+  <div class="index">10</div>
+  <figure class="shot">
+    <div class="phone"><svg viewBox="0 0 360 648" role="img" aria-label="Poople mock: a word ladder from WORD to POOP with the changed letter highlighted at each step">
+      <rect width="360" height="648" fill="#f4e9dc"/>
+      <text x="22" y="46" class="d" font-size="20" fill="#6b4a2b">POOPLE</text>
+      <text x="338" y="46" class="k" fill="#8a7f78" text-anchor="end">DAY 197</text>
+      <text x="180" y="80" font-size="12" fill="#8a7f78" text-anchor="middle">Change one letter at a time. Every step must be a word.</text>
+      <!-- ladder: tile 52, gap 6, origin x 64; rows at y 96 + i*66 -->
+      <g font-size="24" font-weight="800" text-anchor="middle" class="d">
+        <!-- WORD -->
+        <rect x="64" y="96" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="90" y="131" fill="#6b4a2b">W</text>
+        <rect x="122" y="96" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="148" y="131" fill="#6b4a2b">O</text>
+        <rect x="180" y="96" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="206" y="131" fill="#6b4a2b">R</text>
+        <rect x="238" y="96" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="264" y="131" fill="#6b4a2b">D</text>
+        <text x="40" y="131" class="k" fill="#8a7f78" text-anchor="end">START</text>
+        <!-- WOOD -->
+        <rect x="64" y="162" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="90" y="197" fill="#6b4a2b">W</text>
+        <rect x="122" y="162" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="148" y="197" fill="#6b4a2b">O</text>
+        <rect x="180" y="162" width="52" height="52" rx="10" fill="#8b5e3c"/><text x="206" y="197" fill="#fff">O</text>
+        <rect x="238" y="162" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="264" y="197" fill="#6b4a2b">D</text>
+        <!-- HOOD -->
+        <rect x="64" y="228" width="52" height="52" rx="10" fill="#8b5e3c"/><text x="90" y="263" fill="#fff">H</text>
+        <rect x="122" y="228" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="148" y="263" fill="#6b4a2b">O</text>
+        <rect x="180" y="228" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="206" y="263" fill="#6b4a2b">O</text>
+        <rect x="238" y="228" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="264" y="263" fill="#6b4a2b">D</text>
+        <!-- HOOP -->
+        <rect x="64" y="294" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="90" y="329" fill="#6b4a2b">H</text>
+        <rect x="122" y="294" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="148" y="329" fill="#6b4a2b">O</text>
+        <rect x="180" y="294" width="52" height="52" rx="10" fill="#fff" stroke="#d9c7b0"/><text x="206" y="329" fill="#6b4a2b">O</text>
+        <rect x="238" y="294" width="52" height="52" rx="10" fill="#8b5e3c"/><text x="264" y="329" fill="#fff">P</text>
+        <!-- POOP -->
+        <rect x="64" y="360" width="52" height="52" rx="10" fill="#6b4a2b"/><text x="90" y="395" fill="#fff">P</text>
+        <rect x="122" y="360" width="52" height="52" rx="10" fill="#6b4a2b"/><text x="148" y="395" fill="#fff">O</text>
+        <rect x="180" y="360" width="52" height="52" rx="10" fill="#6b4a2b"/><text x="206" y="395" fill="#fff">O</text>
+        <rect x="238" y="360" width="52" height="52" rx="10" fill="#6b4a2b"/><text x="264" y="395" fill="#fff">P</text>
+        <text x="40" y="395" class="k" fill="#6b4a2b" text-anchor="end">GOAL</text>
+      </g>
+      <g fill="#c9b8a2"><path d="M300 150l6 8 6-8z"/><path d="M300 216l6 8 6-8z"/><path d="M300 282l6 8 6-8z"/><path d="M300 348l6 8 6-8z"/></g>
+      <rect x="110" y="434" width="140" height="40" rx="20" fill="#6b4a2b"/>
+      <text x="180" y="460" class="d" font-size="16" fill="#fff" text-anchor="middle">4 STEPS</text>
+      <!-- share card -->
+      <rect x="22" y="496" width="316" height="86" rx="14" fill="#fff" stroke="#d9c7b0"/>
+      <text x="40" y="520" class="k" fill="#8a7f78">COPIED TO CLIPBOARD</text>
+      <text x="40" y="546" font-size="15" fill="#2f2a25" font-weight="800">Poople #197 · 4 steps</text>
+      <text x="40" y="570" font-size="16">🟫🟫🟫🟫 💩</text>
+      <text x="180" y="616" font-size="11" fill="#8a7f78" text-anchor="middle">same start word for everyone · scored on path length</text>
+    </svg></div>
+    <figcaption>A word ladder with a fixed punchline. The shared start word and the emoji trail make it a group-chat contest.</figcaption>
+  </figure>
+  <div>
+    <h2>Poople <span>Elias Furst · poople.io</span></h2>
+    <p class="lede">Everyone gets the same four-letter start word and must reach POOP by changing one letter at a time through valid English words. Shorter is better.</p>
+    <dl class="facts">
+      <dt>Loop</dt><dd>Type a four-letter word each step. Exactly one letter changes, no adding, removing or rearranging, and each step must be in the game's dictionary (a solver site counts 2,398 accepted words). No timer. Ends on POOP. One puzzle a day with a delay preventing continuous play.</dd>
+      <dt>Scoring</dt><dd>Official: "scored on the length of your path, the quicker you get to poop, the better."</dd>
+      <dt>Share</dt><dd>After solving you see a history of your scores and can copy an emoji-grid result, spoiler-free.</dd>
+      <dt>Retention</dt><dd>Daily only on the official site, iOS and Android apps with no in-app purchases listed. Ads, accounts, archive: not found. A 2025 Playlin Awards finalist for "Best Game to Test Your Patience". Born from the developer's father's car-trip "to-poop game".</dd>
+      <dt>Why it charts</dt><dd>A classic word ladder with a childish target word for a punchline. Fifteen weeks on the chart and a past #1.</dd>
+      <dt>Caveats</dt><dd class="caveat">Step limit, par, stars, streaks and the reset hour appear only on clone sites. The restrictive dictionary is the common complaint. The mock's ladder and share card are illustrative.</dd>
+    </dl>
+    <p class="sources"><a href="https://playlin.io/game/poople/">Playlin</a><a href="https://poople.io/">official</a><a href="https://poople.io/about">about</a><a href="https://apps.apple.com/us/app/poople-daily-word-game/id6752505565">App Store</a></p>
+  </div>
+</article>
+
+<!-- ============================================================ PATTERNS -->
+<section class="patterns" id="patterns">
+  <h2>What the ten have in common</h2>
+  <table>
+    <thead><tr><th>Pattern</th><th>Who does it</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Same puzzle for everyone, one a day</td><td>All ten.</td></tr>
+      <tr><td class="k">Under two minutes to play</td><td>All except Loopy River on its hard days.</td></tr>
+      <tr><td class="k">Score is a gradient, not pass or fail</td><td>Krillion, Size It Up, Magnitudle, Vexle, 4 × 3, Number Waffle's stars, Poople's step count.</td></tr>
+      <tr><td class="k">Spoiler-free share card</td><td>Poople, 4 × 3, Songless, Number Waffle, Vexle (sticker and map).</td></tr>
+      <tr><td class="k">A picture instead of a number</td><td>Krillion's dive, Vexle's side-by-side and map, Dartwords' board, Poople's ladder.</td></tr>
+      <tr><td class="k">Free archive or unlimited mode</td><td>Krillion, Size It Up, Magnitudle, 4 × 3.</td></tr>
+      <tr><td class="k">Paid archive or ad gate</td><td>Loopy River (subscription), Number Waffle (ads or supporter), Vexle (premium).</td></tr>
+      <tr><td class="k">Creator or studio brand attached</td><td>Hank Green, The Game Band, Inkwell, Waffle Studio, GriddleLink.</td></tr>
+      <tr><td class="k">A family of sibling games on one hub</td><td>Waffle, Lessgames, Inkwell, GriddleLink. Both GriddleLink games charted within weeks of each other.</td></tr>
+      <tr><td class="k">Classic logic puzzle</td><td>Only Loopy River and Number Waffle. Loopy River is also the only one with no score gradient and a paywalled archive.</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Read for Peeplet Daily.</b> The chart is not rewarding cleverer puzzles. It rewards a result that is fun to look at and post even on a bad day, a comparison against the crowd or a forgiving number, and a hub where one game lifts its siblings. Our boards already have the picture. The gradient and the share card are the gap.</div>
+</section>
+
+</main>
+</body>
+</html>
