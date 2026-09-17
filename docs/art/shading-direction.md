@@ -77,7 +77,18 @@ the shared ink line on a layer that has a colour.
   and keeps its baked smooth-proxy normals so the band reads across the
   whole crown rather than card by card.
 
-Not on it, by design or not yet: the backdrop's painted landscape cards are
-unlit and carry their paint's own variation; the HUD's paper
-(`CozyTheme.paper_card`, the button faces) is still a flat StyleBox colour,
-the one surface left without a painted wash.
+- **Paper** (2026-09-17), the HUD's faces. Every Button, Panel and
+  PanelContainer wears `shaders/paper_2d.gdshader` as its material: the same
+  wash the pieces carry, over whatever colour the stylebox drew, plus a fine
+  paper tooth, so a cream sheet, a slate card and a sun button each take it
+  in their own colour and the labels they draw shift by the same few
+  percent. It is measured in screen space, so one shared material
+  (`CozyTheme.paper()`) serves every face, each showing the patch of paper
+  it sits over; `CozyTheme.dress()`, installed once by `world/main.gd`,
+  hands it to every face as it enters the tree, and a widget that wants
+  another surface (the wood trays, the plank) sets its own material and
+  keeps it. Measured at 1080x1920 on Binairo: 4.86 to 5.03 ms idle, no draw
+  call added.
+
+Only the backdrop's painted landscape cards stand outside the look, by
+design: they are unlit and carry their paint's own variation.

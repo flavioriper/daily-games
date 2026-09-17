@@ -13,10 +13,12 @@ const BODY_PATH := "res://assets/fonts/Nunito-Variable.ttf"
 const WGHT := 0x77676874
 
 const GRAIN_SHADER := preload("res://shaders/wood_grain_2d.gdshader")
+const PAPER_SHADER := preload("res://shaders/paper_2d.gdshader")
 
 static var _theme: Theme
 static var _fonts: Dictionary = {}
 static var _grain: Dictionary = {}
+static var _paper: ShaderMaterial
 
 ## The shared theme, built once.
 static func make() -> Theme:
@@ -130,6 +132,34 @@ static func parchment_card() -> StyleBoxFlat:
 	var sb := card(Color(Pal.PARCHMENT, 0.96), 12, Pal.LINE, 0, 24)
 	sb.set_border_width_all(3)
 	return sb
+
+## The painterly wash every paper face wears, as a Control `material`
+## (shaders/paper_2d.gdshader): the same slow warm-to-cool drift the 3D
+## pieces carry, over whatever colour the stylebox drew. One shared material,
+## since it is measured in screen space and every panel shows the patch it
+## sits over. Applied by dress() to every face that enters the tree; a widget
+## that wants another surface (the wood trays, the plank) sets its own
+## material and keeps it.
+static func paper() -> ShaderMaterial:
+	if _paper == null:
+		_paper = ShaderMaterial.new()
+		_paper.shader = PAPER_SHADER
+	return _paper
+
+## Hands the paper wash to every Button, Panel and PanelContainer that enters
+## `tree` without a material of its own. Installed once, by world/main.gd
+## before any screen builds, the way the theme is one Theme for the whole HUD:
+## a stylebox cannot carry a material, and the alternative was every widget
+## remembering to ask. The check runs for every node that enters the tree,
+## 3D included; it is a type test and costs nothing worth measuring.
+static func dress(tree: SceneTree) -> void:
+	tree.node_added.connect(_dress_node)
+
+static func _dress_node(node: Node) -> void:
+	if node is Button or node is Panel or node is PanelContainer:
+		var c := node as CanvasItem
+		if c.material == null:
+			c.material = paper()
 
 ## The grain the wood panels wear, as a Control `material`. It darkens
 ## whatever the stylebox drew rather than painting a colour of its own, so a

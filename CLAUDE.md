@@ -164,6 +164,15 @@ reads the colour off it, and call `Toon.reline` after any recolour that
 does not go through `Models.tint` or `tint_named`. Nothing may hand a layer
 the shared ink `Toon.outline()` or a hard ramp again.
 
+The HUD's paper takes the same wash through `CozyTheme.dress()`, installed
+once by `world/main.gd` before any screen builds: every Button, Panel and
+PanelContainer that enters the tree without a material gets the one shared
+paper material (`shaders/paper_2d.gdshader`, measured in screen space), so
+a new widget needs nothing. A widget that wants another surface sets its
+own material and keeps it, the way the wood trays do. Harnesses that build
+a screen without `main.tscn` show the faces flat; that is the harness, not
+a regression.
+
 ## Playing on an Android phone
 
 The game ships as a native APK through Firebase App Distribution (project
