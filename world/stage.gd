@@ -53,19 +53,39 @@ const FLAT_BG := Pal.PAPER
 const BOARD_SUN := Color("fff1dc")
 const BOARD_SUN_ENERGY := 0.46
 const BOARD_AMBIENT_ENERGY := 0.115
-const CAMP_SUN := Color("ffe4bd")
-const CAMP_SUN_ENERGY := 0.48
-const CAMP_AMBIENT := Color("f8e2c6")
-const CAMP_AMBIENT_ENERGY := 0.12
+## Where the board's sun stands: behind-right and above, so shadows fall
+## toward the player and left. Only its direction matters to a directional
+## light; the position is the one _ready has always used.
+const BOARD_SUN_FROM := Vector3(3.0, 8.0, -6.0)
+## The campsite's light aims at the painted frame
+## (docs/art/concept-menu-painted.png) rather than the toy-render banner the
+## first grade was set against: a low golden sun from the right and a little
+## in front, so every prop shows a lit side and a shaded side and casts a
+## long shadow to its left, over a *dark, cool* bounce rather than the warm
+## cream one, so the shaded sides go deep and cool under warm light. Ambient
+## is a little over half the board's. Saturation is no longer pushed -- the
+## painted greens are darker, not richer -- and contrast is pushed instead.
+const CAMP_SUN := Color("ffd9a3")
+const CAMP_SUN_ENERGY := 0.56
+const CAMP_SUN_FROM := Vector3(10.0, 6.0, 3.0)
+const CAMP_AMBIENT := Color("a9b8c4")
+const CAMP_AMBIENT_ENERGY := 0.075
 const CAMP_SHADOW_BLUR := 2.5
-const CAMP_SATURATION := 1.18
-const CAMP_CONTRAST := 1.08
-const CAMP_GLOW := 0.25
-const CAMP_BLOOM := 0.12
-const CAMP_GLOW_THRESHOLD := 0.9
-## The campsite's sky, deeper overhead than the boards' pale one so the
-## strip's top corner reads as a summer sky rather than as paper.
-const CAMP_SKY_TOP := Color("9fd2f3")
+const CAMP_SATURATION := 1.02
+const CAMP_CONTRAST := 1.16
+const CAMP_BRIGHTNESS := 0.97
+const CAMP_GLOW := 0.3
+const CAMP_BLOOM := 0.14
+const CAMP_GLOW_THRESHOLD := 0.82
+## The campsite's sky: a deep summer blue overhead over a warm horizon, the
+## frame's own pair, against the boards' pale paper-like one.
+const CAMP_SKY_TOP := Color("5f9fd6")
+const CAMP_SKY_HORIZON := Color("e9dcc2")
+## The campsite's river, graded with the light: a deep teal under a lighter
+## shallow band, set on the shared water material and restored with the
+## board's pair so the pond under a board keeps its calibrated blue.
+const CAMP_WATER := Color("2d7ea0")
+const CAMP_WATER_HI := Color("5fb2c6")
 
 var rig: Node3D
 var sun: DirectionalLight3D
@@ -113,7 +133,7 @@ func _ready() -> void:
 	sun.directional_shadow_max_distance = 40.0
 	add_child(sun)
 	# From behind-right and above, so shadows fall toward the player and left.
-	sun.look_at_from_position(Vector3(3.0, 8.0, -6.0), Vector3.ZERO, Vector3.UP)
+	sun.look_at_from_position(BOARD_SUN_FROM, Vector3.ZERO, Vector3.UP)
 
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Pal.SKY_TOP
@@ -206,25 +226,31 @@ static func grade_board(light: DirectionalLight3D, environment: Environment) -> 
 	light.light_color = BOARD_SUN
 	light.light_energy = BOARD_SUN_ENERGY
 	light.shadow_blur = 1.0
+	light.look_at_from_position(BOARD_SUN_FROM, Vector3.ZERO, Vector3.UP)
 	environment.ambient_light_color = Pal.AMBIENT
 	environment.ambient_light_energy = BOARD_AMBIENT_ENERGY
 	environment.adjustment_enabled = false
 	environment.glow_enabled = false
-	_sky_top(environment, Pal.SKY_TOP)
+	_sky(environment, Pal.SKY_TOP, Pal.SKY_HORIZON)
+	_water_colours(Pal.WATER, Pal.WATER_HI)
 
-## The campsite's light, the concept banner's afternoon: a warmer, slightly
-## stronger sun over warmer bounce, shadows blurred wider, colours pushed a
-## little richer through the environment's adjustments, and a soft bloom
-## that lets the lit faces breathe. All of it post or light-side, so no
-## material changes; the preview scene grades its own rig through this too.
+## The campsite's light, the painted frame's late afternoon (see the CAMP_*
+## constants): a low golden sun from the right over a dark cool bounce, so
+## lit faces glow warm and shaded ones fall deep and cool; shadows blurred
+## wide; contrast pushed and saturation left alone through the environment's
+## adjustments; a soft bloom that lets the lit faces and the lantern breathe;
+## a deep sky over a warm horizon; the river in a deep teal. All of it post,
+## light-side or on the shared water material, so no prop's material
+## changes; the preview scene grades its own rig through this too.
 static func grade_camp(light: DirectionalLight3D, environment: Environment) -> void:
 	light.light_color = CAMP_SUN
 	light.light_energy = CAMP_SUN_ENERGY
 	light.shadow_blur = CAMP_SHADOW_BLUR
+	light.look_at_from_position(CAMP_SUN_FROM, Vector3.ZERO, Vector3.UP)
 	environment.ambient_light_color = CAMP_AMBIENT
 	environment.ambient_light_energy = CAMP_AMBIENT_ENERGY
 	environment.adjustment_enabled = true
-	environment.adjustment_brightness = 1.0
+	environment.adjustment_brightness = CAMP_BRIGHTNESS
 	environment.adjustment_contrast = CAMP_CONTRAST
 	environment.adjustment_saturation = CAMP_SATURATION
 	environment.glow_enabled = true
@@ -235,11 +261,22 @@ static func grade_camp(light: DirectionalLight3D, environment: Environment) -> v
 	environment.glow_hdr_threshold = CAMP_GLOW_THRESHOLD
 	environment.glow_hdr_scale = 2.0
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-	_sky_top(environment, CAMP_SKY_TOP)
+	_sky(environment, CAMP_SKY_TOP, CAMP_SKY_HORIZON)
+	_water_colours(CAMP_WATER, CAMP_WATER_HI)
 
-static func _sky_top(environment: Environment, colour: Color) -> void:
+static func _sky(environment: Environment, top: Color, horizon: Color) -> void:
 	if environment.sky != null and environment.sky.sky_material is ProceduralSkyMaterial:
-		(environment.sky.sky_material as ProceduralSkyMaterial).sky_top_color = colour
+		var m := environment.sky.sky_material as ProceduralSkyMaterial
+		m.sky_top_color = top
+		m.sky_horizon_color = horizon
+		m.ground_horizon_color = horizon
+
+## The shared water material's colour pair (Toon.water is one material so
+## the splash ring reaches every sheet), graded with the light.
+static func _water_colours(base: Color, shallow: Color) -> void:
+	var wm := Toon.water()
+	wm.set_shader_parameter("base_color", base)
+	wm.set_shader_parameter("shallow_color", shallow)
 
 ## Leans the board anchor toward the camera until the board's face is seen at
 ## `face` degrees above the horizontal. The axis is the camera's own right, so
@@ -314,6 +351,10 @@ func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PRO
 	var world := _fit_box(aabb)
 	rig.fit(world, rect)
 	soft_focus.focus(rig.distance())
+	# The near band reaches down to the framed rect's bottom edge and no
+	# further: the menu's hero strip takes it, the footer under it does not.
+	var vh := get_viewport().get_visible_rect().size.y if is_inside_tree() else 0.0
+	soft_focus.gate_near(rect.end.y / vh if vh > 0.0 else 1.0)
 	ambient.fit_to(world)
 	_fit_ground(world)
 

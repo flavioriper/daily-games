@@ -123,8 +123,27 @@ const ISLAND_EM := 0.21
 const DAY_TEXT_X := -0.6
 const DAY_MAX_W := 2.1
 
-const GRASS := 260
+## The ground cover, dense enough that no bare turf shows in the frame the
+## way none shows in the painted one: the grass field, the blossom cards
+## and the low bushes are each one MultiMesh, so the count costs fill rate
+## and never a draw call. Placed from one seeded generator so the field is
+## the same every launch.
+const GRASS := 620
+const BLOSSOMS := 64
+const BUSHES := 14
 const GRASS_SEED := 20260916
+## The canopy that frames the frame: an oak crown hanging into each top
+## corner from a branch out of shot, between the camera and the camp, dark
+## and soft in the soft focus's near band, the way the painted frame's
+## foliage closes over its title. Crowns only -- the oak's trunk layer is
+## hidden -- because a whole tree near enough to cut the corner stands its
+## crown in front of the day sign and the little board: the menu camera
+## stands about (0, 2.7, 10.7) in the camp's space looking at HERO_CENTRE,
+## and both signs sit within a fifth of the frame's width of its edges. The
+## positions were solved for the crown's centre to sit just outside the top
+## corner (screen x 1.05 to 1.12 half-widths out, 0.62 up) about 2.3 units
+## in front of the lens. [slot, x, y, z, yaw, scale]
+const FRAME_CANOPY := [["oak", -1.89, 1.94, 7.92, 0.6, 1.73], ["oak", 3.07, 2.03, 8.58, 2.1, 1.71]]
 
 var footer: Node3D
 var day_sign: Node3D
@@ -154,9 +173,9 @@ func set_day(n: int, island: String) -> void:
 # --- the ground ---
 
 func _build_ground() -> void:
-	add_child(Scenery.ground(GROUND, GROUND_AT, Pal.TURF))
+	add_child(Scenery.ground(GROUND, GROUND_AT, Pal.CAMP_TURF))
 	# The path, a hair proud of the turf so the two never fight for a pixel.
-	var path := Scenery.ground(Vector3(PATH_W, 0.62, 24.0), PATH_AT, Pal.PLOT_SOIL)
+	var path := Scenery.ground(Vector3(PATH_W, 0.62, 24.0), PATH_AT, Pal.CAMP_SOIL)
 	path.rotation.y = PATH_YAW
 	add_child(path)
 	# The river: the stage's own water, so a splash rings it, just under the
@@ -164,11 +183,11 @@ func _build_ground() -> void:
 	add_child(Scenery.water(Vector2(50.0, 70.0), Vector3(LAND_EDGE + 24.0, RIVER_Y, 2.0)))
 	# The far bank, so the water reads as a river rather than an open sea:
 	# a strip of turf out to the right with its own tree line on it.
-	add_child(Scenery.ground(Vector3(24.0, 0.6, 46.0), Vector3(LAND_EDGE + 24.0, -0.3, -3.0), Pal.TURF))
+	add_child(Scenery.ground(Vector3(24.0, 0.6, 46.0), Vector3(LAND_EDGE + 24.0, -0.3, -3.0), Pal.CAMP_TURF))
 	# The near bank turns right just past the dock's end, so the ground under
 	# the camera -- what the shift lens shows below the cards, close and from
 	# above -- is lawn rather than a hard bank edge and a river's foam lines.
-	add_child(Scenery.ground(Vector3(14.0, 0.6, 20.0), Vector3(LAND_EDGE + 7.0, -0.3, FRONT_Z + 10.0), Pal.TURF))
+	add_child(Scenery.ground(Vector3(14.0, 0.6, 20.0), Vector3(LAND_EDGE + 7.0, -0.3, FRONT_Z + 10.0), Pal.CAMP_TURF))
 	add_child(Scenery.deck(DOCK.position.x, DOCK.end.x, DOCK.position.y, DOCK.end.y))
 	for z in [DOCK.position.y + 0.4, DOCK.end.y - 0.4]:
 		add_child(Scenery.prop("pier_post", Vector3(DOCK.end.x - 0.3, RIVER_Y - 0.1, z), 0.0, Vector3(1.0, 0.55, 1.0)))
@@ -183,8 +202,11 @@ func _build_props() -> void:
 	scout.scale = Vector3.ONE * SCOUT_SCALE
 	add_child(scout)
 
+	# The lantern is lit: its glass is a flat unlit cream rather than a shaded
+	# layer, so it reads as light from inside whichever side the sun is on,
+	# and it is bright enough to catch the camp grade's bloom.
 	var lantern := Scenery.prop("lantern", Vector3(-0.1, 0.0, 5.6), 0.0, Vector3.ONE * 1.5)
-	Models.tint_named(lantern, "Glass", Pal.LAMPLIGHT)
+	Models.set_material_named(lantern, "Glass", Toon.ink(Pal.LAMPLIGHT))
 	add_child(lantern)
 	add_child(_signpost())
 
@@ -196,34 +218,55 @@ func _build_props() -> void:
 		[1.0, -10.4, 4.8], [4.2, -11.0, 5.2], [-15.0, -9.4, 4.6]]
 	for i in back.size():
 		var t: Array = back[i]
-		add_child(Scenery.prop("camp_tree", Vector3(t[0], 0.0, t[1]), 0.7 * i, Vector3.ONE * float(t[2])))
-	add_child(Scenery.prop("oak", Vector3(-10.4, 0.0, -9.0), 1.4, Vector3.ONE * 4.4))
-	add_child(Scenery.prop("camp_tree", Vector3(-6.8, 0.0, -1.4), 1.1, Vector3.ONE * 4.4))
+		add_child(_tree("camp_tree", Vector3(t[0], 0.0, t[1]), 0.7 * i, float(t[2])))
+	add_child(_tree("oak", Vector3(-10.4, 0.0, -9.0), 1.4, 4.4))
+	add_child(_tree("camp_tree", Vector3(-6.8, 0.0, -1.4), 1.1, 4.4))
 	# The far bank's own trees, small with the distance.
 	for t in [[14.0, -2.0, 4.6], [17.5, -6.0, 5.2], [12.5, -8.5, 4.2], [21.0, 0.5, 4.8]]:
-		add_child(Scenery.prop("camp_tree", Vector3(t[0], 0.0, t[1]), t[0], Vector3.ONE * float(t[2])))
+		add_child(_tree("camp_tree", Vector3(t[0], 0.0, t[1]), t[0], float(t[2])))
 	# The oak behind the day sign, whole and inside the frame: its crown is
 	# leaf cards, and a card cut open by the top edge reads as shards rather
 	# than as foliage, so it is sized to clear the edge instead of filling it.
-	add_child(Scenery.prop("oak", Vector3(-5.8, 0.0, -3.0), 0.9, Vector3.ONE * 3.4))
+	add_child(_tree("oak", Vector3(-5.8, 0.0, -3.0), 0.9, 3.4))
+	# The canopy framing the frame (FRAME_CANOPY): in shade, a step deeper
+	# still, trunkless, and casting nothing -- a shadow from in front of the
+	# camp is one no light in the picture explains.
+	for t in FRAME_CANOPY:
+		var tree := _tree(t[0], Vector3(t[1], t[2], t[3]), t[4], t[5], Pal.CAMP_LEAF_DEEP)
+		Models.set_layer_visible(tree, "Oak_Trunk", false)
+		for mi in Models.meshes(tree):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(tree)
 
 	for b in [[1.2, 0.2, 0.4, 1.1], [-2.0, -1.8, 1.3, 0.9], [-4.6, 1.4, 2.1, 1.0], [-3.6, 8.2, 0.6, 0.9],
-			[6.4, 5.6, 0.9, 1.3], [7.6, 1.8, 2.0, 0.9]]:
+			[6.4, 5.6, 0.9, 1.3], [7.6, 1.8, 2.0, 0.9], [5.4, 8.8, 0.9, 1.1], [-7.6, 6.4, 0.2, 1.2],
+			[3.2, 11.6, 1.7, 0.9]]:
 		add_child(Scenery.prop("boulder", Vector3(b[0], 0.0, b[1]), b[2], Vector3.ONE * float(b[3])))
 	for b in [[-4.2, 2.4, 0.4, 1.8], [-1.8, -2.6, 1.1, 1.6], [-5.6, 0.4, 2.2, 1.4], [0.8, -0.8, 0.6, 1.3]]:
-		add_child(Scenery.prop("bush", Vector3(b[0], 0.0, b[1]), b[2], Vector3.ONE * float(b[3])))
+		add_child(_tree("bush", Vector3(b[0], 0.0, b[1]), b[2], float(b[3])))
 	for d in [[-1.6, 6.2], [-4.0, 5.0], [-0.9, 1.2], [-4.6, 3.0], [-3.0, 6.6], [-1.4, -1.0],
 			[-2.4, 8.6], [-4.8, 7.8]]:
 		add_child(Scenery.prop("daisy", Vector3(d[0], 0.0, d[1]), d[0] * 1.3, Vector3.ONE * 1.2))
 
 	# The field's own painted cards: leaf sheets filling the gaps in the tree
-	# line, blossoms over the grass in the front corners.
-	for f in [[-9.0, -9.6, 0.34], [-4.4, -9.0, 0.30], [1.2, -9.4, 0.32]]:
-		add_child(_card(FOLIAGE, CARD_FOLIAGE, Vector3(f[0], 0.0, f[1]), float(f[2])))
-	var blossoms := [[-2.6, 5.4], [-3.4, 6.6], [-1.8, 7.2], [-5.0, 4.6], [-4.4, 6.4], [-2.2, 3.2],
-		[-6.2, 5.4], [-1.9, 8.0], [-3.2, 2.0], [-6.6, 2.4], [-5.4, 7.4], [-4.0, 1.0]]
-	for b in blossoms:
-		add_child(_card(BLOSSOM, CARD_FLOWERS, Vector3(b[0], 0.0, b[1]), 0.6))
+	# line, as one scatter. Big enough (the sheet is 7 by 6 at 1.0) to close
+	# the sky between one conifer and the next, so the back of the frame is a
+	# dark wood rather than a row of trees against pale hills.
+	var sheets: Array[Transform3D] = []
+	for f in [[-11.2, -9.8, 0.62], [-9.0, -9.6, 0.56], [-6.6, -9.2, 0.5], [-4.4, -9.0, 0.48],
+			[-1.6, -9.6, 0.54], [1.2, -9.4, 0.52], [3.6, -9.8, 0.5], [6.2, -10.2, 0.56]]:
+		sheets.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * float(f[2])), Vector3(f[0], 0.0, f[1])))
+	add_child(_cards(FOLIAGE, CARD_FOLIAGE, sheets, "foliage_field"))
+
+## A tree or a bush placed as a prop, its leaf layer taken a step deeper than
+## the library's LEAF: the painted frame's greens are forest, not lime. The
+## oak's crown is the `Leaf_flat` layer, the conifer's and the bush's `Leaf`;
+## tint_named re-lines whichever shell there is.
+static func _tree(slot: String, at: Vector3, yaw: float, s: float, leaf := Pal.CAMP_LEAF) -> Node3D:
+	var pivot := Scenery.prop(slot, at, yaw, Vector3.ONE * s)
+	Models.tint_named(pivot, "Leaf", leaf)
+	Models.tint_named(pivot, "Leaf_flat", leaf)
+	return pivot
 
 ## The little hanging sign at the dock's far corner, re-lettered: its
 ## modelled words are Code Break's, so that layer is hidden and three lines
@@ -241,41 +284,98 @@ func _signpost() -> Node3D:
 		model.add_child(mi)
 	return pivot
 
-## One painted card, standing on the ground and turning to face the camera.
-func _card(scene: PackedScene, mat: Material, at: Vector3, s: float) -> Node3D:
-	var node := scene.instantiate() as Node3D
-	node.position = at
-	node.scale = Vector3.ONE * s
-	for mi in Models.meshes(node):
-		for i in mi.mesh.get_surface_count():
-			mi.set_surface_override_material(i, mat)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return node
+## A field of one painted card as a single MultiMesh: the card's mesh under
+## its alpha billboard material, one draw call for every blossom or leaf
+## sheet in the camp. The billboard turns each instance to the camera on its
+## own, so the scatter reads exactly as the placed cards did.
+static func _cards(scene: PackedScene, mat: Material, transforms: Array[Transform3D], name: String) -> MultiMeshInstance3D:
+	var sample := scene.instantiate() as Node3D
+	var layers := Models.meshes(sample)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	if not layers.is_empty():
+		mm.mesh = layers[0].mesh
+	mm.instance_count = transforms.size()
+	for i in transforms.size():
+		mm.set_instance_transform(i, transforms[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = name
+	mmi.multimesh = mm
+	mmi.material_override = mat
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sample.free()
+	return mmi
 
-## The field as one MultiMesh: tufts of baked strands scattered over the turf,
-## kept off the path and off the dock. Sparse on purpose -- the bank reads as
-## a lawn with grass standing up through it, not as a meadow gone to seed.
+## The ground cover, three MultiMeshes over the turf: the grass field of
+## baked strands, the blossom cards among it, and a line of low bushes along
+## the bank and the path. Dense, the way the painted frame leaves no bare
+## ground, and kept off the water, the path, the dock and the scout's feet.
 func _build_grass() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GRASS_SEED
-	var transforms: Array[Transform3D] = []
+	var grass: Array[Transform3D] = []
 	var guard := 0
-	while transforms.size() < GRASS and guard < GRASS * 40:
+	while grass.size() < GRASS and guard < GRASS * 40:
 		guard += 1
-		var x := rng.randf_range(-9.0, 7.0)
+		var x := rng.randf_range(-9.0, 7.5)
 		var z := rng.randf_range(-8.0, 13.0)
-		# Off the water: the bank's edge up to the dock's end, the turn past it.
-		if x > LAND_EDGE - 0.3 and z < FRONT_Z + 0.3:
+		if not _on_turf(x, z, 0.25):
 			continue
-		# The path is turned, so the keep-off test turns with it.
-		var along := Vector2(x, z) - Vector2(PATH_AT.x, PATH_AT.z)
-		if absf(along.rotated(-PATH_YAW).x) < PATH_W * 0.5 + 0.25:
+		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35))
+		grass.append(Transform3D(basis, Vector3(x, 0.0, z)))
+	# The patch arrives in the library's LEAF lime; here it sways in the
+	# camp's own deeper green, on the same wind shader.
+	var lawn := Scenery.scatter("grass_patch", grass)
+	lawn.material_override = Toon.wind_material(Pal.CAMP_GRASS)
+	add_child(lawn)
+
+	# The blossom card is half a unit tall, the grass patch up to 0.55 at its
+	# largest, so a blossom stands at least as tall as the grass around it or
+	# it is buried. Two in three go in the strip between the scout's plane
+	# and the cards, where the frame shows the most turf.
+	var blossoms: Array[Transform3D] = []
+	guard = 0
+	while blossoms.size() < BLOSSOMS and guard < BLOSSOMS * 40:
+		guard += 1
+		var front := blossoms.size() % 3 != 0
+		var x := rng.randf_range(-8.0, 7.5) if front else rng.randf_range(-9.0, 1.2)
+		var z := rng.randf_range(5.4, 10.0) if front else rng.randf_range(-6.0, 5.4)
+		if not _on_turf(x, z, 0.5):
 			continue
-		if Rect2(DOCK.position - Vector2(0.4, 0.4), DOCK.size + Vector2(0.8, 0.8)).has_point(Vector2(x, z)):
+		blossoms.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * rng.randf_range(1.0, 1.45)), Vector3(x, 0.0, z)))
+	add_child(_cards(BLOSSOM, CARD_FLOWERS, blossoms, "blossom_field"))
+
+	# The bushes hug the edges: the bank above the water, both sides of the
+	# path, the foot of the tree line.
+	var bushes: Array[Transform3D] = []
+	var spots := [[0.9, -6.4], [1.0, -4.0], [0.8, -1.6], [1.1, 0.8], [-3.6, -6.2], [-4.8, -4.6],
+		[-0.6, -7.4], [-7.6, -7.8], [-2.8, 10.2], [-6.2, 8.6], [4.2, 9.8], [6.6, 8.2], [-8.4, 4.4],
+		[-8.0, -0.8]]
+	for i in mini(BUSHES, spots.size()):
+		var at := Vector3(spots[i][0] + rng.randf_range(-0.3, 0.3), 0.0, spots[i][1] + rng.randf_range(-0.3, 0.3))
+		if not _on_turf(at.x, at.z, 0.1):
 			continue
-		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3.ONE * rng.randf_range(0.55, 1.0))
-		transforms.append(Transform3D(basis, Vector3(x, 0.0, z)))
-	add_child(Scenery.scatter("grass_patch", transforms))
+		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)).scaled(Vector3.ONE * rng.randf_range(1.0, 1.7))
+		bushes.append(Transform3D(basis, at))
+	var field := Scenery.scatter("bush", bushes)
+	field.material_override = Toon.material(Pal.CAMP_LEAF)
+	add_child(field)
+
+## Whether a spot is open turf: off the water, `pad` clear of the path's edge,
+## outside the dock and off the scout's feet.
+static func _on_turf(x: float, z: float, pad: float) -> bool:
+	# Off the water: the bank's edge up to the dock's end, the turn past it.
+	if x > LAND_EDGE - 0.3 and z < FRONT_Z + 0.3:
+		return false
+	# The path is turned, so the keep-off test turns with it.
+	var along := Vector2(x, z) - Vector2(PATH_AT.x, PATH_AT.z)
+	if absf(along.rotated(-PATH_YAW).x) < PATH_W * 0.5 + pad:
+		return false
+	if Rect2(DOCK.position - Vector2(0.4, 0.4), DOCK.size + Vector2(0.8, 0.8)).has_point(Vector2(x, z)):
+		return false
+	if Vector2(x, z).distance_to(Vector2(SCOUT_AT.x, SCOUT_AT.z)) < 1.4:
+		return false
+	return true
 
 # --- the two lettered boards ---
 

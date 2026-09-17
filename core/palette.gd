@@ -207,3 +207,15 @@ static func contrast(a: Color, b: Color) -> float:
 static func _relative_luminance(c: Color) -> float:
 	var lin := c.srgb_to_linear()
 	return 0.2126 * lin.r + 0.7152 * lin.g + 0.0722 * lin.b
+
+# The first screen's campsite, lit and coloured to the painted frame
+# (docs/art/concept-menu-painted.png) rather than the toy-render banner. Its
+# greens are deeper and cooler than the boards' TURF and LEAF, its path a
+# real earth brown rather than PLOT_SOIL's sand, so under the camp's low sun
+# (Stage.grade_camp) the lit patches glow and the shade goes dark. Only
+# world/camp.gd reads these; a board's field cell keeps TURF.
+const CAMP_TURF      := Color("62823a")
+const CAMP_GRASS     := Color("5d8c3a")   # the blades standing in it, a shade lighter so they read against it
+const CAMP_SOIL      := Color("a67f52")
+const CAMP_LEAF      := Color("4c8538")
+const CAMP_LEAF_DEEP := Color("3d6a2e")   # the trees framing the frame's edges, in shade
