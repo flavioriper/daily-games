@@ -173,10 +173,10 @@ func _open_turn() -> void:
 	if not got.ok and content.is_empty():
 		prompt.text += "\n(Offline — playing today's number without the server.)"
 
-	var played := _played_score(game)
-	if played >= 0:
-		_turn.restore(content, played)
-		await _show_result(played, false)
+	var played := _played(game)
+	if not played.is_empty():
+		_turn.restore(content, played.score, played.guess)
+		await _show_result(played.score, false)
 	else:
 		_turn.start_turn(content)
 	_refresh()
@@ -194,7 +194,7 @@ func _on_lock() -> void:
 
 func _on_graded(the_score: int) -> void:
 	var game: String = str(_entry.get("id", ""))
-	_remember(game, the_score)
+	_remember(game, the_score, _turn.guess())
 	Analytics.track("turn_lock", {
 		"turn_id": game, "day": Progress.day(),
 		"score": the_score, "seconds": _turn.elapsed,
@@ -237,13 +237,24 @@ func _on_back() -> void:
 
 # --- the day already played ---
 
-static func _played_score(game: String) -> int:
+## The day's result, or {} when it has not been played. Tolerates the shape
+## Task 6 shipped first (a bare int score, no guess): a Dictionary value comes
+## back as-is, a plain number comes back as {"score": <int>, "guess": null},
+## and anything else -- including nothing stored -- means "not played". Dev
+## machines already have turns.cfg files in the old shape on disk; a crash on
+## reopening a card would be a worse bug than the one this guards against.
+static func _played(game: String) -> Dictionary:
 	var cfg := ConfigFile.new()
 	cfg.load(PLAYED_PATH)
-	return int(cfg.get_value(game, str(DailySeed.date_key()), -1))
+	var raw = cfg.get_value(game, str(DailySeed.date_key()))
+	if raw is Dictionary:
+		return {"score": int(raw.get("score", -1)), "guess": raw.get("guess")}
+	if raw is int or raw is float:
+		return {"score": int(raw), "guess": null}
+	return {}
 
-static func _remember(game: String, the_score: int) -> void:
+static func _remember(game: String, the_score: int, the_guess) -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(PLAYED_PATH)
-	cfg.set_value(game, str(DailySeed.date_key()), the_score)
+	cfg.set_value(game, str(DailySeed.date_key()), {"score": the_score, "guess": the_guess})
 	cfg.save(PLAYED_PATH)

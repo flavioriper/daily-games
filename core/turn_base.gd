@@ -37,6 +37,9 @@ func build_turn(_content: Dictionary) -> void: pass
 func has_input() -> bool: return false
 ## What the player committed, as it goes to the server.
 func guess() -> Variant: return null
+## Put a committed guess back on the board, for a day already played. The
+## inverse of guess(); a turn whose guess() is null need not implement it.
+func apply_guess(_the_guess) -> void: pass
 ## 0 to 100. Never negative, never a fail.
 func grade(_answer) -> int: return 0
 ## The camera move and the comparison. Runs once, on lock.
@@ -84,9 +87,13 @@ func lock() -> void:
 	graded.emit(score)
 
 ## Puts a turn straight into its revealed state, for a day already played.
-func restore(the_content: Dictionary, the_score: int) -> void:
+## `guess` is what the player committed, so the board can be rebuilt as they
+## left it rather than at whatever the subclass defaults to.
+func restore(the_content: Dictionary, the_score: int, the_guess = null) -> void:
 	content = the_content
 	build_turn(content)
+	if the_guess != null:
+		apply_guess(the_guess)
 	state = State.REVEALED
 	score = clampi(the_score, 0, 100)
 	reveal()

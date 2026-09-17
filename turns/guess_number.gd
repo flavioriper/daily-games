@@ -33,6 +33,12 @@ func board_margin() -> float: return 0.5
 func has_input() -> bool: return true
 func guess() -> Variant: return value
 
+## Puts a restored day's guess back on the dial, so a reopened card shows
+## what was actually locked in rather than the fresh-turn default.
+func apply_guess(the_guess) -> void:
+	value = clampi(int(the_guess), 0, 100)
+	_paint()
+
 ## The published answer, or the same number derived from the day when the
 ## phone has never reached the network. Both sides use the same hash.
 func _answer() -> int:
