@@ -6,7 +6,7 @@ TURN_CROWD,Closer than %d%% of players,Mais perto do que %d%% dos jogadores,Más
 TURN_FIRST,You are the first today,És o primeiro hoje,Eres el primero hoy
 TURN_LANGUAGE,Language,Idioma,Idioma
 GUESS_TITLE,GUESS,ADIVINHA,ADIVINA
-GUESS_MOTTO,One number one go,Um número uma vez,Un número una vez
+GUESS_MOTTO,"One number, one go","Um número, uma vez","Un número, una vez"
 GUESS_FOOTER,Guess · Lock · Reveal,Adivinha · Fecha · Revela,Adivina · Cierra · Revela
 GUESS_PROMPT,"What number is the camp thinking of, 0 to 100?","Em que número está o acampamento a pensar, de 0 a 100?","¿En qué número está pensando el campamento, de 0 a 100?"
 GUESS_BLURB,"One number, one go. How close can you land?","Um número, uma tentativa. Quão perto chegas?","Un número, un intento. ¿Qué tan cerca llegas?"

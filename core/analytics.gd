@@ -27,6 +27,7 @@ const SECRET_FILE := "res://analytics_secret.cfg"
 ## digits, made once and kept beside the other player state. It identifies a
 ## copy of the game, not a person.
 const ID_PATH := "user://analytics.cfg"
+const Locale = preload("res://core/locale.gd")
 ## GA4 drops events whose parameters run long.
 const MAX_PARAMS := 25
 const MAX_VALUE_LEN := 100
@@ -86,6 +87,7 @@ static func track(event: String, params: Dictionary = {}) -> void:
 	# event carries these two.
 	p["session_id"] = _session_id
 	p["engagement_time_msec"] = 1
+	p["locale"] = Locale.current()
 	if debug_mode:
 		p["debug_mode"] = 1
 	_post(JSON.stringify({
@@ -117,7 +119,7 @@ static func _post(body: String) -> void:
 static func _clean(params: Dictionary) -> Dictionary:
 	var out := {}
 	for key in params:
-		if out.size() >= MAX_PARAMS - 3:  # room for the three we add
+		if out.size() >= MAX_PARAMS - 4:  # room for the four we add
 			break
 		var v = params[key]
 		if v is float:
