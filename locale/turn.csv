@@ -4,6 +4,8 @@ TURN_SHARE,Share,Partilhar,Compartir
 TURN_SCORE,%d / 100,%d / 100,%d / 100
 TURN_CROWD,Closer than %d%% of players,Mais perto do que %d%% dos jogadores,Más cerca que el %d%% de los jugadores
 TURN_FIRST,You are the first today,És o primeiro hoje,Eres el primero hoy
+TURN_NO_CROWD,The camp is out of reach today,O acampamento está fora de alcance hoje,El campamento está fuera de alcance hoy
+TURN_OFFLINE,(Offline — playing today's turn without the camp.),(Sem rede — a jogar o dia de hoje sem o acampamento.),(Sin red — juegas el día de hoy sin el campamento.)
 TURN_LANGUAGE,Language,Idioma,Idioma
 GUESS_TITLE,GUESS,ADIVINHA,ADIVINA
 GUESS_MOTTO,"One number, one go","Um número, uma vez","Un número, una vez"
