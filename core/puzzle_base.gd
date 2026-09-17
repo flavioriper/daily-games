@@ -1,5 +1,5 @@
 class_name PuzzleBase
-extends Control
+extends StageView
 
 ## Every prototype implements this. The menu only ever talks to this interface,
 ## so adding a puzzle costs one file and one menu entry.
