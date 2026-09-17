@@ -125,6 +125,16 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	{
+		"id": "rope",
+		"kind": "puzzle",
+		"title": "The Rope",
+		"blurb": "Lay the rope over every square, pegs in order.",
+		"motto": "Every peg in its turn",
+		"footer": "Lay · Cover · Finish",
+		"script": "res://puzzles/rope3d.gd",
+		"difficulties": [0, 1, 2],
+	},
+	{
 		"id": "how_big",
 		"kind": "turn",
 		"title": "How Big?",

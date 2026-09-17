@@ -62,6 +62,8 @@ func _process(_delta: float) -> bool:
 
 func _note(id: String) -> String:
 	match id:
+		"rope": return "%d of %d squares, %d pegs, camera fit=%s, hud=%s" % [
+			_puzzle._rope.size(), _puzzle.w * _puzzle.h, _puzzle._pegs.size(), _fit_ok, _hud_ok]
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
@@ -93,6 +95,7 @@ func _solve(id: String) -> void:
 		"nonogram": _solve_nonogram()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
+		"rope": _solve_rope()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -436,6 +439,32 @@ func _solve_horse() -> void:
 		_tap_local(_puzzle.cell_to_local(cell.y, cell.x))
 	_press(_host.action_bar.check_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+
+## The Rope: tap along the generator's own route, one square at a time, which
+## is the slow careful way a player lays it rather than a drag.
+func _solve_rope() -> void:
+	var w: int = _puzzle.w
+	var h: int = _puzzle.h
+	# Camera fit check: every square's centre must project inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in h:
+		for c in w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	# The HUD's own buttons: one hint, which lays the first square off the
+	# stored route, then one check, which must find the rope finishable.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	# _bad_from is what the check it just ran left behind: -1 means it found
+	# the rope finishable, which a one-square rope always is.
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1 and _puzzle._bad_from == -1
+	for cell in _puzzle._path:
+		if _puzzle.is_done():
+			return
+		if _puzzle._on.has(cell):
+			continue
+		_tap_local(_puzzle.cell_to_local(cell.y, cell.x))
 
 func _solve_snake() -> void:
 	var w: int = _puzzle.w

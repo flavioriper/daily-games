@@ -49,6 +49,7 @@ func show_puzzle(id: String) -> void:
 		"nonogram": _nonogram()
 		"horse": _horse()
 		"snake": _snake()
+		"rope": _rope()
 		"how_big": _how_big()
 		_: _put("tile", Vector3.ZERO)
 	var dir := Vector3(sin(YAW) * cos(PITCH), sin(PITCH), cos(YAW) * cos(PITCH))
@@ -294,6 +295,32 @@ func _horse() -> void:
 	_put("bale", _cell(0, 1, 3, 2) + Vector3(0.0, h, 0.0), 0.2)
 	_put("bale", _cell(2, 1, 3, 2) + Vector3(0.0, h, 0.0), -0.3)
 	_put("apple", _cell(2, 0, 3, 2) + Vector3(0.0, h, 0.0))
+
+## The Rope: a corner of the plank with the rope laid over four squares,
+## between the two pegs it has met. The pegs stand as tall and as slim as the
+## board stands them, and the rope runs flat past their feet, the same way.
+func _rope() -> void:
+	const TALL := 2.4
+	const SLIM := 0.72
+	var pads := _field("plot_pad", 3, 2)
+	var top := Models.height(pads[0])
+	for pad in pads:
+		Models.tint_named(pad, "Stone", Pal.ROPE_FACE)
+	var run := [Vector2i(0, 1), Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]
+	for c in run:
+		Models.tint_named(pads[c.y * 3 + c.x], "Stone", Pal.ROPE_UNDER)
+	for entry in [[Vector2i(0, 1), 1], [Vector2i(2, 0), 2]]:
+		var at: Vector2i = entry[0]
+		var peg := _put("clue_stone", _cell(at.x, at.y, 3, 2) + Vector3(0.0, top, 0.0))
+		_numeral(peg, "Clue_Num_", int(entry[1]), 10)
+		Models.tint_named(peg, "Stone", Pal.GOOD)
+		peg.scale = Vector3(SLIM, TALL, SLIM)
+	var lift := top + 0.13
+	for i in run.size() - 1:
+		var a: Vector2i = run[i]
+		var b: Vector2i = run[i + 1]
+		_tube(_cell(a.x, a.y, 3, 2) + Vector3(0.0, lift, 0.0),
+			_cell(b.x, b.y, 3, 2) + Vector3(0.0, lift, 0.0), 0.13, Pal.ROPE_HEMP)
 
 ## Snake Apple: the snake winding toward an apple, its burrow behind it.
 func _snake() -> void:

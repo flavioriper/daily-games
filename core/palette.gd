@@ -191,6 +191,16 @@ const TONGUE      := Color("e0607a")
 const EARTH       := Color("8a6a4a")   # the burrow's rim while apples remain
 const HOLE        := Color("2a231e")   # the dark of the burrow
 
+# The Rope (the design agreed 2026-09-17): a carved plank ruled into squares
+# with numbered pegs turned out of the same timber, and a hemp rope laid over
+# the lot. The board is the palest wood there is so the rope has something to
+# read against; the pegs take TIMBER, which is on Toon's wood list and so
+# comes out turned and grained rather than flat.
+const ROPE_FACE  := Color("e7d9bd")   # a square the rope has not reached
+const ROPE_UNDER := Color("d2bd95")   # a square it lies on, shaded under it
+const ROPE_HEMP  := Color("b98a4e")   # the rope
+const ROPE_BAD   := Color("f0cfc6")   # a square the check says to take back
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [
