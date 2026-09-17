@@ -126,9 +126,43 @@ every layout change.
   in front of the blur has to draw in the opaque pass (the clouds went to
   alpha scissor for this). `SCREEN_UV.y` runs top-down in a spatial shader
   here. Measured on this Mac at phone resolution: the whole menu idles at
-  about 11 ms against 10 before the painted pass, the soft focus itself is
-  2.8 ms, the grade 1.2 ms; if a phone drops frames on the menu, the soft
-  focus's visibility is the first lever.
+  about 13 ms against 10 before the painted pass, the soft focus itself is
+  2.8 ms, the grade 1.2 ms and the lawn under the cards 2.3 ms; if a phone
+  drops frames on the menu, `Camp.NEAR_GRASS` and the soft focus's
+  visibility are the two levers, in that order.
+- **The camp has weather, and boards do not.** `wind_gust` is the second
+  global shader parameter beside `motion_scale` (`world/ambient.gd`,
+  `shaders/wind.gdshaderinc`): 0 everywhere, and 1 only while the campsite
+  is on the stage, so a board's rim grass keeps exactly the flutter it was
+  calibrated with. `Stage.show_setting` sets it with the pollen and the
+  grade, and reduce-motion stills it along with everything else (measured:
+  two frames 1.5 s apart come out pixel-identical). Over the old flutter it
+  lays a gust -- a band travelling across the world along `wind_dir`, one
+  crest every 13 units, cubed so the lull is long and the crest arrives
+  quickly. `toon_wind`, `outline` and `card_wind` all `#include` the same
+  file, because a gust each shader reads differently is a shimmer rather
+  than a wind; the gust's direction is taken back through the model's own
+  basis so every prop leans the same way in the world however it is turned,
+  which the flutter never had to bother with.
+  What blows: the grass, the blossom and foliage cards, the bushes and every
+  tree crown. A layer's lean is shaped by four `sway_*` parameters
+  (`Toon.SWAY_BLADE`, `SWAY_CROWN`, `SWAY_BUSH`, `SWAY_CARD`), read in the
+  model's own units so the prop's scale carries them, and `Toon.line_for`
+  copies them onto the outline shell -- a line left on the shader's defaults
+  peels off the layer it rings. Aim `wind_dir` much further toward the camera
+  and the field leans down the view, which reads as growing, not bending.
+- **The lawn is sown to what the camera actually sees, which is far less
+  than it looks.** The near lawn under the cards is the wedge from
+  (x -2.9..3.4, z 7.9) to (x -0.9..0.9, z 10.5) in the camp's space -- about
+  eleven square units -- because at the bottom of the screen the shift lens
+  is looking almost straight down from (0, 2.7, 10.8). Cast the rig's rays
+  at the screen's own pixels before sowing anything: a MultiMesh is culled as
+  one thing and never per instance, so a tuft off screen costs its vertices
+  every frame and shows nothing. Two grasses carry the ground:
+  `grass_patch` (480 triangles) where the camera is close and `grass_clump`
+  (98) for the wide fill. Three new fields cost three draw calls (326 to 329
+  on the menu, against the 855 budget) -- the bill is triangles and fill,
+  never calls.
 - **Instance shader parameters are unusable here; nothing may reintroduce
   one.** Any canvas item or mesh whose material's shader *declares* an
   `instance uniform` reserves a 16-item block of the global shader buffer,

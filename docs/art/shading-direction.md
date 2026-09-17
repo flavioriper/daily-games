@@ -118,12 +118,37 @@ thing back.
 - **The camp's palette** (`Pal.CAMP_*`): its turf, its grass blades, its
   path's earth and its leaf are all deeper and cooler than the boards' TURF,
   LEAF and PLOT_SOIL. Trees and bushes on the camp are tinted through
-  `tint_named` so their lines follow (`Camp._tree`); the grass field wears
-  `Toon.wind_material(Pal.CAMP_GRASS)` over the library's LEAF.
-- **Ground cover** is three MultiMeshes (grass, blossom cards, bushes) plus
-  a fourth for the leaf sheets closing the tree line: 620 patches, 64
-  blossoms scaled to stand above the grass, 14 bushes along the bank and
-  the path. One draw call each, so the count costs fill rate only.
+  `tint_named` so their lines follow (`Camp._tree`), and their crowns then go
+  over to the wind shader (`Camp._blow`); the grass fields wear
+  `Toon.wind_material(Pal.CAMP_GRASS, Toon.SWAY_BLADE)` over the library's
+  LEAF.
+- **Ground cover** is six MultiMeshes (three grasses, blossom cards, bushes)
+  plus one for the leaf sheets closing the tree line. One draw call each, so
+  the count costs fill rate and vertices only, never calls. Grown on
+  2026-09-17 from 620 tufts over a third of the ground to 5,050 over all of
+  it, so no bare turf shows anywhere the camera reaches:
+  - **Two grasses**, because the bill is triangles: `grass_patch` is 480 of
+    them and `grass_clump` 98, both about 0.4 tall. The patch goes where the
+    camera is close -- the hero strip (1,150) and the lawn under the cards
+    (1,200) -- and the clump fills the middle ground (2,000) and carries on
+    across the river (700), at a fifth of the cost per tuft.
+  - **Sow to what the camera sees.** A MultiMesh is culled as one thing and
+    never per instance, so a tuft off screen costs its vertices every frame
+    and shows nothing. The lawn under the cards *looks* like a wide band and
+    is in fact the wedge from (x -2.9..3.4, z 7.9) to (x -0.9..0.9, z 10.5)
+    in the camp's space -- eleven square units -- because the shift lens
+    looks almost straight down there from (0, 2.7, 10.8). Cast the rig's
+    rays at the screen's own pixels and read it off, rather than guessing at
+    a range.
+  - **A near tuft closes less ground than a far one**, being seen down the
+    blade rather than across it, so the near lawn gets the fuller patch mesh
+    at near full size rather than more small ones. It is also where the fill
+    goes: measured at 1080x1920, three runs each, the near lawn costs
+    2.3 ms and 650 tufts cost the same as 1,200, because a few hundred
+    blades that close to the lens already cover the screen. Take the fuller
+    one; `Camp.NEAR_GRASS` is the lever if a phone drops frames.
+  - 130 blossoms, scaled to stand above the grass around them, and 14 bushes
+    along the bank and the path.
 - **The canopy framing the frame** (`Camp.FRAME_CANOPY`): a trunkless oak
   crown hanging into each top corner from a couple of units in front of the
   lens, in `CAMP_LEAF_DEEP`, casting nothing. Whole trees near enough to
@@ -145,11 +170,46 @@ thing back.
   `SCREEN_UV.y < fraction` for the top.
 - **The lantern is lit**: its glass is `Toon.ink(Pal.LAMPLIGHT)`, flat and
   unlit, bright enough to catch the grade's bloom.
+- **The camp has weather and boards do not** (added 2026-09-17). Over the
+  flutter the sway shader always had, `shaders/wind.gdshaderinc` lays a
+  gust: a band travelling across the world along `wind_dir`, one crest every
+  13 units, cubed so the lull is long and the crest arrives quickly -- a
+  gust crossing a field, not everything waving at once. `toon_wind`,
+  `outline` and the new `card_wind` all include that one file, because a
+  gust each shader reads differently is a shimmer rather than a wind. It is
+  gated on the `wind_gust` global (`world/ambient.gd`), which
+  `Stage.show_setting` turns on with the pollen and the grade and
+  reduce-motion stills with everything else, so a board's rim grass keeps
+  exactly the flutter it was calibrated with.
+  - The gust's direction is taken back through each model's own basis, so
+    every prop leans the same way in the world however it is turned. The
+    flutter never had to: it is a shimmer with no direction to read, and a
+    field of tufts each blowing down its own local x reads as chaos.
+  - Aimed much further toward the camera it lays the blades down the view,
+    which reads as growing rather than bending. `(0.95, 0.31)` -- across the
+    frame, the way the path and the river lead the eye -- is what the camp
+    wants.
+  - What blows: the grass, the blossom and foliage cards, the bushes and
+    every tree crown. Trunks never do. A layer's lean is shaped by four
+    `sway_*` parameters read in the model's own units, so the prop's scale
+    carries them and one shape fits a sapling and the oak alike
+    (`Toon.SWAY_BLADE`, `SWAY_CROWN`, `SWAY_BUSH`, `SWAY_CARD`).
+  - **A shell must lean by its layer's own shape.** The outline is a second
+    instance of the layer's mesh, so a line left on the shader's defaults
+    peels off it; `Toon.line_for` reads the sway back off the layer and
+    hands it to `wind_line`, which is why nothing has to remember to set it.
+  - The cards went from `StandardMaterial3D` to `shaders/card_wind.gdshader`
+    (the same Y-billboard and alpha depth pre-pass, written out) so they can
+    lean. A billboard has no depth to lean into, so the gust is projected
+    onto screen-right before it is applied.
 
 Measured on this Mac at 1080x1920 through `tests/_shot_menu.gd`, which now
 prints the idle mean and the peak draw calls: 10.1 ms and 337 calls before,
 10.8 to 11.3 ms and 334 after; the difference is fill rate from the denser
-cover and the larger sheets. The ANGLE driver draws the same frame. What
+cover and the larger sheets. The grass and wind pass of 2026-09-17 took that
+to about 13 ms and 329 calls -- 2.3 ms of it the lawn under the cards, the
+rest the wider fields -- all of it fill and vertices, none of it draw calls.
+The ANGLE driver draws the same frame. What
 this pass does not do, by scope: the set (a cliff over a sea), the camera's
 pose, the lettering, per-layer textures, and the card dioramas, which keep
 the board light and read brighter than the camp behind them.
