@@ -192,11 +192,28 @@ because GDScript is single-inheritance.
 replaced `peeplet-daily`, which now holds nothing this game uses). Firestore
 is a `nam5` multi-region database with the rules from `server/` released,
 anonymous sign-in is on, and `core/backend.gd`'s `API_KEY` is the project's
-Web app key. The three functions deploy with `tools/deploy_functions.sh`
-once the project is on Blaze; until they are deployed, a live build signs in
-and reads, but its submits are queued and refused, and the crowd line says
-the camp is out of reach. Everything below was verified against the local
-emulator suite first.
+Web app key. The project is on Blaze and the three functions are deployed in
+`us-central1` (`tools/deploy_functions.sh`), with their schedules enabled and
+a one-day cleanup policy on their container images. Everything below was
+verified against the local emulator suite first, then against the live
+project.
+
+**The project lives in a Google Cloud organisation with the "secure by
+default" policies on**, and three of them bite anything that provisions it:
+no service-account keys (`iam.disableServiceAccountKeyCreation`), no members
+from other domains (`iam.allowedPolicyMemberDomains`, so a navlio account
+cannot own the project and billing is attached from the hypertradeworx side),
+and no automatic roles for default service accounts
+(`iam.automaticIamGrantsForDefaultServiceAccounts`, so a fresh project's
+functions cannot even build). Two one-time scripts hold the answers and are
+safe to re-run: `tools/ci_identity.sh` (keyless CI sign-in for App
+Distribution) and `tools/functions_identity.sh` (build and Firestore roles
+for the functions' identity) and `tools/public_invoker.sh` (the domain
+restriction also rejects `allUsers`, so `firebase deploy` leaves `submitTurn`
+with no invoker and every call answers 403 from Cloud Run; this overrides the
+constraint on this project alone and grants the invoker). All three grant
+roles or change policy, so a person runs them, not an agent session. Billing
+is the navlio account `013342-E2B1D4-0E3351`.
 
 `core/backend.gd` is the only way out of the game. It is static and woken by
 `world/main.gd` alone, exactly like `Analytics` -- **unstarted means offline**,
