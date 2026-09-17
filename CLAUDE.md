@@ -122,7 +122,10 @@ the footer slot's rays meet the ground, after every layout change.
   a board's never does. At y 0 the camp's feet and its fence are buried in it.
 - **Cards come in pages of nine**, turned with the buttons under the grid, not
   a scroll. Each card's picture is a live diorama of that puzzle's own pieces
-  (`ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder.
+  (`ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder. A
+  full page of nine measures 318 draw calls against the 855 budget, on this
+  Mac at phone resolution -- the cards are what a page costs, so a page, not
+  the whole registry, is the unit to measure against the budget.
 
 ## Art: shading direction
 
