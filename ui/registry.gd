@@ -6,6 +6,7 @@ extends RefCounted
 const PUZZLES := [
 	{
 		"id": "binairo",
+		"kind": "puzzle",
 		"title": "Binairo",
 		"blurb": "Suns and moons. Never three alike in a line.",
 		"motto": "Balance brings harmony",
@@ -15,6 +16,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "mastermind",
+		"kind": "puzzle",
 		"title": "Code Break",
 		"blurb": "Crack the hidden row from the feedback.",
 		"motto": "Crack the hidden code",
@@ -24,6 +26,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "balance",
+		"kind": "puzzle",
 		"title": "Balance",
 		"blurb": "Work out what each shape weighs.",
 		"motto": "Find the weight of things",
@@ -33,6 +36,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "pipes",
+		"kind": "puzzle",
 		"title": "Pipes",
 		"blurb": "Route the water. It won't climb without a pump.",
 		"motto": "Make the water flow",
@@ -42,6 +46,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "untangle",
+		"kind": "puzzle",
 		"title": "Untangle",
 		"blurb": "Drag the dots until no lines cross.",
 		"motto": "Every knot comes undone",
@@ -51,6 +56,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "shikaku",
+		"kind": "puzzle",
 		"title": "Shikaku",
 		"blurb": "Cut the field into numbered plots.",
 		"motto": "Every plot has its number",
@@ -60,6 +66,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "tents",
+		"kind": "puzzle",
 		"title": "Tents",
 		"blurb": "One tent beside every tree.",
 		"motto": "A camp for every tree",
@@ -69,6 +76,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "lightup",
+		"kind": "puzzle",
 		"title": "Light Up",
 		"blurb": "Light every cell, and no bulb may see another.",
 		"motto": "Let there be light",
@@ -78,6 +86,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "oneline",
+		"kind": "puzzle",
 		"title": "One Line",
 		"blurb": "Trace every line in a single stroke.",
 		"motto": "One stroke, no lifting",
@@ -87,6 +96,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "nonogram",
+		"kind": "puzzle",
 		"title": "Nonogram",
 		"blurb": "Fill the runs and reveal the picture.",
 		"motto": "Numbers make a picture",
@@ -96,6 +106,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "horse",
+		"kind": "puzzle",
 		"title": "Horse Pen",
 		"blurb": "Pen the horse in with hay bales. Keep the meadow.",
 		"motto": "Pen the wandering horse",
@@ -105,12 +116,23 @@ const PUZZLES := [
 	},
 	{
 		"id": "snake",
+		"kind": "puzzle",
 		"title": "Snake Apple",
 		"blurb": "Eat every apple, then slip into the burrow.",
 		"motto": "Room to wriggle",
 		"footer": "Slide · Eat · Burrow",
 		"script": "res://puzzles/snake3d.gd",
 		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "guess_number",
+		"kind": "turn",
+		"title": "Guess",
+		"blurb": "One number, one go. How close can you land?",
+		"motto": "One number, one go",
+		"footer": "Guess · Lock · Reveal",
+		"script": "res://turns/guess_number.gd",
+		"difficulties": [0],
 	},
 ]
 
@@ -119,3 +141,8 @@ static func find(id: String) -> Dictionary:
 		if p.id == id:
 			return p
 	return {}
+
+## "puzzle" or "turn"; an entry without a kind is a puzzle, as all twelve
+## were before turns existed.
+static func kind(entry: Dictionary) -> String:
+	return str(entry.get("kind", "puzzle"))

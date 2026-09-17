@@ -90,6 +90,9 @@ func _build() -> void:
 	prompt.theme_type_variation = "CardBody"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Replaced by the turn's own prompt_text() once _open_turn's fetch lands,
+	# so the screen never sits there blank while the day loads.
+	prompt.text = "Fetching today's turn…"
 	root.add_child(prompt)
 
 	_slot = Control.new()
@@ -100,6 +103,9 @@ func _build() -> void:
 	lock_button = IconButton.new("check", "Lock", "PrimaryButton")
 	lock_button.name = "Lock"
 	lock_button.custom_minimum_size.y = 110
+	# Hidden until _refresh() knows a turn exists to lock; otherwise the button
+	# sits there, visible and inert, for the whole width of the day fetch.
+	lock_button.visible = false
 	lock_button.pressed.connect(_on_lock)
 	root.add_child(lock_button)
 
@@ -160,6 +166,12 @@ func _open_turn() -> void:
 	_turn.input_changed.connect(_refresh)
 	_turn.graded.connect(_on_graded)
 	prompt.text = _turn.prompt_text()
+	# An offline phone with nothing bundled for this turn still has to be
+	# playable (guess_number derives its own answer from the day key), but
+	# the player deserves to know why, rather than the screen just working
+	# in silence as though nothing happened.
+	if not got.ok and content.is_empty():
+		prompt.text += "\n(Offline — playing today's number without the server.)"
 
 	var played := _played_score(game)
 	if played >= 0:

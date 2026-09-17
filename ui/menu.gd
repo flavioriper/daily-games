@@ -14,6 +14,7 @@ const Motion = preload("res://core/motion.gd")
 const Progress = preload("res://core/progress.gd")
 const Registry = preload("res://ui/registry.gd")
 const Host = preload("res://ui/puzzle_host.gd")
+const TurnHost = preload("res://ui/turn_host.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const TitleView = preload("res://ui/hud/title_view.gd")
@@ -251,9 +252,16 @@ func _enter() -> void:
 	Motion.appear(_gear, 0.0, 1.0, ENTER_FADE, ENTER_TITLE)
 	Motion.appear(_pager, 0.0, 1.0, ENTER_FADE, ENTER_CARDS + CARD_CAP)
 
+## A card opens either a board or a turn; the registry says which, and both
+## hosts close the same way.
 func _open(entry: Dictionary) -> void:
-	var host = Host.new()
-	host.setup(entry, 1)
+	var host: Control
+	if Registry.kind(entry) == "turn":
+		host = TurnHost.new()
+		host.setup(entry)
+	else:
+		host = Host.new()
+		host.setup(entry, 1)
 	host.closed.connect(func():
 		host.queue_free()
 		_show_list()
