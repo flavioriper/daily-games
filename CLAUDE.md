@@ -86,10 +86,15 @@ camera, so the editor shows the real thing. The menu frames
 the footer slot's rays meet the ground, after every layout change.
 
 - **The menu camera is a shift lens** (`CameraRig.shift_fov_deg`, passed as
-  `fit_camera`'s `shift_fov`): aimed straight at the camp at 12 degrees, 54
-  degrees across the hero strip, with the frustum slid so the strip lands at
-  the top of the screen. The ordinary perspective had to aim under the camp
-  through a narrow field to hold it up there, which flattened and shrank it.
+  `fit_camera`'s `shift_fov`), posed the way the camp asks (`Camp.VIEW_PITCH`,
+  `VIEW_YAW`, `VIEW_FOV`): from a step to the left of the camp, 13.7 degrees
+  down, 90 degrees across the hero strip, with the frustum slid so the strip
+  lands at the top of the screen. Standing close and off to the left through
+  a wide field is what shows the scout's left side and lays the dock and the
+  day sign at an angle; the head-on 54-degree view it replaced read flat. The
+  ordinary perspective had to aim under the camp through a narrow field to
+  hold it up there, which flattened and shrank it. `tests/preview_tree.gd`
+  takes the same pose off the camp, so the editor shows the menu's view.
   It is Godot's frustum projection with an offset, and in 4.7
   `project_position` and `project_ray_normal` mis-scale that offset while
   `unproject_position` is right: anything that needs a ray or a pixel size

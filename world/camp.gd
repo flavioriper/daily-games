@@ -46,13 +46,24 @@ const LIFT := 2.0
 
 ## What the menu frames: the picture's middle plane, through the scout and the
 ## day sign, as wide as the banner shows and as tall as the hero strip is.
-## Its centre is where the camera aims: the scout's chest, so the sign's plank
-## and his feet fall in the lower half under the title and motto, and the tent
-## and the tree line get the top. Measured off the banner: the frame is about
-## ten units wide at their plane, the sign's plank a third of it, the scout
-## two thirds of its height.
-const HERO_CENTRE := Vector3(0.75, 1.5, 4.9)
-const HERO_SIZE := Vector3(9.4, 4.1, 0.6)
+## Its centre is where the camera aims: just under the scout's chest, so the
+## sign's plank and his feet fall in the lower half under the title and motto,
+## and the tent and the tree line get the top. The frame is about ten units
+## wide at their plane, the sign's plank a third of it, the scout two thirds
+## of its height; the camera's pose over it is VIEW_* below.
+const HERO_CENTRE := Vector3(1.0, 1.2, 4.9)
+const HERO_SIZE := Vector3(10.0, 4.4, 0.6)
+## How the camp is looked at, by the menu's shift lens and the preview's fixed
+## camera alike: from a step to the left of it, a little over the scout's eye
+## level, close and through a wide field. Taken off the editor's own
+## three-quarter look at tests/preview_tree.tscn (2026-09-17): standing off
+## to the left and close is what shows the scout's left side and lays the dock
+## and the day sign at an angle rather than head on. The field is wide, not
+## the editor's 104 degrees across, which bulges at a phone's edges.
+const VIEW_PITCH := 13.7
+const VIEW_YAW := -6.0
+## Degrees across the frame the camp is fitted to.
+const VIEW_FOV := 90.0
 
 ## The bank runs from well left of the frame out to the water's edge, and the
 ## river takes everything to the right of it.

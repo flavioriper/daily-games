@@ -37,13 +37,11 @@ const HERO_MIN := 250.0
 ## The strip the fence diorama is stood along at the bottom.
 const FOOTER_H := 200.0
 ## The camera on this screen is a shift lens (world/camera_rig.gd,
-## shift_fov_deg): aimed straight at the camp at the banner's gentle pitch, a
-## little over the scout's eye level, with the frame slid so the camp lands in
-## the strip above the cards. The field is the banner's, measured across that
-## strip; the ordinary perspective would have to aim under the camp through a
-## narrow field to hold it up there, which is what flattened and shrank it.
-const PITCH := 12.0
-const SHIFT_FOV := 54.0
+## shift_fov_deg): aimed at the camp from the pose the camp itself asks for
+## (Camp.VIEW_*), with the frame slid so the camp lands in the strip above
+## the cards. The ordinary perspective would have to aim under the camp
+## through a narrow field to hold it up there, which is what flattened and
+## shrank it.
 const BUTTON := Vector2(110, 110)
 const PAGE_BUTTON := Vector2(96, 64)
 ## Entrance delays: the title first, then a wave down the cards.
@@ -242,8 +240,10 @@ func _fit_stage() -> void:
 	var vw := get_viewport_rect().size.x
 	var hero := Rect2(0.0, 0.0, vw, _hero.get_global_rect().end.y)
 	# The camp stands upright: its face angle is the camera's own pitch, so
-	# the stage leans it by nothing. Yaw 0, undoing any turn a board left.
-	_stage.fit_camera(camp.hero_box(), hero, PITCH, Camera3D.PROJECTION_PERSPECTIVE, 0.0, PITCH, SHIFT_FOV)
+	# the stage leans it by nothing. The yaw is set outright, undoing any turn
+	# a board left.
+	_stage.fit_camera(camp.hero_box(), hero, Camp.VIEW_PITCH, Camera3D.PROJECTION_PERSPECTIVE,
+		Camp.VIEW_YAW, Camp.VIEW_PITCH, Camp.VIEW_FOV)
 	var f: Rect2 = _footer_slot.get_global_rect()
 	camp.place_footer(_stage.rig, Rect2(0.0, f.position.y, vw, f.size.y))
 

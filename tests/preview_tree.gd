@@ -25,14 +25,22 @@ const SoftFocus = preload("res://world/soft_focus.gd")
 
 ## Where the camera stands and what it holds in the middle of the frame, in
 ## the camp's ground plane: aimed at Camp.HERO_CENTRE, the spot the menu's
-## shift lens aims at too, from 12 degrees up and far enough back that the
-## frame is Camp.HERO_SIZE wide at that plane. 32 degrees vertical at 16:9 is
-## 54 across, the menu's field.
-const CAM_PITCH := 12.0
-const CAM_FOV := 32.0
+## shift lens aims at too, from the camp's own pitch and yaw (Camp.VIEW_*)
+## and far enough back that the frame holds Camp.HERO_SIZE at that plane the
+## way the menu's fit does: the rig keeps 6 percent of the strip's short side
+## clear on each side (CameraRig.margin), which at the strip's shape comes to
+## about a tenth more width than the box itself. The vertical field is the
+## menu's horizontal one taken across 16:9.
+const FIT_SLACK := 1.1
+const CAM_PITCH := Camp.VIEW_PITCH
+const CAM_YAW := Camp.VIEW_YAW
+const CAM_FOV := rad_to_deg(2.0 * atan(tan(deg_to_rad(Camp.VIEW_FOV * 0.5)) * 9.0 / 16.0))
 const CAM_LOOK := Camp.HERO_CENTRE
-const CAM_AT := CAM_LOOK + Vector3(0.0, sin(deg_to_rad(CAM_PITCH)), cos(deg_to_rad(CAM_PITCH))) \
-	* (Camp.HERO_SIZE.x * 0.5 / tan(deg_to_rad(27.0)))
+const CAM_AT := CAM_LOOK + Vector3(
+		sin(deg_to_rad(CAM_YAW)) * cos(deg_to_rad(CAM_PITCH)),
+		sin(deg_to_rad(CAM_PITCH)),
+		cos(deg_to_rad(CAM_YAW)) * cos(deg_to_rad(CAM_PITCH))) \
+	* (Camp.HERO_SIZE.x * FIT_SLACK * 0.5 / tan(deg_to_rad(Camp.VIEW_FOV * 0.5)))
 
 @export var day := 2
 @export var island := "Birch Haven"
