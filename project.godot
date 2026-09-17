@@ -43,6 +43,10 @@ port_override=6550
 
 pointing/emulate_touch_from_mouse=true
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://locale/turn.en.translation", "res://locale/turn.pt.translation", "res://locale/turn.es.translation")
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

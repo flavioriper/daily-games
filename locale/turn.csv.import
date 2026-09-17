@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dh5en3xuhfyw6"
+
+[deps]
+
+files=["res://locale/turn.en.translation", "res://locale/turn.pt.translation", "res://locale/turn.es.translation"]
+
+source_file="res://locale/turn.csv"
+dest_files=["res://locale/turn.en.translation", "res://locale/turn.pt.translation", "res://locale/turn.es.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

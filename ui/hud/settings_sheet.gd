@@ -7,6 +7,8 @@ extends "res://ui/hud/sheet.gd"
 ## reduce_changed.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, sections 2 and 5.
 
+const Locale = preload("res://core/locale.gd")
+
 signal reduce_changed(on: bool)
 signal new_puzzle
 
@@ -30,6 +32,23 @@ func _build_sheet(col: VBoxContainer) -> void:
 	toggle.set_pressed_no_signal(Motion.reduce)
 	toggle.toggled.connect(_set_reduce)
 	col.add_child(toggle)
+	var lang_row := HBoxContainer.new()
+	lang_row.add_theme_constant_override("separation", 10)
+	var lang_label := Label.new()
+	lang_label.text = tr("TURN_LANGUAGE")
+	lang_label.add_theme_font_size_override("font_size", 30)
+	lang_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lang_row.add_child(lang_label)
+	var picker := OptionButton.new()
+	picker.custom_minimum_size.y = ROW * 0.8
+	for i in Locale.CODES.size():
+		picker.add_item(Locale.NAMES[Locale.CODES[i]], i)
+	picker.select(Locale.CODES.find(Locale.current()))
+	picker.item_selected.connect(func(i: int) -> void:
+		Locale.set_current(Locale.CODES[i])
+		close())
+	lang_row.add_child(picker)
+	col.add_child(lang_row)
 	new_button = IconButton.new("reset", "New puzzle (prototype)", "IconButton")
 	new_button.custom_minimum_size.y = ROW
 	new_button.visible = with_new

@@ -142,6 +142,7 @@ static func _refresh() -> bool:
 	if not res.ok or typeof(d) != TYPE_DICTIONARY:
 		# A rejected refresh token is dead; drop it so the next call signs up.
 		_refresh_token = ""
+		_save_player()
 		return false
 	_uid = str(d.get("user_id", _uid))
 	_refresh_token = str(d.get("refresh_token", _refresh_token))

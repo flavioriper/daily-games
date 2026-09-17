@@ -20,10 +20,10 @@ var _pegs: Array[Node3D] = []
 var _answer_peg: Node3D
 
 func turn_id() -> String: return "guess_number"
-func title() -> String: return "Guess"
-func motto() -> String: return "One number, one go"
-func footer() -> String: return "Guess · Lock · Reveal"
-func prompt_text() -> String: return "What number is the camp thinking of, 0 to 100?"
+func title() -> String: return tr("GUESS_TITLE")
+func motto() -> String: return tr("GUESS_MOTTO")
+func footer() -> String: return tr("GUESS_FOOTER")
+func prompt_text() -> String: return tr("GUESS_PROMPT")
 
 func board_size() -> Vector2i: return Vector2i(PEGS, 1)
 func board_height() -> float: return 1.0

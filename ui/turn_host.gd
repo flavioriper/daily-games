@@ -100,7 +100,7 @@ func _build() -> void:
 	_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_slot)
 
-	lock_button = IconButton.new("check", "Lock", "PrimaryButton")
+	lock_button = IconButton.new("check", tr("TURN_LOCK"), "PrimaryButton")
 	lock_button.name = "Lock"
 	lock_button.custom_minimum_size.y = 110
 	# Hidden until _refresh() knows a turn exists to lock; otherwise the button
@@ -142,7 +142,7 @@ func _build_reveal(root: Control) -> void:
 	crowd_label.theme_type_variation = "CardBody"
 	crowd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(crowd_label)
-	share_button = IconButton.new("chevron_right", "Share", "IconButton")
+	share_button = IconButton.new("chevron_right", tr("TURN_SHARE"), "IconButton")
 	share_button.custom_minimum_size.y = 96
 	share_button.pressed.connect(_on_share)
 	col.add_child(share_button)
@@ -208,7 +208,7 @@ func _show_result(the_score: int, send: bool) -> void:
 	var game: String = str(_entry.get("id", ""))
 	lock_button.visible = false
 	reveal_panel.visible = true
-	score_label.text = "%d / 100" % the_score
+	score_label.text = tr("TURN_SCORE") % the_score
 	score_bar.value = the_score
 	crowd_label.text = "…"
 	Motion.appear(reveal_panel, 0.0, 1.0, 0.3, 0.0)
@@ -222,9 +222,9 @@ func _show_result(the_score: int, send: bool) -> void:
 		return
 	var pct := Backend.percentile(crowd.data, the_score)
 	if pct >= 0:
-		crowd_label.text = "Closer than %d%% of players" % pct
+		crowd_label.text = tr("TURN_CROWD") % pct
 	else:
-		crowd_label.text = "You are the first today"
+		crowd_label.text = tr("TURN_FIRST")
 	Analytics.track("crowd_reveal_opened", {"turn_id": game, "count": int(crowd.data.get("count", 0))})
 
 func _on_share() -> void:
