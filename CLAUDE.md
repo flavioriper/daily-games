@@ -265,7 +265,10 @@ CLI 15.14.0: it prints "Successfully invoked function" and does nothing. To
 trigger `publishDay` or `rollupTally` by hand, wrap the body in a temporary
 `onRequest` function and curl it, or write to Firestore directly over the
 emulator's REST API; this has already cost two implementers an afternoon
-each.
+each. Against the live project, `tools/seed_turn_day.sh <game> <day> <json>`
+writes one day's document the way `publishDay` would (create-only), for the
+day a game ships on, which the 03:00 scheduler never reaches. How Big?'s
+first two days (2026-09-17 and -18) were seeded this way.
 
 **How Big?** (`turns/how_big.gd`, phase 1) is the first real turn, and it
 replaced the Guess stub outright. The scout stands on a dock at a stated
