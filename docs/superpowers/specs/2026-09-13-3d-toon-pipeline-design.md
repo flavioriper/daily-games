@@ -140,11 +140,17 @@ the Blender contract, and the placeholder primitives already satisfy it.
 ### Toon factory (`core/toon.gd`, static)
 
 - `ramp() -> GradientTexture1D`: three constant steps at offsets 0, 0.35,
-  0.7 with values 0.45, 0.8, 1.0. Built once and cached.
+  0.7 with values 0.45, 0.8, 1.0. Built once and cached. (2026-09-17: the
+  steps are eased now -- three bands with each edge eased over a short run,
+  256 texels wide -- for every material; docs/art/shading-direction.md.)
 - `material(albedo: Color) -> ShaderMaterial`: toon material. Cached per
   albedo (dictionary keyed by `Color.to_html()`), so tinting a hundred tiles
   the same colour costs one material.
 - `outline() -> ShaderMaterial`: the one shared outline material.
+  (2026-09-17: only the fallback. A shell wears `line(colour)`, the layer's
+  own colour deepened and cooled at the thinner `LINE_WIDTH`; `add_outline`
+  reads the colour off the mesh's material through `line_for`, and
+  `reline` refreshes it after a recolour.)
 - `add_outline(mesh_instance: MeshInstance3D)`: adds the `Outline` shell
   child described above. Idempotent: a second call finds the existing shell.
 - `apply_to(root: Node)`: walks `MeshInstance3D` descendants. For each surface

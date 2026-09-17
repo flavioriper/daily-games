@@ -508,6 +508,7 @@ func _rebuild_rope(e: int) -> void:
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	(_ropes[e] as MeshInstance3D).set_surface_override_material(0,
 		Toon.material(Pal.BAD if _rope_bad[e] else Pal.WOOD_DEEP))
+	Toon.reline(_ropes[e])
 
 # --- scoring and colour ---
 

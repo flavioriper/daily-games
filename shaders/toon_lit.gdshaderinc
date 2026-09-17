@@ -1,8 +1,13 @@
-// Shared body of the cozy cel shader: toon.gdshader, toon_wind.gdshader and
-// toon_wood.gdshader #include this so the lighting has one source. Spec:
-// 3d-toon-pipeline design section 2. Runs on gl_compatibility: nothing here
-// reads depth or screen. A shader that #defines WOOD_GRAIN before the include
-// also gets the grain block below; nothing else pays for it.
+// Shared body of the soft painted cel shader (docs/art/shading-direction.md):
+// toon.gdshader, toon_wind.gdshader and toon_wood.gdshader #include this so
+// the lighting has one source. Spec: 3d-toon-pipeline design section 2. Runs
+// on gl_compatibility: nothing here reads depth or screen.
+//
+// Every material gets the eased ramp, the eased sky-tinted rim and a slow
+// painterly wash over its colour, so no two hand-widths of one surface are
+// quite the same tone. A shader that #defines WOOD_GRAIN before the include
+// gets the grain block below instead of the plain wash (the grain carries a
+// wash of its own); nothing else pays for the grain.
 
 uniform vec4 albedo : source_color = vec4(1.0);
 // A painted texture under the same ramp, multiplied into the albedo. The
@@ -11,8 +16,9 @@ uniform vec4 albedo : source_color = vec4(1.0);
 // exports) sets it and keeps its paint while still being lit, banded and
 // outlined by the scene. core/toon.gd textured_material() is the one caller.
 uniform sampler2D albedo_tex : source_color, hint_default_white, filter_linear_mipmap;
-// Red channel = lit factor across NdotL remapped to 0..1. Nearest filtering
-// keeps the bands hard. core/toon.gd ramp() builds the default.
+// Red channel = lit factor across NdotL remapped to 0..1. core/toon.gd
+// ramp() builds it: three bands with each edge eased over a short run, wide
+// enough (256 texels) that nearest sampling never shows a stair in the ease.
 uniform sampler2D ramp : filter_nearest, repeat_disable, hint_default_white;
 // Shadow is a hue shift toward this tint, never a multiply toward black.
 uniform vec4 shadow_tint : source_color = vec4(0.72, 0.65, 0.77, 1.0);
@@ -20,10 +26,52 @@ uniform float rim_strength : hint_range(0.0, 1.0) = 0.18;
 uniform float rim_width : hint_range(0.0, 1.0) = 0.30;
 uniform vec4 rim_color : source_color = vec4(1.0);
 // How far the rim's edge eases, in facing units. Zero is the hard step the
-// cel look started with; the soft painted materials (wood first,
-// docs/art/shading-direction.md) set a small value so the edge light reads
-// as bounced sky rather than a drawn line.
+// cel look started with; core/toon.gd sets a small value on every material
+// so the edge light reads as bounced sky rather than a drawn line.
 uniform float rim_soft : hint_range(0.0, 0.5) = 0.0;
+
+// Value noise, smoothed, shared by the wash and the wood grain.
+float cel_hash(vec2 p) {
+	p = mod(p, 289.0);
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float cel_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(cel_hash(i), cel_hash(i + vec2(1.0, 0.0)), f.x),
+		mix(cel_hash(i + vec2(0.0, 1.0)), cel_hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+#ifndef WOOD_GRAIN
+// The painterly wash (docs/art/shading-direction.md: hand-painted feel,
+// painterly colour variation): a slow drift of the surface between a warmer
+// and a cooler tint of itself, with a finer drift in value under it. Two
+// octaves of value noise over world position, so every tile of one colour
+// is its own tone and a piece's top and side read differently. World space
+// rather than the piece's own so a hundred tiles of one mesh do not repeat
+// one pattern; at these amounts the paint sliding over a piece while it
+// moves is not something the eye picks up. Everything is a multiply on the
+// colour, so the palette stays the only colour chosen outright, and the
+// amounts are a few percent: a tile is a tile, not a dirty tile.
+uniform float wash : hint_range(0.0, 1.0) = 1.0;
+uniform float wash_scale = 0.9;                            // broad octave, cycles per world unit
+uniform vec3 wash_warm = vec3(1.045, 1.0, 0.955);
+uniform vec3 wash_cool = vec3(0.96, 0.99, 1.04);
+uniform float wash_value : hint_range(0.0, 0.3) = 0.06;    // fine octave's value swing, peak to peak
+
+vec3 paint_wash(vec3 p) {
+	// A slanted chart, so a vertical face varies along its height too.
+	vec2 q = vec2(p.x + p.y * 0.37, p.z - p.y * 0.61) * wash_scale;
+	float broad = cel_noise(q + 19.0);
+	float fine = cel_noise(q * 2.7 + 57.0);
+	float warmth = clamp(0.5 + (broad - 0.5) * 1.4 + (fine - 0.5) * 0.8, 0.0, 1.0);
+	vec3 tone = mix(wash_cool, wash_warm, warmth);
+	tone *= 1.0 + (fine - 0.5) * wash_value;
+	return mix(vec3(1.0), tone, wash);
+}
+#endif
 
 #ifdef WOOD_GRAIN
 // Wood grain, painted. Rings around the piece's own axis with the heart of
@@ -88,19 +136,6 @@ void vertex() {
 	grain_pos = VERTEX * s;
 }
 
-float wood_hash(vec2 p) {
-	p = mod(p, 289.0);
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-float wood_noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(wood_hash(i), wood_hash(i + vec2(1.0, 0.0)), f.x),
-		mix(wood_hash(i + vec2(0.0, 1.0)), wood_hash(i + vec2(1.0, 1.0)), f.x), f.y);
-}
-
 // Coverage of the band |x| < hw by a pixel of width w centred at x = d >= 0.
 // A band narrower than a pixel fades out instead of leaving a hairline.
 float wood_band(float d, float hw, float w) {
@@ -118,7 +153,7 @@ vec3 wood_figure(vec3 p) {
 	vec2 across = vec2(dot(p, u), dot(p, v));
 	// The seed moves the heart and slides the piece along the log.
 	vec2 heart = grain_heart
-		+ (vec2(wood_hash(vec2(grain_seed, 3.1)), wood_hash(vec2(grain_seed, 7.3))) - 0.5) * 0.5;
+		+ (vec2(cel_hash(vec2(grain_seed, 3.1)), cel_hash(vec2(grain_seed, 7.3))) - 0.5) * 0.5;
 	float along = dot(p, ax) + grain_seed * 11.3;
 	vec2 rc = across - heart;
 	float radius = length(rc);
@@ -127,8 +162,8 @@ vec3 wood_figure(vec3 p) {
 	// lines wave together.
 	float r = radius * grain_scale;
 	vec2 np = vec2(along, radius);
-	r += (wood_noise(np * vec2(0.9, 2.5)) - 0.5) * 2.0 * grain_wobble;
-	r += (wood_noise(np * vec2(2.7, 6.0) + 31.0) - 0.5) * 0.7 * grain_wobble;
+	r += (cel_noise(np * vec2(0.9, 2.5)) - 0.5) * 2.0 * grain_wobble;
+	r += (cel_noise(np * vec2(2.7, 6.0) + 31.0) - 0.5) * 0.7 * grain_wobble;
 
 	// Knots. The surface is charted as (along, arc around the axis), which
 	// is a smooth 2D coordinate over a plank's face and a post's side alike.
@@ -137,8 +172,8 @@ vec3 wood_figure(vec3 p) {
 	float arc = atan(across.y, across.x) * length(across);
 	vec2 kp = vec2(along, arc) / grain_knot_cell;
 	vec2 kc = floor(kp);
-	float has_knot = step(wood_hash(kc + 41.0), grain_knot_chance);
-	vec2 jitter = (vec2(wood_hash(kc + 5.0), wood_hash(kc + 9.0)) - 0.5) * 0.5;
+	float has_knot = step(cel_hash(kc + 41.0), grain_knot_chance);
+	vec2 jitter = (vec2(cel_hash(kc + 5.0), cel_hash(kc + 9.0)) - 0.5) * 0.5;
 	vec2 to_knot = (kp - kc - 0.5 - jitter) * grain_knot_cell;
 	// Elongated along the grain: the core is a 2:1 oval, the bulge that folds
 	// the rings around it reaches three times further. No branch here:
@@ -152,7 +187,7 @@ vec3 wood_figure(vec3 p) {
 	// noise along the ring says so and tapering where it fades.
 	float d = abs(fract(r) - 0.5);
 	float ring = floor(r);
-	float presence = wood_noise(vec2(along * 1.3, ring * 0.71 + 17.0));
+	float presence = cel_noise(vec2(along * 1.3, ring * 0.71 + 17.0));
 	float hw = grain_width * smoothstep(1.0 - grain_cover, 1.0 - grain_cover + 0.3, presence);
 	float w = max(fwidth(r) * grain_soft, grain_soft_min);
 	float streak = wood_band(d, hw, w);
@@ -163,15 +198,15 @@ vec3 wood_figure(vec3 p) {
 	float zr = r + 0.5;
 	float zid = floor(zr);
 	float zf = fract(zr);
-	float z0 = step(0.5, wood_hash(vec2(zid, 23.0)));
-	float zm = step(0.5, wood_hash(vec2(zid - 1.0, 23.0)));
-	float zp = step(0.5, wood_hash(vec2(zid + 1.0, 23.0)));
+	float z0 = step(0.5, cel_hash(vec2(zid, 23.0)));
+	float zm = step(0.5, cel_hash(vec2(zid - 1.0, 23.0)));
+	float zp = step(0.5, cel_hash(vec2(zid + 1.0, 23.0)));
 	float zone = mix(mix(zm, z0, clamp(zf / w + 0.5, 0.0, 1.0)), zp, clamp((zf - 1.0) / w + 0.5, 0.0, 1.0));
 
 	// The wash, on the same (along, arc) chart as the knots: a broad drift
 	// between the cool and the warm tint, and a finer one in value.
-	float n_fine = wood_noise(kp * grain_knot_cell * 2.8 + 53.0);
-	float n_broad = wood_noise(kp * grain_knot_cell * 0.9 + 77.0);
+	float n_fine = cel_noise(kp * grain_knot_cell * 2.8 + 53.0);
+	float n_broad = cel_noise(kp * grain_knot_cell * 0.9 + 77.0);
 	float warmth = clamp(0.5 + (n_broad - 0.5) * 1.4 + (n_fine - 0.5) * 0.8, 0.0, 1.0);
 	vec3 tone = mix(vec3(1.0), mix(grain_cool, grain_warm, warmth), grain_wash);
 	tone *= 1.0 + (n_fine - 0.5) * 0.08 * grain_wash;
@@ -186,6 +221,8 @@ void fragment() {
 	vec3 base = albedo.rgb * texture(albedo_tex, UV).rgb;
 #ifdef WOOD_GRAIN
 	base *= wood_figure(grain_pos);
+#else
+	base *= paint_wash((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 #endif
 	ALBEDO = base;
 	ROUGHNESS = 1.0;

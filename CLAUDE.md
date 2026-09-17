@@ -156,6 +156,14 @@ painted cel, no harsh black outlines, warm muted pastels, diffuse and
 painterly surfaces, soft coloured shadows, minimal specular, depth through
 colour rather than fog. Read it before touching a shader, palette or light.
 
+Every lit material is on it (2026-09-17), through `core/toon.gd`: the eased
+ramp, the eased sky rim and the painterly wash come with `Toon.material()`
+and its variants, and a shell wears the layer's own colour's line. Two rules
+keep it that way: set a mesh's material *before* `Toon.add_outline`, which
+reads the colour off it, and call `Toon.reline` after any recolour that
+does not go through `Models.tint` or `tint_named`. Nothing may hand a layer
+the shared ink `Toon.outline()` or a hard ramp again.
+
 ## Playing on an Android phone
 
 The game ships as a native APK through Firebase App Distribution (project

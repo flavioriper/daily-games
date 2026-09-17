@@ -574,6 +574,7 @@ func _paint_ground() -> void:
 
 func _paint_mesh(mi: MeshInstance3D, colour: Color) -> void:
 	mi.material_override = Toon.ghost(colour, PEEK_ALPHA) if _peeking else Toon.material(colour)
+	Toon.reline(mi)
 	var shell := mi.get_node_or_null(Toon.OUTLINE_NODE)
 	if shell != null:
 		(shell as MeshInstance3D).visible = not _peeking

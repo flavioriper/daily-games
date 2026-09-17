@@ -2,8 +2,9 @@ shader_type spatial;
 render_mode cull_back, depth_draw_opaque, specular_disabled;
 
 // The water inside a pipe. Hard bands and bubble dots travel outward from the
-// hub along every arm, lit with the same two-band step as the toon shader so
-// the board's shadow still falls on the tube. `wet` mixes the whole thing
+// hub along every arm (the bands are the water's own drawing and stay hard),
+// lit with a two-band terminator eased the way the toon ramp's are, so the
+// board's shadow still falls on the tube as a soft one. `wet` mixes the whole thing
 // from a flat grey hole to running water, so one uniform carries a cell's
 // state and the toon material cache never sees an intermediate colour; the
 // motion_scale global stills the current under reduce-motion. Spec:
@@ -51,7 +52,8 @@ void fragment() {
 void light() {
 	float ndl = dot(normalize(NORMAL), normalize(LIGHT));
 	float t = clamp(ndl * 0.5 + 0.5, 0.0, 1.0) * clamp(ATTENUATION, 0.0, 1.0);
-	float band = step(0.5, t);
+	// Eased over the same run as the toon ramp's edges (core/toon.gd ramp()).
+	float band = smoothstep(0.45, 0.55, t);
 	// LIGHT_COLOR is colour * energy * PI and the pipeline multiplies by
 	// ALBEDO afterwards, so neither factor belongs here (see toon_lit).
 	DIFFUSE_LIGHT += LIGHT_COLOR / PI * mix(shadow_tint.rgb, vec3(1.0), band);

@@ -1,9 +1,12 @@
 extends RefCounted
 
-## Factory for the cozy toon look. Every 3D thing in the game gets its
-## materials from here, so the shading contract lives in one place.
-## Materials are cached per colour; a board of a hundred same-coloured tiles
-## costs one material.
+## Factory for the soft painted cel look (docs/art/shading-direction.md).
+## Every 3D thing in the game gets its materials from here, so the shading
+## contract lives in one place: an eased three-band ramp, an eased sky-tinted
+## rim, a slow painterly wash over the colour, and an outline shell in the
+## layer's own colour deepened rather than a shared ink line. Materials are
+## cached per colour; a board of a hundred same-coloured tiles costs one
+## material.
 
 const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
@@ -32,10 +35,6 @@ const WOODS: Array[Color] = [Pal.DECK, Pal.WOOD, Pal.BARK, Pal.TIMBER, Pal.PLAQU
 ## glTF round-trips a colour through linear floats, so an exported model's
 ## wood comes back near its palette value rather than exactly on it.
 const WOOD_TOL := 0.012
-## The palette's leaf greens. Same hook-up as the woods: a layer that arrives
-## in one of these colours gets the soft painted treatment (eased ramp, eased
-## sky rim) with no grain -- Leaf's turn in docs/art/shading-direction.md.
-const LEAVES: Array[Color] = [Pal.LEAF, Pal.LEAF_LIGHT]
 ## How much longer one side must be before it counts as the grain's
 ## direction. Barely more than a tie, so that a strip modelled one unit long
 ## and stretched by the board at runtime -- the deck's, whose modelled length
@@ -43,28 +42,27 @@ const LEAVES: Array[Color] = [Pal.LEAF, Pal.LEAF_LIGHT]
 ## no winner at all falls back to standing rings.
 const GRAIN_LEAD := 1.02
 
-## The line a soft painted layer wears instead of the shared dark outline
-## (docs/art/shading-direction.md: no harsh black outlines). Wood is the
-## first material on it: its line is its own colour, deepened and cooled a
-## little, and thinner than the ink line.
+## The line every layer wears (docs/art/shading-direction.md: no harsh black
+## outlines): its own colour, deepened and cooled a little, and thinner than
+## the ink line the cel look started with (outline(), kept only as the
+## fallback for a layer whose colour cannot be read).
 const LINE_WIDTH := 0.014
 const LINE_DEEPEN := 0.45
 const LINE_COOL := 0.12
-## Wood's rim: eased rather than stepped, and tinted with the sky so the
-## upper edges catch bounced light rather than a drawn highlight.
-const WOOD_RIM_SOFT := 0.12
+## The rim: eased rather than stepped, and tinted with the sky so the upper
+## edges catch bounced light rather than a drawn highlight. Wood's is a
+## little stronger, so a plank's edge catches the light the way a sawn edge
+## does.
+const RIM_SOFT := 0.12
+const RIM_STRENGTH := 0.18
 const WOOD_RIM_STRENGTH := 0.24
-const LEAF_RIM_SOFT := 0.12
-const LEAF_RIM_STRENGTH := 0.18
 
 static var _ramp: GradientTexture1D
-static var _soft_ramp: GradientTexture1D
 static var _outline: ShaderMaterial
 static var _line_cache: Dictionary = {}
 static var _cache: Dictionary = {}
 static var _wind_cache: Dictionary = {}
 static var _wood_cache: Dictionary = {}
-static var _soft_cache: Dictionary = {}
 static var _water: ShaderMaterial
 static var _ink_cache: Dictionary = {}
 static var _ghost_cache: Dictionary = {}
@@ -73,24 +71,14 @@ static var _wind_tex_cache: Dictionary = {}
 static var _wind_line_cache: Dictionary = {}
 static var _mean_cache: Dictionary = {}
 
-## Three hard bands: tinted shadow, half light, full light.
+## Three bands -- tinted shadow, half light, full light -- with each edge
+## eased over a short run instead of stepping: clear light and shadow, soft
+## terminator. Every lit material samples it. Wide enough that the shader's
+## nearest sampling never shows a stair inside the ease. (The hard three-step
+## ramp the cel look started with went on 2026-09-17; the wood had this one
+## first, docs/art/shading-direction.md.)
 static func ramp() -> GradientTexture1D:
 	if _ramp == null:
-		var g := Gradient.new()
-		g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
-		g.offsets = PackedFloat32Array([0.0, 0.42, 0.70])
-		g.colors = PackedColorArray([Color(0, 0, 0), Color(0.55, 0.55, 0.55), Color(1, 1, 1)])
-		_ramp = GradientTexture1D.new()
-		_ramp.gradient = g
-		_ramp.width = 64
-	return _ramp
-
-## The same three bands with each edge eased over a short run instead of
-## stepping: clear light and shadow, soft terminator. The wood material
-## samples it; every other material keeps ramp(). Wide enough that the
-## shader's nearest sampling never shows a stair inside the ease.
-static func soft_ramp() -> GradientTexture1D:
-	if _soft_ramp == null:
 		var g := Gradient.new()
 		g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_LINEAR
 		g.offsets = PackedFloat32Array([0.0, 0.37, 0.47, 0.66, 0.74, 1.0])
@@ -98,11 +86,21 @@ static func soft_ramp() -> GradientTexture1D:
 		var half := Color(0.55, 0.55, 0.55)
 		var lit := Color(1, 1, 1)
 		g.colors = PackedColorArray([dark, dark, half, half, lit, lit])
-		_soft_ramp = GradientTexture1D.new()
-		_soft_ramp.gradient = g
-		_soft_ramp.width = 256
-	return _soft_ramp
+		_ramp = GradientTexture1D.new()
+		_ramp.gradient = g
+		_ramp.width = 256
+	return _ramp
 
+## The eased ramp, the shared shadow tint and the eased sky rim on `m`: the
+## soft painted treatment every lit material starts from.
+static func _soften(m: ShaderMaterial, rim_strength := RIM_STRENGTH) -> void:
+	m.set_shader_parameter("ramp", ramp())
+	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	m.set_shader_parameter("rim_soft", RIM_SOFT)
+	m.set_shader_parameter("rim_strength", rim_strength)
+	m.set_shader_parameter("rim_color", Pal.SKY_TOP)
+
+## The plain painted material in one colour. Cached per colour.
 static func material(albedo: Color) -> ShaderMaterial:
 	var key := albedo.to_html()
 	if _cache.has(key):
@@ -110,8 +108,7 @@ static func material(albedo: Color) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = TOON_SHADER
 	m.set_shader_parameter("albedo", albedo)
-	m.set_shader_parameter("ramp", ramp())
-	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_soften(m)
 	_cache[key] = m
 	return m
 
@@ -162,59 +159,27 @@ static func wood_material(albedo: Color, axis := Vector3.UP, seed := 0.0) -> Sha
 	var m := ShaderMaterial.new()
 	m.shader = WOOD_SHADER
 	m.set_shader_parameter("albedo", albedo)
-	m.set_shader_parameter("ramp", soft_ramp())
-	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
-	m.set_shader_parameter("rim_soft", WOOD_RIM_SOFT)
-	m.set_shader_parameter("rim_strength", WOOD_RIM_STRENGTH)
-	m.set_shader_parameter("rim_color", Pal.SKY_TOP)
+	_soften(m, WOOD_RIM_STRENGTH)
 	m.set_shader_parameter("grain_axis", axis)
 	m.set_shader_parameter("grain_seed", seed)
 	_wood_cache[key] = m
 	return m
 
-## True when `c` is one of the palette's leaf greens, within the tolerance a
-## glTF round-trip costs.
-static func is_leaf(c: Color) -> bool:
-	for l in LEAVES:
-		if absf(c.r - l.r) < WOOD_TOL and absf(c.g - l.g) < WOOD_TOL and absf(c.b - l.b) < WOOD_TOL:
-			return true
-	return false
-
-## The soft painted treatment without a grain: the eased ramp, the eased
-## sky-tinted rim, the shared shadow tint. Cached per colour.
-static func soft_material(albedo: Color) -> ShaderMaterial:
-	var key := albedo.to_html()
-	if _soft_cache.has(key):
-		return _soft_cache[key]
-	var m := ShaderMaterial.new()
-	m.shader = TOON_SHADER
-	m.set_shader_parameter("albedo", albedo)
-	m.set_shader_parameter("ramp", soft_ramp())
-	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
-	m.set_shader_parameter("rim_soft", LEAF_RIM_SOFT)
-	m.set_shader_parameter("rim_strength", LEAF_RIM_STRENGTH)
-	m.set_shader_parameter("rim_color", Pal.SKY_TOP)
-	_soft_cache[key] = m
-	return m
-
 ## The material a surface of `mi` should wear: a wood colour gets the grain,
 ## with its axis read off the mesh's own bounds; everything else gets the
-## flat toon material. Every recolouring path goes through here, so a tinted
-## plank keeps its grain.
+## plain painted material. Every recolouring path goes through here, so a
+## tinted plank keeps its grain.
 static func material_for(mi: MeshInstance3D, albedo: Color) -> ShaderMaterial:
-	if is_leaf(albedo):
-		return soft_material(albedo)
 	if mi == null or mi.mesh == null or not is_wood(albedo):
 		return material(albedo)
 	return wood_material(albedo, grain_axis(mi.mesh.get_aabb().size),
 		float(mi.get_meta(GRAIN_SEED_META, 0.0)))
 
-## The toon look over a painted texture: the same ramp and shadow tint, the
-## texture multiplied into a white albedo. For a prop that arrives already
-## painted -- the menu's camper and its fence sign, both cut down from Meshy
-## exports in Blender -- where flat palette layers would throw the paint away.
-## The soft ramp, since paint wants a brushed terminator rather than a hard
-## band (docs/art/shading-direction.md). Cached per texture.
+## The painted look over a painted texture: the same ramp, rim and shadow
+## tint, the texture multiplied into a white albedo. For a prop that arrives
+## already painted -- the menu's camper and its fence sign, both cut down from
+## Meshy exports in Blender -- where flat palette layers would throw the paint
+## away. Cached per texture.
 static func textured_material(tex: Texture2D) -> ShaderMaterial:
 	var key := tex.get_rid()
 	if _tex_cache.has(key):
@@ -223,16 +188,15 @@ static func textured_material(tex: Texture2D) -> ShaderMaterial:
 	m.shader = TOON_SHADER
 	m.set_shader_parameter("albedo", Color.WHITE)
 	m.set_shader_parameter("albedo_tex", tex)
-	m.set_shader_parameter("ramp", soft_ramp())
-	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_soften(m)
 	_tex_cache[key] = m
 	return m
 
-## The toon look over a painted texture that also bends in the wind: the same
-## white albedo and soft ramp as textured_material, on the sway shader. The
-## scout's map is the first of these -- every sway layer before it was a flat
-## colour, because grass and petals carry no paint. Its own cache, since a
-## texture can be wanted both still (the scout's body) and moving.
+## The painted look over a painted texture that also bends in the wind: the
+## same white albedo as textured_material, on the sway shader. The scout's
+## map is the first of these -- every sway layer before it was a flat colour,
+## because grass and petals carry no paint. Its own cache, since a texture
+## can be wanted both still (the scout's body) and moving.
 static func wind_textured_material(tex: Texture2D) -> ShaderMaterial:
 	var key := tex.get_rid()
 	if _wind_tex_cache.has(key):
@@ -241,8 +205,7 @@ static func wind_textured_material(tex: Texture2D) -> ShaderMaterial:
 	m.shader = WIND_SHADER
 	m.set_shader_parameter("albedo", Color.WHITE)
 	m.set_shader_parameter("albedo_tex", tex)
-	m.set_shader_parameter("ramp", soft_ramp())
-	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_soften(m)
 	_wind_tex_cache[key] = m
 	return m
 
@@ -271,7 +234,8 @@ static func texture_mean(tex: Texture2D) -> Color:
 	_mean_cache[key] = mean
 	return mean
 
-## Toon material that sways in the wind; same ramp and tint, its own cache.
+## The painted material that sways in the wind; same ramp, rim and tint,
+## its own cache.
 static func wind_material(albedo: Color) -> ShaderMaterial:
 	var key := albedo.to_html()
 	if _wind_cache.has(key):
@@ -279,14 +243,13 @@ static func wind_material(albedo: Color) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = WIND_SHADER
 	m.set_shader_parameter("albedo", albedo)
-	m.set_shader_parameter("ramp", ramp())
-	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
+	_soften(m)
 	_wind_cache[key] = m
 	return m
 
-## The same toon look, see-through: what Pipes' peek swaps the ground for
-## while the button is held. Cached per colour and alpha like material(),
-## since a board swaps a handful of them on every press.
+## The same painted look, see-through and without the wash: what Pipes' peek
+## swaps the ground for while the button is held. Cached per colour and alpha
+## like material(), since a board swaps a handful of them on every press.
 static func ghost(albedo: Color, alpha := 0.35) -> ShaderMaterial:
 	var key := "%s@%.2f" % [albedo.to_html(), alpha]
 	if _ghost_cache.has(key):
@@ -353,6 +316,9 @@ static func pipe_flow() -> ShaderMaterial:
 static func sways(name: String) -> bool:
 	return name.contains(SWAY_MARK)
 
+## The shared ink line the cel look started with. Only the fallback now, for
+## a shell on a layer whose colour cannot be read (line_for); every layer
+## with a colour wears line() in that colour instead.
 static func outline() -> ShaderMaterial:
 	if _outline == null:
 		_outline = ShaderMaterial.new()
@@ -396,10 +362,35 @@ static func wind_line(albedo: Color) -> ShaderMaterial:
 	_wind_line_cache[key] = m
 	return m
 
+## The line `mi` asks for: its first surface's own colour, deepened and
+## cooled (line_color), on a hull that leans if the layer sways. A painted
+## layer's colour is its texture's mean. Read off the material the mesh wears
+## now, so it is called after the material is set -- and again, through
+## reline(), whenever the colour changes. A surface whose material carries no
+## colour this can read (an authored ShaderMaterial of some other kind) falls
+## back to the shared ink line.
+static func line_for(mi: MeshInstance3D) -> ShaderMaterial:
+	var m: Material = mi.material_override
+	if m == null and mi.mesh != null and mi.mesh.get_surface_count() > 0:
+		m = mi.get_active_material(0)
+	if m is ShaderMaterial:
+		var sm := m as ShaderMaterial
+		if sm.shader == TOON_SHADER or sm.shader == WOOD_SHADER \
+				or sm.shader == WIND_SHADER or sm.shader == GHOST_SHADER:
+			var tex = sm.get_shader_parameter("albedo_tex")
+			var colour: Color = texture_mean(tex) if tex is Texture2D \
+				else Color(sm.get_shader_parameter("albedo"))
+			return wind_line(colour) if sm.shader == WIND_SHADER else line(colour)
+	elif m is StandardMaterial3D:
+		var std := m as StandardMaterial3D
+		return line(texture_mean(std.albedo_texture) if std.albedo_texture != null else std.albedo_color)
+	return outline()
+
 ## Adds the inverted-hull shell as a child of `mi`, sharing its mesh. Safe to
 ## call twice. The shell casts no shadow, otherwise every piece would throw a
 ## fattened silhouette onto the table. `shell_material` picks the line; the
-## default is the shared dark outline.
+## default is the line of the colour `mi` wears now (line_for), so set the
+## material first.
 static func add_outline(mi: MeshInstance3D, shell_material: ShaderMaterial = null) -> MeshInstance3D:
 	var existing := mi.get_node_or_null(OUTLINE_NODE)
 	if existing != null:
@@ -407,15 +398,26 @@ static func add_outline(mi: MeshInstance3D, shell_material: ShaderMaterial = nul
 	var shell := MeshInstance3D.new()
 	shell.name = OUTLINE_NODE
 	shell.mesh = mi.mesh
-	shell.material_override = shell_material if shell_material != null else outline()
+	shell.material_override = shell_material if shell_material != null else line_for(mi)
 	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.add_child(shell)
 	return shell
 
-## Converts every StandardMaterial3D surface under `root` to the toon material
-## with the same base colour and gives each mesh an outline shell, unless every
-## surface name ends in FLAT_SUFFIX. ShaderMaterial surfaces are left as they
-## are. This is the whole Blender-to-toon step, done at load time.
+## Re-lines `mi`'s shell, if it has one, for the colour it wears now. Every
+## recolouring path calls this after the material change, since the line is
+## the layer's own colour: a stone tile turned slate would otherwise keep a
+## pale line. A shell given a line of its own width (Lettering.outline) is
+## its owner's to keep; nothing recolours those.
+static func reline(mi: MeshInstance3D) -> void:
+	var shell := mi.get_node_or_null(OUTLINE_NODE)
+	if shell is MeshInstance3D:
+		(shell as MeshInstance3D).material_override = line_for(mi)
+
+## Converts every StandardMaterial3D surface under `root` to the painted
+## material with the same base colour and gives each mesh an outline shell in
+## its own line, unless every surface name ends in FLAT_SUFFIX. ShaderMaterial
+## surfaces are left as they are. This is the whole Blender-to-toon step, done
+## at load time.
 static func apply_to(root: Node) -> void:
 	if root is MeshInstance3D:
 		_apply_mesh(root)
@@ -424,37 +426,30 @@ static func apply_to(root: Node) -> void:
 			continue
 		apply_to(child)
 
-## A wood layer's shell wears the wood's own line (line()); anything else
-## keeps the shared dark outline. One mesh is one layer (the Blender
-## contract), so the first wood surface's colour speaks for the mesh.
+## Each surface gets the material its colour and name ask for: the grain for
+## a wood, the sway shader for a `_sway` layer, its paint kept for a textured
+## one, the plain painted material otherwise. The shell then wears the line
+## of the first surface's colour (line_for). One mesh is one layer (the
+## Blender contract), so the first surface speaks for the mesh.
 static func _apply_mesh(mi: MeshInstance3D) -> void:
 	if mi.mesh == null:
 		return
 	var wants_outline := false
-	var shell: ShaderMaterial = null
 	for i in mi.mesh.get_surface_count():
 		var src: Material = mi.get_active_material(i)
 		if src is StandardMaterial3D:
 			var sm := src as StandardMaterial3D
+			var swaying := sways(sm.resource_name)
 			var toon: ShaderMaterial
 			if sm.albedo_texture != null:
-				# A painted layer keeps its paint and wears a line in its own
-				# mean colour, the way a wood layer wears its own -- and if it
-				# is marked to sway, both of them lean together.
-				var swaying := sways(sm.resource_name)
 				toon = wind_textured_material(sm.albedo_texture) if swaying \
 					else textured_material(sm.albedo_texture)
-				if shell == null:
-					var ink := texture_mean(sm.albedo_texture)
-					shell = wind_line(ink) if swaying else line(ink)
-			elif sways(sm.resource_name):
+			elif swaying:
 				toon = wind_material(sm.albedo_color)
 			else:
 				toon = material_for(mi, sm.albedo_color)
 			mi.set_surface_override_material(i, toon)
-			if shell == null and toon.shader == WOOD_SHADER:
-				shell = line(sm.albedo_color)
 		if src == null or not src.resource_name.ends_with(FLAT_SUFFIX):
 			wants_outline = true
 	if wants_outline:
-		add_outline(mi, shell)
+		add_outline(mi)

@@ -13,9 +13,10 @@ render_mode cull_back, depth_draw_opaque, specular_disabled;
 // The source's stops are far more saturated than this project's direction
 // (docs/art/shading-direction.md), so they are muted toward the palette's
 // WATER and WATER_HI. Every time term is scaled by the motion_scale global so
-// reduce-motion stills the whole lake. Lit with the same two-band step as the
-// toon shader so the platform's shadow still falls on it. Runs on
-// gl_compatibility: nothing here reads depth or screen.
+// reduce-motion stills the whole lake. Lit with a two-band terminator eased
+// the way the toon ramp's are, so the platform's shadow still falls on it as
+// a soft coloured shadow. Runs on gl_compatibility: nothing here reads depth
+// or screen.
 // Spec: docs/superpowers/specs/2026-09-16-low-horizon-design.md, section 5.
 
 global uniform float motion_scale;
@@ -172,6 +173,8 @@ void fragment() {
 void light() {
 	float ndl = dot(normalize(NORMAL), normalize(LIGHT));
 	float t = clamp(ndl * 0.5 + 0.5, 0.0, 1.0) * clamp(ATTENUATION, 0.0, 1.0);
-	float band = step(0.5, t);
+	// Eased over the same run as the toon ramp's edges (core/toon.gd ramp()),
+	// never a hard step: docs/art/shading-direction.md, soft shadows.
+	float band = smoothstep(0.45, 0.55, t);
 	DIFFUSE_LIGHT += LIGHT_COLOR / PI * mix(shadow_tint.rgb, vec3(1.0), band);
 }

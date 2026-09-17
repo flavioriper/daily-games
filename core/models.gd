@@ -82,13 +82,15 @@ static func meshes(root: Node) -> Array[MeshInstance3D]:
 		out.append_array(meshes(child))
 	return out
 
-## Recolours every surface under `root` with the toon material for `color`.
-## Through material_for, so a wood colour keeps its grain and reads the axis
-## off the mesh it is going onto.
+## Recolours every surface under `root` with the painted material for
+## `color`. Through material_for, so a wood colour keeps its grain and reads
+## the axis off the mesh it is going onto; the shell is re-lined in the new
+## colour, since a line is the layer's own colour deepened.
 static func tint(root: Node, color: Color) -> void:
 	for mi in meshes(root):
 		for i in mi.mesh.get_surface_count():
 			mi.set_surface_override_material(i, Toon.material_for(mi, color))
+		Toon.reline(mi)
 
 ## Every layer under `root` in one flat colour, unlit, its outline shells
 ## hidden: a cut-out of the model. Under 1.0 alpha it is see-through and
@@ -137,10 +139,14 @@ static func material_named(root: Node, name: String) -> Material:
 ## bounds), so it has to be resolved inside the walk rather than built once.
 static func tint_named(root: Node, name: String, color: Color) -> void:
 	for mi in meshes(root):
+		var hit := false
 		for i in mi.mesh.get_surface_count():
 			var src := mi.mesh.surface_get_material(i)
 			if src != null and src.resource_name == name:
 				mi.set_surface_override_material(i, Toon.material_for(mi, color))
+				hit = true
+		if hit:
+			Toon.reline(mi)
 
 ## Turns off shadow casting on the mesh instance whose imported material is
 ## called `name`. For a layer whose shadow cannot contribute a single visible

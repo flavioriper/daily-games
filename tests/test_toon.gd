@@ -55,7 +55,8 @@ static func _test_apply_converts_and_outlines(t) -> void:
 	var rock := _mesh_with(stone)
 	Toon.apply_to(rock)
 	var rock_shell = rock.get_node_or_null("Outline")
-	t.check(rock_shell != null and rock_shell.material_override == Toon.outline(), "a non-wood shell keeps the shared outline material")
+	t.check(rock_shell != null and rock_shell.material_override == Toon.line(Color("ede2cc")), "a stone shell wears the stone's own line too")
+	t.check(rock_shell != null and rock_shell.material_override != Toon.outline(), "no layer with a colour wears the shared ink line")
 	rock.free()
 
 static func _test_flat_gets_no_outline(t) -> void:
