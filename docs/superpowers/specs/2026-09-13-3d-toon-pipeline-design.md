@@ -628,13 +628,19 @@ strip modelled one unit long and stretched tenfold by the board gets true
 along-length figure, and every piece shares one ring spacing (14 per unit).
 Rotation is not applied, so a board that turns keeps its grain.
 
-Which log a piece came from is `grain_seed`, an `instance uniform` (these
-render on the Compatibility renderer in 4.7; probed before relying on it).
-`Scenery.seed_grain(node, seed)` sets it on every mesh under a node, and is
-called from something fixed at placement -- the deck strip's index, a
-prop's position, a One Line post or plank's index, a Balance beam's row --
-never a live transform an entrance might still be moving. The material
-stays shared, so the cache and the draw count are what they were.
+Which log a piece came from is `grain_seed`, a plain uniform with one wood
+material cached per log (`Toon.GRAIN_LOGS`, eight of them).
+`Scenery.seed_grain(node, seed)` swaps the material on every wood mesh
+under a node and remembers the log on the mesh so a later recolour through
+`material_for` keeps it. It is called from something fixed at placement --
+the deck strip's index, a prop's position, a One Line post or plank's
+index, a Balance beam's row -- never a live transform an entrance might
+still be moving. The draw count is unchanged (measured 2026-09-17: 338
+either way on the menu); the wood cache grows from 6 materials to 22.
+
+It was an `instance uniform` until 2026-09-17, which renders correctly on
+the Compatibility renderer *on a desktop driver* and returns garbage on
+Android. See CLAUDE.md, "Instance shader parameters are unusable here".
 
 The HUD's `CozyTheme.wood_grain(seed)` caches one material per seed; the
 plaque, the day card and each tray and trough pass their own, so four

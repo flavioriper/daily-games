@@ -139,16 +139,22 @@ static func parchment_card() -> StyleBoxFlat:
 ## panel with children that draw themselves -- the material catches those too.
 static func wood_grain(seed := 0.0) -> ShaderMaterial:
 	if not _grain.has(seed):
-		var m := ShaderMaterial.new()
-		m.shader = GRAIN_SHADER
-		m.set_shader_parameter("grain_seed", seed)
-		# The plank's rim, should one be asked for (it is off by default), as
-		# the multiply that takes the face to PLAQUE_DEEP.
-		var face := plank_face()
-		m.set_shader_parameter("rim_tint", Vector3(
-			Pal.PLAQUE_DEEP.r / face.r, Pal.PLAQUE_DEEP.g / face.g, Pal.PLAQUE_DEEP.b / face.b))
-		_grain[seed] = m
+		_grain[seed] = _make_grain(seed)
 	return _grain[seed]
+
+## One grain material, uncached. Only plank() wants this: a panel that carves
+## its own silhouette hands the shader its size, and that size is a plain
+## uniform, so two panels of different sizes cannot share one material.
+static func _make_grain(seed: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = GRAIN_SHADER
+	m.set_shader_parameter("grain_seed", seed)
+	# The plank's rim, should one be asked for (it is off by default), as
+	# the multiply that takes the face to PLAQUE_DEEP.
+	var face := plank_face()
+	m.set_shader_parameter("rim_tint", Vector3(
+		Pal.PLAQUE_DEEP.r / face.r, Pal.PLAQUE_DEEP.g / face.g, Pal.PLAQUE_DEEP.b / face.b))
+	return m
 
 static func wood_card() -> StyleBoxFlat:
 	return card(Pal.WOOD, 28, Pal.WOOD_DEEP, 8, 16)
@@ -167,11 +173,16 @@ static func plank_card() -> StyleBoxFlat:
 ## Dress `panel` as a hewn board: the face as its stylebox, the grain as its
 ## material, and its size handed to the shader on every resize so the shader
 ## can cut the silhouette (shaders/wood_grain_2d.gdshader, `plank_size`).
-## `seed` picks the board, as for wood_grain().
+## `seed` picks the board, as for wood_grain(). The material is this panel's
+## own rather than the shared cached one, because the size is a plain uniform:
+## an instance uniform is read out of the global shader buffer, and
+## gl_compatibility shaders address only sixteen instances of it before a
+## mobile driver starts handing back garbage.
 static func plank(panel: Control, seed: float) -> void:
 	panel.add_theme_stylebox_override("panel", plank_card())
-	panel.material = wood_grain(seed)
-	var fit := func() -> void: panel.set_instance_shader_parameter("plank_size", panel.size)
+	var m := _make_grain(seed)
+	panel.material = m
+	var fit := func() -> void: m.set_shader_parameter("plank_size", panel.size)
 	panel.resized.connect(fit)
 	fit.call()
 

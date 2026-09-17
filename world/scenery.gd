@@ -58,23 +58,45 @@ static func deck(x0: float, x1: float, z0: float, z1: float) -> Node3D:
 	return root
 
 ## Which log a wooden piece was cut from. Shifts the grain shader's figure on
-## every wood mesh under `node`, so ten strips of one deck mesh do not repeat,
-## and as an instance parameter, so the material stays shared. Seed it from
-## something fixed at placement -- an index, the spot a prop was put -- never
-## from a live transform an entrance might still be moving.
+## every wood mesh under `node`, so ten strips of one deck mesh do not repeat.
+## Seed it from something fixed at placement -- an index, the spot a prop was
+## put -- never from a live transform an entrance might still be moving.
 ##
-## Only the wood layers are touched. Setting an instance parameter on any
-## mesh makes the renderer reserve it a block of the global shader buffer,
-## whether or not its material has such a parameter to read, and on
-## gl_compatibility that buffer is a uniform buffer the GPU caps -- 64 KB
-## here, sixteen 16-byte items a block, so 256 meshes in the whole game at
-## once (measured 2026-09-17: the campsite's leaves, stones and daisies all
-## seeded pushed the menu over it and the extra meshes drew unlit). A leaf has
-## no grain; it must not pay for one.
+## Only the wood layers are touched: the seed swaps in the wood material cut
+## from that log (core/toon.gd, GRAIN_LOGS), and a leaf has no grain to cut.
+## It is a material swap and not an instance shader parameter on purpose --
+## those are read out of the global shader buffer, which the gl_compatibility
+## shaders declare as 256 items, sixteen instances in the whole frame, and a
+## mobile driver returns garbage past that (measured 2026-09-17 on Android:
+## twenty-five wood meshes on one screen, and the deck's figure came back as
+## chopped dashes while the day card's edge chewed the card into blocks).
+##
+## The seed is remembered on each mesh, so a later recolour through
+## Toon.material_for keeps the figure rather than reverting to log zero.
 static func seed_grain(node: Node, seed: float) -> void:
+	var log_seed := Toon.grain_log(seed)
 	for mi in Models.meshes(node):
 		if _is_wood(mi):
-			mi.set_instance_shader_parameter("grain_seed", seed)
+			mi.set_meta(Toon.GRAIN_SEED_META, log_seed)
+			_recut(mi, log_seed)
+
+## Every wood material on `mi`, swapped for the same wood cut from `seed`.
+static func _recut(mi: MeshInstance3D, seed: float) -> void:
+	if mi.material_override is ShaderMaterial \
+			and (mi.material_override as ShaderMaterial).shader == Toon.WOOD_SHADER:
+		mi.material_override = _same_wood(mi.material_override, seed)
+		return
+	if mi.mesh == null:
+		return
+	for i in mi.mesh.get_surface_count():
+		var m: Material = mi.get_active_material(i)
+		if m is ShaderMaterial and (m as ShaderMaterial).shader == Toon.WOOD_SHADER:
+			mi.set_surface_override_material(i, _same_wood(m, seed))
+
+## `m`'s colour and grain axis, cut from `seed`.
+static func _same_wood(m: ShaderMaterial, seed: float) -> ShaderMaterial:
+	return Toon.wood_material(
+		m.get_shader_parameter("albedo"), m.get_shader_parameter("grain_axis"), seed)
 
 ## Whether any surface of `mi` wears the wood shader.
 static func _is_wood(mi: MeshInstance3D) -> bool:

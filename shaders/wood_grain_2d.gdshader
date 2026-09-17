@@ -14,10 +14,14 @@ shader_type canvas_item;
 // (shaders/toon_lit.gdshaderinc) keeps its log figure of rings and knots;
 // docs/art/shading-direction.md records the split.
 //
-// A panel that hands over its size (`plank_size`, an instance uniform, so the
-// plaque and the day card share this material and still get their own cut)
-// also has its silhouette carved here: a hewn board rather than a rounded
-// card. The stylebox then only supplies the face colour over the whole rect.
+// A panel that hands over its size (`plank_size`) also has its silhouette
+// carved here: a hewn board rather than a rounded card. The stylebox then only
+// supplies the face colour over the whole rect. It is a plain uniform, so such
+// a panel carries a material of its own (CozyTheme.plank) rather than the
+// shared cached one: an `instance uniform` would be read out of Godot's global
+// shader buffer, which the gl_compatibility shaders declare as 256 items --
+// sixteen instances -- and a mobile driver hands back garbage for anything
+// past that.
 
 varying vec2 grain_pos;
 uniform float grain_seed = 0.0;
@@ -61,7 +65,7 @@ uniform vec3 grain_cool = vec3(0.95, 0.97, 1.05);
 // one of these is a multiply like the grain: `rim_tint` is the rim colour
 // over the face colour, so the face the stylebox drew stays the only colour
 // chosen outright.
-instance uniform vec2 plank_size = vec2(0.0);
+uniform vec2 plank_size = vec2(0.0);
 uniform float edge_inset = 8.0;
 uniform float edge_radius = 8.0;
 uniform float bump_len = 120.0;

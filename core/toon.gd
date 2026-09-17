@@ -134,10 +134,29 @@ static func grain_axis(size: Vector3) -> Vector3:
 		return Vector3.BACK
 	return Vector3.UP
 
+## How many logs the game cuts its wood from. A seed picks one of these, and
+## there is a material per (colour, axis, log): the seed cannot ride on the
+## mesh as an instance parameter, because gl_compatibility shaders declare the
+## buffer those come out of as 256 items -- sixteen instances in the whole
+## frame -- and a mobile driver returns garbage past that, which is what broke
+## the deck's figure and the day card's edge on Android. Eight is enough that
+## neighbouring strips of one deck differ and small enough that the cache
+## stays in the dozens.
+const GRAIN_LOGS := 8
+## The meta a mesh carries to say which log it was cut from. It lives on the
+## mesh rather than the material so that a later recolour through material_for
+## keeps the figure the piece was given.
+const GRAIN_SEED_META := "grain_seed"
+
+## The log `seed` names. Any float lands on one of GRAIN_LOGS.
+static func grain_log(seed: float) -> float:
+	return float(posmod(int(floorf(seed)), GRAIN_LOGS))
+
 ## Toon material with wood grain running along `axis`, in the mesh's own
-## space. Cached per colour and axis, like material().
-static func wood_material(albedo: Color, axis := Vector3.UP) -> ShaderMaterial:
-	var key := "%s@%s" % [albedo.to_html(), axis]
+## space, cut from log `seed`. Cached per colour, axis and log, like
+## material().
+static func wood_material(albedo: Color, axis := Vector3.UP, seed := 0.0) -> ShaderMaterial:
+	var key := "%s@%s@%s" % [albedo.to_html(), axis, seed]
 	if _wood_cache.has(key):
 		return _wood_cache[key]
 	var m := ShaderMaterial.new()
@@ -149,6 +168,7 @@ static func wood_material(albedo: Color, axis := Vector3.UP) -> ShaderMaterial:
 	m.set_shader_parameter("rim_strength", WOOD_RIM_STRENGTH)
 	m.set_shader_parameter("rim_color", Pal.SKY_TOP)
 	m.set_shader_parameter("grain_axis", axis)
+	m.set_shader_parameter("grain_seed", seed)
 	_wood_cache[key] = m
 	return m
 
@@ -186,7 +206,8 @@ static func material_for(mi: MeshInstance3D, albedo: Color) -> ShaderMaterial:
 		return soft_material(albedo)
 	if mi == null or mi.mesh == null or not is_wood(albedo):
 		return material(albedo)
-	return wood_material(albedo, grain_axis(mi.mesh.get_aabb().size))
+	return wood_material(albedo, grain_axis(mi.mesh.get_aabb().size),
+		float(mi.get_meta(GRAIN_SEED_META, 0.0)))
 
 ## The toon look over a painted texture: the same ramp and shadow tint, the
 ## texture multiplied into a white albedo. For a prop that arrives already

@@ -118,13 +118,27 @@ the footer slot's rays meet the ground, after every layout change.
   alpha scissor for this). Measured on this Mac at phone resolution: the
   soft focus is 2.8 ms a frame, the grade 1.2 ms; if a phone drops frames on
   the menu, the soft focus's visibility is the first lever.
-- **Instance shader parameters are scarce.** Any mesh given a
-  `set_instance_shader_parameter` reserves a 16-item block of the global
-  shader buffer, whether or not its material declares such a uniform, and on
-  gl_compatibility that buffer is a uniform buffer the GPU caps: 64 KB on
-  this Mac, so 256 meshes in the whole game at once, and GLES3 only promises
-  16 KB. `Scenery.seed_grain` therefore seeds only wood; do not hand
-  per-instance parameters to leaves, stones or anything else in bulk.
+- **Instance shader parameters are unusable here; nothing may reintroduce
+  one.** Any canvas item or mesh whose material's shader *declares* an
+  `instance uniform` reserves a 16-item block of the global shader buffer,
+  set or not, and the gl_compatibility shaders declare that buffer as 256
+  items -- **sixteen instances in the whole frame**. Past that, index is out
+  of the array's range: a desktop driver reads on into the real 4096-item
+  buffer and looks perfectly right, which is why this Mac never showed it,
+  and a mobile driver hands back garbage. Measured on Android 2026-09-17:
+  twenty-five wood meshes stood on the How Big? screen (the deck, the day
+  card, and the menu's card dioramas still in the tree behind the host); the
+  deck's grain came back as chopped dashes, because a garbage `grain_seed`
+  throws the figure's noise coordinates where `floor`/`fract` lose precision,
+  and the day card's carved edge chewed the card into a lattice of blocks,
+  because a garbage `plank_size` turns the silhouette's alpha cut into a
+  staircase. `--rendering-driver opengl3_angle` reproduces the class on this
+  Mac (it reads zero rather than garbage, so the cut simply vanishes) and is
+  the cheapest way to check anything suspected of being mobile-only.
+  The two that used it now use plain uniforms: the wood's log seed with one
+  material cached per log (`core/toon.gd`, `GRAIN_LOGS`), and the day card's
+  `plank_size` on the panel's own material (`CozyTheme.plank`). Neither costs
+  a draw call (338 on the menu either way); the wood cache went 6 to 22.
 - **The camp stands at y 2** (`Camp.LIFT`): the backdrop's hills ring is a flat
   plateau at about y 1.4, and the menu camera stands out over that ring where
   a board's never does. At y 0 the camp's feet and its fence are buried in it.

@@ -49,10 +49,13 @@ uniform float rim_soft : hint_range(0.0, 0.5) = 0.0;
 // the board gets true along-length figure, and every piece shares one ring
 // spacing. Rotation is not applied, so a board that turns keeps its grain.
 varying vec3 grain_pos;
-// Which log the piece was cut from. Per instance (Scenery.seed_grain) so ten
-// strips of one deck mesh do not carry the same figure; the material stays
-// shared.
-instance uniform float grain_seed = 0.0;
+// Which log the piece was cut from, so ten strips of one deck mesh do not
+// carry the same figure. A plain uniform, and core/toon.gd caches one wood
+// material per log: an `instance uniform` would be read out of Godot's global
+// shader buffer, which the gl_compatibility shaders declare as 256 items --
+// sixteen instances -- and a mobile driver hands back garbage for anything
+// past that (core/toon.gd, GRAIN_LOGS).
+uniform float grain_seed = 0.0;
 uniform vec3 grain_axis = vec3(0.0, 1.0, 0.0);
 // Where the heart sits in the plane across the axis, in world units. Off the
 // piece on purpose -- a ring centred inside a plank would read as a target.
