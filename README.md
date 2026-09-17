@@ -40,6 +40,26 @@ godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd
 Reduce-motion is read from `user://settings.cfg`, section `[motion]`, key
 `reduce`; a missing file defaults to full motion. The settings sheet (gear button) toggles it in the game.
 
+## The backend
+
+A turn's identity, content and crowd tally come from Firestore and one Cloud
+Function in `server/`; unstarted means offline, so the commands above never
+touch this. To drive the real path locally, against the emulator suite
+rather than the live project (`peeplet-daily` has no Firestore enabled yet):
+
+```bash
+    # JDK 21+ is required; this Mac's default `java` is 17
+    PATH="/opt/homebrew/opt/openjdk/bin:$PATH" \
+      firebase emulators:start --only auth,firestore,functions --project demo-peeplet
+
+    FIREBASE_EMULATOR=127.0.0.1 FIREBASE_PROJECT=demo-peeplet \
+      godot --headless --path . --script res://tools/_backend_probe.gd
+
+    tools/deploy_functions.sh      # the three functions and the Firestore rules
+```
+
+`tools/deploy_functions.sh` deploys by hand and is not wired into CI.
+
 ## The puzzles
 
 | Puzzle | Gesture | Uniqueness proof |

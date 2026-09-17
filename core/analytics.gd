@@ -27,6 +27,8 @@ const SECRET_FILE := "res://analytics_secret.cfg"
 ## digits, made once and kept beside the other player state. It identifies a
 ## copy of the game, not a person.
 const ID_PATH := "user://analytics.cfg"
+## The locale every event's `locale` param reads, so a report can be split by
+## language without a second system to join against.
 const Locale = preload("res://core/locale.gd")
 ## GA4 drops events whose parameters run long.
 const MAX_PARAMS := 25

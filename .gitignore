@@ -85,3 +85,7 @@ analytics_secret.cfg
 server/functions/node_modules/
 server/functions/lib/
 server/.firebase/
+# Dropped by the Firebase emulator suite on every run; not project state.
+server/firestore-debug.log
+server/ui-debug.log
+server/database-debug.log
