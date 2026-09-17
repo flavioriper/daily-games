@@ -45,11 +45,12 @@ pass of their own.
 `core/puzzle_base_3d.gd` is 157 lines and about ninety of them have nothing
 to do with puzzles: mounting a `Node3D` on the stage, turning the control's
 own rect into a camera frame, and turning touches into board-plane hits.
-Those move to a new `core/stage_view.gd`, a `Control` that owns:
+Those move to a new `core/stage_view.gd`, `class_name StageView extends
+Control`, which owns:
 
-- `board: Node3D`, mounted on the stage in `_ready` and unmounted in
-  `_exit_tree`, with `Stage.show_setting(false)` on the way in and `(true)`
-  on the way out
+- `board: Node3D`, mounted by `stage_enter(board_name)` and released by
+  `stage_exit()`, with `Stage.show_setting(false)` on the way in and
+  `(true)` on the way out
 - `_refit()` → `Stage.fit_camera(board_aabb(), viewport_rect(), …)`, driven
   by `resized`
 - the framing hooks: `board_size`, `board_height`, `plane_height`,
@@ -59,8 +60,24 @@ Those move to a new `core/stage_view.gd`, a `Control` that owns:
 - `_gui_input`, dispatching touch to `on_board_press/drag/release`, guarded
   by an overridable `accepts_input()`
 
-`core/puzzle_base_3d.gd` becomes `extends "res://core/stage_view.gd"` and
-keeps only `is_3d()` and `accepts_input()` returning `not is_done()`.
+**The hierarchy.** GDScript is single-inheritance, and `PuzzleBase3D`
+already extends `PuzzleBase extends Control`, so it cannot also extend a
+`StageView extends Control`. The chain becomes:
+
+```
+Control -> StageView -> PuzzleBase -> PuzzleBase3D
+Control -> StageView -> TurnBase
+```
+
+`core/puzzle_base.gd` changes by one word, to `extends StageView`.
+`StageView` deliberately defines **no `_ready` and no `_exit_tree`**, so it
+mounts nothing by itself; `PuzzleBase3D` and `TurnBase` each call
+`stage_enter()` and `stage_exit()` from their own. A two-dimensional
+`PuzzleBase` therefore inherits machinery it never invokes, which is the
+price of single inheritance and costs nothing at runtime.
+
+`core/puzzle_base_3d.gd` then keeps only `_ready`, `_exit_tree`, `is_3d()`
+and `accepts_input()` returning `not is_done()`.
 
 This is a mechanical move and the only change in phase 0 that touches code
 all twelve boards inherit. The existing suite and a windowed `tests/_win.gd`
@@ -68,8 +85,8 @@ run are its gate.
 
 ### 2.2 `core/turn_base.gd`
 
-`extends "res://core/stage_view.gd"`. One committed input a day, an
-immediate reveal, a graded result. Never a pass or a fail.
+`extends StageView`. One committed input a day, an immediate reveal, a
+graded result. Never a pass or a fail.
 
 State is one enum, `INPUT → LOCKED → REVEALED`, and it only moves forwards.
 `accepts_input()` is `state == INPUT`, so the stage base already does the
@@ -178,7 +195,9 @@ Reads carry `Authorization: Bearer <idToken>`.
 **Documents carry one field.** Firestore's REST API answers in typed values
 (`{"fields": {"x": {"stringValue": "…"}}}`), and a general decoder for that
 is a tax on every future call. Content and tally documents therefore each
-hold a single field, `json`, containing a JSON string. The client does
+hold a single field, `json`, containing a JSON string. Shard documents are
+the exception and hold plain numeric fields, because `FieldValue.increment`
+cannot reach inside a string; nothing but the functions ever reads them. The client does
 `JSON.parse_string(doc.fields.json.stringValue)` and is finished, and the
 server stays free to shape a payload however a game needs.
 
@@ -224,7 +243,9 @@ days/{yyyymmdd}/turns/{game}                → { json }  public content: prompt
 days/{yyyymmdd}/turns/{game}/secret/answer  → { json }  deny-all; for a game whose answer
                                                         must not leak (phase 6's word)
 days/{yyyymmdd}/turns/{game}/submits/{uid}  → score, guess, locale, at   written once
-days/{yyyymmdd}/turns/{game}/shards/{0..9}  → { json }  histogram fragments
+days/{yyyymmdd}/turns/{game}/shards/{0..9}  → count, histogram{}, byLocale{}
+                                                        server-only; plain numeric fields,
+                                                        because they take FieldValue.increment
 days/{yyyymmdd}/turns/{game}/tally/current  → { json }  count, histogram, by-locale split
 players/{uid}                               → reserved for the leaderboard
 ```
