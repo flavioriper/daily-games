@@ -352,7 +352,7 @@ func fit_camera(aabb: AABB, rect: Rect2, face := NAN, projection := Camera3D.PRO
 	rig.fit(world, rect)
 	soft_focus.focus(rig.distance())
 	# The near band reaches down to the framed rect's bottom edge and no
-	# further: the menu's hero strip takes it, the footer under it does not.
+	# further: the menu's hero strip takes it, the lawn under the cards does not.
 	var vh := get_viewport().get_visible_rect().size.y if is_inside_tree() else 0.0
 	soft_focus.gate_near(rect.end.y / vh if vh > 0.0 else 1.0)
 	ambient.fit_to(world)

@@ -31,8 +31,8 @@ uniform float near_start = 3.0;
 uniform float near_end = 1.5;
 uniform float near_max_lod = 2.5;
 uniform float near_darken : hint_range(0.0, 1.0) = 0.35;
-// The near band is for the trees framing the top of the frame; the fence
-// diorama standing along its bottom edge is as near and must stay sharp.
+// The near band is for the canopy framing the top of the frame; the lawn
+// under the cards is as near and would go dark twice, band over vignette.
 // Only the top near_gate of the frame's height takes the band, eased over
 // near_gate_soft below that line. 1.0 opens it to the whole frame.
 uniform float near_gate : hint_range(0.0, 1.0) = 1.0;
@@ -61,7 +61,7 @@ void fragment() {
 	float dist = -v.z / v.w;
 	float k_far = smoothstep(focus_start, focus_start + focus_range, dist);
 	// SCREEN_UV.y runs top-down here (probed 2026-09-17 on gl_compatibility:
-	// a band keyed the other way darkened the footer and left the canopy
+	// a band keyed the other way darkened the bottom and left the canopy
 	// alone), so the top near_gate of the frame is SCREEN_UV.y < near_gate.
 	float gate = smoothstep(near_gate + near_gate_soft, near_gate, SCREEN_UV.y);
 	float k_near = (1.0 - smoothstep(near_end, near_start, dist)) * gate;

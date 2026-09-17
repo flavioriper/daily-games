@@ -133,14 +133,14 @@ thing back.
   a vignette. Nearer than `near_start` the screen blurs and *darkens* (never
   hazes), which is what turns the canopy into the painting's shaded
   foreground. The band is gated to the top of the frame (`near_gate`, set by
-  `Stage.fit_camera` to the framed rect's bottom edge): the fence diorama
-  along the bottom edge stands as near as the canopy and must stay legible.
+  `Stage.fit_camera` to the framed rect's bottom edge): the lawn under the
+  cards is as near as the canopy and already takes the vignette.
   The vignette eases toward a deep foliage colour from about one half-width
   out, measured in the frame's own shape so a portrait phone darkens more at
   top and bottom than at the sides. The HUD draws over the pass, so none of
   it reaches the cards.
 - **`SCREEN_UV.y` runs top-down in a spatial shader on gl_compatibility**
-  (probed 2026-09-17: a gate keyed the other way blackened the footer and
+  (probed 2026-09-17: a gate keyed the other way blackened the bottom and
   left the canopy alone). Anything that gates by screen height keys off
   `SCREEN_UV.y < fraction` for the top.
 - **The lantern is lit**: its glass is `Toon.ink(Pal.LAMPLIGHT)`, flat and

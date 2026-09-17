@@ -8,9 +8,10 @@ extends Node3D
 ## the tent and sweeps across the picture, the tree line and an oak close the
 ## back, and the little "A puzzle a brighter you" board hangs at the dock's
 ## far corner. Every prop is a library model (core/models.gd) placed here, so
-## the camp is lit, shaded and outlined like a board, and the fence-and-sign
-## diorama that closes the screen at the bottom is placed against the camera
-## each fit so it always sits along the frame's bottom edge.
+## the camp is lit, shaded and outlined like a board. The fence-and-sign
+## diorama that used to stand along the frame's bottom edge was dropped on
+## 2026-09-17 (the user's call: it fought the page buttons and read as
+## clutter); the lawn runs to the bottom now.
 ##
 ## The menu mounts one of these on the stage in place of a board and frames
 ## hero_box() in the top of the screen through the rig's shift lens
@@ -71,43 +72,33 @@ const LAND_EDGE := 1.6
 const GROUND := Vector3(40.0, 0.6, 52.0)
 const GROUND_AT := Vector3(LAND_EDGE - 20.0, -0.3, -1.0)
 const RIVER_Y := -0.5
-## The path comes down the bank from the tent and sweeps out of the frame to
-## the left, so it crosses the picture instead of pointing at the camera --
-## a path aimed at the lens is a slab of soil over half the foreground.
-const PATH_W := 1.8
-const PATH_AT := Vector3(-2.0, -0.29, -1.6)
+## The path comes down the bank from the tent and sweeps across the frame to
+## the right, so it crosses the picture instead of pointing at the camera --
+## a path aimed at the lens is a slab of soil over half the foreground. Near
+## the scout it threads the gap between the day sign's right post (about
+## x -1.0) and the dock's left edge (x 0.6): at 1.8 wide from x -2.0 it ran
+## into the dock's corner, and once the earth went the deck's own brown
+## (Pal.CAMP_SOIL) the overlap read as broken planks under his feet.
+const PATH_W := 1.4
+const PATH_AT := Vector3(-2.5, -0.29, -1.6)
 const PATH_YAW := 0.34
 ## The dock: four strips out over the water, with the scout standing on them.
 const DOCK := Rect2(0.6, 2.0, 4.2, 4.0)  # x, z, width, depth
+## The dock's first metre lies on the bank (LAND_EDGE is 1.6), and its
+## planks' top and the turf's top both sat at y 0, so the turf fought through
+## the planks as green patches under the scout's feet. The deck stands this
+## much proud of the bank, the way the path stands proud of the turf, and
+## whatever stands on the deck stands on that.
+const DOCK_LIFT := 0.03
 ## Where the near bank turns right to close the water off under the camera.
 const FRONT_Z := 6.2
 
-const SCOUT_AT := Vector3(2.3, 0.0, 4.9)
+const SCOUT_AT := Vector3(2.3, DOCK_LIFT, 4.9)
 const SCOUT_YAW := -0.14
 ## A scout 1.07 tall at 1.0 is a small round animal; 2.6 makes him the
 ## banner's hero, as tall as the day sign beside him and two thirds of the
 ## frame, with the tent behind him still clearing his ears.
 const SCOUT_SCALE := 2.6
-
-## camp_sign.glb spans x -0.95..0.95 (docs/art/blender-contract.md).
-const FOOTER_W := 1.9
-## The diorama came with a lettered plank across two posts at x +-0.62; its
-## baked lettering did not survive decimation, so the plank and the posts'
-## tops were cut out of the mesh (art/camp_sign.blend) and a plank of the
-## game's own wood is laid across the stubs here, lettered with TextMesh.
-const FOOTER_PLANK := Vector3(1.5, 0.24, 0.1)
-const FOOTER_PLANK_Y := 0.33
-const FOOTER_EM := 0.08
-const FOOTER_MAX_W := 1.34
-const FOOTER_WORDS := "Pick one · Play · Come back tomorrow"
-## Where in the footer slot the diorama's centre is aimed, and how much of
-## the slot's height and width it may take: whichever binds sets its scale.
-## The aim is where the diorama's *base* lands: it stands up from there, so
-## the base goes near the slot's bottom edge and the fence rises into it.
-const FOOTER_AIM := 0.92
-const FOOTER_FILL_W := 0.72
-const FOOTER_FILL_H := 0.7
-const FOOTER_TALL := 0.45
 
 ## The day sign: two posts, a plank, the day and the island's name, and a
 ## conifer as its emblem, turned a little toward the camera so its face reads.
@@ -145,12 +136,10 @@ const GRASS_SEED := 20260916
 ## in front of the lens. [slot, x, y, z, yaw, scale]
 const FRAME_CANOPY := [["oak", -1.89, 1.94, 7.92, 0.6, 1.73], ["oak", 3.07, 2.03, 8.58, 2.1, 1.71]]
 
-var footer: Node3D
 var day_sign: Node3D
 var scout: Node3D
 var _day: MeshInstance3D
 var _island: MeshInstance3D
-var _footer_words: MeshInstance3D
 
 func _ready() -> void:
 	name = "Camp"
@@ -159,7 +148,6 @@ func _ready() -> void:
 	_build_props()
 	_build_day_sign()
 	_build_grass()
-	_build_footer()
 
 ## The box the menu frames in the top of the screen. In the stage anchor's
 ## space, so it carries the lift.
@@ -188,7 +176,9 @@ func _build_ground() -> void:
 	# the camera -- what the shift lens shows below the cards, close and from
 	# above -- is lawn rather than a hard bank edge and a river's foam lines.
 	add_child(Scenery.ground(Vector3(14.0, 0.6, 20.0), Vector3(LAND_EDGE + 7.0, -0.3, FRONT_Z + 10.0), Pal.CAMP_TURF))
-	add_child(Scenery.deck(DOCK.position.x, DOCK.end.x, DOCK.position.y, DOCK.end.y))
+	var dock := Scenery.deck(DOCK.position.x, DOCK.end.x, DOCK.position.y, DOCK.end.y)
+	dock.position.y = DOCK_LIFT
+	add_child(dock)
 	for z in [DOCK.position.y + 0.4, DOCK.end.y - 0.4]:
 		add_child(Scenery.prop("pier_post", Vector3(DOCK.end.x - 0.3, RIVER_Y - 0.1, z), 0.0, Vector3(1.0, 0.55, 1.0)))
 
@@ -274,7 +264,7 @@ static func _tree(slot: String, at: Vector3, yaw: float, s: float, leaf := Pal.C
 ## `Sign_Paper` layer, measured off signpost.glb at x -0.23..0.63 and
 ## y 1.03..1.59 with its face at z 0.04, and the words sit a hair in front.
 func _signpost() -> Node3D:
-	var pivot := Scenery.prop("signpost", Vector3(4.5, 0.0, 5.7), -0.45, Vector3.ONE * 1.7)
+	var pivot := Scenery.prop("signpost", Vector3(4.5, DOCK_LIFT, 5.7), -0.45, Vector3.ONE * 1.7)
 	var model: Node3D = pivot.get_child(0)
 	Models.set_layer_visible(model, "Sign_Words", false)
 	var lines := ["A puzzle", "a brighter", "you"]
@@ -410,55 +400,3 @@ func _build_day_sign() -> void:
 	# The emblem: a conifer standing on the plank's lower edge.
 	day_sign.add_child(Scenery.prop("camp_tree", Vector3(-1.15, DAY_PLANK_Y - DAY_PLANK.y * 0.5 + 0.03, face + 0.02), 0.0, Vector3.ONE * 1.0))
 	set_day(1, "")
-
-func _build_footer() -> void:
-	footer = Node3D.new()
-	footer.name = "Footer"
-	footer.visible = false
-	add_child(footer)
-	var diorama := Models.instance("camp_sign")
-	footer.add_child(diorama)
-	var plank := _plank(FOOTER_PLANK)
-	plank.position = Vector3(0.0, FOOTER_PLANK_Y, 0.0)
-	footer.add_child(plank)
-	_footer_words = Lettering.line("", FOOTER_EM, 0.02, Pal.SURFACE, 700, HORIZONTAL_ALIGNMENT_CENTER, 0.004)
-	_footer_words.position = Vector3(0.0, FOOTER_PLANK_Y, FOOTER_PLANK.z * 0.5 + 0.01)
-	Lettering.fit(_footer_words, FOOTER_WORDS.to_upper(), FOOTER_EM, FOOTER_MAX_W)
-	footer.add_child(_footer_words)
-
-## Stands the fence diorama on the ground where `rect` (viewport pixels) looks,
-## scaled to fit the rect, facing the camera. `rig` is the stage's camera rig:
-## its rays and pixel sizes are asked for rather than Camera3D's, which are
-## wrong under the shift lens the menu looks through. Call after every fit:
-## the camera has moved and the ground under the frame's bottom edge with it.
-func place_footer(rig: Node3D, rect: Rect2) -> void:
-	if rig == null or rig.camera == null or rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		footer.visible = false
-		return
-	var cam: Camera3D = rig.camera
-	var ground := Plane(Vector3.UP, global_position.y)
-	var aim := Vector2(rect.get_center().x, rect.position.y + rect.size.y * FOOTER_AIM)
-	var hit_c = ground.intersects_ray(rig.ray_origin(aim), rig.ray_normal(aim))
-	var left := Vector2(rect.position.x, aim.y)
-	var right := Vector2(rect.end.x, aim.y)
-	var hit_l = ground.intersects_ray(rig.ray_origin(left), rig.ray_normal(left))
-	var hit_r = ground.intersects_ray(rig.ray_origin(right), rig.ray_normal(right))
-	if hit_c == null or hit_l == null or hit_r == null:
-		footer.visible = false
-		return
-	var centre := hit_c as Vector3
-	var width: float = (hit_r as Vector3).distance_to(hit_l as Vector3)
-	# The diorama squares up to the camera, tilting back as well as turning:
-	# at the bottom of the shift lens's frame the ground is seen steeply and
-	# close, and a diorama standing upright there shows the camera its grass
-	# mounds from above and hides its fence. Seen square, it reads as the card
-	# it is meant to be. Its size is measured along the camera's own up, since
-	# that is the way its height now runs.
-	var per_px: float = 1.0 / rig.pixels_per_unit_at(centre, cam.global_transform.basis.y)
-	var by_width := width * FOOTER_FILL_W / FOOTER_W
-	var by_height := rect.size.y * FOOTER_FILL_H * per_px / FOOTER_TALL
-	footer.visible = true
-	footer.global_position = centre
-	footer.scale = Vector3.ONE * minf(by_width, by_height)
-	# look_at points -Z at its target and the diorama's face is +Z.
-	footer.look_at(centre - (cam.global_position - centre), Vector3.UP)

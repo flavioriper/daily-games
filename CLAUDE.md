@@ -80,13 +80,14 @@ is mounted on the stage in place of a board, staged the way the concept
 banner (`docs/art/concept-menu-banner.png`) frames it: the scout
 (`mascot_scout`, alive through `world/mascot.gd`) reading his map on the
 dock with the river behind him, the day sign lettered live at his left, the
-lantern between them on the path, the tent and the tree line behind, the
-"A puzzle a brighter you" board at the dock's corner, and the fence diorama
-(`camp_sign`) that closes the frame at the bottom with the footer motto on a
-plank. `tests/preview_tree.tscn` mounts the same `Camp` under a fixed
-camera, so the editor shows the real thing. The menu frames
-`camp.hero_box()` in the screen above the cards and stands the fence where
-the footer slot's rays meet the ground, after every layout change.
+lantern between them on the path, the tent and the tree line behind, and
+the "A puzzle a brighter you" board at the dock's corner. The fence diorama
+(`camp_sign`) that used to close the frame at the bottom with a motto plank
+was dropped on 2026-09-17 at the user's request; the lawn runs to the
+bottom and the page buttons stand on it. `tests/preview_tree.tscn` mounts
+the same `Camp` under a fixed camera, so the editor shows the real thing.
+The menu frames `camp.hero_box()` in the screen above the cards after
+every layout change.
 
 - **The menu camera is a shift lens** (`CameraRig.shift_fov_deg`, passed as
   `fit_camera`'s `shift_fov`), posed the way the camp asks (`Camp.VIEW_PITCH`,
@@ -114,8 +115,8 @@ the footer slot's rays meet the ground, after every layout change.
   quad that blurs by view distance past the framed thing by reading the
   screen texture's mip levels, since Compatibility has no depth of field;
   it also blurs and darkens what stands nearer than the framed thing, in
-  the top of the frame only (`near_gate`, the fence diorama at the bottom is
-  as near and must stay legible), and lays a soft vignette over the 3D
+  the top of the frame only (`near_gate`; the lawn under the cards is as
+  near and already takes the vignette), and lays a soft vignette over the 3D
   world. `show_setting(false)` restores the boards' measured pair, the
   sun's direction, the sky and the water colours and hides the pass, so a
   piece is lit exactly as calibrated. The camp's own greens are
@@ -151,7 +152,7 @@ the footer slot's rays meet the ground, after every layout change.
   a draw call (338 on the menu either way); the wood cache went 6 to 22.
 - **The camp stands at y 2** (`Camp.LIFT`): the backdrop's hills ring is a flat
   plateau at about y 1.4, and the menu camera stands out over that ring where
-  a board's never does. At y 0 the camp's feet and its fence are buried in it.
+  a board's never does. At y 0 the camp's feet are buried in it.
 - **Cards come in pages of nine**, turned with the buttons under the grid, not
   a scroll. Each card's picture is a live diorama of that puzzle's own pieces
   (`ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder. A

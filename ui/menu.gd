@@ -34,8 +34,6 @@ const PER_PAGE := 9
 const TITLE_SIZE := Vector2(560.0, 150.0)
 ## The least the campsite gets above the cards; a taller screen gives it more.
 const HERO_MIN := 250.0
-## The strip the fence diorama is stood along at the bottom.
-const FOOTER_H := 200.0
 ## The camera on this screen is a shift lens (world/camera_rig.gd,
 ## shift_fov_deg): aimed at the camp from the pose the camp itself asks for
 ## (Camp.VIEW_*), with the frame slid so the camp lands in the strip above
@@ -64,7 +62,6 @@ var _pager: Control
 var _prev: Button
 var _next: Button
 var _dots: Label
-var _footer_slot: Control
 var _page := 0
 ## The grid's height with a full page on it, so a short last page does not
 ## let the campsite grow and the cards jump.
@@ -172,14 +169,6 @@ func _build_list() -> void:
 	_next.pressed.connect(func() -> void: show_page(_page + 1))
 	_pager.add_child(_next)
 
-	# --- the fence diorama stands along the bottom of this ---
-	_footer_slot = Control.new()
-	_footer_slot.name = "Footer"
-	_footer_slot.custom_minimum_size = Vector2(0.0, FOOTER_H)
-	_footer_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_footer_slot.resized.connect(_request_fit)
-	root.add_child(_footer_slot)
-
 ## How many pages the registry fills.
 func page_count() -> int:
 	return maxi(1, int(ceil(cards.size() / float(PER_PAGE))))
@@ -227,8 +216,8 @@ func _show_list() -> void:
 	show_page(_page)
 	_enter()
 
-## Frames the campsite in the screen above the cards and stands the fence
-## along the bottom. After layout, so the slots have their rects.
+## Frames the campsite in the screen above the cards. After layout, so the
+## slots have their rects.
 func _fit_stage() -> void:
 	_fit_pending = false
 	if _stage == null or camp == null or not camp.is_inside_tree() or not _list_root.visible:
@@ -244,8 +233,6 @@ func _fit_stage() -> void:
 	# a board left.
 	_stage.fit_camera(camp.hero_box(), hero, Camp.VIEW_PITCH, Camera3D.PROJECTION_PERSPECTIVE,
 		Camp.VIEW_YAW, Camp.VIEW_PITCH, Camp.VIEW_FOV)
-	var f: Rect2 = _footer_slot.get_global_rect()
-	camp.place_footer(_stage.rig, Rect2(0.0, f.position.y, vw, f.size.y))
 
 func _enter() -> void:
 	Motion.appear(_title_block, 0.0, 1.0, ENTER_FADE, ENTER_TITLE)

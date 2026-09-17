@@ -23,10 +23,8 @@ const Pal = preload("res://core/palette.gd")
 const START_BEHIND := 1.5
 const RANGE := 9.0
 ## And in front of it: sharp until NEAR_START in front of the focused plane,
-## fully soft (and darkened, see the shader) NEAR_FULL in front. The trees
-## framing the first screen stand inside the soft band; the fence diorama
-## along the frame's bottom stands just outside it, so its motto stays
-## legible (world/camp.gd, place_footer).
+## fully soft (and darkened, see the shader) NEAR_FULL in front. The canopy
+## framing the first screen hangs inside the soft band.
 const NEAR_START := 2.6
 const NEAR_FULL := 3.8
 
@@ -47,9 +45,9 @@ func _init() -> void:
 
 ## Focuses on a view distance: the blur starts START_BEHIND past it.
 ## Opens the near band over the top `frac` of the frame's height only, so
-## the trees framing the hero strip soften and darken while the fence
-## diorama along the bottom edge, as near to the camera as they are, stays
-## sharp (see the shader's near_gate).
+## the canopy framing the hero strip softens and darkens while the lawn
+## under the cards, as near to the camera as it is, keeps only the vignette
+## (see the shader's near_gate).
 func gate_near(frac: float) -> void:
 	_mat.set_shader_parameter("near_gate", clampf(frac, 0.0, 1.0))
 
