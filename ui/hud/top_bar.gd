@@ -72,9 +72,13 @@ func _add_buttons() -> void:
 	hint_button = _button("bulb", hint)
 	settings_button = _button("gear", settings)
 
+## A button keeps its own square and sits centred on the row: the row is as
+## tall as the sign (SIGN_HEIGHT), and a button stretched to that height read
+## as a tall slab rather than a button.
 func _button(icon: String, sig: Signal) -> Button:
 	var b := IconButton.new(icon)
 	b.custom_minimum_size = BUTTON
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(func() -> void: sig.emit())
 	_inner.add_child(b)
 	return b

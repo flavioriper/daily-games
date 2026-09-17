@@ -26,6 +26,8 @@ func _build_sheet(col: VBoxContainer) -> void:
 	col.add_child(_list)
 	close_button = IconButton.new("check", "Got it", "PrimaryButton")
 	close_button.custom_minimum_size.y = ROW
+	# Its own width, centred, not the sheet's.
+	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_button.pressed.connect(close)
 	col.add_child(close_button)
 

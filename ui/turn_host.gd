@@ -116,6 +116,8 @@ func _build() -> void:
 	lock_button = IconButton.new("check", tr("TURN_LOCK"), "PrimaryButton")
 	lock_button.name = "Lock"
 	lock_button.custom_minimum_size.y = 110
+	# Its own width, centred, not the column's.
+	lock_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	# Hidden until _refresh() knows a turn exists to lock; otherwise the button
 	# sits there, visible and inert, for the whole width of the day fetch.
 	lock_button.visible = false
@@ -175,6 +177,7 @@ func _build_reveal(root: Control) -> void:
 	col.add_child(crowd_label)
 	share_button = IconButton.new("chevron_right", tr("TURN_SHARE"), "IconButton")
 	share_button.custom_minimum_size.y = 96
+	share_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	share_button.pressed.connect(_on_share)
 	col.add_child(share_button)
 

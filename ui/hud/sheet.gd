@@ -44,7 +44,14 @@ func _ready() -> void:
 	_slot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_slot)
 	_card = PanelContainer.new()
-	_card.add_theme_stylebox_override("panel", _card_style())
+	var style := _card_style()
+	# Opaque, whatever the card style's own alpha: the scrim already dims what
+	# lies under a sheet, and a see-through card lets the action bar's labels
+	# ghost through its face (seen under a narrow Close button).
+	if style is StyleBoxFlat:
+		style = (style as StyleBoxFlat).duplicate()
+		(style as StyleBoxFlat).bg_color.a = 1.0
+	_card.add_theme_stylebox_override("panel", style)
 	_card.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_card.offset_left = MARGIN

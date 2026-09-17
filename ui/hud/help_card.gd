@@ -23,5 +23,8 @@ func _make_inner() -> Container:
 func _build() -> void:
 	button = IconButton.new("help", "How to play")
 	button.custom_minimum_size.y = HEIGHT
+	# Its own height, centred on the cards row, rather than stretched to the
+	# day card beside it.
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.pressed.connect(func() -> void: open.emit())
 	_inner.add_child(button)

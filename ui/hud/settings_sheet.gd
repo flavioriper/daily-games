@@ -51,6 +51,8 @@ func _build_sheet(col: VBoxContainer) -> void:
 	col.add_child(lang_row)
 	new_button = IconButton.new("reset", "New puzzle (prototype)", "IconButton")
 	new_button.custom_minimum_size.y = ROW
+	# Buttons keep their own width, centred, rather than the sheet's.
+	new_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	new_button.visible = with_new
 	new_button.pressed.connect(func() -> void:
 		new_puzzle.emit()
@@ -58,6 +60,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	col.add_child(new_button)
 	close_button = IconButton.new("check", "Close", "PrimaryButton")
 	close_button.custom_minimum_size.y = ROW
+	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_button.pressed.connect(close)
 	col.add_child(close_button)
 
