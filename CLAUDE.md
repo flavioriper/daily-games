@@ -103,21 +103,31 @@ the footer slot's rays meet the ground, after every layout change.
   `unproject_position` is right: anything that needs a ray or a pixel size
   on the menu asks the rig (`ray_origin`, `ray_normal`,
   `pixels_per_unit_at`), never `Camera3D` directly.
-- **The campsite has its own light and a soft focus; boards do not.**
-  `Stage.show_setting(true)` applies `grade_camp` (a warmer, slightly
-  stronger sun over warmer bounce, wider shadow blur, saturation and
-  contrast through the Environment's adjustments, a soft bloom, a deeper
-  sky overhead) and shows `world/soft_focus.gd`, a full-screen quad that
-  blurs by view distance past the framed thing by reading the screen
-  texture's mip levels, since Compatibility has no depth of field.
-  `show_setting(false)` restores the boards' measured pair and hides the
-  pass, so a piece is lit exactly as calibrated. On Compatibility the
+- **The campsite has its own light, palette and soft focus; boards do
+  not.** Its light and colour aim at the painted frame
+  `docs/art/concept-menu-painted.png` (2026-09-17), not the banner; the
+  section "The first screen's light" in `docs/art/shading-direction.md`
+  holds the calibration. `Stage.show_setting(true)` applies `grade_camp` (a
+  low golden sun from the right over a dark cool bounce, contrast up and
+  saturation left alone, a soft bloom, a deep sky over a warm horizon, the
+  shared water in deep teal) and shows `world/soft_focus.gd`, a full-screen
+  quad that blurs by view distance past the framed thing by reading the
+  screen texture's mip levels, since Compatibility has no depth of field;
+  it also blurs and darkens what stands nearer than the framed thing, in
+  the top of the frame only (`near_gate`, the fence diorama at the bottom is
+  as near and must stay legible), and lays a soft vignette over the 3D
+  world. `show_setting(false)` restores the boards' measured pair, the
+  sun's direction, the sky and the water colours and hides the pass, so a
+  piece is lit exactly as calibrated. The camp's own greens are
+  `Pal.CAMP_*`; a board's TURF and LEAF never changed. On Compatibility the
   screen and depth textures only exist during the transparent pass, so the
   quad is `blend_mix` with a low `render_priority`; anything that must stay
   in front of the blur has to draw in the opaque pass (the clouds went to
-  alpha scissor for this). Measured on this Mac at phone resolution: the
-  soft focus is 2.8 ms a frame, the grade 1.2 ms; if a phone drops frames on
-  the menu, the soft focus's visibility is the first lever.
+  alpha scissor for this). `SCREEN_UV.y` runs top-down in a spatial shader
+  here. Measured on this Mac at phone resolution: the whole menu idles at
+  about 11 ms against 10 before the painted pass, the soft focus itself is
+  2.8 ms, the grade 1.2 ms; if a phone drops frames on the menu, the soft
+  focus's visibility is the first lever.
 - **Instance shader parameters are unusable here; nothing may reintroduce
   one.** Any canvas item or mesh whose material's shader *declares* an
   `instance uniform` reserves a 16-item block of the global shader buffer,

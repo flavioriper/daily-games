@@ -92,3 +92,64 @@ the shared ink line on a layer that has a colour.
 
 Only the backdrop's painted landscape cards stand outside the look, by
 design: they are unlit and carry their paint's own variation.
+
+## The first screen's light
+
+The campsite on the menu is lit and coloured to
+`docs/art/concept-menu-painted.png` (set 2026-09-17), a painted frame that
+replaced the toy-render banner (`concept-menu-banner.png`) as the reference
+for *light, palette and density*; the banner still governs the staging. The
+frame is dark at every edge and bright only where the camp is, its greens
+are forest rather than lime, and no bare ground shows. Boards are untouched:
+everything below lives in `Stage.grade_camp`, the camp's own palette
+constants and `world/camp.gd`, and `Stage.grade_board` puts every shared
+thing back.
+
+- **The grade** (`Stage.grade_camp`, the `CAMP_*` constants in
+  `world/stage.gd`). A low golden sun from the right and a little in front
+  (`CAMP_SUN_FROM`, about 30 degrees up) over a *dark, cool* bounce
+  (`a9b8c4` at 0.075, against the boards' warm cream at 0.115), so every
+  prop shows a warm lit side and a deep cool shaded one and casts a long
+  shadow to its left. Saturation is no longer pushed (1.02, was 1.18);
+  contrast is (1.16) and brightness sits a hair under 1. The sky is a deep
+  summer blue over a warm horizon, and the shared water material's pair is
+  graded to a deep teal with it. `grade_board` restores the sun's direction,
+  the sky pair and the water pair along with the measured light.
+- **The camp's palette** (`Pal.CAMP_*`): its turf, its grass blades, its
+  path's earth and its leaf are all deeper and cooler than the boards' TURF,
+  LEAF and PLOT_SOIL. Trees and bushes on the camp are tinted through
+  `tint_named` so their lines follow (`Camp._tree`); the grass field wears
+  `Toon.wind_material(Pal.CAMP_GRASS)` over the library's LEAF.
+- **Ground cover** is three MultiMeshes (grass, blossom cards, bushes) plus
+  a fourth for the leaf sheets closing the tree line: 620 patches, 64
+  blossoms scaled to stand above the grass, 14 bushes along the bank and
+  the path. One draw call each, so the count costs fill rate only.
+- **The canopy framing the frame** (`Camp.FRAME_CANOPY`): a trunkless oak
+  crown hanging into each top corner from a couple of units in front of the
+  lens, in `CAMP_LEAF_DEEP`, casting nothing. Whole trees near enough to
+  cut the corner stood their crowns in front of the day sign and the little
+  board, which sit within a fifth of the frame's width of its edges.
+- **The soft focus** (`shaders/soft_focus.gdshader`) gained a near band and
+  a vignette. Nearer than `near_start` the screen blurs and *darkens* (never
+  hazes), which is what turns the canopy into the painting's shaded
+  foreground. The band is gated to the top of the frame (`near_gate`, set by
+  `Stage.fit_camera` to the framed rect's bottom edge): the fence diorama
+  along the bottom edge stands as near as the canopy and must stay legible.
+  The vignette eases toward a deep foliage colour from about one half-width
+  out, measured in the frame's own shape so a portrait phone darkens more at
+  top and bottom than at the sides. The HUD draws over the pass, so none of
+  it reaches the cards.
+- **`SCREEN_UV.y` runs top-down in a spatial shader on gl_compatibility**
+  (probed 2026-09-17: a gate keyed the other way blackened the footer and
+  left the canopy alone). Anything that gates by screen height keys off
+  `SCREEN_UV.y < fraction` for the top.
+- **The lantern is lit**: its glass is `Toon.ink(Pal.LAMPLIGHT)`, flat and
+  unlit, bright enough to catch the grade's bloom.
+
+Measured on this Mac at 1080x1920 through `tests/_shot_menu.gd`, which now
+prints the idle mean and the peak draw calls: 10.1 ms and 337 calls before,
+10.8 to 11.3 ms and 334 after; the difference is fill rate from the denser
+cover and the larger sheets. The ANGLE driver draws the same frame. What
+this pass does not do, by scope: the set (a cliff over a sea), the camera's
+pose, the lettering, per-layer textures, and the card dioramas, which keep
+the board light and read brighter than the camp behind them.
