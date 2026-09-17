@@ -103,7 +103,9 @@ func _camera() -> Camera3D:
 ## Board-plane point under a control-local position, or null when the ray
 ## misses. The board leans (see Stage._lean), so the plane at plane_height()
 ## is horizontal in the *board's* space and nowhere else: the ray is taken
-## into that space before it is intersected.
+## into that space before it is intersected. Boards already read the hit as
+## board-local -- it only happened to equal world while the anchor sat
+## untransformed at the origin.
 func local_to_board(local: Vector2) -> Variant:
 	var cam := _camera()
 	if cam == null:
@@ -116,7 +118,11 @@ func local_to_board(local: Vector2) -> Variant:
 
 ## The picking ray through a control-local position, as
 ## [origin: Vector3, direction: Vector3] in the *board's* own space, or [] when
-## there is no camera.
+## there is no camera. Where local_to_board answers with the one point on the
+## board plane, this hands back the ray itself, for a board whose pieces stand
+## at many heights and has to march the ray through its own cells to find out
+## what was tapped -- and those cells are in board space, so the ray must be
+## too.
 func local_ray(local: Vector2) -> Array:
 	var cam := _camera()
 	if cam == null:
