@@ -73,8 +73,13 @@ Control -> StageView -> TurnBase
 `StageView` deliberately defines **no `_ready` and no `_exit_tree`**, so it
 mounts nothing by itself; `PuzzleBase3D` and `TurnBase` each call
 `stage_enter()` and `stage_exit()` from their own. A two-dimensional
-`PuzzleBase` therefore inherits machinery it never invokes, which is the
-price of single inheritance and costs nothing at runtime.
+`PuzzleBase` therefore inherits framing and picking it never calls, which is
+the price of single inheritance and costs nothing at runtime -- with one
+exception that is not inert: `_gui_input` is called by the *engine*, so a
+subclass that mounts no board still reaches the picking maths on every
+touch. `local_to_board`, `local_ray` and `board_to_local` therefore answer
+their no-answer values (`null`, `[]`, `Vector2.INF`) when `board` is null,
+exactly as they do when there is no camera.
 
 `core/puzzle_base_3d.gd` then keeps only `_ready`, `_exit_tree`, `is_3d()`
 and `accepts_input()` returning `not is_done()`.

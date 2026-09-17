@@ -16,6 +16,9 @@ const PEGS := 10
 const RAISE := 0.45
 
 var value: int = 50
+## Whether the player has set the dial at all. The starting 50 is the turn's
+## default, not an answer.
+var _touched := false
 var _pegs: Array[Node3D] = []
 var _answer_peg: Node3D
 
@@ -30,13 +33,17 @@ func board_height() -> float: return 1.0
 func plane_height() -> float: return 0.0
 func board_margin() -> float: return 0.5
 
-func has_input() -> bool: return true
+## Lock stays dark until the dial has been touched once. The stub proves the
+## affordance the base class promises (spec 2.3) rather than asserting it: a
+## turn nobody has answered yet is not a turn that can be committed.
+func has_input() -> bool: return _touched
 func guess() -> Variant: return value
 
 ## Puts a restored day's guess back on the dial, so a reopened card shows
 ## what was actually locked in rather than the fresh-turn default.
 func apply_guess(the_guess) -> void:
 	value = clampi(int(the_guess), 0, 100)
+	_touched = true
 	_paint()
 
 ## The published answer, or the same number derived from the day when the
@@ -66,7 +73,11 @@ func on_board_drag(hit: Vector3) -> void:
 func _set_from(hit: Vector3) -> void:
 	var t := (hit.x + (PEGS - 1) * 0.5) / float(PEGS - 1)
 	var next := clampi(int(round(t * 100.0)), 0, 100)
-	if next == value:
+	# The first touch counts even when it lands on the value already shown:
+	# it is what lights Lock, so it has to reach the host.
+	var first := not _touched
+	_touched = true
+	if next == value and not first:
 		return
 	value = next
 	_paint()
@@ -83,7 +94,9 @@ func _paint() -> void:
 		Models.tint_named(_pegs[i], "Shell", Pal.PEGS[3] if on else Pal.PLOT_SOIL)
 
 ## The answer stands up as an eleventh peg, taller and in its own colour.
-func reveal() -> void:
+## Nothing here animates, so `animate` has nothing to skip; a turn whose
+## reveal moves has to honour it (see TurnBase.reveal).
+func reveal(_animate := true) -> void:
 	var a := _answer()
 	var x := (a / 100.0) * (PEGS - 1) - (PEGS - 1) * 0.5
 	var pivot := Scenery.prop("peg", Vector3(x, 0.0, -1.2), 0.0, Vector3.ONE * 1.3)

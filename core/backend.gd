@@ -36,6 +36,14 @@ static var _id_token := ""
 static var _expires_at := 0.0
 ## Set from FIREBASE_EMULATOR ("127.0.0.1") to point every host at the suite.
 static var _emulator := ""
+## True while a sign-up or a refresh is in flight. world/main.gd starts the
+## backend without awaiting it -- boot must not block -- so the menu is
+## interactive while the first launch is still signing up, and opening a turn
+## card inside that window used to sign up a *second* time: two anonymous
+## uids, _save_player keeping whichever landed last, and a submit recorded
+## against the other. That uid is the identity a leaderboard and a later
+## account upgrade are rooted in, so the second caller waits for the first.
+static var _signing_in := false
 
 # --- lifecycle ---
 
@@ -65,6 +73,10 @@ static func stop() -> void:
 	_node = null
 	_id_token = ""
 	_expires_at = 0.0
+	# A sign-up in flight dies with the node its request hung off, and its
+	# coroutine never resumes to clear this; leaving it set would make every
+	# later caller wait out the deadline for nothing.
+	_signing_in = false
 
 static func uid() -> String:
 	return _uid
@@ -115,9 +127,28 @@ static func _save_player() -> void:
 static func _ensure_token() -> bool:
 	if not _id_token.is_empty() and Time.get_unix_time_from_system() < _expires_at - RENEW_MARGIN:
 		return true
-	if not _refresh_token.is_empty() and await _refresh():
-		return true
-	return await _sign_up()
+	if _signing_in:
+		return await _wait_for_sign_in()
+	_signing_in = true
+	var ok := false
+	if not _refresh_token.is_empty():
+		ok = await _refresh()
+	if not ok:
+		ok = await _sign_up()
+	_signing_in = false
+	return ok
+
+## Waits out the sign-in another caller already started, rather than starting
+## a second one. The deadline covers the case where that caller's coroutine
+## died with its node: two round trips is the longest an honest sign-in can
+## take (a refresh that fails, then a sign-up).
+static func _wait_for_sign_in() -> bool:
+	var loop := Engine.get_main_loop()
+	if loop is SceneTree:
+		var deadline := Time.get_unix_time_from_system() + 2.0 * TIMEOUT
+		while _signing_in and Time.get_unix_time_from_system() < deadline:
+			await (loop as SceneTree).process_frame
+	return not _id_token.is_empty()
 
 static func _sign_up() -> bool:
 	var res := await _http("%s/accounts:signUp?key=%s" % [_host("identity"), API_KEY],
@@ -279,7 +310,9 @@ static func _queue_push(item: Dictionary) -> void:
 	_queue_write(items)
 
 ## Sends everything waiting, keeping whatever would not go. Answers with the
-## result for the item that was just pushed, or an offline verdict.
+## result of the last item it tried -- which is the one just pushed when
+## _queue_push actually appended, and the one already waiting for this game
+## and day when it did not -- or an offline verdict.
 static func _flush_queue() -> Dictionary:
 	var items := _queue_read()
 	if items.is_empty():

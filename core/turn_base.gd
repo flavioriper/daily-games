@@ -42,8 +42,13 @@ func guess() -> Variant: return null
 func apply_guess(_the_guess) -> void: pass
 ## 0 to 100. Never negative, never a fail.
 func grade(_answer) -> int: return 0
-## The camera move and the comparison. Runs once, on lock.
-func reveal() -> void: pass
+## The camera move and the comparison. Runs once, on lock, and again with
+## `animate` false when a day already played is reopened (see restore()). A
+## subclass whose reveal tweens or moves the camera may be a coroutine -- the
+## grade waits for it -- but it must honour `animate == false` by jumping
+## straight to the end state, because that path is not a reveal: the result
+## panel is already on screen and nothing is waiting for the show.
+func reveal(_animate := true) -> void: pass
 func share_text() -> String: return ""
 func share_glyphs() -> String: return ""
 # -------------------
@@ -80,7 +85,12 @@ func lock() -> void:
 		return
 	state = State.LOCKED
 	locked.emit()
-	reveal()
+	# The base reveal returns nothing, but a subclass's may be a coroutine --
+	# a camera move, a tween -- and the score must not pop while it is still
+	# travelling. Awaiting a plain return resolves in place, so this costs
+	# the stub nothing; the warning is silenced here and nowhere else.
+	@warning_ignore("redundant_await")
+	await reveal()
 	state = State.REVEALED
 	revealed.emit()
 	score = clampi(grade(content.get("answer")), 0, 100)
@@ -96,4 +106,4 @@ func restore(the_content: Dictionary, the_score: int, the_guess = null) -> void:
 		apply_guess(the_guess)
 	state = State.REVEALED
 	score = clampi(the_score, 0, 100)
-	reveal()
+	reveal(false)

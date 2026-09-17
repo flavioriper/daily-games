@@ -8,7 +8,10 @@ extends Control
 ##
 ## Nothing mounts by itself. A subclass calls stage_enter() from its own
 ## _ready and stage_exit() from its own _exit_tree, so a Control that
-## inherits this and wants no board pays nothing for it.
+## inherits this and wants no board pays nothing for it -- and is not broken
+## by it either: the engine still delivers _gui_input, so the picking maths
+## answers "no answer" when there is no board, the same as when there is no
+## camera.
 ## Spec: docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md,
 ## section 2.1.
 
@@ -108,7 +111,11 @@ func _camera() -> Camera3D:
 ## untransformed at the origin.
 func local_to_board(local: Vector2) -> Variant:
 	var cam := _camera()
-	if cam == null:
+	# No board is a real state, not a mistake: _gui_input is called by the
+	# engine, not by a subclass, so a Control that inherits this and mounts
+	# nothing gets here on every touch. It answers the same way it does
+	# without a camera -- no answer.
+	if cam == null or not is_instance_valid(board):
 		return null
 	var vp := get_global_transform_with_canvas() * local
 	var inv := board.global_transform.affine_inverse()
@@ -125,7 +132,7 @@ func local_to_board(local: Vector2) -> Variant:
 ## too.
 func local_ray(local: Vector2) -> Array:
 	var cam := _camera()
-	if cam == null:
+	if cam == null or not is_instance_valid(board):
 		return []
 	var vp := get_global_transform_with_canvas() * local
 	var inv := board.global_transform.affine_inverse()
@@ -137,7 +144,7 @@ func local_ray(local: Vector2) -> Array:
 ## is projected, because the board leans.
 func board_to_local(point: Vector3) -> Vector2:
 	var cam := _camera()
-	if cam == null:
+	if cam == null or not is_instance_valid(board):
 		return Vector2.INF
 	var world: Vector3 = board.global_transform * point
 	return get_global_transform_with_canvas().affine_inverse() * cam.unproject_position(world)
