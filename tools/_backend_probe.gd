@@ -25,14 +25,14 @@ func _run() -> void:
 	print("started=%s uid=%s" % [Backend.started(), Backend.uid()])
 	var day := DailySeed.date_key()
 
-	var content := await Backend.day_content("guess_number", day)
+	var content := await Backend.day_content("how_big", day)
 	print("content ok=%s error=%s data=%s" % [content.ok, content.error, content.data])
 
-	var sent := await Backend.submit("guess_number", day,
-		{"score": 73, "guess": 30, "locale": "es"})
+	var sent := await Backend.submit("how_big", day,
+		{"score": 73, "guess": 1.4, "locale": "es"})
 	print("submit ok=%s error=%s data=%s" % [sent.ok, sent.error, sent.data])
 
-	var crowd := await Backend.tally("guess_number", day)
+	var crowd := await Backend.tally("how_big", day)
 	print("tally ok=%s error=%s data=%s" % [crowd.ok, crowd.error, crowd.data])
 	print("percentile(73)=%d" % Backend.percentile(crowd.data, 73))
 	quit(0)

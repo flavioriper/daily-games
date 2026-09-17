@@ -49,7 +49,7 @@ func show_puzzle(id: String) -> void:
 		"nonogram": _nonogram()
 		"horse": _horse()
 		"snake": _snake()
-		"guess_number": _guess_number()
+		"how_big": _how_big()
 		_: _put("tile", Vector3.ZERO)
 	var dir := Vector3(sin(YAW) * cos(PITCH), sin(PITCH), cos(YAW) * cos(PITCH))
 	frame(_bounds(), dir, FRAME)
@@ -308,8 +308,9 @@ func _snake() -> void:
 	var burrow := _put("burrow", _cell(0, 1, 3, 2) + Vector3(0.0, h, 0.0))
 	Models.tint_named(burrow, "Earth", Pal.EARTH)
 
-## Guess: the dial, a short row of pegs with the near ones raised.
-func _guess_number() -> void:
-	for i in 5:
-		var peg := _put("peg", Vector3(i - 2.0, 0.6 if i < 3 else 0.0, 0.0))
-		Models.tint_named(peg, "Shell", Pal.PEGS[3] if i < 3 else Pal.PLOT_SOIL)
+## How Big?: the scout on his dock, and beside him the horse he is to be
+## measured against as the silhouette the player will size.
+func _how_big() -> void:
+	_root.add_child(Scenery.deck(-1.6, 1.6, -0.5, 0.5))
+	_put("mascot_scout", Vector3(-0.75, 0.0, 0.0), 0.35, 0.9)
+	Models.silhouette(_put("horse", Vector3(0.55, 0.0, 0.0), -0.3, 1.55), Pal.OUTLINE)

@@ -49,6 +49,10 @@ func grade(_answer) -> int: return 0
 ## straight to the end state, because that path is not a reveal: the result
 ## panel is already on screen and nothing is waiting for the show.
 func reveal(_animate := true) -> void: pass
+## One line under the score, in the turn's own words: what the answer was
+## and how the guess stood to it. Read after `graded` and on restore; empty
+## means the host shows nothing there.
+func result_text() -> String: return ""
 func share_text() -> String: return ""
 func share_glyphs() -> String: return ""
 # -------------------

@@ -123,6 +123,16 @@ one.
 **Done when** a month of pairs is in the table and a week of tallies shows
 a spread, not a spike at 100.
 
+**Built 2026-09-17** as `turns/how_big.gd`, with two departures. The camera
+stays put: the table (`content/how_big.json`, 13 things, all under four
+scout heights) fits one frame, so the pull-back had nothing to do and a
+still camera keeps the drag honest; the oak and the tall tree wait for a
+camera that moves. And the gesture is direct -- the finger holds the thing's
+top -- rather than a pinch. Heights only; a length column is a later add.
+The thing is sized as a black silhouette, as Size It Up does it; the painted
+model only appears at the reveal, at its true size, with the silhouette left
+see-through where the guess stood.
+
 ---
 
 ## Phase 2 — Colour the Flag (Vexle, build mode)

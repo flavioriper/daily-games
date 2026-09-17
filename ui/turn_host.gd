@@ -46,6 +46,7 @@ var lock_button: Button
 var reveal_panel: PanelContainer
 var score_bar: ProgressBar
 var score_label: Label
+var verdict_label: Label
 var crowd_label: Label
 var footer: Label
 var share_button: Button
@@ -160,6 +161,14 @@ func _build_reveal(root: Control) -> void:
 	score_bar.show_percentage = false
 	score_bar.custom_minimum_size.y = 28
 	col.add_child(score_bar)
+	# The turn's own account of the answer (TurnBase.result_text): hidden for
+	# a turn that has none, so the panel does not carry an empty row.
+	verdict_label = Label.new()
+	verdict_label.theme_type_variation = "CardBody"
+	verdict_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	verdict_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	verdict_label.visible = false
+	col.add_child(verdict_label)
 	crowd_label = Label.new()
 	crowd_label.theme_type_variation = "CardBody"
 	crowd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -187,24 +196,27 @@ func _open_turn() -> void:
 	_slot.add_child(_turn)
 	_turn.input_changed.connect(_refresh)
 	_turn.graded.connect(_on_graded)
+	var played := _played(game, _day)
+	if not played.is_empty():
+		_turn.restore(content, played.score, played.guess)
+	else:
+		_turn.start_turn(content)
+	# After the turn has stood the day up, not before: the prompt names the
+	# day's thing (How Big? asks after a horse or a lantern), and the turn
+	# only knows which once it has read the content.
 	prompt.text = _turn.prompt_text()
-	# An offline phone still has to be playable -- guess_number derives its
-	# own answer from the day key, and day_content falls back to what is
-	# bundled in res:// -- but the player deserves to know the server was
+	# An offline phone still has to be playable -- How Big? derives its own
+	# item from the day key, and day_content falls back to what is bundled
+	# in res:// -- but the player deserves to know the server was
 	# never reached, rather than the screen working in silence as though
 	# nothing had happened. The verdict is the test, never the payload:
 	# there is always a payload, so `content.is_empty()` never fires.
 	if not got.ok:
 		prompt.text += "\n" + tr("TURN_OFFLINE")
-
-	var played := _played(game, _day)
 	if not played.is_empty():
-		_turn.restore(content, played.score, played.guess)
 		await _show_result(played.score, false)
 		if not _alive():
 			return
-	else:
-		_turn.start_turn(content)
 	_refresh()
 
 ## False once this screen has been torn down under a coroutine's feet:
@@ -250,6 +262,8 @@ func _show_result(the_score: int, send: bool) -> void:
 	reveal_panel.visible = true
 	score_label.text = tr("TURN_SCORE") % the_score
 	score_bar.value = the_score
+	verdict_label.text = _turn.result_text()
+	verdict_label.visible = verdict_label.text != ""
 	crowd_label.text = "…"
 	Motion.appear(reveal_panel, 0.0, 1.0, 0.3, 0.0)
 	if send:

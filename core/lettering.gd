@@ -23,8 +23,23 @@ const LINE_WIDTH := 0.005
 ## display face's bold digits do: at 700 the 8 and 9 come out as nothing,
 ## and every weight from 600 up loses at least one digit. 550 is the heaviest
 ## weight that extrudes all ten (measured across 300..900 in steps of 50), so
-## a line that carries a digit is set at that weight instead of its own.
+## a line that carries a digit is set at that weight instead of its own. The
+## question marks fail the same way at 700 at any curve step, so they take the
+## same weight.
 const DIGIT_WEIGHT := 550
+## The glyphs besides digits that need it.
+const FRAGILE := "?¿"
+## Weight is not the whole story: even at 550 the caps of `?`, `¿` and `9`
+## come and go with the font size (whole at 70 px, gone at 75, back at 80)
+## under TextMesh's default half-pixel curve step -- the triangulator trips
+## on the near-duplicate points a tight bend samples. A step in proportion
+## to the size keeps the point density constant, and at three hundredths of
+## the size every one of `?¿89S` extruded whole from 25 px to 300 px, where
+## two hundredths lost the 9 at 150 and four hundredths lost it at 25
+## (measured 2026-09-17). Only a fragile line takes it: a plain title keeps
+## the finer default and its rounder curves.
+const FRAGILE_STEP := 0.03
+const DEFAULT_STEP := 0.5
 
 ## One line of lettering: `em` tall, extruded `depth`, in `colour`. The mesh is
 ## centred on its own origin, so it sits half in front of and half behind
@@ -42,20 +57,23 @@ static func line(text: String, em: float, depth: float, colour: Color, weight :=
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.set_meta("weight", weight)
-	_weigh(mesh, text, weight)
+	_harden(mesh, text, weight)
 	mi.set_surface_override_material(0, Toon.material_for(mi, colour))
 	var shell := Toon.add_outline(mi, outline(Toon.line_color(colour), line_width))
 	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
-## The face at `weight`, or at DIGIT_WEIGHT when `text` carries a digit.
-static func _weigh(mesh: TextMesh, text: String, weight: int) -> void:
-	var has_digit := false
+## The face at `weight` and the default curve step -- or, when `text` carries
+## a digit or a question mark, DIGIT_WEIGHT and the size-proportional step.
+## Reads the mesh's font_size, so it is called after that is set.
+static func _harden(mesh: TextMesh, text: String, weight: int) -> void:
+	var fragile := false
 	for ch in text:
-		if ch.is_valid_int():
-			has_digit = true
+		if ch.is_valid_int() or ch in FRAGILE:
+			fragile = true
 			break
-	mesh.font = CozyTheme.display(DIGIT_WEIGHT if has_digit else weight)
+	mesh.font = CozyTheme.display(DIGIT_WEIGHT if fragile else weight)
+	mesh.curve_step = mesh.font_size * FRAGILE_STEP if fragile else DEFAULT_STEP
 
 ## A fresh outline material at the thin width. Fresh rather than Toon.line():
 ## that caches per colour and its materials are shared with every piece on
@@ -71,10 +89,10 @@ static func outline(colour: Color, width := LINE_WIDTH) -> ShaderMaterial:
 ## wider than `limit`. Width is linear in pixel_size, so one step lands it.
 static func fit(mi: MeshInstance3D, text: String, em: float, limit: float) -> void:
 	var mesh: TextMesh = mi.mesh
-	_weigh(mesh, text, int(mi.get_meta("weight", 700)))
 	mesh.text = text
 	mesh.pixel_size = PIXEL
 	mesh.font_size = maxi(int(round(em / PIXEL)), 1)
+	_harden(mesh, text, int(mi.get_meta("weight", 700)))
 	if text == "":
 		return
 	var w: float = mesh.get_aabb().size.x

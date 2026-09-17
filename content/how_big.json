@@ -1,0 +1,20 @@
+{
+  "scout_m": 1.2,
+  "min_m": 0.1,
+  "max_m": 4.2,
+  "items": [
+    {"id": "horse",     "slot": "horse",     "metres": 1.7, "label": "HOWBIG_ITEM_HORSE"},
+    {"id": "tent",      "slot": "tent",      "metres": 1.5, "label": "HOWBIG_ITEM_TENT"},
+    {"id": "lantern",   "slot": "lantern",   "metres": 0.3, "label": "HOWBIG_ITEM_LANTERN"},
+    {"id": "fox",       "slot": "mascot_fox","metres": 0.5, "label": "HOWBIG_ITEM_FOX"},
+    {"id": "bale",      "slot": "bale",      "metres": 0.5, "label": "HOWBIG_ITEM_BALE"},
+    {"id": "bush",      "slot": "bush",      "metres": 1.2, "label": "HOWBIG_ITEM_BUSH"},
+    {"id": "signpost",  "slot": "signpost",  "metres": 2.4, "label": "HOWBIG_ITEM_SIGNPOST"},
+    {"id": "pump",      "slot": "pump",      "metres": 1.0, "label": "HOWBIG_ITEM_PUMP"},
+    {"id": "fir",       "slot": "camp_tree", "metres": 3.0, "label": "HOWBIG_ITEM_FIR"},
+    {"id": "fence",     "slot": "fence",     "metres": 1.2, "label": "HOWBIG_ITEM_FENCE"},
+    {"id": "cairn",     "slot": "cairn",     "metres": 0.5, "label": "HOWBIG_ITEM_CAIRN"},
+    {"id": "daisy",     "slot": "daisy",     "metres": 0.4, "label": "HOWBIG_ITEM_DAISY"},
+    {"id": "bollard",   "slot": "pier_post", "metres": 1.0, "label": "HOWBIG_ITEM_BOLLARD"}
+  ]
+}

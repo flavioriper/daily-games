@@ -7,8 +7,26 @@ TURN_FIRST,You are the first today,És o primeiro hoje,Eres el primero hoy
 TURN_NO_CROWD,The camp is out of reach today,O acampamento está fora de alcance hoje,El campamento está fuera de alcance hoy
 TURN_OFFLINE,(Offline — playing today's turn without the camp.),(Sem rede — a jogar o dia de hoje sem o acampamento.),(Sin red — juegas el día de hoy sin el campamento.)
 TURN_LANGUAGE,Language,Idioma,Idioma
-GUESS_TITLE,GUESS,ADIVINHA,ADIVINA
-GUESS_MOTTO,"One number, one go","Um número, uma vez","Un número, una vez"
-GUESS_FOOTER,Guess · Lock · Reveal,Adivinha · Fecha · Revela,Adivina · Cierra · Revela
-GUESS_PROMPT,"What number is the camp thinking of, 0 to 100?","Em que número está o acampamento a pensar, de 0 a 100?","¿En qué número está pensando el campamento, de 0 a 100?"
-GUESS_BLURB,"One number, one go. How close can you land?","Um número, uma tentativa. Quão perto chegas?","Un número, un intento. ¿Qué tan cerca llegas?"
+HOWBIG_TITLE,HOW BIG?,QUE TAMANHO?,¿QUÉ TAMAÑO?
+HOWBIG_MOTTO,Size it up,Mede a olho,Mide a ojo
+HOWBIG_FOOTER,Drag · Lock · Reveal,Arrasta · Fecha · Revela,Arrastra · Cierra · Revela
+HOWBIG_BLURB,"How tall is a horse beside the scout? Drag it to size, one go.","Que altura tem um cavalo ao lado do escuteiro? Arrasta até ao tamanho, uma vez.","¿Cuánto mide un caballo junto al explorador? Arrástralo a su tamaño, una vez."
+HOWBIG_PROMPT,"The scout stands %s m tall. How tall is %s? Drag it to size.","O escuteiro tem %s m de altura. Que altura tem %s? Arrasta até ao tamanho certo.","El explorador mide %s m. ¿Cuánto mide %s? Arrástralo hasta su tamaño."
+HOWBIG_RESULT,%s measures %s m. You said %s m: %s.,%s mede %s m. Disseste %s m: %s.,%s mide %s m. Dijiste %s m: %s.
+HOWBIG_OVER,%s%% too big,%s%% a mais,%s%% de más
+HOWBIG_UNDER,%s%% too small,%s%% a menos,%s%% de menos
+HOWBIG_SPOT,spot on,em cheio,clavado
+HOWBIG_SHARE,"How Big? %s · %s: I said %s m, it measures %s m (%s)","Que Tamanho? %s · %s: disse %s m, mede %s m (%s)","¿Qué Tamaño? %s · %s: dije %s m, mide %s m (%s)"
+HOWBIG_ITEM_HORSE,a horse,um cavalo,un caballo
+HOWBIG_ITEM_TENT,a tent,uma tenda,una tienda de campaña
+HOWBIG_ITEM_LANTERN,a lantern,uma lanterna,un farol
+HOWBIG_ITEM_FOX,a fox,uma raposa,un zorro
+HOWBIG_ITEM_BALE,a straw bale,um fardo de palha,un fardo de paja
+HOWBIG_ITEM_BUSH,a bush,um arbusto,un arbusto
+HOWBIG_ITEM_SIGNPOST,a signpost,um poste de sinalização,un letrero
+HOWBIG_ITEM_PUMP,a hand pump,uma bomba de água,una bomba de agua
+HOWBIG_ITEM_FIR,a young fir,um pinheiro jovem,un pino joven
+HOWBIG_ITEM_FENCE,a fence,uma cerca,una cerca
+HOWBIG_ITEM_CAIRN,a cairn,um marco de pedras,un hito de piedras
+HOWBIG_ITEM_DAISY,a daisy,uma margarida,una margarita
+HOWBIG_ITEM_BOLLARD,a mooring post,um poste de amarração,un poste de amarre

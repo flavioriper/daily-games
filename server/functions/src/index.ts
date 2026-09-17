@@ -3,6 +3,7 @@ import {onSchedule} from "firebase-functions/v2/scheduler";
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
+import howBig from "./how_big.json";
 
 initializeApp();
 const db = getFirestore();
@@ -36,14 +37,22 @@ export function dayKey(d: Date): number {
 }
 
 /**
- * The published content, one entry per turn game. guess_number is the phase 0
- * stub and is deleted when How Big? lands.
+ * The published content, one entry per turn game.
+ *
+ * How Big? draws its item from content/how_big.json, the same table the
+ * client ships in res:// -- `npm run build` copies it beside this file, so
+ * there is one table and it cannot drift -- and picks by the day hash exactly
+ * as turns/how_big.gd does on a phone that never reached the network. The
+ * point of publishing what a phone could derive is the override: a day's
+ * document, once created, is what every player gets, so a hand-picked day
+ * can be written ahead of the scheduler and the derivation steps aside.
  */
 export const GAMES: Record<string, (day: number) => unknown> = {
-  guess_number: (day) => ({
-    answer: fnv1a(`guess_number|${day}`) % 101,
-    prior: {mean: 50, spread: 28},
-  }),
+  how_big: (day) => {
+    const items = howBig.items;
+    const it = items[fnv1a(`how_big|${day}`) % items.length];
+    return {item: it.id, metres: it.metres};
+  },
 };
 
 /** The longest string a guess may be. A guess is client data written under

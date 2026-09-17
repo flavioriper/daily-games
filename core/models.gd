@@ -90,6 +90,22 @@ static func tint(root: Node, color: Color) -> void:
 		for i in mi.mesh.get_surface_count():
 			mi.set_surface_override_material(i, Toon.material_for(mi, color))
 
+## Every layer under `root` in one flat colour, unlit, its outline shells
+## hidden: a cut-out of the model. Under 1.0 alpha it is see-through and
+## casts no shadow, since a shadow under a shape that is not there reads as
+## a mistake; opaque, it keeps its shadow so it sits on the ground like the
+## thing it stands for.
+static func silhouette(root: Node, colour: Color, alpha := 1.0) -> void:
+	var mat := Toon.ink(colour, alpha)
+	for mi in meshes(root):
+		var shell := mi.get_node_or_null(Toon.OUTLINE_NODE)
+		if shell != null:
+			shell.visible = false
+		if alpha < 1.0:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for i in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(i, mat)
+
 ## Overrides every surface under `root` whose imported material is called
 ## `name` with `mat`. The glTF material name survives on the mesh surface and
 ## an override does not touch it, so this is repeatable.

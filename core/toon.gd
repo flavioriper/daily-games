@@ -66,6 +66,7 @@ static var _wind_cache: Dictionary = {}
 static var _wood_cache: Dictionary = {}
 static var _soft_cache: Dictionary = {}
 static var _water: ShaderMaterial
+static var _ink_cache: Dictionary = {}
 static var _ghost_cache: Dictionary = {}
 static var _tex_cache: Dictionary = {}
 static var _wind_tex_cache: Dictionary = {}
@@ -276,6 +277,23 @@ static func ghost(albedo: Color, alpha := 0.35) -> ShaderMaterial:
 	m.set_shader_parameter("shadow_tint", Pal.SHADOW_TINT)
 	m.set_shader_parameter("alpha", alpha)
 	_ghost_cache[key] = m
+	return m
+
+## A flat, unlit colour: a cut-out, with no ramp and no line. How Big? draws
+## the thing to be sized this way, so the player sizes a shape rather than a
+## painting and the reveal has something to show. Under 1.0 alpha it is
+## see-through with a depth pre-pass, so a shape's own overlapping layers do
+## not darken where they stack. Cached per colour and alpha like ghost().
+static func ink(colour: Color, alpha := 1.0) -> StandardMaterial3D:
+	var key := "%s@%.2f" % [colour.to_html(), alpha]
+	if _ink_cache.has(key):
+		return _ink_cache[key]
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(colour, alpha)
+	if alpha < 1.0:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	_ink_cache[key] = m
 	return m
 
 ## The one water material. Shared so Ambient can drive its splash uniforms

@@ -68,8 +68,11 @@ the grain on its plank, its own cast shadow and the outline pass.
   piece, so the world-space shells read several times too thick. Never set a
   width on `Toon.line()`'s materials; those are shared with the stage.
 - **TextMesh cannot extrude every glyph.** The display face's digits 8 and 9
-  cross themselves at weight 700 and vanish; `core/lettering.gd` drops a line
-  that carries a digit to weight 550, the heaviest that extrudes all ten.
+  and the question marks `?` `¿` cross themselves at weight 700 and vanish,
+  and even at 550 their caps come and go with the font size under TextMesh's
+  default curve step; `core/lettering.gd` drops a line that carries a digit
+  or a question mark to weight 550 *and* a curve step of three hundredths of
+  its font size, the pair measured to extrude them whole at every size tried.
   Upper-case everything that goes on a board.
 
 **The first screen (`ui/menu.gd`) is a campsite, not a list.** `world/camp.gd`
@@ -264,10 +267,28 @@ trigger `publishDay` or `rollupTally` by hand, wrap the body in a temporary
 emulator's REST API; this has already cost two implementers an afternoon
 each.
 
+**How Big?** (`turns/how_big.gd`, phase 1) is the first real turn, and it
+replaced the Guess stub outright. The scout stands on a dock at a stated
+height and the day's thing from the model set stands beside him as a black
+silhouette (`Models.silhouette`, flat `Toon.ink`, no outline), so the player
+sizes a shape and the reveal has the painted model to show; the finger
+holds the thing's top (the turn overrides `_gui_input` and meets the touch
+ray with the thing's frontal plane, because StageView drops any ray that
+misses the ground plane and at 7 degrees the top half of the screen is sky).
+The camera never moves: every item in the table fits four scout heights, so
+the roadmap's pull-back was dropped along with the oak. `content/how_big.json`
+is the one table -- the server's `npm run build` copies it into
+`server/functions/src/`, gitignored there, so the two sides cannot drift --
+and both pick the day's item by `fnv1a("how_big|<day>") % items`. A
+published day names `item` and `metres`, and the published height wins, which
+is how a day gets hand-picked. `TurnBase.result_text()` is the one line the
+host's reveal panel shows under the score. The grade is symmetric in the log
+ratio: within 6 percent is 100, a factor of five is 0.
+
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. Only the turn flow's strings are
 keyed (`locale/turn.csv`); the twelve boards are still hardcoded English, and
-`GUESS_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
+`HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228
 faces, in the same 3,600-5,600-faces-per-glyph range as `GUESS` at 22,356) --

@@ -84,6 +84,8 @@ analytics_secret.cfg
 
 server/functions/node_modules/
 server/functions/lib/
+# Copied from content/how_big.json by `npm run build`; the table lives once.
+server/functions/src/how_big.json
 server/.firebase/
 # Dropped by the Firebase emulator suite on every run; not project state.
 # The glob, because the suite names a new one for every service it starts
