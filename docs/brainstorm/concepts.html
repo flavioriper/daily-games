@@ -1529,7 +1529,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
         {const u=(t-k.nudgeAt)/0.3; if(u>=0&&u<1){const s=Math.sin(Math.PI*u)*3; dx+=k.ndx*s; dy+=k.ndy*s;}}
         {const u=(t-k.shiverAt)/0.2; if(u>=0&&u<1) dx+=2*Math.sin(4*Math.PI*u)*(1-u);}
         {const u=(t-k.wobbleAt)/0.45; if(u>=0&&u<1) rot=0.105*Math.sin(6*Math.PI*u)*(1-u);}}
-      const bl=blendOf(k,t),base=given[r][c]?C.stoneGiven:((r+c)%2?C.surfaceHi:C.tileLight);
+      const bl=blendOf(k,t),base=given[r][c]?C.stoneGiven:C.surface;  // free cells all white (user, 2026-09-18); the checker went
       const fill=bl<=1?mix(base,C.badTile,bl):mix(C.badTile,C.bad,Math.min(1,(bl-1)*0.5));
       ctx.save(); ctx.translate(cx+dx,cy+dy); ctx.rotate(rot); ctx.scale(es*ps,es*ps);
       card(-T/2,-T/2,T,T,18,fill,given[r][c]?C.line:rgba(C.line,0.5),4);

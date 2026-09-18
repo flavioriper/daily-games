@@ -438,3 +438,8 @@ reset unlock, the tip card's rule, check, the win layout, a new puzzle after
 a win and Back to camp restoring the stage; screenshots of the fresh board,
 a broken line with the moon brush armed, the win screen and the 8x8 board
 beside the mock.
+
+Amendment (2026-09-18, in play): every free cell is plain `SURFACE` white,
+whether empty or filled by the player; the checker of two creams in section
+4 is gone and `TILE_LIGHT` with it. Givens keep their sand. The user asked
+for it on the first run of the real screen.

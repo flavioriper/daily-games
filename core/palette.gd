@@ -40,9 +40,8 @@ const SUN_DEEP    := Color("d88a12")   # primary button's bottom edge
 const PARCHMENT   := Color("f3e9d2")   # rules card
 
 # The flat Binairo (docs/superpowers/specs/2026-09-18-binairo-flat-design.md,
-# section 4): the checker's light tile, the sun's rays, the two palette-chip
-# fills, the moon's ink and its deeper shade, and the faces' cheeks.
-const TILE_LIGHT  := Color("fbf6ea")
+# section 4): the sun's rays, the two palette-chip fills, the moon's ink and
+# its deeper shade, and the faces' cheeks. A free tile is plain SURFACE.
 const SUN_RAY     := Color("f9c04a")
 const SUN_TILE    := Color("fff1d6")
 const MOON_INK    := Color("7d8fd9")

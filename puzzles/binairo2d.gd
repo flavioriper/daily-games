@@ -293,12 +293,13 @@ func _cell_at(local: Vector2) -> Vector2i:
 
 # --- colour ---
 
-## The tile's fill at a blend toward BAD_TILE: the checker's two creams for a
-## free cell, sand for a given, and past 1 the heartbeat pushes on toward BAD.
+## The tile's fill at a blend toward BAD_TILE: white for a free cell (the
+## user dropped the mock's checker, 2026-09-18), sand for a given, and past 1
+## the heartbeat pushes on toward BAD.
 func _paint(blend: float, r: int, c: int) -> void:
 	_blend[r][c] = blend
 	var locked: bool = state.given[r][c]
-	var base: Color = Pal.STONE_GIVEN if locked else (Pal.SURFACE_HI if (r + c) % 2 == 1 else Pal.TILE_LIGHT)
+	var base: Color = Pal.STONE_GIVEN if locked else Pal.SURFACE
 	var fill: Color
 	if blend <= 1.0:
 		fill = base.lerp(Pal.BAD_TILE, blend)
