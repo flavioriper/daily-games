@@ -104,10 +104,31 @@ const PUZZLES := [
 		"id": "untangle",
 		"kind": "puzzle",
 		"title": "Untangle",
-		"blurb": "Drag the dots until no lines cross.",
+		"blurb": "Drag the lanterns until no cords cross.",
+		"motto": "Every knot comes undone",
+		"footer": "Drag · Loosen · Untangle",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-untangle-flat-design.md).
+		# It picks nothing up, so it asks for no tray, and it has **no actions
+		# row**: capabilities() here is undo and hint, so there is no Check to
+		# put in one and Reset rides in the top bar instead.
+		"script": "res://puzzles/untangle2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Untangle, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both hand out the same tangle.
+		"id": "untangle_island",
+		"kind": "puzzle",
+		"title": "Untangle",
+		"blurb": "The island board, for comparison.",
 		"motto": "Every knot comes undone",
 		"footer": "Drag · Loosen · Untangle",
 		"script": "res://puzzles/untangle3d.gd",
+		"seed_as": "untangle",
 		"difficulties": [0, 1, 2],
 	},
 	{

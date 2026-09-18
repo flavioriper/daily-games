@@ -196,17 +196,20 @@ every layout change.
 
 ## The flat screens, on trial beside the island
 
-Since 2026-09-18 three cards open a flat 2D board under flat chrome, and each
+Since 2026-09-18 five cards open a flat 2D board under flat chrome, and each
 keeps its stage version reachable as a second card seeded from the same day
 (`seed_as`), so both can be played and judged on the phone: **Binairo**
 (`puzzles/binairo2d.gd`, beside `binairo_island`), **Code Break**
-(`puzzles/codebreak2d.gd`, beside `mastermind_island`) and **Balance**
-(`puzzles/balance2d.gd`, beside `balance_island`). The user is deciding
+(`puzzles/codebreak2d.gd`, beside `mastermind_island`), **Balance**
+(`puzzles/balance2d.gd`, beside `balance_island`), **Shikaku**
+(`puzzles/shikaku2d.gd`, beside `shikaku_island`) and **Untangle**
+(`puzzles/untangle2d.gd`, beside `untangle_island`). The user is deciding
 whether the game goes 2D; nothing else has moved. Specs:
-`docs/superpowers/specs/2026-09-18-binairo-flat-design.md`,
-`...-codebreak-flat-design.md` and `...-balance-flat-design.md`; mocks:
-`docs/brainstorm/concepts.html#binairo`, `#codebreak` and `#balance` (three
-more flat screens are mocked there and not built: Untangle, Shikaku, Tents).
+`docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
+`...-codebreak-`, `...-balance-`, `...-shikaku-` and `...-untangle-flat-design.md`
+siblings; mocks: `docs/brainstorm/concepts.html#binairo`, `#codebreak`,
+`#balance`, `#shikaku` and `#untangle` (one more flat screen is mocked there
+and not built: Tents).
 
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
@@ -243,7 +246,8 @@ more flat screens are mocked there and not built: Untangle, Shikaku, Tents).
   its own continuous check, so it has no Check to put in the row and Reset
   rides up into the top bar instead. The flat host therefore measures its
   bottom slot from the rows it actually built, not from a constant; the
-  three screens want 460, 460 and 390.
+  five screens want 460, 460, 390, 290 and 140 -- Untangle drops the tray
+  *and* the actions row, so its slot is the tip card alone.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the

@@ -73,7 +73,7 @@ func _note(id: String) -> String:
 		"balance_island": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
 		"pipes": return "%d pieces, %d drains, camera fit=%s, hud=%s" % [
 			_puzzle._placed.size(), _puzzle._drains.size(), _fit_ok, _hud_ok]
-		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
+		"untangle", "untangle_island": return "%d crossings, board fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
 		"shikaku", "shikaku_island": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, camera fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
 		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
@@ -92,7 +92,7 @@ func _solve(id: String) -> void:
 		"balance": _solve_balance_flat()
 		"balance_island": _solve_balance()
 		"pipes": _solve_pipes()
-		"untangle": _solve_untangle()
+		"untangle", "untangle_island": _solve_untangle()
 		"shikaku", "shikaku_island": _solve_shikaku()
 		"tents": _solve_tents()
 		"lightup": _solve_lightup()
@@ -284,8 +284,10 @@ func _select_piece(kind: String) -> void:
 	else:
 		_puzzle.pick(index)
 
+## Drives both Untangles: the flat board and the island answer the same
+## names, because the flat one keeps the state's positions under them.
 func _solve_untangle() -> void:
-	# Camera fit check: every post must project inside the board slot.
+	# Fit check: every lantern must land inside the board slot.
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
 	_fit_ok = true
 	for i in _puzzle.nodes:

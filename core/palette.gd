@@ -125,6 +125,31 @@ const FENCE_DARK  := Color("8d6c41")   # its shade, and a marker's stake
 const FENCE_POST  := Color("a3814f")   # the posts where fence runs meet
 const MARKER_DEEP := Color("b4533f")   # a wrong marker's bottom edge
 
+# The flat Untangle (docs/superpowers/specs/2026-09-18-untangle-flat-design.md,
+# section 3): paper lanterns hung on cords over the parchment card, and a knot
+# drawn wherever two cords cross. The camp already stands a lantern on its
+# path, so the cast is borrowed from the world rather than invented -- these
+# are the mock's own papers, five of them, taken by index so a board of
+# fourteen repeats a colour rather than inventing a sixth. The cord is hemp a
+# shade cooler than ROPE_HEMP: it is drawn hairline-thin against parchment,
+# where the island's rope is a solid in sunlight.
+const LANTERN_PAPER := [
+	[Color("f0a04b"), Color("cf7f2e")],   # amber
+	[Color("e2726e"), Color("bd5350")],   # rose
+	[Color("7fb37a"), Color("5d8f58")],   # moss
+	[Color("6fa8c8"), Color("4d84a3")],   # river
+	[Color("b489c4"), Color("8f66a0")],   # plum
+]
+## What a paper warms toward when its lantern is lit on the win; the deep
+## edge goes to SUN over the same run.
+const LANTERN_LIT := Color("ffe2a8")
+const CORD        := Color("9a7f60")   # a cord at rest
+const CORD_DEEP   := Color("7a6248")   # its shade, the ring and the arm
+## The knot, and the colour a cord caught in one turns. The family's rose and
+## its deep edge -- the same pair Shikaku's wrong marker wears.
+const KNOT        := Color("d9705e")
+const KNOT_DEEP   := Color("b4533f")
+
 # Pipes (docs/art/concept-pipes.png): chrome when dry, lit blue when fed. The
 # water inside the tube is WATER / WATER_HI, already defined above, and its
 # bubbles are MOON.
