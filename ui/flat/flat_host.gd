@@ -169,9 +169,12 @@ func _build_chrome(root: VBoxContainer) -> void:
 func _stack(slot: Control) -> VBoxContainer:
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", GAP)
-	stack.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	slot.add_child(stack)
+	# Placed and sized by hand rather than anchored: a Control with opposite
+	# anchors set warns when its size is written, and this one is written
+	# on every relayout.
 	var fit := func() -> void:
+		stack.position = Vector2(0.0, stack.position.y)
 		stack.size = Vector2(slot.size.x, stack.get_combined_minimum_size().y)
 	slot.resized.connect(fit)
 	stack.minimum_size_changed.connect(fit)

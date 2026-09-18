@@ -24,8 +24,11 @@ const UNDERBITE := 0.04
 const ROCK_ANGLE := 3.0 * PI / 180.0
 const ROCK_PERIOD := 4.0
 
-func radius() -> float:
-	return minf(size.x, size.y) * 0.5
+func _kind() -> String:
+	return "moon"
+
+func _layer_angle(_name: String) -> float:
+	return rock
 
 func _idle_motion() -> Tween:
 	if not rocks:
@@ -37,17 +40,15 @@ func _idle_motion() -> Tween:
 		0.0, 1.0, ROCK_PERIOD)
 	return tw
 
-func _draw() -> void:
-	_begin(rock)
-	var R := radius()
-	_crescent(R, Vector2(0.04, 0.16) * R, Color(Pal.TEXT, SHADOW_ALPHA), UNDERBITE * R)
-	_crescent(R, Vector2(0.0, 0.07) * R, Pal.MOON_DEEP, UNDERBITE * R)
-	_crescent(R, Vector2.ZERO, Pal.MOON_INK, 0.0)
-	_face_parts(0.62 * R, Vector2(-0.34, 0.3) * R, Pal.TEXT)
+func _build_layer(_name: String, R: float, eye: float, b: Builder) -> void:
+	_crescent(b, R, Vector2(0.04, 0.16) * R, Color(Pal.TEXT, SHADOW_ALPHA), UNDERBITE * R)
+	_crescent(b, R, Vector2(0.0, 0.07) * R, Pal.MOON_DEEP, UNDERBITE * R)
+	_crescent(b, R, Vector2.ZERO, Pal.MOON_INK, 0.0)
+	_face_parts(b, 0.62 * R, Vector2(-0.34, 0.3) * R, Pal.TEXT, eye)
 
 ## One layer: the circle of R about `at`, less the bite (its radius widened
 ## by `extra`), as a single closed polygon.
-func _crescent(R: float, at: Vector2, colour: Color, extra: float) -> void:
+func _crescent(b: Builder, R: float, at: Vector2, colour: Color, extra: float) -> void:
 	var bite := Vector2(BITE_OFF * 0.707, -BITE_OFF * 0.707) * R
 	var r2 := BITE_R * R + extra
 	var v := bite - at
@@ -56,10 +57,10 @@ func _crescent(R: float, at: Vector2, colour: Color, extra: float) -> void:
 	# The circles meet at ang +- a seen from the body's centre and at
 	# ang + PI -+ b seen from the bite's (the law of cosines in each).
 	var a := acos((d * d + R * R - r2 * r2) / (2.0 * d * R))
-	var b := acos((d * d + r2 * r2 - R * R) / (2.0 * d * r2))
-	var outer := _arc_points(at, R, ang + a, ang - a + TAU)
-	var back := _arc_points(bite, r2, ang + PI + b, ang + PI - b)
+	var bb := acos((d * d + r2 * r2 - R * R) / (2.0 * d * r2))
+	var outer := Builder.arc_points(at, R, ang + a, ang - a + TAU)
+	var back := Builder.arc_points(bite, r2, ang + PI + bb, ang + PI - bb)
 	# Each arc ends where the other begins; the shared points go in once.
 	var pts := outer.slice(0, outer.size() - 1)
 	pts.append_array(back.slice(0, back.size() - 1))
-	_fill(pts, colour)
+	b.polygon(pts, colour)

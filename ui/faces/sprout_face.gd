@@ -11,36 +11,32 @@ const REACH := 1.3
 ## Points per curve of a leaf's edge.
 const LEAF_STEPS := 16
 
-func radius() -> float:
-	return minf(size.x, size.y) * 0.5 / REACH
+func _kind() -> String:
+	return "sprout"
 
-func _draw() -> void:
-	_begin()
-	var R := radius()
-	_ellipse(Vector2(0.0, 0.95 * 0.15 * R), 1.05 * R, 0.95 * R, Color(Pal.TEXT, SHADOW_ALPHA))
-	_line(Vector2(0.0, -0.8 * R), Vector2(0.0, -1.15 * R), Pal.LEAF, 0.09 * R)
-	_leaf(Vector2(0.0, -1.12 * R), 0.62 * R, -2.6)
-	_leaf(Vector2(0.0, -1.12 * R), 0.55 * R, -0.55)
-	_ellipse(Vector2.ZERO, R, 0.9 * R, Pal.SURFACE)
-	# The outline is a closed polyline; it overlaps itself by a segment so
-	# the seam has a join rather than a notch.
-	var rim := _ellipse_points(Vector2.ZERO, R, 0.9 * R)
-	rim.append(rim[0])
-	rim.append(rim[1])
-	draw_polyline(rim, Pal.LINE, 0.07 * R, true)
-	_face_parts(0.9 * R, Vector2(0.0, 0.12 * R), Pal.TEXT)
+func _radius_for(px: float) -> float:
+	return px * 0.5 / REACH
+
+func _build_layer(_name: String, R: float, eye: float, b: Builder) -> void:
+	b.ellipse(Vector2(0.0, 0.95 * 0.15 * R), 1.05 * R, 0.95 * R, Color(Pal.TEXT, SHADOW_ALPHA))
+	b.stroke(PackedVector2Array([Vector2(0.0, -0.8 * R), Vector2(0.0, -1.15 * R)]), 0.09 * R, Pal.LEAF)
+	_leaf(b, Vector2(0.0, -1.12 * R), 0.62 * R, -2.6)
+	_leaf(b, Vector2(0.0, -1.12 * R), 0.55 * R, -0.55)
+	b.ellipse(Vector2.ZERO, R, 0.9 * R, Pal.SURFACE)
+	b.stroke(Builder.ring(Vector2.ZERO, R, 0.9 * R), 0.07 * R, Pal.LINE, true)
+	_face_parts(b, 0.9 * R, Vector2(0.0, 0.12 * R), Pal.TEXT, eye)
 
 ## A leaf of `length` from `base` along `angle`: two quadratic curves out and
 ## back, and a lighter vein. The vein's colour is LEAF_LIGHT laid at nine
-## tenths over LEAF, baked opaque so its caps do not double up.
-func _leaf(base: Vector2, length: float, angle: float) -> void:
+## tenths over LEAF, baked to one colour since it always sits on the leaf.
+func _leaf(b: Builder, base: Vector2, length: float, angle: float) -> void:
 	var xf := Transform2D(angle, base)
 	var pts := PackedVector2Array()
 	_bezier(pts, Vector2.ZERO, Vector2(0.55, -0.42) * length, Vector2(1.0, -0.05) * length)
 	_bezier(pts, Vector2(1.0, -0.05) * length, Vector2(0.5, 0.28) * length, Vector2.ZERO)
-	_fill(xf * pts, Pal.LEAF)
-	_line(xf * (Vector2(0.08, -0.02) * length), xf * (Vector2(0.85, -0.08) * length),
-		Pal.LEAF.lerp(Pal.LEAF_LIGHT, 0.9), 0.05 * length)
+	b.polygon(xf * pts, Pal.LEAF)
+	b.stroke(xf * PackedVector2Array([Vector2(0.08, -0.02) * length, Vector2(0.85, -0.08) * length]),
+		0.05 * length, Pal.LEAF.lerp(Pal.LEAF_LIGHT, 0.9))
 
 ## Appends a quadratic curve from `p0` through control `c` to `p1`, without
 ## the end point, so curves chain without a doubled vertex.

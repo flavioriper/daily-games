@@ -1,23 +1,36 @@
 extends Control
 
 ## The base of Binairo's three faces (the sun, the moon and the sprout): one
-## Control that draws every part in its own draw call from a few tweened
-## properties, so a board of sixty-four cells is sixty-four faces and not
-## hundreds of nodes. A subclass draws its body in _draw and calls
-## _face_parts for the eyes, brows, mouth and cheeks. Every measure is in
-## units of the face radius R, ported number for number from the approved
-## canvas mock (docs/brainstorm/concepts.html#binairo: faceParts and the
-## three bodies), so the game and the mock stay the same drawing.
+## Control that draws its whole picture as one or two cached meshes, so a
+## board of sixty-four cells is sixty-four faces and not hundreds of nodes,
+## and each face costs the renderer one draw_mesh per layer rather than one
+## canvas command per eye, cheek and ray. A subclass names its layers and
+## appends each one's shapes to a Builder; the base turns that into an
+## ArrayMesh with vertex colours, keeps it in a static cache keyed by kind,
+## layer, size, expression and eye level, and draws it. Every face of a
+## kind on a board shares the same few meshes; the first of each state pays
+## for the build.
+##
+## Every measure is in units of the face radius R, ported number for number
+## from the approved canvas mock (docs/brainstorm/concepts.html#binairo:
+## faceParts and the three bodies), so the game and the mock stay the same
+## drawing.
 ## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 4
 ## and the amendments at its end.
 ##
-## Antialiasing: MSAA stays off for the whole 2D canvas, so a disc or an arc
-## is drawn with the antialiased primitive, an ellipse is an antialiased disc
-## under a squashed transform, and a filled polygon gets a thin antialiased
-## outline in its own colour, which softens its edge. That last trick doubles
-## the alpha along the rim, so it is only laid on an opaque fill; a
-## translucent polygon (the moon's shadow) goes without and hides its
-## staircase in its faintness.
+## Antialiasing: MSAA stays off for the whole 2D canvas, so every shape
+## carries a feather -- a rim of vertices FEATHER pixels outside its outline
+## at alpha 0, joined to the outline in a band. The band lies wholly outside
+## the fill, so it never doubles the alpha of a translucent shape the way an
+## outline centred on the edge would, and the shadows take it too.
+##
+## Measured 2026-09-18 on this Mac at 1080x1920 (the coordinator's probe,
+## /tmp/_perf_flat.gd): the first version drew each part as its own canvas
+## command, about fifty per face, and the flat board idled at 8.4 ms with
+## 1449 render objects against 4.3 ms and 501 with the faces hidden; the
+## compat renderer pays per command. Meshes bring a face down to one
+## command (the sun to three: shadow, rays, body, because the rays turn
+## between the other two).
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -35,12 +48,22 @@ const BLINK_WAIT_MAX := 7.0
 const SLEEPY_EYE := 0.35
 ## The offset shadow under every face: ink at 8 percent.
 const SHADOW_ALPHA := 0.08
-## The outline laid over a filled polygon in its own colour, in pixels.
-const SOFT_EDGE := 1.5
+## The feather's width, in the face's pixels.
+const FEATHER := 1.5
 ## Pixels of arc per polygon segment, and the bounds on how many segments.
 const ARC_STEP := 3.0
 const ARC_MIN := 8
 const ARC_MAX := 256
+## eye_open is snapped to one of these for the cache; four levels are enough
+## for a blink to read, and the blink's own ease does the rest.
+const EYE_LEVELS: Array[float] = [0.1, 0.4, 0.7, 1.0]
+## Sizes are rounded to this many pixels for the cache key.
+const SIZE_STEP := 2.0
+
+## Every mesh built so far: "kind|layer|px[|expression|eye]" -> ArrayMesh.
+## Shared by every face; a mesh handed to draw_mesh has to stay referenced
+## until the frame is rendered, and this keeps them for good.
+static var _mesh_cache: Dictionary = {}
 
 var expression: int = Expr.HAPPY:
 	set(v):
@@ -69,9 +92,6 @@ var _idle := false
 var _blink_tw: Tween
 var _blink_wait: Tween
 var _idle_tw: Tween
-## The transform every part is drawn under: the rect's centre, turned by the
-## moon's rock. A subclass sets it first thing in _draw through _begin.
-var _xf := Transform2D.IDENTITY
 
 func _init() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
@@ -87,9 +107,14 @@ func _notification(what: int) -> void:
 		_stop_idle()
 
 ## R for the current size, so the whole drawing fits the rect. A subclass
-## decides the ratio (the sun's rays and the sprout's leaves reach past R).
+## decides the ratio in _radius_for (the sun's rays and the sprout's leaves
+## reach past R).
 func radius() -> float:
-	return minf(size.x, size.y) * 0.5
+	return _radius_for(minf(size.x, size.y))
+
+## R for a rect `px` across.
+func _radius_for(px: float) -> float:
+	return px * 0.5
 
 ## Shuts the eyes and opens them again over BLINK_TIME. Returns the tween, or
 ## null under reduce-motion, when nothing moves.
@@ -141,110 +166,234 @@ func _stop_idle() -> void:
 		Motion.stop(_blink_tw)
 		eye_open = 1.0
 
-# ---- drawing, all in R about the rect's centre ----
+# ---- the layers and their meshes ----
 
-## Sets the transform every part draws under: the rect's centre, turned by
-## `angle`. A subclass calls it first thing in _draw.
-func _begin(angle := 0.0) -> void:
-	_xf = Transform2D(angle, size * 0.5)
-	draw_set_transform_matrix(_xf)
+## The kind's name in the cache key.
+func _kind() -> String:
+	return "face"
 
-## An antialiased disc.
-func _disc(centre: Vector2, r: float, colour: Color) -> void:
-	draw_circle(centre, r, colour, true, -1.0, true)
+## The layers a subclass draws, in order, each [name, carries_face]. A layer
+## that carries the face is keyed by expression and eye level; one that does
+## not is shared by every face of the kind and size.
+func _layers() -> Array:
+	return [["body", true]]
 
-## An antialiased ellipse: a disc under a transform squashed to the ratio,
-## which keeps the primitive's own edge rather than a polygon's staircase.
-func _ellipse(centre: Vector2, rx: float, ry: float, colour: Color) -> void:
-	draw_set_transform_matrix(_xf * Transform2D(0.0, Vector2(1.0, ry / rx), 0.0, centre))
-	draw_circle(Vector2.ZERO, rx, colour, true, -1.0, true)
-	draw_set_transform_matrix(_xf)
+## The angle a layer is drawn at about the centre: the sun's rays turn by
+## spin, the moon's body by rock. Drawing it as a transform means neither
+## ever rebuilds a mesh, and the Control's own rotation stays the owner's
+## (the board turns an outgoing face a quarter as it shrinks).
+func _layer_angle(_name: String) -> float:
+	return 0.0
 
-## How many segments an arc of `r` sweeping `sweep` radians takes.
-func _arc_n(r: float, sweep: float) -> int:
-	return clampi(int(ceilf(absf(sweep) * r / ARC_STEP)), ARC_MIN, ARC_MAX)
+## Appends a layer's shapes to `b`, in R. `eye` is the eye level after the
+## expression's own rule (JOY ignores it, SLEEPY caps it). The subclass's
+## drawing.
+func _build_layer(_name: String, _R: float, _eye: float, _b: Builder) -> void:
+	pass
 
-## Points along an arc of `r` about `centre` from `from` to `to`, a few
-## pixels apart; `to` below `from` runs the other way. The end point is
-## included, so a caller joining two arcs drops it.
-func _arc_points(centre: Vector2, r: float, from: float, to: float) -> PackedVector2Array:
-	var n := _arc_n(r, to - from)
-	var pts := PackedVector2Array()
-	pts.resize(n + 1)
-	for i in n + 1:
-		pts[i] = centre + Vector2.from_angle(lerpf(from, to, float(i) / n)) * r
-	return pts
-
-## Points around an ellipse, without repeating the first.
-func _ellipse_points(centre: Vector2, rx: float, ry: float) -> PackedVector2Array:
-	var n := _arc_n(maxf(rx, ry), TAU)
-	var pts := PackedVector2Array()
-	pts.resize(n)
-	for i in n:
-		var a := TAU * i / n
-		pts[i] = centre + Vector2(cos(a) * rx, sin(a) * ry)
-	return pts
-
-## A stroked arc with round caps, the way the mock's canvas strokes them.
-func _arc(centre: Vector2, r: float, from: float, to: float, colour: Color, width: float) -> void:
-	draw_arc(centre, r, from, to, _arc_n(r, to - from) + 1, colour, width, true)
-	_disc(centre + Vector2.from_angle(from) * r, width * 0.5, colour)
-	_disc(centre + Vector2.from_angle(to) * r, width * 0.5, colour)
-
-## A stroked line with round caps.
-func _line(from: Vector2, to: Vector2, colour: Color, width: float) -> void:
-	draw_line(from, to, colour, width, true)
-	_disc(from, width * 0.5, colour)
-	_disc(to, width * 0.5, colour)
-
-## A filled polygon with a soft edge: the fill, then its closed outline in the
-## same colour, thin and antialiased. An opaque colour only (see the header);
-## a translucent one is filled plain.
-func _fill(points: PackedVector2Array, colour: Color) -> void:
-	draw_colored_polygon(points, colour)
-	if colour.a < 1.0:
+func _draw() -> void:
+	var px := roundf(minf(size.x, size.y) / SIZE_STEP) * SIZE_STEP
+	if px <= 0.0:
 		return
-	var loop := PackedVector2Array(points)
-	loop.append(points[0])
-	draw_polyline(loop, colour, SOFT_EDGE, true)
+	var eye := _eye_level()
+	var centre := size * 0.5
+	for layer in _layers():
+		var mesh := _mesh_for(layer[0], layer[1], px, eye)
+		draw_mesh(mesh, null, Transform2D(_layer_angle(layer[0]), centre))
 
-## Eyes, brows, mouth and cheeks for `expression` and `eye_open`, at scale R
-## about `centre`, in `ink`: number for number the mock's faceParts. HAPPY is
-## round eyes with a catchlight and a smile; JOY shut arches over the open
-## mouth with its tongue; WORRIED round eyes under slanted brows and a small
-## round mouth; SLEEPY the happy face with its lids down.
-func _face_parts(R: float, centre: Vector2, ink: Color) -> void:
-	var eye := eye_open
-	match expression:
-		Expr.JOY:
-			eye = 1.0
-		Expr.SLEEPY:
-			eye = minf(eye_open, SLEEPY_EYE)
+## eye_open snapped to EYE_LEVELS and put through the expression's rule.
+func _eye_level() -> float:
+	if expression == Expr.JOY:
+		return 1.0
+	var best: float = EYE_LEVELS[0]
+	for lv in EYE_LEVELS:
+		if absf(lv - eye_open) < absf(best - eye_open):
+			best = lv
+	if expression == Expr.SLEEPY:
+		best = minf(best, SLEEPY_EYE)
+	return best
+
+func _mesh_for(layer: String, carries_face: bool, px: float, eye: float) -> ArrayMesh:
+	var key := "%s|%s|%d" % [_kind(), layer, int(px)]
+	if carries_face:
+		key += "|%d|%d" % [expression, int(roundf(eye * 100.0))]
+	var mesh: ArrayMesh = _mesh_cache.get(key)
+	if mesh == null:
+		var b := Builder.new()
+		_build_layer(layer, _radius_for(px), eye, b)
+		mesh = b.mesh()
+		_mesh_cache[key] = mesh
+	return mesh
+
+# ---- the face itself, in R ----
+
+## Eyes, brows, mouth and cheeks for `expression` at eye level `eye`, at
+## scale R about `centre`, in `ink`: number for number the mock's faceParts.
+## HAPPY is round eyes with a catchlight and a smile; JOY shut arches over
+## the open mouth with its tongue; WORRIED round eyes under slanted brows and
+## a small round mouth; SLEEPY the happy face with its lids down.
+func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) -> void:
 	var cheek := Color(Pal.CHEEK, 0.85)
-	_ellipse(centre + Vector2(-0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
-	_ellipse(centre + Vector2(0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
+	b.ellipse(centre + Vector2(-0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
+	b.ellipse(centre + Vector2(0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
 	for sx: float in [-1.0, 1.0]:
 		var e := centre + Vector2(sx * 0.34, -0.1) * R
 		if expression == Expr.JOY:
-			_arc(e + Vector2(0.0, 0.04 * R), 0.13 * R, PI * 1.1, PI * 1.9, ink, 0.075 * R)
+			b.stroke(Builder.arc_points(e + Vector2(0.0, 0.04 * R), 0.13 * R, PI * 1.1, PI * 1.9), 0.075 * R, ink)
 			continue
-		_ellipse(e, 0.1 * R, maxf(0.012 * R, 0.1 * R * eye), ink)
+		b.ellipse(e, 0.1 * R, maxf(0.012 * R, 0.1 * R * eye), ink)
 		if eye > 0.5:
-			_disc(e + Vector2(-0.03, -0.035) * R, 0.03 * R, Color(1.0, 1.0, 1.0, 0.9))
+			b.disc(e + Vector2(-0.03, -0.035) * R, 0.03 * R, Color(1.0, 1.0, 1.0, 0.9))
 		if expression == Expr.WORRIED:
-			_line(e + Vector2(sx * 0.16, -0.2) * R, e + Vector2(-sx * 0.1, -0.3) * R, ink, 0.06 * R)
+			b.stroke(PackedVector2Array([e + Vector2(sx * 0.16, -0.2) * R, e + Vector2(-sx * 0.1, -0.3) * R]), 0.06 * R, ink)
 	if expression == Expr.WORRIED:
-		draw_circle(centre + Vector2(0.0, 0.3 * R), 0.08 * R, ink, false, 0.06 * R, true)
+		b.stroke(Builder.ring(centre + Vector2(0.0, 0.3 * R), 0.08 * R, 0.08 * R), 0.06 * R, ink, true)
 		return
 	var big := expression == Expr.JOY
 	var mouth := centre + Vector2(0.0, (0.08 if big else 0.1) * R)
 	var mr := (0.28 if big else 0.22) * R
 	var from := PI * (0.1 if big else 0.18)
 	var to := PI * (0.9 if big else 0.82)
-	_arc(mouth, mr, from, to, ink, 0.07 * R)
+	b.stroke(Builder.arc_points(mouth, mr, from, to), 0.07 * R, ink)
 	if big:
 		# The open mouth is the arc closed by its chord, and the tongue the
 		# same over the middle. The tongue is the cheek laid at nine tenths
-		# over the ink, baked to one opaque colour so its soft edge holds.
-		_fill(_arc_points(mouth, mr, from, to), ink)
-		_fill(_arc_points(mouth, mr, PI * 0.3, PI * 0.7), ink.lerp(Pal.CHEEK, 0.9))
+		# over the ink, baked to one colour since it always sits on the ink.
+		b.fan(Builder.arc_points(mouth, mr, from, to), ink)
+		b.fan(Builder.arc_points(mouth, mr, PI * 0.3, PI * 0.7), ink.lerp(Pal.CHEEK, 0.9))
+
+## Collects triangles with vertex colours and turns them into a 2D ArrayMesh.
+## Later shapes draw over earlier ones, the order the mock painted in. Every
+## shape ends in a feather (see the header).
+class Builder:
+	var verts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+
+	## How many segments an arc of `r` sweeping `sweep` radians takes.
+	static func arc_n(r: float, sweep: float) -> int:
+		return clampi(int(ceilf(absf(sweep) * r / ARC_STEP)), ARC_MIN, ARC_MAX)
+
+	## Points along an arc of `r` about `centre` from `from` to `to`, a few
+	## pixels apart; `to` below `from` runs the other way. The end point is
+	## included, so a caller joining two arcs drops it.
+	static func arc_points(centre: Vector2, r: float, from: float, to: float) -> PackedVector2Array:
+		var n := arc_n(r, to - from)
+		var pts := PackedVector2Array()
+		pts.resize(n + 1)
+		for i in n + 1:
+			pts[i] = centre + Vector2.from_angle(lerpf(from, to, float(i) / n)) * r
+		return pts
+
+	## Points around an ellipse, without repeating the first.
+	static func ring(centre: Vector2, rx: float, ry: float) -> PackedVector2Array:
+		var n := arc_n(maxf(rx, ry), TAU)
+		var pts := PackedVector2Array()
+		pts.resize(n)
+		for i in n:
+			var a := TAU * i / n
+			pts[i] = centre + Vector2(cos(a) * rx, sin(a) * ry)
+		return pts
+
+	func vertex(p: Vector2, c: Color) -> int:
+		verts.append(p)
+		cols.append(c)
+		return verts.size() - 1
+
+	func tri(a: int, b: int, c: int) -> void:
+		idx.append(a)
+		idx.append(b)
+		idx.append(c)
+
+	func disc(centre: Vector2, r: float, colour: Color) -> void:
+		fan(ring(centre, r, r), colour)
+
+	func ellipse(centre: Vector2, rx: float, ry: float, colour: Color) -> void:
+		fan(ring(centre, rx, ry), colour)
+
+	## A convex outline as a fan about its centroid.
+	func fan(points: PackedVector2Array, colour: Color) -> void:
+		var n := points.size()
+		var c := Vector2.ZERO
+		for p in points:
+			c += p
+		var ci := vertex(c / n, colour)
+		var first := verts.size()
+		for p in points:
+			vertex(p, colour)
+		for i in n:
+			tri(ci, first + i, first + (i + 1) % n)
+		_feather(points, first, colour)
+
+	## Any simple outline, concave allowed.
+	func polygon(points: PackedVector2Array, colour: Color) -> void:
+		var tris := Geometry2D.triangulate_polygon(points)
+		var first := verts.size()
+		for p in points:
+			vertex(p, colour)
+		for t in tris:
+			idx.append(first + t)
+		_feather(points, first, colour)
+
+	## A stroke of `width` along the centreline `points`: open with round
+	## caps (the canvas's lineCap round) or closed as a ring; `caps` false
+	## leaves an open stroke's ends flat, the sun's highlight.
+	func stroke(points: PackedVector2Array, width: float, colour: Color, closed := false, caps := true) -> void:
+		var n := points.size()
+		var half := width * 0.5
+		var clear := Color(colour, 0.0)
+		var base := verts.size()
+		for i in n:
+			var prev := points[(i - 1 + n) % n] if closed or i > 0 else points[i]
+			var next := points[(i + 1) % n] if closed or i < n - 1 else points[i]
+			var t := (next - prev).normalized()
+			var nrm := Vector2(-t.y, t.x)
+			# Four across: outer feather, edge, edge, outer feather.
+			vertex(points[i] - nrm * (half + FEATHER), clear)
+			vertex(points[i] - nrm * half, colour)
+			vertex(points[i] + nrm * half, colour)
+			vertex(points[i] + nrm * (half + FEATHER), clear)
+		var segs := n if closed else n - 1
+		for i in segs:
+			var a := base + i * 4
+			var c := base + ((i + 1) % n) * 4
+			for k in 3:
+				tri(a + k, c + k, c + k + 1)
+				tri(a + k, c + k + 1, a + k + 1)
+		if not closed and caps:
+			disc(points[0], half, colour)
+			disc(points[n - 1], half, colour)
+
+	## The feather: a rim of vertices FEATHER outside the closed outline
+	## `points` (whose vertices start at `first`), transparent, joined to the
+	## outline in a band. Outward is read off the outline's winding.
+	func _feather(points: PackedVector2Array, first: int, colour: Color) -> void:
+		var n := points.size()
+		var clear := Color(colour, 0.0)
+		var area := 0.0
+		for i in n:
+			var j := (i + 1) % n
+			area += points[i].x * points[j].y - points[j].x * points[i].y
+		var out := 1.0 if area > 0.0 else -1.0
+		var rim := verts.size()
+		for i in n:
+			var e0 := (points[i] - points[(i - 1 + n) % n]).normalized()
+			var e1 := (points[(i + 1) % n] - points[i]).normalized()
+			var nrm := Vector2(e0.y, -e0.x) + Vector2(e1.y, -e1.x)
+			if nrm.length_squared() < 1e-8:
+				nrm = Vector2(e1.y, -e1.x)
+			vertex(points[i] + nrm.normalized() * out * FEATHER, clear)
+		for i in n:
+			var j := (i + 1) % n
+			tri(first + i, first + j, rim + j)
+			tri(first + i, rim + j, rim + i)
+
+	func mesh() -> ArrayMesh:
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_COLOR] = cols
+		arrays[Mesh.ARRAY_INDEX] = idx
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		return m
