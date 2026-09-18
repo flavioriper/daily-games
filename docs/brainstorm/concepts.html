@@ -176,6 +176,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-lightup .refs img{border-radius:14px}
 #tab-lightup .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #lu-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat one line mock extras ---------- */
+#tab-oneline .phone{background:#f6efe3}
+#tab-oneline .phone canvas{touch-action:none;cursor:pointer}
+#tab-oneline .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-oneline .refs figure{margin:0}
+#tab-oneline .refs img{border-radius:14px}
+#tab-oneline .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#ol-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -193,6 +201,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="shikaku">Shikaku · flat</button>
     <button data-tab="tents">Tents · flat</button>
     <button data-tab="lightup">Light Up · flat</button>
+    <button data-tab="oneline">One Line · flat</button>
   </nav>
 </header>
 
@@ -1153,6 +1162,101 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li>Whether the court should be centred. This is the second board of the seven whose grid is square in a tall space, and because the cell is capped by the width at every step the court is 932 square and the card 1000 tall on all three — so it is always 132 of air above and 132 below, never a board that fills its space. The family's rule everywhere else is to pin the board under the day card.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a court mostly lit with a swept run of chips and one lantern too many, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#lightup</code>.</p>
+</section>
+
+<section class="tab-panel" id="tab-oneline">
+  <h2>One Line · flat, the eighth screen on trial <span class="pill blue">concept · 2026-09-18</span></h2>
+  <p class="lede">An Eulerian path: walk every line of the figure exactly once without lifting your finger. The generator, the parity fix that guarantees a figure is walkable, Hierholzer's trail behind the hint, undo, three hints, check and reset are exactly the game's (<code>puzzles/oneline3d.gd</code>, <code>puzzles/oneline_gen.gd</code>). Everything on this page is look, motion and words.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The voice, carried from the Binairo trial and now shared by eight screens: cream cards with a soft bottom edge, illustrated characters with faces, and a sprout that talks. There is no user mock for a flat One Line; this page is the proposal.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-codebreak-screen.png" alt="The island board style: a plank dock over a river with stone slabs, wood chrome and a critter on a rock">
+        <figcaption>What the island gives a board. One Line's island version is a jetty: Untangle's mooring posts with a plank between every connected pair, a line you have not walked lying flush as a dark stone ford, and walking it raising a warm plank into place. Section 2 is the argument that a figure is a drawing, and a drawing wants to be seen square-on.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="ol" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="ol-rm">Reduce motion: off</button>
+        <button id="ol-diff">Easy · 3×3</button>
+        <button id="ol-new">New puzzle</button>
+        <button id="ol-strand">Strand one on purpose</button>
+        <button id="ol-solve">Solve it</button>
+      </div>
+      <div id="ol-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>press a green post and drag from post to post</b> without letting go, and Undo, Hint, Check and Reset all do what the game does. The generator is the real one — a sown lattice, its largest piece kept, then odd-degree posts joined in pairs until two are left, which is what makes the figure walkable without any search at all. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-18: the stroke carries <b>a walker</b>, and the board <b>warns about stranding only after it has happened</b>. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>ONE LINE</code> in ink with the leaf sprouting from it and <code>ONE STROKE, NO LIFTING</code> under, then Undo, Hint with its count and Settings.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 8", "Jetty Walk".</td></tr>
+    <tr><td class="k">Board card</td><td>cut to fit</td><td>The figure, on parchment, with <b>square spacing</b>: the lattice steps the same distance across as down, so a diagonal stays a diagonal. Steps land at 329 on easy and 242 on the other two — a post 40 CSS pixels across on easy and 30 on hard, with a 50 and 37 pixel reach around it. The card is cut to the figure and centred, so easy and hard fill it (132 of air) and medium, whose lattice is wider than it is tall, leaves 253.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check. <code>capabilities()</code> is undo, hint and check.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and one line: the rule, how many lines are still to walk, and the stranding warning when it applies.</td></tr>
+  </table>
+
+  <p style="font-size:14px;color:var(--muted)">The ladder, measured over 200 generated boards a step: easy is a 3×3 lattice with about 11.5 lines over 8.4 posts, 4.8 of them diagonal; medium 4×3 with 15.4 lines over 10.9 posts; hard 4×4 with 20 lines over 13.8 posts, 9.3 diagonal. Generation is free — there is no search, only a degree count — and Hierholzer returned a full trail on every board of the 600.</p>
+
+  <h3>2. What flat buys here <span class="pill rose">the argument</span></h3>
+  <ul>
+    <li><b>A figure is a drawing, and this one is drawn on a lattice.</b> Half its lines are diagonals — 9.3 of 20 on hard — and the diagonals are what stop it reading as a plain grid. Seen at seven degrees, a 45-degree plank is not at 45 degrees any more: the lattice shears, the near rows stretch and the far rows crowd, and the shape you are asked to trace is a shape the camera invented. Square-on, the figure is the figure.</li>
+    <li><b>The whole of it has to be legible at once.</b> Unlike every other board in the set, One Line asks a question about the <em>global</em> shape — is what is left still all in one piece from where I stand — and you answer it by looking at the whole figure. That is the worst possible thing to foreshorten.</li>
+    <li><b>Crossings stop being a rendering problem.</b> The lines cross &mdash; that is what makes these figures figures &mdash; and on the stage two planks at the same height share a coplanar patch of top face wherever they meet, which z-fights. <code>oneline3d.gd</code> answers it by lifting every plank by 0.0008 per edge index (<code>PLANK_STACK</code>), a stack 20 planks and 0.016 units tall, chosen to stay under the bevel. Flat, a crossing is two strokes on a canvas and the later one is simply on top.</li>
+    <li><b>And it buys a walker.</b> The island has no walker: your finger is the walker, and the planks simply rise behind it. Flat, a small character can ride the stroke and lay the line as it goes, which makes "without lifting your finger" literal, gives the board something alive between moves, and costs a 2D canvas almost nothing. On the stage that same thing is a rigged model, a path animation and a draw call per frame.</li>
+    <li><b>What it costs is the jetty.</b> The island's version reads as a real place you could walk out onto, and the flat one is an ink-and-parchment diagram with a snail on it. That is a fair trade for legibility, not a free one.</li>
+  </ul>
+
+  <h3>3. The stroke, and the walker <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>Press a green post and drag.</b> The stroke steps whenever the finger comes within a thumb of a neighbouring post — 37 CSS pixels on hard — because the line between two posts is never in doubt, so there is nothing to aim at but the post. Taps work too: the same reach, one step at a time, which is what a player with a small screen and a big thumb will actually do.</li>
+    <li><b>The walker lays the line as it goes.</b> It sits on the post the stroke is standing on, walks the line over 0.28 s — the island's <code>LAY_TIME</code> — and the warm plank grows under it rather than appearing all at once. The trail <em>is</em> the drawing, which is the whole reason this screen has a character at all.</li>
+    <li><b>It is a snail, and it is the one new drawing here.</b> <code>ui/faces/</code> holds the five fruit, Code Break's seven friends, the paper lantern, Shikaku's marker and the sun and the moon, and not one of them walks anywhere. A snail earns the exception because its trail is the mechanic: the line you may not lift is the line it leaves behind.</li>
+    <li><b>The posts keep the island's four caps</b> — <code>GOOD</code> green where the stroke may begin, <code>ACCENT_2</code> terracotta under the walker, <code>ACCENT</code> teal where lines are still to walk, and <code>POST_SPENT</code> pale stone once a post is finished with. A player who cannot see where the stroke may start cannot start it, and the measurement says it matters: <b>198 of 200 easy boards and all 400 of the harder ones have exactly two odd posts</b>, so the opening is forced almost every time and the two green caps are the first thing to read.</li>
+    <li><b>A line, walked, goes from dark stone to warm wood</b> — <code>PLANK_BARE</code> to <code>PLANK_LAID</code>, the island's own pair, and the same dark-to-light language Light Up's floor speaks. How much is left is therefore a thing you see across the whole figure at once rather than count.</li>
+  </ul>
+
+  <h3>4. What the board says, and what it will not <span class="pill blue">decided</span></h3>
+  <p>The one way to lose One Line is to strand lines behind you: walk into a part of the figure you cannot get back out of, and the rest is unreachable however carefully you continue. The board <b>does not draw that in advance.</b> Live reachability — fading every step that would cut the figure in two — was on the table and was turned down, because avoiding stranding <em>is</em> the difficulty, and a board that greys out the wrong moves has played the puzzle for you.</p>
+  <p><b>Two boards in three carry a dead-end post</b> &mdash; a post with one line only, measured at 186 of 300 easy boards and about 200 of 300 on each of the other two steps. On a figure with two odd posts one of them is usually that dead end, so the classic way to lose is to walk into it while most of the figure is still unwalked: the stroke ends there with nowhere to go. That single case is most of what this puzzle is, and it is why the board will not draw it for you.</p>
+  <p>So the warning comes after the fact. The moment a step actually strands something, the stranded lines go cool grey, the walker strains, and the sprout says how many and what to do about it (undo back to the fork). Check flashes the same lines on demand and counts them; Hint walks one line whose far end still leaves everything else walkable, and when no such line exists it says so rather than inventing one — which is the island's behaviour exactly, and the one place a hint is allowed to refuse. Press "Strand one on purpose" to see the state.</p>
+
+  <h3>5. Motion <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The chrome slides in row by row; the stone lines fade in one per 0.02 s in index order, then the posts drop onto the parchment with their caps already coloured.</td></tr>
+    <tr><td class="k">Beginning</td><td>The walker arrives on the post with a pop. A post the stroke may not begin at answers with a dip and a line from the sprout instead.</td></tr>
+    <tr><td class="k">Walking a line</td><td>The walker travels it in 0.28 s, rocking as it goes and facing the way it is heading, and the plank grows behind it. A line already walked refuses with a dip: every line takes exactly one crossing.</td></tr>
+    <tr><td class="k">Stranding</td><td>The stranded lines cool to grey the instant it happens and the walker strains. Nothing is dimmed before the step.</td></tr>
+    <tr><td class="k">Hint · Check</td><td>A hint rings the post it is sending you to in green and walks the line. Check shakes every stranded line and the sprout counts them.</td></tr>
+    <tr><td class="k">Undo</td><td>Takes back the last line: the plank sinks to stone and the walker steps back onto the post it came from. It counts no move, as on the island.</td></tr>
+    <tr><td class="k">Solved</td><td>Every plank warms a shade brighter along the trail in walk order, and the walker hops on the post where the stroke ended.</td></tr>
+  </table>
+
+  <h3>6. Well done <span class="pill">proposed</span></h3>
+  <p>The board <em>is</em> the answer here, as it is on Untangle and Balance, so it does not leave: the chrome fades, the card slides down and shrinks, and the finished figure stays on screen with the walker standing where it finished. Above it, "Well done!" and "One stroke, not a line missed.", then the day card with the time, moves and hints, and a full-width Back to camp.</p>
+
+  <h3>7. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Is a snail one species too many?</b> Eight screens in, the cast is five fruit, seven friends, a lantern, a marker, a tent, a tree, a sun and a moon. This adds a ninth kind of thing for one board. The alternative was giving every post a face, which is the family's usual move and would have put fourteen of them on a hard board.</li>
+    <li><b>Does the drag actually work on a phone?</b> A 37-pixel reach around a 30-pixel post, with the finger covering both, is the tightest gesture of the eight screens — and unlike a tap, a drag that strays onto the wrong post costs an undo. The mock steps on proximity rather than on crossing the line, which is the forgiving choice; whether it is forgiving enough is a thumb question, not an argument.</li>
+    <li><b>Was refusing the live reachability right?</b> It is the kindest thing this screen could do and it was turned down on purpose. If the first real playtest is someone stranding a figure three times and putting the phone down, that decision is the thing to revisit first.</li>
+    <li><b>Medium leaves 253 of air.</b> Its lattice is 4 wide and 3 tall, so the card cut to the figure is squat. Options: let medium stretch to fill (and shear its diagonals), give it a 4×4 lattice with a lower fill, or accept that one of the three steps is a shorter card.</li>
+    <li>Whether the walker should be draggable <em>ahead</em> of the finger — held under it, the way Untangle holds a lantern — or whether walking behind the finger, as it does here, is what keeps the stroke feeling like a trail.</li>
+    <li>Whether "every line exactly once" is clear enough without a count. There is no "12/20" anywhere on the screen; the sprout says how many are left and the figure shows it in stone and wood. That is the family's instinct, and it is also the one number a player might genuinely want.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for two thirds of a figure walked, <code>?strand=1</code> for a stranded figure, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#oneline</code>.</p>
 </section>
 
 </main>
@@ -6041,6 +6145,656 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   if(Q.get('win')==='1'){openedAt=-161; moves=24; hintsLeft=2; checks=1;
     preset(true);
     caption(); solve(0);}
+  frame();
+})();
+
+/* ---------- the flat one line mock ---------- */
+(function(){
+  const cv=document.getElementById('ol'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const now=()=>T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  // The figure's two colours are the game's own (core/palette.gd): a line not
+  // yet walked is PLANK_BARE, dark slate, and walking it lays PLANK_LAID over
+  // it, warm wood. Dark to light, the same language Light Up's floor speaks.
+  // The post caps are the island's four: GOOD where the stroke may begin,
+  // ACCENT_2 under the walker, ACCENT where lines are still to walk, and
+  // POST_SPENT once a post is finished with.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    bare:'#3f4652',bareDeep:'#2f353e',laid:'#c8a17a',laidDeep:'#9c7350',laidHi:'#e3c39b',
+    post:'#c3b7a4',postDeep:'#9c9083',spent:'#dccfb3',teal:'#4c9a94',tealDeep:'#3a7772',
+    terra:'#e2825f',terraDeep:'#bb6244',shell:'#e0a257',shellDeep:'#b87d3a',foot:'#f3e1c4',footDeep:'#d9c29c',
+    good:'#7cb06b',goodDeep:'#5c8c4f',bad:'#d9605a',badDeep:'#b4433e',stranded:'#8d94a3'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],u))+','+Math.round(lerp(A[1],B[1],u))+','+Math.round(lerp(A[2],B[2],u))+')';};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // ---- the generator and the rule, as oneline_gen.gd has them ----
+  // The cheapest correctness guarantee in the catalog: a connected graph has
+  // an Eulerian path exactly when it has zero or two odd-degree nodes, so
+  // there is no search at all -- sow a lattice, keep its largest piece, then
+  // join odd nodes in pairs until two are left. Measured over 200 boards a
+  // step, two odd posts is what comes out every time bar one easy board in a
+  // hundred, so the two green posts are almost always the opening.
+  const ek=e=>e[0]+','+e[1];
+  function randomLattice(rng,cols,rows,fill){const out=[];
+    for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){const a=y*cols+x;
+      // Orthogonal and diagonal neighbours; the diagonals are what make these
+      // figures read as drawings rather than as plain grids.
+      for(const d of [[1,0],[0,1],[1,1],[1,-1]]){const nx=x+d[0],ny=y+d[1];
+        if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+        if(rng()>fill) continue;
+        const b=ny*cols+nx; out.push([Math.min(a,b),Math.max(a,b)]);}}
+    return out;}
+  const usedNodes=edges=>{const s=new Set(); for(const e of edges){s.add(e[0]); s.add(e[1]);} return [...s].sort((a,b)=>a-b);};
+  const adjacency=edges=>{const adj=new Map();
+    for(const e of edges){ if(!adj.has(e[0])) adj.set(e[0],[]); if(!adj.has(e[1])) adj.set(e[1],[]);
+      adj.get(e[0]).push(e[1]); adj.get(e[1]).push(e[0]);} return adj;};
+  function degreesOf(edges){const d=new Map(); for(const e of edges){d.set(e[0],(d.get(e[0])||0)+1); d.set(e[1],(d.get(e[1])||0)+1);} return d;}
+  const oddNodes=(edges,nodes)=>{const d=degreesOf(edges); return nodes.filter(n=>(d.get(n)||0)%2===1).sort((a,b)=>a-b);};
+  function connectedAll(edges,nodes){if(!nodes.length) return false;
+    const adj=adjacency(edges),seen=new Set([nodes[0]]),st=[nodes[0]];
+    while(st.length){const c=st.pop(); for(const n of (adj.get(c)||[])) if(!seen.has(n)){seen.add(n); st.push(n);}}
+    return seen.size===nodes.length;}
+  const hasEulerianPath=(edges,nodes)=>edges.length>0&&connectedAll(edges,nodes)&&[0,2].indexOf(oddNodes(edges,nodes).length)>=0;
+  function largestComponent(edges){const used=usedNodes(edges),adj=adjacency(edges),seen=new Set(); let best=[];
+    for(const start of used){ if(seen.has(start)) continue;
+      const comp=new Set([start]),st=[start]; seen.add(start);
+      while(st.length){const c=st.pop(); for(const n of (adj.get(c)||[])) if(!comp.has(n)){comp.add(n); seen.add(n); st.push(n);}}
+      const sub=edges.filter(e=>comp.has(e[0]));
+      if(sub.length>best.length) best=sub;}
+    return best;}
+  function fixParity(edges,rng){let out=edges.slice();
+    for(let guard=0;guard<50;guard++){
+      const used=usedNodes(out),odd=oddNodes(out,used);
+      if(odd.length<=2) break;
+      // Joining two odd nodes makes both even, cutting the count by two.
+      const a=odd[0],b=odd[1+Math.floor(rng()*(odd.length-1))];
+      const k=ek([Math.min(a,b),Math.max(a,b)]);
+      const i=out.findIndex(q=>ek(q)===k);
+      if(i>=0) out.splice(i,1); else out.push([Math.min(a,b),Math.max(a,b)]);}
+    return out;}
+  function generate(rng,cols,rows,fill){
+    for(let attempt=0;attempt<60;attempt++){
+      let edges=randomLattice(rng,cols,rows,fill);
+      if(edges.length<5) continue;
+      edges=largestComponent(edges);
+      if(edges.length<5) continue;
+      edges=fixParity(edges,rng);
+      const nodes=usedNodes(edges);
+      if(nodes.length<4||!hasEulerianPath(edges,nodes)) continue;
+      return {edges,nodes,starts:oddNodes(edges,nodes),ok:true};}
+    return {edges:[],nodes:[],starts:[],ok:false};}
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align='center',spacing='0px'){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.letterSpacing=spacing; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function wrap(s,maxW,font){ctx.font=font; const words=s.split(' '),lines=[]; let cur=''; for(const w of words){const tst=cur?cur+' '+w:w; if(ctx.measureText(tst).width>maxW&&cur){lines.push(cur); cur=w;} else cur=tst;} if(cur) lines.push(cur); return lines;}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col=C.leaf){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='undo'||name==='reset'){const cw=name==='reset'; ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,cw?Math.PI:Math.PI*2,!cw); stroke(col,w);
+      const ex=cw?-s*0.3:s*0.3; ctx.beginPath(); ctx.moveTo(ex-s*0.14,s*0.02); ctx.lineTo(ex,-s*0.15); ctx.lineTo(ex+s*0.14,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='check'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.24); stroke(col,w*1.2);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}
+        if(expr==='strain'){ctx.beginPath(); ctx.moveTo(ex+sx*R*0.16,ey-R*0.2); ctx.lineTo(ex-sx*R*0.1,ey-R*0.3); stroke(ink,R*0.06);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.moveTo(cx-R*0.16,cy+R*0.3); ctx.lineTo(cx+R*0.16,cy+R*0.3); stroke(ink,R*0.06);}
+    else {const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+      if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+  const blink=(t,k)=>{ if(RM) return 1; const period=3+4*hash(k*3+1,k*7+2),phase=period*hash(k+5,k+9),m=(t+phase)%period; return m<0.14?1-0.9*Math.sin(Math.PI*m/0.14):1; };
+
+  // ---- the pieces ----
+  // A mooring post, seen from above the way the whole board is: a stone drum
+  // with a coloured cap. The cap carries all the guidance, which is the
+  // island's own use for it -- a player who cannot see where the stroke may
+  // start cannot start it.
+  function post(R,capCol,o){
+    ctx.fillStyle='rgba(59,48,40,0.13)'; ellipse(R*0.05,R*0.3,R*0.92,R*0.8);
+    ctx.fillStyle=C.postDeep; circle(0,R*0.1,R);
+    ctx.fillStyle=C.post; circle(0,0,R);
+    ctx.fillStyle=capCol; circle(0,-R*0.04,R*0.62);
+    ctx.fillStyle=rgba('#ffffff',0.22); ellipse(-R*0.2,-R*0.26,R*0.26,R*0.16);
+    if(o&&o.ring){ctx.strokeStyle=rgba(o.ring,0.9); ctx.lineWidth=R*0.2;
+      ctx.beginPath(); ctx.arc(0,0,R*1.32,0,Math.PI*2); ctx.stroke();}
+  }
+  // The snail: the one new drawing this screen needs, and the reason it earns
+  // one is that its trail *is* the line. `ui/faces/` has the five fruit, the
+  // seven friends, the lantern, the marker and the sun and moon, and not one
+  // of them walks anywhere.
+  function snail(R,dir,o){
+    const rock=RM?0:Math.sin((o.t||0)*9)*0.07*(o.moving?1:0.25);
+    ctx.save(); ctx.scale(dir<0?-1:1,1); ctx.rotate(rock);
+    ctx.fillStyle='rgba(59,48,40,0.14)'; ellipse(0,R*0.72,R*1.0,R*0.22);
+    // the foot, then the shell over it
+    ctx.fillStyle=C.footDeep; rr(-R*1.0,R*0.16,R*2.0,R*0.56,R*0.28); ctx.fill();
+    ctx.fillStyle=C.foot; rr(-R*1.0,R*0.1,R*2.0,R*0.5,R*0.25); ctx.fill();
+    ctx.fillStyle=C.shellDeep; circle(-R*0.3,-R*0.16,R*0.78);
+    ctx.fillStyle=C.shell; circle(-R*0.3,-R*0.22,R*0.72);
+    ctx.strokeStyle=rgba(C.shellDeep,0.85); ctx.lineWidth=R*0.12; ctx.lineCap='round';
+    ctx.beginPath();
+    for(let i=0;i<=40;i++){const u=i/40,a=u*Math.PI*3.1,rad=R*0.12+R*0.54*u;
+      const x=-R*0.3+Math.cos(a)*rad,y=-R*0.22+Math.sin(a)*rad;
+      if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y);}
+    ctx.stroke();
+    // eyestalks and a face on the head, which is the family's face at a size
+    // a snail can carry: two eyes and a mouth, no cheeks
+    for(const s of [0.66,0.96]){
+      ctx.beginPath(); ctx.moveTo(R*(s+0.04),R*0.14); ctx.quadraticCurveTo(R*(s+0.22),-R*0.36,R*(s+0.14),-R*0.66);
+      stroke(C.footDeep,R*0.12);
+      ctx.fillStyle=C.text; circle(R*(s+0.14),-R*0.7,R*0.11);}
+    ctx.fillStyle=C.text;
+    const eye=o.expr==='joy'?1:(o.eye==null?1:o.eye);
+    ellipse(R*0.82,R*0.28,R*0.09,Math.max(R*0.012,R*0.09*eye));
+    ctx.beginPath();
+    if(o.expr==='strain'){ctx.moveTo(R*0.62,R*0.48); ctx.lineTo(R*0.98,R*0.48); stroke(C.text,R*0.07);}
+    else {ctx.arc(R*0.76,R*0.38,R*0.16,Math.PI*0.05,Math.PI*0.75); stroke(C.text,R*0.07);}
+    ctx.restore();
+  }
+
+  // ---- state ----
+  const LAY_TIME=0.28;
+  let cols=3,rows=3,fill=0.55,diff=0,seed=23;
+  let edges=[],nodes=[],starts=[],adj=new Map();
+  let walked=new Map();            // edge index -> the time it began to be laid
+  // edge index -> the post it was walked *from*. A line is stored as an
+  // unordered pair, so without this the plank would grow from its
+  // lower-numbered end whichever way the walker actually crossed it -- and
+  // half of all steps would lay their trail against the snail.
+  let layFrom=new Map();
+  let current=-1,walk=[],trail=[];
+  let hintsLeft=3,moves=0,checks=0;
+  let openedAt=0,solvedAt=-1,winAt=-1;
+  let pressTarget=null,btnPress={},drawing=false;
+  let postSt=new Map(),flash=new Map(),particles=[],auto=[],strandedAt=-1;
+  let tip={text:'',at:0,mood:'happy',idx:0},L=null;
+
+  const SIZES=[[3,3,0.55],[4,3,0.5],[4,4,0.45]];
+  const TIPS=[
+    'Start on a green post and walk every line exactly once, without lifting your finger.',
+    'Drag from post to post. A line you have walked turns from stone to warm plank.',
+    'Two green posts mean the stroke has to begin at one of them.',
+  ];
+  function setup(d,sd,t){
+    diff=d; seed=sd;
+    cols=SIZES[d][0]; rows=SIZES[d][1]; fill=SIZES[d][2];
+    const out=generate(mulberry32((sd*2654435761)>>>0),cols,rows,fill);
+    edges=out.edges; nodes=out.nodes; starts=out.starts;
+    adj=new Map();
+    edges.forEach((e,i)=>{ for(const [a,b] of [[e[0],e[1]],[e[1],e[0]]]){
+      if(!adj.has(a)) adj.set(a,[]); adj.get(a).push({to:b,i});}});
+    walked=new Map(); layFrom=new Map(); current=-1; walk=[]; trail=[];
+    hintsLeft=3; moves=0; checks=0; solvedAt=-1; winAt=-1; openedAt=t; strandedAt=-1;
+    postSt=new Map(); flash=new Map(); particles=[]; auto=[]; drawing=false;
+    tip.idx=0; tipSet(TIPS[0],'happy',t);
+    caption();
+  }
+  const open=()=>solvedAt<0;
+  const mayStart=n=>!starts.length||starts.indexOf(n)>=0;
+  const edgeBetween=(a,b)=>{for(const q of (adj.get(a)||[])) if(q.to===b) return q.i; return -1;};
+  const remaining=()=>{const out=[]; for(let i=0;i<edges.length;i++) if(!walked.has(i)) out.push(i); return out;};
+  const openAt=n=>(adj.get(n)||[]).filter(q=>!walked.has(q.i)).length;
+  // Whether every line left can still be walked in one stroke from `v`: the
+  // Eulerian condition applied to what is left. It is the only thing that can
+  // go wrong in One Line, and the only thing Hint and Check need to know.
+  function walkableFrom(rest,v){
+    if(!rest.length) return true;
+    const a=new Map(),deg=new Map();
+    for(const i of rest){const e=edges[i];
+      for(const [x,y] of [[e[0],e[1]],[e[1],e[0]]]){
+        if(!a.has(x)) a.set(x,[]); a.get(x).push(y); deg.set(x,(deg.get(x)||0)+1);}}
+    if(!a.has(v)) return false;
+    const seen=new Set([v]),st=[v];
+    while(st.length){const c=st.pop(); for(const n of a.get(c)) if(!seen.has(n)){seen.add(n); st.push(n);}}
+    for(const i of rest){const e=edges[i]; if(!seen.has(e[0])||!seen.has(e[1])) return false;}
+    const odd=[...deg.keys()].filter(n=>deg.get(n)%2===1);
+    if(!odd.length) return true;
+    return odd.length===2&&odd.indexOf(v)>=0;
+  }
+  // Lines that can no longer be reached from where the walker stands. Before
+  // the stroke begins nothing is stranded.
+  function stranded(){
+    const out=[];
+    if(current<0) return out;
+    const rest=remaining(),a=new Map();
+    for(const i of rest){const e=edges[i];
+      for(const [x,y] of [[e[0],e[1]],[e[1],e[0]]]){ if(!a.has(x)) a.set(x,[]); a.get(x).push(y);}}
+    const seen=new Set([current]),st=[current];
+    while(st.length){const c=st.pop(); for(const n of (a.get(c)||[])) if(!seen.has(n)){seen.add(n); st.push(n);}}
+    for(const i of rest) if(!seen.has(edges[i][0])) out.push(i);
+    return out;
+  }
+  function stOf(n){ if(!postSt.has(n)) postSt.set(n,{dipAt:-1e9,ringAt:-1e9}); return postSt.get(n); }
+  function tipSet(s,mood,t){tip.text=s; tip.mood=mood||'happy'; tip.at=t;}
+
+  // ---- moves ----
+  function begin(n,t){
+    if(!mayStart(n)){stOf(n).dipAt=t;
+      tipSet(starts.length?'The stroke has to begin on one of the two green posts.':'Begin anywhere: this figure has no odd post.','puzzled',t); return false;}
+    current=n; walk=[n]; tipSet('Now walk every line exactly once.','happy',t); caption(); return true;
+  }
+  function step(n,t){
+    if(n===current) return false;
+    const e=edgeBetween(current,n);
+    if(e<0) return false;
+    if(walked.has(e)){stOf(n).dipAt=t; tipSet('That line is walked already. Every line takes exactly one crossing.','puzzled',t); return false;}
+    walked.set(e,t); layFrom.set(e,current); trail.push(e); walk.push(n); current=n; moves++;
+    after(t); return true;
+  }
+  function after(t){
+    caption();
+    if(open()&&walked.size===edges.length){solve(t); return;}
+    const lost=stranded();
+    if(lost.length){
+      // Warned after the fact, never before: the board does not steer the
+      // player around the one mistake this puzzle has.
+      if(strandedAt<0) strandedAt=t;
+      tipSet(lost.length===1?'One line is stranded behind you now. Undo back to the fork.':lost.length+' lines are stranded behind you now. Undo back to the fork.','strain',t);
+      return;}
+    strandedAt=-1;
+    const left=edges.length-walked.size;
+    tipSet(left+(left===1?' line still to walk.':' lines still to walk.'),'happy',t);
+  }
+  function undo(t){
+    if(!open()||!trail.length) return;
+    const e=trail.pop();
+    walked.delete(e); layFrom.delete(e); walk.pop(); current=walk[walk.length-1];
+    caption();
+    const lost=stranded();
+    if(!lost.length) strandedAt=-1;
+    after2(t,lost);
+  }
+  function after2(t,lost){
+    if(lost&&lost.length) tipSet(lost.length+(lost.length===1?' line is still stranded behind you.':' lines are still stranded behind you.'),'strain',t);
+    else {const left=edges.length-walked.size; tipSet(left+(left===1?' line still to walk.':' lines still to walk.'),'happy',t);}
+  }
+  function reset(t){
+    if(!open()) return;
+    walked=new Map(); layFrom=new Map(); current=-1; walk=[]; trail=[]; moves=0; strandedAt=-1;
+    tipSet('The jetty is taken up again. The hints you spent are not refunded, only unpinned.','happy',t); caption();
+  }
+  // Shows the next safe step: a post the stroke may begin at, or one line
+  // whose far end still leaves every other line walkable. A hint can never be
+  // the move that strands the figure.
+  function hint(t){
+    if(!open()||hintsLeft<=0||!nodes.length) return;
+    if(current<0){
+      const n=starts.length?starts[0]:nodes[0];
+      hintsLeft--; begin(n,t); stOf(n).ringAt=t;
+      if(L){const p=xy(n); for(let q=0;q<6;q++) sparkle(p[0]+(hash(q,1)-0.5)*L.step*0.4,p[1]+(hash(q,2)-0.5)*L.step*0.4,t+q*0.05,C.good);}
+      tipSet('Begin there.','happy',t); caption(); return;}
+    let pick=-1;
+    for(const i of remaining()){
+      const e=edges[i];
+      if(e[0]!==current&&e[1]!==current) continue;
+      const far=e[0]===current?e[1]:e[0];
+      const rest=remaining().filter(q=>q!==i);
+      if(walkableFrom(rest,far)){pick=i; break;}}
+    if(pick<0){
+      // Every step from here strands something: there is no honest hint to
+      // give, and saying so is better than lying.
+      tipSet('There is no safe step left from here. Undo back to the fork.','strain',t); return;}
+    const e=edges[pick],to=e[0]===current?e[1]:e[0];
+    hintsLeft--; stOf(to).ringAt=t;
+    if(L){const p=xy(to); for(let q=0;q<6;q++) sparkle(p[0]+(hash(q,1)-0.5)*L.step*0.4,p[1]+(hash(q,2)-0.5)*L.step*0.4,t+q*0.05,C.good);}
+    step(to,t);
+  }
+  // Flashes every line that can no longer be reached from where the walker
+  // stands, and says how many. That is the only way to lose One Line.
+  function check(t){
+    if(!open()) return;
+    checks++;
+    const lost=stranded();
+    for(const i of lost) flash.set(i,t);
+    tipSet(current<0?'Nothing is walked yet, so nothing is stranded. Begin on a green post.':
+      (lost.length?lost.length+(lost.length===1?' line is stranded: nothing can reach it now.':' lines are stranded: nothing can reach them now.'):'Every line left can still be reached from where you stand.'),
+      lost.length?'strain':'joy',t);
+    caption();
+  }
+  function sparkle(x,y,t0,col){if(RM) return; particles.push({x,y,vx:(hash(x|0,y|0)-0.5)*90,vy:-110,t0,life:0.7,col:col||C.sun,r:13});}
+  function solve(t){
+    solvedAt=t; winAt=t+2.0;
+    tipSet('One stroke, and not a line missed.','joy',t+0.4);
+    caption();
+  }
+
+  // ---- layout ----
+  // The lattice keeps square spacing, so a diagonal stays a diagonal and the
+  // figure reads as a drawing. The card is then cut to the figure and centred
+  // in what is left, the way Tents and Light Up do it.
+  function layout(t){
+    const win=winAt<0?0:dec(sineIO((t-winAt)/0.45));
+    const tipY=H-M-140,actY=tipY-20-130,statsY=H-M-130-20-120;
+    const bTop=lerp(380,700,win),bBot=lerp(actY-20,statsY-20,win);
+    const avail=bBot-bTop,pad=40;
+    const step=Math.min((COL-2*pad)/(cols-1+0.8),(avail-2*pad)/(rows-1+0.8));
+    const gw=step*(cols-1),gh=step*(rows-1);
+    const bh=Math.min(avail,gh+2*pad+step*0.8),by=bTop+(avail-bh)/2;
+    return {win,top:{y:M,h:180},day:{y:M+200,h:120},board:{y:by,h:bh},
+      act:{y:actY,h:130},tip:{y:tipY,h:140},stats:{y:statsY,h:120},camp:{y:H-M-130,h:130},
+      step,ox:W/2-gw/2,oy:by+(bh-gh)/2};
+  }
+  const xy=n=>[L.ox+(n%cols)*L.step,L.oy+Math.floor(n/cols)*L.step];
+  function nearestPost(p){
+    let best=-1,bd=L.step*0.42;
+    for(const n of nodes){const q=xy(n),d=Math.hypot(q[0]-p[0],q[1]-p[1]);
+      if(d<bd){bd=d; best=n;}}
+    return best;
+  }
+  // How far along a line the walker has got: the newest line is laid under it
+  // as it goes, which is what makes the trail the snail's own.
+  function layProgress(i,t){
+    if(!walked.has(i)) return 0;
+    if(RM) return 1;
+    return clamp((t-walked.get(i))/LAY_TIME);
+  }
+
+  // ---- the screen ----
+  function iconButton(x,y,name,k,t,opt={}){const [sx,sy]=squash(btnPress[k]||-1e9,t); const size=opt.size||110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function pill(x,y,pw,ph,label,iconName,k,t,primary,dim){const [sx,sy]=squash(btnPress[k]||-1e9,t);
+    ctx.save(); ctx.translate(x+pw/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-pw/2,-ph/2);
+    if(dim) ctx.globalAlpha*=0.45;
+    card(0,0,pw,ph,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total=tw+60+14,x0=pw/2-total/2;
+    icon(iconName,x0+30,ph/2-3,52,col); text(label,x0+74,ph/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>winAt<0?0:dec((t-winAt)/0.25);
+  const squash=(at,t,amt=0.1,dur=0.18)=>{const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'undo','undo',t,{disabled:!trail.length});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 66px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('ONE LINE').width; ctx.letterSpacing='0px';
+    text('ONE LINE',cx,by-10,'700 66px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-44; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-18,lx+2,ly-32); stroke(C.leaf,7); leaf(lx+2,ly-28,36,-2.7); leaf(lx+2,ly-32,30,-0.5);
+    text('ONE STROKE, NO LIFTING',cx,by+36,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 8',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Jetty Walk',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  function capOf(n){
+    if(n===current) return C.terra;
+    if(current<0&&mayStart(n)) return C.good;
+    if(openAt(n)>0) return C.teal;
+    return C.spent;
+  }
+  function drawBoard(t){
+    const b=L.board,step=L.step;
+    card(M,b.y,COL,b.h,32,C.parchment,C.line,6);
+    const lost=open()?new Set(stranded()):new Set();
+    // every line, stone first and then what has been walked over it
+    for(let i=0;i<edges.length;i++){
+      const e=edges[i],f=layFrom.has(i)?layFrom.get(i):e[0];
+      const A=xy(f),B=xy(f===e[0]?e[1]:e[0]);
+      const en=dec((t-openedAt-0.14-i*0.02)/0.4); if(en<=0) continue;
+      ctx.save(); ctx.globalAlpha=en;
+      let sh=0;
+      if(!RM){const f=(t-(flash.get(i)||-1e9))/0.6; if(f>=0&&f<1) sh=step*0.035*Math.sin(9*Math.PI*f)*(1-f);}
+      ctx.translate(sh,0);
+      // the stone ford: a dark line the walk covers over
+      ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(B[0],B[1]);
+      stroke(lost.has(i)?C.stranded:C.bare,step*0.13);
+      const u=layProgress(i,t);
+      if(u>0){
+        const px=lerp(A[0],B[0],u),py=lerp(A[1],B[1],u);
+        ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(px,py);
+        stroke(C.laidDeep,step*0.15);
+        ctx.beginPath(); ctx.moveTo(A[0],A[1]); ctx.lineTo(px,py);
+        stroke(solvedAt>=0?C.laidHi:C.laid,step*0.115);
+      }
+      ctx.restore();
+    }
+    // the posts
+    for(const n of nodes){
+      const p=xy(n),st=stOf(n);
+      const en=dec((t-openedAt-0.2-(n%cols+Math.floor(n/cols))*0.03)/0.4); if(en<=0) continue;
+      let dy=0;
+      if(!RM){const d=(t-st.dipAt)/0.3; if(d>=0&&d<1) dy=step*0.04*Math.sin(Math.PI*d);
+        dy+= -step*0.14*(1-backOut(en));}
+      ctx.save(); ctx.globalAlpha=en; ctx.translate(p[0],p[1]+dy);
+      const sc=RM?1:lerp(0.7,1,backOut(en)); ctx.scale(sc,sc);
+      const ring=(t-st.ringAt)<0.8?C.good:null;
+      post(step*0.17,capOf(n),{ring});
+      ctx.restore();
+    }
+    // the walker, on the post it stands on or part way along the newest line
+    if(current>=0){
+      let p=xy(current),dir=1,moving=false;
+      if(trail.length){
+        const i=trail[trail.length-1],u=layProgress(i,t);
+        const A=xy(layFrom.get(i)),B=xy(current);
+        if(u<1){p=[lerp(A[0],B[0],u),lerp(A[1],B[1],u)]; moving=true;}
+        dir=B[0]>=A[0]?1:-1;
+      }
+      const hop=(solvedAt>=0&&!RM)?-step*0.1*Math.abs(Math.sin((t-solvedAt)*3.4)):0;
+      ctx.save(); ctx.translate(p[0],p[1]-step*0.34+hop);
+      snail(step*0.15,dir,{t,moving,eye:blink(t,1),
+        expr:solvedAt>=0?'joy':(lost.size?'strain':'happy')});
+      ctx.restore();
+    }
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const x=p.x+p.vx*(t-p.t0),y=p.y+p.vy*(t-p.t0)+160*(t-p.t0)*(t-p.t0)*0.5;
+      star4(x,y,p.r*(1-u*0.6),(t-p.t0)*3,rgba(p.col,1-u));}
+  }
+  function drawActions(t){const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    pill(M,L.act.y,260,130,'Reset','reset','reset',t,false,!open()||!trail.length);
+    pill(W-M-260,L.act.y,260,130,'Check','check','check',t,true,!open());
+    ctx.restore();}
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,140,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-160,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left')); ctx.restore();}
+  function drawWin(t){if(winAt<0) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,372,110,-0.7); leaf(1008,372,110,-2.45);
+      star4(212,214,22,t*0.8,C.sun); star4(880,232,16,t*1.1,C.sun);
+      text('Well done!',W/2,402,'700 96px '+FD,C.text); text('One stroke, not a line missed.',W/2,484,'600 34px '+FB,C.dim); ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('ol-caption');
+  function caption(){
+    if(!capEl) return;
+    if(solvedAt>=0){capEl.textContent='Solved in '+moves+' moves, '+(3-hintsLeft)+' hints, '+checks+(checks===1?' check':' checks')+'. '+cols+'×'+rows+' lattice, '+edges.length+' lines, '+nodes.length+' posts.'; return;}
+    const lost=stranded().length;
+    capEl.textContent=cols+'×'+rows+' · '+edges.length+' lines · '+walked.size+'/'+edges.length+' walked · '+
+      (starts.length?starts.length+' green posts':'free start')+(lost?' · '+lost+' stranded':'')+' · '+hintsLeft+' hints';
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout(t);
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); if(!open()) break;
+      if(current<0) begin(a.n,t); else step(a.n,t);}
+    if(tip.mood==='happy'&&open()&&t-tip.at>10){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawActions(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function hit(p,t){
+    if(winAt>=0) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'}; if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.act.y,260,130)) return {kind:'reset'};
+    if(inRect(p,W-M-260,L.act.y,260,130)) return {kind:'check'};
+    if(inRect(p,M,L.tip.y,COL,140)) return {kind:'tip'};
+    const n=nearestPost(p); if(n>=0) return {kind:'post',n};
+    return null;
+  }
+  // The stroke is a drag, and the drag only has to come within a thumb of the
+  // next post: the line between two posts is never in doubt, so there is
+  // nothing to aim at but the post itself.
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='post'&&open()){
+      drawing=true; cv.setPointerCapture(e.pointerId);
+      if(current<0) begin(hh.n,t); else step(hh.n,t);
+    } else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!drawing||!open()) return; e.preventDefault();
+    const t=now(),n=nearestPost(pt(e));
+    if(n<0||n===current) return;
+    if(current<0) begin(n,t); else step(n,t);
+  });
+  cv.addEventListener('pointerup',e=>{e.preventDefault(); const t=now();
+    if(drawing){drawing=false; pressTarget=null; return;}
+    const hh=hit(pt(e),t);
+    if(hh&&pressTarget&&hh.kind===pressTarget.kind){
+      if(hh.kind==='undo') undo(t); else if(hh.kind==='hint') hint(t);
+      else if(hh.kind==='reset') reset(t); else if(hh.kind==='check') check(t);
+      else if(hh.kind==='tip'){ if(open()){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);} }
+      else if(hh.kind==='camp') setup(diff,seed+1,t);}
+    pressTarget=null;});
+  cv.addEventListener('pointercancel',()=>{drawing=false; pressTarget=null;});
+
+  // ---- demo controls ----
+  const $=id=>document.getElementById(id);
+  const DIFFS=['Easy · 3×3','Medium · 4×3','Hard · 4×4'];
+  const rmBtn=$('ol-rm'),dfBtn=$('ol-diff');
+  if(rmBtn) rmBtn.addEventListener('click',()=>{RM=!RM; rmBtn.classList.toggle('on',RM); rmBtn.textContent='Reduce motion: '+(RM?'on':'off');});
+  if(dfBtn) dfBtn.addEventListener('click',()=>{const d=(diff+1)%3; setup(d,seed,now()); dfBtn.textContent=DIFFS[d];});
+  if($('ol-new')) $('ol-new').addEventListener('click',()=>setup(diff,seed+1,now()));
+  // Walks into a dead end on purpose: the step that strands part of the
+  // figure, which is the one mistake this puzzle has.
+  if($('ol-strand')) $('ol-strand').addEventListener('click',()=>{const t=now(); if(!open()) return;
+    // Walk a third of the way in first: starting at an odd post and stepping
+    // straight into the dead end strands everything at once, which is the
+    // rule at its most brutal but a poor picture of it.
+    if(current<0){const path=trailFrom();
+      for(let i=0;i<Math.max(2,Math.round(path.length*0.35));i++){ if(i===0) begin(path[0],t); else step(path[i],t); }}
+    for(let guard=0;guard<40;guard++){
+      if(stranded().length) return;
+      let bad=-1,any=-1;
+      for(const q of (adj.get(current)||[])){
+        if(walked.has(q.i)) continue;
+        if(any<0) any=q.to;
+        const rest=remaining().filter(x=>x!==q.i);
+        if(!walkableFrom(rest,q.to)){bad=q.to; break;}}
+      if(bad>=0){step(bad,t); return;}
+      if(any<0) return;
+      step(any,t);}});
+  if($('ol-solve')) $('ol-solve').addEventListener('click',()=>{const t=now(); if(!open()) return;
+    // Hierholzer's own trail, walked one line at a time
+    const path=trailFrom();
+    if(!path.length) return;
+    auto=[]; reset(t);
+    path.forEach((n,i)=>auto.push({at:t+0.12+i*0.16,n}));});
+  // The trail the generator would walk, from scratch: the win test's basis.
+  function trailFrom(){
+    if(!hasEulerianPath(edges,nodes)) return [];
+    const odd=oddNodes(edges,nodes),start=odd.length===2?odd[0]:nodes[0];
+    const a=new Map();
+    edges.forEach((e,i)=>{ for(const [x,y] of [[e[0],e[1]],[e[1],e[0]]]){
+      if(!a.has(x)) a.set(x,[]); a.get(x).push([y,i]);}});
+    const used=new Set(),st=[start],path=[];
+    while(st.length){const v=st[st.length-1]; let pick=null;
+      for(const pair of (a.get(v)||[])) if(!used.has(pair[1])){pick=pair; break;}
+      if(!pick) path.push(st.pop()); else {used.add(pick[1]); st.push(pick[0]);}}
+    return path.reverse();
+  }
+
+  // ---- start, where the URL asks ----
+  diff=Math.max(0,Math.min(2,parseInt(Q.get('d')||'0')||0));
+  seed=parseInt(Q.get('seed')||'23')||23;
+  setup(diff,seed,0);
+  L=layout(0);
+  if(dfBtn) dfBtn.textContent=DIFFS[diff];
+  if(rmBtn&&RM){rmBtn.classList.add('on'); rmBtn.textContent='Reduce motion: on';}
+  function walkAhead(n,when){
+    const path=trailFrom();
+    for(let i=0;i<Math.min(n+1,path.length);i++){
+      if(i===0) begin(path[0],when); else step(path[i],when);
+      if(trail.length) walked.set(trail[trail.length-1],when);}
+  }
+  if(Q.get('part')==='1'){
+    // Two thirds of the figure walked, the walker part way along: the working
+    // board, which is the one worth a shot.
+    walkAhead(Math.max(1,Math.round(edges.length*0.65)),-9);
+    moves=walked.size; caption(); after(0);}
+  if(Q.get('strand')==='1'){
+    walkAhead(Math.max(1,Math.round(edges.length*0.3)),-9);
+    for(let guard=0;guard<40&&!stranded().length;guard++){
+      let bad=-1,any=-1;
+      for(const q of (adj.get(current)||[])){
+        if(walked.has(q.i)) continue;
+        if(any<0) any=q.to;
+        const rest=remaining().filter(x=>x!==q.i);
+        if(!walkableFrom(rest,q.to)){bad=q.to; break;}}
+      const go=bad>=0?bad:any;
+      if(go<0) break;
+      step(go,-9);
+      walked.set(trail[trail.length-1],-9);
+      if(bad>=0) break;}
+    moves=walked.size; caption(); after(0);}
+  if(Q.get('win')==='1'){openedAt=-118; hintsLeft=2; checks=1;
+    walkAhead(edges.length,-9);
+    moves=walked.size; caption(); solve(0);}
   frame();
 })();
 
