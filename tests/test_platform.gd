@@ -3,9 +3,9 @@ extends RefCounted
 ## The stone platform under a 3D board: a stretched slab plus a ring of moss
 ## rim pieces on its lip (amendment B). Pure node building, so it runs headless.
 
-const Platform = preload("res://core/platform.gd")
-const Models = preload("res://core/models.gd")
-const Placeholders = preload("res://core/placeholders.gd")
+const Platform = preload("res://legacy/core/platform.gd")
+const Models = preload("res://legacy/core/models.gd")
+const Placeholders = preload("res://legacy/core/placeholders.gd")
 
 const EPS := 0.001
 

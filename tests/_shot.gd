@@ -18,7 +18,12 @@ var _idx := 0
 var _entries: Array = []
 
 func _initialize() -> void:
-	_entries = load("res://ui/registry.gd").PUZZLES
+	# The three `soon` cards name a board that has no flat version, so they
+	# have no script to open; the harness walks the ones that do.
+	_entries = []
+	for e in load("res://ui/registry.gd").PUZZLES:
+		if not e.get("soon", false):
+			_entries.append(e)
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")

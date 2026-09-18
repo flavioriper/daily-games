@@ -1,6 +1,7 @@
 extends SceneTree
 
-## The first screen, both pages of it, after the entrance has landed.
+## The first screen, after the entrance has landed, and again with the More
+## sheet up.
 ##
 ##     godot --path . --resolution 540x960 --script res://tests/_shot_menu.gd
 ##
@@ -38,7 +39,7 @@ func _process(delta: float) -> bool:
 		RenderingServer.force_draw()
 		root.get_texture().get_image().save_png("/tmp/shot_menu_1.png")
 		print("saved /tmp/shot_menu_1.png")
-		_menu.show_page(1)
+		_menu.legacy_sheet.open()
 		_phase = 1
 	elif _phase == 1 and _t >= SECOND_AT:
 		RenderingServer.force_draw()

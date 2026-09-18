@@ -54,6 +54,10 @@ func _process(delta: float) -> bool:
 			for e in entries:
 				if e.id == _id:
 					_entry = e
+			if _entry.get("soon", false):
+				push_error("_shot_anim: %s has no flat board to shoot" % _id)
+				quit(1)
+				return true
 			_menu._open(_entry)
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 			_puzzle = _host._puzzle

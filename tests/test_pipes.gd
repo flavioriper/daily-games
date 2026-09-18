@@ -6,7 +6,7 @@ extends RefCounted
 ## checked with the same verifier the generator gates itself on.
 ## Spec: docs/superpowers/specs/2026-09-15-pipes-iso-design.md.
 
-const Gen = preload("res://puzzles/pipes_iso_gen.gd")
+const Gen = preload("res://legacy/puzzles/pipes_iso_gen.gd")
 
 static func run(t) -> void:
 	_test_rotations(t)

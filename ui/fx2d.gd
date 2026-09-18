@@ -14,11 +14,10 @@ extends Node2D
 
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
-const Fx = preload("res://world/fx.gd")
 
 const PUFF_POOL := 4
 const SPARKLE_POOL := 3
-## Fx.star_texture() is a 32 px white four-point star; a particle's scale
+## star_texture() is a 32 px white four-point star; a particle's scale
 ## multiplies that, so 0.44 to 0.52 draws a star 14 to 17 px across. That is
 ## the top of the 12 to 16 px asked for, because the star's four tips are
 ## needle-thin and its solid body is only about seven tenths of the box:
@@ -118,7 +117,7 @@ static func _emitter(nm: String, amount: int, life: float, spread: float, v0: fl
 	p.angle_max = 90.0
 	p.angular_velocity_min = -120.0
 	p.angular_velocity_max = 120.0
-	p.texture = Fx.star_texture()
+	p.texture = star_texture()
 	p.scale_amount_min = STAR_SCALE_MIN
 	p.scale_amount_max = STAR_SCALE_MAX
 	var shrink := Curve.new()
@@ -132,3 +131,24 @@ static func _emitter(nm: String, amount: int, life: float, spread: float, v0: fl
 	fade.add_point(0.6, Color(1.0, 1.0, 1.0, 1.0))
 	p.color_ramp = fade
 	return p
+
+## The particles' star: a 32 px white four-pointed sprite, built once and
+## shared by every pool. `world/fx.gd` has its own copy of this for the 3D
+## boards; legacy is frozen, and nothing live may load it, so the flat
+## screens own theirs.
+const STAR_SIZE := 32
+static var _star: ImageTexture
+
+static func star_texture() -> ImageTexture:
+	if _star != null:
+		return _star
+	var img := Image.create(STAR_SIZE, STAR_SIZE, false, Image.FORMAT_RGBA8)
+	for y in STAR_SIZE:
+		for x in STAR_SIZE:
+			var u := (x + 0.5) / STAR_SIZE * 2.0 - 1.0
+			var v := (y + 0.5) / STAR_SIZE * 2.0 - 1.0
+			var d := sqrt(absf(u)) + sqrt(absf(v))
+			var a := clampf((1.05 - d) / 0.1, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	_star = ImageTexture.create_from_image(img)
+	return _star

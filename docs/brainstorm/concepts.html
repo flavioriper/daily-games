@@ -200,6 +200,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-snakeapple .refs img{border-radius:14px}
 #tab-snakeapple .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #sa-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- the flat first screen mock extras ---------- */
+#tab-menu .phone{background:#f6efe3}
+#tab-menu .phone canvas{touch-action:none;cursor:pointer}
+#tab-menu .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-menu .refs figure{margin:0}
+#tab-menu .refs img{border-radius:14px}
+#tab-menu .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#mn-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -208,7 +216,8 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 <header>
   <div class="brand"><h1>Peeplet Daily · Concepts</h1><span>design notes with a picture attached, one tab per puzzle</span></div>
   <nav class="tabs" role="tablist">
-    <button data-tab="pipes" class="active">Pipes</button>
+    <button data-tab="menu" class="active">Menu &middot; flat</button>
+    <button data-tab="pipes">Pipes</button>
     <button data-tab="horse">Horse Pen</button>
     <button data-tab="binairo">Binairo · flat</button>
     <button data-tab="codebreak">Code Break · flat</button>
@@ -225,7 +234,117 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
 <main>
 <!-- ============================ PIPES ============================ -->
-<section class="tab-panel active" id="tab-pipes">
+<section class="tab-panel active" id="tab-menu">
+  <h2>The first screen &middot; flat <span class="pill blue">concept &middot; 2026-09-18</span></h2>
+  <p class="lede">The campsite goes, and a page of cards takes its place. Twelve boards in a grid of three, a day row over them, a bottom bar under them, and the wordmark drawn in ink rather than extruded in wood. Nine of the twelve open a flat board today; three are named and marked <em>soon</em>. The whole 3D game &mdash; the camp, the thirteen island boards, How Big? and the pipeline behind them &mdash; moves to <code>legacy/</code> and stays reachable behind <b>More</b>.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-menu-flat.png" alt="The user's mock: a cream first screen with the Daily wordmark, a sun and moon pair, a Day 4 row and a grid of nine illustrated puzzle cards over a bottom nav bar">
+        <figcaption>The user's mock, 2026-09-18. Everything on this page follows it: the ink wordmark, the sun-and-moon pair beside it, the day row, the card grid and the bottom bar. Two things depart from it &mdash; the grid holds <b>twelve</b> rather than nine, and the screen is 9:16 rather than the mock's 2:3, which is where the fourth row comes from.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-menu-painted.png" alt="The painted campsite menu: the scout on a dock reading a map, the river behind him, a lantern on the path and trees closing the frame">
+        <figcaption>What is being replaced, and it is not nothing: the painted campsite, its shift lens, its own light and soft focus, and a live diorama in every card. Section 2 is the argument for giving that up; section 7 is what happens to it.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="mn" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="mn-rm">Reduce motion: off</button>
+        <button id="mn-day">Day 4</button>
+        <button id="mn-more">Open More</button>
+        <button id="mn-enter">Replay entrance</button>
+      </div>
+      <div id="mn-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It works: <b>tap a card</b> and it says what would open, tap a <em>soon</em> card and it says why it will not, and <b>More</b> opens the legacy list the old boards live behind. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-18: the grid holds <b>twelve</b>; the three without a flat board are <b>Pipes, Horse Pen and Snake Apple</b>, drawn as <em>soon</em> cards; the hearts, the calendar badge and the day row's chevron are <b>decoration</b> for now; the whole 3D stack moves to <code>legacy/</code> and is reached through <b>More</b>. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Header</td><td>430</td><td>Settings and calendar at the top right, then <code>Daily</code> in ink at 150 with the sprig over it and the two-line motto under, and the sun-and-moon pair at the right. The pair is <code>ui/faces/sun_face.gd</code> and <code>moon_face.gd</code> at 180 &mdash; the same two characters Binairo's board plays with, which is why the first screen and the first board look like one game.</td></tr>
+    <tr><td class="k">Day row</td><td>180</td><td>A tree in a rounded thumb, <code>Day 4</code> at 56 over the day's name at 36, three hearts, and a chevron button. <code>Progress.day()</code> and <code>Progress.island_name()</code> already supply both strings.</td></tr>
+    <tr><td class="k">Grid</td><td>1016</td><td>Twelve cards, three across, four down: 320 wide by 254 tall with a 20 gutter. Picture 118, name 34, blurb two lines at 24, and a 68 go button in the card's own colour at the bottom right.</td></tr>
+    <tr><td class="k">Bottom bar</td><td>150</td><td>Home, Stats, Streak, More. Home is on a pale pill in <code>ACCENT_2</code>; the other three are ink. Only Home and More do anything.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Margins are the HUD's 40, gutters its 20, and the bar sits above the safe-area inset the way <code>ui/safe_area.gd</code> already hands every screen. Four rows fit because the phone is 9:16 and the mock was 2:3: at 1080&times;1994 the grid has 1016 to spend and wants 1016.</p>
+
+  <h3>2. What flat buys here, and what it costs <span class="pill rose">the argument</span></h3>
+  <ul>
+    <li><b>The first screen should look like the game.</b> Nine of twelve boards are flat cream screens with drawn characters. A painted 3D campsite in front of them promises a game that no longer exists behind the cards &mdash; and it is the one screen every player sees first.</li>
+    <li><b>Twelve cards do not fit a hero.</b> The camp needs a strip 250 tall at the least and wants far more; the cards need 1016 of a 1994 screen. Pages of nine were the compromise, and the page buttons were furniture the player had to work. Flat, the whole registry stands on one screen and the pager goes.</li>
+    <li><b>The cards stop being three hundred draw calls.</b> A page of nine dioramas measured 318 of the 855 budget, each in its own <code>SubViewport</code> with its own <code>World3D</code>; the menu idled at about 13&nbsp;ms. Twelve drawn cards are twelve cached meshes. The number to beat is in section 8, and it is the one claim on this page that has to be <em>measured</em> rather than argued.</li>
+    <li><b>What it costs is the best-looking screen in the game.</b> The campsite is painted, lit and framed by a shift lens, its scout is animated, its grass blows, and the cards' dioramas are the actual pieces of the actual board. Cards on cream cannot answer that, and pretending otherwise would be dishonest: this trades a picture for a product. The camp is not deleted &mdash; section 7 &mdash; but nobody will see it by accident again.</li>
+  </ul>
+
+  <h3>3. The twelve cards <span class="pill blue">decided</span></h3>
+  <p>Each card's picture is drawn in code from the cast the flat boards already own (<code>ui/faces/</code>), never a render of a model and never an image file. A card costs one small builder, the way a diorama did.</p>
+  <table>
+    <tr><th style="width:16%">Card</th><th style="width:34%">Picture, and where it comes from</th><th>State</th></tr>
+    <tr><td class="k">Binairo</td><td>The sun and the moon, overlapping &mdash; <code>sun_face.gd</code>, <code>moon_face.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Code Break</td><td>Three friends in a row on a tray &mdash; <code>friends.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Balance</td><td>A beam tipping, a fruit on each pan &mdash; <code>fruit.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Untangle</td><td>Four lanterns, two cords crossing &mdash; <code>lantern_face.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Shikaku</td><td>A field cut into two plots with a numeral on one &mdash; <code>marker_face.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Tents</td><td>A tent between two conifers &mdash; <code>tent_face.gd</code>, <code>conifer_face.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Light Up</td><td>A lit lamp on a tile beside a black block &mdash; <code>court_lantern.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">One Line</td><td>The snail on a short trail of posts &mdash; <code>snail_face.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Nonogram</td><td>A four-square of tiles with two clue numbers &mdash; <code>mosaic_tile.gd</code></td><td>plays</td></tr>
+    <tr><td class="k">Pipes</td><td>An elbow of pipe over a block</td><td><b>soon</b> &mdash; new drawing</td></tr>
+    <tr><td class="k">Horse Pen</td><td>A hay bale and a horse's silhouette</td><td><b>soon</b> &mdash; new drawing</td></tr>
+    <tr><td class="k">Snake Apple</td><td>The worm reaching for an apple</td><td><b>soon</b> &mdash; new drawing</td></tr>
+  </table>
+  <p><b>A <em>soon</em> card is honest and quiet.</b> It keeps its picture and its name, drops its blurb's promise for the word <code>SOON</code> in a pale pill where the go button would be, loses the button entirely, and sits at 55% ink so the row reads as three that are not ready rather than three that are broken. Tapping one says what it is waiting for and does not open anything. They are the last row, together: three greyed cards scattered through the grid reads as a bug, three in a row reads as a roadmap.</p>
+
+  <h3>4. The day row, the hearts and the calendar <span class="pill blue">decided</span></h3>
+  <p>The day row carries what the camp's wooden day sign carried: <code>Day N</code> and the day's name, both already on disk in <code>core/progress.gd</code>. It is the biggest thing on the screen after the grid, and for now it is the only thing on it that does not lead anywhere.</p>
+  <p><b>The hearts, the calendar button and the chevron are decoration</b>, by decision on 2026-09-18. They are drawn exactly as the mock draws them &mdash; two hearts filled of three, a <code>1</code> badge on the calendar &mdash; and pressing the two buttons squashes them and does nothing else. This page records that plainly so nobody later reads a progression system into a picture of one: <em>there is no three-a-day goal, no streak health and no calendar</em>. What the hearts will count is the next thing this screen needs designed.</p>
+
+  <h3>5. More, and where the old game went <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>Nothing is deleted.</b> The thirteen island boards, How Big?, the campsite menu, the stage, the toon pipeline and every <code>.glb</code> move to <code>legacy/</code> and keep working.</li>
+    <li><b>More is the door.</b> The fourth tab opens a sheet listing what is in there, and each line opens that board on the old stage under the old chrome, exactly as it runs today. Stats and Streak are drawn and inert.</li>
+    <li><b>The stage is mounted on demand.</b> <code>world/main.tscn</code> stops carrying it, so the first screen and the nine flat boards never build a <code>World3D</code> at all; opening anything from More mounts <code>legacy/world/stage.tscn</code> first, and leaving it frees it.</li>
+    <li><b>The isolation has to be real, not a folder name.</b> Two things currently tie the live 2D game to the 3D stack, and both are cut as part of this work: <code>core/puzzle_base.gd</code> extends <code>StageView</code>, so every flat board inherits stage mounting, camera fitting and ray picking it never calls; and <code>ui/flat/flat_host.gd</code> extends the island host, whose chrome reaches <code>sign_view.gd</code> &rarr; <code>model_view.gd</code> &rarr; the whole toon and model pipeline. After the cut, <code>PuzzleBase</code> is a plain <code>Control</code> with the board contract, the island boards extend a <code>legacy/core/stage_board.gd</code> that carries what StageView carried, and the host splits into a shell-neutral base with <code>legacy/ui/island_host.gd</code> and <code>ui/flat/flat_host.gd</code> as its two chromes. Then the main menu loads no legacy code at all, and retiring the folder later really is deleting it.</li>
+  </ul>
+
+  <h3>6. Motion <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The header fades in over 0.3; the day row follows at 0.1; the cards rise 60 and fade in reading order, 0.05 apart and capped at 0.4 &mdash; the wave <code>Motion.stagger</code> already gives the current grid. The bottom bar comes up last.</td></tr>
+    <tr><td class="k">Idle</td><td>The sun's rays turn once in 40&nbsp;s and the moon rocks, as they do on Binairo's board. Nothing else moves; the campsite's wind and pollen do not come to this screen.</td></tr>
+    <tr><td class="k">Press</td><td>The whole card squashes 6% and its paper darkens, which is <code>ui/hud/puzzle_card.gd</code>'s existing feel. A <em>soon</em> card squashes half as far and springs back.</td></tr>
+    <tr><td class="k">Opening</td><td>The card lifts and the grid fades under it; the board's own chrome slides in from the top. Returning reverses it and the grid re-enters without the wave &mdash; a 0.4&nbsp;s stagger every time you close a puzzle is a wait, not a delight.</td></tr>
+    <tr><td class="k">Reduce motion</td><td>Everything above is instant, and the rays and the rocking stop, as <code>Motion</code> already enforces everywhere else.</td></tr>
+  </table>
+
+  <h3>7. What this replaces <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:34%">Goes</th><th>Replaced by</th></tr>
+    <tr><td class="k"><code>world/camp.gd</code> and the whole campsite</td><td>Nothing. The grid starts at the top of the screen.</td></tr>
+    <tr><td class="k"><code>ui/hud/title_view.gd</code> &mdash; the extruded wordmark</td><td>A <code>Label</code> in Fredoka 700 at 150 with a drawn sprig, the <code>Wordmark2D</code> variation the flat boards already use, one size up.</td></tr>
+    <tr><td class="k"><code>ui/hud/card_scene.gd</code> &mdash; the dioramas</td><td>One drawn picture per card, from <code>ui/faces/</code>.</td></tr>
+    <tr><td class="k"><code>ui/hud/model_view.gd</code> and its <code>SubViewport</code>s</td><td>Nothing on this screen; it moves to legacy with the island chrome that still uses it.</td></tr>
+    <tr><td class="k">The pager</td><td>Nothing. Twelve cards fit.</td></tr>
+    <tr><td class="k">The camp's grade, soft focus, wind and pollen</td><td>Nothing on this screen. <code>Stage.show_setting</code> keeps them for the legacy menu, which is the only screen left that asks.</td></tr>
+  </table>
+
+  <h3>8. What has to be measured <span class="pill rose">owed</span></h3>
+  <ul>
+    <li><b>Draw calls and idle frame time</b>, against the campsite's 338 and ~13&nbsp;ms at 1080&times;1920. Twelve drawn cards should be a fraction of that; until <code>tests/_shot_menu.gd</code> prints it, "cheaper" is a claim.</li>
+    <li><b>The 254-tall card on a real phone.</b> Three lines of blurb do not fit; two do. Whether two are enough to tell twelve puzzles apart is a thing to look at on the device, not in a browser.</li>
+    <li><b>Twelve cached face meshes at once.</b> Gl_compatibility pays per draw command, and twenty live vector faces measured 4&nbsp;ms once before they were cached into meshes. These are cards, not boards, so each should be one command &mdash; worth confirming rather than assuming.</li>
+  </ul>
+</section>
+
+<section class="tab-panel" id="tab-pipes">
   <h2>Pipes · make the water flow <span class="pill blue">concept · 2026-09-15</span><span class="pill">built · 2026-09-15</span></h2>
   <p class="lede">A floating voxel island seen from the corner. Water starts in a glowing tank on a high block and has to reach the pool at the drain. The player builds the pipeline from a tray of pieces, over ledges and down cliff faces. Water runs level and downhill on its own; every climb needs a pump. Tall ground hides part of the route, so you turn the island to see behind it.</p>
 
@@ -1398,6 +1517,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
         <button id="sa-diff">Easy · 7×8, 3 apples</button>
         <button id="sa-new">New puzzle</button>
         <button id="sa-stuck">Get stuck on purpose</button>
+        <button id="sa-fall">Walk off the edge</button>
         <button id="sa-solve">Solve it</button>
       </div>
       <div id="sa-caption"></div>
@@ -1475,7 +1595,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Held-swipe crawling is fast and it is also easy to overshoot.</b> A half-cell a step means a careless sweep along a shelf can walk one cell further than you meant, and here that can be the cell that strands you. The tap is the precise alternative, and undo is free, but the ratio is a thumb question.</li>
     <li>Whether the daily should ship a hand-drawn level now and then. The generator makes fair levels, never shapely ones — no level it draws will ever spell out a picture in apples the way the reference's advert does.</li>
   </ul>
-  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a level half eaten, <code>?stuck=1</code> for a worm that has stranded itself and been checked, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#snakeapple</code>.</p>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a level half eaten, <code>?stuck=1</code> for a worm that has stranded itself and been checked, <code>?fall=1</code> for a worm that has walked off the edge, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#snakeapple</code>.</p>
 </section>
 </main>
 
@@ -8457,6 +8577,26 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     const out=solve(lv,cells,mask,SPECS[diff].budget);
     if(!out.moves){tipSet('This one cannot be finished from here any more. Undo or reset.','strain',t); return;}
     auto=out.moves.map((d,i)=>({at:t+0.25+i*0.22,d}));});
+  // The fewest moves to a step off the edge, found by a small search, and
+  // played through the board so the fall animates. The one way to lose the
+  // reference, kept here as a state to look at.
+  function fallPath(){
+    const start=stateKey(cells,mask),seen=new Map([[start,null]]);
+    let queue=[{cells,mask,key:start}],spent=0;
+    while(queue.length&&spent<20000){
+      const next=[];
+      for(const st of queue) for(let d=0;d<4;d++){
+        spent++;
+        const o=applyMove(lv,st.cells,st.mask,d,false); if(!o||o.win) continue;
+        if(o.dead){const ms=[d]; let k=st.key; while(seen.get(k)){const step=seen.get(k); ms.unshift(step.d); k=step.from;} return ms;}
+        const k=stateKey(o.cells,o.mask); if(seen.has(k)) continue;
+        seen.set(k,{from:st.key,d}); next.push({cells:o.cells,mask:o.mask,key:k});}
+      queue=next;}
+    return null;
+  }
+  if($('sa-fall')) $('sa-fall').addEventListener('click',()=>{const t=now(); if(!open()||fallen) return;
+    const ms=fallPath(); if(!ms){tipSet('No edge to walk off from here.','puzzled',t); return;}
+    auto=ms.map((d,i)=>({at:t+0.25+i*0.22,d}));});
   // Crawls at random until the level cannot be finished any more, and tries
   // again from where it started if a run of 26 moves fails to spoil it.
   // Measured over 60 levels a step: a random walker strands 83% of easy
@@ -8492,7 +8632,475 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   }
   if(Q.get('part')==='1'){play(Math.max(1,Math.round(best.length*0.55)),-9); after(0); caption();}
   if(Q.get('stuck')==='1'){playStuck(-9); anim=null; check(0);}
+  if(Q.get('fall')==='1'){const ms=fallPath()||[]; for(const d of ms) move(d,-9); anim=null;}
   if(Q.get('win')==='1'){openedAt=-86; hintsLeft=2; checks=1; play(best.length,-9); anim=null; pour(0);}
+  frame();
+})();
+
+/* ---------- the flat first screen mock ---------- */
+(function(){
+  const cv=document.getElementById('mn'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const now=()=>T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  // core/palette.gd, the same names. Nothing here is new paint: the cards are
+  // SURFACE on PAPER with a SURFACE_HI bottom edge, exactly as every flat
+  // board's cards are, and a go button wears the puzzle's own CAT colour.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    accent:'#4c9a94',accent2:'#e2825f',sun:'#f5a623',sunRay:'#f9c04a',sunDeep:'#d88a12',
+    moon:'#7d8fd9',moonDeep:'#6273c0',cheek:'#f4a7a0',white:'#ffffff',
+    leaf:'#6ba845',leafDeep:'#4f8a31',bark:'#8a6a4a',berry:'#e2645c',cloud:'#a9c2dd',
+    slate:'#3f4652',stone:'#ede2cc',stoneDeep:'#d8cbb2',water:'#4fa8ef',hay:'#d9b871',
+    good:'#7cb06b',bad:'#d9605a',parchment:'#f3e9d2'};
+  const CAT=['#4c9a94','#e2825f','#7cb06b','#9b86c9','#d9605a','#6bb1d6','#d3b04a','#9a948c'];
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],u))+','+Math.round(lerp(A[1],B[1],u))+','+Math.round(lerp(A[2],B[2],u))+')';};
+
+  function rr(x,y,w,h,r){ctx.beginPath();const k=Math.min(r,w/2,h/2);
+    ctx.moveTo(x+k,y);ctx.lineTo(x+w-k,y);ctx.quadraticCurveTo(x+w,y,x+w,y+k);
+    ctx.lineTo(x+w,y+h-k);ctx.quadraticCurveTo(x+w,y+h,x+w-k,y+h);
+    ctx.lineTo(x+k,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-k);
+    ctx.lineTo(x,y+k);ctx.quadraticCurveTo(x,y,x+k,y);ctx.closePath();}
+  // A paper card: the fill, a deeper strip along the bottom, a hairline.
+  function paper(x,y,w,h,r,fill,edge){
+    rr(x,y+6,w,h-6,r); ctx.fillStyle=edge||C.surfaceHi; ctx.fill();
+    rr(x,y,w,h-8,r); ctx.fillStyle=fill||C.surface; ctx.fill();
+    rr(x,y,w,h-8,r); ctx.strokeStyle=rgba(C.line,.5); ctx.lineWidth=2; ctx.stroke();}
+  function txt(s,x,y,font,size,col,align,weight){
+    ctx.font=(weight||600)+' '+size+'px '+font; ctx.fillStyle=col;
+    ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic'; ctx.fillText(s,x,y);}
+  function circle(x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();}
+  function chevron(x,y,s,col,dir){ctx.beginPath();ctx.lineWidth=s*0.26;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle=col; const d=dir||1;
+    ctx.moveTo(x-s*0.28*d,y-s*0.42);ctx.lineTo(x+s*0.24*d,y);ctx.lineTo(x-s*0.28*d,y+s*0.42);ctx.stroke();}
+
+  // ---- the cast, as ui/faces/ draws it: a body, a face of two eyes and a
+  // smile, and cheeks. The card pictures are built out of these, which is the
+  // whole point -- the first screen is drawn by the boards' own characters.
+  function smile(x,y,r,col,open){ctx.beginPath();ctx.lineWidth=Math.max(2,r*0.11);ctx.lineCap='round';
+    ctx.strokeStyle=col||C.text;ctx.arc(x,y-r*0.06,r*0.34,0.18*Math.PI,0.82*Math.PI);ctx.stroke();
+    circle(x-r*0.30,y-r*0.22,r*0.095,col||C.text); circle(x+r*0.30,y-r*0.22,r*0.095,col||C.text);
+    if(open!==false){circle(x-r*0.52,y+r*0.06,r*0.13,rgba(C.cheek,.85)); circle(x+r*0.52,y+r*0.06,r*0.13,rgba(C.cheek,.85));}}
+  function sunFace(x,y,r,spin){
+    ctx.save();ctx.translate(x,y);ctx.rotate(spin||0);
+    for(let i=0;i<8;i++){const a=i*Math.PI/4; ctx.save();ctx.rotate(a);
+      ctx.beginPath();ctx.lineWidth=r*0.20;ctx.lineCap='round';ctx.strokeStyle=C.sunRay;
+      ctx.moveTo(0,-r*1.06);ctx.lineTo(0,-r*1.46);ctx.stroke();ctx.restore();}
+    ctx.restore();
+    circle(x,y+r*0.06,r,rgba(C.sunDeep,.30)); circle(x,y,r,C.sun);
+    ctx.beginPath();ctx.arc(x,y,r*0.82,Math.PI*1.05,Math.PI*1.55);ctx.lineWidth=r*0.12;
+    ctx.strokeStyle=rgba(C.white,.45);ctx.lineCap='round';ctx.stroke();
+    smile(x,y,r);}
+  function moonFace(x,y,r,rock){
+    ctx.save();ctx.translate(x,y);ctx.rotate(rock||0);
+    ctx.beginPath();ctx.arc(0,r*0.06,r,0,Math.PI*2);ctx.fillStyle=rgba(C.moonDeep,.35);ctx.fill();
+    ctx.save();ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.clip();
+    ctx.fillStyle=C.moon;ctx.fillRect(-r,-r,r*2,r*2);
+    ctx.beginPath();ctx.arc(r*0.62,-r*0.18,r*0.86,0,Math.PI*2);
+    ctx.globalCompositeOperation='destination-out';ctx.fill();
+    ctx.globalCompositeOperation='source-over';ctx.restore();
+    smile(-r*0.22,r*0.06,r*0.78,C.white);
+    ctx.restore();}
+  function fruit(x,y,r,col,stem){
+    circle(x,y+r*0.08,r,rgba(C.text,.14)); circle(x,y,r,col);
+    ctx.beginPath();ctx.lineWidth=r*0.16;ctx.strokeStyle=C.leafDeep;ctx.lineCap='round';
+    ctx.moveTo(x,y-r*0.92);ctx.lineTo(x+r*0.06,y-r*1.3);ctx.stroke();
+    if(stem!==false){ctx.beginPath();ctx.ellipse(x+r*0.44,y-r*1.22,r*0.34,r*0.17,-0.5,0,Math.PI*2);ctx.fillStyle=C.leaf;ctx.fill();}
+    smile(x,y,r*0.9);}
+  function leafSprig(x,y,s,a){
+    ctx.save();ctx.translate(x,y);ctx.rotate(a||0);
+    ctx.beginPath();ctx.lineWidth=s*0.13;ctx.strokeStyle=C.leafDeep;ctx.lineCap='round';
+    ctx.moveTo(0,s*0.5);ctx.lineTo(0,-s*0.26);ctx.stroke();
+    for(const d of [-1,1]){ctx.beginPath();
+      ctx.ellipse(d*s*0.42,-s*0.34,s*0.46,s*0.25,d*0.62,0,Math.PI*2);
+      ctx.fillStyle=d<0?C.leaf:C.leafDeep;ctx.fill();}
+    ctx.restore();}
+  function tentShape(x,y,s,col){
+    ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*0.92,y+s*0.62);ctx.lineTo(x-s*0.92,y+s*0.62);ctx.closePath();
+    ctx.fillStyle=col||'#e9c48a';ctx.fill();
+    ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x+s*0.26,y+s*0.62);ctx.lineTo(x-s*0.26,y+s*0.62);ctx.closePath();
+    ctx.fillStyle=rgba(C.bark,.55);ctx.fill();}
+  function conifer(x,y,s){
+    ctx.fillStyle=C.bark; ctx.fillRect(x-s*0.09,y+s*0.34,s*0.18,s*0.38);
+    for(let i=0;i<3;i++){const k=1-i*0.22, yy=y+s*0.42-i*s*0.42;
+      ctx.beginPath();ctx.moveTo(x,yy-s*0.86*k);ctx.lineTo(x+s*0.56*k,yy);ctx.lineTo(x-s*0.56*k,yy);ctx.closePath();
+      ctx.fillStyle=i===0?C.leafDeep:C.leaf;ctx.fill();}}
+  function lantern(x,y,r,lit){
+    circle(x,y+r*0.1,r,rgba(C.text,.12));
+    circle(x,y,r,lit?'#ffe2a8':'#f2cf9a');
+    ctx.beginPath();ctx.lineWidth=r*0.16;ctx.strokeStyle=rgba(C.bark,.7);
+    ctx.moveTo(x,y-r);ctx.lineTo(x,y-r*1.5);ctx.stroke();
+    smile(x,y,r*0.86);}
+
+  // ---- the twelve cards ----
+  const CARDS=[
+    {id:'binairo',   name:'Binairo',    short:'Suns and moons,\nnever three alike.'},
+    {id:'mastermind',name:'Code Break', short:'Crack the hidden\nrow of friends.'},
+    {id:'balance',   name:'Balance',    short:'What does each\nfruit weigh?'},
+    {id:'untangle',  name:'Untangle',   short:'Pull the lanterns\nuntil none cross.'},
+    {id:'shikaku',   name:'Shikaku',    short:'Cut the field into\nnumbered plots.'},
+    {id:'tents',     name:'Tents',      short:'One tent beside\nevery tree.'},
+    {id:'lightup',   name:'Light Up',   short:'Light every cell,\nblind every bulb.'},
+    {id:'oneline',   name:'One Line',   short:'Every line, walked\nin one stroke.'},
+    {id:'nonogram',  name:'Nonogram',   short:'The numbers make\na picture.'},
+    {id:'pipes',     name:'Pipes',      short:'Route the water\nuphill with pumps.', soon:1},
+    {id:'horse',     name:'Horse Pen',  short:'Pen the horse in\nwith hay bales.',   soon:1},
+    {id:'snake',     name:'Snake Apple',short:'Eat every apple,\nthen burrow.',      soon:1},
+  ];
+
+  // Each picture is drawn into a box 320 wide and 118 tall, centred on (cx,cy).
+  function art(id,cx,cy,t){
+    const spin=RM?0:t*(Math.PI*2/40), rock=RM?0:Math.sin(t*1.1)*0.07;
+    switch(id){
+    case 'binairo':
+      sunFace(cx-42,cy+2,34,spin); moonFace(cx+40,cy-2,30,rock); break;
+    case 'mastermind': {
+      paper(cx-108,cy-30,216,68,16,'#e0bd90','#c39a68');
+      const cols=[[C.sun,'sun'],[C.berry,'b'],[C.cloud,'c']];
+      cols.forEach((c,i)=>{const x=cx-64+i*64; circle(x,cy+2,25,rgba(C.text,.12));
+        circle(x,cy-2,25,c[0]); smile(x,cy-2,23);});
+      break;}
+    case 'balance': {
+      const tilt=RM?0.10:0.10+Math.sin(t*0.9)*0.035;
+      ctx.save();ctx.translate(cx,cy+18);
+      ctx.beginPath();ctx.moveTo(-18,30);ctx.lineTo(18,30);ctx.lineTo(0,-8);ctx.closePath();
+      ctx.fillStyle=C.bark;ctx.fill();
+      // The fruit ride the beam, so they tip with it instead of floating.
+      ctx.rotate(tilt);
+      rr(-98,-14,196,15,8);ctx.fillStyle='#c8a17a';ctx.fill();
+      fruit(-64,-42,26,C.berry); fruit(66,-38,22,'#e3d06a');
+      ctx.restore(); break;}
+    case 'untangle': {
+      const P=[[-78,-30],[70,-34],[-56,34],[80,28]];
+      ctx.lineWidth=7;ctx.strokeStyle=rgba(C.bark,.55);ctx.lineCap='round';
+      const E=[[0,3],[1,2],[0,1],[2,3]];
+      E.forEach(e=>{ctx.beginPath();ctx.moveTo(cx+P[e[0]][0],cy+P[e[0]][1]);
+        ctx.lineTo(cx+P[e[1]][0],cy+P[e[1]][1]);ctx.stroke();});
+      P.forEach((p,i)=>lantern(cx+p[0],cy+p[1],22,i%2===0));
+      break;}
+    case 'shikaku': {
+      const c=38,x0=cx-c*2.5,y0=cy-c*1.5;
+      for(let r=0;r<3;r++)for(let k=0;k<5;k++){
+        rr(x0+k*c+3,y0+r*c+3,c-6,c-6,7);ctx.fillStyle=C.stone;ctx.fill();}
+      rr(x0+2,y0+2,c*2-4,c*2-4,9);ctx.lineWidth=6;ctx.strokeStyle=C.accent;ctx.stroke();
+      rr(x0+c*3+2,y0+c+2,c*2-4,c-4,9);ctx.lineWidth=6;ctx.strokeStyle=C.accent2;ctx.stroke();
+      circle(x0+c*0.5,y0+c*0.5,15,C.surface);
+      txt('4',x0+c*0.5,y0+c*0.5+8,FD,24,C.text,'center',700);
+      circle(x0+c*3.5,y0+c*1.5,15,C.surface);
+      txt('2',x0+c*3.5,y0+c*1.5+8,FD,24,C.text,'center',700);
+      break;}
+    case 'tents':
+      conifer(cx-86,cy+4,52); conifer(cx+74,cy+10,44);
+      tentShape(cx-8,cy+8,46); break;
+    case 'lightup': {
+      // Four cells: two lit by the lamp, a black block with its count, and
+      // one the block keeps dark. That is the whole rule in one row.
+      const c=54,x0=cx-c*2, yt=cy-c*0.5;
+      const fills=['#f6d488','#f6d488',C.slate,C.stone];
+      for(let k=0;k<4;k++){rr(x0+k*c+4,yt+4,c-8,c-8,11);ctx.fillStyle=fills[k];ctx.fill();}
+      txt('1',x0+c*2.5,yt+c*0.68,FD,30,C.surface,'center',700);
+      const bx=x0+c*0.5, by=yt+c*0.5;
+      circle(bx,by,34,rgba(C.sun,.28));
+      lantern(bx,by,19,true);
+      break;}
+    case 'oneline': {
+      const P=[[-88,22],[-26,-28],[38,20],[92,-26]];
+      ctx.lineWidth=9;ctx.strokeStyle=rgba(C.accent,.8);ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(cx+P[0][0],cy+P[0][1]);
+      for(let i=1;i<P.length;i++)ctx.lineTo(cx+P[i][0],cy+P[i][1]);ctx.stroke();
+      P.forEach(p=>{circle(cx+p[0],cy+p[1],12,C.surface);
+        ctx.beginPath();ctx.arc(cx+p[0],cy+p[1],12,0,Math.PI*2);ctx.lineWidth=4;
+        ctx.strokeStyle=C.bark;ctx.stroke();});
+      // The walker, mid-stroke: a foot along the line, a spiral shell over
+      // it, and the two stalks that make it read as a snail at 118 tall.
+      const sx=cx+10,sy=cy+6;
+      ctx.beginPath();ctx.moveTo(sx-34,sy+18);
+      ctx.quadraticCurveTo(sx-34,sy+4,sx-16,sy+4);
+      ctx.lineTo(sx+16,sy+4);ctx.quadraticCurveTo(sx+30,sy+4,sx+30,sy+18);
+      ctx.closePath();ctx.fillStyle='#e3cfa0';ctx.fill();
+      ctx.beginPath();ctx.lineWidth=4;ctx.strokeStyle='#e3cfa0';ctx.lineCap='round';
+      ctx.moveTo(sx-26,sy+2);ctx.lineTo(sx-34,sy-16);ctx.stroke();
+      ctx.moveTo(sx-16,sy+2);ctx.lineTo(sx-20,sy-18);ctx.stroke();ctx.stroke();
+      circle(sx-35,sy-19,4.5,C.text); circle(sx-21,sy-21,4.5,C.text);
+      circle(sx+6,sy-6,21,'#c98f52');
+      ctx.beginPath();ctx.lineWidth=4.5;ctx.strokeStyle=rgba(C.bark,.85);ctx.lineCap='round';
+      for(let a=0;a<Math.PI*3.2;a+=0.25){const r=3+a*2.6;
+        const px2=sx+6+Math.cos(a-1.2)*r, py=sy-6+Math.sin(a-1.2)*r;
+        if(a===0)ctx.moveTo(px2,py);else ctx.lineTo(px2,py);}
+      ctx.stroke();
+      smile(sx-24,sy+8,11);
+      break;}
+    case 'nonogram': {
+      const c=30,x0=cx-c*1.0,y0=cy-c*1.5, G=[[1,1,0],[0,1,1],[1,1,0]];
+      for(let r=0;r<3;r++)for(let k=0;k<3;k++){
+        rr(x0+k*c+2,y0+r*c+2,c-4,c-4,6);
+        ctx.fillStyle=G[r][k]?C.slate:C.stone;ctx.fill();}
+      for(let r=0;r<3;r++) txt(['2','2','2'][r],x0-14,y0+r*c+c*0.72,FD,22,C.text,'right',700);
+      for(let k=0;k<3;k++) txt(['1 1','3','1'][k],x0+k*c+c*0.5,y0-12,FD,20,C.text,'center',700);
+      break;}
+    case 'pipes': {
+      rr(cx-92,cy-14,72,56,10);ctx.fillStyle='#c8a17a';ctx.fill();
+      rr(cx+22,cy-14,72,56,10);ctx.fillStyle='#c8a17a';ctx.fill();
+      ctx.beginPath();ctx.lineWidth=26;ctx.strokeStyle=C.water;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.moveTo(cx-56,cy+20);ctx.lineTo(cx-56,cy-34);ctx.lineTo(cx+58,cy-34);ctx.lineTo(cx+58,cy+20);ctx.stroke();
+      ctx.beginPath();ctx.lineWidth=8;ctx.strokeStyle=rgba(C.white,.5);
+      ctx.moveTo(cx-56,cy+6);ctx.lineTo(cx-56,cy-30);ctx.stroke();
+      break;}
+    case 'horse': {
+      rr(cx-96,cy-16,74,60,14);ctx.fillStyle=C.hay;ctx.fill();
+      ctx.lineWidth=4;ctx.strokeStyle=rgba(C.bark,.5);
+      for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(cx-96,cy-16+i*15);ctx.lineTo(cx-22,cy-16+i*15);ctx.stroke();}
+      ctx.fillStyle='#7a6250';
+      ctx.beginPath();ctx.ellipse(cx+38,cy+10,44,26,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+66,cy-26,15,22,0.4,0,Math.PI*2);ctx.fill();
+      ctx.fillRect(cx+16,cy+24,10,26); ctx.fillRect(cx+56,cy+24,10,26);
+      ctx.beginPath();ctx.moveTo(cx+76,cy-44);ctx.lineTo(cx+84,cy-58);ctx.lineTo(cx+86,cy-40);ctx.closePath();ctx.fill();
+      break;}
+    case 'snake': {
+      ctx.beginPath();ctx.lineWidth=30;ctx.strokeStyle='#8fbf55';ctx.lineCap='round';
+      ctx.moveTo(cx-86,cy+28);ctx.quadraticCurveTo(cx-30,cy+34,cx-14,cy-10);
+      ctx.quadraticCurveTo(cx-2,cy-44,cx+26,cy-34);ctx.stroke();
+      circle(cx+30,cy-34,20,'#a3cf68'); circle(cx+37,cy-40,4,C.text);
+      circle(cx+78,cy+6,30,rgba(C.text,.12)); circle(cx+78,cy,30,C.berry);
+      ctx.beginPath();ctx.lineWidth=5;ctx.strokeStyle=C.leafDeep;ctx.lineCap='round';
+      ctx.moveTo(cx+78,cy-30);ctx.lineTo(cx+82,cy-46);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(cx+94,cy-42,11,6,-0.5,0,Math.PI*2);ctx.fillStyle=C.leaf;ctx.fill();
+      break;}
+    }
+  }
+
+  // ---- layout ----
+  const HEAD_H=470, DAY_Y=500, DAY_H=180, GRID_Y=704;
+  const CW_=320, CH_=254, GAP=20, NAV_H=150, NAV_Y=H-40-NAV_H;
+  function cardRect(i){const r=Math.floor(i/3),k=i%3;
+    return {x:M+k*(CW_+GAP), y:GRID_Y+r*(CH_+GAP), w:CW_, h:CH_};}
+  const NAV=[{k:'home',label:'Home'},{k:'stats',label:'Stats'},{k:'streak',label:'Streak'},{k:'more',label:'More'}];
+  function navRect(i){const w=COL/4; return {x:M+i*w,y:NAV_Y,w:w,h:NAV_H};}
+
+  // ---- state ----
+  let day=4, islandName='Sunlit Cliffs', t0=0, moreAt=-99, moreOpen=false, pressed=-1, pressAt=-99;
+  const cap=document.getElementById('mn-caption');
+  const say=s=>{if(cap)cap.textContent=s;};
+
+  // ---- the header ----
+  function drawHeader(t){
+    const a=RM?1:clamp((t-0.0)/0.3);
+    ctx.globalAlpha=a;
+    const dy=RM?0:lerp(-24,0,sineIO(a));
+    ctx.save();ctx.translate(0,dy);
+    // settings and calendar
+    for(const b of [{x:800,icon:'gear'},{x:930,icon:'cal'}]){
+      paper(b.x,40,110,110,28);
+      if(b.icon==='gear'){
+        const gx=b.x+55,gy=92;
+        for(let i=0;i<8;i++){const ang=i*Math.PI/4;
+          ctx.save();ctx.translate(gx,gy);ctx.rotate(ang);
+          rr(-7,-34,14,15,5);ctx.fillStyle=C.text;ctx.fill();ctx.restore();}
+        circle(gx,gy,24,C.text); circle(gx,gy,11,C.surface);
+      } else {
+        const bx=b.x+27,by=66;
+        rr(bx,by,56,52,10);ctx.fillStyle=C.text;ctx.fill();
+        ctx.fillStyle=C.surface;ctx.fillRect(bx+6,by+18,44,4);
+        for(let r=0;r<2;r++)for(let k=0;k<3;k++)
+          {rr(bx+9+k*14,by+27+r*10,7,6,2);ctx.fillStyle=C.surface;ctx.fill();}
+        ctx.fillStyle=C.text;ctx.fillRect(bx+12,by-8,7,14);ctx.fillRect(bx+37,by-8,7,14);
+        circle(b.x+104,46,24,C.accent2);
+        txt('1',b.x+104,54,FD,26,C.white,'center',700);
+      }
+    }
+    // the wordmark, in ink, with the sprig over it
+    txt('Daily',M,330,FD,150,C.text,'left',700);
+    // The sprig grows out of the word rather than hovering over it: its stem
+    // ends inside the letters' cap height, which is what the mock draws.
+    leafSprig(M+236,222,58,0.20);
+    leafSprig(M+192,232,46,-0.44);
+    txt('Small puzzles',M+6,398,FB,42,C.dim,'left',600);
+    txt('brighter days',M+6,450,FB,42,C.dim,'left',600);
+    // the sun and the moon, the boards' own two characters
+    const spin=RM?0:t*(Math.PI*2/40), rock=RM?0:Math.sin(t*1.1)*0.06;
+    sunFace(810,300,64,spin); moonFace(936,308,58,rock);
+    leafSprig(716,352,40,-0.7); leafSprig(1028,344,36,0.7);
+    // the heart and the sparkle the mock tucks in
+    ctx.save();ctx.translate(902,214);ctx.scale(1,1);
+    ctx.beginPath();ctx.moveTo(0,10);ctx.bezierCurveTo(-16,-4,-10,-20,0,-10);
+    ctx.bezierCurveTo(10,-20,16,-4,0,10);ctx.fillStyle=rgba(C.accent2,.9);ctx.fill();ctx.restore();
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+
+  // ---- the day row ----
+  function drawDay(t){
+    const a=RM?1:clamp((t-0.1)/0.3); ctx.globalAlpha=a;
+    const dy=RM?0:lerp(30,0,backOut(a));
+    ctx.save();ctx.translate(0,dy);
+    paper(M,DAY_Y,COL,DAY_H,36);
+    // the thumb: a little tree on a pale plate
+    paper(M+22,DAY_Y+24,132,124,26,C.surfaceHi,'#e3d5bd');
+    conifer(M+88,DAY_Y+92,54);
+    txt('Day '+day,M+186,DAY_Y+80,FD,56,C.text,'left',700);
+    txt(islandName,M+188,DAY_Y+130,FB,34,C.dim,'left',600);
+    // three hearts, two of them filled -- decoration, by decision
+    for(let i=0;i<3;i++){const hx=M+606+i*62, hy=DAY_Y+DAY_H/2-6;
+      ctx.save();ctx.translate(hx,hy);ctx.scale(1.9,1.9);
+      ctx.beginPath();ctx.moveTo(0,11);ctx.bezierCurveTo(-17,-4,-11,-21,0,-11);
+      ctx.bezierCurveTo(11,-21,17,-4,0,11);
+      if(i<2){ctx.fillStyle=C.accent2;ctx.fill();}
+      else {ctx.lineWidth=2.6;ctx.strokeStyle=rgba(C.line,.9);ctx.stroke();}
+      ctx.restore();}
+    paper(M+860,DAY_Y+35,110,110,55,C.surfaceHi,'#e3d5bd');
+    chevron(M+915,DAY_Y+86,34,C.text,1);
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+
+  // ---- a card ----
+  function drawCard(i,t){
+    const c=CARDS[i], R=cardRect(i);
+    const d=RM?0:Math.min(0.4,0.15+i*0.05);
+    const a=RM?1:clamp((t-d)/0.3); if(a<=0) return;
+    const rise=RM?0:lerp(60,0,backOut(a));
+    let sq=0;
+    if(pressed===i){const u=clamp((t-pressAt)/0.18); sq=(c.soon?0.03:0.06)*(1-Math.abs(u*2-1));}
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.translate(R.x+R.w/2, R.y+R.h/2+rise); ctx.scale(1-sq,1-sq); ctx.translate(-R.w/2,-R.h/2);
+    paper(0,0,R.w,R.h,28, pressed===i?'#f4ecdd':C.surface);
+    ctx.save(); ctx.globalAlpha=c.soon?0.55:1;
+    art(c.id,R.w/2,72,t);
+    ctx.restore();
+    txt(c.name,18,168,FD,34,c.soon?C.dim:C.text,'left',700);
+    const lines=c.short.split('\n');
+    lines.forEach((l,k)=>txt(l,18,202+k*30,FB,23,C.dim,'left',500));
+    if(c.soon){
+      // Over the picture, not beside the blurb: two lines of text and a pill
+      // in the same corner collided, and the pill is the louder of the two.
+      rr(R.w-104,14,86,38,19);ctx.fillStyle=C.surfaceHi;ctx.fill();
+      txt('SOON',R.w-61,40,FB,21,C.dim,'center',800);
+    } else {
+      const g=CAT[i%CAT.length];
+      circle(R.w-52,R.h-56,34,rgba(C.text,.12));
+      circle(R.w-52,R.h-60,34,g);
+      chevron(R.w-50,R.h-60,26,C.white,1);
+    }
+    ctx.restore();
+  }
+
+  // ---- the bottom bar ----
+  function drawNav(t){
+    const a=RM?1:clamp((t-0.5)/0.3); ctx.globalAlpha=a;
+    const dy=RM?0:lerp(40,0,backOut(a));
+    ctx.save();ctx.translate(0,dy);
+    paper(M,NAV_Y,COL,NAV_H,36);
+    NAV.forEach((n,i)=>{const R=navRect(i), cx=R.x+R.w/2, on=(n.k==='home')!==moreOpen&&n.k==='home'||(moreOpen&&n.k==='more');
+      if(on){rr(R.x+14,NAV_Y+16,R.w-28,NAV_H-32,26);ctx.fillStyle='#fbf0dd';ctx.fill();}
+      const col=on?C.accent2:C.text, iy=NAV_Y+58;
+      if(n.k==='home'){ctx.beginPath();ctx.moveTo(cx,iy-24);ctx.lineTo(cx+26,iy);ctx.lineTo(cx+18,iy);
+        ctx.lineTo(cx+18,iy+22);ctx.lineTo(cx-18,iy+22);ctx.lineTo(cx-18,iy);ctx.lineTo(cx-26,iy);ctx.closePath();
+        ctx.fillStyle=col;ctx.fill();}
+      if(n.k==='stats'){ // a cup: bowl, handles, stem, foot
+        ctx.fillStyle=col;
+        ctx.beginPath();ctx.moveTo(cx-17,iy-22);ctx.lineTo(cx+17,iy-22);
+        ctx.lineTo(cx+13,iy-2);ctx.quadraticCurveTo(cx,iy+10,cx-13,iy-2);ctx.closePath();ctx.fill();
+        ctx.lineWidth=5;ctx.strokeStyle=col;
+        ctx.beginPath();ctx.arc(cx-20,iy-15,8,Math.PI*0.6,Math.PI*1.7);ctx.stroke();
+        ctx.beginPath();ctx.arc(cx+20,iy-15,8,Math.PI*1.3,Math.PI*0.4);ctx.stroke();
+        rr(cx-4,iy+8,8,10,2);ctx.fill(); rr(cx-15,iy+16,30,8,4);ctx.fill();}
+      if(n.k==='streak'){ctx.fillStyle=col;   // three rising bars
+        [[-18,8],[0,-6],[18,-20]].forEach(b=>{rr(cx+b[0]-7,iy+b[1],14,24-b[1],4);ctx.fill();});}
+      if(n.k==='more'){ctx.save();ctx.translate(cx,iy);
+        ctx.beginPath();ctx.ellipse(6,-2,22,12,-0.6,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+        ctx.beginPath();ctx.lineWidth=5;ctx.strokeStyle=col;ctx.lineCap='round';
+        ctx.moveTo(-20,16);ctx.lineTo(4,-2);ctx.stroke();ctx.restore();}
+      txt(n.label,cx,NAV_Y+118,FB,26,on?C.accent2:C.dim,'center',on?800:600);
+    });
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+
+  // ---- the More sheet: where the old game lives now ----
+  const LEGACY=['Binairo · island','Code Break · island','Balance · island','Untangle · island',
+    'Shikaku · island','Tents · island','Light Up · island','One Line · island','Nonogram · island',
+    'Pipes','Horse Pen','Snake Apple','The Rope','How Big? · a turn'];
+  function drawMore(t){
+    const u=clamp((t-moreAt)/0.32), k=moreOpen?(RM?1:sineIO(u)):(RM?0:1-sineIO(u));
+    if(k<=0.001) return;
+    ctx.globalAlpha=0.5*k; ctx.fillStyle=C.text; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+    const sh=1330, y=lerp(H,H-sh,k);
+    paper(0,y,W,sh+80,44);
+    txt('The old game',M+8,y+96,FD,56,C.text,'left',700);
+    txt('Everything 3D lives in legacy/ and still runs.',M+8,y+146,FB,30,C.dim,'left',500);
+    LEGACY.forEach((l,i)=>{const ry=y+186+i*76;
+      rr(M,ry,COL,66,18);ctx.fillStyle=i%2?C.surface:C.surfaceHi;ctx.fill();
+      txt(l,M+24,ry+44,FB,30,C.text,'left',600);
+      chevron(M+COL-34,ry+33,22,C.dim,1);});
+  }
+
+  // ---- frame ----
+  function frame(){
+    const t=now()-t0;
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawHeader(t); drawDay(t);
+    for(let i=0;i<CARDS.length;i++) drawCard(i,t);
+    drawNav(t);
+    drawMore(t);
+    requestAnimationFrame(frame);
+  }
+
+  // ---- input ----
+  function at(ev){const r=cv.getBoundingClientRect();
+    return {x:(ev.clientX-r.left)/r.width*W, y:(ev.clientY-r.top)/r.height*H};}
+  cv.addEventListener('pointerdown',ev=>{
+    const p=at(ev), t=now()-t0;
+    if(moreOpen){ moreOpen=false; moreAt=now()-t0;
+      say('Back to the first screen. Every line in that sheet opens the old board on the old stage — nothing was deleted, it moved to legacy/.'); return; }
+    for(let i=0;i<NAV.length;i++){const R=navRect(i);
+      if(p.x>=R.x&&p.x<=R.x+R.w&&p.y>=R.y&&p.y<=R.y+R.h){
+        if(NAV[i].k==='more'){moreOpen=true;moreAt=t;
+          say('More is the door to the old game: the nine islands, the four boards never drawn flat, and How Big?. Each opens on the stage under the old chrome.');}
+        else if(NAV[i].k==='home') say('Home is this screen.');
+        else say(NAV[i].label+' is drawn and inert — the bar is four tabs in the mock, and only two of them have anything behind them yet.');
+        return;}}
+    for(let i=0;i<CARDS.length;i++){const R=cardRect(i);
+      if(p.x>=R.x&&p.x<=R.x+R.w&&p.y>=R.y&&p.y<=R.y+R.h){
+        pressed=i; pressAt=t; const c=CARDS[i];
+        say(c.soon
+          ? c.name+' has no flat board yet, so the card names it and will not open. Its island version is behind More, and it comes back here when it is drawn flat.'
+          : c.name+' opens the flat board — the same chrome every one of the nine wears, seeded to today.');
+        setTimeout(()=>{pressed=-1;},200); return;}}
+    if(p.y>=DAY_Y&&p.y<=DAY_Y+DAY_H){say('The day row shows Day '+day+' and the day’s name, both already on disk in core/progress.gd. The hearts and the chevron are decoration, by decision.');return;}
+    if(p.y<=160&&p.x>=790){say('Settings opens the sheet the boards already use. The calendar and its badge are decoration — there is no calendar behind them yet.');return;}
+    say('');
+  });
+
+  // ---- controls ----
+  const rmBtn=document.getElementById('mn-rm'), dayBtn=document.getElementById('mn-day'),
+        moreBtn=document.getElementById('mn-more'), entBtn=document.getElementById('mn-enter');
+  if(rmBtn) rmBtn.onclick=()=>{RM=!RM; rmBtn.classList.toggle('on',RM);
+    rmBtn.textContent='Reduce motion: '+(RM?'on':'off');
+    say(RM?'Reduce motion: the entrance is instant, the sun stops turning and the moon stops rocking — the same switch every board already honours.':'');};
+  const DAYS=[[1,'Sunlit Cliffs'],[4,'Sunlit Cliffs'],[40,'Marigold Bank'],[128,'Puffin Steps']];
+  let dayI=1;
+  if(dayBtn) dayBtn.onclick=()=>{dayI=(dayI+1)%DAYS.length; day=DAYS[dayI][0]; islandName=DAYS[dayI][1];
+    dayBtn.textContent='Day '+day;
+    say('Day '+day+' · '+islandName+' — the row takes whatever Progress has counted; three digits still fit beside the hearts.');};
+  if(moreBtn) moreBtn.onclick=()=>{moreOpen=!moreOpen; moreAt=now()-t0;
+    say(moreOpen?'The legacy list: fourteen entries, every one of them still playable.':'');};
+  if(entBtn) entBtn.onclick=()=>{t0=now(); say('The header fades, the day row drops in, the cards rise in reading order 0.05 apart, and the bar comes up last.');};
+
+  if(rmBtn&&RM){rmBtn.classList.add('on'); rmBtn.textContent='Reduce motion: on';}
+  if(Q.get('more')==='1'){moreOpen=true; moreAt=-9;}
+  t0=now();
   frame();
 })();
 </script>

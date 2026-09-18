@@ -1,6 +1,6 @@
 extends RefCounted
 
-const BM = preload("res://core/board_math.gd")
+const BM = preload("res://legacy/core/board_math.gd")
 
 static func run(t) -> void:
 	_test_ray_plane(t)

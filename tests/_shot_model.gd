@@ -8,7 +8,7 @@ extends SceneTree
 ## Saves /tmp/shot_model_<slot>.png. Use it to look at a .glb the game does not
 ## place yet.
 
-const Models = preload("res://core/models.gd")
+const Models = preload("res://legacy/core/models.gd")
 
 const PITCH := 12.0
 const FRAMES := 30
@@ -22,7 +22,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_slot = args[0]
-	_stage = load("res://world/stage.tscn").instantiate()
+	_stage = load("res://legacy/world/stage.tscn").instantiate()
 	root.add_child(_stage)
 
 func _process(_delta: float) -> bool:

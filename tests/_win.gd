@@ -19,7 +19,12 @@ var _fit_ok := true
 var _hud_ok := true
 
 func _initialize() -> void:
-	_entries = load("res://ui/registry.gd").PUZZLES
+	# The three `soon` cards name a board that has no flat version, so they
+	# have no script to open; the harness walks the ones that do.
+	_entries = []
+	for e in load("res://ui/registry.gd").PUZZLES:
+		if not e.get("soon", false):
+			_entries.append(e)
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -195,7 +200,7 @@ func _solve_balance() -> void:
 ## so this proves the tray, the ray picking and the orientation cycle, not
 ## just the rules.
 func _solve_pipes() -> void:
-	const Gen = preload("res://puzzles/pipes_iso_gen.gd")
+	const Gen = preload("res://legacy/puzzles/pipes_iso_gen.gd")
 	# Camera fit check: every column's crown must project inside the slot.
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
 	_fit_ok = true
@@ -522,7 +527,7 @@ func _solve_snake() -> void:
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	# Then the solver's own way home from wherever the hint left the snake,
 	# one tap on the cell ahead of the head per move.
-	var Gen = load("res://puzzles/snake_gen.gd")
+	var Gen = load("res://legacy/puzzles/snake_gen.gd")
 	var path: Array = Gen.solve(w, h, _puzzle._walls, _puzzle._apples, _puzzle._hole,
 		_puzzle._snake, _puzzle._eaten)
 	for d in path:

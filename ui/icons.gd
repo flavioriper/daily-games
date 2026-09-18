@@ -6,7 +6,8 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
-	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus"]
+	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
+	"calendar", "home", "trophy", "bars", "heart", "heart_line"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -62,6 +63,18 @@ static func shape(name: String) -> Dictionary:
 			return {"polys": [], "lines": [
 				PackedVector2Array([Vector2(0.28, 0.28), Vector2(0.72, 0.72)]),
 				PackedVector2Array([Vector2(0.72, 0.28), Vector2(0.28, 0.72)])]}
+		"calendar":
+			return _calendar()
+		"home":
+			return _home()
+		"trophy":
+			return _trophy()
+		"bars":
+			return _bars()
+		"heart":
+			return {"polys": [_heart()], "lines": []}
+		"heart_line":
+			return {"polys": [], "lines": [_heart()]}
 	return {"polys": [], "lines": []}
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw
@@ -249,3 +262,65 @@ static func _eye() -> Dictionary:
 		var t := 1.0 - float(i) / SEGMENTS
 		lid.append(a.lerp(b, t) + Vector2(0.0, sin(t * PI) * 0.27))
 	return {"polys": [circle(Vector2(0.5, 0.5), 0.15)], "lines": [lid]}
+
+
+# --- the first screen (ui/menu.gd) ---
+
+## A page with two rings over it and a row of day squares: the calendar
+## button beside the gear.
+static func _calendar() -> Dictionary:
+	var page := PackedVector2Array([Vector2(0.12, 0.22), Vector2(0.88, 0.22), Vector2(0.88, 0.9), Vector2(0.12, 0.9)])
+	var rings := [
+		PackedVector2Array([Vector2(0.32, 0.08), Vector2(0.32, 0.3)]),
+		PackedVector2Array([Vector2(0.68, 0.08), Vector2(0.68, 0.3)]),
+	]
+	var band := PackedVector2Array([Vector2(0.12, 0.38), Vector2(0.88, 0.38), Vector2(0.88, 0.42), Vector2(0.12, 0.42)])
+	return {"polys": [page, band], "lines": rings}
+
+## A gable over a body: the bar's first tab.
+static func _home() -> Dictionary:
+	var roof := PackedVector2Array([Vector2(0.5, 0.1), Vector2(0.95, 0.52), Vector2(0.05, 0.52)])
+	var body := PackedVector2Array([Vector2(0.18, 0.5), Vector2(0.82, 0.5), Vector2(0.82, 0.9), Vector2(0.18, 0.9)])
+	return {"polys": [roof, body], "lines": []}
+
+## A cup on a stem and a foot, with a handle cut out either side. Drawn as
+## three filled shapes rather than a bowl with two stroked arcs: at 56 px
+## the arcs came out as blobs stuck to the rim.
+static func _trophy() -> Dictionary:
+	var bowl := PackedVector2Array([
+		Vector2(0.26, 0.1), Vector2(0.74, 0.1), Vector2(0.71, 0.4),
+		Vector2(0.5, 0.58), Vector2(0.29, 0.4),
+	])
+	var left := PackedVector2Array([
+		Vector2(0.26, 0.16), Vector2(0.12, 0.16), Vector2(0.08, 0.3),
+		Vector2(0.18, 0.42), Vector2(0.3, 0.44), Vector2(0.28, 0.34),
+		Vector2(0.19, 0.32), Vector2(0.18, 0.26), Vector2(0.26, 0.26),
+	])
+	var right := PackedVector2Array()
+	for p in left:
+		right.append(Vector2(1.0 - p.x, p.y))
+	var stem := PackedVector2Array([Vector2(0.43, 0.56), Vector2(0.57, 0.56), Vector2(0.57, 0.76), Vector2(0.43, 0.76)])
+	var foot := PackedVector2Array([Vector2(0.26, 0.76), Vector2(0.74, 0.76), Vector2(0.74, 0.9), Vector2(0.26, 0.9)])
+	return {"polys": [bowl, left, right, stem, foot], "lines": []}
+
+## Three bars rising to the right.
+static func _bars() -> Dictionary:
+	var out: Array = []
+	for i in 3:
+		var x := 0.16 + i * 0.27
+		var top := 0.62 - i * 0.24
+		out.append(PackedVector2Array([Vector2(x, top), Vector2(x + 0.2, top), Vector2(x + 0.2, 0.9), Vector2(x, 0.9)]))
+	return {"polys": out, "lines": []}
+
+## Two lobes over a point. Used filled on the day row and as a line for an
+## empty one.
+static func _heart() -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var steps := 40
+	for i in steps + 1:
+		var t := TAU * i / steps
+		# The classic heart curve, scaled into the unit square.
+		var x := 16.0 * pow(sin(t), 3.0)
+		var y := 13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)
+		pts.append(Vector2(0.5 + x / 38.0, 0.46 - y / 38.0))
+	return pts

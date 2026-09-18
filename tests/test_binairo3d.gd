@@ -9,12 +9,12 @@ extends RefCounted
 ## snaps the first roll home before starting the next. Needs a live tree
 ## (PuzzleBase3D mounts in _ready), so this runs from run_in_tree.
 
-const Binairo3D = preload("res://puzzles/binairo3d.gd")
-const Stage = preload("res://world/stage.gd")
-const BoardMath = preload("res://core/board_math.gd")
+const Binairo3D = preload("res://legacy/puzzles/binairo3d.gd")
+const Stage = preload("res://legacy/world/stage.gd")
+const BoardMath = preload("res://legacy/core/board_math.gd")
 const Pal = preload("res://core/palette.gd")
-const Models = preload("res://core/models.gd")
-const Placeholders = preload("res://core/placeholders.gd")
+const Models = preload("res://legacy/core/models.gd")
+const Placeholders = preload("res://legacy/core/placeholders.gd")
 const Motion = preload("res://core/motion.gd")
 
 const QUARTER := TAU / 4.0

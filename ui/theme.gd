@@ -73,6 +73,17 @@ static func make() -> Theme:
 	# section 6): the two chips are wide enough to name what they paint, so
 	# each carries its word beside its picture.
 	_label(theme, "ChipLabel", display(700), 40, Pal.TEXT)
+	# The first screen (docs/superpowers/specs/2026-09-18-flat-menu-design.md,
+	# section 1): the wordmark in ink at the size the campsite's extruded
+	# letters used to stand, its two-line motto in sentence case -- the one
+	# place in the game that is not upper-cased, because the mock letters it
+	# that way and a 2D label has none of TextMesh's reasons to shout -- and
+	# the day row's big numeral.
+	_label(theme, "MenuWordmark", display(700), 140, Pal.TEXT)
+	_label(theme, "MenuMotto", body(600), 38, Pal.TEXT_DIM)
+	_label(theme, "DayBig", display(700), 56, Pal.TEXT)
+	_label(theme, "NavLabel", body(600), 26, Pal.TEXT_DIM)
+	_label(theme, "NavLabelOn", body(800), 26, Pal.ACCENT_2)
 	# Button variations.
 	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)
