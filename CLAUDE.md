@@ -196,7 +196,7 @@ every layout change.
 
 ## The flat screens, on trial beside the island
 
-Since 2026-09-18 seven cards open a flat 2D board under flat chrome, and each
+Since 2026-09-18 eight cards open a flat 2D board under flat chrome, and each
 keeps its stage version reachable as a second card seeded from the same day
 (`seed_as`), so both can be played and judged on the phone: **Binairo**
 (`puzzles/binairo2d.gd`, beside `binairo_island`), **Code Break**
@@ -204,16 +204,17 @@ keeps its stage version reachable as a second card seeded from the same day
 (`puzzles/balance2d.gd`, beside `balance_island`), **Shikaku**
 (`puzzles/shikaku2d.gd`, beside `shikaku_island`), **Untangle**
 (`puzzles/untangle2d.gd`, beside `untangle_island`), **Tents**
-(`puzzles/tents2d.gd`, beside `tents_island`) and **Light Up**
-(`puzzles/lightup2d.gd`, beside `lightup_island`). The concept page mocks
-eight; **One Line** (`#oneline`, mocked 2026-09-18) is the one still on paper.
-The user is deciding whether the game goes 2D, and nothing else has moved.
+(`puzzles/tents2d.gd`, beside `tents_island`), **Light Up**
+(`puzzles/lightup2d.gd`, beside `lightup_island`) and **One Line**
+(`puzzles/oneline2d.gd`, beside `oneline_island`). That is every screen the
+concept page mocks; nothing is left on paper. The user is deciding whether the
+game goes 2D, and nothing else has moved.
 Specs:
 `docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
-`...-tents-` and `...-lightup-flat-design.md` siblings; mocks:
+`...-tents-`, `...-lightup-` and `...-oneline-flat-design.md` siblings; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents` and `#lightup`.
+`#untangle`, `#tents`, `#lightup` and `#oneline`.
 
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
@@ -250,8 +251,8 @@ Specs:
   its own continuous check, so it has no Check to put in the row and Reset
   rides up into the top bar instead. The flat host therefore measures its
   bottom slot from the rows it actually built, not from a constant; the
-  seven screens want 460, 460, 390, 290, 140, 290 and 290 -- Untangle drops
-  the tray *and* the actions row, so its slot is the tip card alone.
+  eight screens want 460, 460, 390, 290, 140, 290, 290 and 290 -- Untangle
+  drops the tray *and* the actions row, so its slot is the tip card alone.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -261,10 +262,12 @@ Specs:
   given: Balance caps its scale bands, and the leftover becomes air *above*
   the weight cards, because a gap under the day card reads as a mistake and a
   gap above the cards reads as room) and `card_centred()` (where that
-  leftover goes: Tents and Light Up halve it, because their grid is square
-  while their space is tall, so the cell is capped by the width and there is
-  slack however the card is cut). A board that offers none gets Binairo's
-  behaviour.
+  leftover goes: Tents, Light Up and One Line halve it, because their grid is
+  square -- or, on One Line, wider than it is tall -- while their space is
+  tall, so the cell is capped by the width and there is slack however the card
+  is cut; One Line's medium lattice is 4x3 and leaves 432 of a 1190 slot, the
+  widest air of the eight and a call its spec's section 10 records rather than
+  hides). A board that offers none gets Binairo's behaviour.
 - **The flat cast is a shared drawing, and two screens already share one.**
   `ui/faces/friends.gd` is Code Break's seven and `ui/faces/fruit.gd` is
   Balance's five, and the apple in the second *is* the berry in the first --
@@ -273,15 +276,23 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character.
+  drawing a new character -- in eight screens only One Line's walker
+  (`ui/faces/snail_face.gd`) has earned a new species, and it earned it
+  because nothing else in the cast walks anywhere and its trail *is* the
+  mechanic.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
   card -- on any frame rendered without its queued redraw flushed first, which
   is exactly what `RenderingServer.force_draw()` does in a harness.
-  `lightup2d.gd` keeps the mesh its last `_draw` handed over (`_shown`) until
-  the next one replaces it; `tents2d.gd` and `untangle2d.gd` do not, and
-  should if they are ever shot the same way.
+  `lightup2d.gd` and `oneline2d.gd` keep the mesh their last `_draw` handed
+  over (`_shown`) until the next one replaces it; `tents2d.gd` and
+  `untangle2d.gd` do not, and should if they are ever shot the same way.
+- **A board that rebuilds only while it is moving has to ask about every
+  wave.** `oneline2d.gd`'s `_animating()` first asked only its posts'
+  entrance, and on a figure of twenty lines the lines' own wave outlasts it:
+  the last few froze at four fifths of their fade, two pale lines that never
+  arrived. It showed on a rendered frame and in no test.
 
 ## Art: shading direction
 

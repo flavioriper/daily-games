@@ -225,7 +225,26 @@ const PUZZLES := [
 		"blurb": "Trace every line in a single stroke.",
 		"motto": "One stroke, no lifting",
 		"footer": "Walk · Lay · Finish",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-oneline-flat-design.md). It
+		# picks nothing up, so it asks for no tray; Check counts what the
+		# stroke has stranded, so it keeps the actions row.
+		"script": "res://puzzles/oneline2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island One Line, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both draw the same figure.
+		"id": "oneline_island",
+		"kind": "puzzle",
+		"title": "One Line",
+		"blurb": "The island board, for comparison.",
+		"motto": "One stroke, no lifting",
+		"footer": "Walk · Lay · Finish",
 		"script": "res://puzzles/oneline3d.gd",
+		"seed_as": "oneline",
 		"difficulties": [0, 1, 2],
 	},
 	{

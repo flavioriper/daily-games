@@ -269,6 +269,22 @@ const PLANK_BARE := SLATE
 const PLANK_LAID := WOOD
 const POST_SPENT := STONE_GIVEN   # a post with no line left to walk
 
+## The flat One Line's own shades
+## (docs/superpowers/specs/2026-09-18-oneline-flat-design.md, section 3). The
+## four post caps, the two plank colours and the spent cap are the island's,
+## above; what a flat board adds is a bottom edge under every drum and plank,
+## a brighter plank for the finished trail, one colour for a line nothing can
+## reach any more -- which the island draws as a rose flash and nothing else,
+## because a stage has no room for a fifth state -- and the snail.
+const PLANK_HI    := Color("e3c39b")   # a plank on the finished trail
+const PLANK_LOST  := Color("8d94a3")   # a line the stroke can no longer reach
+const POST_STONE  := Color("c3b7a4")   # the drum a cap sits on
+const POST_DEEP   := Color("9c9083")
+const SHELL       := Color("e0a257")   # the walker's shell, and its spiral
+const SHELL_DEEP  := Color("b87d3a")
+const SNAIL_FOOT  := Color("f3e1c4")
+const SNAIL_DEEP  := Color("d9c29c")
+
 # Horse Pen (the design agreed 2026-09-15, polished 2026-09-15 against
 # enclose.horse -- docs/brainstorm/concepts.html, the Horse Pen tab): a meadow
 # that runs off every edge of the screen, cut by water channels with earth

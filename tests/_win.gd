@@ -77,7 +77,7 @@ func _note(id: String) -> String:
 		"shikaku", "shikaku_island": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents", "tents_island": return "%d tents, board fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
 		"lightup", "lightup_island": return "%d lanterns, board fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
-		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
+		"oneline", "oneline_island": return "%d planks walked, board fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
@@ -96,7 +96,7 @@ func _solve(id: String) -> void:
 		"shikaku", "shikaku_island": _solve_shikaku()
 		"tents", "tents_island": _solve_tents()
 		"lightup", "lightup_island": _solve_lightup()
-		"oneline": _solve_oneline()
+		"oneline", "oneline_island": _solve_oneline()
 		"nonogram": _solve_nonogram()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
@@ -408,6 +408,8 @@ func _solve_lightup() -> void:
 			return
 		_tap_local(_puzzle.cell_to_local(b.y, b.x))
 
+## Drives both One Line boards: the flat one answers the island's own names,
+## because it keeps the state's figure under them.
 func _solve_oneline() -> void:
 	# Camera fit check: every post must project inside the board slot.
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
