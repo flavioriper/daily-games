@@ -260,6 +260,23 @@ const MOSAIC      := SLATE        # a laid tile: the picture
 ## cannot tell why the cell refuses to budge.
 const MOSAIC_LOCK := ACCENT
 
+## The flat board's own shades (the mock's, ported number for number:
+## docs/brainstorm/concepts.html#nonogram). A tile is a real object with a
+## bottom edge and a highlight on it, because the picture is something the
+## player has built; the highlight leaves with the grout on the win, since
+## eighty of them on a finished picture read as noise across it rather than
+## as relief. The pebble on a ruled-out socket is drawn against SOCKET_OUT
+## and not against parchment, so it is its own deeper shade of the same sand.
+const MOSAIC_DEEP := SLATE_GIVEN       # a laid tile's bottom edge
+const MOSAIC_HI   := Color("596273")   # the sliver of light on its crown
+const MOSAIC_LOCK_DEEP := Color("3a7772")
+const SOCKET_PEBBLE := Color("b5a482") # the pebble that rules a cell out
+## The clue numbers' ink. Idle they are TEXT; a line that reads exactly as it
+## should goes green and one holding too many goes rose, which is the whole
+## of this board's feedback.
+const CLUE_OK     := Color("4f8532")
+const CLUE_OVER   := MARKER_DEEP
+
 # One Line (the design agreed 2026-09-15): a jetty of mooring posts with a
 # plank between each pair. A line not yet walked is a dark stone ford; walking
 # it lays a warm plank over it. Dark to light, the same language Light Up's

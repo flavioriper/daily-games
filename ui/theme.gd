@@ -69,6 +69,10 @@ static func make() -> Theme:
 	# its minus and plus. The win screen reuses the numeral at a smaller size.
 	_label(theme, "WeightNumeral", display(700), 62, Pal.TEXT)
 	_label(theme, "GivenTag", body(700, 2), 22, Pal.TEXT_DIM)
+	# The flat Nonogram's tray (docs/superpowers/specs/2026-09-18-nonogram-flat-design.md,
+	# section 6): the two chips are wide enough to name what they paint, so
+	# each carries its word beside its picture.
+	_label(theme, "ChipLabel", display(700), 40, Pal.TEXT)
 	# Button variations.
 	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)

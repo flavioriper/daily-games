@@ -254,7 +254,27 @@ const PUZZLES := [
 		"blurb": "Fill the runs and reveal the picture.",
 		"motto": "Numbers make a picture",
 		"footer": "Count · Lay · Reveal",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-nonogram-flat-design.md). A
+		# stroke paints with one of two chips, so it asks for the tile tray;
+		# Check counts the tiles the picture does not want, so it keeps the
+		# actions row.
+		"script": "res://puzzles/nonogram2d.gd",
+		"shell": "flat",
+		"tray": "tiles",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Nonogram, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both lay the same picture.
+		"id": "nonogram_island",
+		"kind": "puzzle",
+		"title": "Nonogram",
+		"blurb": "The island board, for comparison.",
+		"motto": "Numbers make a picture",
+		"footer": "Count · Lay · Reveal",
 		"script": "res://puzzles/nonogram3d.gd",
+		"seed_as": "nonogram",
 		"difficulties": [0, 1, 2],
 	},
 	{

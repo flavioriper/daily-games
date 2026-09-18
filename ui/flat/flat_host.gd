@@ -3,16 +3,17 @@ extends "res://ui/puzzle_host.gd"
 ## The flat screen's shell: the same host as every other board's (every
 ## handler, the sheets, the analytics and the spawn are inherited) with the
 ## chrome swapped for the reference's cream rows, and the win screen in place
-## of the solved overlay. Two boards ask for it through the registry's
-## `shell` field, the flat Binairo and the flat Code Break; the island
-## boards keep ui/puzzle_host.gd's rows.
+## of the solved overlay. Nine boards ask for it through the registry's
+## `shell` field, Binairo through Nonogram; the island boards keep
+## ui/puzzle_host.gd's rows.
 ##
 ## The one row the flat screens do not share is the tray: Binairo arms a
 ## brush from three symbol chips, Code Break seats a friend from six or
-## seven, Balance steps a weight from one card per fruit, and Shikaku picks
-## nothing up at all. The registry names which (`"tray": "friends"`,
-## `"weights"`, `"none"`), because the host lays out its rows before it has
-## a puzzle to ask.
+## seven, Balance steps a weight from one card per fruit, Nonogram paints
+## with one of two tile chips, and Shikaku picks nothing up at all. The
+## registry names which (`"tray": "friends"`, `"weights"`, `"tiles"`,
+## `"none"`), because the host lays out its rows before it has a puzzle to
+## ask.
 ##
 ## Nor do they all carry an actions row. A board that is its own continuous
 ## check has nothing to put in one -- no Check, and Reset riding up in the
@@ -34,6 +35,7 @@ const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
 const SymbolTray = preload("res://ui/flat/symbol_tray.gd")
 const FriendTray = preload("res://ui/flat/friend_tray.gd")
 const WeightTray = preload("res://ui/flat/weight_tray.gd")
+const TileTray = preload("res://ui/flat/tile_tray.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const TipCard = preload("res://ui/flat/tip_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
@@ -165,6 +167,10 @@ func _build_chrome(root: VBoxContainer) -> void:
 			tray = WeightTray.new()
 			tray.step.connect(_on_step)
 			rows.append(WeightTray.HEIGHT)
+		"tiles":
+			tray = TileTray.new()
+			tray.pick.connect(_on_brush)
+			rows.append(TileTray.HEIGHT)
 		_:
 			tray = SymbolTray.new()
 			tray.pick.connect(_on_brush)

@@ -196,7 +196,7 @@ every layout change.
 
 ## The flat screens, on trial beside the island
 
-Since 2026-09-18 eight cards open a flat 2D board under flat chrome, and each
+Since 2026-09-18 nine cards open a flat 2D board under flat chrome, and each
 keeps its stage version reachable as a second card seeded from the same day
 (`seed_as`), so both can be played and judged on the phone: **Binairo**
 (`puzzles/binairo2d.gd`, beside `binairo_island`), **Code Break**
@@ -205,14 +205,16 @@ keeps its stage version reachable as a second card seeded from the same day
 (`puzzles/shikaku2d.gd`, beside `shikaku_island`), **Untangle**
 (`puzzles/untangle2d.gd`, beside `untangle_island`), **Tents**
 (`puzzles/tents2d.gd`, beside `tents_island`), **Light Up**
-(`puzzles/lightup2d.gd`, beside `lightup_island`) and **One Line**
-(`puzzles/oneline2d.gd`, beside `oneline_island`). The concept page mocks
-nine; **Nonogram** (`#nonogram`, mocked 2026-09-18) is the one still on paper.
+(`puzzles/lightup2d.gd`, beside `lightup_island`), **One Line**
+(`puzzles/oneline2d.gd`, beside `oneline_island`) and **Nonogram**
+(`puzzles/nonogram2d.gd`, beside `nonogram_island`), the last of the twelve
+boards to be drawn flat. Every screen the concept page mocks is now built.
 The user is deciding whether the game goes 2D, and nothing else has moved.
 Specs:
 `docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
-`...-tents-`, `...-lightup-` and `...-oneline-flat-design.md` siblings; mocks:
+`...-tents-`, `...-lightup-`, `...-oneline-` and
+`...-nonogram-flat-design.md` siblings; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
 `#untangle`, `#tents`, `#lightup`, `#oneline` and `#nonogram`.
 
@@ -245,14 +247,15 @@ Specs:
   unless the entry says `"shell": "flat"`; `ui/menu.gd` builds the host
   accordingly, and `ui/puzzle_host.gd` builds its rows in `_build_chrome`,
   the one method the flat host overrides. It picks the tray too
-  (`"tray": "friends"`, `"weights"`), because the host lays out its rows
+  (`"tray": "friends"`, `"weights"`, `"tiles"`), because the host lays out its rows
   before it has a puzzle to ask how many chips it wants -- and it can drop
   the actions row with `"actions": false`, which Balance does: that board is
   its own continuous check, so it has no Check to put in the row and Reset
   rides up into the top bar instead. The flat host therefore measures its
   bottom slot from the rows it actually built, not from a constant; the
-  eight screens want 460, 460, 390, 290, 140, 290, 290 and 290 -- Untangle
-  drops the tray *and* the actions row, so its slot is the tip card alone.
+  nine screens want 460, 460, 390, 290, 140, 290, 290, 290 and 460 --
+  Untangle drops the tray *and* the actions row, so its slot is the tip card
+  alone.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -262,10 +265,10 @@ Specs:
   given: Balance caps its scale bands, and the leftover becomes air *above*
   the weight cards, because a gap under the day card reads as a mistake and a
   gap above the cards reads as room) and `card_centred()` (where that
-  leftover goes: Tents, Light Up and One Line halve it, because their grid is
-  square -- or, on One Line, wider than it is tall -- while their space is
-  tall, so the cell is capped by the width and there is slack however the card
-  is cut; One Line's medium lattice is 4x3 and leaves 432 of a 1190 slot, the
+  leftover goes: Tents, Light Up, One Line and Nonogram halve it, because
+  their grid is square -- or, on One Line, wider than it is tall -- while
+  their space is tall, so the cell is capped by the width and there is slack
+  however the card is cut; One Line's medium lattice is 4x3 and leaves 432 of a 1190 slot, the
   widest air of the eight and a call its spec's section 10 records rather than
   hides). A board that offers none gets Binairo's behaviour.
 - **The flat cast is a shared drawing, and two screens already share one.**
@@ -276,18 +279,25 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in eight screens only One Line's walker
+  drawing a new character -- in nine screens only One Line's walker
   (`ui/faces/snail_face.gd`) has earned a new species, and it earned it
   because nothing else in the cast walks anywhere and its trail *is* the
-  mechanic.
+  mechanic. Nonogram went the other way and drew **no** character at all: its
+  pieces are tiles and its clues are numbers, so the only face on the screen
+  is the sprout's, and `ui/faces/mosaic_tile.gd` is builder shapes rather than
+  a Control -- eighty-one of them go into one mesh.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
   card -- on any frame rendered without its queued redraw flushed first, which
   is exactly what `RenderingServer.force_draw()` does in a harness.
-  `lightup2d.gd` and `oneline2d.gd` keep the mesh their last `_draw` handed
-  over (`_shown`) until the next one replaces it; `tents2d.gd` and
-  `untangle2d.gd` do not, and should if they are ever shot the same way.
+  `lightup2d.gd`, `oneline2d.gd` and `nonogram2d.gd` keep the mesh their last
+  `_draw` handed over (`_shown`) until the next one replaces it; `tents2d.gd`
+  and `untangle2d.gd` do not, and should if they are ever shot the same way.
+  A harness shooting one of these boards has to let a frame pass between the
+  state change and `force_draw()`: `queue_redraw` is flushed on the next idle
+  frame, so a probe that pokes the board and shoots in the same frame
+  photographs the state before the poke.
 - **A board that rebuilds only while it is moving has to ask about every
   wave.** `oneline2d.gd`'s `_animating()` first asked only its posts'
   entrance, and on a figure of twenty lines the lines' own wave outlasts it:

@@ -1,0 +1,292 @@
+# Nonogram, flat: the ninth screen on trial
+
+Status: built, 2026-09-18. Concept page:
+`docs/brainstorm/concepts.html#nonogram`. Sibling specs:
+`2026-09-18-binairo-flat-design.md`, `...-codebreak-`, `...-balance-`,
+`...-shikaku-`, `...-untangle-`, `...-tents-`, `...-lightup-` and
+`...-oneline-flat-design.md`.
+
+Picross: the numbers beside each line count its runs of filled cells, in
+order, and the finished grid is a picture. This is the last of the twelve
+boards to be drawn flat, and the ninth and last of the screens on trial.
+
+## 1. What flat buys here, honestly
+
+This is the largest margin of the nine, and it comes down to one thing.
+
+- **In a nonogram the clues are the puzzle**, and the island puts them on
+  marker stones. A stone carries one numeral and needs a whole cell of
+  platform to stand on, so the clue margin is as wide as the longest clue is
+  long -- and it caps the grid at nine, because a run of "10" has no stone
+  face. Flat, a clue is text in a band: it costs 0.55 of a cell, it can say
+  any number, and it can change colour legibly.
+- **You read a clue constantly and a cell once.** A hard board has 18 lines
+  and about 47 numbers, consulted on every deduction, and on a board pitched
+  at seven degrees the far band is the smallest, most foreshortened thing on
+  the screen. This is Tents' argument again, only stronger: Tents had 16
+  counts, this has 47, and they are the entire input to the puzzle.
+- **And it buys the five-cell guides.** Every nonogram in the world rules a
+  heavier line every fifth cell, because counting to seven along a row of nine
+  is where mistakes come from. The island has nowhere to put one -- a grout
+  line between flagstones is not something you can thicken -- and flat draws
+  it in one stroke.
+- **What it costs is the relief.** The island's finished grid is a mosaic
+  floor in real relief, lit and shadowed, and that is a better *reward* than
+  tiles on parchment: the whole point of a nonogram is the picture at the end,
+  and the island's picture is an object. This screen answers with the reveal
+  in section 8 rather than with the surface, and that is the trade the verdict
+  has to weigh.
+
+## 2. What was built
+
+| File | New? | Job |
+|---|---|---|
+| `puzzles/nonogram_state.gd` | new | The rules, scene-free: the picture, the clues, what the player has put on each cell, and every move that changes it. |
+| `puzzles/nonogram2d.gd` | new | The flat board: the floor, the clue bands, the guides, the stroke and the sprout's lines. |
+| `ui/faces/mosaic_tile.gd` | new | The socket, the tile and the pebble, as builder shapes both the board and the tray batch (section 5). |
+| `ui/flat/tile_tray.gd` | new | The two chips. `symbol_tray.gd`'s sibling; the registry asks for it with `"tray": "tiles"`. |
+| `ui/flat/flat_host.gd` | edit | The `"tiles"` case in the tray match, and the row's height in the bottom slot's sum. |
+| `core/palette.gd` | edit | A tile's bottom edge and highlight, the teal of a grouted one, the pebble on a ruled-out socket, and the clue numbers' two states. |
+| `ui/theme.gd` | edit | `ChipLabel`: the word beside each chip's picture. |
+| `ui/registry.gd` | edit | `nonogram` goes flat; `nonogram_island` keeps the island board, seeded from the same day. |
+| `tests/_win.gd` | edit | One driver solves both boards. |
+
+The generator is untouched. `puzzles/nonogram_gen.gd` -- the smoothed noise,
+the clue extraction and the line-solver that proves every board is fair -- is
+the island's, and both boards run the same ladder, so a day lays the same
+picture on each.
+
+## 3. The state is the one truth
+
+`puzzles/nonogram_state.gd` holds the picture, the clues, `marks` (a cell is
+absent, `FILL` or `MARK`), `locked`, and the history. It is
+`puzzles/nonogram3d.gd`'s logic with one deliberate difference.
+
+**A stroke is a move, not a tap.** The island cycles a cell blank -> tile ->
+cross -> blank on repeated taps, which is three taps to correct a cross and
+one tap per cell besides; a hard board is 81 cells of which about 43 are tiles
+and 38 crosses. Here the tray says which of the two a stroke lays, a stroke
+that begins on your own paint rubs it out, and the history records a *list* of
+cells -- so a painted run of six comes back on one Undo rather than six. This
+is the one place the flat board's history differs from the island's, and it
+follows from the gesture rather than being a decoration.
+
+Two things the state is careful about:
+
+- **The win test is the picture and never the clues.** A grid can have every
+  line reading exactly as its numbers say and still be wrong, because the
+  clues describe runs and not positions. `is_solved` compares cell for cell
+  with the bitmap, and the sprout says so in those words (section 7) rather
+  than pretending the board is finished.
+- **A cross is a note, not a claim.** `row_line`/`col_line` read a cross as an
+  empty cell, `wrong_tiles` never returns one, and Check never looks at one.
+  Crosses are never marked wrong, never counted against the player and never
+  checked.
+
+The island script keeps its own copy of the rules until the verdict; whichever
+board survives, the state is the one truth to keep.
+
+## 4. The cast is nobody
+
+**This is the first flat screen with no character on the board at all.** Its
+pieces are tiles and its clues are numbers, and the only face anywhere on it
+is the sprout's on the tip card. Every other flat screen has something alive
+on the board -- Binairo's suns and moons, Code Break's friends, Balance's
+fruit, Shikaku's markers, Tents' conifers, Light Up's lanterns, One Line's
+snail -- and drawing one here would mean putting a face on a square for the
+sake of it.
+
+That may be the honest answer for a puzzle made of arithmetic, or it may be
+the one screen that reads as a different game from the other eight. It is
+call 10.2 and the page does not pretend to have settled it. What it does
+instead is make the *floor* an object rather than a painted grid: a tile has
+a grout line, a bottom edge and a sliver of light on its crown, and a
+ruled-out cell takes a real pebble.
+
+## 5. How it is drawn
+
+**One mesh for the whole floor.** Every socket, guide line, tile and pebble
+goes into a single `Face.Builder` mesh, rebuilt only when something moves --
+81 cells and about 120 shapes in one `draw_mesh`. None of them has a face on
+it, so none of them needs a Control: a Control per cell would be 81 nodes for
+a field of squares, and gl_compatibility pays per draw command
+(`ui/faces/face.gd`'s measurement, and the `canvas-primitives-are-objects`
+note). `ui/faces/mosaic_tile.gd` is the three shapes, static, so the tray
+draws the same tile and the same pebble the board does -- what the tray offers
+is literally what the finger leaves behind.
+
+**The clue numbers are drawn over it with one `draw_string` each**, as
+`puzzles/lightup2d.gd` draws its numerals: a digit in a mesh cache key would
+multiply every state by ten, and a hard board carries about 47 of them.
+
+**The mesh the last `_draw` handed over is kept** (`_shown`). A canvas command
+holds a mesh by RID and not by reference, so a board that rebuilds its cache
+every frame and drops the previous one leaves the renderer drawing a freed RID
+-- "Parameter mesh is null", and an empty card -- on any frame rendered
+without its queued redraw flushed first. `lightup2d.gd` and `oneline2d.gd`
+learned this; this board was written with it.
+
+**A board left alone costs nothing.** `_animating` is true while a stroke is
+running, through the entrance, through any cell's pop, dip or Check shake, and
+through the win's whole 2.2 s; otherwise the board never asks for a frame.
+Unlike every sibling it has no character to sway or blink, so idle really is
+idle.
+
+## 6. The tray and the gesture
+
+**Two chips, and a drag paints the one you picked.** `ui/flat/tile_tray.gd`
+is a tile chip and a cross chip, each wide enough to carry its word, the
+armed one lifted with the sun border exactly as Binairo's chips take it. The
+tray only asks; the board owns `brush` and the tray reads it back, so a board
+that drops the brush is shown here too.
+
+- **A drag that starts on your own paint rubs it out.** The stroke's job is
+  read off the cell it began on, exactly as Tents' and Light Up's sweeps are,
+  so there is no eraser chip to arm and no mode to get stuck in.
+- **A stroke locks to a row or a column** the moment it leaves the first cell,
+  by whichever direction is larger, and every cell between the last one
+  painted and this one is filled in, so a fast finger leaves no holes. A
+  nonogram is played in lines, and a finger dragged across a phone wanders;
+  without the lock, painting a run of six in the middle of a 9x9 reliably
+  catches a cell in the row above. The lock is not breakable: lift and
+  re-press to paint a new line.
+- **A cell is painted once per stroke.** Crossing back over your own stroke is
+  how a finger wanders, not a second decision.
+- **A tile a hint grouted in refuses the finger** with a dip and a word, and a
+  stroke passing over it leaves it alone.
+
+## 7. What the board says, and what it will not
+
+Feedback is **per line and never per cell**, which is the help a nonogram
+player actually wants. A line's numbers turn green the moment its filled runs
+read exactly as the clue says, and rose the moment the line holds more filled
+cells than the clue can account for. Nothing on the board ever points at one
+cell -- the lines do the talking, and that is the island's decision kept
+unchanged.
+
+A ruled-out cell reads twice, as it does on the island: the socket goes a
+shade darker *and* takes a pebble. On a hard board 38 of the 81 cells end up
+like that, so the difference between "ruled out" and "nobody has looked at
+this yet" has to survive being half the grid.
+
+The sprout's line, in order of precedence:
+
+| When | What it says |
+|---|---|
+| idle, floor bare | the three tips, cycling every 10 s |
+| any line over-filled | "N lines hold more filled cells than their numbers allow." |
+| every line reading right, still wrong | "Every line reads as it should. Something is still in the wrong place." |
+| otherwise | "N tiles still to lay." |
+| all the tiles down, lines disagree | "All the tiles are down. N lines still disagree." |
+| after Check | "N tiles are in the wrong place." / "Every tile you have laid belongs to the picture." |
+| after a hint | "That tile belongs to the picture, and it is grouted in for good." |
+| on a grouted tile | "That tile is grouted in. A hint laid it." |
+| solved | "There it is. The picture you were counting towards." |
+
+## 8. The screen, and the reveal
+
+| Row | Height | What is in it |
+|---|---|---|
+| Top bar | 180 | Back, `NONOGRAM` in ink with the leaf, `NUMBERS MAKE A PICTURE` under, then Undo, Hint with its count and Settings. |
+| Day card | 120 | A tree, the day, the island's name. |
+| Board card | cut to fit | The floor on parchment, with the clue bands above and to the left. |
+| Tray | 150 | The tile chip and the cross chip. |
+| Actions | 130 | Reset and Check. `capabilities()` is undo, hint and check. |
+| Tip card | 140 | The sprout and one line. |
+
+The bottom slot is therefore 460, the same as Binairo's and Code Break's.
+
+**The board card is cut to the floor and centred**, `card_height` and
+`card_centred` both -- the fourth board of the nine to want both (Tents, Light
+Up and One Line are the others), and for the same reason: the grid is square
+while the space is tall, so the cell is capped by the width and there is slack
+however the card is cut. Air above and below reads as centring where all of it
+below reads as a board that fell over.
+
+The band is measured from the puzzle in hand -- as the island measures its
+margin of bare platform -- so a gentle picture gets a tight board. A number
+costs **0.55 of a cell** rather than the whole cell a marker stone needs,
+which is most of why a 9x9 fits at all.
+
+Motion:
+
+| Moment | What happens |
+|---|---|
+| Entrance | The clue numbers fade along their bands, the sockets arrive on a diagonal, the guides last. |
+| Painting | A tile pops in with its grout line; a cross's pebble arrives with the same overshoot. Cells under a running stroke carry a faint shade, so the gesture is visible while it happens. |
+| A line settling | Its numbers go green on the frame the count changes, and rose the moment it is over-filled. Nothing waits for Check. |
+| A grouted tile | Teal rather than a darker slate -- two neighbouring darks are the one thing that will not read -- and it refuses the finger with a dip. |
+| Check | Every tile the picture does not want shakes. Crosses are left alone. |
+| Solved | The crosses clear in a scatter, the empty sockets fade back to parchment, **the grout lines close up**, the clue numbers go faint, and the tiles hop in reading order 0.02 s apart. |
+
+**The reveal is the win.** The board *is* the reward here, more than on any
+other screen, so `flat_win` shows no cast at all: everything that was
+working-out leaves and what stays on the card is the picture as a single
+shape. Closing the gap is not enough on its own -- four rounded corners
+meeting leave a star-shaped hole of parchment -- so the corner radius comes
+down with the inset, and the tiles' highlights go with the grout, because
+eighty of them on a finished picture read as noise across it rather than as
+relief. The clue numbers fade to 15% rather than to nothing: a picture with
+the numbers that made it still faintly beside it reads as an answer, where a
+bare picture reads as a screensaver.
+
+## 9. Measured
+
+The ladder, over 120 generated boards a step (the concept page's measurement):
+every board line-solves, the picture fills 51-53% of the grid, and the longest
+clue runs to 1.6 numbers on easy, 2.1 on medium and 2.6 on hard (worst seen:
+3, 4 and 5). Generation is effectively free -- under a millisecond, 1.4
+attempts on hard -- and on all 360 boards the line-solver's fixpoint came back
+*equal to the stored picture*, which is what makes the answer unique and the
+board guess-free.
+
+Cells land at 154 on easy, 116 on medium and 88 on hard; 80 when a clue runs
+to five numbers.
+
+On this Mac, a hard board half laid: **68 draw calls and 203 render objects**,
+against the 855-call budget in `docs/art/blender-contract.md`. The whole floor
+is one of those calls and the clue numbers are most of the rest -- the fewest
+calls of any flat board measured, against Tents' 111 and Binairo's 162 on
+their own hard boards, because a field of squares with no faces on it batches
+where a board of characters cannot. Idle, the three are indistinguishable
+(11.9, 11.9 and 11.9 ms in a windowed harness with the menu still behind the
+host, two readings each): the number is the harness's floor and not the
+board's, and a board left alone asks for no frames at all.
+
+`tests/_win.gd` drives both boards from one driver and both win:
+22/22 winnable, board fit and HUD checks green. A throwaway probe drove the
+stroke through `_gui_input` and confirmed the axis lock holds a wandering
+finger to its row, that one stroke is one history entry and one move, that a
+stroke beginning on your own paint rubs it out, that the cross chip paints
+crosses and a tile goes straight over one, and that a grouted tile survives a
+tap on it.
+
+## 10. Calls this screen is still for
+
+1. **88 is a small cell, and 80 is smaller.** That is 32 and 29 CSS pixels
+   against the 44 you want under a thumb -- the tightest board of the nine.
+   The gesture is a drag rather than a tap, which forgives a great deal, and
+   the axis lock forgives more; whether that is enough on a 9x9 is a thumb
+   question, and only the phone answers it. The levers, in order: shrink the
+   clue band's 0.55, drop hard to 8x8, or accept the drag.
+2. **No character on the board at all** (section 4).
+3. **Is the picture worth anything when it is a blob?** The generator smooths
+   noise into shapes, so what you reveal is pleasing but abstract -- never a
+   cat. The reveal is the strongest thing this screen does, and it is showing
+   off something nobody authored. A hand-drawn set of pictures per day is the
+   obvious answer and a content pipeline nobody has asked for.
+4. **Two chips, or one chip and a long press?** The tray costs a 150-tall row
+   on the tightest screen in the set. Dropping it would give the board about
+   13% more cell.
+5. **Whether the axis lock should be breakable** -- lift and re-press to paint
+   a new line, as it is here, or allow a stroke to turn a corner the way some
+   picross apps do.
+6. **Whether Check should say anything about crosses.** It refuses to on
+   purpose (a cross is a note), but a player who has crossed out a cell the
+   picture wants is heading for a contradiction they will not find for another
+   twenty strokes.
+7. **The ladder stays 5 / 7 / 9.** The nine-wide cap is the island's
+   constraint, not this screen's -- the flat board could go wider, since a
+   clue is text and a "10" is as cheap as a "1". The series' rule is that the
+   game is identical and only the screen is on trial, so widening it is a
+   decision for after the verdict.

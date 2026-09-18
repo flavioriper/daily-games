@@ -192,6 +192,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-nonogram .refs img{border-radius:14px}
 #tab-nonogram .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #ng-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat snake apple mock extras ---------- */
+#tab-snakeapple .phone{background:#f6efe3}
+#tab-snakeapple .phone canvas{touch-action:none;cursor:pointer}
+#tab-snakeapple .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-snakeapple .refs figure{margin:0}
+#tab-snakeapple .refs img{border-radius:14px}
+#tab-snakeapple .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#sa-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -211,6 +219,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="lightup">Light Up · flat</button>
     <button data-tab="oneline">One Line · flat</button>
     <button data-tab="nonogram">Nonogram · flat</button>
+    <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
 </header>
 
@@ -1362,6 +1371,112 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a picture nearly laid with crosses and one tile too many, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#nonogram</code>.</p>
 </section>
 
+
+<!-- ============================ SNAKE APPLE ============================ -->
+<section class="tab-panel" id="tab-snakeapple">
+  <h2>Snake Apple · flat, and the board we built is the wrong game <span class="pill blue">concept · 2026-09-18</span></h2>
+  <p class="lede">The game the user asked for is <b>Apple Worm</b>, sold on the app stores as Snake Apple and advertised on TikTok: a side view with gravity in it, a worm that crawls along shelves of wood, an apple that makes it one cell longer and is ground until it is eaten, and a spiral portal that is open from the first move but laid where a short worm cannot get. Length is the tool — a longer worm reaches further and climbs higher, and the level is the lock. What we built in September (<code>puzzles/snake3d.gd</code>) is the other Snake: a top-down meadow, boulders, and a burrow. Same name, different game. This page is the right one, and the board on the island retires the day this one is built.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-snakeapple-ref.png" alt="The reference: a side-view level of wooden platforms with grass on top, a green worm resting on a ledge at the top left, a long chain of red apples zig-zagging across the level, and a black spiral portal at the top right">
+        <figcaption>The reference the user brought, saved as <code>docs/art/concept-snakeapple-ref.png</code>. What it settles: the side view, the wood-and-grass terrain, apples hung in the air rather than lying on the ground, and the spiral portal as the way out. Its purple apple is not in the rule below — no source documents one, so this page leaves it out rather than inventing it.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The voice, carried from the Binairo trial and now shared by ten screens: cream cards with a soft bottom edge, a sprout that talks, and a day card over the board. The reference's sky, mountains and cartoon outlines are not what this screen takes from it; the level is drawn on the family's parchment.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="sa" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="sa-rm">Reduce motion: off</button>
+        <button id="sa-diff">Easy · 7×8, 3 apples</button>
+        <button id="sa-new">New puzzle</button>
+        <button id="sa-stuck">Get stuck on purpose</button>
+        <button id="sa-solve">Solve it</button>
+      </div>
+      <div id="sa-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>swipe to crawl</b> (a held swipe keeps crawling, a step for every half-cell of travel), or tap a cell next to the head; arrow keys work too, because this page is read on a desktop. Undo, Hint, Check and Reset all do what the game would. The generator is real and every level is solved before it is shown — and checked to be <em>out of reach</em> without the apples, which is the whole game. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-18: <b>this replaces the built Snake</b>, and <b>levels are generated and solver-verified</b> rather than hand-drawn. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The rule <span class="pill blue">decided</span></h3>
+  <p>The stores and the portal sites sell the game rather than document it, but the original's level-by-level walkthrough (<a href="https://jayisgames.com/review/apple-worm.php">jayisgames, 2018</a>) gives the rule away in its solutions, and the mock now plays that rule move for move. Level 1 is solved with no apple in the level at all, and two later apples are called "a trap" outright: <b>the portal is never locked</b>. Level 8 is solved by "climb[ing] up on the apple to reach the right side": <b>an apple is ground until it is eaten</b>. Level 2 says it in one line — "the apple is necessary to reach the exit" — and that is <b>the puzzle</b>: the portal is put where the worm cannot get as it is, and eating is how it gets longer. What the walkthrough adds after level 10 — push blocks, and spikes from level 21 — is not in the reference and not on this page.</p>
+  <ul>
+    <li><b>A level is shelves of wood in a grid of air, over an edge</b> — most days no ground at the bottom at all, some days a ledge of it under part of the level — with apples hung in the air, one portal, and a worm three cells long resting on something. (Three is the original's: its level 3 hint says that after one apple "you don't just need to be four long".)</li>
+    <li><b>The head steps one cell</b>, up, down, left or right. Wood refuses it and its own body refuses it. The cell the tail is leaving is free to step into: the tail vacates as the head arrives.</li>
+    <li><b>An apple grows the worm by one.</b> The head steps into it and eats it; the tail stays where it is for that move, which is the whole of the growth rule.</li>
+    <li><b>An apple is ground until it is eaten.</b> A worm cell over one is held up as if it were over wood, a fall stops on one, and the body cannot pass through one. That is what lets a worm climb an apple to reach a ledge — and what makes eating the apple you are standing on a decision.</li>
+    <li><b>Then gravity.</b> The worm holds itself up while any of its cells sits directly on wood or on an apple; otherwise it drops a cell at a time until one does — or until it has fallen out of the board, and then it is gone (section 5). Stepping the head up into thin air is legal — the body is the grip — and that is what the puzzle is made of. A worm on a ledge can climb its own column, reach across a gap once it is long enough, and pour itself off an edge it cannot climb back up.</li>
+    <li><b>The portal is open from the first move</b>, and the head arriving in it — by a step or at the end of a fall — is the win. Nothing about it changes when an apple is eaten. What keeps you out is where it is.</li>
+  </ul>
+
+  <h3>2. Why the built board goes <span class="pill rose">the argument</span></h3>
+  <ul>
+    <li><b>They are not the same game with a different camera.</b> Ours is classic Snake on a meadow: the snake slides across a flat grid, apples are on the floor, the room you have left is the puzzle, and a burrow opens at the end. The reference is a platform game about hanging on: there is no room to run out of, only wood to stand on and a height to reach. Nothing in <code>snake3d.gd</code> carries over — not the generator, not the solver, not the pieces.</li>
+    <li><b>Gravity is the whole idea, and gravity needs a side view.</b> Up and down have to be the screen's up and down for "I am about to fall" to be a thing you can see. A top-down meadow has no up.</li>
+    <li><b>Growth means something here.</b> On the meadow, growing is a cost — a longer snake has fewer places to be. In the reference it is the reward: the level is unreachable until you are long enough, so eating apples in the wrong order strands you and eating them in the right one hands you the portal. That inversion is the game, and it is the thing our board does not have.</li>
+    <li><b>What we lose is a built, tested board.</b> <code>snake3d.gd</code> works, it has a generator and a solver behind its check, and it is on the menu. Retiring it is the cost of having asked for the wrong game, and it should be said plainly rather than dressed up as an iteration.</li>
+  </ul>
+
+  <h3>3. The screen <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>SNAKE APPLE</code> in ink with the leaf sprouting from it and <code>EAT YOUR WAY OUT</code> under, then Undo, Hint with its count and Settings.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 10", "Windfall".</td></tr>
+    <tr><td class="k">Board card</td><td>cut to fit</td><td>The level on parchment. <b>The grid is portrait</b> — 7×8, 8×10 and 9×11 — because the phone hands a board twice the height the widest sensible column count asks for, and in a game about gravity the spare belongs to climbing. Cells land at <b>133</b> on easy, 117 on medium and 104 on hard: 48, 42 and 37 CSS pixels, the roomiest board of the ten screens, because the gesture never has to hit a cell.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check. No tray — there is nothing to pick up — so the bottom slot is 290, as Shikaku's is.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and one line: apples left and how long you are, why a move was refused, and what Check found.</td></tr>
+  </table>
+
+  <h3>4. The gesture <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>Swipe to crawl, and hold the swipe to keep crawling.</b> Every half-cell of travel is one more step, so running a worm along a shelf is one gesture rather than six taps. The reference's own controls are a swipe per step, which on a 35-move level is 35 separate flicks.</li>
+    <li><b>A tap on the cell next to the head does the same one step</b>, for the last careful move and for a thumb that would rather aim than sweep. It is also what a win harness can drive, as it drives every other board.</li>
+    <li><b>The move is refused, not punished.</b> Wood and your own body each answer with a nudge of the head in the direction you asked for and a line from the sprout. Nothing is spent.</li>
+    <li><b>One step is one entry in the history</b>, fall and all: undo takes back the step <em>and</em> the drop it caused, because the two were never separate decisions.</li>
+  </ul>
+
+  <h3>5. Falling, and being stuck <span class="pill blue">decided</span></h3>
+  <p><b>There is no losing, and there is an edge.</b> The reference drops you off the bottom of the level and makes you replay it from the start; this family does not fail a player, so the fall is kept and the replay is not. A worm that drops past the bottom of the board falls out of sight, the sprout says so, and Undo puts it back on the step before. Nothing is lost but the move. The first draft of this page gave every level a floor so that a fall always landed; measured (section 6), the floor was also what let a fallen worm climb back up anything shorter than itself, and with it the cells a portal could sit on all but vanished — on hard, one candidate in fifty had one. The edge is not a punishment here. It is what makes length matter, which is the game.</p>
+  <p>What survives is the real difficulty: a worm that drops onto a shelf it cannot climb back off has stranded itself, and the level cannot be finished any more — and unlike the edge, that is invisible until you ask.</p>
+  <p><b>The board does not warn you before the step.</b> That is One Line's decision kept: avoiding the drop <em>is</em> the puzzle, and a board that greys out the moves that spoil it has played it for you. What the board does say, unasked, is the one thing that costs nothing to notice — a worm with no legal move at all is boxed in, and the sprout says so.</p>
+  <p><b>Check is the question you ask on purpose.</b> It runs the solver from where you stand and answers in one of two ways: still finishable, and in how few moves, or stuck — and then how many moves back it could still have been finished, found by binary search over your own history the way the Rope's <code>longest_playable</code> does it. It points; you decide whether to take the undos. <b>Hint</b> plays one move of a shortest finish, and when there is no finish left it refuses, says how far back to undo, and costs nothing: a hint that invents a move it cannot honour is worse than no hint.</p>
+
+  <h3>6. The generator, and what it costs <span class="pill blue">decided</span></h3>
+  <p>Wood first — shelves over the void, or a ledge of ground under part of the level — then the worm on a ledge, then the apples one at a time, each hung where the head can already get with the ones before it eaten, and then the portal. The portal is the whole trick. One breadth-first search over the level with no portal in it records, for every cell the head can stand in or fall through, the fewest moves to arrive there with every apple eaten and whether it can arrive there with one still hanging; a second, cheaper search does the same for the bare terrain. The portal goes on a cell the head reaches full, never part-fed and never on the bare terrain, at a depth inside the step's move band. That one placement makes the level finishable, makes every apple necessary — no finish exists that leaves one — puts the portal out of reach of the worm as it starts, and sets the shortest finish, exactly, without a level being drawn and thrown away for failing any of the four. What is still thrown away is a terrain with nowhere to hang the next apple, or one with no such cell at all. The same search, run from where the player stands, is Check and Hint.</p>
+  <p style="font-size:14px;color:var(--muted)">Measured over 60 generated levels a step, in node on this Mac — <em>not</em> in GDScript, which is the number that will matter: every step kept 60 of 60, at <b>9.5, 9.6 and 18.7 candidates a level</b>; of the candidates dropped, about six in ten had no cell for the portal and four in ten nowhere for an apple. The shortest finish averages <b>17.3 moves on easy</b> (10–24), 24.3 on medium (18–35) and 33.5 on hard (26–48), and the worm ends 6, 7 or 8 cells long. One level costs 9 ms on easy (worst 36), 40 ms on medium (worst 216) and <b>347 ms on hard (worst 2.5 s)</b>; the search that decides a level walks 5,000 states on easy, 20,000 on medium and 116,000 on hard (worst 262,000), against budgets of 200,000, 400,000 and 800,000 — a search that did not finish cannot promise what the head never reaches, so over budget drops the candidate. A Check part way through a level is far cheaper: 600, 2,800 and 15,600 states, or 0.1, 0.7 and 4.1 ms. With a floor under every level the same generator found a candidate with anywhere to put the portal 6 times in 100 on easy, 3 in 80 on medium and once in 50 on hard, and with pits in the floor no better; shelves over the void found one in three, one in four and one in five. That is why there is no floor (section 5).</p>
+
+  <h3>7. Motion, and well done <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The chrome slides in row by row; the wood fades up, then the apples pop in along the level in order, and the portal's spiral is already turning — it is open, and always was.</td></tr>
+    <tr><td class="k">A step</td><td>The worm slides one cell in 0.16 s — the island's own <code>SLIDE_TIME</code> — every segment following the one ahead of it, and the head turns to face the way it is going.</td></tr>
+    <tr><td class="k">A fall</td><td>Each cell of the drop is its own 0.085 s beat, so a long fall reads as a fall rather than a teleport, and the last one lands — or carries the worm out under the card's edge, and the board is empty until Undo.</td></tr>
+    <tr><td class="k">An apple</td><td>The head's mouth opens on the frame it arrives, the apple bursts into sparks, and the worm is one cell longer with the tail left where it was.</td></tr>
+    <tr><td class="k">A refusal</td><td>The head nudges a tenth of a cell the way you asked and comes back. The sprout says which of the two it was.</td></tr>
+    <tr><td class="k">Standing on an apple</td><td>Nothing — and that is the point. The apple stops bobbing while a worm cell rests on it, and the worm sits on it exactly as it sits on wood, so the eye learns that an apple is ground before the rule has to be read.</td></tr>
+    <tr><td class="k">Solved</td><td>The worm pours into the portal head first, a segment every 0.05 s, and the card slides down and shrinks as the win screen arrives over it.</td></tr>
+  </table>
+  <p>Then "Well done!" and "Every apple, and out the other side.", the day card with the time, moves and hints, and a full-width Back to camp — the pattern the other nine screens share.</p>
+
+  <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>347 ms to grow a hard level, and 2.5 s at worst, is a hitch you would see.</b> That is node on a Mac; GDScript will be several times slower, and a phone slower again. A daily level is known a day ahead, though, so the cheapest answer is not a faster search but growing the level the night before — on the device while the game is open, or on the server the way How Big? publishes its day — and shipping the level rather than the seed. It is the one measurement on this page that argues with the design.</li>
+    <li><b>A fall you can undo.</b> The original's fall is a restart, and it is the thing every advert shows; ours plays the same fall and then hands you Undo. Whether a fall that costs one tap still lands as a fall — whether the flinch survives — is a phone question this page cannot settle.</li>
+    <li><b>No decoys, by construction.</b> The original hangs an apple that is "a trap" in two of its thirty levels, and this generator forbids that: every apple is one you will eat, so "3 apples" on the card is a promise rather than a puzzle. A decoy is a real difficulty the daily could add later, on hard only, with the card saying so.</li>
+    <li><b>The worm is the only face on the board.</b> That is one new drawing and no new species — the apples stay plain, because giving a face to the thing you eat is grim. Nonogram had no face at all and this has exactly one; whether the family reads that as consistent is a question for the set, not for this screen.</li>
+    <li><b>Held-swipe crawling is fast and it is also easy to overshoot.</b> A half-cell a step means a careless sweep along a shelf can walk one cell further than you meant, and here that can be the cell that strands you. The tap is the precise alternative, and undo is free, but the ratio is a thumb question.</li>
+    <li>Whether the daily should ship a hand-drawn level now and then. The generator makes fair levels, never shapely ones — no level it draws will ever spell out a picture in apples the way the reference's advert does.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a level half eaten, <code>?stuck=1</code> for a worm that has stranded itself and been checked, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#snakeapple</code>.</p>
+</section>
 </main>
 
 <script>
@@ -7558,6 +7673,828 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   frame();
 })();
 
+/* ---------- the flat snake apple mock ---------- */
+(function(){
+  const cv=document.getElementById('sa'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const now=()=>T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  // The worm's own colours are the ones the island snake was given
+  // (core/palette.gd): SCALE over SCALE_BELLY. The wood is the family's WOOD
+  // over WOOD_DEEP, the apple is Horse Pen's FRUIT with its STEM and
+  // APPLE_LEAF, and the portal is the burrow's HOLE -- the one piece of the
+  // built board this screen keeps.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    wood:'#c8a17a',woodDeep:'#9c7350',woodDark:'#7d5a3c',
+    moss:'#7fa84a',mossDeep:'#5f8a34',
+    scale:'#5cb85c',scaleDeep:'#3f8f42',belly:'#d9e8a8',
+    fruit:'#e04a3f',fruitDeep:'#b8382f',stem:'#6b4a2e',appleLeaf:'#5fa04a',
+    hole:'#2a231e',slate:'#3f4652',stone:'#dccfb3',teal:'#4c9a94',tealDeep:'#3a7772',
+    good:'#7cb06b',bad:'#d9605a'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // ---- the rule ----
+  // Apple Worm's, read off the walkthrough's level solutions rather than off
+  // the store pages (section 1). A level is a grid of air and wood with a
+  // floor along the bottom, apples hung in the air, a portal, and a worm three
+  // cells long resting on something. The head steps one cell; wood and its
+  // own body refuse it. An apple grows the worm by one -- the tail stays where
+  // it is that move. Then gravity: the worm holds itself up if any of its
+  // cells sits directly on wood or on an apple, and otherwise it drops a cell
+  // at a time until one does. The portal is open from the first move: the
+  // head arriving in it, by a step or by a fall, is the win. There is an
+  // edge under the world: a worm that falls past it is gone, which the solver
+  // reads as no move and the board plays out and hands to Undo.
+  const DX=[0,1,0,-1],DY=[-1,0,1,0];
+  // An apple is ground until it is eaten. That is what lets a worm climb on
+  // one, and what stops a fall on one.
+  const solidAt=(lv,i,mask)=>lv.wood[i]||(lv.appleBit[i]>=0&&!((mask>>lv.appleBit[i])&1));
+  function supported(lv,cs,mask){
+    const {cols,rows}=lv;
+    for(let i=0;i<cs.length;i++){const y=(cs[i]/cols)|0; if(y+1<rows&&solidAt(lv,cs[i]+cols,mask)) return true;}
+    return false;
+  }
+  // One move, as the board plays it. Null is a refusal; `frames` is the worm
+  // after the step and after each cell of the fall, which is what the screen
+  // animates. The solver asks for none of that.
+  function applyMove(lv,cs,mask,d,wantFrames){
+    const {cols,rows,wood}=lv;
+    const head=cs[0],hx=head%cols,hy=(head/cols)|0;
+    const nx=hx+DX[d],ny=hy+DY[d];
+    if(nx<0||nx>=cols||ny<0||ny>=rows) return null;
+    const ni=ny*cols+nx;
+    if(wood[ni]) return null;
+    const bit=lv.appleBit[ni],ate=bit>=0&&!((mask>>bit)&1);
+    // The tail vacates the cell it stands in, unless the worm grows into it.
+    const body=ate?cs:cs.slice(0,cs.length-1);
+    for(let i=0;i<body.length;i++) if(body[i]===ni) return null;
+    const nmask=ate?(mask|(1<<bit)):mask;
+    let cur=[ni].concat(body);
+    const frames=wantFrames?[cur]:null;
+    if(ni===lv.portal) return {cells:cur,mask:nmask,ate,win:true,fell:0,frames};
+    let fell=0;
+    while(!supported(lv,cur,nmask)){
+      cur=cur.map(c=>c+cols); fell++;
+      if(frames) frames.push(cur);
+      if(cur[0]===lv.portal) return {cells:cur,mask:nmask,ate,win:true,fell,frames};
+      // Past the edge, once the last cell is out of sight. The fall runs to
+      // the end whether or not anyone is watching, because a head that
+      // passes the portal on the way down has arrived in it.
+      let gone=0; for(const c of cur) if(((c/cols)|0)>=rows) gone++;
+      if(gone===cur.length) return {dead:true,cells:cur,mask:nmask,ate,fell,frames};
+    }
+    return {cells:cur,mask:nmask,ate,win:false,fell,frames};
+  }
+  const stateKey=(cs,mask)=>cs.join(',')+'|'+mask;
+  // Breadth-first over (worm, apples eaten). One search answers the three
+  // questions the board ever has: can this still be finished, in how few
+  // moves, and what is the next move of a shortest finish. A search that runs
+  // out of budget answers "don't know", which Check and Hint both read as
+  // "no" -- the honest reading, and the Rope's own.
+  function solve(lv,cs,mask,budget){
+    budget=budget||160000;
+    const start=stateKey(cs,mask),seen=new Map([[start,null]]);
+    let queue=[{cells:cs,mask,key:start}],spent=0;
+    while(queue.length){
+      const next=[];
+      for(const st of queue){
+        for(let d=0;d<4;d++){
+          spent++;
+          if(spent>budget) return {moves:null,spent,exhausted:false};
+          const out=applyMove(lv,st.cells,st.mask,d,false);
+          if(!out||out.dead) continue;
+          if(out.win){const ms=[d]; let k=st.key;
+            while(seen.get(k)){const step=seen.get(k); ms.unshift(step.d); k=step.from;}
+            return {moves:ms,spent,exhausted:true};}
+          const k=stateKey(out.cells,out.mask);
+          if(seen.has(k)) continue;
+          seen.set(k,{from:st.key,d});
+          next.push({cells:out.cells,mask:out.mask,key:k});
+        }
+      }
+      queue=next;
+    }
+    return {moves:null,spent,exhausted:true};
+  }
+
+  // ---- the generator ----
+  // Wood first, then the worm on a ledge, then the apples one at a time, each
+  // where the head can already get with the ones before it eaten, and then
+  // the portal -- on a cell the head only ever arrives at with every apple
+  // gone, at a depth inside the move band. One search over the level with no
+  // portal in it answers all of that at once, so a level is built to be
+  // finishable, to need every apple, and to sit in its band, rather than
+  // drawn at random and thrown away for failing any of the three.
+  // Shelves over the void, most days; a ledge of ground under part of the
+  // level on the rest. Never a floor the whole way across: measured over the
+  // four terrains tried (section 6), a floor lets a worm that has dropped
+  // climb back up anything shorter than itself, and the cells the head can
+  // reach only at full length -- the only places a portal can go -- all but
+  // vanish. The original has no floor either; falling off is how you fail.
+  function terrain(rng,cols,rows,shelves){
+    const wood=new Uint8Array(cols*rows);
+    if(rng()<0.4){
+      const w=2+Math.floor(rng()*(cols-3)),x0=Math.floor(rng()*(cols-w+1));
+      for(let x=x0;x<x0+w;x++) wood[(rows-1)*cols+x]=1;
+      for(const side of [0,cols-1]) if(wood[(rows-1)*cols+side]&&rng()<0.55){
+        const hgt=1+Math.floor(rng()*2);
+        for(let k=1;k<=hgt;k++) wood[(rows-1-k)*cols+side]=1;}
+    }
+    for(let s=0;s<shelves;s++){
+      const wdt=2+Math.floor(rng()*4),y=1+Math.floor(rng()*(rows-3)),x0=Math.floor(rng()*(cols-wdt+1));
+      for(let x=x0;x<x0+wdt;x++) wood[y*cols+x]=1;
+      // A leg under one end now and then, so a shelf is not always a floater.
+      if(rng()<0.35){const lx=rng()<0.5?x0:x0+wdt-1;
+        for(let y2=y+1;y2<rows-1&&rng()<0.7;y2++) wood[y2*cols+lx]=1;}
+    }
+    return wood;
+  }
+  function airAbove(lv,lift){
+    const {cols,rows,wood}=lv,out=[];
+    for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+      const i=y*cols+x; if(wood[i]) continue;
+      for(let k=1;k<=lift;k++) if(y+k<rows&&wood[i+k*cols]){out.push(i); break;}
+    }
+    return out;
+  }
+  function placeWorm(rng,lv){
+    const {cols}=lv,tries=airAbove(lv,1).slice();
+    while(tries.length){
+      const pick=tries.splice(Math.floor(rng()*tries.length),1)[0],x=pick%cols;
+      for(const dir of (rng()<0.5?[1,-1]:[-1,1])){
+        if(x-dir*2<0||x-dir*2>=cols||x-dir<0||x-dir>=cols) continue;
+        const cs=[pick,pick-dir,pick-2*dir];
+        if(cs.some(c=>lv.wood[c])) continue;
+        if(!supported(lv,cs,0)) continue;
+        return cs;
+      }
+    }
+    return null;
+  }
+  // Everything the worm can do on the level with no portal in it. For every
+  // cell the head can stand in or fall through: the fewest moves to arrive
+  // there with every apple eaten (`fullAt`), and whether it can arrive with
+  // one still hanging (`partAt`). A portal on a cell that is in the first and
+  // not the second is a level every apple must be eaten to finish -- the
+  // walkthrough's "the apple is necessary to reach the exit", made a rule --
+  // and its shortest finish is the depth, exactly. Over budget is null: a
+  // search that did not finish cannot promise what the head never reaches.
+  function explore(lv,cs,budget){
+    const bare=Object.assign({},lv,{portal:-1}),full=(1<<lv.apples.length)-1;
+    const fullAt=new Map(),partAt=new Set();
+    const note=(head,mask,depth)=>{if(mask===full){if(!fullAt.has(head)) fullAt.set(head,depth);} else partAt.add(head);};
+    note(cs[0],0,0);
+    const seen=new Set([stateKey(cs,0)]);
+    let queue=[{cells:cs,mask:0}],depth=0,spent=0,done=true;
+    while(queue.length&&done){
+      depth++; const next=[];
+      for(const st of queue){
+        for(let d=0;d<4;d++){
+          if(++spent>budget){done=false; break;}
+          const out=applyMove(bare,st.cells,st.mask,d,true); if(!out) continue;
+          // A head that passes a cell on its way off the edge has still
+          // arrived there: a portal on that cell would have caught it.
+          for(const f of out.frames) note(f[0],out.mask,depth);
+          if(out.dead) continue;
+          const k=stateKey(out.cells,out.mask); if(seen.has(k)) continue;
+          seen.add(k); next.push({cells:out.cells,mask:out.mask});}
+        if(!done) break;}
+      queue=next;
+    }
+    return {fullAt,partAt,spent,done};
+  }
+  function generate(rng,spec,stats){
+    const why=stats?(k=>{stats[k]=(stats[k]||0)+1;}):(()=>{});
+    for(let attempt=1;attempt<=spec.tries;attempt++){
+      const cols=spec.cols,rows=spec.rows;
+      const wood=terrain(rng,cols,rows,spec.shelves[0]+Math.floor(rng()*(spec.shelves[1]-spec.shelves[0]+1)));
+      const lv={cols,rows,wood,appleBit:new Int8Array(cols*rows).fill(-1),portal:-1,apples:[]};
+      const worm=placeWorm(rng,lv);
+      if(!worm){why('noWorm'); continue;}
+      const taken=new Set(worm);
+      // Where the head gets on the bare terrain, three long and apples gone.
+      // The portal stays out of this set, so that an apple is never merely in
+      // the way: the level is out of reach until the worm has grown.
+      const bare=explore(lv,worm,spec.place).fullAt;
+      let ex=null;
+      // The apples, one at a time, each hung in the air where the head can
+      // get once the ones before it are eaten -- anywhere it can get, not
+      // only over wood; the reference hangs its apples in mid-air too. These
+      // searches need not finish: any cell they did reach is a fair place.
+      for(let a=0;a<spec.apples;a++){
+        ex=explore(lv,worm,spec.place);
+        const can=[...ex.fullAt.keys()].filter(i=>!wood[i]&&lv.appleBit[i]<0&&!taken.has(i));
+        if(!can.length){ex=null; break;}
+        const i=can[Math.floor(rng()*can.length)];
+        lv.apples.push(i); lv.appleBit[i]=a;
+      }
+      if(!ex){why('noApple'); continue;}
+      ex=explore(lv,worm,spec.budget);
+      if(!ex.done){why('budget'); continue;}
+      // The portal: a cell the head only ever arrives at full, inside the
+      // band -- and high where it can, so length is the way out rather than
+      // a stroll along the floor.
+      const spots=[];
+      for(const [i,depth] of ex.fullAt)
+        if(!ex.partAt.has(i)&&!bare.has(i)&&!wood[i]&&lv.appleBit[i]<0&&!taken.has(i)&&depth>=spec.lo&&depth<=spec.hi) spots.push(i);
+      if(!spots.length){why('noPortal'); continue;}
+      const high=spots.filter(i=>((i/cols)|0)<rows-2),from=high.length?high:spots;
+      lv.portal=from[Math.floor(rng()*from.length)];
+      const out=solve(lv,worm,0,spec.budget);
+      if(!out.moves){why('odd'); continue;}
+      return {lv,worm,best:out.moves,attempts:attempt,spent:ex.spent};
+    }
+    return null;
+  }
+  // Portrait grids, because the screen is one: a phone gives a board twice as
+  // much height as the widest sensible column count asks for, and in a game
+  // about gravity the spare belongs to climbing rather than to air.
+  const SPECS=[
+    {cols:7,rows:8,apples:3,shelves:[3,4],lo:10,hi:26,tries:400,place:6000,budget:200000},
+    {cols:8,rows:10,apples:4,shelves:[4,6],lo:18,hi:40,tries:400,place:12000,budget:400000},
+    {cols:9,rows:11,apples:5,shelves:[5,7],lo:26,hi:60,tries:400,place:20000,budget:800000},
+  ];
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align='center',spacing='0px'){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.letterSpacing=spacing; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function wrap(s,maxW,font){ctx.font=font; const words=s.split(' '),lines=[]; let cur=''; for(const w of words){const tst=cur?cur+' '+w:w; if(ctx.measureText(tst).width>maxW&&cur){lines.push(cur); cur=w;} else cur=tst;} if(cur) lines.push(cur); return lines;}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col=C.leaf){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='undo'||name==='reset'){const cw=name==='reset'; ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,cw?Math.PI:Math.PI*2,!cw); stroke(col,w);
+      const ex=cw?-s*0.3:s*0.3; ctx.beginPath(); ctx.moveTo(ex-s*0.14,s*0.02); ctx.lineTo(ex,-s*0.15); ctx.lineTo(ex+s*0.14,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='check'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.24); stroke(col,w*1.2);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}
+        if(expr==='strain'){ctx.beginPath(); ctx.moveTo(ex+sx*R*0.16,ey-R*0.2); ctx.lineTo(ex-sx*R*0.1,ey-R*0.3); stroke(ink,R*0.06);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.moveTo(cx-R*0.16,cy+R*0.3); ctx.lineTo(cx+R*0.16,cy+R*0.3); stroke(ink,R*0.06);}
+    else {const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+      if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+  const blink=(t,k)=>{ if(RM) return 1; const period=3+4*hash(k*3+1,k*7+2),phase=period*hash(k+5,k+9),m=(t+phase)%period; return m<0.14?1-0.9*Math.sin(Math.PI*m/0.14):1; };
+
+  // ---- the pieces ----
+  // Wood, drawn cell by cell but edged only where it meets air, so a shelf
+  // reads as one plank rather than as a row of blocks. Grass grows on every
+  // top face, which is the reference's own tell for "this is the ground".
+  function drawWood(lv,ox,oy,cell,t){
+    const {cols,rows,wood}=lv;
+    const solid=(x,y)=>x>=0&&x<cols&&y>=0&&y<rows&&wood[y*cols+x];
+    for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+      if(!wood[y*cols+x]) continue;
+      const px=ox+x*cell,py=oy+y*cell;
+      ctx.fillStyle=C.wood; ctx.fillRect(px,py,cell+0.5,cell+0.5);
+      // the grain: two short lines, placed off the cell's own hash so the
+      // plank is figured rather than striped
+      ctx.strokeStyle=rgba(C.woodDeep,0.3); ctx.lineWidth=cell*0.045; ctx.lineCap='round';
+      for(let g=0;g<2;g++){
+        const gy=py+cell*(0.3+0.34*g+0.1*hash(x*7+g,y*11)),gx=px+cell*0.14*hash(x+g,y);
+        ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx+cell*(0.5+0.3*hash(x,y*3+g)),gy); ctx.stroke();}
+      if(!solid(x,y+1)){ctx.fillStyle=rgba(C.woodDeep,0.55); ctx.fillRect(px,py+cell*0.82,cell+0.5,cell*0.18+0.5);}
+      if(!solid(x-1,y)){ctx.fillStyle=rgba(C.woodDeep,0.35); ctx.fillRect(px,py,cell*0.08,cell+0.5);}
+      if(!solid(x+1,y)){ctx.fillStyle=rgba(C.woodDeep,0.35); ctx.fillRect(px+cell*0.92,py,cell*0.08+0.5,cell+0.5);}
+      if(!solid(x,y-1)){
+        // the turf: a band with a loose underside, so the green does not end
+        // on a ruled line
+        ctx.fillStyle=C.moss; ctx.beginPath(); ctx.moveTo(px,py);
+        ctx.lineTo(px+cell+0.5,py); ctx.lineTo(px+cell+0.5,py+cell*(0.14+0.05*hash(x+3,y)));
+        for(let q=3;q>=0;q--) ctx.quadraticCurveTo(px+cell*(q+0.5)/4,py+cell*(0.1+0.12*hash(x*5+q,y*7)),px+cell*q/4,py+cell*(0.13+0.05*hash(x+q,y+1)));
+        ctx.closePath(); ctx.fill();
+        // and blades over it, each with its own lean and length
+        for(let b=0;b<3;b++){
+          if(hash(x*13+b,y*17)<0.34) continue;
+          const bx=px+cell*(0.2+0.3*b+0.12*hash(x*3+b,y*5));
+          const len=cell*(0.16+0.14*hash(x*7+b,y*3));
+          const lean=(hash(x*11+b,y*13)-0.5)*cell*0.22;
+          const sway=RM?0:Math.sin(t*1.3+x*0.6+b)*cell*0.025;
+          ctx.beginPath(); ctx.moveTo(bx,py+cell*0.08);
+          ctx.quadraticCurveTo(bx+(lean+sway)*0.5,py-len*0.5,bx+lean+sway,py-len);
+          stroke(b%2?C.mossDeep:C.moss,cell*0.045);}
+      }
+    }
+  }
+  function drawApple(cx,cy,r,t,k,eaten,held){
+    if(eaten) return;
+    const bob=RM||held?0:Math.sin(t*1.8+k*1.7)*r*0.06;
+    ctx.save(); ctx.translate(cx,cy+bob);
+    ctx.fillStyle=rgba(C.text,0.08); ellipse(0,r*0.92,r*0.62,r*0.14);
+    ctx.fillStyle=C.fruitDeep; circle(0,r*0.08,r*0.72);
+    ctx.fillStyle=C.fruit; circle(-r*0.22,0,r*0.5); circle(r*0.22,0,r*0.5); circle(0,r*0.06,r*0.6);
+    ctx.fillStyle=rgba('#ffffff',0.5); ellipse(-r*0.26,-r*0.28,r*0.16,r*0.1);
+    ctx.beginPath(); ctx.moveTo(0,-r*0.5); ctx.quadraticCurveTo(r*0.06,-r*0.8,-r*0.04,-r*0.96); stroke(C.stem,r*0.12);
+    leaf(0,-r*0.9,r*0.46,-0.5,C.appleLeaf);
+    ctx.restore();
+  }
+  // The portal: the burrow of the built board, stood on its end. It is open
+  // from the first move -- the level, not a lock, is what keeps you out -- so
+  // the spiral turns from the start and a teal ring breathes round it.
+  function drawPortal(cx,cy,r,t,k){
+    ctx.save(); ctx.translate(cx,cy);
+    ctx.fillStyle=rgba(C.text,0.1); ellipse(0,r*0.9,r*0.6,r*0.12);
+    ctx.fillStyle=C.tealDeep; circle(0,0,r*0.82);
+    ctx.fillStyle=C.hole; circle(0,0,r*0.68);
+    ctx.save(); ctx.rotate(RM?0.4:t*1.1);
+    ctx.strokeStyle=rgba(C.teal,0.95); ctx.lineWidth=r*0.14; ctx.lineCap='round';
+    ctx.beginPath();
+    for(let i=0;i<=54;i++){const u=i/54,a=u*Math.PI*3.4,rad=r*0.08+r*0.56*u;
+      const x=Math.cos(a)*rad,y=Math.sin(a)*rad; if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y);}
+    ctx.stroke(); ctx.restore();
+    if(!RM){const pulse=0.5+0.5*Math.sin(t*2.4+k);
+      ctx.strokeStyle=rgba(C.teal,0.25+0.3*pulse); ctx.lineWidth=r*0.1;
+      ctx.beginPath(); ctx.arc(0,0,r*0.92+r*0.06*pulse,0,Math.PI*2); ctx.stroke();}
+    ctx.restore();
+  }
+  // The worm: one rounded stroke through its cells, a paler belly under it,
+  // and the face on the head. It is the only face on the board, which is the
+  // call section 7 puts up for judging.
+  function drawWorm(pts,cell,t,o){
+    if(pts.length<1) return;
+    const w=cell*0.74;
+    ctx.save();
+    ctx.fillStyle=rgba(C.text,0.1);
+    for(const p of pts) ellipse(p[0],p[1]+cell*0.46,cell*0.3,cell*0.08);
+    if(pts.length>1){
+      ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+      stroke(C.scaleDeep,w);
+      ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+      stroke(C.scale,w*0.84);
+      // the belly, a pale line along the underside of the whole body
+      ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]+w*0.2);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]+w*0.2);
+      ctx.globalAlpha=0.32; stroke(C.belly,w*0.24); ctx.globalAlpha=1;
+      // the segments: a tick across the body at every cell it stands in
+      for(let i=1;i<pts.length-0;i++){
+        const a=pts[i-1],b=pts[i],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
+        const nx=-dy/L,ny=dx/L;
+        ctx.beginPath(); ctx.moveTo(b[0]-nx*w*0.34,b[1]-ny*w*0.34); ctx.lineTo(b[0]+nx*w*0.34,b[1]+ny*w*0.34);
+        ctx.globalAlpha=0.25; stroke(C.scaleDeep,cell*0.05); ctx.globalAlpha=1;}
+    }
+    // the tail, tapered
+    const tail=pts[pts.length-1];
+    ctx.fillStyle=C.scale; circle(tail[0],tail[1],w*0.42);
+    // the head
+    const head=pts[0],look=pts.length>1?[head[0]-pts[1][0],head[1]-pts[1][1]]:[1,0];
+    const L=Math.hypot(look[0],look[1])||1,lx=look[0]/L,ly=look[1]/L;
+    ctx.fillStyle=C.scaleDeep; circle(head[0],head[1]+cell*0.03,w*0.58);
+    ctx.fillStyle=C.scale; circle(head[0],head[1],w*0.56);
+    ctx.fillStyle=rgba(C.belly,0.75); ellipse(head[0]-lx*w*0.1,head[1]+w*0.24,w*0.3,w*0.16);
+    // The face looks at you, as every face in this family does; only its
+    // place on the head follows the way the worm is heading. Eyes stacked
+    // along the body instead read as a fish seen side-on.
+    const fx=head[0]+lx*w*0.14,fy=head[1]+ly*w*0.14;
+    const eye=o.expr==='joy'?1:(o.eye==null?1:o.eye);
+    for(const s of [-1,1]){
+      const ex=fx+s*w*0.22,ey=fy-w*0.1;
+      ctx.fillStyle='#ffffff'; circle(ex,ey,w*0.18);
+      ctx.fillStyle=C.text; ellipse(ex+lx*w*0.05,ey+ly*w*0.04,w*0.095,Math.max(w*0.014,w*0.095*eye));}
+    ctx.fillStyle=rgba(C.cheek,0.75); ellipse(fx-w*0.34,fy+w*0.16,w*0.11,w*0.07); ellipse(fx+w*0.34,fy+w*0.16,w*0.11,w*0.07);
+    ctx.beginPath();
+    if(o.expr==='strain') {ctx.moveTo(fx-w*0.15,fy+w*0.24); ctx.lineTo(fx+w*0.15,fy+w*0.24); stroke(C.text,w*0.07);}
+    else if(o.expr==='eat'){ctx.fillStyle=C.text; ellipse(fx,fy+w*0.2,w*0.15,w*0.13);}
+    else {ctx.arc(fx,fy+w*0.1,w*0.19,Math.PI*0.15,Math.PI*0.85); stroke(C.text,w*0.075);}
+    ctx.restore();
+  }
+
+  // ---- state ----
+  const STEP_TIME=0.16,FALL_TIME=0.085;   // the island's own SLIDE_TIME, and a faster drop
+  let diff=0,seed=11,lv=null,cells=[],mask=0,best=[];
+  let hist=[],moves=0,checks=0,hintsLeft=3;
+  let anim=null,openedAt=0,solvedAt=-1,winAt=-1,pourAt=-1;
+  let stuckBack=-1,refusedAt=-1e9,refusedDir=0,ateAt=-1e9,fallen=false;
+  let particles=[],auto=[],btnPress={},pressTarget=null,swipe=null;
+  let tip={text:'',at:0,mood:'happy',idx:0},L=null;
+
+  const TIPS=[
+    'Swipe to crawl. Every apple makes you one longer, and length is how you reach the portal.',
+    'You hold on as long as any part of you is over wood or over an apple. Step off the last of it and you drop; past the bottom, you are gone until Undo.',
+    'The portal is open from the start, laid where you cannot reach it yet. Undo is free, and Check says whether you can still finish.',
+  ];
+  function setup(d,sd,t){
+    diff=d; seed=sd;
+    const out=generate(mulberry32((sd*2654435761+d*7919)>>>0),SPECS[d]);
+    if(!out) return;
+    lv=out.lv; cells=out.worm.slice(); best=out.best.slice(); mask=0;
+    hist=[]; moves=0; checks=0; hintsLeft=3; anim=null; auto=[]; particles=[];
+    solvedAt=-1; winAt=-1; pourAt=-1; stuckBack=-1; refusedAt=-1e9; ateAt=-1e9; fallen=false;
+    openedAt=t; tip.idx=0; tipSet(TIPS[0],'happy',t);
+    caption();
+  }
+  const open=()=>solvedAt<0;
+  const applesLeft=()=>lv?lv.apples.length-popcount(mask):0;
+  const popcount=m=>{let n=0; while(m){n+=m&1; m>>=1;} return n;};
+  function tipSet(s,mood,t){tip.text=s; tip.mood=mood||'happy'; tip.at=t;}
+
+  // ---- moves ----
+  function move(d,t){
+    if(!open()||!lv) return false;
+    if(fallen){tipSet('You are off the edge. Undo brings you back to the step before.','strain',t); return false;}
+    const out=applyMove(lv,cells,mask,d,true);
+    if(!out){
+      refusedAt=t; refusedDir=d;
+      tipSet('Nothing that way: wood, or your own body.','puzzled',t);
+      return false;}
+    hist.push({cells:cells.slice(),mask});
+    const from=cells;
+    cells=out.cells; mask=out.mask; moves++; stuckBack=-1;
+    anim={at:t,from,frames:out.frames,fell:out.fell||0};
+    if(out.dead){
+      // The fall plays to the last cell out of sight, and then there is
+      // nothing on the board to move. Undo is the way back, and free.
+      fallen=true;
+      tipSet('Off the edge, and gone. Undo takes the step back; nothing is lost but the move.','strain',t);
+      caption(); return true;}
+    if(out.ate){ateAt=t; const p=cellPt(out.frames[0][0]); for(let q=0;q<7;q++) sparkle(p[0]+(hash(q,3)-0.5)*L.cell*0.7,p[1]+(hash(q,4)-0.5)*L.cell*0.7,t+q*0.04,C.fruit);}
+    if(out.win){pour(t); return true;}
+    after(t);
+    return true;
+  }
+  function after(t){
+    caption();
+    if(!open()) return;
+    // The one thing worth saying without being asked: a worm with no move at
+    // all is a worm that needs Undo, and it costs no search to notice.
+    let any=false;
+    for(let d=0;d<4;d++){const o=applyMove(lv,cells,mask,d,false); if(o&&!o.dead){any=true; break;}}
+    if(!any){tipSet('Boxed in: there is no move from here. Undo, or reset the level.','strain',t); return;}
+    const left=applesLeft();
+    if(left===0) tipSet('Every apple eaten. Now get your head into the portal.','joy',t);
+    else if((anim&&anim.fell>1)) tipSet('Down you go. '+left+(left===1?' apple left.':' apples left.'),'puzzled',t);
+    else tipSet(left+(left===1?' apple left.':' apples left.')+' You are '+cells.length+' cells long.','happy',t);
+  }
+  function undo(t){
+    if(!open()||!hist.length) return;
+    const b=hist.pop();
+    cells=b.cells.slice(); mask=b.mask; anim=null; stuckBack=-1; fallen=false;
+    tipSet('Taken back. Undo costs nothing here.','happy',t); caption();
+  }
+  function reset(t){
+    if(!open()||!hist.length) return;
+    const first=hist[0];
+    cells=first.cells.slice(); mask=first.mask; hist=[]; moves=0; anim=null; stuckBack=-1; fallen=false;
+    tipSet('Back to the start. The hints you spent are not refunded.','happy',t); caption();
+  }
+  // One move of a shortest finish. A level that cannot be finished from here
+  // gets the other kind of hint -- how far back to undo -- and costs nothing,
+  // because a hint that invents a move it cannot honour is worse than none.
+  function hint(t){
+    if(!open()||hintsLeft<=0||!lv) return;
+    if(fallen){tipSet('You are off the edge. Undo first; the hint keeps.','strain',t); return;}
+    const out=solve(lv,cells,mask,SPECS[diff].budget);
+    if(!out.moves){
+      stuckBack=movesBack();
+      tipSet('There is no way on from here. Undo '+stuckBack+(stuckBack===1?' move':' moves')+' and try another line.','strain',t);
+      return;}
+    hintsLeft--;
+    const p=cellPt(cells[0]);
+    for(let q=0;q<6;q++) sparkle(p[0]+(hash(q,1)-0.5)*L.cell*0.6,p[1]+(hash(q,2)-0.5)*L.cell*0.6,t+q*0.05,C.good);
+    move(out.moves[0],t);
+    if(open()) tipSet('That way. '+(out.moves.length-1)+' moves would finish it from there.','happy',t);
+    caption();
+  }
+  // Asks the solver whether the level can still be finished, and if it cannot,
+  // how many moves back it could have been. The Rope's check exactly: it
+  // points, and the player decides whether to take the undos.
+  function check(t){
+    if(!open()||!lv) return;
+    if(fallen){tipSet('Off the edge is as stuck as it gets. Undo one.','strain',t); return;}
+    checks++;
+    const out=solve(lv,cells,mask,SPECS[diff].budget);
+    if(out.moves){
+      stuckBack=-1;
+      tipSet('Still finishable: '+out.moves.length+' moves would do it from here.','joy',t);
+    } else {
+      stuckBack=movesBack();
+      tipSet(stuckBack>0?'Stuck. '+stuckBack+(stuckBack===1?' move':' moves')+' back it could still be finished.'
+        :'Stuck from the very first move. Reset the level.','strain',t);
+    }
+    caption();
+  }
+  // How far back the last finishable state is. A state that can be finished
+  // stays finishable however you got to it, so the answer only falls away as
+  // the worm crawls on and a binary search finds it in a handful of solves
+  // rather than one per move -- the Rope's `longest_playable`.
+  function movesBack(){
+    const states=hist.concat([{cells,mask}]);
+    let lo=0,hi=states.length-1;
+    while(lo<hi){
+      const mid=(lo+hi+1)>>1;
+      const s=states[mid];
+      if(solve(lv,s.cells,s.mask,SPECS[diff].budget).moves) lo=mid; else hi=mid-1;
+    }
+    return states.length-1-lo;
+  }
+  function sparkle(x,y,t0,col){if(RM) return; particles.push({x,y,vx:(hash(x|0,y|0)-0.5)*90,vy:-110,t0,life:0.7,col:col||C.sun,r:13});}
+  function pour(t){
+    solvedAt=t; pourAt=t; winAt=t+1.5;
+    tipSet('In you go.','joy',t);
+    caption();
+  }
+
+  // ---- layout ----
+  // The board is cut to the level and centred in what is left: the grid is
+  // wider than it is tall on every step, so the cell is capped by the width
+  // and there is slack however the card is cut -- Tents' and Light Up's case.
+  function layout(t){
+    const win=winAt<0?0:dec(sineIO((t-winAt)/0.45));
+    const tipY=H-M-140,actY=tipY-20-130,statsY=H-M-130-20-120;
+    const bTop=lerp(380,700,win),bBot=lerp(actY-20,statsY-20,win);
+    const avail=bBot-bTop,pad=34;
+    const cols=lv?lv.cols:8,rows=lv?lv.rows:6;
+    const cell=Math.min((COL-2*pad)/cols,(avail-2*pad)/rows);
+    const gw=cell*cols,gh=cell*rows;
+    const bh=Math.min(avail,gh+2*pad),by=bTop+(avail-bh)/2;
+    return {win,top:{y:M,h:180},day:{y:M+200,h:120},board:{y:by,h:bh},
+      act:{y:actY,h:130},tip:{y:tipY,h:140},stats:{y:statsY,h:120},camp:{y:H-M-130,h:130},
+      cell,ox:W/2-gw/2,oy:by+(bh-gh)/2};
+  }
+  const cellPt=i=>[L.ox+(i%lv.cols+0.5)*L.cell,L.oy+(((i/lv.cols)|0)+0.5)*L.cell];
+  // Where the worm is drawn: part way between the cells it came from and the
+  // cells it is in, one beat for the step and one for every cell of the fall.
+  function wormPoints(t){
+    const out=[];
+    let from=cells,to=cells,u=1;
+    if(anim){
+      const seq=[anim.from].concat(anim.frames);
+      let el=RM?1e9:t-anim.at,i=1;
+      for(;i<seq.length;i++){
+        const dur=i===1?STEP_TIME:FALL_TIME;
+        if(el<dur){from=seq[i-1]; to=seq[i]; u=el/dur; break;}
+        el-=dur;}
+      if(i>=seq.length){from=to=seq[seq.length-1]; u=1; anim=null;}
+    }
+    const n=to.length;
+    for(let i=0;i<n;i++){
+      const a=from[Math.min(i,from.length-1)],b=to[i];
+      const A=cellPt(a),B=cellPt(b),v=sineIO(u);
+      out.push([lerp(A[0],B[0],v),lerp(A[1],B[1],v)]);}
+    return out;
+  }
+
+  // ---- the screen ----
+  function iconButton(x,y,name,k,t,opt={}){const [sx,sy]=squash(btnPress[k]||-1e9,t); const size=opt.size||110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function pill(x,y,pw,ph,label,iconName,k,t,primary,dim){const [sx,sy]=squash(btnPress[k]||-1e9,t);
+    ctx.save(); ctx.translate(x+pw/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-pw/2,-ph/2);
+    if(dim) ctx.globalAlpha*=0.45;
+    card(0,0,pw,ph,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total=tw+60+14,x0=pw/2-total/2;
+    icon(iconName,x0+30,ph/2-3,52,col); text(label,x0+74,ph/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>winAt<0?0:dec((t-winAt)/0.25);
+  const squash=(at,t,amt=0.1,dur=0.18)=>{const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'undo','undo',t,{disabled:!hist.length});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 62px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('SNAKE APPLE').width; ctx.letterSpacing='0px';
+    text('SNAKE APPLE',cx,by-10,'700 62px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.32,ly=by-42; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-18,lx+2,ly-32); stroke(C.leaf,7); leaf(lx+2,ly-28,36,-2.7); leaf(lx+2,ly-32,30,-0.5);
+    text('EAT YOUR WAY OUT',cx,by+36,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 10',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Windfall',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  function drawBoard(t){
+    if(!lv) return;
+    const b=L.board,cell=L.cell;
+    card(M,b.y,COL,b.h,32,C.parchment,C.line,6);
+    const en=dec((t-openedAt-0.15)/0.45);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(M,b.y,COL,b.h); ctx.clip();
+    ctx.globalAlpha=en;
+    drawWood(lv,L.ox,L.oy,cell,t);
+    for(let k=0;k<lv.apples.length;k++){
+      const i=lv.apples[k],p=cellPt(i),eaten=(mask>>k)&1;
+      const pop=dec((t-openedAt-0.25-k*0.05)/0.35);
+      drawApple(p[0],p[1],cell*0.4*(RM?1:backOut(pop)),t,k,eaten,cells.indexOf(i-lv.cols)>=0);}
+    const pp=cellPt(lv.portal);
+    drawPortal(pp[0],pp[1],cell*0.46,t,lv.portal);
+    // the worm, pouring into the portal once the level is won
+    let pts=wormPoints(t),gone=0;
+    if(pourAt>=0){
+      // head first into the portal, a segment every 0.05 s, each one fading
+      // as it arrives: what is left on the card is the level and the spiral.
+      const P=cellPt(lv.portal);
+      pts=pts.map((p,i)=>{const u=dec((t-pourAt-i*0.05)/0.45);
+        return [lerp(p[0],P[0],sineIO(u)),lerp(p[1],P[1],sineIO(u))];});
+      gone=dec((t-pourAt-(pts.length-1)*0.05-0.25)/0.35);}
+    let dy=0,dx=0;
+    if(!RM){const r=(t-refusedAt)/0.26; if(r>=0&&r<1){const s=Math.sin(Math.PI*r)*cell*0.11; dx=DX[refusedDir]*s; dy=DY[refusedDir]*s;}}
+    if(gone<1&&!(fallen&&!anim)){
+      ctx.save(); ctx.translate(dx,dy); ctx.globalAlpha=1-gone;
+      drawWorm(pts,cell,t,{eye:blink(t,2),
+        expr:solvedAt>=0?'joy':(stuckBack>0||fallen?'strain':((t-ateAt)<0.3?'eat':'happy'))});
+      ctx.restore();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const x=p.x+p.vx*(t-p.t0),y=p.y+p.vy*(t-p.t0)+160*(t-p.t0)*(t-p.t0)*0.5;
+      star4(x,y,p.r*(1-u*0.6),(t-p.t0)*3,rgba(p.col,1-u));}
+    ctx.restore();
+  }
+  function drawActions(t){const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    pill(M,L.act.y,260,130,'Reset','reset','reset',t,false,!open()||!hist.length);
+    pill(W-M-260,L.act.y,260,130,'Check','check','check',t,true,!open());
+    ctx.restore();}
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,140,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-160,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left')); ctx.restore();}
+  function drawWin(t){if(winAt<0) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,372,110,-0.7); leaf(1008,372,110,-2.45);
+      star4(212,214,22,t*0.8,C.sun); star4(880,232,16,t*1.1,C.sun);
+      text('Well done!',W/2,402,'700 96px '+FD,C.text); text('Every apple, and out the other side.',W/2,484,'600 34px '+FB,C.dim); ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('sa-caption');
+  function caption(){
+    if(!capEl||!lv) return;
+    if(solvedAt>=0){capEl.textContent='Out in '+moves+' moves, '+(3-hintsLeft)+' hints, '+checks+(checks===1?' check':' checks')+
+      '. The shortest way was '+best.length+' moves.'; return;}
+    capEl.textContent=lv.cols+'×'+lv.rows+' · '+lv.apples.length+' apples · '+popcount(mask)+' eaten · '+
+      cells.length+' cells long · '+moves+' moves · '+hintsLeft+' hints'+(stuckBack>0?' · stuck, '+stuckBack+' back':'')+(fallen?' · off the edge':'');
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout(t);
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); if(open()) move(a.d,t);}
+    if(tip.mood==='happy'&&open()&&t-tip.at>10){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawActions(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  // A swipe crawls, and a swipe held down keeps crawling: every half-cell of
+  // travel is one more step, which is what makes a run along a shelf one
+  // gesture rather than six. A tap on a cell next to the head does the same
+  // one step, for a thumb that would rather aim than sweep.
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  const inBoard=p=>inRect(p,M,L.board.y,COL,L.board.h);
+  function hit(p,t){
+    if(winAt>=0) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'}; if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.act.y,260,130)) return {kind:'reset'};
+    if(inRect(p,W-M-260,L.act.y,260,130)) return {kind:'check'};
+    if(inRect(p,M,L.tip.y,COL,140)) return {kind:'tip'};
+    if(inBoard(p)) return {kind:'board'};
+    return null;
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='board'&&open()){swipe={x:p[0],y:p[1],moved:false}; cv.setPointerCapture(e.pointerId);}
+    else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!swipe||!open()) return; e.preventDefault();
+    const t=now(),p=pt(e),dx=p[0]-swipe.x,dy=p[1]-swipe.y,reach=L.cell*0.5;
+    if(Math.abs(dx)<reach&&Math.abs(dy)<reach) return;
+    const d=Math.abs(dx)>Math.abs(dy)?(dx>0?1:3):(dy>0?2:0);
+    swipe.x=p[0]; swipe.y=p[1]; swipe.moved=true;
+    move(d,t);});
+  cv.addEventListener('pointerup',e=>{e.preventDefault(); const t=now(),p=pt(e);
+    if(swipe){
+      // a tap on the board: the cell next to the head, if that is what it was
+      if(!swipe.moved&&open()&&lv){
+        const x=Math.floor((p[0]-L.ox)/L.cell),y=Math.floor((p[1]-L.oy)/L.cell);
+        const hx=cells[0]%lv.cols,hy=(cells[0]/lv.cols)|0;
+        for(let d=0;d<4;d++) if(hx+DX[d]===x&&hy+DY[d]===y) move(d,t);}
+      swipe=null; pressTarget=null; return;}
+    const hh=hit(p,t);
+    if(hh&&pressTarget&&hh.kind===pressTarget.kind){
+      if(hh.kind==='undo') undo(t); else if(hh.kind==='hint') hint(t);
+      else if(hh.kind==='reset') reset(t); else if(hh.kind==='check') check(t);
+      else if(hh.kind==='tip'){ if(open()){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);} }
+      else if(hh.kind==='camp') setup(diff,seed+1,t);}
+    pressTarget=null;});
+  cv.addEventListener('pointercancel',()=>{swipe=null; pressTarget=null;});
+  // Arrow keys, because this page is read on a desktop and the phone's swipe
+  // has no equivalent there. The game itself will never see them.
+  window.addEventListener('keydown',e=>{
+    const panel=document.getElementById('tab-snakeapple');
+    if(!panel||!panel.classList.contains('active')) return;
+    const k={ArrowUp:0,ArrowRight:1,ArrowDown:2,ArrowLeft:3,w:0,d:1,s:2,a:3,W:0,D:1,S:2,A:3}[e.key];
+    if(k==null) return;
+    e.preventDefault(); move(k,now());});
+
+  // ---- demo controls ----
+  const $=id=>document.getElementById(id);
+  const DIFFS=['Easy · 7×8, 3 apples','Medium · 8×10, 4 apples','Hard · 9×11, 5 apples'];
+  const rmBtn=$('sa-rm'),dfBtn=$('sa-diff');
+  if(rmBtn) rmBtn.addEventListener('click',()=>{RM=!RM; rmBtn.classList.toggle('on',RM); rmBtn.textContent='Reduce motion: '+(RM?'on':'off');});
+  if(dfBtn) dfBtn.addEventListener('click',()=>{const d=(diff+1)%3; setup(d,seed,now()); dfBtn.textContent=DIFFS[d];});
+  if($('sa-new')) $('sa-new').addEventListener('click',()=>setup(diff,seed+1,now()));
+  // Crawls into a corner it cannot come out of: the one way to spoil a level,
+  // and the state Check exists for.
+  if($('sa-stuck')) $('sa-stuck').addEventListener('click',()=>{const t=now(); if(!open()) return; if(playStuck(t)) check(t);});
+  if($('sa-solve')) $('sa-solve').addEventListener('click',()=>{const t=now(); if(!open()) return;
+    const out=solve(lv,cells,mask,SPECS[diff].budget);
+    if(!out.moves){tipSet('This one cannot be finished from here any more. Undo or reset.','strain',t); return;}
+    auto=out.moves.map((d,i)=>({at:t+0.25+i*0.22,d}));});
+  // Crawls at random until the level cannot be finished any more, and tries
+  // again from where it started if a run of 26 moves fails to spoil it.
+  // Measured over 60 levels a step: a random walker strands 83% of easy
+  // levels and about 70% of the other two, after 13 to 17 moves -- which is
+  // why Check exists at all.
+  function playStuck(t){
+    const keep=()=>({cells:cells.slice(),mask,hist:hist.map(h=>({cells:h.cells.slice(),mask:h.mask})),moves});
+    const back=s=>{cells=s.cells.slice(); mask=s.mask; hist=s.hist.map(h=>({cells:h.cells.slice(),mask:h.mask})); moves=s.moves; anim=null;};
+    const save=keep();
+    for(let run=0;run<4;run++){
+      for(let step=0;step<26;step++){
+        const legal=[];
+        for(let d=0;d<4;d++){const o=applyMove(lv,cells,mask,d,false); if(o&&!o.win&&!o.dead) legal.push(d);}
+        if(!legal.length) break;
+        move(legal[Math.floor(Math.random()*legal.length)],t); anim=null;
+        if(!solve(lv,cells,mask,SPECS[diff].budget).moves) return true;
+      }
+      back(save);
+    }
+    tipSet('This one shrugged off four runs of random crawling: nothing spoiled it.','puzzled',t);
+    return false;
+  }
+
+  // ---- start, where the URL asks ----
+  diff=Math.max(0,Math.min(2,parseInt(Q.get('d')||'0')||0));
+  seed=parseInt(Q.get('seed')||'11')||11;
+  setup(diff,seed,0);
+  L=layout(0);
+  if(dfBtn) dfBtn.textContent=DIFFS[diff];
+  if(rmBtn&&RM){rmBtn.classList.add('on'); rmBtn.textContent='Reduce motion: on';}
+  function play(n,when){
+    for(let i=0;i<n&&i<best.length;i++){move(best[i],when); anim=null;}
+  }
+  if(Q.get('part')==='1'){play(Math.max(1,Math.round(best.length*0.55)),-9); after(0); caption();}
+  if(Q.get('stuck')==='1'){playStuck(-9); anim=null; check(0);}
+  if(Q.get('win')==='1'){openedAt=-86; hintsLeft=2; checks=1; play(best.length,-9); anim=null; pour(0);}
+  frame();
+})();
 </script>
 </body>
 </html>
