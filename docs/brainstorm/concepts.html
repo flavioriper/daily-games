@@ -113,7 +113,18 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 .demo-controls .lbl{font-size:13px;color:var(--muted);align-self:center;margin-right:2px}
 #tab-horse .wordmark b{font-size:20px}
 #tab-horse .wordmark small{font-size:8.5px;letter-spacing:1.1px}
+
+/* ---------- flat binairo mock extras ---------- */
+#tab-binairo .phone{background:#f6efe3}
+#tab-binairo .phone canvas{touch-action:none;cursor:pointer}
+#tab-binairo .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-binairo .refs figure{margin:0}
+#tab-binairo .refs img{border-radius:14px}
+#tab-binairo .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#bn-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <header>
@@ -121,6 +132,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <nav class="tabs" role="tablist">
     <button data-tab="pipes" class="active">Pipes</button>
     <button data-tab="horse">Horse Pen</button>
+    <button data-tab="binairo">Binairo · flat</button>
   </nav>
 </header>
 
@@ -463,6 +475,87 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p style="font-size:14.5px">Measured on the stage at 1080 × 1920: idle 3.58 ms, 377 draw calls — well inside the 855 ceiling, with the platform's fifty-odd rim pieces gone and five ground slabs and two MultiMeshes in their place. Suite 1586/0, win harness 12/12. Three commits on <code>feat/horse-meadow</code>: the scene and the pieces, the words, and the four models.</p>
   <p style="font-size:14.5px">Left on the table: the horse's silhouette from directly above is still a lump with a bright stripe on it. A grazing pose — the neck bent down and the head reaching forward onto the grass — would read as a horse in plan at any size, and would suit a meadow. It needs a vertex-level bend of a 3,865-vertex mesh with no rig, so it was not attempted in this pass.</p>
 </section>
+<!-- ============================ BINAIRO · FLAT ============================ -->
+<section class="tab-panel" id="tab-binairo">
+  <h2>Binairo · flat, to judge against the island <span class="pill blue">concept · 2026-09-18</span></h2>
+  <p class="lede">The user is not sure the 3D approach is the right one. This is Binairo built a second time as a flat, illustrated, heavily animated 2D screen after the reference, so it can stand beside the island version and be judged. The rules, the generator, undo, three hints, check and reset are exactly the game's. Everything on this page is look, motion and words.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The reference: three cream phone screens of a flat Binairo with smiling suns and moons, a sun/moon/clear palette, Undo and Hint pills, a sprout mascot tip card, and a Well done screen">
+        <figcaption>The reference, the user's mock. Cream cards with a soft bottom edge, illustrated suns and moons with faces, a palette under the grid, a mascot tip card, and a win screen where the sun and moon take the top of the phone. Saved as <code>docs/art/concept-binairo-flat.png</code>.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-before.png" alt="The current build: a small 3D board of stone cubes on a turf platform, wood signs for the title and the day, a lot of empty paper">
+        <figcaption>The current build at phone size. Stone cubes that roll a quarter turn per tap on the island stage, wood signs for the title and the day, and the board a small thing in a lot of paper. Saved as <code>docs/art/concept-binairo-before.png</code>.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="flat" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="bn-rm">Reduce motion: off</button>
+        <button id="bn-size">Board: 6 × 6</button>
+        <button id="bn-new">New puzzle</button>
+        <button id="bn-break">Break a line</button>
+        <button id="bn-solve">Solve it</button>
+      </div>
+      <div id="bn-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size on it is the size the spec names (<code>docs/superpowers/specs/2026-09-18-binairo-flat-design.md</code>). It plays: tap a cell to cycle sun, moon, empty; tap a chip to arm a brush; Undo, Hint, Reset and Check do what the game does; the tip card names the rule a tap just broke; a solved board goes to the win screen and Back to camp deals a new puzzle. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-18: the whole screen goes flat, Binairo only; tap cycles and the palette arms a brush; faces are drawn from parts so every part animates; no difficulty control, no hearts, no levels. Everything below that is not so marked is <span class="pill" style="margin-left:0">proposed</span>, and this page exists to change it cheaply.</div>
+
+  <h3>1. The screen <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, the wordmark with the leaf sprouting from it and the motto under, then Undo, Hint with its count and Settings. Undo and Hint stay up here: the reference never fits both its pill row and its palette on one screen, and the badge already carries the count. The wordmark is lettering in ink, not the carved sign, for this screen only.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour". No hearts.</td></tr>
+    <tr><td class="k">Board card</td><td>what is left</td><td>A parchment inset with the grid square and centred in it. 6 × 6, or 8 × 8 on hard; the toggle under the mock shows both.</td></tr>
+    <tr><td class="k">Palette</td><td>150</td><td>Sun, moon and clear chips. An armed chip lifts and takes its coloured border; tap it again to let go.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset in paper at the left edge, Check in sun at the right. A clean Check says All good for a moment.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and one line. It replaces the How to play card, the working-line card and the motto footer.</td></tr>
+  </table>
+
+  <h3>2. The board and the faces <span class="pill">proposed</span></h3>
+  <ul>
+    <li><b>Tiles</b> alternate two creams in a checker, with the theme's soft bottom edge. A given's tile is a warmer sand, so a fixed cell reads as fixed without a mark; the reference does not distinguish them, the game has to.</li>
+    <li><b>The sun</b> is an orange disc with eight rounded rays and a highlight; <b>the moon</b> a periwinkle crescent open to the upper right with a deeper shade on its inner edge. Both have round eyes with a catchlight, a smile and cheeks. Every part is drawn from a handful of properties, so a face blinks, worries, squashes and celebrates.</li>
+    <li><b>Expressions.</b> Resting faces have open eyes and blink at their own pace. A face in a line that breaks a rule looks worried: flat brows, a small round mouth. A completed line, a hint and the solve bring the reference's closed happy arcs.</li>
+    <li><b>Idle life.</b> Suns turn their rays one revolution per forty seconds; a third of the moons rock a few degrees. Reduce motion stills all of it.</li>
+  </ul>
+
+  <h3>3. Motion <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>Tiles pop in along the diagonal from the top left; a given's face lands a beat after its tile with a squash. The chrome slides in row by row, as the HUD does today.</td></tr>
+    <tr><td class="k">Tap</td><td>The tile presses under the finger. On release the old face shrinks with a quarter turn, the new one pops with squash and stretch, the tile hops, stars puff in the symbol's colour and the four neighbours nudge away.</td></tr>
+    <tr><td class="k">Broken line</td><td>The line blushes with two heartbeats, its faces worry, the tiles shiver once, and the tip card names the rule. Fixed, it all fades back.</td></tr>
+    <tr><td class="k">Completed line</td><td>When a tap fills the last cell of a clean row or column, its faces hop in a wave with happy eyes.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring pulses, the face drops in from above with a bounce, sparkles rise, the tile takes the given look.</td></tr>
+    <tr><td class="k">Check</td><td>Wrong cells wobble and flash. Undo is a tap in reverse. Reset shrinks the free faces out in a wave from the bottom left while the givens hop.</td></tr>
+    <tr><td class="k">Solved</td><td>Every face hops along the diagonal with happy eyes and sparkles; the sprout says Perfect balance; then the win screen.</td></tr>
+  </table>
+
+  <h3>4. Well done <span class="pill">proposed</span></h3>
+  <p>The top bar and the day card fade, the palette, actions and tip slide out, and the board slides down to make room. Into the top of the screen come the sun and the moon at illustration size with leaves and stars, "Well done!" and "Perfect balance!". Under the board, the day card returns with the time, moves and hints on its right, and a full-width Back to camp. No Next Level: it is a daily. The mock's Back to camp deals a new puzzle so the entrance can be watched again.</p>
+  <p style="font-size:14.5px">This departs from the spec's section 8, which kept the board where it was and put the illustration in the 320 pixels the top rows freed. At 1080 wide that space holds neither a 300-pixel sun nor the lettering under it; sliding the board down frees 640, which does. The spec is amended once the mock is judged.</p>
+
+  <h3>5. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li>Does a flat board with faces beat the island's rolling cubes, on the phone, in the hand? That is the only question that matters; the rest are details.</li>
+    <li>Undo and Hint in the top bar, or as pills under the board with the palette pushed elsewhere.</li>
+    <li>The wordmark sits left of centre because three buttons stand at the right; the sign does the same today. Centre it and shrink it, or keep it.</li>
+    <li>A given's warmer tile against the reference's uniform grid.</li>
+    <li>Resting faces with open eyes that blink, against the reference's closed happy arcs at rest.</li>
+    <li>8 × 8: the tiles come down to about 115 pixels at 1080 wide; whether the faces still read there.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?n=8</code>, <code>?brush=sun|moon|clear</code>, <code>?bad=1</code> for a broken line, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#binairo</code>.</p>
+</section>
+
 </main>
 
 <script>
@@ -1098,6 +1191,453 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+})();
+/* ---------- the flat binairo mock ---------- */
+(function(){
+  const cv=document.getElementById('flat'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  // Drawn in the game's own design space, 1080 wide, and scaled to the phone:
+  // every number below is the spec's number (docs/superpowers/specs/2026-09-18-binairo-flat-design.md).
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const now=()=>T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',ray:'#f9c04a',sunTile:'#fff1d6',moon:'#7d8fd9',moonDeep:'#6273c0',moonTile:'#e9ecfa',
+    cheek:'#f4a7a0',tileLight:'#fbf6ea',stoneGiven:'#dccfb3',parchment:'#f3e9d2',bad:'#d9605a',badTile:'#f2cfc9',
+    leaf:'#6ba845',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- easing and small maths ----
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const stagger=(i,per,cap=0.6)=>Math.min(i*per,cap);
+  const dec=u=>RM?1:clamp(u);           // a decorative ease lands at once under reduce-motion
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],u))+','+Math.round(lerp(A[1],B[1],u))+','+Math.round(lerp(A[2],B[2],u))+')';};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // ---- the rules, as binairo_gen.gd has them ----
+  function partialOk(g,r,c,n){
+    const v=g[r][c],half=n/2;
+    for(const [dr,dc] of [[0,1],[1,0]]) for(let k=-2;k<=0;k++){let same=true;
+      for(let i=0;i<3;i++){const rr=r+dr*(k+i),cc=c+dc*(k+i); if(rr<0||cc<0||rr>=n||cc>=n||g[rr][cc]!==v){same=false;break;}}
+      if(same) return false;}
+    let cr=0,ccn=0,fullR=true,fullC=true;
+    for(let i=0;i<n;i++){if(g[r][i]===v)cr++; if(g[r][i]===-1)fullR=false; if(g[i][c]===v)ccn++; if(g[i][c]===-1)fullC=false;}
+    if(cr>half||ccn>half) return false;
+    if(fullR) for(let r2=0;r2<n;r2++){if(r2===r)continue; let eq=true; for(let i=0;i<n;i++) if(g[r2][i]!==g[r][i]){eq=false;break;} if(eq) return false;}
+    if(fullC) for(let c2=0;c2<n;c2++){if(c2===c)continue; let eq=true; for(let i=0;i<n;i++) if(g[i][c2]!==g[i][c]){eq=false;break;} if(eq) return false;}
+    return true;
+  }
+  function solveCount(g,n,limit){
+    let r=-1,c=-1; outer: for(let i=0;i<n;i++)for(let j=0;j<n;j++) if(g[i][j]===-1){r=i;c=j;break outer;}
+    if(r<0) return 1;
+    let count=0;
+    for(const v of [0,1]){g[r][c]=v; if(partialOk(g,r,c,n)){count+=solveCount(g,n,limit-count); if(count>=limit){g[r][c]=-1;return count;}} g[r][c]=-1;}
+    return count;
+  }
+  function randomSolution(rng,n){
+    const g=Array.from({length:n},()=>Array(n).fill(-1));
+    function fill(idx){if(idx===n*n) return true; const r=(idx/n)|0,c=idx%n; const order=rng()<0.5?[0,1]:[1,0];
+      for(const v of order){g[r][c]=v; if(partialOk(g,r,c,n)&&fill(idx+1)) return true;} g[r][c]=-1; return false;}
+    fill(0); return g;
+  }
+  function generate(seed,n,minClues){
+    const rng=mulberry32(seed); const sol=randomSolution(rng,n); const puzzle=sol.map(r=>r.slice());
+    const cells=[]; for(let i=0;i<n*n;i++) cells.push(i);
+    for(let i=cells.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[cells[i],cells[j]]=[cells[j],cells[i]];}
+    let clues=n*n;
+    for(const idx of cells){if(clues<=minClues) break; const r=(idx/n)|0,c=idx%n,v=puzzle[r][c]; puzzle[r][c]=-1;
+      if(solveCount(puzzle.map(x=>x.slice()),n,2)===1) clues--; else puzzle[r][c]=v;}
+    return {solution:sol,puzzle};
+  }
+  // 1 three alike, 2 too many of one, 3 two identical complete lines
+  function lineBad(line,half){
+    for(let i=0;i+2<line.length;i++){const v=line[i]; if(v!==-1&&line[i+1]===v&&line[i+2]===v) return 1;}
+    let s=0,m=0; for(const v of line){if(v===0)s++;else if(v===1)m++;} return (s>half||m>half)?2:0;
+  }
+  function badLines(g){
+    const n=g.length,half=n/2,rows=new Map(),cols=new Map(),colOf=c=>g.map(row=>row[c]);
+    for(let r=0;r<n;r++){const b=lineBad(g[r],half); if(b) rows.set(r,b);}
+    for(let c=0;c<n;c++){const b=lineBad(colOf(c),half); if(b) cols.set(c,b);}
+    for(let a=0;a<n;a++)for(let b=a+1;b<n;b++){
+      if(!g[a].includes(-1)&&!g[b].includes(-1)&&g[a].every((v,i)=>v===g[b][i])){if(!rows.has(a))rows.set(a,3); if(!rows.has(b))rows.set(b,3);}
+      const A=colOf(a),B=colOf(b);
+      if(!A.includes(-1)&&!B.includes(-1)&&A.every((v,i)=>v===B[i])){if(!cols.has(a))cols.set(a,3); if(!cols.has(b))cols.set(b,3);}}
+    return {rows,cols};
+  }
+  const RULES=['Never three alike in a line','Every line holds as many suns as moons','No two lines are the same'];
+  const BROKEN=['No more than two alike side by side!','A line needs as many suns as moons','Two lines cannot be the same'];
+  function brokenRule(b){let best=0; for(const v of [...b.rows.values(),...b.cols.values()]) best=best?Math.min(best,v):v; return best;}
+
+  // ---- state ----
+  let n=6,seed=5,sol,grid,given,hinted,hist,hintsLeft,bad,brush=-2,focus=null,focusAt=-1e9,moves=0;
+  let cells=[],openedAt=0,solvedAt=-1,winAt=-1,allGoodAt=-1e9,tip={text:'',at:0,idx:0,mood:'happy',broken:false};
+  let arm=[],chipPress=[-1e9,-1e9,-1e9],btnPress={},particles=[],rings=[],auto=[],pressCell=null,pressTarget=null,L=null;
+  const cap=document.getElementById('bn-caption');
+  const CAPS={
+    play:'Tap a cell to cycle sun, moon, empty. Tap a chip under the board to arm it as a brush; tap it again to let go. Undo, Hint, Reset and Check do what the game does, and the tip card names the rule a tap breaks.',
+    win:'Perfect balance. The board slides down and the sun and moon take the top of the screen. Back to camp opens a new puzzle here.'};
+  const setCap=k=>{if(cap) cap.textContent=CAPS[k];};
+
+  function newCell(){return {enterAt:0,cur:-1,curAt:-1e9,prev:-1,prevAt:-1e9,hopAt:-1e9,hopH:0,nudgeAt:-1e9,ndx:0,ndy:0,
+    blendFrom:0,blendTo:0,blendAt:-1e9,shiverAt:-1e9,lineHopAt:-1e9,hopBig:false,joyUntil:-1e9,hintAt:-1e9,wobbleAt:-1e9,flashAt:-1e9,
+    pressAt:-1e9,releaseAt:-1e9,dropAt:-1e9};}
+
+  function setup(size,sd,t){
+    n=size; seed=sd;
+    const out=generate(sd,n,n===6?16:0); sol=out.solution; grid=out.puzzle.map(r=>r.slice());
+    given=grid.map(r=>r.map(v=>v!==-1)); hinted=grid.map(r=>r.map(()=>false));
+    hist=[]; hintsLeft=3; moves=0; brush=-2; focus=null; focusAt=-1e9; solvedAt=-1; winAt=-1; openedAt=t; allGoodAt=-1e9;
+    particles=[]; rings=[]; auto=[]; pressCell=null; pressTarget=null; btnPress={};
+    arm=[0,1,2].map(()=>({at:-1e9,on:false}));
+    cells=[]; for(let r=0;r<n;r++){const row=[]; for(let c=0;c<n;c++){const k=newCell(); k.enterAt=t+stagger(r+c,0.03); k.cur=grid[r][c]; k.curAt=k.enterAt+0.12; row.push(k);} cells.push(row);}
+    bad=badLines(grid); tip={text:RULES[0],at:t,idx:0,mood:'happy',broken:false};
+    L=layout(t); setCap('play');
+  }
+
+  // ---- layout, in design pixels ----
+  function layout(t){
+    const w=winAt<0?0:dec(sineIO((t-winAt)/0.45));
+    const tipY=H-M-140,actY=tipY-20-130,palY=actY-20-150;
+    const statsY=H-M-130-20-120;
+    const bTop=lerp(M+340,M+640,w),bBot=lerp(palY-20,statsY-20,w);
+    const board={y:bTop,h:bBot-bTop},pad=28,GAP=12,g=Math.min(COL,board.h)-2*pad,tile=(g-(n-1)*GAP)/n;
+    return {w,top:{y:M,h:180},day:{y:M+200,h:120},board,pal:{y:palY,h:150},act:{y:actY,h:130},tip:{y:tipY,h:140},
+      stats:{y:statsY,h:120},camp:{y:H-M-130,h:130},pad,g,GAP,tile,ox:M+(COL-g)/2,oy:board.y+(board.h-g)/2};
+  }
+  const centre=(r,c)=>[L.ox+c*(L.tile+L.GAP)+L.tile/2,L.oy+r*(L.tile+L.GAP)+L.tile/2];
+  const chipX=i=>W/2-234+i*164;
+
+  // ---- moves ----
+  function focusTo(r,c,t){focus={r,c}; focusAt=t;}
+  function swapFace(k,nv,t){k.prev=k.cur; k.prevAt=t; k.cur=nv; k.curAt=t+0.08; k.dropAt=-1e9;}
+  function nudge(r,c,t){for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){const rr=r+dr,cc=c+dc; if(rr<0||cc<0||rr>=n||cc>=n) continue;
+    const k=cells[rr][cc]; k.nudgeAt=t+0.04; k.ndx=dc; k.ndy=dr;}}
+  function stars(x,y,col,count,t){if(RM) return; for(let i=0;i<count;i++){const a=-Math.PI/2+(hash(i,count)-0.5)*Math.PI*1.4,sp=140+hash(i*3,count)*120;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-40,t0:t,life:0.5,col,r:7+hash(i,9)*6});}}
+  function sparkle(x,y,t0){if(RM) return; particles.push({x,y,vx:(hash(x|0,y|0)-0.5)*40,vy:-70,t0,life:0.7,col:C.sun,r:13});}
+
+  function tap(r,c,t){
+    if(solvedAt>=0) return;
+    const k=cells[r][c];
+    if(given[r][c]){k.hopAt=t; k.hopH=-4; focusTo(r,c,t); return;}
+    const v=grid[r][c]; const nv=brush===-2?(v===-1?0:(v===0?1:-1)):(brush===-1?-1:brush);
+    if(nv===v) return;
+    hist.push([r,c,v]); grid[r][c]=nv; moves++;
+    swapFace(k,nv,t); k.hopAt=t; k.hopH=6; nudge(r,c,t);
+    const [cx,cy]=centre(r,c); if(nv!==-1) stars(cx,cy,nv===0?C.sun:C.moon,5,t);
+    focusTo(r,c,t); afterChange(r,c,t);
+  }
+  function afterChange(r,c,t){
+    const nb=badLines(grid),wasBroken=tip.broken;
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){const k=cells[i][j]; const to=(nb.rows.has(i)||nb.cols.has(j))?1:0;
+      if(to!==k.blendTo){k.blendFrom=Math.min(1,blendOf(k,t)); k.blendAt=t; k.blendTo=to; if(to>k.blendFrom) k.shiverAt=t;}}
+    bad=nb;
+    const rule=brokenRule(nb);
+    if(rule) tip={text:BROKEN[rule-1],at:t,idx:tip.idx,mood:'worried',broken:true};
+    else if(wasBroken) tip={text:RULES[tip.idx],at:t,idx:tip.idx,mood:'happy',broken:false};
+    if(r>=0){
+      if(!grid[r].includes(-1)&&!nb.rows.has(r)) for(let j=0;j<n;j++){const k=cells[r][j]; k.lineHopAt=t+0.1+stagger(Math.abs(j-c),0.03); k.hopBig=false; k.joyUntil=k.lineHopAt+0.6;}
+      const col=grid.map(row=>row[c]);
+      if(!col.includes(-1)&&!nb.cols.has(c)) for(let i=0;i<n;i++){const k=cells[i][c]; k.lineHopAt=Math.max(k.lineHopAt,t+0.1+stagger(Math.abs(i-r),0.03)); k.hopBig=false; k.joyUntil=k.lineHopAt+0.6;}
+    }
+    if(solvedAt<0&&nb.rows.size===0&&nb.cols.size===0&&grid.every(row=>!row.includes(-1))) solve(t);
+  }
+  function solve(t){
+    solvedAt=t; winAt=t+0.8; focus=null; brush=-2; for(const a of arm){if(a.on){a.on=false;a.at=t;}}
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){const k=cells[i][j]; k.lineHopAt=t+0.25+stagger(i+j,0.04); k.hopBig=true; k.joyUntil=1e9;}
+    tip={text:'Perfect balance!',at:t,idx:tip.idx,mood:'joy',broken:false};
+    for(let s=0;s<16;s++) sparkle(L.ox+hash(s,1)*L.g,L.oy+hash(s,2)*L.g,t+0.2+hash(s,3)*0.7);
+    setCap('win');
+  }
+  function undo(t){if(solvedAt>=0||!hist.length) return; const [r,c,v]=hist.pop(); const k=cells[r][c]; grid[r][c]=v; swapFace(k,v,t); k.hopAt=t; k.hopH=6; focusTo(r,c,t); afterChange(r,c,t);}
+  function hintCell(){
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++) if(!given[r][c]&&grid[r][c]!==-1&&grid[r][c]!==sol[r][c]) return [r,c];
+    let best=null,bs=-1;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){if(grid[r][c]!==-1) continue; let s=0; for(let j=0;j<n;j++){if(grid[r][j]!==-1)s++; if(grid[j][c]!==-1)s++;} if(s>bs){bs=s;best=[r,c];}}
+    return best;
+  }
+  function hint(t){
+    if(solvedAt>=0||hintsLeft<=0) return; const cell=hintCell(); if(!cell) return; const [r,c]=cell; hintsLeft--;
+    hist=hist.filter(h=>!(h[0]===r&&h[1]===c)); const k=cells[r][c],target=sol[r][c];
+    grid[r][c]=target; given[r][c]=true; hinted[r][c]=true;
+    k.prev=k.cur; k.prevAt=t; k.cur=target; k.curAt=t+0.1; k.dropAt=t+0.1; k.hintAt=t;
+    const [cx,cy]=centre(r,c); rings.push({x:cx,y:cy,t0:t}); for(let s=0;s<6;s++) sparkle(cx+(hash(s,7)-0.5)*L.tile*0.7,cy+(hash(s,8)-0.5)*L.tile*0.7,t+0.1+s*0.05);
+    focusTo(r,c,t); afterChange(r,c,t);
+  }
+  function check(t){if(solvedAt>=0) return; let wrong=0;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){if(given[r][c]||grid[r][c]===-1||grid[r][c]===sol[r][c]) continue; wrong++; const k=cells[r][c]; k.wobbleAt=t; k.flashAt=t;}
+    if(!wrong) allGoodAt=t;}
+  function reset(t){if(solvedAt>=0) return; brush=-2; for(const a of arm){if(a.on){a.on=false;a.at=t;}}
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){const d=stagger((n-1-r)+c,0.02),k=cells[r][c];
+      if(hinted[r][c]){hinted[r][c]=false; given[r][c]=false;}
+      if(given[r][c]){k.hopAt=t+d; k.hopH=4; continue;}
+      if(grid[r][c]===-1) continue; grid[r][c]=-1; k.prev=k.cur; k.prevAt=t+d; k.cur=-1;}
+    hist=[]; moves=0; focus=null; afterChange(-1,-1,t);}
+  function armChip(i,t){if(solvedAt>=0) return; chipPress[i]=t; const v=i===0?0:i===1?1:-1;
+    if(brush===v){brush=-2; arm[i].on=false; arm[i].at=t;} else {for(let j=0;j<3;j++) if(arm[j].on){arm[j].on=false; arm[j].at=t;} brush=v; arm[i].on=true; arm[i].at=t;}}
+  function breakLine(t){if(solvedAt>=0) return;
+    const tryLine=(get,set,len)=>{for(let a=0;a<len;a++)for(let b=0;b+2<len;b++){let ok=true; for(let i=0;i<3;i++){const [gv,gg]=get(a,b+i); if(gg&&gv!==0){ok=false;break;}}
+      if(!ok) continue; for(let i=0;i<3;i++){const [gv,gg]=get(a,b+i); if(!gg&&gv!==0) set(a,b+i);} return true;} return false;};
+    const place=(r,c)=>{hist.push([r,c,grid[r][c]]); grid[r][c]=0; swapFace(cells[r][c],0,t); moves++;};
+    let last=null;
+    const okRow=tryLine((a,b)=>[grid[a][b],given[a][b]],(a,b)=>{place(a,b); last=[a,b];},n);
+    if(!okRow) tryLine((a,b)=>[grid[b][a],given[b][a]],(a,b)=>{place(b,a); last=[b,a];},n);
+    if(last){focusTo(last[0],last[1],t); afterChange(last[0],last[1],t);}}
+  function autoSolve(t){if(solvedAt>=0) return; auto=[]; let i=0;
+    for(let d=0;d<2*n-1;d++)for(let r=0;r<n;r++){const c=d-r; if(c<0||c>=n) continue; if(grid[r][c]===sol[r][c]) continue; auto.push({r,c,at:t+0.06*i++});}}
+
+  // ---- per-frame values ----
+  function blendOf(k,t){
+    const inb=k.blendTo>k.blendFrom,u=clamp((t-k.blendAt)/(inb?0.25:0.4));
+    let b=lerp(k.blendFrom,k.blendTo,RM?1:sineIO(u));
+    if(!RM&&inb){const tb=t-k.blendAt-0.25; if(tb>0&&tb<0.8) b+=0.33*Math.max(0,Math.sin(2*Math.PI*tb/0.4));}
+    const f=t-k.flashAt; if(f>=0&&f<0.6) b+=f<0.15?0.6*(f/0.15):0.6*(1-(f-0.15)/0.45);
+    return b;
+  }
+  const focusEnv=t=>{const u=t-focusAt; return u<0?0:u<0.12?u/0.12:u<1.62?1:u<2.02?1-(u-1.62)/0.4:0;};
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>winAt<0?0:dec((t-winAt)/0.25);
+  const squash=(at,t,amt=0.1,dur=0.18)=>{const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ---- drawing helpers ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align='center',spacing='0px'){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.letterSpacing=spacing; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function wrap(s,maxW,font){ctx.font=font; const words=s.split(' '),lines=[]; let cur=''; for(const w of words){const tst=cur?cur+' '+w:w; if(ctx.measureText(tst).width>maxW&&cur){lines.push(cur); cur=w;} else cur=tst;} if(cur) lines.push(cur); return lines;}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,len,ang,col=C.leaf){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(len*0.55,-len*0.42,len,-len*0.05); ctx.quadraticCurveTo(len*0.5,len*0.28,0,0); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(len*0.08,-len*0.02); ctx.lineTo(len*0.85,-len*0.08); stroke(rgba(C.leafLight,0.9),len*0.05); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+
+  // ---- icons, in a box of size s centred on (x, y), ink coloured ----
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='undo'||name==='reset'){const cw=name==='reset'; ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,cw?Math.PI:Math.PI*2,!cw); stroke(col,w);
+      const ex=cw?-s*0.3:s*0.3; ctx.beginPath(); ctx.moveTo(ex-s*0.14,s*0.02); ctx.lineTo(ex,-s*0.15); ctx.lineTo(ex+s*0.14,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='check'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.22); stroke(col,w*1.2);}
+    else if(name==='cross'){ctx.beginPath(); ctx.moveTo(-s*0.22,-s*0.22); ctx.lineTo(s*0.22,s*0.22); ctx.moveTo(s*0.22,-s*0.22); ctx.lineTo(-s*0.22,s*0.22); stroke(col,w*1.2);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+
+  // ---- the faces ----
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}
+        if(expr==='worried'){ctx.beginPath(); ctx.moveTo(ex+sx*R*0.16,ey-R*0.2); ctx.lineTo(ex-sx*R*0.1,ey-R*0.3); stroke(ink,R*0.06);}}}
+    if(expr==='worried'){ctx.beginPath(); ctx.arc(cx,cy+R*0.3,R*0.08,0,Math.PI*2); stroke(ink,R*0.06);}
+    else {const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+      if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}}
+  }
+  function shadow(rx,ry){ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,ry*0.15,rx,ry);}
+  function sun(R,o){
+    shadow(R*1.35,R*1.3);
+    ctx.save(); ctx.rotate(o.spin||0); ctx.fillStyle=C.ray;
+    for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); rr(-R*0.13,-R*1.55,R*0.26,R*0.5,R*0.13); ctx.fill(); ctx.restore();}
+    ctx.restore();
+    ctx.fillStyle=C.sun; circle(0,0,R);
+    ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(0,0,R*0.86,Math.PI*1.02,Math.PI*1.6); ctx.arc(0,0,R*0.62,Math.PI*1.6,Math.PI*1.02,true); ctx.fill();
+    faceParts(R,0,R*0.02,o);
+  }
+  function moon(R,o){
+    ctx.save(); ctx.rotate(o.rock||0);
+    const off=R*0.62,ir=R*0.78,ix=off*0.707,iy=-off*0.707;
+    // one bite cuts every layer, so the shade and the shadow show only along the outer rim
+    // One closed path from horn to horn: the outer arc the long way round, the bite's arc back. No clip,
+    // because Chrome draws a clip circle's antialiased edge faintly wherever the clipped fill lay outside it,
+    // which put a hairline rim across the bite. The lower layers are bitten a touch deeper, so their edges
+    // sit under the top layer's opaque body.
+    const crescent=(dx,dy,col,extra)=>{const r2=ir+extra,vx=ix-dx,vy=iy-dy,d=Math.hypot(vx,vy),ang=Math.atan2(vy,vx);
+      const a=Math.acos((d*d+R*R-r2*r2)/(2*d*R)),b=Math.acos((d*d+r2*r2-R*R)/(2*d*r2));
+      ctx.fillStyle=col; ctx.beginPath(); ctx.arc(dx,dy,R,ang+a,ang-a+Math.PI*2,false); ctx.arc(ix,iy,r2,ang+Math.PI+b,ang+Math.PI-b,true); ctx.closePath(); ctx.fill();};
+    crescent(R*0.04,R*0.16,'rgba(59,48,40,0.08)',R*0.04); crescent(0,R*0.07,C.moonDeep,R*0.04); crescent(0,0,C.moon,0);
+    faceParts(R*0.62,-R*0.34,R*0.3,o);
+    ctx.restore();
+  }
+  function sprout(R,o){
+    shadow(R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+  function face(v,T,o){if(v===0) sun(T*0.26,o); else if(v===1) moon(T*0.34,o);}
+  function faceOpts(k,r,c,t){
+    const worried=bad.rows.has(r)||bad.cols.has(c),joy=t<k.joyUntil&&t>=k.lineHopAt-0.05;
+    const expr=joy?'joy':worried?'worried':'happy'; let eye=1;
+    if(!RM&&expr!=='joy'){const period=3+4*hash(r*3+1,c*7+2),phase=period*hash(r+5,c+9),m=(t+phase)%period; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    const spin=RM?0:t*2*Math.PI/40,rock=(!RM&&hash(r*11+3,c*13+5)<0.34)?0.052*Math.sin(2*Math.PI*t/4+hash(r,c)*6.28):0;
+    return {eye,expr,spin,rock};
+  }
+
+  // ---- the screen ----
+  function iconButton(x,y,name,key,t,opt={}){const [sx,sy]=squash(btnPress[key]||-1e9,t); const size=opt.size||110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function pill(x,y,w,h,label,iconName,key,t,primary){const [sx,sy]=squash(btnPress[key]||-1e9,t);
+    ctx.save(); ctx.translate(x+w/2,y+h/2); ctx.scale(sx,sy); ctx.translate(-w/2,-h/2);
+    card(0,0,w,h,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total=tw+60+14,x0=w/2-total/2;
+    icon(iconName,x0+30,h/2-3,52,col); text(label,x0+74,h/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t); iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0}); iconButton(W-M-362,y,'undo','undo',t,{disabled:!hist.length});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 84px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('BINAIRO').width; ctx.letterSpacing='0px';
+    text('BINAIRO',cx,by-8,'700 84px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.2,ly=by-52; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-18,lx+2,ly-34); stroke(C.leaf,7); leaf(lx+2,ly-30,40,-2.7); leaf(lx+2,ly-34,34,-0.5);
+    text('BALANCE BRINGS HARMONY',cx,by+44,'700 24px '+FB,C.dim,'center','2px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  function drawBoard(t){const b=L.board,T=L.tile;
+    card(M,b.y,COL,b.h,32,C.parchment,C.line,6);
+    // the focus tint runs under the tiles of the row and column
+    const fa=focus?focusEnv(t):0;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){const k=cells[r][c],[cx,cy]=centre(r,c);
+      const es=RM?1:backOut((t-k.enterAt)/0.25); if(t<k.enterAt) continue;
+      let ps=1; if(k.pressAt>k.releaseAt) ps=lerp(1,0.94,clamp((t-k.pressAt)/0.08)); else {const u=(t-k.releaseAt)/0.25; if(u>=0&&u<1) ps=lerp(0.94,1,backOut(u));}
+      let dx=0,dy=0,rot=0;
+      if(!RM){{const u=(t-k.hopAt)/0.3; if(u>=0&&u<1) dy-=k.hopH*Math.sin(Math.PI*u);}
+        {const u=(t-k.lineHopAt)/(k.hopBig?0.4:0.35); if(u>=0&&u<1) dy-=(k.hopBig?10:8)*Math.sin(Math.PI*u);}
+        {const u=(t-k.nudgeAt)/0.3; if(u>=0&&u<1){const s=Math.sin(Math.PI*u)*3; dx+=k.ndx*s; dy+=k.ndy*s;}}
+        {const u=(t-k.shiverAt)/0.2; if(u>=0&&u<1) dx+=2*Math.sin(4*Math.PI*u)*(1-u);}
+        {const u=(t-k.wobbleAt)/0.45; if(u>=0&&u<1) rot=0.105*Math.sin(6*Math.PI*u)*(1-u);}}
+      const bl=blendOf(k,t),base=given[r][c]?C.stoneGiven:((r+c)%2?C.surfaceHi:C.tileLight);
+      const fill=bl<=1?mix(base,C.badTile,bl):mix(C.badTile,C.bad,Math.min(1,(bl-1)*0.5));
+      ctx.save(); ctx.translate(cx+dx,cy+dy); ctx.rotate(rot); ctx.scale(es*ps,es*ps);
+      card(-T/2,-T/2,T,T,18,fill,given[r][c]?C.line:rgba(C.line,0.5),4);
+      if(fa>0&&(focus.r===r||focus.c===c)){const fv=grid[focus.r][focus.c]; ctx.fillStyle=rgba(fv===0?C.sun:fv===1?C.moon:C.line,0.12*fa); rr(-T/2,-T/2,T,T-4,18); ctx.fill();}
+      if(k.prev!==-1){const u=(t-k.prevAt)/0.12; if(u<1){const sc=u<0?1:(RM?0:1-u); if(sc>0){ctx.save(); ctx.rotate(u<0?0:Math.PI/2*u); ctx.scale(sc,sc); face(k.prev,T,{eye:1,expr:'happy'}); ctx.restore();}}}
+      if(k.cur!==-1){const u=(t-k.curAt)/0.22; if(u>=0){let sx=1,sy=1,fy=0;
+        if(u<1&&!RM){if(k.dropAt>-1e8){const v=clamp((t-k.dropAt)/0.3); fy=-40*(1-backOut(v));} else {const p=backOut(u); sx=p*(1+0.15*(1-u)); sy=p*(1-0.15*(1-u));}}
+        ctx.save(); ctx.translate(0,fy); ctx.scale(sx,sy); face(k.cur,T,faceOpts(k,r,c,t)); ctx.restore();}}
+      ctx.restore();}
+    for(let i=rings.length-1;i>=0;i--){const g=rings[i],u=(t-g.t0)/0.5; if(u>=1){rings.splice(i,1); continue;} if(u<0) continue;
+      ctx.beginPath(); ctx.arc(g.x,g.y,T*0.55*(0.9+0.6*u),0,Math.PI*2); stroke(rgba(C.sun,1-u),6);}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue; const x=p.x+p.vx*(t-p.t0),y=p.y+p.vy*(t-p.t0)+120*(t-p.t0)*(t-p.t0)*0.5*(p.life<0.6?1:-0.3);
+      star4(x,y,p.r*(1-u*0.6),(t-p.t0)*3,rgba(p.col,1-u));}
+  }
+  function drawPalette(t){const e=ent(t,0.2,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.pal.y+5;
+    for(let i=0;i<3;i++){const x=chipX(i),ar=arm[i],u=dec((t-ar.at)/0.18),lift=ar.on?-8*backOut(u):-8*(1-backOut(u)),ba=ar.on?dec((t-ar.at)/0.15):1-dec((t-ar.at)/0.15);
+      const [sx,sy]=squash(chipPress[i],t); const col=i===0?C.sun:i===1?C.moon:C.line;
+      ctx.save(); ctx.translate(x+70,y+70+lift); ctx.scale(sx,sy);
+      if(ba>0){ctx.fillStyle=rgba(col,ba); rr(-74,-74,148,148,32); ctx.fill();}
+      card(-70,-70,140,140,28,i===0?C.sunTile:i===1?C.moonTile:C.surfaceHi,C.line,6);
+      ctx.translate(0,-3); if(i===0) sun(34,{eye:1,expr:'happy',spin:RM?0:t*2*Math.PI/40}); else if(i===1) moon(45,{eye:1,expr:'happy'}); else icon('cross',0,0,60,C.dim);
+      ctx.restore();}
+    ctx.restore();}
+  function drawActions(t){const e=ent(t,0.2,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    pill(M,L.act.y,260,130,'Reset','reset','reset',t,false);
+    const good=t-allGoodAt<1.2; pill(W-M-260,L.act.y,260,130,good?'All good':'Check','check','check',t,true); ctx.restore();}
+  function drawTip(t){const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,140,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-24-88-24-24,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left')); ctx.restore();}
+  function drawWin(t){if(winAt<0) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-200*(1-backOut(u1)));
+      leaf(250,300,110,-0.9); leaf(830,300,110,-2.2);
+      star4(400,140,22,t*0.8,C.sun); star4(730,140,16,t*1.1,C.sun); star4(800,240,26,t*0.6,C.sun);
+      ctx.save(); ctx.translate(470,270); sun(130,{eye:1,expr:'joy',spin:RM?0:t*2*Math.PI/40}); ctx.restore();
+      ctx.save(); ctx.translate(610,330); moon(105,{eye:1,expr:'joy',rock:RM?0:0.05*Math.sin(t*1.5)}); ctx.restore();
+      text('Well done!',W/2,548,'700 96px '+FD,C.text); text('Perfect balance!',W/2,622,'600 34px '+FB,C.dim); ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  // ---- the frame ----
+  let lastT=null;
+  function frame(){const t=now(); L=layout(t);
+    // idle tip cycle
+    if(!tip.broken&&solvedAt<0&&t-tip.at>8){tip.idx=(tip.idx+1)%3; tip.text=RULES[tip.idx]; tip.at=t; tip.mood='happy';}
+    // scheduled auto-solve taps
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); if(solvedAt>=0) break; const k=cells[a.r][a.c],v=sol[a.r][a.c]; if(grid[a.r][a.c]!==v){hist.push([a.r,a.c,grid[a.r][a.c]]); grid[a.r][a.c]=v; moves++; swapFace(k,v,t); k.hopAt=t; k.hopH=6; const [cx,cy]=centre(a.r,a.c); stars(cx,cy,v===0?C.sun:C.moon,3,t); focusTo(a.r,a.c,t); afterChange(a.r,a.c,t);}}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawPalette(t); drawActions(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,w,h)=>p[0]>=x&&p[0]<x+w&&p[1]>=y&&p[1]<y+h;
+  function hit(p,t){
+    if(winAt>=0){return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;}
+    const T=L.tile;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){const [cx,cy]=centre(r,c); if(inRect(p,cx-T/2-L.GAP/2,cy-T/2-L.GAP/2,T+L.GAP,T+L.GAP)) return {kind:'cell',r,c};}
+    for(let i=0;i<3;i++) if(inRect(p,chipX(i),L.pal.y,140,150)) return {kind:'chip',i};
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'}; if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'}; if(inRect(p,W-M-362,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.act.y,260,130)) return {kind:'reset'}; if(inRect(p,W-M-260,L.act.y,260,130)) return {kind:'check'};
+    if(inRect(p,M,L.tip.y,COL,140)) return {kind:'tip'};
+    return null;
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),h=hit(p,t); pressTarget=h; if(!h) return;
+    if(h.kind==='cell'){cells[h.r][h.c].pressAt=t; pressCell=h;} else if(h.kind==='chip'){chipPress[h.i]=t;} else btnPress[h.kind]=t;});
+  cv.addEventListener('pointerup',e=>{e.preventDefault(); const t=now(),p=pt(e),h=hit(p,t);
+    if(pressCell){cells[pressCell.r][pressCell.c].releaseAt=t; if(h&&h.kind==='cell'&&h.r===pressCell.r&&h.c===pressCell.c) tap(h.r,h.c,t); pressCell=null;}
+    else if(h&&pressTarget&&h.kind===pressTarget.kind){
+      if(h.kind==='chip') armChip(h.i,t); else if(h.kind==='undo') undo(t); else if(h.kind==='hint') hint(t); else if(h.kind==='reset') reset(t); else if(h.kind==='check') check(t);
+      else if(h.kind==='tip'){if(!tip.broken&&solvedAt<0){tip.idx=(tip.idx+1)%3; tip.text=RULES[tip.idx]; tip.at=t;}}
+      else if(h.kind==='camp') setup(n,seed+1,t);}
+    pressTarget=null;});
+  cv.addEventListener('pointercancel',()=>{if(pressCell){cells[pressCell.r][pressCell.c].releaseAt=now(); pressCell=null;} pressTarget=null;});
+
+  // ---- demo controls ----
+  const $=id=>document.getElementById(id);
+  const rmBtn=$('bn-rm'),sizeBtn=$('bn-size');
+  if(rmBtn) rmBtn.addEventListener('click',()=>{RM=!RM; rmBtn.classList.toggle('on',RM); rmBtn.textContent='Reduce motion: '+(RM?'on':'off');});
+  if(sizeBtn) sizeBtn.addEventListener('click',()=>{const size=n===6?8:6; setup(size,seed,now()); sizeBtn.textContent='Board: '+size+' × '+size;});
+  if($('bn-new')) $('bn-new').addEventListener('click',()=>setup(n,seed+1,now()));
+  if($('bn-break')) $('bn-break').addEventListener('click',()=>breakLine(now()));
+  if($('bn-solve')) $('bn-solve').addEventListener('click',()=>autoSolve(now()));
+
+  // ---- start, where the URL asks ----
+  n=parseInt(Q.get('n')||'6')===8?8:6; seed=parseInt(Q.get('seed')||'5')||5;
+  setup(n,seed,0);
+  if(sizeBtn) sizeBtn.textContent='Board: '+n+' × '+n;
+  if(rmBtn&&RM){rmBtn.classList.add('on'); rmBtn.textContent='Reduce motion: on';}
+  if(Q.get('brush')){const i={sun:0,moon:1,clear:2}[Q.get('brush')]; if(i!=null) armChip(i,0);}
+  if(Q.get('bad')==='1') breakLine(0);
+  if(Q.get('win')==='1'){openedAt=-102; moves=31; hintsLeft=2;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++){grid[r][c]=sol[r][c]; const k=cells[r][c]; k.cur=sol[r][c]; k.curAt=-1;} bad=badLines(grid); solve(0);}
+  frame();
 })();
 </script>
 </body>
