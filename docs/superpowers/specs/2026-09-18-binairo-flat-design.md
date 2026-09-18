@@ -355,3 +355,50 @@ and `shell()`), `ui/theme.gd` (two variations), `ui/icons.gd` (two icons),
 departs from the sign rule on purpose).
 
 Untouched on purpose: `puzzles/binairo3d.gd`, every other board, `world/`.
+
+## Amendments (2026-09-18, after the mock)
+
+The design was built first as a playable canvas mock,
+`docs/brainstorm/concepts.html#binairo`, and approved by the user as shown
+("perfect, build it into godot"). The mock is the visual reference for the
+Godot build; where it and the sections above differ, the mock wins, and the
+differences are these.
+
+- **Section 8 is replaced.** The board does not stay where it is. On the win
+  the top bar and the day card fade and slide up 60 over 0.25; the palette,
+  actions and tip card slide down 100 and fade over 0.25; the board card
+  slides down over 0.45 (sine in-out), its top from 380 to 680 and its
+  bottom up to sit 20 above the stats card, so the grid keeps nearly its
+  size. The freed top 640 takes the illustration, sliding down from 200
+  above over 0.4 with the back ease, 0.2 after the win starts: the sun
+  (radius 130, rays to 200) at (470, 270), the moon (radius 105) at (610,
+  330) in front of it, leaves at (250, 300) and (830, 300), three stars,
+  "Well done!" centred at y 548 and "Perfect balance!" at 622. The stats
+  card and Back to camp slide up from 120 below over 0.35, 0.35 after the
+  win starts; the stats card is the day card's look with "m:ss · N moves ·
+  N hints" at its right.
+- **Section 3.** The day card's type is `CardTitle` (40) over `CardBody`
+  (30) in `TEXT_DIM`, not `CardBlurb`. The tip card's text is 32 px, not 28.
+  The wordmark is centred between the back button and the undo button, so
+  it stands left of the screen's centre, as the carved sign does today; the
+  user saw this in the mock and kept it. Check's label is white on the sun,
+  as the reference has it.
+- **Section 4.** The sun's radius is 0.26 of the tile (rays to 0.8 of it);
+  the moon's outer radius 0.34 of the tile, its bite a circle of 0.78 R
+  centred 0.62 R toward the upper right, its face on the lower-left body at
+  0.62 R scale, centred at (-0.34 R, 0.3 R). The deeper shade sits 0.07 R
+  below and the shadow 0.16 R below, both bitten 0.04 R deeper than the top
+  so their edges hide under it. Resting faces have open eyes with a
+  catchlight and blink; the reference's closed happy arcs appear on a
+  completed line, a hint and the solve. The palette chips carry the same
+  faces at radius 34 (sun) and 45 (moon). Faces are drawn with antialiased
+  primitives, and a filled polygon gets an antialiased outline in its own
+  colour rather than turning MSAA on for the whole 2D canvas.
+- **Section 6.** The tap's outgoing face shrinks with a quarter turn over
+  0.12 from the release; the incoming face pops from 0.08 after it. A hint's
+  face drops from 40 above over 0.3 instead of popping. Under reduce-motion
+  the outgoing face vanishes at once and the incoming one appears at once.
+- **Section 11.** The win harness reads `n`, `_given`, `_solution` and
+  `cell_to_local` off the board and `top_bar.hint_button` and
+  `action_bar.check_button` off the host; the flat board and host keep
+  those names so `tests/_win.gd` and `tests/_shot_anim.gd` need no change.
