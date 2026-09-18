@@ -206,15 +206,15 @@ keeps its stage version reachable as a second card seeded from the same day
 (`puzzles/untangle2d.gd`, beside `untangle_island`), **Tents**
 (`puzzles/tents2d.gd`, beside `tents_island`), **Light Up**
 (`puzzles/lightup2d.gd`, beside `lightup_island`) and **One Line**
-(`puzzles/oneline2d.gd`, beside `oneline_island`). That is every screen the
-concept page mocks; nothing is left on paper. The user is deciding whether the
-game goes 2D, and nothing else has moved.
+(`puzzles/oneline2d.gd`, beside `oneline_island`). The concept page mocks
+nine; **Nonogram** (`#nonogram`, mocked 2026-09-18) is the one still on paper.
+The user is deciding whether the game goes 2D, and nothing else has moved.
 Specs:
 `docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
 `...-tents-`, `...-lightup-` and `...-oneline-flat-design.md` siblings; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents`, `#lightup` and `#oneline`.
+`#untangle`, `#tents`, `#lightup`, `#oneline` and `#nonogram`.
 
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
