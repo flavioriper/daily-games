@@ -1,6 +1,7 @@
 extends Control
 
-## The base of Binairo's three faces (the sun, the moon and the sprout): one
+## The base of every drawn character -- Binairo's sun, moon and sprout, and
+## Code Break's six friends: one
 ## Control that draws its whole picture as one or two cached meshes, so a
 ## board of sixty-four cells is sixty-four faces and not hundreds of nodes,
 ## and each face costs the renderer one draw_mesh per layer rather than one
@@ -57,10 +58,10 @@ const ARC_MAX := 256
 ## eye_open is snapped to one of these for the cache; four levels are enough
 ## for a blink to read, and the blink's own ease does the rest.
 const EYE_LEVELS: Array[float] = [0.1, 0.4, 0.7, 1.0]
-## Sizes are rounded to this many pixels for the cache key.
-const SIZE_STEP := 2.0
+## R is rounded to this many pixels for the cache key.
+const R_STEP := 1.0
 
-## Every mesh built so far: "kind|layer|px[|expression|eye]" -> ArrayMesh.
+## Every mesh built so far: "kind|layer|R[|expression|eye|plain]" -> ArrayMesh.
 ## Shared by every face; a mesh handed to draw_mesh has to stay referenced
 ## until the frame is rendered, and this keeps them for good.
 static var _mesh_cache: Dictionary = {}
@@ -83,6 +84,21 @@ var spin := 0.0:
 var rock := 0.0:
 	set(v):
 		rock = v
+		queue_redraw()
+## Fixes R as this fraction of the rect, whatever the subclass would have
+## chosen; 0 leaves it to the subclass. Code Break seats every friend in the
+## same square and wants the mock's own per-friend ratios there, so the six
+## sit at comparable weights in one seat.
+var radius_ratio := 0.0:
+	set(v):
+		radius_ratio = v
+		queue_redraw()
+## A silhouette: the whole drawing without eyes, mouth or cheeks. The compact
+## history draws its friends this way -- 62 units is 22 pixels on a phone and
+## a face there is a smudge.
+var plain := false:
+	set(v):
+		plain = v
 		queue_redraw()
 ## Whether set_idle(true) rocks this face. Only a moon reads it, and the owner
 ## turns it on for about a third of them so a board sways rather than nods.
@@ -110,7 +126,11 @@ func _notification(what: int) -> void:
 ## decides the ratio in _radius_for (the sun's rays and the sprout's leaves
 ## reach past R).
 func radius() -> float:
-	return _radius_for(minf(size.x, size.y))
+	return _R_for(minf(size.x, size.y))
+
+## R for a rect `px` across, after the owner's ratio if it set one.
+func _R_for(px: float) -> float:
+	return px * radius_ratio if radius_ratio > 0.0 else _radius_for(px)
 
 ## R for a rect `px` across.
 func _radius_for(px: float) -> float:
@@ -192,13 +212,13 @@ func _build_layer(_name: String, _R: float, _eye: float, _b: Builder) -> void:
 	pass
 
 func _draw() -> void:
-	var px := roundf(minf(size.x, size.y) / SIZE_STEP) * SIZE_STEP
-	if px <= 0.0:
+	var R := roundf(_R_for(minf(size.x, size.y)) / R_STEP) * R_STEP
+	if R <= 0.0:
 		return
 	var eye := _eye_level()
 	var centre := size * 0.5
 	for layer in _layers():
-		var mesh := _mesh_for(layer[0], layer[1], px, eye)
+		var mesh := _mesh_for(layer[0], layer[1], R, eye)
 		draw_mesh(mesh, null, Transform2D(_layer_angle(layer[0]), centre))
 
 ## eye_open snapped to EYE_LEVELS and put through the expression's rule.
@@ -213,14 +233,14 @@ func _eye_level() -> float:
 		best = minf(best, SLEEPY_EYE)
 	return best
 
-func _mesh_for(layer: String, carries_face: bool, px: float, eye: float) -> ArrayMesh:
-	var key := "%s|%s|%d" % [_kind(), layer, int(px)]
+func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> ArrayMesh:
+	var key := "%s|%s|%d" % [_kind(), layer, int(R)]
 	if carries_face:
-		key += "|%d|%d" % [expression, int(roundf(eye * 100.0))]
+		key += "|%d|%d|%d" % [expression, int(roundf(eye * 100.0)), int(plain)]
 	var mesh: ArrayMesh = _mesh_cache.get(key)
 	if mesh == null:
 		var b := Builder.new()
-		_build_layer(layer, _radius_for(px), eye, b)
+		_build_layer(layer, R, eye, b)
 		mesh = b.mesh()
 		_mesh_cache[key] = mesh
 	return mesh
@@ -233,6 +253,8 @@ func _mesh_for(layer: String, carries_face: bool, px: float, eye: float) -> Arra
 ## the open mouth with its tongue; WORRIED round eyes under slanted brows and
 ## a small round mouth; SLEEPY the happy face with its lids down.
 func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) -> void:
+	if plain:
+		return
 	var cheek := Color(Pal.CHEEK, 0.85)
 	b.ellipse(centre + Vector2(-0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
 	b.ellipse(centre + Vector2(0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
@@ -293,6 +315,45 @@ class Builder:
 		for i in n:
 			var a := TAU * i / n
 			pts[i] = centre + Vector2(cos(a) * rx, sin(a) * ry)
+		return pts
+
+	## Points along a cubic curve from `p0` through the controls `c0` and `c1`
+	## to `p1`, without the end point, so curves chain without a doubled
+	## vertex. The canvas mock's bezierCurveTo.
+	static func bezier3(p0: Vector2, c0: Vector2, c1: Vector2, p1: Vector2, steps := 18) -> PackedVector2Array:
+		var pts := PackedVector2Array()
+		pts.resize(steps)
+		for i in steps:
+			var t := float(i) / steps
+			var u := 1.0 - t
+			pts[i] = p0 * (u * u * u) + c0 * (3.0 * u * u * t) + c1 * (3.0 * u * t * t) + p1 * (t * t * t)
+		return pts
+
+	## Points along a quadratic curve from `p0` through `c` to `p1`, likewise
+	## without the end point.
+	static func bezier2(p0: Vector2, c: Vector2, p1: Vector2, steps := 14) -> PackedVector2Array:
+		var pts := PackedVector2Array()
+		pts.resize(steps)
+		for i in steps:
+			var t := float(i) / steps
+			var u := 1.0 - t
+			pts[i] = p0 * (u * u) + c * (2.0 * u * t) + p1 * (t * t)
+		return pts
+
+	## A rounded rectangle's outline, the mock's roundRect: `size` from `at`,
+	## corners of `r`, capped at half the shorter side.
+	static func round_rect(at: Vector2, size: Vector2, r: float) -> PackedVector2Array:
+		var rr := minf(r, minf(size.x, size.y) * 0.5)
+		var pts := PackedVector2Array()
+		var corners := [
+			[at + Vector2(size.x - rr, rr), -PI * 0.5, 0.0],
+			[at + Vector2(size.x - rr, size.y - rr), 0.0, PI * 0.5],
+			[at + Vector2(rr, size.y - rr), PI * 0.5, PI],
+			[at + Vector2(rr, rr), PI, PI * 1.5],
+		]
+		for c in corners:
+			var arc := arc_points(c[0], rr, c[1], c[2])
+			pts.append_array(arc.slice(0, arc.size() - 1))
 		return pts
 
 	func vertex(p: Vector2, c: Color) -> int:

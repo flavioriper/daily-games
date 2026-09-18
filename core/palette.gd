@@ -49,6 +49,26 @@ const MOON_DEEP   := Color("6273c0")
 const MOON_TILE   := Color("e9ecfa")
 const CHEEK       := Color("f4a7a0")
 
+# The flat Code Break's six friends, one shape and one colour each
+# (docs/superpowers/specs/2026-09-18-codebreak-flat-design.md, section 3): the
+# sun, the moon and the leaf are already above; these are the rest, plus the
+# chip fill each sits on. A seventh, the flower, joins on the hard difficulty.
+const LEAF_DEEP   := Color("4f8a31")
+const LEAF_TILE   := Color("e6f0da")
+const BERRY       := Color("e2645c")
+const BERRY_DEEP  := Color("bf4a44")
+const BERRY_TILE  := Color("fadcd8")
+const CLOUD       := Color("a9c2dd")
+const CLOUD_DEEP  := Color("8aa6c4")
+const CLOUD_TILE  := Color("e7eff7")
+const ACORN       := Color("c99a63")
+const ACORN_DEEP  := Color("a57a48")
+const ACORN_TILE  := Color("f3e4ce")
+const FLOWER      := Color("e58fb5")
+const FLOWER_DEEP := Color("c26b93")
+const FLOWER_TILE := Color("fbe0ec")
+const FLOWER_EYE  := Color("fdeef4")   # the flower's pale centre, under its face
+
 # Code Break pegs (docs/art/concept-codebreak.png): red, yellow, blue, green,
 # purple, pink, orange. Index order is the difficulty's palette order; every
 # peg also carries a pip mark, so colour never stands alone.
