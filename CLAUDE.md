@@ -194,35 +194,55 @@ every layout change.
   Mac at phone resolution -- the cards are what a page costs, so a page, not
   the whole registry, is the unit to measure against the budget.
 
-## The flat Binairo, on trial beside the island
+## The flat screens, on trial beside the island
 
-Since 2026-09-18 the Binairo card opens a flat 2D board under flat chrome
-(`puzzles/binairo2d.gd` in `ui/flat/flat_host.gd`), and a second card,
-`binairo_island`, keeps the stage version reachable and seeded from the same
-day (`seed_as`), so both can be played and judged on the phone. The user is
-deciding whether the game goes 2D; nothing else has moved. Spec:
-`docs/superpowers/specs/2026-09-18-binairo-flat-design.md`, mock:
-`docs/brainstorm/concepts.html#binairo`.
+Since 2026-09-18 two cards open a flat 2D board under flat chrome, and each
+keeps its stage version reachable as a second card seeded from the same day
+(`seed_as`), so both can be played and judged on the phone: **Binairo**
+(`puzzles/binairo2d.gd`, beside `binairo_island`) and **Code Break**
+(`puzzles/codebreak2d.gd`, beside `mastermind_island`). The user is deciding
+whether the game goes 2D; nothing else has moved. Specs:
+`docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and
+`...-codebreak-flat-design.md`; mocks:
+`docs/brainstorm/concepts.html#binairo` and `#codebreak` (four more flat
+screens are mocked there and not built: Balance, Untangle, Shikaku, Tents).
 
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
   it has no How to play card, working-line card or motto footer: a tip card
   with a sprout names the rule a tap just broke and opens the rules sheet.
   Nothing else may drop the sign; this screen is the experiment.
-- **The rules live in `puzzles/binairo_state.gd`**, a scene-free class the
-  flat board draws. The island script still carries its own copy until the
-  verdict; whichever board survives, the state is the one truth to keep.
-- **Faces are code, not images** (`ui/faces/`): one Control per sun, moon or
-  sprout, drawn from a few tweened properties (`expression`, `eye_open`,
-  `spin`, `rock`). Filled polygons get an antialiased outline in their own
-  colour; MSAA for the 2D canvas stays off.
+- **The rules live in a scene-free state class** the flat board draws
+  (`puzzles/binairo_state.gd`, `puzzles/codebreak_state.gd`), and they are
+  the island's move for move, so what is on trial is the screen and not the
+  game. The island script still carries its own copy until the verdict;
+  whichever board survives, the state is the one truth to keep.
+- **Faces are code, not images** (`ui/faces/`): one Control per character,
+  drawn from a few tweened properties (`expression`, `eye_open`, `spin`,
+  `rock`) as one cached `ArrayMesh` per layer, because gl_compatibility pays
+  per draw command. `radius_ratio` fixes R as a fraction of the rect and
+  `plain` drops the face for a silhouette; `ui/faces/friends.gd` is the one
+  list of Code Break's seven. Filled polygons get an antialiased feather in
+  their own colour; MSAA for the 2D canvas stays off.
+- **Code Break's score is a count and never a map.** Nothing on that screen
+  may suggest which seat a pip came from -- not the pips' arrangement, not
+  their colour, not a face, not the order things animate in. That is why the
+  pouch is a loose pile with no socket for a miss, and why a checked row
+  wears one expression rather than one per seat.
 - **The flat host hides the stage** (`Stage.visible = false` and
   `show_setting(false)`) while it is up, under an opaque paper page, and
   shows it again on exit. The menu's `_show_list` restores the setting.
 - **The registry picks the shell**: `Registry.shell(entry)` is "island"
   unless the entry says `"shell": "flat"`; `ui/menu.gd` builds the host
   accordingly, and `ui/puzzle_host.gd` builds its rows in `_build_chrome`,
-  the one method the flat host overrides.
+  the one method the flat host overrides. It picks the tray too
+  (`"tray": "friends"`), because the host lays out its rows before it has a
+  puzzle to ask how many chips it wants.
+- **What the flat chrome asks a board for is optional and defaulted**:
+  `palette()`, `tip_line()` (the sprout's own line, in place of Binairo's
+  cycle of rules), `flat_win()` (the characters of the answer, laid across
+  the win screen in place of the sun and the moon) and `win_delay()`. A
+  board that offers none gets Binairo's behaviour.
 
 ## Art: shading direction
 

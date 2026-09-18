@@ -5,8 +5,14 @@ extends Control
 ## stars, then "Well done!" and "Perfect balance!". Laid out in the column's
 ## space (1000 wide, 640 tall) under the host's top margin, at the spec's
 ## positions. It slides down into the space the top bar and day card leave.
+##
+## A board whose answer is itself a row of characters replaces that pair
+## with its own cast (`set_cast`), laid across the same space at the board's
+## own pitch: Code Break's answer is four friends, so showing them is both
+## the celebration and the answer.
 ## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 8
-## (as amended).
+## (as amended), and
+## docs/superpowers/specs/2026-09-18-codebreak-flat-design.md, section 6.
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -26,6 +32,17 @@ const LEAF_L := Vector2(210.0, 260.0)
 const LEAF_R := Vector2(790.0, 260.0)
 const LEAF := 110.0
 const STARS := [[360.0, 100.0, 22.0], [690.0, 100.0, 16.0], [760.0, 200.0, 26.0]]
+## A cast fills the middle of the art where the pair left room, so the
+## leaves go out to the edges and the stars up out of its way.
+const CAST_LEAF_L := Vector2(66.0, 390.0)
+const CAST_LEAF_R := Vector2(934.0, 390.0)
+const CAST_LEAF := 116.0
+const CAST_STARS := [[190.0, 110.0, 22.0], [812.0, 128.0, 16.0], [906.0, 236.0, 26.0]]
+## A cast laid across the art: its centre line, and the pitch the board's
+## own seats use (150 wide, 40 apart).
+const CAST_Y := 290.0
+const CAST := 150.0
+const CAST_GAP := 40.0
 const TITLE_Y := 508.0
 const SUB_Y := 582.0
 const SLIDE := 0.4
@@ -33,6 +50,8 @@ const FADE := 0.2
 
 var sun: Control
 var moon: Control
+var _cast: Array[Control] = []
+var _art: Control
 var _title: Label
 var _sub: Label
 var _spin: Tween
@@ -41,11 +60,11 @@ var _rock: Tween
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size.y = HEIGHT
-	var art := Control.new()
-	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.draw.connect(_draw_art.bind(art))
-	add_child(art)
+	_art = Control.new()
+	_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_art.draw.connect(_draw_art.bind(_art))
+	add_child(_art)
 	sun = SunFace.new()
 	sun.size = Vector2(SUN_SIZE, SUN_SIZE)
 	sun.position = SUN_AT - sun.size * 0.5
@@ -74,16 +93,20 @@ func _ready() -> void:
 	_sub.offset_top = SUB_Y - 24.0
 	_sub.offset_bottom = SUB_Y + 24.0
 	add_child(_sub)
+	resized.connect(_fit_cast)
 	visible = false
 
-## Two leaves turned outward and three four-point stars in sun.
+## Two leaves turned outward and three four-point stars in sun, placed
+## clear of whatever the middle of the art holds.
 func _draw_art(ci: Control) -> void:
-	ci.draw_set_transform(LEAF_L, -0.9, Vector2.ONE)
-	Icons.paint(ci, "leaf", Rect2(Vector2(-LEAF * 0.5, -LEAF * 0.5), Vector2(LEAF, LEAF)), Pal.LEAF)
-	ci.draw_set_transform(LEAF_R, -2.2, Vector2.ONE)
-	Icons.paint(ci, "leaf", Rect2(Vector2(-LEAF * 0.5, -LEAF * 0.5), Vector2(LEAF, LEAF)), Pal.LEAF)
+	var row := not _cast.is_empty()
+	var leaf: float = CAST_LEAF if row else LEAF
+	ci.draw_set_transform(CAST_LEAF_L if row else LEAF_L, -0.9, Vector2.ONE)
+	Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
+	ci.draw_set_transform(CAST_LEAF_R if row else LEAF_R, -2.2, Vector2.ONE)
+	Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	for s in STARS:
+	for s in (CAST_STARS if row else STARS):
 		var pts := PackedVector2Array()
 		for i in 8:
 			var a := i * PI / 4.0
@@ -92,11 +115,40 @@ func _draw_art(ci: Control) -> void:
 		ci.draw_colored_polygon(pts, Pal.SUN)
 		ci.draw_polyline(pts + PackedVector2Array([pts[0]]), Pal.SUN, 1.5, true)
 
-## Slides in from 200 above while fading up, after `delay`. Both faces start
-## their idle life (the sun turns its rays, the moon rocks).
+## Puts `faces` across the art in place of the sun and the moon, centred on
+## the panel at the board's own pitch, and re-words the line under
+## "Well done!". The faces come in ready-made from the board, which is the
+## only thing that knows what the answer was.
+func set_cast(faces: Array, subtitle: String) -> void:
+	for face in _cast:
+		face.queue_free()
+	_cast = []
+	sun.visible = false
+	moon.visible = false
+	for face in faces:
+		face.size = Vector2(CAST, CAST)
+		face.pivot_offset = face.size * 0.5
+		face.expression = Face.Expr.JOY
+		add_child(face)
+		_cast.append(face)
+	_fit_cast()
+	_art.queue_redraw()
+	_sub.text = subtitle
+
+## The cast across the middle of the art, centred on the panel.
+func _fit_cast() -> void:
+	var pitch := CAST + CAST_GAP
+	for i in _cast.size():
+		_cast[i].position = Vector2(size.x * 0.5 + (i - (_cast.size() - 1) * 0.5) * pitch, CAST_Y) - Vector2(CAST, CAST) * 0.5
+
+## Slides in from 200 above while fading up, after `delay`. Every face starts
+## its idle life (the sun turns its rays, the moon rocks).
 func enter(delay := 0.0) -> void:
 	visible = true
 	Motion.slide(self, "position:y", position.y - 200.0, position.y, SLIDE, delay)
 	Motion.appear(self, 0.0, 1.0, FADE, delay)
-	sun.set_idle(true)
-	moon.set_idle(true)
+	if _cast.is_empty():
+		sun.set_idle(true)
+		moon.set_idle(true)
+	for face in _cast:
+		face.set_idle(true)

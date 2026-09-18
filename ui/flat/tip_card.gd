@@ -1,11 +1,17 @@
 extends "res://ui/hud/panel.gd"
 
-## The flat screen's tip card: the sprout and one line. Idle, it cycles the
-## three rules; the moment a tap breaks a line it names the broken rule and
-## the sprout worries; on a solve the sprout beams and it says Perfect
-## balance. It stands where the How to play card and the working-line card
-## stood, and a tap on it opens the rules sheet (the host listens to `open`).
-## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 7.
+## The flat screen's tip card: the sprout and one line. It stands where the
+## How to play card and the working-line card stood, and a tap on it opens
+## the rules sheet (the host listens to `open`).
+##
+## A board that writes its own line says so with `tip_line()` and the card
+## only speaks it -- Code Break reads its score out in words after every
+## Check, which no cycle of rules could do. A board without one gets
+## Binairo's behaviour: idle, it cycles the three rules; the moment a tap
+## breaks a line it names the broken rule and the sprout worries; on a solve
+## the sprout beams and it says Perfect balance.
+## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 7,
+## and docs/superpowers/specs/2026-09-18-codebreak-flat-design.md, section 3.
 
 signal open
 
@@ -79,6 +85,13 @@ func _on_input(event: InputEvent) -> void:
 
 ## Reads what the board says is broken and whether it is done.
 func refresh(puzzle) -> void:
+	if puzzle != null and puzzle.has_method("tip_line"):
+		_timer.stop()
+		var line: Dictionary = puzzle.tip_line()
+		var text := String(line.get("text", ""))
+		if text != _label.text:
+			_say(text, int(line.get("mood", Face.Expr.HAPPY)))
+		return
 	var broken: int = 0
 	var done := false
 	if puzzle != null:

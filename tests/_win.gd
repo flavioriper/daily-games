@@ -68,7 +68,7 @@ func _note(id: String) -> String:
 		"rope": return "%d of %d squares, %d pegs, camera fit=%s, hud=%s" % [
 			_puzzle._rope.size(), _puzzle.w * _puzzle.h, _puzzle._pegs.size(), _fit_ok, _hud_ok]
 		"binairo", "binairo_island": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
-		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
+		"mastermind", "mastermind_island": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
 		"pipes": return "%d pieces, %d drains, camera fit=%s, hud=%s" % [
 			_puzzle._placed.size(), _puzzle._drains.size(), _fit_ok, _hud_ok]
@@ -87,7 +87,7 @@ func _note(id: String) -> String:
 func _solve(id: String) -> void:
 	match id:
 		"binairo", "binairo_island": _solve_binairo()
-		"mastermind": _solve_mastermind()
+		"mastermind", "mastermind_island": _solve_mastermind()
 		"balance": _solve_balance()
 		"pipes": _solve_pipes()
 		"untangle": _solve_untangle()
@@ -134,9 +134,12 @@ func _solve_mastermind() -> void:
 			if not slot.has_point(_puzzle.cell_to_local(g, s)):
 				_fit_ok = false
 	# The HUD's tray fills the active row with the code, then the real Check.
-	var tray = _host.action_bar.tray
+	# The flat shell keeps its chips on the host (ui/flat/friend_tray.gd);
+	# the island's sit in the action bar.
+	var flat = _host.get("tray")
 	for s in length:
-		_press(tray.buttons[int(_puzzle._code[s])])
+		var friend: int = int(_puzzle._code[s])
+		_press(flat.chips[friend] if flat != null else _host.action_bar.tray.buttons[friend])
 	_press(_host.action_bar.check_button)
 
 func _solve_balance() -> void:

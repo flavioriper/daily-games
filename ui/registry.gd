@@ -37,7 +37,26 @@ const PUZZLES := [
 		"blurb": "Crack the hidden row from the feedback.",
 		"motto": "Crack the hidden code",
 		"footer": "Small puzzles · Brighter days",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-codebreak-flat-design.md).
+		# Its palette is friends, not a brush, so the shell builds the other
+		# tray.
+		"script": "res://puzzles/codebreak2d.gd",
+		"shell": "flat",
+		"tray": "friends",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Code Break, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both hide the same code.
+		"id": "mastermind_island",
+		"kind": "puzzle",
+		"title": "Code Break",
+		"blurb": "The island board, for comparison.",
+		"motto": "Crack the hidden code",
+		"footer": "Small puzzles · Brighter days",
 		"script": "res://puzzles/codebreak3d.gd",
+		"seed_as": "mastermind",
 		"difficulties": [0, 1, 2],
 	},
 	{

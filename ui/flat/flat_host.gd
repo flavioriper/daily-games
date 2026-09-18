@@ -3,8 +3,14 @@ extends "res://ui/puzzle_host.gd"
 ## The flat screen's shell: the same host as every other board's (every
 ## handler, the sheets, the analytics and the spawn are inherited) with the
 ## chrome swapped for the reference's cream rows, and the win screen in place
-## of the solved overlay. Only Binairo asks for it, through the registry's
-## `shell` field; the island boards keep ui/puzzle_host.gd's rows.
+## of the solved overlay. Two boards ask for it through the registry's
+## `shell` field, the flat Binairo and the flat Code Break; the island
+## boards keep ui/puzzle_host.gd's rows.
+##
+## The one row the two flat screens do not share is the tray: Binairo arms a
+## brush from three symbol chips, Code Break seats a friend from six or
+## seven. The registry names which (`"tray": "friends"`), because the host
+## lays out its rows before it has a puzzle to ask.
 ##
 ## Two slots hold the rows above and below the board, each a plain Control
 ## whose minimum height the win tweens: the top grows by 300 and the bottom
@@ -17,6 +23,7 @@ extends "res://ui/puzzle_host.gd"
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
 const SymbolTray = preload("res://ui/flat/symbol_tray.gd")
+const FriendTray = preload("res://ui/flat/friend_tray.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const TipCard = preload("res://ui/flat/tip_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
@@ -123,9 +130,13 @@ func _build_chrome(root: VBoxContainer) -> void:
 	_bottom_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_bottom_slot)
 	_bottom_stack = _stack(_bottom_slot)
-	tray = SymbolTray.new()
+	if str(_entry.get("tray", "symbols")) == "friends":
+		tray = FriendTray.new()
+		tray.pick.connect(_on_pick)
+	else:
+		tray = SymbolTray.new()
+		tray.pick.connect(_on_brush)
 	tray.name = "Tray"
-	tray.pick.connect(_on_brush)
 	_bottom_stack.add_child(tray)
 	action_bar = FlatActions.new()
 	action_bar.name = "Actions"
@@ -219,13 +230,22 @@ func _spawn(the_seed: int) -> void:
 func _on_solved() -> void:
 	Analytics.track("puzzle_complete", _stats())
 	_refresh()
+	# A board whose win has an animation of its own to play out first says
+	# how long it needs; Code Break's lids and code take nearly two seconds.
 	var wait := WIN_AFTER_STILL if Motion.reduce else WIN_AFTER
+	if is_instance_valid(_puzzle) and _puzzle.has_method("win_delay"):
+		wait = _puzzle.win_delay()
 	get_tree().create_timer(wait).timeout.connect(_show_win)
 
 func _show_win() -> void:
 	if _won or not is_instance_valid(_puzzle):
 		return
 	_won = true
+	# A board whose answer is a row of characters shows it instead of the
+	# sun and the moon (flat_win).
+	if _puzzle.has_method("flat_win"):
+		var art: Dictionary = _puzzle.flat_win()
+		well_done.set_cast(art.get("faces", []), String(art.get("subtitle", "")))
 	stats_card.set_day(Progress.day(), Progress.island_name())
 	stats_card.set_stats(_stats_text())
 	# The playing rows leave: up and out above, down and out below.
@@ -248,4 +268,8 @@ func _show_win() -> void:
 func _stats_text() -> String:
 	var secs := int(round(_puzzle.elapsed))
 	var hints: int = _puzzle.hints_used
-	return "%d:%02d · %d moves · %d %s" % [secs / 60, secs % 60, _puzzle.moves, hints, "hint" if hints == 1 else "hints"]
+	var moves: int = _puzzle.moves
+	return "%d:%02d · %d %s · %d %s" % [
+		secs / 60, secs % 60,
+		moves, "move" if moves == 1 else "moves",
+		hints, "hint" if hints == 1 else "hints"]
