@@ -27,6 +27,9 @@ var _opened := false
 var _tapped := false
 var _shot := 0
 var _idle: Array[float] = []
+var _idle_from := IDLE_FROM
+var _idle_to := IDLE_TO
+var _filling := false
 var _draws := 0
 var _id := ""
 var _empty := false   # skip the fill and measure the bare board
@@ -65,11 +68,18 @@ func _process(delta: float) -> bool:
 	if not _tapped and _t >= TAP_AT:
 		_tapped = true
 		if _entry.id == "mastermind" and not _empty:
-			_fill_mastermind()
+			# The flat board plays a row over about a second (the score, then
+			# the slide), so the fill is one press a frame until it is done and
+			# the idle window opens after it.
+			_filling = true
+			_idle_from = INF
+			_idle_to = INF
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
-	if _t >= IDLE_FROM and _t <= IDLE_TO:
+	if _filling:
+		_fill_mastermind_step()
+	if _t >= _idle_from and _t <= _idle_to:
 		_idle.append(delta * 1000.0)
 		_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 	if _shot < SHOTS.size() and _t >= SHOTS[_shot]:
@@ -77,7 +87,7 @@ func _process(delta: float) -> bool:
 		root.get_texture().get_image().save_png(path)
 		print("saved %s at t=%.2f" % [path, _t])
 		_shot += 1
-	if _t > IDLE_TO:
+	if _t > _idle_to:
 		var mean := 0.0
 		for ms in _idle:
 			mean += ms
@@ -106,17 +116,25 @@ func _tap_first_free() -> void:
 ## the day's code has no repeats, so no monochrome row can win and the eighth
 ## row is still there to fill. Driven through the HUD the way tests/_win.gd
 ## drives it, so the board reaches the state by playing rather than by having
-## its arrays written.
-func _fill_mastermind() -> void:
-	var tray = _host.action_bar.tray
-	var check: Button = _host.action_bar.check_button
-	for g in 7:
-		var colour: Button = tray.buttons[g % tray.buttons.size()]
-		for s in _puzzle.length:
-			_press(colour)
-		_press(check)
-	for s in _puzzle.length:
-		_press(tray.buttons[0])
+## its arrays written: one press a frame, and nothing while a score plays.
+func _fill_mastermind_step() -> void:
+	if _puzzle._busy:
+		return
+	var tray = _host.tray
+	var played: int = _puzzle._guesses.size()
+	if played >= 7:
+		if not _puzzle.state.full():
+			_press(tray.chips[0])
+			return
+		_filling = false
+		_idle_from = _t + 0.6
+		_idle_to = _idle_from + 2.0
+		print("filled at t=%.2f" % _t)
+		return
+	if _puzzle.state.full():
+		_press(_host.action_bar.check_button)
+	else:
+		_press(tray.chips[played % tray.chips.size()])
 
 ## Presses a HUD button through a touch at its centre, like a player would.
 func _press(btn: Button) -> void:

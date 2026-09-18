@@ -32,23 +32,13 @@ const SUN_SIZE := 0.26 * 2.0 * 1.55
 const MOON_SIZE := 0.34 * 2.0
 ## Hint count, not refunded by reset (HUD spec, section 3).
 const HINTS := 3
-## Timings (spec section 6).
-const ENTER_POP := 0.25
-const ENTER_STAGGER := 0.03
+## Timings (spec section 6). The press, the pop in and out, the hop, the
+## nudge, the drop, the ring, the entrance and the solve wave are the flat
+## vocabulary's own numbers now (core/motion.gd, docs/art/flat-motion.md);
+## only what is Binairo's alone stays here.
 const ENTER_FACE_LAG := 0.12
-const PRESS_SCALE := 0.94
-const PRESS_TIME := 0.08
-const RELEASE_TIME := 0.25
-const FACE_OUT := 0.12
 const FACE_IN_LAG := 0.08
-const FACE_IN := 0.22
-const FACE_SQUASH := 0.15
-const HOP := -6.0
-const HOP_TIME := 0.3
 const DIP := 4.0
-const NUDGE := 3.0
-const NUDGE_TIME := 0.3
-const NUDGE_LAG := 0.04
 const BLUSH_IN := 0.25
 const BLUSH_OUT := 0.4
 const BLUSH_BEAT := 0.2
@@ -57,18 +47,8 @@ const LINE_HOP := -8.0
 const LINE_HOP_TIME := 0.35
 const LINE_STAGGER := 0.03
 const JOY_TIME := 0.6
-const HINT_DROP := 40.0
-const HINT_DROP_TIME := 0.3
-const RING_TIME := 0.5
 const CHECK_FLASH := 0.6
-const CHECK_IN := 0.15
-const CHECK_OUT := 0.45
-const RESET_STAGGER := 0.02
 const RESET_HOP := -4.0
-const SOLVE_HOP := -10.0
-const SOLVE_TIME := 0.4
-const SOLVE_STAGGER := 0.04
-const SOLVE_DELAY := 0.25
 const FOCUS_IN := 0.12
 const FOCUS_HOLD := 1.5
 const FOCUS_OUT := 0.4
@@ -390,32 +370,20 @@ func _swap_face(r: int, c: int, v: int, delay := 0.0, drop := false) -> void:
 	_faces[r][c] = null
 	if old != null:
 		old.set_idle(false)
-		if Motion.reduce:
+		var out: Tween = Motion.pop_out(old, Motion.POP_OUT, delay)
+		if out == null:
 			old.queue_free()
 		else:
-			var out := old.create_tween().set_parallel(true)
-			out.tween_property(old, "scale", Vector2.ZERO, FACE_OUT).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-			out.tween_property(old, "rotation", PI * 0.5, FACE_OUT).set_delay(delay)
-			out.chain().tween_callback(old.queue_free)
+			out.finished.connect(old.queue_free)
 	if v == -1:
 		return
 	var face := _make_face(r, c, v)
 	_faces[r][c] = face
-	if Motion.reduce:
-		return
-	var rest := face.position
 	var start := delay + FACE_IN_LAG
 	if drop:
-		face.position.y = rest.y - HINT_DROP
-		face.modulate.a = 0.0
-		var tw := face.create_tween().set_parallel(true)
-		tw.tween_property(face, "position:y", rest.y, HINT_DROP_TIME).set_delay(start).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(face, "modulate:a", 1.0, 0.1).set_delay(start)
-		return
-	face.scale = Vector2.ZERO
-	var tw := face.create_tween()
-	tw.tween_property(face, "scale", Vector2(1.0 + FACE_SQUASH, 1.0 - FACE_SQUASH), FACE_IN * 0.6).set_delay(start).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_property(face, "scale", Vector2.ONE, FACE_IN * 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		Motion.drop_in(face, Motion.DROP, Motion.DROP_TIME, start)
+	else:
+		Motion.pop_in(face, Motion.POP_IN, start)
 
 ## A hop (negative height lifts) on the tile, replacing any hop already on it.
 func _hop(r: int, c: int, height: float, time: float, delay := 0.0) -> void:
@@ -434,24 +402,12 @@ func _nudge_neighbours(r: int, c: int) -> void:
 			continue
 		if Motion.reduce or Motion.running(_hops[rr][cc]):
 			continue
-		var tile: Panel = _tiles[rr][cc]
-		var rest := _origin + Vector2(cc, rr) * (_tile + GAP)
-		tile.position = rest
-		var tw := tile.create_tween()
-		tw.tween_property(tile, "position", rest + Vector2(d) * NUDGE, NUDGE_TIME * 0.5).set_delay(NUDGE_LAG).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tw.tween_property(tile, "position", rest, NUDGE_TIME * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		_hops[rr][cc] = tw
+		_hops[rr][cc] = Motion.nudge(_tiles[rr][cc], Vector2(d), _origin + Vector2(cc, rr) * (_tile + GAP))
 
 ## The press: the tile sinks under the finger and springs back on release.
 func _press(r: int, c: int, down: bool) -> void:
-	var tile: Panel = _tiles[r][c]
 	Motion.stop(_scales[r][c])
-	var tw := tile.create_tween()
-	if down:
-		tw.tween_property(tile, "scale", Vector2.ONE * PRESS_SCALE, PRESS_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	else:
-		tw.tween_property(tile, "scale", Vector2.ONE, RELEASE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_scales[r][c] = tw
+	_scales[r][c] = Motion.press(_tiles[r][c], down)
 
 # --- focus ---
 
@@ -519,7 +475,7 @@ func _gui_input(event: InputEvent) -> void:
 ## A tap on (r, c): cycles, or paints the armed brush. A given only dips.
 func _tap(r: int, c: int) -> void:
 	if state.given[r][c]:
-		_hop(r, c, DIP, HOP_TIME)
+		_hop(r, c, DIP, Motion.HOP_TIME)
 		_focus(r, c)
 		return
 	var changed: bool
@@ -531,7 +487,7 @@ func _tap(r: int, c: int) -> void:
 		return
 	var v: int = state.grid[r][c]
 	_swap_face(r, c, v)
-	_hop(r, c, HOP, HOP_TIME)
+	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	_nudge_neighbours(r, c)
 	if v != -1:
 		fx.puff(cell_to_local(r, c), Pal.SUN if v == 0 else Pal.MOON_INK, 5)
@@ -569,7 +525,7 @@ func undo() -> bool:
 	var r := got.x
 	var c := got.y
 	_swap_face(r, c, got.z)
-	_hop(r, c, HOP, HOP_TIME)
+	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	fx.cue("undo")
 	_focus(r, c)
 	_after_change(r, c)
@@ -606,15 +562,7 @@ func hint() -> bool:
 
 ## A ring that grows and fades over the hinted tile.
 func _ring(r: int, c: int) -> void:
-	if Motion.reduce:
-		return
-	var ring := Ring.new()
-	ring.radius = _tile * 0.55
-	ring.position = cell_to_local(r, c)
-	add_child(ring)
-	var tw := ring.create_tween()
-	tw.tween_property(ring, "t", 1.0, RING_TIME)
-	tw.tween_callback(ring.queue_free)
+	fx.ring(cell_to_local(r, c), _tile * 0.55)
 
 ## Marks every filled free cell that differs from the solution with a wobble
 ## and a flash. Returns how many; solving stays automatic.
@@ -639,12 +587,12 @@ func _flash(r: int, c: int) -> void:
 	Motion.stop(_fades[r][c])
 	var setter := _paint.bind(r, c)
 	var back: float = _blend_target[r][c]
-	var tw: Tween = Motion.fade(self, setter, _blend[r][c], CHECK_FLASH, CHECK_IN, 16)
+	var tw: Tween = Motion.fade(self, setter, _blend[r][c], CHECK_FLASH, Motion.FLASH_IN, 16)
 	if tw == null:
 		setter.call(back)
 		_fades[r][c] = null
 		return
-	tw.tween_method(setter, CHECK_FLASH, back, CHECK_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_method(setter, CHECK_FLASH, back, Motion.FLASH_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_fades[r][c] = tw
 
 ## Reset as a wave from the bottom left: free faces shrink out, givens hop,
@@ -660,9 +608,9 @@ func reset_board() -> void:
 	state.reset()
 	for r in n:
 		for c in n:
-			var delay := Motion.stagger((n - 1 - r) + c, RESET_STAGGER)
+			var delay := Motion.stagger((n - 1 - r) + c, Motion.RESET_STAGGER)
 			if state.given[r][c]:
-				_hop(r, c, RESET_HOP, HOP_TIME, delay)
+				_hop(r, c, RESET_HOP, Motion.HOP_TIME, delay)
 				continue
 			if _faces[r][c] != null:
 				_swap_face(r, c, -1, delay)
@@ -688,8 +636,8 @@ func _on_solved() -> void:
 	brush_changed.emit()
 	for r in n:
 		for c in n:
-			var delay := SOLVE_DELAY + Motion.stagger(r + c, SOLVE_STAGGER)
-			_hop(r, c, SOLVE_HOP, SOLVE_TIME, delay)
+			var delay := Motion.SOLVE_DELAY + Motion.stagger(r + c, Motion.SOLVE_STAGGER)
+			_hop(r, c, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
 			_beam(r, c, delay, INF)
 	if not Motion.reduce:
 		var g := _tile * n + GAP * (n - 1)
@@ -709,17 +657,15 @@ func _enter() -> void:
 	for r in n:
 		for c in n:
 			var tile: Panel = _tiles[r][c]
-			var delay := Motion.stagger(r + c, ENTER_STAGGER)
-			var pop: Tween = Motion.slide(tile, "scale", Vector2.ONE * 0.01, Vector2.ONE, ENTER_POP, delay)
+			var delay := Motion.stagger(r + c, Motion.ENTER_STAGGER)
+			var pop: Tween = Motion.slide(tile, "scale", Vector2.ONE * 0.01, Vector2.ONE, Motion.ENTER_POP, delay)
 			if pop != null:
 				_entrance.append(pop)
 			var face: Control = _faces[r][c]
-			if face != null and not Motion.reduce:
-				face.scale = Vector2.ZERO
-				var tw := face.create_tween()
-				tw.tween_property(face, "scale", Vector2(1.0 + FACE_SQUASH, 1.0 - FACE_SQUASH), FACE_IN * 0.6).set_delay(delay + ENTER_FACE_LAG).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-				tw.tween_property(face, "scale", Vector2.ONE, FACE_IN * 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-				_entrance.append(tw)
+			if face != null:
+				var tw: Tween = Motion.pop_in(face, Motion.POP_IN, delay + ENTER_FACE_LAG)
+				if tw != null:
+					_entrance.append(tw)
 	fx.cue("enter")
 
 ## Cuts the entrance short: everything lands where it was going.
@@ -743,15 +689,3 @@ func _stop_all() -> void:
 		for row in rows:
 			for tw in row:
 				Motion.stop(tw)
-
-## The hint's ring: a circle in sun that grows and fades as `t` runs 0 to 1.
-class Ring extends Control:
-	var radius := 40.0
-	var t := 0.0:
-		set(v):
-			t = v
-			queue_redraw()
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-	func _draw() -> void:
-		draw_arc(Vector2.ZERO, radius * (0.9 + 0.6 * t), 0.0, TAU, 48, Color(Pal.SUN, 1.0 - t), 6.0, true)

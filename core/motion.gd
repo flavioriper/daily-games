@@ -246,6 +246,117 @@ static func vanish(node: Node3D, lift: float, time: float, delay := 0.0) -> Twee
 	tw.chain().tween_callback(func() -> void: node.visible = false)
 	return tw
 
+# --- the flat boards' vocabulary ---
+## The timings every flat board shares, lifted from the flat Binairo
+## (docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 6) so a
+## second board reads as the same hand. docs/art/flat-motion.md is the table
+## of moments these serve; a new board calls these recipes and constants
+## rather than writing its own tweens, and a number that has to differ for
+## a board goes through a parameter, not a copy.
+## A square thing (a tile, a lid, a face) pops in from nothing; something
+## wide (a row, a card) pops from ENTER_WIDE_FROM, because the back ease's
+## overshoot on a thousand units of width is a wobble.
+const PRESS_SCALE := 0.94
+const PRESS_TIME := 0.08
+const RELEASE_TIME := 0.25
+const POP_IN := 0.22
+const POP_SQUASH := 0.15
+const POP_OUT := 0.12
+const ENTER_POP := 0.25
+const ENTER_STAGGER := 0.03
+const ENTER_WIDE_FROM := 0.86
+const HOP := -6.0
+const HOP_TIME := 0.3
+const NUDGE := 3.0
+const NUDGE_TIME := 0.3
+const NUDGE_LAG := 0.04
+const DROP := 40.0
+const DROP_TIME := 0.3
+const RING_TIME := 0.5
+const FLASH_IN := 0.15
+const FLASH_OUT := 0.45
+const RESET_STAGGER := 0.02
+const SOLVE_HOP := -10.0
+const SOLVE_TIME := 0.4
+const SOLVE_STAGGER := 0.04
+const SOLVE_DELAY := 0.25
+const CHIP_LIFT := 8.0
+const CHIP_LIFT_TIME := 0.18
+const CHIP_LIT := 0.35
+
+## The press: `node` sinks to PRESS_SCALE of `base` under the finger and
+## springs back to `base` with the back ease on release. The caller keeps
+## the tween and stops it before the next press. Decorative: under
+## reduce-motion the node sits at `base` and null is returned.
+static func press(node: Control, down: bool, base := Vector2.ONE) -> Tween:
+	if reduce:
+		node.scale = base
+		return null
+	var tw := node.create_tween()
+	if down:
+		tw.tween_property(node, "scale", base * PRESS_SCALE, PRESS_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		tw.tween_property(node, "scale", base, RELEASE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
+
+## Pops `node` in from nothing about its pivot: to a squash wider than tall
+## by POP_SQUASH over the first three fifths, then to `to` with the back
+## ease. The way a face lands on a tile. Under reduce-motion `to` is set and
+## null returned.
+static func pop_in(node: Control, time := POP_IN, delay := 0.0, to := Vector2.ONE) -> Tween:
+	if reduce:
+		node.scale = to
+		return null
+	node.scale = Vector2.ZERO
+	var tw := node.create_tween()
+	tw.tween_property(node, "scale", to * Vector2(1.0 + POP_SQUASH, 1.0 - POP_SQUASH), time * 0.6).set_delay(delay) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", to, time * 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
+
+## Shrinks `node` to nothing with a quarter turn over `time`, rising `lift`
+## pixels on the way if asked. The caller frees the node on `finished`.
+## Under reduce-motion it is hidden at once and null returned, so the caller
+## frees it itself.
+static func pop_out(node: Control, time := POP_OUT, delay := 0.0, lift := 0.0) -> Tween:
+	if reduce:
+		node.visible = false
+		return null
+	var tw := node.create_tween().set_parallel(true)
+	tw.tween_property(node, "scale", Vector2.ZERO, time).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(node, "rotation", node.rotation + PI * 0.5, time).set_delay(delay)
+	if lift != 0.0:
+		tw.tween_property(node, "position:y", node.position.y - lift, time).set_delay(delay) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	return tw
+
+## Drops `node` in from `height` above where it stands with the back ease
+## while it fades in over a tenth: a hint's arrival. Call it with the node
+## already at its rest. Under reduce-motion it is simply shown.
+static func drop_in(node: Control, height := DROP, time := DROP_TIME, delay := 0.0) -> Tween:
+	if reduce:
+		node.modulate.a = 1.0
+		return null
+	var rest := node.position.y
+	node.position.y = rest - height
+	node.modulate.a = 0.0
+	var tw := node.create_tween().set_parallel(true)
+	tw.tween_property(node, "position:y", rest, time).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "modulate:a", 1.0, 0.1).set_delay(delay)
+	return tw
+
+## Leans `node` `px` along `dir` from `rest` and back, sine out then in,
+## after `delay`: what the neighbours of a landing do. Puts the node at
+## `rest` first, so a nudge never compounds. Decorative.
+static func nudge(node: Control, dir: Vector2, rest: Vector2, px := NUDGE, time := NUDGE_TIME, delay := NUDGE_LAG) -> Tween:
+	node.position = rest
+	if reduce:
+		return null
+	var tw := node.create_tween()
+	tw.tween_property(node, "position", rest + dir * px, time * 0.5).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "position", rest, time * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	return tw
+
 ## Kills `tw` if it is still alive. Null-safe.
 static func stop(tw: Tween) -> void:
 	if tw != null and tw.is_valid():

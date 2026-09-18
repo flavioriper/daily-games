@@ -300,6 +300,16 @@ Specs:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
 `#untangle`, `#tents`, `#lightup`, `#oneline` and `#nonogram`.
 
+- **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
+  table: the press, the pop in and out, the hop, the nudge, the drop, the
+  ring, the entrance and the solve wave are recipes and constants in
+  `core/motion.gd` ("the flat boards' vocabulary"), lifted from Binairo on
+  2026-09-18 when Code Break was put on them. A new or a ported board calls
+  those and keeps only its own signature (Binairo's blush, Code Break's
+  flight and lids) as constants of its own; a number that has to differ goes
+  through a recipe's parameter, never a copied constant. Rings, puffs and
+  sparkles come from `ui/fx2d.gd` alone. The other seven flat boards still
+  carry their own tweens and are ported when next touched.
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
   it has no How to play card, working-line card or motto footer: a tip card

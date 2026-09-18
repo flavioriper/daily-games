@@ -77,6 +77,36 @@ func sparkle(at: Vector2, colour: Color = Pal.SUN) -> void:
 	_fire(sparkles[_next_sparkle], at, colour, 6)
 	_next_sparkle = (_next_sparkle + 1) % SPARKLE_POOL
 
+## A ring in `colour` that grows from 0.9 to 1.5 of `radius` and fades over
+## RING_TIME at `at`: the pulse a hint gives its cell. Drawn as one arc, freed
+## when it is gone; nothing under reduce-motion.
+func ring(at: Vector2, radius: float, colour: Color = Pal.SUN, time := Motion.RING_TIME) -> void:
+	if Motion.reduce:
+		return
+	var r := Ring.new()
+	r.radius = radius
+	r.colour = colour
+	r.position = at
+	add_child(r)
+	var tw := r.create_tween()
+	tw.tween_property(r, "t", 1.0, time)
+	tw.tween_callback(r.queue_free)
+
+## The hint's ring: a circle that grows and fades as `t` runs 0 to 1.
+class Ring extends Control:
+	var radius := 40.0
+	var colour := Color.WHITE
+	var t := 0.0:
+		set(v):
+			t = v
+			queue_redraw()
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		draw_arc(Vector2.ZERO, radius * (0.9 + 0.6 * t), 0.0, TAU, 48, Color(colour, 1.0 - t), 6.0, true)
+
 ## Audio hook. Effects name their sound here; nothing plays yet.
 func cue(cue_name: String) -> void:
 	last_cue = cue_name

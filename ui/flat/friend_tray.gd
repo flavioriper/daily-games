@@ -3,9 +3,11 @@ extends "res://ui/hud/panel.gd"
 ## The flat Code Break's palette: one chip per friend, six across the column
 ## and seven on the hard difficulty. A chip is a **direct action, not a
 ## brush**: tap it and the friend runs into the first free seat, which is
-## what the island board's tray does. Nothing here is ever armed, so nothing
-## here is ever lit; the chips only dim together when the row is full or the
-## game is over.
+## what the island board's tray does. Nothing here is ever armed: a tapped
+## chip lights in its friend's colour and its friend hops for a beat as their
+## twin flies to the board, then both settle -- Binairo's arm-lift used as
+## feedback rather than a mode (the user's re-render of 2026-09-18). The chips
+## dim together when the row is full or the game is over.
 ##
 ## The chips are built on the first refresh, not in _build: how many there
 ## are is the puzzle's difficulty, and the host has no puzzle yet when it
@@ -25,9 +27,16 @@ const PIECE := 0.86
 const SQUASH := 0.1
 const SQUASH_TIME := 0.18
 const DIM := 0.45
+## The lit chip's border, all round and a heavier foot, as Binairo's armed chip.
+const LIT_BORDER := 4
+const LIT_FOOT := 8
 
 var chips: Array[Button] = []
 var _faces: Array[Control] = []
+var _rest: Array[StyleBoxFlat] = []
+var _lit: Array[StyleBoxFlat] = []
+var _lits: Array = []
+var _hops: Array = []
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -45,6 +54,10 @@ func _make_chips(count: int) -> void:
 		chip.queue_free()
 	chips = []
 	_faces = []
+	_rest = []
+	_lit = []
+	_lits = []
+	_hops = []
 	for i in count:
 		var chip := Button.new()
 		chip.name = "Chip_%d" % i
@@ -54,13 +67,19 @@ func _make_chips(count: int) -> void:
 		chip.custom_minimum_size.y = CHIP_H
 		var fill := Friends.tile(i)
 		var rest := CozyTheme.card(fill, 28, Pal.LINE, 6, 0)
+		var lit := CozyTheme.card(fill, 28, Friends.colour(i), 6, 0)
+		lit.set_border_width_all(LIT_BORDER)
+		lit.border_width_bottom = LIT_FOOT
 		var down := CozyTheme.card(fill.lerp(Pal.LINE, 0.15), 28, Pal.LINE, 2, 0)
-		for state in ["normal", "hover", "focus", "disabled"]:
-			chip.add_theme_stylebox_override(state, rest)
 		chip.add_theme_stylebox_override("pressed", down)
 		chip.pressed.connect(_on_pressed.bind(i))
 		_inner.add_child(chip)
 		chips.append(chip)
+		_rest.append(rest)
+		_lit.append(lit)
+		_lits.append(null)
+		_hops.append(null)
+		_dress(i, false)
 		var face := Friends.make(i, CHIP_H, Vector2.ZERO)
 		chip.add_child(face)
 		_faces.append(face)
@@ -77,9 +96,35 @@ func _fit(i: int) -> void:
 	var seat: float = minf(chip.size.x * PIECE, CHIP_H)
 	Friends.resize(_faces[i], seat, chip.size * 0.5 - Vector2(0.0, 3.0))
 
+## Where friend `i` rests in its chip: centred, a touch up.
+func _face_rest(i: int) -> Vector2:
+	return chips[i].size * 0.5 - Vector2(0.0, 3.0) - _faces[i].size * 0.5
+
+func _dress(i: int, lit: bool) -> void:
+	var sb: StyleBoxFlat = _lit[i] if lit else _rest[i]
+	for state in ["normal", "hover", "focus", "disabled"]:
+		chips[i].add_theme_stylebox_override(state, sb)
+
 func _on_pressed(i: int) -> void:
 	Motion.squash(chips[i], SQUASH, SQUASH_TIME)
+	_light(i)
 	pick.emit(i)
+
+## The beat of feedback: the chip takes its friend's colour all round for
+## CHIP_LIT and the friend hops CHIP_LIFT, then both settle. Restarts cleanly
+## when mashed. The light is a style and not a motion, so it stays under
+## reduce-motion; the hop does not.
+func _light(i: int) -> void:
+	Motion.stop(_lits[i])
+	_dress(i, true)
+	var tw := chips[i].create_tween()
+	tw.tween_interval(Motion.CHIP_LIT)
+	tw.tween_callback(_dress.bind(i, false))
+	_lits[i] = tw
+	Motion.stop(_hops[i])
+	var face: Control = _faces[i]
+	face.position = _face_rest(i)
+	_hops[i] = Motion.hop(face, -Motion.CHIP_LIFT, Motion.CHIP_LIFT_TIME * 2.0)
 
 ## Reads the board's palette: how many chips, and whether they take a tap.
 func refresh(puzzle) -> void:

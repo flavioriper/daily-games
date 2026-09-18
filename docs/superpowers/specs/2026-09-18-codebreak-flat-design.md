@@ -259,3 +259,61 @@ Two things keep it there, and neither may be undone casually:
   hands every Panel had to be dropped **after** `add_child`, not before, or
   the row cards and sockets wear a stain; and a finished game keeps its last
   row in `state.row`, which drew a ghost row under the winning one.
+
+## 11. Amendment: the polish of 2026-09-18
+
+The user brought a re-render of the built screen and asked for it to be
+smoother and more elegant, with its animations on Binairo's pattern and that
+pattern recorded so the other boards can take it. Four decisions were put to
+them and taken as recommended:
+
+- **The walk-down stays.** The re-render draws eight equal rows; the big
+  active row that slides down the column keeps its faces legible and is the
+  progress bar, so it stays, and every row takes the re-render's dressing
+  instead: a card from the first frame (white at full size, parchment warmed
+  0.45 toward white in the history, blended continuously on the row's
+  bigness), its sockets and dotted rings dimmed rather than hidden, its
+  number darkening as it grows.
+- **The pouch is on every row from the start, empty.** The re-render's four
+  dots in a line are the arrangement section 4 rules out. The pale pill waits
+  at each row's right; a score drops into it as the loose pile it always was,
+  and the pouch gives a beat as the first pip lands. A full unscored row's
+  "?" now sits inside its pouch. An unscored pouch dims with its row; a scored
+  one is the record and never does.
+- **The chip is still a direct action.** The re-render's bordered sun chip is
+  read as feedback, not a mode: a tapped chip takes its friend's colour all
+  round for 0.35 s and its friend hops 8 as their twin flies, then both
+  settle. Nothing is ever armed.
+- **Straight to Godot**, since the screen already had its concept tab and the
+  board was built; this amendment and `docs/art/flat-motion.md` are the
+  record. No hearts on the day card: on a board they read as tries left.
+
+**The vocabulary** (`core/motion.gd`, "the flat boards' vocabulary";
+`docs/art/flat-motion.md`) was lifted from Binairo's inline tweens and both
+boards now call it: `press`, `pop_in`, `pop_out`, `drop_in`, `nudge`, and
+`Fx2D.ring` in place of the ring class each board carried. What changed on
+this screen, moment by moment:
+
+| Moment | Now |
+|---|---|
+| Entrance | rows pop in top-down from 0.86 with the back ease (0.25, staggered 0.03) instead of fading; the lids land with the squash; two amber sparks come up beside them at 0.9 |
+| Seat under the finger | sinks to 0.94 in 0.08, springs back in 0.25 |
+| Place | the flight lands with a squash of 0.12 and a puff of five stars in the friend's colour |
+| Send back | the pop-out (0.12, a quarter turn, rising 24); the dotted ring pops back in 0.18 |
+| Incomplete Check | the empty seats wobble and their sockets flash toward `BAD_TILE` (0.15 in, 0.45 out) |
+| Check | the pouch bumps 0.12 as the first pip lands; the played row's card fades to the history tone as it shrinks, for free, since its dressing is a blend on bigness |
+| Peek, reveal | the sparks swell and brighten with the stir, and again when the code comes out |
+| Cracked | the winning row hops in a wave (-10 over 0.4, staggered 0.04 after 0.25) and beams before the lids go |
+| Reduce-motion | the check's beats shorten to 0.15 (`_beat`), so the code is on the table before the win screen rather than after it |
+
+**Measured** on this Mac at 1080 x 1920, through `tests/_shot_anim.gd`
+(whose Code Break fill now plays one press a frame through the flat tray,
+since a scored row takes about a second to slide): the fullest board, seven
+rows scored and the eighth full, **234 draw calls** against the 855 budget
+(252 was the figure for four rows before the history wore cards) and an idle
+mean of 3.8 ms. `tests/_win.gd` windowed: 9/9 winnable, Code Break cracked
+through the HUD. Suite: 2086 passed, 0 failed. Throwaway probes shot the
+entrance, a flight with its lit chip, a seated row, the incomplete-check
+flash, the hint's drop and ring, a score, the slide, a send-back, the solve
+wave, the lids falling, the code out, the win screen, a full row's "?", a
+zero score's dash, and a reduce-motion crack landing on the win screen.
