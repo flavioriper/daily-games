@@ -63,10 +63,31 @@ const PUZZLES := [
 		"id": "balance",
 		"kind": "puzzle",
 		"title": "Balance",
-		"blurb": "Work out what each shape weighs.",
+		"blurb": "Work out what each fruit weighs.",
+		"motto": "Find the weight of things",
+		"footer": "Weigh · Reason · Settle",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-balance-flat-design.md).
+		# Its tray is a card per fruit, and it has **no actions row**: the
+		# beams are a continuous check, so there is no Check to put in one and
+		# Reset rides in the top bar instead.
+		"script": "res://puzzles/balance2d.gd",
+		"shell": "flat",
+		"tray": "weights",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Balance, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both hide the same weights.
+		"id": "balance_island",
+		"kind": "puzzle",
+		"title": "Balance",
+		"blurb": "The island board, for comparison.",
 		"motto": "Find the weight of things",
 		"footer": "Weigh · Reason · Settle",
 		"script": "res://puzzles/balance3d.gd",
+		"seed_as": "balance",
 		"difficulties": [0, 1, 2],
 	},
 	{

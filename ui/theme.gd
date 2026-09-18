@@ -63,6 +63,12 @@ static func make() -> Theme:
 	_label(theme, "WellDone", display(700), 96, Pal.TEXT)
 	_label(theme, "CardBodyDim", body(500), 30, Pal.TEXT_DIM)
 	_label(theme, "TipBody", body(500), 32, Pal.TEXT)
+	# The flat Balance's weight cards
+	# (docs/superpowers/specs/2026-09-18-balance-flat-design.md, section 4):
+	# the weight as a big numeral, and the tag a given card wears in place of
+	# its minus and plus. The win screen reuses the numeral at a smaller size.
+	_label(theme, "WeightNumeral", display(700), 62, Pal.TEXT)
+	_label(theme, "GivenTag", body(700, 2), 22, Pal.TEXT_DIM)
 	# Button variations.
 	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)

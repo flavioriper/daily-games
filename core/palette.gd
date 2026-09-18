@@ -87,6 +87,27 @@ const BOULDER     := Color("9ba5ad")   # a rock beside the deck, cool against th
 const PLAQUE      := Color("9c6b45")   # the title sign's and day card's wood
 const PLAQUE_DEEP := Color("6e4a2f")   # its bottom edge
 
+# The flat Balance's five camp fruit, one silhouette and one colour each
+# (docs/superpowers/specs/2026-09-18-balance-flat-design.md, section 3). The
+# apple takes BERRY and the acorn ACORN above -- they are the very colours
+# Code Break already draws, which is the point of having a cast -- so only
+# the pear, the pumpkin and the mushroom are new here, plus the wood the
+# scales are cut from. The wood is a shade warmer than the chrome's WOOD:
+# these are the mock's own values, and a scale is the only wood on a flat
+# screen, so it never stands beside a tray cut from the other one.
+const PEAR         := Color("c3cf62")
+const PEAR_TILE    := Color("eef2d6")
+const PUMPKIN      := Color("ef9038")
+const PUMPKIN_DEEP := Color("c86f22")   # the ribs drawn across its belly
+const PUMPKIN_TILE := Color("fde6cf")
+const PUMPKIN_STEM := Color("7b8f4a")
+const MUSHROOM     := Color("b5705f")   # the cap
+const MUSHROOM_STEM := Color("f6ecd9")
+const MUSHROOM_TILE := Color("f1ded6")
+const SCALE_WOOD   := Color("c9a678")   # the beam
+const SCALE_DEEP   := Color("a3814f")   # the post, the dish, the beam's shade
+const SCALE_DARK   := Color("8d6c41")   # the base, the hub, the cords
+
 # Pipes (docs/art/concept-pipes.png): chrome when dry, lit blue when fed. The
 # water inside the tube is WATER / WATER_HI, already defined above, and its
 # bubbles are MOON.

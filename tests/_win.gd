@@ -69,7 +69,8 @@ func _note(id: String) -> String:
 			_puzzle._rope.size(), _puzzle.w * _puzzle.h, _puzzle._pegs.size(), _fit_ok, _hud_ok]
 		"binairo", "binairo_island": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind", "mastermind_island": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
-		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
+		"balance": return "weights %s, board fit=%s, hud=%s" % [_puzzle.state.guess, _fit_ok, _hud_ok]
+		"balance_island": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
 		"pipes": return "%d pieces, %d drains, camera fit=%s, hud=%s" % [
 			_puzzle._placed.size(), _puzzle._drains.size(), _fit_ok, _hud_ok]
 		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
@@ -88,7 +89,8 @@ func _solve(id: String) -> void:
 	match id:
 		"binairo", "binairo_island": _solve_binairo()
 		"mastermind", "mastermind_island": _solve_mastermind()
-		"balance": _solve_balance()
+		"balance": _solve_balance_flat()
+		"balance_island": _solve_balance()
 		"pipes": _solve_pipes()
 		"untangle": _solve_untangle()
 		"shikaku": _solve_shikaku()
@@ -141,6 +143,31 @@ func _solve_mastermind() -> void:
 		var friend: int = int(_puzzle._code[s])
 		_press(flat.chips[friend] if flat != null else _host.action_bar.tray.buttons[friend])
 	_press(_host.action_bar.check_button)
+
+## The flat Balance: the weights are dialled in on the host's own cards
+## (ui/flat/weight_tray.gd), since this screen has no live surface on the
+## board at all -- the board only shows what the cards say. Pressing the real
+## minus and plus is therefore the whole input path.
+func _solve_balance_flat() -> void:
+	# Board fit check: every dish must hang inside the card the board asked
+	# for, which is what the tilt cap and the band cap exist to guarantee.
+	var card := Rect2(Vector2.ZERO, Vector2(_puzzle.size.x, _puzzle.card_height(_puzzle.size.y)))
+	_fit_ok = true
+	for i in _puzzle.state.scales.size():
+		for side in 2:
+			if not card.has_point(_puzzle.dish_to_local(i, side)):
+				_fit_ok = false
+	# The HUD's hint reveals and locks one kind; the rest are stepped in.
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	var tray = _host.tray
+	for i in _puzzle.state.shapes:
+		var target: int = int(_puzzle.state.secret[i])
+		var guard := 0
+		while int(_puzzle.state.guess[i]) != target and guard < 12:
+			guard += 1
+			var up: bool = int(_puzzle.state.guess[i]) < target
+			_press(tray.plus_button(i) if up else tray.minus_button(i))
 
 func _solve_balance() -> void:
 	# Camera fit check: both pads of every plinth must project inside the slot.

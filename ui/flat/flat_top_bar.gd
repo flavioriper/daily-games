@@ -2,14 +2,22 @@ extends "res://ui/hud/panel.gd"
 
 ## The flat screen's top row: back, the wordmark lettered in ink with the
 ## leaf sprouting from it and the motto under, then undo, hint with its
-## bouncing count and settings. The same four signals as ui/hud/top_bar.gd,
-## the same buttons; only the title differs, a Label where the other boards
+## bouncing count and settings. The same signals as ui/hud/top_bar.gd, the
+## same buttons; only the title differs, a Label where the other boards
 ## carry the carved sign. That departure from the sign rule is on purpose and
 ## for this screen only (spec section 3).
-## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 3.
+##
+## One board asks for a fifth button: the flat Balance is its own continuous
+## check, so it has nothing to put in an actions row and drops the row
+## entirely, which leaves Reset homeless. It rides up here instead, between
+## undo and hint. Nothing else sets `with_reset`, so the other two screens
+## keep their four.
+## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 3,
+## and docs/superpowers/specs/2026-09-18-balance-flat-design.md, section 5.
 
 signal back
 signal undo
+signal reset
 signal hint
 signal settings
 
@@ -28,8 +36,11 @@ const LEAF := 40.0
 
 var title_text := ""
 var motto_text := ""
+## Whether this bar carries Reset (a board with no actions row).
+var with_reset := false
 var back_button: Button
 var undo_button: Button
+var reset_button: Button
 var hint_button: Button
 var settings_button: Button
 var _title: Label
@@ -37,9 +48,10 @@ var _motto: Label
 var _block: Control
 var _bounce: Tween
 
-func _init(title := "", motto := "") -> void:
+func _init(title := "", motto := "", carry_reset := false) -> void:
 	title_text = title.to_upper()
 	motto_text = motto.to_upper()
+	with_reset = carry_reset
 	enter_from = Vector2(0, -80)
 
 func _make_inner() -> Container:
@@ -79,6 +91,8 @@ func _build() -> void:
 	_block.add_child(leaf)
 	_title.resized.connect(leaf.queue_redraw)
 	undo_button = _button("undo", undo)
+	reset_button = _button("reset", reset)
+	reset_button.visible = with_reset
 	hint_button = _button("bulb", hint)
 	settings_button = _button("gear", settings)
 
@@ -113,6 +127,7 @@ func refresh(puzzle) -> void:
 	undo_button.visible = caps.has("undo")
 	hint_button.visible = caps.has("hint")
 	undo_button.set_enabled(puzzle != null and puzzle.can_undo() and not done)
+	reset_button.set_enabled(not done)
 	var left: int = puzzle.hints_left() if puzzle != null else 0
 	hint_button.set_enabled(left > 0 and not done)
 	hint_button.badge = left

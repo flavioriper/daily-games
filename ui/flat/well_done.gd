@@ -39,7 +39,17 @@ const CAST_LEAF_R := Vector2(934.0, 390.0)
 const CAST_LEAF := 116.0
 const CAST_STARS := [[190.0, 110.0, 22.0], [812.0, 128.0, 16.0], [906.0, 236.0, 26.0]]
 ## A cast laid across the art: its centre line, and the pitch the board's
-## own seats use (150 wide, 40 apart).
+## own seats use (150 wide, 40 apart). A cast wider than CAST_SPAN is closed
+## up and its faces shrink with the pitch, the mock's own rule, because past
+## four the row otherwise runs out into the leaves at the edges of the art:
+## Code Break's four fit at the full pitch, Balance's five do not.
+const CAST_SPAN := 800.0
+const CAST_SEAT_SHARE := 0.85
+## A cast that carries labels puts each one this far under its face's lower
+## edge, so the gap does not change with the seat.
+const CAST_LABEL_GAP := 24.0
+const CAST_LABEL_H := 60.0
+const CAST_LABEL_SIZE := 46
 const CAST_Y := 290.0
 const CAST := 150.0
 const CAST_GAP := 40.0
@@ -51,6 +61,10 @@ const FADE := 0.2
 var sun: Control
 var moon: Control
 var _cast: Array[Control] = []
+var _cast_labels: Array[Label] = []
+## Set when the cast had to be closed up to fit: the row then reaches the
+## right of the art, and the decoration there steps aside (see _draw_art).
+var _cast_wide := false
 var _art: Control
 var _title: Label
 var _sub: Label
@@ -103,10 +117,19 @@ func _draw_art(ci: Control) -> void:
 	var leaf: float = CAST_LEAF if row else LEAF
 	ci.draw_set_transform(CAST_LEAF_L if row else LEAF_L, -0.9, Vector2.ONE)
 	Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
-	ci.draw_set_transform(CAST_LEAF_R if row else LEAF_R, -2.2, Vector2.ONE)
-	Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
+	# The right leaf stands at x 934 and the outermost star at 906, which is
+	# inside a cast that had to be closed up to fit -- Balance's five fruit
+	# reach 888 with their weights written under them. The answer is the
+	# point of this screen, so the decoration on that side steps aside rather
+	# than being drawn through. Four or fewer faces leave the art untouched.
+	if not _cast_wide:
+		ci.draw_set_transform(CAST_LEAF_R if row else LEAF_R, -2.2, Vector2.ONE)
+		Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	for s in (CAST_STARS if row else STARS):
+	var stars: Array = CAST_STARS if row else STARS
+	if _cast_wide:
+		stars = stars.slice(0, stars.size() - 1)
+	for s in stars:
 		var pts := PackedVector2Array()
 		for i in 8:
 			var a := i * PI / 4.0
@@ -119,27 +142,60 @@ func _draw_art(ci: Control) -> void:
 ## the panel at the board's own pitch, and re-words the line under
 ## "Well done!". The faces come in ready-made from the board, which is the
 ## only thing that knows what the answer was.
-func set_cast(faces: Array, subtitle: String) -> void:
+## `labels`, when given, is one line under each face: Balance's answer is a
+## weight per kind, so the cast is the fruit and the label is what each one
+## turned out to weigh. Code Break passes none -- its cast is the whole
+## answer on its own.
+func set_cast(faces: Array, subtitle: String, labels: Array = []) -> void:
 	for face in _cast:
 		face.queue_free()
+	for label in _cast_labels:
+		label.queue_free()
 	_cast = []
+	_cast_labels = []
 	sun.visible = false
 	moon.visible = false
 	for face in faces:
-		face.size = Vector2(CAST, CAST)
-		face.pivot_offset = face.size * 0.5
 		face.expression = Face.Expr.JOY
 		add_child(face)
 		_cast.append(face)
+	for i in labels.size():
+		var label := Label.new()
+		label.theme_type_variation = "WeightNumeral"
+		label.add_theme_font_size_override("font_size", CAST_LABEL_SIZE)
+		label.text = String(labels[i])
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(label)
+		_cast_labels.append(label)
 	_fit_cast()
+	# After _fit_cast, which is what decides whether the row is wide.
 	_art.queue_redraw()
 	_sub.text = subtitle
 
-## The cast across the middle of the art, centred on the panel.
+## The cast across the middle of the art, centred on the panel, each label
+## squarely under its own face.
 func _fit_cast() -> void:
-	var pitch := CAST + CAST_GAP
-	for i in _cast.size():
-		_cast[i].position = Vector2(size.x * 0.5 + (i - (_cast.size() - 1) * 0.5) * pitch, CAST_Y) - Vector2(CAST, CAST) * 0.5
+	var n := _cast.size()
+	if n == 0:
+		return
+	var pitch: float = CAST + CAST_GAP
+	var seat: float = CAST
+	_cast_wide = pitch * float(n) > CAST_SPAN
+	if _cast_wide:
+		pitch = CAST_SPAN / float(n)
+		seat = minf(CAST, pitch * CAST_SEAT_SHARE)
+	for i in n:
+		var centre := Vector2(size.x * 0.5 + (i - (n - 1) * 0.5) * pitch, CAST_Y)
+		var face: Control = _cast[i]
+		face.size = Vector2(seat, seat)
+		face.pivot_offset = face.size * 0.5
+		face.position = centre - face.size * 0.5
+		if i < _cast_labels.size():
+			var label: Label = _cast_labels[i]
+			label.size = Vector2(pitch, CAST_LABEL_H)
+			label.position = centre + Vector2(-pitch * 0.5, seat * 0.5 + CAST_LABEL_GAP)
 
 ## Slides in from 200 above while fading up, after `delay`. Every face starts
 ## its idle life (the sun turns its rays, the moon rocks).

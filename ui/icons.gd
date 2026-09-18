@@ -6,7 +6,7 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
-	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross"]
+	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -52,6 +52,12 @@ static func shape(name: String) -> Dictionary:
 			return _eye()
 		"tree":
 			return _tree()
+		"minus":
+			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.2, 0.5), Vector2(0.8, 0.5)])]}
+		"plus":
+			return {"polys": [], "lines": [
+				PackedVector2Array([Vector2(0.2, 0.5), Vector2(0.8, 0.5)]),
+				PackedVector2Array([Vector2(0.5, 0.2), Vector2(0.5, 0.8)])]}
 		"cross":
 			return {"polys": [], "lines": [
 				PackedVector2Array([Vector2(0.28, 0.28), Vector2(0.72, 0.72)]),

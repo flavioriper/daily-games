@@ -7,10 +7,18 @@ extends "res://ui/puzzle_host.gd"
 ## `shell` field, the flat Binairo and the flat Code Break; the island
 ## boards keep ui/puzzle_host.gd's rows.
 ##
-## The one row the two flat screens do not share is the tray: Binairo arms a
+## The one row the flat screens do not share is the tray: Binairo arms a
 ## brush from three symbol chips, Code Break seats a friend from six or
-## seven. The registry names which (`"tray": "friends"`), because the host
-## lays out its rows before it has a puzzle to ask.
+## seven, Balance steps a weight from one card per fruit. The registry names
+## which (`"tray": "friends"`, `"weights"`), because the host lays out its
+## rows before it has a puzzle to ask.
+##
+## Nor do they all carry an actions row. A board that is its own continuous
+## check has nothing to put in one -- no Check, and Reset riding up in the
+## top bar instead -- so the registry can say `"actions": false` and the row
+## is never built; the bottom slot is then measured from whatever rows it
+## actually got rather than from a constant, since the three screens no
+## longer agree on its height.
 ##
 ## Two slots hold the rows above and below the board, each a plain Control
 ## whose minimum height the win tweens: the top grows by 300 and the bottom
@@ -24,16 +32,19 @@ const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
 const SymbolTray = preload("res://ui/flat/symbol_tray.gd")
 const FriendTray = preload("res://ui/flat/friend_tray.gd")
+const WeightTray = preload("res://ui/flat/weight_tray.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const TipCard = preload("res://ui/flat/tip_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 
-## The two slots' heights while playing and on the win (spec section 8).
+## The two slots' heights while playing and on the win (spec section 8). The
+## bottom's playing height is measured in _build_chrome from the rows it
+## built, because a screen may have no actions row and a tray of its own
+## height.
 const TOP_PLAY := 180.0 + 20.0 + 120.0
 const TOP_WIN := WellDone.HEIGHT
-const BOTTOM_PLAY := 150.0 + 20.0 + 130.0 + 20.0 + 140.0
 const BOTTOM_WIN := 120.0 + 20.0 + 130.0
 const CAMP_BUTTON := 130.0
 ## Entrance delays per row (the island's order; ENTER_TOP, ENTER_CARDS and
@@ -61,6 +72,8 @@ var _bottom_stack: VBoxContainer
 var _win_stack: VBoxContainer
 var _stage: Node
 var _won := false
+## The bottom slot's playing height, summed from the rows this screen has.
+var _bottom_play := 0.0
 
 func _ready() -> void:
 	super()
@@ -93,10 +106,12 @@ func _build_chrome(root: VBoxContainer) -> void:
 	_top_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_top_slot)
 	_top_stack = _stack(_top_slot)
-	top_bar = FlatTopBar.new(_entry.get("title", ""), _entry.get("motto", ""))
+	var with_actions: bool = bool(_entry.get("actions", true))
+	top_bar = FlatTopBar.new(_entry.get("title", ""), _entry.get("motto", ""), not with_actions)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)
+	top_bar.reset.connect(_on_reset)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(_open_settings)
 	_top_stack.add_child(top_bar)
@@ -119,6 +134,9 @@ func _build_chrome(root: VBoxContainer) -> void:
 	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_board_holder.add_child(_card)
+	# A board that caps its own height keeps the card to it on every relayout,
+	# including the win's slide.
+	_board_holder.resized.connect(_fit_card)
 	# Flat parchment under the grid, as the mock has it: the paper wash the
 	# rest of the chrome wears reads as a stain across a field of small tiles.
 	_card.material = null
@@ -126,27 +144,37 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# --- the bottom slot: palette, actions and tip, then the win's stats and button ---
 	_bottom_slot = Control.new()
 	_bottom_slot.name = "BottomSlot"
-	_bottom_slot.custom_minimum_size.y = BOTTOM_PLAY
 	_bottom_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_bottom_slot)
 	_bottom_stack = _stack(_bottom_slot)
-	if str(_entry.get("tray", "symbols")) == "friends":
-		tray = FriendTray.new()
-		tray.pick.connect(_on_pick)
-	else:
-		tray = SymbolTray.new()
-		tray.pick.connect(_on_brush)
+	match str(_entry.get("tray", "symbols")):
+		"friends":
+			tray = FriendTray.new()
+			tray.pick.connect(_on_pick)
+			_bottom_play = FriendTray.HEIGHT
+		"weights":
+			tray = WeightTray.new()
+			tray.step.connect(_on_step)
+			_bottom_play = WeightTray.HEIGHT
+		_:
+			tray = SymbolTray.new()
+			tray.pick.connect(_on_brush)
+			_bottom_play = SymbolTray.HEIGHT
 	tray.name = "Tray"
 	_bottom_stack.add_child(tray)
-	action_bar = FlatActions.new()
-	action_bar.name = "Actions"
-	action_bar.reset.connect(_on_reset)
-	action_bar.check.connect(_on_check)
-	_bottom_stack.add_child(action_bar)
+	if with_actions:
+		action_bar = FlatActions.new()
+		action_bar.name = "Actions"
+		action_bar.reset.connect(_on_reset)
+		action_bar.check.connect(_on_check)
+		_bottom_stack.add_child(action_bar)
+		_bottom_play += GAP + FlatActions.BUTTON.y
 	tip_card = TipCard.new()
 	tip_card.name = "TipCard"
 	tip_card.open.connect(_open_rules)
 	_bottom_stack.add_child(tip_card)
+	_bottom_play += GAP + TipCard.HEIGHT
+	_bottom_slot.custom_minimum_size.y = _bottom_play
 	_win_stack = _stack(_bottom_slot)
 	_win_stack.name = "WinStack"
 	_win_stack.visible = false
@@ -196,7 +224,8 @@ func _enter() -> void:
 	top_bar.enter(ENTER_TOP)
 	day_card.enter(ENTER_CARDS)
 	tray.enter(ENTER_TRAY)
-	action_bar.enter(ENTER_ACTIONS)
+	if action_bar != null:
+		action_bar.enter(ENTER_ACTIONS)
 	tip_card.enter(ENTER_TIP)
 
 func _refresh() -> void:
@@ -204,6 +233,26 @@ func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	tray.refresh(p)
 	tip_card.refresh(p)
+
+## The weights tray asked for one unit onto or off a kind. The board decides
+## -- it owns the rules and the sprout's reason for a refusal -- and the row
+## is re-read either way.
+func _on_step(i: int, delta: int) -> void:
+	if is_instance_valid(_puzzle) and _puzzle.has_method("step_weight"):
+		_puzzle.step_weight(i, delta)
+		_refresh()
+
+## A board may want less of the slot than it was given: Balance caps its
+## bands, so a short column leaves the rest as air above the weight cards
+## rather than a tall card half full of nothing. A board that says nothing
+## fills the slot, as the other two do.
+func _fit_card() -> void:
+	if _board_holder == null or _card == null:
+		return
+	var want: float = _board_holder.size.y
+	if is_instance_valid(_puzzle) and _puzzle.has_method("card_height"):
+		want = minf(want, _puzzle.card_height(_board_holder.size.y))
+	_card.offset_bottom = want - _board_holder.size.y
 
 func _on_brush(v: int) -> void:
 	if is_instance_valid(_puzzle) and _puzzle.has_method("set_brush"):
@@ -216,7 +265,7 @@ func _spawn(the_seed: int) -> void:
 	if _won:
 		_won = false
 		_top_slot.custom_minimum_size.y = TOP_PLAY
-		_bottom_slot.custom_minimum_size.y = BOTTOM_PLAY
+		_bottom_slot.custom_minimum_size.y = _bottom_play
 		well_done.visible = false
 		_win_stack.visible = false
 		for stack in [_top_stack, _bottom_stack]:
@@ -225,6 +274,7 @@ func _spawn(the_seed: int) -> void:
 			stack.position.y = 0.0
 		_enter()
 	super(the_seed)
+	_fit_card()
 
 ## The board's wave plays first; then the rows make way for the win screen.
 func _on_solved() -> void:
@@ -245,7 +295,8 @@ func _show_win() -> void:
 	# sun and the moon (flat_win).
 	if _puzzle.has_method("flat_win"):
 		var art: Dictionary = _puzzle.flat_win()
-		well_done.set_cast(art.get("faces", []), String(art.get("subtitle", "")))
+		well_done.set_cast(art.get("faces", []), String(art.get("subtitle", "")),
+			art.get("labels", []))
 	stats_card.set_day(Progress.day(), Progress.island_name())
 	stats_card.set_stats(_stats_text())
 	# The playing rows leave: up and out above, down and out below.
@@ -258,7 +309,7 @@ func _show_win() -> void:
 		_bottom_stack.visible = false)
 	# The slots make room; the VBox slides the board card down between them.
 	Motion.slide(_top_slot, "custom_minimum_size:y", TOP_PLAY, TOP_WIN, SLOT_TIME, 0.0, false)
-	Motion.slide(_bottom_slot, "custom_minimum_size:y", BOTTOM_PLAY, BOTTOM_WIN, SLOT_TIME, 0.0, false)
+	Motion.slide(_bottom_slot, "custom_minimum_size:y", _bottom_play, BOTTOM_WIN, SLOT_TIME, 0.0, false)
 	well_done.enter(ART_DELAY)
 	_win_stack.visible = true
 	Motion.slide(_win_stack, "position:y", 120.0, 0.0, STATS_SLIDE, STATS_DELAY)

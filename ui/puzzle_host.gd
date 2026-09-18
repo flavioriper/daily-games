@@ -207,12 +207,15 @@ func _spawn(the_seed: int) -> void:
 	})
 	_refresh()
 
-## Every panel re-reads the puzzle.
+## Every panel re-reads the puzzle. The action bar is optional: a screen
+## whose board is its own continuous check has nothing to put in the row and
+## never builds it (ui/flat/flat_host.gd).
 func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	top_bar.refresh(p)
 	rules_sheet.refresh(p)
-	action_bar.refresh(p)
+	if action_bar != null:
+		action_bar.refresh(p)
 
 func _on_undo() -> void:
 	if is_instance_valid(_puzzle):
@@ -235,7 +238,7 @@ func _on_check() -> void:
 		var wrong: int = _puzzle.check()
 		# A winning Check ends the game under the solved card; only a clean
 		# check on a live board earns the "All good" squash.
-		if wrong == 0 and not _puzzle.is_done():
+		if wrong == 0 and not _puzzle.is_done() and action_bar != null:
 			action_bar.all_good()
 		Analytics.track("check_used", {
 			"puzzle_id": _entry.get("id", ""),

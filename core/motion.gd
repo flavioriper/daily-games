@@ -112,6 +112,22 @@ static func squash(node: Node, amount := 0.12, time := 0.18, delay := 0.0) -> Tw
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	return tw
 
+## A uniform scale up and back about the node's pivot: the beat a numeral
+## gives when the thing it counts changes. Distinct from squash, which
+## flattens one axis against the other -- a number that squashes reads as
+## pressed, and this one has not been pressed, it has been recounted.
+## Decorative: null under reduce-motion, where the new value simply appears.
+static func bump(node: Node, amount := 0.25, time := 0.24, delay := 0.0) -> Tween:
+	if reduce:
+		return null
+	var base = node.get("scale")
+	var tw := node.create_tween()
+	tw.tween_property(node, "scale", base * (1.0 + amount), time * 0.4).set_delay(delay) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", base, time * 0.6) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
+
 ## A damped side-to-side shake on rotation.z: three swings that die out,
 ## ending exactly where it started.
 static func wobble(node: Node3D, angle := 0.12, time := 0.45) -> Tween:

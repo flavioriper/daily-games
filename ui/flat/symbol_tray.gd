@@ -17,6 +17,9 @@ const Icons = preload("res://ui/icons.gd")
 const CHIP := 140.0
 const GAP := 24.0
 const LIFT := 8.0
+## The row's height: a chip plus the room its lift needs above it. The host
+## measures its bottom slot from this.
+const HEIGHT := CHIP + LIFT
 const LIFT_TIME := 0.18
 const SQUASH := 0.1
 const SQUASH_TIME := 0.18

@@ -196,16 +196,17 @@ every layout change.
 
 ## The flat screens, on trial beside the island
 
-Since 2026-09-18 two cards open a flat 2D board under flat chrome, and each
+Since 2026-09-18 three cards open a flat 2D board under flat chrome, and each
 keeps its stage version reachable as a second card seeded from the same day
 (`seed_as`), so both can be played and judged on the phone: **Binairo**
-(`puzzles/binairo2d.gd`, beside `binairo_island`) and **Code Break**
-(`puzzles/codebreak2d.gd`, beside `mastermind_island`). The user is deciding
+(`puzzles/binairo2d.gd`, beside `binairo_island`), **Code Break**
+(`puzzles/codebreak2d.gd`, beside `mastermind_island`) and **Balance**
+(`puzzles/balance2d.gd`, beside `balance_island`). The user is deciding
 whether the game goes 2D; nothing else has moved. Specs:
-`docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and
-`...-codebreak-flat-design.md`; mocks:
-`docs/brainstorm/concepts.html#binairo` and `#codebreak` (four more flat
-screens are mocked there and not built: Balance, Untangle, Shikaku, Tents).
+`docs/superpowers/specs/2026-09-18-binairo-flat-design.md`,
+`...-codebreak-flat-design.md` and `...-balance-flat-design.md`; mocks:
+`docs/brainstorm/concepts.html#binairo`, `#codebreak` and `#balance` (three
+more flat screens are mocked there and not built: Untangle, Shikaku, Tents).
 
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
@@ -236,13 +237,29 @@ screens are mocked there and not built: Balance, Untangle, Shikaku, Tents).
   unless the entry says `"shell": "flat"`; `ui/menu.gd` builds the host
   accordingly, and `ui/puzzle_host.gd` builds its rows in `_build_chrome`,
   the one method the flat host overrides. It picks the tray too
-  (`"tray": "friends"`), because the host lays out its rows before it has a
-  puzzle to ask how many chips it wants.
+  (`"tray": "friends"`, `"weights"`), because the host lays out its rows
+  before it has a puzzle to ask how many chips it wants -- and it can drop
+  the actions row with `"actions": false`, which Balance does: that board is
+  its own continuous check, so it has no Check to put in the row and Reset
+  rides up into the top bar instead. The flat host therefore measures its
+  bottom slot from the rows it actually built, not from a constant; the
+  three screens want 460, 460 and 390.
 - **What the flat chrome asks a board for is optional and defaulted**:
-  `palette()`, `tip_line()` (the sprout's own line, in place of Binairo's
-  cycle of rules), `flat_win()` (the characters of the answer, laid across
-  the win screen in place of the sun and the moon) and `win_delay()`. A
-  board that offers none gets Binairo's behaviour.
+  `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
+  sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
+  characters of the answer, laid across the win screen in place of the sun
+  and the moon, optionally each with a label under it), `win_delay()` and
+  `card_height(available)` (a board that wants less of the slot than it was
+  given: Balance caps its scale bands, and the leftover becomes air *above*
+  the weight cards, because a gap under the day card reads as a mistake and a
+  gap above the cards reads as room). A board that offers none gets Binairo's
+  behaviour.
+- **The flat cast is a shared drawing, and two screens already share one.**
+  `ui/faces/friends.gd` is Code Break's seven and `ui/faces/fruit.gd` is
+  Balance's five, and the apple in the second *is* the berry in the first --
+  one class, one mesh cache, named differently by each screen because the
+  mocks drew the same round red fruit twice. Check `ui/faces/` before drawing
+  a new character.
 
 ## Art: shading direction
 
