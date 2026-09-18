@@ -260,14 +260,26 @@ func _on_step(i: int, delta: int) -> void:
 ## A board may want less of the slot than it was given: Balance caps its
 ## bands, so a short column leaves the rest as air above the weight cards
 ## rather than a tall card half full of nothing. A board that says nothing
-## fills the slot, as the other two do.
+## fills the slot, as the first three do.
+##
+## Where the leftover goes is the board's too (`card_centred`). Balance keeps
+## it all below, because a gap under the day card reads as a mistake and a gap
+## above the cards reads as room. Tents halves it: its grid is square while
+## its space is tall, so the cell is capped by the width and there is slack
+## however it is cut -- air above and below reads as centring where all of it
+## below reads as a board that fell over.
 func _fit_card() -> void:
 	if _board_holder == null or _card == null:
 		return
 	var want: float = _board_holder.size.y
+	var centred := false
 	if is_instance_valid(_puzzle) and _puzzle.has_method("card_height"):
 		want = minf(want, _puzzle.card_height(_board_holder.size.y))
-	_card.offset_bottom = want - _board_holder.size.y
+		centred = _puzzle.has_method("card_centred") and _puzzle.card_centred()
+	var slack: float = _board_holder.size.y - want
+	var above: float = slack * 0.5 if centred else 0.0
+	_card.offset_top = above
+	_card.offset_bottom = above - slack
 
 func _on_brush(v: int) -> void:
 	if is_instance_valid(_puzzle) and _puzzle.has_method("set_brush"):

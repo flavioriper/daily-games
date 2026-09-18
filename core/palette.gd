@@ -150,6 +150,23 @@ const CORD_DEEP   := Color("7a6248")   # its shade, the ring and the arm
 const KNOT        := Color("d9705e")
 const KNOT_DEEP   := Color("b4533f")
 
+# The flat Tents (docs/superpowers/specs/2026-09-18-tents-flat-design.md,
+# section 3): a meadow of pale turf on the parchment card, conifers standing
+# on it, canvas tents pitched beside them and a cairn of pebbles on every
+# square the player has ruled out. The island's TURF, CANVAS and PEBBLE above
+# are the colours of a meadow in sunlight on a stage; drawn flat on parchment
+# the same greens go muddy, so these are the mock's own -- paler turf, warmer
+# canvas. A count chip that holds exactly its number wears LEAF over
+# LEAF_DEEP and one holding too many BAD over MARKER_DEEP, the family's
+# green and rose that Shikaku's markers already wear.
+const MEADOW      := Color("cfdda6")   # a cell nothing stands on
+const MEADOW_LINE := Color("bccf90")   # the faint grid over it
+const TENT_CANVAS := Color("e9c48a")   # the lit side of the fabric
+const TENT_DEEP   := Color("c69a5c")   # its shaded side
+const TENT_DARK   := Color("8d6c41")   # the doorway, the guy lines
+const CAIRN_STONE := Color("c3b7a4")   # the pebbles that rule a square out
+const CAIRN_DEEP  := Color("9c9083")   # the ones under them
+
 # Pipes (docs/art/concept-pipes.png): chrome when dry, lit blue when fed. The
 # water inside the tube is WATER / WATER_HI, already defined above, and its
 # bubbles are MOON.

@@ -167,7 +167,26 @@ const PUZZLES := [
 		"blurb": "One tent beside every tree.",
 		"motto": "A camp for every tree",
 		"footer": "Pitch · Count · Rest",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-tents-flat-design.md). It
+		# picks nothing up, so it asks for no tray; it submits, so it keeps the
+		# actions row.
+		"script": "res://puzzles/tents2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Tents, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both pitch the same meadow.
+		"id": "tents_island",
+		"kind": "puzzle",
+		"title": "Tents",
+		"blurb": "The island board, for comparison.",
+		"motto": "A camp for every tree",
+		"footer": "Pitch · Count · Rest",
 		"script": "res://puzzles/tents3d.gd",
+		"seed_as": "tents",
 		"difficulties": [0, 1, 2],
 	},
 	{
