@@ -76,7 +76,7 @@ func _note(id: String) -> String:
 		"untangle", "untangle_island": return "%d crossings, board fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
 		"shikaku", "shikaku_island": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents", "tents_island": return "%d tents, board fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
-		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
+		"lightup", "lightup_island": return "%d lanterns, board fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
 		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
@@ -95,7 +95,7 @@ func _solve(id: String) -> void:
 		"untangle", "untangle_island": _solve_untangle()
 		"shikaku", "shikaku_island": _solve_shikaku()
 		"tents", "tents_island": _solve_tents()
-		"lightup": _solve_lightup()
+		"lightup", "lightup_island": _solve_lightup()
 		"oneline": _solve_oneline()
 		"nonogram": _solve_nonogram()
 		"horse": _solve_horse()

@@ -196,7 +196,26 @@ const PUZZLES := [
 		"blurb": "Light every cell, and no bulb may see another.",
 		"motto": "Let there be light",
 		"footer": "Place · Light · Reveal",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-lightup-flat-design.md). It
+		# picks nothing up, so it asks for no tray; it submits, so it keeps the
+		# actions row.
+		"script": "res://puzzles/lightup2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Light Up, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both light the same court.
+		"id": "lightup_island",
+		"kind": "puzzle",
+		"title": "Light Up",
+		"blurb": "The island board, for comparison.",
+		"motto": "Let there be light",
+		"footer": "Place · Light · Reveal",
 		"script": "res://puzzles/lightup3d.gd",
+		"seed_as": "lightup",
 		"difficulties": [0, 1, 2],
 	},
 	{

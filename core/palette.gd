@@ -227,6 +227,22 @@ const LANTERN     := Color("5a5248")   # the lantern's iron foot and cap
 ## The chip that rules a cell out: cool slate, so it is never read as a small
 ## block of the court's own warm stone.
 const CHIP        := SLATE
+## The bottom edge under each of those, which the flat board needs and the
+## island does not: every card, tile and piece on a flat screen is a fill over
+## a slightly deeper shape, and that lip is what keeps a tinted floor from
+## reading as flat paint
+## (docs/superpowers/specs/2026-09-18-lightup-flat-design.md, section 3).
+const FLAGSTONE_DEEP := Color("6f7780")
+const BLOCK_DEEP     := Color("332f2a")
+const CHIP_DEEP      := SLATE_GIVEN
+## And the one colour the flat court does not take from the island: a lit
+## stone. LAMPLIGHT above is a pool of light *on* a stone lit from above,
+## and it is all but the lantern's own LANTERN_LIT -- so a flat board, which
+## draws the shaft of light over the stone in that glass, would swallow the
+## beam in the floor. This is a shade more saturated, which is what lets the
+## brighter band read over it; measured against the beam, not guessed.
+const LAMPLIT_FLOOR := Color("f6d488")
+const LAMPLIT_DEEP  := Color("e0b769")
 
 # Nonogram (the design agreed 2026-09-15): a mosaic floor being laid. A cell
 # is an empty socket of pale stone; a filled one carries a slate tile, and the
