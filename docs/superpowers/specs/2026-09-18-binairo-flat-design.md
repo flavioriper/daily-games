@@ -402,3 +402,39 @@ differences are these.
   `cell_to_local` off the board and `top_bar.hint_button` and
   `action_bar.check_button` off the host; the flat board and host keep
   those names so `tests/_win.gd` and `tests/_shot_anim.gd` need no change.
+
+## Built (2026-09-18) and measured
+
+Built on `feat/binairo-flat` as `e3b3d44` (the feature) and `60a097b` (the
+faces as meshes). Two things the build changed against the sections above:
+
+- **Section 4, the faces' drawing.** A face drawn live from fifty antialiased
+  primitives cost the board 4 ms a frame: on gl_compatibility every canvas
+  draw command is its own render object. Each face layer is now built once
+  into a 2D `ArrayMesh` with vertex colours and a 1.5 px alpha-0 feather rim
+  for its edges, cached by kind, size (to 2 px), expression and eye level
+  (four levels for the blink), and drawn with one `draw_mesh`: three for a
+  sun (shadow, rays under the spin transform, body), one for a moon or the
+  sprout. A 6x6 board idles on 24 meshes. MSAA stays off.
+- **Section 9.6 and the harnesses.** HUD panels' outer rects now ignore
+  input (`ui/hud/panel.gd`): during the entrance a neighbour's displaced
+  buttons lie over them, and `tests/_win.gd` found the tip card swallowing
+  the tap on Check. The win harness also solves `binairo_island` and accepts
+  the flat host's scheduled win as its overlay.
+
+Section 10's numbers, this Mac, 1080 by 1920 windowed, vsync off, mean over
+2 s of idle after a tap:
+
+| Board | frame | render CPU | objects | draw calls |
+|---|---|---|---|---|
+| Flat Binairo, faces as live primitives | 8.44 ms | 3.40 ms | 1449 | 651 |
+| Flat Binairo, faces as meshes (shipped) | 2.43 ms | 0.67 ms | 193 | 126 |
+| Island Binairo | 4.33 ms | 1.86 ms | 817 | 716 |
+
+Verified: the suite at 2086 checks and zero failures; `tests/_win.gd` at
+fourteen of fourteen boards solved through touch, both Binairo cards among
+them; thirty headless checks across tap, undo, both brushes, hint lock and
+reset unlock, the tip card's rule, check, the win layout, a new puzzle after
+a win and Back to camp restoring the stage; screenshots of the fresh board,
+a broken line with the moon brush armed, the win screen and the 8x8 board
+beside the mock.
