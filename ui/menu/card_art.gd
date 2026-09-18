@@ -57,7 +57,12 @@ func _relayout() -> void:
 		return
 	_u = minf(size.x / ART.x, size.y / ART.y)
 	_c = size * 0.5
+	# Taken out of the tree before being queued: two resizes in one frame
+	# would otherwise find the previous pass's children still parented (a
+	# queue_free only lands at the end of the frame) and draw both casts
+	# over each other until it did.
 	for child in get_children():
+		remove_child(child)
 		child.queue_free()
 	_build()
 	queue_redraw()
