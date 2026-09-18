@@ -1,0 +1,266 @@
+extends Control
+
+## One puzzle card's picture on the first screen: the same characters the
+## board itself plays with (ui/faces/), seated in a 320 by 118 box and
+## scaled to whatever the card gives them.
+##
+## It is never an image and never a render of a model. Nine of the twelve
+## are made almost entirely of the flat boards' own cast -- Binairo's sun and
+## moon, Code Break's friends, Balance's fruit, Untangle's lanterns,
+## Shikaku's markers, Tents' tent and conifers, Light Up's lamp, One Line's
+## snail -- so a card and its board are visibly the same drawing. Only the
+## furniture under them (a tray, a beam, a tile, a pipe) is drawn here, and
+## only the three `soon` cards are drawn here outright, because the boards
+## they name have no flat cast to borrow from yet.
+##
+## A new card costs one branch of `_build` and, if it needs furniture, one
+## of `_draw`. That is the same bargain the dioramas offered
+## (legacy/ui/hud/card_scene.gd), without the World3D.
+## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 3.
+
+const Pal = preload("res://core/palette.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const Friends = preload("res://ui/faces/friends.gd")
+const Fruit = preload("res://ui/faces/fruit.gd")
+const SunFace = preload("res://ui/faces/sun_face.gd")
+const MoonFace = preload("res://ui/faces/moon_face.gd")
+const LanternFace = preload("res://ui/faces/lantern_face.gd")
+const CourtLantern = preload("res://ui/faces/court_lantern.gd")
+const TentFace = preload("res://ui/faces/tent_face.gd")
+const ConiferFace = preload("res://ui/faces/conifer_face.gd")
+const MarkerFace = preload("res://ui/faces/marker_face.gd")
+const SnailFace = preload("res://ui/faces/snail_face.gd")
+
+## The box every picture is composed in. The card scales it to fit.
+const ART := Vector2(320.0, 118.0)
+
+var id := ""
+## Design units per pixel, and the box's centre, both set by _relayout.
+var _u := 1.0
+var _c := Vector2.ZERO
+
+func _init(the_id := "") -> void:
+	id = the_id
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip_contents = true
+
+func _ready() -> void:
+	resized.connect(_relayout)
+	_relayout()
+
+## In the picture's own units: (0, 0) is the middle of the box.
+func at(x: float, y: float) -> Vector2:
+	return _c + Vector2(x, y) * _u
+
+func _relayout() -> void:
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	_u = minf(size.x / ART.x, size.y / ART.y)
+	_c = size * 0.5
+	for child in get_children():
+		child.queue_free()
+	_build()
+	queue_redraw()
+
+## Seats a face of `seat` design units, centred on (x, y).
+func _seat(face: Control, seat: float, x: float, y: float) -> Control:
+	face.size = Vector2(seat, seat) * _u
+	face.pivot_offset = face.size * 0.5
+	face.position = at(x, y) - face.size * 0.5
+	add_child(face)
+	return face
+
+func _build() -> void:
+	match id:
+		"binairo":
+			_seat(SunFace.new(), 74.0, -44.0, 2.0)
+			var moon := MoonFace.new()
+			moon.rocks = true
+			_seat(moon, 62.0, 40.0, -2.0)
+		"mastermind":
+			# Three of the seven, on the tray _draw lays under them.
+			for i in 3:
+				add_child(Friends.make(i + 3, 50.0 * _u, at(-64.0 + i * 64.0, -2.0)))
+		"balance":
+			# The two pans of the beam _draw tilts; the fruit ride its ends,
+			# so the picture reads as a weighing and not two loose fruit.
+			add_child(Fruit.make(0, 52.0 * _u, at(-64.0, -24.0)))
+			add_child(Fruit.make(1, 44.0 * _u, at(66.0, -11.0)))
+		"untangle":
+			var seats := [Vector2(-78.0, -26.0), Vector2(70.0, -30.0), Vector2(-56.0, 30.0), Vector2(80.0, 24.0)]
+			for i in seats.size():
+				var lamp := LanternFace.new()
+				_seat(lamp, 56.0, seats[i].x, seats[i].y)
+		"shikaku":
+			# Two plots, two numbers; the grid under them is _draw's.
+			var a := MarkerFace.new()
+			a.number = 4
+			_seat(a, 44.0, -76.0, -19.0)
+			var b := MarkerFace.new()
+			b.number = 2
+			_seat(b, 44.0, 38.0, 19.0)
+		"tents":
+			_seat(ConiferFace.new(), 84.0, -86.0, 0.0)
+			_seat(ConiferFace.new(), 70.0, 76.0, 8.0)
+			_seat(TentFace.new(), 78.0, -6.0, 6.0)
+		"lightup":
+			var lamp := CourtLantern.new()
+			_seat(lamp, 58.0, -81.0, 0.0)
+		"oneline":
+			_seat(SnailFace.new(), 96.0, 6.0, 4.0)
+		_:
+			pass
+
+# --- the furniture the faces stand on ---
+
+func _draw() -> void:
+	if _u <= 0.0:
+		return
+	match id:
+		"mastermind": _draw_tray()
+		"balance": _draw_beam()
+		"untangle": _draw_cords()
+		"shikaku": _draw_field()
+		"lightup": _draw_court()
+		"oneline": _draw_trail()
+		"nonogram": _draw_mosaic()
+		"pipes": _draw_pipes()
+		"horse": _draw_paddock()
+		"snake": _draw_burrow()
+
+func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = colour
+	sb.set_corner_radius_all(int(radius * _u))
+	draw_style_box(sb, Rect2(at(x, y), Vector2(w, h) * _u))
+
+func _disc(x: float, y: float, r: float, colour: Color) -> void:
+	draw_circle(at(x, y), r * _u, colour)
+
+func _line(pts: Array, width: float, colour: Color) -> void:
+	var p := PackedVector2Array()
+	for v in pts:
+		p.append(at(v.x, v.y))
+	draw_polyline(p, colour, width * _u, true)
+
+func _text(s: String, x: float, y: float, px: float, colour: Color) -> void:
+	var font := CozyTheme.display(700)
+	var sz := int(px * _u)
+	var w := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+	draw_string(font, at(x, y) - Vector2(w * 0.5, 0.0), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, colour)
+
+## Code Break: the wooden tray the friends are seated in.
+func _draw_tray() -> void:
+	_round(-112.0, -38.0, 224.0, 78.0, 16.0, Pal.WOOD)
+	_round(-104.0, -32.0, 208.0, 58.0, 12.0, Pal.PLAQUE_DEEP)
+
+## Balance: the fulcrum, and the beam tilted across it.
+func _draw_beam() -> void:
+	var tilt := 0.11
+	var pivot := at(0.0, 30.0)
+	draw_colored_polygon(PackedVector2Array([
+		at(-18.0, 34.0), at(18.0, 34.0), at(0.0, -2.0)]), Pal.PLAQUE_DEEP)
+	var half := 98.0 * _u
+	var thick := 8.0 * _u
+	var d := Vector2(cos(tilt), sin(tilt))
+	var n := Vector2(-d.y, d.x)
+	var mid := pivot - Vector2(0.0, 34.0 * _u)
+	draw_colored_polygon(PackedVector2Array([
+		mid - d * half - n * thick, mid + d * half - n * thick,
+		mid + d * half + n * thick, mid - d * half + n * thick]), Pal.WOOD)
+
+## Untangle: two cords that cross, under the four lanterns.
+func _draw_cords() -> void:
+	var p := [Vector2(-78.0, -26.0), Vector2(70.0, -30.0), Vector2(-56.0, 30.0), Vector2(80.0, 24.0)]
+	for e in [[0, 3], [1, 2], [0, 1], [2, 3]]:
+		_line([p[e[0]], p[e[1]]], 7.0, Color(Pal.WOOD, 0.75))
+
+## Shikaku: a field of five by three, with two plots ruled off on it.
+func _draw_field() -> void:
+	var cell := 38.0
+	var x0 := -cell * 2.5
+	var y0 := -cell * 1.5
+	for r in 3:
+		for k in 5:
+			_round(x0 + k * cell + 3.0, y0 + r * cell + 3.0, cell - 6.0, cell - 6.0, 7.0, Pal.STONE)
+	for plot in [[0, 0, 2, 2, Pal.ACCENT], [3, 1, 2, 1, Pal.ACCENT_2]]:
+		var rect := Rect2(at(x0 + plot[0] * cell + 2.0, y0 + plot[1] * cell + 2.0),
+			Vector2(plot[2] * cell - 4.0, plot[3] * cell - 4.0) * _u)
+		draw_rect(rect, plot[4], false, 5.0 * _u)
+
+## Light Up: the lamp's own row, a black block with its count, and the cell
+## the block keeps dark.
+func _draw_court() -> void:
+	var cell := 54.0
+	var x0 := -cell * 2.0
+	var fills: Array[Color] = [Pal.LAMPLIT_FLOOR, Pal.LAMPLIT_FLOOR, Pal.BLOCK_STONE, Pal.STONE]
+	for k in 4:
+		_round(x0 + k * cell + 4.0, -cell * 0.5 + 4.0, cell - 8.0, cell - 8.0, 11.0, fills[k])
+	_text("1", x0 + cell * 2.5, 10.0, 30.0, Pal.SURFACE)
+	# The lamp's own light, under it: without a halo the row reads as a face
+	# sitting on some tiles rather than a lamp lighting them.
+	_disc(x0 + cell * 0.5, 0.0, 40.0, Color(Pal.SUN, 0.22))
+	_disc(x0 + cell * 0.5, 0.0, 26.0, Color(Pal.SUN, 0.18))
+
+## One Line: the posts and the stroke the snail is walking.
+func _draw_trail() -> void:
+	var p := [Vector2(-88.0, 24.0), Vector2(-26.0, -26.0), Vector2(38.0, 22.0), Vector2(92.0, -24.0)]
+	_line(p, 9.0, Color(Pal.ACCENT, 0.8))
+	for v in p:
+		_disc(v.x, v.y, 12.0, Pal.SURFACE)
+		draw_arc(at(v.x, v.y), 12.0 * _u, 0.0, TAU, 18, Pal.WOOD, 4.0 * _u, true)
+
+## Nonogram: a three by three of the picture, with its clues beside it. The
+## tiles are drawn rather than seated, because ui/faces/mosaic_tile.gd is
+## builder shapes for one big mesh, not a Control of its own.
+func _draw_mosaic() -> void:
+	# The clue band stands above the grid, so the grid sits low in the box:
+	# at y0 = -1.4 cells the numbers' caps were cut off by the card's top.
+	var cell := 27.0
+	var x0 := -cell * 1.1
+	var y0 := -cell * 0.85
+	var grid := [[1, 1, 0], [0, 1, 1], [1, 1, 0]]
+	for r in 3:
+		for k in 3:
+			var fill: Color = Pal.MOSAIC if grid[r][k] == 1 else Pal.STONE
+			_round(x0 + k * cell + 2.0, y0 + r * cell + 2.0, cell - 4.0, cell - 4.0, 6.0, fill)
+	for r in 3:
+		_text("2", x0 - 15.0, y0 + r * cell + cell * 0.72, 21.0, Pal.TEXT)
+	var cols := ["1 1", "3", "1"]
+	for k in 3:
+		_text(cols[k], x0 + k * cell + cell * 0.5, y0 - 8.0, 19.0, Pal.TEXT)
+
+## Pipes, Horse Pen and Snake Apple are the three `soon` cards: no flat
+## board, so no cast to borrow. Each is one small drawing, sized to say what
+## the puzzle is at a glance and no more.
+func _draw_pipes() -> void:
+	_round(-92.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
+	_round(22.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
+	_line([Vector2(-56.0, 20.0), Vector2(-56.0, -34.0), Vector2(58.0, -34.0), Vector2(58.0, 20.0)], 26.0, Pal.WATER_HI)
+	_line([Vector2(-56.0, 6.0), Vector2(-56.0, -28.0)], 8.0, Color(Pal.SURFACE, 0.5))
+
+func _draw_paddock() -> void:
+	_round(-96.0, -16.0, 74.0, 60.0, 14.0, Pal.STRAW)
+	for i in range(1, 4):
+		_line([Vector2(-96.0, -16.0 + i * 15.0), Vector2(-22.0, -16.0 + i * 15.0)], 3.0, Color(Pal.PLAQUE_DEEP, 0.5))
+	# The horse: a barrel, a neck up to the head rather than a head floating
+	# beside it, two legs and a tail.
+	var body := Color(0.48, 0.39, 0.32)
+	draw_colored_polygon(PackedVector2Array([
+		at(-6.0, -8.0), at(66.0, -8.0), at(72.0, 24.0), at(0.0, 24.0)]), body)
+	draw_colored_polygon(PackedVector2Array([
+		at(52.0, -4.0), at(70.0, -34.0), at(84.0, -28.0), at(68.0, 2.0)]), body)
+	_disc(78.0, -34.0, 15.0, body)
+	draw_colored_polygon(PackedVector2Array([
+		at(80.0, -44.0), at(88.0, -58.0), at(90.0, -40.0)]), body)
+	_round(8.0, 22.0, 11.0, 28.0, 5.0, body)
+	_round(52.0, 22.0, 11.0, 28.0, 5.0, body)
+	_line([Vector2(-6.0, -4.0), Vector2(-22.0, 10.0), Vector2(-18.0, 26.0)], 7.0, body)
+
+func _draw_burrow() -> void:
+	_line([Vector2(-86.0, 28.0), Vector2(-30.0, 30.0), Vector2(-12.0, -8.0), Vector2(24.0, -32.0)],
+		30.0, Pal.SCALE_BELLY)
+	_disc(28.0, -32.0, 20.0, Pal.MOSS)
+	_disc(35.0, -38.0, 4.0, Pal.TEXT)
+	_disc(78.0, 0.0, 30.0, Pal.BERRY)
+	_line([Vector2(78.0, -30.0), Vector2(82.0, -46.0)], 5.0, Pal.LEAF_DEEP)

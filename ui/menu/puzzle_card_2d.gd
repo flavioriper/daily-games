@@ -1,0 +1,168 @@
+extends "res://ui/hud/panel.gd"
+
+## One puzzle on the first screen: a paper card with a drawn picture of that
+## puzzle's own characters (ui/menu/card_art.gd), its name, a two-line blurb
+## and a round go button in the puzzle's colour. The whole card is the button
+## and squashes on press. Emits `open`; the menu decides what that means.
+##
+## A card whose registry entry says `soon` names a board nobody has drawn
+## flat yet. It keeps its picture and its name, wears a pale SOON pill over
+## the picture's corner where the go button would have been, sits at
+## SOON_INK, and emits `blocked` rather than `open`. It is deliberately quiet
+## rather than disabled-looking: the row is a roadmap, not a fault.
+## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 3.
+
+signal open
+signal blocked
+
+const CardArt = preload("res://ui/menu/card_art.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
+
+## The picture's slot, the card's own inset, and the go button. Both are
+## measured against the vertical budget: at 1080 by 1920 a row of cards gets
+## 252, of which the inset takes 32 and the name and the two blurb lines
+## about 111. The HUD's usual 24 inset and a 118 picture came to 277, which
+## pushed the bottom bar off the screen.
+const ART_H := 92.0
+const INSET := 16
+const GO := 68.0
+const PILL := Vector2(88.0, 40.0)
+const SQUASH := 0.06
+const SQUASH_SOON := 0.03
+const SQUASH_TIME := 0.18
+const PRESS_TINT := Color(0.93, 0.91, 0.88)
+## How far a soon card's picture and words fade back.
+const SOON_INK := 0.55
+
+var entry: Dictionary
+var colour: Color
+var art: Control
+var soon := false
+var _tap: Button
+var _press_tw: Tween
+
+func _init(the_entry: Dictionary, the_colour: Color) -> void:
+	entry = the_entry
+	colour = the_colour
+	soon = bool(the_entry.get("soon", false))
+	enter_from = Vector2(0, 60)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+func _make_inner() -> Container:
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel",
+		CozyTheme.card(Color(Pal.PAPER, 0.94), 28, Pal.LINE, 6, INSET))
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return box
+
+func _build() -> void:
+	_inner.resized.connect(func() -> void: _inner.pivot_offset = _inner.size * 0.5)
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", 4)
+	_inner.add_child(col)
+
+	art = CardArt.new(String(entry.get("id", "")))
+	art.custom_minimum_size = Vector2(0.0, ART_H)
+	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art.modulate.a = SOON_INK if soon else 1.0
+	col.add_child(art)
+
+	var name_label := Label.new()
+	name_label.theme_type_variation = "CardName"
+	name_label.text = String(entry.get("title", ""))
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if soon:
+		name_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
+	col.add_child(name_label)
+
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 8)
+	col.add_child(row)
+	var blurb := Label.new()
+	blurb.theme_type_variation = "CardBlurb"
+	# The registry's `short` is written to two lines at this width; `blurb`
+	# is the long one the rules sheet wants.
+	blurb.text = String(entry.get("short", entry.get("blurb", "")))
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	blurb.max_lines_visible = 2
+	blurb.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	blurb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	blurb.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(blurb)
+	if not soon:
+		var go := IconButton.new("chevron_right")
+		go.custom_minimum_size = Vector2(GO, GO)
+		go.size_flags_vertical = Control.SIZE_SHRINK_END
+		go.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_paint_go(go)
+		row.add_child(go)
+	else:
+		_build_pill()
+
+	# The tap surface lies over the card, drawn by nothing: the card itself
+	# answers the press.
+	_tap = Button.new()
+	_tap.flat = true
+	_tap.focus_mode = Control.FOCUS_NONE
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		_tap.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	_tap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tap.button_down.connect(_press)
+	_tap.button_up.connect(_release)
+	_tap.pressed.connect(func() -> void:
+		if soon:
+			blocked.emit()
+		else:
+			open.emit())
+	add_child(_tap)
+
+## The SOON pill, over the picture's top right corner. It rides the art
+## rather than the blurb's row: two lines of text and a pill in the same
+## corner collided at 320 wide, and the pill is the louder of the two.
+##
+## It hangs off the card itself rather than `_inner`, which is a
+## PanelContainer: a second child there is stretched to fill the card and
+## covers the picture, the name and the blurb entirely.
+func _build_pill() -> void:
+	var pill := PanelContainer.new()
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_theme_stylebox_override("panel",
+		CozyTheme.card(Pal.SURFACE_HI, int(PILL.y * 0.5), Pal.LINE, 0, 6))
+	pill.custom_minimum_size = PILL
+	pill.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	pill.offset_left = -PILL.x - 14.0
+	pill.offset_right = -14.0
+	pill.offset_top = 14.0
+	pill.offset_bottom = 14.0 + PILL.y
+	var label := Label.new()
+	label.text = "SOON"
+	label.theme_type_variation = "CardBlurb"
+	label.add_theme_color_override("font_color", Pal.TEXT_DIM)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(label)
+	add_child(pill)
+
+## The go button as a round disc in the puzzle's colour with a cream chevron:
+## the same paper button, re-dressed.
+func _paint_go(go: Button) -> void:
+	var r := int(GO * 0.5)
+	go.add_theme_stylebox_override("normal", CozyTheme.card(colour, r, colour.darkened(0.28), 5, 8))
+	go.add_theme_stylebox_override("hover", CozyTheme.card(colour, r, colour.darkened(0.28), 5, 8))
+	go.add_theme_stylebox_override("pressed", CozyTheme.card(colour.darkened(0.12), r, colour.darkened(0.28), 2, 8))
+	go.add_theme_stylebox_override("disabled", CozyTheme.card(Color(colour, 0.55), r, Color(colour.darkened(0.28), 0.55), 5, 8))
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		go.add_theme_color_override(state, Pal.SURFACE)
+
+func _press() -> void:
+	Motion.stop(_press_tw)
+	_inner.scale = Vector2.ONE
+	_inner.self_modulate = PRESS_TINT
+	_press_tw = Motion.squash(_inner, SQUASH_SOON if soon else SQUASH, SQUASH_TIME)
+
+func _release() -> void:
+	_inner.self_modulate = Color.WHITE

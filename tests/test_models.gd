@@ -1,9 +1,9 @@
 extends RefCounted
 
-const Models = preload("res://core/models.gd")
-const Placeholders = preload("res://core/placeholders.gd")
+const Models = preload("res://legacy/core/models.gd")
+const Placeholders = preload("res://legacy/core/placeholders.gd")
 const Pal = preload("res://core/palette.gd")
-const Toon = preload("res://core/toon.gd")
+const Toon = preload("res://legacy/core/toon.gd")
 
 ## Height budgets from docs/art/blender-contract.md; anything else gets 0.6.
 const HEIGHT_BUDGET := {"tile": 0.9, "rim_edge": 0.12, "rim_corner": 0.12,

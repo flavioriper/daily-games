@@ -5,10 +5,10 @@ extends RefCounted
 ## water material, and the motion_scale value reduce-motion drives to zero.
 ## Needs a live tree (the stage builds in _ready), so this runs from run_in_tree.
 
-const Stage = preload("res://world/stage.gd")
-const Ambient = preload("res://world/ambient.gd")
+const Stage = preload("res://legacy/world/stage.gd")
+const Ambient = preload("res://legacy/world/ambient.gd")
 const Motion = preload("res://core/motion.gd")
-const Toon = preload("res://core/toon.gd")
+const Toon = preload("res://legacy/core/toon.gd")
 
 static func run_in_tree(t) -> void:
 	var root: Node = (Engine.get_main_loop() as SceneTree).root

@@ -1,6 +1,6 @@
 extends RefCounted
 
-const Toon = preload("res://core/toon.gd")
+const Toon = preload("res://legacy/core/toon.gd")
 
 static func run(t) -> void:
 	_test_material_cache(t)

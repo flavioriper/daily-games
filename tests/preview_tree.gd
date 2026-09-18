@@ -19,10 +19,10 @@ extends Node3D
 ##         -- res://tests/preview_tree.tscn
 
 const Pal = preload("res://core/palette.gd")
-const Camp = preload("res://world/camp.gd")
-const Stage = preload("res://world/stage.gd")
-const SoftFocus = preload("res://world/soft_focus.gd")
-const Ambient = preload("res://world/ambient.gd")
+const Camp = preload("res://legacy/world/camp.gd")
+const Stage = preload("res://legacy/world/stage.gd")
+const SoftFocus = preload("res://legacy/world/soft_focus.gd")
+const Ambient = preload("res://legacy/world/ambient.gd")
 
 ## Where the camera stands and what it holds in the middle of the frame, in
 ## the camp's ground plane: aimed at Camp.HERO_CENTRE, the spot the menu's

@@ -1,10 +1,17 @@
 extends Control
 
-## Shell around any PuzzleBase: the concept HUD (top bar, day card, help
-## card, board slot, action bar, motto footer), the solved overlay, the rules
-## sheet and the settings sheet. Puzzles never draw chrome themselves, so they stay
-## comparable; the host asks each puzzle what it supports
+## Shell around any PuzzleBase, with no chrome of its own: the board slot,
+## the solved overlay, the rules and settings sheets, the spawn, the
+## analytics and every button handler. Puzzles never draw chrome themselves,
+## so they stay comparable; the host asks each puzzle what it supports
 ## (PuzzleBase.capabilities) and the panels hide the rest.
+##
+## The rows are the subclass's business. `_build_chrome` and `_enter` are the
+## two methods a shell fills, and there are two shells: ui/flat/flat_host.gd
+## (the nine flat screens) and legacy/ui/island_host.gd (the boards on the
+## stage). Until 2026-09-18 the island rows were built here and the flat host
+## inherited and overrode them, which meant every flat board loaded the
+## carved sign, the model views and the whole toon pipeline behind them.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md.
 
 signal closed
@@ -16,10 +23,6 @@ const Analytics = preload("res://core/analytics.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
-const TopBar = preload("res://ui/hud/top_bar.gd")
-const DayCard = preload("res://ui/hud/day_card.gd")
-const HelpCard = preload("res://ui/hud/help_card.gd")
-const ActionBar = preload("res://ui/hud/action_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const RulesSheet = preload("res://ui/hud/rules_sheet.gd")
 
@@ -83,64 +86,15 @@ func _ready() -> void:
 	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", _entry.id)), _difficulty))
 	_enter()
 
-## The rows of the HUD, top to bottom, into `root`: the top bar, the cards
-## row, the board slot, the action bar and the motto footer. The flat host
-## (ui/flat/flat_host.gd) overrides this and nothing else of the layout; every
-## handler below reads the panels through the fields this fills.
-func _build_chrome(root: VBoxContainer) -> void:
-	# --- top bar ---
-	top_bar = TopBar.new(_entry.get("title", ""), _entry.get("motto", ""))
-	top_bar.name = "TopBar"
-	top_bar.back.connect(_on_back)
-	top_bar.undo.connect(_on_undo)
-	top_bar.hint.connect(_on_hint)
-	top_bar.settings.connect(_open_settings)
-	root.add_child(top_bar)
-
-	# --- cards row ---
-	var cards := HBoxContainer.new()
-	cards.add_theme_constant_override("separation", GAP)
-	root.add_child(cards)
-	day_card = DayCard.new()
-	day_card.name = "DayCard"
-	cards.add_child(day_card)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cards.add_child(spacer)
-	help_card = HelpCard.new()
-	help_card.name = "HelpCard"
-	help_card.open.connect(_open_rules)
-	cards.add_child(help_card)
-
-	# --- board slot ---
-	_board_holder = Control.new()
-	_board_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(_board_holder)
-	_card = Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Pal.PAPER
-	sb.set_corner_radius_all(32)
-	_card.add_theme_stylebox_override("panel", sb)
-	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_board_holder.add_child(_card)
-
-	# --- action bar and footer ---
-	action_bar = ActionBar.new()
-	action_bar.name = "ActionBar"
-	action_bar.reset.connect(_on_reset)
-	action_bar.check.connect(_on_check)
-	action_bar.pick.connect(_on_pick)
-	action_bar.piece_pick.connect(_on_pick)
-	action_bar.turn_view.connect(_on_turn_view)
-	action_bar.peek.connect(_on_peek)
-	root.add_child(action_bar)
-	footer = Label.new()
-	footer.theme_type_variation = "Motto"
-	footer.text = String(_entry.get("footer", "")).to_upper()
-	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer.visible = footer.text != ""
-	root.add_child(footer)
+## The rows of this shell's chrome, top to bottom, into `root`. The host
+## itself has no opinion about them: it fills `top_bar`, `day_card` and
+## (optionally) `action_bar`, and every handler below talks to the puzzle
+## through those fields. Two shells implement it -- ui/flat/flat_host.gd for
+## the nine flat screens and legacy/ui/island_host.gd for the boards still on
+## the stage -- and neither is the default, because a host with no chrome is
+## a bug rather than a fallback.
+func _build_chrome(_root: VBoxContainer) -> void:
+	push_error("PuzzleHost: a shell must override _build_chrome")
 
 
 func _build_overlay() -> void:
@@ -175,13 +129,10 @@ func _build_overlay() -> void:
 	tap.pressed.connect(func() -> void: _overlay.visible = false)
 	_overlay.add_child(tap)
 
-## The HUD arrives: top bar first, cards, then the action bar and the footer.
+## The chrome arrives. Each shell plays its own rows in; the base has none.
 func _enter() -> void:
-	top_bar.enter(ENTER_TOP)
-	day_card.enter(ENTER_CARDS)
-	help_card.enter(ENTER_CARDS)
-	action_bar.enter(ENTER_ACTIONS)
-	Motion.appear(footer, 0.0, 1.0, ENTER_FOOTER_FADE, ENTER_FOOTER)
+	pass
+
 
 func _spawn(the_seed: int) -> void:
 	if is_instance_valid(_puzzle):

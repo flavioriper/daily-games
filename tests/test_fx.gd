@@ -5,7 +5,7 @@ extends RefCounted
 ## colour given, and do nothing under reduce-motion. cue() is the audio hook.
 ## CPUParticles3D want a tree, so this runs from run_in_tree.
 
-const Fx = preload("res://world/fx.gd")
+const Fx = preload("res://legacy/world/fx.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
