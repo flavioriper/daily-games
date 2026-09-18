@@ -168,6 +168,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-tents .refs img{border-radius:14px}
 #tab-tents .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #tt-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat light up mock extras ---------- */
+#tab-lightup .phone{background:#f6efe3}
+#tab-lightup .phone canvas{touch-action:none;cursor:pointer}
+#tab-lightup .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-lightup .refs figure{margin:0}
+#tab-lightup .refs img{border-radius:14px}
+#tab-lightup .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#lu-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -184,6 +192,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="untangle">Untangle · flat</button>
     <button data-tab="shikaku">Shikaku · flat</button>
     <button data-tab="tents">Tents · flat</button>
+    <button data-tab="lightup">Light Up · flat</button>
   </nav>
 </header>
 
@@ -1052,6 +1061,98 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>The centred board breaks the family's rule.</b> Every other flat screen pins its board directly under the day card. This one is square in a tall space and the cell is capped by the width, so something has to give: 132 of air above and 151 below, or none above and 283 below. The alternative is a full-height parchment with the meadow floating in the middle of it, which is what the first draft did and which read as an empty mat.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a camp mostly pitched with a swept row and one tent too many, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#tents</code>.</p>
+</section>
+
+<section class="tab-panel" id="tab-lightup">
+  <h2>Light Up · flat, the seventh screen on trial <span class="pill blue">concept · 2026-09-18</span></h2>
+  <p class="lede">Akari: set lanterns in a walled court so every floor stone is lit, no lantern lights another, and each numbered block touches exactly its number of lanterns. The rules, the generator, its uniqueness stripper, undo, three hints, check and reset are exactly the game's (<code>puzzles/lightup3d.gd</code>, <code>puzzles/lightup_gen.gd</code>). Everything on this page is look, motion and words.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The voice, carried from the Binairo trial and now shared by seven screens: cream cards with a soft bottom edge, illustrated characters with faces, and a sprout that talks. There is no user mock for a flat Light Up; this page is the proposal.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-codebreak-screen.png" alt="The island board style: a plank dock over a river with stone slabs, wood chrome and a critter on a rock">
+        <figcaption>What the island gives a board. Light Up's island version is a court of flagstones with rough blocks standing in it, each block carrying its number on its crown — and a floor that warms cell by cell as a lamp's light travels out. Section 2 is the argument that the floor is exactly what a tilted camera spoils.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="lu" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="lu-rm">Reduce motion: off</button>
+        <button id="lu-diff">Easy · 5×5</button>
+        <button id="lu-new">New puzzle</button>
+        <button id="lu-wrong">Light one badly</button>
+        <button id="lu-solve">Solve it</button>
+      </div>
+      <div id="lu-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: tap a stone to set a lantern down or take it up, <b>drag across the court to chip the cells you have ruled out</b>, and Undo, Hint, Check and Reset all do what the game does. The generator is the real one, uniqueness stripper included, and the win is tested against the rules rather than against the stored answer — clues exact, no two lanterns in sight of each other, every stone lit. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-18: <b>tap sets a lantern, drag sweeps chips</b>, and the <b>lantern is the only face on the board</b>. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>LIGHT UP</code> in ink with the leaf sprouting from it and <code>LET THERE BE LIGHT</code> under, then Undo, Hint with its count and Settings.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 7", "Lantern Hollow".</td></tr>
+    <tr><td class="k">Board card</td><td>cut to fit</td><td>The court, on parchment. There is no clue band to spend width on — every number is carved into a block that stands <em>inside</em> the grid — so the cell is the roomiest of the flat boards: <b>186 on easy, 155 on medium, 133 on hard</b>, capped by the width every time. That is 48 CSS pixels under a thumb on hard, against the 44 you want and the 38 Tents had to settle for.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check. <code>capabilities()</code> is undo, hint and check, so this screen keeps the actions row that Balance and Untangle dropped.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and one line: the rule, how many stones are still dark, and which rule the court can currently see being broken.</td></tr>
+  </table>
+
+  <p style="font-size:14px;color:var(--muted)">The ladder, measured over 120 generated boards a step with the real generator: easy is 5×5 with about 7 blocks, 3.5 of them numbered, and 6 lanterns to place; medium 6×6 with 9.6 blocks, 5 numbered, 7.8 lanterns; hard 7×7 with 12.3 blocks, 6.6 numbered, 10.3 lanterns over 36.7 floor stones. Generation costs 7 ms on average and 46 ms at worst on hard, stripper and all, which is why the mock can hand you a new board on a button.</p>
+
+  <h3>2. What flat buys here <span class="pill rose">the argument</span></h3>
+  <ul>
+    <li><b>The floor is the display, and the floor is what a tilted camera ruins.</b> Light Up has no marker for its main condition: a stone no lamp reaches is cold grey, a lit one is warm, and that is the whole of "every cell must be lit". So the thing the player reads is a <em>field of 37 flat tints</em> — and on the island that field is seen at seven degrees, where the far rows are four pixels tall, foreshortened, and half in the shade of the blocks standing in front of them. Square-on, every stone is the same size and the same tint wherever it sits.</li>
+    <li><b>The island already had to fight for it once.</b> <code>core/palette.gd</code> records the first pass: unlit stone at <code>b4ab97</code>, one and a half stops off lamplight, and the toon ramp ate the whole difference under the island sun — lit and unlit came out the same cream. The fix was to push the pair nearly three stops apart and cool the dark end. That margin was bought to survive a lit 3D ramp; flat, the same two colours are simply the two colours, and the wave between them is readable at a glance.</li>
+    <li><b>And it buys the beam.</b> Flat can draw the shaft of light itself down the row and the column, cell by cell as it travels, which is the rule made into a picture: you see exactly how far a lamp reaches and exactly what stopped it. The island casts the light onto the floor stones and no further, because a visible beam at seven degrees is a smear across the court.</li>
+    <li><b>What it costs is the court.</b> The island's version is a real place with rough stone standing in it and lamplight pooling on flagstones, and that is genuinely more atmospheric than tinted tiles on parchment. This screen trades a lit room for a legible diagram. Whether that is the right trade for a puzzle whose difficulty is entirely in the reading is the call this page is for.</li>
+  </ul>
+
+  <h3>3. The gesture <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>Tap sets a lantern down, takes one up, or clears a chip.</b> Whatever is on the stone goes; a bare stone gets a lantern. The island cycles blank → lantern → chip → blank on repeated taps, which costs two taps for every chip.</li>
+    <li><b>Drag sweeps chips.</b> The direction is read off the cell the drag started on: begin on a chip and the sweep clears, begin anywhere else and it lays. A sweep never disturbs a lantern, a block, or a lantern a hint pinned.</li>
+    <li><b>One gesture is one entry in the history</b>, so a swept run comes back on a single Undo rather than one chip at a time. This is Tents' gesture, carried unchanged: two boards of the seven now rule cells out by the handful, and it is the same finger movement on both.</li>
+    <li><b>A chip is cool slate, never a small warm block.</b> The court's own stone is warm and its blocks are dark; a ruled-out cell has to be the one cold thing on the board, or the player is reading their own working-out as part of the puzzle.</li>
+  </ul>
+
+  <h3>4. What the board says, and what it will not <span class="pill blue">decided</span></h3>
+  <p>Two of the three rules are shown where they break. A lantern that can see another blushes rose and strains, and it is <em>both</em> of them, because neither is more wrong than the other. A numbered block goes green the moment it touches exactly its number and rose the moment it touches too many &mdash; which means a <code>0</code> is green on the first frame, before the player has done anything. That is honest (a zero is satisfied by an empty court) and it teaches what green means for free, but it does put two settled-looking blocks on a board nobody has touched yet. The third rule — every stone lit — needs no marker at all: the cold stones are the ones still to do, and the count of them is the sprout's line.</p>
+  <p><b>Nothing draws which lamp lit which stone.</b> The beam shows reach, not ownership, and a stone lit twice looks exactly like a stone lit once. That matters because the deduction in Light Up is about <em>which</em> lamp has to be the one — and about half the blocks in a generated board carry no number at all, since the stripper removes every clue it can while the answer stays unique. A blank block is information too: it stops the light and says nothing about what is beside it.</p>
+
+  <h3>5. Motion <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The chrome slides in row by row; the flagstones fade in on a diagonal, then the blocks drop onto the court.</td></tr>
+    <tr><td class="k">Setting a lantern</td><td>The lamp pops in from six tenths with a halo, and the light <b>travels</b>: each stone warms 0.035 s per cell of beam away from the lamp, capped at 0.25 s, over a 0.22 s fade — the island's own <code>LIGHT_STEP</code>, <code>LIGHT_CAP</code> and <code>LIGHT_IN</code>. Taking a lamp up cools the same way, a touch slower at 0.3 s.</td></tr>
+    <tr><td class="k">Breaking a rule</td><td>The paper blushes and the face strains the instant two lamps see each other; a number turns green or rose on the same frame the count changes. Nothing waits for Check.</td></tr>
+    <tr><td class="k">A block, or a pinned lantern</td><td>Refuses the tap with a dip and a line from the sprout. A hinted lantern wears green iron and a green arc at its foot, and can never be taken up.</td></tr>
+    <tr><td class="k">Check</td><td>Every lantern the answer does not put there shakes; the sprout counts them.</td></tr>
+    <tr><td class="k">Solved</td><td>The lanterns hop in reading order, a tenth of a second apart, each grinning and throwing sparks as it lands — and <b>the chips clear away</b>, so the last picture is the lit court rather than the working-out.</td></tr>
+  </table>
+
+  <h3>6. Well done <span class="pill">proposed</span></h3>
+  <p>The same shape as the others: the chrome fades, the board slides down and shrinks, and the lit court stays on screen. Above it, "Well done!" and "Not a stone left in the dark.", then the day card with the time, moves and hints, and a full-width Back to camp.</p>
+
+  <h3>7. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Is a diagram worth a room?</b> This is the sharpest version of the flat question yet: the island's court is atmospheric and the rule is legible here. Nobody should read seven screens as seven wins, and this one is a genuine trade rather than a straight gain.</li>
+    <li><b>An untouched court is the screen's dullest picture.</b> Before a single lamp goes down there is nothing on the board but cold grey stone and dark blocks &mdash; a 5&times;5 opens as 25 large tiles in two dark values, and that is the first thing a player sees. It is honest (dark is the work still to do, and the island opens the same way) and it makes the first lamp feel like something, but the card could also carry a little warmth from the start: a lit brazier in a corner, or a floor a shade warmer than the true unlit grey.</li>
+    <li><b>Is the beam too much?</b> The tinted floor already answers "is this cell lit". Drawing the shaft as well may be the rule made visible or may be a second voice saying the same thing louder — and it is the one thing on this screen the island cannot do at all, which is exactly why it wants challenging rather than assuming.</li>
+    <li><b>Does the travelling wave slow the board down?</b> A quarter of a second of stagger per move is honest and teaches the rule, but Light Up is a board you tap a great deal. Snapping the light on is one lever; halving <code>LIGHT_CAP</code> is a gentler one.</li>
+    <li><b>Ten lanterns with faces, all lit, all glowing.</b> Ten halos on a 7×7 court is a lot of warm light in one card, and the faces sit on the brightest things on the screen. The blocks stayed plain partly for this reason; the lamps may still need their glow pulled down.</li>
+    <li>Whether a hint should pin a lantern for good. It is the island's behaviour and the answer here <em>is</em> unique, so it commits the player to nothing false — but it also removes a cell from the puzzle permanently.</li>
+    <li>Whether the court should be centred. This is the second board of the seven whose grid is square in a tall space, and because the cell is capped by the width at every step the court is 932 square and the card 1000 tall on all three — so it is always 132 of air above and 132 below, never a board that fills its space. The family's rule everywhere else is to pin the board under the day card.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a court mostly lit with a swept run of chips and one lantern too many, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#lightup</code>.</p>
 </section>
 
 </main>
@@ -5252,6 +5353,693 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     for(const q of solutionTents){marks.set(key(q.x,q.y),TENT); stOf(key(q.x,q.y)).at=-9;}
     for(let y=0;y<h;y++) for(let x=0;x<w;x++){const k=key(x,y);
       if(!treeSet.has(k)&&!marks.has(k)){marks.set(k,GRASS); stOf(k).at=-9;}}
+    caption(); solve(0);}
+  frame();
+})();
+
+/* ---------- the flat light up mock ---------- */
+(function(){
+  const cv=document.getElementById('lu'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const now=()=>T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  // The court's two colours are the game's own (core/palette.gd): a stone no
+  // lamp reaches is FLAGSTONE, a cool grey, and lamplight is LAMPLIGHT. They
+  // sit nearly three stops apart because on the island the toon ramp ate a
+  // closer pair; flat needs no such margin, but the pair is what the puzzle
+  // was calibrated with and the two versions are being judged side by side.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    flag:'#8a9199',flagDeep:'#6f7780',lamp:'#f6d488',lampDeep:'#e0b769',
+    block:'#4a4740',blockDeep:'#332f2a',blockNum:'#ede2cc',
+    chip:'#3f4652',chipDeep:'#2f353e',
+    amber:'#f0a04b',amberDeep:'#cf7f2e',glass:'#ffe2a8',iron:'#5a5248',
+    good:'#6ba845',goodDeep:'#4f8532',bad:'#d9705e',badDeep:'#b4533f'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],u))+','+Math.round(lerp(A[1],B[1],u))+','+Math.round(lerp(A[2],B[2],u))+')';};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // ---- the generator and the rules, as lightup_gen.gd has them ----
+  // Walls are sown at random, lanterns are laid greedily where nothing already
+  // reaches, every wall is then numbered, and the numbers are stripped one at
+  // a time while the answer stays unique. The stripper is the expensive half
+  // and it is what makes the clues sparse: a hard board keeps about six and a
+  // half numbers on twelve blocks, so half the court's stone says nothing.
+  const WALL=-2,WHITE=-1;
+  const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
+  const K=(x,y,w)=>y*w+x;
+  function randomWalls(rng,w,h,pct){const g=[];for(let y=0;y<h;y++){const row=[];for(let x=0;x<w;x++) row.push(rng()<pct?WALL:WHITE); g.push(row);} return g;}
+  function litCells(grid,bulbs,w,h){const lit=new Set();
+    for(const b of bulbs){lit.add(K(b.x,b.y,w));
+      for(const d of DIRS){let px=b.x+d[0],py=b.y+d[1];
+        while(px>=0&&py>=0&&px<w&&py<h&&grid[py][px]===WHITE){lit.add(K(px,py,w)); px+=d[0]; py+=d[1];}}}
+    return lit;}
+  function allLit(grid,bulbs,w,h){const lit=litCells(grid,bulbs,w,h);
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]===WHITE&&!lit.has(K(x,y,w))) return false;
+    return true;}
+  function bulbsSeeEachOther(grid,bulbs,w,h){const set=new Set(bulbs.map(b=>K(b.x,b.y,w)));
+    for(const b of bulbs) for(const d of DIRS){let px=b.x+d[0],py=b.y+d[1];
+      while(px>=0&&py>=0&&px<w&&py<h&&grid[py][px]===WHITE){if(set.has(K(px,py,w))) return true; px+=d[0]; py+=d[1];}}
+    return false;}
+  const adjacentBulbs=(wx,wy,bulbs)=>bulbs.filter(b=>Math.abs(b.x-wx)+Math.abs(b.y-wy)===1).length;
+  function cluesExact(grid,bulbs,w,h){for(let y=0;y<h;y++) for(let x=0;x<w;x++)
+      if(grid[y][x]>=0&&adjacentBulbs(x,y,bulbs)!==grid[y][x]) return false; return true;}
+  function consistent(grid,state,cx,cy,put,w,h){
+    if(put) for(const d of DIRS){let px=cx+d[0],py=cy+d[1];
+      while(px>=0&&py>=0&&px<w&&py<h&&grid[py][px]===WHITE){if(state.get(K(px,py,w))) return false; px+=d[0]; py+=d[1];}}
+    for(const d of DIRS){const wx=cx+d[0],wy=cy+d[1];
+      if(wx<0||wy<0||wx>=w||wy>=h) continue;
+      const need=grid[wy][wx]; if(need<0) continue;
+      let have=0,maybe=0;
+      for(const e of DIRS){const nx=wx+e[0],ny=wy+e[1];
+        if(nx<0||ny<0||nx>=w||ny>=h||grid[ny][nx]!==WHITE) continue;
+        const k=K(nx,ny,w);
+        if(state.has(k)){if(state.get(k)) have++;} else maybe++;}
+      if(have>need||have+maybe<need) return false;}
+    return true;}
+  function search(grid,whites,idx,state,w,h,limit){
+    if(idx===whites.length){
+      const bulbs=[]; for(const [k,v] of state) if(v) bulbs.push({x:k%w,y:Math.floor(k/w)});
+      if(!cluesExact(grid,bulbs,w,h)) return 0;
+      return allLit(grid,bulbs,w,h)?1:0;}
+    const c=whites[idx]; let found=0;
+    for(const put of [true,false]){
+      const k=K(c.x,c.y,w); state.set(k,put);
+      if(consistent(grid,state,c.x,c.y,put,w,h)) found+=search(grid,whites,idx+1,state,w,h,limit-found);
+      state.delete(k);
+      if(found>=limit) return found;}
+    return found;}
+  function solveCount(grid,w,h,limit){const whites=[];
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]===WHITE) whites.push({x,y});
+    return search(grid,whites,0,new Map(),w,h,limit);}
+  function shuffle(arr,rng){for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));const q=arr[i];arr[i]=arr[j];arr[j]=q;}}
+  function placeBulbs(rng,grid,w,h){const cells=[];
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]===WHITE) cells.push({x,y});
+    if(!cells.length) return [];
+    shuffle(cells,rng);
+    const bulbs=[];
+    for(const c of cells){
+      if(bulbsSeeEachOther(grid,bulbs.concat([c]),w,h)) continue;
+      if(litCells(grid,bulbs,w,h).has(K(c.x,c.y,w))) continue;  // already lit: a lamp here would be redundant
+      bulbs.push(c);}
+    return bulbs;}
+  function generate(rng,w,h,pct){
+    for(let attempt=0;attempt<120;attempt++){
+      const grid=randomWalls(rng,w,h,pct);
+      const bulbs=placeBulbs(rng,grid,w,h);
+      if(!bulbs.length) continue;
+      if(!allLit(grid,bulbs,w,h)) continue;
+      const clued=grid.map(r=>r.slice());
+      for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]===WALL) clued[y][x]=adjacentBulbs(x,y,bulbs);
+      if(solveCount(clued,w,h,2)!==1) continue;
+      const spots=[];
+      for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(clued[y][x]>=0) spots.push({x,y});
+      shuffle(spots,rng);
+      for(const s of spots){const kept=clued[s.y][s.x]; clued[s.y][s.x]=WALL;
+        if(solveCount(clued,w,h,2)!==1) clued[s.y][s.x]=kept;}
+      return {grid:clued,bulbs,ok:true};
+    }
+    return {grid:[],bulbs:[],ok:false};}
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align='center',spacing='0px'){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.letterSpacing=spacing; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function wrap(s,maxW,font){ctx.font=font; const words=s.split(' '),lines=[]; let cur=''; for(const w of words){const tst=cur?cur+' '+w:w; if(ctx.measureText(tst).width>maxW&&cur){lines.push(cur); cur=w;} else cur=tst;} if(cur) lines.push(cur); return lines;}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col=C.leaf){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='undo'||name==='reset'){const cw=name==='reset'; ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,cw?Math.PI:Math.PI*2,!cw); stroke(col,w);
+      const ex=cw?-s*0.3:s*0.3; ctx.beginPath(); ctx.moveTo(ex-s*0.14,s*0.02); ctx.lineTo(ex,-s*0.15); ctx.lineTo(ex+s*0.14,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='check'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.24); stroke(col,w*1.2);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}
+        if(expr==='strain'){ctx.beginPath(); ctx.moveTo(ex+sx*R*0.16,ey-R*0.2); ctx.lineTo(ex-sx*R*0.1,ey-R*0.3); stroke(ink,R*0.06);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.moveTo(cx-R*0.16,cy+R*0.3); ctx.lineTo(cx+R*0.16,cy+R*0.3); stroke(ink,R*0.06);}
+    else {const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+      if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+  const blinkK=(t,k)=>{ if(RM) return 1; const period=3+4*hash(k*3+1,k*7+2),phase=period*hash(k+5,k+9),m=(t+phase)%period; return m<0.14?1-0.9*Math.sin(Math.PI*m/0.14):1; };
+
+  // ---- the pieces ----
+  // The paper lantern, standing on a flagstone: Untangle's drawing with the
+  // cord and the tassel taken off it and an iron foot put under it, so the
+  // seventh screen adds no new species to the cast. There, `lit` was the
+  // reward at the very end; here it is the state -- a lamp you set down is
+  // burning, and reading how far its light goes is the whole game.
+  function lantern(R,o){
+    const bad=!!o.bad,lit=o.lit==null?1:o.lit;
+    if(lit>0.02){const g=ctx.createRadialGradient(0,0,R*0.5,0,0,R*2.7);
+      g.addColorStop(0,rgba(C.sun,0.30*lit)); g.addColorStop(1,rgba(C.sun,0)); ctx.fillStyle=g; circle(0,0,R*2.7);}
+    ctx.fillStyle='rgba(59,48,40,0.13)'; ellipse(R*0.05,R*1.1,R*0.78,R*0.19);
+    const body=mix(bad?C.bad:C.amber,C.glass,(bad?0.16:0.34)*lit);
+    const deep=mix(bad?C.badDeep:C.amberDeep,bad?C.bad:C.sun,0.34*lit);
+    const iron=o.locked?C.goodDeep:C.iron;
+    ctx.fillStyle=iron; rr(-R*0.5,-R*1.08,R,R*0.24,R*0.09); ctx.fill();               // cap, sat on the paper
+    ctx.fillStyle=deep; rr(-R*0.86,-R*0.86,R*1.72,R*1.72,R*0.62); ctx.fill();
+    ctx.fillStyle=body; rr(-R*0.86,-R*0.86,R*1.72,R*1.56,R*0.6); ctx.fill();          // paper
+    ctx.fillStyle=rgba('#ffffff',0.20); rr(-R*0.7,-R*0.68,R*0.38,R*1.3,R*0.19); ctx.fill();
+    ctx.strokeStyle=rgba(bad?C.badDeep:C.amberDeep,0.42); ctx.lineWidth=R*0.07; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-R*0.84,-R*0.04); ctx.lineTo(R*0.84,-R*0.04); ctx.stroke();
+    ctx.fillStyle=iron; rr(-R*0.42,R*0.82,R*0.84,R*0.2,R*0.08); ctx.fill();           // base
+    rr(-R*0.24,R*1.0,R*0.48,R*0.12,R*0.05); ctx.fill();                               // foot
+    faceParts(R*0.88,0,-R*0.02,o);
+  }
+  // A block of rough stone standing in the court. Half of them carry no number
+  // at all, because the generator strips every clue it can and still leaves
+  // one answer -- so a blank block is information too: it stops the light.
+  function block(s,n,state,t){
+    const over=state==='over',ok=state==='ok';
+    const face=over?mix(C.block,C.bad,0.6):(ok?mix(C.block,C.good,0.55):C.block);
+    const deep=over?mix(C.blockDeep,C.badDeep,0.6):(ok?mix(C.blockDeep,C.goodDeep,0.55):C.blockDeep);
+    ctx.fillStyle='rgba(59,48,40,0.14)'; ellipse(0,s*0.44,s*0.42,s*0.1);
+    ctx.fillStyle=deep; rr(-s*0.46,-s*0.46,s*0.92,s*0.92,s*0.15); ctx.fill();
+    ctx.fillStyle=face; rr(-s*0.46,-s*0.46,s*0.92,s*0.8,s*0.15); ctx.fill();
+    ctx.fillStyle=rgba('#ffffff',0.08); rr(-s*0.36,-s*0.38,s*0.34,s*0.15,s*0.06); ctx.fill();
+    ctx.fillStyle=rgba('#000000',0.07); rr(s*0.06,s*0.1,s*0.3,s*0.14,s*0.06); ctx.fill();
+    if(n>=0) text(String(n),0,-s*0.02,'700 '+(s*0.4).toFixed(1)+'px '+FD,over||ok?C.white:C.blockNum);
+  }
+  // The chip that rules a cell out: cool slate, never a small warm block.
+  function chip(s,u){
+    const g=RM?1:backOut(clamp(u));
+    ctx.save(); ctx.scale(g,g);
+    ctx.fillStyle='rgba(59,48,40,0.13)'; ellipse(0,s*0.16,s*0.26,s*0.08);
+    ctx.fillStyle=C.chipDeep; rr(-s*0.26,-s*0.16,s*0.52,s*0.3,s*0.09); ctx.fill();
+    ctx.fillStyle=C.chip; rr(-s*0.26,-s*0.16,s*0.52,s*0.24,s*0.09); ctx.fill();
+    ctx.fillStyle=rgba('#ffffff',0.16); rr(-s*0.19,-s*0.11,s*0.2,s*0.07,s*0.035); ctx.fill();
+    ctx.restore();
+  }
+
+  // ---- state ----
+  const BLANK=0,LAMP=1,CHIP=2;
+  const LIGHT_STEP=0.035,LIGHT_CAP=0.25,LIGHT_IN=0.22,LIGHT_OUT=0.3;
+  let w=5,h=5,pct=0.24,diff=0,seed=17;
+  let grid=[],answer=[];
+  let marks=new Map(),locked=new Set(),hist=[];
+  let lit=new Map(),clash=new Set();
+  let hintsLeft=3,moves=0,checks=0;
+  let openedAt=0,solvedAt=-1,winAt=-1;
+  let pressAt=null,sweepMode=null,swept=null,pressTarget=null,btnPress={},dragged=false,pendingSweep=[];
+  let cellSt=new Map(),particles=[],auto=[],flash=new Map();
+  let tip={text:'',at:0,mood:'happy',idx:0},L=null;
+
+  const SIZES=[[5,5,0.24],[6,6,0.22],[7,7,0.20]];
+  const TIPS=[
+    'Light every floor stone. A lantern lights its row and column until a block stops it.',
+    'No lantern may light another. Drag across the court to chip the cells you have ruled out.',
+    'A number counts the lanterns touching that block. Half the blocks carry none.',
+  ];
+  function setup(d,sd,t){
+    diff=d; seed=sd;
+    w=SIZES[d][0]; h=SIZES[d][1]; pct=SIZES[d][2];
+    const out=generate(mulberry32((sd*2654435761)>>>0),w,h,pct);
+    grid=out.grid; answer=out.bulbs;
+    marks=new Map(); locked=new Set(); hist=[];
+    hintsLeft=3; moves=0; checks=0; solvedAt=-1; winAt=-1; openedAt=t;
+    pressAt=null; sweepMode=null; swept=null; auto=[]; particles=[];
+    cellSt=new Map(); flash=new Map();
+    recompute(); for(const k of whiteKeys()) stOf(k).to=lit.has(k)?1:0;
+    tip.idx=0; tipSet(TIPS[0],'happy',t);
+    caption();
+  }
+  const open=()=>solvedAt<0;
+  const key=(x,y)=>y*w+x;
+  const inField=(x,y)=>x>=0&&y>=0&&x<w&&y<h;
+  const isWhite=(x,y)=>inField(x,y)&&grid[y][x]===WHITE;
+  const markAt=(x,y)=>inField(x,y)?(marks.get(key(x,y))||BLANK):BLANK;
+  const lamps=()=>{const out=[]; for(const [k,v] of marks) if(v===LAMP) out.push({x:k%w,y:Math.floor(k/w)}); return out;};
+  function whiteKeys(){const out=[]; for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]===WHITE) out.push(key(x,y)); return out;}
+  // `lit` holds the number of cells of beam to the nearest lantern, which is
+  // what the warming wave staggers on; `clash` is every lantern that can see
+  // another. Both are the island's own `_recompute`.
+  function recompute(){
+    lit=new Map(); clash=new Set();
+    if(!grid.length) return;
+    const list=lamps(),set=new Set(list.map(b=>key(b.x,b.y)));
+    for(const b of list){
+      lit.set(key(b.x,b.y),0);
+      for(const d of DIRS){let px=b.x+d[0],py=b.y+d[1],n=1;
+        while(isWhite(px,py)){
+          const k=key(px,py);
+          if(!lit.has(k)||lit.get(k)>n) lit.set(k,n);
+          if(set.has(k)){clash.add(key(b.x,b.y)); clash.add(k);}
+          px+=d[0]; py+=d[1]; n++;}}}
+  }
+  const touching=(x,y)=>DIRS.filter(d=>markAt(x+d[0],y+d[1])===LAMP).length;
+  const blockState=(x,y)=>{const need=grid[y][x]; if(need<0) return 'idle';
+    const have=touching(x,y); return have===need?'ok':(have>need?'over':'idle');};
+  function stOf(k){ if(!cellSt.has(k)) cellSt.set(k,{warm:0,from:0,to:0,at:-1e9,dur:LIGHT_IN,popAt:-1e9,dipAt:-1e9}); return cellSt.get(k); }
+  // The colour painted so far, which is what a retarget has to start from. Ask
+  // for a lamp and take it away again inside the fade and the island used to
+  // leave the first one running, carrying the stone all the way to lamplight
+  // and leaving it there: a lit floor with nothing lighting it.
+  function warmth(k,t){const s=stOf(k);
+    if(RM) return s.to;
+    const u=(t-s.at)/s.dur;
+    if(u<=0) return s.from;
+    if(u>=1) return s.to;
+    return lerp(s.from,s.to,sineIO(u));}
+  function relight(from,t){
+    for(const k of whiteKeys()){
+      const s=stOf(k),target=lit.has(k)?1:0,cur=warmth(k,t);
+      if(s.to===target&&Math.abs(cur-target)<0.001) continue;
+      if(s.to===target&&t>=s.at) continue;
+      const delay=from?Math.min(LIGHT_STEP*(Math.abs((k%w)-from.x)+Math.abs(Math.floor(k/w)-from.y)),LIGHT_CAP):0;
+      s.from=cur; s.to=target; s.at=t+delay; s.dur=target>cur?LIGHT_IN:LIGHT_OUT;}}
+  function tipSet(s,mood,t){tip.text=s; tip.mood=mood||'happy'; tip.at=t;}
+
+  // ---- moves ----
+  // One gesture is one entry in the history, so a swept run of chips comes
+  // back on a single undo rather than one at a time. The island only ever had
+  // single taps to record.
+  function apply(cells,t,from){
+    const entry=[];
+    for(const c of cells){
+      const k=key(c.x,c.y);
+      if((marks.get(k)||BLANK)===c.to) continue;
+      entry.push({k,prev:marks.get(k)||BLANK});
+      if(c.to===BLANK) marks.delete(k); else marks.set(k,c.to);
+      stOf(k).popAt=t;
+    }
+    if(!entry.length) return false;
+    hist.push(entry); moves++;
+    recompute(); relight(from||null,t);
+    after(t); return true;
+  }
+  function after(t){
+    caption();
+    const list=lamps();
+    if(open()&&list.length&&!bulbsSeeEachOther(grid,list,w,h)&&cluesExact(grid,list,w,h)&&allLit(grid,list,w,h)) solve(t);
+    else speak(t);
+  }
+  function speak(t){
+    if(!open()) return;
+    if(clash.size){
+      tipSet(clash.size<=2?'Two lanterns can see each other down that line.':clash.size+' lanterns are lighting each other.','strain',t); return;}
+    let over=0;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]>=0&&blockState(x,y)==='over') over++;
+    if(over){tipSet(over===1?'A block has more lanterns beside it than its number allows.':over+' blocks have more lanterns beside them than their numbers allow.','strain',t); return;}
+    const dark=whiteKeys().filter(k=>!lit.has(k)).length;
+    if(dark){tipSet(dark===1?'One stone is still in the dark.':dark+' stones are still in the dark.','happy',t); return;}
+    tipSet('Every stone is lit. A number is still not satisfied.','happy',t);
+  }
+  function undo(t){
+    if(!open()||!hist.length) return;
+    for(const e of hist.pop()){ if(e.prev===BLANK) marks.delete(e.k); else marks.set(e.k,e.prev); stOf(e.k).popAt=t; }
+    recompute(); relight(null,t); caption(); speak(t);
+  }
+  function reset(t){
+    if(!open()) return;
+    marks=new Map(); locked=new Set(); hist=[]; moves=0;
+    recompute(); relight(null,t);
+    tipSet('The court is cleared. The hints you spent are not refunded, only unpinned.','happy',t); caption();
+  }
+  // Sets down one lantern from the answer and pins it. What came before still
+  // describes this board, except for the one cell the hint has taken over.
+  function hint(t){
+    if(!open()||hintsLeft<=0) return;
+    const target=answer.find(q=>marks.get(key(q.x,q.y))!==LAMP);
+    if(!target) return;
+    const k=key(target.x,target.y);
+    hist=hist.map(e=>e.filter(q=>q.k!==k)).filter(e=>e.length);
+    marks.set(k,LAMP); locked.add(k); stOf(k).popAt=t; hintsLeft--;
+    recompute(); relight(target,t);
+    if(L){const p=cellXY(target.x,target.y);
+      for(let q=0;q<6;q++) sparkle(p[0]+hash(q,1)*L.cell,p[1]+hash(q,2)*L.cell,t+q*0.05,C.good);}
+    tipSet('That lantern is lit for good.','happy',t);
+    after(t);
+  }
+  // Shakes every lantern the answer does not put there, and says how many.
+  function check(t){
+    if(!open()) return;
+    checks++;
+    const want=new Set(answer.map(q=>key(q.x,q.y)));
+    let wrong=0;
+    for(const q of lamps()){const k=key(q.x,q.y); if(want.has(k)) continue; wrong++; flash.set(k,t);}
+    tipSet(wrong?wrong+(wrong===1?' lantern stands in the wrong place.':' lanterns stand in the wrong place.'):'Every lantern you have set down is right.',wrong?'strain':'joy',t);
+    caption();
+  }
+  function sparkle(x,y,t0,col){if(RM) return; particles.push({x,y,vx:(hash(x|0,y|0)-0.5)*90,vy:-110,t0,life:0.7,col:col||C.sun,r:13});}
+  function solve(t){
+    solvedAt=t; winAt=t+2.0;
+    const list=lamps().sort((a,b)=>key(a.x,a.y)-key(b.x,b.y));
+    list.forEach((q,i)=>{stOf(key(q.x,q.y)).popAt=t+0.15+i*0.1;});
+    if(L) list.forEach((q,i)=>{const p=cellXY(q.x,q.y);
+      for(let s=0;s<3;s++) sparkle(p[0]+L.cell*(0.2+0.3*s),p[1]+L.cell*0.2,t+0.2+i*0.1,C.sun);});
+    tipSet('Not a stone left in the dark.','joy',t+0.4);
+    caption();
+  }
+
+  // ---- layout ----
+  // The court is square and the space is tall, and there is no count band to
+  // spend width on, so the cell is capped by the width every time and the card
+  // is cut to the court and centred in what is left -- Tents' answer to the
+  // same shape, and the second board of the seven to need it.
+  function layout(t){
+    const win=winAt<0?0:dec(sineIO((t-winAt)/0.45));
+    const tipY=H-M-140,actY=tipY-20-130,statsY=H-M-130-20-120;
+    const bTop=lerp(380,700,win),bBot=lerp(actY-20,statsY-20,win);
+    const avail=bBot-bTop,pad=34;
+    const cell=Math.min((COL-2*pad)/w,(avail-2*pad)/h);
+    const gw=cell*w,gh=cell*h;
+    const bh=Math.min(avail,gh+2*pad),by=bTop+(avail-bh)/2;
+    return {win,top:{y:M,h:180},day:{y:M+200,h:120},board:{y:by,h:bh},
+      act:{y:actY,h:130},tip:{y:tipY,h:140},stats:{y:statsY,h:120},camp:{y:H-M-130,h:130},
+      cell,gx:W/2-gw/2,gy:by+(bh-gh)/2};
+  }
+  const cellXY=(x,y)=>[L.gx+x*L.cell,L.gy+y*L.cell];
+  function cellAt(p){
+    const x=Math.floor((p[0]-L.gx)/L.cell),y=Math.floor((p[1]-L.gy)/L.cell);
+    if(x<0||y<0||x>=w||y>=h) return null;
+    return {x,y};
+  }
+
+  // ---- the screen ----
+  function iconButton(x,y,name,k,t,opt={}){const [sx,sy]=squash(btnPress[k]||-1e9,t); const size=opt.size||110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function pill(x,y,pw,ph,label,iconName,k,t,primary,dim){const [sx,sy]=squash(btnPress[k]||-1e9,t);
+    ctx.save(); ctx.translate(x+pw/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-pw/2,-ph/2);
+    if(dim) ctx.globalAlpha*=0.45;
+    card(0,0,pw,ph,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total=tw+60+14,x0=pw/2-total/2;
+    icon(iconName,x0+30,ph/2-3,52,col); text(label,x0+74,ph/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>winAt<0?0:dec((t-winAt)/0.25);
+  const squash=(at,t,amt=0.1,dur=0.18)=>{const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'undo','undo',t,{disabled:!hist.length});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 66px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('LIGHT UP').width; ctx.letterSpacing='0px';
+    text('LIGHT UP',cx,by-10,'700 66px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-44; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-18,lx+2,ly-32); stroke(C.leaf,7); leaf(lx+2,ly-28,36,-2.7); leaf(lx+2,ly-32,30,-0.5);
+    text('LET THERE BE LIGHT',cx,by+36,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 7',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Lantern Hollow',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  function drawBoard(t){
+    const b=L.board,cell=L.cell;
+    card(M,b.y,COL,b.h,32,C.parchment,C.line,6);
+    // the court's mortar, then a flagstone per cell: the stones are the
+    // display, so each one is its own tile and carries its own warmth.
+    ctx.fillStyle=rgba(C.text,0.07); rr(L.gx-6,L.gy-6,cell*w+12,cell*h+12,20); ctx.fill();
+    const g=cell*0.035;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+      const k=key(x,y),p=cellXY(x,y);
+      const en=dec((t-openedAt-0.12-(x+y)*0.025)/0.4); if(en<=0) continue;
+      ctx.save(); ctx.globalAlpha=en;
+      if(grid[y][x]===WHITE){
+        const wm=warmth(k,t);
+        ctx.fillStyle=mix(C.flagDeep,C.lampDeep,wm); rr(p[0]+g,p[1]+g,cell-2*g,cell-2*g,cell*0.13); ctx.fill();
+        ctx.fillStyle=mix(C.flag,C.lamp,wm); rr(p[0]+g,p[1]+g,cell-2*g,cell-2*g-cell*0.05,cell*0.13); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // the beams, cell by cell so the light reads as travelling out from the
+    // lamp rather than switching on along the whole line at once
+    for(const q of lamps()){
+      const p=cellXY(q.x,q.y),cx=p[0]+cell/2,cy=p[1]+cell/2,half=cell*0.19;
+      for(const d of DIRS){
+        let px=q.x+d[0],py=q.y+d[1],n=1;
+        while(isWhite(px,py)){
+          const wm=warmth(key(px,py),t);
+          if(wm>0.02){
+            const pp=cellXY(px,py);
+            ctx.fillStyle=rgba(C.glass,0.34*wm/(1+0.22*n));
+            if(d[0]) ctx.fillRect(pp[0],cy-half,cell,half*2); else ctx.fillRect(cx-half,pp[1],half*2,cell);
+          }
+          px+=d[0]; py+=d[1]; n++;}
+      }
+    }
+    // the cells under a running sweep, so the gesture is visible while it happens
+    if(sweepMode&&swept) for(const k of swept){
+      const p=cellXY(k%w,Math.floor(k/w));
+      ctx.fillStyle=rgba(C.text,0.07); rr(p[0]+g,p[1]+g,cell-2*g,cell-2*g,cell*0.13); ctx.fill();
+    }
+    // the blocks
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+      if(grid[y][x]===WHITE) continue;
+      const p=cellXY(x,y);
+      const en=dec((t-openedAt-0.2-(x+y)*0.03)/0.4); if(en<=0) continue;
+      ctx.save(); ctx.globalAlpha=en; ctx.translate(p[0]+cell/2,p[1]+cell/2+(RM?0:-24*(1-backOut(en))));
+      const sc=RM?1:lerp(0.7,1,backOut(en)); ctx.scale(sc,sc);
+      // A block with no number has nothing to be satisfied about, so it
+      // never goes green -- not while playing and not on the win.
+      block(cell*0.94,grid[y][x],grid[y][x]<0?'idle':(open()?blockState(x,y):'ok'),t);
+      ctx.restore();
+    }
+    // what the player put down
+    for(const [k,v] of marks){
+      const x=k%w,y=Math.floor(k/w),p=cellXY(x,y),st=stOf(k);
+      const u=(t-st.popAt)/0.22;
+      ctx.save(); ctx.translate(p[0]+cell/2,p[1]+cell/2);
+      if(v===CHIP){
+        const gone=solvedAt<0?0:dec((t-solvedAt-0.2-hash(k,3)*0.3)/0.5);
+        if(gone<1){ctx.globalAlpha=1-gone; ctx.scale(1-gone*0.4,1-gone*0.4); chip(cell*0.9,u);}
+      } else {
+        let sc=RM?1:lerp(0.6,1,backOut(clamp(u))),sh=0,dy=0;
+        if(!RM){
+          const f=(t-(flash.get(k)||-1e9))/0.6; if(f>=0&&f<1) sh=cell*0.07*Math.sin(9*Math.PI*f)*(1-f);
+          const d=(t-st.dipAt)/0.3; if(d>=0&&d<1) dy=cell*0.05*Math.sin(Math.PI*d);
+          if(solvedAt>=0&&t>=st.popAt){const hp=(t-st.popAt)/0.42; if(hp<1) dy=-cell*0.12*Math.sin(Math.PI*hp);}
+        }
+        ctx.translate(sh,dy); ctx.scale(sc,sc);
+        const bad=open()&&clash.has(k);
+        lantern(cell*0.38,{bad,lit:warmth(k,t),locked:locked.has(k),
+          expr:solvedAt>=0&&t>=st.popAt?'joy':(bad?'strain':'happy'),eye:blinkK(t,k)});
+        if(locked.has(k)){ctx.strokeStyle=rgba(C.good,0.9); ctx.lineWidth=Math.max(3,cell*0.045);
+          ctx.beginPath(); ctx.arc(0,cell*0.4,cell*0.28,0.1*Math.PI,0.9*Math.PI); ctx.stroke();}
+      }
+      ctx.restore();
+    }
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const x=p.x+p.vx*(t-p.t0),y=p.y+p.vy*(t-p.t0)+160*(t-p.t0)*(t-p.t0)*0.5;
+      star4(x,y,p.r*(1-u*0.6),(t-p.t0)*3,rgba(p.col,1-u));}
+  }
+  function drawActions(t){const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    pill(M,L.act.y,260,130,'Reset','reset','reset',t,false,!open()||!marks.size);
+    pill(W-M-260,L.act.y,260,130,'Check','check','check',t,true,!open());
+    ctx.restore();}
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,140,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-160,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left')); ctx.restore();}
+  function drawWin(t){if(winAt<0) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,372,110,-0.7); leaf(1008,372,110,-2.45);
+      star4(212,214,22,t*0.8,C.sun); star4(880,232,16,t*1.1,C.sun);
+      text('Well done!',W/2,402,'700 96px '+FD,C.text); text('Not a stone left in the dark.',W/2,484,'600 34px '+FB,C.dim); ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('lu-caption');
+  function caption(){
+    if(!capEl) return;
+    const whites=whiteKeys();
+    if(solvedAt>=0){capEl.textContent='Solved in '+moves+' moves, '+(3-hintsLeft)+' hints, '+checks+(checks===1?' check':' checks')+'. '+w+'×'+h+', '+answer.length+' lanterns, '+whites.length+' stones.'; return;}
+    let numbers=0,settled=0;
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++) if(grid[y][x]>=0){numbers++; if(blockState(x,y)==='ok') settled++;}
+    let chips=0; for(const v of marks.values()) if(v===CHIP) chips++;
+    const dark=whites.filter(k=>!lit.has(k)).length;
+    capEl.textContent=w+'×'+h+' · '+lamps().length+' lanterns · '+(whites.length-dark)+'/'+whites.length+' stones lit · '+settled+'/'+numbers+' numbers settled · '+chips+' chips · '+hintsLeft+' hints';
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout(t);
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); if(open()) apply([{x:a.x,y:a.y,to:LAMP}],t,a);}
+    if(tip.mood==='happy'&&open()&&t-tip.at>10){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawActions(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function hit(p,t){
+    if(winAt>=0) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'}; if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.act.y,260,130)) return {kind:'reset'};
+    if(inRect(p,W-M-260,L.act.y,260,130)) return {kind:'check'};
+    if(inRect(p,M,L.tip.y,COL,140)) return {kind:'tip'};
+    const c=cellAt(p); if(c) return {kind:'cell',c};
+    return null;
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='cell'&&open()){
+      pressAt=hh.c; dragged=false; sweepMode=null; swept=new Set();
+      cv.setPointerCapture(e.pointerId);
+    } else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!pressAt) return; e.preventDefault();
+    const t=now(),c=cellAt(pt(e));
+    if(!c) return;
+    if(!dragged&&(c.x!==pressAt.x||c.y!==pressAt.y)){
+      dragged=true;
+      // The sweep's direction is read off the cell it started on: begin on a
+      // chip and the drag clears, begin anywhere else and it lays.
+      sweepMode=markAt(pressAt.x,pressAt.y)===CHIP?'erase':'lay';
+      paint(pressAt,t);
+    }
+    if(dragged) paint(c,t);
+  });
+  // A sweep never disturbs a lantern or a block: the gesture is for ruling
+  // cells out, and losing a lamp to a stray finger would be the worst bug on
+  // the board.
+  function paint(c,t){
+    const k=key(c.x,c.y);
+    if(swept.has(k)) return;
+    swept.add(k);
+    if(!isWhite(c.x,c.y)||locked.has(k)||markAt(c.x,c.y)===LAMP) return;
+    const to=sweepMode==='lay'?CHIP:BLANK;
+    if(markAt(c.x,c.y)===to) return;
+    pendingSweep.push({x:c.x,y:c.y,to});
+  }
+  function release(t){
+    if(!pressAt) return;
+    const at=pressAt; pressAt=null;
+    if(dragged){
+      const cells=pendingSweep; pendingSweep=[]; sweepMode=null; swept=null;
+      if(cells.length) apply(cells,t,null);
+      return;
+    }
+    pendingSweep=[]; sweepMode=null; swept=null;
+    const k=key(at.x,at.y);
+    if(!isWhite(at.x,at.y)||locked.has(k)){
+      stOf(k).dipAt=t;
+      tipSet(isWhite(at.x,at.y)?'That lantern is lit for good. A hint set it down.':'A block of stone stands there. It is what stops the light.','puzzled',t);
+      return;
+    }
+    // A tap sets a lantern down, takes one up, or clears a chip: whatever is
+    // on the stone goes, and a bare stone gets a lantern.
+    apply([{x:at.x,y:at.y,to:markAt(at.x,at.y)===BLANK?LAMP:BLANK}],t,at);
+  }
+  cv.addEventListener('pointerup',e=>{e.preventDefault(); const t=now();
+    if(pressAt){release(t); pressTarget=null; return;}
+    const hh=hit(pt(e),t);
+    if(hh&&pressTarget&&hh.kind===pressTarget.kind){
+      if(hh.kind==='undo') undo(t); else if(hh.kind==='hint') hint(t);
+      else if(hh.kind==='reset') reset(t); else if(hh.kind==='check') check(t);
+      else if(hh.kind==='tip'){ if(open()){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);} }
+      else if(hh.kind==='camp') setup(diff,seed+1,t);}
+    pressTarget=null;});
+  cv.addEventListener('pointercancel',()=>{pressAt=null; pendingSweep=[]; sweepMode=null; swept=null; pressTarget=null;});
+
+  // ---- demo controls ----
+  const $=id=>document.getElementById(id);
+  const DIFFS=['Easy · 5×5','Medium · 6×6','Hard · 7×7'];
+  const rmBtn=$('lu-rm'),dfBtn=$('lu-diff');
+  if(rmBtn) rmBtn.addEventListener('click',()=>{RM=!RM; rmBtn.classList.toggle('on',RM); rmBtn.textContent='Reduce motion: '+(RM?'on':'off');});
+  if(dfBtn) dfBtn.addEventListener('click',()=>{const d=(diff+1)%3; setup(d,seed,now()); dfBtn.textContent=DIFFS[d];});
+  if($('lu-new')) $('lu-new').addEventListener('click',()=>setup(diff,seed+1,now()));
+  if($('lu-wrong')) $('lu-wrong').addEventListener('click',()=>{const t=now(); if(!open()) return;
+    // A second lantern down the same line: the blush and the strain worth a look.
+    for(const q of answer){
+      if(marks.get(key(q.x,q.y))!==LAMP) continue;
+      for(const d of DIRS){let px=q.x+d[0],py=q.y+d[1];
+        while(isWhite(px,py)){
+          if(markAt(px,py)===BLANK&&!locked.has(key(px,py))){apply([{x:px,y:py,to:LAMP}],t,{x:px,y:py}); return;}
+          px+=d[0]; py+=d[1];}}}
+    const free=answer.find(q=>marks.get(key(q.x,q.y))!==LAMP);
+    if(free) apply([{x:free.x,y:free.y,to:LAMP}],t,free);});
+  if($('lu-solve')) $('lu-solve').addEventListener('click',()=>{const t=now(); if(!open()) return; auto=[];
+    for(const [k,v] of [...marks]) if(v===LAMP&&!locked.has(k)&&!answer.some(q=>key(q.x,q.y)===k)) marks.delete(k);
+    recompute(); relight(null,t);
+    answer.forEach(q=>{ if(marks.get(key(q.x,q.y))===LAMP) return; auto.push({at:t+auto.length*0.16,x:q.x,y:q.y}); });});
+
+  // ---- start, where the URL asks ----
+  diff=Math.max(0,Math.min(2,parseInt(Q.get('d')||'0')||0));
+  seed=parseInt(Q.get('seed')||'17')||17;
+  setup(diff,seed,0);
+  L=layout(0);
+  if(dfBtn) dfBtn.textContent=DIFFS[diff];
+  if(rmBtn&&RM){rmBtn.classList.add('on'); rmBtn.textContent='Reduce motion: on';}
+  function preset(all){
+    const n=all?answer.length:Math.max(1,answer.length-2);
+    for(let i=0;i<n;i++){const k=key(answer[i].x,answer[i].y); marks.set(k,LAMP); stOf(k).popAt=-9;}
+    recompute();
+    for(const k of whiteKeys()){const s=stOf(k); s.to=lit.has(k)?1:0; s.from=s.to; s.at=-9;}
+  }
+  if(Q.get('part')==='1'){
+    // Most of the court lit, a swept run of chips along the bottom, and one
+    // lantern too many down a line: the working board, which is the one worth
+    // a shot.
+    preset(false);
+    for(let y=0;y<h;y++){let laid=0;
+      for(let x=0;x<w&&laid<4;x++){const k=key(x,y); if(grid[y][x]!==WHITE||marks.has(k)) continue; marks.set(k,CHIP); stOf(k).popAt=-9; laid++;}
+      if(laid>=3) break;}
+    outer: for(let i=0;i<Math.max(1,answer.length-2);i++){const q=answer[i];
+      for(const d of DIRS){let px=q.x+d[0],py=q.y+d[1];
+        while(isWhite(px,py)){
+          if(!marks.has(key(px,py))){marks.set(key(px,py),LAMP); stOf(key(px,py)).popAt=-9; break outer;}
+          px+=d[0]; py+=d[1];}}}
+    recompute();
+    for(const k of whiteKeys()){const s=stOf(k); s.to=lit.has(k)?1:0; s.from=s.to; s.at=-9;}
+    moves=Math.max(1,answer.length-2)+2; caption(); speak(0);}
+  if(Q.get('win')==='1'){openedAt=-161; moves=24; hintsLeft=2; checks=1;
+    preset(true);
     caption(); solve(0);}
   frame();
 })();
