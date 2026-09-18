@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incremental games · what the stores say</title>
+<style>
+@font-face{font-family:"Fredoka";src:url("../../assets/fonts/Fredoka-Variable.ttf") format("truetype");font-weight:300 700}
+@font-face{font-family:"Nunito";src:url("../../assets/fonts/Nunito-Variable.ttf") format("truetype");font-weight:200 1000}
+
+:root{
+  --paper:#f6efe2; --card:#fffaf1; --ink:#2f2a25; --muted:#6f655b; --line:#e3d8c6;
+  --wood:#8a5a3a; --sun:#f2b544; --rose:#e4707a; --sky:#3f7fd6; --leaf:#5ea82f; --grey:#a2988e;
+  --display:"Fredoka",-apple-system,"SF Pro Rounded",sans-serif;
+  --body:"Nunito",-apple-system,"SF Pro Text",sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--body)}
+a{color:var(--sky)}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;letter-spacing:.2px}
+
+header{padding:40px 28px 26px;border-bottom:3px solid var(--ink)}
+header .wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
+header h1{margin:0;font-size:46px;line-height:1.02}
+header h1 small{display:block;font:700 13px/1 var(--body);letter-spacing:2.4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+header p{margin:12px 0 0;max-width:660px;color:var(--muted);font-size:17px}
+header .stamp{font-family:var(--display);text-align:right;color:var(--muted);font-size:14px;line-height:1.5}
+header .stamp b{display:block;color:var(--ink);font-size:20px}
+
+main{max-width:1180px;margin:0 auto;padding:0 24px 90px}
+section{margin-top:66px;padding-top:24px;border-top:3px solid var(--ink)}
+section h2{font-size:34px;margin:0 0 6px}
+section .lede{font-size:17.5px;color:var(--muted);max-width:760px;margin:0 0 22px}
+
+/* ---------- legend ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.legend b{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);
+  border-radius:999px;padding:5px 13px 5px 8px;font:700 12.5px/1 var(--body);letter-spacing:.3px}
+.legend i{width:11px;height:11px;border-radius:50%;display:inline-block}
+
+/* ---------- the ledger ---------- */
+.ledger{border-top:1px solid var(--ink)}
+.ledger .head,.ledger .row{display:grid;grid-template-columns:212px 1fr 66px 78px 112px 92px;gap:12px;align-items:center;
+  padding:8px 6px;border-bottom:1px solid var(--line)}
+.ledger .head{font:800 11px/1 var(--body);letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--ink)}
+.ledger .row:hover{background:var(--card)}
+.ledger .nm{display:grid;grid-template-columns:14px 1fr;gap:0 8px;align-items:center;min-width:0;padding:2px 0}
+.ledger .nm i{width:10px;height:10px;border-radius:50%;grid-row:1/3;align-self:center}
+.ledger .nm b{font-weight:800;font-size:14.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ledger .nm span{grid-column:2;font-weight:600;color:var(--muted);font-size:11.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:15px;border-radius:0 4px 4px 0;position:relative}
+.bar b{position:absolute;left:calc(100% + 8px);top:-2px;font:800 12px/1.5 var(--body);color:var(--muted);white-space:nowrap}
+.num{text-align:right;font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
+.num b{color:var(--ink)}
+.chip{font:800 10.5px/1 var(--body);letter-spacing:.8px;text-transform:uppercase;border-radius:999px;padding:4px 8px;display:inline-block;white-space:nowrap}
+.chip.ads{background:#f7dcd7;color:#a33c2c}
+.chip.iap{background:#dbe8fa;color:#2b5b9e}
+.chip.paid{background:#dff0d6;color:#37701c}
+.solo{font:800 10.5px/1 var(--body);letter-spacing:.8px;text-transform:uppercase;color:#8a4b00;background:#ffe1b3;border-radius:999px;padding:4px 8px}
+.axis{display:grid;grid-template-columns:212px 1fr 66px 78px 112px 92px;gap:12px;font:800 10.5px/1 var(--body);
+  letter-spacing:1px;color:var(--muted);padding:8px 6px 0}
+.axis .ticks{display:flex;justify-content:space-between}
+
+/* ---------- scatter ---------- */
+figure{margin:0}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 10px}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{font-family:var(--body)}
+figcaption{font-size:13.5px;color:var(--muted);margin:10px 4px 0;line-height:1.5}
+
+/* ---------- archetype cards ---------- */
+.arch{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:18px;margin-top:8px}
+.a{background:var(--card);border:1px solid var(--line);border-top:5px solid var(--accent);border-radius:14px;padding:16px 18px 18px;display:flex;flex-direction:column}
+.a h3{margin:0 0 2px;font-size:21px;min-height:52px}
+.a .who{color:var(--muted);font-size:13px;margin:0 0 12px;min-height:36px}
+.a svg.mock{width:100%;height:150px;border-radius:10px;background:#efe5d3;display:block;margin-bottom:12px}
+.a dl{display:grid;grid-template-columns:78px 1fr;gap:6px 12px;font-size:14px;margin:0 0 12px}
+.a dt{font:800 10.5px/1.6 var(--body);letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
+.a dd{margin:0}
+.a .cost{margin-top:auto;border-top:1px dashed var(--line);padding-top:10px;font-size:13.5px}
+.dots{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--ink);display:inline-block}
+.dots i.o{background:transparent;border:1.5px solid #c9bda9}
+
+/* ---------- money ---------- */
+.money{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.big{background:#2f2a25;color:#fff;border-radius:16px;padding:22px 24px}
+.big .k{font:800 11px/1 var(--body);letter-spacing:2px;text-transform:uppercase;color:#bdae9c}
+.big .n{font-family:var(--display);font-size:54px;line-height:1.05;margin:8px 0 2px}
+.big .n small{font-size:20px;color:#f2b544}
+.big p{margin:10px 0 0;font-size:15px;color:#e5dccd}
+.big .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;border-top:1px solid #4a423a;padding-top:14px}
+.big .grid div span{display:block;font:800 10.5px/1.6 var(--body);letter-spacing:1.2px;text-transform:uppercase;color:#bdae9c}
+.big .grid div b{font-family:var(--display);font-size:22px;font-weight:600}
+.cold{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+.cold h3{margin:0 0 4px;font-size:22px}
+
+table{border-collapse:collapse;width:100%;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 1px 0 var(--line)}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}
+th{background:#efe5d3;font-weight:800;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase}
+tr:last-child td{border-bottom:0}
+td.k{white-space:nowrap;font-weight:700}
+.note{background:#fff4d6;border-left:4px solid var(--sun);padding:12px 16px;border-radius:8px;margin:22px 0 0;font-size:15.5px}
+.note b{font-family:var(--display);font-weight:600;font-size:17px}
+.warn{background:#fde9eb;border-left:4px solid var(--rose);padding:12px 16px;border-radius:8px;margin:22px 0 0;font-size:15.5px}
+.warn b{font-family:var(--display);font-weight:600;font-size:17px}
+footer{max-width:1180px;margin:0 auto;padding:0 24px 70px;color:var(--muted);font-size:13.5px}
+footer a{margin-right:12px;white-space:nowrap}
+
+@media (max-width:900px){
+  .money{grid-template-columns:1fr}
+  header .wrap{grid-template-columns:1fr}
+  header .stamp{text-align:left}
+  .ledger .head,.ledger .row,.axis{grid-template-columns:150px 1fr 54px 70px}
+  .ledger .row>*:nth-child(5),.ledger .row>*:nth-child(6),.ledger .head>*:nth-child(5),.ledger .head>*:nth-child(6){display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1><small>Field notes · market reference</small>Incremental games, and which ones a solo dev could actually build</h1>
+      <p>Every install count, rating and price on this page was pulled straight off the two stores on 18 Sep 2026 — Google Play listings scraped one by one, Apple numbers from its own search API across <i>idle</i>, <i>incremental</i>, <i>clicker</i>, <i>tycoon</i> and <i>cozy</i> (about 400 apps). The build-cost readings are my estimate, not store data, and are marked as such throughout.</p>
+    </div>
+    <div class="stamp"><b>18 Sep 2026</b>play.google.com · itunes search API<br>Installs are Play's own banding<br>Ratings are Play unless noted</div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================ LEDGER -->
+<section style="border-top:0;margin-top:34px;padding-top:0">
+  <h2>The board</h2>
+  <p class="lede">Sorted by reach. The bar is a log scale — each step to the right is ten times the installs — so the small games at the bottom are not as close to the giants as a flat bar would make them look.</p>
+  <div class="legend">
+    <b><i style="background:var(--sky)"></i>Pure numbers</b>
+    <b><i style="background:var(--wood)"></i>Text / UI only</b>
+    <b><i style="background:var(--leaf)"></i>One screen, one mechanic</b>
+    <b><i style="background:var(--rose)"></i>Idle bolted onto a toy</b>
+    <b><i style="background:var(--grey)"></i>Studio lane (tycoon / merge / hero RPG)</b>
+  </div>
+  <div class="ledger" id="ledger"></div>
+  <div class="axis"><span></span><div class="ticks"><span>10K</span><span>100K</span><span>1M</span><span>10M</span><span>100M</span></div><span></span><span></span><span></span><span></span></div>
+</section>
+
+<!-- ============================================================ SCATTER -->
+<section>
+  <h2>Cost against reach</h2>
+  <p class="lede">The vertical axis is real: Play installs. The horizontal axis is my judgement — how long one person would need to reach a shippable v1 of that game, not the years of content that follow. The interesting region is the top-left: games that got big reach without a studio behind them.</p>
+  <figure>
+    <div class="chart"><svg id="scatter" viewBox="0 0 1060 600" role="img" aria-label="Scatter of installs against estimated solo build time"></svg></div>
+    <figcaption>Everything left of the dashed line is a v1 one person can reach inside a quarter. Note that three of the four biggest-reaching games in that band — Bee Factory, Gun Idle, Idle Human — are the same studio shipping the same skeleton with a different object on screen.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ ARCHETYPES -->
+<section>
+  <h2>The four cheap shapes</h2>
+  <p class="lede">Every low-cost success on the board is one of these four. The mock under each title is what the player actually looks at.</p>
+  <div class="arch">
+
+    <article class="a" style="--accent:var(--sky)">
+      <h3>1 · Pure numbers</h3>
+      <p class="who">Antimatter Dimensions · Revolution Idle</p>
+      <svg class="mock" viewBox="0 0 300 150">
+        <rect width="300" height="150" fill="#101a2b"/>
+        <text x="16" y="26" fill="#8fb6ff" font-size="11" font-weight="800" letter-spacing="1.4">ANTIMATTER 1.82e14</text>
+        <g font-size="11" fill="#dfe8f7">
+          <rect x="14" y="36" width="272" height="22" rx="5" fill="#1d2c45"/><text x="22" y="51">1st Dimension ×2.0</text><rect x="228" y="40" width="52" height="14" rx="4" fill="#3f7fd6"/><text x="254" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="800">BUY 10</text>
+          <rect x="14" y="62" width="272" height="22" rx="5" fill="#1d2c45"/><text x="22" y="77">2nd Dimension ×1.6</text><rect x="228" y="66" width="52" height="14" rx="4" fill="#3f7fd6"/><text x="254" y="77" text-anchor="middle" fill="#fff" font-size="9" font-weight="800">BUY 10</text>
+          <rect x="14" y="88" width="272" height="22" rx="5" fill="#1d2c45"/><text x="22" y="103">3rd Dimension ×1.2</text><rect x="228" y="92" width="52" height="14" rx="4" fill="#26365200"/><text x="254" y="103" text-anchor="middle" fill="#5d7398" font-size="9" font-weight="800">LOCKED</text>
+        </g>
+        <rect x="14" y="118" width="272" height="20" rx="10" fill="#f2b544"/>
+        <text x="150" y="132" text-anchor="middle" font-size="10" font-weight="800" fill="#2f2a25">BIG CRUNCH · +4 INFINITY POINTS</text>
+      </svg>
+      <dl>
+        <dt>On screen</dt><dd>Rows of numbers and buy buttons. No art at all.</dd>
+        <dt>Proof</dt><dd>Antimatter Dimensions 1M+ at 4.8; Revolution Idle 500K+ at 4.8, launched Oct 2024.</dd>
+        <dt>Money</dt><dd>IAP only, no ads. Players in this niche punish ads.</dd>
+      </dl>
+      <p class="cost"><b>Build cost</b> <span class="dots"><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i></span><br>Cheap to draw, expensive to <i>design</i>: the whole game is prestige layers and balance curves. Months of tuning, no assets.</p>
+    </article>
+
+    <article class="a" style="--accent:var(--wood)">
+      <h3>2 · Text and UI</h3>
+      <p class="who">Idle Obelisk Miner · Magic Research · Universal Paperclips</p>
+      <svg class="mock" viewBox="0 0 300 150">
+        <rect width="300" height="150" fill="#0b0b0b"/>
+        <text x="14" y="22" fill="#39ff6a" font-size="10" font-family="monospace">== OBELISK ============ depth 412 ==</text>
+        <g font-size="10" font-family="monospace" fill="#9dffb8">
+          <text x="14" y="42">ore/s ....... 14.8K</text>
+          <text x="14" y="58">crit ........ 22.5%  x3.0</text>
+          <text x="14" y="74">drones ...... 7 / 12</text>
+          <text x="14" y="90">forge ....... [#####-----] 51%</text>
+        </g>
+        <rect x="14" y="102" width="86" height="18" fill="none" stroke="#39ff6a"/><text x="57" y="115" text-anchor="middle" font-size="9" font-family="monospace" fill="#39ff6a">MINE</text>
+        <rect x="106" y="102" width="86" height="18" fill="none" stroke="#39ff6a"/><text x="149" y="115" text-anchor="middle" font-size="9" font-family="monospace" fill="#39ff6a">CRAFT</text>
+        <rect x="198" y="102" width="88" height="18" fill="none" stroke="#39ff6a"/><text x="242" y="115" text-anchor="middle" font-size="9" font-family="monospace" fill="#39ff6a">PRESTIGE</text>
+        <text x="14" y="140" font-size="9" font-family="monospace" fill="#5f7a66">&gt; drone 7 returned with 2.1K cobalt</text>
+      </svg>
+      <dl>
+        <dt>On screen</dt><dd>A log, some tabs, numbers. Obelisk Miner looks like DOS in 1995 on purpose.</dd>
+        <dt>Proof</dt><dd>Obelisk Miner 1M+ at 4.8 and roughly $1.5M a month; Magic Research 100K+ as a paid $7.99 app.</dd>
+        <dt>Money</dt><dd>Either deep IAP with no ads, or premium one-off.</dd>
+      </dl>
+      <p class="cost"><b>Build cost</b> <span class="dots"><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i></span><br>No art pipeline at all, but the content is writing and systems, and it never stops. Obelisk Miner took three years before the money moved.</p>
+    </article>
+
+    <article class="a" style="--accent:var(--leaf)">
+      <h3>3 · One screen, one mechanic</h3>
+      <p class="who">Bee Factory · Terrarium · Gun Idle · Idle Human · Idle Ants</p>
+      <svg class="mock" viewBox="0 0 300 150">
+        <rect width="300" height="150" fill="#bfe3f5"/>
+        <rect y="96" width="300" height="54" fill="#7fbf58"/>
+        <g>
+          <rect x="112" y="46" width="76" height="52" rx="8" fill="#f2b544" stroke="#2f2a25" stroke-width="2"/>
+          <rect x="124" y="58" width="52" height="16" rx="4" fill="#fff6e0"/>
+          <circle cx="150" cy="40" r="10" fill="#fff6e0" stroke="#2f2a25" stroke-width="2"/>
+          <circle cx="86" cy="36" r="7" fill="#f2b544" stroke="#2f2a25" stroke-width="2"/>
+          <circle cx="216" cy="58" r="7" fill="#f2b544" stroke="#2f2a25" stroke-width="2"/>
+          <circle cx="60" cy="74" r="5" fill="#f2b544" stroke="#2f2a25" stroke-width="2"/>
+        </g>
+        <rect x="12" y="10" width="96" height="22" rx="11" fill="#fff" opacity=".9"/><text x="60" y="25" text-anchor="middle" font-size="11" font-weight="800" fill="#2f2a25">$4.82 M</text>
+        <rect x="204" y="10" width="84" height="22" rx="11" fill="#e4707a"/><text x="246" y="25" text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff">▶ x2 · 30s</text>
+        <rect x="12" y="110" width="132" height="28" rx="8" fill="#fff"/><text x="24" y="128" font-size="10.5" font-weight="800" fill="#2f2a25">HIVE · lvl 24 · $1.2K</text>
+        <rect x="156" y="110" width="132" height="28" rx="8" fill="#fff"/><text x="168" y="128" font-size="10.5" font-weight="800" fill="#2f2a25">BEES · lvl 11 · $840</text>
+      </svg>
+      <dl>
+        <dt>On screen</dt><dd>One cute object, two or three upgrade buttons, a rewarded-ad button.</dd>
+        <dt>Proof</dt><dd>Green Panda run five of these at <b>10M+ installs each</b> — Bee Factory 595K ratings, Terrarium 453K, Sushi Bar 396K.</dd>
+        <dt>Money</dt><dd>Ads everywhere plus a remove-ads subscription. Volume business.</dd>
+      </dl>
+      <p class="cost"><b>Build cost</b> <span class="dots"><i></i><i></i><i></i><i class="o"></i><i class="o"></i></span><br>The one that maps onto your Godot toon pipeline almost unchanged. Cost is art polish and ad plumbing, not systems.</p>
+    </article>
+
+    <article class="a" style="--accent:var(--rose)">
+      <h3>4 · Idle on top of a toy</h3>
+      <p class="who">Scratch Inc. · Pincremental · Idle Dot Shooter</p>
+      <svg class="mock" viewBox="0 0 300 150">
+        <rect width="300" height="150" fill="#241b2e"/>
+        <g>
+          <rect x="24" y="24" width="120" height="100" rx="10" fill="#f6efe2" stroke="#f2b544" stroke-width="2"/>
+          <g fill="#c9bda9">
+            <rect x="36" y="38" width="28" height="26" rx="4"/><rect x="70" y="38" width="28" height="26" rx="4"/><rect x="104" y="38" width="28" height="26" rx="4"/>
+            <rect x="36" y="70" width="28" height="26" rx="4"/><rect x="104" y="70" width="28" height="26" rx="4"/>
+          </g>
+          <rect x="70" y="70" width="28" height="26" rx="4" fill="#f2b544"/><text x="84" y="88" text-anchor="middle" font-size="13" font-weight="800" fill="#2f2a25">7</text>
+          <text x="84" y="115" text-anchor="middle" font-size="10" font-weight="800" fill="#6f655b">MATCH 3 · ×12</text>
+        </g>
+        <g font-size="10" fill="#e5dccd">
+          <rect x="158" y="24" width="118" height="22" rx="5" fill="#3a2d49"/><text x="168" y="39">Grid size 5×5</text>
+          <rect x="158" y="50" width="118" height="22" rx="5" fill="#3a2d49"/><text x="168" y="65">Auto-scratch ×4</text>
+          <rect x="158" y="76" width="118" height="22" rx="5" fill="#3a2d49"/><text x="168" y="91">Multiplier +18%</text>
+          <rect x="158" y="102" width="118" height="22" rx="10" fill="#e4707a"/><text x="217" y="117" text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff">PRESTIGE · INDUSTRY 3</text>
+        </g>
+      </svg>
+      <dl>
+        <dt>On screen</dt><dd>A small satisfying toy on the left, the upgrade stack on the right.</dd>
+        <dt>Proof</dt><dd>Idle Dot Shooter hit 1M+ installs in seven months from a Feb 2026 launch; Scratch Inc. ships in <b>38 MB</b>, solo, no ads.</dd>
+        <dt>Money</dt><dd>Mixed. Scratch Inc. sells IAP with no ads; Dot Shooter runs ads.</dd>
+      </dl>
+      <p class="cost"><b>Build cost</b> <span class="dots"><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i></span><br>The cheapest real shot: the toy is a weekend, the idle stack on top is the known part, and the novelty is what gets it noticed.</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============================================================ MONEY -->
+<section>
+  <h2>What the money actually looks like</h2>
+  <p class="lede">The two ends of the same "cheap to build" bracket, fifty times apart. Both are one person. Neither bought users.</p>
+  <div class="money">
+    <div class="big">
+      <div class="k">Idle Obelisk Miner · Checkbox Entertainment · one developer</div>
+      <div class="n">$1.5M <small>/ month</small></div>
+      <p>Pure text, DOS-1995 look, mono chiptune, no tutorial, no hints and <b>no ads at all</b>. Sat at $30–40K a day for three years, then went vertical once the systems were deep enough to hold people.</p>
+      <div class="grid">
+        <div><span>Revenue per download</span><b>~$13</b></div>
+        <div><span>Downloads a day</span><b>4–5K</b></div>
+        <div><span>Play installs · rating</span><b>1M+ · 4.8</b></div>
+        <div><span>Discord members</span><b>57K</b></div>
+      </div>
+    </div>
+    <div class="cold">
+      <h3>The other end: Magic Research</h3>
+      <p>Also one person. Also text-only. Also praised — 4.7 on Play, sold as a $7.99 premium app with no ads, marketed with two Reddit posts and nothing else.</p>
+      <p>A Steam revenue calculator puts its Steam gross at about <b>$31K lifetime</b>. Third-party write-ups claim $150K in eight months and $400K in twelve across all stores — those are estimates from outside the developer, so treat the spread as the honest range, not a number.</p>
+      <p style="margin-top:14px"><b>Read it this way:</b> the cheap shapes have a very long tail. Same cost, same craft, same genre, and the outcome spans two orders of magnitude. What separates them is years of content depth and a community, not the build.</p>
+    </div>
+  </div>
+  <div class="warn"><b>The catch that matters for you.</b> An incremental is the opposite shape of a daily. A daily wins on a two-minute session and a fresh board tomorrow; an incremental wins on six-month retention and a content treadmill that never stops. Obelisk Miner needed three years of patches before the revenue moved. The build is the small part.</div>
+</section>
+
+<!-- ============================================================ LANES -->
+<section>
+  <h2>Where not to go, and what is open</h2>
+  <table>
+    <tr><th style="width:150px">Lane</th><th>Who owns it</th><th>Verdict</th></tr>
+    <tr><td class="k" style="color:#a33c2c">Tycoon / merge / hero-RPG idle</td>
+        <td>Kolibri, Codigames, AppQuantum, Rollic, Game Hive. Recent App Store entries in this lane ship at 300 MB – 3.4 GB.</td>
+        <td>Closed. It runs on art volume, live ops and paid user acquisition. Nothing you can out-build alone.</td></tr>
+    <tr><td class="k" style="color:#37701c">One screen, one mechanic</td>
+        <td>Green Panda hold the template, but the shelf is wide: Idle Mow, Will it Crush, Planet Evolution and others all sit on it with no studio behind them.</td>
+        <td>Open, on the condition that the object on screen is charming. That is exactly what your Blender-to-toon pipeline already produces.</td></tr>
+    <tr><td class="k" style="color:#2b5b9e">Pure numbers / text</td>
+        <td>Solo developers, every one of them: Kajfosz, Checkbox, Oni Gaming, Maticolotto.</td>
+        <td>Open and proven, but it is a years-long content commitment and the audience is r/incremental_games, not the store charts.</td></tr>
+    <tr><td class="k" style="color:#a33c2c">Idle bolted onto a toy</td>
+        <td>Thin. Scratch cards, pinball and a turret are taken; most toys are not.</td>
+        <td>The best risk-to-reward on this page. Small build, novelty does the marketing, and you can test whether the loop holds before committing a year.</td></tr>
+  </table>
+  <div class="note"><b>One more data point worth holding onto.</b> Idle Mow: Grass Cutting Tycoon sits at 100K+ installs and 4.6, and Zplay's older Idle Grass Cutter has 31.5K App Store ratings with its last update in April 2019. A one-mechanic idler can be shipped and left alone. None of the other three shapes can.</div>
+</section>
+
+<!-- ============================================================ FIT -->
+<section>
+  <h2>What ports from <code>daily</code> as it stands</h2>
+  <table>
+    <tr><th style="width:250px">You already have</th><th>What it would do in an idler</th></tr>
+    <tr><td class="k">Blender one-mesh-per-layer pipeline + toon shader + outline pass</td><td>The whole of archetype 3. The hero object on screen is the game, and recolouring a layer per upgrade tier is free in this setup.</td></tr>
+    <tr><td class="k"><code>ui/hud/model_view.gd</code> SubViewport stage</td><td>Upgrade cards that each show the real model rather than an icon — the thing that makes these games look expensive.</td></tr>
+    <tr><td class="k"><code>core/analytics.gd</code> (GA4 Measurement Protocol)</td><td>Retention and funnel measurement, which is the only number that matters in this genre. Already wired, already shipping.</td></tr>
+    <tr><td class="k"><code>core/backend.gd</code> + Cloud Functions + anonymous auth</td><td>Leaderboards and cloud saves, both expected in an incremental. Save integrity is the one part you would have to harden.</td></tr>
+    <tr><td class="k">Android export + CI + Firebase App Distribution</td><td>Shipping. Nothing new needed.</td></tr>
+    <tr><td class="k" style="color:#a33c2c">Nothing yet</td><td>Rewarded ads. Every archetype-3 game on this board runs on them, and there is no ad SDK in the project — that is the non-gradle export path question all over again.</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  <p><b>Sources.</b>
+  <a href="https://www.gamigion.com/idle-obelisk-miner-one-guy-no-ads-no-tutorial-100k-day/">Gamigion · Obelisk Miner</a>
+  <a href="https://open.spotify.com/episode/5BkcrmVKhcFQfzfOfXZpcR">two &amp; a half gamers podcast</a>
+  <a href="https://gameplaydev.substack.com/p/a-solo-game-developer-generated-over">Magic Research revenue</a>
+  <a href="https://store.steampowered.com/app/2311680/Magic_Research/">Magic Research on Steam</a>
+  <a href="https://www.topincrementalgames.com/platform/mobile">topincrementalgames.com</a>
+  <a href="https://www.blog.udonis.co/mobile-marketing/mobile-games/best-idle-games">Udonis · best idle games 2026</a>
+  </p>
+  <p>Install bands, ratings, review counts, ad and IAP flags: scraped from each Google Play listing on 18 Sep 2026. App Store rating counts, file sizes and release dates: Apple search API, same day. Build-cost and build-time readings are my estimate and are the only judgements on this page — everything else is measured.</p>
+</footer>
+
+<script>
+const A = {num:'var(--sky)', txt:'var(--wood)', one:'var(--leaf)', toy:'var(--rose)', big:'var(--grey)'};
+// installs: Play banding. months: my estimate of solo time to a shippable v1.
+const DATA = [
+ {n:'Idle Miner Tycoon', d:'Kolibri Games', i:1e8, r:4.5, v:'5.85M', m:'ads', k:'big', mo:30},
+ {n:'Idle Lumber Empire', d:'AppQuantum', i:1e8, r:3.9, v:'1.12M', m:'ads', k:'big', mo:30},
+ {n:'Egg, Inc.', d:'Auxbrain', i:1e7, r:4.7, v:'1.41M', m:'ads', k:'big', mo:24},
+ {n:'Tap Titans 2', d:'Game Hive', i:1e7, r:4.6, v:'1.07M', m:'ads', k:'big', mo:26},
+ {n:'Cell to Singularity', d:'ComputerLunch', i:1e7, r:4.5, v:'398K', m:'ads', k:'big', mo:24},
+ {n:'Idle Bee Factory', d:'Green Panda', i:1e7, r:4.7, v:'595K', m:'ads', k:'one', mo:2},
+ {n:'Terrarium: Garden Idle', d:'Green Panda', i:1e7, r:4.7, v:'453K', m:'ads', k:'one', mo:3},
+ {n:'Sushi Bar Idle', d:'Green Panda', i:1e7, r:4.3, v:'396K', m:'ads', k:'one', mo:3},
+ {n:'Idle Human', d:'Green Panda', i:1e7, r:4.4, v:'160K', m:'ads', k:'one', mo:2.5},
+ {n:'Idle Ants', d:'Madbox', i:1e7, r:4.2, v:'91.3K', m:'ads', k:'one', mo:3},
+ {n:'Gun Idle', d:'Green Panda', i:1e7, r:4.5, v:'83.4K', m:'ads', k:'one', mo:1.5},
+ {n:'Idle Slayer', d:'Pablo Leban', i:5e6, r:4.6, v:'133K', m:'ads', k:'toy', mo:10, solo:1},
+ {n:'Antimatter Dimensions', d:'Jakub Kajfosz', i:1e6, r:4.8, v:'35.6K', m:'iap', k:'num', mo:3, solo:1},
+ {n:'Idle Obelisk Miner', d:'Checkbox Ent.', i:1e6, r:4.8, v:'30.7K', m:'iap', k:'txt', mo:3, solo:1},
+ {n:'Idle Dot Shooter!', d:'Infinity Games', i:1e6, r:4.3, v:'16.2K', m:'ads', k:'toy', mo:2},
+ {n:'Leaf Blower Revolution', d:'Humble North', i:1e6, r:4.8, v:'9.26K', m:'iap', k:'one', mo:8},
+ {n:'Revolution Idle', d:'Oni Gaming', i:5e5, r:4.8, v:'43.1K', m:'ads', k:'num', mo:2, solo:1},
+ {n:'IdleMMO', d:'Galahad Creative', i:5e5, r:4.5, v:'14.8K', m:'iap', k:'txt', mo:14},
+ {n:'Melvor Idle', d:'Jagex', i:5e5, r:3.7, v:'12.6K', m:'iap', k:'txt', mo:18},
+ {n:'Cell: Idle Factory', d:'Octocube Games', i:5e5, r:4.2, v:'—', m:'ads', k:'num', mo:6},
+ {n:'Idle Iktah', d:'Grounded Games', i:1e5, r:4.6, v:'6.7K', m:'iap', k:'txt', mo:12},
+ {n:'Scritchy Scratchy', d:'Funday Games', i:1e5, r:4.7, v:'6.1K', m:'iap', k:'toy', mo:4},
+ {n:'Magic Research', d:'Maticolotto', i:1e5, r:4.7, v:'2.06K', m:'paid', k:'txt', mo:4, solo:1},
+ {n:'Pincremental', d:'Makopaz', i:1e5, r:3.9, v:'1.4K', m:'iap', k:'toy', mo:2, solo:1},
+ {n:'Idle Mow', d:'GREENSTAR', i:1e5, r:4.6, v:'520', m:'ads', k:'one', mo:1.5},
+ {n:'Universal Paperclips', d:'Everybody House', i:5e4, r:4.3, v:'2.02K', m:'paid', k:'txt', mo:1},
+ {n:'Scratch Inc.', d:'Makopaz', i:5e4, r:4.6, v:'2.68K', m:'iap', k:'toy', mo:1.5, solo:1},
+ {n:'Archmage Idle', d:'TopCog', i:5e4, r:4.7, v:'1.83K', m:'ads', k:'txt', mo:5},
+ {n:'Idle Runeloop', d:'ShimmerGames', i:1e4, r:4.3, v:'1.31K', m:'ads', k:'toy', mo:5},
+ {n:'Tap Knight', d:'Pixel Balloon', i:1e4, r:4.3, v:'272', m:'iap', k:'toy', mo:6},
+ {n:'Droplet Idle', d:'Mental Health Sol.', i:5e3, r:3.9, v:'208', m:'ads', k:'one', mo:2},
+ {n:'Idle Pact', d:'J. S. Fischer', i:5e3, r:4.3, v:'125', m:'ads', k:'num', mo:3, solo:1},
+];
+const band = i => i>=1e8?'100M+':i>=1e7?'10M+':i>=5e6?'5M+':i>=1e6?'1M+':i>=5e5?'500K+':i>=1e5?'100K+':i>=5e4?'50K+':i>=1e4?'10K+':'5K+';
+const MCHIP = {ads:['ads','Ads + IAP'], iap:['iap','IAP, no ads'], paid:['paid','Premium']};
+
+/* ---- ledger ---- */
+const L = document.getElementById('ledger');
+L.innerHTML = '<div class="head"><span>Game</span><span>Play installs (log)</span><span>Rating</span><span>Reviews</span><span>Money</span><span></span></div>' +
+  DATA.map(g=>{
+    const w = Math.max(2,(Math.log10(g.i)-3.5)/(8-3.5)*100);
+    const [cls,lab] = MCHIP[g.m];
+    return `<div class="row">
+      <div class="nm"><i style="background:${A[g.k]}"></i><b>${g.n}</b><span>${g.d}</span></div>
+      <div><div class="bar" style="width:${w}%;background:${A[g.k]}"><b>${band(g.i)}</b></div></div>
+      <div class="num"><b>${g.r}</b></div>
+      <div class="num">${g.v}</div>
+      <div><span class="chip ${cls}">${lab}</span></div>
+      <div>${g.solo?'<span class="solo">Solo dev</span>':''}</div>
+    </div>`;
+  }).join('');
+
+/* ---- scatter ---- */
+const S = document.getElementById('scatter');
+const W=1060,H=600,PL=74,PR=26,PT=26,PB=58;
+const xs = m => PL + (Math.log10(m)-Math.log10(0.7))/(Math.log10(32)-Math.log10(0.7))*(W-PL-PR);
+const ys = i => H-PB - (Math.log10(i)-3.5)/(8-3.5)*(H-PT-PB);
+let s='';
+[[1e4,'10K'],[1e5,'100K'],[1e6,'1M'],[1e7,'10M'],[1e8,'100M']].forEach(([v,l])=>{
+  s+=`<line x1="${PL}" y1="${ys(v)}" x2="${W-PR}" y2="${ys(v)}" stroke="#e3d8c6"/>`;
+  s+=`<text x="${PL-10}" y="${ys(v)+4}" text-anchor="end" font-size="12" font-weight="800" fill="#6f655b">${l}</text>`;
+});
+[[1,'1 month'],[3,'3'],[6,'6'],[12,'1 year'],[24,'2 years+']].forEach(([v,l])=>{
+  s+=`<line x1="${xs(v)}" y1="${PT}" x2="${xs(v)}" y2="${H-PB}" stroke="#efe5d3"/>`;
+  s+=`<text x="${xs(v)}" y="${H-PB+22}" text-anchor="middle" font-size="12" font-weight="800" fill="#6f655b">${l}</text>`;
+});
+s+=`<line x1="${xs(3)}" y1="${PT}" x2="${xs(3)}" y2="${H-PB}" stroke="#2f2a25" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+s+=`<text x="${xs(3)-10}" y="${PT+16}" text-anchor="end" font-size="11.5" font-weight="800" fill="#2f2a25">one quarter, one person</text>`;
+s+=`<text transform="translate(18,${(PT+H-PB)/2}) rotate(-90)" text-anchor="middle" font-size="11" font-weight="800" fill="#6f655b">PLAY INSTALLS</text>`;
+s+=`<text x="${W-PR}" y="${H-PB+42}" text-anchor="end" font-size="11" font-weight="800" fill="#6f655b">ESTIMATED SOLO BUILD TIME TO v1 →</text>`;
+// place dots, then push labels apart so none overlap
+const pts = DATA.map(g=>({g, x:xs(g.mo), y:ys(g.i)}));
+// nudge dots that land on the exact same spot
+const seen={};
+pts.forEach(p=>{const k=p.x.toFixed(1)+'|'+p.y.toFixed(1); seen[k]=(seen[k]||0)+1; p.y += (seen[k]-1)*15;});
+const boxes=[];
+// dots are obstacles too, so a label never runs across one
+pts.forEach(p=>{const r=(p.g.solo?8:6)+3; boxes.push({x0:p.x-r,x1:p.x+r,y:p.y+4,dot:1});});
+pts.sort((a,b)=>a.y-b.y).forEach(p=>{
+  const g=p.g, r=g.solo?8:6;
+  const right = p.x < W*0.60;
+  const w = g.n.length*6.5+10;
+  let ly=p.y+4, tries=0;
+  const hit = y => boxes.some(b=>{
+    const x0 = right?p.x+r+7:p.x-r-7-w, x1 = right?p.x+r+7+w:p.x-r-7;
+    return !(x1<b.x0-4 || x0>b.x1+4) && Math.abs(y-b.y)<(b.dot?12:13.5);
+  });
+  while(hit(ly) && tries<30){ tries++; ly = p.y+4 + (tries%2?1:-1)*Math.ceil(tries/2)*14; }
+  const x0 = right?p.x+r+7:p.x-r-7-w, x1 = right?p.x+r+7+w:p.x-r-7;
+  boxes.push({x0,x1,y:ly});
+  s+=`<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${A[g.k]}" stroke="#fffaf1" stroke-width="${g.solo?3:1.5}"/>`;
+  if(Math.abs(ly-(p.y+4))>6){
+    const lx = right?p.x+r+4:p.x-r-4;
+    s+=`<line x1="${p.x}" y1="${p.y}" x2="${lx}" y2="${ly-4}" stroke="#c9bda9" stroke-width="1"/>`;
+  }
+  s+=`<text x="${right?p.x+r+7:p.x-r-7}" y="${ly}" text-anchor="${right?'start':'end'}" font-size="12" font-weight="${g.solo?800:600}" fill="#2f2a25">${g.n}</text>`;
+});
+s+=`<g transform="translate(${PL+16},${H-PB-16})"><circle cx="8" cy="-4" r="8" fill="none" stroke="#2f2a25" stroke-width="3"/><text x="24" y="0" font-size="12" font-weight="800" fill="#2f2a25">thick ring = solo developer</text></g>`;
+S.innerHTML=s;
+</script>
+</body>
+</html>
