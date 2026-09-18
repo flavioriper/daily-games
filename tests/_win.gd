@@ -74,7 +74,7 @@ func _note(id: String) -> String:
 		"pipes": return "%d pieces, %d drains, camera fit=%s, hud=%s" % [
 			_puzzle._placed.size(), _puzzle._drains.size(), _fit_ok, _hud_ok]
 		"untangle": return "%d crossings, camera fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
-		"shikaku": return "%d plots, camera fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
+		"shikaku", "shikaku_island": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, camera fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
 		"lightup": return "%d lanterns, camera fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
 		"oneline": return "%d planks walked, camera fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
@@ -93,7 +93,7 @@ func _solve(id: String) -> void:
 		"balance_island": _solve_balance()
 		"pipes": _solve_pipes()
 		"untangle": _solve_untangle()
-		"shikaku": _solve_shikaku()
+		"shikaku", "shikaku_island": _solve_shikaku()
 		"tents": _solve_tents()
 		"lightup": _solve_lightup()
 		"oneline": _solve_oneline()

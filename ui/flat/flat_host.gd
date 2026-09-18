@@ -9,9 +9,10 @@ extends "res://ui/puzzle_host.gd"
 ##
 ## The one row the flat screens do not share is the tray: Binairo arms a
 ## brush from three symbol chips, Code Break seats a friend from six or
-## seven, Balance steps a weight from one card per fruit. The registry names
-## which (`"tray": "friends"`, `"weights"`), because the host lays out its
-## rows before it has a puzzle to ask.
+## seven, Balance steps a weight from one card per fruit, and Shikaku picks
+## nothing up at all. The registry names which (`"tray": "friends"`,
+## `"weights"`, `"none"`), because the host lays out its rows before it has
+## a puzzle to ask.
 ##
 ## Nor do they all carry an actions row. A board that is its own continuous
 ## check has nothing to put in one -- no Check, and Reset riding up in the
@@ -147,33 +148,45 @@ func _build_chrome(root: VBoxContainer) -> void:
 	_bottom_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_bottom_slot)
 	_bottom_stack = _stack(_bottom_slot)
+	# The rows this screen actually has, so the slot's playing height is the
+	# sum of them and the gaps between them -- never a constant, since the
+	# four screens no longer agree on either row.
+	var rows: Array[float] = []
 	match str(_entry.get("tray", "symbols")):
+		"none":
+			# Shikaku picks nothing up: there is no brush, no seat and no
+			# weight, so the row is never built.
+			tray = null
 		"friends":
 			tray = FriendTray.new()
 			tray.pick.connect(_on_pick)
-			_bottom_play = FriendTray.HEIGHT
+			rows.append(FriendTray.HEIGHT)
 		"weights":
 			tray = WeightTray.new()
 			tray.step.connect(_on_step)
-			_bottom_play = WeightTray.HEIGHT
+			rows.append(WeightTray.HEIGHT)
 		_:
 			tray = SymbolTray.new()
 			tray.pick.connect(_on_brush)
-			_bottom_play = SymbolTray.HEIGHT
-	tray.name = "Tray"
-	_bottom_stack.add_child(tray)
+			rows.append(SymbolTray.HEIGHT)
+	if tray != null:
+		tray.name = "Tray"
+		_bottom_stack.add_child(tray)
 	if with_actions:
 		action_bar = FlatActions.new()
 		action_bar.name = "Actions"
 		action_bar.reset.connect(_on_reset)
 		action_bar.check.connect(_on_check)
 		_bottom_stack.add_child(action_bar)
-		_bottom_play += GAP + FlatActions.BUTTON.y
+		rows.append(FlatActions.BUTTON.y)
 	tip_card = TipCard.new()
 	tip_card.name = "TipCard"
 	tip_card.open.connect(_open_rules)
 	_bottom_stack.add_child(tip_card)
-	_bottom_play += GAP + TipCard.HEIGHT
+	rows.append(TipCard.HEIGHT)
+	_bottom_play = GAP * (rows.size() - 1)
+	for row in rows:
+		_bottom_play += row
 	_bottom_slot.custom_minimum_size.y = _bottom_play
 	_win_stack = _stack(_bottom_slot)
 	_win_stack.name = "WinStack"
@@ -223,7 +236,8 @@ func _stack(slot: Control) -> VBoxContainer:
 func _enter() -> void:
 	top_bar.enter(ENTER_TOP)
 	day_card.enter(ENTER_CARDS)
-	tray.enter(ENTER_TRAY)
+	if tray != null:
+		tray.enter(ENTER_TRAY)
 	if action_bar != null:
 		action_bar.enter(ENTER_ACTIONS)
 	tip_card.enter(ENTER_TIP)
@@ -231,7 +245,8 @@ func _enter() -> void:
 func _refresh() -> void:
 	super()
 	var p = _puzzle if is_instance_valid(_puzzle) else null
-	tray.refresh(p)
+	if tray != null:
+		tray.refresh(p)
 	tip_card.refresh(p)
 
 ## The weights tray asked for one unit onto or off a kind. The board decides

@@ -36,7 +36,12 @@ extends Control
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 
-enum Expr { HAPPY, JOY, WORRIED, SLEEPY }
+## HAPPY, JOY, WORRIED and SLEEPY are the flat Binairo's four. STRAIN and
+## PUZZLED joined for Shikaku's markers, which wear four states and need
+## four faces to tell them apart: a plot of the wrong size strains, and one
+## holding two numbers or none is puzzled
+## (docs/superpowers/specs/2026-09-18-shikaku-flat-design.md, section 4).
+enum Expr { HAPPY, JOY, WORRIED, SLEEPY, STRAIN, PUZZLED }
 
 ## One blink, shut and open again.
 const BLINK_TIME := 0.14
@@ -251,7 +256,9 @@ func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> Array
 ## scale R about `centre`, in `ink`: number for number the mock's faceParts.
 ## HAPPY is round eyes with a catchlight and a smile; JOY shut arches over
 ## the open mouth with its tongue; WORRIED round eyes under slanted brows and
-## a small round mouth; SLEEPY the happy face with its lids down.
+## a small round mouth; SLEEPY the happy face with its lids down; STRAIN the
+## same slanted brows over a flat mouth; PUZZLED one raised brow over a
+## small wavering frown.
 func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) -> void:
 	if plain:
 		return
@@ -266,10 +273,25 @@ func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) 
 		b.ellipse(e, 0.1 * R, maxf(0.012 * R, 0.1 * R * eye), ink)
 		if eye > 0.5:
 			b.disc(e + Vector2(-0.03, -0.035) * R, 0.03 * R, Color(1.0, 1.0, 1.0, 0.9))
-		if expression == Expr.WORRIED:
+		if expression == Expr.WORRIED or expression == Expr.STRAIN:
 			b.stroke(PackedVector2Array([e + Vector2(sx * 0.16, -0.2) * R, e + Vector2(-sx * 0.1, -0.3) * R]), 0.06 * R, ink)
+		# One brow, and only the right one: two raised brows read as surprise,
+		# where the mock's puzzled face is asking a question.
+		if expression == Expr.PUZZLED and sx > 0.0:
+			b.stroke(PackedVector2Array([e + Vector2(-0.14, -0.26) * R, e + Vector2(0.14, -0.2) * R]), 0.06 * R, ink)
 	if expression == Expr.WORRIED:
 		b.stroke(Builder.ring(centre + Vector2(0.0, 0.3 * R), 0.08 * R, 0.08 * R), 0.06 * R, ink, true)
+		return
+	if expression == Expr.STRAIN:
+		b.stroke(PackedVector2Array([centre + Vector2(-0.16, 0.3) * R, centre + Vector2(0.16, 0.3) * R]), 0.06 * R, ink)
+		return
+	if expression == Expr.PUZZLED:
+		# bezier2 carries its own start point and drops its end, so the last
+		# point is appended rather than the first.
+		var frown := Builder.bezier2(centre + Vector2(-0.16, 0.32) * R,
+			centre + Vector2(0.0, 0.2) * R, centre + Vector2(0.16, 0.32) * R)
+		frown.append(centre + Vector2(0.16, 0.32) * R)
+		b.stroke(frown, 0.06 * R, ink)
 		return
 	var big := expression == Expr.JOY
 	var mouth := centre + Vector2(0.0, (0.08 if big else 0.1) * R)

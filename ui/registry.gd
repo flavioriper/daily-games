@@ -117,7 +117,26 @@ const PUZZLES := [
 		"blurb": "Cut the field into numbered plots.",
 		"motto": "Every plot has its number",
 		"footer": "Divide · Count · Enclose",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-shikaku-flat-design.md).
+		# It picks nothing up, so it asks for no tray; it does have a Check,
+		# so unlike Balance it keeps the actions row.
+		"script": "res://puzzles/shikaku2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Shikaku, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both cut the same field.
+		"id": "shikaku_island",
+		"kind": "puzzle",
+		"title": "Shikaku",
+		"blurb": "The island board, for comparison.",
+		"motto": "Every plot has its number",
+		"footer": "Divide · Count · Enclose",
 		"script": "res://puzzles/shikaku3d.gd",
+		"seed_as": "shikaku",
 		"difficulties": [0, 1, 2],
 	},
 	{

@@ -108,6 +108,23 @@ const SCALE_WOOD   := Color("c9a678")   # the beam
 const SCALE_DEEP   := Color("a3814f")   # the post, the dish, the beam's shade
 const SCALE_DARK   := Color("8d6c41")   # the base, the hub, the cords
 
+# The flat Shikaku's field (docs/superpowers/specs/2026-09-18-shikaku-flat-design.md,
+# section 3): garden beds fenced with rails, under signpost markers. The
+# island's PLOT_* and WALL_STONE above are stone and sand, because a board
+# out on the water is built of what the island is; a bed drawn flat on
+# parchment has to read as dug ground instead, so these are the mock's own
+# earth. A settled marker's plaque is LEAF over LEAF_DEEP and a wrong one
+# BAD -- the greens and the rose the rest of the family already wears.
+const BED_GROUND  := Color("e6d8b8")   # a cell no plot has claimed
+const BED_LINE    := Color("d3c19c")   # the faint grid drawn over it
+const BED_SOIL    := Color("9e7048")   # a claimed plot's tilled earth
+const BED_FURROW  := Color("7d5836")   # the dashed grain along its rows
+const BED_BLUSH   := Color("e8b6ad")   # a bed holding two numbers or none
+const FENCE_RAIL  := Color("dcbb8c")   # the fence's lit top rail
+const FENCE_DARK  := Color("8d6c41")   # its shade, and a marker's stake
+const FENCE_POST  := Color("a3814f")   # the posts where fence runs meet
+const MARKER_DEEP := Color("b4533f")   # a wrong marker's bottom edge
+
 # Pipes (docs/art/concept-pipes.png): chrome when dry, lit blue when fed. The
 # water inside the tube is WATER / WATER_HI, already defined above, and its
 # bubbles are MOON.
