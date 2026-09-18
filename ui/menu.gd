@@ -15,6 +15,7 @@ const Progress = preload("res://core/progress.gd")
 const Registry = preload("res://ui/registry.gd")
 const Host = preload("res://ui/puzzle_host.gd")
 const TurnHost = preload("res://ui/turn_host.gd")
+const FlatHost = preload("res://ui/flat/flat_host.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const TitleView = preload("res://ui/hud/title_view.gd")
@@ -247,7 +248,7 @@ func _open(entry: Dictionary) -> void:
 		host = TurnHost.new()
 		host.setup(entry)
 	else:
-		host = Host.new()
+		host = FlatHost.new() if Registry.shell(entry) == "flat" else Host.new()
 		host.setup(entry, 1)
 	host.closed.connect(func():
 		host.queue_free()

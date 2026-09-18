@@ -55,16 +55,28 @@ static func make() -> Theme:
 	_label(theme, "OnSlateTitle", display(600), 40, Pal.MOON)
 	_label(theme, "OnSlateBody", body(500), 30, Pal.MOON)
 	_label(theme, "Badge", display(700), 26, Pal.SURFACE)
+	# The flat Binairo's lettering (docs/superpowers/specs/2026-09-18-binairo-flat-design.md):
+	# the wordmark in ink where the other boards carry a carved sign, its
+	# motto under it, and the win screen's headline.
+	_label(theme, "Wordmark2D", display(700, 2), 84, Pal.TEXT)
+	_label(theme, "FlatMotto", body(700, 2), 24, Pal.TEXT_DIM)
+	_label(theme, "WellDone", display(700), 96, Pal.TEXT)
+	_label(theme, "CardBodyDim", body(500), 30, Pal.TEXT_DIM)
+	_label(theme, "TipBody", body(500), 32, Pal.TEXT)
 	# Button variations.
 	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)
 	_variant(theme, "DarkButton", display(700), 40, Pal.SLATE, Pal.SLATE_GIVEN, 8, 32, Pal.MOON)
+	# The flat screen's sun button: PrimaryButton with its label in white, as
+	# the reference letters it.
+	_variant(theme, "SunButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.SURFACE)
 	_theme = theme
 	return theme
 
-## The rounded display face at a weight (Fredoka).
-static func display(weight: int) -> FontVariation:
-	return _font(DISPLAY_PATH, weight)
+## The rounded display face at a weight (Fredoka), optionally letter-spaced
+## by `spacing` pixels between glyphs.
+static func display(weight: int, spacing := 0) -> FontVariation:
+	return _font(DISPLAY_PATH, weight, spacing)
 
 ## The body face at a weight (Nunito), optionally letter-spaced by `spacing`
 ## pixels between glyphs.

@@ -11,7 +11,23 @@ const PUZZLES := [
 		"blurb": "Suns and moons. Never three alike in a line.",
 		"motto": "Balance brings harmony",
 		"footer": "Think · Balance · Complete",
+		# The flat 2D board under the flat chrome, on trial against the island
+		# below (docs/superpowers/specs/2026-09-18-binairo-flat-design.md).
+		"script": "res://puzzles/binairo2d.gd",
+		"shell": "flat",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		# The island Binairo, kept on the menu while the two are judged. It
+		# shares the flat card's day seed, so both show the same puzzle.
+		"id": "binairo_island",
+		"kind": "puzzle",
+		"title": "Binairo",
+		"blurb": "The island board, for comparison.",
+		"motto": "Balance brings harmony",
+		"footer": "Think · Balance · Complete",
 		"script": "res://puzzles/binairo3d.gd",
+		"seed_as": "binairo",
 		"difficulties": [0, 1, 2],
 	},
 	{
@@ -156,3 +172,8 @@ static func find(id: String) -> Dictionary:
 ## were before turns existed.
 static func kind(entry: Dictionary) -> String:
 	return str(entry.get("kind", "puzzle"))
+
+## Which shell hosts the entry: "island" (ui/puzzle_host.gd, the stage and
+## its wood signs) unless the entry asks for "flat" (ui/flat/flat_host.gd).
+static func shell(entry: Dictionary) -> String:
+	return str(entry.get("shell", "island"))

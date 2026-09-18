@@ -20,6 +20,11 @@ var _inner: Container
 var _entrance: Array[Tween] = []
 
 func _ready() -> void:
+	# The panel's own rect takes no input; its contents do. While a panel's
+	# entrance still has `_inner` displaced, a neighbour's displaced buttons
+	# can lie over this rect, and a Control that stopped input here would
+	# swallow their taps (found by tests/_win.gd on the flat screen).
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_inner = _make_inner()
 	add_child(_inner)
 	_inner.minimum_size_changed.connect(_update_min)

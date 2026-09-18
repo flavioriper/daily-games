@@ -1,0 +1,133 @@
+extends "res://ui/hud/panel.gd"
+
+## The flat screen's top row: back, the wordmark lettered in ink with the
+## leaf sprouting from it and the motto under, then undo, hint with its
+## bouncing count and settings. The same four signals as ui/hud/top_bar.gd,
+## the same buttons; only the title differs, a Label where the other boards
+## carry the carved sign. That departure from the sign rule is on purpose and
+## for this screen only (spec section 3).
+## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 3.
+
+signal back
+signal undo
+signal hint
+signal settings
+
+const IconButton = preload("res://ui/hud/icon_button.gd")
+const Icons = preload("res://ui/icons.gd")
+
+const HEIGHT := 180.0
+const BUTTON := Vector2(110, 110)
+const BADGE_HOP := -6.0
+const BADGE_HOP_TIME := 0.3
+const BADGE_CYCLE := 2.4
+## The leaf stands over the gap before the wordmark's last letter: this far
+## right of the title's centre, as a fraction of its width.
+const LEAF_AT := 0.2
+const LEAF := 40.0
+
+var title_text := ""
+var motto_text := ""
+var back_button: Button
+var undo_button: Button
+var hint_button: Button
+var settings_button: Button
+var _title: Label
+var _motto: Label
+var _block: Control
+var _bounce: Tween
+
+func _init(title := "", motto := "") -> void:
+	title_text = title.to_upper()
+	motto_text = motto.to_upper()
+	enter_from = Vector2(0, -80)
+
+func _make_inner() -> Container:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	return row
+
+func _build() -> void:
+	back_button = _button("chevron_left", back)
+	_block = Control.new()
+	_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_block.custom_minimum_size.y = HEIGHT
+	_block.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_inner.add_child(_block)
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_block.add_child(col)
+	_title = Label.new()
+	_title.theme_type_variation = "Wordmark2D"
+	_title.text = title_text
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_title)
+	_motto = Label.new()
+	_motto.theme_type_variation = "FlatMotto"
+	_motto.text = motto_text
+	_motto.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_motto.visible = motto_text != ""
+	col.add_child(_motto)
+	# The leaf draws over the block once the title has a size to hang from.
+	var leaf := Control.new()
+	leaf.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	leaf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	leaf.draw.connect(_draw_leaf.bind(leaf))
+	_block.add_child(leaf)
+	_title.resized.connect(leaf.queue_redraw)
+	undo_button = _button("undo", undo)
+	hint_button = _button("bulb", hint)
+	settings_button = _button("gear", settings)
+
+## A button keeps its own square and sits centred on the row, as the other
+## top bar's do.
+func _button(icon: String, sig: Signal) -> Button:
+	var b := IconButton.new(icon)
+	b.custom_minimum_size = BUTTON
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.pressed.connect(func() -> void: sig.emit())
+	_inner.add_child(b)
+	return b
+
+## A stem rising from the title's top edge with two leaves, over the gap
+## before the last letter. Drawn in the block's space from the title's own
+## rect, so it follows the lettering wherever the row puts it.
+func _draw_leaf(ci: Control) -> void:
+	if _title == null or _title.size.x <= 0.0:
+		return
+	var text_w: float = _title.get_minimum_size().x
+	var top: Vector2 = _title.position + Vector2(_title.size.x * 0.5 + text_w * LEAF_AT, _title.size.y * 0.16)
+	var tip := top + Vector2(2.0, -30.0)
+	ci.draw_polyline(PackedVector2Array([top, top + Vector2(4.0, -16.0), tip]), Pal.LEAF, 7.0, true)
+	# The leaf icon points to the upper right; the mirrored rect turns one to
+	# the upper left.
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-LEAF, -LEAF * 0.9), Vector2(LEAF, LEAF)), Pal.LEAF)
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(LEAF * 0.9, -LEAF * 0.7), Vector2(-LEAF * 0.85, LEAF * 0.85)), Pal.LEAF)
+
+func refresh(puzzle) -> void:
+	var caps: Array = puzzle.capabilities() if puzzle != null else []
+	var done: bool = puzzle != null and puzzle.is_done()
+	undo_button.visible = caps.has("undo")
+	hint_button.visible = caps.has("hint")
+	undo_button.set_enabled(puzzle != null and puzzle.can_undo() and not done)
+	var left: int = puzzle.hints_left() if puzzle != null else 0
+	hint_button.set_enabled(left > 0 and not done)
+	hint_button.badge = left
+	_set_bounce(hint_button.visible and left > 0 and not done)
+
+## The badge hops every BADGE_CYCLE seconds while hints remain, as on the
+## island's bar. Under reduce-motion hop returns null and the badge stays put.
+func _set_bounce(on: bool) -> void:
+	if not on:
+		Motion.stop(_bounce)
+		_bounce = null
+		return
+	if Motion.running(_bounce):
+		return
+	var badge: Control = hint_button.badge_node()
+	_bounce = hint_button.create_tween().set_loops()
+	_bounce.tween_callback(func() -> void: Motion.hop(badge, BADGE_HOP, BADGE_HOP_TIME, 0.0, hint_button.badge_rest.y))
+	_bounce.tween_interval(BADGE_CYCLE)

@@ -67,6 +67,27 @@ func _ready() -> void:
 	root.add_theme_constant_override("separation", GAP)
 	margins.add_child(root)
 
+	_build_chrome(root)
+	_build_overlay()
+	rules_sheet = RulesSheet.new()
+	rules_sheet.name = "RulesSheet"
+	add_child(rules_sheet)
+	settings_sheet = SettingsSheet.new()
+	settings_sheet.name = "SettingsSheet"
+	settings_sheet.reduce_changed.connect(_on_reduce_changed)
+	settings_sheet.new_puzzle.connect(_on_new)
+	add_child(settings_sheet)
+
+	# A second card for the same board (the island Binairo beside the flat one)
+	# names the entry it shares its day with, so both show the same puzzle.
+	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", _entry.id)), _difficulty))
+	_enter()
+
+## The rows of the HUD, top to bottom, into `root`: the top bar, the cards
+## row, the board slot, the action bar and the motto footer. The flat host
+## (ui/flat/flat_host.gd) overrides this and nothing else of the layout; every
+## handler below reads the panels through the fields this fills.
+func _build_chrome(root: VBoxContainer) -> void:
 	# --- top bar ---
 	top_bar = TopBar.new(_entry.get("title", ""), _entry.get("motto", ""))
 	top_bar.name = "TopBar"
@@ -121,18 +142,6 @@ func _ready() -> void:
 	footer.visible = footer.text != ""
 	root.add_child(footer)
 
-	_build_overlay()
-	rules_sheet = RulesSheet.new()
-	rules_sheet.name = "RulesSheet"
-	add_child(rules_sheet)
-	settings_sheet = SettingsSheet.new()
-	settings_sheet.name = "SettingsSheet"
-	settings_sheet.reduce_changed.connect(_on_reduce_changed)
-	settings_sheet.new_puzzle.connect(_on_new)
-	add_child(settings_sheet)
-
-	_spawn(DailySeed.seed_for(_entry.id, _difficulty))
-	_enter()
 
 func _build_overlay() -> void:
 	_overlay = ColorRect.new()

@@ -39,6 +39,17 @@ const WATER_HI    := Color("5fb0e8")   # water's shallow-depth band and splash r
 const SUN_DEEP    := Color("d88a12")   # primary button's bottom edge
 const PARCHMENT   := Color("f3e9d2")   # rules card
 
+# The flat Binairo (docs/superpowers/specs/2026-09-18-binairo-flat-design.md,
+# section 4): the checker's light tile, the sun's rays, the two palette-chip
+# fills, the moon's ink and its deeper shade, and the faces' cheeks.
+const TILE_LIGHT  := Color("fbf6ea")
+const SUN_RAY     := Color("f9c04a")
+const SUN_TILE    := Color("fff1d6")
+const MOON_INK    := Color("7d8fd9")
+const MOON_DEEP   := Color("6273c0")
+const MOON_TILE   := Color("e9ecfa")
+const CHEEK       := Color("f4a7a0")
+
 # Code Break pegs (docs/art/concept-codebreak.png): red, yellow, blue, green,
 # purple, pink, orange. Index order is the difficulty's palette order; every
 # peg also carries a pip mark, so colour never stands alone.

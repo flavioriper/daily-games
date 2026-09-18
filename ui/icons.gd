@@ -6,7 +6,7 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
-	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye"]
+	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -50,6 +50,12 @@ static func shape(name: String) -> Dictionary:
 			return _turn()
 		"eye":
 			return _eye()
+		"tree":
+			return _tree()
+		"cross":
+			return {"polys": [], "lines": [
+				PackedVector2Array([Vector2(0.28, 0.28), Vector2(0.72, 0.72)]),
+				PackedVector2Array([Vector2(0.72, 0.28), Vector2(0.28, 0.72)])]}
 	return {"polys": [], "lines": []}
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw
@@ -140,6 +146,15 @@ static func _island() -> Dictionary:
 	var canopy_right := circle(Vector2(0.63, 0.37), 0.11)
 	var wave := PackedVector2Array([Vector2(0.06, 0.9), Vector2(0.2, 0.86), Vector2(0.34, 0.9), Vector2(0.48, 0.86), Vector2(0.62, 0.9), Vector2(0.76, 0.86), Vector2(0.9, 0.9)])
 	return {"polys": [mound, canopy_big, canopy_left, canopy_right], "lines": [trunk, wave]}
+
+## A round tree on its own, for the flat day card: three lobes of crown over a
+## short trunk, the island icon's tree without the island.
+static func _tree() -> Dictionary:
+	var trunk := PackedVector2Array([Vector2(0.44, 0.58), Vector2(0.56, 0.58), Vector2(0.56, 0.92), Vector2(0.44, 0.92)])
+	var top := circle(Vector2(0.5, 0.32), 0.24)
+	var left := circle(Vector2(0.32, 0.46), 0.17)
+	var right := circle(Vector2(0.68, 0.46), 0.17)
+	return {"polys": [trunk, top, left, right], "lines": []}
 
 ## A question mark: the hook runs from 9 o'clock over the top and down into a
 ## short stem, with a dot beneath.

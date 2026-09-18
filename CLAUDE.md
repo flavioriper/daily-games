@@ -194,6 +194,36 @@ every layout change.
   Mac at phone resolution -- the cards are what a page costs, so a page, not
   the whole registry, is the unit to measure against the budget.
 
+## The flat Binairo, on trial beside the island
+
+Since 2026-09-18 the Binairo card opens a flat 2D board under flat chrome
+(`puzzles/binairo2d.gd` in `ui/flat/flat_host.gd`), and a second card,
+`binairo_island`, keeps the stage version reachable and seeded from the same
+day (`seed_as`), so both can be played and judged on the phone. The user is
+deciding whether the game goes 2D; nothing else has moved. Spec:
+`docs/superpowers/specs/2026-09-18-binairo-flat-design.md`, mock:
+`docs/brainstorm/concepts.html#binairo`.
+
+- **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
+  in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
+  it has no How to play card, working-line card or motto footer: a tip card
+  with a sprout names the rule a tap just broke and opens the rules sheet.
+  Nothing else may drop the sign; this screen is the experiment.
+- **The rules live in `puzzles/binairo_state.gd`**, a scene-free class the
+  flat board draws. The island script still carries its own copy until the
+  verdict; whichever board survives, the state is the one truth to keep.
+- **Faces are code, not images** (`ui/faces/`): one Control per sun, moon or
+  sprout, drawn from a few tweened properties (`expression`, `eye_open`,
+  `spin`, `rock`). Filled polygons get an antialiased outline in their own
+  colour; MSAA for the 2D canvas stays off.
+- **The flat host hides the stage** (`Stage.visible = false` and
+  `show_setting(false)`) while it is up, under an opaque paper page, and
+  shows it again on exit. The menu's `_show_list` restores the setting.
+- **The registry picks the shell**: `Registry.shell(entry)` is "island"
+  unless the entry says `"shell": "flat"`; `ui/menu.gd` builds the host
+  accordingly, and `ui/puzzle_host.gd` builds its rows in `_build_chrome`,
+  the one method the flat host overrides.
+
 ## Art: shading direction
 
 The look everything aims for is in `docs/art/shading-direction.md`: soft

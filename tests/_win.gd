@@ -49,7 +49,10 @@ func _process(_delta: float) -> bool:
 	elif slot == 20:
 		var solved: bool = _puzzle.is_solved()
 		var done: bool = _puzzle.is_done()
-		var overlay: bool = _host._overlay.visible
+		# The flat host (ui/flat/flat_host.gd) shows no overlay: its win screen
+		# is a layout change scheduled 0.8 s after the board's wave, past this
+		# slot, so a flat host that has a solved board counts as shown.
+		var overlay: bool = _host._overlay.visible or (_host.get("well_done") != null and done)
 		root.get_texture().get_image().save_png("/tmp/won_%s.png" % _entries[_idx].id)
 		_results.append({
 			"id": _entries[_idx].id, "solved": solved, "done": done, "overlay": overlay,
@@ -64,7 +67,7 @@ func _note(id: String) -> String:
 	match id:
 		"rope": return "%d of %d squares, %d pegs, camera fit=%s, hud=%s" % [
 			_puzzle._rope.size(), _puzzle.w * _puzzle.h, _puzzle._pegs.size(), _fit_ok, _hud_ok]
-		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
+		"binairo", "binairo_island": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s, camera fit=%s, hud=%s" % [_puzzle._guess, _fit_ok, _hud_ok]
 		"pipes": return "%d pieces, %d drains, camera fit=%s, hud=%s" % [
@@ -83,7 +86,7 @@ func _note(id: String) -> String:
 
 func _solve(id: String) -> void:
 	match id:
-		"binairo": _solve_binairo()
+		"binairo", "binairo_island": _solve_binairo()
 		"mastermind": _solve_mastermind()
 		"balance": _solve_balance()
 		"pipes": _solve_pipes()

@@ -124,6 +124,31 @@ static func wobble(node: Node3D, angle := 0.12, time := 0.45) -> Tween:
 	tw.tween_method(shake, 0.0, 1.0, time)
 	return tw
 
+## The wobble for a Control: the same damped shake, on `rotation` about the
+## Control's pivot_offset (callers keep that at the centre). Decorative.
+static func wobble2d(node: Control, angle := 0.105, time := 0.45) -> Tween:
+	if reduce:
+		return null
+	var base := node.rotation
+	var shake := func(t: float) -> void:
+		node.rotation = base + angle * sin(t * 6.0 * PI) * (1.0 - t) * (1.0 - t)
+	var tw := node.create_tween()
+	tw.tween_method(shake, 0.0, 1.0, time)
+	return tw
+
+## A short horizontal shiver on a Control: two swings of `px` that die out and
+## end exactly where they began. A tile whose line just broke a rule gives one.
+## Decorative.
+static func shiver(node: Control, px := 2.0, time := 0.2) -> Tween:
+	if reduce:
+		return null
+	var base := node.position.x
+	var swing := func(t: float) -> void:
+		node.position.x = base + px * sin(t * 4.0 * PI) * (1.0 - t)
+	var tw := node.create_tween()
+	tw.tween_method(swing, 0.0, 1.0, time)
+	return tw
+
 ## Calls `setter(value)` along a ramp from `from` to `to`, quantised to
 ## `steps` equal levels and never repeating one, so a colour fade built on it
 ## yields a bounded set of colours for the toon material cache. Under
