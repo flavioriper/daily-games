@@ -3,9 +3,11 @@ extends RefCounted
 ## What stands on the first screen, and what stands behind More.
 ##
 ## `PUZZLES` is the grid: twelve cards, three across and four down, in the
-## order they are drawn. Nine of them open a flat board; the last three name
-## a board that has never been drawn flat and say `soon` instead of opening
-## (ui/menu.gd draws them dimmed with no go button).
+## order they are drawn. Ten of them open a flat board; the last two name a
+## board that has never been drawn flat and say `soon` instead of opening
+## (ui/menu.gd draws them dimmed with no go button). Snake Apple's `soon`
+## card left the grid on 2026-09-19 to make room for Queens: it is the one
+## being redesigned outright, and its island board stays under More.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -148,9 +150,24 @@ const PUZZLES := [
 		"tray": "tiles",
 		"difficulties": [0, 1, 2],
 	},
-	# --- the last row: named, drawn, and not yet playable here. Each has a
-	# board on the stage behind More (`legacy` names it), and each comes back
-	# to this row the day it is drawn flat.
+	{
+		"id": "queens",
+		"kind": "puzzle",
+		"title": "Queens",
+		"blurb": "Seat one queen in every row, column and colour.",
+		"short": "One queen per row,\ncolumn and colour.",
+		"motto": "Every queen has her seat",
+		"footer": "Seat · Cross · Reign",
+		# Two chips, a crown and a cross, so it asks for the tile tray with
+		# the crown set.
+		"script": "res://puzzles/queens2d.gd",
+		"shell": "flat",
+		"tray": "crowns",
+		"difficulties": [0, 1, 2],
+	},
+	# --- the end of the last row: named, drawn, and not yet playable here.
+	# Each has a board on the stage behind More (`legacy` names it), and each
+	# comes back to this row the day it is drawn flat.
 	{
 		"id": "pipes",
 		"kind": "puzzle",
@@ -168,15 +185,6 @@ const PUZZLES := [
 		"short": "Pen the horse in\nwith hay bales.",
 		"soon": true,
 		"legacy": "horse_island",
-	},
-	{
-		"id": "snake",
-		"kind": "puzzle",
-		"title": "Snake Apple",
-		"blurb": "Eat every apple, then slip into the burrow.",
-		"short": "Eat every apple,\nthen burrow.",
-		"soon": true,
-		"legacy": "snake_island",
 	},
 ]
 

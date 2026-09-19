@@ -84,6 +84,7 @@ func _note(id: String) -> String:
 		"lightup", "lightup_island": return "%d lanterns, board fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
 		"oneline", "oneline_island": return "%d planks walked, board fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram", "nonogram_island": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
+		"queens": return "%dx%d court, %d queens, board fit=%s, hud=%s" % [_puzzle.n, _puzzle.n, _puzzle.state.queens.size(), _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -103,6 +104,7 @@ func _solve(id: String) -> void:
 		"lightup", "lightup_island": _solve_lightup()
 		"oneline", "oneline_island": _solve_oneline()
 		"nonogram", "nonogram_island": _solve_nonogram()
+		"queens": _solve_queens()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -462,6 +464,29 @@ func _solve_nonogram() -> void:
 				return
 			if int(_puzzle._bitmap[y][x]) == 1:
 				_tap_local(_puzzle.cell_to_local(y, x))
+
+## Queens: one hint (seats and pins a queen), one check, then the answer's
+## seat in every row the hint did not fill, tapped with the crown chip the
+## tray arms by default.
+func _solve_queens() -> void:
+	var n: int = _puzzle.n
+	# Board fit check: every cell centre must land inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in n:
+		for c in n:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	for r in n:
+		if _puzzle.is_done():
+			return
+		var cell := Vector2i(int(_puzzle.state.solution[r]), r)
+		if _puzzle.state.queens.has(cell):
+			continue
+		_tap_local(_puzzle.cell_to_local(r, cell.x))
 
 func _solve_horse() -> void:
 	var w: int = _puzzle.w
