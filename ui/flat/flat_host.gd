@@ -176,6 +176,11 @@ func _build_chrome(root: VBoxContainer) -> void:
 			tray = TileTray.new()
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
+		"crowns":
+			# Queens' pair: the same tray as Nonogram's, with the crown set.
+			tray = TileTray.new(TileTray.CROWNS)
+			tray.pick.connect(_on_brush)
+			rows.append(TileTray.HEIGHT)
 		_:
 			tray = SymbolTray.new()
 			tray.pick.connect(_on_brush)

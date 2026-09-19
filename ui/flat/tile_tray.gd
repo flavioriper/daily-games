@@ -11,15 +11,24 @@ extends "res://ui/hud/panel.gd"
 ## which about 43 are tiles and 38 crosses. The tray is what makes that a
 ## screen you can play rather than one you grind.
 ##
-## The tray only asks; the puzzle owns the brush (`brush`, FILL or MARK) and
-## refresh() reads it back, so a board that drops the brush on a solve is
-## shown here too. `symbol_tray.gd`'s sibling.
-## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 6.
+## The tray only asks; the puzzle owns the brush (`brush`) and refresh()
+## reads it back, so a board that drops the brush on a solve is shown here
+## too. `symbol_tray.gd`'s sibling.
+##
+## Two boards wear it. It is built with a **chip set** -- what each chip
+## paints, the word it carries, its node name and which glyph it draws --
+## and there are two: MOSAIC, Nonogram's tile and cross, the default; and
+## CROWNS, Queens' crown and cross, which the registry asks for with
+## `"tray": "crowns"`. One tray, two sets, no copy.
+## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 6;
+## docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 6.
 
-## What the player chose: State.FILL or State.MARK.
+## What the player chose: one of the set's values.
 signal pick(v: int)
 
-const State = preload("res://puzzles/nonogram_state.gd")
+const NonogramState = preload("res://puzzles/nonogram_state.gd")
+const QueensState = preload("res://puzzles/queens_state.gd")
+const CrownFace = preload("res://ui/faces/crown_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 
@@ -43,15 +52,28 @@ const LABEL_Y := 62.0
 ## board's tenth of a cell: at 84 across, a tenth reads as a circle.
 const SOCKET_RADIUS := 12.0
 
-## Chip index -> brush value, and the word each carries.
-const VALUES := [State.FILL, State.MARK]
-const LABELS := ["Tile", "Cross"]
+## The two sets. `glyphs` names what the chip's picture is: a laid tile, a
+## pebble on its socket, or a crown (a CrownFace seated on the chip).
+const MOSAIC := {
+	"values": [NonogramState.FILL, NonogramState.MARK],
+	"labels": ["Tile", "Cross"],
+	"names": ["TileChip", "CrossChip"],
+	"glyphs": ["tile", "pebble"],
+}
+const CROWNS := {
+	"values": [QueensState.QUEEN, QueensState.CROSS],
+	"labels": ["Queen", "Cross"],
+	"names": ["QueenChip", "CrossChip"],
+	"glyphs": ["crown", "pebble"],
+}
 
 var chips: Array[Button] = []
+var _set: Dictionary = MOSAIC
 var _armed := -1
 var _lifts: Array = [null, null]
 
-func _init() -> void:
+func _init(chip_set: Dictionary = MOSAIC) -> void:
+	_set = chip_set
 	enter_from = Vector2(0, 100)
 
 func _make_inner() -> Container:
@@ -62,7 +84,7 @@ func _make_inner() -> Container:
 	return row
 
 func _build() -> void:
-	for i in VALUES.size():
+	for i in (_set.values as Array).size():
 		# A plain Control holds each chip so the lift can move the chip
 		# freely; a container would put it straight back.
 		var slot := Control.new()
@@ -70,7 +92,7 @@ func _build() -> void:
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_inner.add_child(slot)
 		var chip := Button.new()
-		chip.name = ["TileChip", "CrossChip"][i]
+		chip.name = str(_set.names[i])
 		chip.focus_mode = Control.FOCUS_NONE
 		chip.size = CHIP
 		chip.position = Vector2(0.0, LIFT)
@@ -80,18 +102,23 @@ func _build() -> void:
 		slot.add_child(chip)
 		chips.append(chip)
 
-		var glyph := Control.new()
+		var glyph: Control
+		if str(_set.glyphs[i]) == "crown":
+			# A crown is a face of its own and draws itself.
+			glyph = CrownFace.new()
+		else:
+			glyph = Control.new()
+			glyph.draw.connect(_draw_glyph.bind(glyph, i))
 		glyph.name = "Glyph"
 		glyph.size = Vector2.ONE * GLYPH
 		glyph.position = Vector2(GLYPH_X, GLYPH_Y) - glyph.size * 0.5
 		glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		glyph.draw.connect(_draw_glyph.bind(glyph, i))
 		chip.add_child(glyph)
 
 		var label := Label.new()
 		label.name = "Label"
 		label.theme_type_variation = "ChipLabel"
-		label.text = LABELS[i]
+		label.text = str(_set.labels[i])
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.position = Vector2(LABEL_X, LABEL_Y - CHIP.y * 0.5)
 		label.size = Vector2(CHIP.x - LABEL_X, CHIP.y)
@@ -104,7 +131,7 @@ func _build() -> void:
 func _draw_glyph(glyph: Control, i: int) -> void:
 	var b := Face.Builder.new()
 	var centre := glyph.size * 0.5
-	if VALUES[i] == State.FILL:
+	if str(_set.glyphs[i]) == "tile":
 		Mosaic.tile(b, centre, GLYPH, Vector2.ONE, false, 0.0, 1.0)
 	else:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
@@ -134,13 +161,13 @@ func _style(chip: Button, armed: bool) -> void:
 
 func _on_pressed(i: int) -> void:
 	Motion.squash(chips[i], SQUASH, Motion.CHIP_LIFT_TIME)
-	pick.emit(VALUES[i])
+	pick.emit(int(_set.values[i]))
 
 ## Reads the puzzle's brush and shows it: the armed chip lifts with the back
 ## ease and takes its border, the other settles back.
 func refresh(puzzle) -> void:
 	var brush: int = puzzle.get("brush") if puzzle != null and puzzle.get("brush") != null else -1
-	var armed := VALUES.find(brush)
+	var armed := (_set.values as Array).find(brush)
 	var done: bool = puzzle != null and puzzle.is_done()
 	for chip in chips:
 		chip.disabled = done
