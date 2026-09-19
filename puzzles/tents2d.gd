@@ -673,8 +673,10 @@ func _release() -> void:
 	var lay := _lay
 	var pending := _pending
 	var now := _now()
-	_clear_gesture()
+	# The pressed face springs back before the gesture is forgotten: the
+	# other order leaves a refused tree sunk at PRESS_SCALE for good.
 	_release_press()
+	_clear_gesture()
 	if cell.x < 0 or is_done():
 		_end_shades(now)
 		_redraw()

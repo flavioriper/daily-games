@@ -45,9 +45,15 @@ func _kind() -> String:
 	return "courtlamp%d%d_%d" % [int(bad), int(pinned), int(_lit_level() * 4.0)]
 
 func _layers() -> Array:
+	# The shadow is the parent's `casts` flag here too: the flat Light Up
+	# draws it on the court's own ground, so a hopping lamp leaves it behind.
+	var layers: Array = []
 	if _lit_level() > 0.0:
-		return [["glow", false], ["shadow", false], ["body", true]]
-	return [["shadow", false], ["body", true]]
+		layers.append(["glow", false])
+	if casts:
+		layers.append(["shadow", false])
+	layers.append(["body", true])
+	return layers
 
 func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 	var level := _lit_level()

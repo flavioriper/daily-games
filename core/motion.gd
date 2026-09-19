@@ -142,7 +142,7 @@ static func wobble(node: Node3D, angle := 0.12, time := 0.45) -> Tween:
 
 ## The wobble for a Control: the same damped shake, on `rotation` about the
 ## Control's pivot_offset (callers keep that at the centre). Decorative.
-static func wobble2d(node: Control, angle := 0.105, time := 0.45) -> Tween:
+static func wobble2d(node: Control, angle := WOBBLE_ANGLE, time := WOBBLE_TIME) -> Tween:
 	if reduce:
 		return null
 	var base := node.rotation
@@ -155,7 +155,7 @@ static func wobble2d(node: Control, angle := 0.105, time := 0.45) -> Tween:
 ## A short horizontal shiver on a Control: two swings of `px` that die out and
 ## end exactly where they began. A tile whose line just broke a rule gives one.
 ## Decorative.
-static func shiver(node: Control, px := 2.0, time := 0.2) -> Tween:
+static func shiver(node: Control, px := SHIVER_PX, time := SHIVER_TIME) -> Tween:
 	if reduce:
 		return null
 	var base := node.position.x
@@ -292,6 +292,12 @@ const SOLVE_DELAY := 0.25
 const CHIP_LIFT := 8.0
 const CHIP_LIFT_TIME := 0.18
 const CHIP_LIT := 0.35
+## The shiver and the wobble, so a board that reads them as curves has a
+## length to wait for that is not a copied number.
+const SHIVER_PX := 2.0
+const SHIVER_TIME := 0.2
+const WOBBLE_ANGLE := 0.105
+const WOBBLE_TIME := 0.45
 
 ## The press: `node` sinks to PRESS_SCALE of `base` under the finger and
 ## springs back to `base` with the back ease on release. The caller keeps
@@ -401,12 +407,15 @@ static func flash(node: Node, setter: Callable, from: float, peak: float, back: 
 
 # --- the same recipes, read as curves ---
 ## A board that draws its pieces into a mesh rather than as nodes (Shikaku's
-## beds, Untangle's rings) cannot call a recipe on them
+## beds, Untangle's rings, Light Up's blocks) cannot call a recipe on them
 ## (docs/art/flat-motion.md, rule 8). These read a recipe's shape `elapsed`
 ## seconds in, from the same constants, so the drawn thing and the tweened
 ## one move as one hand and no board copies a number. Before the start each
 ## returns its start state and after the end its final one, and under
 ## reduce-motion the final one at once, exactly as the recipe would land.
+## Every recipe a flat board calls on a node has its reader here (Light Up
+## completed the set on 2026-09-19 with the press, the hop, the nudge, the
+## shiver and the wobble), so a drawn board needs nothing new from this file.
 
 ## The back ease's overshoot, 0 to 1: the curve every pop above ends on.
 static func back_out(u: float) -> float:
@@ -473,6 +482,55 @@ static func flash_level(elapsed: float, time_in := FLASH_IN, time_out := FLASH_O
 		return elapsed / time_in
 	var u := (elapsed - time_in) / time_out
 	return 0.5 + 0.5 * cos(u * PI)
+
+## press's scale for a drawn thing: one to PRESS_SCALE with the sine over
+## PRESS_TIME from the moment the finger landed (`held` seconds ago), and
+## home with the back ease over RELEASE_TIME once it has lifted (`released`
+## seconds ago; negative while it is still down), from wherever the press
+## had got to. One under reduce-motion.
+static func press_scale(held: float, released := -1.0) -> float:
+	if reduce or held <= 0.0:
+		return 1.0
+	if released < 0.0:
+		return lerpf(1.0, PRESS_SCALE, sin(clampf(held / PRESS_TIME, 0.0, 1.0) * PI * 0.5))
+	if released >= RELEASE_TIME:
+		return 1.0
+	var at_release := lerpf(1.0, PRESS_SCALE,
+		sin(clampf((held - released) / PRESS_TIME, 0.0, 1.0) * PI * 0.5))
+	return lerpf(at_release, 1.0, back_out(released / RELEASE_TIME))
+
+## hop's lift from the rest: to `height` (negative is up, on a Control) with
+## the sine out over the first half of `time`, and back with the sine in
+## over the second. Zero before, after and under reduce-motion.
+static func hop_lift(elapsed: float, height := HOP, time := HOP_TIME) -> float:
+	if reduce or elapsed <= 0.0 or elapsed >= time:
+		return 0.0
+	var half := time * 0.5
+	if elapsed < half:
+		return height * sin(elapsed / half * PI * 0.5)
+	return height * cos((elapsed - half) / half * PI * 0.5)
+
+## nudge's lean along its direction: out `px` with the sine over the first
+## half of `time` after `delay`, and back with the sine in. Zero before,
+## after and under reduce-motion.
+static func nudge_offset(elapsed: float, px := NUDGE, time := NUDGE_TIME, delay := NUDGE_LAG) -> float:
+	return -hop_lift(elapsed - delay, -px, time)
+
+## shiver's offset along x: two swings of `px` dying out over `time`. Zero
+## before, after and under reduce-motion.
+static func shiver_offset(elapsed: float, px := SHIVER_PX, time := SHIVER_TIME) -> float:
+	if reduce or elapsed <= 0.0 or elapsed >= time:
+		return 0.0
+	var t := elapsed / time
+	return px * sin(t * 4.0 * PI) * (1.0 - t)
+
+## wobble2d's angle: three swings of `angle` dying out over `time`. Zero
+## before, after and under reduce-motion.
+static func wobble_angle(elapsed: float, angle := WOBBLE_ANGLE, time := WOBBLE_TIME) -> float:
+	if reduce or elapsed <= 0.0 or elapsed >= time:
+		return 0.0
+	var t := elapsed / time
+	return angle * sin(t * 6.0 * PI) * (1.0 - t) * (1.0 - t)
 
 ## Kills `tw` if it is still alive. Null-safe.
 static func stop(tw: Tween) -> void:

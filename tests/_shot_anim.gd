@@ -17,7 +17,9 @@ extends SceneTree
 ## count and the bed landing and the idle window has a bed and a fence in it.
 ## Tents is swept along its top row, so the strip shows the shade under the
 ## finger and the cairns arriving in a wave and the idle window has a row of
-## cairns in it.
+## cairns in it. Light Up has its first answer lamp set down, so the strip
+## shows the pop, the light travelling and the beam, and the idle window has
+## a lit lamp and its halo in it.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -101,6 +103,8 @@ func _process(delta: float) -> bool:
 			_begin_shikaku_drag()
 		elif _entry.id == "tents" and not _empty:
 			_begin_tents_sweep()
+		elif _entry.id == "lightup" and not _empty:
+			_tap_lightup()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -139,6 +143,13 @@ func _tap_first_free() -> void:
 				ev.position = at
 				root.push_input(ev, true)
 			return
+
+## Light Up: one real touch on the first lamp of the answer.
+func _tap_lightup() -> void:
+	if _puzzle._solution_bulbs.is_empty():
+		return
+	var b: Vector2i = _puzzle._solution_bulbs[0]
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(b.y, b.x))
 
 ## Balance: plus on the first card the player owns, through the real button.
 func _step_balance() -> void:

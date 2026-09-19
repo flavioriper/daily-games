@@ -4,8 +4,9 @@ extends "res://core/puzzle_base.gd"
 ## card, rough blocks of stone standing in it with their numbers carved on
 ## their crowns, a paper lantern on every stone the player lights, and a slate
 ## chip on every stone they have ruled out. Built beside the island version
-## (puzzles/lightup3d.gd) so the two can be judged against each other on the
-## phone; the rules live in puzzles/lightup_state.gd, which this only draws.
+## (legacy/puzzles/lightup3d.gd) so the two could be judged against each
+## other on the phone; the rules live in puzzles/lightup_state.gd, which this
+## only draws.
 ##
 ## What flat buys here is the floor. Light Up has no marker for its main
 ## condition: a stone no lamp reaches is a cold grey, a lit one is warm, and
@@ -19,15 +20,29 @@ extends "res://core/puzzle_base.gd"
 ## column cell by cell as it travels, which is the rule made into a picture
 ## and the one thing on this screen the island cannot do at all.
 ##
-## How it is drawn. The whole court is **one** mesh, rebuilt only while
-## something moves: the mortar bed, a flagstone per cell carrying its own
-## warmth, the beams over them, the shade under a running sweep, the blocks
-## and the chips. The numbers are drawn over it with one draw_string each,
-## because a digit in a mesh cache key would multiply every block state by
-## five. Only the lamps are Controls, with the face family's own cached meshes
-## behind them (ui/faces/court_lantern.gd).
+## How it is drawn. The court is two meshes, rebuilt only while something
+## moves. The **floor** is the display: the mortar bed on its edge, a
+## flagstone per cell carrying its own warmth, and the beams over them; it is
+## built about the court's centre so its entrance is a transform. The
+## **ground** is everything standing on it that is not a lamp: the shade
+## under the finger, the blush of a pointed-at stone, every shadow, the
+## blocks and the chips. The numbers are drawn over both with one draw_string
+## each, because a digit in a mesh cache key would multiply every block state
+## by five. Only the lamps are Controls, with the face family's own cached
+## meshes behind them (ui/faces/court_lantern.gd), each standing in a slot
+## the layout owns.
+##
+## How it moves. The lamps take the flat boards' vocabulary (core/motion.gd,
+## docs/art/flat-motion.md) straight, inside their slots: a lamp pops in with
+## the squash, sinks under the finger, drops in from a hint, hops, leans away
+## from a neighbour's landing, wobbles on Check and shivers when it refuses.
+## The blocks, the chips, the shade and the blush are drawn, so they read the
+## same recipes as curves (Motion.pop_in_scale and its siblings; the doc's
+## rule 8) and never copy a number. The light travelling out from a lamp,
+## stone by stone, is this board's own signature; so are the chips clearing
+## away on the win.
 ## Spec: docs/superpowers/specs/2026-09-18-lightup-flat-design.md, sections 2
-## to 7, and the mock it is ported from
+## to 7 and the amendment at its end, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#lightup).
 
 const State = preload("res://puzzles/lightup_state.gd")
@@ -38,11 +53,15 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 # --- the court ---
 const PAD := 34.0
 ## The mortar bed the stones are set into: a hair of shade outside the grid,
 ## which is what keeps a court of pale tints from floating on the parchment.
+## It wears no edge of its own: the family's lip under it sat 14 px above the
+## card's and read as a doubled line, because the bed is a shade and not a
+## surface (the polish amendment in the spec).
 const MORTAR := 6.0
 const MORTAR_RADIUS := 20.0
 const MORTAR_ALPHA := 0.07
@@ -58,7 +77,11 @@ const BEAM_ALPHA := 0.45
 const BEAM_FALL := 0.22
 ## Below this there is no light on the stone worth drawing.
 const BEAM_MIN := 0.02
-const SWEEP_ALPHA := 0.07
+## How far a sinking stone goes into its own shade at the bottom of the
+## press, and the blush a stone takes when Check points at its lamp or a tap
+## is refused on it.
+const SINK_SHADE := 0.5
+const BLUSH_ALPHA := 0.9
 
 # --- the pieces, in cells ---
 const BLOCK_SIZE := 0.94
@@ -67,8 +90,29 @@ const CHIP_SIZE := 0.9
 ## drawing is SEAT (2.4) R tall, so this is the seat that gives it that R.
 const LAMP_SIZE := 0.38 * CourtLantern.SEAT
 const NUM_SIZE := 0.4
+## How far a numbered block goes toward LEAF when its count is met and
+## toward BAD when it is over; a refused tap flashes it the same way.
+const BLOCK_GREEN := 0.55
+const BLOCK_ROSE := 0.6
+## The shadows on the ground: the mock's ellipses, as the family's soft disc.
+## The lamp's is in cells (the lantern drew it at (0.05, 1.1) R, 0.78 by
+## 0.19 R, with R at 0.38 of a cell); the block's and the chip's are in the
+## piece's own size. The peaks are about double the flat ellipses they
+## replace, because a disc that fades to its rim reads at about half its
+## centre (Shikaku measured it).
+const LAMP_SHADOW_AT := Vector2(0.02, 0.42)
+const LAMP_SHADOW_RX := 0.3
+const LAMP_SHADOW_RY := 0.075
+const BLOCK_SHADOW_AT := Vector2(0.0, 0.44)
+const BLOCK_SHADOW_RX := 0.42
+const BLOCK_SHADOW_RY := 0.1
+const CHIP_SHADOW_AT := Vector2(0.0, 0.16)
+const CHIP_SHADOW_RX := 0.26
+const CHIP_SHADOW_RY := 0.08
+const SHADOW_ALPHA := 0.24
+const BLOCK_SHADOW_ALPHA := 0.26
 
-# --- motion ---
+# --- motion: what is this board's own ---
 ## A stone warms over LIGHT_IN and cools over LIGHT_OUT, and waits LIGHT_STEP
 ## per cell of beam it is away from the lamp that changed, capped at
 ## LIGHT_CAP. This is what makes the light read as travelling out rather than
@@ -78,32 +122,18 @@ const LIGHT_IN := 0.22
 const LIGHT_OUT := 0.3
 const LIGHT_STEP := 0.035
 const LIGHT_CAP := 0.25
-const POP_FROM := 0.6
-const POP_TIME := 0.22
-const DIP := 0.05
-const DIP_TIME := 0.3
-const FLASH := 0.07
-const FLASH_TIME := 0.6
-const FLASH_SWINGS := 9.0
-const ENTER_STONE := 0.12
-const ENTER_STONE_STEP := 0.025
-const ENTER_STONE_TIME := 0.4
-const ENTER_BLOCK := 0.2
-const ENTER_BLOCK_STEP := 0.03
-const ENTER_BLOCK_TIME := 0.4
-const ENTER_DROP := 24.0
-const BLOCK_FROM := 0.7
-const SOLVE_DELAY := 0.15
-const SOLVE_STEP := 0.1
-const SOLVE_HOP := 0.12
-const SOLVE_HOP_TIME := 0.42
-const SPARK_DELAY := 0.05
-## The chips clear away on the win, so the last picture is the lit court
-## rather than the working-out.
+## A refused piece's shiver, in cells; the family's 2 px is a tremor on a
+## block this size.
+const SHIVER := 0.04
+## The chips clear away on the win, in a scatter rather than a wave, so the
+## last picture is the lit court rather than the working-out.
 const CLEAR_DELAY := 0.2
 const CLEAR_SPREAD := 0.3
 const CLEAR_TIME := 0.5
-const WIN_WAIT := 2.0
+const CLEAR_SHRINK := 0.4
+## How long the host waits before the win screen: the solve wave and the
+## clearing both have to run their length first.
+const WIN_WAIT := 1.6
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
@@ -128,39 +158,72 @@ var _cell := 0.0
 var _grid := Vector2.ZERO
 var _card := Rect2()
 var _lamps: Dictionary = {}      # Vector2i -> CourtLantern, kept once made
-## Vector2i -> the second a piece went down on that stone, which drives its
-## pop and, on the win, its hop.
-var _at: Dictionary = {}
-var _dip_at: Dictionary = {}
-var _flash_at: Dictionary = {}
+## Lamp -> the Control it stands in. The slot is what the layout moves and
+## the lamp is what the motion moves (a hop, a nudge, a shiver), so a
+## relayout mid-flight never fights a pop.
+var _slots: Dictionary = {}
+var _pos_tw: Dictionary = {}     # lamp -> the hop, the nudge, the shiver, the drop
+var _look_tw: Dictionary = {}    # lamp -> the pop, the press, the wobble
+## Bumped on every rebuild; a pending callback from the last board checks it.
+var _gen := 0
+
+# --- the light ---
 ## Vector2i -> {"from", "to", "at", "dur"}: the warmth actually painted on a
 ## stone, which is what a retarget has to start from. Ask for a lamp and take
 ## it away again inside the fade and a single target would carry the stone all
 ## the way to lamplight and leave it there -- a lit floor with nothing
 ## lighting it.
 var _warm: Dictionary = {}
-## Sparks waiting to be thrown: [{"at": float, "pos": Vector2}].
-var _sparks: Array = []
+## Lamps whose light is going out: [{"cell": Vector2i, "at": float}]. Their
+## beams are drawn withdrawing with the floor they lit, over LIGHT_OUT from
+## `at`, rather than vanishing on the frame the lamp is taken up.
+var _beam_out: Array = []
+
+# --- what the ground is doing ---
+## Vector2i -> the second a chip begins to arrive.
+var _chip_in: Dictionary = {}
+## Chips leaving: [{"cell": Vector2i, "at": float}], drawn shrinking from
+## `at` since the state no longer has them.
+var _chip_out: Array = []
+## Vector2i -> the second a stone began to blush.
+var _blush: Dictionary = {}
+## Vector2i -> {"down": float, "up": float}: a bare stone or a chip's stone
+## sunk under the finger, pressed from `down` and springing back from `up`
+## (INF while the gesture still holds it; a swept stone's is the second its
+## chip lands).
+var _sunk: Dictionary = {}
+## What the blocks are doing, each Vector2i -> when it began: the press under
+## the finger ({"down", "up"}, `up` INF while it is held), the Count bump,
+## the hop ({"at", "height", "time"}), the lean away from a landing lamp
+## ({"at", "dir"}), the refused shiver and the flash toward rose.
+var _block_press: Dictionary = {}
+var _block_bump: Dictionary = {}
+var _block_hop: Dictionary = {}
+var _block_nudge: Dictionary = {}
+var _block_shiver: Dictionary = {}
+var _block_flash: Dictionary = {}
+var _floor: ArrayMesh
+var _ground: ArrayMesh
+var _ground_dirty := true
+## The meshes the last _draw handed over that the next may let go of: a
+## canvas command holds a mesh by RID, and a frame rendered before the queued
+## redraw is flushed would otherwise draw a freed one (see CLAUDE.md).
+var _shown: Array = []
 
 # --- the gesture ---
 var _press_cell := Vector2i(-1, -1)
+## The lamp under the finger, sunk by the press, if the press landed on one.
+var _pressed: Control
 var _dragged := false
-var _sweeping := false
 var _lay := true
 var _swept: Dictionary = {}
 var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
 
-var _opened := 0.0
+var _opened := -1.0e9
 var _solved_at := -1.0
-var _court: ArrayMesh
-## The mesh the last _draw actually handed to the canvas item. A canvas
-## command holds the mesh by RID and not by reference, so dropping the only
-## reference to a mesh that is still on the item's command list leaves the
-## renderer drawing a freed RID ("Parameter mesh is null", and nothing on the
-## card). Keeping it here until the next _draw replaces it is what makes
-## rebuilding the court safe.
-var _shown: ArrayMesh
+## Redraw every frame until this second: a pop, a wave, the light moving.
+var _anim_until := 0.0
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -190,29 +253,49 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+	_stop_all()
 	state.setup(rng, difficulty)
-	_at = {}
-	_dip_at = {}
-	_flash_at = {}
-	_sparks = []
+	_beam_out = []
+	_chip_in = {}
+	_chip_out = []
+	_blush = {}
+	_sunk = {}
+	_block_press = {}
+	_block_bump = {}
+	_block_hop = {}
+	_block_nudge = {}
+	_block_shiver = {}
+	_block_flash = {}
 	_clear_gesture()
 	_solved_at = -1.0
-	_opened = _now()
 	_build_pieces()
 	_settle()
 	_layout()
 	_tip_idx = 0
 	_say(TIPS[0], Face.Expr.HAPPY)
 	_tip_timer.start()
-	fx.cue("enter")
+	_enter()
 
 # --- the cast ---
 
 ## Only the lamps are nodes. The court, the blocks and the chips are drawn.
 func _build_pieces() -> void:
-	for cell in _lamps:
-		_lamps[cell].queue_free()
+	for lamp in _slots:
+		_slots[lamp].queue_free()
+	_slots = {}
 	_lamps = {}
+
+## Puts `lamp` in a slot of its own under the board. The slot takes the
+## layout; the lamp inside it takes the motion.
+func _stand(lamp: Control, node_name: String) -> void:
+	var slot := Control.new()
+	slot.name = node_name
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(slot)
+	lamp.name = "lamp"
+	lamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(lamp)
+	_slots[lamp] = slot
 
 ## The lamp on `cell`, made the first time one is set down there and kept
 ## afterwards: a stone the player taps twice would otherwise build and free a
@@ -221,18 +304,56 @@ func _lamp_node(cell: Vector2i) -> CourtLantern:
 	if _lamps.has(cell):
 		return _lamps[cell]
 	var lamp := CourtLantern.new()
-	lamp.name = "lamp_%d_%d" % [cell.x, cell.y]
-	lamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(lamp)
+	# The shadow is the board's, on the ground (see _build_ground).
+	lamp.casts = false
+	lamp.visible = false
+	lamp.scale = Vector2.ZERO
+	_stand(lamp, "lamp_%d_%d" % [cell.x, cell.y])
 	lamp.set_idle(true)
 	_lamps[cell] = lamp
+	if _cell > 0.0:
+		_seat(lamp, cell_to_local(cell.y, cell.x), _cell * LAMP_SIZE)
 	return lamp
+
+## Every lamp takes the look its state asks for. A lamp is written only when
+## its look changes -- a written face redraws.
+func _refresh_faces() -> void:
+	for cell in _lamps:
+		var lamp: CourtLantern = _lamps[cell]
+		if state.mark_at(cell) != State.LAMP:
+			continue
+		var pinned: bool = state.locked.has(cell)
+		if lamp.pinned != pinned:
+			lamp.pinned = pinned
+		var bad: bool = not is_done() and state.clash.has(cell)
+		if lamp.bad != bad:
+			lamp.bad = bad
+		# The win writes JOY on each lamp as the wave reaches it.
+		if _solved_at >= 0.0:
+			continue
+		_set_expr(lamp, Face.Expr.STRAIN if bad else Face.Expr.HAPPY)
+
+func _set_expr(face: Face, expr: int) -> void:
+	if face.expression != expr:
+		face.expression = expr
+
+## Each lamp's glow follows the warmth of the stone it stands on, so a lamp
+## that has just landed brightens with its floor and one being taken up goes
+## out with it. Written only when the light has moved.
+func _place_light(now: float) -> void:
+	for cell in _lamps:
+		var lamp: CourtLantern = _lamps[cell]
+		if not lamp.visible:
+			continue
+		var warm := _warmth(cell, now)
+		if absf(lamp.lit - warm) > 0.001:
+			lamp.lit = warm
 
 # --- layout ---
 
 ## The court is the largest grid the card holds, and the card is cut to the
 ## court and centred in the slot rather than pinned under the day card the way
-## most of the flat boards are. This is the second board of the seven whose
+## most of the flat boards are. This is the second board of the nine whose
 ## grid is square while its space is tall -- and here there is no count band
 ## to spend width on, so the cell is capped by the width at every step and
 ## there is slack however the card is cut.
@@ -246,7 +367,20 @@ func _layout() -> void:
 	var tall := minf(size.y, court.y + 2.0 * PAD)
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	_grid = Vector2(size.x * 0.5 - court.x * 0.5, _card.position.y + (tall - court.y) * 0.5)
-	_refresh()
+	for cell in _lamps:
+		_seat(_lamps[cell], cell_to_local(cell.y, cell.x), _cell * LAMP_SIZE)
+	_refresh_faces()
+	_redraw()
+
+## Seats `lamp` `px` square about `centre`: its slot takes the place, and the
+## lamp's own place inside the slot is left to the motion.
+func _seat(lamp: Control, centre: Vector2, px: float) -> void:
+	var seat := Vector2.ONE * px
+	var slot: Control = _slots[lamp]
+	slot.size = seat
+	slot.position = centre - seat * 0.5
+	lamp.size = seat
+	lamp.pivot_offset = seat * 0.5
 
 ## The cell a slot of `available` height holds, capped by the width.
 func _cell_for(available: float) -> float:
@@ -277,90 +411,9 @@ func _cell_at(local: Vector2) -> Vector2i:
 	var cell := Vector2i(int(floor(p.x)), int(floor(p.y)))
 	return cell if state.in_field(cell) else Vector2i(-1, -1)
 
-# --- the frame ---
-
-func _process(delta: float) -> void:
-	super(delta)
-	if _cell <= 0.0 or state.grid.is_empty():
-		return
-	var t := _now()
-	_throw_sparks(t)
-	if _animating(t):
-		_refresh()
-
-## True while anything is still moving. A court left alone costs its lamps'
-## own blinks, which are their tweens and not the board's frames.
-func _animating(t: float) -> bool:
-	if _sweeping or not _sparks.is_empty():
-		return true
-	if t < _opened + ENTER_BLOCK + (state.w + state.h) * ENTER_BLOCK_STEP + ENTER_BLOCK_TIME:
-		return true
-	if _solved_at >= 0.0 and t < _solved_at + WIN_WAIT:
-		return true
-	for cell in _warm:
-		var rec: Dictionary = _warm[cell]
-		if float(rec.from) != float(rec.to) and t < float(rec.at) + float(rec.dur):
-			return true
-	for cell in _at:
-		if t < float(_at[cell]) + maxf(POP_TIME, SOLVE_HOP_TIME):
-			return true
-	for cell in _dip_at:
-		if t < float(_dip_at[cell]) + DIP_TIME:
-			return true
-	for cell in _flash_at:
-		if t < float(_flash_at[cell]) + FLASH_TIME:
-			return true
-	return false
-
-func _refresh() -> void:
-	var t := _now()
-	_place_lamps(t)
-	_court = _build_court(t)
-	queue_redraw()
-
-func _place_lamps(t: float) -> void:
-	var seat := Vector2.ONE * (_cell * LAMP_SIZE)
-	for cell in _lamps:
-		var lamp: CourtLantern = _lamps[cell]
-		var up: bool = state.mark_at(cell) == State.LAMP
-		lamp.visible = up
-		if not up:
-			continue
-		lamp.size = seat
-		lamp.pivot_offset = seat * 0.5
-		var grow := 1.0 if Motion.reduce else lerpf(POP_FROM, 1.0, _back_out(_pop_u(cell, t)))
-		lamp.scale = Vector2.ONE * grow
-		lamp.position = cell_to_local(cell.y, cell.x) - seat * 0.5 + _jitter(cell, t)
-		lamp.lit = _warmth(cell, t)
-		lamp.pinned = state.locked.has(cell)
-		lamp.bad = not is_done() and state.clash.has(cell)
-		if _solved_at >= 0.0 and t >= float(_at.get(cell, 0.0)):
-			lamp.expression = Face.Expr.JOY
-		elif lamp.bad:
-			lamp.expression = Face.Expr.STRAIN
-		else:
-			lamp.expression = Face.Expr.HAPPY
-
-func _pop_u(cell: Vector2i, t: float) -> float:
-	return clampf((t - float(_at.get(cell, -100.0))) / POP_TIME, 0.0, 1.0)
-
-## What a lamp is doing besides standing there: the shake a failed Check gave
-## it, the dip a refused tap gave it, and the hop of the win.
-func _jitter(cell: Vector2i, t: float) -> Vector2:
-	if Motion.reduce:
-		return Vector2.ZERO
-	var out := Vector2.ZERO
-	var flash := (t - float(_flash_at.get(cell, -100.0))) / FLASH_TIME
-	if flash >= 0.0 and flash < 1.0:
-		out.x += _cell * FLASH * sin(FLASH_SWINGS * PI * flash) * (1.0 - flash)
-	var dip := (t - float(_dip_at.get(cell, -100.0))) / DIP_TIME
-	if dip >= 0.0 and dip < 1.0:
-		out.y += _cell * DIP * sin(PI * dip)
-	if _solved_at >= 0.0:
-		var hop := (t - float(_at.get(cell, 0.0))) / SOLVE_HOP_TIME
-		if hop >= 0.0 and hop < 1.0:
-			out.y -= _cell * SOLVE_HOP * sin(PI * hop)
-	return out
+## The court's centre in board pixels: what the floor is built about.
+func _court_centre() -> Vector2:
+	return _grid + Vector2(_cell * state.w, _cell * state.h) * 0.5
 
 # --- the light ---
 
@@ -379,230 +432,419 @@ func _warmth(cell: Vector2i, t: float) -> float:
 		return float(rec.to)
 	return lerpf(float(rec.from), float(rec.to), _sine_io(u))
 
-## Sends every stone toward the light it now stands in, staggered by how far
-## it is from the stone that changed, so the light travels. `from` of (-1, -1)
-## is a change with no one place to travel from -- an undo, a reset, a swept
-## run -- and lands everywhere at once.
-func _relight(from: Vector2i, t: float) -> void:
+## Sends every stone toward the light it now stands in, each waiting what
+## `delay` says for it: the travel out from a changed lamp (_travel_from),
+## nothing at all (_at_once: an undo, a swept run) or Reset's wave.
+func _relight(t: float, delay: Callable) -> void:
 	for cell in state.white_cells():
 		var target := 1.0 if state.lit.has(cell) else 0.0
 		var cur := _warmth(cell, t)
 		var rec: Dictionary = _warm.get(cell, {})
 		if rec.is_empty():
 			_warm[cell] = {"from": cur, "to": target, "at": t, "dur": LIGHT_IN}
+			_anim_until = maxf(_anim_until, t + LIGHT_IN)
 			continue
 		if float(rec.to) == target and absf(cur - target) < 0.001:
 			continue
 		if float(rec.to) == target and t >= float(rec.at):
 			continue
-		var delay := 0.0
-		if from.x >= 0:
-			delay = minf(LIGHT_STEP * float(absi(cell.x - from.x) + absi(cell.y - from.y)),
-				LIGHT_CAP)
 		rec.from = cur
 		rec.to = target
-		rec.at = t + delay
+		rec.at = t + float(delay.call(cell))
 		rec.dur = LIGHT_IN if target > cur else LIGHT_OUT
+		_anim_until = maxf(_anim_until, float(rec.at) + float(rec.dur))
+
+## The light travelling out from `origin`: LIGHT_STEP per cell away, capped.
+func _travel_from(origin: Vector2i) -> Callable:
+	return func(cell: Vector2i) -> float:
+		return minf(LIGHT_STEP * float(absi(cell.x - origin.x) + absi(cell.y - origin.y)), LIGHT_CAP)
+
+## A change with no one place to travel from lands everywhere at once.
+func _at_once(_cell_: Vector2i) -> float:
+	return 0.0
+
+## Reset's wave, from the far corner: what everything on the court leaves by.
+func _reset_wave(cell: Vector2i) -> float:
+	return Motion.stagger((state.h - 1 - cell.y) + (state.w - 1 - cell.x), Motion.RESET_STAGGER)
 
 ## The court as it opens: every stone already at the light it stands in, so
-## the entrance is the stones fading in and not a wave crossing an empty
-## court.
+## the entrance is the court arriving and not a wave crossing an empty one.
 func _settle() -> void:
 	_warm = {}
 	for cell in state.white_cells():
 		var target := 1.0 if state.lit.has(cell) else 0.0
 		_warm[cell] = {"from": target, "to": target, "at": -100.0, "dur": LIGHT_IN}
 
-func _throw_sparks(t: float) -> void:
-	while not _sparks.is_empty() and float(_sparks[0].at) <= t:
-		var spark: Dictionary = _sparks.pop_front()
-		fx.sparkle(spark.pos, Pal.SUN)
-
 # --- the drawing ---
 
 func _draw() -> void:
-	_shown = _court
-	if _shown != null:
-		draw_mesh(_shown, null)
-	_draw_numbers()
+	if _cell <= 0.0 or state.grid.is_empty():
+		return
+	var now := _now()
+	var busy := false
+	var shown: Array = []
+	if _ground_dirty or now < _anim_until:
+		_floor = _build_floor(now)
+		var out := _build_ground(now)
+		_ground = out.mesh
+		busy = out.busy
+		_ground_dirty = false
+	# The court pops in wide once the chrome has slid in, drawn.
+	var since := now - _opened - Motion.ENTER_DELAY
+	if since < Motion.ENTER_POP:
+		busy = true
+	var seen := Motion.appear_level(since)
+	if seen > 0.0 and _floor != null:
+		var grown := Motion.wide_pop_scale(since)
+		draw_mesh(_floor, null,
+			Transform2D(0.0, Vector2(grown, grown), 0.0, _court_centre()),
+			Color(1.0, 1.0, 1.0, seen))
+		shown.append(_floor)
+	if _ground != null:
+		draw_mesh(_ground, null)
+		shown.append(_ground)
+	_shown = shown
+	_draw_numbers(now)
+	if busy:
+		_anim_until = maxf(_anim_until, now + 0.1)
 
-## Everything on the court in one mesh, in the order the mock paints it: the
-## mortar, the stones with their own warmth, the beams over them, the shade
-## under a running sweep, the blocks, and the chips.
-func _build_court(t: float) -> ArrayMesh:
+## The display: the mortar bed on its edge, a flagstone per cell carrying its
+## own warmth -- the stones *are* the display, which is why every one is its
+## own tile rather than a tint over a shared field -- and the beams over
+## them. Built about the court's centre, so its pop on the entrance is a
+## transform.
+func _build_floor(now: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field := Vector2(_cell * state.w, _cell * state.h)
-	b.fan(Face.Builder.round_rect(_grid - Vector2.ONE * MORTAR,
+	var origin := -field * 0.5
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
 		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), Color(Pal.TEXT, MORTAR_ALPHA))
-	_build_stones(b, t)
-	_build_beams(b, t)
-	if _sweeping:
-		for key in _swept:
-			var cell: Vector2i = key
-			b.fan(_tile(cell, 0.0), Color(Pal.TEXT, SWEEP_ALPHA))
-	_build_blocks(b, t)
-	_build_chips(b, t)
-	if b.verts.is_empty():
-		return null
-	return b.mesh()
-
-## A flagstone per cell, each carrying its own warmth: the stones *are* the
-## display, which is why every one is its own tile rather than a tint over a
-## shared field.
-func _build_stones(b, t: float) -> void:
+	var gone: Array = []
 	for y in state.h:
 		for x in state.w:
 			if int(state.grid[y][x]) != Gen.WHITE:
 				continue
 			var cell := Vector2i(x, y)
-			var en := _dec((t - _opened - ENTER_STONE - (x + y) * ENTER_STONE_STEP)
-				/ ENTER_STONE_TIME)
-			if en <= 0.0:
-				continue
-			var warm := _warmth(cell, t)
-			b.fan(_tile(cell, 0.0),
-				Color(Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm), en))
-			b.fan(_tile(cell, STONE_EDGE),
-				Color(Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm), en))
+			var warm := _warmth(cell, now)
+			var deep: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm)
+			var face: Color = Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm)
+			# A stone under the finger sinks, drawn (press_scale), and goes
+			# a little into its own shade as it does.
+			var grown := 1.0
+			if _sunk.has(cell):
+				var pr: Dictionary = _sunk[cell]
+				var released := -1.0 if now < float(pr.up) else now - float(pr.up)
+				if released >= Motion.RELEASE_TIME:
+					gone.append(cell)
+				else:
+					grown = Motion.press_scale(now - float(pr.down), released)
+					var depth := clampf((1.0 - grown) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
+					face = face.lerp(deep, SINK_SHADE * depth)
+			b.fan(_tile(cell, 0.0, origin, grown), deep)
+			b.fan(_tile(cell, STONE_EDGE, origin, grown), face)
+	for cell in gone:
+		_sunk.erase(cell)
+	_build_beams(b, now, origin)
+	return b.mesh()
 
-## The outline of one stone, `short` of a cell shorter than the joint allows:
-## the fill sits on the deeper tile, which is the soft lip every card and tile
-## on the flat screens wears.
-func _tile(cell: Vector2i, short: float) -> PackedVector2Array:
+## The outline of one stone, `short` of a cell shorter than the joint allows,
+## with the court's top-left corner at `origin` and the stone `grown` of its
+## size about its own centre: the fill sits on the deeper tile, which is the
+## soft lip every card and tile on the flat screens wears.
+func _tile(cell: Vector2i, short: float, origin: Vector2, grown := 1.0) -> PackedVector2Array:
 	var gap := _cell * GAP
-	return Face.Builder.round_rect(_grid + Vector2(cell) * _cell + Vector2.ONE * gap,
-		Vector2(_cell - 2.0 * gap, _cell - 2.0 * gap - _cell * short), _cell * STONE_RADIUS)
+	var span := Vector2(_cell - 2.0 * gap, _cell - 2.0 * gap - _cell * short) * grown
+	var centre := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
+	return Face.Builder.round_rect(centre - Vector2(span.x, (_cell - 2.0 * gap) * grown) * 0.5,
+		span, _cell * STONE_RADIUS * grown)
 
 ## The shafts themselves, cell by cell out from each lamp, each one as bright
 ## as the warmth already painted on the stone it crosses -- so the beam
-## travels with the light rather than switching on along the whole line.
-func _build_beams(b, t: float) -> void:
-	var half := _cell * BEAM_HALF
+## travels with the light rather than switching on along the whole line. A
+## lamp on its way out keeps its beam, withdrawing with the floor it lit.
+func _build_beams(b, now: float, origin: Vector2) -> void:
 	for cell in state.lamps():
-		var centre := cell_to_local(cell.y, cell.x)
-		for d in State.DIRS:
-			var p: Vector2i = cell + d
-			var n := 1
-			while state.is_white(p):
-				var warm := _warmth(p, t)
-				if warm > BEAM_MIN:
-					var at := _grid + Vector2(p) * _cell
-					var shine := Color(1.0, 1.0, 1.0,
-						BEAM_ALPHA * warm / (1.0 + BEAM_FALL * n))
-					if d.x != 0:
-						b.fan(_quad(Vector2(at.x, centre.y - half),
-							Vector2(_cell, half * 2.0)), shine)
-					else:
-						b.fan(_quad(Vector2(centre.x - half, at.y),
-							Vector2(half * 2.0, _cell)), shine)
-				p += d
-				n += 1
+		_beam(b, cell, now, origin, 1.0)
+	var still: Array = []
+	for out in _beam_out:
+		var gone := clampf((now - float(out.at)) / LIGHT_OUT, 0.0, 1.0)
+		if gone >= 1.0 or state.mark_at(out.cell) == State.LAMP:
+			continue
+		still.append(out)
+		_beam(b, out.cell, now, origin, 1.0 - gone)
+	_beam_out = still
+
+func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> void:
+	var half := _cell * BEAM_HALF
+	var centre := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
+	for d in State.DIRS:
+		var p: Vector2i = cell + d
+		var n := 1
+		while state.is_white(p):
+			var warm := _warmth(p, now) * strength
+			if warm > BEAM_MIN:
+				var at := origin + Vector2(p) * _cell
+				var shine := Color(1.0, 1.0, 1.0, BEAM_ALPHA * warm / (1.0 + BEAM_FALL * n))
+				if d.x != 0:
+					b.fan(_quad(Vector2(at.x, centre.y - half), Vector2(_cell, half * 2.0)), shine)
+				else:
+					b.fan(_quad(Vector2(centre.x - half, at.y), Vector2(half * 2.0, _cell)), shine)
+			p += d
+			n += 1
 
 static func _quad(at: Vector2, extent: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(extent.x, 0.0), at + extent,
 		at + Vector2(0.0, extent.y)])
 
-## The blocks of rough stone. A block with no number has nothing to be
-## satisfied about, so it never goes green: half of a generated court's stone
-## says nothing, and a blank block is information too -- it stops the light.
-func _build_blocks(b, t: float) -> void:
+## Everything standing on the court that is not a lamp, in one mesh: the
+## blush of a pointed-at stone, the shadow under every lamp, the blocks with
+## their shadows, and the chips arriving, standing and leaving. Returns the
+## mesh and whether any of it is still moving. (A sinking stone is the
+## floor's, since the stone itself is what sinks.)
+func _build_ground(now: float) -> Dictionary:
+	var b := Face.Builder.new()
+	var busy := not _sunk.is_empty()
+	# The blush: toward the family's rose and back, read off flash_level.
+	var gone: Array = []
+	for cell in _blush:
+		var e: float = now - float(_blush[cell])
+		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
+			gone.append(cell)
+			continue
+		busy = true
+		var level := Motion.flash_level(e)
+		if level > 0.0:
+			_stone_wash(b, cell, 1.0, Color(Pal.BAD_TILE, BLUSH_ALPHA * level))
+	for cell in gone:
+		_blush.erase(cell)
+	# The lamps' shadows, anchored at the stone and read off each lamp's own
+	# height, so one arrives with the pop and stays put when the lamp hops.
+	for cell in _lamps:
+		var lamp: CourtLantern = _lamps[cell]
+		if lamp.visible:
+			_lamp_shadow(b, lamp, cell)
+	# The blocks, each through whatever it is doing.
 	for y in state.h:
 		for x in state.w:
 			if int(state.grid[y][x]) == Gen.WHITE:
 				continue
 			var cell := Vector2i(x, y)
-			var step := _block_entrance(cell, t)
-			if step.x <= 0.0:
+			var pose := _block_pose(cell, now)
+			if pose.is_empty():
 				continue
-			var s := _cell * BLOCK_SIZE * step.y
-			var at := cell_to_local(y, x) + Vector2(0.0, step.z)
-			var alpha := step.x
-			var face: Color = Pal.BLOCK_STONE
-			var deep: Color = Pal.BLOCK_DEEP
-			match state.block_state(cell):
-				State.BLOCK_OK:
-					face = face.lerp(Pal.LEAF, 0.55)
-					deep = deep.lerp(Pal.LEAF_DEEP, 0.55)
-				State.BLOCK_OVER:
-					face = face.lerp(Pal.BAD, 0.6)
-					deep = deep.lerp(Pal.MARKER_DEEP, 0.6)
-			b.ellipse(at + Vector2(0.0, 0.44 * s), 0.42 * s, 0.1 * s, Color(Pal.TEXT, 0.14 * alpha))
-			b.fan(Face.Builder.round_rect(at - Vector2.ONE * 0.46 * s,
-				Vector2.ONE * 0.92 * s, 0.15 * s), Color(deep, alpha))
-			b.fan(Face.Builder.round_rect(at - Vector2.ONE * 0.46 * s,
-				Vector2(0.92, 0.8) * s, 0.15 * s), Color(face, alpha))
-			b.fan(Face.Builder.round_rect(at + Vector2(-0.36, -0.38) * s,
-				Vector2(0.34, 0.15) * s, 0.06 * s), Color(1.0, 1.0, 1.0, 0.08 * alpha))
-			b.fan(Face.Builder.round_rect(at + Vector2(0.06, 0.1) * s,
-				Vector2(0.3, 0.14) * s, 0.06 * s), Color(0.0, 0.0, 0.0, 0.07 * alpha))
-
-## A block's alpha, its scale and how far it still has to drop onto the court.
-func _block_entrance(cell: Vector2i, t: float) -> Vector3:
-	var en := _dec((t - _opened - ENTER_BLOCK - (cell.x + cell.y) * ENTER_BLOCK_STEP)
-		/ ENTER_BLOCK_TIME)
-	if en <= 0.0:
-		return Vector3.ZERO
-	if Motion.reduce:
-		return Vector3(en, 1.0, 0.0)
-	var eased := _back_out(en)
-	return Vector3(en, lerpf(BLOCK_FROM, 1.0, eased), -ENTER_DROP * (1.0 - eased))
-
-## The chips the player has ruled stones out with: cool slate, never a small
-## warm block of the court's own stone.
-func _build_chips(b, t: float) -> void:
+			busy = busy or bool(pose.busy)
+			_block(b, cell, pose)
+	# Chips on their way out, drawn from the shape the state has forgotten.
+	var still: Array = []
+	for out in _chip_out:
+		var e: float = now - float(out.at)
+		var shrunk := Motion.pop_out_scale(e)
+		if shrunk <= 0.0:
+			continue
+		still.append(out)
+		busy = true
+		var turn := PI * 0.5 * clampf(e / Motion.POP_OUT, 0.0, 1.0)
+		_chip(b, cell_to_local(out.cell.y, out.cell.x), _cell * CHIP_SIZE,
+			Vector2(shrunk, shrunk), turn, 1.0)
+	_chip_out = still
+	# The chips that are here: popping in with the squash, standing, or
+	# clearing away on the win.
+	gone = []
 	for cell in state.marks:
 		if int(state.marks[cell]) != State.CHIP:
 			continue
-		var grow := 1.0 if Motion.reduce else lerpf(POP_FROM, 1.0, _back_out(_pop_u(cell, t)))
+		var grow := Vector2.ONE
+		if _chip_in.has(cell):
+			var e: float = now - float(_chip_in[cell])
+			grow = Motion.pop_in_scale(e)
+			if e < Motion.POP_IN:
+				busy = true
+			else:
+				gone.append(cell)
 		var alpha := 1.0
 		if _solved_at >= 0.0:
-			var gone := _dec((t - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD)
-				/ CLEAR_TIME)
-			if gone >= 1.0:
+			var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
+			if cleared >= 1.0:
 				continue
-			alpha = 1.0 - gone
-			grow *= 1.0 - gone * 0.4
-		_chip(b, cell_to_local(cell.y, cell.x), _cell * CHIP_SIZE * grow, alpha)
+			busy = true
+			alpha = 1.0 - cleared
+			grow *= 1.0 - cleared * CLEAR_SHRINK
+		if grow.x <= 0.0 or grow.y <= 0.0:
+			continue
+		_chip(b, cell_to_local(cell.y, cell.x), _cell * CHIP_SIZE, grow, 0.0, alpha)
+	for cell in gone:
+		_chip_in.erase(cell)
+	if b.verts.is_empty():
+		return {"mesh": null, "busy": busy}
+	return {"mesh": b.mesh(), "busy": busy}
 
-func _chip(b, at: Vector2, s: float, alpha: float) -> void:
-	b.ellipse(at + Vector2(0.0, 0.16 * s), 0.26 * s, 0.08 * s, Color(Pal.TEXT, 0.13 * alpha))
-	b.fan(Face.Builder.round_rect(at + Vector2(-0.26, -0.16) * s,
-		Vector2(0.52, 0.3) * s, 0.09 * s), Color(Pal.CHIP_DEEP, alpha))
-	b.fan(Face.Builder.round_rect(at + Vector2(-0.26, -0.16) * s,
-		Vector2(0.52, 0.24) * s, 0.09 * s), Color(Pal.CHIP, alpha))
-	b.fan(Face.Builder.round_rect(at + Vector2(-0.19, -0.11) * s,
-		Vector2(0.2, 0.07) * s, 0.035 * s), Color(1.0, 1.0, 1.0, 0.16 * alpha))
+## A stone's own outline over `cell`, `grown` of its size about its centre.
+func _stone_wash(b, cell: Vector2i, grown: float, colour: Color) -> void:
+	if grown <= 0.0:
+		return
+	var span := (_cell - 2.0 * _cell * GAP) * grown
+	b.fan(Face.Builder.round_rect(cell_to_local(cell.y, cell.x) - Vector2.ONE * span * 0.5,
+		Vector2.ONE * span, _cell * STONE_RADIUS * grown), colour)
 
-## The numerals, over the court's mesh. One draw_string each rather than
-## geometry in the cache: a hard court carries about seven of them, and a
-## digit in a mesh key would multiply every block state by five.
-func _draw_numbers() -> void:
+## The family's soft disc under `lamp` on `cell`, scaled by how much of the
+## lamp is there and faded with it while it drops in.
+func _lamp_shadow(b, lamp: Control, cell: Vector2i) -> void:
+	var seen := clampf(lamp.scale.y, 0.0, 1.0) * clampf(lamp.modulate.a, 0.0, 1.0)
+	if seen <= 0.0:
+		return
+	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + LAMP_SHADOW_AT * _cell,
+		LAMP_SHADOW_RX * _cell * seen, LAMP_SHADOW_RY * _cell * seen,
+		Color(Pal.TEXT, SHADOW_ALPHA * seen))
+
+## What a block is doing right now, read off the curves: its scale (the
+## entrance pop, the press, the Count bump), its offset (a hop, a lean, a
+## shiver) and its flash toward rose. Empty before it has entered. Finished
+## moments are forgotten here, so the dictionaries never grow.
+func _block_pose(cell: Vector2i, now: float) -> Dictionary:
+	var scale := Motion.pop_in_scale(now - _opened - _enter_delay(cell.x + cell.y))
+	if scale.x <= 0.0 or scale.y <= 0.0:
+		return {}
+	var busy := now < _opened + _enter_delay(cell.x + cell.y) + Motion.POP_IN
+	var offset := Vector2.ZERO
+	var flash := 0.0
+	if _block_press.has(cell):
+		var pr: Dictionary = _block_press[cell]
+		var released := -1.0 if is_inf(float(pr.up)) else now - float(pr.up)
+		if released >= Motion.RELEASE_TIME:
+			_block_press.erase(cell)
+		else:
+			scale *= Motion.press_scale(now - float(pr.down), released)
+			busy = true
+	if _block_bump.has(cell):
+		var e: float = now - float(_block_bump[cell])
+		if e >= Motion.BUMP_TIME:
+			_block_bump.erase(cell)
+		else:
+			scale *= Motion.bump_scale(e)
+			busy = true
+	if _block_hop.has(cell):
+		var hp: Dictionary = _block_hop[cell]
+		var e: float = now - float(hp.at)
+		if e >= float(hp.time):
+			_block_hop.erase(cell)
+		else:
+			offset.y += Motion.hop_lift(e, float(hp.height), float(hp.time))
+			busy = true
+	if _block_nudge.has(cell):
+		var nd: Dictionary = _block_nudge[cell]
+		var e: float = now - float(nd.at)
+		if e >= Motion.NUDGE_LAG + Motion.NUDGE_TIME:
+			_block_nudge.erase(cell)
+		else:
+			offset += (nd.dir as Vector2) * Motion.nudge_offset(e)
+			busy = true
+	if _block_shiver.has(cell):
+		var e: float = now - float(_block_shiver[cell])
+		if e >= Motion.SHIVER_TIME:
+			_block_shiver.erase(cell)
+		else:
+			offset.x += Motion.shiver_offset(e, _cell * SHIVER)
+			busy = true
+	if _block_flash.has(cell):
+		var e: float = now - float(_block_flash[cell])
+		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
+			_block_flash.erase(cell)
+		else:
+			flash = Motion.flash_level(e)
+			busy = true
+	return {"scale": scale, "offset": offset, "flash": flash, "busy": busy}
+
+## A block of rough stone through its pose: its shadow on the ground first,
+## anchored at the stone so a hop leaves it behind, then the block about its
+## own centre put through the pose's transform. A block with no number has
+## nothing to be satisfied about, so it never goes green: half of a generated
+## court's stone says nothing, and a blank block is information too -- it
+## stops the light.
+func _block(b, cell: Vector2i, pose: Dictionary) -> void:
+	var s := _cell * BLOCK_SIZE
+	var at := cell_to_local(cell.y, cell.x)
+	var scale: Vector2 = pose.scale
+	var seen := clampf(scale.y, 0.0, 1.0)
+	Scenery.soft_disc(b, at + BLOCK_SHADOW_AT * s, BLOCK_SHADOW_RX * s * seen,
+		BLOCK_SHADOW_RY * s * seen, Color(Pal.TEXT, BLOCK_SHADOW_ALPHA * seen))
+	var face: Color = Pal.BLOCK_STONE
+	var deep: Color = Pal.BLOCK_DEEP
+	match state.block_state(cell):
+		State.BLOCK_OK:
+			face = face.lerp(Pal.LEAF, BLOCK_GREEN)
+			deep = deep.lerp(Pal.LEAF_DEEP, BLOCK_GREEN)
+		State.BLOCK_OVER:
+			face = face.lerp(Pal.BAD, BLOCK_ROSE)
+			deep = deep.lerp(Pal.MARKER_DEEP, BLOCK_ROSE)
+	var flash := float(pose.flash)
+	if flash > 0.0:
+		# A refused tap: the block flashes toward its own rose, the way a
+		# drawn bed flashes toward its blush.
+		face = face.lerp(Pal.BAD, BLOCK_ROSE * flash)
+		deep = deep.lerp(Pal.MARKER_DEEP, BLOCK_ROSE * flash)
+	var xf := Transform2D(0.0, scale, 0.0, at + (pose.offset as Vector2))
+	_shape(b, xf, Face.Builder.round_rect(-Vector2.ONE * 0.46 * s, Vector2.ONE * 0.92 * s, 0.15 * s), deep)
+	_shape(b, xf, Face.Builder.round_rect(-Vector2.ONE * 0.46 * s, Vector2(0.92, 0.8) * s, 0.15 * s), face)
+	_shape(b, xf, Face.Builder.round_rect(Vector2(-0.36, -0.38) * s, Vector2(0.34, 0.15) * s, 0.06 * s),
+		Color(1.0, 1.0, 1.0, 0.08))
+	_shape(b, xf, Face.Builder.round_rect(Vector2(0.06, 0.1) * s, Vector2(0.3, 0.14) * s, 0.06 * s),
+		Color(0.0, 0.0, 0.0, 0.07))
+
+## The chip the player has ruled a stone out with: cool slate, never a small
+## warm block of the court's own stone. Drawn about `at` through `grow` and
+## `turn`, so a pop is a transform on the same shapes; its shadow scales with
+## it and does not turn.
+func _chip(b, at: Vector2, s: float, grow: Vector2, turn: float, alpha: float) -> void:
+	var seen := clampf(grow.y, 0.0, 1.0)
+	Scenery.soft_disc(b, at + CHIP_SHADOW_AT * s * grow.y, CHIP_SHADOW_RX * s * grow.x,
+		CHIP_SHADOW_RY * s * grow.y, Color(Pal.TEXT, SHADOW_ALPHA * alpha * seen))
+	var xf := Transform2D(turn, grow, 0.0, at)
+	_shape(b, xf, Face.Builder.round_rect(Vector2(-0.26, -0.16) * s, Vector2(0.52, 0.3) * s, 0.09 * s),
+		Color(Pal.CHIP_DEEP, alpha))
+	_shape(b, xf, Face.Builder.round_rect(Vector2(-0.26, -0.16) * s, Vector2(0.52, 0.24) * s, 0.09 * s),
+		Color(Pal.CHIP, alpha))
+	_shape(b, xf, Face.Builder.round_rect(Vector2(-0.19, -0.11) * s, Vector2(0.2, 0.07) * s, 0.035 * s),
+		Color(1.0, 1.0, 1.0, 0.16 * alpha))
+
+## One shape of a piece, put through the piece's transform.
+func _shape(b, xf: Transform2D, pts: PackedVector2Array, colour: Color) -> void:
+	var out := PackedVector2Array()
+	out.resize(pts.size())
+	for i in pts.size():
+		out[i] = xf * pts[i]
+	b.fan(out, colour)
+
+## The numerals, over the court's meshes, each through its block's own pose
+## so a number squashes, sinks, bumps and hops with the stone it is carved
+## on. One draw_string each rather than geometry in the cache: a hard court
+## carries about seven of them, and a digit in a mesh key would multiply
+## every block state by five.
+func _draw_numbers(now: float) -> void:
 	if _cell <= 0.0 or state.grid.is_empty():
 		return
 	var font: Font = CozyTheme.display(700)
-	var t := _now()
+	var s := _cell * BLOCK_SIZE
+	var px := int(roundf(s * NUM_SIZE))
+	if px <= 0:
+		return
 	for y in state.h:
 		for x in state.w:
 			var number := int(state.grid[y][x])
 			if number < 0:
 				continue
 			var cell := Vector2i(x, y)
-			var step := _block_entrance(cell, t)
-			if step.x <= 0.0:
-				continue
-			var s := _cell * BLOCK_SIZE * step.y
-			var px := int(roundf(s * NUM_SIZE))
-			if px <= 0:
+			var pose := _block_pose(cell, now)
+			if pose.is_empty():
 				continue
 			var ink: Color = Pal.BLOCK_NUM
 			if state.block_state(cell) != State.BLOCK_IDLE:
 				ink = Color.WHITE
 			var text := str(number)
 			var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
-			var at := cell_to_local(y, x) + Vector2(0.0, step.z - 0.02 * s) \
-				+ Vector2(-wide * 0.5, font.get_ascent(px) * 0.5)
-			draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px,
-				Color(ink, step.x))
+			draw_set_transform(cell_to_local(y, x) + (pose.offset as Vector2), 0.0, pose.scale as Vector2)
+			draw_string(font, Vector2(-wide * 0.5, font.get_ascent(px) * 0.5 - 0.02 * s), text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, ink)
+	draw_set_transform(Vector2.ZERO)
 
 # --- input ---
 
@@ -618,11 +860,43 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and _press_cell.x >= 0:
 		_drag(event.position)
 
+## The press: a lamp sinks under the finger, and so does a block, drawn, and
+## so does a bare stone or a chip's -- the stone itself. Every tappable stone
+## does this, including one that will refuse on release.
 func _press(cell: Vector2i) -> void:
+	_release_press()
 	_clear_gesture()
 	if is_done() or cell.x < 0:
 		return
 	_press_cell = cell
+	var now := _now()
+	if state.mark_at(cell) == State.LAMP and _lamps.has(cell):
+		_pressed = _lamps[cell]
+		Motion.stop(_look_tw.get(_pressed))
+		_look_tw[_pressed] = Motion.press(_pressed, true)
+		_busy_for(Motion.PRESS_TIME)
+	elif not state.is_white(cell):
+		_block_press[cell] = {"down": now, "up": INF}
+		_busy_for(Motion.PRESS_TIME)
+	else:
+		_sunk[cell] = {"down": now, "up": INF}
+		_busy_for(Motion.PRESS_TIME)
+	_redraw()
+
+## Whatever the finger sank springs back, on release or when the finger
+## leaves it for a sweep.
+func _release_press() -> void:
+	if _pressed != null:
+		Motion.stop(_look_tw.get(_pressed))
+		_look_tw[_pressed] = Motion.press(_pressed, false)
+		_busy_for(Motion.RELEASE_TIME)
+		_pressed = null
+	var now := _now()
+	for cell in _block_press:
+		var pr: Dictionary = _block_press[cell]
+		if is_inf(float(pr.up)):
+			pr.up = now
+			_busy_for(Motion.RELEASE_TIME)
 
 func _drag(at: Vector2) -> void:
 	var cell := _cell_at(at)
@@ -630,10 +904,10 @@ func _drag(at: Vector2) -> void:
 		return
 	if not _dragged and cell != _press_cell:
 		_dragged = true
-		_sweeping = true
 		# Begin on a chip and the sweep rubs out; begin anywhere else and it
 		# lays.
 		_lay = state.mark_at(_press_cell) != State.CHIP
+		_release_press()
 		_paint(_press_cell)
 	if not _dragged:
 		return
@@ -646,11 +920,11 @@ func _drag(at: Vector2) -> void:
 				roundi(lerpf(_last_paint.x, cell.x, float(i) / steps)),
 				roundi(lerpf(_last_paint.y, cell.y, float(i) / steps))))
 	_paint(cell)
-	_refresh()
+	_redraw()
 
 ## A sweep never disturbs a lantern or a block: the gesture is for ruling
 ## stones out, and losing a lamp to a stray finger would be the worst bug on
-## the board.
+## the board. The stones the finger can change sink under it as it passes.
 func _paint(cell: Vector2i) -> void:
 	_last_paint = cell
 	if _swept.has(cell):
@@ -658,6 +932,9 @@ func _paint(cell: Vector2i) -> void:
 	_swept[cell] = true
 	if state.fixed(cell) or state.mark_at(cell) == State.LAMP:
 		return
+	if not _sunk.has(cell):
+		_sunk[cell] = {"down": _now(), "up": INF}
+		_busy_for(Motion.PRESS_TIME)
 	var to := State.CHIP if _lay else State.BLANK
 	if state.mark_at(cell) == to:
 		return
@@ -667,53 +944,233 @@ func _release() -> void:
 	var cell := _press_cell
 	var was_drag := _dragged
 	var pending := _pending
+	var now := _now()
+	_release_press()
 	_clear_gesture()
 	if cell.x < 0 or is_done():
-		_refresh()
+		_end_sinks(now)
+		_redraw()
 		return
 	if was_drag:
-		# A swept run has no one place for the light to travel from, and it
-		# changes no light in any case: chips are the player's own working-out.
+		var arrivals: Dictionary = {}
 		if not pending.is_empty():
-			_commit(state.apply(pending), Vector2i(-1, -1))
-		_refresh()
+			var before: Dictionary = state.marks.duplicate()
+			# One gesture is one move, however many stones it touched; the
+			# chips arrive in a wave along the finger's path. Chips change no
+			# light, and a swept run has no one place to travel from anyway.
+			arrivals = _commit(before, state.apply(pending), now, Motion.ENTER_STAGGER, Vector2i(-1, -1))
+		_end_sinks(now, arrivals)
+		_redraw()
 		return
 	if state.fixed(cell):
-		# A block's stone, or a lamp a hint lit: a dip and a word, rather than
-		# a move.
-		_dip_at[cell] = _now()
-		_say("A block of stone stands there. It is what stops the light."
-			if not state.is_white(cell)
-			else "That lantern is lit for good. A hint set it down.", Face.Expr.PUZZLED)
-		fx.cue("locked")
-		_refresh()
+		# A block's stone, or a lamp a hint lit: a shiver, a blush and a
+		# word, rather than a move.
+		_refuse(cell)
+		_end_sinks(now)
+		_redraw()
 		return
-	_commit(state.tap(cell), cell)
+	var before: Dictionary = state.marks.duplicate()
+	var arrivals := _commit(before, state.tap(cell), now, 0.0, cell)
+	_end_sinks(now, arrivals)
+	_redraw()
 
-## One gesture is one move, however many stones it touched. `from` is the
-## stone the light travels out from, when there is one.
-func _commit(changed: Array, from: Vector2i) -> void:
+## Puts the stones `changed` by a move on the screen (see _transition), sends
+## the light out from `from` when the move has one stone it came from, and
+## counts the move. A tap that set a lamp down also puffs and leans the
+## neighbours away. Returns each stone's arrival time.
+func _commit(before: Dictionary, changed: Array, t: float, per: float, from: Vector2i) -> Dictionary:
 	if changed.is_empty():
-		_refresh()
-		return
-	var t := _now()
-	for cell in changed:
-		_at[cell] = t
-		if state.mark_at(cell) == State.LAMP:
-			_lamp_node(cell)
-	_relight(from, t)
+		_redraw()
+		return {}
+	var arrivals := _transition(before, changed, t, per)
+	if from.x >= 0:
+		_relight(t, _travel_from(from))
+		if state.mark_at(from) == State.LAMP:
+			fx.puff(cell_to_local(from.y, from.x), Pal.SUN)
+			_nudge_around(from, t)
+	else:
+		_relight(t, _at_once)
 	fx.cue("place")
 	_speak()
-	_refresh()
+	_redraw()
 	note_move()
+	return arrivals
 
 func _clear_gesture() -> void:
 	_press_cell = Vector2i(-1, -1)
+	_pressed = null
 	_dragged = false
-	_sweeping = false
+	_lay = true
 	_swept = {}
 	_pending = []
 	_last_paint = Vector2i(-1, -1)
+
+## Lets go of every stone the gesture still holds down: each springs back
+## when the piece it is under arrives, or now.
+func _end_sinks(now: float, arrivals: Dictionary = {}) -> void:
+	var last := now
+	for cell in _sunk:
+		var pr: Dictionary = _sunk[cell]
+		if is_inf(float(pr.up)):
+			pr.up = float(arrivals.get(cell, now))
+			last = maxf(last, float(pr.up))
+	_anim_until = maxf(_anim_until, last + Motion.RELEASE_TIME)
+
+# --- what the pieces do ---
+
+## Every stone in `cells` moves from what `before` had on it to what the
+## state has now, the k-th one `per` seconds after the first: a lamp pops in
+## or out, a chip arrives or leaves, and each numbered block a lamp joined or
+## left is recounted. Returns the second each stone's piece arrives.
+func _transition(before: Dictionary, cells: Array, t: float, per: float, drop := false) -> Dictionary:
+	var arrivals: Dictionary = {}
+	for k in cells.size():
+		var cell: Vector2i = cells[k]
+		var at := t + Motion.stagger(k, per)
+		arrivals[cell] = at
+		var prev := int(before.get(cell, State.BLANK))
+		var mark := state.mark_at(cell)
+		if prev == mark:
+			continue
+		if prev == State.CHIP:
+			_chip_leaves(cell, at)
+		elif prev == State.LAMP:
+			_lamp_down(cell, at - t)
+		if mark == State.CHIP:
+			_chip_arrives(cell, at)
+		elif mark == State.LAMP:
+			_lamp_up(cell, at - t, drop)
+		if prev == State.LAMP or mark == State.LAMP:
+			_recount_around(cell, at)
+	_refresh_faces()
+	return arrivals
+
+## A lamp goes down on `cell`: it pops in with the squash after `delay`, or
+## drops in from above when a hint lit it.
+func _lamp_up(cell: Vector2i, delay: float, drop: bool) -> void:
+	var lamp := _lamp_node(cell)
+	lamp.visible = true
+	Motion.stop(_look_tw.get(lamp))
+	Motion.stop(_pos_tw.get(lamp))
+	lamp.rotation = 0.0
+	lamp.position = Vector2.ZERO
+	lamp.modulate.a = 1.0
+	if drop:
+		lamp.scale = Vector2.ONE
+		_pos_tw[lamp] = Motion.drop_in(lamp, Motion.DROP, Motion.DROP_TIME, delay)
+		_busy_for(delay + Motion.DROP_TIME)
+	else:
+		_look_tw[lamp] = Motion.pop_in(lamp, Motion.POP_IN, delay)
+		_busy_for(delay + Motion.POP_IN)
+
+## A lamp comes up off `cell`: it shrinks to nothing with the quarter turn
+## after `delay`, its beam withdrawing with the floor, and is hidden once gone
+## unless something put it back.
+func _lamp_down(cell: Vector2i, delay: float) -> void:
+	var lamp: CourtLantern = _lamps.get(cell)
+	if lamp == null:
+		return
+	Motion.stop(_look_tw.get(lamp))
+	var tw := Motion.pop_out(lamp, Motion.POP_OUT, delay)
+	if tw == null:
+		lamp.visible = false
+		return
+	_beam_out.append({"cell": cell, "at": _now() + delay})
+	_look_tw[lamp] = tw
+	_busy_for(delay + maxf(Motion.POP_OUT, LIGHT_OUT))
+	tw.chain().tween_callback(func() -> void:
+		if state.mark_at(cell) != State.LAMP:
+			lamp.visible = false
+			lamp.rotation = 0.0)
+
+func _chip_arrives(cell: Vector2i, at: float) -> void:
+	_chip_in[cell] = at
+	_anim_until = maxf(_anim_until, at + Motion.POP_IN)
+
+## A chip leaves `cell` from `at`. Under reduce-motion it is simply gone, as
+## pop_out would have it.
+func _chip_leaves(cell: Vector2i, at: float) -> void:
+	_chip_in.erase(cell)
+	if Motion.reduce:
+		return
+	_chip_out.append({"cell": cell, "at": at})
+	_anim_until = maxf(_anim_until, at + Motion.POP_OUT)
+
+## The Count moment: every numbered block beside `cell` has just been
+## recounted, and bumps as the lamp arrives or leaves.
+func _recount_around(cell: Vector2i, at: float) -> void:
+	if Motion.reduce:
+		return
+	for d in State.DIRS:
+		var n: Vector2i = cell + d
+		if state.in_field(n) and int(state.grid[n.y][n.x]) >= 0:
+			_block_bump[n] = at
+	_busy_for(at - _now() + Motion.BUMP_TIME)
+
+## A stone blushes toward the family's rose and settles: Check pointing at
+## its lamp, or a tap refused on a pinned one.
+func _blush_stone(cell: Vector2i) -> void:
+	if Motion.reduce:
+		return
+	_blush[cell] = _now()
+	_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
+
+## The blocks and lamps beside a lamp that has just been set down lean away
+## from it and back. A lamp already mid-hop is left to land.
+func _nudge_around(cell: Vector2i, t: float) -> void:
+	for d in State.DIRS:
+		var n: Vector2i = cell + d
+		if not state.in_field(n):
+			continue
+		if not state.is_white(n):
+			if not Motion.reduce:
+				_block_nudge[n] = {"at": t, "dir": Vector2(d)}
+		elif state.mark_at(n) == State.LAMP and _lamps.has(n):
+			var lamp: CourtLantern = _lamps[n]
+			if Motion.running(_pos_tw.get(lamp)):
+				continue
+			_pos_tw[lamp] = Motion.nudge(lamp, Vector2(d), Vector2.ZERO)
+	_busy_for(Motion.NUDGE_LAG + Motion.NUDGE_TIME)
+
+## `lamp` hops `height` over `time` after `delay`; it rests at its slot's
+## origin, so the base is always zero.
+func _hop(lamp: Control, height: float, time: float, delay := 0.0) -> void:
+	Motion.stop(_pos_tw.get(lamp))
+	lamp.position = Vector2.ZERO
+	_pos_tw[lamp] = Motion.hop(lamp, height, time, delay, 0.0)
+	_busy_for(delay + time)
+
+## Check pointing at a lamp: it wobbles where it stands.
+func _wobble(lamp: Control) -> void:
+	Motion.stop(_look_tw.get(lamp))
+	lamp.rotation = 0.0
+	lamp.scale = Vector2.ONE
+	_look_tw[lamp] = Motion.wobble2d(lamp)
+	_busy_for(Motion.WOBBLE_TIME)
+
+## A tap refused on `cell`: a block shivers and flashes toward its rose; a
+## pinned lamp shivers while its stone blushes; the sprout says why.
+func _refuse(cell: Vector2i) -> void:
+	_say("A block of stone stands there. It is what stops the light."
+		if not state.is_white(cell)
+		else "That lantern is lit for good. A hint set it down.", Face.Expr.PUZZLED)
+	fx.cue("locked")
+	var now := _now()
+	if not state.is_white(cell):
+		if Motion.reduce:
+			return
+		_block_shiver[cell] = now
+		_block_flash[cell] = now
+		_busy_for(maxf(Motion.SHIVER_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
+		return
+	_blush_stone(cell)
+	var lamp: CourtLantern = _lamps.get(cell)
+	if lamp == null:
+		return
+	Motion.stop(_pos_tw.get(lamp))
+	lamp.position = Vector2.ZERO
+	_pos_tw[lamp] = Motion.shiver(lamp, _cell * SHIVER)
+	_busy_for(Motion.SHIVER_TIME)
 
 # --- the sprout's line ---
 
@@ -763,77 +1220,105 @@ func tip_line() -> Dictionary:
 func can_undo() -> bool:
 	return not is_done() and not state.history.is_empty()
 
-## Takes back the last gesture, however many stones it swept. Counts no move.
+## Takes back the last gesture, however many stones it swept: the reverse of
+## Place, stone by stone along the same path. Counts no move.
 func undo() -> bool:
 	if is_done() or state.history.is_empty():
 		return false
-	var t := _now()
-	for cell in state.undo():
-		_at[cell] = t
-		if state.mark_at(cell) == State.LAMP:
-			_lamp_node(cell)
-	_relight(Vector2i(-1, -1), t)
+	var now := _now()
+	var before: Dictionary = state.marks.duplicate()
+	_transition(before, state.undo(), now, Motion.ENTER_STAGGER)
+	_relight(now, _at_once)
 	_speak()
 	fx.cue("undo")
-	_refresh()
+	_redraw()
 	moved.emit()
 	return true
 
 func hints_left() -> int:
 	return HINTS - hints_used
 
-## Lights one lantern from the answer and pins it for good. Counts no move but
-## can finish the puzzle.
+## Lights one lantern from the answer and pins it for good: a ring pulses out
+## of the stone, the lamp drops in from above, sparkles rise, and the light
+## travels out from it. Counts no move but can finish the puzzle.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var before: Dictionary = state.marks.duplicate()
 	var target: Vector2i = state.hint()
 	if target.x < 0:
 		return false
-	var t := _now()
-	_at[target] = t
-	_lamp_node(target)
+	var now := _now()
 	hints_used += 1
-	_relight(target, t)
-	fx.sparkle(cell_to_local(target.y, target.x), Pal.LEAF)
+	_transition(before, [target], now, 0.0, true)
+	_relight(now, _travel_from(target))
+	var at := cell_to_local(target.y, target.x)
+	fx.ring(at, _cell * 0.5, Pal.LEAF)
+	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
 	_say("That lantern is lit for good.", Face.Expr.HAPPY)
-	_refresh()
+	_redraw()
 	moved.emit()
 	check_solved()
 	return true
 
-## Shakes every lantern the answer does not put there, and says how many.
+## Every lantern the answer does not put there wobbles and its stone blushes,
+## and the sprout says how many.
 func check() -> int:
 	if is_done():
 		return 0
 	checks += 1
-	var t := _now()
 	var wrong: Array = state.wrong_lamps()
 	for cell in wrong:
-		_flash_at[cell] = t
+		if _lamps.has(cell):
+			_wobble(_lamps[cell])
+		_blush_stone(cell)
 	_say("%d %s in the wrong place." % [wrong.size(),
 		"lantern stands" if wrong.size() == 1 else "lanterns stand"]
 		if not wrong.is_empty() else "Every lantern you have set down is right.",
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
-	_refresh()
+	_redraw()
 	return wrong.size()
 
+## Every lamp and chip goes, in a wave from the far corner, the light cooling
+## in the same wave and the blocks hopping as the court clears around them.
+## The hints a player spent are not refunded, only unpinned.
 func reset_board() -> void:
-	var t := _now()
+	var now := _now()
+	_release_press()
 	_clear_gesture()
-	for cell in state.reset():
-		_at[cell] = t
-	_dip_at = {}
-	_flash_at = {}
+	_end_sinks(now)
+	var before: Dictionary = state.marks.duplicate()
+	var cleared := state.reset()
+	for cell in cleared:
+		var at: float = now + _reset_wave(cell)
+		if int(before[cell]) == State.CHIP:
+			_chip_leaves(cell, at)
+		else:
+			_lamp_down(cell, at - now)
+			_recount_around(cell, at)
+	if not Motion.reduce:
+		for y in state.h:
+			for x in state.w:
+				if int(state.grid[y][x]) != Gen.WHITE:
+					var cell := Vector2i(x, y)
+					_block_hop[cell] = {"at": now + _reset_wave(cell), "height": Motion.RESET_HOP,
+						"time": Motion.HOP_TIME}
+		_busy_for(_reset_wave(Vector2i.ZERO) + Motion.HOP_TIME)
+	_relight(now, _reset_wave)
+	_blush = {}
+	_chip_in = {}
+	_block_flash = {}
+	_block_shiver = {}
 	moves = 0
 	_running = true
-	_relight(Vector2i(-1, -1), t)
+	_refresh_faces()
 	_say("The court is cleared. The hints you spent are not refunded, only unpinned.",
 		Face.Expr.HAPPY)
+	_tip_timer.start()
 	fx.cue("reset")
-	_refresh()
+	_redraw()
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -851,39 +1336,121 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
 
-## The lanterns hop in reading order, each throwing sparks as it lands, and
-## the chips clear away.
+## Every lamp and block hops the solve wave along the diagonal, each lamp
+## grinning as the wave reaches it with a spark, and the chips clear away in
+## a scatter behind them.
 func _on_solved() -> void:
-	var t := _now()
+	var now := _now()
+	_release_press()
 	_clear_gesture()
+	_end_sinks(now)
 	_tip_timer.stop()
-	_solved_at = t
-	_sparks = []
-	var down: Array = state.lamps()
-	down.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.y * state.w + a.x < b.y * state.w + b.x)
-	for i in down.size():
-		var cell: Vector2i = down[i]
-		var at: float = t + SOLVE_DELAY + i * SOLVE_STEP
-		_at[cell] = at
-		if not Motion.reduce:
-			_sparks.append({"at": at + SPARK_DELAY, "pos": cell_to_local(cell.y, cell.x)})
+	_solved_at = now
+	var k := 0
+	for cell in state.lamps():
+		var lamp := _lamp_node(cell)
+		var delay := _solve_delay(cell)
+		_hop(lamp, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
+		_grin(lamp, delay)
+		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
+		k += 1
+	if not Motion.reduce:
+		for y in state.h:
+			for x in state.w:
+				if int(state.grid[y][x]) != Gen.WHITE:
+					var cell := Vector2i(x, y)
+					_block_hop[cell] = {"at": now + _solve_delay(cell), "height": Motion.SOLVE_HOP,
+						"time": Motion.SOLVE_TIME}
+	_refresh_faces()
 	_say("Not a stone left in the dark.", Face.Expr.JOY)
 	fx.cue("solved")
-	_refresh()
+	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
+		CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME))
+	_redraw()
+
+func _solve_delay(cell: Vector2i) -> float:
+	if Motion.reduce:
+		return 0.0
+	return Motion.SOLVE_DELAY + Motion.stagger(cell.x + cell.y, Motion.SOLVE_STAGGER)
+
+## `lamp` goes to JOY as the wave reaches it; at once under reduce-motion.
+func _grin(lamp: Face, delay: float) -> void:
+	if delay <= 0.0:
+		lamp.expression = Face.Expr.JOY
+	else:
+		_after(delay, func() -> void: lamp.expression = Face.Expr.JOY)
+
+## A spark as lamp `k` hops. The two pools are used in turn: a run of ten a
+## few hundredths apart would otherwise recycle one pool fast enough to cut
+## each burst in half.
+func _spark_at(k: int, at: Vector2) -> void:
+	if k % 2 == 0:
+		fx.sparkle(at, Pal.SUN)
+	else:
+		fx.puff(at, Pal.SUN, 4)
+
+# --- entrance ---
+
+## The chrome is the host's; here the court pops in wide and the blocks pop
+## onto it a beat later with the squash, along the diagonal from the top-left
+## corner, each block's number and shadow arriving with it.
+func _enter() -> void:
+	_opened = _now()
+	var far := 0
+	for y in state.h:
+		for x in state.w:
+			if int(state.grid[y][x]) != Gen.WHITE:
+				far = maxi(far, x + y)
+	_busy_for(maxf(_enter_delay(far) + Motion.POP_IN, Motion.ENTER_DELAY + Motion.ENTER_POP))
+	fx.cue("enter")
+
+func _enter_delay(diagonal: int) -> float:
+	return Motion.ENTER_DELAY + Motion.ENTER_FACE_LAG + Motion.stagger(diagonal, Motion.ENTER_STAGGER)
 
 # --- odds and ends ---
 
+## Kills every tween the previous board still tracks and retires its pending
+## callbacks, so a rebuild never inherits a hop aimed at a lamp that is gone.
+func _stop_all() -> void:
+	_gen += 1
+	for tw in _pos_tw.values():
+		Motion.stop(tw)
+	for tw in _look_tw.values():
+		Motion.stop(tw)
+	_pos_tw = {}
+	_look_tw = {}
+
+## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	var gen := _gen
+	get_tree().create_timer(maxf(delay, 0.0)).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
+
+## Keeps the court redrawing for `seconds` more: something on it, a shadow's
+## owner or the light is moving.
+func _busy_for(seconds: float) -> void:
+	_anim_until = maxf(_anim_until, _now() + seconds)
+
+func _process(delta: float) -> void:
+	super(delta)
+	var now := _now()
+	if now < _anim_until:
+		_place_light(now)
+		queue_redraw()
+
+## Something on the court changed: rebuild it on the next draw.
+func _redraw() -> void:
+	_ground_dirty = true
+	_place_light(_now())
+	queue_redraw()
+
+## Seconds since the scene started, the clock every animation here reads.
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
 func _dec(u: float) -> float:
 	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
-
-func _back_out(u: float) -> float:
-	u = clampf(u, 0.0, 1.0)
-	const C := 1.70158
-	return 1.0 + (C + 1.0) * pow(u - 1.0, 3.0) + C * pow(u - 1.0, 2.0)
 
 ## The light's own easing: in and out, so a stone warms the way a lamp is
 ## carried in rather than the way a switch is thrown.

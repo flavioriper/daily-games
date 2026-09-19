@@ -328,9 +328,15 @@ Specs:
   for a board with both media: trees, tents and chips are nodes in slots
   taking the recipes, the cairns and the shade under the sweep are drawn off
   the readers, and a piece with no blushing skin (a tree) blushes through
-  its cell (the doc's rule 9). The other three flat boards (Light Up, One
-  Line, Nonogram) still carry their own tweens and are ported when next
-  touched.
+  its cell (the doc's rule 9). Light Up joined on 2026-09-19 as well (its
+  spec's section 11), and it completed the curve readers: every recipe a
+  node takes now has its reader on `Motion` (`press_scale`, `hop_lift`,
+  `nudge_offset`, `shiver_offset`, `wobble_angle` beside the pops and the
+  flash), so a drawn board needs nothing new from `core/motion.gd`; its
+  lamps stand in slots and its blocks, chips and stones are drawn off the
+  readers, the stone itself sinking under the finger. The other two flat
+  boards (One Line, Nonogram) still carry their own tweens and are ported
+  when next touched.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain

@@ -237,3 +237,98 @@ Two implementation notes worth keeping:
   the board under the day card. This is the second board of the seven to break
   it, and the only one where the air is the same above and below at every
   difficulty.
+
+## 11. Amendment: the polish of 2026-09-19
+
+The user asked for Light Up to be polished with proper animations on
+Binairo's pattern, smoother and more elegant, and for the pattern to be
+kept so the other boards take it. Built straight in Godot, as Code Break's,
+Balance's, Untangle's, Shikaku's and Tents' were, with this amendment and
+`docs/art/flat-motion.md` as the record. The layout is kept; sections 2 to 7
+stand. Section 8's motion is superseded by what follows.
+
+**Nodes in slots over two drawn meshes.** The lamps were already nodes; each
+now stands in a slot the layout owns, so the hop, the nudge, the shiver and
+the drop never fight a relayout, and takes the vocabulary straight. The
+court is drawn as two meshes on one `_anim_until` clock every recipe start
+extends: the **floor** (the mortar bed, a stone per cell with its warmth, the
+beams), built about the court's centre so its entrance is a draw transform,
+and the **ground** (a stone's blush, every shadow, the blocks, the chips),
+read off the curve readers. The numbers go through `draw_set_transform` so
+they squash, sink, bump and hop with the block they are carved on. Every
+move -- a tap, a sweep, an undo, a hint, a reset -- goes through one
+`_transition` that diffs a snapshot of the marks against the state.
+
+**The pattern grew here.** Light Up needed the press, the hop, the nudge and
+the shiver on drawn things, so `core/motion.gd` gained the readers it was
+missing (`press_scale`, `hop_lift`, `nudge_offset`, `shiver_offset`,
+`wobble_angle`, with `SHIVER_PX`, `SHIVER_TIME`, `WOBBLE_ANGLE` and
+`WOBBLE_TIME` named beside them). Every recipe a node takes now has its
+reader, so One Line and Nonogram, both drawn boards, need nothing new from
+the vocabulary.
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | the court pops in wide (`wide_pop_scale`, `ENTER_WIDE_FROM` 0.86 over `ENTER_POP` 0.25) after `ENTER_DELAY`; each block pops in with the squash (`pop_in_scale`) along the diagonal at `ENTER_STAGGER` 0.03, `ENTER_FACE_LAG` after the court starts, its number and its shadow with it. The stones' diagonal fade and the blocks' 24 px drop are gone |
+| Press | a lamp sinks to `PRESS_SCALE` 0.94 (`press`) and springs back; a block sinks too, drawn (`press_scale`); a bare stone or a chip's stone sinks *itself*, drawn, and goes half a step into its own deep colour as it does (`SINK_SHADE` 0.5). Tents' wash was tried first and is invisible on mid-grey stone. Nothing pressed before |
+| Place | the lamp pops in with the squash (`pop_in`, `POP_IN` 0.22) in place of its own six tenths; a puff in `SUN`; the blocks and lamps on its four sides lean away `NUDGE` 3 and back (`nudge`, `nudge_offset`); every numbered block it touches bumps (`bump_scale`, the Count moment); the light travels out as before (`LIGHT_STEP` 0.035, `LIGHT_CAP` 0.25, `LIGHT_IN` 0.22) |
+| Sweep | the stones under the finger sink as it passes, and on release the chips arrive in a wave along the finger's path at `ENTER_STAGGER`, each stone springing back as its chip lands (`pop_in_scale`, with the squash). No puffs. A rub-out runs the same wave with the pop out |
+| Remove, undo | a lamp shrinks to nothing with the quarter turn (`pop_out`, `POP_OUT` 0.12) and a chip does the same, drawn from a leaving list after the state has forgotten it; what comes back pops in. **The beam withdraws with the floor**: a leaving lamp is kept in `_beam_out` and its shafts fade over `LIGHT_OUT` 0.3 as its stones cool, where they used to vanish on one frame |
+| Hint | a ring in `LEAF` through `Fx2D.ring`, the lamp drops in from `DROP` 40 above with the fade (`drop_in`), a sparkle in `LEAF`; a chip under it pops out first; the light travels out from it |
+| Wrong on Check | the lamp wobbles (`wobble2d`) and its stone blushes toward `BAD_TILE` and settles (`flash_level`), drawn into the ground. The 0.6 s horizontal shake is gone |
+| Refused | a block shivers (`shiver_offset`, 0.04 of a cell) and flashes toward its own OVER rose (`BLOCK_ROSE` 0.6 at `flash_level`), which it has where a tree has nothing; a pinned lamp shivers (`shiver`) while its stone blushes; the sprout says why. The dip is gone, and a refused block showed nothing at all before |
+| Reset | the chips and lamps pop out in a wave from the far corner at `RESET_STAGGER` 0.02, the blocks hop `RESET_HOP` in the same wave (`hop_lift`), the numbered blocks beside a leaving lamp bump, and the light cools in the same wave (`_relight` takes a delay per stone). Everything used to vanish at once |
+| Solved | every lamp and block hops `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4 along the diagonal from `SOLVE_DELAY` 0.25 at `SOLVE_STAGGER` 0.04, each lamp going to JOY as the wave reaches it, a sparkle or a puff in turn; the chips clearing away in a scatter (`CLEAR_*`) stay this board's own. `WIN_WAIT` 1.6, from 2.0; the wave ran in reading order at 0.1 apart before |
+
+Faces are written only when their look changes; each lamp's glow follows
+the warmth of its own stone, written only when the light has moved.
+
+**The dressing:**
+
+- **Shadows on the ground.** The lamp's shadow leaves its face mesh
+  (`casts`, which `CourtLantern._layers` now honours) for the ground mesh,
+  as the family's soft disc read off the lamp's own scale and fade, anchored
+  at the stone so a hopping lamp leaves it behind; the block's and the
+  chip's flat ellipses became the same disc, at about twice their old peak
+  (0.26 and 0.24 in `TEXT`) because a disc that fades to its rim reads at
+  about half its centre.
+- **The court wears no edge.** The family's 6 in `LINE` under the mortar bed
+  was tried and dropped: it sat 14 px above the card's own lip and read as a
+  doubled line, because the bed is a hair of shade over the parchment and
+  not a surface. The mortar stays as section 2 has it.
+- **No clouds or tufts.** The court fills the card; a tuft in a cell would
+  read as a piece.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+Light Up run now sets down the first lamp of the answer (`empty` skips it):
+
+| | Draw calls | Idle |
+|---|---|---|
+| Medium board at rest, bare, before | 62 | 3.08, 3.12 ms |
+| Medium board at rest, bare, now | 63 | 3.15, 3.27, 3.48 ms |
+| Now, with one lamp lit and its beam | 65 | 3.16, 3.22 ms |
+
+The one call added is the floor and the ground being two meshes; a lamp
+costs one less than it did, its shadow layer now in the ground. One process
+reported 141 calls on the bare board twice; a per-frame probe of the same
+build read a flat 63 on every frame with the board never busy, and every
+later run agreed, so that pair is a process outlier and not the board.
+
+Suite 2086/0. `tests/_win.gd` windowed 9/9, Light Up solved through the real
+hint button, Check and taps. A throwaway probe shot the entrance, a placed
+lamp with its light travelling, a pressed block and its refusal, a sunk
+stone, a sweep and its chips, a wrong lamp under Check, an undo with the
+beam withdrawing, a hint, a removal, a reset, the solve wave and the win
+screen, each with and without reduce-motion (under which the court and the
+blocks are up at once, a lamp is there or gone in one frame with its light
+on or off, nothing sinks, blushes, shivers or rings, and the win screen
+follows the last tap). Found on the way and fixed in both boards: Tents'
+release cleared the gesture before releasing the pressed face, so a refused
+tree stayed sunk at 0.94; the order is release, then clear.
+
+Open, still, from section 10: the beam's second voice, the dull untouched
+court, the travelling wave's pace, the ten glowing faces, the pinning hint
+and the centred card. Nothing here answers them; it only makes the flat
+board move with the same hand as the other six.
