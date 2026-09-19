@@ -26,7 +26,7 @@ rules and section 9 what it looks like.
 | `puzzles/queens_gen.gd` | new | Queens first, regions grown from them, the answer proved unique. |
 | `puzzles/queens_state.gd` | new | The rules, scene-free: regions, queens, the player's crosses, the derived crosses, every move. |
 | `puzzles/queens2d.gd` | new | The flat board: the court, its two meshes, the crowns in slots, the wave, the sprout's lines. |
-| `ui/faces/crown_face.gd` | new | The queen: a gold crown with a face. The tenth screen's one new species. |
+| `ui/faces/bee_face.gd` | new | The queen: a chibi bee in a small crown, wings beating. The tenth screen's one new species (built as `crown_face.gd`, a gold crown with a face; the bee replaced it the same evening, section 13). |
 | `ui/flat/tile_tray.gd` | edit | Takes a chip set; Nonogram's pair stays the default, Queens' pair is the second. |
 | `ui/flat/flat_host.gd` | edit | `"tray": "crowns"` builds the tile tray with the crown set. |
 | `core/palette.gd` | edit | Nine region pastels, and the gold wash the wave leaves behind. |
@@ -138,6 +138,10 @@ settings sheet has no selector. That target is met (section 11's table); the
 today, which section 12 keeps open.
 
 ## 5. The cast: one crown, drawn crosses, coloured ground
+
+*As built on the afternoon of 2026-09-19. The same evening the crown became a
+chibi bee wearing one; section 13's last amendment is the drawing that ships,
+and everything below about the crown's face, states and gem holds of her.*
 
 **The crown is a new species**, `ui/faces/crown_face.gd`. The bar for one is
 the snail's: nothing in the cast does what this needs. Nothing in it is a
@@ -383,3 +387,49 @@ The 855 draw-call budget is the binding one; the idle number is a report.
   answer's own seat into every row but the last, and presses Hint only for
   the row that is left, which seats the n-th queen and wins through the same
   call stack the bug lived in.
+- **The queen is a chibi bee, evening of 2026-09-19.** The user's second
+  mock (`docs/art/concept-queens-bee.png`) put a chibi bee wearing a small
+  gold crown in every seat where the first had a plain crown with a face, and
+  asked for her in place of the crown, piece only: the court, the Queen chip,
+  the menu card and the win screen. Not taken from that mock, by the user's
+  answer: the bee on the tip card (the sprout keeps every flat board's tip
+  card), the hive, flowers and flight path beside the board (no flat board
+  has side scenery; the court fills the card), the crown over the wordmark,
+  and the bee's tiny arms and stinger, a smudge at a 104-pixel seat. She was
+  drawn first in the concept page's mock (`bee`, in s) and shot there, then
+  ported number for number into `ui/faces/bee_face.gd`, and
+  `ui/faces/crown_face.gd` was deleted, since nothing else drew one.
+  - **Two layers.** The wings behind her (two pale ellipses in `CLOUD_TILE`
+    rooted at her shoulder line, tilted 0.6 rad, shared by every bee of a
+    size) and the body carrying the face: a round body in `SUN_RAY`, two
+    stripes in `PLAQUE_DEEP` cut to the body's outline as convex bands rather
+    than clipped, thin antennae with a bead, the crown in `SUN` over a
+    `SUN_DEEP` foot sunk into the top of her head, and the family's face on
+    the upper body. Every colour was already in the palette. HAPPY, JOY and
+    STRAIN as the crown had them; a hint's bee wears the leaf gem on her
+    crown's middle point.
+  - **Her wings beat at idle**, by the user's choice over a buzz on arrival
+    or still wings. The base gained `_layer_transform(name, R, centre)`,
+    defaulting to the per-layer turn every face already had, and the bee's
+    wings layer returns a squash toward her shoulder line by `flap`, read off
+    `beat` (radians) as `lerp(FLAP_MIN 0.45, 1, 0.5 + 0.5 sin beat)`; the
+    idle tween is the sun's, one turn of `beat` every `FLAP_PERIOD` 0.11 s
+    from wherever it stood, so the owner starts every bee on her own phase
+    and nine queens never beat in step. No mesh is rebuilt for a beat; the
+    cost is one draw call a bee. `set_idle` under reduce-motion does
+    nothing, and `beat` starts at the top of the beat, so still wings are
+    open ones. The chip's bee is alive too (`set_idle(true)`), and the win
+    screen already idles its cast.
+  - **The seat is 0.9 of the cell** (`BEE_SIZE`, the crown sat at 0.8),
+    because her wings span the whole seat; the board's soft disc moved from
+    0.36 to 0.38 of the cell under her rounder body, and the card's from 26
+    to 31. Named for what she is: `BeeFace`, `_bees`, `_bee_node`, `_bee_up`,
+    `_bee_down`, `_bee_shadow`, `BEE_*`, `_tap_queen`; the chip set is
+    `TileTray.QUEENS` and the registry asks `"tray": "queens"`; the share
+    text's queen is a bee emoji.
+  - **Measured on this Mac, 2026-09-19 evening:** the strip with the first
+    queen seated, 71 draw calls (her wings and the chip's, against 69) and
+    3.83 ms mean idle (3.80 and 3.81 before); the first screen 320 draw calls
+    against 319 (the card's bee's wings) at the 8.33 ms vsync cap; suite 2406
+    checks, 0 failures; `tests/_win.gd` 10/10 with Queens solved through the
+    hint path.

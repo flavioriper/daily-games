@@ -385,10 +385,15 @@ Specs:
   when -- a queen's king-move distance times `WAVE_STEP` (reversed for a
   lift, far cells first), a sweep's path, Reset's far corner -- and the
   cells the queen sees flash gold (`QUEEN_WASH` at `WAVE_FLASH`) as it
-  reaches them. The crown (`ui/faces/crown_face.gd`) is the cast's one new
-  species since the snail. The tile tray takes a **chip set** now
-  (`TileTray.MOSAIC`, `TileTray.CROWNS`; `"tray": "crowns"`), so Nonogram's
-  tray and Queens' are one class.
+  reaches them. The queen bee (`ui/faces/bee_face.gd`) is the cast's one new
+  species since the snail: a chibi bee in a small crown, who replaced a
+  plain crown with a face on the evening of 2026-09-19 from the user's
+  second mock (`docs/art/concept-queens-bee.png`). Her wings are a second
+  layer that beats through `Face._layer_transform`, a squash about her
+  shoulder line, so a beat rebuilds no mesh and costs one draw call a bee
+  (71 on the strip with a queen seated and the chip alive, against 69). The
+  tile tray takes a **chip set** now (`TileTray.MOSAIC`, `TileTray.QUEENS`;
+  `"tray": "queens"`), so Nonogram's tray and Queens' are one class.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -427,7 +432,7 @@ Specs:
   and `legacy/ui/island_host.gd` is the other, and both fill
   `ui/puzzle_host.gd`'s `_build_chrome` and `_enter`. The base has no rows
   of its own and errors rather than falling back. It picks the tray too
-  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"crowns"`), because the host lays out its rows
+  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`), because the host lays out its rows
   before it has a puzzle to ask how many chips it wants -- and it can drop
   the actions row with `"actions": false`, which Balance does: that board is
   its own continuous check, so it has no Check to put in the row and Reset
@@ -461,9 +466,9 @@ Specs:
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
   drawing a new character -- in ten screens two have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
-  anywhere and its trail *is* the mechanic, and Queens' crown
-  (`ui/faces/crown_face.gd`), because nothing in the cast is a queen and the
-  crown is the one thing that board seats. Nonogram went the other way and
+  anywhere and its trail *is* the mechanic, and Queens' bee
+  (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
+  bee is the one thing that board seats. Nonogram went the other way and
   drew **no** character at all: its
   pieces are tiles and its clues are numbers, so the only face on the screen
   is the sprout's, and `ui/faces/mosaic_tile.gd` is builder shapes rather than
