@@ -8,7 +8,7 @@ extends Control
 ## are made almost entirely of the flat boards' own cast -- Binairo's sun and
 ## moon, Code Break's friends, Balance's fruit, Untangle's lanterns,
 ## Shikaku's markers, Tents' tent and conifers, Light Up's lamp, One Line's
-## snail, Queens' crown -- so a card and its board are visibly the same
+## snail, Queens' bee -- so a card and its board are visibly the same
 ## drawing. Only the furniture under them (a tray, a beam, a tile, a pipe) is
 ## drawn here, and only the two `soon` cards are drawn here outright, because
 ## the boards they name have no flat cast to borrow from yet.
@@ -30,7 +30,7 @@ const TentFace = preload("res://ui/faces/tent_face.gd")
 const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
-const CrownFace = preload("res://ui/faces/crown_face.gd")
+const BeeFace = preload("res://ui/faces/bee_face.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -115,8 +115,8 @@ func _build() -> void:
 		"oneline":
 			_seat(SnailFace.new(), 96.0, 6.0, 4.0)
 		"queens":
-			# The crown on a patch of the court _draw lays under her.
-			_seat(CrownFace.new(), 72.0, 0.0, 2.0)
+			# The queen bee on a patch of the court _draw lays under her.
+			_seat(BeeFace.new(), 72.0, 0.0, 2.0)
 		_:
 			pass
 
@@ -240,7 +240,7 @@ func _draw_mosaic() -> void:
 		_text(cols[k], x0 + k * cell + cell * 0.5, y0 - 8.0, 19.0, Pal.TEXT)
 
 ## Queens: six cells of the court in two regions with the seam between them,
-## under the crown, and the soft disc she stands on.
+## under the bee, and the soft disc she stands on.
 func _draw_regions() -> void:
 	var cell := 54.0
 	var x0 := -cell * 1.5
@@ -252,7 +252,7 @@ func _draw_regions() -> void:
 	_line([Vector2(x0 + 2.0 * cell, y0), Vector2(x0 + 2.0 * cell, y0 + cell),
 		Vector2(x0 + cell, y0 + cell), Vector2(x0 + cell, y0 + 2.0 * cell)], 4.0, Pal.TEXT)
 	draw_rect(Rect2(at(x0, y0), Vector2(3.0 * cell, 2.0 * cell) * _u), Pal.TEXT, false, 4.0 * _u)
-	_disc(0.0, 26.0, 20.0, Color(Pal.TEXT, 0.14))
+	_disc(0.0, 31.0, 20.0, Color(Pal.TEXT, 0.14))
 
 ## Pipes and Horse Pen are the two `soon` cards: no flat
 ## board, so no cast to borrow. Each is one small drawing, sized to say what

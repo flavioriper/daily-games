@@ -210,6 +210,14 @@ func _layers() -> Array:
 func _layer_angle(_name: String) -> float:
 	return 0.0
 
+## The whole transform a layer is drawn with, for a layer that moves by more
+## than a turn about the centre: the bee's wings beat by a squash about her
+## shoulder line (ui/faces/bee_face.gd). The base turns by _layer_angle, so a
+## face that only turns overrides nothing new. `R` is the radius the mesh was
+## built at, `centre` the rect's middle.
+func _layer_transform(name: String, _R: float, centre: Vector2) -> Transform2D:
+	return Transform2D(_layer_angle(name), centre)
+
 ## Appends a layer's shapes to `b`, in R. `eye` is the eye level after the
 ## expression's own rule (JOY ignores it, SLEEPY caps it). The subclass's
 ## drawing.
@@ -224,7 +232,7 @@ func _draw() -> void:
 	var centre := size * 0.5
 	for layer in _layers():
 		var mesh := _mesh_for(layer[0], layer[1], R, eye)
-		draw_mesh(mesh, null, Transform2D(_layer_angle(layer[0]), centre))
+		draw_mesh(mesh, null, _layer_transform(layer[0], R, centre))
 
 ## eye_open snapped to EYE_LEVELS and put through the expression's rule.
 func _eye_level() -> float:

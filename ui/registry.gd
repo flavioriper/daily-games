@@ -158,11 +158,11 @@ const PUZZLES := [
 		"short": "One queen per row,\ncolumn and colour.",
 		"motto": "Every queen has her seat",
 		"footer": "Seat · Cross · Reign",
-		# Two chips, a crown and a cross, so it asks for the tile tray with
-		# the crown set.
+		# Two chips, the queen bee and a cross, so it asks for the tile tray
+		# with the queen set.
 		"script": "res://puzzles/queens2d.gd",
 		"shell": "flat",
-		"tray": "crowns",
+		"tray": "queens",
 		"difficulties": [0, 1, 2],
 	},
 	# --- the end of the last row: named, drawn, and not yet playable here.

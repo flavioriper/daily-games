@@ -205,7 +205,7 @@ static func _test_state(t) -> void:
 	t.check(s3.is_solved(), "the answer is solved")
 	t.eq(s3.queens_left(), 0, "none to go")
 	t.eq(s3.share_glyphs().split("\n").size(), 6, "five rows and a trailing newline")
-	t.check(s3.share_glyphs().contains("👑"), "the share carries a crown")
+	t.check(s3.share_glyphs().contains("🐝"), "the share carries a bee")
 	t.eq(s3.hint().cell, Vector2i(-1, -1), "no hint when every row has its queen")
 
 static func _test_palette(t) -> void:

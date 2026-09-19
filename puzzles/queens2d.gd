@@ -12,16 +12,16 @@ extends "res://core/puzzle_base.gd"
 ## pebble pops in behind the flash. Lift her and the wave runs backward, the
 ## far cells first, so her reach draws back into where she stood. The crosses
 ## a queen lays are derived by the state and never stored, so undo and
-## removal need no bookkeeping for them; a crown on a crossed cell is
+## removal need no bookkeeping for them; a queen on a crossed cell is
 ## refused, so two queens can never conflict and the n-th queen is the win.
 ##
-## How it is drawn. Only the crowns are nodes (ui/faces/crown_face.gd), each
+## How it is drawn. Only the bees are nodes (ui/faces/bee_face.gd), each
 ## in a slot of its own so the layout and the motion never fight (rule 2 of
 ## docs/art/flat-motion.md). Everything else is two meshes rebuilt only while
 ## something moves: the floor (the frame, the region-tinted cells, the grid,
 ## the seams and the dot on every free cell), built about the court's centre
 ## so the entrance pop is a transform; and the ground (the wave's washes, the
-## blushes, the crowns' shadows and every pebble) over it. Every drawn moment
+## blushes, the bees' shadows and every pebble) over it. Every drawn moment
 ## reads the flat boards' vocabulary as curves off core/motion.gd (rule 8);
 ## nothing here needed a new reader. Every move -- a tap, a sweep, an undo, a
 ## hint, a reset -- goes through one _settle that diffs a snapshot of the
@@ -35,7 +35,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
-const CrownFace = preload("res://ui/faces/crown_face.gd")
+const BeeFace = preload("res://ui/faces/bee_face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 
@@ -56,12 +56,12 @@ const DOT_ALPHA := 0.32
 ## cells are flush, so a press here shades rather than shrinks (a shrunk cell
 ## would show the frame's ink round it); the piece on the cell sinks.
 const SINK_SHADE := 0.18
-## The pieces in cells, each a fraction of a cell, and the crown's soft
+## The pieces in cells, each a fraction of a cell, and the bee's soft
 ## shadow on the ground.
-const CROWN_SIZE := 0.8
-const CROWN_SHADOW_AT := Vector2(0.0, 0.36)
-const CROWN_SHADOW_RX := 0.3
-const CROWN_SHADOW_RY := 0.08
+const BEE_SIZE := 0.9
+const BEE_SHADOW_AT := Vector2(0.0, 0.38)
+const BEE_SHADOW_RX := 0.3
+const BEE_SHADOW_RY := 0.08
 const SHADOW_ALPHA := 0.22
 ## The family's rose itself rather than the pale tile tint, at less than
 ## half: the pale tint (0.9 against BAD_TILE) vanishes on the rose and coral
@@ -114,10 +114,10 @@ var n: int:
 var fx: Node2D
 var _cell := 0.0
 var _grid := Vector2.ZERO
-var _crowns: Dictionary = {}   # Vector2i -> CrownFace, kept once made
-var _slots: Dictionary = {}    # crown -> its slot
-var _pos_tw: Dictionary = {}   # crown -> the hop, the shiver, the drop
-var _look_tw: Dictionary = {}  # crown -> the pop, the press, the wobble
+var _bees: Dictionary = {}   # Vector2i -> BeeFace, kept once made
+var _slots: Dictionary = {}    # bee -> its slot
+var _pos_tw: Dictionary = {}   # bee -> the hop, the shiver, the drop
+var _look_tw: Dictionary = {}  # bee -> the pop, the press, the wobble
 var _gen := 0
 
 ## Every drawn moment, each the second it begins, read off Motion's curve
@@ -138,7 +138,7 @@ var _shown: Array = []
 
 # --- the gesture ---
 var _press_cell := Vector2i(-1, -1)
-var _pressed: Control       # the crown under the finger, if one
+var _pressed: Control       # the bee under the finger, if one
 var _dragged := false
 var _lay := true            # a sweep lays crosses, or rubs the player's out
 var _swept: Dictionary = {}
@@ -197,56 +197,56 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 
 # --- the cast ---
 
-## Only the crowns are nodes. The court and the pebbles are drawn.
+## Only the bees are nodes. The court and the pebbles are drawn.
 func _build_pieces() -> void:
-	for crown in _slots:
-		_slots[crown].queue_free()
+	for bee in _slots:
+		_slots[bee].queue_free()
 	_slots = {}
-	_crowns = {}
+	_bees = {}
 
-## Puts `crown` in a slot of her own under the board. The slot takes the
-## layout; the crown inside it takes the motion.
-func _stand(crown: Control, node_name: String) -> void:
+## Puts `bee` in a slot of her own under the board. The slot takes the
+## layout; the bee inside it takes the motion.
+func _stand(bee: Control, node_name: String) -> void:
 	var slot := Control.new()
 	slot.name = node_name
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(slot)
-	crown.name = "crown"
-	crown.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	slot.add_child(crown)
-	_slots[crown] = slot
+	bee.name = "bee"
+	bee.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(bee)
+	_slots[bee] = slot
 
-## The crown on `cell`, made the first time a queen is seated there and kept
+## The bee on `cell`, made the first time a queen is seated there and kept
 ## afterwards: a cell tapped twice would otherwise build and free a node with
 ## a mesh cache behind it on every tap.
-func _crown_node(cell: Vector2i) -> CrownFace:
-	if _crowns.has(cell):
-		return _crowns[cell]
-	var crown := CrownFace.new()
-	crown.visible = false
-	crown.scale = Vector2.ZERO
-	_stand(crown, "crown_%d_%d" % [cell.x, cell.y])
-	crown.set_idle(true)
-	_crowns[cell] = crown
+func _bee_node(cell: Vector2i) -> BeeFace:
+	if _bees.has(cell):
+		return _bees[cell]
+	var bee := BeeFace.new()
+	bee.visible = false
+	bee.scale = Vector2.ZERO
+	_stand(bee, "bee_%d_%d" % [cell.x, cell.y])
+	bee.set_idle(true)
+	_bees[cell] = bee
 	if _cell > 0.0:
-		_seat(crown, cell_to_local(cell.y, cell.x), _cell * CROWN_SIZE)
-	return crown
+		_seat(bee, cell_to_local(cell.y, cell.x), _cell * BEE_SIZE)
+	return bee
 
-## Every crown takes the look her state asks for; a crown is written only
+## Every bee takes the look her state asks for; a bee is written only
 ## when her look changes, since a written face redraws.
 func _refresh_faces() -> void:
-	for cell in _crowns:
-		var crown: CrownFace = _crowns[cell]
+	for cell in _bees:
+		var bee: BeeFace = _bees[cell]
 		if state.mark_at(cell) != State.QUEEN:
 			continue
 		var pinned: bool = state.locked.has(cell)
-		if crown.pinned != pinned:
-			crown.pinned = pinned
-		# The win writes JOY on each crown as the wave reaches her, and a
+		if bee.pinned != pinned:
+			bee.pinned = pinned
+		# The win writes JOY on each bee as the wave reaches her, and a
 		# refusal's strain settles on its own clock.
-		if _solved_at >= 0.0 or crown.expression == Face.Expr.STRAIN:
+		if _solved_at >= 0.0 or bee.expression == Face.Expr.STRAIN:
 			continue
-		_set_expr(crown, Face.Expr.HAPPY)
+		_set_expr(bee, Face.Expr.HAPPY)
 
 func _set_expr(face: Face, expr: int) -> void:
 	if face.expression != expr:
@@ -267,20 +267,20 @@ func _layout() -> void:
 	var court: Vector2 = Vector2.ONE * (_cell * state.n)
 	var tall := minf(size.y, court.y + 2.0 * PAD)
 	_grid = Vector2(size.x * 0.5 - court.x * 0.5, (size.y - tall) * 0.5 + (tall - court.y) * 0.5)
-	for cell in _crowns:
-		_seat(_crowns[cell], cell_to_local(cell.y, cell.x), _cell * CROWN_SIZE)
+	for cell in _bees:
+		_seat(_bees[cell], cell_to_local(cell.y, cell.x), _cell * BEE_SIZE)
 	_refresh_faces()
 	_redraw()
 
-## Seats `crown` `px` square about `centre`: her slot takes the place, and her
+## Seats `bee` `px` square about `centre`: her slot takes the place, and her
 ## own place inside it is left to the motion.
-func _seat(crown: Control, centre: Vector2, px: float) -> void:
+func _seat(bee: Control, centre: Vector2, px: float) -> void:
 	var seat := Vector2.ONE * px
-	var slot: Control = _slots[crown]
+	var slot: Control = _slots[bee]
 	slot.size = seat
 	slot.position = centre - seat * 0.5
-	crown.size = seat
-	crown.pivot_offset = seat * 0.5
+	bee.size = seat
+	bee.pivot_offset = seat * 0.5
 
 ## The cell a slot of `available` height holds, capped by the width.
 func _cell_for(available: float) -> float:
@@ -429,7 +429,7 @@ static func _square(at: Vector2, s: float) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(s, 0.0), at + Vector2.ONE * s, at + Vector2(0.0, s)])
 
 ## Everything standing on the court, in one mesh: the wave's gold washes, the
-## blushes, the crowns' shadows, the pebbles on their way out and the pebbles
+## blushes, the bees' shadows, the pebbles on their way out and the pebbles
 ## that are here.
 func _build_ground(now: float) -> Dictionary:
 	var b := Face.Builder.new()
@@ -460,12 +460,12 @@ func _build_ground(now: float) -> Dictionary:
 		_cell_wash(b, cell, Color(Pal.BAD, BLUSH_ALPHA * Motion.flash_level(e)))
 	for cell in gone:
 		_blush.erase(cell)
-	# The crowns' shadows, anchored at the cell and read off each crown's own
+	# The bees' shadows, anchored at the cell and read off each bee's own
 	# scale and alpha, so one arrives with the pop and stays put when she hops.
-	for cell in _crowns:
-		var crown: CrownFace = _crowns[cell]
-		if crown.visible:
-			_crown_shadow(b, crown, cell)
+	for cell in _bees:
+		var bee: BeeFace = _bees[cell]
+		if bee.visible:
+			_bee_shadow(b, bee, cell)
 	# Pebbles on their way out, drawn from the shape the state has forgotten.
 	var still: Array = []
 	for out in _cross_out:
@@ -531,14 +531,14 @@ func _build_ground(now: float) -> Dictionary:
 func _cell_wash(b: Face.Builder, cell: Vector2i, colour: Color) -> void:
 	b.fan(_square(_grid + Vector2(cell) * _cell, _cell), colour)
 
-## The family's soft disc under `crown` on `cell`, scaled by how much of her
+## The family's soft disc under `bee` on `cell`, scaled by how much of her
 ## is there and faded with her while she drops in.
-func _crown_shadow(b: Face.Builder, crown: Control, cell: Vector2i) -> void:
-	var seen := clampf(crown.scale.y, 0.0, 1.0) * clampf(crown.modulate.a, 0.0, 1.0)
+func _bee_shadow(b: Face.Builder, bee: Control, cell: Vector2i) -> void:
+	var seen := clampf(bee.scale.y, 0.0, 1.0) * clampf(bee.modulate.a, 0.0, 1.0)
 	if seen <= 0.0:
 		return
-	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + CROWN_SHADOW_AT * _cell,
-		CROWN_SHADOW_RX * _cell * seen, CROWN_SHADOW_RY * _cell * seen,
+	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + BEE_SHADOW_AT * _cell,
+		BEE_SHADOW_RX * _cell * seen, BEE_SHADOW_RY * _cell * seen,
 		Color(Pal.TEXT, SHADOW_ALPHA * seen))
 
 ## press_scale for the cell under the finger, one when it is not.
@@ -591,7 +591,7 @@ func _snapshot() -> Dictionary:
 	return out
 
 ## Every cell whose mark differs between `before` (a _snapshot) and the state
-## now takes its moment -- a crown pops in (or drops in, from a hint) or
+## now takes its moment -- a bee pops in (or drops in, from a hint) or
 ## shrinks out, a pebble pops in or shrinks out -- `delay_of.call(cell,
 ## leaving)` seconds after `t`; and every cell in `wash` flashes gold as the
 ## wave reaches it. A cross changing hands between the player and a queen is
@@ -612,11 +612,11 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false, wa
 		var going: float = t + float(delay_of.call(cell, true))
 		var coming: float = t + float(delay_of.call(cell, false))
 		if prev == State.QUEEN:
-			_crown_down(cell, going - t)
+			_bee_down(cell, going - t)
 		elif _crossed(prev):
 			_cross_leaves(cell, going, prev)
 		if mark == State.QUEEN:
-			_crown_up(cell, coming - t, drop)
+			_bee_up(cell, coming - t, drop)
 			arrivals[cell] = coming
 		elif _crossed(mark):
 			_cross_arrives(cell, coming)
@@ -627,7 +627,7 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false, wa
 ## The wave out of a queen at `q`: a cell she sees arrives its king-move
 ## distance in rings after her, and leaves in the reverse order, the far
 ## cells first, so her reach draws back into where she stood. On a lift the
-## queen herself leaves at once, not last: her crown goes and her reach
+## queen herself leaves at once, not last: she goes and her reach
 ## draws back after her, rather than her hanging on while her far pebbles go
 ## first. Nothing waits under reduce-motion.
 func _wave_from(q: Vector2i) -> Callable:
@@ -658,43 +658,43 @@ func _at_once() -> Callable:
 	return func(_cell_: Vector2i, _leaving: bool) -> float:
 		return 0.0
 
-## A queen is seated on `cell`: her crown pops in with the squash after
+## A queen is seated on `cell`: she pops in with the squash after
 ## `delay`, or drops in from above when a hint seated her.
-func _crown_up(cell: Vector2i, delay: float, drop: bool) -> void:
-	var crown := _crown_node(cell)
-	crown.visible = true
-	Motion.stop(_look_tw.get(crown))
-	Motion.stop(_pos_tw.get(crown))
-	crown.rotation = 0.0
-	crown.position = Vector2.ZERO
-	crown.modulate.a = 1.0
-	_set_expr(crown, Face.Expr.HAPPY)
+func _bee_up(cell: Vector2i, delay: float, drop: bool) -> void:
+	var bee := _bee_node(cell)
+	bee.visible = true
+	Motion.stop(_look_tw.get(bee))
+	Motion.stop(_pos_tw.get(bee))
+	bee.rotation = 0.0
+	bee.position = Vector2.ZERO
+	bee.modulate.a = 1.0
+	_set_expr(bee, Face.Expr.HAPPY)
 	if drop:
-		crown.scale = Vector2.ONE
-		_pos_tw[crown] = Motion.drop_in(crown, Motion.DROP, Motion.DROP_TIME, delay)
+		bee.scale = Vector2.ONE
+		_pos_tw[bee] = Motion.drop_in(bee, Motion.DROP, Motion.DROP_TIME, delay)
 		_busy_for(delay + Motion.DROP_TIME)
 	else:
-		_look_tw[crown] = Motion.pop_in(crown, Motion.POP_IN, delay)
+		_look_tw[bee] = Motion.pop_in(bee, Motion.POP_IN, delay)
 		_busy_for(delay + Motion.POP_IN)
 
-## A queen is lifted off `cell`: her crown shrinks to nothing with the quarter
+## A queen is lifted off `cell`: she shrinks to nothing with the quarter
 ## turn after `delay` and is hidden once gone, unless something seated her
 ## again.
-func _crown_down(cell: Vector2i, delay: float) -> void:
-	var crown: CrownFace = _crowns.get(cell)
-	if crown == null:
+func _bee_down(cell: Vector2i, delay: float) -> void:
+	var bee: BeeFace = _bees.get(cell)
+	if bee == null:
 		return
-	Motion.stop(_look_tw.get(crown))
-	var tw := Motion.pop_out(crown, Motion.POP_OUT, delay)
+	Motion.stop(_look_tw.get(bee))
+	var tw := Motion.pop_out(bee, Motion.POP_OUT, delay)
 	if tw == null:
-		crown.visible = false
+		bee.visible = false
 		return
-	_look_tw[crown] = tw
+	_look_tw[bee] = tw
 	_busy_for(delay + Motion.POP_OUT)
 	tw.chain().tween_callback(func() -> void:
 		if state.mark_at(cell) != State.QUEEN:
-			crown.visible = false
-			crown.rotation = 0.0)
+			bee.visible = false
+			bee.rotation = 0.0)
 
 func _cross_arrives(cell: Vector2i, at: float) -> void:
 	_cross_in[cell] = at
@@ -718,26 +718,26 @@ func _blush_cell(cell: Vector2i) -> void:
 	_blush[cell] = _now()
 	_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
 
-## `crown` hops `height` over `time` after `delay`; she rests at her slot's
+## `bee` hops `height` over `time` after `delay`; she rests at her slot's
 ## origin, so the base is always zero.
-func _hop(crown: Control, height: float, time: float, delay := 0.0) -> void:
-	Motion.stop(_pos_tw.get(crown))
-	crown.position = Vector2.ZERO
+func _hop(bee: Control, height: float, time: float, delay := 0.0) -> void:
+	Motion.stop(_pos_tw.get(bee))
+	bee.position = Vector2.ZERO
 	# A drop's fade is stopped here too (drop_in and hop share _pos_tw), and it
 	# must not be left half done: a hop or shiver always finds her fully seen.
-	crown.modulate.a = 1.0
-	_pos_tw[crown] = Motion.hop(crown, height, time, delay, 0.0)
+	bee.modulate.a = 1.0
+	_pos_tw[bee] = Motion.hop(bee, height, time, delay, 0.0)
 	_busy_for(delay + time)
 
-## Check pointing at a crown: she wobbles where she stands.
-func _wobble(crown: Control) -> void:
-	Motion.stop(_look_tw.get(crown))
-	crown.rotation = 0.0
-	crown.scale = Vector2.ONE
-	_look_tw[crown] = Motion.wobble2d(crown)
+## Check pointing at a bee: she wobbles where she stands.
+func _wobble(bee: Control) -> void:
+	Motion.stop(_look_tw.get(bee))
+	bee.rotation = 0.0
+	bee.scale = Vector2.ONE
+	_look_tw[bee] = Motion.wobble2d(bee)
 	_busy_for(Motion.WOBBLE_TIME)
 
-## A crown refused on `cell`, which a queen already sees: the pebble there
+## A queen refused on `cell`, which a queen already sees: the pebble there
 ## shivers and the cell blushes, and the sprout says why.
 func _refuse_seen(cell: Vector2i) -> void:
 	_say("A queen already sees that seat.", Face.Expr.WORRIED)
@@ -754,22 +754,22 @@ func _refuse_pinned(cell: Vector2i) -> void:
 	_say("That queen was given. She stays.", Face.Expr.WORRIED)
 	fx.cue("locked")
 	_blush_cell(cell)
-	var crown: CrownFace = _crowns.get(cell)
-	if crown == null or Motion.reduce:
+	var bee: BeeFace = _bees.get(cell)
+	if bee == null or Motion.reduce:
 		return
-	_set_expr(crown, Face.Expr.STRAIN)
+	_set_expr(bee, Face.Expr.STRAIN)
 	_after(STRAIN_TIME, func() -> void:
-		if crown.expression == Face.Expr.STRAIN and _solved_at < 0.0:
-			crown.expression = Face.Expr.HAPPY)
-	Motion.stop(_pos_tw.get(crown))
-	crown.position = Vector2.ZERO
-	crown.modulate.a = 1.0
-	_pos_tw[crown] = Motion.shiver(crown, _cell * SHIVER)
+		if bee.expression == Face.Expr.STRAIN and _solved_at < 0.0:
+			bee.expression = Face.Expr.HAPPY)
+	Motion.stop(_pos_tw.get(bee))
+	bee.position = Vector2.ZERO
+	bee.modulate.a = 1.0
+	_pos_tw[bee] = Motion.shiver(bee, _cell * SHIVER)
 	_busy_for(Motion.SHIVER_TIME)
 
 # --- input ---
 
-## Touch and drag only, as every flat board takes them. With the crown chip a
+## Touch and drag only, as every flat board takes them. With the queen chip a
 ## tap seats or lifts a queen on the cell it was pressed on; with the cross
 ## chip a tap lays or takes the player's cross, and a drag sweeps.
 func _gui_input(event: InputEvent) -> void:
@@ -789,10 +789,10 @@ func _press(cell: Vector2i) -> void:
 		return
 	_press_cell = cell
 	var mark := state.mark_at(cell)
-	# A crown under the finger sinks whichever chip is armed: every tappable
+	# A bee under the finger sinks whichever chip is armed: every tappable
 	# piece takes the press, including one that will do nothing on release.
-	if mark == State.QUEEN and _crowns.has(cell):
-		_pressed = _crowns[cell]
+	if mark == State.QUEEN and _bees.has(cell):
+		_pressed = _bees[cell]
 		Motion.stop(_look_tw.get(_pressed))
 		_look_tw[_pressed] = Motion.press(_pressed, true)
 	if brush == State.QUEEN:
@@ -804,7 +804,7 @@ func _press(cell: Vector2i) -> void:
 		_paint(cell, true)
 	_redraw()
 
-## The crown under the finger springs back.
+## The bee under the finger springs back.
 func _release_press() -> void:
 	if _pressed == null:
 		return
@@ -816,7 +816,7 @@ func _release_press() -> void:
 
 ## With the cross chip, every cell between the last one painted and this one
 ## is swept, so a fast finger leaves no holes. No line lock: a Queens sweep
-## is a region's odd corners as often as a row. The crown chip does not
+## is a region's odd corners as often as a row. The queen chip does not
 ## sweep.
 func _drag(at: Vector2) -> void:
 	if brush != State.CROSS:
@@ -869,10 +869,10 @@ func _release(at_cell: Vector2i) -> void:
 		return
 	if brush == State.QUEEN:
 		_end_sinks(now)
-		# A press with the crown chip is a tap only if it is let go on the
+		# A press with the queen chip is a tap only if it is let go on the
 		# cell it landed on; a finger that wandered off has changed its mind.
 		if at_cell == cell:
-			_tap_crown(cell, now)
+			_tap_queen(cell, now)
 		_redraw()
 		return
 	if not pending.is_empty():
@@ -894,9 +894,9 @@ func _release(at_cell: Vector2i) -> void:
 	_end_sinks(now)
 	_redraw()
 
-## The crown chip on `cell`: a queen there is lifted (or refuses, if given),
+## The queen chip on `cell`: a queen there is lifted (or refuses, if given),
 ## a bare cell or the player's cross seats one, a seen cell refuses.
-func _tap_crown(cell: Vector2i, now: float) -> void:
+func _tap_queen(cell: Vector2i, now: float) -> void:
 	var before := _snapshot()
 	if state.queens.has(cell):
 		var lifted: Dictionary = state.lift(cell)
@@ -1008,7 +1008,7 @@ func hints_left() -> int:
 
 ## Seats the answer's queen in the first row that lacks her and pins her: a
 ## wrong queen in her way pops out first, a ring pulses out of the cell, the
-## crown drops in from above, sparkles rise, and her wave runs. Counts no
+## bee drops in from above, sparkles rise, and her wave runs. Counts no
 ## move but can finish the puzzle.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
@@ -1026,7 +1026,7 @@ func hint() -> bool:
 	# The wrong queens go first and at once; the snapshot forgets them so the
 	# wave lays their cells' pebbles like any other.
 	for q in out.lifted:
-		_crown_down(q, 0.0)
+		_bee_down(q, 0.0)
 		before[q] = State.BLANK
 	_settle(before, now, _wave_from(target), true, state.sees(target))
 	var at := cell_to_local(target.y, target.x)
@@ -1050,8 +1050,8 @@ func check() -> int:
 	checks += 1
 	var wrong: Array = state.wrong_queens()
 	for cell in wrong:
-		if _crowns.has(cell):
-			_wobble(_crowns[cell])
+		if _bees.has(cell):
+			_wobble(_bees[cell])
 		_blush_cell(cell)
 	if not wrong.is_empty():
 		_say("%d %s in the wrong seat." % [wrong.size(), "queen is" if wrong.size() == 1 else "queens are"],
@@ -1077,8 +1077,8 @@ func reset_board() -> void:
 	_settle(before, now, wave)
 	if not Motion.reduce:
 		for cell in state.queens:
-			if _crowns.has(cell):
-				_hop(_crowns[cell], Motion.RESET_HOP, Motion.HOP_TIME, float(wave.call(cell, false)))
+			if _bees.has(cell):
+				_hop(_bees[cell], Motion.RESET_HOP, Motion.HOP_TIME, float(wave.call(cell, false)))
 	_blush = {}
 	_shiver = {}
 	moves = 0
@@ -1095,15 +1095,15 @@ func share_glyphs() -> String:
 
 # --- the win ---
 
-## One crown in JOY, and the words. The board stays on the card as it slides
+## One bee in JOY, and the words. The board stays on the card as it slides
 ## down, every queen on her colour and the crosses gone.
 func flat_win() -> Dictionary:
-	return {"faces": [CrownFace.new()], "subtitle": "Every queen has her seat."}
+	return {"faces": [BeeFace.new()], "subtitle": "Every queen has her seat."}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
 
-## The crowns hop in the family's wave along the diagonal with JOY and a
+## The bees hop in the family's wave along the diagonal with JOY and a
 ## spark each, and the pebbles clear away in a scatter, leaving the queens on
 ## their colours.
 func _on_solved() -> void:
@@ -1117,10 +1117,10 @@ func _on_solved() -> void:
 	_shiver = {}
 	var k := 0
 	for cell in state.queens:
-		var crown := _crown_node(cell)
+		var bee := _bee_node(cell)
 		var delay := _solve_delay(cell)
-		_hop(crown, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
-		_grin(crown, delay)
+		_hop(bee, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
+		_grin(bee, delay)
 		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
 		k += 1
 	_say("Every queen has her seat.", Face.Expr.JOY)
@@ -1134,14 +1134,14 @@ func _solve_delay(cell: Vector2i) -> float:
 		return 0.0
 	return Motion.SOLVE_DELAY + Motion.stagger(cell.x + cell.y, Motion.SOLVE_STAGGER)
 
-## `crown` goes to JOY as the wave reaches her; at once under reduce-motion.
-func _grin(crown: Face, delay: float) -> void:
+## `bee` goes to JOY as the wave reaches her; at once under reduce-motion.
+func _grin(bee: Face, delay: float) -> void:
 	if delay <= 0.0:
-		crown.expression = Face.Expr.JOY
+		bee.expression = Face.Expr.JOY
 	else:
-		_after(delay, func() -> void: crown.expression = Face.Expr.JOY)
+		_after(delay, func() -> void: bee.expression = Face.Expr.JOY)
 
-## A spark as crown `k` hops, the two pools used in turn so a run of nine a
+## A spark as bee `k` hops, the two pools used in turn so a run of nine a
 ## few hundredths apart does not recycle one pool fast enough to cut each
 ## burst in half.
 func _spark_at(k: int, at: Vector2) -> void:
@@ -1153,7 +1153,7 @@ func _spark_at(k: int, at: Vector2) -> void:
 # --- odds and ends ---
 
 ## Kills every tween the previous board still tracks and retires its pending
-## callbacks, so a rebuild never inherits a hop aimed at a crown that is gone.
+## callbacks, so a rebuild never inherits a hop aimed at a bee that is gone.
 func _stop_all() -> void:
 	_gen += 1
 	_pressed = null

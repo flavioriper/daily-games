@@ -286,7 +286,7 @@ func is_solved() -> bool:
 		cols[q.y] = q.x
 	return Gen.legal(region, n, cols)
 
-## One row per line: a crown for a queen and a coloured square for every
+## One row per line: a bee for a queen and a coloured square for every
 ## other cell, by region, so a shared court carries its regions.
 func share_glyphs() -> String:
 	var out := ""
@@ -294,7 +294,7 @@ func share_glyphs() -> String:
 		for x in n:
 			var cell := Vector2i(x, y)
 			if queens.has(cell):
-				out += "👑"
+				out += "🐝"
 			else:
 				out += str(SQUARES[int(region[y][x]) % SQUARES.size()])
 		out += "\n"

@@ -306,7 +306,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <tr><td class="k">Light Up</td><td>A lit lamp on a tile beside a black block &mdash; <code>court_lantern.gd</code></td><td>plays</td></tr>
     <tr><td class="k">One Line</td><td>The snail on a short trail of posts &mdash; <code>snail_face.gd</code></td><td>plays</td></tr>
     <tr><td class="k">Nonogram</td><td>A four-square of tiles with two clue numbers &mdash; <code>mosaic_tile.gd</code></td><td>plays</td></tr>
-    <tr><td class="k">Queens</td><td>A crown on a patch of coloured cells with a seam through them &mdash; <code>crown_face.gd</code></td><td>plays (2026-09-19)</td></tr>
+    <tr><td class="k">Queens</td><td>The queen bee on a patch of coloured cells with a seam through them &mdash; <code>bee_face.gd</code></td><td>plays (2026-09-19)</td></tr>
     <tr><td class="k">Pipes</td><td>An elbow of pipe over a block</td><td><b>soon</b> &mdash; new drawing</td></tr>
     <tr><td class="k">Horse Pen</td><td>A hay bale and a horse's silhouette</td><td><b>soon</b> &mdash; new drawing</td></tr>
   </table>
@@ -1523,8 +1523,8 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <div class="hero">
     <div class="refs">
       <figure>
-        <img src="../art/concept-queens.png" alt="The user's mock: a cream phone screen with QUEENS in ink under a sprig, a Day 5 card with hearts, a nine-by-nine board of pastel regions with thick ink borders and a dot in every cell, an Undo button, a crown chip and a cross chip, an orange Check button and a How to play card with a sprout">
-        <figcaption>The user's mock, 2026-09-19. Taken from it: the region pastels, the thick ink seams, the faint grid, the dot in every empty seat, the gold crown with a face, and the two chips. Not built, and why: the hearts (there are no lives, 2026-09-18), the How to play card (the tip card carries the rule, as on every flat screen), and the roadside signs with the peeking sprout (the sprout has its card, and the sign's rule is its first line).</figcaption>
+        <img src="../art/concept-queens-bee.png" alt="The user's second mock: the same cream Queens screen, with a chibi bee wearing a small gold crown seated in each queen's cell, a beehive and flowers beside the board, a bee's dotted flight path, and the bee mascot on the How to play card">
+        <figcaption>The user's second mock, the evening of 2026-09-19, which put a chibi bee queen in every seat where the first (<code>docs/art/concept-queens.png</code>) had a plain crown. Taken from the first: the region pastels, the thick ink seams, the faint grid, the dot in every empty seat and the two chips. Taken from this one: <b>the bee</b>, on the court, the chip, the card and the win. Not built, and why: the hearts (there are no lives, 2026-09-18), the How to play card and its bee (the sprout's tip card carries the rule on every flat screen), the hive, the flowers and the flight path beside the board (no flat board has side scenery; the court fills the card), the crown over the wordmark, and the roadside signs with the peeking sprout.</figcaption>
       </figure>
       <figure>
         <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
@@ -1549,7 +1549,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     </div>
   </div>
 
-  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>pick the crown and tap a seat</b> to seat a queen and watch her wave, tap her again to lift her; <b>pick the cross and tap or drag</b> to lay your own crosses, and drag back from one of yours to rub them out. Undo, Hint, Check and Reset do what the game does. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-19: <b>the no-touch rule</b> over chess diagonals; <b>the auto-cross</b> (a seated queen crosses out every cell she sees); <b>two chips</b> over a tap cycle; Queens takes <b>Snake Apple's slot</b> on the first screen. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>pick the queen chip and tap a seat</b> to seat a queen and watch her wave, tap her again to lift her; <b>pick the cross and tap or drag</b> to lay your own crosses, and drag back from one of yours to rub them out. Undo, Hint, Check and Reset do what the game does. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-19: <b>the no-touch rule</b> over chess diagonals; <b>the auto-cross</b> (a seated queen crosses out every cell she sees); <b>two chips</b> over a tap cycle; Queens takes <b>Snake Apple's slot</b> on the first screen. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
 
   <h3>1. The screen <span class="pill">proposed</span></h3>
   <table>
@@ -1557,7 +1557,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>QUEENS</code> in ink with the leaf sprouting from it and <code>EVERY QUEEN HAS HER SEAT</code> under, then Undo, Hint with its count and Settings.</td></tr>
     <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the mock's, without its hearts.</td></tr>
     <tr><td class="k">Board card</td><td>cut to fit</td><td>The court on parchment. The board is square in a tall slot, so the cell is capped by the width &mdash; <code>(1000 &minus; 2 &times; 34) / n</code>: <b>133 on easy, 116 on medium, 103 on hard</b> &mdash; and the card is cut to the court and centred in what is left, the fifth flat board to want both (<code>card_height</code>, <code>card_centred</code>). The mock's 9&times;9 is the hard board; 103 is the cell Nonogram's hard board already asks of a thumb.</td></tr>
-    <tr><td class="k">Tray</td><td>150</td><td>Two chips: a crown and a pebble on a socket. The armed one lifts and takes the sun border, exactly as Nonogram's tile and cross do.</td></tr>
+    <tr><td class="k">Tray</td><td>150</td><td>Two chips: the bee and a pebble on a socket. The armed one lifts and takes the sun border, exactly as Nonogram's tile and cross do.</td></tr>
     <tr><td class="k">Actions</td><td>130</td><td>Reset and Check. <code>capabilities()</code> is undo, hint and check.</td></tr>
     <tr><td class="k">Tip card</td><td>140</td><td>The sprout and one line: the rule, how many queens are seated, and why a tap was refused.</td></tr>
   </table>
@@ -1565,7 +1565,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <h3>2. The rules, and the cross a queen lays for you <span class="pill blue">decided</span></h3>
   <ul>
     <li><b>A cell is crossed while any queen sees it</b>: her row, her column, her region and her eight neighbours. That is derived from the queens on the board and never stored, so lifting a queen takes her crosses with her and undo needs no bookkeeping for them. A cell answers one of four: a queen, the player's cross, a queen's cross, or blank.</li>
-    <li><b>A crown on a seen cell is refused.</b> The cell is provably unavailable given the queens on the board, so the board says so rather than seating a queen that must be wrong. The consequence is a strong one: <b>two queens can never conflict</b>, the crown never needs a conflict face, and the n-th queen seated is the win. A crown on your own cross replaces it; the cross was a guess and the finger has changed its mind.</li>
+    <li><b>A queen on a seen cell is refused.</b> The cell is provably unavailable given the queens on the board, so the board says so rather than seating a queen that must be wrong. The consequence is a strong one: <b>two queens can never conflict</b>, the bee never needs a conflict face, and the n-th queen seated is the win. A queen on your own cross replaces it; the cross was a guess and the finger has changed its mind.</li>
     <li><b>A cross never replaces a queen</b>, and a sweep passes over queens and seen cells alike. Crossing a cell a queen already crossed does nothing but the press.</li>
     <li><b>Check counts the queens in the wrong seat</b> and shakes them; it never seats anything. A clean Check with queens still to seat says <em>All good</em> through the Check pill, as every submitting board does.</li>
     <li><b>Hint</b> seats the answer's queen in the first row that has none, pinned with a leaf gem. A seated queen who sees that cell is wrong by construction, and the hint lifts her first. A hint clears the history, Shikaku's rule.</li>
@@ -1574,17 +1574,17 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
   <h3>3. The tray and the gesture <span class="pill blue">decided</span></h3>
   <ul>
-    <li><b>Crown chip, tap</b>: a blank cell seats a queen; a seated queen is lifted (the mock's "tap once to place, tap again to remove"); a seen cell is refused; your own cross is replaced. A drag with the crown chip is a tap where it ends.</li>
+    <li><b>Queen chip, tap</b>: a blank cell seats a queen; a seated queen is lifted (the mock's "tap once to place, tap again to remove"); a seen cell is refused; your own cross is replaced. A drag with the queen chip is a tap where it ends.</li>
     <li><b>Cross chip, tap</b>: a blank cell takes a cross, your cross is taken away; a queen or a seen cell takes only the press.</li>
     <li><b>Cross chip, drag</b>: a sweep lays crosses on every blank cell the finger passes, or rubs your crosses out if it began on one &mdash; Nonogram's rule, the stroke's job read off its first cell. The cells between two samples are filled in, so a fast finger leaves no holes, and a cell is painted once per stroke. <b>No line lock</b>: a Queens sweep is a region's odd corners as often as a row.</li>
     <li><b>Undo</b> is one gesture back, however many cells it swept. <b>Reset</b> clears your queens and crosses but keeps a hint's queens and their crosses, so what was given stays given.</li>
   </ul>
 
   <h3>4. The cast <span class="pill">proposed</span></h3>
-  <p><b>The crown is a new species</b> (<code>ui/faces/crown_face.gd</code>), the bar for one being the snail's: nothing in the cast is a queen, and the crown is the one thing this board seats. A gold crown, <code>SUN</code> over a <code>SUN_DEEP</code> bottom edge, three points rounded with discs, and a face on its band: <code>HAPPY</code> at rest, <code>JOY</code> on the win, <code>STRAIN</code> for a beat when the finger is refused on her. A hint's crown wears a leaf gem on its middle point. <b>The cross is drawn, not a character</b>: Nonogram's pebble on a soft disc, laid into the ground mesh, so forty crossed cells cost the renderer nothing more than one. Your cross is drawn at full ink; a queen's is the same pebble at <b>0.75</b>, so the eye can tell a guess from a fact without a second shape. <b>The regions are the ground</b>: every cell filled in its region's pastel, the grid between cells a faint line, and a region's border a thick seam in <code>TEXT</code> &mdash; not black, the shading direction's one concession here, because nothing else holds nine pastels apart. Every empty seat carries a dot in its region's deeper tone, as the mock draws it.</p>
+  <p><b>The queen bee is a new species</b> (<code>ui/faces/bee_face.gd</code>; she replaced a plain crown with a face on the evening of 2026-09-19, from the second mock), the bar for one being the snail's: nothing in the cast is a queen, and the bee is the one thing this board seats. A round body in <code>SUN_RAY</code> with two stripes in <code>PLAQUE_DEEP</code> cut to its outline, thin antennae, a small crown in <code>SUN</code> over a <code>SUN_DEEP</code> foot sunk into the top of her head, and the family's face on the upper body: <code>HAPPY</code> at rest, <code>JOY</code> on the win, <code>STRAIN</code> for a beat when the finger is refused on her. A hint's bee wears the leaf gem on her crown's middle point. <b>Her wings beat</b>: two pale ellipses in <code>CLOUD_TILE</code> behind her shoulders, drawn as a second layer squashed about the shoulder line by <code>flap</code> (0.45 to 1, a beat every 0.11 s, every bee on her own phase) so they flutter without a mesh being rebuilt, the way the sun's rays turn; reduce-motion holds them open. One extra draw call a bee. <b>The cross is drawn, not a character</b>: Nonogram's pebble on a soft disc, laid into the ground mesh, so forty crossed cells cost the renderer nothing more than one. Your cross is drawn at full ink; a queen's is the same pebble at <b>0.75</b>, so the eye can tell a guess from a fact without a second shape. <b>The regions are the ground</b>: every cell filled in its region's pastel, the grid between cells a faint line, and a region's border a thick seam in <code>TEXT</code> &mdash; not black, the shading direction's one concession here, because nothing else holds nine pastels apart. Every empty seat carries a dot in its region's deeper tone, as the mock draws it.</p>
   <table>
     <tr><th style="width:18%">Region</th><th style="width:14%">Hex</th><th>Where it comes from</th></tr>
-    <tr><td class="k">tan</td><td><code>#cfc3ac</code></td><td rowspan="9">The mock's own nine, sampled from <code>docs/art/concept-queens.png</code> and lifted a step toward pastel so the seam and the crown read over them. Spread round the wheel so no two neighbours share a family; a region takes one by index, so the same board is the same colours on every phone. Every one is distinct from the parchment card (<code>#f3e9d2</code>) they sit on: tan is darker and greyer, silver is cool. Proposed for <code>core/palette.gd</code> as <code>REGION</code>, with <code>QUEEN_WASH</code> <code>#f7c25a</code> beside them &mdash; the gold the wave leaves on a cell for a moment.</td></tr>
+    <tr><td class="k">tan</td><td><code>#cfc3ac</code></td><td rowspan="9">The mock's own nine, sampled from <code>docs/art/concept-queens.png</code> and lifted a step toward pastel so the seam and the bee read over them. Spread round the wheel so no two neighbours share a family; a region takes one by index, so the same board is the same colours on every phone. Every one is distinct from the parchment card (<code>#f3e9d2</code>) they sit on: tan is darker and greyer, silver is cool. Proposed for <code>core/palette.gd</code> as <code>REGION</code>, with <code>QUEEN_WASH</code> <code>#f7c25a</code> beside them &mdash; the gold the wave leaves on a cell for a moment.</td></tr>
     <tr><td class="k">lavender</td><td><code>#c4a9dc</code></td></tr>
     <tr><td class="k">sky</td><td><code>#a3c4ec</code></td></tr>
     <tr><td class="k">mint</td><td><code>#b6d9a8</code></td></tr>
@@ -1596,21 +1596,21 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   </table>
 
   <h3>5. Motion <span class="pill">proposed</span></h3>
-  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>): the crowns are nodes in slots taking the recipes, the ground is drawn off the readers. <b>The board's own signature is the wave</b>, and its numbers are its own three constants: <code>WAVE_STEP</code> 0.045 s per ring, <code>WAVE_FLASH</code> 0.35 for the wash's peak, <code>AUTO_ALPHA</code> 0.75.</p>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>): the bees are nodes in slots taking the recipes, the ground is drawn off the readers. <b>The board's own signature is the wave</b>, and its numbers are its own three constants: <code>WAVE_STEP</code> 0.045 s per ring, <code>WAVE_FLASH</code> 0.35 for the wash's peak, <code>AUTO_ALPHA</code> 0.75.</p>
   <table>
     <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
     <tr><td class="k">Entrance</td><td>The court pops in wide about its centre (<code>wide_pop_scale</code>, from 0.86) while it fades, after <code>ENTER_DELAY</code> 0.18; nothing stands on it yet. The chrome slides in row by row.</td></tr>
-    <tr><td class="k">Press</td><td>The cell under the finger sinks (<code>press_scale</code> 0.94) and shades toward its region's deeper tone; a crown or a pebble there sinks with it.</td></tr>
-    <tr><td class="k">Seat</td><td>The crown pops in with the squash (0.22, squash 0.15), a ring in gold pulses out of her (0.5 s), a puff of five in gold on her cell, and <b>the wave</b> runs: every cell she can see, ordered by its king-move distance from her, 0.045 s apart, flashes toward the gold wash (in 0.15, out 0.45, peak 0.35) as the wave reaches it, and its pebble pops in behind the flash. Cells already crossed flash and keep their pebble.</td></tr>
-    <tr><td class="k">Lift</td><td>The crown shrinks with the quarter turn (0.12), and the wave runs backward: the cells only she saw lose their pebble far first, near last, each with the quarter turn, so her reach draws back into where she stood.</td></tr>
+    <tr><td class="k">Press</td><td>The cell under the finger sinks (<code>press_scale</code> 0.94) and shades toward its region's deeper tone; a bee or a pebble there sinks with it.</td></tr>
+    <tr><td class="k">Seat</td><td>The bee pops in with the squash (0.22, squash 0.15), a ring in gold pulses out of her (0.5 s), a puff of five in gold on her cell, and <b>the wave</b> runs: every cell she can see, ordered by its king-move distance from her, 0.045 s apart, flashes toward the gold wash (in 0.15, out 0.45, peak 0.35) as the wave reaches it, and its pebble pops in behind the flash. Cells already crossed flash and keep their pebble.</td></tr>
+    <tr><td class="k">Lift</td><td>The bee shrinks with the quarter turn (0.12), and the wave runs backward: the cells only she saw lose their pebble far first, near last, each with the quarter turn, so her reach draws back into where she stood.</td></tr>
     <tr><td class="k">Cross, uncross</td><td>The pebble pops in with the squash and a puff in <code>SOCKET_PEBBLE</code>; taken away, it shrinks with the quarter turn.</td></tr>
     <tr><td class="k">Sweep</td><td>Cells sink as the finger passes and stay down; on release the pebbles arrive in a wave along the finger's path at <code>ENTER_STAGGER</code> 0.03, each cell springing back as its pebble lands. No puffs.</td></tr>
-    <tr><td class="k">Hint</td><td>A wrong queen in the way pops out first, her wave withdrawing. A ring in <code>LEAF</code> at the given cell, the crown drops in from 40 above with the fade (0.3 s), sparkles in leaf, then her wave.</td></tr>
-    <tr><td class="k">Wrong on Check</td><td>Each wrong crown wobbles (0.45 s) and her cell blushes (rule 9: a crown has no blush of her own; her cell carries the colour).</td></tr>
-    <tr><td class="k">Refused</td><td>On a seen cell the pebble shivers (2 px, 0.2 s) and the cell blushes; on a given queen the crown shivers with <code>STRAIN</code> and her cell blushes. The sprout says why.</td></tr>
+    <tr><td class="k">Hint</td><td>A wrong queen in the way pops out first, her wave withdrawing. A ring in <code>LEAF</code> at the given cell, the bee drops in from 40 above with the fade (0.3 s), sparkles in leaf, then her wave.</td></tr>
+    <tr><td class="k">Wrong on Check</td><td>Each wrong bee wobbles (0.45 s) and her cell blushes (rule 9: a bee has no blushing skin of her own; her cell carries the colour).</td></tr>
+    <tr><td class="k">Refused</td><td>On a seen cell the pebble shivers (2 px, 0.2 s) and the cell blushes; on a given queen the bee shivers with <code>STRAIN</code> and her cell blushes. The sprout says why.</td></tr>
     <tr><td class="k">Undo</td><td>The reverse of the gesture, in its own wave.</td></tr>
-    <tr><td class="k">Reset</td><td>Every crown and pebble the player laid shrinks out in a wave from the far corner at 0.02 s a cell; given queens hop 4 and keep their crosses.</td></tr>
-    <tr><td class="k">Solved</td><td>The crowns hop 10 in a wave along the diagonal (0.04 s a cell after 0.25) with <code>JOY</code>, sparkles in gold, and the pebbles clear in a scatter as Nonogram's do, leaving the queens on their colours. The win after 1.6 s: one crown in <code>JOY</code>, "Every queen has her seat.", the court sliding down under it.</td></tr>
+    <tr><td class="k">Reset</td><td>Every bee and pebble the player laid shrinks out in a wave from the far corner at 0.02 s a cell; given queens hop 4 and keep their crosses.</td></tr>
+    <tr><td class="k">Solved</td><td>The bees hop 10 in a wave along the diagonal (0.04 s a cell after 0.25) with <code>JOY</code>, sparkles in gold, and the pebbles clear in a scatter as Nonogram's do, leaving the queens on their colours. The win after 1.6 s: one bee in <code>JOY</code>, "Every queen has her seat.", the court sliding down under it.</td></tr>
   </table>
   <p style="font-size:14px;color:var(--muted)">Reduce motion: the court is up at once, a queen and every cross she brings are there or gone in one frame, nothing sinks, flashes, rings or wobbles, and the win follows the last tap. One departure from the spec's letter in this mock: a cell blushes with <code>BAD</code> at 0.42 rather than toward <code>BAD_TILE</code>, because <code>BAD_TILE</code> is a pale rose and vanishes on a rose or coral region; the Godot board should pick whichever reads on all nine.</p>
 
@@ -1620,13 +1620,13 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <h3>7. Calls this page is for <span class="pill rose">to judge</span></h3>
   <ul>
     <li><b>Region shape as difficulty.</b> Size alone is the ladder here; the game most players know varies the regions' shapes instead. Section 6 already makes the shapes carry uniqueness &mdash; a compact growth on easy and a snaking one on hard is one afternoon if wanted.</li>
-    <li><b>The refusal.</b> A crown on a seen cell is turned down. The game most players know seats her and shows the conflict. Refusing keeps the board always consistent and makes the n-th queen the win; it also means a player cannot park a queen to test a hypothesis. Judge on the phone &mdash; tap a crossed cell here and see whether the shiver and the sprout's line are enough.</li>
+    <li><b>The refusal.</b> A queen on a seen cell is turned down. The game most players know seats her and shows the conflict. Refusing keeps the board always consistent and makes the n-th queen the win; it also means a player cannot park a queen to test a hypothesis. Judge on the phone &mdash; tap a crossed cell here and see whether the shiver and the sprout's line are enough.</li>
     <li><b>Two inks for the cross.</b> Your cross at full ink and a queen's at 0.75. If nobody notices, one ink.</li>
     <li><b>The ink seam.</b> The shading direction wants no harsh black lines; the mock draws the region borders in ink and nothing else would hold nine pastels apart. <code>TEXT</code> rather than black, and thick, is the compromise.</li>
     <li><b>103 on hard.</b> Nonogram's cell, and the same question.</li>
-    <li><b>One crown on the win.</b> The nine on the board are already the reward.</li>
+    <li><b>One bee on the win.</b> The nine on the board are already the reward.</li>
   </ul>
-  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three queens seated with their crosses and two crosses of the player's, <code>?wrong=1</code> for one queen in a seat the answer does not want, <code>?tap=r,c</code> to tap a cell with the crown chip at <code>?at=</code> seconds (0.2 by default; a seen cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code> for a second tap (the same cell shows the lift), <code>?sweep=r0,c0,r1,c1</code> for a drag with the cross chip released at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot (real time otherwise passes before Chrome's shot lands, so the other tabs' mid-motion frames are not reliable); pick the tab with <code>#queens</code>.</p>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three queens seated with their crosses and two crosses of the player's, <code>?wrong=1</code> for one queen in a seat the answer does not want, <code>?tap=r,c</code> to tap a cell with the queen chip at <code>?at=</code> seconds (0.2 by default; a seen cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code> for a second tap (the same cell shows the lift), <code>?sweep=r0,c0,r1,c1</code> for a drag with the cross chip released at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot (real time otherwise passes before Chrome's shot lands, so the other tabs' mid-motion frames are not reliable); pick the tab with <code>#queens</code>.</p>
 </section>
 
 
@@ -7966,7 +7966,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
     leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
     bad:'#d9605a',badTile:'#f2cfc9',socket:'#ede2cc',socketOut:'#c9b998',pebble:'#b5a482',accent:'#4c9a94',
-    wash:'#f7c25a'};
+    wash:'#f7c25a',bee:'#f9c04a',stripe:'#6e4a2f',wing:'#e7eff7'};
   const REGION=['#cfc3ac','#c4a9dc','#a3c4ec','#b6d9a8','#f0c384','#dcdcdf','#e3e27c','#f79a80','#eaa0b8'];
   const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b); return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
   const REGION_DEEP=REGION.map(c=>mixHex(c,C.text,0.24));   // hex, so mix() can read it again for the press
@@ -8122,21 +8122,45 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   }
 
   // ---- the cast ----
-  // The queen: a gold crown with a face on its band, the tenth screen's one
-  // new species (ui/faces/crown_face.gd). Three points rounded with discs
-  // rather than clipped, SUN over a SUN_DEEP bottom edge like every card in
-  // the family, and a leaf gem on the middle point when a hint seated her.
-  function crown(s,o){
-    const w=s*0.8,h=s*0.64,top=-h*0.56,bot=h*0.44,rim=s*0.04;
-    ctx.fillStyle='rgba(59,48,40,0.13)'; ellipse(0,bot+s*0.045,w*0.5,s*0.06);
-    const body=b=>{ctx.beginPath(); ctx.moveTo(-w/2,b); ctx.lineTo(-w/2,top+h*0.3); ctx.lineTo(-w*0.18,top+h*0.62); ctx.lineTo(0,top); ctx.lineTo(w*0.18,top+h*0.62); ctx.lineTo(w/2,top+h*0.3); ctx.lineTo(w/2,b); ctx.closePath(); ctx.fill();};
-    ctx.fillStyle=C.sunDeep; body(bot); rr(-w/2,bot-rim-h*0.08,w,h*0.08,0); ctx.fill();
-    ctx.fillStyle=C.sun; body(bot-rim);
-    for(const [px,py] of [[-w/2,top+h*0.3],[0,top],[w/2,top+h*0.3]]) circle(px,py,s*0.05);
-    ctx.fillStyle=rgba(C.white,0.35); circle(-w*0.28,top+h*0.62,s*0.03);
-    if(o.gem){ctx.fillStyle=C.leafDeep; circle(0,top+h*0.2,s*0.055); ctx.fillStyle=C.leaf; circle(0,top+h*0.2-s*0.008,s*0.045); ctx.fillStyle=rgba(C.white,0.6); circle(-s*0.015,top+h*0.2-s*0.025,s*0.014);}
-    faceParts(s*0.215,0,bot-rim-h*0.3,o);
+  // The queen: a chibi bee wearing a crown, the tenth screen's one new
+  // species (ui/faces/bee_face.gd). She replaced the plain crown on
+  // 2026-09-19 from docs/art/concept-queens-bee.png. Two layers, as the Godot
+  // face draws them: the wings behind her, squashed about the shoulder line
+  // by `flap` so they beat without being redrawn, and the body with its two
+  // stripes cut to its outline, the antennae, a small SUN crown over a
+  // SUN_DEEP foot, and the face; the leaf gem on the crown's middle point
+  // when a hint seated her. Every measure is in s, the seat square's side
+  // (R = s / 2 in Godot), and the seat is 0.9 of the cell.
+  function bee(s,o){
+    const flap=o.flap==null?1:o.flap;
+    ctx.fillStyle='rgba(59,48,40,0.13)'; ellipse(0,s*0.42,s*0.24,s*0.05);
+    // the wings, rooted at the shoulder line y = -0.02 s and beating by flap
+    ctx.save(); ctx.translate(0,-s*0.02); ctx.scale(1,flap); ctx.translate(0,s*0.02);
+    for(const sx of [-1,1]){ctx.save(); ctx.translate(sx*s*0.29,-s*0.12); ctx.rotate(-sx*0.6);
+      ctx.fillStyle=rgba(C.wing,0.92); ellipse(0,0,s*0.235,s*0.14);
+      ctx.fillStyle=rgba(C.white,0.6); ellipse(-s*0.03,-s*0.025,s*0.13,s*0.07); ctx.restore();}
+    ctx.restore();
+    // the antennae, framing the crown
+    for(const sx of [-1,1]){ctx.beginPath(); ctx.moveTo(sx*s*0.10,-s*0.20); ctx.quadraticCurveTo(sx*s*0.14,-s*0.40,sx*s*0.26,-s*0.44); stroke(C.stripe,s*0.018); ctx.fillStyle=C.stripe; circle(sx*s*0.26,-s*0.44,s*0.022);}
+    // the body, and two stripes cut to its outline
+    const by=s*0.09,brx=s*0.33,bry=s*0.31;
+    ctx.fillStyle=C.bee; ellipse(0,by,brx,bry);
+    ctx.fillStyle=C.stripe;
+    for(const [y0,y1] of [[0.15,0.235],[0.29,0.37]]) band(0,by,brx,bry,s*y0,s*y1);
+    // the crown, its foot sunk into the body's top
+    const cw=s*0.34,top=-s*0.44,tipY=-s*0.40,bandTop=-s*0.30,foot=-s*0.19,rim=s*0.03;
+    const cbody=f=>{ctx.beginPath(); ctx.moveTo(-cw/2,f); ctx.lineTo(-cw/2,tipY); ctx.lineTo(-cw*0.17,bandTop); ctx.lineTo(0,top); ctx.lineTo(cw*0.17,bandTop); ctx.lineTo(cw/2,tipY); ctx.lineTo(cw/2,f); ctx.closePath(); ctx.fill();};
+    ctx.fillStyle=C.sunDeep; cbody(foot);
+    ctx.fillStyle=C.sun; cbody(foot-rim);
+    for(const [px,py] of [[-cw/2,tipY],[0,top],[cw/2,tipY]]) circle(px,py,s*0.025);
+    if(o.gem){ctx.fillStyle=C.leafDeep; circle(0,top+s*0.07,s*0.032); ctx.fillStyle=C.leaf; circle(0,top+s*0.065,s*0.025);}
+    faceParts(s*0.24,0,-s*0.01,o);
   }
+  // A horizontal band of the ellipse (cx, cy, rx, ry) between y0 and y1, as
+  // one polygon: the stripes never spill past the body and nothing is clipped.
+  function band(cx,cy,rx,ry,y0,y1){const N=7,xs=y=>{const u=(y-cy)/ry; return rx*Math.sqrt(Math.max(0,1-u*u));};
+    ctx.beginPath(); for(let i=0;i<=N;i++){const y=lerp(y0,y1,i/N),x=xs(y); if(i===0) ctx.moveTo(cx+x,y); else ctx.lineTo(cx+x,y);}
+    for(let i=N;i>=0;i--){const y=lerp(y0,y1,i/N); ctx.lineTo(cx-xs(y),y);} ctx.closePath(); ctx.fill();}
   // The cross is Nonogram's pebble on a soft disc, drawn into the ground: the
   // player's at full ink, a queen's at AUTO_ALPHA, so a guess and a fact are
   // told apart without a second shape.
@@ -8156,7 +8180,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   let hintsLeft=3,moves=0,checks=0,armed=QUEEN;
   let openedAt=0,solvedAt=-1,winAt=-1,allGoodAt=-1e9;
   let cellSt=new Map(),particles=[],rings=[],auto=[];
-  let sweep=null,crownPress=null,pressTarget=null,btnPress={};
+  let sweep=null,queenPress=null,pressTarget=null,btnPress={};
   let tip={text:'',at:0,mood:'happy',idx:0},L=null;
   const TIPS=['One queen in every row, every column and every colour.',
     'A queen crosses out every seat she can see.',
@@ -8196,7 +8220,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     region=out.region; solution=out.solution; genOk=out.ok; genAttempts=out.attempts;
     queens=new Set(); crosses=new Set(); locked=new Set(); hist=[]; recompute(); armed=QUEEN;
     hintsLeft=3; moves=0; checks=0; solvedAt=-1; winAt=-1; allGoodAt=-1e9; openedAt=t;
-    cellSt=new Map(); particles=[]; rings=[]; auto=[]; sweep=null; crownPress=null;
+    cellSt=new Map(); particles=[]; rings=[]; auto=[]; sweep=null; queenPress=null;
     tip.idx=0; tipSet(TIPS[0],'happy',t); caption();
   }
 
@@ -8207,7 +8231,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   function sparkle(k,t0,col){ if(RM) return; for(let i=0;i<6;i++){particles.push({k,ox:(hash(k,i+7)-0.5)*0.9,oy:(hash(k,i+13)-0.5)*0.6,vx:(hash(k,i)-0.5)*90,vy:-120,t0:t0+i*0.05,life:0.7,col,r:13,g:160});} }
 
   // ---- moves, each stamping its own motion ----
-  // Seat: the crown pops in with the squash, a gold ring pulses out of her,
+  // Seat: the bee pops in with the squash, a gold ring pulses out of her,
   // and the wave runs: every cell she sees, by king-move distance, WAVE_STEP
   // apart, flashes toward the wash as the wave reaches it and its pebble
   // pops in behind the flash. A cell already crossed flashes and keeps its
@@ -8224,7 +8248,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       sst.flashAt=at; sst.flashCol=C.wash; sst.flashPeak=WAVE_FLASH;
       if(before.get(s)===BLANK){sst.pAt=at; sst.pGone=-1e9;}}
   }
-  // Lift: the crown shrinks with the quarter turn and the wave runs backward,
+  // Lift: the bee shrinks with the quarter turn and the wave runs backward,
   // the cells only she saw losing their pebble far first and near last.
   function liftQueen(k,t){
     const before=snapshot();
@@ -8247,9 +8271,9 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     const q=queens.size; if(!q){tipSet(TIPS[tip.idx],'happy',t); return;}
     const left=n-q; tipSet(WORDS[q]+(q===1?' queen seated, ':' queens seated, ')+(left===1?'one to go.':WORDS[left].toLowerCase()+' to go.'),'happy',t);
   }
-  // The crown chip's tap: a blank cell seats a queen, a seated queen is
+  // The queen chip's tap: a blank cell seats a queen, a seated queen is
   // lifted, a seen cell is refused, the player's own cross is replaced.
-  function crownTap(k,t){
+  function queenTap(k,t){
     if(!open()) return;
     if(queens.has(k)){ if(locked.has(k)){refuse(k,t,'PINNED'); return;} liftQueen(k,t); push([{k,prev:QUEEN,to:BLANK}],t); return; }
     if(isSeen(k)){refuse(k,t,'SEEN'); return;}
@@ -8265,7 +8289,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       else if(e.prev===CROSS){layCross(e.k,at,false); i++;}}
     caption(); speak(t);
   }
-  // Reset: every crown and pebble the player laid shrinks out in a wave from
+  // Reset: every bee and pebble the player laid shrinks out in a wave from
   // the far corner; given queens hop and keep their crosses.
   function reset(t){ if(!open()) return;
     const before=snapshot();
@@ -8279,7 +8303,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   }
   // Hint: the first row in reading order whose answer cell holds no queen. A
   // seated queen who sees it is wrong, and pops out first; then a ring in
-  // leaf, the crown drops in from above, sparkles, and her wave.
+  // leaf, the bee drops in from above, sparkles, and her wave.
   function hint(t){ if(!open()||hintsLeft<=0) return;
     let k=-1; for(let r=0;r<n&&k<0;r++){const kk=key(r,solution[r]); if(!queens.has(kk)) k=kk;}
     if(k<0) return;
@@ -8349,6 +8373,10 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   const exitU=t=>winAt<0?0:dec((t-winAt)/0.25);
   const squash=(at,t,amt=0.1,dur=0.18)=>{const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
   const blink=(t,k)=>{if(RM) return 1; const m=(t+hash(k,99)*5)%(3.6+hash(k,5)*3); return m<0.14?1-0.9*Math.sin(Math.PI*m/0.14):1;};
+  // The wings beat FLAP_PERIOD apart between FLAP_MIN and 1, each bee on her
+  // own phase so nine queens never beat in step; still and open under RM.
+  const FLAP_PERIOD=0.11,FLAP_MIN=0.45;
+  const flap=(t,k)=>RM?1:lerp(FLAP_MIN,1,0.5+0.5*Math.sin(2*Math.PI*t/FLAP_PERIOD+hash(k+11,k+3)*6.2832));
 
   function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
     ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
@@ -8394,7 +8422,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       if(c===0){ctx.moveTo(x,y); ctx.lineTo(x,y+cell);}
       if(r===0){ctx.moveTo(x,y); ctx.lineTo(x+cell,y);}}
     ctx.stroke();
-    // what stands on it: dots, pebbles, crowns
+    // what stands on it: dots, pebbles, bees
     for(let r=0;r<n;r++) for(let c=0;c<n;c++){const k=key(r,c),st=stOf(k),g=region[r][c],x=L.gx+c*cell+cell/2,y=L.gy+r*cell+cell/2,mark=markAt(k);
       const ps=pressScale(st.downAt,st.upAt,t);
       ctx.save(); ctx.translate(x+shiverOffset(t-st.shiverAt),y); ctx.scale(ps,ps);
@@ -8408,17 +8436,17 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
         if(t<st.pGone){ if(t>=st.pAt){const [sx,sy]=popInScale(t-st.pAt); ctx.save(); ctx.scale(sx,sy); pebble(cell,st.pAlpha); ctx.restore(); pebDrawn=true;}}
         else {const po=popOutScale(t-st.pGone); if(po){ctx.save(); ctx.rotate(po.angle); ctx.scale(po.scale,po.scale); pebble(cell,st.pAlpha); ctx.restore(); pebDrawn=true;}}}
       if(mark===BLANK&&!pebDrawn&&!queens.has(k)){ctx.save(); ctx.globalAlpha*=0.55; ctx.fillStyle=REGION_DEEP[g]; circle(0,0,cell*0.055); ctx.restore();}
-      // the crown
+      // the bee
       const hasQ=queens.has(k);
-      const drawCrown=(sx,sy,ang,a,dy)=>{ctx.save(); ctx.globalAlpha*=a; ctx.translate(0,dy); ctx.rotate(ang); ctx.scale(sx,sy);
+      const drawBee=(sx,sy,ang,a,dy)=>{ctx.save(); ctx.globalAlpha*=a; ctx.translate(0,dy); ctx.rotate(ang); ctx.scale(sx,sy);
         const joy=solvedAt>=0&&t>=st.joyAt; const expr=joy?'joy':(t-st.strainAt<0.6&&t>=st.strainAt?'strain':'happy');
-        crown(cell,{expr,eye:blink(t,k),gem:locked.has(k)}); ctx.restore();};
+        bee(cell*0.9,{expr,eye:blink(t,k),gem:locked.has(k),flap:flap(t,k)}); ctx.restore();};
       if(hasQ){ if(t>=st.qAt){
           let sx=1,sy=1,a=1,dy=0;
           if(st.qDrop){const d=dropInLift(t-st.qAt); dy=d.dy; a=d.a;} else {[sx,sy]=popInScale(t-st.qAt);}
           dy+=hopLift(t-st.hopAt,st.hopAmt,st.hopDur);
-          drawCrown(sx,sy,wobbleAngle(t-st.wobbleAt),a,dy);}}
-      else if(st.qGone>=st.qAt&&st.qGone>-1e8){const po=popOutScale(t-st.qGone); if(po) drawCrown(po.scale,po.scale,po.angle,1,-cell*0.06*(1-po.scale));}
+          drawBee(sx,sy,wobbleAngle(t-st.wobbleAt),a,dy);}}
+      else if(st.qGone>=st.qAt&&st.qGone>-1e8){const po=popOutScale(t-st.qGone); if(po) drawBee(po.scale,po.scale,po.angle,1,-cell*0.06*(1-po.scale));}
       ctx.restore();}
     // rings and particles, in the board's own pixels
     for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue; const [x,y]=cellCentre(rg.k);
@@ -8428,7 +8456,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       star4(x,y,p.r*(1-u*0.6),dt*3,rgba(p.col,1-u));}
     ctx.restore();
   }
-  // The tray: the crown chip and the cross chip, Nonogram's tile tray with
+  // The tray: the queen chip and the cross chip, Nonogram's tile tray with
   // the second chip set. The armed one lifts and takes the sun border.
   function drawTray(t){const e=ent(t,0.25,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
     ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
@@ -8440,7 +8468,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       const lift=on?-10:0;
       card(x,y+lift,cw,130,32,on?C.surface:C.surfaceHi,on?C.sun:C.line,on?10:6);
       ctx.save(); ctx.translate(x+72,y+62+lift);
-      if(kind===QUEEN) crown(108,{expr:'happy'}); else {ctx.fillStyle=C.socketOut; rr(-40,-40,80,80,12); ctx.fill(); pebble(84,1);}
+      if(kind===QUEEN) bee(108,{expr:'happy',flap:flap(t,-1)}); else {ctx.fillStyle=C.socketOut; rr(-40,-40,80,80,12); ctx.fill(); pebble(84,1);}
       ctx.restore();
       text(label,x+128,y+62+lift,'700 40px '+FD,C.text,'left');
       ctx.restore();
@@ -8461,7 +8489,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
     const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-160,'500 32px '+FB),x0=M+24+88+24;
     lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left')); ctx.restore();}
-  // The win: one crown in JOY over the words, the court sliding down with
+  // The win: one bee in JOY over the words, the court sliding down with
   // every queen on her colour and the crosses gone, the day card with the
   // count, and Back to camp.
   function drawWin(t){if(winAt<0) return;
@@ -8469,7 +8497,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
       leaf(72,420,110,-0.7); leaf(1008,420,110,-2.45);
       star4(212,262,22,t*0.8,C.sun); star4(880,280,16,t*1.1,C.sun); star4(300,120,14,t*0.6,C.sunRay); star4(790,110,18,t*0.9,C.sun);
-      ctx.save(); ctx.translate(W/2,262); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); crown(230,{expr:'joy'}); ctx.restore();
+      ctx.save(); ctx.translate(W/2,262); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); bee(230,{expr:'joy',flap:flap(t,-2)}); ctx.restore();
       text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Every queen has her seat.',W/2,534,'600 34px '+FB,C.dim); ctx.restore();}
     const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
     if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
@@ -8531,15 +8559,15 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(hh.kind==='cell'&&open()){
       cv.setPointerCapture(e.pointerId);
       if(armed===CROSS){ sweep={mode:crosses.has(hh.k)?'erase':'lay',path:[],set:new Set(),last:hh.k,first:hh.k,moved:false}; sweepVisit(hh.k,t); }
-      else { crownPress={k:hh.k,at:t}; const st=stOf(hh.k); st.downAt=t; st.upAt=-1e9; }
+      else { queenPress={k:hh.k,at:t}; const st=stOf(hh.k); st.downAt=t; st.upAt=-1e9; }
     } else btnPress[hh.kind==='chip'?'chip'+hh.chip:hh.kind]=t;});
   cv.addEventListener('pointermove',e=>{
     if(!open()) return;
     const t=now(),k=cellAt(pt(e));
     if(sweep){ e.preventDefault(); if(k==null||k===sweep.last) return; sweep.moved=true; sweepTo(k,t); }
-    else if(crownPress){ e.preventDefault(); if(k==null||k===crownPress.k) return;
-      // A drag with the crown chip is a tap where it ends: the press moves with the finger.
-      stOf(crownPress.k).upAt=t; crownPress.k=k; const st=stOf(k); st.downAt=t; st.upAt=-1e9; }
+    else if(queenPress){ e.preventDefault(); if(k==null||k===queenPress.k) return;
+      // A drag with the queen chip is a tap where it ends: the press moves with the finger.
+      stOf(queenPress.k).upAt=t; queenPress.k=k; const st=stOf(k); st.downAt=t; st.upAt=-1e9; }
   });
   function release(t){
     if(sweep){ const s=sweep; sweep=null;
@@ -8555,10 +8583,10 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       const entry=[]; s.path.forEach((k,i)=>{const at=t+i*stag(MO.ENTER_STAGGER); stOf(k).upAt=at;
         if(s.mode==='erase'){rubCross(k,at); entry.push({k,prev:CROSS,to:BLANK});} else {layCross(k,at,false); entry.push({k,prev:BLANK,to:CROSS});}});
       push(entry,t); return; }
-    if(crownPress){ const k=crownPress.k; crownPress=null; stOf(k).upAt=t; crownTap(k,t); }
+    if(queenPress){ const k=queenPress.k; queenPress=null; stOf(k).upAt=t; queenTap(k,t); }
   }
   cv.addEventListener('pointerup',e=>{e.preventDefault(); const t=now();
-    if(sweep||crownPress){release(t); pressTarget=null; return;}
+    if(sweep||queenPress){release(t); pressTarget=null; return;}
     const hh=hit(pt(e),t);
     if(hh&&pressTarget&&hh.kind===pressTarget.kind){
       if(hh.kind==='undo') undo(t); else if(hh.kind==='hint') hint(t);
@@ -8567,7 +8595,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       else if(hh.kind==='tip'){ if(open()&&!queens.size){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);} }
       else if(hh.kind==='camp') setup(diff,seed+1,t);}
     pressTarget=null;});
-  cv.addEventListener('pointercancel',()=>{const t=now(); if(sweep) for(const k of sweep.set) stOf(k).upAt=t; if(crownPress) stOf(crownPress.k).upAt=t; sweep=null; crownPress=null; pressTarget=null;});
+  cv.addEventListener('pointercancel',()=>{const t=now(); if(sweep) for(const k of sweep.set) stOf(k).upAt=t; if(queenPress) stOf(queenPress.k).upAt=t; sweep=null; queenPress=null; pressTarget=null;});
 
   // ---- demo controls ----
   const $=id=>document.getElementById(id);
@@ -8599,8 +8627,8 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(!queens.size) part(2);
     for(let k=0;k<n*n;k++){const [r,c]=rc(k); if(markAt(k)===BLANK&&solution[r]!==c){seatQueen(k,-9); hist.push([{k,prev:BLANK,to:QUEEN}]); moves++; break;}}
     caption(); speak(0);}
-  if(Q.get('tap')){const [r,c]=Q.get('tap').split(',').map(Number); if(r>=0&&c>=0&&r<n&&c<n) auto.push({at:AT,fn:tt=>{const k=key(r,c),st=stOf(k); st.downAt=tt-0.1; st.upAt=tt; crownTap(k,tt);}});}
-  if(Q.get('tap2')){const [r,c]=Q.get('tap2').split(',').map(Number),at2=parseFloat(Q.get('at2')||'1.2'); if(r>=0&&c>=0&&r<n&&c<n) auto.push({at:at2,fn:tt=>{const k=key(r,c),st=stOf(k); st.downAt=tt-0.1; st.upAt=tt; crownTap(k,tt);}});}
+  if(Q.get('tap')){const [r,c]=Q.get('tap').split(',').map(Number); if(r>=0&&c>=0&&r<n&&c<n) auto.push({at:AT,fn:tt=>{const k=key(r,c),st=stOf(k); st.downAt=tt-0.1; st.upAt=tt; queenTap(k,tt);}});}
+  if(Q.get('tap2')){const [r,c]=Q.get('tap2').split(',').map(Number),at2=parseFloat(Q.get('at2')||'1.2'); if(r>=0&&c>=0&&r<n&&c<n) auto.push({at:at2,fn:tt=>{const k=key(r,c),st=stOf(k); st.downAt=tt-0.1; st.upAt=tt; queenTap(k,tt);}});}
   if(Q.get('hint')==='1') auto.push({at:AT,fn:tt=>{btnPress.hint=tt; hint(tt);}});
   if(Q.get('sweep')){const [r0,c0,r1,c1]=Q.get('sweep').split(',').map(Number); auto.push({at:AT,fn:tt=>{ // the cross chip dragged from one cell to another
     armed=CROSS; const k0=key(r0,c0); sweep={mode:crosses.has(k0)?'erase':'lay',path:[],set:new Set(),last:k0,first:k0,moved:false}; sweepVisit(k0,tt-0.3); sweep.moved=true; sweepTo(key(r1,c1),tt-0.1); release(tt);}});}

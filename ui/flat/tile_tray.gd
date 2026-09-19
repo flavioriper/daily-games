@@ -18,8 +18,8 @@ extends "res://ui/hud/panel.gd"
 ## Two boards wear it. It is built with a **chip set** -- what each chip
 ## paints, the word it carries, its node name and which glyph it draws --
 ## and there are two: MOSAIC, Nonogram's tile and cross, the default; and
-## CROWNS, Queens' crown and cross, which the registry asks for with
-## `"tray": "crowns"`. One tray, two sets, no copy.
+## QUEENS, Queens' bee and cross, which the registry asks for with
+## `"tray": "queens"`. One tray, two sets, no copy.
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 6;
 ## docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 6.
 
@@ -28,7 +28,7 @@ signal pick(v: int)
 
 const NonogramState = preload("res://puzzles/nonogram_state.gd")
 const QueensState = preload("res://puzzles/queens_state.gd")
-const CrownFace = preload("res://ui/faces/crown_face.gd")
+const BeeFace = preload("res://ui/faces/bee_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 
@@ -53,18 +53,18 @@ const LABEL_Y := 62.0
 const SOCKET_RADIUS := 12.0
 
 ## The two sets. `glyphs` names what the chip's picture is: a laid tile, a
-## pebble on its socket, or a crown (a CrownFace seated on the chip).
+## pebble on its socket, or the bee (a BeeFace seated on the chip, alive).
 const MOSAIC := {
 	"values": [NonogramState.FILL, NonogramState.MARK],
 	"labels": ["Tile", "Cross"],
 	"names": ["TileChip", "CrossChip"],
 	"glyphs": ["tile", "pebble"],
 }
-const CROWNS := {
+const QUEENS := {
 	"values": [QueensState.QUEEN, QueensState.CROSS],
 	"labels": ["Queen", "Cross"],
 	"names": ["QueenChip", "CrossChip"],
-	"glyphs": ["crown", "pebble"],
+	"glyphs": ["bee", "pebble"],
 }
 
 var chips: Array[Button] = []
@@ -103,9 +103,11 @@ func _build() -> void:
 		chips.append(chip)
 
 		var glyph: Control
-		if str(_set.glyphs[i]) == "crown":
-			# A crown is a face of its own and draws itself.
-			glyph = CrownFace.new()
+		if str(_set.glyphs[i]) == "bee":
+			# The bee is a face of her own and draws herself; alive, so her
+			# wings beat on the chip as they do on the court.
+			glyph = BeeFace.new()
+			glyph.set_idle(true)
 		else:
 			glyph = Control.new()
 			glyph.draw.connect(_draw_glyph.bind(glyph, i))

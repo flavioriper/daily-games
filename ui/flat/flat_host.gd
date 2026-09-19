@@ -11,9 +11,9 @@ extends "res://ui/puzzle_host.gd"
 ## brush from three symbol chips, Code Break seats a friend from six or
 ## seven, Balance steps a weight from one card per fruit, Nonogram paints
 ## with one of two tile chips, and Shikaku picks nothing up at all. Queens
-## arms a crown or a cross chip in the same tile tray, built with
-## `TileTray.CROWNS` in place of Nonogram's `TileTray.MOSAIC`. The registry
-## names which (`"tray": "friends"`, `"weights"`, `"tiles"`, `"crowns"`,
+## arms a queen or a cross chip in the same tile tray, built with
+## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`. The registry
+## names which (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`,
 ## `"none"`), because the host lays out its rows before it has a puzzle to
 ## ask.
 ##
@@ -178,9 +178,9 @@ func _build_chrome(root: VBoxContainer) -> void:
 			tray = TileTray.new()
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
-		"crowns":
-			# Queens' pair: the same tray as Nonogram's, with the crown set.
-			tray = TileTray.new(TileTray.CROWNS)
+		"queens":
+			# Queens' pair: the same tray as Nonogram's, with the queen set.
+			tray = TileTray.new(TileTray.QUEENS)
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
 		_:
