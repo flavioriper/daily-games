@@ -31,6 +31,7 @@ func _initialize() -> void:
 		"lightup": "res://tests/test_lightup.gd",
 		"oneline": "res://tests/test_oneline.gd",
 		"nonogram": "res://tests/test_nonogram.gd",
+		"queens": "res://tests/test_queens.gd",
 	}
 	for suite_name in suites:
 		_t.current = suite_name
