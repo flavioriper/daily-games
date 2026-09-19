@@ -33,6 +33,14 @@ var pegged := false:
 	set(v):
 		pegged = v
 		queue_redraw()
+## Whether the tent casts its own shadow layer. The flat board draws every
+## shadow on its own ground (one mesh of the family's soft discs, so a
+## hopping tent leaves its shadow where it stood) and turns this off; the
+## guy lines stay with the tent either way.
+var casts: bool = true:
+	set(v):
+		casts = v
+		queue_redraw()
 
 func _kind() -> String:
 	return "tent_pegged" if pegged else "tent"
@@ -41,7 +49,12 @@ func _radius_for(px: float) -> float:
 	return px * RATIO
 
 func _layers() -> Array:
-	return [["ground", false], ["body", true]]
+	var layers: Array = []
+	if casts:
+		layers.append(["shadow", false])
+	layers.append(["ground", false])
+	layers.append(["body", true])
+	return layers
 
 ## The fabric's two colours, from the state the expression carries.
 func _skin() -> Array:
@@ -51,8 +64,9 @@ func _skin() -> Array:
 
 func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 	match name:
-		"ground":
+		"shadow":
 			b.ellipse(Vector2(0.0, 0.42) * R, 0.42 * R, 0.1 * R, Color(Pal.TEXT, 0.12))
+		"ground":
 			for side: float in [-1.0, 1.0]:
 				b.stroke(PackedVector2Array([
 					Vector2(side * 0.44, 0.4) * R, Vector2(side * 0.16, -0.3) * R]),

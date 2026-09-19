@@ -3,9 +3,10 @@ extends "res://core/puzzle_base.gd"
 ## Tents as a flat board: a meadow of pale turf on the host's parchment card,
 ## conifers standing on it, canvas tents pitched beside them, cairns over the
 ## ground the player has ruled out, and the line counts on chips along a band
-## outside the grid. Built beside the island version (puzzles/tents3d.gd) so
-## the two can be judged against each other on the phone; the rules live in
-## puzzles/tents_state.gd, which this only draws.
+## outside the grid. Built beside the island version
+## (legacy/puzzles/tents3d.gd) so the two could be judged against each other
+## on the phone; the rules live in puzzles/tents_state.gd, which this only
+## draws.
 ##
 ## What flat buys here is narrower than it was for Shikaku, and worth saying
 ## plainly: a meadow with conifers on it is already this puzzle's natural
@@ -20,13 +21,24 @@ extends "res://core/puzzle_base.gd"
 ## tilted one does not.
 ##
 ## How it is drawn. The meadow and its grid are one cached mesh; every cairn,
-## the shade under a running sweep and nothing else go into a second, rebuilt
-## only when something moves. The characters are Controls with their own
-## cached meshes -- a conifer per tree, a tent per pitched square, a chip per
-## line -- and a tree's sway is a transform on its own draw, so a swaying
-## meadow never asks the board for a frame.
+## every shadow on the ground, the shade under a running sweep and the blush
+## of a cell go into a second, rebuilt only while something moves. The
+## characters are Controls with their own cached meshes -- a conifer per
+## tree, a tent per pitched square, a chip per line -- each standing in a
+## slot the layout owns, and a tree's sway is a transform on its own draw, so
+## a swaying meadow never asks the board for a frame.
+##
+## How it moves. The characters take the flat boards' vocabulary
+## (core/motion.gd, docs/art/flat-motion.md) straight, inside their slots:
+## the trees and the chips pop in with the squash along the diagonal, a tent
+## pops in and out, sinks under the finger, hops, leans away from a
+## neighbour's landing, wobbles on Check and shivers when it refuses. The
+## cairns, the shade and the blush are drawn, so they read the same recipes
+## as curves (Motion.pop_in_scale and its siblings; the doc's rule 8) and
+## never copy a number. The cairns clearing away on the win are this board's
+## own signature.
 ## Spec: docs/superpowers/specs/2026-09-18-tents-flat-design.md, sections 2
-## to 7, and the mock it is ported from
+## to 7 and the amendment at its end, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#tents).
 
 const State = preload("res://puzzles/tents_state.gd")
@@ -37,6 +49,7 @@ const Face = preload("res://ui/faces/face.gd")
 const TentFace = preload("res://ui/faces/tent_face.gd")
 const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const CountChip = preload("res://ui/faces/count_chip.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 # --- the meadow ---
 const PAD := 34.0
@@ -45,43 +58,47 @@ const PAD := 34.0
 ## stands on it, so it costs less than a cell.
 const BAND := 0.72
 const TURF_RADIUS := 18.0
+## The meadow stands on the parchment the way every card does: on a bottom
+## edge of the family's six (docs/art/flat-motion.md, the dressing).
+const TURF_EDGE := 6.0
 const GRID_WIDTH := 2.0
 const GRID_ALPHA := 0.9
-const SWEEP_ALPHA := 0.07
-const SWEEP_INSET := 3.0
-const SWEEP_RADIUS := 10.0
+## The shade under a pressed cell and a running sweep, and the blush a cell
+## takes when Check points at its tent or a tap is refused on it.
+const SHADE_ALPHA := 0.07
+const SHADE_INSET := 3.0
+const SHADE_RADIUS := 10.0
+const BLUSH_ALPHA := 0.9
 
 # --- the pieces, in cells ---
 const TENT_SIZE := 0.9
 const TREE_SIZE := 0.94
 const CAIRN_SIZE := 0.8
+## The shadows on the ground, in the piece's seat: the mock's ellipses, as
+## the family's soft disc. The peak is above the doc's band because a disc
+## that fades to its rim reads at about half its centre (Shikaku measured it).
+const TREE_SHADOW_AT := Vector2(0.0, 0.46)
+const TREE_SHADOW_RX := 0.34
+const TREE_SHADOW_RY := 0.09
+const TENT_SHADOW_AT := Vector2(0.0, 0.42)
+const TENT_SHADOW_RX := 0.42
+const TENT_SHADOW_RY := 0.1
+const SHADOW_ALPHA := 0.2
 
-# --- motion ---
-const POP_FROM := 0.6
-const POP_TIME := 0.22
-const DIP := 0.05
-const DIP_TIME := 0.3
-const FLASH := 0.07
-const FLASH_TIME := 0.6
-const FLASH_SWINGS := 9.0
-const ENTER_CHIP := 0.12
-const ENTER_CHIP_STEP := 0.02
-const ENTER_CHIP_TIME := 0.35
-const ENTER_TREE := 0.2
-const ENTER_TREE_STEP := 0.02
-const ENTER_TREE_TIME := 0.4
-const ENTER_DROP := 26.0
-const SOLVE_DELAY := 0.15
-const SOLVE_STEP := 0.1
-const SOLVE_HOP := 0.12
-const SOLVE_HOP_TIME := 0.42
-## The cairns clear away on the win: a hard board finishes with 55 of its 64
-## squares under pebbles, and without this the last picture is the
-## working-out rather than the camp.
+# --- motion: what is this board's own ---
+## A refused tree's shiver, in cells; the family's 2 px is a tremor on a
+## conifer this size.
+const SHIVER := 0.04
+## The cairns clear away on the win, in a scatter rather than a wave: a hard
+## board finishes with 55 of its 64 squares under pebbles, and without this
+## the last picture is the working-out rather than the camp.
 const CLEAR_DELAY := 0.2
 const CLEAR_SPREAD := 0.3
 const CLEAR_TIME := 0.5
-const WIN_WAIT := 2.0
+const CLEAR_SHRINK := 0.4
+## How long the host waits before the win screen: the solve wave and the
+## clearing both have to run their length first.
+const WIN_WAIT := 1.6
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
@@ -108,25 +125,51 @@ var _chips_row: Array = []       # [r] -> CountChip
 var _chips_col: Array = []       # [c] -> CountChip
 var _trees: Dictionary = {}      # Vector2i -> ConiferFace
 var _tents: Dictionary = {}      # Vector2i -> TentFace, kept once made
-## Vector2i -> the second a square's piece went down, which drives its pop
-## and, on the win, its hop.
-var _at: Dictionary = {}
-var _dip_at: Dictionary = {}
-var _flash_at: Dictionary = {}
+## Tree or tent -> the Control it stands in. The slot is what the layout
+## moves and the face is what the motion moves (a hop, a nudge, a shiver),
+## so a relayout mid-entrance cannot fight a pop: build() lays out before
+## the host has given the board a size. A chip only ever scales, so it
+## stands under the board with no slot.
+var _slots: Dictionary = {}
+var _pos_tw: Dictionary = {}     # face -> the hop, the nudge, the shiver, the drop
+var _look_tw: Dictionary = {}    # face -> the pop, the press, the wobble, the bump
+## Bumped on every rebuild; a pending callback from the last board checks it.
+var _gen := 0
+
+# --- what the ground is doing ---
+## Vector2i -> the second a cairn's pebbles begin to arrive.
+var _cairn_in: Dictionary = {}
+## Cairns leaving: [{"cell": Vector2i, "at": float}], drawn shrinking from
+## `at` since the state no longer has them.
+var _cairn_out: Array = []
+## Vector2i -> the second a cell began to blush.
+var _blush: Dictionary = {}
+## Vector2i -> {"at": float, "until": float}: the shade under a pressed cell
+## or a swept one, popping in wide from `at` and gone from `until` (INF while
+## the gesture still runs).
+var _shade: Dictionary = {}
+var _meadow: ArrayMesh
+var _ground: ArrayMesh
+var _ground_dirty := true
+## The meshes the last _draw handed over that the next may let go of: a
+## canvas command holds a mesh by RID, and a frame rendered before the queued
+## redraw is flushed would otherwise draw a freed one (see CLAUDE.md).
+var _shown: Array = []
 
 # --- the gesture ---
 var _press_cell := Vector2i(-1, -1)
+## The face under the finger, sunk by the press, if the press landed on one.
+var _pressed: Control
 var _dragged := false
-var _sweeping := false
 var _lay := true
 var _swept: Dictionary = {}
 var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
 
-var _opened := 0.0
+var _opened := -1.0e9
 var _solved_at := -1.0
-var _meadow: ArrayMesh
-var _ground: ArrayMesh
+## Redraw every frame until this second: a pop, a wave, the clearing.
+var _anim_until := 0.0
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -156,29 +199,29 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+	_stop_all()
 	state.setup(rng, difficulty)
-	_at = {}
-	_dip_at = {}
-	_flash_at = {}
+	_cairn_in = {}
+	_cairn_out = []
+	_blush = {}
+	_shade = {}
 	_clear_gesture()
 	_solved_at = -1.0
-	_opened = _now()
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
 	_say(TIPS[0], Face.Expr.HAPPY)
 	_tip_timer.start()
-	fx.cue("enter")
+	_enter()
 
 # --- the cast ---
 
 func _build_pieces() -> void:
-	for node in _chips_row + _chips_col:
-		node.queue_free()
-	for cell in _trees:
-		_trees[cell].queue_free()
-	for cell in _tents:
-		_tents[cell].queue_free()
+	for face in _slots:
+		_slots[face].queue_free()
+	for chip in _chips_row + _chips_col:
+		chip.queue_free()
+	_slots = {}
 	_chips_row = []
 	_chips_col = []
 	_trees = {}
@@ -189,19 +232,37 @@ func _build_pieces() -> void:
 		_chips_col.append(_chip(int(state.col_counts[c]), "col_%d" % c))
 	for cell in state.tree_list:
 		var tree := ConiferFace.new()
-		tree.name = "tree_%d_%d" % [cell.x, cell.y]
-		tree.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(tree)
+		# The shadow is the board's, on the ground (see _build_ground).
+		tree.casts = false
+		# Nothing until the meadow is up; _enter pops each one in.
+		tree.scale = Vector2.ZERO
+		_stand(tree, "tree_%d_%d" % [cell.x, cell.y])
 		tree.set_idle(true)
 		_trees[cell] = tree
 
+## A chip stands straight under the board, with no slot: nothing ever moves
+## its position, only its scale (the pop in, the bump), so the layout and the
+## motion never write the same property. Fourteen fewer nodes on a board.
 func _chip(number: int, node_name: String) -> CountChip:
 	var chip := CountChip.new()
 	chip.name = node_name
 	chip.number = number
+	chip.scale = Vector2.ZERO
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chip)
 	return chip
+
+## Puts `face` in a slot of its own under the board. The slot takes the
+## layout; the face inside it takes the motion.
+func _stand(face: Control, node_name: String) -> void:
+	var slot := Control.new()
+	slot.name = node_name
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(slot)
+	face.name = "face"
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(face)
+	_slots[face] = slot
 
 ## The tent on `cell`, made the first time one is pitched there and kept
 ## afterwards: a square the player taps twice would otherwise build and free a
@@ -210,12 +271,53 @@ func _tent_node(cell: Vector2i) -> TentFace:
 	if _tents.has(cell):
 		return _tents[cell]
 	var tent := TentFace.new()
-	tent.name = "tent_%d_%d" % [cell.x, cell.y]
-	tent.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(tent)
+	tent.casts = false
+	tent.visible = false
+	tent.scale = Vector2.ZERO
+	_stand(tent, "tent_%d_%d" % [cell.x, cell.y])
 	tent.set_idle(true)
 	_tents[cell] = tent
+	if _cell > 0.0:
+		_seat(tent, cell_to_local(cell.y, cell.x), _cell * TENT_SIZE)
 	return tent
+
+## The tree or the standing tent on `cell`, or null for bare ground and a
+## cairn.
+func _face_on(cell: Vector2i) -> Control:
+	if _trees.has(cell):
+		return _trees[cell]
+	if state.mark_at(cell) == State.TENT and _tents.has(cell):
+		return _tents[cell]
+	return null
+
+## Every face takes the look its state asks for. A face is written only when
+## its look changes -- a written face redraws.
+func _refresh_faces() -> void:
+	for c in _chips_col.size():
+		_set_expr(_chips_col[c], _chip_face(state.col_tents(c), int(state.col_counts[c])))
+	for r in _chips_row.size():
+		_set_expr(_chips_row[r], _chip_face(state.row_tents(r), int(state.row_counts[r])))
+	for cell in _tents:
+		var tent: TentFace = _tents[cell]
+		if state.mark_at(cell) != State.TENT:
+			continue
+		var pegged: bool = state.locked.has(cell)
+		if tent.pegged != pegged:
+			tent.pegged = pegged
+		# The win writes JOY on each tent as the wave reaches it.
+		if _solved_at >= 0.0:
+			continue
+		_set_expr(tent, Face.Expr.STRAIN if state.tent_bad(cell) else Face.Expr.HAPPY)
+
+func _set_expr(face: Face, expr: int) -> void:
+	if face.expression != expr:
+		face.expression = expr
+
+func _chip_face(have: int, want: int) -> int:
+	match State.line_state(have, want):
+		State.LINE_OK: return Face.Expr.JOY
+		State.LINE_OVER: return Face.Expr.STRAIN
+		_: return Face.Expr.HAPPY
 
 # --- layout ---
 
@@ -236,8 +338,31 @@ func _layout() -> void:
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	_grid = Vector2(size.x * 0.5 - grid.x * 0.5, _card.position.y + (tall - grid.y) * 0.5) \
 		+ Vector2.ONE * (_cell * BAND)
+	for c in _chips_col.size():
+		_seat(_chips_col[c], Vector2(_grid.x + (c + 0.5) * _cell, _grid.y - _cell * BAND * 0.5), _cell)
+	for r in _chips_row.size():
+		_seat(_chips_row[r], Vector2(_grid.x - _cell * BAND * 0.5, _grid.y + (r + 0.5) * _cell), _cell)
+	for cell in _trees:
+		_seat(_trees[cell], cell_to_local(cell.y, cell.x), _cell * TREE_SIZE)
+	for cell in _tents:
+		_seat(_tents[cell], cell_to_local(cell.y, cell.x), _cell * TENT_SIZE)
 	_meadow = _build_meadow()
-	_refresh()
+	_refresh_faces()
+	_redraw()
+
+## Seats `face` `px` square about `centre`: its slot, when it stands in one,
+## with the face's own place inside the slot left to the motion; the face
+## itself when it does not (a chip).
+func _seat(face: Control, centre: Vector2, px: float) -> void:
+	var seat := Vector2.ONE * px
+	var slot: Control = _slots.get(face)
+	if slot != null:
+		slot.size = seat
+		slot.position = centre - seat * 0.5
+	else:
+		face.position = centre - seat * 0.5
+	face.size = seat
+	face.pivot_offset = seat * 0.5
 
 ## The cell a slot of `available` height holds, capped by the width.
 func _cell_for(available: float) -> float:
@@ -269,176 +394,192 @@ func _cell_at(local: Vector2) -> Vector2i:
 	var cell := Vector2i(int(floor(p.x)), int(floor(p.y)))
 	return cell if state.in_field(cell) else Vector2i(-1, -1)
 
-# --- the frame ---
-
-func _process(delta: float) -> void:
-	super(delta)
-	if _cell <= 0.0 or state.tree_list.is_empty():
-		return
-	if _animating(_now()):
-		_refresh()
-
-## True while anything is still moving. A meadow left alone costs its trees'
-## own sway and blinks, which are their tweens and not the board's frames.
-func _animating(t: float) -> bool:
-	if _sweeping:
-		return true
-	if t < _opened + ENTER_TREE + (state.w + state.h) * ENTER_TREE_STEP + ENTER_TREE_TIME:
-		return true
-	if _solved_at >= 0.0 and t < _solved_at + WIN_WAIT:
-		return true
-	for cell in _at:
-		if t < float(_at[cell]) + maxf(POP_TIME, SOLVE_HOP_TIME):
-			return true
-	for cell in _dip_at:
-		if t < float(_dip_at[cell]) + DIP_TIME:
-			return true
-	for cell in _flash_at:
-		if t < float(_flash_at[cell]) + FLASH_TIME:
-			return true
-	return false
-
-func _refresh() -> void:
-	var t := _now()
-	_place_chips(t)
-	_place_pieces(t)
-	_ground = _build_ground(t)
-	queue_redraw()
-
-func _place_chips(t: float) -> void:
-	var seat := Vector2.ONE * _cell
-	for c in _chips_col.size():
-		var chip: CountChip = _chips_col[c]
-		chip.size = seat
-		chip.position = Vector2(_grid.x + (c + 0.5) * _cell,
-			_grid.y - _cell * BAND * 0.5) - seat * 0.5
-		chip.modulate.a = _dec((t - _opened - ENTER_CHIP - c * ENTER_CHIP_STEP) / ENTER_CHIP_TIME)
-		chip.expression = _chip_face(state.col_tents(c), int(state.col_counts[c]))
-	for r in _chips_row.size():
-		var chip: CountChip = _chips_row[r]
-		chip.size = seat
-		chip.position = Vector2(_grid.x - _cell * BAND * 0.5,
-			_grid.y + (r + 0.5) * _cell) - seat * 0.5
-		chip.modulate.a = _dec((t - _opened - ENTER_CHIP - r * ENTER_CHIP_STEP) / ENTER_CHIP_TIME)
-		chip.expression = _chip_face(state.row_tents(r), int(state.row_counts[r]))
-
-func _chip_face(have: int, want: int) -> int:
-	match State.line_state(have, want):
-		State.LINE_OK: return Face.Expr.JOY
-		State.LINE_OVER: return Face.Expr.STRAIN
-		_: return Face.Expr.HAPPY
-
-func _place_pieces(t: float) -> void:
-	for cell in _trees:
-		var tree: ConiferFace = _trees[cell]
-		var seat := Vector2.ONE * (_cell * TREE_SIZE)
-		var u := _dec((t - _opened - ENTER_TREE - (cell.x + cell.y) * ENTER_TREE_STEP) / ENTER_TREE_TIME)
-		tree.size = seat
-		tree.pivot_offset = seat * 0.5
-		var drop := 0.0 if Motion.reduce else -ENTER_DROP * (1.0 - _back_out(u))
-		tree.position = cell_to_local(cell.y, cell.x) - seat * 0.5 + Vector2(0.0, drop)
-		tree.modulate.a = u
-		tree.visible = u > 0.0
-	for cell in _tents:
-		var tent: TentFace = _tents[cell]
-		var up: bool = state.mark_at(cell) == State.TENT
-		tent.visible = up
-		if not up:
-			continue
-		var seat := Vector2.ONE * (_cell * TENT_SIZE)
-		tent.size = seat
-		tent.pivot_offset = seat * 0.5
-		var grow := 1.0 if Motion.reduce else lerpf(POP_FROM, 1.0, _back_out(_pop_u(cell, t)))
-		tent.scale = Vector2.ONE * grow
-		tent.position = cell_to_local(cell.y, cell.x) - seat * 0.5 + _jitter(cell, t)
-		tent.pegged = state.locked.has(cell)
-		if _solved_at >= 0.0 and t >= float(_at.get(cell, 0.0)):
-			tent.expression = Face.Expr.JOY
-		elif not is_done() and state.tent_bad(cell):
-			tent.expression = Face.Expr.STRAIN
-		else:
-			tent.expression = Face.Expr.HAPPY
-
-func _pop_u(cell: Vector2i, t: float) -> float:
-	return clampf((t - float(_at.get(cell, -100.0))) / POP_TIME, 0.0, 1.0)
-
-## What a square's piece is doing besides standing there: the shake a failed
-## Check gave it, the dip a refused tap gave it, and the hop of the win.
-func _jitter(cell: Vector2i, t: float) -> Vector2:
-	if Motion.reduce:
-		return Vector2.ZERO
-	var out := Vector2.ZERO
-	var flash := (t - float(_flash_at.get(cell, -100.0))) / FLASH_TIME
-	if flash >= 0.0 and flash < 1.0:
-		out.x += _cell * FLASH * sin(FLASH_SWINGS * PI * flash) * (1.0 - flash)
-	var dip := (t - float(_dip_at.get(cell, -100.0))) / DIP_TIME
-	if dip >= 0.0 and dip < 1.0:
-		out.y += _cell * DIP * sin(PI * dip)
-	if _solved_at >= 0.0:
-		var hop := (t - float(_at.get(cell, 0.0))) / SOLVE_HOP_TIME
-		if hop >= 0.0 and hop < 1.0:
-			out.y -= _cell * SOLVE_HOP * sin(PI * hop)
-	return out
+## The meadow's rectangle in board pixels.
+func _field_px() -> Rect2:
+	return Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
 
 # --- the drawing ---
 
 func _draw() -> void:
-	if _meadow != null:
-		draw_mesh(_meadow, null)
+	if _cell <= 0.0 or state.tree_list.is_empty():
+		return
+	var now := _now()
+	var busy := false
+	var shown: Array = []
+	# The meadow pops in wide once the chrome has slid in, drawn.
+	var since := now - _opened - Motion.ENTER_DELAY
+	if since < Motion.ENTER_POP:
+		busy = true
+	var seen := Motion.appear_level(since)
+	if seen > 0.0 and _meadow != null:
+		var grown := Motion.wide_pop_scale(since)
+		draw_mesh(_meadow, null,
+			Transform2D(0.0, Vector2(grown, grown), 0.0, _field_px().get_center()),
+			Color(1.0, 1.0, 1.0, seen))
+		shown.append(_meadow)
+	if _ground_dirty or now < _anim_until:
+		var out := _build_ground(now)
+		_ground = out.mesh
+		busy = busy or out.busy
+		_ground_dirty = false
 	if _ground != null:
 		draw_mesh(_ground, null)
+		shown.append(_ground)
+	_shown = shown
+	if busy:
+		_anim_until = maxf(_anim_until, now + 0.1)
 
+## The turf on its bottom edge and the faint grid over it, about the meadow's
+## own centre, so its pop on the entrance is a transform.
 func _build_meadow() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field := Vector2(_cell * state.w, _cell * state.h)
-	b.fan(Face.Builder.round_rect(_grid, field, TURF_RADIUS), Pal.MEADOW)
+	var at := -field * 0.5
+	# The edge is the card at full height plus its lip and the turf the same
+	# card short of it, which is how every card on the flat screens gets its
+	# soft foot.
+	b.fan(Face.Builder.round_rect(at, field + Vector2(0.0, TURF_EDGE), TURF_RADIUS), Pal.LINE)
+	b.fan(Face.Builder.round_rect(at, field, TURF_RADIUS), Pal.MEADOW)
 	var line := Color(Pal.MEADOW_LINE, GRID_ALPHA)
 	for x in range(1, state.w):
-		b.stroke(PackedVector2Array([_grid + Vector2(x * _cell, 0.0),
-			_grid + Vector2(x * _cell, field.y)]), GRID_WIDTH, line, false, false)
+		b.stroke(PackedVector2Array([at + Vector2(x * _cell, 0.0),
+			at + Vector2(x * _cell, field.y)]), GRID_WIDTH, line, false, false)
 	for y in range(1, state.h):
-		b.stroke(PackedVector2Array([_grid + Vector2(0.0, y * _cell),
-			_grid + Vector2(field.x, y * _cell)]), GRID_WIDTH, line, false, false)
+		b.stroke(PackedVector2Array([at + Vector2(0.0, y * _cell),
+			at + Vector2(field.x, y * _cell)]), GRID_WIDTH, line, false, false)
 	return b.mesh()
 
-## The cairns and the shade under a running sweep: everything on the ground
-## that is not a character, in one mesh.
-func _build_ground(t: float) -> ArrayMesh:
+## Everything on the ground that is not a character, in one mesh: the shade
+## under the finger, the blush of a pointed-at cell, the shadow under every
+## tree and tent, and the cairns arriving, standing and leaving. Returns the
+## mesh and whether any of it is still moving.
+func _build_ground(now: float) -> Dictionary:
 	var b := Face.Builder.new()
-	if _sweeping:
-		for key in _swept:
-			var cell: Vector2i = key
-			b.fan(Face.Builder.round_rect(
-				_grid + Vector2(cell) * _cell + Vector2.ONE * SWEEP_INSET,
-				Vector2.ONE * (_cell - 2.0 * SWEEP_INSET), SWEEP_RADIUS),
-				Color(Pal.TEXT, SWEEP_ALPHA))
+	var busy := false
+	# The shade: popping in wide under a pressed or swept cell, shrinking
+	# away once the gesture has let it go.
+	var gone: Array = []
+	for cell in _shade:
+		var sh: Dictionary = _shade[cell]
+		var grown := 0.0
+		if now < float(sh.until):
+			var e: float = now - float(sh.at)
+			grown = Motion.wide_pop_scale(e, Motion.POP_IN)
+			busy = busy or e < Motion.POP_IN
+		else:
+			grown = Motion.pop_out_scale(now - float(sh.until))
+			if grown <= 0.0:
+				gone.append(cell)
+				continue
+			busy = true
+		_cell_wash(b, cell, grown, Color(Pal.TEXT, SHADE_ALPHA))
+	for cell in gone:
+		_shade.erase(cell)
+	# The blush: toward the family's rose and back, read off flash_level.
+	gone = []
+	for cell in _blush:
+		var e: float = now - float(_blush[cell])
+		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
+			gone.append(cell)
+			continue
+		busy = true
+		var level := Motion.flash_level(e)
+		if level > 0.0:
+			_cell_wash(b, cell, 1.0, Color(Pal.BAD_TILE, BLUSH_ALPHA * level))
+	for cell in gone:
+		_blush.erase(cell)
+	# The shadows, anchored at the slot and read off the piece's own height,
+	# so one arrives with its pop and stays put when the piece hops.
+	for cell in _trees:
+		_shadow(b, _trees[cell], cell, TREE_SIZE, TREE_SHADOW_AT, TREE_SHADOW_RX, TREE_SHADOW_RY)
+	for cell in _tents:
+		var tent: TentFace = _tents[cell]
+		if tent.visible:
+			_shadow(b, tent, cell, TENT_SIZE, TENT_SHADOW_AT, TENT_SHADOW_RX, TENT_SHADOW_RY)
+	# Cairns on their way out, drawn from the shape the state has forgotten.
+	var still: Array = []
+	for out in _cairn_out:
+		var e: float = now - float(out.at)
+		var shrunk := Motion.pop_out_scale(e)
+		if shrunk <= 0.0:
+			continue
+		still.append(out)
+		busy = true
+		var turn := PI * 0.5 * clampf(e / Motion.POP_OUT, 0.0, 1.0)
+		_cairn(b, cell_to_local(out.cell.y, out.cell.x), _cell * CAIRN_SIZE,
+			Vector2(shrunk, shrunk), turn, 1.0)
+	_cairn_out = still
+	# The cairns that are here: popping in with the squash, standing, or
+	# clearing away on the win.
+	gone = []
 	for cell in state.marks:
 		if int(state.marks[cell]) != State.GRASS:
 			continue
-		var grow := 1.0 if Motion.reduce else lerpf(POP_FROM, 1.0, _back_out(_pop_u(cell, t)))
+		var grow := Vector2.ONE
+		if _cairn_in.has(cell):
+			var e: float = now - float(_cairn_in[cell])
+			grow = Motion.pop_in_scale(e)
+			if e < Motion.POP_IN:
+				busy = true
+			else:
+				gone.append(cell)
 		var alpha := 1.0
 		if _solved_at >= 0.0:
-			var gone := _dec((t - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
-			if gone >= 1.0:
+			var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
+			if cleared >= 1.0:
 				continue
-			alpha = 1.0 - gone
-			grow *= 1.0 - gone * 0.4
-		_cairn(b, cell_to_local(cell.y, cell.x), _cell * CAIRN_SIZE * grow, alpha)
+			busy = true
+			alpha = 1.0 - cleared
+			grow *= 1.0 - cleared * CLEAR_SHRINK
+		if grow.x <= 0.0 or grow.y <= 0.0:
+			continue
+		_cairn(b, cell_to_local(cell.y, cell.x), _cell * CAIRN_SIZE, grow, 0.0, alpha)
+	for cell in gone:
+		_cairn_in.erase(cell)
 	if b.verts.is_empty():
-		return null
-	return b.mesh()
+		return {"mesh": null, "busy": busy}
+	return {"mesh": b.mesh(), "busy": busy}
+
+## A rounded wash over `cell`, `grown` of its size about its centre.
+func _cell_wash(b, cell: Vector2i, grown: float, colour: Color) -> void:
+	if grown <= 0.0:
+		return
+	var span := (_cell - 2.0 * SHADE_INSET) * grown
+	b.fan(Face.Builder.round_rect(cell_to_local(cell.y, cell.x) - Vector2.ONE * span * 0.5,
+		Vector2.ONE * span, SHADE_RADIUS * grown), colour)
+
+## The family's soft disc under `face` on `cell`, scaled by how much of the
+## face is there.
+func _shadow(b, face: Control, cell: Vector2i, share: float, at: Vector2, rx: float, ry: float) -> void:
+	var seen := clampf(face.scale.y, 0.0, 1.0)
+	if seen <= 0.0:
+		return
+	var seat := _cell * share
+	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + at * seat,
+		rx * seat * seen, ry * seat * seen, Color(Pal.TEXT, SHADOW_ALPHA * seen))
 
 ## A cairn: the mark the puzzle is actually solved with, so it is a thing on
-## the ground and not a shade of grass.
-func _cairn(b, at: Vector2, s: float, alpha: float) -> void:
-	b.ellipse(at + Vector2(0.0, 0.32) * s, 0.33 * s, 0.09 * s, Color(Pal.TEXT, 0.13 * alpha))
+## the ground and not a shade of grass. Drawn about `at` through `grow` and
+## `turn`, so a pop is a transform on the same shapes.
+func _cairn(b, at: Vector2, s: float, grow: Vector2, turn: float, alpha: float) -> void:
+	var xf := Transform2D(turn, grow, 0.0, at)
+	_pebble(b, xf, Vector2(0.0, 0.32) * s, 0.33 * s, 0.09 * s, Color(Pal.TEXT, 0.13 * alpha))
 	var deep := Color(Pal.CAIRN_DEEP, alpha)
-	b.ellipse(at + Vector2(-0.15, 0.19) * s, 0.19 * s, 0.13 * s, deep)
-	b.ellipse(at + Vector2(0.16, 0.21) * s, 0.17 * s, 0.12 * s, deep)
+	_pebble(b, xf, Vector2(-0.15, 0.19) * s, 0.19 * s, 0.13 * s, deep)
+	_pebble(b, xf, Vector2(0.16, 0.21) * s, 0.17 * s, 0.12 * s, deep)
 	var stone := Color(Pal.CAIRN_STONE, alpha)
-	b.ellipse(at + Vector2(0.0, 0.01) * s, 0.2 * s, 0.14 * s, stone)
-	b.ellipse(at + Vector2(-0.03, -0.2) * s, 0.14 * s, 0.11 * s, stone)
-	b.ellipse(at + Vector2(-0.06, -0.24) * s, 0.06 * s, 0.04 * s, Color(1.0, 1.0, 1.0, 0.3 * alpha))
+	_pebble(b, xf, Vector2(0.0, 0.01) * s, 0.2 * s, 0.14 * s, stone)
+	_pebble(b, xf, Vector2(-0.03, -0.2) * s, 0.14 * s, 0.11 * s, stone)
+	_pebble(b, xf, Vector2(-0.06, -0.24) * s, 0.06 * s, 0.04 * s, Color(1.0, 1.0, 1.0, 0.3 * alpha))
+
+## One ellipse of the cairn, put through the cairn's transform.
+func _pebble(b, xf: Transform2D, centre: Vector2, rx: float, ry: float, colour: Color) -> void:
+	var pts := Face.Builder.ring(centre, rx, ry)
+	var out := PackedVector2Array()
+	out.resize(pts.size())
+	for i in pts.size():
+		out[i] = xf * pts[i]
+	b.fan(out, colour)
 
 # --- input ---
 
@@ -454,11 +595,35 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and _press_cell.x >= 0:
 		_drag(event.position)
 
+## The press: a tree or a tent sinks under the finger; bare ground and a
+## cairn take a shade that pops in wide under it. Every tappable square does
+## this, including one that will refuse on release.
 func _press(cell: Vector2i) -> void:
 	_clear_gesture()
 	if is_done() or cell.x < 0:
 		return
 	_press_cell = cell
+	var now := _now()
+	var face := _face_on(cell)
+	if face != null:
+		_pressed = face
+		Motion.stop(_look_tw.get(face))
+		_look_tw[face] = Motion.press(face, true)
+		_busy_for(Motion.PRESS_TIME)
+	else:
+		_shade[cell] = {"at": now, "until": INF}
+		_busy_for(Motion.POP_IN)
+	_redraw()
+
+## The pressed face springs back, on release or when the finger leaves it
+## for a sweep.
+func _release_press() -> void:
+	if _pressed == null:
+		return
+	Motion.stop(_look_tw.get(_pressed))
+	_look_tw[_pressed] = Motion.press(_pressed, false)
+	_busy_for(Motion.RELEASE_TIME)
+	_pressed = null
 
 func _drag(at: Vector2) -> void:
 	var cell := _cell_at(at)
@@ -466,10 +631,10 @@ func _drag(at: Vector2) -> void:
 		return
 	if not _dragged and cell != _press_cell:
 		_dragged = true
-		_sweeping = true
 		# Begin on a cairn and the sweep rubs out; begin anywhere else and it
 		# lays.
 		_lay = state.mark_at(_press_cell) != State.GRASS
+		_release_press()
 		_paint(_press_cell)
 	if not _dragged:
 		return
@@ -482,10 +647,11 @@ func _drag(at: Vector2) -> void:
 				roundi(lerpf(_last_paint.x, cell.x, float(i) / steps)),
 				roundi(lerpf(_last_paint.y, cell.y, float(i) / steps))))
 	_paint(cell)
-	_refresh()
+	_redraw()
 
 ## A sweep never disturbs a tent or a tree: the gesture is for ruling ground
-## out, and losing a tent to a stray finger would be the worst bug here.
+## out, and losing a tent to a stray finger would be the worst bug here. The
+## shade follows the finger over the ground it can change.
 func _paint(cell: Vector2i) -> void:
 	_last_paint = cell
 	if _swept.has(cell):
@@ -493,57 +659,227 @@ func _paint(cell: Vector2i) -> void:
 	_swept[cell] = true
 	if state.fixed(cell) or state.mark_at(cell) == State.TENT:
 		return
+	if not _shade.has(cell):
+		_shade[cell] = {"at": _now(), "until": INF}
+		_busy_for(Motion.POP_IN)
 	var to := State.GRASS if _lay else State.BLANK
 	if state.mark_at(cell) == to:
 		return
-	_pending.append({"cell": cell, "to": to})
+	_pending.append(cell)
 
 func _release() -> void:
 	var cell := _press_cell
 	var was_drag := _dragged
+	var lay := _lay
 	var pending := _pending
+	var now := _now()
 	_clear_gesture()
+	_release_press()
 	if cell.x < 0 or is_done():
-		_refresh()
+		_end_shades(now)
+		_redraw()
 		return
 	if was_drag:
+		var arrivals: Dictionary = {}
 		if not pending.is_empty():
-			_commit(state.apply(pending))
-		_refresh()
+			var moves_: Array = []
+			for c in pending:
+				moves_.append({"cell": c, "to": State.GRASS if lay else State.BLANK})
+			var before: Dictionary = state.marks.duplicate()
+			# One gesture is one move, however many squares it touched; the
+			# cairns arrive in a wave along the finger's path.
+			arrivals = _commit(before, state.apply(moves_), Motion.ENTER_STAGGER, false)
+		_end_shades(now, arrivals)
+		_redraw()
 		return
 	if state.fixed(cell):
-		# A tree's square, or a tent a hint pegged down: a dip and a word,
-		# rather than a move.
-		_dip_at[cell] = _now()
-		_say("A tree stands there. Tents go beside them." if state.trees.has(cell)
-			else "That tent is pegged down. A hint pitched it.", Face.Expr.PUZZLED)
-		fx.cue("locked")
-		_refresh()
+		# A tree's square, or a tent a hint pegged down: a shiver, a blush
+		# and a word, rather than a move.
+		_refuse(cell)
+		_end_shades(now)
+		_redraw()
 		return
-	_commit(state.tap(cell))
+	var before: Dictionary = state.marks.duplicate()
+	var arrivals := _commit(before, state.tap(cell), 0.0, true)
+	_end_shades(now, arrivals)
+	_redraw()
 
-## One gesture is one move, however many squares it touched.
-func _commit(changed: Array) -> void:
+## Puts the squares `changed` by a move on the screen (see _transition) and
+## counts the move. A tap that pitched a tent also puffs and leans the
+## neighbours away. Returns each square's arrival time.
+func _commit(before: Dictionary, changed: Array, per: float, tapped: bool) -> Dictionary:
 	if changed.is_empty():
-		_refresh()
-		return
-	var t := _now()
-	for cell in changed:
-		_at[cell] = t
+		_redraw()
+		return {}
+	var arrivals := _transition(before, changed, _now(), per)
+	if tapped:
+		var cell: Vector2i = changed[0]
 		if state.mark_at(cell) == State.TENT:
-			_tent_node(cell)
+			fx.puff(cell_to_local(cell.y, cell.x), Pal.TENT_CANVAS)
+			_nudge_around(cell)
 	fx.cue("place")
 	_speak()
-	_refresh()
+	_redraw()
 	note_move()
+	return arrivals
 
 func _clear_gesture() -> void:
 	_press_cell = Vector2i(-1, -1)
+	_pressed = null
 	_dragged = false
-	_sweeping = false
+	_lay = true
 	_swept = {}
 	_pending = []
 	_last_paint = Vector2i(-1, -1)
+
+## Lets go of every shade the gesture still holds: each goes when the piece
+## it was under arrives, or now.
+func _end_shades(now: float, arrivals: Dictionary = {}) -> void:
+	var last := now
+	for cell in _shade:
+		var sh: Dictionary = _shade[cell]
+		if is_inf(float(sh.until)):
+			sh.until = float(arrivals.get(cell, now))
+			last = maxf(last, float(sh.until))
+	_anim_until = maxf(_anim_until, last + Motion.POP_OUT)
+
+# --- what the pieces do ---
+
+## Every square in `cells` moves from what `before` had on it to what the
+## state has now, the k-th one `per` seconds after the first: a tent pops in
+## or out, a cairn arrives or leaves, and each line a tent joined or left has
+## its chip recounted. Returns the second each square's piece arrives.
+func _transition(before: Dictionary, cells: Array, t: float, per: float, drop := false) -> Dictionary:
+	var arrivals: Dictionary = {}
+	var cols: Dictionary = {}
+	var rows: Dictionary = {}
+	for k in cells.size():
+		var cell: Vector2i = cells[k]
+		var at := t + Motion.stagger(k, per)
+		arrivals[cell] = at
+		var prev := int(before.get(cell, State.BLANK))
+		var mark := state.mark_at(cell)
+		if prev == mark:
+			continue
+		if prev == State.GRASS:
+			_cairn_leaves(cell, at)
+		elif prev == State.TENT:
+			_tent_down(cell, at - t)
+		if mark == State.GRASS:
+			_cairn_arrives(cell, at)
+		elif mark == State.TENT:
+			_tent_up(cell, at - t, drop)
+		if prev == State.TENT or mark == State.TENT:
+			cols[cell.x] = true
+			rows[cell.y] = true
+	for c in cols:
+		_bump(_chips_col[c])
+	for r in rows:
+		_bump(_chips_row[r])
+	_refresh_faces()
+	return arrivals
+
+## A tent goes up on `cell`: it pops in with the squash after `delay`, or
+## drops in from above when a hint pitched it.
+func _tent_up(cell: Vector2i, delay: float, drop: bool) -> void:
+	var tent := _tent_node(cell)
+	tent.visible = true
+	Motion.stop(_look_tw.get(tent))
+	Motion.stop(_pos_tw.get(tent))
+	tent.rotation = 0.0
+	tent.position = Vector2.ZERO
+	tent.modulate.a = 1.0
+	if drop:
+		tent.scale = Vector2.ONE
+		_pos_tw[tent] = Motion.drop_in(tent, Motion.DROP, Motion.DROP_TIME, delay)
+		_busy_for(delay + Motion.DROP_TIME)
+	else:
+		_look_tw[tent] = Motion.pop_in(tent, Motion.POP_IN, delay)
+		_busy_for(delay + Motion.POP_IN)
+
+## A tent comes down off `cell`: it shrinks to nothing with the quarter turn
+## after `delay`, and is hidden once gone unless something put it back.
+func _tent_down(cell: Vector2i, delay: float) -> void:
+	var tent: TentFace = _tents.get(cell)
+	if tent == null:
+		return
+	Motion.stop(_look_tw.get(tent))
+	var tw := Motion.pop_out(tent, Motion.POP_OUT, delay)
+	if tw == null:
+		tent.visible = false
+		return
+	_look_tw[tent] = tw
+	_busy_for(delay + Motion.POP_OUT)
+	tw.chain().tween_callback(func() -> void:
+		if state.mark_at(cell) != State.TENT:
+			tent.visible = false
+			tent.rotation = 0.0)
+
+func _cairn_arrives(cell: Vector2i, at: float) -> void:
+	_cairn_in[cell] = at
+	_anim_until = maxf(_anim_until, at + Motion.POP_IN)
+
+## A cairn leaves `cell` from `at`. Under reduce-motion it is simply gone, as
+## pop_out would have it.
+func _cairn_leaves(cell: Vector2i, at: float) -> void:
+	_cairn_in.erase(cell)
+	if Motion.reduce:
+		return
+	_cairn_out.append({"cell": cell, "at": at})
+	_anim_until = maxf(_anim_until, at + Motion.POP_OUT)
+
+## A cell blushes toward the family's rose and settles: Check pointing at its
+## tent, or a tap refused on it.
+func _blush_cell(cell: Vector2i) -> void:
+	if Motion.reduce:
+		return
+	_blush[cell] = _now()
+	_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
+
+## The trees and tents beside a tent that has just been pitched lean away
+## from it and back. One already mid-hop is left to land.
+func _nudge_around(cell: Vector2i) -> void:
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var face := _face_on(cell + d)
+		if face == null or Motion.running(_pos_tw.get(face)):
+			continue
+		_pos_tw[face] = Motion.nudge(face, Vector2(d), Vector2.ZERO)
+	_busy_for(Motion.NUDGE_LAG + Motion.NUDGE_TIME)
+
+## `face` hops `height` over `time` after `delay`; it rests at its slot's
+## origin, so the base is always zero.
+func _hop(face: Control, height: float, time: float, delay := 0.0) -> void:
+	Motion.stop(_pos_tw.get(face))
+	face.position = Vector2.ZERO
+	_pos_tw[face] = Motion.hop(face, height, time, delay, 0.0)
+	_busy_for(delay + time)
+
+## A chip whose line was recounted: the family's bump.
+func _bump(chip: Control) -> void:
+	Motion.stop(_look_tw.get(chip))
+	chip.scale = Vector2.ONE
+	_look_tw[chip] = Motion.bump(chip)
+
+## Check pointing at a tent: it wobbles where it stands.
+func _wobble(face: Control) -> void:
+	Motion.stop(_look_tw.get(face))
+	face.rotation = 0.0
+	face.scale = Vector2.ONE
+	_look_tw[face] = Motion.wobble2d(face)
+
+## A tap refused on `cell`, a tree's or a pegged tent's: the piece shivers,
+## the cell blushes and the sprout says why.
+func _refuse(cell: Vector2i) -> void:
+	_say("A tree stands there. Tents go beside them." if state.trees.has(cell)
+		else "That tent is pegged down. A hint pitched it.", Face.Expr.PUZZLED)
+	fx.cue("locked")
+	_blush_cell(cell)
+	var face := _face_on(cell)
+	if face == null:
+		return
+	Motion.stop(_pos_tw.get(face))
+	face.position = Vector2.ZERO
+	_pos_tw[face] = Motion.shiver(face, _cell * SHIVER)
 
 # --- the sprout's line ---
 
@@ -593,72 +929,99 @@ func tip_line() -> Dictionary:
 func can_undo() -> bool:
 	return not is_done() and not state.history.is_empty()
 
-## Takes back the last gesture, however many squares it swept. Counts no move.
+## Takes back the last gesture, however many squares it swept: the reverse of
+## Place, square by square along the same path. Counts no move.
 func undo() -> bool:
 	if is_done() or state.history.is_empty():
 		return false
-	var t := _now()
-	for cell in state.undo():
-		_at[cell] = t
-		if state.mark_at(cell) == State.TENT:
-			_tent_node(cell)
+	var before: Dictionary = state.marks.duplicate()
+	_transition(before, state.undo(), _now(), Motion.ENTER_STAGGER)
 	_speak()
 	fx.cue("undo")
-	_refresh()
+	_redraw()
 	moved.emit()
 	return true
 
 func hints_left() -> int:
 	return HINTS - hints_used
 
-## Pitches one tent from the answer and pegs it down for good. Counts no move
-## but can finish the puzzle.
+## Pitches one tent from the answer and pegs it down for good: a ring pulses
+## out of the square, the tent drops in from above, sparkles rise. Counts no
+## move but can finish the puzzle.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var before: Dictionary = state.marks.duplicate()
 	var target: Vector2i = state.hint()
 	if target.x < 0:
 		return false
-	_at[target] = _now()
-	_tent_node(target)
 	hints_used += 1
-	fx.sparkle(cell_to_local(target.y, target.x), Pal.GOOD)
+	_transition(before, [target], _now(), 0.0, true)
+	var at := cell_to_local(target.y, target.x)
+	fx.ring(at, _cell * 0.5, Pal.LEAF)
+	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
 	_say("That tent is pegged down for good.", Face.Expr.HAPPY)
-	_refresh()
+	_redraw()
 	moved.emit()
 	check_solved()
 	return true
 
-## Shakes every tent the answer does not put there, and says how many.
+## Every tent the answer does not put there wobbles and its cell blushes, and
+## the sprout says how many.
 func check() -> int:
 	if is_done():
 		return 0
 	checks += 1
-	var t := _now()
 	var wrong: Array = state.wrong_tents()
 	for cell in wrong:
-		_flash_at[cell] = t
+		if _tents.has(cell):
+			_wobble(_tents[cell])
+		_blush_cell(cell)
 	_say("%d %s in the wrong place." % [wrong.size(), "tent is" if wrong.size() == 1 else "tents are"]
 		if not wrong.is_empty() else "Every tent you have pitched is right.",
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
-	_refresh()
+	_redraw()
 	return wrong.size()
 
+## Every tent and cairn goes, in a wave from the far corner, and the trees hop
+## as the meadow clears around them. The hints a player spent are not
+## refunded, only unpinned.
 func reset_board() -> void:
-	var t := _now()
+	var now := _now()
 	_clear_gesture()
-	for cell in state.reset():
-		_at[cell] = t
-	_dip_at = {}
-	_flash_at = {}
+	_release_press()
+	_end_shades(now)
+	var before: Dictionary = state.marks.duplicate()
+	var cleared := state.reset()
+	var cols: Dictionary = {}
+	var rows: Dictionary = {}
+	for cell in cleared:
+		var at := now + Motion.stagger((state.h - 1 - cell.y) + (state.w - 1 - cell.x), Motion.RESET_STAGGER)
+		if int(before[cell]) == State.GRASS:
+			_cairn_leaves(cell, at)
+		else:
+			_tent_down(cell, at - now)
+			cols[cell.x] = true
+			rows[cell.y] = true
+	for cell in _trees:
+		_hop(_trees[cell], Motion.RESET_HOP, Motion.HOP_TIME,
+			Motion.stagger((state.h - 1 - cell.y) + (state.w - 1 - cell.x), Motion.RESET_STAGGER))
+	for c in cols:
+		_bump(_chips_col[c])
+	for r in rows:
+		_bump(_chips_row[r])
+	_blush = {}
+	_cairn_in = {}
 	moves = 0
 	_running = true
+	_refresh_faces()
 	_say("The meadow is cleared. The hints you spent are not refunded, only unpinned.",
 		Face.Expr.HAPPY)
+	_tip_timer.start()
 	fx.cue("reset")
-	_refresh()
+	_redraw()
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -676,33 +1039,118 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
 
-## The tents hop in reading order, and the cairns clear away.
+## Every tree and tent hops the solve wave along the diagonal, each tent
+## grinning as the wave reaches it with a spark, and the cairns clear away in
+## a scatter behind them.
 func _on_solved() -> void:
-	var t := _now()
+	var now := _now()
 	_clear_gesture()
+	_release_press()
+	_end_shades(now)
 	_tip_timer.stop()
-	_solved_at = t
-	var pitched: Array = state.tents()
-	pitched.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.y * state.w + a.x < b.y * state.w + b.x)
-	for i in pitched.size():
-		_at[pitched[i]] = t + SOLVE_DELAY + i * SOLVE_STEP
+	_solved_at = now
+	var k := 0
+	for cell in _trees:
+		var tree: ConiferFace = _trees[cell]
+		var delay := _solve_delay(cell)
+		_hop(tree, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
+		_grin(tree, delay)
+	for cell in state.tents():
+		var tent: TentFace = _tent_node(cell)
+		var delay := _solve_delay(cell)
+		_hop(tent, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
+		_grin(tent, delay)
+		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
+		k += 1
+	_refresh_faces()
 	_say("Every tree has its tent. The camp is pitched.", Face.Expr.JOY)
 	fx.cue("solved")
-	_refresh()
+	_busy_for(CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)
+	_redraw()
+
+func _solve_delay(cell: Vector2i) -> float:
+	if Motion.reduce:
+		return 0.0
+	return Motion.SOLVE_DELAY + Motion.stagger(cell.x + cell.y, Motion.SOLVE_STAGGER)
+
+## `face` goes to JOY as the wave reaches it; at once under reduce-motion.
+func _grin(face: Face, delay: float) -> void:
+	if delay <= 0.0:
+		face.expression = Face.Expr.JOY
+	else:
+		_after(delay, func() -> void: face.expression = Face.Expr.JOY)
+
+## A spark as tent `k` hops. The two pools are used in turn: a run of nine a
+## few hundredths apart would otherwise recycle one pool fast enough to cut
+## each burst in half.
+func _spark_at(k: int, at: Vector2) -> void:
+	if k % 2 == 0:
+		fx.sparkle(at, Pal.SUN)
+	else:
+		fx.puff(at, Pal.TENT_CANVAS, 4)
+
+# --- entrance ---
+
+## The chrome is the host's; here the meadow pops in wide and the chips and
+## the trees pop onto it a beat later with the squash, along the diagonal
+## from the top-left corner, each tree's shadow arriving with it.
+func _enter() -> void:
+	_opened = _now()
+	var far := 0
+	for c in _chips_col.size():
+		_look_tw[_chips_col[c]] = Motion.pop_in(_chips_col[c], Motion.POP_IN, _enter_delay(c))
+	for r in _chips_row.size():
+		_look_tw[_chips_row[r]] = Motion.pop_in(_chips_row[r], Motion.POP_IN, _enter_delay(r))
+	for cell in _trees:
+		far = maxi(far, cell.x + cell.y)
+		_look_tw[_trees[cell]] = Motion.pop_in(_trees[cell], Motion.POP_IN, _enter_delay(cell.x + cell.y))
+	_busy_for(maxf(_enter_delay(far) + Motion.POP_IN, Motion.ENTER_DELAY + Motion.ENTER_POP))
+	fx.cue("enter")
+
+func _enter_delay(diagonal: int) -> float:
+	return Motion.ENTER_DELAY + Motion.ENTER_FACE_LAG + Motion.stagger(diagonal, Motion.ENTER_STAGGER)
 
 # --- odds and ends ---
 
+## Kills every tween the previous board still tracks and retires its pending
+## callbacks, so a rebuild never inherits a hop aimed at a tree that is gone.
+func _stop_all() -> void:
+	_gen += 1
+	for tw in _pos_tw.values():
+		Motion.stop(tw)
+	for tw in _look_tw.values():
+		Motion.stop(tw)
+	_pos_tw = {}
+	_look_tw = {}
+
+## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	var gen := _gen
+	get_tree().create_timer(maxf(delay, 0.0)).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
+
+## Keeps the ground redrawing for `seconds` more: something on it, or a
+## shadow's owner, is moving.
+func _busy_for(seconds: float) -> void:
+	_anim_until = maxf(_anim_until, _now() + seconds)
+
+func _process(delta: float) -> void:
+	super(delta)
+	if _now() < _anim_until:
+		queue_redraw()
+
+## Something on the ground changed: rebuild it on the next draw.
+func _redraw() -> void:
+	_ground_dirty = true
+	queue_redraw()
+
+## Seconds since the scene started, the clock every animation here reads.
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
 func _dec(u: float) -> float:
 	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
-
-func _back_out(u: float) -> float:
-	u = clampf(u, 0.0, 1.0)
-	const C := 1.70158
-	return 1.0 + (C + 1.0) * pow(u - 1.0, 3.0) + C * pow(u - 1.0, 2.0)
 
 ## A fixed pseudo-random number per square, so the cairns clear away in a
 ## scatter rather than a wave.

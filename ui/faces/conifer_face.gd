@@ -22,6 +22,14 @@ const SWAY_PERIOD := 7.0
 const FACE_R := 52.0 * 0.0055
 const FACE_AT := Vector2(0.0, 10.0 * 0.0055)
 
+## Whether the tree casts its own shadow layer. The flat board draws every
+## shadow on its own ground (one mesh of the family's soft discs, so a
+## hopping tree leaves its shadow where it stood) and turns this off.
+var casts: bool = true:
+	set(v):
+		casts = v
+		queue_redraw()
+
 func _kind() -> String:
 	return "conifer"
 
@@ -29,7 +37,11 @@ func _radius_for(px: float) -> float:
 	return px * RATIO
 
 func _layers() -> Array:
-	return [["shadow", false], ["body", true]]
+	var layers: Array = []
+	if casts:
+		layers.append(["shadow", false])
+	layers.append(["body", true])
+	return layers
 
 ## The shadow stays on the ground; only the tree leans over it.
 func _layer_angle(name: String) -> float:

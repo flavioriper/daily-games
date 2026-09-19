@@ -1,6 +1,7 @@
 # Tents, flat: the sixth screen on trial
 
-Status: built, 2026-09-18. Concept page:
+Status: built, 2026-09-18; polished onto the flat motion vocabulary,
+2026-09-19 (section 10). Concept page:
 `docs/brainstorm/concepts.html#tents`. Sibling specs:
 `2026-09-18-binairo-flat-design.md`, `...-codebreak-`, `...-balance-`,
 `...-shikaku-` and `...-untangle-flat-design.md`.
@@ -174,3 +175,85 @@ so one driver solves both.
   loose rather than as composed, the alternative is a full-height parchment
   with the meadow floating in it, which is what the first draft did and which
   read as an empty mat.
+
+## 10. Amendment: the polish of 2026-09-19
+
+The user asked for Tents to be polished with proper animations on Binairo's
+pattern, smoother and more elegant, and for the pattern to be kept so the
+other boards take it. Built straight in Godot, as Code Break's, Balance's,
+Untangle's and Shikaku's were, with this amendment and
+`docs/art/flat-motion.md` as the record. The layout is kept; sections 2 to 6
+stand. Section 7's motion is superseded by what follows.
+
+**Two media on one board.** Tents is the first board with both: the trees,
+the tents and the count chips are Face nodes, and the cairns, the shade under
+the finger and a cell's blush are drawn. The nodes take the vocabulary
+straight, each tree and tent standing in a slot the layout owns so the hop,
+the nudge and the shiver never fight a relayout (a chip only ever scales and
+needs none); the drawn things read the same recipes as curves
+(`Motion.pop_in_scale`, `pop_out_scale`, `wide_pop_scale`, `flash_level`) off
+one `_anim_until` clock that every recipe start extends. Every move -- a tap,
+a sweep, an undo, a hint, a reset -- goes through one `_transition` that
+diffs a snapshot of the marks against the state, so a tent going up or down
+and a cairn arriving or leaving are the same code from every direction. The
+doc gained rule 9 from it: a piece drawn in one skin, with nothing to flash
+toward (a conifer, a pegged tent), blushes through its cell.
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | the meadow pops in wide (`wide_pop_scale`, `ENTER_WIDE_FROM` 0.86 over `ENTER_POP` 0.25) after `ENTER_DELAY`; each chip and each tree pops in with the squash (`pop_in`) along the diagonal at `ENTER_STAGGER` 0.03, `ENTER_FACE_LAG` after the meadow starts, a chip in step with the diagonal its line meets. The 26 px drop and the fade at 0.02 are gone |
+| Press | a tree or a tent sinks to `PRESS_SCALE` 0.94 (`press`) and springs back; bare ground and a cairn take a shade that pops in wide under the finger (`wide_pop_scale` over `POP_IN`) and shrinks away when the finger leaves it. Nothing pressed before |
+| Place | a tent pops in with the squash (`pop_in`, `POP_IN` 0.22) in place of its own six tenths; a puff in `TENT_CANVAS`; the trees and tents on its four sides lean away `NUDGE` 3 and back; the row's and the column's chips bump (`bump`, the Count moment) |
+| Sweep | the shade follows the finger over the ground it can change, and on release the cairns arrive in a wave along the finger's path at `ENTER_STAGGER`, each cell's shade staying until its cairn lands (`pop_in_scale`, with the squash). No puffs: a row of them is a cloud. A rub-out runs the same wave with the pop out |
+| Remove, undo | a tent shrinks to nothing with the quarter turn (`pop_out`, `POP_OUT` 0.12) and a cairn does the same, drawn from a leaving list after the state has forgotten it; what comes back pops in. Both used to vanish in one frame |
+| Hint | a ring in `LEAF` through `Fx2D.ring`, the tent drops in from `DROP` 40 above with the fade (`drop_in`), one sparkle; a cairn under it pops out first |
+| Wrong on Check | the tent wobbles (`wobble2d`) and its cell blushes toward `BAD_TILE` and settles (`flash_level`), drawn into the ground. The 0.6 s horizontal shake is gone |
+| Refused | a tree or a pegged tent shivers (`shiver`, 0.04 of a cell) and its cell blushes; the sprout says why. The dip is gone |
+| Reset | the cairns and tents pop out in a wave from the far corner at `RESET_STAGGER` 0.02 and the trees hop `RESET_HOP` in the same wave; the chips of the lines that emptied bump. Everything used to vanish at once |
+| Solved | every tree and tent hops `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4 along the diagonal from `SOLVE_DELAY` 0.25 at `SOLVE_STAGGER` 0.04, each going to JOY as the wave reaches it, a sparkle or a puff in turn at each tent; the cairns clearing away in a scatter (`CLEAR_*`) stay this board's own. `WIN_WAIT` 1.6, from 2.0 |
+
+Faces are written only when their look changes, as the other four boards do
+it.
+
+**The dressing:**
+
+- **Shadows on the ground.** The tree's and the tent's shadow leave their
+  face meshes (`casts`, the marker's flag, now on `ConiferFace` and
+  `TentFace`) for one board mesh of the family's soft discs
+  (`Scenery.soft_disc`), read off each piece's own height so a shadow
+  arrives with the pop and shrinks with the pop out, and anchored at the
+  cell so a hopping piece leaves it where it stood. Peak 0.2 in `TEXT`, as
+  Shikaku measured it. The tent's guy lines stay with the tent.
+- **The meadow stands on the parchment** on the family's bottom edge of 6 in
+  `LINE`, like every card on the flat screens.
+- **No clouds or tufts.** The meadow is the ground seen from above and fills
+  the card to a 34 px margin; a tuft in a cell would read as a piece.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+Tents run now sweeps the top row (`empty` skips it), two readings each:
+
+| | Draw calls | Idle |
+|---|---|---|
+| Medium board at rest, bare, before | 103 | 3.24, 3.30 ms |
+| Medium board at rest, bare, now | 97 | 3.38, 3.40 ms |
+| Now, with a swept row of five cairns | 97 | 3.59, 3.61 ms |
+
+The six calls saved are the trees' shadow layers, now one ground mesh.
+
+Suite 2086/0. `tests/_win.gd` windowed 9/9, Tents solved through the real
+hint button, Check and taps. A throwaway probe shot the entrance, a placed
+tent, a refused tree, a sweep and its cairns, a wrong tent under Check, an
+undo, a hint, a removal, a reset, a held press and the solve wave through to
+the win screen, each with and without reduce-motion (under which the meadow,
+the chips and the trees are up at once, nothing blushes, shivers or rings, a
+tent or a cairn is there or gone in one frame and the win screen follows the
+last tap). The probe also caught its own trap: `Motion.reduce` has to be set
+right before the board opens, because `world/main.gd`'s deferred `_ready`
+reloads settings over anything set earlier.
+
+Open, still, from section 9: the hard cell, the crowd of eighteen faces, the
+tree that reacts to nothing, the automatic cairns and the centred card.
+Nothing here answers them; it only makes the flat board move with the same
+hand as the other five.

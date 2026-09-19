@@ -323,9 +323,14 @@ Specs:
   the recipes as curves off `Motion` (`back_out`, `pop_in_scale`,
   `wide_pop_scale`, `pop_out_scale`, `drop_in_lift`, `bump_scale`,
   `flash_level`), handed the seconds since the moment began, so a drawn bed
-  and a tweened tile move as one hand and no board copies a number. The
-  other four flat boards (Tents, Light Up, One Line, Nonogram) still carry
-  their own tweens and are ported when next touched.
+  and a tweened tile move as one hand and no board copies a number. Tents
+  joined the same morning (its spec's section 10), and it is the precedent
+  for a board with both media: trees, tents and chips are nodes in slots
+  taking the recipes, the cairns and the shade under the sweep are drawn off
+  the readers, and a piece with no blushing skin (a tree) blushes through
+  its cell (the doc's rule 9). The other three flat boards (Light Up, One
+  Line, Nonogram) still carry their own tweens and are ported when next
+  touched.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -408,9 +413,9 @@ Specs:
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
   card -- on any frame rendered without its queued redraw flushed first, which
   is exactly what `RenderingServer.force_draw()` does in a harness.
-  `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd`, `untangle2d.gd` and
-  `shikaku2d.gd` keep the mesh their last `_draw` handed over (`_shown`)
-  until the next one replaces it; `tents2d.gd` does not, and should if it is ever shot the same way.
+  `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd`, `untangle2d.gd`,
+  `shikaku2d.gd` and `tents2d.gd` keep the mesh their last `_draw` handed
+  over (`_shown`) until the next one replaces it.
   A harness shooting one of these boards has to let a frame pass between the
   state change and `force_draw()`: `queue_redraw` is flushed on the next idle
   frame, so a probe that pokes the board and shoots in the same frame

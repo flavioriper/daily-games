@@ -15,6 +15,9 @@ extends SceneTree
 ## `empty` is the number to compare with a board that was left alone. Shikaku
 ## has its first plot drawn corner to corner, so the strip shows the wash, the
 ## count and the bed landing and the idle window has a bed and a fence in it.
+## Tents is swept along its top row, so the strip shows the shade under the
+## finger and the cairns arriving in a wave and the idle window has a row of
+## cairns in it.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -96,6 +99,8 @@ func _process(delta: float) -> bool:
 			_begin_untangle_drag()
 		elif _entry.id == "shikaku" and not _empty:
 			_begin_shikaku_drag()
+		elif _entry.id == "tents" and not _empty:
+			_begin_tents_sweep()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -159,6 +164,14 @@ func _begin_shikaku_drag() -> void:
 	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
 	var from: Vector2 = xf * _puzzle.cell_to_local(rect.position.y, rect.position.x)
 	var to: Vector2 = xf * _puzzle.cell_to_local(rect.end.y - 1, rect.end.x - 1)
+	_begin_drag(from, to - from)
+
+## Tents: sweep the top row from its first cell to its last, laying cairns
+## on every square the sweep may change.
+func _begin_tents_sweep() -> void:
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var from: Vector2 = xf * _puzzle.cell_to_local(0, 0)
+	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
 	_begin_drag(from, to - from)
 
 ## The touch that starts a drag, at `from`, to travel `by` over DRAG_TIME.
