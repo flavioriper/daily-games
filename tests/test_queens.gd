@@ -1,5 +1,12 @@
 extends RefCounted
 
+## Queens' generator (puzzles/queens_gen.gd): across 7x7/8x8/9x9 and five
+## seeds each, checks a generated court has one queen a row, its answer is
+## legal and the only seating, every region holds exactly one answer queen
+## and is connected, and every cell has a region; plus `legal`'s two
+## rejections (a corner touch, a shared column) and that a seed reproduces
+## the same court.
+
 const Gen = preload("res://puzzles/queens_gen.gd")
 
 static func run(t) -> void:

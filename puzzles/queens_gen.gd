@@ -60,12 +60,13 @@ static func generate(rng: RandomNumberGenerator, n: int) -> Dictionary:
 
 ## How many seatings `region` allows, up to `limit`.
 static func solve_count(region: Array, n: int, limit: int) -> int:
-	return _solutions(region, n, limit).size()
+	return _solutions(_flatten(region, n), n, limit).size()
 
 ## Whether `cols` (row -> column) is a full legal seating on `region`.
 static func legal(region: Array, n: int, cols: PackedInt32Array) -> bool:
 	if cols.size() != n:
 		return false
+	var flat := _flatten(region, n)
 	var used_col: Dictionary = {}
 	var used_reg: Dictionary = {}
 	for r in n:
@@ -74,15 +75,36 @@ static func legal(region: Array, n: int, cols: PackedInt32Array) -> bool:
 			return false
 		if r > 0 and absi(int(cols[r - 1]) - c) <= 1:
 			return false
-		var g := int(region[r][c])
+		var g := flat[r * n + c]
 		if used_reg.has(g):
 			return false
 		used_col[c] = true
 		used_reg[g] = true
 	return true
 
-## Every full legal seating on `region`, up to `limit` of them.
-static func _solutions(region: Array, n: int, limit: int) -> Array:
+## `region` ([r][c]) packed into one row-major array, `r * n + c` -> region.
+## The hot paths (`_search`, `_connected_without`, `_repair`'s whole loop)
+## index this instead of the nested `Array` of `Array`, which boxes every
+## cell read as a Variant through two levels of dynamic dispatch.
+static func _flatten(region: Array, n: int) -> PackedInt32Array:
+	var flat := PackedInt32Array()
+	flat.resize(n * n)
+	for r in n:
+		var row: Array = region[r]
+		for c in n:
+			flat[r * n + c] = int(row[c])
+	return flat
+
+## The inverse of `_flatten`, writing into an existing nested `region` (so a
+## caller holding that reference, such as `generate`'s `last`, sees it).
+static func _unflatten_into(flat: PackedInt32Array, n: int, region: Array) -> void:
+	for r in n:
+		var row: Array = region[r]
+		for c in n:
+			row[c] = flat[r * n + c]
+
+## Every full legal seating on flattened `region`, up to `limit` of them.
+static func _solutions(region: PackedInt32Array, n: int, limit: int) -> Array:
 	var out: Array = []
 	var used_col := PackedByteArray()
 	used_col.resize(n)
@@ -90,18 +112,40 @@ static func _solutions(region: Array, n: int, limit: int) -> Array:
 	used_reg.resize(n)
 	var cur := PackedInt32Array()
 	cur.resize(n)
-	_search(region, n, 0, -1, cur, used_col, used_reg, limit, out)
+	var last_row := _last_rows(region, n)
+	_search(region, n, 0, -1, cur, used_col, used_reg, last_row, limit, out)
 	return out
 
-static func _search(region: Array, n: int, r: int, prev: int, cur: PackedInt32Array,
-		used_col: PackedByteArray, used_reg: PackedByteArray, limit: int, out: Array) -> bool:
+## Per region id, the highest row at which `region` still has one of its
+## cells -- precomputed once a call so `_search` can kill a branch the
+## moment a region it has not seated yet runs out of rows to be seated in,
+## without changing which seatings it finds.
+static func _last_rows(region: PackedInt32Array, n: int) -> PackedInt32Array:
+	var last_row := PackedInt32Array()
+	last_row.resize(n)
+	last_row.fill(-1)
+	for r in n:
+		var base := r * n
+		for c in n:
+			var g := region[base + c]
+			if r > last_row[g]:
+				last_row[g] = r
+	return last_row
+
+static func _search(region: PackedInt32Array, n: int, r: int, prev: int, cur: PackedInt32Array,
+		used_col: PackedByteArray, used_reg: PackedByteArray, last_row: PackedInt32Array,
+		limit: int, out: Array) -> bool:
 	if r == n:
 		out.append(cur.duplicate())
 		return out.size() >= limit
+	for g in n:
+		if not used_reg[g] and last_row[g] < r:
+			return false
+	var base := r * n
 	for c in n:
 		if used_col[c]:
 			continue
-		var g := int(region[r][c])
+		var g := region[base + c]
 		if used_reg[g]:
 			continue
 		if prev >= 0 and absi(c - prev) <= 1:
@@ -109,45 +153,59 @@ static func _search(region: Array, n: int, r: int, prev: int, cur: PackedInt32Ar
 		used_col[c] = 1
 		used_reg[g] = 1
 		cur[r] = c
-		var stop := _search(region, n, r + 1, c, cur, used_col, used_reg, limit, out)
+		var stop := _search(region, n, r + 1, c, cur, used_col, used_reg, last_row, limit, out)
 		used_col[c] = 0
 		used_reg[g] = 0
 		if stop:
 			return true
 	return false
 
-## Whether region `g` stays connected with `cell` taken out of it.
-static func _connected_without(region: Array, n: int, g: int, cell: Vector2i) -> bool:
-	var start := Vector2i(-1, -1)
+## Whether region `g` stays connected with `cell` taken out of it, flooding
+## flattened `region` with a bitmask rather than a `Dictionary` of `Vector2i`
+## keys.
+static func _connected_without(region: PackedInt32Array, n: int, g: int, cell: Vector2i) -> bool:
+	var cell_idx := cell.y * n + cell.x
+	var start := -1
 	var total := 0
-	for r in n:
-		for c in n:
-			var p := Vector2i(c, r)
-			if int(region[r][c]) == g and p != cell:
-				total += 1
-				if start.x < 0:
-					start = p
-	if start.x < 0:
+	for idx in n * n:
+		if region[idx] == g and idx != cell_idx:
+			total += 1
+			if start < 0:
+				start = idx
+	if start < 0:
 		return false
-	var reached: Dictionary = {start: true}
+	var visited := PackedByteArray()
+	visited.resize(n * n)
+	visited[start] = 1
+	var reached := 1
 	var stack: Array = [start]
 	while not stack.is_empty():
-		var p: Vector2i = stack.pop_back()
+		var idx: int = stack.pop_back()
+		var r := idx / n
+		var c := idx % n
 		for d in DIRS:
-			var q: Vector2i = p + d
-			if q.x < 0 or q.y < 0 or q.x >= n or q.y >= n or q == cell:
+			var qx: int = c + d.x
+			var qy: int = r + d.y
+			if qx < 0 or qy < 0 or qx >= n or qy >= n:
 				continue
-			if int(region[q.y][q.x]) == g and not reached.has(q):
-				reached[q] = true
-				stack.append(q)
-	return reached.size() == total
+			var qidx: int = qy * n + qx
+			if qidx == cell_idx or visited[qidx] or region[qidx] != g:
+				continue
+			visited[qidx] = 1
+			reached += 1
+			stack.append(qidx)
+	return reached == total
 
 ## Drives a grown court to a unique seating by moving cells across region
 ## seams that a second seating uses, keeping a move only when the number of
-## seatings does not rise. Mutates `region` in place; true if it ends unique.
+## seatings does not rise. Works on one flattened copy of `region` for the
+## whole loop and writes it back into `region` in place before returning
+## (`region` itself is only ever read or replaced wholesale, never
+## re-flattened mid-loop); true if it ends unique.
 static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: PackedInt32Array,
 		iters: int) -> bool:
-	var sols: Array = _solutions(region, n, SOLUTIONS_SEEN)
+	var flat := _flatten(region, n)
+	var sols: Array = _solutions(flat, n, SOLUTIONS_SEEN)
 	var count := sols.size()
 	for _it in iters:
 		if count <= 1:
@@ -165,26 +223,28 @@ static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: Pack
 				rows.append(r)
 		var r: int = rows[rng.randi_range(0, rows.size() - 1)]
 		var c := int(s2[r])
-		var g := int(region[r][c])
+		var idx := r * n + c
+		var g := flat[idx]
 		var cell := Vector2i(c, r)
 		var neighbour_regions: Array = []
 		for d in DIRS:
 			var q: Vector2i = cell + d
 			if q.x < 0 or q.y < 0 or q.x >= n or q.y >= n:
 				continue
-			var g2 := int(region[q.y][q.x])
+			var g2 := flat[q.y * n + q.x]
 			if g2 != g and not neighbour_regions.has(g2):
 				neighbour_regions.append(g2)
-		if neighbour_regions.is_empty() or not _connected_without(region, n, g, cell):
+		if neighbour_regions.is_empty() or not _connected_without(flat, n, g, cell):
 			continue
 		var g2: int = neighbour_regions[rng.randi_range(0, neighbour_regions.size() - 1)]
-		region[r][c] = g2
-		var s3: Array = _solutions(region, n, SOLUTIONS_SEEN)
+		flat[idx] = g2
+		var s3: Array = _solutions(flat, n, SOLUTIONS_SEEN)
 		if s3.size() <= count:
 			sols = s3
 			count = s3.size()
 		else:
-			region[r][c] = g
+			flat[idx] = g
+	_unflatten_into(flat, n, region)
 	return count == 1
 
 static func _same_seating(a: PackedInt32Array, b: PackedInt32Array) -> bool:
