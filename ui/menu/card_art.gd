@@ -4,14 +4,14 @@ extends Control
 ## board itself plays with (ui/faces/), seated in a 320 by 118 box and
 ## scaled to whatever the card gives them.
 ##
-## It is never an image and never a render of a model. Nine of the twelve
+## It is never an image and never a render of a model. Ten of the twelve
 ## are made almost entirely of the flat boards' own cast -- Binairo's sun and
 ## moon, Code Break's friends, Balance's fruit, Untangle's lanterns,
 ## Shikaku's markers, Tents' tent and conifers, Light Up's lamp, One Line's
-## snail -- so a card and its board are visibly the same drawing. Only the
-## furniture under them (a tray, a beam, a tile, a pipe) is drawn here, and
-## only the three `soon` cards are drawn here outright, because the boards
-## they name have no flat cast to borrow from yet.
+## snail, Queens' crown -- so a card and its board are visibly the same
+## drawing. Only the furniture under them (a tray, a beam, a tile, a pipe) is
+## drawn here, and only the two `soon` cards are drawn here outright, because
+## the boards they name have no flat cast to borrow from yet.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -30,6 +30,7 @@ const TentFace = preload("res://ui/faces/tent_face.gd")
 const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
+const CrownFace = preload("res://ui/faces/crown_face.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -113,6 +114,9 @@ func _build() -> void:
 			_seat(lamp, 58.0, -81.0, 0.0)
 		"oneline":
 			_seat(SnailFace.new(), 96.0, 6.0, 4.0)
+		"queens":
+			# The crown on a patch of the court _draw lays under her.
+			_seat(CrownFace.new(), 64.0, 0.0, 2.0)
 		_:
 			pass
 
@@ -129,9 +133,9 @@ func _draw() -> void:
 		"lightup": _draw_court()
 		"oneline": _draw_trail()
 		"nonogram": _draw_mosaic()
+		"queens": _draw_regions()
 		"pipes": _draw_pipes()
 		"horse": _draw_paddock()
-		"snake": _draw_burrow()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -235,7 +239,22 @@ func _draw_mosaic() -> void:
 	for k in 3:
 		_text(cols[k], x0 + k * cell + cell * 0.5, y0 - 8.0, 19.0, Pal.TEXT)
 
-## Pipes, Horse Pen and Snake Apple are the three `soon` cards: no flat
+## Queens: six cells of the court in two regions with the seam between them,
+## under the crown, and the soft disc she stands on.
+func _draw_regions() -> void:
+	var cell := 44.0
+	var x0 := -cell * 1.5
+	var y0 := -cell
+	var plan := [[1, 1, 2], [1, 2, 2]]
+	for r in 2:
+		for k in 3:
+			_round(x0 + k * cell, y0 + r * cell, cell, cell, 0.0, Pal.REGION[plan[r][k]])
+	_line([Vector2(x0 + 2.0 * cell, y0), Vector2(x0 + 2.0 * cell, y0 + cell),
+		Vector2(x0 + cell, y0 + cell), Vector2(x0 + cell, y0 + 2.0 * cell)], 4.0, Pal.TEXT)
+	draw_rect(Rect2(at(x0, y0), Vector2(3.0 * cell, 2.0 * cell) * _u), Pal.TEXT, false, 4.0 * _u)
+	_disc(0.0, 26.0, 20.0, Color(Pal.TEXT, 0.14))
+
+## Pipes and Horse Pen are the two `soon` cards: no flat
 ## board, so no cast to borrow. Each is one small drawing, sized to say what
 ## the puzzle is at a glance and no more.
 func _draw_pipes() -> void:
@@ -261,11 +280,3 @@ func _draw_paddock() -> void:
 	_round(8.0, 22.0, 11.0, 28.0, 5.0, body)
 	_round(52.0, 22.0, 11.0, 28.0, 5.0, body)
 	_line([Vector2(-6.0, -4.0), Vector2(-22.0, 10.0), Vector2(-18.0, 26.0)], 7.0, body)
-
-func _draw_burrow() -> void:
-	_line([Vector2(-86.0, 28.0), Vector2(-30.0, 30.0), Vector2(-12.0, -8.0), Vector2(24.0, -32.0)],
-		30.0, Pal.SCALE_BELLY)
-	_disc(28.0, -32.0, 20.0, Pal.MOSS)
-	_disc(35.0, -38.0, 4.0, Pal.TEXT)
-	_disc(78.0, 0.0, 30.0, Pal.BERRY)
-	_line([Vector2(78.0, -30.0), Vector2(82.0, -46.0)], 5.0, Pal.LEAF_DEEP)
