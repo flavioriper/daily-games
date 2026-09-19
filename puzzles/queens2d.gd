@@ -83,13 +83,18 @@ const AUTO_ALPHA := 0.75
 ## How long a refused given queen strains before her face settles.
 const STRAIN_TIME := 0.6
 ## The pebbles clear away in a scatter on the win, as Nonogram's do.
-const CLEAR_DELAY := 0.2
+## The pebbles wait for the last queen's wave to land (far * WAVE_STEP plus
+## the pop) before they clear, which Nonogram's 0.2 never had to.
+const CLEAR_DELAY := 0.6
 const CLEAR_SPREAD := 0.3
 const CLEAR_TIME := 0.5
 const CLEAR_SHRINK := 0.4
+## The win screen waits for the solve wave to hop every queen and the
+## pebbles to clear before it shows.
 const WIN_WAIT := 1.6
 
 const HINTS := State.HINTS
+## How long a teaching line stands before the next, the family's own cycle.
 const TIP_CYCLE := 10.0
 const TIPS := [
 	"One queen in every row, every column and every colour.",
@@ -518,12 +523,12 @@ func _build_ground(now: float) -> Dictionary:
 	return {"mesh": b.mesh(), "busy": busy}
 
 ## A wash over the whole of `cell`.
-func _cell_wash(b, cell: Vector2i, colour: Color) -> void:
+func _cell_wash(b: Face.Builder, cell: Vector2i, colour: Color) -> void:
 	b.fan(_square(_grid + Vector2(cell) * _cell, _cell), colour)
 
 ## The family's soft disc under `crown` on `cell`, scaled by how much of her
 ## is there and faded with her while she drops in.
-func _crown_shadow(b, crown: Control, cell: Vector2i) -> void:
+func _crown_shadow(b: Face.Builder, crown: Control, cell: Vector2i) -> void:
 	var seen := clampf(crown.scale.y, 0.0, 1.0) * clampf(crown.modulate.a, 0.0, 1.0)
 	if seen <= 0.0:
 		return
@@ -616,11 +621,15 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false, wa
 
 ## The wave out of a queen at `q`: a cell she sees arrives its king-move
 ## distance in rings after her, and leaves in the reverse order, the far
-## cells first, so her reach draws back into where she stood. Nothing waits
-## under reduce-motion.
+## cells first, so her reach draws back into where she stood. On a lift the
+## queen herself leaves at once, not last: her crown goes and her reach
+## draws back after her, rather than her hanging on while her far pebbles go
+## first. Nothing waits under reduce-motion.
 func _wave_from(q: Vector2i) -> Callable:
 	var far := maxi(maxi(q.x, state.n - 1 - q.x), maxi(q.y, state.n - 1 - q.y))
 	return func(cell: Vector2i, leaving: bool) -> float:
+		if leaving and cell == q:
+			return 0.0
 		if Motion.reduce:
 			return 0.0
 		var d := State.distance(q, cell)
@@ -783,7 +792,7 @@ func _press(cell: Vector2i) -> void:
 		# The stroke's job is read off the cell it began on: a stroke that
 		# begins on the player's own cross rubs out, any other lays.
 		_lay = mark != State.CROSS
-		_paint(cell)
+		_paint(cell, true)
 	_redraw()
 
 ## The crown under the finger springs back.
@@ -815,15 +824,19 @@ func _drag(at: Vector2) -> void:
 	_paint(cell)
 	_redraw()
 
-## A stroke paints a cell once, sinks every cell it can change, and passes
-## over queens and the cells a queen sees.
-func _paint(cell: Vector2i) -> void:
+## A stroke paints a cell once. The cell the finger landed on (`pressed`)
+## always takes the press, even a queen's or a seen cell's, which the stroke
+## cannot change; a cell the stroke only passes over sinks only when it can
+## change it, Light Up's own rule for a sweep.
+func _paint(cell: Vector2i, pressed := false) -> void:
 	if not state.in_field(cell):
 		return
 	_last_paint = cell
 	if _swept.has(cell):
 		return
 	_swept[cell] = true
+	if pressed:
+		_sink_cell(cell)
 	var mark := state.mark_at(cell)
 	if _lay:
 		if mark != State.BLANK:
