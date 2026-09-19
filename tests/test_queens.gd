@@ -116,6 +116,7 @@ static func _test_state(t) -> void:
 	var q := Vector2i(2, 1)
 	var res: Dictionary = s.seat(q)
 	t.check(res.ok, "a queen seats on a bare cell")
+	t.check(not s.seat(q).ok, "a queen already seated is nothing to seat")
 	t.eq(s.mark_at(q), State.QUEEN, "the cell holds the queen")
 	t.eq(s.mark_at(Vector2i(4, 1)), State.AUTO, "her row is crossed")
 	t.eq(s.mark_at(Vector2i(2, 4)), State.AUTO, "her column is crossed")
@@ -169,6 +170,11 @@ static func _test_state(t) -> void:
 	t.eq(changed.size(), 2, "a rub-out takes the player's crosses")
 	t.eq(s.mark_at(Vector2i(0, 4)), State.BLANK, "a rubbed-out cell is blank")
 
+	# A sweep with an off-field cell passes over it.
+	t.eq(s.sweep([Vector2i(-1, 0), Vector2i(0, 4)], true).size(), 1, "a sweep passes over a cell off the court")
+	t.check(not s.crosses.has(Vector2i(-1, 0)), "nothing is laid off the court")
+	s.undo()
+
 	# The hint seats the first missing answer queen, lifting a wrong queen in
 	# its way, and pins it.
 	var s2 := _court()
@@ -199,3 +205,4 @@ static func _test_state(t) -> void:
 	t.eq(s3.queens_left(), 0, "none to go")
 	t.eq(s3.share_glyphs().split("\n").size(), 6, "five rows and a trailing newline")
 	t.check(s3.share_glyphs().contains("👑"), "the share carries a crown")
+	t.eq(s3.hint().cell, Vector2i(-1, -1), "no hint when every row has its queen")

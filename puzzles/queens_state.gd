@@ -29,6 +29,7 @@ const BLANK := 0
 const QUEEN := 1
 const CROSS := 2
 const AUTO := 3
+## Three a board, as every flat board gives.
 const HINTS := 3
 ## The ladder: easy, medium, hard. The menu opens medium.
 const SIZES := [7, 8, 9]
@@ -112,6 +113,24 @@ func recompute() -> void:
 		for cell in sees(q):
 			seen[cell] = int(seen.get(cell, 0)) + 1
 
+# --- private helpers ---
+
+## Lays a cross on a bare cell in field. True and mutates when it did; does
+## not touch history.
+func _lay_cross(cell: Vector2i) -> bool:
+	if not in_field(cell) or mark_at(cell) != BLANK:
+		return false
+	crosses[cell] = true
+	return true
+
+## Takes a cross off a player-owned cell. True and mutates when it did; does
+## not touch history.
+func _take_cross(cell: Vector2i) -> bool:
+	if not crosses.has(cell):
+		return false
+	crosses.erase(cell)
+	return true
+
 # --- moves ---
 
 ## Seats a queen on `cell`. Refused on a seen cell (SEEN); a queen already
@@ -141,18 +160,16 @@ func lift(cell: Vector2i) -> Dictionary:
 
 ## Lays the player's cross on a bare cell. True when it did.
 func cross(cell: Vector2i) -> bool:
-	if not in_field(cell) or mark_at(cell) != BLANK:
+	if not _lay_cross(cell):
 		return false
 	history.append([{"cell": cell, "prev": BLANK}])
-	crosses[cell] = true
 	return true
 
 ## Takes the player's own cross off. True when it did.
 func uncross(cell: Vector2i) -> bool:
-	if not crosses.has(cell):
+	if not _take_cross(cell):
 		return false
 	history.append([{"cell": cell, "prev": CROSS}])
-	crosses.erase(cell)
 	return true
 
 ## A sweep: lays the player's crosses on every bare cell of `cells` (`on`),
@@ -163,15 +180,13 @@ func sweep(cells: Array, on: bool) -> Array:
 	var changed: Array = []
 	for cell in cells:
 		if on:
-			if mark_at(cell) != BLANK:
+			if not _lay_cross(cell):
 				continue
 			entry.append({"cell": cell, "prev": BLANK})
-			crosses[cell] = true
 		else:
-			if not crosses.has(cell):
+			if not _take_cross(cell):
 				continue
 			entry.append({"cell": cell, "prev": CROSS})
-			crosses.erase(cell)
 		changed.append(cell)
 	if not entry.is_empty():
 		history.append(entry)
