@@ -108,10 +108,11 @@ game** and ordered easiest first, with `bands` `[217, 467, 968]` saying where
 each difficulty stops reading. Easy draws from the first 217, medium the first
 467, hard from all of them. Common, warm, no proper nouns, and **no plain `-S`
 plurals**: a plural makes the last column a coin flip and the sixth row a
-formality. The day's word is
-`answers[fnv1a("hiddenword|<day>") % bands[difficulty]]`, the same hash How
-Big? picks its item with, so the word is the same on every phone and a given
-day is reproducible.
+formality. The day's word is `answers[rng.randi() % bands[difficulty]]`, drawn from the
+`RandomNumberGenerator` the host already seeds with
+`DailySeed.seed_for("hiddenword", difficulty)` -- the way every other board on
+this screen picks its puzzle, rather than How Big?'s own `fnv1a`. So the word
+is the same on every phone, and a given day is reproducible.
 
 **`content/hidden_word_accept.txt`** -- 15,921 five-letter words, one a line,
 filtered out of `dwyl/english-words`' `words_alpha.txt`, which is released into
