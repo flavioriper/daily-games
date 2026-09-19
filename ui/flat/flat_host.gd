@@ -3,8 +3,8 @@ extends "res://ui/puzzle_host.gd"
 ## The flat screen's shell: the same host as every other board's (every
 ## handler, the sheets, the analytics and the spawn are inherited) with the
 ## chrome swapped for the reference's cream rows, and the win screen in place
-## of the solved overlay. Nine boards ask for it through the registry's
-## `shell` field, Binairo through Nonogram; the island boards keep
+## of the solved overlay. Ten boards ask for it through the registry's
+## `shell` field, Binairo through Queens; the island boards keep
 ## ui/puzzle_host.gd's rows.
 ##
 ## The one row the flat screens do not share is the tray: Binairo arms a

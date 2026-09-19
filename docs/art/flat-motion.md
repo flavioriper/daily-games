@@ -6,9 +6,10 @@ Code Break was the second board to take it, on 2026-09-18, and the vocabulary
 was lifted into `core/motion.gd` on that day so a third does not copy it.
 Balance followed the same day, Untangle on 2026-09-19, and Shikaku, Tents and
 Light Up the same morning; One Line and Nonogram followed that afternoon,
-which put all nine flat boards on it. This page is the table a new or a
-ported board is built against. When a number here and a number in a board disagree, the board is
-wrong.
+which put all nine flat boards on it. Queens arrived the same evening, built
+on the vocabulary from its first line rather than ported, the tenth. This
+page is the table a new or a ported board is built against. When a number
+here and a number in a board disagree, the board is wrong.
 
 ## The rules
 

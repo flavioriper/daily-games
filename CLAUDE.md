@@ -445,9 +445,9 @@ Specs:
   given: Balance caps its scale bands, and the leftover becomes air *above*
   the weight cards, because a gap under the day card reads as a mistake and a
   gap above the cards reads as room) and `card_centred()` (where that
-  leftover goes: Tents, Light Up, One Line and Nonogram halve it, because
-  their grid is square -- or, on One Line, wider than it is tall -- while
-  their space is tall, so the cell is capped by the width and there is slack
+  leftover goes: Tents, Light Up, One Line, Nonogram and Queens halve it,
+  because their grid is square -- or, on One Line, wider than it is tall --
+  while their space is tall, so the cell is capped by the width and there is slack
   however the card is cut; One Line's medium lattice is 4x3 and leaves 432 of a 1190 slot, the
   widest air of the eight and a call its spec's section 10 records rather than
   hides). A board that offers none gets Binairo's behaviour.
@@ -459,10 +459,12 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in nine screens only One Line's walker
-  (`ui/faces/snail_face.gd`) has earned a new species, and it earned it
-  because nothing else in the cast walks anywhere and its trail *is* the
-  mechanic. Nonogram went the other way and drew **no** character at all: its
+  drawing a new character -- in ten screens two have earned one: One Line's
+  walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
+  anywhere and its trail *is* the mechanic, and Queens' crown
+  (`ui/faces/crown_face.gd`), because nothing in the cast is a queen and the
+  crown is the one thing that board seats. Nonogram went the other way and
+  drew **no** character at all: its
   pieces are tiles and its clues are numbers, so the only face on the screen
   is the sprout's, and `ui/faces/mosaic_tile.gd` is builder shapes rather than
   a Control -- eighty-one of them go into one mesh.

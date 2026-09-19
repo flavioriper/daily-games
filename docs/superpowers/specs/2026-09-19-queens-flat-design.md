@@ -110,13 +110,15 @@ by the `rng` the host hands in, so a day is the same board on every phone.
    mock: a blobby partition rarely rules out enough of the hundreds to tens
    of thousands of legal no-touch seatings a bare board still allows, so
    growth alone was not enough and a repair pass follows every grown court.
-3. **The court is repaired to a unique answer.** While `solve_count` (the
-   same row-by-row search, stopped once it finds two) reports more than one
-   seating, repair takes a cell where a second seating disagrees with the
-   answer, and if handing that cell to a neighbouring region keeps the
-   loser's region connected and its own queen in it, tries the move and
-   keeps it only when the seating count does not rise. Repair runs in two
-   phases: a quick pass across `ATTEMPTS` (60) boards, each capped at
+3. **The court is repaired to a unique answer.** Repair enumerates the
+   court's answers with the same row-by-row search, stopping once it has
+   found up to `SOLUTIONS_SEEN` (6) of them; `solve_count` is the public
+   wrapper the tests call, stopping at whatever limit they pass it. While
+   more than one seating turns up, repair takes a cell where a second
+   seating disagrees with the answer, and if handing that cell to a
+   neighbouring region keeps the loser's region connected and its own queen
+   in it, tries the move and keeps it only when that count does not rise.
+   Repair runs in two phases: a quick pass across `ATTEMPTS` (60) boards, each capped at
    `REPAIRS` (400) moves but giving up on a board early once its count has
    not fallen in `STALE` (40) moves; and, only for the rare seed none of
    those crack, a slower, uncapped pass across `PATIENT_ATTEMPTS` (30) more.
