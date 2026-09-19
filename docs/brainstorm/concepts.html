@@ -1648,7 +1648,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <div class="refs">
       <figure>
         <img src="../art/concept-hidden-word.png" alt="The user's mock: a cream phone screen with a six by five grid of big rounded tiles, two rows filled in green, amber and grey, a QWERTY keyboard coloured to match, clouds and bushes around the board, a wooden sign reading A new word every day, and the sprout mascot cheering beside a How to play card">
-        <figcaption>The user's mock of 2026-09-19, and its own subtitle &mdash; <em>Guess the hidden word</em> &mdash; is where the name came from. Taken from it: the six by five grid of big rounded tiles, the three marks, the QWERTY keyboard with a green Enter and a backspace, the day card, the four top-bar buttons. Not built, and why: <b>the hearts</b> (there are no lives, settled 2026-09-18; the six rows <em>are</em> this board's lives and they are drawn as rows), <b>the How to play card</b> (no board gets a tip card any more &mdash; this is the first built without one, and the rules live behind the gear), <b>three hints</b> (two; three of five letters given hands over most days), and <b>the side scenery</b> &mdash; the clouds, the bushes, the wooden sign and the cheering sprout stand outside the board there, and the mock is 2:3 where a phone is 9:16, so at 40 of margin there is no outside.</figcaption>
+        <figcaption>The user's mock of 2026-09-19, and its own subtitle &mdash; <em>Guess the hidden word</em> &mdash; is where the name came from. Taken from it: the six by five grid of big rounded tiles, the three marks, the QWERTY keyboard with a green Enter and a backspace, the day card, the four top-bar buttons. Not built, and why: <b>the hearts</b> (there are no lives, settled 2026-09-18; the six rows <em>are</em> this board's lives and they are drawn as rows), <b>the How to play card</b> (no board gets a tip card any more &mdash; this is the first built without one, and the rules live behind the gear), <b>three hints</b> (two; three of five letters given hands over most days), and <b>the wooden sign and the cheering sprout</b>. <b>Moved rather than dropped:</b> the clouds, the bushes and the grass stand outside the board in the mock, and the mock is 2:3 where a phone is 9:16, so at 40 of margin there is no outside &mdash; they come inside as the 120 band at the card's foot, which the grid pays for out of its own cell. The sprout comes back for the reveal.</figcaption>
       </figure>
       <figure>
         <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
@@ -1680,11 +1680,11 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
     <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>HIDDEN WORD</code> in ink with the leaf sprouting from it and <code>FIND THE HIDDEN WORD</code> under, then Reset, Hint with its count and Settings. No Undo and no Check: <code>capabilities()</code> is <code>["hint"]</code> alone, the top bar already hides a button that is not in it, and the four here come out of <code>"actions": false</code> and nothing else.</td></tr>
     <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the mock's, without its hearts.</td></tr>
-    <tr><td class="k">Board card</td><td>1140</td><td>Six rows of five tiles. The grid is cut to whichever bound binds, <code>tile = min((944 &minus; 4&times;14)/5, (1084 &minus; 5&times;14)/6)</code> with <code>GAP</code> 14 and a 28 inset &mdash; <b>min(177.6, 169), so the height binds at 169</b>, and the block is 901 across of the 944 available by 1084 down.</td></tr>
+    <tr><td class="k">Board card</td><td>1140</td><td>Six rows of five tiles over a <b>120 scenery band</b>. The card reserves the band at its foot and the grid takes what is left: <code>tile = min((944 &minus; 4&times;14)/5, (1084 &minus; 120 &minus; 5&times;14)/6)</code> with <code>GAP</code> 14, <code>BAND</code> 120 and a 28 inset &mdash; <b>min(177.6, 149), so the height binds at 149</b>, and the block is 801 across of the 944 available, with 143 of side air, by 964 down.</td></tr>
     <tr><td class="k">Keys</td><td>340</td><td>The keyboard, section 4.</td></tr>
   </table>
-  <p>With 40 of margin and 20 of gap the four rows are 1920 exactly, which is where the board card's 1140 comes from in the first place. <b>The tile is the biggest cell any flat board has drawn</b>, because five across is the fewest any of them asks for; Queens' hard board is 103 and Nonogram's is the same.</p>
-  <div class="decide"><b>What the mock settles, and section 5 overstates.</b> At a 1140 slot the grid's height binds <em>exactly</em>: 6&times;169 + 5&times;14 = 1084, plus two 28 insets is 1140, the whole slot. So <code>card_height()</code> returns what it was given and <b><code>card_centred()</code> has nothing to centre</b> &mdash; the slack is zero, not halved. The consequence is the second one: <b>there is no room inside the card for a scenery band.</b> The furniture the spec moves in from the mock's margins has 21 either side of the grid, 28 above and below it and the 14 between tiles, so what this page draws is a hem &mdash; two clouds behind the tiles, seen through the gaps, and a strip of grass along the foot. If the clouds and bushes are wanted properly the tile has to come down: a 120 band leaves <code>(964 &minus; 70)/6</code> = <b>149</b>, and 149 also unbinds the width, so the grid becomes 801 of 944 and the card gains 143 of side air as well. That is the trade, and it is a call for the phone.</div>
+  <p>With 40 of margin and 20 of gap the four rows are 1920 exactly, which is where the board card's 1140 comes from in the first place. Even after the band pays for itself, <b>149 is half again the 103 that Queens and Nonogram ask of a thumb on their hard boards</b>, because five across is the fewest columns any flat board asks for; the only cell bigger than it is the 169 it gave up.</p>
+  <div class="decide"><b>What this page measured, and what the spec did with it.</b> The spec first asked for a 169 tile <em>and</em> a scenery band, and the two cannot both be had. At 169 the grid's height binds the card <em>exactly</em> &mdash; 6&times;169 + 5&times;14 = 1084, plus two 28 insets is 1140, the whole slot &mdash; so the furniture moved in from the mock's margins has 21 either side of the grid, 28 above and below and the 14 between tiles to stand in, which is a hem and not a band. Measured here on 2026-09-19 and <b>adopted into the spec the same day</b>: the card reserves 120 at its foot, the grid takes what is left, and the cell is <b>149</b>. That also unbinds the width, so the grid is 801 of the 944 available and the card gains 143 of side air. What the band buys is what you can see under the grid &mdash; two clouds, a strip of turf with blades standing out of it, three bushes and the mock's flowers, laid the way <code>ui/flat/scenery.gd</code> lays Balance's.<br><br><b>And <code>card_centred()</code> does nothing on this phone.</b> Height binds in a 9:16 slot with the band or without it, so the slack is zero at 1080&times;1920 and the call is a no-op there. It should stay <code>true</code> &mdash; on a squarer screen the width binds instead and the block then wants centring &mdash; but nothing should claim it moves the grid on the phone this game is built for.</div>
 
   <h3>2. The rules, and the two-pass mark <span class="pill blue">decided</span></h3>
   <ul>
@@ -1748,7 +1748,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
   <h3>9. Calls this page is for <span class="pill rose">to judge</span></h3>
   <ul>
-    <li><b>169, and nothing else in the card.</b> The tile is generous and the board is handsome at it, but section 1's finding is that the grid eats the whole card and the scenery is reduced to a hem. Judge the two side by side: this page at 169, and 149 with a real band of clouds and grass under the grid.</li>
+    <li><b>149, and the 120 band that bought it.</b> This is what the page draws: a cell still half again Queens' hardest, and under it a band with room for clouds, turf and bushes. The alternative, and it is one constant either way, is 169 with the grid filling the card to its edge and the scenery reduced to a hem round it. Judge it on the phone: does the band earn its room, and does the cell feel generous rather than empty?</li>
     <li><b>A permissive accept list.</b> 15,921 words means <code>AALII</code> and <code>ZYMIN</code> are legal guesses. Type junk here and see whether it feels wrong; if it does, the list can be cut to a curated 9k in an afternoon and nothing else moves.</li>
     <li><b>1.06 s of flip.</b> Long on purpose, and the longest wait on this screen.</li>
     <li><b>No Undo.</b> Committing a guess you did not mean is the one irreversible tap on any board in this game. The original has the same rule and nobody argues with it, but this game is gentler than the original everywhere else.</li>
@@ -8999,7 +8999,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     const n=rows.length;
     for(let r=0;r<n;r++) for(let c=0;c<5;c++)
       ghosts.push({r,c,ch:rows[r][c],m:marks[r][c],at:t+((n-1-r)*5+c)*stag(MO.RESET_STAGGER)});
-    rows=[]; marks=[]; com=[]; typed=''; work={at:[],gone:[]};
+    rows=[]; marks=[]; com=[]; typed=''; work={at:[],gone:[],goneCh:[]};
     solvedAt=-1; winAt=-1; overAt=-1; hasSolve=false; hasOver=false; rowShiver=[]; toast=null;
     caption();
   }
@@ -9046,19 +9046,24 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   // ---- layout ----
   // The rows are the spec's, and they add up: 40 of margin, 180 of top bar,
   // 20, 120 of day card, 20, 1140 of board slot, 20, 340 of keyboard, 40 of
-  // margin -- 1920 exactly. The grid is cut to whichever bound binds:
-  // tile = min((944 - 4*14)/5, (1084 - 5*14)/6) = min(177.6, 169), so the
-  // height binds at 169, the block is 901 by 1084, and with the inset the
-  // card is 1140 -- the whole slot. card_centred() has nothing left to
-  // centre, which is the one thing the spec's section 5 overstates.
-  const TOP_H=180,DAY_H=120,BOARD_H=1140,KEYS_H=340,ROW_GAP=20,GRID_GAP=14,INSET=28;
+  // margin -- 1920 exactly. The card reserves BAND at its foot for the
+  // scenery and the grid takes what is left:
+  // tile = min((944 - 4*14)/5, (1084 - 120 - 5*14)/6) = min(177.6, 149), so
+  // the height binds at 149, the block is 801 by 964 with 143 of side air,
+  // and with the band and the inset the card is 1140 -- the whole slot.
+  // Height binds in a 9:16 slot with the band or without it, so
+  // card_centred()'s slack is zero here and the call is a no-op on this
+  // phone; it stays true because on a squarer screen the width binds and
+  // the block wants centring.
+  const TOP_H=180,DAY_H=120,BOARD_H=1140,KEYS_H=340,ROW_GAP=20,GRID_GAP=14,INSET=28,BAND=120;
   function layout(){
     const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,slotY=dayY+DAY_H+ROW_GAP,keysY=slotY+BOARD_H+ROW_GAP;
-    const cell=Math.min((COL-2*INSET-4*GRID_GAP)/5,(BOARD_H-2*INSET-5*GRID_GAP)/6);
-    const gw=5*cell+4*GRID_GAP,gh=6*cell+5*GRID_GAP,bh=gh+2*INSET;
+    const cell=Math.min((COL-2*INSET-4*GRID_GAP)/5,(BOARD_H-2*INSET-BAND-5*GRID_GAP)/6);
+    const gw=5*cell+4*GRID_GAP,gh=6*cell+5*GRID_GAP,bh=gh+BAND+2*INSET;
     const by=slotY+(BOARD_H-bh)/2;
     return {top:{y:topY},day:{y:dayY},board:{y:by,h:bh},keys:{y:keysY},
       cell,gap:GRID_GAP,gx:W/2-gw/2,gy:by+INSET,gw,gh,
+      band:{y:by+INSET+gh,h:BAND},
       stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
   }
 
@@ -9107,21 +9112,35 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
   // The mock's clouds, bushes, wooden sign and sprout stand outside the
   // board card; at 40 of margin on a 9:16 phone there is no outside, so the
-  // furniture comes inside as a scenery band (ui/flat/scenery.gd). At a 169
-  // tile the grid fills the card's whole inner box and the band is a hem:
-  // two clouds behind the tiles, seen through the 14 gaps, and a strip of
-  // grass along the 28 inset at the foot.
+  // furniture comes inside as a scenery band at the card's foot
+  // (ui/flat/scenery.gd, the way Balance lays its clouds and tufts). The
+  // band is BAND tall and the grid pays for it out of its own cell -- 149
+  // rather than the 169 a bandless card would allow.
   function scenery(){
-    const b=L.board,puff=mixHex(C.parchment,C.white,0.42);
-    ctx.save(); rr(M+6,b.y+6,COL-12,b.h-12,28); ctx.save(); ctx.fillStyle=puff;
-    const cl=(x,y,r)=>{circle(x,y,r); circle(x-r*0.85,y+r*0.22,r*0.62); circle(x+r*0.9,y+r*0.26,r*0.55); ctx.fillRect(x-r*1.5,y+r*0.18,r*3,r*0.72);};
-    cl(M+190,b.y+104,52); cl(W-M-230,b.y+176,42);
-    ctx.restore();
-    const gy=b.y+b.h-INSET-8,gc=mixHex(C.leafLight,C.parchment,0.42);
-    ctx.fillStyle=gc; rr(M+10,gy,COL-20,INSET+2,16); ctx.fill();
-    ctx.fillStyle=mixHex(C.leaf,C.parchment,0.35);
-    for(let i=0;i<22;i++){const x=M+30+i*44,h=10+hash(i,3)*14;
-      ctx.beginPath(); ctx.moveTo(x-5,gy+2); ctx.quadraticCurveTo(x,gy-h,x+5,gy+2); ctx.closePath(); ctx.fill();}
+    const x0=M+INSET,w=COL-2*INSET,y0=L.band.y,gy=y0+BAND-44;
+    const puff=mixHex(C.parchment,C.white,0.8);
+    const turf=mixHex(C.leaf,C.parchment,0.52),turfHi=mixHex(C.leafLight,C.parchment,0.3);
+    const bushDeep=mixHex(C.leafDeep,C.parchment,0.3),bushLit=mixHex(C.leaf,C.parchment,0.12);
+    ctx.save();
+    // Two clouds high in the card, in the side air the band bought: 71 either
+    // side of an 801 grid, which is exactly where Balance puts its own.
+    const cl=(x,y,r)=>{ctx.fillStyle=puff; circle(x,y,r); circle(x-r*0.82,y+r*0.24,r*0.6); circle(x+r*0.88,y+r*0.28,r*0.54); ctx.fillRect(x-r*1.5,y+r*0.22,r*3,r*0.68);};
+    cl(x0+36,L.board.y+176,20); cl(x0+w-36,L.board.y+286,17);
+    // the ground, with a lighter crown along its top
+    ctx.fillStyle=turf; rr(x0,gy,w,BAND-44,24); ctx.fill();
+    ctx.fillStyle=turfHi; rr(x0,gy,w,24,14); ctx.fill();
+    // blades standing out of it
+    ctx.fillStyle=mixHex(C.leaf,C.parchment,0.24);
+    for(let i=0;i<20;i++){const x=x0+26+i*((w-52)/19),h=9+hash(i,5)*15,lean=(hash(i,9)-0.5)*7;
+      ctx.beginPath(); ctx.moveTo(x-5,gy+3); ctx.quadraticCurveTo(x+lean,gy-h,x+5,gy+3); ctx.closePath(); ctx.fill();}
+    // three bushes on the ground line
+    const bush=(x,r)=>{ctx.fillStyle=bushDeep; circle(x,gy-r*0.58,r); circle(x-r*0.82,gy-r*0.24,r*0.64); circle(x+r*0.84,gy-r*0.26,r*0.6);
+      ctx.fillStyle=bushLit; circle(x-r*0.24,gy-r*0.9,r*0.4);};
+    bush(x0+118,36); bush(x0+w*0.47,25); bush(x0+w-138,31);
+    // and the mock's own flowers
+    for(const [fx,fy] of [[x0+232,gy+18],[x0+w*0.67,gy+24],[x0+w-238,gy+16]]){
+      ctx.fillStyle=C.white; for(let k=0;k<5;k++){const a=k/5*Math.PI*2; circle(fx+Math.cos(a)*7,fy+Math.sin(a)*7,5.5);}
+      ctx.fillStyle=C.sun; circle(fx,fy,4);}
     ctx.restore();}
 
   function tileFace(x,y,s,fill,rim,ch,chCol,sy,alpha,r){
@@ -9209,7 +9228,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   function drawOver(t){
     if(!hasOver) return;
     const u=dec((t-overAt-0.1)/0.35),a=dec((t-overAt-0.1)/0.25); if(a<=0) return;
-    const b=L.board,y=b.y+b.h-176;
+    const b=L.board,y=L.band.y-12;
     ctx.save(); ctx.globalAlpha*=a; ctx.translate(0,200*(1-backOut(u)));
     ctx.save(); ctx.translate(M+118,y+76); sprout(66,{expr:'happy'}); ctx.restore();
     card(M+206,y,COL-246,140,28,C.surface,C.line,6);
