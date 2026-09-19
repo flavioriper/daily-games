@@ -152,18 +152,31 @@ static func run(t) -> void:
 ## letter is grey once the answer's copies are spent on greens and earlier
 ## ambers.
 static func _test_marking(t) -> void:
+	# Every expectation below was computed from the rule and checked by hand.
+	# Do not "fix" one to match an implementation -- if the code disagrees with
+	# a row here, the code is wrong.
 	var cases := [
 		# guess,   answer,  expected
 		["plant", "plant", [State.HIT, State.HIT, State.HIT, State.HIT, State.HIT]],
 		["zzzzz", "plant", [State.MISS, State.MISS, State.MISS, State.MISS, State.MISS]],
-		# MOSSY has two S. SASSY: S near, A miss, S miss, S hit, Y hit.
-		["sassy", "mossy", [State.NEAR, State.MISS, State.MISS, State.HIT, State.HIT]],
-		# One E in ABIDE, guessed twice: the first is grey, the second green.
-		["eerie", "abide", [State.MISS, State.MISS, State.MISS, State.MISS, State.HIT]],
-		# Two L in LLAMA vs one L in LEVEL's answer position 0.
-		["llama", "level", [State.HIT, State.MISS, State.NEAR, State.MISS, State.MISS]],
+		# The case the whole rule exists for. MOSSY has two S; SWISS spends one
+		# on the green at 3 and one on the amber at 0, so the S at 4 is GREY.
+		# A one-pass implementation paints it amber and lies.
+		["swiss", "mossy", [State.NEAR, State.MISS, State.MISS, State.HIT, State.MISS]],
+		# A near miss of the above: SASSY shares a third letter with MOSSY, so
+		# it never exhausts the tally. Kept to prove the greens come first.
+		["sassy", "mossy", [State.MISS, State.MISS, State.HIT, State.HIT, State.HIT]],
+		# ABIDE's one I is free after the greens, so EERIE's I at 3 is amber
+		# while both its E's before the green at 4 are grey.
+		["eerie", "abide", [State.MISS, State.MISS, State.MISS, State.NEAR, State.HIT]],
+		# LEVEL's two L's: one is spent on the green at 0, so LLAMA's second L
+		# takes the last one as amber and its A's find nothing.
+		["llama", "level", [State.HIT, State.NEAR, State.MISS, State.MISS, State.MISS]],
 		# Every letter present, none in place.
 		["stone", "notes", [State.NEAR, State.NEAR, State.NEAR, State.NEAR, State.NEAR]],
+		# SHEET has two E; GEESE spends one green at 2 and one amber at 1, so
+		# the E at 3 takes the last and the E at 4 is grey.
+		["geese", "sheet", [State.MISS, State.NEAR, State.HIT, State.NEAR, State.MISS]],
 	]
 	for c in cases:
 		var got: Array[int] = State.mark_guess(c[0], c[1])
@@ -826,7 +839,7 @@ git commit -m "feat(hiddenword): the keys tray, a board with no tip card, and an
 const FLIP_STEP := 0.16
 const FLIP_TIME := 0.42
 const TOAST_HOLD := 1.2
-const GAP := 14.0
+const GAP := 14.0     # between tiles, and between keyboard rows
 const INSET := 28.0
 const ENTER_DELAY := 0.18
 const WIN_WAIT := 1.6
@@ -835,13 +848,16 @@ const WIN_WAIT := 1.6
 `build()` makes the state, calls `setup(rng, difficulty)` and sizes the grid:
 
 ```gdscript
+const BAND := 120.0   # the scenery band at the card's foot
 func _cell() -> float:
 	var w := size.x - INSET * 2.0
-	var h := size.y - INSET * 2.0
+	var h := size.y - INSET * 2.0 - BAND
 	return minf((w - GAP * (State.LEN - 1)) / State.LEN, (h - GAP * (State.ROWS - 1)) / State.ROWS)
 ```
 
-`card_height(available)` returns the block plus its inset, so the card is cut to the grid rather than stretched behind it; `card_centred()` is `true`, so the host halves the slack above and below.
+At 1080x1920 that is a **149** tile, the grid 801 wide of the 944 available, with 143 of side air — measured on the concept tab, which also corrected the spec's first arithmetic (at 169 the grid filled the card's inner height exactly and left the scenery nowhere to go).
+
+`card_height(available)` returns the block plus the band plus the inset. `card_centred()` is `true`, but say so honestly in its comment: height binds in a 9:16 slot, so **its slack is zero on this phone and the call does nothing there**; it earns its keep only on a squarer screen, where the width binds instead.
 
 - [ ] **Step 2: Draw it as one mesh**
 

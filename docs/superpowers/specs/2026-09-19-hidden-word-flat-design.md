@@ -67,8 +67,9 @@ given    Array[int], the positions a hint has revealed
 
 - `type(letter)` appends while `typed` is under five and the board is not done.
 - `erase()` drops the last letter of `typed`.
-- `commit() -> int` returns `OK`, `SHORT` (fewer than five letters) or
-  `UNKNOWN` (not in the accept list). On `OK` it marks the row, appends it,
+- `commit() -> int` returns `OK`, `SHORT` (fewer than five letters),
+  `UNKNOWN` (not in the accept list) or `REPEAT` (a row already guessed --
+  section 8's toast has a line for it). On `OK` it marks the row, appends it,
   clears `typed`, and the board is solved if every mark is `HIT` or over if
   that was the sixth row.
 
@@ -76,11 +77,16 @@ given    Array[int], the positions a hint has revealed
 wrong.** First pass: every position whose letter equals the answer's is `HIT`,
 and that answer letter is struck off a tally. Second pass, left to right: a
 remaining position is `NEAR` if its letter is still in the tally, and that
-copy is struck off too; otherwise `MISS`. The consequence to check: with
-answer `MOSSY`, the guess `SASSY` marks S-A-S-S-Y as `NEAR MISS MISS HIT HIT`
--- the first S is near, the second is grey, because `MOSSY`'s two S's are
-already spent on the third and fourth positions. A one-pass implementation
-paints both amber and lies.
+copy is struck off too; otherwise `MISS`. The case that carries the lesson
+whole: against `MOSSY`, the guess `SWISS` marks S-W-I-S-S as
+`NEAR MISS MISS HIT MISS` -- the first S is amber, the fourth is green, and
+**the fifth is grey**, because `MOSSY`'s two S's are spent by then, one on the
+green and one on the amber. A one-pass implementation paints the fifth amber
+and lies. (This example was corrected on 2026-09-19: the spec first used
+`SASSY`, which shares a third letter with `MOSSY` and so marks
+`MISS MISS HIT HIT HIT` -- true, but it never exercises the exhausted tally.
+The concept tab caught it before any GDScript was written, which is what the
+tab is for.)
 
 `key_mark(letter) -> int` is **derived** from `rows` and `marks` on every
 call, never stored -- the Queens rule. Best mark wins: `HIT` beats `NEAR`
@@ -146,13 +152,23 @@ At 1080x1920, with the host's 40 margins and 20 gaps, the rows add up:
 | Board card | 1140 | Six rows of five tiles on a scenery band. |
 | Keys | 340 | The keyboard. |
 
-The board card's grid is cut to whichever bound binds:
-`tile = min((inner_w - 4*GAP)/5, (inner_h - 5*GAP)/6)` with `GAP` 14 and a 28
-inset, which at 1140 of slot is **169**, five across using 901 of the 944
-available. The slot is tall and the block is not, so `card_centred()` is true
-and the slack is halved above and below, as on Tents, Light Up, One Line,
-Nonogram and Queens. `card_height()` is the block plus its inset, so the card
-is cut to the grid rather than stretched behind it.
+The board card reserves a **120 scenery band** at its foot and the grid takes
+what is left: `tile = min((inner_w - 4*GAP)/5, (inner_h - BAND - 5*GAP)/6)`
+with `GAP` 14, `BAND` 120 and a 28 inset, which at 1140 of slot is **149**,
+five across using 801 of the 944 available, leaving 143 of side air.
+
+This was measured on the concept tab on 2026-09-19 and it corrected the
+spec's first arithmetic. Without the band the tile is 169 and the grid fills
+the card's inner height **exactly** -- 6x169 + 5x14 = 1084, which is the whole
+1084 -- so there is no room left for a cloud, and the mock's scenery reduces
+to a hem round the edge. 149 is still the second-largest cell any flat board
+draws, against Nonogram's and Queens' 103 on hard.
+
+Height binds in a 9:16 slot either way, so `card_centred()`'s slack is **zero
+at 1080x1920 and the call is a no-op there**. It stays `true` because on a
+squarer screen the width binds instead and the block then wants centring;
+what must not be claimed is that it does anything on the phone this game is
+built for. `card_height()` is the block plus the band plus the inset.
 
 **Where the mock and the phone disagree.** The mock is 2:3; the phone is 9:16,
 much taller and relatively narrower. The clouds, the bushes, the wooden sign
@@ -166,9 +182,11 @@ are drawn as rows.
 
 ## 6. The keyboard
 
-`ui/flat/key_board.gd`, `HEIGHT` 340: three rows of keys 100 tall with a 14
-gap between rows and a 12 `LIFT`, `QWERTYUIOP` / `ASDFGHJKL` / `⌫ZXCVBNM` +
-`Enter`. A key is `(1000 - 9*GAP)/10` wide -- **91** -- with the middle row
+`ui/flat/key_board.gd`, `HEIGHT` 340: three rows of keys 100 tall with a
+`ROW_GAP` of 14 between rows, a `GAP` of 10 between keys in a row and a 12
+`LIFT`, `QWERTYUIOP` / `ASDFGHJKL` / `⌫ZXCVBNM` + `Enter`. **The two gaps are
+different numbers and the spec named them both `GAP` until 2026-09-19**; a key
+is `(1000 - 9*GAP)/10` wide with the *key* gap -- **91** -- with the middle row
 centred on its own 899 and the last row spending what the seven letters leave
 on a 126 ⌫ and a 157 Enter, the wider of the two, in `GOOD` with `PAPER`
 lettering, because it is the one key that commits.
