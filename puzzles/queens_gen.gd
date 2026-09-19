@@ -28,10 +28,15 @@ extends RefCounted
 ## section 4.
 
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
-## How many courts to try before giving the last one back unproved.
-const ATTEMPTS := 30
+## How many courts to try before giving the last one back unproved. Raised
+## from 30 once repair could give up on a board early (see STALE) rather
+## than always spending its full REPAIRS budget.
+const ATTEMPTS := 60
 ## How many repair moves to attempt on one court before giving up on it.
 const REPAIRS := 400
+## A board whose answer count has not fallen in this many moves is not
+## going to; a fresh board is cheaper than the remaining REPAIRS.
+const STALE := 40
 ## A region below this many cells is grown before any region at or above it.
 const MIN_REGION := 3
 ## How many seatings the repair pass looks for; only their count matters.
@@ -201,14 +206,20 @@ static func _connected_without(region: PackedInt32Array, n: int, g: int, cell: V
 ## seatings does not rise. Works on one flattened copy of `region` for the
 ## whole loop and writes it back into `region` in place before returning
 ## (`region` itself is only ever read or replaced wholesale, never
-## re-flattened mid-loop); true if it ends unique.
+## re-flattened mid-loop); true if it ends unique. Gives up on this court
+## once STALE moves in a row have failed to lower the seating count -- see
+## STALE's own line.
 static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: PackedInt32Array,
 		iters: int) -> bool:
 	var flat := _flatten(region, n)
 	var sols: Array = _solutions(flat, n, SOLUTIONS_SEEN)
 	var count := sols.size()
+	var stale := 0
 	for _it in iters:
 		if count <= 1:
+			break
+		stale += 1
+		if stale >= STALE:
 			break
 		var others: Array = []
 		for s in sols:
@@ -241,6 +252,8 @@ static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: Pack
 		var s3: Array = _solutions(flat, n, SOLUTIONS_SEEN)
 		if s3.size() <= count:
 			sols = s3
+			if s3.size() < count:
+				stale = 0
 			count = s3.size()
 		else:
 			flat[idx] = g
