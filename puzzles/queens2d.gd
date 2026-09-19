@@ -482,6 +482,7 @@ func _build_ground(now: float) -> Dictionary:
 	# The pebbles that are here: waiting for the wave, popping in with the
 	# squash, standing, shivering when refused, or clearing away on the win.
 	gone = []
+	var shook_gone: Array = []
 	for y in state.n:
 		for x in state.n:
 			var cell := Vector2i(x, y)
@@ -515,9 +516,13 @@ func _build_ground(now: float) -> Dictionary:
 			if shook < Motion.SHIVER_TIME:
 				busy = true
 				at.x += Motion.shiver_offset(shook, _cell * SHIVER)
+			elif _shiver.has(cell):
+				shook_gone.append(cell)
 			Mosaic.pebble(b, at, _cell, grow, alpha)
 	for cell in gone:
 		_cross_in.erase(cell)
+	for cell in shook_gone:
+		_shiver.erase(cell)
 	if b.verts.is_empty():
 		return {"mesh": null, "busy": busy}
 	return {"mesh": b.mesh(), "busy": busy}
@@ -718,6 +723,9 @@ func _blush_cell(cell: Vector2i) -> void:
 func _hop(crown: Control, height: float, time: float, delay := 0.0) -> void:
 	Motion.stop(_pos_tw.get(crown))
 	crown.position = Vector2.ZERO
+	# A drop's fade is stopped here too (drop_in and hop share _pos_tw), and it
+	# must not be left half done: a hop or shiver always finds her fully seen.
+	crown.modulate.a = 1.0
 	_pos_tw[crown] = Motion.hop(crown, height, time, delay, 0.0)
 	_busy_for(delay + time)
 
@@ -755,6 +763,7 @@ func _refuse_pinned(cell: Vector2i) -> void:
 			crown.expression = Face.Expr.HAPPY)
 	Motion.stop(_pos_tw.get(crown))
 	crown.position = Vector2.ZERO
+	crown.modulate.a = 1.0
 	_pos_tw[crown] = Motion.shiver(crown, _cell * SHIVER)
 	_busy_for(Motion.SHIVER_TIME)
 
@@ -991,8 +1000,11 @@ func undo() -> bool:
 	moved.emit()
 	return true
 
+## Zero on an unproved court (state.ok false): the answer the generator
+## stored there is only one of several seatings, so it cannot be handed out
+## as a hint, and the button stays disabled.
 func hints_left() -> int:
-	return HINTS - hints_used
+	return 0 if not state.ok else HINTS - hints_used
 
 ## Seats the answer's queen in the first row that lacks her and pins her: a
 ## wrong queen in her way pops out first, a ring pulses out of the cell, the
@@ -1041,9 +1053,13 @@ func check() -> int:
 		if _crowns.has(cell):
 			_wobble(_crowns[cell])
 		_blush_cell(cell)
-	_say("%d %s in the wrong seat." % [wrong.size(), "queen is" if wrong.size() == 1 else "queens are"]
-		if not wrong.is_empty() else "Every queen you have seated is right.",
-		Face.Expr.WORRIED if not wrong.is_empty() else Face.Expr.JOY)
+	if not wrong.is_empty():
+		_say("%d %s in the wrong seat." % [wrong.size(), "queen is" if wrong.size() == 1 else "queens are"],
+			Face.Expr.WORRIED)
+	elif state.queens.is_empty():
+		_say("Seat a queen first.", Face.Expr.HAPPY)
+	else:
+		_say("Every queen you have seated is right.", Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_redraw()
 	return wrong.size()

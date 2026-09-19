@@ -24,7 +24,8 @@ extends RefCounted
 ## only when repair drives that count to exactly one. Repair runs in two
 ## phases: a quick pass that gives up on a stalled board early, across
 ## ATTEMPTS boards, and then, only for the rare seed none of those crack, a
-## slower, uncapped pass across PATIENT_ATTEMPTS more.
+## slower, patient pass across PATIENT_ATTEMPTS more, each one spending its
+## full REPAIRS budget rather than giving up early when the count stalls.
 ##
 ## Seeded only by the `rng` handed in, so a day is the same court on every
 ## phone. Spec: docs/superpowers/specs/2026-09-19-queens-flat-design.md,

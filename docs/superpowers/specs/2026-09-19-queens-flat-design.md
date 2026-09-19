@@ -121,8 +121,10 @@ by the `rng` the host hands in, so a day is the same board on every phone.
    Repair runs in two phases: a quick pass across `ATTEMPTS` (60) boards, each capped at
    `REPAIRS` (400) moves but giving up on a board early once its count has
    not fallen in `STALE` (40) moves; and, only for the rare seed none of
-   those crack, a slower, uncapped pass across `PATIENT_ATTEMPTS` (30) more.
-   A board is kept only when repair drives the count to exactly one.
+   those crack, a slower, patient pass across `PATIENT_ATTEMPTS` (30) more,
+   each one running its full `REPAIRS` (400) moves rather than giving up
+   early when the count stalls. A board is kept only when repair drives the
+   count to exactly one.
 4. The last board tried is returned with `ok = false` if neither phase
    proved one unique, which still plays (any full legal seating wins) but is
    not a puzzle. `tests/test_queens.gd` asserts five seeds succeed.
@@ -350,3 +352,34 @@ The 855 draw-call budget is the binding one; the idle number is a report.
 - No constant the contact sheet checked (Task 6) needed changing: all 21
   frames it inspected (the six-frame strip plus the fifteen-frame contact
   sheet) matched section 9 as written.
+- **Fixed in the final review, 2026-09-19: winning by hint left the last
+  crown invisible.** `_crown_up`'s drop-in path (a hint's arrival) stores its
+  tween in `_pos_tw[crown]`, the same dictionary `_hop` and `_refuse_pinned`
+  key off; `Motion.drop_in` sets `modulate.a` to 0 at once and restores it
+  only through that tween. A hint that seats the n-th queen runs
+  `check_solved` -> `_on_solved` -> `_hop` in the same call stack, and
+  `_hop`'s `Motion.stop(_pos_tw.get(crown))` killed the drop tween at alpha
+  0 with nothing left to restore it -- the winning queen and her shadow
+  invisible on the solved court and the win screen. `_refuse_pinned` shared
+  the hazard within `DROP_TIME` of a hint. Both now set `crown.modulate.a =
+  1.0` next to the `crown.position = Vector2.ZERO` they already had: a crown
+  that hops or shivers is fully present, whatever tween it interrupted.
+- **An unproved court (`state.ok` false) no longer measures a wrong seat or
+  hands out a hint against an answer that is not the only one.**
+  `queens_state.gd::setup` now carries `ok` from the generator's result, and
+  guards against a generator that gave up on a region entirely (empty
+  `region`, `n` left over from before): that case sets `n = 0` and warns, so
+  `in_field` is false everywhere rather than indexing past an empty array.
+  `wrong_queens()` returns `[]` and `hint()` returns the empty result at
+  once when `ok` is false, and the board's `hints_left()` returns 0 so the
+  hint button disables itself. The board still wins on any legal seating --
+  `is_solved` checks the rules, never the stored answer -- so an unproved
+  court is still playable, just not checkable or hintable against a single
+  truth.
+- **`tests/_win.gd::_solve_queens` now spends its hint last.** It pressed
+  Hint first, which seats and pins a queen before anything else is on the
+  board and so never finishes the puzzle through the hint path -- it never
+  reached the bug above. It now presses Check on the bare court, taps the
+  answer's own seat into every row but the last, and presses Hint only for
+  the row that is left, which seats the n-th queen and wins through the same
+  call stack the bug lived in.

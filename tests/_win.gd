@@ -19,7 +19,7 @@ var _fit_ok := true
 var _hud_ok := true
 
 func _initialize() -> void:
-	# The three `soon` cards name a board that has no flat version, so they
+	# The two `soon` cards name a board that has no flat version, so they
 	# have no script to open; the harness walks the ones that do.
 	_entries = []
 	for e in load("res://ui/registry.gd").PUZZLES:
@@ -465,9 +465,16 @@ func _solve_nonogram() -> void:
 			if int(_puzzle._bitmap[y][x]) == 1:
 				_tap_local(_puzzle.cell_to_local(y, x))
 
-## Queens: one hint (seats and pins a queen), one check, then the answer's
-## seat in every row the hint did not fill, tapped with the crown chip the
-## tray arms by default.
+## Queens: the hint is spent last, on purpose. Check first, on the bare
+## court (it must return 0 and say "Seat a queen first."); then the answer's
+## seat is tapped with the crown chip into every row but the last; then the
+## hint seats the n-th queen and wins the board through the hint path. That
+## order is what caught bug 1's shape: a hint that finishes the puzzle runs
+## check_solved -> _on_solved -> _hop in the same call stack, and _hop's
+## Motion.stop(_pos_tw.get(crown)) was killing the seating crown's drop-in
+## tween at alpha 0, with nothing to restore it -- invisible on the solved
+## court. Pressing the hint first, as this harness used to, never seats the
+## last queen through the hint path and so never reached it.
 func _solve_queens() -> void:
 	var n: int = _puzzle.n
 	# Board fit check: every cell centre must land inside the slot.
@@ -477,16 +484,16 @@ func _solve_queens() -> void:
 		for c in n:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
-	_press(_host.top_bar.hint_button)
 	_press(_host.action_bar.check_button)
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
-	for r in n:
+	for r in range(1, n):
 		if _puzzle.is_done():
 			return
 		var cell := Vector2i(int(_puzzle.state.solution[r]), r)
 		if _puzzle.state.queens.has(cell):
 			continue
 		_tap_local(_puzzle.cell_to_local(r, cell.x))
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 
 func _solve_horse() -> void:
 	var w: int = _puzzle.w

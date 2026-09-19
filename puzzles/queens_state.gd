@@ -41,6 +41,9 @@ const PINNED := 2
 const SQUARES := ["🟫", "🟪", "🟦", "🟩", "🟧", "⬜", "🟨", "🟥", "⬛"]
 
 var n: int = 7
+## Whether the generator proved the answer the only one; false is playable
+## but not a puzzle.
+var ok := true
 var region: Array = []              # [r][c] -> region index
 var solution := PackedInt32Array()  # row -> the answer's column
 var queens: Dictionary = {}         # Vector2i -> true
@@ -56,6 +59,10 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var out: Dictionary = Gen.generate(rng, n)
 	region = out.region
 	solution = out.solution
+	ok = bool(out.ok)
+	if region.is_empty():
+		n = 0
+		push_warning("Queens: no court could be built for this seed")
 	queens = {}
 	crosses = {}
 	locked = {}
@@ -214,7 +221,12 @@ func undo() -> Array:
 ## history: what came before no longer describes a board that can be gone
 ## back to. Returns {"cell": the seat, or (-1, -1) when every row has its
 ## queen, "lifted": the queens taken off}.
+## On an unproved court (`ok` false) the stored answer is only one of several
+## seatings, not the one, so it cannot be handed out as a hint: this seats
+## nothing and returns the empty result at once.
 func hint() -> Dictionary:
+	if not ok:
+		return {"cell": Vector2i(-1, -1), "lifted": []}
 	for r in n:
 		var target := Vector2i(int(solution[r]), r)
 		if queens.has(target):
@@ -234,7 +246,12 @@ func hint() -> Dictionary:
 	return {"cell": Vector2i(-1, -1), "lifted": []}
 
 ## Every seated queen the answer does not seat there. Check counts these.
+## On an unproved court (`ok` false) the stored answer is only one of several
+## seatings, so it cannot be the measure of a wrong seat: nothing is ever
+## wrong there, and this returns the empty array at once.
 func wrong_queens() -> Array:
+	if not ok:
+		return []
 	var out: Array = []
 	for q in queens:
 		if int(solution[q.y]) != q.x:
