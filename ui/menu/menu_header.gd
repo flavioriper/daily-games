@@ -146,8 +146,14 @@ func _draw_sprig(ci: Control) -> void:
 	var root := base + Vector2(text_w * SPRIG_AT, _title.size.y * 0.24)
 	var tip := root + Vector2(4.0, -46.0)
 	ci.draw_polyline(PackedVector2Array([root, root + Vector2(6.0, -24.0), tip]), Pal.LEAF, 10.0, true)
-	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-SPRIG_LEAF, -SPRIG_LEAF * 0.9), Vector2(SPRIG_LEAF, SPRIG_LEAF)), Pal.LEAF)
-	Icons.paint(ci, "leaf", Rect2(tip + Vector2(SPRIG_LEAF * 0.9, -SPRIG_LEAF * 0.7), Vector2(-SPRIG_LEAF * 0.85, SPRIG_LEAF * 0.85)), Pal.LEAF_DEEP)
+	# The leaf icon's base is at (0.15, 0.85) of its rect and its tip at the
+	# opposite corner; a mirrored rect points it the other way. Each rect is
+	# placed so that base lands on the stem's tip and the leaf grows up and
+	# outward, as on the flat top bar (ui/flat/flat_top_bar.gd) and the sprout.
+	var right := SPRIG_LEAF
+	var left := SPRIG_LEAF * 0.85
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-0.15 * right, 3.0 - 0.85 * right), Vector2(right, right)), Pal.LEAF)
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(0.15 * left, 3.0 - 0.85 * left), Vector2(-left, left)), Pal.LEAF_DEEP)
 
 ## The calendar's badge: a disc with a 1 on it, and it means nothing.
 func _draw_badge(ci: Control) -> void:

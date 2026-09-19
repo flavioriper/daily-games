@@ -116,10 +116,17 @@ func _draw_leaf(ci: Control) -> void:
 	var top: Vector2 = _title.position + Vector2(_title.size.x * 0.5 + text_w * LEAF_AT, _title.size.y * 0.16)
 	var tip := top + Vector2(2.0, -30.0)
 	ci.draw_polyline(PackedVector2Array([top, top + Vector2(4.0, -16.0), tip]), Pal.LEAF, 7.0, true)
-	# The leaf icon points to the upper right; the mirrored rect turns one to
-	# the upper left.
-	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-LEAF, -LEAF * 0.9), Vector2(LEAF, LEAF)), Pal.LEAF)
-	Icons.paint(ci, "leaf", Rect2(tip + Vector2(LEAF * 0.9, -LEAF * 0.7), Vector2(-LEAF * 0.85, LEAF * 0.85)), Pal.LEAF)
+	# The leaf icon's base is at (0.15, 0.85) of its rect and its tip at the
+	# opposite corner, so it points to the upper right from a base at the
+	# lower left; a mirrored rect (negative width) points it to the upper
+	# left. Each rect is placed so that base lands on the stem's tip and the
+	# leaf grows up and outward, as the sprout's do. (Until 2026-09-18 the
+	# rects stood on the wrong sides and the leaves hung with their stalks
+	# outboard and their tips turned in.)
+	var right := LEAF
+	var left := LEAF * 0.85
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-0.15 * right, 2.0 - 0.85 * right), Vector2(right, right)), Pal.LEAF)
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(0.15 * left, 2.0 - 0.85 * left), Vector2(-left, left)), Pal.LEAF)
 
 func refresh(puzzle) -> void:
 	var caps: Array = puzzle.capabilities() if puzzle != null else []
