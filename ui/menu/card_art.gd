@@ -116,7 +116,7 @@ func _build() -> void:
 			_seat(SnailFace.new(), 96.0, 6.0, 4.0)
 		"queens":
 			# The crown on a patch of the court _draw lays under her.
-			_seat(CrownFace.new(), 64.0, 0.0, 2.0)
+			_seat(CrownFace.new(), 72.0, 0.0, 2.0)
 		_:
 			pass
 
@@ -242,7 +242,7 @@ func _draw_mosaic() -> void:
 ## Queens: six cells of the court in two regions with the seam between them,
 ## under the crown, and the soft disc she stands on.
 func _draw_regions() -> void:
-	var cell := 44.0
+	var cell := 54.0
 	var x0 := -cell * 1.5
 	var y0 := -cell
 	var plan := [[1, 1, 2], [1, 2, 2]]
