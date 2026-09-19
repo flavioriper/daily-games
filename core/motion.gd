@@ -259,6 +259,8 @@ static func vanish(node: Node3D, lift: float, time: float, delay := 0.0) -> Twee
 const PRESS_SCALE := 0.94
 const PRESS_TIME := 0.08
 const RELEASE_TIME := 0.25
+const LIFT_SCALE := 1.1
+const LIFT_TIME := 0.12
 const POP_IN := 0.22
 const POP_SQUASH := 0.15
 const POP_OUT := 0.12
@@ -296,6 +298,25 @@ static func press(node: Control, down: bool, base := Vector2.ONE) -> Tween:
 	var tw := node.create_tween()
 	if down:
 		tw.tween_property(node, "scale", base * PRESS_SCALE, PRESS_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		tw.tween_property(node, "scale", base, RELEASE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
+
+## The pick-up: the press for a thing that is dragged rather than tapped.
+## `node` grows to LIFT_SCALE of `base`, toward the finger, over LIFT_TIME,
+## and springs back to `base` with the back ease when it is let go; a board
+## with a ground parts the shadow from it meanwhile (Untangle reads the
+## scale back for that). Pass the base a squashed thing rests at, so the
+## lift rides on it. The caller keeps the tween and stops it before the
+## next. Decorative: under reduce-motion the node sits at `base` and null
+## is returned.
+static func lift(node: Control, up: bool, base := Vector2.ONE) -> Tween:
+	if reduce:
+		node.scale = base
+		return null
+	var tw := node.create_tween()
+	if up:
+		tw.tween_property(node, "scale", base * LIFT_SCALE, LIFT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	else:
 		tw.tween_property(node, "scale", base, RELEASE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	return tw

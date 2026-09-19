@@ -11,6 +11,8 @@ extends SceneTree
 ## Code Break is filled to its fullest board before the idle window, since
 ## that is the state the budget is written against; `empty` after the id
 ## measures the bare board instead, so both numbers come from this one probe.
+## Untangle is dragged once, and its springs settle into the idle window, so
+## `empty` is the number to compare with a board that was left alone.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -34,6 +36,14 @@ var _draws := 0
 var _id := ""
 var _empty := false   # skip the fill and measure the bare board
 var _entry: Dictionary = {}
+## Untangle's drag: a real touch on the first free lantern, dragged over
+## DRAG_TIME toward the middle of the card and let go, so the strip shows the
+## lift, the slack and the drop.
+const DRAG_TIME := 0.35
+const DRAG_BY := Vector2(150.0, 110.0)
+var _drag_from := Vector2.ZERO
+var _drag_until := INF
+var _drag_done := true
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -78,11 +88,15 @@ func _process(delta: float) -> bool:
 			# One press on the first free weight card, so the strip shows a
 			# beam swing and the kind's hop.
 			_step_balance()
+		elif _entry.id == "untangle" and not _empty:
+			_begin_untangle_drag()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
 	if _filling:
 		_fill_mastermind_step()
+	if not _drag_done:
+		_untangle_drag_step()
 	if _t >= _idle_from and _t <= _idle_to:
 		_idle.append(delta * 1000.0)
 		_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
@@ -121,6 +135,37 @@ func _step_balance() -> void:
 		if not _puzzle.state.locked[i]:
 			_press(_host.tray.plus_button(i))
 			return
+
+## Untangle: touch the first free lantern's ring and start dragging it.
+func _begin_untangle_drag() -> void:
+	for i in _puzzle.nodes:
+		if _puzzle._locked[i]:
+			continue
+		_drag_from = _puzzle.get_global_transform_with_canvas() * _puzzle.node_to_local(i)
+		var down := InputEventScreenTouch.new()
+		down.index = 0
+		down.pressed = true
+		down.position = _drag_from
+		root.push_input(down, true)
+		_drag_until = _t + DRAG_TIME
+		_drag_done = false
+		return
+
+## One drag event a frame along the way, eased, and the release at the end.
+func _untangle_drag_step() -> void:
+	var u := clampf(1.0 - (_drag_until - _t) / DRAG_TIME, 0.0, 1.0)
+	var at := _drag_from + DRAG_BY * (1.0 - pow(1.0 - u, 2.0))
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = at
+	root.push_input(drag, true)
+	if u >= 1.0:
+		var up := InputEventScreenTouch.new()
+		up.index = 0
+		up.pressed = false
+		up.position = at
+		root.push_input(up, true)
+		_drag_done = true
 
 ## Code Break's fullest board: seven rows guessed and scored, the eighth
 ## filled and waiting on Check. Every row is one colour, and at difficulty 0

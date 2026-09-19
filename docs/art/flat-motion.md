@@ -3,7 +3,8 @@
 Every flat screen moves with the same hand and wears the same cloth. The
 flat Binairo (`puzzles/binairo2d.gd`, its spec's section 6) set the hand;
 Code Break was the second board to take it, on 2026-09-18, and the vocabulary
-was lifted into `core/motion.gd` on that day so a third does not copy it. This
+was lifted into `core/motion.gd` on that day so a third does not copy it.
+Balance followed the same day and Untangle on 2026-09-19. This
 page is the table a new or a ported board is built against. When a number
 here and a number in a board disagree, the board is wrong.
 
@@ -18,7 +19,12 @@ here and a number in a board disagree, the board is wrong.
 2. **A mover owns its place until it lands.** Layout code leaves a node
    alone while its tween runs (`Motion.running`), and the recipe's landing
    callback puts it back where the layout would. Otherwise a relayout mid
-   flight teleports the piece.
+   flight teleports the piece. **A piece the board places every frame
+   stands in a slot.** A dragged lantern's point is written on every frame
+   by the drag and the springs; the paper hangs in a slot the board owns
+   (position and swing) and the recipes tween the paper inside it, so the
+   two hands never write the same property. Balance's weight cards learned
+   the same thing against their container.
 3. **Kill on rebuild.** Every tween a board keeps is stopped in `_stop_all`
    before the nodes it aims at are freed, and a timer is guarded by a
    generation counter (`_after`), so a new board never inherits a hop aimed at
@@ -37,6 +43,11 @@ here and a number in a board disagree, the board is wrong.
    face enters from scale 0.01; a row or a card from `ENTER_WIDE_FROM` (0.86),
    because the back ease's tenth of overshoot on a thousand units of width is
    a wobble, not a spring.
+8. **What is drawn reads the same numbers.** A board that draws its pieces
+   into a mesh rather than as nodes (Untangle's rings and cords) cannot call
+   a recipe on them; it reads the recipe's constants off `Motion` and draws
+   the family's overshoot as a curve (`_back_out`). One voice, two media. It
+   never copies the number.
 
 ## The moments
 
@@ -47,9 +58,10 @@ a recipe in `core/motion.gd` unless it names another file.
 |---|---|---|
 | Entrance | The pieces pop in along the diagonal from the top left (a grid) or down the column (a list), with the back ease; a resident face lands a beat after its tile with the squash. A board whose pieces *do* something as they land lets them (Balance's fruit tilt the beam). The chrome slides in row by row (`ui/hud/panel.gd`). | `slide` on scale, `ENTER_POP` 0.25, `ENTER_STAGGER` 0.03; face `pop_in` `ENTER_FACE_LAG` 0.12 later |
 | Press | The tile sinks under the finger and springs back on release. Every tappable piece does this, including one that will do nothing when released. | `press`: `PRESS_SCALE` 0.94 in `PRESS_TIME` 0.08, back-ease out `RELEASE_TIME` 0.25 |
+| Pick up · Drop | The press for a thing that is dragged rather than tapped: it grows a tenth toward the finger and its shadow parts from it (further below, wider, fainter). On release it springs back with the back ease and hops on landing; whatever weight the board gives it (Untangle's cord slack and swing) settles on its own. | `lift`: `LIFT_SCALE` 1.1 in `LIFT_TIME` 0.12, back-ease out `RELEASE_TIME` 0.25; `hop` `HOP` -6 over `HOP_TIME` 0.3 |
 | Place | The old piece pops out; the new one pops in with the squash; the tile hops; the side neighbours lean away and back; a puff of five stars in the piece's colour. | `pop_out` `POP_OUT` 0.12; `pop_in` `POP_IN` 0.22 with `POP_SQUASH` 0.15; `hop` `HOP` -6 over `HOP_TIME` 0.3; `nudge` `NUDGE` 3 over 0.3 after `NUDGE_LAG` 0.04; `fx.puff` |
 | Remove | The piece shrinks to nothing with a quarter turn, rising a little if the board wants; whatever it hid pops back under it. | `pop_out`, optional `lift`; `pop_in` 0.18 on what returns |
-| Hint | A ring pulses out of the cell, the piece drops in from above with the back ease while it fades in, sparkles rise, the cell takes the given look. | `fx.ring` `RING_TIME` 0.5; `drop_in` `DROP` 40 over `DROP_TIME` 0.3; `fx.sparkle` |
+| Hint | A ring pulses out of the cell, the piece drops in from above with the back ease while it fades in, sparkles rise, the cell takes the given look. A board whose pieces walk (Untangle) walks the piece to its place instead, and rings and sparkles as it lands. | `fx.ring` `RING_TIME` 0.5; `drop_in` `DROP` 40 over `DROP_TIME` 0.3; `fx.sparkle` |
 | Wrong on Check | Each wrong cell wobbles and flashes toward `Pal.BAD_TILE` and back. | `wobble2d` 0.45; `flash` (`FLASH_IN` 0.15, `FLASH_OUT` 0.45) |
 | Clean Check | The Check pill squashes and says All good for a moment. | `ui/flat/flat_actions.gd` |
 | Undo | The reverse of Place. | as Place |
@@ -60,13 +72,16 @@ a recipe in `core/motion.gd` unless it names another file.
 | Refused | A press the rules will not take: the card shivers and blushes toward `BAD` and settles, and the sprout says why. The button still takes the press, or the reason is never given. | `shiver`; `flash` toward `BAD` (`FLASH_IN` 0.15, `FLASH_OUT` 0.45) |
 | Reveal | A hint that settles a card rather than a cell: the card takes the given look, the value drops in from above, the tag pops in, a ring pulses out of its character. | `drop_in`; `pop_in` 0.18; `fx.ring` |
 | Tip | The line fades in and the sprout hops with its new face. | `ui/flat/tip_card.gd`: `appear` 0.25, `hop` -8 over 0.35 |
-| Idle | Faces blink at their own 3 to 7 s; suns turn a revolution in 40 s; a third of the moons rock. | `ui/faces/face.gd` |
+| Idle | Faces blink at their own 3 to 7 s; suns turn a revolution in 40 s; a third of the moons rock; Untangle's knots turn gently, a redraw with the mesh the board already has and no rebuild. | `ui/faces/face.gd` |
 
 What is a board's alone stays a board's: Binairo's blush with its two
 heartbeats and its focus tint; Code Break's flight from the palette, its dip
 under a score, its pips dropping into the pouch, its lids and the code's pop;
-Balance's tilt and the shadows that follow its dishes. A new board may add
-one signature of its own on top of the table, not instead of it.
+Balance's tilt and the shadows that follow its dishes; Untangle's two
+springs, its walks (a hint's to the peg, an undo's back, reset's home, one
+`SLIDE_TIME` for all three) and the light that runs along its string on the
+win, one hop of the graph per `LIGHT_STEP`. A new board may add one signature
+of its own on top of the table, not instead of it.
 
 **A row is not a cell.** The staggers above are per cell of a grid. A board
 whose pieces are rows (Balance's scales, Code Break's lids) paces its waves
@@ -103,6 +118,13 @@ one thing.
   is one radial disc drawn scaled to the ellipse wanted, in `TEXT` at 0.06
   to 0.16, widest and darkest for a thing on the ground and narrower and
   fainter as it rises. One draw a shadow, redrawn only when the thing moves.
+  A board that already rebuilds a mesh while its things move builds the
+  same disc into it with `Scenery.soft_disc` (Untangle's cord mesh, the
+  shadows first so they lie under the cords), at no draw call of their own.
+  A thing that hangs rather than stands throws its shadow on the wall behind
+  it, a little below and to one side; a lifted thing's shadow parts from it
+  and a hopping thing leaves its shadow where it was, and that is what makes
+  height read on a flat card.
 - **Decoration says so**: the sparks beside Code Break's lids, the hearts on
   the menu's day row, Balance's clouds and grass. Nothing decorative may
   read as a count of anything.
@@ -111,7 +133,10 @@ one thing.
 
 1. Read its inline tweens and match each to a row above. Replace the ones
    that match with the recipe, passing the board's own number only where it
-   truly differs. Delete the constants the recipes now own.
+   truly differs. Delete the constants the recipes now own. A board that
+   integrates its motion against a clock (a drag) keeps the *point's* motion
+   and puts each piece in a slot; the piece then takes the recipes (rule 2),
+   and what stays drawn reads the constants (rule 8).
 2. Keep `_stop_all` and its generation counter; add any new tween you keep
    to it.
 3. Route every ring, puff and sparkle through `fx`. A tray that animates
@@ -131,4 +156,5 @@ one thing.
 | Binairo | the source; its press, pop in, pop out, drop, nudge, ring and waves call the recipes (2026-09-18) |
 | Code Break | on it (2026-09-18): entrance pop, seat press, flight landing with squash and puff, lit chip, pop-out on send back, flash on an incomplete Check, solve wave, ring and drop through Fx2D. Measured: fullest board 234 draw calls, 3.8 ms idle at 1080 x 1920 on this Mac |
 | Balance | on it (2026-09-18): scales pop in wide and level, fruit land with the squash and swing the beam, a stepped kind hops in every dish with the card's bump and puff, a refused card shivers and blushes, a hint's card reveals under a ring, a level beam rings through Fx2D, the solve wave; plus its ground shadows and scenery. Measured: 146 draw calls, 3.24 ms idle at 1080 x 1920 on this Mac (7.42 before, when every face redrew every frame) |
-| Shikaku, Untangle, Tents, Light Up, One Line, Nonogram | still carry their own tweens; port when next touched, by the steps above |
+| Untangle | on it (2026-09-19): rings and cords pop in along the stagger and each lantern pops onto its ring a beat later, the lift on pick-up with the shadow parting, the hop on the drop and on every walk's landing, knots undone and a hint's peg ring through Fx2D, the solve wave's hop as the light reaches each lantern; the springs and the walks stay its own. Shadows in the cord mesh, clouds and tufts through Scenery. Measured: 66 draw calls (75 before), 2.92 ms idle bare at 1080 x 1920 on this Mac (2.94 before); 4.8 ms while a dropped lantern's swing settles |
+| Shikaku, Tents, Light Up, One Line, Nonogram | still carry their own tweens; port when next touched, by the steps above |

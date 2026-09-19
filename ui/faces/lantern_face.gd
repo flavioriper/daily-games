@@ -47,6 +47,14 @@ var lit: float = 0.0:
 	set(v):
 		lit = clampf(v, 0.0, 1.0)
 		queue_redraw()
+## Whether the paper casts its own shadow layer. A board that draws the
+## shadows on its own ground (Untangle builds them into its cord mesh, so a
+## lifted lantern's shadow can part from it) turns this off; Light Up's lamp
+## and the menu's card keep it.
+var casts: bool = true:
+	set(v):
+		casts = v
+		queue_redraw()
 
 func _kind() -> String:
 	return "lantern%d_%d" % [hue % Pal.LANTERN_PAPER.size(), int(_lit_level() * 4.0)]
@@ -57,9 +65,13 @@ func _radius_for(px: float) -> float:
 func _layers() -> Array:
 	# The halo is only a layer while there is light in it: an empty mesh is
 	# a surface with no vertices, which is not worth building or drawing.
+	var layers: Array = []
 	if _lit_level() > 0.0:
-		return [["glow", false], ["shadow", false], ["body", true]]
-	return [["shadow", false], ["body", true]]
+		layers.append(["glow", false])
+	if casts:
+		layers.append(["shadow", false])
+	layers.append(["body", true])
+	return layers
 
 func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 	var paper: Array = Pal.LANTERN_PAPER[hue % Pal.LANTERN_PAPER.size()]

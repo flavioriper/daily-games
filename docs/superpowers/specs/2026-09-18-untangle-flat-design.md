@@ -1,6 +1,6 @@
 # Untangle, flat: the fifth screen on trial
 
-Status: built, 2026-09-18. Concept page:
+Status: built, 2026-09-18; polished onto the flat vocabulary 2026-09-19 (section 11). Concept page:
 `docs/brainstorm/concepts.html#untangle`. Sibling specs:
 `2026-09-18-binairo-flat-design.md`, `2026-09-18-codebreak-flat-design.md`,
 `2026-09-18-balance-flat-design.md`, `2026-09-18-shikaku-flat-design.md`.
@@ -206,3 +206,82 @@ answers the island's own names (`nodes`, `_pos`, `_locked`, `_crossings`,
 - **Whether a hint should hang a lantern on a peg for good.** It is the
   island's behaviour and it is generous, but on a board whose solution is not
   unique it also quietly commits the player to the generator's drawing.
+
+## 11. Amendment: the polish of 2026-09-19
+
+The user asked for Untangle to be polished with proper animations on
+Binairo's pattern, smoother and more elegant, and for the pattern to be kept
+so the other boards take it. Built straight in Godot, as Code Break's and
+Balance's were, with this amendment and `docs/art/flat-motion.md` as the
+record. The layout is kept. Section 7's "Nothing here is a tween" is
+superseded by what follows; sections 3 to 5 stand.
+
+**Two hands.** Untangle is the first flat board whose motion was integrated
+against a clock rather than tweened, and it stays that way for the *point*:
+the drag, the cord's slack and the lantern's swing (the two springs), and the
+scripted walks all run in `_process`, because a tween would fight a finger
+that is still moving the thing. What the *paper* does is the family's
+vocabulary (`core/motion.gd`), and it can be because every lantern now
+stands in a slot the board owns: the slot takes the ring's place and the
+swing every frame, and the face hangs inside it where `pop_in`, `lift` and
+`hop` tween its scale and height without the placement writing over them.
+The rule is recorded as the second half of the doc's rule 2; what is drawn
+into the cord mesh (rings, arms, cords) reads the recipes' constants and
+draws the family's overshoot as a curve (rule 8).
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | the rings pop and the cords fade in along `ENTER_STAGGER` 0.03 over `ENTER_POP` 0.25, drawn; each lantern pops onto its ring `ENTER_FACE_LAG` 0.12 later with the squash. The string is hung first, then the paper. The drop from 60 above is gone |
+| Pick up | `Motion.lift`, new to the vocabulary as the press for a dragged thing: the paper grows to 1.1 in 0.12 and its shadow parts from it; the cords wake as before |
+| Drop | the paper springs back over `RELEASE_TIME` with the back ease and hops `HOP` -6; the springs settle as before |
+| Knot undone | rings through `Fx2D.ring` in `KNOT` at R, once a knot a hold; the board's own drawn puff rings are gone, as are `PUFF_*` |
+| Hint, undo, reset | the walks stay, one `SLIDE_TIME` 0.3 for all three (0.35 and 0.26 were copies with a drift), reset paced through `Motion.stagger` at `HOME_STEP` 0.04; every walk hops as it lands; the hint's peg rings green through `Fx2D.ring` and sparkles *as the lantern arrives*, in place of the drawn lock ring |
+| Piled up | the crowd squash is settled through `lift` on its base scale when the pile forms or breaks, not written every frame |
+| Solved | the light still runs along the string one hop per `LIGHT_STEP` 0.12 from `SOLVE_DELAY` 0.25; each lantern hops `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4 as its light arrives, and sparkles through `_after` with the board's generation counter |
+| Idle | the knots turn gently at rest, which they did not: a redraw with the mesh the board already has, no rebuild |
+
+Faces are written only when their look changes, as Balance's are.
+
+**The dressing:**
+
+- **Shadows on the wall behind.** Every lantern throws a soft shadow on the
+  parchment, the family's radial disc, built into the cord mesh under the
+  cords with `Scenery.soft_disc` (new, and what `Scenery.shadow()` is made
+  of), so fourteen shadows cost no draw call. A shadow is anchored at the
+  paper's rest and reads the paper's own height: it arrives with the pop-in,
+  parts from a lifted lantern (0.34 R further down, 0.18 wider, 0.16 to 0.08
+  in `TEXT`) and stays put under a hop. `LanternFace.casts` turns the face's
+  own shadow layer off for this; Light Up's lamp and the menu's card keep
+  theirs.
+- **Scenery** through `ui/flat/scenery.gd`, drawn behind the board's own
+  drawing: a cloud in each top corner (34 and 29) and five tufts along the
+  bottom edge, in the 30 under the lowest a paper can hang. One mesh, one
+  draw call. Decoration says so: nothing there counts anything.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+Untangle run now drags the first lantern over 0.35 s (`empty` skips it):
+
+| | Draw calls | Idle |
+|---|---|---|
+| Medium board at rest, before | 75 | 2.94 ms |
+| Medium board at rest, now | 66 | 2.92 ms |
+| Now, after a drag, its swing settling into the window | 66 | 4.8 ms |
+
+The nine draw calls saved are the faces' shadow layers, less the scenery.
+Three earlier readings of 7.9 ms at rest were the machine, not the board: an
+instrumented copy of the same harness read 2.9 with nothing rebuilding, and
+the harness itself read 2.92 twice afterwards. Take two readings, and take
+them later if they disagree with a probe.
+
+Suite 2086/0. `tests/_win.gd` windowed 9/9, Untangle solved through the
+real hint button and drags. Throwaway probes shot the entrance, the lift,
+the drop and its hop, a hint's walk and landing, an undo, a reset's walk,
+the light run and the win, each with and without reduce-motion (under
+which the string is up at once, nothing lifts or rings, and the light is
+on the moment the board is solved).
+
+Open, still, from section 10: whether the straight cord is worth the rope,
+and the phone question generally. Nothing here answers it; it only makes the
+flat board move with the same hand as the other three.

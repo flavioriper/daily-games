@@ -1,10 +1,8 @@
 extends "res://core/puzzle_base.gd"
 
 ## Untangle as a flat board: paper lanterns hung on cords over the host's
-## parchment card, dragged until no two cords cross. Built beside the island
-## version (puzzles/untangle3d.gd) so the two can be judged against each other
-## on the phone; the rules live in puzzles/untangle_state.gd, which this only
-## draws.
+## parchment card, dragged until no two cords cross. The rules live in
+## puzzles/untangle_state.gd, which this only draws.
 ##
 ## This is the screen with the strongest case for going flat, and it is a case
 ## about honesty rather than polish. The island strings a Verlet rope between
@@ -15,21 +13,28 @@ extends "res://core/puzzle_base.gd"
 ## slack while the lantern it hangs off is in the player's hand, and springs
 ## straight again within about half a second of the drop.
 ##
-## How it is drawn. Every cord, every ring and arm and every fading puff go
-## into one ArrayMesh through Face.Builder, rebuilt only on the frames
-## something is actually moving, so a hard board of twenty-four cords costs
-## one draw command rather than fifty strokes -- gl_compatibility pays per
-## command (see CLAUDE.md). The knots are one cached mesh drawn once per
-## crossing with its own turn, and the lanterns are the only nodes: fourteen
-## Face subclasses, each one cached mesh a layer.
+## How it is drawn. Every shadow, every cord, every ring and arm go into one
+## ArrayMesh through Face.Builder, rebuilt only on the frames something is
+## actually moving, so a hard board of twenty-four cords costs one draw command
+## rather than fifty strokes -- gl_compatibility pays per command (see
+## CLAUDE.md). The knots are one cached mesh drawn once per crossing with its
+## own turn, the scenery is one mesh behind everything, and the lanterns are
+## the only nodes: fourteen Face subclasses, each one cached mesh a layer.
 ##
-## The frame is the mock's, kept deliberately: positions, springs and
-## entrances are integrated and interpolated in _process against a clock,
-## never tweened, because the picture of a lantern moves under a finger that
-## is still moving it and a tween would be fighting the drag.
+## How it moves, in two hands. What the *point* does -- the drag, the two
+## springs, a scripted walk to a peg or home -- is integrated in _process
+## against a clock, never tweened, because the picture of a lantern moves
+## under a finger that is still moving it and a tween would be fighting the
+## drag. What the *paper* does -- pop in, lift under the finger, hop on a
+## landing, the solve wave -- is the flat boards' vocabulary in core/motion.gd
+## (docs/art/flat-motion.md), and it can be, because every lantern stands in
+## a slot the board owns: the slot takes the ring's place and the swing, and
+## the face moves inside it where the recipes tween it without the per-frame
+## placement writing over them. The springs are this board's signature; the
+## rest is the family's.
 ## Spec: docs/superpowers/specs/2026-09-18-untangle-flat-design.md, sections 2
-## to 7, and the mock it is ported from
-## (docs/brainstorm/concepts.html#untangle).
+## to 7 and the amendment at its end; the mock it was ported from is
+## docs/brainstorm/concepts.html#untangle.
 
 const State = preload("res://puzzles/untangle_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -37,6 +42,7 @@ const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const LanternFace = preload("res://ui/faces/lantern_face.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 # --- the field ---
 ## The card's insets. The bottom one is the deep one, because the ring is the
@@ -63,9 +69,22 @@ const RING_PIP := 0.06
 const ARM_WIDTH := 0.09
 ## A tap grabs the nearest lantern within this of its ring or its body.
 const GRAB_R := 1.9
-const GRAB_SCALE := 0.09
 ## A crowded lantern squashes against its neighbour.
 const CROWD_SQUASH := Vector2(1.1, 0.9)
+
+# --- the shadow, in R ---
+## The shadow a lantern throws on the parchment behind it: the family's soft
+## disc (Scenery.soft_disc), a little below the paper, and further below,
+## wider and fainter while the lantern is lifted toward the finger -- which is
+## what makes the lift read as a lift and a hop as a hop, since the paper
+## moves and the shadow stays.
+const SHADOW_AT := Vector2(0.1, 1.2)
+const SHADOW_RX := 0.9
+const SHADOW_RY := 0.28
+const SHADOW_NEAR := 0.16
+const SHADOW_FAR := 0.08
+const SHADOW_LIFT := Vector2(0.14, 0.34)
+const SHADOW_SPREAD := 0.18
 
 # --- the knot ---
 const KNOT_R := 0.62
@@ -76,10 +95,6 @@ const KNOT_FADE := 16.0
 const KNOT_SPAN := 4.0
 const KNOT_SPIN := 0.14
 const KNOT_TURN := 1.7
-const PUFF_TIME := 0.45
-const PUFF_FROM := 18.0
-const PUFF_GROW := 70.0
-const PUFF_WIDTH := 7.0
 
 # --- the two springs ---
 const SAG_K := 46.0
@@ -98,28 +113,34 @@ const SWING_REST_V := 0.02
 ## How far a drag has to travel before it counts as a move, in field pixels.
 const DRAG_SLOP := 0.4
 
-# --- motion ---
+# --- motion: what is this board's own ---
+## The string is hung this long after the board opens, behind the chrome.
 const ENTER_DELAY := 0.18
-const ENTER_STAGGER := 0.035
-const ENTER_TIME := 0.42
-const ENTER_DROP := 60.0
-const HOP := 10.0
-const HOP_TIME := 0.36
+## A scripted walk -- a hint's to its peg, an undo's back, reset's home --
+## takes this long, with the family's overshoot drawn as a curve.
 const SLIDE_TIME := 0.3
-const UNDO_TIME := 0.26
-const HINT_TIME := 0.35
+## Reset walks the lanterns home one per this, so the tangle visibly
+## re-forms rather than snapping back.
 const HOME_STEP := 0.04
-const LOCK_RING := 0.6
-const LOCK_RING_R := 0.3
-const LOCK_RING_GROW := 1.4
-const LOCK_RING_WIDTH := 6.0
-## The light runs out from one lantern along the cords, hop by hop.
-const LIGHT_DELAY := 0.16
+## The light runs out from one lantern along the cords: one hop of the graph
+## per LIGHT_STEP (a hop is a row, not a cell, so it is paced like one), and a
+## lantern warms over LIGHT_TIME as it arrives.
 const LIGHT_STEP := 0.12
 const LIGHT_TIME := 0.4
 ## How long the host waits before the win screen: the light has to reach the
 ## far end of the string first.
 const WIN_WAIT := 2.0
+
+# --- the scenery ---
+## Two clouds in the card's top corners and tufts along its bottom edge,
+## where the lanterns never quite reach: the lowest ring hangs its paper to
+## about 130 above the card's foot, and the tufts stand in the last 30.
+const CLOUD_R := 34.0
+const CLOUD_X := 118.0
+const CLOUD_Y := 58.0
+const TUFT_H := 30.0
+const TUFT_INSET := 24.0
+const TUFT_X: Array[float] = [0.09, 0.27, 0.5, 0.71, 0.9]
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 9.0
@@ -144,7 +165,13 @@ var _crossings: int:
 	get: return state.crossings()
 
 var fx: Node2D
-var _lanterns: Array = []      # [i] -> LanternFace
+var _scenery: Control
+var _slots: Array[Control] = []   # [i] -> the ring's place and the swing
+var _lanterns: Array = []          # [i] -> LanternFace, hung inside its slot
+var _scale_tw: Array = []          # [i] -> the pop in, the lift or the settle
+var _hop_tw: Array = []            # [i] -> the hop
+## Bumped on every rebuild; a pending callback from the last board checks it.
+var _gen := 0
 var _field := Rect2()
 var _r := 0.0
 var _difficulty := 0
@@ -154,19 +181,15 @@ var _held := -1
 var _grab := Vector2.ZERO
 var _dragged := false
 
-# --- the picture's own clock ---
-## [i] -> {"from": Vector2 (where it was drawn), "at": float, "dur": float}:
-## a slide the board scripted. A held lantern has none; it is on the finger.
+# --- the point's own clock ---
+## [i] -> {"from": Vector2 (where it was drawn), "at": float}: a walk the
+## board scripted. A held lantern has none; it is on the finger.
 var _mv: Array = []
 var _swing := PackedFloat32Array()
 var _swing_v := PackedFloat32Array()
 var _sag := PackedFloat32Array()
 var _sag_v := PackedFloat32Array()
-var _hop_at := PackedFloat32Array()
-var _lock_at := PackedFloat32Array()
 var _lit_at := PackedFloat32Array()
-## Rings where a knot came undone: {"at": Vector2 (in the square), "t": float}.
-var _puffs: Array = []
 ## Queued walks home, oldest first: {"node": int, "at": float}.
 var _walk: Array = []
 var _opened := 0.0
@@ -175,11 +198,20 @@ var _last := -1.0
 
 # --- what is drawn ---
 var _cord_mesh: ArrayMesh
+## The mesh the last _draw handed over, kept until the next one replaces it:
+## a canvas command holds a mesh by RID, and a frame rendered before the
+## queued redraw is flushed would otherwise draw a freed one (see CLAUDE.md).
+var _shown: ArrayMesh
 var _knot_mesh: ArrayMesh
 var _knots_px: Array = []
 var _knot_alpha := 0.0
 ## The crossings the last scan found, so the next one can say what went.
 var _knot_keys: Dictionary = {}
+## The knots that rang during this hold: a knot a fast drag flickers rings
+## once, not once a frame.
+var _rang: Dictionary = {}
+## The lanterns the last scan found piled up, so a change can be settled.
+var _crowded_was: Dictionary = {}
 
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
@@ -198,6 +230,12 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The scenery draws behind this Control's own drawing, so the clouds and
+	# the grass sit under the cords and not over them.
+	_scenery = Scenery.new()
+	_scenery.name = "Scenery"
+	_scenery.show_behind_parent = true
+	add_child(_scenery)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -212,16 +250,18 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_difficulty = clampi(difficulty, 0, R_OF.size() - 1)
 	state.setup(rng, difficulty)
+	_stop_all()
 	_held = -1
 	_dragged = false
-	_puffs = []
 	_walk = []
 	_solved_at = -1.0
 	_last = -1.0
 	_opened = _now()
 	_remember_knots()
+	_crowded_was = state.crowded.duplicate()
 	_build_lanterns()
 	_layout()
+	_enter()
 	_tip_idx = 0
 	_say(TIPS[0], Face.Expr.HAPPY)
 	_tip_timer.start()
@@ -230,29 +270,47 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 # --- the cast ---
 
 func _build_lanterns() -> void:
-	for lantern in _lanterns:
-		lantern.queue_free()
+	for slot in _slots:
+		slot.queue_free()
+	_slots = []
 	_lanterns = []
 	_mv = []
+	_scale_tw = []
+	_hop_tw = []
 	_swing = PackedFloat32Array(); _swing.resize(state.nodes)
 	_swing_v = PackedFloat32Array(); _swing_v.resize(state.nodes)
-	_hop_at = PackedFloat32Array(); _hop_at.resize(state.nodes)
-	_lock_at = PackedFloat32Array(); _lock_at.resize(state.nodes)
 	_lit_at = PackedFloat32Array(); _lit_at.resize(state.nodes)
 	_sag = PackedFloat32Array(); _sag.resize(state.edges.size())
 	_sag_v = PackedFloat32Array(); _sag_v.resize(state.edges.size())
 	for i in state.nodes:
-		_hop_at[i] = -100.0
-		_lock_at[i] = -100.0
 		_lit_at[i] = 1.0e9
-		_mv.append({"from": Vector2.ZERO, "at": -100.0, "dur": SLIDE_TIME})
+		_mv.append({"from": Vector2.ZERO, "at": -100.0})
+		_scale_tw.append(null)
+		_hop_tw.append(null)
+		var slot := Control.new()
+		slot.name = "slot_%d" % i
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(slot)
 		var lantern := LanternFace.new()
 		lantern.name = "lantern_%d" % i
 		lantern.hue = i
+		lantern.casts = false
 		lantern.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(lantern)
+		# Nothing until the string is hung; _enter pops each one in.
+		lantern.scale = Vector2.ZERO
+		slot.add_child(lantern)
 		lantern.set_idle(true)
+		_slots.append(slot)
 		_lanterns.append(lantern)
+
+## The entrance: the rings pop and the cords fade in along the family's
+## stagger (drawn, in _build_cords), and each lantern pops in on its ring a
+## beat later with the squash -- the string is hung first, then the paper.
+func _enter() -> void:
+	for i in state.nodes:
+		Motion.stop(_scale_tw[i])
+		_scale_tw[i] = Motion.pop_in(_lanterns[i], Motion.POP_IN,
+			ENTER_DELAY + Motion.stagger(i, Motion.ENTER_STAGGER) + Motion.ENTER_FACE_LAG, _rest_scale(i))
 
 # --- layout ---
 
@@ -268,11 +326,31 @@ func _layout() -> void:
 		return
 	_r = R_OF[_difficulty] * minf(1.0, _field.size.x / R_WIDTH)
 	var seat := _r * LanternFace.SEAT
-	for lantern in _lanterns:
+	for i in state.nodes:
+		var lantern: Control = _lanterns[i]
 		lantern.size = Vector2(seat, seat)
 		lantern.pivot_offset = lantern.size * 0.5
+		# A mover owns its place until it lands: a hop mid-flight is left
+		# where it is, and puts itself back here when it comes down.
+		if not Motion.running(_hop_tw[i]):
+			lantern.position = _hang_rest(i)
 	_knot_mesh = _build_knot()
+	_dress()
 	_refresh(_now())
+
+## The scenery's anchors, in this Control's pixels.
+func _dress() -> void:
+	_scenery.size = size
+	var clouds: Array[Vector3] = [
+		Vector3(CLOUD_X, CLOUD_Y, CLOUD_R),
+		Vector3(size.x - CLOUD_X, CLOUD_Y * 1.15, CLOUD_R * 0.85),
+	]
+	var tufts: Array[Vector3] = []
+	for k in TUFT_X.size():
+		tufts.append(Vector3(size.x * TUFT_X[k], size.y - TUFT_INSET, TUFT_H * (1.0 if k % 2 == 0 else 0.8)))
+	_scenery.clouds = clouds
+	_scenery.tufts = tufts
+	_scenery.rebuild()
 
 func _to_px(p: Vector2) -> Vector2:
 	return _field.position + p * _field.size
@@ -283,12 +361,12 @@ func _to_norm(px: Vector2) -> Vector2:
 	return (px - _field.position) / _field.size
 
 ## Where lantern `i` is drawn, in the square: on the finger while it is held,
-## on its way while a scripted slide is in flight, otherwise where it is.
+## on its way while a scripted walk is in flight, otherwise where it is.
 func _disp(i: int, t: float) -> Vector2:
 	if i == _held:
 		return state.pos[i]
 	var m: Dictionary = _mv[i]
-	var u := _dec((t - float(m.at)) / float(m.dur))
+	var u := _dec((t - float(m.at)) / SLIDE_TIME)
 	if u >= 1.0:
 		return state.pos[i]
 	return Vector2(m.from).lerp(state.pos[i], _back_out(u))
@@ -301,6 +379,17 @@ func node_to_local(i: int) -> Vector2:
 ## The place the generator's untangled drawing put it, likewise.
 func planar_to_local(i: int) -> Vector2:
 	return _to_px(state.planar[i])
+
+## Where the paper rests inside its slot: its centre an arm and a hang below
+## the ring. The hop tweens it from here and back.
+func _hang_rest(i: int) -> Vector2:
+	var lantern: Control = _lanterns[i]
+	return Vector2(0.0, (LanternFace.ARM + LanternFace.HANG) * _r) - lantern.size * 0.5
+
+## The scale a lantern rests at: squashed against a neighbour when piled up,
+## otherwise one. The lift and the pop ride on it.
+func _rest_scale(i: int) -> Vector2:
+	return CROWD_SQUASH if state.crowded.has(i) else Vector2.ONE
 
 # --- the frame ---
 
@@ -315,11 +404,12 @@ func _process(delta: float) -> void:
 	_last = t
 	_fire_walks(t)
 	_springs(dt)
-	for k in range(_puffs.size() - 1, -1, -1):
-		if t - float(_puffs[k].t) >= PUFF_TIME:
-			_puffs.remove_at(k)
 	if _animating(t):
 		_refresh(t)
+	elif _knot_alpha > 0.0 and not Motion.reduce:
+		# The knots turn gently while the board rests: a redraw with the
+		# mesh it already has, no rebuild.
+		queue_redraw()
 
 ## The cords' slack and the lanterns' swing, both springs, both still under
 ## reduce motion.
@@ -353,26 +443,27 @@ func _fire_walks(t: float) -> void:
 		var i := int(step.node)
 		if state.locked[i]:
 			continue
-		_slide(i, _disp(i, t), SLIDE_TIME, t)
+		_slide(i, _disp(i, t), t)
 		state.place(i, state.start[i])
-		_wake(i, t)
 		_after_scan(t)
 
 ## True while anything on the board is still moving. Nothing is rebuilt or
 ## redrawn on a frame this says no to, which is most of them: a board sitting
 ## still costs its lanterns' blinks and nothing else.
 func _animating(t: float) -> bool:
-	if _held >= 0 or not _walk.is_empty() or not _puffs.is_empty():
+	if _held >= 0 or not _walk.is_empty():
 		return true
-	if t < _opened + ENTER_DELAY + state.nodes * ENTER_STAGGER + ENTER_TIME:
+	if t < _opened + ENTER_DELAY + Motion.stagger(state.nodes - 1, Motion.ENTER_STAGGER) \
+			+ Motion.ENTER_FACE_LAG + Motion.POP_IN:
 		return true
 	if _solved_at >= 0.0 and t < _solved_at + WIN_WAIT:
 		return true
 	for i in state.nodes:
 		var m: Dictionary = _mv[i]
-		if t < float(m.at) + float(m.dur):
+		if t < float(m.at) + SLIDE_TIME:
 			return true
-		if t < _hop_at[i] + HOP_TIME or t < _lock_at[i] + LOCK_RING:
+		# The shadow follows the paper, so the mesh keeps up with its tweens.
+		if Motion.running(_scale_tw[i]) or Motion.running(_hop_tw[i]):
 			return true
 		if _swing[i] != 0.0 or _swing_v[i] != 0.0:
 			return true
@@ -388,56 +479,59 @@ func _refresh(t: float) -> void:
 	_cord_mesh = _build_cords(t)
 	queue_redraw()
 
-## Every lantern hangs off its ring: the arm turns with the swing and the body
-## with it, so a flung lantern lags behind the point the rule is about.
+## Every lantern hangs off its ring: the slot stands on the ring and turns
+## with the swing, and the paper inside it turns with the slot, so a flung
+## lantern lags behind the point the rule is about. A face is written only
+## when its look changes -- a written face redraws.
 func _place_lanterns(t: float) -> void:
 	for i in state.nodes:
+		var slot: Control = _slots[i]
 		var lantern: LanternFace = _lanterns[i]
-		var u := _enter_u(i, t)
-		if u <= 0.0:
-			lantern.visible = false
-			continue
-		lantern.visible = true
-		lantern.modulate.a = u
-		var hang := (LanternFace.ARM + LanternFace.HANG) * _r + _hop(i, t)
-		var centre := _ring_px(i, t) + Vector2(0.0, hang).rotated(_swing[i])
-		lantern.position = centre - lantern.size * 0.5
-		lantern.rotation = _swing[i]
-		var grow := 1.0 + (GRAB_SCALE if i == _held else 0.0)
-		lantern.scale = (CROWD_SQUASH if state.crowded.has(i) else Vector2.ONE) * grow
-		var glow := 0.0 if _solved_at < 0.0 else clampf((t - _lit_at[i]) / LIGHT_TIME, 0.0, 1.0)
-		lantern.lit = glow
+		slot.position = _ring_px(i, t)
+		slot.rotation = _swing[i]
+		var glow := 0.0
+		if _solved_at >= 0.0:
+			glow = roundf(clampf((t - _lit_at[i]) / LIGHT_TIME, 0.0, 1.0) * 4.0) / 4.0
+		if lantern.lit != glow:
+			lantern.lit = glow
+		var expr := Face.Expr.HAPPY
 		if _solved_at >= 0.0 and t >= _lit_at[i]:
-			lantern.expression = Face.Expr.JOY
+			expr = Face.Expr.JOY
 		elif state.crowded.has(i):
-			lantern.expression = Face.Expr.STRAIN
-		else:
-			lantern.expression = Face.Expr.HAPPY
+			expr = Face.Expr.STRAIN
+		if lantern.expression != expr:
+			lantern.expression = expr
 
-## The ring's own place on screen, entrance drop included: the whole lantern
-## falls in, ring and all.
+## The ring's own place on screen.
 func _ring_px(i: int, t: float) -> Vector2:
-	var drop := 0.0
-	if not Motion.reduce:
-		drop = -ENTER_DROP * (1.0 - _back_out(_enter_u(i, t)))
-	return _to_px(_disp(i, t)) + Vector2(0.0, drop)
+	return _to_px(_disp(i, t))
 
+## How far in lantern `i`'s ring and cords are, 0 to 1, along the family's
+## entrance: one per ENTER_STAGGER, each over ENTER_POP.
 func _enter_u(i: int, t: float) -> float:
-	return _dec((t - _opened - ENTER_DELAY - i * ENTER_STAGGER) / ENTER_TIME)
+	return _dec((t - _opened - ENTER_DELAY - Motion.stagger(i, Motion.ENTER_STAGGER)) / Motion.ENTER_POP)
 
-func _hop(i: int, t: float) -> float:
-	if Motion.reduce:
-		return 0.0
-	var u := (t - _hop_at[i]) / HOP_TIME
-	if u < 0.0 or u >= 1.0:
-		return 0.0
-	return -HOP * sin(PI * u)
+## A landing: the paper hops on its cord.
+func _hop(i: int, height := Motion.HOP, time := Motion.HOP_TIME, delay := 0.0) -> void:
+	Motion.stop(_hop_tw[i])
+	var lantern: Control = _lanterns[i]
+	var rest := _hang_rest(i)
+	lantern.position = rest
+	_hop_tw[i] = Motion.hop(lantern, height, time, delay, rest.y)
+
+## The paper's scale, settled to where it now belongs: lifted while it is in
+## the hand, squashed while it is piled up, one otherwise. The lift is the
+## family's press for a dragged thing.
+func _settle_scale(i: int) -> void:
+	Motion.stop(_scale_tw[i])
+	_scale_tw[i] = Motion.lift(_lanterns[i], i == _held, _rest_scale(i))
 
 # --- the drawing ---
 
 func _draw() -> void:
 	if _cord_mesh != null:
 		draw_mesh(_cord_mesh, null)
+	_shown = _cord_mesh
 	if _knot_mesh == null or _knot_alpha <= 0.0:
 		return
 	var tint := Color(1.0, 1.0, 1.0, _knot_alpha)
@@ -446,9 +540,10 @@ func _draw() -> void:
 		var spin := 0.0 if Motion.reduce else sin(t * KNOT_TURN + k * 1.9) * KNOT_SPIN
 		draw_mesh(_knot_mesh, null, Transform2D(PI * 0.25 + spin, _knots_px[k]), tint)
 
-## Every cord, every ring and arm and every fading puff, in one mesh. The
-## crossings are read off the *drawn* points rather than the logical ones, so
-## a cord does not redden before the lantern sliding off it has arrived.
+## Every shadow, every cord, every ring and arm, in one mesh, in that order,
+## so the shadows lie under the cords. The crossings are read off the *drawn*
+## points rather than the logical ones, so a cord does not redden before the
+## lantern sliding off it has arrived.
 func _build_cords(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var px := PackedVector2Array()
@@ -458,6 +553,8 @@ func _build_cords(t: float) -> ArrayMesh:
 	var bad: Dictionary = shown.bad
 	_knots_px = shown.pts
 	_knot_alpha = clampf((KNOT_FADE - _knots_px.size()) / KNOT_SPAN, 0.0, 1.0)
+	for i in state.nodes:
+		_shadow(b, i, px[i])
 	for e in state.edges.size():
 		var edge: Vector2i = state.edges[e]
 		var alpha := minf(_enter_u(edge.x, t), _enter_u(edge.y, t))
@@ -476,33 +573,43 @@ func _build_cords(t: float) -> ArrayMesh:
 		b.stroke(curve, CORD_WIDTH, Color(Pal.KNOT_DEEP if caught else Pal.CORD_DEEP, alpha))
 		b.stroke(curve, CORD_LIGHT, Color(light, alpha))
 	for i in state.nodes:
-		var alpha := _enter_u(i, t)
-		if alpha <= 0.0:
+		var u := _enter_u(i, t)
+		if u <= 0.0:
 			continue
+		# The ring and its arm pop in with the family's overshoot, drawn.
+		var grown := _back_out(u)
 		var ring := px[i]
-		var arm := ring + Vector2(0.0, LanternFace.ARM * _r).rotated(_swing[i])
-		b.stroke(PackedVector2Array([ring, arm]), ARM_WIDTH * _r, Color(Pal.CORD_DEEP, alpha))
+		var arm := ring + Vector2(0.0, LanternFace.ARM * _r * grown).rotated(_swing[i])
+		b.stroke(PackedVector2Array([ring, arm]), ARM_WIDTH * _r * grown, Pal.CORD_DEEP)
 		# The ring is the node the rule is about, so it stays a point; a peg
 		# turns it green and puts a hole through it.
-		b.disc(ring, RING_R * _r, Color(Pal.GOOD if state.locked[i] else Pal.CORD_DEEP, alpha))
+		b.disc(ring, RING_R * _r * grown, Pal.GOOD if state.locked[i] else Pal.CORD_DEEP)
 		if state.locked[i]:
-			b.disc(ring, RING_PIP * _r, Color(Pal.PARCHMENT, alpha))
-			var lock_u := (t - _lock_at[i]) / LOCK_RING
-			if lock_u >= 0.0 and lock_u < 1.0:
-				var rad := _r * (LOCK_RING_R + LOCK_RING_GROW * lock_u)
-				b.stroke(Face.Builder.ring(ring, rad, rad), LOCK_RING_WIDTH,
-					Color(Pal.GOOD, 0.7 * (1.0 - lock_u)), true)
-	for puff in _puffs:
-		var u := (t - float(puff.t)) / PUFF_TIME
-		if u < 0.0 or u >= 1.0:
-			continue
-		var at := _to_px(puff.at)
-		var rad := PUFF_FROM + PUFF_GROW * u
-		b.stroke(Face.Builder.ring(at, rad, rad), PUFF_WIDTH,
-			Color(Pal.KNOT, 0.7 * (1.0 - u)), true)
+			b.disc(ring, RING_PIP * _r * grown, Pal.PARCHMENT)
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
+
+## Lantern `i`'s shadow on the parchment behind it. It arrives with the paper
+## (read off the paper's own scale, which the pop-in drives from nothing) and
+## parts from it while it is lifted: further below, wider and fainter, so the
+## lift reads as height. Anchored at the paper's rest, so a hop leaves it
+## behind.
+func _shadow(b: Face.Builder, i: int, ring: Vector2) -> void:
+	var lantern: Control = _lanterns[i]
+	var rest := _rest_scale(i)
+	# Read off the height, not the width: the pop-in's squash is wider than
+	# tall for a beat, and a shadow that parted for it would call that a lift.
+	var grown := lantern.scale.y / rest.y
+	var seen := clampf(grown, 0.0, 1.0)
+	if seen <= 0.0:
+		return
+	var lift := clampf((grown - 1.0) / (Motion.LIFT_SCALE - 1.0), 0.0, 1.0)
+	var body := ring + Vector2(0.0, (LanternFace.ARM + LanternFace.HANG) * _r).rotated(_swing[i])
+	var at := body + (SHADOW_AT + SHADOW_LIFT * lift) * _r
+	var spread := 1.0 + SHADOW_SPREAD * lift
+	Scenery.soft_disc(b, at, SHADOW_RX * _r * spread * rest.x, SHADOW_RY * _r * spread,
+		Color(Pal.TEXT, lerpf(SHADOW_NEAR, SHADOW_FAR, lift) * seen))
 
 ## The knot, drawn once and turned per crossing: a clean patch of parchment so
 ## the two cords run into the lump rather than under it, then the lump.
@@ -556,6 +663,7 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag and _held >= 0:
 		_drag(event.position)
 
+## The pick-up: the paper lifts toward the finger and its cords wake.
 func _press(at: Vector2) -> void:
 	if is_done():
 		return
@@ -565,10 +673,12 @@ func _press(at: Vector2) -> void:
 	var t := _now()
 	_held = i
 	_dragged = false
+	_rang = {}
 	_grab = _to_px(_disp(i, t)) - at
 	state.begin(i)
-	_hop_at[i] = t
-	_wake(i, t)
+	_settle_scale(i)
+	_wake(i)
+	fx.cue("pick")
 	_refresh(t)
 
 ## The nearest lantern within a thumb of its ring or of its body, which hangs
@@ -612,16 +722,20 @@ func _drag(at: Vector2) -> void:
 	state.drag_to(i, wanted)
 	_after_scan(t)
 
-## A drag that moved nothing is not a move and is not undoable.
+## The drop: the paper springs back to its size and hops on its cord, and
+## the cords straighten. A drag that moved nothing is not a move and is not
+## undoable.
 func _release() -> void:
 	if _held < 0:
 		return
 	var i := _held
 	var t := _now()
 	_held = -1
+	_settle_scale(i)
 	if _dragged:
-		_hop_at[i] = t
+		_hop(i)
 		_after_scan(t)
+		fx.cue("drop")
 		note_move()
 	else:
 		state.forget()
@@ -635,8 +749,9 @@ func _remember_knots() -> void:
 	for knot in state.knots:
 		_knot_keys[knot.key] = knot.at
 
-## Everything a change to the positions drives: the rings where knots came
-## undone, the sprout's line and the redraw.
+## Everything a change to the positions drives: a ring where a knot came
+## undone, the squash of a lantern that got piled up or freed, the sprout's
+## line and the redraw.
 func _after_scan(t: float) -> void:
 	var was: Dictionary = _knot_keys
 	_remember_knots()
@@ -645,15 +760,21 @@ func _after_scan(t: float) -> void:
 		if _knot_keys.has(key):
 			continue
 		gone += 1
-		# Under a rash of them a puff each is noise; they only show once the
-		# knots themselves do.
-		if not Motion.reduce and state.knots.size() < int(KNOT_FADE):
-			_puffs.append({"at": was[key], "t": t})
+		# Under a rash of them a ring each is noise; they only show once the
+		# knots themselves do, and once a hold.
+		if state.knots.size() < int(KNOT_FADE) and not _rang.has(key):
+			_rang[key] = true
+			fx.ring(_to_px(was[key]), _r, Pal.KNOT)
+	for i in state.nodes:
+		if state.crowded.has(i) != _crowded_was.has(i):
+			_settle_scale(i)
+	_crowded_was = state.crowded.duplicate()
 	_speak(gone)
 	_refresh(t)
 
-func _wake(i: int, t: float) -> void:
-	_hop_at[i] = t
+## Kicks every cord on lantern `i`, so a lantern that starts moving takes
+## its cords' slack with it.
+func _wake(i: int) -> void:
 	if Motion.reduce:
 		return
 	for e in state.edges.size():
@@ -661,8 +782,13 @@ func _wake(i: int, t: float) -> void:
 		if edge.x == i or edge.y == i:
 			_sag_v[e] = minf(SAG_MAX, _sag_v[e] + WAKE_KICK)
 
-func _slide(i: int, from: Vector2, dur: float, t: float) -> void:
-	_mv[i] = {"from": from, "at": t, "dur": dur}
+## A scripted walk for lantern `i` from where it is drawn to where the state
+## now has it, over SLIDE_TIME with the family's overshoot; its cords wake
+## and it hops as it lands.
+func _slide(i: int, from: Vector2, t: float) -> void:
+	_mv[i] = {"from": from, "at": t}
+	_wake(i)
+	_after(SLIDE_TIME, func() -> void: _hop(i))
 
 # --- the sprout's line ---
 
@@ -702,7 +828,7 @@ func tip_line() -> Dictionary:
 func can_undo() -> bool:
 	return not is_done() and not state.history.is_empty()
 
-## Slides the last dragged lantern back to where it was picked up. Counts no
+## Walks the last dragged lantern back to where it was picked up. Counts no
 ## move.
 func undo() -> bool:
 	if is_done() or state.history.is_empty():
@@ -711,8 +837,7 @@ func undo() -> bool:
 	var i := int(state.history[-1].node)
 	var from := _disp(i, t)
 	state.undo()
-	_slide(i, from, UNDO_TIME, t)
-	_wake(i, t)
+	_slide(i, from, t)
 	_after_scan(t)
 	fx.cue("undo")
 	moved.emit()
@@ -723,8 +848,8 @@ func hints_left() -> int:
 	return HINTS - hints_used
 
 ## Hangs one lantern on its peg: it walks to the place the generator's own
-## untangled drawing put it, a green ring pulses out, and it can never be
-## dragged again. Counts no move.
+## untangled drawing put it, and as it lands a green ring pulses out of the
+## peg and sparkles rise; it can never be dragged again. Counts no move.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
@@ -735,11 +860,12 @@ func hint() -> bool:
 	var pick: int = state.hint()
 	if pick < 0:
 		return false
-	_slide(pick, before[pick], HINT_TIME, t)
-	_lock_at[pick] = t
-	_wake(pick, t)
+	_slide(pick, before[pick], t)
 	hints_used += 1
-	fx.sparkle(_to_px(state.planar[pick]), Pal.GOOD)
+	_after(SLIDE_TIME, func() -> void:
+		var peg := _to_px(state.pos[pick])
+		fx.ring(peg, _r, Pal.GOOD)
+		fx.sparkle(peg, Pal.GOOD))
 	fx.cue("hint")
 	_after_scan(t)
 	_say("That one is on its peg now. It will not move again.", Face.Expr.HAPPY)
@@ -753,7 +879,7 @@ func reset_board() -> void:
 	_walk = []
 	var walking: Array[int] = state.reset()
 	for k in walking.size():
-		_walk.append({"node": walking[k], "at": t + k * HOME_STEP})
+		_walk.append({"node": walking[k], "at": t + Motion.stagger(k, HOME_STEP)})
 	moves = 0
 	_running = true
 	if not walking.is_empty():
@@ -779,7 +905,8 @@ func win_delay() -> float:
 
 ## The light runs out from one lantern along the cords, hop by hop, so the
 ## board finishes by proving it is one connected string -- the one thing about
-## the graph the player never sees while playing.
+## the graph the player never sees while playing. Each lantern hops the
+## solve wave's hop as its light arrives, and sparkles.
 func _on_solved() -> void:
 	var t := _now()
 	_held = -1
@@ -799,8 +926,7 @@ func _on_solved() -> void:
 	var depth := 0
 	while not ring.is_empty():
 		for i in ring:
-			_lit_at[i] = t if Motion.reduce else t + LIGHT_DELAY + depth * LIGHT_STEP
-			_hop_at[i] = _lit_at[i]
+			_lit_at[i] = t if Motion.reduce else t + Motion.SOLVE_DELAY + depth * LIGHT_STEP
 		var next: Array = []
 		for i in ring:
 			for q in adj.get(i, []):
@@ -812,7 +938,9 @@ func _on_solved() -> void:
 	for i in state.nodes:
 		if _lit_at[i] > 1.0e8:
 			_lit_at[i] = t
-		_spark_at(i)
+		var wait := _lit_at[i] - t
+		_hop(i, Motion.SOLVE_HOP, Motion.SOLVE_TIME, wait)
+		_after(wait, _spark_at.bind(i))
 	_say("Not a knot left. The lights go on.", Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh(t)
@@ -821,19 +949,30 @@ func _on_solved() -> void:
 ## fourteen staggered by an eighth of a second would otherwise recycle one
 ## pool fast enough to cut each burst in half.
 func _spark_at(i: int) -> void:
-	if Motion.reduce:
-		return
-	var wait := maxf(0.0, _lit_at[i] - _now())
-	get_tree().create_timer(wait).timeout.connect(func() -> void:
-		if not is_inside_tree():
-			return
-		var at := _to_px(state.pos[i])
-		if i % 2 == 0:
-			fx.sparkle(at, Pal.SUN)
-		else:
-			fx.puff(at, Pal.SUN, 4))
+	var at := _to_px(state.pos[i])
+	if i % 2 == 0:
+		fx.sparkle(at, Pal.SUN)
+	else:
+		fx.puff(at, Pal.SUN, 4)
 
 # --- odds and ends ---
+
+## Kills every tween the previous board still tracks and retires its pending
+## callbacks, so a rebuild never inherits a hop aimed at a lantern that is
+## gone.
+func _stop_all() -> void:
+	_gen += 1
+	for tw in _scale_tw:
+		Motion.stop(tw)
+	for tw in _hop_tw:
+		Motion.stop(tw)
+
+## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	var gen := _gen
+	get_tree().create_timer(maxf(delay, 0.0)).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
 
 ## Seconds since the scene started, the clock every animation here reads.
 func _now() -> float:
@@ -844,7 +983,7 @@ func _dec(u: float) -> float:
 	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
 
 ## The overshoot the whole family's pops use, as a curve rather than a tween,
-## because these are drawn rather than tweened.
+## because the rings and the walks are drawn rather than tweened.
 func _back_out(u: float) -> float:
 	u = clampf(u, 0.0, 1.0)
 	const C := 1.70158

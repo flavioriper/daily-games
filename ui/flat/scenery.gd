@@ -111,12 +111,21 @@ static func shadow() -> ArrayMesh:
 	if _shadow != null:
 		return _shadow
 	var b := Face.Builder.new()
-	var centre := b.vertex(Vector2.ZERO, Color(1.0, 1.0, 1.0, 1.0))
-	var rim := Face.Builder.ring(Vector2.ZERO, SHADOW_UNIT, SHADOW_UNIT)
-	var first := b.verts.size()
-	for p in rim:
-		b.vertex(p, Color(1.0, 1.0, 1.0, 0.0))
-	for i in rim.size():
-		b.tri(centre, first + i, first + (i + 1) % rim.size())
+	soft_disc(b, Vector2.ZERO, SHADOW_UNIT, SHADOW_UNIT, Color(1.0, 1.0, 1.0, 1.0))
 	_shadow = b.mesh()
 	return _shadow
+
+## The same soft disc appended to a caller's own Builder: `colour` at the
+## centre fading to clear at the rim of the ellipse `rx` by `ry` about `at`.
+## A board that builds its ground into a mesh it already rebuilds (Untangle's
+## cord mesh) draws its shadows with this, so they are the family's shadow at
+## no draw call of their own.
+static func soft_disc(b: Face.Builder, at: Vector2, rx: float, ry: float, colour: Color) -> void:
+	var centre := b.vertex(at, colour)
+	var rim := Face.Builder.ring(at, rx, ry)
+	var first := b.verts.size()
+	var clear := Color(colour, 0.0)
+	for p in rim:
+		b.vertex(p, clear)
+	for i in rim.size():
+		b.tri(centre, first + i, first + (i + 1) % rim.size())

@@ -311,8 +311,15 @@ Specs:
   sparkles come from `ui/fx2d.gd` alone. Balance joined them the same day
   (its spec's section 10), and brought `ui/flat/scenery.gd`: one mesh of
   clouds and grass tufts under a board card, and the radial disc every
-  ground shadow is drawn with. The other six flat boards still carry their
-  own tweens and are ported when next touched.
+  ground shadow is drawn with. Untangle joined on 2026-09-19 (its spec's
+  section 11), and it is the precedent for a board whose motion is
+  integrated rather than tweened: the point's motion (the drag, the two
+  springs, the scripted walks) stays on the board's clock, and every lantern
+  stands in a slot the board owns so the paper can take the recipes;
+  `Motion.lift` is the press for a dragged thing, and a board that already
+  rebuilds a mesh builds its shadows into it with `Scenery.soft_disc`. The
+  other five flat boards still carry their own tweens and are ported when
+  next touched.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -395,9 +402,9 @@ Specs:
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
   card -- on any frame rendered without its queued redraw flushed first, which
   is exactly what `RenderingServer.force_draw()` does in a harness.
-  `lightup2d.gd`, `oneline2d.gd` and `nonogram2d.gd` keep the mesh their last
-  `_draw` handed over (`_shown`) until the next one replaces it; `tents2d.gd`
-  and `untangle2d.gd` do not, and should if they are ever shot the same way.
+  `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd` and `untangle2d.gd` keep the
+  mesh their last `_draw` handed over (`_shown`) until the next one replaces
+  it; `tents2d.gd` does not, and should if it is ever shot the same way.
   A harness shooting one of these boards has to let a frame pass between the
   state change and `force_draw()`: `queue_redraw` is flushed on the next idle
   frame, so a probe that pokes the board and shoots in the same frame
