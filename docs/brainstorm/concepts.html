@@ -200,6 +200,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-queens .refs img{border-radius:14px}
 #tab-queens .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #qn-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat hidden word mock extras ---------- */
+#tab-hiddenword .phone{background:#f6efe3}
+#tab-hiddenword .phone canvas{touch-action:none;cursor:pointer}
+#tab-hiddenword .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-hiddenword .refs figure{margin:0}
+#tab-hiddenword .refs img{border-radius:14px}
+#tab-hiddenword .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#hw-caption{max-width:460px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 /* ---------- flat snake apple mock extras ---------- */
 #tab-snakeapple .phone{background:#f6efe3}
 #tab-snakeapple .phone canvas{touch-action:none;cursor:pointer}
@@ -237,6 +245,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="oneline">One Line · flat</button>
     <button data-tab="nonogram">Nonogram · flat</button>
     <button data-tab="queens">Queens · flat</button>
+    <button data-tab="hiddenword">Hidden Word · flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
 </header>
@@ -1629,6 +1638,126 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three queens seated with their crosses and two crosses of the player's, <code>?wrong=1</code> for one queen in a seat the answer does not want, <code>?tap=r,c</code> to tap a cell with the queen chip at <code>?at=</code> seconds (0.2 by default; a seen cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code> for a second tap (the same cell shows the lift), <code>?sweep=r0,c0,r1,c1</code> for a drag with the cross chip released at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot (real time otherwise passes before Chrome's shot lands, so the other tabs' mid-motion frames are not reliable); pick the tab with <code>#queens</code>.</p>
 </section>
 
+
+<!-- ============================ HIDDEN WORD ============================ -->
+<section class="tab-panel" id="tab-hiddenword">
+  <h2>Hidden Word · flat, the eleventh screen <span class="pill blue">concept · 2026-09-19</span></h2>
+  <p class="lede">Five letters, six rows, one word a day. Type a guess, commit it, and every tile answers: green in the right place, amber in the word but elsewhere, grey not in it at all. The game everybody already knows &mdash; and <b>the name is not the other one</b>: the New York Times owns that trademark and this repo has made the move once already, since Mastermind ships here as <em>Code Break</em>. <b>This is the first board that ships words</b>, and the two lists it ships are the ones the mock plays: 968 hand-written answers in three bands and 15,921 words a guess may be. Spec: <code>docs/superpowers/specs/2026-09-19-hidden-word-flat-design.md</code>.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-hidden-word.png" alt="The user's mock: a cream phone screen with a six by five grid of big rounded tiles, two rows filled in green, amber and grey, a QWERTY keyboard coloured to match, clouds and bushes around the board, a wooden sign reading A new word every day, and the sprout mascot cheering beside a How to play card">
+        <figcaption>The user's mock of 2026-09-19, and its own subtitle &mdash; <em>Guess the hidden word</em> &mdash; is where the name came from. Taken from it: the six by five grid of big rounded tiles, the three marks, the QWERTY keyboard with a green Enter and a backspace, the day card, the four top-bar buttons. Not built, and why: <b>the hearts</b> (there are no lives, settled 2026-09-18; the six rows <em>are</em> this board's lives and they are drawn as rows), <b>the How to play card</b> (no board gets a tip card any more &mdash; this is the first built without one, and the rules live behind the gear), <b>three hints</b> (two; three of five letters given hands over most days), and <b>the side scenery</b> &mdash; the clouds, the bushes, the wooden sign and the cheering sprout stand outside the board there, and the mock is 2:3 where a phone is 9:16, so at 40 of margin there is no outside.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The family's chrome the mock is set in: cream cards with a soft bottom edge, a tray under the board, a leaf sprouting from the wordmark. Hidden Word keeps the rows and drops two of them &mdash; no actions row, because every Enter <em>is</em> the check, and no tip card.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="hw" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="hw-rm">Reduce motion: off</button>
+        <button id="hw-diff">Easy · common</button>
+        <button id="hw-new">New puzzle</button>
+        <button id="hw-hint">Hint</button>
+        <button id="hw-reveal">Reveal the word</button>
+        <button id="hw-reset">Reset</button>
+        <button id="hw-show">Show the answer</button>
+      </div>
+      <div id="hw-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays, <b>from your own keyboard as well as from the drawn one</b>: click the board, then type &mdash; letters fill the working row, <kbd>backspace</kbd> erases, <kbd>enter</kbd> commits and the row flips. It plays the <b>real word lists</b>: the caption says which one is live, and over <code>file://</code> the fetch needs Chrome's <code>--allow-file-access-from-files</code> or forty answers stand in. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-19: <b>the name Hidden Word</b>; <b>two hints, not the mock's three</b>; <b>no tip card</b> (the sprout's card is going away across the game and this board is the first without one); <b>the word is revealed on the sixth row</b>; and <b>Horse Pen's <code>SOON</code> card leaves the first screen</b> to make room, exactly as Snake Apple's did for Queens the day before. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>HIDDEN WORD</code> in ink with the leaf sprouting from it and <code>FIND THE HIDDEN WORD</code> under, then Reset, Hint with its count and Settings. No Undo and no Check: <code>capabilities()</code> is <code>["hint"]</code> alone, the top bar already hides a button that is not in it, and the four here come out of <code>"actions": false</code> and nothing else.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the mock's, without its hearts.</td></tr>
+    <tr><td class="k">Board card</td><td>1140</td><td>Six rows of five tiles. The grid is cut to whichever bound binds, <code>tile = min((944 &minus; 4&times;14)/5, (1084 &minus; 5&times;14)/6)</code> with <code>GAP</code> 14 and a 28 inset &mdash; <b>min(177.6, 169), so the height binds at 169</b>, and the block is 901 across of the 944 available by 1084 down.</td></tr>
+    <tr><td class="k">Keys</td><td>340</td><td>The keyboard, section 4.</td></tr>
+  </table>
+  <p>With 40 of margin and 20 of gap the four rows are 1920 exactly, which is where the board card's 1140 comes from in the first place. <b>The tile is the biggest cell any flat board has drawn</b>, because five across is the fewest any of them asks for; Queens' hard board is 103 and Nonogram's is the same.</p>
+  <div class="decide"><b>What the mock settles, and section 5 overstates.</b> At a 1140 slot the grid's height binds <em>exactly</em>: 6&times;169 + 5&times;14 = 1084, plus two 28 insets is 1140, the whole slot. So <code>card_height()</code> returns what it was given and <b><code>card_centred()</code> has nothing to centre</b> &mdash; the slack is zero, not halved. The consequence is the second one: <b>there is no room inside the card for a scenery band.</b> The furniture the spec moves in from the mock's margins has 21 either side of the grid, 28 above and below it and the 14 between tiles, so what this page draws is a hem &mdash; two clouds behind the tiles, seen through the gaps, and a strip of grass along the foot. If the clouds and bushes are wanted properly the tile has to come down: a 120 band leaves <code>(964 &minus; 70)/6</code> = <b>149</b>, and 149 also unbinds the width, so the grid becomes 801 of 944 and the card gains 143 of side air as well. That is the trade, and it is a call for the phone.</div>
+
+  <h3>2. The rules, and the two-pass mark <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>The state is the one truth</b> and it is scene-free (<code>puzzles/hidden_word_state.gd</code>): the answer, the committed <code>rows</code>, their <code>marks</code>, the <code>typed</code> row, and <code>given</code>, the positions a hint has revealed. Three moves &mdash; <code>type</code>, <code>erase</code>, <code>commit</code> &mdash; and nothing else writes to it.</li>
+    <li><b>The marking rule is two passes, and it is the one thing implementations get wrong.</b> First pass: every position whose letter equals the answer's is <code>HIT</code>, and that answer letter is struck off a tally. Second pass, left to right: a remaining position is <code>NEAR</code> if its letter is still in the tally, and that copy is struck off too; otherwise <code>MISS</code>. The consequence to check: with answer <code>MOSSY</code>, the guess <code>SWISS</code> marks S-W-I-S-S as <b><code>NEAR MISS MISS HIT MISS</code></b> &mdash; three S's and three different answers, because MOSSY has two: the fourth is green where it stands, the first takes the other copy and goes amber, and the fifth finds the tally empty and goes grey. A one-pass implementation paints all three amber and lies. Type it here and watch.</li>
+    <li><b>The keyboard is derived, never stored.</b> <code>key_mark(letter)</code> is recomputed from <code>rows</code> and <code>marks</code> on every call &mdash; the Queens rule &mdash; and the best mark wins, so a letter amber on row one and green on row three stays green.</li>
+    <li><b>The board keeps no history.</b> No Undo, because taking back a committed guess is not this game; no Check, because every Enter <em>is</em> the check. Reset replays the same day from the first row.</li>
+    <li><b>Solved</b> is the last row marking five <code>HIT</code>s; <b>over</b> is six rows and not solved.</li>
+  </ul>
+
+  <div class="decide"><b>The spec's worked example is wrong, and a test would have been written from it.</b> Section 3 says that with <code>MOSSY</code> the guess <code>SASSY</code> marks <code>NEAR MISS MISS HIT HIT</code>. It does not: SASSY is S-A-S-S-Y and MOSSY is M-O-S-S-Y, so the third, fourth <em>and</em> fifth positions all match and the real answer is <code>MISS MISS HIT HIT HIT</code> &mdash; the leading S is grey, which is still the lesson, but the string in the spec is not the string the rule produces. The two-pass rule itself is right as written. <code>SWISS</code> is the example that carries the lesson whole, and it is the one above; <code>SISSY</code> gives the spec's intended <code>MISS MISS HIT HIT HIT</code>. All four words are in the accept list, so any of them can be typed here. <b>Fix the example before <code>tests/test_hidden_word.gd</code> is written against it.</b></div>
+
+  <h3>3. The words, and what the mock measured about them <span class="pill rose">a finding</span></h3>
+  <p>Two files, because they have opposite jobs, and this page fetches both rather than carrying a copy &mdash; so what you are playing is what the APK will hold. <code>content/hidden_word.json</code> is <b>968 answers ordered easiest first</b>, with <code>bands</code> <code>[217, 467, 968]</code> saying where each difficulty stops reading; the day's word is <code>answers[rng.randi() % bands[difficulty]]</code> off the seed the host already makes, so a day is the same on every phone. <code>content/hidden_word_accept.txt</code> is <b>15,921 five-letter words</b> a guess may be, filtered out of <code>dwyl/english-words</code> (Unlicense, public domain). It is deliberately far larger than it needs to be: being told that a real word is not a word is the worst thing this board can do to a player, and it is worse than letting an obscure one through.</p>
+  <p>Checked against the shipped files rather than assumed: <b>15,921 lines, every one five letters and alphabetic, no duplicates</b>; <b>968 answers, no duplicates, and every one of them in the accept list</b>; five answers end in S and none of them is a plural (<code>bonus</code>, <code>focus</code>, <code>lotus</code>, <code>oasis</code>, <code>virus</code>), which is the rule the list was written to. macOS's own <code>/usr/share/dict/web2</code> was rejected before this because Webster's 1913 lists headwords and not inflections &mdash; no <code>PROUD</code>, no <code>ASKED</code>, no <code>MOVED</code>, no <code>WALKS</code>, no <code>LIKED</code>; all five are in this one, and you can type them.</p>
+
+  <h3>4. The keyboard <span class="pill">proposed</span></h3>
+  <p><code>ui/flat/key_board.gd</code>, <code>HEIGHT</code> 340: three rows of keys 100 tall with a 14 gap between rows and a 12 lift &mdash; 3&times;100 + 2&times;14 + 12 is 340 exactly. <code>QWERTYUIOP</code> / <code>ASDFGHJKL</code> / <code>&#9003;ZXCVBNM</code> + <code>Enter</code>. <b>A key is <code>(1000 &minus; 9&times;GAP)/10</code> wide with the keyboard's own <code>GAP</code> of 10 &mdash; 91</b>, and ten of them with nine gaps is 1000, the column exactly. Worth saying out loud, because the spec's sentence puts a 14 and a 91 in the same breath and they are two different gaps: 14 is between the <em>rows</em>, 10 is between the keys, and <code>(1000 &minus; 9&times;14)/10</code> would be 87.4.</p>
+  <p>The middle row's nine keys are 899 wide and centred on that. The last row has nine keys and eight gaps too, so the seven letters take 637 and the gaps 80, leaving <b>283</b> for the two specials &mdash; a <b>126</b> backspace and a <b>157</b> Enter, the wider of the two, in <code>GOOD</code> with <code>PAPER</code> lettering, because it is the one key that commits. Every key stands in a slot rather than directly in its container, which is the lesson Balance's weight cards paid for on 2026-09-18: a container rewrites its children's positions on every sort, and a key that presses or bumps writes its own.</p>
+  <p><b>The keyboard must not give a row away.</b> It repaints when the <em>last</em> tile of the committed row lands &mdash; <code>4&times;FLIP_STEP + FLIP_TIME</code>, 1.06 s after the Enter &mdash; and every key the row touched bumps as it takes its colour. Commit a guess here and watch the keys sit still until the fifth tile has turned.</p>
+
+  <h3>5. Colour <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:22%">Name</th><th style="width:14%">Hex</th><th>Where</th></tr>
+    <tr><td class="k"><code>Pal.GOOD</code></td><td><code>#7cb06b</code></td><td>A <code>HIT</code> tile and key, and the Enter key. Already in the palette.</td></tr>
+    <tr><td class="k"><code>WORD_NEAR</code></td><td><code>#e9ba55</code></td><td>A <code>NEAR</code> tile and key. New: <code>SUN_RAY</code> (<code>#f9c04a</code>) is a brighter lemon and reads as the sun rather than as a mark.</td></tr>
+    <tr><td class="k"><code>WORD_MISS</code></td><td><code>#8a8078</code></td><td>A <code>MISS</code> tile and key. New, and warm: the mock's grey is cooler than anything in the palette, and a cool grey goes muddy on cream.</td></tr>
+    <tr><td class="k"><code>Pal.SURFACE_HI</code></td><td><code>#f1e6d2</code></td><td>An empty tile. Already in the palette.</td></tr>
+    <tr><td class="k"><code>KEY_FACE</code></td><td><code>#fffaf0</code></td><td>An untouched key. New, a shade above <code>SURFACE</code>, so the keyboard reads as a slab and not as twenty-eight more cards.</td></tr>
+  </table>
+  <p>A marked tile letters in <code>PAPER</code>; an empty tile's typed letter is <code>TEXT</code>; a hint's given letter is <code>LEAF_DEEP</code> at 0.55, because it is a given and not a guess. Every rim under a tile or a key is its own colour taken a quarter of the way to ink, which is how the family's soft bottom edge is drawn everywhere else.</p>
+
+  <h3>6. What the board says <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>The toast.</b> Refusals do not get a card. A small pill in <code>TEXT</code> at 0.92 with <code>PAPER</code> lettering pops in over the top of the grid, holds <code>TOAST_HOLD</code> 1.2 s and pops out, and the row shivers at the same moment. Three lines: <em>Not a word</em>, <em>Five letters</em>, <em>You guessed that already</em>.</li>
+    <li><b>There is no tip card</b>, and this is the first board built without one. The registry says <code>"tip": false</code> and the flat host skips that row the way <code>"actions": false</code> already skips the actions row, measuring the bottom slot from the rows it actually built &mdash; which it already does. The rules stay in the rules sheet behind the gear.</li>
+    <li><b>Running out is not a failure.</b> Six rows and the keyboard slides out, the rows dim to 0.4, and the sprout rises from the foot of the card with <em>The word was MOSSY</em>. No red, no "you lost". The board calls <code>finish_unsolved()</code>, new on <code>core/puzzle_base.gd</code>: the clock stops and the chrome greys exactly as a solve does, but <code>solved</code> never fires, so the host shows no win screen. Press <b>Reveal the word</b> to see it.</li>
+    <li><b>The win has no cast at all</b> &mdash; five green tiles spelling the word, the block of 🟩🟨⬜ this game is shared in (<code>share_glyphs()</code>), and "Found it." It is the only flat win with no character on it, because the answer is the reward.</li>
+  </ul>
+  <div class="decide"><b>A fourth refusal code.</b> Section 3 of the spec gives <code>commit()</code> three returns &mdash; <code>OK</code>, <code>SHORT</code>, <code>UNKNOWN</code> &mdash; and section 8 gives the toast three lines, one of which is <em>You guessed that already</em>. There is no code for it. The mock carries <code>REPEAT</code> as a fourth, because refusing a repeat silently or marking it again are both worse; the Godot state class needs the same one.</div>
+
+  <h3>7. Motion <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>): the tiles are drawn off the curve readers as Nonogram's are, the keys are nodes in slots taking the recipes as Queens' bees are. The eleventh user of the hybrid precedent, and it needs nothing new from <code>core/motion.gd</code>. <b>Its signature is the flip</b>, and its numbers are its own three: <code>FLIP_STEP</code> 0.16 s per tile, <code>FLIP_TIME</code> 0.42 s a tile, <code>TOAST_HOLD</code> 1.2 s.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The grid pops in wide about its centre (<code>wide_pop_scale</code>, from 0.88) while it fades, after <code>ENTER_DELAY</code> 0.18; the keyboard's rows slide up under it, <code>ENTER_STAGGER</code> 0.03 apart.</td></tr>
+    <tr><td class="k">Type</td><td>The tile takes the letter with a pop (<code>pop_in_scale</code> at 0.18, the recipe's parameter and not a copied constant) and the key presses (<code>press_scale</code> 0.94).</td></tr>
+    <tr><td class="k">Erase</td><td>The letter shrinks out with the quarter turn (<code>pop_out_scale</code>, 0.12) and the tile is left standing.</td></tr>
+    <tr><td class="k">Commit</td><td><b>The flip.</b> The row's five tiles turn on their X axis in sequence, <code>FLIP_STEP</code> apart, each a <code>scale.y</code> squash to zero and back over <code>FLIP_TIME</code>; a tile takes its colour at the halfway point, edge-on, so the answer arrives with the turn and never before it. <code>ui/faces/mosaic_tile.gd</code> already takes a Vector2 scale, so this costs no new mesh and no new class.</td></tr>
+    <tr><td class="k">Keys repaint</td><td>When the last tile of the row lands, every key the row touched bumps (<code>bump_scale</code>) and takes its new colour. Not before.</td></tr>
+    <tr><td class="k">Refused</td><td>The row shivers (<code>shiver_offset</code>, 2 px, 0.2 s), the toast pops in, nothing commits.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring in <code>LEAF</code> over the chosen column, the letter drops into the typed row's slot from 40 above with the fade (<code>drop_in_lift</code>, 0.3 s) ghosted at 0.55, sparkles in leaf, and that key greens with a bump. It is a given, not a guess: the player still types it, and it never spends a row.</td></tr>
+    <tr><td class="k">Reset</td><td>Every committed row's tiles shrink out in a wave from the last row up, 0.03 a tile; the keys clear their colours together.</td></tr>
+    <tr><td class="k">Solved</td><td>The winning row's tiles hop 10 letter by letter (0.04 apart after 0.25) with sparkles in gold, and the rows above fade to 0.3 so the answer is the only thing lit. The win after <code>WIN_WAIT</code> 1.6 s.</td></tr>
+    <tr><td class="k">Over</td><td>The keyboard slides out (0.25), the rows dim to 0.4, and the sprout rises from the bottom of the card over 0.35 with the word on a small card beside it.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the grid is up at once, a committed row colours in one frame with no flip, the toast appears and goes without a scale, nothing hops, rings, shivers or sparkles, and the win follows the last Enter. <b>One number the mock settles:</b> the flip's whole run is <code>4&times;0.16 + 0.42</code> = <b>1.06 s</b> from the Enter to the keyboard repainting, which is the longest any flat board makes a player wait on a committed move. It reads as deliberate rather than slow here; it is worth a second opinion on the phone, and <code>FLIP_STEP</code> 0.13 would bring it to 0.94.</p>
+
+  <h3>8. The hint <span class="pill blue">decided</span></h3>
+  <p><b>Two, not the mock's three.</b> Three of five letters revealed leaves a two-letter guess, which on most days is the answer handed over; two rescues a stuck day without ending it. A hint picks the <b>leftmost position the player has not greened yet</b>, records it in <code>given</code>, and shows that letter ghosted in the typed row at its own column with the key greened. It never commits a row, never counts as a move, and clears nothing, because the board keeps no history. Press Hint twice here and the first two ungreened columns fill; type over one and the ghost gives way to the letter you typed.</p>
+
+  <h3>9. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>169, and nothing else in the card.</b> The tile is generous and the board is handsome at it, but section 1's finding is that the grid eats the whole card and the scenery is reduced to a hem. Judge the two side by side: this page at 169, and 149 with a real band of clouds and grass under the grid.</li>
+    <li><b>A permissive accept list.</b> 15,921 words means <code>AALII</code> and <code>ZYMIN</code> are legal guesses. Type junk here and see whether it feels wrong; if it does, the list can be cut to a curated 9k in an afternoon and nothing else moves.</li>
+    <li><b>1.06 s of flip.</b> Long on purpose, and the longest wait on this screen.</li>
+    <li><b>No Undo.</b> Committing a guess you did not mean is the one irreversible tap on any board in this game. The original has the same rule and nobody argues with it, but this game is gentler than the original everywhere else.</li>
+    <li><b>The word revealed on the sixth row.</b> The alternative is telling the player to come back tomorrow, which is truer to the original and crueller than this game has ever been.</li>
+    <li><b>968 answers.</b> About two and a half years of days before one repeats on hard, eight months on easy. If that is short, the list grows and nothing else changes.</li>
+    <li><b>Difficulty is commonality only.</b> Easy, medium and hard all play the same game with the same six rows; the only thing that moves is how obscure the answer may be. No other flat board's ladder is this thin.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band (easy by default), <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?guess=plant,grass</code> for rows already committed and settled, <code>?typed=mos</code> for a partial working row, <code>?commit=slate</code> to type and commit that word at <code>?at=</code> (0.2 by default), <code>?bad=1</code> to commit whatever is typed &mdash; pair it with <code>?typed=</code> for a refusal &mdash; <code>?hint=1</code> and <code>?reset=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?over=1</code> for six rows and the reveal, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-flip can be shot (real time otherwise passes before Chrome's shot lands). Pick the tab with <code>#hiddenword</code>. The lists are fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
+</section>
 
 <!-- ============================ SNAKE APPLE ============================ -->
 <section class="tab-panel" id="tab-snakeapple">
@@ -8641,6 +8770,592 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     for(let r=0;r<n;r++) seatQueen(key(r,solution[r]),-9);
     caption(); solve(0);}
   frame();
+})();
+
+/* ---------- the flat hidden word mock ---------- */
+(function(){
+  const cv=document.getElementById('hw'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number, with 37 of spare paper above and
+  // below rather than a row quietly stretched to fill.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  // ?freeze=1 holds the clock at ?t=, so a frame mid-flip can be shot;
+  // Chrome's own clock keeps running before a headless shot lands.
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],u))+','+Math.round(lerp(A[1],B[1],u))+','+Math.round(lerp(A[2],B[2],u))+')';};
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd). The three marks and the
+  // key face are this board's own four: GOOD is already there, WORD_NEAR is
+  // warmer than SUN_RAY so it reads as a mark and not as the sun, WORD_MISS
+  // is a warm grey because a cool one goes muddy on cream, and KEY_FACE is a
+  // shade above SURFACE so the keyboard reads as a slab.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',bad:'#d9605a',
+    good:'#7cb06b',near:'#e9ba55',miss:'#8a8078',keyFace:'#fffaf0'};
+  const MARKCOL=[C.good,C.near,C.miss];
+  const MARKDEEP=MARKCOL.map(c=>mixHex(c,C.text,0.26));
+  const EMPTY_RIM=mixHex(C.surfaceHi,C.text,0.14), KEY_RIM=mixHex(C.keyFace,C.text,0.22);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md), read as curves ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.04,SOLVE_DELAY:0.25,
+    RESET_STAGGER:0.03,SHIVER_PX:2,SHIVER_TIME:0.2};
+  // This board's own four numbers: the flip's step per tile, a tile's turn,
+  // how long the toast holds, and how long the win waits.
+  const FLIP_STEP=0.16,FLIP_TIME=0.42,TOAST_HOLD=1.2,WIN_WAIT=1.6;
+  // A hint's letter is a given and not a guess, so it is ghosted.
+  const GHOST=0.55;
+  const stag=v=>RM?0:v;
+  const popInScale=(s,dur)=>{dur=dur||MO.POP_IN; if(RM) return [1,1]; const u=clamp(s/dur),g=lerp(0.01,1,backOut(u)),sq=MO.POP_SQUASH*Math.sin(Math.PI*u); return [g*(1+sq),g*(1-sq)];};
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popOutScale=(s,dur)=>{dur=dur||MO.POP_OUT; if(RM) return null; const u=s/dur; if(u>=1) return null; return {scale:1-clamp(u),angle:Math.PI/2*clamp(u)};};
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*Math.sin(u*Math.PI*6)*(1-u);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const pressScale=(p,t)=>{if(RM||!p||t<p.down) return 1;
+    if(p.up<p.down||t<p.up) return lerp(1,MO.PRESS_SCALE,clamp((t-p.down)/MO.PRESS_TIME));
+    const u=(t-p.up)/MO.RELEASE_TIME; return u>=1?1:lerp(MO.PRESS_SCALE,1,backOut(clamp(u)));};
+
+  // ---- the words ----
+  // The two lists this board ships (content/hidden_word.json and
+  // content/hidden_word_accept.txt) are fetched so the mock plays the real
+  // game. Over file:// that needs --allow-file-access-from-files; without
+  // it the fetch fails and forty answers stand in, which the caption says.
+  const FALLBACK=['about','above','apple','beach','bloom','bread','brave','candy','chair','cloud',
+    'daisy','dream','earth','field','flame','fresh','grape','grass','green','happy',
+    'honey','lemon','light','maple','moss'+'y','ocean','olive','paint','peach','plant',
+    'river','shine','slate','smile','spark','stone','sugar','sweet','table','water'];
+  let ANSWERS=FALLBACK.slice(),BANDS=[14,27,FALLBACK.length],ACCEPT=new Set(FALLBACK),LIST='';
+  async function loadWords(){
+    try{
+      const [a,b]=await Promise.all([fetch('../../content/hidden_word.json'),fetch('../../content/hidden_word_accept.txt')]);
+      if(!a.ok||!b.ok) throw new Error('http');
+      const j=await a.json(),txt=await b.text();
+      if(!j.answers||!j.answers.length) throw new Error('empty');
+      ANSWERS=j.answers; BANDS=j.bands.slice();
+      ACCEPT=new Set(txt.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5));
+      for(const w of ANSWERS) ACCEPT.add(w);
+      LIST='the shipping lists (' + ANSWERS.length + ' answers, ' + ACCEPT.size + ' accepted)';
+    }catch(e){
+      LIST='the inline fallback of ' + FALLBACK.length + ' answers — the shipping lists need Chrome’s --allow-file-access-from-files over file://';
+    }
+  }
+
+  // ---- state (puzzles/hidden_word_state.gd: the one truth, scene-free) ----
+  const HIT=0,NEAR=1,MISS=2;
+  const DIFFS=['Easy · common','Medium','Hard'];
+  let answer='',rows=[],marks=[],com=[],typed='',given=[],givenAt={};
+  let diff=0,seed=5,hintsLeft=2,showAnswer=false;
+  let openedAt=0,solvedAt=-1,winAt=-1,overAt=-1,hasSolve=false,hasOver=false;
+  let work={at:[],gone:[],goneCh:[]},ghosts=[],particles=[],rings=[],toast=null;
+  let keyBump={},keyPress={},btnPress={},rowShiver=[],auto=[],L=null;
+
+  // A harness stamps a solve or an over in the past (?win=1 at -8), so the
+  // fact and the moment are two things: a timestamp alone would read as
+  // "not yet" for every negative one.
+  const open=()=>!hasSolve&&!hasOver;
+
+  // The marking rule is two passes, and it is the one thing implementations
+  // get wrong. First pass: every position whose letter equals the answer's
+  // is HIT, and that answer letter is struck off a tally. Second pass, left
+  // to right: a remaining position is NEAR if its letter is still in the
+  // tally, and that copy is struck off too; otherwise MISS. With MOSSY,
+  // SWISS marks NEAR MISS MISS HIT MISS: three S's and three answers,
+  // because MOSSY has two. (The spec's own example, SASSY, is misstated
+  // there -- it marks MISS MISS HIT HIT HIT, since SASSY and MOSSY share
+  // their third letter too.) A one-pass rule paints every S amber and lies.
+  function mark(guess,ans){
+    const out=new Array(5).fill(MISS),tally={};
+    for(let i=0;i<5;i++){
+      if(guess[i]===ans[i]) out[i]=HIT;
+      else tally[ans[i]]=(tally[ans[i]]||0)+1;
+    }
+    for(let i=0;i<5;i++){
+      if(out[i]===HIT) continue;
+      if(tally[guess[i]]>0){out[i]=NEAR; tally[guess[i]]--;}
+    }
+    return out;
+  }
+  // The keyboard must not give a row away: a row's marks reach the keys only
+  // when the last tile of that row has landed.
+  const landedAt=i=>com[i].at+(RM?0:4*FLIP_STEP+FLIP_TIME);
+  function keyMark(ch,t){
+    const l=ch.toLowerCase(); let best=-1;
+    for(let i=0;i<rows.length;i++){
+      if(t<landedAt(i)) continue;
+      for(let c=0;c<5;c++) if(rows[i][c]===l){const m=marks[i][c]; if(best<0||m<best) best=m;}
+    }
+    for(const g of given) if(answer[g]===l) best=HIT;
+    return best;
+  }
+  const isSolved=()=>marks.length>0&&marks[marks.length-1].every(m=>m===HIT);
+  // The row-per-line block every player of this game already knows how to
+  // paste somewhere (share_glyphs()).
+  const GLYPH=['🟩','🟨','⬜'];
+  const shareGlyphs=()=>marks.map(m=>m.map(x=>GLYPH[x]).join('')).join('\n');
+
+  function setup(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd;
+    const rng=mulberry32((sd*2654435761)>>>0);
+    answer=ANSWERS[Math.floor(rng()*BANDS[diff])];
+    rows=[]; marks=[]; com=[]; typed=''; given=[]; givenAt={};
+    hintsLeft=2; solvedAt=-1; winAt=-1; overAt=-1; hasSolve=false; hasOver=false; openedAt=t;
+    work={at:[],gone:[],goneCh:[]}; ghosts=[]; particles=[]; rings=[]; toast=null;
+    keyBump={}; keyPress={}; btnPress={}; rowShiver=[]; auto=[];
+    caption();
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  function tileCentre(r,c){return [L.gx+c*(L.cell+L.gap)+L.cell/2,L.gy+r*(L.cell+L.gap)+L.cell/2];}
+  function ring(r,c,t0,col){ if(RM) return; rings.push({r,c,t0,col}); }
+  function sparkle(r,c,t0,col){ if(RM) return; for(let i=0;i<6;i++) particles.push({r,c,ox:(hash(i+r,c+7)-0.5)*0.9,oy:(hash(i+c,r+13)-0.5)*0.6,vx:(hash(i,r*5+c)-0.5)*90,vy:-120,t0:t0+i*0.05,life:0.7,col,rad:13,g:160}); }
+
+  // ---- the three moves and the refusals ----
+  function typeLetter(ch,t){
+    if(!open()||typed.length>=5) return;
+    work.at[typed.length]=t; typed+=ch;
+    keyPress[ch.toUpperCase()]={down:t,up:t+0.07}; caption();
+  }
+  function erase(t){
+    if(!open()||!typed.length) return;
+    work.gone[typed.length-1]=t; work.goneCh[typed.length-1]=typed[typed.length-1]; typed=typed.slice(0,-1);
+    keyPress['⌫']={down:t,up:t+0.07}; caption();
+  }
+  function toastUp(s,t){toast={text:s,at:t};}
+  // Commit returns OK, SHORT, UNKNOWN or REPEAT. Section 3 of the spec names
+  // only the first three; the toast in section 8 has a line for the fourth,
+  // so the mock carries it as a code of its own.
+  function commit(t){
+    if(!open()) return 'CLOSED';
+    const r=rows.length;
+    keyPress['↵']={down:t,up:t+0.07};
+    if(typed.length<5){toastUp('Five letters',t); rowShiver[r]=t; return 'SHORT';}
+    if(rows.indexOf(typed)>=0){toastUp('You guessed that already',t); rowShiver[r]=t; return 'REPEAT';}
+    if(!ACCEPT.has(typed)){toastUp('Not a word',t); rowShiver[r]=t; return 'UNKNOWN';}
+    const m=mark(typed,answer);
+    rows.push(typed); marks.push(m); com.push({at:t}); typed=''; work={at:[],gone:[],goneCh:[]};
+    const landed=landedAt(rows.length-1);
+    for(const ch of new Set(rows[rows.length-1])) keyBump[ch.toUpperCase()]=landed;
+    if(isSolved()) solve(landed);
+    else if(rows.length===6) over(landed);
+    caption(); return 'OK';
+  }
+  function solve(t){
+    solvedAt=t; winAt=t+WIN_WAIT; hasSolve=true;
+    const r=rows.length-1;
+    for(let c=0;c<5;c++) sparkle(r,c,t+stag(MO.SOLVE_DELAY+c*MO.SOLVE_STAGGER),C.sun);
+    caption();
+  }
+  // Running out is not a failure: the keyboard slides out, the rows dim and
+  // the sprout brings the word. finish_unsolved(), not a loss screen.
+  function over(t){ overAt=t; hasOver=true; caption(); }
+  // The hint picks the leftmost position the player has not greened yet,
+  // records it in `given`, and shows that letter ghosted in the typed row at
+  // its own column with its key greened. It never commits a row.
+  function hint(t){
+    if(!open()||hintsLeft<=0) return;
+    const got=new Set(given);
+    for(let i=0;i<rows.length;i++) for(let c=0;c<5;c++) if(marks[i][c]===HIT) got.add(c);
+    let pos=-1; for(let c=0;c<5;c++) if(!got.has(c)){pos=c; break;}
+    if(pos<0) return;
+    hintsLeft--; given.push(pos); givenAt[pos]=t;
+    const r=rows.length;
+    ring(r,pos,t,C.leaf); sparkle(r,pos,t+stag(MO.DROP_TIME*0.5),C.leaf);
+    keyBump[answer[pos].toUpperCase()]=t+stag(MO.DROP_TIME);
+    caption();
+  }
+  // Reset replays the same day from the first row: every committed row's
+  // tiles shrink out in a wave from the last row up, and the keys clear
+  // their colours together. What a hint gave stays given.
+  function reset(t){
+    if(rows.length===0&&typed==='') return;
+    const n=rows.length;
+    for(let r=0;r<n;r++) for(let c=0;c<5;c++)
+      ghosts.push({r,c,ch:rows[r][c],m:marks[r][c],at:t+((n-1-r)*5+c)*stag(MO.RESET_STAGGER)});
+    rows=[]; marks=[]; com=[]; typed=''; work={at:[],gone:[]};
+    solvedAt=-1; winAt=-1; overAt=-1; hasSolve=false; hasOver=false; rowShiver=[]; toast=null;
+    caption();
+  }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    else if(name==='bksp'){ctx.beginPath(); ctx.moveTo(-s*0.46,0); ctx.lineTo(-s*0.14,-s*0.3); ctx.lineTo(s*0.46,-s*0.3); ctx.lineTo(s*0.46,s*0.3); ctx.lineTo(-s*0.14,s*0.3); ctx.closePath(); stroke(col,s*0.085);
+      ctx.beginPath(); ctx.moveTo(0,-s*0.12); ctx.lineTo(s*0.26,s*0.12); ctx.moveTo(s*0.26,-s*0.12); ctx.lineTo(0,s*0.12); stroke(col,s*0.085);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- layout ----
+  // The rows are the spec's, and they add up: 40 of margin, 180 of top bar,
+  // 20, 120 of day card, 20, 1140 of board slot, 20, 340 of keyboard, 40 of
+  // margin -- 1920 exactly. The grid is cut to whichever bound binds:
+  // tile = min((944 - 4*14)/5, (1084 - 5*14)/6) = min(177.6, 169), so the
+  // height binds at 169, the block is 901 by 1084, and with the inset the
+  // card is 1140 -- the whole slot. card_centred() has nothing left to
+  // centre, which is the one thing the spec's section 5 overstates.
+  const TOP_H=180,DAY_H=120,BOARD_H=1140,KEYS_H=340,ROW_GAP=20,GRID_GAP=14,INSET=28;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,slotY=dayY+DAY_H+ROW_GAP,keysY=slotY+BOARD_H+ROW_GAP;
+    const cell=Math.min((COL-2*INSET-4*GRID_GAP)/5,(BOARD_H-2*INSET-5*GRID_GAP)/6);
+    const gw=5*cell+4*GRID_GAP,gh=6*cell+5*GRID_GAP,bh=gh+2*INSET;
+    const by=slotY+(BOARD_H-bh)/2;
+    return {top:{y:topY},day:{y:dayY},board:{y:by,h:bh},keys:{y:keysY},
+      cell,gap:GRID_GAP,gx:W/2-gw/2,gy:by+INSET,gw,gh,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+
+  // ---- the keyboard (ui/flat/key_board.gd) ----
+  // Three rows of keys 100 tall, 14 between rows, a 12 lift: 340. A key is
+  // (1000 - 9*10)/10 = 91 wide; the middle row is centred on its own 899;
+  // the last row spends what the seven letters leave on a 126 backspace and
+  // a 157 Enter, the wider of the two, because Enter is the key that commits.
+  const KROWS=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+  const KGAP=10,KW=91,KH=100,KRGAP=14,LIFT=12,BKSPW=126,ENTERW=157;
+  function keyRects(){
+    const y0=L.keys.y+LIFT,out=[];
+    let x=M; for(const ch of KROWS[0]){out.push({ch,x,y:y0,w:KW,h:KH,row:0}); x+=KW+KGAP;}
+    const mid=KROWS[1].length*KW+(KROWS[1].length-1)*KGAP;
+    x=M+(COL-mid)/2; for(const ch of KROWS[1]){out.push({ch,x,y:y0+KH+KRGAP,w:KW,h:KH,row:1}); x+=KW+KGAP;}
+    const y2=y0+2*(KH+KRGAP); x=M;
+    out.push({ch:'⌫',x,y:y2,w:BKSPW,h:KH,row:2}); x+=BKSPW+KGAP;
+    for(const ch of KROWS[2]){out.push({ch,x,y:y2,w:KW,h:KH,row:2}); x+=KW+KGAP;}
+    out.push({ch:'↵',x,y:y2,w:ENTERW,h:KH,row:2});
+    return out;
+  }
+
+  // ---- the screen ----
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:!rows.length&&!typed});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 58px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('HIDDEN WORD').width; ctx.letterSpacing='0px';
+    text('HIDDEN WORD',cx,by-10,'700 58px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.29,ly=by-32; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7); leaf(lx+2,ly-26,34,-2.7); leaf(lx+2,ly-30,28,-0.5);
+    text('FIND THE HIDDEN WORD',cx,by+38,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  // The mock's clouds, bushes, wooden sign and sprout stand outside the
+  // board card; at 40 of margin on a 9:16 phone there is no outside, so the
+  // furniture comes inside as a scenery band (ui/flat/scenery.gd). At a 169
+  // tile the grid fills the card's whole inner box and the band is a hem:
+  // two clouds behind the tiles, seen through the 14 gaps, and a strip of
+  // grass along the 28 inset at the foot.
+  function scenery(){
+    const b=L.board,puff=mixHex(C.parchment,C.white,0.42);
+    ctx.save(); rr(M+6,b.y+6,COL-12,b.h-12,28); ctx.save(); ctx.fillStyle=puff;
+    const cl=(x,y,r)=>{circle(x,y,r); circle(x-r*0.85,y+r*0.22,r*0.62); circle(x+r*0.9,y+r*0.26,r*0.55); ctx.fillRect(x-r*1.5,y+r*0.18,r*3,r*0.72);};
+    cl(M+190,b.y+104,52); cl(W-M-230,b.y+176,42);
+    ctx.restore();
+    const gy=b.y+b.h-INSET-8,gc=mixHex(C.leafLight,C.parchment,0.42);
+    ctx.fillStyle=gc; rr(M+10,gy,COL-20,INSET+2,16); ctx.fill();
+    ctx.fillStyle=mixHex(C.leaf,C.parchment,0.35);
+    for(let i=0;i<22;i++){const x=M+30+i*44,h=10+hash(i,3)*14;
+      ctx.beginPath(); ctx.moveTo(x-5,gy+2); ctx.quadraticCurveTo(x,gy-h,x+5,gy+2); ctx.closePath(); ctx.fill();}
+    ctx.restore();}
+
+  function tileFace(x,y,s,fill,rim,ch,chCol,sy,alpha,r){
+    ctx.save(); ctx.globalAlpha*=alpha; ctx.translate(x+s/2,y+s/2); ctx.scale(1,sy); ctx.translate(-s/2,-s/2);
+    card(0,0,s,s,r,fill,rim,Math.max(5,s*0.05));
+    if(ch&&Math.abs(sy)>0.12) text(ch.toUpperCase(),s/2,s/2-s*0.03,'700 '+Math.round(s*0.52)+'px '+FD,chCol);
+    ctx.restore();}
+
+  function drawBoard(t){
+    const b=L.board,cell=L.cell,rad=cell*0.19,ex=exitU(t);
+    if(ex>=1) return;
+    ctx.save(); ctx.globalAlpha*=1-ex; ctx.translate(0,300*sineIO(ex));
+    card(M,b.y,COL,b.h,32,C.parchment,C.line,6);
+    scenery();
+    const en=t-openedAt-MO.ENTER_DELAY; if(en<0&&!RM){ctx.restore(); return;}
+    const sc=widePopScale(en),ccx=L.gx+L.gw/2,ccy=L.gy+L.gh/2;
+    ctx.save(); ctx.globalAlpha=dec(en/MO.ENTER_POP); ctx.translate(ccx,ccy); ctx.scale(sc,sc); ctx.translate(-ccx,-ccy);
+    const workRow=rows.length<6?rows.length:-1;
+    const overDim=!hasOver?1:lerp(1,0.4,dec((t-overAt)/0.3));
+    const solveDim=!hasSolve?1:lerp(1,0.3,dec((t-solvedAt)/0.4));
+    for(let r=0;r<6;r++){
+      const sh=shiverOffset(t-(rowShiver[r]==null?-1e9:rowShiver[r]));
+      for(let c=0;c<5;c++){
+        const x=L.gx+c*(cell+L.gap)+sh,y=L.gy+r*(cell+L.gap);
+        let fill=C.surfaceHi,rim=EMPTY_RIM,ch='',chCol=C.text,sy=1,alpha=overDim,dy=0;
+        if(r<rows.length){
+          const fs=t-(com[r].at+c*stag(FLIP_STEP)),m=marks[r][c];
+          ch=rows[r][c];
+          if(RM||fs>=FLIP_TIME){fill=MARKCOL[m]; rim=MARKDEEP[m]; chCol=C.paper;}
+          else if(fs<=0){sy=1;}
+          else {const u=fs/FLIP_TIME; sy=Math.abs(Math.cos(Math.PI*u));
+            if(u>=0.5){fill=MARKCOL[m]; rim=MARKDEEP[m]; chCol=C.paper;}}
+          if(hasSolve) alpha*= (r===rows.length-1)?1:solveDim;
+          if(hasSolve&&r===rows.length-1) dy=hopLift(t-(solvedAt+stag(MO.SOLVE_DELAY+c*MO.SOLVE_STAGGER)),MO.SOLVE_HOP,MO.SOLVE_TIME);
+        } else if(r===workRow){
+          if(c<typed.length){ch=typed[c]; const [px,py]=popInScale(t-(work.at[c]==null?-1e9:work.at[c]),0.18); sy=py;
+            ctx.save(); ctx.globalAlpha*=alpha; ctx.translate(x+cell/2,y+cell/2); ctx.scale(px,py); ctx.translate(-cell/2,-cell/2);
+            card(0,0,cell,cell,rad,C.surfaceHi,EMPTY_RIM,Math.max(5,cell*0.05));
+            text(ch.toUpperCase(),cell/2,cell/2-cell*0.03,'700 '+Math.round(cell*0.52)+'px '+FD,C.text); ctx.restore(); continue;}
+          const g=work.gone[c];
+          if(g!=null&&c>=typed.length){const po=popOutScale(t-g);
+            if(po){tileFace(x,y,cell,C.surfaceHi,EMPTY_RIM,'',C.text,1,alpha,rad);
+              ctx.save(); ctx.globalAlpha*=alpha; ctx.translate(x+cell/2,y+cell/2-cell*0.03);
+              ctx.rotate(po.angle); ctx.scale(po.scale,po.scale);
+              text(String(work.goneCh[c]||'').toUpperCase(),0,0,'700 '+Math.round(cell*0.52)+'px '+FD,C.text);
+              ctx.restore(); continue;}}
+          if(given.indexOf(c)>=0&&c>=typed.length){
+            const d=dropInLift(t-(givenAt[c]==null?-1e9:givenAt[c]));
+            tileFace(x,y,cell,C.surfaceHi,EMPTY_RIM,'',C.text,1,alpha,rad);
+            ctx.save(); ctx.globalAlpha*=alpha*GHOST*d.a; text(answer[c].toUpperCase(),x+cell/2,y+cell/2-cell*0.03+d.dy,'700 '+Math.round(cell*0.52)+'px '+FD,C.leafDeep); ctx.restore();
+            continue;}
+        }
+        ctx.save(); ctx.translate(0,dy); tileFace(x,y,cell,fill,rim,ch,chCol,sy,alpha,rad); ctx.restore();
+      }
+    }
+    // Reset's wave: what was committed shrinks out from the last row up.
+    for(const g of ghosts){const po=popOutScale(t-g.at);
+      if(!po){ if(t<g.at){const x=L.gx+g.c*(cell+L.gap),y=L.gy+g.r*(cell+L.gap); tileFace(x,y,cell,MARKCOL[g.m],MARKDEEP[g.m],g.ch,C.paper,1,1,rad);} continue;}
+      const x=L.gx+g.c*(cell+L.gap),y=L.gy+g.r*(cell+L.gap);
+      ctx.save(); ctx.translate(x+cell/2,y+cell/2); ctx.rotate(po.angle); ctx.scale(po.scale,po.scale); ctx.translate(-cell/2,-cell/2);
+      tileFace(0,0,cell,MARKCOL[g.m],MARKDEEP[g.m],g.ch,C.paper,1,1,rad); ctx.restore();}
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue; const [x,y]=tileCentre(rg.r,rg.c);
+      ctx.beginPath(); ctx.arc(x,y,cell*(0.3+0.85*backOut(u)),0,Math.PI*2); ctx.strokeStyle=rgba(rg.col,0.9*(1-u)); ctx.lineWidth=cell*0.07*(1-u)+2; ctx.stroke();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue; const [x0,y0]=tileCentre(p.r,p.c),dt=t-p.t0;
+      star4(x0+p.ox*cell+p.vx*dt,y0+p.oy*cell+p.vy*dt+p.g*dt*dt*0.5,p.rad*(1-u*0.6),dt*3,rgba(p.col,1-u));}
+    ctx.restore();
+    drawOver(t);
+    ctx.restore();
+  }
+  // Refusals do not get a card: a small pill in TEXT at 0.92 with PAPER
+  // lettering pops in over the top of the grid, holds TOAST_HOLD and pops out.
+  function drawToast(t){
+    if(!toast) return;
+    const s=t-toast.at; if(s<0) return;
+    let sx=1,sy=1;
+    if(s<TOAST_HOLD){const [a,b]=popInScale(s,MO.POP_IN); sx=a; sy=b;}
+    else {const po=popOutScale(s-TOAST_HOLD); if(!po){toast=null; return;} sx=po.scale; sy=po.scale;}
+    ctx.font='700 34px '+FB; const tw=ctx.measureText(toast.text).width,pw=tw+64,ph=76;
+    const x=W/2-pw/2,y=L.board.y-30;
+    ctx.save(); ctx.translate(W/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-W/2,-(y+ph/2));
+    ctx.globalAlpha*=0.92; ctx.fillStyle=C.text; rr(x,y,pw,ph,38); ctx.fill();
+    text(toast.text,W/2,y+ph/2-2,'700 34px '+FB,C.paper); ctx.restore();}
+  // Six rows and no word is not a failure: the sprout rises from the foot of
+  // the card with the word on a small card beside it. No red, no "you lost".
+  function drawOver(t){
+    if(!hasOver) return;
+    const u=dec((t-overAt-0.1)/0.35),a=dec((t-overAt-0.1)/0.25); if(a<=0) return;
+    const b=L.board,y=b.y+b.h-176;
+    ctx.save(); ctx.globalAlpha*=a; ctx.translate(0,200*(1-backOut(u)));
+    ctx.save(); ctx.translate(M+118,y+76); sprout(66,{expr:'happy'}); ctx.restore();
+    card(M+206,y,COL-246,140,28,C.surface,C.line,6);
+    text('The word was',M+242,y+50,'500 30px '+FB,C.dim,'left');
+    text(answer.toUpperCase(),M+242,y+96,'700 48px '+FD,C.good,'left','3px');
+    ctx.restore();}
+
+  function drawKeys(t){
+    const outU=!hasOver?0:dec((t-overAt)/0.25),ex=exitU(t);
+    const slide=Math.max(outU,ex); if(slide>=1) return;
+    ctx.save(); ctx.globalAlpha*=1-slide; ctx.translate(0,420*sineIO(slide));
+    for(const k of keyRects()){
+      const e=ent(t,0.25+k.row*MO.ENTER_STAGGER,0,120); if(e.a<=0) continue;
+      const m=k.ch.length===1&&k.ch>='A'&&k.ch<='Z'?keyMark(k.ch,t):-1;
+      let fill=C.keyFace,rim=KEY_RIM,col=C.text;
+      if(m>=0){fill=MARKCOL[m]; rim=MARKDEEP[m]; col=C.paper;}
+      if(k.ch==='↵'){fill=C.good; rim=MARKDEEP[HIT]; col=C.paper;}
+      const ps=pressScale(keyPress[k.ch],t)*bumpScale(t-(keyBump[k.ch]==null?-1e9:keyBump[k.ch]));
+      ctx.save(); ctx.globalAlpha*=e.a; ctx.translate(k.x+k.w/2,k.y+k.h/2+e.y); ctx.scale(ps,ps); ctx.translate(-k.w/2,-k.h/2);
+      card(0,0,k.w,k.h,22,fill,rim,8);
+      if(k.ch==='⌫') icon('bksp',k.w/2,k.h/2-4,58,col);
+      else if(k.ch==='↵') text('Enter',k.w/2,k.h/2-4,'700 38px '+FD,col);
+      else text(k.ch,k.w/2,k.h/2-4,'600 46px '+FD,col);
+      ctx.restore();
+    }
+    ctx.restore();}
+
+  // The win: no cast at all -- five green tiles spelling the word, the block
+  // of glyphs this game is shared in, and "Found it."
+  function drawWin(t){
+    if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      star4(196,OY+400,24,t*0.8,C.sun); star4(892,OY+428,18,t*1.1,C.sun); star4(276,OY+250,15,t*0.6,C.sunRay); star4(812,OY+238,20,t*0.9,C.sun);
+      const s=150,g=18,x0=W/2-(5*s+4*g)/2,ty=OY+310;
+      for(let c=0;c<5;c++){let hop=0; if(!RM){const m=(t-c*0.08)%3.2; if(m>0&&m<0.4) hop=-12*Math.sin(Math.PI*m/0.4);}
+        tileFace(x0+c*(s+g),ty+hop,s,C.good,MARKDEEP[HIT],answer[c],C.paper,1,1,s*0.19);}
+      text('Well done!',W/2,OY+616,'700 96px '+FD,C.text); text('Found it.',W/2,OY+698,'600 34px '+FB,C.dim);
+      const gs=44,gg=8,gx=W/2-(5*gs+4*gg)/2;
+      marks.forEach((m,r)=>m.forEach((v,c)=>{ctx.fillStyle=MARKCOL[v]; rr(gx+c*(gs+gg),OY+772+r*(gs+gg),gs,gs,10); ctx.fill();}));
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const hu=2-hintsLeft;
+      dayCardAt(L.stats.y,1,rows.length+(rows.length===1?' row':' rows')+' · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp==null?-1e9:btnPress.camp,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('hw-caption');
+  function caption(){
+    if(!capEl) return;
+    const tail=' · '+DIFFS[diff]+' · playing '+LIST+(showAnswer?' · the word is '+answer.toUpperCase():'');
+    if(hasSolve){capEl.textContent='Found it in '+rows.length+(rows.length===1?' row':' rows')+', '+(2-hintsLeft)+(2-hintsLeft===1?' hint':' hints')+tail; return;}
+    if(hasOver){capEl.textContent='Six rows and no word — it was '+answer.toUpperCase()+tail; return;}
+    capEl.textContent='Row '+Math.min(6,rows.length+1)+' of 6 · '+hintsLeft+(hintsLeft===1?' hint':' hints')+' left'+tail;
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout();
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); a.fn(a.at);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    for(let i=ghosts.length-1;i>=0;i--) if(t-ghosts[i].at>=MO.POP_OUT) ghosts.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawKeys(t); drawToast(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch: the drawn keys and the top bar ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,w,h)=>p[0]>=x&&p[0]<x+w&&p[1]>=y&&p[1]<y+h;
+  function hit(p,t){
+    if(hasSolve) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(!hasOver) for(const k of keyRects()) if(inRect(p,k.x,k.y,k.w,k.h)) return {kind:'key',ch:k.ch};
+    return null;}
+  let pressTarget=null;
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),hh=hit(pt(e),t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='key') keyPress[hh.ch]={down:t,up:-1e9}; else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointerup',e=>{const t=now(),hh=hit(pt(e),t);
+    if(pressTarget&&pressTarget.kind==='key'){const p=keyPress[pressTarget.ch]; if(p) p.up=t;}
+    if(hh&&pressTarget&&hh.kind===pressTarget.kind&&(hh.kind!=='key'||hh.ch===pressTarget.ch)){
+      if(hh.kind==='hint') hint(t);
+      else if(hh.kind==='reset') reset(t);
+      else if(hh.kind==='camp') setup(diff,seed+1,t);
+      else if(hh.kind==='key'){ if(hh.ch==='⌫') erase(t); else if(hh.ch==='↵') commit(t); else typeLetter(hh.ch.toLowerCase(),t);}}
+    pressTarget=null;});
+  cv.addEventListener('pointercancel',()=>{pressTarget=null;});
+  // ...and a physical keyboard, while this tab is the one on screen.
+  window.addEventListener('keydown',e=>{
+    const panel=document.getElementById('tab-hiddenword');
+    if(!panel||!panel.classList.contains('active')) return;
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    const t=now();
+    if(e.key==='Backspace'){e.preventDefault(); erase(t); return;}
+    if(e.key==='Enter'){e.preventDefault(); commit(t); return;}
+    if(/^[a-zA-Z]$/.test(e.key)){e.preventDefault(); typeLetter(e.key.toLowerCase(),t);}});
+
+  // ---- demo controls ----
+  const $=id=>document.getElementById(id);
+  const rmBtn=$('hw-rm'),dfBtn=$('hw-diff'),shBtn=$('hw-show');
+  if(rmBtn) rmBtn.addEventListener('click',()=>{RM=!RM; rmBtn.classList.toggle('on',RM); rmBtn.textContent='Reduce motion: '+(RM?'on':'off');});
+  if(dfBtn) dfBtn.addEventListener('click',()=>{setup((diff+1)%3,seed,now()); dfBtn.textContent=DIFFS[diff];});
+  if($('hw-new')) $('hw-new').addEventListener('click',()=>setup(diff,seed+1,now()));
+  if($('hw-hint')) $('hw-hint').addEventListener('click',()=>hint(now()));
+  if($('hw-reveal')) $('hw-reveal').addEventListener('click',()=>{if(open()) over(now());});
+  if($('hw-reset')) $('hw-reset').addEventListener('click',()=>reset(now()));
+  if(shBtn) shBtn.addEventListener('click',()=>{showAnswer=!showAnswer; shBtn.classList.toggle('on',showAnswer); caption();});
+
+  // ---- start, where the URL asks ----
+  function start(){
+    diff=Math.max(0,Math.min(2,parseInt(Q.get('d')||'0')||0));
+    seed=parseInt(Q.get('seed')||'5')||5;
+    setup(diff,seed,0);
+    L=layout();
+    if(dfBtn) dfBtn.textContent=DIFFS[diff];
+    if(rmBtn&&RM){rmBtn.classList.add('on'); rmBtn.textContent='Reduce motion: on';}
+    const AT=parseFloat(Q.get('at')||'0.2');
+    const settle=w=>{const m=mark(w,answer); rows.push(w); marks.push(m); com.push({at:-9});};
+    if(Q.get('guess')) for(const w of Q.get('guess').split(',').map(s=>s.trim().toLowerCase())) if(w.length===5&&rows.length<6) settle(w);
+    if(Q.get('typed')){const w=Q.get('typed').trim().toLowerCase().slice(0,5); typed=''; for(let i=0;i<w.length;i++){work.at[i]=-9; typed+=w[i];}}
+    if(Q.get('over')==='1'){
+      const rng=mulberry32((seed*40503)>>>0);
+      while(rows.length<6){const w=ANSWERS[Math.floor(rng()*BANDS[diff])]; if(w!==answer&&rows.indexOf(w)<0) settle(w);}
+      over(-8);
+    }
+    if(Q.get('win')==='1'){
+      const rng=mulberry32((seed*97157)>>>0); openedAt=-180;
+      while(rows.length<3){const w=ANSWERS[Math.floor(rng()*BANDS[diff])]; if(w!==answer&&rows.indexOf(w)<0) settle(w);}
+      settle(answer); hintsLeft=1; solve(-8);
+    }
+    if(Q.get('commit')){const w=Q.get('commit').trim().toLowerCase().slice(0,5);
+      auto.push({at:AT,fn:tt=>{typed=''; for(let i=0;i<w.length;i++){work.at[i]=tt-0.2+i*0.02; typed+=w[i];} commit(tt);}});}
+    if(Q.get('bad')==='1') auto.push({at:AT,fn:tt=>{keyPress['↵']={down:tt-0.06,up:tt}; commit(tt);}});
+    if(Q.get('hint')==='1') auto.push({at:AT,fn:tt=>{btnPress.hint=tt; hint(tt);}});
+    if(Q.get('reset')==='1') auto.push({at:AT,fn:tt=>{btnPress.reset=tt; reset(tt);}});
+    auto.sort((a,b)=>a.at-b.at);
+    caption();
+    frame();
+  }
+  loadWords().then(start);
 })();
 
 /* ---------- the flat snake apple mock ---------- */
