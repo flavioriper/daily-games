@@ -302,6 +302,30 @@ const SHELL_DEEP  := Color("b87d3a")
 const SNAIL_FOOT  := Color("f3e1c4")
 const SNAIL_DEEP  := Color("d9c29c")
 
+# Queens (docs/superpowers/specs/2026-09-19-queens-flat-design.md, section
+# 5): a court cut into as many coloured regions as it has rows, under an ink
+# frame and ink seams, on the parchment card. Nine pastels taken by region
+# index and spread round the wheel so no two neighbours share a family: the
+# seam does the separating and the colour is the region's name. The ten
+# *_TILE chip tints above are too pale to hold nine regions apart on
+# parchment, which is why these are their own block. The mock's own values
+# (docs/art/concept-queens.png, docs/brainstorm/concepts.html#queens).
+const REGION := [
+	Color("cfc3ac"),   # tan
+	Color("c4a9dc"),   # lavender
+	Color("a3c4ec"),   # sky
+	Color("b6d9a8"),   # mint
+	Color("f0c384"),   # apricot
+	Color("dcdcdf"),   # silver
+	Color("e3e27c"),   # lemon
+	Color("f79a80"),   # coral
+	Color("eaa0b8"),   # rose
+]
+## The gold the wave leaves on a cell for a moment as a queen's reach arrives:
+## a paler gold than SUN, so the wash still reads over the apricot and lemon
+## regions, where SUN itself sits too close to their own colour to show.
+const QUEEN_WASH := Color("f7c25a")
+
 # Horse Pen (the design agreed 2026-09-15, polished 2026-09-15 against
 # enclose.horse -- docs/brainstorm/concepts.html, the Horse Pen tab): a meadow
 # that runs off every edge of the screen, cut by water channels with earth

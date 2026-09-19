@@ -13,6 +13,7 @@ const State = preload("res://puzzles/queens_state.gd")
 static func run(t) -> void:
 	_test_generator(t)
 	_test_state(t)
+	_test_palette(t)
 
 static func _test_generator(t) -> void:
 	for n in [7, 8, 9]:
@@ -206,3 +207,13 @@ static func _test_state(t) -> void:
 	t.eq(s3.share_glyphs().split("\n").size(), 6, "five rows and a trailing newline")
 	t.check(s3.share_glyphs().contains("👑"), "the share carries a crown")
 	t.eq(s3.hint().cell, Vector2i(-1, -1), "no hint when every row has its queen")
+
+static func _test_palette(t) -> void:
+	var Pal = load("res://core/palette.gd")
+	t.eq(Pal.REGION.size(), 9, "nine region pastels, one per region of the hard board")
+	for i in Pal.REGION.size():
+		for j in range(i + 1, Pal.REGION.size()):
+			t.check(Pal.REGION[i] != Pal.REGION[j], "REGION %d and %d differ" % [i, j])
+		# A pastel, not a saturated chip: light enough to carry ink and a
+		# grey pebble on it.
+		t.check(Pal.REGION[i].get_luminance() > 0.55, "REGION %d is light enough for a piece on it" % i)
