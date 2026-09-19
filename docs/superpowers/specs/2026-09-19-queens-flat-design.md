@@ -97,24 +97,41 @@ by the `rng` the host hands in, so a day is the same board on every phone.
 1. **Queens first.** A permutation of `n` columns, one per row, chosen row by
    row in a shuffled order and backtracking when a column repeats or the new
    queen touches the one above (`|dc| <= 1`). Every legal answer is reachable.
-2. **Regions grown from the queens.** Region `i` starts on queen `i`'s cell.
-   Until every cell is claimed, pick a region at random and give it a random
-   unclaimed cell that touches it orthogonally. Regions are connected by
-   construction and each holds exactly one queen of the answer.
-3. **The answer proved unique.** `solve_count(region, n, 2)` is the same
-   row-by-row search with a column set, a region set and the no-touch check
-   against the previous row, stopping at two. A board is kept only when it
-   answers one.
-4. Up to 200 attempts; the last is returned with `ok = false` if none was
-   unique, which still plays (any full legal seating wins) but is not a
-   puzzle. `tests/test_queens.gd` asserts five seeds succeed.
+2. **Regions grown from the queens, favouring shape over uniformity.**
+   Region `i` starts on queen `i`'s cell. Until every cell is claimed, a
+   region under three cells is grown before any region at or above it; the
+   cell it takes is the free candidate touching it that already borders the
+   most of its own cells, with a quarter chance of taking a lesser candidate
+   instead so the shapes stay blobby rather than reading as a maze. Regions
+   are connected by construction and each holds exactly one queen of the
+   answer. Uniform growth (every live region picked at random, its cell
+   picked at random) was tried first and measured 0 unique boards in 200
+   attempts on both 8x8 and 9x9, and 12 in 200 on 7x7, in the concept page's
+   mock: a blobby partition rarely rules out enough of the hundreds to tens
+   of thousands of legal no-touch seatings a bare board still allows, so
+   growth alone was not enough and a repair pass follows every grown court.
+3. **The court is repaired to a unique answer.** While `solve_count` (the
+   same row-by-row search, stopped once it finds two) reports more than one
+   seating, repair takes a cell where a second seating disagrees with the
+   answer, and if handing that cell to a neighbouring region keeps the
+   loser's region connected and its own queen in it, tries the move and
+   keeps it only when the seating count does not rise. Repair runs in two
+   phases: a quick pass across `ATTEMPTS` (60) boards, each capped at
+   `REPAIRS` (400) moves but giving up on a board early once its count has
+   not fallen in `STALE` (40) moves; and, only for the rare seed none of
+   those crack, a slower, uncapped pass across `PATIENT_ATTEMPTS` (30) more.
+   A board is kept only when repair drives the count to exactly one.
+4. The last board tried is returned with `ok = false` if neither phase
+   proved one unique, which still plays (any full legal seating wins) but is
+   not a puzzle. `tests/test_queens.gd` asserts five seeds succeed.
 
 Difficulty is size alone. Region shape is the other lever the game has and
 this spec does not pull it; section 12 keeps the call. Generation has to be
-felt as nothing at open: the target is under a tenth of a second for a 9x9 on
-this Mac, measured in the plan with a throwaway probe, and the two levers if
-it is not are a compact growth (which raises the uniqueness rate) and fewer
-attempts.
+felt as nothing at open, and the target is rescoped to the board the game
+actually opens: 8x8, since the menu fixes difficulty at medium and the
+settings sheet has no selector. That target is met (section 11's table); the
+9x9 hard board sits well over a tenth of a second and is not selectable
+today, which section 12 keeps open.
 
 ## 5. The cast: one crown, drawn crosses, coloured ground
 
@@ -141,8 +158,11 @@ the grid between cells a faint line, and a region's border a thick warm ink
 pale to hold nine regions apart, so `core/palette.gd` gains `REGION`, nine
 pastels spread round the wheel so no two neighbours share a family, taken by
 region index: tan, lavender, sky, mint, apricot, silver, lemon, coral, rose,
-the mock's own. The seam does the separating; colour is the region's name.
-Beside them, `QUEEN_WASH`, the gold the wave leaves on a cell for a moment.
+the mock's own values (`cfc3ac c4a9dc a3c4ec b6d9a8 f0c384 dcdcdf e3e27c
+f79a80 eaa0b8`). The seam does the separating; colour is the region's name.
+Beside them, `QUEEN_WASH` (`f7c25a`), a paler gold than `SUN` so the wash
+still reads on the apricot and lemon regions, where `SUN` itself sits too
+close to their own colour to show.
 
 ## 6. The tray and the gesture
 
@@ -235,8 +255,8 @@ alpha 0.35, `AUTO_ALPHA` 0.75.
 | Cross, uncross | The pebble pops in with the squash and a puff in `SOCKET_PEBBLE`; taken away, it shrinks with the quarter turn. |
 | Sweep | Cells sink as the finger passes and stay down; on release the pebbles arrive in a wave along the finger's path at `ENTER_STAGGER`, each cell springing back as its pebble lands. No puffs. |
 | Hint | A wrong queen in the way pops out first. A ring in `LEAF` at the given cell, the crown drops in from `DROP` above with the fade (`drop_in`), sparkles in leaf, then her wave. |
-| Wrong on Check | Each wrong crown wobbles (`wobble2d`) and her cell flashes toward `BAD_TILE` (rule 9: a crown has no blush of her own; her cell blushes). |
-| Refused | On a seen cell the pebble shivers (`shiver_offset`) and the cell flashes toward `BAD_TILE`; on a given queen the crown shivers with `STRAIN` and her cell flashes. The sprout says why. |
+| Wrong on Check | Each wrong crown wobbles (`wobble2d`) and her cell flashes toward `Pal.BAD` at `BLUSH_ALPHA` (0.42) of `flash_level` (rule 9: a crown has no blush of her own; her cell blushes; `BAD_TILE` is skipped because it vanishes on the rose and coral regions). |
+| Refused | On a seen cell the pebble shivers (`shiver_offset`) and the cell flashes toward `Pal.BAD` at `BLUSH_ALPHA`; on a given queen the crown shivers with `STRAIN` and her cell flashes the same way. The sprout says why. |
 | Undo | The reverse of the gesture, in its own wave. |
 | Reset | Every crown and pebble the player laid shrinks out in a wave from the far corner at `RESET_STAGGER`; given queens hop `RESET_HOP` and keep their crosses. |
 | Solved | The crowns hop `SOLVE_HOP` in a wave along the diagonal with `JOY`, sparkles in gold, and the pebbles clear in a scatter as Nonogram's do, leaving the queens on their colours. `win_delay()` 1.6. |
@@ -263,10 +283,18 @@ the two `soon` cards:
 
 ## 11. Measured
 
-Filled in by the build: draw calls bare and with a seated queen's crosses
-against the 855 budget, idle ms at 1080x1920 through `tests/_shot_anim.gd`,
-the menu's draw calls through `tests/_shot_menu.gd` against 291, the
-generator's time for a 9x9, the suite count and the win harness count.
+On this Mac, 2026-09-19.
+
+| | Value |
+|---|---|
+| Generator, 20 seeds each: 7x7 / 8x8 / 9x9 mean and worst | `n=7 mean=4 ms worst=14 ms`, `n=8 mean=29 ms worst=100 ms`, `n=9 mean=177 ms worst=797 ms`, all `fails=0/20` |
+| Medium board at rest, bare: draw calls, idle ms (two readings) | 67 draw calls; 3.18 ms and 3.34 ms |
+| Medium board with the first queen seated: draw calls, idle ms (two readings) | 69 draw calls; 3.80 ms and 3.81 ms |
+| The first screen with the Queens card: draw calls, against 291 | 319 draw calls (307 with the card's picture removed, so the card itself costs 12; the other 16 predate Queens) |
+| Suite | 2406 checks, 0 failures |
+| `tests/_win.gd` windowed | 10/10, Queens solved through the real hint button, Check and taps |
+
+The 855 draw-call budget is the binding one; the idle number is a report.
 
 ## 12. Calls this screen is still for
 
@@ -284,3 +312,39 @@ generator's time for a 9x9, the suite count and the win harness count.
   apart. `TEXT` rather than black, and thick, is the compromise.
 - **103 on hard.** Nonogram's cell, and the same question.
 - **One crown on the win.** The nine on the board are already the reward.
+- **The hard board's open.** 9x9 generates in 177 ms mean and 797 ms worst on
+  this Mac, which a phone would feel; hard is not selectable today, and the
+  day it is, the levers are a precomputed table of courts
+  (`content/queens.json`, picked by day hash the way How Big? picks its item)
+  or a bitmask solver.
+
+## 13. Amendments from the build, 2026-09-19
+
+- **A press with the crown chip is a tap only if it is let go on the cell it
+  landed on.** Section 6 said a drag with the crown chip is a tap where it
+  ends; a finger that wanders off a cell on a phone has more often changed
+  its mind than aimed, so the board takes the press cell or nothing.
+- **No clouds or tufts under the card.** Section 8 promised the family's
+  scenery; the court fills the card, as Nonogram's floor does, and there is
+  nowhere for a cloud to be.
+- **A crown under the finger sinks whichever chip is armed**, including the
+  cross chip, which does nothing to her on release: every tappable piece
+  takes the press.
+- **A tap always sinks the cell it presses**, even a queen's or a seen cell
+  the tap cannot change; a cell a stroke only passes over sinks only when
+  the stroke can actually change it, Light Up's own rule for a sweep.
+- **A lifted queen's own crown leaves at once.** The wave that takes her
+  crosses away runs in reverse, far cells first and near ones last, but the
+  crown under her is not a cell in that wave: she pops out on the same
+  frame the lift lands, so her reach visibly draws back into where she
+  stood rather than the crown itself lagging the wave.
+- **Wrong on Check and Refused blush toward `Pal.BAD`, not `BAD_TILE`**, at
+  `BLUSH_ALPHA` (0.42) of `flash_level`. `BAD_TILE`'s pale tint (0.9) vanishes
+  on the rose and coral regions, found on the mock; the family's own rose at
+  under half strength reads on every region instead.
+- **`CLEAR_DELAY` is 0.6, not Nonogram's 0.2.** The pebbles wait for the last
+  queen's wave to land -- her farthest cell's delay plus its pop-in -- before
+  they clear, which Nonogram never had to wait for.
+- No constant the contact sheet checked (Task 6) needed changing: all 21
+  frames it inspected (the six-frame strip plus the fifteen-frame contact
+  sheet) matched section 9 as written.

@@ -18,7 +18,7 @@ var _idx := 0
 var _entries: Array = []
 
 func _initialize() -> void:
-	# The three `soon` cards name a board that has no flat version, so they
+	# The two `soon` cards name a board that has no flat version, so they
 	# have no script to open; the harness walks the ones that do.
 	_entries = []
 	for e in load("res://ui/registry.gd").PUZZLES:

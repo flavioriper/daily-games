@@ -10,8 +10,10 @@ extends "res://ui/puzzle_host.gd"
 ## The one row the flat screens do not share is the tray: Binairo arms a
 ## brush from three symbol chips, Code Break seats a friend from six or
 ## seven, Balance steps a weight from one card per fruit, Nonogram paints
-## with one of two tile chips, and Shikaku picks nothing up at all. The
-## registry names which (`"tray": "friends"`, `"weights"`, `"tiles"`,
+## with one of two tile chips, and Shikaku picks nothing up at all. Queens
+## arms a crown or a cross chip in the same tile tray, built with
+## `TileTray.CROWNS` in place of Nonogram's `TileTray.MOSAIC`. The registry
+## names which (`"tray": "friends"`, `"weights"`, `"tiles"`, `"crowns"`,
 ## `"none"`), because the host lays out its rows before it has a puzzle to
 ## ask.
 ##

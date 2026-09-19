@@ -86,32 +86,39 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   `_build_list` lays a `Pal.PAPER` rect under everything.
 - **A card's picture is the board's own cast** (`ui/menu/card_art.gd`):
   `ui/faces/` characters seated in a 320 by 118 box and scaled to the card,
-  plus whatever furniture they stand on drawn under them. Nine of the twelve
+  plus whatever furniture they stand on drawn under them. Ten of the twelve
   are almost entirely reuse. It is never an image and never a `SubViewport`.
   A new card costs one branch of `_build` and, if it needs furniture, one of
   `_draw`.
-- **Twelve cards, and three of them do not open.** Pipes, Horse Pen and
-  Snake Apple have no flat board: they keep their picture and name at 55%
-  ink, wear a pale `SOON` pill and emit `blocked`, and the menu answers with
-  a line saying their island version is under More. They are the last row
-  together on purpose -- dimmed cards scattered through a grid read as a
-  bug. The pill hangs off the card, **not** off `_inner`: that is a
-  PanelContainer and a second child there is stretched over everything.
+- **Twelve cards, and two of them do not open.** Pipes and Horse Pen have
+  no flat board: they keep their picture and name at 55% ink, wear a pale
+  `SOON` pill and emit `blocked`, and the menu answers with a line saying
+  their island version is under More. They stand together at the end of the
+  last row on purpose -- dimmed cards scattered through a grid read as a
+  bug. Snake Apple's `soon` card left the grid on 2026-09-19 to make room
+  for Queens, the tenth live card: it is the one being redesigned outright,
+  and its island board stays under More with `seed_as` still `snake`. The
+  pill hangs off the card, **not** off `_inner`: that is a PanelContainer
+  and a second child there is stretched over everything.
 - **The hearts, the calendar badge and the day chevron are decoration**, by
   the user's decision on 2026-09-18. `Day N` and the day's name are real
   (`core/progress.gd`); nothing else on that row counts anything. There is
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (nine flat
-  plus the three `soon`); `Registry.LEGACY` is the old game. A grid entry
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (ten flat
+  plus the two `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
-- **Measured on this Mac at 1080x1920** (`tests/_shot_menu.gd`): 291 draw
+- **Measured on this Mac at 1080x1920** (`tests/_shot_menu.gd`): 319 draw
   calls against the campsite's 338 and the 855 budget, and a mean idle of
   8.33 ms -- which is exactly the 120 Hz vsync cap, so it is a ceiling and
   not a measurement. What can be said honestly is that the campsite sat at
-  ~13 ms, above the cap, and this screen is inside it.
+  ~13 ms, above the cap, and this screen is inside it. This was 291 before
+  Queens; the Queens card alone costs 12 of the 28-call rise (checked on the
+  same build with its picture removed, at 307), and the other 16 predate it
+  -- the header's turning, glinting sun and later changes since 291 was
+  first measured.
 
 ## legacy/: the old 3D game
 
@@ -298,12 +305,13 @@ every layout change.
 
 ## The flat screens
 
-Nine cards open a flat 2D board under flat chrome: **Binairo**
+Ten cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
 (`puzzles/tents2d.gd`), **Light Up** (`puzzles/lightup2d.gd`), **One Line**
-(`puzzles/oneline2d.gd`) and **Nonogram** (`puzzles/nonogram2d.gd`).
+(`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`) and, since
+2026-09-19, **Queens** (`puzzles/queens2d.gd`).
 
 Each was built on trial beside its island, as a second card seeded from the
 same day, so the two could be judged on the phone. **The trial is over**:
@@ -314,9 +322,10 @@ Specs:
 `docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
 `...-tents-`, `...-lightup-`, `...-oneline-` and
-`...-nonogram-flat-design.md` siblings; mocks:
+`...-nonogram-flat-design.md` siblings, and
+`docs/superpowers/specs/2026-09-19-queens-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents`, `#lightup`, `#oneline` and `#nonogram`.
+`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram` and `#queens`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -364,6 +373,22 @@ Specs:
   pop in, bump and hop off the same readers as the mesh, and
   `ui/faces/mosaic_tile.gd` takes a Vector2 scale, a turn and a blush so a
   drawn tile can squash, wobble, turn out and flash.
+- **Queens is the precedent for a board that answers a move** (2026-09-19,
+  `puzzles/queens2d.gd`, spec `2026-09-19-queens-flat-design.md`). A seated
+  queen crosses out every cell she sees; those crosses are **derived** by the
+  state (`seen`, a count per cell rebuilt after every change) and never
+  stored, so lifting her takes them with her and undo keeps no book for
+  them. A crown on a seen cell is **refused**, so two queens can never
+  conflict and the n-th queen is the win. The wave is its signature: every
+  move goes through one `_settle` that diffs a snapshot of the court against
+  the state and hands each changed cell its moment, with a Callable saying
+  when -- a queen's king-move distance times `WAVE_STEP` (reversed for a
+  lift, far cells first), a sweep's path, Reset's far corner -- and the
+  cells the queen sees flash gold (`QUEEN_WASH` at `WAVE_FLASH`) as it
+  reaches them. The crown (`ui/faces/crown_face.gd`) is the cast's one new
+  species since the snail. The tile tray takes a **chip set** now
+  (`TileTray.MOSAIC`, `TileTray.CROWNS`; `"tray": "crowns"`), so Nonogram's
+  tray and Queens' are one class.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -402,13 +427,13 @@ Specs:
   and `legacy/ui/island_host.gd` is the other, and both fill
   `ui/puzzle_host.gd`'s `_build_chrome` and `_enter`. The base has no rows
   of its own and errors rather than falling back. It picks the tray too
-  (`"tray": "friends"`, `"weights"`, `"tiles"`), because the host lays out its rows
+  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"crowns"`), because the host lays out its rows
   before it has a puzzle to ask how many chips it wants -- and it can drop
   the actions row with `"actions": false`, which Balance does: that board is
   its own continuous check, so it has no Check to put in the row and Reset
   rides up into the top bar instead. The flat host therefore measures its
   bottom slot from the rows it actually built, not from a constant; the
-  nine screens want 460, 460, 390, 290, 140, 290, 290, 290 and 460 --
+  ten screens want 460, 460, 390, 290, 140, 290, 290, 290, 460 and 460 --
   Untangle drops the tray *and* the actions row, so its slot is the tip card
   alone.
 - **What the flat chrome asks a board for is optional and defaulted**:
