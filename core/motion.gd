@@ -265,6 +265,7 @@ const POP_OUT := 0.12
 const ENTER_POP := 0.25
 const ENTER_STAGGER := 0.03
 const ENTER_WIDE_FROM := 0.86
+const ENTER_FACE_LAG := 0.12
 const HOP := -6.0
 const HOP_TIME := 0.3
 const NUDGE := 3.0
@@ -355,6 +356,20 @@ static func nudge(node: Control, dir: Vector2, rest: Vector2, px := NUDGE, time 
 	var tw := node.create_tween()
 	tw.tween_property(node, "position", rest + dir * px, time * 0.5).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_property(node, "position", rest, time * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	return tw
+
+## Blushes a value and lets it settle: `setter` is driven from `from` to
+## `peak` over `time_in` in `steps` levels (the fade's bounded set of
+## colours), then eased back to `back` over `time_out`. What a wrong cell on
+## Check, an empty seat asked to score and a card that refused a press all
+## do, each toward its own colour. Under reduce-motion `back` is set at once
+## and null returned.
+static func flash(node: Node, setter: Callable, from: float, peak: float, back: float, time_in := FLASH_IN, time_out := FLASH_OUT, steps := 16) -> Tween:
+	var tw: Tween = fade(node, setter, from, peak, time_in, steps)
+	if tw == null:
+		setter.call(back)
+		return null
+	tw.tween_method(setter, peak, back, time_out).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	return tw
 
 ## Kills `tw` if it is still alive. Null-safe.

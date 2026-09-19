@@ -308,8 +308,17 @@ Specs:
   those and keeps only its own signature (Binairo's blush, Code Break's
   flight and lids) as constants of its own; a number that has to differ goes
   through a recipe's parameter, never a copied constant. Rings, puffs and
-  sparkles come from `ui/fx2d.gd` alone. The other seven flat boards still
-  carry their own tweens and are ported when next touched.
+  sparkles come from `ui/fx2d.gd` alone. Balance joined them the same day
+  (its spec's section 10), and brought `ui/flat/scenery.gd`: one mesh of
+  clouds and grass tufts under a board card, and the radial disc every
+  ground shadow is drawn with. The other six flat boards still carry their
+  own tweens and are ported when next touched.
+- **A card that moves inside a container needs a slot.** A container writes
+  its children's positions on every sort, so a child that tweens its own
+  position (a shiver, a hop) fights it and loses; give the container a plain
+  slot and let the card move inside that. Balance's weight cards learned it
+  the hard way on 2026-09-18: a refused minus threw the card under the first
+  one, and the player saw it vanish.
 - **The flat screen breaks the sign rule on purpose.** Its title is a `Label`
   in ink (`Wordmark2D`) with the leaf drawn over it, not the carved sign, and
   it has no How to play card, working-line card or motto footer: a tip card

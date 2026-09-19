@@ -192,3 +192,71 @@ reasoning, and are worth recording because each would have shipped:
   no buttons.
 - Whether the sprout reading one scale at a time teaches, or whether the
   scales are already sentences and the card should say something else.
+
+## 10. Amendment: the polish of 2026-09-18
+
+The user brought a re-render of the built screen and asked for it to be
+smoother and more elegant, with its animations on Binairo's pattern and the
+pattern recorded for the other boards; they also reported that pressing
+minus on a weight of one made the card vanish. Built straight in Godot, as
+Code Break's polish was (section 11 there), with this amendment and
+`docs/art/flat-motion.md` as the record. The layout is kept, the re-render's
+dressing taken, by the same precedent; the re-render's Check button and the
+hearts on the day card are not taken, for the reasons sections 5 and the
+Code Break amendment give.
+
+**The vanishing card** was the refusal's shiver: the card was a direct child
+of the row container and wrote its own x to zero before shaking, so every
+card but the first jumped under the first card, in reduce-motion too. Each
+card now stands in a slot the container owns and moves inside it; the fix
+is verified by a probe that refuses on the last card and reads its rect back
+equal to its slot's.
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | each scale pops in level from 0.86 with the back ease, one band after another at `BAND_STAGGER` 0.08 (a scale is a row, not a cell); its fruit land in the dishes 0.12 later with the squash, 0.03 apart, and as they land the beam swings to its angle -- the weights arriving is what tilts the scale |
+| Step, undo | the card's fruit hops 10 and its numeral bumps with a puff in the fruit's colour, and every fruit of that kind on the board hops in its dish, down the column at the band's pace |
+| Refused | the card shivers 6 and blushes 0.35 toward `BAD` (0.15 in, 0.45 out); the sprout says why |
+| Level | the fulcrum rings through `Fx2D.ring` in `LEAF` at 90 art units, in place of the board's own ring class |
+| Hint | the card takes the sun rim, its numeral drops in from 40 above, `GIVEN` pops in, a ring pulses out of the fruit; sparkles still rise off the board's edge above it; the kind hops on the board if its weight moved |
+| Reset | beams unwind and the changed kinds hop, both staggered by band |
+| Solved | the vocabulary's wave: every fruit hops -10 over 0.4, 0.04 apart down the column and across each dish after 0.25, with JOY eyes; sparkles over each fulcrum as its wave passes |
+
+The `flash` recipe (`Motion.flash`) was lifted for the refusal, since
+Binairo's check flash and Code Break's socket flash were the same eight
+lines; both call it now. `Motion.ENTER_FACE_LAG` was lifted from Binairo the
+same way.
+
+**The dressing:**
+
+- The weight cards are tinted in their fruit's `tile` colour, as Code Break's
+  chips are; the given card is sand with a sun rim all round; the minus and
+  plus are `SURFACE` pills; none of them wears the paper wash any more, since
+  the stain that reads as paper on cream reads as dirt on a pastel. Section
+  4's line on the wash is superseded.
+- **The board has a ground.** Under every dish a soft shadow on the floor
+  (`GROUND_Y`, the base's underside) follows the dish: widest and darkest
+  with the dish down, narrower and fainter as it rises through
+  `SHADOW_REACH`, so the tilt reads as height and not only as an angle. The
+  stand has its own. Each is one draw of `Scenery.shadow()`, a radial disc,
+  redrawn only when the beam moves.
+- **Scenery** behind the column (`ui/flat/scenery.gd`, new and shared): a
+  cloud in the top corner of each band, alternating sides, a small one on the
+  first band's other corner, a tuft of grass either side of every base and in
+  the card's bottom corners. One mesh, one draw call, built on layout. Clouds
+  keep to the corners because the column spans the card and a cloud behind a
+  raised dish is clutter.
+- A knot where the cords meet the beam.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+Balance run now presses the first free card's plus: 146 draw calls (136
+before: one for the scenery, three shadows a scale) and an idle mean of
+**3.24 ms**, against 7.42 before. The difference is not the polish: the old
+board wrote every face's expression every frame, and a face redraws when
+written; a face is now written only when its look changes. Suite 2086/0.
+`tests/_win.gd` windowed passes with Balance solved through the real minus
+and plus. Throwaway probes shot the entrance, a step, a refusal and its
+settled card, a hint's reveal, a reset, the solve wave and the win, each
+with and without reduce-motion.

@@ -36,7 +36,6 @@ const HINTS := 3
 ## nudge, the drop, the ring, the entrance and the solve wave are the flat
 ## vocabulary's own numbers now (core/motion.gd, docs/art/flat-motion.md);
 ## only what is Binairo's alone stays here.
-const ENTER_FACE_LAG := 0.12
 const FACE_IN_LAG := 0.08
 const DIP := 4.0
 const BLUSH_IN := 0.25
@@ -585,15 +584,7 @@ func check() -> int:
 ## is heading for.
 func _flash(r: int, c: int) -> void:
 	Motion.stop(_fades[r][c])
-	var setter := _paint.bind(r, c)
-	var back: float = _blend_target[r][c]
-	var tw: Tween = Motion.fade(self, setter, _blend[r][c], CHECK_FLASH, Motion.FLASH_IN, 16)
-	if tw == null:
-		setter.call(back)
-		_fades[r][c] = null
-		return
-	tw.tween_method(setter, CHECK_FLASH, back, Motion.FLASH_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_fades[r][c] = tw
+	_fades[r][c] = Motion.flash(self, _paint.bind(r, c), _blend[r][c], CHECK_FLASH, _blend_target[r][c])
 
 ## Reset as a wave from the bottom left: free faces shrink out, givens hop,
 ## a hint's cell goes back to the player, the brush is dropped.
@@ -663,7 +654,7 @@ func _enter() -> void:
 				_entrance.append(pop)
 			var face: Control = _faces[r][c]
 			if face != null:
-				var tw: Tween = Motion.pop_in(face, Motion.POP_IN, delay + ENTER_FACE_LAG)
+				var tw: Tween = Motion.pop_in(face, Motion.POP_IN, delay + Motion.ENTER_FACE_LAG)
 				if tw != null:
 					_entrance.append(tw)
 	fx.cue("enter")

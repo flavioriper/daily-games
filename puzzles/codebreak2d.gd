@@ -759,12 +759,9 @@ func _flash_socket(g: int, s: int) -> void:
 	var setter := func(v: float) -> void: sb.bg_color = base.lerp(Pal.BAD_TILE, v)
 	var key := g * 16 + s
 	Motion.stop(_flash_tw.get(key))
-	var tw: Tween = Motion.fade(self, setter, 0.0, 1.0, Motion.FLASH_IN, 16)
-	if tw == null:
-		setter.call(0.0)
-		return
-	tw.tween_method(setter, 1.0, 0.0, Motion.FLASH_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_flash_tw[key] = tw
+	var tw: Tween = Motion.flash(self, setter, 0.0, 1.0, 0.0)
+	if tw != null:
+		_flash_tw[key] = tw
 
 ## A check's beats are paced to the pips dropping in; under reduce-motion
 ## the pips are simply there, so every beat shortens to one short one, and

@@ -3,9 +3,8 @@ extends "res://core/puzzle_base.gd"
 ## Balance as a flat board: a column of wooden scales on the host's parchment
 ## card, each one a true statement about the fruit in its two dishes, with
 ## the player's answer in the weight cards under the board
-## (ui/flat/weight_tray.gd). Built beside the island version
-## (puzzles/balance3d.gd) so the two can be judged against each other on the
-## phone; the rules live in puzzles/balance_state.gd, which this only draws.
+## (ui/flat/weight_tray.gd). The rules live in puzzles/balance_state.gd,
+## which this only draws; the island version is in legacy/.
 ##
 ## Every beam tilts live under the weights the player has guessed -- the
 ## heavier dish dips -- so **the board is its own check**: when the last beam
@@ -13,19 +12,25 @@ extends "res://core/puzzle_base.gd"
 ## "check" and why this screen has no actions row at all: a button that read
 ## the board for you would be the puzzle. Reset lives in the top bar
 ## instead, which is this screen's one structural departure from the other
-## two flat boards (spec section 5).
+## flat boards (spec section 5).
 ##
-## This is the board the flat view should win on most clearly: a tilt is an
-## angle, and an angle read through the island's seven-degree camera is an
-## angle plus a lie.
+## Its motion is the flat vocabulary's (core/motion.gd, "the flat boards'
+## vocabulary"; docs/art/flat-motion.md is the table): the scales pop in as
+## wide things and their fruit land a beat later with the squash, which is
+## what swings each beam to its angle; a kind whose weight changed hops in
+## every dish it stands in; a beam that comes level rings; the solve is the
+## hop wave. What is this board's alone is the tilt itself (`TILT_*`), the
+## column's pace (`BAND_STAGGER`: a scale is a row, not a cell) and the
+## ground -- a soft shadow under every dish that follows it up and down, the
+## stand's own, and the scenery behind the column (ui/flat/scenery.gd).
 ##
 ## The wood is drawn as **cached meshes, not canvas commands**: gl_compatibility
-## pays per draw command, so a scale is three draw_mesh calls (stand, beam,
-## dish) rather than a dozen rounded rectangles, and every scale of a size
-## shares them. Filled shapes get the Builder's feather, since MSAA stays off
-## for the 2D canvas.
+## pays per draw command, so a scale is a handful of draw_mesh calls (ground,
+## stand, beam, two dishes) rather than a dozen rounded rectangles, and every
+## scale of a size shares them. Filled shapes get the Builder's feather,
+## since MSAA stays off for the 2D canvas.
 ## Spec: docs/superpowers/specs/2026-09-18-balance-flat-design.md, sections 2
-## to 6, ported number for number from the canvas mock
+## to 6 and 10, ported number for number from the canvas mock
 ## (docs/brainstorm/concepts.html#balance).
 
 const Gen = preload("res://puzzles/balance_gen.gd")
@@ -35,6 +40,7 @@ const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Fruit = preload("res://ui/faces/fruit.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 ## Layout, in the board card's inner pixels (spec section 3). A band is
 ## capped, so easy's two scales make a short board with air above the weight
@@ -66,11 +72,12 @@ const SHADE_H := 7.0
 const SHADE_R := 4.0
 const HUB_R := 15.0
 const HUB_IN := 7.0
-## The dish on its cords.
+## The dish on its cords, and the knot they hang from.
 const DISH_W := 176.0
 const CORD := 54.0
 const CORD_X := 0.42
 const CORD_W := 5.0
+const KNOT_R := 7.0
 const DISH_DEEP := 34.0
 const DISH_CTRL := 0.4
 const LIP_Y := 7.0
@@ -81,6 +88,30 @@ const PIECE := 62.0
 const PITCH_MAX := 56.0
 const PIECE_LIFT := 12.0
 
+## The ground (spec section 10): the floor the stand's base sits on, in art
+## units below the fulcrum, and the shadows on it. A dish's shadow is widest
+## and darkest with the dish on the ground and shrinks and fades as the dish
+## rises through SHADOW_REACH; the stand's is fixed.
+const GROUND_Y := BASE_Y + BASE_H
+const SHADOW_RY := 0.16
+const SHADOW_NEAR := 0.16
+const SHADOW_FAR := 0.06
+const SHADOW_SHRINK := 0.4
+const SHADOW_REACH := 140.0
+const SHADOW_HUG := 4.0
+const BASE_SHADOW := 0.12
+const BASE_SHADOW_W := 0.6
+## The scenery behind the column: a cloud in the top corner of each band,
+## alternating sides, a small second one on the first band, tufts either
+## side of every base and in the card's bottom corners.
+const CLOUD_R := 24.0
+const CLOUD_SMALL := 14.0
+const CLOUD_X := 0.13
+const CLOUD_Y := 0.15
+const TUFT_H := 30.0
+const TUFT_GAP := 26.0
+const CORNER_TUFT := 40.0
+
 ## Weight difference at which the beam reaches TILT_MAX. Past three the tilt
 ## stops growing: the board says "this dish is heavier", never by how much,
 ## which is what keeps a wildly wrong guess from burying a dish in the card.
@@ -90,23 +121,17 @@ const TILT_TIME := 0.42
 ## Hint count, not refunded by reset (HUD spec, section 3).
 const HINTS := 3
 
-# --- motion (spec section 6) ---
+# --- motion: the vocabulary's, and what is this board's own ---
+## The board arrives this long after the chrome starts.
 const ENTER_DELAY := 0.15
-const ENTER_STAGGER := 0.08
-const ENTER_TIME := 0.35
-const ENTER_DROP := 40.0
-const RING_R0 := 40.0
-const RING_GROW := 130.0
-const RING_TIME := 0.55
+## The column's own pace: a scale is a row and not a cell, so its waves --
+## the entrance, a reset, a kind hopping down the board -- step by band.
+const BAND_STAGGER := 0.08
+## The ring a fulcrum gives when its beam comes level, in art units.
+const LEVEL_RING := 90.0
 ## How long both dishes keep their happy face after a beam comes level.
 const LEVEL_JOY := 0.9
-const SOLVE_HOP := -12.0
-const SOLVE_TIME := 0.42
-const SOLVE_DELAY := 0.1
-const SOLVE_STAGGER := 0.12
-const SOLVE_PIECE := 0.05
 const SOLVE_SPARKLES := 3
-const RESET_STAGGER := 0.05
 const HINT_SPARKLES := 5
 ## How long the host waits before the win screen: the last beam's swing, the
 ## wave of hops and their sparkles all have to land first.
@@ -120,14 +145,21 @@ var fx: Node2D
 
 var _scales: Array[Control] = []       # [i] -> the band's root, at the fulcrum
 var _lifts: Array[Control] = []        # [i] -> the entrance's node, 0 at rest
+var _grounds: Array[Control] = []      # [i] -> the shadows on the floor
 var _stands: Array[Control] = []       # [i] -> the post and base mesh
 var _beams: Array[Control] = []        # [i] -> the turning node
 var _dishes: Array = []                # [i] -> [left, right] Controls, always level
 var _pieces: Array = []                # [i] -> [[Face...], [Face...]]
 var _tilt_tw: Array = []               # [i]
+var _shown_angle: Array[float] = []    # [i] -> the angle the dishes were last hung from
 var _level_until: Array[float] = []    # [i] -> msec the dishes keep beaming to
 var _was_level: Array[bool] = []
 var _entrance: Array[Tween] = []
+var _hops: Dictionary = {}             # face -> its hop
+var _scenery: Control
+## Bumped by every rebuild, so a callback waiting on a timer from the board
+## before never lands on this one.
+var _gen := 0
 
 var _band := 0.0
 var _art := 1.0
@@ -155,6 +187,10 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = false
+	# The scenery first, so it is drawn under every scale.
+	_scenery = Scenery.new()
+	_scenery.name = "Scenery"
+	add_child(_scenery)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 1
@@ -196,22 +232,26 @@ func _build_scales() -> void:
 		root.queue_free()
 	_scales = []
 	_lifts = []
+	_grounds = []
 	_stands = []
 	_beams = []
 	_dishes = []
 	_pieces = []
 	_tilt_tw = []
+	_shown_angle = []
 	_level_until = []
 	_was_level = []
+	_hops = {}
 	for i in state.scales.size():
 		_build_scale(i)
 
-## One scale: the stand under the fulcrum, the beam turning on it, and a dish
-## hanging from each beam end with that side's fruit standing in it.
+## One scale: the shadows on its floor, the stand under the fulcrum, the beam
+## turning on it, and a dish hanging from each beam end with that side's
+## fruit standing in it.
 ##
 ## Two nodes deep on purpose. The **root** is where the layout puts the
 ## fulcrum, and only the layout ever writes it; the **lift** is what the
-## entrance slides, and only the entrance ever writes that. Animating the
+## entrance pops, and only the entrance ever writes that. Animating the
 ## root directly meant the entrance captured a rest position from before the
 ## card had its real height and then held the scale there for good, which
 ## stacked every band on top of the first (ui/hud/panel.gd separates `_inner`
@@ -235,6 +275,11 @@ func _build_scale(i: int) -> void:
 	root.add_child(lift)
 	_lifts.append(lift)
 
+	var ground := Ground.new()
+	ground.name = "Ground"
+	lift.add_child(ground)
+	_grounds.append(ground)
+
 	var stand := Wood.new()
 	stand.name = "Stand"
 	lift.add_child(stand)
@@ -256,6 +301,7 @@ func _build_scale(i: int) -> void:
 		var kinds: Array = sc.left if side < 0 else sc.right
 		for q in kinds.size():
 			var face := Fruit.make(int(kinds[q]), PIECE, Vector2.ZERO)
+			face.set_meta("kind", int(kinds[q]))
 			dish.add_child(face)
 			row.append(face)
 			face.set_idle(true)
@@ -263,11 +309,13 @@ func _build_scale(i: int) -> void:
 	_dishes.append(dishes)
 	_pieces.append(pieces)
 	_tilt_tw.append(null)
+	_shown_angle.append(INF)
 	_level_until.append(0.0)
 	_was_level.append(state.is_level(i))
 
 ## Places everything from the card's current size: the band height, the art
-## scale that follows from it, and every scale's meshes and dishes.
+## scale that follows from it, every scale's meshes and dishes, and the
+## scenery's anchors.
 func _layout() -> void:
 	if _scales.is_empty():
 		return
@@ -278,6 +326,9 @@ func _layout() -> void:
 		var root: Control = _scales[i]
 		root.position = Vector2(size.x * 0.5, _pivot_y(i))
 		root.pivot_offset = Vector2.ZERO
+		var ground: Ground = _grounds[i]
+		ground.art = _art
+		ground.reach = ARM * _art
 		(_stands[i] as Wood).mesh = _stand_mesh()
 		var beam: Control = _beams[i]
 		beam.pivot_offset = Vector2.ZERO
@@ -286,10 +337,16 @@ func _layout() -> void:
 			var dish: Wood = _dishes[i][side]
 			dish.mesh = _dish_mesh()
 			_fit_pieces(i, side)
-	_place_dishes()
+	_place_dishes(true)
+	_dress()
 
 func _pivot_y(i: int) -> float:
 	return PAD + float(i) * _band + _band * 0.5 - PIVOT_LIFT * _art
+
+## Where every fruit rests in its dish, in the dish's space: the top of a
+## piece's seat sits PIECE_LIFT above the rim.
+func _piece_rest_y() -> float:
+	return (CORD - PIECE_LIFT - PIECE * 0.5) * _art
 
 ## The fruit in one dish, in a row across it. Three a side is the most the
 ## generator ever produces, so they never need a second rank.
@@ -302,19 +359,52 @@ func _fit_pieces(i: int, side: int) -> void:
 		var x: float = (float(q) - float(n - 1) * 0.5) * (pitch if n > 1 else 0.0)
 		Fruit.resize(row[q], seat, Vector2(x, CORD * _art - PIECE_LIFT * _art))
 
-## Both dishes of every scale, hung from wherever their beam end now is.
-## Driven per frame rather than tweened alongside the beam: the beam's own
-## tween can be stopped and replaced mid-swing, and a second tween chasing
-## it would drift -- the island board's reason for doing the same.
-func _place_dishes() -> void:
+## The scenery's anchors, from the bands the card actually has: a cloud in
+## the top corner of every band, alternating sides, and a small one in the
+## first band's other corner; a tuft either side of every base; a tuft in
+## each of the card's bottom corners. Clouds keep to the corners because the
+## column spans nearly the card's width and a cloud behind a raised dish is
+## clutter.
+func _dress() -> void:
+	var w := size.x
+	var ch := card_height(size.y)
+	var clouds: Array[Vector3] = []
+	var tufts: Array[Vector3] = []
+	for i in _scales.size():
+		var top := PAD + float(i) * _band
+		var left: bool = i % 2 == 0
+		clouds.append(Vector3(w * (CLOUD_X if left else 1.0 - CLOUD_X), top + _band * CLOUD_Y, CLOUD_R * _art))
+		if i == 0:
+			clouds.append(Vector3(w * (1.0 - CLOUD_X * 0.8), top + _band * CLOUD_Y * 1.6, CLOUD_SMALL * _art))
+		var floor_y: float = _pivot_y(i) + GROUND_Y * _art
+		for way: float in [-1.0, 1.0]:
+			tufts.append(Vector3(w * 0.5 + way * (BASE_W * 0.5 + TUFT_GAP) * _art, floor_y, TUFT_H * _art))
+	for way: float in [-1.0, 1.0]:
+		tufts.append(Vector3(w * 0.5 + way * (w * 0.5 - PAD - CORNER_TUFT), ch - PAD - 2.0, TUFT_H * 0.8 * _art))
+	_scenery.ground = Pal.PARCHMENT
+	_scenery.clouds = clouds
+	_scenery.tufts = tufts
+	_scenery.rebuild()
+
+## Both dishes of every scale, hung from wherever their beam end now is, and
+## the ground told the angle so the shadows follow. Driven per frame rather
+## than tweened alongside the beam: the beam's own tween can be stopped and
+## replaced mid-swing, and a second tween chasing it would drift -- the
+## island board's reason for doing the same. A beam that has not moved costs
+## nothing: its dishes are left where they hang.
+func _place_dishes(force := false) -> void:
 	for i in _beams.size():
 		var a: float = _beams[i].rotation
+		if not force and absf(a - _shown_angle[i]) < 0.0002:
+			continue
+		_shown_angle[i] = a
 		var reach := ARM * _art
 		var d := Vector2(cos(a), sin(a)) * reach
 		for side in 2:
 			# -1 hangs the left dish, +1 the right.
 			var way := -1.0 if side == 0 else 1.0
 			(_dishes[i][side] as Control).position = d * way
+		(_grounds[i] as Ground).angle = a
 
 func _process(delta: float) -> void:
 	super(delta)
@@ -330,42 +420,48 @@ func _tilt_for(i: int) -> float:
 	var d: int = clampi(state.lean(i), -TILT_CAP, TILT_CAP)
 	return -float(d) / float(TILT_CAP) * TILT_MAX
 
-## Swings every beam to what the current guess says, and rings the fulcrum of
-## any scale that has just come level. The tilt is the state itself and not
-## decoration, so under reduce-motion it snaps rather than being skipped:
-## Motion.slide sets the angle and returns null, which is the board showing
-## the truth without moving.
-func _update_scales() -> void:
+## Swings every beam to what the current guess says, each after its band's
+## share of `per` (a reset unwinds down the column; a step moves them all at
+## once), and rings the fulcrum of any scale that has just come level. The
+## tilt is the state itself and not decoration, so under reduce-motion it
+## snaps rather than being skipped: Motion.slide sets the angle and returns
+## null, which is the board showing the truth without moving.
+func _update_scales(per := 0.0) -> void:
 	for i in _beams.size():
 		var beam: Control = _beams[i]
 		var target := _tilt_for(i)
 		Motion.stop(_tilt_tw[i])
-		_tilt_tw[i] = Motion.slide(beam, "rotation", beam.rotation, target, TILT_TIME)
+		_tilt_tw[i] = Motion.slide(beam, "rotation", beam.rotation, target, TILT_TIME, Motion.stagger(i, per))
 		var level := state.is_level(i)
 		if level and not _was_level[i]:
-			_ring(i)
+			fx.ring(_scales[i].position, LEVEL_RING * _art, Pal.LEAF)
 			_level_until[i] = _now() + LEVEL_JOY
 			fx.cue("level")
 		_was_level[i] = level
 	_place_dishes()
 	_refresh_faces()
 
-## A ring pulses out of the fulcrum of a scale that has just come level.
-func _ring(i: int) -> void:
-	if Motion.reduce:
+## Every fruit of the kinds in `kinds` hops in its dish, down the column at
+## the band's pace: the card that was pressed and the pieces it weighs are
+## one thing, and this is what says so.
+func _hop_kinds(kinds: Array) -> void:
+	if kinds.is_empty():
 		return
-	var ring := Ring.new()
-	ring.art = _art
-	_scales[i].add_child(ring)
-	var tw := ring.create_tween()
-	tw.tween_property(ring, "t", 1.0, RING_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(ring.queue_free)
+	var rest := _piece_rest_y()
+	for i in _pieces.size():
+		for side in 2:
+			for face in _pieces[i][side]:
+				if not kinds.has(int(face.get_meta("kind", -1))):
+					continue
+				Motion.stop(_hops.get(face))
+				_hops[face] = Motion.hop(face, Motion.HOP, Motion.HOP_TIME, Motion.stagger(i, BAND_STAGGER), rest)
 
 ## What every fruit should be showing: both dishes of a scale that just came
 ## level beam for a moment, the low dish's fruit look strained, and the high
 ## dish's rides up content. Nothing is hidden on this board -- the beams are
 ## the whole information channel -- so a face may say whatever the beam
-## already says, and none of them ever reacts to being *correct*.
+## already says, and none of them ever reacts to being *correct*. A face is
+## only written when its look changes, since writing it redraws it.
 func _refresh_faces() -> void:
 	var now := _now()
 	for i in _beams.size():
@@ -376,7 +472,8 @@ func _refresh_faces() -> void:
 			var low: bool = way * a > 0.001
 			var expr: int = Face.Expr.JOY if beaming else (Face.Expr.WORRIED if low else Face.Expr.HAPPY)
 			for face in _pieces[i][side]:
-				(face as Control).expression = expr
+				if (face as Control).expression != expr:
+					(face as Control).expression = expr
 
 func _now() -> float:
 	return float(Time.get_ticks_msec()) / 1000.0
@@ -424,6 +521,7 @@ func step_weight(i: int, delta: int) -> bool:
 		fx.cue("refused")
 		return false
 	_update_scales()
+	_hop_kinds([i])
 	fx.cue("step")
 	_after_change()
 	note_move()
@@ -436,9 +534,13 @@ func can_undo() -> bool:
 
 ## Puts the last weight back and re-settles the beams. Counts no move.
 func undo() -> bool:
-	if is_done() or state.undo().is_empty():
+	if is_done():
+		return false
+	var last: Dictionary = state.undo()
+	if last.is_empty():
 		return false
 	_update_scales()
+	_hop_kinds([int(last.shape)])
 	fx.cue("undo")
 	_after_change()
 	moved.emit()
@@ -455,11 +557,14 @@ func hints_left() -> int:
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var was: Array = state.guess.duplicate()
 	var i := state.apply_hint()
 	if i < 0:
 		return false
 	hints_used += 1
 	_update_scales()
+	if int(was[i]) != int(state.guess[i]):
+		_hop_kinds([i])
 	# Over the bottom edge of the *card*, which is where the weight card it
 	# belongs to stands just below. The board Control fills the whole slot,
 	# which is taller than the card whenever the bands are capped.
@@ -475,21 +580,18 @@ func hint() -> bool:
 
 ## Every unlocked kind falls back to one. Hints already spent stay spent and
 ## the weights they revealed stay locked, as on the island. The column
-## unwinds from the left rather than snapping: each beam's swing is staggered
-## by its band, so the eye follows the change down the board.
+## unwinds from the top rather than snapping: each beam's swing and each
+## kind's hop are staggered by band, so the eye follows the change down the
+## board.
 func reset_board() -> void:
 	if is_done():
 		return
 	_stop_entrance()
-	state.reset()
+	var changed: Array = state.reset()
 	moves = 0
 	_running = true
-	for i in _beams.size():
-		var beam: Control = _beams[i]
-		Motion.stop(_tilt_tw[i])
-		_tilt_tw[i] = Motion.slide(beam, "rotation", beam.rotation, _tilt_for(i),
-			TILT_TIME, Motion.stagger(i, RESET_STAGGER))
-		_was_level[i] = state.is_level(i)
+	_update_scales(BAND_STAGGER)
+	_hop_kinds(changed)
 	_say("Back to one each. Start from the scales.", Face.Expr.HAPPY)
 	fx.cue("reset")
 
@@ -560,23 +662,29 @@ func _side_words(side: Array) -> String:
 
 # --- the win ---
 
-## Every beam is level: the fruit hop in a wave down the column, each dish a
-## beat after the one above it, with sparkles over every fulcrum. The host
-## brings the win screen in after this wave (win_delay).
+## Every beam is level: the fruit hop in the vocabulary's solve wave, down
+## the column and across each dish, with JOY eyes, and sparkles rise over
+## each fulcrum as its wave passes. The host brings the win screen in after
+## this (win_delay).
 func _on_solved() -> void:
 	_tip_timer.stop()
 	_say("Everything sits level. Beautifully weighed.", Face.Expr.JOY)
+	var rest := _piece_rest_y()
+	var k := 0
 	for i in _beams.size():
 		_level_until[i] = _now() + INF
-		var delay: float = SOLVE_DELAY + Motion.stagger(i, SOLVE_STAGGER, 1.0)
+		var first := Motion.SOLVE_DELAY + Motion.stagger(k, Motion.SOLVE_STAGGER)
 		for side in 2:
-			var row: Array = _pieces[i][side]
-			for q in row.size():
-				var face: Control = row[q]
-				Motion.hop(face, SOLVE_HOP * _art, SOLVE_TIME,
-					delay + float(q) * SOLVE_PIECE, face.position.y)
-		for k in SOLVE_SPARKLES:
-			fx.sparkle(_scales[i].position + Vector2((randf() - 0.5) * ARM * _art, 0.0), Pal.SUN)
+			for face in _pieces[i][side]:
+				Motion.stop(_hops.get(face))
+				_hops[face] = Motion.hop(face, Motion.SOLVE_HOP, Motion.SOLVE_TIME,
+					Motion.SOLVE_DELAY + Motion.stagger(k, Motion.SOLVE_STAGGER), rest)
+				k += 1
+		var at: Vector2 = _scales[i].position
+		var spread := ARM * _art
+		_after(first, func() -> void:
+			for s in SOLVE_SPARKLES:
+				fx.sparkle(at + Vector2((randf() - 0.5) * spread, 0.0), Pal.SUN))
 	fx.cue("solved")
 
 ## The win screen's cast: the five kinds with their true weights under them,
@@ -593,26 +701,39 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return WIN_DELAY_STILL if Motion.reduce else WIN_DELAY
 
-# --- entrance ---
+# --- entrance and housekeeping ---
 
-## The board arrives: the scales drop in from the top down, one band per
-## ENTER_STAGGER, each beam already swung to the angle its guess asks for.
+## The board arrives the way a flat board does: each scale pops in level, a
+## wide thing so from ENTER_WIDE_FROM rather than nothing, one band after
+## another at the column's pace; its fruit land in the dishes a beat later
+## with the squash, one after another; and as they land the beam swings to
+## the angle their weights ask for. The weights arriving is what tilts the
+## scale, which is the whole board in one gesture.
 func _enter() -> void:
 	_stop_entrance()
 	for i in _scales.size():
 		var root: Control = _scales[i]
-		var delay := ENTER_DELAY + Motion.stagger(i, ENTER_STAGGER, 1.0)
-		# The drop is on the lift, in the root's own space, so it says nothing
-		# about where the band sits and the layout stays free to move it.
-		var drop: Tween = Motion.slide(_lifts[i], "position:y", -ENTER_DROP, 0.0, ENTER_TIME, delay)
-		if drop != null:
-			_entrance.append(drop)
-		var fade: Tween = Motion.appear(root, 0.0, 1.0, ENTER_TIME, delay)
+		var at := ENTER_DELAY + Motion.stagger(i, BAND_STAGGER)
+		# The pop is on the lift, about the fulcrum in the root's own space,
+		# so it says nothing about where the band sits and the layout stays
+		# free to move it.
+		var pop: Tween = Motion.slide(_lifts[i], "scale", Vector2.ONE * Motion.ENTER_WIDE_FROM, Vector2.ONE, Motion.ENTER_POP, at)
+		if pop != null:
+			_entrance.append(pop)
+		var fade: Tween = Motion.appear(root, 0.0, 1.0, Motion.ENTER_POP, at)
 		if fade != null:
 			_entrance.append(fade)
+		var land := at + Motion.ENTER_FACE_LAG
+		var q := 0
+		for side in 2:
+			for face in _pieces[i][side]:
+				var drop: Tween = Motion.pop_in(face, Motion.POP_IN, land + Motion.stagger(q, Motion.ENTER_STAGGER))
+				if drop != null:
+					_entrance.append(drop)
+				q += 1
 		var beam: Control = _beams[i]
 		Motion.stop(_tilt_tw[i])
-		_tilt_tw[i] = Motion.slide(beam, "rotation", 0.0, _tilt_for(i), TILT_TIME, delay)
+		_tilt_tw[i] = Motion.slide(beam, "rotation", 0.0, _tilt_for(i), TILT_TIME, land + Motion.POP_IN * 0.6)
 		_was_level[i] = state.is_level(i)
 	fx.cue("enter")
 
@@ -622,13 +743,29 @@ func _stop_entrance() -> void:
 		Motion.stop(tw)
 	_entrance = []
 	for i in _scales.size():
-		_lifts[i].position.y = 0.0
+		_lifts[i].scale = Vector2.ONE
 		_scales[i].modulate.a = 1.0
+		for side in 2:
+			for face in _pieces[i][side]:
+				(face as Control).scale = Vector2.ONE
 
+## Kills every tween the previous board still tracks and retires its pending
+## callbacks, so a rebuild never inherits a hop aimed at a dish that is gone.
 func _stop_all() -> void:
+	_gen += 1
 	_stop_entrance()
 	for tw in _tilt_tw:
 		Motion.stop(tw)
+	for tw in _hops.values():
+		Motion.stop(tw)
+	_hops = {}
+
+## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	var gen := _gen
+	get_tree().create_timer(delay).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
 
 # --- the wood, as meshes ---
 
@@ -654,7 +791,8 @@ func _beam_mesh() -> ArrayMesh:
 		b.disc(Vector2.ZERO, HUB_IN * k, Color(Pal.SCALE_WOOD, 0.9)))
 
 ## A dish on its two cords, drawn from the beam end it hangs under: the cords
-## out to the rim, the bowl swung under them, and the rim laid over the top.
+## out to the rim, the knot they hang from, the bowl swung under them, and
+## the rim laid over the top.
 func _dish_mesh() -> ArrayMesh:
 	return _wood("dish", func(b: Face.Builder, k: float) -> void:
 		var ry := CORD * k
@@ -662,6 +800,7 @@ func _dish_mesh() -> ArrayMesh:
 		for sx: float in [-1.0, 1.0]:
 			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(sx * DISH_W * CORD_X * k, ry)]),
 				CORD_W * k, Color(Pal.SCALE_DARK, 0.8))
+		b.disc(Vector2.ZERO, KNOT_R * k, Pal.SCALE_DARK)
 		# bezier2 includes its start and drops its end, so the rim's right
 		# corner comes from the first curve and nothing is doubled --
 		# a repeated vertex makes triangulate_polygon hand back nothing.
@@ -704,17 +843,36 @@ class Wood extends Control:
 		if mesh != null:
 			draw_mesh(mesh, null)
 
-## The pulse that leaves a fulcrum the moment its beam comes level.
-class Ring extends Control:
+## The ground under one scale: the stand's shadow, and under each dish a
+## shadow that follows it -- widest and darkest with the dish down on the
+## ground, narrower and fainter as it rises -- so the beam's tilt reads as
+## height and not only as an angle. Three draws of Scenery's one radial disc,
+## redrawn only when the beam's angle changes.
+class Ground extends Control:
 	var art := 1.0
-	var t := 0.0:
+	var reach := 0.0
+	var angle := 0.0:
 		set(v):
-			t = v
+			angle = v
 			queue_redraw()
 
 	func _ready() -> void:
 		mouse_filter = MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		draw_arc(Vector2.ZERO, (RING_R0 + RING_GROW * t) * art, 0.0, TAU, 48,
-			Color(Pal.LEAF, 0.8 * (1.0 - t)), 6.0 * art, true)
+		var floor_y := GROUND_Y * art
+		_shadow(Vector2(0.0, floor_y), BASE_W * BASE_SHADOW_W * art, BASE_SHADOW)
+		for way: float in [-1.0, 1.0]:
+			var end := Vector2(cos(angle), sin(angle)) * reach * way
+			var bottom := end.y + (CORD + DISH_DEEP) * art
+			var lift := clampf((floor_y - bottom) / (SHADOW_REACH * art), 0.0, 1.0)
+			var rx := DISH_W * 0.5 * art * (1.0 - SHADOW_SHRINK * lift)
+			# A dish the tilt carries below the floor keeps its shadow just
+			# under itself rather than above its bottom.
+			var y := maxf(floor_y, bottom + SHADOW_HUG * art)
+			_shadow(Vector2(end.x, y), rx, lerpf(SHADOW_NEAR, SHADOW_FAR, lift))
+
+	func _shadow(at: Vector2, rx: float, alpha: float) -> void:
+		draw_mesh(Scenery.shadow(), null,
+			Transform2D(0.0, Vector2(rx, rx * SHADOW_RY) / Scenery.SHADOW_UNIT, 0.0, at),
+			Color(Pal.TEXT, alpha))

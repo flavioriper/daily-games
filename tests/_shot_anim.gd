@@ -74,6 +74,10 @@ func _process(delta: float) -> bool:
 			_filling = true
 			_idle_from = INF
 			_idle_to = INF
+		elif _entry.id == "balance":
+			# One press on the first free weight card, so the strip shows a
+			# beam swing and the kind's hop.
+			_step_balance()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -109,6 +113,13 @@ func _tap_first_free() -> void:
 				ev.pressed = pressed
 				ev.position = at
 				root.push_input(ev, true)
+			return
+
+## Balance: plus on the first card the player owns, through the real button.
+func _step_balance() -> void:
+	for i in _puzzle.state.shapes:
+		if not _puzzle.state.locked[i]:
+			_press(_host.tray.plus_button(i))
 			return
 
 ## Code Break's fullest board: seven rows guessed and scored, the eighth
