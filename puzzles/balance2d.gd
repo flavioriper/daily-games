@@ -123,7 +123,6 @@ const HINTS := 3
 
 # --- motion: the vocabulary's, and what is this board's own ---
 ## The board arrives this long after the chrome starts.
-const ENTER_DELAY := 0.15
 ## The column's own pace: a scale is a row and not a cell, so its waves --
 ## the entrance, a reset, a kind hopping down the board -- step by band.
 const BAND_STAGGER := 0.08
@@ -713,7 +712,7 @@ func _enter() -> void:
 	_stop_entrance()
 	for i in _scales.size():
 		var root: Control = _scales[i]
-		var at := ENTER_DELAY + Motion.stagger(i, BAND_STAGGER)
+		var at := Motion.ENTER_DELAY + Motion.stagger(i, BAND_STAGGER)
 		# The pop is on the lift, about the fulcrum in the root's own space,
 		# so it says nothing about where the band sits and the layout stays
 		# free to move it.

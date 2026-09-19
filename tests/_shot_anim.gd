@@ -12,7 +12,9 @@ extends SceneTree
 ## that is the state the budget is written against; `empty` after the id
 ## measures the bare board instead, so both numbers come from this one probe.
 ## Untangle is dragged once, and its springs settle into the idle window, so
-## `empty` is the number to compare with a board that was left alone.
+## `empty` is the number to compare with a board that was left alone. Shikaku
+## has its first plot drawn corner to corner, so the strip shows the wash, the
+## count and the bed landing and the idle window has a bed and a fence in it.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -36,12 +38,14 @@ var _draws := 0
 var _id := ""
 var _empty := false   # skip the fill and measure the bare board
 var _entry: Dictionary = {}
-## Untangle's drag: a real touch on the first free lantern, dragged over
-## DRAG_TIME toward the middle of the card and let go, so the strip shows the
-## lift, the slack and the drop.
+## A drag: a real touch at `_drag_from`, dragged over DRAG_TIME by `_drag_by`
+## and let go. Untangle's is the first free lantern toward the middle of the
+## card, so the strip shows the lift, the slack and the drop; Shikaku's is its
+## first solution plot corner to corner.
 const DRAG_TIME := 0.35
-const DRAG_BY := Vector2(150.0, 110.0)
+const UNTANGLE_BY := Vector2(150.0, 110.0)
 var _drag_from := Vector2.ZERO
+var _drag_by := Vector2.ZERO
 var _drag_until := INF
 var _drag_done := true
 
@@ -90,13 +94,15 @@ func _process(delta: float) -> bool:
 			_step_balance()
 		elif _entry.id == "untangle" and not _empty:
 			_begin_untangle_drag()
+		elif _entry.id == "shikaku" and not _empty:
+			_begin_shikaku_drag()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
 	if _filling:
 		_fill_mastermind_step()
 	if not _drag_done:
-		_untangle_drag_step()
+		_drag_step()
 	if _t >= _idle_from and _t <= _idle_to:
 		_idle.append(delta * 1000.0)
 		_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
@@ -141,20 +147,36 @@ func _begin_untangle_drag() -> void:
 	for i in _puzzle.nodes:
 		if _puzzle._locked[i]:
 			continue
-		_drag_from = _puzzle.get_global_transform_with_canvas() * _puzzle.node_to_local(i)
-		var down := InputEventScreenTouch.new()
-		down.index = 0
-		down.pressed = true
-		down.position = _drag_from
-		root.push_input(down, true)
-		_drag_until = _t + DRAG_TIME
-		_drag_done = false
+		_begin_drag(_puzzle.get_global_transform_with_canvas() * _puzzle.node_to_local(i), UNTANGLE_BY)
 		return
 
+## Shikaku: draw the first solution plot, from the centre of its top-left
+## cell to the centre of its bottom-right one.
+func _begin_shikaku_drag() -> void:
+	if _puzzle._solution.is_empty():
+		return
+	var rect: Rect2i = _puzzle._solution[0]
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var from: Vector2 = xf * _puzzle.cell_to_local(rect.position.y, rect.position.x)
+	var to: Vector2 = xf * _puzzle.cell_to_local(rect.end.y - 1, rect.end.x - 1)
+	_begin_drag(from, to - from)
+
+## The touch that starts a drag, at `from`, to travel `by` over DRAG_TIME.
+func _begin_drag(from: Vector2, by: Vector2) -> void:
+	_drag_from = from
+	_drag_by = by
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = _drag_from
+	root.push_input(down, true)
+	_drag_until = _t + DRAG_TIME
+	_drag_done = false
+
 ## One drag event a frame along the way, eased, and the release at the end.
-func _untangle_drag_step() -> void:
+func _drag_step() -> void:
 	var u := clampf(1.0 - (_drag_until - _t) / DRAG_TIME, 0.0, 1.0)
-	var at := _drag_from + DRAG_BY * (1.0 - pow(1.0 - u, 2.0))
+	var at := _drag_from + _drag_by * (1.0 - pow(1.0 - u, 2.0))
 	var drag := InputEventScreenDrag.new()
 	drag.index = 0
 	drag.position = at

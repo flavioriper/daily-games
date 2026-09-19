@@ -4,9 +4,9 @@ Every flat screen moves with the same hand and wears the same cloth. The
 flat Binairo (`puzzles/binairo2d.gd`, its spec's section 6) set the hand;
 Code Break was the second board to take it, on 2026-09-18, and the vocabulary
 was lifted into `core/motion.gd` on that day so a third does not copy it.
-Balance followed the same day and Untangle on 2026-09-19. This
-page is the table a new or a ported board is built against. When a number
-here and a number in a board disagree, the board is wrong.
+Balance followed the same day, Untangle on 2026-09-19 and Shikaku the same
+morning. This page is the table a new or a ported board is built against.
+When a number here and a number in a board disagree, the board is wrong.
 
 ## The rules
 
@@ -44,10 +44,14 @@ here and a number in a board disagree, the board is wrong.
    because the back ease's tenth of overshoot on a thousand units of width is
    a wobble, not a spring.
 8. **What is drawn reads the same numbers.** A board that draws its pieces
-   into a mesh rather than as nodes (Untangle's rings and cords) cannot call
-   a recipe on them; it reads the recipe's constants off `Motion` and draws
-   the family's overshoot as a curve (`_back_out`). One voice, two media. It
-   never copies the number.
+   into a mesh rather than as nodes (Untangle's rings and cords, Shikaku's
+   beds and the wash under its finger) cannot call a recipe on them; it reads
+   the recipe *as a curve* off `Motion`: `back_out` for the overshoot, and
+   `pop_in_scale`, `wide_pop_scale`, `pop_out_scale`, `drop_in_lift`,
+   `appear_level`, `bump_scale` and `flash_level` for the recipes themselves,
+   each handed the seconds since its moment began and landing on its final
+   state under reduce-motion exactly as the tween would. One voice, two
+   media. It never copies the number.
 
 ## The moments
 
@@ -56,19 +60,19 @@ a recipe in `core/motion.gd` unless it names another file.
 
 | Moment | What happens | Recipe, numbers |
 |---|---|---|
-| Entrance | The pieces pop in along the diagonal from the top left (a grid) or down the column (a list), with the back ease; a resident face lands a beat after its tile with the squash. A board whose pieces *do* something as they land lets them (Balance's fruit tilt the beam). The chrome slides in row by row (`ui/hud/panel.gd`). | `slide` on scale, `ENTER_POP` 0.25, `ENTER_STAGGER` 0.03; face `pop_in` `ENTER_FACE_LAG` 0.12 later |
+| Entrance | The pieces wait `ENTER_DELAY` for the chrome to slide in, then pop in along the diagonal from the top left (a grid) or down the column (a list), with the back ease; a resident face lands a beat after its tile with the squash. A board whose pieces *do* something as they land lets them (Balance's fruit tilt the beam). The chrome slides in row by row (`ui/hud/panel.gd`). | `ENTER_DELAY` 0.18; `slide` on scale, `ENTER_POP` 0.25, `ENTER_STAGGER` 0.03; face `pop_in` `ENTER_FACE_LAG` 0.12 later |
 | Press | The tile sinks under the finger and springs back on release. Every tappable piece does this, including one that will do nothing when released. | `press`: `PRESS_SCALE` 0.94 in `PRESS_TIME` 0.08, back-ease out `RELEASE_TIME` 0.25 |
 | Pick up · Drop | The press for a thing that is dragged rather than tapped: it grows a tenth toward the finger and its shadow parts from it (further below, wider, fainter). On release it springs back with the back ease and hops on landing; whatever weight the board gives it (Untangle's cord slack and swing) settles on its own. | `lift`: `LIFT_SCALE` 1.1 in `LIFT_TIME` 0.12, back-ease out `RELEASE_TIME` 0.25; `hop` `HOP` -6 over `HOP_TIME` 0.3 |
 | Place | The old piece pops out; the new one pops in with the squash; the tile hops; the side neighbours lean away and back; a puff of five stars in the piece's colour. | `pop_out` `POP_OUT` 0.12; `pop_in` `POP_IN` 0.22 with `POP_SQUASH` 0.15; `hop` `HOP` -6 over `HOP_TIME` 0.3; `nudge` `NUDGE` 3 over 0.3 after `NUDGE_LAG` 0.04; `fx.puff` |
 | Remove | The piece shrinks to nothing with a quarter turn, rising a little if the board wants; whatever it hid pops back under it. | `pop_out`, optional `lift`; `pop_in` 0.18 on what returns |
 | Hint | A ring pulses out of the cell, the piece drops in from above with the back ease while it fades in, sparkles rise, the cell takes the given look. A board whose pieces walk (Untangle) walks the piece to its place instead, and rings and sparkles as it lands. | `fx.ring` `RING_TIME` 0.5; `drop_in` `DROP` 40 over `DROP_TIME` 0.3; `fx.sparkle` |
-| Wrong on Check | Each wrong cell wobbles and flashes toward `Pal.BAD_TILE` and back. | `wobble2d` 0.45; `flash` (`FLASH_IN` 0.15, `FLASH_OUT` 0.45) |
+| Wrong on Check | Each wrong cell wobbles and flashes toward `Pal.BAD_TILE` and back; a drawn bed (Shikaku) flashes toward its own blush, read off `flash_level`. | `wobble2d` 0.45; `flash` (`FLASH_IN` 0.15, `FLASH_OUT` 0.45) |
 | Clean Check | The Check pill squashes and says All good for a moment. | `ui/flat/flat_actions.gd` |
 | Undo | The reverse of Place. | as Place |
-| Reset | Free pieces pop out in a wave from the far corner; givens hop 4. | `pop_out`, `RESET_STAGGER` 0.02 |
+| Reset | Free pieces pop out in a wave from the far corner; givens hop `RESET_HOP`. | `pop_out`, `RESET_STAGGER` 0.02, `RESET_HOP` -4 |
 | Solved | Every piece hops in a wave with JOY eyes, sparkles across the board, then the host brings the win screen. | `hop` `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4, `SOLVE_STAGGER` 0.04 after `SOLVE_DELAY` 0.25; win after 0.8 or the board's `win_delay()` |
 | Palette | A pressed chip squashes, lifts and takes a border in its symbol's colour. On a brush tray (Binairo) that is a mode and it stays; on a direct-action tray (Code Break) it is a beat of feedback and settles after `CHIP_LIT`. | `squash` 0.1 over 0.18; `CHIP_LIFT` 8 over `CHIP_LIFT_TIME` 0.18; `CHIP_LIT` 0.35 |
-| Count | A number that was recounted bumps up and back (not a squash: it was not pressed), the thing it counts hops with a puff in its colour, and every twin of that thing on the board hops too, down the board at the board's own pace. Balance's weight cards. | `bump` 0.25 over 0.24; `hop` `HOP` -6 over `HOP_TIME` 0.3; `fx.puff` |
+| Count | A number that was recounted bumps up and back (not a squash: it was not pressed), the thing it counts hops with a puff in its colour, and every twin of that thing on the board hops too, down the board at the board's own pace. Balance's weight cards; Shikaku's area disc as the drag grows, drawn off `bump_scale`. | `bump` `BUMP` 0.25 over `BUMP_TIME` 0.24; `hop` `HOP` -6 over `HOP_TIME` 0.3; `fx.puff` |
 | Refused | A press the rules will not take: the card shivers and blushes toward `BAD` and settles, and the sprout says why. The button still takes the press, or the reason is never given. | `shiver`; `flash` toward `BAD` (`FLASH_IN` 0.15, `FLASH_OUT` 0.45) |
 | Reveal | A hint that settles a card rather than a cell: the card takes the given look, the value drops in from above, the tag pops in, a ring pulses out of its character. | `drop_in`; `pop_in` 0.18; `fx.ring` |
 | Tip | The line fades in and the sprout hops with its new face. | `ui/flat/tip_card.gd`: `appear` 0.25, `hop` -8 over 0.35 |
@@ -80,8 +84,9 @@ under a score, its pips dropping into the pouch, its lids and the code's pop;
 Balance's tilt and the shadows that follow its dishes; Untangle's two
 springs, its walks (a hint's to the peg, an undo's back, reset's home, one
 `SLIDE_TIME` for all three) and the light that runs along its string on the
-win, one hop of the graph per `LIGHT_STEP`. A new board may add one signature
-of its own on top of the table, not instead of it.
+win, one hop of the graph per `LIGHT_STEP`; Shikaku's crop coming up bed by
+bed on the win and the earth thrown at a new bed's four corners. A new board
+may add one signature of its own on top of the table, not instead of it.
 
 **A row is not a cell.** The staggers above are per cell of a grid. A board
 whose pieces are rows (Balance's scales, Code Break's lids) paces its waves
@@ -157,4 +162,5 @@ one thing.
 | Code Break | on it (2026-09-18): entrance pop, seat press, flight landing with squash and puff, lit chip, pop-out on send back, flash on an incomplete Check, solve wave, ring and drop through Fx2D. Measured: fullest board 234 draw calls, 3.8 ms idle at 1080 x 1920 on this Mac |
 | Balance | on it (2026-09-18): scales pop in wide and level, fruit land with the squash and swing the beam, a stepped kind hops in every dish with the card's bump and puff, a refused card shivers and blushes, a hint's card reveals under a ring, a level beam rings through Fx2D, the solve wave; plus its ground shadows and scenery. Measured: 146 draw calls, 3.24 ms idle at 1080 x 1920 on this Mac (7.42 before, when every face redrew every frame) |
 | Untangle | on it (2026-09-19): rings and cords pop in along the stagger and each lantern pops onto its ring a beat later, the lift on pick-up with the shadow parting, the hop on the drop and on every walk's landing, knots undone and a hint's peg ring through Fx2D, the solve wave's hop as the light reaches each lantern; the springs and the walks stay its own. Shadows in the cord mesh, clouds and tufts through Scenery. Measured: 66 draw calls (75 before), 2.92 ms idle bare at 1080 x 1920 on this Mac (2.94 before); 4.8 ms while a dropped lantern's swing settles |
-| Shikaku, Tents, Light Up, One Line, Nonogram | still carry their own tweens; port when next touched, by the steps above |
+| Shikaku | on it (2026-09-19): the field pops in wide and each marker pops in with the squash along the diagonal, its shadow on the ground arriving with it and staying put when it hops; the wash and the count disc pop in under the finger and the disc bumps on every recount; a bed pops in wide, its marker hops and the markers around it lean away; a cleared or displaced bed shrinks to nothing; a hint's bed drops in under a ring with a sparkle and the family's bump; Check wobbles a wrong marker and blushes its bed; a refused drag shivers the marker and blushes the pinned bed; Reset pops the beds out in a wave from the far corner while the markers hop; the planting wave stays its own, with the solve hop and a sparkle as each bed comes up. The beds are drawn, so all of it reads the curve readers (rule 8). Measured: 95 draw calls bare (94 before) and 101 with a bed and its fence, 3.4 ms idle at 1080 x 1920 on this Mac (4.0 before) |
+| Tents, Light Up, One Line, Nonogram | still carry their own tweens; port when next touched, by the steps above |

@@ -249,3 +249,83 @@ passed throughout.
 - **Whether tap-to-clear is discoverable** without the tip card saying so. It
   is the one gesture on the board that is not a drag, which is why it is the
   second of the three teaching lines.
+
+## 11. Amendment: the polish of 2026-09-19
+
+The user asked for Shikaku to be polished with proper animations on Binairo's
+pattern, smoother and more elegant, and for the pattern to be kept so the
+other boards take it. Built straight in Godot, as Code Break's, Balance's and
+Untangle's were, with this amendment and `docs/art/flat-motion.md` as the
+record. The layout is kept; sections 3 to 6 stand. Section 7's motion and its
+"pops in from nine tenths" are superseded by what follows.
+
+**Two media, one hand.** The markers are nodes and take the vocabulary
+straight. The field, the beds and the rectangle under the finger are drawn
+into meshes, so they cannot be handed a tween; they read the same recipes as
+curves instead. That needed the recipes written down as curves once, in
+`core/motion.gd`: `back_out` (the overshoot every board had its own copy of),
+`pop_in_scale`, `wide_pop_scale`, `pop_out_scale`, `drop_in_lift`,
+`appear_level`, `bump_scale` and `flash_level`, each handed the seconds since
+its moment began and landing on its final state under reduce-motion exactly as
+the tween would. Three constants that were sitting as near-copies came in with
+them: `ENTER_DELAY` (Balance 0.15, Untangle 0.18, Shikaku 0.2 -- now one 0.18),
+`RESET_HOP` (Binairo's -4) and `BUMP` / `BUMP_TIME` (bump's own defaults, so a
+drawn bump reads them). The doc's rule 8 names the readers; the four boards
+still to port will use them.
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | the field pops in wide (`wide_pop_scale`, `ENTER_WIDE_FROM` 0.86 over `ENTER_POP` 0.25) after `ENTER_DELAY`; each marker pops in with the squash (`pop_in`) along the diagonal at `ENTER_STAGGER` 0.03, `ENTER_FACE_LAG` after the field starts. The 30 px slide-and-fade at 0.02 is gone |
+| Drag | the wash pops in wide and the count disc pops in from nothing (`pop_in_scale`) as the finger lands; the disc bumps (`bump_scale`) whenever the area is recounted -- the table's Count moment |
+| Place | the bed pops in wide over `POP_IN` 0.22 with the drop's fade, in place of its own 0.9 over 0.3 and 0.2; the marker inside hops `HOP` -6; the markers in the cells bordering the bed lean away `NUDGE` 3 and back; the earth at the four corners stays as this board's placement puff, in `BED_FURROW` |
+| Remove, displaced, undo | a leaving bed shrinks to nothing over `POP_OUT` 0.12 (`pop_out_scale`, no turn on a wide thing, for the reason rule 7 gives), drawn from its own mesh after the state has forgotten it; a returning bed pops in; every marker freed or covered hops. Beds used to vanish in one frame |
+| Hint | a ring in `LEAF` at the bed's centre through `Fx2D.ring`, the bed drops in from `DROP` 40 above (`drop_in_lift`), one sparkle, the marker takes the family's bump. The 0.18 bump over 0.4 and the six sparkles on a pool of three are gone |
+| Wrong on Check | the marker wobbles (`wobble2d`) and its bed, if it has one, blushes toward its own rose and settles: the bed's blushing variant drawn over it at `flash_level`, so it lightens the way a blush does rather than darkening the way a modulate would |
+| Refused | the marker shivers (`shiver`, 0.04 of its seat) and the pinned bed blushes; the sprout says why. The 0.36-seat dip is gone |
+| Reset | the beds pop out in a wave from the far corner at `RESET_STAGGER` 0.02, the fence standing until the last has gone; the markers hop `RESET_HOP` in the same wave |
+| Solved | the crop stays the signature, paced from `SOLVE_DELAY` 0.25 through `Motion.stagger` at the board's `PLANT_STEP` 0.1 (a bed is a row) with a `PLANT_WAVE` cap of 1.2; each marker hops `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4 as its bed is planted, with a sparkle and a puff in turn. `WIN_WAIT` 2.2 |
+
+Faces are written only when their look changes, as Balance's and Untangle's
+are; the old refresh rewrote fourteen every move.
+
+**The dressing:**
+
+- **Shadows on the ground.** The stake's shadow comes out of the marker's mesh
+  (`MarkerFace.casts`, the lantern's flag) and into one mesh of the family's
+  soft discs (`Scenery.soft_disc`) built by the board, read off each marker's
+  own height while the entrance runs and cached after, so it arrives with the
+  pop and a hopping marker leaves it where it stood. Its peak is 0.2 in
+  `TEXT`, above the doc's band, because a disc that fades to its rim reads at
+  about half its centre and 0.14 left the foot floating. One draw call.
+- **The field stands on the parchment** on the family's bottom edge of 6 in
+  `LINE`, like every card on the flat screens.
+- **No clouds or tufts.** The field is the ground seen from above and fills
+  the card to a 34 px margin; a tuft in a cell would read as a piece.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+Shikaku run now draws the first solution plot corner to corner over 0.35 s
+(`empty` skips it):
+
+| | Draw calls | Idle |
+|---|---|---|
+| Medium board at rest, no bed, before | 94 | 4.00 ms |
+| Medium board at rest, no bed, now | 95 | 3.34 ms |
+| Now, with one bed and its fence | 101 | 3.37 ms |
+
+The one call added is the shadow mesh; the time saved is the faces no longer
+redrawn on every move.
+
+Suite 2086/0. `tests/_win.gd` windowed 9/9, Shikaku solved through the real
+hint button, Check and drags. A throwaway probe shot the entrance, a hint, a
+refused drag, a wrong bed, Check, a clear, an undo, a reset and the planting
+wave through to the win screen, each with and without reduce-motion (under
+which the field and its markers are up at once, nothing blushes, shivers or
+rings, a bed is there or gone in one frame and the crop is up the moment the
+board is solved).
+
+Open, still, from section 10: the area disc's generosity, the hard cell, the
+crowd of fourteen faces and whether the bed should blush at all. Nothing here
+answers them; it only makes the flat board move with the same hand as the
+other four.

@@ -47,7 +47,6 @@ const LINE_HOP_TIME := 0.35
 const LINE_STAGGER := 0.03
 const JOY_TIME := 0.6
 const CHECK_FLASH := 0.6
-const RESET_HOP := -4.0
 const FOCUS_IN := 0.12
 const FOCUS_HOLD := 1.5
 const FOCUS_OUT := 0.4
@@ -601,7 +600,7 @@ func reset_board() -> void:
 		for c in n:
 			var delay := Motion.stagger((n - 1 - r) + c, Motion.RESET_STAGGER)
 			if state.given[r][c]:
-				_hop(r, c, RESET_HOP, Motion.HOP_TIME, delay)
+				_hop(r, c, Motion.RESET_HOP, Motion.HOP_TIME, delay)
 				continue
 			if _faces[r][c] != null:
 				_swap_face(r, c, -1, delay)

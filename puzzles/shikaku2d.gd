@@ -3,8 +3,9 @@ extends "res://core/puzzle_base.gd"
 ## Shikaku as a flat board: a field of garden beds on the host's parchment
 ## card, fenced along the seams of the partition, with a signpost marker
 ## standing in every clue's cell. Built beside the island version
-## (puzzles/shikaku3d.gd) so the two can be judged against each other on the
-## phone; the rules live in puzzles/shikaku_state.gd, which this only draws.
+## (legacy/puzzles/shikaku3d.gd) so the two could be judged against each
+## other on the phone; the rules live in puzzles/shikaku_state.gd, which this
+## only draws.
 ##
 ## This is the board the camera costs most. Shikaku is counting -- you count
 ## cells against a number and read whether two plots share one boundary --
@@ -14,17 +15,27 @@ extends "res://core/puzzle_base.gd"
 ## cell is the same square.
 ##
 ## How it is drawn. Nothing here is a node per cell: the ground and its grid
-## are one cached ArrayMesh, each bed with its furrows is another, and the
-## whole fence is a third, so a hard board of sixty-three cells costs about
-## sixteen draw commands rather than hundreds. The meshes are built through
-## Face.Builder, which is the same tool the characters are drawn with and the
-## only one that feathers its shapes -- MSAA is off for the 2D canvas, so an
-## unfeathered draw_rect would be the one hard edge on the screen. A bed is
-## built in its own centre's space, so its pop is a transform on the draw and
-## never a rebuild, and the cache is keyed by the plot itself, so a commit
-## builds the one bed it drew and re-uses the rest.
+## are one cached ArrayMesh, each bed with its furrows is another, the whole
+## fence is a third and the markers' shadows a fourth, so a hard board of
+## sixty-three cells costs about sixteen draw commands rather than hundreds.
+## The meshes are built through Face.Builder, which is the same tool the
+## characters are drawn with and the only one that feathers its shapes --
+## MSAA is off for the 2D canvas, so an unfeathered draw_rect would be the
+## one hard edge on the screen. A bed is built in its own centre's space, so
+## its pop is a transform on the draw and never a rebuild, and the cache is
+## keyed by the plot itself, so a commit builds the one bed it drew and
+## re-uses the rest.
+##
+## How it moves. The markers are nodes and take the flat boards' vocabulary
+## (core/motion.gd, docs/art/flat-motion.md) straight: pop in along the
+## diagonal, hop when their bed lands, lean away from a neighbour's, wobble
+## on Check, shiver when they refuse. The beds, the field and the rectangle
+## under the finger are drawn, so they read the same recipes as curves
+## (Motion.pop_in_scale and its siblings; the doc's rule 8) and never copy a
+## number. The crop coming up on the win is this board's own signature; the
+## earth thrown at a new bed's corners its placement puff.
 ## Spec: docs/superpowers/specs/2026-09-18-shikaku-flat-design.md, sections 3
-## to 7, and the mock it is ported from
+## to 7 and the amendment at its end, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#shikaku).
 
 const State = preload("res://puzzles/shikaku_state.gd")
@@ -34,16 +45,29 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 ## Layout, in the board card's inner pixels (spec section 5).
 const PAD := 34.0
 const GROUND_RADIUS := 18.0
+## The field stands on the parchment the way every card does: on a bottom
+## edge of the family's six (docs/art/flat-motion.md, the dressing).
+const GROUND_EDGE := 6.0
 const GRID_WIDTH := 2.0
 const GRID_ALPHA := 0.8
 ## The marker, as a fraction of a cell, and how far above the cell's centre
 ## it stands so its stake reads as planted in the ground.
 const MARKER := 0.86
 const MARKER_LIFT := 0.05
+## The marker's shadow on the ground, in the marker's seat: the family's soft
+## disc under the foot of its stake, built into one mesh so a hopping marker
+## leaves it where it stood. The peak is above the family's band because a
+## disc that fades to its rim reads at about half its centre: measured, 0.14
+## left the foot floating where the old flat ellipse at 0.10 grounded it.
+const SHADOW_AT := Vector2(0.0, 0.54)
+const SHADOW_RX := 0.34
+const SHADOW_RY := 0.1
+const SHADOW_ALPHA := 0.2
 ## A bed: inset from its cells, the dashed grain along each of its rows, and
 ## the inner line a pinned one takes.
 const BED_INSET := 2.0
@@ -83,28 +107,24 @@ const SEED_STEPS := 8
 const SEED_VARIANTS := 3
 ## Hint count, not refunded by reset (HUD spec, section 3).
 const HINTS := 3
-## Timings (spec section 6).
-const BED_POP := 0.3
-const BED_FADE := 0.2
-const BED_FROM := 0.9
-const ENTER_DELAY := 0.2
-const ENTER_TIME := 0.4
-const ENTER_STAGGER := 0.02
-const ENTER_DROP := 30.0
-const DIP_HEIGHT := 0.36
-const DIP_TIME := 0.3
-const FLASH_SHAKE := 0.09
-const FLASH_TIME := 0.6
-const HINT_POP := 0.18
-const HINT_POP_TIME := 0.4
-const HINT_SPARKLES := 6
-const PLANT_DELAY := 0.2
+
+# --- motion: what is this board's own ---
+## A refused marker's shiver, in its seat; the family's 2 px is a tremor on
+## a plaque this size.
+const SHIVER := 0.04
+## The earth thrown at each corner of a bed that has just been fenced.
+const CORNER_STARS := 3
+## The planting wave: the beds come up one per PLANT_STEP from the top-left
+## (a bed is a row, not a cell, so it is paced like one), the wave never
+## longer than PLANT_WAVE, and inside a bed the cells a PLANT_CELL apart,
+## each seedling growing over PLANT_TIME.
 const PLANT_STEP := 0.1
+const PLANT_WAVE := 1.2
 const PLANT_CELL := 0.04
 const PLANT_TIME := 0.4
 ## How long the host waits before the win screen: the planting wave has to
 ## run its length first, and a hard board plants fourteen beds.
-const WIN_WAIT := 2.1
+const WIN_WAIT := 2.2
 ## The three lines that teach the gestures, cycled while the field is bare.
 const TIPS := [
 	"Drag corner to corner. Each plot holds one number, and that number is how many squares it covers.",
@@ -133,31 +153,63 @@ var _over: Control
 var _markers: Array = []      # [i] -> MarkerFace
 ## [i] -> the Control the marker stands in. The slot is what the layout
 ## moves and the face is what the motion moves, so a relayout mid-entrance
-## cannot fight the drop: build() lays out before the host has given the
+## cannot fight the pop: build() lays out before the host has given the
 ## board a size, and the entrance that starts there would otherwise hold
 ## every marker at the y it was measured at.
 var _slots: Array = []
-var _marker_tw: Array = []    # [i] -> the dip, shake or pop in flight
-## "x_y_w_h_locked_planted" -> the bed's mesh, in its own centre's space.
+var _pos_tw: Array = []       # [i] -> the hop, the nudge or the shiver
+var _look_tw: Array = []      # [i] -> the pop in, the wobble or the bump
+## Whether the markers have been set blinking: once, on the first layout
+## with a size, which is the first moment the board is certainly in the tree.
+var _idling := false
+## Bumped on every rebuild; a pending callback from the last board checks it.
+var _gen := 0
+## "x_y_w_h_locked_blush_planted" -> the bed's mesh, in its own centre's space.
 var _bed_cache: Dictionary = {}
-## "x_y_w_h" -> the msec the plot was first drawn, for its pop.
-var _bed_at: Dictionary = {}
 ## Growth step and variant -> one seedling's mesh.
 var _seed_cache: Dictionary = {}
 var _ground: ArrayMesh
 var _fence: ArrayMesh
+var _shadows: ArrayMesh
 var _cell := 0.0
 var _origin := Vector2.ZERO
+## When the board opened, and when its entrance is over: the field pops in
+## from the first and the shadows follow the markers' scale until the second.
+var _opened := -1.0e9
+var _enter_until := -1.0e9
+
+# --- the drag ---
 var _drag_from := Vector2i(-1, -1)
 var _drag_to := Vector2i(-1, -1)
+## When the finger went down, and when the count last changed: the wash and
+## the disc pop in from the first, the disc bumps from the second.
+var _drag_at := -1.0e9
+var _count := 0
+var _count_at := -1.0e9
 ## The pending rectangle's mesh and the rectangle-and-colour it was cut for.
 var _pend_mesh: ArrayMesh
 var _pend_key := ""
+
+# --- what the beds are doing ---
+## Bed key -> {"at": float, "drop": bool}: a bed arriving, popping in wide
+## or (a hint's) dropping in from above.
+var _bed_in: Dictionary = {}
+## Beds leaving: [{"rect": Rect2i, "mesh": ArrayMesh, "at": float}], drawn
+## from their own meshes since the state no longer has them, shrinking to
+## nothing from `at`.
+var _gone: Array = []
+## Bed key -> the msec its blush began: Check pointing at its number, or a
+## drag refused on a pinned bed.
+var _bed_flash: Dictionary = {}
 ## The planting wave: the msec each bed starts, and whether it has finished
 ## and been folded into the bed meshes.
 var _plant_at: Dictionary = {}
 var _planted := false
-var _entrance: Array = []
+## The meshes the last _draw handed over that the next may let go of: a
+## canvas command holds a mesh by RID, and a frame rendered before the queued
+## redraw is flushed would otherwise draw a freed one (see CLAUDE.md).
+var _shown: Array = []
+
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -198,7 +250,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
 	state.setup(rng, difficulty)
 	_bed_cache = {}
-	_bed_at = {}
+	_bed_in = {}
+	_gone = []
+	_bed_flash = {}
 	_plant_at = {}
 	_planted = false
 	_clear_drag()
@@ -216,7 +270,9 @@ func _build_markers() -> void:
 		slot.queue_free()
 	_markers = []
 	_slots = []
-	_marker_tw = []
+	_pos_tw = []
+	_look_tw = []
+	_idling = false
 	for i in state.clues.size():
 		var slot := Control.new()
 		slot.name = "marker_%d" % i
@@ -225,18 +281,24 @@ func _build_markers() -> void:
 		var marker := MarkerFace.new()
 		marker.name = "face"
 		marker.number = int(state.clues[i].area)
+		# The shadow is the board's, on the ground (see _build_shadows).
+		marker.casts = false
+		# Nothing until the field is up; _enter pops each one in.
+		marker.scale = Vector2.ZERO
 		slot.add_child(marker)
 		_slots.append(slot)
 		_markers.append(marker)
-		_marker_tw.append(null)
+		_pos_tw.append(null)
+		_look_tw.append(null)
 
-## Every marker takes the face and the plaque its state asks for, and stands
-## where the layout put it.
+## Every marker takes the face its state asks for. A face is written only
+## when its look changes -- a written face redraws.
 func _refresh_markers() -> void:
 	for i in _markers.size():
 		var marker: MarkerFace = _markers[i]
-		marker.expression = _expression(i)
-		marker.set_idle(true)
+		var expr := _expression(i)
+		if marker.expression != expr:
+			marker.expression = expr
 
 ## The four states, the four faces: idle smiles, settled beams, a plot of the
 ## wrong size strains, and one holding two numbers or none is puzzled.
@@ -272,6 +334,11 @@ func _layout() -> void:
 	_seed_cache = {}
 	_ground = _build_ground()
 	_fence = _build_fence()
+	_shadows = null
+	if not _idling:
+		_idling = true
+		for marker in _markers:
+			marker.set_idle(true)
 	_refresh_markers()
 	_redraw()
 
@@ -300,20 +367,50 @@ func _cell_at(local: Vector2) -> Vector2i:
 func _rect_px(rect: Rect2i) -> Rect2:
 	return Rect2(_origin + Vector2(rect.position) * _cell, Vector2(rect.size) * _cell)
 
+## The whole field, in board pixels.
+func _field_px() -> Rect2:
+	return Rect2(_origin, Vector2(_cell * w, _cell * h))
+
 # --- the meshes ---
 
-## The bare ground and the faint grid over it, in the grid's own space.
+## The bare ground on its bottom edge and the faint grid over it, about the
+## field's own centre, so its pop on the entrance is a transform.
 func _build_ground() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field := Vector2(_cell * w, _cell * h)
-	b.fan(Face.Builder.round_rect(Vector2.ZERO, field, GROUND_RADIUS), Pal.BED_GROUND)
+	var at := -field * 0.5
+	# The edge is the card at full height plus its lip and the ground the
+	# same card short of it, which is how every card on the flat screens
+	# gets its soft foot.
+	b.fan(Face.Builder.round_rect(at, field + Vector2(0.0, GROUND_EDGE), GROUND_RADIUS), Pal.LINE)
+	b.fan(Face.Builder.round_rect(at, field, GROUND_RADIUS), Pal.BED_GROUND)
 	var line := Color(Pal.BED_LINE, GRID_ALPHA)
 	for x in range(1, w):
-		b.stroke(PackedVector2Array([Vector2(x * _cell, 0.0), Vector2(x * _cell, field.y)]),
+		b.stroke(PackedVector2Array([at + Vector2(x * _cell, 0.0), at + Vector2(x * _cell, field.y)]),
 			GRID_WIDTH, line, false, false)
 	for y in range(1, h):
-		b.stroke(PackedVector2Array([Vector2(0.0, y * _cell), Vector2(field.x, y * _cell)]),
+		b.stroke(PackedVector2Array([at + Vector2(0.0, y * _cell), at + Vector2(field.x, y * _cell)]),
 			GRID_WIDTH, line, false, false)
+	return b.mesh()
+
+## Every marker's shadow in one mesh, on the ground under the foot of its
+## stake: the family's soft disc, read off the marker's own height so it
+## arrives with the pop-in, and anchored at the slot so a hop leaves it
+## behind. Rebuilt each frame only while the entrance runs.
+func _build_shadows() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var seat := _cell * MARKER
+	for i in _markers.size():
+		var marker: Control = _markers[i]
+		var slot: Control = _slots[i]
+		var seen := clampf(marker.scale.y, 0.0, 1.0)
+		if seen <= 0.0:
+			continue
+		var at: Vector2 = slot.position + slot.size * 0.5 + SHADOW_AT * seat
+		Scenery.soft_disc(b, at, SHADOW_RX * seat * seen, SHADOW_RY * seat * seen,
+			Color(Pal.TEXT, SHADOW_ALPHA * seen))
+	if b.verts.is_empty():
+		return null
 	return b.mesh()
 
 ## One bed: tilled earth inset from its cells, the dashed grain along each of
@@ -429,7 +526,7 @@ func _dashes(b, from: Vector2, to: Vector2, width: float, colour: Color,
 func _seedling(b, at: Vector2, u: float, variant: int) -> void:
 	if u <= 0.0:
 		return
-	var s := _cell * SEED_SIZE * _back_out(u)
+	var s := _cell * SEED_SIZE * Motion.back_out(u)
 	var jitter := (variant - 1) * 0.125
 	b.stroke(PackedVector2Array([at, at + Vector2(0.0, -s * 0.7)]), s * 0.13, Pal.LEAF)
 	var tip := at + Vector2(0.0, -s * 0.66)
@@ -467,8 +564,11 @@ func _bed_key(rect: Rect2i) -> String:
 ## The bed's mesh, built the first time it is asked for at this state.
 func _bed_mesh(i: int) -> ArrayMesh:
 	var rect: Rect2i = state.rects[i]
-	var lock: bool = state.locked[i]
-	var blush := state.plot_blushes(i)
+	return _bed_variant(rect, state.locked[i], state.plot_blushes(i))
+
+## A bed's mesh for the look asked for. The blushing variant of a bed that
+## is not blushing is what a flash draws over it.
+func _bed_variant(rect: Rect2i, lock: bool, blush: bool) -> ArrayMesh:
 	var key := "%s_%d_%d_%d" % [_bed_key(rect), int(lock), int(blush), int(_planted)]
 	var mesh: ArrayMesh = _bed_cache.get(key)
 	if mesh == null:
@@ -481,29 +581,85 @@ func _bed_mesh(i: int) -> ArrayMesh:
 func _draw() -> void:
 	if _cell <= 0.0 or state.clues.is_empty():
 		return
-	draw_mesh(_ground, null, Transform2D(0.0, _origin))
 	var now := _now()
 	var busy := false
+	var shown: Array = []
+	# The field pops in wide once the chrome has slid in, drawn.
+	var since := now - _opened - Motion.ENTER_DELAY
+	if since < Motion.ENTER_POP:
+		busy = true
+	var seen := Motion.appear_level(since)
+	if seen > 0.0:
+		var grown := Motion.wide_pop_scale(since)
+		draw_mesh(_ground, null,
+			Transform2D(0.0, Vector2(grown, grown), 0.0, _field_px().get_center()),
+			Color(1.0, 1.0, 1.0, seen))
+	# Beds on their way out go under the beds that are here: a plot drawn over
+	# another lands on top of what it displaced.
+	var still: Array = []
+	for gone in _gone:
+		var e: float = now - float(gone.at)
+		var shrunk := Motion.pop_out_scale(e)
+		if shrunk <= 0.0:
+			continue
+		still.append(gone)
+		busy = true
+		var mesh: ArrayMesh = gone.mesh
+		shown.append(mesh)
+		draw_mesh(mesh, null, Transform2D(0.0, Vector2(shrunk, shrunk), 0.0,
+			_rect_px(gone.rect).get_center()))
+	_gone = still
 	for i in state.rects.size():
 		var rect: Rect2i = state.rects[i]
+		var key := _bed_key(rect)
 		var px := _rect_px(rect)
-		var at: float = _bed_at.get(_bed_key(rect), -1.0e9)
-		var pop := _eased((now - at) / BED_POP)
-		var alpha := _eased((now - at) / BED_FADE)
-		if pop < 1.0:
-			busy = true
-		var g: float = lerpf(BED_FROM, 1.0, _back_out(pop))
-		draw_mesh(_bed_mesh(i), null,
-			Transform2D(0.0, Vector2(g, g), 0.0, px.get_center()),
-			Color(1.0, 1.0, 1.0, alpha))
-		if _plant_at.has(_bed_key(rect)) and not _planted:
+		var xf := Transform2D(0.0, px.get_center())
+		var tint := Color.WHITE
+		var arrival: Dictionary = _bed_in.get(key, {})
+		if not arrival.is_empty():
+			var e: float = now - float(arrival.at)
+			tint.a = Motion.appear_level(e)
+			if arrival.drop:
+				xf.origin.y -= Motion.drop_in_lift(e)
+				if e < Motion.DROP_TIME:
+					busy = true
+				else:
+					_bed_in.erase(key)
+			else:
+				var grown := Motion.wide_pop_scale(e, Motion.POP_IN)
+				xf = xf.scaled_local(Vector2(grown, grown))
+				if e < Motion.POP_IN:
+					busy = true
+				else:
+					_bed_in.erase(key)
+		draw_mesh(_bed_mesh(i), null, xf, tint)
+		if _bed_flash.has(key):
+			var e: float = now - float(_bed_flash[key])
+			var level := Motion.flash_level(e)
+			if e < Motion.FLASH_IN + Motion.FLASH_OUT:
+				busy = true
+			else:
+				_bed_flash.erase(key)
+			if level > 0.0:
+				draw_mesh(_bed_variant(rect, state.locked[i], true), null, xf,
+					Color(1.0, 1.0, 1.0, level * tint.a))
+		if _plant_at.has(key) and not _planted:
 			busy = _draw_crop(i, now) or busy
+	# The shadows follow the markers up while they pop in, then stand.
+	if _shadows == null or now < _enter_until:
+		_shadows = _build_shadows()
+		if now < _enter_until:
+			busy = true
+	if _shadows != null:
+		draw_mesh(_shadows, null)
 	if _fence != null:
 		draw_mesh(_fence, null, Transform2D(0.0, _origin))
 	if _drag_from.x >= 0 and not is_done():
-		_draw_pending()
+		busy = _draw_pending(now) or busy
+		shown.append(_pend_mesh)
+	_shown = shown
 	if busy:
-		_anim_until = now + 0.1
+		_anim_until = maxf(_anim_until, now + 0.1)
 
 ## The crop coming up in bed `i`, cell by cell. True while any of it is still
 ## growing; once the whole field is up it is folded into the bed meshes and
@@ -527,27 +683,33 @@ func _draw_crop(i: int, now: float) -> bool:
 	return growing
 
 ## The rectangle under the finger: its cells washed in the colour the count
-## has earned, under a dashed edge. The disc carrying the count is drawn by
-## the overlay, over the markers.
-func _draw_pending() -> void:
+## has earned, under a dashed edge, popping in wide as the finger lands. The
+## disc carrying the count is drawn by the overlay, over the markers. True
+## while the pop is still running.
+func _draw_pending(now: float) -> bool:
 	var pend := _pending()
 	var colour := _pending_colour(pend)
+	var px := _rect_px(pend)
 	# Cached by the rectangle and the colour it earned: a drag moves the
 	# finger far more often than it moves the rectangle, and the dashed edge
-	# is a hundred small strokes to build.
+	# is a hundred small strokes to build. Built about the rectangle's own
+	# centre, so the pop is a transform.
 	var key := "%d_%d_%d_%d_%s" % [pend.position.x, pend.position.y,
 		pend.size.x, pend.size.y, colour.to_html(false)]
 	if key != _pend_key:
 		_pend_key = key
-		var px := _rect_px(pend)
+		var at := -px.size * 0.5
 		var b := Face.Builder.new()
-		b.fan(Face.Builder.round_rect(px.position + Vector2.ONE * BED_INSET,
+		b.fan(Face.Builder.round_rect(at + Vector2.ONE * BED_INSET,
 			px.size - Vector2.ONE * 2.0 * BED_INSET, BED_RADIUS), Color(colour, PEND_ALPHA))
-		_dash_path(b, Face.Builder.round_rect(px.position + Vector2.ONE * 3.0,
+		_dash_path(b, Face.Builder.round_rect(at + Vector2.ONE * 3.0,
 			px.size - Vector2.ONE * 6.0, BED_RADIUS), true,
 			maxf(PEND_MIN, _cell * PEND_WIDTH), colour, _cell * PEND_DASH, _cell * PEND_GAP)
 		_pend_mesh = b.mesh()
-	draw_mesh(_pend_mesh, null, Transform2D.IDENTITY)
+	var e := now - _drag_at
+	var grown := Motion.wide_pop_scale(e, Motion.POP_IN)
+	draw_mesh(_pend_mesh, null, Transform2D(0.0, Vector2(grown, grown), 0.0, px.get_center()))
+	return e < Motion.POP_IN
 
 ## Green when the rectangle's area matches the single number inside it, rose
 ## when it does not, and plain ink when it holds no number or two.
@@ -573,21 +735,36 @@ func _gui_input(event: InputEvent) -> void:
 			_release()
 	elif event is InputEventScreenDrag and _drag_from.x >= 0:
 		_drag_to = _clamped(event.position)
+		_recount()
 		_redraw()
 
+## The press: the wash and its count pop in on the cell. A pinned bed refuses
+## before the drag starts, rather than letting one run and turning it down on
+## release.
 func _press(cell: Vector2i) -> void:
 	if is_done() or cell.x < 0:
 		return
 	var who := state.owner_at(cell.y, cell.x)
 	if who >= 0 and state.locked[who]:
-		# A pinned bed refuses before the drag starts, rather than letting one
-		# run and turning it down on release.
-		_dip(state.clue_index_in(who))
-		fx.cue("locked")
+		_refuse(who)
 		return
 	_drag_from = cell
 	_drag_to = cell
+	_drag_at = _now()
+	_count = 1
+	_count_at = -1.0e9
+	_pend_key = ""
+	_anim_until = maxf(_anim_until, _drag_at + Motion.POP_IN)
 	_redraw()
+
+## The count moment: a number that was recounted bumps.
+func _recount() -> void:
+	var area := _pending().get_area()
+	if area == _count:
+		return
+	_count = area
+	_count_at = _now()
+	_anim_until = maxf(_anim_until, _count_at + Motion.BUMP_TIME)
 
 func _release() -> void:
 	if _drag_from.x < 0:
@@ -597,17 +774,24 @@ func _release() -> void:
 	if is_done():
 		_redraw()
 		return
+	var before := _snapshot()
 	var out: Dictionary = state.commit(pend)
 	match String(out.get("kind", "none")):
 		"locked":
-			_dip(int(out.get("clue", -1)))
-			fx.cue("locked")
+			var clue := int(out.get("clue", -1))
+			_refuse(state.owner_at(state.clues[clue].pos.y, state.clues[clue].pos.x) if clue >= 0 else -1)
 		"plot":
-			_bed_at[_bed_key(out.rect)] = _now()
-			_puff_corners(out.rect)
+			var rect: Rect2i = out.rect
+			_leave_missing(before, _now())
+			_arrive(rect, false)
+			_hop_inside(rect, Motion.HOP, Motion.HOP_TIME)
+			_nudge_around(rect)
+			_puff_corners(rect, Pal.BED_FURROW)
 			fx.cue("plot")
 			_after_move()
 		"clear":
+			_leave_missing(before, _now())
+			_hop_inside(out.rect, Motion.HOP, Motion.HOP_TIME)
 			fx.cue("clear")
 			_after_move()
 	_redraw()
@@ -629,19 +813,124 @@ func _clear_drag() -> void:
 	_drag_from = Vector2i(-1, -1)
 	_drag_to = Vector2i(-1, -1)
 
-## Earth thrown up at the four corners of a bed that has just been fenced.
-func _puff_corners(rect: Rect2i) -> void:
-	var px := _rect_px(rect)
-	for corner in [px.position, px.position + Vector2(px.size.x, 0.0),
-			px.position + Vector2(0.0, px.size.y), px.end]:
-		fx.puff(corner, Pal.BED_FURROW, 3)
-
 ## Everything a change to the partition drives.
 func _after_move() -> void:
 	_fence = _build_fence()
 	_refresh_markers()
 	_speak()
 	note_move()
+
+# --- what the beds do ---
+
+## Every bed as it is drawn now, so the ones a move takes away can leave
+## from their own picture after the state has forgotten them.
+func _snapshot() -> Array:
+	var out: Array = []
+	for i in state.rects.size():
+		out.append({"rect": state.rects[i], "mesh": _bed_mesh(i)})
+	return out
+
+## The beds in `before` the state no longer has shrink to nothing from `at`
+## (Remove, and what a new plot displaced). Under reduce-motion they are
+## simply gone, as pop_out would have them.
+func _leave_missing(before: Array, at: float) -> void:
+	for was in before:
+		var rect: Rect2i = was.rect
+		if state.rects.has(rect):
+			continue
+		_bed_in.erase(_bed_key(rect))
+		_bed_flash.erase(_bed_key(rect))
+		if Motion.reduce:
+			continue
+		_gone.append({"rect": rect, "mesh": was.mesh, "at": at})
+		_anim_until = maxf(_anim_until, at + Motion.POP_OUT)
+
+## A bed arriving: popping in wide, or dropping in from above when a hint
+## drew it.
+func _arrive(rect: Rect2i, drop: bool) -> void:
+	_bed_in[_bed_key(rect)] = {"at": _now(), "drop": drop}
+	_anim_until = maxf(_anim_until, _now() + maxf(Motion.POP_IN, Motion.DROP_TIME))
+
+## A bed blushes toward its own rose and settles: Check pointing at its
+## number, or a drag refused on it.
+func _blush(rect: Rect2i) -> void:
+	if Motion.reduce:
+		return
+	_bed_flash[_bed_key(rect)] = _now()
+	_anim_until = maxf(_anim_until, _now() + Motion.FLASH_IN + Motion.FLASH_OUT)
+
+## Earth thrown up at the four corners of a bed that has just been fenced:
+## this board's placement puff, where the posts go in.
+func _puff_corners(rect: Rect2i, colour: Color) -> void:
+	var px := _rect_px(rect)
+	for corner in [px.position, px.position + Vector2(px.size.x, 0.0),
+			px.position + Vector2(0.0, px.size.y), px.end]:
+		fx.puff(corner, colour, CORNER_STARS)
+
+# --- what the markers do ---
+
+## The markers standing in `rect` hop `height`.
+func _hop_inside(rect: Rect2i, height: float, time: float, delay := 0.0) -> void:
+	for i in state.clues.size():
+		if rect.has_point(state.clues[i].pos):
+			_hop(i, height, time, delay)
+
+## The markers in the cells bordering `rect` lean away from it and back, the
+## way a landing's neighbours do. One already mid-hop is left to land.
+func _nudge_around(rect: Rect2i) -> void:
+	var ring := rect.grow(1)
+	for i in state.clues.size():
+		var at: Vector2i = state.clues[i].pos
+		if rect.has_point(at) or not ring.has_point(at):
+			continue
+		if Motion.running(_pos_tw[i]):
+			continue
+		var away := Vector2(
+			signf(float(at.x) - clampf(float(at.x), float(rect.position.x), float(rect.end.x - 1))),
+			signf(float(at.y) - clampf(float(at.y), float(rect.position.y), float(rect.end.y - 1))))
+		_pos_tw[i] = Motion.nudge(_markers[i], away.normalized(), Vector2.ZERO)
+
+## Marker `i` hops `height` over `time` after `delay`; it rests at the slot's
+## origin, so the base is always zero.
+func _hop(i: int, height: float, time: float, delay := 0.0) -> void:
+	if i < 0 or i >= _markers.size():
+		return
+	Motion.stop(_pos_tw[i])
+	_markers[i].position = Vector2.ZERO
+	_pos_tw[i] = Motion.hop(_markers[i], height, time, delay, 0.0)
+
+## A refused drag on pinned bed `who`: its marker shivers, the bed blushes
+## and the sprout says why.
+func _refuse(who: int) -> void:
+	_say("That bed is pinned. A hint drew it.", Face.Expr.PUZZLED)
+	fx.cue("locked")
+	if who < 0 or who >= state.rects.size():
+		return
+	_blush(state.rects[who])
+	var i := state.clue_index_in(who)
+	if i < 0:
+		return
+	Motion.stop(_pos_tw[i])
+	_markers[i].position = Vector2.ZERO
+	_pos_tw[i] = Motion.shiver(_markers[i], _cell * MARKER * SHIVER)
+
+## Check pointing at a number: it wobbles where it stands.
+func _wobble(i: int) -> void:
+	if i < 0 or i >= _markers.size():
+		return
+	Motion.stop(_look_tw[i])
+	_markers[i].rotation = 0.0
+	_markers[i].scale = Vector2.ONE
+	_look_tw[i] = Motion.wobble2d(_markers[i])
+
+## A hint's number is recounted as its bed is pinned: the family's bump.
+func _bump(i: int) -> void:
+	if i < 0 or i >= _markers.size():
+		return
+	Motion.stop(_look_tw[i])
+	_markers[i].rotation = 0.0
+	_markers[i].scale = Vector2.ONE
+	_look_tw[i] = Motion.bump(_markers[i])
 
 # --- the sprout's line ---
 
@@ -685,13 +974,21 @@ func tip_line() -> Dictionary:
 func can_undo() -> bool:
 	return not is_done() and not state.history.is_empty()
 
-## Takes back the last plot drawn or cleared. Counts no move.
+## Takes back the last plot drawn or cleared: the reverse of Place. Counts
+## no move.
 func undo() -> bool:
 	if is_done() or state.history.is_empty():
 		return false
+	var before := _snapshot()
 	var back := state.undo()
+	var now := _now()
+	_leave_missing(before, now)
+	for was in before:
+		if not state.rects.has(was.rect):
+			_hop_inside(was.rect, Motion.HOP, Motion.HOP_TIME)
 	for rect in back:
-		_bed_at[_bed_key(rect)] = _now()
+		_arrive(rect, false)
+		_hop_inside(rect, Motion.HOP, Motion.HOP_TIME)
 	_fence = _build_fence()
 	_refresh_markers()
 	_speak()
@@ -703,20 +1000,23 @@ func undo() -> bool:
 func hints_left() -> int:
 	return HINTS - hints_used
 
-## Draws one plot from the answer and pins it, with sparkles over it and a
-## pop on its number. Counts no move but can finish the puzzle.
+## Draws one plot from the answer and pins it: a ring pulses out of the bed,
+## the bed drops in from above, sparkles rise and its number is recounted.
+## Counts no move but can finish the puzzle.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var before := _snapshot()
 	var target := state.apply_hint()
 	if target.size == Vector2i(0, 0):
 		return false
-	_bed_at[_bed_key(target)] = _now()
+	_leave_missing(before, _now())
+	_arrive(target, true)
 	var who: int = state.rects.find(target)
-	_pop(state.clue_index_in(who))
+	_bump(state.clue_index_in(who))
 	var px := _rect_px(target)
-	for i in HINT_SPARKLES:
-		fx.sparkle(px.position + Vector2(_hash(i, 1), _hash(i, 2)) * px.size, Pal.LEAF)
+	fx.ring(px.get_center(), minf(px.size.x, px.size.y) * 0.5, Pal.LEAF)
+	fx.sparkle(px.get_center(), Pal.LEAF)
 	fx.cue("hint")
 	hints_used += 1
 	_fence = _build_fence()
@@ -727,31 +1027,59 @@ func hint() -> bool:
 	check_solved()
 	return true
 
-## Shakes every number the board does not yet satisfy, and says how many.
-## Solving stays automatic; this only points.
+## Every number the board does not yet satisfy wobbles, its bed blushes, and
+## the sprout says how many. Solving stays automatic; this only points.
 func check() -> int:
 	if is_done():
 		return 0
 	checks += 1
 	var wrong := state.wrong_clues()
 	for i in wrong:
-		_shake(i)
+		_wobble(i)
+		var at: Vector2i = state.clues[i].pos
+		var who := state.owner_at(at.y, at.x)
+		if who >= 0:
+			_blush(state.rects[who])
 	if wrong.is_empty():
 		_say("Every number is settled.", Face.Expr.JOY)
 	else:
 		_say("%d %s not settled yet." % [wrong.size(),
 			"number is" if wrong.size() == 1 else "numbers are"], Face.Expr.STRAIN)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
+	_redraw()
 	return wrong.size()
 
-## Every bed goes. The hints a player spent are not refunded, only unpinned.
+## Every bed goes, in a wave from the far corner, and the markers hop as the
+## field clears under them. The hints a player spent are not refunded, only
+## unpinned.
 func reset_board() -> void:
-	_stop_entrance()
 	_clear_drag()
+	var before := _snapshot()
 	state.reset()
-	_bed_at = {}
+	var now := _now()
+	var last := now
+	for was in before:
+		var rect: Rect2i = was.rect
+		var at := now + Motion.stagger((h - rect.end.y) + (w - rect.end.x), Motion.RESET_STAGGER)
+		last = maxf(last, at)
+		_gone.append({"rect": rect, "mesh": was.mesh, "at": at})
+	if Motion.reduce:
+		_gone = []
+	_bed_in = {}
+	_bed_flash = {}
+	for i in state.clues.size():
+		var at: Vector2i = state.clues[i].pos
+		_hop(i, Motion.RESET_HOP, Motion.HOP_TIME,
+			Motion.stagger((h - 1 - at.y) + (w - 1 - at.x), Motion.RESET_STAGGER))
 	moves = 0
-	_fence = _build_fence()
+	# The fence stands until the last bed has gone, then comes down with it.
+	if Motion.reduce or before.is_empty():
+		_fence = _build_fence()
+	else:
+		_after(last - now + Motion.POP_OUT, func() -> void:
+			_fence = _build_fence()
+			_redraw())
+	_anim_until = maxf(_anim_until, last + Motion.POP_OUT)
 	_refresh_markers()
 	_say("Cleared. The hints you spent are not refunded, only unpinned.", Face.Expr.HAPPY)
 	_tip_timer.start()
@@ -775,7 +1103,8 @@ func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
 
 ## The beds are planted in a wave, nearest first, so the field finishes by
-## filling in rather than by a banner arriving.
+## filling in rather than by a banner arriving; each bed's marker hops the
+## solve wave's hop as its crop comes up, and sparkles.
 func _on_solved() -> void:
 	_clear_drag()
 	_tip_timer.stop()
@@ -790,8 +1119,11 @@ func _on_solved() -> void:
 	var last := now
 	for k in order.size():
 		var rect: Rect2i = state.rects[order[k]]
-		last = now + PLANT_DELAY + k * PLANT_STEP
-		_plant_at[_bed_key(rect)] = last
+		var at := now if Motion.reduce else now + Motion.SOLVE_DELAY + Motion.stagger(k, PLANT_STEP, PLANT_WAVE)
+		last = maxf(last, at)
+		_plant_at[_bed_key(rect)] = at
+		_hop_inside(rect, Motion.SOLVE_HOP, Motion.SOLVE_TIME, at - now)
+		_after(at - now, _spark_at.bind(k, _rect_px(rect).get_center()))
 	_speak()
 	fx.cue("solved")
 	# Once the whole field is up, the crop is folded into the bed meshes and
@@ -800,85 +1132,66 @@ func _on_solved() -> void:
 	if grow <= 0.0:
 		_finish_planting()
 	else:
-		get_tree().create_timer(grow).timeout.connect(_finish_planting)
-	_anim_until = now + grow + 0.2
+		_after(grow, _finish_planting)
+	_anim_until = maxf(_anim_until, now + grow + 0.2)
 	_redraw()
+
+## A spark as bed `k` is planted. The two pools are used in turn: a run of
+## fourteen a tenth of a second apart would otherwise recycle one pool fast
+## enough to cut each burst in half.
+func _spark_at(k: int, at: Vector2) -> void:
+	if k % 2 == 0:
+		fx.sparkle(at, Pal.LEAF_LIGHT)
+	else:
+		fx.puff(at, Pal.LEAF, 4)
 
 func _finish_planting() -> void:
 	_planted = true
 	_redraw()
 
-# --- a marker's answers ---
-
-## A refused tap: the marker dips.
-func _dip(i: int) -> void:
-	if i < 0 or i >= _markers.size():
-		return
-	_say("That bed is pinned. A hint drew it.", Face.Expr.PUZZLED)
-	Motion.stop(_marker_tw[i])
-	# The face rests at the slot's origin, so the dip's base is always zero.
-	_markers[i].position = Vector2.ZERO
-	_marker_tw[i] = Motion.hop(_markers[i], _cell * MARKER * DIP_HEIGHT, DIP_TIME, 0.0, 0.0)
-
-## Check pointing at a number: it shakes where it stands.
-func _shake(i: int) -> void:
-	if i < 0 or i >= _markers.size():
-		return
-	Motion.stop(_marker_tw[i])
-	_markers[i].position = Vector2.ZERO
-	_marker_tw[i] = Motion.shiver(_markers[i], _cell * MARKER * FLASH_SHAKE, FLASH_TIME)
-
-## A hint's number pops once as its bed is pinned.
-func _pop(i: int) -> void:
-	if i < 0 or i >= _markers.size():
-		return
-	Motion.stop(_marker_tw[i])
-	_markers[i].scale = Vector2.ONE
-	_marker_tw[i] = Motion.bump(_markers[i], HINT_POP, HINT_POP_TIME)
-
 # --- entrance ---
 
-## The chrome is the host's; here the markers drop into the field on a
-## diagonal from the top-left corner.
+## The chrome is the host's; here the field pops in wide and each marker pops
+## onto it a beat later with the squash, along the diagonal from the top-left
+## corner, its shadow arriving with it.
 func _enter() -> void:
-	_stop_entrance()
+	_opened = _now()
+	var far := 0
 	for i in _markers.size():
-		var marker: MarkerFace = _markers[i]
 		var clue: Dictionary = state.clues[i]
-		var delay := ENTER_DELAY + Motion.stagger(clue.pos.x + clue.pos.y, ENTER_STAGGER)
-		marker.modulate.a = 0.0
-		var drop: Tween = Motion.slide(marker, "position:y", -ENTER_DROP, 0.0,
-			ENTER_TIME, delay)
-		if drop != null:
-			_entrance.append(drop)
-		var show: Tween = Motion.appear(marker, 0.0, 1.0, ENTER_TIME * 0.5, delay)
-		if show != null:
-			_entrance.append(show)
-		else:
-			marker.modulate.a = 1.0
+		far = maxi(far, clue.pos.x + clue.pos.y)
+		var delay := Motion.ENTER_DELAY + Motion.stagger(clue.pos.x + clue.pos.y, Motion.ENTER_STAGGER) \
+			+ Motion.ENTER_FACE_LAG
+		Motion.stop(_look_tw[i])
+		_look_tw[i] = Motion.pop_in(_markers[i], Motion.POP_IN, delay)
+	_enter_until = _opened if Motion.reduce else _opened + Motion.ENTER_DELAY \
+		+ Motion.stagger(far, Motion.ENTER_STAGGER) + Motion.ENTER_FACE_LAG + Motion.POP_IN
+	_anim_until = maxf(_anim_until, maxf(_enter_until, _opened + Motion.ENTER_DELAY + Motion.ENTER_POP))
 	fx.cue("enter")
 
-## Cuts the entrance short: everything lands where it was going.
-func _stop_entrance() -> void:
-	for tw in _entrance:
-		Motion.stop(tw)
-	_entrance = []
-	for marker in _markers:
-		marker.modulate.a = 1.0
-		marker.position = Vector2.ZERO
-
-func _stop_all() -> void:
-	_stop_entrance()
-	for tw in _marker_tw:
-		Motion.stop(tw)
-	_marker_tw = []
-
 # --- odds and ends ---
+
+## Kills every tween the previous board still tracks and retires its pending
+## callbacks, so a rebuild never inherits a hop aimed at a marker that is
+## gone.
+func _stop_all() -> void:
+	_gen += 1
+	for tw in _pos_tw:
+		Motion.stop(tw)
+	for tw in _look_tw:
+		Motion.stop(tw)
+
+## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	var gen := _gen
+	get_tree().create_timer(maxf(delay, 0.0)).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
 
 func _process(delta: float) -> void:
 	super(delta)
 	if _now() < _anim_until:
-		queue_redraw()
+		_redraw()
 
 ## The field and the disc over it are two canvas items, and every change
 ## that moves one moves the other.
@@ -891,31 +1204,19 @@ func _redraw() -> void:
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
-## 0 to 1, and 1 at once under reduce-motion.
-func _eased(u: float) -> float:
-	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
-
-## The overshoot the whole family's pops use, as a curve rather than a tween,
-## because these are drawn rather than tweened.
-func _back_out(u: float) -> float:
-	u = clampf(u, 0.0, 1.0)
-	const C := 1.70158
-	return 1.0 + (C + 1.0) * pow(u - 1.0, 3.0) + C * pow(u - 1.0, 2.0)
-
-## A fixed pseudo-random number per pair, for the hint's sparkles.
-static func _hash(a: int, b: int) -> float:
-	return float(posmod(hash(Vector2i(a, b)), 1000)) / 1000.0
-
 ## The drag's area disc, drawn over the markers: a marker standing inside the
-## rectangle would hide the one number the drag is for.
+## rectangle would hide the one number the drag is for. It pops in from
+## nothing as the finger lands and bumps whenever the count changes.
 class Overlay extends Control:
 	var board
 	## Kept, not local. A mesh handed to draw_mesh has to stay referenced
 	## until the frame is actually rendered (see ui/faces/face.gd): a local
 	## is freed the moment _draw returns, the renderer is then given a dead
 	## RID, and the disc silently does not draw while every redraw logs
-	## `Parameter "mesh" is null`.
+	## `Parameter "mesh" is null`. The one before it is kept a frame longer
+	## for the same reason.
 	var _mesh: ArrayMesh
+	var _last: ArrayMesh
 	var _key := ""
 
 	func _ready() -> void:
@@ -929,17 +1230,25 @@ class Overlay extends Control:
 		var colour: Color = board._pending_colour(pend)
 		var r: float = minf(board._cell * DISC_SHARE, DISC_MAX)
 		var centre := px.get_center()
-		var key := "%.1f_%.1f_%.1f_%s" % [centre.x, centre.y, r, colour.to_html(false)]
+		var key := "%.1f_%s" % [r, colour.to_html(false)]
 		if key != _key:
 			_key = key
+			_last = _mesh
 			var b := Face.Builder.new()
-			b.disc(centre, r, Pal.SURFACE)
-			b.stroke(Face.Builder.ring(centre, r, r), DISC_RIM, colour, true)
+			b.disc(Vector2.ZERO, r, Pal.SURFACE)
+			b.stroke(Face.Builder.ring(Vector2.ZERO, r, r), DISC_RIM, colour, true)
 			_mesh = b.mesh()
+		var now: float = board._now()
+		var grown: Vector2 = Motion.pop_in_scale(now - board._drag_at) \
+			* Motion.bump_scale(now - board._count_at)
+		if grown.x <= 0.0 or grown.y <= 0.0:
+			return
+		draw_set_transform(centre, 0.0, grown)
 		draw_mesh(_mesh, null, Transform2D.IDENTITY)
 		var font: Font = CozyTheme.display(700)
-		var text := str(pend.size.x * pend.size.y)
+		var text := str(pend.get_area())
 		var px_size := int(roundf(r * DISC_TEXT))
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px_size).x
-		draw_string(font, centre + Vector2(-wide * 0.5, font.get_ascent(px_size) * 0.5),
+		draw_string(font, Vector2(-wide * 0.5, font.get_ascent(px_size) * 0.5),
 			text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px_size, colour)
+		draw_set_transform_matrix(Transform2D.IDENTITY)

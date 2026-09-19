@@ -52,6 +52,13 @@ var number: int = 1:
 	set(v):
 		number = v
 		queue_redraw()
+## Whether the marker casts its own shadow layer. A board that draws the
+## shadows on its own ground (Shikaku builds them into one mesh, so a hopping
+## marker leaves its shadow where it stood) turns this off.
+var casts: bool = true:
+	set(v):
+		casts = v
+		queue_redraw()
 
 func _kind() -> String:
 	return "marker"
@@ -60,7 +67,12 @@ func _radius_for(px: float) -> float:
 	return px * RATIO
 
 func _layers() -> Array:
-	return [["stake", false], ["plaque", true]]
+	var layers: Array = []
+	if casts:
+		layers.append(["shadow", false])
+	layers.append(["stake", false])
+	layers.append(["plaque", true])
+	return layers
 
 ## The plaque's fill, its rim and the ink on it, from the state the
 ## expression carries.
@@ -75,9 +87,10 @@ func _skin() -> Array:
 
 func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 	match name:
+		"shadow":
+			b.ellipse(SHADOW_AT * R, SHADOW_RX * R, SHADOW_RY * R, Color(Pal.TEXT, 0.10))
 		"stake":
 			b.fan(Builder.round_rect(STAKE_AT * R, STAKE_SIZE * R, STAKE_RADIUS * R), Pal.FENCE_DARK)
-			b.ellipse(SHADOW_AT * R, SHADOW_RX * R, SHADOW_RY * R, Color(Pal.TEXT, 0.10))
 		"plaque":
 			var skin := _skin()
 			# The rim is the card at full height and the fill the same card

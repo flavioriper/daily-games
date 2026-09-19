@@ -114,8 +114,8 @@ const SWING_REST_V := 0.02
 const DRAG_SLOP := 0.4
 
 # --- motion: what is this board's own ---
-## The string is hung this long after the board opens, behind the chrome.
-const ENTER_DELAY := 0.18
+## The string is hung Motion.ENTER_DELAY after the board opens, behind the
+## chrome, like every board's pieces.
 ## A scripted walk -- a hint's to its peg, an undo's back, reset's home --
 ## takes this long, with the family's overshoot drawn as a curve.
 const SLIDE_TIME := 0.3
@@ -310,7 +310,7 @@ func _enter() -> void:
 	for i in state.nodes:
 		Motion.stop(_scale_tw[i])
 		_scale_tw[i] = Motion.pop_in(_lanterns[i], Motion.POP_IN,
-			ENTER_DELAY + Motion.stagger(i, Motion.ENTER_STAGGER) + Motion.ENTER_FACE_LAG, _rest_scale(i))
+			Motion.ENTER_DELAY + Motion.stagger(i, Motion.ENTER_STAGGER) + Motion.ENTER_FACE_LAG, _rest_scale(i))
 
 # --- layout ---
 
@@ -453,7 +453,7 @@ func _fire_walks(t: float) -> void:
 func _animating(t: float) -> bool:
 	if _held >= 0 or not _walk.is_empty():
 		return true
-	if t < _opened + ENTER_DELAY + Motion.stagger(state.nodes - 1, Motion.ENTER_STAGGER) \
+	if t < _opened + Motion.ENTER_DELAY + Motion.stagger(state.nodes - 1, Motion.ENTER_STAGGER) \
 			+ Motion.ENTER_FACE_LAG + Motion.POP_IN:
 		return true
 	if _solved_at >= 0.0 and t < _solved_at + WIN_WAIT:
@@ -509,7 +509,7 @@ func _ring_px(i: int, t: float) -> Vector2:
 ## How far in lantern `i`'s ring and cords are, 0 to 1, along the family's
 ## entrance: one per ENTER_STAGGER, each over ENTER_POP.
 func _enter_u(i: int, t: float) -> float:
-	return _dec((t - _opened - ENTER_DELAY - Motion.stagger(i, Motion.ENTER_STAGGER)) / Motion.ENTER_POP)
+	return _dec((t - _opened - Motion.ENTER_DELAY - Motion.stagger(i, Motion.ENTER_STAGGER)) / Motion.ENTER_POP)
 
 ## A landing: the paper hops on its cord.
 func _hop(i: int, height := Motion.HOP, time := Motion.HOP_TIME, delay := 0.0) -> void:
@@ -983,8 +983,7 @@ func _dec(u: float) -> float:
 	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
 
 ## The overshoot the whole family's pops use, as a curve rather than a tween,
-## because the rings and the walks are drawn rather than tweened.
+## because the rings and the walks are drawn rather than tweened. It is the
+## vocabulary's own (Motion.back_out); this is the short name the maths reads.
 func _back_out(u: float) -> float:
-	u = clampf(u, 0.0, 1.0)
-	const C := 1.70158
-	return 1.0 + (C + 1.0) * pow(u - 1.0, 3.0) + C * pow(u - 1.0, 2.0)
+	return Motion.back_out(u)

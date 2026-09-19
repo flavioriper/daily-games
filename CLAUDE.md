@@ -317,9 +317,15 @@ Specs:
   springs, the scripted walks) stays on the board's clock, and every lantern
   stands in a slot the board owns so the paper can take the recipes;
   `Motion.lift` is the press for a dragged thing, and a board that already
-  rebuilds a mesh builds its shadows into it with `Scenery.soft_disc`. The
-  other five flat boards still carry their own tweens and are ported when
-  next touched.
+  rebuilds a mesh builds its shadows into it with `Scenery.soft_disc`.
+  Shikaku joined on 2026-09-19 too (its spec's section 11), and it is the
+  precedent for a board whose pieces are drawn rather than nodes: it reads
+  the recipes as curves off `Motion` (`back_out`, `pop_in_scale`,
+  `wide_pop_scale`, `pop_out_scale`, `drop_in_lift`, `bump_scale`,
+  `flash_level`), handed the seconds since the moment began, so a drawn bed
+  and a tweened tile move as one hand and no board copies a number. The
+  other four flat boards (Tents, Light Up, One Line, Nonogram) still carry
+  their own tweens and are ported when next touched.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -402,9 +408,9 @@ Specs:
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
   card -- on any frame rendered without its queued redraw flushed first, which
   is exactly what `RenderingServer.force_draw()` does in a harness.
-  `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd` and `untangle2d.gd` keep the
-  mesh their last `_draw` handed over (`_shown`) until the next one replaces
-  it; `tents2d.gd` does not, and should if it is ever shot the same way.
+  `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd`, `untangle2d.gd` and
+  `shikaku2d.gd` keep the mesh their last `_draw` handed over (`_shown`)
+  until the next one replaces it; `tents2d.gd` does not, and should if it is ever shot the same way.
   A harness shooting one of these boards has to let a frame pass between the
   state change and `force_draw()`: `queue_redraw` is flushed on the next idle
   frame, so a probe that pokes the board and shoots in the same frame

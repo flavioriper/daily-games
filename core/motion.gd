@@ -117,7 +117,7 @@ static func squash(node: Node, amount := 0.12, time := 0.18, delay := 0.0) -> Tw
 ## flattens one axis against the other -- a number that squashes reads as
 ## pressed, and this one has not been pressed, it has been recounted.
 ## Decorative: null under reduce-motion, where the new value simply appears.
-static func bump(node: Node, amount := 0.25, time := 0.24, delay := 0.0) -> Tween:
+static func bump(node: Node, amount := BUMP, time := BUMP_TIME, delay := 0.0) -> Tween:
 	if reduce:
 		return null
 	var base = node.get("scale")
@@ -255,7 +255,9 @@ static func vanish(node: Node3D, lift: float, time: float, delay := 0.0) -> Twee
 ## a board goes through a parameter, not a copy.
 ## A square thing (a tile, a lid, a face) pops in from nothing; something
 ## wide (a row, a card) pops from ENTER_WIDE_FROM, because the back ease's
-## overshoot on a thousand units of width is a wobble.
+## overshoot on a thousand units of width is a wobble. A board's pieces wait
+## ENTER_DELAY for the chrome to slide in before the first of them pops.
+const ENTER_DELAY := 0.18
 const PRESS_SCALE := 0.94
 const PRESS_TIME := 0.08
 const RELEASE_TIME := 0.25
@@ -275,10 +277,14 @@ const NUDGE_TIME := 0.3
 const NUDGE_LAG := 0.04
 const DROP := 40.0
 const DROP_TIME := 0.3
+const DROP_FADE := 0.1
 const RING_TIME := 0.5
 const FLASH_IN := 0.15
 const FLASH_OUT := 0.45
+const BUMP := 0.25
+const BUMP_TIME := 0.24
 const RESET_STAGGER := 0.02
+const RESET_HOP := -4.0
 const SOLVE_HOP := -10.0
 const SOLVE_TIME := 0.4
 const SOLVE_STAGGER := 0.04
@@ -364,7 +370,7 @@ static func drop_in(node: Control, height := DROP, time := DROP_TIME, delay := 0
 	node.modulate.a = 0.0
 	var tw := node.create_tween().set_parallel(true)
 	tw.tween_property(node, "position:y", rest, time).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(node, "modulate:a", 1.0, 0.1).set_delay(delay)
+	tw.tween_property(node, "modulate:a", 1.0, DROP_FADE).set_delay(delay)
 	return tw
 
 ## Leans `node` `px` along `dir` from `rest` and back, sine out then in,
@@ -392,6 +398,81 @@ static func flash(node: Node, setter: Callable, from: float, peak: float, back: 
 		return null
 	tw.tween_method(setter, peak, back, time_out).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	return tw
+
+# --- the same recipes, read as curves ---
+## A board that draws its pieces into a mesh rather than as nodes (Shikaku's
+## beds, Untangle's rings) cannot call a recipe on them
+## (docs/art/flat-motion.md, rule 8). These read a recipe's shape `elapsed`
+## seconds in, from the same constants, so the drawn thing and the tweened
+## one move as one hand and no board copies a number. Before the start each
+## returns its start state and after the end its final one, and under
+## reduce-motion the final one at once, exactly as the recipe would land.
+
+## The back ease's overshoot, 0 to 1: the curve every pop above ends on.
+static func back_out(u: float) -> float:
+	u = clampf(u, 0.0, 1.0)
+	const C := 1.70158
+	return 1.0 + (C + 1.0) * pow(u - 1.0, 3.0) + C * pow(u - 1.0, 2.0)
+
+## pop_in's scale: nothing, the squash over the first three fifths, then the
+## back ease home to `to`.
+static func pop_in_scale(elapsed: float, time := POP_IN, to := Vector2.ONE) -> Vector2:
+	if reduce or elapsed >= time:
+		return to
+	if elapsed <= 0.0:
+		return Vector2.ZERO
+	var squash := to * Vector2(1.0 + POP_SQUASH, 1.0 - POP_SQUASH)
+	var split := time * 0.6
+	if elapsed < split:
+		return squash * sin(elapsed / split * PI * 0.5)
+	return squash.lerp(to, back_out((elapsed - split) / (time - split)))
+
+## The wide thing's pop (rule 7): ENTER_WIDE_FROM to one with the back ease.
+static func wide_pop_scale(elapsed: float, time := ENTER_POP) -> float:
+	if reduce or elapsed >= time:
+		return 1.0
+	return lerpf(ENTER_WIDE_FROM, 1.0, back_out(maxf(elapsed, 0.0) / time))
+
+## pop_out's scale: one to nothing, sine in. A wide thing drawn with it
+## keeps its turn out, for the same reason it pops from most of the way.
+static func pop_out_scale(elapsed: float, time := POP_OUT) -> float:
+	if reduce or elapsed >= time:
+		return 0.0
+	if elapsed <= 0.0:
+		return 1.0
+	return cos(elapsed / time * PI * 0.5)
+
+## drop_in's height above the rest: `height`, then the back ease home.
+static func drop_in_lift(elapsed: float, height := DROP, time := DROP_TIME) -> float:
+	if reduce or elapsed >= time:
+		return 0.0
+	return height * (1.0 - back_out(maxf(elapsed, 0.0) / time))
+
+## The fade a dropping or popping thing arrives with: 0 to 1 over `time`.
+static func appear_level(elapsed: float, time := DROP_FADE) -> float:
+	if reduce:
+		return 1.0
+	return clampf(elapsed / time, 0.0, 1.0)
+
+## bump's scale: up by `amount` with the sine over two fifths, home with the
+## back ease over the rest. One is the rest.
+static func bump_scale(elapsed: float, amount := BUMP, time := BUMP_TIME) -> float:
+	if reduce or elapsed <= 0.0 or elapsed >= time:
+		return 1.0
+	var split := time * 0.4
+	if elapsed < split:
+		return 1.0 + amount * sin(elapsed / split * PI * 0.5)
+	return 1.0 + amount * (1.0 - back_out((elapsed - split) / (time - split)))
+
+## flash's level: 0 to 1 over `time_in`, then sine in-out back to 0 over
+## `time_out`. The caller mixes toward its own colour by it.
+static func flash_level(elapsed: float, time_in := FLASH_IN, time_out := FLASH_OUT) -> float:
+	if reduce or elapsed <= 0.0 or elapsed >= time_in + time_out:
+		return 0.0
+	if elapsed < time_in:
+		return elapsed / time_in
+	var u := (elapsed - time_in) / time_out
+	return 0.5 + 0.5 * cos(u * PI)
 
 ## Kills `tw` if it is still alive. Null-safe.
 static func stop(tw: Tween) -> void:
