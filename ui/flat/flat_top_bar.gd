@@ -4,8 +4,9 @@ extends "res://ui/hud/panel.gd"
 ## leaf sprouting from it and the motto under, then undo, hint with its
 ## bouncing count and settings. The same signals as ui/hud/top_bar.gd, the
 ## same buttons; only the title differs, a Label where the other boards
-## carry the carved sign. That departure from the sign rule is on purpose and
-## for this screen only (spec section 3).
+## carry the carved sign. Every puzzle keeps its title case and wears the
+## shared golden sun over each i. Binairo keeps its supplied mixed-case
+## `BINAiRO` lockup and roots the sprout in the A.
 ##
 ## One board asks for a fifth button: the flat Balance is its own continuous
 ## check, so it has nothing to put in an actions row and drops the row
@@ -23,6 +24,7 @@ signal settings
 
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
+const SunDot = preload("res://ui/sun_dot.gd")
 
 const HEIGHT := 180.0
 const BUTTON := Vector2(110, 110)
@@ -33,9 +35,11 @@ const BADGE_CYCLE := 2.4
 ## right of the title's centre, as a fraction of its width.
 const LEAF_AT := 0.2
 const LEAF := 40.0
+const BRAND_TITLE := "BINAiRO"
 
 var title_text := ""
 var motto_text := ""
+var brand_binairo := false
 ## Whether this bar carries Reset (a board with no actions row).
 var with_reset := false
 var back_button: Button
@@ -48,9 +52,10 @@ var _motto: Label
 var _block: Control
 var _bounce: Tween
 
-func _init(title := "", motto := "", carry_reset := false) -> void:
-	title_text = title.to_upper()
-	motto_text = motto.to_upper()
+func _init(title := "", motto := "", carry_reset := false, branded := false) -> void:
+	brand_binairo = branded
+	title_text = BRAND_TITLE if brand_binairo else title
+	motto_text = motto if brand_binairo else motto.to_upper()
 	with_reset = carry_reset
 	enter_from = Vector2(0, -80)
 
@@ -73,12 +78,13 @@ func _build() -> void:
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_block.add_child(col)
 	_title = Label.new()
-	_title.theme_type_variation = "Wordmark2D"
+	_title.theme_type_variation = "GameWordmark"
 	_title.text = title_text
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_title)
+	_title.add_child(SunDot.new(_title))
 	_motto = Label.new()
-	_motto.theme_type_variation = "FlatMotto"
+	_motto.theme_type_variation = "BinairoMotto" if brand_binairo else "FlatMotto"
 	_motto.text = motto_text
 	_motto.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_motto.visible = motto_text != ""
@@ -113,7 +119,15 @@ func _draw_leaf(ci: Control) -> void:
 	if _title == null or _title.size.x <= 0.0:
 		return
 	var text_w: float = _title.get_minimum_size().x
-	var top: Vector2 = _title.position + Vector2(_title.size.x * 0.5 + text_w * LEAF_AT, _title.size.y * 0.16)
+	var font := _title.get_theme_font("font")
+	var font_size := _title.get_theme_font_size("font_size")
+	var text_left := _title.position.x + (_title.size.x - text_w) * 0.5
+	var root_x := _title.position.x + _title.size.x * 0.5 + text_w * LEAF_AT
+	if brand_binairo:
+		var before_a := font.get_string_size("BIN", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var a_w := font.get_string_size("A", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		root_x = text_left + before_a + a_w * 0.52
+	var top := Vector2(root_x, _title.position.y + _title.size.y * 0.16)
 	var tip := top + Vector2(2.0, -30.0)
 	ci.draw_polyline(PackedVector2Array([top, top + Vector2(4.0, -16.0), tip]), Pal.LEAF, 7.0, true)
 	# The leaf icon's base is at (0.15, 0.85) of its rect and its tip at the

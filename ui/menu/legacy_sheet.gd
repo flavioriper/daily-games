@@ -19,16 +19,16 @@ const Icons = preload("res://ui/icons.gd")
 
 const TITLE := "The old game"
 const BLURB := "Every board that was built on the 3D stage. All of it still runs."
-const ROW_H := 96.0
-const CHEVRON := 34.0
+const ROW_H := 120.0
+const CHEVRON := 42.0
 
 func _build_sheet(col: VBoxContainer) -> void:
 	var title := Label.new()
-	title.theme_type_variation = "CardTitle"
+	title.theme_type_variation = "SheetTitle"
 	title.text = TITLE
 	col.add_child(title)
 	var blurb := Label.new()
-	blurb.theme_type_variation = "CardBodyDim"
+	blurb.theme_type_variation = "SheetBodyDim"
 	blurb.text = BLURB
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(blurb)
@@ -39,7 +39,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(scroll)
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 10)
+	list.add_theme_constant_override("separation", 14)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 
@@ -67,7 +67,7 @@ func _row(text: String, index: int, on_press: Callable) -> Control:
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.text = text
 	button.add_theme_font_override("font", CozyTheme.body(600))
-	button.add_theme_font_size_override("font_size", 32)
+	button.add_theme_font_size_override("font_size", 36)
 	button.add_theme_color_override("font_color", Pal.TEXT)
 	button.add_theme_color_override("font_hover_color", Pal.TEXT)
 	button.add_theme_color_override("font_pressed_color", Pal.TEXT)

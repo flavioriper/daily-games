@@ -110,7 +110,12 @@ func _build_chrome(root: VBoxContainer) -> void:
 	root.add_child(_top_slot)
 	_top_stack = _stack(_top_slot)
 	var with_actions: bool = bool(_entry.get("actions", true))
-	top_bar = FlatTopBar.new(_entry.get("title", ""), _entry.get("motto", ""), not with_actions)
+	top_bar = FlatTopBar.new(
+		_entry.get("title", ""),
+		_entry.get("motto", ""),
+		not with_actions,
+		str(_entry.get("id", "")) == "binairo"
+	)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)

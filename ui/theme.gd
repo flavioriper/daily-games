@@ -60,6 +60,10 @@ static func make() -> Theme:
 	# motto under it, and the win screen's headline.
 	_label(theme, "Wordmark2D", display(700, 2), 84, Pal.TEXT)
 	_label(theme, "FlatMotto", body(700, 2), 24, Pal.TEXT_DIM)
+	# Every live puzzle uses the supplied lockup's tighter, title-case display
+	# lettering; ui/sun_dot.gd gives each lowercase i its golden sun.
+	_label(theme, "GameWordmark", display(700), 84, Pal.TEXT)
+	_label(theme, "BinairoMotto", body(600), 24, Pal.PLAQUE_DEEP)
 	_label(theme, "WellDone", display(700), 96, Pal.TEXT)
 	_label(theme, "CardBodyDim", body(500), 30, Pal.TEXT_DIM)
 	_label(theme, "TipBody", body(500), 32, Pal.TEXT)
@@ -81,9 +85,16 @@ static func make() -> Theme:
 	# the day row's big numeral.
 	_label(theme, "MenuWordmark", display(700), 140, Pal.TEXT)
 	_label(theme, "MenuMotto", body(600), 38, Pal.TEXT_DIM)
+	_label(theme, "MenuKicker", body(800, 3), 20, Pal.ACCENT_2)
 	_label(theme, "DayBig", display(700), 56, Pal.TEXT)
 	_label(theme, "NavLabel", body(600), 26, Pal.TEXT_DIM)
 	_label(theme, "NavLabelOn", body(800), 26, Pal.ACCENT_2)
+	# Bottom sheets share a larger type scale than the compact HUD cards. They
+	# sit close to the player and contain settings or instructions, so they
+	# should read like full-size controls rather than card captions.
+	_label(theme, "SheetTitle", display(700), 52, Pal.TEXT)
+	_label(theme, "SheetBody", body(600), 34, Pal.TEXT)
+	_label(theme, "SheetBodyDim", body(500), 32, Pal.TEXT_DIM)
 	# Button variations.
 	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)

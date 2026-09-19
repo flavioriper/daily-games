@@ -80,6 +80,7 @@ func _ready() -> void:
 	_build_list()
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
+	settings_sheet.reduce_changed.connect(header.refresh_motion)
 	add_child(settings_sheet)
 	legacy_sheet = LegacySheet.new()
 	legacy_sheet.name = "LegacySheet"

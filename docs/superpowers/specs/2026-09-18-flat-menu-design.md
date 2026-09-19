@@ -35,7 +35,7 @@ Sizes are the game's own 1080-wide design space, at 1920 tall.
 
 | Row | Height | What is in it |
 |---|---|---|
-| Header | 380 | Settings and calendar top right; `Daily` at 140 with the sprig over it and the two-line motto under; the sun-and-moon pair at the right, at 190 and 166. |
+| Header | 380 | Settings and calendar top right; `Daily` at 140 with a golden sun for the dot of its i and the sprig growing out of the a beside it, the two-line motto under; the sun-and-moon pair at the right, at 190 and 166. |
 | Day row | 180 | A tree on a pale plate, `Day N` at 56 over the day's name at 38, three hearts, a chevron button. |
 | Grid | 1070 | Twelve cards, three across and four down, 320 by ~252 with a 20 gutter. |
 | Bottom bar | 150 | Home, Stats, Streak, More. |
@@ -79,7 +79,9 @@ down to an image") and never a `SubViewport`.
 | Snake Apple | the worm reaching for an apple | drawn |
 
 A new card costs one branch of `_build` and, if it needs furniture under the
-cast, one of `_draw`. That is the diorama's bargain without the `World3D`.
+cast, one of `_draw`. Its name takes the shared rounded title face and the
+golden sun over every lowercase i. That is the diorama's bargain without the
+`World3D`.
 
 **A `soon` card** keeps its picture and its name at 55% ink, wears a pale
 `SOON` pill over the picture's top-right corner, has no go button, and emits
@@ -188,8 +190,8 @@ the root screen and emits `closed` like any host, and its cards are
 
 | Moment | What happens |
 |---|---|
-| Entrance | Header fades over 0.3; the day row drops in at 0.1; the cards rise 60 in reading order, 0.05 apart capped at 0.4; the bar comes up last at 0.5. |
-| Idle | The sun's rays turn once in 40 s and the moon rocks, as on Binairo's board. Nothing else moves; the campsite's wind and pollen do not come here. |
+| Entrance | The wordmark lifts in, its sprig grows, and the sun and moon rise a beat apart while the utility buttons scale in quietly. The day row drops in at 0.1; the cards rise 60 in reading order, 0.05 apart capped at 0.4; the bar comes up last at 0.5. |
+| Idle | The sun's rays turn once in 40 s and the moon rocks, as on Binairo's board; the small sun on the i turns with them and glints every 3.5 to 6.5 s, its rays flaring and a pale shine rising and fading over the boards' flash timings. Nothing else moves; the campsite's wind and pollen do not come here. |
 | Press | The card squashes 6% and its paper darkens. A `soon` card squashes 3%. |
 | Reduce motion | All of it instant and still, through `core/motion.gd` as everywhere else. |
 

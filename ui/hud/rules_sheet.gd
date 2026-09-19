@@ -6,8 +6,8 @@ extends "res://ui/hud/sheet.gd"
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 2
 ## (amendment 2026-09-15).
 
-const DOT := 30.0
-const SEP := 8.0
+const DOT := 38.0
+const SEP := 14.0
 
 var close_button: Button
 var _list: VBoxContainer
@@ -17,12 +17,12 @@ func _card_style() -> StyleBox:
 
 func _build_sheet(col: VBoxContainer) -> void:
 	var heading := Label.new()
-	heading.theme_type_variation = "CardTitle"
+	heading.theme_type_variation = "SheetTitle"
 	heading.text = "How to play"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(heading)
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 8)
+	_list.add_theme_constant_override("separation", 18)
 	col.add_child(_list)
 	close_button = IconButton.new("check", "Got it", "PrimaryButton")
 	close_button.custom_minimum_size.y = ROW
@@ -46,13 +46,13 @@ func set_rules(text: String) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", int(SEP))
 		var dot := Label.new()
-		dot.theme_type_variation = "CardBody"
+		dot.theme_type_variation = "SheetBody"
 		dot.text = "•"
 		dot.custom_minimum_size.x = DOT
 		dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		row.add_child(dot)
 		var l := Label.new()
-		l.theme_type_variation = "CardBody"
+		l.theme_type_variation = "SheetBody"
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		l.text = sentence

@@ -1,9 +1,10 @@
 extends "res://ui/hud/panel.gd"
 
 ## One puzzle on the first screen: a paper card with a drawn picture of that
-## puzzle's own characters (ui/menu/card_art.gd), its name, a two-line blurb
-## and a round go button in the puzzle's colour. The whole card is the button
-## and squashes on press. Emits `open`; the menu decides what that means.
+## puzzle's own characters (ui/menu/card_art.gd), its name in the shared
+## sun-dotted title face, a two-line blurb and a round go button in the
+## puzzle's colour. The whole card is the button and squashes on press.
+## Emits `open`; the menu decides what that means.
 ##
 ## A card whose registry entry says `soon` names a board nobody has drawn
 ## flat yet. It keeps its picture and its name, wears a pale SOON pill over
@@ -17,6 +18,7 @@ signal blocked
 
 const CardArt = preload("res://ui/menu/card_art.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
+const SunDot = preload("res://ui/sun_dot.gd")
 
 ## The picture's slot, the card's own inset, and the go button. Both are
 ## measured against the vertical budget: at 1080 by 1920 a row of cards gets
@@ -30,9 +32,14 @@ const PILL := Vector2(88.0, 40.0)
 const SQUASH := 0.06
 const SQUASH_SOON := 0.03
 const SQUASH_TIME := 0.18
-const PRESS_TINT := Color(0.93, 0.91, 0.88)
 ## How far a soon card's picture and words fade back.
 const SOON_INK := 0.55
+## Each puzzle picture sits on a pale swatch of its own category colour. The
+## swatch is the grid's one expressive device: it makes twelve small pictures
+## scan as distinct puzzles without adding another label or taking height from
+## their art.
+const ART_TINT := 0.13
+const ART_RADIUS := 18
 
 var entry: Dictionary
 var colour: Color
@@ -50,8 +57,13 @@ func _init(the_entry: Dictionary, the_colour: Color) -> void:
 
 func _make_inner() -> Container:
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel",
-		CozyTheme.card(Color(Pal.PAPER, 0.94), 28, Pal.LINE, 6, INSET))
+	var paper := CozyTheme.card(Color(Pal.SURFACE, 0.96), 28, Pal.LINE, 6, INSET)
+	# The old bottom edge stays the tactile shadow. A fine outline completes
+	# the silhouette against the page, especially on bright phone screens.
+	paper.border_width_left = 2
+	paper.border_width_top = 2
+	paper.border_width_right = 2
+	box.add_theme_stylebox_override("panel", paper)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return box
 
@@ -62,19 +74,25 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", 4)
 	_inner.add_child(col)
 
+	var art_plate := PanelContainer.new()
+	art_plate.custom_minimum_size = Vector2(0.0, ART_H)
+	art_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_plate.add_theme_stylebox_override("panel", _art_style())
+	col.add_child(art_plate)
 	art = CardArt.new(String(entry.get("id", "")))
-	art.custom_minimum_size = Vector2(0.0, ART_H)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	art.modulate.a = SOON_INK if soon else 1.0
-	col.add_child(art)
+	art_plate.add_child(art)
 
 	var name_label := Label.new()
 	name_label.theme_type_variation = "CardName"
-	name_label.text = String(entry.get("title", ""))
+	name_label.text = "BINAiRO" if String(entry.get("id", "")) == "binairo" else String(entry.get("title", ""))
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if soon:
 		name_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
 	col.add_child(name_label)
+	name_label.add_child(SunDot.new(name_label, SOON_INK if soon else 1.0))
 
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -158,10 +176,19 @@ func _paint_go(go: Button) -> void:
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		go.add_theme_color_override(state, Pal.SURFACE)
 
+func _art_style() -> StyleBoxFlat:
+	var fill := Pal.SURFACE_HI.lerp(colour, ART_TINT)
+	var plate := StyleBoxFlat.new()
+	plate.bg_color = fill
+	plate.set_corner_radius_all(ART_RADIUS)
+	plate.set_border_width_all(2)
+	plate.border_color = Color(colour, 0.22 if soon else 0.34)
+	return plate
+
 func _press() -> void:
 	Motion.stop(_press_tw)
 	_inner.scale = Vector2.ONE
-	_inner.self_modulate = PRESS_TINT
+	_inner.self_modulate = Color.WHITE.lerp(colour, 0.08 if soon else 0.13)
 	_press_tw = Motion.squash(_inner, SQUASH_SOON if soon else SQUASH, SQUASH_TIME)
 
 func _release() -> void:

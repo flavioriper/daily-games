@@ -45,7 +45,8 @@ model away for a picture of it.
 ## The first screen
 
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
-wordmark in ink with the sun and the moon beside it, a day row, twelve
+wordmark in ink with its golden sun-dot and the sun and moon beside it, a day
+row, twelve
 puzzle cards three across and four down, and a bottom bar. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
 not even carry a Stage node any more. It replaced the campsite, which is
@@ -62,6 +63,23 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   and the mock's 118 picture came to 277 a card and pushed the bar off the
   screen. Anything added to the header, the day row or the bar comes out of
   the pictures.
+- **The sun-dot is the i's dot, not a sticker over it** (`ui/sun_dot.gd`,
+  2026-09-19). It sets the label's lowercase i in Fredoka's dotless `ı`
+  and seats a small sun where the font's dot was, measured off the
+  rendered face: a circle 0.64 em above the baseline, 0.09 em in radius,
+  centred on the glyph's advance box, at 140, 84 and 32 alike. The seat
+  comes from `Label.get_character_bounds`, so alignment and margins need
+  no arithmetic. A rayed sun (84 and up) floats 0.03 em higher so its
+  bottom rays clear the stem; the 32 px card names get a plain disc,
+  because a ray a pixel wide is a smudge. The wordmark's sprig does **not**
+  grow out of the sun: the user moved it off the i on 2026-09-19, and it
+  stands on the a instead, the letter before the sun, where the Binairo
+  lockup roots its own sprout (the A of BINAiRO). It is drawn from that
+  letter's character bounds, at Fredoka 700's x-height (0.507 em) with its
+  foot sunk three pixels into the ink. A rayed sun idles like the header's
+  sun: rays turning once in 40 s, and a glint every few seconds (rays flare,
+  a shine mesh rises and fades on the boards' flash timings); a plain disc
+  never moves. It costs the header one draw call over a still sun.
 - **The menu paints its own page.** The campsite used to fill the frame, so
   the old menu never drew a background and the viewport's clear colour --
   the stage's sky -- showed through. With nothing behind this screen,

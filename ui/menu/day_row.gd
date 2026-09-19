@@ -56,9 +56,14 @@ func _build() -> void:
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", 0)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(col)
+	var kicker := Label.new()
+	kicker.theme_type_variation = "MenuKicker"
+	kicker.text = "TODAY"
+	kicker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(kicker)
 	_day = Label.new()
 	_day.theme_type_variation = "DayBig"
 	col.add_child(_day)

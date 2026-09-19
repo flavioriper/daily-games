@@ -22,7 +22,9 @@ const SLIDE := 0.3
 const FADE := 0.2
 const OFFSET := 300.0
 const MARGIN := 40.0
-const ROW := 110.0
+const ROW := 128.0
+const SHEET_GAP := 28
+const SHEET_INSET := 32.0
 
 var _scrim: ColorRect
 var _slot: Control
@@ -51,6 +53,10 @@ func _ready() -> void:
 	if style is StyleBoxFlat:
 		style = (style as StyleBoxFlat).duplicate()
 		(style as StyleBoxFlat).bg_color.a = 1.0
+		(style as StyleBoxFlat).content_margin_left = SHEET_INSET
+		(style as StyleBoxFlat).content_margin_top = SHEET_INSET
+		(style as StyleBoxFlat).content_margin_right = SHEET_INSET
+		(style as StyleBoxFlat).content_margin_bottom = SHEET_INSET
 	_card.add_theme_stylebox_override("panel", style)
 	_card.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -59,7 +65,7 @@ func _ready() -> void:
 	_card.offset_bottom = -MARGIN
 	_slot.add_child(_card)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 20)
+	col.add_theme_constant_override("separation", SHEET_GAP)
 	_card.add_child(col)
 	_build_sheet(col)
 

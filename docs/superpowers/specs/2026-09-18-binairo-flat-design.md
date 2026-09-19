@@ -73,10 +73,10 @@ a square of the card's shorter inner side.
   the existing `IconButton` in the paper variant. Undo and Hint stay up
   here: the reference never fits both its pill row and its palette on one
   screen, and the badge already carries the count. The wordmark is a
-  `Label` in a new `Wordmark2D` variation (Fredoka 700, 84 px, `TEXT`,
-  letter spacing 2) with the leaf icon sprouting from its top edge above
-  the gap before the last letter, and the motto under it in the existing
-  `Motto` face recoloured `TEXT_DIM`. This is a deliberate departure from
+  `Label` in the shared `GameWordmark` variation (Fredoka 700, 84 px, `TEXT`) as
+  mixed-case `BINAiRO`, with the leaf icon sprouting from its A, the shared
+  golden sun over the lowercase i, and `Balance brings harmony` under it in
+  sentence case. This is a deliberate departure from
   the carved-sign rule in `CLAUDE.md`, for this screen only, and is why the
   flat chrome is a host of its own.
 - **Day card**: `CozyTheme.card(SURFACE, 28, LINE, 6, 24)` full width, a
