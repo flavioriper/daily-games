@@ -19,7 +19,12 @@ extends SceneTree
 ## finger and the cairns arriving in a wave and the idle window has a row of
 ## cairns in it. Light Up has its first answer lamp set down, so the strip
 ## shows the pop, the light travelling and the beam, and the idle window has
-## a lit lamp and its halo in it.
+## a lit lamp and its halo in it. One Line has its walker stood on the start
+## post and walked one line, so the strip shows the pop, the walk and the
+## landing hop, and the idle window has a plank and the walker in it.
+## Nonogram is swept along its top row with the tile chip, so the strip shows
+## the cells sinking under the finger and the tiles arriving in a wave, and
+## the idle window has a row of tiles in it.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -105,6 +110,10 @@ func _process(delta: float) -> bool:
 			_begin_tents_sweep()
 		elif _entry.id == "lightup" and not _empty:
 			_tap_lightup()
+		elif _entry.id == "oneline" and not _empty:
+			_walk_oneline()
+		elif _entry.id == "nonogram" and not _empty:
+			_begin_nonogram_sweep()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -150,6 +159,25 @@ func _tap_lightup() -> void:
 		return
 	var b: Vector2i = _puzzle._solution_bulbs[0]
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(b.y, b.x))
+
+## One Line: stand the walker on the trail's first post and walk its first
+## line, two real touches.
+func _walk_oneline() -> void:
+	var Gen = load("res://puzzles/oneline_gen.gd")
+	var trail: Array = Gen.find_path(_puzzle._edges, _puzzle._nodes)
+	if trail.size() < 2:
+		return
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	_tap_global(xf * _puzzle.node_to_local(trail[0]))
+	_tap_global(xf * _puzzle.node_to_local(trail[1]))
+
+## Nonogram: sweep the top row from its first cell to its last with the tile
+## chip, laying a tile on every cell.
+func _begin_nonogram_sweep() -> void:
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var from: Vector2 = xf * _puzzle.cell_to_local(0, 0)
+	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
+	_begin_drag(from, to - from)
 
 ## Balance: plus on the first card the player owns, through the real button.
 func _step_balance() -> void:

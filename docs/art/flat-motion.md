@@ -5,8 +5,9 @@ flat Binairo (`puzzles/binairo2d.gd`, its spec's section 6) set the hand;
 Code Break was the second board to take it, on 2026-09-18, and the vocabulary
 was lifted into `core/motion.gd` on that day so a third does not copy it.
 Balance followed the same day, Untangle on 2026-09-19, and Shikaku, Tents and
-Light Up the same morning. This page is the table a new or a ported board is
-built against. When a number here and a number in a board disagree, the board is
+Light Up the same morning; One Line and Nonogram followed that afternoon,
+which put all nine flat boards on it. This page is the table a new or a
+ported board is built against. When a number here and a number in a board disagree, the board is
 wrong.
 
 ## The rules
@@ -25,7 +26,9 @@ wrong.
    by the drag and the springs; the paper hangs in a slot the board owns
    (position and swing) and the recipes tween the paper inside it, so the
    two hands never write the same property. Balance's weight cards learned
-   the same thing against their container.
+   the same thing against their container, and One Line's walker rides its
+   stroke the same way: the seat takes the ride, the facing and the rock,
+   and the snail inside takes the pop, the drop, the press and the hop.
 3. **Kill on rebuild.** Every tween a board keeps is stopped in `_stop_all`
    before the nodes it aims at are freed, and a timer is guarded by a
    generation counter (`_after`), so a new board never inherits a hop aimed at
@@ -47,7 +50,8 @@ wrong.
 8. **What is drawn reads the same numbers.** A board that draws its pieces
    into a mesh rather than as nodes (Untangle's rings and cords, Shikaku's
    beds and the wash under its finger, Tents' cairns and the shade under its
-   sweep) cannot call a recipe on them; it reads
+   sweep, One Line's posts and lines, Nonogram's tiles and pebbles) cannot
+   call a recipe on them; it reads
    the recipe *as a curve* off `Motion`: `back_out` for the overshoot, and
    `pop_in_scale`, `wide_pop_scale`, `pop_out_scale`, `drop_in_lift`,
    `appear_level`, `bump_scale`, `flash_level`, `press_scale`, `hop_lift`,
@@ -55,7 +59,11 @@ wrong.
    themselves, each handed the seconds since its moment began and landing
    on its final state under reduce-motion exactly as the tween would. The
    set is complete since Light Up (2026-09-19): every recipe a node takes
-   has its reader, so a drawn board needs nothing new from `core/motion.gd`.
+   has its reader, so a drawn board needs nothing new from `core/motion.gd`
+   -- One Line and Nonogram, ported that afternoon, added nothing to it.
+   Text drawn with `draw_string` takes the same readers through
+   `draw_set_transform` (Nonogram's clue numbers pop in, bump and hop by
+   the line).
    One voice, two media. It never copies the number. **A board with both** (Tents: trees,
    tents and chips as nodes over drawn cairns) stands each node in a slot and
    gives it the recipes, and draws the rest off the readers; the two arrive
@@ -79,7 +87,7 @@ a recipe in `core/motion.gd` unless it names another file.
 | Pick up · Drop | The press for a thing that is dragged rather than tapped: it grows a tenth toward the finger and its shadow parts from it (further below, wider, fainter). On release it springs back with the back ease and hops on landing; whatever weight the board gives it (Untangle's cord slack and swing) settles on its own. | `lift`: `LIFT_SCALE` 1.1 in `LIFT_TIME` 0.12, back-ease out `RELEASE_TIME` 0.25; `hop` `HOP` -6 over `HOP_TIME` 0.3 |
 | Place | The old piece pops out; the new one pops in with the squash; the tile hops; the side neighbours lean away and back; a puff of five stars in the piece's colour. A gesture that places many at once (Tents' sweep) lays them in a wave along the finger's path at `ENTER_STAGGER`, the shade under each staying until its piece lands, and puffs none of them. | `pop_out` `POP_OUT` 0.12; `pop_in` `POP_IN` 0.22 with `POP_SQUASH` 0.15; `hop` `HOP` -6 over `HOP_TIME` 0.3; `nudge` `NUDGE` 3 over 0.3 after `NUDGE_LAG` 0.04; `fx.puff` |
 | Remove | The piece shrinks to nothing with a quarter turn, rising a little if the board wants; whatever it hid pops back under it. | `pop_out`, optional `lift`; `pop_in` 0.18 on what returns |
-| Hint | A ring pulses out of the cell, the piece drops in from above with the back ease while it fades in, sparkles rise, the cell takes the given look. A board whose pieces walk (Untangle) walks the piece to its place instead, and rings and sparkles as it lands. | `fx.ring` `RING_TIME` 0.5; `drop_in` `DROP` 40 over `DROP_TIME` 0.3; `fx.sparkle` |
+| Hint | A ring pulses out of the cell, the piece drops in from above with the back ease while it fades in, sparkles rise, the cell takes the given look. A board whose pieces walk (Untangle, One Line's walker once the stroke has begun) walks the piece to its place instead, and rings and sparkles as it lands. | `fx.ring` `RING_TIME` 0.5; `drop_in` `DROP` 40 over `DROP_TIME` 0.3; `fx.sparkle` |
 | Wrong on Check | Each wrong cell wobbles and flashes toward `Pal.BAD_TILE` and back; a drawn bed (Shikaku) flashes toward its own blush, read off `flash_level`. | `wobble2d` 0.45; `flash` (`FLASH_IN` 0.15, `FLASH_OUT` 0.45) |
 | Clean Check | The Check pill squashes and says All good for a moment. | `ui/flat/flat_actions.gd` |
 | Undo | The reverse of Place. | as Place |
@@ -104,8 +112,14 @@ cairns clearing away in a scatter on the win, so the last picture is the
 camp and not the working-out; Light Up's light travelling out from a lamp
 stone by stone (`LIGHT_STEP`, `LIGHT_CAP`, `LIGHT_IN`, `LIGHT_OUT`), its
 beam withdrawing with the cooling floor when the lamp is taken up, and its
-chips clearing the same way. A new board may add one signature of its own
-on top of the table, not instead of it.
+chips clearing the same way; One Line's walk itself (`LAY_TIME` 0.28, the
+plank growing under the snail and the far post keeping its old cap until
+the snail lands) and its trail warming back along itself on the win at the
+solve stagger, uncapped, each post hopping as the warmth reaches it;
+Nonogram's reveal (the pebbles clearing in a scatter, the sockets and guides
+fading back to parchment, the grout closing and the numbers going faint). A
+new board may add one signature of its own on top of the table, not instead
+of it.
 
 **A row is not a cell.** The staggers above are per cell of a grid. A board
 whose pieces are rows (Balance's scales, Code Break's lids) paces its waves
@@ -184,4 +198,5 @@ one thing.
 | Shikaku | on it (2026-09-19): the field pops in wide and each marker pops in with the squash along the diagonal, its shadow on the ground arriving with it and staying put when it hops; the wash and the count disc pop in under the finger and the disc bumps on every recount; a bed pops in wide, its marker hops and the markers around it lean away; a cleared or displaced bed shrinks to nothing; a hint's bed drops in under a ring with a sparkle and the family's bump; Check wobbles a wrong marker and blushes its bed; a refused drag shivers the marker and blushes the pinned bed; Reset pops the beds out in a wave from the far corner while the markers hop; the planting wave stays its own, with the solve hop and a sparkle as each bed comes up. The beds are drawn, so all of it reads the curve readers (rule 8). Measured: 95 draw calls bare (94 before) and 101 with a bed and its fence, 3.4 ms idle at 1080 x 1920 on this Mac (4.0 before) |
 | Tents | on it (2026-09-19): the meadow pops in wide on the family's edge and each chip and tree pops in with the squash along the diagonal, the tree's shadow on the ground arriving with it and staying put when it hops; a tree or a tent sinks under the finger and bare ground takes a shade that pops in wide; a tent pops in with a puff, its side neighbours lean away and its line's chips bump; a sweep's shade follows the finger and the cairns arrive in a wave along its path; a tent or cairn taken away shrinks with the quarter turn; a hint's tent drops in under a ring; Check wobbles a wrong tent and blushes its cell; a refused tree or pegged tent shivers and blushes its cell (rule 9); Reset pops everything out in a wave from the far corner while the trees hop; the solve wave hops trees and tents alike to JOY, and the cairns clearing in a scatter stay its own. Nodes in slots and drawn cairns on one clock (rule 8). Measured: 97 draw calls bare (103 before), 3.4 ms idle at 1080 x 1920 on this Mac (3.3 before); 3.6 ms with a swept row |
 | Light Up | on it (2026-09-19): the court pops in wide and each block pops in with the squash along the diagonal, its number and its soft shadow arriving with it; a lamp sinks under the finger and so does a block and so does a bare stone, drawn (`press_scale`); a lamp pops in with a puff, leans its neighbours away and bumps every numbered block it touches while the light travels; a sweep sinks the stones under the finger and the chips arrive in a wave along its path; a lamp taken up shrinks with the quarter turn while its beam withdraws with the cooling floor; a hint's lamp drops in under a ring; Check wobbles a wrong lamp and blushes its stone; a refused block shivers and flashes toward its rose, a refused pinned lamp shivers over a blushing stone; Reset pops everything out in a wave from the far corner while the blocks hop and the light cools in the same wave; the solve wave hops lamps and blocks alike to JOY. Lamps in slots over two drawn meshes on one clock (rule 8); it completed the readers. Measured: 63 draw calls bare (62 before) and 65 with a lit lamp, 3.15 to 3.48 ms idle over three readings at 1080 x 1920 on this Mac (3.08 and 3.12 before) |
-| One Line, Nonogram | still carry their own tweens; port when next touched, by the steps above |
+| One Line | on it (2026-09-19): each stone line pops in wide about its middle in index order and each post pops in with the squash along the diagonal a beat later, its soft shadow arriving with it and staying put when it hops; a post sinks under the finger (and shades toward its deep colour, as Light Up's stones do) and the walker on it sinks too; the walker pops in with the squash and a puff to begin, or drops in under a ring from a hint; on every landing the post hops, its cap takes its new colour with the Count bump and a puff lands in wood (an undo lands without one); a hint after the first step walks the line and rings and sparkles as it lands; Check wobbles a stranded line about its middle and blushes it; a refused post shivers and blushes; Reset shrinks the planks out in a wave from the far corner while the posts hop and the walker pops out where it stood; the solve wave runs the trail, the planks warming and the posts hopping as it passes and the walker grinning and hopping last. Drawn posts and lines off the readers, the walker in a slot (rules 2 and 8). Measured: 63 draw calls bare (63 before) and 66 with a plank and the walker, 2.86 and 2.87 ms idle bare at 1080 x 1920 on this Mac (2.90 before), 2.89 and 2.91 with the walker standing |
+| Nonogram | on it (2026-09-19): the floor pops in wide about its centre and each line's numbers pop in with the squash along their band a beat later; a cell sinks under the finger and stays down through a sweep, springing back as its tile lands; a tapped tile or pebble pops in with the squash and a puff, leans the pieces beside it and bumps its row's and column's numbers; a sweep lays its pieces in a wave along the finger's path and puffs none; a leaving piece shrinks with the quarter turn, an undo in the wave it was laid in; a hint's tile drops in under a ring with a sparkle, a pebble there popping out first; Check wobbles a wrong tile and blushes it; a grouted tile shivers and blushes when pressed; Reset shrinks every piece out in a wave from the far corner while the numbers hop; the solve wave hops the tiles along the diagonal, and the reveal stays its own. Everything drawn off the readers, the numbers through one draw transform per line (rule 8); a soft disc under every pebble. Measured: 68 draw calls bare and with a swept row (68 before), 3.01 and 2.97 ms idle bare at 1080 x 1920 on this Mac (3.04 before), 3.27 and 3.23 with a row of tiles |

@@ -352,9 +352,18 @@ Specs:
   `nudge_offset`, `shiver_offset`, `wobble_angle` beside the pops and the
   flash), so a drawn board needs nothing new from `core/motion.gd`; its
   lamps stand in slots and its blocks, chips and stones are drawn off the
-  readers, the stone itself sinking under the finger. The other two flat
-  boards (One Line, Nonogram) still carry their own tweens and are ported
-  when next touched.
+  readers, the stone itself sinking under the finger. One Line and Nonogram
+  joined that afternoon (each spec's section 11), which put all nine flat
+  boards on the vocabulary; neither needed anything new from it. One Line
+  is the precedent for a board whose one character rides a clock: the
+  walker's seat takes the ride, the facing and the rock every frame, and the
+  snail inside takes the recipes (pop, drop, press, hop), while the far post
+  keeps its old cap until the snail lands and takes the new one with the
+  Count bump. Nonogram is the precedent for drawn text on the vocabulary:
+  its clue numbers go through one `draw_set_transform` per line, so they
+  pop in, bump and hop off the same readers as the mesh, and
+  `ui/faces/mosaic_tile.gd` takes a Vector2 scale, a turn and a blush so a
+  drawn tile can squash, wobble, turn out and flash.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
