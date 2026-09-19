@@ -290,3 +290,76 @@ tap on it.
    clue is text and a "10" is as cheap as a "1". The series' rule is that the
    game is identical and only the screen is on trial, so widening it is a
    decision for after the verdict.
+
+## 11. Amendment: the polish of 2026-09-19
+
+The user asked for One Line and Nonogram to be polished with proper
+animations on Binairo's pattern, smoother and more elegant, and for the
+pattern to be kept so the other boards take it. Built straight in Godot, as
+the seven ports before it were, with this amendment and
+`docs/art/flat-motion.md` as the record. The layout is kept; sections 2 to 7
+stand. Section 8's motion table is superseded by what follows; its reveal
+paragraph stands.
+
+**Everything drawn, off the readers.** The floor stays one mesh, rebuilt
+while an `_anim_until` clock runs that every moment extends through
+`_busy_for`, and every piece reads the recipes as curves off `Motion` (rule 8
+of the motion doc); the board's own `_back_out`, `_dip_at`, `_flash_at` and
+`_at` are gone, and so is the 7 percent shade under a running stroke. Every
+move -- a tap, a sweep, an undo, a hint, a reset -- goes through one
+`_transition` that diffs a snapshot of the marks against the state, Light
+Up's shape. `ui/faces/mosaic_tile.gd` takes its scale as a Vector2 and a turn
+and a blush, so a drawn tile can squash, wobble, turn out and flash. The clue
+numbers are `draw_string` still, but through one `draw_set_transform` per
+line, so a line's numbers pop in, bump and hop together. The pattern grew
+nothing here.
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | the whole floor -- sockets and guides -- pops in wide about its centre (`wide_pop_scale`, `ENTER_WIDE_FROM` 0.86 over `ENTER_POP` 0.25) while it fades in, as one draw transform over the mesh, after `ENTER_DELAY`; each line's numbers pop in with the squash (`pop_in_scale`) along their band at `ENTER_STAGGER` 0.03, `ENTER_FACE_LAG` after the floor, rows from the top and columns from the left together. The sockets' diagonal fade and the numbers' 0.35 s fade are gone |
+| Press | the cell under the finger sinks to `PRESS_SCALE` 0.94 (`press_scale`) and shades a third of the way toward `LINE` (`Mosaic.SINK_SHADE` 0.35, since 0.94 alone is invisible on pale stone), a tile or a pebble there sinking with it; on release it springs back. Nothing pressed before |
+| Place (a tap) | the tile or pebble pops in with the squash (`pop_in_scale`, `POP_IN` 0.22) in place of a bare back ease; a puff in the piece's colour (`MOSAIC` or `SOCKET_PEBBLE`); the pieces on its four sides lean away 0.03 of a cell and back (`nudge_offset`); the row's and the column's numbers bump (`bump_scale`, the Count moment) when a tile joins or leaves the line |
+| Sweep | every cell the finger can change sinks as it passes and stays down; on release the pieces arrive in a wave along the finger's path at `ENTER_STAGGER`, each cell springing back as its piece lands. No puffs, no nudges. A rub-out runs the same wave with the pop out |
+| Remove, undo | a leaving piece shrinks to nothing with the quarter turn (`pop_out_scale`, `POP_OUT` 0.12), drawn from a leaving list after the state has forgotten it; an undo takes a stroke back in the wave it was laid in |
+| Hint | a ring in `MOSAIC_LOCK` through `Fx2D.ring` at 0.62 of a cell, the tile drops in from `DROP` 40 above with the fade (`drop_in_lift`, `appear_level`), a sparkle in the same teal; a pebble under it pops out first |
+| Wrong on Check | each wrong tile wobbles about its centre (`wobble_angle`) and blushes seven tenths of the way toward `BAD_TILE` and back (`flash_level`; slate to full pale rose is a flashbulb). The 0.6 s shake is gone |
+| Refused | a grouted tile shivers (`shiver_offset`, 0.03 of a cell) and blushes the same way; the sprout says why. The dip is gone |
+| Reset | every tile and pebble shrinks out in a wave from the far corner at `RESET_STAGGER` 0.02, a grouted tile in its teal; every line's numbers hop `RESET_HOP` -4 as the wave reaches their band and bump for each tile that leaves their line. Everything vanished on one frame before |
+| Solved | the tiles hop `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4 along the diagonal from `SOLVE_DELAY` 0.25 at `SOLVE_STAGGER` 0.04 (they hopped in reading order 0.02 apart before); the reveal -- the pebbles clearing in a scatter (`CLEAR_*`), the sockets and guides fading back to parchment and the grout closing (`GONE_*`), the numbers going faint (`CLUE_GONE`) -- stays this board's own. `WIN_WAIT` 1.6, from 2.2 |
+
+**The dressing:** a soft disc (`Scenery.soft_disc`, 0.2 peak in `TEXT`, a
+little below and wider than the pebble) under every pebble, so it lies on the
+floor rather than floating on it; the tray's chip shows the same. The tiles
+sit flush in their sockets and cast nothing. No clouds or tufts: the floor
+fills the card. The tile tray's squash and lift times come from
+`Motion.CHIP_LIFT_TIME` now; only its 10 px lift stays its own, for a taller
+chip.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+Nonogram run now sweeps the top row with the tile chip (`empty` skips it), two
+readings each:
+
+| | Draw calls | Idle |
+|---|---|---|
+| Medium board at rest, bare, before | 68 | 3.04 ms |
+| Medium board at rest, bare, now | 68 | 3.01, 2.97 ms |
+| Now, with the top row swept | 68 | 3.27, 3.23 ms |
+
+Suite 2086/0. `tests/_win.gd` windowed 9/9, Nonogram solved through the real
+hint button, Check and taps. A throwaway probe shot the entrance in three
+frames, a tapped tile popping and landed with its column's number bumped, a
+sweep with the row sunk under the finger, the wave arriving and the row
+laid, an undo mid-wave and done, a pebble popping and landed on its shadow,
+a hint's drop under its ring, a refused grouted tile, Check's wobble on a
+wrong tile, Reset mid-wave and done, the solve wave, the reveal and the win
+screen, each with and without reduce-motion (under which the floor and the
+numbers are up at once, a piece is there or gone in one frame, a sweep lays
+its row at once, nothing sinks, blushes, wobbles or rings, and the win screen
+follows the last tap).
+
+Open, still, from section 10: the 88 px cell, the empty cast, the abstract
+picture, the two chips, the breakable lock, Check's silence on crosses and
+the ladder. Nothing here answers them; it only makes the flat board move with
+the same hand as the other eight.

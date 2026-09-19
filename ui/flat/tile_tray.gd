@@ -29,9 +29,9 @@ const LIFT := 10.0
 ## The row's height: a chip, the room its lift needs above it, and the air the
 ## mock leaves under it. The host measures its bottom slot from this.
 const HEIGHT := CHIP.y + LIFT + 10.0
-const LIFT_TIME := 0.18
+## The Palette moment's numbers are the family's (Motion.CHIP_LIFT_TIME, the
+## squash of a tenth); only the lift differs, because this chip is taller.
 const SQUASH := 0.1
-const SQUASH_TIME := 0.18
 ## The mock's own geometry inside a chip: the picture's centre and the size it
 ## is drawn at, and where the word begins.
 const GLYPH := 84.0
@@ -105,11 +105,11 @@ func _draw_glyph(glyph: Control, i: int) -> void:
 	var b := Face.Builder.new()
 	var centre := glyph.size * 0.5
 	if VALUES[i] == State.FILL:
-		Mosaic.tile(b, centre, GLYPH, 1.0, false, 0.0, 1.0)
+		Mosaic.tile(b, centre, GLYPH, Vector2.ONE, false, 0.0, 1.0)
 	else:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
 			Pal.SOCKET_OUT)
-		Mosaic.pebble(b, centre, GLYPH, 1.0, 1.0)
+		Mosaic.pebble(b, centre, GLYPH, Vector2.ONE, 1.0)
 	var mesh := b.mesh()
 	if mesh != null:
 		glyph.draw_mesh(mesh, null)
@@ -133,7 +133,7 @@ func _style(chip: Button, armed: bool) -> void:
 	chip.add_theme_stylebox_override("disabled", sb)
 
 func _on_pressed(i: int) -> void:
-	Motion.squash(chips[i], SQUASH, SQUASH_TIME)
+	Motion.squash(chips[i], SQUASH, Motion.CHIP_LIFT_TIME)
 	pick.emit(VALUES[i])
 
 ## Reads the puzzle's brush and shows it: the armed chip lifts with the back
@@ -152,4 +152,4 @@ func refresh(puzzle) -> void:
 		var up := i == armed
 		_style(chip, up)
 		Motion.stop(_lifts[i])
-		_lifts[i] = Motion.slide(chip, "position:y", chip.position.y, 0.0 if up else LIFT, LIFT_TIME)
+		_lifts[i] = Motion.slide(chip, "position:y", chip.position.y, 0.0 if up else LIFT, Motion.CHIP_LIFT_TIME)

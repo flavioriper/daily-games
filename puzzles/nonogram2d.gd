@@ -22,13 +22,21 @@ extends "res://core/puzzle_base.gd"
 ## and this screen answers with the reveal rather than with the surface.
 ##
 ## How it is drawn. Every socket, guide line, tile and pebble goes into one
-## mesh, rebuilt only when something moves, because none of them has a face
+## mesh, rebuilt only while something moves, because none of them has a face
 ## on it and a Control per cell would be eighty-one nodes for a field of
 ## squares. The clue numbers are drawn over it with one draw_string each, as
 ## puzzles/lightup2d.gd draws its numerals: a digit in a mesh cache key would
-## multiply every state by ten.
+## multiply every state by ten. Everything is drawn, so every moment reads
+## the flat boards' vocabulary as curves off core/motion.gd (rule 8 of
+## docs/art/flat-motion.md): the floor pops in wide and the numbers pop in
+## with the squash; a cell sinks under the finger; a tile pops in, leans its
+## neighbours and bumps its line's numbers; a leaving tile shrinks with the
+## quarter turn; Check wobbles and blushes; Reset runs its wave from the far
+## corner. What is this board's own is the reveal: the pebbles clearing in a
+## scatter, the sockets fading back to parchment and the grout closing up.
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, and the
-## mock it is ported from (docs/brainstorm/concepts.html#nonogram).
+## amendment in its section 11; the mock it is ported from is
+## docs/brainstorm/concepts.html#nonogram.
 
 const State = preload("res://puzzles/nonogram_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -50,40 +58,27 @@ const NUM_SIZE := 0.42
 const GUIDE_EVERY := 5
 const GUIDE_WIDTH := 3.0
 const GUIDE_ALPHA := 0.85
-## The faint shade under the cells a running stroke has taken, so the gesture
-## is visible while it happens.
-const SWEEP_ALPHA := 0.07
+## The hint's ring, in cells: it starts just outside the tile.
+const RING_R := 0.62
+## How far a nudged piece leans, in cells; the family's NUDGE is in pixels on
+## a 147 px tile, and a cell here is 88 to 150.
+const NUDGE := 0.03
+const SHIVER := 0.03
 
-# --- motion ---
-const POP_TIME := 0.22
-const DIP := 0.05
-const DIP_TIME := 0.3
-const FLASH := 0.07
-const FLASH_TIME := 0.6
-const FLASH_SWINGS := 9.0
-const ENTER_CLUE := 0.12
-const ENTER_CLUE_STEP := 0.02
-const ENTER_CLUE_TIME := 0.35
-const ENTER_SOCKET := 0.16
-const ENTER_SOCKET_STEP := 0.02
-const ENTER_SOCKET_TIME := 0.4
-const ENTER_GUIDE := 0.2
-const ENTER_GUIDE_TIME := 0.4
-## The win: the scaffolding leaves, then the tiles hop in reading order.
+# --- this board's own motion: the reveal ---
+## The scaffolding leaves after the last tile has hopped: the grout closes,
+## the sockets and the guides fade back to parchment.
 const GONE_DELAY := 0.6
 const GONE_TIME := 0.7
 ## How far the clue numbers fade with it. Not all the way: a picture with the
 ## numbers that made it still faintly beside it reads as an answer, where a
 ## bare picture reads as a screensaver.
 const CLUE_GONE := 0.85
+## The pebbles clear away in a scatter.
 const CLEAR_DELAY := 0.2
 const CLEAR_SPREAD := 0.3
 const CLEAR_TIME := 0.5
-const SOLVE_DELAY := 0.15
-const SOLVE_STEP := 0.02
-const SOLVE_HOP := 0.1
-const SOLVE_HOP_TIME := 0.42
-const WIN_WAIT := 2.2
+const WIN_WAIT := 1.6
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
@@ -111,11 +106,18 @@ var _cell := 0.0
 ## The grid's top-left, past the bands, and the bands' own width and height.
 var _grid := Vector2.ZERO
 var _band := Vector2.ZERO
-## Vector2i -> the second a cell's piece went down, which drives its pop and,
-## on the win, its hop.
-var _at: Dictionary = {}
-var _dip_at: Dictionary = {}
-var _flash_at: Dictionary = {}
+
+## Every drawn thing's moments, each the second it began, read off Motion's
+## curve readers in _build_floor and _draw_clues.
+var _arrive: Dictionary = {}    # cell -> {"at", "drop"}: its piece pops or drops in
+var _leaving: Array = []        # [{"cell", "kind", "held", "at"}]: pieces shrinking out
+var _sunk: Dictionary = {}      # cell -> {"down", "up"}: the finger has it
+var _hop: Dictionary = {}       # cell -> {"at", "height", "time"}
+var _nudge: Dictionary = {}     # cell -> {"at", "dir"}
+var _wrong: Dictionary = {}     # cell -> at: Check pointed at it (wobble and blush)
+var _shiver: Dictionary = {}    # cell -> at: a refused press
+var _clue_bump: Dictionary = {} # "r3" / "c5" -> at: the line was recounted
+var _clue_hop: Dictionary = {}  # line key -> {"at", "height", "time"}
 
 # --- the gesture ---
 var _press_cell := Vector2i(-1, -1)
@@ -128,7 +130,9 @@ var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
 
 var _opened := 0.0
+var _anim_until := 0.0
 var _solved_at := -1.0
+var _gen := 0
 var _floor: ArrayMesh
 ## The mesh the last _draw actually handed to the canvas item. A canvas
 ## command holds the mesh by RID and not by reference, so dropping the only
@@ -164,19 +168,25 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+	_gen += 1
 	state.setup(rng, difficulty)
 	brush = State.FILL
-	_at = {}
-	_dip_at = {}
-	_flash_at = {}
+	_arrive = {}
+	_leaving = []
+	_sunk = {}
+	_hop = {}
+	_nudge = {}
+	_wrong = {}
+	_shiver = {}
+	_clue_bump = {}
+	_clue_hop = {}
 	_clear_gesture()
 	_solved_at = -1.0
-	_opened = _now()
 	_layout()
+	_enter()
 	_tip_idx = 0
 	_say(TIPS[0], Face.Expr.HAPPY)
 	_tip_timer.start()
-	fx.cue("enter")
 
 # --- layout ---
 
@@ -228,36 +238,26 @@ func _cell_at(local: Vector2) -> Vector2i:
 	var cell := Vector2i(int(floor(p.x)), int(floor(p.y)))
 	return cell if state.in_grid(cell) else Vector2i(-1, -1)
 
+## The centre of the whole floor, bands included: what the entrance pops
+## about.
+func _floor_centre() -> Vector2:
+	return _grid - _band * 0.5 + Vector2(state.w, state.h) * _cell * 0.5
+
 # --- the frame ---
 
 func _process(delta: float) -> void:
 	super(delta)
 	if _cell <= 0.0 or state.bitmap.is_empty():
 		return
-	if _animating(_now()):
+	if _now() < _anim_until:
 		_refresh()
 
-## True while anything is still moving. A floor left alone costs nothing: it
-## has no character on it to sway or blink, which is the one thing this screen
-## has less of than the other eight.
-func _animating(t: float) -> bool:
-	if _axis > 0 or not _painted.is_empty():
-		return true
-	if t < _opened + maxf(ENTER_SOCKET + (state.w + state.h) * ENTER_SOCKET_STEP + ENTER_SOCKET_TIME,
-			ENTER_GUIDE + ENTER_GUIDE_TIME):
-		return true
-	if _solved_at >= 0.0 and t < _solved_at + WIN_WAIT:
-		return true
-	for cell in _at:
-		if t < float(_at[cell]) + maxf(POP_TIME, SOLVE_HOP_TIME):
-			return true
-	for cell in _dip_at:
-		if t < float(_dip_at[cell]) + DIP_TIME:
-			return true
-	for cell in _flash_at:
-		if t < float(_flash_at[cell]) + FLASH_TIME:
-			return true
-	return false
+## Keeps the floor redrawing for `seconds` more: something on it is moving. A
+## floor left alone costs nothing: it has no character on it to sway or
+## blink, which is the one thing this screen has less of than the other
+## eight.
+func _busy_for(seconds: float) -> void:
+	_anim_until = maxf(_anim_until, _now() + seconds)
 
 func _refresh() -> void:
 	_floor = _build_floor(_now())
@@ -265,35 +265,32 @@ func _refresh() -> void:
 
 # --- the drawing ---
 
+## The floor pops in wide about its centre (rule 7: a wide thing comes from
+## most of the way) while it fades in, as one draw transform over the mesh;
+## the numbers pop in over it on their own.
 func _draw() -> void:
 	_shown = _floor
 	if _shown != null:
-		draw_mesh(_shown, null)
+		var elapsed := _now() - _opened - Motion.ENTER_DELAY
+		var grow := Motion.wide_pop_scale(elapsed)
+		var c := _floor_centre()
+		draw_mesh(_shown, null, Transform2D(0.0, Vector2.ONE * grow, 0.0, c * (1.0 - grow)),
+			Color(1.0, 1.0, 1.0, Motion.appear_level(elapsed)))
 	_draw_clues()
 
 ## Everything on the floor in one mesh, in the order the mock paints it: the
-## sockets, the five-cell guides over them, the shade under a running stroke,
-## and what the player has put down.
+## sockets, the five-cell guides over them, the pieces on their way out, and
+## what the player has put down.
 func _build_floor(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var gone := _gone(t)
 	for y in state.h:
 		for x in state.w:
 			var cell := Vector2i(x, y)
-			var en := _dec((t - _opened - ENTER_SOCKET - (x + y) * ENTER_SOCKET_STEP) / ENTER_SOCKET_TIME)
-			if en <= 0.0:
-				continue
 			Mosaic.socket(b, _grid + Vector2(x, y) * _cell, _cell,
-				state.mark_at(cell) == State.MARK, en * (1.0 - gone))
-	_guides(b, t, gone)
-	if not _painted.is_empty():
-		var shade := Color(Pal.TEXT, SWEEP_ALPHA)
-		for key in _painted:
-			var cell: Vector2i = key
-			b.fan(Face.Builder.round_rect(
-				_grid + (Vector2(cell) + Vector2.ONE * Mosaic.SOCKET_INSET) * _cell,
-				Vector2.ONE * (_cell * Mosaic.SOCKET_SIZE),
-				_cell * Mosaic.SOCKET_RADIUS), shade)
+				state.mark_at(cell) == State.MARK, 1.0 - gone, _sink(cell, t))
+	_guides(b, gone)
+	_build_leaving(b, t)
 	for cell in state.marks:
 		if int(state.marks[cell]) == State.MARK:
 			_draw_pebble(b, cell, t)
@@ -305,10 +302,10 @@ func _build_floor(t: float) -> ArrayMesh:
 
 ## The heavier line every fifth cell. A 5x5 has none to rule; on the 9x9 it is
 ## the difference between counting and glancing.
-func _guides(b, t: float, gone: float) -> void:
+func _guides(b, gone: float) -> void:
 	if state.w <= GUIDE_EVERY and state.h <= GUIDE_EVERY:
 		return
-	var alpha := _dec((t - _opened - ENTER_GUIDE) / ENTER_GUIDE_TIME) * (1.0 - gone)
+	var alpha := 1.0 - gone
 	if alpha <= 0.0:
 		return
 	var ink := Color(Pal.LINE, GUIDE_ALPHA * alpha)
@@ -320,23 +317,96 @@ func _guides(b, t: float, gone: float) -> void:
 		b.stroke(PackedVector2Array([_grid + Vector2(0.0, i * _cell),
 			_grid + Vector2(field.x, i * _cell)]), GUIDE_WIDTH, ink, false, false)
 
-func _draw_tile(b, cell: Vector2i, t: float, gone: float) -> void:
-	var grow := 1.0 if Motion.reduce else _back_out(_pop_u(cell, t))
-	Mosaic.tile(b, cell_to_local(cell.y, cell.x) + _jitter(cell, t), _cell,
-		grow, state.locked.has(cell), gone, 1.0)
+## press_scale for the cell under the finger, one when it is not.
+func _sink(cell: Vector2i, t: float) -> float:
+	if not _sunk.has(cell):
+		return 1.0
+	var pr: Dictionary = _sunk[cell]
+	var released := -1.0 if is_inf(float(pr.up)) else t - float(pr.up)
+	var s := Motion.press_scale(t - float(pr.down), released)
+	if s >= 1.0 and released >= 0.0:
+		_sunk.erase(cell)
+	return s
 
-## A cross clears away on the win in a scatter: a hard board finishes with 38
-## of its 81 cells under pebbles, and the picture has to be left standing on
-## its own.
+## A laid tile: it pops in with the squash (or drops in, from a hint), sinks
+## under the finger, leans when a neighbour lands, wobbles and blushes when
+## Check points at it, shivers when it refuses, and hops on the win.
+func _draw_tile(b, cell: Vector2i, t: float, gone: float) -> void:
+	var grow := _grow(cell, t)
+	if grow.x <= 0.0:
+		return
+	var at := cell_to_local(cell.y, cell.x) + _offset(cell, t)
+	var angle := Motion.wobble_angle(t - float(_wrong.get(cell, -100.0)))
+	var blush := Motion.flash_level(t - float(_wrong.get(cell, -100.0)))
+	Mosaic.tile(b, at, _cell, grow, state.locked.has(cell), gone, _alpha(cell, t), angle, blush)
+
+## A pebble: the same arrival, sink and lean, and on the win it clears away
+## in a scatter -- a hard board finishes with 38 of its 81 cells under
+## pebbles, and the picture has to be left standing on its own.
 func _draw_pebble(b, cell: Vector2i, t: float) -> void:
-	var alpha := 1.0
-	var grow := 1.0 if Motion.reduce else _back_out(_pop_u(cell, t))
+	var alpha := _alpha(cell, t)
 	if _solved_at >= 0.0:
 		var clear := _dec((t - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 		if clear >= 1.0:
 			return
-		alpha = 1.0 - clear
-	Mosaic.pebble(b, cell_to_local(cell.y, cell.x), _cell, grow, alpha)
+		alpha *= 1.0 - clear
+	var grow := _grow(cell, t)
+	if grow.x <= 0.0:
+		return
+	Mosaic.pebble(b, cell_to_local(cell.y, cell.x) + _offset(cell, t), _cell, grow, alpha)
+
+## The pieces Reset, an undo or a fresh stroke took away: each shrinks to
+## nothing with the quarter turn where it lay, after the state has forgotten
+## it (the Remove moment).
+func _build_leaving(b, t: float) -> void:
+	var keep: Array = []
+	for g in _leaving:
+		var elapsed: float = t - float(g.at)
+		var grow := Motion.pop_out_scale(elapsed)
+		if grow <= 0.0:
+			continue
+		keep.append(g)
+		var cell: Vector2i = g.cell
+		var at := cell_to_local(cell.y, cell.x)
+		var angle := 0.0 if Motion.reduce else PI * 0.5 * clampf(elapsed / Motion.POP_OUT, 0.0, 1.0)
+		if int(g.kind) == State.MARK:
+			Mosaic.pebble(b, at, _cell, Vector2.ONE * grow, 1.0, angle)
+		else:
+			Mosaic.tile(b, at, _cell, Vector2.ONE * grow, bool(g.held), 0.0, 1.0, angle)
+	_leaving = keep
+
+## A piece's scale now: its arrival's pop (the squash) or one, times the sink
+## under the finger.
+func _grow(cell: Vector2i, t: float) -> Vector2:
+	var grow := Vector2.ONE
+	if _arrive.has(cell):
+		var a: Dictionary = _arrive[cell]
+		if not bool(a.drop):
+			grow = Motion.pop_in_scale(t - float(a.at))
+		elif t < float(a.at) and not Motion.reduce:
+			grow = Vector2.ZERO
+	return grow * _sink(cell, t)
+
+## A piece's alpha now: a dropping piece fades in over its first tenth.
+func _alpha(cell: Vector2i, t: float) -> float:
+	if _arrive.has(cell) and bool(_arrive[cell].drop):
+		return Motion.appear_level(t - float(_arrive[cell].at))
+	return 1.0
+
+## Where a piece is besides its cell: a hint's drop from above, the lean a
+## neighbour's landing gave it, the shiver of a refusal, the hop of the win.
+func _offset(cell: Vector2i, t: float) -> Vector2:
+	var out := Vector2.ZERO
+	if _arrive.has(cell) and bool(_arrive[cell].drop):
+		out.y -= Motion.drop_in_lift(t - float(_arrive[cell].at))
+	if _nudge.has(cell):
+		var n: Dictionary = _nudge[cell]
+		out += (n.dir as Vector2) * Motion.nudge_offset(t - float(n.at), _cell * NUDGE)
+	out.x += Motion.shiver_offset(t - float(_shiver.get(cell, -100.0)), _cell * SHIVER)
+	if _hop.has(cell):
+		var hop: Dictionary = _hop[cell]
+		out.y += Motion.hop_lift(t - float(hop.at), hop.height, hop.time)
+	return out
 
 ## How far the scaffolding has left on the win: the grout closes, the sockets
 ## and the guides fade back to parchment, and the clue numbers go faint.
@@ -345,32 +415,14 @@ func _gone(t: float) -> float:
 		return 0.0
 	return _dec((t - _solved_at - GONE_DELAY) / GONE_TIME)
 
-func _pop_u(cell: Vector2i, t: float) -> float:
-	return clampf((t - float(_at.get(cell, -100.0))) / POP_TIME, 0.0, 1.0)
-
-## What a tile is doing besides sitting there: the shake a failed Check gave
-## it, the dip a refused tap gave it, and the hop of the win.
-func _jitter(cell: Vector2i, t: float) -> Vector2:
-	if Motion.reduce:
-		return Vector2.ZERO
-	var out := Vector2.ZERO
-	var flash := (t - float(_flash_at.get(cell, -100.0))) / FLASH_TIME
-	if flash >= 0.0 and flash < 1.0:
-		out.x += _cell * FLASH * sin(FLASH_SWINGS * PI * flash) * (1.0 - flash)
-	var dip := (t - float(_dip_at.get(cell, -100.0))) / DIP_TIME
-	if dip >= 0.0 and dip < 1.0:
-		out.y += _cell * DIP * sin(PI * dip)
-	if _solved_at >= 0.0:
-		var hop := (t - float(_at.get(cell, 0.0))) / SOLVE_HOP_TIME
-		if hop >= 0.0 and hop < 1.0:
-			out.y -= _cell * SOLVE_HOP * sin(PI * hop)
-	return out
-
 ## The clue numbers, over the floor's mesh: right-aligned along the left band
 ## and bottom-aligned up the top one, as a nonogram's clues always are, and
 ## coloured per line -- green the moment the line's runs read exactly as they
 ## say, rose the moment it holds more filled cells than they allow. A line
-## with nothing in it says 0 rather than nothing, so every line speaks.
+## with nothing in it says 0 rather than nothing, so every line speaks. Each
+## line's numbers pop in with the squash along the band a beat after the
+## floor, bump when the line is recounted and hop on Reset, through one draw
+## transform per line.
 func _draw_clues() -> void:
 	if _cell <= 0.0 or state.bitmap.is_empty():
 		return
@@ -382,27 +434,45 @@ func _draw_clues() -> void:
 		return
 	var rise := font.get_ascent(px) * 0.5
 	for y in state.h:
-		var alpha := _dec((t - _opened - ENTER_CLUE - y * ENTER_CLUE_STEP) / ENTER_CLUE_TIME) * faded
-		if alpha <= 0.0:
+		var key := "r%d" % y
+		var scale := _clue_scale(key, y, t)
+		if scale.x <= 0.0:
 			continue
-		var ink := _clue_ink(state.row_state(y))
+		var ink := Color(_clue_ink(state.row_state(y)), faded)
 		var clue: Array = state.row_clues[y] if not (state.row_clues[y] as Array).is_empty() else [0]
+		var centre := Vector2(_grid.x - _band.x * 0.5, _grid.y + (y + 0.5) * _cell + _clue_lift(key, t))
+		draw_set_transform(centre, 0.0, scale)
 		for i in clue.size():
 			var slot: int = clue.size() - 1 - i
 			_number(font, px, rise, str(clue[i]),
-				Vector2(_grid.x - _cell * NUM * (slot + 0.5),
-					_grid.y + (y + 0.5) * _cell), Color(ink, alpha))
+				Vector2(_band.x * 0.5 - _cell * NUM * (slot + 0.5), 0.0), ink)
 	for x in state.w:
-		var alpha := _dec((t - _opened - ENTER_CLUE - x * ENTER_CLUE_STEP) / ENTER_CLUE_TIME) * faded
-		if alpha <= 0.0:
+		var key := "c%d" % x
+		var scale := _clue_scale(key, x, t)
+		if scale.x <= 0.0:
 			continue
-		var ink := _clue_ink(state.col_state(x))
+		var ink := Color(_clue_ink(state.col_state(x)), faded)
 		var clue: Array = state.col_clues[x] if not (state.col_clues[x] as Array).is_empty() else [0]
+		var centre := Vector2(_grid.x + (x + 0.5) * _cell, _grid.y - _band.y * 0.5 + _clue_lift(key, t))
+		draw_set_transform(centre, 0.0, scale)
 		for i in clue.size():
 			var slot: int = clue.size() - 1 - i
 			_number(font, px, rise, str(clue[i]),
-				Vector2(_grid.x + (x + 0.5) * _cell,
-					_grid.y - _cell * NUM * (slot + 0.5)), Color(ink, alpha))
+				Vector2(0.0, _band.y * 0.5 - _cell * NUM * (slot + 0.5)), ink)
+	draw_set_transform(Vector2.ZERO)
+
+## A line's numbers' scale now: the entrance pop along the band, times the
+## Count bump.
+func _clue_scale(key: String, index: int, t: float) -> Vector2:
+	var grow := Motion.pop_in_scale(t - _opened - _enter_clue_delay(index))
+	return grow * Motion.bump_scale(t - float(_clue_bump.get(key, -100.0)))
+
+## A line's numbers' lift now: the hop Reset gives them.
+func _clue_lift(key: String, t: float) -> float:
+	if not _clue_hop.has(key):
+		return 0.0
+	var hop: Dictionary = _clue_hop[key]
+	return Motion.hop_lift(t - float(hop.at), hop.height, hop.time)
 
 func _clue_ink(line_state: int) -> Color:
 	if is_done():
@@ -412,10 +482,122 @@ func _clue_ink(line_state: int) -> Color:
 		State.LINE_OVER: return Pal.CLUE_OVER
 		_: return Pal.TEXT
 
+## One number centred on `centre`, in the transform already set.
 func _number(font: Font, px: int, rise: float, text: String, centre: Vector2, ink: Color) -> void:
 	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	draw_string(font, centre + Vector2(-wide * 0.5, rise), text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, ink)
+
+# --- the moments ---
+
+## The chrome is the host's; here the floor pops in wide (in _draw) after the
+## family's delay, and each line's numbers pop in with the squash along their
+## band a beat later.
+func _enter() -> void:
+	_opened = _now()
+	_busy_for(maxf(Motion.ENTER_DELAY + Motion.ENTER_POP,
+		_enter_clue_delay(maxi(state.w, state.h) - 1) + Motion.POP_IN))
+	fx.cue("enter")
+
+func _enter_clue_delay(index: int) -> float:
+	return Motion.ENTER_DELAY + Motion.ENTER_FACE_LAG + Motion.stagger(index, Motion.ENTER_STAGGER)
+
+## The cell under the finger sinks (the Press moment), and stays down until
+## the piece it is waiting for lands or the finger lets it go.
+func _sink_cell(cell: Vector2i) -> void:
+	if _sunk.has(cell) and is_inf(float(_sunk[cell].up)):
+		return
+	_sunk[cell] = {"down": _now(), "up": INF}
+	_busy_for(Motion.PRESS_TIME)
+
+## Lets go of every cell the gesture still holds down: each springs back when
+## the piece it is under arrives, or now.
+func _end_sinks(now: float, arrivals: Dictionary = {}) -> void:
+	var last := now
+	for cell in _sunk:
+		var pr: Dictionary = _sunk[cell]
+		if is_inf(float(pr.up)):
+			pr.up = float(arrivals.get(cell, now))
+			last = maxf(last, float(pr.up))
+	_anim_until = maxf(_anim_until, last + Motion.RELEASE_TIME)
+
+## Every cell in `cells` moves from what `before` had on it to what the state
+## has now, the k-th one `per` seconds after the first: a piece pops in (or
+## drops in, from a hint) or shrinks out, and a line a tile joined or left is
+## recounted. Returns the second each cell's piece arrives.
+func _transition(before: Dictionary, cells: Array, t: float, per: float, drop := false) -> Dictionary:
+	var arrivals: Dictionary = {}
+	for k in cells.size():
+		var cell: Vector2i = cells[k]
+		var at := t + (0.0 if Motion.reduce else Motion.stagger(k, per))
+		arrivals[cell] = at
+		var prev := int(before.get(cell, State.BLANK))
+		var mark := state.mark_at(cell)
+		if prev == mark:
+			continue
+		if prev != State.BLANK:
+			_leave(cell, prev, at)
+		if mark != State.BLANK:
+			_arrive[cell] = {"at": at, "drop": drop}
+			_busy_for(at - t + (Motion.DROP_TIME if drop else Motion.POP_IN))
+		else:
+			_arrive.erase(cell)
+		if prev == State.FILL or mark == State.FILL:
+			_recount(cell, at)
+	return arrivals
+
+## The piece `kind` on `cell` leaves at `at`: kept on a list, since the state
+## has already forgotten it, and drawn shrinking with the quarter turn.
+func _leave(cell: Vector2i, kind: int, at: float, held := false) -> void:
+	_wrong.erase(cell)
+	_shiver.erase(cell)
+	if Motion.reduce:
+		return
+	_leaving.append({"cell": cell, "kind": kind, "held": held, "at": at})
+	_busy_for(at - _now() + Motion.POP_OUT)
+
+## The Count moment: the row's and the column's numbers have just been
+## recounted, and bump as the tile arrives or leaves.
+func _recount(cell: Vector2i, at: float) -> void:
+	if Motion.reduce:
+		return
+	_clue_bump["r%d" % cell.y] = at
+	_clue_bump["c%d" % cell.x] = at
+	_busy_for(at - _now() + Motion.BUMP_TIME)
+
+## The pieces on the four sides of a piece that has just landed lean away
+## from it and back.
+func _nudge_around(cell: Vector2i, t: float) -> void:
+	if Motion.reduce:
+		return
+	for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var n: Vector2i = cell + d
+		if state.in_grid(n) and state.mark_at(n) != State.BLANK:
+			_nudge[n] = {"at": t, "dir": Vector2(d)}
+	_busy_for(Motion.NUDGE_LAG + Motion.NUDGE_TIME)
+
+## A press refused on `cell` (a tile a hint grouted in): it shivers and
+## blushes toward the family's rose, and the sprout says why.
+func _refuse(cell: Vector2i) -> void:
+	_say("That tile is grouted in. A hint laid it.", Face.Expr.PUZZLED)
+	fx.cue("locked")
+	if Motion.reduce:
+		return
+	var now := _now()
+	_shiver[cell] = now
+	_wrong[cell] = now
+	_busy_for(maxf(Motion.SHIVER_TIME, maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT)))
+
+## The wave from the far corner Reset runs, per cell.
+func _reset_wave(cell: Vector2i) -> float:
+	if Motion.reduce:
+		return 0.0
+	return Motion.stagger(state.w + state.h - 2 - cell.x - cell.y, Motion.RESET_STAGGER)
+
+func _solve_delay(cell: Vector2i) -> float:
+	if Motion.reduce:
+		return 0.0
+	return Motion.SOLVE_DELAY + Motion.stagger(cell.x + cell.y, Motion.SOLVE_STAGGER)
 
 # --- input ---
 
@@ -433,6 +615,7 @@ func _gui_input(event: InputEvent) -> void:
 		_drag(event.position)
 
 func _press(cell: Vector2i) -> void:
+	_end_sinks(_now())
 	_clear_gesture()
 	if is_done() or cell.x < 0:
 		return
@@ -472,7 +655,8 @@ func _drag(at: Vector2) -> void:
 
 ## A stroke never disturbs a tile a hint grouted in, and never paints a cell
 ## twice: crossing back over your own stroke is how a finger wanders, not a
-## second decision.
+## second decision. Every cell the finger can change sinks under it as it
+## passes.
 func _paint(cell: Vector2i) -> void:
 	if not state.in_grid(cell):
 		return
@@ -482,6 +666,7 @@ func _paint(cell: Vector2i) -> void:
 	_painted[cell] = true
 	if state.locked.has(cell):
 		return
+	_sink_cell(cell)
 	var to: int = State.BLANK if _erase else brush
 	if state.mark_at(cell) == to:
 		return
@@ -489,35 +674,50 @@ func _paint(cell: Vector2i) -> void:
 
 func _release() -> void:
 	var cell := _press_cell
+	var was_drag := _dragged
 	var pending := _pending
+	var now := _now()
 	_clear_gesture()
 	if cell.x < 0 or is_done():
+		_end_sinks(now)
 		_refresh()
 		return
 	if not pending.is_empty():
-		_commit(state.apply(pending))
+		var before: Dictionary = state.marks.duplicate()
+		var changed: Array = state.apply(pending)
+		# One stroke is one move, however many cells it painted, which is
+		# what makes a painted run come back on a single Undo. A sweep lays
+		# its pieces in a wave along the finger's path and puffs none; a
+		# single tap puffs and leans the neighbours.
+		var arrivals := _commit(before, changed, now,
+			Motion.ENTER_STAGGER if was_drag else 0.0, Vector2i(-1, -1) if was_drag else cell)
+		_end_sinks(now, arrivals)
 		return
-	# Nothing changed: either the cell already held what the chip paints, or a
-	# hint has grouted it in.
+	_end_sinks(now)
+	# Nothing changed: a hint has grouted the cell in.
 	if state.locked.has(cell):
-		_dip_at[cell] = _now()
-		_say("That tile is grouted in. A hint laid it.", Face.Expr.PUZZLED)
-		fx.cue("locked")
+		_refuse(cell)
 	_refresh()
 
-## One stroke is one move, however many cells it painted, which is what makes
-## a painted run come back on a single Undo.
-func _commit(changed: Array) -> void:
+## Puts the cells `changed` by a move on the floor (see _transition), puffs
+## and leans the neighbours when the move was one tap on `tapped`, and counts
+## the move. Returns each cell's arrival time.
+func _commit(before: Dictionary, changed: Array, t: float, per: float, tapped: Vector2i) -> Dictionary:
 	if changed.is_empty():
 		_refresh()
-		return
-	var t := _now()
-	for cell in changed:
-		_at[cell] = t
+		return {}
+	var arrivals := _transition(before, changed, t, per)
+	if tapped.x >= 0:
+		var mark := state.mark_at(tapped)
+		if mark != State.BLANK:
+			fx.puff(cell_to_local(tapped.y, tapped.x),
+				Pal.MOSAIC if mark == State.FILL else Pal.SOCKET_PEBBLE)
+			_nudge_around(tapped, t)
 	fx.cue("place")
 	_speak()
 	_refresh()
 	note_move()
+	return arrivals
 
 func _clear_gesture() -> void:
 	_press_cell = Vector2i(-1, -1)
@@ -583,13 +783,17 @@ func tip_line() -> Dictionary:
 func can_undo() -> bool:
 	return not is_done() and not state.history.is_empty()
 
-## Takes back the last stroke, however many cells it painted. Counts no move.
+## Takes back the last stroke, however many cells it painted, in the wave it
+## was laid in: the reverse of Place. Counts no move.
 func undo() -> bool:
 	if is_done() or state.history.is_empty():
 		return false
-	var t := _now()
-	for cell in state.undo():
-		_at[cell] = t
+	var now := _now()
+	_end_sinks(now)
+	_clear_gesture()
+	var before: Dictionary = state.marks.duplicate()
+	var touched: Array = state.undo()
+	_transition(before, touched, now, Motion.ENTER_STAGGER)
 	_speak()
 	fx.cue("undo")
 	_refresh()
@@ -600,17 +804,24 @@ func hints_left() -> int:
 	return HINTS - hints_used
 
 ## Lays one tile the picture wants and grouts it in for good: the first cell
-## in reading order the player has not filled. Counts no move but can finish
-## the puzzle.
+## in reading order the player has not filled. It drops in from above under a
+## ring with a sparkle; a pebble there pops out first. Counts no move but can
+## finish the puzzle.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var now := _now()
+	_end_sinks(now)
+	_clear_gesture()
+	var before: Dictionary = state.marks.duplicate()
 	var target: Vector2i = state.hint()
 	if target.x < 0:
 		return false
-	_at[target] = _now()
 	hints_used += 1
-	fx.sparkle(cell_to_local(target.y, target.x), Pal.MOSAIC_LOCK)
+	_transition(before, [target], now, 0.0, true)
+	var at := cell_to_local(target.y, target.x)
+	fx.ring(at, _cell * RING_R, Pal.MOSAIC_LOCK)
+	fx.sparkle(at, Pal.MOSAIC_LOCK)
 	fx.cue("hint")
 	_say("That tile belongs to the picture, and it is grouted in for good.",
 		Face.Expr.HAPPY)
@@ -619,16 +830,19 @@ func hint() -> bool:
 	check_solved()
 	return true
 
-## Shakes every tile the picture does not want, and says how many. Crosses are
-## left alone: a cross is a note, not a claim, so Check looks only at tiles.
+## Every tile the picture does not want wobbles and blushes toward the
+## family's rose, and the sprout says how many. Crosses are left alone: a
+## cross is a note, not a claim, so Check looks only at tiles.
 func check() -> int:
 	if is_done():
 		return 0
 	checks += 1
 	var t := _now()
 	var wrong: Array = state.wrong_tiles()
-	for cell in wrong:
-		_flash_at[cell] = t
+	if not Motion.reduce and not wrong.is_empty():
+		for cell in wrong:
+			_wrong[cell] = t
+		_busy_for(maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
 	_say("%d %s in the wrong place." % [wrong.size(), "tile is" if wrong.size() == 1 else "tiles are"]
 		if not wrong.is_empty() else "Every tile you have laid belongs to the picture.",
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
@@ -636,13 +850,35 @@ func check() -> int:
 	_refresh()
 	return wrong.size()
 
+## Every tile and pebble goes, in a wave from the far corner, the clue
+## numbers hopping as the floor clears under them. The hints spent are not
+## refunded, only unpinned.
 func reset_board() -> void:
-	var t := _now()
+	var now := _now()
+	_end_sinks(now)
 	_clear_gesture()
+	var before: Dictionary = state.marks.duplicate()
+	var held: Dictionary = state.locked.duplicate()
+	var last := now
 	for cell in state.reset():
-		_at[cell] = t
-	_dip_at = {}
-	_flash_at = {}
+		var at: float = now + _reset_wave(cell)
+		last = maxf(last, at)
+		_leave(cell, int(before[cell]), at, held.has(cell))
+		if int(before[cell]) == State.FILL:
+			_recount(cell, at)
+	if not Motion.reduce:
+		for y in state.h:
+			_clue_hop["r%d" % y] = {"at": now + _reset_wave(Vector2i(-1, y)),
+				"height": Motion.RESET_HOP, "time": Motion.HOP_TIME}
+		for x in state.w:
+			_clue_hop["c%d" % x] = {"at": now + _reset_wave(Vector2i(x, -1)),
+				"height": Motion.RESET_HOP, "time": Motion.HOP_TIME}
+		_busy_for(_reset_wave(Vector2i(-1, -1)) + Motion.HOP_TIME)
+	_arrive = {}
+	_hop = {}
+	_nudge = {}
+	_wrong = {}
+	_shiver = {}
 	moves = 0
 	_running = true
 	_say("The floor is cleared. The hints you spent are not refunded, only unpinned.",
@@ -667,23 +903,28 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
 
-## The crosses clear, the sockets fade back to parchment, the grout lines
-## close up and the tiles hop in reading order. The scaffolding leaves and the
-## picture is left standing on the card.
+## The tiles hop in the family's wave along the diagonal; then the crosses
+## clear, the sockets fade back to parchment and the grout lines close up. The
+## scaffolding leaves and the picture is left standing on the card.
 func _on_solved() -> void:
-	var t := _now()
+	var now := _now()
+	_end_sinks(now)
 	_clear_gesture()
 	_tip_timer.stop()
-	_solved_at = t
-	var laid: Array = []
-	for y in state.h:
-		for x in state.w:
-			if int(state.bitmap[y][x]) == 1:
-				laid.append(Vector2i(x, y))
-	for i in laid.size():
-		_at[laid[i]] = t + SOLVE_DELAY + i * SOLVE_STEP
+	_solved_at = now
+	_wrong = {}
+	_shiver = {}
+	if not Motion.reduce:
+		for y in state.h:
+			for x in state.w:
+				if int(state.bitmap[y][x]) == 1:
+					var cell := Vector2i(x, y)
+					_hop[cell] = {"at": now + _solve_delay(cell), "height": Motion.SOLVE_HOP,
+						"time": Motion.SOLVE_TIME}
 	_say("There it is. The picture you were counting towards.", Face.Expr.JOY)
 	fx.cue("solved")
+	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
+		maxf(GONE_DELAY + GONE_TIME, CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)))
 	_refresh()
 
 # --- odds and ends ---
@@ -693,11 +934,6 @@ func _now() -> float:
 
 func _dec(u: float) -> float:
 	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
-
-func _back_out(u: float) -> float:
-	u = clampf(u, 0.0, 1.0)
-	const C := 1.70158
-	return 1.0 + (C + 1.0) * pow(u - 1.0, 3.0) + C * pow(u - 1.0, 2.0)
 
 ## A fixed pseudo-random number per cell, so the crosses clear away in a
 ## scatter rather than a wave.
