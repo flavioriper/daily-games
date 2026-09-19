@@ -25,6 +25,9 @@ extends SceneTree
 ## Nonogram is swept along its top row with the tile chip, so the strip shows
 ## the cells sinking under the finger and the tiles arriving in a wave, and
 ## the idle window has a row of tiles in it.
+## Queens has the answer's first queen seated, so the strip shows the crown
+## pop and the wave of crosses running out of her, and the idle window has a
+## queen and her crosses in it.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -114,6 +117,8 @@ func _process(delta: float) -> bool:
 			_walk_oneline()
 		elif _entry.id == "nonogram" and not _empty:
 			_begin_nonogram_sweep()
+		elif _entry.id == "queens" and not _empty:
+			_tap_queens()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -178,6 +183,12 @@ func _begin_nonogram_sweep() -> void:
 	var from: Vector2 = xf * _puzzle.cell_to_local(0, 0)
 	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
 	_begin_drag(from, to - from)
+
+## Queens: one real touch on the answer's first queen, with the crown chip the
+## tray arms by default.
+func _tap_queens() -> void:
+	var c: int = int(_puzzle.state.solution[0])
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c))
 
 ## Balance: plus on the first card the player owns, through the real button.
 func _step_balance() -> void:
