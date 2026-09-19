@@ -293,6 +293,10 @@ and eleven against the card's seventeen a line.
 - **968 answers.** About two and a half years of days before one repeats on
   hard, eight months on easy. If that is short, the list grows and nothing
   else changes.
-- **169 tiles.** The biggest cell any flat board has drawn, because five
-  across is the fewest any of them asks for. It should feel generous; check
-  that it does not feel empty.
+- **149 tiles, and the 120 band that bought them.** Five across is the fewest
+  any flat board asks for, so the cell could be 169 -- but at 169 the grid
+  fills the card's inner height exactly and the mock's clouds and bushes have
+  nowhere to stand (measured on the concept tab, 2026-09-19). 149 with a band
+  is the call; 169 with the scenery reduced to a hem is the alternative, and
+  it is one constant either way. Judge it on the phone: does the band earn its
+  room, and does the cell feel generous rather than empty?
