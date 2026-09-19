@@ -263,3 +263,70 @@ Two implementation notes worth keeping:
   It is the island's behaviour and it matters little on a figure with two
   equally good openings, but it is the one move on the board that is not
   reversible.
+
+## 11. Amendment: the polish of 2026-09-19
+
+The user asked for One Line and Nonogram to be polished with proper
+animations on Binairo's pattern, smoother and more elegant, and for the
+pattern to be kept so the other boards take it. Built straight in Godot, as
+the six ports before it were, with this amendment and `docs/art/flat-motion.md`
+as the record. The layout is kept; sections 2 to 7 stand. Section 8's motion
+is superseded by what follows.
+
+**Drawn posts and lines, and a walker in a slot.** The figure stays one
+mesh, rebuilt while an `_anim_until` clock runs that every moment extends
+through `_busy_for`; the posts and lines read the recipes as curves off
+`Motion` (rule 8 of the motion doc), and the board's own `_back_out`, `_dip`,
+`_ring` and `_flash` are gone. The walker was already a Control; it now
+stands in a slot the board positions every frame -- the ride along the line,
+the facing and the rock -- so the recipes can tween the snail inside it
+without the two hands writing the same property (rule 2). The pattern grew
+nothing here: Light Up had completed the curve readers, and One Line needed
+none it did not have.
+
+**What changed, moment by moment:**
+
+| Moment | Now |
+|---|---|
+| Entrance | each stone line pops in wide about its own middle (`wide_pop_scale`, `ENTER_WIDE_FROM` 0.86 over `ENTER_POP` 0.25) while it fades in, in index order at `ENTER_STAGGER` 0.03 after `ENTER_DELAY`; each post pops in with the squash (`pop_in_scale`) along the diagonal `ENTER_FACE_LAG` later, its soft shadow arriving with it. The lines' 0.4 s fade and the posts' 0.14-step drop from 0.7 are gone |
+| Press | the post under the finger sinks to `PRESS_SCALE` 0.94 (`press_scale`) and shades halfway to `POST_DEEP` at the bottom of the press (`SINK_SHADE` 0.5, Light Up's finding on mid-grey stone: the scale alone is five pixels on a drum this size), and springs back on release; the walker standing on it sinks with it (`press`). Nothing pressed before |
+| Begin | the walker pops in with the squash (`pop_in`, `POP_IN` 0.22) in place of its own back ease from 0.01; the post hops `HOP` -6 (`hop_lift`); a puff in `ACCENT_2`, the walker's own cap; every cap takes its new colour with the Count bump (`bump_scale`), since the green starts go teal together |
+| Walk | the walk itself is kept as this board's signature: `LAY_TIME` 0.28 with the plank growing under the snail. **The far post keeps the cap it wore until the walker lands**, then takes its new one with the Count bump; the post the walker left is recounted at once. On landing the post hops `HOP` over `HOP_TIME` 0.3 and a puff in `PLANK_LAID` lands with it |
+| Undo | the reverse: the plank sinks back over `LAY_TIME`, the walker walks back, the post it reaches hops and its cap bumps; no puff |
+| Hint | before the stroke, the walker drops in from `DROP` 40 above with the fade (`drop_in`) onto the start post, under a ring in `GOOD` through `Fx2D.ring` with a sparkle; after, it walks the safe line and the ring and the sparkle come as it lands (`_after(LAY_TIME)`), Untangle's rule for a piece that walks. The ring the mesh used to draw is gone (rule 5) |
+| Wrong on Check | each stranded line wobbles about its middle (`wobble_angle`, `WOBBLE_ANGLE` 0.105 over `WOBBLE_TIME` 0.45) and blushes toward `BAD_TILE` and back (`flash_level`, `FLASH_IN` 0.15, `FLASH_OUT` 0.45). The 0.6 s horizontal shake with nine swings is gone |
+| Refused | the post shivers (`shiver_offset`, `SHIVER_PX` 2 over `SHIVER_TIME` 0.2) while its drum blushes toward `BAD_TILE` (its deep edge half toward `BAD`), read off `flash_level`. The dip is gone |
+| Reset | every plank shrinks to nothing about its own middle (`pop_out_scale`, without the quarter turn a long thing would only wobble through) in a wave from the far corner at `RESET_STAGGER` 0.02, kept on a leaving list since the state has forgotten it; the posts hop `RESET_HOP` -4 and their caps bump in the same wave; the walker pops out with the quarter turn where it stood (`pop_out`), the slot staying put through it. Everything vanished on one frame before |
+| Solved | the planks still warm to `PLANK_HI` along the trail in walk order -- the stroke running back along itself is the signature -- but at `SOLVE_DELAY` 0.25 and `SOLVE_STAGGER` 0.04 per plank, uncapped (a capped retrace would arrive all at once at the end), each over `BRIGHT_TIME` 0.35; each post hops `SOLVE_HOP` -10 over `SOLVE_TIME` 0.4 as the warmth reaches it, and the walker last, grinning, with a sparkle. `win_delay()` is measured off the trail (`_solve_delay(n) + SOLVE_TIME + WIN_SETTLE` 0.3: about 1.4 s on easy and 1.75 on hard) in place of a flat 2.0 |
+
+**The dressing:** the post's flat 0.13 ellipse became the family's soft disc
+(`Scenery.soft_disc`, 0.24 peak in `TEXT`, since a disc that fades to its rim
+reads at about half its centre), drawn at the post's rest so a hopping post
+leaves it behind. The walker's shadow stays in its body mesh. No clouds or
+tufts: a jetty seen from above has no sky.
+
+**Measured** on this Mac at 1080 x 1920 through `tests/_shot_anim.gd`, whose
+One Line run now stands the walker on the trail's first post and walks its
+first line (`empty` skips it), two readings each:
+
+| | Draw calls | Idle |
+|---|---|---|
+| Medium figure at rest, bare, before | 63 | 2.90 ms |
+| Medium figure at rest, bare, now | 63, 64 | 2.86, 2.87 ms |
+| Now, with a plank laid and the walker standing | 66 | 2.89, 2.91 ms |
+
+Suite 2086/0. `tests/_win.gd` windowed 9/9, One Line solved through the real
+hint button, Check and taps. A throwaway probe shot the entrance in three
+frames, a refused start, the hint's drop under its ring, the walk mid-line
+and its landing, an undo mid-walk, Check's wobble on two lines, the pressed
+post and its release, two planks, Reset mid-wave and done, the solve wave in
+three frames and the win screen, each with and without reduce-motion (under
+which the figure is up at once, the walker is there or gone in one frame, the
+walk and the plank are instant, nothing sinks, blushes, wobbles or rings, and
+the win screen follows the last tap). The pressed post was measured on the
+frame at 79 px against 84 at rest, which is the 0.94.
+
+Open, still, from section 10: medium's air, the snail as a species, the drag
+on a phone, the refused live reachability and the missing count. Nothing here
+answers them; it only makes the flat board move with the same hand as the
+other eight.
