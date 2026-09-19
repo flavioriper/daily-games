@@ -21,7 +21,10 @@ extends RefCounted
 ## other seating disagrees with the answer, and if handing that cell to a
 ## neighbouring region keeps the loser's region connected, tries the move
 ## and keeps it only when the seating count does not rise. A board is kept
-## only when repair drives that count to exactly one.
+## only when repair drives that count to exactly one. Repair runs in two
+## phases: a quick pass that gives up on a stalled board early, across
+## ATTEMPTS boards, and then, only for the rare seed none of those crack, a
+## slower, uncapped pass across PATIENT_ATTEMPTS more.
 ##
 ## Seeded only by the `rng` handed in, so a day is the same court on every
 ## phone. Spec: docs/superpowers/specs/2026-09-19-queens-flat-design.md,
@@ -37,6 +40,10 @@ const REPAIRS := 400
 ## A board whose answer count has not fallen in this many moves is not
 ## going to; a fresh board is cheaper than the remaining REPAIRS.
 const STALE := 40
+## The quick attempts give up on a slow board early; a seed none of them
+## crack gets the patient repair that round 1 measured at 0 fails in 20,
+## so the floor is the old floor and only the rare seed pays for it.
+const PATIENT_ATTEMPTS := 30
 ## A region below this many cells is grown before any region at or above it.
 const MIN_REGION := 3
 ## How many seatings the repair pass looks for; only their count matters.
@@ -57,6 +64,19 @@ static func generate(rng: RandomNumberGenerator, n: int) -> Dictionary:
 			continue
 		last = {"region": region, "solution": queens, "n": n, "ok": false}
 		if _repair(rng, region, n, queens, REPAIRS):
+			last.ok = true
+			return last
+	# The quick pass above gives up on a slow board early; for the rare seed
+	# it never cracks, try again without that cap.
+	for _attempt in PATIENT_ATTEMPTS:
+		var queens := _place_queens(rng, n)
+		if queens.is_empty():
+			continue
+		var region := _grow_regions(rng, n, queens)
+		if region.is_empty():
+			continue
+		last = {"region": region, "solution": queens, "n": n, "ok": false}
+		if _repair(rng, region, n, queens, REPAIRS, true):
 			last.ok = true
 			return last
 	if last.is_empty():
@@ -208,9 +228,10 @@ static func _connected_without(region: PackedInt32Array, n: int, g: int, cell: V
 ## (`region` itself is only ever read or replaced wholesale, never
 ## re-flattened mid-loop); true if it ends unique. Gives up on this court
 ## once STALE moves in a row have failed to lower the seating count -- see
-## STALE's own line.
+## STALE's own line -- unless `patient` is true, in which case it runs the
+## full `iters` regardless.
 static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: PackedInt32Array,
-		iters: int) -> bool:
+		iters: int, patient: bool = false) -> bool:
 	var flat := _flatten(region, n)
 	var sols: Array = _solutions(flat, n, SOLUTIONS_SEEN)
 	var count := sols.size()
@@ -219,7 +240,7 @@ static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: Pack
 		if count <= 1:
 			break
 		stale += 1
-		if stale >= STALE:
+		if not patient and stale >= STALE:
 			break
 		var others: Array = []
 		for s in sols:
