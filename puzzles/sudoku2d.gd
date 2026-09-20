@@ -820,6 +820,18 @@ func reset_board() -> void:
 				absi(Gen.col_of(i) - Gen.col_of(far)))
 			var when := now + Motion.stagger(step, Motion.RESET_STAGGER)
 			_bump[i] = when
+			# **A cell can only be leaving once.** `_draw_leaving`'s "has the
+			# player written here again?" guard reads the *current* state,
+			# and after a second `clear_board` the current state is empty
+			# again -- so it cannot tell a ghost this Reset has just made
+			# from one an earlier Reset made, and both would draw over each
+			# other, each fading on its own schedule. Two plain Resets do not
+			# reach here twice for one cell (the second skips a cell that is
+			# already empty); write a digit, Reset, write another into that
+			# same cell and Reset again, and you do. Nothing in the state can
+			# separate the two generations, so the cell index has to: the old
+			# entry goes before the new one is appended.
+			_leaving = _leaving.filter(func(g: Dictionary) -> bool: return int(g.i) != i)
 			# The copy the wave will carry out; see `_leaving` and
 			# `_draw_leaving`. Taken before clear_board empties the state.
 			_leaving.append({"i": i, "d": int(state.grid[i]),
