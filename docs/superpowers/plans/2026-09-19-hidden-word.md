@@ -530,15 +530,21 @@ const KEY_FACE    := Color("fffaf0")
 `ui/faces/mosaic_tile.gd` already draws a socket, a tile and a pebble as builder shapes and already takes a `Vector2` scale. Add one static beside them that draws a letter centred in the cell, taking the same `grow` so a flipping tile's letter squashes with it:
 
 ```gdscript
-## A letter centred in the cell, taking the piece's own `grow` so it squashes
-## with the tile it is on. Hidden Word's only addition to this file.
+## A letter centred on `at`, taking the piece's own `grow` so it squashes with
+## the tile it is on. Hidden Word's only addition to this file.
+##
+## `at` is the cell's CENTRE, like `tile` and `pebble` and unlike `socket`,
+## which takes the top-left corner -- this file has carried both conventions
+## since Nonogram, and a letter follows the piece it is drawn on. `b` here is
+## the board's own CanvasItem, not the Face.Builder its neighbours take: a
+## letter is a draw command, never baked into the mesh.
 const LETTER_SIZE := 0.56
 static func letter(b, at: Vector2, s: float, ch: String, grow: Vector2,
 		col: Color, font: Font, alpha := 1.0) -> void:
 	if ch.is_empty() or alpha <= 0.0 or grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var size := int(s * LETTER_SIZE)
-	var mid := at + Vector2(s, s) * 0.5
+	var mid := at
 	var text := ch.to_upper()
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	var h := font.get_height(size)
