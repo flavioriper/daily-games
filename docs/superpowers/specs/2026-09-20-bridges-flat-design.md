@@ -382,6 +382,11 @@ Reduce motion stills it as it stills every other board: the lit state is
 applied at once and no front travels. On this board that also silences the
 refusals entirely -- see the end of section 5.
 
+**There are two rings on this screen and they are not the same ring**: the
+aim ring that marks the islet a drag is pointing at, and the `GOOD` ring an
+islet wears once its number is met. They have different floors, and the
+paragraph below is about the first one only.
+
 **The lit lane holds at every band, but not by the same means.** The beam is
 0.62 of a cell, so it scales: 81 px at the 7x7's 131, 63 at 102, 52 at the
 11x11's 84, still four times a single plank's width on the hardest band. The
@@ -403,6 +408,18 @@ history entry, so in that one case a hint costs two undos rather than one.
 Verified over 120 boards hinted to completion: 0 overshoots, and every board
 finished. Check marks the runs that differ from the answer, costs a check, and is
 the board's only door to the one thing it will not tell you.
+
+**Its marks flash and then hold.** The flash is the beat that says where to
+look -- on an 11x11 with 24 islets something has to -- but when it decays the
+marked runs keep a quiet tint until the player's next move clears them, on
+the same clearing as every other transient state. This is a deliberate
+departure from Nonogram and Light Up, whose marks fade away entirely, and the
+reason is that on those boards a check is decoration over a board that
+already shows its own state, while here **a check is the only door to the
+near-miss and it is paid for**. A player who spends a check keeps what they
+bought until they act on it. The departure also fixes something nobody chose:
+with a fading mark, a reduce-motion player -- who is drawn no flash at all --
+paid a check and was shown nothing whatsoever.
 
 **The near-miss is unsignposted, deliberately.** When every number is met but
 the islets are in two rings, the board says nothing: no group count, no tint,
