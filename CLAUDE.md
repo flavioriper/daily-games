@@ -123,7 +123,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   are almost entirely reuse. It is never an image and never a `SubViewport`.
   A new card costs one branch of `_build` and, if it needs furniture, one of
   `_draw`.
-- **Twelve cards, eleven live and one that does not open.** Pipes has no
+- **Thirteen cards, twelve live and one that does not open.** Pipes has no
   flat board: it keeps its picture and name at 55% ink, wears a pale
   `SOON` pill and emits `blocked`, and the menu answers with a line saying
   its island version is under More. It holds the last slot of the last row,
@@ -135,17 +135,45 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   make room for Queens, `seed_as` still `snake`, and Horse Pen's the same
   day for Hidden Word, the eleventh live card, `seed_as` still `horse`. The
   pill hangs off the card, **not** off `_inner`: that is a PanelContainer
-  and a second child there is stretched over everything.
+  and a second child there is stretched over everything. Sudoku is the
+  thirteenth entry and the twelfth live card, added 2026-09-20 without
+  displacing anything -- it did not fit on the twelve-card grid, so it got
+  a second page instead of a shorter card; see the pager bullet below.
 - **The hearts, the calendar badge and the day chevron are decoration**, by
   the user's decision on 2026-09-18. `Day N` and the day's name are real
   (`core/progress.gd`); nothing else on that row counts anything. There is
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (eleven flat
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (twelve flat
   plus the one `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
+- **The grid pages twelve at a time, since Sudoku made a thirteenth card**
+  (2026-09-20, spec `2026-09-20-sudoku-flat-design.md`, section 9). The
+  split is **12 + 1**, not a rebalanced 7 + 6: page one stays exactly the
+  twelve cards in exactly the order they were in, and page two holds Sudoku
+  alone until a fourteenth board lands -- sparse, and honest about it, rather
+  than reshaping the first screen for twelve boards to flatter one. The
+  pager lives on the day row (`ui/menu/day_row.gd`'s `set_pager`, a prev
+  chevron, two dots and a next chevron, with the row's old dead chevron
+  becoming the working `next`), **because that is the only place on the
+  screen with a pixel to spare without giving up a card's 92 picture**, and
+  it **costs no height at all** -- the row was already 180 tall with room in
+  its right-hand cluster. At one page the pager hides itself entirely
+  (`set_pager(0, 1)`), so nothing about the twelve-card screen changed
+  before Sudoku existed. Turning the page is not an entrance: the outgoing
+  cards crossfade out on their own tweens while the incoming page plays the
+  ordinary per-page stagger (staggered by its index *within* the page, not
+  its index into the whole registry, or a lone second-page card would wait
+  out twelve cards' worth of delay before appearing), and the header, the
+  day row and the bar never rebuild. The page resets to one on every return
+  from a board, so coming back from Sudoku never strands the player on a
+  page whose only card is the one they just left. **Every figure this file
+  already quoted about the twelve-card layout survives untouched** -- the
+  252 card, the 320x118 art box and the "about seventeen characters a line"
+  budget for `short` are all unmoved by a screen that pages rather than
+  reflows. The proof is the re-measured draw-call count below.
 - **Measured on this Mac** (`tests/_shot_menu.gd` at `--resolution 810x1440`,
   which is the true 1080x1920 of design space -- see "What the harnesses
   actually measure" above): **311** draw calls against the campsite's 338 and
@@ -160,7 +188,16 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   picture is 7 of the 311 -- checked on the same build with its `_draw`
   branch stubbed out, at 304, twice. Of the older rise, the Queens card
   alone cost 12 and the rest predates it: the header's turning, glinting sun
-  and later changes since 291 was first measured.
+  and later changes since 291 was first measured. **Page one reads 317 with
+  Sudoku's pager added** (`--resolution 810x1440`, 2026-09-20, twice in a
+  row, mean idle 8.33 ms both times) -- the same twelve cards' 311 plus 6 for
+  the day row's new prev chevron, its two dots and the repurposed dead
+  chevron becoming `next`, and the proof the 252 card and the 320x118 art box
+  above are unmoved. **Page two, Sudoku alone, reads 97** draw calls
+  (`--resolution 810x1440`, 2026-09-20, twice in a row, mean idle 8.33 and
+  8.42 ms) -- a bare page with one card, the pager's dots now showing the
+  second one lit and `next` disabled, `prev` enabled, exactly `set_pager`'s
+  contract.
 
 ## legacy/: the old 3D game
 
@@ -347,14 +384,15 @@ every layout change.
 
 ## The flat screens
 
-Eleven cards open a flat 2D board under flat chrome: **Binairo**
+Twelve cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
 (`puzzles/tents2d.gd`), **Light Up** (`puzzles/lightup2d.gd`), **One Line**
-(`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`) and, since
+(`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`), since
 2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
-(`puzzles/hidden_word2d.gd`).
+(`puzzles/hidden_word2d.gd`), and since 2026-09-20, **Sudoku**
+(`puzzles/sudoku2d.gd`), the thirteenth card and the twelfth board.
 
 Each was built on trial beside its island, as a second card seeded from the
 same day, so the two could be judged on the phone. **The trial is over**:
@@ -367,10 +405,11 @@ Specs:
 `...-tents-`, `...-lightup-`, `...-oneline-` and
 `...-nonogram-flat-design.md` siblings, and
 `docs/superpowers/specs/2026-09-19-queens-flat-design.md` and
-`...-hidden-word-flat-design.md`; mocks:
+`...-hidden-word-flat-design.md`, and
+`docs/superpowers/specs/2026-09-20-sudoku-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens` and
-`#hiddenword`.
+`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens`,
+`#hiddenword` and `#sudoku`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -486,6 +525,52 @@ Specs:
   (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
   frames match the default driver to 21/255 on edge antialiasing alone, so
   nothing has reintroduced an `instance uniform`.
+- **Sudoku joins Nonogram and Hidden Word in seating no character at all**
+  (2026-09-20, `puzzles/sudoku2d.gd`, spec
+  `2026-09-20-sudoku-flat-design.md`): its pieces are numerals in ink, and
+  `ui/faces/` gets nothing. **The cell is 100, not 104.9.** A 28
+  inset off the 1000 board card leaves 944, and nine cells would fit at 104.9
+  flush to the edge -- but the grid is **900**, nine cells of a round 100,
+  because the 6-wide heavy rule that marks off the regions is drawn *round*
+  the grid rather than inside it, and a grid pushed to the inset's edge has
+  nowhere to put that rule. 100 is the second-smallest cell any flat board
+  asks of a thumb, a hair under Queens' and Nonogram's 103, and it is
+  bearable for the same reason a small cell always is here: a tap on the
+  grid **only ever selects**, nothing is typed on it, and the thing tapped
+  next is the pad. **The pad's chip is 91 wide** -- `(1000 - 9*10) / 10 = 91`
+  for ten chips and nine 10-gaps -- and that is not a new number: it is
+  `ui/flat/key_board.gd`'s own `KEY.x`, Hidden Word's keyboard arithmetic,
+  so a thumb here has exactly the room it already has on a shipped screen.
+  **There is no eraser chip.** The tenth chip is the pencil, a real mode (the
+  only one on the screen, lit in `SUN` with a `PAPER` glyph while it is on),
+  and the rule that buys its place in the row is Nonogram's: **tapping the
+  digit a cell already holds clears it**, one tap instead of two, so nothing
+  needs a second chip just to undo the first. **The wave is its signature**,
+  Queens' `_settle` with a unit in place of a queen's sight: finishing a row,
+  column or region lights every cell of it gold, king-move steps out from the
+  cell that closed it, derived off a snapshot diff rather than stored, so an
+  undo that reopens a unit leaves no highlight behind to clean up. The
+  generator (`puzzles/sudoku_gen.gd`) is seeded, symmetric and graded to a
+  uniqueness count under a 300&nbsp;ms budget, past which it gives up and
+  hands back `graded: false` rather than block the board opening -- and the
+  budget is the one figure on this board that cannot be trusted from this
+  Mac. Task 2's probe timed the worst seed in the suite (band 2, seed 9203)
+  at **~196&ndash;200 ms in GDScript on this Mac**, against **9 ms** for the
+  same algorithm in JavaScript on the concept page -- band 0 ran ~4 ms mean
+  / 7 ms worst, band 1 ~60 ms mean / 142 ms worst, band 2 ~66 ms mean /
+  193&ndash;194 ms worst, twelve seeds a band. **A phone is commonly two to
+  three times slower than this Mac**, so a worst-case ~196 ms here is
+  plausibly 400&ndash;600 ms on device, which is past the 300 ms budget: a
+  hard day on a phone can plausibly fall back to `graded: false` where this
+  Mac never does, and hand the player an accidentally gentler grid than the
+  generator meant to. Nothing on this Mac can measure that; it is the one
+  thing in this board to feel on the phone rather than read off a log.
+  Measured with `tests/_shot_anim.gd -- sudoku` at `--resolution 810x1440`,
+  2026-09-20: **87** draw calls bare (twice, and again on the phone's
+  `--rendering-driver opengl3_angle`, settled frames matching the default
+  driver to within 1/255 on edge antialiasing alone), 88 with a hint's ring
+  live, and 110 on the win screen after a full solve -- all well inside the
+  855 budget.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -538,10 +623,13 @@ Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  eleven screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460 and
-  340 -- Untangle drops the tray *and* the actions row, so its slot is the
-  tip card alone, and Hidden Word's is the keyboard alone
-  (`ui/flat/key_board.gd`'s `HEIGHT`).
+  twelve screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
+  and 480 -- Untangle drops the tray *and* the actions row, so its slot is
+  the tip card alone, Hidden Word's is the keyboard alone
+  (`ui/flat/key_board.gd`'s `HEIGHT`), and **Sudoku's 480 is the widest
+  bottom slot in the game**, twenty more than Binairo's and Nonogram's 460:
+  `170 (pad) + 20 + 130 (actions) + 20 + 140 (tip card) = 480`, and it is the
+  first board since Nonogram to want all three bottom rows at once.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -573,9 +661,9 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in eleven screens two have earned one: One Line's
-  walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
-  anywhere and its trail *is* the mechanic, and Queens' bee
+  drawing a new character -- in twelve screens two have earned one: One
+  Line's walker (`ui/faces/snail_face.gd`), because nothing else in the cast
+  walks anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
   bee is the one thing that board seats. Nonogram went the other way and
   drew **no** character at all: its
@@ -585,6 +673,9 @@ Specs:
   way and added nothing to `ui/faces/`: its thirty tiles are Nonogram's
   mosaic tile, taught to carry a letter and nothing else, and the only face
   it shows is the shared sprout, which comes on stage once, for the reveal.
+  Sudoku went the same way too and added nothing either: its pieces are
+  numerals in ink, drawn straight on the grid mesh with no `ui/faces/`
+  character at all, the way Nonogram decided and Hidden Word confirmed.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty

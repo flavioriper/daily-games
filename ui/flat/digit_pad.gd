@@ -115,7 +115,7 @@ func _bump(b: Button) -> void:
 	_press[b] = Motion.squash(b, SQUASH, Motion.CHIP_LIFT_TIME)
 
 func _draw_pencil(on: Button) -> void:
-	var ink: Color = Pal.SURFACE if _pencil_on else Pal.TEXT
+	var ink: Color = Pal.PAPER if _pencil_on else Pal.TEXT
 	Icons.paint(on, "pencil", Rect2(on.size * 0.5 - Vector2(33, 33), Vector2(66, 66)), ink)
 
 ## Read the digits and the pencil back off the board. Called by the host on

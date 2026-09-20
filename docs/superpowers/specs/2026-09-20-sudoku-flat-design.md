@@ -498,3 +498,27 @@ And over the state, which needs no seeds:
 - A solved grid reports solved; a full grid with a wrong digit does not.
 
 No tests for the board's drawing.
+
+## 15. Amendments from the build, 2026-09-20
+
+The board is built and plays. What follows is what the build found the
+sections above get wrong about the repo it landed in, in Hidden Word's
+register: named and left standing, not silently fixed in place.
+
+- **`tip_line()` returns a `Dictionary`, not a `String`** (section 7).
+  `ui/flat/tip_card.gd`'s `refresh(puzzle)` reads `puzzle.tip_line()` straight
+  into a `var line: Dictionary`, so a board that answered with a bare string
+  would fail there rather than merely read oddly. The practical effect is the
+  one worth stating plainly: the board owns its four tip lines outright,
+  handing the card a dictionary each time, rather than the card cycling
+  Binairo's rules on its own clock the way an unwritten board might expect.
+- **The entrance's wide pop starts from 0.86, not 0.88** (section 11's
+  Entrance row). `Motion.ENTER_WIDE_FROM` is `0.86`; the board reads the
+  recipe rather than a literal, and the recipe is the rule a spec number does
+  not get to overrule.
+- **`RESET_STAGGER` is 0.02, not 0.03** (section 11's Reset row).
+  `core/motion.gd`'s `RESET_STAGGER` is `0.02` (the section's own
+  `ENTER_STAGGER`, a different constant, is correctly `0.03`, which is
+  probably how the two were swapped when this was written). The board reads
+  `Motion.RESET_STAGGER` directly, so it staggers at the code's number
+  regardless of which figure this file quoted.

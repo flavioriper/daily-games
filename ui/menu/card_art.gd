@@ -147,6 +147,7 @@ func _draw() -> void:
 		"queens": _draw_regions()
 		"pipes": _draw_pipes()
 		"hiddenword": _draw_letters()
+		"sudoku": _draw_sudoku()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -299,3 +300,22 @@ func _draw_pipes() -> void:
 	_round(22.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
 	_line([Vector2(-56.0, 20.0), Vector2(-56.0, -34.0), Vector2(58.0, -34.0), Vector2(58.0, 20.0)], 26.0, Pal.WATER_HI)
 	_line([Vector2(-56.0, 6.0), Vector2(-56.0, -28.0)], 8.0, Color(Pal.SURFACE, 0.5))
+
+## Sudoku: a three-by-three fragment of the board with the heavy rule round
+## it and three numerals in ink. No cast -- this board's pieces are numbers,
+## and ui/faces/ gets nothing, which is what Nonogram decided and Hidden Word
+## confirmed. The outline is `draw_rect`'s own unfilled rectangle, the way
+## _draw_field and _draw_regions already rule off a plot and a court -- there
+## is no `_frame` helper in this file, and this is what stands in for it.
+func _draw_sudoku() -> void:
+	var cell := 30.0
+	var x0 := -cell * 1.5
+	var y0 := -cell * 1.5
+	for r in 3:
+		for c in 3:
+			var tint: Color = Pal.GRID_TINT if (r + c) % 2 == 1 else Pal.SURFACE
+			_round(x0 + c * cell + 1.0, y0 + r * cell + 1.0, cell - 2.0, cell - 2.0, 4.0, tint)
+	draw_rect(Rect2(at(x0, y0), Vector2(cell * 3.0, cell * 3.0) * _u), Pal.GRID_RULE, false, 3.0 * _u)
+	_text("5", x0 + cell * 0.5, y0 + cell * 0.78, 26.0, Pal.TEXT)
+	_text("3", x0 + cell * 1.5, y0 + cell * 1.78, 26.0, Pal.LEAF_DEEP)
+	_text("7", x0 + cell * 2.5, y0 + cell * 2.78, 26.0, Pal.TEXT)
