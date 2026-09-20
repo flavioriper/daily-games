@@ -101,6 +101,12 @@ const TURF_DROP := 0.04
 const CAP_AT := Vector2(-0.22, -0.34)
 const CAP_R := Vector2(0.30, 0.17)
 const CAP_ALPHA := 0.55
+## **The satisfied ring, and it is not the aim ring.** This is the standing
+## `GOOD`/`BAD` band a met or over-filled islet wears, drawn on the islet's
+## own scale with its own floor of 4 px. The gold ring the finger's drag
+## throws round the islet it is about to join is `BEAM_RING` below, with a
+## separate floor of 5 px -- two rings, two floors, and the spec's section 9
+## discusses only the second. Do not collapse them.
 const RING_R := 1.13
 const RING_W := 0.13
 const RING_MIN := 4.0
@@ -131,9 +137,14 @@ const BEAM_RADIUS := 0.4
 ## radii, so it meets the turf instead of stopping short of it.
 const BEAM_TUCK := 0.4
 const BEAM_ALPHA := 0.72
-## The ring round the islet the finger is about to join: its radius and its
-## thickness in islet radii, the floor under that thickness so an 11x11 still
-## draws a ring rather than a hair, and how far its gold is let through.
+## **The aim ring, and it is not the satisfied ring.** The gold band the drag
+## throws round the islet the finger is about to join, for as long as the
+## finger is down: its radius and its thickness in islet radii, the floor
+## under that thickness so an 11x11 still draws a ring rather than a hair,
+## and how far its gold is let through. **This is the ring the spec's
+## section 9 measures** -- at the 11x11's 84 px cell the ratio gives 4.7 px
+## and the 5 px floor is what saves it. The standing `GOOD`/`BAD` ring a met
+## islet wears is `RING_R` above, and its floor is 4.
 const BEAM_RING := 1.22
 const BEAM_RING_W := 0.14
 const BEAM_RING_MIN := 5.0
@@ -170,11 +181,36 @@ const DASH_OFF := 0.1
 const DASH_W := 0.05
 const DASH_MIN := 3.0
 ## How far a run the check marked is carried toward BAD, deck and lip alike,
-## **at the peak of its flash**: the mark rides `Motion.flash_level` off the
-## moment Check named it, the way Nonogram's `_wrong` does, so it blushes and
-## settles rather than standing until the next move.
+## **at the peak of its flash**. The flash is `Motion.flash_level` read off
+## the moment Check named the run, which is the beat that draws the eye -- on
+## an 11x11 with 24 islets something has to say *look here*.
 const BAD_MIX := 0.85
 const BAD_DEEP_MIX := 0.6
+## **And then the mark stays**, at this fraction of the flash's own peak,
+## until the player's next move lifts it: 0.425 of the way from `DECK` to
+## `BAD` on the deck (`#b5825a` to `#c4745a`) and 0.30 on the lip
+## (`#9c7350` to `#ae6d53`). Quiet enough to read as a mark and not as a
+## second alarm.
+##
+## **0.50 and not less, and that was measured rather than picked.** `DECK`
+## and `BAD` are both warm, so the mix moves far less than the number
+## suggests: at 0.35 the marked plank came back `#c0785a`, eleven units of
+## red off an unmarked one, and beside a right run on a rendered frame it
+## was there only if you already knew. Shot at both ends of the band table
+## with a marked run standing next to an unmarked one -- the 7x7 at a
+## 131 px cell and the 11x11 at 84 -- 0.50 reads at both and 0.65 goes
+## salmon. A tint tuned at one cell size is not portable to the other, which
+## is why both were shot.
+##
+## **This is a deliberate departure from Nonogram**, whose wrong-tile blush
+## simply decays. On that board a check is decoration over a board that
+## already shows its own state; here Check is the **only door** to the
+## near-miss (spec section 10) and it costs a check to open, so a player who
+## has paid for an answer keeps it until they act on it. It is also what
+## makes Check mean anything under reduce motion, which draws no flash at
+## all: without the held tint a reduce-motion player spends a check and is
+## shown nothing whatsoever.
+const BAD_HELD := 0.50
 ## How far an over-filled islet's turf is washed out (spec section 5): it is
 ## drawn wrong, never refused.
 const OVER_MIX := 0.42
@@ -667,9 +703,18 @@ func _run(b, key: String, t: float) -> void:
 	if _given.has(key) and not is_done():
 		_glow(b, _lane_ends(key), _run_width(count))
 	var laid: Dictionary = _laid.get(key, {})
+	# The check's mark, in one level: the flash while it lasts, and never
+	# below BAD_HELD for as long as the mark is standing. Under reduce motion
+	# the flash is zero from the first frame, so the mark simply appears at
+	# its held tint -- which is the whole of Check's answer there.
+	var since_wrong := -1.0e9
+	var mark := 0.0
+	if _wrong.has(key):
+		since_wrong = t - float(_wrong[key])
+		mark = maxf(BAD_HELD, Motion.flash_level(since_wrong))
 	_planks(b, key, count, 1.0,
 		t - float(laid.get("at", 1.0e9)), int(laid.get("from", count)),
-		t - float(_wrong.get(key, -1.0e9)), _wave_of(key, t))
+		since_wrong, mark, _wave_of(key, t))
 
 ## A run that has gone, still shrinking away where it stood: the whole run at
 ## its old count, its planks closing to nothing with `Motion.pop_out_scale`.
@@ -680,7 +725,7 @@ func _ghost(b, ghost: Dictionary, t: float) -> void:
 	var grow := Motion.pop_out_scale(t - float(ghost["at"]))
 	if grow <= 0.0:
 		return
-	_planks(b, key, int(ghost["count"]), grow, 1.0e9, int(ghost["count"]), -1.0e9, {})
+	_planks(b, key, int(ghost["count"]), grow, 1.0e9, int(ghost["count"]), -1.0e9, 0.0, {})
 
 ## The thickness a run of `count` planks and the air between them comes to:
 ## what the hint's halo is drawn round.
@@ -691,17 +736,18 @@ func _run_width(count: int) -> float:
 ## The planks themselves. `grow` closes them about their own centres (one
 ## while they stand, `pop_out_scale` while a ghost of them leaves); `since`
 ## and `first_new` say which of them are still dropping in and from when;
-## `since_wrong` is the moment Check marked the run, or long ago; `wave` is
-## what `_front` said about this lane, `{}` when no wave is running.
+## `since_wrong` is the moment Check marked the run, which only the rattle
+## reads, and `blush` is how far the mark carries the wood toward BAD -- the
+## flash while it lasts and BAD_HELD for as long as the mark stands after it;
+## `wave` is what `_front` said about this lane, `{}` when no wave is running.
 func _planks(b, key: String, count: int, grow: float, since: float,
-		first_new: int, since_wrong: float, wave: Dictionary) -> void:
+		first_new: int, since_wrong: float, blush: float, wave: Dictionary) -> void:
 	var s := _cell()
 	var g := _lane_ends(key)
 	var horiz: bool = g.horiz
 	var thick := s * PLANK
 	var air := s * PLANK_GAP
 	var total := float(count) * thick + float(count - 1) * air
-	var blush := Motion.flash_level(since_wrong)
 	var rattle := Motion.shiver_offset(since_wrong)
 	var shake := Vector2(0.0, rattle) if horiz else Vector2(rattle, 0.0)
 	var face: Color = Pal.DECK.lerp(Pal.BAD, BAD_MIX * blush)
@@ -852,6 +898,13 @@ func _islet_scale(cell: Vector2i, t: float) -> Vector2:
 ## Where an islet stands against its cell: the lean a refused drag gives the
 ## islet under the finger, the shiver of one the finger has just pushed over
 ## its number, and the hop Reset's wave carries it away on.
+##
+## **The over-filled islet takes `shiver_offset` and not `nudge_offset`, on
+## purpose.** `shiver_offset` is the vocabulary's reader for a shiver, which
+## is the table's Refused row; `nudge_offset` is the *directional lean* a
+## neighbour takes when something lands beside it, and on this board it is
+## already spoken for by `_lean` above. The plan's prose said nudge; the
+## user confirmed the shiver on 2026-09-20. Do not "correct" it back.
 func _islet_off(cell: Vector2i, t: float) -> Vector2:
 	var off := _lean(cell, t)
 	off.x += Motion.shiver_offset(t - float(_shiver_at.get(cell, -1.0e9)))
