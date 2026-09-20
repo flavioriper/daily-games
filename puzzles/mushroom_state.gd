@@ -188,9 +188,10 @@ func place(cell: Vector2i, v: int) -> int:
 		# rather than letting either chip quietly do nothing to it. A
 		# mushroom tap would otherwise fall into the toggle below and pull
 		# it back up; a pebble would otherwise fall through to the COVERED
-		# check. Refuse both the same way, so the board always has a signal
-		# to answer with (the mock's `plantTap` refuses PINNED regardless of
-		# the chip, and section 10's Motion table has a face pull with it).
+		# check and be swallowed in silence. Refuse both the same way, so the
+		# board always has a signal to answer with -- section 10's Motion
+		# table gives the refusal a face pull, and a refusal nobody can see
+		# is not a refusal.
 		return PINNED
 	var cur: int = int(marks.get(cell, BLANK))
 	if v == CLEAR and cur == FOUND:

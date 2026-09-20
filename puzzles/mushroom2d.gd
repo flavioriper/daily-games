@@ -383,14 +383,25 @@ func _process(delta: float) -> void:
 		_tail = true
 		queue_redraw()
 	elif _tail:
-		# One last frame once everything has landed. The whole field is drawn,
-		# so a single stalled frame -- a cold first launch, a shader compiled
-		# mid-entrance -- can step clean over the end of a wave, and the canvas
-		# would then keep a half-faded picture for good. Measured on this Mac
-		# on 2026-09-20: the first run of tests/_shot_anim.gd on this board
-		# froze its entrance at four fifths, every run after it was clean.
+		# One last **rebuilt** frame once everything has landed, and the
+		# rebuild is the whole of it: _draw only rebuilds the cached meshes
+		# while `_ground_dirty` or `now < _anim_until`, so a plain
+		# queue_redraw() here would re-issue the stale floor and leave a
+		# half-faded field under numerals that had recomputed -- worse than
+		# the freeze it is here to prevent. _redraw() sets the flag.
+		#
+		# It is needed because this board bakes the entrance's per-cell fade
+		# into the floor mesh's vertex colours (_build_floor writes
+		# _entered(cell, now) into every rim and face), which it has to: the
+		# fade runs as a diagonal wave, a cell at a time. Queens has no wave
+		# -- its whole floor fades together, as one modulate on the draw call
+		# (queens2d.gd:355-358), recomputed every frame -- so it cannot freeze
+		# mid-fade and needs nothing like this. Measured on this Mac on
+		# 2026-09-20: the first, cold run of tests/_shot_anim.gd on this board
+		# stalled one frame clean over the end of the wave and kept a field
+		# frozen at four fifths for the whole run.
 		_tail = false
-		queue_redraw()
+		_redraw()
 
 ## Keeps the field redrawing for `seconds` more: something on it is moving.
 func _busy_for(seconds: float) -> void:
@@ -454,7 +465,7 @@ func _build_floor(now: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var origin: Vector2 = -Vector2.ONE * (_cell * state.n * 0.5)
 	var gone: Array = []
-	var washed: Array = []
+	var settled: Array = []
 	for y in state.n:
 		for x in state.n:
 			var cell := Vector2i(x, y)
@@ -470,8 +481,11 @@ func _build_floor(now: float) -> ArrayMesh:
 				base = Pal.MUSHROOM_TILE
 			if given:
 				var w := _wash_of(cell, now)
-				if bool(w.moving):
-					washed.append(cell)
+				if not bool(w.moving):
+					# It has finished crossing: the record it was crossing
+					# from says nothing any more, and _worn without it draws
+					# the same colour.
+					settled.append(cell)
 				base = base.lerp(w.from_colour, float(w.from_level)) \
 					.lerp(w.colour, float(w.level))
 			var sink := 1.0
@@ -496,9 +510,9 @@ func _build_floor(now: float) -> ArrayMesh:
 				Color(base, seen))
 	for cell in gone:
 		_sunk.erase(cell)
-	for cell in washed:
-		if now - float(_wash[cell].at) >= WASH_TIME:
-			_wash.erase(cell)
+	for cell in settled:
+		_wash.erase(cell)
+		_bump.erase(cell)
 	# Nothing has entered yet on the board's first frames, and a mesh with no
 	# surface in it is an error rather than an empty drawing.
 	if b.verts.is_empty():
@@ -579,7 +593,8 @@ func _draw_numerals(now: float, grown: float) -> void:
 ## is spoken for. It is the only number this screen gives you free, and it is
 ## a clue and not decoration -- the generator carves against the global count,
 ## so a board played without it would be unfair. It counts in words, because a
-## numeral here would read as a fourteenth clue on the field.
+## numeral here would read as a fourteenth clue on the field -- but only as
+## far as the words go (see _word).
 func _draw_tally(now: float) -> void:
 	var font: Font = CozyTheme.display(700)
 	var left := state.left()
@@ -611,8 +626,15 @@ func _tally_line(left: int) -> String:
 		return "every mushroom is planted"
 	return "%s too many planted" % _word(-left)
 
+## `k` in words while there is a word for it, and as a numeral past that.
+## Counting in words is a choice about how the strip and the sprout read;
+## clamping at fourteen would have been a choice to state a number the board
+## knows is false -- on hard a player can plant fifty-two wrong marks, and
+## "Fourteen marks are wrong" is worse than a numeral, not better.
 func _word(k: int) -> String:
-	return WORDS[clampi(k, 0, WORDS.size() - 1)]
+	if k < 0 or k >= WORDS.size():
+		return str(k)
+	return WORDS[k]
 
 func _layout_tally() -> void:
 	if _tally_face == null or not _slots.has(_tally_face):
@@ -948,13 +970,18 @@ func _refuse_pinned(cell: Vector2i) -> void:
 	fx.cue("locked")
 	_blush_cell(cell)
 	var face: MushroomFace = _caps.get(cell)
-	if face == null or Motion.reduce:
+	if face == null:
 		return
-	_shiver[cell] = _now()
+	# The face is the refusal's answer and not its decoration: reduce-motion
+	# stills the shiver, the blush and the ring (spec section 10), and a
+	# player who has reduce-motion on would otherwise get no answer at all.
 	_set_expr(face, Face.Expr.STRAIN)
 	_after(STRAIN_TIME, func() -> void:
 		if face.expression == Face.Expr.STRAIN and _solved_at < 0.0:
 			face.expression = Face.Expr.HAPPY)
+	if Motion.reduce:
+		return
+	_shiver[cell] = _now()
 	Motion.stop(_pos_tw.get(face))
 	face.position = Vector2.ZERO
 	face.modulate.a = 1.0
@@ -964,8 +991,9 @@ func _refuse_pinned(cell: Vector2i) -> void:
 # --- input ---
 
 ## Touch and drag only, as every flat board takes them. With the mushroom
-## chip a tap plants or pulls up on the cell it was pressed on; with the
-## pebble chip a tap lays or rubs out, and a drag sweeps.
+## chip a tap plants or pulls up on the cell it was pressed on, and only if
+## the finger is let go over that cell; with the pebble chip a tap lays or
+## rubs out, and a drag sweeps.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -1012,25 +1040,16 @@ func _release_press() -> void:
 ## With the pebble chip, every cell between the last one painted and this one
 ## is swept, so a fast finger leaves no holes. **No line lock**: this field's
 ## deductions run round a number as often as along a row. The mushroom chip
-## does not sweep -- a drag with it is a tap where it ends.
+## does not sweep and does not place on release either -- see below.
 func _drag(at: Vector2) -> void:
-	var cell := _cell_at(at)
+	# The mushroom chip does not sweep and does not follow the finger either:
+	# the gesture is abandoned if it leaves the cell it pressed, which is
+	# Queens' rule and every other flat board's. A slide that committed a
+	# placement is how a scroll becomes an accidental move on a phone, and
+	# this would be the only board where that happened.
 	if brush != State.CLEAR:
-		# The mushroom chip does not sweep, but it does not lose the gesture
-		# either: the press follows the finger, so a drag is a tap where it
-		# ends (spec, section 9).
-		if cell.x < 0 or cell == _press_cell:
-			return
-		_end_sinks(_now())
-		_release_press()
-		_press_cell = cell
-		_sink_cell(cell)
-		if int(state.marks.get(cell, State.BLANK)) == State.FOUND and _caps.has(cell):
-			_pressed = _caps[cell]
-			Motion.stop(_look_tw.get(_pressed))
-			_look_tw[_pressed] = Motion.press(_pressed, true)
-		_redraw()
 		return
+	var cell := _cell_at(at)
 	if cell.x < 0 or cell == _last_paint:
 		return
 	_dragged = true
@@ -1110,7 +1129,6 @@ func _release(at_cell: Vector2i) -> void:
 ## move.
 func _tap(cell: Vector2i, now: float) -> void:
 	var before := _snapshot()
-	var was := int(state.marks.get(cell, State.BLANK))
 	var why: int = state.place(cell, brush)
 	match why:
 		State.GIVEN:
