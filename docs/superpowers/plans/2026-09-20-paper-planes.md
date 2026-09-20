@@ -625,6 +625,14 @@ git commit -m "feat(planes): the menu card and the animation harness case"
 
 **Files:**
 - Modify: `puzzles/planes2d.gd`
+- Modify: `tests/_win.gd`
+- Modify: `docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md`
+
+**Three things Task 4 handed over and this task owns** (do these first — the steps below assume them):
+
+- [ ] **Step 0a: The solve wave.** The spec's section 10 asks for "the family's wave over the empty dots, then the win screen", and no task built it. Build it: when the last plane goes, the dots hop through the family's solve wave (`Motion.SOLVE_HOP`, `SOLVE_TIME`, `SOLVE_STAGGER`, `SOLVE_DELAY`, read as curve readers the way this board reads the rest), staggered out from where that plane left the board. Under `Motion.reduce` there is no wave at all.
+- [ ] **Step 0b: `win_delay()`.** Undefined today, so the host uses `WIN_AFTER` (0.8 s) while a last long flight runs about 1.4 s and the win screen can cover it. Define it in the shape the siblings use — `Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT` — with `WIN_WAIT` long enough for the longest flight **and** the solve wave after it. Say in a comment how the number was arrived at.
+- [ ] **Step 0c: Spend or strike `LANE_ALPHA`.** It is `SUN` at 0.35, the *clear* lane's preview under a held finger, and nothing spends it. **Strike it**: the board acts on press-down, so a held-finger state would change what `tests/_win.gd`'s `_tap_local` and the harness see, and the launch itself already draws the lane — the plane flies down it. Remove the constant, remove the "pressed and clear" row from the spec's section 8, and say in the spec that the flight is the preview.
 
 **Interfaces:**
 - Consumes: the flat host's optional contract in `core/puzzle_base.gd` and `ui/flat/flat_host.gd`.
