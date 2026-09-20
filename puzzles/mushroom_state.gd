@@ -32,8 +32,7 @@ const SHORT := 0    # fewer neighbours planted than the number calls for
 const SETTLED := 1  # exactly as many planted as the number calls for
 const OVER := 2     # more planted than the number calls for
 
-## Why place() turned a move down. OK covers both success and the harmless
-## no-op of tapping an already-pinned mushroom again.
+## Why place() turned a move down.
 const OK := 0
 const GIVEN := 1
 const PINNED := 2
@@ -65,9 +64,19 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	given = out.given
 	# The generator carves a full, solved field down to a minimal set of
 	# givens and only keeps a cut while `solvable` still proves the whole
-	# field -- a board with a guess in it is never produced. Assert rather
-	# than rely on it: this is the one place that contract could be checked.
+	# field -- a board with a guess in it is never produced. Assert this for
+	# the editor and debug builds, where it stops the run cold; `assert()` is
+	# stripped from a release export, though, so it cannot be the only guard
+	# -- Queens' `region.is_empty()` fallback is the precedent. On the
+	# contract failing anyway, fall back to an empty field rather than
+	# handing the board something it cannot draw or win.
 	assert(bool(out.ok), "Mushroom: generator produced an unsolvable board")
+	if not bool(out.ok):
+		push_warning("Mushroom: no solvable board could be built for this seed")
+		n = 0
+		k = 0
+		mushrooms = {}
+		given = {}
 	marks = {}
 	pinned = {}
 	history = []
@@ -175,13 +184,14 @@ func place(cell: Vector2i, v: int) -> int:
 	if given.has(cell):
 		return GIVEN
 	if pinned.has(cell):
-		# A hint's mushroom is always FOUND already. A pebble aimed at it is
-		# a disturb attempt and is refused; a mushroom tap on it is simply
-		# nothing new to do -- not a refusal, and not a move either, so no
-		# history entry.
-		if v != FOUND:
-			return PINNED
-		return OK
+		# A hint's mushroom is a fact, not a suggestion: the board says so
+		# rather than letting either chip quietly do nothing to it. A
+		# mushroom tap would otherwise fall into the toggle below and pull
+		# it back up; a pebble would otherwise fall through to the COVERED
+		# check. Refuse both the same way, so the board always has a signal
+		# to answer with (the mock's `plantTap` refuses PINNED regardless of
+		# the chip, and section 10's Motion table has a face pull with it).
+		return PINNED
 	var cur: int = int(marks.get(cell, BLANK))
 	if v == CLEAR and cur == FOUND:
 		# A pebble never lifts a mushroom -- Queens' rule again, and it keeps
