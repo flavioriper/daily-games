@@ -5,7 +5,7 @@ extends Control
 ## scaled to whatever the card gives them.
 ##
 ## It is never an image and never a render of a model. Twelve of the
-## fourteen are made almost entirely of the flat boards' own cast --
+## fifteen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
@@ -13,10 +13,11 @@ extends Control
 ## its board are visibly the same drawing. Only the furniture under them (a
 ## tray, a beam, a tile) is drawn here.
 ##
-## The two that borrow nothing are Nonogram and Sudoku, and for the same
-## reason: neither board has a character at all. Their pictures are entirely
-## `_draw` -- tiles for one, a ruled three-by-three fragment with numerals
-## for the other -- and neither has a branch of `_build`.
+## The three that borrow nothing are Nonogram, Sudoku and Paper Planes, and
+## for the same reason: none of the three has a character at all. Their
+## pictures are entirely `_draw` -- tiles for one, a ruled three-by-three
+## fragment with numerals for the second, bent trails and darts for the
+## third -- and none of the three has a branch of `_build`.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -177,6 +178,7 @@ func _draw() -> void:
 		"hiddenword": _draw_letters()
 		"mushroom": _draw_patch()
 		"sudoku": _draw_sudoku()
+		"planes": _draw_planes()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -414,3 +416,58 @@ func _draw_sudoku() -> void:
 	_text("5", x0 + cell * 0.5, y0 + cell * 0.78, 26.0, Pal.TEXT)
 	_text("3", x0 + cell * 1.5, y0 + cell * 1.78, 26.0, Pal.LEAF_DEEP)
 	_text("7", x0 + cell * 2.5, y0 + cell * 2.78, 26.0, Pal.TEXT)
+
+## Paper Planes: the empty sky's own faint dots, and three bent ink trails
+## laid over them, each ending in a folded paper dart -- the board's own
+## shapes (puzzles/planes2d.gd's DOT/DOT_ALPHA, TRAIL and the DART_*/CREASE_*
+## fractions), drawn at card scale rather than a cell's, so the card and the
+## board read as the same object at two different sizes. No cast: this is the
+## third board Nonogram's decision reaches, after Sudoku.
+func _draw_planes() -> void:
+	_dots_sky()
+	for trail in [
+		[Vector2(-146.0, -34.0), Vector2(-66.0, -34.0), Vector2(-66.0, 18.0)],
+		[Vector2(-34.0, -6.0), Vector2(56.0, -6.0)],
+		[Vector2(84.0, -40.0), Vector2(84.0, 30.0), Vector2(138.0, 30.0)],
+	]:
+		_plane_trail(trail)
+
+## The lattice every plane would sit on, coarser than the board's own (a dot
+## a cell) because a card is read at a glance rather than played on -- a dot
+## a cell here would be a haze at this scale rather than a sky.
+func _dots_sky() -> void:
+	var step := 32.0
+	for gy in range(-1, 2):
+		for gx in range(-4, 5):
+			_disc(gx * step, gy * step, 2.4, Color(Pal.LINE, 0.4))
+
+## One trail, drawn tail to head, with a folded dart turned to face the way
+## the last segment points.
+func _plane_trail(pts: Array) -> void:
+	_line(pts, 9.0, Pal.TEXT)
+	var head: Vector2 = pts[pts.size() - 1]
+	var dir: Vector2 = (head - pts[pts.size() - 2]).normalized()
+	_dart_card(head, dir)
+
+## The size a dart is drawn at, in the box's own units -- this card has no
+## cell to measure against, so the board's DART_TIP/BACK/WING/NOTCH fractions
+## (puzzles/planes2d.gd) are read against this instead.
+const _DART_SIZE := 36.0
+
+## A folded dart at `head` (box units), turned to `dir`: the board's own
+## four-point outline (tip, wing, notch, wing) in TEXT, with its crease slit
+## near the tip in PAPER. The notch and the crease are the whole re-theme
+## (planes2d.gd's own note): a solid arrowhead is a symbol, a dart is an
+## object.
+func _dart_card(head: Vector2, dir: Vector2) -> void:
+	var turn := Transform2D(dir.angle(), at(head.x, head.y))
+	var pts := PackedVector2Array([
+		Vector2(0.42, 0.0), Vector2(-0.26, 0.30),
+		Vector2(-0.12, 0.0), Vector2(-0.26, -0.30),
+	])
+	for i in pts.size():
+		pts[i] = pts[i] * _DART_SIZE * _u
+	draw_colored_polygon(turn * pts, Pal.TEXT)
+	var spine := PackedVector2Array([Vector2(0.22, 0.0) * _DART_SIZE * _u,
+		Vector2(-0.05, 0.0) * _DART_SIZE * _u])
+	draw_polyline(turn * spine, Pal.PAPER, 0.06 * _DART_SIZE * _u, true)

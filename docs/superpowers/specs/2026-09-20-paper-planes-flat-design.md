@@ -447,12 +447,44 @@ somebody to treat it as one.
 ## 15. Calls this screen is for
 
 The budget is 855. The field is one mesh, the chrome is the family's, and
-there is no character on the screen, so the expectation is that this is the
-**cheapest board in the game** -- under Word Trail's 60-65. It is an
-expectation and not a measurement: `tests/_shot_anim.gd -- planes` at
-`--resolution 810x1440` is what settles it, with another board run as a
-control in the same session, because a single reading off that harness is
-worth nothing (Hidden Word's spec, section 9).
+there is no character on the screen, so the expectation was that this would
+be the **cheapest board in the game** -- under Word Trail's 60-65.
+
+**Measured (Task 5, 2026-09-20), and the expectation holds.**
+`tests/_shot_anim.gd -- planes` at `--resolution 810x1440`: the harness taps
+a free plane picked for the shortest flight **among those whose launch also
+wakes another** (`_tap_planes`/`_wakes` in the harness, played and undone on
+the state before the real tap, never on the board), so one tap shows both
+signature moves rather than an isolated dart. Three separate runs (a fourth
+was needed for the phone-driver check below) read **55, 55 and 55** draw
+calls, with idle means of **2.13, 2.07 and 1.98 ms**. Word Trail, run as the
+control in the same session immediately after the first two, read **65**
+draw calls and a **2.30 ms** idle mean -- both a little over the 60-65
+draw calls and 2.37-2.51 ms its own spec recorded, which is the run-to-run
+spread this Mac always shows on this harness and exactly why a single
+reading is worth nothing (Hidden Word's spec, section 9). Paper Planes reads
+under Word Trail by a wide margin in both sessions, so the comparison holds
+even though neither board's absolute number repeats to the millisecond:
+**Paper Planes is the cheapest board in the game**, exactly as predicted,
+both against Word Trail and against the 855 budget.
+
+On the phone's driver (`--rendering-driver opengl3_angle`): the same **55**
+draw calls, and the settled frame (the sixth shot, t=3.8 s) matches the
+default driver's to a **max channel delta of 1** across 91,782 of the
+frame's 1,166,400 pixels -- edge antialiasing dither between the two
+backends, the same class of difference Sudoku's and Word Trail's own phone
+checks recorded, and not the much larger, scattered errors a garbage
+`instance uniform` would leave.
+
+The first screen (`tests/_shot_menu.gd`): page one still reads **335** draw
+calls, the same figure Task 3 recorded with the fifteenth card's picture
+stubbed empty, because the card stands on page two and costs page one
+nothing (section 12). Page two, with all three of its cards now drawing a
+real picture, reads **175** against Task 3's **127** -- checked by
+temporarily stubbing this board's own `_draw` arm back to a no-op and
+re-measuring, which read exactly 127 again, so the **+48** is Paper Planes'
+own picture (the dot lattice, three trails and three darts) and nothing
+else moved.
 
 ## 16. Open questions
 
