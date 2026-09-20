@@ -373,6 +373,21 @@ board's are the vocabulary's, and none of them became a fourth constant:
   it is a one-line change through `nudge_offset`'s own `px` parameter if the
   refusal ever reads as too quiet on a phone.
 
+**A plane turns around in the air; it never snaps home first** (amended
+2026-09-20, Task 4, fix round 1). Undo and Reset put a plane back in the
+state the instant its flight home *begins* -- the board has to be correct
+before the picture is -- so its cells are tappable again while it is still
+out over the edge, and there is deliberately no busy gate to stop that. Both
+directions therefore start a new flight at the phase whose eased position is
+where the plane actually is, rather than at the end of the track: without it,
+a re-tap during a flight home snaps the plane back to its resting cells
+before launching it, and an Undo during a flight out throws it off the board
+before bringing it in. Both were reproduced on rendered frames before the fix
+and after. One consequence is worth stating rather than discovering: **a
+plane already in the air does not wait its turn in Reset's wave** -- the
+stagger delay is dropped for it, because holding a moving piece still is the
+same teleport one beat later.
+
 The wake's own stagger goes through `Motion.stagger(k, WAKE_STEP)`, so it
 takes the family's 0.6 cap: on a 16 by 22 field a king-move distance can
 reach 21, and 21 x 0.04 is 0.84 s of wings still beating after the plane has

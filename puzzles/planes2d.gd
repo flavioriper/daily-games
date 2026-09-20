@@ -743,30 +743,70 @@ func _free_set() -> Dictionary:
 ## crosses the edge of the board -- `(lane + 0.5)` cells past the head is the
 ## edge, and `_ease_inv` says which frame that is. Under reduce-motion a
 ## launch is an instant removal: no flight, no puff, nothing to retire.
+##
+## **A plane turns around in the air; it never snaps home first.** `undo()`
+## and `reset_board()` put a plane back in the state the instant its flight
+## home *begins*, not when it lands -- the board has to be correct before the
+## picture is -- so its cells are tappable again while it is still out over
+## the edge, and there is deliberately no busy gate to stop that. A fresh
+## flight starting at `s = 0` would therefore teleport the plane back to its
+## resting cells and only then launch it, which on a Reset wave is a whole
+## field of planes jumping. So a launch that finds a flight already in the
+## air for that plane **starts at the phase whose eased position is where the
+## plane actually is**: the position is `s_end * _ease((t - at) / dur)`, so
+## sliding `at` back by `u0 * dur` puts the new flight exactly under the old
+## one's last frame and leaves `(1 - u0) * dur` of it to run -- shorter,
+## because there is less track left. The turn is continuous in the dots too:
+## a cell is covered while the tail is short of it, which both directions
+## agree on at the moment of the switch.
+##
+## The edge's sparkles are skipped when that phase is already past the edge:
+## a plane still off the board when it is re-launched never crosses it again.
 func _fly_out(i: int, t: float) -> void:
 	if Motion.reduce:
 		return
 	var dur := _dur(i)
 	var s_end := _s_end(i)
-	_fly[i] = {"at": t, "dur": dur, "s_end": s_end, "back": false}
-	_busy_for(dur)
+	var at := t
+	if _fly.has(i):
+		at = t - _ease_inv(clampf(_flown(i, t) / s_end, 0.0, 1.0)) * dur
+	_fly[i] = {"at": at, "dur": dur, "s_end": s_end, "back": false}
+	_busy_for(at + dur - t)
 	var cells: Array = _state.planes[i]["cells"]
 	var out := float(_state.lane(i).size()) + 0.5
-	_puffs.append({
-		"at": t + dur * _ease_inv(out / s_end),
-		"pos": _centre(cells[cells.size() - 1]) + Vector2(_state.planes[i]["dir"]) * out * _cell,
-	})
+	var crosses := at + dur * _ease_inv(out / s_end)
+	if crosses >= t:
+		_puffs.append({
+			"at": crosses,
+			"pos": _centre(cells[cells.size() - 1])
+				+ Vector2(_state.planes[i]["dir"]) * out * _cell,
+		})
 
 ## Flies plane `i` home along the same track, `delay` from now: an undo's
 ## flight, or one of Reset's wave. The state already has it back, so the
 ## board is correct the instant the button is pressed and only the picture
 ## is late.
+##
+## **The same turn as `_fly_out`'s, the other way round**, and for the same
+## reason: Undo takes back the last launch, which on a quick finger is still
+## in the air, and Reset takes back a whole handful of them. Starting the
+## flight home at the far end of the track would throw the plane off the
+## board first and only then bring it in. So a plane already in the air turns
+## where it is -- `at` slides back by `(1 - u0) * dur`, the backward phase
+## whose eased position is the plane's own -- and **it does not wait its turn
+## in the wave**: `delay` is dropped for it, because a piece that is already
+## moving has nothing to queue for and holding it would be the teleport
+## again, one beat later.
 func _fly_back(i: int, t: float, delay: float) -> void:
 	if Motion.reduce:
 		return
 	var dur := _dur(i)
-	_fly[i] = {"at": t + delay, "dur": dur, "s_end": _s_end(i), "back": true}
-	_busy_for(delay + dur)
+	var s_end := _s_end(i)
+	var at := t + delay
+	if _fly.has(i):
+		at = t - (1.0 - _ease_inv(clampf(_flown(i, t) / s_end, 0.0, 1.0))) * dur
+	_fly[i] = {"at": at, "dur": dur, "s_end": s_end, "back": true}
+	_busy_for(at + dur - t)
 
 ## **The board answers the move.** This is Queens' `_settle` with a departure
 ## in place of a queen's sight: the free planes were snapshotted before the
