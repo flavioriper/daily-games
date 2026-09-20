@@ -961,12 +961,16 @@ The given letter draws ghosted at 0.55 in its own column of the working row when
 On a solve: the winning row's tiles hop 10 letter by letter, 0.04 apart after 0.25, with sparkles in gold, and the rows above fade to 0.3.
 
 ```gdscript
-func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
-
 func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": "Found it."}
 ```
+
+**`win_delay()` already exists and must NOT be changed back to a flat
+`WIN_WAIT`.** Task 6 shipped `_flip_length() + WIN_WAIT`, and that is correct:
+`solved` fires the instant Enter is pressed, *before* the row has finished
+turning, so a flat constant raises the win screen 0.54 s after the last tile
+lands and cuts across the solve hop this task adds. It matches the concept
+tab's own `landedAt + WIN_WAIT`. Leave it alone.
 
 The win screen shows no cast: five green tiles spelling the word are what stays on the card under it, the way Nonogram leaves its picture.
 
