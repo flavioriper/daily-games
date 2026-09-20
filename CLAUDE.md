@@ -468,10 +468,13 @@ Specs:
   the keys repainted (109 bare, 109 to 111 over fourteen runs), and **56** in
   the losing reveal, where the keyboard has gone and the grid is dimmed --
   all well inside the 855 budget. Its idle reads about **5.0 ms**, and that
-  figure deserves a caveat: fourteen runs spread 3.06 to 7.30 (median 5.00)
-  on a machine that gave Queens 4.40 to 4.62 in the same session against its
-  recorded 3.83, so a single reading off this harness is not worth quoting --
-  compare a board against another board measured the same hour. The reveal,
+  figure deserves a caveat: fourteen runs spread 3.06 to 7.30 (median 5.00).
+  Queens, run as a control in the same session, swung as widely -- 4.40,
+  4.62, 4.45, 2.84, 4.55 and 4.52, a factor of 1.6 against the 3.83 recorded
+  in its own spec -- which is what shows the spread is this machine's and not
+  this board's, and why **a single reading off this harness is worth
+  nothing**. Compare a board only against another board measured the same
+  hour, and quote every reading, including the flattering one. The reveal,
   which draws half as much, read 1.88 and 1.92. Checked on the phone's driver
   (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
   frames match the default driver to 21/255 on edge antialiasing alone, so
@@ -547,9 +550,10 @@ Specs:
   hides). A board that offers none gets Binairo's behaviour. Hidden Word
   answers `true` to `card_centred()` and **the answer does nothing on this
   phone**: five tiles across six rows is taller than it is wide, so height
-  binds and the slack is zero -- measured 2026-09-19, `card_height()` hands
-  back every pixel it is given (1140 of a 1140 slot, 1190 of 1190), so there
-  is nothing to halve. It says `true` because on a squarer screen
+  binds and the slack is zero -- measured at three slot sizes on 2026-09-19,
+  `card_height()` hands back every pixel it is given (1140 of 1140, 1190 of
+  1190, 900 of 900), so there is nothing to halve at any of them. It says
+  `true` because on a squarer screen
   the width would bind instead; nobody should read a centring on the phone
   into it.
 - **The flat cast is a shared drawing, and two screens already share one.**
