@@ -171,7 +171,8 @@ func hint_plane() -> int:
 	return -1 if free.is_empty() else free[0]
 
 ## Carves a board backwards out of an empty sky (spec section 5, ported cell
-## for cell from tools/_planes_probe.py). Up to CANDIDATES attempts are
+## for cell from the throwaway Python probe that validated it before this
+## file existed; that probe is not kept). Up to CANDIDATES attempts are
 ## carved and thrown away except the winner: the first at or above the
 ## band's coverage floor, else the fullest one made. `order` is set to the
 ## reverse of the winner's placement order -- planes placed later are

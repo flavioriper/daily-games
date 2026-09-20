@@ -3,15 +3,41 @@ extends RefCounted
 ## Paper Planes' rules (puzzles/planes_state.gd): the lane, the launch, and
 ## the generator's one promise -- a board carved backwards out of an empty
 ## sky can always be cleared.
+##
+## It also carries the one check that is not this board's: that every
+## registered board's script parses at all (`_test_boards_parse`). That
+## belongs to no puzzle in particular and it is three lines, so it lives in
+## the newest suite rather than in a file of its own.
 
 const State = preload("res://puzzles/planes_state.gd")
+const Registry = preload("res://ui/registry.gd")
 
 static func run(t) -> void:
+	_test_boards_parse(t)
 	_test_lane(t)
 	_test_launch(t)
 	_test_degenerate_plane_refused(t)
 	_test_generator(t)
 	_test_repeatable(t)
+
+## Every board on the first screen has a script that parses.
+##
+## Until 2026-09-20 **nothing under tests/ loaded a board's `*2d.gd`**: a
+## parse error in `puzzles/planes2d.gd` left the suite reporting
+## `passed=94534 failed=0`, and only `tests/_win.gd` -- which needs a display
+## and is not in CI -- caught it. That was true of all fifteen boards, not
+## just this one. A script with a parse error still `load()`s as a GDScript
+## object and only gives itself away at `can_instantiate()`, which is exactly
+## the trap `tests/run_tests.gd` already guards its own suites against, and
+## for the same reason. The board is not instantiated here: it is a Control
+## that wants a live tree, and loading it is all that proves it compiles.
+static func _test_boards_parse(t) -> void:
+	for e in Registry.PUZZLES:
+		var path: String = e.get("script", "")
+		t.check(not path.is_empty(), "%s: the registry names a script" % e.get("id", "?"))
+		var script := load(path)
+		t.check(script != null and script.can_instantiate(),
+			"%s: %s parses" % [e.get("id", "?"), path])
 
 static func _empty(rows: int, cols: int) -> State:
 	var st := State.new()
