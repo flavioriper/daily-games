@@ -258,6 +258,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="mushroom">Mushroom Patch · flat</button>
     <button data-tab="sudoku">Sudoku &middot; flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
+    <button data-tab="bridges">Bridges · flat</button>
   </nav>
 </header>
 
@@ -2272,6 +2273,144 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Whether easy is too easy.</b> Handing 45% of the carved numbers back makes a 6&times;6 nearly a reading exercise. The knob is one constant.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three mushrooms planted and four pebbles laid, <code>?wrong=1</code> for one mushroom on bare ground, <code>?tap=r,c</code> to tap a cell with the armed chip at <code>?at=</code> seconds (0.2 by default; a turned-over cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-motion can be shot; pick the tab with <code>#mushroom</code>.</p>
+</section>
+
+<!-- ============================ BRIDGES ============================ -->
+<section class="tab-panel" id="tab-bridges">
+  <h2>Bridges &middot; flat, the thirteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A sea with islets in it, each showing how many plank-ends it wants. Press an islet, drag at the one facing it across the water, and a run of planks drops in; drag again for a second and a third. Runs are straight, orthogonal and <b>never cross</b>, and when every number is met <b>and every islet is on one network</b>, the light runs out along the planks from the islet you finished at. The game is Hashiwokakero; <b>the name here is Bridges</b>, which is what every puzzle book outside Japan already calls it.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption><b>There is no mock for this board</b>, and the screen below was drawn straight from the family's chrome, which twelve screens now share: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout in the tip card that names the rule a drag just broke. Bridges keeps <em>all</em> the rows &mdash; top bar, day card, board, actions, tip &mdash; which makes it the plainest shape on the shelf: a 290 bottom slot, the same as Shikaku's, Tents', Light Up's and One Line's. Everything it adds is inside the board card: the sea.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="bg" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="bg-rm">Reduce motion: off</button>
+        <button id="bg-diff">Easy &middot; 7&times;7</button>
+        <button id="bg-new">New puzzle</button>
+        <button id="bg-hint">Hint</button>
+        <button id="bg-undo">Undo</button>
+        <button id="bg-reset">Reset</button>
+        <button id="bg-check">Check</button>
+        <button id="bg-solve">Solve it</button>
+        <button id="bg-peek">Show the answer</button>
+      </div>
+      <div id="bg-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>press an islet and drag</b> at a neighbour to cycle its run 0&ndash;1&ndash;2&ndash;3&ndash;0, <b>tap a run</b> to wipe it, and a drag that finds nothing or runs into another run is refused with the rule said out loud. It plays the <b>real generator</b> and the <b>real solver</b> &mdash; the board is grown, then proved unique by a propagating solver that counts to two and stops, and a board with a second answer is thrown away and regrown. The caption under the phone says how many attempts the day's board took, how long it took and how far propagation got before a guess was needed.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>BRIDGES</code> in ink with the leaf sprouting from it and <code>JOIN EVERY ISLET</code> under, then Undo, Hint with its count and Settings. <b>Four buttons</b>, the ordinary number: <code>capabilities()</code> is <code>["undo","hint","check"]</code> and Check lives in the actions row, so Reset does not have to come up here.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 9", "Otter Reach".</td></tr>
+    <tr><td class="k">Board card</td><td>1190</td><td>The sea and the lattice. Section 2.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check, 260 each &mdash; Light Up's row exactly. Check is worth keeping here: nothing on this board says whether a run is <em>right</em>, and an over-filled islet is the only mistake the board itself shows.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet.</td></tr>
+  </table>
+  <p>40 of margin, four 20 gaps and the five rows are 1920 exactly, which is where the board card's 1190 comes from &mdash; and the bottom slot is <b>290</b>, actions and tip together, which is already the shape of four other screens.</p>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p>The card is paper with a <b>sea</b> set into it: a rounded pool inset 28, pale water over a deeper bottom edge, a paler band inside the rim for the shallows and a few ripples over it. <b>The sea is deliberately pale</b> &mdash; see section 5; it was <code>Pal.WATER</code> at full strength until 2026-09-20 and it shouted over the other twelve boards. The lattice is square and the pool is tall, so <b>the width binds at every band</b> &mdash; <code>cell = (944 &minus; 24)/n</code> is 131, 102 and 84 &mdash; and the 920-wide field leaves <b>214</b> of the pool over, halved to <b>107 above and 107 below</b>. That is <code>card_centred()</code> returning true, for Tents' and Light Up's reason: a square grid in a tall slot has slack however it is cut, and air only under it reads as a mistake.</p>
+  <table>
+    <tr><th style="width:12%">Band</th><th style="width:12%">Lattice</th><th style="width:9%">Cell</th><th style="width:10%">Islets</th><th style="width:12%">Lanes</th><th style="width:12%">Runs in it</th><th>Decoy lanes &middot; crossing pairs</th></tr>
+    <tr><td class="k">Easy</td><td>7 &times; 7</td><td>131</td><td>11</td><td>11.3</td><td>10.3</td><td>1.0 &middot; 1.0</td></tr>
+    <tr><td class="k">Medium</td><td>9 &times; 9</td><td>102</td><td>16</td><td>18.2</td><td>15.7</td><td>2.5 &middot; 2.7</td></tr>
+    <tr><td class="k">Hard</td><td>11 &times; 11</td><td>84</td><td>24</td><td>29.7</td><td>24.0</td><td>5.7 &middot; 7.5</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Means over 500 generated boards a band. A <b>lane</b> is a pair of islets facing each other with only water between; a <b>decoy lane</b> is one the answer leaves empty; a <b>crossing pair</b> is two lanes that want the same water, which is the only place the no-crossing rule can ever bite.</p>
+  <p>An islet is a turf disc 0.80 of a cell across on a <code>Pal.STONE</code> sand rim, with <code>Pal.ACORN</code> darkened for the wet edge under it and its number in <code>Pal.TEXT</code>. A plank is <code>Pal.DECK</code> over a <code>Pal.WOOD_DEEP</code> bottom edge, 0.115 of a cell thick with 0.095 between, so three planks and their gaps are 0.59 of a cell &mdash; comfortably inside the islet they run between, at every band.</p>
+
+  <h3>3. The rules <span class="pill">proposed</span></h3>
+  <ul>
+    <li><b>A run joins two islets that face each other orthogonally</b> with only water between them, and it is 0, 1, 2 or 3 planks. Never diagonal, never bent.</li>
+    <li><b>A lane ends at the first islet it meets.</b> A run can never pass over an islet, which is why the third islet in a row is never the one a drag finds.</li>
+    <li><b>Runs may not cross.</b> A drag down a lane whose water another run already holds is refused, and the tip card says so; the run in the way flashes with it.</li>
+    <li><b>An islet's number is how many plank-ends it wants</b> &mdash; two planks to one neighbour count two. Numbers run 1 to 6.</li>
+    <li><b>Solved is two things at once:</b> every number exactly met <em>and</em> every islet on one single network. Meeting every number and leaving two separate rings is the classic near-miss, and this board will let you sit in it.</li>
+    <li><b>Nothing is ever refused for being wrong</b>, only for being impossible. An islet may be over-filled &mdash; it turns red and shivers and the board waits.</li>
+  </ul>
+
+  <h3>4. Generation: grow the answer, then prove it unique <span class="pill">proposed</span></h3>
+  <p>There is no hole-punching pass and no clue-stripping loop, because an islet's number <em>is</em> its degree in the network that was grown. The clues are complete by construction, and the only question left is whether some <em>other</em> network satisfies them.</p>
+  <ol>
+    <li><b>Grow.</b> One islet at random, then repeatedly: pick an islet already placed, a direction, a distance of 2 to 5, and a run of 1 to 3 planks. Refuse anything that crosses a run already laid, lands on or passes over a cell that is taken, touches another islet side-on, or pushes a degree over 6. Stop at the band's count. <b>Connected by construction</b>, and no islet is ever adjacent to another, so a lane always has water in it.</li>
+    <li><b>Close some loops.</b> The growth above lays exactly one run per new islet, so on its own it can only ever build a <b>tree</b> &mdash; and a tree is a thin Hashiwokakero, where connectivity never bites and no lane is ever a decoy. So a second pass joins a few pairs that already face each other, if nothing is in the way and no degree goes over 6. That pass is worth about one extra run on easy and one on hard; it is limited by the degree cap, not by the number asked for.</li>
+    <li><b>Centre it, and make it reach.</b> The walk starts on one cell and wanders, so a grown network can sit in a corner with two rows of open sea under it. It is slid so its bounding box is centred &mdash; nothing moves relative to anything else, so every lane, every crossing and the answer are untouched &mdash; and a board whose box does not come within one row <em>and</em> one column of the lattice's edges is thrown back. Centring alone is not enough: it only moves the empty water to the other side. Measured against the same loop without it, the reach test costs <b>a tenth of an attempt on easy and half an attempt on hard</b> &mdash; 2.9 to 3.0, 3.5 to 3.9, 6.3 to 6.8.</li>
+    <li><b>Clues.</b> Each islet's degree, capped at 6 by the growth.</li>
+    <li><b>Solve.</b> Per-run range propagation: every lane carries a <code>lo..hi</code>, an islet narrows every lane it touches against its own number and what its other lanes can still take, a lane that is certainly there closes every lane that would cross it, and <b>a group of islets already joined may not be closed off before every islet is in it</b> &mdash; if such a group has exactly one way out, that way is forced; if it has none, the branch is dead. Then a DFS over whatever is still open, <b>counting solutions and stopping at two</b>.</li>
+    <li><b>Reject.</b> A grown board with a second answer is thrown away and the next one grown, up to 200 attempts.</li>
+    <li><b>Grade.</b> The solver records how many lanes pure propagation pins before the first guess. <b>Band 0 additionally must need no guess at all</b>; bands 1 and 2 take what they get, and the caption reports it.</li>
+  </ol>
+  <h4>Measured, 500 seeds a band</h4>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:12%">Built</th><th style="width:16%">Attempts</th><th style="width:20%">Second answer rejected</th><th style="width:18%">No guess needed</th><th>Time to generate</th></tr>
+    <tr><td class="k">Easy 7&times;7</td><td>500/500</td><td>3.0 mean, 13 worst</td><td>54% of grown boards</td><td>required &mdash; 100%</td><td>0.41 ms mean, <b>5.3 ms worst</b></td></tr>
+    <tr><td class="k">Medium 9&times;9</td><td>500/500</td><td>3.9 mean, 19 worst</td><td>70%</td><td>82%, 94% of lanes pinned</td><td>0.33 ms mean, <b>2.1 ms worst</b></td></tr>
+    <tr><td class="k">Hard 11&times;11</td><td>500/500</td><td>6.8 mean, 47 worst</td><td>82%</td><td>71%, 87% of lanes pinned</td><td>0.93 ms mean, <b>7.0 ms worst</b></td></tr>
+  </table>
+  <p><b>The uniqueness is cross-checked, not asserted.</b> On <b>380</b> of those boards &mdash; 150 easy, 150 medium, 80 hard &mdash; a second, independent counter with no propagation and no connectivity rule in it, a plain depth-first enumeration over every lane, agreed on the count every time: <b>0 mismatches</b>, and the grown answer itself verified as a legal solution on all 380. The rejection is doing real work rather than decorating the loop: on the hard band <b>four grown boards in five carry a second answer</b> and are thrown away.</p>
+  <p>That is node on this Mac, which is the same V8 the page runs in; the Godot port has a ~194 ms budget and the worst case here is <b>7.0 ms</b>, so there is room for GDScript to be twenty times slower and still not be seen. The one figure worth watching in the port is <b>attempts</b>, not milliseconds: a hard board takes 6.8 grow-and-solve rounds on average and took 47 once in five hundred.</p>
+
+  <h3>5. Colour <span class="pill">proposed</span></h3>
+  <p><b>Every colour on this screen is already in <code>core/palette.gd</code>.</b> Nothing was invented for it, which is unusual for a board that introduces a new surface.</p>
+  <table>
+    <tr><th style="width:26%">Thing</th><th style="width:26%">Colour</th><th>Note</th></tr>
+    <tr><td class="k">The sea</td><td><code>mix(WATER_HI, PAPER, 0.46)</code><br>#a4cde6</td><td><b>Pale on purpose</b>, decided 2026-09-20. It was <code>WATER</code> #2f8fd6 and it was the loudest surface in the game: saturation 0.78 against a set of warm muted pastels, and it made the card shout over the other twelve. Letting <code>WATER_HI</code> down into <code>PAPER</code> takes it to <b>saturation 0.29 at value 230</b> and warms it by the paper in it, which is what <code>docs/art/shading-direction.md</code> asks for &mdash; depth through colour rather than contrast.</td></tr>
+    <tr><td class="k">The shallows</td><td><code>mix(WATER_HI, PAPER, 0.74)</code><br>#cfdfe4</td><td>A band inside the pool's rim at 0.85. It has to be <em>paler</em> than the open water now, so it is the same mix taken further into the paper &mdash; saturation 0.09, barely a colour at all, which is what a sandbar looks like.</td></tr>
+    <tr><td class="k">The pool's edge</td><td><code>mix(WATER_HI, TEXT, 0.20)</code><br>#5896c2</td><td>The 9 of darker water along the bottom, the soft edge every card in the family has.</td></tr>
+    <tr><td class="k">The ripples</td><td><code>Pal.WATER</code> #2f8fd6 at 0.24</td><td><b>The old sea's colour is the new sea's mark.</b> A ripple has to be darker than the water it lies on; on the pale pool <code>WATER_HI</code> was invisible, and the palette's deep blue at a quarter alpha is exactly the soft coloured line the brief wants.</td></tr>
+    <tr><td class="k">Islet turf</td><td><code>Pal.BANK</code> #8cb050</td><td>The turf disc, with <code>mix(BANK, SURFACE, 0.26)</code> for the sun on it. It was mixed to a raw white before; <code>SURFACE</code> is the palette's own white and slightly warm, so the cap no longer reads as a specular hit.</td></tr>
+    <tr><td class="k">Sand rim</td><td><code>Pal.ACORN</code> #c99a63</td><td><b>Changed with the sea.</b> It was <code>STONE</code> #ede2cc, which is value 237 against a 230 sea &mdash; seven apart, and the islet lost its edge. <code>ACORN</code> sits <b>29 of value below the water</b> and warm against a cool ground, which is what draws the shape now. Under it, <code>mix(ACORN, TEXT, 0.22)</code> for the wet sand at the waterline.</td></tr>
+    <tr><td class="k">Planks</td><td><code>Pal.DECK</code> #b5825a</td><td>Over <code>Pal.WOOD_DEEP</code> for the bottom edge and the slats across it.</td></tr>
+    <tr><td class="k">Satisfied</td><td><code>Pal.GOOD</code> #7cb06b</td><td>A ring round the sand, and the number softened toward the paper. <b>Quiet on purpose</b>: on a hard board twenty-four islets go green and a loud green is a wall.</td></tr>
+    <tr><td class="k">Over-filled</td><td><code>Pal.BAD</code> #d9605a</td><td>Ring, turf washed toward it, number in it, and one shiver. The only mistake the board shows by itself.</td></tr>
+    <tr><td class="k">A refused lane</td><td><code>Pal.BAD</code> at 0.88, fading</td><td><b>A plain alpha blend again.</b> On the dark sea red at any alpha came back <em>mauve</em> &mdash; tried at 0.7 and at 0.9, a bruise both times &mdash; so the band had to be drawn solid and dissolved by mixing toward the water. A pale ground takes red honestly, so the band is an ordinary fade once more and one special case is gone.</td></tr>
+    <tr><td class="k">The lane under the finger</td><td><code>Pal.SUN</code> at 0.72</td><td>A torch beam down the water, with the islet it would reach ringed in <code>Pal.SUN</code> too. It went <code>SUN_RAY</code> 0.55 &rarr; 0.78 on the dark sea because half-strength yellow over <code>WATER</code> came back olive; on the pale sea the problem is the other way round &mdash; <code>SUN_RAY</code> is value 249 against a 230 ground and barely shows &mdash; so the beam is the deeper <code>SUN</code> at a lower alpha.</td></tr>
+    <tr><td class="k">The wave</td><td><code>DECK</code> mixed to <code>SUN_RAY</code></td><td>The lit plank, section 6.</td></tr>
+  </table>
+
+  <h3>6. Motion, and the network wave <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), drawn off the curve readers the way Light Up's and Nonogram's drawn pieces are. <b>Its signature is the wave on solve</b>, and the board needs four numbers of its own: <code>DROP_TIME</code> 0.26 s, <code>WAVE_STEP</code> 0.18 s from islet to islet, <code>WAVE_EDGE</code> 0.24 s for the light to cross one run, and <code>WIN_HOLD</code> 0.9 s.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The field pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) and each islet pops in on the diagonal stagger (<code>pop_in_scale</code>, <code>ENTER_STAGGER</code>).</td></tr>
+    <tr><td class="k">Dragging</td><td>The islet under the finger presses (<code>press_scale</code> 0.94); the lane to the islet it would reach lights, and that islet takes a ring. Swing to another direction and the beam swings with it.</td></tr>
+    <tr><td class="k">A plank lands</td><td><code>drop_in_lift</code> &mdash; it falls the last 40 into the water and settles.</td></tr>
+    <tr><td class="k">Satisfied</td><td>The islet bumps (<code>bump_scale</code>) and takes its green ring. Losing the number takes the ring back with no motion at all: undoing is not an event.</td></tr>
+    <tr><td class="k">Refused</td><td>The lane flashes in <code>BAD</code> and fades over 0.55 s &mdash; with the run that is in the way, if there is one &mdash; the run shivers (<code>shiver_offset</code>), and the sprout names the rule.</td></tr>
+    <tr><td class="k">Over-filled</td><td>The islet shivers once and stays red until a plank comes off it.</td></tr>
+    <tr><td class="k">Check</td><td>Every run that differs from the answer washes toward <code>BAD</code> on <code>flash_level</code> and holds for 2.4 s. A run the answer wants and the board has not laid is <em>not</em> marked &mdash; there is nothing on the water to mark &mdash; and the tip says so in words instead.</td></tr>
+    <tr><td class="k"><b>Solved</b></td><td><b>The wave.</b> A breadth-first walk of the finished network from <b>the islet the player finished at</b>, one step per run: the light crosses each run in <code>WAVE_EDGE</code> from the end it arrives at to the far end, the planks behind the front take the lit deck, and each islet flares gold, bumps and throws sparkles as the light reaches it. The win follows <code>WIN_HOLD</code> after the last islet. On a hard board the network is seven or eight steps deep, so the wave runs about a second and a half.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the field is up at once, planks appear rather than drop, nothing shivers, rings and sparkles are off, and the whole network lights in one frame &mdash; the wave's BFS still runs, but every step is at zero, so the win follows immediately.</p>
+  <div class="decide"><b>The wave is the one thing on this screen worth building twice if the first one is wrong.</b> It is the only moment that says what the puzzle was <em>about</em> &mdash; not "every number is met", which the green rings have been saying all along, but "it is one island now" &mdash; and it can only say that by travelling. A flash over the whole board would say the first thing again and lose the second.</div>
+
+  <h3>7. The hint and the check <span class="pill">proposed</span></h3>
+  <p><b>Three hints</b>, and each one lays <b>one plank the answer has and the board lacks</b>, taking the shortest such run first so the hint is always a whole small decision rather than half a long one. The plank it lays keeps a soft sun glow under it until the board is reset, so a hinted run is never confused with one the player reasoned out. A hint is an ordinary move: Undo takes it back, and does not give the hint back.</p>
+  <p><b>Check</b> marks the runs that differ from the answer. It cannot mark what is missing, so when nothing laid is wrong it says so in words &mdash; <em>&ldquo;Nothing laid is wrong &mdash; there is just more to lay.&rdquo;</em> &mdash; which is the honest version of a green tick.</p>
+
+  <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Drag-to-join against tap-to-join.</b> Dragging is unambiguous &mdash; the direction <em>is</em> the choice &mdash; and it is also four times the finger travel of tapping two islets. At 84 a cell on hard, a drag is about a centimetre. Play the hard board and see whether the thumb agrees.</li>
+    <li><b>The cycle wraps at 3.</b> Three drags in the same direction to clear a run is the standard, and it is also a trap on a board where a 3 is common. The tap-to-wipe is the escape hatch; whether anyone finds it without being told is the question.</li>
+    <li><b>The easy board has one decoy lane.</b> Eleven islets on a 7&times;7 leave almost every facing pair joined in the answer, so <b>the crossing rule barely appears on easy</b> &mdash; one crossing pair a board, on average. That is honest Hashiwokakero and it may also be a band that never teaches its own hardest rule.</li>
+    <li><b>Six is the cap, not eight.</b> The real game allows 8, and an islet of 8 is a landmark &mdash; it tells you all four of its lanes are full. Capping at 6 keeps every number inside one comfortable glyph and keeps the growth from knotting, but it throws away the board's best free clue.</li>
+    <li><b>Twenty-four green rings.</b> On a finished hard board almost everything is ringed before the last run goes down, so the green has to stay quiet enough to live with. It is currently a thin ring and a paled number; a fill would be unreadable.</li>
+    <li><b>The near-miss is not signposted.</b> Every number met and two separate networks is the position this puzzle is <em>about</em>, and right now the board says nothing at all &mdash; no count of groups, no tint. Check will tell you, at the price of a check. Whether that silence is the puzzle or a cruelty is the call.</li>
+    <li><b>The sea is the first non-paper surface on a flat board</b>, and it has already been pitched down once. <span class="pill blue" style="margin-left:0">decided</span> 2026-09-20: keep the pool, but pale &mdash; <code>WATER</code> at full strength made this the loudest card in the game. What the pass cost is worth knowing before the next board puts a new surface on the paper: <b>the sand rim had to change colour</b> (<code>STONE</code> is seven points of value from the new sea and the islets stopped having an edge), <b>the ripples had to invert</b> (a mark on pale water is darker, not lighter), and <b>the drag beam had to go from a light yellow to a deeper amber</b>. A warm-ink constant tuned against a dark ground is not portable to a light one, in either direction. What is still open is whether a pale blue pool in a cream card reads as one family or as a cream card with a hole in it.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot, <code>?runs=k</code> to lay the first <b>k</b> runs of the answer outward from one islet, <code>?hint=k</code> for that many hints spent, <code>?wrong=1</code> to put a run on the water the answer does not want and cut another one short, <code>?check=1</code> to run a Check over whatever is laid, <code>?reset=1</code> to lay the answer and then clear it, <code>?aim=1</code> for a finger mid-drag with a lane lit, <code>?refuse=cross</code> for a drag refused by a run in the way and <code>?refuse=none</code> for one refused because nothing faces it, <code>?peek=1</code> to dash in the runs still missing and print each islet's current count, and <code>?win=1</code> for the win screen. Pick the tab with <code>#bridges</code>.</p>
 </section>
 </main>
 

@@ -222,10 +222,11 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
-	# these are entries thirteen and fourteen. Mushroom Patch was the
+	# these are entries thirteen, fourteen and fifteen. Mushroom Patch was the
 	# thirteenth and the first card that was *added* rather than swapped into
 	# a `soon` slot, which is what pushed the grid onto a second page at all;
-	# Sudoku is the fourteenth and joins it there. Twelve a page is not a
+	# Sudoku is the fourteenth and Bridges the fifteenth, and both join it
+	# there. Twelve a page is not a
 	# taste -- it is what four rows of 252 buy -- so the grid grew a page
 	# rather than a shorter card, and both of these stay last so page one
 	# keeps exactly the twelve cards it has, in exactly the order it has
@@ -259,6 +260,23 @@ const PUZZLES := [
 		"script": "res://puzzles/sudoku2d.gd",
 		"shell": "flat",
 		"tray": "digits",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "bridges",
+		"kind": "puzzle",
+		"title": "Bridges",
+		"blurb": "Plank every islet to its number, and join them all.",
+		"short": "Plank every islet\nto its number.",
+		"motto": "Join every islet",
+		"footer": "Link · Count · Cross",
+		# It picks nothing up, so it asks for no tray; it has a real Check, so
+		# unlike Balance and Untangle it keeps the actions row. The bottom slot
+		# is 290, which is Shikaku's, Tents' and Light Up's shape, so the flat
+		# host needs nothing new.
+		"script": "res://puzzles/bridges2d.gd",
+		"shell": "flat",
+		"tray": "none",
 		"difficulties": [0, 1, 2],
 	},
 ]
