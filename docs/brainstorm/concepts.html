@@ -232,6 +232,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-menu .refs img{border-radius:14px}
 #tab-menu .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #mn-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- fairy lights mock extras ---------- */
+#tab-fairylights .phone{background:#f6efe3}
+#tab-fairylights .phone canvas{touch-action:none;cursor:pointer}
+#tab-fairylights .refs{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+#tab-fairylights .refs figure{margin:0}
+#tab-fairylights .refs img{border-radius:14px}
+#tab-fairylights .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#fl-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -257,6 +265,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="wordtrail">Word Trail · flat</button>
     <button data-tab="mushroom">Mushroom Patch · flat</button>
     <button data-tab="sudoku">Sudoku &middot; flat</button>
+    <button data-tab="fairylights">Fairy Lights &middot; flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
 </header>
@@ -2272,6 +2281,157 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Whether easy is too easy.</b> Handing 45% of the carved numbers back makes a 6&times;6 nearly a reading exercise. The knob is one constant.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three mushrooms planted and four pebbles laid, <code>?wrong=1</code> for one mushroom on bare ground, <code>?tap=r,c</code> to tap a cell with the armed chip at <code>?at=</code> seconds (0.2 by default; a turned-over cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-motion can be shot; pick the tab with <code>#mushroom</code>.</p>
+</section>
+
+<!-- ============================ FAIRY LIGHTS ============================ -->
+<section class="tab-panel" id="tab-fairylights">
+  <h2>Fairy Lights &middot; flat, the fifteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A garden strung with wire. A lantern post stands in the middle cell and every other cell holds one length of garden wire &mdash; a straight, an elbow, a tee, a cross, or a paper lantern on a stub. <b>One tap turns a piece a quarter turn clockwise</b>, and that is the only gesture on the screen: no drag, no second direction, no locking. Wire joined all the way back to the post runs warm and gold; everything else is pale and cool, and the light washes outward one step at a time every time a turn changes what is reachable. Done when every stub meets a stub and every lantern is lit. The game is Netwalk, which is nobody's property and has been in every puzzle collection for thirty years; the garden is ours.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The chrome this is set in, now shared by fourteen screens: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout that names the rule you just broke. Fairy Lights takes <b>Untangle's and Word Trail's shape</b> &mdash; no tray and no actions row, so Reset rides up into the top bar as a fifth button and the tip card is the whole bottom slot. <b>The user's reference is a screenshot of another phone game's version of Netwalk</b>, in purple and yellow; it is not in this repo and nothing is taken from it but the mechanic. The colours here are the palette's own, and section 5 says which.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="fl" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="fl-rm">Reduce motion: off</button>
+        <button id="fl-diff">Medium &middot; 6&times;6</button>
+        <button id="fl-new">New puzzle</button>
+        <button id="fl-hint">Hint</button>
+        <button id="fl-undo">Undo</button>
+        <button id="fl-reset">Reset</button>
+        <button id="fl-one">Turn one for me</button>
+        <button id="fl-solve">Light it up</button>
+      </div>
+      <div id="fl-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>tap any piece</b> and it turns a quarter turn clockwise. <b>It runs the real generator and the real solver</b> &mdash; a randomised Prim spanning tree over every cell, then the propagate-only solver of section 4, and the tree is thrown away and re-rolled until one passes. The caption under the phone says <b>how many attempts the board you are looking at took</b>, the way the Mushroom Patch tab says out loud whether its board was proved by logic alone. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>a spanning tree over every cell</b>, so there is no dead cell and no wall; <b>one tap, clockwise, and nothing else</b>; <b>the live subtree is drawn warm</b> and recomputed after every turn; <b>solved is defined by the rule</b> &mdash; every stub met, every cell live &mdash; and never by comparison with the stored answer; <b>easy 5&times;5, medium 6&times;6, hard 7&times;7</b>; <b>Undo, Hint and Reset, and no Check</b>, because nothing on this board can be wrong, only unfinished; and <b>no guess is ever needed</b>, which section 4 is the whole of. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>Fairy Lights</code> in ink with the leaf sprouting from it and <code>WAKE EVERY LANTERN</code> under, then Undo, Reset, Hint with its count and Settings. <b>Five buttons</b>, the shape Balance, Untangle and Word Trail already carry: <code>"actions": false</code> puts Reset up here and <code>capabilities()</code> is <code>["undo","hint"]</code> with no <code>check</code>.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the family's, unchanged.</td></tr>
+    <tr><td class="k">Board slot</td><td>1340</td><td>The card is <b>cut to the grid</b> and the rest is air, halved above and below. Section 2.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet. Untangle's number and Untangle's reason: it is the only thing in the bottom slot.</td></tr>
+  </table>
+  <p>40 of margin, three 20 gaps and the four rows are 1920 exactly, which is where the slot's 1340 comes from &mdash; the same sum Word Trail's board card gets, because the two screens ask the host for the same rows.</p>
+  <div class="decide"><b>The title is lettered smaller, and it is the title and not the motto.</b> <code>Fairy Lights</code> measures <b>452</b> at GameWordmark 84 against the five-button block of <b>370</b>, so <code>ui/flat/flat_top_bar.gd</code>'s <code>_fit_title</code> steps it down to <b>68</b>, where the rendered face is 366. <code>WAKE EVERY LANTERN</code> measures <b>309</b> at FlatMotto 24 and is untouched &mdash; which makes this the first five-button board whose <em>motto</em> fits: Balance's (399), Untangle's and Word Trail's (406) all come down. Measured on this Mac on 2026-09-20 with the real Fredoka, against the recorded figures for <code>Word Trail</code> (392), <code>Hidden Word</code> (482) and <code>Mushroom Patch</code> (635), all three of which the same probe reproduced to the pixel.</div>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p><b>The cells abut &mdash; there is no gap between them</b>, and this is the one flat board where that is not a style choice. A wire has to cross the cell boundary and meet the wire on the other side; a 14-pixel alley between tiles, which Word Trail and Nonogram both draw, would put a break in the middle of every join and the board would read as broken everywhere. So the cell is a round <code>(1000 &minus; 2&times;28) / n = 944 / n</code> with nothing to subtract, floored: <b>188, 157 and 134</b>. The grid is <b>940, 942 and 938</b> wide and as tall.</p>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:12%">Grid</th><th style="width:10%">Cell</th><th style="width:14%">Card height</th><th style="width:12%">Air, halved</th><th>Lanterns, typically</th></tr>
+    <tr><td class="k">Easy</td><td>5 &times; 5</td><td>188</td><td>996</td><td>172 each</td><td>9 of 25 (37.9% mean)</td></tr>
+    <tr><td class="k">Medium</td><td>6 &times; 6</td><td>157</td><td>998</td><td>171 each</td><td>13 of 36 (36.0%)</td></tr>
+    <tr><td class="k">Hard</td><td>7 &times; 7</td><td>134</td><td>994</td><td>173 each</td><td>17 of 49 (35.2%)</td></tr>
+  </table>
+  <p><b>188 is the largest cell any flat board has ever asked for</b> and 134 is comfortably the largest <em>hard</em> cell &mdash; Word Trail's 123 held that, and Queens, Nonogram and Sudoku are down at 103, 103 and 100. The reason is the same as Word Trail's: seven columns is fewer than nine, and the width binds long before the height does. <code>card_height()</code> hands back the grid plus its two 28 insets and <code>card_centred()</code> answers <b>true</b>, so the 344 the card does not want is halved into air above and below, which is Tents' and Queens' arrangement and not a new one.</p>
+  <div class="decide"><b>The alternative, named so it is not lost:</b> spend that 344 on a scenery band at the card's foot, the way Word Trail does with its 222&ndash;250. A garden with a hedge and a sky under it is an easy sell, and this board has more air to fill than Word Trail did. It is not drawn here because a strung grid of wire is a single object and a band under it reads as a second one; the air is what lets the garden sit on the page. <b>Worth judging on the phone</b>, and it is the first thing to change if the screen reads empty.</div>
+
+  <h3>3. The rules <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>Every cell holds a piece, and the pieces are a tree.</b> The wiring is a spanning tree over the whole grid rooted at the post, so there is no empty cell, no wall, and no loop &mdash; and a cell's piece is nothing but its degree in that tree: 1 is <b>a paper lantern on a stub</b>, 2 is <b>a straight or an elbow</b>, 3 is <b>a tee</b>, 4 is <b>a cross</b>. The post cell draws the post and carries whatever arms its own degree gives it.</li>
+    <li><b>One tap, one quarter turn, clockwise.</b> There is no counter-clockwise tap, no long press, no lock, no drag. Four taps bring a piece back where it started, which is the whole of the undo a player needs on the board itself; Undo in the bar is for the tap you did not mean.</li>
+    <li><b>A cross refuses.</b> It is already every way round, so tapping it shivers the cell and says so rather than pretending to turn. That is Hidden Word's rule: a refusal is a toast and never a silence.</li>
+    <li><b>Live is derived, every frame it changes, and never stored.</b> A breadth-first walk from the post over edges where <em>both</em> sides carry a stub. Live wire is warm; dead wire is pale. Queens' rule about derived state, and it is what makes Undo free: there is no highlight to put back.</li>
+    <li><b>A loose end looks loose.</b> A stub that meets a stub runs to the cell's edge and joins; a stub that meets a wall or a closed neighbour stops short of the edge with a rounded end. The player can therefore <em>see</em> every unfinished join without counting, which is the rule the win is defined by made visible.</li>
+    <li><b>Solved is the rule, not the answer.</b> Every stub meets a stub <em>and</em> every cell is live &mdash; which, the wiring being a tree, is the same as every lantern being lit, and can only be the arrangement the generator meant. Nothing anywhere compares the board with the stored solution to decide whether it is finished.</li>
+    <li><b>Nothing can be lost, and nothing can be wrong.</b> There is no Check because there is nothing to check: a board is unfinished or it is done. It is Word Trail's gentleness arrived at from the other side &mdash; there the board refuses a wrong move, here a wrong move simply is not a category.</li>
+  </ul>
+  <div class="decide"><b>On a board that passed section 4, the second half of that rule is already implied by the first</b>, and it is worth knowing why rather than discovering it later. &ldquo;Every stub meets a stub&rdquo; is exactly the constraint the propagate-only solver works in, and that solver came back with <em>one</em> candidate a cell &mdash; so there is only one fully-matched arrangement of the whole grid, and it is the generator's. The &ldquo;and every cell is live&rdquo; clause therefore costs nothing on a real day, and is kept for two reasons: it is what the player is actually looking at, and it still holds on the fallback board the generator hands back if it ever exhausts its re-roll budget, where uniqueness was never proved.</div>
+
+  <h3>4. The generator, and the promise <span class="pill blue">decided</span></h3>
+  <p>The user chose the strongest promise available: <b>no guess is ever needed.</b> That is not a property of the scramble &mdash; a scramble only hides the answer, it cannot make the board harder to <em>deduce</em> &mdash; it is a property of <b>the tree's shape</b>, so it is tested before anything is scrambled, and a tree that fails is thrown away whole.</p>
+  <ol>
+    <li><b>Grow a spanning tree</b> over every cell, rooted at the post, with randomised Prim off the day seed. (For an even-sided grid the post is one of the four middle cells, picked from the same seed.)</li>
+    <li><b>Run the propagate-only solver.</b> Each cell starts with the <em>distinct</em> rotations of its own shape as candidates &mdash; four for a stub, an elbow and a tee, two for a straight, one for a cross. An edge to off-grid is closed, so any candidate with a stub pointing into the wall is struck out. Whenever every remaining candidate of a cell agrees about an edge, that edge is <b>proven</b> open or closed, and the neighbour's candidates are filtered to match. Iterate to a fixpoint.</li>
+    <li><b>If every cell is down to one candidate, the board is guess-free</b> &mdash; and that one candidate <em>is</em> the answer, because the answer was in the set to begin with and filtering only ever removes what cannot be. If any cell still has two, re-roll the tree.</li>
+    <li><b>Then scramble</b>, and only then: every non-cross piece takes a random rotation, and a scramble that came out with fewer than 60% of the turnable pieces out of place is thrown back rather than shipped.</li>
+  </ol>
+  <p><b>The solver is deliberately weaker than a good player.</b> It never reasons "that would make a loop" or "that would strand a corner", which a human does all the time. Weaker is the point: a board this solver can finish is a board nobody has to guess on, with room to spare.</p>
+  <div class="decide"><b>How the tree is grown is the whole cost of the promise, and it was measured rather than assumed.</b> Over <b>20,000 trees a band</b>:
+  <table>
+    <tr><th style="width:26%">Tree</th><th style="width:16%">5&times;5</th><th style="width:16%">6&times;6</th><th style="width:16%">7&times;7</th><th>Lanterns</th></tr>
+    <tr><td class="k">Randomised DFS</td><td>0.00% fail</td><td>0.35%</td><td>0.74%</td><td>13.6&ndash;17.1% of cells</td></tr>
+    <tr><td class="k">Randomised Prim</td><td>18.64% fail</td><td>23.95%</td><td>30.95%</td><td>35.2&ndash;37.9%</td></tr>
+  </table>
+  A depth-first tree is almost always guess-free on the first try &mdash; it grows long corridors, and a corridor is straights, and a straight has only two rotations to begin with. It is also a <b>snake of wire with a dozen lights on it</b>, which is not a garden of fairy lights. Prim branches, which is where the lanterns, the tees and the crosses come from, and it costs a re-roll about a quarter of the time. <b>Prim, and pay the re-rolls</b>, is the call.</div>
+  <p><b>What the re-rolls actually cost</b>, with the full acceptance test in place &mdash; guess-free, plus at least 22% of cells as lanterns so the garden has lights, plus a post with at least two arms so it does not read as broken &mdash; measured over <b>2,000 seeds a band</b>:</p>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:12%">Mean</th><th style="width:12%">Median</th><th style="width:12%">p90</th><th style="width:12%">p99</th><th style="width:12%">Worst</th><th>Gave up</th></tr>
+    <tr><td class="k">Easy 5&times;5</td><td>1.27</td><td>1</td><td>2</td><td>4</td><td>6</td><td>none</td></tr>
+    <tr><td class="k">Medium 6&times;6</td><td>1.36</td><td>1</td><td>2</td><td>4</td><td>6</td><td>none</td></tr>
+    <tr><td class="k">Hard 7&times;7</td><td>1.48</td><td>1</td><td>3</td><td>5</td><td>8</td><td>none</td></tr>
+  </table>
+  <p><b>Read twice, and both readings are here.</b> Those figures are a standalone probe of the algorithm over 2,000 seeds a band; <b>the mock on this page was then measured on its own caption</b> over 400 seeds a band and came back at <b>1.28, 1.31 and 1.44</b> mean, median 1 and worst 5 at every band. Two probes, the same answer; neither is quoted without the other.</p>
+  <p><b>Guess-free trees are not rare at 7&times;7, and the spec should record that plainly</b>, because it was the open risk when this page was started. The whole build &mdash; every re-roll included &mdash; costs <b>0.053, 0.059 and 0.093&nbsp;ms</b> in JavaScript on this Mac, against Sudoku's 9&nbsp;ms for its generator in the same place. Sudoku's GDScript port came out roughly seven times slower than its JavaScript on the mean, so the honest estimate for this one is <b>single-digit milliseconds in GDScript, worst case included</b> &mdash; nowhere near a budget, and nothing here needs the 300&nbsp;ms escape hatch Sudoku had to build. That estimate is scaled off a recorded ratio and is not a reading; it should be replaced with a real one when the board is built.</p>
+  <p>The re-roll budget is 400 attempts and, having never been approached in 6,000 measured boards, it exists only so a pathological seed cannot hang the board opening: past it the board plays the last tree it grew rather than blocking, exactly as Sudoku hands back <code>graded: false</code>.</p>
+
+  <h3>5. Colour <span class="pill">proposed</span></h3>
+  <p><b>This board invents no colour.</b> Every value on the screen is already in <code>core/palette.gd</code>, and two of them are being used for the second time for the reason they were written down the first time.</p>
+  <table>
+    <tr><th style="width:22%">Thing</th><th style="width:26%">Colour</th><th>Why that one</th></tr>
+    <tr><td class="k">Dead wire</td><td><code>Pal.FLAGSTONE</code> over <code>FLAGSTONE_DEEP</code></td><td>Light Up's unlit stone, and its comment is the argument: it is &ldquo;the one cool colour on the island&hellip; against the warm lamplight the difference is a change of temperature as well as of value, which is how light has always been painted&rdquo;. That is precisely this board's one job.</td></tr>
+    <tr><td class="k">Live wire</td><td><code>Pal.SUN</code> over <code>SUN_DEEP</code>, halo in <code>SUN_RAY</code>, a thin highlight in <code>LANTERN_LIT</code></td><td>The family's gold. The halo is drawn under every live run before any wire is drawn, so a live branch reads as light before it reads as cable.</td></tr>
+    <tr><td class="k">A lantern, unlit</td><td>Its <code>Pal.LANTERN_PAPER</code> pair, 55% of the way to <code>STONE</code></td><td>Untangle's five papers by index. Muted, and with <b>no face</b>: <code>ui/faces/face.gd</code>'s <code>plain</code> is what an unlit lantern is.</td></tr>
+    <tr><td class="k">A lantern, lit</td><td>Its paper 40% toward <code>Pal.LANTERN_LIT</code>, deep edge toward <code>SUN</code>, halo</td><td>This is not a new behaviour &mdash; it is <em>the documented meaning</em> of <code>LANTERN_LIT</code>: &ldquo;what a paper warms toward when its lantern is lit&hellip; the deep edge goes to <code>SUN</code> over the same run&rdquo;. Untangle's win does it once; here it is the mechanic.</td></tr>
+    <tr><td class="k">The post</td><td><code>Pal.LANTERN</code> iron, glass in <code>SUN</code> over <code>SUN_DEEP</code></td><td>Light Up's lantern iron. The one thing on the board that is never paper and never dark.</td></tr>
+    <tr><td class="k">The ground</td><td><code>SURFACE</code> half-way to <code>PARCHMENT</code>, rules in <code>LINE</code> at 34%</td><td>The cells have to be visible &mdash; a tap turns one cell &mdash; but only just; the wire is the drawing.</td></tr>
+    <tr><td class="k">The fence round the grid</td><td><code>Pal.GRID_RULE</code>, 6 wide</td><td>Sudoku's heavy rule, drawn <em>round</em> the grid for the same reason it is there: the cells run to the inset's edge and the rule has nowhere to go inside.</td></tr>
+    <tr><td class="k">A pinned cell</td><td><code>SUN_RAY</code> wash at 40% under a dotted <code>SUN_DEEP</code> ring</td><td>Word Trail's hint mark, unchanged.</td></tr>
+  </table>
+  <p><b>And nothing is added to <code>ui/faces/</code>.</b> The lantern is <code>ui/faces/lantern_face.gd</code> exactly as Untangle ships it &mdash; five papers by index, a <code>lit</code> from 0 to 1 snapped to five levels for the mesh cache, and its own halo &mdash; so a board of seventeen lanterns costs at most five meshes a paper. That makes it the <b>sixth screen running</b> to add no character at all: Nonogram decided it, and Hidden Word, Word Trail, Mushroom Patch and Sudoku each confirmed it.</p>
+
+  <h3>6. Motion <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), read off the curve readers the way Nonogram's and Light Up's drawn pieces are. <b>It needs nothing new from <code>core/motion.gd</code></b> and carries two constants of its own: <code>TURN_TIME</code> 0.26&nbsp;s and <code>WAVE_STEP</code> 0.05&nbsp;s a depth.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The grid pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) while it fades, and the lanterns pop in after it (<code>pop_in_scale</code>). The first wash then runs out from the post, so the screen opens by showing you where the power is.</td></tr>
+    <tr><td class="k">A turn</td><td>The piece spins a quarter turn with <code>back_out</code>'s overshoot over <code>TURN_TIME</code>, and pulls its arms in about 11% at the middle of the spin so it does not reach into its neighbours on the way round. <b>The paper stays level</b>: a lantern's body counter-rotates, because a lantern hangs and a hanging thing does not cartwheel.</td></tr>
+    <tr><td class="k">The wash <b>(the signature)</b></td><td>Queens' <code>_settle</code> with the tree's own depth in place of a queen's sight. Every turn diffs a snapshot of what is live: a cell that has just been reached lights at <code>depth &times; WAVE_STEP</code> after the spin, so the light runs <em>out along the wire</em> from the post; a cell that has just been cut off goes dark on the same wave <em>reversed</em>, far end first, which reads as the light being pulled back rather than switched off. Derived off the diff and never stored.</td></tr>
+    <tr><td class="k">A lantern waking</td><td><code>bump_scale</code> as the wash arrives, and the face appears with it &mdash; an unlit lantern is <code>plain</code>. Seventeen of them on a hard board wake in a ripple rather than together, because each is on its own depth.</td></tr>
+    <tr><td class="k">A refusal</td><td>A cross shivers in place (<code>shiver_offset</code>) and the sprout says why. Nothing else on this board can refuse.</td></tr>
+    <tr><td class="k">Hint</td><td>The piece turns however many quarters it needs in one spin, a ring in <code>LEAF</code> over it, and the cell keeps the pinned wash from then on.</td></tr>
+    <tr><td class="k">Undo</td><td>The same spin anticlockwise, and the wash runs backwards behind it.</td></tr>
+    <tr><td class="k">Reset</td><td>Every piece that has moved turns back at once, on a corner-out stagger of 0.02 a cell. Pinned pieces stay where the hint put them, which is what a given means on every other board.</td></tr>
+    <tr><td class="k">Solved</td><td>The last wash finishes, every lantern is awake, and the win comes up <code>WIN_WAIT</code> 1.4&nbsp;s later.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: no spin &mdash; a piece is simply round the other way &mdash; no wash, so the whole live set changes in one frame, no lantern bump, no halo pulse on the post, no rings and no sparkles, and the win follows the last turn.</p>
+
+  <h3>7. Undo, Hint, Reset &mdash; and no Check <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>Undo</b> turns the last piece back a quarter turn, in tap order. One log, one integer an entry; there is nothing else a move touches.</li>
+    <li><b>Hint</b> takes the <b>first unsolved cell in reading order</b>, turns it to its proven orientation and <b>pins it</b> so it cannot be turned again. Reading order rather than anything cleverer for Word Trail's reason: it is predictable, it needs no state, and a hint that guesses what the player wanted can guess wrong. Three of them.</li>
+    <li><b>Reset</b> puts every unpinned piece back to the scramble it was dealt. A pinned piece stays, because a hint is a given.</li>
+    <li><b>No Check.</b> The board has no wrong state to find. This is the third screen to drop it &mdash; Balance because it is its own continuous check, Word Trail because nothing wrong can sit on the board, and this one because nothing wrong can exist.</li>
+  </ul>
+  <div class="decide"><b>The hint is worth more here than anywhere else in the game, and that is a risk.</b> On Word Trail a hint lights one tile of thirty-three; here it settles one cell of forty-nine <em>permanently</em>, and because the solver is a propagation, a pinned cell often unlocks a run of its neighbours by hand immediately afterwards. Three may be too many. The knob is one constant, and the phone is where to feel it.</div>
+
+  <h3>8. What the chrome is asked for <span class="pill">proposed</span></h3>
+  <p>One registry line and nothing new on the host: <code>"shell": "flat"</code>, <code>"tray": "none"</code>, <code>"actions": false</code>, and the tip card kept. <code>capabilities()</code> is <code>["undo","hint"]</code>. The bottom slot the host measures from the rows it built is therefore <b>140</b> &mdash; the tip card alone, which only Untangle and Word Trail share &mdash; against the fifteen screens' 458, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340, 140, 460, 480 and this one's 140.</p>
+  <p>Of the optional things a flat board may answer, it uses exactly two: <code>card_height()</code>, which returns the grid plus its insets rather than the whole slot, and <code>card_centred()</code>, which is <code>true</code>. It does not want <code>palette()</code>, <code>weights()</code> or <code>win_delay()</code>. It does want <code>flat_win()</code>, and its cast is the one thing it has: <b>five lit paper lanterns strung on a cord</b> across the win screen, swinging.</p>
+
+  <h3>9. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Whether the live wash gives the game away.</b> It is the friendliest possible feedback and it may be too friendly &mdash; on an easy board you can chase the gold outward and barely think. The alternative is to light only the post's immediate run, or to light nothing until the board is done. Play the 5&times;5 first and see whether it was a puzzle.</li>
+    <li><b>Clockwise only.</b> Four taps to undo one is the classic Netwalk bargain, and on a 134-pixel cell it is four taps in the same place. It is also why Undo is in the bar. Play the 7&times;7 and count how often you overshoot.</li>
+    <li><b>Whether 7&times;7 is long.</b> Forty-nine cells, about thirty of them out of place at the deal, roughly one tap and a half each. Nothing else in the game asks for that many discrete taps.</li>
+    <li><b>The air.</b> 172 above and below the card at every band, because the width binds. Section 2's alternative is a scenery band; this is the first thing to look at if the screen reads bare.</li>
+    <li><b>The loose-end rule.</b> Stubs that meet nothing stop short. It makes the board much easier to read and it may make it too easy to read &mdash; it hands the player the entire &ldquo;every stub meets a stub&rdquo; half of the win condition at a glance.</li>
+    <li><b>Whether the post should turn.</b> It does here: it is an ordinary piece that happens to draw a post. Fixing it would be a free given on every board and would shrink the puzzle by one cell. Nobody has argued for it yet.</li>
+    <li><b>Three hints.</b> See section 7. A pinned cell is worth more here than on any other board.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band (medium by default), <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?solve=N</code> to turn that many pieces to their proven orientation before the clock starts, <code>?hint=N</code> for that many hints spent, <code>?win=1</code> for the win screen, <code>?turn=r,c</code> to tap one cell at <code>?at=</code> seconds (0.2 by default) through the ordinary move, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> &mdash; the two together are what catch a frame part-way through a spin or a wash. Pick the tab with <code>#fairylights</code>.</p>
 </section>
 </main>
 
@@ -13041,6 +13201,652 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   if($('mp-solve')) $('mp-solve').addEventListener('click',()=>runSolve(now()));
 
   L=layout(0); setup(diff,seed,0); labels(); frame();
+})();
+
+/* ---------- Fairy Lights · flat ---------- */
+(function(){
+  const cv=document.getElementById('fl'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd), and so is everything on
+  // the board. This screen invents no colour: dead wire is Light Up's
+  // FLAGSTONE, the one cool grey in the palette, chosen there for exactly
+  // this reason -- "against the warm lamplight the difference is a change of
+  // temperature as well as of value". Live wire is SUN over SUN_DEEP with a
+  // SUN_RAY halo, and a lantern is Untangle's paper warming toward
+  // LANTERN_LIT, which is what that constant is already documented to mean.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',lit:'#ffe2a8',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    stone:'#ede2cc',stoneGiven:'#dccfb3',cloud:'#a9c2dd',moss:'#7fa84a',
+    dead:'#8a9199',deadDeep:'#6f7780',iron:'#5a5248',rule:'#a3855f'};
+  const PAPER=[
+    {body:'#f0a04b',deep:'#cf7f2e'},   // amber
+    {body:'#e2726e',deep:'#bd5350'},   // rose
+    {body:'#7fb37a',deep:'#5d8f58'},   // moss
+    {body:'#6fa8c8',deep:'#4d84a3'},   // river
+    {body:'#b489c4',deep:'#8f66a0'},   // plum
+  ];
+  const CELL_FACE=mixHex(C.surface,C.parchment,0.5), CELL_LINE=rgba(C.line,0.34);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,POP_IN:0.22,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.02,SOLVE_DELAY:0.2,SHIVER_PX:2,SHIVER_TIME:0.2};
+  // This board's own three: the quarter turn, one step of the wash per
+  // depth, and how long the win waits after the last lantern wakes.
+  const TURN_TIME=0.26,WAVE_STEP=0.05,WIN_WAIT=1.4;
+  const stag=v=>RM?0:v;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const popInScale=s=>{if(RM) return 1; const u=clamp(s/MO.POP_IN); return backOut(u);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+  const shiver=(at,t)=>{const u=(t-at)/MO.SHIVER_TIME; if(RM||u<0||u>=1) return 0; return Math.sin(u*Math.PI*3)*MO.SHIVER_PX*4*(1-u);};
+
+  // ---- the state (puzzles/fairy_lights_state.gd: the one truth, scene-free) ----
+  // A piece is four bits, one a side: N E S W. A quarter turn clockwise is
+  // one bit rotate, which is the whole of the move.
+  const DR=[-1,0,1,0],DC=[0,1,0,-1];
+  const rotCW=m=>((m<<1)|(m>>3))&15;
+  const rotCCW=m=>((m>>1)|(m<<3))&15;
+  const deg=m=>(m&1)+(m>>1&1)+(m>>2&1)+(m>>3&1);
+  function rots(m){const s=[];let x=m;for(let i=0;i<4;i++){if(s.indexOf(x)<0)s.push(x);x=rotCW(x);}return s;}
+  const DIFFS=['Easy · 5×5','Medium · 6×6','Hard · 7×7'];
+
+  let n=5,diff=1,seed=7,post=0,attempts=0,scrambleTries=0;
+  let sol=[],cur=[],start=[],pin=[],paper=[];
+  let spinAt=[],spinQ=[],wakeAt=[],refuseAt=[];
+  let live=[],liveAt=[],outAt=[],depth=[];
+  let hist=[],hintsLeft=3,moves=0,openedAt=0,solvedAt=-1e9,winAt=-1e9,hasSolve=false;
+  let press=null,btnPress={},rings=[],particles=[],auto=[],L=null;
+  const open=()=>!hasSolve;
+  const idx=(r,c)=>r*n+c;
+
+  // A spanning tree over every cell, rooted at the post: randomised Prim off
+  // the day seed. Prim rather than a depth-first walk on purpose -- measured
+  // over 2,000 seeds a band, a DFS tree leaves only 13-17% of the field as
+  // lanterns (it grows long corridors), where Prim leaves 35-38%. This is a
+  // garden of fairy lights; it wants lights.
+  function tree(rng){
+    const N=n*n,mask=new Array(N).fill(0),seen=new Array(N).fill(false),front=[];
+    const push=i=>{const r=(i/n)|0,c=i%n;
+      for(let d=0;d<4;d++){const a=r+DR[d],b=c+DC[d]; if(a<0||b<0||a>=n||b>=n) continue;
+        const j=a*n+b; if(!seen[j]) front.push([i,d,j]);}};
+    seen[post]=true; push(post);
+    while(front.length){
+      const k=(rng()*front.length)|0,e=front[k]; front.splice(k,1);
+      if(seen[e[2]]) continue;
+      mask[e[0]]|=1<<e[1]; mask[e[2]]|=1<<((e[1]+2)%4); seen[e[2]]=true; push(e[2]);
+    }
+    return mask;
+  }
+  // The propagate-only solver. A cell's candidates are the distinct rotations
+  // of its own shape; an edge to off-grid is closed, and a cell whose
+  // candidates all agree about an edge proves that edge for its neighbour.
+  // Iterate to a fixpoint. Every cell down to one candidate means no guess is
+  // ever needed -- and the one candidate is the answer, because the answer
+  // was in the set and filtering only ever removes what cannot be.
+  function guessFree(mask){
+    const N=n*n,cand=mask.map(rots);
+    let changed=true,guard=0;
+    while(changed&&guard++<400){
+      changed=false;
+      for(let i=0;i<N;i++){
+        const r=(i/n)|0,c=i%n;
+        for(let d=0;d<4;d++){
+          const a=r+DR[d],b=c+DC[d],off=(a<0||b<0||a>=n||b>=n),ci=cand[i];
+          if(off){const f=ci.filter(m=>!(m>>d&1)); if(f.length!==ci.length){cand[i]=f; changed=true;} if(!f.length) return false; continue;}
+          const j=a*n+b,od=(d+2)%4;
+          const allOpen=ci.every(m=>m>>d&1),noneOpen=ci.every(m=>!(m>>d&1));
+          if(allOpen||noneOpen){
+            const f=cand[j].filter(m=>allOpen?(m>>od&1):!(m>>od&1));
+            if(f.length!==cand[j].length){cand[j]=f; changed=true;}
+            if(!f.length) return false;
+          }
+        }
+      }
+    }
+    return cand.every(x=>x.length===1);
+  }
+  // Two rules on the look, and then the promise. The property being tested
+  // belongs to the tree's shape and not to the scramble, so the scramble
+  // comes after a tree has passed.
+  function accept(mask){
+    let lant=0; for(const m of mask) if(deg(m)===1) lant++;
+    if(lant<Math.ceil(n*n*0.22)) return false;   // a garden wants lights
+    if(deg(mask[post])<2) return false;          // a post with one arm reads as broken
+    return guessFree(mask);
+  }
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd; n=5+diff;
+    const rng=mulberry32((sd*2654435761)>>>0);
+    // The middle cell. An even side has four of them; the seed picks one.
+    const lo=((n-1)/2)|0,hi=Math.ceil((n-1)/2);
+    post=idx(lo+((rng()*(hi-lo+1))|0),lo+((rng()*(hi-lo+1))|0));
+    let mask=null; attempts=0;
+    for(let a=0;a<400;a++){ attempts++; const m=tree(rng); if(accept(m)){mask=m; break;} }
+    if(!mask) mask=tree(rng);   // the budget ran out: play it anyway rather than block the board
+    sol=mask.slice();
+    // Then scramble. A cross is already every way round, so it is left
+    // alone; everything else takes a random rotation, and a scramble that
+    // came out mostly right is thrown away rather than shipped.
+    scrambleTries=0;
+    for(let a=0;a<40;a++){
+      scrambleTries++;
+      cur=sol.map(m=>{const rs=rots(m); return rs.length===1?m:rs[(rng()*rs.length)|0];});
+      let turnable=0,wrong=0;
+      for(let i=0;i<n*n;i++){ if(rots(sol[i]).length>1) turnable++; if(cur[i]!==sol[i]) wrong++; }
+      if(wrong>=Math.ceil(turnable*0.6)) break;
+    }
+    start=cur.slice();
+    paper=sol.map((m,i)=>(hash(i,sd)*997|0)%PAPER.length);
+    pin=new Array(n*n).fill(0); spinAt=new Array(n*n).fill(-1e9); spinQ=new Array(n*n).fill(0);
+    wakeAt=new Array(n*n).fill(-1e9); refuseAt=new Array(n*n).fill(-1e9);
+    live=new Array(n*n).fill(false); liveAt=new Array(n*n).fill(-1e9);
+    outAt=new Array(n*n).fill(-1e9); depth=new Array(n*n).fill(0);
+    hist=[]; hintsLeft=3; moves=0; hasSolve=false; solvedAt=-1e9; winAt=-1e9;
+    openedAt=t; press=null; btnPress={}; rings=[]; particles=[]; auto=[];
+    tip.idx=0; tipSet(TIPS[0],'happy',t);
+    settle(t+MO.ENTER_DELAY+0.2,true);
+    caption();
+  }
+
+  // ---- what is live, and the wash that carries it ----
+  const joined=(i,d)=>{
+    const r=(i/n)|0,c=i%n,a=r+DR[d],b=c+DC[d];
+    if(a<0||b<0||a>=n||b>=n) return false;
+    return !!((cur[i]>>d&1)&&(cur[a*n+b]>>((d+2)%4)&1));
+  };
+  function reach(){
+    const N=n*n,lv=new Array(N).fill(false),dp=new Array(N).fill(0),q=[post];
+    lv[post]=true;
+    for(let h=0;h<q.length;h++){
+      const i=q[h],r=(i/n)|0,c=i%n;
+      for(let d=0;d<4;d++){ if(!joined(i,d)) continue;
+        const j=(r+DR[d])*n+(c+DC[d]); if(lv[j]) continue; lv[j]=true; dp[j]=dp[i]+1; q.push(j);}
+    }
+    return [lv,dp];
+  }
+  // Queens' settle, with the tree's own depth in place of a queen's sight:
+  // the light steps out from the post one depth at a time, and a piece that
+  // goes dark goes dark from the far end back. Derived off a snapshot diff,
+  // so nothing is stored that an undo would have to clean up.
+  function settle(t,quiet){
+    const [lv,dp]=reach();
+    let prevMax=0; for(let i=0;i<n*n;i++) if(live[i]&&depth[i]>prevMax) prevMax=depth[i];
+    for(let i=0;i<n*n;i++){
+      if(lv[i]&&!live[i]) liveAt[i]=t+stag(dp[i]*WAVE_STEP);
+      else if(!lv[i]&&live[i]) outAt[i]=t+stag((prevMax-depth[i])*WAVE_STEP);
+      if(lv[i]&&!live[i]&&deg(sol[i])===1) wakeAt[i]=t+stag(dp[i]*WAVE_STEP);
+    }
+    live=lv; depth=dp;
+    if(!quiet) checkSolved(t);
+  }
+  const shownLive=(i,t)=>live[i]?t>=liveAt[i]:t<outAt[i];
+  function loose(){ // stubs that meet nothing: a wall, or a neighbour that is closed
+    let k=0;
+    for(let i=0;i<n*n;i++) for(let d=0;d<4;d++) if((cur[i]>>d&1)&&!joined(i,d)) k++;
+    return k;
+  }
+  // Solved is the rule, not a comparison with the answer: every stub meets a
+  // stub, and every cell is live -- which is the same thing as every lantern
+  // being lit, and on a tree it can only be the answer.
+  function checkSolved(t){
+    if(hasSolve||loose()>0) return;
+    for(let i=0;i<n*n;i++) if(!live[i]) return;
+    let md=0; for(let i=0;i<n*n;i++) if(depth[i]>md) md=depth[i];
+    const done=t+stag(md*WAVE_STEP)+0.2;
+    hasSolve=true; solvedAt=done; winAt=done+WIN_WAIT;
+    tipSet('Every lantern is lit.','joy',done);
+  }
+
+  // ---- the moves ----
+  function spin(i,q,t){ spinAt[i]=t; spinQ[i]=q; }
+  function turn(i,t){
+    if(!open()) return;
+    if(pin[i]){ refuseAt[i]=t; tipSet('A hint pinned that one where it belongs.','flat',t); return; }
+    if(rots(cur[i]).length===1){ refuseAt[i]=t; tipSet('A cross is already every way round.','flat',t); return; }
+    cur[i]=rotCW(cur[i]); spin(i,1,t); hist.push(i); moves++;
+    settle(t+stag(TURN_TIME*0.55));
+    if(!hasSolve) tipSet(LEFT_LINE(),'happy',t);
+    caption();
+  }
+  function undo(t){
+    if(!hist.length||!open()) return;
+    const i=hist.pop(); cur[i]=rotCCW(cur[i]); spin(i,-1,t); moves++;
+    settle(t+stag(TURN_TIME*0.55)); tipSet('Turned back. '+LEFT_LINE(),'happy',t); caption();
+  }
+  function reset(t){
+    if(!open()) return;
+    for(let i=0;i<n*n;i++) if(!pin[i]&&cur[i]!==start[i]){ cur[i]=start[i]; spin(i,1,t+stag(((i/n|0)+i%n)*0.02)); }
+    hist=[]; settle(t+stag(TURN_TIME*0.55)); tipSet('A fresh tangle. '+LEFT_LINE(),'happy',t); caption();
+  }
+  // Turns to the proven orientation and pins it there, first unsolved cell in
+  // reading order -- the cell a propagate-only solver would have settled
+  // anyway, so a hint never tells the player anything a hint could not.
+  function hint(t){
+    if(hintsLeft<=0||!open()) return;
+    let at=-1;
+    for(let i=0;i<n*n;i++) if(!pin[i]&&cur[i]!==sol[i]){at=i; break;}
+    if(at<0) for(let i=0;i<n*n;i++) if(!pin[i]){at=i; break;}
+    if(at<0) return;
+    let q=0,m=cur[at]; while(m!==sol[at]&&q<4){m=rotCW(m); q++;}
+    cur[at]=sol[at]; pin[at]=1; hintsLeft--; if(q) spin(at,q,t);
+    ring(at,t,C.leaf); settle(t+stag(TURN_TIME*0.55));
+    tipSet('Pinned. That one could only go one way.','happy',t); caption();
+  }
+  // ?solve=N and the page's own button: turn the next k pieces to where the
+  // solver proved they go, one after another so the wash can be watched.
+  function runSolve(k,t){
+    let at=t;
+    for(let i=0;i<n*n&&k>0;i++){
+      if(cur[i]===sol[i]) continue;
+      const j=i,target=sol[i]; k--;
+      auto.push({at,fn:tt=>{ if(!open()) return;
+        let q=0,m=cur[j]; while(m!==target&&q<4){m=rotCW(m); q++;}
+        cur[j]=target; spin(j,q,tt); hist.push(j); moves++;
+        settle(tt+stag(TURN_TIME*0.55)); caption(); }});
+      at+=RM?0:0.16;
+    }
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  const centre=i=>[L.gx+(i%n)*L.cell+L.cell/2,L.gy+((i/n)|0)*L.cell+L.cell/2];
+  function ring(i,t0,col){ if(RM) return; rings.push({i,t0,col}); }
+  function sparkle(i,t0,col){ if(RM) return; for(let k=0;k<6;k++) particles.push({i,ox:(hash(k+i,7)-0.5)*0.7,oy:(hash(k,i+13)-0.5)*0.5,vx:(hash(k,i*5)-0.5)*80,vy:-110,t0:t0+k*0.04,life:0.7,col,rad:12,g:150}); }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur2='';
+    for(const w of ws){const test=cur2?cur2+' '+w:w; if(ctx.measureText(test).width>maxw&&cur2){out.push(cur2); cur2=w;} else cur2=test;}
+    if(cur2) out.push(cur2); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+  // Untangle's paper lantern, ported number for number from that tab's own
+  // `lantern` -- ui/faces/lantern_face.gd is the class, and its `lit` 0..1
+  // and its halo are exactly this. Unlit it is `plain`: the face is what
+  // waking up looks like, so an unlit garden is quiet paper and no eyes.
+  function lanternAt(R,hue,o){
+    const P=PAPER[hue%PAPER.length],lt=o.lit||0;
+    if(lt>0){
+      const g=ctx.createRadialGradient(0,0,R*0.4,0,0,R*2.5);
+      g.addColorStop(0,rgba(C.sun,0.34*lt)); g.addColorStop(1,rgba(C.sun,0));
+      ctx.fillStyle=g; circle(0,0,R*2.5);
+    }
+    ctx.fillStyle='rgba(59,48,40,0.10)'; ellipse(R*0.1,R*1.1,R*0.8,R*0.18);
+    const body=lt>0?mixHex(P.body,C.lit,0.4*lt):mixHex(P.body,C.stone,0.55);
+    const deep=lt>0?mixHex(P.deep,C.sun,0.42*lt):mixHex(P.deep,C.dead,0.5);
+    ctx.fillStyle=deep; rr(-R*0.42,-R*1.02,R*0.84,R*0.24,R*0.1); ctx.fill();
+    ctx.fillStyle=body; rr(-R*0.86,-R*0.86,R*1.72,R*1.72,R*0.62); ctx.fill();
+    ctx.fillStyle=rgba('#ffffff',0.2); rr(-R*0.7,-R*0.7,R*0.4,R*1.36,R*0.2); ctx.fill();
+    ctx.strokeStyle=rgba(P.deep,lt>0?0.45:0.25); ctx.lineWidth=R*0.07; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-R*0.86,-R*0.06); ctx.lineTo(R*0.86,-R*0.06); ctx.stroke();
+    ctx.fillStyle=deep; rr(-R*0.34,R*0.8,R*0.68,R*0.2,R*0.08); ctx.fill();
+    if(lt>0.4) faceParts(R*0.9,0,-R*0.04,o);
+  }
+  // The post: the only thing on the board that is always live, and the only
+  // thing that is not paper. Iron foot, iron stem, a sun in the glass.
+  function postAt(R,t){
+    ctx.fillStyle='rgba(59,48,40,0.12)'; ellipse(0,R*1.02,R*0.8,R*0.2);
+    const g=ctx.createRadialGradient(0,-R*0.3,R*0.3,0,-R*0.3,R*2.3);
+    g.addColorStop(0,rgba(C.sun,0.3)); g.addColorStop(1,rgba(C.sun,0)); ctx.fillStyle=g; circle(0,-R*0.3,R*2.3);
+    ctx.fillStyle=C.iron; rr(-R*0.46,R*0.76,R*0.92,R*0.22,R*0.1); ctx.fill();
+    ctx.fillStyle=C.iron; rr(-R*0.13,-R*0.1,R*0.26,R*0.96,R*0.06); ctx.fill();
+    ctx.fillStyle=C.sunDeep; circle(0,-R*0.42,R*0.52);
+    ctx.fillStyle=C.sun; circle(0,-R*0.46,R*0.46);
+    const pulse=RM?0:0.5+0.5*Math.sin(t*1.6);
+    ctx.fillStyle=rgba(C.lit,0.55+0.35*pulse); circle(-R*0.1,-R*0.56,R*0.2);
+    ctx.fillStyle=C.iron; rr(-R*0.34,-R*1.08,R*0.68,R*0.24,R*0.1); ctx.fill();
+    ctx.fillStyle=C.iron; rr(-R*0.08,-R*1.28,R*0.16,R*0.24,R*0.06); ctx.fill();
+  }
+
+  // ---- layout ----
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, a 1340 slot, 20,
+  // 140 of tip card, 40 of margin -- 1920 exactly. This board has no tray and
+  // no actions row (Untangle's and Word Trail's shape), so Reset rides up in
+  // the bar and the tip card is the whole bottom slot. The cells abut, so the
+  // cell is a round (1000 - 2*28)/n with no gap to take out: 188, 157, 134.
+  // The card is then cut to the grid and centred in what is left, which is
+  // `card_height()` and `card_centred()` doing exactly what Tents asks of them.
+  const TOP_H=180,DAY_H=120,SLOT_H=1340,TIP_H=140,ROW_GAP=20,INSET=28;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,slotY=dayY+DAY_H+ROW_GAP,tipY=slotY+SLOT_H+ROW_GAP;
+    const cell=Math.floor((COL-2*INSET)/n),gw=n*cell,cardH=gw+2*INSET;
+    const by=slotY+(SLOT_H-cardH)/2,gx=W/2-gw/2,gy=by+INSET;
+    return {top:{y:topY},day:{y:dayY},board:{y:by,h:cardH},tip:{y:tipY},cell,gx,gy,gw,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+
+  // ---- the board ----
+  function spinAngle(i,t){
+    if(RM||!spinQ[i]) return 0;
+    const u=clamp((t-spinAt[i])/(TURN_TIME*Math.max(1,Math.abs(spinQ[i]))*0.7+TURN_TIME*0.3));
+    if(u>=1) return 0;
+    return -spinQ[i]*(Math.PI/2)*(1-backOut(u));
+  }
+  const spinPull=(i,t)=>{if(RM||!spinQ[i]) return 1; const u=clamp((t-spinAt[i])/TURN_TIME); return u>=1?1:1-0.11*Math.sin(Math.PI*u);};
+  // An arm runs from the middle to the cell's edge when it meets a stub on
+  // the other side, and stops a little short with a round end when it does
+  // not. A loose end has to look loose: it is the only thing on this board
+  // that says "not finished here", and the rule the win is defined by.
+  function armPath(i,m,S2,t){
+    const half=S2/2,pull=spinPull(i,t);
+    for(let d=0;d<4;d++){
+      if(!(m>>d&1)) continue;
+      const full=joined(i,d),len=(full?half:half*0.7)*pull;
+      ctx.moveTo(0,0); ctx.lineTo(DC[d]*len,DR[d]*len);
+    }
+  }
+  function cellFrame(i,t){
+    const r=(i/n)|0,c=i%n;
+    ctx.translate(L.gx+c*L.cell+L.cell/2,L.gy+r*L.cell+L.cell/2);
+    const sh=shiver(refuseAt[i],t); if(sh) ctx.translate(sh,0);
+    ctx.rotate(spinAngle(i,t));
+  }
+  function drawGrid(t){
+    const S2=L.cell,w=S2*0.13;
+    // the ground: one pale field with the cells ruled on it, and the heavy
+    // rule round the outside -- Sudoku's GRID_RULE, the fence of this garden
+    ctx.fillStyle=C.rule; rr(L.gx-6,L.gy-6,L.gw+12,L.gw+12,26); ctx.fill();
+    ctx.fillStyle=CELL_FACE; rr(L.gx,L.gy,L.gw,L.gw,20); ctx.fill();
+    ctx.save(); rr(L.gx,L.gy,L.gw,L.gw,20); ctx.clip();
+    ctx.beginPath();
+    for(let k=1;k<n;k++){ctx.moveTo(L.gx+k*S2,L.gy); ctx.lineTo(L.gx+k*S2,L.gy+L.gw); ctx.moveTo(L.gx,L.gy+k*S2); ctx.lineTo(L.gx+L.gw,L.gy+k*S2);}
+    stroke(CELL_LINE,2); ctx.restore();
+    // a pinned cell reads as a given: the sun wash and the dotted ring every
+    // board draws round a hint
+    for(let i=0;i<n*n;i++){
+      if(!pin[i]) continue;
+      const x=L.gx+(i%n)*S2,y=L.gy+((i/n)|0)*S2;
+      ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle=C.sunRay; rr(x+6,y+6,S2-12,S2-12,S2*0.18); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.setLineDash([S2*0.1,S2*0.08]); rr(x+9,y+9,S2-18,S2-18,S2*0.16); stroke(C.sunDeep,4); ctx.restore();
+    }
+    // the glow, under everything: a live run reads as light before it reads
+    // as wire
+    for(let i=0;i<n*n;i++){
+      if(!shownLive(i,t)) continue;
+      ctx.save(); cellFrame(i,t);
+      ctx.beginPath(); armPath(i,cur[i],S2,t); stroke(rgba(C.sunRay,0.15),w*2.7);
+      ctx.beginPath(); armPath(i,cur[i],S2,t); stroke(rgba(C.sun,0.22),w*1.6);
+      ctx.restore();
+    }
+    // the shade under the wire, then the wire itself: a fill over a slightly
+    // deeper shape, the family's lip on every piece
+    for(let pass=0;pass<2;pass++){
+      for(let i=0;i<n*n;i++){
+        const lv=shownLive(i,t);
+        ctx.save(); cellFrame(i,t);
+        if(pass===0) ctx.translate(0,4);
+        ctx.beginPath(); armPath(i,cur[i],S2,t);
+        stroke(pass===0?(lv?C.sunDeep:C.deadDeep):(lv?C.sun:C.dead),w);
+        // a junction gets a collar; a straight or an elbow does not, because a
+        // disc wider than the wire reads as a lump on it rather than a joint
+        if(deg(cur[i])>=3){ctx.fillStyle=pass===0?(lv?C.sunDeep:C.deadDeep):(lv?C.sun:C.dead); circle(0,0,w*0.62);}
+        if(pass===1&&lv){ctx.beginPath(); armPath(i,cur[i],S2,t); stroke(rgba(C.lit,0.55),w*0.3);}
+        ctx.restore();
+      }
+    }
+    // the lanterns and the post over them
+    for(let i=0;i<n*n;i++){
+      const lv=shownLive(i,t);
+      ctx.save(); cellFrame(i,t);
+      ctx.rotate(-spinAngle(i,t));   // paper hangs level however the wire is turned
+      if(i===post){ postAt(S2*0.34,t); }
+      else if(deg(cur[i])===1){
+        const wake=lv?bumpScale(t-wakeAt[i]):1,pop=popInScale(t-openedAt-MO.ENTER_DELAY-0.1);
+        ctx.scale(wake*pop,wake*pop);
+        let eye=1; if(!RM){const mm=(t+i*0.7)%4.6; if(mm<0.14) eye=1-0.9*Math.sin(Math.PI*mm/0.14);}
+        lanternAt(S2*0.27,paper[i],{lit:lv?1:0,eye,expr:hasSolve?'joy':'happy'});
+      }
+      ctx.restore();
+    }
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      const p=centre(rg.i); ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.arc(p[0],p[1],S2*(0.3+0.36*u),0,Math.PI*2); stroke(rg.col,8*(1-u)+2); ctx.restore();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const c0=centre(p.i),s2=(t-p.t0);
+      ctx.save(); ctx.globalAlpha=1-u; star4(c0[0]+p.ox*S2+p.vx*s2,c0[1]+p.oy*S2+p.vy*s2+p.g*s2*s2,p.rad*(1-0.5*u),t*2+p.ox,p.col); ctx.restore();}
+  }
+  function drawBoard(t){
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,L.board.y,COL,L.board.h,40,C.surface,C.line,8);
+    const s=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a>0){
+      ctx.save(); ctx.globalAlpha=a*fade;
+      const cx=L.gx+L.gw/2,cy=L.gy+L.gw/2;
+      let hop=0; if(hasSolve) hop=0;
+      ctx.translate(cx,cy+hop); ctx.scale(s,s); ctx.translate(-cx,-cy);
+      drawGrid(t);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ---- the chrome ----
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const sq=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sq[0],sq[1]); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t);
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!hist.length});
+    const cx=(M+126+W-M-504)/2,by=L.top.y+98;
+    ctx.font='700 54px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('FAIRY LIGHTS').width; ctx.letterSpacing='0px';
+    text('FAIRY LIGHTS',cx,by-10,'700 54px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-32; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7); leaf(lx+2,ly-26,34,-2.7); leaf(lx+2,ly-30,28,-0.5);
+    text('WAKE EVERY LANTERN',cx,by+38,'700 19px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+  const TIPS=['Tap a length of wire to turn it a quarter turn.','The post in the middle is where the light comes from.','Warm wire is live. Pale wire has not been reached yet.','Done when every lantern is lit and no end is loose.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  const LEFT_LINE=()=>{const l=loose(); const d=n*n-live.filter(Boolean).length;
+    return l===0?'No loose ends left — now reach them all.':d===1?'One lantern still in the dark.':d+' still in the dark.';};
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood==='joy'?'joy':'happy'}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-200,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  // The win: `flat_win()` is the board's own cast laid across the screen, and
+  // this board's cast is the lanterns -- five of them strung on a cord, lit.
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Every lantern is lit.',W/2,534,'600 34px '+FB,C.dim);
+      // the cord and its five papers
+      const cy=900,R=76; ctx.beginPath(); ctx.moveTo(M+20,cy-110);
+      ctx.quadraticCurveTo(W/2,cy-30,W-M-20,cy-110); stroke(C.iron,9);
+      for(let i=0;i<5;i++){const x=M+110+i*205,u=(x-M-20)/(COL-40),sag=cy-110+80*Math.sin(Math.PI*u);
+        let sw=0; if(!RM) sw=Math.sin(t*1.5+i*0.8)*0.06;
+        ctx.save(); ctx.translate(x,sag); ctx.rotate(sw); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,62); stroke(C.iron,7);
+        ctx.translate(0,62+R); lanternAt(R,i,{lit:1,expr:'joy'}); ctx.restore();}
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' turns · '+hu+(hu===1?' hint':' hints'));
+      const sq=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sq[0],sq[1]); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('fl-caption');
+  function caption(){
+    if(!capEl) return;
+    let lant=0,lanLit=0,wrong=0,crosses=0;
+    for(let i=0;i<n*n;i++){
+      if(deg(sol[i])===1){lant++; if(live[i]) lanLit++;}
+      if(rots(sol[i]).length===1) crosses++;
+      if(cur[i]!==sol[i]) wrong++;
+    }
+    if(hasSolve){capEl.textContent='Lit in '+moves+' turns and '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+' — all '+lant+' lanterns on one wire.'; return;}
+    capEl.textContent=n+'×'+n+' · '+lant+' lanterns, '+lanLit+' lit · '+crosses+' crosses (nothing to turn) · '+wrong+' pieces still out of place · '+loose()+' loose ends · '+hintsLeft+' hints · '
+      +'built in '+attempts+(attempts===1?' attempt':' attempts')+', guess-free by propagation alone';
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout();
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); a.fn(a.at);}
+    // never under ?freeze=1: the clock is stopped, so a line set at exactly t
+    // would sit at zero of its own fade for the whole shot
+    if(!FREEZE&&tip.mood==='happy'&&open()&&!hist.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch: one tap, one quarter turn, and nothing else ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function cellAt(p){
+    const c=Math.floor((p[0]-L.gx)/L.cell),r=Math.floor((p[1]-L.gy)/L.cell);
+    if(c<0||r<0||c>=n||r>=n) return -1;
+    return r*n+c;
+  }
+  function hit(p,t){
+    if(hasSolve) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(inRect(p,W-M-488,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    const i=cellAt(p); if(i>=0) return {kind:'cell',i};
+    return null;
+  }
+  let pressTarget=null;
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),hh=hit(pt(e),t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='cell') press=hh.i; else btnPress[hh.kind]=t;});
+  function up(e){const t=now(),p=pt(e),hh=hit(p,t); press=null;
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind||(hh.kind==='cell'&&hh.i!==pressTarget.i)){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='cell') turn(hh.i,t);
+    else if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='tip') tipSet('One tap turns a piece a quarter turn clockwise. Nothing else.','happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the fifteen cards.','happy',t);
+    else if(hh.kind==='camp') build(diff,seed+1,t);}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{press=null; pressTarget=null;});
+
+  // ---- the page's own controls ----
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('fl-hint',t=>hint(t)); btn('fl-undo',t=>undo(t)); btn('fl-reset',t=>reset(t));
+  btn('fl-new',t=>build(diff,seed+1,t));
+  btn('fl-solve',t=>runSolve(n*n,t));
+  btn('fl-one',t=>runSolve(1,t));
+  const diffEl=document.getElementById('fl-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=DIFFS[diff];});
+  const rmEl=document.getElementById('fl-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  build(Q.has('d')?parseInt(Q.get('d'))||0:1,parseInt(Q.get('seed')||'7')||7,0);
+  if(diffEl) diffEl.textContent=DIFFS[diff];
+  // A harness stamps the moves in the past so the frame it shoots is settled.
+  (function(){
+    const hn=parseInt(Q.get('hint')||'0')||0,win=Q.get('win')==='1';
+    const sv=win?n*n:(parseInt(Q.get('solve')||'0')||0);
+    for(let i=0;i<hn;i++) hint(-12);
+    if(sv>0){
+      let k=sv;
+      for(let i=0;i<n*n&&k>0;i++){ if(cur[i]===sol[i]) continue; k--;
+        let q=0,m=cur[i]; while(m!==sol[i]&&q<4){m=rotCW(m); q++;}
+        cur[i]=sol[i]; spin(i,q,-11); hist.push(i); moves++; }
+      settle(-11); checkSolved(-11);
+    }
+    if(hn||sv){openedAt=-14; if(hasSolve){solvedAt=-11; winAt=-10.6;}}
+    // ?turn=r,c at ?at= is the one that leaves a wash in flight: it goes
+    // through the ordinary move, so with ?freeze=1 a frame part-way along
+    // the wave can be shot.
+    const tw=Q.get('turn');
+    if(tw){const rc2=tw.split(',').map(Number),at=parseFloat(Q.get('at')||'0.2');
+      if(rc2.length===2&&rc2[0]>=0&&rc2[0]<n&&rc2[1]>=0&&rc2[1]<n) auto.push({at,fn:tt=>turn(rc2[0]*n+rc2[1],tt)});}
+    caption();
+  })();
+  frame();
 })();
 </script>
 </body>
