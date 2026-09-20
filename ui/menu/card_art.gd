@@ -5,7 +5,7 @@ extends Control
 ## scaled to whatever the card gives them.
 ##
 ## It is never an image and never a render of a model. Twelve of the
-## fourteen are made almost entirely of the flat boards' own cast --
+## sixteen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
@@ -13,10 +13,12 @@ extends Control
 ## its board are visibly the same drawing. Only the furniture under them (a
 ## tray, a beam, a tile) is drawn here.
 ##
-## The two that borrow nothing are Nonogram and Sudoku, and for the same
-## reason: neither board has a character at all. Their pictures are entirely
-## `_draw` -- tiles for one, a ruled three-by-three fragment with numerals
-## for the other -- and neither has a branch of `_build`.
+## The four that borrow nothing are Nonogram, Sudoku, Bridges and Quilt, and
+## for the same reason: none of those boards has a character at all. Their
+## pictures are entirely `_draw` -- tiles for the first, a ruled
+## three-by-three fragment with numerals for the second, a sea with islets
+## on it for the third and a part-sewn blanket for the fourth -- and none of
+## them has a branch of `_build`.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -41,9 +43,18 @@ const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
+const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
+
+## Bridges' three islets and their radius, in the box's own units. The pair
+## on the left face each other across a lane the double run fills; the third
+## stands clear of both, so nothing on the card reads as a run that is not
+## drawn. An islet is 0.40 of a cell on the board, so the cell these are
+## spaced and planked by is SEA_R / 0.40.
+const SEA_R := 26.0
+const SEA_ISLETS := [Vector2(-100.0, 14.0), Vector2(26.0, 14.0), Vector2(104.0, -20.0)]
 
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
@@ -53,6 +64,10 @@ var _c := Vector2.ZERO
 ## command keeps a mesh by RID and not by reference, so a local ArrayMesh is
 ## freed before the frame it was queued in ever renders.
 var _band_mesh: ArrayMesh
+## Bridges' sea, islets and planks, held for the same RID reason.
+var _sea_mesh: ArrayMesh
+## Quilt's backing, its patches and their seams, likewise.
+var _quilt_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -135,6 +150,11 @@ func _build() -> void:
 			# No cast: the three marks are the whole picture, and _draw lays
 			# them and the band under them, so this branch seats nothing.
 			pass
+		"bridges":
+			# Nothing to seat either: that board adds no character to
+			# ui/faces/ (spec section 8), so an islet is drawn furniture and
+			# the whole picture is _draw's.
+			pass
 		"wordtrail":
 			# The sprout beside a small field: the field is one plain Control
 			# whose own `draw` this branch wires up, so the picture costs one
@@ -177,6 +197,8 @@ func _draw() -> void:
 		"hiddenword": _draw_letters()
 		"mushroom": _draw_patch()
 		"sudoku": _draw_sudoku()
+		"bridges": _draw_sea()
+		"quilt": _draw_quilt()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -414,3 +436,135 @@ func _draw_sudoku() -> void:
 	_text("5", x0 + cell * 0.5, y0 + cell * 0.78, 26.0, Pal.TEXT)
 	_text("3", x0 + cell * 1.5, y0 + cell * 1.78, 26.0, Pal.LEAF_DEEP)
 	_text("7", x0 + cell * 2.5, y0 + cell * 2.78, 26.0, Pal.TEXT)
+## Bridges: three turf islets with their numbers on a small sea panel, two of
+## them joined by a double run and one still waiting. That board adds nothing
+## to ui/faces/ (spec section 8), so unlike its siblings this picture seats no
+## character at all -- every piece of it is drawn furniture, and it is one
+## mesh (the pool, the shallows, the ripples, the two planks and the islets)
+## with the numbers as draw commands over it, which is the arrangement the
+## board itself uses.
+##
+## Every colour is a core/palette.gd entry or a mix of exactly two of them,
+## and the mixes are the board's own (spec section 7): the sea is WATER_HI let
+## down into PAPER rather than WATER straight, and on a pale sea the mark is
+## darker than the water, so Pal.WATER is the ripple and not the water.
+func _draw_sea() -> void:
+	var sea: Color = Pal.WATER_HI.lerp(Pal.PAPER, 0.46)          # #a4cde6
+	var sea_pale: Color = Pal.WATER_HI.lerp(Pal.PAPER, 0.74)     # #cfdfe4
+	var sea_deep: Color = Pal.WATER_HI.lerp(Pal.TEXT, 0.20)      # #5896c2
+	var sea_shade: Color = Pal.WATER.lerp(Pal.TEXT, 0.35)        # #336e99
+	var sand_deep: Color = Pal.ACORN.lerp(Pal.TEXT, 0.22)
+	var bank_deep: Color = Pal.BANK.lerp(Pal.TEXT, 0.28)
+	var bank_hi: Color = Pal.BANK.lerp(Pal.SURFACE, 0.26)
+	var b := Face.Builder.new()
+	# The pool, with its darker bottom edge showing under it.
+	b.fan(Face.Builder.round_rect(at(-156.0, -54.0), Vector2(312.0, 108.0) * _u, 12.0 * _u), sea_deep)
+	b.fan(Face.Builder.round_rect(at(-156.0, -54.0), Vector2(312.0, 105.0) * _u, 12.0 * _u), sea)
+	# The shallows: a paler band inside the rim, not a deeper one.
+	b.stroke(Face.Builder.round_rect(at(-152.0, -50.0), Vector2(304.0, 100.0) * _u, 9.0 * _u),
+		8.0 * _u, Color(sea_pale, 0.85), true)
+	for r: Array in [[-140.0, -34.0, 28.0], [40.0, -42.0, 26.0], [-34.0, 42.0, 30.0]]:
+		var from := at(r[0], r[1])
+		var to := at(r[0] + r[2], r[1])
+		var arc := Face.Builder.bezier2(from, at(r[0] + r[2] * 0.5, r[1] - 3.0), to, 8)
+		arc.append(to)
+		b.stroke(arc, 2.6 * _u, Color(Pal.WATER, 0.24))
+	# The run: two planks in the lane between the first two islets, thick and
+	# spaced as the board's are -- 0.115 of a cell with 0.095 between them.
+	var cell := SEA_R / 0.40
+	var th := cell * 0.115
+	var gap := cell * 0.095
+	var x0: float = SEA_ISLETS[0].x + SEA_R
+	var x1: float = SEA_ISLETS[1].x - SEA_R
+	for i in 2:
+		var y := SEA_ISLETS[0].y + i * (th + gap) - (th + gap) * 0.5
+		b.fan(Face.Builder.round_rect(at(x0 + 2.0, y - th * 0.5 + 4.0),
+			Vector2(x1 - x0, th) * _u, th * 0.34 * _u), Color(Pal.TEXT, 0.22))
+		b.fan(Face.Builder.round_rect(at(x0, y - th * 0.5),
+			Vector2(x1 - x0, th) * _u, th * 0.34 * _u), Pal.WOOD_DEEP)
+		b.fan(Face.Builder.round_rect(at(x0, y - th * 0.5),
+			Vector2(x1 - x0, th - 2.0) * _u, th * 0.34 * _u), Pal.DECK)
+		var step := cell * 0.30
+		var s := step * 0.6
+		while s < x1 - x0 - step * 0.3:
+			b.stroke(PackedVector2Array([at(x0 + s, y - th * 0.5 + 1.0), at(x0 + s, y + th * 0.5 - 2.0)]),
+				2.0 * _u, Color(Pal.WOOD_DEEP, 0.28), false, false)
+			s += step
+	# The islets: a coloured shadow on the water, a beach of ACORN over its
+	# own wet sand, turf on top and one sun cap. ACORN rather than STONE is
+	# what gives the islet an edge on a pale sea (spec section 7).
+	for seat: Vector2 in SEA_ISLETS:
+		b.ellipse(at(seat.x, seat.y + SEA_R * 0.30), SEA_R * 1.02 * _u, SEA_R * 0.40 * _u,
+			Color(sea_shade, 0.30))
+		b.disc(at(seat.x, seat.y + SEA_R * 0.07), SEA_R * _u, sand_deep)
+		b.disc(at(seat.x, seat.y), SEA_R * _u, Pal.ACORN)
+		b.disc(at(seat.x, seat.y + SEA_R * 0.04), SEA_R * 0.80 * _u, bank_deep)
+		b.disc(at(seat.x, seat.y), SEA_R * 0.80 * _u, Pal.BANK)
+		b.ellipse(at(seat.x - SEA_R * 0.22, seat.y - SEA_R * 0.34), SEA_R * 0.30 * _u,
+			SEA_R * 0.17 * _u, Color(bank_hi, 0.55))
+	_sea_mesh = b.mesh()
+	draw_mesh(_sea_mesh, null)
+	# The numbers read as a real board part-solved: the double run spends two
+	# at each end, so the 2 is met, the 3 still wants one more, and the third
+	# islet has spent nothing at all.
+	var needs := ["2", "3", "1"]
+	for i in 3:
+		_text(needs[i], SEA_ISLETS[i].x, SEA_ISLETS[i].y + SEA_R * 0.32, SEA_R * 0.95, Pal.TEXT)
+
+## Quilt: a backing part covered, five patches sewn onto it with the stitch
+## showing along every seam between two of them, and one patch still waiting
+## beside it at the rack's smaller cell -- the whole game in one picture.
+##
+## No cast. This board seats no character either (spec section 8), which
+## makes it the fourth after Nonogram, Sudoku and Bridges, so the picture is
+## entirely drawn furniture. It is **the board's own drawing** and not a
+## second one: `ui/faces/patch_cloth.gd` traces the silhouette, rounds it and
+## lays the lip under it here exactly as `puzzles/quilt2d.gd` does, so a card
+## and its board cannot drift apart. One mesh, one draw call.
+func _draw_quilt() -> void:
+	var cell := 22.0 * _u
+	var b := Face.Builder.new()
+	# The backing: a four-row blanket with two corners bitten out of it, so
+	# the shape reads as cut cloth rather than as a grid.
+	var back: Array = []
+	for r in 4:
+		for c in 8:
+			if (c == 7 and (r == 0 or r == 3)):
+				continue
+			back.append(Vector2i(c, r))
+	var origin := at(-150.0, -44.0)
+	PatchCloth.patch(b, PatchCloth.loops(back), origin, cell, Vector2i.ZERO,
+		Pal.QUILT_BACK, Pal.LINE)
+	# Five patches, by the same colour index the board would give them.
+	var sewn := [
+		[4, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]],
+		[6, [Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0), Vector2i(2, 1)]],
+		[2, [Vector2i(5, 0), Vector2i(6, 0), Vector2i(5, 1), Vector2i(6, 1)]],
+		[0, [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), Vector2i(0, 3)]],
+		[3, [Vector2i(5, 2), Vector2i(6, 2), Vector2i(5, 3), Vector2i(6, 3)]],
+	]
+	for entry: Array in sewn:
+		var i := int(entry[0])
+		PatchCloth.patch(b, PatchCloth.loops(entry[1] as Array), origin, cell,
+			Vector2i.ZERO, PatchCloth.cloth(i), PatchCloth.cloth_deep(i))
+	# The stitch, along the four seams where two patches meet. The hem is
+	# left unsewn here: at this size every edge dashed is a hatch, and the
+	# seams between patches are the ones that say what the game is.
+	var seams := [
+		[Vector2(2.0, 0.0), Vector2(2.0, 2.0), 6],
+		[Vector2(5.0, 0.0), Vector2(5.0, 1.0), 2],
+		[Vector2(0.0, 2.0), Vector2(2.0, 2.0), 0],
+		[Vector2(5.0, 2.0), Vector2(7.0, 2.0), 3],
+	]
+	for seam: Array in seams:
+		PatchCloth.stitch(b, origin + (seam[0] as Vector2) * cell,
+			origin + (seam[1] as Vector2) * cell, 0.05 * cell,
+			0.15 * cell, 0.1 * cell, PatchCloth.cloth_stitch(int(seam[2])))
+	# The patch still waiting, at the rack's own smaller cell, and clear of
+	# the blanket so it reads as not yet sewn on.
+	var wait_cell := 15.0 * _u
+	PatchCloth.patch(b, PatchCloth.loops([Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1)]),
+		at(88.0, -15.0), wait_cell, Vector2i.ZERO,
+		PatchCloth.cloth(1), PatchCloth.cloth_deep(1))
+	_quilt_mesh = b.mesh()
+	draw_mesh(_quilt_mesh, null)

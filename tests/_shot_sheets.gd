@@ -26,7 +26,7 @@ func _initialize() -> void:
 func _process(delta: float) -> bool:
 	_t += delta
 	if _step == 0 and _t >= OPEN_AT:
-		_menu._open(load("res://ui/registry.gd").PUZZLES[0])
+		_menu._open(_pick())
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_step = 1
 	elif _step == 1 and _t >= RULES_AT:
@@ -48,3 +48,16 @@ func _shot(path: String) -> void:
 	RenderingServer.force_draw()
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path)
+
+## Which board's sheets to shoot: the first, or the one named after `--`.
+## The two panels are shared, so any board judges the panels -- but a
+## board's own `rules()` is its own, and a long one is worth looking at
+## rather than assuming it fits.
+func _pick() -> Dictionary:
+	var args := OS.get_cmdline_user_args()
+	var entries: Array = load("res://ui/registry.gd").PUZZLES
+	if args.size() > 0:
+		for e in entries:
+			if e.id == args[0]:
+				return e
+	return entries[0]
