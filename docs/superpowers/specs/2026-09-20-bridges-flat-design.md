@@ -47,11 +47,26 @@ built a pager in `ui/menu.gd`** to make room for it. This board is the third
 in that queue and does not touch `ui/menu.gd` at all: it adds a registry
 entry and a card picture, and whichever pager merges first carries it.
 
-That is a deliberate narrowing, and it has a cost worth stating: **nobody has
-seen this card on a real page**, because the page it would stand on does not
-exist on `main` yet. The card picture is drawn and measured on its own
-(section 11); its draw-call contribution to a full page is not, and cannot be
-until a pager lands.
+That is a deliberate narrowing, and it has a sharper cost than this spec
+first claimed. The original wording here said the card simply would not
+appear on a full grid. **That was wrong, and the build proved it wrong.**
+`ui/menu.gd:139` loops `for i in Registry.PUZZLES.size()` into a 3-column
+grid with no cap of any kind, so a thirteenth entry *does* get a card, the
+grid becomes five rows, and **the bottom bar is pushed off the bottom of the
+screen**. The menu shot drops from 322 draw calls to 313, and the nine
+missing calls are the bar leaving, not a saving.
+
+So the constraint is not "the card is invisible until a pager lands", it is
+**this branch cannot merge to `main` before a pager does**. That is a merge
+ordering requirement, not a defect in this board: nothing here is wrong, and
+the moment a pager is in front of it the card takes its slot. It is written
+down in this paragraph because the symptom -- a first screen with no bottom
+bar -- looks nothing like its cause, and the next person to see it will not
+guess that a registry entry three files away did it.
+
+The card picture is drawn and verified on its own (section 11); its
+draw-call contribution to a full page is not, and cannot be until a pager
+lands.
 
 `ui/registry.gd` gains one `PUZZLES` entry:
 
