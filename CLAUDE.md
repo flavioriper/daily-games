@@ -832,7 +832,17 @@ pointing `seed_as` at them. Specs:
   (391 at 84, to 79) and motto (406, to 21), Mushroom Patch's title (635, to
   65) and **Paper Planes' title (497, to 62)**. **Bridges is untouched** --
   284 and 236 against the four-button 496, which is what its spec's section
-  2 predicted. Every other label is
+  2 predicted. **Rings was not in that sweep** -- it merged after it -- and
+  was measured on its own at the Paper Planes merge with the same headless
+  arithmetic, with Paper Planes' own pair re-run in the same probe as a
+  control and reproducing 497 and 62 exactly. **Rings is untouched too, and
+  it is the narrowest miss in the game**: the title measures 204 at 84
+  against the five-button 370, nowhere near it, but the motto `EVERY RING
+  FINDS ITS PEG` measures **363 against 370** and keeps its 24 by seven
+  pixels. Seven labels lettered smaller is therefore still the count at
+  eighteen boards -- but a motto one word longer on a five-button bar would
+  have made it eight, so nobody should read Rings' escape as headroom.
+  Every other label is
   untouched to the pixel, Hidden Word's 481-wide title included: its bar
   builds five buttons but `refresh()` hides Undo, so the block it measures
   against is 496 and it stays at 84. **Sudoku is now measured rather than
@@ -1048,7 +1058,10 @@ pointing `seed_as` at them. Specs:
   apart are pixel-identical, 0 of 1,166,400, against non-zero controls.
 - **Nothing under `tests/` loaded a board's `*2d.gd` until 2026-09-20**, and
   that was true of all boards, not one -- and since the merge that brought
-  Bridges and Quilt in, the guard covers all seventeen. A parse error in
+  Bridges and Quilt in, the guard covers every entry there is -- eighteen
+  once Paper Planes and Rings landed, because it walks `Registry.PUZZLES`
+  rather than a list of its own, which is the only reason that number has
+  not gone stale here the way every hand-written one did. A parse error in
   `puzzles/planes2d.gd` left the suite reporting `passed=94534 failed=0`; the
   only thing that caught it was `tests/_win.gd`, which needs a display and is
   not in CI. A script with a parse error still `load()`s as a GDScript object
