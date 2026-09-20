@@ -61,16 +61,21 @@ func _build() -> ArrayMesh:
 	if clouds.is_empty() and tufts.is_empty():
 		return null
 	var b := Face.Builder.new()
-	var cloud: Color = ground.lerp(Pal.SURFACE, CLOUD_LIFT)
+	# Named `puff` rather than `cloud` since the shape below became public: a
+	# local of the same name would shadow it.
+	var puff: Color = ground.lerp(Pal.SURFACE, CLOUD_LIFT)
 	for c in clouds:
-		_cloud(b, Vector2(c.x, c.y), c.z, cloud)
+		cloud(b, Vector2(c.x, c.y), c.z, puff)
 	for t in tufts:
 		_tuft(b, Vector2(t.x, t.y), t.z)
 	return b.mesh()
 
 ## A cloud: a flat base under three puffs, the middle one tallest, the way
-## the concept page's sky draws them.
-static func _cloud(b: Face.Builder, at: Vector2, r: float, colour: Color) -> void:
+## the concept page's sky draws them. Public, beside `soft_disc`, because a
+## board that builds its own scenery into a mesh it already draws (Hidden
+## Word's band) appends the family's cloud to its own Builder rather than
+## standing a Scenery node up for two of them.
+static func cloud(b: Face.Builder, at: Vector2, r: float, colour: Color) -> void:
 	b.ellipse(at + Vector2(0.0, r * 0.35), r * 1.75, r * 0.5, colour)
 	b.disc(at + Vector2(-r * 0.75, r * 0.1), r * 0.62, colour)
 	b.disc(at + Vector2(0.05 * r, -r * 0.2), r, colour)

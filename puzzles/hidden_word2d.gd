@@ -152,9 +152,21 @@ var _shiver_at: Array[float] = []
 ## Column -> the second a hint revealed the answer's letter there. Task 7
 ## draws the ghost off it; it is here because the board owns its moments.
 var _given_at: Dictionary = {}
-## When the keyboard is due its repaint: the second the last tile of the row
-## in hand lands. INF when nothing is waiting.
-var _keys_at := INF
+## The keyboard repaints still owed, in the order they were earned: each is
+## `{"at", "marks", "letters"}` -- the second that row's last tile lands, and
+## what that row taught, **snapshotted at the moment it was committed**.
+##
+## Two things about this are load-bearing, and both were bugs first. It is a
+## queue and not one slot, because a second Enter inside the 1.06 s a row
+## takes to turn used to overwrite the repaint waiting on the first row --
+## and `KeyBoard.set_marks` is additive and never re-runs over an older row,
+## so those letters stayed unpainted *for the rest of the game* and the
+## keyboard silently lied about what had been guessed. And the payload is
+## snapshotted rather than re-derived when it comes due, for the very rule
+## the delay exists to keep: `state.key_mark` reads every committed row, so a
+## repaint resolved late would carry a **newer** row's marks and give that
+## row away while its own tiles were still face-down.
+var _keys_due: Array = []
 
 var _opened := 0.0
 var _anim_until := 0.0
@@ -200,7 +212,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_given_at = {}
 	_flip_at = -100.0
 	_flip_row = -1
-	_keys_at = INF
+	_keys_due = []
 	_layout()
 	_enter()
 
@@ -281,9 +293,7 @@ func _layout() -> void:
 func _process(delta: float) -> void:
 	super(delta)
 	var now := _now()
-	if now >= _keys_at:
-		_keys_at = INF
-		_paint_keys()
+	_deliver_keys(now)
 	if _laid_out() and _animating(now):
 		queue_redraw()
 
@@ -306,12 +316,12 @@ func _animating(t: float) -> bool:
 		return true
 	if _flip_row >= 0 and t < _flip_at + _flip_length():
 		return true
-	# Guarded against the rest: _keys_at is INF while nothing is waiting, and
-	# `t < INF + BUMP_TIME` is true for every t there will ever be -- which
-	# would leave the board rebuilding its thirty tiles on every frame of a
-	# screen that is standing perfectly still.
-	if not is_inf(_keys_at) and t < _keys_at + Motion.BUMP_TIME:
-		return true
+	# There is deliberately no branch for the keyboard's pending repaint. The
+	# window before it lands is the flip's own, which the line above already
+	# covers, and the BUMP_TIME after it is covered by the `_busy_for` that
+	# commit_row posts. A branch here read `_keys_due`'s due time a frame
+	# after _process had already delivered and dropped it, so it never saw
+	# the window it claimed to hold open.
 	return t < _anim_until
 
 ## Keeps the board redrawing for `seconds` more: something on it is moving.
@@ -376,8 +386,8 @@ func _build_band() -> ArrayMesh:
 	var y0 := _origin().y + _block().y
 	var ground := y0 + BAND - TURF_TOP
 	var puff: Color = Pal.PARCHMENT.lerp(Pal.SURFACE, Scenery.CLOUD_LIFT)
-	Scenery._cloud(b, Vector2(x0 + CLOUD_LEFT.x, top + CLOUD_LEFT.y), CLOUD_LEFT.z, puff)
-	Scenery._cloud(b, Vector2(x0 + w - CLOUD_RIGHT.x, top + CLOUD_RIGHT.y), CLOUD_RIGHT.z, puff)
+	Scenery.cloud(b, Vector2(x0 + CLOUD_LEFT.x, top + CLOUD_LEFT.y), CLOUD_LEFT.z, puff)
+	Scenery.cloud(b, Vector2(x0 + w - CLOUD_RIGHT.x, top + CLOUD_RIGHT.y), CLOUD_RIGHT.z, puff)
 	var turf: Color = Pal.LEAF.lerp(Pal.PARCHMENT, TURF_WASH)
 	var crown: Color = Pal.LEAF_LIGHT.lerp(Pal.PARCHMENT, CROWN_WASH)
 	b.fan(Face.Builder.round_rect(Vector2(x0, ground), Vector2(w, BAND - TURF_TOP), TURF_RADIUS), turf)
@@ -597,12 +607,16 @@ func commit_row() -> void:
 	_clear_working()
 	# The keyboard learns what the row learned only when the **last** tile of
 	# it has landed. Painted a beat early, the keys would give the row away
-	# while three of its tiles were still face-down.
+	# while three of its tiles were still face-down. What it will be told is
+	# settled now, while the state still ends at this row; when it is told is
+	# `landed`, and a row committed on top of a row still turning queues
+	# behind it rather than replacing it.
 	var landed := _flip_at + _flip_length()
+	var due := _keys_payload(_flip_row)
+	due["at"] = landed
+	_keys_due.append(due)
 	if Motion.reduce:
-		_paint_keys()
-	else:
-		_keys_at = landed
+		_deliver_keys(landed)
 	_busy_for(landed - _flip_at + Motion.BUMP_TIME)
 	_refresh()
 	note_move()
@@ -614,23 +628,32 @@ func _flip_length() -> float:
 		return 0.0
 	return float(State.LEN - 1) * FLIP_STEP + FLIP_TIME
 
-## Repaints and bumps the keys the row in hand touched. The marks are read
-## back off the state (`key_mark`, which resolves best-mark-wins across every
-## committed row), so a letter amber on row one and green on row three stays
-## green.
-func _paint_keys() -> void:
-	if _tray == null or _flip_row < 0 or _flip_row >= state.rows.size():
-		return
+## What the keys `row` touched should say, and which of them bump. The marks
+## are read back off the state (`key_mark`, which resolves best-mark-wins
+## across every committed row), so a letter amber on row one and green on row
+## three stays green. Called the moment `row` is committed, so `key_mark`
+## sees exactly the rows up to and including it.
+func _keys_payload(row: int) -> Dictionary:
 	var marks: Dictionary = {}
 	var letters: Array = []
-	var word: String = state.rows[_flip_row]
+	if row < 0 or row >= state.rows.size():
+		return {"marks": marks, "letters": letters}
+	var word: String = state.rows[row]
 	for i in State.LEN:
 		var ch := word[i]
 		if not marks.has(ch):
 			letters.append(ch)
 		marks[ch] = state.key_mark(ch)
-	_tray.set_marks(marks)
-	_tray.bump(letters)
+	return {"marks": marks, "letters": letters}
+
+## Hands the keyboard every repaint that has come due, oldest first.
+func _deliver_keys(now: float) -> void:
+	while not _keys_due.is_empty() and now >= float(_keys_due[0].at):
+		var due: Dictionary = _keys_due.pop_front()
+		if _tray == null:
+			continue
+		_tray.set_marks(due.marks)
+		_tray.bump(due.letters)
 
 func _clear_working() -> void:
 	_typed_at = []
@@ -680,7 +703,7 @@ func reset_board() -> void:
 	_clear_working()
 	_flip_at = -100.0
 	_flip_row = -1
-	_keys_at = INF
+	_keys_due = []
 	moves = 0
 	_running = true
 	fx.cue("reset")
