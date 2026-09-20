@@ -45,6 +45,18 @@ extends "res://core/puzzle_base.gd"
 ## 4 and 5. Concept page: docs/brainstorm/concepts.html#rings, whose
 ## drawRing, drawPost, drawStation, scenery, station and slotY are the shapes
 ## ported here number for number.
+##
+## **`ui/menu/card_art.gd`'s "rings" branch is a second consumer of
+## `_append_ring`, `_slab_mapped`, `_fan_mapped` and `RING_COLOURS`.** Those
+## three helpers carry a leading underscore because they are this board's
+## own internals, not a published API -- GDScript does not enforce that,
+## and the card calls them anyway, on purpose: the alternative was a second
+## copy of the ring shape on the menu, and two copies drift the first time
+## either one changes, which is exactly what a menu card is supposed to
+## promise it won't do. The trade taken is one ring shape, not two -- so
+## changing what a ring, a post or a base looks like here, or any of these
+## four signatures, changes the menu card too, and that has to be checked
+## (`tests/_shot_menu.gd -- page2`) alongside the board itself.
 
 const State = preload("res://puzzles/rings_state.gd")
 const Gen = preload("res://puzzles/rings_gen.gd")

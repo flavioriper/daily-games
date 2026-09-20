@@ -169,6 +169,11 @@ func _build() -> void:
 			# branch of the top _draw() match: there is no furniture
 			# distinct from the piece here, so there is nothing for that
 			# match to add.
+			# This calls three of rings2d.gd's own underscore-prefixed
+			# helpers and its RING_COLOURS directly (below) rather than a
+			# published API -- deliberately, so the card draws the board's
+			# real ring instead of a second copy of it; see that file's
+			# header for what this costs.
 			var field := Control.new()
 			field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			field.size = Vector2(300.0, 112.0) * _u
