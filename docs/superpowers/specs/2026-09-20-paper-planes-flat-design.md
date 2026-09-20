@@ -349,8 +349,13 @@ after a long pause says nothing at all. It never counts planes: **the board
 is its own scoreboard**, and an empty sky is the only score anyone needs --
 Word Trail's rule, and Mushroom Patch's.
 
-`flat_win()`: three darts across the win screen, in the three directions
-the board's last planes left by.
+`flat_win()`: **no cast and a subtitle**, `{"faces": [], "subtitle": "Every
+plane found its lane."}`. The host's `faces` are Controls from `ui/faces/`,
+and this board has none by section 9's rule, so the win screen keeps the
+family's sun and moon -- which is what Nonogram, Word Trail and Sudoku all
+do for the same reason. A dart drawn on the win screen would mean a new
+Control for one screen's sake, and that is exactly the bargain section 9
+declines.
 
 ## 14. Analytics
 

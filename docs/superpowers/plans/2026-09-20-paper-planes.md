@@ -634,7 +634,12 @@ Read what `word_trail2d.gd` and `mushroom2d.gd` return and match the shape exact
 
 - [ ] **Step 2: `flat_win()`**
 
-Three darts across the win screen, in three directions. Read `word_trail2d.gd`'s and `sudoku2d.gd`'s `flat_win()` for the dictionary's shape; a board with no cast returns whatever those return for the same situation.
+```gdscript
+func flat_win() -> Dictionary:
+	return {"faces": [], "subtitle": "Every plane found its lane."}
+```
+
+`faces` are Controls from `ui/faces/` and this board has none, so the win screen keeps the family's sun and moon — exactly what `nonogram2d.gd`, `word_trail2d.gd` and `sudoku2d.gd` do. Add `win_delay()` in the same shape those three use (`Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT`), long enough for the last launch and the solve wave to finish first.
 
 - [ ] **Step 3: Win it**
 
