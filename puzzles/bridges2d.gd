@@ -36,6 +36,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Face = preload("res://ui/faces/face.gd")
+const Fx2D = preload("res://ui/fx2d.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The sea pool's inset from the card, and the lattice's own inset inside the
@@ -168,14 +169,26 @@ const DASH_ON := 0.13
 const DASH_OFF := 0.1
 const DASH_W := 0.05
 const DASH_MIN := 3.0
-## How far a run the check marked is carried toward BAD, deck and lip alike.
-## It is the mock's flash at its peak, because until the motion pass lands
-## there is no flash to ride: the mark simply stands until the next move.
+## How far a run the check marked is carried toward BAD, deck and lip alike,
+## **at the peak of its flash**: the mark rides `Motion.flash_level` off the
+## moment Check named it, the way Nonogram's `_wrong` does, so it blushes and
+## settles rather than standing until the next move.
 const BAD_MIX := 0.85
 const BAD_DEEP_MIX := 0.6
 ## How far an over-filled islet's turf is washed out (spec section 5): it is
 ## drawn wrong, never refused.
 const OVER_MIX := 0.42
+
+# --- the solve wave's gold (spec sections 7 and 9) ---
+## How far a lit plank's deck and lip are carried into `SUN_RAY`, and how far
+## an islet's turf goes with it as the front arrives. The deck's 0.72 is the
+## spec's own `mix(DECK, SUN_RAY, 0.72)`, **left unchanged by the colour
+## pass** because it separates cleanly from the unlit brown against the pale
+## sea; the flare is the same gold at the islet, read off `flash_level` so it
+## rises and settles as the wave goes past.
+const WAVE_GOLD := 0.72
+const WAVE_DEEP := 0.55
+const WAVE_FLARE := 0.62
 
 # --- the sea, and everything on it (spec section 7) ---
 ## **This is the first flat board whose field is not paper**, and every value
@@ -214,12 +227,23 @@ const TIP_CROSS := "Another run crosses that lane."
 
 var state = State.new()
 
+## The board's own effects node, as on every flat board: the puff a plank
+## lands with, the ring a satisfied islet takes and the wave's sparkles come
+## through it and nowhere else (docs/art/flat-motion.md, rule 5).
+var fx: Node2D
+
 ## The mesh the last `_draw` built, and the one it actually handed to the
 ## canvas item. The first is dropped whenever something changed so the next
 ## `_draw` rebuilds it; the second is held because a canvas command keeps a
 ## mesh by RID and not by reference.
 var _mesh: ArrayMesh
 var _shown: ArrayMesh
+
+## When the board opened, and how long anything on it is still moving. The
+## card redraws while the clock has not passed `_anim_until` and stands still
+## the rest of the time, which is what keeps a settled board at no cost.
+var _opened := -1.0e9
+var _anim_until := 0.0
 
 ## The islet the finger went down on, and where it went down, while a drag is
 ## live. NOWHERE when nothing is held.
@@ -242,9 +266,42 @@ var _last := State.NOWHERE
 
 ## Every lane a hint laid a plank on, so the board can show what was given.
 var _given: Dictionary = {}
-## Every lane the last Check marked. Cleared by the next move, because until
-## the motion pass lands there is no flash to time the mark out.
+## Every lane the last Check marked, and when: the mark is `Motion.flash_level`
+## and `Motion.shiver_offset` read off that moment, so it blushes, rattles and
+## settles rather than standing until the next move.
 var _wrong: Dictionary = {}
+
+# --- the moments the drawn pieces are read off ---
+## Each lane that has just gained planks: `{"at": float, "from": int}`, where
+## `from` is the count it had, so every plank at or past that index is still
+## falling in with `Motion.drop_in_lift` and fading with `appear_level`.
+var _laid: Dictionary = {}
+## Runs that have gone: `[{"key": String, "count": int, "at": float}]`, drawn
+## at their old size shrinking away with `Motion.pop_out_scale`. Only a run
+## that went **to zero** leaves a ghost -- a run going 3 to 2 re-centres its
+## survivors, so there is no one plank that left for a ghost to be.
+var _ghosts: Array = []
+## The islets that have just met their number, and the ones the finger has
+## just pushed over: the first bumps and rings, the second shivers.
+var _met_at: Dictionary = {}
+var _shiver_at: Dictionary = {}
+## Reset's wave: each islet's hop, by the moment it begins.
+var _hop_at: Dictionary = {}
+## The islet under the finger, when it went down and when it came up (-1 while
+## it is still down): what `Motion.press_scale` is handed, so a drawn islet
+## sinks under a press and springs back exactly as a tile node would.
+var _press_cell := Vector2i(-1, -1)
+var _press_at := -1.0e9
+var _press_up := -1.0
+
+## The solve wave. `_solved_at` is when it began and `_depth` is the
+## breadth-first walk it runs over -- the same walk `_wave_depth()` measures
+## and `win_delay()` spends, taken from the same `_last`, so the wave and the
+## win screen can never disagree about how long the wave is. `_sparked` is
+## the islets whose sparkle has already gone up.
+var _solved_at := -1.0
+var _depth: Dictionary = {}
+var _sparked: Dictionary = {}
 
 var _tip_text := TIP_REST
 var _tip_mood := Face.Expr.HAPPY
@@ -271,7 +328,12 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	fx = Fx2D.new()
+	fx.name = "Fx"
+	fx.z_index = 2
+	add_child(fx)
 	resized.connect(_refresh)
+	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.build(rng, difficulty)
@@ -283,7 +345,19 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_last = State.NOWHERE
 	_given = {}
 	_wrong = {}
+	_laid = {}
+	_ghosts = []
+	_met_at = {}
+	_shiver_at = {}
+	_hop_at = {}
+	_press_cell = State.NOWHERE
+	_press_up = -1.0
+	_solved_at = -1.0
+	_depth = {}
+	_sparked = {}
+	_anim_until = 0.0
 	_say(TIP_REST, Face.Expr.HAPPY)
+	_enter()
 	_refresh()
 
 # --- the layout, ported from the mock ---
@@ -381,29 +455,43 @@ func _refresh() -> void:
 ## One mesh for everything with no glyph on it, then the numbers over the top.
 ## The order is the only one that works: an islet is opaque and a run ends
 ## under one.
+## The whole card pops in wide about the pool's centre and fades as it comes
+## (rule 7: a wide thing enters from most of the way, because the back ease's
+## tenth of overshoot on a thousand units of width is a wobble), and the
+## numbers take the same transform so a glyph never floats off the islet it
+## belongs to.
 func _draw() -> void:
 	if state.islets.is_empty() or _cell() <= 0.0:
 		return
+	var t := _now()
 	if _mesh == null:
-		_mesh = _build()
-	if _mesh != null:
-		draw_mesh(_mesh, null)
+		_mesh = _build(t)
+	var since := t - _opened - Motion.ENTER_DELAY
+	var seen := Motion.appear_level(since, Motion.ENTER_POP)
+	var grow := Motion.wide_pop_scale(since)
+	var mid := _pool().get_center()
+	var page := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	if _mesh != null and seen > 0.0:
+		draw_mesh(_mesh, null, page, Color(1.0, 1.0, 1.0, seen))
 	_shown = _mesh
-	_draw_numbers()
+	if seen > 0.0:
+		_draw_numbers(t, page, seen)
 
 ## The order the mock draws in, and it is not a preference either: the lit
 ## lane and a refusal's band go **under** the runs, so a highlight on the run
 ## in the way reads as a glow beneath it rather than a coat of paint over it,
 ## and everything goes under the islets, which are opaque.
-func _build() -> ArrayMesh:
+func _build(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	_water(b)
 	_aim_band(b)
-	_refusal(b)
+	_refusal(b, t)
 	for key in state.runs:
-		_run(b, String(key))
+		_run(b, String(key), t)
+	for ghost: Dictionary in _ghosts:
+		_ghost(b, ghost, t)
 	for cell in state.islets:
-		_islet(b, cell, _lean(cell))
+		_islet(b, cell, t)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## The lane the finger is asking for, lit: a gold band down it and a gold ring
@@ -426,10 +514,10 @@ func _aim_band(b) -> void:
 ## vocabulary's own flash read as a curve (`Motion.flash_level`) off the
 ## moment the refusal happened, the way Shikaku and Light Up read theirs; it
 ## is zero under reduce motion, which is why nothing is recorded there.
-func _refusal(b) -> void:
+func _refusal(b, t: float) -> void:
 	if _refuse.is_empty():
 		return
-	var level := Motion.flash_level(_now() - float(_refuse.at))
+	var level := Motion.flash_level(t - float(_refuse.at))
 	if level <= 0.0:
 		return
 	var key := String(_refuse.key)
@@ -483,25 +571,65 @@ func _empty_lane(cell: Vector2i, dir: Vector2i) -> Dictionary:
 ## own moment -- a refusal that does not move is not a refusal -- and nothing
 ## here is a number of this board's: the recipe's own `NUDGE` and `NUDGE_TIME`
 ## carry it, as they carry every other board's nudge.
-func _lean(cell: Vector2i) -> Vector2:
+func _lean(cell: Vector2i, t: float) -> Vector2:
 	if _refuse.is_empty() or cell != Vector2i(_refuse.from):
 		return Vector2.ZERO
-	return Vector2(_refuse.dir) * Motion.nudge_offset(_now() - float(_refuse.at))
+	return Vector2(_refuse.dir) * Motion.nudge_offset(t - float(_refuse.at))
 
 ## Seconds since the scene started: the one clock every curve here is read at.
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
-## Keeps the board redrawing while a refusal's flash and lean are alive, and
-## drops the refusal on the frame after the last of them has died. The flash
-## outlasts the nudge, so it is the one that says when this is over.
+## Keeps the card redrawing for `seconds` more: something on it is moving.
+func _busy_for(seconds: float) -> void:
+	_anim_until = maxf(_anim_until, _now() + seconds)
+
+## The entrance: the pool pops in wide about its own centre and the islets pop
+## onto it a beat later with the squash, along the diagonal from the top-left
+## corner. Nothing here is a number of this board's -- the recipes' own carry
+## it, exactly as they carry Light Up's court and Word Trail's field.
+func _enter() -> void:
+	_opened = _now()
+	var far := 0
+	for cell: Vector2i in state.islets:
+		far = maxi(far, cell.x + cell.y)
+	_busy_for(maxf(_enter_delay(far) + Motion.POP_IN,
+		Motion.ENTER_DELAY + Motion.ENTER_POP))
+	if fx != null:
+		fx.cue("enter")
+
+func _enter_delay(diagonal: int) -> float:
+	return Motion.ENTER_DELAY + Motion.ENTER_FACE_LAG \
+		+ Motion.stagger(diagonal, Motion.ENTER_STAGGER)
+
+## Retires what has finished, sends up the sparkles the wave's front has
+## reached, and keeps the card redrawing while anything is still moving.
 func _process(delta: float) -> void:
 	super(delta)
-	if _refuse.is_empty():
+	if state.islets.is_empty() or _cell() <= 0.0:
 		return
-	if _now() - float(_refuse.at) >= Motion.FLASH_IN + Motion.FLASH_OUT:
+	var t := _now()
+	_sweep(t)
+	_spark(t)
+	if t < _anim_until:
+		_refresh()
+
+## Drops the refusal once its flash has died -- the flash outlasts the lean,
+## so it is the one that says when the refusal is over -- and the ghosts of
+## the runs that have shrunk away to nothing.
+func _sweep(t: float) -> void:
+	if not _refuse.is_empty() and t - float(_refuse.at) >= Motion.FLASH_IN + Motion.FLASH_OUT:
 		_refuse = {}
-	_refresh()
+		_refresh()
+	if _ghosts.is_empty():
+		return
+	var keep: Array = []
+	for ghost: Dictionary in _ghosts:
+		if t - float(ghost["at"]) < Motion.POP_OUT:
+			keep.append(ghost)
+	if keep.size() != _ghosts.size():
+		_ghosts = keep
+		_refresh()
 
 ## The pool: its face over a bottom edge in the deeper blue, the paler band of
 ## shallows inside the rim, and a few ripples over the open water.
@@ -525,24 +653,59 @@ func _water(b) -> void:
 		b.stroke(Face.Builder.bezier2(at, at + Vector2(span * 0.5, -RIPPLE_BOW),
 			at + Vector2(span, 0.0)), RIPPLE_W, ink)
 
-## One run: the halo if a hint laid it, then a plank per count, each on its
-## own coloured shadow. A run the last Check marked is carried toward BAD,
-## deck and lip alike.
-func _run(b, key: String) -> void:
+## One run as it stands: the halo if a hint laid it, then a plank per count,
+## each on its own coloured shadow. Three recipes meet on a run and every one
+## of them is read as a curve -- a plank that has just been laid is still
+## falling in with `Motion.drop_in_lift` and fading with `appear_level`, a run
+## the last Check marked blushes toward BAD with `flash_level` and rattles
+## across its own lane with `shiver_offset`, and a run the solve wave has
+## reached wears the lit deck from the end the front came in at.
+func _run(b, key: String, t: float) -> void:
 	var count: int = state.planks(key)
 	if count <= 0:
 		return
+	if _given.has(key) and not is_done():
+		_glow(b, _lane_ends(key), _run_width(count))
+	var laid: Dictionary = _laid.get(key, {})
+	_planks(b, key, count, 1.0,
+		t - float(laid.get("at", 1.0e9)), int(laid.get("from", count)),
+		t - float(_wrong.get(key, -1.0e9)), _wave_of(key, t))
+
+## A run that has gone, still shrinking away where it stood: the whole run at
+## its old count, its planks closing to nothing with `Motion.pop_out_scale`.
+func _ghost(b, ghost: Dictionary, t: float) -> void:
+	var key := String(ghost["key"])
+	if not state.lanes.has(key):
+		return
+	var grow := Motion.pop_out_scale(t - float(ghost["at"]))
+	if grow <= 0.0:
+		return
+	_planks(b, key, int(ghost["count"]), grow, 1.0e9, int(ghost["count"]), -1.0e9, {})
+
+## The thickness a run of `count` planks and the air between them comes to:
+## what the hint's halo is drawn round.
+func _run_width(count: int) -> float:
+	var s := _cell()
+	return float(count) * s * PLANK + float(count - 1) * s * PLANK_GAP
+
+## The planks themselves. `grow` closes them about their own centres (one
+## while they stand, `pop_out_scale` while a ghost of them leaves); `since`
+## and `first_new` say which of them are still dropping in and from when;
+## `since_wrong` is the moment Check marked the run, or long ago; `wave` is
+## what `_front` said about this lane, `{}` when no wave is running.
+func _planks(b, key: String, count: int, grow: float, since: float,
+		first_new: int, since_wrong: float, wave: Dictionary) -> void:
 	var s := _cell()
 	var g := _lane_ends(key)
 	var horiz: bool = g.horiz
 	var thick := s * PLANK
 	var air := s * PLANK_GAP
 	var total := float(count) * thick + float(count - 1) * air
-	var bad: bool = _wrong.has(key)
-	var face: Color = Pal.DECK.lerp(Pal.BAD, BAD_MIX) if bad else Pal.DECK
-	var deep: Color = Pal.WOOD_DEEP.lerp(Pal.BAD, BAD_DEEP_MIX) if bad else Pal.WOOD_DEEP
-	if _given.has(key) and not is_done():
-		_glow(b, g, total)
+	var blush := Motion.flash_level(since_wrong)
+	var rattle := Motion.shiver_offset(since_wrong)
+	var shake := Vector2(0.0, rattle) if horiz else Vector2(rattle, 0.0)
+	var face: Color = Pal.DECK.lerp(Pal.BAD, BAD_MIX * blush)
+	var deep: Color = Pal.WOOD_DEEP.lerp(Pal.BAD, BAD_DEEP_MIX * blush)
 	var lo: Vector2 = Vector2(minf(g.a.x, g.b.x), minf(g.a.y, g.b.y))
 	var run: float = absf(g.b.x - g.a.x) if horiz else absf(g.b.y - g.a.y)
 	for i in count:
@@ -555,18 +718,33 @@ func _run(b, key: String) -> void:
 		else:
 			at = Vector2(g.a.x + off - thick * 0.5, lo.y)
 			box = Vector2(thick, run)
+		if grow != 1.0:
+			var mid := at + box * 0.5
+			box *= grow
+			at = mid - box * 0.5
+		at += shake
+		var fade := 1.0
+		if i >= first_new:
+			fade = Motion.appear_level(since)
+			if fade <= 0.0:
+				continue
 		var r := minf(box.x, box.y) * PLANK_RADIUS
 		b.fan(Face.Builder.round_rect(at + PLANK_SHADOW, box, r),
-			Color(Pal.TEXT, PLANK_SHADOW_ALPHA))
-		_plank(b, at, box, horiz, r, face, deep)
+			Color(Pal.TEXT, PLANK_SHADOW_ALPHA * fade))
+		if i >= first_new:
+			at.y -= Motion.drop_in_lift(since)
+		_plank(b, at, box, horiz, r, Color(face, fade), Color(deep, fade), wave)
 
 ## A plank: WOOD_DEEP under DECK, with a lip along its lower edge and slats
-## across it -- the mock's own shape.
-func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color, deep: Color) -> void:
+## across it -- the mock's own shape. `wave` lays the solve wave's gold over
+## the part of it the front has already crossed, from the end the front came
+## in at, so the light runs along the plank rather than switching it on.
+func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color,
+		deep: Color, wave: Dictionary) -> void:
 	b.fan(Face.Builder.round_rect(at, box, r), deep)
-	var lit := Vector2(box.x, box.y - PLANK_EDGE) if horiz else Vector2(box.x - PLANK_EDGE, box.y)
-	b.fan(Face.Builder.round_rect(at, lit, r), face)
-	var ink := Color(deep, SLAT_ALPHA)
+	var top := Vector2(box.x, box.y - PLANK_EDGE) if horiz else Vector2(box.x - PLANK_EDGE, box.y)
+	b.fan(Face.Builder.round_rect(at, top, r), face)
+	var ink := Color(deep, SLAT_ALPHA * deep.a)
 	var wide := maxf(SLAT_MIN, _cell() * SLAT_W)
 	var step := _cell() * SLAT_STEP
 	var span: float = box.x if horiz else box.y
@@ -581,6 +759,20 @@ func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color, de
 			line.append(at + Vector2(box.x - 5.0, s))
 		b.stroke(line, wide, ink)
 		s += step
+	var u: float = float(wave.get("u", 0.0))
+	if u <= 0.0:
+		return
+	var run: float = box.x if horiz else box.y
+	var lit_at := at
+	var lit_box := Vector2(run * u, box.y) if horiz else Vector2(box.x, run * u)
+	if not bool(wave.get("low", true)):
+		lit_at += Vector2(run * (1.0 - u), 0.0) if horiz else Vector2(0.0, run * (1.0 - u))
+	b.fan(Face.Builder.round_rect(lit_at, lit_box, r),
+		Color(Pal.WOOD_DEEP.lerp(Pal.SUN_RAY, WAVE_DEEP), face.a))
+	var lit_top := Vector2(lit_box.x, lit_box.y - PLANK_EDGE) if horiz \
+		else Vector2(lit_box.x - PLANK_EDGE, lit_box.y)
+	b.fan(Face.Builder.round_rect(lit_at, lit_top, r),
+		Color(Pal.DECK.lerp(Pal.SUN_RAY, WAVE_GOLD), face.a))
 
 ## The halo a hint leaves round a whole run, so a given reads at a glance
 ## rather than plank by plank: a pale gold box under a dashed gold outline,
@@ -607,35 +799,83 @@ func _glow(b, g: Dictionary, total: float) -> void:
 ## An over-filled islet is **drawn wrong and never refused** (spec section 5).
 ## `lean` is the nudge a refused islet takes, which is why the whole thing is
 ## drawn about `mid` rather than about its cell.
-func _islet(b, cell: Vector2i, lean := Vector2.ZERO) -> void:
+func _islet(b, cell: Vector2i, t: float) -> void:
+	var sc := _islet_scale(cell, t)
+	if sc.x <= 0.001 or sc.y <= 0.001:
+		return
 	var r := _islet_r()
-	var mid := _at(cell) + lean
+	var mid := _at(cell) + _islet_off(cell, t)
+	var rx := r * sc.x
+	var ry := r * sc.y
 	var want: int = int(state.need[cell])
 	var got: int = state.degree(cell)
 	var met := got == want
 	var over := got > want
-	b.ellipse(mid + Vector2(0.0, r * SHADOW_AT), r * SHADOW_RX, r * SHADOW_RY,
+	# The wave's flare, which is also the gold the planks wear: it rises as
+	# the front arrives and settles again behind it, read off `flash_level`.
+	var flare := 0.0
+	var arrived := _arrived(cell, t)
+	if arrived >= 0.0:
+		flare = Motion.flash_level(arrived, WAVE_EDGE) * WAVE_FLARE
+	b.ellipse(mid + Vector2(0.0, ry * SHADOW_AT), rx * SHADOW_RX, ry * SHADOW_RY,
 		Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
-	b.disc(mid + Vector2(0.0, r * SAND_DROP), r, Pal.ACORN.lerp(Pal.TEXT, SAND_DEEP))
-	b.disc(mid, r, Pal.ACORN)
-	b.disc(mid + Vector2(0.0, r * TURF_DROP), r * TURF_R, Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
+	b.ellipse(mid + Vector2(0.0, ry * SAND_DROP), rx, ry, Pal.ACORN.lerp(Pal.TEXT, SAND_DEEP))
+	b.ellipse(mid, rx, ry, Pal.ACORN)
+	b.ellipse(mid + Vector2(0.0, ry * TURF_DROP), rx * TURF_R, ry * TURF_R,
+		Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
 	var turf: Color = Pal.BANK.lerp(Pal.BAD, OVER_MIX) if over else Pal.BANK
-	b.disc(mid, r * TURF_R, turf)
-	b.ellipse(mid + CAP_AT * r, r * CAP_R.x, r * CAP_R.y,
+	b.ellipse(mid, rx * TURF_R, ry * TURF_R, turf.lerp(Pal.SUN_RAY, flare))
+	b.ellipse(mid + Vector2(CAP_AT.x * rx, CAP_AT.y * ry), rx * CAP_R.x, ry * CAP_R.y,
 		Color(Pal.BANK.lerp(Pal.SURFACE, BANK_HI), CAP_ALPHA))
 	if met or over:
-		b.stroke(Face.Builder.ring(mid, r * RING_R, r * RING_R),
+		var ring: Color = Pal.BAD if over else Pal.GOOD
+		b.stroke(Face.Builder.ring(mid, rx * RING_R, ry * RING_R),
 			maxf(RING_MIN, r * RING_W),
-			Color(Pal.BAD if over else Pal.GOOD, RING_ALPHA), true)
+			Color(ring.lerp(Pal.SUN_RAY, flare), RING_ALPHA), true)
+
+## An islet's scale: the entrance pop it came in on, the bump it took when it
+## met its number, and the bump the wave's front gives it on the way past.
+## Every one of them is a reader off `core/motion.gd` handed the seconds since
+## its own moment began, and they multiply, so an islet that is bumped
+## mid-entrance does both rather than losing one.
+func _islet_scale(cell: Vector2i, t: float) -> Vector2:
+	var sc := Motion.pop_in_scale(t - _opened - _enter_delay(cell.x + cell.y))
+	sc *= Motion.bump_scale(t - float(_met_at.get(cell, -1.0e9)))
+	if cell == _press_cell:
+		sc *= Motion.press_scale(t - _press_at,
+			-1.0 if _press_up < 0.0 else t - _press_up)
+	var arrived := _arrived(cell, t)
+	if arrived >= 0.0:
+		sc *= Motion.bump_scale(arrived)
+	return sc
+
+## Where an islet stands against its cell: the lean a refused drag gives the
+## islet under the finger, the shiver of one the finger has just pushed over
+## its number, and the hop Reset's wave carries it away on.
+func _islet_off(cell: Vector2i, t: float) -> Vector2:
+	var off := _lean(cell, t)
+	off.x += Motion.shiver_offset(t - float(_shiver_at.get(cell, -1.0e9)))
+	off.y += Motion.hop_lift(t - float(_hop_at.get(cell, -1.0e9)),
+		Motion.RESET_HOP, Motion.HOP_TIME)
+	return off
 
 ## The numbers, over the mesh: one `draw_string` each, as Nonogram draws its
 ## clues and Word Trail its letters. A met number steps back toward the paper
 ## and an over-filled one goes to BAD.
-func _draw_numbers() -> void:
+## The numbers, over the mesh. Each one takes its islet's own scale and the
+## page's entrance through one `draw_set_transform_matrix` -- Nonogram's way
+## with its clue lines -- so a glyph pops in, bumps and leans with the turf it
+## stands on rather than floating over a piece that has moved out from under
+## it.
+func _draw_numbers(t: float, page: Transform2D, seen: float) -> void:
 	var r := _islet_r()
 	var font: Font = CozyTheme.display(700)
 	var px := maxi(1, int(round(r * NUMBER_SIZE)))
+	var drawn := false
 	for cell in state.islets:
+		var sc := _islet_scale(cell, t)
+		if sc.x <= 0.001 or sc.y <= 0.001:
+			continue
 		var want: int = int(state.need[cell])
 		var got: int = state.degree(cell)
 		var ink: Color = Pal.TEXT
@@ -643,10 +883,14 @@ func _draw_numbers() -> void:
 			ink = Pal.BAD
 		elif got == want:
 			ink = Pal.TEXT.lerp(Pal.PAPER, NUMBER_MET)
-		# The lean again, so a refused islet's number goes with its turf rather
-		# than standing still while the ground moves out from under it.
-		_glyph(font, px, str(want), ink,
-			_at(cell) + _lean(cell) + Vector2(0.0, r * NUMBER_AT))
+		var mid := _at(cell) + _islet_off(cell, t)
+		draw_set_transform_matrix(page * Transform2D(0.0, sc, 0.0,
+			Vector2(mid.x * (1.0 - sc.x), mid.y * (1.0 - sc.y))))
+		drawn = true
+		_glyph(font, px, str(want), Color(ink, ink.a * seen),
+			mid + Vector2(0.0, r * NUMBER_AT))
+	if drawn:
+		draw_set_transform_matrix(Transform2D.IDENTITY)
 
 ## One glyph centred on `at`, as Nonogram centres a clue number.
 func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
@@ -741,6 +985,11 @@ func _press(at: Vector2) -> bool:
 		if at.distance_to(_at(cell)) > _islet_r() * GRAB:
 			return false
 		_from = cell
+		_press_cell = cell
+		_press_at = _now()
+		_press_up = -1.0
+		_busy_for(Motion.PRESS_TIME)
+		_refresh()
 		return true
 	_on_run = _run_over(cell)
 	return _on_run != ""
@@ -791,6 +1040,9 @@ func _release() -> void:
 	_aim = ""
 	_aim_dir = Vector2i.ZERO
 	_on_run = ""
+	if _press_cell != State.NOWHERE and _press_up < 0.0:
+		_press_up = _now()
+		_busy_for(Motion.RELEASE_TIME)
 	if from != State.NOWHERE:
 		if dir == Vector2i.ZERO:
 			_refresh()
@@ -803,14 +1055,16 @@ func _release() -> void:
 			_refuse_at(from, dir, lane, blocker, TIP_CROSS)
 			return
 		var before: int = state.planks(lane)
+		var snap := _snapshot()
 		if state.cycle(lane) == before:
 			_refresh()
 			return
 		_last = from
-		_after_move()
+		_after_move(snap)
 		return
+	var wipe_snap := _snapshot()
 	if wipe != "" and state.clear_run(wipe):
-		_after_move()
+		_after_move(wipe_snap)
 	else:
 		_refresh()
 
@@ -826,18 +1080,89 @@ func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 	if not Motion.reduce:
 		_refuse = {"at": _now(), "from": from, "dir": dir, "key": key,
 			"blocker": blocker}
+		_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
 	_refresh()
 
 ## Every move clears the last Check's marks -- the board has changed under
-## them -- and the refusal standing over it, and counts itself, which is what
-## ends the puzzle when the last plank lands on one single network.
-func _after_move() -> void:
+## them -- and the refusal standing over it, hands the pieces that changed
+## their moments, and counts itself, which is what ends the puzzle when the
+## last plank lands on one single network.
+func _after_move(snap: Dictionary) -> void:
 	_wrong = {}
 	_refuse = {}
 	if _tip_text != TIP_REST:
 		_say(TIP_REST, Face.Expr.HAPPY)
-	_refresh()
+	_settle(snap)
 	note_move()
+
+# --- what changed, and when each piece answers for it ---
+
+## The board as it stands, taken before a move so `_settle` can diff against
+## it. An islet is kept as its degree **less** its number, so zero is met and
+## anything above it is over: the two states the drawing answers for.
+func _snapshot() -> Dictionary:
+	var runs := {}
+	for key in state.runs:
+		runs[key] = int(state.runs[key])
+	var islets := {}
+	for cell in state.islets:
+		islets[cell] = state.degree(cell) - int(state.need[cell])
+	return {"runs": runs, "islets": islets}
+
+## Diffs the board against `snap` and hands every piece that changed the
+## moment it begins to move, with `when` -- a Callable taking a lane key --
+## saying how long that piece waits. Reset passes its wave; a move passes
+## nothing and everything answers at once. This is Queens' `_settle` in this
+## board's terms: one place that decides who moves, and one Callable that
+## decides when.
+func _settle(snap: Dictionary, when := Callable()) -> void:
+	var t := _now()
+	var was_runs: Dictionary = snap["runs"]
+	var was_islets: Dictionary = snap["islets"]
+	var keys := {}
+	for key in was_runs:
+		keys[key] = true
+	for key in state.runs:
+		keys[key] = true
+	var longest := 0.0
+	for k in keys:
+		var key := String(k)
+		var was := int(was_runs.get(key, 0))
+		var now_count := state.planks(key)
+		if now_count == was:
+			continue
+		var delay := 0.0
+		if when.is_valid():
+			delay = float(when.call(key))
+		longest = maxf(longest, delay)
+		if now_count > was:
+			_laid[key] = {"at": t + delay, "from": was}
+			fx.puff(_lane_middle(key), Pal.DECK)
+		else:
+			_laid.erase(key)
+			# Only a run that went **to zero** leaves a ghost: a run going 3
+			# to 2 re-centres the planks it keeps, so there is no one plank
+			# that left for a ghost to stand in for.
+			if now_count == 0:
+				_ghosts.append({"key": key, "count": was, "at": t + delay})
+	for cell in state.islets:
+		var was_d := int(was_islets.get(cell, -999))
+		var now_d := state.degree(cell) - int(state.need[cell])
+		if now_d == was_d:
+			continue
+		if now_d == 0:
+			_met_at[cell] = t
+			fx.ring(_at(cell), _islet_r() * RING_R, Pal.GOOD)
+		elif now_d > 0 and was_d <= 0:
+			_shiver_at[cell] = t
+	_busy_for(longest + maxf(Motion.DROP_TIME,
+		maxf(Motion.BUMP_TIME, maxf(Motion.POP_OUT, Motion.SHIVER_TIME))))
+	_refresh()
+
+## The middle of a lane in the board's own pixels: where a plank's puff goes.
+func _lane_middle(key: String) -> Vector2:
+	var g := _lane_ends(key)
+	return (Vector2(g.a) + Vector2(g.b)) * 0.5
 
 # --- the sprout's line ---
 
@@ -857,12 +1182,15 @@ func can_undo() -> bool:
 	return state.can_undo()
 
 func undo() -> bool:
-	if is_done() or not state.undo():
+	if is_done():
+		return false
+	var snap := _snapshot()
+	if not state.undo():
 		return false
 	_wrong = {}
 	_refuse = {}
 	_say(TIP_REST, Face.Expr.HAPPY)
-	_refresh()
+	_settle(snap)
 	moved.emit()
 	return true
 
@@ -874,6 +1202,7 @@ func hints_left() -> int:
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var snap := _snapshot()
 	var key := state.hint()
 	if key == "":
 		return false
@@ -882,7 +1211,13 @@ func hint() -> bool:
 	_wrong = {}
 	_refuse = {}
 	_say("A plank the answer wants is in.", Face.Expr.HAPPY)
-	_refresh()
+	_settle(snap)
+	# The hint's own pair, over the plank the answer wanted: a ring out of the
+	# lane and sparkles rising off it, which is the Hint row of the table.
+	var at := _lane_middle(key)
+	fx.ring(at, _islet_r() * BEAM_RING, Pal.SUN)
+	fx.sparkle(at, Pal.SUN)
+	_busy_for(Motion.RING_TIME)
 	moved.emit()
 	check_solved()
 	return true
@@ -897,18 +1232,25 @@ func check() -> int:
 		return 0
 	checks += 1
 	var wrong: Array = state.wrong_runs()
+	var t := _now()
 	_wrong = {}
 	_refuse = {}
 	for key in wrong:
-		_wrong[key] = true
+		_wrong[key] = t
+	if not wrong.is_empty():
+		_busy_for(maxf(Motion.FLASH_IN + Motion.FLASH_OUT, Motion.SHIVER_TIME))
 	_say("%d %s in the way." % [wrong.size(), "run is" if wrong.size() == 1 else "runs are"]
 		if not wrong.is_empty() else "Nothing you have laid is wrong.",
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	_refresh()
 	return wrong.size()
 
-## Every plank goes. The hints a player spent are not refunded, only unpinned.
+## Every plank goes, in a wave from the far corner with the islets hopping as
+## it passes -- the table's Reset row, in this board's pieces. The hints a
+## player spent are not refunded, only unpinned.
 func reset_board() -> void:
+	var snap := _snapshot()
+	var t := _now()
 	state.reset_board()
 	_from = State.NOWHERE
 	_aim = ""
@@ -918,10 +1260,31 @@ func reset_board() -> void:
 	_last = State.NOWHERE
 	_given = {}
 	_wrong = {}
+	_met_at = {}
+	_shiver_at = {}
+	_press_cell = State.NOWHERE
+	_press_up = -1.0
+	_solved_at = -1.0
+	_depth = {}
+	_sparked = {}
 	moves = 0
 	_running = true
 	_say(TIP_REST, Face.Expr.HAPPY)
-	_refresh()
+	_settle(snap, _reset_wave)
+	for cell in state.islets:
+		_hop_at[cell] = t + _reset_delay(cell)
+	_busy_for(_reset_delay(Vector2i.ZERO) + Motion.HOP_TIME)
+
+## How long a lane waits in Reset's wave: the far corner goes first.
+func _reset_wave(key: String) -> float:
+	var lane: Dictionary = state.lanes[key]
+	var a: Vector2i = lane.a
+	var b: Vector2i = lane.b
+	return _reset_delay(Vector2i(maxi(a.x, b.x), maxi(a.y, b.y)))
+
+func _reset_delay(cell: Vector2i) -> float:
+	return Motion.stagger((state.n - 1 - cell.x) + (state.n - 1 - cell.y),
+		Motion.RESET_STAGGER)
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -938,26 +1301,125 @@ func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": "One network, every islet on it."}
 
 ## Long enough for the wave that lights the network, which runs outward from
-## the islet the player finished at: `WAVE_EDGE` to cross a run and
-## `WAVE_HOLD` on each islet it reaches.
+## the islet the player finished at. It spends the wave's own clock
+## (`_wave_at`), so the win screen and the wave can never disagree about how
+## long the wave is.
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return float(_wave_depth()) * (WAVE_EDGE + WAVE_HOLD)
+	return _wave_at(_wave_depth())
+
+## The solve: the wave's graph is the network the player built, walked once
+## from the islet the last plank was laid at and then never walked again.
+func _on_solved() -> void:
+	_solved_at = _now()
+	_depth = _wave_steps()
+	_sparked = {}
+	_refuse = {}
+	_wrong = {}
+	_busy_for(_wave_at(_wave_depth()) + Motion.FLASH_IN + Motion.FLASH_OUT
+		+ Motion.BUMP_TIME)
+	fx.cue("solved")
+	_refresh()
+
+# --- the wave, and the one function that says where its front is ---
+
+## **Where the front is, in islets deep, at clock time `t`**, and -1 before
+## the board is solved. This is the one truth the whole wave is read off --
+## which planks are lit, which islet is flaring, where a sparkle goes -- which
+## is the rule Word Trail's `_front` set: four things reading four clocks is
+## how a wave drifts apart. It crosses a run in `WAVE_EDGE` and rests on the
+## islet it reached for `WAVE_HOLD`, so the return runs `0 .. 1` across the
+## first run, holds at 1, then `1 .. 2` across the second.
+##
+## Under reduce motion it answers INF: the lit state is applied at once and no
+## front travels, which is what stilling this wave means.
+func _front(t: float) -> float:
+	if _solved_at < 0.0:
+		return -1.0
+	if Motion.reduce:
+		return INF
+	var step := _wave_at(1)
+	var since := t - _solved_at
+	if since <= 0.0 or step <= 0.0:
+		return 0.0
+	var d := floorf(since / step)
+	return d + clampf((since - d * step) / WAVE_EDGE, 0.0, 1.0)
+
+## `_front`'s inverse, and the only other place the wave's clock is written:
+## when the front reaches an islet `d` runs out from the start.
+func _wave_at(d: int) -> float:
+	return float(d) * (WAVE_EDGE + WAVE_HOLD)
+
+## Seconds since the front reached `cell`, or -1 while it has not. The gate is
+## `_front` itself, so an islet flares when the light arrives at it and not a
+## frame before.
+func _arrived(cell: Vector2i, t: float) -> float:
+	if _solved_at < 0.0 or not _depth.has(cell):
+		return -1.0
+	var d := int(_depth[cell])
+	if _front(t) < float(d):
+		return -1.0
+	return (t - _solved_at) - _wave_at(d)
+
+## What the front says about one lane: how far along it the light has run
+## (`u`, 0 to 1) and whether it came in at the lane's low end, so the gold
+## grows from the islet the wave reached first rather than from wherever the
+## lane happens to be drawn from.
+func _wave_of(key: String, t: float) -> Dictionary:
+	var f := _front(t)
+	if f <= 0.0 or not state.lanes.has(key):
+		return {}
+	var lane: Dictionary = state.lanes[key]
+	if not _depth.has(lane.a) or not _depth.has(lane.b):
+		return {}
+	var da := int(_depth[lane.a])
+	var db := int(_depth[lane.b])
+	var u := clampf(f - float(mini(da, db)), 0.0, 1.0)
+	if u <= 0.0:
+		return {}
+	var near: Vector2i = lane.a if da <= db else lane.b
+	var far: Vector2i = lane.b if da <= db else lane.a
+	var low: bool = (_at(near).x + _at(near).y) <= (_at(far).x + _at(far).y)
+	return {"u": u, "low": low}
+
+## Sends up each islet's sparkle as the front reaches it -- `_front` again,
+## asked once a frame, so the sparkle and the gold can never be a frame
+## apart. Nothing under reduce motion: `ui/fx2d.gd` draws neither a sparkle
+## nor a ring there, and the front does not travel to have reached anything.
+func _spark(t: float) -> void:
+	if _solved_at < 0.0 or Motion.reduce or _sparked.size() >= _depth.size():
+		return
+	var f := _front(t)
+	for cell in _depth:
+		if _sparked.has(cell) or f < float(_depth[cell]):
+			continue
+		_sparked[cell] = true
+		fx.sparkle(_at(cell), Pal.SUN)
 
 ## How many runs deep the network is from the islet the last plank was laid
-## at: the number of steps the wave has to take. Breadth-first over the laid
-## runs, which is the wave's own order.
+## at: the number of steps the wave has to take.
 func _wave_depth() -> int:
-	if state.islets.is_empty():
-		return 0
-	var start: Vector2i = _last if _last != State.NOWHERE else state.islets[0]
-	var seen := {start: 0}
-	var queue: Array[Vector2i] = [start]
+	var steps := _depth if not _depth.is_empty() else _wave_steps()
 	var deepest := 0
+	for cell in steps:
+		deepest = maxi(deepest, int(steps[cell]))
+	return deepest
+
+## The breadth-first walk the wave runs over: every islet the laid runs reach
+## from `_last`, and how many runs out it stands. This is the walk, and the
+## only one -- `win_delay()` measures the wave with it and the wave itself
+## reads it, so the two can never disagree.
+func _wave_steps() -> Dictionary:
+	var out := {}
+	if state.islets.is_empty():
+		return out
+	var start: Vector2i = _last if _last != State.NOWHERE else state.islets[0]
+	out[start] = 0
+	var queue: Array[Vector2i] = [start]
 	while not queue.is_empty():
 		var cell: Vector2i = queue.pop_front()
-		var step: int = int(seen[cell]) + 1
+		var step: int = int(out[cell]) + 1
 		for key in state.runs:
 			if int(state.runs[key]) <= 0:
 				continue
@@ -967,9 +1429,8 @@ func _wave_depth() -> int:
 				other = lane.b
 			elif lane.b == cell:
 				other = lane.a
-			if other == State.NOWHERE or seen.has(other):
+			if other == State.NOWHERE or out.has(other):
 				continue
-			seen[other] = step
-			deepest = maxi(deepest, step)
+			out[other] = step
 			queue.append(other)
-	return deepest
+	return out
