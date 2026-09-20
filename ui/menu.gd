@@ -9,9 +9,14 @@ extends Control
 ## campsite did that this does not: a painted 3D setting under a shift lens,
 ## its own light and soft focus, a live diorama in every card, and pages of
 ## nine turned with buttons. Twelve cards fit on one screen, so the pager
-## went with it -- and came back on the day row (day_row.gd's `set_pager`)
-## once a thirteenth card needed a second page; at one page it stays hidden,
-## so the twelve-card screen still looks exactly as it did.
+## went with it -- and came back on 2026-09-20 once a thirteenth card
+## needed a second page, in its own strip between the grid and the bottom
+## bar (`_pager`, built the way `_toast` already is: an overlay on
+## `_list_root`, not a row of the column). A prev chevron first grew out of
+## the day row's own dead one instead, and the user overturned that: the
+## day row's chevron is decoration by their own 2026-09-18 decision, and a
+## pager beside "Day N" reads as *next day*. The day row is untouched by
+## any of this.
 ##
 ## Opening a card hands the puzzle to a FlatHost and hides the grid; the
 ## host's close shows it again. The host is always this node's last child
@@ -37,6 +42,7 @@ const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const BottomBar = preload("res://ui/menu/bottom_bar.gd")
 const LegacySheet = preload("res://ui/menu/legacy_sheet.gd")
+const Icons = preload("res://ui/icons.gd")
 
 ## The old game's scene and its two hosts, loaded only when More opens one.
 const STAGE_SCENE := "res://legacy/world/stage.tscn"
@@ -69,6 +75,24 @@ const TOAST_FADE := 0.25
 ## Where the line sits: this far above the screen's bottom, and this tall.
 const TOAST_OVER := 150.0 + 40.0 + 10.0
 const TOAST_H := 88.0
+## The pager strip, laid over the bar the way the toast is: the header, the
+## day row, the grid and the bar already spend the screen exactly (see the
+## toast's own comment in _build_list), so this is an overlay on
+## `_list_root` rather than a row of the column, and it costs the grid
+## nothing -- a card stays 252 whether or not a second page exists. It sits
+## a little closer to the bar than the toast does (the toast is a rare
+## message that can afford to sit over the last row's cards for a moment;
+## this is up on every multi-page screen, so it is kept as short as a
+## usable tap target allows to leave the cards' own bottom edge alone as
+## much as it can).
+const PAGER_OVER := 150.0 + 40.0 + 6.0
+const PAGER_H := 32.0
+const PAGER_ICON := 16.0
+const PAGER_TAP := Vector2(56.0, PAGER_H)
+## The pager's dots. Two is what thirteen cards need; the row draws as many
+## as it is given, so a fourteenth board costs nothing here.
+const DOT := 10.0
+const DOT_GAP := 10.0
 
 var settings_sheet: Control
 var legacy_sheet: Control
@@ -84,6 +108,11 @@ var _grid: GridContainer
 var _page := 0
 var _toast: Label
 var _toast_tw: Tween
+## The pager strip: prev, dots, next, between the grid and the bar.
+var _pager: Control
+var _prev: Button
+var _next: Button
+var _dots: Control
 ## The stage, while something from More is open on it.
 var _stage: Node
 
@@ -139,8 +168,6 @@ func _build_list() -> void:
 
 	day_row = DayRow.new()
 	day_row.name = "DayRow"
-	day_row.prev.connect(func() -> void: _turn_page(-1))
-	day_row.next.connect(func() -> void: _turn_page(1))
 	root.add_child(day_row)
 
 	# --- the cards, a page at a time ---
@@ -178,6 +205,39 @@ func _build_list() -> void:
 	_toast.offset_top = -TOAST_OVER - TOAST_H
 	_toast.offset_bottom = -TOAST_OVER
 	_list_root.add_child(_toast)
+
+	# The pager: prev, dots, next -- see PAGER_OVER above for why it is
+	# sized and placed the way it is, and PER_PAGE above and
+	# docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
+	# section 2 ("a next and a prev under the grid with a dot each") for
+	# what it is answering. Built even at one page and simply hidden
+	# (_set_pager, called from _build_page), the way the toast exists
+	# whether or not there is anything to say.
+	_pager = Control.new()
+	_pager.name = "Pager"
+	_pager.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pager.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_pager.offset_left = MARGIN
+	_pager.offset_right = -MARGIN
+	_pager.offset_top = -PAGER_OVER - PAGER_H
+	_pager.offset_bottom = -PAGER_OVER
+	_list_root.add_child(_pager)
+	var pager_row := HBoxContainer.new()
+	pager_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	pager_row.add_theme_constant_override("separation", 16)
+	pager_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pager.add_child(pager_row)
+	_prev = _page_button("chevron_left")
+	_prev.pressed.connect(func() -> void: _turn_page(-1))
+	pager_row.add_child(_prev)
+	_dots = Control.new()
+	_dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dots.draw.connect(_draw_dots.bind(_dots))
+	pager_row.add_child(_dots)
+	_next = _page_button("chevron_right")
+	_next.pressed.connect(func() -> void: _turn_page(1))
+	pager_row.add_child(_next)
 
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
@@ -228,7 +288,55 @@ func _build_page() -> void:
 			filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_fillers.append(filler)
 			_grid.add_child(filler)
-	day_row.set_pager(_page, _pages())
+	_set_pager(_page, _pages())
+
+## Which page is up, and how many there are. One page hides the whole strip
+## (nothing on the grid or the bar moves either way -- it is an overlay);
+## the next chevron disables itself once the last page is up, and the prev
+## once the first is.
+func _set_pager(page: int, pages: int) -> void:
+	var many := pages > 1
+	_pager.visible = many
+	_prev.disabled = page <= 0
+	_next.disabled = page >= pages - 1
+	(_prev.get_meta("glyph") as Control).queue_redraw()
+	(_next.get_meta("glyph") as Control).queue_redraw()
+	_dots.custom_minimum_size = Vector2(pages * DOT + (pages - 1) * DOT_GAP, DOT)
+	_dots.set_meta("page", page)
+	_dots.set_meta("pages", pages)
+	_dots.queue_redraw()
+
+func _draw_dots(on: Control) -> void:
+	var page: int = on.get_meta("page", 0)
+	var pages: int = on.get_meta("pages", 1)
+	for i in pages:
+		var x := i * (DOT + DOT_GAP) + DOT * 0.5
+		var c: Color = Pal.TEXT if i == page else Pal.LINE
+		on.draw_circle(Vector2(x, DOT * 0.5), DOT * 0.5, c)
+
+## One small chevron button for the pager: the vector icon at PAGER_ICON
+## rather than the HUD's IconButton (whose glyph is a fixed 44), because
+## the strip is only PAGER_H (32) tall.
+func _page_button(icon: String) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = PAGER_TAP
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		btn.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.add_child(center)
+	var glyph := Control.new()
+	glyph.custom_minimum_size = Vector2(PAGER_ICON, PAGER_ICON)
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glyph.draw.connect(func() -> void:
+		Icons.paint(glyph, icon, Rect2(Vector2.ZERO, glyph.size),
+			Pal.TEXT_DIM if btn.disabled else Pal.TEXT))
+	center.add_child(glyph)
+	btn.set_meta("glyph", glyph)
+	return btn
 
 ## A page change is not an entrance: the header, the day row and the bar
 ## stay where they are, the outgoing cards fade rather than cut, and the
@@ -305,6 +413,7 @@ func _enter() -> void:
 	for i in cards.size():
 		cards[i].enter(ENTER_CARDS + Motion.stagger(i, CARD_STEP, CARD_CAP))
 	bar.enter(ENTER_BAR)
+	Motion.appear(_pager, 0.0, 1.0, ENTER_FADE, ENTER_CARDS + CARD_CAP)
 
 ## One line under the grid, for a tap on something that is only drawn.
 func _say(text: String) -> void:
