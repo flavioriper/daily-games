@@ -1951,7 +1951,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p>40 of margin, four 20 gaps and the five rows are 1920 exactly, which is where the board card's 1190 comes from &mdash; and the bottom slot is <b>290</b>, actions and tip together, which is already the shape of four other screens.</p>
 
   <h3>2. Inside the board card <span class="pill">proposed</span></h3>
-  <p>The card is paper with a <b>sea</b> set into it: a rounded pool inset 28, <code>Pal.WATER</code> over a deeper bottom edge, a band of <code>Pal.WATER_HI</code> inside the rim for the shallows and a few ripples over it. The lattice is square and the pool is tall, so <b>the width binds at every band</b> &mdash; <code>cell = (944 &minus; 24)/n</code> is 131, 102 and 84 &mdash; and the 920-wide field leaves <b>214</b> of the pool over, halved to <b>107 above and 107 below</b>. That is <code>card_centred()</code> returning true, for Tents' and Light Up's reason: a square grid in a tall slot has slack however it is cut, and air only under it reads as a mistake.</p>
+  <p>The card is paper with a <b>sea</b> set into it: a rounded pool inset 28, pale water over a deeper bottom edge, a paler band inside the rim for the shallows and a few ripples over it. <b>The sea is deliberately pale</b> &mdash; see section 5; it was <code>Pal.WATER</code> at full strength until 2026-09-20 and it shouted over the other twelve boards. The lattice is square and the pool is tall, so <b>the width binds at every band</b> &mdash; <code>cell = (944 &minus; 24)/n</code> is 131, 102 and 84 &mdash; and the 920-wide field leaves <b>214</b> of the pool over, halved to <b>107 above and 107 below</b>. That is <code>card_centred()</code> returning true, for Tents' and Light Up's reason: a square grid in a tall slot has slack however it is cut, and air only under it reads as a mistake.</p>
   <table>
     <tr><th style="width:12%">Band</th><th style="width:12%">Lattice</th><th style="width:9%">Cell</th><th style="width:10%">Islets</th><th style="width:12%">Lanes</th><th style="width:12%">Runs in it</th><th>Decoy lanes &middot; crossing pairs</th></tr>
     <tr><td class="k">Easy</td><td>7 &times; 7</td><td>131</td><td>11</td><td>11.3</td><td>10.3</td><td>1.0 &middot; 1.0</td></tr>
@@ -1996,15 +1996,17 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p><b>Every colour on this screen is already in <code>core/palette.gd</code>.</b> Nothing was invented for it, which is unusual for a board that introduces a new surface.</p>
   <table>
     <tr><th style="width:26%">Thing</th><th style="width:26%">Colour</th><th>Note</th></tr>
-    <tr><td class="k">The sea</td><td><code>Pal.WATER</code> #2f8fd6</td><td>Over a bottom edge darkened toward <code>TEXT</code>, the way every card in the family has one.</td></tr>
-    <tr><td class="k">The shallows</td><td><code>Pal.WATER_HI</code> #5fb0e8</td><td>A band inside the pool's rim at half alpha, and the ripples over the open water.</td></tr>
-    <tr><td class="k">Islet turf</td><td><code>Pal.BANK</code> #8cb050</td><td>The turf disc, with a lighter cap for the sun on it.</td></tr>
-    <tr><td class="k">Sand rim</td><td><code>Pal.STONE</code> #ede2cc</td><td>A pale beach ring, with <code>Pal.ACORN</code> darkened for the wet sand under it. <code>ACORN</code> is the palette's other sand and was not used for the ring itself, because it is the same family as <code>DECK</code> and an islet ringed in it reads as a wooden platform rather than as land.</td></tr>
+    <tr><td class="k">The sea</td><td><code>mix(WATER_HI, PAPER, 0.46)</code><br>#a4cde6</td><td><b>Pale on purpose</b>, decided 2026-09-20. It was <code>WATER</code> #2f8fd6 and it was the loudest surface in the game: saturation 0.78 against a set of warm muted pastels, and it made the card shout over the other twelve. Letting <code>WATER_HI</code> down into <code>PAPER</code> takes it to <b>saturation 0.29 at value 230</b> and warms it by the paper in it, which is what <code>docs/art/shading-direction.md</code> asks for &mdash; depth through colour rather than contrast.</td></tr>
+    <tr><td class="k">The shallows</td><td><code>mix(WATER_HI, PAPER, 0.74)</code><br>#cfdfe4</td><td>A band inside the pool's rim at 0.85. It has to be <em>paler</em> than the open water now, so it is the same mix taken further into the paper &mdash; saturation 0.09, barely a colour at all, which is what a sandbar looks like.</td></tr>
+    <tr><td class="k">The pool's edge</td><td><code>mix(WATER_HI, TEXT, 0.20)</code><br>#5896c2</td><td>The 9 of darker water along the bottom, the soft edge every card in the family has.</td></tr>
+    <tr><td class="k">The ripples</td><td><code>Pal.WATER</code> #2f8fd6 at 0.24</td><td><b>The old sea's colour is the new sea's mark.</b> A ripple has to be darker than the water it lies on; on the pale pool <code>WATER_HI</code> was invisible, and the palette's deep blue at a quarter alpha is exactly the soft coloured line the brief wants.</td></tr>
+    <tr><td class="k">Islet turf</td><td><code>Pal.BANK</code> #8cb050</td><td>The turf disc, with <code>mix(BANK, SURFACE, 0.26)</code> for the sun on it. It was mixed to a raw white before; <code>SURFACE</code> is the palette's own white and slightly warm, so the cap no longer reads as a specular hit.</td></tr>
+    <tr><td class="k">Sand rim</td><td><code>Pal.ACORN</code> #c99a63</td><td><b>Changed with the sea.</b> It was <code>STONE</code> #ede2cc, which is value 237 against a 230 sea &mdash; seven apart, and the islet lost its edge. <code>ACORN</code> sits <b>29 of value below the water</b> and warm against a cool ground, which is what draws the shape now. Under it, <code>mix(ACORN, TEXT, 0.22)</code> for the wet sand at the waterline.</td></tr>
     <tr><td class="k">Planks</td><td><code>Pal.DECK</code> #b5825a</td><td>Over <code>Pal.WOOD_DEEP</code> for the bottom edge and the slats across it.</td></tr>
     <tr><td class="k">Satisfied</td><td><code>Pal.GOOD</code> #7cb06b</td><td>A ring round the sand, and the number softened toward the paper. <b>Quiet on purpose</b>: on a hard board twenty-four islets go green and a loud green is a wall.</td></tr>
     <tr><td class="k">Over-filled</td><td><code>Pal.BAD</code> #d9605a</td><td>Ring, turf washed toward it, number in it, and one shiver. The only mistake the board shows by itself.</td></tr>
-    <tr><td class="k">A refused lane</td><td><code>Pal.BAD</code>, <b>opaque</b></td><td>Red at any alpha over <code>WATER</code> comes back <em>mauve</em> &mdash; it was tried at 0.7 and 0.9 and read as a bruise both times &mdash; so the band is drawn solid and dissolves by mixing toward the water it stands on instead of by fading.</td></tr>
-    <tr><td class="k">The lane under the finger</td><td><code>Pal.SUN_RAY</code> at 0.78</td><td>A torch beam down the water, with the islet it would reach ringed in <code>Pal.SUN</code>. It was 0.55 and came back olive: warm yellow at half strength over <code>WATER</code> reads as weed, not as light.</td></tr>
+    <tr><td class="k">A refused lane</td><td><code>Pal.BAD</code> at 0.88, fading</td><td><b>A plain alpha blend again.</b> On the dark sea red at any alpha came back <em>mauve</em> &mdash; tried at 0.7 and at 0.9, a bruise both times &mdash; so the band had to be drawn solid and dissolved by mixing toward the water. A pale ground takes red honestly, so the band is an ordinary fade once more and one special case is gone.</td></tr>
+    <tr><td class="k">The lane under the finger</td><td><code>Pal.SUN</code> at 0.72</td><td>A torch beam down the water, with the islet it would reach ringed in <code>Pal.SUN</code> too. It went <code>SUN_RAY</code> 0.55 &rarr; 0.78 on the dark sea because half-strength yellow over <code>WATER</code> came back olive; on the pale sea the problem is the other way round &mdash; <code>SUN_RAY</code> is value 249 against a 230 ground and barely shows &mdash; so the beam is the deeper <code>SUN</code> at a lower alpha.</td></tr>
     <tr><td class="k">The wave</td><td><code>DECK</code> mixed to <code>SUN_RAY</code></td><td>The lit plank, section 6.</td></tr>
   </table>
 
@@ -2036,7 +2038,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Six is the cap, not eight.</b> The real game allows 8, and an islet of 8 is a landmark &mdash; it tells you all four of its lanes are full. Capping at 6 keeps every number inside one comfortable glyph and keeps the growth from knotting, but it throws away the board's best free clue.</li>
     <li><b>Twenty-four green rings.</b> On a finished hard board almost everything is ringed before the last run goes down, so the green has to stay quiet enough to live with. It is currently a thin ring and a paled number; a fill would be unreadable.</li>
     <li><b>The near-miss is not signposted.</b> Every number met and two separate networks is the position this puzzle is <em>about</em>, and right now the board says nothing at all &mdash; no count of groups, no tint. Check will tell you, at the price of a check. Whether that silence is the puzzle or a cruelty is the call.</li>
-    <li><b>The sea is the first non-paper surface on a flat board.</b> Every other screen is parchment or cream. A blue pool in a cream card is either the set getting a second voice or the set losing one.</li>
+    <li><b>The sea is the first non-paper surface on a flat board</b>, and it has already been pitched down once. <span class="pill blue" style="margin-left:0">decided</span> 2026-09-20: keep the pool, but pale &mdash; <code>WATER</code> at full strength made this the loudest card in the game. What the pass cost is worth knowing before the next board puts a new surface on the paper: <b>the sand rim had to change colour</b> (<code>STONE</code> is seven points of value from the new sea and the islets stopped having an edge), <b>the ripples had to invert</b> (a mark on pale water is darker, not lighter), and <b>the drag beam had to go from a light yellow to a deeper amber</b>. A warm-ink constant tuned against a dark ground is not portable to a light one, in either direction. What is still open is whether a pale blue pool in a cream card reads as one family or as a cream card with a hole in it.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot, <code>?runs=k</code> to lay the first <b>k</b> runs of the answer outward from one islet, <code>?hint=k</code> for that many hints spent, <code>?wrong=1</code> to put a run on the water the answer does not want and cut another one short, <code>?check=1</code> to run a Check over whatever is laid, <code>?reset=1</code> to lay the answer and then clear it, <code>?aim=1</code> for a finger mid-drag with a lane lit, <code>?refuse=cross</code> for a drag refused by a run in the way and <code>?refuse=none</code> for one refused because nothing faces it, <code>?peek=1</code> to dash in the runs still missing and print each islet's current count, and <code>?win=1</code> for the win screen. Pick the tab with <code>#bridges</code>.</p>
 </section>
@@ -10313,8 +10315,20 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
     water:'#2f8fd6',waterHi:'#5fb0e8',bank:'#8cb050',stone:'#ede2cc',acorn:'#c99a63',
     deck:'#b5825a',woodDeep:'#9c7350',good:'#7cb06b',bad:'#d9605a',badTile:'#f2cfc9'};
-  const WATER_DEEP=mixHex(C.water,C.text,0.34), BANK_HI=mixHex(C.bank,'#ffffff',0.26),
-        BANK_DEEP=mixHex(C.bank,C.text,0.28), SAND_DEEP=mixHex(C.acorn,C.text,0.16),
+  // The sea is pale on purpose (2026-09-20, the user's call): WATER at full
+  // strength shouted over the other twelve boards' warm muted surfaces, and
+  // docs/art/shading-direction.md asks for depth through colour rather than
+  // contrast. So the pool is WATER_HI let down into PAPER, and every value
+  // below is a mix of exactly two palette entries -- nothing is invented.
+  const SEA=mixHex(C.waterHi,C.paper,0.46),        // #a4cde6, the open water
+        SEA_PALE=mixHex(C.waterHi,C.paper,0.74),   // #cfdfe4, the shallows inside the rim
+        SEA_DEEP=mixHex(C.waterHi,C.text,0.20),    // #5896c2, the pool's bottom edge
+        SEA_SHADE=mixHex(C.water,C.text,0.35);     // #336e99, an islet's coloured shadow
+  // STONE (V 237) against a 230 sea is no rim at all, so the beach is ACORN
+  // now -- 29 of value below the water and warm against a cool ground, which
+  // is what draws the islet's edge.
+  const BANK_HI=mixHex(C.bank,C.surface,0.26),
+        BANK_DEEP=mixHex(C.bank,C.text,0.28), SAND_DEEP=mixHex(C.acorn,C.text,0.22),
         DECK_LIT=mixHex(C.deck,C.sunRay,0.72), GOOD_DEEP=mixHex(C.good,C.text,0.3);
   const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
   const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -10758,13 +10772,15 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   // ================= the board =================
   function water(t){
     const p=L.pool;
-    ctx.fillStyle=WATER_DEEP; rr(p.x,p.y,p.w,p.h,34); ctx.fill();
-    ctx.fillStyle=C.water; rr(p.x,p.y,p.w,p.h-9,34); ctx.fill();
-    // the shallows: a band of lighter water inside the rim, and a few ripples
+    ctx.fillStyle=SEA_DEEP; rr(p.x,p.y,p.w,p.h,34); ctx.fill();
+    ctx.fillStyle=SEA; rr(p.x,p.y,p.w,p.h-9,34); ctx.fill();
+    // the shallows: a band of paler water inside the rim, and a few ripples.
+    // On a pale sea a ripple has to be *darker* than the water it lies on, so
+    // it is the palette's own WATER, thin and low, rather than WATER_HI.
     ctx.save(); ctx.beginPath(); ctx.roundRect(p.x,p.y,p.w,p.h,34); ctx.clip();
-    ctx.globalAlpha=0.5; rr(p.x+9,p.y+9,p.w-18,p.h-18,26); stroke(C.waterHi,26); ctx.globalAlpha=1;
+    ctx.globalAlpha=0.85; rr(p.x+9,p.y+9,p.w-18,p.h-18,26); stroke(SEA_PALE,26); ctx.globalAlpha=1;
     const drift=RM?0:Math.sin(t*0.5)*10;
-    ctx.globalAlpha=0.42; ctx.strokeStyle=C.waterHi; ctx.lineWidth=9; ctx.lineCap='round';
+    ctx.globalAlpha=0.24; ctx.strokeStyle=C.water; ctx.lineWidth=8; ctx.lineCap='round';
     for(let i=0;i<9;i++){
       const rx=p.x+60+hash(i,7)*(p.w-160)+drift*(i%2?1:-1),ry=p.y+70+hash(i,11)*(p.h-140),ln=40+hash(i,3)*60;
       ctx.beginPath(); ctx.moveTo(rx,ry); ctx.quadraticCurveTo(rx+ln*0.5,ry-8,rx+ln,ry); ctx.stroke();
@@ -10806,7 +10822,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       let bx,by2,bw,bh;
       if(g.horiz){bx=Math.min(g.x0,g.x1)-pad; bw=Math.abs(g.x1-g.x0)+2*pad; by2=g.y-total/2-pad; bh=total+2*pad;}
       else {by2=Math.min(g.y0,g.y1)-pad; bh=Math.abs(g.y1-g.y0)+2*pad; bx=g.x-total/2-pad; bw=total+2*pad;}
-      ctx.save(); ctx.globalAlpha*=0.7; ctx.fillStyle=C.sunRay; rr(bx,by2,bw,bh,pad*1.6); ctx.fill();
+      ctx.save(); ctx.globalAlpha*=0.85; ctx.fillStyle=C.sunRay; rr(bx,by2,bw,bh,pad*1.6); ctx.fill();
       ctx.setLineDash([L.cell*0.13,L.cell*0.1]); rr(bx,by2,bw,bh,pad*1.6); stroke(C.sunDeep,Math.max(3,L.cell*0.05)); ctx.restore();
     }
     for(let i=0;i<v;i++){
@@ -10840,9 +10856,9 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(press===i&&!RM){sc=[sc[0]*MO.PRESS_SCALE,sc[1]*MO.PRESS_SCALE];}
     const sh=over?shiverOffset(t-overAt[i]):0;
     ctx.save(); ctx.translate(x+sh,y); ctx.scale(sc[0],sc[1]);
-    ctx.fillStyle='rgba(20,60,96,0.26)'; ellipse(0,R*0.30,R*1.02,R*0.40);
-    ctx.fillStyle=SAND_DEEP; circle(0,R*0.05,R);
-    ctx.fillStyle=C.stone; circle(0,0,R);
+    ctx.fillStyle=rgba(SEA_SHADE,0.30); ellipse(0,R*0.30,R*1.02,R*0.40);
+    ctx.fillStyle=SAND_DEEP; circle(0,R*0.07,R);
+    ctx.fillStyle=C.acorn; circle(0,0,R);
     const turf=over?mixHex(C.bank,C.bad,0.42):(lit>0?mixHex(C.bank,C.sunRay,0.5*lit):C.bank);
     ctx.fillStyle=BANK_DEEP; circle(0,R*0.04,R*0.80);
     ctx.fillStyle=turf; circle(0,0,R*0.80);
@@ -10858,7 +10874,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   function drawAim(t){
     if(drag&&drag.e>=0){
       const g=lane(drag.e),R=isletR(),w2=L.cell*0.62;
-      ctx.save(); ctx.globalAlpha=0.78; ctx.fillStyle=C.sunRay;
+      ctx.save(); ctx.globalAlpha=0.72; ctx.fillStyle=C.sun;
       if(g.horiz) rr(Math.min(g.x0,g.x1)-R*0.4,g.y-w2/2,Math.abs(g.x1-g.x0)+R*0.8,w2,w2*0.4);
       else rr(g.x-w2/2,Math.min(g.y0,g.y1)-R*0.4,w2,Math.abs(g.y1-g.y0)+R*0.8,w2*0.4);
       ctx.fill(); ctx.restore();
@@ -10869,10 +10885,11 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       const u=(t-refuse.at)/REFUSE_TIME;
       if(u>=1){refuse=null;}
       else {
-        // Red at any alpha over WATER comes back mauve, so the band is opaque
-        // and dissolves by mixing toward the water it stands on instead.
+        // On the old dark sea this band had to be opaque, because BAD at any
+        // alpha over WATER came back mauve. A pale ground takes a plain blend,
+        // so it is one again and it simply fades.
         const w2=L.cell*0.62,R=isletR();
-        ctx.save(); ctx.fillStyle=mixHex(C.bad,C.water,clamp(u*u));
+        ctx.save(); ctx.globalAlpha=(1-u)*0.88; ctx.fillStyle=C.bad;
         if(refuse.lane){const q=refuse.lane,hz=Math.abs(q.x1-q.x0)>Math.abs(q.y1-q.y0);
           if(hz) rr(Math.min(q.x0,q.x1),q.y0-w2/2,Math.abs(q.x1-q.x0),w2,w2*0.4);
           else rr(q.x0-w2/2,Math.min(q.y0,q.y1),w2,Math.abs(q.y1-q.y0),w2*0.4);
@@ -10882,7 +10899,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
           else rr(g.x-w2/2,Math.min(g.y0,g.y1)-R*0.4,w2,Math.abs(g.y1-g.y0)+R*0.8,w2*0.4);
           ctx.fill();
           const f=blockedBy(refuse.e);
-          if(f>=0){const h2=lane(f); ctx.fillStyle=mixHex(C.bad,WATER_DEEP,clamp(u*u));
+          if(f>=0){const h2=lane(f); ctx.globalAlpha=(1-u)*0.95; ctx.fillStyle=C.bad;
             if(h2.horiz) rr(Math.min(h2.x0,h2.x1),h2.y-w2/2,Math.abs(h2.x1-h2.x0),w2,w2*0.4);
             else rr(h2.x-w2/2,Math.min(h2.y0,h2.y1),w2,Math.abs(h2.y1-h2.y0),w2*0.4);
             ctx.fill();}
@@ -10902,7 +10919,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     const cx=L.gx+L.gw/2,cy=L.gy+L.gw/2;
     ctx.translate(cx,cy); ctx.scale(s,s); ctx.translate(-cx,-cy);
     if(peek&&open()) for(let e=0;e<E();e++) if(ans[e]>0&&val[e]<ans[e]){
-      const g=lane(e); ctx.save(); ctx.globalAlpha=0.30; ctx.strokeStyle=C.white;
+      const g=lane(e); ctx.save(); ctx.globalAlpha=0.34; ctx.strokeStyle=C.text;
       ctx.lineWidth=Math.max(3,L.cell*0.05); ctx.setLineDash([L.cell*0.14,L.cell*0.12]);
       ctx.beginPath();
       if(g.horiz){ctx.moveTo(g.x0,g.y); ctx.lineTo(g.x1,g.y);} else {ctx.moveTo(g.x,g.y0); ctx.lineTo(g.x,g.y1);}
@@ -10978,7 +10995,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       // the finished network, drawn small over the celebration
       const bw=800,bh=bw,bx=W/2-bw/2,byy=616,cs=bw/n;
       ctx.save(); ctx.globalAlpha=a1;
-      card(bx-26,byy-26,bw+52,bh+52,34,C.water,WATER_DEEP,8);
+      card(bx-26,byy-26,bw+52,bh+52,34,SEA,SEA_DEEP,8);
       for(let e=0;e<E();e++){ if(val[e]<1) continue;
         const A=G.edges[e].a,B=G.edges[e].b,v=val[e],TH=cs*0.11,GP=cs*0.09,tot=v*TH+(v-1)*GP;
         const ax=bx+isl[A].c*cs+cs/2,ay=byy+isl[A].r*cs+cs/2,bx2=bx+isl[B].c*cs+cs/2,by2=byy+isl[B].r*cs+cs/2;
@@ -10986,7 +11003,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
           if(G.edges[e].dr===0) rr(ax,ay+off-TH/2,bx2-ax,TH,TH*0.4); else rr(ax+off-TH/2,ay,TH,by2-ay,TH*0.4);
           ctx.fill();}}
       for(let i=0;i<G.N;i++){const x=bx+isl[i].c*cs+cs/2,y=byy+isl[i].r*cs+cs/2,R=cs*0.36;
-        ctx.fillStyle=C.stone; circle(x,y,R); ctx.fillStyle=C.bank; circle(x,y,R*0.8);
+        ctx.fillStyle=C.acorn; circle(x,y,R); ctx.fillStyle=C.bank; circle(x,y,R*0.8);
         text(String(need[i]),x,y-R*0.04,'700 '+Math.round(R*0.95)+'px '+FD,C.text);}
       ctx.restore(); ctx.restore();}
     const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
