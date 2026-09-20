@@ -17,6 +17,11 @@ extends "res://ui/hud/panel.gd"
 const Icons = preload("res://ui/icons.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 
+## Emitted by the pager's two chevrons. The row itself never changes page;
+## ui/menu.gd owns which page is up, the way it owns which day it is.
+signal prev
+signal next
+
 const HEIGHT := 180.0
 const PLATE := 132.0
 const TREE := 84.0
@@ -25,9 +30,18 @@ const HEART_GAP := 16.0
 const HEARTS := 3
 const HEARTS_FULL := 2
 const CHEVRON := 110.0
+## The pager's dots. Two is what thirteen cards need; the row draws as many
+## as it is given, so a fourteenth board costs nothing here.
+const DOT := 14.0
+const DOT_GAP := 12.0
 
 var _day: Label
 var _island: Label
+var _prev: Button
+var _next: Button
+var _dots: Control
+var _page := 0
+var _pages := 1
 
 func _init() -> void:
 	enter_from = Vector2(0, 30)
@@ -78,15 +92,70 @@ func _build() -> void:
 	hearts.draw.connect(_draw_hearts.bind(hearts))
 	row.add_child(hearts)
 
+	# --- the pager ---
+	# The thirteenth card does not fit on one page (spec section 9), and this
+	# row is the only place a pager fits for free: it is 180 tall, it already
+	# ends in a chevron that does nothing, and the cards cannot give up a
+	# pixel without the 92 picture giving it up first. Hidden at one page, so
+	# nothing changes on a screen that does not need it.
+	_prev = IconButton.new("chevron_left")
+	_prev.custom_minimum_size = Vector2(CHEVRON, CHEVRON)
+	_prev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_style_chevron(_prev)
+	_prev.pressed.connect(func() -> void: prev.emit())
+	row.add_child(_prev)
+
+	_dots = Control.new()
+	_dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dots.draw.connect(_draw_dots.bind(_dots))
+	row.add_child(_dots)
+
 	var go := IconButton.new("chevron_right")
 	go.custom_minimum_size = Vector2(CHEVRON, CHEVRON)
 	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	go.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE_HI, int(CHEVRON * 0.5), Pal.LINE, 5, 8))
-	go.add_theme_stylebox_override("hover", CozyTheme.card(Pal.SURFACE_HI, int(CHEVRON * 0.5), Pal.LINE, 5, 8))
-	go.add_theme_stylebox_override("pressed", CozyTheme.card(Pal.SURFACE_HI.darkened(0.08), int(CHEVRON * 0.5), Pal.LINE, 2, 8))
+	_style_chevron(go)
+	go.pressed.connect(func() -> void: next.emit())
 	row.add_child(go)
+	_next = go
 
+	set_pager(0, 1)
 	set_day(1, "")
+
+func _style_chevron(b: Button) -> void:
+	var r := int(CHEVRON * 0.5)
+	b.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 5, 8))
+	b.add_theme_stylebox_override("hover", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 5, 8))
+	b.add_theme_stylebox_override("pressed", CozyTheme.card(Pal.SURFACE_HI.darkened(0.08), r, Pal.LINE, 2, 8))
+
+func _draw_dots(on: Control) -> void:
+	for i in _pages:
+		var x := i * (DOT + DOT_GAP) + DOT * 0.5
+		var c: Color = Pal.TEXT if i == _page else Pal.LINE
+		on.draw_circle(Vector2(x, DOT * 0.5), DOT * 0.5, c)
+
+## Which page is up, and how many there are. One page hides the pager's new
+## half: the prev chevron and the dots, which did not exist before this,
+## simply are not there. The next chevron is not new -- it is the same
+## chevron this row always ended in, wired to nothing until now -- so it
+## keeps exactly its old look at one page (present, full alpha, enabled) and
+## only starts disabling itself once a real second page makes "next" a
+## question with a wrong answer. That is also what keeps this row's draw
+## calls at the measured 311 with the pager hidden: a chevron that already
+## rendered before the pager existed has to go on rendering, or the count
+## moves for a screen that was supposed to look untouched.
+func set_pager(page: int, pages: int) -> void:
+	_page = page
+	_pages = pages
+	var many := pages > 1
+	_prev.visible = many
+	_dots.visible = many
+	_dots.custom_minimum_size = Vector2(pages * DOT + (pages - 1) * DOT_GAP, DOT) if many else Vector2.ZERO
+	_prev.disabled = page <= 0
+	_prev.modulate.a = 1.0 if page > 0 else 0.35
+	_next.disabled = many and page >= pages - 1
+	_next.modulate.a = 1.0 if not many or page < pages - 1 else 0.35
+	_dots.queue_redraw()
 
 func _draw_hearts(on: Control) -> void:
 	for i in HEARTS:

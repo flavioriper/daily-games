@@ -9,7 +9,9 @@ extends Control
 ## campsite did that this does not: a painted 3D setting under a shift lens,
 ## its own light and soft focus, a live diorama in every card, and pages of
 ## nine turned with buttons. Twelve cards fit on one screen, so the pager
-## went with it.
+## went with it -- and came back on the day row (day_row.gd's `set_pager`)
+## once a thirteenth card needed a second page; at one page it stays hidden,
+## so the twelve-card screen still looks exactly as it did.
 ##
 ## Opening a card hands the puzzle to a FlatHost and hides the grid; the
 ## host's close shows it again. The host is always this node's last child
@@ -45,6 +47,11 @@ const CAMP_MENU := "res://legacy/ui/camp_menu.gd"
 const MARGIN := 40
 const GAP := 20
 const COLS := 3
+## Twelve cards a page: three across and four down is what 80 of margin, 60
+## of gaps, a 380 header, a 180 day row and a 150 bar leave for rows of 252.
+## The thirteenth card gets a second page rather than a shorter card
+## (spec 2026-09-20-sudoku-flat-design.md, section 9).
+const PER_PAGE := 12
 ## Entrance delays: the header first, then the day row, then a wave down the
 ## cards, then the bar.
 const ENTER_HEADER := 0.0
@@ -69,6 +76,7 @@ var day_row: Control
 var bar: Control
 var _list_root: Control
 var _grid: GridContainer
+var _page := 0
 var _toast: Label
 var _toast_tw: Tween
 ## The stage, while something from More is open on it.
@@ -126,9 +134,11 @@ func _build_list() -> void:
 
 	day_row = DayRow.new()
 	day_row.name = "DayRow"
+	day_row.prev.connect(func() -> void: _turn_page(-1))
+	day_row.next.connect(func() -> void: _turn_page(1))
 	root.add_child(day_row)
 
-	# --- the twelve cards, all on one screen ---
+	# --- the cards, a page at a time ---
 	_grid = GridContainer.new()
 	_grid.name = "Grid"
 	_grid.columns = COLS
@@ -136,14 +146,7 @@ func _build_list() -> void:
 	_grid.add_theme_constant_override("h_separation", GAP)
 	_grid.add_theme_constant_override("v_separation", GAP)
 	root.add_child(_grid)
-	for i in Registry.PUZZLES.size():
-		var entry: Dictionary = Registry.PUZZLES[i]
-		var card := PuzzleCard.new(entry, Pal.CAT[i % Pal.CAT.size()])
-		card.name = "Card_" + entry.id
-		card.open.connect(_open.bind(entry))
-		card.blocked.connect(_on_soon.bind(entry))
-		cards.append(card)
-		_grid.add_child(card)
+	_build_page()
 
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
@@ -171,11 +174,56 @@ func _build_list() -> void:
 	_toast.offset_bottom = -TOAST_OVER
 	_list_root.add_child(_toast)
 
+## How many pages the registry needs at PER_PAGE a page; at least one, so an
+## empty registry does not divide by nothing.
+func _pages() -> int:
+	return maxi(1, ceili(float(Registry.PUZZLES.size()) / float(PER_PAGE)))
+
+## The entries on the page that is up, with the index each has in the
+## registry -- the colour comes off that index, so a card keeps its colour
+## whichever page it lands on.
+func _page_entries() -> Array:
+	var out: Array = []
+	var from := _page * PER_PAGE
+	for i in range(from, mini(from + PER_PAGE, Registry.PUZZLES.size())):
+		out.append({"i": i, "entry": Registry.PUZZLES[i]})
+	return out
+
+func _build_page() -> void:
+	for c in cards:
+		_grid.remove_child(c)
+		c.queue_free()
+	cards.clear()
+	for row in _page_entries():
+		var entry: Dictionary = row.entry
+		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()])
+		card.name = "Card_" + entry.id
+		card.open.connect(_open.bind(entry))
+		card.blocked.connect(_on_soon.bind(entry))
+		cards.append(card)
+		_grid.add_child(card)
+	day_row.set_pager(_page, _pages())
+
+## A page change is not an entrance: the header, the day row and the bar
+## stay where they are and only the cards are replaced, with the same
+## per-page stagger the first page gets.
+func _turn_page(by: int) -> void:
+	var want := clampi(_page + by, 0, _pages() - 1)
+	if want == _page:
+		return
+	_page = want
+	_build_page()
+	for i in cards.size():
+		cards[i].enter(Motion.stagger(i, CARD_STEP, CARD_CAP))
+
 ## Shows the grid with the day current and plays the entrance; at start and
 ## on every return from a puzzle. Opening the app is what counts a day.
 func _show_list() -> void:
 	_list_root.visible = true
 	Progress.touch()
+	if _page != 0:
+		_page = 0
+		_build_page()
 	day_row.set_day(Progress.day(), Progress.island_name())
 	bar.show_tab("home")
 	_enter()
