@@ -201,12 +201,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_toast = ""
 	_toast_at = -100.0
 	_reset_at = -100.0
-	# A deal can hand out an already-locked peg by chance, well short of a
-	# solve; it never went through _settle, so it needs its own gold moment.
 	_lock_at = {}
-	for i in _state.pegs.size():
-		if _state.locked(i):
-			_lock_at[i] = _opened
 	_tip_timer.start()
 
 # --- layout ---
@@ -295,15 +290,21 @@ func _tap(i: int) -> void:
 			_settle(i, _now())
 	_refresh()
 
-## Every move that can change the pegs comes through here, so the wash and
-## the toast are decided in exactly one place. Nothing else may call
-## state.drop. Derives rather than trusts: every peg's lock timestamp is
-## checked against the state fresh, so a peg that is no longer locked (only
-## undo can do that) loses its gold in the same pass.
-func _settle(j: int, at: float) -> void:
+## Drops `_lock_at`'s entry for any peg that is no longer locked, checked
+## against the state fresh rather than trusted -- the only way that happens
+## is an undo breaking a peg, and it is the one thing that must never be
+## copied twice: two copies of this invariant is how a stale gold wash
+## survives an undo.
+func _reconcile_locks() -> void:
 	for i in _lock_at.keys().duplicate():
 		if not _state.locked(int(i)):
 			_lock_at.erase(i)
+
+## Every move that can change the pegs comes through here, so the wash and
+## the toast are decided in exactly one place. Nothing else may call
+## state.drop.
+func _settle(j: int, at: float) -> void:
+	_reconcile_locks()
 	if _state.locked(j):
 		_lock_at[j] = at
 		var st := _station(j)
@@ -364,9 +365,7 @@ func undo() -> bool:
 		return false
 	_toast = ""
 	_toast_at = -100.0
-	for i in _lock_at.keys().duplicate():
-		if not _state.locked(int(i)):
-			_lock_at.erase(i)
+	_reconcile_locks()
 	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
 	check_solved()
@@ -397,9 +396,6 @@ func hint() -> bool:
 func reset_board() -> void:
 	_state.reset_board()
 	_lock_at = {}
-	for i in _state.pegs.size():
-		if _state.locked(i):
-			_lock_at[i] = _now()
 	_shake_at = {}
 	_toast = ""
 	_toast_at = -100.0
