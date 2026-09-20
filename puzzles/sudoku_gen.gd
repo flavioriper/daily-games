@@ -1,0 +1,333 @@
+extends RefCounted
+
+## Sudoku's generator: a seeded full grid, a symmetric dig that keeps the
+## answer unique, and the grader that decides which band a dug puzzle is in.
+## No state and no scene -- every entry point is static, and the cell tables
+## are built once on first use.
+##
+## Two things are worth knowing before changing anything here. **The dig is
+## the expensive half**, because every cell taken out is a uniqueness count;
+## the count is most-constrained-cell-first precisely so a second answer is
+## found or ruled out in a few thousand steps instead of a few million.
+## **And a band is a target AND a technique**: easy must fall to naked and
+## hidden singles, medium and hard must not, and ATTEMPTS tries is where
+## that stops being free. A band is a tendency; a hung generator is worse
+## than a medium day labelled hard.
+## Spec: docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 8.
+
+const N := 9
+const CELLS := 81
+## Nine bits, digits 1..9.
+const FULL := 511
+## Givens aimed at, per band: easy, medium, hard.
+const TARGET := [36, 30, 26]
+## Tries before the band's technique test is given up on. Measured: six left
+## one hard day in twelve solvable by singles, ten leaves none.
+const ATTEMPTS := 10
+## How far singles_solve will iterate before giving up. Eighty-one placements
+## is the most any grid can need, so this cannot be hit by a real board and
+## exists only so a bug here cannot hang a phone.
+const PASSES := 200
+## Wall-clock ceiling on generate(), in milliseconds. ATTEMPTS alone bounds
+## the number of tries, not the time they take, and this runs inside build()
+## at board open on a phone -- a phone slower than this Mac could see a hard
+## day's worst sequence run well past the 310 ms measured here across twelve
+## seeds. 400 ms stops the loop after whichever attempt is in flight when the
+## budget is crossed and hands back that attempt's grid, graded or not; it
+## does not cut an attempt short mid-dig, so a single unlucky dig can still
+## run past the budget once. Set above the 305 ms the slowest seed in the
+## test suite actually needs (band 2, seed 9203, its sixth attempt) rather
+## than at the first round number that sounded safe -- a tighter cap silently
+## turned two hard days into ungraded ones instead of only guarding the tail.
+const TIME_BUDGET_MS := 400
+
+static var _peers: Array = []
+static var _units: Array = []
+
+static func row_of(i: int) -> int:
+	return i / N
+
+static func col_of(i: int) -> int:
+	return i % N
+
+static func box_of(i: int) -> int:
+	return (i / 27) * 3 + (i % N) / 3
+
+## The twenty cells that share a row, a column or a region with `i`.
+static func peers_of(i: int) -> PackedInt32Array:
+	_tables()
+	return _peers[i]
+
+## The twenty-seven units: nine rows, then nine columns, then nine regions.
+static func units() -> Array:
+	_tables()
+	return _units
+
+static func _tables() -> void:
+	if not _units.is_empty():
+		return
+	var us: Array = []
+	for r in N:
+		var u := PackedInt32Array()
+		for c in N:
+			u.append(r * N + c)
+		us.append(u)
+	for c in N:
+		var u := PackedInt32Array()
+		for r in N:
+			u.append(r * N + c)
+		us.append(u)
+	for b in N:
+		var u := PackedInt32Array()
+		for i in CELLS:
+			if box_of(i) == b:
+				u.append(i)
+		us.append(u)
+	var ps: Array = []
+	for i in CELLS:
+		var p := PackedInt32Array()
+		for j in CELLS:
+			if j == i:
+				continue
+			if row_of(j) == row_of(i) or col_of(j) == col_of(i) or box_of(j) == box_of(i):
+				p.append(j)
+		ps.append(p)
+	# Assigned last and together, so a second thread or a re-entrant call
+	# cannot see half-built tables through the `_units.is_empty()` guard.
+	_peers = ps
+	_units = us
+
+## The day's puzzle. `graded` says whether the band's technique test was met
+## within ATTEMPTS tries; the board plays either way and nothing reads it but
+## the tests and the probe.
+static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
+	_tables()
+	var d := clampi(difficulty, 0, TARGET.size() - 1)
+	var out := {}
+	var t0 := Time.get_ticks_msec()
+	for attempt in ATTEMPTS:
+		var sol := full_grid(rng)
+		var puz := dig(rng, sol, int(TARGET[d]))
+		var singled := is_complete(singles_solve(puz))
+		var want := singled if d == 0 else not singled
+		out = {"puzzle": puz, "solution": sol, "graded": want}
+		if want:
+			break
+		if Time.get_ticks_msec() - t0 >= TIME_BUDGET_MS:
+			break
+	return out
+
+## A full legal grid, by randomised backtracking over row, column and region
+## bitmasks. Packed arrays are passed by reference in GDScript, which is what
+## lets the masks be undone after a failed branch.
+static func full_grid(rng: RandomNumberGenerator) -> PackedByteArray:
+	var g := PackedByteArray()
+	g.resize(CELLS)
+	var rm := PackedInt32Array()
+	rm.resize(N)
+	var cm := PackedInt32Array()
+	cm.resize(N)
+	var bm := PackedInt32Array()
+	bm.resize(N)
+	_fill(rng, g, rm, cm, bm, 0)
+	return g
+
+static func _fill(rng: RandomNumberGenerator, g: PackedByteArray, rm: PackedInt32Array,
+		cm: PackedInt32Array, bm: PackedInt32Array, i: int) -> bool:
+	if i == CELLS:
+		return true
+	var r := row_of(i)
+	var c := col_of(i)
+	var b := box_of(i)
+	var avail := FULL & ~(rm[r] | cm[c] | bm[b])
+	var opts: Array = []
+	for d in range(1, N + 1):
+		if avail & (1 << (d - 1)):
+			opts.append(d)
+	_shuffle(opts, rng)
+	for d in opts:
+		var bit := 1 << (int(d) - 1)
+		g[i] = d
+		rm[r] |= bit
+		cm[c] |= bit
+		bm[b] |= bit
+		if _fill(rng, g, rm, cm, bm, i + 1):
+			return true
+		g[i] = 0
+		rm[r] &= ~bit
+		cm[c] &= ~bit
+		bm[b] &= ~bit
+	return false
+
+## How many solutions `puz` has, stopping at `cap`. Most-constrained cell
+## first: a cell with no candidate kills the branch at once, and a cell with
+## one is taken before any cell with two.
+static func count_solutions(puz: PackedByteArray, cap: int) -> int:
+	var g := puz.duplicate()
+	var rm := PackedInt32Array()
+	rm.resize(N)
+	var cm := PackedInt32Array()
+	cm.resize(N)
+	var bm := PackedInt32Array()
+	bm.resize(N)
+	for i in CELLS:
+		if g[i] > 0:
+			var bit := 1 << (g[i] - 1)
+			rm[row_of(i)] |= bit
+			cm[col_of(i)] |= bit
+			bm[box_of(i)] |= bit
+	# An Array, not an int: GDScript has no out-parameters and an Array is
+	# the cheapest box that survives the recursion.
+	var found: Array = [0]
+	_count(g, rm, cm, bm, cap, found)
+	return int(found[0])
+
+static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Array,
+		bm: PackedInt32Array, cap: int, found: Array) -> bool:
+	var best := -1
+	var best_mask := 0
+	var best_n := 10
+	for i in CELLS:
+		if g[i] > 0:
+			continue
+		var m := FULL & ~(rm[row_of(i)] | cm[col_of(i)] | bm[box_of(i)])
+		var n := popcount(m)
+		if n == 0:
+			return false
+		if n < best_n:
+			best_n = n
+			best = i
+			best_mask = m
+			if n == 1:
+				break
+	if best < 0:
+		found[0] = int(found[0]) + 1
+		return int(found[0]) >= cap
+	var r := row_of(best)
+	var c := col_of(best)
+	var b := box_of(best)
+	for d in range(1, N + 1):
+		var bit := 1 << (d - 1)
+		if not (best_mask & bit):
+			continue
+		g[best] = d
+		rm[r] |= bit
+		cm[c] |= bit
+		bm[b] |= bit
+		var stop := _count(g, rm, cm, bm, cap, found)
+		g[best] = 0
+		rm[r] &= ~bit
+		cm[c] &= ~bit
+		bm[b] &= ~bit
+		if stop:
+			return true
+	return false
+
+## Take cells out of `sol` in a shuffled order, in 180-degree pairs so the
+## givens read as a pattern and not as spilled salt, keeping a cell out only
+## while exactly one solution survives.
+static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int) -> PackedByteArray:
+	var puz := sol.duplicate()
+	var order: Array = []
+	for i in CELLS:
+		order.append(i)
+	_shuffle(order, rng)
+	var givens := CELLS
+	for i in order:
+		if givens <= target:
+			break
+		var j: int = CELLS - 1 - int(i)
+		var a := puz[i]
+		var b := puz[j]
+		if a == 0 and b == 0:
+			continue
+		var removing := 0
+		if a > 0:
+			removing += 1
+		if j != int(i) and b > 0:
+			removing += 1
+		puz[i] = 0
+		puz[j] = 0
+		if count_solutions(puz, 2) != 1:
+			puz[i] = a
+			puz[j] = b
+		else:
+			givens -= removing
+	return puz
+
+## As far as naked singles (a cell with one candidate) and hidden singles (a
+## unit where one cell alone can take a digit) get. Those two are the moves a
+## player makes without writing anything down, so a grid this finishes is
+## easy by definition and one it stalls on wants a pencil.
+static func singles_solve(puz: PackedByteArray) -> PackedByteArray:
+	_tables()
+	var g := puz.duplicate()
+	for _pass in PASSES:
+		var placed := false
+		var cand := PackedInt32Array()
+		cand.resize(CELLS)
+		for i in CELLS:
+			if g[i] > 0:
+				continue
+			var m := FULL
+			for j in _peers[i]:
+				if g[j] > 0:
+					m &= ~(1 << (g[j] - 1))
+			cand[i] = m
+			if m == 0:
+				return g
+			if popcount(m) == 1:
+				g[i] = _digit_of(m)
+				placed = true
+		if not placed:
+			for u in _units:
+				for d in range(1, N + 1):
+					var bit := 1 << (d - 1)
+					var seat := -1
+					var n := 0
+					var has := false
+					for i in u:
+						if g[i] == d:
+							has = true
+							break
+						if g[i] == 0 and (cand[i] & bit) != 0:
+							seat = i
+							n += 1
+					if not has and n == 1:
+						g[seat] = d
+						placed = true
+						break
+				if placed:
+					break
+		if not placed:
+			return g
+	return g
+
+static func is_complete(g: PackedByteArray) -> bool:
+	for i in CELLS:
+		if g[i] == 0:
+			return false
+	return true
+
+static func _digit_of(mask: int) -> int:
+	for d in range(1, N + 1):
+		if mask == (1 << (d - 1)):
+			return d
+	return 0
+
+## How many bits are set. Public because both this file's uniqueness count
+## and singles_solve's candidate check call it -- a function two classes call
+## was never really private.
+static func popcount(m: int) -> int:
+	var n := 0
+	while m != 0:
+		m &= m - 1
+		n += 1
+	return n
+
+static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
+	for k in range(arr.size() - 1, 0, -1):
+		var j := rng.randi_range(0, k)
+		var tmp = arr[k]
+		arr[k] = arr[j]
+		arr[j] = tmp
