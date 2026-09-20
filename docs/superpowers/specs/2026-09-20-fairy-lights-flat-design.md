@@ -489,12 +489,53 @@ inferring it, one board a band off seed 12345, sixty calls each, four runs:
 
 So between a half and three quarters of the 16.5 ms moving frame is the
 rebuild in GDScript, and the rest is the fresh mesh going to the canvas
-beside the lanterns and the effects. The day's own 6x6 board read **11.81 ms** for the
-same `_build` on an earlier run of the probe, which is the same figure with
+beside the lanterns and the effects. The day's own 6x6 board read
+**11.81 ms** for the same `_build` on an earlier run of the probe, which is
+the same figure with
 more of the garden live: a live run draws two halo passes and a sheen a dark
 one does not. **Run that probe windowed and at 810x1440**: `_build` tessellates
 its arcs off the cell, and the first reading of it, headless on a 297 cell,
 came back at 21 ms.
+
+**The two calls to `depths()` a frame are not the cost, and the next agent
+should not spend an hour there.** Task 4's review noticed that `_build` and
+`_dress` each rebuild the walk from the post rather than sharing one; Task
+5's review round timed it at 6x6, where `_build` read 9.32-9.53 ms, `_dress`
+0.042 ms and **`depths()` 0.019 ms**. Two of those a frame is **0.3% of the
+frame**. The walk is cheap because it is a breadth-first pass over 36 cells
+of packed integers; what is expensive is the geometry the rebuild lays down
+after it.
+
+**A moving frame had never been measured on any other board in this repo, so
+here are three, taken by this board's own method** -- the same harness with
+the shot list emptied and a window laid over the motion -- in the review
+round, so that 16.5 is read against a family and not as an anomaly:
+
+| Board | Moving window | Mean a frame | Calls | Settled |
+| --- | --- | --- | --- | --- |
+| **Fairy Lights** 6x6, wash | 1.65-2.05 | **16.73** (15.70-17.81, 24 frames) | 82 | 2.58-2.78 |
+| Word Trail, lock wave | 2.10-2.50 | 11.80 / 11.95 (34, 33 frames) | 65 | 2.37 / 2.37 |
+| Word Trail, trail traced | 1.65-2.05 | 12.63 / 12.64 | 61 | 2.37 / 2.37 |
+| Nonogram 9x9, sweep | 1.65-2.05 | 6.41 / 6.44 | -- | 2.29 / 2.42 |
+| Nonogram 9x9, wave after it | 1.95-2.35 | 5.37 / 5.44 | 68 | 2.29 / 2.42 |
+| Fairy Lights on ANGLE, wash | 1.65-2.05 | 19.79 (16.67-23.41) | -- | 5.36-5.86 |
+
+The review's 16.73 falls inside the 16.30-16.81 measured here, which is what
+says the figure is the board's and not a `save_png` artefact. **A whole-mesh
+board in this game costs 5.4 to 16.8 ms a moving frame**; this one is 1.4
+times Word Trail and 3 times Nonogram, and against each board's own settled
+frame the ratios are about 6x here, 5x on Word Trail and 2.3x on Nonogram.
+**Word Trail already ships at about 12 ms a moving frame**, which is 24-36 ms
+on a phone by the same two-to-three-times rule, so what is written below is a
+sharper version of a risk this repo has already shipped without measuring --
+not a new class of problem, and not a reason to single this board out.
+
+**The cost does not track cell count.** Nonogram rebuilds 81 tiles for 5.4 ms
+and this board rebuilds 36 cells for 9.4 ms of `_build` alone. What is
+expensive here is the geometry *per* cell -- the arcs tessellated off the
+cell, the two halo passes under every live run and the sheen along its back
+-- and that is where an optimisation would have to go, not at the cell count
+and not at the walk.
 
 **What that means and what it does not.** A settled board is 2.7 ms and idles
 inside anything. A board with the wash running sits at about 16.5 ms a frame
@@ -571,6 +612,15 @@ Said plainly so nobody reads a number into a gap: the win screen's own draw
 call (there is no `solve` word in this board's branch of the harness), the
 count at 5x5 and 7x7 on the strip (the harness opens the day's band), and
 anything at all on the phone.
+
+And one thing that was not measured **until this board**, which matters for
+how 11.2 is read: **no other board in this repo had ever had a moving frame
+measured**. Every millisecond on record anywhere else -- in this file, in the
+other specs and in `CLAUDE.md` -- is an idle window on a settled board. The
+Word Trail and Nonogram figures in 11.2 were taken in Task 5's review round
+for the sole purpose of giving this board's 16.5 a family to sit in, and they
+are the first of their kind; they belong to that session and want re-reading
+in their own specs before either board is judged on them.
 
 ---
 
