@@ -208,6 +208,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-hiddenword .refs img{border-radius:14px}
 #tab-hiddenword .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #hw-caption{max-width:460px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat word trail mock extras ---------- */
+#tab-wordtrail .phone{background:#f6efe3}
+#tab-wordtrail .phone canvas{touch-action:none;cursor:pointer}
+#tab-wordtrail .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-wordtrail .refs figure{margin:0}
+#tab-wordtrail .refs img{border-radius:14px}
+#tab-wordtrail .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#wt-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 /* ---------- flat snake apple mock extras ---------- */
 #tab-snakeapple .phone{background:#f6efe3}
 #tab-snakeapple .phone canvas{touch-action:none;cursor:pointer}
@@ -246,6 +254,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="nonogram">Nonogram · flat</button>
     <button data-tab="queens">Queens · flat</button>
     <button data-tab="hiddenword">Hidden Word · flat</button>
+    <button data-tab="wordtrail">Word Trail · flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
 </header>
@@ -1757,6 +1766,133 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Difficulty is commonality only.</b> Easy, medium and hard all play the same game with the same six rows; the only thing that moves is how obscure the answer may be. No other flat board's ladder is this thin.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band (easy by default), <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?guess=plant,grass</code> for rows already committed and settled, <code>?typed=mos</code> for a partial working row, <code>?commit=slate</code> to type and commit that word at <code>?at=</code> (0.2 by default), <code>?bad=1</code> to commit whatever is typed &mdash; pair it with <code>?typed=</code> for a refusal &mdash; <code>?hint=1</code> and <code>?reset=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?over=1</code> for six rows and the reveal, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-flip can be shot (real time otherwise passes before Chrome's shot lands). Pick the tab with <code>#hiddenword</code>. The lists are fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
+</section>
+
+<!-- ============================ WORD TRAIL ============================ -->
+<section class="tab-panel" id="tab-wordtrail">
+  <h2>Word Trail &middot; flat, the twelfth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A field of letters with grey walls through it. Drag from tile to side-adjacent tile &mdash; <b>never diagonally</b> &mdash; and the trail bends around the walls; let go on a word and it locks. <b>You are never told the words, only how long each one is.</b> Every open tile belongs to exactly one word, so the grid is the scoreboard: the last word locked fills the last tile. The game is LinkedIn's <em>Wend</em>, and <b>the name is not that one</b> &mdash; this repo already ships Mastermind as <em>Code Break</em>. Rules taken from the published ones on 2026-09-20, not from the mock, which describes a straight-line word search with diagonals and is wrong about the game.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-word-trail.png" alt="The user's mock: a seven by seven grid of cream letter tiles in a wooden frame with grey blocked cells, a searching sprout with a magnifying glass at the left, a crowned bee at the right, a Day 5 Moss Harbour card above and a How to play card below">
+        <figcaption>The user's mock of 2026-09-20, saved as <code>docs/art/concept-word-trail.png</code>. Taken from it: the field of big cream letter tiles, the <b>grey blocked cells</b> drawn as slabs with a leaf on them, the day card, the tip card. Not built, and why: <b>its rules text</b> (&ldquo;horizontally, vertically or diagonally&rdquo; &mdash; the real game is orthogonal and the path bends, which is the whole puzzle), <b>Check</b> (there is nothing to check when a wrong trail cannot stay on the board), <b>the two chips</b> (they are Queens' tray, and this board picks nothing up), <b>the crowned bee</b> (Queens' cast), <b>the hearts</b> (decoration, settled 2026-09-18) and <b>the wooden frame</b> (no flat board wears one; the family's card is paper). <b>Missing from it and required:</b> the length slots &mdash; without them the player is hunting blind.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The chrome the mock is set in, now shared by eleven screens: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout that names the rule you just broke. Word Trail keeps the tip card and drops the actions row &mdash; no Check, so Reset rides up into the top bar beside Undo and Hint, as Balance's and Untangle's already do.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="wt" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="wt-rm">Reduce motion: off</button>
+        <button id="wt-diff">Easy &middot; 5&times;5</button>
+        <button id="wt-new">New puzzle</button>
+        <button id="wt-hint">Hint</button>
+        <button id="wt-undo">Undo</button>
+        <button id="wt-reset">Reset</button>
+        <button id="wt-solve">Solve it</button>
+        <button id="wt-peek">Show the answer</button>
+      </div>
+      <div id="wt-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>press a letter and drag</b> through side-adjacent tiles, let go on a word and it locks with its own colour; anything else just unwinds. It plays the <b>real generator</b> &mdash; paths grown first, walls left over &mdash; and the <b>real word list</b>, <code>content/word_trail.json</code>, fetched from this page, which over <code>file://</code> needs Chrome's <code>--allow-file-access-from-files</code> or a small inline list stands in; the caption says which one is live. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>the real Wend rules</b>, not the mock's word search; <b>the name Word Trail</b>; <b>only a right word locks</b> &mdash; any other selection just highlights and unwinds, with no toast and no penalty; <b>a trail must run along that word's own cells</b>; <b>the board is generated in game from the day seed</b>; and <b>Pipes' <code>SOON</code> card leaves the first screen</b> to make room, exactly as Horse Pen's did for Hidden Word the day before. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>WORD TRAIL</code> in ink with the leaf sprouting from it and <code>EVERY LETTER FINDS ITS WAY</code> under, then Undo, Reset, Hint with its count and Settings. <b>Five buttons</b>, which only Balance and Untangle carry: <code>"actions": false</code> puts Reset up here, and <code>capabilities()</code> is <code>["undo","hint"]</code> with no <code>check</code>.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the mock's, without its hearts.</td></tr>
+    <tr><td class="k">Board card</td><td>1340</td><td>The grid, the length slots under it, and the scenery band under those. Section 2.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet. Untangle's number, and Untangle's reason: it is the only thing in the bottom slot.</td></tr>
+  </table>
+  <p>40 of margin, three 20 gaps and the four rows are 1920 exactly, which is where the board card's 1340 comes from.</p>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p><b>The width binds at every band</b>, which is what makes this card easy: <code>cell = min((944 &minus; (n&minus;1)&times;14)/n, &hellip;)</code> and the first term wins at 5, 6 and 7 alike &mdash; <b>178, 146 and 123</b>, against Queens' and Nonogram's 103 on their hard boards. The grid is then 944 wide and as tall, and the card has 222 to 250 left over after the 150 the slots take. That leftover is <b>not</b> centred away as air: it is the <b>scenery band</b> at the card's foot, the way Hidden Word's 120 band is laid and <code>ui/flat/scenery.gd</code> lays Balance's &mdash; clouds, a strip of turf, bushes. <code>card_height()</code> returns everything it is given and <code>card_centred()</code> never comes up.</p>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:10%">Grid</th><th style="width:10%">Cell</th><th style="width:12%">Words</th><th style="width:10%">Walls</th><th>Band left for scenery</th></tr>
+    <tr><td class="k">Easy</td><td>5 &times; 5</td><td>178</td><td>4 &mdash; 3,4,5,6 (18 tiles)</td><td>7</td><td>222</td></tr>
+    <tr><td class="k">Medium</td><td>6 &times; 6</td><td>146</td><td>6 &mdash; 3,4,4,5,6,7 (29)</td><td>7</td><td>236</td></tr>
+    <tr><td class="k">Hard</td><td>7 &times; 7</td><td>123</td><td>6 &mdash; 4,5,6,7,8,8 (38)</td><td>11</td><td>250</td></tr>
+  </table>
+  <p><b>The slots are the only thing the player is told.</b> One group of empty boxes per word, shortest first, boxes 34 by 52 with 5 between and 22 between groups, wrapped to as many lines as it takes &mdash; two on every band. A group fills with its letters when the word locks, in that word's colour. Nothing about a word's <em>shape</em> is ever shown: length is the whole clue.</p>
+
+  <h3>3. The rules <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>A trail runs through side-adjacent tiles</b> &mdash; up, down, left, right, and it may bend as often as it likes. No diagonals, no jumps, no reusing a tile inside one trail, and never through a wall or a tile a locked word already holds.</li>
+    <li><b>Only a right word locks.</b> Release on one of today's unfound words, traced along that word's own cells in order, and it locks in its colour. <b>Any other release just unwinds</b> &mdash; no toast, no shiver, no penalty, no hint spent. The board never says no, because it never had to say yes.</li>
+    <li><b>Its own cells, not merely its letters.</b> A trail that spells the word over other tiles is not that word: accepting it would break the coverage the whole puzzle rests on, and leave a board that cannot be finished. In practice the player retraces; there is no state to recover from.</li>
+    <li><b>Every open tile belongs to exactly one word</b>, so the count is not a target the player has to keep &mdash; the last word fills the last tile. Solved is all words found.</li>
+    <li><b>Undo</b> lifts the last locked word, in lock order. <b>Reset</b> lifts them all and gives back nothing else, because there is nothing else to give back. <b>There is no Check</b>: nothing wrong can be sitting on the board to check.</li>
+    <li><b>The board cannot be lost, stuck or spoiled.</b> It is the gentlest board in the game, and that is the point of the &ldquo;only the right word locks&rdquo; rule: the original lets a plausible-but-wrong word stick and quietly kill the grid.</li>
+  </ul>
+
+  <h3>4. Generation, backwards from the walls <span class="pill blue">decided</span></h3>
+  <p><b>A path's shape puts no constraint on its letters</b> &mdash; any five-letter word fits any five-cell path, because each cell just holds one letter. So there is no packing search and no solver. <code>puzzles/word_trail_state.gd</code> works backwards:</p>
+  <ol>
+    <li>Off the day seed, grow the paths <b>longest first</b>: a random free start, then a self-avoiding walk through free neighbours, restarting that word if it paints itself into a corner.</li>
+    <li>Every cell no path covered becomes a <b>wall</b>. There are exactly <code>n&sup2; &minus; &Sigma;lengths</code> of them, so the wall count is a property of the band and never a dial.</li>
+    <li>Pick a word of each length from <code>content/word_trail.json</code> and write it along its path.</li>
+  </ol>
+  <p><b>The band is chosen by how much of the field it fills, not by how many words it names.</b> One word of each length would leave <b>16 walls on the 7&times;7</b> &mdash; a third of the field, which reads as damage rather than as carving, and is twice what the user's own mock draws. Repeating a length instead (<code>4,5,6,7,8,8</code>) fills 38 of 49 and leaves <b>11</b>, the mock's number exactly. Six words is also the most the palette's six chip colours cover, which is why no band asks for seven.</p>
+  <p>Solvable by construction, and cheap enough to do on the phone at load. A layout is then judged and re-rolled if it fails: <b>every word of five or more must bend at least once</b> (a straight row is not a trail), <b>the open cells must be one connected field</b> (an island of letters reads as a bug), and <b>no row or column may be wall end to end</b> (that is not carving, it is a smaller grid with a dead strip drawn on it). What survives is then <b>scored on how the walls read</b> &mdash; ten a wall block, less one a bend &mdash; and the best of sixty candidates is the day's board. Measured over forty seeds a band: every one of them built, in one to three wall blocks.</p>
+  <div class="decide"><b>Both of those rules were paid for on this page.</b> Taking the first layout that passed gave the speckled field in the first shot; scoring for the fewest wall blocks then gave a board whose entire top row was wall, because one block is cheapest when the block is a stripe. The two rules together are what the shots above draw.</div>
+  <div class="decide"><b>Uniqueness is not required here, and that is a consequence of the lock rule.</b> LinkedIn's walls guarantee one solution because a wrong-but-real word can stick; ours cannot stick, so a second valid tiling of the same letters is unreachable &mdash; a trail that is not one of today's words never locks, whatever it spells. Nothing in the generator has to prove anything, which is why it is twenty lines rather than a search.</div>
+
+  <h3>5. The words <span class="pill">proposed</span></h3>
+  <p><code>content/word_trail.json</code>, <b>1,132 words bucketed by length</b> &mdash; 108 of three letters, 160 of four, 199 of five, 222 of six, 272 of seven, 171 of eight. Common, concrete, and the same camp vocabulary the rest of the game is written in. The rule the list is written to: <b>the player is shown the lengths and nothing else</b>, so an obscure word is not a hard day, it is an unfair one. No proper nouns, no plurals made by adding an <em>s</em> to a shorter word in the same bucket.</p>
+  <p>There is no band structure inside the lists, unlike Hidden Word's: difficulty here is the grid, not the vocabulary. The picks are independent, so the easy board's four alone are 108&times;160&times;199&times;222 &mdash; over seven hundred million letterings before the paths are even counted, and a day never repeats in any life.</p>
+
+  <h3>6. Colour <span class="pill">proposed</span></h3>
+  <p><b>A locked word takes one of the palette's six chip colours</b>, in order, and every part of it agrees: the ribbon under its tiles in the strong colour, the tile faces in that colour's pale <code>*_TILE</code>, and its slot group lettered in the deep one. Six colours, six words at most, so no board ever repeats one.</p>
+  <table>
+    <tr><th style="width:16%">Word</th><th style="width:20%">Ribbon</th><th style="width:20%">Tile face</th><th>Already in the palette?</th></tr>
+    <tr><td class="k">1st</td><td><code>Pal.LEAF</code></td><td><code>Pal.LEAF_TILE</code></td><td>Yes &mdash; the sprout's green</td></tr>
+    <tr><td class="k">2nd</td><td><code>Pal.SUN</code></td><td><code>Pal.SUN_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">3rd</td><td><code>Pal.MOON_INK</code></td><td><code>Pal.MOON_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">4th</td><td><code>Pal.BERRY</code></td><td><code>Pal.BERRY_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">5th</td><td><code>Pal.ACORN</code></td><td><code>Pal.ACORN_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">6th</td><td><code>Pal.FLOWER</code></td><td><code>Pal.FLOWER_TILE</code></td><td>Yes</td></tr>
+  </table>
+  <p>An untouched tile is <code>SURFACE</code> with a <code>LINE</code> rim and its letter in <code>TEXT</code>; a wall is <code>STONE_GIVEN</code> with a leaf drawn on it, which is the mock's own grey slab in the family's warm grey rather than its cool one. The live trail under the finger is <code>SUN_RAY</code> at 0.5, so it reads as a torch beam rather than as a seventh word.</p>
+
+  <h3>7. Motion <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), drawn off the curve readers as Nonogram's and Hidden Word's tiles are. <b>Its signature is the ribbon</b>, and it needs two numbers of its own: <code>WAVE_STEP</code> 0.05 s per tile and <code>LOCK_TIME</code> 0.3 s.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The grid pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) while it fades; the slot groups drop in after it, <code>ENTER_STAGGER</code> apart.</td></tr>
+    <tr><td class="k">Dragging</td><td>The tile under the finger presses (<code>press_scale</code> 0.94) and the beam grows to it over <code>LOCK_TIME</code>/3. Retracting back over the last tile takes the beam with it.</td></tr>
+    <tr><td class="k">Locked</td><td><b>The wave.</b> The ribbon takes the word's colour from its first tile to its last, <code>WAVE_STEP</code> a tile, and each tile bumps (<code>bump_scale</code>) and takes its face as the wave reaches it; the letter flies into its slot box on the same step, arriving with <code>drop_in_lift</code>. Sparkles in the word's colour on the last tile.</td></tr>
+    <tr><td class="k">Unwound</td><td>The beam shrinks back to its first tile over 0.18 s and fades. Nothing shivers and nothing is said: a wrong trail is not a wrong move.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring in <code>LEAF</code> over the tile revealed, and that tile keeps a soft sun glow with a dotted outline until its word is found.</td></tr>
+    <tr><td class="k">Undo</td><td>The word's wave runs <em>backwards</em>, last tile first, and its letters shrink out of the slots (<code>pop_out_scale</code>).</td></tr>
+    <tr><td class="k">Reset</td><td>Every locked word unwinds at once, each on its own reversed wave.</td></tr>
+    <tr><td class="k">Solved</td><td>The last word's wave finishes, then every tile on the board hops in one long wave from the top-left corner (0.02 a tile) with sparkles in gold. The win after <code>WIN_WAIT</code> 1.4 s.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the grid is up at once, a locked word takes its colour and its letters in one frame with no wave, the beam has no growth, nothing hops, rings or sparkles, and the win follows the last lock.</p>
+
+  <h3>8. The hint <span class="pill">proposed</span></h3>
+  <p><b>Three, as the mock's badge says</b>, and each one lights <b>the next tile of the shortest unfound word's path</b> &mdash; its first tile, then its second, and so on. That is the one hint this game can give: the words are hidden but the letters are not, so the only thing a player can be short of is <em>where a word starts</em>. Three hints on an easy board reveal three tiles of an eighteen-tile answer; on hard, three of thirty-three.</p>
+  <div class="decide"><b>Worth judging on the phone:</b> whether the hint should light the next tile of the <em>shortest</em> unfound word or of the one the player last touched. Shortest is predictable and needs no state; last-touched is cleverer and can be wrong about what the player wants. The mock does shortest.</div>
+
+  <h3>9. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Length slots, and only length slots.</b> This is the whole clue. Play a 7&times;7 here and see whether six lengths and thirty-three letters is a puzzle or a shrug.</li>
+    <li><b>Only the right word locks.</b> Gentler than the original by a long way, and it removes the original's best trap. Does the board feel too safe?</li>
+    <li><b>123 at 7&times;7.</b> Comfortably the biggest hard-board cell in the game, because seven columns is fewer than Queens' nine. Drag accuracy is the thing to feel.</li>
+    <li><b>Three hints.</b> A hint here is worth much less than on other boards &mdash; it lights one tile of thirty-three. Three may be too few to rescue anyone.</li>
+    <li><b>The scenery band.</b> 222 to 250 of clouds and turf under the slots, because the width binds and the height cannot be spent on the grid. The alternative is a squarer card with air above it, which no other board does.</li>
+    <li><b>Backwards tracing.</b> Trace <em>oats</em> from the S and nothing happens, because it spells <em>stao</em>. Right, and possibly annoying.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?found=2</code> to lock that many words before the clock starts, <code>?hint=2</code> for that many hints spent, <code>?peek=1</code> to draw every answer's path, <code>?win=1</code> for the win screen and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot. Pick the tab with <code>#wordtrail</code>. The word list is fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
 </section>
 
 <!-- ============================ SNAKE APPLE ============================ -->
@@ -9375,6 +9511,624 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     frame();
   }
   loadWords().then(start);
+})();
+
+/* ---------- the flat word trail mock ---------- */
+(function(){
+  const cv=document.getElementById('wt'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd). This board adds no colour
+  // at all: a locked word takes one of the palette's six chip colours in
+  // order, ribbon in the strong one and tile face in its pale *_TILE, and
+  // six is also the most words any band has.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    stone:'#ede2cc',stoneGiven:'#dccfb3',cloud:'#a9c2dd',moss:'#7fa84a'};
+  const WORDCOL=[
+    {ink:'#6ba845',deep:'#4f8a31',tile:'#e6f0da'},  // LEAF
+    {ink:'#f5a623',deep:'#d88a12',tile:'#fff1d6'},  // SUN
+    {ink:'#7d8fd9',deep:'#6273c0',tile:'#e9ecfa'},  // MOON_INK
+    {ink:'#e2645c',deep:'#bf4a44',tile:'#fadcd8'},  // BERRY
+    {ink:'#c99a63',deep:'#a57a48',tile:'#f3e4ce'},  // ACORN
+    {ink:'#e58fb5',deep:'#c26b93',tile:'#fbe0ec'}]; // FLOWER
+  const TILE_RIM=mixHex(C.surface,C.text,0.16), WALL_RIM=mixHex(C.stoneGiven,C.text,0.22);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.02,SOLVE_DELAY:0.2,SHIVER_PX:2,SHIVER_TIME:0.2};
+  // This board's own three: the wave's step per tile, how long a beam takes
+  // to grow or unwind, and how long the win waits.
+  const WAVE_STEP=0.05,BEAM_TIME=0.18,WIN_WAIT=1.4;
+  const stag=v=>RM?0:v;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popOutScale=(s,dur)=>{dur=dur||MO.POP_OUT; if(RM) return null; const u=s/dur; if(u>=1) return null; return {scale:1-clamp(u),angle:Math.PI/2*clamp(u)};};
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ---- the words ----
+  // content/word_trail.json is fetched so the mock plays the shipping list.
+  // Over file:// that needs --allow-file-access-from-files; without it this
+  // small list stands in, which the caption says.
+  const FALLBACK={'3':['bee','cub','fox','hen','ivy','jar','kid','log','nut','oak','owl','pea','pot','sun','web'],
+    '4':['barn','bear','cake','deer','fern','gate','hive','kite','lamp','moss','nest','pine','rope','sail','wolf'],
+    '5':['acorn','berry','cabin','daisy','eagle','fence','grove','honey','lemon','maple','otter','plant','river','stone','tulip'],
+    '6':['badger','candle','forest','garden','hollow','kitten','lantern','meadow','pebble','rabbit','shadow','tunnel','valley','willow','winter'],
+    '7':['bonfire','cottage','dolphin','feather','harvest','kitchen','lantern','morning','orchard','pumpkin','rainbow','seaside','thistle','village','whisper'],
+    '8':['birdsong','campfire','daylight','eggplant','hedgehog','lakeside','mountain','mushroom','pinecone','seashell','signpost','snowdrop','starfish','sunlight','woodland']};
+  let WORDS=FALLBACK,LIST='';
+  async function loadWords(){
+    try{
+      const r=await fetch('../../content/word_trail.json'); if(!r.ok) throw new Error('http');
+      const j=await r.json(); if(!j.words||!j.words['3']) throw new Error('empty');
+      WORDS=j.words;
+      LIST='the shipping list ('+Object.keys(WORDS).reduce((a,k)=>a+WORDS[k].length,0)+' words)';
+    }catch(e){ LIST='the inline fallback of 90 words — the shipping list needs Chrome’s --allow-file-access-from-files over file://'; }
+  }
+
+  // ---- state (puzzles/word_trail_state.gd: the one truth, scene-free) ----
+  const key=(r,c)=>r+','+c, rc=k=>k.split(',').map(Number);
+  const DIFFS=['Easy · 5×5','Medium · 6×6','Hard · 7×7'];
+  // The bands. A wall is whatever the words do not cover, so the wall count
+  // is a property of the band and never a dial: 7, 7 and 11. One word per
+  // length would put 16 walls on the 7x7 -- a third of the field, and it
+  // reads as damage rather than as carving -- so the two larger bands repeat
+  // a length instead. Six words at most, which is what the palette's six
+  // chip colours cover.
+  const LENS=d=>d===0?[3,4,5,6]:d===1?[3,4,4,5,6,7]:[4,5,6,7,8,8];
+  let n=5,diff=0,seed=5,genAttempts=0;
+  let words=[],letters={},walls=new Set(),given={},order=[];
+  let hintsLeft=3,moves=0,openedAt=0,solvedAt=-1e9,winAt=-1e9,peek=Q.get('peek')==='1';
+  // A harness stamps a solve in the past (?win=1 at -10), so the fact and
+  // the moment are two things: a timestamp alone reads as "not yet" for
+  // every negative one, and the win screen never comes up.
+  let hasSolve=false;
+  let trail=[],beamAt=0,ghost=null,press=null;
+  let particles=[],rings=[],btnPress={},auto=[],L=null;
+  const open=()=>!hasSolve;
+  const found=()=>words.filter(w=>w.found).length;
+
+  // A path's shape puts no constraint on its letters -- any five-letter word
+  // fits any five-cell path -- so there is no packing search here. Grow the
+  // paths first, longest first, and every cell no path covered is a wall.
+  function growPaths(rng,n,lens){
+    const used={},paths=[];
+    const free=(r,c)=>r>=0&&r<n&&c>=0&&c<n&&!used[key(r,c)];
+    for(const len of lens.slice().sort((a,b)=>b-a)){
+      let got=null;
+      for(let tries=0;tries<120&&!got;tries++){
+        const sr=(rng()*n)|0,sc=(rng()*n)|0;
+        if(!free(sr,sc)) continue;
+        const path=[[sr,sc]]; used[key(sr,sc)]=1;
+        while(path.length<len){
+          const [r,c]=path[path.length-1];
+          const opts=[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([a,b])=>free(a,b));
+          if(!opts.length) break;
+          const p=opts[(rng()*opts.length)|0]; path.push(p); used[key(p[0],p[1])]=1;
+        }
+        if(path.length===len) got=path;
+        else for(const [r,c] of path) delete used[key(r,c)];
+      }
+      if(!got) return null;
+      paths.push(got);
+    }
+    return paths;
+  }
+  const bends=p=>{let b=0;for(let i=2;i<p.length;i++){const a=[p[i-1][0]-p[i-2][0],p[i-1][1]-p[i-2][1]],d=[p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]];if(a[0]!==d[0]||a[1]!==d[1])b++;}return b;};
+  function oneField(paths){
+    const openSet=new Set(); paths.forEach(p=>p.forEach(([r,c])=>openSet.add(key(r,c))));
+    const first=openSet.values().next().value; if(first===undefined) return false;
+    const seen=new Set([first]),st=[first];
+    while(st.length){const [r,c]=rc(st.pop());
+      for(const [a,b] of [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]){const k=key(a,b); if(openSet.has(k)&&!seen.has(k)){seen.add(k);st.push(k);}}}
+    return seen.size===openSet.size;
+  }
+  function fullWallLine(paths,n){
+    const open=new Set(); paths.forEach(p=>p.forEach(([r,c])=>open.add(key(r,c))));
+    for(let i=0;i<n;i++){
+      let row=true,col=true;
+      for(let j=0;j<n;j++){ if(open.has(key(i,j))) row=false; if(open.has(key(j,i))) col=false; }
+      if(row||col) return true;
+    }
+    return false;
+  }
+  // How many separate blocks the leftover walls fall into.
+  function wallIslands(paths,n){
+    const open=new Set(); paths.forEach(p=>p.forEach(([r,c])=>open.add(key(r,c))));
+    const seen=new Set(); let count=0;
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      const k=key(r,c); if(open.has(k)||seen.has(k)) continue;
+      count++; seen.add(k); const st=[k];
+      while(st.length){const [a,b]=rc(st.pop());
+        for(const [x,y] of [[a-1,b],[a+1,b],[a,b-1],[a,b+1]]){
+          const k2=key(x,y);
+          if(x<0||y<0||x>=n||y>=n||open.has(k2)||seen.has(k2)) continue;
+          seen.add(k2); st.push(k2);}}
+    }
+    return count;
+  }
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd; n=5+diff;
+    const lens=LENS(diff),rng=mulberry32((sd*2654435761)>>>0);
+    let paths=null,loose=null,best=1e9; genAttempts=0;
+    // Best of the candidates, not the first of them. A layout that passes is
+    // then scored on how the *walls* read: a wall speckled over the field
+    // looks like damage, a wall in two or three blocks looks carved, so the
+    // score is ten a wall island less one a bend, and the lowest wins.
+    for(let a=0;a<60;a++){
+      genAttempts++;
+      const p=growPaths(rng,n,lens); if(!p) continue;
+      loose=loose||p;
+      // A straight row is not a trail, and an island of letters reads as a bug.
+      if(p.some(q=>q.length>=5&&bends(q)===0)) continue;
+      if(!oneField(p)) continue;
+      // A wholly walled row or column is not carving, it is a smaller grid
+      // with a dead strip drawn on it -- and at 11 walls on a 7 wide field
+      // the "fewest wall islands" score walks straight into one.
+      if(fullWallLine(p,n)) continue;
+      const sc=10*wallIslands(p,n)-p.reduce((acc,q)=>acc+bends(q),0);
+      if(sc<best){best=sc; paths=p;}
+    }
+    paths=paths||loose;
+    words=paths.map(path=>({path,w:WORDS[String(path.length)][(rng()*WORDS[String(path.length)].length)|0],found:false,at:-1e9,undoAt:null}));
+    words.sort((a,b)=>a.path.length-b.path.length);
+    letters={}; walls=new Set(); given={}; order=[];
+    words.forEach((wd,i)=>{wd.ci=i; wd.path.forEach(([r,c],j)=>letters[key(r,c)]=wd.w[j].toUpperCase());});
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(letters[key(r,c)]===undefined) walls.add(key(r,c));
+    hintsLeft=3; moves=0; hasSolve=false; solvedAt=-1e9; winAt=-1e9; openedAt=t; trail=[]; ghost=null; press=null;
+    particles=[]; rings=[]; btnPress={}; auto=[];
+    tipSet(TIPS[0],'happy',t); tip.idx=0;
+    caption();
+  }
+
+  // ---- the moves ----
+  const owner=k=>{for(const wd of words) if(wd.found&&wd.path.some(([r,c])=>key(r,c)===k)) return wd; return null;};
+  const freeCell=k=>!walls.has(k)&&!owner(k);
+  function lock(wd,t){
+    wd.found=true; wd.at=t; wd.undoAt=null; order.push(wd.ci); moves++;
+    const [lr,lc]=wd.path[wd.path.length-1];
+    const done=t+stag(wd.path.length*WAVE_STEP);
+    ring(lr,lc,done,WORDCOL[wd.ci%6].ink); sparkle(lr,lc,done,WORDCOL[wd.ci%6].ink);
+    if(words.every(x=>x.found)){ hasSolve=true; solvedAt=done; winAt=done+WIN_WAIT;
+      tipSet('Every letter found its way.','joy',done); }
+    else tipSet(LEFT_LINE(),'happy',t);
+    caption();
+  }
+  function undo(t){
+    if(!order.length||!open()) return;
+    const wd=words[order.pop()]; wd.found=false; wd.undoAt=t; moves++;
+    tipSet('Taken back. '+LEFT_LINE(),'happy',t); caption();
+  }
+  function reset(t){
+    if(!order.length) return;
+    while(order.length){const wd=words[order.pop()]; wd.found=false; wd.undoAt=t;}
+    hasSolve=false; solvedAt=-1e9; winAt=-1e9; trail=[]; ghost=null;
+    tipSet('A clean field. '+LEFT_LINE(),'happy',t); caption();
+  }
+  // The one hint this game can give: the words are hidden but the letters
+  // are not, so the only thing a player can be short of is where a word
+  // starts. It lights the next tile of the shortest unfound word's path.
+  function hint(t){
+    if(hintsLeft<=0||!open()) return;
+    const cand=words.filter(w=>!w.found&&(given[w.ci]||0)<w.path.length).sort((a,b)=>a.path.length-b.path.length)[0];
+    if(!cand) return;
+    const k=(given[cand.ci]||0); given[cand.ci]=k+1; hintsLeft--;
+    const [r,c]=cand.path[k]; ring(r,c,t,C.leaf); sparkle(r,c,t+stag(0.1),C.leaf);
+    tipSet(k===0?'A word starts on the glowing tile.':'It carries on through the glow.','happy',t);
+    caption();
+  }
+  // Release: a trail locks only if it is one of today's unfound words traced
+  // along that word's own cells, in order. Anything else simply unwinds --
+  // no toast, no shiver, no penalty, nothing spent.
+  function release(t){
+    if(trail.length>=3){
+      for(const wd of words){
+        if(wd.found||wd.path.length!==trail.length) continue;
+        if(wd.path.every(([r,c],i)=>key(r,c)===trail[i])){ lock(wd,t); trail=[]; return true; }
+      }
+    }
+    if(trail.length>1) ghost={path:trail.slice(),at:t};
+    trail=[]; caption(); return false;
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  const centre=k=>{const [r,c]=rc(k); return [L.gx+c*(L.cell+L.gap)+L.cell/2,L.gy+r*(L.cell+L.gap)+L.cell/2];};
+  function ring(r,c,t0,col){ if(RM) return; rings.push({k:key(r,c),t0,col}); }
+  function sparkle(r,c,t0,col){ if(RM) return; for(let i=0;i<7;i++) particles.push({k:key(r,c),ox:(hash(i+r,c+7)-0.5)*0.9,oy:(hash(i+c,r+13)-0.5)*0.6,vx:(hash(i,r*5+c)-0.5)*90,vy:-120,t0:t0+i*0.04,life:0.7,col,rad:13,g:160}); }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur='';
+    for(const w of ws){const test=cur?cur+' '+w:w; if(ctx.measureText(test).width>maxw&&cur){out.push(cur); cur=w;} else cur=test;}
+    if(cur) out.push(cur); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- layout ----
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1340 of board,
+  // 20, 140 of tip card, 40 of margin -- 1920 exactly. Inside the card the
+  // width binds at every band: cell = (944 - (n-1)*14)/n is 178, 146 and
+  // 123, well under what the height would allow. What the grid and the
+  // slots do not spend is the scenery band at the card's foot.
+  const TOP_H=180,DAY_H=120,BOARD_H=1340,TIP_H=140,ROW_GAP=20,GRID_GAP=14,INSET=28;
+  const SLOT_W=34,SLOT_H=52,SLOT_GAP=5,GROUP_GAP=22,LINE_GAP=14,SLOTS_H=150,SLOTS_PAD=24;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,tipY=by+BOARD_H+ROW_GAP;
+    const cell=Math.min((COL-2*INSET-(n-1)*GRID_GAP)/n,(BOARD_H-2*INSET-SLOTS_H-SLOTS_PAD-(n-1)*GRID_GAP)/n);
+    const gw=n*cell+(n-1)*GRID_GAP,gx=W/2-gw/2,gy=by+INSET;
+    const slotsY=gy+gw+SLOTS_PAD,bandY=slotsY+SLOTS_H;
+    return {top:{y:topY},day:{y:dayY},board:{y:by},tip:{y:tipY},cell,gap:GRID_GAP,gx,gy,gw,
+      slots:{y:slotsY},band:{y:bandY,h:by+BOARD_H-bandY-INSET},
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+  // One group of boxes per word, shortest first, wrapped to as many lines as
+  // it takes. Length is the whole clue: nothing about a word's shape shows.
+  function slotLines(){
+    const maxw=COL-2*INSET,lines=[]; let cur=[],curW=0;
+    words.forEach((wd,i)=>{
+      const gwid=wd.w.length*SLOT_W+(wd.w.length-1)*SLOT_GAP,add=(cur.length?GROUP_GAP:0)+gwid;
+      if(cur.length&&curW+add>maxw){lines.push({items:cur,w:curW}); cur=[]; curW=0;}
+      curW+=(cur.length?GROUP_GAP:0)+gwid; cur.push({i,w:gwid});
+    });
+    if(cur.length) lines.push({items:cur,w:curW});
+    return lines;
+  }
+
+  // ---- the board ----
+  // A word's wave front: tiles light from its first to its last, WAVE_STEP
+  // apart, and an undo runs the same wave backwards.
+  function frontOf(wd,t){
+    const len=wd.path.length;
+    if(wd.found) return RM?len:clamp((t-wd.at)/(len*WAVE_STEP))*len;
+    if(wd.undoAt==null||RM) return 0;
+    return (1-clamp((t-wd.undoAt)/(len*WAVE_STEP)))*len;
+  }
+  function tileState(k,t){
+    for(const wd of words){
+      const idx=wd.path.findIndex(([r,c])=>key(r,c)===k);
+      if(idx<0) continue;
+      const f=frontOf(wd,t);
+      if(idx<f) return {wd,idx,at:wd.found?wd.at+idx*stag(WAVE_STEP):-1e9};
+      return null;
+    }
+    return null;
+  }
+  function ribbon(path,upto,col,alpha,width){
+    if(upto<=0) return;
+    const pts=path.map(([r,c])=>centre(key(r,c)));
+    ctx.save(); ctx.globalAlpha=alpha; ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+    const whole=Math.floor(Math.min(upto,pts.length)-1e-9);
+    for(let i=1;i<=whole&&i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    const frac=Math.min(upto,pts.length)-whole;
+    if(frac>0&&whole+1<pts.length){const a=pts[whole],b=pts[whole+1]; ctx.lineTo(lerp(a[0],b[0],frac),lerp(a[1],b[1],frac));}
+    stroke(col,width); ctx.restore();
+  }
+  // pass 0: the faces. pass 1: the hint glow and the letter.
+  function tilePass(t,pass){
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      const k=key(r,c); if(walls.has(k)) continue;
+      const st=tileState(k,t),col=st?WORDCOL[st.wd.ci%6]:null;
+      const x=L.gx+c*(L.cell+L.gap),yy=L.gy+r*(L.cell+L.gap);
+      let sc=1,dy=0;
+      if(st) sc=bumpScale(t-st.at);
+      if(press===k&&!RM) sc*=MO.PRESS_SCALE;
+      else if(trail.indexOf(k)>=0) sc*=0.97;
+      if(hasSolve) dy=hopLift(t-solvedAt-MO.SOLVE_DELAY-(r+c)*stag(MO.SOLVE_STAGGER),MO.SOLVE_HOP,MO.SOLVE_TIME);
+      ctx.save(); ctx.translate(x+L.cell/2,yy+L.cell/2+dy); ctx.scale(sc,sc); ctx.translate(-L.cell/2,-L.cell/2);
+      if(pass===0){
+        const face=col?col.tile:C.surface,rim=col?mixHex(col.tile,col.deep,0.45):TILE_RIM;
+        card(0,0,L.cell,L.cell,L.cell*0.22,face,rim,7);
+      } else {
+        const wd=words.find(x2=>x2.path.some(([a,b])=>key(a,b)===k));
+        if(wd&&!wd.found&&wd.path.findIndex(([a,b])=>key(a,b)===k)<(given[wd.ci]||0)){
+          ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle=C.sunRay; rr(7,7,L.cell-14,L.cell-21,L.cell*0.19); ctx.fill(); ctx.restore();
+          ctx.save(); ctx.setLineDash([L.cell*0.1,L.cell*0.08]); rr(9,9,L.cell-18,L.cell-25,L.cell*0.18); stroke(C.sunDeep,5); ctx.restore();
+        }
+        if(peek&&!col&&wd){ctx.fillStyle=rgba(WORDCOL[wd.ci%6].ink,0.45); circle(L.cell/2,L.cell-15,7);}
+        text(letters[k]||'',L.cell/2,L.cell/2-4,'700 '+Math.round(L.cell*0.48)+'px '+FD,col?col.deep:C.text);
+      }
+      ctx.restore();
+    }
+  }
+  function drawBoard(t){
+    // The card leaves with the other rows when the win comes up, or the
+    // answer is read through the celebration.
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    const y=L.board.y;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,y,COL,BOARD_H,40,C.surface,C.line,8);
+    scenery(t);
+    const s=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a<=0){ctx.restore(); return;}
+    ctx.save(); ctx.globalAlpha=a*fade;
+    const cxm=L.gx+L.gw/2,cym=L.gy+L.gw/2;
+    ctx.translate(cxm,cym); ctx.scale(s,s); ctx.translate(-cxm,-cym);
+    // the walls first: the mock's grey slabs, in the family's warm grey
+    for(const k of walls){
+      const [r,c]=rc(k),x=L.gx+c*(L.cell+L.gap),yy=L.gy+r*(L.cell+L.gap);
+      card(x,yy,L.cell,L.cell,L.cell*0.22,C.stoneGiven,WALL_RIM,6);
+      leaf(x+L.cell*0.32,yy+L.cell*0.52,L.cell*0.34,-0.5,rgba(C.text,0.14));
+    }
+    // Then the tiles in two passes with the ribbons between them: a tile is
+    // opaque, so a trail drawn under one is a trail nobody sees. Faces
+    // first, the ribbons over them, the letters and the hint glow last.
+    tilePass(t,0);
+    for(const wd of words){
+      const f=frontOf(wd,t); if(f<=0) continue;
+      ribbon(wd.path,f,rgba(WORDCOL[wd.ci%6].ink,0.5),1,L.cell*0.46);
+    }
+    if(ghost){const u=clamp((t-ghost.at)/BEAM_TIME);
+      if(u<1) ribbon(ghost.path,1+(ghost.path.length-1)*(1-u),rgba(C.sunRay,0.55*(1-u)),1,L.cell*0.44);
+      else ghost=null;}
+    if(trail.length) ribbon(trail,Math.min(trail.length,1+(trail.length-1)*clamp((t-beamAt)/BEAM_TIME+0.7)),rgba(C.sunRay,0.6),1,L.cell*0.44);
+    tilePass(t,1);
+    // rings and sparkles
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      const [x,y2]=centre(rg.k); ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.arc(x,y2,L.cell*(0.35+0.4*u),0,Math.PI*2); stroke(rg.col,8*(1-u)+2); ctx.restore();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const [x,y2]=centre(p.k),s2=(t-p.t0);
+      ctx.save(); ctx.globalAlpha=1-u; star4(x+p.ox*L.cell+p.vx*s2,y2+p.oy*L.cell+p.vy*s2+p.g*s2*s2,p.rad*(1-0.5*u),t*2+p.ox,p.col); ctx.restore();}
+    ctx.restore();
+    drawSlots(t,fade);
+    ctx.restore();
+  }
+  function drawSlots(t,fade){
+    const lines=slotLines(),linesH=lines.length*SLOT_H+(lines.length-1)*LINE_GAP;
+    let y=L.slots.y+(SLOTS_H-linesH)/2;
+    lines.forEach((ln,li)=>{
+      let x=W/2-ln.w/2;
+      ln.items.forEach(it=>{
+        const wd=words[it.i],col=WORDCOL[wd.ci%6],f=frontOf(wd,t);
+        for(let i=0;i<wd.w.length;i++){
+          const bx=x+i*(SLOT_W+SLOT_GAP),lit=i<f;
+          const e=dropInLift(t-openedAt-MO.ENTER_DELAY-0.25-(li*4+i)*stag(MO.ENTER_STAGGER));
+          ctx.save(); ctx.globalAlpha=e.a*fade; ctx.translate(0,e.dy);
+          card(bx,y,SLOT_W,SLOT_H,12,lit?col.tile:C.surfaceHi,lit?mixHex(col.tile,col.deep,0.4):C.line,5);
+          if(lit){const at=wd.found?wd.at+i*stag(WAVE_STEP):t,d=dropInLift(t-at);
+            ctx.save(); ctx.globalAlpha=e.a*d.a*fade; text(wd.w[i].toUpperCase(),bx+SLOT_W/2,y+SLOT_H/2-2+d.dy*0.3,'700 29px '+FD,col.deep); ctx.restore();}
+          ctx.restore();
+        }
+        x+=it.w+GROUP_GAP;
+      });
+      y+=SLOT_H+LINE_GAP;
+    });
+  }
+  // The mock's clouds and bushes stand outside its wooden frame; at 40 of
+  // margin on a 9:16 phone there is no outside, so they come inside as the
+  // band the grid's width leaves at the card's foot (ui/flat/scenery.gd).
+  function scenery(t){
+    const x0=M+INSET,w=COL-2*INSET,y0=L.band.y,h=L.band.h,gy=y0+h-6;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip();
+    ctx.fillStyle=rgba(C.cloud,0.35);
+    for(const [cx,cy,cr] of [[x0+120,y0+46,34],[x0+170,y0+38,26],[x0+w-190,y0+62,30],[x0+w-140,y0+54,22]]) circle(cx,cy,cr);
+    ctx.fillStyle=mixHex(C.moss,C.paper,0.35); rr(x0-20,gy-52,w+40,120,40); ctx.fill();
+    ctx.fillStyle=C.moss;
+    for(let i=0;i<26;i++){const bx=x0+((i*137+41)%w),bh=22+((i*53)%18),sw=(RM?0:Math.sin(t*1.2+i)*3);
+      ctx.beginPath(); ctx.moveTo(bx,gy-46); ctx.quadraticCurveTo(bx+4+sw,gy-46-bh*0.6,bx+2+sw*2,gy-46-bh); ctx.quadraticCurveTo(bx+8+sw,gy-46-bh*0.5,bx+9,gy-46); ctx.fill();}
+    for(const [bx,br] of [[x0+52,40],[x0+w-72,34],[x0+w*0.42,28]]){
+      ctx.fillStyle=mixHex(C.leaf,C.text,0.12); circle(bx,gy-52,br); circle(bx-br*0.8,gy-44,br*0.7); circle(bx+br*0.8,gy-44,br*0.7);
+      ctx.fillStyle=C.leafLight; circle(bx-br*0.3,gy-64,br*0.28);}
+    ctx.restore();
+  }
+
+  // ---- the chrome ----
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:!order.length});
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!order.length});
+    const cx=(M+126+W-M-504)/2,by=L.top.y+98;
+    ctx.font='700 56px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('WORD TRAIL').width; ctx.letterSpacing='0px';
+    text('WORD TRAIL',cx,by-10,'700 56px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-32; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7); leaf(lx+2,ly-26,34,-2.7); leaf(lx+2,ly-30,28,-0.5);
+    text('EVERY LETTER FINDS ITS WAY',cx,by+38,'700 19px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+  const TIPS=['Drag from letter to letter. Never diagonally.','Every open tile belongs to one word.','The lengths under the field are the only clue.','A wrong trail costs nothing. Try another.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  const LEFT_LINE=()=>{const l=words.length-found(); return l===0?'That is the field filled.':l===1?'One word left.':l+' words left.';};
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-200,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  // The win: the sprout in joy over the words the field held, each in its
+  // own colour, the day card with the count, and Back to camp.
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Every letter found its way.',W/2,534,'600 34px '+FB,C.dim);
+      const perRow=2,rows=Math.ceil(words.length/perRow),wy=700+(3-rows)*56;
+      words.forEach((wd,i)=>{const col=WORDCOL[wd.ci%6],x=W/2+((i%perRow)-0.5)*480,yy=wy+Math.floor(i/perRow)*118;
+        card(x-222,yy,444,96,30,col.tile,mixHex(col.tile,col.deep,0.4),7);
+        text(wd.w.toUpperCase(),x,yy+44,'700 46px '+FD,col.deep,'center','3px');});
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('wt-caption');
+  function caption(){
+    if(!capEl) return;
+    const lens=words.map(w=>w.w.length).join(', ');
+    if(hasSolve){capEl.textContent='Filled in '+moves+' moves and '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+': '+words.map(w=>w.w.toUpperCase()).join(', ')+'.'; return;}
+    capEl.textContent=n+'×'+n+' · '+found()+'/'+words.length+' words · lengths '+lens+' · '+walls.size+' walls · '+hintsLeft+' hints · built in '+genAttempts+(genAttempts===1?' attempt':' attempts')+' · '+LIST;
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout();
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); a.fn(a.at);}
+    if(tip.mood==='happy'&&open()&&!order.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function cellAt(p){
+    const cx=Math.floor((p[0]-L.gx)/(L.cell+L.gap)),cy=Math.floor((p[1]-L.gy)/(L.cell+L.gap));
+    if(cx<0||cy<0||cx>=n||cy>=n) return null;
+    const x=L.gx+cx*(L.cell+L.gap),y=L.gy+cy*(L.cell+L.gap);
+    if(p[0]>x+L.cell||p[1]>y+L.cell) return null;
+    return key(cy,cx);
+  }
+  const adjacent=(a,b)=>{const [r1,c1]=rc(a),[r2,c2]=rc(b); return Math.abs(r1-r2)+Math.abs(c1-c2)===1;};
+  function hit(p,t){
+    if(hasSolve) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(inRect(p,W-M-488,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    const k=cellAt(p); if(k!=null) return {kind:'cell',k};
+    return null;
+  }
+  let pressTarget=null;
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='cell'){
+      if(!open()||!freeCell(hh.k)) return;
+      cv.setPointerCapture(e.pointerId); trail=[hh.k]; beamAt=t; press=hh.k;
+    } else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!trail.length) return; e.preventDefault();
+    const t=now(),k=cellAt(pt(e)); if(k==null) return;
+    const at=trail.indexOf(k);
+    if(at>=0){ if(at===trail.length-2){trail.pop(); press=trail[trail.length-1];} return; }
+    if(!freeCell(k)||!adjacent(trail[trail.length-1],k)) return;
+    trail.push(k); press=k; beamAt=t;});
+  function up(e){const t=now();
+    if(trail.length){ press=null; release(t); pressTarget=null; return; }
+    const p=pt(e),hh=hit(p,t); press=null;
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='tip') tipSet('Trace a word along its own tiles. Nothing else sticks, and nothing else costs you.','happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the twelve cards.','happy',t);
+    else if(hh.kind==='camp'){build(diff,seed+1,t);}}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{trail=[]; press=null; pressTarget=null;});
+
+  // ---- the page's own controls ----
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('wt-hint',t=>hint(t)); btn('wt-undo',t=>undo(t)); btn('wt-reset',t=>reset(t));
+  btn('wt-new',t=>build(diff,seed+1,t));
+  btn('wt-solve',t=>{let k=t; for(const wd of words) if(!wd.found){lock(wd,k); k+=wd.path.length*(RM?0:WAVE_STEP)+0.25;}});
+  btn('wt-peek',()=>{peek=!peek; const el=document.getElementById('wt-peek'); if(el) el.classList.toggle('on',peek);});
+  const diffEl=document.getElementById('wt-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=DIFFS[diff];});
+  const rmEl=document.getElementById('wt-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  (async function(){
+    await loadWords();
+    build(parseInt(Q.get('d')||'0')||0,parseInt(Q.get('seed')||'5')||5,0);
+    if(diffEl) diffEl.textContent=DIFFS[diff];
+    // A harness stamps the moves in the past so the frame it shoots is settled.
+    const fnd=parseInt(Q.get('found')||'0')||0, hn=parseInt(Q.get('hint')||'0')||0, win=Q.get('win')==='1';
+    if(win) for(const wd of words) lock(wd,-10);
+    else for(let i=0;i<fnd&&i<words.length;i++) lock(words[i],-10);
+    for(let i=0;i<hn;i++) hint(-11);
+    openedAt=win||fnd||hn?-12:0;
+    caption(); frame();
+  })();
 })();
 
 /* ---------- the flat snake apple mock ---------- */
