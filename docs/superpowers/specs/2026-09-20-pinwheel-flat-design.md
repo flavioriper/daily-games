@@ -432,12 +432,17 @@ dictionary, which also carries `cols == 0`. `hint()` deliberately does not test
 the proof said, and the check would silently start mattering if the generator
 ever grew a fallback that skipped the proof.
 
-**The share glyphs are one short, and that is Unicode's fault.** There are
-seven coloured squares; this board needs two more for bare (`⬛`) and stained
-(`⬜`), so cloth indices 4 and 7 both share `🟪`. It is harmless because a
-share is only ever taken from a solved frame, where the reader is looking at a
-picture of the tiling and not counting colours — but it is written here so
-nobody rediscovers it and "fixes" it by stealing one of the two states' glyphs.
+**The share glyphs looked one short and are not.** The first count was eight
+cloths plus bare plus stained against Unicode's nine squares, which is one too
+many, and cloth indices 4 and 7 shipped sharing `🟪`. That count is wrong:
+**a share is only ever taken from a solved frame**, where by definition no cell
+is bare and none is stained. The nine glyphs are therefore eight cloths with
+one to spare, not ten states in nine slots. Each cloth now has its own square
+and bare and stained share the leftover `⬛`, which costs nothing because a
+share carrying either cannot happen. Worth keeping because the mistake is the
+interesting part: **the constraint was counted over every state the board can
+be in, when the only state the share is ever taken from is the one that
+excludes two of them.**
 
 ---
 

@@ -42,15 +42,18 @@ const Gen = preload("res://puzzles/pinwheel_gen.gd")
 
 ## Three a board, as every flat board gives.
 const HINTS := 3
-## The share's squares, one per `Pal.CLOTH` index. Unicode ships seven
-## coloured squares and this board needs two more for bare and stained, so
-## cloths 4 and 7 knowingly share a glyph; a share is only ever offered from
-## a solved frame, where the two never stand side by side as themselves.
-const SQUARES := ["🟨", "🟦", "🟥", "🟩", "🟪", "🟧", "🟫", "🟪"]
-## The share's bare cell, which a solved frame never has.
+## The share's squares, one per `Pal.CLOTH` index.
+##
+## A share is only ever taken from a **solved** frame, where by definition no
+## cell is bare and none is stained -- so the nine square glyphs Unicode
+## ships are not eight cloths plus two states, they are eight cloths with one
+## to spare. Giving the eight a distinct glyph each is therefore free, and it
+## is what the share is for; bare and stained then share the one left over,
+## which costs nothing because a share carrying either cannot happen.
+const SQUARES := ["🟨", "🟦", "🟥", "🟩", "🟪", "🟧", "🟫", "⬜"]
+## Unfinished, in a share that cannot be taken.
 const BARE := "⬛"
-## The share's stained cell, which a solved frame never has either.
-const STAINED := "⬜"
+const STAINED := BARE
 
 var cols: int = 0
 var rows: int = 0
