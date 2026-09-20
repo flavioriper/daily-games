@@ -248,7 +248,7 @@ reference is and what this family's boards have never quite been:
 | Empty cell | `LINE` at 0.45 | a dot, radius 0.05 cell |
 | Trail | `TEXT` | stroke 0.17 cell, round caps and joins |
 | Dart | `TEXT` | 0.42 cell forward of the head's centre, wings 0.26 back and 0.30 aside, tail notch 0.12 back |
-| Crease | `PAPER` | a line down the dart, 0.09 cell |
+| Crease | `PAPER` | a fold slit near the tip, 0.06 cell wide, running `[0.22, -0.05]` of a cell along the spine rather than down the whole of it |
 | Lane, pressed and clear | `SUN` at 0.35 | a band 0.34 cell wide |
 | Lane, refused | `BAD_TILE` | the same band, head to blocker |
 | Hint ring | the family's (`ui/fx2d.gd`) | |
@@ -258,6 +258,17 @@ arrowhead is a triangle; a dart is the same triangle with a notch cut out of
 its tail and a crease down its spine, which is two more polygons and reads as
 folded paper at 58 px. That is the whole re-theme: the board is the
 reference's board, drawn in this game's material.
+
+**The crease's 0.09 was designed and its 0.06 was seen** (amended 2026-09-20,
+Task 3). The wider number came off this page; the narrower one came off a
+screenshot at the hard band's 58 px cell, where a `PAPER` slit 0.09 of a cell
+across hollows the dart out and the head stops reading as the solid ink the
+reference's arrowhead is. The canvas mock at
+`docs/brainstorm/concepts.html#planes` had already settled on 0.06 over the
+short `[0.22, -0.05]` run, and `puzzles/planes2d.gd` ships the mock's numbers.
+The lane band's own disagreement with the mock (0.34 here, a 0.86 wash there)
+is **not** settled by this amendment: nothing draws that band until the
+refusal lands, and it is that task's to settle by the same method.
 
 The field is **one `ArrayMesh`**, rebuilt only when something changes, the
 way Word Trail's field is: the dots, the trails, the darts, the lane band and

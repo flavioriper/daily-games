@@ -35,8 +35,12 @@ extends RefCounted
 ## **`PER_PAGE` is still twelve, so it costs the first screen nothing**: page
 ## one keeps exactly the same twelve cards in the same order, page two simply
 ## holds three instead of two, and the pager that arrived for the thirteenth
-## already draws as many dots as it is given. The short last row still wants
-## ui/menu.gd's invisible filler Controls, which it already pads out. See
+## already draws as many dots as it is given. Three over three columns is a
+## **full** row, so the invisible filler Controls the fourteenth card needed
+## are not made at all on page two now (`ui/menu.gd` pads a short row out to
+## COLS, and page two's three cards over three columns leave nothing to pad).
+## The machinery stays where it is: a sixteenth card makes the row short
+## again. See
 ## docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md, section 12.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,

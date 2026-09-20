@@ -320,14 +320,20 @@ func _build_page() -> void:
 		card.blocked.connect(_on_soon.bind(entry))
 		cards.append(card)
 		_grid.add_child(card)
-	# A short last row (fifteen over twelve leaves three) hands the real
-	# columns it does have the empty one's leftover width -- GridContainer
-	# sizes a column to the widest cell it actually has, and a column with no cell in that
-	# row does not compete for the row's stretch at all. Padding out to COLS
-	# with zero-minimum, EXPAND_FILL fillers keeps three columns competing
-	# on every row, on any page, so a card is 320 wide everywhere rather
-	# than however many empty columns' worth wider. The mirror of the
-	# height floor puzzle_card_2d.gd's CARD_H sets on the other axis.
+	# A short last row -- one whose cards do not fill COLS, as page two's two
+	# were at fourteen -- hands the real columns it does have the empty one's
+	# leftover width: GridContainer sizes a column to the widest cell it
+	# actually has, and a column with no cell in that row does not compete
+	# for the row's stretch at all. Padding out to COLS with zero-minimum,
+	# EXPAND_FILL fillers keeps three columns competing on every row, on any
+	# page, so a card is 320 wide everywhere rather than however many empty
+	# columns' worth wider. The mirror of the height floor
+	# puzzle_card_2d.gd's CARD_H sets on the other axis.
+	#
+	# **At fifteen cards nothing below runs**: page two holds three, COLS is
+	# three, and a full row needs no filler. That is worth having rather than
+	# working around -- and the path stays exactly where it is, because a
+	# sixteenth card makes the row short again.
 	var short := cards.size() % COLS
 	if short > 0:
 		for i in COLS - short:
