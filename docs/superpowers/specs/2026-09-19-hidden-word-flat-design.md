@@ -251,7 +251,24 @@ day while the gear's New puzzle gives a fresh one. No red, no "you lost". The
 board calls `finish_unsolved()`, new on `core/puzzle_base.gd`: it stops the
 clock and the chrome greys exactly as a solve does, but `solved` never fires,
 so the host shows no win screen. The host connects the new `ended` signal to
-its `_refresh`, which is all it needs to know.
+its `_refresh` -- **behind `has_signal("ended")`, and that guard is not
+optional.**
+
+`ui/puzzle_host.gd` is shared by both shells: `legacy/ui/island_host.gd`
+extends it and inherits the same `_spawn`, and the thirteen island boards
+stand on `legacy/core/stage_board.gd`, which carries a **frozen copy** of the
+contract declaring `solved`, `moved` and `focus_changed` and nothing else. An
+unguarded connect throws on every one of them, and it throws *inside*
+`_spawn`, aborting the function before `_puzzle.start()` ever runs -- so a
+legacy board comes up blank and dead rather than merely unrefreshed. Found by
+review on 2026-09-19 after it had shipped green, because **the suite does not
+open a legacy board and nothing caught it.**
+
+The frozen copy must **not** gain `signal ended` to make the connect legal.
+Its whole purpose, stated in CLAUDE.md, is that a change to the live contract
+cannot break thirteen retired boards; teaching it each new signal unfreezes it
+and gives the contract a second place to drift from. The live host tolerates
+both contracts instead.
 
 ## 9. Motion
 
