@@ -537,6 +537,8 @@ The plane runs along a **track**: its own body polyline (tail to head), extended
 
 Launch the state *immediately* on the tap (so the freed planes are correct while the animation runs) and draw the departing plane from the animation rather than from the state.
 
+**No busy gate.** A tap is never refused because something is still moving: several planes may be in flight at once, and a player who taps quickly is playing well, not fighting the board. This is also what lets `tests/_win.gd` clear the whole board inside one frame (Task 6). Boards in this repo that call `_busy_for` do it to protect a *shared* piece; nothing here is shared.
+
 - [ ] **Step 2: The wake**
 
 Before the tap, snapshot `free_planes()` as a `Dictionary`; after it, diff. Every newly freed plane beats its wings once — `Motion.bump_scale` on the dart only, 0.24 s — starting at `WAKE_STEP` times the king-move distance between its head and the departing plane's head. This is `queens2d.gd`'s `_settle`; read it and follow it, including that the set is **derived and never stored**, so an undo leaves nothing to clean up.
@@ -641,9 +643,23 @@ func flat_win() -> Dictionary:
 
 `faces` are Controls from `ui/faces/` and this board has none, so the win screen keeps the family's sun and moon — exactly what `nonogram2d.gd`, `word_trail2d.gd` and `sudoku2d.gd` do. Add `win_delay()` in the same shape those three use (`Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT`), long enough for the last launch and the solve wave to finish first.
 
-- [ ] **Step 3: Win it**
+- [ ] **Step 3: Teach the win harness to fly the board**
 
-`godot --path . --script tests/_win.gd` — **windowed, not headless**: that harness silently reports 0/0 without a display. Every board must still win 10/10 (or whatever the file's own count is); a new board joins the sweep if the file enumerates the registry.
+`tests/_win.gd` walks every registry entry, so Paper Planes is already in the sweep and **will fail without a driver**. Add, following `_solve_queens()` and `_solve_mushroom()` in that file:
+
+- a `"planes": _solve_planes()` arm in `_solve`'s match;
+- a `"planes"` arm in `_note()` in the file's own voice (planes launched, board fit, hud);
+- `func _solve_planes() -> void:` — the board-fit check every driver does (every cell centre inside the slot), then: while the board is not done, ask the state for a free plane, `_tap_local` the centre of one of its cells, and go on. Leave the **last** plane to the hint button the way `_solve_queens` leaves the n-th queen, so the hint path is exercised too, and set `_hud_ok` from `hints_used == 1`. There is no Check on this board, so nothing presses one and `checks` stays 0.
+
+**The whole solve runs inside one frame** (slot 12; the result is read at slot 20). That is only possible because the board updates the state on the tap and animates afterwards, and because **taps are never gated on an animation** — see Task 4. If you find yourself needing to wait frames between taps, the board has a busy gate it must not have.
+
+Then run it — **windowed, not headless**: that harness silently reports 0/0 without a display.
+
+```bash
+godot --path . --script tests/_win.gd
+```
+
+Expected: `winnable=N/N` with the new board among them, and no other board's result changed.
 
 - [ ] **Step 4: Commit**
 
