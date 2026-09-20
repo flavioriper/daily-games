@@ -8,6 +8,7 @@ extends RefCounted
 ## exactly like a board that is merely hard, right up to the coin flip.
 
 const Gen = preload("res://puzzles/fairy_lights_gen.gd")
+const State = preload("res://puzzles/fairy_lights_state.gd")
 
 static func run(t) -> void:
 	_test_turning(t)
@@ -16,6 +17,7 @@ static func run(t) -> void:
 	_test_promise(t)
 	_test_deal(t)
 	_test_seeded(t)
+	_test_state(t)
 
 ## 1. Turning four times is the identity, and cw/ccw are inverses.
 static func _test_turning(t) -> void:
@@ -199,6 +201,187 @@ static func _test_seeded(t) -> void:
 
 static func _degree(m: int) -> int:
 	return (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1)
+
+## 9.  A fresh state is not solved, and grid == deal.
+## 10. turn() on an ordinary cell returns OK, advances turns by one, and
+##     leaves grid[i] == cw(previous).
+## 11. Four turns of one cell come back to where they started.
+## 12. turn() on a cross returns CROSS, does not change grid, and does not
+##     count a turn.
+## 13. Setting grid to sol makes is_solved() true; turning any one
+##     non-cross cell off it makes it false again.
+## 14. depths(): post is 0, a cell joined to the post is 1, and a cell whose
+##     stub faces a closed neighbour is -1.
+## 15. matched() is symmetric: matched(i, side) == matched(j, opposite)
+##     for every neighbouring pair, and false at the grid's edge.
+## 16. undo() turns the last cell back and returns it; on an empty log it
+##     returns -1 and changes nothing.
+## 17. hint() settles the first unsolved cell in reading order to sol,
+##     pins it, counts a hint, and empties the undo log.
+## 18. turn() on a pinned cell returns PINNED and changes nothing.
+## 19. reset_board() puts every unpinned cell back to deal and leaves a
+##     pinned cell where the hint put it.
+## 20. Solving a whole board by turning each cell to sol reaches
+##     is_solved() with no cell left loose().
+static func _test_state(t) -> void:
+	for d in 3:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 4700 + d
+
+		# 9.
+		var fresh := State.new()
+		fresh.start(rng, d)
+		var tag := "band=%d" % d
+		t.check(not fresh.is_solved(), "%s a fresh state is not solved" % tag)
+		t.eq(fresh.grid, fresh.deal, "%s a fresh state's grid is the deal" % tag)
+
+		# 10.
+		var i10 := _first_turnable(fresh)
+		var prev10: int = fresh.grid[i10]
+		var turns10 := fresh.turns
+		t.eq(fresh.turn(i10), State.OK, "%s turning an ordinary cell returns OK" % tag)
+		t.eq(fresh.turns, turns10 + 1, "%s turning an ordinary cell advances turns" % tag)
+		t.eq(fresh.grid[i10], Gen.cw(prev10), "%s the turned cell is the previous cell, turned" % tag)
+
+		# 11.
+		var i11 := _first_turnable(fresh)
+		var start11: int = fresh.grid[i11]
+		for _k in range(4):
+			fresh.turn(i11)
+		t.eq(fresh.grid[i11], start11, "%s four turns of one cell come back to where it started" % tag)
+
+		# 12.
+		var cross := State.new()
+		cross.start(rng, d)
+		var i12 := 0
+		cross.grid[i12] = 15
+		var grid12 := cross.grid.duplicate()
+		var turns12 := cross.turns
+		t.eq(cross.turn(i12), State.CROSS, "%s turning a cross returns CROSS" % tag)
+		t.eq(cross.grid, grid12, "%s turning a cross does not change the grid" % tag)
+		t.eq(cross.turns, turns12, "%s turning a cross does not count a turn" % tag)
+
+		# 13.
+		var solved := State.new()
+		solved.start(rng, d)
+		solved.grid = solved.sol.duplicate()
+		t.check(solved.is_solved(), "%s grid == sol is solved" % tag)
+		var i13 := _first_turnable(solved)
+		solved.turn(i13)
+		t.check(not solved.is_solved(), "%s turning one non-cross cell off sol is unsolved again" % tag)
+
+		# 14.
+		var tiny := State.new()
+		tiny.n = 3
+		tiny.post = 4
+		var g14 := PackedInt32Array()
+		g14.resize(9)
+		g14.fill(0)
+		g14[4] = Gen.S
+		g14[7] = Gen.N
+		g14[1] = Gen.S
+		tiny.grid = g14
+		var depths14 := tiny.depths()
+		t.eq(depths14[4], 0, "%s depths(): the post is 0" % tag)
+		t.eq(depths14[7], 1, "%s depths(): a cell joined to the post is 1" % tag)
+		t.eq(depths14[1], -1, "%s depths(): a stub facing a closed neighbour is -1" % tag)
+
+		# 15.
+		var sym := State.new()
+		sym.start(rng, d)
+		for i in sym.n * sym.n:
+			var r: int = i / sym.n
+			var c: int = i % sym.n
+			for dd in range(4):
+				var side := 1 << dd
+				var a: int = r + Gen.DR[dd]
+				var b: int = c + Gen.DC[dd]
+				if a < 0 or b < 0 or a >= sym.n or b >= sym.n:
+					t.check(not sym.matched(i, side), "%s matched() is false at the grid's edge" % tag)
+					continue
+				var j: int = a * sym.n + b
+				var od := 1 << ((dd + 2) % 4)
+				t.eq(sym.matched(i, side), sym.matched(j, od),
+					"%s matched(%d, %d) == matched(%d, %d)" % [tag, i, side, j, od])
+
+		# 16.
+		var un := State.new()
+		un.start(rng, d)
+		t.eq(un.undo(), -1, "%s undo() on an empty log returns -1" % tag)
+		var i16 := _first_turnable(un)
+		var prev16: int = un.grid[i16]
+		un.turn(i16)
+		t.eq(un.undo(), i16, "%s undo() returns the cell just turned" % tag)
+		t.eq(un.grid[i16], prev16, "%s undo() turns the cell back" % tag)
+		t.eq(un.undo(), -1, "%s undo() on an empty log again returns -1" % tag)
+
+		# 17.
+		var hi := State.new()
+		hi.start(rng, d)
+		hi.turn(_first_turnable(hi))
+		var want17 := -1
+		for k in hi.n * hi.n:
+			if hi.grid[k] != hi.sol[k]:
+				want17 = k
+				break
+		var hints17 := hi.hints
+		var settled17 := hi.hint()
+		t.eq(settled17, want17, "%s hint() settles the first unsolved cell in reading order" % tag)
+		t.eq(hi.grid[settled17], hi.sol[settled17], "%s hint() settles the cell to sol" % tag)
+		t.eq(hi.pinned[settled17], 1, "%s hint() pins the settled cell" % tag)
+		t.eq(hi.hints, hints17 + 1, "%s hint() counts a hint" % tag)
+		t.eq(hi.undo(), -1, "%s hint() empties the undo log" % tag)
+
+		# 18.
+		var pin := State.new()
+		pin.start(rng, d)
+		var i18: int = pin.hint()
+		var prev18: int = pin.grid[i18]
+		var turns18 := pin.turns
+		t.eq(pin.turn(i18), State.PINNED, "%s turning a pinned cell returns PINNED" % tag)
+		t.eq(pin.grid[i18], prev18, "%s turning a pinned cell does not change the grid" % tag)
+		t.eq(pin.turns, turns18, "%s turning a pinned cell does not count a turn" % tag)
+
+		# 19.
+		var rb := State.new()
+		rb.start(rng, d)
+		var pinned19: int = rb.hint()
+		var other19 := _first_turnable_excluding(rb, pinned19)
+		rb.turn(other19)
+		rb.reset_board()
+		for k in rb.n * rb.n:
+			if rb.pinned[k] == 1:
+				t.eq(rb.grid[k], rb.sol[k], "%s reset_board() leaves a pinned cell where the hint put it" % tag)
+			else:
+				t.eq(rb.grid[k], rb.deal[k], "%s reset_board() puts an unpinned cell back to the deal" % tag)
+
+		# 20.
+		var solve := State.new()
+		solve.start(rng, d)
+		for k in solve.n * solve.n:
+			var guard := 0
+			while solve.grid[k] != solve.sol[k] and guard < 4:
+				solve.turn(k)
+				guard += 1
+		t.check(solve.is_solved(), "%s turning every cell to sol reaches is_solved()" % tag)
+		for k in solve.n * solve.n:
+			t.eq(solve.loose(k), 0, "%s no cell is left loose once solved" % tag)
+
+## The first cell whose shape has more than one distinct rotation -- an
+## ordinary turnable piece, never a cross.
+static func _first_turnable(st) -> int:
+	for i in st.n * st.n:
+		if Gen.rotations(st.sol[i]).size() > 1:
+			return i
+	return -1
+
+static func _first_turnable_excluding(st, skip: int) -> int:
+	for i in st.n * st.n:
+		if i == skip:
+			continue
+		if Gen.rotations(st.sol[i]).size() > 1:
+			return i
+	return -1
 
 ## How many cells a breadth-first walk from the post reaches over sides that
 ## are open from both ends -- the board's own definition of live.
