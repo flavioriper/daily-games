@@ -215,6 +215,15 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-wordtrail .refs figure{margin:0}
 #tab-wordtrail .refs img{border-radius:14px}
 #tab-wordtrail .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+
+/* ---------- flat bridges mock extras ---------- */
+#tab-bridges .phone{background:#f6efe3}
+#tab-bridges .phone canvas{touch-action:none;cursor:pointer}
+#tab-bridges .refs{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+#tab-bridges .refs figure{margin:0}
+#tab-bridges .refs img{border-radius:14px}
+#tab-bridges .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#bg-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 #wt-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 /* ---------- flat snake apple mock extras ---------- */
 #tab-snakeapple .phone{background:#f6efe3}
@@ -255,6 +264,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="queens">Queens · flat</button>
     <button data-tab="hiddenword">Hidden Word · flat</button>
     <button data-tab="wordtrail">Word Trail · flat</button>
+    <button data-tab="bridges">Bridges · flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
 </header>
@@ -1893,6 +1903,142 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Backwards tracing.</b> Trace <em>oats</em> from the S and nothing happens, because it spells <em>stao</em>. Right, and possibly annoying.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?found=2</code> to lock that many words before the clock starts, <code>?hint=2</code> for that many hints spent, <code>?peek=1</code> to draw every answer's path, <code>?win=1</code> for the win screen and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot. Pick the tab with <code>#wordtrail</code>. The word list is fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
+</section>
+
+<!-- ============================ BRIDGES ============================ -->
+<section class="tab-panel" id="tab-bridges">
+  <h2>Bridges &middot; flat, the thirteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A sea with islets in it, each showing how many plank-ends it wants. Press an islet, drag at the one facing it across the water, and a run of planks drops in; drag again for a second and a third. Runs are straight, orthogonal and <b>never cross</b>, and when every number is met <b>and every islet is on one network</b>, the light runs out along the planks from the islet you finished at. The game is Hashiwokakero; <b>the name here is Bridges</b>, which is what every puzzle book outside Japan already calls it.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption><b>There is no mock for this board</b>, and the screen below was drawn straight from the family's chrome, which twelve screens now share: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout in the tip card that names the rule a drag just broke. Bridges keeps <em>all</em> the rows &mdash; top bar, day card, board, actions, tip &mdash; which makes it the plainest shape on the shelf: a 290 bottom slot, the same as Shikaku's, Tents', Light Up's and One Line's. Everything it adds is inside the board card: the sea.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="bg" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="bg-rm">Reduce motion: off</button>
+        <button id="bg-diff">Easy &middot; 7&times;7</button>
+        <button id="bg-new">New puzzle</button>
+        <button id="bg-hint">Hint</button>
+        <button id="bg-undo">Undo</button>
+        <button id="bg-reset">Reset</button>
+        <button id="bg-check">Check</button>
+        <button id="bg-solve">Solve it</button>
+        <button id="bg-peek">Show the answer</button>
+      </div>
+      <div id="bg-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>press an islet and drag</b> at a neighbour to cycle its run 0&ndash;1&ndash;2&ndash;3&ndash;0, <b>tap a run</b> to wipe it, and a drag that finds nothing or runs into another run is refused with the rule said out loud. It plays the <b>real generator</b> and the <b>real solver</b> &mdash; the board is grown, then proved unique by a propagating solver that counts to two and stops, and a board with a second answer is thrown away and regrown. The caption under the phone says how many attempts the day's board took, how long it took and how far propagation got before a guess was needed.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>BRIDGES</code> in ink with the leaf sprouting from it and <code>JOIN EVERY ISLET</code> under, then Undo, Hint with its count and Settings. <b>Four buttons</b>, the ordinary number: <code>capabilities()</code> is <code>["undo","hint","check"]</code> and Check lives in the actions row, so Reset does not have to come up here.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 9", "Otter Reach".</td></tr>
+    <tr><td class="k">Board card</td><td>1190</td><td>The sea and the lattice. Section 2.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check, 260 each &mdash; Light Up's row exactly. Check is worth keeping here: nothing on this board says whether a run is <em>right</em>, and an over-filled islet is the only mistake the board itself shows.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet.</td></tr>
+  </table>
+  <p>40 of margin, four 20 gaps and the five rows are 1920 exactly, which is where the board card's 1190 comes from &mdash; and the bottom slot is <b>290</b>, actions and tip together, which is already the shape of four other screens.</p>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p>The card is paper with a <b>sea</b> set into it: a rounded pool inset 28, <code>Pal.WATER</code> over a deeper bottom edge, a band of <code>Pal.WATER_HI</code> inside the rim for the shallows and a few ripples over it. The lattice is square and the pool is tall, so <b>the width binds at every band</b> &mdash; <code>cell = (944 &minus; 24)/n</code> is 131, 102 and 84 &mdash; and the 920-wide field leaves <b>214</b> of the pool over, halved to <b>107 above and 107 below</b>. That is <code>card_centred()</code> returning true, for Tents' and Light Up's reason: a square grid in a tall slot has slack however it is cut, and air only under it reads as a mistake.</p>
+  <table>
+    <tr><th style="width:12%">Band</th><th style="width:12%">Lattice</th><th style="width:9%">Cell</th><th style="width:10%">Islets</th><th style="width:12%">Lanes</th><th style="width:12%">Runs in it</th><th>Decoy lanes &middot; crossing pairs</th></tr>
+    <tr><td class="k">Easy</td><td>7 &times; 7</td><td>131</td><td>11</td><td>11.3</td><td>10.3</td><td>1.0 &middot; 1.0</td></tr>
+    <tr><td class="k">Medium</td><td>9 &times; 9</td><td>102</td><td>16</td><td>18.2</td><td>15.7</td><td>2.5 &middot; 2.7</td></tr>
+    <tr><td class="k">Hard</td><td>11 &times; 11</td><td>84</td><td>24</td><td>29.7</td><td>24.0</td><td>5.7 &middot; 7.5</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Means over 500 generated boards a band. A <b>lane</b> is a pair of islets facing each other with only water between; a <b>decoy lane</b> is one the answer leaves empty; a <b>crossing pair</b> is two lanes that want the same water, which is the only place the no-crossing rule can ever bite.</p>
+  <p>An islet is a turf disc 0.80 of a cell across on a <code>Pal.STONE</code> sand rim, with <code>Pal.ACORN</code> darkened for the wet edge under it and its number in <code>Pal.TEXT</code>. A plank is <code>Pal.DECK</code> over a <code>Pal.WOOD_DEEP</code> bottom edge, 0.115 of a cell thick with 0.095 between, so three planks and their gaps are 0.59 of a cell &mdash; comfortably inside the islet they run between, at every band.</p>
+
+  <h3>3. The rules <span class="pill">proposed</span></h3>
+  <ul>
+    <li><b>A run joins two islets that face each other orthogonally</b> with only water between them, and it is 0, 1, 2 or 3 planks. Never diagonal, never bent.</li>
+    <li><b>A lane ends at the first islet it meets.</b> A run can never pass over an islet, which is why the third islet in a row is never the one a drag finds.</li>
+    <li><b>Runs may not cross.</b> A drag down a lane whose water another run already holds is refused, and the tip card says so; the run in the way flashes with it.</li>
+    <li><b>An islet's number is how many plank-ends it wants</b> &mdash; two planks to one neighbour count two. Numbers run 1 to 6.</li>
+    <li><b>Solved is two things at once:</b> every number exactly met <em>and</em> every islet on one single network. Meeting every number and leaving two separate rings is the classic near-miss, and this board will let you sit in it.</li>
+    <li><b>Nothing is ever refused for being wrong</b>, only for being impossible. An islet may be over-filled &mdash; it turns red and shivers and the board waits.</li>
+  </ul>
+
+  <h3>4. Generation: grow the answer, then prove it unique <span class="pill">proposed</span></h3>
+  <p>There is no hole-punching pass and no clue-stripping loop, because an islet's number <em>is</em> its degree in the network that was grown. The clues are complete by construction, and the only question left is whether some <em>other</em> network satisfies them.</p>
+  <ol>
+    <li><b>Grow.</b> One islet at random, then repeatedly: pick an islet already placed, a direction, a distance of 2 to 5, and a run of 1 to 3 planks. Refuse anything that crosses a run already laid, lands on or passes over a cell that is taken, touches another islet side-on, or pushes a degree over 6. Stop at the band's count. <b>Connected by construction</b>, and no islet is ever adjacent to another, so a lane always has water in it.</li>
+    <li><b>Close some loops.</b> The growth above lays exactly one run per new islet, so on its own it can only ever build a <b>tree</b> &mdash; and a tree is a thin Hashiwokakero, where connectivity never bites and no lane is ever a decoy. So a second pass joins a few pairs that already face each other, if nothing is in the way and no degree goes over 6. That pass is worth about one extra run on easy and one on hard; it is limited by the degree cap, not by the number asked for.</li>
+    <li><b>Centre it, and make it reach.</b> The walk starts on one cell and wanders, so a grown network can sit in a corner with two rows of open sea under it. It is slid so its bounding box is centred &mdash; nothing moves relative to anything else, so every lane, every crossing and the answer are untouched &mdash; and a board whose box does not come within one row <em>and</em> one column of the lattice's edges is thrown back. Centring alone is not enough: it only moves the empty water to the other side. Measured against the same loop without it, the reach test costs <b>a tenth of an attempt on easy and half an attempt on hard</b> &mdash; 2.9 to 3.0, 3.5 to 3.9, 6.3 to 6.8.</li>
+    <li><b>Clues.</b> Each islet's degree, capped at 6 by the growth.</li>
+    <li><b>Solve.</b> Per-run range propagation: every lane carries a <code>lo..hi</code>, an islet narrows every lane it touches against its own number and what its other lanes can still take, a lane that is certainly there closes every lane that would cross it, and <b>a group of islets already joined may not be closed off before every islet is in it</b> &mdash; if such a group has exactly one way out, that way is forced; if it has none, the branch is dead. Then a DFS over whatever is still open, <b>counting solutions and stopping at two</b>.</li>
+    <li><b>Reject.</b> A grown board with a second answer is thrown away and the next one grown, up to 200 attempts.</li>
+    <li><b>Grade.</b> The solver records how many lanes pure propagation pins before the first guess. <b>Band 0 additionally must need no guess at all</b>; bands 1 and 2 take what they get, and the caption reports it.</li>
+  </ol>
+  <h4>Measured, 500 seeds a band</h4>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:12%">Built</th><th style="width:16%">Attempts</th><th style="width:20%">Second answer rejected</th><th style="width:18%">No guess needed</th><th>Time to generate</th></tr>
+    <tr><td class="k">Easy 7&times;7</td><td>500/500</td><td>3.0 mean, 13 worst</td><td>54% of grown boards</td><td>required &mdash; 100%</td><td>0.41 ms mean, <b>5.3 ms worst</b></td></tr>
+    <tr><td class="k">Medium 9&times;9</td><td>500/500</td><td>3.9 mean, 19 worst</td><td>70%</td><td>82%, 94% of lanes pinned</td><td>0.33 ms mean, <b>2.1 ms worst</b></td></tr>
+    <tr><td class="k">Hard 11&times;11</td><td>500/500</td><td>6.8 mean, 47 worst</td><td>82%</td><td>71%, 87% of lanes pinned</td><td>0.93 ms mean, <b>7.0 ms worst</b></td></tr>
+  </table>
+  <p><b>The uniqueness is cross-checked, not asserted.</b> On <b>380</b> of those boards &mdash; 150 easy, 150 medium, 80 hard &mdash; a second, independent counter with no propagation and no connectivity rule in it, a plain depth-first enumeration over every lane, agreed on the count every time: <b>0 mismatches</b>, and the grown answer itself verified as a legal solution on all 380. The rejection is doing real work rather than decorating the loop: on the hard band <b>four grown boards in five carry a second answer</b> and are thrown away.</p>
+  <p>That is node on this Mac, which is the same V8 the page runs in; the Godot port has a ~194 ms budget and the worst case here is <b>7.0 ms</b>, so there is room for GDScript to be twenty times slower and still not be seen. The one figure worth watching in the port is <b>attempts</b>, not milliseconds: a hard board takes 6.8 grow-and-solve rounds on average and took 47 once in five hundred.</p>
+
+  <h3>5. Colour <span class="pill">proposed</span></h3>
+  <p><b>Every colour on this screen is already in <code>core/palette.gd</code>.</b> Nothing was invented for it, which is unusual for a board that introduces a new surface.</p>
+  <table>
+    <tr><th style="width:26%">Thing</th><th style="width:26%">Colour</th><th>Note</th></tr>
+    <tr><td class="k">The sea</td><td><code>Pal.WATER</code> #2f8fd6</td><td>Over a bottom edge darkened toward <code>TEXT</code>, the way every card in the family has one.</td></tr>
+    <tr><td class="k">The shallows</td><td><code>Pal.WATER_HI</code> #5fb0e8</td><td>A band inside the pool's rim at half alpha, and the ripples over the open water.</td></tr>
+    <tr><td class="k">Islet turf</td><td><code>Pal.BANK</code> #8cb050</td><td>The turf disc, with a lighter cap for the sun on it.</td></tr>
+    <tr><td class="k">Sand rim</td><td><code>Pal.STONE</code> #ede2cc</td><td>A pale beach ring, with <code>Pal.ACORN</code> darkened for the wet sand under it. <code>ACORN</code> is the palette's other sand and was not used for the ring itself, because it is the same family as <code>DECK</code> and an islet ringed in it reads as a wooden platform rather than as land.</td></tr>
+    <tr><td class="k">Planks</td><td><code>Pal.DECK</code> #b5825a</td><td>Over <code>Pal.WOOD_DEEP</code> for the bottom edge and the slats across it.</td></tr>
+    <tr><td class="k">Satisfied</td><td><code>Pal.GOOD</code> #7cb06b</td><td>A ring round the sand, and the number softened toward the paper. <b>Quiet on purpose</b>: on a hard board twenty-four islets go green and a loud green is a wall.</td></tr>
+    <tr><td class="k">Over-filled</td><td><code>Pal.BAD</code> #d9605a</td><td>Ring, turf washed toward it, number in it, and one shiver. The only mistake the board shows by itself.</td></tr>
+    <tr><td class="k">A refused lane</td><td><code>Pal.BAD</code>, <b>opaque</b></td><td>Red at any alpha over <code>WATER</code> comes back <em>mauve</em> &mdash; it was tried at 0.7 and 0.9 and read as a bruise both times &mdash; so the band is drawn solid and dissolves by mixing toward the water it stands on instead of by fading.</td></tr>
+    <tr><td class="k">The lane under the finger</td><td><code>Pal.SUN_RAY</code> at 0.78</td><td>A torch beam down the water, with the islet it would reach ringed in <code>Pal.SUN</code>. It was 0.55 and came back olive: warm yellow at half strength over <code>WATER</code> reads as weed, not as light.</td></tr>
+    <tr><td class="k">The wave</td><td><code>DECK</code> mixed to <code>SUN_RAY</code></td><td>The lit plank, section 6.</td></tr>
+  </table>
+
+  <h3>6. Motion, and the network wave <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), drawn off the curve readers the way Light Up's and Nonogram's drawn pieces are. <b>Its signature is the wave on solve</b>, and the board needs four numbers of its own: <code>DROP_TIME</code> 0.26 s, <code>WAVE_STEP</code> 0.18 s from islet to islet, <code>WAVE_EDGE</code> 0.24 s for the light to cross one run, and <code>WIN_HOLD</code> 0.9 s.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The field pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) and each islet pops in on the diagonal stagger (<code>pop_in_scale</code>, <code>ENTER_STAGGER</code>).</td></tr>
+    <tr><td class="k">Dragging</td><td>The islet under the finger presses (<code>press_scale</code> 0.94); the lane to the islet it would reach lights, and that islet takes a ring. Swing to another direction and the beam swings with it.</td></tr>
+    <tr><td class="k">A plank lands</td><td><code>drop_in_lift</code> &mdash; it falls the last 40 into the water and settles.</td></tr>
+    <tr><td class="k">Satisfied</td><td>The islet bumps (<code>bump_scale</code>) and takes its green ring. Losing the number takes the ring back with no motion at all: undoing is not an event.</td></tr>
+    <tr><td class="k">Refused</td><td>The lane flashes in <code>BAD</code> and fades over 0.55 s &mdash; with the run that is in the way, if there is one &mdash; the run shivers (<code>shiver_offset</code>), and the sprout names the rule.</td></tr>
+    <tr><td class="k">Over-filled</td><td>The islet shivers once and stays red until a plank comes off it.</td></tr>
+    <tr><td class="k">Check</td><td>Every run that differs from the answer washes toward <code>BAD</code> on <code>flash_level</code> and holds for 2.4 s. A run the answer wants and the board has not laid is <em>not</em> marked &mdash; there is nothing on the water to mark &mdash; and the tip says so in words instead.</td></tr>
+    <tr><td class="k"><b>Solved</b></td><td><b>The wave.</b> A breadth-first walk of the finished network from <b>the islet the player finished at</b>, one step per run: the light crosses each run in <code>WAVE_EDGE</code> from the end it arrives at to the far end, the planks behind the front take the lit deck, and each islet flares gold, bumps and throws sparkles as the light reaches it. The win follows <code>WIN_HOLD</code> after the last islet. On a hard board the network is seven or eight steps deep, so the wave runs about a second and a half.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the field is up at once, planks appear rather than drop, nothing shivers, rings and sparkles are off, and the whole network lights in one frame &mdash; the wave's BFS still runs, but every step is at zero, so the win follows immediately.</p>
+  <div class="decide"><b>The wave is the one thing on this screen worth building twice if the first one is wrong.</b> It is the only moment that says what the puzzle was <em>about</em> &mdash; not "every number is met", which the green rings have been saying all along, but "it is one island now" &mdash; and it can only say that by travelling. A flash over the whole board would say the first thing again and lose the second.</div>
+
+  <h3>7. The hint and the check <span class="pill">proposed</span></h3>
+  <p><b>Three hints</b>, and each one lays <b>one plank the answer has and the board lacks</b>, taking the shortest such run first so the hint is always a whole small decision rather than half a long one. The plank it lays keeps a soft sun glow under it until the board is reset, so a hinted run is never confused with one the player reasoned out. A hint is an ordinary move: Undo takes it back, and does not give the hint back.</p>
+  <p><b>Check</b> marks the runs that differ from the answer. It cannot mark what is missing, so when nothing laid is wrong it says so in words &mdash; <em>&ldquo;Nothing laid is wrong &mdash; there is just more to lay.&rdquo;</em> &mdash; which is the honest version of a green tick.</p>
+
+  <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Drag-to-join against tap-to-join.</b> Dragging is unambiguous &mdash; the direction <em>is</em> the choice &mdash; and it is also four times the finger travel of tapping two islets. At 84 a cell on hard, a drag is about a centimetre. Play the hard board and see whether the thumb agrees.</li>
+    <li><b>The cycle wraps at 3.</b> Three drags in the same direction to clear a run is the standard, and it is also a trap on a board where a 3 is common. The tap-to-wipe is the escape hatch; whether anyone finds it without being told is the question.</li>
+    <li><b>The easy board has one decoy lane.</b> Eleven islets on a 7&times;7 leave almost every facing pair joined in the answer, so <b>the crossing rule barely appears on easy</b> &mdash; one crossing pair a board, on average. That is honest Hashiwokakero and it may also be a band that never teaches its own hardest rule.</li>
+    <li><b>Six is the cap, not eight.</b> The real game allows 8, and an islet of 8 is a landmark &mdash; it tells you all four of its lanes are full. Capping at 6 keeps every number inside one comfortable glyph and keeps the growth from knotting, but it throws away the board's best free clue.</li>
+    <li><b>Twenty-four green rings.</b> On a finished hard board almost everything is ringed before the last run goes down, so the green has to stay quiet enough to live with. It is currently a thin ring and a paled number; a fill would be unreadable.</li>
+    <li><b>The near-miss is not signposted.</b> Every number met and two separate networks is the position this puzzle is <em>about</em>, and right now the board says nothing at all &mdash; no count of groups, no tint. Check will tell you, at the price of a check. Whether that silence is the puzzle or a cruelty is the call.</li>
+    <li><b>The sea is the first non-paper surface on a flat board.</b> Every other screen is parchment or cream. A blue pool in a cream card is either the set getting a second voice or the set losing one.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot, <code>?runs=k</code> to lay the first <b>k</b> runs of the answer outward from one islet, <code>?hint=k</code> for that many hints spent, <code>?wrong=1</code> to put a run on the water the answer does not want and cut another one short, <code>?check=1</code> to run a Check over whatever is laid, <code>?reset=1</code> to lay the answer and then clear it, <code>?aim=1</code> for a finger mid-drag with a lane lit, <code>?refuse=cross</code> for a drag refused by a run in the way and <code>?refuse=none</code> for one refused because nothing faces it, <code>?peek=1</code> to dash in the runs still missing and print each islet's current count, and <code>?win=1</code> for the win screen. Pick the tab with <code>#bridges</code>.</p>
 </section>
 
 <!-- ============================ SNAKE APPLE ============================ -->
@@ -10127,6 +10273,899 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     else for(let i=0;i<fnd&&i<words.length;i++) lock(words[i],-10);
     for(let i=0;i<hn;i++) hint(-11);
     openedAt=win||fnd||hn?-12:0;
+    caption(); frame();
+  })();
+})();
+
+/* ---------- the flat bridges mock ---------- */
+(function(){
+  const cv=document.getElementById('bg'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // Every colour on this screen is already in core/palette.gd. The sea is
+  // WATER with WATER_HI for the shallows, an islet is BANK turf on a STONE
+  // sand rim with ACORN for the wet edge, and a plank is DECK over WOOD_DEEP.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    water:'#2f8fd6',waterHi:'#5fb0e8',bank:'#8cb050',stone:'#ede2cc',acorn:'#c99a63',
+    deck:'#b5825a',woodDeep:'#9c7350',good:'#7cb06b',bad:'#d9605a',badTile:'#f2cfc9'};
+  const WATER_DEEP=mixHex(C.water,C.text,0.34), BANK_HI=mixHex(C.bank,'#ffffff',0.26),
+        BANK_DEEP=mixHex(C.bank,C.text,0.28), SAND_DEEP=mixHex(C.acorn,C.text,0.16),
+        DECK_LIT=mixHex(C.deck,C.sunRay,0.72), GOOD_DEEP=mixHex(C.good,C.text,0.3);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md), read as curves ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    FLASH_IN:0.15,FLASH_OUT:0.45,BUMP:0.22,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.02,SOLVE_DELAY:0.2,
+    SHIVER_PX:4,SHIVER_TIME:0.26,WOBBLE_TIME:0.45};
+  // This board's own four: how long a plank takes to drop, the wave's step
+  // from islet to islet, how long the light takes to cross one run, and how
+  // long the finished network is held before the win comes up.
+  const DROP_TIME=0.26,WAVE_STEP=0.18,WAVE_EDGE=0.24,WIN_HOLD=0.9;
+  const CHECK_HOLD=2.4,REFUSE_TIME=0.55;
+  const stag=v=>RM?0:v;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popInScale=s=>{if(RM) return [1,1]; const u=clamp(s/MO.POP_IN),g=lerp(0.01,1,backOut(u)),sq=MO.POP_SQUASH*Math.sin(Math.PI*u); return [g*(1+sq),g*(1-sq)];};
+  const popOutScale=s=>{if(RM) return null; const u=s/MO.POP_OUT; if(u>=1) return null; return 1-clamp(u);};
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(DROP_TIME*0.6))};};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const flashLevel=s=>{if(RM||s<0) return 0; if(s<MO.FLASH_IN) return s/MO.FLASH_IN; const u=(s-MO.FLASH_IN)/MO.FLASH_OUT; return u>=1?0:1-u;};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*Math.sin(u*Math.PI*6)*(1-u);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ================= the generator (puzzles/bridges_state.gd) =================
+  // Grow the answer, then prove it unique. There is no hole-punching pass and
+  // no clue stripping: an islet's number *is* its degree in the grown network,
+  // so the clues are complete by construction and the only question the
+  // generator has to answer is whether a second network satisfies them.
+  const key=(r,c)=>r+','+c;
+  const DIR4=[[-1,0],[1,0],[0,-1],[0,1]];
+  function grow(rng,n,target,maxSpan,extras){
+    const at=new Map(),cover=new Set(),isl=[],runs=[];
+    const inside=(r,c)=>r>=0&&c>=0&&r<n&&c<n;
+    const put=(r,c)=>{at.set(key(r,c),isl.length); isl.push({r,c,deg:0});};
+    const touching=(r,c)=>DIR4.some(([dr,dc])=>at.has(key(r+dr,c+dc)));
+    put(1+((rng()*(n-2))|0),1+((rng()*(n-2))|0));
+    let guard=0;
+    while(isl.length<target&&guard++<4000){
+      const i=(rng()*isl.length)|0,src=isl[i],[dr,dc]=DIR4[(rng()*4)|0];
+      const d=2+((rng()*(maxSpan-1))|0);          // never 1: islets never touch
+      const tr=src.r+dr*d,tc=src.c+dc*d;
+      if(!inside(tr,tc)||at.has(key(tr,tc))||cover.has(key(tr,tc))) continue;
+      if(touching(tr,tc)) continue;
+      let ok=true; const cells=[];
+      for(let s=1;s<d;s++){const k=key(src.r+dr*s,src.c+dc*s);
+        if(at.has(k)||cover.has(k)){ok=false; break;} cells.push(k);}
+      if(!ok) continue;
+      const v=1+((rng()*3)|0);
+      if(src.deg+v>6) continue;                    // no islet ever asks for more than 6
+      const j=isl.length; put(tr,tc);
+      cells.forEach(k=>cover.add(k));
+      runs.push({a:i,b:j,v}); isl[i].deg+=v; isl[j].deg+=v;
+    }
+    if(isl.length<target) return null;
+    // The growth lays exactly one run per new islet, so on its own it can only
+    // ever build a tree -- and a tree is a thin Hashiwokakero, where the
+    // connectivity rule never bites and no lane is ever a decoy. So close some
+    // loops: pairs that already face each other, joined if nothing is in the way.
+    const facing=[];
+    for(let i=0;i<isl.length;i++) for(const [dr,dc] of [[0,1],[1,0]]){
+      let r=isl[i].r+dr,c=isl[i].c+dc; const cells=[];
+      while(inside(r,c)){const k=key(r,c);
+        if(at.has(k)){facing.push({a:i,b:at.get(k),cells}); break;}
+        cells.push(k); r+=dr; c+=dc;}
+    }
+    const has=new Set(runs.map(r=>Math.min(r.a,r.b)+'|'+Math.max(r.a,r.b)));
+    const pool=facing.filter(f=>!has.has(Math.min(f.a,f.b)+'|'+Math.max(f.a,f.b)));
+    for(let i=pool.length-1;i>0;i--){const j=(rng()*(i+1))|0,t=pool[i]; pool[i]=pool[j]; pool[j]=t;}
+    let want=extras;
+    for(const f of pool){
+      if(want<=0) break;
+      if(f.cells.some(k=>cover.has(k))) continue;
+      const v=1+((rng()*3)|0);
+      if(isl[f.a].deg+v>6||isl[f.b].deg+v>6) continue;
+      f.cells.forEach(k=>cover.add(k));
+      runs.push({a:f.a,b:f.b,v}); isl[f.a].deg+=v; isl[f.b].deg+=v; want--;
+    }
+    // The walk starts on one cell and wanders, so a grown network can sit in a
+    // corner with two rows of open sea under it. Slide the whole thing so its
+    // bounding box is centred: nothing moves relative to anything else, so
+    // every lane, every crossing and the answer itself are untouched.
+    let r0=n,r1=-1,c0=n,c1=-1;
+    for(const q of isl){r0=Math.min(r0,q.r); r1=Math.max(r1,q.r); c0=Math.min(c0,q.c); c1=Math.max(c1,q.c);}
+    const sr2=Math.floor((n-1-(r1+r0))/2),sc2=Math.floor((n-1-(c1+c0))/2);
+    if(sr2||sc2) for(const q of isl){q.r+=sr2; q.c+=sc2;}
+    return {isl,runs};
+  }
+  // The puzzle's graph is read back off the islets alone: a lane ends at the
+  // first islet it meets, so a pair that faces another islet across a third
+  // never becomes an edge, and a run can never pass over an islet.
+  function buildGraph(isl,n){
+    const at=new Map(); isl.forEach((s,i)=>at.set(key(s.r,s.c),i));
+    const edges=[],inc=isl.map(()=>[]);
+    for(let i=0;i<isl.length;i++) for(const [dr,dc] of [[0,1],[1,0]]){
+      let r=isl[i].r+dr,c=isl[i].c+dc; const cells=[];
+      while(r>=0&&c>=0&&r<n&&c<n){
+        const k=key(r,c);
+        if(at.has(k)){const j=at.get(k),id=edges.length;
+          edges.push({a:i,b:j,dr,dc,cells,id}); inc[i].push(id); inc[j].push(id); break;}
+        cells.push(k); r+=dr; c+=dc;}
+    }
+    const byCell=new Map();
+    edges.forEach(e=>e.cells.forEach(k=>{if(!byCell.has(k)) byCell.set(k,[]); byCell.get(k).push(e.id);}));
+    const cross=edges.map(()=>new Set());
+    for(const list of byCell.values()) for(let x=0;x<list.length;x++) for(let y=x+1;y<list.length;y++){
+      if(edges[list[x]].dr===edges[list[y]].dr) continue;
+      cross[list[x]].add(list[y]); cross[list[y]].add(list[x]);}
+    return {edges,inc,cross:cross.map(s=>[...s]),N:isl.length};
+  }
+  // Range propagation, the whole of the solver's reasoning. Each run carries a
+  // lo..hi; an islet narrows every run it touches against its own number and
+  // what its other runs can still take; a run that is certainly there closes
+  // every run that would cross it; and a group of islets already joined may
+  // not be closed off before every islet is in it.
+  function propagate(G,need,lo,hi){
+    const E=G.edges.length;
+    for(let pass=0;pass<200;pass++){
+      let ch=false;
+      for(let i=0;i<G.N;i++){
+        const li=G.inc[i]; let sl=0,sh=0;
+        for(const e of li){sl+=lo[e]; sh+=hi[e];}
+        if(sl>need[i]||sh<need[i]) return false;
+        for(const e of li){
+          const nl=need[i]-(sh-hi[e]),nh=need[i]-(sl-lo[e]);
+          if(nl>lo[e]){lo[e]=nl; ch=true;}
+          if(nh<hi[e]){hi[e]=nh; ch=true;}
+          if(lo[e]>hi[e]) return false;
+        }
+      }
+      for(let e=0;e<E;e++) if(lo[e]>=1) for(const f of G.cross[e]){
+        if(lo[f]>=1) return false;
+        if(hi[f]!==0){hi[f]=0; ch=true;}
+      }
+      const comp=new Int32Array(G.N).fill(-1); let nc=0;
+      for(let i=0;i<G.N;i++) if(comp[i]<0){
+        comp[i]=nc; const st=[i];
+        while(st.length){const u=st.pop();
+          for(const e of G.inc[u]) if(lo[e]>=1){const v=G.edges[e].a===u?G.edges[e].b:G.edges[e].a;
+            if(comp[v]<0){comp[v]=nc; st.push(v);}}}
+        nc++;
+      }
+      if(nc>1){
+        const outs=[]; for(let k=0;k<nc;k++) outs.push([]);
+        for(let e=0;e<E;e++){const A=comp[G.edges[e].a],B=comp[G.edges[e].b];
+          if(A!==B&&hi[e]>=1){outs[A].push(e); outs[B].push(e);}}
+        for(let k=0;k<nc;k++){
+          if(!outs[k].length) return false;
+          if(outs[k].length===1){const e=outs[k][0]; if(lo[e]<1){lo[e]=1; ch=true; if(lo[e]>hi[e]) return false;}}
+        }
+      }
+      if(!ch) return true;
+    }
+    return true;
+  }
+  function degrees(G,val){const d=new Array(G.N).fill(0);
+    for(let e=0;e<G.edges.length;e++) if(val[e]){d[G.edges[e].a]+=val[e]; d[G.edges[e].b]+=val[e];} return d;}
+  function connected(G,val){
+    let start=-1,total=0; const d=degrees(G,val);
+    for(let i=0;i<G.N;i++){total++; if(start<0&&d[i]>0) start=i;}
+    if(start<0) return total<=1;
+    const seen=new Int8Array(G.N); seen[start]=1; const st=[start]; let cnt=1;
+    while(st.length){const u=st.pop();
+      for(const e of G.inc[u]) if(val[e]>=1){const v=G.edges[e].a===u?G.edges[e].b:G.edges[e].a;
+        if(!seen[v]){seen[v]=1; cnt++; st.push(v);}}}
+    return cnt===total;
+  }
+  function legal(G,need,val){
+    const d=degrees(G,val);
+    for(let i=0;i<G.N;i++) if(d[i]!==need[i]) return false;
+    for(let e=0;e<G.edges.length;e++) if(val[e]>=1) for(const f of G.cross[e]) if(val[f]>=1) return false;
+    return connected(G,val);
+  }
+  // Counts solutions and stops at two. The grade falls out of it: how many runs
+  // pure propagation pins before the first guess is needed.
+  function countSolutions(G,need,limit){
+    const E=G.edges.length,lo0=new Int8Array(E),hi0=new Int8Array(E);
+    for(let e=0;e<E;e++) hi0[e]=Math.min(3,need[G.edges[e].a],need[G.edges[e].b]);
+    let fixedAfterFirst=0,guesses=0;
+    function go(lo,hi,depth){
+      if(!propagate(G,need,lo,hi)) return 0;
+      if(depth===0){fixedAfterFirst=0; for(let e=0;e<E;e++) if(lo[e]===hi[e]) fixedAfterFirst++;}
+      let pick=-1,span=9;
+      for(let e=0;e<E;e++) if(hi[e]>lo[e]&&hi[e]-lo[e]<span){span=hi[e]-lo[e]; pick=e;}
+      if(pick<0) return legal(G,need,lo)?1:0;
+      guesses++; let out=0;
+      for(let v=lo[pick];v<=hi[pick];v++){
+        const l2=Int8Array.from(lo),h2=Int8Array.from(hi); l2[pick]=v; h2[pick]=v;
+        out+=go(l2,h2,depth+1);
+        if(out>=limit) return out;
+      }
+      return out;
+    }
+    const c=go(lo0,hi0,0);
+    return {count:c,fixed:fixedAfterFirst,total:E,guesses,noGuess:fixedAfterFirst===E};
+  }
+  // 7x7 with eleven islets, 9x9 with sixteen, 11x11 with twenty-four: a fifth
+  // of the lattice at every band, so the sea reads the same on all three and
+  // difficulty is the size of the network rather than how packed it is. Band 0
+  // is also required to fall out of propagation alone -- no guess, ever.
+  const BANDS=[{n:7,isl:11,span:5,extra:4,noGuess:true},
+               {n:9,isl:16,span:5,extra:6,noGuess:false},
+               {n:11,isl:24,span:5,extra:10,noGuess:false}];
+  function generate(seed,d){
+    const B=BANDS[d],rng=mulberry32((seed*2654435761)>>>0);
+    let last=null;
+    for(let a=1;a<=200;a++){
+      const g=grow(rng,B.n,B.isl,B.span,B.extra); if(!g) continue;
+      // A network that covers five rows of seven is a smaller board drawn on a
+      // bigger one, and centring it only moves the empty water. So a grown
+      // board has to reach within one row and one column of the lattice's
+      // edges; it costs a tenth of an attempt on easy and half an attempt on hard.
+      {let r0=B.n,r1=-1,c0=B.n,c1=-1;
+       for(const q of g.isl){r0=Math.min(r0,q.r); r1=Math.max(r1,q.r); c0=Math.min(c0,q.c); c1=Math.max(c1,q.c);}
+       if(r1-r0<B.n-2||c1-c0<B.n-2) continue;}
+      const G=buildGraph(g.isl,B.n),need=g.isl.map(s=>s.deg);
+      if(need.some(v=>v<1)) continue;
+      const ans=new Int8Array(G.edges.length);
+      let ok=true;
+      for(const r of g.runs){
+        const e=G.edges.find(x=>(x.a===r.a&&x.b===r.b)||(x.a===r.b&&x.b===r.a));
+        if(!e){ok=false; break;} ans[e.id]=r.v;
+      }
+      if(!ok) continue;
+      last={isl:g.isl,G,need,ans,attempts:a};
+      const s=countSolutions(G,need,2);
+      if(s.count!==1) continue;
+      if(B.noGuess&&!s.noGuess) continue;
+      last.grade=s; return last;
+    }
+    if(last&&!last.grade) last.grade=countSolutions(last.G,last.need,2);
+    return last;
+  }
+
+  // ================= state =================
+  const DIFFS=['Easy · 7×7','Medium · 9×9','Hard · 11×11'];
+  let n=7,diff=0,seed=3,isl=[],G=null,need=[],ans=null,val=null,attempts=0,grade=null,genMs=0;
+  let laid={},hist=[],given=new Set(),hintsLeft=3,moves=0,checks=0;
+  let openedAt=0,solvedAt=-1e9,winAt=-1e9,hasSolve=false,lastIslet=0;
+  let waveIs=[],waveEd=[],waveFrom=[],waveDepth=0,sparked=false;
+  let wrong=new Set(),checkAt=-1e9,refuse=null,drag=null,press=null,pressTarget=null;
+  let satAt={},overAt={},rings=[],particles=[],btnPress={},L=null,peek=Q.get('peek')==='1';
+  const open=()=>!hasSolve;
+  const E=()=>G?G.edges.length:0;
+  const other=(e,i)=>G.edges[e].a===i?G.edges[e].b:G.edges[e].a;
+
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd; n=BANDS[diff].n;
+    const t0=performance.now();
+    let out=null;
+    for(let k=0;k<8&&!out;k++) out=generate(sd+k*7919,diff);
+    genMs=performance.now()-t0;
+    isl=out.isl; G=out.G; need=out.need; ans=out.ans; attempts=out.attempts; grade=out.grade;
+    val=new Int8Array(G.edges.length);
+    laid={}; hist=[]; given=new Set(); hintsLeft=3; moves=0; checks=0;
+    hasSolve=false; sparked=false; solvedAt=-1e9; winAt=-1e9; openedAt=t; lastIslet=0;
+    wrong=new Set(); checkAt=-1e9; refuse=null; drag=null; press=null;
+    satAt={}; overAt={}; rings=[]; particles=[]; btnPress={};
+    tip.idx=0; tipSet(TIPS[0],'happy',t);
+    caption();
+  }
+
+  // ---- the moves ----
+  const deg=()=>degrees(G,val);
+  function blockedBy(e){for(const f of G.cross[e]) if(val[f]>=1) return f; return -1;}
+  function settle(t){
+    const d=deg();
+    for(let i=0;i<G.N;i++){
+      const was=satAt[i]!=null,isSat=d[i]===need[i],isOver=d[i]>need[i];
+      if(isSat&&!was){satAt[i]=t; ring(i,t,C.good);} else if(!isSat&&was) delete satAt[i];
+      if(isOver&&overAt[i]==null) overAt[i]=t; else if(!isOver) delete overAt[i];
+    }
+    if(!hasSolve&&legal(G,need,val)){
+      hasSolve=true; sparked=false; solvedAt=t+stag(0.22); buildWave(lastIslet);
+      winAt=solvedAt+stag(waveDepth*WAVE_STEP+WAVE_EDGE)+WIN_HOLD;
+      tipSet('One island, end to end.','joy',t);
+    }
+    caption();
+  }
+  function setRun(e,v,t,push){
+    if(push!==false) hist.push({e,from:val[e]});
+    const from=val[e]; val[e]=v;
+    if(v>from) laid[e]=t; else if(v===0) delete laid[e];
+    else laid[e]=t;
+    if(v===0) given.delete(e);
+    moves++; wrong.delete(e);
+    settle(t);
+  }
+  // Press an islet, drag at a neighbour, let go: the run cycles 0-1-2-3-0.
+  function commit(e,from,t){
+    if(val[e]===0&&blockedBy(e)>=0){ refuseAt(e,'cross',t); return; }
+    lastIslet=from; setRun(e,(val[e]+1)%4,t,true);
+  }
+  function wipe(e,t){ if(val[e]===0) return; lastIslet=G.edges[e].a; setRun(e,0,t,true); }
+  function refuseAt(e,kind,t,lane){
+    refuse={e,kind,at:t,lane:lane||null};
+    tipSet(kind==='cross'?'Runs may not cross. Clear the one in the way first.'
+      :kind==='none'?'Nothing faces that islet across the water.'
+      :'A lane ends at the first islet it meets.','strain',t);
+  }
+  function undo(t){
+    if(!hist.length||!open()) return;
+    const h=hist.pop(); val[h.e]=h.from;
+    if(h.from===0){delete laid[h.e]; given.delete(h.e);} else laid[h.e]=t;
+    moves++; wrong.delete(h.e);
+    tipSet('Taken back.','happy',t); settle(t);
+  }
+  function reset(t){
+    if(!val.some(v=>v>0)) return;
+    for(let e=0;e<E();e++) val[e]=0;
+    laid={}; hist=[]; given=new Set(); wrong=new Set(); hasSolve=false; sparked=false;
+    solvedAt=-1e9; winAt=-1e9; moves++;
+    tipSet('A clear channel again.','happy',t); settle(t);
+  }
+  // Lays one plank the answer has and the board lacks -- the shortest run
+  // short of its answer first, so a hint is always a whole small decision.
+  function hint(t){
+    if(hintsLeft<=0||!open()) return;
+    let pick=-1,best=1e9;
+    for(let e=0;e<E();e++){
+      if(val[e]>=ans[e]) continue;
+      const len=G.edges[e].cells.length;
+      if(len<best){best=len; pick=e;}
+    }
+    if(pick<0){tipSet('Nothing is missing. Something laid is wrong.','happy',t); return;}
+    hintsLeft--; given.add(pick);
+    lastIslet=G.edges[pick].a;
+    setRun(pick,val[pick]+1,t,true);
+    ring(G.edges[pick].a,t,C.sun); ring(G.edges[pick].b,t+stag(0.08),C.sun);
+    tipSet('That plank belongs there.','happy',t);
+  }
+  function check(t){
+    if(!open()) return;
+    checks++; checkAt=t; wrong=new Set();
+    let missing=0;
+    for(let e=0;e<E();e++){
+      if(val[e]>0&&val[e]!==ans[e]) wrong.add(e);
+      else if(val[e]<ans[e]) missing++;
+    }
+    tipSet(wrong.size?(wrong.size===1?'One run is wrong — washed red.':wrong.size+' runs are wrong, washed red.')
+      :(missing?'Nothing laid is wrong. There is more to lay.':'Every plank is where it belongs.'),
+      wrong.size?'strain':'happy',t);
+    caption();
+  }
+
+  // ---- the solve wave: BFS over the finished network from the islet the
+  // player finished at, one step per run ----
+  function buildWave(from){
+    waveIs=new Array(G.N).fill(-1); waveEd=new Array(E()).fill(-1); waveFrom=new Array(E()).fill(-1);
+    waveIs[from]=0; const q=[from]; waveDepth=0;
+    while(q.length){const u=q.shift();
+      for(const e of G.inc[u]) if(val[e]>=1){
+        if(waveEd[e]<0){waveEd[e]=waveIs[u]; waveFrom[e]=u;}
+        const v=other(e,u);
+        if(waveIs[v]<0){waveIs[v]=waveIs[u]+1; waveDepth=Math.max(waveDepth,waveIs[v]); q.push(v);}
+      }}
+  }
+  const waveU=(e,t)=>{if(!hasSolve||waveEd[e]<0) return -1; if(RM) return 1;
+    const s=t-solvedAt-waveEd[e]*WAVE_STEP; return s<0?-1:clamp(s/WAVE_EDGE);};
+  const waveArrived=(i,t)=>{if(!hasSolve||waveIs[i]<0) return -1e9; return solvedAt+stag(waveIs[i]*WAVE_STEP);};
+
+  // ---- fx (ui/fx2d.gd) ----
+  function ring(i,t0,col){ if(RM) return; rings.push({i,t0,col}); }
+  function sparkle(i,t0,col){ if(RM) return;
+    for(let k=0;k<7;k++) particles.push({i,ox:(hash(k+i,3)-0.5)*0.9,oy:(hash(k,i+7)-0.5)*0.6,
+      vx:(hash(k*5,i)-0.5)*110,vy:-140,t0:t0+k*0.035,life:0.7,col,rad:13,g:190}); }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,Math.abs(w)/2,Math.abs(h)/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur='';
+    for(const w of ws){const test=cur?cur+' '+w:w; if(ctx.measureText(test).width>maxw&&cur){out.push(cur); cur=w;} else cur=test;}
+    if(cur) out.push(cur); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='check'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.24); stroke(col,w*1.1);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.arc(cx,cy+R*0.3,R*0.2,Math.PI*1.18,Math.PI*1.82); stroke(ink,R*0.07); return;}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ================= layout =================
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1190 of board, 20,
+  // 130 of actions, 20, 140 of tip card, 40 of margin -- 1920 exactly. The
+  // bottom slot is 290, which is Tents' and Light Up's. Inside the card the
+  // lattice is square and the slot is tall, so the width binds every time and
+  // what is left over is halved above and below the field (card_centred).
+  const TOP_H=180,DAY_H=120,BOARD_H=1190,ACT_H=130,TIP_H=140,ROW_GAP=20;
+  const POOL_INSET=28,FIELD_PAD=12;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP;
+    const actY=by+BOARD_H+ROW_GAP,tipY=actY+ACT_H+ROW_GAP;
+    const px=M+POOL_INSET,py=by+POOL_INSET,pw=COL-2*POOL_INSET,ph=BOARD_H-2*POOL_INSET;
+    const cell=Math.min((pw-2*FIELD_PAD)/n,(ph-2*FIELD_PAD)/n),gw=cell*n;
+    return {top:{y:topY},day:{y:dayY},board:{y:by},act:{y:actY},tip:{y:tipY},
+      pool:{x:px,y:py,w:pw,h:ph},cell,gw,gx:W/2-gw/2,gy:py+(ph-gw)/2,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+  const cellXY=(r,c)=>[L.gx+c*L.cell+L.cell/2,L.gy+r*L.cell+L.cell/2];
+  const isletXY=i=>cellXY(isl[i].r,isl[i].c);
+  const isletR=()=>L.cell*0.40;
+  // The planks of a run stand in the lane between the two islets' rims.
+  function lane(e){
+    const E0=G.edges[e],A=isletXY(E0.a),B=isletXY(E0.b),R=isletR(),horiz=E0.dr===0;
+    return horiz?{horiz,x0:A[0]+R,x1:B[0]-R,y:A[1],A,B}:{horiz,y0:A[1]+R,y1:B[1]-R,x:A[0],A,B};
+  }
+
+  // ================= the board =================
+  function water(t){
+    const p=L.pool;
+    ctx.fillStyle=WATER_DEEP; rr(p.x,p.y,p.w,p.h,34); ctx.fill();
+    ctx.fillStyle=C.water; rr(p.x,p.y,p.w,p.h-9,34); ctx.fill();
+    // the shallows: a band of lighter water inside the rim, and a few ripples
+    ctx.save(); ctx.beginPath(); ctx.roundRect(p.x,p.y,p.w,p.h,34); ctx.clip();
+    ctx.globalAlpha=0.5; rr(p.x+9,p.y+9,p.w-18,p.h-18,26); stroke(C.waterHi,26); ctx.globalAlpha=1;
+    const drift=RM?0:Math.sin(t*0.5)*10;
+    ctx.globalAlpha=0.42; ctx.strokeStyle=C.waterHi; ctx.lineWidth=9; ctx.lineCap='round';
+    for(let i=0;i<9;i++){
+      const rx=p.x+60+hash(i,7)*(p.w-160)+drift*(i%2?1:-1),ry=p.y+70+hash(i,11)*(p.h-140),ln=40+hash(i,3)*60;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.quadraticCurveTo(rx+ln*0.5,ry-8,rx+ln,ry); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // A plank: DECK over WOOD_DEEP, with slats across it. Behind the solve
+  // wave's front it takes the lit deck instead, which is what makes the light
+  // read as running along the network rather than switching it all on.
+  function plank(x,y,w,h,horiz,col,deep,t){
+    ctx.fillStyle=deep; rr(x,y,w,h,Math.min(w,h)*0.34); ctx.fill();
+    ctx.fillStyle=col;
+    if(horiz) rr(x,y,w,h-4,Math.min(w,h)*0.34); else rr(x,y,w-4,h,Math.min(w,h)*0.34);
+    ctx.fill();
+    ctx.save(); ctx.globalAlpha=0.28; ctx.strokeStyle=deep; ctx.lineWidth=Math.max(2,L.cell*0.022); ctx.lineCap='butt';
+    const step=L.cell*0.30,len=horiz?w:h;
+    for(let s=step*0.6;s<len-step*0.3;s+=step){
+      ctx.beginPath();
+      if(horiz){ctx.moveTo(x+s,y+2); ctx.lineTo(x+s,y+h-5);} else {ctx.moveTo(x+2,y+s); ctx.lineTo(x+w-5,y+s);}
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawRun(e,t){
+    const v=val[e]; if(v<=0) return;
+    const g=lane(e),TH=L.cell*0.115,GAP=L.cell*0.095,total=v*TH+(v-1)*GAP;
+    const drop=dropInLift(t-(laid[e]==null?-1e9:laid[e]));
+    const bad=wrong.has(e)&&t-checkAt<CHECK_HOLD;
+    const badU=bad?flashLevel(t-checkAt)*0.65+0.35:0;
+    const col=bad?mixHex(C.deck,C.bad,0.55+0.3*badU):C.deck;
+    const deep=bad?mixHex(C.woodDeep,C.bad,0.6):C.woodDeep;
+    const u=waveU(e,t);
+    const glow=given.has(e)&&open();
+    ctx.save(); ctx.globalAlpha*=drop.a;
+    const sh=refuse&&refuse.e===e?shiverOffset(t-refuse.at):0;
+    ctx.translate(sh,drop.dy);
+    if(glow){   // one halo round the whole run, so a hint reads at a glance
+      const pad=L.cell*0.13;
+      let bx,by2,bw,bh;
+      if(g.horiz){bx=Math.min(g.x0,g.x1)-pad; bw=Math.abs(g.x1-g.x0)+2*pad; by2=g.y-total/2-pad; bh=total+2*pad;}
+      else {by2=Math.min(g.y0,g.y1)-pad; bh=Math.abs(g.y1-g.y0)+2*pad; bx=g.x-total/2-pad; bw=total+2*pad;}
+      ctx.save(); ctx.globalAlpha*=0.7; ctx.fillStyle=C.sunRay; rr(bx,by2,bw,bh,pad*1.6); ctx.fill();
+      ctx.setLineDash([L.cell*0.13,L.cell*0.1]); rr(bx,by2,bw,bh,pad*1.6); stroke(C.sunDeep,Math.max(3,L.cell*0.05)); ctx.restore();
+    }
+    for(let i=0;i<v;i++){
+      const off=i*(TH+GAP)-(total-TH)/2;
+      let x,y,w2,h2;
+      if(g.horiz){x=Math.min(g.x0,g.x1); w2=Math.abs(g.x1-g.x0); y=g.y+off-TH/2; h2=TH;}
+      else {y=Math.min(g.y0,g.y1); h2=Math.abs(g.y1-g.y0); x=g.x+off-TH/2; w2=TH;}
+      ctx.save(); ctx.globalAlpha*=0.22; ctx.fillStyle=C.text;
+      rr(x+3,y+7,w2,h2,Math.min(w2,h2)*0.34); ctx.fill(); ctx.restore();
+      plank(x,y,w2,h2,g.horiz,col,deep,t);
+      if(u>=0){
+        // the light, from the islet the wave reached first to the far one
+        const nearA=waveFrom[e]===G.edges[e].a;
+        ctx.save(); ctx.beginPath();
+        if(g.horiz){const len=w2,fx=nearA?x+len*u:x+len*(1-u);
+          if(nearA) ctx.rect(x,y-4,fx-x,h2+8); else ctx.rect(fx,y-4,x+len-fx,h2+8);}
+        else {const len=h2,fy=nearA?y+len*u:y+len*(1-u);
+          if(nearA) ctx.rect(x-4,y,w2+8,fy-y); else ctx.rect(x-4,fy,w2+8,y+len-fy);}
+        ctx.clip(); plank(x,y,w2,h2,g.horiz,DECK_LIT,mixHex(C.woodDeep,C.sun,0.5),t); ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  function drawIslet(i,t,DEG){
+    const [x,y]=isletXY(i),R=isletR(),d=DEG[i];
+    const sat=d===need[i],over=d>need[i];
+    const arrive=waveArrived(i,t),lit=hasSolve&&t>=arrive?clamp((t-arrive)/0.3):0;
+    let sc=popInScale(t-openedAt-MO.ENTER_DELAY-(isl[i].r+isl[i].c)*stag(MO.ENTER_STAGGER));
+    if(sat&&satAt[i]!=null){const b=bumpScale(t-satAt[i]); sc=[sc[0]*b,sc[1]*b];}
+    if(hasSolve&&lit>0){const b=bumpScale(t-arrive); sc=[sc[0]*b,sc[1]*b];}
+    if(press===i&&!RM){sc=[sc[0]*MO.PRESS_SCALE,sc[1]*MO.PRESS_SCALE];}
+    const sh=over?shiverOffset(t-overAt[i]):0;
+    ctx.save(); ctx.translate(x+sh,y); ctx.scale(sc[0],sc[1]);
+    ctx.fillStyle='rgba(20,60,96,0.26)'; ellipse(0,R*0.30,R*1.02,R*0.40);
+    ctx.fillStyle=SAND_DEEP; circle(0,R*0.05,R);
+    ctx.fillStyle=C.stone; circle(0,0,R);
+    const turf=over?mixHex(C.bank,C.bad,0.42):(lit>0?mixHex(C.bank,C.sunRay,0.5*lit):C.bank);
+    ctx.fillStyle=BANK_DEEP; circle(0,R*0.04,R*0.80);
+    ctx.fillStyle=turf; circle(0,0,R*0.80);
+    ctx.fillStyle=rgba(BANK_HI,0.55); ellipse(-R*0.22,-R*0.34,R*0.30,R*0.17);
+    if(sat&&!over){ctx.beginPath(); ctx.arc(0,0,R*1.13,0,Math.PI*2); stroke(rgba(C.good,0.95),Math.max(4,R*0.13));}
+    if(over){ctx.beginPath(); ctx.arc(0,0,R*1.13,0,Math.PI*2); stroke(rgba(C.bad,0.95),Math.max(4,R*0.13));}
+    const ink=over?C.bad:(sat?mixHex(C.text,C.paper,0.38):C.text);
+    text(String(need[i]),0,-R*0.04,'700 '+Math.round(R*0.95)+'px '+FD,ink);
+    if(peek&&open()){text(String(d),0,R*0.74,'700 '+Math.round(R*0.4)+'px '+FB,rgba(C.text,0.5));}
+    ctx.restore();
+  }
+  // The lane under the finger, and the lane a refusal names.
+  function drawAim(t){
+    if(drag&&drag.e>=0){
+      const g=lane(drag.e),R=isletR(),w2=L.cell*0.62;
+      ctx.save(); ctx.globalAlpha=0.78; ctx.fillStyle=C.sunRay;
+      if(g.horiz) rr(Math.min(g.x0,g.x1)-R*0.4,g.y-w2/2,Math.abs(g.x1-g.x0)+R*0.8,w2,w2*0.4);
+      else rr(g.x-w2/2,Math.min(g.y0,g.y1)-R*0.4,w2,Math.abs(g.y1-g.y0)+R*0.8,w2*0.4);
+      ctx.fill(); ctx.restore();
+      const tgt=other(drag.e,drag.from),p=isletXY(tgt);
+      ctx.beginPath(); ctx.arc(p[0],p[1],R*1.22,0,Math.PI*2); stroke(rgba(C.sun,0.9),Math.max(5,R*0.14));
+    }
+    if(refuse){
+      const u=(t-refuse.at)/REFUSE_TIME;
+      if(u>=1){refuse=null;}
+      else {
+        // Red at any alpha over WATER comes back mauve, so the band is opaque
+        // and dissolves by mixing toward the water it stands on instead.
+        const w2=L.cell*0.62,R=isletR();
+        ctx.save(); ctx.fillStyle=mixHex(C.bad,C.water,clamp(u*u));
+        if(refuse.lane){const q=refuse.lane,hz=Math.abs(q.x1-q.x0)>Math.abs(q.y1-q.y0);
+          if(hz) rr(Math.min(q.x0,q.x1),q.y0-w2/2,Math.abs(q.x1-q.x0),w2,w2*0.4);
+          else rr(q.x0-w2/2,Math.min(q.y0,q.y1),w2,Math.abs(q.y1-q.y0),w2*0.4);
+          ctx.fill();
+        } else if(refuse.e>=0){const g=lane(refuse.e);
+          if(g.horiz) rr(Math.min(g.x0,g.x1)-R*0.4,g.y-w2/2,Math.abs(g.x1-g.x0)+R*0.8,w2,w2*0.4);
+          else rr(g.x-w2/2,Math.min(g.y0,g.y1)-R*0.4,w2,Math.abs(g.y1-g.y0)+R*0.8,w2*0.4);
+          ctx.fill();
+          const f=blockedBy(refuse.e);
+          if(f>=0){const h2=lane(f); ctx.fillStyle=mixHex(C.bad,WATER_DEEP,clamp(u*u));
+            if(h2.horiz) rr(Math.min(h2.x0,h2.x1),h2.y-w2/2,Math.abs(h2.x1-h2.x0),w2,w2*0.4);
+            else rr(h2.x-w2/2,Math.min(h2.y0,h2.y1),w2,Math.abs(h2.y1-h2.y0),w2*0.4);
+            ctx.fill();}
+        }
+        ctx.restore();
+      }
+    }
+  }
+  function drawBoard(t){
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,L.board.y,COL,BOARD_H,40,C.surface,C.line,8);
+    water(t);
+    const s=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a<=0){ctx.restore(); return;}
+    ctx.save(); ctx.globalAlpha=a*fade;
+    const cx=L.gx+L.gw/2,cy=L.gy+L.gw/2;
+    ctx.translate(cx,cy); ctx.scale(s,s); ctx.translate(-cx,-cy);
+    if(peek&&open()) for(let e=0;e<E();e++) if(ans[e]>0&&val[e]<ans[e]){
+      const g=lane(e); ctx.save(); ctx.globalAlpha=0.30; ctx.strokeStyle=C.white;
+      ctx.lineWidth=Math.max(3,L.cell*0.05); ctx.setLineDash([L.cell*0.14,L.cell*0.12]);
+      ctx.beginPath();
+      if(g.horiz){ctx.moveTo(g.x0,g.y); ctx.lineTo(g.x1,g.y);} else {ctx.moveTo(g.x,g.y0); ctx.lineTo(g.x,g.y1);}
+      ctx.stroke(); ctx.restore();}
+    drawAim(t);
+    for(let e=0;e<E();e++) drawRun(e,t);
+    const DEG=deg();
+    for(let i=0;i<G.N;i++) drawIslet(i,t,DEG);
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      const [x,y]=isletXY(rg.i); ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.arc(x,y,L.cell*(0.34+0.4*u),0,Math.PI*2); stroke(rg.col,9*(1-u)+2); ctx.restore();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const [x,y]=isletXY(p.i),s2=t-p.t0;
+      ctx.save(); ctx.globalAlpha=1-u; star4(x+p.ox*L.cell+p.vx*s2,y+p.oy*L.cell+p.vy*s2+p.g*s2*s2,p.rad*(1-0.5*u),t*2+p.ox,p.col); ctx.restore();}
+    ctx.restore(); ctx.restore();
+  }
+
+  // ================= the chrome =================
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function pill(x,y,pw,ph,label,iconName,k,t,primary,dim){const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t);
+    ctx.save(); ctx.translate(x+pw/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-pw/2,-ph/2);
+    if(dim) ctx.globalAlpha*=0.45;
+    card(0,0,pw,ph,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total=tw+60+14,x0=pw/2-total/2;
+    icon(iconName,x0+30,ph/2-3,52,col); text(label,x0+74,ph/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'undo','undo',t,{disabled:!hist.length});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 66px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('BRIDGES').width; ctx.letterSpacing='0px';
+    text('BRIDGES',cx,by-10,'700 66px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-44; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-18,lx+2,ly-32); stroke(C.leaf,7); leaf(lx+2,ly-28,36,-2.7); leaf(lx+2,ly-32,30,-0.5);
+    text('JOIN EVERY ISLET',cx,by+36,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 9',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Otter Reach',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+  function drawActions(t){const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    pill(M,L.act.y,260,130,'Reset','reset','reset',t,false,!open()||!val.some(v=>v>0));
+    pill(W-M-260,L.act.y,260,130,'Check','check','check',t,true,!open());
+    ctx.restore();}
+  const TIPS=['Press an islet and drag at the one facing it.',
+    'Runs never cross. Three planks at most to a neighbour.',
+    'A number is the plank-ends that islet wants.',
+    'One network in the end — no islet on its own.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-300,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('One island, end to end.',W/2,534,'600 34px '+FB,C.dim);
+      // the finished network, drawn small over the celebration
+      const bw=800,bh=bw,bx=W/2-bw/2,byy=616,cs=bw/n;
+      ctx.save(); ctx.globalAlpha=a1;
+      card(bx-26,byy-26,bw+52,bh+52,34,C.water,WATER_DEEP,8);
+      for(let e=0;e<E();e++){ if(val[e]<1) continue;
+        const A=G.edges[e].a,B=G.edges[e].b,v=val[e],TH=cs*0.11,GP=cs*0.09,tot=v*TH+(v-1)*GP;
+        const ax=bx+isl[A].c*cs+cs/2,ay=byy+isl[A].r*cs+cs/2,bx2=bx+isl[B].c*cs+cs/2,by2=byy+isl[B].r*cs+cs/2;
+        for(let k=0;k<v;k++){const off=k*(TH+GP)-(tot-TH)/2; ctx.fillStyle=C.deck;
+          if(G.edges[e].dr===0) rr(ax,ay+off-TH/2,bx2-ax,TH,TH*0.4); else rr(ax+off-TH/2,ay,TH,by2-ay,TH*0.4);
+          ctx.fill();}}
+      for(let i=0;i<G.N;i++){const x=bx+isl[i].c*cs+cs/2,y=byy+isl[i].r*cs+cs/2,R=cs*0.36;
+        ctx.fillStyle=C.stone; circle(x,y,R); ctx.fillStyle=C.bank; circle(x,y,R*0.8);
+        text(String(need[i]),x,y-R*0.04,'700 '+Math.round(R*0.95)+'px '+FD,C.text);}
+      ctx.restore(); ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp==null?-1e9:btnPress.camp,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('bg-caption');
+  function caption(){
+    if(!capEl||!G||!grade) return;
+    const d=deg(); let sat=0,laidRuns=0,planks=0;
+    for(let i=0;i<G.N;i++) if(d[i]===need[i]) sat++;
+    for(let e=0;e<E();e++) if(val[e]>0){laidRuns++; planks+=val[e];}
+    let ansRuns=0; for(let e=0;e<E();e++) if(ans[e]>0) ansRuns++;
+    if(hasSolve){capEl.textContent='Joined in '+moves+' moves, '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+' and '+checks+(checks===1?' check':' checks')+'. '+G.N+' islets, '+ansRuns+' runs, '+n+'×'+n+'.'; return;}
+    capEl.textContent=n+'×'+n+' · '+G.N+' islets · '+E()+' lanes, '+ansRuns+' of them in the answer · '
+      +laidRuns+' runs laid ('+planks+' planks) · '+sat+'/'+G.N+' islets satisfied · '+hintsLeft+' hints · unique in '
+      +attempts+(attempts===1?' attempt':' attempts')+', '+genMs.toFixed(1)+' ms · propagation pins '
+      +grade.fixed+'/'+grade.total+' runs before a guess'+(grade.noGuess?' (no guess needed)':'');
+  }
+
+  // ================= the frame =================
+  function frame(){const t=now(); L=layout();
+    if(tip.mood==='happy'&&open()&&!hist.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    if(hasSolve&&!sparked&&t>=solvedAt){sparked=true; for(let i=0;i<G.N;i++) sparkle(i,solvedAt+stag(waveIs[i]*WAVE_STEP),C.sunRay);}
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawActions(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ================= the finger =================
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function cellAt(p){
+    const c=Math.floor((p[0]-L.gx)/L.cell),r=Math.floor((p[1]-L.gy)/L.cell);
+    if(c<0||r<0||c>=n||r>=n) return null;
+    return [r,c];
+  }
+  function isletAt(p){
+    const rc=cellAt(p); if(!rc) return -1;
+    for(let i=0;i<G.N;i++) if(isl[i].r===rc[0]&&isl[i].c===rc[1]){
+      const [x,y]=isletXY(i); const R=isletR()*1.25;
+      return (p[0]-x)*(p[0]-x)+(p[1]-y)*(p[1]-y)<=R*R?i:-1;}
+    return -1;
+  }
+  function runAt(p){
+    const rc=cellAt(p); if(!rc) return -1;
+    const k=key(rc[0],rc[1]);
+    for(let e=0;e<E();e++) if(val[e]>=1&&G.edges[e].cells.indexOf(k)>=0) return e;
+    return -1;
+  }
+  // The lane to the first islet in a direction, or nothing at all: the run the
+  // finger is asking for is never a guess about which pair was meant.
+  function edgeFrom(i,dr,dc){
+    for(const e of G.inc[i]){
+      const E0=G.edges[e],o=other(e,i);
+      if(dr!==0&&E0.dr===0) continue;
+      if(dc!==0&&E0.dc===0) continue;
+      if(dr>0&&isl[o].r<isl[i].r) continue;
+      if(dr<0&&isl[o].r>isl[i].r) continue;
+      if(dc>0&&isl[o].c<isl[i].c) continue;
+      if(dc<0&&isl[o].c>isl[i].c) continue;
+      return e;
+    }
+    return -1;
+  }
+  // The empty lane a refused drag ran down, out to the wall.
+  function emptyLane(i,dr,dc){
+    const [x,y]=isletXY(i),R=isletR();
+    const x2=dc>0?L.gx+L.gw:(dc<0?L.gx:x),y2=dr>0?L.gy+L.gw:(dr<0?L.gy:y);
+    return {x0:x+dc*R,y0:y+dr*R,x1:x2,y1:y2};
+  }
+  function hit(p,t){
+    if(hasSolve) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.act.y,260,130)) return {kind:'reset'};
+    if(inRect(p,W-M-260,L.act.y,260,130)) return {kind:'check'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    const i=isletAt(p); if(i>=0) return {kind:'islet',i};
+    const e=runAt(p); if(e>=0) return {kind:'run',e};
+    return null;
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='islet'){ if(!open()) return; cv.setPointerCapture(e.pointerId);
+      drag={from:hh.i,e:-1,dr:0,dc:0,at:t}; press=hh.i; refuse=null; }
+    else if(hh.kind!=='run') btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!drag) return; e.preventDefault();
+    const p=pt(e),[ox,oy]=isletXY(drag.from),dx=p[0]-ox,dy=p[1]-oy;
+    if(Math.abs(dx)<L.cell*0.5&&Math.abs(dy)<L.cell*0.5){drag.e=-1; drag.dr=0; drag.dc=0; return;}
+    const dr=Math.abs(dy)>Math.abs(dx)?Math.sign(dy):0,dc=Math.abs(dy)>Math.abs(dx)?0:Math.sign(dx);
+    drag.dr=dr; drag.dc=dc; drag.e=edgeFrom(drag.from,dr,dc);});
+  function up(e){const t=now();
+    if(drag){const d=drag; drag=null; press=null; pressTarget=null;
+      if(d.dr===0&&d.dc===0) return;
+      if(d.e<0){ refuseAt(-1,'none',t,emptyLane(d.from,d.dr,d.dc)); return; }
+      commit(d.e,d.from,t); return;}
+    const p=pt(e),hh=hit(p,t); press=null;
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='run'){ if(open()) wipe(hh.e,t); }
+    else if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='check') check(t);
+    else if(hh.kind==='tip') tipSet('Tap a run to take it away again.','happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the twelve cards.','happy',t);
+    else if(hh.kind==='camp') build(diff,seed+1,t);}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{drag=null; press=null; pressTarget=null;});
+
+  // ---- the page's own controls ----
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('bg-hint',t=>hint(t)); btn('bg-undo',t=>undo(t)); btn('bg-reset',t=>reset(t)); btn('bg-check',t=>check(t));
+  btn('bg-new',t=>build(diff,seed+1,t));
+  btn('bg-solve',t=>{for(let e=0;e<E();e++) if(val[e]!==ans[e]){lastIslet=G.edges[e].a; setRun(e,ans[e],t,true);}});
+  btn('bg-peek',()=>{peek=!peek; const el=document.getElementById('bg-peek'); if(el) el.classList.toggle('on',peek);});
+  const diffEl=document.getElementById('bg-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=DIFFS[diff];});
+  const rmEl=document.getElementById('bg-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  // ---- the opening ----
+  // A harness stamps the moves in the past so the frame it shoots is settled.
+  (function(){
+    build(parseInt(Q.get('d')||'0')||0,parseInt(Q.get('seed')||'3')||3,0);
+    L=layout();
+    if(diffEl) diffEl.textContent=DIFFS[diff];
+    const runsWanted=parseInt(Q.get('runs')||'0')||0,hn=parseInt(Q.get('hint')||'0')||0;
+    const win=Q.get('win')==='1',wrongOne=Q.get('wrong')==='1',doCheck=Q.get('check')==='1';
+    const doReset=Q.get('reset')==='1',aim=Q.get('aim')==='1';
+    const rq=Q.get('refuse'),ref=rq==='none'?'none':(rq?'cross':'');
+    const mid=runsWanted||hn||win||wrongOne||doCheck||doReset||aim||ref;
+    // the answer's runs in BFS order from islet 0, so ?runs= grows a network
+    // outward rather than lighting scattered pairs
+    const order=[]; {const seen=new Int8Array(G.N); seen[0]=1; const q=[0];
+      while(q.length){const u=q.shift();
+        for(const e of G.inc[u]) if(ans[e]>0&&order.indexOf(e)<0){order.push(e);
+          const v=other(e,u); if(!seen[v]){seen[v]=1; q.push(v);}}}}
+    if(win) for(const e of order) setRun(e,ans[e],-10,false);
+    else for(let i=0;i<runsWanted&&i<order.length;i++) setRun(order[i],ans[order[i]],-10,true);
+    for(let i=0;i<hn;i++) hint(-11);
+    if(wrongOne){ // a run the answer does not have, laid where it can be laid
+      for(let e=0;e<E();e++) if(ans[e]===0&&val[e]===0&&blockedBy(e)<0){setRun(e,1,-10,true); break;}
+      for(let e=0;e<E();e++) if(ans[e]>=2&&val[e]===ans[e]){setRun(e,1,-10,true); break;}
+    }
+    if(doReset) reset(-9);
+    if(doCheck) check(-0.4);
+    if(aim){ // a finger on the first islet with a spare lane, dragged at it
+      for(let i=0;i<G.N;i++){const e=G.inc[i].find(x=>val[x]===0&&ans[x]>0);
+        if(e!=null){const o=other(e,i); drag={from:i,e,dr:Math.sign(isl[o].r-isl[i].r),dc:Math.sign(isl[o].c-isl[i].c),at:-0.3}; press=i; break;}}
+    }
+    if(ref==='cross'){ // a lane whose water another run already holds
+      outer: for(let e=0;e<E();e++){ if(val[e]!==0) continue;
+        const f=blockedBy(e); if(f<0) continue;
+        refuseAt(e,'cross',0); break outer; }
+      if(!refuse){ // nothing crossed yet: lay the blocker first, then ask
+        for(let e=0;e<E();e++){ if(!G.cross[e].length) continue;
+          const f=G.cross[e][0]; if(val[f]>0) continue;
+          setRun(f,Math.max(1,ans[f]),-10,true); refuseAt(e,'cross',0); break; }
+      }
+    } else if(ref==='none'){
+      for(let i=0;i<G.N;i++){
+        for(const [dr,dc] of DIR4) if(edgeFrom(i,dr,dc)<0){
+          const far=dr?(dr>0?n-1-isl[i].r:isl[i].r):(dc>0?n-1-isl[i].c:isl[i].c);
+          if(far>=3){refuseAt(-1,'none',0,emptyLane(i,dr,dc)); break;}}
+        if(refuse) break;}
+    }
+    if(mid) openedAt=-12;
     caption(); frame();
   })();
 })();
