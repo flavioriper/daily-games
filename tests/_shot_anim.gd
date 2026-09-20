@@ -32,10 +32,21 @@ extends SceneTree
 ## beat later, so the strip shows the letters popping in, the row caught
 ## mid-flip and the row landed with the keys repainted behind it. The guess is
 ## never the day's word, so the board does not win in the middle of the strip.
+## It takes four more words after the id, one per ending it has:
+## `toast` refuses a guess that is not a word, `hint` presses the real hint
+## button, `solve` types the day's own word, and `over` spends all six rows so
+## the strip catches the keyboard leaving and the sprout bringing the word.
 ##
-## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
+## `rm` anywhere after the id sets `Motion.reduce` **before the board opens**
+## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
+## pixel for pixel: under reduce motion nothing on a settled board may move.
+##
+## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
 
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
+## The reduce-motion pair: how long after the last shot the extra one is
+## taken, and how much longer the run then has to last.
+const RM_PAIR := 1.5
 const TAP_AT := 1.6
 const IDLE_FROM := 2.2
 const IDLE_TO := 4.2
@@ -54,6 +65,9 @@ var _filling := false
 var _draws := 0
 var _id := ""
 var _empty := false   # skip the fill and measure the bare board
+var _mode := ""       # a board with more than one thing to show picks here
+var _reduce := false
+var _shots: Array = SHOTS.duplicate()
 var _entry: Dictionary = {}
 ## A drag: a real touch at `_drag_from`, dragged over DRAG_TIME by `_drag_by`
 ## and let go. Untangle's is the first free lantern toward the middle of the
@@ -70,6 +84,12 @@ var _drag_done := true
 ## third of the way through its turn, still face-down.
 const COMMIT_AFTER := 0.05
 var _commit_at := INF
+## `over` spends all six rows: one word typed and committed every WORD_EVERY
+## seconds, so the rows turn one after another rather than all at once and
+## the reveal comes off the sixth one's landing.
+const WORD_EVERY := 0.28
+var _words: Array[String] = []
+var _word_at := INF
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -77,7 +97,21 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_id = args[0]
-	_empty = args.size() > 1 and args[1] == "empty"
+	for i in range(1, args.size()):
+		if args[i] == "rm":
+			_reduce = true
+		else:
+			_mode = args[i]
+	_empty = _mode == "empty"
+	if _mode == "over":
+		# Six rows take WORD_EVERY each and the last of them another second
+		# to turn over, so the reveal lands well past the usual last shot.
+		_shots.append_array([4.6, 5.6])
+		_idle_from = 5.8
+		_idle_to = 7.8
+	if _reduce:
+		_shots.append(float(_shots[_shots.size() - 1]) + RM_PAIR)
+		_idle_to = maxf(_idle_to, float(_shots[_shots.size() - 1]) + 0.2)
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -97,6 +131,10 @@ func _process(delta: float) -> bool:
 				push_error("_shot_anim: %s has no flat board to shoot" % _id)
 				quit(1)
 				return true
+			# Set before the board opens, so its entrance is the reduced one
+			# and not a full entrance stilled halfway through.
+			if _reduce:
+				load("res://core/motion.gd").reduce = true
 			_menu._open(_entry)
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 			_puzzle = _host._puzzle
@@ -136,6 +174,15 @@ func _process(delta: float) -> bool:
 	if _t >= _commit_at:
 		_commit_at = INF
 		_tap_key("Key_Enter")
+	if _t >= _word_at:
+		if _words.is_empty():
+			_word_at = INF
+		else:
+			var word: String = _words.pop_front()
+			for i in word.length():
+				_tap_key("Key_%s" % word[i].to_upper())
+			_tap_key("Key_Enter")
+			_word_at = _t + WORD_EVERY
 	if _filling:
 		_fill_mastermind_step()
 	if not _drag_done:
@@ -143,7 +190,7 @@ func _process(delta: float) -> bool:
 	if _t >= _idle_from and _t <= _idle_to:
 		_idle.append(delta * 1000.0)
 		_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
-	if _shot < SHOTS.size() and _t >= SHOTS[_shot]:
+	if _shot < _shots.size() and _t >= float(_shots[_shot]):
 		var path := "/tmp/anim_%s_%d.png" % [_entry.id, _shot]
 		root.get_texture().get_image().save_png(path)
 		print("saved %s at t=%.2f" % [path, _t])
@@ -208,17 +255,54 @@ func _tap_queens() -> void:
 ## like a thumb, and press Enter a beat later. The guess is picked off the
 ## accept list the board itself answers with, and never the day's word: a
 ## board that won here would spend the rest of the strip on the win screen.
+## The four other things this board has to show, each driven through the real
+## keyboard or the real top bar: the refusal's toast, the hint's ghost letter
+## and greened key, the solve, and the six rows that run out.
 func _type_hiddenword() -> void:
-	var word := ""
-	for candidate in ["slate", "crane", "roast", "plant"]:
-		if candidate != _puzzle.state.answer and _puzzle.state.accepts(candidate):
-			word = candidate
-			break
-	if word.is_empty():
-		return
+	match _mode:
+		"toast":
+			# Five letters that are not a word: the refusal the toast names
+			# most often, and the one the accept list decides.
+			for i in "qwrtz".length():
+				_tap_key("Key_%s" % "qwrtz"[i].to_upper())
+			_commit_at = _t + COMMIT_AFTER
+			return
+		"hint":
+			_press(_host.top_bar.hint_button)
+			return
+		"solve":
+			_type_word(_puzzle.state.answer)
+			_commit_at = _t + COMMIT_AFTER
+			return
+		"over":
+			_words = _six_wrong()
+			_word_at = _t
+			return
+	_type_word(_wrong_word())
+	_commit_at = _t + COMMIT_AFTER
+
+func _type_word(word: String) -> void:
 	for i in word.length():
 		_tap_key("Key_%s" % word[i].to_upper())
-	_commit_at = _t + COMMIT_AFTER
+
+## A guess off the accept list the board itself answers with, and never the
+## day's word: a board that won here would spend the rest of the strip on the
+## win screen.
+func _wrong_word() -> String:
+	for candidate in ["slate", "crane", "roast", "plant"]:
+		if candidate != _puzzle.state.answer and _puzzle.state.accepts(candidate):
+			return candidate
+	return ""
+
+## Six accepted words, none of them the day's: enough to spend every row.
+func _six_wrong() -> Array[String]:
+	var out: Array[String] = []
+	for candidate in ["slate", "crane", "roast", "plant", "bugle", "windy", "mirth", "pluck"]:
+		if out.size() >= 6:
+			break
+		if candidate != _puzzle.state.answer and _puzzle.state.accepts(candidate):
+			out.append(candidate)
+	return out
 
 ## One tap on a key of the keyboard tray, found by the name key_board.gd
 ## gives it.

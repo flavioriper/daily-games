@@ -148,7 +148,14 @@ func refresh(puzzle) -> void:
 	undo_button.visible = caps.has("undo")
 	hint_button.visible = caps.has("hint")
 	undo_button.set_enabled(puzzle != null and puzzle.can_undo() and not done)
-	reset_button.set_enabled(not done)
+	# A finished board has nothing left to reset -- except the one that can
+	# finish without being solved. Hidden Word's sixth wrong row stops the
+	# clock and greys this bar exactly as a solve does (spec
+	# 2026-09-19-hidden-word-flat-design.md, section 8), but the day is still
+	# there to replay and Reset is the only way back to it: the win screen
+	# never comes, so there is no Back to camp button under it either. Every
+	# other board that is done is also solved, so nothing else moves.
+	reset_button.set_enabled(not done or (puzzle != null and not puzzle.is_solved()))
 	var left: int = puzzle.hints_left() if puzzle != null else 0
 	hint_button.set_enabled(left > 0 and not done)
 	hint_button.badge = left

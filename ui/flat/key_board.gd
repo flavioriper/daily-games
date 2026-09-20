@@ -49,6 +49,11 @@ const EDGE_DARKEN := 0.28
 const PRESS_DARKEN := 0.12
 const BORDER_W := 6
 
+## True while the keyboard has been slid out of the way. The board asks,
+## because a Reset or a new word has to bring it back and the board that
+## sent it away may not be the one that needs it again -- the settings
+## sheet's New puzzle spawns a fresh board against this same tray.
+var gone := false
 var _keys: Dictionary = {}   # letter -> Button
 var _chips: Array[Button] = []   # every key, letters and the two specials
 var _press_tw: Dictionary = {}   # Button -> Tween
@@ -242,6 +247,16 @@ func set_marks(marks: Dictionary) -> void:
 				continue
 		_style(chip, fill, Pal.PAPER)
 
+## Every letter key back to its untouched face. `set_marks` alone can never
+## get there: it only ever paints what it is handed and a letter absent from
+## its dictionary keeps whatever it already had, which is right for a guess
+## and wrong for a Reset -- the board's rows are gone and the keyboard would
+## still be coloured by them. Enter keeps its own `Pal.GOOD` and the
+## backspace its own face; neither is ever a mark.
+func clear_marks() -> void:
+	for letter in _keys:
+		_style(_keys[letter], Pal.KEY_FACE, Pal.TEXT)
+
 ## The named keys bump, the beat that says the row just landed on them.
 func bump(letters: Array) -> void:
 	for letter in letters:
@@ -270,6 +285,7 @@ func slide_out(time: float) -> void:
 		_entrance.append(fade)
 	for chip in _chips:
 		chip.disabled = true
+	gone = true
 
 ## The three rows slide up `ENTER_STAGGER` apart on top of the panel's own
 ## entrance, so the keyboard reads as one hand settling rather than a slab
@@ -277,6 +293,7 @@ func slide_out(time: float) -> void:
 ## `slide_out`).
 func enter(delay: float) -> void:
 	super(delay)
+	gone = false
 	for chip in _chips:
 		chip.disabled = false
 	for r in _rows.size():

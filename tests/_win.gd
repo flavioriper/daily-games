@@ -85,6 +85,10 @@ func _note(id: String) -> String:
 		"oneline", "oneline_island": return "%d planks walked, board fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram", "nonogram_island": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"queens": return "%dx%d court, %d queens, board fit=%s, hud=%s" % [_puzzle.n, _puzzle.n, _puzzle.state.queens.size(), _fit_ok, _hud_ok]
+		"hiddenword": return "%s in %d %s, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
+			"row" if _puzzle.state.rows.size() == 1 else "rows",
+			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -105,6 +109,7 @@ func _solve(id: String) -> void:
 		"oneline", "oneline_island": _solve_oneline()
 		"nonogram", "nonogram_island": _solve_nonogram()
 		"queens": _solve_queens()
+		"hiddenword": _solve_hiddenword()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -494,6 +499,41 @@ func _solve_queens() -> void:
 		_tap_local(_puzzle.cell_to_local(r, cell.x))
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+
+## Hidden Word: one hint, then the day's own word typed on the real keyboard
+## a key at a time and committed with the real Enter. Nothing here writes to
+## the state -- every letter goes in through the tray's own Button, so a
+## keyboard whose keys were laid out or named wrongly fails this rather than
+## passing on a state poke.
+##
+## The hint is spent first and on purpose: it greens a key and drops a ghost
+## into the working row, and the answer is then typed straight over that
+## column, which is the path a stuck player actually takes. A hint never
+## commits a row, so the win still has to come from the Enter.
+func _solve_hiddenword() -> void:
+	# Board fit check: every tile centre must land inside the board slot.
+	var State = load("res://puzzles/hidden_word_state.gd")
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in State.ROWS:
+		for c in State.LEN:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.moves == 0
+	var word: String = _puzzle.state.answer
+	for i in word.length():
+		_tap_key("Key_%s" % word[i].to_upper())
+	_tap_key("Key_Enter")
+
+## One tap on a key of the keyboard tray, found by the name key_board.gd
+## gives it.
+func _tap_key(key_name: String) -> void:
+	if _host.get("tray") == null:
+		return
+	var chip = _host.tray.find_child(key_name, true, false)
+	if chip is Button:
+		_press(chip)
 
 func _solve_horse() -> void:
 	var w: int = _puzzle.w

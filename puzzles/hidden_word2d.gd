@@ -40,6 +40,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const SproutFace = preload("res://ui/faces/sprout_face.gd")
 
 # --- this board's own three numbers (spec section 9) ---
 ## The flip: how far apart the five tiles start turning, and how long one
@@ -79,6 +80,60 @@ const TYPE_POP := 0.18
 ## How long the win screen waits after the solve, so the flip that won it can
 ## finish first.
 const WIN_WAIT := 1.6
+
+# --- the toast (spec section 8) ---
+## The refusal pill over the top of the grid: its height, the paper either
+## side of the line, the corner, how far above the card's own top it sits and
+## the size and the ink of the line inside it. The corner is half the height,
+## which is what makes it a pill rather than a card -- Face.Builder.round_rect
+## clamps it there anyway, exactly as the mock's own `rr` does.
+const TOAST_H := 76.0
+const TOAST_PAD := 64.0
+const TOAST_RADIUS := 38.0
+const TOAST_RISE := 30.0
+const TOAST_FONT := 34
+const TOAST_INK := 0.92
+## The three lines a refusal can say, indexed by the state's own code, and no
+## others. OK is index 0 and never shows one.
+const TOAST_LINE := ["", "Five letters", "Not a word", "You guessed that already"]
+
+# --- the hint (spec section 10) ---
+## A hint's letter is a given and not a guess, so it is drawn ghosted.
+const GHOST := 0.55
+
+# --- the solve and the reveal (spec section 9's table) ---
+## How far the rows that did not win fade back while the winning row hops,
+## and how far every row fades once the sixth has been spent. These and the
+## four below are the ending's own numbers rather than the vocabulary's:
+## core/motion.gd has no reveal, because no other board can run out.
+const SOLVE_DIM := 0.3
+const OVER_DIM := 0.4
+const DIM_TIME := 0.3
+## How long the keyboard takes to leave, and the sprout's own rise -- how long
+## it waits after the last tile lands, how far below its seat it starts, how
+## long it takes and how long it fades in over.
+const KEYS_OUT := 0.25
+const REVEAL_WAIT := 0.1
+const REVEAL_RISE := 200.0
+const REVEAL_TIME := 0.35
+const REVEAL_FADE := 0.25
+## The reveal, laid out on the scenery band: its top, the sprout's centre in
+## from the card's left and R, then the word card's left, the paper it leaves
+## at the right, its height, corner and edge, and the two lines inside it.
+const REVEAL_TOP := -12.0
+const SPROUT_AT := Vector2(118.0, 76.0)
+const SPROUT_R := 66.0
+const WORD_CARD_X := 206.0
+const WORD_CARD_RIGHT := 40.0
+const WORD_CARD_H := 140.0
+const WORD_CARD_RADIUS := 28.0
+const WORD_CARD_EDGE := 6.0
+const WORD_TEXT_X := 36.0
+const WORD_LABEL_Y := 50.0
+const WORD_LABEL_FONT := 30
+const WORD_Y := 96.0
+const WORD_FONT := 48
+const WORD_SPACING := 3
 
 # --- the scenery band, ported from the mock's `scenery()` ---
 ## The turf's top edge, measured up from the foot of the band, and the band's
@@ -167,12 +222,42 @@ var _given_at: Dictionary = {}
 ## repaint resolved late would carry a **newer** row's marks and give that
 ## row away while its own tiles were still face-down.
 var _keys_due: Array = []
+## The refusal in hand: an index into TOAST_LINE (0 for none) and the second
+## it popped up. One at a time -- a second refusal replaces the first rather
+## than stacking, because two pills over one grid is a pile of paper.
+var _toast := 0
+var _toast_at := -100.0
+## The second the winning row landed, and the second the sixth row did. Both
+## are in the future while that row is still turning, which is the whole
+## point: the hop, the dim, the sprout and the word all wait for the tiles.
+var _solved_at := -100.0
+var _over_at := -100.0
+## When the keyboard is due to leave. Whether it has gone is the tray's own
+## `gone`, not a second copy here: the settings sheet's New puzzle spawns a
+## fresh board against the same tray, and a board that had just learned the
+## keyboard was still on screen would leave it slid out for good.
+var _keys_out_at := INF
+## Reset's wave: one {"r", "c", "ch", "m", "at"} per committed tile on its way
+## out, drawn over the bed that is already underneath it.
+var _ghosts: Array = []
+## The sparkles still owed, each {"at", "r", "c"}: the solve's five arrive one
+## SOLVE_STAGGER after another, so they cannot all be fired at the commit.
+var _fx_due: Array = []
+## The sprout the reveal raises. Built on the first ending and kept, because
+## Reset can put the board back into play and a second sixth row can come.
+var _sprout: Control = null
 
 var _opened := 0.0
 var _anim_until := 0.0
 ## The band, built once per layout, and the grid, rebuilt while it moves.
 var _band_mesh: ArrayMesh
 var _grid_mesh: ArrayMesh
+## The toast's pill and the reveal's word card, each built once -- when the
+## line changes and when the reveal begins -- and drawn with a transform, so
+## neither is rebuilt per frame while it moves.
+var _toast_mesh: ArrayMesh
+var _toast_mesh_for := -1
+var _reveal_mesh: ArrayMesh
 ## The meshes the last _draw actually handed to the canvas item. A canvas
 ## command holds a mesh by RID and not by reference, so dropping the only
 ## reference to a mesh still on the item's command list leaves the renderer
@@ -213,13 +298,43 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_flip_at = -100.0
 	_flip_row = -1
 	_keys_due = []
+	_clear_endings()
 	_layout()
 	_enter()
+
+## Everything a finished board leaves behind: the refusal in hand, the solve,
+## the reveal and the waves either of them owns. Both build() (a new word) and
+## reset_board() (the same word again) go through it, because a board that
+## kept `_over_at` would raise the sprout over an empty grid.
+func _clear_endings() -> void:
+	_toast = 0
+	_toast_at = -100.0
+	_solved_at = -100.0
+	_over_at = -100.0
+	_ghosts = []
+	_fx_due = []
+	if _sprout != null:
+		_sprout.visible = false
+	_bring_keys_back()
+
+## Puts a keyboard that was sent away back on screen. `slide_out` is
+## reversible: the same tray slides back from the same `enter_from`, fades in
+## and re-enables every key, so nothing here has to be undone by hand.
+func _bring_keys_back() -> void:
+	_keys_out_at = INF
+	if _tray != null and _tray.gone:
+		_tray.enter(0.0)
 
 ## The keyboard, handed over by the host once per spawn. The board paints it
 ## from the row it has just marked; nothing else writes to it.
 func set_tray(t: Control) -> void:
 	_tray = t
+	# A handoff is once per board, and the same tray outlives the board that
+	# had it: the settings sheet's New puzzle spawns a fresh one against it.
+	# So the new word starts with the keys untouched, and with the keyboard
+	# on screen even if the board before it ran out of rows and sent it away.
+	_tray.clear_marks()
+	_bring_keys_back()
 
 # --- layout ---
 
@@ -284,8 +399,15 @@ func _tile_at(r: int, c: int) -> Vector2:
 func cell_to_local(r: int, c: int) -> Vector2:
 	return _tile_at(r, c) + Vector2.ONE * (_cell() * 0.5)
 
+## The band's top, which the reveal stands on.
+func _reveal_top() -> float:
+	return _origin().y + _block().y + REVEAL_TOP
+
 func _layout() -> void:
 	_band_mesh = null
+	_reveal_mesh = null
+	_toast_mesh = null
+	_toast_mesh_for = -1
 	_refresh()
 
 # --- the frame ---
@@ -294,8 +416,41 @@ func _process(delta: float) -> void:
 	super(delta)
 	var now := _now()
 	_deliver_keys(now)
+	_deliver_fx(now)
+	_expire(now)
+	_send_keys_away(now)
+	_ride_sprout(now)
 	if _laid_out() and _animating(now):
 		queue_redraw()
+
+## Drops what has finished: the toast once its pop-out is spent, and Reset's
+## tiles once theirs is. Both are drawn off their own moment, so leaving them
+## in the list would only cost work -- but the toast must go, or _draw would
+## keep asking pop_out_scale for a scale it has already answered zero to.
+func _expire(now: float) -> void:
+	var dropped := false
+	if _toast > 0 and now - _toast_at >= TOAST_HOLD + Motion.POP_OUT:
+		_toast = 0
+		dropped = true
+	for i in range(_ghosts.size() - 1, -1, -1):
+		if now - float(_ghosts[i].at) >= Motion.POP_OUT:
+			_ghosts.remove_at(i)
+			dropped = true
+	# The frame that drops the last of them may be the first frame
+	# `_animating` has answered false on, and then nothing would ask for the
+	# draw that takes it off the screen. Asking here costs one draw and does
+	# not depend on `_busy_for` having been given a hair more than it needs.
+	if dropped:
+		_refresh()
+
+## The keyboard leaves when the sixth row has landed and not a moment before:
+## it slides out over KEYS_OUT and every key stops taking input.
+func _send_keys_away(now: float) -> void:
+	if now < _keys_out_at:
+		return
+	_keys_out_at = INF
+	if _tray != null:
+		_tray.slide_out(KEYS_OUT)
 
 ## The engine runs _process and _draw from the moment the node enters the
 ## tree; the board only exists once build() has been through and the host's
@@ -303,25 +458,40 @@ func _process(delta: float) -> void:
 func _laid_out() -> bool:
 	return _row_at.size() == State.ROWS and _cell() > 0.0
 
-## True while **any** wave on this board is still running. The three moments
-## that outlive a single recipe are named outright -- the entrance, the flip
-## and the keyboard's repaint -- and everything else registers its own end
-## through _busy_for, so a moment added later (Task 7's toast, hint, Reset,
-## solve and reveal) extends this by saying how long it needs rather than by
-## being remembered here. One Line froze two lines at four fifths of their
-## fade by asking about the entrance alone; it showed on a rendered frame and
-## in no test.
+## True while **any** wave on this board is still running. Two moments are
+## named outright -- the entrance and the flip -- and every other one
+## registers its own end through `_busy_for`, so a wave says how long it needs
+## at the moment it starts rather than being remembered here. In full, what
+## `_anim_until` is holding open for:
+##
+## - the typed letter's pop and the erased one's turn out (TYPE_POP, POP_OUT);
+## - the refused row's shiver and **the toast** over it, which outlives the
+##   shiver five times over (TOAST_HOLD + POP_OUT);
+## - **the hint's** ghost letter dropping in and the key greening behind it
+##   (DROP_TIME + BUMP_TIME; the ring and the sparkles are the Fx2D node's
+##   own children and animate themselves);
+## - the row's flip and the keyboard's repaint after it (the `landed` window
+##   plus BUMP_TIME, which commit_row posts);
+## - **the solve**, from the moment the row lands through the last tile's hop
+##   (SOLVE_DELAY + four SOLVE_STAGGERs + SOLVE_TIME) -- longer than the dim
+##   behind it, so the one figure covers both;
+## - **the reveal**, from the same landing through the sprout's rise
+##   (REVEAL_WAIT + REVEAL_TIME) -- longer than the rows' dim and the
+##   keyboard's exit;
+## - **Reset's** wave, the last tile's delay plus its turn out.
+##
+## There is deliberately no branch for the keyboard's pending repaint. The
+## window before it lands is the flip's own, which the line below already
+## covers, and the BUMP_TIME after it is covered by commit_row's `_busy_for`.
+## A branch here read `_keys_due`'s due time a frame after _process had
+## already delivered and dropped it, so it never saw the window it claimed to
+## hold open. One Line froze two lines at four fifths of their fade by asking
+## about the entrance alone; it showed on a rendered frame and in no test.
 func _animating(t: float) -> bool:
 	if t < _opened + Motion.ENTER_DELAY + Motion.ENTER_POP:
 		return true
 	if _flip_row >= 0 and t < _flip_at + _flip_length():
 		return true
-	# There is deliberately no branch for the keyboard's pending repaint. The
-	# window before it lands is the flip's own, which the line above already
-	# covers, and the BUMP_TIME after it is covered by the `_busy_for` that
-	# commit_row posts. A branch here read `_keys_due`'s due time a frame
-	# after _process had already delivered and dropped it, so it never saw
-	# the window it claimed to hold open.
 	return t < _anim_until
 
 ## Keeps the board redrawing for `seconds` more: something on it is moving.
@@ -363,8 +533,10 @@ func _draw() -> void:
 				Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow)),
 				Color(1.0, 1.0, 1.0, seen))
 			shown.append(_grid_mesh)
-	_shown = shown
 	_draw_letters(now)
+	_draw_reveal(now, shown)
+	_draw_toast(now, shown)
+	_shown = shown
 
 ## The scenery band at the card's foot: two clouds high in the side air the
 ## band bought, a washed turf with a lighter crown along its top, blades
@@ -450,8 +622,9 @@ func _build_grid(t: float) -> ArrayMesh:
 	var work := _working_row()
 	for r in State.ROWS:
 		var shake := Motion.shiver_offset(t - _shiver_at[r])
+		var fade := _row_alpha(r, t)
 		for c in State.LEN:
-			var at := _tile_at(r, c) + Vector2(shake, 0.0)
+			var at := _tile_at(r, c) + Vector2(shake, _solve_lift(r, c, t))
 			var grow := Vector2.ONE
 			var fill: Color = Pal.SURFACE_HI
 			var deep: Color = Pal.SURFACE_HI.lerp(Pal.TEXT, EMPTY_MIX)
@@ -464,8 +637,49 @@ func _build_grid(t: float) -> ArrayMesh:
 					deep = fill.lerp(Pal.TEXT, EDGE_MIX)
 			elif r == work and c < state.typed.length():
 				grow = Motion.pop_in_scale(t - _typed_at[c], TYPE_POP)
-			_tile_face(b, at, cell, fill, deep, grow)
+			_tile_face(b, at, cell, fill, deep, grow, fade)
+	# Reset's wave, over the beds the tiles have just gone back to being: a
+	# committed tile keeps its mark's colour and turns out where it stood.
+	for g in _ghosts:
+		var elapsed: float = t - float(g.at)
+		var m := int(g.m)
+		var fill: Color = MARK[m]
+		var deep: Color = fill.lerp(Pal.TEXT, EDGE_MIX)
+		var at := _tile_at(int(g.r), int(g.c))
+		if elapsed < 0.0:
+			_tile_face(b, at, cell, fill, deep, Vector2.ONE)
+			continue
+		var out := Motion.pop_out_scale(elapsed)
+		if out <= 0.0:
+			continue
+		_tile_face(b, at, cell, fill, deep, Vector2.ONE * out, 1.0, _turn_out(elapsed))
 	return b.mesh() if not b.verts.is_empty() else null
+
+## The quarter turn a thing leaving takes with it, `elapsed` into its pop out.
+func _turn_out(elapsed: float) -> float:
+	return PI * 0.5 * clampf(elapsed / Motion.POP_OUT, 0.0, 1.0)
+
+## How lit row `r` is. The solve leaves the winning row alone and takes the
+## rows that came before it back to SOLVE_DIM, so the answer is the only
+## thing burning; the reveal takes the whole grid to OVER_DIM, because there
+## is no winning row to spare. An empty bed keeps its own light either way,
+## which is the mock's own reading: a bed is not a guess.
+func _row_alpha(r: int, t: float) -> float:
+	var a := 1.0
+	if _over_at > -50.0:
+		a = lerpf(1.0, OVER_DIM, Motion.appear_level(t - _over_at, DIM_TIME))
+	if _solved_at > -50.0 and r < state.rows.size() and r != state.rows.size() - 1:
+		a *= lerpf(1.0, SOLVE_DIM, Motion.appear_level(t - _solved_at, Motion.SOLVE_TIME))
+	return a
+
+## The solve's hop: the winning row's tiles lift SOLVE_HOP letter by letter,
+## SOLVE_STAGGER apart after SOLVE_DELAY, from the moment the row **landed**
+## and not from the Enter that won it.
+func _solve_lift(r: int, c: int, t: float) -> float:
+	if _solved_at <= -50.0 or r != state.rows.size() - 1:
+		return 0.0
+	return Motion.hop_lift(t - (_solved_at + Motion.SOLVE_DELAY + float(c) * Motion.SOLVE_STAGGER),
+		Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 
 ## A tile's turn at `t`: x is its scale.y, y is 1 once it has taken its
 ## colour. `abs(cos(PI * u))` squashes it to nothing and back over FLIP_TIME,
@@ -486,15 +700,16 @@ func _flip(r: int, c: int, t: float) -> Vector2:
 ## One tile: its face over a bottom edge in a darker shade of itself, the
 ## soft lip every card on these screens wears, drawn at `grow` of its size
 ## about its own centre so the flip's squash reads.
-func _tile_face(b, at: Vector2, s: float, fill: Color, deep: Color, grow: Vector2) -> void:
-	if grow.x <= 0.0 or grow.y <= 0.0:
+func _tile_face(b, at: Vector2, s: float, fill: Color, deep: Color, grow: Vector2,
+		alpha := 1.0, angle := 0.0) -> void:
+	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
 		return
 	var edge := maxf(EDGE_MIN, s * EDGE)
 	var r := s * RADIUS
 	var corner := -Vector2.ONE * (s * 0.5)
-	var xf := Transform2D(0.0, grow, 0.0, at + Vector2.ONE * (s * 0.5))
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s), r), deep)
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), fill)
+	var xf := Transform2D(angle, grow, 0.0, at + Vector2.ONE * (s * 0.5))
+	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s), r), Color(deep, deep.a * alpha))
+	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), Color(fill, fill.a * alpha))
 
 ## The letters, over the grid's mesh and inside the same entrance: the
 ## working row's in ink, a committed row's in paper once its tile has turned
@@ -513,8 +728,9 @@ func _draw_letters(t: float) -> void:
 	var work := _working_row()
 	for r in State.ROWS:
 		var shake := Motion.shiver_offset(t - _shiver_at[r])
+		var fade := _row_alpha(r, t) * seen
 		for c in State.LEN:
-			var seat := cell_to_local(r, c) + Vector2(shake, 0.0)
+			var seat := cell_to_local(r, c) + Vector2(shake, _solve_lift(r, c, t))
 			seat = mid + (seat - mid) * pop
 			if r < state.rows.size():
 				var turn := _flip(r, c, t)
@@ -522,14 +738,43 @@ func _draw_letters(t: float) -> void:
 					continue
 				var ink: Color = Pal.PAPER if turn.y >= 1.0 else Pal.TEXT
 				Mosaic.letter(self, seat, cell, state.rows[r][c],
-					Vector2(pop, turn.x * pop), ink, font, seen)
+					Vector2(pop, turn.x * pop), ink, font, fade)
 			elif r == work:
 				if c < state.typed.length():
 					var grow := Motion.pop_in_scale(t - _typed_at[c], TYPE_POP)
 					Mosaic.letter(self, seat, cell, state.typed[c], grow * pop,
-						Pal.TEXT, font, seen)
-				elif _gone_at[c] > 0.0:
-					_letter_out(seat, cell, _gone_ch[c], t - _gone_at[c], pop, seen, font)
+						Pal.TEXT, font, fade)
+				elif _gone_at[c] > 0.0 and t - _gone_at[c] < Motion.POP_OUT and not Motion.reduce:
+					_letter_out(seat, cell, _gone_ch[c], t - _gone_at[c], pop, fade, font)
+				elif state.given.has(c):
+					# What a hint gave: the answer's own letter, dropping into
+					# the column it belongs to and standing there ghosted
+					# until the player types over it.
+					_ghost_letter(seat, cell, state.answer[c],
+						t - float(_given_at.get(c, -100.0)), pop, fade, font)
+	# Reset's wave carries the letters out with the tiles.
+	for g in _ghosts:
+		var elapsed: float = t - float(g.at)
+		var seat := cell_to_local(int(g.r), int(g.c))
+		seat = mid + (seat - mid) * pop
+		if elapsed < 0.0:
+			Mosaic.letter(self, seat, cell, String(g.ch), Vector2.ONE * pop, Pal.PAPER, font, seen)
+			continue
+		_letter_out(seat, cell, String(g.ch), elapsed, pop, seen, font, Pal.PAPER)
+
+## A hint's letter: it drops in from DROP above its column with the fade and
+## then stands at GHOST in LEAF_DEEP, a given rather than a guess. Drawn
+## whether or not the board is moving, because the ghost outlives its drop --
+## it is there until the player types over that column, and under reduce
+## motion it is simply there from the first frame.
+func _ghost_letter(seat: Vector2, cell: float, ch: String, elapsed: float,
+		pop: float, seen: float, font: Font) -> void:
+	var a := Motion.appear_level(elapsed, Motion.DROP_FADE) * GHOST * seen
+	if a <= 0.0:
+		return
+	var lift := Motion.drop_in_lift(elapsed)
+	Mosaic.letter(self, seat - Vector2(0.0, lift * pop), cell, ch,
+		Vector2.ONE * pop, Pal.LEAF_DEEP, font, a)
 
 ## The letter an erase took away: it shrinks out with the quarter turn where
 ## it stood, the family's own way out for a drawn thing. Mosaic.letter takes
@@ -537,21 +782,146 @@ func _draw_letters(t: float) -> void:
 ## same string itself, with Mosaic's own measure, rather than growing that
 ## call an argument its two other callers would never pass.
 func _letter_out(seat: Vector2, cell: float, ch: String, elapsed: float,
-		pop: float, seen: float, font: Font) -> void:
+		pop: float, seen: float, font: Font, ink: Color = Pal.TEXT) -> void:
 	if ch.is_empty():
 		return
 	var grow := Motion.pop_out_scale(elapsed)
 	if grow <= 0.0:
 		return
-	var angle := PI * 0.5 * clampf(elapsed / Motion.POP_OUT, 0.0, 1.0)
+	var angle := _turn_out(elapsed)
 	var px := int(cell * Mosaic.LETTER_SIZE)
 	var text := ch.to_upper()
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
 	var where := Vector2(-w * 0.5, font.get_height(px) * 0.5 - font.get_descent(px))
 	draw_set_transform(seat, angle, Vector2.ONE * (grow * pop))
 	font.draw_string(get_canvas_item(), where, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-		px, Color(Pal.TEXT, seen))
+		px, Color(ink, seen))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# --- the toast (spec section 8) ---
+
+## The refusal's pill, over the top of the grid and over the card's own edge:
+## TEXT at TOAST_INK with the line in PAPER, popping in about its centre,
+## holding TOAST_HOLD and popping out. Both scales are the family's readers
+## at their own lengths, so the pill arrives and leaves like every other
+## small thing on these screens and this board adds no number for it.
+##
+## Refusals do not get a card and they never get a colour: nothing here goes
+## red, because a word this board does not know is not the player's mistake.
+func _draw_toast(t: float, shown: Array) -> void:
+	if _toast <= 0:
+		return
+	var since := t - _toast_at
+	if since < 0.0:
+		return
+	var grow: Vector2
+	if since < TOAST_HOLD:
+		grow = Motion.pop_in_scale(since)
+	else:
+		var out := Motion.pop_out_scale(since - TOAST_HOLD)
+		if out <= 0.0:
+			return
+		grow = Vector2.ONE * out
+	if grow.x <= 0.0 or grow.y <= 0.0:
+		return
+	var font: Font = CozyTheme.body(700)
+	var line: String = TOAST_LINE[_toast]
+	var w: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x + TOAST_PAD
+	if _toast_mesh == null or _toast_mesh_for != _toast:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(-w, -TOAST_H) * 0.5, Vector2(w, TOAST_H), TOAST_RADIUS),
+			Color(Pal.TEXT, TOAST_INK))
+		_toast_mesh = b.mesh() if not b.verts.is_empty() else null
+		_toast_mesh_for = _toast
+	if _toast_mesh == null:
+		return
+	var mid := Vector2(size.x * 0.5, _card_top() - TOAST_RISE + TOAST_H * 0.5)
+	draw_mesh(_toast_mesh, null, Transform2D(0.0, grow, 0.0, mid))
+	shown.append(_toast_mesh)
+	var where := Vector2(-w * 0.5 + TOAST_PAD * 0.5,
+		font.get_height(TOAST_FONT) * 0.5 - font.get_descent(TOAST_FONT))
+	draw_set_transform(mid, 0.0, grow)
+	font.draw_string(get_canvas_item(), where, line, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		TOAST_FONT, Color(Pal.PAPER, TOAST_INK))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# --- the reveal (spec section 8) ---
+
+## The word on its own small card at the foot of the board, beside the sprout
+## the board raises with it. It rises with the sprout and fades in with it,
+## off the same two readers, because one is a node and the other is drawn and
+## they have to arrive as one thing.
+func _draw_reveal(t: float, shown: Array) -> void:
+	if _over_at <= -50.0:
+		return
+	var since := t - _over_at - REVEAL_WAIT
+	var a := Motion.appear_level(since, REVEAL_FADE)
+	if a <= 0.0:
+		return
+	if _reveal_mesh == null:
+		var b := Face.Builder.new()
+		var w := size.x - WORD_CARD_X - WORD_CARD_RIGHT
+		b.fan(Face.Builder.round_rect(Vector2(WORD_CARD_X, 0.0), Vector2(w, WORD_CARD_H),
+			WORD_CARD_RADIUS), Pal.LINE)
+		b.fan(Face.Builder.round_rect(Vector2(WORD_CARD_X, 0.0),
+			Vector2(w, WORD_CARD_H - WORD_CARD_EDGE), WORD_CARD_RADIUS), Pal.SURFACE)
+		_reveal_mesh = b.mesh() if not b.verts.is_empty() else null
+	if _reveal_mesh == null:
+		return
+	var top := _reveal_top() + _reveal_rise(since)
+	draw_mesh(_reveal_mesh, null, Transform2D(0.0, Vector2.ONE, 0.0, Vector2(0.0, top)),
+		Color(1.0, 1.0, 1.0, a))
+	shown.append(_reveal_mesh)
+	var x := WORD_CARD_X + WORD_TEXT_X
+	_line(CozyTheme.body(500), WORD_LABEL_FONT, Vector2(x, top + WORD_LABEL_Y),
+		"The word was", Color(Pal.TEXT_DIM, a))
+	_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_Y),
+		state.answer.to_upper(), Color(Pal.GOOD, a))
+
+## How far below its seat the reveal still is, `since` seconds in: REVEAL_RISE
+## taken home by the back ease, the curve `Motion.slide` would have used on a
+## node. Nothing under reduce motion -- the sprout and the card are simply
+## there.
+func _reveal_rise(since: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	return REVEAL_RISE * (1.0 - Motion.back_out(clampf(since / REVEAL_TIME, 0.0, 1.0)))
+
+## One line of text seated by its left edge and its middle, the way the mock
+## lays every line out; draw_string wants a baseline instead.
+func _line(font: Font, px: int, at: Vector2, text: String, colour: Color) -> void:
+	font.draw_string(get_canvas_item(),
+		at + Vector2(0.0, font.get_height(px) * 0.5 - font.get_descent(px)),
+		text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, colour)
+
+## The sprout rides the board's clock, as One Line's walker does: it is a
+## node (ui/faces/sprout_face.gd draws itself), but the card beside it is
+## drawn, and a tween on one of them and a reader on the other would arrive a
+## frame apart. Both read `_over_at` every frame instead.
+func _ride_sprout(t: float) -> void:
+	if _sprout == null or not _sprout.visible:
+		return
+	var since := t - _over_at - REVEAL_WAIT
+	var seat := Vector2(SPROUT_AT.x, _reveal_top() + SPROUT_AT.y + _reveal_rise(since))
+	_sprout.position = seat - _sprout.size * 0.5
+	_sprout.modulate.a = Motion.appear_level(since, REVEAL_FADE)
+
+## The sprout the reveal brings, built on the first ending and kept after it.
+## It is sized so R comes out at SPROUT_R once the face's own REACH -- the
+## room its leaves need above the blob -- has been paid for.
+func _raise_sprout() -> void:
+	if _sprout == null:
+		_sprout = SproutFace.new()
+		_sprout.name = "Sprout"
+		_sprout.z_index = 1
+		add_child(_sprout)
+	var px := SPROUT_R * 2.0 * SproutFace.REACH
+	_sprout.size = Vector2(px, px)
+	_sprout.expression = Face.Expr.HAPPY
+	_sprout.visible = true
+	_sprout.modulate.a = 0.0
+	_ride_sprout(_now())
+	_sprout.set_idle(true)
 
 # --- the three moves ---
 
@@ -598,7 +968,9 @@ func commit_row() -> void:
 	var code := state.commit()
 	if code != State.OK:
 		_shiver_at[row] = _now()
-		_busy_for(Motion.SHIVER_TIME)
+		_toast = code
+		_toast_at = _now()
+		_busy_for(maxf(Motion.SHIVER_TIME, TOAST_HOLD + Motion.POP_OUT))
 		_refresh()
 		return
 	_flip_row = state.rows.size() - 1
@@ -618,6 +990,27 @@ func commit_row() -> void:
 	if Motion.reduce:
 		_deliver_keys(landed)
 	_busy_for(landed - _flip_at + Motion.BUMP_TIME)
+	# The row that ends the game does it when it has **landed**, not when
+	# Enter was pressed: a sprout that named the word while the sixth row was
+	# still face-down would answer the board before it had finished asking.
+	# The solve is the one exception, and only for the signal -- `solved`
+	# fires now, because the host's own win_delay() is measured from here.
+	if state.is_solved():
+		_solved_at = landed
+		if not Motion.reduce:
+			for c in State.LEN:
+				_fx_due.append({
+					"at": landed + Motion.SOLVE_DELAY + float(c) * Motion.SOLVE_STAGGER,
+					"r": _flip_row, "c": c, "colour": Pal.SUN,
+				})
+		_busy_for(landed - _now() + Motion.SOLVE_DELAY
+			+ float(State.LEN - 1) * Motion.SOLVE_STAGGER + Motion.SOLVE_TIME)
+	elif state.is_over():
+		_over_at = landed
+		_keys_out_at = landed
+		_raise_sprout()
+		_busy_for(landed - _now() + REVEAL_WAIT + REVEAL_TIME)
+		finish_unsolved()
 	_refresh()
 	note_move()
 
@@ -655,6 +1048,14 @@ func _deliver_keys(now: float) -> void:
 		_tray.set_marks(due.marks)
 		_tray.bump(due.letters)
 
+## Fires the sparkles that have come due. The solve's five are staggered
+## across the winning row, so they cannot all be fired at the Enter that won
+## it; Fx2D is the only place a spark comes from on this board.
+func _deliver_fx(now: float) -> void:
+	while not _fx_due.is_empty() and now >= float(_fx_due[0].at):
+		var due: Dictionary = _fx_due.pop_front()
+		fx.sparkle(cell_to_local(int(due.r), int(due.c)), due.get("colour", Pal.SUN))
+
 func _clear_working() -> void:
 	_typed_at = []
 	_gone_at = []
@@ -683,19 +1084,69 @@ func share_glyphs() -> String:
 func hints_left() -> int:
 	return state.hints_left
 
-## Task 7 builds the hint: the ring over the chosen column, the letter
-## dropping in ghosted at 0.55, the sparkles in leaf and that key greening
-## with a bump. It is a given and not a guess, so it never spends a row --
-## which is why the state already has `given` and `_given_at` is already
-## here. Until then the board has none to give.
+## A hint gives the leftmost letter the player has not greened: a ring over
+## its column, the letter dropping into the working row ghosted at GHOST,
+## sparkles in leaf, and that key greening with a bump.
+##
+## **It is a given and not a guess.** It never commits a row, it never counts
+## as a move (`hints_used` rises; `moves` does not, so nothing here calls
+## `note_move`), and the player still has to type the letter for it to be
+## part of a guess. The key's own green goes through `_keys_due` like every
+## other repaint on this board, so a hint taken while a row is still turning
+## waits its turn behind that row rather than painting over it.
 func hint() -> bool:
-	return false
+	var at := state.hint()
+	if at < 0:
+		return false
+	# state.hint() answers -1 on a solved or a spent board, so there is always
+	# a working row under the column it chose.
+	var work: int = state.rows.size()
+	if not Motion.reduce:
+		fx.ring(cell_to_local(work, at), _cell() * 0.6, Pal.LEAF)
+		_fx_due.append({"at": _now() + Motion.DROP_TIME * 0.5,
+			"r": work, "c": at, "colour": Pal.LEAF})
+	# Outside the reduce guard on purpose: the ghost is not decoration, it is
+	# the letter the hint gave, and under reduce motion it has to be on the
+	# board from the next frame rather than not at all.
+	_given_at[at] = _now()
+	var ch: String = state.answer[at]
+	_keys_due.append({
+		"at": _now() + (0.0 if Motion.reduce else Motion.DROP_TIME),
+		"marks": {ch: State.HIT}, "letters": [ch],
+	})
+	hints_used += 1
+	_busy_for(Motion.DROP_TIME + Motion.BUMP_TIME)
+	_refresh()
+	check_solved()
+	return true
 
-## Replays the same day from the first row. Task 7 gives it its wave -- every
-## committed row shrinking out from the last row up -- and brings the
-## keyboard's colours back with it; this is the state and the moments the
-## drawing reads, so a Reset already empties the board.
+## Replays the same day from the first row: every committed row's tiles turn
+## out in a wave from the last row up, RESET_STAGGER a tile, and the keys go
+## back to their untouched face together.
+##
+## **What a hint gave stays given.** `state.reset()` clears `rows`, `marks`
+## and `typed` and leaves `hints_left` and `given` exactly where they were --
+## Queens' own rule, and here it is load-bearing rather than tidy: Reset
+## replays the *same word*, so refunding a hint would make the limit of two
+## meaningless (hint, Reset, hint, Reset would spell the answer out a letter
+## at a time) and discarding `given` would charge the player twice for the
+## same letter. `_given_at` therefore survives too, and the ghost is back on
+## the first row the moment the wave has passed.
+##
+## It also has to put a **finished** board back into play. Nothing else on
+## this screen can be over without being solved, so nothing else has ever had
+## to clear `_done`; a Reset that left it set would hand the player a board
+## that took no keys and never ticked again.
 func reset_board() -> void:
+	var wave: Array = []
+	if not Motion.reduce:
+		for r in state.rows.size():
+			for c in State.LEN:
+				wave.append({
+					"r": r, "c": c, "ch": state.rows[r][c], "m": int(state.marks[r][c]),
+					"at": _now() + Motion.stagger(
+						(state.rows.size() - 1 - r) * State.LEN + c, Motion.RESET_STAGGER),
+				})
 	state.reset()
 	for r in State.ROWS:
 		_row_at[r] = -100.0
@@ -704,8 +1155,16 @@ func reset_board() -> void:
 	_flip_at = -100.0
 	_flip_row = -1
 	_keys_due = []
+	# After _clear_endings, which empties the wave list along with the rest
+	# of what the last ending left behind.
+	_clear_endings()
+	_ghosts = wave
+	if _tray != null:
+		_tray.clear_marks()
 	moves = 0
+	_done = false
 	_running = true
+	_busy_for(Motion.stagger(State.ROWS * State.LEN - 1, Motion.RESET_STAGGER) + Motion.POP_OUT)
 	fx.cue("reset")
 	_refresh()
 
