@@ -13,7 +13,8 @@ extends "res://core/puzzle_base.gd"
 ##
 ## How it is drawn, and it is Word Trail's arrangement wholesale. One
 ## `ArrayMesh` carries everything with no glyph on it -- the pool, its rim and
-## shallow band, the ripples, the hint glows, the planks, the islets and their
+## shallow band, the ripples, the lit lane under the finger, a refusal's band,
+## the hint glows, the planks, the islets and their
 ## rings -- and the numbers go over the top as `draw_string` commands, because
 ## a glyph in a mesh cache key multiplies every state by ten. With it comes
 ## Word Trail's hard-won rule: **a canvas command holds a mesh by RID and not
@@ -22,8 +23,8 @@ extends "res://core/puzzle_base.gd"
 ## photographs a freed RID ("Parameter mesh is null", and an empty card).
 ##
 ## **The order is not a preference, because an islet is opaque and a run ends
-## under one**: the pool, the ripples, the runs, the islets over them, and the
-## numbers last.
+## under one**: the pool, the ripples, the lit lane and a refusal's band, the
+## runs over those, the islets over them, and the numbers last.
 ##
 ## Spec: docs/superpowers/specs/2026-09-20-bridges-flat-design.md, sections 6
 ## and 7. Ported number for number from the canvas mock at
@@ -112,6 +113,39 @@ const NUMBER_MET := 0.38
 ## islet is round and the corners of its cell are water.
 const GRAB := 1.25
 
+# --- the lit lane under the finger, and the band a refusal flashes ---
+## **The player has to see which islet they are about to join before they let
+## go**, which is the whole of the drag's feedback: a gold band down the lane
+## and a gold ring round the far islet, both drawn off `_aim` and `_aim_dir`
+## in `_draw` -- a variable and a `queue_redraw`, never a node.
+##
+## The band is 0.62 of a cell wide, which is the mock's own number and which
+## is what makes it read at **both ends of the band table**: 81 px on the 7x7
+## and 52 px on the 11x11, against runs of 15 and 10. It is wider than a run
+## of three planks (0.59 of a cell) by a hair, so a lit lane never reads as a
+## run that is already there.
+const BEAM_W := 0.62
+const BEAM_RADIUS := 0.4
+## How far the lit lane is let in under the two islets it joins, in islet
+## radii, so it meets the turf instead of stopping short of it.
+const BEAM_TUCK := 0.4
+const BEAM_ALPHA := 0.72
+## The ring round the islet the finger is about to join: its radius and its
+## thickness in islet radii, the floor under that thickness so an 11x11 still
+## draws a ring rather than a hair, and how far its gold is let through.
+const BEAM_RING := 1.22
+const BEAM_RING_W := 0.14
+const BEAM_RING_MIN := 5.0
+const BEAM_RING_ALPHA := 0.9
+## A refusal's own band, and the highlight under the run that is in the way.
+## Both are **plain `BAD` at a fading alpha**, which the pale sea is what
+## allows: on the first cut's deep water `BAD` at any alpha came back mauve
+## and the band had to be drawn opaque and dissolved by a mix (spec section 7).
+## An alpha tuned against a dark ground is not portable to a light one, so
+## these two say out loud that they were measured on the pale sea.
+const REFUSE_ALPHA := 0.88
+const BLOCKER_ALPHA := 0.95
+
 # --- a plank ---
 ## Its corner as a fraction of its own thickness, the lip the deck stands on,
 ## the shadow it throws on the water and where, and the slats across it.
@@ -166,8 +200,17 @@ const BANK_HI := 0.26      # BANK into SURFACE, the turf's sun cap
 const BANK_DEEP := 0.28    # BANK into TEXT, the turf's own lip
 const SAND_DEEP := 0.22    # ACORN into TEXT, the wet sand at the waterline
 
-## The tip card's resting line. Its two refusal lines land with the finger.
+## The tip card names the rule a gesture just broke; it is the only thing on
+## this screen that explains itself, and it is the board's only door to the
+## rules sheet.
+##
+## **There are exactly two refusals and there is no third** (spec section 5).
+## An islet pushed *over* its number is not one of them: it is drawn wrong --
+## a `BAD` ring and washed turf -- and the finger fixes it, which is the house
+## rule that feedback beats a mode.
 const TIP_REST := "Press an islet and drag at the one facing it."
+const TIP_NONE := "Nothing faces it across the water."
+const TIP_CROSS := "Another run crosses that lane."
 
 var state = State.new()
 
@@ -187,6 +230,13 @@ var _aim := ""
 var _aim_dir := Vector2i.ZERO
 ## The laid run the press landed on the water of, for the tap that wipes.
 var _on_run := ""
+## The refusal on screen, or {} when there is none:
+## `{"at": float, "from": Vector2i, "dir": Vector2i, "key": String,
+## "blocker": String}`. The lane is kept as a key and a direction rather than
+## as pixels, so a resize mid-flash moves the band with the lattice. Nothing
+## is recorded under reduce motion -- the tip card still names the rule, but
+## there is no flash to redraw for.
+var _refuse: Dictionary = {}
 ## The islet the last run was laid from: where the solve wave will start.
 var _last := State.NOWHERE
 
@@ -229,6 +279,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_aim = ""
 	_aim_dir = Vector2i.ZERO
 	_on_run = ""
+	_refuse = {}
 	_last = State.NOWHERE
 	_given = {}
 	_wrong = {}
@@ -340,14 +391,117 @@ func _draw() -> void:
 	_shown = _mesh
 	_draw_numbers()
 
+## The order the mock draws in, and it is not a preference either: the lit
+## lane and a refusal's band go **under** the runs, so a highlight on the run
+## in the way reads as a glow beneath it rather than a coat of paint over it,
+## and everything goes under the islets, which are opaque.
 func _build() -> ArrayMesh:
 	var b := Face.Builder.new()
 	_water(b)
+	_aim_band(b)
+	_refusal(b)
 	for key in state.runs:
 		_run(b, String(key))
 	for cell in state.islets:
-		_islet(b, cell)
+		_islet(b, cell, _lean(cell))
 	return b.mesh() if not b.verts.is_empty() else null
+
+## The lane the finger is asking for, lit: a gold band down it and a gold ring
+## round the islet at the far end. This is the drag's whole answer, and it is
+## drawn rather than mounted -- `_aim` and `_aim_dir` are the only state under
+## it, so a drag costs a variable and a `queue_redraw`.
+func _aim_band(b) -> void:
+	if _aim == "" or _from == State.NOWHERE or not state.lanes.has(_aim):
+		return
+	var r := _islet_r()
+	_band(b, _lane_ends(_aim), r * BEAM_TUCK, Color(Pal.SUN, BEAM_ALPHA))
+	var lane: Dictionary = state.lanes[_aim]
+	var other: Vector2i = lane.b if lane.a == _from else lane.a
+	b.stroke(Face.Builder.ring(_at(other), r * BEAM_RING, r * BEAM_RING),
+		maxf(BEAM_RING_MIN, r * BEAM_RING_W), Color(Pal.SUN, BEAM_RING_ALPHA), true)
+
+## A refused drag: the lane flashes in BAD, and on a crossed lane the run in
+## the way flashes under it, so the refusal names the plank the finger has to
+## clear rather than only saying that one exists. The level is the
+## vocabulary's own flash read as a curve (`Motion.flash_level`) off the
+## moment the refusal happened, the way Shikaku and Light Up read theirs; it
+## is zero under reduce motion, which is why nothing is recorded there.
+func _refusal(b) -> void:
+	if _refuse.is_empty():
+		return
+	var level := Motion.flash_level(_now() - float(_refuse.at))
+	if level <= 0.0:
+		return
+	var key := String(_refuse.key)
+	if key == "":
+		# Nothing faces it: the band runs from the islet's rim out to the wall,
+		# down the empty water the finger asked for.
+		_band(b, _empty_lane(Vector2i(_refuse.from), Vector2i(_refuse.dir)), 0.0,
+			Color(Pal.BAD, level * REFUSE_ALPHA))
+	else:
+		_band(b, _lane_ends(key), _islet_r() * BEAM_TUCK,
+			Color(Pal.BAD, level * REFUSE_ALPHA))
+	var blocker := String(_refuse.blocker)
+	if blocker != "" and state.lanes.has(blocker):
+		_band(b, _lane_ends(blocker), 0.0, Color(Pal.BAD, level * BLOCKER_ALPHA))
+
+## One band down a lane: `tuck` is how far past each end it reaches, which is
+## an islet's shoulder for a real lane and nothing for a lane that ends at the
+## wall or for the blocker's own run.
+func _band(b, g: Dictionary, tuck: float, ink: Color) -> void:
+	if ink.a <= 0.0:
+		return
+	var w := _cell() * BEAM_W
+	var at: Vector2
+	var box: Vector2
+	if bool(g.horiz):
+		at = Vector2(minf(g.a.x, g.b.x) - tuck, g.a.y - w * 0.5)
+		box = Vector2(absf(g.b.x - g.a.x) + 2.0 * tuck, w)
+	else:
+		at = Vector2(g.a.x - w * 0.5, minf(g.a.y, g.b.y) - tuck)
+		box = Vector2(w, absf(g.b.y - g.a.y) + 2.0 * tuck)
+	if box.x <= 0.0 or box.y <= 0.0:
+		return
+	b.fan(Face.Builder.round_rect(at, box, w * BEAM_RADIUS), ink)
+
+## The empty water a refused drag ran down: from the islet's rim out to the
+## edge of the lattice, in the shape `_lane_ends` hands back so one `_band`
+## draws both. There is no islet at the far end, which is the refusal.
+func _empty_lane(cell: Vector2i, dir: Vector2i) -> Dictionary:
+	var mid := _at(cell)
+	var o := _origin()
+	var g := _field_size()
+	var a := mid + Vector2(dir) * _islet_r()
+	if dir.x != 0:
+		return {"horiz": true, "a": a,
+			"b": Vector2(o.x + g if dir.x > 0 else o.x, mid.y)}
+	return {"horiz": false, "a": a,
+		"b": Vector2(mid.x, o.y + g if dir.y > 0 else o.y)}
+
+## The lean a refused islet takes: out along the drag the finger just made and
+## back again. It is `Motion.nudge_offset` read as a curve off the refusal's
+## own moment -- a refusal that does not move is not a refusal -- and nothing
+## here is a number of this board's: the recipe's own `NUDGE` and `NUDGE_TIME`
+## carry it, as they carry every other board's nudge.
+func _lean(cell: Vector2i) -> Vector2:
+	if _refuse.is_empty() or cell != Vector2i(_refuse.from):
+		return Vector2.ZERO
+	return Vector2(_refuse.dir) * Motion.nudge_offset(_now() - float(_refuse.at))
+
+## Seconds since the scene started: the one clock every curve here is read at.
+func _now() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+## Keeps the board redrawing while a refusal's flash and lean are alive, and
+## drops the refusal on the frame after the last of them has died. The flash
+## outlasts the nudge, so it is the one that says when this is over.
+func _process(delta: float) -> void:
+	super(delta)
+	if _refuse.is_empty():
+		return
+	if _now() - float(_refuse.at) >= Motion.FLASH_IN + Motion.FLASH_OUT:
+		_refuse = {}
+	_refresh()
 
 ## The pool: its face over a bottom edge in the deeper blue, the paler band of
 ## shallows inside the rim, and a few ripples over the open water.
@@ -451,9 +605,11 @@ func _glow(b, g: Dictionary, total: float) -> void:
 ## with a sun cap on its shoulder, and the ring it wears once its number is
 ## met -- GOOD when it is met exactly, BAD when the finger has pushed it over.
 ## An over-filled islet is **drawn wrong and never refused** (spec section 5).
-func _islet(b, cell: Vector2i) -> void:
+## `lean` is the nudge a refused islet takes, which is why the whole thing is
+## drawn about `mid` rather than about its cell.
+func _islet(b, cell: Vector2i, lean := Vector2.ZERO) -> void:
 	var r := _islet_r()
-	var mid := _at(cell)
+	var mid := _at(cell) + lean
 	var want: int = int(state.need[cell])
 	var got: int = state.degree(cell)
 	var met := got == want
@@ -487,7 +643,10 @@ func _draw_numbers() -> void:
 			ink = Pal.BAD
 		elif got == want:
 			ink = Pal.TEXT.lerp(Pal.PAPER, NUMBER_MET)
-		_glyph(font, px, str(want), ink, _at(cell) + Vector2(0.0, r * NUMBER_AT))
+		# The lean again, so a refused islet's number goes with its turf rather
+		# than standing still while the ground moves out from under it.
+		_glyph(font, px, str(want), ink,
+			_at(cell) + _lean(cell) + Vector2(0.0, r * NUMBER_AT))
 
 ## One glyph centred on `at`, as Nonogram centres a clue number.
 func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
@@ -617,31 +776,66 @@ func _aim_at(at: Vector2) -> void:
 	_aim = "" if other == State.NOWHERE else state.lane_at(_from, other)
 	_refresh()
 
+## Let go. The three ways it can end, and there is no fourth: the lit lane
+## cycles, a refused lane flashes and names its rule, or the tap wipes a run.
+##
+## **A press that never travelled half a cell is not a gesture and is not
+## refused** -- the finger went down on an islet and came up again, which is
+## how a player reads a number without meaning anything by it.
 func _release() -> void:
 	var from := _from
 	var lane := _aim
+	var dir := _aim_dir
 	var wipe := _on_run
 	_from = State.NOWHERE
 	_aim = ""
 	_aim_dir = Vector2i.ZERO
 	_on_run = ""
 	if from != State.NOWHERE:
+		if dir == Vector2i.ZERO:
+			_refresh()
+			return
 		if lane == "":
+			_refuse_at(from, dir, "", "", TIP_NONE)
+			return
+		var blocker := state.blocked_by(lane)
+		if blocker != "":
+			_refuse_at(from, dir, lane, blocker, TIP_CROSS)
 			return
 		var before: int = state.planks(lane)
 		if state.cycle(lane) == before:
+			_refresh()
 			return
 		_last = from
 		_after_move()
 		return
 	if wipe != "" and state.clear_run(wipe):
 		_after_move()
+	else:
+		_refresh()
+
+## A refused drag: the rule on the tip card, and the flash and the lean that
+## carry it. The two refusals are the whole list -- an islet pushed over its
+## number is drawn wrong and never comes through here.
+##
+## Reduce motion keeps the line and drops the movement, so nothing is recorded
+## and the board does not redraw for six tenths of a second to show nothing.
+func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
+		line: String) -> void:
+	_say(line, Face.Expr.STRAIN)
+	if not Motion.reduce:
+		_refuse = {"at": _now(), "from": from, "dir": dir, "key": key,
+			"blocker": blocker}
+	_refresh()
 
 ## Every move clears the last Check's marks -- the board has changed under
-## them -- and counts itself, which is what ends the puzzle when the last
-## plank lands on one single network.
+## them -- and the refusal standing over it, and counts itself, which is what
+## ends the puzzle when the last plank lands on one single network.
 func _after_move() -> void:
 	_wrong = {}
+	_refuse = {}
+	if _tip_text != TIP_REST:
+		_say(TIP_REST, Face.Expr.HAPPY)
 	_refresh()
 	note_move()
 
@@ -666,6 +860,7 @@ func undo() -> bool:
 	if is_done() or not state.undo():
 		return false
 	_wrong = {}
+	_refuse = {}
 	_say(TIP_REST, Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
@@ -685,6 +880,7 @@ func hint() -> bool:
 	hints_used += 1
 	_given[key] = true
 	_wrong = {}
+	_refuse = {}
 	_say("A plank the answer wants is in.", Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
@@ -702,6 +898,7 @@ func check() -> int:
 	checks += 1
 	var wrong: Array = state.wrong_runs()
 	_wrong = {}
+	_refuse = {}
 	for key in wrong:
 		_wrong[key] = true
 	_say("%d %s in the way." % [wrong.size(), "run is" if wrong.size() == 1 else "runs are"]
@@ -717,6 +914,7 @@ func reset_board() -> void:
 	_aim = ""
 	_aim_dir = Vector2i.ZERO
 	_on_run = ""
+	_refuse = {}
 	_last = State.NOWHERE
 	_given = {}
 	_wrong = {}
