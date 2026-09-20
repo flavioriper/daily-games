@@ -5,7 +5,7 @@ extends Control
 ## scaled to whatever the card gives them.
 ##
 ## It is never an image and never a render of a model. Twelve of the
-## fourteen are made almost entirely of the flat boards' own cast --
+## sixteen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
@@ -13,10 +13,12 @@ extends Control
 ## its board are visibly the same drawing. Only the furniture under them (a
 ## tray, a beam, a tile) is drawn here.
 ##
-## The two that borrow nothing are Nonogram and Sudoku, and for the same
-## reason: neither board has a character at all. Their pictures are entirely
-## `_draw` -- tiles for one, a ruled three-by-three fragment with numerals
-## for the other -- and neither has a branch of `_build`.
+## The four that borrow nothing are Nonogram, Sudoku, Bridges and Quilt, and
+## for the same reason: none of those boards has a character at all. Their
+## pictures are entirely `_draw` -- tiles for the first, a ruled
+## three-by-three fragment with numerals for the second, a sea with islets
+## on it for the third and a part-sewn blanket for the fourth -- and none of
+## them has a branch of `_build`.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -41,6 +43,7 @@ const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
+const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -63,6 +66,8 @@ var _c := Vector2.ZERO
 var _band_mesh: ArrayMesh
 ## Bridges' sea, islets and planks, held for the same RID reason.
 var _sea_mesh: ArrayMesh
+## Quilt's backing, its patches and their seams, likewise.
+var _quilt_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -193,6 +198,7 @@ func _draw() -> void:
 		"mushroom": _draw_patch()
 		"sudoku": _draw_sudoku()
 		"bridges": _draw_sea()
+		"quilt": _draw_quilt()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -504,3 +510,61 @@ func _draw_sea() -> void:
 	var needs := ["2", "3", "1"]
 	for i in 3:
 		_text(needs[i], SEA_ISLETS[i].x, SEA_ISLETS[i].y + SEA_R * 0.32, SEA_R * 0.95, Pal.TEXT)
+
+## Quilt: a backing part covered, five patches sewn onto it with the stitch
+## showing along every seam between two of them, and one patch still waiting
+## beside it at the rack's smaller cell -- the whole game in one picture.
+##
+## No cast. This board seats no character either (spec section 8), which
+## makes it the fourth after Nonogram, Sudoku and Bridges, so the picture is
+## entirely drawn furniture. It is **the board's own drawing** and not a
+## second one: `ui/faces/patch_cloth.gd` traces the silhouette, rounds it and
+## lays the lip under it here exactly as `puzzles/quilt2d.gd` does, so a card
+## and its board cannot drift apart. One mesh, one draw call.
+func _draw_quilt() -> void:
+	var cell := 22.0 * _u
+	var b := Face.Builder.new()
+	# The backing: a four-row blanket with two corners bitten out of it, so
+	# the shape reads as cut cloth rather than as a grid.
+	var back: Array = []
+	for r in 4:
+		for c in 8:
+			if (c == 7 and (r == 0 or r == 3)):
+				continue
+			back.append(Vector2i(c, r))
+	var origin := at(-150.0, -44.0)
+	PatchCloth.patch(b, PatchCloth.loops(back), origin, cell, Vector2i.ZERO,
+		Pal.QUILT_BACK, Pal.LINE)
+	# Five patches, by the same colour index the board would give them.
+	var sewn := [
+		[4, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]],
+		[6, [Vector2i(2, 0), Vector2i(3, 0), Vector2i(4, 0), Vector2i(2, 1)]],
+		[2, [Vector2i(5, 0), Vector2i(6, 0), Vector2i(5, 1), Vector2i(6, 1)]],
+		[0, [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), Vector2i(0, 3)]],
+		[3, [Vector2i(5, 2), Vector2i(6, 2), Vector2i(5, 3), Vector2i(6, 3)]],
+	]
+	for entry: Array in sewn:
+		var i := int(entry[0])
+		PatchCloth.patch(b, PatchCloth.loops(entry[1] as Array), origin, cell,
+			Vector2i.ZERO, PatchCloth.cloth(i), PatchCloth.cloth_deep(i))
+	# The stitch, along the four seams where two patches meet. The hem is
+	# left unsewn here: at this size every edge dashed is a hatch, and the
+	# seams between patches are the ones that say what the game is.
+	var seams := [
+		[Vector2(2.0, 0.0), Vector2(2.0, 2.0), 6],
+		[Vector2(5.0, 0.0), Vector2(5.0, 1.0), 2],
+		[Vector2(0.0, 2.0), Vector2(2.0, 2.0), 0],
+		[Vector2(5.0, 2.0), Vector2(7.0, 2.0), 3],
+	]
+	for seam: Array in seams:
+		PatchCloth.stitch(b, origin + (seam[0] as Vector2) * cell,
+			origin + (seam[1] as Vector2) * cell, 0.05 * cell,
+			0.15 * cell, 0.1 * cell, PatchCloth.cloth_stitch(int(seam[2])))
+	# The patch still waiting, at the rack's own smaller cell, and clear of
+	# the blanket so it reads as not yet sewn on.
+	var wait_cell := 15.0 * _u
+	PatchCloth.patch(b, PatchCloth.loops([Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1)]),
+		at(88.0, -15.0), wait_cell, Vector2i.ZERO,
+		PatchCloth.cloth(1), PatchCloth.cloth_deep(1))
+	_quilt_mesh = b.mesh()
+	draw_mesh(_quilt_mesh, null)

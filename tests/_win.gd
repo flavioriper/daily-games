@@ -101,6 +101,9 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			81 - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"quilt": return "%dx%d backing, %d patches, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
+			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -126,6 +129,7 @@ func _solve(id: String) -> void:
 		"bridges": _solve_bridges()
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
+		"quilt": _solve_quilt()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -367,6 +371,48 @@ func _solve_wordtrail() -> void:
 
 func _to_global(p: Vector2) -> Vector2:
 	return _puzzle.get_global_transform_with_canvas() * p
+
+## Quilt: every patch dragged off the rack and onto the cell the answer
+## wants it on. Each is taken hold of by its own first cell -- wherever that
+## cell happens to sit on the rack -- and the finger is aimed `HOLD_LIFT`
+## cells *below* where the patch has to land, because this board holds a
+## dragged patch above the thumb; aiming at the cell itself would place
+## every patch a row and a bit too high and the board would refuse the lot.
+##
+## One hint first, through the HUD, which sews one patch and locks it; that
+## patch is then skipped, because a given refuses to be picked up (which is
+## itself worth exercising: the skip is the harness agreeing with the rule).
+## There is no Check on this board -- nothing wrong can be sitting on it --
+## so `_hud_ok` watches the hint alone, as Word Trail's does.
+func _solve_quilt() -> void:
+	var st = _puzzle._state
+	# Fit check: every cell of the backing must land inside the board slot,
+	# and so must every patch's bay on the rack.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if st.in_region(c, r) and not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	for p in st.shapes.size():
+		if not slot.has_point(_puzzle._bay_home(p)):
+			_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	var cell: float = _puzzle._cell()
+	var rack: float = _puzzle._rack_cell()
+	for p in st.shapes.size():
+		if _puzzle.is_done():
+			return
+		if int(st.at[p]) >= 0:
+			continue
+		var first: Vector2i = (st.shapes[p] as Array)[0]
+		var from: Vector2 = _puzzle._bay_home(p) + (Vector2(first) + Vector2(0.5, 0.5)) * rack
+		var origin := int(st.answer[p])
+		var corner: Vector2 = _puzzle._origin() + Vector2(
+			float(origin % st.cols), float(origin / st.cols)) * cell
+		var to: Vector2 = corner + (Vector2(first) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * cell
+		_drag_local(from, to)
 
 func _tap_local(local: Vector2) -> void:
 	_tap_global(_to_global(local))
