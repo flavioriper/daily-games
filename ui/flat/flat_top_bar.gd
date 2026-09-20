@@ -36,6 +36,15 @@ const BADGE_CYCLE := 2.4
 const LEAF_AT := 0.2
 const LEAF := 40.0
 const BRAND_TITLE := "BINAiRO"
+## The width the title's block gets: the row less the back button, the three
+## icon buttons and the four separations (1000 - 110 - 3 x 110 - 4 x 16 =
+## 496). A title wider than this is shrunk to fit rather than clipped --
+## Mushroom Patch measures 635 in Fredoka 700 at the theme's 84 (2026-09-20),
+## where Hidden Word's 482 is the longest that fits as it stands.
+const BLOCK := 496.0
+## No title shrinks below this; past it the name is too long for the screen
+## and the answer is a shorter name.
+const TITLE_MIN := 56
 
 var title_text := ""
 var motto_text := ""
@@ -82,6 +91,7 @@ func _build() -> void:
 	_title.text = title_text
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_title)
+	_fit_title()
 	_title.add_child(SunDot.new(_title))
 	_motto = Label.new()
 	_motto.theme_type_variation = "BinairoMotto" if brand_binairo else "FlatMotto"
@@ -101,6 +111,35 @@ func _build() -> void:
 	reset_button.visible = with_reset
 	hint_button = _button("bulb", hint)
 	settings_button = _button("gear", settings)
+
+## `_title` fires this once itself, synchronously, the moment it enters the
+## already-themed tree inside _build(); the notification hook below covers
+## the case that add_child does not resolve it in time or a theme is
+## installed after the fact. Always clears any prior override first, so a
+## repeat call always measures the theme's true size and not a size this
+## function set on an earlier pass -- without that, a shrunk title would
+## shrink again on every re-entry.
+func _fit_title() -> void:
+	if _title == null:
+		return
+	_title.remove_theme_font_size_override("font_size")
+	var font := _title.get_theme_font("font")
+	var size := _title.get_theme_font_size("font_size")
+	# A harness that never installs ui/theme.gd's theme (nothing up the tree
+	# knows the GameWordmark variation) hands back a null font or a zero
+	# size here; leave the label exactly as it fell back rather than fit it
+	# to garbage.
+	if font == null or size <= 0:
+		return
+	var width: float = font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	if width <= 0.0 or width <= BLOCK:
+		return
+	var fitted := floori(float(size) * BLOCK / width)
+	_title.add_theme_font_size_override("font_size", maxi(fitted, TITLE_MIN))
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED:
+		_fit_title()
 
 ## A button keeps its own square and sits centred on the row, as the other
 ## top bar's do.
