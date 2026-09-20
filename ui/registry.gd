@@ -2,18 +2,33 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: **thirteen cards over two pages**, twelve on the
-## first -- three across and four down -- and the thirteenth alone on the
-## second, in the order they are drawn. Twelve on a page is not a taste: it
-## is what 80 of margin, 60 of gaps, a 380 header, a 180 day row and a 150
-## bar leave for four rows of 252, so the thirteenth card bought its seat
-## from the day row's pager rather than out of the pictures (spec
-## 2026-09-20-sudoku-flat-design.md, section 9). Twelve of the thirteen open
-## a flat board; one names a board that has never been drawn flat and says
-## `soon` instead of opening (ui/menu.gd draws it dimmed with no go button).
-## Snake Apple's `soon` card left the grid on 2026-09-19 to make room for
-## Queens, and Horse Pen's left the same day for Hidden Word: both are being
-## redesigned outright, and their island boards stay under More.
+## `PUZZLES` is the grid: **fourteen cards over two pages**, in the order they
+## are drawn. **All fourteen open a flat board, and there is no `soon` card
+## left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
+## room for Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
+## 2026-09-20 for Word Trail; all three keep their island board under More.
+## The dimmed-card machinery -- the `soon` flag, the `SOON` pill, the 55% ink
+## and ui/menu.gd's `blocked` signal -- stays in the code for the next board
+## that is named before it is drawn, but nothing exercises it now.
+##
+## **Fourteen does not fit the three-by-four grid, so the grid pages.** The
+## fourth row was full at twelve, and a `GridContainer` that is
+## SIZE_EXPAND_FILL simply runs to five rows and takes a card from 252 to
+## about 210 -- every one of those 42 pixels out of the 92 px picture the
+## card-art budget is written against. The answer is the pager the campsite
+## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
+## and the strip is its own pill between the grid and the bar): twelve cards
+## on page one, and Mushroom Patch and Sudoku on page two, each card still
+## 252 with its 92 px picture. See
+## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
+##
+## Sudoku is the fourteenth, added on 2026-09-20. Its own branch had built a
+## pager into the day row; main's, built in parallel, stands in its own strip
+## between the grid and the bottom bar instead, because a pager beside
+## "Day N" reads as a way to change the day. Main's is the one that shipped
+## and the one this entry pages onto; see
+## docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9 and its
+## amendments.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -189,23 +204,47 @@ const PUZZLES := [
 		"tip": false,
 		"difficulties": [0, 1, 2],
 	},
-	# --- the end of the last row: named, drawn, and not yet playable here.
-	# It has a board on the stage behind More (`legacy` names it), and comes
-	# back to this row the day it is drawn flat.
 	{
-		"id": "pipes",
+		"id": "wordtrail",
 		"kind": "puzzle",
-		"title": "Pipes",
-		"blurb": "Route the water. It won't climb without a pump.",
-		"short": "Route the water\nuphill with pumps.",
-		"soon": true,
-		"legacy": "pipes_island",
+		"title": "Word Trail",
+		"blurb": "Trace every hidden word. The lengths are the only clue.",
+		"short": "Trace the words,\nfill the field.",
+		"motto": "Every letter finds its way",
+		"footer": "Trace · Bend · Fill",
+		# It picks nothing up, and there is no Check because nothing wrong can
+		# be sitting on the board: only a right word locks. So Reset rides up
+		# into the top bar and the bottom slot is the tip card alone.
+		"script": "res://puzzles/word_trail2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
 	},
-	# --- page two. Sudoku is the thirteenth entry and it displaces nothing:
-	# twelve is what four rows of 252 buy, so the grid grew a second page
-	# rather than a shorter card (spec 2026-09-20-sudoku-flat-design.md,
-	# section 9). It stays last so page one keeps exactly the twelve cards it
-	# has, in exactly the order it has them.
+	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
+	# these are entries thirteen and fourteen. Mushroom Patch was the
+	# thirteenth and the first card that was *added* rather than swapped into
+	# a `soon` slot, which is what pushed the grid onto a second page at all;
+	# Sudoku is the fourteenth and joins it there. Twelve a page is not a
+	# taste -- it is what four rows of 252 buy -- so the grid grew a page
+	# rather than a shorter card, and both of these stay last so page one
+	# keeps exactly the twelve cards it has, in exactly the order it has
+	# them. Sudoku's own spec (2026-09-20-sudoku-flat-design.md, section 9)
+	# argued that pager into the day row; the user ruled otherwise and the
+	# strip under the grid is what shipped. See that section's amendments.
+	{
+		"id": "mushroom",
+		"kind": "puzzle",
+		"title": "Mushroom Patch",
+		"blurb": "Every number counts the mushrooms around it. Find them all.",
+		"short": "The numbers count\nwhat is hidden.",
+		"motto": "Every patch has its count",
+		"footer": "Count · Prove · Plant",
+		"script": "res://puzzles/mushroom2d.gd",
+		"shell": "flat",
+		"tray": "patch",
+		"difficulties": [0, 1, 2],
+	},
 	{
 		"id": "sudoku",
 		"kind": "puzzle",

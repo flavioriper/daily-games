@@ -4,14 +4,19 @@ extends Control
 ## board itself plays with (ui/faces/), seated in a 320 by 118 box and
 ## scaled to whatever the card gives them.
 ##
-## It is never an image and never a render of a model. Ten of the twelve
-## are made almost entirely of the flat boards' own cast -- Binairo's sun and
-## moon, Code Break's friends, Balance's fruit, Untangle's lanterns,
-## Shikaku's markers, Tents' tent and conifers, Light Up's lamp, One Line's
-## snail, Queens' bee -- so a card and its board are visibly the same
-## drawing. Only the furniture under them (a tray, a beam, a tile, a pipe) is
-## drawn here, and only the one `soon` card (Pipes) is drawn here outright,
-## because the board it names has no flat cast to borrow from yet.
+## It is never an image and never a render of a model. Twelve of the
+## fourteen are made almost entirely of the flat boards' own cast --
+## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
+## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
+## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
+## sprout that stands in for Hidden Word's and Word Trail's -- so a card and
+## its board are visibly the same drawing. Only the furniture under them (a
+## tray, a beam, a tile) is drawn here.
+##
+## The two that borrow nothing are Nonogram and Sudoku, and for the same
+## reason: neither board has a character at all. Their pictures are entirely
+## `_draw` -- tiles for one, a ruled three-by-three fragment with numerals
+## for the other -- and neither has a branch of `_build`.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -31,6 +36,8 @@ const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
+const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
@@ -128,6 +135,28 @@ func _build() -> void:
 			# No cast: the three marks are the whole picture, and _draw lays
 			# them and the band under them, so this branch seats nothing.
 			pass
+		"wordtrail":
+			# The sprout beside a small field: the field is one plain Control
+			# whose own `draw` this branch wires up, so the picture costs one
+			# branch of _build and none of _draw (spec section 11).
+			_seat(SproutFace.new(), 58.0, -122.0, 6.0)
+			var field := Control.new()
+			field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			field.size = Vector2(210.0, 100.0) * _u
+			field.position = at(32.0, 2.0) - field.size * 0.5
+			field.draw.connect(_draw_word_field.bind(field))
+			add_child(field)
+		"mushroom":
+			# Two mushrooms on the turf strip _draw lays under them, the tile
+			# and its numeral drawn beside them. `sprig` stays false: it marks
+			# a mushroom a hint planted, which would be a lie on a card.
+			# The y's here were set by eye against a rendered, zoomed crop,
+			# not by the body's arithmetic alone (a first pass trusted the
+			# arithmetic and buried both mushrooms to the chin -- see
+			# _draw_patch's comment): each mushroom's own foot lands right at
+			# the strip's top (24), fully clear of it, rather than sunk in.
+			_seat(MushroomFace.new(), 62.0, -104.0, -1.0)
+			_seat(MushroomFace.new(), 48.0, -26.0, 5.0)
 		_:
 			pass
 
@@ -145,8 +174,8 @@ func _draw() -> void:
 		"oneline": _draw_trail()
 		"nonogram": _draw_mosaic()
 		"queens": _draw_regions()
-		"pipes": _draw_pipes()
 		"hiddenword": _draw_letters()
+		"mushroom": _draw_patch()
 		"sudoku": _draw_sudoku()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
@@ -289,17 +318,83 @@ func _draw_letters() -> void:
 		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
 		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
 
-## Pipes is the one `soon` card left: no flat board, so no cast to borrow.
-## It is one small drawing, sized to say what the puzzle is at a glance and
-## no more. Horse Pen left `Registry.PUZZLES` for Hidden Word (`b2de66a`),
-## and its own drawing (`_draw_paddock`) should have left with it -- the
-## precedent is Snake Apple's `_draw_burrow`, deleted in the same commit
-## that dropped its card (`b6723a9`) -- but it was left behind until now.
-func _draw_pipes() -> void:
-	_round(-92.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
-	_round(22.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
-	_line([Vector2(-56.0, 20.0), Vector2(-56.0, -34.0), Vector2(58.0, -34.0), Vector2(58.0, 20.0)], 26.0, Pal.WATER_HI)
-	_line([Vector2(-56.0, 6.0), Vector2(-56.0, -28.0)], 8.0, Color(Pal.SURFACE, 0.5))
+## Mushroom Patch: the turf strip the pair stands on -- TURF_REACH, the same
+## pale meadow a covered cell wears on the board itself, so the card and the
+## field read as one screen -- and, beside them, a cream SURFACE tile
+## carrying a number. The numeral is written in LEAF_DEEP rather than TEXT: a
+## turned-over cell's own ink is TEXT, but LEAF_DEEP is what a number turns
+## the moment its count is satisfied, and that is the hint worth giving on a
+## card for a board nobody has played yet. The tile stays SURFACE rather than
+## washing toward LEAF, because a fully green tile would claim a solved board
+## rather than hint at the mechanic.
+##
+## The strip's top is 24 and its height 35, landing its bottom exactly on the
+## box's own edge (ART.y * 0.5 = 59) with its radius fully inside that span
+## -- Hidden Word's turf band (_draw_letters) is drawn the same way for the
+## same reason: a strip cut short of the radius, or clipped mid-curve by
+## `clip_contents`, shows its straight-cut bottom overhanging the card
+## plate's own rounded corner, which reads as a drawing bug rather than
+## ground running off the frame. A first pass here got this wrong (top 20,
+## height 50, bottom 70 clipped at 59) and, worse, seated the mushrooms with
+## their feet above the strip's top, burying them to the chin and clipping
+## the smaller one's face; both are fixed by the numbers below, checked
+## against a rendered, zoomed crop rather than by arithmetic alone.
+func _draw_patch() -> void:
+	_round(-150.0, 24.0, 195.0, 35.0, 16.0, Pal.TURF_REACH)
+	_round(70.0, -38.0, 76.0, 76.0, 14.0, Pal.SURFACE)
+	_text("3", 108.0, 12.0, 42.0, Pal.LEAF_DEEP)
+
+## Word Trail: a small field of letter tiles beside the sprout, four by
+## three, with two grey wall slabs and one trail bending twice through the
+## rest in Pal.LEAF over Pal.LEAF_TILE, its letters in Pal.LEAF_DEEP. Wired
+## as `field`'s own `draw` handler rather than a branch of this file's
+## `_draw()` (spec section 11), so the field is a plain Control this method
+## draws directly on, in its own local pixels -- never a mesh, an image or a
+## SubViewport. The letters spell nothing, so the card never reads as a
+## solvable day.
+func _draw_word_field(field: Control) -> void:
+	const COLS := 4
+	const ROWS := 3
+	var raw := minf(field.size.x / COLS, field.size.y / ROWS)
+	var gap := raw * 0.14
+	var cell := minf((field.size.x - gap * (COLS - 1)) / COLS, (field.size.y - gap * (ROWS - 1)) / ROWS)
+	var fw := cell * COLS + gap * (COLS - 1)
+	var fh := cell * ROWS + gap * (ROWS - 1)
+	var origin := (field.size - Vector2(fw, fh)) * 0.5
+	var walls := [Vector2i(3, 0), Vector2i(0, 2)]
+	var trail := [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1), Vector2i(2, 1), Vector2i(2, 2), Vector2i(3, 2)]
+	var letters := {
+		Vector2i(0, 0): "Q", Vector2i(1, 0): "X", Vector2i(2, 0): "K",
+		Vector2i(0, 1): "R", Vector2i(1, 1): "J", Vector2i(2, 1): "Z", Vector2i(3, 1): "Y",
+		Vector2i(1, 2): "F", Vector2i(2, 2): "V", Vector2i(3, 2): "W",
+	}
+	var on_trail := {}
+	for c in trail:
+		on_trail[c] = true
+	var corner := func(cell_pos: Vector2i) -> Vector2:
+		return origin + Vector2(cell_pos) * (cell + gap)
+	for r in ROWS:
+		for k in COLS:
+			var cell_pos := Vector2i(k, r)
+			var face: Color = Pal.SURFACE
+			if walls.has(cell_pos):
+				face = Pal.STONE_GIVEN
+			elif on_trail.has(cell_pos):
+				face = Pal.LEAF_TILE
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = face
+			sb.set_corner_radius_all(int(cell * 0.18))
+			field.draw_style_box(sb, Rect2(corner.call(cell_pos), Vector2(cell, cell)))
+	if trail.size() > 1:
+		var pts := PackedVector2Array()
+		for c in trail:
+			pts.append(corner.call(c) + Vector2.ONE * (cell * 0.5))
+		field.draw_polyline(pts, Color(Pal.LEAF, 0.5), cell * 0.42, true)
+	var font := CozyTheme.display(700)
+	for cell_pos: Vector2i in letters:
+		var mid: Vector2 = corner.call(cell_pos) + Vector2.ONE * (cell * 0.5)
+		var ink: Color = Pal.LEAF_DEEP if on_trail.has(cell_pos) else Pal.TEXT
+		MosaicTile.letter(field, mid, cell, String(letters[cell_pos]), Vector2.ONE, ink, font)
 
 ## Sudoku: a three-by-three fragment of the board with the heavy rule round
 ## it and three numerals in ink. No cast -- this board's pieces are numbers,

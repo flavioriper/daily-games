@@ -3,8 +3,8 @@ extends "res://ui/puzzle_host.gd"
 ## The flat screen's shell: the same host as every other board's (every
 ## handler, the sheets, the analytics and the spawn are inherited) with the
 ## chrome swapped for the reference's cream rows, and the win screen in place
-## of the solved overlay. Ten boards ask for it through the registry's
-## `shell` field, Binairo through Queens; the island boards keep
+## of the solved overlay. All fourteen grid cards ask for it through the
+## registry's `shell` field, Binairo through Sudoku; the island boards keep
 ## ui/puzzle_host.gd's rows.
 ##
 ## The one row the flat screens do not share is the tray: Binairo arms a
@@ -12,13 +12,15 @@ extends "res://ui/puzzle_host.gd"
 ## seven, Balance steps a weight from one card per fruit, Nonogram paints
 ## with one of two tile chips, and Shikaku picks nothing up at all. Queens
 ## arms a queen or a cross chip in the same tile tray, built with
-## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`. Sudoku's ten
-## digit chips fire straight through `_on_pick` to the board's own `pick()`,
-## the way Code Break's friends do, rather than through `_on_brush`: nothing
-## on that row stays armed except the pencil, which the board owns. The
-## registry names which (`"tray": "friends"`, `"weights"`, `"tiles"`,
-## `"queens"`, `"keys"`, `"digits"`, `"none"`), because the host lays out its
-## rows before it has a puzzle to ask.
+## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`, and Mushroom
+## Patch arms a mushroom or a pebble chip in that same tray again, built with
+## `TileTray.PATCH`. Hidden Word types instead: its tray is a keyboard. And
+## Sudoku's ten digit chips fire straight through `_on_pick` to the board's
+## own `pick()`, the way Code Break's friends do, rather than through
+## `_on_brush`: nothing on that row stays armed except the pencil, which the
+## board owns. The registry names which (`"tray": "friends"`, `"weights"`,
+## `"tiles"`, `"queens"`, `"patch"`, `"keys"`, `"digits"`, `"none"`), because
+## the host lays out its rows before it has a puzzle to ask.
 ##
 ## Nor do they all carry an actions row. A board that is its own continuous
 ## check has nothing to put in one -- no Check, and Reset riding up in the
@@ -192,6 +194,11 @@ func _build_chrome(root: VBoxContainer) -> void:
 		"queens":
 			# Queens' pair: the same tray as Nonogram's, with the queen set.
 			tray = TileTray.new(TileTray.QUEENS)
+			tray.pick.connect(_on_brush)
+			rows.append(TileTray.HEIGHT)
+		"patch":
+			# Mushroom Patch's pair: the same tray again, with the patch set.
+			tray = TileTray.new(TileTray.PATCH)
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
 		"keys":

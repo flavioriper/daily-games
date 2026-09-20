@@ -25,6 +25,11 @@ extends SceneTree
 ## Nonogram is swept along its top row with the tile chip, so the strip shows
 ## the cells sinking under the finger and the tiles arriving in a wave, and
 ## the idle window has a row of tiles in it.
+## Word Trail has the first word's trail traced cell by cell from TAP_AT and
+## let go, so the strip shows the beam growing to the finger, the release and
+## the lock wave running down the ribbon; it gets three extra frames and a
+## later idle window for that, because the wave is over in a fifth of a
+## second a tile.
 ## Queens has the answer's first queen seated, so the strip shows the crown
 ## pop and the wave of crosses running out of her, and the idle window has a
 ## queen and her crosses in it.
@@ -36,6 +41,10 @@ extends SceneTree
 ## `toast` refuses a guess that is not a word, `hint` presses the real hint
 ## button, `solve` types the day's own word, and `over` spends all six rows so
 ## the strip catches the keyboard leaving and the sprout bringing the word.
+## Mushroom Patch has the answer's first mushroom planted with the mushroom
+## chip the tray arms by default, so the strip shows the pop, the ring, the
+## puff and -- the point of the shot -- the count wash arriving on the givens
+## around it as their numerals bump and turn green.
 ##
 ## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
 ## strip shows the selection's washes, a digit dropping in and the wave the
@@ -58,6 +67,8 @@ extends SceneTree
 ## pixel for pixel: under reduce motion nothing on a settled board may move.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
+
+const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
 
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
 ## The reduce-motion pair: how long after the last shot the extra one is
@@ -110,6 +121,15 @@ var _reset_at := INF
 const WORD_EVERY := 0.28
 var _words: Array[String] = []
 var _word_at := INF
+## Word Trail's trail: the first word's own cells, touched one at a time
+## TRAIL_STEP apart and let go one step after the last, so the strip catches
+## the beam growing to the finger, the release and the lock wave running down
+## the ribbon. A straight _begin_drag would cut the corners a bent trail is
+## made of.
+const TRAIL_STEP := 0.12
+var _trail_cells: Array[Vector2] = []
+var _trail_last := Vector2.ZERO
+var _trail_at := INF
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -123,6 +143,14 @@ func _initialize() -> void:
 		else:
 			_mode = args[i]
 	_empty = _mode == "empty"
+	if _id == "wordtrail" and not _empty:
+		# The trail is traced from TAP_AT and the lock wave runs off its
+		# release, so three frames go between the usual ones: the trail
+		# nearly whole, the wave part-way down the ribbon, and the word
+		# settled. The idle window opens after the wave rather than during it.
+		_shots = [0.35, 0.9, 1.65, 1.9, 2.05, 2.25, 2.8, 3.8]
+		_idle_from = 2.6
+		_idle_to = 4.6
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -188,6 +216,10 @@ func _process(delta: float) -> bool:
 			_tap_queens()
 		elif _entry.id == "hiddenword" and not _empty:
 			_type_hiddenword()
+		elif _entry.id == "mushroom" and not _empty:
+			_tap_mushroom()
+		elif _entry.id == "wordtrail" and not _empty:
+			_drag_wordtrail()
 		elif _entry.id == "sudoku" and not _empty:
 			_tap_sudoku()
 			if _mode == "hint":
@@ -219,6 +251,8 @@ func _process(delta: float) -> bool:
 		# a third and two thirds of the way down the board.
 		_shots[4] = _t + 0.15
 		_shots[5] = _t + 0.40
+	if _t >= _trail_at:
+		_trail_step()
 	if _t >= _commit_at:
 		_commit_at = INF
 		_tap_key("Key_Enter")
@@ -298,6 +332,38 @@ func _begin_nonogram_sweep() -> void:
 func _tap_queens() -> void:
 	var c: int = int(_puzzle.state.solution[0])
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c))
+
+## Mushroom Patch: one real touch on the answer's first mushroom (reading
+## order, sorted by y then x), with the mushroom chip the tray arms by
+## default. That cell is the point of the shot only if planting it turns a
+## given neighbour's numeral green; if the first mushroom in reading order
+## touches none, the one whose plant changes the most numbers is tapped
+## instead, so the strip always catches the wash landing.
+func _tap_mushroom() -> void:
+	var st = _puzzle.state
+	var cells: Array = st.mushrooms.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	var best: Vector2i = cells[0]
+	if _mushroom_wash_count(cells[0]) == 0:
+		var best_score := 0
+		for cell in cells:
+			var score := _mushroom_wash_count(cell)
+			if score > best_score:
+				best_score = score
+				best = cell
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(best.y, best.x))
+
+## How many of `cell`'s given neighbours would turn green the instant it is
+## planted: on a fresh board every given starts short, so a neighbour whose
+## own number is exactly one goes straight to settled.
+func _mushroom_wash_count(cell: Vector2i) -> int:
+	var st = _puzzle.state
+	var c := 0
+	for p in MushroomGen.neighbours(cell, st.n):
+		if st.given.has(p) and int(st.given[p]) == 1:
+			c += 1
+	return c
 
 ## Hidden Word: type a five-letter guess on the real keyboard, one key tapped
 ## like a thumb, and press Enter a beat later. The guess is picked off the
@@ -479,6 +545,44 @@ func _begin_tents_sweep() -> void:
 	var from: Vector2 = xf * _puzzle.cell_to_local(0, 0)
 	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
 	_begin_drag(from, to - from)
+
+## Word Trail: trace the first word -- the shortest, since the board sorts
+## them that way -- cell by cell through the board's own input path. The
+## trail bends, so it is a list of waypoints and not a straight drag, and one
+## step passes between the last cell and the release so the strip can catch
+## the beam whole before the wave takes over.
+func _drag_wordtrail() -> void:
+	var cells: Array = _puzzle._state.words[0]["path"]
+	if cells.size() < 2:
+		return
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	_trail_cells = []
+	for cell: Vector2i in cells:
+		_trail_cells.append(xf * _puzzle.cell_to_local(cell.y, cell.x))
+	_trail_last = _trail_cells.pop_front()
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = _trail_last
+	root.push_input(down, true)
+	_trail_at = _t + TRAIL_STEP
+
+## One cell a step, then the release on the one after the last.
+func _trail_step() -> void:
+	if _trail_cells.is_empty():
+		var up := InputEventScreenTouch.new()
+		up.index = 0
+		up.pressed = false
+		up.position = _trail_last
+		root.push_input(up, true)
+		_trail_at = INF
+		return
+	_trail_last = _trail_cells.pop_front()
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = _trail_last
+	root.push_input(drag, true)
+	_trail_at = _t + TRAIL_STEP
 
 ## The touch that starts a drag, at `from`, to travel `by` over DRAG_TIME.
 func _begin_drag(from: Vector2, by: Vector2) -> void:

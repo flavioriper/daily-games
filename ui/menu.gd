@@ -1,7 +1,8 @@
 extends Control
 
 ## The first screen: the wordmark and the two characters at the top, the day
-## row under them, twelve puzzle cards in a grid of three, and the bottom
+## row under them, a page of twelve puzzle cards in a grid of three, and the
+## bottom
 ## bar. Everything on it is drawn in 2D -- there is no stage, no World3D and
 ## no model anywhere on this screen.
 ##
@@ -9,9 +10,14 @@ extends Control
 ## campsite did that this does not: a painted 3D setting under a shift lens,
 ## its own light and soft focus, a live diorama in every card, and pages of
 ## nine turned with buttons. Twelve cards fit on one screen, so the pager
-## went with it -- and came back on the day row (day_row.gd's `set_pager`)
-## once a thirteenth card needed a second page; at one page it stays hidden,
-## so the twelve-card screen still looks exactly as it did.
+## went with it -- and came back on 2026-09-20 once a thirteenth card
+## needed a second page, in its own strip between the grid and the bottom
+## bar (`_pager`, built the way `_toast` already is: an overlay on
+## `_list_root`, not a row of the column). A prev chevron first grew out of
+## the day row's own dead one instead, and the user overturned that: the
+## day row's chevron is decoration by their own 2026-09-18 decision, and a
+## pager beside "Day N" reads as *next day*. The day row is untouched by
+## any of this.
 ##
 ## Opening a card hands the puzzle to a FlatHost and hides the grid; the
 ## host's close shows it again. The host is always this node's last child
@@ -37,6 +43,7 @@ const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const BottomBar = preload("res://ui/menu/bottom_bar.gd")
 const LegacySheet = preload("res://ui/menu/legacy_sheet.gd")
+const Icons = preload("res://ui/icons.gd")
 
 ## The old game's scene and its two hosts, loaded only when More opens one.
 const STAGE_SCENE := "res://legacy/world/stage.tscn"
@@ -49,8 +56,13 @@ const GAP := 20
 const COLS := 3
 ## Twelve cards a page: three across and four down is what 80 of margin, 60
 ## of gaps, a 380 header, a 180 day row and a 150 bar leave for rows of 252.
-## The thirteenth card gets a second page rather than a shorter card
-## (spec 2026-09-20-sudoku-flat-design.md, section 9).
+## A thirteenth card gets a second page rather than a shorter card -- this is
+## not any one board's work, it is the first screen's (see docs/superpowers/
+## specs/2026-09-20-mushroom-patch-flat-design.md, section 2, and the sibling
+## specs of whichever other board lands beside it). Sudoku made it fourteen
+## on 2026-09-20 and page two grew a second card; nothing here had to change
+## for it, which is the whole point of paging the grid rather than counting
+## the cards.
 const PER_PAGE := 12
 ## Entrance delays: the header first, then the day row, then a wave down the
 ## cards, then the bar.
@@ -67,10 +79,53 @@ const TOAST_FADE := 0.25
 ## Where the line sits: this far above the screen's bottom, and this tall.
 const TOAST_OVER := 150.0 + 40.0 + 10.0
 const TOAST_H := 88.0
+## The pager strip, laid over the bar the way the toast is: the header, the
+## day row, the grid and the bar already spend the screen exactly (see the
+## toast's own comment in _build_list), so this is an overlay on
+## `_list_root` rather than a row of the column, and it costs the grid
+## nothing -- a card stays 252 whether or not a second page exists.
+##
+## The screen leaves no free band for it: the true gap between the grid and
+## the bar is GAP (20), the same 20 already spent as separation everywhere
+## else. Rather than a bare row of tiny controls straddling that seam (which
+## reads as ink on the card whose rim it crosses, not a control of its own --
+## found by review, 2026-09-20), the pager is its own paper pill (built in
+## _build_list below, `CozyTheme.card` -- the HUD's usual card stylebox)
+## that floats across the seam: PAGER_MID is the seam's vertical centre,
+## and the pill is centred there and centred horizontally, so wherever it
+## overlaps a neighbour it reads as a chip laid over the page rather than a
+## mark on either one.
+##
+## That overlap is real and was measured by review, 2026-09-20: the pill's
+## buttons sit about 18px inside the last card row's bottom rim. Kept rather
+## than pushed lower, on the ruling that the pill is drawn on top and, once
+## _enter_pager below stops it being tappable while it is still fading in,
+## a tap that lands there correctly belongs to whichever control the player
+## can actually see -- and the bar sits directly under it with no spare band
+## to push into.
+const PAGER_MID := 150.0 + 40.0 + 10.0
+## The pill's own slot: taller than the pill needs, so CenterContainer never
+## clips it.
+const PAGER_SLOT_H := 64.0
+## Chunky, round and bordered, the same visual language as every other
+## control on this screen (the bar's tabs, a card's go button) rather than a
+## bare vector line -- the first version of this strip used a 16px icon on
+## no background at all and read as an artefact, not a button.
+const PAGER_BTN := Vector2(44.0, 44.0)
+const PAGER_ICON := 20.0
+## The pager's dots. Two is what thirteen or fourteen cards need; the row
+## draws as many as it is given, so a fifteenth board costs nothing here. The current
+## page is a filled disc; every other page is a ring, so the two are never
+## just two shades of the same filled dot.
+const DOT := 14.0
+const DOT_GAP := 10.0
 
 var settings_sheet: Control
 var legacy_sheet: Control
 var cards: Array = []
+## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
+## see _build_page().
+var _fillers: Array = []
 var header: Control
 var day_row: Control
 var bar: Control
@@ -79,6 +134,12 @@ var _grid: GridContainer
 var _page := 0
 var _toast: Label
 var _toast_tw: Tween
+## The pager strip: prev, dots, next, between the grid and the bar.
+var _pager: Control
+var _prev: Button
+var _next: Button
+var _dots: Control
+var _pager_tw: Tween
 ## The stage, while something from More is open on it.
 var _stage: Node
 
@@ -134,8 +195,6 @@ func _build_list() -> void:
 
 	day_row = DayRow.new()
 	day_row.name = "DayRow"
-	day_row.prev.connect(func() -> void: _turn_page(-1))
-	day_row.next.connect(func() -> void: _turn_page(1))
 	root.add_child(day_row)
 
 	# --- the cards, a page at a time ---
@@ -146,7 +205,6 @@ func _build_list() -> void:
 	_grid.add_theme_constant_override("h_separation", GAP)
 	_grid.add_theme_constant_override("v_separation", GAP)
 	root.add_child(_grid)
-	_build_page()
 
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
@@ -155,10 +213,57 @@ func _build_list() -> void:
 		_say("%s is drawn but not built yet." % tab.capitalize()))
 	root.add_child(bar)
 
+	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
+	# above for why it is a pill and not a bare row, and PER_PAGE above and
+	# docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
+	# section 2 ("a next and a prev under the grid with a dot each") for
+	# what it is answering. Built even at one page and simply hidden
+	# (_set_pager, called from _build_page below), the way the toast exists
+	# whether or not there is anything to say. Built *before* the toast below
+	# so it lands under it in `_list_root`'s children: the toast has to draw
+	# over the pager where the two overlap (found by review, 2026-09-20 --
+	# a wrapped two-line toast used to read partly under the pill).
+	_pager = Control.new()
+	_pager.name = "Pager"
+	_pager.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pager.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_pager.offset_left = 0.0
+	_pager.offset_right = 0.0
+	_pager.offset_top = -PAGER_MID - PAGER_SLOT_H * 0.5
+	_pager.offset_bottom = -PAGER_MID + PAGER_SLOT_H * 0.5
+	_list_root.add_child(_pager)
+	# CenterContainer, not anchors: the pill hugs its own content (prev, the
+	# dots, next) rather than spanning the margin-to-margin width every
+	# other row on this screen uses, so it reads as a floating chip and not
+	# another card.
+	var pager_center := CenterContainer.new()
+	pager_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pager_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pager.add_child(pager_center)
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", CozyTheme.card(Pal.SURFACE, 24, Pal.LINE, 4, 8))
+	pager_center.add_child(pill)
+	var pager_row := HBoxContainer.new()
+	pager_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	pager_row.add_theme_constant_override("separation", 12)
+	pill.add_child(pager_row)
+	_prev = _page_button("chevron_left")
+	_prev.pressed.connect(func() -> void: _turn_page(-1))
+	pager_row.add_child(_prev)
+	_dots = Control.new()
+	_dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dots.draw.connect(_draw_dots.bind(_dots))
+	pager_row.add_child(_dots)
+	_next = _page_button("chevron_right")
+	_next.pressed.connect(func() -> void: _turn_page(1))
+	pager_row.add_child(_next)
+
 	# A line about something that is only drawn, laid over the bar rather
 	# than given a row of the column: four rows of cards and the bar spend
 	# the screen exactly, and a row that is empty most of the time would
-	# come out of the cards.
+	# come out of the cards. Built after the pager (see above) so a wrapped
+	# two-line toast always reads on top of the pill where they overlap.
 	_toast = Label.new()
 	_toast.name = "Toast"
 	_toast.theme_type_variation = "CardBodyDim"
@@ -173,6 +278,14 @@ func _build_list() -> void:
 	_toast.offset_top = -TOAST_OVER - TOAST_H
 	_toast.offset_bottom = -TOAST_OVER
 	_list_root.add_child(_toast)
+
+	# Built last: _set_pager (called from _build_page) reaches into _pager,
+	# _prev, _next and _dots, all built just above -- calling this any
+	# earlier (it once sat right after _grid, before any of them existed)
+	# left _set_pager silently failing on a null _pager and _dots never
+	# getting told how many pages there are, which is why the very first
+	# render only ever showed one dot.
+	_build_page()
 
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
@@ -194,6 +307,10 @@ func _build_page() -> void:
 		_grid.remove_child(c)
 		c.queue_free()
 	cards.clear()
+	for f in _fillers:
+		_grid.remove_child(f)
+		f.queue_free()
+	_fillers.clear()
 	for row in _page_entries():
 		var entry: Dictionary = row.entry
 		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()])
@@ -202,14 +319,89 @@ func _build_page() -> void:
 		card.blocked.connect(_on_soon.bind(entry))
 		cards.append(card)
 		_grid.add_child(card)
-	day_row.set_pager(_page, _pages())
+	# A short last row (fourteen over twelve leaves two) hands the real
+	# columns it does have the empty one's leftover width -- GridContainer
+	# sizes a column to the widest cell it actually has, and a column with no cell in that
+	# row does not compete for the row's stretch at all. Padding out to COLS
+	# with zero-minimum, EXPAND_FILL fillers keeps three columns competing
+	# on every row, on any page, so a card is 320 wide everywhere rather
+	# than however many empty columns' worth wider. The mirror of the
+	# height floor puzzle_card_2d.gd's CARD_H sets on the other axis.
+	var short := cards.size() % COLS
+	if short > 0:
+		for i in COLS - short:
+			var filler := Control.new()
+			filler.name = "Filler_%d" % i
+			filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_fillers.append(filler)
+			_grid.add_child(filler)
+	_set_pager(_page, _pages())
 
-## A page change is not an entrance (spec 2026-09-20-sudoku-flat-design.md,
-## section 9): the header, the day row and the bar stay where they are, the
-## outgoing cards fade rather than cut, and the incoming ones play the same
-## per-page stagger the first page gets. The outgoing cards are handed to
-## `_fade_out_page` and `cards` is emptied before `_build_page` runs, so
-## its own free-the-old-page loop finds nothing to do and only builds.
+## Which page is up, and how many there are. One page hides the whole strip
+## (nothing on the grid or the bar moves either way -- it is an overlay);
+## the next chevron disables itself once the last page is up, and the prev
+## once the first is.
+func _set_pager(page: int, pages: int) -> void:
+	var many := pages > 1
+	_pager.visible = many
+	_prev.disabled = page <= 0
+	_next.disabled = page >= pages - 1
+	(_prev.get_meta("glyph") as Control).queue_redraw()
+	(_next.get_meta("glyph") as Control).queue_redraw()
+	_dots.custom_minimum_size = Vector2(pages * DOT + (pages - 1) * DOT_GAP, DOT)
+	_dots.set_meta("page", page)
+	_dots.set_meta("pages", pages)
+	_dots.queue_redraw()
+
+## The current page is a filled disc; every other page is an outlined
+## ring, so "which page" reads at a glance rather than as two shades of the
+## same dot (found by review, 2026-09-20 -- the fix for the missing second
+## dot was the build-order bug in _build_list, but the ring makes the two
+## states unmistakable even so).
+func _draw_dots(on: Control) -> void:
+	var page: int = on.get_meta("page", 0)
+	var pages: int = on.get_meta("pages", 1)
+	for i in pages:
+		var x := i * (DOT + DOT_GAP) + DOT * 0.5
+		var center_pt := Vector2(x, DOT * 0.5)
+		if i == page:
+			on.draw_circle(center_pt, DOT * 0.5, Pal.TEXT)
+		else:
+			on.draw_arc(center_pt, DOT * 0.5 - 1.5, 0.0, TAU, 24, Pal.TEXT_DIM, 2.5, true)
+
+## One chunky round button for the pager -- CozyTheme's usual card
+## stylebox rather than a bare vector line on no background, so it reads
+## as a button the way the bar's tabs and a card's own go button do.
+func _page_button(icon: String) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = PAGER_BTN
+	btn.focus_mode = Control.FOCUS_NONE
+	var r := int(PAGER_BTN.y * 0.5)
+	btn.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 3, 0))
+	btn.add_theme_stylebox_override("hover", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 3, 0))
+	btn.add_theme_stylebox_override("pressed", CozyTheme.card(Pal.SURFACE_HI.darkened(0.08), r, Pal.LINE, 2, 0))
+	btn.add_theme_stylebox_override("disabled", CozyTheme.card(Color(Pal.SURFACE_HI, 0.55), r, Color(Pal.LINE, 0.55), 2, 0))
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.add_child(center)
+	var glyph := Control.new()
+	glyph.custom_minimum_size = Vector2(PAGER_ICON, PAGER_ICON)
+	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glyph.draw.connect(func() -> void:
+		Icons.paint(glyph, icon, Rect2(Vector2.ZERO, glyph.size),
+			Pal.TEXT_DIM if btn.disabled else Pal.TEXT))
+	center.add_child(glyph)
+	btn.set_meta("glyph", glyph)
+	return btn
+
+## A page change is not an entrance: the header, the day row and the bar
+## stay where they are, the outgoing cards fade rather than cut, and the
+## incoming ones play the same per-page stagger the first page gets. The
+## outgoing cards are handed to `_fade_out_page` and `cards` is emptied
+## before `_build_page` runs, so its own free-the-old-page loop finds
+## nothing to do and only builds.
 func _turn_page(by: int) -> void:
 	var want := clampi(_page + by, 0, _pages() - 1)
 	if want == _page:
@@ -246,9 +438,20 @@ func _fade_out_page(leaving: Array) -> void:
 		var rect: Rect2 = card.get_global_rect()
 		_grid.remove_child(card)
 		_list_root.add_child(card)
-		_list_root.move_child(_toast, -1)  # the toast must stay on top of a fading card
+		# `add_child` appends, which would draw a fading card over the pager
+		# pill -- right where the finger just pressed to turn the page (found
+		# by review, 2026-09-20). `_pager` is built before `_toast` (see
+		# _build_list) specifically so this puts the card under both.
+		_list_root.move_child(card, _pager.get_index())
 		card.global_position = rect.position
 		card.disable_tap()
+		# A card turned onto this page moments ago may still be mid-entrance
+		# (panel.gd's `_entrance`, driving the same modulate:a this fade
+		# drives): stop those first, or a fast page-turn-and-back leaves two
+		# tweens racing the alpha and a one-frame flicker before this card
+		# frees itself.
+		for tw in card._entrance:
+			Motion.stop(tw)
 		var out := Motion.appear(card, card.modulate.a, 0.0, ENTER_FADE)
 		if out == null:
 			card.queue_free()
@@ -257,11 +460,21 @@ func _fade_out_page(leaving: Array) -> void:
 
 ## Shows the grid with the day current and plays the entrance; at start and
 ## on every return from a puzzle. Opening the app is what counts a day.
+##
+## The page is *kept*, not reset to zero (found by review, 2026-09-20: this
+## used to force `_page = 0` every time, so finishing a board on page two
+## silently dropped the player back on page one). The ruling is the ordinary
+## one for "where does closing something put you back": you return to where
+## you were, and only a fresh app open starts cold on page one, which
+## `_page`'s own default of 0 already gives it. `_page` is clamped rather
+## than trusted outright, in case a registry that shrinks below the current
+## page count ever makes today's "cannot happen" possible.
 func _show_list() -> void:
 	_list_root.visible = true
 	Progress.touch()
-	if _page != 0:
-		_page = 0
+	var clamped := clampi(_page, 0, _pages() - 1)
+	if clamped != _page:
+		_page = clamped
 		_build_page()
 	day_row.set_day(Progress.day(), Progress.island_name())
 	bar.show_tab("home")
@@ -273,6 +486,31 @@ func _enter() -> void:
 	for i in cards.size():
 		cards[i].enter(ENTER_CARDS + Motion.stagger(i, CARD_STEP, CARD_CAP))
 	bar.enter(ENTER_BAR)
+	_enter_pager()
+
+## Fades the pager in with the last card, the way Motion.appear would -- but
+## Motion.appear only zeroes `modulate.a`, and a Control at alpha 0 is still
+## `visible` and still hands its buttons every tap by hit rect (found by
+## review, 2026-09-20): during the ~0.85s before this fade starts, `_prev`
+## and `_next` sat there fully transparent and fully live, `_prev` refusing
+## every tap silently because page one starts it disabled. Hiding the node
+## outright for the wait and only setting it visible the instant the fade
+## begins is what keeps it untappable for exactly as long as it reads
+## invisible, rather than trying to chase every button's mouse_filter by hand.
+func _enter_pager() -> void:
+	Motion.stop(_pager_tw)
+	if _pages() <= 1:
+		return
+	if Motion.reduce:
+		_pager.visible = true
+		_pager.modulate.a = 1.0
+		return
+	_pager.visible = false
+	_pager.modulate.a = 0.0
+	_pager_tw = create_tween()
+	_pager_tw.tween_callback(func() -> void: _pager.visible = true) \
+		.set_delay(ENTER_CARDS + CARD_CAP)
+	_pager_tw.tween_property(_pager, "modulate:a", 1.0, ENTER_FADE)
 
 ## One line under the grid, for a tap on something that is only drawn.
 func _say(text: String) -> void:
@@ -297,7 +535,7 @@ func _on_tab(tab: String) -> void:
 func _on_soon(entry: Dictionary) -> void:
 	_say("%s has no flat board yet. Its island version is under More." % entry.get("title", ""))
 
-## Opens one of the twelve. A `soon` card never gets here.
+## Opens one of the fourteen. A `soon` card never gets here.
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry):
 		return

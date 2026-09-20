@@ -208,6 +208,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-hiddenword .refs img{border-radius:14px}
 #tab-hiddenword .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #hw-caption{max-width:460px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat word trail mock extras ---------- */
+#tab-wordtrail .phone{background:#f6efe3}
+#tab-wordtrail .phone canvas{touch-action:none;cursor:pointer}
+#tab-wordtrail .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-wordtrail .refs figure{margin:0}
+#tab-wordtrail .refs img{border-radius:14px}
+#tab-wordtrail .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#wt-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 /* ---------- flat snake apple mock extras ---------- */
 #tab-snakeapple .phone{background:#f6efe3}
 #tab-snakeapple .phone canvas{touch-action:none;cursor:pointer}
@@ -246,6 +254,8 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="nonogram">Nonogram · flat</button>
     <button data-tab="queens">Queens · flat</button>
     <button data-tab="hiddenword">Hidden Word · flat</button>
+    <button data-tab="wordtrail">Word Trail · flat</button>
+    <button data-tab="mushroom">Mushroom Patch · flat</button>
     <button data-tab="sudoku">Sudoku &middot; flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
@@ -1760,10 +1770,137 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band (easy by default), <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?guess=plant,grass</code> for rows already committed and settled, <code>?typed=mos</code> for a partial working row, <code>?commit=slate</code> to type and commit that word at <code>?at=</code> (0.2 by default), <code>?bad=1</code> to commit whatever is typed &mdash; pair it with <code>?typed=</code> for a refusal &mdash; <code>?hint=1</code> and <code>?reset=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?over=1</code> for six rows and the reveal, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-flip can be shot (real time otherwise passes before Chrome's shot lands). Pick the tab with <code>#hiddenword</code>. The lists are fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
 </section>
 
+<!-- ============================ WORD TRAIL ============================ -->
+<section class="tab-panel" id="tab-wordtrail">
+  <h2>Word Trail &middot; flat, the twelfth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A field of letters with grey walls through it. Drag from tile to side-adjacent tile &mdash; <b>never diagonally</b> &mdash; and the trail bends around the walls; let go on a word and it locks. <b>You are never told the words, only how long each one is.</b> Every open tile belongs to exactly one word, so the grid is the scoreboard: the last word locked fills the last tile. The game is LinkedIn's <em>Wend</em>, and <b>the name is not that one</b> &mdash; this repo already ships Mastermind as <em>Code Break</em>. Rules taken from the published ones on 2026-09-20, not from the mock, which describes a straight-line word search with diagonals and is wrong about the game.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-word-trail.png" alt="The user's mock: a seven by seven grid of cream letter tiles in a wooden frame with grey blocked cells, a searching sprout with a magnifying glass at the left, a crowned bee at the right, a Day 5 Moss Harbour card above and a How to play card below">
+        <figcaption>The user's mock of 2026-09-20, saved as <code>docs/art/concept-word-trail.png</code>. Taken from it: the field of big cream letter tiles, the <b>grey blocked cells</b> drawn as slabs with a leaf on them, the day card, the tip card. Not built, and why: <b>its rules text</b> (&ldquo;horizontally, vertically or diagonally&rdquo; &mdash; the real game is orthogonal and the path bends, which is the whole puzzle), <b>Check</b> (there is nothing to check when a wrong trail cannot stay on the board), <b>the two chips</b> (they are Queens' tray, and this board picks nothing up), <b>the crowned bee</b> (Queens' cast), <b>the hearts</b> (decoration, settled 2026-09-18) and <b>the wooden frame</b> (no flat board wears one; the family's card is paper). <b>Missing from it and required:</b> the length slots &mdash; without them the player is hunting blind.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The chrome the mock is set in, now shared by eleven screens: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout that names the rule you just broke. Word Trail keeps the tip card and drops the actions row &mdash; no Check, so Reset rides up into the top bar beside Undo and Hint, as Balance's and Untangle's already do.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="wt" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="wt-rm">Reduce motion: off</button>
+        <button id="wt-diff">Easy &middot; 5&times;5</button>
+        <button id="wt-new">New puzzle</button>
+        <button id="wt-hint">Hint</button>
+        <button id="wt-undo">Undo</button>
+        <button id="wt-reset">Reset</button>
+        <button id="wt-solve">Solve it</button>
+        <button id="wt-peek">Show the answer</button>
+      </div>
+      <div id="wt-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>press a letter and drag</b> through side-adjacent tiles, let go on a word and it locks with its own colour; anything else just unwinds. It plays the <b>real generator</b> &mdash; paths grown first, walls left over &mdash; and the <b>real word list</b>, <code>content/word_trail.json</code>, fetched from this page, which over <code>file://</code> needs Chrome's <code>--allow-file-access-from-files</code> or a small inline list stands in; the caption says which one is live. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>the real published rules</b>, not the mock's word search; <b>the name Word Trail</b>; <b>only a right word locks</b> &mdash; any other selection just highlights and unwinds, with no toast and no penalty; <b>a trail must run along that word's own cells</b>; <b>the board is generated in game from the day seed</b>; and <b>Pipes' <code>SOON</code> card leaves the first screen</b> to make room, exactly as Horse Pen's did for Hidden Word the day before. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>WORD TRAIL</code> in ink with the leaf sprouting from it and <code>EVERY LETTER FINDS ITS WAY</code> under, then Undo, Reset, Hint with its count and Settings. <b>Five buttons</b>, which only Balance and Untangle carry: <code>"actions": false</code> puts Reset up here, and <code>capabilities()</code> is <code>["undo","hint"]</code> with no <code>check</code>.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the mock's, without its hearts.</td></tr>
+    <tr><td class="k">Board card</td><td>1340</td><td>The grid, the length slots under it, and the scenery band under those. Section 2.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet. Untangle's number, and Untangle's reason: it is the only thing in the bottom slot.</td></tr>
+  </table>
+  <p>40 of margin, three 20 gaps and the four rows are 1920 exactly, which is where the board card's 1340 comes from.</p>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p><b>The width binds at every band</b>, which is what makes this card easy: <code>cell = min((944 &minus; (n&minus;1)&times;14)/n, &hellip;)</code> and the first term wins at 5, 6 and 7 alike &mdash; <b>178, 146 and 123</b>, against Queens' and Nonogram's 103 on their hard boards. The grid is then 944 wide and as tall, and the card has 222 to 250 left over after the 150 the slots take. That leftover is <b>not</b> centred away as air: it is the <b>scenery band</b> at the card's foot, the way Hidden Word's 120 band is laid and <code>ui/flat/scenery.gd</code> lays Balance's &mdash; clouds, a strip of turf, bushes. <code>card_height()</code> returns everything it is given and <code>card_centred()</code> never comes up.</p>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:10%">Grid</th><th style="width:10%">Cell</th><th style="width:12%">Words</th><th style="width:10%">Walls</th><th>Band left for scenery</th></tr>
+    <tr><td class="k">Easy</td><td>5 &times; 5</td><td>178</td><td>4 &mdash; 3,4,5,6 (18 tiles)</td><td>7</td><td>222</td></tr>
+    <tr><td class="k">Medium</td><td>6 &times; 6</td><td>146</td><td>6 &mdash; 3,4,4,5,6,7 (29)</td><td>7</td><td>236</td></tr>
+    <tr><td class="k">Hard</td><td>7 &times; 7</td><td>123</td><td>6 &mdash; 4,5,6,7,8,8 (38)</td><td>11</td><td>250</td></tr>
+  </table>
+  <p><b>The slots are the only thing the player is told.</b> One group of empty boxes per word, shortest first, boxes 34 by 52 with 5 between and 22 between groups, wrapped to as many lines as it takes &mdash; two on every band. A group fills with its letters when the word locks, in that word's colour. Nothing about a word's <em>shape</em> is ever shown: length is the whole clue.</p>
+
+  <h3>3. The rules <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>A trail runs through side-adjacent tiles</b> &mdash; up, down, left, right, and it may bend as often as it likes. No diagonals, no jumps, no reusing a tile inside one trail, and never through a wall or a tile a locked word already holds.</li>
+    <li><b>Only a right word locks.</b> Release on one of today's unfound words, traced along that word's own cells in order, and it locks in its colour. <b>Any other release just unwinds</b> &mdash; no toast, no shiver, no penalty, no hint spent. The board never says no, because it never had to say yes.</li>
+    <li><b>Its own cells, not merely its letters.</b> A trail that spells the word over other tiles is not that word: accepting it would break the coverage the whole puzzle rests on, and leave a board that cannot be finished. In practice the player retraces; there is no state to recover from.</li>
+    <li><b>Every open tile belongs to exactly one word</b>, so the count is not a target the player has to keep &mdash; the last word fills the last tile. Solved is all words found.</li>
+    <li><b>Undo</b> lifts the last locked word, in lock order. <b>Reset</b> lifts them all and gives back nothing else, because there is nothing else to give back. <b>There is no Check</b>: nothing wrong can be sitting on the board to check.</li>
+    <li><b>The board cannot be lost, stuck or spoiled.</b> It is the gentlest board in the game, and that is the point of the &ldquo;only the right word locks&rdquo; rule: the original lets a plausible-but-wrong word stick and quietly kill the grid.</li>
+  </ul>
+
+  <h3>4. Generation, backwards from the walls <span class="pill blue">decided</span></h3>
+  <p><b>A path's shape puts no constraint on its letters</b> &mdash; any five-letter word fits any five-cell path, because each cell just holds one letter. So there is no packing search and no solver. <code>puzzles/word_trail_state.gd</code> works backwards:</p>
+  <ol>
+    <li>Off the day seed, grow the paths <b>longest first</b>: a random free start, then a self-avoiding walk through free neighbours, restarting that word if it paints itself into a corner.</li>
+    <li>Every cell no path covered becomes a <b>wall</b>. There are exactly <code>n&sup2; &minus; &Sigma;lengths</code> of them, so the wall count is a property of the band and never a dial.</li>
+    <li>Pick a word of each length from <code>content/word_trail.json</code> and write it along its path.</li>
+  </ol>
+  <p><b>The band is chosen by how much of the field it fills, not by how many words it names.</b> One word of each length would leave <b>16 walls on the 7&times;7</b> &mdash; a third of the field, which reads as damage rather than as carving, and is twice what the user's own mock draws. Repeating a length instead (<code>4,5,6,7,8,8</code>) fills 38 of 49 and leaves <b>11</b>, the mock's number exactly. Six words is also the most the palette's six chip colours cover, which is why no band asks for seven.</p>
+  <p>Solvable by construction, and cheap enough to do on the phone at load. A layout is then judged and re-rolled if it fails: <b>every word of five or more must bend at least once</b> (a straight row is not a trail), <b>the open cells must be one connected field</b> (an island of letters reads as a bug), and <b>no row or column may be wall end to end</b> (that is not carving, it is a smaller grid with a dead strip drawn on it). What survives is then <b>scored on how the walls read</b> &mdash; ten a wall block, less one a bend &mdash; and the best of sixty candidates is the day's board. Measured over forty seeds a band: every one of them built, in one to three wall blocks.</p>
+  <div class="decide"><b>Both of those rules were paid for on this page.</b> Taking the first layout that passed gave the speckled field in the first shot; scoring for the fewest wall blocks then gave a board whose entire top row was wall, because one block is cheapest when the block is a stripe. The two rules together are what the shots above draw.</div>
+  <div class="decide"><b>Uniqueness is not required here, and that is a consequence of the lock rule.</b> LinkedIn's walls guarantee one solution because a wrong-but-real word can stick; ours cannot stick, so a second valid tiling of the same letters is unreachable &mdash; a trail that is not one of today's words never locks, whatever it spells. Nothing in the generator has to prove anything, which is why it is twenty lines rather than a search.</div>
+
+  <h3>5. The words <span class="pill">proposed</span></h3>
+  <p><code>content/word_trail.json</code>, <b>1,132 words bucketed by length</b> &mdash; 108 of three letters, 160 of four, 199 of five, 222 of six, 272 of seven, 171 of eight. Common, concrete, and the same camp vocabulary the rest of the game is written in. The rule the list is written to: <b>the player is shown the lengths and nothing else</b>, so an obscure word is not a hard day, it is an unfair one. No proper nouns, no plurals made by adding an <em>s</em> to a shorter word in the same bucket.</p>
+  <p>There is no band structure inside the lists, unlike Hidden Word's: difficulty here is the grid, not the vocabulary. The picks are independent, so the easy board's four alone are 108&times;160&times;199&times;222 &mdash; over seven hundred million letterings before the paths are even counted, and a day never repeats in any life.</p>
+
+  <h3>6. Colour <span class="pill">proposed</span></h3>
+  <p><b>A locked word takes one of the palette's six chip colours</b>, in order, and every part of it agrees: the ribbon under its tiles in the strong colour, the tile faces in that colour's pale <code>*_TILE</code>, and its slot group lettered in the deep one. Six colours, six words at most, so no board ever repeats one.</p>
+  <table>
+    <tr><th style="width:16%">Word</th><th style="width:20%">Ribbon</th><th style="width:20%">Tile face</th><th>Already in the palette?</th></tr>
+    <tr><td class="k">1st</td><td><code>Pal.LEAF</code></td><td><code>Pal.LEAF_TILE</code></td><td>Yes &mdash; the sprout's green</td></tr>
+    <tr><td class="k">2nd</td><td><code>Pal.SUN</code></td><td><code>Pal.SUN_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">3rd</td><td><code>Pal.MOON_INK</code></td><td><code>Pal.MOON_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">4th</td><td><code>Pal.BERRY</code></td><td><code>Pal.BERRY_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">5th</td><td><code>Pal.ACORN</code></td><td><code>Pal.ACORN_TILE</code></td><td>Yes</td></tr>
+    <tr><td class="k">6th</td><td><code>Pal.FLOWER</code></td><td><code>Pal.FLOWER_TILE</code></td><td>Yes</td></tr>
+  </table>
+  <p>An untouched tile is <code>SURFACE</code> with a <code>LINE</code> rim and its letter in <code>TEXT</code>; a wall is <code>STONE_GIVEN</code> with a leaf drawn on it, which is the mock's own grey slab in the family's warm grey rather than its cool one. The live trail under the finger is <code>SUN_RAY</code> at 0.5, so it reads as a torch beam rather than as a seventh word.</p>
+
+  <h3>7. Motion <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), drawn off the curve readers as Nonogram's and Hidden Word's tiles are. <b>Its signature is the ribbon</b>, and it needs two numbers of its own: <code>WAVE_STEP</code> 0.05 s per tile and <code>LOCK_TIME</code> 0.3 s.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The grid pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) while it fades; the slot groups drop in after it, <code>ENTER_STAGGER</code> apart.</td></tr>
+    <tr><td class="k">Dragging</td><td>The tile under the finger presses (<code>press_scale</code> 0.94) and the beam grows to it over <code>LOCK_TIME</code>/3. Retracting back over the last tile takes the beam with it.</td></tr>
+    <tr><td class="k">Locked</td><td><b>The wave.</b> The ribbon takes the word's colour from its first tile to its last, <code>WAVE_STEP</code> a tile, and each tile bumps (<code>bump_scale</code>) and takes its face as the wave reaches it; the letter flies into its slot box on the same step, arriving with <code>drop_in_lift</code>. Sparkles in the word's colour on the last tile.</td></tr>
+    <tr><td class="k">Unwound</td><td>The beam shrinks back to its first tile over 0.18 s and fades. Nothing shivers and nothing is said: a wrong trail is not a wrong move.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring in <code>LEAF</code> over the tile revealed, and that tile keeps a soft sun glow with a dotted outline until its word is found.</td></tr>
+    <tr><td class="k">Undo</td><td>The word's wave runs <em>backwards</em>, last tile first, and its letters shrink out of the slots (<code>pop_out_scale</code>).</td></tr>
+    <tr><td class="k">Reset</td><td>Every locked word unwinds at once, each on its own reversed wave.</td></tr>
+    <tr><td class="k">Solved</td><td>The last word's wave finishes, then every tile on the board hops in one long wave from the top-left corner (0.02 a tile) with sparkles in gold. The win after <code>WIN_WAIT</code> 1.4 s.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the grid is up at once, a locked word takes its colour and its letters in one frame with no wave, the beam has no growth, nothing hops, rings or sparkles, and the win follows the last lock.</p>
+
+  <h3>8. The hint <span class="pill">proposed</span></h3>
+  <p><b>Three, as the mock's badge says</b>, and each one lights <b>the next tile of the shortest unfound word's path</b> &mdash; its first tile, then its second, and so on. That is the one hint this game can give: the words are hidden but the letters are not, so the only thing a player can be short of is <em>where a word starts</em>. Three hints on an easy board reveal three tiles of an eighteen-tile answer; on hard, three of thirty-three.</p>
+  <div class="decide"><b>Worth judging on the phone:</b> whether the hint should light the next tile of the <em>shortest</em> unfound word or of the one the player last touched. Shortest is predictable and needs no state; last-touched is cleverer and can be wrong about what the player wants. The mock does shortest.</div>
+
+  <h3>9. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Length slots, and only length slots.</b> This is the whole clue. Play a 7&times;7 here and see whether six lengths and thirty-three letters is a puzzle or a shrug.</li>
+    <li><b>Only the right word locks.</b> Gentler than the original by a long way, and it removes the original's best trap. Does the board feel too safe?</li>
+    <li><b>123 at 7&times;7.</b> Comfortably the biggest hard-board cell in the game, because seven columns is fewer than Queens' nine. Drag accuracy is the thing to feel.</li>
+    <li><b>Three hints.</b> A hint here is worth much less than on other boards &mdash; it lights one tile of thirty-three. Three may be too few to rescue anyone.</li>
+    <li><b>The scenery band.</b> 222 to 250 of clouds and turf under the slots, because the width binds and the height cannot be spent on the grid. The alternative is a squarer card with air above it, which no other board does.</li>
+    <li><b>Backwards tracing.</b> Trace <em>oats</em> from the S and nothing happens, because it spells <em>stao</em>. Right, and possibly annoying.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?found=2</code> to lock that many words before the clock starts, <code>?hint=2</code> for that many hints spent, <code>?peek=1</code> to draw every answer's path, <code>?win=1</code> for the win screen and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot. Pick the tab with <code>#wordtrail</code>. The word list is fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
+</section>
+
 <!-- ============================== SUDOKU ============================== -->
 <section class="tab-panel" id="tab-sudoku">
-  <h2>Sudoku &middot; flat, the thirteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
-  <p class="lede">Nine by nine, three by three, every number once in every row, column and region. The oldest game this grid has ever been asked to hold, and the one everybody already knows &mdash; so the whole of the design is in <b>what a 100-pixel cell can be made to say</b>: the peers and the twins wash when you touch a cell, a region that comes right lights up from the cell that finished it, and a pencil chip in the pad writes small. <b>It is also the first card that will not fit on the first screen</b>: twelve is what four rows of 252 buy, so this board brings a second page with it. Spec: <code>docs/superpowers/specs/2026-09-20-sudoku-flat-design.md</code>.</p>
+  <h2>Sudoku &middot; flat, the fourteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">Nine by nine, three by three, every number once in every row, column and region. The oldest game this grid has ever been asked to hold, and the one everybody already knows &mdash; so the whole of the design is in <b>what a 100-pixel cell can be made to say</b>: the peers and the twins wash when you touch a cell, a region that comes right lights up from the cell that finished it, and a pencil chip in the pad writes small. <b>It was also drawn as the first card that would not fit on the first screen</b>: twelve is what four rows of 252 buy, so this board was designed to bring a second page with it. By the time it merged, Word Trail and Mushroom Patch had landed and the first screen already paged &mdash; see the amendment under section 8. Spec: <code>docs/superpowers/specs/2026-09-20-sudoku-flat-design.md</code>.</p>
 
   <div class="hero">
     <div class="refs">
@@ -1795,7 +1932,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     </div>
   </div>
 
-  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays, <b>and it plays the real generated puzzle</b>, not a fixture: tap a cell, tap a number, or use your own keyboard &mdash; <kbd>1</kbd>&ndash;<kbd>9</kbd> place, <kbd>backspace</kbd> clears, <kbd>n</kbd> flips the pencil, <kbd>u</kbd> undoes, the arrow keys walk the selection. <b>Press "Six from the end"</b> to see the solve wave without sitting through a whole grid. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>9&times;9 at all three bands</b>, difficulty by given count and technique; <b>pencil marks with a toggle</b>; <b>no lives</b> &mdash; the mock's hearts stay decoration, as they have been since 2026-09-18; <b>peers and twins wash on selection</b>; and <b>a second page on the first screen</b>, with the pager in the day row. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays, <b>and it plays the real generated puzzle</b>, not a fixture: tap a cell, tap a number, or use your own keyboard &mdash; <kbd>1</kbd>&ndash;<kbd>9</kbd> place, <kbd>backspace</kbd> clears, <kbd>n</kbd> flips the pencil, <kbd>u</kbd> undoes, the arrow keys walk the selection. <b>Press "Six from the end"</b> to see the solve wave without sitting through a whole grid. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>9&times;9 at all three bands</b>, difficulty by given count and technique; <b>pencil marks with a toggle</b>; <b>no lives</b> &mdash; the mock's hearts stay decoration, as they have been since 2026-09-18; <b>peers and twins wash on selection</b>; and <b>a second page on the first screen</b>, with the pager in the day row &mdash; overtaken, see section 8's amendment. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
 
   <h3>1. The screen, measured <span class="pill">proposed</span></h3>
   <table>
@@ -1893,6 +2030,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p>The pager is a prev chevron, two dots and a next chevron in the day row's right cluster, and the dead chevron becomes the next button. It <b>costs no height at all</b>: cards stay 252 with their 92 pictures, and every measured number in <code>CLAUDE.md</code> &mdash; the 311 draw calls, the 252 card, the 320&times;118 art box, the seventeen characters a line of <code>short</code> &mdash; survives untouched. The hearts stay where they are and stay decoration; the row spends about 620 of its 1000 today and the pager wants about 180 of the rest.</p>
   <p><b>The split is 12 + 1</b>, not 7 + 6. Page one stays exactly the twelve cards in exactly the order they are in, and page two holds Sudoku alone until a fourteenth board lands. It looks sparse and it is honest: rebalancing would change the shape of the first screen for twelve boards to flatter one.</p>
   <div class="decide"><b>What this costs the menu's entrance.</b> <code>ui/menu.gd</code> staggers its cards on <code>Motion.stagger(i, CARD_STEP, CARD_CAP)</code> over <code>Registry.PUZZLES</code> entire. With pages, <code>i</code> has to be the index <em>within the page</em> or page two's single card waits out twelve cards' worth of stagger before it appears. That is a one-line change and exactly the kind that is found by watching rather than by reading.</div>
+  <div class="note"><b>Amendment, 2026-09-20, at the merge.</b> The argument above lost. Two other boards &mdash; Word Trail and Mushroom Patch &mdash; were being drawn in parallel, and Mushroom Patch was the thirteenth card to land, so the first screen grew its pager before Sudoku got there. That pager was built <b>in its own strip between the grid and the bottom bar</b>, not in the day row, and the reason is one this page did not weigh: the day row's chevron sits beside <b>Day N</b>, so a pager there reads as a way to change the <em>day</em>. The user overturned the day-row placement on main. What survives of section 8 is the part that was right &mdash; twelve a page, cards still 252, pictures still 92, page one unchanged and unrebalanced. What is wrong is the placement, and the "12 + 1" split: Sudoku is the fourteenth card, so page two holds Mushroom Patch and Sudoku, and page one is untouched exactly as argued. <code>ui/menu/day_row.gd</code> is back to what it was, chevron and all.</div>
 
   <h3>9. The menu card <span class="pill">proposed</span></h3>
   <p><code>ui/menu/card_art.gd</code> gains one branch: a 3&times;3 fragment of the board in the 320&times;118 box &mdash; nine cream cells with the region rule round them and three numerals in ink, drawn with <code>ui/faces/mosaic_tile.gd</code>, the class Nonogram and Hidden Word already share. <b>No new character.</b> Sudoku's pieces are numbers; <code>ui/faces/</code> gets nothing, which is what Nonogram decided and Hidden Word confirmed, and the only face on the screen is the shared sprout on the tip card and the win.</p>
@@ -2015,6 +2153,125 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li>Whether the daily should ship a hand-drawn level now and then. The generator makes fair levels, never shapely ones — no level it draws will ever spell out a picture in apples the way the reference's advert does.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty, <code>?part=1</code> for a level half eaten, <code>?stuck=1</code> for a worm that has stranded itself and been checked, <code>?fall=1</code> for a worm that has walked off the edge, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion and <code>?seed=</code>; pick the tab with <code>#snakeapple</code>.</p>
+</section>
+
+<!-- ============================ MUSHROOM PATCH ============================ -->
+<section class="tab-panel" id="tab-mushroom">
+  <h2>Mushroom Patch &middot; flat, the thirteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A meadow with mushrooms hidden under it. Some cells are turned over and carry a number: how many mushrooms grow in the eight cells touching that one. Plant a mushroom where you have proved one is, lay a pebble where you have proved one is not, and the patch is done when the last mushroom is planted. <b>Nothing is revealed by a tap and nothing can be lost</b> &mdash; and no board needs a guess, because the generator proves each one by logic alone before it hands it over. The generator and its solver on this page are real. Reference: the user's screenshot of another app's <em>Campo Minado</em>, <code>docs/art/concept-mushroom-ref.png</code>.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-mushroom-ref.png" alt="The user's reference: a green How-to-play sheet over a Campo Minado board, showing a four by four grid of numbered white cells and pale blue covered cells, a shovel chip and a flag chip under it, and a Portuguese rules paragraph">
+        <figcaption>The user's reference, 2026-09-20. What it settles: the field of numbered cells over covered ones, and <b>two chips under the board</b> &mdash; one that marks and one that rules out. What this screen does not take from it: the mines (see below), the flag, the dig, the modal how-to-play sheet (every flat board's rule lives on the sprout's tip card) and the green chrome.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The family's chrome this is set in: cream cards with a soft bottom edge, a chip tray under the board and a sprout that talks. Mushroom Patch borrows Nonogram's rows exactly, and its tile tray with a third chip set.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="mp" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="mp-rm">Reduce motion: off</button>
+        <button id="mp-diff">Medium · 7×7</button>
+        <button id="mp-new">New puzzle</button>
+        <button id="mp-hint">Hint</button>
+        <button id="mp-check">Check</button>
+        <button id="mp-solve">Solve it</button>
+        <button id="mp-reset">Reset</button>
+      </div>
+      <div id="mp-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>pick the mushroom chip and tap a covered cell</b> to plant one, tap it again to pull it up; <b>pick the pebble and tap or drag</b> to rule cells out, and drag back from one of yours to rub them out. Undo, Hint, Check and Reset do what the game does, and the caption under the phone says whether the board it just built was <em>proved by logic alone</em>. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>no digging and no death</b> &mdash; a tap never reveals anything and the board cannot be lost; <b>mushrooms, not mines</b>, and the board is called <b>Mushroom Patch</b>; <b>the win is the last mushroom planted</b> and the pebble is bookkeeping; and the first screen <b>gets its pager back</b> to hold a thirteenth and fourteenth card. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. Why it is not Minesweeper <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>A daily puzzle you lose on the first tap is a bad daily puzzle.</b> The game in the reference kills you for a wrong dig, and a daily board gets one attempt. So the reveal goes: the numbers you are given are the numbers you get, every covered cell is decided by reasoning over them, and there is nothing to step on.</li>
+    <li><b>Mushrooms rather than mines.</b> The cast on every other flat screen is a sprout, a snail, a bee and five camp fruit; a buried explosive is the one subject that would not belong. <code>ui/faces/mushroom_face.gd</code> already exists &mdash; it is Balance's fifth fruit &mdash; so the reskin costs nothing and the board gains no new character.</li>
+    <li><b>And the pebble rather than a flag.</b> Nonogram and Queens already rule a cell out with a pebble on a socket; a third glyph for the third board doing the same thing would be a new word for an idea the game has.</li>
+    <li><b>The name.</b> <em>Minesweeper</em> is the genre's own word and nobody owns it, unlike Wordle or Mastermind, so this is a choice of tone rather than of law &mdash; but the repo has already renamed a game three times and the cast decides it.</li>
+  </ul>
+
+  <h3>2. The screen <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>MUSHROOM PATCH</code> in ink with the leaf sprouting from it and <code>EVERY PATCH HAS ITS COUNT</code> under, then Undo, Hint with its count and Settings.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour", and at its right <b>how many mushrooms the patch holds</b> and how many are still to find. The count is the one number the board gives away, and it has to be somewhere the eye returns to.</td></tr>
+    <tr><td class="k">Board card</td><td>cut to fit</td><td>A 72 tally strip &mdash; a small mushroom and <em>four mushrooms still hidden</em> &mdash; over the field on parchment. The field is square in a tall slot, so the cell is capped by the width: <code>(1000 &minus; 2 &times; 34) / n</code>, <b>155 on easy, 133 on medium, 116 on hard</b>. The card is cut to the field and centred in what is left, the sixth flat board to want both (<code>card_height</code>, <code>card_centred</code>).</td></tr>
+    <tr><td class="k">Tray</td><td>150</td><td>Two chips: the mushroom and a pebble. The armed one lifts and takes the sun border, exactly as Nonogram's tile and cross do.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check. <code>capabilities()</code> is undo, hint and check.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and one line: the rule, how many mushrooms are found, and why a tap was refused.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">The bottom slot is therefore <b>460</b> &mdash; Nonogram's and Queens' number, and the flat host measures it from the rows it built rather than a constant.</p>
+
+  <h3>3. The rules <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>A turned-over cell carries a number</b>, which is how many mushrooms grow in the eight cells touching it. A turned-over cell is never a mushroom, and tapping one is <b>refused</b>: there is nothing there to decide.</li>
+    <li><b>A covered cell answers one of three</b>: your mushroom, your pebble, or nothing yet. The mushroom chip plants and pulls up; the pebble chip lays and rubs out; a mushroom replaces your pebble, and <b>a pebble never lifts a mushroom</b> &mdash; Queens' rule, and it keeps a fat finger from undoing a deduction.</li>
+    <li><b>The pebble counts for nothing towards the win</b>, exactly as Nonogram's cross does. It is a note to yourself.</li>
+    <li><b>Solved is the last mushroom planted</b>, and only that: your mushrooms are the patch's mushrooms, cell for cell. Planting the right number in the wrong places does not win, and the board says nothing about it until you ask.</li>
+    <li><b>Check answers claims.</b> It shakes every mark that contradicts the patch &mdash; a mushroom on bare ground <em>and</em> a pebble on a mushroom &mdash; and it never plants anything. A clean Check says <em>All good</em> through the Check pill, as every submitting board does.</li>
+    <li><b>Hint</b> plants the next mushroom in reading order and pins it with a leaf sprig. A hint clears the history, Shikaku's rule, and what it gave survives Reset.</li>
+    <li><b>Undo</b> is one gesture back, however many cells a sweep painted.</li>
+  </ul>
+
+  <h3>4. The count wash &mdash; the board's signature <span class="pill">proposed</span></h3>
+  <p>Queens' signature is the wave and Hidden Word's is the flip. This one is <b>the count wash</b>: a number is written in ink while its neighbourhood is short of mushrooms, <b>turns green the moment exactly that many stand around it</b>, and turns rose if you plant one too many. The wash holds &mdash; it is not a flash that fades &mdash; and the numeral bumps as it changes, off <code>Motion.bump_scale</code>. On a solved board every number on the field is green, which is what makes the last plant feel like a lid closing.</p>
+  <p><b>This does not break the Code Break rule</b> (&ldquo;a count and never a map&rdquo;). The wash is computed from information the player already holds &mdash; the number printed on the cell, and the mushrooms they themselves planted &mdash; and never from the answer. A green number means <em>you have put three here</em>, not <em>your three are right</em>. Finding out that they are not is what Check is for, and a board can be covered in green numbers and still be wrong.</p>
+  <p style="font-size:14px;color:var(--muted)">Two numbers of its own, and they are the only two: <code>WASH_TIME</code> 0.35 s and <code>WASH_LEVEL</code> 0.30, how long the change takes to settle and how deep the colour sits on the cell. Everything else on this screen is <code>core/motion.gd</code>'s.</p>
+
+  <h3>5. Generation, backwards from a full field <span class="pill rose">measured</span></h3>
+  <p>Scatter <em>k</em> mushrooms from the day's seeded RNG, count every bare cell's eight neighbours, then <b>turn every bare cell over</b> and try to cover each one back up again in a shuffled order, keeping the cover only while the solver still proves the whole field. What survives is a near-minimal set of givens and a board that is solvable by logic alone <em>by construction</em> &mdash; the guarantee is not tested for afterwards, it is the carving rule.</p>
+  <p><b>The solver never branches.</b> It runs two rule families to a fixpoint &mdash; a number whose mushrooms are all accounted for clears its remaining neighbours, and a number whose unknown neighbours equal its shortfall plants them all &mdash; plus the global &ldquo;<em>k</em> in the whole field&rdquo;, which is why the tally strip has to be on the screen: it is a clue, not decoration. On hard it may also <b>subtract subsets</b>: where one number's unknown cells sit inside another's, the difference carries the difference of their counts, which is the 1-2-1 pattern every player of this game knows by feel. A board the solver cannot finish is a board with a guess in it, and would be rejected &mdash; but carving can only ever remove information from a board that started fully solved, so nothing is ever rejected in practice.</p>
+  <p><b>A minimal board is the hardest board</b>, so easy and medium hand some of the carved-away numbers back at random: 45% on easy, 20% on medium, none on hard. That, the size and whether the solver may subtract subsets are the whole ladder.</p>
+  <table>
+    <tr><th style="width:16%">Difficulty</th><th style="width:14%">Field</th><th style="width:16%">Mushrooms</th><th style="width:18%">Subsets allowed</th><th>Numbers given</th></tr>
+    <tr><td class="k">Easy</td><td>6&times;6</td><td>6</td><td>no</td><td rowspan="3">Whatever survives the carve, plus what is handed back &mdash; the caption under the phone prints it for the board you are looking at. Press <b>New puzzle</b> a few times: it is stable within a couple of cells for a difficulty.</td></tr>
+    <tr><td class="k">Medium</td><td>7&times;7</td><td>9</td><td>no</td></tr>
+    <tr><td class="k">Hard</td><td>8&times;8</td><td>12</td><td>yes</td></tr>
+  </table>
+
+  <h3>6. Colour: nothing new <span class="pill">proposed</span></h3>
+  <p>Every colour on this field is already in <code>core/palette.gd</code>, which is unusual enough to be worth saying: a covered cell is <code>TURF_REACH</code>, the pale meadow Horse Pen owns; a turned-over cell is <code>SURFACE</code> with its number in <code>TEXT</code>; a settled number's cell washes toward <code>LEAF</code> and its numeral is <code>LEAF_DEEP</code>; an over-planted one washes toward <code>BAD</code>; a pebbled cell is <code>SOCKET_OUT</code> with the pebble in <code>SOCKET_PEBBLE</code>; and a planted cell is <code>MUSHROOM_TILE</code> under a cap in <code>MUSHROOM</code> over a stem in <code>MUSHROOM_STEM</code>. The card is <code>PARCHMENT</code> on <code>PAPER</code>, as every flat board's is.</p>
+
+  <h3>7. Motion <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>): the mushrooms are nodes in slots taking the recipes, the field and the pebbles are drawn off the readers, and the numerals ride <code>draw_set_transform</code> the way Nonogram's clues do. <code>core/motion.gd</code> gains nothing.</p>
+  <table>
+    <tr><th style="width:22%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The field pops in wide about its centre (<code>wide_pop_scale</code>, from 0.86) after <code>ENTER_DELAY</code> 0.18, and the cells fade in in a diagonal wave at <code>ENTER_STAGGER</code> 0.03.</td></tr>
+    <tr><td class="k">Press</td><td>The cell under the finger sinks (<code>press_scale</code> 0.94); whatever stands on it sinks with it.</td></tr>
+    <tr><td class="k">Plant</td><td>The mushroom pops in with the squash (0.22, squash 0.15), a ring in <code>SUN_RAY</code> pulses out of its cell, a puff of five in leaf &mdash; and <b>every number whose standing just changed bumps and takes its wash</b>.</td></tr>
+    <tr><td class="k">Pull up</td><td>The mushroom shrinks with the quarter turn (0.12), and the numbers around it go back to ink.</td></tr>
+    <tr><td class="k">Pebble, rub out</td><td>The pebble pops in with the squash and a puff in <code>SOCKET_PEBBLE</code>; rubbed out, it shrinks with the quarter turn.</td></tr>
+    <tr><td class="k">Sweep</td><td>Cells sink as the finger passes and stay down; on release the pebbles arrive in a wave along the path at <code>ENTER_STAGGER</code> 0.03, each cell springing back as its pebble lands. The stroke's job is read off its first cell &mdash; Nonogram's rule &mdash; and it passes over numbers and planted mushrooms alike. No line lock.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring in <code>LEAF</code> at the cell, the mushroom drops in from 40 above with the fade (0.3 s), sparkles in leaf, and it wears a leaf sprig from then on.</td></tr>
+    <tr><td class="k">Wrong on Check</td><td>Each wrong mark wobbles (0.45 s) and its cell blushes.</td></tr>
+    <tr><td class="k">Refused</td><td>A tap on a turned-over cell shivers it (2 px, 0.2 s) and blushes it; the sprout says why. A tap on a pinned mushroom does the same and she pulls a face.</td></tr>
+    <tr><td class="k">Reset</td><td>Every mushroom and pebble the player laid shrinks out in a wave from the far corner at 0.02 s a cell; a hint's mushrooms hop 4 and stay.</td></tr>
+    <tr><td class="k">Solved</td><td>The mushrooms hop 10 in a wave along the diagonal (0.04 s a cell after 0.25) with <code>JOY</code> and sparkles in gold, the pebbles clear in the same wave, and every number on the field is already green. The win after 1.6 s: one mushroom in <code>JOY</code>, &ldquo;Every patch has its count.&rdquo;, the field sliding down under it.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the field is up at once, a mushroom or a pebble is there or gone in one frame, nothing sinks, rings, shivers or wobbles, the washes change without bumping, and the win follows the last tap.</p>
+
+  <h3>8. Where it stands on the first screen <span class="pill blue">decided</span></h3>
+  <p>The grid is full. Twelve cards, three across and four down, and the last slot is Pipes' dimmed <code>SOON</code> card &mdash; which Word Trail is already spending. Two more boards are in flight, so the answer is <b>the pager comes back</b>: twelve cards a page, next and prev under the grid with a dot each, the way the campsite menu turned its pages of nine before the flat screen dropped it. The card stays <b>252</b> tall and the 92 px picture the card-art budget is written against is untouched; letting the <code>GridContainer</code> run to five rows instead would take a card to about 210 and every one of those pixels out of the picture.</p>
+  <p><b>This is not this board's work</b>, and it belongs to whichever of the three lands first; it is written down here because this is the tab that hit the wall. The card's own picture is one <code>_build</code> branch in <code>ui/menu/card_art.gd</code>: two mushrooms on a turf strip beside a cream tile with a number on it, all of it reuse.</p>
+
+  <h3>9. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>The auto-pebble.</b> A number that has all its mushrooms could lay pebbles on its remaining neighbours for you, the way a seated queen crosses out what she sees. It would feel wonderful and it would play the easiest 60% of the game on your behalf &mdash; so it is off. Judge it on the phone; it is one method either way.</li>
+    <li><b>The wash as a crutch.</b> Section 4 argues it is honest. It is still a running signal no other flat board gives, and if it turns the hard board into colour-matching it should go to Check only.</li>
+    <li><b>116 on hard.</b> Nonogram's cell and Queens' cell, and the same question about a thumb.</li>
+    <li><b>Two chips or one.</b> A tap cycle (nothing &rarr; mushroom &rarr; pebble) would free the 150 the tray costs and give the field a bigger cell. Nonogram already answered this the other way, and three taps to correct a pebble is why.</li>
+    <li><b>Whether easy is too easy.</b> Handing 45% of the carved numbers back makes a 6&times;6 nearly a reading exercise. The knob is one constant.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three mushrooms planted and four pebbles laid, <code>?wrong=1</code> for one mushroom on bare ground, <code>?tap=r,c</code> to tap a cell with the armed chip at <code>?at=</code> seconds (0.2 by default; a turned-over cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-motion can be shot; pick the tab with <code>#mushroom</code>.</p>
 </section>
 </main>
 
@@ -9528,6 +9785,624 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   loadWords().then(start);
 })();
 
+/* ---------- the flat word trail mock ---------- */
+(function(){
+  const cv=document.getElementById('wt'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd). This board adds no colour
+  // at all: a locked word takes one of the palette's six chip colours in
+  // order, ribbon in the strong one and tile face in its pale *_TILE, and
+  // six is also the most words any band has.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    stone:'#ede2cc',stoneGiven:'#dccfb3',cloud:'#a9c2dd',moss:'#7fa84a'};
+  const WORDCOL=[
+    {ink:'#6ba845',deep:'#4f8a31',tile:'#e6f0da'},  // LEAF
+    {ink:'#f5a623',deep:'#d88a12',tile:'#fff1d6'},  // SUN
+    {ink:'#7d8fd9',deep:'#6273c0',tile:'#e9ecfa'},  // MOON_INK
+    {ink:'#e2645c',deep:'#bf4a44',tile:'#fadcd8'},  // BERRY
+    {ink:'#c99a63',deep:'#a57a48',tile:'#f3e4ce'},  // ACORN
+    {ink:'#e58fb5',deep:'#c26b93',tile:'#fbe0ec'}]; // FLOWER
+  const TILE_RIM=mixHex(C.surface,C.text,0.16), WALL_RIM=mixHex(C.stoneGiven,C.text,0.22);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.02,SOLVE_DELAY:0.2,SHIVER_PX:2,SHIVER_TIME:0.2};
+  // This board's own three: the wave's step per tile, how long a beam takes
+  // to grow or unwind, and how long the win waits.
+  const WAVE_STEP=0.05,BEAM_TIME=0.18,WIN_WAIT=1.4;
+  const stag=v=>RM?0:v;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popOutScale=(s,dur)=>{dur=dur||MO.POP_OUT; if(RM) return null; const u=s/dur; if(u>=1) return null; return {scale:1-clamp(u),angle:Math.PI/2*clamp(u)};};
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ---- the words ----
+  // content/word_trail.json is fetched so the mock plays the shipping list.
+  // Over file:// that needs --allow-file-access-from-files; without it this
+  // small list stands in, which the caption says.
+  const FALLBACK={'3':['bee','cub','fox','hen','ivy','jar','kid','log','nut','oak','owl','pea','pot','sun','web'],
+    '4':['barn','bear','cake','deer','fern','gate','hive','kite','lamp','moss','nest','pine','rope','sail','wolf'],
+    '5':['acorn','berry','cabin','daisy','eagle','fence','grove','honey','lemon','maple','otter','plant','river','stone','tulip'],
+    '6':['badger','candle','forest','garden','hollow','kitten','lantern','meadow','pebble','rabbit','shadow','tunnel','valley','willow','winter'],
+    '7':['bonfire','cottage','dolphin','feather','harvest','kitchen','lantern','morning','orchard','pumpkin','rainbow','seaside','thistle','village','whisper'],
+    '8':['birdsong','campfire','daylight','eggplant','hedgehog','lakeside','mountain','mushroom','pinecone','seashell','signpost','snowdrop','starfish','sunlight','woodland']};
+  let WORDS=FALLBACK,LIST='';
+  async function loadWords(){
+    try{
+      const r=await fetch('../../content/word_trail.json'); if(!r.ok) throw new Error('http');
+      const j=await r.json(); if(!j.words||!j.words['3']) throw new Error('empty');
+      WORDS=j.words;
+      LIST='the shipping list ('+Object.keys(WORDS).reduce((a,k)=>a+WORDS[k].length,0)+' words)';
+    }catch(e){ LIST='the inline fallback of 90 words — the shipping list needs Chrome’s --allow-file-access-from-files over file://'; }
+  }
+
+  // ---- state (puzzles/word_trail_state.gd: the one truth, scene-free) ----
+  const key=(r,c)=>r+','+c, rc=k=>k.split(',').map(Number);
+  const DIFFS=['Easy · 5×5','Medium · 6×6','Hard · 7×7'];
+  // The bands. A wall is whatever the words do not cover, so the wall count
+  // is a property of the band and never a dial: 7, 7 and 11. One word per
+  // length would put 16 walls on the 7x7 -- a third of the field, and it
+  // reads as damage rather than as carving -- so the two larger bands repeat
+  // a length instead. Six words at most, which is what the palette's six
+  // chip colours cover.
+  const LENS=d=>d===0?[3,4,5,6]:d===1?[3,4,4,5,6,7]:[4,5,6,7,8,8];
+  let n=5,diff=0,seed=5,genAttempts=0;
+  let words=[],letters={},walls=new Set(),given={},order=[];
+  let hintsLeft=3,moves=0,openedAt=0,solvedAt=-1e9,winAt=-1e9,peek=Q.get('peek')==='1';
+  // A harness stamps a solve in the past (?win=1 at -10), so the fact and
+  // the moment are two things: a timestamp alone reads as "not yet" for
+  // every negative one, and the win screen never comes up.
+  let hasSolve=false;
+  let trail=[],beamAt=0,ghost=null,press=null;
+  let particles=[],rings=[],btnPress={},auto=[],L=null;
+  const open=()=>!hasSolve;
+  const found=()=>words.filter(w=>w.found).length;
+
+  // A path's shape puts no constraint on its letters -- any five-letter word
+  // fits any five-cell path -- so there is no packing search here. Grow the
+  // paths first, longest first, and every cell no path covered is a wall.
+  function growPaths(rng,n,lens){
+    const used={},paths=[];
+    const free=(r,c)=>r>=0&&r<n&&c>=0&&c<n&&!used[key(r,c)];
+    for(const len of lens.slice().sort((a,b)=>b-a)){
+      let got=null;
+      for(let tries=0;tries<120&&!got;tries++){
+        const sr=(rng()*n)|0,sc=(rng()*n)|0;
+        if(!free(sr,sc)) continue;
+        const path=[[sr,sc]]; used[key(sr,sc)]=1;
+        while(path.length<len){
+          const [r,c]=path[path.length-1];
+          const opts=[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([a,b])=>free(a,b));
+          if(!opts.length) break;
+          const p=opts[(rng()*opts.length)|0]; path.push(p); used[key(p[0],p[1])]=1;
+        }
+        if(path.length===len) got=path;
+        else for(const [r,c] of path) delete used[key(r,c)];
+      }
+      if(!got) return null;
+      paths.push(got);
+    }
+    return paths;
+  }
+  const bends=p=>{let b=0;for(let i=2;i<p.length;i++){const a=[p[i-1][0]-p[i-2][0],p[i-1][1]-p[i-2][1]],d=[p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]];if(a[0]!==d[0]||a[1]!==d[1])b++;}return b;};
+  function oneField(paths){
+    const openSet=new Set(); paths.forEach(p=>p.forEach(([r,c])=>openSet.add(key(r,c))));
+    const first=openSet.values().next().value; if(first===undefined) return false;
+    const seen=new Set([first]),st=[first];
+    while(st.length){const [r,c]=rc(st.pop());
+      for(const [a,b] of [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]){const k=key(a,b); if(openSet.has(k)&&!seen.has(k)){seen.add(k);st.push(k);}}}
+    return seen.size===openSet.size;
+  }
+  function fullWallLine(paths,n){
+    const open=new Set(); paths.forEach(p=>p.forEach(([r,c])=>open.add(key(r,c))));
+    for(let i=0;i<n;i++){
+      let row=true,col=true;
+      for(let j=0;j<n;j++){ if(open.has(key(i,j))) row=false; if(open.has(key(j,i))) col=false; }
+      if(row||col) return true;
+    }
+    return false;
+  }
+  // How many separate blocks the leftover walls fall into.
+  function wallIslands(paths,n){
+    const open=new Set(); paths.forEach(p=>p.forEach(([r,c])=>open.add(key(r,c))));
+    const seen=new Set(); let count=0;
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      const k=key(r,c); if(open.has(k)||seen.has(k)) continue;
+      count++; seen.add(k); const st=[k];
+      while(st.length){const [a,b]=rc(st.pop());
+        for(const [x,y] of [[a-1,b],[a+1,b],[a,b-1],[a,b+1]]){
+          const k2=key(x,y);
+          if(x<0||y<0||x>=n||y>=n||open.has(k2)||seen.has(k2)) continue;
+          seen.add(k2); st.push(k2);}}
+    }
+    return count;
+  }
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd; n=5+diff;
+    const lens=LENS(diff),rng=mulberry32((sd*2654435761)>>>0);
+    let paths=null,loose=null,best=1e9; genAttempts=0;
+    // Best of the candidates, not the first of them. A layout that passes is
+    // then scored on how the *walls* read: a wall speckled over the field
+    // looks like damage, a wall in two or three blocks looks carved, so the
+    // score is ten a wall island less one a bend, and the lowest wins.
+    for(let a=0;a<60;a++){
+      genAttempts++;
+      const p=growPaths(rng,n,lens); if(!p) continue;
+      loose=loose||p;
+      // A straight row is not a trail, and an island of letters reads as a bug.
+      if(p.some(q=>q.length>=5&&bends(q)===0)) continue;
+      if(!oneField(p)) continue;
+      // A wholly walled row or column is not carving, it is a smaller grid
+      // with a dead strip drawn on it -- and at 11 walls on a 7 wide field
+      // the "fewest wall islands" score walks straight into one.
+      if(fullWallLine(p,n)) continue;
+      const sc=10*wallIslands(p,n)-p.reduce((acc,q)=>acc+bends(q),0);
+      if(sc<best){best=sc; paths=p;}
+    }
+    paths=paths||loose;
+    words=paths.map(path=>({path,w:WORDS[String(path.length)][(rng()*WORDS[String(path.length)].length)|0],found:false,at:-1e9,undoAt:null}));
+    words.sort((a,b)=>a.path.length-b.path.length);
+    letters={}; walls=new Set(); given={}; order=[];
+    words.forEach((wd,i)=>{wd.ci=i; wd.path.forEach(([r,c],j)=>letters[key(r,c)]=wd.w[j].toUpperCase());});
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(letters[key(r,c)]===undefined) walls.add(key(r,c));
+    hintsLeft=3; moves=0; hasSolve=false; solvedAt=-1e9; winAt=-1e9; openedAt=t; trail=[]; ghost=null; press=null;
+    particles=[]; rings=[]; btnPress={}; auto=[];
+    tipSet(TIPS[0],'happy',t); tip.idx=0;
+    caption();
+  }
+
+  // ---- the moves ----
+  const owner=k=>{for(const wd of words) if(wd.found&&wd.path.some(([r,c])=>key(r,c)===k)) return wd; return null;};
+  const freeCell=k=>!walls.has(k)&&!owner(k);
+  function lock(wd,t){
+    wd.found=true; wd.at=t; wd.undoAt=null; order.push(wd.ci); moves++;
+    const [lr,lc]=wd.path[wd.path.length-1];
+    const done=t+stag(wd.path.length*WAVE_STEP);
+    ring(lr,lc,done,WORDCOL[wd.ci%6].ink); sparkle(lr,lc,done,WORDCOL[wd.ci%6].ink);
+    if(words.every(x=>x.found)){ hasSolve=true; solvedAt=done; winAt=done+WIN_WAIT;
+      tipSet('Every letter found its way.','joy',done); }
+    else tipSet(LEFT_LINE(),'happy',t);
+    caption();
+  }
+  function undo(t){
+    if(!order.length||!open()) return;
+    const wd=words[order.pop()]; wd.found=false; wd.undoAt=t; moves++;
+    tipSet('Taken back. '+LEFT_LINE(),'happy',t); caption();
+  }
+  function reset(t){
+    if(!order.length) return;
+    while(order.length){const wd=words[order.pop()]; wd.found=false; wd.undoAt=t;}
+    hasSolve=false; solvedAt=-1e9; winAt=-1e9; trail=[]; ghost=null;
+    tipSet('A clean field. '+LEFT_LINE(),'happy',t); caption();
+  }
+  // The one hint this game can give: the words are hidden but the letters
+  // are not, so the only thing a player can be short of is where a word
+  // starts. It lights the next tile of the shortest unfound word's path.
+  function hint(t){
+    if(hintsLeft<=0||!open()) return;
+    const cand=words.filter(w=>!w.found&&(given[w.ci]||0)<w.path.length).sort((a,b)=>a.path.length-b.path.length)[0];
+    if(!cand) return;
+    const k=(given[cand.ci]||0); given[cand.ci]=k+1; hintsLeft--;
+    const [r,c]=cand.path[k]; ring(r,c,t,C.leaf); sparkle(r,c,t+stag(0.1),C.leaf);
+    tipSet(k===0?'A word starts on the glowing tile.':'It carries on through the glow.','happy',t);
+    caption();
+  }
+  // Release: a trail locks only if it is one of today's unfound words traced
+  // along that word's own cells, in order. Anything else simply unwinds --
+  // no toast, no shiver, no penalty, nothing spent.
+  function release(t){
+    if(trail.length>=3){
+      for(const wd of words){
+        if(wd.found||wd.path.length!==trail.length) continue;
+        if(wd.path.every(([r,c],i)=>key(r,c)===trail[i])){ lock(wd,t); trail=[]; return true; }
+      }
+    }
+    if(trail.length>1) ghost={path:trail.slice(),at:t};
+    trail=[]; caption(); return false;
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  const centre=k=>{const [r,c]=rc(k); return [L.gx+c*(L.cell+L.gap)+L.cell/2,L.gy+r*(L.cell+L.gap)+L.cell/2];};
+  function ring(r,c,t0,col){ if(RM) return; rings.push({k:key(r,c),t0,col}); }
+  function sparkle(r,c,t0,col){ if(RM) return; for(let i=0;i<7;i++) particles.push({k:key(r,c),ox:(hash(i+r,c+7)-0.5)*0.9,oy:(hash(i+c,r+13)-0.5)*0.6,vx:(hash(i,r*5+c)-0.5)*90,vy:-120,t0:t0+i*0.04,life:0.7,col,rad:13,g:160}); }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur='';
+    for(const w of ws){const test=cur?cur+' '+w:w; if(ctx.measureText(test).width>maxw&&cur){out.push(cur); cur=w;} else cur=test;}
+    if(cur) out.push(cur); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- layout ----
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1340 of board,
+  // 20, 140 of tip card, 40 of margin -- 1920 exactly. Inside the card the
+  // width binds at every band: cell = (944 - (n-1)*14)/n is 178, 146 and
+  // 123, well under what the height would allow. What the grid and the
+  // slots do not spend is the scenery band at the card's foot.
+  const TOP_H=180,DAY_H=120,BOARD_H=1340,TIP_H=140,ROW_GAP=20,GRID_GAP=14,INSET=28;
+  const SLOT_W=34,SLOT_H=52,SLOT_GAP=5,GROUP_GAP=22,LINE_GAP=14,SLOTS_H=150,SLOTS_PAD=24;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,tipY=by+BOARD_H+ROW_GAP;
+    const cell=Math.min((COL-2*INSET-(n-1)*GRID_GAP)/n,(BOARD_H-2*INSET-SLOTS_H-SLOTS_PAD-(n-1)*GRID_GAP)/n);
+    const gw=n*cell+(n-1)*GRID_GAP,gx=W/2-gw/2,gy=by+INSET;
+    const slotsY=gy+gw+SLOTS_PAD,bandY=slotsY+SLOTS_H;
+    return {top:{y:topY},day:{y:dayY},board:{y:by},tip:{y:tipY},cell,gap:GRID_GAP,gx,gy,gw,
+      slots:{y:slotsY},band:{y:bandY,h:by+BOARD_H-bandY-INSET},
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+  // One group of boxes per word, shortest first, wrapped to as many lines as
+  // it takes. Length is the whole clue: nothing about a word's shape shows.
+  function slotLines(){
+    const maxw=COL-2*INSET,lines=[]; let cur=[],curW=0;
+    words.forEach((wd,i)=>{
+      const gwid=wd.w.length*SLOT_W+(wd.w.length-1)*SLOT_GAP,add=(cur.length?GROUP_GAP:0)+gwid;
+      if(cur.length&&curW+add>maxw){lines.push({items:cur,w:curW}); cur=[]; curW=0;}
+      curW+=(cur.length?GROUP_GAP:0)+gwid; cur.push({i,w:gwid});
+    });
+    if(cur.length) lines.push({items:cur,w:curW});
+    return lines;
+  }
+
+  // ---- the board ----
+  // A word's wave front: tiles light from its first to its last, WAVE_STEP
+  // apart, and an undo runs the same wave backwards.
+  function frontOf(wd,t){
+    const len=wd.path.length;
+    if(wd.found) return RM?len:clamp((t-wd.at)/(len*WAVE_STEP))*len;
+    if(wd.undoAt==null||RM) return 0;
+    return (1-clamp((t-wd.undoAt)/(len*WAVE_STEP)))*len;
+  }
+  function tileState(k,t){
+    for(const wd of words){
+      const idx=wd.path.findIndex(([r,c])=>key(r,c)===k);
+      if(idx<0) continue;
+      const f=frontOf(wd,t);
+      if(idx<f) return {wd,idx,at:wd.found?wd.at+idx*stag(WAVE_STEP):-1e9};
+      return null;
+    }
+    return null;
+  }
+  function ribbon(path,upto,col,alpha,width){
+    if(upto<=0) return;
+    const pts=path.map(([r,c])=>centre(key(r,c)));
+    ctx.save(); ctx.globalAlpha=alpha; ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+    const whole=Math.floor(Math.min(upto,pts.length)-1e-9);
+    for(let i=1;i<=whole&&i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    const frac=Math.min(upto,pts.length)-whole;
+    if(frac>0&&whole+1<pts.length){const a=pts[whole],b=pts[whole+1]; ctx.lineTo(lerp(a[0],b[0],frac),lerp(a[1],b[1],frac));}
+    stroke(col,width); ctx.restore();
+  }
+  // pass 0: the faces. pass 1: the hint glow and the letter.
+  function tilePass(t,pass){
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      const k=key(r,c); if(walls.has(k)) continue;
+      const st=tileState(k,t),col=st?WORDCOL[st.wd.ci%6]:null;
+      const x=L.gx+c*(L.cell+L.gap),yy=L.gy+r*(L.cell+L.gap);
+      let sc=1,dy=0;
+      if(st) sc=bumpScale(t-st.at);
+      if(press===k&&!RM) sc*=MO.PRESS_SCALE;
+      else if(trail.indexOf(k)>=0) sc*=0.97;
+      if(hasSolve) dy=hopLift(t-solvedAt-MO.SOLVE_DELAY-(r+c)*stag(MO.SOLVE_STAGGER),MO.SOLVE_HOP,MO.SOLVE_TIME);
+      ctx.save(); ctx.translate(x+L.cell/2,yy+L.cell/2+dy); ctx.scale(sc,sc); ctx.translate(-L.cell/2,-L.cell/2);
+      if(pass===0){
+        const face=col?col.tile:C.surface,rim=col?mixHex(col.tile,col.deep,0.45):TILE_RIM;
+        card(0,0,L.cell,L.cell,L.cell*0.22,face,rim,7);
+      } else {
+        const wd=words.find(x2=>x2.path.some(([a,b])=>key(a,b)===k));
+        if(wd&&!wd.found&&wd.path.findIndex(([a,b])=>key(a,b)===k)<(given[wd.ci]||0)){
+          ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle=C.sunRay; rr(7,7,L.cell-14,L.cell-21,L.cell*0.19); ctx.fill(); ctx.restore();
+          ctx.save(); ctx.setLineDash([L.cell*0.1,L.cell*0.08]); rr(9,9,L.cell-18,L.cell-25,L.cell*0.18); stroke(C.sunDeep,5); ctx.restore();
+        }
+        if(peek&&!col&&wd){ctx.fillStyle=rgba(WORDCOL[wd.ci%6].ink,0.45); circle(L.cell/2,L.cell-15,7);}
+        text(letters[k]||'',L.cell/2,L.cell/2-4,'700 '+Math.round(L.cell*0.48)+'px '+FD,col?col.deep:C.text);
+      }
+      ctx.restore();
+    }
+  }
+  function drawBoard(t){
+    // The card leaves with the other rows when the win comes up, or the
+    // answer is read through the celebration.
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    const y=L.board.y;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,y,COL,BOARD_H,40,C.surface,C.line,8);
+    scenery(t);
+    const s=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a<=0){ctx.restore(); return;}
+    ctx.save(); ctx.globalAlpha=a*fade;
+    const cxm=L.gx+L.gw/2,cym=L.gy+L.gw/2;
+    ctx.translate(cxm,cym); ctx.scale(s,s); ctx.translate(-cxm,-cym);
+    // the walls first: the mock's grey slabs, in the family's warm grey
+    for(const k of walls){
+      const [r,c]=rc(k),x=L.gx+c*(L.cell+L.gap),yy=L.gy+r*(L.cell+L.gap);
+      card(x,yy,L.cell,L.cell,L.cell*0.22,C.stoneGiven,WALL_RIM,6);
+      leaf(x+L.cell*0.32,yy+L.cell*0.52,L.cell*0.34,-0.5,rgba(C.text,0.14));
+    }
+    // Then the tiles in two passes with the ribbons between them: a tile is
+    // opaque, so a trail drawn under one is a trail nobody sees. Faces
+    // first, the ribbons over them, the letters and the hint glow last.
+    tilePass(t,0);
+    for(const wd of words){
+      const f=frontOf(wd,t); if(f<=0) continue;
+      ribbon(wd.path,f,rgba(WORDCOL[wd.ci%6].ink,0.5),1,L.cell*0.46);
+    }
+    if(ghost){const u=clamp((t-ghost.at)/BEAM_TIME);
+      if(u<1) ribbon(ghost.path,1+(ghost.path.length-1)*(1-u),rgba(C.sunRay,0.55*(1-u)),1,L.cell*0.44);
+      else ghost=null;}
+    if(trail.length) ribbon(trail,Math.min(trail.length,1+(trail.length-1)*clamp((t-beamAt)/BEAM_TIME+0.7)),rgba(C.sunRay,0.6),1,L.cell*0.44);
+    tilePass(t,1);
+    // rings and sparkles
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      const [x,y2]=centre(rg.k); ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.arc(x,y2,L.cell*(0.35+0.4*u),0,Math.PI*2); stroke(rg.col,8*(1-u)+2); ctx.restore();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const [x,y2]=centre(p.k),s2=(t-p.t0);
+      ctx.save(); ctx.globalAlpha=1-u; star4(x+p.ox*L.cell+p.vx*s2,y2+p.oy*L.cell+p.vy*s2+p.g*s2*s2,p.rad*(1-0.5*u),t*2+p.ox,p.col); ctx.restore();}
+    ctx.restore();
+    drawSlots(t,fade);
+    ctx.restore();
+  }
+  function drawSlots(t,fade){
+    const lines=slotLines(),linesH=lines.length*SLOT_H+(lines.length-1)*LINE_GAP;
+    let y=L.slots.y+(SLOTS_H-linesH)/2;
+    lines.forEach((ln,li)=>{
+      let x=W/2-ln.w/2;
+      ln.items.forEach(it=>{
+        const wd=words[it.i],col=WORDCOL[wd.ci%6],f=frontOf(wd,t);
+        for(let i=0;i<wd.w.length;i++){
+          const bx=x+i*(SLOT_W+SLOT_GAP),lit=i<f;
+          const e=dropInLift(t-openedAt-MO.ENTER_DELAY-0.25-(li*4+i)*stag(MO.ENTER_STAGGER));
+          ctx.save(); ctx.globalAlpha=e.a*fade; ctx.translate(0,e.dy);
+          card(bx,y,SLOT_W,SLOT_H,12,lit?col.tile:C.surfaceHi,lit?mixHex(col.tile,col.deep,0.4):C.line,5);
+          if(lit){const at=wd.found?wd.at+i*stag(WAVE_STEP):t,d=dropInLift(t-at);
+            ctx.save(); ctx.globalAlpha=e.a*d.a*fade; text(wd.w[i].toUpperCase(),bx+SLOT_W/2,y+SLOT_H/2-2+d.dy*0.3,'700 29px '+FD,col.deep); ctx.restore();}
+          ctx.restore();
+        }
+        x+=it.w+GROUP_GAP;
+      });
+      y+=SLOT_H+LINE_GAP;
+    });
+  }
+  // The mock's clouds and bushes stand outside its wooden frame; at 40 of
+  // margin on a 9:16 phone there is no outside, so they come inside as the
+  // band the grid's width leaves at the card's foot (ui/flat/scenery.gd).
+  function scenery(t){
+    const x0=M+INSET,w=COL-2*INSET,y0=L.band.y,h=L.band.h,gy=y0+h-6;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip();
+    ctx.fillStyle=rgba(C.cloud,0.35);
+    for(const [cx,cy,cr] of [[x0+120,y0+46,34],[x0+170,y0+38,26],[x0+w-190,y0+62,30],[x0+w-140,y0+54,22]]) circle(cx,cy,cr);
+    ctx.fillStyle=mixHex(C.moss,C.paper,0.35); rr(x0-20,gy-52,w+40,120,40); ctx.fill();
+    ctx.fillStyle=C.moss;
+    for(let i=0;i<26;i++){const bx=x0+((i*137+41)%w),bh=22+((i*53)%18),sw=(RM?0:Math.sin(t*1.2+i)*3);
+      ctx.beginPath(); ctx.moveTo(bx,gy-46); ctx.quadraticCurveTo(bx+4+sw,gy-46-bh*0.6,bx+2+sw*2,gy-46-bh); ctx.quadraticCurveTo(bx+8+sw,gy-46-bh*0.5,bx+9,gy-46); ctx.fill();}
+    for(const [bx,br] of [[x0+52,40],[x0+w-72,34],[x0+w*0.42,28]]){
+      ctx.fillStyle=mixHex(C.leaf,C.text,0.12); circle(bx,gy-52,br); circle(bx-br*0.8,gy-44,br*0.7); circle(bx+br*0.8,gy-44,br*0.7);
+      ctx.fillStyle=C.leafLight; circle(bx-br*0.3,gy-64,br*0.28);}
+    ctx.restore();
+  }
+
+  // ---- the chrome ----
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:!order.length});
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!order.length});
+    const cx=(M+126+W-M-504)/2,by=L.top.y+98;
+    ctx.font='700 56px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('WORD TRAIL').width; ctx.letterSpacing='0px';
+    text('WORD TRAIL',cx,by-10,'700 56px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-32; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7); leaf(lx+2,ly-26,34,-2.7); leaf(lx+2,ly-30,28,-0.5);
+    text('EVERY LETTER FINDS ITS WAY',cx,by+38,'700 19px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+  const TIPS=['Drag from letter to letter. Never diagonally.','Every open tile belongs to one word.','The lengths under the field are the only clue.','A wrong trail costs nothing. Try another.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  const LEFT_LINE=()=>{const l=words.length-found(); return l===0?'That is the field filled.':l===1?'One word left.':l+' words left.';};
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-200,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  // The win: the sprout in joy over the words the field held, each in its
+  // own colour, the day card with the count, and Back to camp.
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Every letter found its way.',W/2,534,'600 34px '+FB,C.dim);
+      const perRow=2,rows=Math.ceil(words.length/perRow),wy=700+(3-rows)*56;
+      words.forEach((wd,i)=>{const col=WORDCOL[wd.ci%6],x=W/2+((i%perRow)-0.5)*480,yy=wy+Math.floor(i/perRow)*118;
+        card(x-222,yy,444,96,30,col.tile,mixHex(col.tile,col.deep,0.4),7);
+        text(wd.w.toUpperCase(),x,yy+44,'700 46px '+FD,col.deep,'center','3px');});
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('wt-caption');
+  function caption(){
+    if(!capEl) return;
+    const lens=words.map(w=>w.w.length).join(', ');
+    if(hasSolve){capEl.textContent='Filled in '+moves+' moves and '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+': '+words.map(w=>w.w.toUpperCase()).join(', ')+'.'; return;}
+    capEl.textContent=n+'×'+n+' · '+found()+'/'+words.length+' words · lengths '+lens+' · '+walls.size+' walls · '+hintsLeft+' hints · built in '+genAttempts+(genAttempts===1?' attempt':' attempts')+' · '+LIST;
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout();
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); a.fn(a.at);}
+    if(tip.mood==='happy'&&open()&&!order.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function cellAt(p){
+    const cx=Math.floor((p[0]-L.gx)/(L.cell+L.gap)),cy=Math.floor((p[1]-L.gy)/(L.cell+L.gap));
+    if(cx<0||cy<0||cx>=n||cy>=n) return null;
+    const x=L.gx+cx*(L.cell+L.gap),y=L.gy+cy*(L.cell+L.gap);
+    if(p[0]>x+L.cell||p[1]>y+L.cell) return null;
+    return key(cy,cx);
+  }
+  const adjacent=(a,b)=>{const [r1,c1]=rc(a),[r2,c2]=rc(b); return Math.abs(r1-r2)+Math.abs(c1-c2)===1;};
+  function hit(p,t){
+    if(hasSolve) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(inRect(p,W-M-488,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    const k=cellAt(p); if(k!=null) return {kind:'cell',k};
+    return null;
+  }
+  let pressTarget=null;
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='cell'){
+      if(!open()||!freeCell(hh.k)) return;
+      cv.setPointerCapture(e.pointerId); trail=[hh.k]; beamAt=t; press=hh.k;
+    } else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!trail.length) return; e.preventDefault();
+    const t=now(),k=cellAt(pt(e)); if(k==null) return;
+    const at=trail.indexOf(k);
+    if(at>=0){ if(at===trail.length-2){trail.pop(); press=trail[trail.length-1];} return; }
+    if(!freeCell(k)||!adjacent(trail[trail.length-1],k)) return;
+    trail.push(k); press=k; beamAt=t;});
+  function up(e){const t=now();
+    if(trail.length){ press=null; release(t); pressTarget=null; return; }
+    const p=pt(e),hh=hit(p,t); press=null;
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='tip') tipSet('Trace a word along its own tiles. Nothing else sticks, and nothing else costs you.','happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the twelve cards.','happy',t);
+    else if(hh.kind==='camp'){build(diff,seed+1,t);}}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{trail=[]; press=null; pressTarget=null;});
+
+  // ---- the page's own controls ----
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('wt-hint',t=>hint(t)); btn('wt-undo',t=>undo(t)); btn('wt-reset',t=>reset(t));
+  btn('wt-new',t=>build(diff,seed+1,t));
+  btn('wt-solve',t=>{let k=t; for(const wd of words) if(!wd.found){lock(wd,k); k+=wd.path.length*(RM?0:WAVE_STEP)+0.25;}});
+  btn('wt-peek',()=>{peek=!peek; const el=document.getElementById('wt-peek'); if(el) el.classList.toggle('on',peek);});
+  const diffEl=document.getElementById('wt-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=DIFFS[diff];});
+  const rmEl=document.getElementById('wt-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  (async function(){
+    await loadWords();
+    build(parseInt(Q.get('d')||'0')||0,parseInt(Q.get('seed')||'5')||5,0);
+    if(diffEl) diffEl.textContent=DIFFS[diff];
+    // A harness stamps the moves in the past so the frame it shoots is settled.
+    const fnd=parseInt(Q.get('found')||'0')||0, hn=parseInt(Q.get('hint')||'0')||0, win=Q.get('win')==='1';
+    if(win) for(const wd of words) lock(wd,-10);
+    else for(let i=0;i<fnd&&i<words.length;i++) lock(words[i],-10);
+    for(let i=0;i<hn;i++) hint(-11);
+    openedAt=win||fnd||hn?-12:0;
+    caption(); frame();
+  })();
+})();
+
 /* ---------- the flat snake apple mock ---------- */
 (function(){
   const cv=document.getElementById('sa'); if(!cv) return;
@@ -11527,6 +12402,645 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   if(Q.get('more')==='1'){moreOpen=true; moreAt=-9;}
   t0=now();
   frame();
+})();
+(function(){
+  const cv=document.getElementById('mp'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  // ?freeze=1 holds the clock at ?t=, so a frame mid-motion can be shot;
+  // Chrome's own clock keeps running before a headless shot lands.
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return 'rgb('+Math.round(lerp(A[0],B[0],u))+','+Math.round(lerp(A[1],B[1],u))+','+Math.round(lerp(A[2],B[2],u))+')';};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd), and so is every colour on
+  // the field: no constant here is new. The covered cell is TURF_REACH, the
+  // pale meadow Horse Pen already owns; a turned-over cell is SURFACE; a
+  // pebbled one SOCKET_OUT with the pebble in SOCKET_PEBBLE; a planted one
+  // MUSHROOM_TILE, and the mushroom itself MUSHROOM over MUSHROOM_STEM.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    bad:'#d9605a',badTile:'#f2cfc9',stone:'#ede2cc',socketOut:'#c9b998',pebble:'#b5a482',accent:'#4c9a94',
+    meadow:'#dde08a',turf:'#93b85c',cap:'#b5705f',stem:'#f6ecd9',capTile:'#f1ded6'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md), read as curves ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.86,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    FLASH_IN:0.15,FLASH_OUT:0.45,HOP:-6,HOP_TIME:0.3,BUMP:1.14,BUMP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.04,SOLVE_DELAY:0.25,
+    RESET_STAGGER:0.02,RESET_HOP:-4,SHIVER_PX:2,SHIVER_TIME:0.2,WOBBLE_TIME:0.45};
+  // This board's own two numbers: how long a number holds its green wash
+  // once it settles, and how deep that wash sits on the cell.
+  const WASH_TIME=0.35,WASH_LEVEL=0.30;
+  const stag=v=>RM?0:v;
+  const popInScale=s=>{if(RM) return [1,1]; const u=clamp(s/MO.POP_IN),g=lerp(0.01,1,backOut(u)),sq=MO.POP_SQUASH*Math.sin(Math.PI*u); return [g*(1+sq),g*(1-sq)];};
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popOutScale=s=>{if(RM) return null; const u=s/MO.POP_OUT; if(u>=1) return null; return {scale:1-clamp(u),angle:Math.PI/2*clamp(u)};};
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const flashLevel=s=>{if(RM||s<0) return 0; if(s<MO.FLASH_IN) return s/MO.FLASH_IN; const u=(s-MO.FLASH_IN)/MO.FLASH_OUT; return u>=1?0:1-u;};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; const u=s/MO.BUMP_TIME; return 1+(MO.BUMP-1)*Math.sin(Math.PI*u);};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*Math.sin(u*Math.PI*6)*(1-u);};
+  const wobbleAngle=s=>{if(RM||s<0||s>=MO.WOBBLE_TIME) return 0; const u=s/MO.WOBBLE_TIME; return 0.16*Math.sin(u*Math.PI*5)*(1-u);};
+  const pressScale=(down,up,t)=>{if(RM||down<-1e8||t<down) return 1;
+    if(up<down||t<up) return lerp(1,MO.PRESS_SCALE,clamp((t-down)/MO.PRESS_TIME));
+    const u=(t-up)/MO.RELEASE_TIME; return u>=1?1:lerp(MO.PRESS_SCALE,1,backOut(clamp(u)));};
+  function squash(at,t){if(RM||at<-1e8||t<at||t>at+0.22) return [1,1]; const u=(t-at)/0.22,k=0.12*Math.sin(Math.PI*u); return [1+k,1-k];}
+
+  // ---- the generator, as mushroom_gen.gd will have it ----
+  // Scatter k mushrooms, count every bare cell's eight neighbours, turn
+  // *every* bare cell over, then shuffle them and try to cover each one back
+  // up again -- keeping the cover only while the solver still proves the
+  // whole field. What is left is a near-minimal set of givens, and the board
+  // is solvable by logic alone by construction. Easy and medium then put a
+  // share of the carved-away numbers back, because a minimal board is the
+  // hardest board.
+  function shuffled(k,rng){const a=[]; for(let i=0;i<k;i++) a.push(i); for(let i=k-1;i>0;i--){const j=Math.floor(rng()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t;} return a;}
+  function neigh(k,n){const r=(k/n)|0,c=k%n,out=[];
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue; const rr=r+dr,cc=c+dc;
+      if(rr<0||cc<0||rr>=n||cc>=n) continue; out.push(rr*n+cc);}
+    return out;}
+  // The solver. Two rule families and a global count, plus -- on hard only --
+  // subset subtraction between overlapping numbers, which is the 1-2-1 every
+  // player of this game knows by feel. It never branches: a board it cannot
+  // finish is a board with a guess in it, and is rejected.
+  function solvable(given,n,total,subset){
+    const NB=new Map(); for(const g of given.keys()) NB.set(g,neigh(g,n).filter(x=>!given.has(x)));
+    const unknown=[]; for(let i=0;i<n*n;i++) if(!given.has(i)) unknown.push(i);
+    const st=new Map();                       // k -> 1 mushroom, 0 bare
+    let mines=0,left=unknown.length;
+    const setk=(k,v)=>{ if(st.has(k)) return false; st.set(k,v); left--; if(v) mines++; return true;};
+    let moved=true;
+    while(moved&&left>0){
+      moved=false;
+      const cons=[];
+      for(const [g,v] of given){
+        const open=[]; let have=0;
+        for(const x of NB.get(g)){ const s=st.get(x); if(s===undefined) open.push(x); else have+=s;}
+        if(!open.length) continue;
+        const need=v-have;
+        if(need<=0){ for(const x of open) if(setk(x,0)) moved=true; continue;}
+        if(need>=open.length){ for(const x of open) if(setk(x,1)) moved=true; continue;}
+        cons.push({open,need});
+      }
+      if(moved) continue;
+      if(mines===total){ for(const x of unknown) if(setk(x,0)) moved=true; if(moved) continue;}
+      if(mines+left===total){ for(const x of unknown) if(setk(x,1)) moved=true; if(moved) continue;}
+      if(!subset) break;
+      for(let i=0;i<cons.length&&!moved;i++) for(let j=0;j<cons.length&&!moved;j++){
+        if(i===j) continue; const A=cons[i],B=cons[j];
+        if(A.open.length>=B.open.length) continue;
+        const bs=new Set(B.open); let inside=true;
+        for(const x of A.open) if(!bs.has(x)){inside=false; break;}
+        if(!inside) continue;
+        const as=new Set(A.open),rest=B.open.filter(x=>!as.has(x)),dv=B.need-A.need;
+        if(dv<=0){ for(const x of rest) if(setk(x,0)) moved=true;}
+        else if(dv>=rest.length){ for(const x of rest) if(setk(x,1)) moved=true;}
+      }
+    }
+    return left===0;
+  }
+  function generate(rng,n,k,subset,giveBack){
+    const total=n*n,order=shuffled(total,rng),mines=new Set(order.slice(0,k));
+    const num=new Map();
+    for(let i=0;i<total;i++) if(!mines.has(i)) num.set(i,neigh(i,n).filter(x=>mines.has(x)).length);
+    const bare=[...num.keys()],given=new Map(num),dropped=[];
+    for(const idx of shuffled(bare.length,rng)){
+      const g=bare[idx],v=given.get(g); given.delete(g);
+      if(solvable(given,n,k,subset)) dropped.push(g); else given.set(g,v);
+    }
+    // A minimal board is the hardest board. Easy and medium hand some of the
+    // carved-away numbers back, chosen at random so the givens stay scattered.
+    const back=Math.round(dropped.length*giveBack);
+    for(const idx of shuffled(dropped.length,rng).slice(0,back)) given.set(dropped[idx],num.get(dropped[idx]));
+    return {n,k,mines,given,num,ok:solvable(given,n,k,subset)};
+  }
+  // Width, mushrooms, whether the solver may subtract subsets, and how much
+  // of the carved-away scaffolding comes back. Tents' ladder, one size up.
+  const SIZES=[[6,6,false,0.45],[7,9,false,0.20],[8,12,true,0.0]];
+
+  // ---- canvas helpers (the flat family's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align='center',spacing='0px'){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.letterSpacing=spacing; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col=C.leaf){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='undo'||name==='reset'){const cw=name==='reset'; ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,cw?Math.PI:Math.PI*2,!cw); stroke(col,w);
+      const ex=cw?-s*0.3:s*0.3; ctx.beginPath(); ctx.moveTo(ex-s*0.14,s*0.02); ctx.lineTo(ex,-s*0.15); ctx.lineTo(ex+s*0.14,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='check'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.24); stroke(col,w*1.2);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}
+        if(expr==='strain'){ctx.beginPath(); ctx.moveTo(ex+sx*R*0.16,ey-R*0.2); ctx.lineTo(ex-sx*R*0.1,ey-R*0.3); stroke(ink,R*0.06);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.moveTo(cx-R*0.16,cy+R*0.3); ctx.lineTo(cx+R*0.16,cy+R*0.3); stroke(ink,R*0.06);}
+    else {const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+      if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- the cast: Balance's mushroom, not a new one ----
+  // ui/faces/mushroom_face.gd, drawn number for number as Balance's fifth
+  // fruit already draws it: a MUSHROOM_STEM trunk under a MUSHROOM cap with
+  // three pale spots, and the face low on the stem where the cap leaves it
+  // room. Nothing on this board is a new character.
+  function mushroom(R,o){
+    o=o||{};
+    if(!o.flat){ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.8*0.15,R*1.05,R*0.8);}
+    ctx.fillStyle=C.stem; ctx.beginPath(); ctx.moveTo(-R*0.38,-R*0.1);
+    ctx.bezierCurveTo(-R*0.44,R*0.7,-R*0.3,R*1.02,0,R*1.02);
+    ctx.bezierCurveTo(R*0.3,R*1.02,R*0.44,R*0.7,R*0.38,-R*0.1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=C.cap; ctx.beginPath(); ctx.moveTo(-R*1.04,-R*0.08);
+    ctx.bezierCurveTo(-R*1.0,-R*1.1,R*1.0,-R*1.1,R*1.04,-R*0.08); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.55)'; circle(-R*0.42,-R*0.5,R*0.15); circle(R*0.3,-R*0.62,R*0.12); circle(R*0.62,-R*0.26,R*0.1);
+    faceParts(R*0.56,0,R*0.42,o);
+    if(o.gem){leaf(R*0.74,-R*0.66,R*0.42,-0.9,C.leaf);}
+  }
+  // The pebble on its socket: Nonogram's and Queens' cross, exactly.
+  function pebble(R){
+    ctx.fillStyle=rgba(C.text,0.07); ellipse(0,R*0.34,R*0.92,R*0.3);
+    ctx.fillStyle=C.pebble; ctx.beginPath(); ctx.ellipse(0,0,R*0.82,R*0.66,0.18,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.35)'; ellipse(-R*0.24,-R*0.24,R*0.26,R*0.17);
+  }
+
+  // ---- state ----
+  const BLANK=0,FOUND=1,CLEAR=2;
+  let diff=parseInt(Q.get('d')||'1',10); if(isNaN(diff)||diff<0||diff>2) diff=1;
+  let seed=parseInt(Q.get('seed')||'71',10);
+  let n=7,total=9,puz=null,marks=new Map(),locked=new Set(),hist=[],cells=[];
+  let hintsLeft=3,checks=0,moves=0,builtAt=0,solvedAt=-1e9,winAt=-1e9,allGoodAt=-1e9;
+  let brush=FOUND,auto=[],puffs=[],rings=[];
+  const btnPress={},tip={idx:0,text:'',expr:'happy',at:-1e9};
+  const TIPS=['A number counts the mushrooms in the eight cells touching it.',
+    'Plant a mushroom where you are sure. Lay a pebble where you are not.',
+    'A number goes green the moment it has all its mushrooms.'];
+  const WORDS=['no','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen'];
+
+  const rcOf=k=>[(k/n)|0,k%n];
+  const stOf=k=>cells[k];
+  const markAt=k=>marks.get(k)||BLANK;
+  const open=()=>solvedAt<-1e8;
+  function fresh(){return {press:-1e9,release:-1e9,mAt:-1e9,mGone:-1e9,pAt:-1e9,pGone:-1e9,
+    flashAt:-1e9,flashCol:C.leaf,flashPeak:WASH_LEVEL,shiverAt:-1e9,wobbleAt:-1e9,hopAt:-1e9,hopAmt:0,hopDur:MO.HOP_TIME,
+    bumpAt:-1e9,joyAt:-1e9,enterAt:-1e9,strainAt:-1e9,dropAt:-1e9};}
+
+  // Derived and never stored, the Queens rule: how many mushrooms stand
+  // around a number, and therefore whether it is short, settled or over.
+  function around(g){let m=0; for(const x of neigh(g,n)) if(markAt(x)===FOUND) m++; return m;}
+  function stateOfNumber(g){const m=around(g),v=puz.given.get(g); return m<v?0:(m===v?1:2);}
+  const placed=()=>{let c=0; for(const [,v] of marks) if(v===FOUND) c++; return c;};
+  function isSolved(){ if(placed()!==total) return false; for(const k of puz.mines) if(markAt(k)!==FOUND) return false; return true;}
+  // Every mark that contradicts the patch: a mushroom on bare ground, and a
+  // pebble on a mushroom. The pebble counts for nothing towards the win, but
+  // it is still a claim, and Check answers claims.
+  function wrongMarks(){const out=[]; for(const [k,v] of marks){ const isM=puz.mines.has(k);
+    if(v===FOUND&&!isM) out.push(k); else if(v===CLEAR&&isM) out.push(k);} return out;}
+
+  function setup(d,sd,t){
+    diff=d; seed=sd;
+    const step=SIZES[d]; n=step[0]; total=step[1];
+    const rng=mulberry32(seed*2654435761+d*40503+7);
+    puz=generate(rng,n,total,step[2],step[3]);
+    marks=new Map(); locked=new Set(); hist=[]; auto=[]; puffs=[]; rings=[];
+    hintsLeft=3; checks=0; moves=0; brush=FOUND;
+    solvedAt=-1e9; winAt=-1e9; allGoodAt=-1e9; builtAt=t;
+    cells=[]; for(let i=0;i<n*n;i++){const st=fresh(); const [r,c]=[(i/n)|0,i%n];
+      st.enterAt=t+MO.ENTER_DELAY+stag((r+c)*MO.ENTER_STAGGER); cells.push(st);}
+    tip.idx=0; tipSet(TIPS[0],'happy',t);
+    applyParams(t); caption();
+  }
+
+  // ---- moves ----
+  function tipSet(s,e,t){tip.text=s; tip.expr=e; tip.at=t;}
+  function puff(k,t,col){const [r,c]=rcOf(k); puffs.push({x:L.gx+(c+0.5)*L.cell,y:L.gy+(r+0.5)*L.cell,at:t,col});}
+  function sparkle(k,t,col){const [r,c]=rcOf(k); for(let i=0;i<5;i++) puffs.push({x:L.gx+(c+0.5)*L.cell,y:L.gy+(r+0.5)*L.cell,at:t+i*0.04,col,star:true});}
+  function ring(k,t,col){const [r,c]=rcOf(k); rings.push({x:L.gx+(c+0.5)*L.cell,y:L.gy+(r+0.5)*L.cell,at:t,col});}
+
+  // The count wash: after anything that moves a mushroom, every number whose
+  // standing changed says so. Derived from what the player can already read
+  // -- the number, and the mushrooms they themselves planted -- and never
+  // from the answer, which is what keeps it honest.
+  function washAfter(before,t){
+    for(const g of puz.given.keys()){
+      const was=before.get(g),is=stateOfNumber(g);
+      if(was===is||(puz.given.get(g)===0&&is!==2&&was!==2)) continue;
+      const st=stOf(g); st.bumpAt=t;
+      if(is===1){st.flashAt=t; st.flashCol=C.leaf; st.flashPeak=WASH_LEVEL;}
+      else if(is===2){st.flashAt=t; st.flashCol=C.bad; st.flashPeak=0.34;}
+    }
+  }
+  function numbers(){const m=new Map(); for(const g of puz.given.keys()) m.set(g,stateOfNumber(g)); return m;}
+
+  function plant(k,t,o){o=o||{};
+    const before=numbers(); marks.set(k,FOUND); const st=stOf(k);
+    st.mAt=o.drop?-1e9:t; st.mGone=-1e9; st.pGone=-1e9; st.pAt=-1e9;
+    if(o.drop){st.dropAt=t; st.mAt=t;}
+    if(o.locked) locked.add(k);
+    if(!o.quiet){puff(k,t,C.leaf); ring(k,t,o.locked?C.leaf:C.sunRay);}
+    washAfter(before,t);
+  }
+  function uproot(k,t){const before=numbers(); marks.delete(k); const st=stOf(k); st.mGone=t; st.mAt=-1e9; washAfter(before,t);}
+  function layPebble(k,t,puffIt){marks.set(k,CLEAR); const st=stOf(k); st.pAt=t; st.pGone=-1e9; if(puffIt) puff(k,t,C.pebble);}
+  function rubPebble(k,t){marks.delete(k); const st=stOf(k); st.pGone=t;}
+  function refuse(k,t,why){const st=stOf(k); st.flashAt=t; st.flashCol=C.bad; st.flashPeak=0.42; st.shiverAt=t;
+    if(why==='PINNED'){st.strainAt=t; tipSet('That mushroom was given. It stays.','strain',t);}
+    else tipSet('That cell is already turned over. Its number is the clue.','strain',t);}
+  function push(entry,t){ if(!entry.length) return; hist.push(entry); moves++; after(t);}
+  function after(t){ caption(); if(open()&&isSolved()) solve(t); else speak(t);}
+  function speak(t){ if(!open()) return;
+    const p=placed(),left=total-p;
+    if(!p){tipSet(TIPS[tip.idx],'happy',t); return;}
+    if(left>0) tipSet(WORDS[p]+(p===1?' mushroom found, ':' mushrooms found, ')+(left===1?'one to go.':WORDS[left].toLowerCase()+' to go.'),'happy',t);
+    else tipSet('Every mushroom is spoken for. One of them is in the wrong place.','strain',t);
+  }
+  // The mushroom chip's tap: a covered cell takes one, a planted one is
+  // uprooted, a pebble of yours is replaced, a turned-over cell is refused.
+  function plantTap(k,t){
+    if(!open()) return;
+    if(puz.given.has(k)){refuse(k,t,'GIVEN'); return;}
+    const cur=markAt(k);
+    if(cur===FOUND){ if(locked.has(k)){refuse(k,t,'PINNED'); return;} uproot(k,t); push([{k,prev:FOUND,to:BLANK}],t); return;}
+    plant(k,t); push([{k,prev:cur,to:FOUND}],t);
+  }
+  function pebbleTap(k,t){
+    if(!open()) return;
+    if(puz.given.has(k)){refuse(k,t,'GIVEN'); return;}
+    const cur=markAt(k);
+    if(cur===FOUND) return;                       // a pebble never lifts a mushroom
+    if(cur===CLEAR){rubPebble(k,t); push([{k,prev:CLEAR,to:BLANK}],t); return;}
+    layPebble(k,t,true); push([{k,prev:BLANK,to:CLEAR}],t);
+  }
+  function undo(t){ if(!open()||!hist.length) return;
+    const entry=hist.pop(); let i=0;
+    for(const e of entry){const at=t+i*stag(MO.ENTER_STAGGER);
+      if(e.to===FOUND){uproot(e.k,t); if(e.prev===CLEAR) layPebble(e.k,t+MO.POP_OUT,false);}
+      else if(e.prev===FOUND) plant(e.k,t,{quiet:true});
+      else if(e.to===CLEAR){rubPebble(e.k,at); i++;}
+      else if(e.prev===CLEAR){layPebble(e.k,at,false); i++;}}
+    caption(); speak(t);
+  }
+  function reset(t){ if(!open()) return;
+    const before=numbers();
+    for(const k of [...marks.keys()]) if(!locked.has(k)) marks.delete(k);
+    hist=[];
+    for(let k=0;k<n*n;k++){const [r,c]=rcOf(k),at=t+((n-1-r)+(n-1-c))*stag(MO.RESET_STAGGER),st=stOf(k);
+      const is=markAt(k);
+      if(locked.has(k)&&is===FOUND){st.hopAt=t; st.hopAmt=MO.RESET_HOP; st.hopDur=MO.HOP_TIME; continue;}
+      if(st.mAt>-1e8&&is!==FOUND){st.mGone=at; st.mAt=-1e9;}
+      if(st.pAt>-1e8&&is!==CLEAR){st.pGone=at; st.pAt=-1e9;}}
+    washAfter(before,t);
+    tipSet('The patch is cleared. What a hint gave stays given.','happy',t); caption();
+  }
+  function hint(t){ if(!open()||hintsLeft<=0) return;
+    let k=-1; for(const m of [...puz.mines].sort((a,b)=>a-b)) if(markAt(m)!==FOUND){k=m; break;}
+    if(k<0) return;
+    hintsLeft--; hist=[];
+    ring(k,t,C.leaf);
+    plant(k,t,{drop:true,locked:true,quiet:true});
+    sparkle(k,t+0.15,C.leaf);
+    tipSet('One mushroom found for you, and pinned. It is a fact now.','happy',t);
+    after(t);
+  }
+  function check(t){ if(!open()) return; checks++;
+    const wrong=wrongMarks();
+    for(const k of wrong){const st=stOf(k); st.wobbleAt=t; st.flashAt=t; st.flashCol=C.bad; st.flashPeak=0.42;}
+    if(wrong.length) tipSet(WORDS[wrong.length]+(wrong.length===1?' mark is wrong.':' marks are wrong.'),'strain',t);
+    else {allGoodAt=t; btnPress.check=t;}
+    caption();
+  }
+  function solve(t){ solvedAt=t; winAt=t+1.6;
+    const ms=[...puz.mines].sort((a,b)=>{const [ar,ac]=rcOf(a),[br,bc]=rcOf(b); return (ar+ac)-(br+bc);});
+    for(const k of ms){const [r,c]=rcOf(k),st=stOf(k),at=t+stag(MO.SOLVE_DELAY+(r+c)*MO.SOLVE_STAGGER);
+      st.hopAt=at; st.hopAmt=MO.SOLVE_HOP; st.hopDur=MO.SOLVE_TIME; st.joyAt=at; sparkle(k,at,C.sun);}
+    // The pebbles scatter, as Nonogram's crosses do, leaving the patch to
+    // the mushrooms and their numbers.
+    for(const [k,v] of marks) if(v===CLEAR){const [r,c]=rcOf(k); stOf(k).pGone=t+stag(MO.SOLVE_DELAY+(r+c)*MO.SOLVE_STAGGER);}
+    tipSet('Every patch has its count.','joy',t+0.5); caption();
+  }
+  function runSolve(t){ if(!open()) return;
+    for(const k of wrongMarks()) if(!locked.has(k)){ if(markAt(k)===FOUND) uproot(k,t); else rubPebble(k,t);}
+    hist=[]; let i=0;
+    for(const k of [...puz.mines].sort((a,b)=>a-b)){ if(markAt(k)===FOUND) continue;
+      auto.push({at:t+(RM?0.04:0.22+i*0.16),fn:tt=>{plant(k,tt); after(tt);}}); i++;}
+    auto.sort((a,b)=>a.at-b.at); caption();
+  }
+
+  // ---- layout ----
+  // Nonogram's rows exactly, with one strip of this board's own above the
+  // field: the tally. The field is square in a tall slot, so the cell is
+  // capped by the width -- (1000 - 2 * 34) / n -- and the card is cut to the
+  // field and centred in what is left.
+  const PAD=34,TALLY=72;
+  let L=null;
+  function layout(t){
+    const win=winAt<-1e8?0:dec(sineIO((t-winAt)/0.45));
+    const tipY=H-M-140,actY=tipY-20-130,trayY=actY-20-150,statsY=H-M-130-20-120;
+    const bTop=lerp(380,700,win),bBot=lerp(trayY-20,statsY-40,win);
+    const avail=bBot-bTop;
+    const cell=Math.min((COL-2*PAD)/n,(avail-2*PAD-TALLY)/n);
+    const th=cell*n,bh=th+2*PAD+TALLY,by=bTop+(avail-bh)/2;
+    return {win,top:{y:M,h:180},day:{y:M+200,h:120},board:{y:by,h:bh},
+      tray:{y:trayY,h:150},act:{y:actY,h:130},tip:{y:tipY,h:140},
+      cell,gx:W/2-th/2,gy:by+PAD+TALLY,tally:by+PAD+TALLY/2};
+  }
+  function cellAt(p){const c=Math.floor((p[0]-L.gx)/L.cell),r=Math.floor((p[1]-L.gy)/L.cell); if(r<0||c<0||r>=n||c>=n) return null; return r*n+c;}
+
+  // ---- the screen ----
+  function iconButton(x,y,name,k,t,opt={}){const [sx,sy]=squash(btnPress[k]||-1e9,t); const size=opt.size||110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function pill(x,y,pw,ph,label,iconName,k,t,primary,dim){const [sx,sy]=squash(btnPress[k]||-1e9,t);
+    ctx.save(); ctx.translate(x+pw/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-pw/2,-ph/2);
+    if(dim) ctx.globalAlpha*=0.45;
+    card(0,0,pw,ph,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total2=tw+60+14,x0=pw/2-total2/2;
+    icon(iconName,x0+30,ph/2-3,52,col); text(label,x0+74,ph/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+
+  // The wordmark sits in the band the real bar leaves it: everything between
+  // the back button and the three icons, separations included, which is 496
+  // wide. `Mushroom Patch` is 635 at the theme's 84 (measured in Fredoka 700
+  // on 2026-09-20, against Hidden Word's 482, the longest that fits), so the
+  // title is fitted down to the band -- see the spec's section 2.
+  const TITLE='Mushroom Patch',BAND_X=M+110+16,BAND_W=COL-110-3*110-4*16;
+  function titleSize(){ctx.font='700 84px '+FD; const w=ctx.measureText(TITLE).width;
+    return w<=BAND_W?84:Math.floor(84*BAND_W/w);}
+  function drawTopBar(t){
+    const y=L.top.y;
+    iconButton(M,y+35,'chevron','back',t,{size:110});
+    const cx=BAND_X+BAND_W/2,fs=titleSize();
+    text(TITLE,cx,y+72,'700 '+fs+'px '+FD,C.text);
+    ctx.font='700 '+fs+'px '+FD; const tw=ctx.measureText(TITLE).width;
+    leaf(cx+tw*0.2,y+72-fs*0.42,fs*0.48,-2.5,C.leaf);
+    text('EVERY PATCH HAS ITS COUNT',cx,y+128,'600 24px '+FB,C.dim,'center','2px');
+    iconButton(W-M-110-10-110-10-110,y+35,'undo','undo',t,{disabled:!hist.length});
+    iconButton(W-M-110-10-110,y+35,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-110,y+35,'gear','set',t);
+  }
+  function drawDayCard(t){
+    const y=L.day.y,h=L.day.h;
+    card(M,y,COL,h,32,C.surface,C.line,8);
+    icon('tree',M+70,y+h/2,84,C.text);
+    text('Day 5',M+130,y+44,'700 44px '+FD,C.text,'left');
+    text('Moss Harbour',M+130,y+84,'600 30px '+FB,C.dim,'left');
+  }
+  function drawCell(k,t){
+    const [r,c]=rcOf(k),st=stOf(k),cell=L.cell,x=L.gx+c*cell,y=L.gy+r*cell;
+    const given=puz.given.has(k),v=marks.get(k);
+    const ent=st.enterAt>-1e8?clamp((t-st.enterAt)/0.25):1;
+    if(ent<=0) return;
+    const ps=pressScale(st.press,st.release,t);
+    const sh=shiverOffset(t-st.shiverAt);
+    let base=given?C.surface:C.meadow;
+    if(!given&&v===CLEAR) base=C.socketOut;
+    if(!given&&v===FOUND) base=C.capTile;
+    // The wash. A number that has all its mushrooms sits on leaf, one that
+    // has too many on rose; both hold, they do not only flash.
+    let hold=0,holdCol=C.leaf;
+    // A zero carries no numeral and takes no green: it is turned over and
+    // bare, which is the whole of what it has to say, and the reference draws
+    // it as an empty white cell for the same reason. It still blushes if a
+    // mushroom is planted beside it, because that is news.
+    if(given){const s=stateOfNumber(k),z=puz.given.get(k)===0;
+      if(s===1&&!z){hold=WASH_LEVEL; holdCol=C.leaf;} else if(s===2){hold=0.34; holdCol=C.bad;}}
+    const fl=flashLevel(t-st.flashAt)*st.flashPeak;
+    let fill=hold?mix(base,holdCol,hold):base;
+    if(fl>0) fill=mix(fill,st.flashCol,fl);
+    ctx.save(); ctx.globalAlpha=ent;
+    ctx.translate(x+cell/2+sh,y+cell/2); ctx.scale(ps,ps);
+    const pad=cell*0.035,side=cell-pad*2;
+    ctx.fillStyle=given?rgba(C.line,0.55):rgba(C.turf,0.35); rr(-side/2,-side/2,side,side,cell*0.18); ctx.fill();
+    ctx.fillStyle=fill; rr(-side/2,-side/2+cell*0.015,side,side-cell*0.05,cell*0.18); ctx.fill();
+    if(given){
+      const v0=puz.given.get(k),s=stateOfNumber(k),col=s===0?C.text:(s===1?C.leafDeep:C.bad),bs=bumpScale(t-st.bumpAt);
+      if(v0>0){ctx.save(); ctx.scale(bs,bs); text(String(v0),0,cell*0.02,'700 '+(cell*0.52).toFixed(1)+'px '+FD,col); ctx.restore();}
+    } else {
+      const go=popOutScale(t-st.pGone);
+      if(v===CLEAR||go){ const inS=popInScale(t-st.pAt);
+        ctx.save(); if(go){ctx.rotate(go.angle); ctx.scale(go.scale,go.scale);} else ctx.scale(inS[0],inS[1]);
+        pebble(cell*0.26); ctx.restore();}
+      const mgo=popOutScale(t-st.mGone);
+      if(v===FOUND||mgo){
+        const drop=st.dropAt>-1e8&&t-st.dropAt<MO.DROP_TIME?dropInLift(t-st.dropAt):{dy:0,a:1};
+        const hop=hopLift(t-st.hopAt,st.hopAmt,st.hopDur),wob=wobbleAngle(t-st.wobbleAt);
+        const inS=popInScale(t-st.mAt);
+        ctx.save(); ctx.globalAlpha=ent*drop.a; ctx.translate(0,drop.dy+hop); ctx.rotate(wob);
+        if(mgo){ctx.rotate(mgo.angle); ctx.scale(mgo.scale,mgo.scale);} else ctx.scale(inS[0],inS[1]);
+        const expr=t-st.joyAt>=0&&t-st.joyAt<3?'joy':(t-st.strainAt>=0&&t-st.strainAt<0.6?'strain':'happy');
+        mushroom(cell*0.33,{expr,gem:locked.has(k)});
+        ctx.restore();}
+    }
+    ctx.restore();
+  }
+  function drawBoard(t){
+    const b=L.board,ent=clamp((t-builtAt-MO.ENTER_DELAY)/MO.ENTER_POP),sc=widePopScale(t-builtAt-MO.ENTER_DELAY);
+    ctx.save(); ctx.globalAlpha=dec(ent*2);
+    ctx.translate(W/2,b.y+b.h/2); ctx.scale(sc,sc); ctx.translate(-W/2,-(b.y+b.h/2));
+    card(M,b.y,COL,b.h,40,C.parchment,C.line,10);
+    // The tally strip: what the field is worth, and how much of it is spoken
+    // for. It is the only number on this screen the board gives you free.
+    const p=placed(),left=total-p;
+    const tally=left>0?WORDS[Math.min(left,14)]+(left===1?' mushroom still hidden':' mushrooms still hidden')
+      :(left===0?'every mushroom is planted':WORDS[Math.min(-left,14)]+' too many planted');
+    ctx.font='700 34px '+FD; const tw=ctx.measureText(tally).width,run=tw+70;
+    ctx.save(); ctx.translate(W/2-run/2,L.tally);
+    ctx.save(); ctx.translate(26,0); ctx.scale(0.62,0.62); mushroom(34,{flat:true}); ctx.restore();
+    text(tally,70,2,'700 34px '+FD,left>=0?C.text:C.bad,'left');
+    ctx.restore();
+    for(let k=0;k<n*n;k++) drawCell(k,t);
+    ctx.restore();
+  }
+  function drawTray(t){
+    const y=L.tray.y,cw=300,ch=130,gap=40,x0=W/2-cw-gap/2;
+    for(let i=0;i<2;i++){
+      const v=i===0?FOUND:CLEAR,x=x0+i*(cw+gap),on=brush===v;
+      const [sx,sy]=squash(btnPress['chip'+i]||-1e9,t),lift=on?-10:0;
+      ctx.save(); ctx.translate(x+cw/2,y+ch/2+lift); ctx.scale(sx,sy); ctx.translate(-cw/2,-ch/2);
+      card(0,0,cw,ch,36,on?C.surface:C.surfaceHi,on?C.sun:C.line,on?10:6);
+      ctx.save(); ctx.translate(72,60); if(v===FOUND){ctx.scale(0.92,0.92); mushroom(38,{flat:true});} else pebble(30); ctx.restore();
+      text(v===FOUND?'Mushroom':'Pebble',128,62,'700 34px '+FD,C.text,'left');
+      ctx.restore();
+    }
+  }
+  function drawActions(t){
+    const y=L.act.y,ph=110,pw=(COL-20)/2;
+    pill(M,y+10,pw,ph,'Reset','reset','reset',t,false,false);
+    const good=t-allGoodAt>=0&&t-allGoodAt<1.6;
+    pill(M+pw+20,y+10,pw,ph,good?'All good':'Check','check','check',t,true,false);
+  }
+  function drawTip(t){
+    const y=L.tip.y,h=L.tip.h;
+    card(M,y,COL,h,36,C.surface,C.line,8);
+    ctx.save(); ctx.translate(M+84,y+h/2); sprout(42,{expr:tip.expr}); ctx.restore();
+    ctx.font='600 30px '+FB; const words=tip.text.split(' '),lines=[]; let cur='';
+    for(const w of words){const tst=cur?cur+' '+w:w; if(ctx.measureText(tst).width>COL-190&&cur){lines.push(cur); cur=w;} else cur=tst;}
+    if(cur) lines.push(cur);
+    for(let i=0;i<lines.length;i++) text(lines[i],M+150,y+h/2+(i-(lines.length-1)/2)*36,'600 30px '+FB,C.text,'left');
+  }
+  function drawWin(t){
+    if(winAt<-1e8) return;
+    const u=dec(sineIO((t-winAt)/0.45)); if(u<=0) return;
+    ctx.save(); ctx.globalAlpha=u;
+    const y=lerp(360,452,u);
+    ctx.save(); ctx.translate(W/2,y); ctx.scale(1.3,1.3); mushroom(70,{expr:'joy'}); ctx.restore();
+    text('Every patch has its count.',W/2,y+146,'700 54px '+FD,C.text);
+    text(WORDS[total]+' mushrooms, '+moves+' moves',W/2,y+204,'600 32px '+FB,C.dim);
+    ctx.restore();
+  }
+  function drawFx(t){
+    for(const p of puffs){const s=t-p.at; if(s<0||s>0.5) continue; const u=s/0.5;
+      ctx.save(); ctx.globalAlpha=(1-u)*0.9;
+      if(p.star) star4(p.x+Math.cos(u*6+p.at)*40*u,p.y-30*u,16*(1-u*0.5),u*3,p.col);
+      else {ctx.fillStyle=p.col; for(let i=0;i<5;i++){const a=i*Math.PI*2/5+p.at; circle(p.x+Math.cos(a)*L.cell*0.5*u,p.y+Math.sin(a)*L.cell*0.5*u,L.cell*0.07*(1-u));}}
+      ctx.restore();}
+    for(const r of rings){const s=t-r.at; if(s<0||s>MO.RING_TIME) continue; const u=s/MO.RING_TIME;
+      ctx.save(); ctx.globalAlpha=(1-u)*0.7; ctx.beginPath(); ctx.arc(r.x,r.y,L.cell*(0.35+u*0.55),0,Math.PI*2); stroke(r.col,L.cell*0.07*(1-u)); ctx.restore();}
+    if(puffs.length>140) puffs=puffs.slice(-80);
+    if(rings.length>40) rings=rings.slice(-20);
+  }
+
+  function frame(){
+    const t=now();
+    while(auto.length&&auto[0].at<=t){auto.shift().fn(t);}
+    L=layout(t);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawTopBar(t); drawDayCard(t); drawBoard(t); drawFx(t);
+    if(L.win<0.5){drawTray(t); drawActions(t); drawTip(t);}
+    drawWin(t);
+    requestAnimationFrame(frame);
+  }
+
+  // ---- input ----
+  const pos=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H];};
+  let dragFrom=null,swept=null,pressed=null;
+  function hitChip(p){const y=L.tray.y,cw=300,ch=130,gap=40,x0=W/2-cw-gap/2;
+    for(let i=0;i<2;i++){const x=x0+i*(cw+gap); if(p[0]>=x&&p[0]<=x+cw&&p[1]>=y&&p[1]<=y+ch) return i;} return -1;}
+  cv.addEventListener('pointerdown',e=>{const t=now(),p=pos(e); cv.setPointerCapture(e.pointerId);
+    if(L.win>=0.5) return;
+    const ci=hitChip(p); if(ci>=0){brush=ci===0?FOUND:CLEAR; btnPress['chip'+ci]=t; return;}
+    const y=L.act.y,ph=110,pw=(COL-20)/2;
+    if(p[1]>=y+10&&p[1]<=y+10+ph){ if(p[0]<M+pw){btnPress.reset=t; reset(t);} else if(p[0]>=M+pw+20){btnPress.check=t; check(t);} return;}
+    const ty=L.top.y+35;
+    if(p[1]>=ty&&p[1]<=ty+110){
+      if(p[0]>=W-M-110){btnPress.set=t;}
+      else if(p[0]>=W-M-230){btnPress.hint=t; hint(t);}
+      else if(p[0]>=W-M-350){btnPress.undo=t; undo(t);}
+      else if(p[0]<=M+110){btnPress.back=t;}
+      return;}
+    const k=cellAt(p); if(k==null) return;
+    pressed=k; stOf(k).press=t; stOf(k).release=-1e9;
+    if(brush===CLEAR&&!puz.given.has(k)){dragFrom=k; swept=new Set([k]);}
+  });
+  cv.addEventListener('pointermove',e=>{ if(dragFrom==null||!swept) return; const t=now(),k=cellAt(pos(e));
+    if(k==null||swept.has(k)) return; swept.add(k);
+    if(pressed!=null&&pressed!==k){stOf(pressed).release=t;}
+    stOf(k).press=t; pressed=k;
+  });
+  cv.addEventListener('pointerup',e=>{const t=now(),p=pos(e);
+    if(pressed!=null) stOf(pressed).release=t;
+    if(dragFrom!=null&&swept&&swept.size>1){
+      // Nonogram's rule: the stroke's job is read off its first cell -- a
+      // sweep that begins on your own pebble rubs pebbles out, and one that
+      // begins on bare ground lays them.
+      const rub=markAt(dragFrom)===CLEAR,entry=[]; let i=0;
+      for(const k of swept){ if(puz.given.has(k)||markAt(k)===FOUND) continue;
+        const cur=markAt(k),at=t+i*stag(MO.ENTER_STAGGER);
+        if(rub&&cur===CLEAR){rubPebble(k,at); entry.push({k,prev:CLEAR,to:BLANK}); i++;}
+        else if(!rub&&cur===BLANK){layPebble(k,at,false); entry.push({k,prev:BLANK,to:CLEAR}); i++;}}
+      for(const k of swept) stOf(k).release=t;
+      push(entry,t); dragFrom=null; swept=null; pressed=null; return;}
+    dragFrom=null; swept=null;
+    const k=cellAt(p);
+    if(k!=null&&pressed===k){ if(brush===FOUND) plantTap(k,t); else pebbleTap(k,t);}
+    pressed=null;
+  });
+
+  // ---- the caption under the demo, and the buttons beside it ----
+  const capEl=document.getElementById('mp-caption');
+  function caption(){ if(!capEl) return;
+    const g=puz.given.size,cov=n*n-g;
+    capEl.textContent=n+'×'+n+' · '+total+' mushrooms · '+g+' numbers given, '+cov+' cells covered · '
+      +placed()+' planted · '+moves+' moves · '+checks+' checks · '+(puz.ok?'proved by logic alone':'NOT PROVED — a guess is in it');
+  }
+  function applyParams(t){
+    // Everything a headless shot needs, on the clock rather than at once.
+    const at=parseFloat(Q.get('at')||'0.2'),at2=parseFloat(Q.get('at2')||'1.1');
+    if(Q.get('part')==='1'){ const ms=[...puz.mines].sort((a,b)=>a-b);
+      for(let i=0;i<Math.min(3,ms.length);i++) plant(ms[i],t,{quiet:true});
+      let laid=0; for(let k=0;k<n*n&&laid<4;k++) if(!puz.given.has(k)&&!puz.mines.has(k)&&markAt(k)===BLANK){layPebble(k,t,false); laid++;}
+      speak(t);}
+    if(Q.get('wrong')==='1'){ for(let k=0;k<n*n;k++) if(!puz.given.has(k)&&!puz.mines.has(k)&&markAt(k)===BLANK){plant(k,t,{quiet:true}); break;} }
+    const tap=Q.get('tap'); if(tap){const [r,c]=tap.split(',').map(Number); auto.push({at:at,fn:tt=>{const k=r*n+c; stOf(k).press=tt; stOf(k).release=tt+0.1; if(brush===FOUND) plantTap(k,tt); else pebbleTap(k,tt);}});}
+    const tap2=Q.get('tap2'); if(tap2){const [r,c]=tap2.split(',').map(Number); auto.push({at:at2,fn:tt=>{const k=r*n+c; if(brush===FOUND) plantTap(k,tt); else pebbleTap(k,tt);}});}
+    if(Q.get('hint')==='1') auto.push({at:at,fn:tt=>hint(tt)});
+    if(Q.get('check')==='1') auto.push({at:at,fn:tt=>check(tt)});
+    if(Q.get('reset')==='1') auto.push({at:at,fn:tt=>reset(tt)});
+    if(Q.get('undo')==='1') auto.push({at:at2,fn:tt=>undo(tt)});
+    // ?win=1 lands on the build's own clock rather than the auto queue: under
+    // ?freeze= the queue fires at the frozen instant, and a plant frozen at
+    // its first frame is a mushroom at one hundredth of its size.
+    if(Q.get('win')==='1'){
+      for(const k of wrongMarks()) if(markAt(k)===FOUND) uproot(k,t); else rubPebble(k,t);
+      for(const k of puz.mines) if(markAt(k)!==FOUND) plant(k,t,{quiet:true});
+      after(t);
+    } else if(Q.get('solve')==='1') auto.push({at:at,fn:tt=>{
+      for(const k of wrongMarks()) if(markAt(k)===FOUND) uproot(k,tt); else rubPebble(k,tt);
+      runSolve(tt);}});
+    auto.sort((a,b)=>a.at-b.at);
+  }
+
+  const $=id=>document.getElementById(id);
+  const rmBtn=$('mp-rm'),dfBtn=$('mp-diff');
+  const DNAMES=['Easy · 6×6','Medium · 7×7','Hard · 8×8'];
+  function labels(){ if(rmBtn) rmBtn.textContent='Reduce motion: '+(RM?'on':'off'); if(dfBtn) dfBtn.textContent=DNAMES[diff];}
+  if(rmBtn) rmBtn.addEventListener('click',()=>{RM=!RM; labels();});
+  if(dfBtn) dfBtn.addEventListener('click',()=>{setup((diff+1)%3,seed,now()); labels();});
+  if($('mp-new')) $('mp-new').addEventListener('click',()=>setup(diff,seed+1,now()));
+  if($('mp-hint')) $('mp-hint').addEventListener('click',()=>hint(now()));
+  if($('mp-check')) $('mp-check').addEventListener('click',()=>check(now()));
+  if($('mp-reset')) $('mp-reset').addEventListener('click',()=>reset(now()));
+  if($('mp-solve')) $('mp-solve').addEventListener('click',()=>runSolve(now()));
+
+  L=layout(0); setup(diff,seed,0); labels(); frame();
 })();
 </script>
 </body>

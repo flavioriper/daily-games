@@ -78,6 +78,15 @@ sprout; the four top-bar buttons; the hint's badge of three.
 
 ## 3. Where it stands on the first screen
 
+> **Overtaken at the merge, 2026-09-20.** Sudoku is the **fourteenth** card,
+> not the thirteenth: Word Trail took Pipes' `SOON` slot *and* Mushroom Patch
+> was added beside it while this branch was being built, so the grid was
+> already thirteen live cards over two pages before Sudoku arrived. The
+> paragraph below is left as it was written, because its reasoning still
+> holds and only its arithmetic is stale; section 15's last two entries are
+> the correction. The registry entry quoted here landed unchanged, and it is
+> still last in `Registry.PUZZLES`.
+
 Sudoku is the **thirteenth** card, and it displaces nothing. This branch is
 cut from `main`, where `Registry.PUZZLES` is eleven live cards and Pipes'
 dimmed `SOON` &mdash; twelve, a full grid. Word Trail is claiming that `SOON`
@@ -317,6 +326,31 @@ because of it.
 
 ## 9. The first screen grows a second page
 
+> **Overtaken at the merge, 2026-09-20. The user chose otherwise.** The whole
+> of this section argues the pager into the **day row**, and that is not
+> where it went. `main` built its own pager in parallel, for Mushroom Patch,
+> and put it in **its own strip between the grid and the bottom bar** -- the
+> first of the three candidates below, the one this section rejected. The
+> reason is one this section never weighed: a pager beside **Day N** reads
+> as a way to change the *day*, and the day row's chevron has been
+> decoration by the user's own decision since 2026-09-18. `main`'s pager is
+> later, better argued and shipped, so at the merge this branch's day-row
+> pager was discarded outright and `ui/menu/day_row.gd` went back to what it
+> was, chevron and hearts and all. The section is left standing because the
+> parts of it that were right are the parts that survived -- twelve a page,
+> no shorter card, page one unrebalanced -- and because the record of a
+> rejected argument is worth more than its deletion. Section 15's last entry
+> carries the measurement.
+>
+> What is right below and shipped: the 12-a-page split, cards still 252 with
+> their 92 pictures, page one untouched and unrebalanced, the per-page
+> entrance stagger, and "a page change is not an entrance". What is wrong:
+> the placement, the cost argument for it, "the split is 12 + 1" (page two
+> holds Mushroom Patch *and* Sudoku), and the claim that the page resets to
+> one on every return -- `main` keeps the page instead, so finishing a board
+> on page two puts you back on page two, which is the ordinary ruling for
+> where closing something returns you.
+
 Twelve is what 80 of margin, 60 of gaps, a 380 header, a 180 day row and a
 150 bar leave for four rows of 252. A thirteenth card has to come from
 somewhere, and the three candidates cost:
@@ -544,13 +578,38 @@ register: named and left standing, not silently fixed in place.
   one. This section did not, and it is the design authority, so it is wrong
   and this is the correction.
 
-  **This 317 is measured on this branch, before merge, and it will not
-  survive the merge.** Parallel Word Trail work has already landed on
-  `main`: it took Pipes' slot, so `main` carries twelve live cards and no
-  `soon` card, and `main`'s own first screen already reads 322 draw calls --
-  a different count of cards than page one has here. Once this branch
-  merges, page one carries a thirteenth card and its true draw-call figure
-  is neither 311 nor 317; it **has not been measured** with Word Trail's
-  card in the grid, and nobody should guess it from these numbers. Whoever
-  merges this owes page one a fresh reading at
-  `--resolution 810x1440` before quoting a figure for it anywhere.
+  **The 317 did not survive the merge, and here is what replaced it**
+  (measured at the merge, 2026-09-20, this entry discharging the debt the
+  paragraph that stood here left behind). Two other boards landed on `main`
+  while this branch was being built -- Word Trail, which took Pipes' `SOON`
+  slot, and Mushroom Patch, which was *added* -- so `main` already carried
+  thirteen live cards over two pages and its own pager before Sudoku
+  arrived. **Page one reads 335**, `tests/_shot_menu.gd` at
+  `--resolution 810x1440`, four readings in a row all 335, mean idle
+  8.31-8.38 ms. That is exactly the figure `main` recorded for page one
+  before this merge: **Sudoku costs page one nothing**, because Sudoku
+  stands on page two. **Page two reads 119** with its two cards, one
+  invisible filler and the pager pill (`tests/_shot_menu.gd -- page2`, twice
+  in a row, mean idle 8.31 and 8.33 ms) against about 100 when Mushroom
+  Patch stood there alone. Neither 311 nor 317 is a live figure any more:
+  311 was eleven live cards and a `soon`, 317 was this branch's twelve cards
+  with a day-row pager that no longer exists, and both are history.
+
+- **The pager this section designed was discarded at the merge** (2026-09-20,
+  and see the note at the head of section 9). `main`'s pager -- its own
+  strip over the bottom bar, built for Mushroom Patch -- is the one that
+  shipped, on the user's ruling that a pager beside **Day N** reads as *next
+  day*. Three fixes this branch found the hard way were checked against
+  `main`'s pager before the branch's copy was thrown away, and `main` had
+  already found all three independently: a fading outgoing card eating taps
+  (`PuzzleCard.disable_tap()`, because the card's real hit surface is a
+  full-rect `Button` that `mouse_filter` on the card does not reach); the
+  toast rendering under a fading card (`main` fixes it the better way, by
+  moving the *card* under both the pager and the toast rather than moving
+  the toast to the front, which also keeps a fading card off the pill the
+  finger just pressed); and two tweens fighting over `modulate:a` when a
+  page turn lands inside another's fade (`main` stops the card's `_entrance`
+  tweens in `_fade_out_page` where this branch stopped them inside
+  `disable_tap()`). Nothing was ported. One behaviour differs and `main`'s
+  is better: this branch reset to page one on every return from a board,
+  `main` keeps the page you were on.

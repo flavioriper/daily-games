@@ -26,6 +26,15 @@ const SunDot = preload("res://ui/sun_dot.gd")
 ## about 111. The HUD's usual 24 inset and a 118 picture came to 277, which
 ## pushed the bottom bar off the screen.
 const ART_H := 92.0
+## The row's own budgeted height. The card's content (the inset, the art
+## plate, the name and the two blurb lines) only ever measures to about 240:
+## GridContainer sizes every row to the tallest cell's own minimum and does
+## not hand a row any of the grid's leftover height, whether the grid has
+## four rows or one. `_update_min` below floors this card's reported
+## minimum at CARD_H so every row is exactly the budget regardless of how
+## many rows share the page -- the twelve-card page and the pager's short
+## last page alike (task 8, 2026-09-20).
+const CARD_H := 252.0
 const INSET := 16
 const GO := 68.0
 const PILL := Vector2(88.0, 40.0)
@@ -198,14 +207,15 @@ func _release() -> void:
 ## on a page turn: it still sits over the incoming page's cards for the
 ## fade's duration, and `_tap` is a full-rect Button that wins every tap
 ## over whatever is underneath it, so a card leaving has to give that up
-## before it can be trusted to sit on top of one arriving. It also stops any
-## entrance tween still running on this card (panel.gd's `_entrance`): a page
-## turn inside a page turn's 0.3 s fade could otherwise leave a card sliding
-## its `_inner` in while `_fade_out_page` fades the whole thing out, two
-## tweens fighting over `modulate:a` and `position`. `_fade_out_page` already
-## calls this on every card it takes, so the fix costs nothing new to wire.
+## before it can be trusted to sit on top of one arriving.
 func disable_tap() -> void:
 	_tap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for tw in _entrance:
-		Motion.stop(tw)
-	_entrance = []
+
+## ui/hud/panel.gd reports `_inner`'s own combined minimum (about 240) as
+## this Control's minimum; floored at CARD_H so a GridContainer row -- which
+## sizes to the tallest cell's minimum and never redistributes its own
+## leftover height to a row -- lands on the budget however many rows the
+## page it is on has.
+func _update_min() -> void:
+	super._update_min()
+	custom_minimum_size.y = maxf(custom_minimum_size.y, CARD_H)

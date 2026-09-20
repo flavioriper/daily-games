@@ -15,20 +15,24 @@ extends "res://ui/hud/panel.gd"
 ## reads it back, so a board that drops the brush on a solve is shown here
 ## too. `symbol_tray.gd`'s sibling.
 ##
-## Two boards wear it. It is built with a **chip set** -- what each chip
+## Three boards wear it. It is built with a **chip set** -- what each chip
 ## paints, the word it carries, its node name and which glyph it draws --
-## and there are two: MOSAIC, Nonogram's tile and cross, the default; and
+## and there are three: MOSAIC, Nonogram's tile and cross, the default;
 ## QUEENS, Queens' bee and cross, which the registry asks for with
-## `"tray": "queens"`. One tray, two sets, no copy.
+## `"tray": "queens"`; and PATCH, Mushroom Patch's mushroom and pebble, asked
+## for with `"tray": "patch"`. One tray, three sets, no copy.
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 6;
-## docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 6.
+## docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 6;
+## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 7.
 
 ## What the player chose: one of the set's values.
 signal pick(v: int)
 
 const NonogramState = preload("res://puzzles/nonogram_state.gd")
 const QueensState = preload("res://puzzles/queens_state.gd")
+const MushroomState = preload("res://puzzles/mushroom_state.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
+const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 
@@ -52,8 +56,9 @@ const LABEL_Y := 62.0
 ## board's tenth of a cell: at 84 across, a tenth reads as a circle.
 const SOCKET_RADIUS := 12.0
 
-## The two sets. `glyphs` names what the chip's picture is: a laid tile, a
-## pebble on its socket, or the bee (a BeeFace seated on the chip, alive).
+## The three sets. `glyphs` names what the chip's picture is: a laid tile, a
+## pebble on its socket, the bee (a BeeFace seated on the chip, alive) or the
+## mushroom (a MushroomFace, still).
 const MOSAIC := {
 	"values": [NonogramState.FILL, NonogramState.MARK],
 	"labels": ["Tile", "Cross"],
@@ -65,6 +70,12 @@ const QUEENS := {
 	"labels": ["Queen", "Cross"],
 	"names": ["QueenChip", "CrossChip"],
 	"glyphs": ["bee", "pebble"],
+}
+const PATCH := {
+	"values": [MushroomState.FOUND, MushroomState.CLEAR],
+	"labels": ["Mushroom", "Pebble"],
+	"names": ["MushroomChip", "PebbleChip"],
+	"glyphs": ["mushroom", "pebble"],
 }
 
 var chips: Array[Button] = []
@@ -108,6 +119,11 @@ func _build() -> void:
 			# wings beat on the chip as they do on the court.
 			glyph = BeeFace.new()
 			glyph.set_idle(true)
+		elif str(_set.glyphs[i]) == "mushroom":
+			# The mushroom draws herself too, but the mock keeps her still: no
+			# idle motion of her own means set_idle(true) here would only add
+			# a blink neither the mock nor the tray's other chips carry.
+			glyph = MushroomFace.new()
 		else:
 			glyph = Control.new()
 			glyph.draw.connect(_draw_glyph.bind(glyph, i))
