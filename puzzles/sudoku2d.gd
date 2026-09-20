@@ -112,9 +112,25 @@ var _wrong: Dictionary = {}
 ## future, since a wave hands the far cells a later one. Read off Motion's
 ## curve readers in _build_grid and _draw_numerals.
 var _flash: Dictionary = {}    # cell -> at: the wave reaches it then
-var _bump: Dictionary = {}     # cell -> at: its numeral beats then
+var _bump: Dictionary = {}     # cell -> at: the cell beats then
 var _drop: Dictionary = {}     # cell -> at: a digit falls in then
 var _shiver: Dictionary = {}   # cell -> at: a refusal shook it then
+
+## Reset's wave: one {"i", "d", "notes", "at"} per cell the player wrote,
+## still drawn where it was until its beat arrives. The state forgets the
+## whole board the instant Reset is pressed -- the pad's counts, the undo
+## history and `is_solved` cannot wait on an animation -- so a cell that is
+## due to empty half a second from now has nothing left to bump, and the
+## spec's "bumps ... and empties" would be a wave over eighty-one blanks.
+## The board keeps the copy instead and draws it swelling and fading out as
+## the wave reaches it: hidden_word2d.gd's `_ghosts` is the family's
+## precedent for a piece outliving the state that held it.
+var _leaving: Array = []
+
+## Sparkles still owed, each {"at", "where"}. The solve's three ride the
+## diagonal wave and so cannot all be fired at the move that won it;
+## hidden_word2d.gd's `_fx_due` is the same queue for the same reason.
+var _fx_due: Array = []
 
 ## The geometry the input and the draw both read, so neither can drift.
 var _cell := 0.0
@@ -168,6 +184,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_bump = {}
 	_drop = {}
 	_shiver = {}
+	_leaving = []
+	_fx_due = []
 	_layout()
 	_tip_idx = 0
 	_hold_until = 0.0
@@ -240,7 +258,17 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _cell <= 0.0 or state == null:
 		return
-	if _moving(_now()):
+	var now := _now()
+	_deliver_fx(now)
+	# The rebuild is decided **here** and never in _draw. Asking `_mesh_moving`
+	# twice a frame -- once to queue the redraw and once to decide whether to
+	# rebuild -- is the oneline2d.gd trap in miniature: _draw's clock is a
+	# hair later than _process's, so on the frame a moment expires the two
+	# could disagree and the mesh would be left one frame stale with nothing
+	# queuing another redraw. One ask, one flag, and _draw simply obeys it.
+	if _mesh_moving(now):
+		_dirty = true
+	if _moving(now):
 		queue_redraw()
 
 ## True while anything is still moving. **It asks about every wave, not just
@@ -255,6 +283,18 @@ func _moving(now: float) -> bool:
 	return _live(_flash, now, WAVE_FLASH) \
 		or _live(_bump, now, Motion.BUMP_TIME) \
 		or _live(_drop, now, Motion.DROP_TIME) \
+		or _live(_shiver, now, Motion.SHIVER_TIME)
+
+## True while anything the **mesh** draws is moving. Deliberately narrower
+## than `_moving`: the entrance is one transform laid over the finished mesh
+## and a fade that lives entirely in the numerals, so for its whole 0.84 s
+## not one vertex of the grid changes, and rebuilding eighty-one cells sixty
+## times over would buy exactly nothing. `_drop` is out for the same reason,
+## a falling digit being a numeral and not a cell, and `_anim_until` is out
+## because every wave it is ever set for has its own book listed here.
+func _mesh_moving(now: float) -> bool:
+	return _live(_flash, now, WAVE_FLASH) \
+		or _live(_bump, now, Motion.BUMP_TIME) \
 		or _live(_shiver, now, Motion.SHIVER_TIME)
 
 static func _live(book: Dictionary, now: float, span: float) -> bool:
@@ -282,7 +322,10 @@ func _draw() -> void:
 	if state == null or _cell <= 0.0:
 		return
 	var now := _now()
-	if _dirty or _moving(now):
+	# `_dirty` is the whole test: a state change sets it through `_redraw`
+	# and a live cell moment sets it in `_process`, which is the one place
+	# the question is asked. See the note there.
+	if _dirty:
 		_grid_mesh = _build_grid(now)
 		_dirty = false
 	# The mesh is handed over and held in the same breath, so what the canvas
@@ -318,11 +361,15 @@ func _build_grid(now: float) -> ArrayMesh:
 		var region_shaded := ((Gen.row_of(i) / 3) + (Gen.col_of(i) / 3)) % 2 == 1
 		b.fan(_square(at, _cell), Pal.GRID_TINT if region_shaded else Pal.SURFACE)
 		var wash := _wash_of(i, peers, twins, clash)
-		if wash.a > 0.0:
-			b.fan(_square(at, _cell), wash)
 		var lit := _flash_level(now, i)
+		if wash.a <= 0.0 and lit <= 0.0:
+			continue
+		# The cell's own layers ride the cell's own motion; see _cell_quad.
+		var quad := _cell_quad(i, _cell_shift(now, i), _cell_grow(now, i))
+		if wash.a > 0.0:
+			b.fan(quad, wash)
 		if lit > 0.0:
-			b.fan(_square(at, _cell), Color(Pal.SUN_RAY, WASH_FLASH * lit))
+			b.fan(quad, Color(Pal.SUN_RAY, WASH_FLASH * lit))
 	# The thin rule between two cells of one region, and the heavy one
 	# between two regions. Flat-ended: a round cap would bulge past the
 	# frame the heavy rule draws round the whole grid.
@@ -343,9 +390,16 @@ func _build_grid(now: float) -> ArrayMesh:
 	b.stroke(Face.Builder.round_rect(_grid - Vector2.ONE * half,
 		Vector2.ONE * (field + RULE_W * k), CORNER * k), RULE_W * k, Pal.GRID_RULE, true)
 	if _sel >= 0:
+		# The gold edge is the clearest thing on the cell, so it is the thing
+		# that has to shake when the cell is refused: it takes the same shift
+		# and the same swell as the washes under it.
+		var grow := _cell_grow(now, _sel)
 		var inset := EDGE_INSET * k
-		b.stroke(Face.Builder.round_rect(_corner_of(_sel) + Vector2.ONE * inset,
-			Vector2.ONE * (_cell - 2.0 * inset), EDGE_RADIUS * k), EDGE_W * k, Pal.SUN, true)
+		var side := (_cell - 2.0 * inset) * grow
+		var mid := _corner_of(_sel) + Vector2.ONE * (_cell * 0.5) \
+			+ Vector2(_cell_shift(now, _sel), 0.0)
+		b.stroke(Face.Builder.round_rect(mid - Vector2.ONE * (side * 0.5),
+			Vector2.ONE * side, EDGE_RADIUS * k * grow), EDGE_W * k * grow, Pal.SUN, true)
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
@@ -353,6 +407,39 @@ func _build_grid(now: float) -> ArrayMesh:
 ## A cell's square from its top-left corner.
 static func _square(at: Vector2, s: float) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(s, 0.0), at + Vector2.ONE * s, at + Vector2(0.0, s)])
+
+## How far `i` is shoved sideways this frame: the refusal's and the Check's
+## shiver, read off the family's curve at the cell's own scale.
+func _cell_shift(now: float, i: int) -> float:
+	return Motion.shiver_offset(now - float(_shiver.get(i, -1.0e9)), Motion.SHIVER_PX * _scale())
+
+## How much bigger `i` is this frame: the bump a place, a take-out, an undo,
+## a hint, Reset's wave and the solve's wave all stamp.
+func _cell_grow(now: float, i: int) -> float:
+	return Motion.bump_scale(now - float(_bump.get(i, -1.0e9)))
+
+## `i`'s square under whatever the cell is doing: the shiver along x, and the
+## bump about the square's own centre.
+##
+## **The cell moves, not only its numeral.** `_shiver` used to be read by
+## `_draw_numerals` alone, so a refused tap shook a digit inside a square
+## that never budged -- and a cell whose digit had just been taken out, or
+## that Reset had just emptied, bumped with nothing on it to see. What moves
+## instead is everything that is *this cell* rather than the board: its
+## washes, the wave's gold and, below, the selected cell's gold edge. That is
+## tents2d.gd's rule 9 -- a piece with no skin of its own blushing through
+## its cell -- applied to motion instead of colour.
+##
+## What does **not** move is the region chequer under it and the rules
+## between the cells. They are the paper the grid is ruled on, not the cell;
+## a chequer that slid would open a seam of bare card at its edge, and a rule
+## that shivered with one cell would tear the grid in two.
+func _cell_quad(i: int, shift: float, grow: float) -> PackedVector2Array:
+	var at := _corner_of(i) + Vector2(shift, 0.0)
+	if is_equal_approx(grow, 1.0):
+		return _square(at, _cell)
+	var half := _cell * 0.5
+	return _square(at + Vector2.ONE * (half - half * grow), _cell * grow)
 
 ## What `i` is washed with, in the order section 10's table decides it: the
 ## selection first, then its twins -- the most useful scan in sudoku, and the
@@ -403,8 +490,8 @@ func _draw_numerals(now: float, pop: float, centre: Vector2) -> void:
 		if seen <= 0.0:
 			continue
 		var at := cell_to_local(Gen.row_of(i), Gen.col_of(i))
-		at.x += Motion.shiver_offset(now - float(_shiver.get(i, -1.0e9)), Motion.SHIVER_PX * k)
-		var grow := Motion.bump_scale(now - float(_bump.get(i, -1.0e9)))
+		at.x += _cell_shift(now, i)
+		var grow := _cell_grow(now, i)
 		var d: int = state.grid[i]
 		if d > 0:
 			var fell := now - float(_drop.get(i, -1.0e9))
@@ -425,7 +512,48 @@ func _draw_numerals(now: float, pop: float, centre: Vector2) -> void:
 					* (_cell * NOTE_STEP)
 				_numeral(note_font, note_px, note_rise, str(n), spot,
 					Color(Pal.TEXT_DIM, seen))
+	_draw_leaving(now, pop, centre, digit_font, digit_px, digit_rise,
+		note_font, note_px, note_rise)
 	draw_set_transform(Vector2.ZERO)
+
+## Reset's wave, drawn over the emptied cells: what the player had written
+## stands where it was until its beat arrives, then swells with the family's
+## bump and fades out over the same BUMP_TIME, so the wave from the far
+## corner is a thing coming apart and not a wave over eighty-one blanks.
+## The alpha is `appear_level` read backwards -- a recipe, not a number of
+## this board's -- and the scale is the bump every other moment here uses.
+func _draw_leaving(now: float, pop: float, centre: Vector2, digit_font: Font,
+		digit_px: int, digit_rise: float, note_font: Font, note_px: int,
+		note_rise: float) -> void:
+	if _leaving.is_empty():
+		return
+	var keep: Array = []
+	for g in _leaving:
+		var since: float = now - float(g.at)
+		if since >= Motion.BUMP_TIME:
+			continue
+		keep.append(g)
+		var i: int = g.i
+		# The player can write into the cell again before the wave gets
+		# there; what is really on the board wins, and the ghost gives way.
+		if state.grid[i] != 0 or state.notes[i] != 0:
+			continue
+		var at := cell_to_local(Gen.row_of(i), Gen.col_of(i))
+		var alpha := 1.0 - Motion.appear_level(since, Motion.BUMP_TIME)
+		_seat(at, centre, pop, Motion.bump_scale(since))
+		var d: int = g.d
+		if d > 0:
+			_numeral(digit_font, digit_px, digit_rise, str(d), Vector2.ZERO,
+				Color(Pal.LEAF_DEEP, alpha))
+			continue
+		for n in range(1, Gen.N + 1):
+			if int(g.notes) & (1 << (n - 1)) == 0:
+				continue
+			var spot := Vector2(float((n - 1) % 3) - 1.0, float((n - 1) / 3) - 1.0) \
+				* (_cell * NOTE_STEP)
+			_numeral(note_font, note_px, note_rise, str(n), spot,
+				Color(Pal.TEXT_DIM, alpha))
+	_leaving = keep
 
 ## Puts the canvas at `at` under the entrance's pop about `centre`, scaled by
 ## the cell's own bump: one transform, so a numeral never drifts off the cell
@@ -692,6 +820,10 @@ func reset_board() -> void:
 				absi(Gen.col_of(i) - Gen.col_of(far)))
 			var when := now + Motion.stagger(step, Motion.RESET_STAGGER)
 			_bump[i] = when
+			# The copy the wave will carry out; see `_leaving` and
+			# `_draw_leaving`. Taken before clear_board empties the state.
+			_leaving.append({"i": i, "d": int(state.grid[i]),
+				"notes": int(state.notes[i]), "at": when})
 			_busy_for(when - now + Motion.BUMP_TIME)
 	state.clear_board()
 	_sel = -1
@@ -718,16 +850,40 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	if not Motion.reduce:
 		for i in Gen.CELLS:
-			var when := now + Motion.SOLVE_DELAY \
-				+ Motion.stagger(Gen.row_of(i) + Gen.col_of(i), Motion.SOLVE_STAGGER)
+			var when := now + _solve_delay(Gen.row_of(i) + Gen.col_of(i))
 			_flash[i] = when
 			_bump[i] = when
 			_busy_for(when - now + maxf(WAVE_FLASH, Motion.BUMP_TIME))
-		# One burst, at the middle of the grid. The scatter along the
-		# diagonal the spec's table asks for wants a scheduled emitter per
-		# cell against a pool of three, and it is the motion task's to build.
-		fx.sparkle(_centre(), Pal.SUN)
+		# Three sparkles marching down the main diagonal with the wave, at a
+		# quarter, the middle and three quarters of it. Three and not eighty-
+		# one because Fx2D's sparkle pool is three: a fourth would recycle
+		# the first emitter and cut its burst in half. Spaced four diagonals
+		# apart they are used once each and never reclaimed mid-flight.
+		for d in [4, 8, 12]:
+			var k: int = d / 2
+			_fx_due.append({"at": now + _solve_delay(d),
+				"where": cell_to_local(k, k)})
 	_redraw()
+
+## When the solve's wave reaches anti-diagonal `d` (row + col, 0 to 16).
+##
+## **The last two diagonals share a beat and that is left alone.**
+## `Motion.stagger` caps at 0.6 s, and 16 x SOLVE_STAGGER is 0.64, so
+## r+c = 15 and r+c = 16 both land at 0.6. That is three cells of eighty-one
+## -- (7,8), (8,7) and (8,8) -- at the very tail of a wave that has already
+## been running for most of a second, and nobody will catch it. The cap is
+## the family's promise that no cell waits longer than 0.6 s to be answered,
+## and `stagger` does take a `cap` parameter, so raising it here would be
+## legal; it would also make Sudoku's solve the slowest wave in the game for
+## a difference of four hundredths on three cells. The family's number wins.
+func _solve_delay(diagonal: int) -> float:
+	return Motion.SOLVE_DELAY + Motion.stagger(diagonal, Motion.SOLVE_STAGGER)
+
+## Fires the sparkles that have come due, in the order they were queued.
+func _deliver_fx(now: float) -> void:
+	while not _fx_due.is_empty() and now >= float(_fx_due[0].at):
+		var due: Dictionary = _fx_due.pop_front()
+		fx.sparkle(due.where, Pal.SUN)
 
 # --- the sprout's line ---
 

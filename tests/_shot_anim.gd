@@ -39,9 +39,19 @@ extends SceneTree
 ##
 ## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
 ## strip shows the selection's washes, a digit dropping in and the wave the
-## finished row runs from the cell that closed it. `tap` after the id writes
-## one digit and closes nothing, which is the lone placement to compare it
-## against.
+## finished row runs from the cell that closed it. It takes six more words
+## after the id, one per moment a still frame has to be able to judge:
+## `tap` writes one digit and closes nothing, which is the lone placement to
+## compare the wave against; `refuse` taps a given and then a chip, so the
+## strip catches the cell shivering and the tip card saying why; `check`
+## writes two wrong digits and presses the real Check, so the strip catches
+## both of them shivering out of the middle row under the rose wash; and
+## `hint` presses the real hint button, so the strip catches the ring, the
+## sparkle and the digit dropping in; `reset` fills the first eight rows and
+## presses Reset a beat later, so the strip catches the wave carrying them
+## out; and `solve` writes the whole
+## answer, so the strip catches the diagonal wave, its three sparkles and the
+## win screen behind them.
 ##
 ## `rm` anywhere after the id sets `Motion.reduce` **before the board opens**
 ## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
@@ -90,6 +100,10 @@ var _drag_done := true
 ## third of the way through its turn, still face-down.
 const COMMIT_AFTER := 0.05
 var _commit_at := INF
+## Sudoku's `reset` mode: the grid is filled at TAP_AT and Reset pressed a
+## beat later, so the strip catches the wave carrying the digits out.
+const RESET_AFTER := 0.5
+var _reset_at := INF
 ## `over` spends all six rows: one word typed and committed every WORD_EVERY
 ## seconds, so the rows turn one after another rather than all at once and
 ## the reveal comes off the sixth one's landing.
@@ -176,9 +190,35 @@ func _process(delta: float) -> bool:
 			_type_hiddenword()
 		elif _entry.id == "sudoku" and not _empty:
 			_tap_sudoku()
+			if _mode == "hint":
+				# The ring runs RING_TIME and the digit drops over
+				# DROP_TIME, both off this frame rather than off TAP_AT: the
+				# frame that pushes the touch is a long one and the texture
+				# read in it is the frame before the press.
+				_shots[2] = _t + 0.10
+				_shots[3] = _t + 0.30
+			if _mode == "refuse" or _mode == "check":
+				# A shiver is two swings dying out over SHIVER_TIME, so it is
+				# at rest again a fifth of a second after the tap and it
+				# crosses zero four times on the way: the stock shots at 1.65
+				# and 1.80 photograph a cell standing perfectly still. These
+				# two land on the second and third crests -- and they are
+				# measured off **this** frame rather than off TAP_AT, because
+				# the frame that pushes the touches is a long one and the
+				# texture read in it is the frame before the poke.
+				_shots[2] = _t + 0.075
+				_shots[3] = _t + 0.125
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
+	if _t >= _reset_at:
+		_reset_at = INF
+		_press(_host.action_bar.reset_button)
+		# The wave from the far corner is RESET_STAGGER a step and a bump
+		# long, so it is over in well under a second; these two catch it
+		# a third and two thirds of the way down the board.
+		_shots[4] = _t + 0.15
+		_shots[5] = _t + 0.40
 	if _t >= _commit_at:
 		_commit_at = INF
 		_tap_key("Key_Enter")
@@ -326,6 +366,53 @@ func _tap_sudoku() -> void:
 			if p.state.grid[i] == 0:
 				_write_sudoku(i)
 				return
+		return
+	if _mode == "refuse":
+		# A given, then a chip: the one refusal the grid can hand out, and
+		# the frame that shows the cell shivering rather than its digit.
+		for i in 81:
+			if p.state.given[i] != 0:
+				_tap_global(p.get_global_transform_with_canvas() * p.cell_to_local(i / 9, i % 9))
+				_tap_key("Digit0")
+				return
+		return
+	if _mode == "check":
+		# Two digits that are not the answer, then the real Check button.
+		var written := 0
+		for i in 81:
+			if p.state.grid[i] != 0:
+				continue
+			_tap_global(p.get_global_transform_with_canvas() * p.cell_to_local(i / 9, i % 9))
+			_tap_key("Digit%d" % (int(p.state.sol[i]) % 9))
+			written += 1
+			if written == 2:
+				break
+		_press(_host.action_bar.check_button)
+		return
+	if _mode == "hint":
+		# The real hint button: a ring, a sparkle, the digit dropping in,
+		# and the wave if that cell happened to finish something.
+		_press(_host.top_bar.hint_button)
+		return
+	if _mode == "reset":
+		# Eight rows written, so the wave from the far corner has the whole
+		# board to cross, and Reset a beat later so the strip catches the
+		# digits going out.
+		for i in 72:
+			if p.state.grid[i] == 0:
+				_write_sudoku(i)
+		_reset_at = _t + RESET_AFTER
+		return
+	if _mode == "solve":
+		# The whole answer through the real pad, the way tests/_win.gd writes
+		# it, so the strip catches the diagonal wave off the last digit.
+		for i in 81:
+			if p.is_done():
+				return
+			var d: int = p.state.sol[i]
+			if p.state.grid[i] == d:
+				continue
+			_write_sudoku(i)
 		return
 	# The row with the fewest holes: filling it is one wave and few taps.
 	var row := 0
