@@ -90,9 +90,9 @@ draw-call count, a budget figure or a design-space constant is fine.
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
 wordmark in ink with its golden sun-dot and the sun and moon beside it, a day
 row, a page of puzzle cards three across and four down, a pager under the
-grid once a second page is needed, and a bottom bar. Sixteen cards are in
+grid once a second page is needed, and a bottom bar. Seventeen cards are in
 the registry, so there are two pages: twelve on the first, and Mushroom
-Patch, Sudoku, Bridges and Quilt on the second. There is no
+Patch, Sudoku, Bridges, Quilt and Rings on the second. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
 not even carry a Stage node any more. It replaced the campsite, which is
 still reachable; see "legacy/" below.
@@ -159,15 +159,20 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
 - **A card's picture is the board's own cast** (`ui/menu/card_art.gd`):
   `ui/faces/` characters seated in a 320 by 118 box and scaled to the card,
   plus whatever furniture they stand on drawn under them. Twelve of the
-  sixteen are almost entirely reuse; the four that borrow nothing are
-  Nonogram, Sudoku, Bridges and Quilt, none of which has a character to
-  borrow, and none of which has a branch of `_build` at all. **Quilt's is
+  seventeen are almost entirely reuse; the five that borrow nothing are
+  Nonogram, Sudoku, Bridges, Quilt and Rings, none of which has a character
+  to borrow. Four of those five have no branch of `_build` at all; **Rings
+  is the exception, and it is Word Trail's exception rather than a new
+  one** -- it seats no character and has no furniture either, so its whole
+  picture is one mesh drawn into a plain child `Control` its `_build`
+  branch wires up, and the top `_draw` match has nothing to add for it.
+  **Quilt's is
   the board's own drawing rather than a second one**: the card and the
   board both lay their patches through `ui/faces/patch_cloth.gd`, so they
   cannot drift apart. It is never an image and
   never a `SubViewport`. A new card costs one branch of `_build` and, if it
   needs furniture, one of `_draw`.
-- **Sixteen cards, all sixteen live, and no `soon` card left.** Three left
+- **Seventeen cards, all seventeen live, and no `soon` card left.** Three left
   the grid in a week, each being redesigned outright and each keeping its
   island board under More: Snake Apple's on 2026-09-19 to make room for
   Queens (`seed_as` still `snake`), Horse Pen's the same day for Hidden Word
@@ -176,9 +181,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   thirteenth, and it is the one that was *added* rather than swapped in,
   which is what took the grid over a page -- see the pager above. Sudoku is
   the fourteenth, added 2026-09-20 without displacing anything either,
-  Bridges the fifteenth and Quilt the sixteenth, both the same day again
-  and neither displacing anything; all four stand on page two, which is
-  what page two is for. **The
+  Bridges the fifteenth, Quilt the sixteenth and Rings the seventeenth, all
+  three the same day again and none of them displacing anything; all five
+  stand on page two, which is what page two is for. **Three of those boards
+  were in flight in parallel worktrees on the same day**, so each merged in
+  turn and renumbered the two behind it: Rings' own spec, plan and concept
+  tab were all written calling it the sixteenth, and every one of those
+  words had to be corrected by hand on the merge. An ordinal in this repo
+  is the first thing to distrust after a parallel branch lands. **The
   dimmed-card machinery is now unexercised**: the registry's `soon` flag,
   the 55% ink, the pale `SOON` pill and `ui/menu.gd`'s `blocked` signal
   (which answered with a line saying the island version is under More) are
@@ -195,7 +205,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (sixteen
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (seventeen
   flat boards, no `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
@@ -216,17 +226,25 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   recorded before Sudoku arrived. **Sudoku costs page one nothing, because
   it stands on page two**, which is the whole point of paging rather than
   reflowing.
-  **Page two reads 140** with its four cards -- Mushroom Patch, Sudoku,
-  Bridges and Quilt -- the pager pill, and the header, day row and bar
-  already standing (measured 2026-09-20 with Quilt merged; page one read
-  335 in the same run, unchanged). That is a committed reading, not a
-  probe:
+  **335 is also the figure after Rings merged**, re-measured 2026-09-20 at
+  that merge and read three times (8.32, 8.36 and 8.33 ms idle), so three
+  boards have now been added to page two without page one moving a call.
+  **Page two reads 150** with its five cards -- Mushroom Patch, Sudoku,
+  Bridges, Quilt and Rings -- one invisible filler, the pager pill, and the
+  header, day row and bar already standing (twice in a row on the Rings
+  merge, mean idle 8.32 and 8.39 ms). It read **140** with four, measured
+  2026-09-20 at the Quilt merge; page one read 335 in that run too. That is
+  a committed reading, not a probe:
   `tests/_shot_menu.gd -- page2` turns the page instead of opening More, so
   anyone can retake it. It read about 100 when Mushroom Patch stood there
   alone and **119 with two cards and an invisible filler** (twice in a row,
   mean idle 8.31 and 8.33 ms), so a card on a bare page costs about 20 --
   which the two added since have held to almost exactly: 119 to 140 for
-  Bridges and Quilt together.
+  Bridges and Quilt together. **Rings' card cost 10, not 20**: 140 to 150.
+  The picture is the reason -- three pegs drawn as one mesh with no
+  character seated on them, where Bridges' and Quilt's each build a second
+  mesh and Quilt's seats a cloth -- so "about 20 a card" is a rule of thumb
+  about *busy* cards and not a constant.
   **It read 322 on the same twelve cards before the pager landed**, so the
   strip itself -- its paper pill, the prev and next buttons and the two dots
   -- is the +13, and Mushroom Patch's own card costs page one nothing
@@ -431,7 +449,7 @@ every layout change.
 
 ## The flat screens
 
-Sixteen cards open a flat 2D board under flat chrome: **Binairo**
+Seventeen cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
@@ -440,16 +458,16 @@ Sixteen cards open a flat 2D board under flat chrome: **Binairo**
 2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
 (`puzzles/hidden_word2d.gd`), and, since 2026-09-20, **Word Trail**
 (`puzzles/word_trail2d.gd`), **Mushroom Patch** (`puzzles/mushroom2d.gd`),
-**Sudoku** (`puzzles/sudoku2d.gd`), **Bridges** (`puzzles/bridges2d.gd`) and
-**Quilt** (`puzzles/quilt2d.gd`).
+**Sudoku** (`puzzles/sudoku2d.gd`), **Bridges** (`puzzles/bridges2d.gd`),
+**Quilt** (`puzzles/quilt2d.gd`) and **Rings** (`puzzles/rings2d.gd`).
 
 Each of the first nine was built on trial beside its island, as a second
 card seeded from the same day, so the two could be judged on the phone.
 **The trial is over**: on 2026-09-18 the game went 2D, the first screen was
 redrawn flat and every island moved to `legacy/`. Those nine islands keep
 `seed_as` pointing at their flat twin, so a board opened from More still
-hands out the same day's puzzle. The seven since -- Queens and Hidden Word
-(2026-09-19), Word Trail, Mushroom Patch, Sudoku, Bridges and Quilt
+hands out the same day's puzzle. The eight since -- Queens and Hidden Word
+(2026-09-19), Word Trail, Mushroom Patch, Sudoku, Bridges, Quilt and Rings
 (2026-09-20) -- were
 drawn flat from the start, with no island of their own behind them in More and nothing
 pointing `seed_as` at them. Specs:
@@ -461,11 +479,12 @@ pointing `seed_as` at them. Specs:
 `...-hidden-word-flat-design.md`,
 `docs/superpowers/specs/2026-09-20-word-trail-flat-design.md`,
 `...-mushroom-patch-flat-design.md`, `...-sudoku-flat-design.md`,
-`...-bridges-flat-design.md` and `...-quilt-flat-design.md`; mocks:
+`...-bridges-flat-design.md`, `...-quilt-flat-design.md` and
+`...-rings-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
 `#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens`,
-`#hiddenword`, `#wordtrail`, `#mushroom`, `#sudoku`, `#bridges` and
-`#quilt`.
+`#hiddenword`, `#wordtrail`, `#mushroom`, `#sudoku`, `#bridges`, `#quilt`
+and `#rings`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -849,6 +868,107 @@ pointing `seed_as` at them. Specs:
   driver to within 1/255 on edge antialiasing alone), 88 once with a hint's
   ring live, and 110 once on the win screen after a full solve -- all well
   inside the 855 budget.
+- **Rings is the seventeenth board, and the only one that can be played into
+  a position with no legal move** (2026-09-20, `puzzles/rings2d.gd`, spec
+  `2026-09-20-rings-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#rings`). Eight pegs, twenty-four rings, six
+  colours, three to a peg: lift the top ring off a peg and set it down on an
+  empty peg or on a ring of its own colour, and on nothing else, until every
+  colour stands alone. **The shape came off the user's reference read pixel
+  by pixel** rather than judged by eye -- six colours, four rings of each,
+  eight pegs of three, verified colour by colour -- and that arithmetic *is*
+  the game: 24 rings in 32 slots, so every peg is one slot short of full and
+  the two pegs' worth of slack is spread around instead of standing in two
+  empty tubes. The bands take a colour away rather than a peg (4/6, 5/7,
+  6/8; pegs are always colours + 2), so the slack is eight slots at every
+  band. The genre is generic -- hoops on pegs, water into bottles, balls
+  into tubes -- so unlike Code Break, Hidden Word and Word Trail there is no
+  name being avoided here; it is called **Rings** because that is what the
+  pieces are.
+  **A finished peg locks**, and that is safe to forbid rather than merely
+  pointless: a full monochrome peg is where that colour belongs and has no
+  free slot, so no solution can need to empty it, and a careless tap cannot
+  undo work already done. Everything the screen washes -- which pegs are
+  locked, which colours are home, whether anything can move -- is derived
+  from the stacks on every read and never stored, so an undo leaves no stale
+  gold behind: Queens' rule, third board to take it.
+  **Its signature is the arc and the settle.** A lifted ring rises `LIFT_H`
+  over its post and breathes `BOB` on a `BOB_CYCLE` while it waits; a
+  dropped ring flies an eased arc between the two pegs rather than snapping,
+  clamped so it can never rise clear of the card, with its destination slot
+  skipped in the mesh while it is airborne; and a peg that has just come
+  right washes its rings gold from the top ring down, `Motion.WAVE_STEP`
+  apart. **Seven constants are its own and no more** -- `LIFT_H` 40, `BOB`
+  5, `BOB_CYCLE` 1.9, `ARC_TIME` 0.34, `ARC_LIFT` 26, `TOAST_HOLD` 2.6 and
+  `WIN_WAIT` 1.4 -- and `core/motion.gd` gains nothing: the entrance, the
+  reset, the solve and even the refusal's shiver take the family's own
+  numbers, and the shiver takes the default rather than a parameter.
+  **The generator's proof is nearly free, which is the opposite of what the
+  spec braced for.** Measured in **JavaScript on the concept page**, 200
+  seeds a band: **0 of 600 deals unsolvable**, worst search 82 / 126 / 267
+  nodes by band, solution lengths mean 22 / 30 / 38. Measured in
+  **GDScript, headless on this Mac**, twelve seeds a band and three separate
+  runs: band 0 mean 0.4 / 0.7 / 0.5 ms and worst 0.7 / 8.0 / 0.9; band 1
+  mean 0.7 / 1.0 / 0.8 and worst 1.3 / 1.9 / 1.5; band 2 mean 0.9 / 1.3 /
+  1.0 and worst 1.2 / 2.2 / 1.3. The 8.0 is the one unflattering reading in
+  the set and it is quoted rather than dropped -- it is a first-call outlier
+  on band 0's second run, not a seed. Against a 300 ms gate that is two
+  orders of magnitude of headroom, so **unlike Sudoku there is nothing here
+  to feel on the phone**: GDScript came out roughly 2 to 13 times the
+  JavaScript, not the thirty to eighty the spec wrote its budget against.
+  **And greedy does not solve it**: a player who always takes the obvious
+  move and never backtracks solves 6 of 200 easy boards and **0 of 200** at
+  either harder band (the concept page's JavaScript again), so the search is
+  cheap because it backtracks well and not because the game plays itself.
+  **What the board deliberately does not say is the interesting part.** In
+  **450 careless games** in that same JavaScript -- 150 a band, picking
+  uniformly among the legal moves -- the board ran out of legal moves **not
+  once**; but the careless player reached a position that was still legal
+  and **already lost 4% / 9% / 11% of the time** by band, usually inside the
+  first ten moves. So the toast (`is_stuck()`, two loops and no solver, ink
+  pill, `TOAST_HOLD`, *"Nothing can move. Undo, or start again."*) is a
+  cheap guard for a rare case, and **the thing that actually ends a hard
+  board happens 11% of the time with nothing on screen saying so**. That is
+  a decision and not an oversight: the user was offered silence, the toast,
+  and a solver that refuses any move which dooms the board, and chose the
+  toast. Refusing doomed moves was rejected with its reason -- every
+  accepted move would then be a safe move, and tapping at random would solve
+  the board. Undo is unlimited and a lost board costs only the taps to walk
+  back out of it, so a position that is legal and lost stays the player's
+  problem, which is the puzzle. The levers if the phone says otherwise, in
+  order: one peg less at the hard band (the same probe at 6 colours on 7
+  pegs sends rejection to 85% and careless run-outs to 22%, so it is a real
+  lever and a big one), then the solver-vetted refusal already rejected.
+  The other three open questions ride along: **tap-tap rather than drag**
+  (the reference's gesture, and steadier on a phone -- watch whether a hand
+  expects to drag), **six colours at once**, the most colour this game has
+  put on one screen, with the pips there to make them countable and the easy
+  band's four as the control, and **three hints where a hint plays a whole
+  move**, a much bigger gift than a hint on Sudoku; two may be right.
+  It adds **nothing to `ui/faces/`** -- see the cast bullet below -- and its
+  bottom slot is 140, the tip card alone, which is Word Trail's and
+  Untangle's shape.
+  Measured with `tests/_shot_anim.gd -- rings` at `--resolution 810x1440`,
+  2026-09-20 after the merge with main: **61** draw calls with a ring flying
+  and a peg mid-wash, three runs in a row and 61 every time; **57** bare
+  (58 once, an fx ring still alive on the sampled frame), 57 under reduce
+  motion, and **35** on the win screen -- the win takes the top bar and the
+  tip card away and puts one column of five ring faces there, so it draws
+  *less* than the board it covers. All well inside the 855 budget. Idles
+  3.88, 3.66 and 3.58 ms in flight against 2.31 and 2.95 bare and 1.87 and
+  1.78 on the win. **Word Trail was the control in the same hour** and came
+  back at exactly the **65** draw calls this file already records for it,
+  twice -- on idles of 3.29 and 2.54 ms against its own recorded 2.37-2.51,
+  which is the usual reminder that only the draw calls travel between
+  sessions and the milliseconds do not. On the phone's driver
+  (`--rendering-driver opengl3_angle`): the same 61 played and 57 bare, and
+  a settled **bare** frame matches the default driver to **3/255** over
+  46,252 pixels -- edge antialiasing, no `instance uniform`. A *played*
+  frame cannot be compared across the drivers at all and nobody should try:
+  the gold wash is mid-decay on the frame the strip samples and ANGLE runs
+  the board three times slower (12.47 ms a frame against 3.58), so the two
+  land at different points of the same fade and the diff comes back at
+  204/255. Two reduce-motion frames 1.5 s apart are pixel-identical.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -902,9 +1022,10 @@ pointing `seed_as` at them. Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  sixteen screens want 458, 460, 390, 290, 140, 290, 290, 290, 460, 460,
-  340, 140, 460, 480, 290 and 140, with Mushroom Patch's 460 the thirteenth,
-  Bridges' 290 the fifteenth and Quilt's 140 the sixteenth, and
+  seventeen screens want 458, 460, 390, 290, 140, 290, 290, 290, 460, 460,
+  340, 140, 460, 480, 290, 140 and 140, with Mushroom Patch's 460 the
+  thirteenth, Bridges' 290 the fifteenth, Quilt's 140 the sixteenth and
+  **Rings' 140 the seventeenth**, and
   **Sudoku's 480 the fourteenth and the widest bottom slot in the game** --
   twenty more than the 460 its neighbours take, because its digit pad is 170
   where a tray is 150: `170 + 20 + 130 (actions) + 20 + 140 (tip card)`. It
@@ -917,9 +1038,14 @@ pointing `seed_as` at them. Specs:
   that shape**, and for the third distinct reason: its pieces are dragged
   from a rack *inside the board card* rather than picked out of a tray row,
   so it asks for no tray, and nothing wrong can be sitting on the quilt
-  because an illegal drop is never taken, so there is no Check either. Four
+  because an illegal drop is never taken, so there is no Check either.
+  **Rings is the fourth of that shape**, and the fourth distinct reason
+  again: it picks nothing up, so no tray; and a solved board is solved in
+  plain sight -- every peg one colour, nothing hidden anywhere on the
+  screen -- so there is nothing for a Check to find and no actions row to
+  put one in. Nothing on that board can be *wrong*, only wasteful. Five
   boards now carry
-  five buttons up there (Balance, Untangle, Word Trail, Quilt); Hidden Word
+  five buttons up there (Balance, Untangle, Word Trail, Quilt, Rings); Hidden Word
   builds five and shows four, because its `capabilities()` has no Undo. Mushroom
   Patch takes the ordinary three rows, and its 460 is the same sum as
   Code Break's, Nonogram's and Queens': a 150 tray, a 130 actions row, a
@@ -958,11 +1084,14 @@ pointing `seed_as` at them. Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in fourteen screens two have earned one: One Line's
+  drawing a new character -- in seventeen screens three have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
-  bee is the one thing that board seats. Nonogram went the other way and
+  bee is the one thing that board seats, and Quilt's cloth
+  (`ui/faces/patch_cloth.gd`), which is the odd one out and is covered at
+  the end of this bullet: it is a drawing rather than a character. Nonogram
+  went the other way and
   drew **no** character at all: its
   pieces are tiles and its clues are numbers, so the only face on the screen
   is the sprout's, and `ui/faces/mosaic_tile.gd` is builder shapes rather than
@@ -992,7 +1121,18 @@ pointing `seed_as` at them. Specs:
   corners rounded (a concave one rounds inward, which is what makes a notch
   read as folded cloth), because tiling a patch out of rounded squares
   would draw the seams the game has not sewn yet -- and those are exactly
-  the information the player is looking for.
+  the information the player is looking for. **Rings is the fifth board to
+  add nothing**, and it adds nothing at all -- not a character, not a
+  drawing class: a ring is a rounded slab with a highlight and a row of
+  pips, built straight into the board's own `ArrayMesh` by
+  `rings2d.gd`'s `_append_ring`, and the only face on the screen is the
+  shared sprout on the tip card and the ring faces on the win. That the
+  menu card reaches into `_append_ring`, `_fan_mapped`, `_slab_mapped` and
+  `RING_COLOURS` -- four underscore-prefixed internals of a board script --
+  is the price of not writing the ring twice, and it is written down in
+  `rings2d.gd`'s header as a debt rather than a pattern: the card draws the
+  board's own ring, so the two cannot drift, but a second consumer of a
+  private API is a second consumer of a private API.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
@@ -1198,7 +1338,7 @@ ratio: within 6 percent is 100, a factor of five is 0.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. Only the turn flow's strings are
-keyed (`locale/turn.csv`); the fourteen boards are still hardcoded English, and
+keyed (`locale/turn.csv`); the seventeen boards are still hardcoded English, and
 `HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228
