@@ -160,26 +160,30 @@ const BLOCK_FLASH := 0.35
 ## rather than taste** -- the two things that still have to happen when the
 ## last plane is tapped, added up at their worst:
 ##
-## - **The last flight: 1.41 s.** A flight is `_s_end / LAUNCH_SPEED` with a
-##   `Motion.POP_IN` floor, and the hard band's own numbers bound `_s_end` at
-##   31 cells -- a ten-cell plane (`BANDS[2].max_len`) whose head sits on one
-##   edge of a 22-row field pointing at the other has a body of 9 cells
-##   behind the head, a lane of 21, and one more cell for the tail to leave
-##   on. 31 / 22 = 1.409 s, which is the longest flight this game can
-##   generate.
+## - **The last flight: 1.364 s.** A flight is `_s_end / LAUNCH_SPEED` with a
+##   `Motion.POP_IN` floor. **The plane a first draft of this comment
+##   described cannot exist**: a ten-cell plane's head on row 0 of the
+##   22-row hard band, pointing off that edge, needs a cell at row -1 for
+##   `add_plane` to derive its direction from -- the head is never the first
+##   row a plane can point off of. The true ceiling is a head on **row 1**:
+##   a body of 9 cells behind the head, a lane of 20 to the far edge, and one
+##   more cell for the tail to leave on, for `_s_end` 30. 30 / 22 = 1.364 s,
+##   the longest flight this game can generate; the worst actually measured
+##   over 120 generated boards was `_s_end` 29 (1.318 s).
 ## - **The solve wave after it: 1.25 s.** `SOLVE_DELAY` (0.25) plus the far
 ##   corner's own stagger, which `Motion.stagger` caps at 0.6 however wide
 ##   the field is (rule 4, and a 16 x 22 field reaches that cap), plus
 ##   `SOLVE_TIME` (0.4).
 ##
-## 1.409 + 1.25 = 2.66, rounded up. It is the longest wait of any flat board
-## -- Shikaku's 2.2 was the previous -- and the cost is named rather than
-## hidden: when the last plane's flight is a short one, which is the common
-## case, the board stands empty and still for up to a second after the wave
-## before the win screen arrives. That is the price of a constant, which is
-## the shape every sibling uses; the alternative is a `win_delay()` that
-## measures the flight it is actually waiting for, and nothing in the family
-## does that yet.
+## 1.364 + 1.25 = 2.614, rounded up. `WIN_WAIT` stays at 2.7 -- it now has
+## *more* headroom than the arithmetic it was set against claimed, not less.
+## It is the longest wait of any flat board -- Shikaku's 2.2 was the previous
+## -- and the cost is named rather than hidden: when the last plane's flight
+## is a short one, which is the common case, the board stands empty and still
+## for up to a second after the wave before the win screen arrives. That is
+## the price of a constant, which is the shape every sibling uses; the
+## alternative is a `win_delay()` that measures the flight it is actually
+## waiting for, and nothing in the family does that yet.
 const WIN_WAIT := 2.7
 
 const TIP_CYCLE := 8.0
@@ -254,8 +258,10 @@ var _nudge: Dictionary = {}
 ## The refused lane itself: {"cells": Array[Vector2i], "at": float}, or empty.
 var _refuse: Dictionary = {}
 ## Sparkles waiting for the plane they belong to to reach the edge of the
-## board: {"at": float, "pos": Vector2}. `ui/fx2d.gd` has no delay of its
-## own and fifty CPU timers is fifty too many, so `_process` fires them.
+## board: {"at": float, "pos": Vector2, "i": int}. `ui/fx2d.gd` has no delay
+## of its own and fifty CPU timers is fifty too many, so `_process` fires
+## them. The plane index rides along so `_fly_back` can drop a puff whose
+## flight reversed before it fired.
 var _puffs: Array[Dictionary] = []
 
 var _tip_text := ""
@@ -470,6 +476,16 @@ func _spend_puffs(t: float) -> void:
 		else:
 			i += 1
 
+## Drops any puff still booked for plane `i`: its flight reversed before the
+## sparkle fired, and there is nothing left at that edge to mark.
+func _forget_puff(i: int) -> void:
+	var j := 0
+	while j < _puffs.size():
+		if int(_puffs[j]["i"]) == i:
+			_puffs.remove_at(j)
+		else:
+			j += 1
+
 ## Keeps the field redrawing for `seconds` more: something on it is moving.
 func _busy_for(seconds: float) -> void:
 	_anim_until = maxf(_anim_until, _now() + seconds)
@@ -504,8 +520,8 @@ func _draw() -> void:
 ## every plane's trail and its dart over them.
 ##
 ## The washes go under rather than over, which is the mock's order and not
-## the spec's table: a lane band is a pale colour (SUN at 0.35, or BAD_TILE
-## on a refusal) and the thing it explains is the ink it would be covering --
+## the spec's table: a lane band is BAD_TILE at the flash's own level, drawn
+## on a refusal, and the thing it explains is the ink it would be covering --
 ## a band laid over a dart rubs out the dart. Nothing is lost by it: the
 ## band's cells are empty by definition except the blocker's, and the blocker
 ## is exactly what the player is being pointed at.
@@ -626,8 +642,8 @@ func _plane(b, i: int, t: float) -> void:
 ## stroke's own join averages the two tangents, so at the right angle every
 ## one of these paths turns it pinches to seven tenths of its width and
 ## leaves a notch on the outside of the corner.
-func _ink(b, cells: Array, width: float, colour: Color, xf := Transform2D.IDENTITY) -> void:
-	_ink_pts(b, _cell_pts(cells), width, colour, xf)
+func _ink(b, cells: Array, width: float, colour: Color) -> void:
+	_ink_pts(b, _cell_pts(cells), width, colour)
 
 ## The centres of `cells`, which is what a plane standing still is drawn
 ## along. A plane in flight hands `_ink_pts` its track's points instead.
@@ -661,7 +677,7 @@ func _ink_pts(b, pts: PackedVector2Array, width: float, colour: Color,
 ## board's three motion constants. A dart at rest is handed 1.0 and the
 ## arithmetic falls out to the plain dart.
 func _dart(b, head: Vector2, angle: float, seen: float, xf: Transform2D,
-		beat := 1.0) -> void:
+		beat: float) -> void:
 	var turn := Transform2D(angle, head)
 	var wings := Vector2(1.0 + (beat - 1.0) * 0.3, beat) * _cell
 	var pts := PackedVector2Array([
@@ -882,6 +898,7 @@ func _fly_out(i: int, t: float) -> void:
 			"at": crosses,
 			"pos": _centre(cells[cells.size() - 1])
 				+ Vector2(_state.planes[i]["dir"]) * out * _cell,
+			"i": i,
 		})
 
 ## Flies plane `i` home along the same track, `delay` from now: an undo's
@@ -900,6 +917,11 @@ func _fly_out(i: int, t: float) -> void:
 ## moving has nothing to queue for and holding it would be the teleport
 ## again, one beat later.
 func _fly_back(i: int, t: float, delay: float) -> void:
+	# The flight has reversed, so any puff still booked for this plane's old
+	# outbound crossing is for an edge it is no longer headed toward. Undo
+	# during a flight, and Reset's whole wave, both come through here, and
+	# both used to leave that puff to fire at an empty edge.
+	_forget_puff(i)
 	if Motion.reduce:
 		return
 	var dur := _dur(i)

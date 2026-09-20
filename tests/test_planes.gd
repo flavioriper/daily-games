@@ -1,8 +1,8 @@
 extends RefCounted
 
-## Paper Planes' rules (puzzles/planes_state.gd): the lane, the launch, and
-## the generator's one promise -- a board carved backwards out of an empty
-## sky can always be cleared.
+## Paper Planes' rules (puzzles/planes_state.gd): the lane, the launch, reset
+## and hint, and the generator's one promise -- a board carved backwards out
+## of an empty sky can always be cleared.
 ##
 ## It also carries the one check that is not this board's: that every
 ## registered board's script parses at all (`_test_boards_parse`). That
@@ -16,6 +16,8 @@ static func run(t) -> void:
 	_test_boards_parse(t)
 	_test_lane(t)
 	_test_launch(t)
+	_test_reset(t)
+	_test_hint(t)
 	_test_degenerate_plane_refused(t)
 	_test_generator(t)
 	_test_repeatable(t)
@@ -87,6 +89,36 @@ static func _test_launch(t) -> void:
 	t.eq(st.undo(), a, "undo puts the last one back")
 	t.check(not st.solved(), "so the board is not solved any more")
 	t.eq(st.plane_at(Vector2i(1, 2)), a, "and it is back on its own cells")
+
+## reset() puts every launched plane back on the board and empties the
+## launch history, so a fresh undo() after it has nothing left to call back.
+static func _test_reset(t) -> void:
+	var st := _empty(5, 5)
+	var a := _add(st, [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2)])
+	var b := _add(st, [Vector2i(4, 0), Vector2i(4, 1), Vector2i(4, 2)])
+	t.check(st.launch(b), "the free one goes")
+	t.check(st.launch(a), "and the one it was blocking goes too")
+	t.check(st.solved(), "an empty sky is a solved board")
+	st.reset()
+	t.check(not st.solved(), "reset puts the board back in play")
+	t.eq(st.left(), 2, "and both planes are back")
+	t.eq(st.plane_at(Vector2i(1, 2)), a, "each on its own cells")
+	t.eq(st.plane_at(Vector2i(4, 1)), b, "the other on its own cells too")
+	t.eq(st.undo(), -1, "and the history is empty: nothing left to call back")
+
+## hint_plane() names a plane that is actually free, and -1 when none is --
+## on an empty board, or once the sky is cleared.
+static func _test_hint(t) -> void:
+	var st := _empty(5, 5)
+	t.eq(st.hint_plane(), -1, "no planes at all: nothing to hint")
+	var a := _add(st, [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2)])
+	var b := _add(st, [Vector2i(4, 0), Vector2i(4, 1), Vector2i(4, 2)])
+	var hinted := st.hint_plane()
+	t.eq(hinted, b, "the only free plane is the one named")
+	t.check(st.is_free(hinted), "and it really is free")
+	st.launch(b)
+	st.launch(a)
+	t.eq(st.hint_plane(), -1, "an empty sky leaves nothing left to hint")
 
 ## A single cell has no last step and so no heading; add_plane refuses it
 ## rather than hand out a zero direction lane() would spin on forever.

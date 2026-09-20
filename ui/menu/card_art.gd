@@ -422,10 +422,23 @@ func _draw_sudoku() -> void:
 
 ## Paper Planes: the empty sky's own faint dots, and three bent ink trails
 ## laid over them, each ending in a folded paper dart -- the board's own
-## shapes (puzzles/planes2d.gd's DOT/DOT_ALPHA, TRAIL and the DART_*/CREASE_*
-## fractions), drawn at card scale rather than a cell's, so the card and the
-## board read as the same object at two different sizes. No cast: this is the
-## third board Nonogram's decision reaches, after Sudoku.
+## shapes (puzzles/planes2d.gd's DOT, TRAIL and DART_*/CREASE_* fractions),
+## **copied** here as bare literals rather than shared, drawn at card scale
+## rather than a cell's, so the card and the board read as the same object at
+## two different sizes. This file preloads no puzzle script and should not
+## start; a literal is the price of that. Two of the copies differ from the
+## board **on purpose**: the dot's alpha is 0.4 here against the board's
+## `DOT_ALPHA` 0.45 (a card is read at a glance, not played on, and a touch
+## fainter reads right at that distance), and the trail's width is 9.0 px
+## against this card's 32 px step -- about 0.28 of it -- against the board's
+## `TRAIL` of 0.17 of a cell, because a card this small needs a heavier line
+## to read as ink rather than a hairline. Every other figure here is meant to
+## track the board's exactly, `CREASE`'s 0.06 included -- **and CREASE has
+## already moved once on this branch, 0.09 to 0.06** (see planes2d.gd's own
+## note), silently as far as this file is concerned. Nothing here would
+## notice a second move; if the board's numbers change again, sweep this
+## function by hand. No cast: this is the third board Nonogram's decision
+## reaches, after Sudoku.
 ##
 ## Baked into **one mesh**, the way Hidden Word's turf band is
 ## (`_draw_letters`) rather than a `draw_circle`/`draw_polyline` per piece:
