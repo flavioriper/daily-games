@@ -114,9 +114,15 @@ var order: Array                # the moves, for undo
 
 Four moves and nothing else writes:
 
-- **`place(cell, v) -> bool`** plants or pebbles. It returns false and changes
-  nothing when the cell is a given (there is nothing there to decide) or when
-  a pebble is aimed at a planted mushroom.
+- **`place(cell, v) -> int`** plants or pebbles, and hands back a reason
+  code rather than a bool -- `OK`, `GIVEN`, `PINNED` or `COVERED` -- so the
+  board knows *why* a move did nothing and can pick the sprout's line and
+  the face's expression from it: a given and a hint's pinned mushroom read
+  different lines (`_refuse_given` vs `_refuse_pinned`) and only the pinned
+  one pulls the mushroom's own face along with the blush (see the
+  amendments). It changes nothing when the cell is a given (`GIVEN`), when
+  it is a hint's pinned mushroom (`PINNED`, refused for either chip), or
+  when a pebble is aimed at a planted mushroom (`COVERED`).
 - **`undo() -> bool`** takes back one gesture, however many cells a sweep
   painted.
 - **`reset_board()`** lifts everything the player laid. What a hint gave stays.
@@ -315,11 +321,21 @@ is darker than `LEAF` and reads lighter on the meadow.
 ## 9. The tray and the gesture
 
 - **Mushroom chip, tap**: a covered cell takes a mushroom; a planted one is
-  pulled up; your own pebble is replaced; a given is refused. A drag with the
-  mushroom chip is a tap where it ends.
+  pulled up; your own pebble is replaced; a given is refused, and a hint's
+  pinned mushroom is refused rather than pulled up. **A drag with the
+  mushroom chip cancels** -- Queens' rule, and every other flat board's: the
+  gesture is abandoned the moment it leaves the cell it pressed, and only a
+  release on that same cell commits a tap. This is the opposite of this
+  section's own first draft, which called a drag "a tap where it ends";
+  that sentence was copied from Queens' spec without checking Queens' own
+  code, which never did that either. The reason is a phone's: a slide that
+  committed a placement is how a scroll becomes an accidental move, and this
+  would have been the only flat board where that happened.
 - **Pebble chip, tap**: a covered cell takes a pebble, your pebble is taken
   away; **a pebble never lifts a mushroom** -- Queens' rule, and it keeps a fat
-  finger from undoing a deduction; a given is refused.
+  finger from undoing a deduction; a given is refused, and so is a hint's
+  pinned mushroom -- a pebble aimed at one is refused outright rather than
+  silently doing nothing.
 - **Pebble chip, drag**: a sweep lays pebbles on every covered cell the finger
   passes, or rubs yours out if it began on one -- Nonogram's rule, the stroke's
   job read off its first cell. Cells between two samples are filled in, and a
@@ -475,3 +491,98 @@ sit well under a millisecond apart and nowhere near trouble -- they do not
 establish a precise number for either board, and a single session this
 consistent should be read as fortunate rather than as the machine's true
 floor.
+
+## 15. Amendments from the build, 2026-09-20
+
+Task 9 is the record: every place the build disagreed with this spec, and
+why. Sections 3 and 9 above have already been edited in place rather than
+left wrong beside a footnote; what follows is the fuller account, plus what
+neither section claimed at all.
+
+1. **Section 9's drag was backwards, and it is now fixed in place.** The
+   first draft said a drag with the mushroom chip "is a tap where it ends."
+   The user's call went the other way: **the drag cancels**, exactly as
+   Queens' does -- the gesture is abandoned the instant it leaves the pressed
+   cell, and only a release on that same cell is a tap. The sentence was
+   copied from Queens' own spec without checking Queens' own code, which
+   never implemented what its spec said either; had Mushroom Patch shipped
+   the sentence as written, it would have been the only flat board where a
+   scrolling slide could commit a placement by accident.
+2. **Section 3's `place()` returns an `int` reason code, not a `bool`.**
+   `GIVEN`, `PINNED` and `COVERED` are three different refusals and the
+   board needs to tell them apart to pick the sprout's line and the face's
+   expression -- a given reads `_refuse_given` (STRAIN) and a pinned
+   mushroom reads `_refuse_pinned` (PUZZLED) and pulls the mushroom's own
+   face along with the blush, which a bare `false` could never carry. Fixed
+   in place above.
+3. **A pinned mushroom refuses a tap of either chip, not just the pebble.**
+   Section 9's draft only spelled out the pebble's refusal ("a pebble never
+   lifts a mushroom"); the mushroom chip needed the same rule spelled out,
+   because a mushroom-chip tap on a hint's mushroom would otherwise fall
+   into the ordinary toggle and pull it back up. `mushroom_state.gd`'s
+   `place()` checks `pinned` before it checks anything else, so both chips
+   get the same `PINNED` answer. Fixed in place above.
+4. **`WASH_TIME` is a real crossfade in the board; the concept mock's is a
+   snap.** Section 8's own definition -- "how long a change takes to settle"
+   -- was right all along. `puzzles/mushroom2d.gd` reads it exactly that way,
+   crossfading a cell's wash from whatever it wore toward what it now asks
+   for over `WASH_TIME` seconds. The mock (`docs/brainstorm/concepts.html`,
+   the `#mushroom` tab) declares the same constant and never reads it: its
+   `hold` value is assigned outright, with no interpolation against the
+   clock, so what looks like a crossfade there is only the transient flash
+   decaying on top of an already-snapped `hold`. The mock was the artifact
+   behind the design, not the other way round, and the board is what the
+   section always described.
+5. **Section 5.1's wordmark fit shipped as designed**, and is worth
+   confirming rather than silently trusting: `ui/flat/flat_top_bar.gd` now
+   overrides the title's font size to `84 * BLOCK / width` (floored at
+   `TITLE_MIN` 56) whenever a title measures wider than the 496-wide block.
+   Mushroom Patch, measured at 635 in Fredoka 700 at 84, lands on **65**.
+   The eleven titles that shipped before it all measure under 496 and take
+   no override at all -- nothing that shipped before today changed by a
+   pixel.
+6. **`ui/faces/mushroom_face.gd` gained an off-by-default `sprig` this
+   task**, a file section 1's table does not list because the file was
+   marked "reuse" rather than "edit." The pinned mushroom's sprig has to
+   root *on* the cap (the mock's `leaf(R*0.74, -R*0.66, R*0.42, -0.9)`, ported
+   number for number), and the board's own ground mesh draws *under* every
+   node, so a sprig drawn there instead would sit behind the mushroom and
+   lose its rooted half. It is keyed into the face's mesh cache through
+   `_kind()` (`"mushroom%d" % int(sprig)`), exactly the way the queen bee's
+   `pinned` gem is keyed into hers, so Balance's own mushroom -- which never
+   sets `sprig` -- draws exactly as it always has.
+7. **Section 2's pager claim was wrong twice.** It said the pager "is its
+   own commit and it touches `ui/menu.gd` alone"; it touches
+   `ui/menu/puzzle_card_2d.gd` as well, because pagination by itself does not
+   hold the 252 card budget. `GridContainer` sizes each row to its own
+   content minimum and never redistributes a page's leftover height across
+   rows, so a short last page (or a page with fewer rows) would still let a
+   `SIZE_EXPAND_FILL` grid stretch a lone row taller than 252 without a
+   floor stopping it. `puzzle_card_2d.gd`'s `CARD_H := 252` constant is what
+   actually holds the budget, pager or no pager -- see CLAUDE.md, "The first
+   screen." Separately, a page whose last row falls short of `COLS` needs
+   invisible `SIZE_EXPAND_FILL` filler `Control`s padded out to the column
+   count, or `GridContainer` hands its one real cell every idle column's
+   leftover width and the lone card comes out 334 wide instead of 320.
+8. **The harness trap in section 14 is worth repeating in CLAUDE.md too**,
+   because it is the single most reusable thing this task learned and it
+   will recur on the next board's spec if it is only recorded once here:
+   `--resolution` is a Godot *engine* flag and has to come before
+   `--script`; placed after the `--`, it is handed to the script as a user
+   argument instead, the engine never sees it, and the run silently falls
+   back to the unflagged default window (1237x1920's worth of design space,
+   not 1080x1920's) rather than failing loudly. The tell both times was a
+   card measuring 372-373 wide against the 320 the whole first screen is
+   designed around. Recorded in CLAUDE.md's "What the harnesses actually
+   measure," 2026-09-20.
+
+**The menu, with the pager, measured at 810x1440** (`tests/_shot_menu.gd`,
+same session as section 14's strip, the flag placed correctly): **324** draw
+calls on page one (twelve cards, the pager pill and the bottom bar all
+visible) and about **100** on page two (the lone thirteenth card, its three
+filler columns and the pager pill, no bottom-bar chrome repainted beyond
+what already stood), both twice, against the twelve-card screen's
+previously recorded **311** and the shared 855 budget. Page one's rise over
+311 is Mushroom Patch's own card plus the pager strip's pill, prev and next
+buttons and dots; page two is far short of a full page's cost because a
+single card and three fillers draw almost nothing beside it.

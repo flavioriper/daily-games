@@ -69,6 +69,16 @@ figures here were taken with the old flag:
   the same build (2026-09-19), so the counts recorded in this file are not
   invalidated by the width -- and the 855 budget is unaffected. Frame times
   were not compared across the two and no claim is made about them.
+- **`--resolution` is a Godot *engine* flag: it has to come before
+  `--script`, never after** (Mushroom Patch's spec, 2026-09-20). Written
+  after the `--` it is handed to the script as a user argument instead --
+  `OS.get_cmdline_user_args()` sees it and the engine never does -- and the
+  run silently falls back to the default, unflagged window (1080x1676 on
+  this Mac) rather than erroring. The tell was in the numbers it produced: a
+  first-screen card measured 372-373 wide, the 1237-wide canvas's figure,
+  not 320's. A whole round of a spec's layout numbers was retaken and
+  corrected once this was found; treat any card measuring near 372 as proof
+  the flag landed on the wrong side of `--script`.
 
 What has *not* been rechecked is every older recorded layout number taken
 from a frame at the old flag. Treat a pixel measurement in this file that
@@ -80,7 +90,8 @@ draw-call count, a budget figure or a design-space constant is fine.
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
 wordmark in ink with its golden sun-dot and the sun and moon beside it, a day
 row, twelve
-puzzle cards three across and four down, and a bottom bar. There is no
+puzzle cards three across and four down, a pager under the grid once a
+second page is needed, and a bottom bar. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
 not even carry a Stage node any more. It replaced the campsite, which is
 still reachable; see "legacy/" below.
@@ -96,6 +107,25 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   and the mock's 118 picture came to 277 a card and pushed the bar off the
   screen. Anything added to the header, the day row or the bar comes out of
   the pictures.
+- **The pager came back on 2026-09-20**, once a thirteenth card needed a
+  second page (`ui/menu.gd`, `ui/menu/puzzle_card_2d.gd`; the campsite's own
+  pager of nine had left with it on 2026-09-18). A five-row grid was
+  rejected first: `GridContainer` is `SIZE_EXPAND_FILL`, so simply letting it
+  run to five rows takes a card from 252 to about 210, and every one of
+  those 42 pixels comes out of the 92 picture -- the one thing this file
+  says a new row may not spend. Pagination alone does not hold the budget
+  either: a `GridContainer` sizes each row to its own content and never
+  redistributes leftover height, so it is `puzzle_card_2d.gd`'s own
+  `CARD_H := 252` floor that keeps a card at 252 regardless of how many rows
+  share the page -- the pager is what makes a second page possible, not what
+  keeps a card's height. The strip itself costs the grid nothing: it is laid
+  over the seam between the grid and the bottom bar as its own paper pill,
+  an overlay on `_list_root` the way `_toast` already is, never a row of the
+  column, so a card stays 252 whether or not a second page exists. A short
+  last row (thirteen over twelve leaves one) needs invisible `SIZE_EXPAND_FILL`
+  filler `Control`s padded out to the column count, or `GridContainer` hands
+  its one real cell every column's leftover width and the lone card comes out
+  334 wide instead of 320.
 - **The sun-dot is the i's dot, not a sticker over it** (`ui/sun_dot.gd`,
   2026-09-19). It sets the label's lowercase i in Fredoka's dotless `ı`
   and seats a small sun where the font's dot was, measured off the
@@ -119,11 +149,11 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   `_build_list` lays a `Pal.PAPER` rect under everything.
 - **A card's picture is the board's own cast** (`ui/menu/card_art.gd`):
   `ui/faces/` characters seated in a 320 by 118 box and scaled to the card,
-  plus whatever furniture they stand on drawn under them. Ten of the twelve
-  are almost entirely reuse. It is never an image and never a `SubViewport`.
-  A new card costs one branch of `_build` and, if it needs furniture, one of
-  `_draw`.
-- **Twelve cards, eleven live and one that does not open.** Pipes has no
+  plus whatever furniture they stand on drawn under them. Eleven of the
+  thirteen are almost entirely reuse. It is never an image and never a
+  `SubViewport`. A new card costs one branch of `_build` and, if it needs
+  furniture, one of `_draw`.
+- **Thirteen cards, twelve live and one that does not open.** Pipes has no
   flat board: it keeps its picture and name at 55% ink, wears a pale
   `SOON` pill and emits `blocked`, and the menu answers with a line saying
   its island version is under More. It holds the last slot of the last row,
@@ -142,7 +172,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (eleven flat
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (twelve flat
   plus the one `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
@@ -339,7 +369,9 @@ every layout change.
   plateau at about y 1.4, and the menu camera stands out over that ring where
   a board's never does. At y 0 the camp's feet are buried in it.
 - **The campsite's cards came in pages of nine**, turned with the buttons
-  under the grid, not a scroll. The flat screen has no pager: twelve fit. Each card's picture is a live diorama of that puzzle's own pieces
+  under the grid, not a scroll. The flat screen went without a pager while
+  twelve fit, and got its own back on 2026-09-20 once a thirteenth card
+  did not -- see "The first screen" above. Each card's picture is a live diorama of that puzzle's own pieces
   (`legacy/ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder. A
   full page of nine measures 318 draw calls against the 855 budget, on this
   Mac at phone resolution -- the cards are what a page costs, so a page, not
@@ -347,30 +379,34 @@ every layout change.
 
 ## The flat screens
 
-Eleven cards open a flat 2D board under flat chrome: **Binairo**
+Twelve cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
 (`puzzles/tents2d.gd`), **Light Up** (`puzzles/lightup2d.gd`), **One Line**
 (`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`) and, since
 2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
-(`puzzles/hidden_word2d.gd`).
+(`puzzles/hidden_word2d.gd`), and, since 2026-09-20, **Mushroom Patch**
+(`puzzles/mushroom2d.gd`).
 
-Each was built on trial beside its island, as a second card seeded from the
-same day, so the two could be judged on the phone. **The trial is over**:
-on 2026-09-18 the game went 2D, the first screen was redrawn flat and every
-island moved to `legacy/`. The islands keep `seed_as` pointing at their flat
-twin, so a board opened from More still hands out the same day's puzzle.
-Specs:
+Each of the first eleven was built on trial beside its island, as a second
+card seeded from the same day, so the two could be judged on the phone.
+**The trial is over**: on 2026-09-18 the game went 2D, the first screen was
+redrawn flat and every island moved to `legacy/`. The islands keep `seed_as`
+pointing at their flat twin, so a board opened from More still hands out the
+same day's puzzle. Mushroom Patch (2026-09-20) breaks that pattern outright:
+it has no island precedent and no `seed_as` behind it in More, the first
+board built flat from the start. Specs:
 `docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
 `...-tents-`, `...-lightup-`, `...-oneline-` and
 `...-nonogram-flat-design.md` siblings, and
 `docs/superpowers/specs/2026-09-19-queens-flat-design.md` and
-`...-hidden-word-flat-design.md`; mocks:
+`...-hidden-word-flat-design.md`, and
+`docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens` and
-`#hiddenword`.
+`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens`,
+`#hiddenword` and `#mushroom`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -486,6 +522,19 @@ Specs:
   (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
   frames match the default driver to 21/255 on edge antialiasing alone, so
   nothing has reintroduced an `instance uniform`.
+- **Mushroom Patch is the first title that does not fit its block**
+  (2026-09-20, `puzzles/mushroom2d.gd`, spec
+  `2026-09-20-mushroom-patch-flat-design.md`). `ui/flat/flat_top_bar.gd` lays
+  a board's title in an `HBoxContainer` block between the back button and
+  the three icons -- `1000 - 110 - 3 x 110 - 4 x 16 = 496` wide (`BLOCK`) --
+  and every title before this one measured under that (Hidden Word's 482 the
+  closest, by fourteen pixels). Mushroom Patch measures 635 in Fredoka 700
+  at the `GameWordmark` size of 84, so the bar gained a fit: a title wider
+  than `BLOCK` has its font size overridden to `84 * BLOCK / width`, floored
+  at `TITLE_MIN` 56. Mushroom Patch lands at 65; the other eleven shipping
+  titles all measure under 496 and take no override at all. Its own
+  signature is the count wash, a running feedback no other flat board
+  gives; `docs/art/flat-motion.md` is where that is recorded.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -524,7 +573,8 @@ Specs:
   and `legacy/ui/island_host.gd` is the other, and both fill
   `ui/puzzle_host.gd`'s `_build_chrome` and `_enter`. The base has no rows
   of its own and errors rather than falling back. It picks the tray too
-  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`, `"keys"`), because
+  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`, `"keys"`,
+  `"patch"`), because
   the host lays out its rows
   before it has a puzzle to ask how many chips it wants -- and it can drop
   the actions row with `"actions": false`, which Balance does: that board is
@@ -538,10 +588,12 @@ Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  eleven screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460 and
-  340 -- Untangle drops the tray *and* the actions row, so its slot is the
+  twelve screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
+  and 460 -- Untangle drops the tray *and* the actions row, so its slot is the
   tip card alone, and Hidden Word's is the keyboard alone
-  (`ui/flat/key_board.gd`'s `HEIGHT`).
+  (`ui/flat/key_board.gd`'s `HEIGHT`). Mushroom Patch's own 460 is the same
+  sum as Binairo's, Code Break's, Nonogram's and Queens': a 150 tray, a 130
+  actions row, a 140 tip card and two 20 gaps between them.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -573,7 +625,7 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in eleven screens two have earned one: One Line's
+  drawing a new character -- in twelve screens two have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
@@ -585,6 +637,10 @@ Specs:
   way and added nothing to `ui/faces/`: its thirty tiles are Nonogram's
   mosaic tile, taught to carry a letter and nothing else, and the only face
   it shows is the shared sprout, which comes on stage once, for the reveal.
+  Mushroom Patch reused rather than earned too: its two mushrooms and their
+  pebble are `ui/faces/mushroom_face.gd` and `ui/faces/mosaic_tile.gd`,
+  already on stage since Balance and Nonogram/Queens, and the only thing it
+  added to either was the off-by-default `sprig` a hint's mushroom wears.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
@@ -788,7 +844,7 @@ ratio: within 6 percent is 100, a factor of five is 0.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. Only the turn flow's strings are
-keyed (`locale/turn.csv`); the twelve boards are still hardcoded English, and
+keyed (`locale/turn.csv`); the thirteen boards are still hardcoded English, and
 `HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228
