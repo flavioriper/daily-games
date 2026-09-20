@@ -133,8 +133,13 @@ func _build() -> void:
 			# Two mushrooms on the turf strip _draw lays under them, the tile
 			# and its numeral drawn beside them. `sprig` stays false: it marks
 			# a mushroom a hint planted, which would be a lie on a card.
-			_seat(MushroomFace.new(), 62.0, -104.0, 0.0)
-			_seat(MushroomFace.new(), 48.0, -26.0, 10.0)
+			# The y's here were set by eye against a rendered, zoomed crop,
+			# not by the body's arithmetic alone (a first pass trusted the
+			# arithmetic and buried both mushrooms to the chin -- see
+			# _draw_patch's comment): each mushroom's own foot lands right at
+			# the strip's top (24), fully clear of it, rather than sunk in.
+			_seat(MushroomFace.new(), 62.0, -104.0, -1.0)
+			_seat(MushroomFace.new(), 48.0, -26.0, 5.0)
 		_:
 			pass
 
@@ -305,8 +310,20 @@ func _draw_letters() -> void:
 ## card for a board nobody has played yet. The tile stays SURFACE rather than
 ## washing toward LEAF, because a fully green tile would claim a solved board
 ## rather than hint at the mechanic.
+##
+## The strip's top is 24 and its height 35, landing its bottom exactly on the
+## box's own edge (ART.y * 0.5 = 59) with its radius fully inside that span
+## -- Hidden Word's turf band (_draw_letters) is drawn the same way for the
+## same reason: a strip cut short of the radius, or clipped mid-curve by
+## `clip_contents`, shows its straight-cut bottom overhanging the card
+## plate's own rounded corner, which reads as a drawing bug rather than
+## ground running off the frame. A first pass here got this wrong (top 20,
+## height 50, bottom 70 clipped at 59) and, worse, seated the mushrooms with
+## their feet above the strip's top, burying them to the chin and clipping
+## the smaller one's face; both are fixed by the numbers below, checked
+## against a rendered, zoomed crop rather than by arithmetic alone.
 func _draw_patch() -> void:
-	_round(-150.0, 20.0, 195.0, 50.0, 16.0, Pal.TURF_REACH)
+	_round(-150.0, 24.0, 195.0, 35.0, 16.0, Pal.TURF_REACH)
 	_round(70.0, -38.0, 76.0, 76.0, 14.0, Pal.SURFACE)
 	_text("3", 108.0, 12.0, 42.0, Pal.LEAF_DEEP)
 
