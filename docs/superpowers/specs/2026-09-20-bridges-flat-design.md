@@ -270,16 +270,155 @@ At 1080x1920 design space, top to bottom: 40 margin, a 180 top bar, 20, the
 shape as Shikaku, Tents, Light Up and One Line, so `ui/flat/flat_host.gd`
 needs no change at all.
 
-Inside the card, a sea pool inset 28 from the paper. The lattice is **920
-wide at every band**, so the width binds and a cell is **131 / 102 / 84** on
-the three bands. That leaves 214 of pool height over, and because the lattice
-is square in a tall slot, `card_centred()` is `true` and the slack is
+Inside the card, a sea pool inset 28 from the paper (`INSET`), with the
+lattice inset a further 12 inside the pool (`FIELD_PAD`). At 1080 wide that
+is a 1000 card, a 944 pool and a lattice **920 wide at every band**
+(`FIELD`), so the width binds and a cell is **131 / 102 / 84** on the three
+bands. That leaves 214 of pool height over, and because the lattice is
+square in a tall slot, `card_centred()` is `true` and the slack is
 **halved: 107 above and 107 below**.
 
 An islet is a turf disc on a sand rim with its number in ink. A plank is
-**0.115 of a cell thick with 0.095 between two of them**, so a full run of
-three spans 0.59 of a cell -- wide enough to read as three at 84 px and
-narrow enough to leave water either side.
+**0.115 of a cell thick with 0.095 between two of them** (`PLANK`,
+`PLANK_GAP`), so a full run of three spans 0.59 of a cell -- wide enough to
+read as three at 84 px and narrow enough to leave water either side.
+
+Everything else the board is made of was ported from the mock number for
+number, and all of it now stands as named constants in
+`puzzles/bridges2d.gd`. **Three different units are in play**, and mixing
+them up is how this board goes wrong, so each table below says which it is.
+
+### The pool, in design-space pixels
+
+These are the mock's own numbers and they do **not** scale with the band: the
+pool is the same size on a 7x7 as on an 11x11, only the lattice inside it
+changes.
+
+| What | Constant | Value |
+|---|---|---|
+| Pool corner | `POOL_RADIUS` | 34 |
+| The rim the pool stands on | `POOL_EDGE` | 9 |
+| Shallows, inset from the pool | `SHALLOW_INSET` | 9 |
+| Shallows, band thickness | `SHALLOW_W` | 26 |
+| Shallows, corner | `SHALLOW_RADIUS` | 26 |
+| Shallows, alpha | `SHALLOW_ALPHA` | 0.85 |
+
+The pool is two rounded rects, not a rect with a border: the deep edge colour
+fills the whole box and the sea fills the same box `POOL_EDGE` shorter, so
+the rim shows along the bottom only, the way a lip catches light.
+
+### The ripples, also in pixels
+
+Nine of them (`RIPPLES`), each a quadratic bezier bowed up by `RIPPLE_BOW`
+and stroked `RIPPLE_W` wide in `WATER` at `RIPPLE_ALPHA`.
+
+| What | Constant | Value |
+|---|---|---|
+| How many | `RIPPLES` | 9 |
+| Stroke width | `RIPPLE_W` | 8 |
+| Alpha | `RIPPLE_ALPHA` | 0.24 |
+| Sown from, in from the pool's corner | `RIPPLE_AT` | (60, 70) |
+| Kept clear of the far edges | `RIPPLE_SPAN` | (190, 140) |
+| Length, base plus spread | `RIPPLE_LEN` | (40, 60) |
+| Bow | `RIPPLE_BOW` | 8 |
+
+**`RIPPLE_SPAN` is the one number on this board that is deliberately not the
+mock's.** The mock sows its ripples over (160, 140) and then clips the whole
+sea to the pool's rounded rect, so a ripple that runs off the edge is simply
+cut. **A mesh cannot clip**, and this board is one `ArrayMesh`, so a ripple
+that ran past the rim would stand on the paper outside the pool. The width
+was raised from 160 to 190 so the ripples are sown clear of the rim instead
+of cut at it, and the arithmetic is exact: a ripple starts at `RIPPLE_AT`
+plus up to `pool - RIPPLE_SPAN`, and runs up to 100 long, so on the 944-wide
+pool the furthest one ends at 914 -- 30 px clear of the edge. At the mock's
+160 that last ripple would end at 944, on the rim itself, which is precisely
+where the mock's clip cuts it. The height stays the mock's 140, because a
+ripple's vertical extent is the 8 of `RIPPLE_BOW` and nothing reaches.
+Everything else in these tables is the mock's figure verbatim.
+
+### An islet, in fractions
+
+`ISLET_R` is a fraction of the **cell**; everything under it is a fraction of
+**that radius**, so an islet keeps its proportions at 131, 102 and 84 alike.
+
+| What | Constant | Value |
+|---|---|---|
+| Turf disc radius, of the cell | `ISLET_R` | 0.40 |
+| Coloured shadow, offset down | `SHADOW_AT` | 0.30 |
+| Shadow radii | `SHADOW_RX` / `SHADOW_RY` | 1.02 / 0.40 |
+| Shadow alpha | `SHADOW_ALPHA` | 0.30 |
+| Wet sand, offset down | `SAND_DROP` | 0.07 |
+| Turf, of the sand rim | `TURF_R` | 0.80 |
+| Turf lip, offset down | `TURF_DROP` | 0.04 |
+| Sun cap, seat and radii | `CAP_AT` / `CAP_R` | (-0.22, -0.34) / (0.30, 0.17) |
+| Sun cap alpha | `CAP_ALPHA` | 0.55 |
+| Number size, of the islet | `NUMBER_SIZE` | 0.95 |
+| Number seat | `NUMBER_AT` | -0.04 |
+| A met number, let down toward the paper | `NUMBER_MET` | 0.38 |
+| How wide a press still takes the islet | `GRAB` | 1.25 |
+
+`GRAB` is 1.25 and not 1.0 because an islet is round and the corners of its
+cell are water: a finger that lands on the corner meant the islet.
+
+### Two rings, two floors
+
+**There are two rings on this screen and they are not the same ring**, which
+section 9 discusses only half of. The satisfied ring is the standing
+`GOOD`/`BAD` band a met or over-filled islet wears; the aim ring is the gold
+band a live drag throws round the islet it is about to join. They have
+different radii, different thicknesses and **different pixel floors**.
+
+| Ring | Radius | Width | Floor | Alpha |
+|---|---|---|---|---|
+| Satisfied (`RING_*`) | 1.13 | 0.13 | 4 px | 0.95 |
+| Aim (`BEAM_RING*`) | 1.22 | 0.14 | 5 px | 0.90 |
+
+Both radii and widths are in islet radii. The floors are what keep either
+ring from becoming a hair on the 11x11, and section 9's arithmetic -- 4.7 px
+from the ratio against a 5 px floor -- is about the aim ring alone.
+
+### The lit lane and a refusal, in fractions of a cell
+
+| What | Constant | Value |
+|---|---|---|
+| Beam width | `BEAM_W` | 0.62 |
+| Beam corner | `BEAM_RADIUS` | 0.4 |
+| Let in under the islets it joins, in islet radii | `BEAM_TUCK` | 0.4 |
+| Beam alpha | `BEAM_ALPHA` | 0.72 |
+| Refusal band alpha | `REFUSE_ALPHA` | 0.88 |
+| Blocker highlight alpha | `BLOCKER_ALPHA` | 0.95 |
+
+`BEAM_W` is 0.62 against a full run's 0.59, so a lit lane is wider than three
+planks by a hair and never reads as a run that is already there.
+
+### A plank
+
+Thickness and gap are the 0.115 and 0.095 above. The rest:
+
+| What | Constant | Value | Unit |
+|---|---|---|---|
+| Corner, of its own thickness | `PLANK_RADIUS` | 0.34 | fraction |
+| The lip the deck stands on | `PLANK_EDGE` | 4 | px |
+| Shadow offset | `PLANK_SHADOW` | (3, 7) | px |
+| Shadow alpha | `PLANK_SHADOW_ALPHA` | 0.22 | — |
+| Slat spacing | `SLAT_STEP` | 0.30 | of a cell |
+| Slat width | `SLAT_W` | 0.022 | of a cell |
+| Slat floor | `SLAT_MIN` | 2 | px |
+| Slat alpha | `SLAT_ALPHA` | 0.28 | — |
+
+The lip is the same 4 px trick as the pool's: the deep colour fills the
+plank's box and the deck fills it `PLANK_EDGE` shorter on the axis the run
+does not run along, which is why a plank is a plank and not a bar.
+
+### The hint's glow pad
+
+| What | Constant | Value |
+|---|---|---|
+| Pad off the run's own box, of a cell | `GLOW_PAD` | 0.13 |
+| Corner, of the pad | `GLOW_RADIUS` | 1.6 |
+| Alpha | `GLOW_ALPHA` | 0.85 |
+| Dash on / off, of a cell | `DASH_ON` / `DASH_OFF` | 0.13 / 0.1 |
+| Dash width, of a cell, with a floor | `DASH_W` / `DASH_MIN` | 0.05 / 3 px |
 
 ## 7. Colour
 
@@ -343,6 +482,31 @@ columns: a warm-ink alpha tuned against a dark ground is not portable to a
 light one, in either direction.** Three of the five re-tunes above were
 reversals rather than adjustments. Any alpha fixed as a constant on this
 board must say which ground it was measured on.
+
+
+### The check's mark, and the tint it holds
+
+Check flashes the runs that differ from the answer and then **keeps them
+tinted** until the player's next move (section 10). The flash is
+`Motion.flash_level` at `BAD_MIX` 0.85 on the deck and `BAD_DEEP_MIX` 0.6 on
+the lip; what stays behind is `BAD_HELD = 0.50` **of that peak**, so the held
+mark is `mix(DECK, BAD, 0.425)` = `#c4745a` on the deck and
+`mix(WOOD_DEEP, BAD, 0.30)` = `#ae6d53` on the lip.
+
+**0.50 was measured, not picked, and the reason it has to be that high is
+that `DECK` and `BAD` are both warm**: the mix moves far less than the number
+suggests. At 0.35 the marked deck came back `#c0785a` -- eleven units of red
+off an unmarked plank -- and on a rendered frame beside a right run it was
+there only if you already knew where to look; call that invisible. At 0.65 (`#c96f5a`) it
+goes salmon and reads as a second alarm rather than as a mark. Both ends of
+the band table were shot with a marked run standing next to an unmarked one,
+the 7x7 at a 131 px cell and the 11x11 at 84, because a tint tuned at one
+cell size is not portable to the other.
+
+This is the same rule as the rest of this section, arrived at from the other
+direction: an alpha or a mix is only valid against the ground it was measured
+on -- there against a pale sea rather than a dark one, here against a warm
+deck rather than a neutral tile.
 
 ## 8. The cast: nobody new
 
@@ -459,13 +623,167 @@ This board cannot end without a solve, so it never sends `solved: false`.
 
 ## 14. Calls this screen is for
 
-To be filled from the port: draw calls and idle at `--resolution 810x1440`
-with `tests/_shot_anim.gd -- bridges`, against the 855 budget, with another
-board run as a control in the same session -- because a single reading off
-that harness is worth nothing, and every reading gets quoted including the
-flattering one. Generation time per band in GDScript, against the ~194 ms
-gate, with the attempt counts beside it. And the `--rendering-driver
-opengl3_angle` check that nothing has reintroduced an `instance uniform`.
+Measured on this Mac on 2026-09-20 with
+`godot --path . --resolution 810x1440 --script res://tests/_shot_anim.gd -- bridges`
+-- the resolution flag before `--script`, windowed, and **one harness at a
+time**. The harness disables vsync, so the idle mean is a measurement rather
+than the 120 Hz ceiling `tests/_shot_menu.gd` reports.
+
+### Draw calls
+
+**64 to 65**, against the 855 budget. Every reading of the session, in the
+order taken:
+
+| Run | Draw calls | Idle mean | Idle frames |
+|---|---|---|---|
+| Bridges 1 | 65 | 4.11 ms | 487 |
+| Bridges 2 | 65 | 4.22 ms | 474 |
+| Bridges 3 | 64 | 3.75 ms | 532 |
+| Word Trail (control) | 65 | 2.94 ms | 681 |
+| Word Trail (control) | 65 | 3.38 ms | 594 |
+| Queens (control) | 71 | 4.28 ms | 468 |
+| Queens (control) | 71 | 3.93 ms | 508 |
+| Bridges 4 | 64 | 4.08 ms | 490 |
+| Bridges 5 (`empty`, bare board) | 64 | 4.04 ms | 495 |
+| Bridges 6 (`rm`, reduce motion) | 64 | 4.27 ms | 633 |
+| Bridges 7 | 65 | 4.05 ms | 493 |
+| Bridges 8 | 65 | 3.11 ms | 642 |
+| Bridges 9 (`opengl3_angle`) | 65 | 5.98 ms | 334 |
+| Bridges 10 (`empty`) | 64 | 3.61 ms | 554 |
+| Bridges 11 (`empty`) | 64 | 4.54 ms | 440 |
+
+The controls are quoted because a single reading off this harness is worth
+nothing. **The draw calls came back exactly on record** -- Word Trail 65 and
+65 against its recorded 65/62/65, Queens 71 and 71 against its recorded 71 --
+which is what makes this session's counts worth writing down.
+
+The board's own spread is **64 or 65 and nothing else**, and the two are not
+two states:
+
+- **Bare (`empty`): 64, 64, 64.** Three readings, no variation.
+- **Reduce motion (`rm`), which plays the same two runs: 64.**
+- **The strip's state** -- two runs laid at one islet, its number met, its
+  ring up -- **65, 65, 64, 64, 65, 65.** Same code, same board, same frame
+  budget, six runs.
+
+So the played board costs the bare board **either nothing or one call**, and
+which of the two a run reports is not determined by anything on screen. **It
+cannot be the ring**: the ring is built into the same `ArrayMesh` as the rest
+of the board, and a mesh is one draw call however many fans go into it. The
+likely cause -- and this is an inference from the timings, not a measurement
+-- is `ui/fx2d.gd`: the ring and sparkles the satisfied islet throws are
+their own canvas items, the idle window opens at 3.2 s, and the last plank
+lands not long before it, so whether one effect node is still alive when the
+counter first samples is a matter of a frame or two. That is exactly Word
+Trail's 62 outlier in the other direction -- its spec reaches the same
+inference from the same shape of evidence, with its own effect-free bare and
+reduce-motion boards reading a stable number while the played one wobbles. **It was not checked by stubbing the effects
+out**, and until someone does, the honest statement is that this board costs
+64 with an occasional 65 and both are 790 calls inside the budget.
+
+### Idle, and the caveat that matters more than the number
+
+**4.05, 4.08, 4.11, 4.22, 3.75 and 3.11 ms** on the strip's state; **4.04,
+3.61 and 4.54** bare; **4.27** under reduce motion; **5.98** on ANGLE. Quote
+all of them or none.
+
+**This machine's idle figure is not stable and this board has already proved
+it.** On unchanged Bridges code, in a single day, the same harness has
+returned figures from **2.50 to 7.62 ms** with the draw calls flat at 64
+throughout. The session above is tighter than that -- 3.11 to 4.54 over ten
+default-driver runs -- but the spread is still a third of the mean.
+
+The controls say the same thing from the other side, and they do not all
+agree:
+
+- **Queens came back where it is recorded** (4.28 and 3.93 against ~3.83-4.5).
+- **Word Trail came back high** (2.94 and 3.38 against its recorded
+  2.40-2.51), 20 to 40 percent above its own figures.
+
+So the honest reading is: the *counts* from this session are trustworthy and
+the *milliseconds* are comparable **only within it**. Within it, Bridges
+(3.11-4.22) sits above Word Trail (2.94, 3.38) and at or just under Queens
+(3.93, 4.28) -- which is where a board with a full-card mesh, nine ripples
+and a shallow band should sit, but the gap to Word Trail is about one
+millisecond and this session's own noise is larger than that. **Nobody should
+read a ranking off it.** Against the 8 ms the polish spec asks for, every
+reading is inside, with the worst of them at about half.
+
+One thing genuinely is cheap and it is not visible in these numbers: a
+settled Bridges card **redraws nothing at all** -- `_anim_until` has passed,
+so the idle window is measuring the chrome around a still mesh. What the
+readings above bound is the cost of *having* this board on screen, not the
+cost of playing it. The playing frames are inside the strip and were not
+timed separately.
+
+### Reduce motion
+
+The `rm` pair 1.5 s apart is **pixel-identical**: the difference image's
+bounding box is empty and the maximum channel difference is 0 over the whole
+810x1440 frame. Nothing on a settled Bridges board moves when motion is off.
+
+### The phone's driver
+
+`--rendering-driver opengl3_angle`: **the same 65 draw calls**, and the
+settled frame compared against the default driver's pixel for pixel.
+
+Outside one 33 by 35 box the two drivers agree to **4 of 255**, and 167,582
+of the 168,213 differing pixels differ by exactly **1** -- the pale sea's
+gradient rounding, across the sea and nowhere structural. That is the
+expected edge-antialiasing-and-rounding class and **not** the
+`instance uniform` class of bug; nothing this board touches declares one.
+
+The one box that differs by more (132 of 255) is the **wordmark's sun-dot**
+in the top bar, and it is not a driver difference at all: two runs on the
+*default* driver, compared with each other, differ by 82 of 255 in the same
+box and nowhere else. `ui/sun_dot.gd`'s rayed sun turns and glints on its own
+clock, so the phase it is caught at is not reproducible between runs of the
+harness. That is shared chrome on every flat screen, it is not this board,
+and it is written down here because the next person to run this comparison
+will see a three-figure difference and reach for the wrong explanation.
+
+### Generation, in GDScript
+
+Re-measured with a throwaway probe, 200 boards a band, run from `_process`
+(headless `_ready` is deferred), twice; the probe was then deleted. Both runs
+agreed to two decimal places on attempts and to a tenth of a millisecond on
+the means, so only the second is quoted where they differ:
+
+| Band | Attempts mean | Attempts worst | ms mean | **ms worst** | Guess-free |
+|---|---|---|---|---|---|
+| 0 (7x7) | 3.26 | 19 | 1.85 | **14.7** | 100.0% |
+| 1 (9x9) | 3.83 | 19 | 2.34 | **13.3** | 82.5% |
+| 2 (11x11) | 6.26 | 38 | 6.89 | **47.2** | 73.5% |
+
+**Against the ~194 ms gate the worst case is 47.2 ms, which is 4.1x of
+headroom on the hard band** -- and the gate is what the Sudoku generator was
+held to, so it is a real bar and not a round number.
+
+**Task 1's figures reproduce.** They were 14.4 / 13.9 / 56.7 ms worst and
+3.26 / 4.14 / 6.71 mean attempts; this run gives 14.7 / 13.3 / 47.2 and 3.26
+/ 3.83 / 6.26. Band 0's mean attempts land on the same 3.26 to the hundredth;
+bands 1 and 2 come in a little under. **That is not a speed-up and must not
+be read as one** -- Task 1's probe was deleted, so its seed set is unknown
+and this one's is `s * 7919 + difficulty`. Two different 200-board samples of
+the same generator is all the agreement claims. The hard band's worst case
+moved 56.7 to 47.2 for the same reason: the worst of 200 boards is the
+longest tail this sample happened to draw, and nothing in the generator
+changed between the two.
+
+The guess-free rates -- 100 / 82.5 / 73.5 percent -- hold section 4's
+requirement that **band 0 needs no guess**, over 200 boards, and sit beside
+the mock's JavaScript (100 / 82 / 71) and Task 1's port figures
+(100 / 81 / 68.5). Bands 0 and 1 land within a point and a half of both; the
+hard band's 73.5 is 2.5 points over the mock and **5 points over Task 1's own
+port figure**, which is the largest disagreement anywhere in this section. It
+is a different 200-board sample of the same code, so sampling is the obvious
+explanation and no other was looked for.
+
+### The suite
+
+`godot --headless --path . --import` then
+`godot --headless --path . --script res://tests/run_tests.gd`:
+**passed=19962 failed=0**, on the baseline this branch started from.
 
 ## 15. Open calls carried from the concept build
 
