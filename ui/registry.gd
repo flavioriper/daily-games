@@ -3,11 +3,12 @@ extends RefCounted
 ## What stands on the first screen, and what stands behind More.
 ##
 ## `PUZZLES` is the grid: twelve cards, three across and four down, in the
-## order they are drawn. Ten of them open a flat board; the last two name a
-## board that has never been drawn flat and say `soon` instead of opening
-## (ui/menu.gd draws them dimmed with no go button). Snake Apple's `soon`
-## card left the grid on 2026-09-19 to make room for Queens: it is the one
-## being redesigned outright, and its island board stays under More.
+## order they are drawn. Eleven of them open a flat board; the last names a
+## board that has never been drawn flat and says `soon` instead of opening
+## (ui/menu.gd draws it dimmed with no go button). Snake Apple's `soon` card
+## left the grid on 2026-09-19 to make room for Queens, and Horse Pen's left
+## the same day for Hidden Word: both are being redesigned outright, and
+## their island boards stay under More.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -165,9 +166,27 @@ const PUZZLES := [
 		"tray": "queens",
 		"difficulties": [0, 1, 2],
 	},
+	{
+		"id": "hiddenword",
+		"kind": "puzzle",
+		"title": "Hidden Word",
+		"blurb": "Five letters, six tries. A new word every day.",
+		"short": "Five letters,\nsix tries.",
+		"motto": "Find the hidden word",
+		"footer": "Type · Guess · Find",
+		# It types, so its tray is a keyboard; every Enter is the check, so
+		# there is no actions row and Reset rides in the top bar; and it is
+		# the first board built with no tip card at all.
+		"script": "res://puzzles/hidden_word2d.gd",
+		"shell": "flat",
+		"tray": "keys",
+		"actions": false,
+		"tip": false,
+		"difficulties": [0, 1, 2],
+	},
 	# --- the end of the last row: named, drawn, and not yet playable here.
-	# Each has a board on the stage behind More (`legacy` names it), and each
-	# comes back to this row the day it is drawn flat.
+	# It has a board on the stage behind More (`legacy` names it), and comes
+	# back to this row the day it is drawn flat.
 	{
 		"id": "pipes",
 		"kind": "puzzle",
@@ -176,15 +195,6 @@ const PUZZLES := [
 		"short": "Route the water\nuphill with pumps.",
 		"soon": true,
 		"legacy": "pipes_island",
-	},
-	{
-		"id": "horse",
-		"kind": "puzzle",
-		"title": "Horse Pen",
-		"blurb": "Pen the horse in with hay bales. Keep the meadow.",
-		"short": "Pen the horse in\nwith hay bales.",
-		"soon": true,
-		"legacy": "horse_island",
 	},
 ]
 

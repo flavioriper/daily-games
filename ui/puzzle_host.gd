@@ -142,6 +142,7 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_board_holder.add_child(_puzzle)
 	_puzzle.solved.connect(_on_solved)
+	_puzzle.ended.connect(_refresh)
 	_puzzle.moved.connect(_refresh)
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()

@@ -38,6 +38,7 @@ const SymbolTray = preload("res://ui/flat/symbol_tray.gd")
 const FriendTray = preload("res://ui/flat/friend_tray.gd")
 const WeightTray = preload("res://ui/flat/weight_tray.gd")
 const TileTray = preload("res://ui/flat/tile_tray.gd")
+const KeyBoard = preload("res://ui/flat/key_board.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const TipCard = preload("res://ui/flat/tip_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
@@ -183,6 +184,20 @@ func _build_chrome(root: VBoxContainer) -> void:
 			tray = TileTray.new(TileTray.QUEENS)
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
+		"keys":
+			# Hidden Word types: the tray is a keyboard, and the board takes
+			# its three signals directly rather than through a brush.
+			tray = KeyBoard.new()
+			tray.key.connect(func(l: String) -> void:
+				if is_instance_valid(_puzzle) and _puzzle.has_method("type_letter"):
+					_puzzle.type_letter(l))
+			tray.commit.connect(func() -> void:
+				if is_instance_valid(_puzzle) and _puzzle.has_method("commit_row"):
+					_puzzle.commit_row())
+			tray.erase.connect(func() -> void:
+				if is_instance_valid(_puzzle) and _puzzle.has_method("erase_letter"):
+					_puzzle.erase_letter())
+			rows.append(KeyBoard.HEIGHT)
 		_:
 			tray = SymbolTray.new()
 			tray.pick.connect(_on_brush)
@@ -197,11 +212,14 @@ func _build_chrome(root: VBoxContainer) -> void:
 		action_bar.check.connect(_on_check)
 		_bottom_stack.add_child(action_bar)
 		rows.append(FlatActions.BUTTON.y)
-	tip_card = TipCard.new()
-	tip_card.name = "TipCard"
-	tip_card.open.connect(_open_rules)
-	_bottom_stack.add_child(tip_card)
-	rows.append(TipCard.HEIGHT)
+	# Hidden Word has no cycle of rules to show: Enter is the check, so there
+	# is nothing a tip card would say that the keyboard does not already.
+	if bool(_entry.get("tip", true)):
+		tip_card = TipCard.new()
+		tip_card.name = "TipCard"
+		tip_card.open.connect(_open_rules)
+		_bottom_stack.add_child(tip_card)
+		rows.append(TipCard.HEIGHT)
 	_bottom_play = GAP * (rows.size() - 1)
 	for row in rows:
 		_bottom_play += row
@@ -258,14 +276,20 @@ func _enter() -> void:
 		tray.enter(ENTER_TRAY)
 	if action_bar != null:
 		action_bar.enter(ENTER_ACTIONS)
-	tip_card.enter(ENTER_TIP)
+	if tip_card != null:
+		tip_card.enter(ENTER_TIP)
 
 func _refresh() -> void:
+	# The one board that talks back to its tray: Hidden Word paints the keys
+	# from the row it has just marked. Every other tray is driven by the host.
+	if tray != null and is_instance_valid(_puzzle) and _puzzle.has_method("set_tray"):
+		_puzzle.set_tray(tray)
 	super()
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	if tray != null:
 		tray.refresh(p)
-	tip_card.refresh(p)
+	if tip_card != null:
+		tip_card.refresh(p)
 
 ## The weights tray asked for one unit onto or off a kind. The board decides
 ## -- it owns the rules and the sprout's reason for a refusal -- and the row

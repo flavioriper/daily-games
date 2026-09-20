@@ -14,6 +14,11 @@ signal solved
 signal moved
 ## A board that tracks a focused cell emits this when the focus moves or clears.
 signal focus_changed
+## A board that can run out ends without a solve. Hidden Word is the only one
+## (spec 2026-09-19-hidden-word-flat-design.md, section 8): six wrong rows and
+## the word is revealed. The clock stops and the chrome greys exactly as a
+## solve does, but `solved` never fires, so the host raises no win screen.
+signal ended
 
 var moves: int = 0
 var elapsed: float = 0.0
@@ -98,3 +103,10 @@ func check_solved() -> void:
 
 func is_done() -> bool:
 	return _done
+
+func finish_unsolved() -> void:
+	if _done:
+		return
+	_done = true
+	_running = false
+	ended.emit()
