@@ -109,6 +109,23 @@ static func tile(b, at: Vector2, s: float, grow: Vector2, held: bool,
 		b.fan(xf * Face.Builder.round_rect(HI_AT * s, HI_SIZE * s, HI_RADIUS * s),
 			Color(Pal.MOSAIC_HI, glint))
 
+## A letter centred in the cell, taking the piece's own `grow` so it squashes
+## with the tile it is on. Hidden Word's only addition to this file.
+const LETTER_SIZE := 0.56
+static func letter(b, at: Vector2, s: float, ch: String, grow: Vector2,
+		col: Color, font: Font, alpha := 1.0) -> void:
+	if ch.is_empty() or alpha <= 0.0 or grow.x <= 0.0 or grow.y <= 0.0:
+		return
+	var size := int(s * LETTER_SIZE)
+	var mid := at + Vector2(s, s) * 0.5
+	var text := ch.to_upper()
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var h := font.get_height(size)
+	var where := Vector2(-w * 0.5, h * 0.5 - font.get_descent(size))
+	b.draw_set_transform(mid, 0.0, grow)
+	font.draw_string(b.get_canvas_item(), where, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, alpha))
+	b.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 ## The pebble on a ruled-out cell, centred on `at`, over its own soft shadow.
 ## The socket under it has already gone a shade darker: the ruling-out reads
 ## twice, because on a hard board more than half the grid ends up like this

@@ -384,6 +384,14 @@ const ROPE_UNDER := Color("d2bd95")   # a square it lies on, shaded under it
 const ROPE_HEMP  := Color("b98a4e")   # the rope
 const ROPE_BAD   := Color("f0cfc6")   # a square the check says to take back
 
+## Hidden Word's three marks. GOOD is the green; the amber is its own rather
+## than SUN_RAY, which is a brighter lemon and reads as the sun; the grey is
+## warm, because a cool grey goes muddy on cream. KEY_FACE is a shade above
+## SURFACE so the keyboard reads as a slab and not as six more cards.
+const WORD_NEAR   := Color("e9ba55")
+const WORD_MISS   := Color("8a8078")
+const KEY_FACE    := Color("fffaf0")
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

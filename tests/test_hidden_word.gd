@@ -5,6 +5,7 @@ extends RefCounted
 ## coverage of every answer, the bands, and that a seed reproduces a day.
 
 const State = preload("res://puzzles/hidden_word_state.gd")
+const Pal = preload("res://core/palette.gd")
 
 static func run(t) -> void:
 	_test_marking(t)
@@ -80,6 +81,10 @@ static func _test_lists(t) -> void:
 	var a := State.new(); a.setup(_rng(42), 1)
 	var b := State.new(); b.setup(_rng(42), 1)
 	t.eq(a.answer, b.answer, "a seed reproduces its word")
+	# The three marks must be told apart by luminance alone, not just hue.
+	for pair in [[Pal.GOOD, Pal.WORD_NEAR], [Pal.WORD_NEAR, Pal.WORD_MISS], [Pal.GOOD, Pal.WORD_MISS]]:
+		var d: float = absf(pair[0].get_luminance() - pair[1].get_luminance())
+		t.check(d > 0.06, "the three marks are told apart by luminance alone")
 
 static func _test_play(t) -> void:
 	var s := State.new()
