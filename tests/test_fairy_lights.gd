@@ -223,6 +223,9 @@ static func _degree(m: int) -> int:
 ##     pinned cell where the hint put it.
 ## 20. Solving a whole board by turning each cell to sol reaches
 ##     is_solved() with no cell left loose().
+## 21. lanterns() returns the degree-1 cells of the real board, in reading
+##     order -- Task 3 seats a lantern face off it, so it needs its own
+##     assertion rather than riding along with something else.
 static func _test_state(t) -> void:
 	for d in 3:
 		var rng := RandomNumberGenerator.new()
@@ -270,6 +273,28 @@ static func _test_state(t) -> void:
 		solved.turn(i13)
 		t.check(not solved.is_solved(), "%s turning one non-cross cell off sol is unsolved again" % tag)
 
+		# 13b. The control that tells the rule from the answer: `grid == sol`
+		# can be true while the board is still unsolved, because "every stub
+		# meets a stub" says nothing about whether the tree it forms actually
+		# reaches the post. n=2, post=0, grid=sol=[E,W,E,W]: cell 0 meets
+		# cell 1 and cell 2 meets cell 3, so every stub is matched and
+		# loose() is 0 everywhere -- but nothing joins that pair to the post,
+		# so depths() only reaches {0,1} and is_solved() must be false. A
+		# gutted `is_solved()` that returns `grid == sol` passes this fixture
+		# by accident; the real rule cannot.
+		var ctl := State.new()
+		ctl.n = 2
+		ctl.post = 0
+		var gctl := PackedInt32Array([Gen.E, Gen.W, Gen.E, Gen.W])
+		ctl.grid = gctl
+		ctl.sol = gctl.duplicate()
+		for k in 4:
+			t.eq(ctl.loose(k), 0, "band=%d control: cell %d has every stub matched" % [d, k])
+		t.eq(ctl.depths(), PackedInt32Array([0, 1, -1, -1]),
+			"band=%d control: depths() only reaches the post's own pair" % d)
+		t.check(not ctl.is_solved(),
+			"band=%d control: grid == sol is not enough -- unreached cells make it unsolved" % d)
+
 		# 14.
 		var tiny := State.new()
 		tiny.n = 3
@@ -285,6 +310,35 @@ static func _test_state(t) -> void:
 		t.eq(depths14[4], 0, "%s depths(): the post is 0" % tag)
 		t.eq(depths14[7], 1, "%s depths(): a cell joined to the post is 1" % tag)
 		t.eq(depths14[1], -1, "%s depths(): a stub facing a closed neighbour is -1" % tag)
+		# loose() is asserted at a specific non-zero mask, not merely "not
+		# zero": cell 1's only stub faces south into the post (cell 4), which
+		# has no north bit, so that stub is unmatched and loose(1) is exactly
+		# Gen.S. Spec rule 5 draws every loose end straight off loose(), so a
+		# gutted `return 0` would draw every unfinished join on the board as
+		# though it were already joined.
+		t.eq(tiny.loose(1), Gen.S, "%s loose(): cell 1's south stub faces the post's closed side" % tag)
+		t.eq(tiny.loose(4), 0, "%s loose(): the post's own stub is matched to cell 7" % tag)
+
+		# 14b. depths() must reflect a move the instant it happens, never a
+		# cached snapshot -- the guard that matters most going into Task 3,
+		# where the wash wants a depth snapshot per settle and a cache is the
+		# obvious shortcut to reach for. Hand-built so it does not depend on
+		# a seed: the post starts facing east (no stub south), so cell 2 is
+		# unreached; turning the post once brings it to face south, which
+		# meets cell 2's own north-facing stub, and depths() must show cell 2
+		# joined on the very next call.
+		var cache := State.new()
+		cache.n = 2
+		cache.post = 0
+		cache.grid = PackedInt32Array([Gen.E, 0, Gen.N, 0])
+		cache.pinned = PackedByteArray([0, 0, 0, 0])
+		var before_cache := cache.depths()
+		t.eq(before_cache[2], -1, "%s depths() cache guard: cell 2 starts unreached" % tag)
+		t.eq(cache.turn(0), State.OK, "%s depths() cache guard: the post turns" % tag)
+		var after_cache := cache.depths()
+		t.eq(after_cache[2], 1, "%s depths() cache guard: cell 2 is reached the instant the post turns" % tag)
+		t.check(before_cache != after_cache,
+			"%s depths() reflects the move, and is never a stale cache" % tag)
 
 		# 15.
 		var sym := State.new()
@@ -366,6 +420,17 @@ static func _test_state(t) -> void:
 		t.check(solve.is_solved(), "%s turning every cell to sol reaches is_solved()" % tag)
 		for k in solve.n * solve.n:
 			t.eq(solve.loose(k), 0, "%s no cell is left loose once solved" % tag)
+
+		# 21.
+		var lant := State.new()
+		lant.start(rng, d)
+		var want_lanterns := PackedInt32Array()
+		for k in lant.n * lant.n:
+			if Gen.degree(lant.sol[k]) == 1:
+				want_lanterns.append(k)
+		t.check(want_lanterns.size() > 0, "%s the real board has at least one lantern" % tag)
+		t.eq(lant.lanterns(), want_lanterns,
+			"%s lanterns() returns the degree-1 cells of the real board in reading order" % tag)
 
 ## The first cell whose shape has more than one distinct rotation -- an
 ## ordinary turnable piece, never a cross.

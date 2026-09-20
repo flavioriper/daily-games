@@ -14751,7 +14751,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   }
   function undo(t){
     if(!hist.length||!open()) return;
-    const i=hist.pop(); cur[i]=rotCCW(cur[i]); spin(i,-1,t); moves++;
+    const i=hist.pop(); cur[i]=rotCCW(cur[i]); spin(i,-1,t);
     settle(t+stag(TURN_TIME*0.55)); tipSet('Turned back. '+LEFT_LINE(),'happy',t); caption();
   }
   function reset(t){
@@ -14769,7 +14769,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(at<0) for(let i=0;i<n*n;i++) if(!pin[i]){at=i; break;}
     if(at<0) return;
     let q=0,m=cur[at]; while(m!==sol[at]&&q<4){m=rotCW(m); q++;}
-    cur[at]=sol[at]; pin[at]=1; hintsLeft--; if(q) spin(at,q,t);
+    cur[at]=sol[at]; pin[at]=1; hintsLeft--; hist=[]; if(q) spin(at,q,t);
     ring(at,t,C.leaf); settle(t+stag(TURN_TIME*0.55));
     tipSet('Pinned. That one could only go one way.','happy',t); caption();
   }
