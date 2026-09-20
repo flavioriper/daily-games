@@ -2,13 +2,23 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: twelve cards, three across and four down, in the
-## order they are drawn. Eleven of them open a flat board; the last names a
-## board that has never been drawn flat and says `soon` instead of opening
-## (ui/menu.gd draws it dimmed with no go button). Snake Apple's `soon` card
-## left the grid on 2026-09-19 to make room for Queens, and Horse Pen's left
-## the same day for Hidden Word: both are being redesigned outright, and
-## their island boards stay under More.
+## `PUZZLES` is the grid: thirteen cards in the order they are drawn. Twelve
+## of them open a flat board; the last names a board that has never been
+## drawn flat and says `soon` instead of opening (ui/menu.gd draws it dimmed
+## with no go button). Snake Apple's `soon` card left the grid on 2026-09-19
+## to make room for Queens, and Horse Pen's left the same day for Hidden
+## Word: both are being redesigned outright, and their island boards stay
+## under More.
+##
+## **Thirteen no longer fits the three-by-four grid.** The fourth row was
+## full at twelve, so the `GridContainer` -- which is SIZE_EXPAND_FILL --
+## simply runs to five rows and takes a card from 252 to about 210, and
+## every one of those 42 pixels comes out of the 92 px picture the card-art
+## budget is written against. The answer is the pager the campsite menu used
+## to have (twelve cards a page, a next and a prev under the grid), which is
+## task 8 of the Mushroom Patch plan and touches ui/menu.gd alone; until it
+## lands the grid is short by one row's worth of height. See
+## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -182,6 +192,19 @@ const PUZZLES := [
 		"tray": "keys",
 		"actions": false,
 		"tip": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "mushroom",
+		"kind": "puzzle",
+		"title": "Mushroom Patch",
+		"blurb": "Every number counts the mushrooms around it. Find them all.",
+		"short": "The numbers count\nwhat is hidden.",
+		"motto": "Every patch has its count",
+		"footer": "Count · Prove · Plant",
+		"script": "res://puzzles/mushroom2d.gd",
+		"shell": "flat",
+		"tray": "patch",
 		"difficulties": [0, 1, 2],
 	},
 	# --- the end of the last row: named, drawn, and not yet playable here.

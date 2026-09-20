@@ -85,6 +85,8 @@ func _note(id: String) -> String:
 		"oneline", "oneline_island": return "%d planks walked, board fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram", "nonogram_island": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"queens": return "%dx%d court, %d queens, board fit=%s, hud=%s" % [_puzzle.n, _puzzle.n, _puzzle.state.queens.size(), _fit_ok, _hud_ok]
+		"mushroom": return "%dx%d patch, %d mushrooms, board fit=%s, hud=%s" % [
+			_puzzle.n, _puzzle.n, _puzzle.state.mushrooms.size(), _fit_ok, _hud_ok]
 		"hiddenword": return "%s in %d %s, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
 			"row" if _puzzle.state.rows.size() == 1 else "rows",
@@ -109,6 +111,7 @@ func _solve(id: String) -> void:
 		"oneline", "oneline_island": _solve_oneline()
 		"nonogram", "nonogram_island": _solve_nonogram()
 		"queens": _solve_queens()
+		"mushroom": _solve_mushroom()
 		"hiddenword": _solve_hiddenword()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
@@ -497,6 +500,32 @@ func _solve_queens() -> void:
 		if _puzzle.state.queens.has(cell):
 			continue
 		_tap_local(_puzzle.cell_to_local(r, cell.x))
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+
+## Mushroom Patch: the mushroom chip is the tray's default, so every mushroom
+## of the answer is planted with a real touch on its own cell, in reading
+## order -- and the last one is left to the hint, the way _solve_queens leaves
+## the n-th queen, so the win comes through the hint path as well as through
+## the tap path. Check is spent first, on a bare patch, where it must find
+## nothing wrong and say so.
+func _solve_mushroom() -> void:
+	var n: int = _puzzle.n
+	# Board fit check: every cell centre must land inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in n:
+		for c in n:
+			if not slot.has_point(_puzzle.cell_centre(Vector2i(c, r))):
+				_fit_ok = false
+	_press(_host.action_bar.check_button)
+	var cells: Array = _puzzle.state.mushrooms.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	for i in range(cells.size() - 1):
+		if _puzzle.is_done():
+			return
+		_tap_local(_puzzle.cell_centre(cells[i]))
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 

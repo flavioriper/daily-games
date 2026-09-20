@@ -8,12 +8,34 @@ extends "res://ui/faces/face.gd"
 ## Ported number for number from the canvas mock
 ## (docs/brainstorm/concepts.html#balance, mushroomP).
 ## Spec: docs/superpowers/specs/2026-09-18-balance-flat-design.md, section 3.
+##
+## `sprig` is Mushroom Patch's one addition (2026-09-20): a leaf tucked under
+## the right of the cap on a mushroom a hint planted, which is that board's
+## given look, the way the queen bee wears a leaf-green gem on her crown for
+## the same reason (ui/faces/bee_face.gd's `pinned`). It is off by default and
+## keyed into the mesh cache through _kind(), exactly as hers is, so Balance's
+## fruit is unchanged.
+## Spec: docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
+## section 10.
 
 ## R as a fraction of the seat, the mock's `r`.
 const RATIO := 0.40
+## The hint's leaf: where it is rooted, how long it is and which way it points
+## -- the mock's `leaf(R*0.74, -R*0.66, R*0.42, -0.9)`.
+const SPRIG_AT := Vector2(0.74, -0.66)
+const SPRIG_LEN := 0.42
+const SPRIG_ANGLE := -0.9
+
+## A mushroom a hint planted, which can never be pulled up again.
+var sprig: bool = false:
+	set(v):
+		if sprig == v:
+			return
+		sprig = v
+		queue_redraw()
 
 func _kind() -> String:
-	return "mushroom"
+	return "mushroom%d" % int(sprig)
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
@@ -46,3 +68,15 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			b.disc(Vector2(0.3, -0.62) * R, 0.12 * R, pale)
 			b.disc(Vector2(0.62, -0.26) * R, 0.1 * R, pale)
 			_face_parts(b, 0.56 * R, Vector2(0.0, 0.42 * R), Pal.TEXT, eye)
+			if sprig:
+				_leaf(b, SPRIG_AT * R, SPRIG_LEN * R, SPRIG_ANGLE, Pal.LEAF)
+
+## One leaf from `at`, `length` long along `angle`: two quadratic curves
+## bowed either side of the stalk, the canvas mock's `leaf`.
+static func _leaf(b: Builder, at: Vector2, length: float, angle: float, colour: Color) -> void:
+	var xf := Transform2D(angle, at)
+	var pts := Builder.bezier2(Vector2.ZERO,
+		Vector2(length * 0.55, -length * 0.42), Vector2(length, 0.0))
+	pts.append_array(Builder.bezier2(Vector2(length, 0.0),
+		Vector2(length * 0.55, length * 0.42), Vector2.ZERO))
+	b.polygon(xf * pts, colour)
