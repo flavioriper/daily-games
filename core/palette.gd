@@ -392,6 +392,15 @@ const WORD_NEAR   := Color("e9ba55")
 const WORD_MISS   := Color("8a8078")
 const KEY_FACE    := Color("fffaf0")
 
+# --- Sudoku (spec 2026-09-20-sudoku-flat-design.md, section 5) ---
+## A cell in a shaded region: SURFACE 55% of the way to PARCHMENT. The mock's
+## own chequer, and what makes nine columns read as three.
+const GRID_TINT   := Color("f9f3e7")
+## The heavy rule between regions and round the grid, 6 wide. BARK is too
+## dark on cream at that width and LINE too faint to read as a region edge,
+## so this is BARK 38% of the way to PARCHMENT.
+const GRID_RULE   := Color("a3855f")
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

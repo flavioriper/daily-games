@@ -7,7 +7,7 @@ extends RefCounted
 
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
-	"calendar", "home", "trophy", "bars", "heart", "heart_line"]
+	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -53,6 +53,8 @@ static func shape(name: String) -> Dictionary:
 			return _eye()
 		"tree":
 			return _tree()
+		"pencil":
+			return _pencil()
 		"minus":
 			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.2, 0.5), Vector2(0.8, 0.5)])]}
 		"plus":
@@ -174,6 +176,29 @@ static func _tree() -> Dictionary:
 	var left := circle(Vector2(0.32, 0.46), 0.17)
 	var right := circle(Vector2(0.68, 0.46), 0.17)
 	return {"polys": [trunk, top, left, right], "lines": []}
+
+## A pencil at -45 degrees, tip to the lower left: a rounded barrel, its wood
+## nib drawn as a bare outline so it reads paler than the solid barrel beside
+## it (this repo's icons are one colour, so "pale" has to come from leaving a
+## shape unfilled rather than a second tint), and a small filled sliver right
+## at the point for the ink it lays down. The pencil is Sudoku's one new
+## icon, for the pad's pencil chip -- the only mode on that screen.
+static func _pencil() -> Dictionary:
+	var tip := Vector2(0.13, 0.87)
+	var cap := Vector2(0.82, 0.18)
+	var dir := (cap - tip).normalized()
+	var perp := Vector2(-dir.y, dir.x)
+	var half := 0.085
+	# Where the barrel ends and the wood nib begins, and how far back from
+	# the very point the last inked sliver reaches.
+	var nib_base: Vector2 = tip.lerp(cap, 0.34)
+	var ink_back: Vector2 = tip.lerp(cap, 0.1)
+	var body := PackedVector2Array([
+		nib_base + perp * half, cap + perp * half, cap - perp * half, nib_base - perp * half,
+	])
+	var nib := PackedVector2Array([nib_base + perp * half, tip, nib_base - perp * half, nib_base + perp * half])
+	var ink_tip := PackedVector2Array([tip, ink_back + perp * half * 0.4, ink_back - perp * half * 0.4])
+	return {"polys": [body, circle(cap, half, 16), ink_tip], "lines": [nib]}
 
 ## A question mark: the hook runs from 9 o'clock over the top and down into a
 ## short stem, with a dot beneath.

@@ -12,10 +12,13 @@ extends "res://ui/puzzle_host.gd"
 ## seven, Balance steps a weight from one card per fruit, Nonogram paints
 ## with one of two tile chips, and Shikaku picks nothing up at all. Queens
 ## arms a queen or a cross chip in the same tile tray, built with
-## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`. The registry
-## names which (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`,
-## `"none"`), because the host lays out its rows before it has a puzzle to
-## ask.
+## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`. Sudoku's ten
+## digit chips fire straight through `_on_pick` to the board's own `pick()`,
+## the way Code Break's friends do, rather than through `_on_brush`: nothing
+## on that row stays armed except the pencil, which the board owns. The
+## registry names which (`"tray": "friends"`, `"weights"`, `"tiles"`,
+## `"queens"`, `"keys"`, `"digits"`, `"none"`), because the host lays out its
+## rows before it has a puzzle to ask.
 ##
 ## Nor do they all carry an actions row. A board that is its own continuous
 ## check has nothing to put in one -- no Check, and Reset riding up in the
@@ -39,6 +42,7 @@ const FriendTray = preload("res://ui/flat/friend_tray.gd")
 const WeightTray = preload("res://ui/flat/weight_tray.gd")
 const TileTray = preload("res://ui/flat/tile_tray.gd")
 const KeyBoard = preload("res://ui/flat/key_board.gd")
+const DigitPad = preload("res://ui/flat/digit_pad.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const TipCard = preload("res://ui/flat/tip_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
@@ -204,6 +208,13 @@ func _build_chrome(root: VBoxContainer) -> void:
 				if is_instance_valid(_puzzle) and _puzzle.has_method("erase_letter"):
 					_puzzle.erase_letter())
 			rows.append(KeyBoard.HEIGHT)
+		"digits":
+			# Sudoku's ten chips. A chip is a direct action, so it goes to
+			# _on_pick and the board's pick(), not to _on_brush: nothing here
+			# stays armed except the pencil, and the board owns that.
+			tray = DigitPad.new()
+			tray.pick.connect(_on_pick)
+			rows.append(DigitPad.HEIGHT)
 		_:
 			tray = SymbolTray.new()
 			tray.pick.connect(_on_brush)
