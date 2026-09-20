@@ -261,6 +261,24 @@ const PUZZLES := [
 		"tray": "digits",
 		"difficulties": [0, 1, 2],
 	},
+	{
+		"id": "rings",
+		"kind": "puzzle",
+		"title": "Rings",
+		"blurb": "Gather every colour onto a peg of its own.",
+		"short": "Sort the rings,\na colour a peg.",
+		"motto": "Every ring finds its peg",
+		"footer": "Lift · Drop · Sort",
+		# It picks nothing up, so it asks for no tray; and there is **no
+		# Check** -- a solved board is solved in plain sight and there is no
+		# wrong ring to find, only a wasted move -- so it has no actions row
+		# either and Reset rides up into the top bar.
+		"script": "res://puzzles/rings2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
 ]
 
 ## The old game. Every one of these mounts the 3D stage and wears the island
