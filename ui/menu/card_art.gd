@@ -31,6 +31,9 @@ const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
+const Face = preload("res://ui/faces/face.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
+const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -39,6 +42,10 @@ var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
 var _u := 1.0
 var _c := Vector2.ZERO
+## Hidden Word's band, held here rather than as a function local: a canvas
+## command keeps a mesh by RID and not by reference, so a local ArrayMesh is
+## freed before the frame it was queued in ever renders.
+var _band_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -117,6 +124,10 @@ func _build() -> void:
 		"queens":
 			# The queen bee on a patch of the court _draw lays under her.
 			_seat(BeeFace.new(), 72.0, 0.0, 2.0)
+		"hiddenword":
+			# No cast: the three marks are the whole picture, and _draw lays
+			# them and the band under them, so this branch seats nothing.
+			pass
 		_:
 			pass
 
@@ -136,6 +147,7 @@ func _draw() -> void:
 		"queens": _draw_regions()
 		"pipes": _draw_pipes()
 		"horse": _draw_paddock()
+		"hiddenword": _draw_letters()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -253,6 +265,29 @@ func _draw_regions() -> void:
 		Vector2(x0 + cell, y0 + cell), Vector2(x0 + cell, y0 + 2.0 * cell)], 4.0, Pal.TEXT)
 	draw_rect(Rect2(at(x0, y0), Vector2(3.0 * cell, 2.0 * cell) * _u), Pal.TEXT, false, 4.0 * _u)
 	_disc(0.0, 31.0, 20.0, Color(Pal.TEXT, 0.14))
+
+## Hidden Word: three marks in a row -- HIT, NEAR and MISS, lettered H, I, D
+## for the game's own name -- seated on the same turf and clouds the board
+## stands its grid on (ui/flat/scenery.gd), so the card and the board read as
+## the one drawing. No character sits here, so unlike its ten siblings this
+## branch's whole picture is `_draw`, in a single mesh and three tiles.
+func _draw_letters() -> void:
+	var b := Face.Builder.new()
+	var turf: Color = Pal.LEAF.lerp(Pal.PARCHMENT, 0.4)
+	b.fan(Face.Builder.round_rect(at(-160.0, 24.0), Vector2(320.0, 35.0) * _u, 16.0 * _u), turf)
+	var puff: Color = Pal.PARCHMENT.lerp(Pal.SURFACE, Scenery.CLOUD_LIFT)
+	Scenery.cloud(b, at(-108.0, -44.0), 15.0 * _u, puff)
+	Scenery.cloud(b, at(104.0, -48.0), 12.0 * _u, puff)
+	_band_mesh = b.mesh()
+	draw_mesh(_band_mesh, null)
+	var cell := 62.0
+	var xs := [-70.0, 0.0, 70.0]
+	var marks := [Pal.GOOD, Pal.WORD_NEAR, Pal.WORD_MISS]
+	var letters := ["H", "I", "D"]
+	var font := CozyTheme.display(700)
+	for i in 3:
+		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
+		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
 
 ## Pipes and Horse Pen are the two `soon` cards: no flat
 ## board, so no cast to borrow. Each is one small drawing, sized to say what
