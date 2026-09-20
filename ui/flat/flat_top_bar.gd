@@ -51,6 +51,9 @@ var _title: Label
 var _motto: Label
 var _block: Control
 var _bounce: Tween
+## Each fitted label's lettering size before any fit, so a second fit measures
+## the face the theme gave it rather than the one the last fit left.
+var _base_size: Dictionary = {}
 
 func _init(title := "", motto := "", carry_reset := false, branded := false) -> void:
 	brand_binairo = branded
@@ -101,6 +104,44 @@ func _build() -> void:
 	reset_button.visible = with_reset
 	hint_button = _button("bulb", hint)
 	settings_button = _button("gear", settings)
+	_block.resized.connect(_fit_title)
+	_fit_title.call_deferred()
+
+## The title block is whatever the buttons leave, and a long title or motto
+## is wider than that. A five-button bar (a board with no actions row, so
+## Reset rides up here: Balance, Untangle and Word Trail) leaves it 370 at
+## 1080 of design space, and `Word Trail` measures 392 at GameWordmark and
+## `EVERY LETTER FINDS ITS WAY` 406 at FlatMotto, so both used to run out
+## under Undo and Reset -- as Balance's motto (399) had done since
+## 2026-09-18. A label wider than its block is lettered smaller until it
+## fits, and **never larger**, so every screen that already fits is untouched
+## to the pixel. The width is the rendered face's own
+## (`Font.get_string_size`, which carries the variation's letter spacing) and
+## not a constant, because the block's width follows the button count.
+##
+## ui/sun_dot.gd seats its suns off `Label.get_character_bounds` and reads
+## the label's font size live, so a refitted wordmark carries its dot with
+## it; the override resizes the label, and the dot redraws on that.
+func _fit_title() -> void:
+	if _block == null:
+		return
+	_fit(_title, _block.size.x)
+	_fit(_motto, _block.size.x)
+
+func _fit(label: Label, wide: float) -> void:
+	if label == null or label.text.is_empty() or wide <= 0.0:
+		return
+	if not _base_size.has(label):
+		_base_size[label] = label.get_theme_font_size("font_size")
+	var base: int = _base_size[label]
+	var font: Font = label.get_theme_font("font")
+	if font == null or base <= 0:
+		return
+	var want := font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, base).x
+	if want <= wide:
+		label.remove_theme_font_size_override("font_size")
+		return
+	label.add_theme_font_size_override("font_size", maxi(1, int(floor(base * wide / want))))
 
 ## A button keeps its own square and sits centred on the row, as the other
 ## top bar's do.
