@@ -38,6 +38,7 @@ func _initialize() -> void:
 		"bridges": "res://tests/test_bridges.gd",
 		"quilt": "res://tests/test_quilt.gd",
 		"quilt_board": "res://tests/test_quilt_board.gd",
+		"planes": "res://tests/test_planes.gd",
 		"rings": "res://tests/test_rings.gd",
 	}
 	for suite_name in suites:

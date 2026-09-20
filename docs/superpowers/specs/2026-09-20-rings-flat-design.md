@@ -1,4 +1,4 @@
-# Rings — the seventeenth flat screen
+# Rings — the eighteenth flat screen
 
 **Date:** 2026-09-20
 **Concept tab:** `docs/brainstorm/concepts.html#rings` (playable, plays a real generated deal)
@@ -394,21 +394,26 @@ solve rate (0–3%), the careless-doom rate (4/9/11%), the careless-stuck rate (
 | `tests/_win.gd`, `tests/_shot_anim.gd`, `tests/run_tests.gd` | the three harness lists |
 | `CLAUDE.md` | the record, once it is measured |
 
-**It is the seventeenth card** (amended 2026-09-20 on the merge: the spec was
-written expecting it to be the sixteenth, and *two* other boards landed on `main`
-while this branch was in flight, not one), so it stands on page two of the pager
-with Mushroom Patch, Sudoku, Bridges and Quilt — five cards on page two. Page one is
-untouched and its 335 draw calls are unaffected — which is the whole point of paging
-rather than reflowing.
+**It is the eighteenth card**, and it took two amendments to get there. The spec was
+written expecting the sixteenth; on the first merge *two* other boards (Bridges and
+Quilt) turned out to have landed on `main` while this branch was in flight, making it
+the seventeenth; on the second merge a third (Paper Planes) had done the same, making
+it the eighteenth. It stands on page two of the pager with Mushroom Patch, Sudoku,
+Bridges, Quilt and Paper Planes — six cards on page two, which is a full last row and
+so needs no filler Control. Page one is untouched and its 335 draw calls are
+unaffected — which is the whole point of paging rather than reflowing.
 
-**Two other boards were built in parallel** (`.claude/worktrees/bridges` and
-`.claude/worktrees/quilt`), and all three touch the same shared files: the registry,
-`card_art.gd`, `core/palette.gd`, the three harness lists, `docs/art/flat-motion.md`
-and `CLAUDE.md`. The record says these branches merge clean but broken, and this one
-did: six files conflicted and six more merged silently with contradictory prose in
-them. So: merge `main` in before finishing, and reconcile the registry order, the
-card-art branches, the harness lists and every sentence that counts cards or pages by
-hand rather than trusting a clean `git merge`.
+**Three other boards were built in parallel** (`.claude/worktrees/bridges`, `quilt`
+and the Paper Planes branch), and all four touch the same shared files: the registry,
+`card_art.gd`, `core/palette.gd`, the three harness lists, `ui/menu.gd`,
+`docs/art/flat-motion.md` and `CLAUDE.md`. The record says these branches merge clean
+but broken, and both merges proved it: the first conflicted in six files and merged
+six more silently wrong, the second conflicted in seven and left every ordinal in this
+document stale again. So: merge `main` in before finishing, reconcile the registry
+order, the card-art branches, the harness lists and every sentence that counts cards
+or pages by hand — and expect to do it more than once. **An ordinal written into prose
+is a moving target while other boards are in flight; the count to trust is the one
+derived from `Registry.PUZZLES`.**
 
 ---
 

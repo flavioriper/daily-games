@@ -3,7 +3,7 @@ extends "res://ui/puzzle_host.gd"
 ## The flat screen's shell: the same host as every other board's (every
 ## handler, the sheets, the analytics and the spawn are inherited) with the
 ## chrome swapped for the reference's cream rows, and the win screen in place
-## of the solved overlay. All seventeen grid cards ask for it through the
+## of the solved overlay. All eighteen grid cards ask for it through the
 ## registry's `shell` field, Binairo through Rings; the island boards keep
 ## ui/puzzle_host.gd's rows.
 ##

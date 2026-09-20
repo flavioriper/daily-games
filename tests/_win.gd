@@ -99,6 +99,9 @@ func _note(id: String) -> String:
 			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
 			"row" if _puzzle.state.rows.size() == 1 else "rows",
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"planes": return "%d planes launched off a %dx%d sky, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.planes.size(), _puzzle._state.cols, _puzzle._state.rows,
+			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			81 - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"quilt": return "%dx%d backing, %d patches, hints=%d, board fit=%s, hud=%s" % [
@@ -129,6 +132,7 @@ func _solve(id: String) -> void:
 		"mushroom": _solve_mushroom()
 		"wordtrail": _solve_wordtrail()
 		"bridges": _solve_bridges()
+		"planes": _solve_planes()
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
 		"quilt": _solve_quilt()
@@ -679,6 +683,49 @@ func _solve_bridges() -> void:
 			if _puzzle.is_done():
 				return
 			_drag_local(a, b)
+
+## Paper Planes: every plane is tapped on its own head cell, with a real
+## touch, until the sky is empty. It needs no order and no solver -- a launch
+## only ever empties cells, so any plane that is free now is still free
+## later and the greedy walk can never dead-end -- and it needs no waiting
+## between taps, because the board updates the state on the press and
+## animates afterwards. That is what lets the whole board be cleared inside
+## this one frame; if a busy gate is ever added to `_tap`, this is the test
+## that will catch it.
+##
+## The **last** plane goes through the hint, the way `_solve_queens` leaves
+## the n-th queen to it, so the hint path is exercised as well as the tap
+## path. It takes one extra step here: a hint on this board only *names* a
+## free plane and never launches it (there is no wrong move to be saved
+## from), so the harness presses Hint and then taps the plane it rang --
+## `_hint_lit` -- and the win still arrives through a touch on the board.
+##
+## **There is no Check on this board**, so nothing presses one and `checks`
+## stays 0; `_hud_ok` is the hint alone.
+func _solve_planes() -> void:
+	var st = _puzzle._state
+	# Board fit check: every cell centre must land inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	var guard := 0
+	while not _puzzle.is_done() and guard < 400:
+		guard += 1
+		var free: Array[int] = st.free_planes()
+		if free.is_empty():
+			return
+		var i: int = free[0]
+		if st.left() == 1:
+			_press(_host.top_bar.hint_button)
+			_hud_ok = _puzzle.hints_used == 1
+			if _puzzle._hint_lit >= 0:
+				i = _puzzle._hint_lit
+		var cells: Array = st.planes[i]["cells"]
+		var head: Vector2i = cells[cells.size() - 1]
+		_tap_local(_puzzle.cell_to_local(head.y, head.x))
 
 ## Hidden Word: one hint, then the day's own word typed on the real keyboard
 ## a key at a time and committed with the real Enter. Nothing here writes to

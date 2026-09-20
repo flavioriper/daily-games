@@ -275,6 +275,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="snakeapple">Snake Apple · flat</button>
     <button data-tab="bridges">Bridges · flat</button>
     <button data-tab="quilt">Quilt &middot; flat</button>
+    <button data-tab="planes">Paper Planes &middot; flat</button>
   </nav>
 </header>
 
@@ -2067,7 +2068,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
 <!-- ============================ RINGS ============================ -->
 <section class="tab-panel" id="tab-rings">
-  <h2>Rings &middot; flat, the seventeenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <h2>Rings &middot; flat, the eighteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
   <p class="lede">Eight pegs, twenty-four rings, six colours. Lift the top ring off a peg and put it down on its own colour or on an empty peg &mdash; nothing else is allowed &mdash; until every colour stands alone. It is the one game on this grid with <b>no hidden information at all</b>: everything is face up from the first frame and the whole difficulty is in the order you do things. That makes it the first board here that can be played into a corner, and section 6 is about the one sentence the screen says when it happens. Reference: the user's shot of a ring-sort game, <code>docs/art/concept-rings-ref.png</code>.</p>
 
   <div class="hero">
@@ -2176,7 +2177,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <div class="decide"><b>What the board deliberately does not say.</b> A position can be perfectly legal and still doomed &mdash; there are moves, they just all lead nowhere. <b>Nothing warns you about that</b>, and it would take a solver call on every drop to do it. That is the puzzle: the whole skill in a ring sort is not spending your empty peg on the wrong ring, and a board that catches you before you do has taken the game away. The two alternatives were put to the user on 2026-09-20 and this is the one that was chosen.</div>
 
   <h3>7. The menu card <span class="pill">proposed</span></h3>
-  <p><code>ui/menu/card_art.gd</code> gains one branch: three little pegs in the 320&times;118 box, one full of a colour, two part-sorted, drawn with the board's own ring builder scaled down. <b>No new character</b> &mdash; Rings joins Nonogram, Hidden Word, Word Trail, Sudoku and Bridges in adding nothing to <code>ui/faces/</code> (Quilt, which merged the same day, did add one), and the only face on the screen is the shared sprout on the tip card and the win. It is the <b>seventeenth card</b> &mdash; written here as the sixteenth, and corrected on the merge, when two other boards turned out to have landed on trunk while this one was in flight rather than one &mdash; so it stands on page two of the pager beside Mushroom Patch, Sudoku, Bridges and Quilt, five cards on that page.</p>
+  <p><code>ui/menu/card_art.gd</code> gains one branch: three little pegs in the 320&times;118 box, one full of a colour, two part-sorted, drawn with the board's own ring builder scaled down. <b>No new character</b> &mdash; Rings joins Nonogram, Hidden Word, Word Trail, Sudoku, Bridges and Paper Planes in adding nothing to <code>ui/faces/</code> (Quilt, which merged the same day, did add one), and the only face on the board is the shared sprout on the tip card. It is the <b>eighteenth card</b> &mdash; written here as the sixteenth, corrected to the seventeenth when Bridges and Quilt turned out to have landed on trunk while this one was in flight, and corrected again to the eighteenth when Paper Planes did the same &mdash; so it stands on page two of the pager beside Mushroom Patch, Sudoku, Bridges, Quilt and Paper Planes, six cards on that page and a full last row.</p>
 
   <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
   <ul>
@@ -2694,6 +2695,161 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>The quilt is the first shaped field in the set.</b> Every other flat board draws a rectangle of cells; this one draws a region with a ragged hem, and the hem is the thing the stitch runs round at the end. It is also the first board whose <em>rack</em> is inside the board card rather than in a tray, which is what took the bottom of the screen down to a tip card alone. Whether a card holding two quite different things still reads as one card is a call for the phone.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-stitch can be shot, <code>?sew=k</code> to sew the first <b>k</b> patches of the answer, <code>?hint=k</code> for that many hints spent, <code>?drag=1</code> for a patch held over the quilt with its footprint lit, <code>?refuse=off</code> and <code>?refuse=over</code> for the two refusals, <code>?reset=1</code> to sew the answer and then clear it, <code>?peek=1</code> to dash in where the patches still missing belong, and <code>?win=1</code> for the win screen. Pick the tab with <code>#quilt</code>.</p>
+</section>
+
+<!-- ============================ PAPER PLANES ============================ -->
+<section class="tab-panel" id="tab-planes">
+  <h2>Paper Planes &middot; flat, the seventeenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A field of folded paper darts, each one sitting on a bent trail of cells and pointing somewhere. <b>Tap one and it flies</b> &mdash; forward along its own body and then straight off the board, the tail dragged after the head like a snake pulled through a hole &mdash; but only if the lane in front of it is clear all the way to the edge. If something is in the way the tap is refused and <b>nothing is lost</b>: no life, no counter, no mistake recorded. Because taking a plane off the board only ever empties cells, <b>a removal can never block anything</b>, so there is no wrong move, no dead end and <b>no Check button</b>. The game is a Portuguese daily's <em>SETAS</em>; <b>the name is not that one, and neither are the arrows</b> &mdash; this repo already ships Mastermind as <em>Code Break</em>, the New York Times' word game as <em>Hidden Word</em> and LinkedIn's as <em>Word Trail</em>, and an arrowhead becomes a paper dart with a crease down it, which is a thing this camp would actually fold. Spec: <code>docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md</code>.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-planes-reference.png" alt="The reference: a white phone screen under a pink bar reading SETAS, filled with a dense lattice of black bent polylines each ending in a solid arrowhead, faint grey dots in every cell no line covers, and an advert rail at the foot">
+        <figcaption><b>The reference</b>, saved as <code>docs/art/concept-planes-reference.png</code> and measured off: a lattice at <b>32 px pitch, 16 columns by 22 rows</b>, stroke 5, each arrow a bent polyline of cells ending in a solid head, and <b>a faint grey dot at the centre of every cell no arrow covers</b>. <b>Taken from it:</b> the dot lattice (it is what makes an empty cell a place rather than nothing), the bent trails, the head at the end of the trail, the <b>density</b> &mdash; two thirds to nine tenths of the field is under a plane &mdash; and 16&times;22 as the hard band. <b>Not taken, and why:</b> <b>the name</b> (this repo renames a game it did not invent &mdash; Code Break, Hidden Word, Word Trail, and now this), <b>the plain arrowheads</b> (an arrow is a symbol, a dart is an object, and an object can be folded, creased and lit like everything else in this game), <b>the lives</b> that the original's siblings carry (settled 2026-09-18: no board here has any), <b>the ad rail</b>, and <b>the pink chrome</b>.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The family's chrome this is set in, now shared by seventeen screens: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout on a tip card that names the rule a tap just broke. Paper Planes keeps the tip card and drops both the tray and the actions row, so Reset rides up into the top bar and there are <b>five buttons</b> up there &mdash; Word Trail's shape exactly.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="pp" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="pp-rm">Reduce motion: off</button>
+        <button id="pp-diff">Easy &middot; 10&times;14</button>
+        <button id="pp-new">New puzzle</button>
+        <button id="pp-hint">Hint</button>
+        <button id="pp-undo">Undo</button>
+        <button id="pp-reset">Reset</button>
+        <button id="pp-nearly">Three from the end</button>
+        <button id="pp-solve">Show the answer</button>
+      </div>
+      <div id="pp-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. <b>It plays</b>, and it plays the <b>real generator</b> &mdash; the board is carved backwards out of an empty grid and the play order is the reverse of the insertion order, which is what makes it solvable by construction. Tap a plane to send it; tap a blocked one to see the refusal. <kbd>u</kbd> undo, <kbd>r</kbd> reset, <kbd>h</kbd> hint, <kbd>n</kbd> new. <b>&ldquo;Show the answer&rdquo;</b> runs the greedy solver at a pace you can watch. <span class="pill blue" style="margin-left:0">decided</span> on 2026-09-20: <b>the name Paper Planes</b> and the folded-dart head; <b>no lives and no Check</b>; <b>the reverse-insertion generator</b>, validated in a throwaway Python probe (not kept in the tree) before a line of this page was written. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>PAPER PLANES</code> in ink with the leaf sprouting from it and <code>A CLEAR LANE AND AWAY</code> under it, then Undo, Reset, Hint with its count and Settings. <b>Five buttons</b>, because <code>"actions": false</code> puts Reset up here; <code>capabilities()</code> is <code>["undo","hint"]</code> and there is no <code>check</code>.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, &ldquo;Day 5&rdquo;, &ldquo;Moss Harbour&rdquo;. The shared row, no hearts.</td></tr>
+    <tr><td class="k">Board card</td><td>1340</td><td>The field, and nothing else. Section 4.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout, its line, and the door to the rules sheet. Untangle's number and Untangle's reason: it is the only thing in the bottom slot.</td></tr>
+  </table>
+  <p>40 of margin, three 20 gaps and the four rows are <b>1920 exactly</b>, which is where the board card's 1340 comes from. The bottom slot is <b>140</b>, the tip card alone &mdash; the same shape Untangle, Word Trail and Quilt ask for, and the smallest bottom slot in the game, shared four ways.</p>
+  <p><b>The cell is height-bound at every band.</b> A 28 inset off the 1000&times;1340 card leaves a field box of <b>944 &times; 1284</b>, and <code>cell = floor(min(944/cols, 1284/rows))</code> comes out of the second term every time:</p>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:14%">Grid</th><th style="width:14%">Width allows</th><th style="width:14%">Height allows</th><th style="width:10%">Cell</th><th>Grid, and what is left over</th></tr>
+    <tr><td class="k">Easy</td><td>10 &times; 14</td><td>94.4</td><td>91.7</td><td><b>91</b></td><td>910 &times; 1274 &mdash; 34 of hem across, 10 down</td></tr>
+    <tr><td class="k">Medium</td><td>13 &times; 18</td><td>72.6</td><td>71.3</td><td><b>71</b></td><td>923 &times; 1278 &mdash; 21 across, 6 down</td></tr>
+    <tr><td class="k">Hard</td><td>16 &times; 22</td><td>59.0</td><td>58.4</td><td><b>58</b></td><td>928 &times; 1276 &mdash; 16 across, 8 down</td></tr>
+  </table>
+  <p><b>58 is the smallest cell any flat board's playing grid has ever asked of a thumb</b> &mdash; Bridges' hard band is 84, Sudoku's 100 held the record before that, and Queens' and Nonogram's 103 before that. (Quilt's <em>rack</em> cell runs smaller, 48 to 57, but a rack patch spans several of them and is dragged rather than tapped.) It is bearable for the same reason Sudoku's is: <b>a tap is the whole move and it is never a drag</b>, nothing is typed on the grid, and a plane is <em>five and a bit cells long on average</em>, so the thing being aimed at is a trail of about 300 pixels and not a 58-pixel square. <b>It is still the call this page exists to make</b>, and section 7 says so again.</p>
+  <p><b>The title is lettered smaller by the bar, not by this board.</b> Five buttons leave a title block of <b>370</b> (four leave 496), and <code>PAPER PLANES</code> does not fit it at GameWordmark's 84. <code>ui/flat/flat_top_bar.gd</code>'s <code>_fit_title</code> already handles that: it seeds an override with <code>floor(84 &times; 370 / measured)</code> and then steps down from the seed until the rendered face actually fits, because advance widths are not linear in the font size. The mock does the same arithmetic against the same 370 &mdash; the caption under the phone prints the size it landed on, so it is a reading and not a claim. The motto goes through the same fit, as Balance's and Untangle's already do.</p>
+  <p id="pp-fit" style="font-size:14px;color:var(--muted)">The fit is measured in your browser a moment after this tab draws, and replaces this line with what it found.</p>
+  <div class="decide"><b>Two title numbers, and the page quotes both on purpose.</b> This mock draws the title <em>upper-cased</em> with the family's 2 px tracking, the way the Binairo, Word Trail and Sudoku mocks all do. <code>ui/flat/flat_top_bar.gd</code> does not: its comment is explicit that &ldquo;every puzzle keeps its title case&rdquo;, and only the <em>motto</em> is sent through <code>to_upper()</code>. So the uppercase figure above is what you are looking at and the title-case one is what the game will letter, and they are far apart &mdash; <b>this is comfortably the most severely fitted title in the game either way</b>, past Mushroom Patch's 84-to-65 on a wider block. If the drop is too much to read, the honest fixes are a shorter motto (freeing nothing, the motto is not the constraint), a four-button bar (there is no Check to add back), or <b>a shorter name</b>. <code>Planes</code> alone fits at 84 and is the fallback this page would take.</div>
+
+  <h3>2. The rules &mdash; all of them <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>A plane is a self-avoiding path of 2 to N cells</b>, tail to head. Its <b>direction</b> is the step from its second-to-last cell to its head cell. Planes never overlap, so every cell holds at most one.</li>
+    <li><b>Its lane is every cell strictly beyond the head</b>, in that direction, out to the board edge.</li>
+    <li><b>Tap a plane and, if its lane is empty, it launches.</b> It slides forward along its own body and then straight out of the board, head first, the body following the head's track. Its cells become empty.</li>
+    <li><b>If any cell of the lane is occupied, the tap is refused.</b> The lane flashes as far as the plane that is in the way, that plane shivers, the tapped one nudges forward and back, and <b>that is the whole of the consequence</b>. No lives, no mistakes counted, no penalty, no hint spent. (Settled 2026-09-18 across the game: no board here has lives.)</li>
+    <li><b>The board is won when every plane has gone.</b> There is no other ending: it cannot be lost and it cannot run out, so it is not Hidden Word.</li>
+    <li><b>There is no Check</b>, and the reason is a theorem rather than a taste &mdash; see section 3. Undo, Reset and Hint are the whole of the chrome's offer.</li>
+    <li><b>Undo</b> flies the last-launched plane back in along the same track, reversed, and it is always safe: its cells cannot have been taken, because nothing ever moves into a cell.</li>
+  </ul>
+  <div class="decide"><b>Removing a plane can never block another one.</b> A launch only empties cells, and a lane is blocked only by occupied ones, so the set of planes that <em>can</em> go never shrinks &mdash; it only grows. That single fact is what removes Check from this screen: there is no move that can be regretted, nothing wrong can be left standing on the board, and the player cannot paint themselves into a corner. <b>The board is on the player's side the whole way through</b>, which makes it the second-gentlest screen in the game after Word Trail.</div>
+
+  <h3>3. The generator, and why every board it makes is solvable <span class="pill blue">decided</span></h3>
+  <p>The board is <b>carved backwards out of an empty grid</b>, and <b>play order is the reverse of insertion order</b>. Repeatedly:</p>
+  <ol>
+    <li>Pick a random empty cell as the <b>head</b> and a random direction whose <b>lane is entirely empty</b>.</li>
+    <li>Grow a <b>tail</b> backwards from the head as a random self-avoiding walk through empty cells, <b>never entering the lane</b> &mdash; which is what stops a plane from ever blocking itself &mdash; to a length drawn from the band's weights.</li>
+    <li>Place it and record it.</li>
+  </ol>
+  <p>Stop at a coverage target, or after a run of failures. Then the <b>coverage retry</b>: generate up to six candidates and keep the first at or above <b>0.72</b> coverage, else the fullest of the six.</p>
+  <div class="decide"><b>Why the reverse order always works, and why any greedy choice does.</b> When plane <i>i</i> was placed, its lane held none of planes 0..<i>i</i>&minus;1, and its own tail was kept out of that lane on purpose. So in reverse order &mdash; last placed, first played &mdash; every plane's lane is clear when its turn comes. That proves the board <em>has</em> a solution. The stronger claim the game needs is that <b>the player cannot go wrong</b>, and it follows: take any position, and let <i>m</i> be the <b>highest-numbered plane still on the board</b>. Nothing numbered above it remains, and nothing numbered below it was ever in its lane &mdash; so <i>m</i> can always go. <b>There is always a legal move</b>, at every position, whatever order the player has taken so far. That is the theorem, and it is why this screen has no Check, no fail state and no need for a solver at run time.</div>
+  <p><b>Measured in this page's own JavaScript, 200 seeds a band</b>, every board generated and then proved twice with the greedy solver &mdash; once always taking the first free plane and once taking a random free one, because if any greedy choice works then both must. <b>All 600 boards cleared, under both orders.</b></p>
+  <table>
+    <tr><th style="width:12%">Band</th><th style="width:10%">Grid</th><th style="width:8%">Cell</th><th style="width:16%">Planes</th><th style="width:16%">Coverage</th><th style="width:12%">Candidates</th><th style="width:14%">Free at once</th><th>Generate</th></tr>
+    <tr><td class="k">Easy</td><td>10 &times; 14</td><td>91</td><td>20&ndash;35 (mean 25.3)</td><td>0.72&ndash;0.91 (mean 0.80)</td><td>1.03</td><td>mean 5.8, min 1</td><td>0.17 ms mean, 0.8 ms worst</td></tr>
+    <tr><td class="k">Medium</td><td>13 &times; 18</td><td>71</td><td>29&ndash;45 (mean 37.3)</td><td>0.72&ndash;0.87 (mean 0.78)</td><td>1.34</td><td>mean 7.6, min 1</td><td>0.24 ms mean, 1.1 ms worst</td></tr>
+    <tr><td class="k">Hard</td><td>16 &times; 22</td><td>58</td><td>42&ndash;63 (mean 51.9)</td><td>0.70&ndash;0.83 (mean 0.75)</td><td>2.23</td><td>mean 10.0, min 1</td><td>0.63 ms mean, 2.5 ms worst</td></tr>
+  </table>
+  <p id="pp-gen" style="font-size:14px;color:var(--muted)">The same sweep runs in your browser a moment after this tab draws, and replaces this line with what it found.</p>
+  <p><b>Three things in that table are worth saying out loud rather than leaving in a cell.</b></p>
+  <ul>
+    <li><b>The coverage floor is not always met.</b> Six of 200 hard boards were still under 0.72 after all six candidates, so the fullest of the six shipped at 0.70. That is the retry doing what it was told &mdash; hand back the best it has rather than loop &mdash; and 0.70 on a 16&times;22 is still 246 cells under a plane.</li>
+    <li><b>Hard is the <em>loosest</em> band, not the tightest.</b> Counting how often the player is down to two legal launches or fewer: <b>easy 22.0% of steps, medium 16.6%, hard 12.6%</b>. A bigger field has more planes pointing at more open edges. <b>So difficulty here is length of sit, not tightness of squeeze</b> &mdash; 52 planes against 25 &mdash; and that is a real finding this page did not expect. Section 7 asks whether that is difficulty at all.</li>
+    <li><b>Every band bottoms out at one legal move.</b> Every band's minimum, over 200 boards, is a position with exactly one plane that can go. The board is never stuck, but it is sometimes down to a single answer &mdash; which is the moment the puzzle is actually a puzzle.</li>
+  </ul>
+  <div class="note"><b>Three measurements of the same algorithm now exist, and they agree.</b> The spec records the shipping <code>puzzles/planes_state.gd</code> measured in GDScript on this Mac over 40 seeds a band &mdash; planes 21&ndash;31 / 30&ndash;45 / 45&ndash;62 and coverage <b>0.72&ndash;0.91 / 0.73&ndash;0.87 / 0.70&ndash;0.83</b>. This page's JavaScript, over 200 seeds, gives coverage <b>0.72&ndash;0.91 / 0.72&ndash;0.87 / 0.70&ndash;0.83</b> &mdash; the same to the hundredth on all three bands, from a different language and a different generator of random numbers. That is the coverage retry doing its job and not a coincidence: the floor is the retry's 0.72 and the ceiling is what the carve can physically reach. The plane counts spread wider here only because 200 seeds sees more tails of the distribution than 40 does. <b>Timing is the one place they part</b>: 0.17 / 0.24 / 0.63 ms here against GDScript's 1.3 / 2.2 / 7.0 on the same machine, so the hard band costs about eleven times more in the engine than in the browser &mdash; still nothing at board open, and already recorded in the spec rather than discovered here.</div>
+  <p style="font-size:14px;color:var(--muted)">The Python probe this was ported from (a throwaway, not kept in the tree; 20 seeds a band) reported easy 21&ndash;33, medium 27&ndash;45 and hard 42&ndash;59 planes at coverage 0.63&ndash;0.89. The JavaScript's ranges are wider at the top and its coverage floor is higher because <b>the probe had no coverage retry</b> and used a different generator of random numbers; 200 seeds also simply sees more than 20 does. Neither set of numbers is wrong and the ones above are the ones this page stands behind.</p>
+
+  <h3>4. How it is drawn <span class="pill">proposed</span></h3>
+  <p>Ink on parchment and nothing else. <b>This board adds no colour to the palette</b>, and it is the second after Sudoku to seat <b>no character at all</b> &mdash; its pieces are folded paper, <code>ui/faces/</code> gets nothing, and the only face on the screen is the shared sprout on the tip card. Every size is a fraction of the cell, so the same numbers draw the 91 of easy and the 58 of hard.</p>
+  <table>
+    <tr><th style="width:20%">Thing</th><th style="width:26%">Size, in cells</th><th style="width:16%">Colour</th><th>Note</th></tr>
+    <tr><td class="k">Empty-cell dot</td><td>radius <b>0.05</b>, at the cell's centre</td><td><code>Pal.LINE</code> at <b>0.45</b></td><td>Straight off the reference. It is drawn for every cell <b>no plane covers</b>, so the field fills with dots as the board empties &mdash; and a cell takes its dot the moment the tail passes over it, not when the flight ends.</td></tr>
+    <tr><td class="k">Trail</td><td>stroke <b>0.17</b>, round caps and joins</td><td><code>Pal.TEXT</code></td><td>A polyline through the cell centres, tail to head. The reference's 5 on a 32 pitch is 0.156; 0.17 is that, rounded to something that still reads at 58.</td></tr>
+    <tr><td class="k">Head</td><td>tip <b>0.42</b> forward, wings <b>0.26</b> back and <b>0.30</b> to each side, tail notch <b>0.12</b> back</td><td><code>Pal.TEXT</code></td><td>A four-point polygon: tip, wing, notch, wing. The notch is what turns an arrowhead into a folded dart, and it is the only difference in silhouette from the reference.</td></tr>
+    <tr><td class="k">Crease</td><td>from <b>0.26</b> forward to <b>0.09</b> back, stroke <b>0.09</b></td><td><code>Pal.PAPER</code></td><td>The fold down the middle of the dart, in the page's own colour so it reads as a cut rather than as a highlight. At 58 it is 5 px wide inside a head 35 px across &mdash; the thing that has to be checked on the phone.</td></tr>
+    <tr><td class="k">Lane, held down</td><td>one round-capped band <b>0.34</b> wide down the lane's cell centres</td><td><code>Pal.SUN</code> at <b>0.35</b></td><td><b>The board answers before the finger lifts.</b> Hold a plane and its lane lights gold all the way to the edge &mdash; or, if it is blocked, only in <code>BAD_TILE</code> and only as far as the plane in the way. It is the one affordance that teaches the rule without a word, and it is why a refusal needs no toast.</td></tr>
+    <tr><td class="k">Lane, refused</td><td>the same band</td><td><code>Pal.BAD_TILE</code></td><td>From the head to the blocking cell inclusive, flashed and gone in 0.35 s.</td></tr>
+    <tr><td class="k">Hint glow</td><td>the same band, down the plane's own cells</td><td><code>Pal.SUN_RAY</code> at <b>0.32</b></td><td>Stays under the plane the hint named until that plane goes. <b>This page's own addition</b> &mdash; the spec gives the hint a ring and nothing that lingers, and three hints on a 52-plane field are easy to lose sight of.</td></tr>
+  </table>
+  <p><b>Both washes are one stroke and not a rounded rect a cell</b>, and that was paid for on this page: laid side by side, rounded rects leave a four-pointed hole where their corners meet, so the first shot of a hinted plane had little cream stars scattered down it. A round-capped stroke through the cell centres is one path, reads as a corridor, and has no seams.</p>
+  <p><b>One mesh's worth of drawing.</b> In Godot this is a single <code>ArrayMesh</code> rebuilt only when something moves, and the mock is written in the same spirit: every dot goes into one path, every still trail into one, every still head into one and every crease into one, and <b>only a plane that is actually moving is drawn on its own</b>. That matters here more than on any other flat board &mdash; a hard field is 52 planes and 352 cells, and gl_compatibility pays per draw command (<code>ui/faces/</code>'s founding rule). It also means the board card is the clip: a plane flies off the grid, across the hem and disappears behind the card's edge.</p>
+
+  <h3>5. The motion <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), read off the curve readers the way Nonogram's, Light Up's and Sudoku's drawn pieces are. <b>This board needs nothing new from the vocabulary</b> and carries <b>four numbers of its own</b> &mdash; <code>SPEED</code>, <code>LAUNCH_MIN</code>, <code>BEAT_STEP</code> and <code>REFUSE_TIME</code>. Everything else is the family's value or the family's recipe read through a parameter.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th style="width:26%">Recipe, and where it comes from</th><th>This board's own numbers</th></tr>
+    <tr><td class="k">Entrance</td><td><code>wide_pop_scale</code> from 0.88 about the field's centre, then <code>pop_in_scale</code> a plane, staggered by king-move distance from the top-left corner</td><td>The stagger is the family's <code>ENTER_STAGGER</code> read as a parameter: <b>0.02 with a 0.5 cap</b>, because a king-move distance of twenty at the family's own 0.03, uncapped, is a two-thirds-of-a-minute entrance</td></tr>
+    <tr><td class="k"><b>The launch</b></td><td>Its own, and it is the signature. The plane runs along a <b>track</b> = its own body polyline, extended past the head down the lane and one plane-length beyond the edge. <i>s</i> is cells travelled; <b>the body is the slice of the track between <i>s</i> and <i>s</i> + (len &minus; 1)</b>, which is what makes the tail follow the head's bends</td><td><code>SPEED</code> <b>22 cells/s</b>, <code>LAUNCH_MIN</code> <b>0.22 s</b>, eased in slightly (<i>u</i>(0.6 + 0.4<i>u</i>)) so it accelerates away</td></tr>
+    <tr><td class="k">Crossing out</td><td>Sparkles from <code>ui/fx2d.gd</code>, at the frame the head crosses the board edge &mdash; found by inverting the ease, not by guessing a fraction of the duration</td><td>eight, 0.65 s, in <code>SUN_RAY</code></td></tr>
+    <tr><td class="k"><b>The board answers</b></td><td>Queens' <code>_settle</code> (<code>puzzles/queens2d.gd</code>): snapshot which planes were free, launch, diff, and give every <b>newly freed</b> plane a wing-beat &mdash; <code>bump_scale</code> on the head, across its wings more than along its spine. <b>Derived from state, never stored</b>, so undo leaves nothing behind to clean up</td><td><code>BEAT_STEP</code> <b>0.04 s</b> per king-move step out from the departing plane's head</td></tr>
+    <tr><td class="k">Refused</td><td><code>flash_level</code> on the lane cells &mdash; the family's shape, its quarter-in three-quarters-out split kept and compressed into the board's own time &mdash; <code>shiver_offset</code> on the blocking plane and <code>nudge_offset</code> on the tapped one, both through the recipes' amplitude parameters, read in cells the way Mushroom Patch's <code>SHIVER</code> is</td><td><code>REFUSE_TIME</code> <b>0.35 s</b>; shiver 0.05 of a cell, nudge 0.22 of a cell forward and back</td></tr>
+    <tr><td class="k">Hint</td><td>The family's ring (<code>RING_TIME</code>) over a free plane's head, and that plane beats its wings</td><td>ring radius 0.5 of a cell, growing to 0.95</td></tr>
+    <tr><td class="k">Undo</td><td>The launch, run backwards down the same track &mdash; the exact time-reverse, so it decelerates into its seat</td><td>none</td></tr>
+    <tr><td class="k">Reset</td><td>Every launched plane flies back at once, staggered from the far corner</td><td>none &mdash; the family's <code>RESET_STAGGER</code> 0.02, by king-move distance from the bottom-right</td></tr>
+    <tr><td class="k">Solved</td><td>The last launch finishes and the win comes up</td><td><code>WIN_WAIT</code> <b>1.4 s</b>, the family's</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion (<code>?rm=1</code>, and the button under the phone): the field is up at once, a launched plane is simply gone and a recalled one simply back, nothing beats, shivers, nudges, rings or sparkles, the refused lane does not flash, the tip card does not cycle its lines, and the win follows the last launch. <b>Two frames 1.5 s apart are pixel-identical</b> &mdash; checked, and the check is in this page's commit message.</p>
+
+  <h3>6. What the board asks the chrome for <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:26%">Registry / contract</th><th style="width:18%">Value</th><th>Why</th></tr>
+    <tr><td class="k"><code>"shell"</code></td><td><code>"flat"</code></td><td>The eighteenth.</td></tr>
+    <tr><td class="k"><code>"tray"</code></td><td><code>"none"</code></td><td>Nothing is picked up and nothing is placed. The only input is a tap on a plane.</td></tr>
+    <tr><td class="k"><code>"actions"</code></td><td><code>false</code></td><td>There is no Check to put in the row (section 2), and Reset alone does not earn a 130 row, so Reset rides up into the top bar &mdash; Balance's, Untangle's, Word Trail's and Quilt's precedent, and the fifth board to do it.</td></tr>
+    <tr><td class="k"><code>"tip"</code></td><td><code>true</code></td><td>Kept. It is the only door to the rules sheet on every board but Hidden Word, and this screen has the room.</td></tr>
+    <tr><td class="k"><code>capabilities()</code></td><td><code>["undo","hint"]</code></td><td>No <code>check</code>. Five buttons are built and five are shown.</td></tr>
+    <tr><td class="k"><code>card_height(available)</code></td><td>everything</td><td>The field fills the card at every band; there is nothing to hand back.</td></tr>
+    <tr><td class="k"><code>card_centred()</code></td><td>never comes up</td><td>Height binds at all three bands, so the slack is 6 to 10 pixels down and 16 to 34 across, and it is hem rather than air.</td></tr>
+    <tr><td class="k"><code>flat_win()</code></td><td>a formation of three</td><td>Drawn with the board's own dart at 200, since there is no cast to lay across the win screen.</td></tr>
+    <tr><td class="k"><code>ui/faces/</code></td><td>nothing</td><td>The sixth board to add nothing, and the fourth &mdash; after Sudoku, Bridges and Quilt &mdash; to seat no character of any kind.</td></tr>
+  </table>
+  <p>The bottom slot is <b>140</b> &mdash; the tip card alone, measured from the rows the host actually built (<code>ui/flat/flat_host.gd</code>), which is Untangle's and Word Trail's number. <code>1840 &minus; 320 &minus; 40 &minus; 140</code> leaves the board card <b>1340</b>, and that is where the 1340 in section 1 comes from: it is not chosen, it is what is left.</p>
+
+  <h3>7. Open questions <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>The 58 cell.</b> It is the smallest this game has drawn, by a long way. The argument is that the target is a 300-pixel trail and not a 58-pixel square, and that a tap is the whole move. <b>Play the hard band on the phone and see whether the wrong plane goes.</b> The fallback is a smaller hard grid &mdash; 14&times;19 at 67 &mdash; at the cost of the reference's own density.</li>
+    <li><b>Is a bigger board actually harder?</b> Section 3 measured the opposite: hard leaves the player <em>more</em> legal moves at a time than easy does (12.6% tight steps against 22.0%). What hard really buys is <b>length</b>: 52 planes against 25. If that is not difficulty, the band wants a second dial &mdash; a coverage target, or a weighting toward long planes, or a generator that prefers heads pointing into the middle.</li>
+    <li><b>Does a refusal that costs nothing teach anything?</b> This is the first board where the punishment for a wrong tap is <em>only</em> information. It may read as slack. The alternative &mdash; a counter, a timer penalty &mdash; is forbidden by the no-lives rule, so the only lever is how loudly the refusal draws itself.</li>
+    <li><b>Is the crease legible at 58?</b> Five pixels of <code>PAPER</code> inside a 35-pixel head. It is the one thing separating a paper dart from the reference's plain arrowhead, and it is the first thing that goes if it turns to mush.</li>
+    <li><b>The wing-beat wave.</b> Queens' <code>_settle</code> on a 52-plane field can beat a dozen heads at once. It may read as the board breathing, or as noise. The dial is <code>BEAT_STEP</code>, and the harsher answer is to beat only the planes whose lane the departing plane actually vacated.</li>
+    <li><b>Three hints, on a board with no wrong moves.</b> A hint here does not rescue anyone from anything &mdash; it just names a legal move, and on hard there are ten of those at any moment. It may be the first board that should have <b>no</b> hint at all, and the hint count badge is then a fifth button's worth of top bar given back.</li>
+    <li><b>Undo, on a board that cannot be lost.</b> Same question from the other side: if no move can be regretted, what is Undo for? The answer this page assumes is &ldquo;a mis-tap&rdquo;, which is a real thing at 58 &mdash; but that makes Undo a consequence of the cell size, and it should be re-asked if the cell grows.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?left=N</code> to leave N planes on the field, <code>?hint=N</code> for that many hints spent, <code>?win=1</code> for the win screen, <code>?pp=launch</code> and <code>?pp=blocked</code> to fire a legal or a refused tap at <code>?at=</code> (0.6 by default), <code>?pp=press</code> and <code>?pp=pressblocked</code> to hold a clear or a blocked plane down so the lane preview can be photographed, <code>?sweep=N</code> for the generator sweep's seed count, <code>?sweepnow=1</code> to run it before the first frame so a shot can catch its result, <code>?pp=nosweep</code> to skip it, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-flight can be shot. Pick the tab with <code>#planes</code>.</p>
 </section>
 </main>
 
@@ -10825,7 +10981,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   })();
 })();
 
-/* ---------- Rings, flat: the seventeenth screen ---------- */
+/* ---------- Rings, flat: the eighteenth screen ---------- */
 (function(){
   const cv=document.getElementById('rg'); if(!cv) return;
   const ctx=cv.getContext('2d');
@@ -15049,7 +15205,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     else if(hh.kind==='reset') reset(t);
     else if(hh.kind==='tip') tipSet('Drag a sewn patch off to send it home.','happy',t);
     else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
-    else if(hh.kind==='back') tipSet('Back to the fifteen cards.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the seventeen cards.','happy',t);
     else if(hh.kind==='camp') build(diff,seed+1,t);}
   cv.addEventListener('pointerup',up);
   cv.addEventListener('pointercancel',()=>{if(drag) endDrag(now()); pressed=-1; pressTarget=null;});
@@ -15099,6 +15255,802 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(mid) openedAt=-12;
     caption(); frame();
   })();
+})();
+/* ---------- Paper Planes, flat: the seventeenth screen ---------- */
+(function(){
+  const cv=document.getElementById('pp'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd), and this board adds no
+  // colour to it at all: the planes are TEXT on SURFACE, the empty cells
+  // are LINE at 0.45, the refused lane is BAD_TILE and the crease is PAPER.
+  // Nothing on the screen is coloured except the chrome that is coloured on
+  // every other board.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    bad:'#d9605a',badTile:'#f2cfc9',cloud:'#a9c2dd',moss:'#7fa84a'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,NUDGE_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.04,SOLVE_DELAY:0.25,
+    RESET_STAGGER:0.02,SHIVER_TIME:0.2,FLASH_IN:0.15,FLASH_OUT:0.45,WIN_WAIT:1.4};
+  // This board's own four. The launch is the signature and SPEED is its one
+  // real number: cells a second along the track, with a floor so a two-cell
+  // plane on a short lane still reads as a flight and not as a blink.
+  // ENTER_STEP and ENTER_CAP are not new numbers, they are the entrance
+  // stagger read as a parameter: the family's 0.03 uncapped over a king-move
+  // distance of twenty is a two-thirds-of-a-minute entrance on a hard field.
+  const SPEED=22,LAUNCH_MIN=0.22,BEAT_STEP=0.04,REFUSE_TIME=0.35;
+  const ENTER_STEP=0.02,ENTER_CAP=0.5,WIN_WAIT=MO.WIN_WAIT;
+  // Eased in slightly, so a plane accelerates away rather than sliding at a
+  // constant rate; the inverse is needed to find the frame it crosses the
+  // board edge on, which is where the puff of sparkles goes.
+  const easeIn=u=>{u=clamp(u); return u*(0.6+0.4*u);};
+  const easeInv=e=>(-0.6+Math.sqrt(0.36+1.6*clamp(e)))/0.8;
+  const stag=v=>RM?0:v;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popInScale=s=>{if(RM) return 1; const u=clamp(s/MO.POP_IN); return backOut(u);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const shiverOffset=(s,px)=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return px*Math.sin(u*Math.PI*6)*(1-u);};
+  const nudgeOffset=(s,px)=>{if(RM||s<0||s>=MO.NUDGE_TIME) return 0; return px*Math.sin(Math.PI*s/MO.NUDGE_TIME);};
+  // The family's flash shape (FLASH_IN over FLASH_IN+FLASH_OUT is a quarter
+  // of the way in), compressed into this board's own REFUSE_TIME.
+  const flashLevel=s=>{if(RM||s<0||s>=REFUSE_TIME) return 0;
+    const inT=REFUSE_TIME*MO.FLASH_IN/(MO.FLASH_IN+MO.FLASH_OUT);
+    return s<inT?s/inT:1-(s-inT)/(REFUSE_TIME-inT);};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ---- how a plane is drawn (section 4) ----
+  // Every one of these is a fraction of the cell, so the same numbers draw
+  // the 91 of easy and the 58 of hard.
+  const DOT_R=0.05,DOT_A=0.45,TRAIL_W=0.17;
+  const DART=[[0.42,0],[-0.26,0.30],[-0.12,0],[-0.26,-0.30]],CREASE=[[0.22,0],[-0.05,0]],CREASE_W=0.06;
+  const SHIVER=0.05,NUDGE=0.22,RING_R=0.5,WASH_W=0.34;
+
+  // ---- the state (puzzles/planes_state.gd is the one truth, scene-free) ----
+  const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+  const BANDS=[
+    {name:'Easy · 10×14',cols:10,rows:14,min:2,max:8,w:[2,3,4,5,5,4,3]},
+    {name:'Medium · 13×18',cols:13,rows:18,min:2,max:9,w:[2,3,4,5,5,5,4,3]},
+    {name:'Hard · 16×22',cols:16,rows:22,min:2,max:10,w:[2,3,4,5,5,5,4,3,2]}];
+  // The coverage retry: six candidates, keep the first at or above 0.72,
+  // else the fullest of the six. TARGET and TRIES are the carve's own stop.
+  const COVER_WANT=0.72,CANDIDATES=6,TARGET=0.95,TRIES=400;
+
+  let B=BANDS[0],diff=0,seed=5;
+  let planes=[],occ=null,pos=null,order=[],genTries=1,cover=0;
+  let hintsLeft=3,moves=0,openedAt=0,solvedAt=-1e9,winAt=-1e9,hasSolve=false;
+  let refuse=null,rings=[],particles=[],btnPress={},auto=[],L=null,hintLit=-1,press=null;
+
+  // The board is carved backwards out of an empty grid and PLAY ORDER IS
+  // THE REVERSE OF INSERTION ORDER, which is what makes it solvable by
+  // construction: plane i's lane was empty of planes 0..i-1 when it was
+  // placed, so once every plane after it has gone its lane is clear.
+  function carve(rng){
+    const rows=B.rows,cols=B.cols,occ2=new Map(),out=[];
+    const pick=w=>{let s=0;for(const v of w)s+=v;let r=rng()*s;for(let i=0;i<w.length;i++){r-=w[i];if(r<0)return i;}return w.length-1;};
+    let fails=0;
+    while(occ2.size<TARGET*rows*cols&&fails<TRIES){
+      const r=(rng()*rows)|0,c=(rng()*cols)|0;
+      if(occ2.has(r*cols+c)){fails++;continue;}
+      const dirs=DIRS.slice();
+      for(let i=dirs.length-1;i>0;i--){const j=(rng()*(i+1))|0,tm=dirs[i];dirs[i]=dirs[j];dirs[j]=tm;}
+      let placed=false;
+      for(const d of dirs){
+        // 1. a head and a direction whose lane is entirely empty
+        let rr=r+d[0],cc=c+d[1],clear=true;const lane=new Set();
+        while(rr>=0&&rr<rows&&cc>=0&&cc<cols){
+          if(occ2.has(rr*cols+cc)){clear=false;break;}
+          lane.add(rr*cols+cc); rr+=d[0]; cc+=d[1];
+        }
+        if(!clear) continue;
+        // 2. a tail grown backwards as a self-avoiding walk that NEVER
+        //    enters the lane, so a plane can never block itself
+        const prev=[r-d[0],c-d[1]];
+        if(!(prev[0]>=0&&prev[0]<rows&&prev[1]>=0&&prev[1]<cols)) continue;
+        const pk=prev[0]*cols+prev[1];
+        if(occ2.has(pk)||lane.has(pk)) continue;
+        const want=B.min+pick(B.w);
+        const body=[[r,c],prev],used=new Set([r*cols+c,pk]);
+        while(body.length<want){
+          const last=body[body.length-1],cand=[];
+          for(const e of DIRS){
+            const q=[last[0]+e[0],last[1]+e[1]];
+            if(q[0]<0||q[1]<0||q[0]>=rows||q[1]>=cols) continue;
+            const qk=q[0]*cols+q[1];
+            if(occ2.has(qk)||used.has(qk)||lane.has(qk)) continue;
+            cand.push(q);
+          }
+          if(!cand.length) break;
+          const q=cand[(rng()*cand.length)|0]; body.push(q); used.add(q[0]*cols+q[1]);
+        }
+        if(body.length<B.min) continue;
+        body.reverse();                       // tail first, head last
+        const idx=out.length;
+        for(const cell of body) occ2.set(cell[0]*cols+cell[1],idx);
+        out.push({cells:body,dir:d});
+        placed=true; break;
+      }
+      if(placed) fails=0; else fails++;
+    }
+    return {out:out,occ:occ2,cover:occ2.size/(rows*cols)};
+  }
+  function generate(rng){
+    let best=null;
+    for(let a=0;a<CANDIDATES;a++){
+      const g=carve(rng);
+      if(!best||g.cover>best.cover) best=g;
+      if(g.cover>=COVER_WANT){g.tries=a+1; return g;}
+    }
+    best.tries=CANDIDATES; return best;
+  }
+  // The greedy solver, and the proof the page leans on: at any point the
+  // remaining plane with the HIGHEST insertion index always has a clear
+  // lane, because everything placed after it is gone and nothing placed
+  // before it was ever in its lane. So there is always a move, and since
+  // a removal only ever empties cells, ANY free plane may be taken.
+  function greedySolve(list,occ2,rng){
+    const gone=new Set(),profile=[];
+    const clearLane=p=>{const d=p.dir,h=p.cells[p.cells.length-1];
+      let r=h[0]+d[0],c=h[1]+d[1];
+      while(r>=0&&r<B.rows&&c>=0&&c<B.cols){
+        const o=occ2.get(r*B.cols+c);
+        if(o!==undefined&&!gone.has(o)) return false;
+        r+=d[0]; c+=d[1];
+      }
+      return true;};
+    while(gone.size<list.length){
+      const free=[];
+      for(let i=0;i<list.length;i++) if(!gone.has(i)&&clearLane(list[i])) free.push(i);
+      if(!free.length) return {ok:false,profile:profile};
+      profile.push(free.length);
+      gone.add(rng?free[(rng()*free.length)|0]:free[0]);
+    }
+    return {ok:true,profile:profile};
+  }
+
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); B=BANDS[diff]; seed=sd;
+    const g=generate(mulberry32((sd*2654435761)>>>0));
+    genTries=g.tries; cover=g.cover;
+    planes=g.out.map((p,i)=>({cells:p.cells,dir:p.dir,i:i,gone:false,fly:null,beatAt:-1e9,shiverAt:-1e9,nudgeAt:-1e9}));
+    occ=new Int32Array(B.rows*B.cols).fill(-1);
+    pos=new Int32Array(B.rows*B.cols).fill(-1);
+    planes.forEach(p=>p.cells.forEach((cl,j)=>{occ[cl[0]*B.cols+cl[1]]=p.i; pos[cl[0]*B.cols+cl[1]]=j;}));
+    order=[]; hintsLeft=3; moves=0; hasSolve=false; solvedAt=-1e9; winAt=-1e9;
+    refuse=null; rings=[]; particles=[]; btnPress={}; auto=[]; hintLit=-1; press=null;
+    openedAt=t; L=layout();
+    tipSet(TIPS[0],'happy',t); tip.idx=0; caption();
+  }
+
+  // ---- what a plane can do ----
+  const live=p=>!p.gone;
+  const head=p=>p.cells[p.cells.length-1];
+  function laneCells(p){
+    const d=p.dir,h=head(p),out=[];
+    let r=h[0]+d[0],c=h[1]+d[1];
+    while(r>=0&&r<B.rows&&c>=0&&c<B.cols){out.push([r,c]); r+=d[0]; c+=d[1];}
+    return out;
+  }
+  // The blocker: the first lane cell a live plane is standing on. Derived
+  // on every read, never stored -- Queens' rule.
+  function blockerOf(p){
+    for(const cl of laneCells(p)){
+      const i=occ[cl[0]*B.cols+cl[1]];
+      if(i>=0&&live(planes[i])) return {idx:i,cell:cl};
+    }
+    return null;
+  }
+  const isFree=p=>live(p)&&!blockerOf(p);
+  const freeSet=()=>{const s=new Set(); for(const p of planes) if(isFree(p)) s.add(p.i); return s;};
+  const kdist=(a,b)=>Math.max(Math.abs(a[0]-b[0]),Math.abs(a[1]-b[1]));
+
+  // ---- the launch ----
+  function sEndOf(p){return (p.cells.length-1)+laneCells(p).length+1;}
+  function durOf(p){return Math.max(LAUNCH_MIN,sEndOf(p)/SPEED);}
+  function launch(p,t,quiet){
+    const before=freeSet();
+    const sEnd=sEndOf(p),dur=RM?0:durOf(p),lane=laneCells(p).length;
+    p.gone=true; p.fly=RM?null:{at:t,dur:dur,sEnd:sEnd,back:false};
+    order.push(p.i); moves++; hintLit=-1;
+    if(!RM&&!quiet){
+      // the puff where it crosses the board edge
+      const edgeS=lane+0.5,u=easeInv(edgeS/sEnd),at=t+dur*u;
+      const h=head(p),last=[h[0]+p.dir[0]*(lane+0.5),h[1]+p.dir[1]*(lane+0.5)];
+      puff(cen(last),at);
+    }
+    // The board answers the move: every newly freed plane beats its wings,
+    // staggered out from the departing plane's head. Queens' _settle,
+    // diffed off a snapshot and never stored.
+    const after=freeSet(),h2=head(p);
+    for(const q of planes){
+      if(!after.has(q.i)||before.has(q.i)) continue;
+      q.beatAt=t+stag(kdist(head(q),h2)*BEAT_STEP);
+    }
+    if(planes.every(x=>x.gone)){
+      hasSolve=true; solvedAt=t+dur; winAt=t+dur+WIN_WAIT;
+      tipSet('Every plane away.','joy',t+dur);
+    } else if(!quiet) tipSet(LEFT_LINE(),'happy',t);
+    caption();
+  }
+  // A refused tap. Nothing is lost: the lane flashes as far as the plane
+  // that is in the way, that plane shivers, and the tapped one nudges
+  // forward and back. No toast, no heart, no counter.
+  function refuseTap(p,t,b){
+    const cells=[];
+    for(const cl of laneCells(p)){cells.push(cl); if(cl[0]===b.cell[0]&&cl[1]===b.cell[1]) break;}
+    refuse={cells:cells,at:t};
+    planes[b.idx].shiverAt=t; p.nudgeAt=t;
+    tipSet('That lane is not clear. Send the one in its way first.','flat',t);
+  }
+  function tap(p,t){
+    if(!p||!live(p)||hasSolve) return;
+    const b=blockerOf(p);
+    if(b) refuseTap(p,t,b); else launch(p,t);
+  }
+  function undo(t){
+    if(!order.length||hasSolve) return;
+    const p=planes[order.pop()];
+    p.gone=false; p.beatAt=-1e9;
+    if(!RM) p.fly={at:t,dur:durOf(p),sEnd:sEndOf(p),back:true};
+    moves++; hintLit=-1; refuse=null;
+    tipSet('Called back. '+LEFT_LINE(),'happy',t); caption();
+  }
+  function reset(t){
+    if(!order.length) return;
+    const far=[B.rows-1,B.cols-1];
+    while(order.length){
+      const p=planes[order.pop()];
+      p.gone=false; p.beatAt=-1e9;
+      if(!RM) p.fly={at:t+stag(kdist(head(p),far)*MO.RESET_STAGGER),dur:durOf(p),sEnd:sEndOf(p),back:true};
+    }
+    hasSolve=false; solvedAt=-1e9; winAt=-1e9; hintLit=-1; refuse=null;
+    tipSet('All of them back on the field. '+LEFT_LINE(),'happy',t); caption();
+  }
+  // The hint rings a plane that can go and beats its wings. It does not
+  // launch it: naming a legal move is the whole of the help this board can
+  // give, because there is no wrong move to save anyone from.
+  function hint(t){
+    if(hintsLeft<=0||hasSolve) return;
+    const free=planes.filter(isFree);
+    if(!free.length) return;
+    free.sort((a,b)=>{const ha=head(a),hb=head(b); return (ha[0]+ha[1])-(hb[0]+hb[1]);});
+    const p=free.find(x=>x.i!==hintLit)||free[0];
+    hintsLeft--; hintLit=p.i; p.beatAt=t;
+    ring(cen(head(p)),t); tipSet('This one has a clear lane.','happy',t); caption();
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  function ring(xy,t0){ if(RM) return; rings.push({x:xy[0],y:xy[1],t0:t0}); }
+  function puff(xy,t0){ if(RM) return;
+    for(let i=0;i<8;i++) particles.push({x:xy[0],y:xy[1],ox:(hash(i,7)-0.5)*0.7,oy:(hash(i,13)-0.5)*0.7,
+      vx:(hash(i,3)-0.5)*110,vy:-130,t0:t0+i*0.03,life:0.65,rad:12,g:170,col:C.sunRay}); }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur='';
+    for(const w of ws){const test=cur?cur+' '+w:w; if(ctx.measureText(test).width>maxw&&cur){out.push(cur); cur=w;} else cur=test;}
+    if(cur) out.push(cur); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    if(expr==='flat'){ctx.beginPath(); ctx.moveTo(cx-R*0.18,cy+R*0.26); ctx.lineTo(cx+R*0.18,cy+R*0.26); stroke(ink,R*0.07); return;}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- layout ----
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1340 of board,
+  // 20, 140 of tip card, 40 of margin -- 1920 exactly. There is no tray and
+  // no actions row, so the bottom slot is the tip card alone and Reset
+  // rides up into the top bar: Word Trail's shape exactly.
+  const TOP_H=180,DAY_H=120,BOARD_H=1340,TIP_H=140,ROW_GAP=20,INSET=28;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,tipY=by+BOARD_H+ROW_GAP;
+    const bw=COL-2*INSET,bh=BOARD_H-2*INSET;
+    const cell=Math.floor(Math.min(bw/B.cols,bh/B.rows));
+    const gw=cell*B.cols,gh=cell*B.rows;
+    return {top:{y:topY},day:{y:dayY},board:{y:by},tip:{y:tipY},cell:cell,gw:gw,gh:gh,
+      gx:M+INSET+(bw-gw)/2,gy:by+INSET+(bh-gh)/2,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+  const cen=cl=>[L.gx+(cl[1]+0.5)*L.cell,L.gy+(cl[0]+0.5)*L.cell];
+
+  // ---- the track ----
+  // A plane's track is its own body, extended past the head down the lane
+  // and on out past the board edge. s is cells travelled; the body is the
+  // slice of the track between s and s + (len - 1), which is what makes the
+  // body follow the head's path like a snake pulled through a hole.
+  function trackPt(p,x){
+    const len=p.cells.length;
+    if(x<len-1){
+      const i=Math.max(0,Math.floor(x)),f=x-i;
+      const a=cen(p.cells[i]),b=cen(p.cells[Math.min(i+1,len-1)]);
+      return [lerp(a[0],b[0],f),lerp(a[1],b[1],f)];
+    }
+    const h=cen(p.cells[len-1]),k=x-(len-1);
+    return [h[0]+p.dir[1]*k*L.cell,h[1]+p.dir[0]*k*L.cell];
+  }
+  function flyS(p,t){
+    const f=p.fly; if(!f) return 0;
+    const u=clamp((t-f.at)/(f.dur||1e-6));
+    return f.back?f.sEnd*easeIn(1-u):f.sEnd*easeIn(u);
+  }
+  function bodyPts(p,s){
+    const len=p.cells.length,pts=[trackPt(p,s)];
+    const lo=Math.floor(s)+1,hi=Math.ceil(s+len-1)-1;
+    for(let i=lo;i<=hi;i++) pts.push(trackPt(p,i));
+    pts.push(trackPt(p,s+len-1));
+    return pts;
+  }
+
+  // ---- drawing the field ----
+  // One mesh's worth: in Godot this is a single ArrayMesh rebuilt only when
+  // something moves, so the dots go into one path, the still trails into
+  // one, the still darts into one and the creases into one. Only a plane
+  // that is actually moving is drawn on its own.
+  function addTrail(path,p,s){
+    const pts=p.fly?bodyPts(p,s):p.cells.map(cen);
+    path.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++) path.lineTo(pts[i][0],pts[i][1]);
+  }
+  function addDart(path,crease,x,y,ang,sx,sy){
+    const ca=Math.cos(ang),sa=Math.sin(ang),cell=L.cell;
+    const m=q=>{const ax=q[0]*sx*cell,ay=q[1]*sy*cell; return [x+ax*ca-ay*sa,y+ax*sa+ay*ca];};
+    DART.forEach((q,i)=>{const w=m(q); if(i===0) path.moveTo(w[0],w[1]); else path.lineTo(w[0],w[1]);});
+    path.closePath();
+    if(crease){const a=m(CREASE[0]),b=m(CREASE[1]); crease.moveTo(a[0],a[1]); crease.lineTo(b[0],b[1]);}
+  }
+  const angOf=p=>Math.atan2(p.dir[0],p.dir[1]);
+  // A cell shows its dot the moment the tail passes over it, which is what
+  // makes a launch read as emptying the board rather than as a jump cut.
+  function cellCover(k,t){
+    const i=occ[k]; if(i<0) return 0;
+    const p=planes[i];
+    if(p.fly) return 1-clamp((flyS(p,t)-pos[k])/0.6);
+    return p.gone?0:1;
+  }
+  function entOf(p,t){
+    const d=t-openedAt-MO.ENTER_DELAY-stag(Math.min(ENTER_CAP,kdist(head(p),[0,0])*ENTER_STEP));
+    return {sc:popInScale(d),a:dec(d/0.2)};
+  }
+  function offOf(p,t){
+    const sh=shiverOffset(t-p.shiverAt,SHIVER*L.cell);
+    const nd=nudgeOffset(t-p.nudgeAt,NUDGE*L.cell);
+    return [sh+nd*p.dir[1],nd*p.dir[0]];
+  }
+  function drawField(t){
+    const cell=L.cell;
+    // the dots
+    const dots=new Path2D(); const fade=[];
+    for(let r=0;r<B.rows;r++) for(let c=0;c<B.cols;c++){
+      const k=r*B.cols+c,cv2=cellCover(k,t);
+      if(cv2>=0.999) continue;
+      const x=L.gx+(c+0.5)*cell,y=L.gy+(r+0.5)*cell;
+      if(cv2<=0.001){dots.moveTo(x+DOT_R*cell,y); dots.arc(x,y,DOT_R*cell,0,Math.PI*2);}
+      else fade.push([x,y,1-cv2]);
+    }
+    ctx.fillStyle=rgba(C.line,DOT_A); ctx.fill(dots);
+    for(const f of fade){ctx.fillStyle=rgba(C.line,DOT_A*f[2]); circle(f[0],f[1],DOT_R*cell);}
+    // The refused lane and the hint's glow are both drawn as ONE round-capped
+    // stroke down the cells rather than as a rounded rect a cell: laid side
+    // by side those leave a four-pointed hole where their corners meet, and
+    // a lane full of little stars reads as a bug.
+    const wash=(cells,col)=>{
+      ctx.beginPath();
+      cells.forEach((cl,i)=>{const p2=cen(cl); if(i===0) ctx.moveTo(p2[0],p2[1]); else ctx.lineTo(p2[0],p2[1]);});
+      if(cells.length===1){const p2=cen(cells[0]); ctx.lineTo(p2[0]+0.01,p2[1]);}
+      ctx.strokeStyle=col; ctx.lineWidth=cell*WASH_W; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();};
+    // Held down, the lane answers before the finger lifts: gold all the way
+    // to the edge if it is clear, and only as far as the blocker if it is
+    // not. It is the one affordance that teaches the rule without a word.
+    if(press&&live(press.p)){
+      const b3=blockerOf(press.p),lane=laneCells(press.p);
+      if(b3){const upto=[]; for(const cl of lane){upto.push(cl); if(cl[0]===b3.cell[0]&&cl[1]===b3.cell[1]) break;}
+        wash(upto,rgba(C.badTile,0.95));}
+      else if(lane.length) wash(lane,rgba(C.sun,0.35));}
+    if(refuse){const lv=flashLevel(t-refuse.at);
+      if(lv>0) wash(refuse.cells,rgba(C.badTile,0.95*lv));
+      else if(t-refuse.at>=REFUSE_TIME) refuse=null;}
+    // the hint's plane keeps a soft glow under it until it goes
+    if(hintLit>=0&&live(planes[hintLit])) wash(planes[hintLit].cells,rgba(C.sunRay,0.32));
+    // the planes, batched where nothing is moving
+    const trails=new Path2D(),darts=new Path2D(),creases=new Path2D(),movers=[];
+    for(const p of planes){
+      if(p.gone&&!p.fly) continue;
+      const e=entOf(p,t); if(e.a<=0) continue;
+      const beat=bumpScale(t-p.beatAt),off=offOf(p,t);
+      if(p.fly||e.sc<0.999||e.a<0.999||beat!==1||off[0]||off[1]){movers.push(p); continue;}
+      addTrail(trails,p,0);
+      const h=cen(head(p)); addDart(darts,creases,h[0],h[1],angOf(p),1,1);
+    }
+    ctx.strokeStyle=C.text; ctx.lineWidth=TRAIL_W*cell; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(trails);
+    ctx.fillStyle=C.text; ctx.fill(darts);
+    ctx.strokeStyle=C.paper; ctx.lineWidth=CREASE_W*cell; ctx.stroke(creases);
+    for(const p of movers) drawPlane(p,t);
+  }
+  function drawPlane(p,t){
+    const cell=L.cell,e=entOf(p,t),off=offOf(p,t),s=p.fly?flyS(p,t):0;
+    const beat=bumpScale(t-p.beatAt);
+    const h=p.fly?trackPt(p,s+p.cells.length-1):cen(head(p));
+    ctx.save(); ctx.globalAlpha*=e.a; ctx.translate(off[0],off[1]);
+    if(e.sc!==1){ctx.translate(h[0],h[1]); ctx.scale(e.sc,e.sc); ctx.translate(-h[0],-h[1]);}
+    const tr=new Path2D(); addTrail(tr,p,s);
+    ctx.strokeStyle=C.text; ctx.lineWidth=TRAIL_W*cell; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(tr);
+    const dt=new Path2D(),cr=new Path2D();
+    addDart(dt,cr,h[0],h[1],angOf(p),1+(beat-1)*0.3,beat);
+    ctx.fillStyle=C.text; ctx.fill(dt);
+    ctx.strokeStyle=C.paper; ctx.lineWidth=CREASE_W*cell; ctx.stroke(cr);
+    ctx.restore();
+  }
+  function drawFx(t){
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.arc(rg.x,rg.y,L.cell*(RING_R+0.45*u),0,Math.PI*2); stroke(C.leaf,8*(1-u)+2); ctx.restore();}
+    for(const pa of particles){const u=(t-pa.t0)/pa.life; if(u<0||u>=1) continue;
+      const s2=t-pa.t0; ctx.save(); ctx.globalAlpha=1-u;
+      star4(pa.x+pa.ox*L.cell+pa.vx*s2,pa.y+pa.oy*L.cell+pa.vy*s2+pa.g*s2*s2,pa.rad*(1-0.5*u),t*2+pa.ox,pa.col); ctx.restore();}
+  }
+  function drawBoard(t){
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    const y=L.board.y;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,y,COL,BOARD_H,40,C.surface,C.line,8);
+    const s=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a>0){
+      ctx.save();
+      // the card is the wall a plane disappears behind
+      rr(M,y,COL,BOARD_H,40); ctx.clip();
+      ctx.globalAlpha=a*fade;
+      const cx=L.gx+L.gw/2,cy=L.gy+L.gh/2;
+      ctx.translate(cx,cy); ctx.scale(s,s); ctx.translate(-cx,-cy);
+      drawField(t); drawFx(t);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ---- the chrome ----
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a:a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const sq=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sq[0],sq[1]); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  // Five buttons leave the title block 370 wide (496 is what four leave),
+  // and `PAPER PLANES` does not fit it at the theme's 84. The real bar
+  // letters a long title smaller by itself (ui/flat/flat_top_bar.gd): the
+  // linear guess floor(84 * block / measured) is only the SEED, because
+  // advance widths are not linear in the font size, so it steps down from
+  // there until the rendered face actually fits.
+  const TITLE='PAPER PLANES',MOTTO='A CLEAR LANE AND AWAY';
+  const BAND_W=370;
+  let fitTitle=0,fitMotto=0,fitCase=0,wideTitle=0,wideCase=0;
+  const measure=(s,px,font,spacing)=>{ctx.font='700 '+px+'px '+font; ctx.letterSpacing=spacing; const w=ctx.measureText(s).width; ctx.letterSpacing='0px'; return w;};
+  function fit(s,base,font,spacing,block){
+    if(measure(s,base,font,spacing)<=block) return base;
+    let px=Math.floor(base*block/measure(s,base,font,spacing));
+    while(px>8&&measure(s,px,font,spacing)>block) px--;
+    return px;
+  }
+  function drawTopBar(t){
+    const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:!order.length});
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!order.length});
+    if(!fitTitle){
+      fitTitle=fit(TITLE,84,FD,'2px',BAND_W); fitMotto=fit(MOTTO,24,FB,'1.5px',BAND_W);
+      // The shipping bar keeps the registry's own title CASE -- only the
+      // motto is upper-cased (ui/flat/flat_top_bar.gd) -- so the number the
+      // game will see is the one for `Paper Planes` untracked, and the mock
+      // measures both rather than quoting the drawn one as if it were the
+      // shipped one.
+      wideTitle=Math.round(measure(TITLE,84,FD,'2px'));
+      wideCase=Math.round(measure('Paper Planes',84,FD,'0px'));
+      fitCase=fit('Paper Planes',84,FD,'0px',BAND_W);
+      const el=document.getElementById('pp-fit');
+      if(el) el.textContent='Measured on this page, against a block of '+BAND_W+': the uppercase face this mock draws is '+
+        wideTitle+' wide at 84 and is lettered down to '+fitTitle+'; the registry\u2019s own `Paper Planes` in title case, which is what the bar will actually letter, is '+
+        wideCase+' at 84 and comes down to '+fitCase+'. The motto fits at its full 24.';
+      caption();}
+    const cx=(M+126+W-M-504)/2,by=L.top.y+98;
+    ctx.font='700 '+fitTitle+'px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText(TITLE).width; ctx.letterSpacing='0px';
+    text(TITLE,cx,by-10,'700 '+fitTitle+'px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-10-fitTitle*0.42;
+    ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7);
+    leaf(lx+2,ly-26,34,-2.7); leaf(lx+2,ly-30,28,-0.5);
+    text(MOTTO,cx,by+38,'700 '+fitMotto+'px '+FB,C.dim,'center','1.5px'); ctx.restore();
+  }
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  const TIPS=['Tap a plane and it flies out the way it points.','Its lane has to be clear all the way off the board.','Nothing here can go wrong. Any plane that can go, can go.','Send the one in front first.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  const leftN=()=>planes.filter(live).length;
+  const LEFT_LINE=()=>{const l=leftN(); return l===0?'That is the field cleared.':l===1?'One plane left.':l+' planes left.';};
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye:eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-200,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      const st=RM?0:t; star4(212,272,22,st*0.8,C.sun); star4(880,290,16,st*1.1,C.sun); star4(300,130,14,st*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Every plane away.',W/2,534,'600 34px '+FB,C.dim);
+      // A formation of three, drawn with the board's own dart at 240 and each
+      // on the tail of a trail, so the win screen is the board's own two
+      // marks and not a new drawing.
+      const save=L.cell,SZ=240;
+      for(let i=0;i<3;i++){
+        const dx=W/2+(i-1)*265,dy=880+Math.abs(i-1)*110;
+        let fl=0; if(!RM) fl=Math.sin(t*2.2+i*0.7)*12;
+        ctx.beginPath(); ctx.moveTo(dx,dy+fl+SZ*0.22); ctx.lineTo(dx,dy+fl+SZ*0.22+110+Math.abs(i-1)*24);
+        stroke(rgba(C.line,0.55),SZ*0.11);
+        const dt=new Path2D(),cr=new Path2D();
+        L.cell=SZ; addDart(dt,cr,dx,dy+fl,-Math.PI/2,1,1); L.cell=save;
+        ctx.fillStyle=C.text; ctx.fill(dt); ctx.strokeStyle=C.paper; ctx.lineWidth=CREASE_W*SZ; ctx.lineCap='round'; ctx.stroke(cr);
+      }
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+planes.length+' planes · '+hu+(hu===1?' hint':' hints'));
+      const sq=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sq[0],sq[1]); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('pp-caption');
+  function caption(){
+    if(!capEl) return;
+    if(hasSolve){capEl.textContent='Field cleared: '+planes.length+' planes in '+moves+' moves and '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+'.'; return;}
+    capEl.textContent=B.cols+'×'+B.rows+' at cell '+L.cell+' · '+planes.length+' planes, '+leftN()+' left · '+
+      Math.round(cover*100)+'% of the field covered · '+planes.filter(isFree).length+' can go now · '+
+      hintsLeft+' hints · built in '+genTries+(genTries===1?' candidate':' candidates')+
+      (fitTitle?' · title lettered at '+fitTitle+' (title case would be '+fitCase+'), motto at '+fitMotto:'');
+  }
+
+  // ---- the frame ----
+  function frame(){
+    const t=now(); L=layout();
+    while(auto.length&&auto[0].at<=t){const a=auto.shift(); a.fn(a.at);}
+    for(const p of planes) if(p.fly&&t-p.fly.at>=p.fly.dur) p.fly=null;
+    if(!RM&&tip.mood==='happy'&&!hasSolve&&!order.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);
+  }
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function planeAt(p){
+    const c=Math.floor((p[0]-L.gx)/L.cell),r=Math.floor((p[1]-L.gy)/L.cell);
+    if(c<0||r<0||c>=B.cols||r>=B.rows) return null;
+    const i=occ[r*B.cols+c];
+    return i>=0&&live(planes[i])?planes[i]:null;
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e);
+    if(hasSolve){if(t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130)){btnPress.camp=t; auto.push({at:t+0.25,fn:tt=>build(diff,seed+1,tt)});} return;}
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)){btnPress.back=t; tipSet('Back to the fourteen cards.','happy',t); return;}
+    if(inRect(p,W-M-110,y,110,110)){btnPress.gear=t; tipSet('The rules sheet opens here.','happy',t); return;}
+    if(inRect(p,W-M-236,y,110,110)){btnPress.hint=t; hint(t); return;}
+    if(inRect(p,W-M-362,y,110,110)){btnPress.reset=t; reset(t); return;}
+    if(inRect(p,W-M-488,y,110,110)){btnPress.undo=t; undo(t); return;}
+    if(inRect(p,M,L.tip.y,COL,TIP_H)){tipSet('Every plane leaves head first and drags its tail after it. Clear the way and it goes.','happy',t); return;}
+    const pl=planeAt(p);
+    if(pl&&live(pl)){press={p:pl,at:t}; try{cv.setPointerCapture(e.pointerId);}catch(err){}}});
+  const lift=e=>{if(!press) return; const t=now(),p=press.p; press=null; tap(p,t);};
+  cv.addEventListener('pointerup',lift);
+  cv.addEventListener('pointercancel',()=>{press=null;});
+
+  window.addEventListener('keydown',ev=>{
+    const panel=document.getElementById('tab-planes');
+    if(!panel||!panel.classList.contains('active')) return;
+    const t=now(); let used=true;
+    if(ev.key==='u'||ev.key==='U') undo(t);
+    else if(ev.key==='r'||ev.key==='R') reset(t);
+    else if(ev.key==='h'||ev.key==='H') hint(t);
+    else if(ev.key==='n'||ev.key==='N') build(diff,seed+1,t);
+    else used=false;
+    if(used) ev.preventDefault();});
+
+  // ---- the page's own controls ----
+  // "Show the answer" plays the greedy solver at a pace you can watch: one
+  // launch every 0.42 s, always taking the first free plane, which is the
+  // same choice the solver makes to prove the board.
+  function runSolve(t){
+    auto=[]; let k=t+0.1;
+    const step=tt=>{
+      if(hasSolve) return;
+      const free=planes.filter(isFree);
+      if(!free.length) return;
+      launch(free[0],tt,false);
+      if(!hasSolve) auto.push({at:tt+(RM?0.05:0.42),fn:step});
+    };
+    auto.push({at:k,fn:step});
+  }
+  function nearlyDone(t){
+    auto=[];
+    let guard=0;
+    while(planes.filter(live).length>3&&guard++<500){
+      const free=planes.filter(isFree); if(!free.length) break;
+      launch(free[0],-20,true);
+      for(const p of planes) if(p.fly) p.fly=null;
+      for(const p of planes) p.beatAt=-1e9;
+    }
+    hintLit=-1; refuse=null; tipSet('Three from the end.','happy',t); caption();
+  }
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>fn(now(),el));};
+  btn('pp-hint',t=>hint(t)); btn('pp-undo',t=>undo(t)); btn('pp-reset',t=>reset(t));
+  btn('pp-new',t=>build(diff,seed+1,t));
+  btn('pp-nearly',t=>nearlyDone(t));
+  btn('pp-solve',t=>runSolve(t));
+  const diffEl=document.getElementById('pp-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=BANDS[diff].name;});
+  const rmEl=document.getElementById('pp-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  // ---- the sweep this page's own numbers come from ----
+  // Two hundred seeds a band, generated and then proved with the greedy
+  // solver twice -- once always taking the first free plane and once taking
+  // a random one, because if any greedy choice works then both must. It
+  // runs once, after the first frames, and writes what it found into
+  // section 3 rather than leaving the page quoting a figure nobody can
+  // check.
+  function sweep(N){
+    const rows=[];let allOk=true;
+    for(let d=0;d<3;d++){
+      const save=B; B=BANDS[d];
+      let nmin=1e9,nmax=0,nsum=0,cmin=1,cmax=0,tsum=0,tmax=0,trysum=0,short=0,fmin=1e9,fsum=0;
+      for(let s=0;s<N;s++){
+        const t0=performance.now();
+        const g=generate(mulberry32((s*2654435761)>>>0));
+        const ms=performance.now()-t0;
+        const a=greedySolve(g.out,g.occ,null),b2=greedySolve(g.out,g.occ,mulberry32(s+7777));
+        if(!a.ok||!b2.ok) allOk=false;
+        const n=g.out.length;
+        nmin=Math.min(nmin,n); nmax=Math.max(nmax,n); nsum+=n;
+        cmin=Math.min(cmin,g.cover); cmax=Math.max(cmax,g.cover);
+        if(g.cover<COVER_WANT) short++;
+        tsum+=ms; tmax=Math.max(tmax,ms); trysum+=g.tries;
+        let mn=1e9,sm=0; for(const q of a.profile){if(q<mn)mn=q; sm+=q;}
+        fmin=Math.min(fmin,mn); fsum+=sm/a.profile.length;
+      }
+      B=save;
+      rows.push({band:BANDS[d].name,nmin:nmin,nmax:nmax,nmean:nsum/N,cmin:cmin,cmax:cmax,short:short,
+        tries:trysum/N,free:fsum/N,fmin:fmin,ms:tsum/N,msMax:tmax});
+    }
+    return {rows:rows,ok:allOk,N:N};
+  }
+  function runSweep(){
+    const N=parseInt(Q.get('sweep')||'200',10)||200;
+    const r=sweep(N);
+    const line=r.rows.map(x=>x.band.split(' ')[0]+' '+x.nmin+'-'+x.nmax+' planes (mean '+x.nmean.toFixed(1)+
+      '), coverage '+x.cmin.toFixed(2)+'-'+x.cmax.toFixed(2)+', '+x.tries.toFixed(2)+' candidates, '+
+      x.ms.toFixed(2)+' ms mean / '+x.msMax.toFixed(1)+' worst, '+x.free.toFixed(1)+' free at once (min '+x.fmin+')').join(' | ');
+    console.log('PAPER PLANES generator, '+N+' seeds a band: solved by greedy (first-free AND random-free) '+
+      (r.ok?'ALL':'NOT ALL')+' · '+line);
+    const el=document.getElementById('pp-gen');
+    if(el) el.textContent=N+' seeds a band, re-measured in your browser: '+
+      (r.ok?'every board solved by both greedy orders':'A BOARD FAILED — see the console')+'. '+line+'.';
+  }
+
+  // ---- harness parameters ----
+  build(parseInt(Q.get('d')||'0')||0,parseInt(Q.get('seed')||'5')||5,0);
+  if(diffEl) diffEl.textContent=BANDS[diff].name;
+  const AT=parseFloat(Q.get('at')||'0.6');
+  const leftWant=parseInt(Q.get('left')||'0',10)||0;
+  const hintN=parseInt(Q.get('hint')||'0',10)||0;
+  if(Q.get('win')==='1'){let g=0; while(planes.some(live)&&g++<800){const f=planes.filter(isFree); if(!f.length) break; launch(f[0],-20,true);} for(const p of planes) p.fly=null; solvedAt=-18; winAt=-18;}
+  else if(leftWant>0){let g=0; while(planes.filter(live).length>leftWant&&g++<800){const f=planes.filter(isFree); if(!f.length) break; launch(f[0],-20,true); for(const p of planes){p.fly=null; p.beatAt=-1e9;}}}
+  for(let i=0;i<hintN;i++) hint(-19);
+  if(leftWant||hintN||Q.get('win')==='1') openedAt=-20;
+  // ?pp=launch fires a legal tap at ?at=, ?pp=blocked a refused one, so a
+  // frame mid-flight or mid-flash can be shot with ?freeze=1.
+  const mode=Q.get('pp')||'';
+  // ?pp=press holds a clear plane down and ?pp=pressblocked a blocked one,
+  // so the lane preview can be photographed without a finger.
+  if(mode==='press'||mode==='pressblocked'){
+    const pool=mode==='press'?planes.filter(isFree):planes.filter(p=>live(p)&&blockerOf(p));
+    const far=p=>laneCells(p).length;
+    pool.sort((a,b2)=>far(b2)-far(a));
+    if(pool.length) press={p:pool[0],at:0};
+  }
+  if(mode==='launch'||mode==='blocked'){
+    const want=mode==='launch'?planes.filter(isFree):planes.filter(p=>live(p)&&blockerOf(p));
+    if(want.length){
+      // the one with the most to look at: for a launch the longest plane,
+      // for a refusal the longest run of lane before the blocker
+      const reach=p=>{const b2=blockerOf(p); if(!b2) return 0;
+        const h=head(p); return Math.abs(b2.cell[0]-h[0])+Math.abs(b2.cell[1]-h[1]);};
+      want.sort(mode==='launch'?(a,b2)=>b2.cells.length-a.cells.length:(a,b2)=>reach(b2)-reach(a));
+      auto.push({at:AT,fn:t=>tap(want[0],t)});
+    }
+  }
+  caption(); frame();
+  // The sweep is deferred so it cannot hold up the first frames; a headless
+  // shot that wants to photograph its result asks for ?sweepnow=1, which
+  // runs it before the first frame instead.
+  if(Q.get('sweepnow')==='1') runSweep();
+  else if(mode!=='nosweep') setTimeout(runSweep,700);
 })();
 
 </script>
