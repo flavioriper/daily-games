@@ -50,8 +50,21 @@ const PRESS_DARKEN := 0.12
 const BORDER_W := 6
 
 var _keys: Dictionary = {}   # letter -> Button
+var _chips: Array[Button] = []   # every key, letters and the two specials
 var _press_tw: Dictionary = {}   # Button -> Tween
 var _bump_tw: Dictionary = {}    # letter -> Tween
+## One slot per row, and the row it holds. A row is *not* a direct child of
+## `_inner`: a `VBoxContainer` re-sorts its children on
+## `NOTIFICATION_SORT_CHILDREN` (a resize, a child change, a theme change),
+## and any such sort mid-tween snapped every row's `position:y` tween back to
+## wherever the sort last put it -- the three rows landed stacked on top of
+## each other at (0, 0). The slot is the VBox's child at a fixed height; the
+## row moves freely inside it, the way `ui/flat/weight_tray.gd`'s cards move
+## inside slots the row container owns. `docs/art/flat-motion.md` rule 6 and
+## CLAUDE.md's own "a card that moves inside a container needs a slot."
+var _row_slots: Array[Control] = []
+var _rows: Array[HBoxContainer] = []
+var _row_tw: Array = [null, null, null]
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -66,12 +79,23 @@ func _make_inner() -> Container:
 
 func _build() -> void:
 	for r in ROWS.size():
+		var slot := Control.new()
+		slot.name = "RowSlot_%d" % r
+		slot.custom_minimum_size = Vector2(0.0, KEY.y)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_inner.add_child(slot)
+		_row_slots.append(slot)
+
 		var row := HBoxContainer.new()
 		row.name = "Row_%d" % r
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", int(GAP))
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_inner.add_child(row)
+		slot.add_child(row)
+		_rows.append(row)
+		slot.resized.connect(_fit_row.bind(r))
+		_fit_row(r)
+
 		var letters: String = ROWS[r]
 		if r == 2:
 			_add_special(row, "erase", WIDE_BACK)
@@ -79,6 +103,18 @@ func _build() -> void:
 			_add_letter(row, letters[i])
 		if r == 2:
 			_add_special(row, "commit", WIDE_ENTER)
+
+## Keeps row `r` filling its slot's whole width -- the slot's width is
+## whatever the VBox leaves it, which is the tray's own width and not a
+## constant. A row mid-slide owns its own `position.y` until the tween ends.
+func _fit_row(r: int) -> void:
+	var slot: Control = _row_slots[r]
+	var row: HBoxContainer = _rows[r]
+	if slot.size.x <= 0.0:
+		return
+	row.size = slot.size
+	if not Motion.running(_row_tw[r]):
+		row.position = Vector2.ZERO
 
 ## A plain Control holds each key so a press or a bump can move the key
 ## freely; the row's HBoxContainer would otherwise put it straight back on
@@ -109,6 +145,7 @@ func _add_letter(row: HBoxContainer, letter: String) -> void:
 	chip.button_up.connect(_release.bind(chip))
 	chip.pressed.connect(func() -> void: key.emit(letter))
 	_keys[letter] = chip
+	_chips.append(chip)
 
 ## The backspace and Enter keys: same slot idiom, wider, and their own fixed
 ## look -- Enter in `Pal.GOOD` because it is the one key that commits, the
@@ -140,6 +177,7 @@ func _add_special(row: HBoxContainer, role: String, width: float) -> void:
 		chip.pressed.connect(func() -> void: erase.emit())
 	chip.button_down.connect(_press.bind(chip))
 	chip.button_up.connect(_release.bind(chip))
+	_chips.append(chip)
 
 ## The backspace glyph, drawn rather than set as text: neither of the HUD's
 ## two fonts carries U+232B, so a Button.text of "⌫" renders as a missing
@@ -183,34 +221,43 @@ func _release(chip: Button) -> void:
 ## `NEAR`, `Pal.WORD_MISS` for a `MISS`, lettered in `Pal.PAPER` like Enter --
 ## a letter absent from `marks` keeps whatever it already had. The caller
 ## (the board, reading `HiddenWordState.key_mark`) is the one that already
-## resolves "best mark wins"; this only ever paints what it is handed.
+## resolves "best mark wins"; this only ever paints what it is handed. The
+## mark is matched explicitly rather than defaulted to a hit, so a value that
+## is none of the three (a caller's bug) paints nothing rather than lying
+## green.
 func set_marks(marks: Dictionary) -> void:
 	for letter in marks:
-		var chip: Button = _keys.get(letter)
+		var chip: Button = _keys.get(String(letter).to_lower())
 		if chip == null:
 			continue
-		var m := int(marks[letter])
-		var fill: Color = Pal.GOOD
-		if m == HiddenWordState.NEAR:
-			fill = Pal.WORD_NEAR
-		elif m == HiddenWordState.MISS:
-			fill = Pal.WORD_MISS
+		var fill: Color
+		match int(marks[letter]):
+			HiddenWordState.HIT:
+				fill = Pal.GOOD
+			HiddenWordState.NEAR:
+				fill = Pal.WORD_NEAR
+			HiddenWordState.MISS:
+				fill = Pal.WORD_MISS
+			_:
+				continue
 		_style(chip, fill, Pal.PAPER)
 
 ## The named keys bump, the beat that says the row just landed on them.
 func bump(letters: Array) -> void:
 	for letter in letters:
-		var chip: Button = _keys.get(letter)
+		var lower := String(letter).to_lower()
+		var chip: Button = _keys.get(lower)
 		if chip == null:
 			continue
-		Motion.stop(_bump_tw.get(letter))
-		_bump_tw[letter] = Motion.bump(chip)
+		Motion.stop(_bump_tw.get(lower))
+		_bump_tw[lower] = Motion.bump(chip)
 
 ## The keyboard leaves for the reveal: `_inner` slides down to `enter_from`
-## while the tray fades, over `time`. Not a queue_free -- a later `enter()`
-## call (Reset replaying the day) slides `_inner` straight back from the same
-## `enter_from` and fades the tray back in, so nothing here needs undoing by
-## hand.
+## while the tray fades, over `time`, and every key is disabled so a tap on
+## the now-faded paper cannot still fire `key`/`commit`/`erase`. Not a
+## queue_free -- a later `enter()` call (Reset replaying the day) slides
+## `_inner` straight back from the same `enter_from`, fades the tray back in
+## and re-enables every key, so nothing here needs undoing by hand.
 func slide_out(time: float) -> void:
 	for tw in _entrance:
 		Motion.stop(tw)
@@ -221,14 +268,21 @@ func slide_out(time: float) -> void:
 	var fade: Tween = Motion.appear(self, self.modulate.a, 0.0, time)
 	if fade != null:
 		_entrance.append(fade)
+	for chip in _chips:
+		chip.disabled = true
 
 ## The three rows slide up `ENTER_STAGGER` apart on top of the panel's own
 ## entrance, so the keyboard reads as one hand settling rather than a slab
-## dropping in at once.
+## dropping in at once, and every key takes input again (undoing a prior
+## `slide_out`).
 func enter(delay: float) -> void:
 	super(delay)
-	for r in _inner.get_child_count():
-		var row: Control = _inner.get_child(r)
+	for chip in _chips:
+		chip.disabled = false
+	for r in _rows.size():
+		Motion.stop(_row_tw[r])
+		var row: HBoxContainer = _rows[r]
 		var slide: Tween = Motion.slide(row, "position:y", Motion.DROP, 0.0, ENTER_SLIDE, delay + r * Motion.ENTER_STAGGER)
+		_row_tw[r] = slide
 		if slide != null:
 			_entrance.append(slide)
