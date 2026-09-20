@@ -343,3 +343,275 @@ Hidden Word added is always true here.
   cannot be spent on the grid.
 - **Backwards tracing.** Trace *oats* from the S and nothing happens, because
   it spells *stao*. Right, and possibly annoying.
+
+## 15. Amendments from the build, 2026-09-20
+
+The board was built in four tasks and measured in a fifth, all on
+2026-09-20. This section is what the build found, what it changed and what
+it measured -- the spec above is left as it was written, so the two can be
+compared.
+
+### 15.1 The numbers
+
+Every reading below was taken on this Mac with the windowed harnesses at
+`--resolution 810x1440`, which is the true 1080x1920 of design space, one
+run at a time with nothing else on the GPU. **A single reading off this
+harness is worth nothing** -- this machine's spread on frame time is a
+factor of 1.6 -- so everything is quoted twice or more, including the
+flattering reading, and two already-measured boards were run as controls in
+the same session.
+
+`tests/_shot_anim.gd -- wordtrail` puts the board on day 7, medium: a 6x6
+field, seven walls, the words DEW POOL BIRD BRUSH TENNIS STRETCH, with the
+harness dragging DEW's own three cells and the idle window opening at 2.6 s,
+after the wave.
+
+| Run | Draw calls | Idle mean, ms |
+|---|---|---|
+| `wordtrail`, one word locked | 65, 62, 65 | 2.51, 2.49, 2.51 |
+| `wordtrail empty`, the bare field | 60, 61 | 2.40, 2.39 |
+| `wordtrail rm`, reduce motion | 61, 61 | 2.40, 2.37 |
+| `wordtrail` on `--rendering-driver opengl3_angle` | 65, 65 | 4.49, 4.87 |
+| Queens, control, same session | 71, 71 | 2.92, 2.95 |
+| Hidden Word, control, same session | 110, 110 | 3.27, 3.26 |
+| `tests/_shot_menu.gd`, the first screen | 322, 322 | 8.32, 8.33 |
+
+All of it is far inside the 855 draw-call budget: the whole board costs less
+than a tenth of it, and the fullest reading on this screen is 65.
+
+Read it this way:
+
+- **The controls are the point.** Queens read 71 and Hidden Word 110 in this
+  session, which are exactly the figures already on the record for them
+  (`CLAUDE.md`, 2026-09-19). That is what says the session itself is sound
+  and that the Word Trail figures beside them can be trusted; it is not a
+  new measurement of those two boards.
+- **The 62 is the outlier of three readings, not a second truth.** The
+  settled board with one word locked draws 65 in two runs of three. The lock
+  fires a ring and sparkles at about 2.26 s and the idle window opens at
+  2.6 s, so whether the emitters are still alive when the window opens turns
+  on a frame or two of timing -- that is the likely cause, and it is an
+  inference from the timings rather than something measured directly. The
+  bare and the reduce-motion boards, which have no effects in them at all,
+  read 60/61 and 61/61.
+- **A locked word costs about five calls** over the bare field: the ribbon,
+  the ring and the sparkle emitter. The scenery band costs nothing in calls,
+  because it is one mesh.
+- **The menu's idle mean is the vsync cap, not a measurement.**
+  `tests/_shot_menu.gd` never disables vsync and 8.33 ms is exactly 120 Hz.
+  The 8.32/8.33 pair says only that the screen is inside the cap.
+- **The board's ~2.4-2.5 ms idle is a real figure** (`_shot_anim.gd` runs
+  with vsync off) but it is one machine on one afternoon; quote it only
+  against a board measured the same hour, which is what the Queens and
+  Hidden Word rows are for.
+
+**The first screen went from 311 to 322** (2026-09-20, two runs, against the
+311 recorded on 2026-09-19). The eleven cards of the old grid were unchanged
+in that time; what moved is that Pipes' dimmed `soon` card left the twelfth
+slot and Word Trail's live card took it, so the +11 is that swap and not a
+card added to a full grid. The Queens card cost +12 when it joined, so the
+price is the usual one for a card with a face and furniture in it.
+
+**On the phone's driver.** `--rendering-driver opengl3_angle` gives the same
+**65** twice, and the settled frame at 3.80 s matches the default driver's
+to **5/255**, with only four pixels of 1,166,400 differing by more than
+3/255 -- edge antialiasing, as Hidden Word's own check found. Nothing here
+has reintroduced an `instance uniform`. The mid-animation frames do *not*
+match (up to 208/255 at 0.36 s): the two drivers run the harness at
+different frame rates, and a shot is taken on the first frame at or after
+its time, so the wave is caught at a different sub-step. That is timing, not
+rendering, and the settled frames are the comparison that means anything.
+
+**Reduce motion stands still.** The `rm` pair 1.5 s apart (3.80 s and
+5.30 s) is pixel-identical again this session:
+`ImageChops.difference(...).getbbox()` is `None` and the extrema are
+`(0, 0)` on all three channels. Task 3 had checked the same pair twice.
+
+### 15.2 The top bar, and the two screens that were never photographed
+
+Task 3 taught the shared `ui/flat/flat_top_bar.gd` to letter a title or
+motto smaller when it is wider than the block the buttons leave
+(`4e3d5c2`), because `Word Trail` at GameWordmark 84 measures 391 against
+the 370 a five-button bar leaves. It never letters anything larger. Only
+Binairo and Balance were photographed at the time, so the other ten screens
+rested on an argument. A throwaway headless probe (not committed) built the
+real bar for every entry in `Registry.PUZZLES` at 1080 of design width, with
+each board's buttons hidden the way the host's `refresh()` hides them, and
+measured every label with its own rendered face:
+
+| Board | Buttons | Block | Label | Text | Base | Wanted | Lettered at | Width then |
+|---|---|---|---|---|---|---|---|---|
+| Binairo | 4 | 496 | title | `BINAıRO` | 84 | 318 | 84 | 318 |
+| Binairo | 4 | 496 | motto | `Balance brings harmony` | 24 | 265 | 24 | 265 |
+| Code Break | 4 | 496 | title | `Code Break` | 84 | 430 | 84 | 430 |
+| Code Break | 4 | 496 | motto | `CRACK THE HIDDEN CODE` | 24 | 351 | 24 | 351 |
+| Balance | 5 | 370 | title | `Balance` | 84 | 306 | 84 | 306 |
+| **Balance** | 5 | 370 | **motto** | `FIND THE WEIGHT OF THINGS` | 24 | 399 | **22** | **372** |
+| Untangle | 5 | 370 | title | `Untangle` | 84 | 351 | 84 | 351 |
+| **Untangle** | 5 | 370 | **motto** | `EVERY KNOT COMES UNDONE` | 24 | 397 | **22** | 367 |
+| Shikaku | 4 | 496 | title | `Shıkaku` | 84 | 288 | 84 | 288 |
+| Shikaku | 4 | 496 | motto | `EVERY PLOT HAS ITS NUMBER` | 24 | 403 | 24 | 403 |
+| Tents | 4 | 496 | title | `Tents` | 84 | 210 | 84 | 210 |
+| Tents | 4 | 496 | motto | `A CAMP FOR EVERY TREE` | 24 | 340 | 24 | 340 |
+| Light Up | 4 | 496 | title | `Lıght Up` | 84 | 319 | 84 | 319 |
+| Light Up | 4 | 496 | motto | `LET THERE BE LIGHT` | 24 | 277 | 24 | 277 |
+| One Line | 4 | 496 | title | `One Lıne` | 84 | 333 | 84 | 333 |
+| One Line | 4 | 496 | motto | `ONE STROKE, NO LIFTING` | 24 | 342 | 24 | 342 |
+| Nonogram | 4 | 496 | title | `Nonogram` | 84 | 390 | 84 | 390 |
+| Nonogram | 4 | 496 | motto | `NUMBERS MAKE A PICTURE` | 24 | 368 | 24 | 368 |
+| Queens | 4 | 496 | title | `Queens` | 84 | 287 | 84 | 287 |
+| Queens | 4 | 496 | motto | `EVERY QUEEN HAS HER SEAT` | 24 | 394 | 24 | 394 |
+| Hidden Word | 4 | 496 | title | `Hıdden Word` | 84 | 481 | 84 | 481 |
+| Hidden Word | 4 | 496 | motto | `FIND THE HIDDEN WORD` | 24 | 335 | 24 | 335 |
+| **Word Trail** | 5 | 370 | **title** | `Word Traıl` | 84 | 391 | **79** | 368 |
+| **Word Trail** | 5 | 370 | **motto** | `EVERY LETTER FINDS ITS WAY` | 24 | 406 | **21** | 360 |
+
+(The dotless `ı` is `ui/sun_dot.gd`'s doing -- it sets the lowercase i in
+Fredoka's dotless glyph and seats a sun where the dot was -- so the widths
+above are the widths actually drawn.)
+
+Four labels on three boards are lettered smaller; **every other label on
+every other screen is untouched to the pixel**, which is what the probe was
+for. Two things it settled that the argument had not:
+
+- **Untangle's motto was overflowing too**, by 27 at base 24, and nobody had
+  said so. It is now lettered at 22 and fits. Task 3's report named Balance
+  as "the only other title that overflowed"; that was two thirds right.
+- **Hidden Word's title is untouched.** Its bar is built with five buttons
+  because it has no actions row, but the board's `capabilities()` is
+  `["hint"]` alone, so `refresh()` hides Undo, the block goes back to 496
+  and the 481-wide title fits at 84. A first pass of the probe that skipped
+  `refresh()` "found" it lettered at 64; that was the probe's mistake and it
+  is recorded here so nobody re-finds it. Section 6's line that five buttons
+  are carried by "only Balance and Untangle" should be read as **Balance,
+  Untangle and Word Trail carry five; Hidden Word builds five and shows
+  four**.
+
+**One defect, reported and not fixed: Balance's motto still overflows by
+two pixels.** The fit is `floor(base * wide / want)`, which for
+`FIND THE WEIGHT OF THINGS` is `floor(24 * 370 / 399)` = 22, and the face at
+22 measures **372** against a 370 block -- the font's advance widths are not
+linear in the size, so one step down is not always enough. It spills one
+pixel each side into the 16 of separation before the buttons, so nothing is
+drawn over; a fit that measured after choosing the size, or stepped down
+until it actually fitted, would close it. Left alone: this task changed no
+game code.
+
+### 15.3 Where the build departed from the spec
+
+**The state (`puzzles/word_trail_state.gd`).**
+
+1. `String.reverse()` does not exist in GDScript 4.7, so the backwards-trace
+   guard in the generator's quality rules uses a manual `_reverse_str`
+   helper. Same intent, one helper.
+
+**The board (`puzzles/word_trail2d.gd`).**
+
+2. **The entrance pops from 0.86, not the 0.88 in section 9.**
+   `Motion.wide_pop_scale` has no `from` parameter and `ENTER_WIDE_FROM` is
+   the family's constant; using 0.88 would have meant either a literal in
+   this board or a change to `core/motion.gd`, and the vocabulary's rule is
+   that a board keeps no number the family already owns. Hidden Word's grid
+   pops from the same 0.86. Two hundredths of a scale, and the spec's figure
+   was never measured off anything.
+3. **The solve wave's 0.02 a tile goes through
+   `Motion.stagger(index, Motion.SOLVE_STAGGER * 0.5)`.** The family's
+   `SOLVE_STAGGER` is 0.04 and there is no named 0.02; halving the recipe's
+   own constant through `stagger`'s parameter is rule 6 of
+   `docs/art/flat-motion.md` and adds no constant. The reason is real: this
+   field's diagonal runs to twelve on a 7x7, where every other board's runs
+   to six or eight.
+4. **A slot letter drops `SLOT_H * 0.25`, not the family's `DROP` of 40**,
+   through `drop_in_lift`'s own `height` parameter: 40 is most of a 52-tall
+   slot box, so the letter would arrive from the line above.
+5. **The slot *groups* drop in `ENTER_STAGGER` apart, not the boxes** --
+   six groups at 0.03 is a wave the eye can follow where thirty-odd boxes
+   would not be. (The mock staggers per box.)
+6. **The beam grows only its last segment**: `reach = (len - 2) +
+   clamp(u)`. The mock pre-charges the whole trail to `clamp(u + 0.7)` of
+   its length, which on a seven-cell trail leaves the head two cells behind
+   the finger at the moment a cell is added. Growing the last segment is
+   exactly section 9's "the beam grows to the finger over `BEAM_TIME`" and
+   it needs no extra number.
+7. **The field mesh became three** -- the still band, the field, the slots --
+   so the entrance's pop and fade can transform the field without moving the
+   band, and each slot group's drop can be baked into its vertices. `_shown`
+   holds all three until the next `_draw` replaces them, so the freed-RID
+   rule (a canvas command holds a mesh by RID) still holds.
+8. **Ribbon corners are filleted into the centreline** before the stroke.
+   `Face.Builder.stroke` has no round join, so a ninety-degree bend pinches;
+   stroking each segment separately would darken where two round caps
+   overlap at alpha 0.5. Cutting the corner back by the half-width and
+   bridging with a quadratic gives the mock's round join in one stroke.
+9. **The hint's dashed outline is this board's own walker** (`_dashes`),
+   because `Face.Builder` has no dash support.
+10. **`rules()` is one string, not three paragraphs.**
+    `ui/hud/rules_sheet.gd` splits on `". "` into bullets and ignores
+    newlines. Not a word of the text changed.
+11. **The scenery band carries about eighteen geometry constants of its
+    own** (the turf's edges, two cloud anchors, the blades' band, three
+    bushes, five washes), and its colours are the family's
+    `LEAF`/`LEAF_LIGHT`/`LEAF_DEEP` washed toward the card's `PARCHMENT` at
+    Hidden Word's own wash levels, not the mock's `moss` and `cloud`. The
+    "exactly two constants" rule in section 9 is a *motion* rule; the two
+    are still `WAVE_STEP` and `BEAM_TIME`, and nothing was added to
+    `core/motion.gd`.
+12. **`_bush` is drawn a second time here**, four discs, rather than lifted
+    into `ui/flat/scenery.gd`. Hidden Word's band has the same four discs.
+    A third band should lift it, and probably the blade with it.
+13. Pixel measures section 6 did not give (the tile, wall and slot bottom
+    edges, the slot corner and letter size, the wall leaf's seat and lean,
+    the hint glow's insets and dash runs, the beam's width and the ghost's
+    alpha) were taken off the mock rather than invented, in the same
+    1080-wide design space as the rest.
+
+**The correction.** Task 2's report said `ui/fx2d.gd` "does not check
+`Motion.reduce` itself, so Task 3 should gate them". **That was wrong**, and
+it is corrected here so it is not repeated: `fx2d`'s `puff`, `sparkle` and
+`ring` each return early under `Motion.reduce` already. What the board does
+instead is make `_fx_at` a no-op under reduce motion, which spares it the
+frames it would otherwise spend waiting on effects that will never draw --
+the same net effect with no dead guard.
+
+**The card (`ui/menu/card_art.gd`).**
+
+14. The branch builds a plain `Control` for the field and binds its own
+    `draw` signal, so nothing was added to `card_art.gd`'s `_draw` match --
+    section 11's "one branch of `_build` and nothing of `_draw`", taken
+    literally. Its tile slabs are `draw_style_box` roundrects in the board's
+    own three colours rather than `MosaicTile.tile()`, which hardcodes
+    Nonogram's; what it borrows from `mosaic_tile.gd` is `letter()`, the
+    same glyph helper the board itself uses.
+
+### 15.4 Two bugs the build found, both in the input handling
+
+Both were in the board as Task 2 shipped it and both were fixed in Task 3.
+
+1. **A drag off a trail of one emptied it.** The retraction branch read
+   `at == _trail.size() - 2`, and on a trail of one that is `-1` -- which is
+   also what `find()` returns for a cell that is *not* on the trail. So
+   dragging from a single tile to a non-adjacent free cell resized the trail
+   to nothing and left the finger holding a beam that did not exist. It
+   shipped silently and only became visible when a later change turned it
+   into an out-of-bounds. Guarded with `at >= 0`.
+2. **A slot letter had no moment to sit still on while its word was
+   lifted.** `_slot_wave` returned the current time for a word that is not
+   found, so `drop_in_lift(0)` put every letter of an unwinding word at full
+   lift and `appear_level(0)` at zero alpha: on undo the letters vanished in
+   one frame instead of leaving tile by tile with the wave. Fixed to a past
+   moment. Caught on a rendered frame, not by a test.
+
+### 15.5 What is still open
+
+- **Balance's motto, two pixels over.** Section 15.2.
+- **The solve wave has never been in the strip.** `tests/_shot_anim.gd`
+  locks one word of six, so it cannot reach a solve; the solve, the hint,
+  the undo and the reset were all seen on a throwaway probe instead. A
+  `solve` mode in the harness, as Hidden Word has, would be the honest fix.
+- **The band's upper half is fairly empty** at the band a medium board
+  leaves it (section 6's 236, not re-measured here; Task 3's build reported
+  233). Two clouds is what Hidden Word puts in a 120-tall band. It
+  reads as air rather than as a mistake, and the mock has the same shape.
+- **No test covers the board**, only the state class
+  (`tests/test_word_trail.gd`), which is where every other flat board
+  stands.

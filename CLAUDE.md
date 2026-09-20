@@ -123,41 +123,48 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   are almost entirely reuse. It is never an image and never a `SubViewport`.
   A new card costs one branch of `_build` and, if it needs furniture, one of
   `_draw`.
-- **Twelve cards, eleven live and one that does not open.** Pipes has no
-  flat board: it keeps its picture and name at 55% ink, wears a pale
-  `SOON` pill and emits `blocked`, and the menu answers with a line saying
-  its island version is under More. It holds the last slot of the last row,
-  where the dimmed cards have always stood -- the rule that they stand
-  together on purpose, rather than scattered through the grid where they
-  read as a bug, survives a set of one. Two `soon` cards left the grid the
-  same week and for the same reason, each being redesigned outright and
-  each keeping its island board under More: Snake Apple's on 2026-09-19 to
-  make room for Queens, `seed_as` still `snake`, and Horse Pen's the same
-  day for Hidden Word, the eleventh live card, `seed_as` still `horse`. The
-  pill hangs off the card, **not** off `_inner`: that is a PanelContainer
-  and a second child there is stretched over everything.
+- **Twelve cards, all twelve live, and no `soon` card left.** Three left the
+  grid in a week, each being redesigned outright and each keeping its island
+  board under More: Snake Apple's on 2026-09-19 to make room for Queens
+  (`seed_as` still `snake`), Horse Pen's the same day for Hidden Word
+  (`seed_as` still `horse`), and Pipes' on 2026-09-20 for Word Trail, the
+  twelfth live card (`seed_as` still `pipes`). **The dimmed-card machinery
+  is now unexercised**: the registry's `soon` flag, the 55% ink, the pale
+  `SOON` pill and `ui/menu.gd`'s `blocked` signal (which answered with a
+  line saying the island version is under More) are all still in the code
+  and nothing on the screen reaches them. They stay there for the next board
+  that is named before it is drawn -- and with them the two rules they were
+  built with, learned the hard way and not to be re-derived: a dimmed card
+  holds the last slot of the last row, because dimmed cards scattered
+  through the grid read as a bug rather than as a plan; and the pill hangs
+  off the card, **not** off `_inner`, which is a PanelContainer where a
+  second child is stretched over everything.
 - **The hearts, the calendar badge and the day chevron are decoration**, by
   the user's decision on 2026-09-18. `Day N` and the day's name are real
   (`core/progress.gd`); nothing else on that row counts anything. There is
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (eleven flat
-  plus the one `soon`); `Registry.LEGACY` is the old game. A grid entry
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (twelve flat
+  boards, no `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
 - **Measured on this Mac** (`tests/_shot_menu.gd` at `--resolution 810x1440`,
   which is the true 1080x1920 of design space -- see "What the harnesses
-  actually measure" above): **311** draw calls against the campsite's 338 and
-  the 855 budget, twice in a row, and a mean idle of 8.33 ms -- which is
-  exactly the 120 Hz vsync cap, and this harness never disables vsync, so it
-  is a ceiling and not a measurement. What can be said honestly is that the
-  campsite sat at ~13 ms, above the cap, and this screen is inside it. The
-  count reads 311 at the old `1080x1920` flag too (2026-09-19), so what the
-  wider canvas moved was the layout and not the calls. It was 291 before
+  actually measure" above): **322** draw calls against the campsite's 338
+  and the 855 budget, twice in a row on 2026-09-20, and a mean idle of
+  8.32-8.33 ms -- which is exactly the 120 Hz vsync cap, and this harness
+  never disables vsync, so it is a ceiling and not a measurement. What can
+  be said honestly is that the campsite sat at ~13 ms, above the cap, and
+  this screen is inside it. **It read 311 on 2026-09-19**, and the +11 is
+  one card swapped, not one added: Pipes' dimmed `soon` card left the
+  twelfth slot and Word Trail's live card -- the sprout and a 4x3 field of
+  letter tiles with a trail bending through it -- took it. The count read
+  311 at the old `1080x1920` flag too (2026-09-19), so what the wider canvas
+  moved was the layout and not the calls. Before that it was 291 before
   Queens and 319 with Queens beside Horse Pen's `soon` card; swapping that
   card for Hidden Word's live one took it to 311, and Hidden Word's own
-  picture is 7 of the 311 -- checked on the same build with its `_draw`
+  picture is 7 of that 311 -- checked on the same build with its `_draw`
   branch stubbed out, at 304, twice. Of the older rise, the Queens card
   alone cost 12 and the rest predates it: the header's turning, glinting sun
   and later changes since 291 was first measured.
@@ -347,14 +354,15 @@ every layout change.
 
 ## The flat screens
 
-Eleven cards open a flat 2D board under flat chrome: **Binairo**
+Twelve cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
 (`puzzles/tents2d.gd`), **Light Up** (`puzzles/lightup2d.gd`), **One Line**
 (`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`) and, since
 2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
-(`puzzles/hidden_word2d.gd`).
+(`puzzles/hidden_word2d.gd`), and since 2026-09-20 **Word Trail**
+(`puzzles/word_trail2d.gd`).
 
 Each was built on trial beside its island, as a second card seeded from the
 same day, so the two could be judged on the phone. **The trial is over**:
@@ -366,11 +374,12 @@ Specs:
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
 `...-tents-`, `...-lightup-`, `...-oneline-` and
 `...-nonogram-flat-design.md` siblings, and
-`docs/superpowers/specs/2026-09-19-queens-flat-design.md` and
-`...-hidden-word-flat-design.md`; mocks:
+`docs/superpowers/specs/2026-09-19-queens-flat-design.md`,
+`...-hidden-word-flat-design.md` and
+`docs/superpowers/specs/2026-09-20-word-trail-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens` and
-`#hiddenword`.
+`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens`,
+`#hiddenword` and `#wordtrail`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -486,6 +495,58 @@ Specs:
   (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
   frames match the default driver to 21/255 on edge antialiasing alone, so
   nothing has reintroduced an `instance uniform`.
+- **Word Trail is the twelfth board, and the first whose signature is a
+  drawn path** (2026-09-20, `puzzles/word_trail2d.gd`, spec
+  `2026-09-20-word-trail-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#wordtrail`). Drag orthogonally through a
+  field of letters; every open tile belongs to exactly one hidden word and
+  the lengths under the field are the only clue. Only a **right** word
+  locks, so nothing wrong can sit on the board and there is no Check --
+  which, with no tray, leaves the tip card alone in its bottom slot at 140
+  and Reset up in the top bar. **It is called Word Trail and nothing else**,
+  in code, in a comment or on screen: LinkedIn ships this game under its own
+  name, which the spec records once and nothing else may repeat, and this is
+  the third time the repo has renamed a game it did not invent (Code Break,
+  Hidden Word). The wave is its
+  motion, and it needed nothing new from `core/motion.gd`: the ribbon takes
+  the word's colour from its first tile to its last at `WAVE_STEP` a tile,
+  `_front(i, t)` is the one truth four things read (which tile wears the
+  colour, how far the ribbon is drawn, which slot box is lit, which letter
+  has arrived), and Undo and Reset run the same wave backwards. Its only two
+  motion constants are `WAVE_STEP` and `BEAM_TIME`. Its band is Hidden
+  Word's, appended to the board's own builder rather than mounted as a
+  `Scenery` node, so it is one draw call. Measured on this Mac with
+  `tests/_shot_anim.gd -- wordtrail` at `--resolution 810x1440`, 2026-09-20:
+  **65, 62, 65** draw calls over three runs with one word locked (the 62 is
+  the outlier of the three; the likely cause, inferred from the timings and
+  not measured, is the lock's ring and sparkles dying just as the idle
+  window opens), **60/61** bare, **61/61** under reduce motion, and idles of
+  2.51/2.49/2.51, 2.40/2.39 and 2.40/2.37 ms. Queens (71, 71) and Hidden
+  Word (110, 110) were run as controls in the same session and came back
+  exactly as recorded above, which is what makes those figures worth
+  quoting. On the phone's driver (`--rendering-driver opengl3_angle`): the
+  same **65** twice, and the settled frame matches the default driver to
+  5/255 on four pixels -- edge antialiasing, no `instance uniform`. The
+  reduce-motion pair 1.5 s apart is pixel-identical again.
+- **A long title or motto is lettered smaller, never larger**
+  (`ui/flat/flat_top_bar.gd`, 2026-09-20). The title block is whatever the
+  buttons leave -- 496 with four, 370 with five -- and `Word Trail` measures
+  391 at GameWordmark 84, so it used to run out under Undo and Reset, as
+  Balance's and Untangle's mottos had since 2026-09-18. `_fit_title`
+  measures the rendered face (`Font.get_string_size`, which carries the
+  variation's letter spacing) against the block on every resize and takes a
+  `font_size` override of `floor(base * wide / want)` when it does not fit,
+  removing the override when it does. Measured across all twelve screens
+  with a headless probe on 2026-09-20: exactly four labels are lettered
+  smaller -- Balance's motto (24 to 22), Untangle's (24 to 22) and Word
+  Trail's title (84 to 79) and motto (24 to 21) -- and every other label is
+  untouched to the pixel, Hidden Word's 481-wide title included: its bar
+  builds five buttons but `refresh()` hides Undo, so the block it measures
+  against is 496 and it stays at 84. **One known defect**: Balance's motto still overflows
+  by two pixels, because the face at 22 measures 372 against a 370 block --
+  advance widths are not linear in the size, so one step down is not always
+  enough. It spills into the separation before the buttons and draws over
+  nothing.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -538,10 +599,15 @@ Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  eleven screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460 and
-  340 -- Untangle drops the tray *and* the actions row, so its slot is the
-  tip card alone, and Hidden Word's is the keyboard alone
-  (`ui/flat/key_board.gd`'s `HEIGHT`).
+  twelve screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
+  and 140 -- Untangle drops the tray *and* the actions row, so its slot is
+  the tip card alone, Hidden Word's is the keyboard alone
+  (`ui/flat/key_board.gd`'s `HEIGHT`), and **Word Trail** is Untangle's
+  shape again: it picks nothing up and there is no Check, because only a
+  right word locks, so its slot is the tip card alone at 140 and Reset rides
+  up into the top bar. Three boards now carry five buttons up there
+  (Balance, Untangle, Word Trail); Hidden Word builds five and shows four,
+  because its `capabilities()` has no Undo.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -573,7 +639,7 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in eleven screens two have earned one: One Line's
+  drawing a new character -- in twelve screens two have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
@@ -585,6 +651,10 @@ Specs:
   way and added nothing to `ui/faces/`: its thirty tiles are Nonogram's
   mosaic tile, taught to carry a letter and nothing else, and the only face
   it shows is the shared sprout, which comes on stage once, for the reveal.
+  Word Trail is the third to add nothing: its letter tiles are that same
+  mosaic tile, its scenery band borrows `ui/flat/scenery.gd`'s clouds and
+  discs into the board's own builder, and the only face on the screen is the
+  sprout on the tip card.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
@@ -592,7 +662,9 @@ Specs:
   is exactly what `RenderingServer.force_draw()` does in a harness.
   `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd`, `untangle2d.gd`,
   `shikaku2d.gd` and `tents2d.gd` keep the mesh their last `_draw` handed
-  over (`_shown`) until the next one replaces it.
+  over (`_shown`) until the next one replaces it; `word_trail2d.gd` keeps
+  three (the still band, the field and the slots), so its `_shown` is an
+  Array.
   A harness shooting one of these boards has to let a frame pass between the
   state change and `force_draw()`: `queue_redraw` is flushed on the next idle
   frame, so a probe that pokes the board and shoots in the same frame
