@@ -1,18 +1,33 @@
 extends "res://ui/hud/panel.gd"
 
 ## The first screen's day row: a tree on a pale plate, "Day N" over the day's
-## name, three hearts and a chevron. It is the flat day card
-## (ui/flat/flat_day_card.gd) at the menu's size, with the two decorations
-## the mock puts on it.
+## name, three hearts and a pager. It is the flat day card
+## (ui/flat/flat_day_card.gd) at the menu's size, with the decorations the
+## mock puts on it plus the pager grown into its right-hand chevron since
+## 2026-09-20.
 ##
-## **The hearts and the chevron are decoration**, by decision with the user
-## on 2026-09-18, and this comment is the place that says so plainly: they
-## are drawn exactly as the mock draws them -- two of three filled -- and
-## they count nothing. There is no three-a-day goal, no streak health and no
-## lives. The day whose number and name it shows is real
-## (core/progress.gd); everything else on this row is a picture of a feature
-## that has not been designed. The chevron squashes and does nothing.
-## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 4.
+## **The hearts are decoration**, by decision with the user on 2026-09-18,
+## and this comment is the place that says so plainly: they are drawn
+## exactly as the mock draws them -- two of three filled -- and they count
+## nothing. There is no three-a-day goal, no streak health and no lives.
+## The day whose number and name it shows is real (core/progress.gd);
+## the hearts are a picture of a feature that has not been designed.
+##
+## **The pager (`set_pager`, and the signals `prev`/`next`) lives here and
+## not in a row of its own** because this row is 180 tall and already ended
+## in a chevron that squashed and did nothing (docs/superpowers/specs/
+## 2026-09-20-sudoku-flat-design.md, section 9): a thirteenth card needs a
+## second page, and every other place that page could come from -- a
+## shorter header, a shorter card -- costs a pixel a screen full of cards
+## already spends. Growing the dead chevron into a working `next`, and
+## adding a `prev` and two dots beside it, costs this row no height at all.
+## At one page the new half hides (`set_pager(0, 1)`, called from `_build`);
+## the chevron itself does not, since it already rendered before the pager
+## existed and hiding it would move the first screen's measured draw-call
+## count. The row itself never turns a page -- ui/menu.gd owns that, the way
+## it owns which day it is -- it only says which chevron was pressed.
+## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 4,
+## and docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9.
 
 const Icons = preload("res://ui/icons.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")

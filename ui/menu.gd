@@ -204,17 +204,48 @@ func _build_page() -> void:
 		_grid.add_child(card)
 	day_row.set_pager(_page, _pages())
 
-## A page change is not an entrance: the header, the day row and the bar
-## stay where they are and only the cards are replaced, with the same
-## per-page stagger the first page gets.
+## A page change is not an entrance (spec 2026-09-20-sudoku-flat-design.md,
+## section 9): the header, the day row and the bar stay where they are, the
+## outgoing cards fade rather than cut, and the incoming ones play the same
+## per-page stagger the first page gets. The outgoing cards are handed to
+## `_fade_out_page` and `cards` is emptied before `_build_page` runs, so
+## its own free-the-old-page loop finds nothing to do and only builds.
 func _turn_page(by: int) -> void:
 	var want := clampi(_page + by, 0, _pages() - 1)
 	if want == _page:
 		return
 	_page = want
+	_fade_out_page(cards)
+	cards = []
 	_build_page()
 	for i in cards.size():
 		cards[i].enter(Motion.stagger(i, CARD_STEP, CARD_CAP))
+
+## Pulls every card the page turn is leaving behind out of the grid, so the
+## grid is free to lay out the incoming page without the outgoing cards
+## still claiming a cell, and onto the list root at the exact spot it was
+## already standing -- a plain Control with no layout of its own, so it can
+## hold a card at an arbitrary position while the grid moves on without it.
+## Each card then fades on its own tween (Motion.appear, reusing the
+## screen's own ENTER_FADE rather than a new constant) and frees itself
+## when that tween lands, mirroring how a leaving face is freed elsewhere
+## (binairo2d.gd's `_swap_face`). A second page turn before this one's
+## fades land only ever calls this again with whatever `cards` holds by
+## then -- a fresh page `_build_page` only just built, never the nodes
+## already fading -- so no card is ever asked to fade or free twice, and
+## every card that starts fading is guaranteed its own free.
+func _fade_out_page(leaving: Array) -> void:
+	for card in leaving:
+		var rect: Rect2 = card.get_global_rect()
+		_grid.remove_child(card)
+		_list_root.add_child(card)
+		card.global_position = rect.position
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var out := Motion.appear(card, card.modulate.a, 0.0, ENTER_FADE)
+		if out == null:
+			card.queue_free()
+		else:
+			out.finished.connect(card.queue_free)
 
 ## Shows the grid with the day current and plays the entrance; at start and
 ## on every return from a puzzle. Opening the app is what counts a day.
