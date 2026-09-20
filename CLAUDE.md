@@ -760,8 +760,11 @@ pointing `seed_as` at them. Specs:
   straight ahead of the dart out to the edge, is empty. Clear the sky and the
   board is done. **It is called Paper Planes and nothing else**, in code, in
   a comment or on screen: the app the reference screenshot came from ships
-  this genre under its own name, which the spec records once, in order to
-  forbid it, and which nothing else may repeat. That is the fifth time this
+  this genre under its own name, which appears in the spec (four times) and
+  the concept page (twice) in order to forbid it, and is nowhere in code, in
+  a comment, in a commit message or on screen -- the rule the earlier
+  "records it once" phrasing overstated is fully honoured; only the count of
+  where it is written down was wrong. That is the fifth time this
   repo has renamed a game it did not invent (Code Break, Hidden Word, Word
   Trail, and Mushroom Patch for Minesweeper's gentler cousin), and the
   re-theme came free with the name: an arrowhead folded once is a paper dart,
@@ -799,8 +802,12 @@ pointing `seed_as` at them. Specs:
   carries three constants of its own (`LAUNCH_SPEED`, `WAKE_STEP`,
   `BLOCK_FLASH`) plus `WIN_WAIT`, which at **2.7 s is the longest win wait of
   any flat board** and is arithmetic rather than taste: the longest flight
-  this game can generate is 1.41 s and the solve wave after it is 1.25.
-  Shikaku's 2.2 was the longest constant before it, and Hidden Word's is the
+  this game can generate is **1.364 s**, not the 1.41 s first recorded --
+  that bullet described a ten-cell plane with its head on row 0 of the hard
+  band, which cannot exist (`add_plane` derives a direction from the cell
+  before the head, and row 0 pointing off that edge would need a cell at row
+  -1); the true ceiling is a head on row 1, and the solve wave after it is
+  1.25. Shikaku's 2.2 was the longest constant before it, and Hidden Word's is the
   only one that is computed rather than set -- its flip plus 1.6, which comes
   to about 2.66, so 2.7 wins by a hair rather than by a length.
   **The cells are 91, 71 and 58**, and **58 is the smallest cell in the

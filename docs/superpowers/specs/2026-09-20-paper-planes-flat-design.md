@@ -131,6 +131,16 @@ nothing about blocking is ever stored -- the crosses on Queens' board are
 derived the same way, and for the same reason: an undo that puts a plane back
 must not have to remember what it used to block.
 
+**As shipped, four of these names are not the ones built** (amended
+2026-09-20): `generate(rng, difficulty)` shipped as `build(rng, difficulty)`,
+`free(i)` as `is_free(i)`, `occupant` and `history` as the private
+`_occupant` and `_history` (read by `lane()`, `blocker()`, `is_free()` and
+`hint_plane()`, never by the board directly), and `blocker(i)` returns `-1`
+on no blocker rather than `null` -- the same sentinel `plane_at()` and
+`Dictionary.get()`'s default already use everywhere else in this file. None
+of this changed the shape the design asked for, only its spelling; see
+section 17's amendment index.
+
 ## 5. Generation: carve the board backwards out of an empty sky
 
 The generator never solves anything. It builds the board in **reverse play
@@ -175,8 +185,10 @@ lack of a fallback path.
 
 Every generated board is then run through the greedy solver before it is
 handed over. It has never failed -- it cannot, by construction -- and the
-check stays because the cost is a microsecond and the claim is worth
-enforcing.
+check stays because the claim is worth enforcing and the cost is cheap:
+**0.331 ms a hard board, about 300x the microsecond an earlier draft of this
+line guessed at rather than measured** (corrected 2026-09-20, the fix
+round).
 
 ## 6. The bands
 
@@ -331,7 +343,7 @@ that every flat board carries, and nothing at all to the shared vocabulary:
 | This board's own | Value | Why it cannot be shared |
 |---|---|---|
 | `LAUNCH_SPEED` | 22 cells a second, minimum 0.22 s | Nothing else in the game moves a piece along its own body. |
-| `WAKE_STEP` | 0.04 s per king-move step | Queens' `WAVE_STEP` is 0.05 and tuned to a queen's sight; this wave runs out of a departing plane. |
+| `WAKE_STEP` | 0.04 s per king-move step | `Motion.WAVE_STEP` (Queens' own) is 0.045, tuned to a queen's sight -- 0.05 is Word Trail's own board-local constant, not the shared one -- and this wave runs out of a departing plane rather than a piece's sight, so it earns its own number either way. |
 | `BLOCK_FLASH` | 0.35 s | The refusal's band. |
 | `WIN_WAIT` | 2.7 s | How long the win screen waits. Arithmetic, not taste; see below. |
 
@@ -440,17 +452,23 @@ Three consequences worth writing down rather than rediscovering:
 **`WIN_WAIT` is 2.7 s, and it is arithmetic.** The two things that still
 have to happen when the last plane is tapped, added up at their worst:
 
-- **The last flight: 1.41 s.** A flight is `_s_end / LAUNCH_SPEED` with a
-  `Motion.POP_IN` floor, and the hard band's own numbers bound `_s_end` at
-  31 cells -- a ten-cell plane (`BANDS[2].max_len`) whose head sits on one
-  edge of a 22-row field pointing at the other has 9 body cells behind the
-  head, a lane of 21 and one more cell for the tail to leave on. 31 / 22 =
-  1.409 s is the longest flight this game can generate.
+- **The last flight: 1.364 s** (corrected 2026-09-20, the fix round). A
+  flight is `_s_end / LAUNCH_SPEED` with a `Motion.POP_IN` floor. **The
+  plane this bullet used to describe cannot exist**: a ten-cell plane's head
+  on row 0 of the 22-row hard band, pointing off that edge, would need a
+  cell at row -1 for `add_plane` to derive its direction from -- row 0 is
+  never a row a plane can point off of. The true ceiling is a head on
+  **row 1**: 9 body cells behind the head, a lane of 20 to the far edge, and
+  one more cell for the tail to leave on, for `_s_end` 30. 30 / 22 = 1.364 s
+  is the longest flight this game can generate; the worst actually measured
+  over 120 generated boards was `_s_end` 29 (1.318 s).
 - **The solve wave after it: 1.25 s.** `SOLVE_DELAY` (0.25), plus the far
   corner's stagger, which `Motion.stagger` caps at 0.6 however wide the
   field is and a 16 by 22 field reaches, plus `SOLVE_TIME` (0.4).
 
-1.409 + 1.25 = 2.66, rounded up to 2.7. It is the longest win wait of any
+1.364 + 1.25 = 2.614, rounded up to 2.7. `WIN_WAIT` is unchanged by this
+correction -- it now carries *more* headroom against the arithmetic than the
+impossible flight above claimed, not less. It is the longest win wait of any
 flat board (Shikaku's 2.2 was the previous), and the cost is named rather
 than hidden: when the last plane's flight is a short one, which is the
 common case, the board stands empty and still for up to a second after the
@@ -475,8 +493,14 @@ The fifteenth entry in `Registry.PUZZLES`, which puts it on **page two**
 beside Mushroom Patch and Sudoku -- the third card there, and the first one
 to land on that page without a word being changed anywhere else: the pager
 arrived on 2026-09-20 for the thirteenth card and `PER_PAGE` is twelve, so
-the fifteenth costs the first screen nothing at all. The short last row still
-needs its invisible filler `Control`s, which `ui/menu.gd` already pads out.
+the fifteenth costs the first screen nothing at all. **Page two's last row
+needs no filler** (corrected 2026-09-20, the fix round, the one place the
+earlier correction to `ui/menu.gd`, `ui/registry.gd` and `CLAUDE.md` had not
+yet reached): fifteen over `PER_PAGE` twelve leaves three, and three cards
+over three columns is a full row, so `ui/menu.gd`'s invisible
+`SIZE_EXPAND_FILL` fillers -- built for the fourteenth card's short row --
+are not built at all for this one. The machinery stays in place for a
+sixteenth card.
 
 The picture is **pure `_draw`**, like Nonogram's and Sudoku's: three bent ink
 trails with darts at their heads, across the 320 by 118 box, with the faint
@@ -646,11 +670,16 @@ Each amendment already made in place is indexed rather than repeated.
 | Four numbers that did not become a fourth constant | section 10 | The 0.22 floor is `Motion.POP_IN`, the ease is `pop_out_scale` read backwards, the dot's return is `appear_level`, the shiver and nudge are the family's pixels. |
 | A plane turns around in the air | section 10 | Both directions snapped the plane home first; photographed before and after. Reset drops its stagger for a plane already flying. |
 | The solve wave, as built | section 10 | A hop on every dot, rolling out from the cell the last head stood on, booked for when that last flight lands. |
-| `WIN_WAIT` 2.7 s, and its arithmetic | section 10 | 1.41 s worst flight + 1.25 s wave. The longest win wait of any flat board, and usually longer than it needs to be. |
+| `WIN_WAIT` 2.7 s, and its arithmetic | section 10 | 1.364 s worst flight + 1.25 s wave. The longest win wait of any flat board, and usually longer than it needs to be. |
 | The count came out of the tip lines | section 13 | Fifty-two planes cannot be counted out loud; the emptying sky says it better. |
 | GDScript's hard band runs ~3.7x Python's, not ~1.6x | sections 5 and 6 | Named rather than smoothed over; both are two orders under any budget. |
 | The card's picture: 48 draw calls -> 1 | section 15 | The 5x9 dot lattice was 27 `draw_circle` calls; baked into one mesh, the same rule the board's own field obeys. |
 | The Word Trail control was quoted backwards | section 15 | 65 is *at* the top of its recorded 60-65 and 2.30 ms is *below* its 2.37-2.51; corrected, and a second control added. |
+| The worst flight was an impossible plane | section 10 | Head on row 0 needs a cell at row -1. The true ceiling is head on row 1, `_s_end` 30, 1.364 s -- `WIN_WAIT` keeps more headroom than claimed, not less. |
+| The solver check costs 0.331 ms, not a microsecond | section 5 | About 300x the guessed figure; still nowhere near a budget, and now measured rather than assumed. |
+| Queens' `WAVE_STEP` is 0.045, not 0.05 | section 10 | 0.05 is Word Trail's own board-local constant; `planes2d.gd`'s own comment already had this right. |
+| Section 4's API names were not the ones built | section 4 | `generate()`/`free()`/`occupant`/`history`/`blocker() -> null` are `build()`/`is_free()`/`_occupant`/`_history`/`blocker() -> -1` as shipped. |
+| Page two's last row needs no filler | section 12 | Three cards over three columns is a full row; the fourteenth card's filler machinery is untouched but unused here. |
 
 **Not recorded anywhere else, and recorded here:**
 
