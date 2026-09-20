@@ -278,6 +278,12 @@ bands. That leaves 214 of pool height over, and because the lattice is
 square in a tall slot, `card_centred()` is `true` and the slack is
 **halved: 107 above and 107 below**.
 
+One detail the build settled and this section had not: `card_height()` hands
+back **every pixel it is given**, so the host has nothing left to halve, and
+the centring `card_centred()` promises is done by the board itself inside the
+pool (`_origin()`). `FIELD_PAD` only ever caps the cell -- it does not inset
+the lattice's seat -- which is why the leftover is 214 and not 190.
+
 An islet is a turf disc on a sand rim with its number in ink. A plank is
 **0.115 of a cell thick with 0.095 between two of them** (`PLANK`,
 `PLANK_GAP`), so a full run of three spans 0.59 of a cell -- wide enough to
@@ -290,9 +296,10 @@ them up is how this board goes wrong, so each table below says which it is.
 
 ### The pool, in design-space pixels
 
-These are the mock's own numbers and they do **not** scale with the band: the
-pool is the same size on a 7x7 as on an 11x11, only the lattice inside it
-changes.
+These are the mock's own numbers and they do **not** scale with the band. The
+pool is the card less `INSET` on every side and the lattice is 920 at every
+band, so both are the same size on a 7x7 as on an 11x11; the only thing a
+band changes is the cell.
 
 | What | Constant | Value |
 |---|---|---|
