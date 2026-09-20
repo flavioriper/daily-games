@@ -89,9 +89,10 @@ draw-call count, a budget figure or a design-space constant is fine.
 
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
 wordmark in ink with its golden sun-dot and the sun and moon beside it, a day
-row, twelve
-puzzle cards three across and four down, a pager under the grid once a
-second page is needed, and a bottom bar. There is no
+row, a page of puzzle cards three across and four down, a pager under the
+grid once a second page is needed, and a bottom bar. Thirteen cards are in
+the registry, so there are two pages: twelve on the first and Mushroom Patch
+alone on the second. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
 not even carry a Stage node any more. It replaced the campsite, which is
 still reachable; see "legacy/" below.
@@ -153,41 +154,58 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   thirteen are almost entirely reuse. It is never an image and never a
   `SubViewport`. A new card costs one branch of `_build` and, if it needs
   furniture, one of `_draw`.
-- **Thirteen cards, twelve live and one that does not open.** Pipes has no
-  flat board: it keeps its picture and name at 55% ink, wears a pale
-  `SOON` pill and emits `blocked`, and the menu answers with a line saying
-  its island version is under More. It holds the last slot of the last row,
-  where the dimmed cards have always stood -- the rule that they stand
-  together on purpose, rather than scattered through the grid where they
-  read as a bug, survives a set of one. Two `soon` cards left the grid the
-  same week and for the same reason, each being redesigned outright and
-  each keeping its island board under More: Snake Apple's on 2026-09-19 to
-  make room for Queens, `seed_as` still `snake`, and Horse Pen's the same
-  day for Hidden Word, the eleventh live card, `seed_as` still `horse`. The
-  pill hangs off the card, **not** off `_inner`: that is a PanelContainer
-  and a second child there is stretched over everything.
+- **Thirteen cards, all thirteen live, and no `soon` card left.** Three left
+  the grid in a week, each being redesigned outright and each keeping its
+  island board under More: Snake Apple's on 2026-09-19 to make room for
+  Queens (`seed_as` still `snake`), Horse Pen's the same day for Hidden Word
+  (`seed_as` still `horse`), and Pipes' on 2026-09-20 for Word Trail, the
+  twelfth live card (`seed_as` still `pipes`). Mushroom Patch is the
+  thirteenth, and it is the one that was *added* rather than swapped in,
+  which is what took the grid over a page -- see the pager above. **The
+  dimmed-card machinery is now unexercised**: the registry's `soon` flag,
+  the 55% ink, the pale `SOON` pill and `ui/menu.gd`'s `blocked` signal
+  (which answered with a line saying the island version is under More) are
+  all still in the code and nothing on the screen reaches them. They stay
+  there for the next board that is named before it is drawn -- and with them
+  the two rules they were built with, learned the hard way and not to be
+  re-derived: a dimmed card holds the last slot of the last row, because
+  dimmed cards scattered through the grid read as a bug rather than as a
+  plan; and the pill hangs off the card, **not** off `_inner`, which is a
+  PanelContainer where a second child is stretched over everything.
 - **The hearts, the calendar badge and the day chevron are decoration**, by
   the user's decision on 2026-09-18. `Day N` and the day's name are real
   (`core/progress.gd`); nothing else on that row counts anything. There is
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (twelve flat
-  plus the one `soon`); `Registry.LEGACY` is the old game. A grid entry
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (thirteen
+  flat boards, no `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
 - **Measured on this Mac** (`tests/_shot_menu.gd` at `--resolution 810x1440`,
   which is the true 1080x1920 of design space -- see "What the harnesses
-  actually measure" above): **311** draw calls against the campsite's 338 and
-  the 855 budget, twice in a row, and a mean idle of 8.33 ms -- which is
-  exactly the 120 Hz vsync cap, and this harness never disables vsync, so it
-  is a ceiling and not a measurement. What can be said honestly is that the
-  campsite sat at ~13 ms, above the cap, and this screen is inside it. The
-  count reads 311 at the old `1080x1920` flag too (2026-09-19), so what the
-  wider canvas moved was the layout and not the calls. It was 291 before
+  actually measure" above): **335** draw calls on **page one** against the
+  campsite's 338 and the 855 budget, twice in a row on 2026-09-20, and a
+  mean idle of 8.35-8.42 ms -- which is the 120 Hz vsync cap, and this
+  harness never disables vsync, so it is a ceiling and not a measurement.
+  What can be said honestly is that the campsite sat at ~13 ms, above the
+  cap, and this screen is inside it. **Page two reads about 100**: one card,
+  two invisible fillers and the pager pill, with the header, day row and bar
+  already standing. The harness shoots page one; the page-two figure came
+  from a throwaway probe that turned the page in the same session.
+  **It read 322 on the same twelve cards before the pager landed**, so the
+  strip itself -- its paper pill, the prev and next buttons and the two dots
+  -- is the +13, and Mushroom Patch's own card costs page one nothing
+  because it stands on page two. **322 in turn read 311 on 2026-09-19**, and
+  that +11 was
+  one card swapped, not one added: Pipes' dimmed `soon` card left the
+  twelfth slot and Word Trail's live card -- the sprout and a 4x3 field of
+  letter tiles with a trail bending through it -- took it. The count read
+  311 at the old `1080x1920` flag too (2026-09-19), so what the wider canvas
+  moved was the layout and not the calls. Before that it was 291 before
   Queens and 319 with Queens beside Horse Pen's `soon` card; swapping that
   card for Hidden Word's live one took it to 311, and Hidden Word's own
-  picture is 7 of the 311 -- checked on the same build with its `_draw`
+  picture is 7 of that 311 -- checked on the same build with its `_draw`
   branch stubbed out, at 304, twice. Of the older rise, the Queens card
   alone cost 12 and the rest predates it: the header's turning, glinting sun
   and later changes since 291 was first measured.
@@ -379,34 +397,36 @@ every layout change.
 
 ## The flat screens
 
-Twelve cards open a flat 2D board under flat chrome: **Binairo**
+Thirteen cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
 (`puzzles/tents2d.gd`), **Light Up** (`puzzles/lightup2d.gd`), **One Line**
 (`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`) and, since
 2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
-(`puzzles/hidden_word2d.gd`), and, since 2026-09-20, **Mushroom Patch**
-(`puzzles/mushroom2d.gd`).
+(`puzzles/hidden_word2d.gd`), and, since 2026-09-20, **Word Trail**
+(`puzzles/word_trail2d.gd`) and **Mushroom Patch** (`puzzles/mushroom2d.gd`).
 
-Each of the first eleven was built on trial beside its island, as a second
+Each of the first nine was built on trial beside its island, as a second
 card seeded from the same day, so the two could be judged on the phone.
 **The trial is over**: on 2026-09-18 the game went 2D, the first screen was
-redrawn flat and every island moved to `legacy/`. The islands keep `seed_as`
-pointing at their flat twin, so a board opened from More still hands out the
-same day's puzzle. Mushroom Patch (2026-09-20) breaks that pattern outright:
-it has no island precedent and no `seed_as` behind it in More, the first
-board built flat from the start. Specs:
+redrawn flat and every island moved to `legacy/`. Those nine islands keep
+`seed_as` pointing at their flat twin, so a board opened from More still
+hands out the same day's puzzle. The four since -- Queens and Hidden Word
+(2026-09-19), Word Trail and Mushroom Patch (2026-09-20) -- were drawn flat
+from the start, with no island of their own behind them in More and nothing
+pointing `seed_as` at them. Specs:
 `docs/superpowers/specs/2026-09-18-binairo-flat-design.md` and its
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
 `...-tents-`, `...-lightup-`, `...-oneline-` and
 `...-nonogram-flat-design.md` siblings, and
-`docs/superpowers/specs/2026-09-19-queens-flat-design.md` and
-`...-hidden-word-flat-design.md`, and
-`docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md`; mocks:
+`docs/superpowers/specs/2026-09-19-queens-flat-design.md`,
+`...-hidden-word-flat-design.md`,
+`docs/superpowers/specs/2026-09-20-word-trail-flat-design.md` and
+`...-mushroom-patch-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
 `#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens`,
-`#hiddenword` and `#mushroom`.
+`#hiddenword`, `#wordtrail` and `#mushroom`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -522,19 +542,83 @@ board built flat from the start. Specs:
   (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
   frames match the default driver to 21/255 on edge antialiasing alone, so
   nothing has reintroduced an `instance uniform`.
-- **Mushroom Patch is the first title that does not fit its block**
-  (2026-09-20, `puzzles/mushroom2d.gd`, spec
-  `2026-09-20-mushroom-patch-flat-design.md`). `ui/flat/flat_top_bar.gd` lays
-  a board's title in an `HBoxContainer` block between the back button and
-  the three icons -- `1000 - 110 - 3 x 110 - 4 x 16 = 496` wide (`BLOCK`) --
-  and every title before this one measured under that (Hidden Word's 482 the
-  closest, by fourteen pixels). Mushroom Patch measures 635 in Fredoka 700
-  at the `GameWordmark` size of 84, so the bar gained a fit: a title wider
-  than `BLOCK` has its font size overridden to `84 * BLOCK / width`, floored
-  at `TITLE_MIN` 56. Mushroom Patch lands at 65; the other eleven shipping
-  titles all measure under 496 and take no override at all. Its own
-  signature is the count wash, a running feedback no other flat board
-  gives; `docs/art/flat-motion.md` is where that is recorded.
+- **Word Trail is the twelfth board, and the first whose signature is a
+  drawn path** (2026-09-20, `puzzles/word_trail2d.gd`, spec
+  `2026-09-20-word-trail-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#wordtrail`). Drag orthogonally through a
+  field of letters; every open tile belongs to exactly one hidden word and
+  the lengths under the field are the only clue. Only a **right** word
+  locks, so nothing wrong can sit on the board and there is no Check --
+  which, with no tray, leaves the tip card alone in its bottom slot at 140
+  and Reset up in the top bar. **It is called Word Trail and nothing else**,
+  in code, in a comment or on screen: LinkedIn ships this game under its own
+  name, which the design docs record once each, in order to forbid it, and
+  which nothing else may repeat. This is
+  the third time the repo has renamed a game it did not invent (Code Break,
+  Hidden Word). The wave is its
+  motion, and it needed nothing new from `core/motion.gd`: the ribbon takes
+  the word's colour from its first tile to its last at `WAVE_STEP` a tile,
+  `_front(i, t)` is the one truth four things read (which tile wears the
+  colour, how far the ribbon is drawn, which slot box is lit, which letter
+  has arrived), and Undo and Reset run the same wave backwards. Its only two
+  motion constants are `WAVE_STEP` and `BEAM_TIME`. Its band is Hidden
+  Word's, appended to the board's own builder rather than mounted as a
+  `Scenery` node, so it is one draw call. Measured on this Mac with
+  `tests/_shot_anim.gd -- wordtrail` at `--resolution 810x1440`, 2026-09-20:
+  **65, 62, 65** draw calls over three runs with one word locked (the 62 is
+  the outlier of the three; the likely cause, inferred from the timings and
+  not measured, is the lock's ring and sparkles dying just as the idle
+  window opens), **60/61** bare, **61/61** under reduce motion, and idles of
+  2.51/2.49/2.51, 2.40/2.39 and 2.40/2.37 ms. Queens (71, 71) and Hidden
+  Word (110, 110) were run as controls in the same session and came back
+  exactly as recorded above, which is what makes those figures worth
+  quoting. On the phone's driver (`--rendering-driver opengl3_angle`): the
+  same **65** twice, and the settled frame matches the default driver to
+  5/255 on four pixels -- edge antialiasing, no `instance uniform`. The
+  reduce-motion pair 1.5 s apart is pixel-identical again.
+- **A long title or motto is lettered smaller, never larger**
+  (`ui/flat/flat_top_bar.gd`, 2026-09-20). The title block is whatever the
+  buttons leave -- 496 with four, 370 with five -- and `Word Trail` measures
+  391 at GameWordmark 84, so it used to run out under Undo and Reset, as
+  Balance's and Untangle's mottos had since 2026-09-18. Every title fitted
+  the four-button 496 until `Mushroom Patch`'s 635 (2026-09-20). `_fit_title`
+  measures the rendered face (`Font.get_string_size`, which carries the
+  variation's letter spacing) against the block on every resize and takes a
+  `font_size` override when it does not fit, removing the override when it
+  does. **`floor(base * wide / want)` is the seed of that override and not
+  the answer**: advance widths are not linear in the font size, so the
+  linear guess can still overflow -- Balance's motto guesses 22 and the face
+  at 22 measures 372 against a 370 block -- and `_fit` steps down from the
+  guess (never from `base`, which is up to 60 measurements for a long title)
+  until the rendered face actually fits. Measured across all thirteen
+  screens with a headless probe on 2026-09-20: exactly five labels are
+  lettered smaller -- Balance's motto (24 to 21), Untangle's (24 to 22),
+  Word Trail's title (84 to 79) and motto (24 to 21), and Mushroom Patch's
+  title (84 to 65) -- and every other label is untouched to the pixel,
+  Hidden Word's 481-wide title included: its bar builds five buttons but
+  `refresh()` hides Undo, so the block it measures against is 496 and it
+  stays at 84.
+- **Mushroom Patch is the thirteenth board, and the first that was added
+  rather than swapped in** (2026-09-20, `puzzles/mushroom2d.gd`, spec
+  `2026-09-20-mushroom-patch-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#mushroom`). Every number counts the
+  mushrooms in the eight cells touching it; plant a mushroom where you have
+  proved one is, lay a pebble where you have proved one is not, and the
+  patch is done when the last mushroom is planted. **Nothing is revealed by
+  a tap and nothing can be lost**, and no board needs a guess: the generator
+  carves each one backwards out of a full field and its solver proves it by
+  logic alone before it is handed over. Queens, Hidden Word and Word Trail
+  each took a `soon` card's slot; this one took no slot, which is what put
+  the first screen back on a pager -- see "The first screen" above. Its
+  signature is the **count wash**, a running feedback no other flat board
+  gives: a number turns the moment its count is satisfied, so the board
+  answers a move without being asked to check, and `docs/art/flat-motion.md`
+  is where that is recorded. It needed nothing new from `core/motion.gd`.
+  **Its title is the widest in the game**: `Mushroom Patch` measures 635 in
+  Fredoka 700 at GameWordmark's 84 against a four-button block of 496, where
+  Hidden Word's 481 was the widest that had ever fitted, so it is the first
+  *title* on a four-button bar to be lettered smaller. It lands at 65,
+  through the bar's own fit (the bullet below) and at no cost to the board.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -573,8 +657,8 @@ board built flat from the start. Specs:
   and `legacy/ui/island_host.gd` is the other, and both fill
   `ui/puzzle_host.gd`'s `_build_chrome` and `_enter`. The base has no rows
   of its own and errors rather than falling back. It picks the tray too
-  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`, `"keys"`,
-  `"patch"`), because
+  (`"tray": "none"`, `"friends"`, `"weights"`, `"tiles"`, `"queens"`,
+  `"keys"`, `"patch"`), because
   the host lays out its rows
   before it has a puzzle to ask how many chips it wants -- and it can drop
   the actions row with `"actions": false`, which Balance does: that board is
@@ -588,12 +672,18 @@ board built flat from the start. Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  twelve screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
-  and 460 -- Untangle drops the tray *and* the actions row, so its slot is the
-  tip card alone, and Hidden Word's is the keyboard alone
-  (`ui/flat/key_board.gd`'s `HEIGHT`). Mushroom Patch's own 460 is the same
-  sum as Binairo's, Code Break's, Nonogram's and Queens': a 150 tray, a 130
-  actions row, a 140 tip card and two 20 gaps between them.
+  thirteen screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
+  and 140, with Mushroom Patch's 460 the thirteenth -- Untangle drops the
+  tray *and* the actions row, so its slot is the tip card alone, Hidden
+  Word's is the keyboard alone (`ui/flat/key_board.gd`'s `HEIGHT`), and
+  **Word Trail** is Untangle's shape again: it picks nothing up and there is
+  no Check, because only a right word locks, so its slot is the tip card
+  alone at 140 and Reset rides up into the top bar. Three boards now carry
+  five buttons up there (Balance, Untangle, Word Trail); Hidden Word builds
+  five and shows four, because its `capabilities()` has no Undo. Mushroom
+  Patch takes the ordinary three rows, and its 460 is the same sum as
+  Binairo's, Code Break's, Nonogram's and Queens': a 150 tray, a 130 actions
+  row, a 140 tip card and two 20 gaps between them.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -603,7 +693,8 @@ board built flat from the start. Specs:
   given: Balance caps its scale bands, and the leftover becomes air *above*
   the weight cards, because a gap under the day card reads as a mistake and a
   gap above the cards reads as room) and `card_centred()` (where that
-  leftover goes: Tents, Light Up, One Line, Nonogram and Queens halve it,
+  leftover goes: Tents, Light Up, One Line, Nonogram, Queens and Mushroom
+  Patch halve it,
   because their grid is square -- or, on One Line, wider than it is tall --
   while their space is tall, so the cell is capped by the width and there is slack
   however the card is cut; One Line's medium lattice is 4x3 and leaves 432 of a 1190 slot, the
@@ -625,7 +716,7 @@ board built flat from the start. Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in twelve screens two have earned one: One Line's
+  drawing a new character -- in thirteen screens two have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
@@ -637,10 +728,15 @@ board built flat from the start. Specs:
   way and added nothing to `ui/faces/`: its thirty tiles are Nonogram's
   mosaic tile, taught to carry a letter and nothing else, and the only face
   it shows is the shared sprout, which comes on stage once, for the reveal.
-  Mushroom Patch reused rather than earned too: its two mushrooms and their
-  pebble are `ui/faces/mushroom_face.gd` and `ui/faces/mosaic_tile.gd`,
-  already on stage since Balance and Nonogram/Queens, and the only thing it
-  added to either was the off-by-default `sprig` a hint's mushroom wears.
+  Word Trail is the third to add nothing: its letter tiles are that same
+  mosaic tile, its scenery band borrows `ui/flat/scenery.gd`'s clouds
+  (`Scenery.cloud`) into the board's own builder -- the bushes under them are
+  the board's own `_bush` -- and the only face on the screen is the sprout on
+  the tip card. Mushroom Patch reused rather than earned too: its mushrooms
+  and their pebble are `ui/faces/mushroom_face.gd` and
+  `ui/faces/mosaic_tile.gd`, already on stage since Balance and
+  Nonogram/Queens, and the only thing it added to either was the
+  off-by-default `sprig` a hint's mushroom wears.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
@@ -648,7 +744,9 @@ board built flat from the start. Specs:
   is exactly what `RenderingServer.force_draw()` does in a harness.
   `lightup2d.gd`, `oneline2d.gd`, `nonogram2d.gd`, `untangle2d.gd`,
   `shikaku2d.gd` and `tents2d.gd` keep the mesh their last `_draw` handed
-  over (`_shown`) until the next one replaces it.
+  over (`_shown`) until the next one replaces it; `word_trail2d.gd` keeps
+  three (the still band, the field and the slots), so its `_shown` is an
+  Array.
   A harness shooting one of these boards has to let a frame pass between the
   state change and `force_draw()`: `queue_redraw` is flushed on the next idle
   frame, so a probe that pokes the board and shoots in the same frame

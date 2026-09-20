@@ -36,15 +36,6 @@ const BADGE_CYCLE := 2.4
 const LEAF_AT := 0.2
 const LEAF := 40.0
 const BRAND_TITLE := "BINAiRO"
-## The width the title's block gets: the row less the back button, the three
-## icon buttons and the four separations (1000 - 110 - 3 x 110 - 4 x 16 =
-## 496). A title wider than this is shrunk to fit rather than clipped --
-## Mushroom Patch measures 635 in Fredoka 700 at the theme's 84 (2026-09-20),
-## where Hidden Word's 482 is the longest that fits as it stands.
-const BLOCK := 496.0
-## No title shrinks below this; past it the name is too long for the screen
-## and the answer is a shorter name.
-const TITLE_MIN := 56
 
 var title_text := ""
 var motto_text := ""
@@ -60,6 +51,9 @@ var _title: Label
 var _motto: Label
 var _block: Control
 var _bounce: Tween
+## Each fitted label's lettering size before any fit, so a second fit measures
+## the face the theme gave it rather than the one the last fit left.
+var _base_size: Dictionary = {}
 
 func _init(title := "", motto := "", carry_reset := false, branded := false) -> void:
 	brand_binairo = branded
@@ -91,7 +85,6 @@ func _build() -> void:
 	_title.text = title_text
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_title)
-	_fit_title()
 	_title.add_child(SunDot.new(_title))
 	_motto = Label.new()
 	_motto.theme_type_variation = "BinairoMotto" if brand_binairo else "FlatMotto"
@@ -111,35 +104,52 @@ func _build() -> void:
 	reset_button.visible = with_reset
 	hint_button = _button("bulb", hint)
 	settings_button = _button("gear", settings)
+	_block.resized.connect(_fit_title)
+	_fit_title.call_deferred()
 
-## `_title` fires this once itself, synchronously, the moment it enters the
-## already-themed tree inside _build(); the notification hook below covers
-## the case that add_child does not resolve it in time or a theme is
-## installed after the fact. Always clears any prior override first, so a
-## repeat call always measures the theme's true size and not a size this
-## function set on an earlier pass -- without that, a shrunk title would
-## shrink again on every re-entry.
+## The title block is whatever the buttons leave, and a long title or motto
+## is wider than that. A five-button bar (a board with no actions row, so
+## Reset rides up here: Balance, Untangle and Word Trail) leaves it 370 at
+## 1080 of design space, and `Word Trail` measures 392 at GameWordmark and
+## `EVERY LETTER FINDS ITS WAY` 406 at FlatMotto, so both used to run out
+## under Undo and Reset -- as Balance's motto (399) had done since
+## 2026-09-18. A label wider than its block is lettered smaller until it
+## fits, and **never larger**, so every screen that already fits is untouched
+## to the pixel. The width is the rendered face's own
+## (`Font.get_string_size`, which carries the variation's letter spacing) and
+## not a constant, because the block's width follows the button count.
+##
+## ui/sun_dot.gd seats its suns off `Label.get_character_bounds` and reads
+## the label's font size live, so a refitted wordmark carries its dot with
+## it; the override resizes the label, and the dot redraws on that.
 func _fit_title() -> void:
-	if _title == null:
+	if _block == null:
 		return
-	_title.remove_theme_font_size_override("font_size")
-	var font := _title.get_theme_font("font")
-	var size := _title.get_theme_font_size("font_size")
-	# A harness that never installs ui/theme.gd's theme (nothing up the tree
-	# knows the GameWordmark variation) hands back a null font or a zero
-	# size here; leave the label exactly as it fell back rather than fit it
-	# to garbage.
-	if font == null or size <= 0:
-		return
-	var width: float = font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-	if width <= 0.0 or width <= BLOCK:
-		return
-	var fitted := floori(float(size) * BLOCK / width)
-	_title.add_theme_font_size_override("font_size", maxi(fitted, TITLE_MIN))
+	_fit(_title, _block.size.x)
+	_fit(_motto, _block.size.x)
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_THEME_CHANGED:
-		_fit_title()
+func _fit(label: Label, wide: float) -> void:
+	if label == null or label.text.is_empty() or wide <= 0.0:
+		return
+	if not _base_size.has(label):
+		_base_size[label] = label.get_theme_font_size("font_size")
+	var base: int = _base_size[label]
+	var font: Font = label.get_theme_font("font")
+	if font == null or base <= 0:
+		return
+	var want := font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, base).x
+	if want <= wide:
+		label.remove_theme_font_size_override("font_size")
+		return
+	# The linear guess is the seed, not the answer: advance widths are not
+	# linear in the size -- FIND THE WEIGHT OF THINGS guesses 22 and the face
+	# at 22 measures 372 against a 370 block -- so step down from the seed
+	# (never from `base`, which would be up to 60 measurements for a long
+	# title) until the rendered face actually fits.
+	var px := maxi(1, int(floor(base * wide / want)))
+	while px > 1 and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > wide:
+		px -= 1
+	label.add_theme_font_size_override("font_size", px)
 
 ## A button keeps its own square and sits centred on the row, as the other
 ## top bar's do.

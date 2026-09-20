@@ -87,6 +87,9 @@ func _note(id: String) -> String:
 		"queens": return "%dx%d court, %d queens, board fit=%s, hud=%s" % [_puzzle.n, _puzzle.n, _puzzle.state.queens.size(), _fit_ok, _hud_ok]
 		"mushroom": return "%dx%d patch, %d mushrooms, board fit=%s, hud=%s" % [
 			_puzzle.n, _puzzle.n, _puzzle.state.mushrooms.size(), _fit_ok, _hud_ok]
+		"wordtrail": return "%dx%d field, %d words traced, board fit=%s, hud=%s" % [
+			_puzzle._state.n, _puzzle._state.n, _puzzle._state.words.size(),
+			_fit_ok, _hud_ok]
 		"hiddenword": return "%s in %d %s, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
 			"row" if _puzzle.state.rows.size() == 1 else "rows",
@@ -112,6 +115,7 @@ func _solve(id: String) -> void:
 		"nonogram", "nonogram_island": _solve_nonogram()
 		"queens": _solve_queens()
 		"mushroom": _solve_mushroom()
+		"wordtrail": _solve_wordtrail()
 		"hiddenword": _solve_hiddenword()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
@@ -320,6 +324,35 @@ func _solve_untangle() -> void:
 			continue
 		_drag_local(_puzzle.node_to_local(i), _puzzle.planar_to_local(i))
 
+## Word Trail: a word is traced by dragging through its own cells, one
+## side-adjacent step at a time, so this is the one board that needs a
+## multi-point drag rather than `_drag_local`'s two. Every word of the answer
+## is traced in turn, except that the first is left to a hint where the hint
+## can take it -- the way _solve_queens leaves the n-th queen -- so the win
+## comes through the hint path as well as the drag path. There is no Check on
+## this board (only a right word locks), so `_hud_ok` watches the hint alone.
+func _solve_wordtrail() -> void:
+	var st = _puzzle._state
+	# Fit check: every cell centre must land inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.n:
+		for c in st.n:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	for w: Dictionary in st.words:
+		if _puzzle.is_done():
+			return
+		var path: Array = w["path"]
+		if path.size() < 2:
+			continue
+		var pts: Array[Vector2] = []
+		for cell: Vector2i in path:
+			pts.append(_puzzle.cell_to_local(cell.y, cell.x))
+		_drag_path_local(pts)
+
 # --- input helpers (viewport-local coordinates) ---
 
 func _to_global(p: Vector2) -> Vector2:
@@ -359,6 +392,32 @@ func _drag_local(from_local: Vector2, to_local: Vector2) -> void:
 	up.index = 0
 	up.pressed = false
 	up.position = b
+	root.push_input(up, true)
+
+## A drag through every point in turn, not just from the first to the last:
+## Word Trail only accepts a step to a side-adjacent cell, so a two-point
+## drag across a bending word is refused at the first corner.
+func _drag_path_local(points: Array[Vector2]) -> void:
+	if points.size() < 2:
+		return
+	var here := _to_global(points[0])
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = here
+	root.push_input(down, true)
+	for i in range(1, points.size()):
+		var next := _to_global(points[i])
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = next
+		drag.relative = next - here
+		root.push_input(drag, true)
+		here = next
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.pressed = false
+	up.position = here
 	root.push_input(up, true)
 
 func _solve_shikaku() -> void:

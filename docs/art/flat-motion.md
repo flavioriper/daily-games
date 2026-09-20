@@ -8,9 +8,11 @@ Balance followed the same day, Untangle on 2026-09-19, and Shikaku, Tents and
 Light Up the same morning; One Line and Nonogram followed that afternoon,
 which put all nine flat boards on it. Queens arrived the same evening, built
 on the vocabulary from its first line rather than ported, the tenth, and
-Hidden Word followed it the same night, the eleventh. Mushroom Patch joined
-on 2026-09-20, also built on the vocabulary from its first line, the
-twelfth. This page is the table a new or a ported board is built against.
+Hidden Word followed it the same night, the eleventh, and Word Trail on
+2026-09-20, the twelfth. Mushroom Patch joined the same day, also built on
+the vocabulary from its first line, the thirteenth. (Word Trail has no row
+of its own in the table below yet; its motion is recorded in CLAUDE.md and
+in its own spec's section 11.) This page is the table a new or a ported board is built against.
 When a number here and a number in a board disagree, the board is wrong.
 
 ## The rules

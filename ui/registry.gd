@@ -2,22 +2,24 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: thirteen cards in the order they are drawn. Twelve
-## of them open a flat board; the last names a board that has never been
-## drawn flat and says `soon` instead of opening (ui/menu.gd draws it dimmed
-## with no go button). Snake Apple's `soon` card left the grid on 2026-09-19
-## to make room for Queens, and Horse Pen's left the same day for Hidden
-## Word: both are being redesigned outright, and their island boards stay
-## under More.
+## `PUZZLES` is the grid: thirteen cards, in the order they are drawn.
+## **All thirteen open a flat board, and there is no `soon` card left on the
+## screen.** Snake Apple's left the grid on 2026-09-19 to make room for
+## Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
+## 2026-09-20 for Word Trail; all three keep their island board under More.
+## The dimmed-card machinery -- the `soon` flag, the `SOON` pill, the 55% ink
+## and ui/menu.gd's `blocked` signal -- stays in the code for the next board
+## that is named before it is drawn, but nothing exercises it now.
 ##
-## **Thirteen no longer fits the three-by-four grid.** The fourth row was
-## full at twelve, so the `GridContainer` -- which is SIZE_EXPAND_FILL --
-## simply runs to five rows and takes a card from 252 to about 210, and
-## every one of those 42 pixels comes out of the 92 px picture the card-art
-## budget is written against. The answer is the pager the campsite menu used
-## to have (twelve cards a page, a next and a prev under the grid), which is
-## task 8 of the Mushroom Patch plan and touches ui/menu.gd alone; until it
-## lands the grid is short by one row's worth of height. See
+## **Thirteen does not fit the three-by-four grid, so the grid pages.** The
+## fourth row was full at twelve, and a `GridContainer` that is
+## SIZE_EXPAND_FILL simply runs to five rows and takes a card from 252 to
+## about 210 -- every one of those 42 pixels out of the 92 px picture the
+## card-art budget is written against. The answer is the pager the campsite
+## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
+## and the strip is its own pill between the grid and the bar): twelve cards
+## on page one and Mushroom Patch alone on page two, each card still 252 with
+## its 92 px picture. See
 ## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
@@ -195,6 +197,23 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	{
+		"id": "wordtrail",
+		"kind": "puzzle",
+		"title": "Word Trail",
+		"blurb": "Trace every hidden word. The lengths are the only clue.",
+		"short": "Trace the words,\nfill the field.",
+		"motto": "Every letter finds its way",
+		"footer": "Trace · Bend · Fill",
+		# It picks nothing up, and there is no Check because nothing wrong can
+		# be sitting on the board: only a right word locks. So Reset rides up
+		# into the top bar and the bottom slot is the tip card alone.
+		"script": "res://puzzles/word_trail2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
 		"id": "mushroom",
 		"kind": "puzzle",
 		"title": "Mushroom Patch",
@@ -206,18 +225,6 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "patch",
 		"difficulties": [0, 1, 2],
-	},
-	# --- the end of the last row: named, drawn, and not yet playable here.
-	# It has a board on the stage behind More (`legacy` names it), and comes
-	# back to this row the day it is drawn flat.
-	{
-		"id": "pipes",
-		"kind": "puzzle",
-		"title": "Pipes",
-		"blurb": "Route the water. It won't climb without a pump.",
-		"short": "Route the water\nuphill with pumps.",
-		"soon": true,
-		"legacy": "pipes_island",
 	},
 ]
 

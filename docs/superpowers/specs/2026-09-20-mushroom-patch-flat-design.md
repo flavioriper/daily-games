@@ -51,12 +51,21 @@ nothing** (section 9).
 
 ## 2. Where it stands on the first screen, and the pager
 
-The grid is full: twelve cards, three across and four down, and the last slot
-is Pipes' dimmed `SOON` card, which Word Trail's spec of the same morning is
-already spending. Sudoku is in flight beside this. So the first screen **gets
-its pager back**: twelve cards a page, a next and a prev under the grid with a
-dot each, the way `legacy/ui/camp_menu.gd` turned its pages of nine before the
-flat screen dropped it on 2026-09-18.
+The grid was full when this was written: twelve cards, three across and four
+down, and the last slot Pipes' dimmed `SOON` card, which Word Trail's spec of
+the same morning was already spending. Sudoku was in flight beside this. So
+the first screen **gets its pager back**: twelve cards a page, a next and a
+prev under the grid with a dot each, the way `legacy/ui/camp_menu.gd` turned
+its pages of nine before the flat screen dropped it on 2026-09-18.
+
+**How it actually landed** (recorded on merge, 2026-09-20): Word Trail took
+Pipes' slot rather than adding a card, so the twelve are Binairo through Word
+Trail and Mushroom Patch is the thirteenth. Thirteen live cards over two
+pages: twelve on page one, **Mushroom Patch alone on page two**. A lone card
+in a short last row needs invisible `SIZE_EXPAND_FILL` filler `Control`s
+padded out to the column count, or `GridContainer` hands its one real cell
+every column's leftover width and the card comes out 334 wide instead of
+320.
 
 The card stays **252** tall and the 92 px picture the card-art budget is
 written against is untouched. The alternative -- letting the `GridContainer`,
@@ -68,10 +77,10 @@ the one thing CLAUDE.md says a new row may not do.
 boards in flight lands first, and it is specified here because this is the tab
 that hit the wall. It is its own commit and it touches `ui/menu.gd` alone.
 
-One consequence to record: with three boards landing, **no dimmed card is left
-on the grid**. The `SOON` pill, the 55% ink and the `blocked` signal stay in
-the code for the next board that is named before it is drawn, but nothing
-exercises them.
+One consequence to record: with these boards landing, **no dimmed card is left
+on the grid** -- and that is how it turned out. The `SOON` pill, the 55% ink
+and the `blocked` signal stay in the code for the next board that is named
+before it is drawn, but nothing exercises them.
 
 Registry entry:
 
@@ -97,7 +106,7 @@ from the rows it actually built.
 
 ## 3. The state is the one truth
 
-`puzzles/mushroom_state.gd`, scene-free, as all twelve are.
+`puzzles/mushroom_state.gd`, scene-free, as all thirteen are.
 
 ```gdscript
 const BLANK := 0
@@ -578,11 +587,21 @@ neither section claimed at all.
 
 **The menu, with the pager, measured at 810x1440** (`tests/_shot_menu.gd`,
 same session as section 14's strip, the flag placed correctly): **324** draw
-calls on page one (twelve cards, the pager pill and the bottom bar all
-visible) and about **100** on page two (the lone thirteenth card, its three
-filler columns and the pager pill, no bottom-bar chrome repainted beyond
-what already stood), both twice, against the twelve-card screen's
-previously recorded **311** and the shared 855 budget. Page one's rise over
-311 is Mushroom Patch's own card plus the pager strip's pill, prev and next
-buttons and dots; page two is far short of a full page's cost because a
-single card and three fillers draw almost nothing beside it.
+calls on page one and about **100** on page two, both twice, against the
+twelve-card screen's then-recorded **311** and the shared 855 budget.
+
+**Re-measured after the merge with `main`, 2026-09-20.** Word Trail took
+Pipes' slot rather than adding a card, so page one is no longer the same
+twelve it was when 324 was taken: it is Binairo through Word Trail, all
+live, and Mushroom Patch stands alone on page two. Page one reads **335**
+twice (8.35 and 8.42 ms mean idle, at the 120 Hz vsync ceiling) and page two
+about **100**, with two filler columns rather than three, since one card
+short of a row of three leaves two. Page one's **335** against main's
+**322** for the same twelve cards without a pager makes the strip itself --
+pill, prev, next and two dots -- worth **+13**; Mushroom Patch's own card
+costs page one nothing at all, because it is not on it. Page two is far
+short of a full page's cost because a single card and two fillers draw
+almost nothing beside the header, day row and bar that already stood.
+Confirmed in the same run: the canvas is 1080x1920, every card on both pages
+measures **320 x 252** with a **92** picture plate, and the lone page-two
+card is 320 rather than 334, which is the filler `Control`s doing their job.
