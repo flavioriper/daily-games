@@ -57,6 +57,14 @@ extends SceneTree
 ## chip the tray arms by default, so the strip shows the pop, the ring, the
 ## puff and -- the point of the shot -- the count wash arriving on the givens
 ## around it as their numerals bump and turn green.
+## Fairy Lights has one dark cell beside the live run turned a quarter turn
+## clockwise, chosen so the turn joins it to the post and **the wash** --
+## this board's signature -- actually runs: the light walking out along the
+## wire a depth at a time, the halos coming up under it and every lantern it
+## reaches waking with a bump. The idle window opens after the wash is over,
+## so the milliseconds are a settled board's. `wash` runs the same tap and
+## puts the window *over* the wash instead, which is where the peak draw
+## call is; its mean is the cost of an animating frame and is not an idle.
 ##
 ## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
 ## strip shows the selection's washes, a digit dropping in and the wave the
@@ -81,6 +89,7 @@ extends SceneTree
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
 
 const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
+const FairyGen = preload("res://puzzles/fairy_lights_gen.gd")
 
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
 ## The reduce-motion pair: how long after the last shot the extra one is
@@ -173,6 +182,30 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.9, 2.05, 2.25, 2.8, 3.8]
 		_idle_from = 2.6
 		_idle_to = 4.6
+	if _id == "fairylights" and _mode == "wash":
+		# The window is put *over* the wash rather than after it, and it is
+		# closed before the wash ends, so every frame in it is a moving one:
+		# the light leaves WASH_LAG after the tap and walks out a depth
+		# every WAVE_STEP, and the mesh is rebuilt on each of those frames.
+		# The count here is the peak, and the mean is what a moving frame
+		# costs -- neither is an idle.
+		# **No shot falls inside that window.** `save_png` of the whole
+		# viewport costs tens of milliseconds, which is nothing spread over
+		# the seven hundred frames of a stock idle window and is most of a
+		# twenty-five frame one: a draft of this mode with four shots inside
+		# the window came back at 33 ms a frame against this one's 16.5.
+		_shots = [0.35, 0.9, 2.3]
+		_idle_from = TAP_AT + 0.05
+		_idle_to = TAP_AT + 0.45
+	elif _id == "fairylights" and not _empty:
+		# The spin is TURN_TIME and the wash behind it runs a depth every
+		# WAVE_STEP with a lantern's bump on the end, so a long branch is
+		# still lighting well after the usual 1.8. These catch the piece
+		# mid-turn, the wash part-way out along the wire and the run settled,
+		# and the idle window waits until all of it is over.
+		_shots = [0.35, 0.9, 1.72, 1.9, 2.2, 3.0, 4.0]
+		_idle_from = 2.8
+		_idle_to = 4.8
 	if _id == "bridges" and not _empty:
 		# Up to four planks at two steps each run from TAP_AT, and the last
 		# islet's bump and ring land after them, so the settled frame and the
@@ -293,6 +326,8 @@ func _process(delta: float) -> bool:
 				# texture read in it is the frame before the poke.
 				_shots[2] = _t + 0.075
 				_shots[3] = _t + 0.125
+		elif _entry.id == "fairylights" and not _empty:
+			_tap_fairylights()
 		elif _entry.id == "bridges" and not _empty:
 			_lay_bridges()
 		elif _entry.id == "quilt" and not _empty:
@@ -561,6 +596,44 @@ func _tap_sudoku() -> void:
 func _write_sudoku(i: int) -> void:
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(i / 9, i % 9))
 	_tap_key("Digit%d" % (int(_puzzle.state.sol[i]) - 1))
+
+## Fairy Lights: one real touch on a dark cell beside the live run, turning
+## it a quarter turn clockwise onto the post's tree so **the wash** runs --
+## the whole point of a still frame of this board. Which cell is chosen by
+## looking one turn ahead: every unpinned, non-cross cell is turned clockwise
+## in the grid, `depths()` asked how much of the garden that lights, and the
+## grid put straight back; the deepest win takes it, so the light has a
+## branch to walk out along rather than one cell to jump to. The touch itself
+## goes through the board's own `_gui_input`, like a thumb.
+func _tap_fairylights() -> void:
+	var st = _puzzle.state
+	var cells: int = st.n * st.n
+	var before: PackedInt32Array = st.depths()
+	var best := -1
+	var best_score := 0
+	for i in cells:
+		if st.pinned[i] == 1:
+			continue
+		var m: int = st.grid[i]
+		if m == FairyGen.N | FairyGen.E | FairyGen.S | FairyGen.W:
+			continue  # a cross is already every way round and never turns
+		st.grid[i] = FairyGen.cw(m)
+		var after: PackedInt32Array = st.depths()
+		st.grid[i] = m
+		var score := 0
+		for j in cells:
+			if after[j] >= 0 and before[j] < 0:
+				score += 1
+		if score > best_score:
+			best_score = score
+			best = i
+	if best < 0:
+		push_error("_shot_anim: no turn on this board lights anything")
+		return
+	print("fairylights: n=%d tapping cell %d (r%d c%d), %d cells light"
+		% [st.n, best, best / st.n, best % st.n, best_score])
+	_tap_global(_puzzle.get_global_transform_with_canvas()
+		* _puzzle.cell_to_local(best / st.n, best % st.n))
 
 ## One tap on a key of the keyboard tray or a chip of the digit pad, found by
 ## the name that tray gives it.

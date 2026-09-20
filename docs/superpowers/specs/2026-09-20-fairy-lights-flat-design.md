@@ -400,26 +400,172 @@ there being no Check. Moves are turns.
 
 ---
 
-## 11. Measured, and what the build must measure
+## 11. Measured
 
-Nothing in this section is filled in yet; the build task fills it and nothing
-may be claimed without a reading. What has to be recorded:
+Everything below was read on this Mac on 2026-09-20, on the build this
+section was written against, with **one windowed harness running at a time**
+(three other agents were live on this machine; every run waited for any other
+Godot to leave, because GPU contention inflates every millisecond). Every
+reading is quoted, including the flattering one -- a single reading off this
+harness is worth nothing.
 
-- **Draw calls** on the animation strip (`tests/_shot_anim.gd -- fairylights`)
-  at `--resolution 810x1440`, bare and with a wash in flight, against the 855
-  budget. `--resolution` is an engine flag and must come **before**
-  `--script`; a first-screen card measuring near 372 instead of 320 is the
-  proof it landed on the wrong side.
-- **The same count on the phone's driver**, `--rendering-driver opengl3_angle`,
-  with the settled frames compared -- the check that nothing has reintroduced
-  an `instance uniform`.
-- **Idle**, with another board run as a control **in the same hour**, both
-  readings quoted. A single reading off this harness is worth nothing: Hidden
-  Word's fourteen runs spread 3.06 to 7.30 ms on an unchanged build.
-- **The generator in GDScript**, per band, worst seed named -- replacing the
-  estimate in 4.3.
-- **The win harness**, `tests/_win.gd`, run windowed (it reports 0/0
-  headless), solving every band.
+The flag is `--resolution 810x1440`, **before `--script`**, which is the true
+1080x1920 of design space. Written after the `--` it is handed to the script
+as a user argument, the engine never sees it, and the run falls back to a
+1237-wide canvas without saying so.
+
+```
+godot --path . --resolution 810x1440 --script tests/_shot_anim.gd -- fairylights [empty|wash|rm]
+```
+
+`tests/_shot_anim.gd` learned this board in Task 5. Its tap is the point of
+the strip: `_tap_fairylights()` looks one turn ahead at every unpinned,
+non-cross cell -- turning it clockwise in the grid, asking `depths()` how
+much of the garden that lights, and putting the grid straight back -- and
+touches the cell that lights the most, through the board's own `_gui_input`.
+On the day this was measured that is cell 20 (row 3, column 2) of a 6x6
+garden, and it lights five cells and wakes a lantern. The `empty` word
+measures the bare board, `wash` puts the measuring window **over** the wash
+instead of after it, and `rm` adds the reduce-motion pair.
+
+### 11.1 Draw calls, against the 855 budget
+
+| State | Word | Default driver | ANGLE |
+| --- | --- | --- | --- |
+| Bare | `empty` | **81**, 81 | 81 |
+| One turn played, settled | -- | **82**, 82, 84, 84 | 82, 84 |
+| With the wash in flight | `wash` | **82**, 82, 82, 82 | not run |
+| Reduce motion | `rm` | 82 | not run |
+
+**A tenth of the budget at every state**, and no state is more than two
+calls from any other. Two things are worth saying about that spread rather
+than hiding it:
+
+- **The wash costs no draw call.** The peak while the light walks out along
+  the wire is the same 82 as the settled board, because the halos, the sheen
+  and the lit cable all go into the **one** `ArrayMesh` the board already
+  rebuilds. What a wash costs is that rebuild, and the rebuild is
+  milliseconds, not calls -- see 11.2.
+- **The 82/84 pair is the chrome and not the board.** It comes and goes on an
+  unchanged build, on both drivers, off a deterministic tap, and the window
+  reports a maximum; the wordmark's rayed sun glints on its own clock and the
+  repo already records it costing the header a call. That attribution is
+  **inferred from where the two values fall and not measured**; what is
+  measured is that the board's own state does not move it.
+
+### 11.2 Milliseconds
+
+This harness **disables vsync** (`VSYNC_DISABLED`, `Engine.max_fps = 0`), so
+nothing here is the 120 Hz ceiling that `tests/_shot_menu.gd`'s ~8.3 ms is.
+
+| Window | Readings |
+| --- | --- |
+| Settled, 2.8-4.8 s (719-775 frames) | 2.78, 2.58, 2.72, 2.72 ms; 2.72 under `rm` |
+| Moving, 1.65-2.05 s, `wash` (24-25 frames) | **16.30, 16.70, 16.67, 16.81 ms** |
+| Settled on ANGLE | 5.40, 5.86, 5.36 ms |
+
+**The control, run in the same hour**: Word Trail came back at **65, 65**
+draw calls with one word locked against its recorded 65/62/65, **60** bare
+against its recorded 60/61, and idles of **2.44, 2.49** ms played and 2.40
+bare against its recorded 2.51/2.49/2.51. It reproduced its record, so this
+session's figures are worth quoting.
+
+**A moving frame costs six times a settled one, and that is the one number on
+this board to think about.** While anything moves the board rebuilds its
+whole mesh every frame (the board's own header says so), and
+`tests/_probe_fairy_frame.gd` times that rebuild directly rather than
+inferring it, one board a band off seed 12345, sixty calls each, four runs:
+
+| Band | `_build` | `_dress` |
+| --- | --- | --- |
+| Easy 5x5 (cell 188) | 7.23, 7.30, 7.26, 7.29 ms | 0.03 ms |
+| Medium 6x6 (cell 157) | 9.03, 9.10, 9.03, 9.16 ms | 0.03-0.04 ms |
+| Hard 7x7 (cell 134) | 10.68, 10.78, 10.67, 10.91 ms | 0.05-0.06 ms |
+
+So between a half and three quarters of the 16.5 ms moving frame is the
+rebuild in GDScript, and the rest is the fresh mesh going to the canvas
+beside the lanterns and the effects. The day's own 6x6 board read **11.81 ms** for the
+same `_build` on an earlier run of the probe, which is the same figure with
+more of the garden live: a live run draws two halo passes and a sheen a dark
+one does not. **Run that probe windowed and at 810x1440**: `_build` tessellates
+its arcs off the cell, and the first reading of it, headless on a 297 cell,
+came back at 21 ms.
+
+**What that means and what it does not.** A settled board is 2.7 ms and idles
+inside anything. A board with the wash running sits at about 16.5 ms a frame
+on this Mac, which is one 60 Hz frame and not one 120 Hz frame, and the wash
+runs for a few tenths of a second a tap. **A phone is commonly two to three
+times slower than this Mac**, which would put a moving frame past a 60 Hz
+frame there; nothing on this Mac can measure that, so it is one more thing to
+feel on the phone rather than read off a log. If it does need fixing, the
+levers in order are: rebuild only while a *moment* is actually live rather
+than for the whole
+of `_anim_until`, cache the still half of the mesh (the ground, the fence and
+the rules never change inside a deal), and only then cut geometry.
+
+**Two earlier readings of a moving window are not quoted above and must not
+be**: 8.46 and 8.83 ms, off a first draft of `wash` whose window was wider
+(1.75-2.45 s, so it ran on past the wash) **and had three of the strip's
+shots inside it**. `save_png` of the viewport costs tens of milliseconds,
+which is nothing spread over the seven hundred frames of a settled window and
+is most of a twenty-five frame one: a second draft with four shots in a
+tight window read 33.60 ms. The harness now takes no shot between
+`_idle_from` and `_idle_to` in `wash` mode, and says why in a comment.
+
+### 11.3 The phone's driver
+
+```
+godot --path . --resolution 810x1440 --rendering-driver opengl3_angle --script tests/_shot_anim.gd -- fairylights
+```
+
+Same counts (82 and 84 played, 81 bare), and the settled frame matches the
+default driver's to **2/255, on three pixels of the whole frame**; 141,781
+pixels differ by a single level, which is two drivers rounding the same
+gradients differently. Two runs of the *default* driver, compared with each
+other as the reference for that, agree to 1/255. **Nothing has reintroduced an
+`instance uniform`**, whose real cap is sixteen instances in the frame and
+which this desktop driver would hide.
+
+The reduce-motion pair 1.5 s apart is **pixel-identical** (max difference 0,
+zero pixels differing): nothing on a settled board moves when motion is off.
+
+### 11.4 The generator
+
+Measured and written into **section 4.3**, which is where it belongs: the
+estimate that stood there was scaled off the JavaScript mock and has been
+replaced by `tests/_probe_fairy_gen.gd`'s own reading, 200 seeds a band, run
+twice. `build()` means **0.411 / 0.680 / 1.117 ms** and worsts **1.05 / 2.89
+/ 3.49 ms** across the three bands, attempts means 1.170 / 1.320 / 1.445,
+`proved` 600/600. **The port came out about twelve times the JavaScript mean
+rather than the seven the estimate scaled by** -- the estimate's band was
+right and its ratio was optimistic. Nothing here needs Sudoku's 300 ms escape
+hatch.
+
+### 11.5 The suite and the win harness
+
+The suite is **29650 / 0** (`godot --headless --path . --script
+tests/run_tests.gd`), unchanged by Task 5's one code fix.
+
+`tests/_win.gd`, **run windowed** -- it reports 0/0 headless -- comes back
+**winnable=17/17**, and 17 is `Registry.PUZZLES.size()` (checked; a board that
+fails to parse drops out of that count silently rather than failing it). This
+board's line:
+
+```
+PASS  fairylights  solved=true done=true overlay=true  6x6 garden, 11 lanterns, 44 turns, board fit=true, hud=true
+```
+
+That is the **day's** board and so one band, not three: `_win.gd` opens what
+the day deals, which was the medium 6x6. The other two bands are covered by
+`tests/test_fairy_lights.gd` in the suite rather than end to end by this
+harness.
+
+### 11.6 Not measured
+
+Said plainly so nobody reads a number into a gap: the win screen's own draw
+call (there is no `solve` word in this board's branch of the harness), the
+count at 5x5 and 7x7 on the strip (the harness opens the day's band), and
+anything at all on the phone.
 
 ---
 
