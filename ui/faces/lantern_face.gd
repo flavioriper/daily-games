@@ -36,6 +36,13 @@ const GLOW_SEGMENTS := 36
 const DROP_ALPHA := 0.1
 ## `lit` is snapped to one of these for the cache key.
 const LIT_LEVELS: Array[float] = [0.0, 0.25, 0.5, 0.75, 1.0]
+## An unlit paper washed out, for a board where being unlit is the state the
+## screen is mostly in: 55% of the way to STONE, its deep edge half-way to
+## FLAGSTONE. Both are the canvas mock's own pair (Fairy Lights' spec,
+## section 5), and both are **off by default** -- Untangle, Light Up and the
+## menu card are untouched to the pixel.
+const DIM_BODY := 0.55
+const DIM_DEEP := 0.5
 
 ## Which paper, by the lantern's index on the board.
 var hue: int = 0:
@@ -55,9 +62,22 @@ var casts: bool = true:
 	set(v):
 		casts = v
 		queue_redraw()
+## Whether an unlit paper is washed out by DIM_BODY and DIM_DEEP. Untangle
+## hangs five lanterns that are unlit only until the win, so full paper is
+## right there; Fairy Lights fills a garden with them and being unlit is the
+## board's ordinary state, so a wall of full-saturation paper cannot read as
+## dark -- and its unlit *amber* comes out warmer than the gold wire it is
+## the whole point of the screen to tell apart. **Off by default**, and it
+## rides the mesh cache key, so a washed paper and a plain one never share a
+## mesh.
+var dims: bool = false:
+	set(v):
+		dims = v
+		queue_redraw()
 
 func _kind() -> String:
-	return "lantern%d_%d" % [hue % Pal.LANTERN_PAPER.size(), int(_lit_level() * 4.0)]
+	return "lantern%d_%d%s" % [hue % Pal.LANTERN_PAPER.size(),
+		int(_lit_level() * 4.0), "d" if dims else ""]
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
@@ -78,6 +98,9 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 	var level := _lit_level()
 	var body: Color = paper[0].lerp(Pal.LANTERN_LIT, 0.38 * level)
 	var deep: Color = paper[1].lerp(Pal.SUN, 0.4 * level)
+	if dims and level <= 0.0:
+		body = paper[0].lerp(Pal.STONE, DIM_BODY)
+		deep = paper[1].lerp(Pal.FLAGSTONE, DIM_DEEP)
 	match name:
 		"glow":
 			_halo(b, R, GLOW_ALPHA * level)

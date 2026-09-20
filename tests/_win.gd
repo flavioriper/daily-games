@@ -101,6 +101,9 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			81 - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"fairylights": return "%dx%d garden, %d lanterns, %d turns, board fit=%s, hud=%s" % [
+			_puzzle.state.n, _puzzle.state.n, _puzzle.state.lanterns().size(),
+			_puzzle.state.turns, _fit_ok, _hud_ok]
 		"quilt": return "%dx%d backing, %d patches, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.hints_used, _fit_ok, _hud_ok]
@@ -130,6 +133,7 @@ func _solve(id: String) -> void:
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
 		"quilt": _solve_quilt()
+		"fairylights": _solve_fairylights()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -729,6 +733,55 @@ func _solve_sudoku() -> void:
 			continue
 		_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
 		_tap_key("Digit%d" % (d - 1))
+
+## Fairy Lights: every piece that is out of place turned to its proven
+## orientation **through the ordinary tap** -- one quarter turn a touch, up
+## to three of them a cell, on the board's own `_gui_input`. **Nothing here
+## writes to `grid`**: the harness's whole job is to prove the real move path
+## reaches the win, and a state poke would prove only that the state class
+## works, which its own suite entry already does.
+##
+## The last piece is left to the hint, the way _solve_queens leaves the n-th
+## queen and _solve_mushroom the last mushroom, so the win comes through the
+## hint path as well as through the tap path -- a hint here settles a cell
+## *and* pins it, and pinning the cell that finishes the board is the one
+## order in which `hint()` has to run `check_solved()` itself. There is no
+## Check on this board -- nothing wrong can exist on it -- so `_hud_ok`
+## watches the hint alone, as Word Trail's and Quilt's do.
+func _solve_fairylights() -> void:
+	var Gen = load("res://puzzles/fairy_lights_gen.gd")
+	var st = _puzzle.state
+	# Board fit check: every cell centre must land inside the board slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.n:
+		for c in st.n:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	var wrong: Array = []
+	for i in st.n * st.n:
+		if st.grid[i] != st.sol[i]:
+			wrong.append(i)
+	# A deal that came out all but solved would leave the hint nothing to do;
+	# the generator's 60% rule makes that impossible, and this is the guard
+	# rather than the plan.
+	if wrong.size() < 2:
+		_press(_host.top_bar.hint_button)
+		_hud_ok = _puzzle.hints_used == 1
+	for k in range(wrong.size() - 1):
+		if _puzzle.is_done():
+			return
+		var i: int = wrong[k]
+		var m: int = st.grid[i]
+		# However many quarter turns clockwise it takes, one tap each.
+		for _q in 3:
+			if m == st.sol[i]:
+				break
+			_tap_local(_puzzle.cell_to_local(i / st.n, i % st.n))
+			m = Gen.cw(m)
+	if wrong.size() >= 2:
+		_press(_host.top_bar.hint_button)
+		_hud_ok = _puzzle.hints_used == 1
 
 ## One tap on a key of the keyboard tray or a chip of the digit pad, found by
 ## the name that tray gives it.

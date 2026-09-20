@@ -303,6 +303,23 @@ const PUZZLES := [
 		"actions": false,
 		"difficulties": [0, 1, 2],
 	},
+	{
+		"id": "fairylights",
+		"kind": "puzzle",
+		"title": "Fairy Lights",
+		"blurb": "Turn the wire until every lantern is lit.",
+		"short": "Turn the wire,\nlight the garden.",
+		"motto": "Wake every lantern",
+		"footer": "Turn · Join · Light",
+		# It picks nothing up and there is no Check: a board is unfinished
+		# or it is done. So Reset rides up into the top bar and the bottom
+		# slot is the tip card alone.
+		"script": "res://puzzles/fairy_lights2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
 ]
 
 ## The old game. Every one of these mounts the 3D stage and wears the island
