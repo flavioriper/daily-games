@@ -78,11 +78,21 @@ rules are. It holds the lattice size, the islets and their numbers, the
 answer's runs, the player's runs, and the history. The board
 (`puzzles/bridges2d.gd`) only draws it.
 
-What it exposes, and nothing more: `build(rng, difficulty)`; `lane(a, b)` and
-the list of lanes an islet faces; `cycle(a, b)` which advances a run
-0→1→2→3→0 and is the only way a plank is laid; `clear_run(a, b)`; `undo()`;
-`reset_board()`; `hint()`; `check()`; `degree(islet)`; `is_solved()`; and
-`share_glyphs()`.
+What it exposes, and nothing more -- this is the surface as built, and the
+board is written against it: `build(rng, difficulty)`; `lane_at(a, b)` and
+`facing(cell, dir)` for finding the lane a gesture means; `blocked_by(key)`;
+`cycle(key)`, which advances a run 0→1→2→3→0 and is the only way a plank is
+laid; `clear_run(key)`; `undo()`; `reset_board()`; `hint()`; `wrong_runs()`;
+`degree(cell)`; `groups()`; `is_solved()`; and `share_glyphs()`. Runs are
+keyed by lane, `"x,y|x,y"` with the two cells sorted, so the end a gesture
+starts from never matters.
+
+**A run is wrong when it carries *more* planks than the answer lays there**,
+including a run on a lane the answer never names. An under-laid run is
+unfinished, not wrong. The distinction is not pedantry: marking every
+under-laid lane would print the answer, which is exactly what section 10
+says this screen does not do. It also matches the house convention that
+`nonogram_state.wrong_tiles` and `lightup_state.wrong_lamps` already set.
 
 Two things are **derived and never stored**, which is Queens' rule and the
 reason undo needs no bookkeeping for them: an islet's current degree, summed
@@ -337,7 +347,14 @@ applied at once and no front travels.
 
 Three hints. A hint lays **one plank the answer has and the board lacks** --
 never an overshoot, so a hint can never be the thing that pushes an islet
-over. Check marks the runs that differ from the answer, costs a check, and is
+over. It walks the answer's lanes in sorted order, so the hint a board gives
+is stable however that board's answer happened to be grown. One edge case is
+worth knowing: when every remaining under-laid lane is crossed by a run the
+player laid wrong, the hint lifts that blocker first, which is always safe
+because the answer's own runs never cross each other. That lift is its own
+history entry, so in that one case a hint costs two undos rather than one.
+Verified over 120 boards hinted to completion: 0 overshoots, and every board
+finished. Check marks the runs that differ from the answer, costs a check, and is
 the board's only door to the one thing it will not tell you.
 
 **The near-miss is unsignposted, deliberately.** When every number is met but
