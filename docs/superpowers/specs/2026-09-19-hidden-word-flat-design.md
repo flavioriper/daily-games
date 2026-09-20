@@ -363,3 +363,94 @@ and eleven against the card's seventeen a line.
   is the call; 169 with the scenery reduced to a hem is the alternative, and
   it is one constant either way. Judge it on the phone: does the band earn its
   room, and does the cell feel generous rather than empty?
+
+## 13. Amendments from the build, 2026-09-19
+
+The board is built and plays. Four things above were corrected **in place**
+while it was being built -- the marking rule's worked example, the 120 band
+and the 149 tile, the `has_signal` guard on `ended`, and the ending's six
+constants -- so the sections read true and are not repeated here. What
+follows is what the build taught that the spec above still gets wrong, plus
+the numbers it was waiting for.
+
+**Two names above are wrong in the source.**
+
+- The keyboard emits **`commit`**, not `enter` (section 6). `ui/hud/panel.gd`
+  already has an `enter(delay)` method that the flat host calls on every
+  tray, and GDScript refuses a signal that shares a method's name -- the
+  spec as written would not have compiled at the host wiring.
+- The menu card is a **`_draw`** branch, not a `_build` one (section 11).
+  `_build` seats characters; this card has no cast, only three drawn tiles
+  on a drawn band, so its `_build` case seats nothing and `_draw_letters`
+  does the work. It cost the picture **7 draw calls** on the first screen
+  (311 with it, 304 with the branch stubbed out, both twice).
+
+**A key is a node, and the tiles are not.** Section 9's table names
+`press_scale` for a key press, which is the *reader* a drawn piece uses. A
+key is a real `Button` in a slot, so it takes `Motion.press` and
+`Motion.bump`, the node recipes -- the other half of the vocabulary. The
+tiles and the letters are drawn and do read the readers. This board is a
+hybrid in exactly Tents' sense, and section 9 should have said which half
+each piece takes rather than naming one.
+
+**The win cannot wait a constant.** Section 9 gives the win `WIN_WAIT` 1.6 s
+after the solve. That is 1.6 s after the *commit*, and a row that wins on its
+fifth tile is still turning then, so the win screen covered the flip that
+earned it. `win_delay()` returns `_flip_length() + WIN_WAIT` instead: the
+constant is the pause *after* the row has finished, which is what the
+section meant and not what it said.
+
+**Two containers, one lesson, already paid for once.** The keyboard's three
+rows had to go in slots for the same reason Balance's weight cards did on
+2026-09-18 -- a row that slides writes its own position and a container
+rewrites it on the next sort. The spec said it for the keys (section 6) and
+not for the rows they stand in. The keyboard also has to refuse input while
+it is sliding out, or a key pressed during the reveal types into a board
+that has ended.
+
+**Reset leaves the clock running.** `reset_board()` clears the rows and
+leaves `elapsed` counting on from the lost attempt. That is what every other
+flat board does, so it is consistent rather than a defect, but on this board
+it is the one place a player can see a second attempt and might expect a
+fresh clock. Recorded, not changed.
+
+**What it costs, measured** (`tests/_shot_anim.gd`, this Mac, 2026-09-19):
+109 draw calls bare, **110** with the first row committed and the keys
+repainted, **56** in the losing reveal with the keyboard gone. The first
+screen with its card reads **311**. All of it is far inside the 855 budget,
+but it is worth saying plainly that 109 bare is dearer than any of the seven
+boards that draw their pieces (63 to 97), and cheap only beside the two that
+build them out of nodes, Balance at 146 and Code Break at 234. Thirty tiles
+and a twenty-nine-key keyboard are on screen from the first frame and none
+of them leaves until the reveal takes the keyboard away, which is where the
+56 comes from.
+
+Its idle in milliseconds is **not** a number this spec should carry. Fourteen
+runs on the same build spread 3.06 to 7.30 ms with a median of 5.00, on a
+machine that gave Queens 4.40 to 4.62 in the same session against the 3.83
+recorded in its own spec. The honest statement is the comparison: Hidden
+Word idles about half a millisecond above Queens, and a single reading off
+this harness means nothing on its own.
+
+**Checked on the phone's driver.** `--rendering-driver opengl3_angle` gave
+the same 110 and 56, the same colours and the same letters; the settled
+frames differ from the default driver's by at most 21/255 on antialiased
+edges, and the frames that differ more are the ones caught mid-animation,
+where the two drivers land on different phases. Nothing here has an
+`instance uniform`, and this is the check that would have shown one.
+
+**The harnesses were measuring the wrong canvas.** Every figure in this spec
+labelled "at 1080x1920" was taken with `--resolution 1080x1920`, which on
+this Mac renders a **1237x1920** canvas: the window clamps to 1080x1676 and
+`stretch/aspect="expand"` widens rather than shortens. `810x1440` gives the
+true 1080x1920. It does not move this board's numbers -- the tile is 149 and
+the block 801 by 964 at both, because height binds -- but the card around
+them is 1000 wide at the true size against 1157 at the old flag, and the
+first screen's card is 320 against 372, which is the number the card art is
+drawn to. See CLAUDE.md, "What the harnesses actually measure".
+
+**Two small things left for the next pass**, found by review and deliberately
+not fixed here: the sprout the reveal brings on keeps a looping idle tween it
+is never asked to stop, and the solve hop's last frame settles a sub-pixel
+above its seat (the same rounding `lightup2d.gd` has). Neither is visible on
+a rendered frame; both are one line.

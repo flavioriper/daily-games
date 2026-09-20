@@ -42,6 +42,39 @@ If draw calls are the reason to hesitate, say so out loud and measure it
 against the budget in `docs/art/blender-contract.md`. Do not quietly trade the
 model away for a picture of it.
 
+## What the harnesses actually measure
+
+**Run a render harness at `--resolution 810x1440`, never `1080x1920`**
+(measured 2026-09-19). This Mac's display cannot show 1920 rows, so the
+window clamps to 1080x1676, and `stretch/aspect="expand"` then keeps the
+height and *widens* the canvas: `get_visible_rect()` comes back
+**1237x1920**, 15% wider than the phone the game is drawn for. `810x1440`
+and `720x1280` both come back exactly **1080x1920**, which is the design
+space every layout in this file is written against.
+
+Be precise about what that spoils and what it does not, because most of the
+figures here were taken with the old flag:
+
+- **Width-sensitive layout is wrong at the old flag, and measurably so.**
+  The first screen's card measures **320** wide at 810x1440 and **372** at
+  1080x1920 -- and 320 is the number the card-art budget, the 320 by 118
+  picture box and the "about seventeen characters a line" of `short` are all
+  written against. A frame shot at the old flag showed cards 16% wider than
+  the phone will, with the air between them wrong to match.
+- **Height-bound cells are the same either way.** Hidden Word's tile is 149
+  at both, because six rows of five in a 9:16 slot are bound by the height;
+  so is its 801 by 964 block. What differs is the card *around* it: 1000
+  wide against 1157.
+- **Draw calls did not move.** The first screen reads 311 at both flags on
+  the same build (2026-09-19), so the counts recorded in this file are not
+  invalidated by the width -- and the 855 budget is unaffected. Frame times
+  were not compared across the two and no claim is made about them.
+
+What has *not* been rechecked is every older recorded layout number taken
+from a frame at the old flag. Treat a pixel measurement in this file that
+predates 2026-09-19 as taken on a 1237-wide canvas until it is re-shot; a
+draw-call count, a budget figure or a design-space constant is fine.
+
 ## The first screen
 
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
@@ -90,14 +123,17 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   are almost entirely reuse. It is never an image and never a `SubViewport`.
   A new card costs one branch of `_build` and, if it needs furniture, one of
   `_draw`.
-- **Twelve cards, and two of them do not open.** Pipes and Horse Pen have
-  no flat board: they keep their picture and name at 55% ink, wear a pale
-  `SOON` pill and emit `blocked`, and the menu answers with a line saying
-  their island version is under More. They stand together at the end of the
-  last row on purpose -- dimmed cards scattered through a grid read as a
-  bug. Snake Apple's `soon` card left the grid on 2026-09-19 to make room
-  for Queens, the tenth live card: it is the one being redesigned outright,
-  and its island board stays under More with `seed_as` still `snake`. The
+- **Twelve cards, eleven live and one that does not open.** Pipes has no
+  flat board: it keeps its picture and name at 55% ink, wears a pale
+  `SOON` pill and emits `blocked`, and the menu answers with a line saying
+  its island version is under More. It holds the last slot of the last row,
+  where the dimmed cards have always stood -- the rule that they stand
+  together on purpose, rather than scattered through the grid where they
+  read as a bug, survives a set of one. Two `soon` cards left the grid the
+  same week and for the same reason, each being redesigned outright and
+  each keeping its island board under More: Snake Apple's on 2026-09-19 to
+  make room for Queens, `seed_as` still `snake`, and Horse Pen's the same
+  day for Hidden Word, the eleventh live card, `seed_as` still `horse`. The
   pill hangs off the card, **not** off `_inner`: that is a PanelContainer
   and a second child there is stretched over everything.
 - **The hearts, the calendar badge and the day chevron are decoration**, by
@@ -106,19 +142,25 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (ten flat
-  plus the two `soon`); `Registry.LEGACY` is the old game. A grid entry
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (eleven flat
+  plus the one `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
-- **Measured on this Mac at 1080x1920** (`tests/_shot_menu.gd`): 319 draw
-  calls against the campsite's 338 and the 855 budget, and a mean idle of
-  8.33 ms -- which is exactly the 120 Hz vsync cap, so it is a ceiling and
-  not a measurement. What can be said honestly is that the campsite sat at
-  ~13 ms, above the cap, and this screen is inside it. This was 291 before
-  Queens; the Queens card alone costs 12 of the 28-call rise (checked on the
-  same build with its picture removed, at 307), and the other 16 predate it
-  -- the header's turning, glinting sun and later changes since 291 was
-  first measured.
+- **Measured on this Mac** (`tests/_shot_menu.gd` at `--resolution 810x1440`,
+  which is the true 1080x1920 of design space -- see "What the harnesses
+  actually measure" above): **311** draw calls against the campsite's 338 and
+  the 855 budget, twice in a row, and a mean idle of 8.33 ms -- which is
+  exactly the 120 Hz vsync cap, and this harness never disables vsync, so it
+  is a ceiling and not a measurement. What can be said honestly is that the
+  campsite sat at ~13 ms, above the cap, and this screen is inside it. The
+  count reads 311 at the old `1080x1920` flag too (2026-09-19), so what the
+  wider canvas moved was the layout and not the calls. It was 291 before
+  Queens and 319 with Queens beside Horse Pen's `soon` card; swapping that
+  card for Hidden Word's live one took it to 311, and Hidden Word's own
+  picture is 7 of the 311 -- checked on the same build with its `_draw`
+  branch stubbed out, at 304, twice. Of the older rise, the Queens card
+  alone cost 12 and the rest predates it: the header's turning, glinting sun
+  and later changes since 291 was first measured.
 
 ## legacy/: the old 3D game
 
@@ -305,13 +347,14 @@ every layout change.
 
 ## The flat screens
 
-Ten cards open a flat 2D board under flat chrome: **Binairo**
+Eleven cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
 (`puzzles/tents2d.gd`), **Light Up** (`puzzles/lightup2d.gd`), **One Line**
 (`puzzles/oneline2d.gd`), **Nonogram** (`puzzles/nonogram2d.gd`) and, since
-2026-09-19, **Queens** (`puzzles/queens2d.gd`).
+2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
+(`puzzles/hidden_word2d.gd`).
 
 Each was built on trial beside its island, as a second card seeded from the
 same day, so the two could be judged on the phone. **The trial is over**:
@@ -323,9 +366,11 @@ Specs:
 `...-codebreak-`, `...-balance-`, `...-shikaku-`, `...-untangle-`,
 `...-tents-`, `...-lightup-`, `...-oneline-` and
 `...-nonogram-flat-design.md` siblings, and
-`docs/superpowers/specs/2026-09-19-queens-flat-design.md`; mocks:
+`docs/superpowers/specs/2026-09-19-queens-flat-design.md` and
+`...-hidden-word-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
-`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram` and `#queens`.
+`#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens` and
+`#hiddenword`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -394,6 +439,43 @@ Specs:
   (71 on the strip with a queen seated and the chip alive, against 69). The
   tile tray takes a **chip set** now (`TileTray.MOSAIC`, `TileTray.QUEENS`;
   `"tray": "queens"`), so Nonogram's tray and Queens' are one class.
+- **Hidden Word is the first board that can end without a solve** (2026-09-19,
+  `puzzles/hidden_word2d.gd`, spec `2026-09-19-hidden-word-flat-design.md`).
+  Five letters, six rows: type a guess, commit it, and the row turns over a
+  tile at a time -- green in the right place, amber in the word elsewhere,
+  grey not in it. **The commit is the one irreversible move on any flat
+  board**: there is no Undo and no Check, an Enter spends a row, and when the
+  sixth is spent the board calls `PuzzleBase.finish_unsolved()`, which sets
+  `_done` and emits **`ended`** rather than `solved`. The host connects that
+  behind `has_signal`, because `legacy/core/stage_board.gd` carries a frozen
+  copy of the contract that predates it and must stay frozen. The keyboard is
+  its tray (`ui/flat/key_board.gd`, `"tray": "keys"`), and it is the first
+  board with **no tip card** (`"tip": false`) and no actions row: the
+  keyboard says what a tip card would. **The flip is its signature** and its
+  numbers are its own three (`FLIP_STEP`, `FLIP_TIME`, `TOAST_HOLD`), with
+  six more for the ending -- the keyboard's exit, two dim levels, the dim's
+  time and the sprout's rise -- which stand in the board because nothing else
+  in the game can run out, so `core/motion.gd` would never read them. A
+  refusal is a toast over the card and never a silence. It ships words:
+  `content/hidden_word.json` (968 answers in three bands) and
+  `content/hidden_word_accept.txt` (15,921 a guess may be), and `content/*`
+  had to join the export preset's `include_filter` to reach the APK at all --
+  which was also quietly true of How Big?'s table. **Never call it Wordle**,
+  in code, in a comment or on screen; the New York Times owns that, and this
+  repo already ships Mastermind as Code Break for the same reason.
+  Measured on this Mac with `tests/_shot_anim.gd -- hiddenword` at
+  `--resolution 810x1440`: **110** draw calls with the first row committed and
+  the keys repainted (109 bare, 109 to 111 over fourteen runs), and **56** in
+  the losing reveal, where the keyboard has gone and the grid is dimmed --
+  all well inside the 855 budget. Its idle reads about **5.0 ms**, and that
+  figure deserves a caveat: fourteen runs spread 3.06 to 7.30 (median 5.00)
+  on a machine that gave Queens 4.40 to 4.62 in the same session against its
+  recorded 3.83, so a single reading off this harness is not worth quoting --
+  compare a board against another board measured the same hour. The reveal,
+  which draws half as much, read 1.88 and 1.92. Checked on the phone's driver
+  (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
+  frames match the default driver to 21/255 on edge antialiasing alone, so
+  nothing has reintroduced an `instance uniform`.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -432,15 +514,22 @@ Specs:
   and `legacy/ui/island_host.gd` is the other, and both fill
   `ui/puzzle_host.gd`'s `_build_chrome` and `_enter`. The base has no rows
   of its own and errors rather than falling back. It picks the tray too
-  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`), because the host lays out its rows
+  (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`, `"keys"`), because
+  the host lays out its rows
   before it has a puzzle to ask how many chips it wants -- and it can drop
   the actions row with `"actions": false`, which Balance does: that board is
   its own continuous check, so it has no Check to put in the row and Reset
-  rides up into the top bar instead. The flat host therefore measures its
-  bottom slot from the rows it actually built, not from a constant; the
-  ten screens want 460, 460, 390, 290, 140, 290, 290, 290, 460 and 460 --
-  Untangle drops the tray *and* the actions row, so its slot is the tip card
-  alone.
+  rides up into the top bar instead. It can drop the tip card too
+  (`"tip": false`), which **Hidden Word** is the first board to do: a
+  keyboard says what a tip card would, and the screen has no room to say it
+  twice. Hidden Word drops the actions row as well -- there is no Check on a
+  board where a commit is the check, and no Undo, because the commit is the
+  one irreversible move any flat board has. The flat host therefore measures
+  its bottom slot from the rows it actually built, not from a constant; the
+  eleven screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460 and
+  340 -- Untangle drops the tray *and* the actions row, so its slot is the
+  tip card alone, and Hidden Word's is the keyboard alone
+  (`ui/flat/key_board.gd`'s `HEIGHT`).
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the
@@ -455,7 +544,14 @@ Specs:
   while their space is tall, so the cell is capped by the width and there is slack
   however the card is cut; One Line's medium lattice is 4x3 and leaves 432 of a 1190 slot, the
   widest air of the eight and a call its spec's section 10 records rather than
-  hides). A board that offers none gets Binairo's behaviour.
+  hides). A board that offers none gets Binairo's behaviour. Hidden Word
+  answers `true` to `card_centred()` and **the answer does nothing on this
+  phone**: five tiles across six rows is taller than it is wide, so height
+  binds and the slack is zero -- measured 2026-09-19, `card_height()` hands
+  back every pixel it is given (1140 of a 1140 slot, 1190 of 1190), so there
+  is nothing to halve. It says `true` because on a squarer screen
+  the width would bind instead; nobody should read a centring on the phone
+  into it.
 - **The flat cast is a shared drawing, and two screens already share one.**
   `ui/faces/friends.gd` is Code Break's seven and `ui/faces/fruit.gd` is
   Balance's five, and the apple in the second *is* the berry in the first --
@@ -464,7 +560,7 @@ Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in ten screens two have earned one: One Line's
+  drawing a new character -- in eleven screens two have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
@@ -472,7 +568,10 @@ Specs:
   drew **no** character at all: its
   pieces are tiles and its clues are numbers, so the only face on the screen
   is the sprout's, and `ui/faces/mosaic_tile.gd` is builder shapes rather than
-  a Control -- eighty-one of them go into one mesh.
+  a Control -- eighty-one of them go into one mesh. Hidden Word went the same
+  way and added nothing to `ui/faces/`: its thirty tiles are Nonogram's
+  mosaic tile, taught to carry a letter and nothing else, and the only face
+  it shows is the shared sprout, which comes on stage once, for the reveal.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
