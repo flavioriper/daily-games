@@ -249,8 +249,7 @@ reference is and what this family's boards have never quite been:
 | Trail | `TEXT` | stroke 0.17 cell, round caps and joins |
 | Dart | `TEXT` | 0.42 cell forward of the head's centre, wings 0.26 back and 0.30 aside, tail notch 0.12 back |
 | Crease | `PAPER` | a fold slit near the tip, 0.06 cell wide, running `[0.22, -0.05]` of a cell along the spine rather than down the whole of it |
-| Lane, pressed and clear | `SUN` at 0.35 | a band 0.34 cell wide |
-| Lane, refused | `BAD_TILE` at the flash's own level | the same band, first lane cell to blocker |
+| Lane, refused | `BAD_TILE` at the flash's own level | a band 0.34 cell wide, first lane cell to blocker |
 | Hint glow | `SUN_RAY` at 0.32 | a wash **0.86 cell wide** under the hinted plane's whole body |
 | Hint ring | the family's (`ui/fx2d.gd`) | |
 
@@ -281,6 +280,21 @@ cells kerb to kerb, swallows those dots, crowds the trails in the rows above
 and below, and reads as *this region is wrong*, which is a sentence this
 board never says: nothing is wrong, the lane is merely occupied.
 
+**There is no second lane band, and the flight is the preview** (amended
+2026-09-20, Task 6). The table above used to carry a "Lane, pressed and
+clear" row -- `SUN` at 0.35, the mock's band under a held finger over a
+plane that *can* go -- and it was struck rather than built, with its
+constant. The binding reason is the input: **this board acts on press-down**
+(section 3's "a tap is the whole of the interaction"), so by the time a
+finger is held there is no plane left to preview a lane for. Building one
+would mean either gating the press -- the single thing `_tap` is written not
+to do, and what the whole one-frame solve in `tests/_win.gd` depends on --
+or a second and slower input path, and both change what one press does. The
+second reason is that the sentence is already said, and better: a plane with
+a clear lane flies down that exact band when it is tapped, so **the flight
+is the preview**. The lane is shown by the plane taking it, not by a stripe
+promising it could.
+
 **The hint's glow is the one wash that is deliberately not 0.34.** It is
 0.86, because it is doing the other job: the lane band names a *path* and
 has to read as a line, and the glow names a *piece* and has to read as a
@@ -309,14 +323,15 @@ rather than creatures does not get a mascot bolted onto it.
 ## 10. Motion
 
 Everything comes from `core/motion.gd` and `docs/art/flat-motion.md`. This
-board adds **three constants of its own** and nothing to the shared
-vocabulary:
+board adds **three motion constants of its own**, plus the win's own wait
+that every flat board carries, and nothing at all to the shared vocabulary:
 
 | This board's own | Value | Why it cannot be shared |
 |---|---|---|
 | `LAUNCH_SPEED` | 22 cells a second, minimum 0.22 s | Nothing else in the game moves a piece along its own body. |
 | `WAKE_STEP` | 0.04 s per king-move step | Queens' `WAVE_STEP` is 0.05 and tuned to a queen's sight; this wave runs out of a departing plane. |
 | `BLOCK_FLASH` | 0.35 s | The refusal's band. |
+| `WIN_WAIT` | 2.7 s | How long the win screen waits. Arithmetic, not taste; see below. |
 
 - **The launch is the signature.** The plane runs along a *track*: its own
   body polyline, extended past the head down the lane and one body-length
@@ -393,6 +408,56 @@ takes the family's 0.6 cap: on a 16 by 22 field a king-move distance can
 reach 21, and 21 x 0.04 is 0.84 s of wings still beating after the plane has
 gone. The cap is rule 4 and this board does not raise it.
 
+**The solve wave, as built** (amended 2026-09-20, Task 6). When the sky is
+empty the dots are the only thing left on the card, so the family's wave is
+a hop on each of them: `Motion.SOLVE_HOP`, `SOLVE_TIME`, `SOLVE_STAGGER` and
+`SOLVE_DELAY`, read as curve readers off `Motion.hop_lift` the way
+everything else on this board is read, with no tween and no node. It rolls
+out by king-move distance from `_solve_from` -- **the cell the last plane's
+head stood on** -- so the sky empties outward from the place the last plane
+left it, and the whole wave is one second (`_solved_at`) plus that one
+origin. Nothing is stored per cell, which is the same reason Queens' wave is
+worth copying: an undo would have nothing to clean up.
+
+Three consequences worth writing down rather than rediscovering:
+
+- **The wave waits for the plane that won the board.** The last launch is
+  still in the air when `note_move()` ends the puzzle -- the state let the
+  plane go on the tap -- so `_solved_at` is booked for the second that
+  flight lands (`_flight_left`), not for the tap. A field hopping under a
+  plane that has not left yet is two hands at once, which is Word Trail's
+  lesson at its own solve.
+- **`_animating()` asks about it**, like every other wave on this board, and
+  `_retire` clears `_solved_at` the frame the wave runs out. One Line
+  shipped two lines frozen at four fifths of a fade for want of exactly
+  this.
+- **Under reduce motion there is no wave at all.** `_on_solved` returns
+  before booking it, so `_solved_at` is never set; `Motion.hop_lift` answers
+  zero under `reduce` in any case, so it is stilled twice over.
+
+**`WIN_WAIT` is 2.7 s, and it is arithmetic.** The two things that still
+have to happen when the last plane is tapped, added up at their worst:
+
+- **The last flight: 1.41 s.** A flight is `_s_end / LAUNCH_SPEED` with a
+  `Motion.POP_IN` floor, and the hard band's own numbers bound `_s_end` at
+  31 cells -- a ten-cell plane (`BANDS[2].max_len`) whose head sits on one
+  edge of a 22-row field pointing at the other has 9 body cells behind the
+  head, a lane of 21 and one more cell for the tail to leave on. 31 / 22 =
+  1.409 s is the longest flight this game can generate.
+- **The solve wave after it: 1.25 s.** `SOLVE_DELAY` (0.25), plus the far
+  corner's stagger, which `Motion.stagger` caps at 0.6 however wide the
+  field is and a 16 by 22 field reaches, plus `SOLVE_TIME` (0.4).
+
+1.409 + 1.25 = 2.66, rounded up to 2.7. It is the longest win wait of any
+flat board (Shikaku's 2.2 was the previous), and the cost is named rather
+than hidden: when the last plane's flight is a short one, which is the
+common case, the board stands empty and still for up to a second after the
+wave before the win screen arrives. That is the price of a constant, which
+is the shape every sibling uses; the alternative is a `win_delay()` that
+measures the flight it is actually waiting for, and nothing in the family
+does that yet. Under reduce motion there is neither a flight nor a wave to
+wait for, so `win_delay()` is `Motion.REDUCED_TIME`.
+
 ## 11. The hint
 
 Three, as everywhere. A hint rings one **free** plane and beats its wings; it
@@ -440,8 +505,24 @@ the tip card, which this board keeps.
 `tip_line()` says what just happened, in the family's voice: the opening line
 names the rule, a refusal says the lane is blocked and by which way, a launch
 after a long pause says nothing at all. It never counts planes: **the board
-is its own scoreboard**, and an empty sky is the only score anyone needs --
-Word Trail's rule, and Mushroom Patch's.
+is its own scoreboard**, and an empty sky is the only score anyone needs.
+
+**As built** (amended 2026-09-20, Task 6). The opening line and the cycle
+behind it are `TIPS`, which stops turning the moment anything launches. A
+launch then takes a line from `SAID` -- three of them, one per launch --
+and after the third a launch says nothing at all and whatever is on the
+card stays. A refusal always speaks, because it is the one moment the
+player has been told no. Undo and Reset say what came back without saying
+how much is left, and the win's line is `flat_win()`'s subtitle, said by
+`_on_solved`.
+
+Two of those are worth the note. **The count came out**: an earlier draft
+of this board said "41 planes left" after every launch, which is the shape
+Word Trail and Mushroom Patch use and which does not survive this field --
+five words or nine mushrooms can be counted out loud, fifty-two planes
+cannot, and the sky emptying in front of the player says it better than any
+sentence. And **the lines are indexed by how many planes have gone, not by
+how many are left**, so what runs out is a lesson and not a countdown.
 
 `flat_win()`: **no cast and a subtitle**, `{"faces": [], "subtitle": "Every
 plane found its lane."}`. The host's `faces` are Controls from `ui/faces/`,
@@ -450,6 +531,21 @@ family's sun and moon -- which is what Nonogram, Word Trail and Sudoku all
 do for the same reason. A dart drawn on the win screen would mean a new
 Control for one screen's sake, and that is exactly the bargain section 9
 declines.
+
+**The win harness flies the board** (`tests/_win.gd`'s `_solve_planes`,
+added 2026-09-20, Task 6). It needs no solver and no order: a launch only
+ever empties cells (section 3), so any plane free now is still free later
+and a greedy walk over `free_planes()` can never dead-end. It needs no
+waiting between taps either, which is the point -- **the whole board is
+cleared inside one frame**, because `_tap` updates the state on the press
+and animates afterwards and there is no busy gate. If a gate is ever added,
+that is the test which catches it. The **last** plane goes through the hint,
+the way `_solve_queens` leaves the n-th queen to it; it takes one step more
+here, because a hint on this board only *names* a free plane and never
+launches it, so the harness presses Hint and then taps the plane it rang.
+There is no Check, so nothing presses one and `checks` stays 0. Measured
+2026-09-20: `winnable=15/15`, with Paper Planes clearing a 13 x 18 sky of 37
+planes and no other board's result moved.
 
 ## 14. Analytics
 

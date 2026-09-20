@@ -81,8 +81,7 @@ const DART_NOTCH := 0.12
 const CREASE := 0.06
 const CREASE_FROM := 0.22
 const CREASE_TO := -0.05
-## The lane band a refusal lays down the cells ahead of a dart, and how far
-## the *clear* lane's own colour would be let through. **0.34 was drawn
+## The lane band a refusal lays down the cells ahead of a dart. **0.34 was drawn
 ## against 0.86 at the hard band's 58 px cell and kept** (Task 4): a stripe
 ## a third of a cell wide runs down the middle of the lane and leaves the
 ## dots on either side of it showing, so the band reads as *the way out* --
@@ -94,11 +93,20 @@ const CREASE_TO := -0.05
 ## spec's section 8 is amended to say so rather than to record a
 ## disagreement that was never there.
 ## A refusal's own band is `BAD_TILE` at the flash's level and needs no alpha
-## of its own; `LANE_ALPHA` is the **clear** lane's, `SUN` at 0.35, and it is
-## still unspent: that band is the mock's preview under a held finger, and
-## this board has no press yet. Whoever gives it one draws `LANE_W` at this.
+## of its own, so this is the only lane width on the board. **The mock's
+## second lane -- `SUN` at 0.35 under a held finger, previewing a lane that
+## *is* clear -- was struck rather than built** (Task 6). Two reasons, and
+## the first is the binding one: **this board acts on press-down**, so there
+## is no held-finger state to preview with. A preview would have to wait for
+## a press that has already launched the plane, which means either a gate on
+## the press (the one thing `_tap` is written not to have) or a second,
+## slower input path -- and either would change what a single press does,
+## which is what `tests/_win.gd`'s `_tap_local` drives and what the whole
+## one-frame solve depends on. The second is that it would be saying a thing
+## already said better: **the flight is the preview**. Tap a plane with a
+## clear lane and it flies down that exact band, so the lane is shown by the
+## plane taking it rather than by a stripe promising it could.
 const LANE_W := 0.34
-const LANE_ALPHA := 0.35
 ## The wash that stays under a hinted plane until it goes, and the ring that
 ## lands on its head: the only glow on this board. **This one is wider than
 ## the mock's** -- the mock draws every wash at its single `WASH_W` of 0.34 --
@@ -148,12 +156,52 @@ const WAKE_STEP := 0.04
 ## see `_flash_now`.
 const BLOCK_FLASH := 0.35
 
+## How long the win screen waits behind the board, and **it is arithmetic
+## rather than taste** -- the two things that still have to happen when the
+## last plane is tapped, added up at their worst:
+##
+## - **The last flight: 1.41 s.** A flight is `_s_end / LAUNCH_SPEED` with a
+##   `Motion.POP_IN` floor, and the hard band's own numbers bound `_s_end` at
+##   31 cells -- a ten-cell plane (`BANDS[2].max_len`) whose head sits on one
+##   edge of a 22-row field pointing at the other has a body of 9 cells
+##   behind the head, a lane of 21, and one more cell for the tail to leave
+##   on. 31 / 22 = 1.409 s, which is the longest flight this game can
+##   generate.
+## - **The solve wave after it: 1.25 s.** `SOLVE_DELAY` (0.25) plus the far
+##   corner's own stagger, which `Motion.stagger` caps at 0.6 however wide
+##   the field is (rule 4, and a 16 x 22 field reaches that cap), plus
+##   `SOLVE_TIME` (0.4).
+##
+## 1.409 + 1.25 = 2.66, rounded up. It is the longest wait of any flat board
+## -- Shikaku's 2.2 was the previous -- and the cost is named rather than
+## hidden: when the last plane's flight is a short one, which is the common
+## case, the board stands empty and still for up to a second after the wave
+## before the win screen arrives. That is the price of a constant, which is
+## the shape every sibling uses; the alternative is a `win_delay()` that
+## measures the flight it is actually waiting for, and nothing in the family
+## does that yet.
+const WIN_WAIT := 2.7
+
 const TIP_CYCLE := 8.0
 const TIPS := [
 	"Tap a plane and it flies out the way it points.",
 	"Its lane has to be clear all the way off the board.",
 	"Nothing here can go wrong. Any plane that can go, can go.",
 	"Send the one in front first.",
+]
+
+## What the sprout says after a launch, and **it stops** (spec section 13).
+## The first few launches are still teaching the rule, so each gets a line;
+## after that a launch says nothing at all and whatever was on the card
+## stays. **It never counts planes**: the board is its own scoreboard, and
+## "forty-one planes left" said forty-one times on the hard band is noise
+## over a picture that already says it better -- the sky empties in front of
+## the player. That is Mushroom Patch's rule about a running commentary,
+## taken further because this field is five times the size of that patch.
+const SAID := [
+	"Off it goes. That lane was clear the whole way.",
+	"Any plane with a clear lane can go, in whatever order you like.",
+	"Send the one in front, and the one behind it is free.",
 ]
 
 var _state = State.new()
@@ -180,6 +228,13 @@ var _opened := 0.0
 var _anim_until := 0.0
 ## The plane a hint named, or -1: it keeps a soft wash under it until it goes.
 var _hint_lit := -1
+## The second the solve wave begins, or -1 while there is no wave. It is a
+## record and not a book, exactly like `_refuse`: `_retire` clears it the
+## frame it runs out, so the quiet board is quiet.
+var _solved_at := -1.0
+## The cell the last plane's head stood on, which is where the solve wave is
+## staggered out from -- the point the sky was emptied at.
+var _solve_from := Vector2i.ZERO
 
 # --- the books of moments ---
 ## The flights in the air: plane index -> {"at", "dur", "s_end", "back"}.
@@ -241,11 +296,14 @@ func _ready() -> void:
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
 	resized.connect(_layout)
+	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
 	_hint_lit = -1
 	_anim_until = 0.0
+	_solved_at = -1.0
+	_solve_from = Vector2i.ZERO
 	_forget()
 	_layout()
 	_enter()
@@ -335,6 +393,11 @@ func _animating(t: float) -> bool:
 		return true
 	if not _shiver.is_empty() or not _nudge.is_empty() or not _refuse.is_empty():
 		return true
+	# The solve wave, which `_retire` clears the frame it runs out; while it
+	# is set, the dots are still hopping (or waiting for the last flight to
+	# land before they start).
+	if _solved_at >= 0.0:
+		return true
 	if Motion.reduce:
 		return false
 	# The field's wide pop, then the last plane's own pop at the far end of
@@ -366,7 +429,23 @@ func _retire(t: float) -> bool:
 	if not _refuse.is_empty() and t >= float(_refuse["at"]) + BLOCK_FLASH:
 		_refuse = {}
 		dirty = true
+	if _solved_at >= 0.0 and t >= _solved_at + _wave_span():
+		_solved_at = -1.0
+		dirty = true
 	return dirty
+
+## How long the solve wave takes from the second it begins: the family's own
+## delay, the far corner's stagger off `_solve_from` (capped at 0.6 by
+## `Motion.stagger`, which a 16 by 22 field reaches), and one hop.
+func _wave_span() -> float:
+	return Motion.SOLVE_DELAY \
+		+ Motion.stagger(_wave_reach(), Motion.SOLVE_STAGGER) + Motion.SOLVE_TIME
+
+## The king-move distance from `_solve_from` to the furthest cell of the
+## field, which is always one of the four corners.
+func _wave_reach() -> int:
+	return maxi(maxi(_solve_from.x, _state.cols - 1 - _solve_from.x),
+		maxi(_solve_from.y, _state.rows - 1 - _solve_from.y))
 
 ## Every book emptied at once: a new board inherits nobody's flight.
 func _forget() -> void:
@@ -432,7 +511,7 @@ func _draw() -> void:
 ## is exactly what the player is being pointed at.
 func _build_field(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	_dots(b, _covers(t))
+	_dots(b, _covers(t), t)
 	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
 		_ink(b, _state.planes[_hint_lit]["cells"], GLOW_W * _cell,
 			Color(Pal.SUN_RAY, GLOW_ALPHA))
@@ -453,7 +532,12 @@ func _build_field(t: float) -> ArrayMesh:
 ## is why a launch reads as emptying the board rather than as a jump cut: the
 ## cells a plane leaves are places, not holes, and each of them comes back
 ## the moment the tail passes over it.
-func _dots(b, cover: Dictionary) -> void:
+##
+## The solve wave rides here too, and nowhere else: when the sky is empty the
+## dots are the only thing left on the card, so the family's wave is a hop on
+## each of them. It is read as a curve off `Motion` the way everything on
+## this board is -- no tween, no node -- and the whole of it is `_hop`.
+func _dots(b, cover: Dictionary, t: float) -> void:
 	var r := DOT * _cell
 	for y in _state.rows:
 		for x in _state.cols:
@@ -464,7 +548,21 @@ func _dots(b, cover: Dictionary) -> void:
 			elif _state.plane_at(cell) >= 0:
 				shown = 0.0
 			if shown > 0.004:
-				b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA * shown))
+				b.disc(_centre(cell) + Vector2(0.0, _hop(cell, t)), r,
+					Color(Pal.LINE, DOT_ALPHA * shown))
+
+## One dot's place in the solve wave: the family's `hop_lift`, handed the
+## seconds since this cell's own moment began -- `SOLVE_DELAY` after the wave
+## starts, plus `SOLVE_STAGGER` per king-move step out from the cell the last
+## plane's head stood on. Zero before the moment, after it, and under
+## reduce-motion (`_solved_at` is never set there, and `hop_lift` answers
+## zero anyway, so it is stilled twice over).
+func _hop(cell: Vector2i, t: float) -> float:
+	if _solved_at < 0.0:
+		return 0.0
+	return Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
+		- Motion.stagger(_king(cell, _solve_from), Motion.SOLVE_STAGGER),
+		Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 
 ## How much of each cell is still under a plane in flight, 0 to 1, for every
 ## cell of every flight in the air. The fade is the family's own
@@ -723,8 +821,12 @@ func _tap(i: int) -> void:
 	_refuse = {}
 	_beat.erase(i)
 	var cells: Array = _state.planes[i]["cells"]
+	# Where the wake runs out of, and -- if this was the last plane -- where
+	# the solve wave runs out of too. Written before `note_move()`, which is
+	# what emits `solved` and calls `_on_solved` on this same frame.
+	_solve_from = cells[cells.size() - 1]
 	_fly_out(i, t)
-	_wake(before, cells[cells.size() - 1], t)
+	_wake(before, _solve_from, t)
 	fx.cue("place")
 	_speak()
 	_refresh()
@@ -849,16 +951,17 @@ func _refuse_tap(i: int, blocked: int, t: float) -> void:
 
 # --- the sprout's line ---
 
-func _left_line() -> String:
-	var left := _state.left()
-	if left <= 0:
-		return "That is the field cleared."
-	return "One plane left." if left == 1 else "%d planes left." % left
-
+## What a launch says, which after the first few is nothing at all. The line
+## is picked by how many planes have gone rather than by how many are left,
+## so it is a lesson running out and not a countdown running down -- see
+## `SAID`. The win's own line comes from `_on_solved`, not from here.
 func _speak() -> void:
 	if is_done():
 		return
-	_say(_left_line(), Face.Expr.HAPPY)
+	var gone: int = _state.planes.size() - _state.left()
+	if gone < 1 or gone > SAID.size():
+		return
+	_say(SAID[gone - 1], Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -904,7 +1007,7 @@ func undo() -> bool:
 	# because a plane mid-beat that is also mid-flight reads as a stutter.
 	_beat.erase(i)
 	_fly_back(i, _now(), 0.0)
-	_say("Called back. " + _left_line(), Face.Expr.HAPPY)
+	_say("Called back. It is on the field again.", Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
 	moved.emit()
@@ -961,11 +1064,63 @@ func reset_board() -> void:
 	_state.reset()
 	_hint_lit = -1
 	_refuse = {}
+	_solved_at = -1.0
 	moves = 0
 	_running = true
-	_say("All of them back on the field. " + _left_line(), Face.Expr.HAPPY)
+	_say("All of them back on the field.", Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
+
+# --- the win ---
+
+## No cast and a subtitle, so the win screen keeps the family's sun and moon.
+## The host's `faces` are Controls out of `ui/faces/` and **this board has
+## none** (spec section 9): a dart drawn up there would be a new Control for
+## one screen's sake, which is exactly the bargain that section declines.
+## Nonogram, Word Trail and Sudoku all answer this way for the same reason.
+func flat_win() -> Dictionary:
+	return {"faces": [], "subtitle": "Every plane found its lane."}
+
+## How long the host holds the win screen back. See `WIN_WAIT` for the
+## arithmetic; under reduce-motion there is neither a flight nor a wave to
+## wait for, so the win follows the last tap (spec section 10's
+## reduce-motion row).
+func win_delay() -> float:
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+
+## **The wave waits for the plane that won the board.** The last launch is
+## still in the air when `note_move()` ends the puzzle -- the state let it go
+## on the tap -- and a field hopping under a plane that has not left yet is
+## two hands at once, which is Word Trail's lesson at its own solve. So the
+## wave is booked for the second the last flight lands, and rolls out from
+## `_solve_from`, the cell that plane's head stood on: the sky empties from
+## the place the last plane left it.
+##
+## Nothing here is a book, because nothing here needs retiring one entry at
+## a time: the wave is one second (`_solved_at`) and one origin, read by
+## every dot in `_hop`, and `_retire` drops it when it has run.
+func _on_solved() -> void:
+	var t := _now()
+	_tip_timer.stop()
+	_hint_lit = -1
+	_refuse = {}
+	_say("Every plane found its lane.", Face.Expr.JOY)
+	fx.cue("solved")
+	_refresh()
+	if Motion.reduce:
+		return
+	_solved_at = t + _flight_left(t)
+	_busy_for(_solved_at - t + _wave_span())
+
+## How much of the longest flight still in the air is left to run. Zero on a
+## quiet board, and zero under reduce-motion, where a launch is an instant
+## removal and `_fly` is never written.
+func _flight_left(t: float) -> float:
+	var left := 0.0
+	for i in _fly:
+		var f: Dictionary = _fly[i]
+		left = maxf(left, float(f["at"]) + float(f["dur"]) - t)
+	return maxf(0.0, left)
 
 # --- odds and ends ---
 
