@@ -80,6 +80,12 @@ var _stage: Node
 var _won := false
 ## The bottom slot's playing height, summed from the rows this screen has.
 var _bottom_play := 0.0
+## set_tray is a one-time handoff, not a per-move refresh: _refresh() runs on
+## every move and every focus change, and re-handing the same tray each time
+## would be harmless today but is not what "the host hands it over once,
+## after the board is spawned" means. Cleared by _spawn so a new board gets
+## its own handoff.
+var _tray_given := false
 
 func _ready() -> void:
 	super()
@@ -220,7 +226,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 		tip_card.open.connect(_open_rules)
 		_bottom_stack.add_child(tip_card)
 		rows.append(TipCard.HEIGHT)
-	_bottom_play = GAP * (rows.size() - 1)
+	_bottom_play = GAP * maxi(rows.size() - 1, 0)
 	for row in rows:
 		_bottom_play += row
 	_bottom_slot.custom_minimum_size.y = _bottom_play
@@ -282,8 +288,11 @@ func _enter() -> void:
 func _refresh() -> void:
 	# The one board that talks back to its tray: Hidden Word paints the keys
 	# from the row it has just marked. Every other tray is driven by the host.
-	if tray != null and is_instance_valid(_puzzle) and _puzzle.has_method("set_tray"):
+	# Handed over once per spawn, not on every move/focus refresh -- _refresh
+	# runs on both.
+	if not _tray_given and tray != null and is_instance_valid(_puzzle) and _puzzle.has_method("set_tray"):
 		_puzzle.set_tray(tray)
+		_tray_given = true
 	super()
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	if tray != null:
@@ -342,6 +351,7 @@ func _spawn(the_seed: int) -> void:
 			stack.modulate.a = 1.0
 			stack.position.y = 0.0
 		_enter()
+	_tray_given = false
 	super(the_seed)
 	_fit_card()
 

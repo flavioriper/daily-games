@@ -142,7 +142,14 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_board_holder.add_child(_puzzle)
 	_puzzle.solved.connect(_on_solved)
-	_puzzle.ended.connect(_refresh)
+	# Hidden Word's ending that is not a solve (PuzzleBase.finish_unsolved).
+	# The thirteen legacy boards stand on legacy/core/stage_board.gd, a frozen
+	# copy of this contract that predates `ended` and must stay frozen (see
+	# spec 2026-09-19-hidden-word-flat-design.md, section 8): connecting
+	# unconditionally throws on every one of them, and the throw aborts this
+	# function before start() ever runs, leaving a blank dead board.
+	if _puzzle.has_signal("ended"):
+		_puzzle.ended.connect(_refresh)
 	_puzzle.moved.connect(_refresh)
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
