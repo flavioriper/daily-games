@@ -120,11 +120,20 @@ func _grow(rng: RandomNumberGenerator, lens: Array) -> Array:
 func _write(rng: RandomNumberGenerator, paths: Array) -> void:
 	var bank := word_bank()
 	var built: Array[Dictionary] = []
+	var taken := {}
 	for path in paths:
 		var bucket: Array = bank.get(str(path.size()), [])
 		var word: String = "?".repeat(path.size())
 		if not bucket.is_empty():
-			word = str(bucket[rng.randi_range(0, bucket.size() - 1)])
+			# A day never writes the same word twice: the two larger bands
+			# repeat a length on purpose, so two paths draw from one bucket.
+			# The shallowest bucket is 108 deep and at most two paths share a
+			# length, so eight tries is overwhelming.
+			for tries in 8:
+				word = str(bucket[rng.randi_range(0, bucket.size() - 1)])
+				if not taken.has(word):
+					break
+		taken[word] = true
 		built.append({"word": word.to_upper(), "path": path, "found": false})
 	built.sort_custom(func(a, b): return (a["path"] as Array).size() < (b["path"] as Array).size())
 	words = built
@@ -291,6 +300,17 @@ func reset_board() -> void:
 ## The one hint this game can give: the words are hidden but the letters are
 ## not, so the only thing a player can be short of is where a word starts.
 func hint() -> bool:
+	var pick := hint_target()
+	if pick < 0:
+		return false
+	given[pick] = hint_shown(pick) + 1
+	return true
+
+## Which word the next hint would light, or -1 when there is none: the
+## shortest unfound word that still has a tile left to give. `hint()` picks
+## through this, and so does the board, which has to know which tile to ring
+## before it spends the hint -- one seam, so the two can never disagree.
+func hint_target() -> int:
 	var pick := -1
 	for i in words.size():
 		if words[i]["found"]:
@@ -299,10 +319,7 @@ func hint() -> bool:
 			continue
 		if pick < 0 or (words[i]["path"] as Array).size() < (words[pick]["path"] as Array).size():
 			pick = i
-	if pick < 0:
-		return false
-	given[pick] = hint_shown(pick) + 1
-	return true
+	return pick
 
 func hint_shown(index: int) -> int:
 	return int(given.get(index, 0))

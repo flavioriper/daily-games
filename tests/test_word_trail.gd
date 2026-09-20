@@ -127,8 +127,15 @@ static func _test_trace(t) -> void:
 		t.eq(st.trace(back), -1, "a trail traced backwards does not lock")
 		t.check(not st.words[0]["found"], "and nothing was marked found")
 
-	# A prefix is not the word either.
-	t.eq(st.trace(path.slice(0, path.size() - 1)), -1, "a prefix does not lock")
+	# A prefix is not the word either. It has to be a prefix of at least
+	# three cells to reach the length test at all: words[0] is the shortest
+	# and its path is three, so its prefix is turned away by trace()'s "a
+	# trail under three tiles locks nothing" and never exercises the
+	# mismatch. words[1] is four, so its three-cell prefix does.
+	var long_path: Array = (st.words[1]["path"] as Array).duplicate()
+	t.eq(st.trace(long_path.slice(0, long_path.size() - 1)), -1, "a prefix does not lock")
+	t.check(not st.words[1]["found"], "and the longer word is still unfound")
+	t.eq(st.trace(path.slice(0, path.size() - 1)), -1, "a two-tile trail locks nothing either")
 
 	t.eq(st.trace(path), 0, "its own cells, in order, lock the word")
 	t.check(st.words[0]["found"], "the word is found")

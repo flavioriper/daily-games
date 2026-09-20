@@ -1088,6 +1088,14 @@ func undo() -> bool:
 		return false
 	_lifted_at[i] = _now()
 	_found_at.erase(i)
+	# The lock's ring was queued for the moment its wave would have reached
+	# the last tile. The word is gone before then, so the ring goes with it
+	# -- reset_board() already drops _pending for the same reason.
+	var keep: Array = []
+	for e: Dictionary in _pending:
+		if not (_state.words[i]["path"] as Array).has(e["cell"]):
+			keep.append(e)
+	_pending = keep
 	_trail = []
 	# The same wave backwards: the last tile the word took is the first it
 	# gives up, and its letters leave the slots with it.
@@ -1108,7 +1116,7 @@ func hints_left() -> int:
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
-	var pick := _hint_pick()
+	var pick := _state.hint_target()
 	if pick < 0:
 		return false
 	var shown := _state.hint_shown(pick)
@@ -1124,21 +1132,6 @@ func hint() -> bool:
 	_refresh()
 	moved.emit()
 	return true
-
-## Which word the next hint will light: the state's own choice, read ahead so
-## the board knows which tile to ring. `hint()` picks the shortest unfound
-## word that still has a tile left to give.
-func _hint_pick() -> int:
-	var pick := -1
-	for i in _state.words.size():
-		if bool(_state.words[i]["found"]):
-			continue
-		var span: int = (_state.words[i]["path"] as Array).size()
-		if _state.hint_shown(i) >= span:
-			continue
-		if pick < 0 or span < (_state.words[pick]["path"] as Array).size():
-			pick = i
-	return pick
 
 ## Every locked word unwinds. What a hint gave stays given: the hints spent
 ## are not refunded, only unpinned.

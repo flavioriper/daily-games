@@ -9,9 +9,8 @@ extends Control
 ## moon, Code Break's friends, Balance's fruit, Untangle's lanterns,
 ## Shikaku's markers, Tents' tent and conifers, Light Up's lamp, One Line's
 ## snail, Queens' bee -- so a card and its board are visibly the same
-## drawing. Only the furniture under them (a tray, a beam, a tile, a pipe) is
-## drawn here, and only the one `soon` card (Pipes) is drawn here outright,
-## because the board it names has no flat cast to borrow from yet.
+## drawing. Only the furniture under them (a tray, a beam, a tile) is drawn
+## here.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -157,7 +156,6 @@ func _draw() -> void:
 		"oneline": _draw_trail()
 		"nonogram": _draw_mosaic()
 		"queens": _draw_regions()
-		"pipes": _draw_pipes()
 		"hiddenword": _draw_letters()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
@@ -351,15 +349,3 @@ func _draw_word_field(field: Control) -> void:
 		var mid: Vector2 = corner.call(cell_pos) + Vector2.ONE * (cell * 0.5)
 		var ink: Color = Pal.LEAF_DEEP if on_trail.has(cell_pos) else Pal.TEXT
 		MosaicTile.letter(field, mid, cell, String(letters[cell_pos]), Vector2.ONE, ink, font)
-
-## Pipes is the one `soon` card left: no flat board, so no cast to borrow.
-## It is one small drawing, sized to say what the puzzle is at a glance and
-## no more. Horse Pen left `Registry.PUZZLES` for Hidden Word (`b2de66a`),
-## and its own drawing (`_draw_paddock`) should have left with it -- the
-## precedent is Snake Apple's `_draw_burrow`, deleted in the same commit
-## that dropped its card (`b6723a9`) -- but it was left behind until now.
-func _draw_pipes() -> void:
-	_round(-92.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
-	_round(22.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
-	_line([Vector2(-56.0, 20.0), Vector2(-56.0, -34.0), Vector2(58.0, -34.0), Vector2(58.0, 20.0)], 26.0, Pal.WATER_HI)
-	_line([Vector2(-56.0, 6.0), Vector2(-56.0, -28.0)], 8.0, Color(Pal.SURFACE, 0.5))

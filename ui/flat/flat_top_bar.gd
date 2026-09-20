@@ -141,7 +141,15 @@ func _fit(label: Label, wide: float) -> void:
 	if want <= wide:
 		label.remove_theme_font_size_override("font_size")
 		return
-	label.add_theme_font_size_override("font_size", maxi(1, int(floor(base * wide / want))))
+	# The linear guess is the seed, not the answer: advance widths are not
+	# linear in the size -- FIND THE WEIGHT OF THINGS guesses 22 and the face
+	# at 22 measures 372 against a 370 block -- so step down from the seed
+	# (never from `base`, which would be up to 60 measurements for a long
+	# title) until the rendered face actually fits.
+	var px := maxi(1, int(floor(base * wide / want)))
+	while px > 1 and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > wide:
+		px -= 1
+	label.add_theme_font_size_override("font_size", px)
 
 ## A button keeps its own square and sits centred on the row, as the other
 ## top bar's do.
