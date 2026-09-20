@@ -226,21 +226,28 @@ func _turn_page(by: int) -> void:
 ## still claiming a cell, and onto the list root at the exact spot it was
 ## already standing -- a plain Control with no layout of its own, so it can
 ## hold a card at an arbitrary position while the grid moves on without it.
-## Each card then fades on its own tween (Motion.appear, reusing the
-## screen's own ENTER_FADE rather than a new constant) and frees itself
-## when that tween lands, mirroring how a leaving face is freed elsewhere
-## (binairo2d.gd's `_swap_face`). A second page turn before this one's
-## fades land only ever calls this again with whatever `cards` holds by
-## then -- a fresh page `_build_page` only just built, never the nodes
-## already fading -- so no card is ever asked to fade or free twice, and
-## every card that starts fading is guaranteed its own free.
+## It lands there *after* `margins` (which holds `_grid`), so for the whole
+## fade it sits on top of the incoming page at the same screen rect, which
+## is the point of a crossfade -- and also why `disable_tap()` matters: the
+## card's own hit surface is a full-rect Button (`_tap`, in
+## puzzle_card_2d.gd), and Godot hands input to the front-most one under
+## the finger regardless of fade alpha, so a card left tappable here would
+## win every tap over whatever just arrived underneath it. Each card then
+## fades on its own tween (Motion.appear, reusing the screen's own
+## ENTER_FADE rather than a new constant) and frees itself when that tween
+## lands, mirroring how a leaving face is freed elsewhere (binairo2d.gd's
+## `_swap_face`). A second page turn before this one's fades land only ever
+## calls this again with whatever `cards` holds by then -- a fresh page
+## `_build_page` only just built, never the nodes already fading -- so no
+## card is ever asked to fade or free twice, and every card that starts
+## fading is guaranteed its own free.
 func _fade_out_page(leaving: Array) -> void:
 	for card in leaving:
 		var rect: Rect2 = card.get_global_rect()
 		_grid.remove_child(card)
 		_list_root.add_child(card)
 		card.global_position = rect.position
-		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.disable_tap()
 		var out := Motion.appear(card, card.modulate.a, 0.0, ENTER_FADE)
 		if out == null:
 			card.queue_free()

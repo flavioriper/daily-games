@@ -193,3 +193,11 @@ func _press() -> void:
 
 func _release() -> void:
 	_inner.self_modulate = Color.WHITE
+
+## Turns off this card's own tap surface. For a card the menu is fading out
+## on a page turn: it still sits over the incoming page's cards for the
+## fade's duration, and `_tap` is a full-rect Button that wins every tap
+## over whatever is underneath it, so a card leaving has to give that up
+## before it can be trusted to sit on top of one arriving.
+func disable_tap() -> void:
+	_tap.mouse_filter = Control.MOUSE_FILTER_IGNORE
