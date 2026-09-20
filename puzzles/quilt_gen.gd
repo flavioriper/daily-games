@@ -27,8 +27,9 @@ extends RefCounted
 ## ever checks for it. Three rejections shape what survives:
 ##
 ## - a patch whose bounding box runs past MAX_SPAN in either direction,
-##   because the rack's bays are square and a patch longer than the bay would
-##   have to be drawn smaller than the patch beside it;
+##   because one rack cell serves every patch on the board and the rack's
+##   two shelves are bounded in height, so one very tall patch would be paid
+##   for by shrinking all of them (`quilt2d.gd`, `_rack_cell`);
 ## - a finished region enclosing an empty cell with no orthogonal way out of
 ##   the box, because a hole in the quilt reads as a mistake in the drawing
 ##   rather than as part of the shape (and, on a board where the only clue is
@@ -74,7 +75,12 @@ const BANDS := [
 	{"box": 6, "patches": 6, "sizes": [4, 5, 6]},
 	{"box": 7, "patches": 8, "sizes": [4, 5, 6]},
 ]
-## A patch's bounding box may not run past this in either direction.
+## A patch's bounding box may not run past this in either direction. Four
+## is what the rack can hold at a legible size: its two shelves share the
+## rack's height between them, so a four-tall patch already costs every
+## patch on the board about a fifth of its cell, and five would be visible
+## (see the spec's section 6, where a grid of equal bays measured 46.7 a
+## cell on every band and had to be thrown out).
 const MAX_SPAN := 4
 ## How many regions to grow before handing back the best one seen. The grow
 ## is cheap and the proof is not, so a board is regrown rather than repaired
