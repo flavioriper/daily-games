@@ -3,12 +3,14 @@ extends RefCounted
 ## What stands on the first screen, and what stands behind More.
 ##
 ## `PUZZLES` is the grid: twelve cards, three across and four down, in the
-## order they are drawn. Eleven of them open a flat board; the last names a
-## board that has never been drawn flat and says `soon` instead of opening
-## (ui/menu.gd draws it dimmed with no go button). Snake Apple's `soon` card
-## left the grid on 2026-09-19 to make room for Queens, and Horse Pen's left
-## the same day for Hidden Word: both are being redesigned outright, and
-## their island boards stay under More.
+## order they are drawn. **All twelve open a flat board, and there is no
+## `soon` card left on the screen.** Snake Apple's left the grid on
+## 2026-09-19 to make room for Queens, Horse Pen's the same day for Hidden
+## Word, and Pipes' on 2026-09-20 for Word Trail; all three keep their island
+## board under More. The dimmed-card machinery -- the `soon` flag, the `SOON`
+## pill, the 55% ink and ui/menu.gd's `blocked` signal -- stays in the code
+## for the next board that is named before it is drawn, but nothing
+## exercises it now.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -184,17 +186,22 @@ const PUZZLES := [
 		"tip": false,
 		"difficulties": [0, 1, 2],
 	},
-	# --- the end of the last row: named, drawn, and not yet playable here.
-	# It has a board on the stage behind More (`legacy` names it), and comes
-	# back to this row the day it is drawn flat.
 	{
-		"id": "pipes",
+		"id": "wordtrail",
 		"kind": "puzzle",
-		"title": "Pipes",
-		"blurb": "Route the water. It won't climb without a pump.",
-		"short": "Route the water\nuphill with pumps.",
-		"soon": true,
-		"legacy": "pipes_island",
+		"title": "Word Trail",
+		"blurb": "Trace every hidden word. The lengths are the only clue.",
+		"short": "Trace the words,\nfill the field.",
+		"motto": "Every letter finds its way",
+		"footer": "Trace · Bend · Fill",
+		# It picks nothing up, and there is no Check because nothing wrong can
+		# be sitting on the board: only a right word locks. So Reset rides up
+		# into the top bar and the bottom slot is the tip card alone.
+		"script": "res://puzzles/word_trail2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
 	},
 ]
 
