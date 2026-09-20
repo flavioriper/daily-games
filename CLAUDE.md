@@ -505,7 +505,8 @@ Specs:
   which, with no tray, leaves the tip card alone in its bottom slot at 140
   and Reset up in the top bar. **It is called Word Trail and nothing else**,
   in code, in a comment or on screen: LinkedIn ships this game under its own
-  name, which the spec records once and nothing else may repeat, and this is
+  name, which the design docs record once each, in order to forbid it, and
+  which nothing else may repeat. This is
   the third time the repo has renamed a game it did not invent (Code Break,
   Hidden Word). The wave is its
   motion, and it needed nothing new from `core/motion.gd`: the ribbon takes
@@ -535,18 +536,19 @@ Specs:
   Balance's and Untangle's mottos had since 2026-09-18. `_fit_title`
   measures the rendered face (`Font.get_string_size`, which carries the
   variation's letter spacing) against the block on every resize and takes a
-  `font_size` override of `floor(base * wide / want)` when it does not fit,
-  removing the override when it does. Measured across all twelve screens
+  `font_size` override when it does not fit, removing the override when it
+  does. **`floor(base * wide / want)` is the seed of that override and not
+  the answer**: advance widths are not linear in the font size, so the
+  linear guess can still overflow -- Balance's motto guesses 22 and the face
+  at 22 measures 372 against a 370 block -- and `_fit` steps down from the
+  guess (never from `base`, which is up to 60 measurements for a long title)
+  until the rendered face actually fits. Measured across all twelve screens
   with a headless probe on 2026-09-20: exactly four labels are lettered
-  smaller -- Balance's motto (24 to 22), Untangle's (24 to 22) and Word
+  smaller -- Balance's motto (24 to 21), Untangle's (24 to 22) and Word
   Trail's title (84 to 79) and motto (24 to 21) -- and every other label is
   untouched to the pixel, Hidden Word's 481-wide title included: its bar
   builds five buttons but `refresh()` hides Undo, so the block it measures
-  against is 496 and it stays at 84. **One known defect**: Balance's motto still overflows
-  by two pixels, because the face at 22 measures 372 against a 370 block --
-  advance widths are not linear in the size, so one step down is not always
-  enough. It spills into the separation before the buttons and draws over
-  nothing.
+  against is 496 and it stays at 84.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -652,9 +654,10 @@ Specs:
   mosaic tile, taught to carry a letter and nothing else, and the only face
   it shows is the shared sprout, which comes on stage once, for the reveal.
   Word Trail is the third to add nothing: its letter tiles are that same
-  mosaic tile, its scenery band borrows `ui/flat/scenery.gd`'s clouds and
-  discs into the board's own builder, and the only face on the screen is the
-  sprout on the tip card.
+  mosaic tile, its scenery band borrows `ui/flat/scenery.gd`'s clouds
+  (`Scenery.cloud`) into the board's own builder -- the bushes under them are
+  the board's own `_bush` -- and the only face on the screen is the sprout on
+  the tip card.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty

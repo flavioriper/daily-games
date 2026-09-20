@@ -446,7 +446,7 @@ measured every label with its own rendered face:
 | Code Break | 4 | 496 | title | `Code Break` | 84 | 430 | 84 | 430 |
 | Code Break | 4 | 496 | motto | `CRACK THE HIDDEN CODE` | 24 | 351 | 24 | 351 |
 | Balance | 5 | 370 | title | `Balance` | 84 | 306 | 84 | 306 |
-| **Balance** | 5 | 370 | **motto** | `FIND THE WEIGHT OF THINGS` | 24 | 399 | **22** | **372** |
+| **Balance** | 5 | 370 | **motto** | `FIND THE WEIGHT OF THINGS` | 24 | 399 | **21** | 356 |
 | Untangle | 5 | 370 | title | `Untangle` | 84 | 351 | 84 | 351 |
 | **Untangle** | 5 | 370 | **motto** | `EVERY KNOT COMES UNDONE` | 24 | 397 | **22** | 367 |
 | Shikaku | 4 | 496 | title | `Shıkaku` | 84 | 288 | 84 | 288 |
@@ -487,15 +487,20 @@ for. Two things it settled that the argument had not:
   Untangle and Word Trail carry five; Hidden Word builds five and shows
   four**.
 
-**One defect, reported and not fixed: Balance's motto still overflows by
-two pixels.** The fit is `floor(base * wide / want)`, which for
-`FIND THE WEIGHT OF THINGS` is `floor(24 * 370 / 399)` = 22, and the face at
-22 measures **372** against a 370 block -- the font's advance widths are not
-linear in the size, so one step down is not always enough. It spills one
-pixel each side into the 16 of separation before the buttons, so nothing is
-drawn over; a fit that measured after choosing the size, or stepped down
-until it actually fitted, would close it. Left alone: this task changed no
-game code.
+**The defect this probe found, and the fix.** The first fit was
+`floor(base * wide / want)` and stopped there, which for
+`FIND THE WEIGHT OF THINGS` is `floor(24 * 370 / 399)` = 22 -- and the face
+at 22 measures **372** against a 370 block, because the font's advance
+widths are not linear in the size, so one step down is not always enough.
+It was reported here and left alone at the time (that task changed no game
+code) and fixed in the branch's review wave: `_fit` now treats the linear
+guess as a **seed** and steps down from it, one size at a time, until the
+rendered face actually fits. It steps from the guess and never from `base`,
+which would be up to 60 measurements for a long title. Re-measured with the
+same probe after the fix: Balance's motto letters at **21** and draws 356,
+Untangle's stays at 22, Word Trail's title stays at 79 and its motto at 21,
+**no label overflows**, and the twenty labels that already fitted are still
+untouched to the pixel.
 
 ### 15.3 Where the build departed from the spec
 
@@ -556,9 +561,23 @@ game code.
     "exactly two constants" rule in section 9 is a *motion* rule; the two
     are still `WAVE_STEP` and `BEAM_TIME`, and nothing was added to
     `core/motion.gd`.
-12. **`_bush` is drawn a second time here**, four discs, rather than lifted
-    into `ui/flat/scenery.gd`. Hidden Word's band has the same four discs.
-    A third band should lift it, and probably the blade with it.
+12. **The whole band is drawn a second time here, not just `_bush`**, rather
+    than lifted into `ui/flat/scenery.gd`. This disclosure understated
+    itself when it first named only the bush, so it is written out in full:
+    `_build_band`'s body, the blade loop, `_span`, `_hash` and `_bush` are
+    all near-verbatim copies of `puzzles/hidden_word2d.gd`'s band, plus
+    thirteen geometry constants carrying the same names (`TURF_TOP`,
+    `TURF_RADIUS`, `CROWN_H`, `CROWN_RADIUS`, `CLOUD_LEFT`, `CLOUD_RIGHT`,
+    `BLADES`, `BLADE_EDGE`, `BLADE_W`, `BLADE_ROOT`, `BLADE_MIN`,
+    `BLADE_SPREAD`, `BLADE_LEAN`) and the same five wash levels
+    (`TURF_WASH`, `CROWN_WASH`, `BLADE_WASH`, `BUSH_DEEP_WASH`,
+    `BUSH_LIT_WASH`). What differs is the vertical anchoring -- Word Trail
+    hangs its band off `_slots_top() + SLOTS_H` and off its own `BAND_FOOT`
+    where Hidden Word hangs its off the keyboard -- the bushes' bookkeeping
+    (one `BUSHES` list against Hidden Word's three named seats), and the
+    flowers, which Word Trail drops. **This is the third band and the lift is now due**: the
+    next board that wants one should take `ui/flat/scenery.gd` a `band()`
+    and delete both copies, rather than making a fourth.
 13. Pixel measures section 6 did not give (the tile, wall and slot bottom
     edges, the slot corner and letter size, the wall leaf's seat and lean,
     the hint glow's insets and dash runs, the beam's width and the ghost's
@@ -603,7 +622,19 @@ Both were in the board as Task 2 shipped it and both were fixed in Task 3.
 
 ### 15.5 What is still open
 
-- **Balance's motto, two pixels over.** Section 15.2.
+- **The slot layout walk is written twice.** `_build_slots` and
+  `_draw_slot_letters` each compute `tall`, the group's `y`, the per-line
+  `x`, the per-item timings and the advance, in the same order and with the
+  same arithmetic -- one builds the boxes, the other letters them. A future
+  edit to the wrap rule in one of them slides every letter off its box, and
+  no test would catch it, because no test covers the board (below). A shared
+  `_slot_boxes()` handing back the boxes and their moments would collapse
+  both. **Deliberately deferred**: it came out of the whole-branch review,
+  and changing the draw path after the board had been photographed and
+  measured would have invalidated the figures in 15.1 for a refactor that
+  fixes no defect.
+- **The band is a third copy.** Section 15.3, item 12: the lift into
+  `ui/flat/scenery.gd` is now due.
 - **The solve wave has never been in the strip.** `tests/_shot_anim.gd`
   locks one word of six, so it cannot reach a solve; the solve, the hint,
   the undo and the reset were all seen on a throwaway probe instead. A
