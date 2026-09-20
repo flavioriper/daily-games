@@ -398,8 +398,12 @@ and no new host wiring.
 Everything through the flat boards' vocabulary (`core/motion.gd`,
 `docs/art/flat-motion.md`), read as curves the way Nonogram's drawn tiles and
 clue numbers already read them. **This board adds nothing to the vocabulary**
-and takes only three constants of its own: `WAVE_STEP` 0.045, `WAVE_FLASH`
-0.5 and `WIN_WAIT` 1.4.
+and takes only two constants of its own: `WAVE_FLASH` 0.5 and `WIN_WAIT` 1.4
+(a third, `WASH_FLASH` 0.55, sits with the washes rather than here, which
+makes three board-owned constants in all). `WAVE_STEP` 0.045, the wave's
+step, is not this board's own: Sudoku was the second board to read it after
+Queens, so on 2026-09-20 it moved into `core/motion.gd` itself rather than
+being copied a second time.
 
 **Its signature is the unit coming right.** The instant a row, a column or a
 region is complete and correct it lights up in `SUN_RAY` from the cell that
@@ -539,3 +543,14 @@ register: named and left standing, not silently fixed in place.
   claim to the layout figures rather than repeating this section's broader
   one. This section did not, and it is the design authority, so it is wrong
   and this is the correction.
+
+  **This 317 is measured on this branch, before merge, and it will not
+  survive the merge.** Parallel Word Trail work has already landed on
+  `main`: it took Pipes' slot, so `main` carries twelve live cards and no
+  `soon` card, and `main`'s own first screen already reads 322 draw calls --
+  a different count of cards than page one has here. Once this branch
+  merges, page one carries a thirteenth card and its true draw-call figure
+  is neither 311 nor 317; it **has not been measured** with Word Trail's
+  card in the grid, and nobody should guess it from these numbers. Whoever
+  merges this owes page one a fresh reading at
+  `--resolution 810x1440` before quoting a figure for it anywhere.

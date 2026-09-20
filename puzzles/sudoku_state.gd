@@ -38,9 +38,6 @@ var sol := PackedByteArray()       # the answer
 ## Newest last. {"cell": int, "prev": int, "notes": int, "struck": PackedInt32Array, "bit": int}
 var history: Array = []
 var hints_left := HINTS
-## Whether the generator met its band's technique test. Nothing on screen
-## reads it; the tests and the probe do.
-var graded := true
 
 ## Handed two arguments on purpose: real play always wants generate()'s own
 ## TIME_BUDGET_MS deadline, and passing a third here would be the state
@@ -50,7 +47,6 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	sol = out.solution
 	given = out.puzzle
 	grid = out.puzzle.duplicate()
-	graded = bool(out.get("graded", true))
 	notes = PackedInt32Array()
 	notes.resize(CELLS)
 	history = []

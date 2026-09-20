@@ -246,6 +246,7 @@ func _fade_out_page(leaving: Array) -> void:
 		var rect: Rect2 = card.get_global_rect()
 		_grid.remove_child(card)
 		_list_root.add_child(card)
+		_list_root.move_child(_toast, -1)  # the toast must stay on top of a fading card
 		card.global_position = rect.position
 		card.disable_tap()
 		var out := Motion.appear(card, card.modulate.a, 0.0, ENTER_FADE)

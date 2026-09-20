@@ -76,8 +76,9 @@ static func _test_generator(t) -> void:
 	# generate()'s output is contingent on wall-clock timing as well as on
 	# the seed, because TIME_BUDGET_MS abandons a dig that overruns and hands
 	# back a shallower, ungraded puzzle. On the live clock that makes this
-	# file a coin flip rather than a test: band 2 seed 3 spends about 196 ms
-	# of its own 300 ms budget on an idle Mac, so under any load at all it
+	# file a coin flip rather than a test: band 2 seed 3 spends 193-201.5 ms
+	# (two timing sessions, CLAUDE.md's Sudoku entry has both) of its own
+	# 300 ms budget on an idle Mac, so under any load at all it
 	# clips the deadline, comes back under-dug, and "hard does not fall to
 	# singles" fails -- measured at roughly one cold run in two, on a suite
 	# that gates the Android build. A CI runner slower than this Mac would

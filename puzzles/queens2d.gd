@@ -73,9 +73,11 @@ const RING_R := 0.6
 const SHIVER := 0.03
 
 # --- this board's own motion: the wave ---
-## One ring of the wave per WAVE_STEP: a cell a queen sees arrives its
+## One ring of the wave per Motion.WAVE_STEP: a cell a queen sees arrives its
 ## king-move distance in rings after her, and leaves in the reverse order.
-const WAVE_STEP := 0.045
+## WAVE_STEP itself moved to core/motion.gd on 2026-09-20 when Sudoku became
+## the second board to read it; this board keeps only the peak below, which
+## genuinely differs from Sudoku's.
 ## The gold wash's peak alpha as the wave reaches a cell.
 const WAVE_FLASH := 0.35
 ## A cross a queen laid, against the player's own at one.
@@ -83,7 +85,7 @@ const AUTO_ALPHA := 0.75
 ## How long a refused given queen strains before her face settles.
 const STRAIN_TIME := 0.6
 ## The pebbles clear away in a scatter on the win, as Nonogram's do.
-## The pebbles wait for the last queen's wave to land (far * WAVE_STEP plus
+## The pebbles wait for the last queen's wave to land (far * Motion.WAVE_STEP plus
 ## the pop) before they clear, which Nonogram's 0.2 never had to.
 const CLEAR_DELAY := 0.6
 const CLEAR_SPREAD := 0.3
@@ -638,7 +640,7 @@ func _wave_from(q: Vector2i) -> Callable:
 		if Motion.reduce:
 			return 0.0
 		var d := State.distance(q, cell)
-		return float((far - d) if leaving else d) * WAVE_STEP
+		return float((far - d) if leaving else d) * Motion.WAVE_STEP
 
 ## A sweep's wave: along the finger's path at the family's stagger.
 func _along(path: Array) -> Callable:

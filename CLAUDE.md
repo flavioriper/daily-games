@@ -578,9 +578,9 @@ Specs:
   Measured with `tests/_shot_anim.gd -- sudoku` at `--resolution 810x1440`,
   2026-09-20: **87** draw calls bare (twice, and again on the phone's
   `--rendering-driver opengl3_angle`, settled frames matching the default
-  driver to within 1/255 on edge antialiasing alone), 88 with a hint's ring
-  live, and 110 on the win screen after a full solve -- all well inside the
-  855 budget.
+  driver to within 1/255 on edge antialiasing alone), 88 once with a hint's
+  ring live, and 110 once on the win screen after a full solve -- all well
+  inside the 855 budget.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain

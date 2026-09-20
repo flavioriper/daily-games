@@ -298,6 +298,15 @@ const SHIVER_PX := 2.0
 const SHIVER_TIME := 0.2
 const WOBBLE_ANGLE := 0.105
 const WOBBLE_TIME := 0.45
+## The step between rings of a king-move wave: a cell arrives its king-move
+## distance in rings after the seat that triggered it, times this. Queens'
+## crossing-out wave and Sudoku's finished-unit wave both read it; lifted here
+## on 2026-09-20, the moment Sudoku became the second board to take it, the
+## way docs/art/flat-motion.md's own opening says the vocabulary gets lifted
+## on a second use rather than waiting for a third to copy it. Each board
+## keeps its own WAVE_FLASH -- the peak the wave holds a cell at -- because
+## that genuinely differs between them.
+const WAVE_STEP := 0.045
 
 ## The press: `node` sinks to PRESS_SCALE of `base` under the finger and
 ## springs back to `base` with the back ease on release. The caller keeps

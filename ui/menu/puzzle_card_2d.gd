@@ -198,6 +198,14 @@ func _release() -> void:
 ## on a page turn: it still sits over the incoming page's cards for the
 ## fade's duration, and `_tap` is a full-rect Button that wins every tap
 ## over whatever is underneath it, so a card leaving has to give that up
-## before it can be trusted to sit on top of one arriving.
+## before it can be trusted to sit on top of one arriving. It also stops any
+## entrance tween still running on this card (panel.gd's `_entrance`): a page
+## turn inside a page turn's 0.3 s fade could otherwise leave a card sliding
+## its `_inner` in while `_fade_out_page` fades the whole thing out, two
+## tweens fighting over `modulate:a` and `position`. `_fade_out_page` already
+## calls this on every card it takes, so the fix costs nothing new to wire.
 func disable_tap() -> void:
 	_tap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for tw in _entrance:
+		Motion.stop(tw)
+	_entrance = []

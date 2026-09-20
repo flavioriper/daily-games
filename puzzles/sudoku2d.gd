@@ -73,12 +73,16 @@ const WASH_PEER := 0.08
 const WASH_CLASH := 0.10
 const WASH_WRONG := 0.22
 ## The gold a cell reaches at the peak of the wave. A wash like the five
-## above and not a timing: the wave's own three are below.
+## above and not a timing: it is one of the wave's own three, with the two
+## below.
 const WASH_FLASH := 0.55
 
-## This board's own three. Everything else is a recipe or a constant in
+## This board's own three: WASH_FLASH above is the gold's peak alpha,
+## WAVE_FLASH below is how long the wave holds a cell at that peak, and
+## WIN_WAIT is the win wait. The wave's step, Motion.WAVE_STEP, moved to
+## core/motion.gd on 2026-09-20 when Sudoku became the second board to read
+## it, alongside Queens; everything else here is a recipe or a constant in
 ## core/motion.gd, read as a curve (rule 8 of docs/art/flat-motion.md).
-const WAVE_STEP := 0.045
 const WAVE_FLASH := 0.5
 const WIN_WAIT := 1.4
 
@@ -688,7 +692,7 @@ func _settle(before: Array, at: int, now: float) -> void:
 			if at >= 0:
 				step = maxi(absi(Gen.row_of(i) - Gen.row_of(at)),
 					absi(Gen.col_of(i) - Gen.col_of(at)))
-			var when := now + step * WAVE_STEP
+			var when := now + step * Motion.WAVE_STEP
 			if not _flash.has(i) or float(_flash[i]) < when:
 				_flash[i] = when
 			_busy_for(when - now + WAVE_FLASH)
@@ -727,11 +731,26 @@ func undo() -> bool:
 	_busy_for(Motion.BUMP_TIME)
 	# An undo can take a finished unit apart, and most of that unit's wave is
 	# still in the future when it does -- eight of a row's nine cells are, at
-	# WAVE_STEP a step. `_settle` will not re-light it (`before` says it was
+	# Motion.WAVE_STEP a step. `_settle` will not re-light it (`before` says it was
 	# already finished), but nothing else would put it out either, and the
 	# gold would go on sweeping a row that is no longer right. Section 7's
 	# rule is that there is no highlight to leave behind; this is the one
 	# place on the board that could leave one.
+	#
+	# The prune below is cell-granular, not unit-scoped: `_flash` is keyed by
+	# cell alone with no record of which unit scheduled it, so erasing every
+	# cell of a newly-reopened unit can also erase a wave a *different*,
+	# still-complete unit legitimately scheduled for a cell the two units
+	# share (a box cell that sits in the row this undo just broke). That is
+	# accepted and cosmetic, not a bug to chase: it needs two units to finish
+	# within about a wave's width of each other (eight steps of
+	# Motion.WAVE_STEP, ~0.36 s) and then an undo inside that window, and the
+	# cost is a legitimate flash cut a little short -- never a stale one left
+	# behind, which is the failure this prune exists to prevent. Making the
+	# prune unit-aware would mean tagging every `_flash` entry with the units
+	# that scheduled it and only clearing a tag on their own reopening, which
+	# is a real restructure for a case this narrow; over-eager is the right
+	# trade until something else forces `_flash` to carry more than a time.
 	var units: Array = Gen.units()
 	for u in units.size():
 		if not bool(before[u]) or state.unit_done(units[u]):

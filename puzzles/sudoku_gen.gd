@@ -37,12 +37,15 @@ const PASSES := 200
 ## number of tries, not the time they take, and this runs inside build() at
 ## board open on a phone; a phone slower than this Mac could otherwise see a
 ## single dig() run far longer than any attempt measured here. Set above the
-## ~194 ms the slowest seed in the test suite actually needs end to end
-## (band 2, seed 9203, six failed attempts before its seventh grades) rather
-## than at the first round number that sounded safe -- a tighter cap here
-## silently turns a hard day into an ungraded one instead of only guarding
-## the tail, the same failure mode this budget hit at 150 ms before the dig
-## rewrite that stopped it re-checking the same pair twice.
+## slowest seed in the test suite (band 2, seed 9203, six failed attempts
+## before its seventh grades), which two separate timing sessions put at
+## 193&ndash;201.5 ms end to end -- one pass at 193-195 ms, a later one
+## chasing an unrelated flake at 196.5-201.5 ms -- rather than at the
+## flattering low end of that range or at the first round number that
+## sounded safe: a tighter cap here silently turns a hard day into an
+## ungraded one instead of only guarding the tail, the same failure mode this
+## budget hit at 150 ms before the dig rewrite that stopped it re-checking
+## the same pair twice.
 const TIME_BUDGET_MS := 300
 
 static var _peers: Array = []
