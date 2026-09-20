@@ -675,10 +675,13 @@ which is the moment the whole board is for.
 - [ ] **Step 2: Shoot the strip, twice**
 
 ```bash
-godot --path . --script res://tests/_shot_anim.gd -- mushroom --resolution 810x1440
+godot --path . --resolution 810x1440 --script res://tests/_shot_anim.gd -- mushroom
 ```
 
-**`810x1440` and never `1080x1920`** — this Mac's display cannot show 1920
+**`--resolution` is a Godot engine flag and must come BEFORE `--script`.** After a
+`--` it is handed to the script as a user argument and silently ignored, and the
+run then happens at the default window — which is exactly the 1237-wide canvas
+this rule exists to avoid. **`810x1440` and never `1080x1920`** — this Mac's display cannot show 1920
 rows, and the old flag comes back 1237 wide, 15% wider than the phone
 (CLAUDE.md). Run it **twice, sequentially, never overlapping another harness**,
 and take a control reading of an existing board (`queens`) in the same session:
@@ -720,7 +723,7 @@ crown) for the seat and scale conventions.
 - [ ] **Step 2: Shoot the menu, twice**
 
 ```bash
-godot --path . --script res://tests/_shot_menu.gd -- --resolution 810x1440
+godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd
 ```
 
 Expected: the thirteenth card drawn on page one or two depending on whether
@@ -767,7 +770,7 @@ current page**, and replay the wave when the page turns.
 - [ ] **Step 3: Shoot both pages**
 
 ```bash
-godot --path . --script res://tests/_shot_menu.gd -- --resolution 810x1440
+godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd
 ```
 
 Confirm by measurement, not by eye, that a card is still **252** tall and its

@@ -405,10 +405,21 @@ with `solved: true` (this board cannot end unsolved -- only Hidden Word can),
 
 ## 14. Measured
 
-On this Mac, 2026-09-20, with:
+**The first pass at this section was taken at the wrong flag, and it is worth
+naming the trap rather than quietly overwriting it.** `--resolution` is a
+Godot engine flag and only takes effect placed before `--script`; written
+after the `--` (as the first draft of this section did) it is handed to the
+script as a user argument instead, `OS.get_cmdline_user_args()` sees it and
+the engine never does, and the run silently falls back to the default
+window. The tell was in the very numbers this section quoted: a card
+measured 372-373 wide on the menu screen in the sibling task's report, which
+CLAUDE.md's own "What the harnesses actually measure" names as the *wrong*
+canvas -- 1237x1920, 15% wider than the phone -- while the correct
+`810x1440` flag comes back 1080x1920 with a 320-wide card. The draw-call and
+idle-ms figures below were re-taken at the corrected invocation:
 
 ```
-godot --path . --script res://tests/_shot_anim.gd -- mushroom --resolution 810x1440
+godot --path . --resolution 810x1440 --script res://tests/_shot_anim.gd -- mushroom
 ```
 
 `tests/_shot_anim.gd` grew a `mushroom` branch beside Queens': `_tap_mushroom()`
@@ -421,36 +432,46 @@ chosen=(1, 0)`. Had it touched nothing, `_tap_mushroom()` would instead have
 walked every mushroom and picked the one bordering the most givens of exactly
 one, so the strip always catches the wash landing rather than a plant that
 changes nothing. The two shots before/after the tap (`/tmp/anim_mushroom_2.png`
-at t=1.66, `/tmp/anim_mushroom_3.png` at t=1.81) show the point of the shot
-plainly: the mushroom pops into the second cell of the top row, and the
-given `1` beside it turns from ink to `LEAF_DEEP` on a `LEAF`-washed cell in
-the same beat, with its numeral bumped -- the count wash arriving, which is
-this board's whole signature.
+at t=1.66, `/tmp/anim_mushroom_3.png` at t=1.80-1.81 across runs) show the
+point of the shot plainly: the mushroom pops into the second cell of the top
+row, and the given `1` beside it turns from ink to `LEAF_DEEP` on a
+`LEAF`-washed cell in the same beat, with its numeral bumped -- the count
+wash arriving, which is this board's whole signature.
 
-`--resolution 810x1440`, never `1080x1920`: this Mac's display cannot show
-1920 rows, and the wider flag comes back 1237 x 1920, 15% wider than the
-phone the game is drawn for (CLAUDE.md, "What the harnesses actually
-measure"). The two runs below ran one at a time, nothing else windowed open
-at the same time, with the Queens control shot in the same session.
+The saved frames came back **810x1440** this time (matched with PIL), which
+is the proof the flag actually landed; the earlier pass's frames were never
+checked for size and would have come back 1080x1676, the unflagged default
+window on this Mac. The two runs below ran one at a time, nothing else
+windowed open at the same time, with the Queens control shot in the same
+session, immediately after.
 
 | Run | Draw calls | Idle mean (ms) |
 |---|---|---|
-| Mushroom, run 1 | 75 | 3.27 |
-| Mushroom, run 2 | 75 | 3.29 |
-| Queens (control), run 1 | 71 | 3.87 |
-| Queens (control), run 2 | 71 | 3.86 |
+| Mushroom, run 1 | 75 | 2.47 |
+| Mushroom, run 2 | 75 | 2.47 |
+| Queens (control), run 1 | 71 | 2.90 |
+| Queens (control), run 2 | 71 | 2.87 |
 
-Every reading is quoted above, including the flattering ones; there is no
-outlier to drop and no mean standing in for the spread, because there
-barely is one this session. 75 draw calls with the answer's first mushroom
-planted and its neighbour's wash landed is comfortably inside the 72 bare /
-103 mid-wave (five pebbles and a hint) Task 5 already measured through the
-win harness, and nowhere near the 855 budget. The idle figure is a report,
-not a gate: 3.27-3.29 ms for Mushroom Patch against 3.86-3.87 ms for Queens
-in the same session is a small, consistent gap, but Hidden Word's own spec
-already showed this machine's idle reading can swing by a factor of 1.6 run
-to run (Queens read 4.40 to 4.62 ms in one session against 3.83 ms recorded
-in its own spec), so two clean runs each establish that both boards sit well
-under a millisecond apart and nowhere near trouble -- they do not establish
-a precise number for either board, and a single session this consistent
-should be read as fortunate rather than as the machine's true floor.
+The draw-call counts did not move against the earlier, wrongly-taken
+readings (75 and 71 both times) -- consistent with CLAUDE.md's own note that
+draw calls did not shift between the two flags on the first screen, and
+worth stating plainly rather than assuming it holds everywhere: it happened
+to hold here too, checked rather than presumed. The idle-ms figures did
+move, from 3.27-3.29 / 3.86-3.87 to 2.47 / 2.87-2.90; both sit at a smaller
+window (810x1440 fewer pixels than the unflagged 1080x1676), so a lower
+figure at the corrected flag is expected and is not read as either board
+getting faster. Every reading is quoted above, including the flattering
+ones; there is no outlier to drop and no mean standing in for the spread,
+because there barely is one this session. 75 draw calls with the answer's
+first mushroom planted and its neighbour's wash landed is comfortably inside
+the 72 bare / 103 mid-wave (five pebbles and a hint) Task 5 already measured
+through the win harness, and nowhere near the 855 budget. The idle figure is
+a report, not a gate: 2.47 ms for Mushroom Patch against 2.87-2.90 ms for
+Queens in the same session is a small, consistent gap, but Hidden Word's own
+spec already showed this machine's idle reading can swing by a factor of 1.6
+run to run (Queens read 4.40 to 4.62 ms in one session against 3.83 ms
+recorded in its own spec), so two clean runs each establish that both boards
+sit well under a millisecond apart and nowhere near trouble -- they do not
+establish a precise number for either board, and a single session this
+consistent should be read as fortunate rather than as the machine's true
+floor.
