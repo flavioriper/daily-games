@@ -658,7 +658,7 @@ func _process(_d):
 	get_root().get_texture().get_image().save_png("/tmp/kb.png")
 	quit()
 EOF
-godot --path . --resolution 1080x1920 --script /tmp/_kb.gd
+godot --path . --resolution 810x1440 --script /tmp/_kb.gd
 ```
 
 Open `/tmp/kb.png` and look: three rows centred, A green, S amber, T/N/L grey, Enter wide and green, nothing clipped at either margin, the tray 340 tall.
@@ -807,7 +807,7 @@ Delete the `horse` entry from `PUZZLES` (the `soon` card, around line 181 — **
 
 ```bash
 cd /Users/flavioriper/dev/daily
-godot --path . --resolution 1080x1920 --script tests/_shot_menu.gd
+godot --path . --resolution 810x1440 --script tests/_shot_menu.gd
 ```
 
 Open the shot it writes. Expected: twelve slots, eleven live cards, Pipes alone and dimmed in the last slot of the last row, nothing overlapping, the bottom bar still on screen. Note the draw-call count it prints — it is the baseline Task 9 measures against.
@@ -891,7 +891,7 @@ A probe must let a frame pass between poking the board and `force_draw()` — `q
 
 ```bash
 cd /Users/flavioriper/dev/daily
-godot --path . --resolution 1080x1920 --script tests/_shot_anim.gd -- hiddenword
+godot --path . --resolution 810x1440 --script tests/_shot_anim.gd -- hiddenword
 ```
 
 Look at every frame it writes: the empty grid, a row part-flipped, a row landed. Expected: 169-ish tiles, five across centred, six down filling the card, letters legible, the flip caught mid-turn on at least one frame.
@@ -980,7 +980,7 @@ On `state.is_over()`: call `finish_unsolved()`, slide the keyboard out over 0.25
 
 ```bash
 cd /Users/flavioriper/dev/daily
-godot --path . --resolution 1080x1920 --script tests/_shot_anim.gd -- hiddenword
+godot --path . --resolution 810x1440 --script tests/_shot_anim.gd -- hiddenword
 ```
 
 Expected frames: the toast over the grid; a hint's ghost letter and its greened key; the solve with the row lit and the rest dim; the reveal with the sprout, the word, and no keyboard. Check the reduce-motion frames too — two frames 1.5 s apart must come out pixel-identical.
@@ -990,7 +990,7 @@ Expected frames: the toast over the grid; a hint's ghost letter and its greened 
 `tests/_win.gd` silently reports 0/0 headless — run it **windowed**.
 
 ```bash
-godot --path . --resolution 1080x1920 --script tests/_win.gd
+godot --path . --resolution 810x1440 --script tests/_win.gd
 ```
 
 Expected: 11/11, Hidden Word among them. If it reports 10/11, the solve path is wrong, not the harness.
@@ -1021,7 +1021,7 @@ In `_build`'s `match id`, a `"hiddenword"` branch; in `_draw`'s, a `_draw_letter
 
 ```bash
 cd /Users/flavioriper/dev/daily
-godot --path . --resolution 1080x1920 --script tests/_shot_menu.gd
+godot --path . --resolution 810x1440 --script tests/_shot_menu.gd
 ```
 
 Expected: the Hidden Word card reads at card size — three tiles, three colours, the name under them — and the draw-call count has not moved far from Task 5's baseline. Queens' picture cost 12; this one has no faces and should cost less.
@@ -1045,12 +1045,14 @@ git commit -m "feat(hiddenword): the card's picture"
 
 - [ ] **Step 1: Measure**
 
-Run these **one at a time** — never overlap windowed render harnesses, and take two sequential readings, because the first run pays for shader compilation.
+**Run harnesses at `--resolution 810x1440`, never 1080x1920** (corrected 2026-09-19 after measuring). The window clamps to 1080x1676 on this Mac because the display cannot show 1920 rows, and `stretch/aspect="expand"` then preserves the height and *widens* the canvas to **1237x1920** — 15% wider than a real phone. 810x1440 and 720x1280 both yield exactly 1080x1920 of design space. Height-bound boards are unaffected either way, but anything width-sensitive is not — above all the menu's three-column card grid, whose card-art budget is written against 320.
+
+Run these **one at a time** — never overlap windowed render harnesses, and take two sequential readings, because the first run pays for shader compilation. **Confirm each frame shows what it should before quoting a number off it:** a first run in a session has produced an entirely blank strip on this Mac, not merely a slow one. Run `ps aux | grep godot` and kill strays first — a leaked probe from an earlier task was found spinning at 2.5 minutes of CPU and skewing every reading after it.
 
 ```bash
 cd /Users/flavioriper/dev/daily
-godot --path . --resolution 1080x1920 --script tests/_shot_menu.gd
-godot --path . --resolution 1080x1920 --script tests/_shot_anim.gd -- hiddenword
+godot --path . --resolution 810x1440 --script tests/_shot_menu.gd
+godot --path . --resolution 810x1440 --script tests/_shot_anim.gd -- hiddenword
 ```
 
 Record: the menu's draw calls before and after (Task 5's baseline against Task 8's), the board's draw calls idle and mid-flip, and the mean idle in ms. One odd reading is an outlier — take the second.
@@ -1060,7 +1062,7 @@ Record: the menu's draw calls before and after (Task 5's baseline against Task 8
 The mobile-only class of defect reproduces on this Mac under ANGLE:
 
 ```bash
-godot --path . --resolution 1080x1920 --rendering-driver opengl3_angle --script tests/_shot_anim.gd -- hiddenword
+godot --path . --resolution 810x1440 --rendering-driver opengl3_angle --script tests/_shot_anim.gd -- hiddenword
 ```
 
 Expected: identical frames. If the letters or the tiles come out wrong here and right on the default driver, something has reintroduced an `instance uniform` — the buffer is sixteen instances, not 256, and a desktop driver hides the overrun.
@@ -1081,7 +1083,7 @@ Append an "Amendments from the build, 2026-09-19" section to the spec with every
 
 ```bash
 godot --headless --path . --script tests/run_tests.gd 2>&1 | tail -6
-godot --path . --resolution 1080x1920 --script tests/_win.gd
+godot --path . --resolution 810x1440 --script tests/_win.gd
 git status --porcelain
 git add -A
 git commit -m "docs(hiddenword): the eleventh flat board on the record, measured"
