@@ -246,6 +246,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="nonogram">Nonogram · flat</button>
     <button data-tab="queens">Queens · flat</button>
     <button data-tab="hiddenword">Hidden Word · flat</button>
+    <button data-tab="sudoku">Sudoku &middot; flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
   </nav>
 </header>
@@ -1757,6 +1758,156 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Difficulty is commonality only.</b> Easy, medium and hard all play the same game with the same six rows; the only thing that moves is how obscure the answer may be. No other flat board's ladder is this thin.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band (easy by default), <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?guess=plant,grass</code> for rows already committed and settled, <code>?typed=mos</code> for a partial working row, <code>?commit=slate</code> to type and commit that word at <code>?at=</code> (0.2 by default), <code>?bad=1</code> to commit whatever is typed &mdash; pair it with <code>?typed=</code> for a refusal &mdash; <code>?hint=1</code> and <code>?reset=1</code> to fire those at <code>?at=</code>, <code>?win=1</code> for the win screen, <code>?over=1</code> for six rows and the reveal, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-flip can be shot (real time otherwise passes before Chrome's shot lands). Pick the tab with <code>#hiddenword</code>. The lists are fetched relative to this page, so a headless run wants <code>--allow-file-access-from-files</code>; the caption says which list it got.</p>
+</section>
+
+<!-- ============================== SUDOKU ============================== -->
+<section class="tab-panel" id="tab-sudoku">
+  <h2>Sudoku &middot; flat, the thirteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">Nine by nine, three by three, every number once in every row, column and region. The oldest game this grid has ever been asked to hold, and the one everybody already knows &mdash; so the whole of the design is in <b>what a 100-pixel cell can be made to say</b>: the peers and the twins wash when you touch a cell, a region that comes right lights up from the cell that finished it, and a pencil chip in the pad writes small. <b>It is also the first card that will not fit on the first screen</b>: twelve is what four rows of 252 buy, so this board brings a second page with it. Spec: <code>docs/superpowers/specs/2026-09-20-sudoku-flat-design.md</code>.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-sudoku.png" alt="The user's mock: a cream phone screen with a carved SUDOKU sign, a day card with three hearts, a nine by nine grid in a wooden frame with vines and a signpost beside it, a row of number keys with an eraser, an Undo / crown / cross / Check row, and a How to play card with the sprout mascot holding a pencil">
+        <figcaption>The user's mock of 2026-09-20. <b>Taken from it:</b> the 9&times;9 grid with its heavy region rules and its alternating region tint, the one gold selected cell, the givens in ink, the row of number keys under the board, the day card, the tip card with the sprout, and the four top-bar buttons. <b>Not built, and why:</b> the <b>three hearts</b> (there are no lives, settled 2026-09-18 &mdash; a wrong digit is just a wrong digit and Check is what finds it), the <b>crown and cross buttons</b> in the actions row (that row is Reset and Check on every flat screen, and the mock has borrowed Queens' tray chips into it), the <b>wooden frame, the vines and the signpost</b> (a flat board stands on paper, not on furniture &mdash; the frame becomes the heavy rule drawn round the grid), and the <b>eraser key</b>, which section 4 replaces with the pencil and gives its reason. <b>Moved rather than dropped:</b> Undo and Hint are in the top bar here, where they are on all eleven other boards, not in the actions row.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The family's chrome the mock is set in: cream cards with a soft bottom edge, a tray under the board, a leaf sprouting from the wordmark, a sprout on a tip card. Sudoku keeps every row &mdash; it is the first board since Nonogram to want all of them.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="sd" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="sd-rm">Reduce motion: off</button>
+        <button id="sd-diff">Easy</button>
+        <button id="sd-new">New puzzle</button>
+        <button id="sd-hint">Hint</button>
+        <button id="sd-check">Check</button>
+        <button id="sd-nearly">Six from the end</button>
+        <button id="sd-reset">Reset</button>
+        <button id="sd-show">Show the answer</button>
+      </div>
+      <div id="sd-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays, <b>and it plays the real generated puzzle</b>, not a fixture: tap a cell, tap a number, or use your own keyboard &mdash; <kbd>1</kbd>&ndash;<kbd>9</kbd> place, <kbd>backspace</kbd> clears, <kbd>n</kbd> flips the pencil, <kbd>u</kbd> undoes, the arrow keys walk the selection. <b>Press "Six from the end"</b> to see the solve wave without sitting through a whole grid. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>9&times;9 at all three bands</b>, difficulty by given count and technique; <b>pencil marks with a toggle</b>; <b>no lives</b> &mdash; the mock's hearts stay decoration, as they have been since 2026-09-18; <b>peers and twins wash on selection</b>; and <b>a second page on the first screen</b>, with the pager in the day row. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>SUDOKU</code> in ink with the leaf sprouting from it and <code>EVERY NUMBER ONCE</code> under, then Undo, Hint with its count and Settings. <code>capabilities()</code> is <code>["undo","hint","check"]</code>, and Reset rides in the actions row where it belongs, so this is the ordinary four.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour" &mdash; the mock's, without its hearts.</td></tr>
+    <tr><td class="k">Board card</td><td>1000</td><td>The grid, and nothing else. Section 3.</td></tr>
+    <tr><td class="k">Digit pad</td><td>170</td><td>Ten chips: 1&ndash;9 and the pencil. Section 4.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset in paper at the left, Check in sun at the right. The shared row, unchanged.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout, its line, and the door to the rules sheet.</td></tr>
+  </table>
+  <p>With 40 of margin and 20 between rows that is <b>1920 exactly</b>, and the 1000 is not chosen &mdash; it is what <code>ui/flat/flat_host.gd</code> hands back. The host measures its bottom slot from the rows it actually built: 170 + 20 + 130 + 20 + 140 = <b>480</b>, and <code>1840 &minus; 320 &minus; 40 &minus; 480</code> leaves the board <b>1000</b>. Sudoku is the first board since Nonogram to ask for all three bottom rows, and its 480 is the widest bottom slot on the game &mdash; twenty more than Binairo's and Nonogram's 460.</p>
+  <div class="decide"><b>This board asks the host for nothing new.</b> No <code>"actions": false</code>, no <code>"tip": false</code>, no new optional on <code>PuzzleBase</code>. <code>card_height()</code> returns every pixel it is given and <code>card_centred()</code> never comes up, because the grid is square and so is the space: at 944 of inner width and 944 of inner height the slack is zero in both directions. That makes it the plainest board in the registry to wire &mdash; one line, <code>"tray": "digits"</code>, and the tray is the only new class the chrome needs.</div>
+
+  <h3>2. The rules, and what is derived <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>The state is the one truth</b> and it is scene-free (<code>puzzles/sudoku_state.gd</code>): <code>given</code>, <code>grid</code>, <code>notes</code> (a nine-bit mask a cell), <code>sol</code>, and a move log. Three moves &mdash; <code>place</code>, <code>mark</code>, <code>undo</code> &mdash; and nothing else writes to it.</li>
+    <li><b>Everything the screen washes is derived, never stored.</b> The peers of the selected cell, the twins holding its digit, and the clashes are all recomputed on every read. That is Queens' rule, and it is the reason undo cannot leave a stale highlight behind: there is no highlight to leave.</li>
+    <li><b>A given is refused, not overwritten.</b> Tapping a number at a cell the puzzle came with shivers the cell and says so on the tip card. A refusal is a toast and never a silence &mdash; Hidden Word's rule.</li>
+    <li><b>Tapping the digit a cell already holds takes it out.</b> That is why there is no eraser chip; section 4.</li>
+    <li><b>Placing a digit strikes it off its peers' pencil marks</b>, and undo puts every one of them back. That is the fiddly half of the move log, and the one part of this state a test earns its keep on.</li>
+    <li><b>A wrong digit is allowed to stand.</b> Nothing refuses a move that clashes &mdash; spotting your own mistake is the game. A clash is washed faintly in <code>BAD</code> while it stands, and Check is what names it.</li>
+    <li><b>Solved</b> is every cell equal to the solution. There is no way to end this board without solving it: it is not Hidden Word and it cannot run out.</li>
+  </ul>
+
+  <h3>3. The grid, and why the cell is 100 and not 104.9 <span class="pill">proposed</span></h3>
+  <p>Inside the board card a 28 inset leaves <b>944</b>, and nine cells would fit at <b>104.9</b>. The grid is <b>900 &mdash; nine cells of 100</b> &mdash; and the 22 of hem either side is what the heavy rule stands in: it is drawn <em>round</em> the grid, 6 wide, and a grid pushed to the inset's edge has nowhere to put it. A round 100 is also what makes the pencil marks legible, because each of the nine sits in a third of a cell and 33 is the smallest square a 26-px numeral reads in.</p>
+  <p><b>100 is the second-smallest cell any flat board asks of a thumb</b>, above Queens' and Nonogram's 103 only by a hair and well under Hidden Word's 149 &mdash; and it is the price of nine columns. It is bearable because a tap on the grid only ever <em>selects</em>; nothing is typed there, and the thing you tap next is a 91&times;130 chip. Judge that split on the phone: it is the call this page exists to make.</p>
+  <table>
+    <tr><th style="width:24%">Name</th><th style="width:16%">Hex</th><th>Where</th></tr>
+    <tr><td class="k"><code>Pal.SURFACE</code></td><td><code>#fffdf8</code></td><td>A cell in a pale region.</td></tr>
+    <tr><td class="k">region tint</td><td><code>#f9f3e7</code></td><td>A cell in a shaded region &mdash; <code>SURFACE</code> 55% of the way to <code>PARCHMENT</code>. The mock's own chequer, and it is what makes nine columns read as three.</td></tr>
+    <tr><td class="k"><code>GRID_RULE</code></td><td><code>#a3855f</code></td><td>The heavy rule between regions and round the grid, 6 wide. New: <code>BARK</code> is too dark on cream at that width and <code>LINE</code> too faint to read as a region edge, so this is <code>BARK</code> 38% of the way to <code>PARCHMENT</code>.</td></tr>
+    <tr><td class="k"><code>Pal.LINE</code> at 0.8</td><td><code>#b8a892</code></td><td>The thin rule between cells, 2 wide.</td></tr>
+    <tr><td class="k"><code>Pal.TEXT</code></td><td><code>#3b3028</code></td><td>A given. It never changes and it never washes.</td></tr>
+    <tr><td class="k"><code>Pal.LEAF_DEEP</code></td><td><code>#4f8a31</code></td><td><b>A digit the player put there.</b> One colour is all it takes to tell a guess from a given, and green is the game's own word for something that grew.</td></tr>
+    <tr><td class="k"><code>Pal.DIM</code></td><td><code>#8a7b6b</code></td><td>A pencil mark, at 26 px in a third of a cell.</td></tr>
+  </table>
+
+  <h3>4. The digit pad, and the eraser that is not there <span class="pill blue">decided</span></h3>
+  <p><code>ui/flat/digit_pad.gd</code>, <code>HEIGHT</code> 170: one row of ten chips 130 tall, a 10 lift over them and 30 of air under. A chip is <b><code>(1000 &minus; 9&times;10)/10 = 91</code> wide</b>, and that is not a new number &mdash; it is Hidden Word's keyboard arithmetic exactly (<code>ui/flat/key_board.gd</code>'s <code>KEY</code> is 91 by 100), so a thumb here has the room it already has on a shipped screen, and ten chips with nine gaps close on the 1000 column.</p>
+  <p><b>The tenth chip is the pencil, not an eraser.</b> The mock draws an eraser and this drops it, for Nonogram's stated reason &mdash; <em>"no eraser chip here and no mode to get stuck in"</em>. Tapping the digit a cell already holds takes it out again, which is one tap rather than two and is what every phone sudoku already does. That buys the row back for the pencil, which a 9&times;9 at 30 givens genuinely needs and which has nowhere else to go: eleven chips would be 82 wide, under the keyboard's own floor, and a pencil in the top bar is four hundred pixels from the numbers it modifies.</p>
+  <p><b>A digit placed nine times goes pale</b> and stops answering. It costs one count and it closes off a whole class of wasted tap &mdash; the pad is the only place on the screen that can say "there are no more of these".</p>
+
+  <h3>5. What the board says when you touch it <span class="pill blue">decided</span></h3>
+  <p>This is the whole of the design, because the rules are not in question and the readability is. Tapping a cell selects it &mdash; tapping it again clears the selection &mdash; and four washes come off that one fact, all derived:</p>
+  <table>
+    <tr><th style="width:22%">Wash</th><th style="width:18%">Colour</th><th>What it means</th></tr>
+    <tr><td class="k">Selected</td><td><code>SUN</code> at 0.34, gold edge 5</td><td>The cell the pad will write into.</td></tr>
+    <tr><td class="k">Twins</td><td><code>SUN</code> at 0.20</td><td>Every other cell holding the selected cell's digit. <b>The most useful scan in sudoku</b>, and the reason the selection survives the tap.</td></tr>
+    <tr><td class="k">Peers</td><td><code>SUN</code> at 0.08</td><td>The selected cell's row, column and region &mdash; the twenty cells it cannot repeat.</td></tr>
+    <tr><td class="k">Clash</td><td><code>BAD</code> at 0.10</td><td>Two of the same digit seeing each other. Faint on purpose: it is a note, not an accusation, and Check is the one that counts them.</td></tr>
+    <tr><td class="k">Checked wrong</td><td><code>BAD</code> at 0.22, digit in <code>BAD</code></td><td>What the last Check found. Cleared for a cell the moment it is touched again.</td></tr>
+  </table>
+  <div class="decide"><b>A clash and a mistake are two different things, and the board says both.</b> A clash is visible with no solution in hand &mdash; two 7s in a row is wrong on its face, so drawing it costs the player nothing they could not see. A <em>wrong</em> digit that clashes with nothing needs the answer to find, which is what Check is for and what it spends a count on. Drawing the first faintly and the second only on request is the line this board draws between helping and playing for you. It is worth arguing with on the phone.</div>
+
+  <h3>6. The signature: the board answers a finished unit <span class="pill">proposed</span></h3>
+  <p>Every flat board has one moment that is its own (<code>docs/art/flat-motion.md</code>). Binairo has the blush, Code Break the flight, Hidden Word the flip, Queens the wave. <b>Sudoku's is the unit coming right</b>: the instant a row, a column or a region is complete and correct, it lights up in <code>SUN_RAY</code> from the cell that finished it outwards, a king-move step of <code>WAVE_STEP</code> 0.045 apart, each cell holding its gold for <code>WAVE_FLASH</code> 0.5. Finish a cell that closes a row <em>and</em> a region and both run at once from the same seat.</p>
+  <p>It is Queens' <code>_settle</code> shape and it is diffed in exactly one place: one snapshot of which units were finished before the move against which are finished after it. Undo, Hint and Reset all go through the same door, so no move can light a unit twice and none can light one it did not finish.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The grid pops in wide about its centre (<code>wide_pop_scale</code>, from 0.88) after <code>ENTER_DELAY</code> 0.18; the givens fade in region by region, <code>ENTER_STAGGER</code> 0.03 apart, so the board assembles itself as three by three rather than as eighty-one.</td></tr>
+    <tr><td class="k">Place</td><td>The cell bumps (<code>bump_scale</code>) and the digit drops into it from 40 above with the fade (<code>drop_in_lift</code>).</td></tr>
+    <tr><td class="k">Take out</td><td>The same digit tapped again: the cell bumps and the numeral is simply gone. No pop-out &mdash; a cleared cell is not an event.</td></tr>
+    <tr><td class="k">Pencil</td><td>The cell bumps; the mark appears at its third of the cell with no drop, because nine of them dropping is a rainstorm.</td></tr>
+    <tr><td class="k">Refused</td><td>The cell shivers (<code>shiver_offset</code>, 2 px, 0.2 s) and the tip card says what happened for 2.2 s. There is no toast pill on this board: it already has a card whose whole job is one line of text.</td></tr>
+    <tr><td class="k">Unit complete</td><td><b>The wave.</b> Above.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring in <code>LEAF</code> over the cell, the digit drops in, sparkles in leaf, and the wave runs if it finished anything.</td></tr>
+    <tr><td class="k">Check</td><td>Every wrong cell shivers, in a shallow wave out from the middle row, and takes the <code>BAD</code> wash until it is touched.</td></tr>
+    <tr><td class="k">Reset</td><td>Every cell the player wrote bumps in a wave from the far corner, <code>RESET_STAGGER</code> 0.03 apart, and empties.</td></tr>
+    <tr><td class="k">Solved</td><td>The whole grid waves on the diagonal, <code>SOLVE_STAGGER</code> 0.04 a step, with sparkles in gold; the win after <code>WIN_WAIT</code> 1.4 s.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the grid is up at once, a digit appears where it is put, nothing bumps, shivers, rings or sparkles, no unit flashes, and the win follows the last digit. Everything above except the three named constants comes from <code>core/motion.gd</code> as a curve reader, the way Nonogram's drawn tiles and clue numbers already do &mdash; this board adds nothing to the vocabulary.</p>
+
+  <h3>7. The generator, and the one number that has to be measured <span class="pill rose">a finding</span></h3>
+  <p>Seeded from the day, so a board is the same on every phone. A full solution by randomised backtracking over bitmasks; then <b>the dig</b>, taking cells out in a shuffled order in <b>180-degree pairs</b> &mdash; so the givens read as a pattern and not as spilled salt &mdash; and keeping a cell out only while a counting solver capped at two still finds exactly one solution.</p>
+  <p><b>The bands are a target and a technique, not a count.</b> A grader solves the dug puzzle with naked singles and hidden singles alone, which are the two moves a player makes without writing anything down. Easy must fall to that pair; medium and hard must not. Ten tries, then whatever the tenth gave &mdash; a band is a tendency, and a hung generator is worse than a medium day labelled hard.</p>
+  <p><b>Measured here, in this page's own JavaScript, over twelve seeds a band</b> (2026-09-20):</p>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:16%">Target</th><th style="width:20%">Givens produced</th><th style="width:24%">Falls to singles</th><th>Generate</th></tr>
+    <tr><td class="k">Easy</td><td>36</td><td>35&ndash;36 (mean 35.1)</td><td>12 / 12 &mdash; as intended</td><td>1 ms mean, 5 ms worst</td></tr>
+    <tr><td class="k">Medium</td><td>30</td><td>29&ndash;30 (mean 29.4)</td><td>2 / 12 slip through</td><td>2 ms mean, 3 ms worst</td></tr>
+    <tr><td class="k">Hard</td><td>26</td><td>25&ndash;28 (mean 26.7)</td><td>0 / 12</td><td>3 ms mean, 9 ms worst</td></tr>
+  </table>
+  <p>All thirty-six puzzles were checked to have <b>exactly one solution</b> and every given to agree with it. Two mediums in twelve falling to singles is recorded rather than hidden: the middle band is allowed to be gentle, and ten tries is where the cost stops being free.</p>
+  <div class="decide"><b>The one real risk in this board is this function in GDScript.</b> Nine ms in JavaScript is nothing; the same nest of loops in GDScript is commonly thirty to eighty times slower, which puts the worst case somewhere between a quarter of a second and three quarters of one &mdash; at board open, on a phone, in <code>build()</code>. Nothing else in this repo does that much work to start a board. <b>What the implementation must do:</b> write the solver over <code>PackedInt32Array</code> with the same bitmasks, cap the attempt budget, fall back to a shallower dig rather than hang, and <b>measure it with a probe before the board is called done</b>. If it cannot be made to fit, the fallback is a pack of pre-generated grids in <code>content/sudoku.json</code>, which is exactly how Hidden Word ships its words &mdash; and <code>content/*</code> is already in the export preset's <code>include_filter</code> because of it.</div>
+
+  <h3>8. The first screen grows a second page <span class="pill blue">decided</span></h3>
+  <p>Sudoku is the thirteenth card, and twelve is not a taste &mdash; it is what 80 of margin, 60 of gaps, a 380 header, a 180 day row and a 150 bar leave for four rows of 252. A thirteenth card has to come from somewhere, and the three places it could come from all cost something:</p>
+  <ul>
+    <li><b>A pager row under the grid</b>, the campsite's own pattern, costs 60 out of the pictures: the card drops 252 to 237 and the picture 92 to 77, which re-opens the 320&times;118 card-art budget on all twelve existing cards.</li>
+    <li><b>A shorter header</b>, 380 to 320, keeps the cards whole and takes a sixth off the screen's signature.</li>
+    <li><b>The day row</b>, which is 180 tall and already carries a chevron that does nothing. <b>This is the one that was taken.</b></li>
+  </ul>
+  <p>The pager is a prev chevron, two dots and a next chevron in the day row's right cluster, and the dead chevron becomes the next button. It <b>costs no height at all</b>: cards stay 252 with their 92 pictures, and every measured number in <code>CLAUDE.md</code> &mdash; the 311 draw calls, the 252 card, the 320&times;118 art box, the seventeen characters a line of <code>short</code> &mdash; survives untouched. The hearts stay where they are and stay decoration; the row spends about 620 of its 1000 today and the pager wants about 180 of the rest.</p>
+  <p><b>The split is 12 + 1</b>, not 7 + 6. Page one stays exactly the twelve cards in exactly the order they are in, and page two holds Sudoku alone until a fourteenth board lands. It looks sparse and it is honest: rebalancing would change the shape of the first screen for twelve boards to flatter one.</p>
+  <div class="decide"><b>What this costs the menu's entrance.</b> <code>ui/menu.gd</code> staggers its cards on <code>Motion.stagger(i, CARD_STEP, CARD_CAP)</code> over <code>Registry.PUZZLES</code> entire. With pages, <code>i</code> has to be the index <em>within the page</em> or page two's single card waits out twelve cards' worth of stagger before it appears. That is a one-line change and exactly the kind that is found by watching rather than by reading.</div>
+
+  <h3>9. The menu card <span class="pill">proposed</span></h3>
+  <p><code>ui/menu/card_art.gd</code> gains one branch: a 3&times;3 fragment of the board in the 320&times;118 box &mdash; nine cream cells with the region rule round them and three numerals in ink, drawn with <code>ui/faces/mosaic_tile.gd</code>, the class Nonogram and Hidden Word already share. <b>No new character.</b> Sudoku's pieces are numbers; <code>ui/faces/</code> gets nothing, which is what Nonogram decided and Hidden Word confirmed, and the only face on the screen is the shared sprout on the tip card and the win.</p>
+
+  <h3>10. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>The 100 cell.</b> Nine columns on a phone is the tightest grid this game has drawn. Tapping only ever selects, and the thing you tap next is a 91&times;130 chip &mdash; but that is an argument, and the phone is the test.</li>
+    <li><b>The pencil instead of the eraser.</b> Tap-the-same-digit-to-clear is undiscoverable until someone tells you, and the tip card is the only place that does. Watch whether you reach for an eraser that is not there.</li>
+    <li><b>The clash wash.</b> Faint <code>BAD</code> on two digits that see each other is help the mock does not offer. Turning it off makes a harder, purer board and makes Check matter more.</li>
+    <li><b>The player's digit in green.</b> One extra colour on a board that is otherwise ink on cream. The alternative is ink for both and no way to tell what you put there, which Reset then makes frightening.</li>
+    <li><b>A hard 9&times;9 is a fifteen-minute sit</b>, and every other board here is three to five. Sudoku is the first card that is not a coffee break, and the day row says "Day 5" not "twenty minutes".</li>
+    <li><b>Three hints</b>, the mock's number, on 81 cells. Hidden Word gives two on five letters. Three may be too few to rescue a stuck hard day and too many to matter on an easy one.</li>
+    <li><b>The lonely second page.</b> One card on page two for as long as it takes to build a fourteenth board.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?fill=N</code> to fill N empty cells correctly, <code>?sel=r,c</code> to select a cell, <code>?notes=1</code> to scatter pencil marks, <code>?pencil=1</code> to arm the pencil, <code>?wrong=1</code> to plant one wrong digit, <code>?check=1</code> and <code>?hint=1</code> to fire those at <code>?at=</code> (0.2 by default), <code>?win=1</code> for the win screen, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot. Pick the tab with <code>#sudoku</code>.</p>
 </section>
 
 <!-- ============================ SNAKE APPLE ============================ -->
@@ -10222,6 +10373,679 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 })();
 
 /* ---------- the flat first screen mock ---------- */
+/* ---------- Sudoku, flat: the thirteenth screen ---------- */
+(function(){
+  const cv=document.getElementById('sd'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd). This board's own two are
+  // the heavy rule between regions -- BARK is too dark on cream at 6 wide
+  // and LINE too faint to read as a region edge -- and the player's own
+  // digit in LEAF_DEEP, which is what tells it apart from a given without
+  // putting a second colour anywhere on the board.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    good:'#7cb06b',bad:'#d9605a',keyFace:'#fffaf0'};
+  C.rule=mixHex(C.bark,C.parchment,0.38);
+  const BOX_TINT=mixHex(C.surface,C.parchment,0.55);
+  const CHIP_RIM=mixHex(C.keyFace,C.text,0.22);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.04,SOLVE_DELAY:0.25,
+    RESET_STAGGER:0.03,SHIVER_PX:2,SHIVER_TIME:0.2};
+  // This board's own three: the wave's step per cell as a finished unit
+  // lights up, how long a cell holds its gold, and how long the win waits.
+  const WAVE_STEP=0.045,WAVE_FLASH=0.5,WIN_WAIT=1.4;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*Math.sin(u*Math.PI*6)*(1-u);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const flashLevel=s=>{if(RM||s<0||s>=WAVE_FLASH) return 0; return Math.sin(Math.PI*s/WAVE_FLASH);};
+
+  // ================= the rule (puzzles/sudoku_state.gd) =================
+  // Scene-free, and the one truth. Everything the screen washes -- the
+  // peers, the twins, the clashes -- is DERIVED on every read and never
+  // stored, which is Queens' rule and the reason undo cannot leave a stale
+  // wash behind.
+  const ROWOF=new Int8Array(81),COLOF=new Int8Array(81),BOXOF=new Int8Array(81);
+  for(let i=0;i<81;i++){ROWOF[i]=(i/9)|0;COLOF[i]=i%9;BOXOF[i]=((((i/9)|0)/3)|0)*3+(((i%9)/3)|0);}
+  const PEERS=[],UNITS=[];
+  for(let i=0;i<81;i++){const s=[];for(let j=0;j<81;j++) if(j!==i&&(ROWOF[j]===ROWOF[i]||COLOF[j]===COLOF[i]||BOXOF[j]===BOXOF[i])) s.push(j); PEERS.push(s);}
+  for(let r=0;r<9;r++){const u=[];for(let c=0;c<9;c++)u.push(r*9+c);UNITS.push(u);}
+  for(let c=0;c<9;c++){const u=[];for(let r=0;r<9;r++)u.push(r*9+c);UNITS.push(u);}
+  for(let b=0;b<9;b++){const u=[];for(let k=0;k<81;k++) if(BOXOF[k]===b) u.push(k); UNITS.push(u);}
+  const popcount=m=>{let n=0;while(m){m&=m-1;n++;}return n;};
+
+  // A full solved grid, by randomised backtracking over bitmasks.
+  function fullGrid(rng){
+    const g=new Int8Array(81),rm=new Int16Array(9),cm=new Int16Array(9),bm=new Int16Array(9);
+    (function go(i){
+      if(i===81) return true;
+      const r=ROWOF[i],c=COLOF[i],b=BOXOF[i],avail=511&~(rm[r]|cm[c]|bm[b]),opts=[];
+      for(let d=1;d<=9;d++) if(avail&(1<<(d-1))) opts.push(d);
+      for(let k=opts.length-1;k>0;k--){const j=(rng()*(k+1))|0,tmp=opts[k];opts[k]=opts[j];opts[j]=tmp;}
+      for(const d of opts){const bit=1<<(d-1);g[i]=d;rm[r]|=bit;cm[c]|=bit;bm[b]|=bit;
+        if(go(i+1)) return true;
+        g[i]=0;rm[r]&=~bit;cm[c]&=~bit;bm[b]&=~bit;}
+      return false;
+    })(0);
+    return g;
+  }
+  // How many solutions, stopping at `cap`. Most-constrained cell first, so
+  // a second solution is found or ruled out in a few thousand steps rather
+  // than a few million. This is the function the dig cannot do without, and
+  // in GDScript it is the one that has to be measured.
+  function countSolutions(puz,cap){
+    const g=Int8Array.from(puz),rm=new Int16Array(9),cm=new Int16Array(9),bm=new Int16Array(9);
+    for(let i=0;i<81;i++) if(g[i]){const bit=1<<(g[i]-1);rm[ROWOF[i]]|=bit;cm[COLOF[i]]|=bit;bm[BOXOF[i]]|=bit;}
+    let n=0;
+    (function go(){
+      let best=-1,bestMask=0,bestCount=10;
+      for(let i=0;i<81;i++){
+        if(g[i]) continue;
+        const m=511&~(rm[ROWOF[i]]|cm[COLOF[i]]|bm[BOXOF[i]]),cnt=popcount(m);
+        if(cnt===0) return false;
+        if(cnt<bestCount){bestCount=cnt;best=i;bestMask=m; if(cnt===1) break;}
+      }
+      if(best<0){n++; return n>=cap;}
+      const r=ROWOF[best],c=COLOF[best],b=BOXOF[best];
+      for(let d=1;d<=9;d++){
+        const bit=1<<(d-1); if(!(bestMask&bit)) continue;
+        g[best]=d;rm[r]|=bit;cm[c]|=bit;bm[b]|=bit;
+        const stop=go();
+        g[best]=0;rm[r]&=~bit;cm[c]&=~bit;bm[b]&=~bit;
+        if(stop) return true;
+      }
+      return false;
+    })();
+    return n;
+  }
+  // The grader. Naked singles (a cell with one candidate) and hidden
+  // singles (a unit where one cell alone can take a digit) are the two
+  // moves a player makes without writing anything down. A board this pair
+  // finishes is easy by definition; one it stalls on needs a pencil, which
+  // is the whole reason the pad carries one.
+  function singlesSolve(puz){
+    const g=Int8Array.from(puz);
+    for(;;){
+      let placed=false;
+      const cand=new Int16Array(81);
+      for(let i=0;i<81;i++){
+        if(g[i]) continue;
+        let m=511;
+        for(const j of PEERS[i]) if(g[j]) m&=~(1<<(g[j]-1));
+        cand[i]=m;
+        if(m===0) return g;
+        if(popcount(m)===1){g[i]=(Math.log2(m)+1)|0;placed=true;}
+      }
+      if(!placed){
+        for(const u of UNITS){
+          for(let d=1;d<=9&&!placed;d++){
+            const bit=1<<(d-1); let seat=-1,n=0,has=false;
+            for(const i of u){ if(g[i]===d){has=true;break;} if(!g[i]&&(cand[i]&bit)){seat=i;n++;} }
+            if(!has&&n===1){g[seat]=d;placed=true;}
+          }
+          if(placed) break;
+        }
+      }
+      if(!placed) return g;
+    }
+  }
+  const complete=g=>{for(let i=0;i<81;i++) if(!g[i]) return false; return true;};
+
+  // The dig: take cells out of a solved grid in a shuffled order, in
+  // 180-degree pairs so the givens read as a pattern and not as spilled
+  // salt, and keep a cell out only while exactly one solution survives.
+  function dig(rng,sol,target){
+    const puz=Int8Array.from(sol),order=[];
+    for(let i=0;i<81;i++) order.push(i);
+    for(let k=order.length-1;k>0;k--){const j=(rng()*(k+1))|0,t=order[k];order[k]=order[j];order[j]=t;}
+    let givens=81;
+    for(const i of order){
+      if(givens<=target) break;
+      const j=80-i,a=puz[i],b=puz[j];
+      if(!a&&!b) continue;
+      const removing=(j===i)?(a?1:0):((a?1:0)+(b?1:0));
+      puz[i]=0; puz[j]=0;
+      if(countSolutions(puz,2)!==1){puz[i]=a; puz[j]=b;}
+      else givens-=removing;
+    }
+    return puz;
+  }
+  // Three bands, and each is a target AND a technique, not a count alone:
+  // easy must fall to singles, medium and hard must not. Ten tries, then
+  // whatever the tenth gave -- a band is a tendency, and a hung generator
+  // is worse than a medium day labelled hard. Measured over 12 seeds a
+  // band: six tries left one hard day in twelve solvable by singles, ten
+  // leaves none, and the worst generate is still single-figure ms in JS.
+  const TARGET=[36,30,26];
+  const ATTEMPTS=10;
+  function generate(seed,d){
+    const rng=mulberry32(seed*7919+d*131+17);
+    let best=null;
+    for(let attempt=0;attempt<ATTEMPTS;attempt++){
+      const sol=fullGrid(rng),puz=dig(rng,sol,TARGET[d]);
+      const easy=complete(singlesSolve(puz));
+      best={sol,puz};
+      if(d===0&&easy) break;
+      if(d>0&&!easy) break;
+    }
+    return best;
+  }
+
+  // ---- the state ----
+  const DIFFS=['Easy','Medium','Hard'];
+  let sol=null,given=new Int8Array(81),grid=new Int8Array(81),notes=new Int16Array(81);
+  let log=[],sel=-1,pencil=false,diff=0,seed=5,hintsLeft=3,showAnswer=false;
+  let openedAt=0,solvedAt=-1,winAt=-1,hasSolve=false,checkedWrong=new Set();
+  let cellBump={},cellFlash={},cellDrop={},cellShiver={},chipPress={},btnPress={};
+  let rings=[],particles=[],toast=null,lastCheck='';
+
+  const digitsOf=d=>{let n=0;for(let i=0;i<81;i++) if(grid[i]===d) n++; return n;};
+  const filled=()=>{let n=0;for(let i=0;i<81;i++) if(grid[i]) n++; return n;};
+  const givenCount=()=>{let n=0;for(let i=0;i<81;i++) if(given[i]) n++; return n;};
+  // Derived, every read: the cells that clash with another of their own kind.
+  function clashes(){
+    const out=new Set();
+    for(let i=0;i<81;i++){ if(!grid[i]) continue;
+      for(const j of PEERS[i]) if(grid[j]===grid[i]){out.add(i);out.add(j);} }
+    return out;
+  }
+  const unitDone=u=>{let m=0;for(const i of u){if(!grid[i])return false;m|=1<<(grid[i]-1);}return m===511;};
+  const isSolved=()=>{for(let i=0;i<81;i++) if(grid[i]!==sol[i]) return false; return true;};
+  const snapshot=()=>UNITS.map(unitDone);
+
+  function build(){
+    const g=generate(seed,diff);
+    sol=g.sol; given=Int8Array.from(g.puz); grid=Int8Array.from(g.puz); notes=new Int16Array(81);
+    log=[]; sel=-1; pencil=false; hintsLeft=3; showAnswer=false; checkedWrong=new Set(); lastCheck='';
+    hasSolve=false; solvedAt=-1; winAt=-1;
+    cellBump={};cellFlash={};cellDrop={};cellShiver={};rings=[];particles=[];toast=null;
+    openedAt=now();
+  }
+  function say(msg,t){ toast={msg,t0:t}; }
+  function shiver(i,t){cellShiver[i]=t;}
+  function ring(i,t,col){ if(RM) return; rings.push({i,t0:t,col}); }
+  function sparkle(i,t,col){ if(RM) return; for(let k=0;k<6;k++) particles.push({i,ox:(hash(k+i,7)-0.5)*0.9,oy:(hash(k+i,13)-0.5)*0.6,vx:(hash(k,i)-0.5)*90,vy:-120,t0:t+k*0.05,life:0.7,col,rad:12,g:160}); }
+
+  // Every change goes through here, so the wave is diffed in one place:
+  // what was finished before the move against what is finished after it.
+  // A row, a column or a region that has just come right lights up from
+  // the cell that finished it outwards, a king-move step apart.
+  function settle(before,t,at){
+    for(let u=0;u<UNITS.length;u++){
+      if(before[u]||!unitDone(UNITS[u])) continue;
+      for(const i of UNITS[u]){
+        const d=at<0?0:Math.max(Math.abs(ROWOF[i]-ROWOF[at]),Math.abs(COLOF[i]-COLOF[at]));
+        const when=t+d*WAVE_STEP;
+        if(!(i in cellFlash)||cellFlash[i]<when) cellFlash[i]=when;
+      }
+    }
+    if(isSolved()&&!hasSolve){
+      hasSolve=true; solvedAt=t; winAt=t+WIN_WAIT;
+      for(let i=0;i<81;i++){
+        const when=t+(ROWOF[i]+COLOF[i])*MO.SOLVE_STAGGER+MO.SOLVE_DELAY;
+        cellFlash[i]=when; cellBump[i]=when;
+        if(i%7===0) sparkle(i,when,C.sun);
+      }
+    }
+  }
+
+  function place(i,d,t){
+    if(given[i]){ say('That one came with the puzzle',t); shiver(i,t); return false; }
+    if(hasSolve) return false;
+    const before=snapshot(),prev=grid[i],prevNotes=notes[i],struck=[];
+    if(prev===d) grid[i]=0;
+    else{
+      grid[i]=d; notes[i]=0;
+      // Placing a digit strikes it off the peers' pencil marks, and undo
+      // puts every one of them back -- the fiddly half of the move log.
+      for(const j of PEERS[i]) if(notes[j]&(1<<(d-1))){struck.push(j); notes[j]&=~(1<<(d-1));}
+    }
+    log.push({i,prev,prevNotes,struck,bit:1<<(d-1)});
+    checkedWrong.delete(i);
+    cellBump[i]=t; if(grid[i]) cellDrop[i]=t;
+    settle(before,t,i);
+    return true;
+  }
+  function mark(i,d,t){
+    if(given[i]||grid[i]){ say('Pencil marks go in an empty cell',t); shiver(i,t); return false; }
+    if(hasSolve) return false;
+    log.push({i,prev:grid[i],prevNotes:notes[i],struck:[],bit:0});
+    notes[i]^=1<<(d-1); cellBump[i]=t;
+    return true;
+  }
+  function undo(t){
+    if(!log.length||hasSolve) return false;
+    const m=log.pop();
+    grid[m.i]=m.prev; notes[m.i]=m.prevNotes;
+    for(const j of m.struck) notes[j]|=m.bit;
+    cellBump[m.i]=t; sel=m.i; checkedWrong.delete(m.i);
+    return true;
+  }
+  function hint(t){
+    if(hintsLeft<=0||hasSolve) return false;
+    const open=[];
+    for(let i=0;i<81;i++) if(grid[i]!==sol[i]) open.push(i);
+    if(!open.length) return false;
+    const i=open[(hash(open.length,log.length)*open.length)|0];
+    const before=snapshot(),prev=grid[i],prevNotes=notes[i],struck=[],bit=1<<(sol[i]-1);
+    grid[i]=sol[i]; notes[i]=0;
+    for(const j of PEERS[i]) if(notes[j]&bit){struck.push(j); notes[j]&=~bit;}
+    log.push({i,prev,prevNotes,struck,bit});
+    hintsLeft--; sel=i; checkedWrong.delete(i);
+    cellBump[i]=t; cellDrop[i]=t; ring(i,t,C.leaf); sparkle(i,t,C.leaf);
+    settle(before,t,i);
+    return true;
+  }
+  function check(t){
+    checkedWrong=new Set();
+    for(let i=0;i<81;i++) if(grid[i]&&!given[i]&&grid[i]!==sol[i]){checkedWrong.add(i); shiver(i,t+Math.abs(ROWOF[i]-4)*0.02);}
+    lastCheck=checkedWrong.size?(checkedWrong.size===1?'One to look at again':checkedWrong.size+' to look at again'):'All good';
+    say(lastCheck,t);
+    return checkedWrong.size;
+  }
+  function reset(t){
+    for(let i=0;i<81;i++){
+      if(!given[i]&&(grid[i]||notes[i])){
+        const d=Math.max(Math.abs(ROWOF[i]-8),Math.abs(COLOF[i]-8));
+        cellBump[i]=t+d*MO.RESET_STAGGER;
+      }
+      if(!given[i]){grid[i]=0;notes[i]=0;}
+    }
+    log=[]; sel=-1; checkedWrong=new Set(); lastCheck='';
+  }
+
+  // ================= the screen =================
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leafShape(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='undo'){ctx.beginPath(); ctx.arc(0,s*0.02,s*0.3,Math.PI*0.9,Math.PI*0.35,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,-s*0.06); ctx.lineTo(-s*0.3,-s*0.24); ctx.lineTo(-s*0.14,-s*0.08); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    else if(name==='tick'){ctx.beginPath(); ctx.moveTo(-s*0.3,0); ctx.lineTo(-s*0.08,s*0.22); ctx.lineTo(s*0.32,-s*0.24); stroke(col,s*0.14);}
+    else if(name==='pencil'){ctx.save(); ctx.rotate(-Math.PI/4);
+      ctx.fillStyle=col; rr(-s*0.1,-s*0.34,s*0.2,s*0.5,s*0.04); ctx.fill();
+      ctx.fillStyle=mixHex(C.cheek,C.text,0.08); rr(-s*0.1,-s*0.46,s*0.2,s*0.14,s*0.05); ctx.fill();
+      ctx.fillStyle=C.parchment; ctx.beginPath(); ctx.moveTo(-s*0.1,s*0.16); ctx.lineTo(s*0.1,s*0.16); ctx.lineTo(0,s*0.42); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=C.text; ctx.beginPath(); ctx.moveTo(-s*0.035,s*0.33); ctx.lineTo(s*0.035,s*0.33); ctx.lineTo(0,s*0.42); ctx.closePath(); ctx.fill(); ctx.restore();}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leafShape(0,-R*1.12,R*0.62,-2.6); leafShape(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- layout ----
+  // The rows are the spec's and they add up: 40 of margin, 180 of top bar,
+  // 20, 120 of day card, 20, 1000 of board slot, 20, 170 of digit pad, 20,
+  // 130 of actions, 20, 140 of tip card, 40 of margin -- 1920 exactly, and
+  // the 1000 is what the host's own arithmetic hands back once the bottom
+  // slot is 480. Inside the card a 28 inset leaves 944, and the grid is
+  // nine cells of 100 -- 900 -- rather than the 104.9 the inset would
+  // allow, because the heavy rule is drawn ROUND the grid and the 22 of hem
+  // either side is what it stands in. card_height() returns every pixel it
+  // is given and card_centred() never comes up: there is no slack.
+  const TOP_H=180,DAY_H=120,BOARD_H=1000,PAD_H=170,ACT_H=130,TIP_H=140,ROW_GAP=20,INSET=28;
+  const CELL=100,GRID=900,RULE_W=6,THIN_W=2;
+  const CHIP_W=91,CHIP_H=130,CHIP_GAP=10,CHIP_LIFT=10;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,boardY=dayY+DAY_H+ROW_GAP;
+    const padY=boardY+BOARD_H+ROW_GAP,actY=padY+PAD_H+ROW_GAP,tipY=actY+ACT_H+ROW_GAP;
+    return {top:{y:topY},day:{y:dayY},board:{y:boardY,h:BOARD_H},
+      gx:W/2-GRID/2,gy:boardY+(BOARD_H-GRID)/2,
+      pad:{y:padY},act:{y:actY},tip:{y:tipY},
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+  let L=layout();
+  const cellX=i=>L.gx+COLOF[i]*CELL, cellY=i=>L.gy+ROWOF[i]*CELL;
+  function chipRects(){
+    const out=[],y=L.pad.y+CHIP_LIFT;
+    for(let k=0;k<10;k++) out.push({k,x:M+k*(CHIP_W+CHIP_GAP),y,w:CHIP_W,h:CHIP_H});
+    return out;
+  }
+
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+
+  function drawTopBar(t){
+    const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'undo','undo',t,{disabled:!log.length});
+    const cx=(M+126+W-M-378)/2,by=L.top.y+98;
+    ctx.font='700 58px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('SUDOKU').width; ctx.letterSpacing='0px';
+    text('SUDOKU',cx,by-10,'700 58px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-32; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7);
+    leafShape(lx+2,ly-26,34,-2.7); leafShape(lx+2,ly-30,28,-0.5);
+    text('EVERY NUMBER ONCE',cx,by+38,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();
+  }
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+
+  // ---- the board ----
+  // Peers and twins are DERIVED from the selection on every frame. The
+  // selected cell's row, column and region wash pale; every other cell
+  // holding the same digit washes stronger. That pair is the deduction made
+  // visible, and at a 100 cell it is what makes nine columns readable on a
+  // phone at all.
+  function washOf(i,peers,twins,wrong,clash){
+    if(i===sel) return rgba(C.sun,0.34);
+    if(twins.has(i)) return rgba(C.sun,0.20);
+    if(wrong.has(i)) return rgba(C.bad,0.22);
+    if(clash.has(i)) return rgba(C.bad,0.10);
+    if(peers.has(i)) return rgba(C.sun,0.08);
+    return null;
+  }
+  function drawBoard(t){
+    const e=ent(t,0.18,0,0); if(e.a<=0) return;
+    const pop=widePopScale(t-openedAt-MO.ENTER_DELAY);
+    ctx.save(); ctx.globalAlpha=e.a;
+    card(M,L.board.y,COL,BOARD_H,36,C.surface,C.line,6);
+    ctx.save();
+    ctx.translate(W/2,L.board.y+BOARD_H/2); ctx.scale(pop,pop); ctx.translate(-W/2,-(L.board.y+BOARD_H/2));
+    const peers=new Set(),twins=new Set();
+    if(sel>=0){
+      for(const j of PEERS[sel]) peers.add(j);
+      const d=grid[sel];
+      if(d) for(let j=0;j<81;j++) if(j!==sel&&grid[j]===d) twins.add(j);
+    }
+    const clash=clashes();
+    for(let i=0;i<81;i++){
+      const br=(ROWOF[i]/3)|0,bc=(COLOF[i]/3)|0,x=cellX(i),y=cellY(i);
+      ctx.fillStyle=((br+bc)%2)?BOX_TINT:C.surface; ctx.fillRect(x,y,CELL,CELL);
+      const wash=washOf(i,peers,twins,checkedWrong,clash);
+      if(wash){ctx.fillStyle=wash; ctx.fillRect(x,y,CELL,CELL);}
+      const fl=flashLevel(t-(cellFlash[i]==null?-1e9:cellFlash[i]));
+      if(fl>0){ctx.fillStyle=rgba(C.sunRay,0.55*fl); ctx.fillRect(x,y,CELL,CELL);}
+    }
+    // the rules: thin between cells, heavy between regions and round the grid
+    for(let k=1;k<9;k++){
+      if(k%3===0) continue;
+      ctx.beginPath(); ctx.moveTo(L.gx+k*CELL,L.gy); ctx.lineTo(L.gx+k*CELL,L.gy+GRID); stroke(rgba(C.line,0.8),THIN_W);
+      ctx.beginPath(); ctx.moveTo(L.gx,L.gy+k*CELL); ctx.lineTo(L.gx+GRID,L.gy+k*CELL); stroke(rgba(C.line,0.8),THIN_W);
+    }
+    for(let k=3;k<9;k+=3){
+      ctx.beginPath(); ctx.moveTo(L.gx+k*CELL,L.gy); ctx.lineTo(L.gx+k*CELL,L.gy+GRID); stroke(C.rule,RULE_W);
+      ctx.beginPath(); ctx.moveTo(L.gx,L.gy+k*CELL); ctx.lineTo(L.gx+GRID,L.gy+k*CELL); stroke(C.rule,RULE_W);
+    }
+    rr(L.gx-RULE_W/2,L.gy-RULE_W/2,GRID+RULE_W,GRID+RULE_W,14); stroke(C.rule,RULE_W);
+    if(sel>=0){ rr(cellX(sel)+2,cellY(sel)+2,CELL-4,CELL-4,10); stroke(C.sun,5); }
+    // the digits and the pencil marks
+    for(let i=0;i<81;i++){
+      const x=cellX(i)+CELL/2,y=cellY(i)+CELL/2;
+      const sh=shiverOffset(t-(cellShiver[i]==null?-1e9:cellShiver[i]));
+      const bs=bumpScale(t-(cellBump[i]==null?-1e9:cellBump[i]));
+      const stg=RM?0:MO.ENTER_DELAY+0.1+(BOXOF[i]*3+(ROWOF[i]%3))*MO.ENTER_STAGGER;
+      const app=given[i]?dec((t-openedAt-stg)/0.3):1;
+      if(app<=0) continue;
+      ctx.save(); ctx.globalAlpha=app; ctx.translate(x+sh,y); ctx.scale(bs,bs);
+      const ghost=showAnswer&&!grid[i],d=ghost?sol[i]:grid[i];
+      if(d){
+        const dr=cellDrop[i]==null?{dy:0,a:1}:dropInLift(t-cellDrop[i]);
+        ctx.save(); ctx.globalAlpha=app*dr.a; ctx.translate(0,dr.dy);
+        const col=given[i]?C.text:(checkedWrong.has(i)?C.bad:C.leafDeep);
+        text(String(d),0,4,'600 64px '+FD,ghost?rgba(C.dim,0.5):col);
+        ctx.restore();
+      } else if(notes[i]){
+        for(let n=1;n<=9;n++) if(notes[i]&(1<<(n-1))){
+          const nx=(((n-1)%3)-1)*CELL*0.28,ny=((((n-1)/3)|0)-1)*CELL*0.28;
+          text(String(n),nx,ny+2,'600 26px '+FB,C.dim);
+        }
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    for(const r of rings){ const u=(t-r.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      ctx.beginPath(); ctx.arc(cellX(r.i)+CELL/2,cellY(r.i)+CELL/2,CELL*0.4+CELL*0.5*u,0,Math.PI*2); stroke(rgba(r.col,1-u),6*(1-u)+1);}
+    for(const p of particles){ const u=(t-p.t0)/p.life; if(u<0||u>=1) continue; const s=t-p.t0;
+      star4(cellX(p.i)+CELL/2+p.ox*CELL+p.vx*s, cellY(p.i)+CELL/2+p.oy*CELL+p.vy*s+0.5*p.g*s*s, p.rad*(1-u), u*3, rgba(p.col,1-u));}
+    ctx.restore();
+  }
+
+  // ---- the digit pad (ui/flat/digit_pad.gd) ----
+  // Ten chips in one row: 1-9 and the pencil. A chip is
+  // (1000 - 9*10)/10 = 91 wide, which is Hidden Word's keyboard arithmetic
+  // exactly (ui/flat/key_board.gd's KEY is 91 by 100), so a thumb here has
+  // the room it already has there. THERE IS NO ERASER CHIP: tapping the
+  // digit a cell already holds takes it out again, which is Nonogram's own
+  // rule -- no eraser, and no mode to get stuck in.
+  function drawPad(t){
+    const e=ent(t,0.2,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y+60*sineIO(ex));
+    for(const c of chipRects()){
+      const [sx,sy]=squash(chipPress[c.k]==null?-1e9:chipPress[c.k],t);
+      const isPencil=c.k===9,d=c.k+1,spent=!isPencil&&digitsOf(d)>=9,on=isPencil&&pencil;
+      ctx.save(); ctx.translate(c.x+c.w/2,c.y+c.h/2); ctx.scale(sx,sy); ctx.translate(-c.w/2,-c.h/2);
+      card(0,0,c.w,c.h,20,on?C.sun:C.keyFace,on?C.sunDeep:CHIP_RIM,7);
+      if(spent) ctx.globalAlpha=0.35;
+      if(isPencil) icon('pencil',c.w/2,c.h/2-4,64,on?C.white:C.text);
+      else text(String(d),c.w/2,c.h/2-4,'600 56px '+FD,C.text);
+      ctx.globalAlpha=1; ctx.restore();
+    }
+    ctx.restore();
+  }
+  function drawActions(t){
+    const e=ent(t,0.25,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y+60*sineIO(ex));
+    const y=L.act.y,bw=260,bh=130;
+    let [sx,sy]=squash(btnPress.reset==null?-1e9:btnPress.reset,t);
+    ctx.save(); ctx.translate(M+bw/2,y+bh/2); ctx.scale(sx,sy); ctx.translate(-bw/2,-bh/2);
+    card(0,0,bw,bh,28,C.surfaceHi,C.line,6); icon('reset',56,bh/2-3,52,C.text); text('Reset',bw/2+30,bh/2-2,'600 38px '+FD,C.text); ctx.restore();
+    [sx,sy]=squash(btnPress.check==null?-1e9:btnPress.check,t);
+    ctx.save(); ctx.translate(W-M-bw/2,y+bh/2); ctx.scale(sx,sy); ctx.translate(-bw/2,-bh/2);
+    card(0,0,bw,bh,28,C.sun,C.sunDeep,6); icon('tick',54,bh/2-3,52,C.white); text('Check',bw/2+28,bh/2-2,'600 38px '+FD,C.white); ctx.restore();
+    ctx.restore();
+  }
+  // The tip card names the rule a tap has just broken, and it is the rules
+  // sheet's only door -- which is why this board keeps it where Hidden Word
+  // dropped it.
+  const TIPS=['Every row, column and region holds 1 to 9 once.',
+    'Tap a cell, then a number. Tap that number again to take it out.',
+    'The pencil writes small: use it for the numbers a cell might be.',
+    'A number already placed nine times goes pale in the pad.'];
+  function drawTip(t){
+    const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y+60*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    ctx.save(); ctx.translate(M+92,y+TIP_H/2+8); sprout(44,{expr:'happy'}); ctx.restore();
+    const line=(toast&&t-toast.t0>=0&&t-toast.t0<2.2)?toast.msg:TIPS[Math.floor(Math.max(0,t-openedAt)/4.5)%TIPS.length];
+    ctx.save(); ctx.font='500 30px '+FB; ctx.fillStyle=C.text; ctx.textAlign='left'; ctx.textBaseline='middle';
+    const words=line.split(' '); let l1='',l2='';
+    for(const w of words){ const trial=l1?l1+' '+w:w; if(!l2&&ctx.measureText(trial).width<=COL-270) l1=trial; else l2=l2?l2+' '+w:w; }
+    if(l2){ ctx.fillText(l1,M+168,y+TIP_H/2-19); ctx.fillText(l2,M+168,y+TIP_H/2+19); }
+    else ctx.fillText(l1,M+168,y+TIP_H/2);
+    ctx.restore();
+    icon('chevronR',W-M-46,y+TIP_H/2,44,C.dim);
+    ctx.restore();
+  }
+  function drawWin(t){
+    const u=dec((t-winAt)/0.45); if(u<=0) return;
+    ctx.save(); ctx.globalAlpha=u;
+    // The top bar and the day card have both faded out by now, so the win
+    // art has 40..380 to stand in -- and it has to stay inside it, because
+    // this board's card is 1000 tall and does not move down to make room
+    // the way a shorter one could.
+    const y=L.top.y; ctx.save(); ctx.translate(W/2,y+110); sprout(88,{expr:'joy'}); ctx.restore();
+    text('Well done!',W/2,y+258,'700 60px '+FD,C.text);
+    const secs=Math.max(1,Math.round(solvedAt-openedAt));
+    dayCardAt(L.stats.y,1,secs+'s · '+log.length+' moves · '+(3-hintsLeft)+' hints');
+    card(M,L.camp.y,COL,130,28,C.sun,C.sunDeep,6);
+    text('Back to camp',W/2,L.camp.y+62,'600 40px '+FD,C.white);
+    icon('chevronR',W-M-60,L.camp.y+62,52,C.white);
+    ctx.restore();
+  }
+
+  function frame(){
+    const t=now(); L=layout();
+    if(rings.length>40) rings=rings.filter(r=>t-r.t0<MO.RING_TIME);
+    if(particles.length>240) particles=particles.filter(p=>t-p.t0<p.life);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawTopBar(t); drawDayCard(t); drawBoard(t);
+    if(!hasSolve||t<winAt){ drawPad(t); drawActions(t); drawTip(t); }
+    else drawWin(t);
+    caption(t);
+    requestAnimationFrame(frame);
+  }
+
+  // ---- input ----
+  const cap=document.getElementById('sd-caption');
+  let lastCap='';
+  function caption(t){
+    const left=81-filled(),cl=clashes().size;
+    const s=hasSolve?('Solved in '+Math.max(1,Math.round(solvedAt-openedAt))+'s, '+log.length+' moves, '+(3-hintsLeft)+' hints.')
+      :(DIFFS[diff]+' · '+givenCount()+' givens · '+left+' to go'
+        +(cl?' · '+cl+' cells clash':'')
+        +(pencil?' · pencil on':'')
+        +(lastCheck?' · last Check: '+lastCheck:''));
+    if(s!==lastCap&&cap){cap.textContent=s; lastCap=s;}
+  }
+  const hit=(p,r)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
+  function at(ev){const b=cv.getBoundingClientRect(); return {x:(ev.clientX-b.left)/b.width*W,y:(ev.clientY-b.top)/b.height*H};}
+  let focused=false;
+  cv.addEventListener('pointerdown',ev=>{
+    const p=at(ev),t=now(); focused=true;
+    if(p.x>=L.gx&&p.x<L.gx+GRID&&p.y>=L.gy&&p.y<L.gy+GRID){
+      const c=((p.x-L.gx)/CELL)|0,r=((p.y-L.gy)/CELL)|0,i=r*9+c;
+      sel=(sel===i)?-1:i; return;
+    }
+    for(const c of chipRects()) if(hit(p,c)){
+      chipPress[c.k]=t;
+      if(c.k===9){pencil=!pencil; return;}
+      if(sel<0){say('Tap a cell first',t); return;}
+      if(pencil) mark(sel,c.k+1,t); else place(sel,c.k+1,t);
+      return;
+    }
+    if(p.y>=L.act.y&&p.y<=L.act.y+ACT_H){
+      if(p.x<=M+260){btnPress.reset=t; reset(t); return;}
+      if(p.x>=W-M-260){btnPress.check=t; check(t); return;}
+    }
+    const ty=L.top.y+35;
+    if(p.y>=ty&&p.y<=ty+110){
+      if(p.x>=W-M-362&&p.x<=W-M-252){btnPress.undo=t; undo(t); return;}
+      if(p.x>=W-M-236&&p.x<=W-M-126){btnPress.hint=t; hint(t); return;}
+    }
+  });
+  window.addEventListener('keydown',ev=>{
+    const panel=document.getElementById('tab-sudoku');
+    if(!focused||!panel||!panel.classList.contains('active')) return;
+    const t=now(); let used=true;
+    if(ev.key>='1'&&ev.key<='9'){ if(sel>=0){ chipPress[+ev.key-1]=t; if(pencil) mark(sel,+ev.key,t); else place(sel,+ev.key,t); } }
+    else if(ev.key==='Backspace'||ev.key==='Delete'||ev.key==='0'){ if(sel>=0&&grid[sel]&&!given[sel]) place(sel,grid[sel],t); }
+    else if(ev.key==='n'||ev.key==='N'){ pencil=!pencil; chipPress[9]=t; }
+    else if(ev.key==='u'||ev.key==='U'){ undo(t); }
+    else if(ev.key.indexOf('Arrow')===0){
+      if(sel<0) sel=40;
+      else{ let r=ROWOF[sel],c=COLOF[sel];
+        if(ev.key==='ArrowUp') r=(r+8)%9; else if(ev.key==='ArrowDown') r=(r+1)%9;
+        else if(ev.key==='ArrowLeft') c=(c+8)%9; else if(ev.key==='ArrowRight') c=(c+1)%9;
+        sel=r*9+c; }
+    }
+    else used=false;
+    if(used) ev.preventDefault();
+  });
+
+  const btn=(id,fn)=>{const b=document.getElementById(id); if(b) b.addEventListener('click',()=>fn(b));};
+  btn('sd-rm',b=>{RM=!RM; b.textContent='Reduce motion: '+(RM?'on':'off');});
+  btn('sd-diff',b=>{diff=(diff+1)%3; build(); b.textContent=DIFFS[diff];});
+  btn('sd-new',()=>{seed++; build();});
+  btn('sd-hint',()=>hint(now()));
+  btn('sd-check',()=>check(now()));
+  // Fills every cell but six from the solution, so a solve and its wave are
+  // a few taps away rather than a quarter of an hour.
+  btn('sd-nearly',()=>{
+    const t=now(),open=[];
+    for(let i=0;i<81;i++) if(!given[i]) open.push(i);
+    for(let k=0;k<open.length-6;k++){const i=open[k]; log.push({i,prev:grid[i],prevNotes:notes[i],struck:[],bit:1<<(sol[i]-1)}); grid[i]=sol[i]; notes[i]=0;}
+    sel=-1; cellFlash={}; settle(UNITS.map(()=>true),t,-1);
+  });
+  btn('sd-reset',()=>reset(now()));
+  btn('sd-show',b=>{showAnswer=!showAnswer; b.textContent=showAnswer?'Hide the answer':'Show the answer';});
+
+  // ---- harness parameters ----
+  diff=Math.max(0,Math.min(2,parseInt(Q.get('d')||'0',10)));
+  seed=parseInt(Q.get('seed')||'5',10);
+  build();
+  if(T0>0) openedAt=0;
+  const AT=parseFloat(Q.get('at')||'0.2');
+  const fillN=parseInt(Q.get('fill')||'0',10);
+  if(fillN>0){ const open=[]; for(let i=0;i<81;i++) if(!given[i]) open.push(i);
+    for(let k=0;k<Math.min(fillN,open.length);k++) grid[open[k]]=sol[open[k]]; }
+  if(Q.get('notes')==='1'){ for(let i=0;i<81;i++) if(!grid[i]&&i%5===0) notes[i]=(1<<(i%9))|(1<<((i*3)%9))|(1<<((i*7)%9)); }
+  if(Q.get('sel')){ const p=Q.get('sel').split(',').map(Number); if(p.length===2) sel=p[0]*9+p[1]; }
+  if(Q.get('wrong')==='1'){ for(let i=0;i<81;i++) if(!given[i]&&!grid[i]){ grid[i]=(sol[i]%9)+1; break; } }
+  if(Q.get('pencil')==='1') pencil=true;
+  if(Q.get('win')==='1'){ for(let i=0;i<81;i++) grid[i]=sol[i]; hasSolve=true; solvedAt=-8; winAt=-8; }
+  if(Q.get('check')==='1') setTimeout(()=>check(now()),AT*1000);
+  if(Q.get('hint')==='1') setTimeout(()=>hint(now()),AT*1000);
+  requestAnimationFrame(frame);
+})();
+
 (function(){
   const cv=document.getElementById('mn'); if(!cv) return;
   const ctx=cv.getContext('2d');
