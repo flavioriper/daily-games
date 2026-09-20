@@ -688,7 +688,17 @@ func _settle(before: PackedInt32Array, at: float) -> void:
 		else:
 			_out_at[i] = moment
 		last = maxf(last, moment)
-	_wash_end = last
+	# **Never behind a wash still in flight.** `last` covers only the cells
+	# *this* settle changed, so a move that changes nothing (a turn on an
+	# isolated piece, most of a Reset's stagger) would otherwise drop
+	# `_wash_end` back to `at` while a longer wash is still running -- and
+	# `win_delay()` and `_on_solved()` both spend this figure as the wash's
+	# whole length. Task 4's review measured it behind on 2,757 of 2,880
+	# settles, worst by 0.84 s. It only ever grows within a deal;
+	# `_clear_clocks()` puts it back to zero when a new board is dealt, and a
+	# wash whose end is in the past costs nothing, both readers taking
+	# `maxf(0.0, _wash_end - now)`.
+	_wash_end = maxf(_wash_end, last)
 	_busy_for(last - _now())
 
 ## A pinned cell reads as a given, in the language every board in this game
