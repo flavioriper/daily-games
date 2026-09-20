@@ -579,7 +579,7 @@ pointing `seed_as` at them. Specs:
 - **A long title or motto is lettered smaller, never larger**
   (`ui/flat/flat_top_bar.gd`, 2026-09-20). The title block is whatever the
   buttons leave -- 496 with four, 370 with five -- and `Word Trail` measures
-  391 at GameWordmark 84, so it used to run out under Undo and Reset, as
+  392 at GameWordmark 84, so it used to run out under Undo and Reset, as
   Balance's and Untangle's mottos had since 2026-09-18. Every title fitted
   the four-button 496 until `Mushroom Patch`'s 635 (2026-09-20). `_fit_title`
   measures the rendered face (`Font.get_string_size`, which carries the
@@ -595,7 +595,7 @@ pointing `seed_as` at them. Specs:
   lettered smaller -- Balance's motto (24 to 21), Untangle's (24 to 22),
   Word Trail's title (84 to 79) and motto (24 to 21), and Mushroom Patch's
   title (84 to 65) -- and every other label is untouched to the pixel,
-  Hidden Word's 481-wide title included: its bar builds five buttons but
+  Hidden Word's 482-wide title included: its bar builds five buttons but
   `refresh()` hides Undo, so the block it measures against is 496 and it
   stays at 84.
 - **Mushroom Patch is the thirteenth board, and the first that was added
@@ -616,7 +616,7 @@ pointing `seed_as` at them. Specs:
   is where that is recorded. It needed nothing new from `core/motion.gd`.
   **Its title is the widest in the game**: `Mushroom Patch` measures 635 in
   Fredoka 700 at GameWordmark's 84 against a four-button block of 496, where
-  Hidden Word's 481 was the widest that had ever fitted, so it is the first
+  Hidden Word's 482 was the widest that had ever fitted, so it is the first
   *title* on a four-button bar to be lettered smaller. It lands at 65,
   through the bar's own fit (the bullet below) and at no cost to the board.
 - **A card that moves inside a container needs a slot.** A container writes
@@ -672,7 +672,7 @@ pointing `seed_as` at them. Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  thirteen screens want 460, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
+  thirteen screens want 458, 460, 390, 290, 140, 290, 290, 290, 460, 460, 340
   and 140, with Mushroom Patch's 460 the thirteenth -- Untangle drops the
   tray *and* the actions row, so its slot is the tip card alone, Hidden
   Word's is the keyboard alone (`ui/flat/key_board.gd`'s `HEIGHT`), and
@@ -682,8 +682,10 @@ pointing `seed_as` at them. Specs:
   five buttons up there (Balance, Untangle, Word Trail); Hidden Word builds
   five and shows four, because its `capabilities()` has no Undo. Mushroom
   Patch takes the ordinary three rows, and its 460 is the same sum as
-  Binairo's, Code Break's, Nonogram's and Queens': a 150 tray, a 130 actions
-  row, a 140 tip card and two 20 gaps between them.
+  Code Break's, Nonogram's and Queens': a 150 tray, a 130 actions row, a
+  140 tip card and two 20 gaps between them. Binairo's own tray
+  (`SymbolTray.HEIGHT`, a 140 chip plus an 8 lift) is 148, two short of
+  150, so its slot is 458 rather than 460.
 - **What the flat chrome asks a board for is optional and defaulted**:
   `palette()`, `weights()` (the weight cards' rows), `tip_line()` (the
   sprout's own line, in place of Binairo's cycle of rules), `flat_win()` (the

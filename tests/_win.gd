@@ -19,8 +19,10 @@ var _fit_ok := true
 var _hud_ok := true
 
 func _initialize() -> void:
-	# The two `soon` cards name a board that has no flat version, so they
-	# have no script to open; the harness walks the ones that do.
+	# No card is `soon` any more (the last one, Pipes, gave up its slot to
+	# Word Trail on 2026-09-20), but the guard stays for whenever a board is
+	# next named before it is drawn: a `soon` card has no script to open, so
+	# the harness walks only the entries that do.
 	_entries = []
 	for e in load("res://ui/registry.gd").PUZZLES:
 		if not e.get("soon", false):
@@ -326,11 +328,12 @@ func _solve_untangle() -> void:
 
 ## Word Trail: a word is traced by dragging through its own cells, one
 ## side-adjacent step at a time, so this is the one board that needs a
-## multi-point drag rather than `_drag_local`'s two. Every word of the answer
-## is traced in turn, except that the first is left to a hint where the hint
-## can take it -- the way _solve_queens leaves the n-th queen -- so the win
-## comes through the hint path as well as the drag path. There is no Check on
-## this board (only a right word locks), so `_hud_ok` watches the hint alone.
+## multi-point drag rather than `_drag_local`'s two. The hint only lights the
+## next tile of the shortest unfound word (`word_trail_state.gd`'s `hint()`);
+## it never completes a word on its own, so every word of the answer,
+## including the one the hint touched, is still traced in full below. There
+## is no Check on this board (only a right word locks), so `_hud_ok` watches
+## the hint alone.
 func _solve_wordtrail() -> void:
 	var st = _puzzle._state
 	# Fit check: every cell centre must land inside the board slot.

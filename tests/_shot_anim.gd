@@ -52,6 +52,8 @@ extends SceneTree
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
 
+const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
+
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
 ## The reduce-motion pair: how long after the last shot the extra one is
 ## taken, and how much longer the run then has to last.
@@ -308,10 +310,9 @@ func _tap_mushroom() -> void:
 ## planted: on a fresh board every given starts short, so a neighbour whose
 ## own number is exactly one goes straight to settled.
 func _mushroom_wash_count(cell: Vector2i) -> int:
-	var Gen = load("res://puzzles/mushroom_gen.gd")
 	var st = _puzzle.state
 	var c := 0
-	for p in Gen.neighbours(cell, st.n):
+	for p in MushroomGen.neighbours(cell, st.n):
 		if st.given.has(p) and int(st.given[p]) == 1:
 			c += 1
 	return c

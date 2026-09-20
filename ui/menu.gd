@@ -91,6 +91,14 @@ const TOAST_H := 88.0
 ## and the pill is centred there and centred horizontally, so wherever it
 ## overlaps a neighbour it reads as a chip laid over the page rather than a
 ## mark on either one.
+##
+## That overlap is real and was measured by review, 2026-09-20: the pill's
+## buttons sit about 18px inside the last card row's bottom rim. Kept rather
+## than pushed lower, on the ruling that the pill is drawn on top and, once
+## _enter_pager below stops it being tappable while it is still fading in,
+## a tap that lands there correctly belongs to whichever control the player
+## can actually see -- and the bar sits directly under it with no spare band
+## to push into.
 const PAGER_MID := 150.0 + 40.0 + 10.0
 ## The pill's own slot: taller than the pill needs, so CenterContainer never
 ## clips it.
@@ -127,6 +135,7 @@ var _pager: Control
 var _prev: Button
 var _next: Button
 var _dots: Control
+var _pager_tw: Tween
 ## The stage, while something from More is open on it.
 var _stage: Node
 
@@ -200,32 +209,16 @@ func _build_list() -> void:
 		_say("%s is drawn but not built yet." % tab.capitalize()))
 	root.add_child(bar)
 
-	# A line about something that is only drawn, laid over the bar rather
-	# than given a row of the column: four rows of cards and the bar spend
-	# the screen exactly, and a row that is empty most of the time would
-	# come out of the cards.
-	_toast = Label.new()
-	_toast.name = "Toast"
-	_toast.theme_type_variation = "CardBodyDim"
-	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast.modulate.a = 0.0
-	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_toast.offset_left = MARGIN
-	_toast.offset_right = -MARGIN
-	_toast.offset_top = -TOAST_OVER - TOAST_H
-	_toast.offset_bottom = -TOAST_OVER
-	_list_root.add_child(_toast)
-
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
 	# above for why it is a pill and not a bare row, and PER_PAGE above and
 	# docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
 	# section 2 ("a next and a prev under the grid with a dot each") for
 	# what it is answering. Built even at one page and simply hidden
 	# (_set_pager, called from _build_page below), the way the toast exists
-	# whether or not there is anything to say.
+	# whether or not there is anything to say. Built *before* the toast below
+	# so it lands under it in `_list_root`'s children: the toast has to draw
+	# over the pager where the two overlap (found by review, 2026-09-20 --
+	# a wrapped two-line toast used to read partly under the pill).
 	_pager = Control.new()
 	_pager.name = "Pager"
 	_pager.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -261,6 +254,26 @@ func _build_list() -> void:
 	_next = _page_button("chevron_right")
 	_next.pressed.connect(func() -> void: _turn_page(1))
 	pager_row.add_child(_next)
+
+	# A line about something that is only drawn, laid over the bar rather
+	# than given a row of the column: four rows of cards and the bar spend
+	# the screen exactly, and a row that is empty most of the time would
+	# come out of the cards. Built after the pager (see above) so a wrapped
+	# two-line toast always reads on top of the pill where they overlap.
+	_toast = Label.new()
+	_toast.name = "Toast"
+	_toast.theme_type_variation = "CardBodyDim"
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toast.modulate.a = 0.0
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_toast.offset_left = MARGIN
+	_toast.offset_right = -MARGIN
+	_toast.offset_top = -TOAST_OVER - TOAST_H
+	_toast.offset_bottom = -TOAST_OVER
+	_list_root.add_child(_toast)
 
 	# Built last: _set_pager (called from _build_page) reaches into _pager,
 	# _prev, _next and _dots, all built just above -- calling this any
@@ -421,6 +434,11 @@ func _fade_out_page(leaving: Array) -> void:
 		var rect: Rect2 = card.get_global_rect()
 		_grid.remove_child(card)
 		_list_root.add_child(card)
+		# `add_child` appends, which would draw a fading card over the pager
+		# pill -- right where the finger just pressed to turn the page (found
+		# by review, 2026-09-20). `_pager` is built before `_toast` (see
+		# _build_list) specifically so this puts the card under both.
+		_list_root.move_child(card, _pager.get_index())
 		card.global_position = rect.position
 		card.disable_tap()
 		# A card turned onto this page moments ago may still be mid-entrance
@@ -438,11 +456,21 @@ func _fade_out_page(leaving: Array) -> void:
 
 ## Shows the grid with the day current and plays the entrance; at start and
 ## on every return from a puzzle. Opening the app is what counts a day.
+##
+## The page is *kept*, not reset to zero (found by review, 2026-09-20: this
+## used to force `_page = 0` every time, so finishing a board on page two
+## silently dropped the player back on page one). The ruling is the ordinary
+## one for "where does closing something put you back": you return to where
+## you were, and only a fresh app open starts cold on page one, which
+## `_page`'s own default of 0 already gives it. `_page` is clamped rather
+## than trusted outright, in case a registry that shrinks below the current
+## page count ever makes today's "cannot happen" possible.
 func _show_list() -> void:
 	_list_root.visible = true
 	Progress.touch()
-	if _page != 0:
-		_page = 0
+	var clamped := clampi(_page, 0, _pages() - 1)
+	if clamped != _page:
+		_page = clamped
 		_build_page()
 	day_row.set_day(Progress.day(), Progress.island_name())
 	bar.show_tab("home")
@@ -454,7 +482,31 @@ func _enter() -> void:
 	for i in cards.size():
 		cards[i].enter(ENTER_CARDS + Motion.stagger(i, CARD_STEP, CARD_CAP))
 	bar.enter(ENTER_BAR)
-	Motion.appear(_pager, 0.0, 1.0, ENTER_FADE, ENTER_CARDS + CARD_CAP)
+	_enter_pager()
+
+## Fades the pager in with the last card, the way Motion.appear would -- but
+## Motion.appear only zeroes `modulate.a`, and a Control at alpha 0 is still
+## `visible` and still hands its buttons every tap by hit rect (found by
+## review, 2026-09-20): during the ~0.85s before this fade starts, `_prev`
+## and `_next` sat there fully transparent and fully live, `_prev` refusing
+## every tap silently because page one starts it disabled. Hiding the node
+## outright for the wait and only setting it visible the instant the fade
+## begins is what keeps it untappable for exactly as long as it reads
+## invisible, rather than trying to chase every button's mouse_filter by hand.
+func _enter_pager() -> void:
+	Motion.stop(_pager_tw)
+	if _pages() <= 1:
+		return
+	if Motion.reduce:
+		_pager.visible = true
+		_pager.modulate.a = 1.0
+		return
+	_pager.visible = false
+	_pager.modulate.a = 0.0
+	_pager_tw = create_tween()
+	_pager_tw.tween_callback(func() -> void: _pager.visible = true) \
+		.set_delay(ENTER_CARDS + CARD_CAP)
+	_pager_tw.tween_property(_pager, "modulate:a", 1.0, ENTER_FADE)
 
 ## One line under the grid, for a tap on something that is only drawn.
 func _say(text: String) -> void:
