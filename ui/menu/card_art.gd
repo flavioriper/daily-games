@@ -31,6 +31,7 @@ const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
+const SproutFace = preload("res://ui/faces/sprout_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
@@ -128,6 +129,17 @@ func _build() -> void:
 			# No cast: the three marks are the whole picture, and _draw lays
 			# them and the band under them, so this branch seats nothing.
 			pass
+		"wordtrail":
+			# The sprout beside a small field: the field is one plain Control
+			# whose own `draw` this branch wires up, so the picture costs one
+			# branch of _build and none of _draw (spec section 11).
+			_seat(SproutFace.new(), 58.0, -122.0, 6.0)
+			var field := Control.new()
+			field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			field.size = Vector2(210.0, 100.0) * _u
+			field.position = at(32.0, 2.0) - field.size * 0.5
+			field.draw.connect(_draw_word_field.bind(field))
+			add_child(field)
 		_:
 			pass
 
@@ -287,6 +299,58 @@ func _draw_letters() -> void:
 	for i in 3:
 		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
 		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
+
+## Word Trail: a small field of letter tiles beside the sprout, four by
+## three, with two grey wall slabs and one trail bending twice through the
+## rest in Pal.LEAF over Pal.LEAF_TILE, its letters in Pal.LEAF_DEEP. Wired
+## as `field`'s own `draw` handler rather than a branch of this file's
+## `_draw()` (spec section 11), so the field is a plain Control this method
+## draws directly on, in its own local pixels -- never a mesh, an image or a
+## SubViewport. The letters spell nothing, so the card never reads as a
+## solvable day.
+func _draw_word_field(field: Control) -> void:
+	const COLS := 4
+	const ROWS := 3
+	var raw := minf(field.size.x / COLS, field.size.y / ROWS)
+	var gap := raw * 0.14
+	var cell := minf((field.size.x - gap * (COLS - 1)) / COLS, (field.size.y - gap * (ROWS - 1)) / ROWS)
+	var fw := cell * COLS + gap * (COLS - 1)
+	var fh := cell * ROWS + gap * (ROWS - 1)
+	var origin := (field.size - Vector2(fw, fh)) * 0.5
+	var walls := [Vector2i(3, 0), Vector2i(0, 2)]
+	var trail := [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1), Vector2i(2, 1), Vector2i(2, 2), Vector2i(3, 2)]
+	var letters := {
+		Vector2i(0, 0): "Q", Vector2i(1, 0): "X", Vector2i(2, 0): "K",
+		Vector2i(0, 1): "R", Vector2i(1, 1): "J", Vector2i(2, 1): "Z", Vector2i(3, 1): "Y",
+		Vector2i(1, 2): "F", Vector2i(2, 2): "V", Vector2i(3, 2): "W",
+	}
+	var on_trail := {}
+	for c in trail:
+		on_trail[c] = true
+	var corner := func(cell_pos: Vector2i) -> Vector2:
+		return origin + Vector2(cell_pos) * (cell + gap)
+	for r in ROWS:
+		for k in COLS:
+			var cell_pos := Vector2i(k, r)
+			var face: Color = Pal.SURFACE
+			if walls.has(cell_pos):
+				face = Pal.STONE_GIVEN
+			elif on_trail.has(cell_pos):
+				face = Pal.LEAF_TILE
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = face
+			sb.set_corner_radius_all(int(cell * 0.18))
+			field.draw_style_box(sb, Rect2(corner.call(cell_pos), Vector2(cell, cell)))
+	if trail.size() > 1:
+		var pts := PackedVector2Array()
+		for c in trail:
+			pts.append(corner.call(c) + Vector2.ONE * (cell * 0.5))
+		field.draw_polyline(pts, Color(Pal.LEAF, 0.5), cell * 0.42, true)
+	var font := CozyTheme.display(700)
+	for cell_pos: Vector2i in letters:
+		var mid: Vector2 = corner.call(cell_pos) + Vector2.ONE * (cell * 0.5)
+		var ink: Color = Pal.LEAF_DEEP if on_trail.has(cell_pos) else Pal.TEXT
+		MosaicTile.letter(field, mid, cell, String(letters[cell_pos]), Vector2.ONE, ink, font)
 
 ## Pipes is the one `soon` card left: no flat board, so no cast to borrow.
 ## It is one small drawing, sized to say what the puzzle is at a glance and
