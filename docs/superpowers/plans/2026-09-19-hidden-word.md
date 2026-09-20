@@ -597,7 +597,7 @@ git commit -m "feat(hiddenword): the three marks, and a letter on a mosaic tile"
 - Consumes: `Pal.GOOD`, `Pal.WORD_NEAR`, `Pal.WORD_MISS`, `Pal.KEY_FACE`; `HiddenWordState.HIT/NEAR/MISS`
 - Produces:
   - `const HEIGHT := 340.0`
-  - `signal key(letter: String)`, `signal enter`, `signal erase`
+  - `signal key(letter: String)`, `signal commit`, `signal erase` — **not** `enter`: `ui/hud/panel.gd` already defines a method `enter(delay)` that the host calls on every tray, and GDScript refuses a signal sharing a method's name
   - `func set_marks(marks: Dictionary) -> void` — letter → `HIT`/`NEAR`/`MISS`; a letter absent is untouched
   - `func bump(letters: Array) -> void` — the named keys take `Motion.bump_scale`
   - `func slide_out(time: float) -> void` — for the reveal
@@ -631,7 +631,7 @@ A key wears its own `StyleBoxFlat` (it must not take `CozyTheme.dress()`'s share
 
 - [ ] **Step 2: Colour and motion**
 
-`set_marks` repaints each named key's stylebox face and switches its lettering to `Pal.PAPER` for `HIT`, `NEAR` and `MISS` alike. `bump` runs `Motion.bump_scale` on the slotted buttons. Press is `Motion.press_scale` at 0.94 on `button_down`, released on `button_up`. `slide_out` is `Motion.slide` on the tray's own position with a fade, and it is not a queue_free — Reset brings it back.
+`set_marks` repaints each named key's stylebox face and switches its lettering to `Pal.PAPER` for `HIT`, `NEAR` and `MISS` alike. `bump` runs `Motion.bump` on the slotted buttons and press is `Motion.press` on `button_down`/`button_up` — the **node** recipes, because a key is a real `Button`. `press_scale`/`bump_scale` are the curve readers for drawn pieces with no node to tween, and are the wrong half of the vocabulary here; `Motion.press`'s own `PRESS_SCALE` is already 0.94. `slide_out` is `Motion.slide` on the tray's own position with a fade, and it is not a queue_free — Reset brings it back.
 
 Entrance: the tray already gets the flat host's row entrance from `ui/hud/panel.gd`; on top of it, the three rows slide up 0.03 apart, and under `Motion.reduce` they are simply there.
 
@@ -692,7 +692,7 @@ git commit -m "feat(hiddenword): the keyboard tray"
 - Modify: `ui/registry.gd` — the `hiddenword` entry; Horse Pen's `soon` card leaves the grid
 
 **Interfaces:**
-- Consumes: `KeyBoard.HEIGHT`, `KeyBoard.key/enter/erase`
+- Consumes: `KeyBoard.HEIGHT`, `KeyBoard.key/commit/erase`
 - Produces: `PuzzleBase.ended` signal, `PuzzleBase.finish_unsolved()`; the host forwards `key`, `enter` and `erase` to the puzzle by calling `_puzzle.type_letter(l)`, `_puzzle.commit_row()` and `_puzzle.erase_letter()` when those methods exist
 
 - [ ] **Step 1: The base gains an ending that is not a solve**
@@ -732,7 +732,7 @@ In `ui/flat/flat_host.gd`'s `match` over `"tray"`, after the `"queens"` branch:
 			tray.key.connect(func(l: String) -> void:
 				if is_instance_valid(_puzzle) and _puzzle.has_method("type_letter"):
 					_puzzle.type_letter(l))
-			tray.enter.connect(func() -> void:
+			tray.commit.connect(func() -> void:
 				if is_instance_valid(_puzzle) and _puzzle.has_method("commit_row"):
 					_puzzle.commit_row())
 			tray.erase.connect(func() -> void:
