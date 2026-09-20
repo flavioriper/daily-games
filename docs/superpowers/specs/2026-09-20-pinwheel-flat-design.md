@@ -111,16 +111,17 @@ and its title block is therefore **370 wide, not 496**.
 
 `capabilities()` is `["undo", "hint"]`.
 
-### The title, and a thing to measure rather than assume
+### The title, and the reading that settled it
 
 `Pinwheel` is eight characters in Fredoka 700 at GameWordmark's 84 against a
-370 block. `Word Trail` measures 392 against the same block and is lettered
-down to 79; `Pinwheel` is shorter but carries a `w` and an `h`. **It is
-expected to fit at 84 and that is an estimate, not a reading.** Measure it with
-a headless probe against the real face before the spec's amendments claim
-otherwise, the way the `_fit_title` round of 2026-09-20 did, and record the
-number here. The motto must be measured too — it is the label that has been
-forced down on three of the four existing five-button boards.
+370 block. `Word Trail` measures 391 against the same block and is lettered
+down to 79; `Pinwheel` is shorter but carries a `w` and an `h`, so it was an
+open question rather than an assumption. **Measured against the real face on
+the real screen** (§8): the title comes to **338** and keeps its 84, and the
+motto to **272** and keeps its 24. Neither is lettered down, which makes this
+the first five-button board whose motto is not — all four before it are
+(Balance 399 → 21, Untangle 397 → 22, Word Trail 406 → 21, Quilt 380 → 23),
+and a motto written short on purpose is what bought it.
 
 Motto: `TURN IT TILL IT FITS` (short on purpose, for the 370 block).
 
@@ -542,26 +543,133 @@ Quilt's cloth. The only face on the screen is the sprout on the tip card.
 
 ---
 
-## 8. What has to be measured, not assumed
+## 8. What was measured
 
-Written here so the implementation cannot quietly skip it. Every one of these
-is a number this spec does not yet have.
+Every figure here was taken on this Mac on 2026-09-20, after the board was
+live on the menu, in **one sitting and one windowed run at a time** — the rule
+the repo has already paid for twice. The strip harness is
+`tests/_shot_anim.gd -- pinwheel` at `--resolution 810x1440`, with the
+resolution flag **before** `--script`, and the win harness is `tests/_win.gd`,
+run windowed because headless it silently reports 0/0.
 
-1. **Generation cost in GDScript, per band**, worst seed of a calibrated sweep,
-   against the 194 ms gate. The prototype's sub-millisecond JS reading is not a
-   substitute.
-2. **Draw calls**, with `tests/_shot_anim.gd -- pinwheel` at
-   `--resolution 810x1440`, bare and played, against the 855 budget — plus a
-   control board (Queens at 71, Word Trail at 65) run **in the same session**,
-   because CLAUDE.md records this Mac's idle readings swinging by a factor of
-   1.6 and a single reading off that harness being worth nothing.
-3. **The phone's driver**: the same counts under
-   `--rendering-driver opengl3_angle`, and the settled frames compared, to prove
-   nothing has reintroduced an `instance uniform`.
-4. **Reduce motion**: two frames 1.5 s apart, pixel-identical.
-5. **The title and motto widths** against the 370 block (§3).
-6. **The menu**: page one unchanged at 335, page two up from 140 by about one
-   card's worth (Bridges and Quilt cost about 20 each).
+### The session, and what it is worth
+
+A single reading off `_shot_anim.gd` is worth nothing — CLAUDE.md records this
+Mac's idle swinging by a factor of 1.6 on identical code — so Queens and Word
+Trail were run as controls at **both ends** of the session, everything was read
+twice, and every reading is quoted below including the ones that disagree.
+
+| run | draw calls | idle mean |
+|---|---|---|
+| **Queens** (control), opening and closing the session | **71 / 71** | 2.89 / 2.83 ms |
+| **Word Trail** (control), opening and closing the session | **65 / 65** | 2.42 / 2.38 ms |
+| `pinwheel`, one piece turned and its stain settled | **59 / 59** | 2.65 / 2.62 ms |
+| `pinwheel empty`, the bare opening board | **60 / 59** | 2.14 / 2.52 ms |
+| `pinwheel rm`, reduce motion | **59 / 59** | 2.53 / 2.55 ms |
+| `pinwheel` on `--rendering-driver opengl3_angle` | **59 / 59** | 4.10 / 4.20 ms |
+
+Both controls reproduced their recorded counts exactly, at the start and again
+at the end, so the counts in this table can be quoted. **The milliseconds
+cannot be quoted outside it**: this was a fast session — Queens read 2.83–2.89
+against the 3.83 recorded in its own spec and the 3.45/3.49 of Quilt's
+session — so Pinwheel's 2.6 ms means "beside Word Trail's 2.4 and Queens' 2.86
+in the same hour" and nothing more. The ANGLE run's 4.1–4.2 ms is that driver
+being slower on *this* Mac; no claim about a phone can be read off it.
+
+**59 draw calls against the 855 budget**, which makes Pinwheel the
+second-cheapest board the repo has measured, a call behind Quilt's 58 and a
+little over half of Hidden Word's 110. Three meshes and no Controls is what
+buys that, and it is also why **a turn costs nothing measurable**: a piece
+swinging over its neighbours, the stain arriving on the cells it has doubled
+up on and eleven pinwheels standing on the frame are all inside the same three
+meshes as the bare board, so the played board does not draw more than the
+opening one.
+
+The one reading in the table that disagrees with itself is the bare board's
+**60 then 59**, against a played board that read 59 twice — a bare board
+cannot cost more than a played one, so the ±1 is the frame the window happened
+to catch. The likely cause, **inferred and not measured**, is the shared
+wordmark's sun-dot: CLAUDE.md records a rayed sun costing the header one draw
+call over a still one when it glints, and it glints on its own clock. The
+reduce-motion runs are what point at it — with the glint stilled the count is
+a flat 59 twice — but nothing here was run with the glint disabled, so this is
+an inference from three readings and not a measurement.
+
+### Reduce motion
+
+**Pixel-identical, twice.** The two frames 1.5 s apart (shots 7 and 8 of a
+`pinwheel rm` run) differ in **zero** pixels of 810 x 1440, in both runs — not
+a small number, an empty difference image, because reduce motion stills the
+wordmark's glint along with the board.
+
+The played run says the other half of the same thing: its shots at 2.8 s and
+3.8 s differ **only** in a 22 x 22 box at (169, 55)–(191, 77), which is the
+sun-dot, worst 153/255 there and nothing anywhere else. The board itself is
+still by 2.8 s, so the idle window that produced the numbers above was
+measuring an idle board — which is exactly what the extra shots and the later
+`_idle_from` of 2.6 s were added for: the swing is over in `TURN_TIME` 0.26,
+but the stain fans out of the pin for another `_wave_span` (0.515 s on band 1)
+after the piece has landed.
+
+### The phone's driver
+
+ANGLE agrees on **59**, twice. Comparing the settled frames, 110,002 pixels of
+1,166,400 differ and **not one of them by more than 1/255** — worst 1 overall
+and worst 1 below the header. That is paper-wash and gradient rounding spread
+thinly over the whole page, with nothing structural anywhere: no silhouette
+moved, no cut staircased, nothing has reintroduced an `instance uniform`. It
+is the tightest agreement between the two drivers any board in the repo has
+recorded.
+
+### The title and the motto
+
+Measured with a throwaway probe that opened the real screen and read
+`Font.get_string_size` off the rendered face, against the block the bar
+actually lays out. The block is **370.0** with five buttons, as §3 said it
+would be.
+
+| board | title at 84 | motto at 24 | fitted |
+|---|---|---|---|
+| **Pinwheel** | **338** | **272** | **neither is lettered down** |
+| Balance | 306 | 399 | motto 24 → 21 |
+| Untangle | 351 | 397 | motto 24 → 22 |
+| Word Trail | 391 | 406 | title 84 → 79, motto 24 → 21 |
+| Quilt | 190 | 380 | motto 24 → 23 |
+
+So §3's estimate holds, and it is now a reading: `Pinwheel` fits at 84 with 32
+px to spare and `TURN IT TILL IT FITS` fits at 24 with 98. **Pinwheel is the
+first five-button board whose motto is not lettered down** — all four before it
+are, which is what §3's "short on purpose" was aiming at. Two by-products worth
+keeping: Quilt's motto is fitted 24 → 23 and that was nowhere on the record,
+because CLAUDE.md's `_fit_title` probe of 2026-09-20 predates Quilt; and Word
+Trail's title measures 391 here against the 392 on the record, because the
+string the label actually renders is `Word Traıl` — `ui/sun_dot.gd` has already
+swapped the i for Fredoka's dotless `ı` by the time the bar measures it. The
+probe reproduced Word Trail's 79 and Mushroom Patch's 65 exactly, which is what
+says it was reading the real Fredoka and not a fallback face.
+
+### The menu
+
+Taken at the card (Task 5), twice, at the same resolution: **page one
+unchanged at 335** and **page two 150** with five cards, up from the 140 it
+read with four. Pinwheel stands on page two and costs page one nothing, which
+is the point of paging rather than reflowing — the third board in three days to
+be added without displacing one, and the second to land on a pager that was
+already there.
+
+### Generation, and the win path
+
+Generation cost is measured per band in §5 and not repeated here: worst board
+**9.08 ms** in the quiet session and **16.42 ms** in the loaded one, against
+the repo's 194 ms gate, the smallest generation cost of any board in the game.
+
+`tests/_win.gd` drives the board the way a thumb would — a real hint off the
+HUD, then every piece turned home by touching its own pinwheel, with the
+pinned-fast pieces skipped because tapping one is the board's refusal rather
+than its move. It comes back **17/17 winnable** with Pinwheel reading
+`5x7 frame, 11 pieces, 16 taps, hints=1, board fit=true, hud=true`, so the pin
+maths, the cell the finger lands on and the win condition are all proved
+through the input layer rather than by poking the state.
 
 ---
 

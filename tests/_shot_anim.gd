@@ -57,6 +57,11 @@ extends SceneTree
 ## chip the tray arms by default, so the strip shows the pop, the ring, the
 ## puff and -- the point of the shot -- the count wash arriving on the givens
 ## around it as their numerals bump and turn green.
+## Pinwheel has one pinwheel tapped -- the one whose quarter turn doubles up
+## the most cells -- so the strip shows the piece mid-swing with its blades
+## running on past it, and then the stain arriving on the squares it has just
+## landed on top of. It gets two extra frames and a later idle window for
+## that, because the wave only sets off once the piece has stopped turning.
 ##
 ## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
 ## strip shows the selection's washes, a digit dropping in and the wave the
@@ -180,6 +185,16 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.8, 2.2, 3.2, 4.2]
 		_idle_from = 3.2
 		_idle_to = 5.2
+	if _id == "pinwheel" and not _empty:
+		# The swing is over in TURN_TIME, but the stain it lays fans out of
+		# the pin for another half-second after the piece has landed
+		# (`_wave_span`: the frame's longer side at WAVE_STEP a cell, plus
+		# the stained cell's own pop). Four of these are re-seated off the
+		# frame that pushes the touch -- see the tap branch below -- and the
+		# idle window opens after the wave rather than during it.
+		_shots = [0.35, 0.9, 1.65, 1.8, 2.0, 2.25, 2.8, 3.8]
+		_idle_from = 2.6
+		_idle_to = 4.6
 	if _id == "quilt" and _mode == "full":
 		# Every patch but the last is sewn on at once, and the last is
 		# dragged, so the strip catches a nearly full quilt, the last patch
@@ -297,6 +312,19 @@ func _process(delta: float) -> bool:
 			_lay_bridges()
 		elif _entry.id == "quilt" and not _empty:
 			_drag_quilt()
+		elif _entry.id == "pinwheel" and not _empty:
+			_tap_pinwheel()
+			# The swing runs TURN_TIME 0.26 and the blades another half as
+			# long again, and the stain only starts fanning out once the
+			# piece has landed. These four are measured off **this** frame
+			# rather than off TAP_AT, because the frame that pushes the
+			# touch is a long one and the texture read in it is the frame
+			# before the press: two mid-swing, two while the wash is
+			# arriving on the cells the piece has just doubled up on.
+			_shots[2] = _t + 0.06
+			_shots[3] = _t + 0.20
+			_shots[4] = _t + 0.40
+			_shots[5] = _t + 0.65
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -423,6 +451,48 @@ func _mushroom_wash_count(cell: Vector2i) -> int:
 		if st.given.has(p) and int(st.given[p]) == 1:
 			c += 1
 	return c
+
+## Pinwheel: one real touch on one pinwheel, which is this board's whole
+## input vocabulary. The piece tapped is the one whose quarter turn leaves
+## the **most stained cells** -- squares two pieces are now on -- because the
+## stain settling is the half of the moment the swing does not show, and a
+## piece that turns into empty ground would give the strip a spin and
+## nothing else. A piece with only one in-frame orientation is skipped: it
+## is pinned fast, and tapping it is the board's refusal rather than its
+## move.
+func _tap_pinwheel() -> void:
+	var st = _puzzle._state
+	var best := -1
+	var best_score := -1
+	for p in (st.shapes as Array).size():
+		if st.fixed(p):
+			continue
+		var score := _pinwheel_stain_count(p)
+		if score > best_score:
+			best_score = score
+			best = p
+	if best < 0:
+		return
+	var pin: Vector2i = st.pin_cell(best)
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(pin.x, pin.y))
+
+## How many cells would be stained the instant piece `p` took its quarter
+## turn: its cells leave the squares it is on now and arrive on the squares
+## the next orientation wants, and any square that ends up under two pieces
+## or more is a stain.
+func _pinwheel_stain_count(p: int) -> int:
+	var st = _puzzle._state
+	var m: int = (st.shapes[p] as Array).size()
+	var by: Dictionary = {}
+	for c: Vector2i in st.cells_of(p, int(st.turned[p])):
+		by[c] = int(by.get(c, 0)) - 1
+	for c: Vector2i in st.cells_of(p, (int(st.turned[p]) + 1) % m):
+		by[c] = int(by.get(c, 0)) + 1
+	var n := 0
+	for c: Vector2i in by:
+		if st.depth(c.x, c.y) + int(by[c]) >= 2:
+			n += 1
+	return n
 
 ## Hidden Word: type a five-letter guess on the real keyboard, one key tapped
 ## like a thumb, and press Enter a beat later. The guess is picked off the

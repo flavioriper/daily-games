@@ -104,6 +104,9 @@ func _note(id: String) -> String:
 		"quilt": return "%dx%d backing, %d patches, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
+			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -130,6 +133,7 @@ func _solve(id: String) -> void:
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
 		"quilt": _solve_quilt()
+		"pinwheel": _solve_pinwheel()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -413,6 +417,54 @@ func _solve_quilt() -> void:
 			float(origin % st.cols), float(origin / st.cols)) * cell
 		var to: Vector2 = corner + (Vector2(first) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * cell
 		_drag_local(from, to)
+
+## Pinwheel: every piece turned home by tapping its own pinwheel, which is
+## this board's entire input vocabulary -- one tap on one unambiguous target,
+## repeated until the piece faces the way the answer wants. Nothing else on
+## the frame does anything, so a pin drawn at the wrong cell, or a tap that
+## reads the cell under the finger as `row * cols + column`, fails here
+## rather than passing on a poke at the state.
+##
+## A piece that is *pinned fast* -- one in-frame orientation, so nowhere to
+## go -- is skipped, and it has to be: it is already on its answer and the
+## board refuses the tap, so a loop that waited for it to turn would spin
+## for ever. That skip is the harness agreeing with rule 5.
+##
+## One hint first, through the real HUD, which walks the piece furthest from
+## home all the way back in a single history entry; that piece is then
+## already facing right and the loop below steps over it with no special
+## case. There is no Check on this board -- nothing is hidden, and the stain
+## a second piece lays on a cell is the answer a Check would give -- so
+## `_hud_ok` watches the hint alone, as Quilt's and Word Trail's do.
+func _solve_pinwheel() -> void:
+	var st = _puzzle._state
+	# Fit check: every cell centre must land inside the board slot, and so
+	# must every pin. The pin is the only tap target on the screen, so a pin
+	# off the card is a piece that can never be turned at all.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if not slot.has_point(_puzzle.cell_to_local(c, r)):
+				_fit_ok = false
+	for p in (st.shapes as Array).size():
+		if not slot.has_point(_puzzle._pin_point(p)):
+			_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	for p in (st.shapes as Array).size():
+		if _puzzle.is_done():
+			return
+		if st.fixed(p):
+			continue
+		var pin: Vector2i = st.pin_cell(p)
+		# A piece has at most four orientations, so four taps come home from
+		# anywhere; the guard is there so a board that refused a tap stops
+		# rather than hangs.
+		var guard := 0
+		while int(st.turned[p]) != int(st.answer[p]) and guard < 5:
+			guard += 1
+			_tap_local(_puzzle.cell_to_local(pin.x, pin.y))
 
 func _tap_local(local: Vector2) -> void:
 	_tap_global(_to_global(local))
