@@ -14,8 +14,10 @@ extends "res://ui/hud/panel.gd"
 ## the hearts are a picture of a feature that has not been designed.
 ##
 ## **The pager (`set_pager`, and the signals `prev`/`next`) lives here and
-## not in a row of its own** because this row is 180 tall and already ended
-## in a chevron that squashed and did nothing -- a thirteenth card needs a
+## not in a row of its own** because this row is budgeted at 180 tall (it
+## actually measures 188, a pre-existing drift this task did not cause and
+## does not fix) and already ended in a chevron that squashed and did
+## nothing -- a thirteenth card needs a
 ## second page, and every other place that page could come from -- a
 ## shorter header, a shorter card -- costs a pixel a screen full of cards
 ## already spends. This is not any one board's work, it is the first
@@ -112,10 +114,11 @@ func _build() -> void:
 
 	# --- the pager ---
 	# The thirteenth card does not fit on one page (see the class doc above),
-	# and this row is the only place a pager fits for free: it is 180 tall,
-	# it already ends in a chevron that does nothing, and the cards cannot
-	# give up a pixel without the 92 picture giving it up first. Hidden at
-	# one page, so nothing changes on a screen that does not need it.
+	# and this row is the only place a pager fits for free: it is budgeted
+	# at 180 tall (measures 188 -- see the class doc above), it already ends
+	# in a chevron that does nothing, and the cards cannot give up a pixel
+	# without the 92 picture giving it up first. Hidden at one page, so
+	# nothing changes on a screen that does not need it.
 	_prev = IconButton.new("chevron_left")
 	_prev.custom_minimum_size = Vector2(CHEVRON, CHEVRON)
 	_prev.size_flags_vertical = Control.SIZE_SHRINK_CENTER

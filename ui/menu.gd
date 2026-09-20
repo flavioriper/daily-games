@@ -73,6 +73,9 @@ const TOAST_H := 88.0
 var settings_sheet: Control
 var legacy_sheet: Control
 var cards: Array = []
+## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
+## see _build_page().
+var _fillers: Array = []
 var header: Control
 var day_row: Control
 var bar: Control
@@ -196,6 +199,10 @@ func _build_page() -> void:
 		_grid.remove_child(c)
 		c.queue_free()
 	cards.clear()
+	for f in _fillers:
+		_grid.remove_child(f)
+		f.queue_free()
+	_fillers.clear()
 	for row in _page_entries():
 		var entry: Dictionary = row.entry
 		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()])
@@ -204,6 +211,23 @@ func _build_page() -> void:
 		card.blocked.connect(_on_soon.bind(entry))
 		cards.append(card)
 		_grid.add_child(card)
+	# A short last row (thirteen over twelve leaves one) hands its one real
+	# column every column's leftover width -- GridContainer sizes a column
+	# to the widest cell it actually has, and a column with no cell in that
+	# row does not compete for the row's stretch at all. Padding out to COLS
+	# with zero-minimum, EXPAND_FILL fillers keeps three columns competing
+	# on every row, on any page, so a card is 320 wide everywhere rather
+	# than however many empty columns' worth wider. The mirror of the
+	# height floor puzzle_card_2d.gd's CARD_H sets on the other axis.
+	var short := cards.size() % COLS
+	if short > 0:
+		for i in COLS - short:
+			var filler := Control.new()
+			filler.name = "Filler_%d" % i
+			filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_fillers.append(filler)
+			_grid.add_child(filler)
 	day_row.set_pager(_page, _pages())
 
 ## A page change is not an entrance: the header, the day row and the bar
@@ -250,6 +274,13 @@ func _fade_out_page(leaving: Array) -> void:
 		_list_root.add_child(card)
 		card.global_position = rect.position
 		card.disable_tap()
+		# A card turned onto this page moments ago may still be mid-entrance
+		# (panel.gd's `_entrance`, driving the same modulate:a this fade
+		# drives): stop those first, or a fast page-turn-and-back leaves two
+		# tweens racing the alpha and a one-frame flicker before this card
+		# frees itself.
+		for tw in card._entrance:
+			Motion.stop(tw)
 		var out := Motion.appear(card, card.modulate.a, 0.0, ENTER_FADE)
 		if out == null:
 			card.queue_free()
