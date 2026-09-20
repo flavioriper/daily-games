@@ -713,6 +713,21 @@ pointing `seed_as` at them. Specs:
   it is two content-packed shelves with the tall patches grouped; and the
   empty bays are drawn, because without them the rack empties as the quilt
   fills and the last patch is dragged across four hundred pixels of nothing.
+  **And a fifth, which is the one that travels: a patch cannot blush.** Every
+  other board flashes a refused piece toward `Pal.BAD`; `Pal.CLOTH` runs
+  right round the wheel, so at 0.30 the teal goes from 0.34 saturation to
+  **0.07** (dead grey), the sage swings hue 91 to 49 (khaki) and the sky 212
+  to 265 (mauve) -- only the four warm cloths blush at all, and a greyed
+  patch reads as *disabled* rather than as refused. So the refusal is a rose
+  **halo stroked round the silhouette** with the shiver, and the cloth is
+  left alone: `docs/art/flat-motion.md`'s rule 9 read for a piece that is
+  its own shape. **Any board whose pieces are coloured by index should
+  expect this.** Two bugs on the drag were also found in review and are
+  locked by `tests/test_quilt_board.gd`: an origin packed as
+  `row * cols + column` wrapped a hold one cell off the left edge onto the
+  far right (2,386 of those came back legal across 120 boards), and a second
+  press stranded the held patch with no undo entry, because `take()` pushes
+  no history and the matching `drop()` never ran.
   Measured with `tests/_shot_anim.gd -- quilt` at `--resolution 810x1440`:
   **58** bare, 58-59 played over six readings, **80 on the fullest board** and 58 under reduce
   motion, against the 855 budget, with Queens (71, 71) and Word Trail (65)
@@ -970,7 +985,7 @@ pointing `seed_as` at them. Specs:
   Hidden Word confirmed. **Quilt seats none either, and is the second board
   to add a drawing rather than a character**: `ui/faces/patch_cloth.gd` is
   builder shapes and not a Control, exactly as `mosaic_tile.gd` is, because
-  the board batches up to nine patch silhouettes into one mesh and the menu
+  the board batches up to eight patch silhouettes into one mesh and the menu
   card draws five more into another -- a Control per patch would be a node
   per piece of a thing with no face on it. A patch is **one polygon and not
   a row of squares**: its cells' boundary is traced into a loop and the

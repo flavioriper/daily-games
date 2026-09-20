@@ -86,11 +86,15 @@ const STITCH_TIME := 0.22
 const HOLD_LIFT := 1.2
 ## A refused or a lifted patch flying home to its bay.
 const FLY_TIME := 0.26
-## The ghost under the finger: the cells a legal drop would take.
+## The ghost under the finger: the cells a drop would take, and the thread
+## drawn round them so the footprint reads from under the patch that is
+## hiding most of it.
 const GHOST_ALPHA := 0.3
-## How far the cloth in the hand goes toward the rose while it is held over
-## somewhere it will not go.
-const HOLD_BLUSH := 0.3
+const GHOST_W := 0.035
+const GHOST_DASH := 0.12
+## The rose halo a refused patch wears instead of blushing (see `_blush`).
+const HALO_W := 0.11
+const HALO_ALPHA := 0.85
 ## The shape a patch leaves in its bay once it has gone onto the quilt.
 const GONE_ALPHA := 0.16
 ## A patch a hint sewed keeps this glow round it until the board is reset.
@@ -543,11 +547,23 @@ func _held_cell() -> Vector2i:
 	var p := (_held_corner() - _origin()) / cell
 	return Vector2i(int(round(p.x)), int(round(p.y)))
 
-## The origin index a release would ask for, or -1 when the patch is nowhere
-## near the quilt.
+## The origin index a release would ask for, or -1 when the patch's own
+## (0, 0) is not over the grid at all.
+##
+## **The bounds have to be exactly the grid**, because the origin is packed
+## into one int as `row * cols + column` and an out-of-range column wraps
+## onto another row: held one cell off the left edge at row 2 of a 5-wide
+## quilt, `-1` encodes as origin 9, which decodes as column 4 of row 1 --
+## the far side of the board. Measured before it was fixed: of the holds a
+## looser guard admitted, **2,386 came back `fits() == OK`** across 120
+## boards, so a patch dragged off one edge could be sewn on at the other.
+##
+## Nothing is lost by the tight test. A shape is normalised, so some cell of
+## it has an x-offset of 0 and some cell has a y-offset of 0; for every cell
+## to land on the grid, the origin itself must therefore be on it.
 func _held_origin() -> int:
 	var at := _held_cell()
-	if at.x < -_state.cols or at.y < -_state.rows or at.x > _state.cols or at.y > _state.rows:
+	if at.x < 0 or at.y < 0 or at.x >= _state.cols or at.y >= _state.rows:
 		return -1
 	return at.y * _state.cols + at.x
 
@@ -730,22 +746,42 @@ func _mesh(b) -> ArrayMesh:
 ## One patch, in its cloth -- or in the family's rose while it is being
 ## refused, which is the one thing that can change a patch's colour.
 func _patch(b, p: int, f: Dictionary) -> void:
-	var face := Cloth.cloth(p)
-	var deep := Cloth.cloth_deep(p)
-	var blush := 0.0
+	Cloth.patch(b, _loops[p], f["pos"], float(f["cell"]), _spans[p],
+		Cloth.cloth(p), Cloth.cloth_deep(p), f["sc"], float(f["alpha"]))
+	_blush(b, p, f)
+
+## A patch that is being turned down wears a rose **halo** round its
+## silhouette. It does not blush.
+##
+## **The cloth cannot blush**, and this is measured rather than felt. The
+## eight cloths run right round the wheel, so there is no one rose they can
+## all be taken toward: at 0.30 the teal drops from 0.34 saturation to
+## **0.07** and comes back dead grey, the sage swings from hue 91 to 49 and
+## comes back khaki, and the sky goes to 265 and comes back mauve. Only the
+## four warm cloths blush at all. A wash that means "wrong" on half a rack
+## and "muddy" on the other half is worse than no wash.
+##
+## That is `docs/art/flat-motion.md`'s **rule 9** -- a piece with no
+## blushing variant blushes through its cell -- read for a piece that *is*
+## its own shape and covers several cells: the halo is drawn beside the
+## cloth rather than mixed into it, so it reads the same on all eight. The
+## piece still moves; the halo carries the colour.
+func _blush(b, p: int, f: Dictionary) -> void:
+	var level := 0.0
 	if not _refused.is_empty() and int(_refused["patch"]) == p:
-		blush = Motion.flash_level(_now() - float(_refused["at"]))
+		level = Motion.flash_level(_now() - float(_refused["at"]))
 	elif not _drag.is_empty() and int(_drag["patch"]) == p and _hold_state() == SNAG:
-		# Held over the quilt somewhere it will not go. The cloth in the hand
-		# says so while it is held, rather than the board waiting for the
-		# release to refuse it -- a drag is a question, and this is the only
-		# moment the board can answer it before the answer costs anything.
-		blush = HOLD_BLUSH
-	if blush > 0.0:
-		face = face.lerp(Pal.BAD, blush)
-		deep = deep.lerp(Pal.BAD.lerp(Pal.TEXT, Cloth.DEEP), blush)
-	Cloth.patch(b, _loops[p], f["pos"], float(f["cell"]), _spans[p], face, deep,
-		f["sc"], float(f["alpha"]))
+		# Held over the quilt somewhere it will not go. The hand says so
+		# while it is held, rather than the board waiting for the release --
+		# a drag is a question, and this is the only moment the board can
+		# answer it before the answer costs anything.
+		level = 1.0
+	if level <= 0.0:
+		return
+	var cell := float(f["cell"])
+	for loop: PackedVector2Array in _loops[p]:
+		b.stroke(Cloth.laid(loop, f["pos"], cell, _spans[p], f["sc"]),
+			HALO_W * cell, Color(Pal.BAD, HALO_ALPHA * level), true)
 
 ## The glow a hint's patch keeps: a soft sun ring round its silhouette, so a
 ## patch that was given is never mistaken for one that was worked out.
@@ -782,23 +818,34 @@ func _hold_state() -> int:
 		return CLEAR
 	return FITS if _state.fits(p, origin) == State.OK else SNAG
 
-## Where the patch in the hand would land: its cells washed onto the backing
-## in its own cloth. **Only when it fits** -- a refusal is said on the cloth
-## in the hand instead (`_patch`), because the held patch covers the ghost
-## almost exactly and a rose wash under it would be seen by nobody. What the
-## ghost is for is the *snap*: it sits on whole cells while the patch above
-## it follows the finger, so its edges peek out and show where the release
-## will put things.
+## Where the patch in the hand would land, on whole cells while the patch
+## above it follows the finger: a wash in its own cloth with a thread drawn
+## round it when it fits, and a **dashed rose thread alone** when it will
+## not go.
+##
+## **The outline is not decoration.** The patch is held above the thumb and
+## the footprint snaps underneath it, so the patch covers most of the wash
+## and only its edges peek out; a wash on its own is a hint of a hint. The
+## thread is what makes the footprint readable. And the refusing case gets
+## no wash at all, because a patch that will not go is partly *off* the
+## backing by definition and a rose wash would be painted onto the card.
 func _ghost(b, _t: float) -> void:
-	if _hold_state() != FITS:
+	var state := _hold_state()
+	if state == CLEAR:
 		return
 	var p := int(_drag["patch"])
 	var cells: Array = _state.patch_cells(p, _held_origin())
 	if cells.is_empty():
 		return
+	var cell := _cell()
 	for loop: PackedVector2Array in Cloth.loops(cells):
-		b.polygon(Cloth.laid(loop, _origin(), _cell(), Vector2i.ZERO),
-			Color(Cloth.cloth(p), GHOST_ALPHA))
+		var pts := Cloth.laid(loop, _origin(), cell, Vector2i.ZERO)
+		if state == FITS:
+			b.polygon(pts, Color(Cloth.cloth(p), GHOST_ALPHA))
+			b.stroke(pts, GHOST_W * cell, Cloth.cloth_stitch(p), true)
+		else:
+			Cloth.dash_loop(b, pts, GHOST_W * cell,
+				GHOST_DASH * cell, GHOST_DASH * cell, Pal.BAD)
 
 ## The running stitch along every seam: the board's signature. Each seam's
 ## dashes run out from the patch that made it, one cell of distance per
@@ -865,6 +912,15 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 func _grab(local: Vector2) -> void:
+	# One hand at a time. A second press while a patch is held -- a second
+	# finger on a phone, a second mouse button here -- used to overwrite
+	# `_drag` outright, and the patch it dropped had already been taken off
+	# the quilt by `take()`, which pushes no history because the matching
+	# `drop()` is meant to. So the first patch was stranded in the rack with
+	# no undo entry and no move counted, and only the second one was ever
+	# resolved.
+	if not _drag.is_empty():
+		return
 	var hit := _hit(local)
 	if hit.is_empty():
 		return
@@ -1166,7 +1222,7 @@ func _on_solved() -> void:
 	_solved_at = _now()
 	_drag = {}
 	_tip_timer.stop()
-	# Gold on each patch as the hop reaches it, and no ring: nine rings over
+	# Gold on each patch as the hop reaches it, and no ring: eight rings over
 	# a finished quilt is a firework, where the hem's stitch is the point.
 	for p in _state.shapes.size():
 		var origin := int(_state.at[p])

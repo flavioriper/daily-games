@@ -189,6 +189,13 @@ func _initialize() -> void:
 		_shots = [0.35, 1.75, 1.95, 2.2, 2.6, 3.2, 4.4, 5.4]
 		_idle_from = 3.4
 		_idle_to = 5.4
+	elif _id == "quilt" and _mode == "refuse":
+		# The drag lands at TAP_AT + DRAG_TIME; these catch the patch held
+		# over a place it will not go (halo and dashed footprint), then the
+		# first two crests of the shiver on the way home, then settled.
+		_shots = [0.35, 1.75, 1.90, 2.02, 2.08, 2.5, 3.2, 4.2]
+		_idle_from = 3.0
+		_idle_to = 5.0
 	elif _id == "quilt" and not _empty:
 		# The drag runs DRAG_TIME from TAP_AT, then the patch pops in and its
 		# seam stitches sew themselves over about four tenths. These catch
@@ -725,6 +732,17 @@ func _drag_quilt() -> void:
 	if _puzzle._state.shapes.is_empty():
 		return
 	var p := 0
+	if _mode == "refuse":
+		# One patch sewn on, and a second dragged straight onto it, so the
+		# strip catches the two things a refusal is made of: the rose halo
+		# round the cloth in the hand and the dashed footprint under it
+		# while it is held, then the shiver and the flight home. The cloth
+		# itself never changes colour -- eight cloths round the wheel have
+		# no one rose to blush toward (spec section 5).
+		_puzzle._state.drop(0, int(_puzzle._state.answer[0]), -1)
+		_puzzle._landed[0] = Time.get_ticks_msec() / 1000.0
+		_puzzle._refresh()
+		p = 1
 	if _mode == "full":
 		# `full`: every patch but the last goes on through the state, and
 		# the last is dragged, so the shot that matters -- a quilt with not
@@ -741,6 +759,8 @@ func _drag_quilt() -> void:
 	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
 	var from: Vector2 = xf * (_puzzle._bay_home(p) + (Vector2(first) + Vector2(0.5, 0.5)) * rc)
 	var origin := int(_puzzle._state.answer[p])
+	if _mode == "refuse":
+		origin = int(_puzzle._state.answer[0])
 	var cols: int = _puzzle._state.cols
 	var corner: Vector2 = _puzzle._origin() \
 		+ Vector2(float(origin % cols), float(origin / cols)) * cell

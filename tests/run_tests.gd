@@ -37,6 +37,7 @@ func _initialize() -> void:
 		"sudoku": "res://tests/test_sudoku.gd",
 		"bridges": "res://tests/test_bridges.gd",
 		"quilt": "res://tests/test_quilt.gd",
+		"quilt_board": "res://tests/test_quilt_board.gd",
 	}
 	for suite_name in suites:
 		_t.current = suite_name

@@ -16,9 +16,12 @@ different game and its name is not used either. The pieces here are
 *Patch* as a title.)
 
 The playable mock is `docs/brainstorm/concepts.html#quilt`, built before this
-spec as the house order requires. **Every measurement below is ported from
-that mock**; where a figure came from the mock's JavaScript rather than from
-Godot, this document says so, because a JS timing is not a GDScript timing.
+spec as the house order requires. **The mock and the board were built in
+parallel against this design and measured apart**, which is unusual here and
+is the reason section 4 carries two sets of generator figures rather than
+one: the agreement between two independent implementations is worth more
+than either measured twice. Every figure below says which side it came
+from, because a JS timing is not a GDScript timing.
 
 ## 1. What is built
 
@@ -150,9 +153,10 @@ grows and proves; this grows and proves).
    empty cell orthogonally adjacent to what has been grown and grow the next
    patch from there. The backing is therefore **connected by construction**,
    and so is the order the patches were cut in.
-2. **Reject a shape** whose bounding box is wider or taller than four cells:
-   the rack's bays have to hold every patch at a legible size, and one long
-   patch would shrink all of them (section 6).
+2. **Reject a shape** whose bounding box is wider or taller than four cells.
+   One rack cell serves every patch on the board and the rack's two shelves
+   share its height, so a single very tall patch is paid for by shrinking
+   all of them (section 6).
 3. **Reject a backing** that encloses a hole, and one whose bounding box does
    not fill the band's box in at least one dimension, so a 7×7 board never
    comes back 4×4. Re-normalise to the bounding box.
@@ -197,6 +201,50 @@ Worst case **51.8 ms** against the repo's 194 ms gate, which is comfortable
 even at the two-to-three times a phone is commonly slower. All 1,500 seeds
 came back unique and inside their band's node window, so none of the three
 fallbacks was walked.
+
+### Two implementations, measured apart
+
+The mock's JavaScript generator and the GDScript one were written
+independently against this section, and **both were swept over 500 seeds a
+band**. They are not the same program and the numbers are not the same
+numbers; what matters is that they agree about the *shape* of the problem.
+
+| | JS (mock) | GDScript (shipped) |
+|---|---|---|
+| Second answer, share of grown boards | 2.1 / 3.5 / 5.0% | 2.5 / 4.1 / 4.7% |
+| Node gates | easy ≤ 18, hard ≥ 70 | easy ≤ 20, hard ≥ 60 |
+| Attempts, hard band, mean | 32.5 | 25.9 |
+| Attempts, hard band, worst | 200 (the cap — 1 board in 500) | 179 |
+| Worst generation time | 2.7 ms | 51.8 ms |
+| Boards that came back unproved | 0 of 1500 | 0 of 1500 |
+
+**The agreement that matters is the uniqueness rate**, and it is close: 2–5%
+either way. That is the number this design turns on, and two independent
+solvers reaching it separately is worth more than either reaching it twice.
+The gates differ because each was calibrated against its own distribution,
+and the hard-band attempt counts follow from the gates; the mock's stricter
+gate (70 against 60) is why it spends 32.5 attempts where GDScript spends
+25.9, and why it hit the cap once in 500 where GDScript's worst was 179.
+
+**The times are not comparable and should not be read as a 19× penalty for
+GDScript**: node and Godot are different runtimes doing different amounts
+of allocation, and only the GDScript figure is the one the 194 ms gate is
+about. The JS figure is in the table so that nobody later finds it on the
+concept page and thinks the port regressed.
+
+**The mock cross-checked its uniqueness independently** — 520 boards
+(200/200/120) counted again by a second enumerator sharing none of the
+first's pruning: **0 count mismatches, 0 answers that were not a legal
+cover**. The GDScript suite does the same in `tests/test_quilt.gd`, by
+counting *labelled* tilings and asserting the total equals
+`∏ (copies of a shape)!`, which checks the grouping rule as well as the
+count. Two different cross-checks of the same claim.
+
+One more measured fact, from the mock, that justifies the grouping rule
+outright: **23.6% of kept boards carry a repeated shape** (25.0 / 17.0 /
+28.8% by band). Without grouping the multiset by shape, every one of those
+would be thrown away for having a "second answer" that is the same quilt
+with two identical patches swapped.
 
 ### Three things the sweep proved wrong, and they are worth knowing
 
@@ -257,14 +305,62 @@ because the reason is reusable.
 | A patch | `Pal.CLOTH[i]` | **New**: eight cloths, taken by patch index. Mid-light and warm-leaning, pitched between `REGION`'s pastels and `PEGS`' full colours, and spread round the wheel *by index* — butter, sky, coral, sage, lilac, apricot, teal, rose — so two patches with consecutive indices never land beside each other in the same family. Eight is the most any band asks for, so a colour never repeats on one board. |
 | Its bottom edge | `CLOTH[i]` 22% toward `Pal.TEXT` | The lip every piece on these screens wears: a fill over a slightly deeper copy of itself. |
 | Its stitch | `CLOTH[i]` 35% toward `Pal.TEXT` | Dark enough to read on its own cloth, light enough not to be ink. |
-| The backing | `Pal.QUILT_BACK` over `Pal.LINE` | **Reused, not invented**: `QUILT_BACK` is Shikaku's `BED_GROUND` `#e6d8b8`, the one colour in the palette already chosen to read as bare ground *on parchment*, which is exactly this problem. Drawn as **one more patch of cloth** — same silhouette, same corner, same lip — so the quilt reads as the pale piece underneath rather than as a hole in the card. |
+| The backing | `Pal.QUILT_BACK` over `Pal.LINE` | **Reused, not invented**: `QUILT_BACK` is Shikaku's `BED_GROUND` `#e6d8b8`. Drawn as **one more patch of cloth** — same silhouette, same corner, same lip — so the quilt reads as the pale piece underneath rather than as a hole in the card. See below for why it is that one. |
 | Its cell rules | `Pal.QUILT_RULE` (Shikaku's `BED_LINE`) at 0.55 | A hint of the grid a patch snaps to, and nothing more. |
 | A patch that has gone | its own cloth at 0.16, in its empty bay | Section 6. |
-| A refused patch | toward `Pal.BAD` on `flash_level` | The family's rose, on the patch itself: a patch *is* its own shape, so it has something to blush (`flat-motion.md`'s rule 9 does not bite here). |
-| A patch held where it will not go | toward `Pal.BAD` at 0.30, while it is held | Section 6. |
+| A refused patch, or one held where it will not go | a `Pal.BAD` **halo** round its silhouette | **The cloth does not blush**, and that is measured. See below. |
 | A hint's patch | `Pal.SUN` at 0.32, round its silhouette | The given's language every board speaks. |
 | The ghost under the finger | the patch's own cloth at 0.30 | Where a legal drop would land. |
 | The solve | the stitch warmed toward `Pal.SUN_RAY` | Section 9. |
+
+### Why the backing is that one, and not a darker one
+
+The backing has to be told apart from **two** things at once — the card
+above it and the cloths on it — and they pull in opposite directions. Every
+candidate the palette holds, as a WCAG ratio:
+
+| Candidate | vs the card | worst vs a cloth |
+|---|---|---|
+| `SURFACE_HI` (the proposal) | 1.024 | 1.287 |
+| `STONE` | 1.064 | 1.239 |
+| **`BED_GROUND`** | **1.169** | **1.128** |
+| `STONE_GIVEN` | 1.277 | 1.032 |
+| `BED_LINE` | 1.465 | 1.009 |
+| `SOCKET_OUT` | 1.600 | 1.003 |
+
+`BED_GROUND` is the **maximin**: the worst of its two comparisons, 1.128, is
+the best worst on the list. Going darker buys separation from the card and
+spends it straight back on the cloths — at `SOCKET_OUT` a patch on the
+backing is 1.003, which is no difference at all. The mock's own answer
+(`STONE`) is right for the mock, which drew the card in `Pal.SURFACE`
+rather than `PARCHMENT` and so had a different budget to spend.
+
+### Why a patch cannot blush
+
+Every other board flashes the thing that was refused toward `Pal.BAD`. A
+patch cannot: the eight cloths run right round the wheel, so there is no
+one rose they can all be taken toward. Measured at 0.30 of the way:
+
+| Cloth | Becomes | What happened |
+|---|---|---|
+| teal `#82c6c0` | `#9ca7a1` | saturation **0.34 → 0.07**: dead grey |
+| sage `#a9cd87` | `#b7ac7a` | hue **91 → 49**: khaki |
+| sky `#9bbfe8` | `#aea3bd` | hue **212 → 265**, saturation 0.33 → 0.14: mauve |
+| coral `#ef938c` | `#e8847d` | fine — it was already rose |
+
+Only the four warm cloths blush at all. A wash that means *wrong* on half a
+rack and *muddy* on the other half is worse than no wash, and a greyed-out
+patch reads as **disabled** rather than as refused, which is the opposite of
+what a refusal should say.
+
+So the refusal is a **rose halo stroked round the patch's silhouette**, with
+the shiver, and the cloth is left alone. That is `docs/art/flat-motion.md`'s
+**rule 9** — a piece with no blushing variant blushes through its cell —
+read for a piece that *is* its own shape and covers several cells: the
+colour is drawn beside the cloth instead of mixed into it, so it reads
+identically on all eight. The piece still moves; the halo carries the
+colour. **A board whose pieces are coloured by index should expect this**,
+and it is the one finding here that travels.
 
 The patch, its lip, its stitch and those two mixes live in
 `ui/faces/patch_cloth.gd`, not in the board: the menu card draws the same
@@ -380,22 +476,36 @@ something.
   rack's, at `LIFT_SCALE` 1.1, and **held 1.2 cells above the finger** so the
   thumb never covers the shape being placed. That offset is the one number on
   this screen that exists purely because a phone has a thumb on it.
-- The **ghost** is the cells a release would take, washed in the patch's own
-  cloth at 0.30 — **only when it fits**. A rose ghost for a refusal was the
-  proposal and it is pointless: the held patch is drawn at 1.1 of the same
-  cell over the same place and covers it almost exactly. What the ghost is
-  actually for is the **snap** — it sits on whole cells while the patch
-  above it follows the finger, so its edges peek out and show where the
-  release will put things.
-- **The cloth in the hand says no.** The board reads three states, not two:
-  `CLEAR` when no cell of the held patch is over the quilt at all, `FITS`,
-  and `SNAG` — over the quilt, and it will not go. On `SNAG` the held cloth
-  washes 0.30 toward `Pal.BAD` for as long as it is held there. The three
-  states matter: a patch on its way up from the rack spends most of the
-  journey not fitting anywhere, and blushing the whole way would be a board
-  shouting at a player who has not done anything yet. A drag is a question,
-  and this is the only moment the board can answer it before the answer
-  costs anything.
+- The **ghost** is the cells a release would take. It fits: a wash in the
+  patch's own cloth at 0.30 with a thread drawn round it. It will not go: a
+  **dashed rose thread alone**, no wash, because a patch that will not go is
+  partly *off* the backing by definition and a wash would be painted onto
+  the card. **The thread is not decoration** — the patch is held above the
+  thumb and the footprint snaps underneath it, so the patch covers most of
+  the wash and only its edges peek out; a wash on its own is a hint of a
+  hint.
+- **The hand says no.** The board reads three states, not two: `CLEAR` when
+  no cell of the held patch is over the quilt at all, `FITS`, and `SNAG` —
+  over the quilt, and it will not go. On `SNAG` the held patch wears the
+  rose halo for as long as it is held there. The three states matter: a
+  patch on its way up from the rack spends most of the journey not fitting
+  anywhere, and blushing the whole way would be a board shouting at a
+  player who has not done anything yet. A drag is a question, and this is
+  the only moment the board can answer it before the answer costs anything.
+- **Only one hand at a time.** A second press while a patch is held is
+  ignored. It has to be: `_grab` takes a patch off the quilt with `take()`,
+  which pushes no history because the matching `drop()` is meant to, so
+  overwriting the hand strands the first patch in the rack with no undo
+  entry and no move counted. Two fingers on a phone reach it; a test locks
+  it (`tests/test_quilt_board.gd`).
+- **An origin never wraps.** The cell a release aims at is packed into one
+  int as `row * cols + column`, so a hold one cell off the left edge at row
+  2 encodes as a cell on row 1 at the far right. Held loosely, **2,386 of
+  the off-edge holds across 120 boards came back `fits() == OK`** — a patch
+  dragged off one edge could be sewn onto the other. The bounds are now
+  exactly the grid, which loses nothing: a shape is normalised, so some cell
+  has an x-offset of 0 and some has a y-offset of 0, and the origin must
+  therefore be on the grid for any legal placement. Also locked by a test.
 - **Release has three endings, and telling them apart is the whole of
   whether this board feels fair.**
   - **Sewn on**, when the drop fits. Dropped back exactly where it was
@@ -571,15 +681,23 @@ playing rather than by writing to the board's arrays.
 
 | State | Draw calls |
 |---|---|
-| Bare | **58** (three readings, all 58) |
+| Bare | **58-59** (six readings: 58, 58, 58, 58, 59, 58) |
 | One patch dragged on, seams sewn | **58-59** (six readings: 59, 59, 58, 59, 58, 59) |
-| **Fullest board**, every patch on and the solve wave running | **80** (three readings) |
+| A patch held and refused | **59** |
+| **Fullest board**, every patch on and the solve wave running | **80** (four readings, all 80) |
 | Reduce motion | **58** |
+
+The **±1** is not noise in the counter: it is whether an `Fx2D` ring or
+sparkle is still alive on the frame the window samples, and it is why the
+bare and the played board read the same range. Only the fullest board is a
+flat number, because by then the fx have gone and what is left is eight
+patches, their seams and the hem.
 
 Against the **855** budget, so this is one of the cheapest screens in the
 game. **The controls reproduce exactly**, which is what makes the numbers
-worth quoting: Queens came back **71** twice and Word Trail **65** in the
-same session, both exactly their recorded figures.
+worth quoting: Queens came back **71** three times and Word Trail **65**,
+both exactly their recorded figures, and Queens' idle read 3.81 against the
+3.83 in its own spec.
 
 One `full` run returned `max_draw_calls=0` over a short 285-frame window.
 That is **discarded, not averaged**: zero draw calls for a whole window
@@ -621,8 +739,11 @@ recorded.
 
 ### The suite, and the win
 
-`godot --headless --path . --script tests/run_tests.gd` → **28,528 passed,
-0 failed**, with `tests/test_quilt.gd`'s sixteen functions in it.
+`godot --headless --path . --script tests/run_tests.gd` → **28,539 passed,
+0 failed**, with `tests/test_quilt.gd`'s sixteen functions and
+`tests/test_quilt_board.gd`'s two in it. The two board tests were checked
+against the bugs they are for: with both fixes reverted the suite fails
+five assertions, with them in place it is clean.
 
 `tests/_win.gd` → **16/16 winnable**, Quilt included, driven end to end
 through real touch events: `board fit=true, hud=true`, one hint taken
@@ -651,13 +772,24 @@ than only here:
    on every band, and replaced with two content-packed shelves — section 6.
 4. **The empty bays are drawn**, which the design did not call for and a
    nearly finished board demanded — section 6.
-5. **The rose ghost was dropped** and the held cloth blushes instead, with
-   `CLEAR`/`FITS`/`SNAG` in place of `fits()`'s two answers — section 6.
+5. **The rose ghost was dropped** — the held patch covers it — and replaced
+   with a dashed rose thread round the footprint, with `CLEAR`/`FITS`/`SNAG`
+   in place of `fits()`'s two answers — section 6.
+6. **A patch cannot blush at all**, which was found on a rendered frame and
+   then measured: `Pal.CLOTH` spans the wheel, and a rose wash turns the
+   teal grey and the sage khaki. The refusal is a halo — rule 9 — section 5.
 
-And one that came out of the build rather than the design:
+And three that came out of the build rather than the design:
 
-6. **`quilt_state.gd` grew `take()` and `drop()`** so that one gesture is
+7. **`quilt_state.gd` grew `take()` and `drop()`** so that one gesture is
    one undo — section 3. `place()` and `lift()` are wrappers over them.
+8. **Taking a patch off was being scolded as a refusal.** Release has three
+   endings, not two — section 6.
+9. **Two bugs on the drag, both found in review and both now locked by
+   `tests/test_quilt_board.gd`**: an origin that wrapped a hold off one
+   edge onto the far side of the quilt (2,386 of them came back legal
+   across 120 boards), and a second press that stranded the held patch with
+   no undo entry. Section 6 has both.
 
 Two things are left open and named rather than fixed:
 

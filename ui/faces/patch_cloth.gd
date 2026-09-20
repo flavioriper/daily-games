@@ -194,6 +194,49 @@ static func stitch(b, a: Vector2, to: Vector2, width: float, on: float, off: flo
 			width, ink, false, false)
 		walked = next + off
 
+## The closed loop `pts` stroked as dashes of `on` with `off` between them,
+## walked by arc length so a rounded corner dashes at the same rate a
+## straight run does. `word_trail2d.gd` cuts a ring into dashes the same
+## way; this one strokes them as it goes rather than handing back a list.
+static func dash_loop(b, pts: PackedVector2Array, width: float, on: float, off: float,
+		ink: Color) -> void:
+	var n := pts.size()
+	if n < 2 or on <= 0.0 or off <= 0.0:
+		return
+	var run := PackedVector2Array([pts[0]])
+	var lit := true
+	var spent := 0.0
+	for i in n:
+		var a := pts[i]
+		var z := pts[(i + 1) % n]
+		var span := a.distance_to(z)
+		if span <= 0.0001:
+			continue
+		var walked := 0.0
+		while walked < span:
+			# Never zero: a dash ending exactly on a corner would otherwise
+			# walk nowhere for ever.
+			var want := maxf((on if lit else off) - spent, 0.0001)
+			if walked + want >= span:
+				spent += span - walked
+				walked = span
+				if lit:
+					run.append(z)
+			else:
+				walked += want
+				var p := a.lerp(z, walked / span)
+				if lit:
+					run.append(p)
+					if run.size() >= 2:
+						b.stroke(run, width, ink, false, false)
+					run = PackedVector2Array()
+				else:
+					run = PackedVector2Array([p])
+				lit = not lit
+				spent = 0.0
+	if lit and run.size() >= 2:
+		b.stroke(run, width, ink, false, false)
+
 static func _moved(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	out.resize(pts.size())
