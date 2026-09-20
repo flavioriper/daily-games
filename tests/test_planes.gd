@@ -27,8 +27,8 @@ static func run(t) -> void:
 ## Until 2026-09-20 **nothing under tests/ loaded a board's `*2d.gd`**: a
 ## parse error in `puzzles/planes2d.gd` left the suite reporting
 ## `passed=94534 failed=0`, and only `tests/_win.gd` -- which needs a display
-## and is not in CI -- caught it. That was true of all fifteen boards, not
-## just this one. A script with a parse error still `load()`s as a GDScript
+## and is not in CI -- caught it. That was true of every board, not just this
+## one, and the walk below now covers all seventeen. A script with a parse error still `load()`s as a GDScript
 ## object and only gives itself away at `can_instantiate()`, which is exactly
 ## the trap `tests/run_tests.gd` already guards its own suites against, and
 ## for the same reason. The board is not instantiated here: it is a Control

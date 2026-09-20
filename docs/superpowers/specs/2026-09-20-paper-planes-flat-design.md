@@ -1,4 +1,4 @@
-# Paper Planes, flat: the fifteenth screen
+# Paper Planes, flat: the seventeenth screen
 
 Status: designed 2026-09-20, alongside the concept page.
 Concept page: `docs/brainstorm/concepts.html#planes` -- it plays the real
@@ -34,7 +34,7 @@ clear lane before it takes off *is* the rule, said in a picture.
 |---|---|---|
 | `puzzles/planes_state.gd` | new | The rules, scene-free: the grid, the planes, the lanes, generation, launch/undo/reset/hint, and the solver that proves a board. |
 | `puzzles/planes2d.gd` | new | The flat board: the field of dots, the trails, the darts, the launch, the wake and the refusal. |
-| `ui/registry.gd` | edit | The fifteenth grid entry, on page two. |
+| `ui/registry.gd` | edit | The seventeenth grid entry, on page two. |
 | `ui/menu/card_art.gd` | edit | The menu card's picture: one `_draw` branch, no character. |
 | `tests/test_planes.gd` | new | The state class: generation, solvability over a sweep of seeds, the lane rule, launch, undo, reset, hint. |
 | `tests/_shot_anim.gd` | edit | A `planes` case: a launch and its wake in the strip, then the idle window. |
@@ -91,7 +91,8 @@ Everything else on this screen follows from one fact:
 > its turn comes.
 
 Three consequences, and they are the reason this board's chrome is the
-shortest in the game:
+shortest in the game -- a bottom slot of 140, which Untangle, Word Trail and
+Quilt also have, so it is the shortest and not the uniquely shortest:
 
 1. **There is no wrong move**, so there is **no Check**. Nothing incorrect
    can ever be sitting on the board, exactly as on Word Trail.
@@ -246,10 +247,14 @@ so `card_height(available)` hands back everything it is given and there is no
 slack worth centring; `card_centred()` stays false, as Word Trail's does, and
 the few leftover pixels are absorbed by centring the grid inside the box.
 
-**58 is the smallest cell in the game**, under Sudoku's 100 and Queens' 103,
+**58 is the smallest cell of any playing grid in the game**, under Bridges'
+hard-band 84, Sudoku's 100, Queens' and Nonogram's 103 and Quilt's 114,
 and it is bearable for a reason none of those could use: **you do not tap a
 cell here, you tap a plane**, and the smallest plane covers two cells and
-carries a dart drawn across most of one. The hit test is by cell and the
+carries a dart drawn across most of one. (Quilt's *rack* cell is smaller
+still -- 57.0 mean and 48.3 worst on hard -- but that is a waiting patch's
+display size in a rack, spanned by a multi-cell patch and dragged rather
+than tapped, not a grid a piece is placed on.) The hit test is by cell and the
 answer is the plane occupying it, so the target is the whole body.
 
 ## 8. Colour, and how it is drawn
@@ -489,18 +494,19 @@ the base class's.
 
 ## 12. The menu card
 
-The fifteenth entry in `Registry.PUZZLES`, which puts it on **page two**
-beside Mushroom Patch and Sudoku -- the third card there, and the first one
-to land on that page without a word being changed anywhere else: the pager
+The seventeenth entry in `Registry.PUZZLES`, which puts it on **page two**
+beside Mushroom Patch, Sudoku, Bridges and Quilt -- the fifth card there,
+landing on that page without a word being changed anywhere else: the pager
 arrived on 2026-09-20 for the thirteenth card and `PER_PAGE` is twelve, so
-the fifteenth costs the first screen nothing at all. **Page two's last row
-needs no filler** (corrected 2026-09-20, the fix round, the one place the
-earlier correction to `ui/menu.gd`, `ui/registry.gd` and `CLAUDE.md` had not
-yet reached): fifteen over `PER_PAGE` twelve leaves three, and three cards
-over three columns is a full row, so `ui/menu.gd`'s invisible
-`SIZE_EXPAND_FILL` fillers -- built for the fourteenth card's short row --
-are not built at all for this one. The machinery stays in place for a
-sixteenth card.
+the seventeenth costs the first screen nothing at all. **Page two's last row
+is short, so the filler is built**: seventeen over `PER_PAGE` twelve leaves
+five, `5 % COLS` is two, and `ui/menu.gd` pads the row out with one
+invisible `SIZE_EXPAND_FILL` Control -- without it `GridContainer` hands the
+real cells the empty column's leftover width and a lone card comes out 334
+wide instead of 320. This spec argued the opposite twice while the board was
+the fifteenth, when page two held three over three columns and the filler
+genuinely did not run; both passages are corrected here and the reason the
+machinery exists is the part to keep.
 
 The picture is **pure `_draw`**, like Nonogram's and Sudoku's: three bent ink
 trails with darts at their heads, across the 320 by 118 box, with the faint
@@ -585,7 +591,10 @@ somebody to treat it as one.
 
 The budget is 855. The field is one mesh, the chrome is the family's, and
 there is no character on the screen, so the expectation was that this would
-be the **cheapest board in the game** -- under Word Trail's 60-65.
+be the **cheapest board in the game** -- under Word Trail's 60-65. (It still
+is at seventeen boards: re-measured at the Bridges/Quilt merge, 55 twice,
+against Quilt's 59 and Bridges' 65 read as controls in the same session,
+both exactly on their own record.)
 
 **Measured (Task 5, 2026-09-20), and the expectation holds.**
 `tests/_shot_anim.gd -- planes` at `--resolution 810x1440`: the harness taps
@@ -621,9 +630,14 @@ checks recorded, and not the much larger, scattered errors a garbage
 `instance uniform` would leave.
 
 The first screen (`tests/_shot_menu.gd`): page one still reads **335** draw
-calls, the same figure Task 3 recorded with the fifteenth card's picture
+calls, the same figure Task 3 recorded with this card's picture
 stubbed empty, because the card stands on page two and costs page one
-nothing (section 12). Page two, with all three of its cards now drawing a
+nothing (section 12). Page two read **128** with three cards on it while
+this board was the fifteenth, and **149** after Bridges and Quilt merged
+ahead of it and made it the fifth of five there (two readings each, both
+flat). The figures below were taken on the three-card page and are quoted
+for what each part cost, not for the page total. Page two, with all three of
+its cards then drawing a
 real picture, first read **175** against Task 3's **127** -- checked by
 temporarily stubbing this board's own `_draw` arm back to a no-op and
 re-measuring, which read exactly 127 again, so the **+48** was Paper Planes'
@@ -679,7 +693,8 @@ Each amendment already made in place is indexed rather than repeated.
 | The solver check costs 0.331 ms, not a microsecond | section 5 | About 300x the guessed figure; still nowhere near a budget, and now measured rather than assumed. |
 | Queens' `WAVE_STEP` is 0.045, not 0.05 | section 10 | 0.05 is Word Trail's own board-local constant; `planes2d.gd`'s own comment already had this right. |
 | Section 4's API names were not the ones built | section 4 | `generate()`/`free()`/`occupant`/`history`/`blocker() -> null` are `build()`/`is_free()`/`_occupant`/`_history`/`blocker() -> -1` as shipped. |
-| Page two's last row needs no filler | section 12 | Three cards over three columns is a full row; the fourteenth card's filler machinery is untouched but unused here. |
+| Page two's last row needs no filler | section 12 | True while this board was the fifteenth: three cards over three columns is a full row. **Overturned by the merge below** -- at seventeen, page two holds five and the filler is built again. |
+| Built as the fifteenth, landed as the seventeenth | sections 1, 12, 15 | Bridges and Quilt merged to `main` while this board was being built, so the spec's "fifteenth screen" became the seventeenth at the merge on 2026-09-20. Nothing about the board changed; what changed is every count around it -- the grid entry's index, page two's card count (three to five) and therefore the short-row filler, page two's draw calls (128 to 149) and the superlatives, which were re-checked one by one: **cheapest board (55) survives** against Quilt's 59 and Bridges' 65, **smallest cell (58) survives for a playing grid** but not as an unqualified claim, because Quilt's rack cell measures 48-57, **shortest bottom slot (140) survives but is now shared four ways** with Untangle, Word Trail and Quilt, and **most severely lettered label (84 to 62) survives** -- the only label those two boards added to the fitted list is Quilt's motto, 24 to 23. |
 
 **Not recorded anywhere else, and recorded here:**
 
@@ -720,7 +735,8 @@ Each amendment already made in place is indexed rather than repeated.
 - **Nothing under `tests/` loaded a board's `*2d.gd`, and now something
   does.** Task 6's first draft of `_speak()` was a parse error and the suite
   stayed green at `passed=94534 failed=0`; only `tests/_win.gd`, which needs
-  a display and is not in CI, caught it. That was true of all fifteen boards.
+  a display and is not in CI, caught it. That was true of every board, and
+  the walk now covers all seventeen.
   `tests/test_planes.gd` now walks `Registry.PUZZLES` and asserts every
   entry's script loads and `can_instantiate()`s, which takes the suite to
   `passed=94564 failed=0` and, with `planes2d.gd` deliberately broken, to
@@ -743,12 +759,15 @@ Each amendment already made in place is indexed rather than repeated.
   a snap no other flat screen has, and without `tip_line()` the tip card
   falls back to Binairo's cycle and shows *Binairo's* rules under a Paper
   Planes title.
-- **Page two holds three cards and makes no filler.** Fifteen over `PER_PAGE`
-  twelve leaves three, and three over three columns is a full row, so
-  `ui/menu.gd`'s invisible `SIZE_EXPAND_FILL` fillers -- which the fourteenth
-  card needed -- are not built at all. The machinery stays for the sixteenth
-  card, and both `ui/menu.gd` and `ui/registry.gd` say so rather than
-  claiming a padding they are not doing.
+- **Page two holds five cards and the filler is built.** Seventeen over
+  `PER_PAGE` twelve leaves five, `5 % COLS` is two, so `ui/menu.gd` pads the
+  short row with one invisible `SIZE_EXPAND_FILL` Control -- without it
+  `GridContainer` hands the real cells the empty column's leftover width and
+  a lone card comes out 334 wide instead of 320. This bullet said the
+  opposite while this board was the fifteenth, when page two's three over
+  three columns really was a full row and the fillers really were not built;
+  the merge that brought Bridges and Quilt in put the short row back, and
+  `ui/menu.gd`, `ui/registry.gd` and `CLAUDE.md` all say so.
 - **The throwaway tools are gone.** `tools/_planes_probe.py` (the Python that
   validated the generator before Task 2 ported it), `tools/_planes_time.gd`
   (the timing probe behind section 6's GDScript rows) and

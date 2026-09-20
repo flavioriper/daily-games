@@ -33,6 +33,12 @@ extends SceneTree
 ## Queens has the answer's first queen seated, so the strip shows the crown
 ## pop and the wave of crosses running out of her, and the idle window has a
 ## queen and her crosses in it.
+## Bridges lays the answer's runs at one islet -- the one the answer asks
+## least of, so the number is actually met -- one plank a drag through the
+## board's own input path, so the strip shows the lit lane under the finger,
+## the planks dropping in and that islet taking its GOOD ring. It gets an
+## extra frame and a later idle window for that, because a run costs two
+## steps and the islet is not satisfied until the last of them lands.
 ## Hidden Word has a five-letter guess typed on its keyboard and committed a
 ## beat later, so the strip shows the letters popping in, the row caught
 ## mid-flip and the row landed with the keys repainted behind it. The guess is
@@ -41,6 +47,12 @@ extends SceneTree
 ## `toast` refuses a guess that is not a word, `hint` presses the real hint
 ## button, `solve` types the day's own word, and `over` spends all six rows so
 ## the strip catches the keyboard leaving and the sprout bringing the word.
+## Quilt drags the answer's first patch off the rack and onto the cell the
+## answer wants it on, through the board's own input path, so the strip
+## shows the patch grown to the quilt's cell and held above the finger, the
+## ghost under it, and the seam stitches sewing themselves in a wave once it
+## lands. It gets a later idle window for that, because the wave runs on
+## past the drop.
 ## Mushroom Patch has the answer's first mushroom planted with the mushroom
 ## chip the tray arms by default, so the strip shows the pop, the ring, the
 ## puff and -- the point of the shot -- the count wash arriving on the givens
@@ -144,6 +156,16 @@ const TRAIL_STEP := 0.12
 var _trail_cells: Array[Vector2] = []
 var _trail_last := Vector2.ZERO
 var _trail_at := INF
+## Bridges' runs: one [from islet, to islet] a plank, since a run cycles
+## 0-1-2-3 one drag at a time. Each takes two steps -- press and aim on the
+## first, release on the second -- so the strip catches the lit lane under
+## the finger before the plank lands.
+const BRIDGE_STEP := 0.12
+const BRIDGE_MAX := 4
+var _bridge_drags: Array = []
+var _bridge_to := Vector2.ZERO
+var _bridge_at := INF
+var _bridge_down := false
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -165,6 +187,37 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.9, 2.05, 2.25, 2.8, 3.8]
 		_idle_from = 2.6
 		_idle_to = 4.6
+	if _id == "bridges" and not _empty:
+		# Up to four planks at two steps each run from TAP_AT, and the last
+		# islet's bump and ring land after them, so the settled frame and the
+		# idle window both wait for the laying to be over.
+		_shots = [0.35, 0.9, 1.65, 1.8, 2.2, 3.2, 4.2]
+		_idle_from = 3.2
+		_idle_to = 5.2
+	if _id == "quilt" and _mode == "full":
+		# Every patch but the last is sewn on at once, and the last is
+		# dragged, so the strip catches a nearly full quilt, the last patch
+		# in the hand over it, and the solve wave running the hem. The idle
+		# window opens after the win screen has come up, which is the state
+		# the fullest-board draw call belongs to.
+		_shots = [0.35, 1.75, 1.95, 2.2, 2.6, 3.2, 4.4, 5.4]
+		_idle_from = 3.4
+		_idle_to = 5.4
+	elif _id == "quilt" and _mode == "refuse":
+		# The drag lands at TAP_AT + DRAG_TIME; these catch the patch held
+		# over a place it will not go (halo and dashed footprint), then the
+		# first two crests of the shiver on the way home, then settled.
+		_shots = [0.35, 1.75, 1.90, 2.02, 2.08, 2.5, 3.2, 4.2]
+		_idle_from = 3.0
+		_idle_to = 5.0
+	elif _id == "quilt" and not _empty:
+		# The drag runs DRAG_TIME from TAP_AT, then the patch pops in and its
+		# seam stitches sew themselves over about four tenths. These catch
+		# the patch in the hand, the landing, the wave mid-sew and the seams
+		# settled, and the idle window opens after all of it.
+		_shots = [0.35, 0.9, 1.75, 1.95, 2.1, 2.3, 2.9, 3.9]
+		_idle_from = 2.7
+		_idle_to = 4.7
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -256,6 +309,10 @@ func _process(delta: float) -> bool:
 				# texture read in it is the frame before the poke.
 				_shots[2] = _t + 0.075
 				_shots[3] = _t + 0.125
+		elif _entry.id == "bridges" and not _empty:
+			_lay_bridges()
+		elif _entry.id == "quilt" and not _empty:
+			_drag_quilt()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -269,6 +326,8 @@ func _process(delta: float) -> bool:
 		_shots[5] = _t + 0.40
 	if _t >= _trail_at:
 		_trail_step()
+	if _t >= _bridge_at:
+		_bridge_step()
 	if _t >= _commit_at:
 		_commit_at = INF
 		_tap_key("Key_Enter")
@@ -644,6 +703,130 @@ func _trail_step() -> void:
 	drag.position = _trail_last
 	root.push_input(drag, true)
 	_trail_at = _t + TRAIL_STEP
+
+## Bridges: lay **two** of the answer's runs, both at one islet, so the strip
+## catches the lit lane, the planks dropping and -- because those two runs are
+## the whole of that islet's number -- the GOOD ring and the bump as the
+## second lands. The islet picked is the cheapest one the answer joins with
+## two runs and no more than BRIDGE_MAX planks, so the laying is over before
+## the settled frame; a board with no such islet falls back to the one the
+## answer asks least of. A run cycles one plank a drag, so a run of two
+## planks is two drags.
+func _lay_bridges() -> void:
+	var st = _puzzle.state
+	var best := Vector2i(-1, -1)
+	var best_cost := 99
+	var spare := Vector2i(-1, -1)
+	var spare_cost := 99
+	for cell in st.islets:
+		var runs := _bridge_runs_at(st, cell)
+		var cost := 0
+		for pair in runs:
+			cost += int(pair[1])
+		if cost > 0 and cost < spare_cost:
+			spare_cost = cost
+			spare = cell
+		if runs.size() == 2 and cost <= BRIDGE_MAX and cost < best_cost:
+			best_cost = cost
+			best = cell
+	if best.x < 0:
+		best = spare
+	if best.x < 0:
+		return
+	_bridge_drags = []
+	for pair in _bridge_runs_at(st, best):
+		for i in int(pair[1]):
+			if _bridge_drags.size() >= BRIDGE_MAX:
+				break
+			_bridge_drags.append([best, pair[0]])
+	_bridge_at = _t
+
+## The answer's runs at `cell`, each as [the islet at the other end, planks].
+func _bridge_runs_at(st, cell: Vector2i) -> Array:
+	var out: Array = []
+	for key in st.answer:
+		var lane: Dictionary = st.lanes[key]
+		if lane.a != cell and lane.b != cell:
+			continue
+		out.append([lane.b if lane.a == cell else lane.a, int(st.answer[key])])
+	return out
+
+## One step of the laying: press the islet and drag at the one facing it on
+## the first, let go on the second.
+func _bridge_step() -> void:
+	if _bridge_down:
+		var up := InputEventScreenTouch.new()
+		up.index = 0
+		up.pressed = false
+		up.position = _bridge_to
+		root.push_input(up, true)
+		_bridge_down = false
+		_bridge_at = INF if _bridge_drags.is_empty() else _t + BRIDGE_STEP
+		return
+	if _bridge_drags.is_empty():
+		_bridge_at = INF
+		return
+	var pair: Array = _bridge_drags.pop_front()
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var from: Vector2 = xf * _puzzle.cell_to_local(pair[0].y, pair[0].x)
+	_bridge_to = xf * _puzzle.cell_to_local(pair[1].y, pair[1].x)
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = from
+	root.push_input(down, true)
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = _bridge_to
+	root.push_input(drag, true)
+	_bridge_down = true
+	_bridge_at = _t + BRIDGE_STEP
+
+## Quilt: drag the answer's first patch off the rack and onto the place the
+## answer wants it, so the strip shows the patch grown to the quilt's cell
+## and held above the finger, the ghost under it, and the seam stitches
+## sewing themselves in a wave once it lands. The patch is taken hold of by
+## its own first cell, and the finger is aimed HOLD_LIFT below the cell the
+## patch has to land on, because the board holds a dragged patch above the
+## thumb.
+func _drag_quilt() -> void:
+	if _puzzle._state.shapes.is_empty():
+		return
+	var p := 0
+	if _mode == "refuse":
+		# One patch sewn on, and a second dragged straight onto it, so the
+		# strip catches the two things a refusal is made of: the rose halo
+		# round the cloth in the hand and the dashed footprint under it
+		# while it is held, then the shiver and the flight home. The cloth
+		# itself never changes colour -- eight cloths round the wheel have
+		# no one rose to blush toward (spec section 5).
+		_puzzle._state.drop(0, int(_puzzle._state.answer[0]), -1)
+		_puzzle._landed[0] = Time.get_ticks_msec() / 1000.0
+		_puzzle._refresh()
+		p = 1
+	if _mode == "full":
+		# `full`: every patch but the last goes on through the state, and
+		# the last is dragged, so the shot that matters -- a quilt with not
+		# a gap in it -- is reached by playing rather than by writing to the
+		# board's arrays, and the solve still runs off a real release.
+		p = _puzzle._state.shapes.size() - 1
+		for q in p:
+			_puzzle._state.drop(q, int(_puzzle._state.answer[q]), -1)
+			_puzzle._landed[q] = Time.get_ticks_msec() / 1000.0
+		_puzzle._refresh()
+	var first: Vector2i = (_puzzle._state.shapes[p] as Array)[0]
+	var cell: float = _puzzle._cell()
+	var rc: float = _puzzle._rack_cell()
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var from: Vector2 = xf * (_puzzle._bay_home(p) + (Vector2(first) + Vector2(0.5, 0.5)) * rc)
+	var origin := int(_puzzle._state.answer[p])
+	if _mode == "refuse":
+		origin = int(_puzzle._state.answer[0])
+	var cols: int = _puzzle._state.cols
+	var corner: Vector2 = _puzzle._origin() \
+		+ Vector2(float(origin % cols), float(origin / cols)) * cell
+	var to: Vector2 = xf * (corner + (Vector2(first) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * cell)
+	_begin_drag(from, to - from)
 
 ## The touch that starts a drag, at `from`, to travel `by` over DRAG_TIME.
 func _begin_drag(from: Vector2, by: Vector2) -> void:
