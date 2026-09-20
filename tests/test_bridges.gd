@@ -19,6 +19,8 @@ static func run(t) -> void:
 	_test_hint_check(t)
 	_test_solved_needs_one_network(t)
 	_two_rings_are_not_solved(t)
+	_crossed_runs_are_not_solved(t)
+	_hint_lifts_every_blocker(t)
 
 static func _built(seed_value: int, difficulty: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
@@ -98,6 +100,12 @@ static func _test_unique(t) -> void:
 			var lanes: Dictionary = Gen.lanes_for(g.n, g.islets)
 			var r: Dictionary = Gen.count_solutions(g.n, g.islets, g.need, lanes, 2)
 			t.eq(int(r.count), 1, "band %d seed %d has exactly one answer" % [difficulty, s])
+			# The flag is the proof's own verdict and not a stand-in for
+			# "a board came back": the state reads it and can say so.
+			t.check(bool(g.get("unique", false)),
+				"band %d seed %d comes back flagged unique" % [difficulty, s])
+			var st := _state(s, difficulty)
+			t.check(st.unique, "band %d seed %d hands the flag to the state" % [difficulty, s])
 		if Gen.band(difficulty).guess_free:
 			for s in range(1, 16):
 				var g2 := _built(s, difficulty)
@@ -214,3 +222,96 @@ static func _two_rings_are_not_solved(t) -> void:
 		t.eq(st.degree(cell), int(st.need[cell]), "the near-miss meets the number at %s" % cell)
 	t.eq(st.groups().size(), 2, "the near-miss stands in two rings")
 	t.check(not st.is_solved(), "every number met in two rings is NOT solved")
+
+## The same hand-built shape, crossed rather than split: five islets on a 5x5
+## whose runs cross at (2,2), with every number met and one single group. It
+## is unreachable through `cycle()`, which refuses a crossed lane, so the runs
+## are laid straight into the dictionary -- which is the point. `is_solved()`
+## is the win predicate and it must cover every rule `rules()` states, not the
+## two that ordinary play cannot break.
+static func _crossed_runs_are_not_solved(t) -> void:
+	var st := State.new()
+	st.n = 5
+	var seats: Array[Vector2i] = [Vector2i(0, 0), Vector2i(0, 2), Vector2i(4, 2),
+		Vector2i(2, 0), Vector2i(2, 4)]
+	st.islets = seats
+	st.need = {Vector2i(0, 0): 2, Vector2i(0, 2): 2, Vector2i(4, 2): 1,
+		Vector2i(2, 0): 2, Vector2i(2, 4): 1}
+	st.lanes = Gen.lanes_for(st.n, st.islets)
+	st.crossing = Gen.crossings(st.lanes)
+	st.answer = {}
+	st.history = []
+	var across := Gen.lane_key(Vector2i(0, 2), Vector2i(4, 2))
+	var down := Gen.lane_key(Vector2i(2, 0), Vector2i(2, 4))
+	st.runs = {
+		across: 1, down: 1,
+		Gen.lane_key(Vector2i(0, 0), Vector2i(0, 2)): 1,
+		Gen.lane_key(Vector2i(0, 0), Vector2i(2, 0)): 1,
+	}
+	# The fixture says what it claims before it is used to judge anything.
+	t.check(st.crossing.get(across, []).has(down), "the two runs do cross at (2,2)")
+	for cell in st.islets:
+		t.eq(st.degree(cell), int(st.need[cell]), "the crossed board meets the number at %s" % cell)
+	t.eq(st.groups().size(), 1, "the crossed board is one single network")
+	t.check(not st.is_solved(), "two runs crossing is NOT solved, however the rest reads")
+	# The control: take the crossing away and change nothing else that matters
+	# -- lift the down run and the islet it was the only way to reach, and drop
+	# (2,0)'s number to the one plank it still carries. Every other clause read
+	# the same before, so a board that now solves shows it was the crossing the
+	# predicate caught and not a degree or a group gone astray.
+	st.runs.erase(down)
+	var left: Array[Vector2i] = [Vector2i(0, 0), Vector2i(0, 2), Vector2i(4, 2), Vector2i(2, 0)]
+	st.islets = left
+	st.need.erase(Vector2i(2, 4))
+	st.need[Vector2i(2, 0)] = 1
+	t.check(st.is_solved(), "with the crossing lifted the same runs solve")
+
+## `hint()` used to lift the **first** lane blocking the plank it wanted and
+## then write through the private `_lay`, which bypasses the `blocked_by`
+## guard. A lane with k water cells can be crossed by k lanes, and two lanes
+## crossing the same lane are perpendicular to it and so parallel to each
+## other -- both may legally be laid. So one lift was not enough and the board
+## ended with two runs crossing, both frozen, a hint spent and a glow round an
+## illegal run.
+##
+## Band 0 at seed 259 is the position: the lane `1,2|1,6`, which the answer
+## wants two planks on, is crossed by `0,3|2,3` and `0,5|2,5`, neither of
+## which the answer names. Lay both, fill the rest of the answer so the hint
+## has nowhere else to go, and press Hint.
+static func _hint_lifts_every_blocker(t) -> void:
+	var st := _state(259, 0)
+	var target := "1,2|1,6"
+	var blockers := ["0,3|2,3", "0,5|2,5"]
+	# The fixture, asserted rather than assumed: a regenerated board that no
+	# longer has this shape must say so instead of passing vacuously.
+	t.check(st.lanes.has(target), "seed 259 still has the lane %s" % target)
+	t.eq(int(st.answer.get(target, 0)), 2, "the answer still wants two planks on %s" % target)
+	for b in blockers:
+		t.check(st.crossing.get(target, []).has(b), "%s still crosses %s" % [b, target])
+		t.check(not st.answer.has(b), "the answer still does not want %s" % b)
+		st.cycle(b)
+		t.eq(st.planks(b), 1, "the blocker %s is laid" % b)
+	# Every other lane the answer wants, laid full, so the hint must take the
+	# crossed one and cannot pass over it.
+	for key in st.answer:
+		if String(key) == target:
+			continue
+		while st.planks(String(key)) < int(st.answer[key]):
+			var before := st.planks(String(key))
+			if st.cycle(String(key)) == before:
+				break
+	t.check(st.blocked_by(target) != "", "the hint's only lane left is blocked")
+	var key2 := st.hint()
+	t.eq(key2, target, "the hint takes the one lane the answer still lacks")
+	t.check(st.planks(target) > 0, "the hint laid its plank")
+	# The assertion this test exists for.
+	var crossed := []
+	for key in st.runs:
+		if int(st.runs[key]) <= 0:
+			continue
+		if st.blocked_by(String(key)) != "":
+			crossed.append(String(key))
+	t.eq(crossed.size(), 0, "no two runs cross after a hint, got %s" % [crossed])
+	# And nothing is frozen: every laid run can still be cycled.
+	for key in st.runs.keys():
+		t.eq(st.blocked_by(String(key)), "", "the laid run %s is not frozen" % key)

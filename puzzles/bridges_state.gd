@@ -14,9 +14,10 @@ extends RefCounted
 ## number is not refused, because that is a mistake the player can see; the
 ## board draws it wrong and the finger fixes it.
 ##
-## `is_solved()` is the conjunction and never one half of it: every islet's
-## degree equals its number **and** one flood reaches every islet. The second
-## half is the puzzle -- see the spec's section 1.
+## `is_solved()` is every rule at once and never a subset of them: every
+## islet's degree equals its number, no two laid runs cross, **and** one
+## flood reaches every islet. The last is the puzzle -- see the spec's
+## section 1.
 ## Spec: docs/superpowers/specs/2026-09-20-bridges-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/bridges_gen.gd")
@@ -44,7 +45,9 @@ var crossing: Dictionary = {}
 ## One entry per move, newest last: {"key": String, "was": int}.
 var history: Array[Dictionary] = []
 ## Whether the generator proved the clues admit only this answer, and whether
-## propagation alone finishes it. False is playable but not a puzzle.
+## propagation alone finishes it. Both come from the generator's own proof --
+## `unique` is false only for the last-resort board `generate()` hands back
+## when 200 attempts found none, which is playable but not a puzzle.
 var unique := true
 var guess_free := false
 ## Vector2i -> true for every islet, so a walk can ask what it met.
@@ -61,7 +64,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	need = g.get("need", {})
 	answer = g.get("answer", {})
 	guess_free = bool(g.get("guess_free", false))
-	unique = not islets.is_empty()
+	unique = bool(g.get("unique", false))
 	if islets.is_empty():
 		push_warning("Bridges: no board could be grown for this seed")
 	lanes = Gen.lanes_for(n, islets)
@@ -207,11 +210,24 @@ func groups() -> Array[Array]:
 		out.append(group)
 	return out
 
-## Both halves, never one: every islet's number met AND one single network.
-## The second half is the puzzle -- see the spec's section 1.
+## Every rule at once and never a subset: every islet's number met, no two
+## runs crossing, AND one single network. The last is the puzzle -- see the
+## spec's section 1.
+##
+## The crossing clause is a backstop rather than the rule's enforcement:
+## `cycle()` refuses a crossed lane, so ordinary play can never reach a
+## crossed position. It is here because it once *was* reachable -- `hint()`
+## lifted only the first blocker of a lane that had two -- and because a win
+## predicate that does not cover a rule the board states is a bug waiting for
+## the next way in.
 func is_solved() -> bool:
 	for cell in islets:
 		if degree(cell) != int(need[cell]):
+			return false
+	for key in runs:
+		if int(runs[key]) <= 0:
+			continue
+		if blocked_by(String(key)) != "":
 			return false
 	return groups().size() == 1
 
@@ -238,10 +254,16 @@ func wrong_runs() -> Array[String]:
 ## The order is the answer's keys sorted, not their insertion order, so the
 ## same board always hands out the same hint however the answer was grown.
 ## A lane a wrong run crosses cannot take a plank, so it is passed over; if
-## every lane left is crossed, the blocker is lifted first -- the answer's
-## runs never cross each other, so a blocker is always a plank the player
-## laid wrong. That lift is its own history entry, which is the one place a
-## hint costs two undos rather than one.
+## every lane left is crossed, **every** blocker is lifted first -- the
+## answer's runs never cross each other, so a blocker is always a plank the
+## player laid wrong. It has to be every one and not the first: a lane with
+## *k* water cells can be crossed by *k* lanes, and two lanes crossing the
+## same lane are perpendicular to it and so parallel to each other, which
+## means both may legally be laid. Lifting one and writing the hint through
+## the private `_lay` would leave two runs crossing -- a position `rules()`
+## calls impossible, with both lanes frozen, each `blocked_by` the other.
+## Each lift is its own history entry, so in that case a hint costs one undo
+## per blocker plus one, rather than one.
 func hint() -> String:
 	var want: Array = answer.keys()
 	want.sort()
@@ -256,7 +278,10 @@ func hint() -> String:
 			return String(key)
 	if first == "":
 		return ""
-	clear_run(blocked_by(first))
+	var b := blocked_by(first)
+	while b != "":
+		clear_run(b)
+		b = blocked_by(first)
 	_lay_hint(first)
 	return first
 

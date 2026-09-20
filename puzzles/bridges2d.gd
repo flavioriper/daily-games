@@ -40,13 +40,13 @@ const Fx2D = preload("res://ui/fx2d.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The sea pool's inset from the card, and the lattice's own inset inside the
-## pool. At 1080 wide that is a 1000 card, a 944 pool and a **920 lattice at
-## every band**, so the width binds and a cell is 131 / 102 / 84.
+## pool. These two are the whole of it: **the lattice is measured off the
+## pool the card actually hands over and never off a constant**, so the 920 it
+## comes to at 1080 wide -- a 1000 card, a 944 pool, a cell of 131 / 102 / 84
+## on the three bands -- is a measurement recorded in the spec's section 6 and
+## not a number anything here reads.
 const INSET := 28.0
 const FIELD_PAD := 12.0
-## What those two come to in design space, recorded so a layout that stops
-## measuring 920 is caught rather than explained away.
-const FIELD := 920.0
 ## A plank's thickness and the air between two of them, in cells: three planks
 ## span 0.59 of a cell, wide enough to read as three at 84 px and narrow
 ## enough to leave water either side.
@@ -1234,6 +1234,11 @@ func _say(text: String, mood: int) -> void:
 func can_undo() -> bool:
 	return state.can_undo()
 
+## An undo is not a move, so it does not go through `note_move()` and has to
+## ask the contract itself -- `core/puzzle_base.gd` says hints and undos call
+## `check_solved()` directly. Undo can only ever return to a position that was
+## already checked when it was made, so today it never fires; leaving the call
+## out would make that invariant load-bearing and nothing states or tests it.
 func undo() -> bool:
 	if is_done():
 		return false
@@ -1245,6 +1250,7 @@ func undo() -> bool:
 	_say(TIP_REST, Face.Expr.HAPPY)
 	_settle(snap)
 	moved.emit()
+	check_solved()
 	return true
 
 func hints_left() -> int:
