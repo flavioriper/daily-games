@@ -59,9 +59,10 @@ const COLS := 3
 ## not any one board's work, it is the first screen's (see docs/superpowers/
 ## specs/2026-09-20-mushroom-patch-flat-design.md, section 2, and the sibling
 ## specs of whichever other board lands beside it). Sudoku made it fourteen
-## on 2026-09-20 and page two grew a second card; nothing here had to change
-## for it, which is the whole point of paging the grid rather than counting
-## the cards.
+## on 2026-09-20 and Paper Planes fifteen the same day, so page two grew a
+## second and then a third card; nothing here had to change for either,
+## which is the whole point of paging the grid rather than counting the
+## cards.
 const PER_PAGE := 12
 ## Entrance delays: the header first, then the day row, then a wave down the
 ## cards, then the bar.
@@ -112,8 +113,9 @@ const PAGER_SLOT_H := 64.0
 ## no background at all and read as an artefact, not a button.
 const PAGER_BTN := Vector2(44.0, 44.0)
 const PAGER_ICON := 20.0
-## The pager's dots. Two is what thirteen or fourteen cards need; the row
-## draws as many as it is given, so a fifteenth board costs nothing here. The current
+## The pager's dots. Two is what thirteen, fourteen or fifteen cards need;
+## the row draws as many as it is given, so a twenty-fifth board would cost
+## nothing here either -- the fifteenth already did not. The current
 ## page is a filled disc; every other page is a ring, so the two are never
 ## just two shades of the same filled dot.
 const DOT := 14.0
@@ -318,7 +320,7 @@ func _build_page() -> void:
 		card.blocked.connect(_on_soon.bind(entry))
 		cards.append(card)
 		_grid.add_child(card)
-	# A short last row (fourteen over twelve leaves two) hands the real
+	# A short last row (fifteen over twelve leaves three) hands the real
 	# columns it does have the empty one's leftover width -- GridContainer
 	# sizes a column to the widest cell it actually has, and a column with no cell in that
 	# row does not compete for the row's stretch at all. Padding out to COLS
@@ -534,7 +536,7 @@ func _on_tab(tab: String) -> void:
 func _on_soon(entry: Dictionary) -> void:
 	_say("%s has no flat board yet. Its island version is under More." % entry.get("title", ""))
 
-## Opens one of the fourteen. A `soon` card never gets here.
+## Opens one of the fifteen. A `soon` card never gets here.
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry):
 		return

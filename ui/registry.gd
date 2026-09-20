@@ -2,8 +2,8 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: **fourteen cards over two pages**, in the order they
-## are drawn. **All fourteen open a flat board, and there is no `soon` card
+## `PUZZLES` is the grid: **fifteen cards over two pages**, in the order they
+## are drawn. **All fifteen open a flat board, and there is no `soon` card
 ## left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
 ## room for Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
 ## 2026-09-20 for Word Trail; all three keep their island board under More.
@@ -11,15 +11,15 @@ extends RefCounted
 ## and ui/menu.gd's `blocked` signal -- stays in the code for the next board
 ## that is named before it is drawn, but nothing exercises it now.
 ##
-## **Fourteen does not fit the three-by-four grid, so the grid pages.** The
+## **Fifteen does not fit the three-by-four grid, so the grid pages.** The
 ## fourth row was full at twelve, and a `GridContainer` that is
 ## SIZE_EXPAND_FILL simply runs to five rows and takes a card from 252 to
 ## about 210 -- every one of those 42 pixels out of the 92 px picture the
 ## card-art budget is written against. The answer is the pager the campsite
 ## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
 ## and the strip is its own pill between the grid and the bar): twelve cards
-## on page one, and Mushroom Patch and Sudoku on page two, each card still
-## 252 with its 92 px picture. See
+## on page one, and Mushroom Patch, Sudoku and Paper Planes on page two, each
+## card still 252 with its 92 px picture. See
 ## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
 ## Sudoku is the fourteenth, added on 2026-09-20. Its own branch had built a
@@ -29,6 +29,15 @@ extends RefCounted
 ## and the one this entry pages onto; see
 ## docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9 and its
 ## amendments.
+##
+## Paper Planes is the fifteenth, added the same day, and it is the second
+## card in a row that was *added* rather than swapped into a `soon` slot.
+## **`PER_PAGE` is still twelve, so it costs the first screen nothing**: page
+## one keeps exactly the same twelve cards in the same order, page two simply
+## holds three instead of two, and the pager that arrived for the thirteenth
+## already draws as many dots as it is given. The short last row still wants
+## ui/menu.gd's invisible filler Controls, which it already pads out. See
+## docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md, section 12.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -222,10 +231,11 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
-	# these are entries thirteen and fourteen. Mushroom Patch was the
+	# these are entries thirteen, fourteen and fifteen. Mushroom Patch was the
 	# thirteenth and the first card that was *added* rather than swapped into
 	# a `soon` slot, which is what pushed the grid onto a second page at all;
-	# Sudoku is the fourteenth and joins it there. Twelve a page is not a
+	# Sudoku is the fourteenth and Paper Planes the fifteenth, and both join
+	# it there without a word changing anywhere else. Twelve a page is not a
 	# taste -- it is what four rows of 252 buy -- so the grid grew a page
 	# rather than a shorter card, and both of these stay last so page one
 	# keeps exactly the twelve cards it has, in exactly the order it has
@@ -259,6 +269,24 @@ const PUZZLES := [
 		"script": "res://puzzles/sudoku2d.gd",
 		"shell": "flat",
 		"tray": "digits",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "planes",
+		"kind": "puzzle",
+		"title": "Paper Planes",
+		"blurb": "Tap a plane whose lane to the edge is clear, and off it goes.",
+		"short": "Send every plane\noff a clear lane.",
+		"motto": "A clear lane and away",
+		"footer": "Scan · Clear · Launch",
+		# It picks nothing up, and there is no Check: a launch only ever
+		# empties cells, so nothing wrong can be sitting on the board and the
+		# player cannot dead-end it. Reset rides up into the top bar and the
+		# bottom slot is the tip card alone, which is Word Trail's shape.
+		"script": "res://puzzles/planes2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
 		"difficulties": [0, 1, 2],
 	},
 ]
