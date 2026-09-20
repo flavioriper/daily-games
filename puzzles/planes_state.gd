@@ -16,6 +16,23 @@ extends RefCounted
 
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
+## The bands (spec section 6). Hard is the reference's own 16 x 22. The
+## weights pick a plane's length: the middle lengths are the common ones,
+## because a board of two-cell darts reads as confetti and a board of
+## ten-cell ones cannot be packed.
+const BANDS: Array[Dictionary] = [
+	{"cols": 10, "rows": 14, "min_len": 2, "max_len": 8, "weights": [2, 3, 4, 5, 5, 4, 3], "floor": 0.72},
+	{"cols": 13, "rows": 18, "min_len": 2, "max_len": 9, "weights": [2, 3, 4, 5, 5, 5, 4, 3], "floor": 0.72},
+	{"cols": 16, "rows": 22, "min_len": 2, "max_len": 10, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.72},
+]
+## How many boards to make before keeping the fullest, and how many failed
+## placements in a row end a board.
+const CANDIDATES := 6
+const TRIES := 400
+
+static func band(difficulty: int) -> Dictionary:
+	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
+
 var rows := 0
 var cols := 0
 var planes: Array[Dictionary] = []
@@ -152,3 +169,133 @@ func hint_plane() -> int:
 			return i
 	var free := free_planes()
 	return -1 if free.is_empty() else free[0]
+
+## Carves a board backwards out of an empty sky (spec section 5, ported cell
+## for cell from tools/_planes_probe.py). Up to CANDIDATES attempts are
+## carved and thrown away except the winner: the first at or above the
+## band's coverage floor, else the fullest one made. `order` is set to the
+## reverse of the winner's placement order -- planes placed later are
+## launched earlier, so `hint_plane()` walks it front to back -- and the
+## result is asserted solvable, which the construction (section 3's "a
+## launch only ever empties cells") guarantees but is cheap enough to check
+## anyway.
+func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+	var b := band(difficulty)
+	rows = int(b["rows"])
+	cols = int(b["cols"])
+	planes = []
+	order = []
+	clear_occupancy()
+	var area := float(rows * cols)
+	var floor_cov: float = float(b["floor"])
+	var best_planes: Array[Dictionary] = []
+	var best_occupant: Dictionary = {}
+	var best_cov := -1.0
+	for attempt in CANDIDATES:
+		planes = []
+		clear_occupancy()
+		_carve(rng, b)
+		var cov := float(_occupant.size()) / area
+		if cov > best_cov:
+			best_cov = cov
+			best_planes = planes.duplicate(true)
+			best_occupant = _occupant.duplicate()
+		if cov >= floor_cov:
+			break
+	planes = best_planes
+	_occupant = best_occupant
+	for i in range(planes.size() - 1, -1, -1):
+		order.append(i)
+	var check := solve_order()
+	assert(check.size() == planes.size(), "PlanesState.build: generated board must be solvable")
+
+## One candidate, laid straight onto `self` (rows/cols/planes/_occupant
+## already reset by `build()`). Loops while coverage is under 95% and no run
+## of TRIES placements in a row has failed: pick a random empty cell as the
+## head, shuffle the four directions and, for the first whose lane runs
+## entirely clear to the edge, grow a self-avoiding tail backwards to a
+## length drawn from the band's weights, never crossing the lane or itself.
+## A body that reaches the band's min_len is laid with `add_plane()` -- the
+## one place the direction is derived -- and a failed direction or a body
+## too short both count as one failed placement.
+func _carve(rng: RandomNumberGenerator, b: Dictionary) -> void:
+	var min_len: int = int(b["min_len"])
+	var area := float(rows * cols)
+	var fails := 0
+	while float(_occupant.size()) < 0.95 * area and fails < TRIES:
+		var cell := Vector2i(rng.randi_range(0, cols - 1), rng.randi_range(0, rows - 1))
+		if _occupant.has(cell):
+			fails += 1
+			continue
+		var dirs: Array[Vector2i] = DIRS.duplicate()
+		_shuffle_dirs(dirs, rng)
+		var placed := false
+		for d in dirs:
+			var lane_set := {}
+			var at: Vector2i = cell + d
+			var clear := true
+			while in_board(at):
+				if _occupant.has(at):
+					clear = false
+					break
+				lane_set[at] = true
+				at += d
+			if not clear:
+				continue
+			var body: Array[Vector2i] = [cell]
+			var used := {cell: true}
+			var want := _pick_length(rng, b)
+			var prev: Vector2i = cell - d
+			if not in_board(prev) or _occupant.has(prev) or lane_set.has(prev):
+				continue
+			body.append(prev)
+			used[prev] = true
+			while body.size() < want:
+				var last: Vector2i = body[body.size() - 1]
+				var cand: Array[Vector2i] = []
+				for e in DIRS:
+					var q: Vector2i = last + e
+					if not in_board(q):
+						continue
+					if _occupant.has(q) or used.has(q) or lane_set.has(q):
+						continue
+					cand.append(q)
+				if cand.is_empty():
+					break
+				var pick: Vector2i = cand[rng.randi_range(0, cand.size() - 1)]
+				body.append(pick)
+				used[pick] = true
+			if body.size() < min_len:
+				continue
+			body.reverse()
+			add_plane(body)
+			placed = true
+			break
+		if placed:
+			fails = 0
+		else:
+			fails += 1
+
+## Weighted by `b["weights"]`, index `len - min_len` -- the middle lengths
+## are the common ones (see BANDS above).
+static func _pick_length(rng: RandomNumberGenerator, b: Dictionary) -> int:
+	var weights: Array = b["weights"]
+	var min_len: int = int(b["min_len"])
+	var total := 0.0
+	for w in weights:
+		total += float(w)
+	var r := rng.randf() * total
+	var acc := 0.0
+	for i in weights.size():
+		acc += float(weights[i])
+		if r < acc:
+			return min_len + i
+	return min_len + weights.size() - 1
+
+## Fisher-Yates, seeded only by `rng` -- same shape as mushroom_gen.gd's.
+static func _shuffle_dirs(arr: Array[Vector2i], rng: RandomNumberGenerator) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: Vector2i = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp

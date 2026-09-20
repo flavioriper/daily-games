@@ -10,6 +10,8 @@ static func run(t) -> void:
 	_test_lane(t)
 	_test_launch(t)
 	_test_degenerate_plane_refused(t)
+	_test_generator(t)
+	_test_repeatable(t)
 
 static func _empty(rows: int, cols: int) -> State:
 	var st := State.new()
@@ -66,3 +68,56 @@ static func _test_degenerate_plane_refused(t) -> void:
 	var st := _empty(5, 5)
 	t.eq(_add(st, [Vector2i(2, 2)]), -1, "a one-cell body is refused")
 	t.eq(st.planes.size(), 0, "and nothing was placed")
+
+static func _built(seed_value: int, difficulty: int) -> State:
+	var st := State.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	st.build(rng, difficulty)
+	return st
+
+## The generator's promises, over enough seeds that a rare layout cannot
+## hide: the band's grid, well-formed planes, no overlap, no plane blocking
+## itself, and -- the one that matters -- every board clears.
+static func _test_generator(t) -> void:
+	for difficulty in 3:
+		var b: Dictionary = State.band(difficulty)
+		for s in range(1, 41):
+			var st := _built(s, difficulty)
+			t.eq(st.cols, int(b["cols"]), "band %d seed %d: columns" % [difficulty, s])
+			t.eq(st.rows, int(b["rows"]), "band %d seed %d: rows" % [difficulty, s])
+			t.check(st.planes.size() >= 8, "band %d seed %d: a board worth playing" % [difficulty, s])
+			var seen := {}
+			for i in st.planes.size():
+				var cells: Array = st.planes[i]["cells"]
+				t.check(cells.size() >= int(b["min_len"]) and cells.size() <= int(b["max_len"]),
+					"band %d seed %d: plane %d is within the band's lengths" % [difficulty, s, i])
+				for j in cells.size():
+					var c: Vector2i = cells[j]
+					t.check(st.in_board(c), "band %d seed %d: plane %d stays on the board" % [difficulty, s, i])
+					t.check(not seen.has(c), "band %d seed %d: plane %d shares no cell with another" % [difficulty, s, i])
+					seen[c] = true
+					if j > 0:
+						var step: Vector2i = c - cells[j - 1]
+						t.eq(absi(step.x) + absi(step.y), 1,
+							"band %d seed %d: plane %d walks one cell at a time" % [difficulty, s, i])
+				# A plane may never stand in its own lane: the launch rule
+				# would then have to special-case the plane being tapped.
+				var body := {}
+				for c in cells:
+					body[c] = true
+				for c in st.lane(i):
+					t.check(not body.has(c), "band %d seed %d: plane %d never blocks itself" % [difficulty, s, i])
+			t.eq(st.solve_order().size(), st.planes.size(),
+				"band %d seed %d: the whole board clears" % [difficulty, s])
+			t.eq(st.order.size(), st.planes.size(),
+				"band %d seed %d: the generator's own order is complete" % [difficulty, s])
+
+## The same seed is the same board, which is what a daily puzzle means.
+static func _test_repeatable(t) -> void:
+	for difficulty in 3:
+		var a := _built(77, difficulty)
+		var b := _built(77, difficulty)
+		t.eq(a.planes.size(), b.planes.size(), "band %d: same seed, same plane count" % difficulty)
+		for i in a.planes.size():
+			t.eq(a.planes[i]["cells"], b.planes[i]["cells"], "band %d: plane %d is the same" % [difficulty, i])

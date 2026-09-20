@@ -163,7 +163,13 @@ is cheap enough to do that: measured with `tools/_planes_probe.py`, the
 algorithm in Python takes **0.8 ms (easy), 1.3 ms (medium) and 1.9 ms (hard)**
 a board on this Mac, twenty seeds a band -- two orders off Sudoku's budget
 problem, so there is no fallback path here and nothing to grade against a
-clock.
+clock. The shipped GDScript, measured the same way with a throwaway
+`SceneTree` probe over forty seeds a band once `build()` existed (Task 2),
+came in at **1.3 ms (easy), 2.2 ms (medium) and 7.0 ms (hard)** -- still two
+orders off the budget, but the hard band is proportionally the outlier: easy
+and medium ran 1.6x the Python figure, hard ran roughly 3.7x, which is worth
+naming rather than smoothing over even though it changes nothing about the
+lack of a fallback path.
 
 Every generated board is then run through the greedy solver before it is
 handed over. It has never failed -- it cannot, by construction -- and the
@@ -172,11 +178,24 @@ enforcing.
 
 ## 6. The bands
 
-| Band | Grid | Plane length | Planes (20 seeds, Python probe) | Coverage |
-|---|---|---|---|---|
-| Easy | 10 x 14 | 2-8 | 21-33 (mean 25) | 0.74-0.89 |
-| Medium | 13 x 18 | 2-9 | 27-45 (mean 37) | 0.65-0.81 |
-| Hard | 16 x 22 | 2-10 | 42-59 (mean 51) | 0.63-0.82 |
+| Band | Grid | Plane length | Source | Planes | Coverage | ms/board |
+|---|---|---|---|---|---|---|
+| Easy | 10 x 14 | 2-8 | Python probe (20 seeds) | 21-33 (mean 25) | 0.74-0.89 | 0.8 |
+| Easy | 10 x 14 | 2-8 | GDScript on this Mac (40 seeds) | 21-31 (mean 25.4) | 0.72-0.91 (mean 0.80) | 1.3 |
+| Medium | 13 x 18 | 2-9 | Python probe (20 seeds) | 27-45 (mean 37) | 0.65-0.81 | 1.3 |
+| Medium | 13 x 18 | 2-9 | GDScript on this Mac (40 seeds) | 30-45 (mean 37.7) | 0.73-0.87 (mean 0.78) | 2.2 |
+| Hard | 16 x 22 | 2-10 | Python probe (20 seeds) | 42-59 (mean 51) | 0.63-0.82 | 1.9 |
+| Hard | 16 x 22 | 2-10 | GDScript on this Mac (40 seeds) | 45-62 (mean 51.6) | 0.70-0.83 (mean 0.75) | 7.0 |
+
+The GDScript row is `build()` itself (Task 2), read from a throwaway
+`tools/_planes_time.gd` `SceneTree` probe, two runs each within 0.1-0.2 ms of
+the figures above; it is not kept in the tree. Plane counts and coverage land
+close to the Python probe's on every band -- the port carries the same
+behaviour -- but the timings diverge on the hard band specifically (see
+section 5): easy and medium run about 1.6x Python's ms, hard runs about
+3.7x, likely GDScript's per-call overhead compounding over the longer
+self-avoiding walks a 16 x 22 board needs. Both are still far under any
+budget, so nothing here changes the "no fallback path" conclusion above.
 
 Difficulty here is **how long the scan is, not how hard the logic is** --
 there is no logic, in the Binairo sense, only looking. A bigger board holds
