@@ -2,9 +2,8 @@ extends Control
 
 ## The first screen: the wordmark and the two characters at the top, the day
 ## row under them, a page of twelve puzzle cards in a grid of three, and the
-## bottom
-## bar. Everything on it is drawn in 2D -- there is no stage, no World3D and
-## no model anywhere on this screen.
+## bottom bar. Everything on it is drawn in 2D -- there is no stage, no
+## World3D and no model anywhere on this screen.
 ##
 ## It replaced the campsite (legacy/ui/camp_menu.gd) on 2026-09-18. What the
 ## campsite did that this does not: a painted 3D setting under a shift lens,

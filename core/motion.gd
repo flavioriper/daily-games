@@ -306,6 +306,12 @@ const WOBBLE_TIME := 0.45
 ## on a second use rather than waiting for a third to copy it. Each board
 ## keeps its own WAVE_FLASH -- the peak the wave holds a cell at -- because
 ## that genuinely differs between them.
+## Word Trail's own `WAVE_STEP` (0.05, in word_trail2d.gd) is not this constant
+## and does not read it: GDScript resolves the unqualified name inside that
+## script to its own script-local const, so the two never collide and the
+## suite stays green. It is deliberately not the same one -- Word Trail's step
+## is per-tile along a ribbon, not the king-move ring step this constant
+## measures -- so it was not folded in when this const was lifted.
 const WAVE_STEP := 0.045
 
 ## The press: `node` sinks to PRESS_SCALE of `base` under the finger and

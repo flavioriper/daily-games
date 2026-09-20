@@ -361,7 +361,8 @@ somewhere, and the three candidates cost:
 - **A shorter header**, 380 to 320, keeps the cards whole and takes a sixth
   off the screen's signature.
 - **The day row**, which is 180 tall and already carries a chevron that does
-  nothing. **This is the one taken**, with the user on 2026-09-20.
+  nothing. **This is the one taken**, with the user on 2026-09-20 *(reversed
+  at the merge -- see the amendment blockquote at the top of this section)*.
 
 `ui/menu/day_row.gd` gains a pager in its right-hand cluster: a prev chevron,
 two dots and a next chevron, with the dead chevron becoming next. It **costs

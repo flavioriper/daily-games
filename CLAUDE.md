@@ -197,7 +197,11 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
 - **Measured on this Mac** (`tests/_shot_menu.gd` at `--resolution 810x1440`,
   which is the true 1080x1920 of design space -- see "What the harnesses
   actually measure" above): **335** draw calls on **page one** against the
-  campsite's 338 and the 855 budget, and a mean idle of 8.31-8.42 ms --
+  campsite's 338 and the 855 budget, and a mean idle of 8.31-8.42 ms -- this
+  merge's own four readings (8.31, 8.33, 8.38, 8.33) plus 8.42 from main's
+  earlier session, before Sudoku arrived; the range spans both sessions
+  rather than one, named here so it is not read as four readings taken in a
+  row --
   which is the 120 Hz vsync cap, and this harness never disables vsync, so
   it is a ceiling and not a measurement. What can be said honestly is that
   the campsite sat at ~13 ms, above the cap, and this screen is inside it.
@@ -612,13 +616,22 @@ pointing `seed_as` at them. Specs:
   at 22 measures 372 against a 370 block -- and `_fit` steps down from the
   guess (never from `base`, which is up to 60 measurements for a long title)
   until the rendered face actually fits. Measured across all thirteen
-  screens with a headless probe on 2026-09-20: exactly five labels are
-  lettered smaller -- Balance's motto (24 to 21), Untangle's (24 to 22),
-  Word Trail's title (84 to 79) and motto (24 to 21), and Mushroom Patch's
-  title (84 to 65) -- and every other label is untouched to the pixel,
-  Hidden Word's 482-wide title included: its bar builds five buttons but
-  `refresh()` hides Undo, so the block it measures against is 496 and it
-  stays at 84.
+  screens that existed at the time -- every flat board except Sudoku, which
+  had not merged yet -- with a headless probe on 2026-09-20: exactly five
+  labels are lettered smaller -- Balance's motto (24 to 21), Untangle's (24
+  to 22), Word Trail's title (84 to 79) and motto (24 to 21), and Mushroom
+  Patch's title (84 to 65) -- and every other label is untouched to the
+  pixel, Hidden Word's 482-wide title included: its bar builds five buttons
+  but `refresh()` hides Undo, so the block it measures against is 496 and it
+  stays at 84. **Sudoku was not in that probe**, and the claim is expected to
+  hold there too rather than shown to: Sudoku keeps its actions row, so
+  Reset never rides up into the top bar and its title block is the wider 496
+  Hidden Word gets, not the 370 that forces Balance's, Untangle's and Word
+  Trail's mottos down, and its own motto (`EVERY NUMBER HAS ITS PLACE`, the
+  widest in the game) comes to roughly 428 against that 496 -- about 70px of
+  headroom. That figure is an estimate scaled off a recorded measurement
+  using a fallback font face, not a reading taken with the real Fredoka, and
+  should not be repeated as one.
 - **Mushroom Patch is the thirteenth board, and the first that was added
   rather than swapped in** (2026-09-20, `puzzles/mushroom2d.gd`, spec
   `2026-09-20-mushroom-patch-flat-design.md`, mock
@@ -1029,7 +1042,7 @@ ratio: within 6 percent is 100, a factor of five is 0.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. Only the turn flow's strings are
-keyed (`locale/turn.csv`); the thirteen boards are still hardcoded English, and
+keyed (`locale/turn.csv`); the fourteen boards are still hardcoded English, and
 `HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228

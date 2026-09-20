@@ -20,9 +20,10 @@ const FIRST_AT := 1.8
 const SECOND_AT := 2.8
 const IDLE_FROM := 0.8
 ## `page2`: how long after the turn to wait before the second shot -- the
-## crossfade out and the incoming card's entrance (`ui/menu.gd`'s
-## `ENTER_FADE`, 0.3 s, plus a lone card's own stagger, which is zero) with
-## margin -- and how much of that tail counts as its idle window.
+## crossfade out and the incoming cards' entrance (`ui/menu.gd`'s
+## `ENTER_FADE`, 0.3 s, plus the second card's own stagger, `CARD_STEP` 0.05,
+## page two having held two cards since Sudoku landed beside Mushroom Patch)
+## with margin -- and how much of that tail counts as its idle window.
 const PAGE2_SETTLE := 1.0
 const PAGE2_IDLE := 0.3
 
