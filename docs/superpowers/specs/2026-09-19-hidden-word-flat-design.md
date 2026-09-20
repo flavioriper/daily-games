@@ -275,11 +275,26 @@ both contracts instead.
 Everything through the flat boards' vocabulary (`core/motion.gd`,
 `docs/art/flat-motion.md`). The tiles are drawn off the curve readers, as
 Nonogram's are; the keys are nodes in slots taking the recipes, as Queens'
-bees are. This board is the hybrid precedent's eleventh user and needs nothing
-new from `core/motion.gd`.
+bees are. This board is the hybrid precedent's eleventh user and **adds
+nothing to `core/motion.gd`** -- every recipe and reader it uses was already
+there.
 
 **Its signature is the flip**, and its numbers are its own three constants:
 `FLIP_STEP` 0.16 s per tile, `FLIP_TIME` 0.42 s a tile, `TOAST_HOLD` 1.2 s.
+
+**The ending needs six more, and they are the board's own too** (found in the
+build, 2026-09-19; this section first claimed "needs nothing new", which was
+not literally achievable). The keyboard's exit, the two dim levels for the
+solve and the reveal, the dim's time, and the sprout's rise and its time
+describe a moment no other board has, so they cannot live in
+`core/motion.gd` -- nothing else would ever read them. They stand in a
+labelled block of their own in `puzzles/hidden_word2d.gd`, and `SOLVE_DIM`'s
+fade reuses `Motion.SOLVE_TIME` rather than inventing a duration. The rule
+the vocabulary actually asks for is kept: a number that has to *differ* from
+a shared one goes through a recipe's parameter, never a copied constant --
+which is why the reset wave uses `Motion.RESET_STAGGER` 0.02 and **not** the
+concept tab's 0.03. Where the mock and the family constant disagree, the
+family wins.
 
 | Moment | What happens |
 |---|---|
