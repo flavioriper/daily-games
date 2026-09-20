@@ -12,10 +12,11 @@ extends "res://ui/puzzle_host.gd"
 ## seven, Balance steps a weight from one card per fruit, Nonogram paints
 ## with one of two tile chips, and Shikaku picks nothing up at all. Queens
 ## arms a queen or a cross chip in the same tile tray, built with
-## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`. The registry
-## names which (`"tray": "friends"`, `"weights"`, `"tiles"`, `"queens"`,
-## `"none"`), because the host lays out its rows before it has a puzzle to
-## ask.
+## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`, and Mushroom
+## Patch arms a mushroom or a pebble chip in that same tray again, built with
+## `TileTray.PATCH`. The registry names which (`"tray": "friends"`,
+## `"weights"`, `"tiles"`, `"queens"`, `"patch"`, `"none"`), because the host
+## lays out its rows before it has a puzzle to ask.
 ##
 ## Nor do they all carry an actions row. A board that is its own continuous
 ## check has nothing to put in one -- no Check, and Reset riding up in the
@@ -188,6 +189,11 @@ func _build_chrome(root: VBoxContainer) -> void:
 		"queens":
 			# Queens' pair: the same tray as Nonogram's, with the queen set.
 			tray = TileTray.new(TileTray.QUEENS)
+			tray.pick.connect(_on_brush)
+			rows.append(TileTray.HEIGHT)
+		"patch":
+			# Mushroom Patch's pair: the same tray again, with the patch set.
+			tray = TileTray.new(TileTray.PATCH)
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
 		"keys":
