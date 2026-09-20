@@ -683,6 +683,11 @@ git commit -m "feat(planes): the tip lines and the win screen"
 **Files:**
 - Modify: `CLAUDE.md`
 - Modify: `docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md` (an amendments section)
+- Modify: `tests/test_planes.gd` (the parse guard below)
+- Delete: `tools/_planes_probe.py`, `tools/_planes_shot.sh`
+
+- [ ] **Step 0a: A guard so a broken board cannot pass the suite.** Task 6 found that **nothing under `tests/` loads `puzzles/planes2d.gd`**: a parse error in it left the suite reporting `passed=94534 failed=0`, and only the win harness caught it. That is true of every board's `*2d.gd` in this repo, not just this one, and the fix is small and belongs here. Add to `tests/test_planes.gd` a check that walks **`Registry.PUZZLES`** and, for each entry's `script`, asserts `load(...)` returns something that `can_instantiate()` — the same idiom `tests/run_tests.gd` already uses on its suites, and the same reason. One assertion per board, with the board's id in the message so a failure names the file. Do not make it a new suite file; it is three lines in the one that exists.
+- [ ] **Step 0b: Delete the throwaway tools.** `tools/_planes_probe.py` (the Python that validated the generator before Task 2 ported it) and `tools/_planes_shot.sh` are scratch. The spec's section 5 quotes the probe's numbers; change that sentence to say the numbers were taken with a throwaway probe that is not kept, so the record does not point at a file that is gone.
 
 - [ ] **Step 1: `CLAUDE.md`**
 
