@@ -558,7 +558,13 @@ Specs:
   across all three bands, and both were cross-checked against brute-force
   counters -- which is a better statement about the proof than either alone.
   Worst case 47 ms against the 194 ms gate.
-  **`is_solved()` is the conjunction and never one half**, and the near-miss
+  **`is_solved()` is every rule at once and never a subset** -- every number
+  met, no two runs crossing, and one single network. The crossing clause is a
+  backstop (`cycle()` refuses a crossed lane) and it was added on 2026-09-20
+  with the bug that made it reachable: `hint()` lifted only the **first** lane
+  blocking the plank it wanted, and a lane can be blocked by several, so a
+  hint could leave two runs crossing with both frozen. A hint now lifts every
+  blocker, and costs one undo per blocker plus one. The near-miss
   -- every number met, the islets in two rings -- is **unsignposted by
   decision**. Check is the only door and it costs a check, which is why
   **Check's marks flash and then hold until the next move** rather than

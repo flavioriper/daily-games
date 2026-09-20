@@ -115,8 +115,13 @@ from its runs, and the network's connected groups, flooded from the runs on
 demand. Storing either would mean a second truth to keep in step, and undo
 would have to unwind it.
 
-`is_solved()` is the conjunction and never one half of it: every islet's
-degree equals its number **and** one flood from any islet reaches them all.
+`is_solved()` is every rule at once and never a subset of them: every islet's
+degree equals its number, **no two laid runs cross**, and one flood from any
+islet reaches them all. The crossing clause is a backstop and not the rule's
+enforcement -- `cycle()` refuses a crossed lane, so ordinary play cannot reach
+a crossed position -- but a win predicate that covers only two of the three
+rules it states is a bug waiting for the next way in, and there *was* one: see
+section 10 on the hint that lifted a single blocker.
 
 ## 4. Generation: grow the answer, then prove it unique
 
@@ -271,10 +276,11 @@ shape as Shikaku, Tents, Light Up and One Line, so `ui/flat/flat_host.gd`
 needs no change at all.
 
 Inside the card, a sea pool inset 28 from the paper (`INSET`), with the
-lattice inset a further 12 inside the pool (`FIELD_PAD`). At 1080 wide that
-is a 1000 card, a 944 pool and a lattice **920 wide at every band**
-(`FIELD`), so the width binds and a cell is **131 / 102 / 84** on the three
-bands. That leaves 214 of pool height over, and because the lattice is
+lattice inset a further 12 inside the pool (`FIELD_PAD`). Those two are the
+only constants: the lattice is measured off the pool the card hands over, so
+its width is a consequence and not a setting. At 1080 wide that is a 1000
+card, a 944 pool and a lattice **920 wide at every band**, so the width binds
+and a cell is **131 / 102 / 84** on the three bands. That leaves 214 of pool height over, and because the lattice is
 square in a tall slot, `card_centred()` is `true` and the slack is
 **halved: 107 above and 107 below**.
 
@@ -573,9 +579,26 @@ never an overshoot, so a hint can never be the thing that pushes an islet
 over. It walks the answer's lanes in sorted order, so the hint a board gives
 is stable however that board's answer happened to be grown. One edge case is
 worth knowing: when every remaining under-laid lane is crossed by a run the
-player laid wrong, the hint lifts that blocker first, which is always safe
-because the answer's own runs never cross each other. That lift is its own
-history entry, so in that one case a hint costs two undos rather than one.
+player laid wrong, the hint lifts the blockers first, which is always safe
+because the answer's own runs never cross each other. Each lift is its own
+history entry, so in that case a hint costs **one undo per blocker plus one**
+rather than one.
+
+**It has to be every blocker and not the first, and this was a real bug.**
+A lane with *k* water cells can be crossed by *k* different lanes, and two
+lanes that cross the same lane are perpendicular to it and therefore parallel
+to each other -- so `cycle()` permits both, and a player can have both laid.
+Lifting only the first and then writing the hint through the private `_lay`
+bypassed the `blocked_by` guard and left **two runs crossing**: a position
+this section's own rules call impossible, with both lanes frozen (each is now
+`blocked_by` the other, so neither can be cycled), a hint spent, a glow lit
+round an illegal run and the tip card saying a plank the answer wants is in.
+Reproduced on band 0 at `rng.seed = 259`, where the lane `1,2|1,6` is crossed
+by both `0,3|2,3` and `0,5|2,5`; a regression test in `tests/test_bridges.gd`
+builds that position and asserts nothing crosses after the hint. Aimless
+random play never reached it (0 in 360 tries) while realistic near-end play
+hit it in 1-3.3%, which is why the suite had not caught it. `is_solved()`
+grew its crossing clause in the same pass -- see section 3.
 Verified over 120 boards hinted to completion: 0 overshoots, and every board
 finished. Check marks the runs that differ from the answer, costs a check, and is
 the board's only door to the one thing it will not tell you.
@@ -609,8 +632,12 @@ card is.
 
 ## 12. What the board says
 
-`rules()` is the four rules of section 1, in that order, connectivity last
-and stated plainly. The tip card's resting line is "Press an islet and drag
+`rules()` is a one-line preamble -- "Join the islets with plank bridges." --
+and then the four rules of section 1, **connectivity last** and stated
+plainly. It is not section 1's order: the number rule comes ahead of the
+crossing rule, because a player reads the number on an islet before they have
+laid anything to cross. The order that is load-bearing is the last one, and
+that is the one the code keeps. The tip card's resting line is "Press an islet and drag
 at the one facing it."; its two refusal lines are in section 5.
 
 `flat_win()` returns `{"faces": [], "subtitle": ...}` -- the no-cast form
