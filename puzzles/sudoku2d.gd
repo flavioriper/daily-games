@@ -441,9 +441,14 @@ func _appear_of(now: float, i: int) -> float:
 		return 1.0
 	return Motion.appear_level(now - _opened - _enter_delay(i), Motion.DROP_TIME)
 
+## One step per region, nine of them: 0.24 s end to end, well inside
+## `Motion.stagger`'s 0.6 cap. Stepping by band within a region instead would
+## be twenty-seven indices, and 26 * ENTER_STAGGER overruns that cap -- the
+## last seven bands would all land on one frame, which is neither region by
+## region nor cell by cell.
 func _enter_delay(i: int) -> float:
 	return Motion.ENTER_DELAY + Motion.ENTER_FACE_LAG \
-		+ Motion.stagger(Gen.box_of(i) * 3 + Gen.row_of(i) % 3, Motion.ENTER_STAGGER)
+		+ Motion.stagger(Gen.box_of(i), Motion.ENTER_STAGGER)
 
 ## A given is ink and never changes; what the player put there is leaf, which
 ## is this game's own word for something that grew, and turns to the family's
@@ -534,9 +539,15 @@ func _apply(i: int, d: int) -> bool:
 
 ## Diff the units and hand each cell of one that has just come right its
 ## moment: it lights up in gold from `at` outwards, a king-move step apart.
-## Queens' `_settle`, with a unit in place of a queen's sight. A digit that
-## closes a row *and* a region runs both at once from the same seat, which is
-## why a later moment never overwrites an earlier one.
+## Queens' `_settle`, with a unit in place of a queen's sight.
+##
+## A digit that closes a row *and* a region runs both at once from the same
+## seat, and it comes out right for free: `step` is read off `i` and `at`
+## alone and never off the unit, so the second unit hands a shared cell the
+## identical `when` and neither can disturb the other. The `<` test is not
+## for that -- it is there because `_flash` is never pruned, so a cell may
+## still be carrying a spent moment from an earlier move, and the new one has
+## to win.
 func _settle(before: Array, at: int, now: float) -> void:
 	if Motion.reduce:
 		return
@@ -586,6 +597,19 @@ func undo() -> bool:
 	_wrong.erase(i)
 	_bump[i] = now
 	_busy_for(Motion.BUMP_TIME)
+	# An undo can take a finished unit apart, and most of that unit's wave is
+	# still in the future when it does -- eight of a row's nine cells are, at
+	# WAVE_STEP a step. `_settle` will not re-light it (`before` says it was
+	# already finished), but nothing else would put it out either, and the
+	# gold would go on sweeping a row that is no longer right. Section 7's
+	# rule is that there is no highlight to leave behind; this is the one
+	# place on the board that could leave one.
+	var units: Array = Gen.units()
+	for u in units.size():
+		if not bool(before[u]) or state.unit_done(units[u]):
+			continue
+		for c in units[u]:
+			_flash.erase(c)
 	_settle(before, i, now)
 	fx.cue("undo")
 	_redraw()

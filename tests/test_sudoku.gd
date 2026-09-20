@@ -35,7 +35,10 @@ static func _test_generator(t) -> void:
 		for i in range(4):
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 9000 + d * 100 + i
-			var out: Dictionary = Gen.generate(rng, d)
+			# Budget disabled (-1): see the note under the determinism check
+			# below. Every assertion in this loop is about what the generator
+			# guarantees, and none of them is about the clock.
+			var out: Dictionary = Gen.generate(rng, d, -1)
 			var tag := "band=%d seed=%d" % [d, i]
 			var puz: PackedByteArray = out.puzzle
 			var sol: PackedByteArray = out.solution
@@ -69,13 +72,29 @@ static func _test_generator(t) -> void:
 				t.check(singled, "%s easy falls to singles" % tag)
 			elif d == 2:
 				t.check(not singled, "%s hard does not fall to singles" % tag)
-	# The same seed twice is the same board. Budget disabled (-1) on both
-	# calls: generate()'s output is otherwise contingent on wall-clock timing
-	# as well as the seed since round 1 added TIME_BUDGET_MS, and this
-	# assertion is about the seed, not about whether two calls happen to
-	# cross the same 300 ms deadline the same way on whatever machine runs
-	# the suite -- a CI runner slower than this Mac could see one call clip
-	# and the other not, for two puzzles that would otherwise be identical.
+	# **Every Gen.generate in this file passes -1, and it has to.**
+	# generate()'s output is contingent on wall-clock timing as well as on
+	# the seed, because TIME_BUDGET_MS abandons a dig that overruns and hands
+	# back a shallower, ungraded puzzle. On the live clock that makes this
+	# file a coin flip rather than a test: band 2 seed 3 spends about 196 ms
+	# of its own 300 ms budget on an idle Mac, so under any load at all it
+	# clips the deadline, comes back under-dug, and "hard does not fall to
+	# singles" fails -- measured at roughly one cold run in two, on a suite
+	# that gates the Android build. A CI runner slower than this Mac would
+	# see it far more often, and on the determinism check it could clip one
+	# of the pair and not the other for two puzzles that are otherwise
+	# identical.
+	#
+	# The assertions here are about the generator's guarantees -- one
+	# solution, givens that agree with it, symmetry, the band's technique --
+	# and not one of them is about whether a machine happened to make a
+	# deadline. The budget is a shipping decision (a board that opens with
+	# 32 givens beats a board that does not open), and it is measured by the
+	# throwaway probe the spec asks for, not by this file.
+	#
+	# The one call left on the clock is the State.setup below, which takes
+	# two arguments on purpose; nothing it asserts -- place, mark, undo, the
+	# struck marks -- depends on how deep the dig got.
 	var a := RandomNumberGenerator.new()
 	a.seed = 4242
 	var b := RandomNumberGenerator.new()
@@ -83,7 +102,7 @@ static func _test_generator(t) -> void:
 	t.check(Gen.generate(a, 1, -1).puzzle == Gen.generate(b, 1, -1).puzzle, "the same seed gives the same puzzle")
 	# A grid with a cell removed from a finished board has one answer; one
 	# with a whole unit removed does not.
-	var full: PackedByteArray = Gen.generate(RandomNumberGenerator.new(), 0).solution
+	var full: PackedByteArray = Gen.generate(RandomNumberGenerator.new(), 0, -1).solution
 	var one := full.duplicate()
 	one[0] = 0
 	t.eq(Gen.count_solutions(one, 3), 1, "one cell removed leaves one answer")
