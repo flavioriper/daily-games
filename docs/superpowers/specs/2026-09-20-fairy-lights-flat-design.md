@@ -227,12 +227,28 @@ other.
 board was started, and it is recorded here plainly because it did not
 materialise. The whole build including re-rolls costs **0.053 / 0.059 /
 0.093 ms in JavaScript** on this Mac, against Sudoku's 9 ms for its generator
-in the same place. Sudoku's GDScript port came out roughly seven times slower
-than its JavaScript on the mean, so the honest estimate here is **single-digit
-milliseconds in GDScript**, worst case included. **That is an estimate scaled
-off a recorded ratio and not a reading**, and the build task must replace it
-with a real one. Nothing here needs the 300 ms escape hatch Sudoku had to
-build.
+in the same place.
+
+**The GDScript reading is now real, and it is the third reading of this
+generator.** `tests/_probe_fairy_gen.gd` over **200 seeds a band**, run twice
+on 2026-09-20, both readings quoted because one off this Mac is worth
+nothing:
+
+| Band | Attempts mean | Attempts worst | `build()` mean | `build()` worst | Proved |
+| --- | --- | --- | --- | --- | --- |
+| Easy 5x5 | 1.170 | 3 | 0.411 / 0.411 ms | 1.051 / 1.054 ms | 200/200 |
+| Medium 6x6 | 1.320 | 5 | 0.680 / 0.711 ms | 2.792 / 2.888 ms | 200/200 |
+| Hard 7x7 | 1.445 | 4 | 1.117 / 1.120 ms | 3.416 / 3.489 ms | 200/200 |
+
+The attempt counts are identical between the two runs, because the seeds are
+the seeds; only the clock moved, and it moved by under 5%. **The worst whole
+build measured in GDScript is 3.5 ms at 7x7**, which is roughly twelve times
+the JavaScript mean rather than the seven the estimate scaled by -- so the
+estimate's *band* (single-digit milliseconds, worst case included) was right
+and its ratio was optimistic. Nothing here needs the 300 ms escape hatch
+Sudoku had to build; even three times slower on a phone this is under 11 ms,
+one frame. The attempt means are a fourth independent agreement with the 1.27
+/ 1.36 / 1.48 and 1.28 / 1.31 / 1.44 above, off a different RNG.
 
 ### 4.4 The fallback
 

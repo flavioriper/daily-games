@@ -2360,7 +2360,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Grow a spanning tree</b> over every cell, rooted at the post, with randomised Prim off the day seed. (For an even-sided grid the post is one of the four middle cells, picked from the same seed.)</li>
     <li><b>Run the propagate-only solver.</b> Each cell starts with the <em>distinct</em> rotations of its own shape as candidates &mdash; four for a stub, an elbow and a tee, two for a straight, one for a cross. An edge to off-grid is closed, so any candidate with a stub pointing into the wall is struck out. Whenever every remaining candidate of a cell agrees about an edge, that edge is <b>proven</b> open or closed, and the neighbour's candidates are filtered to match. Iterate to a fixpoint.</li>
     <li><b>If every cell is down to one candidate, the board is guess-free</b> &mdash; and that one candidate <em>is</em> the answer, because the answer was in the set to begin with and filtering only ever removes what cannot be. If any cell still has two, re-roll the tree.</li>
-    <li><b>Then scramble</b>, and only then: every non-cross piece takes a random rotation, and a scramble that came out with fewer than 60% of the turnable pieces out of place is thrown back rather than shipped.</li>
+    <li><b>Then scramble</b>, and only then: every non-cross piece takes a random rotation, and a scramble that came out with fewer than 60% of the turnable pieces out of place is thrown back rather than shipped. <b>The deal is capped at 25% of cells live</b> as well, and re-rolled otherwise, so the garden always opens dark and the post reads as the one place the power comes from &mdash; without that ceiling one 6&times;6 seed opened with a third of the field already gold and another with nothing lit but the post.</li>
   </ol>
   <p><b>The solver is deliberately weaker than a good player.</b> It never reasons "that would make a loop" or "that would strand a corner", which a human does all the time. Weaker is the point: a board this solver can finish is a board nobody has to guess on, with room to spare.</p>
   <div class="decide"><b>How the tree is grown is the whole cost of the promise, and it was measured rather than assumed.</b> Over <b>20,000 trees a band</b>:
@@ -2379,6 +2379,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   </table>
   <p><b>Read twice, and both readings are here.</b> Those figures are a standalone probe of the algorithm over 2,000 seeds a band; <b>the mock on this page was then measured on its own caption</b> over 400 seeds a band and came back at <b>1.28, 1.31 and 1.44</b> mean, median 1 and worst 5 at every band. Two probes, the same answer; neither is quoted without the other.</p>
   <p><b>Guess-free trees are not rare at 7&times;7, and the spec should record that plainly</b>, because it was the open risk when this page was started. The whole build &mdash; every re-roll included &mdash; costs <b>0.053, 0.059 and 0.093&nbsp;ms</b> in JavaScript on this Mac, against Sudoku's 9&nbsp;ms for its generator in the same place. Sudoku's GDScript port came out roughly seven times slower than its JavaScript on the mean, so the honest estimate for this one is <b>single-digit milliseconds in GDScript, worst case included</b> &mdash; nowhere near a budget, and nothing here needs the 300&nbsp;ms escape hatch Sudoku had to build. That estimate is scaled off a recorded ratio and is not a reading; it should be replaced with a real one when the board is built.</p>
+  <p><b>It has been.</b> <code>tests/_probe_fairy_gen.gd</code>, 200 seeds a band, run twice on 2026-09-20 and both readings quoted: attempts mean <b>1.170, 1.320, 1.445</b> (worst 3, 5, 4), whole <code>build()</code> mean <b>0.411, 0.680&ndash;0.711 and 1.117&ndash;1.120&nbsp;ms</b>, worst <b>1.05, 2.89 and 3.49&nbsp;ms</b>, and <b>600 of 600 boards proved</b>. The estimate's band was right and its ratio was optimistic &mdash; the real port is about twelve times the JavaScript mean, not seven &mdash; and 3.5&nbsp;ms worst case is still one frame even on a phone three times slower.</p>
   <p>The re-roll budget is 400 attempts and, having never been approached in 6,000 measured boards, it exists only so a pathological seed cannot hang the board opening: past it the board plays the last tree it grew rather than blocking, exactly as Sudoku hands back <code>graded: false</code>.</p>
 
   <h3>5. Colour <span class="pill">proposed</span></h3>
@@ -13360,16 +13361,26 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(!mask) mask=tree(rng);   // the budget ran out: play it anyway rather than block the board
     sol=mask.slice();
     // Then scramble. A cross is already every way round, so it is left
-    // alone; everything else takes a random rotation, and a scramble that
-    // came out mostly right is thrown away rather than shipped.
+    // alone; everything else takes a random rotation. Two conditions on the
+    // deal, each re-rolled rather than shipped: at least 60% of the turnable
+    // pieces out of place, so the board is not most of the way solved before
+    // it is touched, and -- spec 4.5 -- at most 25% of cells live, so the
+    // garden opens dark and the post is visibly where the power is. Without
+    // the second, one 6x6 seed opened with a third of the field gold.
+    // Capped, and the least-bad deal seen is taken rather than spinning.
     scrambleTries=0;
-    for(let a=0;a<40;a++){
+    let best=null,bestMiss=-1;
+    for(let a=0;a<200;a++){
       scrambleTries++;
       cur=sol.map(m=>{const rs=rots(m); return rs.length===1?m:rs[(rng()*rs.length)|0];});
       let turnable=0,wrong=0;
       for(let i=0;i<n*n;i++){ if(rots(sol[i]).length>1) turnable++; if(cur[i]!==sol[i]) wrong++; }
-      if(wrong>=Math.ceil(turnable*0.6)) break;
+      let lit=0; for(const v of reach()[0]) if(v) lit++;
+      const miss=Math.max(0,Math.ceil(turnable*0.6)-wrong)+Math.max(0,lit-((n*n*0.25)|0));
+      if(miss===0){best=cur; break;}
+      if(bestMiss<0||miss<bestMiss){bestMiss=miss; best=cur.slice();}
     }
+    cur=best.slice();
     start=cur.slice();
     paper=sol.map((m,i)=>(hash(i,sd)*997|0)%PAPER.length);
     pin=new Array(n*n).fill(0); spinAt=new Array(n*n).fill(-1e9); spinQ=new Array(n*n).fill(0);
