@@ -122,10 +122,15 @@ grows an answer and then proves the clues admit only that answer.
    -- never appears on this screen.
 5. **Prove it.** A solver runs range propagation over every lane (each pair's
    `lo..hi` narrowed by each islet's remaining need, its still-open
-   directions, and the lanes a laid run now blocks), plus the standard rule
-   that refuses closing an island-group while islets remain outside it. Then
-   a DFS counts answers and **stops at two**. A board with a second answer is
-   thrown away and the grow restarts.
+   directions, and the lanes a laid run now blocks), plus **the group rule**,
+   which has two halves and needs both. Flood the islets over the lanes that
+   must carry at least one plank; if that leaves more than one group, then a
+   group with **no** way out still open is a contradiction, and a group with
+   **exactly one** way out must take it. The first half is the connectivity
+   rule as most people state it; **the second half is what pins lanes without
+   a guess**, and dropping it moves the guess-free rates off 100/81/69 by a
+   wide margin. Then a DFS counts answers and **stops at two**. A board with a
+   second answer is thrown away and the grow restarts.
 6. **Grade.** The generator records how far pure propagation gets before the
    first guess. **Band 0 must need no guess at all**; the other two may.
 
@@ -157,6 +162,18 @@ against 1.1) and cost the hard band 70 attempts and 41 ms against 7.3 and
 | 7x7 | 3.0 mean, 13 worst | 54% | 100% (required) | 100% | 0.41 ms mean, 5.3 ms worst |
 | 9x9 | 3.9 mean, 19 worst | 70% | 82% | 94% | 0.33 ms mean, 2.1 ms worst |
 | 11x11 | 6.8 mean, 47 worst | 82% | 71% | 87% | 0.93 ms mean, 7.0 ms worst |
+
+**The port then reproduced them**, which is the reason this table is left
+standing rather than replaced. 200 boards a band in GDScript, two sequential
+readings: attempts 3.26 / 4.14 / 6.71 mean and 19 / 20 / 53 worst against the
+mock's 3.0 / 3.9 / 6.8 and 13 / 19 / 47; second answers rejected on 53% / 72%
+/ 84% against 54% / 70% / 82%; guess-free on 100% / 81% / 68.5% against 100%
+/ 82% / 71%. Every figure within two points of a different language's
+implementation of the same rules, which is a stronger statement about the
+solver than either run alone. **Worst case 14.4 / 13.9 / 56.7 ms against the
+194 ms gate** -- 3.4x of headroom on the hard band. The port's solver was
+also cross-checked the way the mock's was, against an independent counter
+with no propagation and no group rule, on 102 boards: 0 mismatches.
 
 The uniqueness claim is **cross-checked rather than asserted**: on 380 boards
 an independent counter -- a plain DFS over every lane with no propagation and
