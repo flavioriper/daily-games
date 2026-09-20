@@ -31,6 +31,7 @@ const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
+const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
@@ -128,6 +129,12 @@ func _build() -> void:
 			# No cast: the three marks are the whole picture, and _draw lays
 			# them and the band under them, so this branch seats nothing.
 			pass
+		"mushroom":
+			# Two mushrooms on the turf strip _draw lays under them, the tile
+			# and its numeral drawn beside them. `sprig` stays false: it marks
+			# a mushroom a hint planted, which would be a lie on a card.
+			_seat(MushroomFace.new(), 62.0, -104.0, 0.0)
+			_seat(MushroomFace.new(), 48.0, -26.0, 10.0)
 		_:
 			pass
 
@@ -147,6 +154,7 @@ func _draw() -> void:
 		"queens": _draw_regions()
 		"pipes": _draw_pipes()
 		"hiddenword": _draw_letters()
+		"mushroom": _draw_patch()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -287,6 +295,20 @@ func _draw_letters() -> void:
 	for i in 3:
 		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
 		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
+
+## Mushroom Patch: the turf strip the pair stands on -- TURF_REACH, the same
+## pale meadow a covered cell wears on the board itself, so the card and the
+## field read as one screen -- and, beside them, a cream SURFACE tile
+## carrying a number. The numeral is written in LEAF_DEEP rather than TEXT: a
+## turned-over cell's own ink is TEXT, but LEAF_DEEP is what a number turns
+## the moment its count is satisfied, and that is the hint worth giving on a
+## card for a board nobody has played yet. The tile stays SURFACE rather than
+## washing toward LEAF, because a fully green tile would claim a solved board
+## rather than hint at the mechanic.
+func _draw_patch() -> void:
+	_round(-150.0, 20.0, 195.0, 50.0, 16.0, Pal.TURF_REACH)
+	_round(70.0, -38.0, 76.0, 76.0, 14.0, Pal.SURFACE)
+	_text("3", 108.0, 12.0, 42.0, Pal.LEAF_DEEP)
 
 ## Pipes is the one `soon` card left: no flat board, so no cast to borrow.
 ## It is one small drawing, sized to say what the puzzle is at a glance and
