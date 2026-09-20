@@ -39,6 +39,7 @@ func _initialize() -> void:
 		"bridges": "res://tests/test_bridges.gd",
 		"quilt": "res://tests/test_quilt.gd",
 		"quilt_board": "res://tests/test_quilt_board.gd",
+		"pinwheel_gen": "res://tests/test_pinwheel_gen.gd",
 	}
 	for suite_name in suites:
 		_t.current = suite_name
