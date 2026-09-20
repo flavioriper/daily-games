@@ -17,12 +17,14 @@ extends Control
 ## Rings, and for the same reason: none of those boards has a character at
 ## all. Four of the five are entirely `_draw` -- tiles for the first, a
 ## ruled three-by-three fragment with numerals for the second, a sea with
-## islets on it for the third and a part-sewn blanket for the fourth -- and
-## none of those four has a branch of `_build`. Rings is the exception that
-## borrows no character and still has a `_build` branch: like Word Trail's
-## field it draws into a plain child `Control` of its own, because its
-## picture is one mesh with no furniture under it for the top `_draw` match
-## to add.
+## islets on it for the third and a part-sewn blanket for the fourth.
+## **Three of those four have no branch of `_build`**; Bridges keeps an
+## empty one, an explicit `pass` under a comment, so that a reader who
+## wonders where its islets are seated learns that nothing is. Rings is the
+## one that borrows no character and still has a `_build` branch doing real
+## work: like Word Trail's field it draws into a plain child `Control` of
+## its own, because its picture is one mesh with no furniture under it for
+## the top `_draw` match to add.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered

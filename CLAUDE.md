@@ -123,7 +123,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   over the seam between the grid and the bottom bar as its own paper pill,
   an overlay on `_list_root` the way `_toast` already is, never a row of the
   column, so a card stays 252 whether or not a second page exists. A short
-  last row (fourteen over twelve leaves two) needs invisible
+  last row (seventeen over twelve leaves five) needs invisible
   `SIZE_EXPAND_FILL` filler `Control`s padded out to the column count, or
   `GridContainer` hands the real cells the empty column's leftover width and
   a lone card comes out 334 wide instead of 320.
@@ -161,11 +161,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   plus whatever furniture they stand on drawn under them. Twelve of the
   seventeen are almost entirely reuse; the five that borrow nothing are
   Nonogram, Sudoku, Bridges, Quilt and Rings, none of which has a character
-  to borrow. Four of those five have no branch of `_build` at all; **Rings
-  is the exception, and it is Word Trail's exception rather than a new
-  one** -- it seats no character and has no furniture either, so its whole
-  picture is one mesh drawn into a plain child `Control` its `_build`
-  branch wires up, and the top `_draw` match has nothing to add for it.
+  to borrow. Three of those five have no branch of `_build` at all;
+  **Bridges has one that does nothing** -- an explicit `pass` with a comment
+  on it, so the next reader knows the omission was decided rather than
+  forgotten -- and **Rings has one that does the whole picture**, which is
+  Word Trail's exception rather than a new one: it seats no character and
+  has no furniture either, so its picture is one mesh drawn into a plain
+  child `Control` its `_build` branch wires up, and the top `_draw` match
+  has nothing to add for it.
   **Quilt's is
   the board's own drawing rather than a second one**: the card and the
   board both lay their patches through `ui/faces/patch_cloth.gd`, so they
@@ -908,7 +911,7 @@ and `#rings`.
   seeds a band: **0 of 600 deals unsolvable**, worst search 82 / 126 / 267
   nodes by band, solution lengths mean 22 / 30 / 38. Measured in
   **GDScript, headless on this Mac**, twelve seeds a band and three separate
-  runs: band 0 mean 0.4 / 0.7 / 0.5 ms and worst 0.7 / 8.0 / 0.9; band 1
+  runs: band 0 mean 0.4 / 1.8 / 0.5 ms and worst 0.7 / 8.0 / 0.9; band 1
   mean 0.7 / 1.0 / 0.8 and worst 1.3 / 1.9 / 1.5; band 2 mean 0.9 / 1.3 /
   1.0 and worst 1.2 / 2.2 / 1.3. The 8.0 is the one unflattering reading in
   the set and it is quoted rather than dropped -- it is a first-call outlier
@@ -1084,13 +1087,16 @@ and `#rings`.
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in seventeen screens three have earned one: One Line's
+  drawing a new character -- in seventeen screens only **two characters**
+  have been earned: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
-  bee is the one thing that board seats, and Quilt's cloth
-  (`ui/faces/patch_cloth.gd`), which is the odd one out and is covered at
-  the end of this bullet: it is a drawing rather than a character. Nonogram
+  bee is the one thing that board seats. A third file lives in `ui/faces/`
+  without being a third character: Quilt's cloth
+  (`ui/faces/patch_cloth.gd`) is a **drawing** rather than a character, for
+  the reasons at the end of this bullet -- so the directory holds three
+  additions and the cast has grown by two. Nonogram
   went the other way and
   drew **no** character at all: its
   pieces are tiles and its clues are numbers, so the only face on the screen
