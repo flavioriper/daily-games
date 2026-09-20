@@ -37,6 +37,12 @@ extends SceneTree
 ## button, `solve` types the day's own word, and `over` spends all six rows so
 ## the strip catches the keyboard leaving and the sprout bringing the word.
 ##
+## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
+## strip shows the selection's washes, a digit dropping in and the wave the
+## finished row runs from the cell that closed it. `tap` after the id writes
+## one digit and closes nothing, which is the lone placement to compare it
+## against.
+##
 ## `rm` anywhere after the id sets `Motion.reduce` **before the board opens**
 ## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
 ## pixel for pixel: under reduce motion nothing on a settled board may move.
@@ -168,6 +174,8 @@ func _process(delta: float) -> bool:
 			_tap_queens()
 		elif _entry.id == "hiddenword" and not _empty:
 			_type_hiddenword()
+		elif _entry.id == "sudoku" and not _empty:
+			_tap_sudoku()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -304,8 +312,46 @@ func _six_wrong() -> Array[String]:
 			out.append(candidate)
 	return out
 
-## One tap on a key of the keyboard tray, found by the name key_board.gd
-## gives it.
+## Sudoku: the emptiest row closed off, a cell selected and a digit written
+## through the real pad, so the strip shows the washes under the selection,
+## the digit dropping in and **the wave** -- the row lighting up in gold from
+## the cell that finished it outwards, which is this board's signature and
+## the one thing a still frame of it has to catch. `empty` measures the bare
+## board instead, and `tap` writes one digit without closing anything, which
+## is the frame to compare a lone placement against.
+func _tap_sudoku() -> void:
+	var p = _puzzle
+	if _mode == "tap":
+		for i in 81:
+			if p.state.grid[i] == 0:
+				_write_sudoku(i)
+				return
+		return
+	# The row with the fewest holes: filling it is one wave and few taps.
+	var row := 0
+	var fewest := 99
+	for r in 9:
+		var holes := 0
+		for c in 9:
+			if p.state.grid[r * 9 + c] == 0:
+				holes += 1
+		if holes > 0 and holes < fewest:
+			fewest = holes
+			row = r
+	for c in 9:
+		var i: int = row * 9 + c
+		if p.state.grid[i] != 0:
+			continue
+		_write_sudoku(i)
+
+## One cell selected and its answer written, both through real touches: the
+## pair of taps is the only way anything gets into this grid.
+func _write_sudoku(i: int) -> void:
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(i / 9, i % 9))
+	_tap_key("Digit%d" % (int(_puzzle.state.sol[i]) - 1))
+
+## One tap on a key of the keyboard tray or a chip of the digit pad, found by
+## the name that tray gives it.
 func _tap_key(name: String) -> void:
 	if _host.tray == null:
 		return

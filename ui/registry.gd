@@ -2,13 +2,18 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: twelve cards, three across and four down, in the
-## order they are drawn. Eleven of them open a flat board; the last names a
-## board that has never been drawn flat and says `soon` instead of opening
-## (ui/menu.gd draws it dimmed with no go button). Snake Apple's `soon` card
-## left the grid on 2026-09-19 to make room for Queens, and Horse Pen's left
-## the same day for Hidden Word: both are being redesigned outright, and
-## their island boards stay under More.
+## `PUZZLES` is the grid: **thirteen cards over two pages**, twelve on the
+## first -- three across and four down -- and the thirteenth alone on the
+## second, in the order they are drawn. Twelve on a page is not a taste: it
+## is what 80 of margin, 60 of gaps, a 380 header, a 180 day row and a 150
+## bar leave for four rows of 252, so the thirteenth card bought its seat
+## from the day row's pager rather than out of the pictures (spec
+## 2026-09-20-sudoku-flat-design.md, section 9). Twelve of the thirteen open
+## a flat board; one names a board that has never been drawn flat and says
+## `soon` instead of opening (ui/menu.gd draws it dimmed with no go button).
+## Snake Apple's `soon` card left the grid on 2026-09-19 to make room for
+## Queens, and Horse Pen's left the same day for Hidden Word: both are being
+## redesigned outright, and their island boards stay under More.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -195,6 +200,27 @@ const PUZZLES := [
 		"short": "Route the water\nuphill with pumps.",
 		"soon": true,
 		"legacy": "pipes_island",
+	},
+	# --- page two. Sudoku is the thirteenth entry and it displaces nothing:
+	# twelve is what four rows of 252 buy, so the grid grew a second page
+	# rather than a shorter card (spec 2026-09-20-sudoku-flat-design.md,
+	# section 9). It stays last so page one keeps exactly the twelve cards it
+	# has, in exactly the order it has them.
+	{
+		"id": "sudoku",
+		"kind": "puzzle",
+		"title": "Sudoku",
+		"blurb": "Every number once in every row, column and region.",
+		"short": "Every number once,\nevery way you look.",
+		"motto": "Every number has its place",
+		"footer": "Scan · Place · Complete",
+		# Ten chips -- 1 to 9 and the pencil -- so it asks for the digit pad.
+		# Everything else is the default: it keeps the actions row and the tip
+		# card, which makes it the plainest board in the registry to wire.
+		"script": "res://puzzles/sudoku2d.gd",
+		"shell": "flat",
+		"tray": "digits",
+		"difficulties": [0, 1, 2],
 	},
 ]
 

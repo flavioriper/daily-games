@@ -89,6 +89,8 @@ func _note(id: String) -> String:
 			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
 			"row" if _puzzle.state.rows.size() == 1 else "rows",
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
+			81 - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -110,6 +112,7 @@ func _solve(id: String) -> void:
 		"nonogram", "nonogram_island": _solve_nonogram()
 		"queens": _solve_queens()
 		"hiddenword": _solve_hiddenword()
+		"sudoku": _solve_sudoku()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -526,8 +529,35 @@ func _solve_hiddenword() -> void:
 		_tap_key("Key_%s" % word[i].to_upper())
 	_tap_key("Key_Enter")
 
-## One tap on a key of the keyboard tray, found by the name key_board.gd
-## gives it.
+## Sudoku: one hint and one Check off the real HUD, then the day's own answer
+## a cell at a time -- a touch on the cell to select it and a touch on the
+## pad's own chip to write the digit. That pair is the only way anything gets
+## into this grid, so a pad whose chips were laid out or named wrongly fails
+## here rather than passing on a poke at the state. The hint fills its cell
+## with the answer, so the loop below steps over it with no special case.
+func _solve_sudoku() -> void:
+	# Board fit check: every cell centre must land inside the board slot.
+	var Gen = load("res://puzzles/sudoku_gen.gd")
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in Gen.N:
+		for c in Gen.N:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	for i in Gen.CELLS:
+		if _puzzle.is_done():
+			return
+		var d: int = _puzzle.state.sol[i]
+		if _puzzle.state.grid[i] == d:
+			continue
+		_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
+		_tap_key("Digit%d" % (d - 1))
+
+## One tap on a key of the keyboard tray or a chip of the digit pad, found by
+## the name that tray gives it.
 func _tap_key(key_name: String) -> void:
 	if _host.get("tray") == null:
 		return
