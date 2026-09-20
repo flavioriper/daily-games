@@ -240,6 +240,12 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-menu .refs img{border-radius:14px}
 #tab-menu .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #mn-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat quilt mock extras ---------- */
+#tab-quilt .phone{background:#f6efe3}
+#tab-quilt .phone canvas{touch-action:none;cursor:grab}
+#tab-quilt .refs figure{margin:0}
+#tab-quilt .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#ql-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -267,6 +273,8 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="sudoku">Sudoku &middot; flat</button>
     <button data-tab="rings">Rings &middot; flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
+    <button data-tab="bridges">Bridges · flat</button>
+    <button data-tab="quilt">Quilt &middot; flat</button>
   </nav>
 </header>
 
@@ -2407,6 +2415,285 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Whether easy is too easy.</b> Handing 45% of the carved numbers back makes a 6&times;6 nearly a reading exercise. The knob is one constant.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the difficulty (medium by default), <code>?part=1</code> for three mushrooms planted and four pebbles laid, <code>?wrong=1</code> for one mushroom on bare ground, <code>?tap=r,c</code> to tap a cell with the armed chip at <code>?at=</code> seconds (0.2 by default; a turned-over cell shows the refusal) and <code>?tap2=r,c</code> at <code>?at2=</code>, <code>?hint=1</code>, <code>?check=1</code>, <code>?reset=1</code> and <code>?solve=1</code> to fire those at <code>?at=</code>, <code>?undo=1</code> at <code>?at2=</code>, <code>?win=1</code> for the win screen, <code>?rm=1</code> for reduce motion, <code>?seed=</code>, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-motion can be shot; pick the tab with <code>#mushroom</code>.</p>
+</section>
+
+<!-- ============================ BRIDGES ============================ -->
+<section class="tab-panel" id="tab-bridges">
+  <h2>Bridges &middot; flat, the thirteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A sea with islets in it, each showing how many plank-ends it wants. Press an islet, drag at the one facing it across the water, and a run of planks drops in; drag again for a second and a third. Runs are straight, orthogonal and <b>never cross</b>, and when every number is met <b>and every islet is on one network</b>, the light runs out along the planks from the islet you finished at. The game is Hashiwokakero; <b>the name here is Bridges</b>, which is what every puzzle book outside Japan already calls it.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption><b>There is no mock for this board</b>, and the screen below was drawn straight from the family's chrome, which twelve screens now share: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout in the tip card that names the rule a drag just broke. Bridges keeps <em>all</em> the rows &mdash; top bar, day card, board, actions, tip &mdash; which makes it the plainest shape on the shelf: a 290 bottom slot, the same as Shikaku's, Tents', Light Up's and One Line's. Everything it adds is inside the board card: the sea.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="bg" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="bg-rm">Reduce motion: off</button>
+        <button id="bg-diff">Easy &middot; 7&times;7</button>
+        <button id="bg-new">New puzzle</button>
+        <button id="bg-hint">Hint</button>
+        <button id="bg-undo">Undo</button>
+        <button id="bg-reset">Reset</button>
+        <button id="bg-check">Check</button>
+        <button id="bg-solve">Solve it</button>
+        <button id="bg-peek">Show the answer</button>
+      </div>
+      <div id="bg-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>press an islet and drag</b> at a neighbour to cycle its run 0&ndash;1&ndash;2&ndash;3&ndash;0, <b>tap a run</b> to wipe it, and a drag that finds nothing or runs into another run is refused with the rule said out loud. It plays the <b>real generator</b> and the <b>real solver</b> &mdash; the board is grown, then proved unique by a propagating solver that counts to two and stops, and a board with a second answer is thrown away and regrown. The caption under the phone says how many attempts the day's board took, how long it took and how far propagation got before a guess was needed.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>BRIDGES</code> in ink with the leaf sprouting from it and <code>JOIN EVERY ISLET</code> under, then Undo, Hint with its count and Settings. <b>Four buttons</b>, the ordinary number: <code>capabilities()</code> is <code>["undo","hint","check"]</code> and Check lives in the actions row, so Reset does not have to come up here.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 9", "Otter Reach".</td></tr>
+    <tr><td class="k">Board card</td><td>1190</td><td>The sea and the lattice. Section 2.</td></tr>
+    <tr><td class="k">Actions</td><td>130</td><td>Reset and Check, 260 each &mdash; Light Up's row exactly. Check is worth keeping here: nothing on this board says whether a run is <em>right</em>, and an over-filled islet is the only mistake the board itself shows.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet.</td></tr>
+  </table>
+  <p>40 of margin, four 20 gaps and the five rows are 1920 exactly, which is where the board card's 1190 comes from &mdash; and the bottom slot is <b>290</b>, actions and tip together, which is already the shape of four other screens.</p>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p>The card is paper with a <b>sea</b> set into it: a rounded pool inset 28, pale water over a deeper bottom edge, a paler band inside the rim for the shallows and a few ripples over it. <b>The sea is deliberately pale</b> &mdash; see section 5; it was <code>Pal.WATER</code> at full strength until 2026-09-20 and it shouted over the other twelve boards. The lattice is square and the pool is tall, so <b>the width binds at every band</b> &mdash; <code>cell = (944 &minus; 24)/n</code> is 131, 102 and 84 &mdash; and the 920-wide field leaves <b>214</b> of the pool over, halved to <b>107 above and 107 below</b>. That is <code>card_centred()</code> returning true, for Tents' and Light Up's reason: a square grid in a tall slot has slack however it is cut, and air only under it reads as a mistake.</p>
+  <table>
+    <tr><th style="width:12%">Band</th><th style="width:12%">Lattice</th><th style="width:9%">Cell</th><th style="width:10%">Islets</th><th style="width:12%">Lanes</th><th style="width:12%">Runs in it</th><th>Decoy lanes &middot; crossing pairs</th></tr>
+    <tr><td class="k">Easy</td><td>7 &times; 7</td><td>131</td><td>11</td><td>11.3</td><td>10.3</td><td>1.0 &middot; 1.0</td></tr>
+    <tr><td class="k">Medium</td><td>9 &times; 9</td><td>102</td><td>16</td><td>18.2</td><td>15.7</td><td>2.5 &middot; 2.7</td></tr>
+    <tr><td class="k">Hard</td><td>11 &times; 11</td><td>84</td><td>24</td><td>29.7</td><td>24.0</td><td>5.7 &middot; 7.5</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Means over 500 generated boards a band. A <b>lane</b> is a pair of islets facing each other with only water between; a <b>decoy lane</b> is one the answer leaves empty; a <b>crossing pair</b> is two lanes that want the same water, which is the only place the no-crossing rule can ever bite.</p>
+  <p>An islet is a turf disc 0.80 of a cell across on a <code>Pal.STONE</code> sand rim, with <code>Pal.ACORN</code> darkened for the wet edge under it and its number in <code>Pal.TEXT</code>. A plank is <code>Pal.DECK</code> over a <code>Pal.WOOD_DEEP</code> bottom edge, 0.115 of a cell thick with 0.095 between, so three planks and their gaps are 0.59 of a cell &mdash; comfortably inside the islet they run between, at every band.</p>
+
+  <h3>3. The rules <span class="pill">proposed</span></h3>
+  <ul>
+    <li><b>A run joins two islets that face each other orthogonally</b> with only water between them, and it is 0, 1, 2 or 3 planks. Never diagonal, never bent.</li>
+    <li><b>A lane ends at the first islet it meets.</b> A run can never pass over an islet, which is why the third islet in a row is never the one a drag finds.</li>
+    <li><b>Runs may not cross.</b> A drag down a lane whose water another run already holds is refused, and the tip card says so; the run in the way flashes with it.</li>
+    <li><b>An islet's number is how many plank-ends it wants</b> &mdash; two planks to one neighbour count two. Numbers run 1 to 6.</li>
+    <li><b>Solved is two things at once:</b> every number exactly met <em>and</em> every islet on one single network. Meeting every number and leaving two separate rings is the classic near-miss, and this board will let you sit in it.</li>
+    <li><b>Nothing is ever refused for being wrong</b>, only for being impossible. An islet may be over-filled &mdash; it turns red and shivers and the board waits.</li>
+  </ul>
+
+  <h3>4. Generation: grow the answer, then prove it unique <span class="pill">proposed</span></h3>
+  <p>There is no hole-punching pass and no clue-stripping loop, because an islet's number <em>is</em> its degree in the network that was grown. The clues are complete by construction, and the only question left is whether some <em>other</em> network satisfies them.</p>
+  <ol>
+    <li><b>Grow.</b> One islet at random, then repeatedly: pick an islet already placed, a direction, a distance of 2 to 5, and a run of 1 to 3 planks. Refuse anything that crosses a run already laid, lands on or passes over a cell that is taken, touches another islet side-on, or pushes a degree over 6. Stop at the band's count. <b>Connected by construction</b>, and no islet is ever adjacent to another, so a lane always has water in it.</li>
+    <li><b>Close some loops.</b> The growth above lays exactly one run per new islet, so on its own it can only ever build a <b>tree</b> &mdash; and a tree is a thin Hashiwokakero, where connectivity never bites and no lane is ever a decoy. So a second pass joins a few pairs that already face each other, if nothing is in the way and no degree goes over 6. That pass is worth about one extra run on easy and one on hard; it is limited by the degree cap, not by the number asked for.</li>
+    <li><b>Centre it, and make it reach.</b> The walk starts on one cell and wanders, so a grown network can sit in a corner with two rows of open sea under it. It is slid so its bounding box is centred &mdash; nothing moves relative to anything else, so every lane, every crossing and the answer are untouched &mdash; and a board whose box does not come within one row <em>and</em> one column of the lattice's edges is thrown back. Centring alone is not enough: it only moves the empty water to the other side. Measured against the same loop without it, the reach test costs <b>a tenth of an attempt on easy and half an attempt on hard</b> &mdash; 2.9 to 3.0, 3.5 to 3.9, 6.3 to 6.8.</li>
+    <li><b>Clues.</b> Each islet's degree, capped at 6 by the growth.</li>
+    <li><b>Solve.</b> Per-run range propagation: every lane carries a <code>lo..hi</code>, an islet narrows every lane it touches against its own number and what its other lanes can still take, a lane that is certainly there closes every lane that would cross it, and <b>a group of islets already joined may not be closed off before every islet is in it</b> &mdash; if such a group has exactly one way out, that way is forced; if it has none, the branch is dead. Then a DFS over whatever is still open, <b>counting solutions and stopping at two</b>.</li>
+    <li><b>Reject.</b> A grown board with a second answer is thrown away and the next one grown, up to 200 attempts.</li>
+    <li><b>Grade.</b> The solver records how many lanes pure propagation pins before the first guess. <b>Band 0 additionally must need no guess at all</b>; bands 1 and 2 take what they get, and the caption reports it.</li>
+  </ol>
+  <h4>Measured, 500 seeds a band</h4>
+  <table>
+    <tr><th style="width:14%">Band</th><th style="width:12%">Built</th><th style="width:16%">Attempts</th><th style="width:20%">Second answer rejected</th><th style="width:18%">No guess needed</th><th>Time to generate</th></tr>
+    <tr><td class="k">Easy 7&times;7</td><td>500/500</td><td>3.0 mean, 13 worst</td><td>54% of grown boards</td><td>required &mdash; 100%</td><td>0.41 ms mean, <b>5.3 ms worst</b></td></tr>
+    <tr><td class="k">Medium 9&times;9</td><td>500/500</td><td>3.9 mean, 19 worst</td><td>70%</td><td>82%, 94% of lanes pinned</td><td>0.33 ms mean, <b>2.1 ms worst</b></td></tr>
+    <tr><td class="k">Hard 11&times;11</td><td>500/500</td><td>6.8 mean, 47 worst</td><td>82%</td><td>71%, 87% of lanes pinned</td><td>0.93 ms mean, <b>7.0 ms worst</b></td></tr>
+  </table>
+  <p><b>The uniqueness is cross-checked, not asserted.</b> On <b>380</b> of those boards &mdash; 150 easy, 150 medium, 80 hard &mdash; a second, independent counter with no propagation and no connectivity rule in it, a plain depth-first enumeration over every lane, agreed on the count every time: <b>0 mismatches</b>, and the grown answer itself verified as a legal solution on all 380. The rejection is doing real work rather than decorating the loop: on the hard band <b>four grown boards in five carry a second answer</b> and are thrown away.</p>
+  <p>That is node on this Mac, which is the same V8 the page runs in; the Godot port has a ~194 ms budget and the worst case here is <b>7.0 ms</b>, so there is room for GDScript to be twenty times slower and still not be seen. The one figure worth watching in the port is <b>attempts</b>, not milliseconds: a hard board takes 6.8 grow-and-solve rounds on average and took 47 once in five hundred.</p>
+
+  <h3>5. Colour <span class="pill">proposed</span></h3>
+  <p><b>Every colour on this screen is already in <code>core/palette.gd</code>.</b> Nothing was invented for it, which is unusual for a board that introduces a new surface.</p>
+  <table>
+    <tr><th style="width:26%">Thing</th><th style="width:26%">Colour</th><th>Note</th></tr>
+    <tr><td class="k">The sea</td><td><code>mix(WATER_HI, PAPER, 0.46)</code><br>#a4cde6</td><td><b>Pale on purpose</b>, decided 2026-09-20. It was <code>WATER</code> #2f8fd6 and it was the loudest surface in the game: saturation 0.78 against a set of warm muted pastels, and it made the card shout over the other twelve. Letting <code>WATER_HI</code> down into <code>PAPER</code> takes it to <b>saturation 0.29 at value 230</b> and warms it by the paper in it, which is what <code>docs/art/shading-direction.md</code> asks for &mdash; depth through colour rather than contrast.</td></tr>
+    <tr><td class="k">The shallows</td><td><code>mix(WATER_HI, PAPER, 0.74)</code><br>#cfdfe4</td><td>A band inside the pool's rim at 0.85. It has to be <em>paler</em> than the open water now, so it is the same mix taken further into the paper &mdash; saturation 0.09, barely a colour at all, which is what a sandbar looks like.</td></tr>
+    <tr><td class="k">The pool's edge</td><td><code>mix(WATER_HI, TEXT, 0.20)</code><br>#5896c2</td><td>The 9 of darker water along the bottom, the soft edge every card in the family has.</td></tr>
+    <tr><td class="k">The ripples</td><td><code>Pal.WATER</code> #2f8fd6 at 0.24</td><td><b>The old sea's colour is the new sea's mark.</b> A ripple has to be darker than the water it lies on; on the pale pool <code>WATER_HI</code> was invisible, and the palette's deep blue at a quarter alpha is exactly the soft coloured line the brief wants.</td></tr>
+    <tr><td class="k">Islet turf</td><td><code>Pal.BANK</code> #8cb050</td><td>The turf disc, with <code>mix(BANK, SURFACE, 0.26)</code> for the sun on it. It was mixed to a raw white before; <code>SURFACE</code> is the palette's own white and slightly warm, so the cap no longer reads as a specular hit.</td></tr>
+    <tr><td class="k">Sand rim</td><td><code>Pal.ACORN</code> #c99a63</td><td><b>Changed with the sea.</b> It was <code>STONE</code> #ede2cc, which is value 237 against a 230 sea &mdash; seven apart, and the islet lost its edge. <code>ACORN</code> sits <b>29 of value below the water</b> and warm against a cool ground, which is what draws the shape now. Under it, <code>mix(ACORN, TEXT, 0.22)</code> for the wet sand at the waterline.</td></tr>
+    <tr><td class="k">Planks</td><td><code>Pal.DECK</code> #b5825a</td><td>Over <code>Pal.WOOD_DEEP</code> for the bottom edge and the slats across it.</td></tr>
+    <tr><td class="k">Satisfied</td><td><code>Pal.GOOD</code> #7cb06b</td><td>A ring round the sand, and the number softened toward the paper. <b>Quiet on purpose</b>: on a hard board twenty-four islets go green and a loud green is a wall.</td></tr>
+    <tr><td class="k">Over-filled</td><td><code>Pal.BAD</code> #d9605a</td><td>Ring, turf washed toward it, number in it, and one shiver. The only mistake the board shows by itself.</td></tr>
+    <tr><td class="k">A refused lane</td><td><code>Pal.BAD</code> at 0.88, fading</td><td><b>A plain alpha blend again.</b> On the dark sea red at any alpha came back <em>mauve</em> &mdash; tried at 0.7 and at 0.9, a bruise both times &mdash; so the band had to be drawn solid and dissolved by mixing toward the water. A pale ground takes red honestly, so the band is an ordinary fade once more and one special case is gone.</td></tr>
+    <tr><td class="k">The lane under the finger</td><td><code>Pal.SUN</code> at 0.72</td><td>A torch beam down the water, with the islet it would reach ringed in <code>Pal.SUN</code> too. It went <code>SUN_RAY</code> 0.55 &rarr; 0.78 on the dark sea because half-strength yellow over <code>WATER</code> came back olive; on the pale sea the problem is the other way round &mdash; <code>SUN_RAY</code> is value 249 against a 230 ground and barely shows &mdash; so the beam is the deeper <code>SUN</code> at a lower alpha.</td></tr>
+    <tr><td class="k">The wave</td><td><code>DECK</code> mixed to <code>SUN_RAY</code></td><td>The lit plank, section 6.</td></tr>
+  </table>
+
+  <h3>6. Motion, and the network wave <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), drawn off the curve readers the way Light Up's and Nonogram's drawn pieces are. <b>Its signature is the wave on solve</b>, and the board needs four numbers of its own: <code>DROP_TIME</code> 0.26 s, <code>WAVE_STEP</code> 0.18 s from islet to islet, <code>WAVE_EDGE</code> 0.24 s for the light to cross one run, and <code>WIN_HOLD</code> 0.9 s.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The field pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) and each islet pops in on the diagonal stagger (<code>pop_in_scale</code>, <code>ENTER_STAGGER</code>).</td></tr>
+    <tr><td class="k">Dragging</td><td>The islet under the finger presses (<code>press_scale</code> 0.94); the lane to the islet it would reach lights, and that islet takes a ring. Swing to another direction and the beam swings with it.</td></tr>
+    <tr><td class="k">A plank lands</td><td><code>drop_in_lift</code> &mdash; it falls the last 40 into the water and settles.</td></tr>
+    <tr><td class="k">Satisfied</td><td>The islet bumps (<code>bump_scale</code>) and takes its green ring. Losing the number takes the ring back with no motion at all: undoing is not an event.</td></tr>
+    <tr><td class="k">Refused</td><td>The lane flashes in <code>BAD</code> and fades over 0.55 s &mdash; with the run that is in the way, if there is one &mdash; the run shivers (<code>shiver_offset</code>), and the sprout names the rule.</td></tr>
+    <tr><td class="k">Over-filled</td><td>The islet shivers once and stays red until a plank comes off it.</td></tr>
+    <tr><td class="k">Check</td><td>Every run that differs from the answer washes toward <code>BAD</code> on <code>flash_level</code> and holds for 2.4 s. A run the answer wants and the board has not laid is <em>not</em> marked &mdash; there is nothing on the water to mark &mdash; and the tip says so in words instead.</td></tr>
+    <tr><td class="k"><b>Solved</b></td><td><b>The wave.</b> A breadth-first walk of the finished network from <b>the islet the player finished at</b>, one step per run: the light crosses each run in <code>WAVE_EDGE</code> from the end it arrives at to the far end, the planks behind the front take the lit deck, and each islet flares gold, bumps and throws sparkles as the light reaches it. The win follows <code>WIN_HOLD</code> after the last islet. On a hard board the network is seven or eight steps deep, so the wave runs about a second and a half.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the field is up at once, planks appear rather than drop, nothing shivers, rings and sparkles are off, and the whole network lights in one frame &mdash; the wave's BFS still runs, but every step is at zero, so the win follows immediately.</p>
+  <div class="decide"><b>The wave is the one thing on this screen worth building twice if the first one is wrong.</b> It is the only moment that says what the puzzle was <em>about</em> &mdash; not "every number is met", which the green rings have been saying all along, but "it is one island now" &mdash; and it can only say that by travelling. A flash over the whole board would say the first thing again and lose the second.</div>
+
+  <h3>7. The hint and the check <span class="pill">proposed</span></h3>
+  <p><b>Three hints</b>, and each one lays <b>one plank the answer has and the board lacks</b>, taking the shortest such run first so the hint is always a whole small decision rather than half a long one. The plank it lays keeps a soft sun glow under it until the board is reset, so a hinted run is never confused with one the player reasoned out. A hint is an ordinary move: Undo takes it back, and does not give the hint back.</p>
+  <p><b>Check</b> marks the runs that differ from the answer. It cannot mark what is missing, so when nothing laid is wrong it says so in words &mdash; <em>&ldquo;Nothing laid is wrong &mdash; there is just more to lay.&rdquo;</em> &mdash; which is the honest version of a green tick.</p>
+
+  <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Drag-to-join against tap-to-join.</b> Dragging is unambiguous &mdash; the direction <em>is</em> the choice &mdash; and it is also four times the finger travel of tapping two islets. At 84 a cell on hard, a drag is about a centimetre. Play the hard board and see whether the thumb agrees.</li>
+    <li><b>The cycle wraps at 3.</b> Three drags in the same direction to clear a run is the standard, and it is also a trap on a board where a 3 is common. The tap-to-wipe is the escape hatch; whether anyone finds it without being told is the question.</li>
+    <li><b>The easy board has one decoy lane.</b> Eleven islets on a 7&times;7 leave almost every facing pair joined in the answer, so <b>the crossing rule barely appears on easy</b> &mdash; one crossing pair a board, on average. That is honest Hashiwokakero and it may also be a band that never teaches its own hardest rule.</li>
+    <li><b>Six is the cap, not eight.</b> The real game allows 8, and an islet of 8 is a landmark &mdash; it tells you all four of its lanes are full. Capping at 6 keeps every number inside one comfortable glyph and keeps the growth from knotting, but it throws away the board's best free clue.</li>
+    <li><b>Twenty-four green rings.</b> On a finished hard board almost everything is ringed before the last run goes down, so the green has to stay quiet enough to live with. It is currently a thin ring and a paled number; a fill would be unreadable.</li>
+    <li><b>The near-miss is not signposted.</b> Every number met and two separate networks is the position this puzzle is <em>about</em>, and right now the board says nothing at all &mdash; no count of groups, no tint. Check will tell you, at the price of a check. Whether that silence is the puzzle or a cruelty is the call.</li>
+    <li><b>The sea is the first non-paper surface on a flat board</b>, and it has already been pitched down once. <span class="pill blue" style="margin-left:0">decided</span> 2026-09-20: keep the pool, but pale &mdash; <code>WATER</code> at full strength made this the loudest card in the game. What the pass cost is worth knowing before the next board puts a new surface on the paper: <b>the sand rim had to change colour</b> (<code>STONE</code> is seven points of value from the new sea and the islets stopped having an edge), <b>the ripples had to invert</b> (a mark on pale water is darker, not lighter), and <b>the drag beam had to go from a light yellow to a deeper amber</b>. A warm-ink constant tuned against a dark ground is not portable to a light one, in either direction. What is still open is whether a pale blue pool in a cream card reads as one family or as a cream card with a hole in it.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot, <code>?runs=k</code> to lay the first <b>k</b> runs of the answer outward from one islet, <code>?hint=k</code> for that many hints spent, <code>?wrong=1</code> to put a run on the water the answer does not want and cut another one short, <code>?check=1</code> to run a Check over whatever is laid, <code>?reset=1</code> to lay the answer and then clear it, <code>?aim=1</code> for a finger mid-drag with a lane lit, <code>?refuse=cross</code> for a drag refused by a run in the way and <code>?refuse=none</code> for one refused because nothing faces it, <code>?peek=1</code> to dash in the runs still missing and print each islet's current count, and <code>?win=1</code> for the win screen. Pick the tab with <code>#bridges</code>.</p>
+</section>
+<section class="tab-panel" id="tab-quilt">
+  <h2>Quilt &middot; flat, the sixteenth board <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">A quilt cut to a shape, and under it, in the same card, a rack of cloth patches waiting to go on. Drag one up; it snaps to the cells. It has to lie <b>wholly on the quilt</b> and clear of everything already sewn, and it <b>never turns</b> &mdash; the one orientation it is drawn in is the one it goes on in. Every patch sewn on is the win, by construction, so there is nothing to Check. The genre ships elsewhere as Blocos, or Block Fit; <b>the name here is Quilt</b> and nothing else, which is the fifth time this repo has renamed a game it did not invent.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption><b>There is no mock for this board</b>, and the screen below was drawn straight from the family's chrome, which fifteen screens now share: cream cards with a soft bottom edge, a leaf sprouting from the wordmark, a sprout in the tip card that names the rule a drop just broke. What Quilt does not share is the bottom of the screen: it has <em>no tray and no actions row</em>, because the rack lives inside the board card and there is nothing to check. That is Word Trail's shape &mdash; a tip card alone at 140, Reset up in the top bar &mdash; and it hands the board card the same <b>1340</b>.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="ql" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="ql-rm">Reduce motion: off</button>
+        <button id="ql-diff">Easy &middot; 5&times;5</button>
+        <button id="ql-new">New puzzle</button>
+        <button id="ql-hint">Hint</button>
+        <button id="ql-undo">Undo</button>
+        <button id="ql-reset">Reset</button>
+        <button id="ql-sew">Sew the rest</button>
+        <button id="ql-peek">Show the answer</button>
+      </div>
+      <div id="ql-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays: <b>drag a patch out of the rack onto the quilt</b>, drag or tap a sewn one to send it home, and a drop that hangs off the hem or lands on cloth already sewn is refused with the rule said out loud in the tip card. It plays the <b>real generator</b> and the <b>real solver</b> &mdash; the quilt is grown patch by patch and then proved to admit exactly one covering by an exact-cover count that stops at two, and a quilt with a second covering is thrown away and the next grown. There is <b>no Check button</b>, because nothing wrong can ever be on the board. <em>Sew the rest</em> is a page control and not a board action: the solve wave is worth watching and eight careful drags is a lot to ask first.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>QUILT</code> in ink with the leaf sprouting from it and <code>NOT A GAP LEFT OVER</code> under, then Undo, Reset, Hint with its count and Settings. <b>Five buttons</b>: <code>capabilities()</code> is <code>["undo","hint"]</code>, there is no actions row to put Reset in, so it rides up here &mdash; the shape Balance, Untangle and Word Trail already have.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 12", "Fern Hollow".</td></tr>
+    <tr><td class="k">Board card</td><td>1340</td><td>The quilt <em>and</em> the rack, in one card. Section 2.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout and its line, and the door to the rules sheet.</td></tr>
+  </table>
+  <p>40 of margin, three 20 gaps and the four rows come to 1920 exactly, which is where the board card's <b>1340</b> comes from. That is not a new number: it is the card Word Trail already has, for the same reason &mdash; a bottom slot of <b>140</b>, the tip card alone. What is new is what the card has to hold. Every other board with a rack of pieces puts it in a <em>tray</em> under the card (150 tall) or in a keyboard (Hidden Word); this one keeps the rack inside the card, because a patch has to grow on its way from the rack to the quilt and a tray would clip it.</p>
+
+  <h3>2. Inside the board card <span class="pill">proposed</span></h3>
+  <p>28 of inset off the 1000-wide card leaves <b>944 by 1284</b>, split into a <b>field box of 800</b>, a 28 gap with one faint <code>Pal.LINE</code> rule across it, and a <b>rack of 456</b> in two rows of bays. The quilt is centred in the field box; the cell is <code>min(944/cols, 800/rows)</code> <b>capped at 150</b>, and the cap is not decoration: an easy quilt would take 160 uncapped, and 160 is a comic cell.</p>
+  <table>
+    <tr><th style="width:10%">Band</th><th style="width:9%">Box</th><th style="width:9%">Patches</th><th style="width:11%">Patch cells</th><th style="width:20%">Bounding box, measured</th><th style="width:15%">Field cell</th><th>Rack cell</th></tr>
+    <tr><td class="k">Easy</td><td>5 &times; 5</td><td>5</td><td>4&ndash;5</td><td>5&times;5 on 499 of 500; 5&times;4 once</td><td><b>150</b>, the cap, on every board</td><td>45&ndash;83, mean <b>55</b></td></tr>
+    <tr><td class="k">Medium</td><td>6 &times; 6</td><td>6</td><td>4&ndash;6</td><td>6&times;6 on 483; 6&times;5 on 10; 5&times;6 on 7</td><td><b>133.3</b> (150 on the seven 5&times;6)</td><td>45&ndash;62, mean <b>51</b></td></tr>
+    <tr><td class="k">Hard</td><td>7 &times; 7</td><td>8</td><td>4&ndash;6</td><td>7&times;7 on 470; 7&times;6 on 13; 6&times;7 on 17</td><td><b>114.3</b> (133.3 on the 6&times;7)</td><td>45&ndash;60, mean <b>46</b></td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">500 generated boards a band. A quilt does not have to fill its band's box in both directions &mdash; it only has to fill it in one &mdash; so the field is not always square, and the cell is whichever of the two constraints binds.</p>
+  <p><b>The rack is bays, and a bay is not a box.</b> Two rows always: three columns for five or six patches, four for eight. One cell size serves every patch on the board, so the rack reads as one length of cloth cut up rather than as a shelf of different-sized toys:<br>
+  <code>rack_cell = min(0.82 &middot; bay_w / widest, 0.82 &middot; bay_h / tallest, 0.62 &middot; cell)</code>.
+  <b>The third term never binds.</b> Over 1500 generated boards the bay's <em>height</em> bound 1416 of them and its width the other 84; <code>0.62 &middot; cell</code> not once, on any band. It stays in as a guard and is named here as inert, so nobody later reads it as doing work.</p>
+  <p><b>What the bay draws is the patch's own silhouette, not a box.</b> A rectangular bay round a four-cell patch is mostly air &mdash; the bays are 304 by 220 on easy and the biggest patch in them is 180 across &mdash; so the bay is only there when the patch is not: once a patch is sewn on, its bay keeps a dashed outline of that exact shape, which says both <em>where this came from</em> and <em>what shape it was</em> while it is away.</p>
+  <p><b>A dragged patch grows.</b> It leaves the rack at the rack's cell and arrives at the field's over <code>GROW_TIME</code>, and it is held <b>1.2 cells above the finger</b> so the thumb never covers the shape it is placing. The growth is not a nudge: measured over 500 boards a band it is <b>&times;2.74 on easy, &times;2.64 on medium and &times;2.52 on hard</b>. That is the one number on this screen a phone should be asked about before the port &mdash; it is large enough that the patch has to be recognisable at 45, which is why the bounding box is capped at 4 by 4 in the generator rather than left to chance.</p>
+
+  <h3>3. The rules <span class="pill">proposed</span></h3>
+  <ul>
+    <li><b>Drag a patch onto the quilt.</b> It snaps to the cell grid. Every one of its cells must be on the quilt, and none of them may be on a patch already sewn.</li>
+    <li><b>Patches never rotate and never flip.</b> Each is shown in the one orientation it goes on in. The puzzle is where it goes, not which way up.</li>
+    <li><b>An illegal drop flies home to its bay</b>, takes a rose halo when it lands and the sprout says which of the two rules it broke &mdash; off the quilt, or onto something sewn. Nothing wrong can sit on the board, ever.</li>
+    <li><b>Drag or tap a sewn patch to take it off.</b> It flies home. A patch a hint sewed on does not: it is a given.</li>
+    <li><b>Every patch sewn on is solved</b>, because the patches' cells sum to the quilt's cells and no illegal placement is ever accepted. So there is no Check, and the board's actions are Undo and Hint alone.</li>
+    <li><b>Identical patches are interchangeable.</b> Two patches of the same shape swapping places is the same quilt, which the generator's uniqueness proof has to agree with or it would throw away perfectly good boards &mdash; see section 4.</li>
+  </ul>
+
+  <h3>4. Generation: grow the quilt, then prove it admits one covering <span class="pill">proposed</span></h3>
+  <ol>
+    <li><b>Grow the answer.</b> Seed a random cell in the band's box and accrete a polyomino of a drawn size from it. Then repeatedly seed the next patch on a random empty cell <em>orthogonally adjacent to what is already grown</em>, so the quilt is <b>connected by construction</b> and there is never a second island to worry about. A candidate cell that would push a patch's bounding box past <b>4 by 4</b> is simply never taken, which is the bounding-box rejection done without throwing the board away.</li>
+    <li><b>Reject a region with a hole in it</b> &mdash; an empty cell inside the bounding box that cannot reach the outside through empty cells &mdash; and one whose bounding box fills the band's box in neither direction. Then re-normalise the region to its own bounding box, which is the grid the field draws.</li>
+    <li><b>Prove it.</b> Exact cover: take the first uncovered cell in scan order and try every <em>distinct remaining shape</em> that can cover it. <b>Identical shapes are grouped into a multiset</b>, so two copies of the same tetromino swapping places is the same quilt and not a second answer. That is not a nicety: <b>23.6% of the boards this generator keeps carry a repeated shape</b> (25.0% easy, 17.0% medium, 28.8% hard, 500 a band), and without the grouping every one of them would be thrown away for an answer that is not one. Count to two and stop.</li>
+    <li><b>Grade on search nodes.</b> The count-to-two search reports how many nodes it explored; band 0 throws back anything above an easy threshold and band 2 anything below a hard one. The two thresholds are this page's own measurement, not a guess: an ungated sweep of 500 seeds a band put easy's median at <b>14</b> nodes and its upper quartile at <b>18</b>, and hard's median at <b>55</b> and its upper quartile at <b>92</b>. The gates are <b>easy &le; 18</b> and <b>hard &ge; 70</b>; medium takes what it gets.</li>
+    <li><b>If the budget runs out</b> (200 attempts), hand back the best board grown rather than block the screen: first the best <em>unique</em> board that only failed the grade, and, if there was never a unique one at all, an unproved board &mdash; which the caption then says out loud. In 1500 boards the second case never happened once; the first happened <b>once</b>, on hard.</li>
+  </ol>
+  <h4>Measured, 500 seeds a band</h4>
+  <table>
+    <tr><th style="width:13%">Band</th><th style="width:10%">Built</th><th style="width:20%">Attempts</th><th style="width:16%">Second answer</th><th style="width:13%">Off the grade</th><th style="width:15%">Search nodes</th><th>Time to generate</th></tr>
+    <tr><td class="k">Easy 5&times;5</td><td>500/500</td><td>5.85 mean, 4 median, <b>39 worst</b></td><td>2.1% of grown boards</td><td>24.6%</td><td>13 mean, 18 worst</td><td>0.06 ms mean, <b>0.3&ndash;0.6 ms worst</b></td></tr>
+    <tr><td class="k">Medium 6&times;6</td><td>500/500</td><td>6.24 mean, 4 median, <b>37 worst</b></td><td>3.5%</td><td>&mdash; no gate</td><td>23 mean, 103 worst</td><td>0.06 ms mean, <b>0.35 ms worst</b></td></tr>
+    <tr><td class="k">Hard 7&times;7</td><td>500/500</td><td>32.5 mean, 23 median, <b>200 worst</b></td><td>5.0%</td><td>58.6%</td><td>130 mean, 899 worst</td><td>0.46 ms mean, <b>2.7 ms worst</b></td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Times are four runs of the whole sweep in node on this Mac, which is the same V8 the page runs in. A fifth run threw a single 3.02 ms on easy and a 4.47 ms on hard &mdash; garbage collection, not the generator &mdash; and both are quoted here rather than dropped. The worst <em>attempt</em> count on hard is 200, which is the cap itself: that board is the one in 500 that came back off the grade.</p>
+  <p><b>The uniqueness rejection barely bites, and that is worth saying plainly.</b> Bridges throws away four grown boards in five for a second answer; this generator throws away <b>one in fifty</b>. A quilt of five to eight different polyominoes is a rigid thing. What actually costs the attempts is the growth getting stuck &mdash; <b>63.7%, 64.3% and 73.6%</b> of all attempts on the three bands, an accretion that painted itself into a corner &mdash; and the hole test, <b>13.0%, 19.1% and 17.9%</b>. The "must fill the box in one direction" test fired <b>once in 22,280 attempts</b>, all three bands together, and is effectively inert; it stays in because the growth is what makes it inert, and a change to the growth would bring it back.</p>
+  <p><b>The uniqueness is cross-checked, not asserted.</b> On <b>520</b> boards &mdash; 200 easy, 200 medium, 120 hard &mdash; a second, independent counter with none of this one's pruning in it agreed on the count every time: <b>0 mismatches</b>. It does not take the first uncovered cell, does not anchor on a shape's own first cell and does not know the multiset trick as a pruning rule; it builds every legal placement of every distinct shape (72 a board on average, 176 at worst) and enumerates increasing combinations of pairwise-disjoint ones. On the same 520 boards the grown answer itself was verified to be a legal, exact covering: <b>0 failures</b>.</p>
+  <p>The worst case here is <b>2.7 ms</b> against Sudoku's ~194 ms gate on this Mac, so GDScript has a long way to be slower in before anyone sees it. The figure to watch in the port is <b>attempts</b>, not milliseconds: 500 hard boards cost <b>16,234</b> grow-and-prove rounds, and one of them spent the whole 200-attempt budget.</p>
+
+  <h3>5. Colour <span class="pill">proposed</span></h3>
+  <p><b>Every colour on this screen is already in <code>core/palette.gd</code>.</b> Nothing was invented for a board that puts a new object on the paper, and that is only possible because Queens already needed nine colours no two of which read alike.</p>
+  <table>
+    <tr><th style="width:24%">Thing</th><th style="width:28%">Colour</th><th>Note</th></tr>
+    <tr><td class="k">A patch</td><td><code>Pal.REGION[i]</code></td><td>The nine pastels Queens' court is cut into &mdash; but taken in the order <b>1, 4, 3, 7, 2, 6, 8, 5, 0</b> rather than straight, so a board of five and a board of eight both come out spread round the wheel, and <b>tan</b> and <b>silver</b>, the two that sit closest to parchment, are the last two picked.</td></tr>
+    <tr><td class="k">Its bottom edge</td><td><code>mix(REGION[i], TEXT, 0.22)</code></td><td>The family's lip: a fill over a slightly deeper shape. It also draws the seams <em>inside</em> a patch at 0.22 alpha &mdash; a patch is cut from one cloth, so its own cell divisions are its shade and not a stitch.</td></tr>
+    <tr><td class="k">Its thread</td><td><code>mix(REGION[i], TEXT, 0.35)</code></td><td>The running stitch along every seam that patch makes. Section 6.</td></tr>
+    <tr><td class="k">The quilt's backing</td><td><code>Pal.STONE</code> #ede2cc<br>over <code>mix(STONE, TEXT, 0.14)</code></td><td><b>Changed on the canvas.</b> It was drawn as <code>SURFACE_HI</code> on a <code>PARCHMENT</code> card, and those two measure a contrast of <b>1.024</b> &mdash; the same colour twice. An uncovered cell did not exist on screen. The card went to <code>SURFACE</code> and the backing to <code>STONE</code>, which is <b>1.263</b>, the widest pair the palette holds at this end of it; and <code>STONE</code> is already what Nonogram's empty socket and Shikaku's unclaimed cell are made of, so an uncovered cell is the colour this set already uses for "nothing here yet".</td></tr>
+    <tr><td class="k">The cell rules</td><td><code>Pal.LINE</code> at 0.32</td><td>Faint, and only between two quilt cells, so the squares can be counted without the grid becoming the picture.</td></tr>
+    <tr><td class="k">The hem</td><td><code>Pal.LINE</code></td><td>Round the whole region, drawn edge by edge off the silhouette rather than as a stroked path, so no interior line can ever leak through.</td></tr>
+    <tr><td class="k">The card</td><td><code>Pal.SURFACE</code> #fffdf8</td><td>The family's board card, after the row above. <code>PARCHMENT</code> was the proposal and it lost to a measurement.</td></tr>
+    <tr><td class="k">A refusal</td><td><code>Pal.BAD</code> #d9605a</td><td><b>A halo, not a wash &mdash; changed on the canvas.</b> The patch was to blush toward <code>BAD</code> on <code>flash_level</code>; drawn, the mint patch at 43% went <b>khaki</b> and the sky one went mauve. <code>REGION</code> spans the whole wheel, so there is no single rose a patch can be washed toward without half the nine going to mud. So the cloth keeps its own colour and wears a rose halo round its silhouette instead, with the shiver &mdash; which is <code>docs/art/flat-motion.md</code>'s <b>rule 9</b> (a piece with no blushing skin blushes through its cell) with the bay standing in for the cell. The footprint under a finger that cannot drop is still <code>BAD</code>, at 0.34 with a dashed <code>BAD</code> outline.</td></tr>
+    <tr><td class="k">A hint's ring</td><td><code>Pal.LEAF</code> #6ba845</td><td>One pulse out of the patch it sewed.</td></tr>
+    <tr><td class="k">A hint's patch</td><td><code>Pal.SUN_RAY</code> #f9c04a</td><td>A soft glow drawn along the silhouette's own edges: the language every board uses for a given. A <code>Pal.SUN_DEEP</code> dashed hem was drawn over it as a second cue and taken out again &mdash; the patch's own stitch is <em>already</em> a dashed line on that exact edge, so the two sat on top of each other and the hem read as a printing error.</td></tr>
+    <tr><td class="k">The solve's thread</td><td>the patch's thread 70% to <code>SUN_RAY</code></td><td>The hem warms as the last wave runs round it.</td></tr>
+  </table>
+
+  <h3>6. Motion, and the seam stitches <span class="pill">proposed</span></h3>
+  <p>Everything through the flat boards' vocabulary (<code>core/motion.gd</code>, <code>docs/art/flat-motion.md</code>), read as curves the way Light Up's and Nonogram's drawn pieces read them &mdash; every patch on this board is drawn, not a node. <b>The signature is the stitch</b>, and the board needs five numbers of its own: <code>FLY_TIME</code> 0.3 s for a patch to fly home, <code>GROW_TIME</code> 0.14 s for it to grow from the rack's cell to the field's, <code>SEAM_STEP</code> 0.09 s a cell for the stitch to travel, <code>SEAM_TIME</code> 0.22 s for one seam to sew itself, and <code>WIN_HOLD</code> 0.9 s. <code>HOLD_CELLS</code> 1.2 is a layout number, not a motion one.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The quilt's backing pops in wide about its centre (<code>wide_pop_scale</code> from 0.88) and each patch in the rack pops in on the stagger (<code>pop_in_scale</code>, <code>ENTER_STAGGER</code> 0.03, capped at 0.6).</td></tr>
+    <tr><td class="k">Pick up</td><td>The patch leaves its bay for the finger, grows over <code>GROW_TIME</code> and rides 1.2 cells above it with its shadow parted from it. That is the vocabulary's <em>Pick up</em>, with the growth as this board's own addition &mdash; it is on its way onto the quilt, so it arrives the size the quilt wants.</td></tr>
+    <tr><td class="k">Over the quilt</td><td>The footprint it would take is washed under it in its own colour at 0.40, or in <code>BAD</code> at 0.34 where it cannot go, <b>and outlined</b> &mdash; solid in its own thread, dashed in <code>BAD</code> when it is refused. The outline is the part that does the work: the patch rides above the finger and the footprint snaps under it, so most of the wash is behind the patch itself and only the outline is reliably in the open. The finger is told before it lets go, every time.</td></tr>
+    <tr><td class="k">It lands</td><td>It springs back from <code>LIFT_SCALE</code> with the back ease over <code>RELEASE_TIME</code> 0.25 and hops (<code>HOP</code> -6 over <code>HOP_TIME</code> 0.3), with a puff of five stars in its own colour.</td></tr>
+    <tr><td class="k"><b>The stitch</b></td><td><b>The signature.</b> A running stitch sews itself along every seam that patch now makes &mdash; with each patch already on the quilt beside it, and with the quilt's own hem wherever it reaches it &mdash; four dashes to a cell edge, arriving dash by dash, in a wave outward from the patch that landed at <code>SEAM_STEP</code> a cell of distance.</td></tr>
+    <tr><td class="k">Refused</td><td>The patch flies home over <code>FLY_TIME</code> and takes a <code>BAD</code> halo on <code>flash_level</code> and shivers (<code>SHIVER_PX</code> 2, <code>SHIVER_TIME</code> 0.2) <em>as it lands in its bay</em>, not in mid-air &mdash; a blush in flight is a blur, and the bay is where the eye is going anyway. The halo rather than a wash is a colour decision, section 5. The sprout names the rule.</td></tr>
+    <tr><td class="k">Taken off</td><td>It flies home and nothing else happens. Its stitches go with it, because they were never stored.</td></tr>
+    <tr><td class="k">Hint</td><td>A ring pulses out of the patch (<code>RING_TIME</code> 0.5), the patch drops in from above (<code>DROP</code> 40 over <code>DROP_TIME</code> 0.3) while it fades in, sparkles rise, and it keeps the sun round it from then on.</td></tr>
+    <tr><td class="k">Undo</td><td>The reverse of whatever it was. A patch that did not move keeps the stitches it had; only the one that came back sews itself on again.</td></tr>
+    <tr><td class="k">Reset</td><td>Every sewn patch flies home in a wave from the far corner (<code>RESET_STAGGER</code> 0.02).</td></tr>
+    <tr><td class="k"><b>Solved</b></td><td>The hem re-sews itself <b>all the way round the quilt in one wave</b>, out of the patch that finished it, warming toward <code>SUN_RAY</code>; the patches hop as the wave reaches each (<code>SOLVE_HOP</code> -10 over <code>SOLVE_TIME</code> 0.4, <code>SOLVE_STAGGER</code> 0.04) and sparkle. The win follows <code>WIN_HOLD</code> after the last stitch.</td></tr>
+  </table>
+  <p><b>The stitched seams are derived, never stored.</b> Nothing keeps a list of stitches: the seams are read off where the patches are, every frame, and each one's moment is the landing time of whichever of its two patches landed later. So lifting a patch takes its stitches with it for free, undo keeps no book for them, and there is no state to get out of step &mdash; which is the <code>_settle</code> pattern Queens' crosses and Sudoku's gold both use, applied to a line rather than a cell.</p>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the board is up at once, a patch does not grow on the way up and does not fly home (it is simply back in its bay), nothing takes a halo or shivers, rings, puffs and sparkles are off, every stitch is fully drawn the instant its patch lands, and the solve's hem is complete in one frame with the win straight after &mdash; the wave's arithmetic still runs, but every step is zero.</p>
+
+  <h3>7. The hint <span class="pill">proposed</span></h3>
+  <p><b>Three hints</b>, and each one sews <b>one patch of the answer where the board has not got it</b> &mdash; the first such placement in scan order, so a hint is always the top-left corner of what is still undone rather than a jump across the quilt &mdash; lifting home anything in its way first. The patch it sews is <b>locked</b> from then on: it keeps a soft sun round it, a tap on it says so, and it cannot be dragged off. A locked patch can never be in the way of a <em>later</em> hint, because the answer's own placements do not overlap each other, so the hint never has to fight itself.</p>
+  <p><b>A placement counts as already held when the patch sitting on it has the same shape</b>, not when it is the same patch. Identical patches are interchangeable (section 3), so a hint that insisted on "the" right copy would lift a patch that is already correct and put an identical one back in its place &mdash; which would look, to a player, exactly like a bug.</p>
+  <p>A hint is an ordinary move: <b>Undo takes it back, and does not give the hint back.</b></p>
+
+  <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>The rack cell is small.</b> 45 to 83 design units, mean 46 on hard, against a field cell of 114. That is the bay's height talking: two rows in 456 is 220 a row, and a four-tall patch at 82% of that is 45 a cell. It is legible on this canvas; whether a four-cell patch at 45 is legible on a phone in the hand is the first thing to check, and the lever is the field box &mdash; every 40 taken off the 800 is about 4 more on the rack cell and about 6 off the field's, on hard.</li>
+    <li><b>&times;2.7 is a big grow.</b> A patch more than doubles between the bay and the finger. It is the clearest way to say "this is going somewhere else now", and it is also the most motion any flat board puts under a dragged thing. If it reads as a lurch rather than a rise, <code>GROW_TIME</code> is the knob, not the ratio.</li>
+    <li><b>Holding the patch 1.2 cells above the finger.</b> Untangle's point sits <em>under</em> the finger and Shikaku's drag draws from it; this one floats. Above the finger is the only way a five-cell patch is not mostly hidden by a thumb, and it costs the player a translation between where they are pointing and where the thing is. Play the hard board and see whether the hand learns it in one drag or ten.</li>
+    <li><b>There is no Check, and no way to be wrong.</b> That is unusually kind for this set &mdash; Bridges will let you sit in a near-miss, Hidden Word will let you lose &mdash; and it makes Quilt the gentlest board on the shelf. The question is whether "you cannot make a mistake" also means "you cannot make progress you can feel": the only feedback the board gives is that a patch went on, and the only wall it puts up is silence when nothing fits.</li>
+    <li><b>The grade is a search-node count, which is a proxy and not a measurement of difficulty.</b> It counts how hard the <em>solver</em> works, and this solver takes the first uncovered cell in scan order, which is nothing like how a person plays. A hard board here is one where that scan backtracks a lot; whether that is the same board a person finds hard is untested, and cannot be tested from this page.</li>
+    <li><b>The hard gate costs a lot for what it buys.</b> Gating band 2 at 70 nodes takes the mean attempts from 12.4 to <b>32.5</b> and throws away 58.6% of perfectly unique boards; it doubles the median node count (55 to 103) and it is why one board in 500 comes back ungraded. If the port's generator is ever near its budget, this gate is the first thing to loosen.</li>
+    <li><b>Two of the generator's and the layout's guards are inert.</b> The <code>0.62 &middot; cell</code> cap on the rack cell never binds, and the "fill the box in one direction" test fired once in 22,280 attempts. Both are kept and both are named here, because a guard that has never fired is exactly the one a later change quietly starts needing.</li>
+    <li><b>The quilt is the first shaped field in the set.</b> Every other flat board draws a rectangle of cells; this one draws a region with a ragged hem, and the hem is the thing the stitch runs round at the end. It is also the first board whose <em>rack</em> is inside the board card rather than in a tray, which is what took the bottom of the screen down to a tip card alone. Whether a card holding two quite different things still reads as one card is a call for the phone.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-stitch can be shot, <code>?sew=k</code> to sew the first <b>k</b> patches of the answer, <code>?hint=k</code> for that many hints spent, <code>?drag=1</code> for a patch held over the quilt with its footprint lit, <code>?refuse=off</code> and <code>?refuse=over</code> for the two refusals, <code>?reset=1</code> to sew the answer and then clear it, <code>?peek=1</code> to dash in where the patches still missing belong, and <code>?win=1</code> for the win screen. Pick the tab with <code>#quilt</code>.</p>
 </section>
 </main>
 
@@ -13804,6 +14091,1016 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
   L=layout(0); setup(diff,seed,0); labels(); frame();
 })();
+/* ---------- the flat quilt mock ---------- */
+(function(){
+  const cv=document.getElementById('ql'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // Every colour on this screen is already in core/palette.gd, which is
+  // unusual for a board that puts a new object on the paper: a patch is
+  // Pal.REGION[i], the nine pastels Queens' court is cut into, and the quilt's
+  // backing is SURFACE_HI. Nothing was invented.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    good:'#7cb06b',bad:'#d9605a',badTile:'#f2cfc9',stone:'#ede2cc'};
+  const REGION=['#cfc3ac','#c4a9dc','#a3c4ec','#b6d9a8','#f0c384','#dcdcdf','#e3e27c','#f79a80','#eaa0b8'];
+  // The card is SURFACE and the quilt's backing is STONE, which is not what
+  // this board was drawn with: PARCHMENT under SURFACE_HI measured a contrast
+  // of 1.024 -- the same colour twice -- and an uncovered cell simply did not
+  // exist. SURFACE against STONE is 1.263, the widest pair the palette holds
+  // at this end of it, and STONE is already what Nonogram's empty socket and
+  // Shikaku's unclaimed cell are made of.
+  // Taken round the wheel rather than in index order, so a board of five and a
+  // board of eight both come out with no two patches reading alike; tan and
+  // silver, the two that sit closest to the parchment, are the last picked.
+  const HUES=[1,4,3,7,2,6,8,5,0];
+  const patchCol=i=>REGION[HUES[i%9]];
+  const patchDeep=i=>mixHex(patchCol(i),C.text,0.22);   // the family's lip
+  const patchThread=i=>mixHex(patchCol(i),C.text,0.35); // and its stitch
+  const BACK=C.stone, BACK_DEEP=mixHex(C.stone,C.text,0.14);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,LIFT_SCALE:1.1,LIFT_TIME:0.12,
+    POP_IN:0.22,POP_SQUASH:0.15,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    FLASH_IN:0.15,FLASH_OUT:0.45,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.04,SOLVE_DELAY:0.25,
+    SHIVER_PX:2,SHIVER_TIME:0.2,RESET_STAGGER:0.02,STAGGER_CAP:0.6};
+  // This board's own four: how long a patch takes to fly home, how long it
+  // takes to grow from the rack's cell to the field's on the way up, the
+  // stitch's step from one cell of seam to the next, and how long one seam
+  // takes to sew itself. Nothing else in the game sews.
+  const FLY_TIME=0.3,GROW_TIME=0.14,SEAM_STEP=0.09,SEAM_TIME=0.22,WIN_HOLD=0.9;
+  const HOLD_CELLS=1.2;     // how far above the finger a dragged patch is held
+  const stag=(i,per)=>RM?0:Math.min(i*per,MO.STAGGER_CAP);
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popInScale=s=>{if(RM) return [1,1]; const u=clamp(s/MO.POP_IN),g=lerp(0.01,1,backOut(u)),sq=MO.POP_SQUASH*Math.sin(Math.PI*u); return [g*(1+sq),g*(1-sq)];};
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const flashLevel=s=>{if(RM||s<0) return 0; if(s<MO.FLASH_IN) return s/MO.FLASH_IN; const u=(s-MO.FLASH_IN)/MO.FLASH_OUT; return u>=1?0:1-u;};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*Math.sin(u*Math.PI*6)*(1-u);};
+  const hopLift=s=>{if(RM||s<0||s>=MO.HOP_TIME) return 0; return MO.HOP*Math.sin(Math.PI*s/MO.HOP_TIME);};
+  const releaseScale=s=>{if(RM||s<0||s>=MO.RELEASE_TIME) return 1; return lerp(MO.LIFT_SCALE,1,backOut(s/MO.RELEASE_TIME));};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ================= the generator (puzzles/quilt_gen.gd) =================
+  // Grow the answer, then prove the quilt admits only that one covering.
+  const DIR4=[[-1,0],[1,0],[0,-1],[0,1]];
+  const MAX_SPAN=4;   // a patch's bounding box, so a rack bay can hold it legibly
+  // 1. Seed a cell, accrete a polyomino of a drawn size, then seed every later
+  // patch on an empty cell orthogonally adjacent to what is already grown --
+  // which is what makes the quilt connected by construction. A candidate cell
+  // that would push the patch's bounding box past MAX_SPAN is never taken,
+  // which is the bounding-box rejection done without throwing the board away.
+  function grow(rng,B){
+    const box=B.box,N=box*box,owner=new Int8Array(N).fill(-1),patches=[];
+    const inside=(r,c)=>r>=0&&c>=0&&r<box&&c<box;
+    for(let k=0;k<B.count;k++){
+      const size=B.sizes[(rng()*B.sizes.length)|0];
+      let seed=-1;
+      if(k===0) seed=(rng()*N)|0;
+      else{
+        const cands=[];
+        for(let i=0;i<N;i++) if(owner[i]<0){
+          const r=(i/box)|0,c=i%box;
+          if(DIR4.some(([dr,dc])=>inside(r+dr,c+dc)&&owner[(r+dr)*box+c+dc]>=0)) cands.push(i);
+        }
+        if(!cands.length) return null;
+        seed=cands[(rng()*cands.length)|0];
+      }
+      if(owner[seed]>=0) return null;
+      owner[seed]=k;
+      const cells=[seed];
+      let r0=(seed/box)|0,r1=r0,c0=seed%box,c1=c0;
+      while(cells.length<size){
+        const cands=[];
+        for(const i of cells){
+          const r=(i/box)|0,c=i%box;
+          for(const [dr,dc] of DIR4){
+            const nr=r+dr,nc=c+dc;
+            if(!inside(nr,nc)) continue;
+            const j=nr*box+nc;
+            if(owner[j]>=0) continue;
+            if(Math.max(r1,nr)-Math.min(r0,nr)>=MAX_SPAN) continue;
+            if(Math.max(c1,nc)-Math.min(c0,nc)>=MAX_SPAN) continue;
+            if(cands.indexOf(j)<0) cands.push(j);
+          }
+        }
+        if(!cands.length) return null;
+        const j=cands[(rng()*cands.length)|0];
+        owner[j]=k; cells.push(j);
+        const r=(j/box)|0,c=j%box;
+        r0=Math.min(r0,r); r1=Math.max(r1,r); c0=Math.min(c0,c); c1=Math.max(c1,c);
+      }
+      patches.push(cells);
+    }
+    return {owner,patches,box};
+  }
+  function shapeOf(cells,box){
+    const pts=cells.map(i=>[(i/box)|0,i%box]);
+    let r0=99,c0=99,r1=-1,c1=-1;
+    for(const [r,c] of pts){r0=Math.min(r0,r);c0=Math.min(c0,c);r1=Math.max(r1,r);c1=Math.max(c1,c);}
+    const rel=pts.map(([r,c])=>[r-r0,c-c0]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+    return {rel,h:r1-r0+1,w:c1-c0+1,r0,c0,key:rel.map(p=>p[0]+':'+p[1]).join('|')};
+  }
+  // 2. Re-normalise the region to its own bounding box, and throw it back if it
+  // encloses a hole or fails to fill the band's box in either dimension.
+  function region(g){
+    const box=g.box,N=box*box;
+    let r0=99,c0=99,r1=-1,c1=-1;
+    for(let i=0;i<N;i++) if(g.owner[i]>=0){const r=(i/box)|0,c=i%box;
+      r0=Math.min(r0,r);c0=Math.min(c0,c);r1=Math.max(r1,r);c1=Math.max(c1,c);}
+    const R=r1-r0+1,Cc=c1-c0+1;
+    if(R!==box&&Cc!==box) return null;
+    const quilt=new Uint8Array(R*Cc);
+    for(let i=0;i<N;i++) if(g.owner[i]>=0) quilt[(((i/box)|0)-r0)*Cc+(i%box-c0)]=1;
+    const seen=new Uint8Array((R+2)*(Cc+2)),WW=Cc+2,st=[0]; seen[0]=1;
+    while(st.length){const p=st.pop(),r=(p/WW)|0,c=p%WW;
+      for(const [dr,dc] of DIR4){const nr=r+dr,nc=c+dc;
+        if(nr<0||nc<0||nr>=R+2||nc>=Cc+2) continue;
+        const q=nr*WW+nc; if(seen[q]) continue;
+        if(nr>0&&nc>0&&nr<=R&&nc<=Cc&&quilt[(nr-1)*Cc+nc-1]) continue;
+        seen[q]=1; st.push(q);}}
+    for(let r=0;r<R;r++) for(let c=0;c<Cc;c++)
+      if(!quilt[r*Cc+c]&&!seen[(r+1)*WW+c+1]) return null;
+    const patches=g.patches.map(cells=>{
+      const moved=cells.map(i=>(((i/box)|0)-r0)*Cc+(i%box-c0));
+      return {cells:moved,shape:shapeOf(moved,Cc)};
+    });
+    return {R,C:Cc,quilt,patches};
+  }
+  // 3. Exact cover, counting to a cap and stopping. Identical shapes are
+  // interchangeable: the rack is grouped into a multiset by shape key, so two
+  // copies of the same tetromino swapping places is the same quilt and not a
+  // second answer. The only cell a shape may be anchored on is the first
+  // uncovered cell in scan order, and the only cell of the shape that may
+  // land on it is the shape's own first cell -- any other anchor would have
+  // to cover a cell earlier in scan order, which is covered already.
+  function shapeSet(patches){
+    const by=new Map();
+    for(const p of patches){
+      const k=p.shape.key;
+      if(!by.has(k)) by.set(k,{rel:p.shape.rel,w:p.shape.w,h:p.shape.h,count:0,key:k});
+      by.get(k).count++;
+    }
+    return [...by.values()];
+  }
+  function countCovers(reg,shapes,limit,stats){
+    const R=reg.R,Cc=reg.C,quilt=reg.quilt,cov=new Uint8Array(R*Cc);
+    const left=shapes.map(s=>s.count);
+    let nodes=0;
+    function go(){
+      nodes++;
+      let first=-1;
+      for(let i=0;i<R*Cc;i++) if(quilt[i]&&!cov[i]){first=i;break;}
+      if(first<0) return 1;
+      const fr=(first/Cc)|0,fc=first%Cc;
+      let found=0;
+      for(let si=0;si<shapes.length;si++){
+        if(left[si]<=0) continue;
+        const s=shapes[si],a=s.rel[0];
+        const orr=fr-a[0],occ=fc-a[1];
+        if(orr<0||occ<0||orr+s.h>R||occ+s.w>Cc) continue;
+        let ok=true;
+        for(const [dr,dc] of s.rel){const j=(orr+dr)*Cc+occ+dc; if(!quilt[j]||cov[j]){ok=false;break;}}
+        if(!ok) continue;
+        for(const [dr,dc] of s.rel) cov[(orr+dr)*Cc+occ+dc]=1;
+        left[si]--;
+        found+=go();
+        left[si]++;
+        for(const [dr,dc] of s.rel) cov[(orr+dr)*Cc+occ+dc]=0;
+        if(found>=limit) break;
+      }
+      return found;
+    }
+    const c=go();
+    if(stats) stats.nodes=nodes;
+    return c;
+  }
+  // 4. The bands, and the grade. A board's difficulty is the size of the
+  // count-to-two search: the gates are this page's own measurement (500 seeds
+  // a band, ungated) -- easy's own median was 14 nodes and its upper quartile
+  // 18, hard's median 55 and its upper quartile 92 -- so band 0 keeps the
+  // easier half and a bit of its own distribution and band 2 the harder half
+  // of its own. Medium takes what it gets.
+  const BANDS=[{box:5,count:5,sizes:[4,5],gate:n=>n<=18,label:'Easy · 5×5'},
+               {box:6,count:6,sizes:[4,5,6],gate:null,label:'Medium · 6×6'},
+               {box:7,count:8,sizes:[4,5,6],gate:n=>n>=70,label:'Hard · 7×7'}];
+  // 5. If the budget runs out, hand back the best board grown rather than
+  // block the screen: first the best *unique* one that simply failed the
+  // grade, and only if there was never a unique one at all, an ungraded,
+  // unproved board -- which the caption then says out loud.
+  function generate(seed,d){
+    const B=BANDS[d],rng=mulberry32((seed*2654435761)>>>0);
+    let best=null,lastGrown=null,attempts=0,grown=0,dup=0,offGrade=0;
+    for(let a=1;a<=200;a++){
+      attempts=a;
+      const g=grow(rng,B); if(!g) continue;
+      const reg=region(g); if(!reg) continue;
+      grown++; lastGrown=reg;
+      const shapes=shapeSet(reg.patches),st={nodes:0};
+      const n=countCovers(reg,shapes,2,st);
+      if(n!==1){dup++; continue;}
+      if(!best) best={reg,shapes,nodes:st.nodes,unique:true,graded:false};
+      if(B.gate&&!B.gate(st.nodes)){offGrade++; continue;}
+      return {reg,shapes,nodes:st.nodes,unique:true,graded:true,attempts:a,grown,dup,offGrade};
+    }
+    const out=best||{reg:lastGrown,shapes:lastGrown?shapeSet(lastGrown.patches):null,nodes:0,unique:false,graded:false};
+    out.attempts=attempts; out.grown=grown; out.dup=dup; out.offGrade=offGrade;
+    return out.reg?out:null;
+  }
+
+  // ================= state =================
+  let diff=0,seed=4,R=5,Cn=5,quilt=null,patches=[],ans=[],nodes=0,attempts=0,unique=true,graded=true,genMs=0;
+  let place=[],laid=[],locked=new Set(),hist=[],hintsLeft=3,moves=0;
+  let openedAt=0,solvedAt=-1e9,winAt=-1e9,hasSolve=false,sparked=false,lastPatch=0,waveEnd=0;
+  let drag=null,flying=[],blushAt={},rings=[],particles=[],btnPress={},L=null;
+  let peek=Q.get('peek')==='1';
+  const open=()=>!hasSolve;
+  const cellsOf=i=>patches[i].cells;
+
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd;
+    const t0=performance.now();
+    let out=null;
+    for(let k=0;k<8&&!out;k++) out=generate(sd+k*7919,diff);
+    genMs=performance.now()-t0;
+    R=out.reg.R; Cn=out.reg.C; quilt=out.reg.quilt;
+    nodes=out.nodes; attempts=out.attempts; unique=out.unique; graded=out.graded;
+    // the rack, shuffled off the answer's own order so the bays do not read
+    // top-left to bottom-right
+    const rng=mulberry32((sd*40503+7)>>>0);
+    const idx=out.reg.patches.map((_,i)=>i);
+    for(let i=idx.length-1;i>0;i--){const j=(rng()*(i+1))|0,tmp=idx[i]; idx[i]=idx[j]; idx[j]=tmp;}
+    patches=[]; ans=[];
+    for(const k of idx){
+      const p=out.reg.patches[k];
+      patches.push({cells:p.shape.rel,w:p.shape.w,h:p.shape.h,key:p.shape.key,
+        n:p.shape.rel.length});
+      ans.push([p.shape.r0,p.shape.c0]);
+    }
+    place=patches.map(()=>null); laid=patches.map(()=>-1e9);
+    locked=new Set(); hist=[]; hintsLeft=3; moves=0;
+    hasSolve=false; sparked=false; solvedAt=-1e9; winAt=-1e9; openedAt=t; lastPatch=0;
+    drag=null; flying=[]; blushAt={}; rings=[]; particles=[]; btnPress={}; _order=null; _orderFor=-1;
+    tip.idx=0; tipSet(TIPS[0],'happy',t);
+    caption();
+  }
+
+  // ---- the rules ----
+  function occupancy(){
+    const occ=new Int8Array(R*Cn).fill(-1);
+    for(let i=0;i<patches.length;i++){
+      const o=place[i]; if(!o) continue;
+      for(const [r,c] of cellsOf(i)) occ[(o[0]+r)*Cn+(o[1]+c)]=i;
+    }
+    return occ;
+  }
+  // A drop is legal when every cell of the patch is on the quilt and no cell
+  // is already sewn. Which of the two it breaks is what the sprout says.
+  function testDrop(i,r0,c0,occ){
+    for(const [r,c] of cellsOf(i)){
+      const rr2=r0+r,cc=c0+c;
+      if(rr2<0||cc<0||rr2>=R||cc>=Cn||!quilt[rr2*Cn+cc]) return 'off';
+    }
+    for(const [r,c] of cellsOf(i)){
+      const j=occ[(r0+r)*Cn+(c0+c)];
+      if(j>=0&&j!==i) return 'over';
+    }
+    return '';
+  }
+  function snapshot(){return {place:place.map(p=>p?[p[0],p[1]]:null),locked:[...locked]};}
+  // Undo restores where the patches are and nothing else: the stitches are
+  // derived from that, so a patch that never moved keeps the seams it had and
+  // only the one that came back sews itself on again.
+  function restore(s,t){
+    const before=place.map(p=>!!p);
+    place=s.place.map(p=>p?[p[0],p[1]]:null);
+    locked=new Set(s.locked);
+    for(let i=0;i<patches.length;i++) if(place[i]&&!before[i]) laid[i]=t;
+    settle(t);
+  }
+  function push(){hist.push(snapshot());}
+  function settle(t){
+    const all=place.every(p=>p);
+    if(all&&!hasSolve){
+      hasSolve=true; sparked=false; solvedAt=t+(RM?0:MO.SOLVE_DELAY);
+      waveEnd=solvedAt+(RM?0:hemWaveSpan()+SEAM_TIME);
+      winAt=waveEnd+WIN_HOLD;
+      tipSet('Not a gap left over.','joy',t);
+    } else if(!all&&hasSolve){hasSolve=false; solvedAt=-1e9; winAt=-1e9;}
+    caption();
+  }
+  // A refused patch flies home first and blushes when it lands, so the rule
+  // it broke is named on the bay it came from rather than in mid-air.
+  function refuse(i,kind,t){
+    blushAt[i]=t+FLY_TIME;
+    tipSet(kind==='off'?'That patch hangs off the quilt.'
+      :'Something is already sewn there.','strain',t);
+  }
+  // Counts no move: an undo is not a thing the player did to the quilt, it
+  // is the taking back of one. (`quilt2d.gd`'s undo() says the same.)
+  function undo(t){
+    if(!hist.length||!open()) return;
+    const s=hist.pop();
+    for(let i=0;i<patches.length;i++) if(place[i]&&!s.place[i]) flyHome(i,t);
+    restore(s,t);
+    tipSet('Taken back.','happy',t);
+  }
+  // Everything the player laid goes home in a wave from the far corner.
+  // **A hint's patch stays**, and Reset is not itself undoable -- the
+  // history goes with the quilt. Both match `quilt_state.gd`'s reset() and
+  // the Quilt row in docs/art/flat-motion.md; the mock cleared the locks
+  // too until 2026-09-20, which would have let a player launder three
+  // hints into a clean board.
+  function reset(t){
+    const mine=patches.map((_,i)=>i).filter(i=>place[i]&&!locked.has(i));
+    if(!mine.length) return;
+    // the far corner first, the way every flat board clears
+    const order=mine.sort((a,b)=>(place[b][0]+place[b][1])-(place[a][0]+place[a][1]));
+    order.forEach((i,k)=>flyHome(i,t+stag(k,MO.RESET_STAGGER)));
+    order.forEach(i=>{place[i]=null;});
+    hist.length=0; moves=0;
+    tipSet('A clean quilt again.','happy',t); settle(t);
+  }
+  // A hint sews one patch of the answer where the board has not got it,
+  // lifting home anything in its way first, and locks it. A locked patch can
+  // never be in the way of a later hint: the answer's placements do not
+  // overlap each other.
+  function hintPick(){
+    const occ=occupancy();
+    for(let k=0;k<patches.length;k++){
+      const o=ans[k];
+      let held=true;
+      for(const [r,c] of cellsOf(k)){const j=occ[(o[0]+r)*Cn+(o[1]+c)];
+        if(j<0||patches[j].key!==patches[k].key){held=false;break;}}
+      if(held) continue;
+      return k;
+    }
+    return -1;
+  }
+  function hint(t){
+    if(hintsLeft<=0||!open()) return;
+    const k=hintPick();
+    if(k<0){tipSet('Every patch is where it belongs.','happy',t); return;}
+    push();
+    const o=ans[k],occ=occupancy(),away=new Set();
+    for(const [r,c] of cellsOf(k)){const j=occ[(o[0]+r)*Cn+(o[1]+c)]; if(j>=0) away.add(j);}
+    away.add(k);
+    for(const j of away) if(place[j]){flyHome(j,t); place[j]=null; locked.delete(j);}
+    hintsLeft--;
+    place[k]=[o[0],o[1]]; laid[k]=t+0.12; lastPatch=k; locked.add(k); moves++;
+    ring(k,t); sparkle(k,t+0.1);
+    tipSet('That patch belongs there.','happy',t);
+    settle(t);
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  function ring(i,t0){ if(RM) return; rings.push({i,t0}); }
+  function sparkle(i,t0){ if(RM) return;
+    for(let k=0;k<7;k++) particles.push({i,ox:(hash(k+i,3)-0.5)*1.4,oy:(hash(k,i+7)-0.5)*1.0,
+      vx:(hash(k*5,i)-0.5)*110,vy:-140,t0:t0+k*0.035,life:0.7,rad:13,g:190,col:C.sunRay}); }
+  function puff(i,t0){ if(RM) return;
+    for(let k=0;k<5;k++) particles.push({i,ox:(hash(k+i,11)-0.5)*1.2,oy:(hash(k,i+2)-0.5)*0.9,
+      vx:(hash(k*3,i+1)-0.5)*90,vy:-110,t0:t0+k*0.03,life:0.55,rad:11,g:170,col:patchCol(i)}); }
+  // Home is the bay; where it flies *from* is wherever it was when it left.
+  function flyHome(i,t){
+    if(RM) return;          // reduce motion: it is simply home
+    let fx=null,fy=null,fs=null;
+    if(L&&place[i]){fx=L.gx+place[i][1]*L.cell; fy=L.gy+place[i][0]*L.cell; fs=L.cell;}
+    flying.push({i,at:t,fromX:fx,fromY:fy,fromS:fs});
+  }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,Math.abs(w)/2,Math.abs(h)/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur='';
+    for(const w of ws){const test=cur?cur+' '+w:w; if(ctx.measureText(test).width>maxw&&cur){out.push(cur); cur=w;} else cur=test;}
+    if(cur) out.push(cur); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(Rr,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-Rr*0.46,cy+Rr*0.16,Rr*0.13,Rr*0.09); ellipse(cx+Rr*0.46,cy+Rr*0.16,Rr*0.13,Rr*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*Rr*0.34,ey=cy-Rr*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+Rr*0.04,Rr*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,Rr*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,Rr*0.1,Math.max(Rr*0.012,Rr*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-Rr*0.03,ey-Rr*0.035,Rr*0.03);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.arc(cx,cy+Rr*0.3,Rr*0.2,Math.PI*1.18,Math.PI*1.82); stroke(ink,Rr*0.07); return;}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?Rr*0.08:Rr*0.1),big?Rr*0.28:Rr*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,Rr*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+Rr*0.08,Rr*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+Rr*0.08,Rr*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(Rr,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,Rr*0.14,Rr*1.05,Rr*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-Rr*0.8); ctx.lineTo(0,-Rr*1.15); stroke(C.leaf,Rr*0.09);
+    leaf(0,-Rr*1.12,Rr*0.62,-2.6); leaf(0,-Rr*1.12,Rr*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,Rr,Rr*0.9); ctx.beginPath(); ctx.ellipse(0,0,Rr,Rr*0.9,0,0,Math.PI*2); stroke(C.line,Rr*0.07);
+    faceParts(Rr*0.9,0,Rr*0.12,o);
+  }
+
+  // ================= layout =================
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1340 of board, 20,
+  // 140 of tip card, 40 of margin -- 1920 exactly. The bottom slot is the tip
+  // card alone at 140, which is Word Trail's shape: there is nothing to Check,
+  // so Reset rides up into the top bar and the row goes.
+  const TOP_H=180,DAY_H=120,BOARD_H=1340,TIP_H=140,ROW_GAP=20;
+  const INSET=28,FIELD_H=800,RACK_H=456,RACK_GAP=16,CELL_CAP=150;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,tipY=by+BOARD_H+ROW_GAP;
+    const cx0=M+INSET,cy0=by+INSET,cw=COL-2*INSET;
+    const cell=Math.min(cw/Cn,FIELD_H/R,CELL_CAP);
+    const gw=cell*Cn,gh=cell*R,gx=cx0+(cw-gw)/2,gy=cy0+(FIELD_H-gh)/2;
+    const rackY=cy0+FIELD_H+INSET;
+    const cols=patches.length>6?4:3;
+    const bayW=(cw-(cols-1)*RACK_GAP)/cols,bayH=(RACK_H-RACK_GAP)/2;
+    let widest=1,tallest=1;
+    for(const p of patches){widest=Math.max(widest,p.w); tallest=Math.max(tallest,p.h);}
+    // One size for every patch, so the rack reads as one length of cloth cut
+    // up rather than as a shelf of different-sized toys.
+    const rcell=Math.min(0.82*bayW/widest,0.82*bayH/tallest,0.62*cell);
+    const bays=patches.map((p,i)=>{
+      const row=i<cols?0:1,rowN=row===0?Math.min(patches.length,cols):patches.length-cols;
+      const col=i-row*cols;
+      const x0=cx0+(cw-(rowN*bayW+(rowN-1)*RACK_GAP))/2;
+      return {x:x0+col*(bayW+RACK_GAP)+bayW/2,y:rackY+row*(bayH+RACK_GAP)+bayH/2};
+    });
+    return {top:{y:topY},day:{y:dayY},board:{y:by},tip:{y:tipY},
+      cx0,cy0,cw,cell,gx,gy,gw,gh,rackY,bayW,bayH,rcell,bays,cols,widest,tallest,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+
+  // ================= the quilt =================
+  // A polyomino is drawn as one path of rounded rects, each grown by its own
+  // corner radius toward every neighbour it has, so the union comes out with
+  // soft outer corners and no seam down the middle -- and one fill, so a
+  // ghost at half alpha never double-darkens where two cells overlap.
+  function shapePath(cells,x,y,s,pad){
+    const set=new Set(cells.map(p=>p[0]+','+p[1]));
+    ctx.beginPath();
+    for(const [r,c] of cells){
+      const l=set.has(r+','+(c-1)),rt=set.has(r+','+(c+1)),u=set.has((r-1)+','+c),dn=set.has((r+1)+','+c);
+      const x0=x+c*s-(l?pad:0),y0=y+r*s-(u?pad:0);
+      const w=s+(l?pad:0)+(rt?pad:0),h=s+(u?pad:0)+(dn?pad:0);
+      ctx.roundRect(x0,y0,w,h,Math.min(pad,w/2,h/2));
+    }
+  }
+  function boundary(cells,x,y,s,inset){
+    const set=new Set(cells.map(p=>p[0]+','+p[1])),segs=[];
+    for(const [r,c] of cells) for(let d=0;d<4;d++){
+      const [dr,dc]=DIR4[d];
+      if(set.has((r+dr)+','+(c+dc))) continue;
+      const x0=x+c*s,y0=y+r*s;
+      if(d===0) segs.push([x0+inset,y0,x0+s-inset,y0]);
+      else if(d===1) segs.push([x0+inset,y0+s,x0+s-inset,y0+s]);
+      else if(d===2) segs.push([x0,y0+inset,x0,y0+s-inset]);
+      else segs.push([x0+s,y0+inset,x0+s,y0+s-inset]);
+    }
+    return segs;
+  }
+  function quiltCells(){const out=[]; for(let r=0;r<R;r++) for(let c=0;c<Cn;c++) if(quilt[r*Cn+c]) out.push([r,c]); return out;}
+  // A running stitch: the dashes arrive one by one along the seam.
+  function stitchLine(x0,y0,x1,y1,u,col,w){
+    const n=4,len=Math.hypot(x1-x0,y1-y0),dash=0.56/n;
+    for(let k=0;k<n;k++){
+      const f=clamp(u*n-k); if(f<=0) break;
+      const a=(k+0.22)/n,b=a+dash*f;
+      ctx.beginPath();
+      ctx.moveTo(lerp(x0,x1,a),lerp(y0,y1,a));
+      ctx.lineTo(lerp(x0,x1,b),lerp(y0,y1,b));
+      stroke(col,w);
+    }
+  }
+  // Every seam is derived from where the patches are, never stored: lifting a
+  // patch takes its stitches with it and undo keeps no book for them.
+  function seams(){
+    const occ=occupancy(),out=[];
+    for(let r=0;r<R;r++) for(let c=0;c<Cn;c++){
+      const p=occ[r*Cn+c]; if(p<0) continue;
+      for(let d=0;d<4;d++){
+        const [dr,dc]=DIR4[d],nr=r+dr,nc=c+dc;
+        const inGrid=nr>=0&&nc>=0&&nr<R&&nc<Cn;
+        if(!inGrid||!quilt[nr*Cn+nc]){out.push({r,c,d,owner:p,hem:true}); continue;}
+        if(d!==1&&d!==3) continue;              // a shared seam, counted once
+        const q=occ[nr*Cn+nc];
+        if(q>=0&&q!==p) out.push({r,c,d,owner:laid[q]>laid[p]?q:p,hem:false});
+      }
+    }
+    return out;
+  }
+  function centroid(i){
+    const o=place[i]; if(!o) return [0,0];
+    let sr=0,sc=0; for(const [r,c] of cellsOf(i)){sr+=o[0]+r+0.5; sc+=o[1]+c+0.5;}
+    const n=cellsOf(i).length; return [sr/n,sc/n];
+  }
+  function seamMid(s){
+    const [dr,dc]=DIR4[s.d];
+    return [s.r+0.5+dr*0.5,s.c+0.5+dc*0.5];
+  }
+  function hemWaveSpan(){
+    const [cr,cc]=centroid(lastPatch); let m=0;
+    for(let r=0;r<R;r++) for(let c=0;c<Cn;c++){ if(!quilt[r*Cn+c]) continue;
+      m=Math.max(m,Math.max(Math.abs(r+0.5-cr),Math.abs(c+0.5-cc)));}
+    return m*SEAM_STEP;
+  }
+  function drawField(t){
+    const cells=quiltCells(),s=L.cell,pad=s*0.24;
+    // the backing: SURFACE_HI over its own deeper shape, the lip every card,
+    // tile and piece on a flat screen has
+    ctx.fillStyle=BACK_DEEP; shapePath(cells,L.gx,L.gy+s*0.045,s,pad); ctx.fill();
+    ctx.fillStyle=BACK; shapePath(cells,L.gx,L.gy,s,pad); ctx.fill();
+    // the cell rules, faint, so the player can count squares
+    ctx.save(); ctx.globalAlpha=0.32; ctx.strokeStyle=C.line; ctx.lineWidth=Math.max(2,s*0.018); ctx.lineCap='butt';
+    for(let r=0;r<R;r++) for(let c=0;c<Cn;c++){
+      if(!quilt[r*Cn+c]) continue;
+      if(c+1<Cn&&quilt[r*Cn+c+1]){ctx.beginPath(); ctx.moveTo(L.gx+(c+1)*s,L.gy+r*s+s*0.12); ctx.lineTo(L.gx+(c+1)*s,L.gy+(r+1)*s-s*0.12); ctx.stroke();}
+      if(r+1<R&&quilt[(r+1)*Cn+c]){ctx.beginPath(); ctx.moveTo(L.gx+c*s+s*0.12,L.gy+(r+1)*s); ctx.lineTo(L.gx+(c+1)*s-s*0.12,L.gy+(r+1)*s); ctx.stroke();}
+    }
+    ctx.restore();
+    // the hem round the whole region
+    for(const g of boundary(cells,L.gx,L.gy,s,0)) {ctx.beginPath(); ctx.moveTo(g[0],g[1]); ctx.lineTo(g[2],g[3]); stroke(C.line,Math.max(4,s*0.055));}
+  }
+  function drawAnswer(){
+    const s=L.cell;
+    ctx.save(); ctx.globalAlpha=0.5;
+    for(let i=0;i<patches.length;i++){
+      if(place[i]&&place[i][0]===ans[i][0]&&place[i][1]===ans[i][1]) continue;
+      const o=ans[i];
+      ctx.setLineDash([s*0.16,s*0.13]);
+      for(const g of boundary(cellsOf(i),L.gx+o[1]*s,L.gy+o[0]*s,s,s*0.06)){
+        ctx.beginPath(); ctx.moveTo(g[0],g[1]); ctx.lineTo(g[2],g[3]); stroke(patchThread(i),Math.max(3,s*0.05));}
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+  function drawPatchAt(i,x,y,s,t,opt){
+    opt=opt||{};
+    const cells=cellsOf(i),pad=s*0.24;
+    const blush=blushAt[i]==null?0:flashLevel(t-blushAt[i]);
+    // A patch does not blush. Washing its own colour toward BAD turns the
+    // mint one khaki and the sky one mauve -- half the nine go to mud -- so
+    // the refusal is a rose halo round the cloth and a shiver, which is
+    // docs/art/flat-motion.md rule 9 with the bay standing in for the cell.
+    const col=patchCol(i),deep=patchDeep(i);
+    if(opt.shadow){ctx.save(); ctx.globalAlpha*=0.20; ctx.fillStyle=C.text;
+      shapePath(cells,x+opt.shadow*0.45,y+opt.shadow,s,pad); ctx.fill(); ctx.restore();}
+    if(blush>0){ctx.save(); ctx.globalAlpha*=blush;
+      for(const g of boundary(cells,x,y,s,0)){ctx.beginPath(); ctx.moveTo(g[0],g[1]); ctx.lineTo(g[2],g[3]); stroke(rgba(C.bad,0.92),s*0.30);}
+      ctx.restore();}
+    if(opt.glow){   // a hint's patch keeps a soft sun round it: it is a given.
+      // Drawn as a thick round line along the silhouette's own edges rather
+      // than as a second filled shape, so nothing shows through the patch.
+      ctx.save(); ctx.globalAlpha*=0.8;
+      for(const g of boundary(cells,x,y,s,0)){ctx.beginPath(); ctx.moveTo(g[0],g[1]); ctx.lineTo(g[2],g[3]); stroke(rgba(C.sunRay,0.85),s*0.30);}
+      ctx.restore();
+    }
+    ctx.fillStyle=deep; shapePath(cells,x,y+s*0.075,s,pad); ctx.fill();
+    ctx.fillStyle=col; shapePath(cells,x,y,s,pad); ctx.fill();
+    // the seams inside one patch: it is cut from one cloth, so these are its
+    // own shade and not a stitch
+    ctx.save(); ctx.globalAlpha*=0.22; ctx.strokeStyle=deep; ctx.lineWidth=Math.max(1.5,s*0.026); ctx.lineCap='round';
+    const set=new Set(cells.map(p=>p[0]+','+p[1]));
+    for(const [r,c] of cells){
+      if(set.has(r+','+(c+1))){ctx.beginPath(); ctx.moveTo(x+(c+1)*s,y+r*s+s*0.16); ctx.lineTo(x+(c+1)*s,y+(r+1)*s-s*0.16); ctx.stroke();}
+      if(set.has((r+1)+','+c)){ctx.beginPath(); ctx.moveTo(x+c*s+s*0.16,y+(r+1)*s); ctx.lineTo(x+(c+1)*s-s*0.16,y+(r+1)*s); ctx.stroke();}
+    }
+    ctx.restore();
+    // a highlight along the top of the cloth
+    ctx.save(); ctx.globalAlpha*=0.28; ctx.fillStyle=C.surface;
+    for(const [r,c] of cells) if(!set.has((r-1)+','+c)) {rr(x+c*s+s*0.18,y+r*s+s*0.1,s*0.64,s*0.09,s*0.05); ctx.fill();}
+    ctx.restore();
+  }
+  function drawSeams(t){
+    const s=L.cell,list=seams();
+    for(const sm of list){
+      const own=sm.owner,[cr,cc]=centroid(own),[mr,mc]=seamMid(sm);
+      const d=Math.max(Math.abs(mr-cr),Math.abs(mc-cc));
+      let at=laid[own]+(RM?0:d*SEAM_STEP),col=patchThread(own);
+      if(hasSolve&&sm.hem){
+        // On the solve the whole hem is re-sewn in one wave out of the patch
+        // that finished the quilt, and the thread warms toward SUN_RAY.
+        const [lr,lc]=centroid(lastPatch);
+        const dd=Math.max(Math.abs(mr-lr),Math.abs(mc-lc));
+        at=solvedAt+(RM?0:dd*SEAM_STEP);
+        col=mixHex(patchThread(own),C.sunRay,0.7);
+      }
+      const u=RM?1:clamp((t-at)/SEAM_TIME);
+      if(u<=0) continue;
+      const x0=L.gx+sm.c*s,y0=L.gy+sm.r*s;
+      let ax,ay,bx,by;
+      if(sm.d===0){ax=x0+s*0.08; ay=y0; bx=x0+s*0.92; by=y0;}
+      else if(sm.d===1){ax=x0+s*0.08; ay=y0+s; bx=x0+s*0.92; by=y0+s;}
+      else if(sm.d===2){ax=x0; ay=y0+s*0.08; bx=x0; by=y0+s*0.92;}
+      else {ax=x0+s; ay=y0+s*0.08; bx=x0+s; by=y0+s*0.92;}
+      stitchLine(ax,ay,bx,by,u,col,Math.max(2.5,s*0.045));
+    }
+  }
+  function flyState(i,t){
+    for(const f of flying) if(f.i===i){const u=clamp((t-f.at)/FLY_TIME); if(u<1) return {u,f};}
+    return null;
+  }
+  function drawSewn(t){
+    const s=L.cell;
+    for(let i=0;i<patches.length;i++){
+      const o=place[i]; if(!o) continue;
+      if(drag&&drag.i===i) continue;
+      const cs=centroid(i),cx=L.gx+cs[1]*s,cy=L.gy+cs[0]*s;
+      let sc=1,dy=0,a=1;
+      const since=t-laid[i];
+      if(since>=0&&since<MO.RELEASE_TIME) sc=releaseScale(since);
+      if(since>=0) dy+=hopLift(since-0.02);
+      if(locked.has(i)){const dl=dropInLift(since); dy+=dl.dy; a=dl.a;}
+      if(hasSolve){
+        const order=solveOrder(),k=order.indexOf(i);
+        dy+=RM?0:hopSolve(t-solvedAt-stag(k,MO.SOLVE_STAGGER));
+      }
+      const sh=shiverOffset(t-(blushAt[i]==null?-1e9:blushAt[i]));
+      ctx.save(); ctx.globalAlpha*=a; ctx.translate(cx+sh,cy+dy); ctx.scale(sc,sc); ctx.translate(-cx,-cy);
+      drawPatchAt(i,L.gx+o[1]*s,L.gy+o[0]*s,s,t,{glow:locked.has(i)});
+      ctx.restore();
+    }
+  }
+  const hopSolve=s=>{if(s<0||s>=MO.SOLVE_TIME) return 0; return MO.SOLVE_HOP*Math.sin(Math.PI*s/MO.SOLVE_TIME);};
+  let _order=null,_orderFor=-1;
+  function solveOrder(){
+    if(_order&&_orderFor===lastPatch) return _order;
+    const [lr,lc]=centroid(lastPatch);
+    _order=patches.map((_,i)=>i).sort((a,b)=>{
+      const A=centroid(a),B=centroid(b);
+      return (Math.abs(A[0]-lr)+Math.abs(A[1]-lc))-(Math.abs(B[0]-lr)+Math.abs(B[1]-lc));});
+    _orderFor=lastPatch; return _order;
+  }
+  function bayPatchPos(i){
+    const b=L.bays[i],p=patches[i],s=L.rcell;
+    return [b.x-p.w*s/2,b.y-p.h*s/2,s];
+  }
+  function drawRack(t){
+    const s=L.rcell;
+    // one faint rule across the card: the quilt above it, the cloth below
+    ctx.save(); ctx.globalAlpha*=0.45; ctx.beginPath();
+    ctx.moveTo(L.cx0+40,L.rackY-INSET/2); ctx.lineTo(L.cx0+L.cw-40,L.rackY-INSET/2);
+    stroke(C.line,3); ctx.restore();
+    for(let i=0;i<patches.length;i++){
+      const [bx,by]=bayPatchPos(i);
+      const home=!place[i]&&!(drag&&drag.i===i);
+      const fl=flyState(i,t);
+      if(!home&&!fl) {   // the bay keeps the patch's own silhouette while it is away
+        ctx.save(); ctx.globalAlpha*=0.55; ctx.setLineDash([s*0.2,s*0.16]);
+        for(const g of boundary(cellsOf(i),bx,by,s,s*0.06)){ctx.beginPath(); ctx.moveTo(g[0],g[1]); ctx.lineTo(g[2],g[3]); stroke(C.line,Math.max(2.5,s*0.07));}
+        ctx.setLineDash([]); ctx.restore();
+        continue;
+      }
+      if(fl){   // flying home: from wherever it was let go, back to its bay
+        const u=sineIO(fl.u),f=fl.f;
+        const fx=f.fromX==null?bx:lerp(f.fromX,bx,u),fy=f.fromY==null?by:lerp(f.fromY,by,u);
+        const fs=f.fromS==null?s:lerp(f.fromS,s,u);
+        ctx.save(); drawPatchAt(i,fx,fy,fs,t,{shadow:fs*0.12}); ctx.restore();
+        continue;
+      }
+      const en=popInScale(t-openedAt-MO.ENTER_DELAY-stag(i,MO.ENTER_STAGGER));
+      const cx=bx+patches[i].w*s/2,cy=by+patches[i].h*s/2;
+      const pr=drag===null&&pressed===i&&!RM?MO.PRESS_SCALE:1;
+      const sh=shiverOffset(t-(blushAt[i]==null?-1e9:blushAt[i]));
+      ctx.save(); ctx.translate(cx+sh,cy); ctx.scale(en[0]*pr,en[1]*pr); ctx.translate(-cx,-cy);
+      drawPatchAt(i,bx,by,s,t,{shadow:s*0.1});
+      ctx.restore();
+    }
+  }
+  // Where the patch would land: always measured off the hold point and the
+  // field's own cell, never off the size the patch happens to be part-way
+  // through growing to, so the snap never moves while the growth finishes.
+  function snapOf(d){
+    const p=patches[d.i],cell=L.cell;
+    const px=d.x-p.w*cell/2,py=d.y-HOLD_CELLS*cell-p.h*cell/2;
+    return [Math.round((py-L.gy)/cell),Math.round((px-L.gx)/cell)];
+  }
+  const overField=(snap,i)=>{const p=patches[i];
+    return snap[0]+p.h>0&&snap[0]<R&&snap[1]+p.w>0&&snap[1]<Cn;};
+  function drawDrag(t){
+    if(!drag) return;
+    const i=drag.i,u=RM?1:clamp((t-drag.at)/GROW_TIME);
+    const s=lerp(drag.fromS,L.cell,sineIO(u));
+    const hx=drag.x,hy=drag.y-HOLD_CELLS*L.cell;
+    const px=lerp(drag.fromX+drag.fromW/2,hx,sineIO(u))-patches[i].w*s/2;
+    const py=lerp(drag.fromY+drag.fromH/2,hy,sineIO(u))-patches[i].h*s/2;
+    const snap=snapOf(drag);
+    if(overField(snap,i)){
+      // The patch rides above the finger and the footprint snaps under it, so
+      // most of the wash is behind the patch itself: the outline is what
+      // actually carries the answer, and a refusal's is dashed as well as red.
+      const bad=testDrop(i,snap[0],snap[1],occupancy());
+      const fx=L.gx+snap[1]*L.cell,fy=L.gy+snap[0]*L.cell;
+      ctx.save(); ctx.globalAlpha=bad?0.34:0.40;
+      ctx.fillStyle=bad?C.bad:patchCol(i);
+      shapePath(cellsOf(i),fx,fy,L.cell,L.cell*0.24); ctx.fill();
+      ctx.globalAlpha=bad?0.95:0.75;
+      if(bad) ctx.setLineDash([L.cell*0.14,L.cell*0.11]);
+      for(const g of boundary(cellsOf(i),fx,fy,L.cell,L.cell*0.05)){
+        ctx.beginPath(); ctx.moveTo(g[0],g[1]); ctx.lineTo(g[2],g[3]); stroke(bad?C.bad:patchThread(i),Math.max(3,L.cell*0.05));}
+      ctx.setLineDash([]); ctx.restore();
+    }
+    ctx.save(); drawPatchAt(i,px,py,s,t,{shadow:s*0.22}); ctx.restore();
+  }
+  function drawBoard(t){
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,L.board.y,COL,BOARD_H,40,C.surface,C.line,8);
+    const sc=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a<=0){ctx.restore(); return;}
+    ctx.save(); ctx.globalAlpha=a*fade;
+    const cx=L.gx+L.gw/2,cy=L.gy+L.gh/2;
+    ctx.save(); ctx.translate(cx,cy); ctx.scale(sc,sc); ctx.translate(-cx,-cy);
+    drawField(t);
+    if(peek&&open()) drawAnswer();
+    drawSewn(t);
+    drawSeams(t);
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      const cs=centroid(rg.i),x=L.gx+cs[1]*L.cell,y=L.gy+cs[0]*L.cell;
+      ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.arc(x,y,L.cell*(0.5+0.7*u),0,Math.PI*2); stroke(C.leaf,10*(1-u)+2); ctx.restore();}
+    ctx.restore();
+    drawRack(t);
+    drawDrag(t);
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const cs=place[p.i]?centroid(p.i):null;
+      const bx=cs?L.gx+cs[1]*L.cell:L.bays[p.i].x,byy=cs?L.gy+cs[0]*L.cell:L.bays[p.i].y,s2=t-p.t0;
+      ctx.save(); ctx.globalAlpha=1-u; star4(bx+p.ox*L.cell*0.5+p.vx*s2,byy+p.oy*L.cell*0.5+p.vy*s2+p.g*s2*s2,p.rad*(1-0.5*u),t*2+p.ox,p.col); ctx.restore();}
+    ctx.restore(); ctx.restore();
+  }
+
+  // ================= the chrome =================
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:!place.some(p=>p)});
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!hist.length});
+    const cx=(M+126+W-M-504)/2,by=L.top.y+98;
+    ctx.font='700 66px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('QUILT').width; ctx.letterSpacing='0px';
+    text('QUILT',cx,by-10,'700 66px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-44; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-18,lx+2,ly-32); stroke(C.leaf,7); leaf(lx+2,ly-28,36,-2.7); leaf(lx+2,ly-32,30,-0.5);
+    text('NOT A GAP LEFT OVER',cx,by+36,'700 21px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 12',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Fern Hollow',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+  const TIPS=['Drag a patch onto the quilt. It snaps to the cells.',
+    'A patch never turns. It goes on the way it is drawn.',
+    'Drag a sewn patch off again to send it home.',
+    'Every patch fits somewhere. There is one way.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-300,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Not a gap left over.',W/2,534,'600 34px '+FB,C.dim);
+      const bw=760,cs=Math.min(bw/Cn,760/R),bx=W/2-cs*Cn/2,byy=640;
+      ctx.save(); ctx.globalAlpha=a1;
+      for(let i=0;i<patches.length;i++){const o=place[i]; if(!o) continue;
+        ctx.fillStyle=patchDeep(i); shapePath(cellsOf(i),bx+o[1]*cs,byy+o[0]*cs+cs*0.07,cs,cs*0.24); ctx.fill();
+        ctx.fillStyle=patchCol(i); shapePath(cellsOf(i),bx+o[1]*cs,byy+o[0]*cs,cs,cs*0.24); ctx.fill();}
+      ctx.restore(); ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp==null?-1e9:btnPress.camp,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('ql-caption');
+  function caption(){
+    if(!capEl||!patches.length) return;
+    let cells=0; for(let i=0;i<R*Cn;i++) cells+=quilt[i];
+    const sewn=place.filter(p=>p).length,shapes=new Set(patches.map(p=>p.key)).size;
+    if(hasSolve){capEl.textContent='Sewn in '+moves+' moves and '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+'. '
+      +patches.length+' patches over '+cells+' cells, '+R+'×'+Cn+'.'; return;}
+    capEl.textContent=R+'×'+Cn+' · '+cells+' cells · '+patches.length+' patches in '+shapes+' shapes · '
+      +sewn+' sewn · '+hintsLeft+' hints · '
+      +(unique?'proved unique':'NOT proved unique (the budget ran out)')
+      +' in '+attempts+(attempts===1?' attempt':' attempts')+', '+genMs.toFixed(1)+' ms · '
+      +nodes+' search nodes'+(graded?'':' · off the band’s grade, kept anyway');
+  }
+
+  // ================= the frame =================
+  function frame(){const t=now(); L=layout();
+    if(tip.mood==='happy'&&open()&&!hist.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    for(let i=flying.length-1;i>=0;i--) if(t-flying[i].at>=FLY_TIME) flying.splice(i,1);
+    if(hasSolve&&!sparked&&t>=solvedAt){sparked=true;
+      const order=solveOrder();
+      for(let k=0;k<order.length;k++) sparkle(order[k],solvedAt+stag(k,MO.SOLVE_STAGGER));}
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ================= the finger =================
+  let pressed=-1,pressTarget=null;
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function rackAt(p){
+    for(let i=0;i<patches.length;i++){
+      if(place[i]) continue;
+      const [bx,by,s]=bayPatchPos(i);
+      for(const [r,c] of cellsOf(i)) if(inRect(p,bx+c*s,by+r*s,s,s)) return i;
+    }
+    return -1;
+  }
+  function fieldAt(p){
+    const c=Math.floor((p[0]-L.gx)/L.cell),r=Math.floor((p[1]-L.gy)/L.cell);
+    if(c<0||r<0||c>=Cn||r>=R) return -1;
+    return occupancy()[r*Cn+c];
+  }
+  function hit(p,t){
+    if(hasSolve&&t-winAt>0.5) return inRect(p,M,L.camp.y,COL,130)?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(inRect(p,W-M-488,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    if(!open()) return null;
+    const i=rackAt(p); if(i>=0) return {kind:'rack',i};
+    const j=fieldAt(p); if(j>=0&&!locked.has(j)) return {kind:'sewn',i:j};
+    if(j>=0) return {kind:'given',i:j};
+    return null;
+  }
+  // A drag takes its snapshot before it lifts anything, so undo puts a patch
+  // back where it was picked up from whatever the drag turns out to be.
+  function startDrag(i,p,t,from){
+    const s=from==='rack'?L.rcell:L.cell;
+    const fx=from==='rack'?bayPatchPos(i)[0]:L.gx+place[i][1]*L.cell;
+    const fy=from==='rack'?bayPatchPos(i)[1]:L.gy+place[i][0]*L.cell;
+    push();
+    drag={i,at:t,x:p[0],y:p[1],from,fromS:s,fromX:fx,fromY:fy,
+      fromW:patches[i].w*s,fromH:patches[i].h*s,travel:0};
+    if(from==='field'){place[i]=null; settle(t);}
+  }
+  function endDrag(t){
+    const d=drag; drag=null; if(!d) return;
+    const i=d.i,u=RM?1:clamp((t-d.at)/GROW_TIME);
+    const s=lerp(d.fromS,L.cell,sineIO(u));
+    const px=lerp(d.fromX+d.fromW/2,d.x,sineIO(u))-patches[i].w*s/2;
+    const py=lerp(d.fromY+d.fromH/2,d.y-HOLD_CELLS*L.cell,sineIO(u))-patches[i].h*s/2;
+    const home=()=>flying.push({i,at:t,fromX:px,fromY:py,fromS:s});
+    // A press that never travelled is a tap: on the field it takes the patch
+    // off, in the rack it is only a press and the sprout says what to do.
+    if(d.travel<L.cell*0.5){
+      if(d.from==='field'){home(); moves++; tipSet('Back to the rack.','happy',t);}
+      else {hist.pop(); tipSet('Drag it up onto the quilt.','happy',t);}
+      return;
+    }
+    const snap=snapOf(d);
+    if(!overField(snap,i)){   // let go away from the quilt: home, quietly
+      if(d.from==='field'){home(); moves++; tipSet('Back to the rack.','happy',t);}
+      else {hist.pop(); home();}
+      return;
+    }
+    const bad=testDrop(i,snap[0],snap[1],occupancy());
+    if(bad){
+      if(d.from!=='field') hist.pop();
+      else moves++;
+      home(); refuse(i,bad,t);
+      return;
+    }
+    place[i]=[snap[0],snap[1]]; laid[i]=t; lastPatch=i; moves++;
+    puff(i,t); settle(t);
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),p=pt(e),hh=hit(p,t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='rack'||hh.kind==='sewn'){ cv.setPointerCapture(e.pointerId); pressed=hh.i;
+      startDrag(hh.i,p,t,hh.kind==='rack'?'rack':'field'); }
+    else if(hh.kind==='given'){ tipSet('A hint sewed that one on. It stays.','happy',t); }
+    else btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{
+    if(!drag) return; e.preventDefault();
+    const p=pt(e);
+    drag.travel+=Math.hypot(p[0]-drag.x,p[1]-drag.y);
+    drag.x=p[0]; drag.y=p[1];});
+  function up(e){const t=now();
+    if(drag){endDrag(t); pressed=-1; pressTarget=null; return;}
+    const p=pt(e),hh=hit(p,t); pressed=-1;
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='tip') tipSet('Drag a sewn patch off to send it home.','happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the fifteen cards.','happy',t);
+    else if(hh.kind==='camp') build(diff,seed+1,t);}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{if(drag) endDrag(now()); pressed=-1; pressTarget=null;});
+
+  // ---- the page's own controls ----
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('ql-hint',t=>hint(t)); btn('ql-undo',t=>undo(t)); btn('ql-reset',t=>reset(t));
+  btn('ql-new',t=>build(diff,seed+1,t));
+  // not a board action: a page control, so the solve wave can be watched
+  // without eight careful drags first
+  btn('ql-sew',t=>{push(); for(let i=0;i<patches.length;i++) if(!place[i]){
+      place[i]=[ans[i][0],ans[i][1]]; laid[i]=t+stag(i,MO.SOLVE_STAGGER); lastPatch=i;}
+    settle(t);});
+  btn('ql-peek',()=>{peek=!peek; const el=document.getElementById('ql-peek'); if(el){el.classList.toggle('on',peek); el.textContent=peek?'Hide the answer':'Show the answer';}});
+  const diffEl=document.getElementById('ql-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=BANDS[diff].label;});
+  const rmEl=document.getElementById('ql-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  // ---- the opening ----
+  (function(){
+    build(parseInt(Q.get('d')||'0')||0,parseInt(Q.get('seed')||'4')||4,0);
+    L=layout();
+    if(diffEl) diffEl.textContent=BANDS[diff].label;
+    const sewn=parseInt(Q.get('sew')||'0')||0,hn=parseInt(Q.get('hint')||'0')||0;
+    const win=Q.get('win')==='1',doReset=Q.get('reset')==='1',ref=Q.get('refuse');
+    const mid=sewn||hn||win||doReset||ref||Q.get('drag')==='1';
+    if(win) for(let i=0;i<patches.length;i++){place[i]=[ans[i][0],ans[i][1]]; laid[i]=-10;}
+    else for(let i=0;i<sewn&&i<patches.length;i++){place[i]=[ans[i][0],ans[i][1]]; laid[i]=-10;}
+    if(win){lastPatch=patches.length-1; settle(-10);} else settle(-10);
+    for(let i=0;i<hn;i++) hint(-11);
+    if(doReset){ // sew the answer, then clear it, so the wave has something to clear
+      for(let i=0;i<patches.length;i++){place[i]=[ans[i][0],ans[i][1]]; laid[i]=-10;}
+      settle(-10); reset(-0.2);
+    }
+    if(Q.get('drag')==='1'){
+      const i=place.findIndex(p=>!p);
+      if(i>=0){const b=L.bays[i];
+        drag={i,at:-1,x:L.gx+L.gw*0.45,y:L.gy+L.gh*0.5+HOLD_CELLS*L.cell,from:'rack',
+          fromS:L.rcell,fromX:bayPatchPos(i)[0],fromY:bayPatchPos(i)[1],
+          fromW:patches[i].w*L.rcell,fromH:patches[i].h*L.rcell,travel:99,ox:0,oy:0};}
+    }
+    if(ref){
+      const i=place.findIndex(p=>!p);
+      if(i>=0) refuse(i,ref==='over'?'over':'off',-0.1);
+    }
+    if(mid) openedAt=-12;
+    caption(); frame();
+  })();
+})();
+
 </script>
 </body>
 </html>

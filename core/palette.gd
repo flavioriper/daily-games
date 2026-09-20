@@ -406,6 +406,41 @@ const GRID_TINT   := Color("f9f3e7")
 ## so this is BARK 38% of the way to PARCHMENT.
 const GRID_RULE   := Color("a3855f")
 
+# --- Quilt (spec 2026-09-20-quilt-flat-design.md, section 5) ---
+## The eight cloths a quilt is sewn from, taken by patch index. Eight is the
+## most any band asks for, so a colour never repeats on one board.
+##
+## **Queens' `REGION` was the proposal and it lost on a rendered frame.**
+## Those nine are pale by design -- they are a *ground* for a bee to stand
+## on -- and two of them, the tan #cfc3ac and the silver #dcdcdf, sit within
+## a few points of `PARCHMENT` and `SURFACE_HI`. A patch in either read as a
+## hole in the card rather than as a piece of cloth on it, which is the
+## Bridges lesson again (a beach at value 237 against a 230 sea stops being
+## an islet). Cloth is the thing the player moves, so it has to be the
+## strongest surface on the screen, not the palest.
+##
+## These sit between `REGION`'s pastels and `PEGS`' full colours: mid-light,
+## warm-leaning, and spread right round the wheel **by index** -- yellow,
+## blue, red, green, violet, orange, cyan, pink -- so two patches given
+## consecutive indices never land beside each other in the same family.
+const CLOTH := [
+	Color("f0c86f"),   # butter
+	Color("9bbfe8"),   # sky
+	Color("ef938c"),   # coral
+	Color("a9cd87"),   # sage
+	Color("bda3e0"),   # lilac
+	Color("f2ab73"),   # apricot
+	Color("82c6c0"),   # teal
+	Color("eaa2c4"),   # rose
+]
+## The backing a quilt is sewn onto: a cell no patch has covered yet.
+## Shikaku's unclaimed ground, reused unchanged -- it is the one colour in
+## the palette already chosen to read as bare ground *on parchment*, which
+## is exactly the problem here. `SURFACE_HI` was the proposal and it is four
+## points off the card it sits on.
+const QUILT_BACK := BED_GROUND
+const QUILT_RULE := BED_LINE
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [
