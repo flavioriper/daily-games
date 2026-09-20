@@ -269,6 +269,16 @@ greened yet, records it in `given`, and shows that letter ghosted in the typed
 row at its own column with the key greened. It never commits a row and never
 counts as a move; it clears nothing, because the board keeps no history.
 
+**Reset does not refund a hint, and it does not take one back either.** It
+clears `rows`, `marks` and `typed` and leaves `hints_left` and `given` exactly
+as they were -- Queens' rule, stated in its own spec's section 3: *what was
+given stays given*. The reason is not tidiness. Reset replays the **same
+word**, so a Reset that refunded hints would make the limit of two meaningless
+-- hint, Reset, hint, Reset would spell the answer out a letter at a time --
+and one that discarded `given` would charge the player twice for the same
+letter. Added 2026-09-19 after the review found `reset()` refunding; the spec
+had not said, which is why it did.
+
 ## 11. The menu card
 
 `ui/menu/card_art.gd` gets one `_build` branch: three letter tiles in a row --
