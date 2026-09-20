@@ -203,6 +203,23 @@ const PUZZLES := [
 		"actions": false,
 		"difficulties": [0, 1, 2],
 	},
+	{
+		"id": "bridges",
+		"kind": "puzzle",
+		"title": "Bridges",
+		"blurb": "Plank every islet to its number, and join them all.",
+		"short": "Plank every islet\nto its number.",
+		"motto": "Join every islet",
+		"footer": "Link · Count · Cross",
+		# It picks nothing up, so it asks for no tray; it has a real Check, so
+		# unlike Balance and Untangle it keeps the actions row. The bottom slot
+		# is 290, which is Shikaku's, Tents' and Light Up's shape, so the flat
+		# host needs nothing new.
+		"script": "res://puzzles/bridges2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2],
+	},
 ]
 
 ## The old game. Every one of these mounts the 3D stage and wears the island

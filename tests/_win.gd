@@ -85,6 +85,9 @@ func _note(id: String) -> String:
 		"oneline", "oneline_island": return "%d planks walked, board fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram", "nonogram_island": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"queens": return "%dx%d court, %d queens, board fit=%s, hud=%s" % [_puzzle.n, _puzzle.n, _puzzle.state.queens.size(), _fit_ok, _hud_ok]
+		"bridges": return "%dx%d sea, %d islets, %d runs, board fit=%s, hud=%s" % [
+			_puzzle.state.n, _puzzle.state.n, _puzzle.state.islets.size(),
+			_puzzle.state.runs.size(), _fit_ok, _hud_ok]
 		"hiddenword": return "%s in %d %s, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
 			"row" if _puzzle.state.rows.size() == 1 else "rows",
@@ -109,6 +112,7 @@ func _solve(id: String) -> void:
 		"oneline", "oneline_island": _solve_oneline()
 		"nonogram", "nonogram_island": _solve_nonogram()
 		"queens": _solve_queens()
+		"bridges": _solve_bridges()
 		"hiddenword": _solve_hiddenword()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
@@ -499,6 +503,40 @@ func _solve_queens() -> void:
 		_tap_local(_puzzle.cell_to_local(r, cell.x))
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+
+## Bridges: one hint and one check through the HUD, then the answer laid one
+## run at a time with real drags from islet to islet. **Nothing here writes to
+## the state** -- every plank goes in through the board's own `_gui_input`, so
+## a board whose drag resolved to the wrong lane, or whose islet hit box was
+## laid out wrongly, fails this rather than passing on a state poke.
+##
+## The answer's own runs never cross each other, so no order of laying them
+## can ever be refused; and the hint has already laid one of them, so each
+## lane is only dragged the planks it is still short of.
+func _solve_bridges() -> void:
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for cell in _puzzle.state.islets:
+		if not slot.has_point(_puzzle.cell_to_local(cell.y, cell.x)):
+			_fit_ok = false
+	# One hint (which lays a plank the answer wants and never an overshoot),
+	# then one check, which must find nothing wrong on a board carrying only
+	# the answer's own planks.
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	var keys: Array = _puzzle.state.answer.keys()
+	keys.sort()
+	for key in keys:
+		var lane: Dictionary = _puzzle.state.lanes[key]
+		var a: Vector2 = _puzzle.cell_to_local(lane.a.y, lane.a.x)
+		var b: Vector2 = _puzzle.cell_to_local(lane.b.y, lane.b.x)
+		for k in int(_puzzle.state.answer[key]) - _puzzle.state.planks(String(key)):
+			# Stop the moment it is won -- further drags land on the solved
+			# overlay, which is correct behaviour and not a bug.
+			if _puzzle.is_done():
+				return
+			_drag_local(a, b)
 
 ## Hidden Word: one hint, then the day's own word typed on the real keyboard
 ## a key at a time and committed with the real Enter. Nothing here writes to
