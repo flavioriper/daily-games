@@ -37,6 +37,33 @@ extends "res://core/puzzle_base.gd"
 ## drawn after the wire is a smear over it; a halo drawn per cell as the
 ## wire is drawn washes out its own neighbour's cable.
 ##
+## **The spin and the wash** (spec section 7). A turn spins the piece a
+## quarter turn with `back_out`'s overshoot over TURN_TIME, pulling its arms
+## in ARM_PULL at the middle so it does not reach into its neighbours on the
+## way round; a lantern's slot takes that turn and the paper inside it
+## counter-turns, because a hanging thing does not cartwheel. Behind the spin
+## runs **the wash**, which is this board's signature: Queens' `_settle` with
+## the tree's own depth in place of a queen's sight. Every move diffs a
+## depth snapshot taken *before* it against `state.depths()` after it, and
+## hands each changed cell a moment -- `depth * WAVE_STEP` for a cell just
+## reached, and the same wave **reversed, far end first**, for a cell just
+## cut off, which reads as the light being pulled back rather than switched
+## off.
+##
+## **Nothing about the wash is stored.** The board keeps the *moments*
+## (`_live_at`, `_out_at`, `_wake_at`) and never the live set: what is live
+## is `state.depths()`, recomputed on every build and every dress, and the
+## moment only says when the eye is allowed to see it. The snapshot a settle
+## diffs against is a local taken at the move and thrown away. So an undo
+## needs no book to unwind and a stale set cannot exist.
+##
+## **While anything moves, the mesh is rebuilt every frame**, because the
+## spin, the shiver and the wash are all baked into it. `_animating()` is the
+## one gate on that, and **every** wave has to be inside it: they all push
+## `_anim_until` out through `_busy_for`, so a new wave that forgets to call
+## it freezes part-way through and shows on a rendered frame and in no test
+## (One Line's two pale lines).
+##
 ## **Keep the mesh the last `_draw` handed over.** A canvas command holds a
 ## mesh by RID and not by reference, so rebuilding the cache and dropping
 ## the previous mesh leaves the renderer drawing a freed RID -- "Parameter
@@ -125,13 +152,36 @@ const POST_GLASS_ALPHA := 0.55
 const LANTERN_R := 0.27
 
 # --- this board's own motion constants (spec section 7) ---
-## The quarter turn and one step of the wash per depth. Task 4 spends them;
-## they stand here because they are this board's signature and nothing in
-## core/motion.gd would ever read them.
+## The quarter turn and one step of the wash per depth. They stand here
+## because they are this board's signature and nothing in core/motion.gd
+## would ever read them. **`WAVE_STEP` is not `Motion.WAVE_STEP`** (0.045):
+## GDScript resolves the unqualified name to this script's own const, and
+## this one is a step along a tree's depth rather than the king-move ring
+## step that constant measures -- Word Trail's own WAVE_STEP stands apart for
+## the same reason.
 const TURN_TIME := 0.26
 const WAVE_STEP := 0.05
 ## How long the win waits after the last lantern wakes.
 const WIN_WAIT := 1.4
+## How far a spinning piece pulls its arms in at the middle of the turn, so a
+## long arm does not sweep through the cell next door on the way round. The
+## mock's own 11%, and the one number the spin needs that no recipe has.
+const ARM_PULL := 0.11
+## How far into the spin the wash sets off. The light leaves before the piece
+## has finished turning, so the two arrive together rather than in sequence.
+const WASH_LAG := TURN_TIME * 0.55
+## The first wash's own lead: it runs out from the post this long after the
+## chrome has slid in, so the screen opens by showing where the power is.
+const ENTER_WASH := 0.2
+## The refusal's shiver, through the recipe's `px` parameter rather than a
+## copied constant (rule 6): a cell here is 134 to 188 across, and the
+## family's 2 px on a piece that wide is not a shiver, it is a rounding
+## error. Four times it is the mock's own amplitude.
+const REFUSE_PX := Motion.SHIVER_PX * 4.0
+## A moment far enough in the future never to arrive, and one far enough in
+## the past that every curve reader is already past the end of it.
+const FAR := 1.0e9
+const AGO := -1.0e9
 ## Three, as the mock's badge says (spec section 8). **The cap lives on the
 ## board and not on the state**, the way binairo2d.gd, bridges2d.gd and
 ## mushroom2d.gd keep theirs: the state counts the hints it gave, the board
@@ -169,6 +219,29 @@ var _lanterns: Dictionary = {}
 ## Which paper each lantern wears, settled once per board so a lantern does
 ## not change colour when it wakes.
 var _hue: Dictionary = {}
+
+## The wash's book, and all of it is *moments* rather than state: when cell
+## `i` is allowed to be seen lit, when it is allowed to go dark, and when its
+## lantern wakes. What is live is never in here -- see the header.
+var _live_at: PackedFloat64Array = PackedFloat64Array()
+var _out_at: PackedFloat64Array = PackedFloat64Array()
+var _wake_at: PackedFloat64Array = PackedFloat64Array()
+## The spin: when cell `i` began turning and how many quarters it is turning
+## (negative anticlockwise, which is Undo).
+var _spin_at: PackedFloat64Array = PackedFloat64Array()
+var _spin_q: PackedInt32Array = PackedInt32Array()
+## When cell `i` was last refused, which is when its shiver began.
+var _refuse_at: PackedFloat64Array = PackedFloat64Array()
+## Nothing on this card moves past this second. Every wave pushes it out
+## through _busy_for, and _animating() reads it and nothing else.
+var _anim_until := 0.0
+## When the wash now running finishes and the last lantern it wakes has
+## finished waking. win_delay() spends the same figure, so the win screen and
+## the wash can never disagree about how long the wash is.
+var _wash_end := 0.0
+## Whether the last frame was a moving one, so the board can lay one final
+## frame at rest rather than stopping wherever the clock left it.
+var _moving := false
 
 var _opened := 0.0
 var _mesh: ArrayMesh
@@ -209,6 +282,7 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.start(rng, difficulty)
+	_clear_clocks()
 	_hue = {}
 	for i in state.lanterns():
 		# Settled once, off the cell and the board, so a lantern keeps its
@@ -221,6 +295,33 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_idx = 0
 	_say(TIPS[0], Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## Every clock on the board back to "has not happened yet". A cell that has
+## never been lit waits FAR, so it is never seen lit; every other clock sits
+## AGO, long enough ago that its curve reader hands back the resting value.
+func _clear_clocks() -> void:
+	var cells: int = maxi(0, state.n * state.n)
+	_live_at = PackedFloat64Array()
+	_live_at.resize(cells)
+	_live_at.fill(FAR)
+	_out_at = PackedFloat64Array()
+	_out_at.resize(cells)
+	_out_at.fill(AGO)
+	_wake_at = PackedFloat64Array()
+	_wake_at.resize(cells)
+	_wake_at.fill(AGO)
+	_spin_at = PackedFloat64Array()
+	_spin_at.resize(cells)
+	_spin_at.fill(AGO)
+	_refuse_at = PackedFloat64Array()
+	_refuse_at.resize(cells)
+	_refuse_at.fill(AGO)
+	_spin_q = PackedInt32Array()
+	_spin_q.resize(cells)
+	_spin_q.fill(0)
+	_anim_until = 0.0
+	_wash_end = 0.0
+	_moving = false
 
 # --- the cast ---
 
@@ -325,23 +426,46 @@ func _cell_at(local: Vector2) -> int:
 
 # --- the frame ---
 
+## While anything is moving the whole card is rebuilt every frame -- the
+## spin, the shiver and the wash are all baked into the mesh -- and the
+## lanterns are placed with it. The frame after the last wave ends is laid
+## once more, so nothing is left a pixel out from wherever the clock stopped.
 func _process(delta: float) -> void:
 	super(delta)
 	if _cell <= 0.0 or state.n <= 0:
 		return
-	if _animating(_now()):
-		queue_redraw()
+	var t := _now()
+	if _animating(t):
+		_moving = true
+		_dress(t)
+		_refresh()
+	elif _moving:
+		_moving = false
+		_dress(t)
+		_refresh()
 
-## Whether anything on this card is still moving. Only the entrance, for
-## now: the still board has nothing else on a clock, and Task 4's spin and
-## wash each add their own line here. **Every** wave has to be in this
-## function -- One Line shipped two lines frozen at four fifths of a fade
-## because one was left out, and it showed in a rendered frame and in no
-## test.
+## Whether anything on this card is still moving: the entrance, or a wave
+## that has not run out yet. **Every** wave has to be accounted for here --
+## One Line shipped two lines frozen at four fifths of a fade because one was
+## left out, and it showed in a rendered frame and in no test. They are, and
+## without a line each: the spin, the wash, a lantern waking, a refusal's
+## shiver, Reset's stagger and the solve all end by pushing `_anim_until` out
+## through `_busy_for`, so a wave added later is covered the moment it says
+## how long it lasts.
 func _animating(t: float) -> bool:
 	if Motion.reduce:
 		return false
-	return t - _opened < Motion.ENTER_DELAY + Motion.ENTER_POP
+	if t - _opened < Motion.ENTER_DELAY + Motion.ENTER_POP \
+			+ Motion.ENTER_FACE_LAG + Motion.POP_IN:
+		return true
+	return t < _anim_until
+
+## Keeps the card moving for `seconds` more. Nothing under reduce-motion,
+## where there is nothing to wait for.
+func _busy_for(seconds: float) -> void:
+	if Motion.reduce:
+		return
+	_anim_until = maxf(_anim_until, _now() + seconds)
 
 ## Drops the mesh so the next _draw rebuilds it, and asks for that draw. The
 ## mesh the last _draw handed over is still held by _shown, so the renderer
@@ -358,12 +482,13 @@ func _refresh() -> void:
 func _draw() -> void:
 	if state.n <= 0 or _cell <= 0.0:
 		return
-	var since := _now() - _opened - Motion.ENTER_DELAY
+	var now := _now()
+	var since := now - _opened - Motion.ENTER_DELAY
 	var seen := Motion.appear_level(since, Motion.ENTER_POP)
 	if seen <= 0.0:
 		return
 	if _mesh == null:
-		_mesh = _build()
+		_mesh = _build(now)
 	if _mesh == null:
 		return
 	var grow := Motion.wide_pop_scale(since)
@@ -373,8 +498,9 @@ func _draw() -> void:
 		Color(1.0, 1.0, 1.0, seen))
 	_shown = _mesh
 
-## Everything on the board with no face on it, in the mock's own order.
-func _build() -> ArrayMesh:
+## Everything on the board with no face on it, in the mock's own order, as it
+## stands `t` seconds into whatever is moving.
+func _build(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var span := _cell * float(state.n)
 	# The fence, and the ground over it so only the rule shows round the edge.
@@ -393,47 +519,177 @@ func _build() -> ArrayMesh:
 	for i in cells:
 		if state.pinned[i] == 1:
 			_pin(b, i)
+	# What is live, recomputed here and never kept; the wash only decides when
+	# the eye is allowed to see it. One frame and one pull a cell, read once
+	# and handed to every pass, so the halo, the shade, the face and the
+	# sheen can never disagree about where a spinning piece is.
 	var depths: PackedInt32Array = state.depths()
+	var frames: Array[Transform2D] = []
+	frames.resize(cells)
+	var pulls := PackedFloat32Array()
+	pulls.resize(cells)
+	var live := PackedByteArray()
+	live.resize(cells)
+	for i in cells:
+		frames[i] = _frame(i, t)
+		pulls[i] = _spin_pull(i, t)
+		live[i] = 1 if _shown_live(i, depths, t) else 0
 	# The halo under every live run first: a live branch has to read as light
 	# before it reads as cable, which it cannot do if the wire is under it.
 	for i in cells:
-		if depths[i] < 0:
+		if live[i] == 0:
 			continue
-		_arms(b, i, HALO_WIDE, Color(Pal.SUN_RAY, HALO_WIDE_ALPHA))
-		_arms(b, i, HALO_NEAR, Color(Pal.SUN, HALO_NEAR_ALPHA))
+		_arms(b, i, frames[i], pulls[i], HALO_WIDE, Color(Pal.SUN_RAY, HALO_WIDE_ALPHA))
+		_arms(b, i, frames[i], pulls[i], HALO_NEAR, Color(Pal.SUN, HALO_NEAR_ALPHA))
 	# Then the wire: every shade first, then every face over the lot, so a
 	# neighbour's shade never lands on this cell's cable.
 	for pass_i in 2:
 		for i in cells:
-			var live := depths[i] >= 0
+			var lit := live[i] == 1
 			var shade := pass_i == 0
-			var col: Color = (Pal.SUN_DEEP if live else Pal.FLAGSTONE_DEEP) if shade \
-				else (Pal.SUN if live else Pal.FLAGSTONE)
+			var col: Color = (Pal.SUN_DEEP if lit else Pal.FLAGSTONE_DEEP) if shade \
+				else (Pal.SUN if lit else Pal.FLAGSTONE)
 			var drop := Vector2(0.0, SHADE_DROP) if shade else Vector2.ZERO
-			_arms(b, i, 1.0, col, drop)
+			_arms(b, i, frames[i], pulls[i], 1.0, col, drop)
 			if Gen.degree(state.grid[i]) >= 3:
-				b.disc(cell_centre(i) + drop, _cell * WIRE * COLLAR, col)
-			if not shade and live:
-				_arms(b, i, SHEEN, Color(Pal.LANTERN_LIT, SHEEN_ALPHA))
-	_post(b, state.post)
+				b.disc(frames[i] * drop, _cell * WIRE * COLLAR, col)
+			if not shade and lit:
+				_arms(b, i, frames[i], pulls[i], SHEEN,
+					Color(Pal.LANTERN_LIT, SHEEN_ALPHA))
+	# The post stands level however its own cell is turning, the way a lantern
+	# does: it takes the cell's place, not the cell's turn.
+	_post(b, frames[state.post].origin)
 	return b.mesh() if not b.verts.is_empty() else null
 
-## Cell `i`'s arms, `weight` times the wire's width, offset by `drop`. An arm
-## runs from the cell's middle to its edge when it meets a stub on the other
-## side and stops at LOOSE of the way with a round cap when it does not --
-## which is the whole of "a loose end looks loose".
-func _arms(b, i: int, weight: float, colour: Color, drop := Vector2.ZERO) -> void:
+## Cell `i`'s arms in its own `frame`, `weight` times the wire's width and
+## `pull` of their full length, offset by `drop`. An arm runs from the cell's
+## middle to its edge when it meets a stub on the other side and stops at
+## LOOSE of the way with a round cap when it does not -- which is the whole
+## of "a loose end looks loose". The drop rides inside the frame, as the
+## mock's own `translate(0, 4)` does, so a piece's lip turns with it.
+func _arms(b, i: int, frame: Transform2D, pull: float, weight: float,
+		colour: Color, drop := Vector2.ZERO) -> void:
 	var m: int = state.grid[i]
 	if m == 0:
 		return
-	var mid := cell_centre(i) + drop
+	var mid := frame * drop
 	var half := _cell * 0.5
 	for d in 4:
 		if m & (1 << d) == 0:
 			continue
-		var reach := half if state.matched(i, 1 << d) else half * LOOSE
+		var reach := (half if state.matched(i, 1 << d) else half * LOOSE) * pull
 		var out := Vector2(float(Gen.DC[d]), float(Gen.DR[d])) * reach
-		b.stroke(PackedVector2Array([mid, mid + out]), _cell * WIRE * weight, colour)
+		b.stroke(PackedVector2Array([mid, frame * (drop + out)]),
+			_cell * WIRE * weight, colour)
+
+# --- the spin, and the wash behind it ---
+
+## Where cell `i` stands and how far round it is, `t` seconds in: its centre,
+## shifted by whatever a refusal is shaking out of it, turned by the spin.
+## One frame, read by every pass of the build and by the lantern in its slot.
+func _frame(i: int, t: float) -> Transform2D:
+	var at := cell_centre(i)
+	at.x += Motion.shiver_offset(t - _refuse_at[i], REFUSE_PX)
+	return Transform2D(_spin_angle(i, t), at)
+
+## How far cell `i` still has to turn, `t` seconds in. The piece is already
+## where the turn put it, so the angle runs from a quarter turn *behind* (or
+## ahead, for an anticlockwise undo) home to nothing on `back_out`'s
+## overshoot. A spin of several quarters -- a hint's -- takes proportionally
+## longer, so the piece does not blur. Zero before it begins, which is what
+## lets Reset set every piece spinning at a moment of its own.
+func _spin_angle(i: int, t: float) -> float:
+	var q: int = _spin_q[i]
+	if Motion.reduce or q == 0:
+		return 0.0
+	var u := clampf((t - _spin_at[i]) / _spin_time(q), 0.0, 1.0)
+	if u >= 1.0:
+		return 0.0
+	return -float(q) * (PI * 0.5) * (1.0 - Motion.back_out(u))
+
+## How far cell `i`'s arms are pulled in, `t` seconds in: ARM_PULL at the
+## middle of the turn and nothing at either end, so a full-length arm never
+## sweeps through the piece next door.
+func _spin_pull(i: int, t: float) -> float:
+	if Motion.reduce or _spin_q[i] == 0:
+		return 1.0
+	var u := clampf((t - _spin_at[i]) / TURN_TIME, 0.0, 1.0)
+	if u >= 1.0:
+		return 1.0
+	return 1.0 - ARM_PULL * sin(PI * u)
+
+static func _spin_time(q: int) -> float:
+	return TURN_TIME * (0.7 * maxf(1.0, float(absi(q))) + 0.3)
+
+## Sets cell `i` spinning `q` quarters (negative anticlockwise) from `at`, and
+## keeps the card alive until it lands. Nothing under reduce-motion: the
+## piece is simply round the other way.
+func _spin(i: int, q: int, at: float) -> void:
+	if Motion.reduce or q == 0:
+		return
+	_spin_at[i] = at
+	_spin_q[i] = q
+	_busy_for(at - _now() + _spin_time(q))
+
+## Whether cell `i` may be *seen* lit at `t`. `depths` is the truth, computed
+## fresh by the caller; the moment is only the wash's permission to show it.
+## A cell that is live waits for the light to reach it; a cell that has been
+## cut off keeps its light until the wave pulls it back.
+func _shown_live(i: int, depths: PackedInt32Array, t: float) -> bool:
+	if depths[i] >= 0:
+		return t >= _live_at[i]
+	return t < _out_at[i]
+
+## One step of the wash, or none at all under reduce-motion, where the whole
+## live set changes in one frame.
+func _step(rings: int) -> float:
+	return 0.0 if Motion.reduce else float(maxi(0, rings)) * WAVE_STEP
+
+## How far into a spin the wash sets off, from now.
+func _lag() -> float:
+	return 0.0 if Motion.reduce else WASH_LAG
+
+## **The wash.** `before` is `state.depths()` as it stood *before* the move;
+## the state now holds the move's result. Every cell whose reachability
+## changed takes a moment from `at`: a cell just reached lights its own depth
+## in steps later, so the light walks out along the wire from the post; a cell
+## just cut off goes dark on the same wave **reversed**, the far end first, so
+## the light reads as pulled back down the branch rather than switched off.
+## Queens' `_settle` with the tree's own depth in place of a queen's sight.
+## Nothing derived is stored: only the moments, and the truth is read fresh
+## wherever it is wanted.
+func _settle(before: PackedInt32Array, at: float) -> void:
+	var now_d: PackedInt32Array = state.depths()
+	var cells: int = state.n * state.n
+	# The far end of what *was* live, which is where a cut-off branch starts
+	# going dark from.
+	var far := 0
+	for i in cells:
+		if before[i] > far:
+			far = before[i]
+	var lanterns: Dictionary = {}
+	for i in state.lanterns():
+		lanterns[i] = true
+	var last := at
+	for i in cells:
+		var was := before[i] >= 0
+		var is_live := now_d[i] >= 0
+		if is_live == was:
+			continue
+		var moment := at + (_step(now_d[i]) if is_live else _step(far - before[i]))
+		if is_live:
+			_live_at[i] = moment
+			if lanterns.has(i):
+				# The lantern wakes as the wash reaches it, and its face
+				# arrives with the bump: seventeen of them in a ripple rather
+				# than together, because each is on its own depth.
+				_wake_at[i] = moment
+				last = maxf(last, moment + Motion.BUMP_TIME)
+		else:
+			_out_at[i] = moment
+		last = maxf(last, moment)
+	_wash_end = last
+	_busy_for(last - _now())
 
 ## A pinned cell reads as a given, in the language every board in this game
 ## uses: a pale sun wash under a dotted ring. Word Trail's hint mark.
@@ -492,8 +748,7 @@ static func _dashes(pts: PackedVector2Array, on: float, off: float) -> Array:
 ## Light Up's `LANTERN` iron, a sun in the glass, and a halo that is always
 ## on. It has no face, so it is drawn into this mesh rather than seated as a
 ## Control -- see the header.
-func _post(b, i: int) -> void:
-	var at := cell_centre(i)
+func _post(b, at: Vector2) -> void:
 	var R := _cell * POST_R
 	b.ellipse(at + Vector2(0.0, 1.02) * R, 0.8 * R, 0.2 * R,
 		Color(Pal.TEXT, POST_SHADOW_ALPHA))
@@ -535,38 +790,62 @@ func _halo(b, at: Vector2, inner: float, outer: float, warm: Color) -> void:
 		b.tri(ring_i + i, ring_o + i, ring_o + j)
 		b.tri(ring_i + i, ring_o + j, ring_i + j)
 
-## What each lantern is wearing: lit and smiling once the wash has reached
-## its cell, plain paper while it has not. `lit` is snapped to five levels
-## before it reaches the mesh cache, so seventeen lanterns cost at most five
-## meshes a paper.
-func _dress() -> void:
+## What each lantern is wearing and where it is standing at `t`: lit and
+## smiling once the wash has reached its cell, plain paper while it has not.
+## `lit` is snapped to five levels before it reaches the mesh cache, so
+## seventeen lanterns cost at most five meshes a paper.
+##
+## **The slot takes the cell's frame and the paper counter-turns inside it.**
+## The slot carries the shiver, the quarter turn and the wake's bump; the
+## paper carries the entrance's own pop (a tween) and the turn back, so the
+## two hands never write the same property (rule 2) and a hanging thing never
+## cartwheels (spec section 7).
+func _dress(t: float) -> void:
 	if state.n <= 0:
 		return
 	var depths: PackedInt32Array = state.depths()
+	var done := is_done()
 	for i in _lanterns:
 		var lantern: LanternFace = _lanterns[i]
-		var live := depths[i] >= 0
+		var slot: Control = _slots[i]
+		var live := _shown_live(i, depths, t)
 		var want := 1.0 if live else 0.0
 		if lantern.lit != want:
 			lantern.lit = want
+			# A lit paper is alive and blinks on a clock of its own; an
+			# unlit one is plain paper with no eyes to blink. set_idle does
+			# nothing under reduce-motion.
+			lantern.set_idle(live)
 		if lantern.plain != (not live):
 			lantern.plain = not live
-		var expr := Face.Expr.JOY if is_done() else Face.Expr.HAPPY
+		var expr := Face.Expr.JOY if done else Face.Expr.HAPPY
 		if live and lantern.expression != expr:
 			lantern.expression = expr
+		var frame := _frame(i, t)
+		slot.position = frame.origin
+		slot.rotation = frame.get_rotation()
+		slot.scale = Vector2.ONE * (Motion.bump_scale(t - _wake_at[i]) if live else 1.0)
+		lantern.rotation = -slot.rotation
 
 # --- the moments ---
 
 ## The chrome is the host's. The grid's own entrance is one wide pop about
 ## its centre while it fades in (rule 7), read off the clock in _draw, and
-## the lanterns pop in on their cells a beat after it.
+## the lanterns pop in on their cells a beat after it. Then the first wash
+## runs out from the post, so the screen opens by showing where the power is
+## (spec section 7) -- settled against an all-dark board, which is what makes
+## every reached cell a cell "just reached".
 func _enter() -> void:
 	_opened = _now()
 	fx.cue("enter")
 	for i in _lanterns:
 		Motion.pop_in(_lanterns[i], Motion.POP_IN,
 			Motion.ENTER_DELAY + Motion.ENTER_POP + Motion.ENTER_FACE_LAG)
-	_dress()
+	var dark := PackedInt32Array()
+	dark.resize(state.n * state.n)
+	dark.fill(-1)
+	_settle(dark, _opened + (0.0 if Motion.reduce else Motion.ENTER_DELAY + ENTER_WASH))
+	_dress(_now())
 	_refresh()
 
 # --- input ---
@@ -592,22 +871,37 @@ func _gui_input(event: InputEvent) -> void:
 ## a given: neither turns, and a refusal is a line from the sprout and never
 ## a silence (Hidden Word's rule).
 func _turn(i: int) -> void:
+	# Taken before the move: what the wash diffs against, and a local of this
+	# move rather than anything the board keeps.
+	var before: PackedInt32Array = state.depths()
+	var now := _now()
 	match state.turn(i):
 		State.PINNED:
-			_say("A hint pinned that one where it belongs.", Face.Expr.PUZZLED)
-			fx.cue("refuse")
+			_refuse(i, now, "A hint pinned that one where it belongs.")
 			return
 		State.CROSS:
-			_say("A cross is already every way round.", Face.Expr.PUZZLED)
-			fx.cue("refuse")
+			_refuse(i, now, "A cross is already every way round.")
 			return
 	fx.cue("place")
-	_dress()
+	_spin(i, 1, now)
+	_settle(before, now + _lag())
+	_dress(now)
 	_refresh()
 	_speak()
 	# note_move() counts the turn and ends the board if that was the last
 	# loose end; the host raises the win screen after win_delay().
 	note_move()
+
+## A move the rules will not take: the piece shivers where it stands and the
+## sprout says why, because a refusal is never a silence. Nothing else on
+## this board can refuse.
+func _refuse(i: int, now: float, line: String) -> void:
+	_say(line, Face.Expr.PUZZLED)
+	fx.cue("refuse")
+	if Motion.reduce:
+		return
+	_refuse_at[i] = now
+	_busy_for(Motion.SHIVER_TIME)
 
 # --- the sprout's line ---
 
@@ -662,9 +956,17 @@ func can_undo() -> bool:
 func undo() -> bool:
 	if is_done() or state.history.is_empty():
 		return false
-	if state.undo() < 0:
+	var before: PackedInt32Array = state.depths()
+	var i := state.undo()
+	if i < 0:
 		return false
-	_dress()
+	# The same spin the other way round, and the wash runs backwards behind
+	# it for free: the diff is symmetric, so a branch that was reached goes
+	# dark from its far end exactly as it lit from the post.
+	var now := _now()
+	_spin(i, -1, now)
+	_settle(before, now + _lag())
+	_dress(now)
 	_refresh()
 	_say("Turned back. " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
@@ -685,15 +987,22 @@ func hints_left() -> int:
 func hint() -> bool:
 	if is_done() or hints_left() <= 0:
 		return false
+	var before: PackedInt32Array = state.depths()
+	var grid_before: PackedInt32Array = state.grid.duplicate()
 	# -1 is every cell already where the answer wants it. Nothing is spent
 	# and nothing is rung: there was no hint to give.
 	var at := state.hint()
 	if at < 0:
 		return false
 	hints_used += 1
+	var now := _now()
+	# However many quarters it needs, in one spin rather than a stutter of
+	# them -- the piece turns straight to where the solver proved it goes.
+	_spin(at, _quarters(grid_before[at], state.grid[at]), now)
+	_settle(before, now + _lag())
 	fx.ring(cell_centre(at), _cell * RING_R, Pal.LEAF)
 	fx.cue("hint")
-	_dress()
+	_dress(now)
 	_refresh()
 	_say("Pinned. That one could only go one way.", Face.Expr.HAPPY)
 	moved.emit()
@@ -705,13 +1014,35 @@ func hint() -> bool:
 ## Every unpinned piece back to the scramble it was dealt. A pinned piece
 ## stays, because a hint is a given.
 func reset_board() -> void:
+	var before: PackedInt32Array = state.depths()
+	var grid_before: PackedInt32Array = state.grid.duplicate()
 	state.reset_board()
+	var now := _now()
+	# Every piece that moved turns back at once, on the family's corner-out
+	# stagger: a cell goes its row plus its column steps after the top-left
+	# one. A pinned piece is a given and never moves, so it never spins.
+	for i in state.n * state.n:
+		if state.pinned[i] == 0 and grid_before[i] != state.grid[i]:
+			var wait := 0.0 if Motion.reduce else Motion.stagger(
+				i / state.n + i % state.n, Motion.RESET_STAGGER)
+			_spin(i, 1, now + wait)
 	moves = 0
 	_running = true
-	_dress()
+	_settle(before, now + _lag())
+	_dress(now)
 	_refresh()
 	_say("A fresh tangle. " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
+
+## How many quarter turns clockwise take `from` to `to`; 0 if it is already
+## there (which is a hint that only pinned a cell, and spins nothing).
+static func _quarters(from: int, to: int) -> int:
+	var m := from
+	for q in 4:
+		if m == to:
+			return q
+		m = Gen.cw(m)
+	return 0
 
 ## Solved is the rule and never the answer: every stub meets a stub and every
 ## cell is live. The `state.n > 0` guard is what keeps an unstarted board
@@ -740,19 +1071,27 @@ func flat_win() -> Dictionary:
 		faces.append(lantern)
 	return {"faces": faces, "subtitle": "Every lantern is lit."}
 
-## Long enough for the last wash to finish and every lantern to wake. Under
-## reduce-motion there is no wash, so the win follows the last turn.
+## Long enough for the last wash to finish and every lantern to wake, and
+## WIN_WAIT after that. It spends the wash's own clock (`_wash_end`, set by
+## `_settle`), so the win screen and the wash can never disagree about how
+## long the wash is -- Bridges' arrangement. Under reduce-motion there is no
+## wash, so the win follows the last turn.
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	if Motion.reduce:
+		return Motion.REDUCED_TIME
+	return maxf(0.0, _wash_end - _now()) + WIN_WAIT
 
-## The garden is lit: every lantern wakes and grins, and the sprout says so.
-## The wash that won it and the solve wave are Task 4's.
+## The garden is lit. There is no solve wave of its own here: the wash that
+## won it *is* the wave, running out from the post over the branch the last
+## turn joined, and every lantern grins as it arrives. The card stays alive
+## until the last of them has woken.
 func _on_solved() -> void:
 	_tip_timer.stop()
-	_dress()
+	_dress(_now())
 	_refresh()
 	_say("Every lantern is lit.", Face.Expr.JOY)
 	fx.cue("solved")
+	_busy_for(maxf(0.0, _wash_end - _now()) + Motion.BUMP_TIME)
 
 # --- odds and ends ---
 
