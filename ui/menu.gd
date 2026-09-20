@@ -79,19 +79,33 @@ const TOAST_H := 88.0
 ## day row, the grid and the bar already spend the screen exactly (see the
 ## toast's own comment in _build_list), so this is an overlay on
 ## `_list_root` rather than a row of the column, and it costs the grid
-## nothing -- a card stays 252 whether or not a second page exists. It sits
-## a little closer to the bar than the toast does (the toast is a rare
-## message that can afford to sit over the last row's cards for a moment;
-## this is up on every multi-page screen, so it is kept as short as a
-## usable tap target allows to leave the cards' own bottom edge alone as
-## much as it can).
-const PAGER_OVER := 150.0 + 40.0 + 6.0
-const PAGER_H := 32.0
-const PAGER_ICON := 16.0
-const PAGER_TAP := Vector2(56.0, PAGER_H)
+## nothing -- a card stays 252 whether or not a second page exists.
+##
+## The screen leaves no free band for it: the true gap between the grid and
+## the bar is GAP (20), the same 20 already spent as separation everywhere
+## else. Rather than a bare row of tiny controls straddling that seam (which
+## reads as ink on the card whose rim it crosses, not a control of its own --
+## found by review, 2026-09-20), the pager is its own paper pill (built in
+## _build_list below, `CozyTheme.card` -- the HUD's usual card stylebox)
+## that floats across the seam: PAGER_MID is the seam's vertical centre,
+## and the pill is centred there and centred horizontally, so wherever it
+## overlaps a neighbour it reads as a chip laid over the page rather than a
+## mark on either one.
+const PAGER_MID := 150.0 + 40.0 + 10.0
+## The pill's own slot: taller than the pill needs, so CenterContainer never
+## clips it.
+const PAGER_SLOT_H := 64.0
+## Chunky, round and bordered, the same visual language as every other
+## control on this screen (the bar's tabs, a card's go button) rather than a
+## bare vector line -- the first version of this strip used a 16px icon on
+## no background at all and read as an artefact, not a button.
+const PAGER_BTN := Vector2(44.0, 44.0)
+const PAGER_ICON := 20.0
 ## The pager's dots. Two is what thirteen cards need; the row draws as many
-## as it is given, so a fourteenth board costs nothing here.
-const DOT := 10.0
+## as it is given, so a fourteenth board costs nothing here. The current
+## page is a filled disc; every other page is a ring, so the two are never
+## just two shades of the same filled dot.
+const DOT := 14.0
 const DOT_GAP := 10.0
 
 var settings_sheet: Control
@@ -178,7 +192,6 @@ func _build_list() -> void:
 	_grid.add_theme_constant_override("h_separation", GAP)
 	_grid.add_theme_constant_override("v_separation", GAP)
 	root.add_child(_grid)
-	_build_page()
 
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
@@ -206,27 +219,37 @@ func _build_list() -> void:
 	_toast.offset_bottom = -TOAST_OVER
 	_list_root.add_child(_toast)
 
-	# The pager: prev, dots, next -- see PAGER_OVER above for why it is
-	# sized and placed the way it is, and PER_PAGE above and
+	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
+	# above for why it is a pill and not a bare row, and PER_PAGE above and
 	# docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
 	# section 2 ("a next and a prev under the grid with a dot each") for
 	# what it is answering. Built even at one page and simply hidden
-	# (_set_pager, called from _build_page), the way the toast exists
+	# (_set_pager, called from _build_page below), the way the toast exists
 	# whether or not there is anything to say.
 	_pager = Control.new()
 	_pager.name = "Pager"
 	_pager.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pager.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_pager.offset_left = MARGIN
-	_pager.offset_right = -MARGIN
-	_pager.offset_top = -PAGER_OVER - PAGER_H
-	_pager.offset_bottom = -PAGER_OVER
+	_pager.offset_left = 0.0
+	_pager.offset_right = 0.0
+	_pager.offset_top = -PAGER_MID - PAGER_SLOT_H * 0.5
+	_pager.offset_bottom = -PAGER_MID + PAGER_SLOT_H * 0.5
 	_list_root.add_child(_pager)
+	# CenterContainer, not anchors: the pill hugs its own content (prev, the
+	# dots, next) rather than spanning the margin-to-margin width every
+	# other row on this screen uses, so it reads as a floating chip and not
+	# another card.
+	var pager_center := CenterContainer.new()
+	pager_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pager_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pager.add_child(pager_center)
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", CozyTheme.card(Pal.SURFACE, 24, Pal.LINE, 4, 8))
+	pager_center.add_child(pill)
 	var pager_row := HBoxContainer.new()
 	pager_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	pager_row.add_theme_constant_override("separation", 16)
-	pager_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_pager.add_child(pager_row)
+	pager_row.add_theme_constant_override("separation", 12)
+	pill.add_child(pager_row)
 	_prev = _page_button("chevron_left")
 	_prev.pressed.connect(func() -> void: _turn_page(-1))
 	pager_row.add_child(_prev)
@@ -238,6 +261,14 @@ func _build_list() -> void:
 	_next = _page_button("chevron_right")
 	_next.pressed.connect(func() -> void: _turn_page(1))
 	pager_row.add_child(_next)
+
+	# Built last: _set_pager (called from _build_page) reaches into _pager,
+	# _prev, _next and _dots, all built just above -- calling this any
+	# earlier (it once sat right after _grid, before any of them existed)
+	# left _set_pager silently failing on a null _pager and _dots never
+	# getting told how many pages there are, which is why the very first
+	# render only ever showed one dot.
+	_build_page()
 
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
@@ -306,24 +337,34 @@ func _set_pager(page: int, pages: int) -> void:
 	_dots.set_meta("pages", pages)
 	_dots.queue_redraw()
 
+## The current page is a filled disc; every other page is an outlined
+## ring, so "which page" reads at a glance rather than as two shades of the
+## same dot (found by review, 2026-09-20 -- the fix for the missing second
+## dot was the build-order bug in _build_list, but the ring makes the two
+## states unmistakable even so).
 func _draw_dots(on: Control) -> void:
 	var page: int = on.get_meta("page", 0)
 	var pages: int = on.get_meta("pages", 1)
 	for i in pages:
 		var x := i * (DOT + DOT_GAP) + DOT * 0.5
-		var c: Color = Pal.TEXT if i == page else Pal.LINE
-		on.draw_circle(Vector2(x, DOT * 0.5), DOT * 0.5, c)
+		var center_pt := Vector2(x, DOT * 0.5)
+		if i == page:
+			on.draw_circle(center_pt, DOT * 0.5, Pal.TEXT)
+		else:
+			on.draw_arc(center_pt, DOT * 0.5 - 1.5, 0.0, TAU, 24, Pal.TEXT_DIM, 2.5, true)
 
-## One small chevron button for the pager: the vector icon at PAGER_ICON
-## rather than the HUD's IconButton (whose glyph is a fixed 44), because
-## the strip is only PAGER_H (32) tall.
+## One chunky round button for the pager -- CozyTheme's usual card
+## stylebox rather than a bare vector line on no background, so it reads
+## as a button the way the bar's tabs and a card's own go button do.
 func _page_button(icon: String) -> Button:
 	var btn := Button.new()
-	btn.custom_minimum_size = PAGER_TAP
-	btn.flat = true
+	btn.custom_minimum_size = PAGER_BTN
 	btn.focus_mode = Control.FOCUS_NONE
-	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
-		btn.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	var r := int(PAGER_BTN.y * 0.5)
+	btn.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 3, 0))
+	btn.add_theme_stylebox_override("hover", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 3, 0))
+	btn.add_theme_stylebox_override("pressed", CozyTheme.card(Pal.SURFACE_HI.darkened(0.08), r, Pal.LINE, 2, 0))
+	btn.add_theme_stylebox_override("disabled", CozyTheme.card(Color(Pal.SURFACE_HI, 0.55), r, Color(Pal.LINE, 0.55), 2, 0))
 	var center := CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
