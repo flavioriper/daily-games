@@ -19,8 +19,8 @@ extends RefCounted
 ## card-art budget is written against. The answer is the pager the campsite
 ## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
 ## and the strip is its own pill between the grid and the bar): twelve cards
-## on page one, and Mushroom Patch, Sudoku, Bridges and Quilt on page two,
-## each card still
+## on page one, and Mushroom Patch, Sudoku, Bridges, Quilt and Pinwheel on
+## page two, each card still
 ## 252 with its 92 px picture. See
 ## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
@@ -31,7 +31,10 @@ extends RefCounted
 ## and the one this entry pages onto; see
 ## docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9 and its
 ## amendments. Bridges is the fifteenth and Quilt the sixteenth, both added
-## the same day and both onto that same page two.
+## the same day and both onto that same page two. Pinwheel is the
+## seventeenth, added the same day again: `PER_PAGE` is twelve, so a
+## seventeenth entry asks the pager for nothing and costs page one nothing,
+## which is the whole point of paging rather than reflowing.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -298,6 +301,22 @@ const PUZZLES := [
 		# there is no Check to put in one and Reset rides up into the top bar.
 		# Word Trail's shape exactly: the bottom slot is the tip card alone.
 		"script": "res://puzzles/quilt2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "pinwheel",
+		"kind": "puzzle",
+		"title": "Pinwheel",
+		"blurb": "Turn each pinned piece until the frame is full.",
+		"short": "Turn each piece\ntill the frame fills.",
+		"motto": "Turn it till it fits",
+		"footer": "Turn · Fit · Complete",
+		# Nothing is picked up and nothing is hidden, so there is no tray and no
+		# Check; Reset rides up into the top bar and the tip card stands alone.
+		"script": "res://puzzles/pinwheel2d.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
