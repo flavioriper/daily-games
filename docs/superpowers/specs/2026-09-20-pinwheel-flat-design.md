@@ -236,23 +236,41 @@ Measured on a prototype of this exact algorithm (80 seeds a band):
 
 and zero seeds in 240 failed to produce a board.
 
-**Generation cost, measured in GDScript on this Mac** (2026-09-20, a headless
-probe over 24 seeds a band, `Time.get_ticks_usec()` round the whole of
-`generate`, run twice and both runs quoted):
+**Generation cost, measured in GDScript on this Mac** (retaken 2026-09-20 once
+the colouring began rejecting boards — see "Colouring the pieces" below. A
+headless probe over 24 seeds a band, `Time.get_ticks_usec()` round the whole of
+`generate`, four runs across two sessions and every run quoted):
 
-| band | mean (run 1 / run 2) | median | worst | attempts, median / max | taps, median / range |
+| band | mean, four runs | median | worst | attempts, median / max | taps, median / range |
 |---|---|---|---|---|---|
-| 0 | 3.10 / 4.07 ms | 2.28 / 4.23 | **6.65 / 6.85** | 2 / 8 | 13 / 10–18 |
-| 1 | 3.01 / 3.21 ms | 2.84 / 3.09 | **3.93 / 4.01** | 1 / 4 | 17 / 14–22 |
-| 2 | 5.04 / 5.46 ms | 4.60 / 4.93 | **8.66 / 9.12** | 3 / 12 | 23 / 20–29 |
+| 0 | 3.57 / 3.59 / 3.95 / 3.96 ms | 2.44–3.28 | **9.04–9.96** | 2 / 9 | 14 / 9–18 |
+| 1 | 3.10 / 3.12 / 3.29 / 3.34 ms | 2.92–3.21 | **4.61–4.90** | 2 / 6 | 18 / 14–24 |
+| 2 | 4.92 / 4.99 / 5.21 / 7.39 ms | 4.59–6.08 | **7.67–16.42** | 3 / 9 | 23 / 20–33 |
 
-Every one of the 72 seeds in each run came back proved unique, so no band ever
-walked the `ATTEMPTS` fallback. The worst board in either run is **9.12 ms**
-against the repo's 194 ms gate — two orders inside it, and the smallest
-generation cost of any board in the game (Quilt's worst is 51.8 ms and Sudoku's
-is about 200). The attempt counts and tap depths reproduce the prototype's
-table above to within a board or two, which is a second, cheaper statement that
-the port did not change the algorithm.
+Four runs rather than two because **the first session was under load and its
+numbers are useless on their own**: it timed the *unchanged* band-0 generator
+at 4.14 ms in one run and 9.31 ms in the next, a factor of 2.3 on identical
+code. The second session is the quiet one, its two runs agree to within two
+percent, and every figure below that compares before with after is taken from
+inside it. This is the same caution `CLAUDE.md` records for the render
+harnesses, and it applies to a headless clock too: a single reading is worth
+nothing.
+
+**What the rejections cost, before against after, on the same 24 seeds in the
+quiet session:** band 0 3.56/3.55 → 3.59/3.57 ms and band 1 3.06/3.08 →
+3.12/3.10 ms, which is inside the noise; band 2 4.54/4.54 → 4.92/4.99 ms,
+about **nine percent**. That agrees with the grow counts taken separately over
+300 seeds a band (1125 → 1257 grows on band 2, +11.7%), which is two
+measurements of the same thing by different routes.
+
+Every one of the 24 seeds in every run came back proved unique, so no band ever
+walked the `ATTEMPTS` fallback. The worst board in the quiet session is
+**9.08 ms** and the worst seen at all, in the loaded one, is **16.42 ms** —
+against the repo's 194 ms gate, two orders inside it either way, and still the
+smallest generation cost of any board in the game (Quilt's worst is 51.8 ms and
+Sudoku's is about 200). The attempt counts and tap depths reproduce the
+prototype's table above to within a board or two, which is a second, cheaper
+statement that the port did not change the algorithm.
 
 That comfort is the pin's doing and not the code's: a piece with at most four
 placements in the entire frame makes the exact cover collapse almost
@@ -268,32 +286,76 @@ because the scramble is by construction reachable from a real tiling.
 
 `Pal.CLOTH` holds eight cloths and band 2 has thirteen pieces, so colours
 repeat. Two pieces that repeat a colour must never be able to be confused, or
-the player sees one shape where there are two. The generator therefore **greedy
-graph-colours** the pieces in descending degree, falling back to index order if
-eight colours run out (which it must be *allowed* to do rather than loop
-forever — a board with a colour clash is a blemish, a board that never
-generates is a crash).
+the player sees one shape where there are two.
 
-**What the edges are was rewritten during Task 1, because the rule this section
-first asked for cannot be kept with eight colours.** That rule was "an edge
-whenever one piece's orientations' cells are adjacent to or intersect the
-other's", and a piece's reach is everything its four orientations sweep, so on
-a 5x7 of eleven pieces nearly every pair reaches nearly every other: degrees of
-10 out of 10 and 12 out of 12 were measured. Colouring 60 seeds a band
-*exactly*, not greedily, that rule needs a ninth colour on 2 of 60 band-0
-boards and 1 of 60 band-1 boards; a wider "within two cells" reading of it
-needs one on 33 of 60 band-1 boards. Neither is a promise the board can make.
+**The edge is the honest reading of “these two can ever meet”:** the union of
+one piece’s orientations’ cells, **dilated by one orthogonal step**, meeting
+the union of the other’s. It is symmetric, it covers overlapping as well as
+touching, and — the whole point — it holds in *every* state the board can be
+in rather than in one of them. The generator greedy-colours that graph in
+descending degree.
 
-The rule the generator keeps instead is the strongest one eight cloths can
-actually carry, and it was measured before it was written down: **two pieces
-never share a cloth if they can ever overlap** (share a cell in any pair of
-orientations) **or if they touch in the answer**. Those are the two ways the
-colour would really mislead — a same-cloth stack is invisible, and the solved
-frame is the picture being built — and that graph wanted at most **seven**
-colours on all 180 boards measured. Plain greedy reached it on all of them, and
-a 600-board sweep found **zero** clashes and never once walked the index-order
-fallback. `tests/test_pinwheel_gen.gd` asserts exactly that pair of promises;
-it does not assert the wider one, because the wider one is false.
+**A board eight cloths cannot colour is thrown away and another is grown.**
+There is no `p % CLOTHS` fallback on the playable path any more: the moment
+greedy would want a ninth cloth, `_colour` hands back an empty array and
+`generate()`’s loop moves to the next attempt exactly as it does for a failed
+proof or a failed scramble. Rejection is affordable here only because
+generation is — a board is a few milliseconds — and that is the entire
+argument. Measured over 300 seeds a band, it throws away **2, 6 and 31** proved
+boards, which costs **3, 17 and 132** extra grows out of 619, 721 and 1125: a
+rejected board costs a whole fresh grow-and-prove cycle rather than one grow,
+which is why band 2’s bill is twelve percent where its rejection rate is ten.
+The one `p % CLOTHS` left is in the total-failure dictionary, the `cols == 0`
+one, which has no pieces to mis-colour and nothing playable to spoil.
+
+#### The narrow rule that shipped first, and the lesson it left
+
+**A narrower rule was measured, written down and shipped before this one, and
+it was measured against the wrong frame.** It is recorded here rather than
+deleted, because the reason it failed travels further than the rule that
+replaced it.
+
+Task 1 tried the rule above, found that eight cloths cannot always colour it
+— exact colouring, not greedy, of 60 seeds a band needed a ninth on 2 of 60
+band-0 boards and 1 of 60 band-1 boards — and concluded that it was “not a
+promise the board can make”. So it weakened the promise to the strongest thing
+eight cloths could keep without ever rejecting anything: **two pieces never
+share a cloth if they can ever overlap, or if they touch *in the answer*.**
+That graph wanted at most seven colours on all 180 boards measured, greedy
+reached it every time, and a 600-board sweep found zero clashes.
+
+Every one of those measurements was true. The promise was about the wrong
+state. **The answer is the frame the player sees last and least**; the opening
+is what is on the screen when the board is handed over and for as long as it
+takes to solve. Measured over 300 seeds a band, the shipped rule left a
+same-cloth pair **orthogonally touching in the opening state** on **149, 219
+and 241 boards of 300** — independently re-measured at 145, 214 and 233 on a
+different seed block. Two apricot pieces edge to edge read as one shape, which
+is exactly what the colouring exists to prevent, and it was happening on most
+boards.
+
+**The lesson is not the rule. A legibility rule measured against the solved
+frame is measured against the state the player spends the least time looking
+at.** Any board that colours, shades or outlines its pieces to keep them apart
+should check that rule against the *opening*, and against whatever the player
+stares at in between — the solved frame is the cheapest state to reason about
+and the least important one to get right.
+
+The fix was not to weaken the rule further but to keep the wide one and
+**reject the boards it cannot colour**, which Task 1 never weighed because it
+was looking for a colouring that always succeeds rather than a generator that
+can afford to be picky. The “within two cells” reading, which an early test
+asked for, is still out of reach and has not been retried: exact colouring
+needed a ninth colour on 33 of 60 band-1 boards, and rejecting a board in two
+would not be picky, it would be a different generator.
+
+Under the widened rule, all 900 boards of the 300-a-band sweep came back with
+**zero** same-cloth pairs touching or stacked in the opening state and zero in
+the answer. `tests/test_pinwheel_gen.gd` asserts both states over 40 seeds a
+band, and also re-derives the conflict graph and checks the colouring is
+proper, which is what says the fallback was never walked on a real board. Run
+against the *old* colouring, that test fails on 18, 24 and 31 of its 40 boards
+a band, so it bites.
 
 ---
 

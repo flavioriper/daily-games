@@ -12,11 +12,12 @@ extends RefCounted
 ## uniqueness comes almost free: the median board is proved on the first or
 ## second grow.
 ##
-## Four stages, and each one can reject:
+## Five stages, and each one can reject:
 ##   1. grow   -- partition the frame into polyominoes of the band's sizes
 ##   2. pin    -- choose each piece's pin to maximise its in-frame orientations
 ##   3. prove  -- exact cover, capped at two solutions; require exactly one
-##   4. scramble -- the tidiest opening that still needs the band's taps
+##   4. colour -- eight cloths, properly; a board needing a ninth is thrown away
+##   5. scramble -- the tidiest opening that still needs the band's taps
 ##
 ## There is no wall-clock budget and no `graded: false`. The loop is bounded
 ## by ATTEMPTS and the honest flag is `unique: false`, which is Quilt's
@@ -51,10 +52,10 @@ static func band(difficulty: int) -> Dictionary:
 
 # ------------------------------------------------------------- the generator
 
-## Grow, pin, prove, scramble; the first board that passes all four is the
-## board. A proved board whose scramble was too tidy or too deep to satisfy
-## the band is kept as a fallback with a plain scramble over it, so a seed
-## that somehow exhausts ATTEMPTS still opens a real puzzle rather than
+## Grow, pin, prove, colour, scramble; the first board that passes all five
+## is the board. A proved board whose scramble was too tidy or too deep to
+## satisfy the band is kept as a fallback with a plain scramble over it, so a
+## seed that somehow exhausts ATTEMPTS still opens a real puzzle rather than
 ## nothing -- Quilt's order of preference, for Quilt's reason.
 static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	var d := clampi(difficulty, 0, BANDS.size() - 1)
@@ -74,24 +75,34 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			shapes.append(orientations(cells, pin, cols, rows))
 		if count_tilings(shapes, cols, rows, 2) != 1:
 			continue
+		# Colour before scrambling: it is the cheaper of the two stages and the
+		# likelier rejection. A board eight cloths cannot colour properly is
+		# thrown away here exactly as a board that failed the proof is.
+		var cloth: PackedInt32Array = _colour(shapes)
+		if cloth.is_empty():
+			continue
 		var scramble: Dictionary = _scramble(rng, shapes, cols, rows, b)
 		if scramble.is_empty():
 			if fallback.is_empty():
-				fallback = _board(cols, rows, pins, shapes,
+				fallback = _board(cols, rows, pins, shapes, cloth,
 					_plain_scramble(rng, shapes), attempt)
 			continue
-		return _board(cols, rows, pins, shapes, scramble, attempt)
+		return _board(cols, rows, pins, shapes, cloth, scramble, attempt)
 	if not fallback.is_empty():
 		return fallback
+	# The total-failure dictionary: no frame, no pieces, nothing to look at and
+	# nothing to play. It is the one path left that colours loosely instead of
+	# rejecting, because rejecting here would hand back nothing at all -- and it
+	# has no pieces to mis-colour.
 	return {
 		"cols": 0, "rows": 0, "pins": PackedInt32Array(), "shapes": [],
 		"answer": PackedInt32Array(), "start": PackedInt32Array(),
-		"cloth": PackedInt32Array(), "unique": false,
+		"cloth": _colour([], false), "unique": false,
 		"attempts": ATTEMPTS, "turns": 0,
 	}
 
 static func _board(cols: int, rows: int, pins: PackedInt32Array, shapes: Array,
-		scramble: Dictionary, attempt: int) -> Dictionary:
+		cloth: PackedInt32Array, scramble: Dictionary, attempt: int) -> Dictionary:
 	var answer := PackedInt32Array()
 	answer.resize(shapes.size())
 	# `answer` is all zeros because the grow *is* the answer and `orientations`
@@ -105,7 +116,7 @@ static func _board(cols: int, rows: int, pins: PackedInt32Array, shapes: Array,
 		"shapes": shapes,
 		"answer": answer,
 		"start": scramble.start,
-		"cloth": _colour(shapes, answer),
+		"cloth": cloth,
 		"unique": true,
 		"attempts": attempt,
 		"turns": int(scramble.turns),
@@ -391,76 +402,70 @@ static func _plain_scramble(rng: RandomNumberGenerator, shapes: Array) -> Dictio
 ## be confused with -- two pieces in one colour read as a single shape, which
 ## is exactly the information the player is reading the frame for.
 ##
-## **Eight cloths cannot promise what the spec first asked for, and this is
-## the measurement that says so.** The rule it wanted was "no two pieces that
-## could ever *touch* in any pair of orientations", and that graph is far
-## denser than it sounds: a piece's reach is everything its four orientations
-## sweep, so on a 5x7 of eleven pieces almost every pair reaches almost every
-## other. Exact colouring (not greedy) of 60 seeds a band: that rule needs
-## more than eight colours on 2 of 60 band-0 boards and on most of band 1's,
-## with degrees of 10 and 12 out of 12. Widening it to "within two cells",
-## which is what an early test asked for, is worse again -- 33 of 60 on
-## band 1.
+## The edge is the honest reading of "these two can ever meet": the union of
+## A's orientations' cells, **dilated by one orthogonal step**, meeting the
+## union of B's. That is symmetric, it covers overlapping as well as touching,
+## and it holds in every state the board can be in rather than in one of them.
 ##
-## So the promise is the strongest one eight cloths can actually keep, and it
-## was measured before it was written down: two pieces never share a cloth if
-## they can ever **overlap** (share a cell in any pair of orientations), or if
-## they **touch in the answer**. Both of those are what the player is actually
-## reading -- a same-colour stack is invisible, and the solved frame is the
-## picture being built. That graph wanted at most **seven** colours on every
-## one of 180 measured boards.
+## **Eight cloths cannot always colour that graph, and a board they cannot is
+## thrown away.** There is no `p % CLOTHS` fallback on this path: greedy runs
+## in descending degree and the moment it would want a ninth cloth this hands
+## back an empty array, `generate()` grows another board, and the loop carries
+## on exactly as it does for a failed proof. Generation is a few milliseconds
+## here, so rejection is the cheap way to keep a promise: over 300 seeds a
+## band it throws away **2, 6 and 31** proved boards, which costs 3, 17 and
+## 132 extra grows -- a rejected board costs a whole fresh grow-and-prove
+## cycle, and band 2 already spends 3.75 grows on an average board.
 ##
-## Greedy in descending degree, and if the eight run out the remainder falls
-## back to `p % CLOTHS` rather than looping: a colour clash is a blemish, a
-## generator that never returns is a crash.
-static func _colour(shapes: Array, answer: PackedInt32Array) -> PackedInt32Array:
+## `strict` is false on one caller only: the total-failure dictionary, which
+## has no pieces to colour and nothing playable to spoil.
+##
+## **A narrower rule shipped here first and was measured against the answer.**
+## It forbade a shared cloth only on pieces that could overlap or that touched
+## *in the solved frame*, it kept that promise perfectly, and it left a
+## same-cloth pair orthogonally touching **in the opening state** on 149, 219
+## and 241 boards of 300. The lesson is worth more than the rule: a legibility
+## rule measured against the solved frame is measured against the state the
+## player spends the least time looking at. The spec's section 5 has the full
+## history.
+static func _colour(shapes: Array, strict := true) -> PackedInt32Array:
 	var n := shapes.size()
 	var spread: Array = []
-	var home: Array = []
-	var home_near: Array = []
+	var reach: Array = []
 	for p in n:
 		var every := {}
+		var near := {}
 		for orient: Array in (shapes[p] as Array):
 			for c: Vector2i in orient:
 				every[c] = true
+				near[c] = true
+				for d: Vector2i in DIRS:
+					near[c + d] = true
 		spread.append(every)
-		var solved := {}
-		var near := {}
-		for c: Vector2i in ((shapes[p] as Array)[answer[p]] as Array):
-			solved[c] = true
-			near[c] = true
-			for d: Vector2i in DIRS:
-				near[c + d] = true
-		home.append(solved)
-		home_near.append(near)
-	var near_by: Array = []
+		reach.append(near)
+	var meets: Array = []
 	for p in n:
-		near_by.append([])
+		meets.append([])
 	for a in n:
 		for b in range(a + 1, n):
-			var meets := false
+			var met := false
 			for c in (spread[b] as Dictionary):
-				if (spread[a] as Dictionary).has(c):
-					meets = true
+				if (reach[a] as Dictionary).has(c):
+					met = true
 					break
-			if not meets:
-				for c in (home[b] as Dictionary):
-					if (home_near[a] as Dictionary).has(c):
-						meets = true
-						break
-			if meets:
-				(near_by[a] as Array).append(b)
-				(near_by[b] as Array).append(a)
+			if met:
+				(meets[a] as Array).append(b)
+				(meets[b] as Array).append(a)
 	var order: Array = []
 	for p in n:
 		order.append(p)
-	order.sort_custom(func(x, y): return (near_by[x] as Array).size() > (near_by[y] as Array).size())
+	order.sort_custom(func(x, y): return (meets[x] as Array).size() > (meets[y] as Array).size())
 	var cloth := PackedInt32Array()
 	cloth.resize(n)
 	cloth.fill(-1)
 	for p: int in order:
 		var taken := {}
-		for q: int in (near_by[p] as Array):
+		for q: int in (meets[p] as Array):
 			if cloth[q] >= 0:
 				taken[cloth[q]] = true
 		var pick := -1
@@ -468,5 +473,9 @@ static func _colour(shapes: Array, answer: PackedInt32Array) -> PackedInt32Array
 			if not taken.has(i):
 				pick = i
 				break
-		cloth[p] = pick if pick >= 0 else p % CLOTHS
+		if pick < 0:
+			if strict:
+				return PackedInt32Array()
+			pick = p % CLOTHS
+		cloth[p] = pick
 	return cloth

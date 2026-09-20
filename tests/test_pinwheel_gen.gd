@@ -13,7 +13,7 @@ static func run(t) -> void:
 	_test_repeatable(t)
 	_test_the_answer_tiles_the_frame(t)
 	_test_the_start_is_reachable_and_not_the_answer(t)
-	_test_pieces_that_could_be_confused_never_share_a_cloth(t)
+	_test_a_cloth_is_never_repeated_where_it_could_merge(t)
 
 static func _cells(raw: Array) -> Array:
 	var out: Array = []
@@ -135,44 +135,83 @@ static func _test_the_start_is_reachable_and_not_the_answer(t) -> void:
 					moved += 1
 			t.check(moved > 0, "band %d seed %d has something to turn" % [d, s])
 
-static func _test_pieces_that_could_be_confused_never_share_a_cloth(t) -> void:
-	# Two pieces in one colour read as one shape. Eight cloths cannot keep a
-	# colour off every piece another could ever brush past -- that graph is
-	# nearly complete on the bigger bands, and `_colour`'s header carries the
-	# measurement that killed it. What they can keep, and what is asserted
-	# here, is that two pieces sharing a cloth can never **overlap** and never
-	# **touch in the answer**: an invisible stack and a merged solved frame
-	# are the two ways the colour would actually mislead.
+static func _test_a_cloth_is_never_repeated_where_it_could_merge(t) -> void:
+	# Two pieces in one colour read as one shape. The promise is that a cloth is
+	# never repeated on two pieces that can ever **meet** -- share a cell or sit
+	# edge to edge -- and it is checked in both states the player actually looks
+	# at: the opening, which is where the whole puzzle is spent, and the answer.
+	#
+	# The narrow rule this replaced was measured against the answer alone, and
+	# kept it perfectly while leaving a same-cloth pair touching in the opening
+	# on 149, 219 and 241 boards of 300.
 	for d in 3:
-		for s in 10:
+		for s in 40:
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 600 + s
 			var g: Dictionary = Gen.generate(rng, d)
-			var spread: Array = []
-			var home: Array = []
-			var home_near: Array = []
-			for p in (g.shapes as Array).size():
-				var every: Dictionary = {}
-				for orient: Array in (g.shapes[p] as Array):
-					for c: Vector2i in orient:
-						every[c] = true
-				spread.append(every)
-				var solved: Dictionary = {}
-				var near: Dictionary = {}
-				for c: Vector2i in ((g.shapes[p] as Array)[int(g.answer[p])] as Array):
-					solved[c] = true
-					near[c] = true
-					for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-						near[c + dd] = true
-				home.append(solved)
-				home_near.append(near)
-			for a in spread.size():
-				for b in range(a + 1, spread.size()):
-					if int(g.cloth[a]) != int(g.cloth[b]):
-						continue
-					for c in (spread[b] as Dictionary):
-						t.check(not (spread[a] as Dictionary).has(c),
-							"band %d seed %d: pieces %d and %d share a cloth and can stack" % [d, s, a, b])
-					for c in (home[b] as Dictionary):
-						t.check(not (home_near[a] as Dictionary).has(c),
-							"band %d seed %d: pieces %d and %d share a cloth and touch in the answer" % [d, s, a, b])
+			t.check(int(g.cols) > 0, "band %d seed %d built a board to colour" % [d, s])
+			if int(g.cols) == 0:
+				continue
+			_no_merge(t, g, g.start, "opening", d, s)
+			_no_merge(t, g, g.answer, "answer", d, s)
+			_colouring_is_proper(t, g, d, s)
+
+## No two pieces wearing one cloth are stacked on a cell or edge to edge, in
+## whichever state `which` names.
+static func _no_merge(t, g: Dictionary, which: PackedInt32Array, where: String,
+		d: int, s: int) -> void:
+	var n: int = (g.shapes as Array).size()
+	var cells: Array = []
+	for p in n:
+		var set := {}
+		for c: Vector2i in ((g.shapes[p] as Array)[int(which[p])] as Array):
+			set[c] = true
+		cells.append(set)
+	for a in n:
+		for b in range(a + 1, n):
+			if int(g.cloth[a]) != int(g.cloth[b]):
+				continue
+			var merged := false
+			for ca: Vector2i in (cells[a] as Dictionary):
+				for cb: Vector2i in (cells[b] as Dictionary):
+					if absi(ca.x - cb.x) + absi(ca.y - cb.y) <= 1:
+						merged = true
+						break
+				if merged:
+					break
+			t.check(not merged,
+				"band %d seed %d: pieces %d and %d share a cloth and meet in the %s"
+				% [d, s, a, b, where])
+
+## The colouring is proper on the whole conflict graph, not merely on the two
+## states above -- which is also what says the generator never walked a
+## fallback: a board eight cloths cannot colour properly is thrown away and
+## another is grown, so every board that arrives is properly coloured.
+static func _colouring_is_proper(t, g: Dictionary, d: int, s: int) -> void:
+	var n: int = (g.shapes as Array).size()
+	var spread: Array = []
+	var reach: Array = []
+	for p in n:
+		var every := {}
+		var near := {}
+		for orient: Array in (g.shapes[p] as Array):
+			for c: Vector2i in orient:
+				every[c] = true
+				near[c] = true
+				for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					near[c + dd] = true
+		spread.append(every)
+		reach.append(near)
+		t.check(int(g.cloth[p]) >= 0 and int(g.cloth[p]) < 8,
+			"band %d seed %d piece %d wears one of the eight cloths" % [d, s, p])
+	for a in n:
+		for b in range(a + 1, n):
+			var met := false
+			for c in (spread[b] as Dictionary):
+				if (reach[a] as Dictionary).has(c):
+					met = true
+					break
+			if met:
+				t.check(int(g.cloth[a]) != int(g.cloth[b]),
+					"band %d seed %d: pieces %d and %d can meet and share a cloth"
+					% [d, s, a, b])
