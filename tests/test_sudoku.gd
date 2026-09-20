@@ -10,6 +10,7 @@ const Gen = preload("res://puzzles/sudoku_gen.gd")
 static func run(t) -> void:
 	_test_tables(t)
 	_test_generator(t)
+	_test_deadline(t)
 
 static func _test_tables(t) -> void:
 	t.eq(Gen.row_of(0), 0, "cell 0 is in row 0")
@@ -66,12 +67,18 @@ static func _test_generator(t) -> void:
 				t.check(singled, "%s easy falls to singles" % tag)
 			elif d == 2:
 				t.check(not singled, "%s hard does not fall to singles" % tag)
-	# The same seed twice is the same board.
+	# The same seed twice is the same board. Budget disabled (-1) on both
+	# calls: generate()'s output is otherwise contingent on wall-clock timing
+	# as well as the seed since round 1 added TIME_BUDGET_MS, and this
+	# assertion is about the seed, not about whether two calls happen to
+	# cross the same 300 ms deadline the same way on whatever machine runs
+	# the suite -- a CI runner slower than this Mac could see one call clip
+	# and the other not, for two puzzles that would otherwise be identical.
 	var a := RandomNumberGenerator.new()
 	a.seed = 4242
 	var b := RandomNumberGenerator.new()
 	b.seed = 4242
-	t.check(Gen.generate(a, 1).puzzle == Gen.generate(b, 1).puzzle, "the same seed gives the same puzzle")
+	t.check(Gen.generate(a, 1, -1).puzzle == Gen.generate(b, 1, -1).puzzle, "the same seed gives the same puzzle")
 	# A grid with a cell removed from a finished board has one answer; one
 	# with a whole unit removed does not.
 	var full: PackedByteArray = Gen.generate(RandomNumberGenerator.new(), 0).solution
@@ -87,6 +94,33 @@ static func _test_generator(t) -> void:
 		two[swapped] = 0
 		two[swapped + 1] = 0
 		t.check(Gen.count_solutions(two, 3) >= 2, "a swappable pair removed leaves more than one answer")
+
+## dig()'s intra-attempt deadline (round 1 of the code review): checked
+## before every pair, so a caller past its budget stops removing rather than
+## finish the dig it started. An already-expired deadline is the maximally
+## adversarial case -- past before dig() is even entered, so no pair is ever
+## tried and sol comes back untouched -- and it is the one this suite would
+## otherwise never exercise, since generate()'s own attempts never cross the
+## deadline mid-pair in practice (see the probe figures in the commit
+## history). Covering it here is what stops a future rewrite of dig()'s
+## control flow from moving the check inside the zero-then-restore window
+## and silently reintroducing round 1's hang with the suite still green.
+static func _test_deadline(t) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 777
+	var sol := Gen.full_grid(rng)
+	var expired := Time.get_ticks_msec() - 1
+	var puz := Gen.dig(rng, sol, 30, expired)
+	t.eq(puz.size(), 81, "an expired deadline still returns 81 cells")
+	t.eq(Gen.count_solutions(puz, 3), 1, "an expired deadline's puzzle still has exactly one solution")
+	var agrees := true
+	for k in 81:
+		if puz[k] != 0 and puz[k] != sol[k]:
+			agrees = false
+	t.check(agrees, "an expired deadline's puzzle still agrees with the solution")
+	# "Returns the full grid" is the legitimate answer here, not a bug: no
+	# pair was ever tried, so nothing was ever removed.
+	t.check(Gen.is_complete(puz), "an already-expired deadline returns the solution untouched")
 
 ## Whether a full grid obeys the three rules.
 static func _legal(g: PackedByteArray) -> bool:

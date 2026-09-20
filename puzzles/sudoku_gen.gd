@@ -105,12 +105,18 @@ static func _tables() -> void:
 ## within ATTEMPTS tries; the board plays either way and nothing reads it but
 ## the tests and the probe. `deadline`, shared with dig(), is what makes
 ## "give up on this attempt" and "give up on this whole call" the same
-## clock rather than two budgets that can disagree.
-static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
+## clock rather than two budgets that can disagree. `budget_ms` defaults to
+## TIME_BUDGET_MS for every real call; a test that wants generate()'s output
+## to depend on nothing but the seed -- proving determinism, say -- passes
+## -1 to turn the clock off entirely, the same sentinel dig() already uses
+## for "no deadline".
+static func generate(rng: RandomNumberGenerator, difficulty: int, budget_ms: int = TIME_BUDGET_MS) -> Dictionary:
 	_tables()
 	var d := clampi(difficulty, 0, TARGET.size() - 1)
 	var out := {}
-	var deadline := Time.get_ticks_msec() + TIME_BUDGET_MS
+	var deadline := -1
+	if budget_ms >= 0:
+		deadline = Time.get_ticks_msec() + budget_ms
 	for attempt in ATTEMPTS:
 		var sol := full_grid(rng)
 		var puz := dig(rng, sol, int(TARGET[d]), deadline)
@@ -119,7 +125,7 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 		out = {"puzzle": puz, "solution": sol, "graded": want}
 		if want:
 			break
-		if Time.get_ticks_msec() >= deadline:
+		if deadline >= 0 and Time.get_ticks_msec() >= deadline:
 			break
 	return out
 
