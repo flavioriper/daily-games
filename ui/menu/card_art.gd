@@ -10,8 +10,8 @@ extends Control
 ## Shikaku's markers, Tents' tent and conifers, Light Up's lamp, One Line's
 ## snail, Queens' bee -- so a card and its board are visibly the same
 ## drawing. Only the furniture under them (a tray, a beam, a tile, a pipe) is
-## drawn here, and only the two `soon` cards are drawn here outright, because
-## the boards they name have no flat cast to borrow from yet.
+## drawn here, and only the one `soon` card (Pipes) is drawn here outright,
+## because the board it names has no flat cast to borrow from yet.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -146,7 +146,6 @@ func _draw() -> void:
 		"nonogram": _draw_mosaic()
 		"queens": _draw_regions()
 		"pipes": _draw_pipes()
-		"horse": _draw_paddock()
 		"hiddenword": _draw_letters()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
@@ -289,29 +288,14 @@ func _draw_letters() -> void:
 		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
 		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
 
-## Pipes and Horse Pen are the two `soon` cards: no flat
-## board, so no cast to borrow. Each is one small drawing, sized to say what
-## the puzzle is at a glance and no more.
+## Pipes is the one `soon` card left: no flat board, so no cast to borrow.
+## It is one small drawing, sized to say what the puzzle is at a glance and
+## no more. Horse Pen left `Registry.PUZZLES` for Hidden Word (`b2de66a`),
+## and its own drawing (`_draw_paddock`) should have left with it -- the
+## precedent is Snake Apple's `_draw_burrow`, deleted in the same commit
+## that dropped its card (`b6723a9`) -- but it was left behind until now.
 func _draw_pipes() -> void:
 	_round(-92.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
 	_round(22.0, -14.0, 72.0, 56.0, 10.0, Pal.WOOD)
 	_line([Vector2(-56.0, 20.0), Vector2(-56.0, -34.0), Vector2(58.0, -34.0), Vector2(58.0, 20.0)], 26.0, Pal.WATER_HI)
 	_line([Vector2(-56.0, 6.0), Vector2(-56.0, -28.0)], 8.0, Color(Pal.SURFACE, 0.5))
-
-func _draw_paddock() -> void:
-	_round(-96.0, -16.0, 74.0, 60.0, 14.0, Pal.STRAW)
-	for i in range(1, 4):
-		_line([Vector2(-96.0, -16.0 + i * 15.0), Vector2(-22.0, -16.0 + i * 15.0)], 3.0, Color(Pal.PLAQUE_DEEP, 0.5))
-	# The horse: a barrel, a neck up to the head rather than a head floating
-	# beside it, two legs and a tail.
-	var body := Color(0.48, 0.39, 0.32)
-	draw_colored_polygon(PackedVector2Array([
-		at(-6.0, -8.0), at(66.0, -8.0), at(72.0, 24.0), at(0.0, 24.0)]), body)
-	draw_colored_polygon(PackedVector2Array([
-		at(52.0, -4.0), at(70.0, -34.0), at(84.0, -28.0), at(68.0, 2.0)]), body)
-	_disc(78.0, -34.0, 15.0, body)
-	draw_colored_polygon(PackedVector2Array([
-		at(80.0, -44.0), at(88.0, -58.0), at(90.0, -40.0)]), body)
-	_round(8.0, 22.0, 11.0, 28.0, 5.0, body)
-	_round(52.0, 22.0, 11.0, 28.0, 5.0, body)
-	_line([Vector2(-6.0, -4.0), Vector2(-22.0, 10.0), Vector2(-18.0, 26.0)], 7.0, body)

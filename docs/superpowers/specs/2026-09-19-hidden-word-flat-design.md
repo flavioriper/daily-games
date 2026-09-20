@@ -454,3 +454,13 @@ not fixed here: the sprout the reveal brings on keeps a looping idle tween it
 is never asked to stop, and the solve hop's last frame settles a sub-pixel
 above its seat (the same rounding `lightup2d.gd` has). Neither is visible on
 a rendered frame; both are one line.
+
+**There is no way to open this board's rules sheet.** `rules()` returns a
+real string (section 8) and `ui/puzzle_host.gd`'s `rules_sheet` is built and
+refreshed for it exactly as for any other board, but the only door to that
+sheet on a flat board is `tip_card.open`, wired in `ui/flat/flat_host.gd`,
+and this board is the first to set `"tip": false` -- it has no tip card to
+tap. The settings sheet has no rules entry either. This is not something to
+fix by inventing a second door on this board alone: whether and how the tip
+card is replaced is a decision across all eleven flat boards, since it is
+being retired everywhere, and it belongs to the user. Left open until then.

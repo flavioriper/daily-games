@@ -47,9 +47,10 @@ const SproutFace = preload("res://ui/faces/sprout_face.gd")
 ## tile's turn takes.
 const FLIP_STEP := 0.16
 const FLIP_TIME := 0.42
-## How long a refusal's toast holds before it pops out again. Task 7 raises
-## the toast; the number is here with the other two because it is one of this
-## board's signature three and nothing else on the screen sets it.
+## How long a refusal's toast holds before it pops out again. `commit_row`
+## raises it on a refused Enter; the number is here with the other two
+## because it is one of this board's signature three and nothing else on
+## the screen sets it.
 const TOAST_HOLD := 1.2
 
 # --- the grid, measured (spec section 5) ---
@@ -181,8 +182,8 @@ const BUSH_LIT_WASH := 0.12
 const MARK := [Pal.GOOD, Pal.WORD_NEAR, Pal.WORD_MISS]
 
 var state = State.new()
-## The board's own effects node, as on every flat board: Task 7's hint rings
-## and sparkles come through it and nowhere else.
+## The board's own effects node, as on every flat board: the hint's ring
+## and sparkle (func hint(), below) come through it and nowhere else.
 var fx: Node2D
 ## The keyboard, handed over once by the host after the board is spawned. A
 ## harness that builds this board without a tray leaves it null, so every use
@@ -204,8 +205,9 @@ var _gone_at: Array[float] = []
 var _gone_ch: Array[String] = []
 ## Per row: when a refused Enter shivered it.
 var _shiver_at: Array[float] = []
-## Column -> the second a hint revealed the answer's letter there. Task 7
-## draws the ghost off it; it is here because the board owns its moments.
+## Column -> the second a hint revealed the answer's letter there.
+## `_ghost_letter` draws the ghost off it; it is here because the board owns
+## its moments.
 var _given_at: Dictionary = {}
 ## The keyboard repaints still owed, in the order they were earned: each is
 ## `{"at", "marks", "letters"}` -- the second that row's last tile lands, and
@@ -957,14 +959,17 @@ func erase_letter() -> void:
 
 ## Enter. On OK the row turns over, a tile at a time; on any of the three
 ## refusals nothing commits, nothing counts, and the row shivers where it is
-## (Task 7 raises the toast that names the rule).
+## (`_draw_toast` raises the toast that names the rule).
 func commit_row() -> void:
 	if is_done():
 		return
-	# The row that shivers is the one being typed -- or, once all six are
-	# committed and the board is only waiting for Task 7 to end it, the last
-	# one, which is the row the finger is still over.
-	var row: int = mini(state.rows.size(), State.ROWS - 1)
+	# The row that shivers is the one being typed. The is_done() guard above
+	# is why this can be read without a clamp: a commit that fills the sixth
+	# row always ends the board before commit_row returns (state.is_solved()
+	# or state.is_over(), below, one or the other always holds once
+	# rows.size() reaches State.ROWS), so a call that gets this far always
+	# finds rows.size() < State.ROWS.
+	var row: int = state.rows.size()
 	var code := state.commit()
 	if code != State.OK:
 		_shiver_at[row] = _now()
@@ -1173,11 +1178,11 @@ func reset_board() -> void:
 func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": "Found it."}
 
-## WIN_WAIT after the winning row has **landed**, which is what the mock
-## waits and not what the plan's snippet said: `solved` fires the moment
-## Enter is pressed, so a flat WIN_WAIT would raise the win screen 0.54 s
-## after the last tile turned -- on top of the solve's own hop, which Task 7
-## starts a quarter of a second after the landing and runs for 0.4.
+## WIN_WAIT after the winning row has **landed**, not from the Enter that won
+## it: `solved` fires the moment Enter is pressed, so a flat WIN_WAIT would
+## raise the win screen 0.54 s after the last tile turned -- on top of the
+## solve's own hop (`_solve_lift`, above), which starts a quarter of a
+## second after the landing and runs for 0.4.
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else _flip_length() + WIN_WAIT
 

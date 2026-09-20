@@ -149,7 +149,7 @@ func _spawn(the_seed: int) -> void:
 	# unconditionally throws on every one of them, and the throw aborts this
 	# function before start() ever runs, leaving a blank dead board.
 	if _puzzle.has_signal("ended"):
-		_puzzle.ended.connect(_refresh)
+		_puzzle.ended.connect(_on_ended)
 	_puzzle.moved.connect(_refresh)
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
@@ -257,11 +257,23 @@ func _on_solved() -> void:
 		_puzzle.elapsed, _puzzle.moves, _puzzle.share_glyphs()
 	]
 	_overlay.visible = true
-	Analytics.track("puzzle_complete", _stats())
+	Analytics.track("puzzle_complete", _stats().merged({"solved": true}))
+	_refresh()
+
+## Hidden Word's ending that runs out rather than solves
+## (PuzzleBase.finish_unsolved): the clock stops and the chrome greys, but
+## there is no win to show, so this raises no overlay. It still closes the
+## board's funnel -- "the player did not get it" is exactly the signal a
+## board like this exists to produce, and without an event here that run
+## is indistinguishable from a crash (a puzzle_start with nothing after it).
+func _on_ended() -> void:
+	Analytics.track("puzzle_complete", _stats().merged({"solved": false}))
 	_refresh()
 
 ## Leaving a board unsolved is the signal that it was too hard, too long
-## or too dull, so it is worth an event of its own.
+## or too dull, so it is worth an event of its own. A board that already
+## ended on its own (solved or run out) has sent its puzzle_complete;
+## is_done() covers both, so this never double-fires.
 func _on_back() -> void:
 	if is_instance_valid(_puzzle) and not _puzzle.is_done():
 		Analytics.track("puzzle_abandon", _stats())

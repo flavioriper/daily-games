@@ -450,8 +450,15 @@ Specs:
   behind `has_signal`, because `legacy/core/stage_board.gd` carries a frozen
   copy of the contract that predates it and must stay frozen. The keyboard is
   its tray (`ui/flat/key_board.gd`, `"tray": "keys"`), and it is the first
-  board with **no tip card** (`"tip": false`) and no actions row: the
-  keyboard says what a tip card would. **The flip is its signature** and its
+  board with **no tip card** (`"tip": false`) and no actions row. Its
+  `rules()` string is real and the rules sheet is built and refreshed for it
+  like any other board, but **there is currently no way to open it**: every
+  other board's tip card is the sheet's only door
+  (`tip_card.open` to `_open_rules` in `ui/flat/flat_host.gd`), and Hidden
+  Word has no tip card. This is an open question for whenever the tip card
+  is retired across the other ten boards, tracked in the spec's amendments;
+  it is not a claim that the keyboard explains the rule, which it does not.
+  **The flip is its signature** and its
   numbers are its own three (`FLIP_STEP`, `FLIP_TIME`, `TOAST_HOLD`), with
   six more for the ending -- the keyboard's exit, two dim levels, the dim's
   time and the sprout's rise -- which stand in the board because nothing else
@@ -523,9 +530,11 @@ Specs:
   the actions row with `"actions": false`, which Balance does: that board is
   its own continuous check, so it has no Check to put in the row and Reset
   rides up into the top bar instead. It can drop the tip card too
-  (`"tip": false`), which **Hidden Word** is the first board to do: a
-  keyboard says what a tip card would, and the screen has no room to say it
-  twice. Hidden Word drops the actions row as well -- there is no Check on a
+  (`"tip": false`), which **Hidden Word** is the first board to do: the
+  keyboard fills the space a tip card would sit in, and the screen has no
+  room for both. This also leaves Hidden Word with no route to the rules
+  sheet, since the tip card was every other board's only door to it -- see
+  above. Hidden Word drops the actions row as well -- there is no Check on a
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
@@ -650,6 +659,14 @@ export stays on the non-gradle path.
   `turn_share` and `crowd_reveal_opened`. Board events carry puzzle_id,
   difficulty, day, seconds, moves, hints, checks; the last two tell us
   whether Pipes' third dimension is a puzzle or a nuisance.
+- **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
+  landed (2026-09-19): until then `done` implied solved, so the event had
+  nothing to say either way. Hidden Word can run out of rows
+  (`PuzzleBase.finish_unsolved`) without solving, and that ending fires
+  `puzzle_complete` with `solved: false` from `ui/puzzle_host.gd`'s
+  `_on_ended` -- a lost board is still a terminal event, and without one a
+  player who reads six rows and backs out looks identical to a crash. Every
+  other board only ever sends `solved: true`, from `_on_solved`.
 - **`locale` rides on every event**, stamped by `Analytics.track()` beside
   `session_id` and `engagement_time_msec` on whatever it is handed, so any
   event can be split by language without a caller remembering to pass it.
