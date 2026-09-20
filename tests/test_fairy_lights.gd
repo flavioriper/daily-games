@@ -98,22 +98,51 @@ static func _test_tree(t) -> void:
 					lanterns += 1
 			t.check(lanterns >= int(ceil(n * n * 0.22)), "%s at least 22%% of the field is lanterns" % tag)
 
-## 4. Every board over 40 seeds a band comes back proved, and solvable()
-##    agrees when handed the solution back.
+## 4. Every board over 40 seeds a band comes back proved, solvable() refuses
+##    a board that genuinely needs a guess, and its verdict is about shape
+##    and never about the orientation it is handed.
 static func _test_promise(t) -> void:
+	# The negative control, and the only assertion in this file that fails if
+	# the solver goes unsound. Every other check here is a positive: a
+	# `solvable()` stubbed to `return true` leaves them all green, because
+	# `build()` only ever hands back trees that function has already
+	# approved, so asking it again re-runs a call that cannot disagree with
+	# itself. A 2x2 of straights is the smallest Netwalk board no amount of
+	# propagation can settle -- every cell has two walls and a straight has
+	# only two rotations, so the candidate sets empty out -- and it must be
+	# refused.
+	t.check(not Gen.solvable(2, PackedInt32Array([5, 5, 5, 5])),
+		"a 2x2 of straights cannot be settled by propagation and is refused")
+	t.check(not Gen.solvable(2, PackedInt32Array([10, 10, 10, 10])),
+		"the same four straights laid the other way round are refused too")
 	for d in 3:
 		var unproved := 0
 		var disagreed := 0
+		var orientation := 0
 		for i in range(40):
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 4300 + d * 1000 + i
 			var out: Dictionary = Gen.build(rng, d)
 			if not out.proved:
 				unproved += 1
-			if not Gen.solvable(out.n, out.sol):
+			var verdict: bool = Gen.solvable(out.n, out.sol)
+			if not verdict:
 				disagreed += 1
+			# The solver reads a cell's *shape* -- its set of distinct
+			# rotations -- and never the orientation it happens to arrive in.
+			# Turning every cell a quarter turn is not the same board, but it
+			# is the same shape in every cell, so the verdict may not move.
+			# A solver that seeded its candidates from the given mask in any
+			# order-dependent way would come apart here.
+			var turned := PackedInt32Array()
+			turned.resize(out.sol.size())
+			for c in range(out.sol.size()):
+				turned[c] = Gen.cw(out.sol[c])
+			if Gen.solvable(out.n, turned) != verdict:
+				orientation += 1
 		t.eq(unproved, 0, "band %d proves every one of forty boards" % d)
 		t.eq(disagreed, 0, "band %d: solvable() agrees with build() on every board" % d)
+		t.eq(orientation, 0, "band %d: the verdict is about shape, not the orientation handed in" % d)
 
 ## 5-7. The deal is a rotation of the solution cell for cell, it is not the
 ##      solution, and it opens dark.
