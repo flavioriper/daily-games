@@ -155,14 +155,25 @@ func reset_board() -> void:
 ## when hints are spent, the board is already solved, or Gen.solve() finds
 ## nothing (a stuck board, or one past the search budget). Otherwise the move
 ## goes through lift()/drop() so it is logged and undoable exactly like a tap.
+##
+## Self-guards the way undo() does: put_back() first, so a ring already in
+## hand when hint() is called cannot leave lift() silently refusing (held
+## already set) while drop() tests can_drop against the *stale* held colour
+## instead of the solver's. And a hint is only ever credited once lift() and
+## drop() have both actually succeeded -- the board must never be told a move
+## happened when it did not, nor lose a count for one that never played.
 func hint() -> Vector2i:
+	put_back()
 	if hints_used >= HINTS or is_solved():
 		return Vector2i(-1, -1)
 	var path: Array = Gen.solve(pegs)
 	if path.is_empty():
 		return Vector2i(-1, -1)
 	var m: Vector2i = path[0]
-	lift(m.x)
-	drop(m.y)
+	if not lift(m.x):
+		return Vector2i(-1, -1)
+	if drop(m.y) == -1:
+		put_back()
+		return Vector2i(-1, -1)
 	hints_used += 1
 	return m

@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_test_solved_and_stuck(t)
 	_test_reset(t)
 	_test_hint(t)
+	_test_hint_guards_a_held_ring(t)
 
 static func _rng(seed_value: int) -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()
@@ -121,9 +122,10 @@ static func _test_drop_rules(t) -> void:
 	s.colours = 3
 	t.check(s.lift(0), "lifted a 0")
 	t.check(not s.can_drop(1), "1's top is a different colour")
-	t.check(s.refusal(1).length() > 0, "and it says so")
+	t.eq(s.refusal(1), "A ring only lands on its own colour.", "the mismatch line, verbatim")
 	t.check(s.can_drop(2), "the empty peg takes anything")
 	t.check(not s.can_drop(3), "a full peg takes nothing")
+	t.eq(s.refusal(3), "That peg is full.", "the full line, verbatim")
 	t.eq(s.drop(2), 0, "landed in the empty peg's first slot")
 	t.eq(s.log.size(), 1, "one move logged")
 	t.eq(s.held, -1, "the hand is empty")
@@ -187,3 +189,20 @@ static func _test_hint(t) -> void:
 	for i in 5:
 		s.hint()
 	t.eq(s.hints_used, State.HINTS, "never more than three")
+
+## Regression: a ring already in hand when hint() is called used to make
+## lift(m.x) fail silently (held already set) while drop(m.y) tested
+## can_drop against the *stale* held colour rather than the solver's -- and
+## hints_used was spent either way. hint() now self-guards with put_back()
+## first, so the board it hands to the solver always matches what is really
+## on the pegs, and only actually crediting the move it reports.
+static func _test_hint_guards_a_held_ring(t) -> void:
+	var s = _state()
+	t.check(s.lift(0), "a ring already in hand before hinting")
+	var before_hints: int = s.hints_used
+	var before_log: int = s.log.size()
+	var m: Vector2i = s.hint()
+	t.check(m.x >= 0, "a real move was played, off the restored board")
+	t.check(not s.log.is_empty() and s.log.back() == m, "the move reported is the move made")
+	t.eq(s.log.size(), before_log + 1, "the log grew by exactly one")
+	t.eq(s.hints_used, before_hints + 1, "and exactly one hint was spent")
