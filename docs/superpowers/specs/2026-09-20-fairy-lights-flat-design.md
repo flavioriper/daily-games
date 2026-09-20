@@ -229,6 +229,11 @@ materialise. The whole build including re-rolls costs **0.053 / 0.059 /
 0.093 ms in JavaScript** on this Mac, against Sudoku's 9 ms for its generator
 in the same place.
 
+**What stood here before this table was an estimate and never a
+measurement**: the GDScript cost was scaled off the JavaScript figure above
+by a guessed factor of about seven, because no port existed yet to time. It
+is gone, and the reading below replaces it.
+
 **The GDScript reading is now real, and it is the third reading of this
 generator.** `tests/_probe_fairy_gen.gd` over **200 seeds a band**, run twice
 on 2026-09-20, both readings quoted because one off this Mac is worth
