@@ -159,7 +159,9 @@ gather into pockets with no clear lane to an edge, and placements start
 failing; the honest ceiling is around nine cells in ten and the honest floor
 is nearer six. The generator makes up to `CANDIDATES` boards and keeps the
 first at or above the band's coverage floor, else the fullest one it made. It
-is cheap enough to do that: measured with `tools/_planes_probe.py`, the
+is cheap enough to do that: measured with a throwaway Python probe that is
+**not kept in the tree** (it validated the algorithm before Task 2 ported it,
+and was deleted with the rest of this board's scratch in Task 7), the
 algorithm in Python takes **0.8 ms (easy), 1.3 ms (medium) and 1.9 ms (hard)**
 a board on this Mac, twenty seeds a band -- two orders off Sudoku's budget
 problem, so there is no fallback path here and nothing to grade against a
@@ -625,3 +627,101 @@ canvas changed, not the picture itself.
    line today. If playtesting shows people tapping the same blocked plane
    repeatedly, the second refusal of the same plane could ring the blocker
    instead -- but that is a change to make with a reason, not in advance.
+
+## 17. Amendments: what the build changed, and why
+
+Written 2026-09-20 at Task 7, from the seven tasks' own reports. A claim
+that was overturned is more useful than one that was never tested, so the
+ones this build overturned are here with the evidence that overturned them.
+Each amendment already made in place is indexed rather than repeated.
+
+**Indexed, and recorded where they belong:**
+
+| What changed | Where it is written | In one line |
+|---|---|---|
+| Crease 0.09 -> 0.06, over a short `[0.22, -0.05]` run | section 8 | The wider slit hollowed the dart out at 58 px; the mock had already settled it. |
+| The lane band is 0.34, and the "disagreement" never existed | section 8 | The mock draws *every* wash at 0.34; the spec's 0.86 was a misreading of it. Shot both ways. |
+| The hint's glow stays 0.86 | section 8 | It names a piece, not a path; at 0.34 the trail reads outlined rather than lit. |
+| "Lane, pressed and clear" struck, with its constant | section 8 | The board acts on press-down, so there is no held finger to preview for -- and the flight *is* the preview. |
+| Four numbers that did not become a fourth constant | section 10 | The 0.22 floor is `Motion.POP_IN`, the ease is `pop_out_scale` read backwards, the dot's return is `appear_level`, the shiver and nudge are the family's pixels. |
+| A plane turns around in the air | section 10 | Both directions snapped the plane home first; photographed before and after. Reset drops its stagger for a plane already flying. |
+| The solve wave, as built | section 10 | A hop on every dot, rolling out from the cell the last head stood on, booked for when that last flight lands. |
+| `WIN_WAIT` 2.7 s, and its arithmetic | section 10 | 1.41 s worst flight + 1.25 s wave. The longest win wait of any flat board, and usually longer than it needs to be. |
+| The count came out of the tip lines | section 13 | Fifty-two planes cannot be counted out loud; the emptying sky says it better. |
+| GDScript's hard band runs ~3.7x Python's, not ~1.6x | sections 5 and 6 | Named rather than smoothed over; both are two orders under any budget. |
+| The card's picture: 48 draw calls -> 1 | section 15 | The 5x9 dot lattice was 27 `draw_circle` calls; baked into one mesh, the same rule the board's own field obeys. |
+| The Word Trail control was quoted backwards | section 15 | 65 is *at* the top of its recorded 60-65 and 2.30 ms is *below* its 2.37-2.51; corrected, and a second control added. |
+
+**Not recorded anywhere else, and recorded here:**
+
+- **`add_plane` refuses a body shorter than two cells** (Task 1's review).
+  The design derives a plane's direction from its last step and never says
+  what happens without one: a one-cell body wraps to `cells[-1] == cells[0]`,
+  `dir` comes out `Vector2i(0, 0)`, and `lane()`'s `while in_board(at): at +=
+  dir` never advances. Not a crash -- a silent hang, reproduced with a script
+  that timed out. The guard `push_error`s and returns `-1`, and
+  `tests/test_planes.gd` covers it without ever calling `lane()` on a
+  degenerate plane, which is the call that would hang the suite.
+- **The hard band is the *loosest*, not the tightest, and that is the
+  design.** Measured on the concept page over 200 seeds a band: steps with
+  two or fewer legal launches are **22.0% / 16.6% / 12.6%** of play, easy to
+  hard. A bigger board holds more planes and more of them are free at once,
+  so the hard band asks for **minutes and attention, not deduction** -- which
+  is what section 6 already says the genre is, now with a number behind it.
+  This was accepted deliberately rather than dialled out: the levers if it
+  ever needs to be (the coverage target, weighting toward long planes, heads
+  biased inward) are all in the generator and touch no other file. Nobody
+  should "fix" this later thinking it was overlooked.
+- **The title fits to 62, not 58, and it measures 497, not 528.** The plan's
+  ledger recorded `Paper Planes` at 528 px at GameWordmark 84, lettered down
+  to 58 on the five-button 370 block, while the name was still being chosen
+  off the concept page. The shipping bar was swept at Task 7 -- a windowed
+  probe at `--resolution 810x1440` opening every registry entry through the
+  real menu -- and the face measures **497 at 84**, so `_fit_title`'s seed is
+  `floor(84 * 370 / 497) = 62` and 62 measures 367 against the 370 block. The
+  probe reproduced Mushroom Patch's 635 -> 65 and Word Trail's 84 -> 79
+  exactly in the same run, which is why 497 -> 62 is believed over the
+  earlier figure. **The conclusion is unchanged and if anything stronger**:
+  62 is the smallest any title is lettered in this game, three points under
+  Mushroom Patch's 65 and off a face 138 px narrower, because the block is
+  370 and not 496. The motto is untouched: `A CLEAR LANE AND AWAY` measures
+  353 and clears the same block. And the mock is not the bar -- the mock
+  letters the title UPPERCASE at 44, where `ui/flat/flat_top_bar.gd` keeps a
+  puzzle's title case and only upper-cases the motto.
+- **Nothing under `tests/` loaded a board's `*2d.gd`, and now something
+  does.** Task 6's first draft of `_speak()` was a parse error and the suite
+  stayed green at `passed=94534 failed=0`; only `tests/_win.gd`, which needs
+  a display and is not in CI, caught it. That was true of all fifteen boards.
+  `tests/test_planes.gd` now walks `Registry.PUZZLES` and asserts every
+  entry's script loads and `can_instantiate()`s, which takes the suite to
+  `passed=94564 failed=0` and, with `planes2d.gd` deliberately broken, to
+  `failed=1` naming the file. The board is not instantiated -- it is a
+  Control that wants a live tree, and loading it is all that proves it
+  compiles.
+- **The board acts on press-down and has no busy gate, deliberately.**
+  Nothing in the design said so and three things now depend on it:
+  `tests/_win.gd` clears a whole sky inside one frame, rapid tapping is good
+  play on a 52-plane board, and a plane can be re-tapped while its own return
+  flight is still in the air (which is what the turn-in-the-air fix is for).
+  If a gate is ever added, `_win.gd`'s one-frame solve is the test that
+  catches it.
+- **`clip_contents = true`, the only flat board that clips.** A launch runs a
+  body-length -- up to ten cells, 580 px at the hard band -- past the grid,
+  and would otherwise draw over the day card and the top bar. The board
+  Control fills the card's slot, so the cut lands on the card's own hem.
+- **The entrance and `tip_line()` arrived a task early** (Task 3), each with
+  a reason rather than as scope creep: a board with no entrance appears with
+  a snap no other flat screen has, and without `tip_line()` the tip card
+  falls back to Binairo's cycle and shows *Binairo's* rules under a Paper
+  Planes title.
+- **Page two holds three cards and makes no filler.** Fifteen over `PER_PAGE`
+  twelve leaves three, and three over three columns is a full row, so
+  `ui/menu.gd`'s invisible `SIZE_EXPAND_FILL` fillers -- which the fourteenth
+  card needed -- are not built at all. The machinery stays for the sixteenth
+  card, and both `ui/menu.gd` and `ui/registry.gd` say so rather than
+  claiming a padding they are not doing.
+- **The throwaway tools are gone.** `tools/_planes_probe.py` (the Python that
+  validated the generator before Task 2 ported it), `tools/_planes_time.gd`
+  (the timing probe behind section 6's GDScript rows) and
+  `tools/_planes_shot.sh` were all scratch and none is kept. Section 5 names
+  the probe's numbers without naming a file that no longer exists.
