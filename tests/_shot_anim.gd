@@ -28,6 +28,10 @@ extends SceneTree
 ## Queens has the answer's first queen seated, so the strip shows the crown
 ## pop and the wave of crosses running out of her, and the idle window has a
 ## queen and her crosses in it.
+## Hidden Word has a five-letter guess typed on its keyboard and committed a
+## beat later, so the strip shows the letters popping in, the row caught
+## mid-flip and the row landed with the keys repainted behind it. The guess is
+## never the day's word, so the board does not win in the middle of the strip.
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5.
 
@@ -61,6 +65,11 @@ var _drag_from := Vector2.ZERO
 var _drag_by := Vector2.ZERO
 var _drag_until := INF
 var _drag_done := true
+## Hidden Word presses Enter a beat after the five letters, so the shot at
+## 1.65 catches the row typed and the one at 1.8 catches its first tile a
+## third of the way through its turn, still face-down.
+const COMMIT_AFTER := 0.05
+var _commit_at := INF
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -119,9 +128,14 @@ func _process(delta: float) -> bool:
 			_begin_nonogram_sweep()
 		elif _entry.id == "queens" and not _empty:
 			_tap_queens()
+		elif _entry.id == "hiddenword" and not _empty:
+			_type_hiddenword()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
+	if _t >= _commit_at:
+		_commit_at = INF
+		_tap_key("Key_Enter")
 	if _filling:
 		_fill_mastermind_step()
 	if not _drag_done:
@@ -189,6 +203,31 @@ func _begin_nonogram_sweep() -> void:
 func _tap_queens() -> void:
 	var c: int = int(_puzzle.state.solution[0])
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c))
+
+## Hidden Word: type a five-letter guess on the real keyboard, one key tapped
+## like a thumb, and press Enter a beat later. The guess is picked off the
+## accept list the board itself answers with, and never the day's word: a
+## board that won here would spend the rest of the strip on the win screen.
+func _type_hiddenword() -> void:
+	var word := ""
+	for candidate in ["slate", "crane", "roast", "plant"]:
+		if candidate != _puzzle.state.answer and _puzzle.state.accepts(candidate):
+			word = candidate
+			break
+	if word.is_empty():
+		return
+	for i in word.length():
+		_tap_key("Key_%s" % word[i].to_upper())
+	_commit_at = _t + COMMIT_AFTER
+
+## One tap on a key of the keyboard tray, found by the name key_board.gd
+## gives it.
+func _tap_key(name: String) -> void:
+	if _host.tray == null:
+		return
+	var chip = _host.tray.find_child(name, true, false)
+	if chip is Button:
+		_press(chip)
 
 ## Balance: plus on the first card the player owns, through the real button.
 func _step_balance() -> void:
