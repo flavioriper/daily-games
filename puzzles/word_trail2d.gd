@@ -37,6 +37,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 
@@ -112,6 +113,45 @@ const DASH_OFF := 0.08
 ## The hint's ring, in cells: it starts just outside the tile.
 const RING_R := 0.62
 
+# --- the scenery band at the card's foot (spec section 8) ---
+## The band is whatever the field and the slots do not spend -- 222, 236 and
+## 250 by difficulty -- and it is laid the way Hidden Word's is: the family's
+## clouds high in it, a washed turf with a lighter crown, blades standing out
+## of that, and three bushes on the ground line. It stands still; only the
+## field takes the entrance, so it is built once per layout.
+## The turf's top edge measured up from the foot of the band, the band's own
+## foot inside the card's inset, and the two corners.
+const TURF_TOP := 52.0
+const BAND_FOOT := 6.0
+const TURF_RADIUS := 26.0
+const CROWN_H := 22.0
+const CROWN_RADIUS := 14.0
+## Two clouds in the air the band bought, each x in from its own side of the
+## card's inner width, y down from the band's top, and its radius.
+const CLOUD_LEFT := Vector3(150.0, 46.0, 26.0)
+const CLOUD_RIGHT := Vector3(170.0, 58.0, 21.0)
+## Blades standing out of the turf: how many, how far in from each end they
+## start, their half-width at the root, how far below the ground line they
+## root, and the band their height and lean fall in.
+const BLADES := 22
+const BLADE_EDGE := 30.0
+const BLADE_W := 5.0
+const BLADE_ROOT := 4.0
+const BLADE_MIN := 14.0
+const BLADE_SPREAD := 20.0
+const BLADE_LEAN := 8.0
+## Three bushes on the ground line, in the mock's own x convention: from the
+## left, or negative from the right, or a fraction of the width when between
+## 0 and 1; and the radius.
+const BUSHES := [Vector2(52.0, 38.0), Vector2(0.42, 26.0), Vector2(-72.0, 33.0)]
+## How far each green is lifted toward the card's parchment, so the band
+## recedes behind the field rather than competing with it.
+const TURF_WASH := 0.52
+const CROWN_WASH := 0.3
+const BLADE_WASH := 0.24
+const BUSH_DEEP_WASH := 0.3
+const BUSH_LIT_WASH := 0.12
+
 ## A locked word takes one of the palette's six chip colours, in order, and
 ## every part of it agrees: the ribbon in the strong one at RIBBON_ALPHA, the
 ## tile faces in the pale *_TILE, the letters in the deep one. Six is also
@@ -137,9 +177,15 @@ var fx: Node2D
 ## The cells the finger has strung together, in order. Empty when nothing is
 ## being dragged.
 var _trail: Array[Vector2i] = []
-## When the beam last reached a new tile. The beam's growth is the motion
-## pass's (task 3); this is the moment it reads.
+## When the beam last reached a new tile: the beam grows from the tile before
+## it to the finger over BEAM_TIME from here.
 var _beam_at := -100.0
+## The tile under the finger, when it went down and when it came up (-1 while
+## it is still down): what Motion.press_scale is handed. The trail's other
+## tiles sit half-way into the same press.
+var _press_cell := Vector2i(-1, -1)
+var _press_at := -100.0
+var _press_up := -1.0
 ## The trail a release did not lock, unwinding: {"path": Array, "at": float}.
 ## Nothing else happens on a wrong trail -- no toast, no shiver, no move
 ## counted, no hint spent (spec section 3).
@@ -149,17 +195,25 @@ var _ghost: Dictionary = {}
 var _found_at: Dictionary = {}
 var _lifted_at: Dictionary = {}
 
+## The rings and sparkles a wave still owes: [{"at", "cell", "colour",
+## "ring"}]. A lock's ring lands on the word's last tile when the wave gets
+## there, not when the finger let go, so the two arrive together.
+var _pending: Array = []
+
 var _opened := 0.0
 var _anim_until := 0.0
 var _solved_at := -1.0
-## The field mesh, dropped whenever something changed so the next _draw
-## rebuilds it.
+## The field mesh (walls, tiles, ribbons and hint glows), the slots' mesh and
+## the still scenery band. The first two are dropped whenever something
+## changed so the next _draw rebuilds them; the band only on a relayout.
 var _field: ArrayMesh
-## The mesh the last _draw actually handed to the canvas item. A canvas
+var _slots: ArrayMesh
+var _band: ArrayMesh
+## The meshes the last _draw actually handed to the canvas item. A canvas
 ## command holds a mesh by RID and not by reference, so dropping the only
 ## reference to a mesh still on the item's command list leaves the renderer
 ## drawing a freed RID ("Parameter mesh is null", and an empty card).
-var _shown: ArrayMesh
+var _shown: Array = []
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -195,9 +249,13 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
 	_trail = []
 	_beam_at = -100.0
+	_press_cell = Vector2i(-1, -1)
+	_press_up = -1.0
 	_ghost = {}
 	_found_at = {}
 	_lifted_at = {}
+	_pending = []
+	_anim_until = 0.0
 	_solved_at = -1.0
 	_layout()
 	_enter()
@@ -281,6 +339,9 @@ func card_centred() -> bool:
 	return false
 
 func _layout() -> void:
+	# The band is the only thing that does not move, so it is the only mesh a
+	# relayout has to drop by hand.
+	_band = null
 	_refresh()
 
 ## One group of boxes per word, shortest first, wrapped to as many lines as
@@ -312,57 +373,166 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _cell() <= 0.0 or _state.words.is_empty():
 		return
-	# A ghost keeps its own frames coming until _build_field lets go of it:
-	# a beam whose unwind ran a frame past _anim_until would otherwise stay
-	# on the card for ever at an alpha nobody can see.
-	if _now() < _anim_until or not _ghost.is_empty():
+	var t := _now()
+	_fire_pending(t)
+	if _animating(t):
 		_refresh()
+
+## Whether anything on this card is still moving, asked wave by wave rather
+## than by one deadline. **Every** wave has to be in here: One Line shipped
+## two lines frozen at four fifths of a fade because one was left out, and it
+## showed in a rendered frame and in no test.
+func _animating(t: float) -> bool:
+	# A ghost keeps its own frames coming until _ribbons lets go of it: a
+	# beam whose unwind ran a frame past the rest would otherwise stay on the
+	# card for ever at an alpha nobody can see.
+	if not _ghost.is_empty():
+		return true
+	# Rings, sparkles and anything else that asked for time by the clock.
+	if t < _anim_until or not _pending.is_empty():
+		return true
+	if Motion.reduce:
+		return false
+	# The entrance: the field's wide pop, then the slot groups dropping in.
+	var entrance := Motion.ENTER_DELAY + Motion.ENTER_POP \
+		+ Motion.stagger(maxi(_state.words.size() - 1, 0), Motion.ENTER_STAGGER) \
+		+ Motion.DROP_TIME
+	if t - _opened < entrance:
+		return true
+	# Every word's wave, forward off a lock and backwards off an undo or a
+	# reset, with the bump and the slot letter's drop the last tile still owes.
+	for i in _state.words.size():
+		var span := float((_state.words[i]["path"] as Array).size())
+		var settled := span * WAVE_STEP + maxf(Motion.BUMP_TIME, Motion.DROP_TIME)
+		if _found_at.has(i) and t - float(_found_at[i]) < settled:
+			return true
+		if _lifted_at.has(i) and t - float(_lifted_at[i]) < span * WAVE_STEP:
+			return true
+	# The live beam growing to the finger, and the tile under it pressing or
+	# springing back.
+	if not _trail.is_empty() and t - _beam_at < BEAM_TIME:
+		return true
+	if _press_cell.x >= 0 and (_press_up < 0.0 or t - _press_up < Motion.RELEASE_TIME):
+		return true
+	# The solve wave, from the corner the field is hopped from.
+	if _solved_at >= 0.0 and t - _solved_at < Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME:
+		return true
+	return false
+
+## How long the solve wave takes to cross the field: the far corner's own
+## delay.
+func _solve_span() -> float:
+	return Motion.stagger(2 * maxi(_state.n - 1, 0), _solve_per())
+
+## The solve wave's pace, a tile: **half the family's**, because this field
+## is the biggest grid in the game (7 x 7 at 123 a cell) and its diagonal
+## runs to twelve, where every other board's runs to six or eight. It goes
+## through Motion.stagger's own `per` rather than a copied number of this
+## board's (spec section 9: 0.02 a tile).
+func _solve_per() -> float:
+	return Motion.SOLVE_STAGGER * 0.5
 
 ## Keeps the field redrawing for `seconds` more: something on it is moving.
 func _busy_for(seconds: float) -> void:
 	_anim_until = maxf(_anim_until, _now() + seconds)
 
-## Drops the field mesh so the next _draw rebuilds it, and asks for that
-## draw. The mesh the last _draw handed over is still held by _shown, so the
-## renderer is never left pointing at a freed RID.
+## Drops the field and the slots so the next _draw rebuilds them, and asks
+## for that draw. The meshes the last _draw handed over are still held by
+## _shown, so the renderer is never left pointing at a freed RID.
 func _refresh() -> void:
 	_field = null
+	_slots = null
 	queue_redraw()
+
+## Every ring and sparkle whose moment has come. A lock's pair waits for its
+## wave to reach the word's last tile; the solve's gold waits for the hop.
+func _fire_pending(t: float) -> void:
+	if _pending.is_empty():
+		return
+	var keep: Array = []
+	for e: Dictionary in _pending:
+		if t < float(e["at"]):
+			keep.append(e)
+			continue
+		var at := _centre(e["cell"])
+		if bool(e["ring"]):
+			fx.ring(at, _cell() * RING_R, e["colour"])
+		fx.sparkle(at, e["colour"])
+		_busy_for(Motion.RING_TIME)
+	_pending = keep
+
+## Queues one ring and sparkle on `cell` in `colour`, `after` seconds from
+## now. Nothing at all under reduce-motion: ui/fx2d.gd already draws neither
+## a ring nor a sparkle there, so this only spares the board the frames it
+## would have spent waiting for them.
+func _fx_at(cell: Vector2i, colour: Color, after := 0.0, ring := true) -> void:
+	if Motion.reduce:
+		return
+	_pending.append({"at": _now() + after, "cell": cell, "colour": colour, "ring": ring})
+	_busy_for(after + Motion.RING_TIME)
 
 # --- the drawing ---
 
+## The band under everything, still; then the field, which pops in wide about
+## its centre while it fades (rule 7: a wide thing comes from most of the
+## way), as one draw transform over its mesh; then the field's letters over
+## that; then the slots, whose groups drop in on their own stagger, and their
+## letters.
 func _draw() -> void:
 	if _state.words.is_empty() or _cell() <= 0.0:
 		return
 	var t := _now()
-	if _field == null:
-		_field = _build_field(t)
-	if _field != null:
-		draw_mesh(_field, null)
-		_shown = _field
-	_draw_letters(t)
+	var shown: Array = []
+	if _band == null:
+		_band = _build_band()
+	if _band != null:
+		draw_mesh(_band, null)
+		shown.append(_band)
+	var since := t - _opened - Motion.ENTER_DELAY
+	var seen := Motion.appear_level(since, Motion.ENTER_POP)
+	var grow := Motion.wide_pop_scale(since)
+	var mid := _field_centre()
+	if seen > 0.0:
+		if _field == null:
+			_field = _build_field(t)
+		if _field != null:
+			draw_mesh(_field, null,
+				Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow)),
+				Color(1.0, 1.0, 1.0, seen))
+			shown.append(_field)
+		_draw_letters(t, grow, mid, seen)
+	if _slots == null:
+		_slots = _build_slots(t)
+	if _slots != null:
+		draw_mesh(_slots, null)
+		shown.append(_slots)
 	_draw_slot_letters(t)
+	_shown = shown
 
-## Everything with no glyph on it, in one mesh and in the one order that
-## works: the walls, the tile faces, the ribbons over them, the hint glows
-## over those, and the slot boxes.
+## Everything on the field with no glyph on it, in one mesh and in the one
+## order that works: the walls, the tile faces, the ribbons over them and the
+## hint glows over those. The slots are their own mesh, because they do not
+## take the field's entrance.
 func _build_field(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	for cell: Vector2i in _state.walls:
 		_wall(b, cell)
 	for cell: Vector2i in _state.letters:
-		_tile(b, cell)
+		_tile(b, cell, t)
 	_ribbons(b, t)
 	for i in _state.words.size():
-		_glow(b, i)
-	_slot_boxes(b)
+		_glow(b, i, t)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A rounded card: its face over a bottom edge in the rim colour, the soft
 ## lip every card on these screens wears. The canvas mock's `card()`.
-func _slab(b, at: Vector2, box: Vector2, r: float, edge: float, face: Color, rim: Color) -> void:
-	b.fan(Face.Builder.round_rect(at, box, r), rim)
-	b.fan(Face.Builder.round_rect(at, Vector2(box.x, box.y - edge), r), face)
+## `xf` is whatever the thing is wearing this frame -- a tile's bump, press
+## and hop, or a slot box's drop -- so a moving slab is one rounded rect
+## through a transform and never a second recipe.
+func _slab(b, at: Vector2, box: Vector2, r: float, edge: float, face: Color, rim: Color,
+		xf := Transform2D.IDENTITY) -> void:
+	b.fan(xf * Face.Builder.round_rect(at, box, r), rim)
+	b.fan(xf * Face.Builder.round_rect(at, Vector2(box.x, box.y - edge), r), face)
 
 ## A wall: the mock's grey slab in the family's warm grey, with a leaf
 ## pressed into it. The cool grey the mock draws goes muddy on cream, which
@@ -376,23 +546,65 @@ func _wall(b, cell: Vector2i) -> void:
 		Color(Pal.TEXT, WALL_LEAF_INK))
 
 ## One open tile: plain SURFACE with a rim a sixth of the way to ink, or its
-## word's pale face once that word is found.
-func _tile(b, cell: Vector2i) -> void:
+## word's pale face once the wave has reached it, wearing whatever it is
+## wearing this frame.
+func _tile(b, cell: Vector2i, t: float) -> void:
 	var s := _cell()
 	var face: Color = Pal.SURFACE
 	var rim: Color = Pal.SURFACE.lerp(Pal.TEXT, TILE_RIM)
-	var i := _lit_word(cell)
+	var i := _lit_word(cell, t)
 	if i >= 0:
 		face = WORD_TILES[i % WORD_TILES.size()]
 		rim = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], FOUND_RIM)
-	_slab(b, _corner(cell), Vector2(s, s), s * RADIUS, TILE_EDGE, face, rim)
+	_slab(b, _corner(cell), Vector2(s, s), s * RADIUS, TILE_EDGE, face, rim, _tile_xf(cell, t))
 
-## The word whose colour this cell is wearing, or -1. The wave the motion
-## pass adds will narrow this to the tiles it has reached; a found word is
-## whole until then.
-func _lit_word(cell: Vector2i) -> int:
+## The word whose colour this cell is wearing, or -1: the one that owns it,
+## once its wave has reached this far. A lock's wave runs from the word's
+## first tile to its last, an undo's and a reset's run back the other way,
+## and nothing else lights a tile.
+func _lit_word(cell: Vector2i, t: float) -> int:
 	var i := _state.word_at(cell)
-	return i if i >= 0 and bool(_state.words[i]["found"]) else -1
+	if i < 0:
+		return -1
+	var idx := (_state.words[i]["path"] as Array).find(cell)
+	return i if idx >= 0 and float(idx) < _front(i, t) else -1
+
+## How far word `i`'s wave has run, in tiles. A found word fills from 0 to
+## its length over `length * WAVE_STEP`; a word that was just lifted drains
+## the same way backwards, so the last tile it took is the first it gives up.
+## Under reduce-motion there is no wave: a word is whole or it is nothing.
+func _front(i: int, t: float) -> float:
+	var span := float((_state.words[i]["path"] as Array).size())
+	if bool(_state.words[i]["found"]):
+		if Motion.reduce or not _found_at.has(i):
+			return span
+		return clampf((t - float(_found_at[i])) / (span * WAVE_STEP), 0.0, 1.0) * span
+	if Motion.reduce or not _lifted_at.has(i):
+		return 0.0
+	return (1.0 - clampf((t - float(_lifted_at[i])) / (span * WAVE_STEP), 0.0, 1.0)) * span
+
+## What a tile wears this frame, as one transform about its own centre: the
+## wave's bump as the colour reaches it, the finger's press (the tile under
+## it, and the rest of the trail half-way into the same press), and the
+## solve wave's hop from the top-left corner. Every one of them is a reader
+## off core/motion.gd handed the seconds since its moment began.
+func _tile_xf(cell: Vector2i, t: float) -> Transform2D:
+	var grow := 1.0
+	var i := _lit_word(cell, t)
+	if i >= 0 and _found_at.has(i):
+		var idx := (_state.words[i]["path"] as Array).find(cell)
+		var wave := float(_found_at[i]) + float(idx) * _wave_step()
+		grow *= Motion.bump_scale(t - wave)
+	if cell == _press_cell:
+		grow *= Motion.press_scale(t - _press_at, -1.0 if _press_up < 0.0 else t - _press_up)
+	elif not Motion.reduce and _trail.has(cell):
+		grow *= lerpf(1.0, Motion.PRESS_SCALE, 0.5)
+	var lift := 0.0
+	if _solved_at >= 0.0:
+		lift = Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
+			- Motion.stagger(cell.x + cell.y, _solve_per()), Motion.SOLVE_HOP, Motion.SOLVE_TIME)
+	var mid := _centre(cell)
+	return Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow) + Vector2(0.0, lift))
 
 ## Every locked word's ribbon, then the beam under the finger and the one a
 ## release let go of. A ribbon is a rounded polyline through the path's cell
@@ -402,10 +614,14 @@ func _lit_word(cell: Vector2i) -> int:
 func _ribbons(b, t: float) -> void:
 	var s := _cell()
 	for i in _state.words.size():
-		if not bool(_state.words[i]["found"]):
+		var front := _front(i, t)
+		if front <= 0.0:
 			continue
+		# `front` counts tiles and `reach` segments, and the partial one is
+		# interpolated, so the head of the ribbon travels rather than jumping
+		# from tile to tile.
 		_ribbon(b, _state.words[i]["path"], s * RIBBON_W,
-			Color(WORD_COLS[i % WORD_COLS.size()], RIBBON_ALPHA))
+			Color(WORD_COLS[i % WORD_COLS.size()], RIBBON_ALPHA), maxf(front - 1.0, 0.0))
 	if not _ghost.is_empty():
 		var u := clampf((t - float(_ghost["at"])) / BEAM_TIME, 0.0, 1.0)
 		if u >= 1.0 or Motion.reduce:
@@ -416,7 +632,15 @@ func _ribbons(b, t: float) -> void:
 				Color(Pal.SUN_RAY, GHOST_ALPHA * (1.0 - u)),
 				float(path.size() - 1) * (1.0 - u))
 	if not _trail.is_empty():
-		_ribbon(b, _trail, s * BEAM_W, Color(Pal.SUN_RAY, BEAM_ALPHA))
+		# The beam grows from the tile before the finger to the finger over
+		# BEAM_TIME; a retraction takes it straight back, because the finger
+		# has already gone. No growth under reduce-motion.
+		var span := float(_trail.size() - 1)
+		var reach := span
+		if not Motion.reduce and span > 0.0:
+			reach = minf(span, maxf(span - 1.0, 0.0)
+				+ clampf((t - _beam_at) / BEAM_TIME, 0.0, 1.0))
+		_ribbon(b, _trail, s * BEAM_W, Color(Pal.SUN_RAY, BEAM_ALPHA), reach)
 
 ## One ribbon along `cells`, `reach` segments of it (all of them by default).
 func _ribbon(b, cells: Array, width: float, colour: Color, reach := -1.0) -> void:
@@ -476,7 +700,7 @@ func _leaf(b, at: Vector2, length: float, angle: float, colour: Color) -> void:
 ## The glow a hint leaves on a tile: a pale wash under a dashed outline,
 ## which stays until that word is found. A hint is a given, and every board
 ## in this game says so in the same language.
-func _glow(b, i: int) -> void:
+func _glow(b, i: int, t: float) -> void:
 	if bool(_state.words[i]["found"]):
 		return
 	var shown := _state.hint_shown(i)
@@ -486,12 +710,15 @@ func _glow(b, i: int) -> void:
 	var path: Array = _state.words[i]["path"]
 	for k in mini(shown, path.size()):
 		var at := _corner(path[k])
-		b.fan(Face.Builder.round_rect(at + Vector2.ONE * GLOW_INSET,
+		# The glow rides its tile: it is part of that cell's face, so it takes
+		# the press and the hop with it rather than sitting still under one.
+		var xf := _tile_xf(path[k], t)
+		b.fan(xf * Face.Builder.round_rect(at + Vector2.ONE * GLOW_INSET,
 			Vector2(s, s) - GLOW_TRIM, s * GLOW_RADIUS), Color(Pal.SUN_RAY, GLOW_ALPHA))
 		var ring := Face.Builder.round_rect(at + Vector2.ONE * DASH_INSET,
 			Vector2(s, s) - DASH_TRIM, s * DASH_RADIUS)
 		for dash in _dashes(ring, s * DASH_ON, s * DASH_OFF):
-			b.stroke(dash, DASH_W, Pal.SUN_DEEP)
+			b.stroke(xf * (dash as PackedVector2Array), DASH_W * xf.get_scale().x, Pal.SUN_DEEP)
 
 ## The closed outline `pts` cut into dashes of `on` with `off` between them.
 static func _dashes(pts: PackedVector2Array, on: float, off: float) -> Array:
@@ -533,31 +760,52 @@ static func _dashes(pts: PackedVector2Array, on: float, off: float) -> Array:
 		out.append(cur)
 	return out
 
-## The empty length boxes, and the ones a found word has filled. Each line is
-## centred across the card and the block is centred in the slots' band.
-func _slot_boxes(b) -> void:
+## The empty length boxes, and the ones a word's wave has reached. Each line
+## is centred across the card and the block is centred in the slots' band.
+## The groups drop in after the field, ENTER_STAGGER apart -- a group and not
+## a box, because six boxes 0.03 apart is one box.
+func _build_slots(t: float) -> ArrayMesh:
 	var lines := _slot_lines()
 	if lines.is_empty():
-		return
+		return null
+	var b := Face.Builder.new()
 	var tall := float(lines.size()) * SLOT_H + float(lines.size() - 1) * LINE_GAP
 	var y := _slots_top() + (SLOTS_H - tall) * 0.5
+	var group := 0
 	for line in lines:
 		var x := size.x * 0.5 - float(line["w"]) * 0.5
 		for item in line["items"]:
 			var i: int = item["i"]
-			var lit := bool(_state.words[i]["found"])
-			var face: Color = WORD_TILES[i % WORD_TILES.size()] if lit else Pal.SURFACE_HI
-			var rim: Color = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], SLOT_RIM) if lit else Pal.LINE
-			var span: int = (_state.words[i]["path"] as Array).size()
-			for k in span:
-				_slab(b, Vector2(x + float(k) * (SLOT_W + SLOT_GAP), y),
-					Vector2(SLOT_W, SLOT_H), SLOT_RADIUS, SLOT_EDGE, face, rim)
+			var since := _slot_since(group, t)
+			var seen := Motion.appear_level(since)
+			if seen > 0.0:
+				var xf := Transform2D(0.0, Vector2(0.0, -Motion.drop_in_lift(since)))
+				var front := _front(i, t)
+				var span: int = (_state.words[i]["path"] as Array).size()
+				for k in span:
+					var lit := float(k) < front
+					var face: Color = WORD_TILES[i % WORD_TILES.size()] if lit else Pal.SURFACE_HI
+					var rim: Color = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], SLOT_RIM) if lit else Pal.LINE
+					_slab(b, Vector2(x + float(k) * (SLOT_W + SLOT_GAP), y),
+						Vector2(SLOT_W, SLOT_H), SLOT_RADIUS, SLOT_EDGE,
+						Color(face, face.a * seen), Color(rim, rim.a * seen), xf)
 			x += float(item["w"]) + GROUP_GAP
+			group += 1
 		y += SLOT_H + LINE_GAP
+	return b.mesh() if not b.verts.is_empty() else null
+
+## The seconds since slot group `index` was due to drop in: after the field's
+## own pop, then the stagger.
+func _slot_since(index: int, t: float) -> float:
+	return t - _opened - Motion.ENTER_DELAY - Motion.ENTER_POP \
+		- Motion.stagger(index, Motion.ENTER_STAGGER)
 
 ## The field's letters, over the mesh: ink on a free tile, the word's deep
-## once it is found. One draw command each, and only when something changed.
-func _draw_letters(_t: float) -> void:
+## once the wave has reached it. One draw command each, and only when
+## something changed. Each letter takes its own tile's transform and the
+## field's entrance on top of it, so the glyph and the slab under it are one
+## piece (Nonogram's clue numbers, through draw_set_transform).
+func _draw_letters(t: float, grow: float, mid: Vector2, seen: float) -> void:
 	var s := _cell()
 	var font: Font = CozyTheme.display(700)
 	# Mosaic.letter sizes a glyph at its own LETTER_SIZE of the box it is
@@ -565,35 +813,129 @@ func _draw_letters(_t: float) -> void:
 	# rather than the constant copied.
 	var box := s * LETTER / Mosaic.LETTER_SIZE
 	for cell: Vector2i in _state.letters:
-		var i := _lit_word(cell)
+		var i := _lit_word(cell, t)
 		var ink: Color = WORD_DEEPS[i % WORD_DEEPS.size()] if i >= 0 else Pal.TEXT
-		Mosaic.letter(self, _centre(cell), box, String(_state.letters[cell]),
-			Vector2.ONE, ink, font)
+		var xf := _tile_xf(cell, t)
+		var at := (xf * _centre(cell)) * grow + mid * (1.0 - grow)
+		Mosaic.letter(self, at, box, String(_state.letters[cell]),
+			Vector2.ONE * (xf.get_scale().x * grow), ink, font, seen)
 
-## A found word's letters, dropped into its slot group in its own deep.
-func _draw_slot_letters(_t: float) -> void:
+## A word's letters, dropping into its slot group in its own deep as the
+## wave reaches each tile. The box's own entrance drop carries the letter
+## with it; the letter's arrival is a third of the family's drop over it, so
+## it settles into a box that has already landed.
+func _draw_slot_letters(t: float) -> void:
 	var lines := _slot_lines()
 	if lines.is_empty():
 		return
 	var font: Font = CozyTheme.display(700)
 	var tall := float(lines.size()) * SLOT_H + float(lines.size() - 1) * LINE_GAP
 	var y := _slots_top() + (SLOTS_H - tall) * 0.5
+	var group := 0
 	for line in lines:
 		var x := size.x * 0.5 - float(line["w"]) * 0.5
 		for item in line["items"]:
 			var i: int = item["i"]
-			if bool(_state.words[i]["found"]):
+			var since := _slot_since(group, t)
+			var seen := Motion.appear_level(since)
+			var front := _front(i, t)
+			if seen > 0.0 and front > 0.0:
 				var word: String = _state.words[i]["word"]
 				var ink: Color = WORD_DEEPS[i % WORD_DEEPS.size()]
-				for k in word.length():
-					_glyph(font, SLOT_FONT, word.substr(k, 1), ink,
+				var box_lift := Motion.drop_in_lift(since)
+				for k in mini(word.length(), int(ceil(front))):
+					if float(k) >= front:
+						break
+					var wave := _slot_wave(i, k, t)
+					# A quarter of its own box, through the recipe's own
+					# height: the family's 40 is most of a 52-tall slot, and
+					# a letter would arrive from the line above.
+					var fell := Motion.drop_in_lift(t - wave, SLOT_H * 0.25)
+					_glyph(font, SLOT_FONT, word.substr(k, 1),
+						Color(ink, ink.a * seen * Motion.appear_level(t - wave)),
 						Vector2(x + float(k) * (SLOT_W + SLOT_GAP) + SLOT_W * 0.5,
-							y + SLOT_H * 0.5))
+							y + SLOT_H * 0.5 - box_lift - fell))
 			x += float(item["w"]) + GROUP_GAP
+			group += 1
 		y += SLOT_H + LINE_GAP
+
+## When word `i`'s wave reached its k-th tile, and so when that letter is due
+## in its box. A word being lifted has no moment to drop from -- it is going,
+## not coming -- so its letters are simply there until the wave passes them.
+func _slot_wave(i: int, k: int, t: float) -> float:
+	if Motion.reduce or not bool(_state.words[i]["found"]) or not _found_at.has(i):
+		return -100.0
+	return float(_found_at[i]) + float(k) * WAVE_STEP
+
+# --- the scenery band ---
+
+## The band the field and the slots leave at the card's foot, laid the way
+## Balance's and Hidden Word's are: two of the family's clouds high in it, a
+## washed turf with a lighter crown along its top, blades standing out of
+## that, and three bushes on the ground line. The clouds are
+## ui/flat/scenery.gd's own shape, appended to this board's builder rather
+## than standing a Scenery node up for two of them, so the whole band is one
+## draw call. It never moves -- only the field takes the entrance -- so it is
+## built once per layout and drawn with no transform.
+func _build_band() -> ArrayMesh:
+	var top := _slots_top() + SLOTS_H
+	var tall := size.y - INSET - top
+	if _cell() <= 0.0 or tall <= 0.0:
+		return null
+	var b := Face.Builder.new()
+	var x0 := INSET
+	var w := size.x - 2.0 * INSET
+	var ground := top + tall - BAND_FOOT - TURF_TOP
+	var puff: Color = Pal.PARCHMENT.lerp(Pal.SURFACE, Scenery.CLOUD_LIFT)
+	Scenery.cloud(b, Vector2(x0 + CLOUD_LEFT.x, top + CLOUD_LEFT.y), CLOUD_LEFT.z, puff)
+	Scenery.cloud(b, Vector2(x0 + w - CLOUD_RIGHT.x, top + CLOUD_RIGHT.y), CLOUD_RIGHT.z, puff)
+	var turf: Color = Pal.LEAF.lerp(Pal.PARCHMENT, TURF_WASH)
+	var crown: Color = Pal.LEAF_LIGHT.lerp(Pal.PARCHMENT, CROWN_WASH)
+	b.fan(Face.Builder.round_rect(Vector2(x0, ground),
+		Vector2(w, tall - BAND_FOOT - (ground - top)), TURF_RADIUS), turf)
+	b.fan(Face.Builder.round_rect(Vector2(x0, ground), Vector2(w, CROWN_H), CROWN_RADIUS), crown)
+	var blade: Color = Pal.LEAF.lerp(Pal.PARCHMENT, BLADE_WASH)
+	var step := (w - BLADE_EDGE * 2.0) / float(BLADES - 1)
+	for i in BLADES:
+		var x := x0 + BLADE_EDGE + float(i) * step
+		var h := BLADE_MIN + _hash(i, 5) * BLADE_SPREAD
+		var lean := (_hash(i, 9) - 0.5) * BLADE_LEAN
+		var foot := Vector2(x - BLADE_W, ground + BLADE_ROOT)
+		var tip := Vector2(x + BLADE_W, ground + BLADE_ROOT)
+		var pts := Face.Builder.bezier2(foot, Vector2(x + lean, ground - h), tip, 8)
+		pts.append(tip)
+		b.polygon(pts, blade)
+	var deep: Color = Pal.LEAF_DEEP.lerp(Pal.PARCHMENT, BUSH_DEEP_WASH)
+	var lit: Color = Pal.LEAF.lerp(Pal.PARCHMENT, BUSH_LIT_WASH)
+	for bush: Vector2 in BUSHES:
+		_bush(b, _span(x0, w, bush.x), ground, bush.y, deep, lit)
+	return b.mesh() if not b.verts.is_empty() else null
+
+## The mock's own x convention for a thing on the band: a fraction of the
+## width between 0 and 1, so many pixels in from the left above that, and so
+## many in from the right when it is negative.
+static func _span(x0: float, w: float, x: float) -> float:
+	if x > 0.0 and x < 1.0:
+		return x0 + w * x
+	return x0 + (x if x >= 0.0 else w + x)
+
+## Three deep puffs with a lit one on the shoulder, seated on the ground
+## line: the same bush Hidden Word's band stands on its turf.
+func _bush(b, x: float, ground: float, r: float, deep: Color, lit: Color) -> void:
+	b.disc(Vector2(x, ground - r * 0.58), r, deep)
+	b.disc(Vector2(x - r * 0.82, ground - r * 0.24), r * 0.64, deep)
+	b.disc(Vector2(x + r * 0.84, ground - r * 0.26), r * 0.6, deep)
+	b.disc(Vector2(x - r * 0.24, ground - r * 0.9), r * 0.4, lit)
+
+## A settled number in 0..1 from two ints: what keeps the blades from
+## standing in a comb without a seeded generator in the drawing.
+static func _hash(a: int, b: int) -> float:
+	return float(posmod(hash(Vector2i(a, b)), 1000)) / 1000.0
 
 ## One glyph centred on `at`, as Nonogram centres a clue number.
 func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
+	if ink.a <= 0.0:
+		return
 	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	var rise := font.get_height(px) * 0.5 - font.get_descent(px)
 	draw_string(font, at + Vector2(-wide * 0.5, rise), text,
@@ -601,11 +943,14 @@ func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
 
 # --- the moments ---
 
-## The chrome is the host's; the field's own entrance is the motion pass's.
+## The chrome is the host's. The field's own entrance is one wide pop about
+## its centre while it fades in (rule 7), and the slot groups drop in behind
+## it; both are read off the clock in _draw, so all this has to do is start
+## it. _animating() knows how long it runs.
 func _enter() -> void:
 	_opened = _now()
-	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP)
 	fx.cue("enter")
+	_refresh()
 
 # --- input ---
 
@@ -622,24 +967,44 @@ func _gui_input(event: InputEvent) -> void:
 		if pressed:
 			if cell.x >= 0 and _state.can_trace(cell):
 				_trail = [cell]
-				_beam_at = _now()
+				_take(cell)
 				_refresh()
 				accept_event()
-		elif not _trail.is_empty():
-			_release()
-			accept_event()
+		else:
+			if _press_cell.x >= 0 and _press_up < 0.0:
+				_press_up = _now()
+				_busy_for(Motion.RELEASE_TIME)
+			if not _trail.is_empty():
+				_release()
+				accept_event()
 	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and not _trail.is_empty():
 		var cell := _cell_at(event.position)
 		if cell.x < 0:
 			return
 		var at := _trail.find(cell)
-		if at == _trail.size() - 2:
+		# `at >= 0` matters: on a trail of one, find()'s -1 for a cell that is
+		# not on it is also `size - 2`, and the retraction would empty the
+		# trail mid-drag and leave the finger holding nothing.
+		if at >= 0 and at == _trail.size() - 2:
 			_trail.resize(_trail.size() - 1)          # retracting takes the beam back
+			_take(_trail[_trail.size() - 1])
 		elif at < 0 and _state.can_trace(cell) and _adjacent(_trail[_trail.size() - 1], cell):
 			_trail.append(cell)
-			_beam_at = _now()
+			_take(cell)
 		_refresh()
 		accept_event()
+
+## The finger has arrived on `cell`: the beam starts growing toward it and
+## the tile under it starts sinking. The tile it left springs back to the
+## trail's own shallower press, which is the mock's behaviour and the reason
+## a single pressed cell is enough here.
+func _take(cell: Vector2i) -> void:
+	var t := _now()
+	_beam_at = t
+	_press_cell = cell
+	_press_at = t
+	_press_up = -1.0
+	_busy_for(maxf(BEAM_TIME, Motion.PRESS_TIME))
 
 ## Side-adjacent, never diagonal. The bending is the whole puzzle, and a
 ## diagonal step would make a straight line of it.
@@ -663,10 +1028,14 @@ func _release() -> void:
 		return
 	_found_at[i] = t
 	_lifted_at.erase(i)
-	var last: Vector2i = (_state.words[i]["path"] as Array)[-1]
+	var cells: Array = _state.words[i]["path"]
+	var last: Vector2i = cells[-1]
 	var colour: Color = WORD_COLS[i % WORD_COLS.size()]
-	fx.ring(_centre(last), _cell() * RING_R, colour)
-	fx.sparkle(_centre(last), colour)
+	# The ring and the sparkles land on the word's last tile when the wave
+	# gets there, not when the finger let go, so the colour and the flourish
+	# arrive together.
+	_fx_at(last, colour, float(cells.size()) * _wave_step())
+	_busy_for(float(cells.size()) * _wave_step() + Motion.BUMP_TIME)
 	fx.cue("place")
 	_speak()
 	_refresh()
@@ -720,6 +1089,9 @@ func undo() -> bool:
 	_lifted_at[i] = _now()
 	_found_at.erase(i)
 	_trail = []
+	# The same wave backwards: the last tile the word took is the first it
+	# gives up, and its letters leave the slots with it.
+	_busy_for(float((_state.words[i]["path"] as Array).size()) * _wave_step())
 	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
@@ -745,8 +1117,7 @@ func hint() -> bool:
 		return false
 	hints_used += 1
 	if cell.x >= 0:
-		fx.ring(_centre(cell), _cell() * RING_R, Pal.LEAF)
-		fx.sparkle(_centre(cell), Pal.LEAF)
+		_fx_at(cell, Pal.LEAF)
 	fx.cue("hint")
 	_say("A word starts on the glowing tile." if shown == 0
 		else "It carries on through the glow.", Face.Expr.HAPPY)
@@ -773,13 +1144,20 @@ func _hint_pick() -> int:
 ## are not refunded, only unpinned.
 func reset_board() -> void:
 	var t := _now()
+	var longest := 0
 	for i in _state.order:
 		_lifted_at[i] = t
+		longest = maxi(longest, (_state.words[i]["path"] as Array).size())
 	_state.reset_board()
 	_found_at = {}
+	_pending = []
 	_trail = []
 	_ghost = {}
+	_press_cell = Vector2i(-1, -1)
 	_solved_at = -1.0
+	# Every locked word unwinds at once, each on its own reversed wave, so
+	# the board is clear when the longest of them has run.
+	_busy_for(float(longest) * _wave_step())
 	moves = 0
 	_running = true
 	_say("A clean field. " + _left_line(), Face.Expr.HAPPY)
@@ -802,17 +1180,45 @@ func share_glyphs() -> String:
 func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": "Every letter found its way."}
 
+## Long enough for the wave that won the board and the solve wave after it.
+## Under reduce-motion there is neither, so the win follows the last lock
+## (spec section 9's reduce-motion row).
 func win_delay() -> float:
-	return WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
 
+## The solve wave waits for the wave that won it: the last word locked is
+## still colouring its way down its own ribbon, and a field hopping through
+## that would be two hands at once.
 func _on_solved() -> void:
+	var t := _now()
 	_trail = []
 	_ghost = {}
-	_solved_at = _now()
+	_press_cell = Vector2i(-1, -1)
+	_solved_at = t + _wave_left(t)
 	_tip_timer.stop()
+	# Gold across the field as the hop reaches each word's last tile, which
+	# is the one place on this board a sparkle has ever landed.
+	for i in _state.words.size():
+		var last: Vector2i = (_state.words[i]["path"] as Array)[-1]
+		_fx_at(last, Pal.SUN, _solved_at - t + Motion.SOLVE_DELAY
+			+ Motion.stagger(last.x + last.y, _solve_per()), false)
+	_busy_for(_solved_at - t + Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
 	_say("Every letter found its way.", Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh()
+
+## How much of any word's lock wave is still to run.
+func _wave_left(t: float) -> float:
+	var left := 0.0
+	for i in _found_at:
+		var span := float((_state.words[i]["path"] as Array).size())
+		left = maxf(left, float(_found_at[i]) + span * _wave_step() - t)
+	return maxf(left, 0.0)
+
+## The wave's step a tile: nothing under reduce-motion, where a word takes
+## its colour and its letters in one frame.
+func _wave_step() -> float:
+	return 0.0 if Motion.reduce else WAVE_STEP
 
 # --- odds and ends ---
 
