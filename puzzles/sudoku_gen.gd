@@ -28,18 +28,22 @@ const ATTEMPTS := 10
 ## is the most any grid can need, so this cannot be hit by a real board and
 ## exists only so a bug here cannot hang a phone.
 const PASSES := 200
-## Wall-clock ceiling on generate(), in milliseconds. ATTEMPTS alone bounds
-## the number of tries, not the time they take, and this runs inside build()
-## at board open on a phone -- a phone slower than this Mac could see a hard
-## day's worst sequence run well past the 310 ms measured here across twelve
-## seeds. 400 ms stops the loop after whichever attempt is in flight when the
-## budget is crossed and hands back that attempt's grid, graded or not; it
-## does not cut an attempt short mid-dig, so a single unlucky dig can still
-## run past the budget once. Set above the 305 ms the slowest seed in the
-## test suite actually needs (band 2, seed 9203, its sixth attempt) rather
-## than at the first round number that sounded safe -- a tighter cap silently
-## turned two hard days into ungraded ones instead of only guarding the tail.
-const TIME_BUDGET_MS := 400
+## Wall-clock ceiling on one generate() call, in milliseconds, shared by two
+## checks: generate()'s own attempt loop stops trying a fresh attempt once
+## it is crossed, and dig() (handed the same deadline) stops removing cells
+## mid-attempt and hands back the puzzle as it stands -- more givens than
+## the band wanted, but still unique, because dig() only ever commits a
+## removal once count_solutions has confirmed it. ATTEMPTS alone bounds the
+## number of tries, not the time they take, and this runs inside build() at
+## board open on a phone; a phone slower than this Mac could otherwise see a
+## single dig() run far longer than any attempt measured here. Set above the
+## ~194 ms the slowest seed in the test suite actually needs end to end
+## (band 2, seed 9203, six failed attempts before its seventh grades) rather
+## than at the first round number that sounded safe -- a tighter cap here
+## silently turns a hard day into an ungraded one instead of only guarding
+## the tail, the same failure mode this budget hit at 150 ms before the dig
+## rewrite that stopped it re-checking the same pair twice.
+const TIME_BUDGET_MS := 300
 
 static var _peers: Array = []
 static var _units: Array = []
@@ -99,21 +103,23 @@ static func _tables() -> void:
 
 ## The day's puzzle. `graded` says whether the band's technique test was met
 ## within ATTEMPTS tries; the board plays either way and nothing reads it but
-## the tests and the probe.
+## the tests and the probe. `deadline`, shared with dig(), is what makes
+## "give up on this attempt" and "give up on this whole call" the same
+## clock rather than two budgets that can disagree.
 static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	_tables()
 	var d := clampi(difficulty, 0, TARGET.size() - 1)
 	var out := {}
-	var t0 := Time.get_ticks_msec()
+	var deadline := Time.get_ticks_msec() + TIME_BUDGET_MS
 	for attempt in ATTEMPTS:
 		var sol := full_grid(rng)
-		var puz := dig(rng, sol, int(TARGET[d]))
+		var puz := dig(rng, sol, int(TARGET[d]), deadline)
 		var singled := is_complete(singles_solve(puz))
 		var want := singled if d == 0 else not singled
 		out = {"puzzle": puz, "solution": sol, "graded": want}
 		if want:
 			break
-		if Time.get_ticks_msec() - t0 >= TIME_BUDGET_MS:
+		if Time.get_ticks_msec() >= deadline:
 			break
 	return out
 
@@ -225,18 +231,45 @@ static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Arra
 
 ## Take cells out of `sol` in a shuffled order, in 180-degree pairs so the
 ## givens read as a pattern and not as spilled salt, keeping a cell out only
-## while exactly one solution survives.
-static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int) -> PackedByteArray:
+## while exactly one solution survives. `deadline_ms` (an absolute
+## Time.get_ticks_msec() reading, as generate() hands in) is checked before
+## every pair: past it, the loop stops removing and returns the puzzle as it
+## stands -- shallower than `target` wanted, but every removal already
+## committed was already proved unique, so the fallback is still a real,
+## still-unique puzzle and not a hang. -1 (the default) means no deadline,
+## for a caller with nothing to share one with.
+static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int, deadline_ms: int = -1) -> PackedByteArray:
 	var puz := sol.duplicate()
 	var order: Array = []
 	for i in CELLS:
 		order.append(i)
 	_shuffle(order, rng)
+	# `order` shuffles all 81 cell indices, so every non-centre pair (i,
+	# 80-i) comes up twice -- once as i, once as its mirror -- rather than
+	# `order` being a shuffle of the forty-one distinct pairs. `seen` marks
+	# both indices the first time a pair is handled and skips it outright on
+	# its second visit, rather than re-running count_solutions on it. That is
+	# always safe, not just faster: if the pair succeeded, both its cells are
+	# already 0 and the second visit is a no-op anyway (the a==0 and b==0
+	# guard below would have caught it regardless); if it failed, it cannot
+	# succeed later, because whatever else got removed from the grid in
+	# between only ever has fewer givens than when this pair was first
+	# tried, and removing a given can only add solutions, never take one
+	# away -- a pair that leaves two answers at a higher given count leaves
+	# at least that many at every lower one too.
+	var seen := PackedByteArray()
+	seen.resize(CELLS)
 	var givens := CELLS
 	for i in order:
 		if givens <= target:
 			break
+		if deadline_ms >= 0 and Time.get_ticks_msec() >= deadline_ms:
+			break
+		if seen[i]:
+			continue
 		var j: int = CELLS - 1 - int(i)
+		seen[i] = 1
+		seen[j] = 1
 		var a := puz[i]
 		var b := puz[j]
 		if a == 0 and b == 0:
