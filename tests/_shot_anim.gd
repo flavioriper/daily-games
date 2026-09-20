@@ -47,6 +47,12 @@ extends SceneTree
 ## `toast` refuses a guess that is not a word, `hint` presses the real hint
 ## button, `solve` types the day's own word, and `over` spends all six rows so
 ## the strip catches the keyboard leaving and the sprout bringing the word.
+## Quilt drags the answer's first patch off the rack and onto the cell the
+## answer wants it on, through the board's own input path, so the strip
+## shows the patch grown to the quilt's cell and held above the finger, the
+## ghost under it, and the seam stitches sewing themselves in a wave once it
+## lands. It gets a later idle window for that, because the wave runs on
+## past the drop.
 ## Mushroom Patch has the answer's first mushroom planted with the mushroom
 ## chip the tray arms by default, so the strip shows the pop, the ring, the
 ## puff and -- the point of the shot -- the count wash arriving on the givens
@@ -174,6 +180,23 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.8, 2.2, 3.2, 4.2]
 		_idle_from = 3.2
 		_idle_to = 5.2
+	if _id == "quilt" and _mode == "full":
+		# Every patch but the last is sewn on at once, and the last is
+		# dragged, so the strip catches a nearly full quilt, the last patch
+		# in the hand over it, and the solve wave running the hem. The idle
+		# window opens after the win screen has come up, which is the state
+		# the fullest-board draw call belongs to.
+		_shots = [0.35, 1.75, 1.95, 2.2, 2.6, 3.2, 4.4, 5.4]
+		_idle_from = 3.4
+		_idle_to = 5.4
+	elif _id == "quilt" and not _empty:
+		# The drag runs DRAG_TIME from TAP_AT, then the patch pops in and its
+		# seam stitches sew themselves over about four tenths. These catch
+		# the patch in the hand, the landing, the wave mid-sew and the seams
+		# settled, and the idle window opens after all of it.
+		_shots = [0.35, 0.9, 1.75, 1.95, 2.1, 2.3, 2.9, 3.9]
+		_idle_from = 2.7
+		_idle_to = 4.7
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -265,6 +288,8 @@ func _process(delta: float) -> bool:
 				_shots[3] = _t + 0.125
 		elif _entry.id == "bridges" and not _empty:
 			_lay_bridges()
+		elif _entry.id == "quilt" and not _empty:
+			_drag_quilt()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -688,6 +713,39 @@ func _bridge_step() -> void:
 	root.push_input(drag, true)
 	_bridge_down = true
 	_bridge_at = _t + BRIDGE_STEP
+
+## Quilt: drag the answer's first patch off the rack and onto the place the
+## answer wants it, so the strip shows the patch grown to the quilt's cell
+## and held above the finger, the ghost under it, and the seam stitches
+## sewing themselves in a wave once it lands. The patch is taken hold of by
+## its own first cell, and the finger is aimed HOLD_LIFT below the cell the
+## patch has to land on, because the board holds a dragged patch above the
+## thumb.
+func _drag_quilt() -> void:
+	if _puzzle._state.shapes.is_empty():
+		return
+	var p := 0
+	if _mode == "full":
+		# `full`: every patch but the last goes on through the state, and
+		# the last is dragged, so the shot that matters -- a quilt with not
+		# a gap in it -- is reached by playing rather than by writing to the
+		# board's arrays, and the solve still runs off a real release.
+		p = _puzzle._state.shapes.size() - 1
+		for q in p:
+			_puzzle._state.drop(q, int(_puzzle._state.answer[q]), -1)
+			_puzzle._landed[q] = Time.get_ticks_msec() / 1000.0
+		_puzzle._refresh()
+	var first: Vector2i = (_puzzle._state.shapes[p] as Array)[0]
+	var cell: float = _puzzle._cell()
+	var rc: float = _puzzle._rack_cell()
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var from: Vector2 = xf * (_puzzle._bay_home(p) + (Vector2(first) + Vector2(0.5, 0.5)) * rc)
+	var origin := int(_puzzle._state.answer[p])
+	var cols: int = _puzzle._state.cols
+	var corner: Vector2 = _puzzle._origin() \
+		+ Vector2(float(origin % cols), float(origin / cols)) * cell
+	var to: Vector2 = xf * (corner + (Vector2(first) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * cell)
+	_begin_drag(from, to - from)
 
 ## The touch that starts a drag, at `from`, to travel `by` over DRAG_TIME.
 func _begin_drag(from: Vector2, by: Vector2) -> void:

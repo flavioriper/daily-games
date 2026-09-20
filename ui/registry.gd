@@ -2,8 +2,8 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: **fourteen cards over two pages**, in the order they
-## are drawn. **All fourteen open a flat board, and there is no `soon` card
+## `PUZZLES` is the grid: **sixteen cards over two pages**, in the order they
+## are drawn. **All sixteen open a flat board, and there is no `soon` card
 ## left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
 ## room for Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
 ## 2026-09-20 for Word Trail; all three keep their island board under More.
@@ -11,14 +11,16 @@ extends RefCounted
 ## and ui/menu.gd's `blocked` signal -- stays in the code for the next board
 ## that is named before it is drawn, but nothing exercises it now.
 ##
-## **Fourteen does not fit the three-by-four grid, so the grid pages.** The
+## **More than twelve does not fit the three-by-four grid, so the grid
+## pages.** The
 ## fourth row was full at twelve, and a `GridContainer` that is
 ## SIZE_EXPAND_FILL simply runs to five rows and takes a card from 252 to
 ## about 210 -- every one of those 42 pixels out of the 92 px picture the
 ## card-art budget is written against. The answer is the pager the campsite
 ## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
 ## and the strip is its own pill between the grid and the bar): twelve cards
-## on page one, and Mushroom Patch and Sudoku on page two, each card still
+## on page one, and Mushroom Patch, Sudoku, Bridges and Quilt on page two,
+## each card still
 ## 252 with its 92 px picture. See
 ## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
@@ -28,7 +30,8 @@ extends RefCounted
 ## "Day N" reads as a way to change the day. Main's is the one that shipped
 ## and the one this entry pages onto; see
 ## docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9 and its
-## amendments.
+## amendments. Bridges is the fifteenth and Quilt the sixteenth, both added
+## the same day and both onto that same page two.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -222,11 +225,11 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
-	# these are entries thirteen, fourteen and fifteen. Mushroom Patch was the
+	# these are entries thirteen to sixteen. Mushroom Patch was the
 	# thirteenth and the first card that was *added* rather than swapped into
 	# a `soon` slot, which is what pushed the grid onto a second page at all;
-	# Sudoku is the fourteenth and Bridges the fifteenth, and both join it
-	# there. Twelve a page is not a
+	# Sudoku is the fourteenth, Bridges the fifteenth and Quilt the
+	# sixteenth, and all three join it there. Twelve a page is not a
 	# taste -- it is what four rows of 252 buy -- so the grid grew a page
 	# rather than a shorter card, and both of these stay last so page one
 	# keeps exactly the twelve cards it has, in exactly the order it has
@@ -277,6 +280,27 @@ const PUZZLES := [
 		"script": "res://puzzles/bridges2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "quilt",
+		"kind": "puzzle",
+		"title": "Quilt",
+		"blurb": "Fit every patch onto the quilt, with not a gap left.",
+		"short": "Fit every patch.\nLeave no gap.",
+		"motto": "Make the blanket whole",
+		"footer": "Fit · Sew · Finish",
+		# Its rack of patches is **inside the board card**, not a tray row --
+		# a patch is dragged from the rack onto the quilt, and the two have to
+		# share one coordinate space for that to be one gesture. So it asks
+		# for no tray, and it has **no actions row**: nothing wrong can be
+		# sitting on the quilt, because an illegal drop is never taken, so
+		# there is no Check to put in one and Reset rides up into the top bar.
+		# Word Trail's shape exactly: the bottom slot is the tip card alone.
+		"script": "res://puzzles/quilt2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
 		"difficulties": [0, 1, 2],
 	},
 ]
