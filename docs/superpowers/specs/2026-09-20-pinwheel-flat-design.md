@@ -332,9 +332,11 @@ func idx(c: int, r: int) -> int
 func cell_of(i: int) -> Vector2i
 func piece_at_pin(c: int, r: int) -> int        # -1 when the cell is not a pin
 func pieces_over(c: int, r: int) -> Array       # every piece whose current cells include it
-func cells_of(p: int, orientation := -1) -> Array
+func cells_of(p: int, orientation := -1) -> Array   # a fresh copy; the caller may keep it
+func pin_cell(p: int) -> Vector2i               # cached in setup, because the board asks every frame
 func depth(c: int, r: int) -> int               # 0 bare, 1 covered, 2+ stained
 func fixed(p: int) -> bool                      # one orientation: pinned fast
+func steps_home(p: int) -> int                  # posmod(answer - turned, orientations)
 func turn(p: int) -> bool                       # false when the piece is pinned fast
 func is_solved() -> bool
 func hints_left() -> int
@@ -353,6 +355,27 @@ it spent — the same decision Quilt made about a hint that displaces two patche
 records: a hint that has been seen has been spent.
 
 `reset()` clears `history`, because reset is not a gesture and cannot be undone.
+
+**A hint spends itself on the piece furthest from home** (the largest
+`steps_home`, strictly greater than zero). A hint that turned the piece already
+one quarter from its answer would be worth less than the tap it saved, and a
+board with three of them cannot afford a cheap one.
+
+**`ok` is currently always true for any board that exists**, and nothing in the
+UI may be built on the assumption that an unproved board will arrive.
+`generate()` only returns a board — the chosen one or its fallback — after the
+proof has passed, so `unique: false` ships only with the total-failure
+dictionary, which also carries `cols == 0`. `hint()` deliberately does not test
+`ok` anyway, the way Quilt's does not: the stored answer is a tiling whatever
+the proof said, and the check would silently start mattering if the generator
+ever grew a fallback that skipped the proof.
+
+**The share glyphs are one short, and that is Unicode's fault.** There are
+seven coloured squares; this board needs two more for bare (`⬛`) and stained
+(`⬜`), so cloth indices 4 and 7 both share `🟪`. It is harmless because a
+share is only ever taken from a solved frame, where the reader is looking at a
+picture of the tiling and not counting colours — but it is written here so
+nobody rediscovers it and "fixes" it by stealing one of the two states' glyphs.
 
 ---
 
