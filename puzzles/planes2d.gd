@@ -24,6 +24,19 @@ extends "res://core/puzzle_base.gd"
 ## empty card) on any frame a harness forces with
 ## `RenderingServer.force_draw()`.
 ##
+## How it moves (spec section 10). Nothing here tweens a node, because there
+## is no node to tween: every moment is a **book of moments** -- a plane index
+## against the second something began -- read off the clock in `_draw` through
+## `core/motion.gd`'s curve readers, which is docs/art/flat-motion.md's rule 8.
+## There are four books (`_fly`, `_beat`, `_shiver`, `_nudge`) and one record
+## (`_refuse`), and `_animating()` asks about **every one of them**: One Line
+## shipped two lines frozen at four fifths of a fade because a second wave was
+## left out of that function, and this board has six waves able to overlap.
+## Every book is emptied as its moment expires (`_retire`), so the quiet board
+## is quiet and none of it is state: **the wake in particular is derived from
+## a diff of `free_planes()` and never stored**, which is Queens' `_settle`,
+## so an undo leaves nothing behind to clean up.
+##
 ## Spec: docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md,
 ## sections 7 to 10. Ported from the canvas mock at
 ## docs/brainstorm/concepts.html#planes, which is the reference for every
@@ -68,16 +81,34 @@ const DART_NOTCH := 0.12
 const CREASE := 0.06
 const CREASE_FROM := 0.22
 const CREASE_TO := -0.05
-## The lane band a press or a refusal lays down the cells ahead of a dart,
-## and how far its colour is let through. **Task 4 owns both moments** (the
-## launch, the wake and the refusal); the band lives here because the field
-## mesh is built in one place and the spec fixes its size. The mock's own
-## band is 0.86 of a cell -- a wash over the whole lane rather than a stripe
-## down it -- and the spec's 0.34 is the number taken.
+## The lane band a refusal lays down the cells ahead of a dart, and how far
+## the *clear* lane's own colour would be let through. **0.34 was drawn
+## against 0.86 at the hard band's 58 px cell and kept** (Task 4): a stripe
+## a third of a cell wide runs down the middle of the lane and leaves the
+## dots on either side of it showing, so the band reads as *the way out* --
+## the line the plane would take -- while 0.86 floods the cells kerb to kerb,
+## swallows those dots and reads as a highlighted region, which is a
+## different sentence about the same rule. The stripe is also what the mock
+## draws (its `WASH_W`, 0.34, for the refusal, the press preview and the
+## hint's glow alike); the spec's "0.86 wash" was a misreading of it, and the
+## spec's section 8 is amended to say so rather than to record a
+## disagreement that was never there.
+## A refusal's own band is `BAD_TILE` at the flash's level and needs no alpha
+## of its own; `LANE_ALPHA` is the **clear** lane's, `SUN` at 0.35, and it is
+## still unspent: that band is the mock's preview under a held finger, and
+## this board has no press yet. Whoever gives it one draws `LANE_W` at this.
 const LANE_W := 0.34
 const LANE_ALPHA := 0.35
 ## The wash that stays under a hinted plane until it goes, and the ring that
-## lands on its head: the mock's, and the only glow on this board.
+## lands on its head: the only glow on this board. **This one is wider than
+## the mock's** -- the mock draws every wash at its single `WASH_W` of 0.34 --
+## and it is kept wide on purpose, because it is doing a different job: the
+## lane band above names a *path* and wants to read as a line, and this names
+## a *piece* and wants to read as a halo round the body it sits under. Shot
+## both ways at 58 px (Task 4): 0.34 under a 0.17 trail leaves a gold rim
+## barely a stroke wider than the ink, which reads as the trail having been
+## outlined rather than as a light standing under the plane, and under the
+## dart itself it all but disappears.
 const GLOW_W := 0.86
 const GLOW_ALPHA := 0.32
 const RING_R := 0.5
@@ -92,6 +123,30 @@ const HINTS := 3
 ## into a copied constant (docs/art/flat-motion.md's rule for a number that
 ## has to differ).
 const ENTER_CAP := 0.5
+
+# --- this board's own motion, and no more of it (spec section 10) ---
+## **Three constants, and nothing added to `core/motion.gd`.** Everything
+## else below is a recipe from the vocabulary read as a curve, or a number
+## handed to a recipe through its own parameter (rule 6).
+##
+## Cells a second along the track. Nothing else in the game moves a piece
+## along its own body, so nothing else can want this number. The floor under
+## a short flight is **not a fourth constant**: it is the family's
+## `Motion.POP_IN`, because a launch is never quicker than the pop a piece
+## arrives with, and a two-cell dart on a one-cell lane would otherwise blink
+## out rather than fly.
+const LAUNCH_SPEED := 22.0
+## One ring of the wake per king-move step out from the departing plane's
+## head. `Motion.WAVE_STEP` is 0.045 and measures a queen's *sight*, which is
+## a fact about the piece that moved; this measures a *departure*, and the
+## field it crosses is twenty-two rows rather than a court of eight.
+const WAKE_STEP := 0.04
+## How long the refused lane holds its band. The family's own flash runs
+## `FLASH_IN` + `FLASH_OUT` = 0.6 s; this one is shorter because a refusal
+## here is frequent by design and 0.6 s of rose across half the board reads
+## as a scolding. The *shape* is still the family's, compressed into this:
+## see `_flash_now`.
+const BLOCK_FLASH := 0.35
 
 const TIP_CYCLE := 8.0
 const TIPS := [
@@ -126,6 +181,28 @@ var _anim_until := 0.0
 ## The plane a hint named, or -1: it keeps a soft wash under it until it goes.
 var _hint_lit := -1
 
+# --- the books of moments ---
+## The flights in the air: plane index -> {"at", "dur", "s_end", "back"}.
+## **Not state.** The state is launched on the tap and this only draws the
+## going, which is what lets several planes be in the air at once and what
+## lets `tests/_win.gd` clear a whole board inside a single frame. A `back`
+## flight is an undo's or a reset's, the same track run the other way.
+var _fly: Dictionary = {}
+## The wake: plane index -> the second its wings beat. Written by `_wake`
+## off a diff of `free_planes()` across the tap and never read for anything
+## but the beat, so an undo has nothing to undo here.
+var _beat: Dictionary = {}
+## The refusal's two movers: the blocking plane's shiver and the tapped
+## plane's nudge, each plane index -> the second it began.
+var _shiver: Dictionary = {}
+var _nudge: Dictionary = {}
+## The refused lane itself: {"cells": Array[Vector2i], "at": float}, or empty.
+var _refuse: Dictionary = {}
+## Sparkles waiting for the plane they belong to to reach the edge of the
+## board: {"at": float, "pos": Vector2}. `ui/fx2d.gd` has no delay of its
+## own and fifty CPU timers is fifty too many, so `_process` fires them.
+var _puffs: Array[Dictionary] = []
+
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -147,7 +224,14 @@ func capabilities() -> Array[String]:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	clip_contents = false
+	# **The card is the wall a plane disappears behind**, and this is the one
+	# flat board that clips: a launch runs its track a whole body-length past
+	# the edge of the grid, which is out of this Control and over the top bar
+	# unless it is cut off. The Control is a full-rect child of the board
+	# slot, and the board card fills that slot, so the cut lands exactly on
+	# the card's own edge -- the mock's picture, where a plane flies off the
+	# grid, across the hem and is gone.
+	clip_contents = true
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -162,6 +246,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
 	_hint_lit = -1
 	_anim_until = 0.0
+	_forget()
 	_layout()
 	_enter()
 	_tip_idx = 0
@@ -219,24 +304,92 @@ func _cell_at(local: Vector2) -> Vector2i:
 
 func _process(delta: float) -> void:
 	super(delta)
-	if _cell <= 0.0 or _state.planes.is_empty():
+	if _state.planes.is_empty():
 		return
-	if _animating(_now()):
+	var t := _now()
+	_spend_puffs(t)
+	# Sudoku's lesson: decide once a frame, here, and never again in _draw --
+	# two asks disagreeing on the frame a moment expires is the One Line bug
+	# in another costume. A moment that has just landed still owes one frame,
+	# which is what _retire's answer buys. It runs **before** the cell guard
+	# on purpose: a board with no layout yet still has to let its books empty,
+	# or `_animating()` is true for ever the moment one is ever given a size.
+	var dirty := _retire(t)
+	if _cell <= 0.0:
+		return
+	if dirty or _animating(t):
 		_refresh()
 
-## Whether anything on this card is still moving. Today that is the entrance
-## and the hint's ring; Task 4's launch, wake and refusal each add their own
-## wave here, and **every one of them has to be in this function** -- One Line
-## shipped two lines frozen at four fifths of a fade because one was left out,
-## and it showed in a rendered frame and in no test.
+## Whether anything on this card is still moving, and **every wave is in
+## here** -- the entrance, the hint's ring (through `_anim_until`), the
+## flights, the wake's beats, the refusal's band, its shiver and its nudge.
+## One Line shipped two lines frozen at four fifths of a fade because one
+## wave was left out of its own version of this, and it showed in a rendered
+## frame and in no test. The books are asked directly as well as through
+## `_anim_until`, so a moment cannot outlive the window that was booked for
+## it: whichever is longer wins.
 func _animating(t: float) -> bool:
 	if t < _anim_until:
+		return true
+	if not _fly.is_empty() or not _beat.is_empty():
+		return true
+	if not _shiver.is_empty() or not _nudge.is_empty() or not _refuse.is_empty():
 		return true
 	if Motion.reduce:
 		return false
 	# The field's wide pop, then the last plane's own pop at the far end of
 	# the capped stagger.
 	return t - _opened < Motion.ENTER_DELAY + ENTER_CAP + Motion.POP_IN
+
+## Closes every moment that has run out, so a landed plane is drawn from the
+## state again and a quiet board goes quiet. Answers true when something
+## actually left, because that frame is the first one drawn without it.
+func _retire(t: float) -> bool:
+	var dirty := false
+	for i in _fly.keys():
+		var f: Dictionary = _fly[i]
+		if t >= float(f["at"]) + float(f["dur"]):
+			_fly.erase(i)
+			dirty = true
+	for i in _beat.keys():
+		if t >= float(_beat[i]) + Motion.BUMP_TIME:
+			_beat.erase(i)
+			dirty = true
+	for i in _shiver.keys():
+		if t >= float(_shiver[i]) + Motion.SHIVER_TIME:
+			_shiver.erase(i)
+			dirty = true
+	for i in _nudge.keys():
+		if t >= float(_nudge[i]) + Motion.NUDGE_LAG + Motion.NUDGE_TIME:
+			_nudge.erase(i)
+			dirty = true
+	if not _refuse.is_empty() and t >= float(_refuse["at"]) + BLOCK_FLASH:
+		_refuse = {}
+		dirty = true
+	return dirty
+
+## Every book emptied at once: a new board inherits nobody's flight.
+func _forget() -> void:
+	_fly = {}
+	_beat = {}
+	_shiver = {}
+	_nudge = {}
+	_refuse = {}
+	_puffs = []
+
+## The sparkles a launch leaves where it crossed the edge of the board, each
+## fired on the frame its own plane reaches that point rather than when the
+## tap happened. `ui/fx2d.gd` has no delay of its own; a `SceneTreeTimer` a
+## plane would be fifty timers on the hard band and a generation counter to
+## guard them, where this is four lines and dies with the board.
+func _spend_puffs(t: float) -> void:
+	var i := 0
+	while i < _puffs.size():
+		if t >= float(_puffs[i]["at"]):
+			fx.puff(_puffs[i]["pos"], Pal.SUN_RAY)
+			_puffs.remove_at(i)
+		else:
+			i += 1
 
 ## Keeps the field redrawing for `seconds` more: something on it is moving.
 func _busy_for(seconds: float) -> void:
@@ -279,44 +432,93 @@ func _draw() -> void:
 ## is exactly what the player is being pointed at.
 func _build_field(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	_dots(b)
+	_dots(b, _covers(t))
 	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
 		_ink(b, _state.planes[_hint_lit]["cells"], GLOW_W * _cell,
 			Color(Pal.SUN_RAY, GLOW_ALPHA))
+	if not _refuse.is_empty():
+		var lv := _flash_now(t - float(_refuse["at"]))
+		if lv > 0.0:
+			_ink(b, _refuse["cells"], LANE_W * _cell, Color(Pal.BAD_TILE, lv))
 	for i in _state.planes.size():
-		if not _state.planes[i]["gone"]:
+		# A plane in the air is drawn from its flight and not from the state:
+		# the state let it go on the tap, and a returning one is back in the
+		# state before it has flown home.
+		if _fly.has(i) or not _state.planes[i]["gone"]:
 			_plane(b, i, t)
 	return b.mesh() if not b.verts.is_empty() else null
 
-## A faint dot on every cell no plane stands on. This is the lattice, and it
+## A faint dot on every cell no plane stands on, and a **fading** one on
+## every cell a plane is in the act of leaving. This is the lattice, and it
 ## is why a launch reads as emptying the board rather than as a jump cut: the
-## cells a plane leaves are places, not holes.
-func _dots(b) -> void:
-	var ink := Color(Pal.LINE, DOT_ALPHA)
+## cells a plane leaves are places, not holes, and each of them comes back
+## the moment the tail passes over it.
+func _dots(b, cover: Dictionary) -> void:
 	var r := DOT * _cell
 	for y in _state.rows:
 		for x in _state.cols:
 			var cell := Vector2i(x, y)
-			if _state.plane_at(cell) < 0:
-				b.disc(_centre(cell), r, ink)
+			var shown := 1.0
+			if cover.has(cell):
+				shown = 1.0 - float(cover[cell])
+			elif _state.plane_at(cell) >= 0:
+				shown = 0.0
+			if shown > 0.004:
+				b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA * shown))
 
-## One plane: its trail, its dart and the crease down the dart, all wearing
-## the entrance this frame. The pop is about the **head**, because that is
-## where the eye is -- a body scaling about its tail swings.
+## How much of each cell is still under a plane in flight, 0 to 1, for every
+## cell of every flight in the air. The fade is the family's own
+## (`appear_level`), read against the second that plane's **tail** crosses
+## that cell rather than against a distance -- which is how the dot's return
+## costs this board no constant of its own. A flight home runs it backwards:
+## the dot goes out as the tail arrives.
+func _covers(t: float) -> Dictionary:
+	var out: Dictionary = {}
+	for i in _fly:
+		var f: Dictionary = _fly[i]
+		var cells: Array = _state.planes[i]["cells"]
+		var s_end := float(f["s_end"])
+		var back: bool = f["back"]
+		for j in cells.size():
+			var u := _ease_inv(float(j) / s_end)
+			var when := float(f["at"]) + float(f["dur"]) * (1.0 - u if back else u)
+			var lv := Motion.appear_level(t - when)
+			out[cells[j]] = lv if back else 1.0 - lv
+	return out
+
+## One plane: its trail, its dart and the crease down the dart, wearing every
+## moment it is in at once -- the entrance's pop about its **head** (that is
+## where the eye is; a body scaling about its tail swings), the wake's beat
+## across its wings, and the refusal's shiver or nudge under the whole of it.
+## While it is in the air the body is the slice of its track between the tail
+## and the head, so the tail follows the head through every bend the plane
+## ever made.
 func _plane(b, i: int, t: float) -> void:
 	var cells: Array = _state.planes[i]["cells"]
-	var head: Vector2 = _centre(cells[cells.size() - 1])
+	var n := cells.size()
+	var dir := Vector2(_state.planes[i]["dir"])
+	var flying := _fly.has(i)
+	var s := _flown(i, t) if flying else 0.0
+	var head: Vector2 = _track(i, s + float(n - 1)) if flying else _centre(cells[n - 1])
 	var since := t - _opened - Motion.ENTER_DELAY \
-		- Motion.stagger(_king(cells[cells.size() - 1], Vector2i.ZERO),
+		- Motion.stagger(_king(cells[n - 1], Vector2i.ZERO),
 			Motion.ENTER_STAGGER, ENTER_CAP)
 	var grow := Motion.pop_in_scale(since)
 	var seen := Motion.appear_level(since)
 	if grow.x <= 0.0 or seen <= 0.0:
 		return
-	var xf := Transform2D(0.0, grow, 0.0, head - head * grow)
+	# The refusal's two movers, both read as curves: the blocker shivers
+	# across the board and the tapped plane leans the way it wanted to go.
+	# Both take the vocabulary's own pixels -- the family measures a shiver
+	# and a nudge in the 1080-wide design space, not in cells -- so neither
+	# costs this board a constant.
+	var off := Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0) \
+		+ dir * Motion.nudge_offset(t - float(_nudge.get(i, -1e9)))
+	var xf := Transform2D(0.0, grow, 0.0, head - head * grow + off)
 	var ink := Color(Pal.TEXT, seen)
-	_ink(b, cells, TRAIL * _cell, ink, xf)
-	_dart(b, head, Vector2(_state.planes[i]["dir"]).angle(), seen, xf)
+	_ink_pts(b, _body(i, s) if flying else _cell_pts(cells), TRAIL * _cell, ink, xf)
+	_dart(b, head, dir.angle(), seen, xf,
+		Motion.bump_scale(t - float(_beat.get(i, -1e9))))
 
 ## A trail, a wash or a band: **one round-capped stroke** along the cell
 ## centres of `cells`, with a disc at every bend -- never a rounded rect a
@@ -327,11 +529,20 @@ func _plane(b, i: int, t: float) -> void:
 ## one of these paths turns it pinches to seven tenths of its width and
 ## leaves a notch on the outside of the corner.
 func _ink(b, cells: Array, width: float, colour: Color, xf := Transform2D.IDENTITY) -> void:
-	if cells.is_empty() or width <= 0.0:
-		return
+	_ink_pts(b, _cell_pts(cells), width, colour, xf)
+
+## The centres of `cells`, which is what a plane standing still is drawn
+## along. A plane in flight hands `_ink_pts` its track's points instead.
+func _cell_pts(cells: Array) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for cell: Vector2i in cells:
 		pts.append(_centre(cell))
+	return pts
+
+func _ink_pts(b, pts: PackedVector2Array, width: float, colour: Color,
+		xf := Transform2D.IDENTITY) -> void:
+	if pts.is_empty() or width <= 0.0:
+		return
 	pts = xf * pts
 	if pts.size() < 2:
 		b.disc(pts[0], width * 0.5, colour)
@@ -343,18 +554,28 @@ func _ink(b, cells: Array, width: float, colour: Color, xf := Transform2D.IDENTI
 ## The folded dart at a plane's head: the four-point outline (tip, wing,
 ## notch, wing) turned to the plane's heading, with the crease laid down its
 ## spine in PAPER. The notch is what stops it reading as an arrow.
-func _dart(b, head: Vector2, angle: float, seen: float, xf: Transform2D) -> void:
+##
+## `beat` is the wake's `bump_scale`, and it opens the **wings**: the bump
+## whole across the spine and three tenths of it along, which is the mock's
+## proportion and the reason a beating dart reads as flapping rather than as
+## swelling. It is a shape and not a timing -- the timing is the family's
+## `BUMP_TIME` -- so it stands here beside `DART_WING` rather than among this
+## board's three motion constants. A dart at rest is handed 1.0 and the
+## arithmetic falls out to the plain dart.
+func _dart(b, head: Vector2, angle: float, seen: float, xf: Transform2D,
+		beat := 1.0) -> void:
 	var turn := Transform2D(angle, head)
+	var wings := Vector2(1.0 + (beat - 1.0) * 0.3, beat) * _cell
 	var pts := PackedVector2Array([
-		Vector2(DART_TIP, 0.0) * _cell,
-		Vector2(-DART_BACK, DART_WING) * _cell,
-		Vector2(-DART_NOTCH, 0.0) * _cell,
-		Vector2(-DART_BACK, -DART_WING) * _cell,
+		Vector2(DART_TIP, 0.0) * wings,
+		Vector2(-DART_BACK, DART_WING) * wings,
+		Vector2(-DART_NOTCH, 0.0) * wings,
+		Vector2(-DART_BACK, -DART_WING) * wings,
 	])
 	b.polygon(xf * (turn * pts), Color(Pal.TEXT, seen))
 	var spine := PackedVector2Array([
-		Vector2(CREASE_FROM, 0.0) * _cell,
-		Vector2(CREASE_TO, 0.0) * _cell,
+		Vector2(CREASE_FROM, 0.0) * wings,
+		Vector2(CREASE_TO, 0.0) * wings,
 	])
 	b.stroke(xf * (turn * spine), CREASE * _cell * xf.get_scale().x,
 		Color(Pal.PAPER, seen))
@@ -362,6 +583,81 @@ func _dart(b, head: Vector2, angle: float, seen: float, xf: Transform2D) -> void
 ## King-move distance, the step every wave on this board is staggered by.
 static func _king(a: Vector2i, z: Vector2i) -> int:
 	return maxi(absi(a.x - z.x), absi(a.y - z.y))
+
+# --- the track: the launch's one piece of arithmetic ---
+
+## A point on plane `i`'s **track**, `x` cells along it: its own body
+## polyline from the tail at 0 to the head at `len - 1`, and then straight on
+## down the lane and out past the edge of the board. Everything about the
+## launch is a slice of this -- the body drawn is the track between `s` and
+## `s + len - 1` -- and that is why the tail follows the head through every
+## bend the plane ever made instead of sliding sideways off it. **Nothing
+## else in the game moves a piece along its own body.**
+func _track(i: int, x: float) -> Vector2:
+	var cells: Array = _state.planes[i]["cells"]
+	var n := cells.size()
+	if x < float(n - 1):
+		var j := clampi(int(floorf(x)), 0, n - 2)
+		return _centre(cells[j]).lerp(_centre(cells[j + 1]), x - float(j))
+	return _centre(cells[n - 1]) \
+		+ Vector2(_state.planes[i]["dir"]) * (x - float(n - 1)) * _cell
+
+## The body as a polyline, `s` cells along the track: the tail, every bend
+## between it and the head, and the head. The bends are the whole-numbered
+## points, because those are the cell centres the plane was drawn through.
+func _body(i: int, s: float) -> PackedVector2Array:
+	var n: int = (_state.planes[i]["cells"] as Array).size()
+	var pts := PackedVector2Array([_track(i, s)])
+	for k in range(int(floorf(s)) + 1, int(ceilf(s + float(n - 1)))):
+		pts.append(_track(i, float(k)))
+	pts.append(_track(i, s + float(n - 1)))
+	return pts
+
+## The whole flight, in cells: the body's own length, the lane it crosses,
+## and one more cell, which is where the tail leaves the board. `lane()` is
+## geometry and not occupancy, so this is the same number before the launch,
+## during it, and on the way home.
+func _s_end(i: int) -> float:
+	var n: int = (_state.planes[i]["cells"] as Array).size()
+	return float(n - 1 + _state.lane(i).size() + 1)
+
+## How long that flight takes. The floor is the family's `POP_IN` rather than
+## a constant of this board's: a launch is never quicker than the pop a piece
+## arrives with.
+func _dur(i: int) -> float:
+	return maxf(Motion.POP_IN, _s_end(i) / LAUNCH_SPEED)
+
+## The launch's ease, and it is **the family's own curve read backwards**:
+## `pop_out_scale` is a quarter-cosine falling from one to nothing, so one
+## minus it rises from nothing and accelerates away, which is a launch. No
+## new curve, no new constant, and nothing added to `core/motion.gd`.
+static func _ease(u: float) -> float:
+	return 1.0 - Motion.pop_out_scale(clampf(u, 0.0, 1.0), 1.0)
+
+## Its inverse: the fraction of the flight at which the plane has covered `e`
+## of its track. Two things need it -- the puff, which has to know the frame
+## the head crosses the edge of the board, and every cell's dot, which has to
+## know the frame the tail passed over it.
+static func _ease_inv(e: float) -> float:
+	return acos(clampf(1.0 - e, -1.0, 1.0)) * 2.0 / PI
+
+## Where plane `i` has got to, in cells along its track. A flight home reads
+## the same curve from the far end, so an undo is the launch played
+## backwards and not a second animation.
+func _flown(i: int, t: float) -> float:
+	var f: Dictionary = _fly[i]
+	var u := clampf((t - float(f["at"])) / maxf(float(f["dur"]), 0.0001), 0.0, 1.0)
+	return float(f["s_end"]) * _ease(1.0 - u if bool(f["back"]) else u)
+
+## The refusal's band level: **the family's flash, compressed into
+## `BLOCK_FLASH`**. `flash_level` takes its two halves as parameters, so the
+## rise and the fall keep the vocabulary's own proportion (0.15 against 0.45)
+## at a quarter less than the vocabulary's length -- a recipe's parameter,
+## never a copied curve (rule 6).
+static func _flash_now(elapsed: float) -> float:
+	var span := Motion.FLASH_IN + Motion.FLASH_OUT
+	return Motion.flash_level(elapsed, BLOCK_FLASH * Motion.FLASH_IN / span,
+		BLOCK_FLASH * Motion.FLASH_OUT / span)
 
 # --- the moments ---
 
@@ -394,27 +690,122 @@ func _gui_input(event: InputEvent) -> void:
 	_tap(i)
 	accept_event()
 
-## The whole game, in six lines. A free plane goes; a blocked one does
-## nothing at all yet -- Task 4 gives the flight, the wake and the refusal
-## their pictures, and until then a launch is immediate.
+## The whole game. A free plane goes and a blocked one is refused, and the
+## refusal costs nothing: no toast, no counter, no analytics event, no mark
+## left on the board.
 ##
-## **There is no busy gate**, now or after Task 4: a tap is never refused
-## because something else is still moving, and several planes may be in
-## flight at once. `tests/_win.gd` clears a whole board inside a single
-## frame, and a gate on animation would fail it.
+## **The state goes first and the picture follows.** The plane is out of the
+## state on the frame of the tap, which is what makes the freed planes right
+## while the flight is still in the air -- the wake is diffed against a
+## snapshot taken a line earlier -- and what lets the departing plane be
+## drawn from its flight rather than from a board it has already left.
+##
+## **There is no busy gate**: a tap is never refused because something else
+## is still moving, several planes may be in the air at once, and a player
+## who taps quickly is playing well rather than fighting the board. Boards
+## here that gate on animation do it to protect a *shared* piece; nothing on
+## this board is shared. It is also what lets `tests/_win.gd` clear a whole
+## board inside a single frame.
 func _tap(i: int) -> void:
-	if not _state.is_free(i):
+	if _state.planes[i]["gone"]:
 		return
+	var t := _now()
+	var blocked := _state.blocker(i)
+	if blocked >= 0:
+		_refuse_tap(i, blocked, t)
+		_refresh()
+		return
+	var before := _free_set()
 	if not _state.launch(i):
 		return
 	if _hint_lit == i:
 		_hint_lit = -1
+	_refuse = {}
+	_beat.erase(i)
+	var cells: Array = _state.planes[i]["cells"]
+	_fly_out(i, t)
+	_wake(before, cells[cells.size() - 1], t)
 	fx.cue("place")
 	_speak()
 	_refresh()
 	# note_move() counts the move and ends the puzzle if that was the last
 	# plane; the host raises the win screen after win_delay().
 	note_move()
+
+## Every plane that can go right now, as a set to diff against.
+func _free_set() -> Dictionary:
+	var out: Dictionary = {}
+	for i in _state.free_planes():
+		out[i] = true
+	return out
+
+## Puts plane `i` in the air, and books the sparkles for the moment its head
+## crosses the edge of the board -- `(lane + 0.5)` cells past the head is the
+## edge, and `_ease_inv` says which frame that is. Under reduce-motion a
+## launch is an instant removal: no flight, no puff, nothing to retire.
+func _fly_out(i: int, t: float) -> void:
+	if Motion.reduce:
+		return
+	var dur := _dur(i)
+	var s_end := _s_end(i)
+	_fly[i] = {"at": t, "dur": dur, "s_end": s_end, "back": false}
+	_busy_for(dur)
+	var cells: Array = _state.planes[i]["cells"]
+	var out := float(_state.lane(i).size()) + 0.5
+	_puffs.append({
+		"at": t + dur * _ease_inv(out / s_end),
+		"pos": _centre(cells[cells.size() - 1]) + Vector2(_state.planes[i]["dir"]) * out * _cell,
+	})
+
+## Flies plane `i` home along the same track, `delay` from now: an undo's
+## flight, or one of Reset's wave. The state already has it back, so the
+## board is correct the instant the button is pressed and only the picture
+## is late.
+func _fly_back(i: int, t: float, delay: float) -> void:
+	if Motion.reduce:
+		return
+	var dur := _dur(i)
+	_fly[i] = {"at": t + delay, "dur": dur, "s_end": _s_end(i), "back": true}
+	_busy_for(delay + dur)
+
+## **The board answers the move.** This is Queens' `_settle` with a departure
+## in place of a queen's sight: the free planes were snapshotted before the
+## launch, they are asked again after it, and every plane that was not free
+## and now is beats its wings once, `WAKE_STEP` a king-move step out from the
+## departing plane's head. The set is **derived and never stored** -- nothing
+## remembers who was freed by what -- so an undo leaves nothing behind to
+## clean up, which is the whole reason the shape is worth copying.
+func _wake(before: Dictionary, from: Vector2i, t: float) -> void:
+	if Motion.reduce:
+		return
+	for q in _state.free_planes():
+		if before.has(q):
+			continue
+		var cells: Array = _state.planes[q]["cells"]
+		var at := t + Motion.stagger(_king(cells[cells.size() - 1], from), WAKE_STEP)
+		_beat[q] = at
+		_busy_for(at - t + Motion.BUMP_TIME)
+
+## A refused tap, and **nothing is lost by it**: the lane flashes in
+## `BAD_TILE` from the dart as far as the plane that is in the way, that
+## plane shivers, the tapped one leans the way it wanted to go and settles,
+## and the tip card says why. No toast (the flash already is the sentence, and
+## a refusal here is frequent by design), no counter, no analytics event, no
+## move counted, and no mark left on the board once the band has gone.
+func _refuse_tap(i: int, blocked: int, t: float) -> void:
+	_say("That lane is not clear. Send the one in its way first.", Face.Expr.PUZZLED)
+	if Motion.reduce:
+		return
+	var cells: Array[Vector2i] = []
+	for c in _state.lane(i):
+		cells.append(c)
+		if _state.plane_at(c) == blocked:
+			break
+	_refuse = {"cells": cells, "at": t}
+	_shiver[blocked] = t
+	_nudge[i] = t
+	_busy_for(maxf(BLOCK_FLASH, Motion.NUDGE_LAG + Motion.NUDGE_TIME))
+	fx.cue("refuse")
 
 # --- the sprout's line ---
 
@@ -458,13 +849,21 @@ func is_solved() -> bool:
 func can_undo() -> bool:
 	return _state.left() < _state.planes.size()
 
-## Calls the last plane back. Counts no move.
+## Calls the last plane back, flying it home along the track it left on.
+## Counts no move.
 func undo() -> bool:
 	if is_done() or not can_undo():
 		return false
-	if _state.undo() < 0:
+	var i := _state.undo()
+	if i < 0:
 		return false
 	_hint_lit = -1
+	_refuse = {}
+	# Nothing to unwind in the wake: who was freed by what was never written
+	# down. The one thing that is this plane's own is its beat, and only
+	# because a plane mid-beat that is also mid-flight reads as a stutter.
+	_beat.erase(i)
+	_fly_back(i, _now(), 0.0)
 	_say("Called back. " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
@@ -489,6 +888,10 @@ func hint() -> bool:
 	_hint_lit = i
 	var cells: Array = _state.planes[i]["cells"]
 	fx.ring(_centre(cells[cells.size() - 1]), _cell * RING_R, Pal.LEAF)
+	# It beats its wings once, out of the wake's own book: the hint names a
+	# plane that can go, and that is exactly what a beat means here.
+	if not Motion.reduce:
+		_beat[i] = _now()
 	_busy_for(Motion.RING_TIME)
 	fx.cue("hint")
 	_say("This one has a clear lane.", Face.Expr.HAPPY)
@@ -500,8 +903,24 @@ func hint() -> bool:
 ## Every plane back on the field. What a hint gave stays given: the hints
 ## spent are not refunded, only unpinned.
 func reset_board() -> void:
+	var t := _now()
+	var far := Vector2i(_state.cols - 1, _state.rows - 1)
+	# Pulled back one at a time rather than with `reset()`, because each one
+	# needs a flight home of its own and the state's `undo()` is the only
+	# thing that knows what went and in what order. `reset()` afterwards is a
+	# no-op that keeps this honest if the history and the board ever part.
+	while true:
+		var i := _state.undo()
+		if i < 0:
+			break
+		_beat.erase(i)
+		var cells: Array = _state.planes[i]["cells"]
+		# The family's reset wave, from the far corner (rule 4's cap and all).
+		_fly_back(i, t, Motion.stagger(
+			_king(cells[cells.size() - 1], far), Motion.RESET_STAGGER))
 	_state.reset()
 	_hint_lit = -1
+	_refuse = {}
 	moves = 0
 	_running = true
 	_say("All of them back on the field. " + _left_line(), Face.Expr.HAPPY)

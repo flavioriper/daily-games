@@ -250,7 +250,8 @@ reference is and what this family's boards have never quite been:
 | Dart | `TEXT` | 0.42 cell forward of the head's centre, wings 0.26 back and 0.30 aside, tail notch 0.12 back |
 | Crease | `PAPER` | a fold slit near the tip, 0.06 cell wide, running `[0.22, -0.05]` of a cell along the spine rather than down the whole of it |
 | Lane, pressed and clear | `SUN` at 0.35 | a band 0.34 cell wide |
-| Lane, refused | `BAD_TILE` | the same band, head to blocker |
+| Lane, refused | `BAD_TILE` at the flash's own level | the same band, first lane cell to blocker |
+| Hint glow | `SUN_RAY` at 0.32 | a wash **0.86 cell wide** under the hinted plane's whole body |
 | Hint ring | the family's (`ui/fx2d.gd`) | |
 
 **The dart is the one thing the reference's picture loses.** A solid
@@ -266,9 +267,27 @@ across hollows the dart out and the head stops reading as the solid ink the
 reference's arrowhead is. The canvas mock at
 `docs/brainstorm/concepts.html#planes` had already settled on 0.06 over the
 short `[0.22, -0.05]` run, and `puzzles/planes2d.gd` ships the mock's numbers.
-The lane band's own disagreement with the mock (0.34 here, a 0.86 wash there)
-is **not** settled by this amendment: nothing draws that band until the
-refusal lands, and it is that task's to settle by the same method.
+**The lane band is 0.34, and the disagreement it was recorded as having with
+the mock never existed** (amended 2026-09-20, Task 4, by the same method: two
+screenshots at the hard band's 58 px cell rather than an argument). The mock
+draws *every* wash at one width -- its `WASH_W` is 0.34, for the press
+preview, the refusal and the hint's glow alike -- so the "0.86 wash there"
+recorded above was a misreading of the mock and not a second opinion about
+the band. Drawn both ways, 0.34 is also the better picture, for a reason
+worth keeping: **a third of a cell is a line and reads as the way out** --
+the route the plane would take, drawn in the same language as the trails,
+with the dots on either side of it still showing -- while 0.86 floods the
+cells kerb to kerb, swallows those dots, crowds the trails in the rows above
+and below, and reads as *this region is wrong*, which is a sentence this
+board never says: nothing is wrong, the lane is merely occupied.
+
+**The hint's glow is the one wash that is deliberately not 0.34.** It is
+0.86, because it is doing the other job: the lane band names a *path* and
+has to read as a line, and the glow names a *piece* and has to read as a
+light standing under the body it sits beneath. At 0.34 under a 0.17 trail
+the glow is a gold rim barely a stroke wider than the ink -- the trail looks
+outlined rather than lit, and under the dart it all but disappears. Both were
+shot at 58 px before this was written.
 
 The field is **one `ArrayMesh`**, rebuilt only when something changes, the
 way Word Trail's field is: the dots, the trails, the darts, the lane band and
@@ -328,6 +347,36 @@ vocabulary:
 - **Reduce motion** stills all of it: a launch becomes an instant removal,
   the wake and the flash do not run, and two frames 1.5 s apart must come out
   pixel-identical.
+
+**What the three constants turned out not to have to cover** (amended
+2026-09-20, Task 4, as built). Four numbers the table above reads as this
+board's are the vocabulary's, and none of them became a fourth constant:
+
+- **The 0.22 s floor under a short launch is `Motion.POP_IN`**, not a
+  coincidence written down twice. A launch is never quicker than the pop a
+  piece arrives with, which is the honest reason for a floor at all.
+- **The ease is the family's own curve read backwards.**
+  `Motion.pop_out_scale` is a quarter-cosine falling from one to nothing, so
+  one minus it rises from nothing and accelerates away -- which is a launch.
+  Its inverse is arithmetic, and two things need it: the puff, which has to
+  know the frame the head crosses the edge, and every cell's dot, which has
+  to know the frame the tail passed over it.
+- **A cell takes its dot back over `Motion.appear_level`**, read against the
+  second the tail crosses that cell rather than over a distance in cells, so
+  the dot's return costs nothing either.
+- **The refusal's shiver and nudge are the vocabulary's own pixels**
+  (`SHIVER_PX` 2, `NUDGE` 3), not the mock's cell fractions (0.05 and 0.22 of
+  a cell). The family measures both in the 1080-wide design space rather than
+  per cell, and taking the mock's would have meant two more constants for a
+  detail the band already carries. The mock's are the more visible lurch at
+  58 px and that is the trade made; it is named here rather than hidden, and
+  it is a one-line change through `nudge_offset`'s own `px` parameter if the
+  refusal ever reads as too quiet on a phone.
+
+The wake's own stagger goes through `Motion.stagger(k, WAKE_STEP)`, so it
+takes the family's 0.6 cap: on a 16 by 22 field a king-move distance can
+reach 21, and 21 x 0.04 is 0.84 s of wings still beating after the plane has
+gone. The cap is rule 4 and this board does not raise it.
 
 ## 11. The hint
 
