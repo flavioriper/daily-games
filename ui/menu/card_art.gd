@@ -54,6 +54,9 @@ var _c := Vector2.ZERO
 ## command keeps a mesh by RID and not by reference, so a local ArrayMesh is
 ## freed before the frame it was queued in ever renders.
 var _band_mesh: ArrayMesh
+## Paper Planes' sky -- the dots, the trails and the darts, all baked into
+## one mesh -- held here for exactly the same reason as `_band_mesh` above.
+var _sky_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -423,31 +426,53 @@ func _draw_sudoku() -> void:
 ## fractions), drawn at card scale rather than a cell's, so the card and the
 ## board read as the same object at two different sizes. No cast: this is the
 ## third board Nonogram's decision reaches, after Sudoku.
+##
+## Baked into **one mesh**, the way Hidden Word's turf band is
+## (`_draw_letters`) rather than a `draw_circle`/`draw_polyline` per piece:
+## gl_compatibility pays per `draw_*` command, a repeated field of dots is
+## exactly what a baked mesh is for, and it is what the board itself does for
+## its own dots, trails and darts (`Face.Builder`, `puzzles/planes2d.gd`).
+## The 27 discs of the dot lattice alone were 27 of this card's original +48
+## draw calls (Task 5's review, round 1); baking the trails and darts in
+## beside them costs nothing extra and matches the board's own technique.
 func _draw_planes() -> void:
-	_dots_sky()
+	var b := Face.Builder.new()
+	_dots_sky(b)
 	for trail in [
 		[Vector2(-146.0, -34.0), Vector2(-66.0, -34.0), Vector2(-66.0, 18.0)],
 		[Vector2(-34.0, -6.0), Vector2(56.0, -6.0)],
 		[Vector2(84.0, -40.0), Vector2(84.0, 30.0), Vector2(138.0, 30.0)],
 	]:
-		_plane_trail(trail)
+		_plane_trail(b, trail)
+	_sky_mesh = b.mesh()
+	draw_mesh(_sky_mesh, null)
 
 ## The lattice every plane would sit on, coarser than the board's own (a dot
 ## a cell) because a card is read at a glance rather than played on -- a dot
 ## a cell here would be a haze at this scale rather than a sky.
-func _dots_sky() -> void:
+func _dots_sky(b) -> void:
 	var step := 32.0
+	var r := 2.4 * _u
 	for gy in range(-1, 2):
 		for gx in range(-4, 5):
-			_disc(gx * step, gy * step, 2.4, Color(Pal.LINE, 0.4))
+			b.disc(at(gx * step, gy * step), r, Color(Pal.LINE, 0.4))
 
-## One trail, drawn tail to head, with a folded dart turned to face the way
-## the last segment points.
-func _plane_trail(pts: Array) -> void:
-	_line(pts, 9.0, Pal.TEXT)
+## One trail, drawn tail to head with a disc at every bend (the board's own
+## `_ink_pts`: a stroke's own join pinches at a corner, and a disc there is
+## what keeps the bend round rather than notched), and a folded dart turned
+## to face the way the last segment points. `caps=false` on the stroke keeps
+## its own ends flat, the way `draw_polyline` always drew them.
+func _plane_trail(b, pts: Array) -> void:
+	var canvas_pts := PackedVector2Array()
+	for v in pts:
+		canvas_pts.append(at(v.x, v.y))
+	var width := 9.0 * _u
+	b.stroke(canvas_pts, width, Pal.TEXT, false, false)
+	for i in range(1, canvas_pts.size() - 1):
+		b.disc(canvas_pts[i], width * 0.5, Pal.TEXT)
 	var head: Vector2 = pts[pts.size() - 1]
 	var dir: Vector2 = (head - pts[pts.size() - 2]).normalized()
-	_dart_card(head, dir)
+	_dart_card(b, head, dir)
 
 ## The size a dart is drawn at, in the box's own units -- this card has no
 ## cell to measure against, so the board's DART_TIP/BACK/WING/NOTCH fractions
@@ -459,7 +484,7 @@ const _DART_SIZE := 36.0
 ## near the tip in PAPER. The notch and the crease are the whole re-theme
 ## (planes2d.gd's own note): a solid arrowhead is a symbol, a dart is an
 ## object.
-func _dart_card(head: Vector2, dir: Vector2) -> void:
+func _dart_card(b, head: Vector2, dir: Vector2) -> void:
 	var turn := Transform2D(dir.angle(), at(head.x, head.y))
 	var pts := PackedVector2Array([
 		Vector2(0.42, 0.0), Vector2(-0.26, 0.30),
@@ -467,7 +492,7 @@ func _dart_card(head: Vector2, dir: Vector2) -> void:
 	])
 	for i in pts.size():
 		pts[i] = pts[i] * _DART_SIZE * _u
-	draw_colored_polygon(turn * pts, Pal.TEXT)
+	b.polygon(turn * pts, Pal.TEXT)
 	var spine := PackedVector2Array([Vector2(0.22, 0.0) * _DART_SIZE * _u,
 		Vector2(-0.05, 0.0) * _DART_SIZE * _u])
-	draw_polyline(turn * spine, Pal.PAPER, 0.06 * _DART_SIZE * _u, true)
+	b.stroke(turn * spine, 0.06 * _DART_SIZE * _u, Pal.PAPER, false, false)

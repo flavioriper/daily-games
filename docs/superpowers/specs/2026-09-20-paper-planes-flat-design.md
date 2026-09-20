@@ -474,14 +474,21 @@ signature moves rather than an isolated dart. Three separate runs (a fourth
 was needed for the phone-driver check below) read **55, 55 and 55** draw
 calls, with idle means of **2.13, 2.07 and 1.98 ms**. Word Trail, run as the
 control in the same session immediately after the first two, read **65**
-draw calls and a **2.30 ms** idle mean -- both a little over the 60-65
-draw calls and 2.37-2.51 ms its own spec recorded, which is the run-to-run
-spread this Mac always shows on this harness and exactly why a single
-reading is worth nothing (Hidden Word's spec, section 9). Paper Planes reads
-under Word Trail by a wide margin in both sessions, so the comparison holds
-even though neither board's absolute number repeats to the millisecond:
-**Paper Planes is the cheapest board in the game**, exactly as predicted,
-both against Word Trail and against the 855 budget.
+draw calls and a **2.30 ms** idle mean. Read straight rather than rounded
+into a story: 65 sits at the *top* of the 60-65 draw calls its own spec
+recorded, not over it, and 2.30 ms sits *below* the 2.37-2.51 ms floor of its
+own recorded range, not over it either (corrected 2026-09-20, Task 5's
+review, round 1 -- the first draft of this paragraph said "over" both ways,
+which is exactly the kind of misquote this section cites Hidden Word's spec
+against in the next sentence). A second, independent control -- the
+reviewer's own run, in a separate session -- read Word Trail at **62** draw
+calls and **2.42 ms**, which lands inside its own spec's range on both
+counts and is the more typical reading of the two. Between the two sessions
+Word Trail has now been read at 65/2.30 and 62/2.42; Paper Planes (55) reads
+under it by a wide margin either way, which is what the comparison actually
+needs and why a single reading off this harness is worth nothing (Hidden
+Word's spec, section 9): **Paper Planes is the cheapest board in the game**,
+exactly as predicted, both against Word Trail and against the 855 budget.
 
 On the phone's driver (`--rendering-driver opengl3_angle`): the same **55**
 draw calls, and the settled frame (the sixth shot, t=3.8 s) matches the
@@ -495,11 +502,20 @@ The first screen (`tests/_shot_menu.gd`): page one still reads **335** draw
 calls, the same figure Task 3 recorded with the fifteenth card's picture
 stubbed empty, because the card stands on page two and costs page one
 nothing (section 12). Page two, with all three of its cards now drawing a
-real picture, reads **175** against Task 3's **127** -- checked by
+real picture, first read **175** against Task 3's **127** -- checked by
 temporarily stubbing this board's own `_draw` arm back to a no-op and
-re-measuring, which read exactly 127 again, so the **+48** is Paper Planes'
-own picture (the dot lattice, three trails and three darts) and nothing
-else moved.
+re-measuring, which read exactly 127 again, so the **+48** was Paper Planes'
+own picture (the dot lattice, three trails and three darts) and nothing else
+moved. **That +48 was mostly the dot lattice's own 27 `draw_circle` calls,
+one per dot** (Task 5's review, round 1): gl_compatibility pays per `draw_*`
+command, so the lattice was rebuilt into one `Face.Builder` mesh alongside
+the trails and darts -- one `draw_mesh()` call, the technique
+`_draw_letters` already uses for Hidden Word's band and the board itself
+uses for its own field -- and page two now reads **128**, one over the
+127-card-empty baseline rather than 48 over it. The card was shot again on
+page two and looks the same to the eye -- the dots, the three trails and
+their darts, in the same places -- so only how the picture reaches the
+canvas changed, not the picture itself.
 
 ## 16. Open questions
 
