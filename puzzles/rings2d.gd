@@ -6,12 +6,18 @@ extends "res://core/puzzle_base.gd"
 ## own colour; the rules live in puzzles/rings_state.gd and the deal and its
 ## proof in puzzles/rings_gen.gd, which this only draws.
 ##
-## **This file draws the board standing still.** The layout, the mesh and the
-## registry entry are this task's whole job; lifting, dropping, Undo, Hint,
-## Reset and the stuck toast are a later one, on top of this frame. That is
-## why capabilities() already advertises "undo" and "hint" while nothing here
-## answers either yet -- the base class's defaults (can_undo() false,
-## hint() false) are exactly right for a board with no moves logged.
+## **Lifting, dropping, Undo, Hint and Reset are all here now.** Every move
+## that can change the pegs goes through one door, _settle, so the wash and
+## the toast are decided in exactly one place -- it is Queens' _settle with
+## a peg in place of a queen's sight. A tap on a peg lifts an empty hand's
+## top ring, puts a held one back where it came from, or drops it, in
+## _gui_input/_tap; _peg_at tests the whole station column plus the lift's
+## own headroom, because a thumb aiming at a peg with a ring hovering over
+## it is still aiming at that peg. What is still owed is the motion: the
+## lift's float and the flight between pegs, the gold wash a locked peg
+## washes down its stack, and the toast's pill -- _lock_at, _shake_at and
+## _toast/_toast_at are all here for that later task to read and animate,
+## and nothing yet draws any of the three.
 ##
 ## How it is drawn. One mesh: the pegs at rest (their shadow, post, dish and
 ## rings, bottom-up) and the scenery band at the card's foot, rebuilt in
@@ -35,6 +41,7 @@ const Gen = preload("res://puzzles/rings_gen.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
+const Fx2D = preload("res://ui/fx2d.gd")
 
 # --- the screen, measured (spec section 4) ---
 ## The card's inset, and the station a peg stands in.
@@ -104,6 +111,10 @@ const TIPS := [
 	"Nothing is ever lost here. Undo is right above.",
 ]
 
+## What the toast says when a move leaves nothing legal to play. Exactly the
+## concept page's own string.
+const STUCK_MSG := "Nothing can move. Undo, or start again."
+
 var _state = State.new()
 
 var _opened := 0.0
@@ -124,6 +135,27 @@ var _tip_idx := 0
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 
+## Rings, puffs and sparkles (ui/fx2d.gd), fired at a post's mouth when it
+## locks.
+var fx: Fx2D
+
+## Peg index -> the second it locked, for the gold wash's timing (Task 5).
+## Derived, not truth: cleared for a peg that is no longer locked on every
+## _settle, so an undo that breaks a peg takes its gold with it.
+var _lock_at: Dictionary = {}
+## Peg index -> the second a drop on it was last refused, for its shiver.
+var _shake_at: Dictionary = {}
+## The station under the finger when it pressed, so the release can tell it
+## never left.
+var _press_i := -1
+## "" when nothing is up; otherwise the toast's line, and _toast_at says
+## when it was raised. Task 5 draws and pops the pill; this only decides
+## when one is owed.
+var _toast := ""
+var _toast_at := -100.0
+## The moment reset_board() last ran, for its own drop-in wave (Task 5).
+var _reset_at := -100.0
+
 func puzzle_id() -> String: return "rings"
 func title() -> String: return "Rings"
 
@@ -132,6 +164,12 @@ func rules() -> String:
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
+
+func can_undo() -> bool:
+	return not _state.log.is_empty()
+
+func hints_left() -> int:
+	return State.HINTS - hints_used
 
 func card_height(available: float) -> float:
 	return available
@@ -148,6 +186,8 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	fx = Fx2D.new()
+	add_child(fx)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
@@ -156,6 +196,17 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_idx = 0
 	_tip_text = TIPS[0]
 	_tip_mood = Face.Expr.HAPPY
+	_press_i = -1
+	_shake_at = {}
+	_toast = ""
+	_toast_at = -100.0
+	_reset_at = -100.0
+	# A deal can hand out an already-locked peg by chance, well short of a
+	# solve; it never went through _settle, so it needs its own gold moment.
+	_lock_at = {}
+	for i in _state.pegs.size():
+		if _state.locked(i):
+			_lock_at[i] = _opened
 	_tip_timer.start()
 
 # --- layout ---
@@ -189,6 +240,172 @@ func _station(i: int) -> Dictionary:
 ## The centre of slot `k` of station `st` (bottom slot is 0).
 func _slot_y(st: Dictionary, k: int) -> float:
 	return float(st["ground"]) - BASE_H - RING_H * 0.5 - float(k) * (RING_H + RING_GAP)
+
+# --- input and the one door every move goes through ---
+
+## The peg under `p`: the whole STATION_W by STATION_H column, plus the
+## lift's own headroom above it (LIFT_H) -- a thumb aiming at a peg with a
+## ring hovering over it is still aiming at that peg, not at the gap above
+## the row.
+func _peg_at(p: Vector2) -> int:
+	for i in _state.pegs.size():
+		var st := _station(i)
+		var x: float = st["x"]
+		var top: float = st["top"]
+		var ground: float = st["ground"]
+		if p.x >= x and p.x <= x + STATION_W and p.y >= top - LIFT_H and p.y <= ground:
+			return i
+	return -1
+
+## Touch only, as every flat board takes it: the viewport hands a control
+## both the mouse event and the emulated touch, and two would fire twice.
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_press_i = _peg_at(event.position)
+		else:
+			var i := _press_i
+			_press_i = -1
+			if i >= 0 and i == _peg_at(event.position):
+				_tap(i)
+
+## The one tap gesture this board takes: lift an empty hand's ring off peg
+## `i`, put a held ring back where it came from, or drop it on `i` -- the
+## only place state.drop() is ever called.
+func _tap(i: int) -> void:
+	if is_done():
+		return
+	if _state.held == -1:
+		if _state.lift(i):
+			_say("Drop it on its own colour, or on an empty peg.", Face.Expr.HAPPY)
+		elif (_state.pegs[i] as Array).is_empty():
+			_say("That peg is empty. Lift from a peg that has a ring.", Face.Expr.HAPPY)
+		else:
+			_say("That colour is home. Nothing comes off a finished peg.", Face.Expr.HAPPY)
+	elif i == _state.held_from:
+		_state.put_back()
+		_say("Back where it was.", Face.Expr.HAPPY)
+	else:
+		var slot := _state.drop(i)
+		if slot == -1:
+			_shake_at[i] = _now()
+			_say(_state.refusal(i), Face.Expr.WORRIED)
+		else:
+			note_move()
+			_settle(i, _now())
+	_refresh()
+
+## Every move that can change the pegs comes through here, so the wash and
+## the toast are decided in exactly one place. Nothing else may call
+## state.drop. Derives rather than trusts: every peg's lock timestamp is
+## checked against the state fresh, so a peg that is no longer locked (only
+## undo can do that) loses its gold in the same pass.
+func _settle(j: int, at: float) -> void:
+	for i in _lock_at.keys().duplicate():
+		if not _state.locked(int(i)):
+			_lock_at.erase(i)
+	if _state.locked(j):
+		_lock_at[j] = at
+		var st := _station(j)
+		var top_pt := Vector2(float(st["cx"]), _slot_y(st, Gen.CAP - 1) - RING_H * 0.5 - POST_UP)
+		var colour: Color = RING_COLOURS[int(_state.pegs[j][0])]
+		fx.ring(top_pt, RING_W * 0.5, colour)
+		fx.sparkle(top_pt, colour)
+	if _state.is_solved():
+		_say("Every colour on a peg of its own.", Face.Expr.JOY)
+	elif _state.locked(j):
+		_say(_home_line(), Face.Expr.JOY)
+	else:
+		_say(_left_line(), Face.Expr.HAPPY)
+	if not _state.is_solved() and _state.is_stuck():
+		_toast = STUCK_MSG
+		_toast_at = at
+
+## How many colours are still loose, in the tip's own two shapes: after a
+## peg has just locked, and after a ring has merely moved.
+func _colours_left() -> int:
+	return _state.colours - _state.home_count()
+
+func _home_line() -> String:
+	var left := _colours_left()
+	if left <= 0:
+		return "Every colour on a peg of its own."
+	if left == 1:
+		return "One colour left to gather."
+	return "That one is home. %d colours left." % left
+
+func _left_line() -> String:
+	var left := _colours_left()
+	if left == _state.colours:
+		return "Lift a ring and find it a peg."
+	if left == 1:
+		return "One colour left to gather."
+	return "%d colours left to gather." % left
+
+## Sets the tip card's line and tells the host to re-read it. The tip card
+## only re-reads a board when the host refreshes it, and the host refreshes
+## on this signal.
+func _say(text: String, mood: int) -> void:
+	_tip_text = text
+	_tip_mood = mood
+	focus_changed.emit()
+
+# --- undo, hint and reset ---
+
+## Takes the last drop back exactly, including one that finished a peg --
+## no legality check, it was legal on the way out. Counts no move, and
+## clears the toast: a board that can still be undone was never really
+## stuck, so a stale "nothing can move" would be a lie the instant it lands.
+func undo() -> bool:
+	if is_done() or _state.log.is_empty():
+		return false
+	var m: Vector2i = _state.undo()
+	if m.x < 0:
+		return false
+	_toast = ""
+	_toast_at = -100.0
+	for i in _lock_at.keys().duplicate():
+		if not _state.locked(int(i)):
+			_lock_at.erase(i)
+	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
+	_refresh()
+	check_solved()
+	return true
+
+## Plays the solver's own next move exactly like a tapped drop, through the
+## same _settle -- and, like a tapped drop, spends nothing when there is
+## none to play. Counts no move (hints_used, not moves) but can finish the
+## puzzle, so it calls check_solved() directly.
+func hint() -> bool:
+	if is_done():
+		return false
+	_toast = ""
+	_toast_at = -100.0
+	var m: Vector2i = _state.hint()
+	if m.x < 0:
+		if _state.is_stuck():
+			_toast = STUCK_MSG
+			_toast_at = _now()
+		return false
+	hints_used += 1
+	_settle(m.y, _now())
+	_refresh()
+	check_solved()
+	return true
+
+## Back to the dealt position in one step. Hints spent are not refunded.
+func reset_board() -> void:
+	_state.reset_board()
+	_lock_at = {}
+	for i in _state.pegs.size():
+		if _state.locked(i):
+			_lock_at[i] = _now()
+	_shake_at = {}
+	_toast = ""
+	_toast_at = -100.0
+	_reset_at = _now()
+	_say("The pegs as they were dealt.", Face.Expr.HAPPY)
+	_refresh()
 
 # --- the frame ---
 
@@ -386,27 +603,37 @@ static func _clip_polygon(b, points: PackedVector2Array, colour: Color, clip: Pa
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
 
+## Idles through the four opening tips while nothing has happened yet; the
+## moment a ring is lifted or a move is logged, _settle and _tap are the
+## only things allowed to speak, or a stale rule would paper over a live
+## status line.
 func _cycle_tip() -> void:
-	if is_done():
+	if is_done() or not _state.log.is_empty() or _state.held != -1:
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_tip_text = TIPS[_tip_idx]
-	_tip_mood = Face.Expr.HAPPY
-	focus_changed.emit()
+	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
 
 # --- the state PuzzleBase asks for ---
 
 func is_solved() -> bool:
 	return _state.is_solved()
 
-## One coloured square per colour already home. Reads `pegs` fresh, the way
-## every other derived thing on this board does; a true "in the order they
-## came home" needs the moves a later task logs.
+## One coloured square per colour already home, in the order it actually
+## came home: replays `log` from the dealt position rather than trusting
+## anything stored, the same way every other derived read on this board
+## does. A peg can only ever lock once play starts (undo removes the move
+## that locked it along with the move itself), so nothing here can double
+## it up.
 func share_glyphs() -> String:
+	var pegs: Array = []
+	for s in _state.deal:
+		pegs.append((s as Array).duplicate())
 	var out := ""
-	for peg in _state.pegs:
-		if Gen.locked(peg):
-			out += SHARE_GLYPHS[int(peg[0])]
+	for m in _state.log:
+		var ring = (pegs[m.x] as Array).pop_back()
+		(pegs[m.y] as Array).append(ring)
+		if Gen.locked(pegs[m.y]):
+			out += SHARE_GLYPHS[int(pegs[m.y][0])]
 	return out
 
 # --- the win ---
