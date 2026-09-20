@@ -36,6 +36,10 @@ extends SceneTree
 ## `toast` refuses a guess that is not a word, `hint` presses the real hint
 ## button, `solve` types the day's own word, and `over` spends all six rows so
 ## the strip catches the keyboard leaving and the sprout bringing the word.
+## Mushroom Patch has the answer's first mushroom planted with the mushroom
+## chip the tray arms by default, so the strip shows the pop, the ring, the
+## puff and -- the point of the shot -- the count wash arriving on the givens
+## around it as their numerals bump and turn green.
 ##
 ## `rm` anywhere after the id sets `Motion.reduce` **before the board opens**
 ## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
@@ -168,6 +172,8 @@ func _process(delta: float) -> bool:
 			_tap_queens()
 		elif _entry.id == "hiddenword" and not _empty:
 			_type_hiddenword()
+		elif _entry.id == "mushroom" and not _empty:
+			_tap_mushroom()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -250,6 +256,39 @@ func _begin_nonogram_sweep() -> void:
 func _tap_queens() -> void:
 	var c: int = int(_puzzle.state.solution[0])
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c))
+
+## Mushroom Patch: one real touch on the answer's first mushroom (reading
+## order, sorted by y then x), with the mushroom chip the tray arms by
+## default. That cell is the point of the shot only if planting it turns a
+## given neighbour's numeral green; if the first mushroom in reading order
+## touches none, the one whose plant changes the most numbers is tapped
+## instead, so the strip always catches the wash landing.
+func _tap_mushroom() -> void:
+	var st = _puzzle.state
+	var cells: Array = st.mushrooms.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	var best: Vector2i = cells[0]
+	if _mushroom_wash_count(cells[0]) == 0:
+		var best_score := 0
+		for cell in cells:
+			var score := _mushroom_wash_count(cell)
+			if score > best_score:
+				best_score = score
+				best = cell
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(best.y, best.x))
+
+## How many of `cell`'s given neighbours would turn green the instant it is
+## planted: on a fresh board every given starts short, so a neighbour whose
+## own number is exactly one goes straight to settled.
+func _mushroom_wash_count(cell: Vector2i) -> int:
+	var Gen = load("res://puzzles/mushroom_gen.gd")
+	var st = _puzzle.state
+	var c := 0
+	for p in Gen.neighbours(cell, st.n):
+		if st.given.has(p) and int(st.given[p]) == 1:
+			c += 1
+	return c
 
 ## Hidden Word: type a five-letter guess on the real keyboard, one key tapped
 ## like a thumb, and press Enter a beat later. The guess is picked off the

@@ -402,3 +402,55 @@ with `solved: true` (this board cannot end unsolved -- only Hidden Word can),
   6×6 close to a reading exercise. The knob is one constant.
 - **The fitted wordmark.** Section 5.1 shrinks one title to 65. The other
   answer is a shorter name -- *Mushrooms* measures 434 and fits at full size.
+
+## 14. Measured
+
+On this Mac, 2026-09-20, with:
+
+```
+godot --path . --script res://tests/_shot_anim.gd -- mushroom --resolution 810x1440
+```
+
+`tests/_shot_anim.gd` grew a `mushroom` branch beside Queens': `_tap_mushroom()`
+plants the answer's first mushroom in reading order (sorted by y then x) with
+one real touch, using the mushroom chip the tray arms by default. On the day
+this ran (Day 7, Lantern Cove, medium 7x7), that first mushroom already sits
+against a given whose number is one, so the tap needed no fallback -- checked
+with a throwaway print before it was taken out, `first=(1, 0) score0=1
+chosen=(1, 0)`. Had it touched nothing, `_tap_mushroom()` would instead have
+walked every mushroom and picked the one bordering the most givens of exactly
+one, so the strip always catches the wash landing rather than a plant that
+changes nothing. The two shots before/after the tap (`/tmp/anim_mushroom_2.png`
+at t=1.66, `/tmp/anim_mushroom_3.png` at t=1.81) show the point of the shot
+plainly: the mushroom pops into the second cell of the top row, and the
+given `1` beside it turns from ink to `LEAF_DEEP` on a `LEAF`-washed cell in
+the same beat, with its numeral bumped -- the count wash arriving, which is
+this board's whole signature.
+
+`--resolution 810x1440`, never `1080x1920`: this Mac's display cannot show
+1920 rows, and the wider flag comes back 1237 x 1920, 15% wider than the
+phone the game is drawn for (CLAUDE.md, "What the harnesses actually
+measure"). The two runs below ran one at a time, nothing else windowed open
+at the same time, with the Queens control shot in the same session.
+
+| Run | Draw calls | Idle mean (ms) |
+|---|---|---|
+| Mushroom, run 1 | 75 | 3.27 |
+| Mushroom, run 2 | 75 | 3.29 |
+| Queens (control), run 1 | 71 | 3.87 |
+| Queens (control), run 2 | 71 | 3.86 |
+
+Every reading is quoted above, including the flattering ones; there is no
+outlier to drop and no mean standing in for the spread, because there
+barely is one this session. 75 draw calls with the answer's first mushroom
+planted and its neighbour's wash landed is comfortably inside the 72 bare /
+103 mid-wave (five pebbles and a hint) Task 5 already measured through the
+win harness, and nowhere near the 855 budget. The idle figure is a report,
+not a gate: 3.27-3.29 ms for Mushroom Patch against 3.86-3.87 ms for Queens
+in the same session is a small, consistent gap, but Hidden Word's own spec
+already showed this machine's idle reading can swing by a factor of 1.6 run
+to run (Queens read 4.40 to 4.62 ms in one session against 3.83 ms recorded
+in its own spec), so two clean runs each establish that both boards sit well
+under a millisecond apart and nowhere near trouble -- they do not establish
+a precise number for either board, and a single session this consistent
+should be read as fortunate rather than as the machine's true floor.
