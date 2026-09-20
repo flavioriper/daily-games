@@ -2067,7 +2067,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
 <!-- ============================ RINGS ============================ -->
 <section class="tab-panel" id="tab-rings">
-  <h2>Rings &middot; flat, the sixteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <h2>Rings &middot; flat, the seventeenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
   <p class="lede">Eight pegs, twenty-four rings, six colours. Lift the top ring off a peg and put it down on its own colour or on an empty peg &mdash; nothing else is allowed &mdash; until every colour stands alone. It is the one game on this grid with <b>no hidden information at all</b>: everything is face up from the first frame and the whole difficulty is in the order you do things. That makes it the first board here that can be played into a corner, and section 6 is about the one sentence the screen says when it happens. Reference: the user's shot of a ring-sort game, <code>docs/art/concept-rings-ref.png</code>.</p>
 
   <div class="hero">
@@ -2176,7 +2176,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <div class="decide"><b>What the board deliberately does not say.</b> A position can be perfectly legal and still doomed &mdash; there are moves, they just all lead nowhere. <b>Nothing warns you about that</b>, and it would take a solver call on every drop to do it. That is the puzzle: the whole skill in a ring sort is not spending your empty peg on the wrong ring, and a board that catches you before you do has taken the game away. The two alternatives were put to the user on 2026-09-20 and this is the one that was chosen.</div>
 
   <h3>7. The menu card <span class="pill">proposed</span></h3>
-  <p><code>ui/menu/card_art.gd</code> gains one branch: three little pegs in the 320&times;118 box, one full of a colour, two part-sorted, drawn with the board's own ring builder scaled down. <b>No new character</b> &mdash; Rings joins Nonogram, Hidden Word, Word Trail and Sudoku in adding nothing to <code>ui/faces/</code>, and the only face on the screen is the shared sprout on the tip card and the win. It is the <b>sixteenth card</b>, so it stands on page two of the pager beside Mushroom Patch, Sudoku and whatever else lands first.</p>
+  <p><code>ui/menu/card_art.gd</code> gains one branch: three little pegs in the 320&times;118 box, one full of a colour, two part-sorted, drawn with the board's own ring builder scaled down. <b>No new character</b> &mdash; Rings joins Nonogram, Hidden Word, Word Trail, Sudoku and Bridges in adding nothing to <code>ui/faces/</code> (Quilt, which merged the same day, did add one), and the only face on the screen is the shared sprout on the tip card and the win. It is the <b>seventeenth card</b> &mdash; written here as the sixteenth, and corrected on the merge, when two other boards turned out to have landed on trunk while this one was in flight rather than one &mdash; so it stands on page two of the pager beside Mushroom Patch, Sudoku, Bridges and Quilt, five cards on that page.</p>
 
   <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
   <ul>
@@ -10825,7 +10825,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   })();
 })();
 
-/* ---------- Rings, flat: the sixteenth screen ---------- */
+/* ---------- Rings, flat: the seventeenth screen ---------- */
 (function(){
   const cv=document.getElementById('rg'); if(!cv) return;
   const ctx=cv.getContext('2d');

@@ -5,7 +5,7 @@ extends Control
 ## scaled to whatever the card gives them.
 ##
 ## It is never an image and never a render of a model. Twelve of the
-## sixteen are made almost entirely of the flat boards' own cast --
+## seventeen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
@@ -13,12 +13,16 @@ extends Control
 ## its board are visibly the same drawing. Only the furniture under them (a
 ## tray, a beam, a tile) is drawn here.
 ##
-## The four that borrow nothing are Nonogram, Sudoku, Bridges and Quilt, and
-## for the same reason: none of those boards has a character at all. Their
-## pictures are entirely `_draw` -- tiles for the first, a ruled
-## three-by-three fragment with numerals for the second, a sea with islets
-## on it for the third and a part-sewn blanket for the fourth -- and none of
-## them has a branch of `_build`.
+## The five that borrow nothing are Nonogram, Sudoku, Bridges, Quilt and
+## Rings, and for the same reason: none of those boards has a character at
+## all. Four of the five are entirely `_draw` -- tiles for the first, a
+## ruled three-by-three fragment with numerals for the second, a sea with
+## islets on it for the third and a part-sewn blanket for the fourth -- and
+## none of those four has a branch of `_build`. Rings is the exception that
+## borrows no character and still has a `_build` branch: like Word Trail's
+## field it draws into a plain child `Control` of its own, because its
+## picture is one mesh with no furniture under it for the top `_draw` match
+## to add.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
