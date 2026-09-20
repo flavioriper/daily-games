@@ -13,11 +13,21 @@ extends "res://core/puzzle_base.gd"
 ## top ring, puts a held one back where it came from, or drops it, in
 ## _gui_input/_tap; _peg_at tests the whole station column plus the lift's
 ## own headroom, because a thumb aiming at a peg with a ring hovering over
-## it is still aiming at that peg. What is still owed is the motion: the
-## lift's float and the flight between pegs, the gold wash a locked peg
-## washes down its stack, and the toast's pill -- _lock_at, _shake_at and
-## _toast/_toast_at are all here for that later task to read and animate,
-## and nothing yet draws any of the three.
+## it is still aiming at that peg.
+##
+## **The motion is here too now.** A held ring rises on the back ease and
+## breathes; a dropped ring flies (_fly, _flight) rather than snapping, on a
+## sine ease in x and an eased arc in y, clamped so it never leaves the card;
+## `_settle` itself only runs once a flight lands, so the wash, the fx ring
+## and the tip line all land with the ring rather than a beat early. A
+## locked peg washes its rings gold top-down off `_lock_at` and nothing
+## else, read through `Motion.flash_level`; a refusal shivers the station; a
+## reset drops every peg back on `Motion.RESET_STAGGER`, and a solve hops
+## every peg on `Motion.SOLVE_HOP`. The one toast this board owns
+## (STUCK_MSG) is a small cached mesh, the way Hidden Word caches its own.
+## Concept page's drawHeld, drawFlight, washOf, drawStation and drawToast are
+## what all of this ports, number for shape rather than number for number
+## where core/motion.gd already has the reader.
 ##
 ## How it is drawn. One mesh: the pegs at rest (their shadow, post, dish and
 ## rings, bottom-up) and the scenery band at the card's foot, rebuilt in
@@ -42,6 +52,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const CozyTheme = preload("res://ui/theme.gd")
 
 # --- the screen, measured (spec section 4) ---
 ## The card's inset, and the station a peg stands in.
@@ -115,6 +126,15 @@ const TIPS := [
 ## concept page's own string.
 const STUCK_MSG := "Nothing can move. Undo, or start again."
 
+## The toast pill's own shape -- layout, not motion, so these sit outside
+## this board's six. Matches the concept page's own pill.
+const TOAST_H := 84.0
+const TOAST_PAD := 80.0
+const TOAST_RADIUS := 28.0
+const TOAST_FONT := 32
+## How far the pill's own bottom sits above the card's bottom edge.
+const TOAST_MARGIN := 66.0
+
 var _state = State.new()
 
 var _opened := 0.0
@@ -149,12 +169,36 @@ var _shake_at: Dictionary = {}
 ## never left.
 var _press_i := -1
 ## "" when nothing is up; otherwise the toast's line, and _toast_at says
-## when it was raised. Task 5 draws and pops the pill; this only decides
-## when one is owed.
+## when it was raised.
 var _toast := ""
 var _toast_at := -100.0
-## The moment reset_board() last ran, for its own drop-in wave (Task 5).
+## The moment reset_board() last ran, for its own drop-in wave.
 var _reset_at := -100.0
+## The moment the ring in hand was lifted, for its rise and its breathing.
+## -100.0 (nothing held) rather than -1.0, matching every sentinel on this
+## board and Hidden Word's own.
+var _held_at := -100.0
+## The one ring in flight between two pegs, or {} for none: "colour" (the
+## ring's colour index), "from"/"to" (peg indices), "slot" (the slot it is
+## landing in), "at" (when it left), "dur" (ARC_TIME, or 0 caught earlier by
+## _fly under reduce motion, which never builds one), and "settle" (whether
+## _process should call _settle once it lands -- true for a tapped or
+## hinted drop, false for an undo, which can never newly lock a peg).
+var _flight: Dictionary = {}
+## Which peg and slot last landed, and when, for the landing's own squash --
+## -1/-1/-100.0 for none. Only one flight is ever in the air at once, so one
+## slot is enough to remember.
+var _land_peg := -1
+var _land_slot := -1
+var _land_at := -100.0
+## When is_solved() last turned true, for the win's hop wave -- -100.0
+## rather than word_trail2d.gd's -1.0, matching this board's own sentinels.
+var _solved_at := -100.0
+## The toast pill's mesh, cached by its own text the way
+## puzzles/hidden_word2d.gd caches _toast_mesh / _toast_mesh_for -- one
+## message on this board today, but never special-cased for having only one.
+var _toast_mesh: ArrayMesh
+var _toast_mesh_for := ""
 
 func puzzle_id() -> String: return "rings"
 func title() -> String: return "Rings"
@@ -188,6 +232,7 @@ func _ready() -> void:
 	add_child(_tip_timer)
 	fx = Fx2D.new()
 	add_child(fx)
+	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
@@ -202,6 +247,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_toast_at = -100.0
 	_reset_at = -100.0
 	_lock_at = {}
+	_held_at = -100.0
+	_flight = {}
+	_land_peg = -1
+	_land_slot = -1
+	_land_at = -100.0
+	_solved_at = -100.0
 	_tip_timer.start()
 
 # --- layout ---
@@ -219,6 +270,8 @@ func _layout() -> void:
 	var r0 := INSET + TOP_AIR
 	var r1 := r0 + STATION_H + MID_GAP
 	_row_y = [r0, r1]
+	_toast_mesh = null
+	_toast_mesh_for = ""
 	_refresh()
 
 ## Where peg `i` stands: a short row is centred, so a station is 236 wide and
@@ -272,6 +325,7 @@ func _tap(i: int) -> void:
 		return
 	if _state.held == -1:
 		if _state.lift(i):
+			_held_at = _now()
 			_say("Drop it on its own colour, or on an empty peg.", Face.Expr.HAPPY)
 		elif (_state.pegs[i] as Array).is_empty():
 			_say("That peg is empty. Lift from a peg that has a ring.", Face.Expr.HAPPY)
@@ -279,16 +333,38 @@ func _tap(i: int) -> void:
 			_say("That colour is home. Nothing comes off a finished peg.", Face.Expr.HAPPY)
 	elif i == _state.held_from:
 		_state.put_back()
+		_held_at = -100.0
 		_say("Back where it was.", Face.Expr.HAPPY)
 	else:
+		var from: int = _state.held_from
+		var colour_i: int = _state.held
 		var slot := _state.drop(i)
 		if slot == -1:
 			_shake_at[i] = _now()
 			_say(_state.refusal(i), Face.Expr.WORRIED)
 		else:
+			_held_at = -100.0
+			# The flight has to exist before note_move()'s check_solved() can
+			# fire solved -- _on_solved reads _flight for the landing moment
+			# its hop wave waits on.
+			_fly(colour_i, from, i, slot, _now(), true)
 			note_move()
-			_settle(i, _now())
 	_refresh()
+
+## Sends the ring last lifted or dropped flying from `from` to `to`, landing
+## in `slot` of the destination -- the one place a ring's position changes
+## over time on this board rather than at once. `settle` says whether
+## _process should call _settle once it lands: true for a tapped or hinted
+## drop, false for an undo, which can only ever shrink a peg and so can
+## never newly lock one. Under reduce motion there is no flight at all (the
+## brief's own words): the ring is simply on its new peg, and _settle runs
+## at once if asked.
+func _fly(colour_i: int, from: int, to: int, slot: int, at: float, settle: bool) -> void:
+	if Motion.reduce:
+		if settle:
+			_settle(to, at)
+		return
+	_flight = {"colour": colour_i, "from": from, "to": to, "slot": slot, "at": at, "dur": ARC_TIME, "settle": settle}
 
 ## Drops `_lock_at`'s entry for any peg that is no longer locked, checked
 ## against the state fresh rather than trusted -- the only way that happens
@@ -365,7 +441,15 @@ func undo() -> bool:
 		return false
 	_toast = ""
 	_toast_at = -100.0
+	# Immediate, not deferred to the flight's landing: a peg that just lost
+	# its top ring is not locked the instant it loses it, and a stale gold
+	# wash on the rings still under it would be a lie for however long the
+	# ring takes to fly clear.
 	_reconcile_locks()
+	var dst: Array = _state.pegs[m.x]
+	var slot := dst.size() - 1
+	var colour_i: int = dst[slot]
+	_fly(colour_i, m.y, m.x, slot, _now(), false)
 	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
 	check_solved()
@@ -387,9 +471,12 @@ func hint() -> bool:
 			_toast_at = _now()
 		return false
 	hints_used += 1
-	_settle(m.y, _now())
-	_refresh()
+	var dst: Array = _state.pegs[m.y]
+	var slot := dst.size() - 1
+	var colour_i: int = dst[slot]
+	_fly(colour_i, m.x, m.y, slot, _now(), true)
 	check_solved()
+	_refresh()
 	return true
 
 ## Back to the dealt position in one step. Hints spent are not refunded.
@@ -400,6 +487,12 @@ func reset_board() -> void:
 	_toast = ""
 	_toast_at = -100.0
 	_reset_at = _now()
+	_held_at = -100.0
+	_flight = {}
+	_land_peg = -1
+	_land_slot = -1
+	_land_at = -100.0
+	_solved_at = -100.0
 	_say("The pegs as they were dealt.", Face.Expr.HAPPY)
 	_refresh()
 
@@ -409,18 +502,72 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _state.pegs.is_empty():
 		return
-	if _animating(_now()):
+	var t := _now()
+	if not _flight.is_empty():
+		var land: float = float(_flight["at"]) + float(_flight["dur"])
+		if t >= land:
+			var to: int = _flight["to"]
+			var slot: int = _flight["slot"]
+			var settle: bool = _flight.get("settle", false)
+			_flight = {}
+			_land_peg = to
+			_land_slot = slot
+			_land_at = land
+			if settle:
+				_settle(to, land)
+	if _animating(t):
 		_refresh()
 
-## The only thing moving yet is the entrance: the card's wide pop, then the
-## last station's own staggered drop.
+## Whether anything on this board is still moving, asked wave by wave: the
+## entrance, the held ring's rise and its breathing, the flight, the
+## landing's own squash, the gold wash, the refusal shiver, the reset and
+## the solve -- and the toast's own hold, which has to keep the frame coming
+## under reduce motion too, since nothing else does there and it still has
+## to leave on time. A board that rebuilds only while it is moving has to
+## ask about **every** wave: oneline2d.gd once asked only its entrance and
+## left two lines frozen at four fifths of their fade, and it showed on a
+## rendered frame and in no test.
 func _animating(t: float) -> bool:
+	if _toast != "" and t - _toast_at < TOAST_HOLD:
+		return true
 	if Motion.reduce:
 		return false
-	var entrance := Motion.ENTER_DELAY \
-		+ Motion.stagger(maxi(_state.pegs.size() - 1, 0), Motion.ENTER_STAGGER) \
-		+ Motion.DROP_TIME
-	return t - _opened < entrance
+	if _state.held != -1:
+		return true
+	if not _flight.is_empty():
+		return true
+	if t - _land_at < _LAND_SQUASH_TIME:
+		return true
+	var n := maxi(_state.pegs.size() - 1, 0)
+	var entrance := Motion.ENTER_DELAY + Motion.stagger(n, Motion.ENTER_STAGGER) + Motion.DROP_TIME
+	if t - _opened < entrance:
+		return true
+	if t - _reset_at < Motion.stagger(n, Motion.RESET_STAGGER) + Motion.HOP_TIME:
+		return true
+	for i in _shake_at.keys():
+		if t - float(_shake_at[i]) < Motion.SHIVER_TIME:
+			return true
+	for j in _lock_at.keys():
+		if t - float(_lock_at[j]) < float(Gen.CAP - 1) * Motion.WAVE_STEP + Motion.FLASH_IN + Motion.FLASH_OUT:
+			return true
+	if _solved_at >= 0.0 and t - _solved_at < Motion.SOLVE_DELAY + Motion.stagger(n, Motion.SOLVE_STAGGER) + Motion.SOLVE_TIME:
+		return true
+	return false
+
+## Every colour on a peg of its own: every peg hops on the family's wave, off
+## the moment the winning ring actually lands rather than the moment
+## note_move() called check_solved() (which fires before the flight that
+## carries it has finished) -- so the hop never starts a beat before the
+## last ring is visibly home. `_flight` is only empty here under reduce
+## motion, where the hop is zero anyway.
+func _on_solved() -> void:
+	var land := _now()
+	if not _flight.is_empty():
+		land = float(_flight["at"]) + float(_flight["dur"])
+	_solved_at = land + (0.0 if Motion.reduce else float(Gen.CAP) * Motion.WAVE_STEP)
+	_tip_timer.stop()
+	fx.cue("solved")
+	_refresh()
 
 func _refresh() -> void:
 	_mesh = null
@@ -439,6 +586,7 @@ func _draw() -> void:
 	if _mesh != null:
 		draw_mesh(_mesh, null)
 	_shown = [_mesh]
+	_draw_toast(t, _shown)
 
 # --- the mesh ---
 
@@ -452,6 +600,14 @@ func _build_mesh(t: float) -> ArrayMesh:
 			wide = Motion.wide_pop_scale(t - _opened - Motion.ENTER_DELAY)
 		for i in _state.pegs.size():
 			_build_station(b, i, t, centre, wide)
+		# The held ring and the one in flight stand outside every station's
+		# own map -- they take the board's wide pop (drawn inside the same
+		# scaled block on the concept page) but never a station's own
+		# entrance lift, which is a station's alone.
+		var gmap := func(p: Vector2) -> Vector2:
+			return centre + (p - centre) * wide
+		_build_held(b, t, gmap)
+		_build_flight(b, t, gmap)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## One station: the seat shadow, the post (drawn only from its top down to
@@ -469,8 +625,17 @@ func _build_station(b, i: int, t: float, centre: Vector2, wide: float) -> void:
 		lift = Motion.drop_in_lift(since)
 	if seen <= 0.0:
 		return
+	# Reset's own drop-in wave and the solve's hop read the same way the
+	# entrance's does: Motion.hop_lift's height is signed for a Control's
+	# position (negative is up), and this map wants a magnitude that is
+	# already up, so both are negated in.
+	lift += -Motion.hop_lift(t - _reset_at - Motion.stagger(i, Motion.RESET_STAGGER), Motion.RESET_HOP, Motion.HOP_TIME)
+	if _solved_at >= 0.0:
+		lift += -Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER),
+			Motion.SOLVE_HOP, Motion.SOLVE_TIME)
+	var dx := Motion.shiver_offset(t - float(_shake_at.get(i, -100.0)))
 	var map := func(p: Vector2) -> Vector2:
-		return centre + ((p - Vector2(0.0, lift)) - centre) * wide
+		return centre + ((p + Vector2(dx, -lift)) - centre) * wide
 
 	var cx: float = st["cx"]
 	var ground: float = st["ground"]
@@ -494,8 +659,22 @@ func _build_station(b, i: int, t: float, centre: Vector2, wide: float) -> void:
 		Color(Pal.SURFACE_HI, seen), Color(Pal.LINE, seen), map)
 
 	for k in pegs.size():
+		# The destination slot of a live flight is drawn there separately
+		# (_build_flight); drawing it here too would show the ring twice.
+		if not _flight.is_empty() and int(_flight["to"]) == i and int(_flight["slot"]) == k \
+				and t < float(_flight["at"]) + float(_flight["dur"]):
+			continue
 		var colour_i: int = pegs[k]
-		_append_ring(b, cx, _slot_y(st, k), RING_W, RING_H, RING_COLOURS[colour_i], colour_i + 1, seen, map)
+		var ring_col: Color = RING_COLOURS[colour_i]
+		if _lock_at.has(i):
+			# Top ring down: k = CAP - 1 is the top and washes first.
+			var wash := Motion.flash_level(t - float(_lock_at[i]) - float(Gen.CAP - 1 - k) * Motion.WAVE_STEP)
+			if wash > 0.0:
+				ring_col = ring_col.lerp(Pal.SUN_RAY, wash)
+		var land_scale := Vector2.ONE
+		if i == _land_peg and k == _land_slot:
+			land_scale = _land_squash(t - _land_at)
+		_append_ring(b, cx, _slot_y(st, k), RING_W, RING_H, ring_col, colour_i + 1, seen, map, land_scale)
 
 ## A rounded card of `box` at `at`: a rim colour under a face colour inset by
 ## `edge` at the bottom, the soft lip every card on these screens wears.
@@ -508,26 +687,101 @@ static func _slab_mapped(b, at: Vector2, box: Vector2, r: float, edge: float,
 ## rim, the shoulder highlight, the post's dimple and its pips (spec
 ## section 4's table, ported number for number off drawRing).
 static func _append_ring(b, cx: float, cy: float, ring_w: float, ring_h: float,
-		colour: Color, pips: int, alpha: float, map: Callable) -> void:
+		colour: Color, pips: int, alpha: float, map: Callable, scale: Vector2 = Vector2.ONE) -> void:
+	# The landing squash scales the ring about its own centre, before the
+	# station's map (its entrance lift, the board's wide pop): a local
+	# effect on the piece itself, same as every other drawn board's pop.
+	var smap := map
+	if scale != Vector2.ONE:
+		var about := Vector2(cx, cy)
+		smap = func(p: Vector2) -> Vector2:
+			return map.call(about + (p - about) * scale)
 	var face := colour
 	var rim := colour.lerp(Pal.TEXT, 0.22)
 	var edge := ring_h * (9.0 / 92.0)
 	var at := Vector2(cx - ring_w * 0.5, cy - ring_h * 0.5)
-	_fan_mapped(b, Face.Builder.round_rect(at, Vector2(ring_w, ring_h), ring_h * 0.5), Color(rim, alpha), map)
+	_fan_mapped(b, Face.Builder.round_rect(at, Vector2(ring_w, ring_h), ring_h * 0.5), Color(rim, alpha), smap)
 	_fan_mapped(b, Face.Builder.round_rect(at, Vector2(ring_w, maxf(ring_h - edge, 0.0)), ring_h * 0.5),
-		Color(face, alpha), map)
+		Color(face, alpha), smap)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx - ring_w * 0.22, cy - ring_h * 0.26), ring_w * 0.17, ring_h * 0.11),
-		Color(Color.WHITE, 0.26 * alpha), map)
+		Color(Color.WHITE, 0.26 * alpha), smap)
 	var dimple := face.lerp(Pal.TEXT, 0.30)
 	var post_w := ring_w * (POST_W / RING_W)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx, cy - ring_h * 0.21), post_w * 0.56, ring_h * 0.10),
-		Color(dimple, 0.32 * alpha), map)
+		Color(dimple, 0.32 * alpha), smap)
 	var pip_col := Color(dimple, 0.70 * alpha)
 	var sp := ring_w * 0.098
 	var x0 := -float(pips - 1) * sp * 0.5
 	for p in pips:
 		_fan_mapped(b, Face.Builder.ring(Vector2(cx + x0 + float(p) * sp, cy + ring_h * 0.17),
-			ring_h * 0.075, ring_h * 0.075), pip_col, map)
+			ring_h * 0.075, ring_h * 0.075), pip_col, smap)
+
+## The held ring: risen LIFT_H over its post on the back ease over
+## Motion.LIFT_TIME, then breathing BOB px on a BOB_CYCLE for as long as it
+## waits -- forever, until it is put back or dropped. Under reduce motion it
+## is simply up and does not breathe (the brief's own words).
+func _build_held(b, t: float, map: Callable) -> void:
+	if _state.held == -1:
+		return
+	var st := _station(_state.held_from)
+	var cx: float = st["cx"]
+	var up := _slot_y(st, Gen.CAP - 1) - RING_H * 0.5 - POST_UP - LIFT_H
+	var y := up
+	if not Motion.reduce:
+		var since := t - _held_at
+		var from_y := _slot_y(st, (_state.pegs[_state.held_from] as Array).size())
+		var u := clampf(since / Motion.LIFT_TIME, 0.0, 1.0)
+		y = lerpf(from_y, up, Motion.back_out(u)) + BOB * sin(since * TAU / BOB_CYCLE)
+	_ring_shadow(b, cx, y, map)
+	_append_ring(b, cx, y, RING_W, RING_H, RING_COLOURS[_state.held], _state.held + 1, 1.0, map)
+
+## The one ring in flight: x on a sine ease between the two stations, y held
+## near the lift height early and falling late (an eased arc), clamped so it
+## never leaves the card. Under reduce motion _flight never exists (_fly
+## settles at once instead), so this only ever draws when there is one.
+func _build_flight(b, t: float, map: Callable) -> void:
+	if _flight.is_empty():
+		return
+	var at: float = _flight["at"]
+	var dur: float = float(_flight["dur"])
+	var u := clampf((t - at) / dur, 0.0, 1.0) if dur > 0.0 else 1.0
+	var a := _station(int(_flight["from"]))
+	var d := _station(int(_flight["to"]))
+	var y0 := _slot_y(a, Gen.CAP - 1) - RING_H * 0.5 - POST_UP - LIFT_H
+	var y1 := _slot_y(d, int(_flight["slot"]))
+	var ease := 0.5 - 0.5 * cos(PI * u)
+	var x := lerpf(float(a["cx"]), float(d["cx"]), ease)
+	var y := lerpf(y0, y1, u * u) - ARC_LIFT * sin(PI * u)
+	y = maxf(y, INSET + RING_H * 0.5)
+	_ring_shadow(b, x, y, map)
+	var colour_i: int = _flight["colour"]
+	_append_ring(b, x, y, RING_W, RING_H, RING_COLOURS[colour_i], colour_i + 1, 1.0, map)
+
+## The soft disc a held or flying ring casts, trailing below it -- the
+## concept page's own `shadow` option on drawRing, always RING_H * 0.9 below
+## the ring rather than pinned to the peg it is over, which is what makes it
+## read as the ring's own shadow rather than the post's.
+static func _ring_shadow(b, cx: float, cy: float, map: Callable) -> void:
+	_fan_mapped(b, Face.Builder.ring(Vector2(cx, cy + RING_H * 0.9), RING_W * 0.44, 12.0),
+		Color(Pal.TEXT, 0.10), map)
+
+## The span Motion.squash's own tween plays, read as a curve: this board
+## draws its rings rather than tweening Control nodes (docs/art/flat-motion.md
+## rule 8, Shikaku's precedent), and Motion has no reader for squash the way
+## it does for every other recipe a drawn board calls. 0.12 and 0.18 are that
+## recipe's own defaults, copied rather than read back out of it because
+## GDScript cannot introspect a static function's default arguments -- not a
+## number of this board's own, and not one of its six.
+const _LAND_SQUASH_TIME := 0.18
+static func _land_squash(elapsed: float) -> Vector2:
+	if Motion.reduce or elapsed < 0.0 or elapsed >= _LAND_SQUASH_TIME:
+		return Vector2.ONE
+	var amount := 0.12
+	var squashed := Vector2(1.0 + amount * 0.5, 1.0 - amount)
+	var split := _LAND_SQUASH_TIME * 0.4
+	if elapsed < split:
+		return Vector2.ONE.lerp(squashed, sin(elapsed / split * PI * 0.5))
+	return squashed.lerp(Vector2.ONE, Motion.back_out((elapsed - split) / (_LAND_SQUASH_TIME - split)))
 
 ## `points`, each carried through `map`, as one fan.
 static func _fan_mapped(b, points: PackedVector2Array, colour: Color, map: Callable) -> void:
@@ -536,6 +790,53 @@ static func _fan_mapped(b, points: PackedVector2Array, colour: Color, map: Calla
 	for i in points.size():
 		mapped[i] = map.call(points[i])
 	b.fan(mapped, colour)
+
+## The one thing this board can say that no other move answers: a position
+## still legal and already lost. **Deliberately not announced past this
+## pill** -- no dimming, no forced ending, nothing that treats it as the
+## board's business rather than the player's. Measured while the concept
+## page was built (2026-09-20): in 450 careless games it never fired at all,
+## and asking whether it *could* have (is_stuck(), two loops and no solver)
+## put the true rate at 4%, 9% and 11% by band. That is common enough that
+## silence would read as a bug, and rare enough that a modal or a forced
+## Reset would be a bigger interruption than the problem deserves; a toast
+## that fades on its own, over a board that is still there to look at and
+## still has Undo above it, is the smaller intrusion.
+##
+## Pal.TEXT under Pal.PAPER text, cached by its own line the way
+## puzzles/hidden_word2d.gd caches _toast_mesh / _toast_mesh_for, up for
+## TOAST_HOLD and fading at both ends over Motion.DROP_FADE -- there is only
+## the one line here, so this reaches for that recipe's own edge rather than
+## adding a number for a second fade.
+func _draw_toast(t: float, shown: Array) -> void:
+	if _toast == "":
+		return
+	var since := t - _toast_at
+	if since < 0.0 or since >= TOAST_HOLD:
+		return
+	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
+		Motion.appear_level(TOAST_HOLD - since, Motion.DROP_FADE))
+	if alpha <= 0.0:
+		return
+	var font: Font = CozyTheme.body(600)
+	var w: float = minf(size.x - 120.0,
+		font.get_string_size(_toast, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x + TOAST_PAD)
+	if _toast_mesh == null or _toast_mesh_for != _toast:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(-w, -TOAST_H) * 0.5, Vector2(w, TOAST_H), TOAST_RADIUS), Pal.TEXT)
+		_toast_mesh = b.mesh() if not b.verts.is_empty() else null
+		_toast_mesh_for = _toast
+	if _toast_mesh == null:
+		return
+	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - TOAST_H * 0.5)
+	draw_mesh(_toast_mesh, null, Transform2D(0.0, Vector2.ONE, 0.0, mid), Color(Color.WHITE, alpha))
+	shown.append(_toast_mesh)
+	var where := Vector2(-w * 0.5 + TOAST_PAD * 0.5,
+		font.get_height(TOAST_FONT) * 0.5 - font.get_descent(TOAST_FONT))
+	draw_set_transform(mid, 0.0, Vector2.ONE)
+	font.draw_string(get_canvas_item(), where, _toast, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		TOAST_FONT, Color(Pal.PAPER, alpha))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # --- the scenery band at the card's foot ---
 
@@ -666,6 +967,20 @@ class RingIcon extends Control:
 	## Set by ui/flat/well_done.gd's set_cast on every face it seats; a ring
 	## has no expression of its own, but the property has to exist.
 	var expression: int = 0
+	## Kept past the frame that builds it -- a canvas command holds a mesh by
+	## RID, not by reference, and a purely local one is freed the instant
+	## _draw() returns, which the win screen's own force_draw() outlives on
+	## an idle frame. Found by actually shooting a win (Task 5); Task 3/4
+	## never had a caller that rendered this far.
+	var _mesh: ArrayMesh
+
+	## well_done.gd's enter() calls this on every face it seats
+	## (ui/faces/face.gd's own contract); a ring has nothing to idle -- no
+	## blink, no rock, no turn -- so this is a no-op that only has to exist.
+	## Found the same way as the mesh fix above: the win screen had never
+	## actually been rendered for this board before Task 5 shot one.
+	func set_idle(_on: bool) -> void:
+		pass
 
 	func _draw() -> void:
 		var ring_w := size.x * 0.88
@@ -689,6 +1004,6 @@ class RingIcon extends Control:
 		var x0 := -float(pips - 1) * sp * 0.5
 		for p in pips:
 			b.disc(Vector2(cx + x0 + float(p) * sp, cy + ring_h * 0.17), ring_h * 0.075, pip_col)
-		var mesh := b.mesh()
-		if mesh != null:
-			draw_mesh(mesh, null)
+		_mesh = b.mesh()
+		if _mesh != null:
+			draw_mesh(_mesh, null)
