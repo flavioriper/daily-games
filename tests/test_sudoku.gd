@@ -6,11 +6,13 @@ extends RefCounted
 ## to the end.
 
 const Gen = preload("res://puzzles/sudoku_gen.gd")
+const State = preload("res://puzzles/sudoku_state.gd")
 
 static func run(t) -> void:
 	_test_tables(t)
 	_test_generator(t)
 	_test_deadline(t)
+	_test_state(t)
 
 static func _test_tables(t) -> void:
 	t.eq(Gen.row_of(0), 0, "cell 0 is in row 0")
@@ -154,3 +156,158 @@ static func _swap_pair(g: PackedByteArray) -> int:
 		if not clash:
 			return i
 	return -1
+
+static func _test_state(t) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31337
+	var s := State.new()
+	s.setup(rng, 1)
+
+	# The first empty cell, and the first given.
+	var empty := -1
+	var filled := -1
+	for i in 81:
+		if empty < 0 and s.given[i] == 0:
+			empty = i
+		if filled < 0 and s.given[i] != 0:
+			filled = i
+	t.check(empty >= 0 and filled >= 0, "the board has both an empty cell and a given")
+
+	# A given is refused and nothing changes.
+	var before := s.grid[filled]
+	t.eq(s.place(filled, 5), State.GIVEN, "a digit at a given is refused")
+	t.eq(s.grid[filled], before, "a refused place changes nothing")
+	t.eq(s.history.size(), 0, "a refused place writes no history")
+
+	# A digit goes in, and the same digit again takes it out.
+	t.eq(s.place(empty, 7), State.OK, "a digit goes into an empty cell")
+	t.eq(s.grid[empty], 7, "the cell holds it")
+	t.eq(s.place(empty, 7), State.OK, "the same digit again is accepted")
+	t.eq(s.grid[empty], 0, "and takes it out")
+	t.eq(s.undo(), empty, "undo reports the cell")
+	t.eq(s.grid[empty], 7, "undo puts the digit back")
+	t.eq(s.undo(), empty, "undo again reports the cell")
+	t.eq(s.grid[empty], 0, "undo again empties it")
+	t.eq(s.undo(), -1, "undo on an empty log is -1")
+
+	# Pencil marks: empty cells only.
+	t.eq(s.mark(filled, 3), State.GIVEN, "a mark at a given is refused")
+	t.eq(s.place(empty, 4), State.OK, "fill the cell")
+	t.eq(s.mark(empty, 3), State.FILLED, "a mark at a filled cell is refused")
+	s.undo()
+	t.eq(s.mark(empty, 3), State.OK, "a mark goes into an empty cell")
+	t.check(s.has_note(empty, 3), "the mark is there")
+	t.eq(s.mark(empty, 3), State.OK, "the same mark again is accepted")
+	t.check(not s.has_note(empty, 3), "and toggles it off")
+
+	# THE assertion this file exists for: placing a digit strikes it off the
+	# peers' marks, and undo puts every one of them back.
+	s.clear_board()
+	var peer := -1
+	for j in Gen.peers_of(empty):
+		if s.given[j] == 0:
+			peer = j
+			break
+	t.check(peer >= 0, "the empty cell has an empty peer")
+	t.eq(s.mark(peer, 6), State.OK, "pencil a 6 into the peer")
+	t.check(s.has_note(peer, 6), "the peer holds the mark")
+	t.eq(s.place(empty, 6), State.OK, "place a 6 where the peer can see it")
+	t.check(not s.has_note(peer, 6), "the peer's 6 is struck off")
+	t.eq(s.undo(), empty, "undo the placement")
+	t.check(s.has_note(peer, 6), "the peer's 6 comes back")
+
+	# A cell's own marks survive a round trip through a digit.
+	s.clear_board()
+	t.eq(s.mark(empty, 2), State.OK, "pencil a 2")
+	t.eq(s.mark(empty, 8), State.OK, "pencil an 8")
+	t.eq(s.place(empty, 5), State.OK, "then place a 5 over them")
+	t.eq(s.notes[empty], 0, "the marks are gone while a digit is in")
+	s.undo()
+	t.check(s.has_note(empty, 2) and s.has_note(empty, 8), "undo brings both marks back")
+
+	# Derived, not cached. Digit 9 is not safe to hardcode here: a real
+	# puzzle's own givens can already hold it somewhere among `empty`'s
+	# peers (seed 31337's medium band does, at band 1), which would make
+	# `empty` clash with a given the moment 9 goes in, undo or no undo, and
+	# would throw off "one placed leaves the baseline one lower" by however
+	# many givens of 9 are already on the board. So the test finds a digit
+	# free of every given among `empty`'s peers and measures `remaining`
+	# against its own baseline rather than a number assumed off an empty
+	# board.
+	s.clear_board()
+	var a := -1
+	for j in Gen.peers_of(empty):
+		if s.given[j] == 0 and a < 0:
+			a = j
+	t.check(a >= 0, "found a peer to clash with")
+	var clash_d := 0
+	for d in range(1, 10):
+		var taken := false
+		for j in Gen.peers_of(empty):
+			if s.grid[j] == d:
+				taken = true
+				break
+		if not taken:
+			clash_d = d
+			break
+	t.check(clash_d > 0, "found a digit none of the peers already give")
+	var base := s.remaining(clash_d)
+	s.place(empty, clash_d)
+	s.place(a, clash_d)
+	var cl: Dictionary = s.clashes()
+	t.check(cl.has(empty) and cl.has(a), "two of a digit in one unit clash")
+	t.check(s.twins(empty).has(a), "and are twins of each other")
+	s.undo()
+	t.check(not s.clashes().has(empty), "lifting one clears the clash with no bookkeeping")
+	t.eq(s.remaining(clash_d), base - 1, "one placed digit leaves the baseline one lower")
+
+	# Check names only what is wrong against the answer, and never a given.
+	s.clear_board()
+	var bad := (int(s.sol[empty]) % 9) + 1
+	s.place(empty, bad)
+	var w: PackedInt32Array = s.wrong()
+	t.check(w.has(empty), "a wrong digit is found by check")
+	s.undo()
+	s.place(empty, int(s.sol[empty]))
+	t.check(not s.wrong().has(empty), "a right digit is not")
+
+	# Solved is the whole grid agreeing with the answer.
+	s.clear_board()
+	t.check(not s.is_solved(), "a fresh board is not solved")
+	for i in 81:
+		if s.given[i] == 0:
+			s.place(i, int(s.sol[i]))
+	t.check(s.is_solved(), "filling every cell from the answer solves it")
+	# A full grid with one digit wrong is not solved.
+	var last := -1
+	for i in 81:
+		if s.given[i] == 0:
+			last = i
+	s.place(last, int(s.sol[last]))          # takes it out
+	s.place(last, (int(s.sol[last]) % 9) + 1)  # puts a wrong one in
+	t.check(not s.is_solved(), "a full grid with a wrong digit is not solved")
+
+	# Reset leaves the givens and nothing else.
+	s.clear_board()
+	var left := 0
+	for i in 81:
+		if s.grid[i] != 0:
+			left += 1
+		if s.notes[i] != 0:
+			left += 100
+	var givens := 0
+	for i in 81:
+		if s.given[i] != 0:
+			givens += 1
+	t.eq(left, givens, "reset leaves exactly the givens and no marks")
+	t.eq(s.history.size(), 0, "and no history")
+
+	# Three hints, each one right, each one undoable.
+	s.clear_board()
+	t.eq(s.hints_left, State.HINTS, "three hints to start")
+	var h := s.hint()
+	t.check(h >= 0, "a hint fills a cell")
+	t.eq(s.grid[h], s.sol[h], "with the right digit")
+	t.eq(s.hints_left, State.HINTS - 1, "and spends one")
+	s.undo()
+	t.eq(s.grid[h], 0, "a hint can be undone")
