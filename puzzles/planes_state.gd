@@ -29,8 +29,15 @@ func clear_occupancy() -> void:
 
 ## Lays one plane on the board. `cells` runs tail to head; the direction is
 ## the step into the head, so a plane's heading is a property of its shape
-## and never a second field to keep in step.
+## and never a second field to keep in step. That derivation is why **a
+## plane is never shorter than two cells**: a single cell has no last step
+## and so no heading, which is also why every band's `min_len` is 2. A
+## shorter body is refused rather than given a zero direction, because a
+## zero direction never advances -- `lane()` would loop on it forever.
 func add_plane(cells: Array[Vector2i]) -> int:
+	if cells.size() < 2:
+		push_error("PlanesState.add_plane: a plane needs at least two cells to have a heading")
+		return -1
 	var head: Vector2i = cells[cells.size() - 1]
 	var dir: Vector2i = head - cells[cells.size() - 2]
 	var idx := planes.size()

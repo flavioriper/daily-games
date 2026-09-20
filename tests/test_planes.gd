@@ -9,6 +9,7 @@ const State = preload("res://puzzles/planes_state.gd")
 static func run(t) -> void:
 	_test_lane(t)
 	_test_launch(t)
+	_test_degenerate_plane_refused(t)
 
 static func _empty(rows: int, cols: int) -> State:
 	var st := State.new()
@@ -58,3 +59,10 @@ static func _test_launch(t) -> void:
 	t.eq(st.undo(), a, "undo puts the last one back")
 	t.check(not st.solved(), "so the board is not solved any more")
 	t.eq(st.plane_at(Vector2i(1, 2)), a, "and it is back on its own cells")
+
+## A single cell has no last step and so no heading; add_plane refuses it
+## rather than hand out a zero direction lane() would spin on forever.
+static func _test_degenerate_plane_refused(t) -> void:
+	var st := _empty(5, 5)
+	t.eq(_add(st, [Vector2i(2, 2)]), -1, "a one-cell body is refused")
+	t.eq(st.planes.size(), 0, "and nothing was placed")
