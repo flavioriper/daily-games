@@ -235,6 +235,29 @@ An islet pushed **over** its number is not refused. It is drawn wrong -- a
 is the house rule that feedback beats a mode: nothing on these boards stops a
 finger from making a mistake it can see.
 
+Three things about the refusals that the build settled and this spec did not:
+
+- **The lines are shorter than the mock's**, on purpose. The mock says "Runs
+  may not cross. Clear the one in the way first." and "Nothing faces that
+  islet across the water."; the board says the two above. The porting rule on
+  this board is about measurements, not about copy.
+- **The refusal band is drawn under the runs, not over them.** That order is
+  what makes the blocker highlight read as a glow beneath the run in the way
+  rather than paint laid on top of it: water, then the aim and refusal bands,
+  then the runs, then the islets, then the numbers.
+- **What moves on a refusal is the pressed islet**, leaning along the drag.
+  The mock appears to shiver the refused lane, but that is a dead branch --
+  a refused lane carries zero planks at that moment, so the mock's own draw
+  returns before the shiver applies, and the mock has no visible nudge at
+  all. The islet under the finger is the one piece guaranteed to exist for
+  both refusals, so it is the piece that answers.
+
+And one consequence nobody chose but everybody should know: **under reduce
+motion a refusal has no visual at all.** The flash is motion and the lean is
+motion, so the tip card's line is the whole of the feedback. That is correct
+house behaviour and matches every other board, but on this board the refusal
+is *entirely* motion, which is not true of the others.
+
 The cycle wrapping at 3 means clearing a full run takes three drags, with
 tap-to-wipe as the shortcut. **Nothing on screen teaches the tap**, and that
 is carried as an open call in section 15 rather than solved here.
@@ -356,7 +379,16 @@ own graph, which is why this board could not borrow another's solve -- the
 shape of the animation is the shape of the answer.
 
 Reduce motion stills it as it stills every other board: the lit state is
-applied at once and no front travels.
+applied at once and no front travels. On this board that also silences the
+refusals entirely -- see the end of section 5.
+
+**The lit lane holds at every band, but not by the same means.** The beam is
+0.62 of a cell, so it scales: 81 px at the 7x7's 131, 63 at 102, 52 at the
+11x11's 84, still four times a single plank's width on the hardest band. The
+ring on the target islet does **not** survive the same way -- at 84 the ratio
+gives 4.7 px, under the 5 px floor, so on the hard band that ring is drawn at
+the floor rather than at its ratio, and the floor is what keeps it from
+becoming a hair.
 
 ## 10. The hint, the check, and the silence
 
