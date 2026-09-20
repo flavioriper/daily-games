@@ -284,24 +284,27 @@ ring to the bottom.
 
 | Moment | What happens |
 |---|---|
-| Entrance | The card pops in wide about its centre (`wide_pop_scale`, from 0.88) after `ENTER_DELAY`; the pegs drop in from 40 above, `ENTER_STAGGER` 0.05 apart, so the board deals itself out peg by peg. |
+| Entrance | The card pops in wide about its centre (`wide_pop_scale`, from 0.88) after `ENTER_DELAY`; the pegs drop in from `Motion.DROP` above, `Motion.ENTER_STAGGER` apart, so the board deals itself out peg by peg. |
 | Lift | `back_out` to `LIFT_H` over the post top, then `BOB` 5 px on a `BOB_CYCLE` of 1.9 s, with a soft shadow under it. `Motion.lift` is the recipe; the bob is this board's. |
 | Drop | `ARC_TIME` 0.34: x on a sine ease, y held near the lift height early and falling late (`lerp(hover, slot, u²)`) with a small `ARC_LIFT` 26 arch over the top, clamped so the ring never leaves the card. It lands with `Motion.squash`. |
 | Put back | The ring settles back onto its own post. No flight, no log entry, no move counted. |
 | Refused | The peg shivers (`shiver_offset`, 3 px, 0.2 s) and the tip card says which rule it was. The ring stays in hand. |
-| **Peg comes home** | The wash: each ring of the stack flashes toward `SUN_RAY` in turn, `WAVE_STEP` 0.06 apart from the top down, one `Fx2D.ring` and a handful of sparkles at the post. |
+| **Peg comes home** | The wash: each ring of the stack flashes toward `SUN_RAY` in turn, `Motion.WAVE_STEP` apart from the top down, one `Fx2D.ring` and a handful of sparkles at the post. |
 | Hint | A ring in `LEAF` over the peg it means, then it **plays the move** — lift, flight, landing, sparkles in leaf. |
 | Undo | The last ring flies back the way it came, on the same arc. |
 | Reset | The pegs drop back in as dealt, 0.03 apart, left to right. |
-| Solved | Every peg hops in a wave, `SOLVE_STAGGER` 0.05 a peg, then the win after `WIN_WAIT` 1.4 s. |
+| Solved | Every peg hops in a wave on `Motion.SOLVE_HOP`/`SOLVE_TIME`/`SOLVE_STAGGER`/`SOLVE_DELAY`, then the win after `WIN_WAIT` 1.4 s. |
 
 **Reduce motion:** the pegs are up at once, a lifted ring hangs still, a dropped ring
 is simply on its new peg, nothing squashes, shivers, washes or sparkles, and the win
 follows the last move (`win_delay()` returns `Motion.REDUCED_TIME`).
 
-**Six constants are this board's own** — `LIFT_H` 40, `BOB` 5, `ARC_TIME` 0.34,
-`ARC_LIFT` 26, `WAVE_STEP` 0.06, `TOAST_HOLD` 2.6 — and every other number above is a
-recipe or a curve reader off `core/motion.gd`. **Nothing is added to the vocabulary.**
+**Six constants are this board's own** — `LIFT_H` 40, `BOB` 5, `BOB_CYCLE` 1.9,
+`ARC_TIME` 0.34, `ARC_LIFT` 26, `TOAST_HOLD` 2.6, plus the customary `WIN_WAIT` 1.4 —
+and every other number above is a recipe or a curve reader off `core/motion.gd`. The
+wash uses `Motion.WAVE_STEP`, which Queens wrote and Sudoku moved into the vocabulary;
+the entrance, the reset and the solve use `Motion`'s own stagger, hop and delay.
+**Nothing is added to the vocabulary.**
 The board is drawn rather than built of nodes, so it reads `press_scale`,
 `hop_lift`, `shiver_offset`, `bump_scale`, `drop_in_lift`, `wide_pop_scale` and
 `flash_level` as curves, the way Light Up and Nonogram already do.
