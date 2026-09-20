@@ -209,6 +209,27 @@ cards paid for on 2026-09-18.
 
 A marked tile letters in `PAPER`; an empty tile's typed letter is `TEXT`.
 
+**The letters are draw commands, not mesh.** `Mosaic.letter` has to be called
+from the board's own `_draw` with the `CanvasItem` -- it goes through
+`draw_set_transform` and `font.draw_string`, which is Nonogram's clue-number
+technique -- while `socket`, `tile` and `pebble` beside it take a mesh builder
+and bake. The two cannot be mixed in one call, and the board must not try:
+the beds and faces go into the one `ArrayMesh`, the thirty letters are thirty
+commands on top of it. gl_compatibility pays per command, so the honest
+figure for this board is **one `draw_mesh` plus up to thirty `draw_string`s a
+redraw**, not the single call section 9 first implied -- and the grid only
+redraws when something changes, never per frame. Task 9 measures it; if thirty
+is too many, the fallback is a glyph atlas baked into the same mesh, which is
+a bigger job than this board needs until the number says otherwise.
+
+**Measured luminances, for the colour-blind case** (2026-09-19): `GOOD` 0.627,
+`WORD_NEAR` 0.740, `WORD_MISS` 0.508. The pairwise gaps are 0.113 (green to
+amber), 0.119 (green to grey) and 0.232 (amber to grey), so every pair is told
+apart by lightness alone and a test asserts it stays that way. Green to amber
+is the tightest of the three, and green and amber are also the pair that
+deuteranopia flattens; if the board needs a high-contrast option later, that
+is the pair to re-pick, not the grey.
+
 ## 8. What the board says
 
 **The toast.** Refusals do not get a card. A small pill in `TEXT` at 0.92 with
