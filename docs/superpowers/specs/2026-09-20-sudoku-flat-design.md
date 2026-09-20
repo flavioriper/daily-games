@@ -522,3 +522,20 @@ register: named and left standing, not silently fixed in place.
   probably how the two were swapped when this was written). The board reads
   `Motion.RESET_STAGGER` directly, so it staggers at the code's number
   regardless of which figure this file quoted.
+- **Section 9's survival claim is false for the draw-call figure** (Task 7,
+  2026-09-20). It says "every measured figure in `CLAUDE.md` -- the 311 draw
+  calls, the 252 card, the 320x118 art box, the seventeen characters a line
+  of `short` -- survives untouched." The layout figures do survive: the 252
+  card, the 320x118 art box and `short`'s budget are all unmoved by a screen
+  that pages rather than reflows. **The draw-call figure does not.** Page
+  one reads **317**, not 311, at `--resolution 810x1440` on 2026-09-20,
+  twice in a row. The six-call difference is the day row's own new
+  furniture: a live `prev` chevron, its two dots, and the row's old dead
+  chevron becoming a working `next`. The original 311 was measured with
+  twelve cards and no second page, where `set_pager(0, 1)` hides all of that
+  furniture -- true then, and false the moment a real pager is drawn.
+  `CLAUDE.md` was written correctly the first time: it keeps the historical
+  311, adds the 317 with the six explained, and scopes its own survival
+  claim to the layout figures rather than repeating this section's broader
+  one. This section did not, and it is the design authority, so it is wrong
+  and this is the correction.

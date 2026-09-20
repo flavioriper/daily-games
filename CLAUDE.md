@@ -194,10 +194,11 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   the day row's new prev chevron, its two dots and the repurposed dead
   chevron becoming `next`, and the proof the 252 card and the 320x118 art box
   above are unmoved. **Page two, Sudoku alone, reads 97** draw calls
-  (`--resolution 810x1440`, 2026-09-20, twice in a row, mean idle 8.33 and
-  8.42 ms) -- a bare page with one card, the pager's dots now showing the
-  second one lit and `next` disabled, `prev` enabled, exactly `set_pager`'s
-  contract.
+  (`tests/_shot_menu.gd -- page2`, which turns the page instead of opening
+  More so the reading is anyone's to retake, `--resolution 810x1440`,
+  2026-09-20, twice in a row, mean idle 8.33 and 8.43 ms) -- a bare page with
+  one card, the pager's dots now showing the second one lit and `next`
+  disabled, `prev` enabled, exactly `set_pager`'s contract.
 
 ## legacy/: the old 3D game
 
@@ -554,12 +555,21 @@ Specs:
   uniqueness count under a 300&nbsp;ms budget, past which it gives up and
   hands back `graded: false` rather than block the board opening -- and the
   budget is the one figure on this board that cannot be trusted from this
-  Mac. Task 2's probe timed the worst seed in the suite (band 2, seed 9203)
-  at **~196&ndash;200 ms in GDScript on this Mac**, against **9 ms** for the
-  same algorithm in JavaScript on the concept page -- band 0 ran ~4 ms mean
-  / 7 ms worst, band 1 ~60 ms mean / 142 ms worst, band 2 ~66 ms mean /
-  193&ndash;194 ms worst, twelve seeds a band. **A phone is commonly two to
-  three times slower than this Mac**, so a worst-case ~196 ms here is
+  Mac, and two different sessions timed it rather than one. **Task 2's own
+  calibrated probe** (twelve seeds a band, two full readings) has the worst
+  seed in the suite (band 2, seed 9203) at **193&ndash;195 ms in GDScript on
+  this Mac** -- band 0 ~4 ms mean / 7 ms worst, band 1 ~60 ms mean / 142 ms
+  worst, band 2 ~66 ms mean / 193&ndash;195 ms worst -- against **9 ms** for
+  the same algorithm in JavaScript on the concept page. **Task 5's review
+  round timed the same seed again**, ad hoc and from a different throwaway
+  probe, while chasing the suite's live-clock flake (this file's own CI
+  section): five separate readings of **196.5, 198.4, 198.4, 201.3 and
+  201.5 ms**. The two sessions never claimed to be the same measurement --
+  one is the spec's calibrated per-band sweep, the other is an incident
+  probe reproducing one seed under load -- and the honest range this file
+  can stand behind for that seed on this Mac is **193&ndash;201.5 ms**
+  across both. **A phone is commonly two to
+  three times slower than this Mac**, so a worst-case ~200 ms here is
   plausibly 400&ndash;600 ms on device, which is past the 300 ms budget: a
   hard day on a phone can plausibly fall back to `graded: false` where this
   Mac never does, and hand the player an accidentally gentler grid than the
