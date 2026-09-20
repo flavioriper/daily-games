@@ -914,17 +914,28 @@ func _hit(local: Vector2) -> Dictionary:
 			return {"patch": i, "cell": cell}
 	return {}
 
-## Let go. A legal drop is sewn on; anything else flies home to its bay and
-## blushes, with the sprout naming the rule it broke. A patch dropped back
-## exactly where it was lifted from is neither: it simply goes back, and
-## costs no move.
+## Let go. Three endings, and telling them apart is the whole of whether
+## this board feels fair:
+##
+## - **Sewn on.** The drop fits. Dropped back exactly where it was lifted
+##   from, nothing happened, so nothing is said and nothing is counted.
+## - **Taken off.** The patch was let go **clear of the quilt** -- no cell
+##   of it over the backing at all. That is not a refusal, it is *the*
+##   gesture for taking a patch off, and the board must not scold a player
+##   for doing the thing it told them to do. It goes home quietly, with the
+##   count and no blush. A patch that came from the rack and went back to
+##   the rack is the same ending with nothing to count.
+## - **Refused.** The patch was let go **over the quilt** somewhere it will
+##   not go. Only this one blushes, and the sprout names the rule.
 func _release() -> void:
 	var p := int(_drag["patch"])
 	var from := int(_drag["from"])
 	var origin := _held_origin()
-	# Where the hand is, read before _drag is cleared: a refused patch flies
-	# home from under the finger and not from wherever it came.
+	# Both read before _drag is cleared: the hand's place, because a patch
+	# that goes home flies from under the finger and not from wherever it
+	# came, and whether it was over the quilt at all.
 	var hand := _held_corner()
+	var clear := _hold_state() == CLEAR
 	var code := State.OFF if origin < 0 else _state.fits(p, origin)
 	_drag = {}
 	if code == State.OK:
@@ -946,17 +957,25 @@ func _release() -> void:
 		return
 	_state.drop(p, -1, from)
 	_fly_home(p, hand)
-	_refused = {"patch": p, "at": _now()}
-	_busy_for(maxf(FLY_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
-	fx.cue("refused")
-	_say(_reason(code), Face.Expr.WORRIED)
+	if clear:
+		# Taken off, not turned down.
+		_busy_for(FLY_TIME)
+		fx.cue("undo" if from >= 0 else "lift")
+		_speak()
+	else:
+		_refused = {"patch": p, "at": _now()}
+		_busy_for(maxf(FLY_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
+		fx.cue("refused")
+		_say(_reason(code), Face.Expr.WORRIED)
 	_refresh()
 	if from >= 0:
 		# It was on the quilt and is not any more, which is a move whichever
 		# way the drop was judged.
 		note_move()
 
-## The sprout's line for a refusal. A refusal is never a silence.
+## The sprout's line for a refusal. A refusal is never a silence -- and it
+## is only ever said about a patch let go *over* the quilt, since a patch
+## let go clear of it was taken off rather than turned down.
 func _reason(code: int) -> String:
 	match code:
 		State.OVER:

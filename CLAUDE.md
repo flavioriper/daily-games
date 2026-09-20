@@ -714,7 +714,7 @@ pointing `seed_as` at them. Specs:
   empty bays are drawn, because without them the rack empties as the quilt
   fills and the last patch is dragged across four hundred pixels of nothing.
   Measured with `tests/_shot_anim.gd -- quilt` at `--resolution 810x1440`:
-  **58** bare, 59 played, **80 on the fullest board** and 58 under reduce
+  **58** bare, 58-59 played over six readings, **80 on the fullest board** and 58 under reduce
   motion, against the 855 budget, with Queens (71, 71) and Word Trail (65)
   reproducing their recorded counts as controls in the same session. Idle
   2.09-3.90 ms across every state, against a Queens control at 3.45/3.49 in

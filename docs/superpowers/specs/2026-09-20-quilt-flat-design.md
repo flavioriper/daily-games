@@ -396,10 +396,21 @@ something.
   shouting at a player who has not done anything yet. A drag is a question,
   and this is the only moment the board can answer it before the answer
   costs anything.
-- **Release** sews it on if it fits. Otherwise it flies home to its bay over
-  `FLY_TIME` 0.26 with the back ease, shivering and blushing, and the sprout
-  names the rule it broke. A patch dropped back exactly where it came from
-  simply goes back: no move, no line, no history.
+- **Release has three endings, and telling them apart is the whole of
+  whether this board feels fair.**
+  - **Sewn on**, when the drop fits. Dropped back exactly where it was
+    lifted from, nothing happened: no move, no line, no history.
+  - **Taken off**, when the patch is let go **clear of the quilt** — no
+    cell of it over the backing at all. It flies home over `FLY_TIME` 0.26
+    with the back ease, quietly, and the sprout says the count. **This is
+    not a refusal**, and the first build had it as one: dragging a patch
+    off is *the* gesture for taking a patch off, and a board that blushes
+    and recites a rule at a player for doing the thing it told them to do
+    is a board that feels broken. A patch that came from the rack and went
+    back to the rack is the same ending with nothing to count.
+  - **Refused**, when the patch is let go **over the quilt** somewhere it
+    will not go. Only this one shivers and blushes, and only this one gets
+    the rule said out loud.
 
 ## 7. The cast: nobody new
 
@@ -561,7 +572,7 @@ playing rather than by writing to the board's arrays.
 | State | Draw calls |
 |---|---|
 | Bare | **58** (three readings, all 58) |
-| One patch dragged on, seams sewn | **59** (three readings) |
+| One patch dragged on, seams sewn | **58-59** (six readings: 59, 59, 58, 59, 58, 59) |
 | **Fullest board**, every patch on and the solve wave running | **80** (three readings) |
 | Reduce motion | **58** |
 
