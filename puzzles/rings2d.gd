@@ -186,8 +186,10 @@ var _held_at := -100.0
 ## hinted drop, false for an undo, which can never newly lock a peg).
 var _flight: Dictionary = {}
 ## Which peg and slot last landed, and when, for the landing's own squash --
-## -1/-1/-100.0 for none. Only one flight is ever in the air at once, so one
-## slot is enough to remember.
+## -1/-1/-100.0 for none. One slot is enough to remember because a new
+## flight always resolves whatever is still in the air before it takes this
+## slot (`_fly`'s own call to `_land_flight`), so there is never more than
+## one flight, live or just-landed, to keep track of.
 var _land_peg := -1
 var _land_slot := -1
 var _land_at := -100.0
@@ -359,12 +361,44 @@ func _tap(i: int) -> void:
 ## never newly lock one. Under reduce motion there is no flight at all (the
 ## brief's own words): the ring is simply on its new peg, and _settle runs
 ## at once if asked.
+##
+## **Never blocks a second move.** A ring sort invites fast tapping, and this
+## board must not refuse a tap for ARC_TIME because a previous ring is still
+## in the air. So a flight already live when a new one starts is landed
+## right now, on the spot, rather than left to finish its arc: without this,
+## re-lifting the ring just dropped (legal the instant drop() returns, since
+## `_state` already carries it as that peg's top) overwrites `_flight`
+## before `_process`'s own `t >= land` check ever fires for the first move,
+## and its `_settle` -- and with it the wash on a peg it may have just
+## locked -- never runs, silently, for the rest of the game. The ring simply
+## snaps to its slot instead of finishing its arc, which is the one thing
+## allowed to be lost to a player moving faster than the animation.
 func _fly(colour_i: int, from: int, to: int, slot: int, at: float, settle: bool) -> void:
+	_land_flight(at)
 	if Motion.reduce:
 		if settle:
 			_settle(to, at)
 		return
 	_flight = {"colour": colour_i, "from": from, "to": to, "slot": slot, "at": at, "dur": ARC_TIME, "settle": settle}
+
+## Resolves whatever flight is in the air right now, as if it had just
+## landed at `at`: records the landing squash's peg/slot/moment and, if the
+## flight was a genuine drop or hint (`settle`), calls _settle. A no-op when
+## nothing is flying. Called both from _process, when a flight's own time is
+## up, and from _fly, when a second move starts before the first has
+## landed -- see _fly's own comment for why that must never be silent.
+func _land_flight(at: float) -> void:
+	if _flight.is_empty():
+		return
+	var to: int = _flight["to"]
+	var slot: int = _flight["slot"]
+	var settle: bool = _flight.get("settle", false)
+	_flight = {}
+	_land_peg = to
+	_land_slot = slot
+	_land_at = at
+	if settle:
+		_settle(to, at)
 
 ## Drops `_lock_at`'s entry for any peg that is no longer locked, checked
 ## against the state fresh rather than trusted -- the only way that happens
@@ -506,15 +540,7 @@ func _process(delta: float) -> void:
 	if not _flight.is_empty():
 		var land: float = float(_flight["at"]) + float(_flight["dur"])
 		if t >= land:
-			var to: int = _flight["to"]
-			var slot: int = _flight["slot"]
-			var settle: bool = _flight.get("settle", false)
-			_flight = {}
-			_land_peg = to
-			_land_slot = slot
-			_land_at = land
-			if settle:
-				_settle(to, land)
+			_land_flight(land)
 	if _animating(t):
 		_refresh()
 

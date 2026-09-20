@@ -5,6 +5,8 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/rings_gen.gd")
 const State = preload("res://puzzles/rings_state.gd")
+const Board = preload("res://puzzles/rings2d.gd")
+const Motion = preload("res://core/motion.gd")
 
 ## The runner calls one static run(t) a suite (tests/run_tests.gd), so every
 ## test below is reached from here and nowhere else.
@@ -206,3 +208,58 @@ static func _test_hint_guards_a_held_ring(t) -> void:
 	t.check(not s.log.is_empty() and s.log.back() == m, "the move reported is the move made")
 	t.eq(s.log.size(), before_log + 1, "the log grew by exactly one")
 	t.eq(s.hints_used, before_hints + 1, "and exactly one hint was spent")
+
+## The board's own motion needs a live tree (a real Timer, a real Fx2D child
+## under _ready()), so it runs here rather than from run(t) -- see
+## tests/run_tests.gd's own doc comment.
+static func run_in_tree(t) -> void:
+	var root: Node = (Engine.get_main_loop() as SceneTree).root
+	Motion.reduce = false
+	var board = Board.new()
+	root.add_child(board)
+	board.start(_rng(1), 0)
+	_test_overlapping_flight_settles_the_first(t, board)
+	Motion.reduce = false
+	root.remove_child(board)
+	board.free()
+
+## Task 5 fix round 1 (code review of 990ccac): `_flight` is a single
+## Dictionary, and nothing stopped a second lift+drop from overwriting it
+## while the first ring was still in the air -- trivially reachable, since
+## `_state` already carries a dropped ring as its destination's top the
+## instant drop() returns. The second `_fly()` used to clobber `_flight`
+## before `_process()`'s own `t >= land` check ever fired for the first
+## move, so the first's `_settle()` -- the only thing that ever writes
+## `_lock_at` -- silently never ran, and a peg that move had just finished
+## lost its gold wash for the rest of the game, even though
+## `_state.locked()` was (and stayed) true. The fix is not to block the
+## second tap -- a ring sort invites fast tapping -- but to land whatever is
+## still in the air the moment a new flight starts (`_fly`'s own call to
+## `_land_flight`), so the ring in the air snaps to its slot instead of
+## finishing its arc, and nothing about `_settle` is skipped.
+##
+## This reproduces the review's own scenario: drop a ring that completes a
+## peg, then start an unrelated second move before ARC_TIME elapses (here,
+## before even one frame passes -- both moves are played synchronously), and
+## check that `_lock_at` actually gained the completed peg. Failed before
+## the fix (`_lock_at` stayed empty for peg 0 forever); passes after it.
+static func _test_overlapping_flight_settles_the_first(t, board) -> void:
+	board._state.pegs = [
+		[0, 0, 0],  # peg 0: one more ring of colour 0 completes it
+		[1, 0],     # peg 1: its top is colour 0 -- the ring that finishes peg 0
+		[2],        # peg 2: an unrelated ring for the second, overlapping move
+		[],         # peg 3: an empty peg to receive it
+		[],
+		[],
+	]
+	board._lock_at = {}
+	board._flight = {}
+	board._tap(1)   # lift the ring that will finish peg 0
+	board._tap(0)   # drop it -- peg 0 is locked in state now, but _settle
+	                # (and _lock_at) waits for the flight to land
+	t.check(board._state.locked(0), "peg 0 is locked in state the instant drop() returns")
+	t.check(not board._flight.is_empty(), "its ring is still flying, not settled yet")
+	t.check(not board._lock_at.has(0), "so _lock_at has nothing for it yet -- the deferral is real")
+	board._tap(2)   # an unrelated second move, well inside ARC_TIME of the first
+	board._tap(3)
+	t.check(board._lock_at.has(0), "the first peg's lock must not be lost when a second move overtakes it")
