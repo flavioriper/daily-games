@@ -141,9 +141,14 @@ static func _test_play(t) -> void:
 	t.check(at >= 0 and at < State.LEN, "a hint names a position")
 	t.check(h.given.has(at), "the position is remembered")
 	t.eq(h.rows.size(), before, "a hint commits no row")
+	var hints_before := h.hints_left
 	h.reset()
 	t.eq(h.rows.size(), 0, "reset clears the rows")
 	t.eq(h.typed, "", "reset clears the working row")
+	# Reset replays the same word, so a hint already spent stays spent -- else
+	# hint, Reset, hint, Reset would spell the answer out a letter at a time.
+	t.eq(h.hints_left, hints_before, "reset does not refund a hint")
+	t.check(h.given.has(at), "reset leaves the given position given")
 
 static func _rng(s: int) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()

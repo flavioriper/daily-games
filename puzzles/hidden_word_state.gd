@@ -94,7 +94,13 @@ static func mark_guess(guess: String, word: String) -> Array[int]:
 func type_letter(letter: String) -> bool:
 	if is_solved() or is_over() or typed.length() >= LEN:
 		return false
-	typed += letter.to_lower()
+	if letter.length() != 1:
+		return false
+	var lower := letter.to_lower()
+	var c := lower.unicode_at(0)
+	if c < 97 or c > 122:
+		return false
+	typed += lower
 	return true
 
 func erase() -> bool:
@@ -104,6 +110,8 @@ func erase() -> bool:
 	return true
 
 func commit() -> int:
+	if is_solved() or is_over():
+		return SHORT
 	if typed.length() < LEN:
 		return SHORT
 	if rows.has(typed):
@@ -144,12 +152,14 @@ func hint() -> int:
 			return i
 	return -1
 
+## Replays the same word from the first row. A hint is not a move to take
+## back: `hints_left` and `given` are untouched, or Reset would let a hint,
+## Reset, hint, Reset spell the answer out a letter at a time (spec section
+## 10, Queens' own rule -- what was given stays given).
 func reset() -> void:
 	rows = []
 	marks = []
 	typed = ""
-	given = []
-	hints_left = HINTS
 
 func is_solved() -> bool:
 	if marks.is_empty():
