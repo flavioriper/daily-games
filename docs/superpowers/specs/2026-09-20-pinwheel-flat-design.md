@@ -1,8 +1,8 @@
-# Pinwheel — the seventeenth flat board
+# Pinwheel — the eighteenth flat board
 
 **Date:** 2026-09-20
 **Mock:** `docs/brainstorm/concepts.html#pinwheel`
-**Card:** page two, the fifth card (after Mushroom Patch, Sudoku, Bridges and Quilt)
+**Card:** page two, the sixth card (after Mushroom Patch, Sudoku, Bridges, Quilt and Paper Planes)
 **Status:** design, approved in chat before the mock was built
 
 ---
@@ -19,13 +19,16 @@ the frame is full.
 The reference the user supplied is a screenshot of a mobile puzzle app's daily,
 and the genre ships elsewhere as **Flipart**. It is recorded here **once, in
 order to forbid it**: in this repo the board is called **Pinwheel** and nothing
-else, in code, in a comment or on screen. That is the sixth rename after Code
-Break, Hidden Word, Word Trail, Bridges and Quilt.
+else, in code, in a comment or on screen. It is the newest link in a chain
+this repo **names rather than numbers**, because two branches numbered it two
+different ways on the same day: Code Break, Hidden Word, Word Trail, Bridges,
+Quilt, Paper Planes and now Pinwheel. (This spec was written calling it the
+sixth rename, when Paper Planes had not yet merged.)
 
 ### Why it earns a slot
 
-Sixteen boards already stand on the grid and the question a seventeenth has to
-answer is what it does that none of them do. Pinwheel's move is **one tap with
+Seventeen boards already stand on the grid and the question an eighteenth has
+to answer is what it does that none of them do. Pinwheel's move is **one tap with
 a deterministic consequence and no target**: every other board on the grid asks
 *where* (Quilt's drag, Shikaku's rectangle, Sudoku's cell-then-digit) or *what*
 (Binairo's brush, Hidden Word's letter). Pinwheel asks neither. The only
@@ -79,13 +82,15 @@ that has nowhere to go at all, which is the one case worth a refusal.
 
 Nothing is hidden. A bare cell is drawn bare and a stained cell is drawn
 stained, so the board already answers, continuously, the only question Check
-could ask. This is Word Trail's and Quilt's shape reached by a third route, and
-it is the third distinct reason for it:
+could ask. This is Word Trail's, Quilt's and Paper Planes' shape reached by a
+fourth route, and it is the fourth distinct reason for it:
 
 - **Word Trail** has no Check because only a *right* word locks, so nothing
   wrong can be sitting on the board.
 - **Quilt** has no Check because an illegal drop is *never taken*, so nothing
   wrong can be sitting on the board.
+- **Paper Planes** has no Check because a launch only ever *empties* cells, so
+  nothing wrong can be sitting on the board and no move can dead-end it.
 - **Pinwheel** has no Check because something wrong **can** be sitting on the
   board and is **drawn as wrong the instant it lands**.
 
@@ -105,9 +110,11 @@ No tray (nothing is picked up), no actions row (no Check), tip card alone.
 | **bottom slot** | **140** |
 | **board slot** | **1340** (1800 − 320 top − 140) |
 
-`"actions": false` puts Reset in the top bar, so Pinwheel is the **fifth** board
-carrying five buttons up there (after Balance, Untangle, Word Trail and Quilt),
-and its title block is therefore **370 wide, not 496**.
+`"actions": false` puts Reset in the top bar, so Pinwheel is the **sixth**
+board carrying five buttons up there (after Balance, Untangle, Word Trail,
+Quilt and Paper Planes; Hidden Word builds five and shows four, because its
+`capabilities()` has no Undo), and its title block is therefore **370 wide,
+not 496**.
 
 `capabilities()` is `["undo", "hint"]`.
 
@@ -119,9 +126,11 @@ down to 79; `Pinwheel` is shorter but carries a `w` and an `h`, so it was an
 open question rather than an assumption. **Measured against the real face on
 the real screen** (§8): the title comes to **338** and keeps its 84, and the
 motto to **272** and keeps its 24. Neither is lettered down, which makes this
-the first five-button board whose motto is not — all four before it are
-(Balance 399 → 21, Untangle 397 → 22, Word Trail 406 → 21, Quilt 380 → 23),
-and a motto written short on purpose is what bought it.
+the first five-button board to letter **neither** down. Four of the five
+before it have their mottos fitted (Balance 399 → 21, Untangle 397 → 22, Word
+Trail 406 → 21, Quilt 380 → 23) and a motto written short on purpose is what
+bought Pinwheel's; the fifth, Paper Planes, keeps its motto at 353 but loses
+its *title* to the same block, fitted 84 → 62. §8 has the table.
 
 Motto: `TURN IT TILL IT FITS` (short on purpose, for the 370 block).
 
@@ -267,9 +276,13 @@ measurements of the same thing by different routes.
 Every one of the 24 seeds in every run came back proved unique, so no band ever
 walked the `ATTEMPTS` fallback. The worst board in the quiet session is
 **9.08 ms** and the worst seen at all, in the loaded one, is **16.42 ms** —
-against the repo's 194 ms gate, two orders inside it either way, and still the
-smallest generation cost of any board in the game (Quilt's worst is 51.8 ms and
-Sudoku's is about 200). The attempt counts and tap depths reproduce the
+against the repo's 194 ms gate, two orders inside it either way, and among the
+smallest generation costs of any board in the game (Quilt's worst is 51.8 ms
+and Sudoku's is about 200). **Paper Planes is the other contender and the two
+have never been measured in the same session**: its record is 1.3 / 2.2 /
+7.0 ms a board as a per-band mean over forty seeds, against these 3.1–5.0 ms
+means, with no worst case recorded for it at all — so "the smallest" is a
+claim this spec can no longer make, and neither can that one. The attempt counts and tap depths reproduce the
 prototype's table above to within a board or two, which is a second, cheaper
 statement that the port did not change the algorithm.
 
@@ -577,8 +590,10 @@ in the same hour" and nothing more. The ANGLE run's 4.1–4.2 ms is that driver
 being slower on *this* Mac; no claim about a phone can be read off it.
 
 **59 draw calls against the 855 budget**, which makes Pinwheel the
-second-cheapest board the repo has measured, a call behind Quilt's 58 and a
-little over half of Hidden Word's 110. Three meshes and no Controls is what
+third-cheapest board the repo has measured — behind Paper Planes' 55 and
+Quilt's 58, and a little over half of Hidden Word's 110. (Before `main` was
+merged in it was the second-cheapest; Paper Planes' 55 is what moved it, and
+the 59 was re-read unchanged after the merge with Paper Planes in the tree.) Three meshes and no Controls is what
 buys that, and it is also why **a turn costs nothing measurable**: a piece
 swinging over its neighbours, the stain arriving on the cells it has doubled
 up on and eleven pinwheels standing on the frame are all inside the same three
@@ -635,11 +650,22 @@ would be.
 | Untangle | 351 | 397 | motto 24 → 22 |
 | Word Trail | 391 | 406 | title 84 → 79, motto 24 → 21 |
 | Quilt | 190 | 380 | motto 24 → 23 |
+| Paper Planes † | 497 | 353 | title 84 → 62 |
+
+† Paper Planes was not in this probe — it had not merged when it was run. Its
+two figures are CLAUDE.md's own reading of the same bar, taken at the
+Bridges/Quilt/Paper Planes merge with a headless probe running `_fit`'s
+arithmetic against the real theme faces, and they are quoted here because the
+sentence below depends on them.
 
 So §3's estimate holds, and it is now a reading: `Pinwheel` fits at 84 with 32
 px to spare and `TURN IT TILL IT FITS` fits at 24 with 98. **Pinwheel is the
-first five-button board whose motto is not lettered down** — all four before it
-are, which is what §3's "short on purpose" was aiming at. Two by-products worth
+first five-button board to letter neither its title nor its motto down.** The
+claim this spec made before the merge — "the first whose *motto* is not
+lettered down, all four before it are" — did not survive Paper Planes, whose
+motto clears the same 370 block at 353; what Paper Planes does not clear is
+the block with its *title*, so it is fitted 84 → 62 and Pinwheel keeps the
+superlative in its stronger form. Two by-products worth
 keeping: Quilt's motto is fitted 24 → 23 and that was nowhere on the record,
 because CLAUDE.md's `_fit_title` probe of 2026-09-20 predates Quilt; and Word
 Trail's title measures 391 here against the 392 on the record, because the
@@ -650,23 +676,42 @@ says it was reading the real Fredoka and not a fallback face.
 
 ### The menu
 
-Taken at the card (Task 5), twice, at the same resolution: **page one
-unchanged at 335** and **page two 150** with five cards, up from the 140 it
-read with four. Pinwheel stands on page two and costs page one nothing, which
-is the point of paging rather than reflowing — the third board in three days to
-be added without displacing one, and the second to land on a pager that was
-already there.
+Taken at the card (Task 5), twice, at the same resolution, and **retaken
+twice more after `main` was merged in at Task 7** — which is the reading that
+counts, because Paper Planes landed on page two while this branch was being
+built. **Page one is unchanged at 335** (twice before the merge, twice after)
+and **page two reads 159** with its six cards — Mushroom Patch, Sudoku,
+Bridges, Quilt, Paper Planes and Pinwheel — twice in a row, mean idle 8.31 and
+8.33 ms. Before the merge, on a page of five that ended in Pinwheel rather
+than Paper Planes, it read **150 against the 140 of four**; after it, 159
+against main's recorded 149 of five. **Pinwheel's own card is +10 either way**,
+measured against two different pages of five, which is a better statement
+about the card's cost than either reading alone. It stands on page two and
+costs page one nothing, which is the point of paging rather than reflowing —
+the fourth board in three days to be added without displacing one, and the
+third to land on a pager that was already there.
+
+**Page two's short-row filler stops running at eighteen**, and that is worth
+writing down because it looks like a deletion and is not: six cards over three
+columns is two full rows, so `6 % COLS` is zero and `ui/menu.gd` builds no
+filler `Control`. It *was* building one at seventeen, where page two held
+five. Whether the path runs is a property of today's card count and never of
+the pager, so nothing may delete it the next time a page happens to come out
+square.
 
 ### Generation, and the win path
 
 Generation cost is measured per band in §5 and not repeated here: worst board
 **9.08 ms** in the quiet session and **16.42 ms** in the loaded one, against
-the repo's 194 ms gate, the smallest generation cost of any board in the game.
+the repo's 194 ms gate, and among the smallest generation costs of any board
+in the game — see §5 for why Paper Planes makes "the smallest" unclaimable by
+either of them.
 
 `tests/_win.gd` drives the board the way a thumb would — a real hint off the
 HUD, then every piece turned home by touching its own pinwheel, with the
 pinned-fast pieces skipped because tapping one is the board's refusal rather
-than its move. It comes back **17/17 winnable** with Pinwheel reading
+than its move. It comes back **18/18 winnable** after the merge (17/17 before
+it, the eighteenth being Paper Planes) with Pinwheel reading
 `5x7 frame, 11 pieces, 16 taps, hints=1, board fit=true, hud=true`, so the pin
 maths, the cell the finger lands on and the win condition are all proved
 through the input layer rather than by poking the state.
@@ -683,7 +728,7 @@ through the input layer rather than by poking the state.
 | `ui/faces/pin_wheel.gd` | new — the pinwheel hub, builder shapes |
 | `core/motion.gd` | `TURN_TIME` and `turn_angle()` |
 | `docs/art/flat-motion.md` | a Turn row, and Pinwheel's line |
-| `ui/registry.gd` | the seventeenth entry |
+| `ui/registry.gd` | the eighteenth entry |
 | `ui/menu/card_art.gd` | a `pinwheel` branch of `_draw`, and a `_pinwheel_mesh` field |
 | `tests/test_pinwheel.gd` | the rules and generator suite |
 | `tests/run_tests.gd` | register it |

@@ -90,9 +90,9 @@ draw-call count, a budget figure or a design-space constant is fine.
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
 wordmark in ink with its golden sun-dot and the sun and moon beside it, a day
 row, a page of puzzle cards three across and four down, a pager under the
-grid once a second page is needed, and a bottom bar. Sixteen cards are in
+grid once a second page is needed, and a bottom bar. Eighteen cards are in
 the registry, so there are two pages: twelve on the first, and Mushroom
-Patch, Sudoku, Bridges and Quilt on the second. There is no
+Patch, Sudoku, Bridges, Quilt, Paper Planes and Pinwheel on the second. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
 not even carry a Stage node any more. It replaced the campsite, which is
 still reachable; see "legacy/" below.
@@ -123,10 +123,18 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   over the seam between the grid and the bottom bar as its own paper pill,
   an overlay on `_list_root` the way `_toast` already is, never a row of the
   column, so a card stays 252 whether or not a second page exists. A short
-  last row (fourteen over twelve leaves two) needs invisible
+  last row -- one whose cards do not fill `COLS` -- needs invisible
   `SIZE_EXPAND_FILL` filler `Control`s padded out to the column count, or
   `GridContainer` hands the real cells the empty column's leftover width and
-  a lone card comes out 334 wide instead of 320.
+  a lone card comes out 334 wide instead of 320. **Whether it runs is a
+  property of today's card count and never of the pager**, which is the one
+  thing to carry away from it: at fifteen page two held three over three
+  columns, a full row, and nothing was built; at seventeen it held five,
+  `5 % COLS` was two, and one filler was; at **eighteen** it holds six, two
+  full rows, and nothing is built again. It has now been off, on and off
+  within three days, so nobody may delete the path because a page happens to
+  come out square, and no sentence in this repo may state the answer without
+  naming the count it was true at.
   **Sudoku merged into this on 2026-09-20 and its own pager was discarded.**
   Its branch (spec `2026-09-20-sudoku-flat-design.md`, section 9) had built
   a pager into the day row, growing that row's dead chevron into a working
@@ -159,15 +167,23 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
 - **A card's picture is the board's own cast** (`ui/menu/card_art.gd`):
   `ui/faces/` characters seated in a 320 by 118 box and scaled to the card,
   plus whatever furniture they stand on drawn under them. Twelve of the
-  sixteen are almost entirely reuse; the four that borrow nothing are
-  Nonogram, Sudoku, Bridges and Quilt, none of which has a character to
-  borrow, and none of which has a branch of `_build` at all. **Quilt's is
-  the board's own drawing rather than a second one**: the card and the
-  board both lay their patches through `ui/faces/patch_cloth.gd`, so they
-  cannot drift apart. It is never an image and
-  never a `SubViewport`. A new card costs one branch of `_build` and, if it
-  needs furniture, one of `_draw`.
-- **Sixteen cards, all sixteen live, and no `soon` card left.** Three left
+  eighteen are almost entirely reuse; the six that borrow nothing are
+  Nonogram, Sudoku, Bridges, Quilt, Paper Planes and Pinwheel, none of which
+  has a character to borrow, and none of which has a branch of `_build` at
+  all.
+  **Quilt's is the board's own drawing rather than a second one**: the card
+  and the board both lay their patches through `ui/faces/patch_cloth.gd`, so
+  they cannot drift apart. **Pinwheel's is the second of those**, through
+  both `patch_cloth.gd` and `ui/faces/pin_wheel.gd`. It is never an
+  image and never a `SubViewport`. A new card costs one branch of `_build`
+  and, if it needs furniture, one of `_draw`. **A picture drawn with `_draw`
+  bakes into one mesh like everything else** (2026-09-20): Paper Planes' arm
+  first drew its 5x9 dot lattice as 27 `draw_circle` calls and the card cost
+  **48** draw calls on its own; built into one `Face.Builder` mesh and issued
+  as a single `draw_mesh` -- the technique Hidden Word's band already used in
+  this file -- **the same picture costs 1**. gl_compatibility pays per
+  `draw_*` command, and a card's picture is not exempt.
+- **Eighteen cards, all eighteen live, and no `soon` card left.** Three left
   the grid in a week, each being redesigned outright and each keeping its
   island board under More: Snake Apple's on 2026-09-19 to make room for
   Queens (`seed_as` still `snake`), Horse Pen's the same day for Hidden Word
@@ -176,9 +192,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   thirteenth, and it is the one that was *added* rather than swapped in,
   which is what took the grid over a page -- see the pager above. Sudoku is
   the fourteenth, added 2026-09-20 without displacing anything either,
-  Bridges the fifteenth and Quilt the sixteenth, both the same day again
-  and neither displacing anything; all four stand on page two, which is
-  what page two is for. **The
+  Bridges the fifteenth, Quilt the sixteenth, Paper Planes the seventeenth
+  and Pinwheel the eighteenth, all four the same day again and none of them
+  displacing anything; all six stand on page two, which is what page two is
+  for.
+  `PER_PAGE` is twelve, so page one keeps exactly the same twelve cards in
+  the same order and the fifteenth through the eighteenth cost it
+  nothing at all -- which is what paging buys over reflowing, and the first
+  time that promise has been collected on rather than argued for. **The
   dimmed-card machinery is now unexercised**: the registry's `soon` flag,
   the 55% ink, the pale `SOON` pill and `ui/menu.gd`'s `blocked` signal
   (which answered with a line saying the island version is under More) are
@@ -195,7 +216,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   no three-a-day goal, no streak health and no lives, and nobody should read
   a progression system into a drawing of one. Stats and Streak in the bar
   are drawn and inert for the same reason, and say so when pressed.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (sixteen
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (eighteen
   flat boards, no `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits
   about seventeen characters a line, which `blurb` does not.
@@ -216,17 +237,37 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   recorded before Sudoku arrived. **Sudoku costs page one nothing, because
   it stands on page two**, which is the whole point of paging rather than
   reflowing.
-  **Page two reads 140** with its four cards -- Mushroom Patch, Sudoku,
-  Bridges and Quilt -- the pager pill, and the header, day row and bar
-  already standing (measured 2026-09-20 with Quilt merged; page one read
-  335 in the same run, unchanged). That is a committed reading, not a
+  **335 again after Bridges, Quilt and Paper Planes**, re-read on 2026-09-20
+  at that merge -- three readings in a row, 335 every time (mean idle 8.59,
+  8.45 and 8.32 ms) -- for the same reason: all three of those cards stand
+  on page two. **335 again after Pinwheel**, twice more at that merge on the
+  same day, for the same reason again.
+  **Page two reads 159** with its six cards -- Mushroom Patch, Sudoku,
+  Bridges, Quilt, Paper Planes and Pinwheel -- no filler (six over three
+  columns is two full rows), the pager pill, and the header, day row and
+  bar already standing; two readings in a row, 159 both times, mean idle
+  8.31 and 8.33 ms. That is a committed reading, not a
   probe:
   `tests/_shot_menu.gd -- page2` turns the page instead of opening More, so
   anyone can retake it. It read about 100 when Mushroom Patch stood there
-  alone and **119 with two cards and an invisible filler** (twice in a row,
-  mean idle 8.31 and 8.33 ms), so a card on a bare page costs about 20 --
-  which the two added since have held to almost exactly: 119 to 140 for
-  Bridges and Quilt together.
+  alone, **119 with two cards and an invisible filler** (twice in a row,
+  mean idle 8.31 and 8.33 ms), **140 with four** and **149 with five**, so a
+  card on a bare
+  page costs about 20 at first and then settles to about nine or ten once
+  the pill
+  and the filler are already standing: 119 to 140 for Bridges and Quilt
+  together, 140 to 149 for Paper Planes on its own and **149 to 159 for
+  Pinwheel on its own**. Pinwheel's +10 is the firmest of those, because it
+  was measured twice against two *different* pages of five -- 140 to 150 on
+  its own branch before Paper Planes merged, and 149 to 159 after -- which
+  is a better statement about a card's cost than either reading alone. **Eight of that nine
+  is the card and one is its picture**: on the branch that built it, page
+  two read 127 with the card standing and its picture box empty -- both
+  before the arm was written and again with the arm stubbed back to a no-op
+  -- against 128 with it drawing. It is one because
+  the whole picture is one baked mesh -- unbaked it was 48, and that page
+  read 175. (Those three figures were taken when page two held three cards
+  and are quoted for the +1, not for the page total, which 149 replaces.)
   **It read 322 on the same twelve cards before the pager landed**, so the
   strip itself -- its paper pill, the prev and next buttons and the two dots
   -- is the +13, and Mushroom Patch's own card costs page one nothing
@@ -431,7 +472,7 @@ every layout change.
 
 ## The flat screens
 
-Sixteen cards open a flat 2D board under flat chrome: **Binairo**
+Eighteen cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**
 (`puzzles/shikaku2d.gd`), **Untangle** (`puzzles/untangle2d.gd`), **Tents**
@@ -440,16 +481,18 @@ Sixteen cards open a flat 2D board under flat chrome: **Binairo**
 2026-09-19, **Queens** (`puzzles/queens2d.gd`) and **Hidden Word**
 (`puzzles/hidden_word2d.gd`), and, since 2026-09-20, **Word Trail**
 (`puzzles/word_trail2d.gd`), **Mushroom Patch** (`puzzles/mushroom2d.gd`),
-**Sudoku** (`puzzles/sudoku2d.gd`), **Bridges** (`puzzles/bridges2d.gd`) and
-**Quilt** (`puzzles/quilt2d.gd`).
+**Sudoku** (`puzzles/sudoku2d.gd`), **Bridges** (`puzzles/bridges2d.gd`),
+**Quilt** (`puzzles/quilt2d.gd`), **Paper Planes**
+(`puzzles/planes2d.gd`) and **Pinwheel** (`puzzles/pinwheel2d.gd`).
 
 Each of the first nine was built on trial beside its island, as a second
 card seeded from the same day, so the two could be judged on the phone.
 **The trial is over**: on 2026-09-18 the game went 2D, the first screen was
 redrawn flat and every island moved to `legacy/`. Those nine islands keep
 `seed_as` pointing at their flat twin, so a board opened from More still
-hands out the same day's puzzle. The seven since -- Queens and Hidden Word
-(2026-09-19), Word Trail, Mushroom Patch, Sudoku, Bridges and Quilt
+hands out the same day's puzzle. The nine since -- Queens and Hidden Word
+(2026-09-19), Word Trail, Mushroom Patch, Sudoku, Bridges, Quilt, Paper
+Planes and Pinwheel
 (2026-09-20) -- were
 drawn flat from the start, with no island of their own behind them in More and nothing
 pointing `seed_as` at them. Specs:
@@ -461,11 +504,12 @@ pointing `seed_as` at them. Specs:
 `...-hidden-word-flat-design.md`,
 `docs/superpowers/specs/2026-09-20-word-trail-flat-design.md`,
 `...-mushroom-patch-flat-design.md`, `...-sudoku-flat-design.md`,
-`...-bridges-flat-design.md` and `...-quilt-flat-design.md`; mocks:
+`...-bridges-flat-design.md`, `...-quilt-flat-design.md`,
+`...-paper-planes-flat-design.md` and `...-pinwheel-flat-design.md`; mocks:
 `docs/brainstorm/concepts.html#binairo`, `#codebreak`, `#balance`, `#shikaku`,
 `#untangle`, `#tents`, `#lightup`, `#oneline`, `#nonogram`, `#queens`,
-`#hiddenword`, `#wordtrail`, `#mushroom`, `#sudoku`, `#bridges` and
-`#quilt`.
+`#hiddenword`, `#wordtrail`, `#mushroom`, `#sudoku`, `#bridges`, `#quilt`,
+`#planes` and `#pinwheel`.
 
 - **Every flat board moves with one hand.** `docs/art/flat-motion.md` is the
   table: the press, the pop in and out, the hop, the nudge, the drop, the
@@ -755,23 +799,61 @@ pointing `seed_as` at them. Specs:
   linear guess can still overflow -- Balance's motto guesses 22 and the face
   at 22 measures 372 against a 370 block -- and `_fit` steps down from the
   guess (never from `base`, which is up to 60 measurements for a long title)
-  until the rendered face actually fits. Measured across all thirteen
-  screens that existed at the time -- every flat board except Sudoku, which
-  had not merged yet -- with a headless probe on 2026-09-20: exactly five
-  labels are lettered smaller -- Balance's motto (24 to 21), Untangle's (24
-  to 22), Word Trail's title (84 to 79) and motto (24 to 21), and Mushroom
-  Patch's title (84 to 65) -- and every other label is untouched to the
-  pixel, Hidden Word's 482-wide title included: its bar builds five buttons
-  but `refresh()` hides Undo, so the block it measures against is 496 and it
-  stays at 84. **Sudoku was not in that probe**, and the claim is expected to
-  hold there too rather than shown to: Sudoku keeps its actions row, so
-  Reset never rides up into the top bar and its title block is the wider 496
-  Hidden Word gets, not the 370 that forces Balance's, Untangle's and Word
-  Trail's mottos down, and its own motto (`EVERY NUMBER HAS ITS PLACE`, the
-  widest in the game) comes to roughly 428 against that 496 -- about 70px of
-  headroom. That figure is an estimate scaled off a recorded measurement
-  using a fallback font face, not a reading taken with the real Fredoka, and
-  should not be repeated as one.
+  until the rendered face actually fits. **Swept across all seventeen
+  screens on 2026-09-20** -- first a windowed probe at `--resolution
+  810x1440` that opened every registry entry in turn through the real menu
+  and read the bar's own labels back (fifteen screens, before Bridges and
+  Quilt merged), then re-run over all seventeen at the Bridges/Quilt/Paper
+  Planes merge with a headless probe running `_fit`'s own arithmetic against
+  the real theme faces; the second reproduced every figure of the first to
+  the pixel bar one (Hidden Word's title 482 where the windowed run read
+  481), which is why its two new rows are quoted beside them --
+  **exactly seven labels are lettered smaller**: Balance's
+  motto (399 at 24, down to 21), Untangle's (397, to 22), **Quilt's (`MAKE
+  THE BLANKET WHOLE`, 380, to 23)**, Word Trail's title
+  (391 at 84, to 79) and motto (406, to 21), Mushroom Patch's title (635, to
+  65) and **Paper Planes' title (497, to 62)**. **Bridges is untouched** --
+  284 and 236 against the four-button 496, which is what its spec's section
+  2 predicted. Every other label is
+  untouched to the pixel, Hidden Word's 481-wide title included: its bar
+  builds five buttons but `refresh()` hides Undo, so the block it measures
+  against is 496 and it stays at 84. **Sudoku is now measured rather than
+  expected**: its title is 275 and `EVERY NUMBER HAS ITS PLACE`, the widest
+  motto in the game, is **421 against the four-button 496** -- 75 px of
+  headroom, so nothing on that screen is fitted, which is what the earlier
+  estimate of "roughly 428" guessed and this reading replaces. (Two of the
+  older figures read one pixel narrower in this sweep -- Word Trail's title
+  391 where 392 was recorded, Hidden Word's 481 where 482 was: rounding
+  between the two probes, and it moves no label across the line.)
+  **Paper Planes is still the most severely fitted label in the game after
+  Bridges and Quilt** -- 62 is
+  three points under Mushroom Patch's 65 even though Mushroom Patch's face is
+  138 px the wider, because the block is the five-button 370 and not 496, and
+  Quilt's motto, the one label those two boards added to the list, gives up
+  a single point (24 to 23) against Paper Planes' twenty-two. Its
+  own motto is not fitted: `A CLEAR LANE AND AWAY` measures 353 and clears
+  the same 370 block that forces the other three mottos down.
+  **Pinwheel leaves the count at seven labels over eighteen screens**, and
+  it is the first five-button board to letter *neither* of its own down: `Pinwheel`
+  measures **338** at 84 and `TURN IT TILL IT FITS` **272** at 24, against
+  the same 370 block, so both keep their base size with 32 and 98 px to
+  spare -- read on 2026-09-20 by a throwaway probe that opened the real
+  screen and measured the rendered face, not by the headless sweep above,
+  which predates it. A motto written short on purpose is what bought the
+  second half of that; the first half is simply a short title. Two
+  by-products of that probe are worth keeping and are *not* in the sweep:
+  **Quilt's motto is fitted 24 to 23** (`MAKE THE BLANKET WHOLE`, 380),
+  which the sweep did record, and **Word Trail's title measures 391 there
+  against 392 here** because the string the label actually renders is
+  `Word Traıl` -- `ui/sun_dot.gd` has already swapped the i for Fredoka's
+  dotless `ı` by the time the bar measures it, which is the explanation the
+  sweep's own "rounding between the two probes" was guessing at.
+  **497 and 62
+  are the measurements, and they replace 528 and 58**, which the plan's
+  ledger recorded off the concept page while the name was still being chosen
+  and which nothing on the shipping bar produces; the sweep that took them
+  reproduced Mushroom Patch's 635 to 65 and Word Trail's 84 to 79 before it
+  was believed about this one.
 - **Mushroom Patch is the thirteenth board, and the first that was added
   rather than swapped in** (2026-09-20, `puzzles/mushroom2d.gd`, spec
   `2026-09-20-mushroom-patch-flat-design.md`, mock
@@ -803,8 +885,10 @@ pointing `seed_as` at them. Specs:
   but the grid is **900**, nine cells of a round 100, because the 6-wide
   heavy rule that marks off the regions is drawn *round* the grid rather
   than inside it, and a grid pushed to the inset's edge has nowhere to put
-  that rule. 100 is the second-smallest cell any flat board asks of a thumb,
-  a hair under Queens' and Nonogram's 103, and it is bearable for the same
+  that rule. 100 was the second-smallest cell any flat board asked of a
+  thumb when it landed, a hair under Queens' and Nonogram's 103 -- Paper
+  Planes' 58 and Bridges' hard-band 84 have since put it fourth -- and it
+  is bearable for the same
   reason a small cell always is here: a tap on the grid **only ever
   selects**, nothing is typed on it, and the thing tapped next is the pad.
   **The pad's chip is 91 wide** -- `(1000 - 9*10) / 10 = 91` for ten chips
@@ -849,6 +933,241 @@ pointing `seed_as` at them. Specs:
   driver to within 1/255 on edge antialiasing alone), 88 once with a hint's
   ring live, and 110 once on the win screen after a full solve -- all well
   inside the 855 budget.
+- **Paper Planes is the seventeenth board, and still the cheapest board in
+  the game after Bridges and Quilt**
+  (2026-09-20, `puzzles/planes2d.gd`, `puzzles/planes_state.gd`, spec
+  `2026-09-20-paper-planes-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#planes`). A field of bent ink trails, each
+  with a folded paper dart at its head, on a lattice of faint dots. **Tap a
+  plane and it launches** -- it slides forward along its own body and out
+  over the edge, head first, the tail pulled through every bend the way a
+  ribbon is pulled through a hole -- but only if its **lane**, every cell
+  straight ahead of the dart out to the edge, is empty. Clear the sky and the
+  board is done. **It is called Paper Planes and nothing else**, in code, in
+  a comment or on screen: the app the reference screenshot came from ships
+  this genre under its own name, which appears in the spec (four times) and
+  the concept page (twice) in order to forbid it, and is nowhere in code, in
+  a comment, in a commit message or on screen -- the rule the earlier
+  "records it once" phrasing overstated is fully honoured; only the count of
+  where it is written down was wrong. It joins a chain this file is careful
+  to **name rather than number**, because two branches numbered it two
+  different ways on the same day: Code Break, Hidden Word, Word Trail,
+  Bridges, Quilt and now Paper Planes, with Mushroom Patch (Minesweeper's
+  gentler cousin) counted in it by some bullets and not by others. The
+  re-theme came free with the name: an arrowhead folded once is a paper dart,
+  and a dart that needs a clear lane before it takes off *is* the rule, said
+  in a picture.
+  **One fact shapes the whole screen: a launch can never block another
+  plane**, because launching only empties cells and a lane is blocked only by
+  occupied ones. So there is no wrong move and therefore **no Check**, the
+  player cannot dead-end a board that was generated solvable, and the solver
+  is greedy and complete -- launch anything whose lane is clear, repeat.
+  The generator carves backwards out of an empty sky in reverse play order
+  (planes placed later are launched earlier), so a solution exists before the
+  first pixel is drawn; measured in GDScript on this Mac over forty seeds a
+  band, **1.3 / 2.2 / 7.0 ms** a board for 21-31, 30-45 and 45-62 planes at
+  0.70-0.91 coverage, which is two orders off Sudoku's budget problem, so
+  **this board has no fallback path and nothing to grade against a clock**.
+  **The hard band is the loosest, not the tightest**, and that was accepted
+  rather than overlooked: steps with two or fewer legal launches measured
+  **22.0% / 16.6% / 12.6%** easy / medium / hard, so a bigger board leaves
+  *more* free at once. Difficulty here is how long you sit, not how hard you
+  look -- the genre is scanning, not deduction, and dressing it as deduction
+  would be a lie the generator cannot back.
+  **The launch and the wake are its signature.** The plane runs a track --
+  its own body polyline, extended down the lane and one body-length past the
+  edge -- eased off `Motion.pop_out_scale` read backwards, with a puff where
+  the head crosses the edge and each cell taking its dot back as the tail
+  passes over it; then every plane the departure **newly freed** beats its
+  wings once, staggered by king-move distance from the departing head. That
+  is Queens' `_settle` with a departure in place of a queen's sight, derived
+  off a snapshot diff and never stored, so an undo leaves nothing to clean
+  up. A refusal is a picture of the rule and not a scolding: the lane flashes
+  `BAD_TILE` from the dart to the blocker, the blocker shivers, the tapped
+  plane nudges, and the tip card says why -- no toast, because this refusal
+  is frequent by design. It needed **nothing new from `core/motion.gd`** and
+  carries three constants of its own (`LAUNCH_SPEED`, `WAKE_STEP`,
+  `BLOCK_FLASH`) plus `WIN_WAIT`, which at **2.7 s is the longest win wait of
+  any flat board** and is arithmetic rather than taste: the longest flight
+  this game can generate is **1.364 s**, not the 1.41 s first recorded --
+  that bullet described a ten-cell plane with its head on row 0 of the hard
+  band, which cannot exist (`add_plane` derives a direction from the cell
+  before the head, and row 0 pointing off that edge would need a cell at row
+  -1); the true ceiling is a head on row 1, and the solve wave after it is
+  1.25. Shikaku's 2.2 was the longest constant before it, and Hidden Word's is the
+  only one that is computed rather than set -- its flip plus 1.6, which comes
+  to about 2.66, so 2.7 wins by a hair rather than by a length.
+  **The cells are 91, 71 and 58**, and **58 is the smallest cell of any
+  playing grid in the game** -- under Bridges' hard-band 84, Sudoku's 100,
+  Queens' and Nonogram's 103 and Quilt's 114. It is bearable for a reason
+  none of those could use: **you do not tap a cell here, you tap a
+  plane**, the smallest of which covers two cells and carries a dart across
+  most of one. **One thing on a flat screen is drawn smaller**, and it is
+  named here so the superlative is not read wider than it is: Quilt's *rack*
+  cell measures 57.0 mean and 48.3 worst on its hard band (its spec's
+  section 6). That is a waiting patch's display size in the rack and not a
+  grid anything is placed on -- a rack patch spans several of them and is
+  dragged, not tapped -- so the two numbers are not the same kind of thing,
+  but "the smallest cell in the game" full stop is no longer a sentence this
+  file can stand behind. Its bottom slot is the tip card alone at **140**,
+  **the shortest in the game and now shared four ways** -- Untangle, Word
+  Trail, Quilt and Paper Planes -- and Reset rides up into the top bar
+  with it. **It is the one flat board that clips** (`clip_contents = true`):
+  a launch runs up to a body-length past the grid and would otherwise draw
+  over the day card and the top bar, so the cut lands on the board card's own
+  hem. It adds **nothing to `ui/faces/`** and **no entry to the palette** --
+  the sixth board to add no character and the fourth to seat none at all,
+  after Sudoku, Bridges and Quilt -- and its field, dots, trails, darts,
+  lane band and hint glow
+  are **one `ArrayMesh`**, kept in `_shown` until the next one replaces it.
+  Measured with `tests/_shot_anim.gd -- planes` at `--resolution 810x1440`,
+  2026-09-20: **55** draw calls on every run anyone has taken of it -- three
+  in the session that first measured it (idle means 2.13, 2.07 and 1.98 ms),
+  two more under and without reduce motion (1.97 and 2.02, both at 55, so the
+  solve wave costs nothing because the field was already one mesh), and two
+  again when this file was written (6.52 and 2.05). Word Trail, the control,
+  read **65 / 2.30 ms** in the first session, **62 / 2.42 ms** in a
+  reviewer's separate one and **65 / 2.69 ms** in the last, so the gap holds
+  across three sittings and is what the comparison actually rests on -- a
+  single reading off this harness is worth nothing (Hidden Word's spec). One
+  caveat, named rather than dropped: that **6.52 ms** was the first windowed
+  run of its session, on the same 55 calls, which is this Mac's first-run
+  shader compile and is why a pair is taken and the second is the one to
+  quote. **Re-measured at the Bridges/Quilt merge on 2026-09-20**: 55 twice
+  more (2.00 and 2.01 ms), with Quilt read as a control in the same session
+  at **59** (2.08 ms, its recorded 58-59) and Bridges at **65** (2.56 ms,
+  its recorded 64-65) -- both exactly on their own record, which is what
+  makes the comparison worth quoting and what keeps "the cheapest board in
+  the game" true at seventeen. **Still true at eighteen**: Pinwheel came in
+  at 59 (see its bullet below), four calls above this one. On the phone's driver
+  (`--rendering-driver opengl3_angle`): the same **55**, with the settled
+  frame differing from the default driver's over 91,782 pixels at a **max
+  channel delta of 1** -- edge antialiasing between backends, not a garbage
+  `instance uniform`. Reduce motion stills it completely: two frames 1.5 s
+  apart are pixel-identical, 0 of 1,166,400, against non-zero controls.
+- **Pinwheel is the eighteenth board, and the first piece in the game that
+  turns** (2026-09-20, `puzzles/pinwheel2d.gd`, `puzzles/pinwheel_state.gd`,
+  `puzzles/pinwheel_gen.gd`, spec `2026-09-20-pinwheel-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#pinwheel`). A rectangular frame of cells and
+  a handful of cloth polyominoes lying on it, each pinned through **one of
+  its own cells** by a paper pinwheel whose board cell never moves. Tap the
+  pinwheel and the piece takes a quarter turn clockwise about the pin. A cell
+  two pieces are on goes dark; a cell nobody is on stays bare ground; turn
+  every piece until there is neither, and the frame is covered exactly once.
+  **It is called Pinwheel and nothing else**, in code, in a comment or on
+  screen: Puzzmo ships the genre under its own name, which the spec records
+  once in order to forbid it. It is the newest link in the chain this file
+  **names rather than numbers** -- Code Break, Hidden Word, Word Trail,
+  Bridges, Quilt, Paper Planes and now Pinwheel -- for the reason Paper
+  Planes' bullet already gives: two branches numbered it two different ways
+  on the same day.
+  **A tap must skip an out-of-frame orientation, not refuse it**, and this is
+  the one thing on this board a future board would otherwise re-derive the
+  hard way. Rotation is a discrete state change, so a piece cannot pass
+  *through* an illegal orientation on the way to a legal one: a 1x4 bar
+  pinned at its end against the frame edge has its solving orientation two
+  clockwise steps away with an out-of-frame step in between, and a refusing
+  tap makes that solution unreachable for ever. **The generator cannot see
+  it**, because it reasons about orientation *sets* and not about
+  reachability, so the boards it hands out would be unsolvable and every
+  test would pass. Skipping fixes it by construction: the in-frame
+  orientations form a cycle, a tap advances one place round it, and every one
+  is reachable from every other.
+  **A pinned piece cannot translate, so it has at most four placements in the
+  whole frame** -- and that is why `puzzles/quilt_gen.gd`'s header warning,
+  that a patch free to rotate would make almost every region tileable a dozen
+  ways and uniqueness would stop being worth proving, **does not apply here
+  and must not be carried over**. Quilt's patches translate and Pinwheel's
+  cannot, so Pinwheel is far *more* constrained, the exact cover collapses
+  almost at once, and **the proof is the cheap stage here where it is the
+  expensive one on Quilt**. There is no wall-clock give-up and no
+  `graded: false`: the attempt loop is bounded by `ATTEMPTS` and the honest
+  flag is Quilt's `unique: false`.
+  **A legibility rule measured against the solved frame is measured against
+  the state the player spends the least time in.** The piece colouring
+  shipped once on a rule that forbade a shared cloth to two pieces that could
+  overlap or that touched *in the answer*. Every measurement behind it was
+  true -- at most seven colours over 180 boards, zero clashes over 600 -- and
+  the promise was about the wrong state: over 300 seeds a band it left a
+  same-cloth pair **orthogonally touching in the opening** on **149, 219 and
+  241 boards of 300** (re-measured 145, 214 and 233 on a different seed
+  block), and two apricot pieces edge to edge read as one shape. The fix was
+  not a weaker rule but a wider graph -- one piece's orientations dilated by
+  one orthogonal step meeting the other's, which holds in *every* state the
+  board can be in -- and **rejecting the boards eight cloths cannot colour**,
+  which costs 3, 17 and 132 extra grows out of 619, 721 and 1125, about ten
+  percent on the worst band. Rejection is affordable only because generation
+  is. **Any board that colours, shades or outlines its pieces to keep them
+  apart should check the rule against the opening, not the answer.**
+  **And a wash alone cannot signal state on pieces coloured by index.** The
+  stain over a doubled-up cell was first drawn as `Pal.TEXT` at 0.30 and
+  nothing else, and on the first rendered band-0 frame a coral under it came
+  back as **a maroon piece** and a butter as an olive one -- not "shaded",
+  *another cloth*, and a player counting pieces would have counted them. So
+  the stain is also **hatched**, diagonal lines in `Pal.TEXT` at 0.20 drawn
+  across the union of the stain rather than per cell, because **a hatch
+  cannot be mistaken for a cloth**: nothing else on the screen is drawn in
+  lines. That is Quilt's "a patch cannot blush" from the other end -- there
+  the refusal could not be a colour, here the state could not be -- and
+  together they are the general form: **on a board whose pieces are coloured
+  by index, no state may be signalled by a shade of the piece's own colour.**
+  The refusal on this board follows the same rule and is Quilt's exactly: a
+  `Pal.BAD` halo stroked round the silhouette with the shiver, the cloth left
+  alone.
+  **The turn is its signature and the one thing it added to
+  `core/motion.gd`**: `TURN_TIME` 0.26 and `turn_angle()`, a curve reader on
+  `back_out`, because a quarter turn is a thing the next board may want and
+  every turn before it was an idle or Hidden Word's flip, which is a scale on
+  one axis and not a rotation. The piece and its pinwheel read the same
+  recipe with different `time`s -- the blades go on to 1.55 times it, so the
+  handle carries the overshoot the cloth does not -- which is one recipe and
+  one parameter, not two numbers. The stain settles in **Queens' `_settle` in
+  a fourth shape**: a snapshot of `cover` diffed before against after, each
+  changed cell taking king-move distance from the pin at `Motion.WAVE_STEP`,
+  derived and never stored, so a hint that walks a piece through three
+  quarters and the undo that walks it back both animate with nothing to clean
+  up. Only two constants are the board's own and both are shape rather than
+  timing: `STAIN_ALPHA` 0.26 and `PIN_R` 0.19.
+  **Its cell is 183 on the shipping band, the largest of any flat board** --
+  against Paper Planes' 58 at the other end -- and that is not indulgence: the
+  tap target is the pin cell and nothing else, so the input surface is `N`
+  cells out of `cols * rows` and a generous cell is what stops a mis-tap
+  turning a neighbour. It seats no character (the fifth board to seat none)
+  and adds `ui/faces/pin_wheel.gd`, a drawing rather than a character, the
+  third after Nonogram's tile and Quilt's cloth; its cloth is Quilt's
+  unchanged.
+  Measured with `tests/_shot_anim.gd -- pinwheel` at `--resolution 810x1440`,
+  2026-09-20: **59** draw calls played and 59-60 bare (the 60 is one frame's
+  worth of the wordmark's sun-dot glint, inferred and not measured), 59 under
+  reduce motion, against the 855 budget -- the third-cheapest board in the
+  game behind Paper Planes' 55 and Quilt's 58, and **a turn costs nothing
+  measurable**, because the swinging piece, the stain and eleven pinwheels
+  are all inside the same three meshes as the bare board. Queens (71, 71) and
+  Word Trail (65, 65) reproduced their recorded counts as controls at both
+  ends of the session, which is what makes those counts quotable; the
+  milliseconds are not, because Queens read 2.83-2.89 there against the 3.83
+  of its own spec. **59 again after `main` was merged in**, with Paper Planes
+  in the tree. ANGLE agrees on 59 and 110,002 pixels of 1,166,400 differ by
+  **no more than 1/255**, the tightest agreement between the two drivers any
+  board here has recorded; the reduce-motion pair 1.5 s apart is
+  pixel-identical, in both runs. Generation worst **9.08 ms** in the quiet
+  session and 16.42 ms in a loaded one, against the 194 ms gate.
+- **Nothing under `tests/` loaded a board's `*2d.gd` until 2026-09-20**, and
+  that was true of all boards, not one -- and since the merge that brought
+  Bridges and Quilt in, the guard covers every entry in the registry, which
+  is eighteen today. It walks `Registry.PUZZLES` rather than a list of its
+  own, so a new board is covered by being added and by nothing else. A parse error in
+  `puzzles/planes2d.gd` left the suite reporting `passed=94534 failed=0`; the
+  only thing that caught it was `tests/_win.gd`, which needs a display and is
+  not in CI. A script with a parse error still `load()`s as a GDScript object
+  and only gives itself away at `can_instantiate()`. `tests/test_planes.gd`
+  now walks `Registry.PUZZLES` and asserts exactly that for every entry's
+  script, naming the board in the message -- the same idiom
+  `tests/run_tests.gd` already uses on its own suites, and the same reason.
+  It is two assertions a board in the newest suite rather than a file of its
+  own, because it belongs to no board in particular.
+  `godot --headless --check-only --script puzzles/<board>2d.gd` is still the
+  one-second check worth running before a harness.
 - **A card that moves inside a container needs a slot.** A container writes
   its children's positions on every sort, so a child that tweens its own
   position (a shiver, a hop) fights it and loses; give the container a plain
@@ -902,9 +1221,15 @@ pointing `seed_as` at them. Specs:
   board where a commit is the check, and no Undo, because the commit is the
   one irreversible move any flat board has. The flat host therefore measures
   its bottom slot from the rows it actually built, not from a constant; the
-  sixteen screens want 458, 460, 390, 290, 140, 290, 290, 290, 460, 460,
-  340, 140, 460, 480, 290 and 140, with Mushroom Patch's 460 the thirteenth,
-  Bridges' 290 the fifteenth and Quilt's 140 the sixteenth, and
+  eighteen screens want, **in registry order**, 458, 460, 390, 140, 290,
+  290, 290, 290, 460, 460, 340, 140, 460, 480, 290, 140, 140 and 140, with
+  Mushroom Patch's 460 the thirteenth, Bridges' 290 the fifteenth, Quilt's
+  140 the sixteenth, Paper Planes' 140 the seventeenth and Pinwheel's 140
+  the eighteenth, and
+  **the fourth and fifth numbers were the wrong way round in this file
+  until 2026-09-20** (Untangle's is 140 and Shikaku's is 290, not the
+  reverse) -- re-derived from the registry and `ui/flat/flat_host.gd`'s own
+  row sums at this merge rather than carried forward. And
   **Sudoku's 480 the fourteenth and the widest bottom slot in the game** --
   twenty more than the 460 its neighbours take, because its digit pad is 170
   where a tray is 150: `170 + 20 + 130 (actions) + 20 + 140 (tip card)`. It
@@ -917,10 +1242,26 @@ pointing `seed_as` at them. Specs:
   that shape**, and for the third distinct reason: its pieces are dragged
   from a rack *inside the board card* rather than picked out of a tray row,
   so it asks for no tray, and nothing wrong can be sitting on the quilt
-  because an illegal drop is never taken, so there is no Check either. Four
+  because an illegal drop is never taken, so there is no Check either.
+  **Paper Planes is the fourth** and gives a fourth reason: nothing to pick
+  up, and no Check because a launch only ever empties cells, so it can never
+  put a wrong thing on the board. **Pinwheel is the fifth and gives a
+  fifth**, and it is the only one of the five that reaches it by *allowing*
+  the wrong thing rather than by preventing it: a piece may lie across
+  another, and the stain under it draws that the instant it lands, so the
+  one question Check could ask is already answered on the screen. **140 is
+  therefore the shortest bottom
+  slot in the game and five boards now share it** -- Untangle, Word Trail,
+  Quilt, Paper Planes and Pinwheel -- so it is no longer a tie of two and
+  nobody
+  should write it as one. Six
   boards now carry
-  five buttons up there (Balance, Untangle, Word Trail, Quilt); Hidden Word
-  builds five and shows four, because its `capabilities()` has no Undo. Mushroom
+  five buttons up there (Balance, Untangle, Word Trail, Quilt, Paper
+  Planes, Pinwheel); Hidden Word
+  builds five and shows four, because its `capabilities()` has no Undo.
+  **Count that from the registry's `"actions": false`, never by
+  incrementing**: seven entries carry it and Hidden Word is the one of the
+  seven that shows four. Mushroom
   Patch takes the ordinary three rows, and its 460 is the same sum as
   Code Break's, Nonogram's and Queens': a 150 tray, a 130 actions row, a
   140 tip card and two 20 gaps between them. Binairo's own tray
@@ -958,7 +1299,7 @@ pointing `seed_as` at them. Specs:
   (`ui/faces/court_lantern.gd`) is the third: it is Untangle's paper lantern
   subclassed, with the cord and tassel off it and an iron foot under it, so it
   shares the parent's seat, halo and mesh cache. Check `ui/faces/` before
-  drawing a new character -- in fourteen screens two have earned one: One Line's
+  drawing a new character -- in eighteen screens two have earned one: One Line's
   walker (`ui/faces/snail_face.gd`), because nothing else in the cast walks
   anywhere and its trail *is* the mechanic, and Queens' bee
   (`ui/faces/bee_face.gd`), because nothing in the cast is a queen and the
@@ -979,11 +1320,15 @@ pointing `seed_as` at them. Specs:
   `ui/faces/mosaic_tile.gd`, already on stage since Balance and
   Nonogram/Queens, and the only thing it added to either was the
   off-by-default `sprig` a hint's mushroom wears. Sudoku is the fourth to add
-  nothing, and the only board that seats no character of any kind: its pieces
+  nothing, and the first board that seats no character of any kind: its
+  pieces
   are numerals in ink drawn straight on the grid mesh, and the one face on
   the screen is the sprout on the tip card -- the way Nonogram decided and
-  Hidden Word confirmed. **Quilt seats none either, and is the second board
-  to add a drawing rather than a character**: `ui/faces/patch_cloth.gd` is
+  Hidden Word confirmed. **Bridges is the fifth to add nothing and seats
+  none either**: its islets are a disc, a rim and a number, and the only
+  face on that screen is the sprout on the tip card. **Quilt seats none
+  either, and is the second board to add a drawing rather than a
+  character**: `ui/faces/patch_cloth.gd` is
   builder shapes and not a Control, exactly as `mosaic_tile.gd` is, because
   the board batches up to eight patch silhouettes into one mesh and the menu
   card draws five more into another -- a Control per patch would be a node
@@ -993,6 +1338,19 @@ pointing `seed_as` at them. Specs:
   read as folded cloth), because tiling a patch out of rounded squares
   would draw the seams the game has not sewn yet -- and those are exactly
   the information the player is looking for.
+  Paper Planes is the sixth to add nothing and the **fourth to seat none**:
+  its pieces are folded paper, drawn straight into
+  the field mesh, and the only face on that screen is the sprout again.
+  **Pinwheel is the fifth to seat none and the third to add a drawing rather
+  than a character**, after Nonogram's tile and Quilt's cloth:
+  `ui/faces/pin_wheel.gd` is builder shapes and not a Control, for the same
+  reason `patch_cloth.gd` is -- the board bakes every piece and every
+  pinwheel into three meshes, and a Control per pinwheel would be a node per
+  handle of a thing with no face on it. Its cloth is Quilt's, unchanged. Five
+  boards in a row now say the same thing, so it is a pattern and not a
+  coincidence -- **a board whose pieces are marks rather than creatures does
+  not get a mascot bolted onto it**, and its win screen keeps the family's
+  sun and moon rather than earning a Control for one screen's sake.
 - **A canvas command holds a mesh by RID, not by reference.** A board that
   rebuilds a cached `ArrayMesh` every frame and drops the previous one leaves
   the renderer drawing a freed RID -- "Parameter mesh is null", and an empty
@@ -1002,7 +1360,8 @@ pointing `seed_as` at them. Specs:
   `shikaku2d.gd` and `tents2d.gd` keep the mesh their last `_draw` handed
   over (`_shown`) until the next one replaces it; `word_trail2d.gd` keeps
   three (the still band, the field and the slots), so its `_shown` is an
-  Array.
+  Array, `planes2d.gd` keeps the one mesh its whole field is drawn as, and
+  `pinwheel2d.gd` keeps its three the same way.
   A harness shooting one of these boards has to let a frame pass between the
   state change and `force_draw()`: `queue_redraw` is flushed on the next idle
   frame, so a probe that pokes the board and shoots in the same frame
@@ -1198,7 +1557,7 @@ ratio: within 6 percent is 100, a factor of five is 0.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. Only the turn flow's strings are
-keyed (`locale/turn.csv`); the fourteen boards are still hardcoded English, and
+keyed (`locale/turn.csv`); the eighteen boards are still hardcoded English, and
 `HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228

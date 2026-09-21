@@ -2,9 +2,9 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: **sixteen cards over two pages**, in the order they
-## are drawn. **All sixteen open a flat board, and there is no `soon` card
-## left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
+## `PUZZLES` is the grid: **eighteen cards over two pages**, in the order
+## they are drawn. **All eighteen open a flat board, and there is no `soon`
+## card left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
 ## room for Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
 ## 2026-09-20 for Word Trail; all three keep their island board under More.
 ## The dimmed-card machinery -- the `soon` flag, the `SOON` pill, the 55% ink
@@ -19,8 +19,8 @@ extends RefCounted
 ## card-art budget is written against. The answer is the pager the campsite
 ## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
 ## and the strip is its own pill between the grid and the bar): twelve cards
-## on page one, and Mushroom Patch, Sudoku, Bridges, Quilt and Pinwheel on
-## page two, each card still
+## on page one, and Mushroom Patch, Sudoku, Bridges, Quilt, Paper Planes and
+## Pinwheel on page two, each card still
 ## 252 with its 92 px picture. See
 ## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
@@ -31,10 +31,31 @@ extends RefCounted
 ## and the one this entry pages onto; see
 ## docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9 and its
 ## amendments. Bridges is the fifteenth and Quilt the sixteenth, both added
-## the same day and both onto that same page two. Pinwheel is the
-## seventeenth, added the same day again: `PER_PAGE` is twelve, so a
-## seventeenth entry asks the pager for nothing and costs page one nothing,
-## which is the whole point of paging rather than reflowing.
+## the same day and both onto that same page two.
+##
+## Paper Planes is the seventeenth, added the same day as all three of them.
+## It was designed and built as the fifteenth and landed as the seventeenth,
+## because Bridges and Quilt merged ahead of it while it was being built; it
+## displaced nothing either way. **`PER_PAGE` is still twelve, so it costs
+## the first screen nothing**: page one keeps exactly the same twelve cards
+## in the same order, page two simply holds more of them, and the
+## pager that arrived for the thirteenth already draws as many dots as it is
+## given. See
+## docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md, section 12.
+##
+## Pinwheel is the eighteenth, added the same day again and built in
+## parallel with Paper Planes -- it was designed as the seventeenth and
+## landed as the eighteenth, because Paper Planes merged ahead of it. It
+## displaces nothing either way, and `PER_PAGE` is still twelve, so page
+## one keeps exactly the same twelve cards in the same order and page two
+## holds six. **At eighteen the short-row filler is not built**: six over
+## three columns is two full rows, `6 % COLS` is zero. That path is
+## load-bearing at any count the page does *not* come out square on --
+## it was running at seventeen, where page two held five -- so nothing may
+## delete it just because eighteen happens to be tidy, and nothing may
+## write "so no filler is built" as though it were a property of the
+## pager rather than of today's card count. See
+## docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 7.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
 ## plus the one turn, reached only through the first screen's More sheet.
@@ -228,13 +249,14 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
-	# these are entries thirteen to sixteen. Mushroom Patch was the
+	# these are entries thirteen to seventeen. Mushroom Patch was the
 	# thirteenth and the first card that was *added* rather than swapped into
 	# a `soon` slot, which is what pushed the grid onto a second page at all;
-	# Sudoku is the fourteenth, Bridges the fifteenth and Quilt the
-	# sixteenth, and all three join it there. Twelve a page is not a
+	# Sudoku is the fourteenth, Bridges the fifteenth, Quilt the sixteenth
+	# and Paper Planes the seventeenth, and all four join it there without a
+	# word changing anywhere else. Twelve a page is not a
 	# taste -- it is what four rows of 252 buy -- so the grid grew a page
-	# rather than a shorter card, and both of these stay last so page one
+	# rather than a shorter card, and all of these stay last so page one
 	# keeps exactly the twelve cards it has, in exactly the order it has
 	# them. Sudoku's own spec (2026-09-20-sudoku-flat-design.md, section 9)
 	# argued that pager into the day row; the user ruled otherwise and the
@@ -301,6 +323,25 @@ const PUZZLES := [
 		# there is no Check to put in one and Reset rides up into the top bar.
 		# Word Trail's shape exactly: the bottom slot is the tip card alone.
 		"script": "res://puzzles/quilt2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "planes",
+		"kind": "puzzle",
+		"title": "Paper Planes",
+		"blurb": "Tap a plane whose lane to the edge is clear, and off it goes.",
+		"short": "Send every plane\noff a clear lane.",
+		"motto": "A clear lane and away",
+		"footer": "Scan · Clear · Launch",
+		# It picks nothing up, and there is no Check: a launch only ever
+		# empties cells, so nothing wrong can be sitting on the board and the
+		# player cannot dead-end it. Reset rides up into the top bar and the
+		# bottom slot is the tip card alone, which is Word Trail's and
+		# Quilt's shape.
+		"script": "res://puzzles/planes2d.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,

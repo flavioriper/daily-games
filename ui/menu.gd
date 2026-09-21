@@ -59,9 +59,10 @@ const COLS := 3
 ## not any one board's work, it is the first screen's (see docs/superpowers/
 ## specs/2026-09-20-mushroom-patch-flat-design.md, section 2, and the sibling
 ## specs of whichever other board lands beside it). Sudoku made it fourteen
-## on 2026-09-20 and page two grew a second card; nothing here had to change
-## for it, which is the whole point of paging the grid rather than counting
-## the cards.
+## on 2026-09-20, and Bridges, Quilt, Paper Planes and Pinwheel made it
+## fifteen, sixteen, seventeen and eighteen the same day, so page two grew
+## from one card to six; nothing here had to change for any of them, which
+## is the whole point of paging the grid rather than counting the cards.
 const PER_PAGE := 12
 ## Entrance delays: the header first, then the day row, then a wave down the
 ## cards, then the bar.
@@ -112,8 +113,9 @@ const PAGER_SLOT_H := 64.0
 ## no background at all and read as an artefact, not a button.
 const PAGER_BTN := Vector2(44.0, 44.0)
 const PAGER_ICON := 20.0
-## The pager's dots. Two is what thirteen or fourteen cards need; the row
-## draws as many as it is given, so a fifteenth board costs nothing here. The current
+## The pager's dots. Two is what thirteen to twenty-four cards need;
+## the row draws as many as it is given, so a twenty-fifth board would cost
+## nothing here either -- the seventeenth already did not. The current
 ## page is a filled disc; every other page is a ring, so the two are never
 ## just two shades of the same filled dot.
 const DOT := 14.0
@@ -318,14 +320,24 @@ func _build_page() -> void:
 		card.blocked.connect(_on_soon.bind(entry))
 		cards.append(card)
 		_grid.add_child(card)
-	# A short last row (fourteen over twelve leaves two) hands the real
-	# columns it does have the empty one's leftover width -- GridContainer
-	# sizes a column to the widest cell it actually has, and a column with no cell in that
-	# row does not compete for the row's stretch at all. Padding out to COLS
-	# with zero-minimum, EXPAND_FILL fillers keeps three columns competing
-	# on every row, on any page, so a card is 320 wide everywhere rather
-	# than however many empty columns' worth wider. The mirror of the
-	# height floor puzzle_card_2d.gd's CARD_H sets on the other axis.
+	# A short last row -- one whose cards do not fill COLS -- hands the real
+	# columns it does have the empty
+	# one's
+	# leftover width: GridContainer sizes a column to the widest cell it
+	# actually has, and a column with no cell in that row does not compete
+	# for the row's stretch at all. Padding out to COLS with zero-minimum,
+	# EXPAND_FILL fillers keeps three columns competing on every row, on any
+	# page, so a card is 320 wide everywhere rather than however many empty
+	# columns' worth wider. The mirror of the height floor
+	# puzzle_card_2d.gd's CARD_H sets on the other axis.
+	#
+	# **At eighteen cards this does not run**: page two holds six, COLS is
+	# three, 6 % 3 is zero, so no filler is made. It ran at seventeen, where
+	# page two held five, and it went unused at fifteen, where page two's
+	# three over three columns was a full row -- which is why the path stays
+	# exactly where it is rather than being deleted the moment a page happens
+	# to come out square. Whether it runs is a property of today's card
+	# count, never of the pager.
 	var short := cards.size() % COLS
 	if short > 0:
 		for i in COLS - short:
@@ -534,7 +546,7 @@ func _on_tab(tab: String) -> void:
 func _on_soon(entry: Dictionary) -> void:
 	_say("%s has no flat board yet. Its island version is under More." % entry.get("title", ""))
 
-## Opens one of the fourteen. A `soon` card never gets here.
+## Opens one of the seventeen. A `soon` card never gets here.
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry):
 		return

@@ -109,10 +109,12 @@ func _build() -> void:
 
 ## The title block is whatever the buttons leave, and a long title or motto
 ## is wider than that. A five-button bar (a board with no actions row, so
-## Reset rides up here: Balance, Untangle and Word Trail) leaves it 370 at
-## 1080 of design space, and `Word Trail` measures 392 at GameWordmark and
-## `EVERY LETTER FINDS ITS WAY` 406 at FlatMotto, so both used to run out
-## under Undo and Reset -- as Balance's motto (399) had done since
+## Reset rides up here: Balance, Untangle, Word Trail, Quilt and Paper
+## Planes)
+## leaves it 370 at 1080 of design space, and `Word Trail` measures 392 at
+## GameWordmark and `EVERY LETTER FINDS ITS WAY` 406 at FlatMotto, so both
+## used to run out under Undo and Reset -- as Balance's motto (399) had done
+## since
 ## 2026-09-18. A label wider than its block is lettered smaller until it
 ## fits, and **never larger**, so every screen that already fits is untouched
 ## to the pixel. The width is the rendered face's own

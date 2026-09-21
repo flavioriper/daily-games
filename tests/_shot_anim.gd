@@ -79,6 +79,20 @@ extends SceneTree
 ## answer, so the strip catches the diagonal wave, its three sparkles and the
 ## win screen behind them.
 ##
+## Paper Planes taps a free plane picked for two things at once: its launch
+## has to wake at least one other plane (`_wakes`, played and undone on the
+## state before the real tap, never on the board), so the strip's single tap
+## shows both signature moves rather than an isolated dart; and, among the
+## planes that do, the shortest flight (`cells.size() - 1 + lane.size() +
+## 1`, the same sum the board's own `_dur()` divides by `LAUNCH_SPEED`),
+## rather than the first free plane the generator happens to list, whose
+## lane could run the length of the board. That keeps the flight inside or
+## close to `Motion.POP_IN`'s own floor most seeds, so the strip's unmoved
+## default schedule still catches the launch at 1.65 and 1.8, the wake it
+## opens up behind the departing plane, and the field settled again well
+## before the idle window opens at 2.2 -- no shot times or idle window of its
+## own, unlike Word Trail's and Sudoku's.
+##
 ## `rm` anywhere after the id sets `Motion.reduce` **before the board opens**
 ## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
 ## pixel for pixel: under reduce motion nothing on a settled board may move.
@@ -288,6 +302,8 @@ func _process(delta: float) -> bool:
 			_tap_mushroom()
 		elif _entry.id == "wordtrail" and not _empty:
 			_drag_wordtrail()
+		elif _entry.id == "planes" and not _empty:
+			_tap_planes()
 		elif _entry.id == "sudoku" and not _empty:
 			_tap_sudoku()
 			if _mode == "hint":
@@ -631,6 +647,51 @@ func _tap_sudoku() -> void:
 func _write_sudoku(i: int) -> void:
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(i / 9, i % 9))
 	_tap_key("Digit%d" % (int(_puzzle.state.sol[i]) - 1))
+
+## Paper Planes: one real touch on a free plane's head cell -- picked, among
+## every free plane, for the shortest flight (`cells.size() - 1 +
+## lane.size() + 1`, the same sum the board's own `_dur()` divides by
+## `LAUNCH_SPEED`) **among those whose launch also wakes at least one other
+## plane** (`_wakes`, played and undone on the state to find out, never on
+## the board), so the strip's one tap shows both signature moves -- the
+## launch and the wake -- rather than an isolated dart with nothing behind
+## it. Falls back to the shortest flight of all if no free plane wakes
+## another. Either way the flight stays short enough that the strip's
+## ordinary shot schedule catches the launch, the wake and the settle without
+## a board-specific timeline of its own.
+func _tap_planes() -> void:
+	var st = _puzzle._state
+	var free: Array = st.free_planes()
+	if free.is_empty():
+		return
+	var best: int = free[0]
+	var best_key: Array = [true, INF]
+	for i in free:
+		var cells: Array = st.planes[i]["cells"]
+		var s_end := float(cells.size() - 1 + st.lane(i).size() + 1)
+		var key: Array = [_wakes(st, i).is_empty(), s_end]
+		if key < best_key:
+			best_key = key
+			best = i
+	var cells: Array = st.planes[best]["cells"]
+	var head: Vector2i = cells[cells.size() - 1]
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(head.y, head.x))
+
+## Which planes would become free if `i` launched right now, found by playing
+## the move on the state and undoing it -- the state is `RefCounted` and
+## reversible (`launch`/`undo`), so this costs nothing the real tap does not
+## already pay and leaves the board exactly as it was.
+func _wakes(st, i: int) -> Array:
+	var before := {}
+	for f in st.free_planes():
+		before[f] = true
+	st.launch(i)
+	var out := []
+	for f in st.free_planes():
+		if not before.has(f):
+			out.append(f)
+	st.undo()
+	return out
 
 ## One tap on a key of the keyboard tray or a chip of the digit pad, found by
 ## the name that tray gives it.
