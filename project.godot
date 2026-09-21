@@ -8,6 +8,12 @@
 
 config_version=5
 
+[ads]
+
+provider_singleton=""
+app_id=""
+banner_unit_id=""
+
 [application]
 
 config/name="Daily"
@@ -19,6 +25,7 @@ boot_splash/show_image=false
 [autoload]
 
 MCPGameBridge="res://addons/godot_mcp/game_bridge/mcp_game_bridge.gd"
+Ads="*res://core/ads.gd"
 
 [display]
 

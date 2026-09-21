@@ -99,6 +99,9 @@ func _note(id: String) -> String:
 			_puzzle.state.answer.to_upper(), _puzzle.state.rows.size(),
 			"row" if _puzzle.state.rows.size() == 1 else "rows",
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"planes": return "%d planes launched off a %dx%d sky, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.planes.size(), _puzzle._state.cols, _puzzle._state.rows,
+			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			81 - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"fairylights": return "%dx%d garden, %d lanterns, %d turns, board fit=%s, hud=%s" % [
@@ -107,6 +110,9 @@ func _note(id: String) -> String:
 		"quilt": return "%dx%d backing, %d patches, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
+			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -130,10 +136,12 @@ func _solve(id: String) -> void:
 		"mushroom": _solve_mushroom()
 		"wordtrail": _solve_wordtrail()
 		"bridges": _solve_bridges()
+		"planes": _solve_planes()
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
 		"quilt": _solve_quilt()
 		"fairylights": _solve_fairylights()
+		"pinwheel": _solve_pinwheel()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -418,6 +426,54 @@ func _solve_quilt() -> void:
 		var to: Vector2 = corner + (Vector2(first) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * cell
 		_drag_local(from, to)
 
+## Pinwheel: every piece turned home by tapping its own pinwheel, which is
+## this board's entire input vocabulary -- one tap on one unambiguous target,
+## repeated until the piece faces the way the answer wants. Nothing else on
+## the frame does anything, so a pin drawn at the wrong cell, or a tap that
+## reads the cell under the finger as `row * cols + column`, fails here
+## rather than passing on a poke at the state.
+##
+## A piece that is *pinned fast* -- one in-frame orientation, so nowhere to
+## go -- is skipped, and it has to be: it is already on its answer and the
+## board refuses the tap, so a loop that waited for it to turn would spin
+## for ever. That skip is the harness agreeing with rule 5.
+##
+## One hint first, through the real HUD, which walks the piece furthest from
+## home all the way back in a single history entry; that piece is then
+## already facing right and the loop below steps over it with no special
+## case. There is no Check on this board -- nothing is hidden, and the stain
+## a second piece lays on a cell is the answer a Check would give -- so
+## `_hud_ok` watches the hint alone, as Quilt's and Word Trail's do.
+func _solve_pinwheel() -> void:
+	var st = _puzzle._state
+	# Fit check: every cell centre must land inside the board slot, and so
+	# must every pin. The pin is the only tap target on the screen, so a pin
+	# off the card is a piece that can never be turned at all.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if not slot.has_point(_puzzle.cell_to_local(c, r)):
+				_fit_ok = false
+	for p in (st.shapes as Array).size():
+		if not slot.has_point(_puzzle._pin_point(p)):
+			_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	for p in (st.shapes as Array).size():
+		if _puzzle.is_done():
+			return
+		if st.fixed(p):
+			continue
+		var pin: Vector2i = st.pin_cell(p)
+		# A piece has at most four orientations, so four taps come home from
+		# anywhere; the guard is there so a board that refused a tap stops
+		# rather than hangs.
+		var guard := 0
+		while int(st.turned[p]) != int(st.answer[p]) and guard < 5:
+			guard += 1
+			_tap_local(_puzzle.cell_to_local(pin.x, pin.y))
+
 func _tap_local(local: Vector2) -> void:
 	_tap_global(_to_global(local))
 
@@ -680,6 +736,49 @@ func _solve_bridges() -> void:
 			if _puzzle.is_done():
 				return
 			_drag_local(a, b)
+
+## Paper Planes: every plane is tapped on its own head cell, with a real
+## touch, until the sky is empty. It needs no order and no solver -- a launch
+## only ever empties cells, so any plane that is free now is still free
+## later and the greedy walk can never dead-end -- and it needs no waiting
+## between taps, because the board updates the state on the press and
+## animates afterwards. That is what lets the whole board be cleared inside
+## this one frame; if a busy gate is ever added to `_tap`, this is the test
+## that will catch it.
+##
+## The **last** plane goes through the hint, the way `_solve_queens` leaves
+## the n-th queen to it, so the hint path is exercised as well as the tap
+## path. It takes one extra step here: a hint on this board only *names* a
+## free plane and never launches it (there is no wrong move to be saved
+## from), so the harness presses Hint and then taps the plane it rang --
+## `_hint_lit` -- and the win still arrives through a touch on the board.
+##
+## **There is no Check on this board**, so nothing presses one and `checks`
+## stays 0; `_hud_ok` is the hint alone.
+func _solve_planes() -> void:
+	var st = _puzzle._state
+	# Board fit check: every cell centre must land inside the slot.
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	var guard := 0
+	while not _puzzle.is_done() and guard < 400:
+		guard += 1
+		var free: Array[int] = st.free_planes()
+		if free.is_empty():
+			return
+		var i: int = free[0]
+		if st.left() == 1:
+			_press(_host.top_bar.hint_button)
+			_hud_ok = _puzzle.hints_used == 1
+			if _puzzle._hint_lit >= 0:
+				i = _puzzle._hint_lit
+		var cells: Array = st.planes[i]["cells"]
+		var head: Vector2i = cells[cells.size() - 1]
+		_tap_local(_puzzle.cell_to_local(head.y, head.x))
 
 ## Hidden Word: one hint, then the day's own word typed on the real keyboard
 ## a key at a time and committed with the real Enter. Nothing here writes to

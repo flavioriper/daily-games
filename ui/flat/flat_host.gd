@@ -3,8 +3,8 @@ extends "res://ui/puzzle_host.gd"
 ## The flat screen's shell: the same host as every other board's (every
 ## handler, the sheets, the analytics and the spawn are inherited) with the
 ## chrome swapped for the reference's cream rows, and the win screen in place
-## of the solved overlay. All fourteen grid cards ask for it through the
-## registry's `shell` field, Binairo through Sudoku; the island boards keep
+## of the solved overlay. All eighteen grid cards ask for it through the
+## registry's `shell` field, Binairo through Rings; the island boards keep
 ## ui/puzzle_host.gd's rows.
 ##
 ## The one row the flat screens do not share is the tray: Binairo arms a
@@ -46,7 +46,6 @@ const TileTray = preload("res://ui/flat/tile_tray.gd")
 const KeyBoard = preload("res://ui/flat/key_board.gd")
 const DigitPad = preload("res://ui/flat/digit_pad.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
-const TipCard = preload("res://ui/flat/tip_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -62,7 +61,6 @@ const CAMP_BUTTON := 130.0
 ## Entrance delays per row (the island's order; ENTER_TOP, ENTER_CARDS and
 ## ENTER_ACTIONS come from the base host).
 const ENTER_TRAY := 0.2
-const ENTER_TIP := 0.3
 ## The win: the board's wave first, then the layout change and the panels.
 const WIN_AFTER := 0.8
 const WIN_AFTER_STILL := 0.2
@@ -73,7 +71,6 @@ const STATS_DELAY := 0.35
 const STATS_SLIDE := 0.35
 
 var tray: Control
-var tip_card: Control
 var well_done: Control
 var stats_card: Control
 var camp_button: Button
@@ -164,7 +161,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# rest of the chrome wears reads as a stain across a field of small tiles.
 	_card.material = null
 
-	# --- the bottom slot: palette, actions and tip, then the win's stats and button ---
+	# --- the bottom slot: palette and actions, then the win's stats and button ---
 	_bottom_slot = Control.new()
 	_bottom_slot.name = "BottomSlot"
 	_bottom_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -236,14 +233,6 @@ func _build_chrome(root: VBoxContainer) -> void:
 		action_bar.check.connect(_on_check)
 		_bottom_stack.add_child(action_bar)
 		rows.append(FlatActions.BUTTON.y)
-	# Hidden Word has no cycle of rules to show: Enter is the check, so there
-	# is nothing a tip card would say that the keyboard does not already.
-	if bool(_entry.get("tip", true)):
-		tip_card = TipCard.new()
-		tip_card.name = "TipCard"
-		tip_card.open.connect(_open_rules)
-		_bottom_stack.add_child(tip_card)
-		rows.append(TipCard.HEIGHT)
 	_bottom_play = GAP * maxi(rows.size() - 1, 0)
 	for row in rows:
 		_bottom_play += row
@@ -300,8 +289,6 @@ func _enter() -> void:
 		tray.enter(ENTER_TRAY)
 	if action_bar != null:
 		action_bar.enter(ENTER_ACTIONS)
-	if tip_card != null:
-		tip_card.enter(ENTER_TIP)
 
 func _refresh() -> void:
 	# The one board that talks back to its tray: Hidden Word paints the keys
@@ -315,8 +302,6 @@ func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	if tray != null:
 		tray.refresh(p)
-	if tip_card != null:
-		tip_card.refresh(p)
 
 ## The weights tray asked for one unit onto or off a kind. The board decides
 ## -- it owns the rules and the sprout's reason for a refusal -- and the row

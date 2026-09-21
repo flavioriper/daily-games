@@ -38,6 +38,20 @@ static func day() -> int:
 	cfg.load(path)
 	return int(cfg.get_value("progress", "days", 0))
 
+## Whether the player has dismissed a one-time tutorial. Tutorials live in the
+## same small progress file so they survive a restart without adding another
+## persistence format.
+static func tutorial_seen(id: String) -> bool:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	return bool(cfg.get_value("tutorials", id, false))
+
+static func mark_tutorial_seen(id: String) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	cfg.set_value("tutorials", id, true)
+	cfg.save(path)
+
 ## The island name for a date, the same for everyone on that date.
 static func island_name(date_key: int = Daily.date_key()) -> String:
 	return ISLANDS[posmod(hash(str(date_key)), ISLANDS.size())]

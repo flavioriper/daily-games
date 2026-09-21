@@ -313,6 +313,11 @@ const WOBBLE_TIME := 0.45
 ## is per-tile along a ribbon, not the king-move ring step this constant
 ## measures -- so it was not folded in when this const was lifted.
 const WAVE_STEP := 0.045
+## How long a quarter turn takes. Pinwheel's swing is the first rotation any
+## flat board asks for, so the number lives here rather than in the board: a
+## quarter turn is a thing the next board may want, and a board that needs a
+## slower one passes `time` rather than copying this.
+const TURN_TIME := 0.26
 
 ## The press: `node` sinks to PRESS_SCALE of `base` under the finger and
 ## springs back to `base` with the back ease on release. The caller keeps
@@ -546,6 +551,22 @@ static func wobble_angle(elapsed: float, angle := WOBBLE_ANGLE, time := WOBBLE_T
 		return 0.0
 	var t := elapsed / time
 	return angle * sin(t * 6.0 * PI) * (1.0 - t) * (1.0 - t)
+
+## The angle a thing has swung through: `quarters` quarter turns clockwise,
+## `elapsed` seconds after the moment it was set off. Reads `back_out`, so it
+## passes the quarter and settles back onto it -- a thing that stopped dead on
+## the mark reads as a snap rather than as a spin. **The vocabulary's first
+## rotation**: every turn in the game before it was an idle (the sun's
+## revolution, Untangle's knots) or Hidden Word's flip, which is a scale on one
+## axis and not a rotation at all. Zero before the moment, the full angle after
+## it and under reduce-motion.
+static func turn_angle(elapsed: float, quarters: int, time := TURN_TIME) -> float:
+	var full := float(quarters) * PI * 0.5
+	if reduce or elapsed >= time:
+		return full
+	if elapsed <= 0.0:
+		return 0.0
+	return full * back_out(elapsed / time)
 
 ## Kills `tw` if it is still alive. Null-safe.
 static func stop(tw: Tween) -> void:

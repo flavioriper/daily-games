@@ -6,6 +6,8 @@ extends Control
 ##
 ## It is never an image and never a render of a model. Thirteen of the
 ## seventeen are made almost entirely of the flat boards' own cast --
+## It is never an image and never a render of a model. Twelve of the
+## eighteen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, Fairy Lights'
@@ -15,12 +17,14 @@ extends Control
 ## Only the furniture under them (a tray, a beam, a tile, a run of wire) is
 ## drawn here.
 ##
-## The four that borrow nothing are Nonogram, Sudoku, Bridges and Quilt, and
-## for the same reason: none of those boards has a character at all. Their
-## pictures are entirely `_draw` -- tiles for the first, a ruled
-## three-by-three fragment with numerals for the second, a sea with islets
-## on it for the third and a part-sewn blanket for the fourth -- and none of
-## them has a branch of `_build`.
+## The six that borrow nothing are Nonogram, Sudoku, Bridges, Quilt, Paper
+## Planes and Pinwheel, and for the same reason: none of those boards has a
+## character at all. Their pictures are entirely `_draw` -- tiles for the
+## first, a ruled three-by-three fragment with numerals for the second, a sea
+## with islets on it for the third, a part-sewn blanket for the fourth,
+## bent trails with darts for the fifth, and a frame of pinned pieces with
+## one of them turned off its square for the sixth -- and none of them has a
+## branch of `_build`.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -46,6 +50,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
 const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
+const PinWheel = preload("res://ui/faces/pin_wheel.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -81,6 +86,39 @@ const LIGHTS_LAMPS := [-5.0, 95.0]
 ## almost exactly the wire's own gold, and the one thing this picture has to
 ## say is which of the two things is the light and which is the cable.
 const LIGHTS_HUES := [1, 2]
+## Pinwheel's frame, in the box's own units. Three rows is what 118 will hold
+## at a cell worth drawing a wheel on, and eight columns is what the tiling
+## below takes; the board's own bands are taller than they are wide and a box
+## 2.7 times wider than it is tall cannot show one, so the card states the
+## game rather than the shape of a band.
+const PIN_CELL := 35.0
+const PIN_COLS := 8
+const PIN_ROWS := 3
+const PIN_PAD := 5.0
+## The wheel, in cells. **The one number here not taken from the board**: at
+## `pinwheel2d.gd`'s own 0.19 a wheel is five pixels across in this box and
+## comes out a dot, and the four vanes are the whole of the drawing.
+const PIN_WHEEL_R := 0.32
+
+## The frame's pieces, as [cloth index, pin cell, cells covered]. Four are
+## lying in their square and tile the frame with the fifth; the fifth is
+## `PIN_TURNED`, a quarter turn clockwise about its own pin off where it
+## belongs, which is what puts two pieces on (3, 0) and (5, 1) and leaves
+## (3, 2) and (4, 2) bare. **A card of a solved frame would say nothing
+## about the game**: the stain and the bare ground are the whole of it.
+const PIN_PIECES := [
+	[0, Vector2i(0, 1), [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1),
+		Vector2i(0, 2), Vector2i(1, 2)]],
+	[6, Vector2i(2, 1), [Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1),
+		Vector2i(2, 1), Vector2i(2, 2)]],
+	[3, Vector2i(6, 0), [Vector2i(5, 0), Vector2i(6, 0), Vector2i(7, 0),
+		Vector2i(5, 1), Vector2i(5, 2)]],
+	[4, Vector2i(7, 2), [Vector2i(6, 1), Vector2i(7, 1), Vector2i(6, 2),
+		Vector2i(7, 2)]],
+]
+const PIN_TURNED := [2, Vector2i(4, 1), [Vector2i(3, 0), Vector2i(4, 0),
+	Vector2i(3, 1), Vector2i(4, 1), Vector2i(5, 1)]]
+const PIN_STAINED := [Vector2i(3, 0), Vector2i(5, 1)]
 
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
@@ -96,6 +134,12 @@ var _sea_mesh: ArrayMesh
 var _quilt_mesh: ArrayMesh
 ## Fairy Lights' run of wire and its post, likewise.
 var _lights_mesh: ArrayMesh
+## Paper Planes' sky -- the dots, the trails and the darts, all baked into
+## one mesh -- held here for exactly the same reason as `_band_mesh` above.
+var _sky_mesh: ArrayMesh
+## Pinwheel's frame, its pieces, the stain over them and every wheel, again
+## for the RID reason and not for the arithmetic.
+var _pinwheel_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -245,6 +289,8 @@ func _draw() -> void:
 		"bridges": _draw_sea()
 		"quilt": _draw_quilt()
 		"fairylights": _draw_lights()
+		"planes": _draw_planes()
+		"pinwheel": _draw_pinwheel()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -482,6 +528,7 @@ func _draw_sudoku() -> void:
 	_text("5", x0 + cell * 0.5, y0 + cell * 0.78, 26.0, Pal.TEXT)
 	_text("3", x0 + cell * 1.5, y0 + cell * 1.78, 26.0, Pal.LEAF_DEEP)
 	_text("7", x0 + cell * 2.5, y0 + cell * 2.78, 26.0, Pal.TEXT)
+
 ## Bridges: three turf islets with their numbers on a small sea panel, two of
 ## them joined by a double run and one still waiting. That board adds nothing
 ## to ui/faces/ (spec section 8), so unlike its siblings this picture seats no
@@ -702,3 +749,203 @@ func _glow(b, centre: Vector2, inner: float, outer: float, warm: Color) -> void:
 		b.tri(mid, ring_i + i, ring_i + j)
 		b.tri(ring_i + i, ring_o + i, ring_o + j)
 		b.tri(ring_i + i, ring_o + j, ring_i + j)
+## Paper Planes: the empty sky's own faint dots, and three bent ink trails
+## laid over them, each ending in a folded paper dart -- the board's own
+## shapes (puzzles/planes2d.gd's DOT, TRAIL and DART_*/CREASE_* fractions),
+## **copied** here as bare literals rather than shared, drawn at card scale
+## rather than a cell's, so the card and the board read as the same object at
+## two different sizes. This file preloads no puzzle script and should not
+## start; a literal is the price of that. Two of the copies differ from the
+## board **on purpose**: the dot's alpha is 0.4 here against the board's
+## `DOT_ALPHA` 0.45 (a card is read at a glance, not played on, and a touch
+## fainter reads right at that distance), and the trail's width is 9.0 px
+## against this card's 32 px step -- about 0.28 of it -- against the board's
+## `TRAIL` of 0.17 of a cell, because a card this small needs a heavier line
+## to read as ink rather than a hairline. Every other figure here is meant to
+## track the board's exactly, `CREASE`'s 0.06 included -- **and CREASE has
+## already moved once on this branch, 0.09 to 0.06** (see planes2d.gd's own
+## note), silently as far as this file is concerned. Nothing here would
+## notice a second move; if the board's numbers change again, sweep this
+## function by hand. No cast: this is the fifth board Nonogram's decision
+## reaches, after Sudoku, Bridges and Quilt.
+##
+## Baked into **one mesh**, the way Hidden Word's turf band is
+## (`_draw_letters`) rather than a `draw_circle`/`draw_polyline` per piece:
+## gl_compatibility pays per `draw_*` command, a repeated field of dots is
+## exactly what a baked mesh is for, and it is what the board itself does for
+## its own dots, trails and darts (`Face.Builder`, `puzzles/planes2d.gd`).
+## The 27 discs of the dot lattice alone were 27 of this card's original +48
+## draw calls (Task 5's review, round 1); baking the trails and darts in
+## beside them costs nothing extra and matches the board's own technique.
+func _draw_planes() -> void:
+	var b := Face.Builder.new()
+	_dots_sky(b)
+	for trail in [
+		[Vector2(-146.0, -34.0), Vector2(-66.0, -34.0), Vector2(-66.0, 18.0)],
+		[Vector2(-34.0, -6.0), Vector2(56.0, -6.0)],
+		[Vector2(84.0, -40.0), Vector2(84.0, 30.0), Vector2(138.0, 30.0)],
+	]:
+		_plane_trail(b, trail)
+	_sky_mesh = b.mesh()
+	draw_mesh(_sky_mesh, null)
+
+## The lattice every plane would sit on, coarser than the board's own (a dot
+## a cell) because a card is read at a glance rather than played on -- a dot
+## a cell here would be a haze at this scale rather than a sky.
+func _dots_sky(b) -> void:
+	var step := 32.0
+	var r := 2.4 * _u
+	for gy in range(-1, 2):
+		for gx in range(-4, 5):
+			b.disc(at(gx * step, gy * step), r, Color(Pal.LINE, 0.4))
+
+## One trail, drawn tail to head with a disc at every bend (the board's own
+## `_ink_pts`: a stroke's own join pinches at a corner, and a disc there is
+## what keeps the bend round rather than notched), and a folded dart turned
+## to face the way the last segment points. `caps=false` on the stroke keeps
+## its own ends flat, the way `draw_polyline` always drew them.
+func _plane_trail(b, pts: Array) -> void:
+	var canvas_pts := PackedVector2Array()
+	for v in pts:
+		canvas_pts.append(at(v.x, v.y))
+	var width := 9.0 * _u
+	b.stroke(canvas_pts, width, Pal.TEXT, false, false)
+	for i in range(1, canvas_pts.size() - 1):
+		b.disc(canvas_pts[i], width * 0.5, Pal.TEXT)
+	var head: Vector2 = pts[pts.size() - 1]
+	var dir: Vector2 = (head - pts[pts.size() - 2]).normalized()
+	_dart_card(b, head, dir)
+
+## The size a dart is drawn at, in the box's own units -- this card has no
+## cell to measure against, so the board's DART_TIP/BACK/WING/NOTCH fractions
+## (puzzles/planes2d.gd) are read against this instead.
+const _DART_SIZE := 36.0
+
+## A folded dart at `head` (box units), turned to `dir`: the board's own
+## four-point outline (tip, wing, notch, wing) in TEXT, with its crease slit
+## near the tip in PAPER. The notch and the crease are the whole re-theme
+## (planes2d.gd's own note): a solid arrowhead is a symbol, a dart is an
+## object.
+func _dart_card(b, head: Vector2, dir: Vector2) -> void:
+	var turn := Transform2D(dir.angle(), at(head.x, head.y))
+	var pts := PackedVector2Array([
+		Vector2(0.42, 0.0), Vector2(-0.26, 0.30),
+		Vector2(-0.12, 0.0), Vector2(-0.26, -0.30),
+	])
+	for i in pts.size():
+		pts[i] = pts[i] * _DART_SIZE * _u
+	b.polygon(turn * pts, Pal.TEXT)
+	var spine := PackedVector2Array([Vector2(0.22, 0.0) * _DART_SIZE * _u,
+		Vector2(-0.05, 0.0) * _DART_SIZE * _u])
+	b.stroke(turn * spine, 0.06 * _DART_SIZE * _u, Pal.PAPER, false, false)
+
+## Pinwheel: a frame of five pinned pieces with one of them turned off its
+## square, so the card carries the two hatched cells where it now sits on its
+## neighbours and the two cells of bare ground it has left behind. That is
+## what a Pinwheel board looks like while it is being played, and a picture of
+## a solved frame would say nothing at all about the game.
+##
+## No cast. This board seats no character either, which makes it the sixth
+## after Nonogram, Sudoku, Bridges, Quilt and Paper Planes, so the picture is
+## entirely drawn
+## furniture -- and, like Quilt's, it is **the board's own drawing** and not a
+## second one: the cloth goes through `ui/faces/patch_cloth.gd` and the pins
+## through `ui/faces/pin_wheel.gd`, the same two files `puzzles/pinwheel2d.gd`
+## draws with, so a card and its board cannot drift apart. One mesh, one draw
+## call.
+##
+## Every measure but the wheel's radius is the board's own, scaled by the
+## cell: the ground is `Pal.QUILT_BACK` ruled in `QUILT_RULE`, a piece is its
+## cloth over its own lip with a solid `cloth_stitch` edge, and a contested
+## cell is washed in `Pal.TEXT` and then **hatched** -- because a wash alone
+## cannot signal state on pieces coloured by index, which is Quilt's "a patch
+## cannot blush" read from the other end.
+## Spec: docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 4.
+func _draw_pinwheel() -> void:
+	var cell := PIN_CELL * _u
+	var origin := at(-float(PIN_COLS) * PIN_CELL * 0.5, -float(PIN_ROWS) * PIN_CELL * 0.5)
+	var b := Face.Builder.new()
+	# The ground: Shikaku's unclaimed plot behind the grid, the faint rules
+	# between its cells and a rim round the lot, as `_build_frame` lays it.
+	var pad := PIN_PAD * _u
+	var panel := Face.Builder.round_rect(origin - Vector2.ONE * pad,
+		Vector2(PIN_COLS, PIN_ROWS) * cell + Vector2.ONE * (2.0 * pad), 0.24 * cell)
+	b.polygon(panel, Pal.QUILT_BACK)
+	var rule := maxf(1.0, cell * 0.018)
+	for c in range(1, PIN_COLS):
+		var x := origin.x + float(c) * cell
+		b.stroke(PackedVector2Array([Vector2(x, origin.y),
+			Vector2(x, origin.y + float(PIN_ROWS) * cell)]), rule, Pal.QUILT_RULE, false, false)
+	for r in range(1, PIN_ROWS):
+		var y := origin.y + float(r) * cell
+		b.stroke(PackedVector2Array([Vector2(origin.x, y),
+			Vector2(origin.x + float(PIN_COLS) * cell, y)]), rule, Pal.QUILT_RULE, false, false)
+	b.stroke(panel, maxf(1.5, cell * 0.038), Pal.LINE, true)
+	# The four pieces lying in their squares, then the one that is not: it
+	# draws over the neighbours it has been turned across, the order the
+	# board puts a swinging piece in.
+	for piece: Array in PIN_PIECES:
+		_pin_piece(b, piece, origin, cell)
+	_pin_piece(b, PIN_TURNED, origin, cell)
+	for stained: Vector2i in PIN_STAINED:
+		_pin_stain(b, stained, origin, cell)
+	# Every wheel over everything, because a wheel is the handle. Its hub
+	# wears its own piece's cloth taken toward the ink, which is the only
+	# thing saying whose handle it is -- and on a board where a pin can end
+	# up underneath another piece, that is load-bearing rather than pretty.
+	var all: Array = PIN_PIECES.duplicate()
+	all.append(PIN_TURNED)
+	for i in all.size():
+		var piece: Array = all[i]
+		var seat := origin + (Vector2(piece[1] as Vector2i) + Vector2(0.5, 0.5)) * cell
+		var r := cell * PIN_WHEEL_R
+		PinWheel.shadow(b, seat, r, Pal.TEXT)
+		PinWheel.wheel(b, seat, r, float(i) * PI * 0.5, Pal.LINE, Pal.SURFACE,
+			PatchCloth.cloth(int(piece[0])).lerp(Pal.TEXT, 0.42))
+	_pinwheel_mesh = b.mesh()
+	draw_mesh(_pinwheel_mesh, null)
+
+## One Pinwheel piece: its cloth over its own lip with a solid edge round it,
+## laid through the board's own `PatchCloth` so the silhouette is traced and
+## filleted once and not twice.
+func _pin_piece(b, piece: Array, origin: Vector2, cell: float) -> void:
+	var ci := int(piece[0])
+	var lip := Vector2(0.0, PatchCloth.EDGE * cell)
+	var edge := maxf(1.0, cell * 0.04)
+	for loop: PackedVector2Array in PatchCloth.loops(piece[2] as Array):
+		var pts := PatchCloth.laid(loop, origin, cell, Vector2i.ZERO)
+		b.polygon(_shifted(pts, lip), PatchCloth.cloth_deep(ci))
+		b.polygon(pts, PatchCloth.cloth(ci))
+		b.stroke(pts, edge, PatchCloth.cloth_stitch(ci), true)
+
+## One contested cell: the wash, and the hatch over it. The hatch's phase
+## comes off the frame and not off the cell, the way the board's does, so two
+## stained cells side by side would carry one unbroken line across the seam.
+func _pin_stain(b, at_cell: Vector2i, origin: Vector2, cell: float) -> void:
+	var lo := origin + Vector2(at_cell) * cell
+	var hi := lo + Vector2.ONE * cell
+	b.polygon(Face.Builder.round_rect(lo, Vector2.ONE * cell, 0.22 * cell),
+		Color(Pal.TEXT, 0.30))
+	var ink := Color(Pal.TEXT, 0.20)
+	var step := cell * 0.24
+	var width := maxf(1.0, cell * 0.045)
+	var phase := origin.x - origin.y
+	var j := int(ceil(((lo.x - hi.y) - phase) / step))
+	while true:
+		var cc := phase + float(j) * step
+		if cc > hi.x - lo.y:
+			break
+		var a := maxf(lo.y, lo.x - cc)
+		var z := minf(hi.y, hi.x - cc)
+		if z > a:
+			b.stroke(PackedVector2Array([Vector2(a + cc, a), Vector2(z + cc, z)]),
+				width, ink, false, false)
+		j += 1
+
+## `pts` moved by `by`, for the lip under a piece.
+func _shifted(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(pts.size())
+	for i in pts.size():
+		out[i] = pts[i] + by
+	return out

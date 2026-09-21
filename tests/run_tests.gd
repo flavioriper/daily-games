@@ -16,6 +16,7 @@ func _initialize() -> void:
 		"board_math": "res://tests/test_board_math.gd",
 		"toon": "res://tests/test_toon.gd",
 		"motion": "res://tests/test_motion.gd",
+		"motion_turn": "res://tests/test_motion_turn.gd",
 		"ambient": "res://tests/test_ambient.gd",
 		"fx": "res://tests/test_fx.gd",
 		"models": "res://tests/test_models.gd",
@@ -39,6 +40,9 @@ func _initialize() -> void:
 		"quilt": "res://tests/test_quilt.gd",
 		"quilt_board": "res://tests/test_quilt_board.gd",
 		"fairylights": "res://tests/test_fairy_lights.gd",
+		"planes": "res://tests/test_planes.gd",
+		"pinwheel": "res://tests/test_pinwheel.gd",
+		"pinwheel_gen": "res://tests/test_pinwheel_gen.gd",
 	}
 	for suite_name in suites:
 		_t.current = suite_name

@@ -65,6 +65,18 @@ extends SceneTree
 ## so the milliseconds are a settled board's. `wash` runs the same tap and
 ## puts the window *over* the wash instead, which is where the peak draw
 ## call is; its mean is the cost of an animating frame and is not an idle.
+## Pinwheel has one pinwheel tapped -- the one whose quarter turn doubles up
+## the most cells -- so the strip shows the piece mid-swing with its blades
+## running on past it, and then the stain arriving on the squares it has just
+## landed on top of. It gets two extra frames and a later idle window for
+## that, because the wave only sets off once the piece has stopped turning.
+##
+## Rings lifts a ring, holds it a beat, then drops it on a peg engineered to
+## lock, so the strip shows the held ring risen and breathing, a frame
+## mid-flight and the gold wash landing. `stuck` raises the toast directly
+## instead of engineering a real dead position; `win` engineers every colour
+## but the last already home and drops the one ring that finishes it, so the
+## strip runs on to the win screen.
 ##
 ## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
 ## strip shows the selection's washes, a digit dropping in and the wave the
@@ -82,6 +94,20 @@ extends SceneTree
 ## answer, so the strip catches the diagonal wave, its three sparkles and the
 ## win screen behind them.
 ##
+## Paper Planes taps a free plane picked for two things at once: its launch
+## has to wake at least one other plane (`_wakes`, played and undone on the
+## state before the real tap, never on the board), so the strip's single tap
+## shows both signature moves rather than an isolated dart; and, among the
+## planes that do, the shortest flight (`cells.size() - 1 + lane.size() +
+## 1`, the same sum the board's own `_dur()` divides by `LAUNCH_SPEED`),
+## rather than the first free plane the generator happens to list, whose
+## lane could run the length of the board. That keeps the flight inside or
+## close to `Motion.POP_IN`'s own floor most seeds, so the strip's unmoved
+## default schedule still catches the launch at 1.65 and 1.8, the wake it
+## opens up behind the departing plane, and the field settled again well
+## before the idle window opens at 2.2 -- no shot times or idle window of its
+## own, unlike Word Trail's and Sudoku's.
+##
 ## `rm` anywhere after the id sets `Motion.reduce` **before the board opens**
 ## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
 ## pixel for pixel: under reduce motion nothing on a settled board may move.
@@ -90,6 +116,7 @@ extends SceneTree
 
 const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
 const FairyGen = preload("res://puzzles/fairy_lights_gen.gd")
+const RingsGen = preload("res://puzzles/rings_gen.gd")
 
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
 ## The reduce-motion pair: how long after the last shot the extra one is
@@ -161,6 +188,11 @@ var _bridge_drags: Array = []
 var _bridge_to := Vector2.ZERO
 var _bridge_at := INF
 var _bridge_down := false
+## Rings: the drop lands DROP_AFTER after the lift, so the strip has time to
+## catch the held ring risen and breathing before it flies.
+const RINGS_DROP_AFTER := 0.4
+var _rings_drop_to := 0
+var _rings_drop_at := INF
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -213,6 +245,16 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.8, 2.2, 3.2, 4.2]
 		_idle_from = 3.2
 		_idle_to = 5.2
+	if _id == "pinwheel" and not _empty:
+		# The swing is over in TURN_TIME, but the stain it lays fans out of
+		# the pin for another half-second after the piece has landed
+		# (`_wave_span`: the frame's longer side at WAVE_STEP a cell, plus
+		# the stained cell's own pop). Four of these are re-seated off the
+		# frame that pushes the touch -- see the tap branch below -- and the
+		# idle window opens after the wave rather than during it.
+		_shots = [0.35, 0.9, 1.65, 1.8, 2.0, 2.25, 2.8, 3.8]
+		_idle_from = 2.6
+		_idle_to = 4.6
 	if _id == "quilt" and _mode == "full":
 		# Every patch but the last is sewn on at once, and the last is
 		# dragged, so the strip catches a nearly full quilt, the last patch
@@ -237,6 +279,14 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.75, 1.95, 2.1, 2.3, 2.9, 3.9]
 		_idle_from = 2.7
 		_idle_to = 4.7
+	if _id == "rings" and _mode == "win":
+		# The drop lands about 0.74 s after the id opens (TAP_AT plus the
+		# drop delay plus the flight), the wash runs another 0.18 s and the
+		# solve hop another second past that -- so the win screen wants a
+		# shot well past the usual last one.
+		_shots.append_array([4.6, 5.6])
+		_idle_from = 5.8
+		_idle_to = 7.8
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -306,6 +356,10 @@ func _process(delta: float) -> bool:
 			_tap_mushroom()
 		elif _entry.id == "wordtrail" and not _empty:
 			_drag_wordtrail()
+		elif _entry.id == "planes" and not _empty:
+			_tap_planes()
+		elif _entry.id == "rings" and not _empty:
+			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
 			_tap_sudoku()
 			if _mode == "hint":
@@ -332,6 +386,19 @@ func _process(delta: float) -> bool:
 			_lay_bridges()
 		elif _entry.id == "quilt" and not _empty:
 			_drag_quilt()
+		elif _entry.id == "pinwheel" and not _empty:
+			_tap_pinwheel()
+			# The swing runs TURN_TIME 0.26 and the blades another half as
+			# long again, and the stain only starts fanning out once the
+			# piece has landed. These four are measured off **this** frame
+			# rather than off TAP_AT, because the frame that pushes the
+			# touch is a long one and the texture read in it is the frame
+			# before the press: two mid-swing, two while the wash is
+			# arriving on the cells the piece has just doubled up on.
+			_shots[2] = _t + 0.06
+			_shots[3] = _t + 0.20
+			_shots[4] = _t + 0.40
+			_shots[5] = _t + 0.65
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
@@ -347,6 +414,9 @@ func _process(delta: float) -> bool:
 		_trail_step()
 	if _t >= _bridge_at:
 		_bridge_step()
+	if _t >= _rings_drop_at:
+		_rings_drop_at = INF
+		_tap_rings_station(_rings_drop_to)
 	if _t >= _commit_at:
 		_commit_at = INF
 		_tap_key("Key_Enter")
@@ -421,11 +491,13 @@ func _begin_nonogram_sweep() -> void:
 	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
 	_begin_drag(from, to - from)
 
-## Queens: one real touch on the answer's first queen, with the crown chip the
-## tray arms by default.
+## Queens: two real touches on the answer's first queen: the first lays its X
+## and the second seats the queen.
 func _tap_queens() -> void:
 	var c: int = int(_puzzle.state.solution[0])
-	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c))
+	var at := _puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c)
+	_tap_global(at)
+	_tap_global(at)
 
 ## Mushroom Patch: one real touch on the answer's first mushroom (reading
 ## order, sorted by y then x), with the mushroom chip the tray arms by
@@ -458,6 +530,48 @@ func _mushroom_wash_count(cell: Vector2i) -> int:
 		if st.given.has(p) and int(st.given[p]) == 1:
 			c += 1
 	return c
+
+## Pinwheel: one real touch on one pinwheel, which is this board's whole
+## input vocabulary. The piece tapped is the one whose quarter turn leaves
+## the **most stained cells** -- squares two pieces are now on -- because the
+## stain settling is the half of the moment the swing does not show, and a
+## piece that turns into empty ground would give the strip a spin and
+## nothing else. A piece with only one in-frame orientation is skipped: it
+## is pinned fast, and tapping it is the board's refusal rather than its
+## move.
+func _tap_pinwheel() -> void:
+	var st = _puzzle._state
+	var best := -1
+	var best_score := -1
+	for p in (st.shapes as Array).size():
+		if st.fixed(p):
+			continue
+		var score := _pinwheel_stain_count(p)
+		if score > best_score:
+			best_score = score
+			best = p
+	if best < 0:
+		return
+	var pin: Vector2i = st.pin_cell(best)
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(pin.x, pin.y))
+
+## How many cells would be stained the instant piece `p` took its quarter
+## turn: its cells leave the squares it is on now and arrive on the squares
+## the next orientation wants, and any square that ends up under two pieces
+## or more is a stain.
+func _pinwheel_stain_count(p: int) -> int:
+	var st = _puzzle._state
+	var m: int = (st.shapes[p] as Array).size()
+	var by: Dictionary = {}
+	for c: Vector2i in st.cells_of(p, int(st.turned[p])):
+		by[c] = int(by.get(c, 0)) - 1
+	for c: Vector2i in st.cells_of(p, (int(st.turned[p]) + 1) % m):
+		by[c] = int(by.get(c, 0)) + 1
+	var n := 0
+	for c: Vector2i in by:
+		if st.depth(c.x, c.y) + int(by[c]) >= 2:
+			n += 1
+	return n
 
 ## Hidden Word: type a five-letter guess on the real keyboard, one key tapped
 ## like a thumb, and press Enter a beat later. The guess is picked off the
@@ -511,6 +625,63 @@ func _six_wrong() -> Array[String]:
 		if candidate != _puzzle.state.answer and _puzzle.state.accepts(candidate):
 			out.append(candidate)
 	return out
+
+## Rings: lift a ring, hold a beat, then drop it on a peg engineered to lock
+## -- two real touches, so the strip shows the held ring risen and breathing,
+## a frame mid-flight and the gold wash landing. The drop is forced to finish
+## a peg because a fresh deal is not reliably one move from doing that: peg 0
+## becomes three rings of one colour and the source peg's top ring is set to
+## match, so the move the strip watches always locks a peg. `stuck` skips all
+## of that and simply raises the toast directly, since engineering an actual
+## position with no legal move is not worth it just to look at the pill.
+func _tap_rings() -> void:
+	var p = _puzzle
+	if _mode == "stuck":
+		p._toast = p.STUCK_MSG
+		p._toast_at = _t
+		p._refresh()
+		return
+	if _mode == "win":
+		# Every colour but the last already locked on a peg of its own; the
+		# last is split 3 and 1 across the two spare pegs every band deals
+		# (BANDS always leaves two), so the one drop the strip watches wins.
+		var colours: int = p._state.colours
+		var win_pegs: Array = p._state.pegs
+		for c in range(colours - 1):
+			win_pegs[c] = [c, c, c, c]
+		win_pegs[colours - 1] = [colours - 1, colours - 1, colours - 1]
+		win_pegs[colours] = [colours - 1]
+		for i in range(colours + 1, win_pegs.size()):
+			win_pegs[i] = []
+		_rings_drop_to = colours - 1
+		_tap_rings_station(colours)
+		_rings_drop_at = _t + RINGS_DROP_AFTER
+		return
+	var pegs: Array = p._state.pegs
+	if pegs.size() < 2:
+		return
+	pegs[0] = [0, 0, 0]
+	var src := 1
+	for i in range(1, pegs.size()):
+		var peg: Array = pegs[i]
+		if not peg.is_empty() and not RingsGen.locked(peg):
+			src = i
+			break
+	var peg: Array = pegs[src]
+	peg[peg.size() - 1] = 0
+	_rings_drop_to = 0
+	_tap_rings_station(src)
+	_rings_drop_at = _t + RINGS_DROP_AFTER
+	_shots[4] = _rings_drop_at + 0.15   # mid-flight: ARC_TIME is 0.34
+	_shots[5] = _rings_drop_at + 0.6    # landed, the wash still bright
+
+## A real touch inside station `i`'s column, near its base -- the whole
+## column is one target (_peg_at), so any point inside it taps the peg.
+func _tap_rings_station(i: int) -> void:
+	var p = _puzzle
+	var st: Dictionary = p._station(i)
+	var at: Vector2 = p.get_global_transform_with_canvas() * Vector2(float(st["cx"]), float(st["ground"]) - 10.0)
+	_tap_global(at)
 
 ## Sudoku: the emptiest row closed off, a cell selected and a digit written
 ## through the real pad, so the strip shows the washes under the selection,
@@ -634,6 +805,50 @@ func _tap_fairylights() -> void:
 		% [st.n, best, best / st.n, best % st.n, best_score])
 	_tap_global(_puzzle.get_global_transform_with_canvas()
 		* _puzzle.cell_to_local(best / st.n, best % st.n))
+## Paper Planes: one real touch on a free plane's head cell -- picked, among
+## every free plane, for the shortest flight (`cells.size() - 1 +
+## lane.size() + 1`, the same sum the board's own `_dur()` divides by
+## `LAUNCH_SPEED`) **among those whose launch also wakes at least one other
+## plane** (`_wakes`, played and undone on the state to find out, never on
+## the board), so the strip's one tap shows both signature moves -- the
+## launch and the wake -- rather than an isolated dart with nothing behind
+## it. Falls back to the shortest flight of all if no free plane wakes
+## another. Either way the flight stays short enough that the strip's
+## ordinary shot schedule catches the launch, the wake and the settle without
+## a board-specific timeline of its own.
+func _tap_planes() -> void:
+	var st = _puzzle._state
+	var free: Array = st.free_planes()
+	if free.is_empty():
+		return
+	var best: int = free[0]
+	var best_key: Array = [true, INF]
+	for i in free:
+		var cells: Array = st.planes[i]["cells"]
+		var s_end := float(cells.size() - 1 + st.lane(i).size() + 1)
+		var key: Array = [_wakes(st, i).is_empty(), s_end]
+		if key < best_key:
+			best_key = key
+			best = i
+	var cells: Array = st.planes[best]["cells"]
+	var head: Vector2i = cells[cells.size() - 1]
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(head.y, head.x))
+
+## Which planes would become free if `i` launched right now, found by playing
+## the move on the state and undoing it -- the state is `RefCounted` and
+## reversible (`launch`/`undo`), so this costs nothing the real tap does not
+## already pay and leaves the board exactly as it was.
+func _wakes(st, i: int) -> Array:
+	var before := {}
+	for f in st.free_planes():
+		before[f] = true
+	st.launch(i)
+	var out := []
+	for f in st.free_planes():
+		if not before.has(f):
+			out.append(f)
+	st.undo()
+	return out
 
 ## One tap on a key of the keyboard tray or a chip of the digit pad, found by
 ## the name that tray gives it.
