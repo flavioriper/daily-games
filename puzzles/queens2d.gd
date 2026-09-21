@@ -105,8 +105,8 @@ const TIPS := [
 ]
 
 var state = State.new()
-## Which chip the tray has armed: State.QUEEN or State.CROSS. The tray only
-## asks; this owns it, and tile_tray.gd reads it back.
+## Kept for the shared tray contract. Queens input is gesture-driven now: taps
+## cycle the cell and drags always lay crosses, regardless of this value.
 var brush: int = State.QUEEN
 
 ## The court's size, the name the win harness reads.
@@ -142,7 +142,7 @@ var _shown: Array = []
 var _press_cell := Vector2i(-1, -1)
 var _pressed: Control       # the bee under the finger, if one
 var _dragged := false
-var _lay := true            # a sweep lays crosses, or rubs the player's out
+var _lay := true            # retained for the shared sweep bookkeeping
 var _swept: Dictionary = {}
 var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
@@ -771,9 +771,9 @@ func _refuse_pinned(cell: Vector2i) -> void:
 
 # --- input ---
 
-## Touch and drag only, as every flat board takes them. With the queen chip a
-## tap seats or lifts a queen on the cell it was pressed on; with the cross
-## chip a tap lays or takes the player's cross, and a drag sweeps.
+## A tap cycles a cell blank -> player cross -> queen -> blank. A drag always
+## lays player crosses, including when it starts on a queen or an existing
+## cross.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -791,19 +791,13 @@ func _press(cell: Vector2i) -> void:
 		return
 	_press_cell = cell
 	var mark := state.mark_at(cell)
-	# A bee under the finger sinks whichever chip is armed: every tappable
-	# piece takes the press, including one that will do nothing on release.
+	# A bee under the finger sinks whichever mark is already there. The actual
+	# tap transition happens on release, so a short press can become a drag.
 	if mark == State.QUEEN and _bees.has(cell):
 		_pressed = _bees[cell]
 		Motion.stop(_look_tw.get(_pressed))
 		_look_tw[_pressed] = Motion.press(_pressed, true)
-	if brush == State.QUEEN:
-		_sink_cell(cell)
-	else:
-		# The stroke's job is read off the cell it began on: a stroke that
-		# begins on the player's own cross rubs out, any other lays.
-		_lay = mark != State.CROSS
-		_paint(cell, true)
+	_sink_cell(cell)
 	_redraw()
 
 ## The bee under the finger springs back.
@@ -816,17 +810,17 @@ func _release_press() -> void:
 		_busy_for(Motion.RELEASE_TIME)
 	_pressed = null
 
-## With the cross chip, every cell between the last one painted and this one
-## is swept, so a fast finger leaves no holes. No line lock: a Queens sweep
-## is a region's odd corners as often as a row. The queen chip does not
-## sweep.
+## Every cell between the last one painted and this one is swept, so a fast
+## finger leaves no holes. Queens always lays crosses while dragging.
 func _drag(at: Vector2) -> void:
-	if brush != State.CROSS:
-		return
 	var cell := _cell_at(at)
 	if cell.x < 0 or cell == _last_paint:
 		return
 	_dragged = true
+	# Delay painting until movement proves this is a drag, but once it is,
+	# include the cell where the finger first went down in the stroke.
+	if _last_paint.x < 0:
+		_paint(_press_cell)
 	if _last_paint.x >= 0:
 		var steps := maxi(absi(cell.x - _last_paint.x), absi(cell.y - _last_paint.y))
 		for i in range(1, steps):
@@ -835,24 +829,17 @@ func _drag(at: Vector2) -> void:
 	_paint(cell)
 	_redraw()
 
-## A stroke paints a cell once. The cell the finger landed on (`pressed`)
-## always takes the press, even a queen's or a seen cell's, which the stroke
-## cannot change; a cell the stroke only passes over sinks only when it can
-## change it, Light Up's own rule for a sweep.
-func _paint(cell: Vector2i, pressed := false) -> void:
+## A stroke paints a cell once. A queen or an existing cross is left alone;
+## only blank cells can receive a new player cross.
+func _paint(cell: Vector2i) -> void:
 	if not state.in_field(cell):
 		return
 	_last_paint = cell
 	if _swept.has(cell):
 		return
 	_swept[cell] = true
-	if pressed:
-		_sink_cell(cell)
 	var mark := state.mark_at(cell)
-	if _lay:
-		if mark != State.BLANK:
-			return
-	elif mark != State.CROSS:
+	if mark != State.BLANK:
 		return
 	_sink_cell(cell)
 	_pending.append(cell)
@@ -869,12 +856,11 @@ func _release(at_cell: Vector2i) -> void:
 		_end_sinks(now)
 		_redraw()
 		return
-	if brush == State.QUEEN:
-		_end_sinks(now)
-		# A press with the queen chip is a tap only if it is let go on the
-		# cell it landed on; a finger that wandered off has changed its mind.
-		if at_cell == cell:
-			_tap_queen(cell, now)
+	_end_sinks(now)
+	# A tap is the only gesture that advances the cell through its three
+	# states. A finger that wandered off is a drag, even if it painted nothing.
+	if at_cell == cell and not was_drag:
+		_tap_cycle(cell, now)
 		_redraw()
 		return
 	if not pending.is_empty():
@@ -923,6 +909,27 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 	fx.cue("place")
 	_speak()
 	note_move()
+
+## One tap advances the player's mark. Cross -> queen deliberately uses the
+## normal seating rules, so an already-seen cell still refuses the queen.
+func _tap_cycle(cell: Vector2i, now: float) -> void:
+	var mark := state.mark_at(cell)
+	if mark == State.BLANK:
+		var before := _snapshot()
+		if not state.cross(cell):
+			return
+		_settle(before, now, _at_once())
+		fx.cue("place")
+		_speak()
+		note_move()
+		return
+	if mark == State.CROSS:
+		_tap_queen(cell, now)
+		return
+	if mark == State.QUEEN:
+		_tap_queen(cell, now)
+		return
+	_refuse_seen(cell)
 
 func _clear_gesture() -> void:
 	_press_cell = Vector2i(-1, -1)

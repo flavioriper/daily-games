@@ -622,6 +622,7 @@ func _solve_queens() -> void:
 		if _puzzle.state.queens.has(cell):
 			continue
 		_tap_local(_puzzle.cell_to_local(r, cell.x))
+		_tap_local(_puzzle.cell_to_local(r, cell.x))
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 

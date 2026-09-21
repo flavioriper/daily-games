@@ -428,11 +428,13 @@ func _begin_nonogram_sweep() -> void:
 	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
 	_begin_drag(from, to - from)
 
-## Queens: one real touch on the answer's first queen, with the crown chip the
-## tray arms by default.
+## Queens: two real touches on the answer's first queen: the first lays its X
+## and the second seats the queen.
 func _tap_queens() -> void:
 	var c: int = int(_puzzle.state.solution[0])
-	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c))
+	var at := _puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c)
+	_tap_global(at)
+	_tap_global(at)
 
 ## Mushroom Patch: one real touch on the answer's first mushroom (reading
 ## order, sorted by y then x), with the mushroom chip the tray arms by
