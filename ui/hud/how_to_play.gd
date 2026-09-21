@@ -61,7 +61,7 @@ func _build() -> void:
 
 	var title := Label.new()
 	title.theme_type_variation = "CardTitle"
-	title.text = "Solve the puzzle"
+	title.text = "Tap in the missing symbol" if is_binairo else "Start with one move"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
 

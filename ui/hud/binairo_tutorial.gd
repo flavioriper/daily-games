@@ -52,13 +52,13 @@ func _build() -> void:
 
 	var title := Label.new()
 	title.theme_type_variation = "CardTitle"
-	title.text = "Fill the grid"
+	title.text = "Tap in the missing symbol"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
 
 	var body := Label.new()
 	body.theme_type_variation = "SheetBody"
-	body.text = "Use suns and moons to fill every cell. Each row and column must contain the same number of each symbol. Never place three matching symbols in a row, and no row or column can be repeated."
+	body.text = "Fill every cell with a sun or moon. Keep the same number of each in every row and column, and never place three matching symbols together."
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.custom_minimum_size.x = 760
@@ -66,7 +66,7 @@ func _build() -> void:
 
 	var note := Label.new()
 	note.theme_type_variation = "SheetBodyDim"
-	note.text = "Tip: start with rows that already have two matching symbols side by side."
+	note.text = "No two rows or columns can be the same."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.custom_minimum_size.x = 760

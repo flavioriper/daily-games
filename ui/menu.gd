@@ -121,6 +121,11 @@ const PAGER_ICON := 20.0
 ## just two shades of the same filled dot.
 const DOT := 14.0
 const DOT_GAP := 10.0
+## A page swipe must travel this far and be clearly more horizontal than
+## vertical. Keeping the threshold larger than ordinary thumb jitter means a
+## tap still opens its card, while a diagonal scroll-like motion does neither.
+const SWIPE_MIN := 72.0
+const SWIPE_AXIS_BIAS := 1.25
 
 var settings_sheet: Control
 var legacy_sheet: Control
@@ -145,6 +150,13 @@ var _pager_tw: Tween
 ## The stage, while something from More is open on it.
 var _stage: Node
 var _margins: MarginContainer
+## One touch that began over the puzzle grid. Input is observed before GUI
+## controls so the release can be consumed after a real swipe, preventing the
+## Button under the finger from opening a game at the same time.
+var _swipe_touch := -1
+var _swipe_from := Vector2.ZERO
+var _swipe_at := Vector2.ZERO
+var _swipe_claimed := false
 
 func _ready() -> void:
 	theme = CozyTheme.make()
@@ -162,6 +174,52 @@ func _ready() -> void:
 	legacy_sheet.closed.connect(func() -> void: bar.show_tab("home"))
 	add_child(legacy_sheet)
 	_show_list()
+
+func _input(event: InputEvent) -> void:
+	var modal_open := (is_instance_valid(settings_sheet) and settings_sheet.visible) \
+		or (is_instance_valid(legacy_sheet) and legacy_sheet.visible)
+	if not is_instance_valid(_grid) or not _list_root.visible or modal_open or _pages() <= 1:
+		_cancel_swipe()
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			if _swipe_touch == -1 and _grid.get_global_rect().has_point(touch.position):
+				_swipe_touch = touch.index
+				_swipe_from = touch.position
+				_swipe_at = touch.position
+				_swipe_claimed = false
+		elif touch.index == _swipe_touch:
+			_swipe_at = touch.position
+			var turned := _finish_swipe()
+			_cancel_swipe()
+			if turned:
+				get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if drag.index == _swipe_touch:
+			_swipe_at = drag.position
+			# Once the intent is unmistakably horizontal, own the rest of the
+			# gesture so cards do not react to its drag/release sequence.
+			var delta := _swipe_at - _swipe_from
+			if absf(delta.x) >= SWIPE_MIN and absf(delta.x) > absf(delta.y) * SWIPE_AXIS_BIAS:
+				_swipe_claimed = true
+				get_viewport().set_input_as_handled()
+
+## Turns once on release. Swiping left advances through the grid; swiping
+## right returns. At an edge the gesture is still consumed as a swipe, but
+## `_turn_page` keeps the page clamped.
+func _finish_swipe() -> bool:
+	var delta := _swipe_at - _swipe_from
+	var horizontal := absf(delta.x) >= SWIPE_MIN and absf(delta.x) > absf(delta.y) * SWIPE_AXIS_BIAS
+	if not horizontal and not _swipe_claimed:
+		return false
+	_turn_page(1 if delta.x < 0.0 else -1)
+	return true
+
+func _cancel_swipe() -> void:
+	_swipe_touch = -1
+	_swipe_claimed = false
 
 func _build_list() -> void:
 	_list_root = Control.new()
