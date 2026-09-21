@@ -4,14 +4,16 @@ extends Control
 ## board itself plays with (ui/faces/), seated in a 320 by 118 box and
 ## scaled to whatever the card gives them.
 ##
-## It is never an image and never a render of a model. Twelve of the
-## sixteen are made almost entirely of the flat boards' own cast --
+## It is never an image and never a render of a model. Thirteen of the
+## seventeen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
-## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
-## sprout that stands in for Hidden Word's and Word Trail's -- so a card and
-## its board are visibly the same drawing. Only the furniture under them (a
-## tray, a beam, a tile) is drawn here.
+## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, Fairy Lights'
+## two lit papers (Untangle's lantern again, which is what that board plays
+## with too), and the shared sprout that stands in for Hidden Word's and
+## Word Trail's -- so a card and its board are visibly the same drawing.
+## Only the furniture under them (a tray, a beam, a tile, a run of wire) is
+## drawn here.
 ##
 ## The four that borrow nothing are Nonogram, Sudoku, Bridges and Quilt, and
 ## for the same reason: none of those boards has a character at all. Their
@@ -56,6 +58,30 @@ const ART := Vector2(320.0, 118.0)
 const SEA_R := 26.0
 const SEA_ISLETS := [Vector2(-100.0, 14.0), Vector2(26.0, 14.0), Vector2(104.0, -20.0)]
 
+## Fairy Lights, in the box's own units. Everything in that picture is a
+## fraction of one cell, exactly as the board sizes its own pieces off the
+## cell it was dealt (`POST_R` 0.34, `LANTERN_R` 0.27, `WIRE` 0.13 in
+## puzzles/fairy_lights2d.gd), so the card keeps the board's proportions
+## rather than being measured by eye. LIGHTS_CELL is the one number chosen
+## here: at 100 a post and two papers fill the 320 box's width with the
+## post's finial and the papers' tassels both clear of its edges, and the
+## three of them stand exactly one cell apart, which is the spacing they
+## would have as three cells of a real garden.
+const LIGHTS_CELL := 100.0
+const LIGHTS_POST_R := 0.34
+const LIGHTS_LAMP_R := 0.27
+const LIGHTS_WIRE := 0.13
+## Where the run hangs, where the post stands on it, and where the two papers
+## are strung along it. The far lamp ends the run, because on the board a
+## lantern is always the end of a branch and never a thing a wire runs past.
+const LIGHTS_Y := 2.0
+const LIGHTS_POST_X := -105.0
+const LIGHTS_LAMPS := [-5.0, 95.0]
+## Which two of Untangle's five papers. Not the amber: lit, it comes back
+## almost exactly the wire's own gold, and the one thing this picture has to
+## say is which of the two things is the light and which is the cable.
+const LIGHTS_HUES := [1, 2]
+
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
 var _u := 1.0
@@ -68,6 +94,8 @@ var _band_mesh: ArrayMesh
 var _sea_mesh: ArrayMesh
 ## Quilt's backing, its patches and their seams, likewise.
 var _quilt_mesh: ArrayMesh
+## Fairy Lights' run of wire and its post, likewise.
+var _lights_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -177,6 +205,23 @@ func _build() -> void:
 			# the strip's top (24), fully clear of it, rather than sunk in.
 			_seat(MushroomFace.new(), 62.0, -104.0, -1.0)
 			_seat(MushroomFace.new(), 48.0, -26.0, 5.0)
+		"fairylights":
+			# Two paper lanterns strung on the run _draw lays under them, and
+			# **lit**: `lit` is 1, so each wears the warmed paper, its face
+			# and its own halo -- an unlit garden is what that board looks
+			# like before it is played, and a card shows the thing you are
+			# playing for. `dims` is left alone for the same reason: it is
+			# the wash an *unlit* paper takes, and nothing here is unlit.
+			# Seated on the run's own line rather than under it: on the board
+			# the wire runs into a lantern's middle and the paper covers the
+			# joint, which is why the cable may pass behind these two without
+			# either reading as floating over it.
+			var lamp_seat := LIGHTS_CELL * LIGHTS_LAMP_R * LanternFace.SEAT
+			for i in LIGHTS_LAMPS.size():
+				var lamp := LanternFace.new()
+				lamp.hue = int(LIGHTS_HUES[i])
+				lamp.lit = 1.0
+				_seat(lamp, lamp_seat, float(LIGHTS_LAMPS[i]), LIGHTS_Y)
 		_:
 			pass
 
@@ -199,6 +244,7 @@ func _draw() -> void:
 		"sudoku": _draw_sudoku()
 		"bridges": _draw_sea()
 		"quilt": _draw_quilt()
+		"fairylights": _draw_lights()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -568,3 +614,91 @@ func _draw_quilt() -> void:
 		PatchCloth.cloth(1), PatchCloth.cloth_deep(1))
 	_quilt_mesh = b.mesh()
 	draw_mesh(_quilt_mesh, null)
+
+## Fairy Lights: the lantern post, a short run of live wire out of it, and
+## the two papers strung along that run (seated by `_build`). Everything
+## here with no face on it -- the halo, the wire and the post -- is one mesh
+## and one draw call, which is the arrangement the board itself uses.
+##
+## It is drawn in the board's own order and with the board's own numbers
+## (`puzzles/fairy_lights2d.gd`, section 5 of the spec): the halo under the
+## run **before** any wire, because a live branch has to read as light before
+## it reads as cable; then the wire's shade, its face in SUN, and the sheen
+## along its back; then the post over the lot, so the cable leaves the post's
+## middle the way an arm leaves a cell's. Nothing here is a new colour -- the
+## gold is SUN over SUN_DEEP with SUN_RAY in the halo and LANTERN_LIT on the
+## sheen, and the post is Light Up's LANTERN iron.
+##
+## The run is **live for its whole length**: a card shows the thing you are
+## playing for, so there is no pale FLAGSTONE wire and no loose end on it.
+func _draw_lights() -> void:
+	var cell := LIGHTS_CELL
+	var wire := cell * LIGHTS_WIRE
+	var from := at(LIGHTS_POST_X, LIGHTS_Y)
+	var to := at(float(LIGHTS_LAMPS[LIGHTS_LAMPS.size() - 1]), LIGHTS_Y)
+	var run := PackedVector2Array([from, to])
+	# The lip under the cable. The board's SHADE_DROP is 4 px under a cell of
+	# 134 to 188; three of this box's units under a cell of 100 is the same
+	# fraction of a cell, which is what keeps the lip the same weight here.
+	var drop := Vector2(0.0, 3.0) * _u
+	var shade := PackedVector2Array([from + drop, to + drop])
+	var b := Face.Builder.new()
+	b.stroke(run, wire * 2.7 * _u, Color(Pal.SUN_RAY, 0.15))
+	b.stroke(run, wire * 1.6 * _u, Color(Pal.SUN, 0.22))
+	b.stroke(shade, wire * _u, Pal.SUN_DEEP)
+	b.stroke(run, wire * _u, Pal.SUN)
+	b.stroke(run, wire * 0.3 * _u, Color(Pal.LANTERN_LIT, 0.55))
+	_lights_post(b, from, cell * LIGHTS_POST_R * _u)
+	_lights_mesh = b.mesh()
+	draw_mesh(_lights_mesh, null)
+
+## The post, in units of its own R and in the board's own proportions -- the
+## iron foot, the pole, the sun in the glass and the hood over it. Redrawn
+## here rather than borrowed, the way Bridges' islets are: `_post` on the
+## board is an instance method measured off the cell it was dealt, and there
+## is no character in `ui/faces/` to seat, because the post has no face.
+##
+## Its light is the board's own halo, not `_draw_court`'s pair of flat
+## discs: a disc's edge is a visible ring at this size -- it was, on the
+## first frame shot of this card -- and worse, the post stands 55 units from
+## the left of a 320 box while its light reaches 78, so a disc of it is cut
+## square by `clip_contents` where a gradient simply runs out.
+func _lights_post(b, at_px: Vector2, R: float) -> void:
+	var iron: Color = Pal.LANTERN
+	b.ellipse(at_px + Vector2(0.0, 1.02) * R, 0.8 * R, 0.2 * R, Color(Pal.TEXT, 0.12))
+	_glow(b, at_px + Vector2(0.0, -0.3) * R, 0.3 * R, 2.3 * R, Color(Pal.SUN, 0.3))
+	b.fan(Face.Builder.round_rect(at_px + Vector2(-0.46, 0.76) * R,
+		Vector2(0.92, 0.22) * R, 0.1 * R), iron)
+	b.fan(Face.Builder.round_rect(at_px + Vector2(-0.13, -0.1) * R,
+		Vector2(0.26, 0.96) * R, 0.06 * R), iron)
+	b.disc(at_px + Vector2(0.0, -0.42) * R, 0.52 * R, Pal.SUN_DEEP)
+	b.disc(at_px + Vector2(0.0, -0.46) * R, 0.46 * R, Pal.SUN)
+	b.disc(at_px + Vector2(-0.1, -0.56) * R, 0.2 * R, Color(Pal.LANTERN_LIT, 0.55))
+	b.fan(Face.Builder.round_rect(at_px + Vector2(-0.34, -1.08) * R,
+		Vector2(0.68, 0.24) * R, 0.1 * R), iron)
+	b.fan(Face.Builder.round_rect(at_px + Vector2(-0.08, -1.28) * R,
+		Vector2(0.16, 0.24) * R, 0.06 * R), iron)
+
+## A disc of light at `inner` fading to nothing at `outer`, built as two
+## rings and the band between them -- what a canvas radial gradient comes to
+## once it is triangles. `ui/faces/lantern_face.gd`'s own halo, which
+## `puzzles/fairy_lights2d.gd` already keeps a copy of for the same reason
+## this file needs one: it is a method on a Control there, and the post has
+## no face and so is not one.
+func _glow(b, centre: Vector2, inner: float, outer: float, warm: Color) -> void:
+	if warm.a <= 0.0:
+		return
+	var clear := Color(warm, 0.0)
+	var segments: int = LanternFace.GLOW_SEGMENTS
+	var mid: int = b.vertex(centre, warm)
+	var ring_i: int = b.verts.size()
+	for i in segments:
+		b.vertex(centre + Vector2.from_angle(TAU * i / segments) * inner, warm)
+	var ring_o: int = b.verts.size()
+	for i in segments:
+		b.vertex(centre + Vector2.from_angle(TAU * i / segments) * outer, clear)
+	for i in segments:
+		var j := (i + 1) % segments
+		b.tri(mid, ring_i + i, ring_i + j)
+		b.tri(ring_i + i, ring_o + i, ring_o + j)
+		b.tri(ring_i + i, ring_o + j, ring_i + j)
