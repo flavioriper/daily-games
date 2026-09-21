@@ -25,6 +25,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const RulesSheet = preload("res://ui/hud/rules_sheet.gd")
+const HowToPlay = preload("res://ui/hud/how_to_play.gd")
 
 const MARGIN := 40
 const GAP := 20
@@ -50,6 +51,8 @@ var _board_holder: Control
 var _card: Panel
 var _overlay: Control
 var _overlay_label: Label
+var _margins: MarginContainer
+var _tutorial: Control
 
 func setup(entry: Dictionary, difficulty: int) -> void:
 	_entry = entry
@@ -58,8 +61,10 @@ func setup(entry: Dictionary, difficulty: int) -> void:
 func _ready() -> void:
 	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Ads.banner_changed.connect(func(_visible: bool, _height: float) -> void: _apply_insets())
 	var insets := SafeArea.insets(self)
-	var margins := MarginContainer.new()
+	_margins = MarginContainer.new()
+	var margins := _margins
 	margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margins.add_theme_constant_override("margin_left", MARGIN)
 	margins.add_theme_constant_override("margin_right", MARGIN)
@@ -85,6 +90,24 @@ func _ready() -> void:
 	# names the entry it shares its day with, so both show the same puzzle.
 	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", _entry.id)), _difficulty))
 	_enter()
+	_maybe_show_first_play_tutorial()
+
+func _maybe_show_first_play_tutorial() -> void:
+	var puzzle_id := String(_entry.get("id", ""))
+	if puzzle_id == "" or Progress.tutorial_seen(puzzle_id):
+		return
+	_tutorial = HowToPlay.new()
+	_tutorial.name = "HowToPlay"
+	_tutorial.setup(_entry, _puzzle)
+	_tutorial.completed.connect(func() -> void: _tutorial = null)
+	add_child(_tutorial)
+
+func _apply_insets() -> void:
+	if not is_instance_valid(_margins):
+		return
+	var insets := SafeArea.insets(self)
+	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
+	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
 
 ## The rows of this shell's chrome, top to bottom, into `root`. The host
 ## itself has no opinion about them: it fills `top_bar`, `day_card` and

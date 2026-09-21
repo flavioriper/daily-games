@@ -99,9 +99,9 @@ static func make() -> Theme:
 	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)
 	_variant(theme, "DarkButton", display(700), 40, Pal.SLATE, Pal.SLATE_GIVEN, 8, 32, Pal.MOON)
-	# The flat screen's sun button: PrimaryButton with its label in white, as
-	# the reference letters it.
-	_variant(theme, "SunButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.SURFACE)
+	# The flat screen's sun button: warm orange surface with the same ink
+	# lettering as the settings sheet's primary action.
+	_variant(theme, "SunButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)
 	_theme = theme
 	return theme
 

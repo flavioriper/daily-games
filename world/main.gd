@@ -24,6 +24,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	Analytics.start(self)
 	Analytics.track("game_open", {"day": Progress.day()})
+	Ads.show_banner()
 	# The backend wakes here and nowhere else, same as telemetry: the suite
 	# and the harnesses build these screens and stay offline.
 	Backend.start(self)

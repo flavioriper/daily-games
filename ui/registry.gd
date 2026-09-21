@@ -223,8 +223,8 @@ const PUZZLES := [
 		"motto": "Find the hidden word",
 		"footer": "Type · Guess · Find",
 		# It types, so its tray is a keyboard; every Enter is the check, so
-		# there is no actions row and Reset rides in the top bar; and it is
-		# the first board built with no tip card at all.
+		# there is no actions row and Reset rides in the top bar. Rules remain
+		# available through the shared How to play entry point.
 		"script": "res://puzzles/hidden_word2d.gd",
 		"shell": "flat",
 		"tray": "keys",
@@ -242,7 +242,7 @@ const PUZZLES := [
 		"footer": "Trace · Bend · Fill",
 		# It picks nothing up, and there is no Check because nothing wrong can
 		# be sitting on the board: only a right word locks. So Reset rides up
-		# into the top bar and the bottom slot is the tip card alone.
+		# into the top bar and the bottom slot has no extra tip row.
 		"script": "res://puzzles/word_trail2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -285,8 +285,8 @@ const PUZZLES := [
 		"motto": "Every number has its place",
 		"footer": "Scan · Place · Complete",
 		# Ten chips -- 1 to 9 and the pencil -- so it asks for the digit pad.
-		# Everything else is the default: it keeps the actions row and the tip
-		# card, which makes it the plainest board in the registry to wire.
+		# Everything else is the default: it keeps the actions row, which makes
+		# it the plainest board in the registry to wire.
 		"script": "res://puzzles/sudoku2d.gd",
 		"shell": "flat",
 		"tray": "digits",
@@ -323,7 +323,7 @@ const PUZZLES := [
 		# for no tray, and it has **no actions row**: nothing wrong can be
 		# sitting on the quilt, because an illegal drop is never taken, so
 		# there is no Check to put in one and Reset rides up into the top bar.
-		# Word Trail's shape exactly: the bottom slot is the tip card alone.
+		# Word Trail's shape exactly: the bottom slot has no tray or actions row.
 		"script": "res://puzzles/quilt2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -341,7 +341,7 @@ const PUZZLES := [
 		# It picks nothing up, and there is no Check: a launch only ever
 		# empties cells, so nothing wrong can be sitting on the board and the
 		# player cannot dead-end it. Reset rides up into the top bar and the
-		# bottom slot is the tip card alone, which is Word Trail's and
+		# bottom slot has no tray or actions row, which is Word Trail's and
 		# Quilt's shape.
 		"script": "res://puzzles/planes2d.gd",
 		"shell": "flat",

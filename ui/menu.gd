@@ -144,10 +144,12 @@ var _dots: Control
 var _pager_tw: Tween
 ## The stage, while something from More is open on it.
 var _stage: Node
+var _margins: MarginContainer
 
 func _ready() -> void:
 	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Ads.banner_changed.connect(func(_visible: bool, _height: float) -> void: _apply_insets())
 	_build_list()
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
@@ -177,7 +179,8 @@ func _build_list() -> void:
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_list_root.add_child(page)
 	var insets := SafeArea.insets(self)
-	var margins := MarginContainer.new()
+	_margins = MarginContainer.new()
+	var margins := _margins
 	margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margins.add_theme_constant_override("margin_left", MARGIN)
 	margins.add_theme_constant_override("margin_right", MARGIN)
@@ -288,6 +291,13 @@ func _build_list() -> void:
 	# getting told how many pages there are, which is why the very first
 	# render only ever showed one dot.
 	_build_page()
+
+func _apply_insets() -> void:
+	if not is_instance_valid(_margins):
+		return
+	var insets := SafeArea.insets(self)
+	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
+	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
 
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
