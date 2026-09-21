@@ -228,6 +228,14 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-snakeapple .refs img{border-radius:14px}
 #tab-snakeapple .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #sa-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+/* ---------- flat rings mock extras ---------- */
+#tab-rings .phone{background:#f6efe3}
+#tab-rings .phone canvas{touch-action:none;cursor:pointer}
+#tab-rings .refs{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+#tab-rings .refs figure{margin:0}
+#tab-rings .refs img{border-radius:14px}
+#tab-rings .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#rg-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 /* ---------- the flat first screen mock extras ---------- */
 #tab-menu .phone{background:#f6efe3}
 #tab-menu .phone canvas{touch-action:none;cursor:pointer}
@@ -267,6 +275,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="wordtrail">Word Trail · flat</button>
     <button data-tab="mushroom">Mushroom Patch · flat</button>
     <button data-tab="sudoku">Sudoku &middot; flat</button>
+    <button data-tab="rings">Rings &middot; flat</button>
     <button data-tab="snakeapple">Snake Apple · flat</button>
     <button data-tab="bridges">Bridges · flat</button>
     <button data-tab="quilt">Quilt &middot; flat</button>
@@ -2062,6 +2071,132 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?fill=N</code> to fill N empty cells correctly, <code>?sel=r,c</code> to select a cell, <code>?notes=1</code> to scatter pencil marks, <code>?pencil=1</code> to arm the pencil, <code>?wrong=1</code> to plant one wrong digit, <code>?check=1</code> and <code>?hint=1</code> to fire those at <code>?at=</code> (0.2 by default), <code>?win=1</code> for the win screen, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-wave can be shot. Pick the tab with <code>#sudoku</code>.</p>
 </section>
 
+<!-- ============================ RINGS ============================ -->
+<section class="tab-panel" id="tab-rings">
+  <h2>Rings &middot; flat, the eighteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
+  <p class="lede">Eight pegs, twenty-four rings, six colours. Lift the top ring off a peg and put it down on its own colour or on an empty peg &mdash; nothing else is allowed &mdash; until every colour stands alone. It is the one game on this grid with <b>no hidden information at all</b>: everything is face up from the first frame and the whole difficulty is in the order you do things. That makes it the first board here that can be played into a corner, and section 6 is about the one sentence the screen says when it happens. Reference: the user's shot of a ring-sort game, <code>docs/art/concept-rings-ref.png</code>.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-rings-ref.png" alt="The reference: a white phone screen titled ANEIS with eight pegs in two rows of four, each holding three coloured rings in coral, amber, cornflower, tan, pink and teal">
+        <figcaption>The user's reference of 2026-09-20, and it was <b>read off pixel by pixel</b> rather than by eye: six colours, four rings each, eight pegs of three, so every peg is one slot short of full and the two pegs' worth of slack is spread around instead of sitting in two empty tubes. <b>Taken from it:</b> the deal, the two rows of four, the pale post standing proud of the stack, the flat pastel rings with their soft bottom edge. <b>Not taken:</b> the white page and the salmon header bar (this game is ink on cream), the ad rail, the timer, and the six colours' exact hues &mdash; ours are the palette's own, which land within a few points of them anyway.</figcaption>
+      </figure>
+      <figure>
+        <img src="../art/concept-binairo-flat.png" alt="The Binairo flat reference: cream phone screens with smiling suns and moons, a palette under the grid and a sprout tip card">
+        <figcaption>The family's chrome the board is set in: a cream card with a soft bottom edge, a leaf sprouting from the wordmark, a sprout on a tip card. Rings drops the tray and the actions row, so the tip card sits alone under the board and Reset rides up into the top bar &mdash; Word Trail's shape exactly.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="rg" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="rg-rm">Reduce motion: off</button>
+        <button id="rg-diff">Hard</button>
+        <button id="rg-new">New puzzle</button>
+        <button id="rg-hint">Hint</button>
+        <button id="rg-undo">Undo</button>
+        <button id="rg-reset">Reset</button>
+        <button id="rg-nearly">Three from the end</button>
+        <button id="rg-solve">Show the answer</button>
+      </div>
+      <div id="rg-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen, drawn in the game's own 1080-wide design space and scaled to the phone, so every size named below is the size you are looking at. It plays, <b>and it plays a real generated deal</b>: the day's seed is dealt at random and then <em>proved solvable</em> by the same depth-first solver that will ship, before it is put on screen. Tap a peg to lift its top ring, tap another to put it down, tap the same one again to change your mind. <b>Press "Three from the end"</b> to see the last few moves and the win without sorting a whole board. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-20: <b>plain hoops</b> rather than the cast on posts, with a pip count so colour never stands alone; <b>colours grow and the slack stays</b> &mdash; four on six pegs, five on seven, six on eight; and <b>a toast when nothing can move</b>, rather than silence or a solver that refuses any move that dooms the board. Everything not so marked is <span class="pill" style="margin-left:0">proposed</span>.</div>
+
+  <h3>1. The screen, measured <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Top bar</td><td>180</td><td>Back, <code>RINGS</code> in ink with the leaf sprouting from it and <code>EVERY RING FINDS ITS PEG</code> under, then Undo, <b>Reset</b>, Hint with its count and Settings. Five buttons, because there is no actions row for Reset to live in.</td></tr>
+    <tr><td class="k">Day card</td><td>120</td><td>A tree, "Day 5", "Moss Harbour". The shared row, unchanged.</td></tr>
+    <tr><td class="k">Board card</td><td>1340</td><td>Two rows of pegs and the scenery band their height leaves. Section 3.</td></tr>
+    <tr><td class="k">Tip card</td><td>140</td><td>The sprout, its line, and the door to the rules sheet.</td></tr>
+  </table>
+  <p>With 40 of margin and 20 between rows that is <b>1920 exactly</b>, and the 1340 is not chosen &mdash; it is what <code>ui/flat/flat_host.gd</code> hands back once the bottom slot is the tip card alone. <code>capabilities()</code> is <code>["undo","hint"]</code>: <b>there is no Check</b>, because a solved board is solved in plain sight and there is no such thing as a wrong ring, only a wasted move. That drops the actions row (<code>"actions": false</code>), Reset rides up into the top bar, and the slot is 140 &mdash; the same shape Word Trail and Untangle already ship. The board picks nothing up, so <code>"tray": "none"</code>.</p>
+  <div class="decide"><b>This board asks the host for nothing new.</b> No new optional on <code>PuzzleBase</code>, no new tray class, no new chrome. <code>card_height()</code> takes every pixel it is given and <code>card_centred()</code> never comes up. What it does want is a fifth top-bar button, which <code>ui/flat/flat_top_bar.gd</code> has carried since Balance, and a title that fits the narrower five-button block: <code>RINGS</code> measures well under it, so nothing is lettered smaller here.</div>
+
+  <h3>2. The rules, and the one move <span class="pill blue">decided</span></h3>
+  <ul>
+    <li><b>The state is the one truth</b> and it is scene-free (<code>puzzles/rings_state.gd</code>): <code>pegs</code>, an array of stacks of colour index, bottom first; a move log; and nothing else. <code>CAP</code> is 4 at every band.</li>
+    <li><b>One move, and it has two halves.</b> Tap a peg to <em>lift</em> its top ring; tap a peg to <em>drop</em> it. Tapping the peg it came from puts it back and costs nothing. A lift and its drop are one entry in the log, so Undo is one tap for one move.</li>
+    <li><b>A drop is legal only onto an empty peg, or onto a ring of the same colour</b>, and only if the peg has room. That single restriction is the whole puzzle: without it every deal solves itself.</li>
+    <li><b>A finished peg locks.</b> Four of a colour on one peg and nothing comes off it again. It is safe to forbid &mdash; a full monochrome peg is already where that colour belongs, so taking rings back off it can never be part of a solution &mdash; and it means a careless tap cannot undo work you have done.</li>
+    <li><b>A refused drop costs nothing.</b> The peg shivers, the ring stays in your hand, the tip card says which of the two rules it broke. No move is spent, nothing is lost.</li>
+    <li><b>Solved</b> is every peg either empty or full of one colour. There is no other ending &mdash; this board cannot run out the way Hidden Word can, and there is nothing to check.</li>
+    <li><b>Everything the screen washes is derived.</b> Which pegs are locked, which colours are home, whether anything can move at all: all recomputed from <code>pegs</code> on every read, so an undo cannot leave a stale gold peg behind.</li>
+  </ul>
+
+  <h3>3. The peg, the ring, and the pips <span class="pill">proposed</span></h3>
+  <p>Inside the board card a 28 inset leaves <b>944 by 1284</b>. Four stations of <b>236</b> close the width exactly, and a station is <b>476</b> tall: a 26 base, four ring slots of 92 with 6 between them, and 64 of bare post standing proud of a full stack, which is what tells you at a glance that a peg of three has room for one more. Two rows of 476 with 56 of air above and 120 between them leave <b>156</b> at the foot, and that is the scenery band &mdash; the family's clouds and a bank of grass, appended to the board's own builder the way Word Trail's is, for one draw call.</p>
+  <p><b>A ring is 200 by 92</b>, which is the reference's own proportion to within a point, and <b>the thing a thumb aims at is the station, not the ring</b>: the whole 236 by 476 column answers a tap. That makes this the largest touch target of any board in the game by a wide margin &mdash; Sudoku's cell is 100 &mdash; and it has to be, because a tap here is not a fine placement, it is "this peg".</p>
+  <table>
+    <tr><th style="width:20%">Colour</th><th style="width:14%">Hex</th><th style="width:12%">Pips</th><th>Where it comes from</th></tr>
+    <tr><td class="k"><code>Pal.BERRY</code></td><td><code>#e2645c</code></td><td>1</td><td>The reference's coral, <code>#f06d65</code>.</td></tr>
+    <tr><td class="k"><code>Pal.SUN</code></td><td><code>#f5a623</code></td><td>2</td><td>Its amber, <code>#f5bc48</code>.</td></tr>
+    <tr><td class="k"><code>Pal.MOON_INK</code></td><td><code>#7d8fd9</code></td><td>3</td><td>Its cornflower, <code>#7fa0e5</code> &mdash; the closest match of the six.</td></tr>
+    <tr><td class="k"><code>Pal.ACORN</code></td><td><code>#c99a63</code></td><td>4</td><td>Its tan, <code>#d8b4a4</code>. Ours is the warmer of the two.</td></tr>
+    <tr><td class="k"><code>Pal.FLOWER</code></td><td><code>#e58fb5</code></td><td>5</td><td>Its pink, <code>#ffacce</code>.</td></tr>
+    <tr><td class="k"><code>Pal.ACCENT</code></td><td><code>#4c9a94</code></td><td>6</td><td>Its teal, <code>#aee0e9</code> &mdash; the one real departure: the reference's is a pale wash and ours is the palette's proper teal, which holds its own beside the other five. Needs <code>ACCENT_DEEP</code> and <code>ACCENT_TILE</code> added beside it, the two shades every other chip colour already has.</td></tr>
+  </table>
+  <div class="decide"><b>The pips are not decoration.</b> <code>core/palette.gd</code> says it in as many words about Code Break's pegs &mdash; <em>"every peg also carries a pip mark, so colour never stands alone"</em> &mdash; and a game whose entire mechanic is matching colour is exactly the game that rule was written for. One to six pips, embossed in a darker shade of the ring's own colour, low on the face where the post's shadow is not. A player who cannot separate the coral from the tan can still count.</div>
+
+  <h3>4. The deal, and the proof it can be solved <span class="pill rose">a finding</span></h3>
+  <p>The day's seed shuffles twenty-four rings and deals them as evenly as the band allows &mdash; six colours over eight pegs is the reference's exact three a peg; four over six and five over seven leave a couple of pegs one short. <b>Then the deal has to be proved.</b> A random deal with one free slot a peg is tight, and plenty of them are simply dead, so the generator runs a solver over the deal and rejects it if the answer is no.</p>
+  <p>The solver is depth-first over <b>canonical</b> positions &mdash; the pegs are interchangeable, so sorting them before hashing collapses the whole symmetry group, which is what makes this tractable at all &mdash; with three prunings that do most of the work: a finished peg is never a source, a whole uniform peg is never moved to an empty one, and the moves are tried finishing-first, then onto-a-colour, then spend-an-empty-peg. It returns <em>a</em> solution, not the shortest one; the mock prints its length in the caption under the phone as a rough measure of how tangled the day is.</p>
+  <p><b>Measured in JavaScript on this Mac, 2026-09-20</b> &mdash; 200 seeds a band for the deal, 150 a band for the play:</p>
+  <table>
+    <tr><th style="width:12%">Band</th><th style="width:16%">Shape</th><th style="width:16%">Deals rejected</th><th style="width:18%">Worst search</th><th style="width:18%">Greedy solves it</th><th>Solution length</th></tr>
+    <tr><td class="k">Easy</td><td>4 colours, 6 pegs</td><td><b>0 of 200</b></td><td>82 nodes, 0.4 ms</td><td>6 of 200 (3%)</td><td>mean 22, 10&ndash;39</td></tr>
+    <tr><td class="k">Medium</td><td>5 colours, 7 pegs</td><td><b>0 of 200</b></td><td>126 nodes, 0.3 ms</td><td>0 of 200</td><td>mean 30, 15&ndash;49</td></tr>
+    <tr><td class="k">Hard</td><td>6 colours, 8 pegs</td><td><b>0 of 200</b></td><td>267 nodes, 0.6 ms</td><td>0 of 200</td><td>mean 38, 19&ndash;58</td></tr>
+  </table>
+  <p><b>Two of those columns are the whole story of this board.</b> Not one deal in six hundred was unsolvable, and the verdict cost under three hundred nodes, so the proof the generator was designed around is <em>nearly free</em> &mdash; the risk this section was written to flag turned out not to be there at two pegs' worth of slack. And "greedy solves it" is the column that says the board is not trivial: a player who always takes the obvious move &mdash; finish a peg if you can, otherwise land on a colour, otherwise spend an empty slot &mdash; and who never once backtracks, <b>solves 3% of easy boards and none at all above that</b>. The search is cheap because it backtracks well, not because the game plays itself.</p>
+  <div class="decide"><b>It still has to be measured in GDScript, and the gate is Sudoku's.</b> A search that costs half a millisecond in JavaScript commonly costs thirty to eighty times that in GDScript, which puts the worst deal somewhere around 20&ndash;50 ms &mdash; comfortably inside a <b>300 ms</b> budget, with two orders of magnitude of headroom that Sudoku never had. <b>What the implementation must do anyway:</b> keep the position in a <code>PackedByteArray</code>, keep the canonical key cheap, cap the node budget rather than trusting the measurement, and <b>time it with a probe before the board is called done</b>. The fallback, if it ever bites, is to stop dealing at random and <b>build the deal backwards</b> from the solved position &mdash; move a top ring that is either alone on its peg or sitting on its own colour to any peg with room, which is the exact inverse of a legal move, so the deal is solvable by construction. That fallback costs the even three-a-peg look on some days and nothing else, and on these numbers it will not be needed.</div>
+  <p><b>The same probe was run at one peg less</b> &mdash; six colours on seven pegs, half the slack &mdash; because that is the obvious lever if the board ever feels too kind: rejection goes from 0% to <b>85%</b> (still only about a millisecond a deal, so the loop is affordable), and a careless player starts running out of moves entirely, 22% of the time. It is recorded here so nobody has to re-derive it; it is not what ships.</p>
+
+  <h3>5. The signature: the arc, and the peg that comes home <span class="pill">proposed</span></h3>
+  <p>Every flat board has one moment that is its own (<code>docs/art/flat-motion.md</code>). Binairo has the blush, Hidden Word the flip, Queens the wave, Mushroom Patch the count wash. <b>Rings has the arc and the settle</b>: a ring you lift rises off its post and waits there breathing, a ring you put down <em>flies</em> &mdash; an arc 120 high over whatever stands between the two pegs &mdash; and the peg it lands on squashes under it. And the instant a peg comes right, gold washes down its stack from the top ring to the bottom, <code>WAVE_STEP</code> 0.06 a ring, with one <code>Fx2D</code> ellipse and a handful of sparkles at the top of the post.</p>
+  <table>
+    <tr><th style="width:20%">Moment</th><th>What happens</th></tr>
+    <tr><td class="k">Entrance</td><td>The card pops in wide about its centre (<code>wide_pop_scale</code>, from 0.88) after <code>ENTER_DELAY</code> 0.18; the pegs drop in from 40 above, <code>ENTER_STAGGER</code> 0.05 apart, so the board deals itself out peg by peg.</td></tr>
+    <tr><td class="k">Lift</td><td>The ring rises <code>LIFT_H</code> 52 over the post on <code>back_out</code> and then breathes &mdash; <code>BOB</code> 5 px on a <code>BOB_CYCLE</code> of 1.9 s &mdash; with a soft shadow under it. It is <code>Motion.lift</code>'s job, the recipe Untangle wrote for a thing being held.</td></tr>
+    <tr><td class="k">Drop</td><td>The flight: <code>ARC_TIME</code> 0.34 on a sine ease across, <code>ARC_LIFT</code> 120 up and over. The ring lands with a squash and the peg takes it.</td></tr>
+    <tr><td class="k">Put back</td><td>The same peg tapped again: the ring simply settles back onto its post. No flight, no log entry, no move counted.</td></tr>
+    <tr><td class="k">Refused</td><td>The peg shivers (<code>shiver_offset</code>, 3 px, 0.2 s) and the tip card says which rule it was. The ring stays in your hand.</td></tr>
+    <tr><td class="k">Peg comes home</td><td><b>The settle.</b> Above. It is derived from a snapshot diff, Queens' <code>_settle</code> shape, so undoing the move that finished a peg takes its gold with it.</td></tr>
+    <tr><td class="k">Hint</td><td>A leaf ring over the peg it means, and then it <em>plays the move</em> &mdash; the ring lifts, flies and lands with sparkles in leaf. There is nothing else a hint could be here: every ring is already face up, so the only thing a player can be short of is which one to move.</td></tr>
+    <tr><td class="k">Undo</td><td>The last ring flies back the way it came, on the same arc.</td></tr>
+    <tr><td class="k">Reset</td><td>The pegs drop back in as dealt, <code>0.03</code> apart, left to right.</td></tr>
+    <tr><td class="k">Solved</td><td>Every peg hops in a wave, <code>SOLVE_STAGGER</code> 0.05 a peg, and the win follows after <code>WIN_WAIT</code> 1.4 s.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">Reduce motion: the pegs are up at once, a lifted ring hangs still, a dropped ring is simply on its new peg, nothing squashes, shivers, washes or sparkles, and the win follows the last move. <b>Six constants are this board's own</b> &mdash; <code>LIFT_H</code>, <code>BOB</code>, <code>ARC_TIME</code>, <code>ARC_LIFT</code>, <code>WAVE_STEP</code> and <code>TOAST_HOLD</code> &mdash; and every other number above is a recipe read off <code>core/motion.gd</code>. Nothing new is added to the vocabulary.</p>
+
+  <h3>6. The one sentence this board needs and no other board does <span class="pill blue">decided</span></h3>
+  <p>A ring sort is the first game on this grid you can play into a position with <b>no legal move at all</b>: every peg full or mismatched, nothing that can go anywhere. It is not a loss &mdash; Undo and Reset are both one tap away &mdash; but a screen that says nothing at that moment is a screen that looks broken.</p>
+  <p>So: <b>a toast over the board</b>, ink on cream's dark pill, <code>TOAST_HOLD</code> 2.6 s, saying <em>"Nothing can move. Undo, or start again."</em> It is Hidden Word's rule (a refusal is a toast and never a silence) spent on the one thing worth it. The check behind it is two loops over the pegs and no solver at all.</p>
+  <div class="note"><b>Measured, and it changes how much this matters.</b> In <b>450 careless games</b> &mdash; a player picking uniformly at random among the legal moves, 150 a band &mdash; the board ran out of legal moves <b>not once</b>. At two pegs' worth of slack there is almost always something that can move; a genuinely stuck position is constructible (fill enough pegs with mismatched tops and the remaining tops all differ) but you have to work at it. What that careless player <em>did</em> hit is the other thing: a position that is still legal and already lost, <b>4% of the time on easy, 9% on medium, 11% on hard</b>, and usually within the first ten moves. So the toast is the cheap guard for a rare case, and the thing that will actually end a player's board is the thing this screen deliberately says nothing about. That is the trade the next box describes, now with a number on it.</div>
+  <div class="decide"><b>What the board deliberately does not say.</b> A position can be perfectly legal and still doomed &mdash; there are moves, they just all lead nowhere. <b>Nothing warns you about that</b>, and it would take a solver call on every drop to do it. That is the puzzle: the whole skill in a ring sort is not spending your empty peg on the wrong ring, and a board that catches you before you do has taken the game away. The two alternatives were put to the user on 2026-09-20 and this is the one that was chosen.</div>
+
+  <h3>7. The menu card <span class="pill">proposed</span></h3>
+  <p><code>ui/menu/card_art.gd</code> gains one branch: three little pegs in the 320&times;118 box, one full of a colour, two part-sorted, drawn with the board's own ring builder scaled down. <b>No new character</b> &mdash; Rings joins Nonogram, Hidden Word, Word Trail, Sudoku, Bridges and Paper Planes in adding nothing to <code>ui/faces/</code> (Quilt, which merged the same day, did add one), and the only face on the board is the shared sprout on the tip card. It is the <b>eighteenth card</b> &mdash; written here as the sixteenth, corrected to the seventeenth when Bridges and Quilt turned out to have landed on trunk while this one was in flight, and corrected again to the eighteenth when Paper Planes did the same &mdash; so it stands on page two of the pager beside Mushroom Patch, Sudoku, Bridges, Quilt and Paper Planes, six cards on that page and a full last row.</p>
+
+  <h3>8. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Tap-tap, not drag.</b> Lift with one tap and drop with another. Dragging a ring between pegs is the other option and it is what the reference does not do either; a tap is steadier on a phone and it survives a finger that slips. Play it and see whether your hand expects to drag.</li>
+    <li><b>The locked peg.</b> Forbidding a lift off a finished peg is safe and kind, and it also removes a move you might want to make for the fun of it. Watch whether it ever feels like the board saying no for no reason.</li>
+    <li><b>Six colours on one screen.</b> The pips make them countable, but six pastels two rows deep is the most colour this game has put in front of anyone. The easy band's four is the control.</li>
+    <li><b>Three hints on a board where a hint plays a whole move.</b> That is a much bigger gift here than a hint is on Sudoku. Two may be right.</li>
+    <li><b>The empty peg is the whole game</b> and the board never says so. The tip card's four lines are the only teaching this screen does.</li>
+    <li><b>No Check and no way to be wrong</b> &mdash; only stuck. It is the gentlest board in the registry by that measure, and possibly the least tense.</li>
+    <li><b>An 11% chance a careless hard board is already lost by move eighteen, with nothing on screen saying so.</b> That is the measured cost of the decision in section 6, and it is the one worth re-opening after a week on the phone: the levers, in order, are a peg less at the hard band (section 4's second probe), a solver-vetted refusal (rejected once already), and leaving it exactly as it is because Undo is unlimited and a lost board costs nothing but the taps to walk back out of it.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?moves=N</code> to play N moves of the solver's answer in the past, <code>?nearly=1</code> to stop three from the end, <code>?win=1</code> for the win screen, <code>?hold=N</code> to leave a ring lifted off peg N, <code>?hint=1</code> to spend one, <code>?stuck=1</code> to put the toast up, and <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-flight can be shot. Pick the tab with <code>#rings</code>.</p>
+</section>
+
 <!-- ============================ SNAKE APPLE ============================ -->
 <section class="tab-panel" id="tab-snakeapple">
   <h2>Snake Apple · flat, and the board we built is the wrong game <span class="pill blue">concept · 2026-09-18</span></h2>
@@ -2697,7 +2832,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <h3>6. What the board asks the chrome for <span class="pill">proposed</span></h3>
   <table>
     <tr><th style="width:26%">Registry / contract</th><th style="width:18%">Value</th><th>Why</th></tr>
-    <tr><td class="k"><code>"shell"</code></td><td><code>"flat"</code></td><td>The seventeenth.</td></tr>
+    <tr><td class="k"><code>"shell"</code></td><td><code>"flat"</code></td><td>The eighteenth.</td></tr>
     <tr><td class="k"><code>"tray"</code></td><td><code>"none"</code></td><td>Nothing is picked up and nothing is placed. The only input is a tap on a plane.</td></tr>
     <tr><td class="k"><code>"actions"</code></td><td><code>false</code></td><td>There is no Check to put in the row (section 2), and Reset alone does not earn a 130 row, so Reset rides up into the top bar &mdash; Balance's, Untangle's, Word Trail's and Quilt's precedent, and the fifth board to do it.</td></tr>
     <tr><td class="k"><code>"tip"</code></td><td><code>true</code></td><td>Kept. It is the only door to the rules sheet on every board but Hidden Word, and this screen has the room.</td></tr>
@@ -11005,6 +11140,633 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     openedAt=win||fnd||hn?-12:0;
     caption(); frame();
   })();
+})();
+
+/* ---------- Rings, flat: the eighteenth screen ---------- */
+(function(){
+  const cv=document.getElementById('rg'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // The chrome is the family's (core/palette.gd). The six ring colours are
+  // the palette's own, in this order, and they are within a few points of
+  // the six the reference shot uses -- measured off it, 2026-09-20.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    stone:'#ede2cc',stoneGiven:'#dccfb3',cloud:'#a9c2dd',moss:'#7fa84a',wood:'#c8a17a',woodDeep:'#9c7350',bad:'#d9605a'};
+  const RINGS=[
+    {n:'coral',  ink:'#e2645c', deep:'#bf4a44', tile:'#fadcd8', pips:1},  // BERRY
+    {n:'amber',  ink:'#f5a623', deep:'#d88a12', tile:'#fff1d6', pips:2},  // SUN
+    {n:'corn',   ink:'#7d8fd9', deep:'#6273c0', tile:'#e9ecfa', pips:3},  // MOON_INK
+    {n:'acorn',  ink:'#c99a63', deep:'#a57a48', tile:'#f3e4ce', pips:4},  // ACORN
+    {n:'flower', ink:'#e58fb5', deep:'#c26b93', tile:'#fbe0ec', pips:5},  // FLOWER
+    {n:'teal',   ink:'#4c9a94', deep:'#3a7a75', tile:'#dfeceb', pips:6}]; // ACCENT (+ two new shades)
+  // The peg itself: the reference's pale pink stick, here CHEEK washed into
+  // the card's own surface so it belongs to this palette rather than to that
+  // screenshot.
+  const POST=mixHex(C.cheek,C.surface,0.62), POST_HI=mixHex(POST,C.white,0.55), POST_DEEP=mixHex(C.cheek,C.text,0.18);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.05,ENTER_WIDE_FROM:0.88,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,
+    POP_IN:0.22,POP_SQUASH:0.15,POP_OUT:0.12,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    BUMP:0.25,BUMP_TIME:0.24,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-14,SOLVE_TIME:0.4,SOLVE_STAGGER:0.05,SOLVE_DELAY:0.2,SHIVER_PX:3,SHIVER_TIME:0.2};
+  // This board's own six. Everything else on the screen is a recipe.
+  const LIFT_H=40,           // how far a lifted ring floats over its post
+        BOB=5,BOB_CYCLE=1.9, // its idle breath while it waits to be put down
+        ARC_TIME=0.34,       // the flight from one peg to another
+        ARC_LIFT=26,         // the little arch it makes on the way
+        WAVE_STEP=0.06,      // the gold wash, a ring of the stack at a time
+        TOAST_HOLD=2.6,      // how long "nothing can move" stays up
+        WIN_WAIT=1.4;
+  const stag=v=>RM?0:v;
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const dropInLift=s=>{if(RM) return {dy:0,a:1}; const u=clamp(s/MO.DROP_TIME); return {dy:-MO.DROP*(1-backOut(u)),a:clamp(s/(MO.DROP_TIME*0.6))};};
+  const hopLift=(s,amt,dur)=>{if(RM||s<0||s>=dur) return 0; return amt*Math.sin(Math.PI*s/dur);};
+  const bumpScale=s=>{if(RM||s<0||s>=MO.BUMP_TIME) return 1; return 1+MO.BUMP*Math.sin(Math.PI*s/MO.BUMP_TIME);};
+  const shiverX=(s)=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; return MO.SHIVER_PX*Math.sin(s/MO.SHIVER_TIME*Math.PI*3)*(1-s/MO.SHIVER_TIME);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+  // A landing squashes the ring it lands on top of, and itself.
+  const landSquash=(at,t)=>squash(at,t,0.16,0.22);
+
+  // ---- state (puzzles/rings_state.gd: the one truth, scene-free) ----
+  const CAP=4;
+  const DIFFS=['Easy · 4 colours','Medium · 5 colours','Hard · 6 colours'];
+  const BANDS=[{cols:4,pegs:6},{cols:5,pegs:7},{cols:6,pegs:8}];
+  let diff=2,seed=5,cols=6,pegCount=8;
+  let pegs=[],deal0=[],log=[],held=null,flight=null,lockAt=[],pressAt=[],shiveAt=[];
+  let hintsLeft=3,moves=0,openedAt=0,solvedAt=-1e9,winAt=-1e9,hasSolve=false;
+  let genAttempts=0,genMoves=0,genTimeMs=0,stuckAt=-1e9,toast='',toastAt=-1e9;
+  let particles=[],rings=[],btnPress={},L=null,resetAt=-1e9;
+  const open=()=>!hasSolve;
+  const copy=p=>p.map(s=>s.slice());
+  const top=s=>s[s.length-1];
+  const full=s=>s.length>=CAP;
+  const uniform=s=>s.length>0&&s.every(c=>c===s[0]);
+  const locked=i=>full(pegs[i])&&uniform(pegs[i]);
+  const complete=st=>st.every(s=>s.length===0||(s.length===CAP&&s.every(c=>c===s[0])));
+
+  // ---- the generator (puzzles/rings_gen.gd) ----
+  // Deal the day's seed as evenly as it goes -- six colours over eight pegs
+  // is the reference's exact three a peg; four over six and five over seven
+  // leave a couple of pegs one short -- and then *prove it solvable* before
+  // handing it over. An unsolvable deal is rejected and the seed moves on.
+  function dealOnce(rng,cols,pegCount){
+    const bag=[];
+    for(let c=0;c<cols;c++) for(let k=0;k<CAP;k++) bag.push(c);
+    for(let i=bag.length-1;i>0;i--){const j=(rng()*(i+1))|0; const v=bag[i]; bag[i]=bag[j]; bag[j]=v;}
+    const total=bag.length, base=Math.floor(total/pegCount), extra=total-base*pegCount;
+    const sizes=[]; for(let i=0;i<pegCount;i++) sizes.push(base+(i<extra?1:0));
+    for(let i=sizes.length-1;i>0;i--){const j=(rng()*(i+1))|0; const v=sizes[i]; sizes[i]=sizes[j]; sizes[j]=v;}
+    const out=[]; let at=0;
+    for(const s of sizes){out.push(bag.slice(at,at+s)); at+=s;}
+    return out;
+  }
+  const canon=st=>st.map(s=>s.join('.')).sort().join('|');
+  // Depth-first over canonical positions -- the pegs are interchangeable, so
+  // sorting them collapses the whole symmetry group -- with the obvious move
+  // ordering: finish a peg, then land on a colour, then spend an empty peg.
+  // Returns the path it found (not the shortest), or null, and gives up at
+  // `budget` nodes so a bad deal cannot hang the board.
+  function solve(start,budget){
+    const seen=new Set(); let nodes=0,gaveUp=false;
+    const path=[];
+    function dfs(st){
+      if(complete(st)) return true;
+      if(++nodes>budget){gaveUp=true; return false;}
+      const k=canon(st); if(seen.has(k)) return false; seen.add(k);
+      const ms=[];
+      for(let i=0;i<st.length;i++){
+        const s=st[i]; if(!s.length) continue;
+        if(full(s)&&uniform(s)) continue;              // a finished peg is done with
+        const col=top(s), run=(()=>{let r=0;for(let x=s.length-1;x>=0&&s[x]===col;x--)r++;return r;})();
+        for(let j=0;j<st.length;j++){
+          if(i===j) continue;
+          const d=st[j]; if(full(d)) continue;
+          if(d.length&&top(d)!==col) continue;
+          if(!d.length&&uniform(s)) continue;          // shuffling a whole peg to another empty peg
+          const room=CAP-d.length;
+          let sc;
+          if(d.length) sc=(d.length+Math.min(run,room)===CAP&&d.every(c=>c===col))?0:1;
+          else sc=2;
+          ms.push([sc,i,j]);
+        }
+      }
+      ms.sort((a,b)=>a[0]-b[0]);
+      for(const [,i,j] of ms){
+        st[j].push(st[i].pop()); path.push([i,j]);
+        if(dfs(st)) return true;
+        path.pop(); st[i].push(st[j].pop());
+        if(gaveUp) return false;
+      }
+      return false;
+    }
+    const ok=dfs(copy(start));
+    return {path:ok?path.slice():null,nodes,gaveUp};
+  }
+  function build(d,sd,t){
+    diff=Math.max(0,Math.min(2,d)); seed=sd;
+    cols=BANDS[diff].cols; pegCount=BANDS[diff].pegs;
+    const t0=performance.now();
+    let got=null,res=null; genAttempts=0;
+    for(let a=0;a<60&&!got;a++){
+      genAttempts++;
+      const rng=mulberry32(((sd+a*7919)*2654435761)>>>0);
+      const cand=dealOnce(rng,cols,pegCount);
+      if(complete(cand)) continue;                     // a deal that is already solved is not a puzzle
+      res=solve(cand,120000);
+      if(res.path) got=cand;
+    }
+    genTimeMs=Math.round(performance.now()-t0);
+    genMoves=res&&res.path?res.path.length:0;
+    pegs=copy(got||dealOnce(mulberry32(sd),cols,pegCount)); deal0=copy(pegs);
+    log=[]; held=null; flight=null; lockAt=pegs.map(()=>-1e9); pressAt=pegs.map(()=>-1e9); shiveAt=pegs.map(()=>-1e9);
+    hintsLeft=3; moves=0; hasSolve=false; solvedAt=-1e9; winAt=-1e9; openedAt=t; resetAt=-1e9;
+    particles=[]; rings=[]; btnPress={}; toast=''; toastAt=-1e9; stuckAt=-1e9;
+    tipSet(TIPS[0],'happy',t); tip.idx=0;
+    caption();
+  }
+
+  // ---- the moves ----
+  const canDrop=(j,col)=>!full(pegs[j])&&(pegs[j].length===0||top(pegs[j])===col);
+  function anyMove(){
+    for(let i=0;i<pegs.length;i++){
+      if(!pegs[i].length||locked(i)) continue;
+      const col=top(pegs[i]);
+      for(let j=0;j<pegs.length;j++) if(j!==i&&canDrop(j,col)) return true;
+    }
+    return false;
+  }
+  function lift(i,t){
+    if(!open()||held||flight) return false;
+    if(!pegs[i].length){tipSet('That peg is empty. Lift from a peg that has a ring.','happy',t); return false;}
+    if(locked(i)){tipSet('That colour is home. Nothing comes off a finished peg.','happy',t); return false;}
+    held={peg:i,col:pegs[i].pop(),at:t};
+    tipSet('Drop it on its own colour, or on an empty peg.','happy',t);
+    caption(); return true;
+  }
+  function putBack(t){
+    if(!held) return;
+    pegs[held.peg].push(held.col); held=null;
+    tipSet('Back where it was.','happy',t); caption();
+  }
+  function drop(j,t){
+    if(!held) return false;
+    if(j===held.peg){putBack(t); return false;}
+    if(!canDrop(j,held.col)){
+      shiveAt[j]=t;
+      tipSet(full(pegs[j])?'That peg is full.':'A ring only lands on its own colour.','sad',t);
+      return false;
+    }
+    const from=held.peg,col=held.col,slot=pegs[j].length;
+    pegs[j].push(col); log.push([from,j]); moves++; held=null;
+    const land=t+(RM?0:ARC_TIME);
+    flight={col,from,to:j,slot,t0:t,dur:RM?0:ARC_TIME};
+    settle(j,land,t); caption(); return true;
+  }
+  // Every move lands here, and the board answers it: a peg that just came
+  // right washes gold from the top of its stack down, and a board with no
+  // legal move left says so.
+  function settle(j,land,t){
+    if(locked(j)){
+      lockAt[j]=land;
+      ringFx(j,land,RINGS[pegs[j][0]].ink); sparkle(j,land,RINGS[pegs[j][0]].ink);
+      tipSet(homeLine(),'joy',land);
+    } else tipSet(leftLine(),'happy',land);
+    if(complete(pegs)){
+      hasSolve=true; solvedAt=land+stag(CAP*WAVE_STEP); winAt=solvedAt+WIN_WAIT;
+      tipSet('Every colour on a peg of its own.','joy',land);
+    } else if(!anyMove()){
+      stuckAt=land; toast='Nothing can move. Undo, or start again.'; toastAt=land;
+      tipSet('Nothing can move from here.','sad',land);
+    }
+  }
+  function undo(t){
+    if(!log.length||!open()) return;
+    if(held) putBack(t);
+    const [from,to]=log.pop();
+    const col=pegs[to].pop(); const slot=pegs[from].length; pegs[from].push(col);
+    if(lockAt[to]>-1e8&&!locked(to)) lockAt[to]=-1e9;
+    moves++; flight={col,from:to,to:from,slot,t0:t,dur:RM?0:ARC_TIME};
+    toast=''; toastAt=-1e9;
+    tipSet('Taken back. '+leftLine(),'happy',t); caption();
+  }
+  function reset(t){
+    if(!log.length&&!held) return;
+    pegs=copy(deal0); log=[]; held=null; flight=null;
+    lockAt=pegs.map(()=>-1e9); hasSolve=false; solvedAt=-1e9; winAt=-1e9;
+    resetAt=t; toast=''; toastAt=-1e9;
+    tipSet('The pegs as they were dealt.','happy',t); caption();
+  }
+  // The hint is the solver's own next move, played out. There is nothing
+  // else it could be: everything on this board is already face up, so the
+  // only thing a player can be short of is which ring to move.
+  function hint(t){
+    if(hintsLeft<=0||!open()||flight) return;
+    if(held) putBack(t);
+    const res=solve(pegs,120000);
+    if(!res.path||!res.path.length){
+      toast=res.gaveUp?'This one is beyond me.':'Nothing can move. Undo, or start again.'; toastAt=t; return;
+    }
+    hintsLeft--;
+    const [i,j]=res.path[0];
+    held={peg:i,col:pegs[i].pop(),at:t};
+    ringFx(i,t,C.leaf);
+    const slot=pegs[j].length;
+    pegs[j].push(held.col); log.push([i,j]); moves++;
+    const col=held.col; held=null;
+    const land=t+(RM?0:ARC_TIME);
+    flight={col,from:i,to:j,slot,t0:t,dur:RM?0:ARC_TIME};
+    ringFx(j,land,C.leaf); sparkle(j,land,C.leaf);
+    settle(j,land,t); caption();
+  }
+
+  // ---- fx (ui/fx2d.gd) ----
+  function ringFx(i,t0,col){ if(RM) return; rings.push({i,t0,col}); }
+  function sparkle(i,t0,col){ if(RM) return; for(let k=0;k<8;k++) particles.push({i,ox:(hash(k,i+7)-0.5)*1.1,oy:(hash(k+3,i)-0.5)*0.5,vx:(hash(k,i*5)-0.5)*110,vy:-150,t0:t0+k*0.035,life:0.75,col,rad:15,g:190}); }
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,w/2,h/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur='';
+    for(const w of ws){const test=cur?cur+' '+w:w; if(ctx.measureText(test).width>maxw&&cur){out.push(cur); cur=w;} else cur=test;}
+    if(cur) out.push(cur); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(R,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-R*0.46,cy+R*0.16,R*0.13,R*0.09); ellipse(cx+R*0.46,cy+R*0.16,R*0.13,R*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*R*0.34,ey=cy-R*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+R*0.04,R*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,R*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,R*0.1,Math.max(R*0.012,R*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.03,ey-R*0.035,R*0.03);}}}
+    const big=expr==='joy',sad=expr==='sad';
+    if(sad){ctx.beginPath(); ctx.arc(cx,cy+R*0.34,R*0.2,Math.PI*1.2,Math.PI*1.8); stroke(ink,R*0.07);}
+    else {ctx.beginPath(); ctx.arc(cx,cy+(big?R*0.08:R*0.1),big?R*0.28:R*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,R*0.07);}
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+R*0.08,R*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(R,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,R*0.14,R*1.05,R*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-R*0.8); ctx.lineTo(0,-R*1.15); stroke(C.leaf,R*0.09);
+    leaf(0,-R*1.12,R*0.62,-2.6); leaf(0,-R*1.12,R*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,R,R*0.9); ctx.beginPath(); ctx.ellipse(0,0,R,R*0.9,0,0,Math.PI*2); stroke(C.line,R*0.07);
+    faceParts(R*0.9,0,R*0.12,o);
+  }
+
+  // ---- layout ----
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1340 of board,
+  // 20, 140 of tip card, 40 of margin -- 1920 exactly. Inside the card a 28
+  // inset leaves 944 by 1284: four stations of 236 across, two rows of 476
+  // down, and what the rows do not spend becomes the shelf's ground and the
+  // scenery band at the foot.
+  const TOP_H=180,DAY_H=120,BOARD_H=1340,TIP_H=140,ROW_GAP=20,INSET=28;
+  const STATION_W=236,RING_W=200,RING_H=92,RING_GAP=6,POST_W=30,POST_UP=48,BASE_W=182,BASE_H=30;
+  const STACK_H=CAP*(RING_H+RING_GAP)-RING_GAP, STATION_H=BASE_H+STACK_H+POST_UP;
+  const TOP_AIR=96,MID_GAP=96;
+  function rowsOf(p){ return p<=6?[Math.ceil(p/2),Math.floor(p/2)]:[4,p-4]; }
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,tipY=by+BOARD_H+ROW_GAP;
+    const innerX=M+INSET,innerW=COL-2*INSET;
+    const r0=by+INSET+TOP_AIR, r1=r0+STATION_H+MID_GAP;
+    const bandY=r1+STATION_H, bandH=by+BOARD_H-INSET-bandY;
+    return {top:{y:topY},day:{y:dayY},board:{y:by},tip:{y:tipY},innerX,innerW,rowY:[r0,r1],
+      band:{y:bandY,h:bandH},stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};
+  }
+  // Where peg i stands. Rows of four at the hard band, four and three at the
+  // medium one, three and three at the easy one; a short row is centred, so
+  // a station is 236 wide whatever the band, and so is a ring.
+  function station(i){
+    const [a,b]=rowsOf(pegCount), r=i<a?0:1, k=i<a?i:i-a, n=r===0?a:b;
+    const x=L.innerX+(L.innerW-n*STATION_W)/2+k*STATION_W;
+    return {r,k,x,cx:x+STATION_W/2,top:L.rowY[r],ground:L.rowY[r]+STATION_H};
+  }
+  const slotY=(st,k)=>st.ground-BASE_H-RING_H/2-k*(RING_H+RING_GAP);
+
+  // ---- the board ----
+  // One ring, drawn where it is told. The pips are the second channel: a
+  // colour never stands alone here any more than a Code Break peg does.
+  function drawRing(cx,cy,col,o){
+    o=o||{}; const sx=o.sx==null?1:o.sx, sy=o.sy==null?1:o.sy, R=RINGS[col];
+    ctx.save(); ctx.translate(cx,cy); ctx.scale(sx,sy);
+    if(o.shadow){ctx.fillStyle='rgba(59,48,40,0.10)'; ellipse(0,o.shadow,RING_W*0.44,12);}
+    const face=o.flash?mixHex(R.ink,C.sunRay,o.flash):R.ink;
+    card(-RING_W/2,-RING_H/2,RING_W,RING_H,RING_H/2,face,mixHex(face,C.text,0.22),9);
+    // the hole: a soft crescent where the post goes through, so a pill reads
+    // as a ring even when the post behind it is hidden
+    ctx.fillStyle=rgba(C.white,0.26); ellipse(-RING_W*0.22,-RING_H*0.26,RING_W*0.17,RING_H*0.11);
+    ctx.fillStyle=rgba(mixHex(face,C.text,0.30),0.32); ellipse(0,-RING_H*0.21,POST_W*0.56,RING_H*0.10);
+    ctx.fillStyle=rgba(mixHex(face,C.text,0.30),0.7);
+    const n=R.pips,sp=RING_W*0.098,x0=-(n-1)*sp/2;
+    for(let p=0;p<n;p++) circle(x0+p*sp,RING_H*0.17,RING_H*0.075);
+    ctx.restore();
+  }
+  function drawPost(st,t,i){
+    const topY=slotY(st,CAP-1)-RING_H/2-POST_UP;
+    const botY=pegs[i].length?slotY(st,pegs[i].length-1):st.ground-BASE_H+6;
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(st.cx,st.ground-2,BASE_W*0.58,13);
+    card(st.cx-POST_W/2,topY,POST_W,botY-topY,POST_W/2,POST,POST_DEEP,5);
+    ctx.fillStyle=rgba(POST_HI,0.75); rr(st.cx-POST_W*0.22,topY+8,POST_W*0.2,botY-topY-22,POST_W*0.1); ctx.fill();
+    card(st.cx-BASE_W/2,st.ground-BASE_H,BASE_W,BASE_H,BASE_H/2,C.surfaceHi,C.line,7);
+  }
+  // A finished peg washes gold from the top of its stack down, one ring a
+  // WAVE_STEP -- the board's answer to the move that finished it.
+  function washOf(i,k,t){
+    if(lockAt[i]<-1e8||RM) return 0;
+    const s=t-lockAt[i]-(CAP-1-k)*WAVE_STEP;
+    if(s<0||s>0.55) return 0;
+    return Math.sin(Math.PI*clamp(s/0.55))*0.75;
+  }
+  function drawStation(i,t){
+    const st=station(i);
+    const e=dropInLift(t-openedAt-MO.ENTER_DELAY-i*stag(MO.ENTER_STAGGER));
+    const rs=t-resetAt>=0&&t-resetAt<1?dropInLift(t-resetAt-i*stag(0.03)):null;
+    ctx.save(); ctx.globalAlpha=e.a;
+    const dx=shiverX(t-shiveAt[i]);
+    let hop=0;
+    if(hasSolve) hop=hopLift(t-solvedAt-MO.SOLVE_DELAY-i*stag(MO.SOLVE_STAGGER),MO.SOLVE_HOP,MO.SOLVE_TIME);
+    ctx.translate(dx,e.dy+hop+(rs?rs.dy*0.4:0));
+    drawPost(st,t,i);
+    for(let k=0;k<pegs[i].length;k++){
+      if(flight&&flight.to===i&&flight.slot===k&&t<flight.t0+flight.dur) continue;
+      const land=flight&&flight.to===i&&flight.slot===k?flight.t0+flight.dur:-1e9;
+      const [sx,sy]=landSquash(land,t);
+      const press=pressAt[i]>-1e8&&k===pegs[i].length-1?squash(pressAt[i],t,0.08,0.16):[1,1];
+      drawRing(st.cx,slotY(st,k),pegs[i][k],{sx:sx*press[0],sy:sy*press[1],flash:washOf(i,k,t)});
+    }
+    ctx.restore();
+  }
+  function drawHeld(t){
+    if(!held) return;
+    const st=station(held.peg);
+    const up=slotY(st,CAP-1)-RING_H/2-POST_UP-LIFT_H;
+    const u=RM?1:clamp((t-held.at)/0.22);
+    const from=slotY(st,pegs[held.peg].length);
+    const y=lerp(from,up,backOut(u))+(RM?0:BOB*Math.sin((t-held.at)*Math.PI*2/BOB_CYCLE));
+    drawRing(st.cx,y,held.col,{shadow:RING_H*0.9});
+  }
+  function drawFlight(t){
+    if(!flight) return;
+    if(t>=flight.t0+flight.dur){flight=null; return;}
+    const a=station(flight.from),b=station(flight.to);
+    const y0=slotY(a,CAP-1)-RING_H/2-POST_UP-LIFT_H, y1=slotY(b,flight.slot);
+    const u=clamp((t-flight.t0)/flight.dur);
+    const x=lerp(a.cx,b.cx,sineIO(u));
+    const y=Math.max(lerp(y0,y1,u*u)-ARC_LIFT*Math.sin(Math.PI*u),L.board.y+INSET+RING_H/2);
+    drawRing(x,y,flight.col,{shadow:RING_H*0.9});
+  }
+  // The band the two rows leave at the card's foot: the family's clouds and
+  // a shelf of grass, one builder's worth (ui/flat/scenery.gd).
+  function scenery(t){
+    const x0=M,w=COL,y0=L.band.y,h=L.band.h,gy=y0+h;
+    if(h<40) return;
+    ctx.save(); rr(M+8,L.board.y+8,COL-16,BOARD_H-16,36); ctx.clip();
+    ctx.beginPath(); ctx.rect(M,y0,COL,h+20); ctx.clip();
+    ctx.fillStyle=mixHex(C.moss,C.paper,0.38); rr(M-40,gy-38,COL+80,120,40); ctx.fill();
+    ctx.fillStyle=C.moss;
+    for(let i=0;i<24;i++){const bx=x0+((i*149+37)%w),bh=20+((i*53)%16),sw=(RM?0:Math.sin(t*1.2+i)*3);
+      ctx.beginPath(); ctx.moveTo(bx,gy-32); ctx.quadraticCurveTo(bx+4+sw,gy-32-bh*0.6,bx+2+sw*2,gy-32-bh); ctx.quadraticCurveTo(bx+8+sw,gy-32-bh*0.5,bx+9,gy-32); ctx.fill();}
+    for(const [bx,br] of [[x0+86,32],[x0+w-96,28],[x0+w*0.47,23]]){
+      ctx.fillStyle=mixHex(C.leaf,C.text,0.12); circle(bx,gy-40,br); circle(bx-br*0.8,gy-32,br*0.7); circle(bx+br*0.8,gy-32,br*0.7);
+      ctx.fillStyle=C.leafLight; circle(bx-br*0.3,gy-52,br*0.28);}
+    ctx.restore();
+  }
+  function drawBoard(t){
+    const ex=exitU(t),fade=1-ex; if(fade<=0) return;
+    const y=L.board.y;
+    ctx.save(); ctx.globalAlpha=fade; ctx.translate(0,140*sineIO(ex));
+    card(M,y,COL,BOARD_H,40,C.surface,C.line,8);
+    scenery(t);
+    const s=widePopScale(t-openedAt-MO.ENTER_DELAY),a=dec((t-openedAt-MO.ENTER_DELAY)/0.3);
+    if(a<=0){ctx.restore(); return;}
+    ctx.save(); ctx.globalAlpha=a*fade;
+    const cxm=W/2,cym=y+BOARD_H/2;
+    ctx.translate(cxm,cym); ctx.scale(s,s); ctx.translate(-cxm,-cym);
+    for(let i=0;i<pegs.length;i++) drawStation(i,t);
+    drawHeld(t); drawFlight(t);
+    for(const rg of rings){const u=(t-rg.t0)/MO.RING_TIME; if(u<0||u>=1) continue;
+      const st=station(rg.i),cy=slotY(st,Math.max(0,pegs[rg.i].length-1));
+      ctx.save(); ctx.globalAlpha=(1-u)*0.8; ctx.beginPath();
+      ctx.ellipse(st.cx,cy,RING_W*(0.55+0.4*u),RING_H*(0.7+0.55*u),0,0,Math.PI*2); stroke(rg.col,9*(1-u)+2); ctx.restore();}
+    for(const p of particles){const u=(t-p.t0)/p.life; if(u<0||u>=1) continue;
+      const st=station(p.i),cy=slotY(st,Math.max(0,pegs[p.i].length-1)),s2=(t-p.t0);
+      ctx.save(); ctx.globalAlpha=1-u; star4(st.cx+p.ox*RING_W*0.5+p.vx*s2,cy+p.oy*RING_H+p.vy*s2+p.g*s2*s2,p.rad*(1-0.5*u),t*2+p.ox,p.col); ctx.restore();}
+    ctx.restore();
+    drawToast(t,fade);
+    ctx.restore();
+  }
+  // A refusal is a toast and never a silence (Hidden Word's rule). This is
+  // the only board that can reach a position with no move in it, so this is
+  // the only board whose toast has something that urgent to say.
+  function drawToast(t,fade){
+    if(!toast) return;
+    const u=(t-toastAt)/TOAST_HOLD; if(u<0||u>=1){ if(u>=1) toast=''; return; }
+    const a=(RM?1:Math.min(1,clamp(u*8)))*(1-clamp((u-0.82)/0.18))*fade;
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.font='600 32px '+FB; const w=Math.min(COL-120,ctx.measureText(toast).width+80);
+    const x=W/2-w/2,y=L.board.y+BOARD_H-150;
+    card(x,y,w,84,28,C.text,mixHex(C.text,C.white,0.2),5);
+    text(toast,W/2,y+40,'600 32px '+FB,C.paper);
+    ctx.restore();
+  }
+
+  // ---- the chrome ----
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a};};
+  const exitU=t=>!hasSolve?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha=0.4; icon(name,size/2,size/2-3,60,C.text); ctx.globalAlpha=1;
+    if(opt.badge!=null){let hop=0; if(!RM){const m=t%2.4; if(m<0.3) hop=-6*Math.sin(Math.PI*m/0.3);} ctx.fillStyle=C.sun; circle(size-8,8+hop,22); text(String(opt.badge),size-8,9+hop,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:!log.length&&!held});
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!log.length});
+    const cx=(M+126+W-M-504)/2,by=L.top.y+98;
+    ctx.font='700 62px '+FD; ctx.letterSpacing='2px'; const tw=ctx.measureText('RINGS').width; ctx.letterSpacing='0px';
+    text('RINGS',cx,by-10,'700 62px '+FD,C.text,'center','2px');
+    const lx=cx+tw*0.3,ly=by-36; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-16,lx+2,ly-30); stroke(C.leaf,7); leaf(lx+2,ly-26,34,-2.7); leaf(lx+2,ly-30,28,-0.5);
+    text('EVERY RING FINDS ITS PEG',cx,by+38,'700 19px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 5',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Moss Harbour',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right'); ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a); ctx.restore();}
+  const TIPS=['Tap a peg to lift its top ring.','A ring lands on its own colour, or on an empty peg.','Four of a colour fills a peg, and it locks.','Nothing is ever lost here. Undo is right above.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0};
+  function tipSet(s,mood,t){tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  const homeCount=()=>pegs.filter((s,i)=>locked(i)).length;
+  const homeLine=()=>{const l=cols-homeCount(); return l===0?'Every colour on a peg of its own.':l===1?'One colour left to gather.':'That one is home. '+l+' colours left.';};
+  const leftLine=()=>{const l=cols-homeCount(); return l===cols?'Lift a ring and find it a peg.':l===1?'One colour left to gather.':l+' colours left to gather.';};
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-200,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  // The win: the sprout in joy over the day's colours, each one a ring with
+  // its own pip count, which is flat_win()'s "characters of the answer".
+  function drawWin(t){if(!hasSolve) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('Every colour on a peg of its own.',W/2,534,'600 34px '+FB,C.dim);
+      const perRow=3,rows=Math.ceil(cols/perRow),wy=690+(2-rows)*70;
+      for(let c=0;c<cols;c++){
+        const x=W/2+((c%perRow)-(perRow-1)/2)*300,yy=wy+Math.floor(c/perRow)*150;
+        ctx.save(); ctx.translate(x,yy); ctx.scale(1.12,1.12); drawRing(0,0,c,{}); ctx.restore();}
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=3-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+' moves · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp||-1e9,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('rg-caption');
+  function caption(){
+    if(!capEl) return;
+    if(hasSolve){capEl.textContent='Sorted in '+moves+' moves and '+(3-hintsLeft)+(3-hintsLeft===1?' hint':' hints')+'. The solver wanted '+genMoves+'.'; return;}
+    capEl.textContent=cols+' colours · '+pegCount+' pegs · '+cols*CAP+' rings · '+homeCount()+' home · '+moves+' moves · '+hintsLeft+' hints · dealt in '+genAttempts+(genAttempts===1?' attempt':' attempts')+', solved by the generator in '+genMoves+' moves ('+genTimeMs+' ms)';
+  }
+
+  // ---- the frame ----
+  function frame(){const t=now(); L=layout();
+    if(tip.mood==='happy'&&open()&&!log.length&&!held&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ---- touch ----
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  // A station's whole column answers, not the ring: the thing a thumb aims
+  // at on this board is a peg, and a peg is 236 by 476.
+  function pegAt(p){
+    for(let i=0;i<pegs.length;i++){
+      const st=station(i);
+      if(inRect(p,st.x,st.top-LIFT_H-20,STATION_W,STATION_H+LIFT_H+20)) return i;
+    }
+    return -1;
+  }
+  function hit(p,t){
+    if(hasSolve) return (t-winAt>0.5&&inRect(p,M,L.camp.y,COL,130))?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(inRect(p,W-M-488,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    const i=pegAt(p); if(i>=0) return {kind:'peg',i};
+    return null;
+  }
+  let pressTarget=null;
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),hh=hit(pt(e),t); pressTarget=hh; if(!hh) return;
+    if(hh.kind==='peg') pressAt[hh.i]=t; else btnPress[hh.kind]=t;});
+  function up(e){const t=now(),p=pt(e),hh=hit(p,t);
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind||(hh.kind==='peg'&&hh.i!==pressTarget.i)){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='peg'){ if(held) drop(hh.i,t); else lift(hh.i,t); }
+    else if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='tip') tipSet('Gather every colour onto a peg of its own. A ring only lands on its own colour.','happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the sixteen cards.','happy',t);
+    else if(hh.kind==='camp'){build(diff,seed+1,t);}}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{pressTarget=null;});
+
+  // ---- the page's own controls ----
+  // Play the generator's own solution, n moves of it, stamped at `at`.
+  function play(n,at,step){
+    const res=solve(pegs,120000); if(!res.path) return 0;
+    let k=at,done=0;
+    for(const [i,j] of res.path.slice(0,n)){
+      const slot=pegs[j].length; pegs[j].push(pegs[i].pop()); log.push([i,j]); moves++; done++;
+      settle(j,k,k); k+=step; }
+    flight=null; held=null; caption(); return done;
+  }
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('rg-hint',t=>hint(t)); btn('rg-undo',t=>undo(t)); btn('rg-reset',t=>reset(t));
+  btn('rg-new',t=>build(diff,seed+1,t));
+  btn('rg-nearly',t=>{const res=solve(pegs,120000); if(res.path) play(Math.max(0,res.path.length-3),t-6,0.5);});
+  btn('rg-solve',t=>{const res=solve(pegs,120000); if(res.path) play(res.path.length,t,0.42);});
+  const diffEl=document.getElementById('rg-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{const t=now(); build((diff+1)%3,seed,t); diffEl.textContent=DIFFS[diff];});
+  const rmEl=document.getElementById('rg-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  build(parseInt(Q.get('d')||'2'),parseInt(Q.get('seed')||'5')||5,0);
+  if(diffEl) diffEl.textContent=DIFFS[diff];
+  // A harness stamps the moves in the past so the frame it shoots is settled.
+  (function(){
+    const mv=parseInt(Q.get('moves')||'0')||0, win=Q.get('win')==='1', hold=Q.get('hold');
+    const res=Q.get('nearly')==='1'?solve(pegs,120000):null;
+    if(win) play(999,-10,0);
+    else if(res&&res.path) play(Math.max(0,res.path.length-3),-10,0);
+    else if(mv) play(mv,-10,0);
+    if(Q.get('hint')==='1') hint(-9);
+    if(hold!=null&&!hasSolve) lift(parseInt(hold)||0,-8);
+    if(Q.get('stuck')==='1') toast='Nothing can move. Undo, or start again.', toastAt=T0-0.2;
+    if(Q.get('fly')==='1'){const r2=solve(pegs,120000); if(r2.path&&r2.path.length){openedAt=-12; lift(r2.path[0][0],0); drop(r2.path[0][1],0);}}
+    if(win||mv||hold!=null||res) openedAt=-12;
+    caption();
+  })();
+  frame();
 })();
 
 /* ---------- the flat snake apple mock ---------- */

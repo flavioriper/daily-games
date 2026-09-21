@@ -272,6 +272,12 @@ func title() -> String: return "Hidden Word"
 func rules() -> String:
 	return "Guess the five-letter word in six tries. A green tile is the right letter in the right place; an amber one is in the word somewhere else; a grey one is not in the word at all."
 
+## Hidden Word has no cycling tip, but it still uses the shared How to play
+## card as the door to the rules sheet. Keep its resting line specific to this
+## game instead of falling back to Binairo's default tip.
+func tip_line() -> Dictionary:
+	return {"text": "Five letters, six tries", "mood": Face.Expr.HAPPY}
+
 ## Hint alone. Every Enter *is* the check, and taking a committed guess back
 ## is not this game, so there is no Check and no Undo -- the top bar hides
 ## what is not named here.

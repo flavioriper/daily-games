@@ -13,4 +13,8 @@ static func insets(control: Control) -> Vector2:
 		return Vector2.ZERO
 	var safe := DisplayServer.get_display_safe_area()
 	var k := control.get_viewport_rect().size.y / float(win.y)
-	return Vector2(maxf(0.0, float(safe.position.y)) * k, maxf(0.0, float(win.y - safe.end.y)) * k)
+	var top := maxf(0.0, float(safe.position.y)) * k
+	var bottom := maxf(0.0, float(win.y - safe.end.y)) * k
+	if Ads != null:
+		bottom += Ads.bottom_inset() * k
+	return Vector2(top, bottom)
