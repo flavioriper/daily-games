@@ -5,7 +5,7 @@ extends Control
 ## scaled to whatever the card gives them.
 ##
 ## It is never an image and never a render of a model. Twelve of the
-## seventeen are made almost entirely of the flat boards' own cast --
+## eighteen are made almost entirely of the flat boards' own cast --
 ## Binairo's sun and moon, Code Break's friends, Balance's fruit, Untangle's
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, and the shared
@@ -13,13 +13,19 @@ extends Control
 ## its board are visibly the same drawing. Only the furniture under them (a
 ## tray, a beam, a tile) is drawn here.
 ##
-## The five that borrow nothing are Nonogram, Sudoku, Bridges, Quilt and
-## Paper Planes, and for the same reason: none of those boards has a
-## character at all. Their pictures are entirely `_draw` -- tiles for the
+## The six that borrow nothing are Nonogram, Sudoku, Bridges, Quilt, Paper
+## Planes and Rings, and for the same reason: none of those boards has a
+## character at all. Five of the six are entirely `_draw` -- tiles for the
 ## first, a ruled three-by-three fragment with numerals for the second, a sea
 ## with islets on it for the third, a part-sewn blanket for the fourth and
-## bent trails with darts for the fifth -- and none of them has a branch of
-## `_build`.
+## bent trails with darts for the fifth.
+## **Four of those five have no branch of `_build`**; Bridges keeps an
+## empty one, an explicit `pass` under a comment, so that a reader who
+## wonders where its islets are seated learns that nothing is. Rings is the
+## sixth and the one that borrows no character and still has a `_build`
+## branch doing real work: like Word Trail's field it draws into a plain
+## child `Control` of its own, because its picture is one mesh with no
+## furniture under it for the top `_draw` match to add.
 ##
 ## A new card costs one branch of `_build` and, if it needs furniture, one
 ## of `_draw`. That is the same bargain the dioramas offered
@@ -45,6 +51,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
 const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
+const Rings2D = preload("res://puzzles/rings2d.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -72,6 +79,8 @@ var _quilt_mesh: ArrayMesh
 ## Paper Planes' sky -- the dots, the trails and the darts, all baked into
 ## one mesh -- held here for exactly the same reason as `_band_mesh` above.
 var _sky_mesh: ArrayMesh
+## Rings' three pegs, held for the same reason as _band_mesh above.
+var _rings_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -181,6 +190,26 @@ func _build() -> void:
 			# the strip's top (24), fully clear of it, rather than sunk in.
 			_seat(MushroomFace.new(), 62.0, -104.0, -1.0)
 			_seat(MushroomFace.new(), 48.0, -26.0, 5.0)
+		"rings":
+			# No cast: Rings seats no character, joining Nonogram, Hidden
+			# Word, Word Trail and Sudoku. Its whole picture is three pegs
+			# drawn with the board's own ring shape (Rings2D._append_ring)
+			# scaled down, so -- like Word Trail's field -- it is one plain
+			# Control this branch wires its own draw to, rather than a
+			# branch of the top _draw() match: there is no furniture
+			# distinct from the piece here, so there is nothing for that
+			# match to add.
+			# This calls three of rings2d.gd's own underscore-prefixed
+			# helpers and its RING_COLOURS directly (below) rather than a
+			# published API -- deliberately, so the card draws the board's
+			# real ring instead of a second copy of it; see that file's
+			# header for what this costs.
+			var field := Control.new()
+			field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			field.size = Vector2(300.0, 112.0) * _u
+			field.position = at(0.0, 0.0) - field.size * 0.5
+			field.draw.connect(_draw_rings_pegs.bind(field))
+			add_child(field)
 		_:
 			pass
 
@@ -664,3 +693,52 @@ func _dart_card(b, head: Vector2, dir: Vector2) -> void:
 	var spine := PackedVector2Array([Vector2(0.22, 0.0) * _DART_SIZE * _u,
 		Vector2(-0.05, 0.0) * _DART_SIZE * _u])
 	b.stroke(turn * spine, 0.06 * _DART_SIZE * _u, Pal.PAPER, false, false)
+## Rings: three pegs in a 300 by 112 design box, one full of a colour (four
+## rings, locked) and two still part-sorted (two rings apiece, mixed
+## colours) -- the same three states `_tap_rings()`'s harness engineers on
+## the board itself. Every post is drawn its full height first, `Gen.CAP`
+## slots tall, and the rings are stacked on top of it from the base up, so a
+## part-sorted peg's post pokes out proud exactly the way the board's own
+## `_build_station` leaves it: a glance at how much post shows above the
+## rings says how much room is left. `RH`..`POST_UP` are this box's own
+## scale-down of the board's RING_H..POST_UP (each ratio to RING_H copied
+## across; POST_W and BASE_H happen to share the board's own 30, which is
+## this file's coincidence to note and not to lean on), never the board's
+## own constants directly -- a card this small does not want the board's
+## touch targets, only its shape.
+func _draw_rings_pegs(field: Control) -> void:
+	const CAP := 4  # Rings_gen.gd's Gen.CAP, copied rather than read across
+	                # scripts (rings2d.gd's own comment: a const from
+	                # another script does not always fold in GDScript).
+	const RH := 19.0
+	const RW := 41.0
+	const GAP := 1.25
+	const BASE_H := 6.2
+	const BASE_W := 37.6
+	const POST_W := 6.2
+	const POST_UP := 10.0
+	var ground_y := 104.0
+	var base_top := ground_y - BASE_H
+	var stack_full := float(CAP) * RH + float(CAP - 1) * GAP
+	var post_top := base_top - stack_full - POST_UP
+	var post_col: Color = Pal.CHEEK.lerp(Pal.SURFACE, 0.62)
+	var pegs := [
+		{"cx": 50.0, "colours": [3, 3, 3, 3]},
+		{"cx": 150.0, "colours": [0, 1]},
+		{"cx": 250.0, "colours": [2, 5]},
+	]
+	var b := Face.Builder.new()
+	var map := func(p: Vector2) -> Vector2: return p * _u
+	for peg in pegs:
+		var cx: float = peg["cx"]
+		Rings2D._fan_mapped(b, Face.Builder.round_rect(Vector2(cx - POST_W * 0.5, post_top),
+			Vector2(POST_W, base_top - post_top), POST_W * 0.5), post_col, map)
+		Rings2D._slab_mapped(b, Vector2(cx - BASE_W * 0.5, base_top), Vector2(BASE_W, BASE_H),
+			BASE_H * 0.5, 1.5, Pal.SURFACE_HI, Pal.LINE, map)
+		var colours: Array = peg["colours"]
+		for k in colours.size():
+			var ci: int = colours[k]
+			var cy := base_top - RH * 0.5 - float(k) * (RH + GAP)
+			Rings2D._append_ring(b, cx, cy, RW, RH, Rings2D.RING_COLOURS[ci], ci + 1, 1.0, map)
+	_rings_mesh = b.mesh()
+	field.draw_mesh(_rings_mesh, null)

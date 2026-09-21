@@ -2,8 +2,8 @@ extends RefCounted
 
 ## What stands on the first screen, and what stands behind More.
 ##
-## `PUZZLES` is the grid: **seventeen cards over two pages**, in the order
-## they are drawn. **All seventeen open a flat board, and there is no `soon`
+## `PUZZLES` is the grid: **eighteen cards over two pages**, in the order
+## they are drawn. **All eighteen open a flat board, and there is no `soon`
 ## card left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
 ## room for Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
 ## 2026-09-20 for Word Trail; all three keep their island board under More.
@@ -19,8 +19,8 @@ extends RefCounted
 ## card-art budget is written against. The answer is the pager the campsite
 ## menu used to have, rebuilt flat in ui/menu.gd alone (`PER_PAGE` is twelve,
 ## and the strip is its own pill between the grid and the bar): twelve cards
-## on page one, and Mushroom Patch, Sudoku, Bridges, Quilt and Paper Planes
-## on page two, each card still
+## on page one, and Mushroom Patch, Sudoku, Bridges, Quilt, Paper Planes and
+## Rings on page two, each card still
 ## 252 with its 92 px picture. See
 ## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 2.
 ##
@@ -30,21 +30,32 @@ extends RefCounted
 ## "Day N" reads as a way to change the day. Main's is the one that shipped
 ## and the one this entry pages onto; see
 ## docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 9 and its
-## amendments. Bridges is the fifteenth and Quilt the sixteenth, both added
-## the same day and both onto that same page two.
+## amendments. Bridges is the fifteenth, Quilt the sixteenth, Paper Planes
+## the seventeenth and Rings the eighteenth, all four added the same day and
+## all four onto that same page two. **Four boards were in flight in
+## parallel worktrees at once that day**, so each merged in turn and
+## renumbered the ones behind it; the count in this comment is the thing to
+## distrust after a merge, and the count to trust is `PUZZLES.size()`.
 ##
-## Paper Planes is the seventeenth, added the same day as all three of them.
-## It was designed and built as the fifteenth and landed as the seventeenth,
-## because Bridges and Quilt merged ahead of it while it was being built; it
-## displaced nothing either way. **`PER_PAGE` is still twelve, so it costs
+## Paper Planes was designed and built as the fifteenth and landed as the
+## seventeenth, because Bridges and Quilt merged ahead of it while it was
+## being built. Rings was designed as the sixteenth, corrected to the
+## seventeenth when the same two turned out to have landed ahead of *it*,
+## and corrected again to the eighteenth when Paper Planes did the same;
+## none of the four displaced anything either way. **`PER_PAGE` is still
+## twelve, so it costs
 ## the first screen nothing**: page one keeps exactly the same twelve cards
-## in the same order, page two simply holds five instead of two, and the
+## in the same order, page two simply holds six instead of two, and the
 ## pager that arrived for the thirteenth already draws as many dots as it is
-## given. **Page two's last row is short again**, as it was at fourteen:
-## seventeen over twelve leaves five, `5 % COLS` is two, so `ui/menu.gd`
-## pads the row out with one invisible `SIZE_EXPAND_FILL` filler Control --
-## without it `GridContainer` hands the real cells the empty column's
-## leftover width and a lone card comes out 334 wide instead of 320. See
+## given. **Page two's last row was short at seventeen and is full again at
+## eighteen**: seventeen over twelve left five and `5 % COLS` is two, so
+## `ui/menu.gd` padded the row out with one invisible `SIZE_EXPAND_FILL`
+## filler Control; eighteen leaves six, `6 % COLS` is zero, and no filler is
+## made at all. Without one on a short row `GridContainer` hands the real
+## cells the empty column's
+## leftover width and a lone card comes out 334 wide instead of 320 -- so
+## the path is dormant, not dead, and this is the second time in four cards
+## it has gone quiet. See
 ## docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md, section 12.
 ##
 ## `LEGACY` is the old game: every board that still lives on the 3D stage,
@@ -239,12 +250,13 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
-	# these are entries thirteen to seventeen. Mushroom Patch was the
+	# these are entries thirteen to eighteen. Mushroom Patch was the
 	# thirteenth and the first card that was *added* rather than swapped into
 	# a `soon` slot, which is what pushed the grid onto a second page at all;
-	# Sudoku is the fourteenth, Bridges the fifteenth, Quilt the sixteenth
-	# and Paper Planes the seventeenth, and all four join it there without a
-	# word changing anywhere else. Twelve a page is not a
+	# Sudoku is the fourteenth, Bridges the fifteenth, Quilt the sixteenth,
+	# Paper Planes the seventeenth and Rings the eighteenth, and all six
+	# join it there without a word changing anywhere else. Twelve a page is
+	# not a
 	# taste -- it is what four rows of 252 buy -- so the grid grew a page
 	# rather than a shorter card, and all of these stay last so page one
 	# keeps exactly the twelve cards it has, in exactly the order it has
@@ -332,6 +344,24 @@ const PUZZLES := [
 		# bottom slot is the tip card alone, which is Word Trail's and
 		# Quilt's shape.
 		"script": "res://puzzles/planes2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+	},
+	{
+		"id": "rings",
+		"kind": "puzzle",
+		"title": "Rings",
+		"blurb": "Gather every colour onto a peg of its own.",
+		"short": "Sort the rings,\na colour a peg.",
+		"motto": "Every ring finds its peg",
+		"footer": "Lift · Drop · Sort",
+		# It picks nothing up, so it asks for no tray; and there is **no
+		# Check** -- a solved board is solved in plain sight and there is no
+		# wrong ring to find, only a wasted move -- so it has no actions row
+		# either and Reset rides up into the top bar.
+		"script": "res://puzzles/rings2d.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,

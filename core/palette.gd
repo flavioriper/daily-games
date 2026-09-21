@@ -14,6 +14,11 @@ const TEXT        := Color("3b3028")
 const TEXT_DIM    := Color("8a7b6b")
 const ACCENT      := Color("4c9a94")
 const ACCENT_2    := Color("e2825f")
+## ACCENT's own pair, the two shades every other chip colour already carries.
+## Rings is what wanted them: its sixth ring colour is the palette's teal, and
+## a ring needs a deeper edge and a pale tile like every other piece here.
+const ACCENT_DEEP  := Color("3a7a75")
+const ACCENT_TILE  := Color("dfeceb")
 const GOOD        := Color("7cb06b")
 const BAD         := Color("d9605a")
 const BAD_TILE    := Color("f2cfc9")

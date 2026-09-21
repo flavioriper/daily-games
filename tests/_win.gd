@@ -107,6 +107,8 @@ func _note(id: String) -> String:
 		"quilt": return "%dx%d backing, %d patches, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"rings": return "%d pegs, %d colours, %d moves" % [
+			_puzzle._state.pegs.size(), _puzzle._state.colours, _puzzle.moves]
 		"horse": return "%d bales, pen %d/%d, camera fit=%s, hud=%s" % [_puzzle._walls.size(), _puzzle.score(), _puzzle._target, _fit_ok, _hud_ok]
 		"snake": return "%d moves, length %d, camera fit=%s, hud=%s" % [_puzzle.moves, _puzzle._snake.size(), _fit_ok, _hud_ok]
 	return ""
@@ -134,6 +136,7 @@ func _solve(id: String) -> void:
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
 		"quilt": _solve_quilt()
+		"rings": _solve_rings()
 		"horse": _solve_horse()
 		"snake": _solve_snake()
 		"rope": _solve_rope()
@@ -776,6 +779,31 @@ func _solve_sudoku() -> void:
 			continue
 		_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
 		_tap_key("Digit%d" % (d - 1))
+
+## Rings: the generator's own solver hands back the path that proved the
+## day's deal solvable, and it is played back move by move through the
+## board's real lift and drop -- a tap on the source peg's station, then on
+## the destination's, with RenderingServer.force_draw() between the two
+## letting a frame pass so the move the board just made is what actually
+## reaches the screen before the next one starts, rather than racing the
+## whole path through in one unrendered burst. Nothing here pokes `pegs`
+## directly or calls state.drop -- only the board's own _tap does that.
+func _solve_rings() -> void:
+	var Gen = load("res://puzzles/rings_gen.gd")
+	var path: Array = Gen.solve(_puzzle._state.pegs)
+	for m: Vector2i in path:
+		if _puzzle.is_done():
+			return
+		_tap_local(_station_centre(m.x))
+		RenderingServer.force_draw()
+		_tap_local(_station_centre(m.y))
+		RenderingServer.force_draw()
+
+## The middle of peg `i`'s own station, comfortably inside _peg_at's hit
+## column whatever the row it stands in.
+func _station_centre(i: int) -> Vector2:
+	var st: Dictionary = _puzzle._station(i)
+	return Vector2(float(st["cx"]), (float(st["top"]) + float(st["ground"])) * 0.5)
 
 ## One tap on a key of the keyboard tray or a chip of the digit pad, found by
 ## the name that tray gives it.

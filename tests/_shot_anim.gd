@@ -58,6 +58,13 @@ extends SceneTree
 ## puff and -- the point of the shot -- the count wash arriving on the givens
 ## around it as their numerals bump and turn green.
 ##
+## Rings lifts a ring, holds it a beat, then drops it on a peg engineered to
+## lock, so the strip shows the held ring risen and breathing, a frame
+## mid-flight and the gold wash landing. `stuck` raises the toast directly
+## instead of engineering a real dead position; `win` engineers every colour
+## but the last already home and drops the one ring that finishes it, so the
+## strip runs on to the win screen.
+##
 ## Sudoku has the emptiest row of its grid closed off a cell at a time, so the
 ## strip shows the selection's washes, a digit dropping in and the wave the
 ## finished row runs from the cell that closed it. It takes six more words
@@ -95,6 +102,7 @@ extends SceneTree
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
 
 const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
+const RingsGen = preload("res://puzzles/rings_gen.gd")
 
 const SHOTS := [0.35, 0.9, 1.65, 1.8, 2.8, 3.8]  # seconds after opening
 ## The reduce-motion pair: how long after the last shot the extra one is
@@ -166,6 +174,11 @@ var _bridge_drags: Array = []
 var _bridge_to := Vector2.ZERO
 var _bridge_at := INF
 var _bridge_down := false
+## Rings: the drop lands DROP_AFTER after the lift, so the strip has time to
+## catch the held ring risen and breathing before it flies.
+const RINGS_DROP_AFTER := 0.4
+var _rings_drop_to := 0
+var _rings_drop_at := INF
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -218,6 +231,14 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.75, 1.95, 2.1, 2.3, 2.9, 3.9]
 		_idle_from = 2.7
 		_idle_to = 4.7
+	if _id == "rings" and _mode == "win":
+		# The drop lands about 0.74 s after the id opens (TAP_AT plus the
+		# drop delay plus the flight), the wash runs another 0.18 s and the
+		# solve hop another second past that -- so the win screen wants a
+		# shot well past the usual last one.
+		_shots.append_array([4.6, 5.6])
+		_idle_from = 5.8
+		_idle_to = 7.8
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -289,6 +310,8 @@ func _process(delta: float) -> bool:
 			_drag_wordtrail()
 		elif _entry.id == "planes" and not _empty:
 			_tap_planes()
+		elif _entry.id == "rings" and not _empty:
+			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
 			_tap_sudoku()
 			if _mode == "hint":
@@ -328,6 +351,9 @@ func _process(delta: float) -> bool:
 		_trail_step()
 	if _t >= _bridge_at:
 		_bridge_step()
+	if _t >= _rings_drop_at:
+		_rings_drop_at = INF
+		_tap_rings_station(_rings_drop_to)
 	if _t >= _commit_at:
 		_commit_at = INF
 		_tap_key("Key_Enter")
@@ -492,6 +518,63 @@ func _six_wrong() -> Array[String]:
 		if candidate != _puzzle.state.answer and _puzzle.state.accepts(candidate):
 			out.append(candidate)
 	return out
+
+## Rings: lift a ring, hold a beat, then drop it on a peg engineered to lock
+## -- two real touches, so the strip shows the held ring risen and breathing,
+## a frame mid-flight and the gold wash landing. The drop is forced to finish
+## a peg because a fresh deal is not reliably one move from doing that: peg 0
+## becomes three rings of one colour and the source peg's top ring is set to
+## match, so the move the strip watches always locks a peg. `stuck` skips all
+## of that and simply raises the toast directly, since engineering an actual
+## position with no legal move is not worth it just to look at the pill.
+func _tap_rings() -> void:
+	var p = _puzzle
+	if _mode == "stuck":
+		p._toast = p.STUCK_MSG
+		p._toast_at = _t
+		p._refresh()
+		return
+	if _mode == "win":
+		# Every colour but the last already locked on a peg of its own; the
+		# last is split 3 and 1 across the two spare pegs every band deals
+		# (BANDS always leaves two), so the one drop the strip watches wins.
+		var colours: int = p._state.colours
+		var win_pegs: Array = p._state.pegs
+		for c in range(colours - 1):
+			win_pegs[c] = [c, c, c, c]
+		win_pegs[colours - 1] = [colours - 1, colours - 1, colours - 1]
+		win_pegs[colours] = [colours - 1]
+		for i in range(colours + 1, win_pegs.size()):
+			win_pegs[i] = []
+		_rings_drop_to = colours - 1
+		_tap_rings_station(colours)
+		_rings_drop_at = _t + RINGS_DROP_AFTER
+		return
+	var pegs: Array = p._state.pegs
+	if pegs.size() < 2:
+		return
+	pegs[0] = [0, 0, 0]
+	var src := 1
+	for i in range(1, pegs.size()):
+		var peg: Array = pegs[i]
+		if not peg.is_empty() and not RingsGen.locked(peg):
+			src = i
+			break
+	var peg: Array = pegs[src]
+	peg[peg.size() - 1] = 0
+	_rings_drop_to = 0
+	_tap_rings_station(src)
+	_rings_drop_at = _t + RINGS_DROP_AFTER
+	_shots[4] = _rings_drop_at + 0.15   # mid-flight: ARC_TIME is 0.34
+	_shots[5] = _rings_drop_at + 0.6    # landed, the wash still bright
+
+## A real touch inside station `i`'s column, near its base -- the whole
+## column is one target (_peg_at), so any point inside it taps the peg.
+func _tap_rings_station(i: int) -> void:
+	var p = _puzzle
+	var st: Dictionary = p._station(i)
+	var at: Vector2 = p.get_global_transform_with_canvas() * Vector2(float(st["cx"]), float(st["ground"]) - 10.0)
+	_tap_global(at)
 
 ## Sudoku: the emptiest row closed off, a cell selected and a digit written
 ## through the real pad, so the strip shows the washes under the selection,
