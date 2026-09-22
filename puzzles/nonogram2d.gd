@@ -606,12 +606,14 @@ func _solve_delay(cell: Vector2i) -> float:
 ## already holds what the chip paints -- and a drag carries that decision
 ## along one line.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(_cell_at(event.position))
 		else:
 			_release()
-	elif event is InputEventScreenDrag and _press_cell.x >= 0:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _press_cell.x >= 0:
 		_drag(event.position)
 
 func _press(cell: Vector2i) -> void:

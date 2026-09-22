@@ -314,7 +314,8 @@ func _build_page() -> void:
 	_fillers.clear()
 	for row in _page_entries():
 		var entry: Dictionary = row.entry
-		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()])
+		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()],
+			Progress.completed(String(entry.id)))
 		card.name = "Card_" + entry.id
 		card.open.connect(_open.bind(entry))
 		card.blocked.connect(_on_soon.bind(entry))
@@ -551,7 +552,7 @@ func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry):
 		return
 	var host: Control = FlatHost.new()
-	host.setup(entry, 1)
+	host.setup(entry, 1, Progress.completed(String(entry.id)))
 	_mount_host(host)
 
 ## Opens something from the old game: the stage goes up first, because the
@@ -578,12 +579,23 @@ func _open_camp() -> void:
 	_mount_host(camp_menu)
 
 func _mount_host(host: Control) -> void:
+	if host.has_signal("daily_completed"):
+		host.daily_completed.connect(_on_daily_completed)
 	host.closed.connect(func() -> void:
 		host.queue_free()
 		_drop_stage()
 		_show_list())
 	add_child(host)
 	_list_root.visible = false
+
+func _on_daily_completed(puzzle_id: String) -> void:
+	if puzzle_id.is_empty():
+		return
+	Progress.mark_completed(puzzle_id)
+	for card in cards:
+		if is_instance_valid(card) and String(card.entry.get("id", "")) == puzzle_id:
+			card.set_completed(true)
+			break
 
 ## Puts legacy/world/stage.tscn in the tree above this screen's canvas, for
 ## as long as something needs it. world/main.tscn has not carried one since

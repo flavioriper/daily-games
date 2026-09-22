@@ -728,12 +728,14 @@ func _pending_colour(pend: Rect2i) -> Color:
 ## control both the mouse event and the emulated touch, and two would fire
 ## twice.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(_cell_at(event.position))
 		else:
 			_release()
-	elif event is InputEventScreenDrag and _drag_from.x >= 0:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _drag_from.x >= 0:
 		_drag_to = _clamped(event.position)
 		_recount()
 		_redraw()

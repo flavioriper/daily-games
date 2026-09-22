@@ -1099,7 +1099,9 @@ func _on_solved() -> void:
 ## twice. Only the active row's seats answer; the history and the code are a
 ## record, not a keyboard.
 func _gui_input(event: InputEvent) -> void:
-	if not (event is InputEventScreenTouch):
+	if not (event is InputEventScreenTouch or event is InputEventMouseButton):
+		return
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
 		if _busy or not state.open():

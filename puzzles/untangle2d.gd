@@ -655,12 +655,14 @@ func _scan_px(px: PackedVector2Array) -> Dictionary:
 ## Control both the mouse event and the emulated touch, and two would fire
 ## twice.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(event.position)
 		else:
 			_release()
-	elif event is InputEventScreenDrag and _held >= 0:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _held >= 0:
 		_drag(event.position)
 
 ## The pick-up: the paper lifts toward the finger and its cords wake.

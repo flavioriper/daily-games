@@ -99,6 +99,19 @@ func _ready() -> void:
 	if _stage != null:
 		_stage.show_setting(false)
 		_stage.visible = false
+	if _completed_daily:
+		call_deferred("_restore_completed_daily")
+
+## A completed daily has no saved move history to replay. Restore the board's
+## terminal lifecycle state, then use the same solved presentation as a live
+## solve so the player lands on the finished screen immediately.
+func _restore_completed_daily() -> void:
+	if _won or not is_instance_valid(_puzzle):
+		return
+	if _puzzle.has_method("restore_completed"):
+		_puzzle.restore_completed()
+	_refresh()
+	_show_win()
 
 func _exit_tree() -> void:
 	if _stage != null and is_instance_valid(_stage):
@@ -360,6 +373,7 @@ func _spawn(the_seed: int) -> void:
 
 ## The board's wave plays first; then the rows make way for the win screen.
 func _on_solved() -> void:
+	daily_completed.emit(String(_entry.get("id", "")))
 	Analytics.track("puzzle_complete", _stats())
 	_refresh()
 	# A board whose win has an animation of its own to play out first says

@@ -18,6 +18,7 @@ signal blocked
 
 const CardArt = preload("res://ui/menu/card_art.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
+const Icons = preload("res://ui/icons.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
 
 ## The picture's slot, the card's own inset, and the go button. Both are
@@ -38,6 +39,7 @@ const CARD_H := 252.0
 const INSET := 16
 const GO := 68.0
 const PILL := Vector2(88.0, 40.0)
+const DONE_PILL := Vector2(92.0, 40.0)
 const SQUASH := 0.06
 const SQUASH_SOON := 0.03
 const SQUASH_TIME := 0.18
@@ -54,13 +56,15 @@ var entry: Dictionary
 var colour: Color
 var art: Control
 var soon := false
+var completed := false
 var _tap: Button
 var _press_tw: Tween
 
-func _init(the_entry: Dictionary, the_colour: Color) -> void:
+func _init(the_entry: Dictionary, the_colour: Color, is_completed := false) -> void:
 	entry = the_entry
 	colour = the_colour
 	soon = bool(the_entry.get("soon", false))
+	completed = is_completed and not soon
 	enter_from = Vector2(0, 60)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
@@ -145,6 +149,47 @@ func _build() -> void:
 		else:
 			open.emit())
 	add_child(_tap)
+	if completed:
+		_build_done_badge()
+
+## A compact, high-contrast completion marker on the art corner. It is an
+## overlay rather than another row, so the card keeps the same height and the
+## existing chevron remains the affordance for opening it again.
+func _build_done_badge() -> void:
+	var badge := PanelContainer.new()
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_theme_stylebox_override("panel",
+		CozyTheme.card(Pal.GOOD, int(DONE_PILL.y * 0.5), Pal.GOOD.darkened(0.25), 4, 6))
+	badge.custom_minimum_size = DONE_PILL
+	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	badge.offset_left = -DONE_PILL.x - 14.0
+	badge.offset_right = -14.0
+	badge.offset_top = 14.0
+	badge.offset_bottom = 14.0 + DONE_PILL.y
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 5)
+	badge.add_child(row)
+	var check := Control.new()
+	check.custom_minimum_size = Vector2(19.0, 19.0)
+	check.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	check.draw.connect(func() -> void:
+		Icons.paint(check, "check", Rect2(Vector2.ZERO, check.size), Pal.SURFACE))
+	row.add_child(check)
+	var label := Label.new()
+	label.text = "DONE"
+	label.theme_type_variation = "CardBlurb"
+	label.add_theme_color_override("font_color", Pal.SURFACE)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(label)
+	add_child(badge)
+
+func set_completed(value: bool) -> void:
+	if completed == value or soon:
+		return
+	completed = value
+	_build_done_badge()
 
 ## The SOON pill, over the picture's top right corner. It rides the art
 ## rather than the blurb's row: two lines of text and a pill in the same

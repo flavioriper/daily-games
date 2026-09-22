@@ -605,7 +605,9 @@ func _numeral(font: Font, px: int, rise: float, text: String, centre: Vector2, i
 func _gui_input(event: InputEvent) -> void:
 	if state == null or is_done():
 		return
-	if not (event is InputEventScreenTouch and event.pressed):
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not ((event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed):
 		return
 	var i := _cell_at(event.position)
 	if i < 0:

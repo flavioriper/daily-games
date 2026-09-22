@@ -322,7 +322,9 @@ func _peg_at(p: Vector2) -> int:
 ## Touch only, as every flat board takes it: the viewport hands a control
 ## both the mouse event and the emulated touch, and two would fire twice.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press_i = _peg_at(event.position)
 		else:

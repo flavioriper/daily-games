@@ -456,7 +456,9 @@ func broken_rule() -> int:
 ## Touch events only, as StageView takes them: the viewport hands a control
 ## both the mouse event and the emulated touch, and two would fire twice.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		var cell := _cell_at(event.position)
 		if event.pressed:
 			if is_done() or cell.x < 0:

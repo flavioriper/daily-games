@@ -670,14 +670,16 @@ func _reset_wave(diagonal: float) -> float:
 ## Taps work too: the same reach, one step at a time, which is what a player
 ## with a small screen and a big thumb will actually do.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(event.position)
 		else:
 			_drawing = false
 			_release_post()
 			_refresh()
-	elif event is InputEventScreenDrag and _drawing:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _drawing:
 		_reach(event.position)
 
 func _press(at: Vector2) -> void:

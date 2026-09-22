@@ -775,12 +775,14 @@ func _refuse_pinned(cell: Vector2i) -> void:
 ## lays player crosses, including when it starts on a queen or an existing
 ## cross.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(_cell_at(event.position))
 		else:
 			_release(_cell_at(event.position))
-	elif event is InputEventScreenDrag and _press_cell.x >= 0:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _press_cell.x >= 0:
 		_drag(event.position)
 
 func _press(cell: Vector2i) -> void:

@@ -55,3 +55,17 @@ static func mark_tutorial_seen(id: String) -> void:
 ## The island name for a date, the same for everyone on that date.
 static func island_name(date_key: int = Daily.date_key()) -> String:
 	return ISLANDS[posmod(hash(str(date_key)), ISLANDS.size())]
+
+## Records that the player solved puzzle `puzzle_id` on `date_key`. Completion
+## belongs to the daily, not to the puzzle's current generated round, so a
+## card can keep its done state after the player leaves and reopens the app.
+static func mark_completed(puzzle_id: String, date_key: int = Daily.date_key()) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	cfg.set_value("completed", "%d_%s" % [date_key, puzzle_id], true)
+	cfg.save(path)
+
+static func completed(puzzle_id: String, date_key: int = Daily.date_key()) -> bool:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	return bool(cfg.get_value("completed", "%d_%s" % [date_key, puzzle_id], false))

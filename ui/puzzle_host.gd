@@ -15,6 +15,9 @@ extends Control
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md.
 
 signal closed
+## Emitted once when this host's puzzle is solved, so the menu can persist
+## the daily completion without making the board know about menu cards.
+signal daily_completed(puzzle_id: String)
 
 const Pal = preload("res://core/palette.gd")
 const DailySeed = preload("res://core/daily.gd")
@@ -39,6 +42,7 @@ const ENTER_FOOTER_FADE := 0.25
 var _puzzle: Control
 var _entry: Dictionary
 var _difficulty: int = 0
+var _completed_daily := false
 
 var top_bar: Control
 var day_card: Control
@@ -54,9 +58,10 @@ var _overlay_label: Label
 var _margins: MarginContainer
 var _tutorial: Control
 
-func setup(entry: Dictionary, difficulty: int) -> void:
+func setup(entry: Dictionary, difficulty: int, completed_daily := false) -> void:
 	_entry = entry
 	_difficulty = difficulty
+	_completed_daily = completed_daily
 
 func _ready() -> void:
 	theme = CozyTheme.make()
@@ -276,6 +281,7 @@ func _on_reduce_changed(_on: bool) -> void:
 	_refresh()
 
 func _on_solved() -> void:
+	daily_completed.emit(String(_entry.get("id", "")))
 	_overlay_label.text = "%.1fs  ·  %d moves\n\n%s" % [
 		_puzzle.elapsed, _puzzle.moves, _puzzle.share_glyphs()
 	]

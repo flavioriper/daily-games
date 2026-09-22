@@ -852,12 +852,14 @@ func _draw_numbers(now: float) -> void:
 ## down, takes one up or clears a chip; a drag sweeps chips, and its direction
 ## is read off the stone it started on.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(_cell_at(event.position))
 		else:
 			_release()
-	elif event is InputEventScreenDrag and _press_cell.x >= 0:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _press_cell.x >= 0:
 		_drag(event.position)
 
 ## The press: a lamp sinks under the finger, and so does a block, drawn, and

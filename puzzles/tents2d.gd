@@ -587,12 +587,14 @@ func _pebble(b, xf: Transform2D, centre: Vector2, rx: float, ry: float, colour: 
 ## or takes whatever is there away; a drag sweeps cairns, and its direction is
 ## read off the square it started on.
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
+	if event is InputEventScreenTouch or event is InputEventMouseButton:
+		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+			return
 		if event.pressed:
 			_press(_cell_at(event.position))
 		else:
 			_release()
-	elif event is InputEventScreenDrag and _press_cell.x >= 0:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _press_cell.x >= 0:
 		_drag(event.position)
 
 ## The press: a tree or a tent sinks under the finger; bare ground and a
