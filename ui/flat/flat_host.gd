@@ -81,6 +81,7 @@ var _bottom_stack: VBoxContainer
 var _win_stack: VBoxContainer
 var _stage: Node
 var _won := false
+var redo_button: Button
 ## The bottom slot's playing height, summed from the rows this screen has.
 var _bottom_play := 0.0
 ## set_tray is a one-time handoff, not a per-move refresh: _refresh() runs on
@@ -110,6 +111,11 @@ func _restore_completed_daily() -> void:
 		return
 	if _puzzle.has_method("restore_completed"):
 		_puzzle.restore_completed()
+	var saved := Progress.completed_stats(String(_entry.get("id", "")))
+	if not saved.is_empty():
+		_puzzle.elapsed = float(saved.get("seconds", _puzzle.elapsed))
+		_puzzle.moves = int(saved.get("moves", _puzzle.moves))
+		_puzzle.hints_used = int(saved.get("hints", _puzzle.hints_used))
 	_refresh()
 	_show_win()
 
@@ -174,7 +180,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# rest of the chrome wears reads as a stain across a field of small tiles.
 	_card.material = null
 
-	# --- the bottom slot: palette and actions, then the win's stats and button ---
+	# --- the bottom slot: palette and actions, then the win's stats and buttons ---
 	_bottom_slot = Control.new()
 	_bottom_slot.name = "BottomSlot"
 	_bottom_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -256,11 +262,23 @@ func _build_chrome(root: VBoxContainer) -> void:
 	stats_card = FlatDayCard.new()
 	stats_card.name = "StatsCard"
 	_win_stack.add_child(stats_card)
+	var win_buttons := HBoxContainer.new()
+	win_buttons.name = "WinButtons"
+	win_buttons.add_theme_constant_override("separation", GAP)
+	win_buttons.custom_minimum_size.y = CAMP_BUTTON
+	_win_stack.add_child(win_buttons)
+	redo_button = IconButton.new("reset", "Redo", "IconButton")
+	redo_button.name = "RedoButton"
+	redo_button.custom_minimum_size.y = CAMP_BUTTON
+	redo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	redo_button.pressed.connect(_on_redo)
+	win_buttons.add_child(redo_button)
 	camp_button = IconButton.new("", "Back to camp", "SunButton")
 	camp_button.name = "CampButton"
 	camp_button.custom_minimum_size.y = CAMP_BUTTON
+	camp_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	camp_button.pressed.connect(_on_back)
-	_win_stack.add_child(camp_button)
+	win_buttons.add_child(camp_button)
 	# The chevron at the button's right edge, where the reference puts it.
 	var chevron := Control.new()
 	chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -373,7 +391,12 @@ func _spawn(the_seed: int) -> void:
 
 ## The board's wave plays first; then the rows make way for the win screen.
 func _on_solved() -> void:
-	daily_completed.emit(String(_entry.get("id", "")))
+	var puzzle_id := String(_entry.get("id", ""))
+	# Keep the result metrics with the completion flag. The menu still listens
+	# to daily_completed for its card state, while a reopened daily can restore
+	# the same time, moves and hints on its finished screen.
+	Progress.mark_completed(puzzle_id, DailySeed.date_key(), _stats())
+	daily_completed.emit(puzzle_id)
 	Analytics.track("puzzle_complete", _stats())
 	_refresh()
 	# A board whose win has an animation of its own to play out first says
@@ -387,14 +410,17 @@ func _show_win() -> void:
 	if _won or not is_instance_valid(_puzzle):
 		return
 	_won = true
+	# Every completed flat board gets the same compact result line: elapsed
+	# time, move count and hints used. Prepare it independently of the
+	# optional celebration art below.
+	stats_card.set_day(Progress.day(), Progress.island_name())
+	stats_card.set_stats(_stats_text())
 	# A board whose answer is a row of characters shows it instead of the
 	# sun and the moon (flat_win).
 	if _puzzle.has_method("flat_win"):
 		var art: Dictionary = _puzzle.flat_win()
 		well_done.set_cast(art.get("faces", []), String(art.get("subtitle", "")),
 			art.get("labels", []))
-	stats_card.set_day(Progress.day(), Progress.island_name())
-	stats_card.set_stats(_stats_text())
 	# The playing rows leave: up and out above, down and out below.
 	Motion.slide(_top_stack, "position:y", 0.0, -60.0, CHROME_OUT, 0.0, false)
 	Motion.appear(_top_stack, 1.0, 0.0, CHROME_OUT)
@@ -410,6 +436,18 @@ func _show_win() -> void:
 	_win_stack.visible = true
 	Motion.slide(_win_stack, "position:y", 120.0, 0.0, STATS_SLIDE, STATS_DELAY)
 	Motion.appear(_win_stack, 0.0, 1.0, 0.2, STATS_DELAY)
+
+## Replay the same daily from a fresh board. Completion is cleared before the
+## new board starts so leaving the replay unsolved cannot restore the old DONE
+## card or its old result stats.
+func _on_redo() -> void:
+	var puzzle_id := String(_entry.get("id", ""))
+	if puzzle_id.is_empty():
+		return
+	Progress.clear_completed(puzzle_id, DailySeed.date_key())
+	_completed_daily = false
+	Analytics.track("puzzle_redo", {"puzzle_id": puzzle_id})
+	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", puzzle_id)), _difficulty))
 
 ## "m:ss · N moves · N hints" for the stats card.
 func _stats_text() -> String:

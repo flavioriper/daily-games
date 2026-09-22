@@ -889,6 +889,34 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_after_scan(t)
 
+## A completed daily is rebuilt from its seed, so its transient node positions
+## start tangled when the player opens it again. Restore the generator's
+## canonical planar arrangement and settle every visible lantern immediately;
+## this does not emit `solved` a second time because the host owns the win
+## presentation for an already-completed daily.
+func restore_completed_board() -> void:
+	var t := _now()
+	_stop_all()
+	_held = -1
+	_walk = []
+	_solved_at = t
+	_opened = t - 10.0
+	_last = t
+	state.pos = state.planar.duplicate()
+	state.history.clear()
+	state.scan()
+	_crowded_was = state.crowded.duplicate()
+	for i in state.nodes:
+		_mv[i] = {"from": state.pos[i], "at": t - SLIDE_TIME}
+		_swing[i] = 0.0
+		_swing_v[i] = 0.0
+		_lit_at[i] = t
+		Motion.stop(_hop_tw[i])
+		_hop_tw[i] = null
+		_lanterns[i].position = _hang_rest(i)
+		_lanterns[i].scale = Vector2.ONE
+	_refresh(t)
+
 func is_solved() -> bool:
 	return state.is_solved()
 

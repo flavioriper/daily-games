@@ -104,12 +104,19 @@ func check_solved() -> void:
 func is_done() -> bool:
 	return _done
 
-## Restores a daily that was already solved in an earlier session. The board
-## state itself is deterministic and the host owns the solved presentation;
-## this stops the clock and input without emitting `solved` a second time.
+## Restores a daily that was already solved in an earlier session. Concrete
+## boards can override restore_completed_board() to put their visible state
+## back into its solved arrangement before the host shows the win screen.
+## This stops the clock and input without emitting `solved` a second time.
 func restore_completed() -> void:
+	restore_completed_board()
 	_done = true
 	_running = false
+
+## Rebuild the visible solved arrangement for a completed daily. Boards whose
+## state is already persisted elsewhere can leave this as a no-op.
+func restore_completed_board() -> void:
+	pass
 
 func finish_unsolved() -> void:
 	if _done:

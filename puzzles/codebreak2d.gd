@@ -926,6 +926,33 @@ func reset_board() -> void:
 	_say("Cleared. Back to row one.", Face.Expr.HAPPY)
 	fx.cue("reset")
 
+## A completed daily is rebuilt from its seed, so its transient Code Break
+## state is empty when the player opens it again. Completion only stores that
+## the daily was solved, not its individual guesses, so rebuild a terminal
+## scorecard: seven deterministic non-winning attempts followed by the answer
+## on row eight. That keeps the visible ending in the same place as a real
+## finished game instead of making a completed board look like it was solved
+## on its first try.
+func restore_completed_board() -> void:
+	_stop_all()
+	_busy = false
+	var earlier: Array = state.code.duplicate()
+	# The first friend differs from the code, so this row cannot accidentally
+	# score as a solve, even when the day's code permits repeated friends.
+	earlier[0] = (int(earlier[0]) + 1) % state.palette_size
+	for _guess in State.TRIES - 1:
+		state.row = earlier.duplicate()
+		state.commit()
+	state.row = state.code.duplicate()
+	state.commit()
+	# `build()` gives row one the live-row scale. Restoring has no active row,
+	# so place the large, just-finished treatment on the final scored row.
+	for g in State.TRIES:
+		_big[g] = 1.0 if g == State.TRIES - 1 else 0.0
+	_place_rows()
+	_refresh_seats()
+	_reveal(true)
+
 func _leave_after(g: int, s: int, delay: float) -> void:
 	if delay <= 0.0 or Motion.reduce:
 		_leave(g, s)

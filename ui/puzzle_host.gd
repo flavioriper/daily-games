@@ -306,6 +306,8 @@ func _on_ended() -> void:
 func _on_back() -> void:
 	if is_instance_valid(_puzzle) and not _puzzle.is_done():
 		Analytics.track("puzzle_abandon", _stats())
+	# A finished board still needs to be able to leave its result screen. It
+	# simply is not an abandon event because the daily already ended.
 	closed.emit()
 
 ## What a board-level event carries: which puzzle, how hard, and how far

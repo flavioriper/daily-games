@@ -614,6 +614,24 @@ func reset_board() -> void:
 	_recolour()
 	fx.cue("reset")
 
+## The daily completion flag persists independently of the board instance.
+## Reopening the daily creates a fresh deterministic board, so copy the
+## generated solution back into the cells before the host presents the win
+## screen. This is deliberately not check_solved(): restoring a completion
+## must not emit the completion signal a second time.
+func restore_completed_board() -> void:
+	_stop_entrance()
+	_focus_clear()
+	state.history.clear()
+	for r in n:
+		for c in n:
+			state.grid[r][c] = state.solution[r][c]
+			_swap_face(r, c, state.grid[r][c])
+			_paint(0.0, r, c)
+	_recolour(false)
+	brush = -2
+	brush_changed.emit()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

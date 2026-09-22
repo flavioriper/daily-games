@@ -594,6 +594,24 @@ func reset_board() -> void:
 	_say("Back to one each. Start from the scales.", Face.Expr.HAPPY)
 	fx.cue("reset")
 
+## A completed daily is rebuilt from its seed, so its transient weights start
+## at the unsolved arrangement when the player opens it again. Restore the
+## secret directly and settle the visible board without emitting `solved` a
+## second time; the host owns the completion presentation.
+func restore_completed_board() -> void:
+	_stop_entrance()
+	state.guess = state.secret.duplicate()
+	state.history.clear()
+	for i in _beams.size():
+		Motion.stop(_tilt_tw[i])
+		_tilt_tw[i] = null
+		_beams[i].rotation = _tilt_for(i)
+		_shown_angle[i] = INF
+		_level_until[i] = INF
+		_was_level[i] = true
+	_place_dishes(true)
+	_refresh_faces()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

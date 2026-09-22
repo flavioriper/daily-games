@@ -59,13 +59,34 @@ static func island_name(date_key: int = Daily.date_key()) -> String:
 ## Records that the player solved puzzle `puzzle_id` on `date_key`. Completion
 ## belongs to the daily, not to the puzzle's current generated round, so a
 ## card can keep its done state after the player leaves and reopens the app.
-static func mark_completed(puzzle_id: String, date_key: int = Daily.date_key()) -> void:
+## The optional stats are kept with that completion so the finished screen can
+## show the result of the solve when the daily is reopened.
+static func mark_completed(puzzle_id: String, date_key: int = Daily.date_key(), stats: Dictionary = {}) -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(path)
-	cfg.set_value("completed", "%d_%s" % [date_key, puzzle_id], true)
+	var key := "%d_%s" % [date_key, puzzle_id]
+	cfg.set_value("completed", key, true)
+	if not stats.is_empty():
+		cfg.set_value("completed_stats", key, stats)
 	cfg.save(path)
 
 static func completed(puzzle_id: String, date_key: int = Daily.date_key()) -> bool:
 	var cfg := ConfigFile.new()
 	cfg.load(path)
 	return bool(cfg.get_value("completed", "%d_%s" % [date_key, puzzle_id], false))
+
+static func completed_stats(puzzle_id: String, date_key: int = Daily.date_key()) -> Dictionary:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	var value = cfg.get_value("completed_stats", "%d_%s" % [date_key, puzzle_id], {})
+	return value if value is Dictionary else {}
+
+## Clears a daily's completion so a player can replay it from the finished
+## screen. The result stats belong to the same completion and must go with it.
+static func clear_completed(puzzle_id: String, date_key: int = Daily.date_key()) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	var key := "%d_%s" % [date_key, puzzle_id]
+	cfg.erase_section_key("completed", key)
+	cfg.erase_section_key("completed_stats", key)
+	cfg.save(path)
