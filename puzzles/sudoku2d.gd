@@ -70,7 +70,7 @@ const RING_R := 0.4
 const WASH_SELECTED := 0.34
 const WASH_TWIN := 0.20
 const WASH_PEER := 0.08
-const WASH_CLASH := 0.10
+const WASH_CLASH := 0.18
 const WASH_WRONG := 0.22
 ## The gold a cell reaches at the peak of the wave. A wash like the five
 ## above and not a timing: it is one of the wave's own three, with the two
@@ -111,6 +111,9 @@ var _pencil := false
 ## written again. The only thing on this board that is remembered rather
 ## than derived, because it is a memory of a question that was asked.
 var _wrong: Dictionary = {}
+## `state.clashes()` as of the last grid rebuild, so the numerals drawn every
+## frame read the same set the washes were built from.
+var _clash: Dictionary = {}
 
 ## Every drawn moment, each the second it begins -- which may be in the
 ## future, since a wave hands the far cells a later one. Read off Motion's
@@ -330,6 +333,7 @@ func _draw() -> void:
 	# and a live cell moment sets it in `_process`, which is the one place
 	# the question is asked. See the note there.
 	if _dirty:
+		_clash = state.clashes()
 		_grid_mesh = _build_grid(now)
 		_dirty = false
 	# The mesh is handed over and held in the same breath, so what the canvas
@@ -359,7 +363,7 @@ func _build_grid(now: float) -> ArrayMesh:
 			peers[j] = true
 		for j in state.twins(_sel):
 			twins[j] = true
-	var clash: Dictionary = state.clashes()
+	var clash: Dictionary = _clash
 	for i in Gen.CELLS:
 		var at := _corner_of(i)
 		var region_shaded := ((Gen.row_of(i) / 3) + (Gen.col_of(i) / 3)) % 2 == 1
@@ -445,22 +449,25 @@ func _cell_quad(i: int, shift: float, grow: float) -> PackedVector2Array:
 	var half := _cell * 0.5
 	return _square(at + Vector2.ONE * (half - half * grow), _cell * grow)
 
-## What `i` is washed with, in the order section 10's table decides it: the
-## selection first, then its twins -- the most useful scan in sudoku, and the
-## reason the selection survives the tap -- then what the last Check found,
-## then a clash, then the twenty cells the selection cannot repeat into.
-## A clash and a mistake are two different things: the first is visible with
-## no answer in hand and is drawn faintly, the second needs the answer and
-## costs a Check.
+## What `i` is washed with: what the last Check found and any clash first,
+## then the selection, then its twins -- the most useful scan in sudoku, and
+## the reason the selection survives the tap -- then the twenty cells the
+## selection cannot repeat into. A clash outranks the selection because the
+## two copies of a clashing digit are always the selection and its twin the
+## moment one is placed, so ranked under them it was washed gold -- the
+## selection's own colour -- exactly when it happened, and read as right. The
+## selected cell keeps its gold edge either way. A clash and a mistake are
+## two different things: the first is visible with no answer in hand, the
+## second needs the answer and costs a Check.
 func _wash_of(i: int, peers: Dictionary, twins: Dictionary, clash: Dictionary) -> Color:
-	if i == _sel:
-		return Color(Pal.SUN, WASH_SELECTED)
-	if twins.has(i):
-		return Color(Pal.SUN, WASH_TWIN)
 	if _wrong.has(i):
 		return Color(Pal.BAD, WASH_WRONG)
 	if clash.has(i):
 		return Color(Pal.BAD, WASH_CLASH)
+	if i == _sel:
+		return Color(Pal.SUN, WASH_SELECTED)
+	if twins.has(i):
+		return Color(Pal.SUN, WASH_TWIN)
 	if peers.has(i):
 		return Color(Pal.SUN, WASH_PEER)
 	return Color(1.0, 1.0, 1.0, 0.0)
@@ -584,11 +591,12 @@ func _enter_delay(i: int) -> float:
 
 ## A given is ink and never changes; what the player put there is leaf, which
 ## is this game's own word for something that grew, and turns to the family's
-## rose while the last Check still points at it.
+## rose while it clashes or the last Check still points at it. A clash is
+## wrong on its face, so a green digit in one read as a right answer.
 func _digit_ink(i: int) -> Color:
 	if state.is_given(i):
 		return Pal.TEXT
-	return Pal.BAD if _wrong.has(i) else Pal.LEAF_DEEP
+	return Pal.BAD if _wrong.has(i) or _clash.has(i) else Pal.LEAF_DEEP
 
 ## One numeral centred on `centre`, in the transform already set.
 func _numeral(font: Font, px: int, rise: float, text: String, centre: Vector2, ink: Color) -> void:
