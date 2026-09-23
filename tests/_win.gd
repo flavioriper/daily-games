@@ -103,7 +103,7 @@ func _note(id: String) -> String:
 			_puzzle._state.planes.size(), _puzzle._state.cols, _puzzle._state.rows,
 			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
-			81 - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+			_puzzle.state.given.size() - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"fairylights": return "%dx%d garden, %d lanterns, %d turns, board fit=%s, hud=%s" % [
 			_puzzle.state.n, _puzzle.state.n, _puzzle.state.lanterns().size(),
 			_puzzle.state.turns, _fit_ok, _hud_ok]

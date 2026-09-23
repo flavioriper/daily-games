@@ -42,6 +42,7 @@ const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const BottomBar = preload("res://ui/menu/bottom_bar.gd")
 const LegacySheet = preload("res://ui/menu/legacy_sheet.gd")
+const DifficultySheet = preload("res://ui/menu/difficulty_sheet.gd")
 const Icons = preload("res://ui/icons.gd")
 
 ## The old game's scene and its two hosts, loaded only when More opens one.
@@ -146,6 +147,7 @@ const MOUSE_ID := -2
 
 var settings_sheet: Control
 var legacy_sheet: Control
+var difficulty_sheet: Control
 var cards: Array = []
 ## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
 ## see _build_page().
@@ -193,6 +195,10 @@ func _ready() -> void:
 	legacy_sheet.chose_camp.connect(_open_camp)
 	legacy_sheet.closed.connect(func() -> void: bar.show_tab("home"))
 	add_child(legacy_sheet)
+	difficulty_sheet = DifficultySheet.new()
+	difficulty_sheet.name = "DifficultySheet"
+	difficulty_sheet.chose.connect(_open_at)
+	add_child(difficulty_sheet)
 	_show_list()
 
 func _build_list() -> void:
@@ -683,8 +689,16 @@ func _on_soon(entry: Dictionary) -> void:
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry) or _swiped:
 		return
+	# A card whose difficulties are different boards (Sudoku's 6x6 and 9x9)
+	# asks which first; the sheet calls _open_at with the answer.
+	if bool(entry.get("pick_difficulty", false)):
+		difficulty_sheet.ask(entry)
+		return
+	_open_at(entry, 1)
+
+func _open_at(entry: Dictionary, difficulty: int) -> void:
 	var host: Control = FlatHost.new()
-	host.setup(entry, 1, Progress.completed(String(entry.id)))
+	host.setup(entry, difficulty, Progress.completed(Registry.progress_id(entry, difficulty)))
 	_mount_host(host)
 
 ## Opens something from the old game: the stage goes up first, because the

@@ -46,6 +46,10 @@ const Face = preload("res://ui/faces/face.gd")
 ## hands it on the phone; on a narrower screen the cell shrinks under the
 ## nominal 100 rather than the rule running off the card.
 const CELL := 100.0
+## The grid's nominal side, whatever its size: nine cells of 100 on hard,
+## six of 150 on the mini. Everything drawn is written against CELL, so the
+## mini's numerals and rules come out half as big again with its cells.
+const GRID := 900.0
 const HEM := 22.0
 const CARD_INSET := 28.0
 const PAD := HEM + CARD_INSET
@@ -89,17 +93,21 @@ const WIN_WAIT := 1.4
 ## How long a refusal holds the tip card before the cycling rules resume.
 const SAY_HOLD := 2.2
 const TIP_CYCLE := 10.0
+## "%d" is the grid's size, filled in by _tip().
 const TIPS := [
-	"Every row, every column and every region holds 1 to 9 once.",
+	"Every row, every column and every region holds 1 to %d once.",
 	"Tap a cell, then a number. Tap that number again to take it out.",
-	"The pencil writes small: use it for the numbers a cell might be.",
-	"A number already placed nine times goes pale in the pad.",
+	"The cross takes out whatever is in the selected cell.",
+	"A number already placed %d times goes pale in the pad.",
 ]
 
-## The pencil's seat in the tray, ui/flat/digit_pad.gd's PENCIL. Declared
-## here rather than preloaded off the pad on purpose: the tray asks and the
-## board decides, and no board in the flat family preloads its own tray.
-const PENCIL_CHIP := 9
+## The remove chip's seat in the tray, ui/flat/digit_pad.gd's REMOVE.
+## Declared here rather than preloaded off the pad on purpose: the tray asks
+## and the board decides, and no board in the flat family preloads its own
+## tray. It took the pencil's seat on 2026-09-23 at the user's request, so
+## nothing on the screen turns `_pencil` on any more; the pencil's drawing
+## and state.mark stay for whenever it gets a door again.
+const REMOVE_CHIP := 9
 
 var state: State = null
 
@@ -162,7 +170,8 @@ func puzzle_id() -> String: return "sudoku"
 func title() -> String: return "Sudoku"
 
 func rules() -> String:
-	return "Fill the grid so every row, every column and every three-by-three region holds the numbers 1 to 9, each exactly once.\n\nTap a cell, then tap a number. Tapping the number a cell already holds takes it out again.\n\nThe pencil writes small: use it for the numbers a cell might be. Placing a number rubs it out of every cell that can see it.\n\nCheck marks anything that disagrees with the answer, and costs nothing but a count."
+	var n := Gen.N
+	return ("Fill the grid so every row, every column and every %d-by-%d region holds the numbers 1 to %d, each exactly once." % [Gen.BOX_R, Gen.BOX_C, n]) + "\n\nTap a cell, then tap a number. Tapping the number a cell already holds takes it out again.\n\nThe cross takes out whatever is in the selected cell.\n\nCheck marks anything that disagrees with the answer, and costs nothing but a count."
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -196,7 +205,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_tip_idx = 0
 	_hold_until = 0.0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(_tip(0), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -217,7 +226,7 @@ func _layout() -> void:
 	_redraw()
 
 func _cell_for(available: float) -> float:
-	return minf(CELL, minf(size.x - 2.0 * PAD, available - 2.0 * PAD) / float(Gen.N))
+	return minf(GRID / float(Gen.N), minf(size.x - 2.0 * PAD, available - 2.0 * PAD) / float(Gen.N))
 
 ## Everything the grid is drawn with is written against a 100 cell, so a
 ## smaller one scales the rules, the numerals and the marks with it.
@@ -263,7 +272,7 @@ func _centre() -> Vector2:
 
 func _process(delta: float) -> void:
 	super(delta)
-	if _cell <= 0.0 or state == null:
+	if _cell <= 0.0 or not _current():
 		return
 	var now := _now()
 	_deliver_fx(now)
@@ -326,7 +335,7 @@ func _redraw() -> void:
 ## most of the way) as one transform over the mesh, and every numeral rides
 ## the same pop in its own transform, so the board arrives as one thing.
 func _draw() -> void:
-	if state == null or _cell <= 0.0:
+	if not _current() or _cell <= 0.0:
 		return
 	var now := _now()
 	# `_dirty` is the whole test: a state change sets it through `_redraw`
@@ -366,7 +375,7 @@ func _build_grid(now: float) -> ArrayMesh:
 	var clash: Dictionary = _clash
 	for i in Gen.CELLS:
 		var at := _corner_of(i)
-		var region_shaded := ((Gen.row_of(i) / 3) + (Gen.col_of(i) / 3)) % 2 == 1
+		var region_shaded := ((Gen.row_of(i) / Gen.BOX_R) + (Gen.col_of(i) / Gen.BOX_C)) % 2 == 1
 		b.fan(_square(at, _cell), Pal.GRID_TINT if region_shaded else Pal.SURFACE)
 		var wash := _wash_of(i, peers, twins, clash)
 		var lit := _flash_level(now, i)
@@ -382,15 +391,16 @@ func _build_grid(now: float) -> ArrayMesh:
 	# between two regions. Flat-ended: a round cap would bulge past the
 	# frame the heavy rule draws round the whole grid.
 	var thin := Color(Pal.LINE, THIN_ALPHA)
+	# A region is BOX_R tall and BOX_C wide -- two by three on the mini --
+	# so the heavy rules fall on different steps down and across.
 	for step in range(1, Gen.N):
-		var wide := step % 3 == 0
-		var ink: Color = Pal.GRID_RULE if wide else thin
-		var width: float = (RULE_W if wide else THIN_W) * k
 		var d: float = step * _cell
+		var across := step % Gen.BOX_C == 0
 		b.stroke(PackedVector2Array([_grid + Vector2(d, 0.0), _grid + Vector2(d, field)]),
-			width, ink, false, false)
+			(RULE_W if across else THIN_W) * k, Pal.GRID_RULE if across else thin, false, false)
+		var down := step % Gen.BOX_R == 0
 		b.stroke(PackedVector2Array([_grid + Vector2(0.0, d), _grid + Vector2(field, d)]),
-			width, ink, false, false)
+			(RULE_W if down else THIN_W) * k, Pal.GRID_RULE if down else thin, false, false)
 	# The frame: the heavy rule run round the grid, its centreline pushed out
 	# by half its width so its inner edge lands on the grid's own edge. This
 	# is the mock's wooden frame, which a flat board draws rather than builds.
@@ -519,8 +529,7 @@ func _draw_numerals(now: float, pop: float, centre: Vector2) -> void:
 				# Each mark sits in its own third of the cell, which is what
 				# a round 100 buys: 33 is the smallest square a 26 px numeral
 				# reads in.
-				var spot := Vector2(float((n - 1) % 3) - 1.0, float((n - 1) / 3) - 1.0) \
-					* (_cell * NOTE_STEP)
+				var spot := _note_spot(n)
 				_numeral(note_font, note_px, note_rise, str(n), spot,
 					Color(Pal.TEXT_DIM, seen))
 	_draw_leaving(now, pop, centre, digit_font, digit_px, digit_rise,
@@ -560,11 +569,17 @@ func _draw_leaving(now: float, pop: float, centre: Vector2, digit_font: Font,
 		for n in range(1, Gen.N + 1):
 			if int(g.notes) & (1 << (n - 1)) == 0:
 				continue
-			var spot := Vector2(float((n - 1) % 3) - 1.0, float((n - 1) / 3) - 1.0) \
-				* (_cell * NOTE_STEP)
+			var spot := _note_spot(n)
 			_numeral(note_font, note_px, note_rise, str(n), spot,
 				Color(Pal.TEXT_DIM, alpha))
 	_leaving = keep
+
+## Where pencil mark `n` sits from its cell's centre: three to a line, in
+## three lines on a nine and two on the mini, centred either way.
+func _note_spot(n: int) -> Vector2:
+	var lines := float((Gen.N + 2) / 3)
+	return Vector2(float((n - 1) % 3) - 1.0, float((n - 1) / 3) - (lines - 1.0) * 0.5) \
+		* (_cell * NOTE_STEP)
 
 ## Puts the canvas at `at` under the entrance's pop about `centre`, scaled by
 ## the cell's own bump: one transform, so a numeral never drifts off the cell
@@ -611,7 +626,7 @@ func _numeral(font: Font, px: int, rise: float, text: String, centre: Vector2, i
 ## thumb: nothing is typed here, and the thing tapped next is a 91 by 130
 ## chip in the pad.
 func _gui_input(event: InputEvent) -> void:
-	if state == null or is_done():
+	if not _current() or is_done():
 		return
 	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
@@ -635,19 +650,48 @@ func pencil_on() -> bool:
 func remaining(d: int) -> int:
 	return state.remaining(d) if state != null else Gen.N
 
-## A chip was tapped: 0..8 are the digits 1..9 and PENCIL_CHIP is the pencil,
-## which is the one thing on this screen that stays armed.
+## How many digit chips the pad shows: six on the mini, nine on hard.
+func digit_count() -> int:
+	return Gen.N
+
+## A chip was tapped: 0..8 are the digits 1..9 and REMOVE_CHIP empties the
+## selected cell.
 func pick(i: int) -> bool:
 	if state == null or is_done():
-		return false
-	if i == PENCIL_CHIP:
-		_pencil = not _pencil
-		focus_changed.emit()
 		return false
 	if _sel < 0:
 		_speak("Tap a cell first", Face.Expr.PUZZLED)
 		return false
+	if i == REMOVE_CHIP:
+		return _erase(_sel)
 	return _apply(_sel, i + 1)
+
+## The remove chip: the selected cell's digit or marks come out, as one move
+## undo can put back. Taking a digit out can only open a unit, never finish
+## one, so there is no wave to settle -- but a unit it opens may still have
+## its wave running, and that gold goes out with it, as in undo().
+func _erase(i: int) -> bool:
+	var before: Array = state.finished_units()
+	match state.erase(i):
+		State.GIVEN:
+			_refuse(i, "That one came with the puzzle")
+			return false
+		State.EMPTY:
+			_refuse(i, "That cell is already empty")
+			return false
+	var now := _now()
+	_wrong.erase(i)
+	_bump[i] = now
+	_busy_for(Motion.BUMP_TIME)
+	var units: Array = Gen.units()
+	for u in units.size():
+		if bool(before[u]) and not state.unit_done(units[u]):
+			for c in units[u]:
+				_flash.erase(c)
+	fx.cue("undo")
+	_redraw()
+	note_move()
+	return true
 
 # --- the one door every move goes through ---
 
@@ -826,7 +870,7 @@ func check() -> int:
 	for i in w:
 		_wrong[i] = true
 		if not Motion.reduce:
-			var when := now + absi(Gen.row_of(i) - 4) * Motion.RESET_STAGGER
+			var when := now + absi(Gen.row_of(i) - (Gen.N - 1) / 2) * Motion.RESET_STAGGER
 			_shiver[i] = when
 			_busy_for(when - now + Motion.SHIVER_TIME)
 	_speak(_check_line(w.size()), Face.Expr.STRAIN if w.size() > 0 else Face.Expr.JOY)
@@ -908,7 +952,8 @@ func _on_solved() -> void:
 		# one because Fx2D's sparkle pool is three: a fourth would recycle
 		# the first emitter and cut its burst in half. Spaced four diagonals
 		# apart they are used once each and never reclaimed mid-flight.
-		for d in [4, 8, 12]:
+		var span := 2 * (Gen.N - 1)
+		for d in [span / 4, span / 2, span * 3 / 4]:
 			var k: int = d / 2
 			_fx_due.append({"at": now + _solve_delay(d),
 				"where": cell_to_local(k, k)})
@@ -1000,15 +1045,26 @@ func _speak(line: String, mood: int) -> void:
 func _resume_tips() -> void:
 	if is_done() or _now() < _hold_until - 0.01:
 		return
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(_tip(_tip_idx), Face.Expr.HAPPY)
+
+func _tip(k: int) -> String:
+	var line: String = TIPS[k]
+	return line % Gen.N if line.contains("%d") else line
 
 func _cycle_tip() -> void:
 	if is_done() or _now() < _hold_until:
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(_tip(_tip_idx), Face.Expr.HAPPY)
 
 # --- odds and ends ---
+
+## Whether Gen's geometry is still this board's. Gen holds one size at a
+## time, and a board being replaced by one of another band (the mini by
+## hard) lives a frame after the new one has switched Gen over; it must not
+## read the new geometry against its own arrays in that frame.
+func _current() -> bool:
+	return state != null and state.grid.size() == Gen.CELLS
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0

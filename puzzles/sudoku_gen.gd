@@ -15,12 +15,23 @@ extends RefCounted
 ## than a medium day labelled hard.
 ## Spec: docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 8.
 
-const N := 9
-const CELLS := 81
-## Nine bits, digits 1..9.
-const FULL := 511
-## Givens aimed at, per band: easy, medium, hard.
-const TARGET := [36, 30, 26]
+## The grid's size is the band's: easy and medium are the mini, six by six
+## in six regions of two rows by three columns, and hard is the classic nine
+## by nine. These are static vars and not consts because of that, and
+## `use()` is the one thing that changes them; every table below is rebuilt
+## when it does. One board is open at a time, so one geometry at a time is
+## all the game ever needs.
+static var N := 9
+static var CELLS := 81
+## N bits, digits 1..N.
+static var FULL := 511
+## A region's height and width in cells.
+static var BOX_R := 3
+static var BOX_C := 3
+## The side of the grid, per band: easy, medium, hard.
+const SIZE := [6, 6, 9]
+## Givens aimed at, per band. The mini's are out of 36 cells, not 81.
+const TARGET := [14, 10, 26]
 ## Tries before the band's technique test is given up on. Measured: six left
 ## one hard day in twelve solvable by singles, ten leaves none.
 const ATTEMPTS := 10
@@ -58,14 +69,32 @@ static func col_of(i: int) -> int:
 	return i % N
 
 static func box_of(i: int) -> int:
-	return (i / 27) * 3 + (i % N) / 3
+	return (row_of(i) / BOX_R) * (N / BOX_C) + col_of(i) / BOX_C
 
-## The twenty cells that share a row, a column or a region with `i`.
+## Switch the geometry to an `n` by `n` grid: 6 (regions two rows by three
+## columns) or 9 (three by three). A no-op when it is already that size.
+static func use(n: int) -> void:
+	if n == N and not _units.is_empty():
+		return
+	N = n
+	CELLS = n * n
+	FULL = (1 << n) - 1
+	BOX_R = 2 if n == 6 else 3
+	BOX_C = 3
+	_units = []
+	_peers = []
+	_tables()
+
+## The side of the grid band `difficulty` is played on.
+static func size_for(difficulty: int) -> int:
+	return int(SIZE[clampi(difficulty, 0, SIZE.size() - 1)])
+
+## The cells (twenty on a nine, ten on a six) that share a row, a column or a region with `i`.
 static func peers_of(i: int) -> PackedInt32Array:
 	_tables()
 	return _peers[i]
 
-## The twenty-seven units: nine rows, then nine columns, then nine regions.
+## Every unit: N rows, then N columns, then N regions.
 static func units() -> Array:
 	_tables()
 	return _units
@@ -114,8 +143,8 @@ static func _tables() -> void:
 ## -1 to turn the clock off entirely, the same sentinel dig() already uses
 ## for "no deadline".
 static func generate(rng: RandomNumberGenerator, difficulty: int, budget_ms: int = TIME_BUDGET_MS) -> Dictionary:
-	_tables()
 	var d := clampi(difficulty, 0, TARGET.size() - 1)
+	use(size_for(d))
 	var out := {}
 	var deadline := -1
 	if budget_ms >= 0:
@@ -201,7 +230,7 @@ static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Arra
 		bm: PackedInt32Array, cap: int, found: Array) -> bool:
 	var best := -1
 	var best_mask := 0
-	var best_n := 10
+	var best_n := N + 1
 	for i in CELLS:
 		if g[i] > 0:
 			continue

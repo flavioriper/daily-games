@@ -289,6 +289,15 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "digits",
 		"difficulties": [0, 1, 2],
+		# Easy and medium are the 6x6 mini and hard the 9x9, so the card asks
+		# which before it opens (ui/menu/difficulty_sheet.gd), and each is its
+		# own daily with its own done mark (progress_id below).
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
+			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
+			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+		],
 	},
 	{
 		"id": "bridges",
@@ -564,6 +573,15 @@ static func kind(entry: Dictionary) -> String:
 ## and its wood signs) unless the entry asks for "flat" (ui/flat/flat_host.gd).
 static func shell(entry: Dictionary) -> String:
 	return str(entry.get("shell", "island"))
+
+## The key a board's daily completion is saved under. A card that asks for
+## its difficulty keeps one per difficulty, so finishing the easy board does
+## not open the hard one as already solved; every other card keeps its id.
+static func progress_id(entry: Dictionary, difficulty: int) -> String:
+	var id := String(entry.get("id", ""))
+	if bool(entry.get("pick_difficulty", false)):
+		return "%s_%d" % [id, difficulty]
+	return id
 
 ## A grid card that names a board nobody has drawn flat yet: it is on the
 ## screen, and it does not open.

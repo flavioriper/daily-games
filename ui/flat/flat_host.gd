@@ -109,7 +109,7 @@ func _ready() -> void:
 func _restore_completed_daily() -> void:
 	if _won or not is_instance_valid(_puzzle):
 		return
-	var saved := Progress.completed_stats(String(_entry.get("id", "")))
+	var saved := Progress.completed_stats(_progress_id())
 	if _puzzle.has_method("restore_completed"):
 		var record = saved.get("board", {})
 		_puzzle.completed_record = record if record is Dictionary else {}
@@ -402,7 +402,7 @@ func _on_solved() -> void:
 		var record: Dictionary = _puzzle.completion_record()
 		if not record.is_empty():
 			kept["board"] = record
-	Progress.mark_completed(puzzle_id, DailySeed.date_key(), kept)
+	Progress.mark_completed(_progress_id(), DailySeed.date_key(), kept)
 	daily_completed.emit(puzzle_id)
 	Analytics.track("puzzle_complete", _stats())
 	_refresh()
@@ -451,10 +451,15 @@ func _on_redo() -> void:
 	var puzzle_id := String(_entry.get("id", ""))
 	if puzzle_id.is_empty():
 		return
-	Progress.clear_completed(puzzle_id, DailySeed.date_key())
+	Progress.clear_completed(_progress_id(), DailySeed.date_key())
 	_completed_daily = false
 	Analytics.track("puzzle_redo", {"puzzle_id": puzzle_id})
 	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", puzzle_id)), _difficulty))
+
+## Where today's completion is saved: the card's id, or the id and the
+## difficulty for a card that asks which (ui/registry.gd `progress_id`).
+func _progress_id() -> String:
+	return load("res://ui/registry.gd").progress_id(_entry, _difficulty)
 
 ## "m:ss · N moves · N hints" for the stats card.
 func _stats_text() -> String:

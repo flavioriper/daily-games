@@ -21,8 +21,6 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/sudoku_gen.gd")
 
-const N := 9
-const CELLS := 81
 ## Three a board, the mock's number, as every flat board gives.
 const HINTS := 3
 
@@ -30,10 +28,11 @@ const HINTS := 3
 const OK := 0
 const GIVEN := 1
 const FILLED := 2
+const EMPTY := 3
 
 var given := PackedByteArray()     # the puzzle's own digits, 0 where empty
 var grid := PackedByteArray()      # what is on the board now, givens included
-var notes := PackedInt32Array()    # a nine-bit mask a cell
+var notes := PackedInt32Array()    # an N-bit mask a cell
 var sol := PackedByteArray()       # the answer
 ## Newest last. {"cell": int, "prev": int, "notes": int, "struck": PackedInt32Array, "bit": int}
 var history: Array = []
@@ -43,12 +42,14 @@ var hints_left := HINTS
 ## TIME_BUDGET_MS deadline, and passing a third here would be the state
 ## quietly overriding a generator decision it has no business overriding.
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+	# generate() switches Gen to the band's size (six for easy and medium,
+	# nine for hard), and everything below reads the size off Gen.
 	var out: Dictionary = Gen.generate(rng, difficulty)
 	sol = out.solution
 	given = out.puzzle
 	grid = out.puzzle.duplicate()
 	notes = PackedInt32Array()
-	notes.resize(CELLS)
+	notes.resize(Gen.CELLS)
 	history = []
 	hints_left = HINTS
 
@@ -60,10 +61,10 @@ func is_given(i: int) -> bool:
 func has_note(i: int, d: int) -> bool:
 	return (notes[i] & (1 << (d - 1))) != 0
 
-## Nine minus how many of `d` are on the board.
+## N minus how many of `d` are on the board.
 func remaining(d: int) -> int:
-	var n := N
-	for i in CELLS:
+	var n := Gen.N
+	for i in Gen.CELLS:
 		if grid[i] == d:
 			n -= 1
 	return n
@@ -74,7 +75,7 @@ func twins(i: int) -> PackedInt32Array:
 	var d := grid[i]
 	if d == 0:
 		return out
-	for j in CELLS:
+	for j in Gen.CELLS:
 		if j != i and grid[j] == d:
 			out.append(j)
 	return out
@@ -83,7 +84,7 @@ func twins(i: int) -> PackedInt32Array:
 ## the board asks it per cell while drawing.
 func clashes() -> Dictionary:
 	var out: Dictionary = {}
-	for i in CELLS:
+	for i in Gen.CELLS:
 		if grid[i] == 0:
 			continue
 		for j in Gen.peers_of(i):
@@ -112,13 +113,13 @@ func finished_units() -> Array:
 ## Every non-given cell whose digit differs from the answer. What Check names.
 func wrong() -> PackedInt32Array:
 	var out := PackedInt32Array()
-	for i in CELLS:
+	for i in Gen.CELLS:
 		if given[i] == 0 and grid[i] > 0 and grid[i] != sol[i]:
 			out.append(i)
 	return out
 
 func is_solved() -> bool:
-	for i in CELLS:
+	for i in Gen.CELLS:
 		if grid[i] != sol[i]:
 			return false
 	return true
@@ -149,6 +150,19 @@ func mark(i: int, d: int) -> int:
 	notes[i] ^= 1 << (d - 1)
 	return OK
 
+## Take out whatever the player put in `i`, digit or pencil marks: the pad's
+## remove chip. Refused at a given and at a cell with nothing to take.
+func erase(i: int) -> int:
+	if given[i] > 0:
+		return GIVEN
+	if grid[i] == 0 and notes[i] == 0:
+		return EMPTY
+	history.append({"cell": i, "prev": int(grid[i]), "notes": int(notes[i]),
+		"struck": PackedInt32Array(), "bit": 0})
+	grid[i] = 0
+	notes[i] = 0
+	return OK
+
 ## The cell put back, or -1 when there was nothing to undo.
 func undo() -> int:
 	if history.is_empty():
@@ -170,8 +184,8 @@ func hint() -> int:
 	if hints_left <= 0:
 		return -1
 	var best := -1
-	var best_n := 10
-	for i in CELLS:
+	var best_n := Gen.N + 1
+	for i in Gen.CELLS:
 		if grid[i] == sol[i]:
 			continue
 		var m := Gen.FULL
@@ -193,7 +207,7 @@ func hint() -> int:
 
 ## Back to the givens: no digits, no marks, no history. Reset, not undo.
 func clear_board() -> void:
-	for i in CELLS:
+	for i in Gen.CELLS:
 		if given[i] == 0:
 			grid[i] = 0
 			notes[i] = 0

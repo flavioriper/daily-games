@@ -15,6 +15,9 @@ static func run(t) -> void:
 	_test_state(t)
 
 static func _test_tables(t) -> void:
+	# The tables below are the nine's; the mini (easy and medium) is checked
+	# by the generator loop, which reads its geometry off Gen.
+	Gen.use(9)
 	t.eq(Gen.row_of(0), 0, "cell 0 is in row 0")
 	t.eq(Gen.col_of(0), 0, "cell 0 is in column 0")
 	t.eq(Gen.box_of(0), 0, "cell 0 is in region 0")
@@ -42,7 +45,8 @@ static func _test_generator(t) -> void:
 			var tag := "band=%d seed=%d" % [d, i]
 			var puz: PackedByteArray = out.puzzle
 			var sol: PackedByteArray = out.solution
-			t.eq(puz.size(), 81, "%s the puzzle is 81 cells" % tag)
+			var cells := Gen.size_for(d) * Gen.size_for(d)
+			t.eq(puz.size(), cells, "%s the puzzle is %d cells" % [tag, cells])
 			t.check(Gen.is_complete(sol), "%s the solution is full" % tag)
 			# The answer must obey the rules, not merely be what the dig
 			# started from.
@@ -51,17 +55,17 @@ static func _test_generator(t) -> void:
 			t.eq(Gen.count_solutions(puz, 3), 1, "%s has exactly one solution" % tag)
 			# Every given agrees with the answer.
 			var agrees := true
-			for k in 81:
+			for k in cells:
 				if puz[k] != 0 and puz[k] != sol[k]:
 					agrees = false
 			t.check(agrees, "%s every given agrees with the solution" % tag)
 			# Within one of the band's target, and symmetric about the centre.
 			var givens := 0
 			var symmetric := true
-			for k in 81:
+			for k in cells:
 				if puz[k] != 0:
 					givens += 1
-				if (puz[k] != 0) != (puz[80 - k] != 0):
+				if (puz[k] != 0) != (puz[cells - 1 - k] != 0):
 					symmetric = false
 			t.check(givens >= int(Gen.TARGET[d]) - 1, "%s has at least its band's givens (%d)" % [tag, givens])
 			t.check(givens <= int(Gen.TARGET[d]) + 6, "%s is not far over its band's givens (%d)" % [tag, givens])
@@ -103,7 +107,7 @@ static func _test_generator(t) -> void:
 	t.check(Gen.generate(a, 1, -1).puzzle == Gen.generate(b, 1, -1).puzzle, "the same seed gives the same puzzle")
 	# A grid with a cell removed from a finished board has one answer; one
 	# with a whole unit removed does not.
-	var full: PackedByteArray = Gen.generate(RandomNumberGenerator.new(), 0, -1).solution
+	var full: PackedByteArray = Gen.generate(RandomNumberGenerator.new(), 2, -1).solution
 	var one := full.duplicate()
 	one[0] = 0
 	t.eq(Gen.count_solutions(one, 3), 1, "one cell removed leaves one answer")
@@ -130,6 +134,7 @@ static func _test_generator(t) -> void:
 static func _test_deadline(t) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 777
+	Gen.use(9)
 	var sol := Gen.full_grid(rng)
 	var expired := Time.get_ticks_msec() - 1
 	var puz := Gen.dig(rng, sol, 30, expired)
@@ -149,7 +154,7 @@ static func _legal(g: PackedByteArray) -> bool:
 	for u in Gen.units():
 		var mask := 0
 		for i in u:
-			if g[i] < 1 or g[i] > 9:
+			if g[i] < 1 or g[i] > Gen.N:
 				return false
 			var bit := 1 << (g[i] - 1)
 			if mask & bit:
@@ -181,7 +186,8 @@ static func _test_state(t) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 31337
 	var s := State.new()
-	s.setup(rng, 1)
+	# Hard, so the nine's digits below (7, 8, 9) exist on the board.
+	s.setup(rng, 2)
 
 	# The first empty cell, and the first given.
 	var empty := -1
