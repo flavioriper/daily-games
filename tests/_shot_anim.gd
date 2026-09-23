@@ -142,6 +142,7 @@ var _id := ""
 var _empty := false   # skip the fill and measure the bare board
 var _mode := ""       # a board with more than one thing to show picks here
 var _reduce := false
+var _level := 1        # `d=0` or `d=2` after the id opens a level other than medium
 var _shots: Array = SHOTS.duplicate()
 var _entry: Dictionary = {}
 ## A drag: a real touch at `_drag_from`, dragged over DRAG_TIME by `_drag_by`
@@ -206,6 +207,8 @@ func _initialize() -> void:
 	for i in range(1, args.size()):
 		if args[i] == "rm":
 			_reduce = true
+		elif args[i].begins_with("d="):
+			_level = int(args[i].substr(2))
 		else:
 			_mode = args[i]
 	_empty = _mode == "empty"
@@ -323,9 +326,10 @@ func _process(delta: float) -> bool:
 			if _reduce:
 				load("res://core/motion.gd").reduce = true
 			# A card that asks for its difficulty (Sudoku, Binairo) would put
-			# the sheet up instead of the board: open it at medium directly.
+			# the sheet up instead of the board: open it at medium directly,
+			# or at the level `d=` named.
 			if bool(_entry.get("pick_difficulty", false)):
-				_menu._open_at(_entry, 1)
+				_menu._open_at(_entry, _level)
 			else:
 				_menu._open(_entry)
 			_host = _menu.get_child(_menu.get_child_count() - 1)

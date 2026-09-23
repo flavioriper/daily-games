@@ -340,6 +340,15 @@ const PUZZLES := [
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): four words on a 5 by 5 field, six
+		# on 6 by 6 or six longer ones on 7 by 7 (word_trail_state.gd's
+		# BANDS), and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "4 words, 5 × 5"},
+			{"difficulty": 1, "name": "Medium", "line": "6 words, 6 × 6"},
+			{"difficulty": 2, "name": "Hard", "line": "6 words, 7 × 7"},
+		],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
 	# these are entries thirteen to seventeen. Mushroom Patch was the
