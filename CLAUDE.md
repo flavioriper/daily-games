@@ -1382,7 +1382,8 @@ glockenspiel and paper; never a buzzer; up means good, down means not yet;
 cues that fire on every touch (Binairo's `focus`, `blush_out`) get no file.
 One take per cue; the user listens and names the ones to redo. The set is
 keyed by `puzzle_id()`, not the card's name (Code Break's is `mastermind`).
-Binairo and Code Break have sets (2026-09-23).
+Binairo, Code Break, Balance, Untangle, Shikaku and Tents have sets
+(2026-09-23).
 
 ## Art: shading direction
 

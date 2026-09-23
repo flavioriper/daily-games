@@ -2,7 +2,8 @@
 
 How a board gets its sounds. The first set is Binairo's (2026-09-23,
 `assets/sfx/binairo/`), the second Code Break's (the same day,
-`assets/sfx/mastermind/`), and neither had been judged by ear when this was
+`assets/sfx/mastermind/`), then Balance, Untangle, Shikaku and Tents the
+same afternoon, and none had been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
 
@@ -33,6 +34,10 @@ set is choosing which cues get a file.
   Binairo's `focus` fires on every tap with `place`, and `blush_out` fires on
   every cell that recovers; both were left without a file, because they
   would only muddy the sound they ride with.
+- **A board's main move gets a file even when it is chatty.** Balance's
+  `step` fires on every +/- tap and Untangle's `pick` on every grab; they are
+  the move itself, not a cue riding on another, so they get a file, kept
+  quiet (-9 and -12).
 - A cue that fires per cell in one frame (Binairo's `blush_in`, `line`) is
   fine: `cue()` plays a repeat inside `CUE_GAP` (60 ms) once.
 - Reuse cue names across boards where the moment is the same (`place`,
@@ -87,6 +92,9 @@ reprocessed for free.
   quarter second of sound at about -45 dB RMS followed by silence, so the
   trimmed file was 0.25 s against 1.0 asked. That was the take, not the
   trim (check the raw mp3's RMS over time with `astats`); `--new` fixed it.
+  A short file is not a dud on its own: Balance's `step`, Untangle's `drop`
+  and Shikaku's `plot` trimmed to 0.23-0.29 s but carry -25 to -30 dB RMS,
+  which is a real tap. Only a near-silent take (around -45) needs redoing.
 - **The key** is read from `$ELEVENLABS_API_KEY` or
   `~/.config/elevenlabs/api_key` (mode 600) and must never be written into
   the repo or pasted into chat. If it is missing, ask the user to run

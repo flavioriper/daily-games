@@ -54,6 +54,53 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of seats appearing", 1.0, -9),
     },
+    # Balance: fruit weights on little hanging scales; a tap steps a weight
+    # up or down, and a scale that comes level chimes.
+    "balance": {
+        "step":     ("a single tiny soft wooden click, a small weight nudged on a scale pan, very short", 0.5, -9),
+        "level":    ("a soft bright two-note kalimba chime going up, a hanging scale settling perfectly level", 0.7, -6),
+        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft wooden creak and gentle clatter, little scale pans swinging back to rest", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, little scales swinging into place", 1.0, -9),
+    },
+    # Untangle: paper lanterns joined by strings, dragged until no strings cross.
+    "untangle": {
+        "pick":     ("a tiny soft paper rustle, lifting a small paper lantern, very short and quiet", 0.5, -12),
+        "drop":     ("a soft gentle paper lantern landing with a tiny wooden tap, very short", 0.5, -8),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft airy paper flutter, many small paper lanterns drifting back into place", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny paper and wooden pops, paper lanterns appearing one by one", 1.0, -9),
+    },
+    # Shikaku: garden beds drawn as rectangles in soil around number stakes.
+    "shikaku": {
+        "plot":     ("a soft short garden trowel pat in loose soil with a tiny wooden tap, a garden bed marked out", 0.5, -6),
+        "clear":    ("a very short soft downward whoosh with a light soil brush, a garden bed wiped away", 0.5, -9),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a soft brushing sweep across loose soil with a few small wooden pops, a garden raked clean", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, little garden stakes appearing", 1.0, -9),
+    },
+    # Tents: pitch a tent beside each tree on a grassy campsite grid.
+    "tents": {
+        "place":    ("a tiny soft canvas flap and a light wooden peg tap, a little tent pitched, very short", 0.5, -6),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a quick soft ripple of canvas flaps and small wooden pops, tents being packed away", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a campsite of trees appearing", 1.0, -9),
+    },
 }
 
 
