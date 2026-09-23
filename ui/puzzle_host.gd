@@ -42,6 +42,7 @@ const ENTER_FOOTER_FADE := 0.25
 var _puzzle: Control
 var _entry: Dictionary
 var _difficulty: int = 0
+var _bank_step := 0
 var _completed_daily := false
 
 var top_bar: Control
@@ -184,6 +185,7 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = the_seed
+	_puzzle.bank_step = _bank_step
 	_puzzle.start(rng, _difficulty)
 	_card.visible = not _puzzle.is_3d()
 	_overlay.visible = false
@@ -267,6 +269,7 @@ func _on_reset() -> void:
 func _on_new() -> void:
 	# Prototype affordance only. The shipped game gets one puzzle per day.
 	Analytics.track("new_puzzle", {"puzzle_id": _entry.get("id", "")})
+	_bank_step += 1
 	_spawn(randi())
 
 func _open_settings() -> void:

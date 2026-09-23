@@ -454,6 +454,7 @@ func _on_redo() -> void:
 	Progress.clear_completed(_progress_id(), DailySeed.date_key())
 	_completed_daily = false
 	Analytics.track("puzzle_redo", {"puzzle_id": puzzle_id})
+	_bank_step = 0
 	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", puzzle_id)), _difficulty))
 
 ## Where today's completion is saved: the card's id, or the id and the
