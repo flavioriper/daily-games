@@ -18,7 +18,6 @@ signal blocked
 
 const CardArt = preload("res://ui/menu/card_art.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
-const Icons = preload("res://ui/icons.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
 
 ## The picture's slot, the card's own inset, and the go button. Both are
@@ -44,7 +43,11 @@ const ART_GROW := 26.0
 const INSET := 16
 const GO := 68.0
 const PILL := Vector2(88.0, 40.0)
-const DONE_PILL := Vector2(92.0, 40.0)
+## The done seal: a green disc in a paper ring, pinned over the picture's
+## top right corner and hanging SEAL_HANG past it on both edges.
+const SEAL_R := 23.0
+const SEAL_RING := 4
+const SEAL_HANG := 9.0
 const SQUASH := 0.06
 const SQUASH_SOON := 0.03
 const SQUASH_TIME := 0.18
@@ -64,6 +67,7 @@ var soon := false
 var completed := false
 var _tap: Button
 var _art_plate: PanelContainer
+var _seal: Control
 ## This card's row height: CARD_H on a 1080x1920 screen, more on a taller
 ## one (see `fit_height`).
 var card_h := CARD_H
@@ -162,44 +166,44 @@ func _build() -> void:
 	if completed:
 		_build_done_badge()
 
-## A compact, high-contrast completion marker on the art corner. It is an
-## overlay rather than another row, so the card keeps the same height and the
-## existing chevron remains the affordance for opening it again.
+## The completion marker: a check seal pinned over the picture's corner like
+## a sticker, with no word on it. It rides a layer laid over the art plate
+## (a PanelContainer stretches it to the picture's own rect, and nothing up
+## the chain clips) so it squashes with the card, and it covers only the
+## plate's empty corner: the old DONE pill sat over the picture itself and cut
+## into Code Break's pouch, Nonogram's clues and Word Trail's tiles, and a
+## page of them read louder than the one card still to play. The chevron is
+## still the way back in. Two draw commands: the stylebox and the check.
 func _build_done_badge() -> void:
-	var badge := PanelContainer.new()
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge.add_theme_stylebox_override("panel",
-		CozyTheme.card(Pal.GOOD, int(DONE_PILL.y * 0.5), Pal.GOOD.darkened(0.25), 4, 6))
-	badge.custom_minimum_size = DONE_PILL
-	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	badge.offset_left = -DONE_PILL.x - 14.0
-	badge.offset_right = -14.0
-	badge.offset_top = 14.0
-	badge.offset_bottom = 14.0 + DONE_PILL.y
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 5)
-	badge.add_child(row)
-	var check := Control.new()
-	check.custom_minimum_size = Vector2(19.0, 19.0)
-	check.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	check.draw.connect(func() -> void:
-		Icons.paint(check, "check", Rect2(Vector2.ZERO, check.size), Pal.SURFACE))
-	row.add_child(check)
-	var label := Label.new()
-	label.text = "DONE"
-	label.theme_type_variation = "CardBlurb"
-	label.add_theme_color_override("font_color", Pal.SURFACE)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(label)
-	add_child(badge)
+	if _seal != null or _art_plate == null:
+		return
+	_seal = Control.new()
+	_seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var disc := CozyTheme.card(Pal.GOOD, int(SEAL_R), Pal.SURFACE, 0, 0)
+	disc.set_border_width_all(SEAL_RING)
+	disc.shadow_color = Color(Pal.GOOD.darkened(0.45), 0.35)
+	disc.shadow_size = 2
+	disc.shadow_offset = Vector2(0.0, 3.0)
+	disc.anti_aliasing_size = 1.2
+	_seal.draw.connect(func() -> void:
+		var c := Vector2(_seal.size.x - SEAL_R + SEAL_HANG, SEAL_R - SEAL_HANG)
+		var box := Rect2(c - Vector2.ONE * SEAL_R, Vector2.ONE * SEAL_R * 2.0)
+		_seal.draw_style_box(disc, box)
+		var k := SEAL_R - float(SEAL_RING)
+		var tick := PackedVector2Array([
+			c + Vector2(-0.46, 0.02) * k, c + Vector2(-0.14, 0.34) * k, c + Vector2(0.48, -0.30) * k])
+		_seal.draw_polyline(tick, Pal.SURFACE, k * 0.30, true))
+	_art_plate.add_child(_seal)
 
 func set_completed(value: bool) -> void:
 	if completed == value or soon:
 		return
 	completed = value
-	_build_done_badge()
+	if value:
+		_build_done_badge()
+	elif _seal != null:
+		_seal.queue_free()
+		_seal = null
 
 ## The SOON pill, over the picture's top right corner. It rides the art
 ## rather than the blurb's row: two lines of text and a pill in the same

@@ -243,3 +243,17 @@ gets one page. Row gaps may close to 16 (the day row is 188, not 180). A
 horizontal swipe on the grid turns the page. The 1080x1920 page is
 unchanged: still twelve cards, 3x4.
 
+
+## Amendment, 2026-09-23: the done seal
+
+A finished card wears a check seal, not a DONE pill: a 46 green disc with a
+cream check, set in a 4 px paper ring, pinned over the top right corner of
+the picture and hanging 9 past it on both edges. It has no word on it. The pill
+sat over the picture itself (it was placed 14 from the card's corner, but the
+picture starts 16 in) and cut into Code Break's pouch, Nonogram's clues and
+Word Trail's tiles; at that size its check read as a square root; and a
+page of eleven green pills read louder than the one card still to play. The
+seal is drawn on a layer inside the picture's plate, so it squashes with the
+card when pressed. It costs two draw commands a card, not three, so
+page one went from 390 to 379 with eleven cards done (`tests/_shot_menu.gd`
+at `810x1440`, two readings each).
