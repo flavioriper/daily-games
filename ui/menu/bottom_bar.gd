@@ -20,10 +20,10 @@ const Icons = preload("res://ui/icons.gd")
 const HEIGHT := 150.0
 const ICON := 56.0
 const TABS := [
-	{"key": "home", "label": "Home", "icon": "home", "live": true},
-	{"key": "stats", "label": "Stats", "icon": "trophy", "live": false},
-	{"key": "streak", "label": "Streak", "icon": "bars", "live": false},
-	{"key": "more", "label": "More", "icon": "leaf", "live": true},
+	{"key": "home", "label": "BAR_HOME", "icon": "home", "live": true},
+	{"key": "stats", "label": "BAR_STATS", "icon": "trophy", "live": false},
+	{"key": "streak", "label": "BAR_STREAK", "icon": "bars", "live": false},
+	{"key": "more", "label": "BAR_MORE", "icon": "leaf", "live": true},
 ]
 
 var current := "home"

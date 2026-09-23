@@ -52,7 +52,7 @@ pointing/emulate_mouse_from_touch=false
 
 [internationalization]
 
-locale/translations=PackedStringArray("res://locale/turn.en.translation", "res://locale/turn.pt.translation", "res://locale/turn.es.translation")
+locale/translations=PackedStringArray("res://locale/turn.en.translation", "res://locale/turn.pt.translation", "res://locale/turn.es.translation", "res://locale/ui.en.translation", "res://locale/ui.pt.translation", "res://locale/ui.es.translation")
 
 [rendering]
 

@@ -37,7 +37,8 @@ const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 
 const TITLE := "Daily"
-const MOTTO := "Small puzzles\nbrighter days"
+## A translation key (locale/ui.csv): the label re-translates itself live.
+const MOTTO := "MENU_MOTTO"
 ## Measured against the vertical budget rather than chosen: at 1080 by 1920
 ## the screen owes 80 to margins, 180 to the day row, 150 to the bar and 60
 ## to the three gaps, and four rows of cards want the rest. 380 is what is

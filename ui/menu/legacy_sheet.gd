@@ -17,8 +17,8 @@ signal chose_camp
 const Registry = preload("res://ui/registry.gd")
 const Icons = preload("res://ui/icons.gd")
 
-const TITLE := "The old game"
-const BLURB := "Every board that was built on the 3D stage. All of it still runs."
+const TITLE := "LEGACY_TITLE"
+const BLURB := "LEGACY_BLURB"
 const ROW_H := 120.0
 const CHEVRON := 42.0
 
@@ -47,7 +47,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	for entry in Registry.LEGACY:
 		list.add_child(_row(_name_of(entry), i, func() -> void: chose.emit(entry)))
 		i += 1
-	list.add_child(_row("The campsite menu", i, func() -> void: chose_camp.emit()))
+	list.add_child(_row("LEGACY_CAMP", i, func() -> void: chose_camp.emit()))
 
 ## An island board says so; the four that were never drawn flat, and the
 ## turn, carry their own name alone.

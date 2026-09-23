@@ -17,6 +17,9 @@ const Registry = preload("res://ui/registry.gd")
 const Progress = preload("res://core/progress.gd")
 const Icons = preload("res://ui/icons.gd")
 
+## The registry names its levels in English; these are their keys.
+const LEVEL_KEYS := {"Easy": "DIFF_EASY", "Medium": "DIFF_MEDIUM", "Hard": "DIFF_HARD"}
+
 const ROW_H := 128.0
 const MARK := 44.0
 
@@ -30,7 +33,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	col.add_child(_title)
 	var blurb := Label.new()
 	blurb.theme_type_variation = "SheetBodyDim"
-	blurb.text = "Pick a board for today."
+	blurb.text = "DIFF_PICK"
 	col.add_child(blurb)
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 14)
@@ -73,7 +76,7 @@ func _row(level: Dictionary, index: int, done: bool, on_press: Callable) -> Cont
 	text.add_theme_constant_override("separation", 20)
 	button.add_child(text)
 	var name := Label.new()
-	name.text = String(level.get("name", ""))
+	name.text = LEVEL_KEYS.get(String(level.get("name", "")), String(level.get("name", "")))
 	name.add_theme_font_override("font", CozyTheme.body(700))
 	name.add_theme_font_size_override("font_size", 38)
 	name.add_theme_color_override("font_color", Pal.TEXT)

@@ -145,7 +145,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	var with_actions: bool = bool(_entry.get("actions", true))
 	top_bar = FlatTopBar.new(
 		_entry.get("title", ""),
-		_entry.get("motto", ""),
+		tr(String(_entry.get("motto", ""))),
 		not with_actions,
 		str(_entry.get("id", "")) == "binairo"
 	)
@@ -269,13 +269,13 @@ func _build_chrome(root: VBoxContainer) -> void:
 	win_buttons.add_theme_constant_override("separation", GAP)
 	win_buttons.custom_minimum_size.y = CAMP_BUTTON
 	_win_stack.add_child(win_buttons)
-	redo_button = IconButton.new("reset", "Redo", "IconButton")
+	redo_button = IconButton.new("reset", "WIN_REDO", "IconButton")
 	redo_button.name = "RedoButton"
 	redo_button.custom_minimum_size.y = CAMP_BUTTON
 	redo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	redo_button.pressed.connect(_on_redo)
 	win_buttons.add_child(redo_button)
-	camp_button = IconButton.new("", "Back to camp", "SunButton")
+	camp_button = IconButton.new("", "WIN_BACK", "SunButton")
 	camp_button.name = "CampButton"
 	camp_button.custom_minimum_size.y = CAMP_BUTTON
 	camp_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL

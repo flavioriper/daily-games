@@ -193,7 +193,7 @@ func _add_special(row: HBoxContainer, role: String, width: float) -> void:
 	slot.add_child(chip)
 	chip.material = null
 	if role == "commit":
-		chip.text = "Enter"
+		chip.text = "KEY_ENTER"
 		chip.add_theme_font_override("font", CozyTheme.display(700))
 		chip.add_theme_font_size_override("font_size", FONT_SIZE)
 		_style(chip, Pal.GOOD, Pal.PAPER)

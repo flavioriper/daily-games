@@ -1,0 +1,58 @@
+keys,en,pt,es
+MENU_MOTTO,Small puzzles\nbrighter days,Pequenos desafios\ndias mais leves,Pequeños retos\ndías más alegres
+MENU_TODAY,TODAY,HOJE,HOY
+MENU_DAY,Day %d,Dia %d,Día %d
+MENU_CALENDAR_SOON,The calendar is a picture for now — there is nothing behind it yet.,Por enquanto o calendário é só um desenho — ainda não há nada por trás dele.,Por ahora el calendario es solo un dibujo: todavía no hay nada detrás.
+MENU_TAB_SOON,%s is drawn but not built yet.,%s: por enquanto é só o desenho.,%s: por ahora es solo el dibujo.
+MENU_NO_FLAT,%s has no flat board yet. Its island version is under More.,%s ainda não tem tabuleiro plano. A versão da ilha está em Mais.,%s aún no tiene tablero plano. Su versión de la isla está en Más.
+BAR_HOME,Home,Início,Inicio
+BAR_STATS,Stats,Números,Datos
+BAR_STREAK,Streak,Sequência,Racha
+BAR_MORE,More,Mais,Más
+CARD_SOON,SOON,EM BREVE,PRONTO
+DIFF_PICK,Pick a board for today.,Escolha um tabuleiro para hoje.,Elige un tablero para hoy.
+DIFF_EASY,Easy,Fácil,Fácil
+DIFF_MEDIUM,Medium,Médio,Medio
+DIFF_HARD,Hard,Difícil,Difícil
+LEGACY_TITLE,The old game,O jogo antigo,El juego antiguo
+LEGACY_BLURB,Every board that was built on the 3D stage. All of it still runs.,Todos os tabuleiros feitos no palco 3D. Tudo ainda funciona.,Todos los tableros hechos en el escenario 3D. Todo sigue funcionando.
+LEGACY_CAMP,The campsite menu,O menu do acampamento,El menú del campamento
+SETTINGS_TITLE,Settings,Configurações,Ajustes
+SETTINGS_REDUCE_MOTION,Reduce motion,Reduzir movimento,Reducir movimiento
+SETTINGS_NEW_PUZZLE,New puzzle (prototype),Novo desafio (protótipo),Nuevo reto (prototipo)
+BTN_CLOSE,Close,Fechar,Cerrar
+RULES_TITLE,How to play,Como jogar,Cómo jugar
+RULES_GOT_IT,Got it,Entendi,Entendido
+ACT_RESET,Reset,Recomeçar,Reiniciar
+ACT_CHECK,Check,Conferir,Comprobar
+ACT_ALL_GOOD,All good,Tudo certo,Todo bien
+WIN_WELL_DONE,Well done!,Muito bem!,¡Muy bien!
+WIN_REDO,Redo,De novo,Otra vez
+WIN_BACK,Back to camp,Voltar,Volver
+HOST_SOLVED,Solved,Resolvido,Resuelto
+HOST_STATS,%.1fs  ·  %d moves,%.1fs  ·  %d jogadas,%.1fs  ·  %d jugadas
+KEY_ENTER,Enter,Enviar,Enviar
+HW_MOTTO,Find the hidden word,Encontre a palavra oculta,Encuentra la palabra oculta
+HW_SHORT,"Five letters,\nsix tries.","Cinco letras,\nseis tentativas.","Cinco letras,\nseis intentos."
+HW_TIP,"Five letters, six tries","Cinco letras, seis tentativas","Cinco letras, seis intentos"
+HW_RULES,"Guess the five-letter word in six tries. A green tile is the right letter in the right place; an amber one is in the word somewhere else; a grey one is not in the word at all.","Adivinhe a palavra de cinco letras em seis tentativas. Uma casa verde é a letra certa no lugar certo; uma âmbar está na palavra, mas em outro lugar; uma cinza não está na palavra. Os acentos não contam: digite sem eles.","Adivina la palabra de cinco letras en seis intentos. Una casilla verde es la letra correcta en el lugar correcto; una ámbar está en la palabra, pero en otro lugar; una gris no está en la palabra. Las tildes no cuentan, pero la Ñ es una letra."
+HW_TOAST_LENGTH,Five letters,Cinco letras,Cinco letras
+HW_TOAST_NOT_WORD,Not a word,Não é uma palavra,No es una palabra
+HW_TOAST_REPEAT,You guessed that already,Você já tentou essa,Ya probaste esa
+HW_WORD_WAS,The word was,A palavra era,La palabra era
+HW_WIN,Found it.,Acertou!,¡La encontraste!
+WT_MOTTO,Every letter finds its way,Cada letra acha seu caminho,Cada letra encuentra su camino
+WT_SHORT,"Trace the words,\nfill the field.","Ache as palavras,\nencha o campo.","Traza palabras,\nllena el campo."
+WT_TIP_DRAG,Drag from letter to letter. Never diagonally.,Arraste de letra em letra. Nunca na diagonal.,Arrastra de letra en letra. Nunca en diagonal.
+WT_TIP_ONE_WORD,Every open tile belongs to one word.,Cada casa aberta pertence a uma palavra.,Cada casilla abierta pertenece a una palabra.
+WT_TIP_LENGTHS,The lengths under the field are the only clue.,Os tamanhos embaixo do campo são a única pista.,Las longitudes bajo el campo son la única pista.
+WT_TIP_FREE,A wrong trail costs nothing. Try another.,Um caminho errado não custa nada. Tente outro.,Un camino equivocado no cuesta nada. Prueba otro.
+WT_FILLED,That is the field filled.,O campo está completo.,El campo está completo.
+WT_ONE_LEFT,One word left.,Falta uma palavra.,Queda una palabra.
+WT_N_LEFT,%d words left.,Faltam %d palavras.,Quedan %d palabras.
+WT_TAKEN_BACK,Taken back.,Desfeito.,Deshecho.
+WT_CLEAN,A clean field.,Campo limpo.,Campo limpio.
+WT_HINT_START,A word starts on the glowing tile.,Uma palavra começa na casa que brilha.,Una palabra empieza en la casilla que brilla.
+WT_HINT_MORE,It carries on through the glow.,Ela continua pelo brilho.,Sigue por el brillo.
+WT_WIN,Every letter found its way.,Cada letra achou seu caminho.,Cada letra encontró su camino.
+WT_RULES,"Drag from letter to letter -- up, down, left or right, never diagonally -- to trace a hidden word. A trail may bend as often as it likes, but it may not cross a grey wall or a word you have already found. You are never told the words, only how long each one is: the boxes under the field are the lengths, shortest first. Every open tile belongs to exactly one word, so when the last word is traced the field is full. A trail that is not one of today's words simply unwinds -- it costs you nothing.","Arraste de letra em letra -- para cima, para baixo, para a esquerda ou para a direita, nunca na diagonal -- para traçar uma palavra escondida. O caminho pode dobrar quantas vezes quiser, mas não pode cruzar uma parede cinza nem uma palavra que você já encontrou. As palavras nunca são reveladas, só o tamanho de cada uma: as caixas embaixo do campo são os tamanhos, da menor para a maior. Cada casa aberta pertence a exatamente uma palavra, então, quando a última palavra é traçada, o campo fica cheio. Um caminho que não é uma das palavras de hoje simplesmente se desfaz -- não custa nada.","Arrastra de letra en letra -- arriba, abajo, a la izquierda o a la derecha, nunca en diagonal -- para trazar una palabra oculta. El camino puede doblar tantas veces como quiera, pero no puede cruzar una pared gris ni una palabra que ya encontraste. Nunca se dicen las palabras, solo cuánto mide cada una: las casillas bajo el campo son las longitudes, de la más corta a la más larga. Cada casilla abierta pertenece a exactamente una palabra, así que cuando trazas la última el campo queda lleno. Un camino que no es una de las palabras de hoy simplemente se deshace: no te cuesta nada."

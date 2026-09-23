@@ -163,10 +163,10 @@ const WORD_DEEPS := [Pal.LEAF_DEEP, Pal.SUN_DEEP, Pal.MOON_DEEP, Pal.BERRY_DEEP,
 
 const TIP_CYCLE := 8.0
 const TIPS := [
-	"Drag from letter to letter. Never diagonally.",
-	"Every open tile belongs to one word.",
-	"The lengths under the field are the only clue.",
-	"A wrong trail costs nothing. Try another.",
+	"WT_TIP_DRAG",
+	"WT_TIP_ONE_WORD",
+	"WT_TIP_LENGTHS",
+	"WT_TIP_FREE",
 ]
 
 var _state = State.new()
@@ -223,7 +223,7 @@ func puzzle_id() -> String: return "wordtrail"
 func title() -> String: return "Word Trail"
 
 func rules() -> String:
-	return "Drag from letter to letter -- up, down, left or right, never diagonally -- to trace a hidden word. A trail may bend as often as it likes, but it may not cross a grey wall or a word you have already found. You are never told the words, only how long each one is: the boxes under the field are the lengths, shortest first. Every open tile belongs to exactly one word, so when the last word is traced the field is full. A trail that is not one of today's words simply unwinds -- it costs you nothing."
+	return tr("WT_RULES")
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can be sitting on the board to check: only a right word locks, so the
@@ -260,7 +260,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 # --- layout ---
@@ -1048,8 +1048,8 @@ func _release() -> void:
 func _left_line() -> String:
 	var left: int = _state.words.size() - _state.found_count()
 	if left <= 0:
-		return "That is the field filled."
-	return "One word left." if left == 1 else "%d words left." % left
+		return tr("WT_FILLED")
+	return tr("WT_ONE_LEFT") if left == 1 else tr("WT_N_LEFT") % left
 
 func _speak() -> void:
 	if is_done():
@@ -1067,7 +1067,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not _state.order.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules: there
 ## is no rule a tap can break on this board.
@@ -1100,7 +1100,7 @@ func undo() -> bool:
 	# The same wave backwards: the last tile the word took is the first it
 	# gives up, and its letters leave the slots with it.
 	_busy_for(float((_state.words[i]["path"] as Array).size()) * _wave_step())
-	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("WT_TAKEN_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
 	moved.emit()
@@ -1127,8 +1127,7 @@ func hint() -> bool:
 	if cell.x >= 0:
 		_fx_at(cell, Pal.LEAF)
 	fx.cue("hint")
-	_say("A word starts on the glowing tile." if shown == 0
-		else "It carries on through the glow.", Face.Expr.HAPPY)
+	_say(tr("WT_HINT_START") if shown == 0 else tr("WT_HINT_MORE"), Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
 	return true
@@ -1153,7 +1152,7 @@ func reset_board() -> void:
 	_busy_for(float(longest) * _wave_step())
 	moves = 0
 	_running = true
-	_say("A clean field. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("WT_CLEAN") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
 
@@ -1171,7 +1170,7 @@ func share_glyphs() -> String:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Every letter found its way."}
+	return {"faces": [], "subtitle": tr("WT_WIN")}
 
 ## Long enough for the wave that won the board and the solve wave after it.
 ## Under reduce-motion there is neither, so the win follows the last lock
@@ -1196,7 +1195,7 @@ func _on_solved() -> void:
 		_fx_at(last, Pal.SUN, _solved_at - t + Motion.SOLVE_DELAY
 			+ Motion.stagger(last.x + last.y, _solve_per()), false)
 	_busy_for(_solved_at - t + Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
-	_say("Every letter found its way.", Face.Expr.JOY)
+	_say(tr("WT_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh()
 
@@ -1226,7 +1225,7 @@ func restore_completed_board() -> void:
 	# The field's pop and the slots' drop have already played.
 	_opened = _now() - 100.0
 	_tip_timer.stop()
-	_say("Every letter found its way.", Face.Expr.JOY)
+	_say(tr("WT_WIN"), Face.Expr.JOY)
 	_refresh()
 
 ## How much of any word's lock wave is still to run.

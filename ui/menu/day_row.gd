@@ -61,7 +61,7 @@ func _build() -> void:
 	row.add_child(col)
 	var kicker := Label.new()
 	kicker.theme_type_variation = "MenuKicker"
-	kicker.text = "TODAY"
+	kicker.text = "MENU_TODAY"
 	kicker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(kicker)
 	_day = Label.new()
@@ -96,7 +96,15 @@ func _draw_hearts(on: Control) -> void:
 		else:
 			Icons.paint(on, "heart_line", box, Pal.LINE)
 
+var _day_n := 1
+
 func set_day(n: int, island: String) -> void:
-	_day.text = "Day %d" % n
+	_day_n = n
+	_day.text = tr("MENU_DAY") % n
 	_island.text = island
 	_island.visible = island != ""
+
+## "Day %d" is formatted, so it cannot re-translate itself like the kicker.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _day != null:
+		_day.text = tr("MENU_DAY") % _day_n

@@ -1590,8 +1590,18 @@ host's reveal panel shows under the score. The grade is symmetric in the log
 ratio: within 6 percent is 100, a factor of five is 0.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
-formatting `TranslationServer` does not. Only the turn flow's strings are
-keyed (`locale/turn.csv`); the eighteen boards' chrome is still hardcoded English, and
+formatting `TranslationServer` does not. The turn flow's strings are keyed
+in `locale/turn.csv` (European Portuguese, unlike everything since), and
+since 2026-09-23 `locale/ui.csv` (pt-BR) keys the chrome every flat board
+shares -- menu, bottom bar, sheets, actions row, win screen, keyboard -- and
+all of Hidden Word's and Word Trail's own text. A static Label or IconButton
+holds the key itself, so Godot's auto-translate re-reads it live when the
+language changes; anything formatted, drawn or measured goes through `tr()`
+(`day_row.gd` re-formats on `NOTIFICATION_TRANSLATION_CHANGED`). Board
+titles stay English in every language, by the user's decision, and the
+other sixteen boards' rules, tips, trays and card blurbs are still English
+-- `tr()` on an English literal passes it through, so they can be keyed one
+board at a time. And
 `HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228

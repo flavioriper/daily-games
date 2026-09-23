@@ -302,8 +302,8 @@ const PUZZLES := [
 		"kind": "puzzle",
 		"title": "Hidden Word",
 		"blurb": "Five letters, six tries. A new word every day.",
-		"short": "Five letters,\nsix tries.",
-		"motto": "Find the hidden word",
+		"short": "HW_SHORT",
+		"motto": "HW_MOTTO",
 		"footer": "Type · Guess · Find",
 		# It types, so its tray is a keyboard; every Enter is the check, so
 		# there is no actions row and Reset rides in the top bar; and it is
@@ -329,8 +329,8 @@ const PUZZLES := [
 		"kind": "puzzle",
 		"title": "Word Trail",
 		"blurb": "Trace every hidden word. The lengths are the only clue.",
-		"short": "Trace the words,\nfill the field.",
-		"motto": "Every letter finds its way",
+		"short": "WT_SHORT",
+		"motto": "WT_MOTTO",
 		"footer": "Trace · Bend · Fill",
 		# It picks nothing up, and there is no Check because nothing wrong can
 		# be sitting on the board: only a right word locks. So Reset rides up

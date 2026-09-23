@@ -129,6 +129,8 @@ func _build() -> void:
 	blurb.theme_type_variation = "CardBlurb"
 	# The registry's `short` is written to two lines at this width; `blurb`
 	# is the long one the rules sheet wants.
+	# A word board's `short` is a translation key; the rest are English
+	# text for now, which a Label passes through untranslated.
 	blurb.text = String(entry.get("short", entry.get("blurb", "")))
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	blurb.max_lines_visible = 2
@@ -224,7 +226,7 @@ func _build_pill() -> void:
 	pill.offset_top = 14.0
 	pill.offset_bottom = 14.0 + PILL.y
 	var label := Label.new()
-	label.text = "SOON"
+	label.text = "CARD_SOON"
 	label.theme_type_variation = "CardBlurb"
 	label.add_theme_color_override("font_color", Pal.TEXT_DIM)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

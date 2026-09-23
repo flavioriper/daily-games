@@ -145,7 +145,7 @@ func _build_overlay() -> void:
 	card.add_child(col)
 	var title := Label.new()
 	title.theme_type_variation = "CardTitle"
-	title.text = "Solved"
+	title.text = "HOST_SOLVED"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
 	_overlay_label = Label.new()
@@ -284,9 +284,7 @@ func _on_reduce_changed(_on: bool) -> void:
 
 func _on_solved() -> void:
 	daily_completed.emit(String(_entry.get("id", "")))
-	_overlay_label.text = "%.1fs  ·  %d moves\n\n%s" % [
-		_puzzle.elapsed, _puzzle.moves, _puzzle.share_glyphs()
-	]
+	_overlay_label.text = (tr("HOST_STATS") % [_puzzle.elapsed, _puzzle.moves]) + "\n\n" + _puzzle.share_glyphs()
 	_overlay.visible = true
 	Analytics.track("puzzle_complete", _stats().merged({"solved": true}))
 	_refresh()

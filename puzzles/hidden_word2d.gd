@@ -96,7 +96,8 @@ const TOAST_FONT := 34
 const TOAST_INK := 0.92
 ## The three lines a refusal can say, indexed by the state's own code, and no
 ## others. OK is index 0 and never shows one.
-const TOAST_LINE := ["", "Five letters", "Not a word", "You guessed that already"]
+## Translation keys (locale/ui.csv), read through tr() when drawn.
+const TOAST_LINE := ["", "HW_TOAST_LENGTH", "HW_TOAST_NOT_WORD", "HW_TOAST_REPEAT"]
 
 # --- the hint (spec section 10) ---
 ## A hint's letter is a given and not a guess, so it is drawn ghosted.
@@ -273,13 +274,13 @@ func puzzle_id() -> String: return "hiddenword"
 func title() -> String: return "Hidden Word"
 
 func rules() -> String:
-	return "Guess the five-letter word in six tries. A green tile is the right letter in the right place; an amber one is in the word somewhere else; a grey one is not in the word at all."
+	return tr("HW_RULES")
 
 ## Hidden Word has no cycling tip, but it still uses the shared How to play
 ## card as the door to the rules sheet. Keep its resting line specific to this
 ## game instead of falling back to Binairo's default tip.
 func tip_line() -> Dictionary:
-	return {"text": "Five letters, six tries", "mood": Face.Expr.HAPPY}
+	return {"text": tr("HW_TIP"), "mood": Face.Expr.HAPPY}
 
 ## Hint alone. Every Enter *is* the check, and taking a committed guess back
 ## is not this game, so there is no Check and no Undo -- the top bar hides
@@ -841,7 +842,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var font: Font = CozyTheme.body(700)
-	var line: String = TOAST_LINE[_toast]
+	var line: String = tr(TOAST_LINE[_toast])
 	var w: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x + TOAST_PAD
 	if _toast_mesh == null or _toast_mesh_for != _toast:
 		var b := Face.Builder.new()
@@ -890,7 +891,7 @@ func _draw_reveal(t: float, shown: Array) -> void:
 	shown.append(_reveal_mesh)
 	var x := WORD_CARD_X + WORD_TEXT_X
 	_line(CozyTheme.body(500), WORD_LABEL_FONT, Vector2(x, top + WORD_LABEL_Y),
-		"The word was", Color(Pal.TEXT_DIM, a))
+		tr("HW_WORD_WAS"), Color(Pal.TEXT_DIM, a))
 	_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_Y),
 		state.written.to_upper(), Color(Pal.GOOD, a))
 
@@ -1274,7 +1275,7 @@ func _recorded_guesses() -> Array[String]:
 ## The win screen shows no cast: five green tiles spelling the word are what
 ## stays on the card under it, the way Nonogram leaves its picture.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Found it."}
+	return {"faces": [], "subtitle": tr("HW_WIN")}
 
 ## WIN_WAIT after the winning row has **landed**, not from the Enter that won
 ## it: `solved` fires the moment Enter is pressed, so a flat WIN_WAIT would

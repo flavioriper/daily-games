@@ -54,7 +54,7 @@ func hint() -> bool: return false
 func check() -> int: return -1
 ## What the Check button says for this puzzle; a board that ends on that press
 ## calls it Submit.
-func check_label() -> String: return "Check"
+func check_label() -> String: return "ACT_CHECK"
 ## {} when nothing is focused, else {"row": {"index": r, "cells": [...]},
 ## "col": {"index": c, "cells": [...]}} with cells -1 empty, 0 sun, 1 moon.
 func line_state() -> Dictionary: return {}

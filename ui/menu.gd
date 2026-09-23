@@ -234,7 +234,7 @@ func _build_list() -> void:
 	header.name = "Header"
 	header.settings.connect(func() -> void: settings_sheet.open())
 	header.calendar.pressed.connect(func() -> void:
-		_say("The calendar is a picture for now — there is nothing behind it yet."))
+		_say(tr("MENU_CALENDAR_SOON")))
 	root.add_child(header)
 
 	day_row = DayRow.new()
@@ -254,7 +254,7 @@ func _build_list() -> void:
 	bar.name = "BottomBar"
 	bar.picked.connect(_on_tab)
 	bar.unbuilt.connect(func(tab: String) -> void:
-		_say("%s is drawn but not built yet." % tab.capitalize()))
+		_say(tr("MENU_TAB_SOON") % tr("BAR_" + tab.to_upper())))
 	root.add_child(bar)
 
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
@@ -683,7 +683,7 @@ func _on_tab(tab: String) -> void:
 
 ## A card that names a board nobody has drawn flat yet.
 func _on_soon(entry: Dictionary) -> void:
-	_say("%s has no flat board yet. Its island version is under More." % entry.get("title", ""))
+	_say(tr("MENU_NO_FLAT") % entry.get("title", ""))
 
 ## Opens one of the seventeen. A `soon` card never gets here.
 func _open(entry: Dictionary) -> void:

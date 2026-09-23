@@ -92,7 +92,7 @@ func _ready() -> void:
 	add_child(moon)
 	_title = Label.new()
 	_title.theme_type_variation = "WellDone"
-	_title.text = "Well done!"
+	_title.text = "WIN_WELL_DONE"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_title.offset_top = TITLE_Y - 60.0

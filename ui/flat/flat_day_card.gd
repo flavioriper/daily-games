@@ -50,7 +50,7 @@ func _build() -> void:
 	set_day(1, "")
 
 func set_day(n: int, island: String) -> void:
-	_day.text = "Day %d" % n
+	_day.text = tr("MENU_DAY") % n
 	_island.text = island
 	_island.visible = island != ""
 
