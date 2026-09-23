@@ -24,7 +24,7 @@
 ## Review Focus
 
 1. **The New button on an Insane board** must hand a *different* board, not today's again: `bank_step` increments in `_on_new`, and Redo resets it to 0. Pinned in Task 1 Step 4.
-2. **A pick card opened without the sheet** (`_open_at(entry, 1)`) must still open medium; nothing may default to 3. Checked in Task 6 Step 2.
+2. **A pick card opened without the sheet** (`_open_at(entry, 1)`) must still open medium; nothing may default to 3. Checked in Task 7 Step 2.
 3. **The sheet on a short phone**: four rows plus title must fit at 810x1440 without clipping the Insane row. Shot in Task 2 Step 5.
 4. **A band-3 generator that fails** (`ok: false` / fallback path) must still hand a board, never an empty card. The probe in Task 3/4 counts `ok == false` per board and must read 0 across 40 seeds.
 5. **pt/es sheet**: `Demencial` / `Insano` must fit the name label beside the longest line without overflowing into the mark. Shot in Task 2 Step 5.
