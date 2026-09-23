@@ -330,6 +330,10 @@ func _process(delta: float) -> bool:
 				_menu._open(_entry)
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 			_puzzle = _host._puzzle
+			# The first-play tutorial would cover the board in every frame: the
+			# harness's own progress file has never seen one.
+			if _host.has_node("HowToPlay"):
+				_host.get_node("HowToPlay").free()
 		return false
 	if not _tapped and _t >= TAP_AT:
 		_tapped = true
@@ -503,7 +507,7 @@ func _begin_nonogram_sweep() -> void:
 ## and the second seats the queen.
 func _tap_queens() -> void:
 	var c: int = int(_puzzle.state.solution[0])
-	var at := _puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c)
+	var at: Vector2 = _puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c)
 	_tap_global(at)
 	_tap_global(at)
 
