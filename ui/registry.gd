@@ -288,6 +288,14 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "queens",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 7 by 7, 8 by 8 or 9 by 9 court,
+		# and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "7 × 7"},
+			{"difficulty": 1, "name": "Medium", "line": "8 × 8"},
+			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+		],
 	},
 	{
 		"id": "hiddenword",

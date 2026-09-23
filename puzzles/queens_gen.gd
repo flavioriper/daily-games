@@ -51,6 +51,16 @@ const MIN_REGION := 3
 const SOLUTIONS_SEEN := 6
 ## Chance a candidate that is not the best-scoring one is grown anyway.
 const STRAY := 0.25
+## From SMALL_FROM on (the 9 by 9 hard court), SMALL_REGIONS regions stop
+## growing at 2 to SMALL_CAP cells. With every region grown alike, a 9 by 9
+## was too loose for repair to pin down in time: a median 164 ms and a worst
+## of 950 ms, 130 seeds in 300 past the 194 ms gate, all spent on courts
+## thrown away unproved. A few small regions are what a made-by-hand court
+## has anyway, and never a single cell, which would hand out a queen. Below
+## 9 nothing changes: 7 by 7 and 8 by 8 hand out the same courts as before.
+const SMALL_FROM := 9
+const SMALL_REGIONS := 3
+const SMALL_CAP := 4
 ## Growth gives up rather than loop forever if the board never fills.
 const GROW_GUARD := 20000
 
@@ -132,55 +142,54 @@ static func _unflatten_into(flat: PackedInt32Array, n: int, region: Array) -> vo
 ## Every full legal seating on flattened `region`, up to `limit` of them.
 static func _solutions(region: PackedInt32Array, n: int, limit: int) -> Array:
 	var out: Array = []
-	var used_col := PackedByteArray()
-	used_col.resize(n)
 	var used_reg := PackedByteArray()
 	used_reg.resize(n)
 	var cur := PackedInt32Array()
 	cur.resize(n)
-	var last_row := _last_rows(region, n)
-	_search(region, n, 0, -1, cur, used_col, used_reg, last_row, limit, out)
+	var reach := _reach(region, n)
+	_search(region, n, 0, -1, cur, 0, used_reg, reach, limit, out)
 	return out
 
-## Per region id, the highest row at which `region` still has one of its
-## cells -- precomputed once a call so `_search` can kill a branch the
-## moment a region it has not seated yet runs out of rows to be seated in,
-## without changing which seatings it finds.
-static func _last_rows(region: PackedInt32Array, n: int) -> PackedInt32Array:
-	var last_row := PackedInt32Array()
-	last_row.resize(n)
-	last_row.fill(-1)
-	for r in n:
+## Per row `r` and region id `g`, at `r * n + g`, the columns (a bitmask)
+## where `g` has a cell in row `r` or any row below it -- precomputed once a
+## call so `_search` can kill a branch the moment a region it has not seated
+## yet has no cell left in a free column, without changing which seatings it
+## finds or the order it finds them in. It used to wait until the region had
+## no *rows* left, which let a 9 by 9 court (the hard band) run a median
+## 164 ms and a worst of 950 ms, 130 seeds in 300 past the 194 ms gate.
+static func _reach(region: PackedInt32Array, n: int) -> PackedInt32Array:
+	var reach := PackedInt32Array()
+	reach.resize(n * n)
+	for r in range(n - 1, -1, -1):
 		var base := r * n
+		if r < n - 1:
+			for g in n:
+				reach[base + g] = reach[base + n + g]
 		for c in n:
-			var g := region[base + c]
-			if r > last_row[g]:
-				last_row[g] = r
-	return last_row
+			reach[base + region[base + c]] |= 1 << c
+	return reach
 
 static func _search(region: PackedInt32Array, n: int, r: int, prev: int, cur: PackedInt32Array,
-		used_col: PackedByteArray, used_reg: PackedByteArray, last_row: PackedInt32Array,
+		cols: int, used_reg: PackedByteArray, reach: PackedInt32Array,
 		limit: int, out: Array) -> bool:
 	if r == n:
 		out.append(cur.duplicate())
 		return out.size() >= limit
-	for g in n:
-		if not used_reg[g] and last_row[g] < r:
-			return false
 	var base := r * n
+	for g in n:
+		if not used_reg[g] and reach[base + g] & ~cols == 0:
+			return false
 	for c in n:
-		if used_col[c]:
+		if cols & (1 << c):
 			continue
 		var g := region[base + c]
 		if used_reg[g]:
 			continue
 		if prev >= 0 and absi(c - prev) <= 1:
 			continue
-		used_col[c] = 1
 		used_reg[g] = 1
 		cur[r] = c
-		var stop := _search(region, n, r + 1, c, cur, used_col, used_reg, last_row, limit, out)
-		used_col[c] = 0
+		var stop := _search(region, n, r + 1, c, cur, cols | (1 << c), used_reg, reach, limit, out)
 		used_reg[g] = 0
 		if stop:
 			return true
@@ -335,6 +344,14 @@ static func _grow_regions(rng: RandomNumberGenerator, n: int, queens: PackedInt3
 	var alive: Array = []
 	for _i in n:
 		alive.append(true)
+	var cap := PackedInt32Array()
+	cap.resize(n)
+	cap.fill(n * n)
+	if n >= SMALL_FROM:
+		var order: Array = range(n)
+		_shuffle(order, rng)
+		for j in SMALL_REGIONS:
+			cap[int(order[j])] = rng.randi_range(2, SMALL_CAP)
 	var claimed := n
 	var guard := 0
 	while claimed < n * n and guard < GROW_GUARD:
@@ -350,7 +367,7 @@ static func _grow_regions(rng: RandomNumberGenerator, n: int, queens: PackedInt3
 			break
 		var pool: Array = small if not small.is_empty() else any
 		var i: int = pool[rng.randi_range(0, pool.size() - 1)]
-		var cand := _candidates(region, n, i)
+		var cand := _candidates(region, n, i) if int(size[i]) < int(cap[i]) else []
 		if cand.is_empty():
 			alive[i] = false
 			continue
