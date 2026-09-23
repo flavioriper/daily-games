@@ -38,6 +38,11 @@ set is choosing which cues get a file.
   `step` fires on every +/- tap and Untangle's `pick` on every grab; they are
   the move itself, not a cue riding on another, so they get a file, kept
   quiet (-9 and -12).
+- **A drag that grows something can tick as it grows.** Shikaku's `select`
+  fires on the press and again each time the bed's area changes, played
+  through `cue(name, pitch)` a little higher per cell (4% a cell, capped at
+  1.6), so the size of the bed can be heard. Asked for by the user
+  2026-09-23. `CUE_GAP` keeps a fast drag from machine-gunning it.
 - A cue that fires per cell in one frame (Binairo's `blush_in`, `line`) is
   fine: `cue()` plays a repeat inside `CUE_GAP` (60 ms) once.
 - Reuse cue names across boards where the moment is the same (`place`,

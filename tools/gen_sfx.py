@@ -78,6 +78,7 @@ SETS = {
     },
     # Shikaku: garden beds drawn as rectangles in soil around number stakes.
     "shikaku": {
+        "select":   ("a single tiny soft wooden marimba tick, one light mallet tap, very short and quiet", 0.5, -12),
         "plot":     ("a soft short garden trowel pat in loose soil with a tiny wooden tap, a garden bed marked out", 0.5, -6),
         "clear":    ("a very short soft downward whoosh with a light soil brush, a garden bed wiped away", 0.5, -9),
         "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),

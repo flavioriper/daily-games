@@ -119,8 +119,9 @@ class Ring extends Control:
 ## assets/sfx/<puzzle_id>/<cue>.ogg when that file exists, so a board with
 ## no set (or a cue with no file) stays silent. tools/gen_sfx.py makes the
 ## files. A cue fired again inside CUE_GAP plays once: the blush and the
-## line cues fire per cell, several in one frame.
-func cue(cue_name: String) -> void:
+## line cues fire per cell, several in one frame. `pitch` scales the
+## playback rate, for a cue that should climb (Shikaku's select tick).
+func cue(cue_name: String, pitch := 1.0) -> void:
 	last_cue = cue_name
 	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
 	if not _streams.has(path):
@@ -140,6 +141,7 @@ func cue(cue_name: String) -> void:
 	var player: AudioStreamPlayer = _players[_next_voice]
 	_next_voice = (_next_voice + 1) % VOICES
 	player.stream = stream
+	player.pitch_scale = pitch
 	player.play()
 
 ## The board this Fx2D serves: the nearest ancestor that names a puzzle.

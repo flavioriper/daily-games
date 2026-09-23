@@ -757,6 +757,7 @@ func _press(cell: Vector2i) -> void:
 	_count_at = -1.0e9
 	_pend_key = ""
 	_anim_until = maxf(_anim_until, _drag_at + Motion.POP_IN)
+	fx.cue("select")
 	_redraw()
 
 ## The count moment: a number that was recounted bumps.
@@ -766,6 +767,8 @@ func _recount() -> void:
 		return
 	_count = area
 	_count_at = _now()
+	# The tick climbs as the bed grows, so its size can be heard.
+	fx.cue("select", minf(1.0 + 0.04 * (area - 1), 1.6))
 	_anim_until = maxf(_anim_until, _count_at + Motion.BUMP_TIME)
 
 func _release() -> void:
