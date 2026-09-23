@@ -220,6 +220,14 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 5 by 5, 6 by 6 or 7 by 7 court,
+		# and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "5 × 5"},
+			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
+			{"difficulty": 2, "name": "Hard", "line": "7 × 7"},
+		],
 	},
 	{
 		"id": "oneline",

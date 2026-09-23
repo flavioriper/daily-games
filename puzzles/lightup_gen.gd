@@ -48,6 +48,20 @@ static func solve_count(grid: Array, w: int, h: int, limit: int) -> int:
 		for x in w:
 			if grid[y][x] == WHITE:
 				whites.append(Vector2i(x, y))
+	# Stones beside a number first, then the ones fewest stones can see:
+	# both fail soonest, and the order cannot change the count.
+	var key: Dictionary = {}
+	for c in whites:
+		var sight := 0
+		for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+			var p: Vector2i = c + d
+			if p.x >= 0 and p.y >= 0 and p.x < w and p.y < h and grid[p.y][p.x] >= 0:
+				sight -= 100
+			while p.x >= 0 and p.y >= 0 and p.x < w and p.y < h and grid[p.y][p.x] == WHITE:
+				sight += 1
+				p += d
+		key[c] = sight
+	whites.sort_custom(func(a, b): return key[a] < key[b] or (key[a] == key[b] and (a.y < b.y or (a.y == b.y and a.x < b.x))))
 	var state: Dictionary = {}
 	return _search(grid, whites, 0, state, w, h, limit)
 
@@ -104,7 +118,30 @@ static func _consistent(grid: Array, state: Dictionary, cell: Vector2i, put: boo
 				maybe += 1
 		if have > need or have + maybe < need:
 			return false
+	# Leaving a stone dark can strand it, or a stone that sees it, with
+	# nothing left that could light it; only those can die here.
+	if not put:
+		if not _lightable(grid, state, cell, w, h):
+			return false
+		for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+			var p: Vector2i = cell + d
+			while p.x >= 0 and p.y >= 0 and p.x < w and p.y < h and grid[p.y][p.x] == WHITE:
+				if not _lightable(grid, state, p, w, h):
+					return false
+				p += d
 	return true
+
+## Whether a lamp stands on or in sight of `c`, or a stone there is undecided.
+static func _lightable(grid: Array, state: Dictionary, c: Vector2i, w: int, h: int) -> bool:
+	if state.get(c, true):
+		return true
+	for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+		var p: Vector2i = c + d
+		while p.x >= 0 and p.y >= 0 and p.x < w and p.y < h and grid[p.y][p.x] == WHITE:
+			if state.get(p, true):
+				return true
+			p += d
+	return false
 
 static func _clues_exact(grid: Array, bulbs: Array, w: int, h: int) -> bool:
 	for y in h:
