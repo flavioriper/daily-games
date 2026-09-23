@@ -29,11 +29,13 @@ const RULES := [
 	"Never three alike in a line",
 	"Every line holds as many suns as moons",
 	"No two lines are the same",
+	"= means the same, × means opposite",
 ]
 const BROKEN := [
 	"No more than two alike side by side!",
 	"A line needs as many suns as moons",
 	"Two lines cannot be the same",
+	"That sign is not kept!",
 ]
 
 var sprout: Control

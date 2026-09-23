@@ -80,6 +80,14 @@ const PUZZLES := [
 		"script": "res://puzzles/binairo2d.gd",
 		"shell": "flat",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): easy and medium are 6x6, hard is 8x8,
+		# and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
+			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
+			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
+		],
 	},
 	{
 		"id": "mastermind",

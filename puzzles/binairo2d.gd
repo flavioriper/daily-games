@@ -10,6 +10,12 @@ extends "res://core/puzzle_base.gd"
 ## keeps the change of symbol.
 ## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, sections
 ## 4 to 6 and 9.2, as amended after the mock (docs/brainstorm/concepts.html#binairo).
+##
+## Signs (2026-09-23): a board carries "=" and "x" marks between some
+## side-by-side tiles -- the two match, the two differ -- drawn as small
+## paper badges over the gap, all of them one mesh on a layer above the
+## tiles. A broken sign turns its glyph red and blushes the two tiles it
+## joins. The card asks for the difficulty first, as Sudoku's does.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 const State = preload("res://puzzles/binairo_state.gd")
@@ -53,6 +59,21 @@ const FOCUS_OUT := 0.4
 const FOCUS_ALPHA := 0.12
 ## About a third of the moons rock; which ones is fixed per cell.
 const ROCK_SHARE := 0.34
+## A sign's badge radius and its glyph's half-width and stroke, as fractions
+## of the tile.
+const SIGN_R := 0.14
+const SIGN_GLYPH := 0.065
+const SIGN_STROKE := 0.028
+## How long the signs take to fade in once the tiles have landed.
+const SIGN_IN := 0.3
+## Per difficulty: the board's side, the clue floor the strip stops at (0
+## strips to minimal) and how many signs are laid. Hard's floor of 12 is what
+## keeps an 8x8 strip affordable: the last clues are the expensive ones.
+const LEVELS := [
+	{"size": 6, "min_clues": 12, "signs": 8},
+	{"size": 6, "min_clues": 0, "signs": 6},
+	{"size": 8, "min_clues": 12, "signs": 10},
+]
 
 ## The armed brush: -2 none (taps cycle), -1 clear, 0 sun, 1 moon.
 var brush: int = -2
@@ -71,6 +92,12 @@ var _solution: Array:
 	get: return state.solution
 
 var fx: Node2D
+## The signs' layer, over the tiles and under the fx; its one mesh is kept in
+## `_signs_shown` until the next replaces it (a canvas command holds a mesh
+## by RID).
+var _sign_layer: Control
+var _signs_shown: ArrayMesh
+var _signs_tw: Tween
 var _tiles: Array = []      # [r][c] -> Panel
 var _styles: Array = []     # [r][c] -> its StyleBoxFlat
 var _tints: Array = []      # [r][c] -> the focus tint Panel over the tile
@@ -91,7 +118,7 @@ func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
 
 func rules() -> String:
-	return "Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical."
+	return "Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical.\n\nAn = between two cells means they hold the same symbol. An × means they hold opposite ones."
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -99,6 +126,12 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	_sign_layer = Control.new()
+	_sign_layer.name = "Signs"
+	_sign_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sign_layer.z_index = 1
+	_sign_layer.draw.connect(_draw_signs)
+	add_child(_sign_layer)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	# Over the tiles, which are added after it: stars land on the board, not under it.
@@ -108,13 +141,8 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var size := 6
-	var min_clues := 0
-	match difficulty:
-		0: size = 6; min_clues = 16
-		1: size = 6; min_clues = 0
-		_: size = 8; min_clues = 0
-	state.setup(Gen.generate(rng, size, min_clues))
+	var level: Dictionary = LEVELS[clampi(difficulty, 0, LEVELS.size() - 1)]
+	state.setup(Gen.generate(rng, level.size, level.min_clues, level.signs))
 	brush = -2
 	focus_cell = Vector2i(-1, -1)
 	_build_tiles()
@@ -209,6 +237,9 @@ func _layout() -> void:
 	if _tile <= 0.0:
 		return
 	_origin = (size - Vector2(g, g)) * 0.5
+	_sign_layer.position = Vector2.ZERO
+	_sign_layer.size = size
+	_sign_layer.queue_redraw()
 	for r in n:
 		for c in n:
 			var tile: Panel = _tiles[r][c]
@@ -269,6 +300,39 @@ func _cell_at(local: Vector2) -> Vector2i:
 	# The gap belongs to the nearer tile: a thumb is never that precise.
 	return Vector2i(c, r)
 
+# --- signs ---
+
+## Where sign `s` sits: the middle of the gap between its two tiles.
+func _sign_at(s: Vector4i) -> Vector2:
+	var a := cell_to_local(s.x, s.y)
+	var o := Gen.sign_other(s)
+	return (a + cell_to_local(o.x, o.y)) * 0.5
+
+## Every sign as one mesh: a paper badge with a line round it and the glyph
+## in acorn ink, or in BAD while the sign is broken.
+func _draw_signs() -> void:
+	if state.signs.is_empty() or _tile <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var r := _tile * SIGN_R
+	var w := _tile * SIGN_GLYPH
+	var line := maxf(2.0, _tile * SIGN_STROKE)
+	for i in state.signs.size():
+		var s: Vector4i = state.signs[i]
+		var at := _sign_at(s)
+		var ink: Color = Pal.BAD if state.sign_broken(i) else Pal.ACORN_DEEP
+		b.disc(at, r + 2.0, Pal.LINE)
+		b.disc(at, r, Pal.SURFACE)
+		if s.w == 1:
+			for dy in [-0.45, 0.45]:
+				b.stroke(PackedVector2Array([at + Vector2(-w, dy * w), at + Vector2(w, dy * w)]), line, ink)
+		else:
+			var k := w * 0.8
+			b.stroke(PackedVector2Array([at + Vector2(-k, -k), at + Vector2(k, k)]), line, ink)
+			b.stroke(PackedVector2Array([at + Vector2(-k, k), at + Vector2(k, -k)]), line, ink)
+	_signs_shown = b.mesh()
+	_sign_layer.draw_mesh(_signs_shown, null)
+
 # --- colour ---
 
 ## The tile's fill at a blend toward BAD_TILE: white for a free cell (the
@@ -292,6 +356,7 @@ func _paint(blend: float, r: int, c: int) -> void:
 ## A cell already heading for the right blend is left alone.
 func _recolour(animate := true) -> void:
 	state.refresh_bad()
+	_sign_layer.queue_redraw()
 	for r in n:
 		for c in n:
 			var target := 1.0 if state.is_bad(r, c) else 0.0
@@ -676,6 +741,8 @@ func _enter() -> void:
 				var tw: Tween = Motion.pop_in(face, Motion.POP_IN, delay + Motion.ENTER_FACE_LAG)
 				if tw != null:
 					_entrance.append(tw)
+	_signs_tw = Motion.appear(_sign_layer, 0.0, 1.0, SIGN_IN,
+		Motion.stagger(2 * (n - 1), Motion.ENTER_STAGGER) + Motion.ENTER_POP * 0.5)
 	fx.cue("enter")
 
 ## Cuts the entrance short: everything lands where it was going.
@@ -683,6 +750,8 @@ func _stop_entrance() -> void:
 	for tw in _entrance:
 		Motion.stop(tw)
 	_entrance = []
+	Motion.stop(_signs_tw)
+	_sign_layer.modulate.a = 1.0
 	for r in _tiles.size():
 		for c in _tiles[r].size():
 			_tiles[r][c].scale = Vector2.ONE

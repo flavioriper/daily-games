@@ -197,6 +197,9 @@ var _rings_drop_at := INF
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
+	# A harness plays the real game: its solves must not land in the
+	# player's own save, where they mark today's boards done.
+	load("res://core/progress.gd").path = "user://progress_harness.cfg"
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_id = args[0]
@@ -319,7 +322,12 @@ func _process(delta: float) -> bool:
 			# and not a full entrance stilled halfway through.
 			if _reduce:
 				load("res://core/motion.gd").reduce = true
-			_menu._open(_entry)
+			# A card that asks for its difficulty (Sudoku, Binairo) would put
+			# the sheet up instead of the board: open it at medium directly.
+			if bool(_entry.get("pick_difficulty", false)):
+				_menu._open_at(_entry, 1)
+			else:
+				_menu._open(_entry)
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 			_puzzle = _host._puzzle
 		return false

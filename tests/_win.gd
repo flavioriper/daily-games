@@ -23,6 +23,9 @@ func _initialize() -> void:
 	# Word Trail on 2026-09-20), but the guard stays for whenever a board is
 	# next named before it is drawn: a `soon` card has no script to open, so
 	# the harness walks only the entries that do.
+	# A harness plays the real game: its solves must not land in the
+	# player's own save, where they mark today's boards done.
+	load("res://core/progress.gd").path = "user://progress_harness.cfg"
 	_entries = []
 	for e in load("res://ui/registry.gd").PUZZLES:
 		if not e.get("soon", false):
@@ -46,7 +49,11 @@ func _process(_delta: float) -> bool:
 
 	var slot := _frames % SLOT
 	if slot == 5:
-		_menu._open(_entries[_idx])
+		# A card that asks for its difficulty would put the sheet up instead.
+		if bool(_entries[_idx].get("pick_difficulty", false)):
+			_menu._open_at(_entries[_idx], 1)
+		else:
+			_menu._open(_entries[_idx])
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 	elif slot == 12:
 		_puzzle = _host._puzzle

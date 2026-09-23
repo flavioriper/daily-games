@@ -20,9 +20,13 @@ var given: Array = []      # [r][c] -> bool: a clue, or a cell a hint filled
 var hinted: Array = []     # [r][c] -> bool: filled by a hint, so a reset gives it back
 var solution: Array = []
 var history: Array[Vector3i] = []
-## Gen.bad_lines(grid): {"rows": {r: true}, "cols": {c: true}}. Kept in
+## The signs between side-by-side cells, as Gen hands them:
+## Vector4i(r, c, dir, same), dir 0 rightward and 1 downward.
+var signs: Array = []
+## Gen.bad_lines(grid, signs): {"rows": {r: true}, "cols": {c: true},
+## "cells": {(c, r): true}} -- the last for the ends of a broken sign. Kept in
 ## Gen's shape so a board asks `bad.rows.has(r)` exactly as the island does.
-var bad: Dictionary = {"rows": {}, "cols": {}}
+var bad: Dictionary = {"rows": {}, "cols": {}, "cells": {}}
 
 ## Takes a fresh puzzle from Gen.generate: the solution, the clues as givens,
 ## an empty history. Everything is copied out of the dictionary, so the
@@ -30,6 +34,7 @@ var bad: Dictionary = {"rows": {}, "cols": {}}
 func setup(out: Dictionary) -> void:
 	var puzzle: Array = out.puzzle
 	n = puzzle.size()
+	signs = (out.get("signs", []) as Array).duplicate()
 	solution = []
 	grid = []
 	given = []
@@ -172,15 +177,21 @@ func wrong_cells() -> Array[Vector2i]:
 # --- rules ---
 
 func refresh_bad() -> void:
-	bad = Gen.bad_lines(grid)
+	bad = Gen.bad_lines(grid, signs)
 
-## Whether the cell sits in a row or a column that breaks a rule right now.
+## Whether the cell sits in a row or a column that breaks a rule right now,
+## or at either end of a broken sign.
 func is_bad(r: int, c: int) -> bool:
-	return bad.rows.has(r) or bad.cols.has(c)
+	return bad.rows.has(r) or bad.cols.has(c) or bad.cells.has(Vector2i(c, r))
+
+## Whether sign `i` of `signs` disagrees with the grid right now.
+func sign_broken(i: int) -> bool:
+	return Gen.sign_broken(grid, signs[i])
 
 ## Which rule the board breaks, for the tip card: 0 none, 1 three alike side
 ## by side, 2 more than half a line of one symbol, 3 two identical complete
-## lines. The lowest id among every broken line; a line breaking both 1 and 2
+## lines, 4 a sign between two cells that is not kept. The lowest id among
+## every broken line; a line breaking both 1 and 2
 ## reads as 1, since the run of three is what the eye finds first. Gen's
 ## bad_lines only says which lines are wrong, so the rule is worked out here.
 func broken_rule() -> int:
@@ -198,6 +209,8 @@ func broken_rule() -> int:
 			var ca := _column(a)
 			if not ca.has(-1) and ca == _column(b):
 				worst = _lowest(worst, 3)
+	if worst == 0 and not bad.cells.is_empty():
+		return 4
 	return worst
 
 ## 1 for three equal filled cells in a row, else 2 for more than half of one
@@ -234,15 +247,23 @@ func _column(c: int) -> Array:
 ## the last of them. Reads `bad` as it stands, so call it after the change.
 func line_just_completed(r: int, c: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	if not (grid[r] as Array).has(-1) and not bad.rows.has(r):
+	if not (grid[r] as Array).has(-1) and not bad.rows.has(r) and not _signs_bad_in(r, -1):
 		for j in n:
 			out.append(Vector2i(j, r))
-	if not _column(c).has(-1) and not bad.cols.has(c):
+	if not _column(c).has(-1) and not bad.cols.has(c) and not _signs_bad_in(-1, c):
 		for i in n:
 			var cell := Vector2i(c, i)
 			if not out.has(cell):
 				out.append(cell)
 	return out
+
+## Whether a broken sign's end lies in row r (or column c, with r -1): a
+## line with a broken sign in it is not celebrated.
+func _signs_bad_in(r: int, c: int) -> bool:
+	for cell in bad.cells:
+		if (r >= 0 and cell.y == r) or (c >= 0 and cell.x == c):
+			return true
+	return false
 
 func is_full() -> bool:
 	for r in n:
@@ -251,7 +272,7 @@ func is_full() -> bool:
 	return true
 
 func is_solved() -> bool:
-	return Gen.is_valid_complete(grid)
+	return Gen.is_valid_complete(grid) and Gen.signs_ok(grid, signs)
 
 # --- for the HUD ---
 
