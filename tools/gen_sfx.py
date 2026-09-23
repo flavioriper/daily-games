@@ -224,6 +224,38 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a gentle water lap, little islands appearing on a calm sea", 1.0, -9),
     },
+    # Quilt: cloth patches dragged off a rack onto a backing; a patch that
+    # lands sews a running stitch along its seams.
+    "quilt": {
+        "lift":     ("a tiny soft fabric rustle, a small cloth patch picked up, very short and quiet", 0.5, -12),
+        "place":    ("a soft muffled cloth pat followed by a few quick tiny soft needle-and-thread stitch ticks, a patch sewn on", 0.7, -6),
+        "refused":  ("a tiny soft worried wobble, a muffled cloth 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft quick ripple of fabric rustles and small muffled pats, cloth patches gathered back onto a rack", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny muffled cloth pats and wooden pops, quilt patches appearing on a rack", 1.0, -9),
+    },
+    # Paper Planes: tap a folded paper dart and it launches down its lane.
+    "planes": {
+        "place":    ("a light soft paper whoosh gliding away with a tiny papery flutter, a small folded paper plane launched, gentle", 0.8, -7),
+        "refuse":   ("a tiny soft worried wobble, a muffled papery 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft airy flurry of small paper rustles and folds, paper planes gliding back into place", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny paper folds and light wooden pops, paper planes appearing on a page", 1.0, -9),
+    },
+    # Pinwheel: tap a paper pinwheel and its cloth piece takes a quarter turn.
+    "pinwheel": {
+        "place":    ("a short soft airy paper pinwheel whirr with a tiny wooden click, a quarter turn, very short", 0.5, -11),
+        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft quick ripple of airy paper whirrs and small wooden clicks, pinwheels spinning back", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light breezy flutter, little paper pinwheels appearing", 1.0, -9),
+    },
 }
 
 
@@ -259,7 +291,10 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int) -> None:
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
     # fade the last 30 ms so nothing clicks off.
     trim = "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01"
-    pre = f"{trim},areverse,{trim},areverse"
+    # Fold to mono first, so the peak is measured on what is written: a take
+    # whose channels differ loses several dB in the fold, and levelling the
+    # stereo peak left those files well under their target.
+    pre = f"aformat=channel_layouts=mono,{trim},areverse,{trim},areverse"
     probe = subprocess.run(["ffmpeg", "-i", str(mp3), "-af", f"{pre},volumedetect", "-f", "null", "-"],
                            capture_output=True, text=True).stderr
     top = float(re.search(r"max_volume: (-?[0-9.]+) dB", probe).group(1))

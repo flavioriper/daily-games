@@ -4,7 +4,8 @@ How a board gets its sounds. The first set is Binairo's (2026-09-23,
 `assets/sfx/binairo/`), the second Code Break's (the same day,
 `assets/sfx/mastermind/`), then Balance, Untangle, Shikaku and Tents the
 same afternoon, then Light Up, One Line and Nonogram, then Queens, Hidden
-Word and Word Trail, then Mushroom Patch, Sudoku and Bridges; none had
+Word and Word Trail, then Mushroom Patch, Sudoku and Bridges, then Quilt, Paper Planes and
+Pinwheel -- all eighteen boards; none had
 been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
@@ -62,6 +63,9 @@ set is choosing which cues get a file.
   for a note, `line` when a move finishes a row, column or region (checked
   outside the wave, so reduce motion still hears it), and `locked` on a
   refused tap.
+- **Pinwheel's `place` is levelled at -11**, not a tap's usual -6/-7: the
+  whirr is dense (RMS -14 at -7 peak, against about -22 for the other taps)
+  and it plays on every turn.
 - A cue that fires per cell in one frame (Binairo's `blush_in`, `line`) is
   fine: `cue()` plays a repeat inside `CUE_GAP` (60 ms) once.
 - Reuse cue names across boards where the moment is the same (`place`,
@@ -93,8 +97,8 @@ yet (Hidden Word's keys, Sudoku's pad) still clicks. A button with the meta
 - **Short.** A tap is 0.5 s requested, a UI action 0.6-0.7, a flourish 1.0,
   the win 2.0. The API's minimum is 0.5 s; ask for that and describe the
   sound as "very short".
-- Peaks land within about 3 dB of the target after Vorbis encoding; that is
-  expected, not a bug.
+- Peaks land within about a decibel of the target after Vorbis encoding;
+  a file several dB off is a bug (see the mono fold under Traps).
 
 ## How to generate
 
@@ -116,6 +120,14 @@ reprocessed for free.
 
 ## Traps already hit
 
+- **Measure the peak on the mono file, not the stereo take.** Until
+  2026-09-23 the script levelled the stereo take and folded it to mono
+  afterwards (`-ac 1`), and the fold moved the peak: about +3 dB when the
+  two channels were alike, and as much as -5 dB when they differed
+  (Pinwheel's `hint` landed at -10.9 against -5). 93 of 146 files were
+  more than 2 dB off their target. The chain now folds to mono first
+  (`aformat=channel_layouts=mono`), and every set was re-levelled from its
+  cached take -- the same sounds, only the gain changed.
 - **`loudnorm` does not work on sub-second clips**: it pushed several to
   0 dBFS and left one at -18. The script levels on peak instead
   (`volumedetect`, then `volume=`).
