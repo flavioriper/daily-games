@@ -511,6 +511,16 @@ const PUZZLES := [
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 10 by 14, 13 by 18 or 16 by 22 sky
+		# (planes_state.gd's BANDS), and each is its own daily with its own
+		# done mark. The planes are not counted on the sheet: 300 seeds a
+		# level laid 20-33, 29-47 and 43-68 of them.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "10 × 14 sky"},
+			{"difficulty": 1, "name": "Medium", "line": "13 × 18 sky"},
+			{"difficulty": 2, "name": "Hard", "line": "16 × 22 sky"},
+		],
 	},
 	{
 		"id": "pinwheel",
