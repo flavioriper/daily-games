@@ -108,6 +108,27 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   and the mock's 118 picture came to 277 a card and pushed the bar off the
   screen. Anything added to the header, the day row or the bar comes out of
   the pictures.
+- **The page is fitted to the screen since 2026-09-23** (`ui/menu.gd`,
+  `_fit_grid`). The canvas is 1080 wide and never shorter than 1920
+  (`stretch/aspect="expand"`), so a taller phone gets height and a wider
+  screen gets width, and a fixed 3x4 left a tall phone (9:20, the user's)
+  a ~530 px empty band under the fourth row. The grid now takes as many
+  columns of `MIN_CARD_W` 320 and rows of `CARD_H` 252 as the room holds;
+  the spare height grows every picture up to `ART_GROW` 26 (plate 92 to
+  118, the mock's) and then opens the row gaps. `PER_PAGE` 12 is only the
+  default before the first fit. Measured with `tests/_shot_menu.gd`:
+  `810x1440` is still 3x4 (345 / 176 draw calls on pages one and two, the
+  same as the build before the change), `660x1500` (9:20) is 3x6 with
+  eighteen cards on page one and 426 calls, and `1080x1440` (3:4) is 4x4
+  at 400. Row gaps may close to `MIN_ROW_GAP` 16: the day row really
+  measures 188 against the 180 budgeted, so four rows at a 20 gap were 6
+  over the 1920 room and the column had been overflowing its bottom margin;
+  they fit at 18. **A swipe across the grid turns the page** (finger left
+  is next), read in `_input` from both touch and mouse because the project
+  does not emulate one from the other; the card a swipe started on does not
+  open. Which cards stand on page one is therefore a property of the phone
+  as well as of the card count -- the "twelve on the first" figures in this
+  file are the 1080x1920 page.
 - **The pager came back on 2026-09-20**, once a thirteenth card needed a
   second page (`ui/menu.gd`, `ui/menu/puzzle_card_2d.gd`; the campsite's own
   pager of nine had left with it on 2026-09-18). A five-row grid was

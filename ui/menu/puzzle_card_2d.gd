@@ -36,6 +36,11 @@ const ART_H := 92.0
 ## many rows share the page -- the twelve-card page and the pager's short
 ## last page alike (task 8, 2026-09-20).
 const CARD_H := 252.0
+## How much taller than ART_H a picture may grow when the menu hands a card
+## spare height on a tall screen (`fit_height`): 118 is the mock's picture,
+## and past it the plate only gains empty paper, so the rest of the spare
+## height goes into the gaps between rows instead (ui/menu.gd, `_fit_grid`).
+const ART_GROW := 26.0
 const INSET := 16
 const GO := 68.0
 const PILL := Vector2(88.0, 40.0)
@@ -58,6 +63,10 @@ var art: Control
 var soon := false
 var completed := false
 var _tap: Button
+var _art_plate: PanelContainer
+## This card's row height: CARD_H on a 1080x1920 screen, more on a taller
+## one (see `fit_height`).
+var card_h := CARD_H
 var _press_tw: Tween
 
 func _init(the_entry: Dictionary, the_colour: Color, is_completed := false) -> void:
@@ -88,7 +97,8 @@ func _build() -> void:
 	_inner.add_child(col)
 
 	var art_plate := PanelContainer.new()
-	art_plate.custom_minimum_size = Vector2(0.0, ART_H)
+	_art_plate = art_plate
+	art_plate.custom_minimum_size = Vector2(0.0, ART_H + clampf(card_h - CARD_H, 0.0, ART_GROW))
 	art_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_plate.add_theme_stylebox_override("panel", _art_style())
 	col.add_child(art_plate)
@@ -263,4 +273,15 @@ func disable_tap() -> void:
 ## page it is on has.
 func _update_min() -> void:
 	super._update_min()
-	custom_minimum_size.y = maxf(custom_minimum_size.y, CARD_H)
+	custom_minimum_size.y = maxf(custom_minimum_size.y, card_h)
+
+## Gives this card a row of `h` (never under CARD_H), spending what is over
+## the budget on the picture up to ART_GROW. The menu calls it with the
+## height its grid can afford a row on this screen.
+func fit_height(h: float) -> void:
+	card_h = maxf(h, CARD_H)
+	if not is_node_ready():
+		return
+	if _art_plate != null:
+		_art_plate.custom_minimum_size.y = ART_H + clampf(card_h - CARD_H, 0.0, ART_GROW)
+	_update_min()

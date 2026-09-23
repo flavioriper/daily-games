@@ -231,3 +231,15 @@ picture for a product. Three things bought it:
 
 The camp is not deleted, and More is a real door. But nobody will see it by
 accident again.
+
+## Amendment, 2026-09-23: the page is fitted to the screen
+
+A fixed three by four left a 9:20 phone with a ~530 px empty band under
+the grid, and nothing turned the page but the chevrons. `ui/menu.gd`'s
+`_fit_grid` now fits columns of 320 and rows of 252 to whatever room the
+header, day row and bar leave, grows each picture up to 118 with the
+spare height and then opens the row gaps; a screen that holds every card
+gets one page. Row gaps may close to 16 (the day row is 188, not 180). A
+horizontal swipe on the grid turns the page. The 1080x1920 page is
+unchanged: still twelve cards, 3x4.
+

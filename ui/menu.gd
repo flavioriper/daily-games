@@ -53,8 +53,24 @@ const CAMP_MENU := "res://legacy/ui/camp_menu.gd"
 const MARGIN := 40
 const GAP := 20
 const COLS := 3
+## The narrowest a card may be drawn: the width the card art's 320 by 118
+## box and `short`'s seventeen characters a line are written against.
+## `_fit_grid` fits as many columns of it as the screen is wide.
+const MIN_CARD_W := 320.0
+## How far the gap between card rows may close to keep a row. The day row
+## measures 188 against the 180 in the budget above, so on the 1920 page
+## four rows at the full GAP come out 6 over the room; they fit at 18.
+const MIN_ROW_GAP := 16
 ## Twelve cards a page: three across and four down is what 80 of margin, 60
 ## of gaps, a 380 header, a 180 day row and a 150 bar leave for rows of 252.
+## That is the 1080x1920 page, and the one every other screen starts from:
+## since 2026-09-23 the page is *fitted* (`_fit_grid`). The canvas is 1080
+## wide and never shorter than 1920 (`stretch/aspect="expand"`), so a taller
+## phone gets extra height and a wider screen extra width; the grid takes as
+## many rows of CARD_H and columns of MIN_CARD_W as that room holds, and a
+## screen that holds every card gets one page and no pager. PER_PAGE is the
+## default before the first fit and the figure on the phone the game is
+## drawn for, not a constant of the grid any more.
 ## A thirteenth card gets a second page rather than a shorter card -- this is
 ## not any one board's work, it is the first screen's (see docs/superpowers/
 ## specs/2026-09-20-mushroom-patch-flat-design.md, section 2, and the sibling
@@ -120,6 +136,13 @@ const PAGER_ICON := 20.0
 ## just two shades of the same filled dot.
 const DOT := 14.0
 const DOT_GAP := 10.0
+## A swipe across the grid turns the page: this far sideways, and at least
+## SWIPE_SLOPE times further sideways than down, so a vertical flick or a
+## tap that wanders is never read as one.
+const SWIPE := 90.0
+const SWIPE_SLOPE := 1.5
+## The pointer id a mouse press tracks under, beside a touch's index.
+const MOUSE_ID := -2
 
 var settings_sheet: Control
 var legacy_sheet: Control
@@ -133,6 +156,18 @@ var bar: Control
 var _list_root: Control
 var _grid: GridContainer
 var _page := 0
+## The fitted page (`_fit_grid`): cards a page, columns, a row's height.
+var _per_page := PER_PAGE
+var _cols := COLS
+var _row_h := PuzzleCard.CARD_H
+var _column: VBoxContainer
+var _fit_queued := false
+## The press a swipe is measured from, and which finger or mouse it is.
+var _swipe_id := -1
+var _swipe_from := Vector2.ZERO
+## Set once a press became a swipe, so the card it started on does not open
+## when the finger lifts; cleared by the next press.
+var _swiped := false
 var _toast: Label
 var _toast_tw: Tween
 ## The pager strip: prev, dots, next, between the grid and the bar.
@@ -186,6 +221,8 @@ func _build_list() -> void:
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", GAP)
 	margins.add_child(root)
+	_column = root
+	root.resized.connect(_queue_fit)
 
 	header = MenuHeader.new()
 	header.name = "Header"
@@ -291,15 +328,15 @@ func _build_list() -> void:
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
 func _pages() -> int:
-	return maxi(1, ceili(float(Registry.PUZZLES.size()) / float(PER_PAGE)))
+	return maxi(1, ceili(float(Registry.PUZZLES.size()) / float(_per_page)))
 
 ## The entries on the page that is up, with the index each has in the
 ## registry -- the colour comes off that index, so a card keeps its colour
 ## whichever page it lands on.
 func _page_entries() -> Array:
 	var out: Array = []
-	var from := _page * PER_PAGE
-	for i in range(from, mini(from + PER_PAGE, Registry.PUZZLES.size())):
+	var from := _page * _per_page
+	for i in range(from, mini(from + _per_page, Registry.PUZZLES.size())):
 		out.append({"i": i, "entry": Registry.PUZZLES[i]})
 	return out
 
@@ -317,6 +354,7 @@ func _build_page() -> void:
 		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()],
 			Progress.completed(String(entry.id)))
 		card.name = "Card_" + entry.id
+		card.fit_height(_row_h)
 		card.open.connect(_open.bind(entry))
 		card.blocked.connect(_on_soon.bind(entry))
 		cards.append(card)
@@ -339,9 +377,9 @@ func _build_page() -> void:
 	# exactly where it is rather than being deleted the moment a page happens
 	# to come out square. Whether it runs is a property of today's card
 	# count, never of the pager.
-	var short := cards.size() % COLS
+	var short := cards.size() % _cols
 	if short > 0:
-		for i in COLS - short:
+		for i in _cols - short:
 			var filler := Control.new()
 			filler.name = "Filler_%d" % i
 			filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -349,6 +387,100 @@ func _build_page() -> void:
 			_fillers.append(filler)
 			_grid.add_child(filler)
 	_set_pager(_page, _pages())
+
+## The fit is worked out once the column has its size, and never inside the
+## layout pass that resized it: rebuilding the page there would resize the
+## grid under the container still sorting it.
+func _queue_fit() -> void:
+	if _fit_queued:
+		return
+	_fit_queued = true
+	_fit_grid.call_deferred()
+
+## Fits the page to the screen. The grid's room is what the column has left
+## after the header, the day row and the bar (measured off the column rather
+## than the grid, because the grid's own size is at least its content's and
+## a page too tall for the screen would report the overflow as room).
+## Columns of MIN_CARD_W and rows of CARD_H go in as many as fit; what is
+## left over grows every row's picture up to ART_GROW and then opens the
+## gaps between rows, so a tall phone gets bigger pictures and a little air
+## rather than one empty band under the last row. When the page size
+## changes the page is rebuilt on whichever page holds the card that was
+## first on screen, so a rotation or a resize never jumps the player back.
+func _fit_grid() -> void:
+	_fit_queued = false
+	if _column == null or _column.size.x <= 0.0:
+		return
+	var room_w := _column.size.x
+	var room_h := _column.size.y - header.size.y - day_row.size.y - bar.size.y - GAP * 3
+	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
+	var rows := maxi(1, floori((room_h + MIN_ROW_GAP) / (PuzzleCard.CARD_H + MIN_ROW_GAP)))
+	var slack := room_h - rows * PuzzleCard.CARD_H - (rows - 1) * GAP
+	var grow := floorf(clampf(slack / rows, 0.0, PuzzleCard.ART_GROW))
+	var gap := GAP
+	if rows > 1:
+		gap = maxi(MIN_ROW_GAP, GAP + floori((slack - grow * rows) / (rows - 1)))
+	_grid.add_theme_constant_override("v_separation", gap)
+	var per := cols * rows
+	var row_h := PuzzleCard.CARD_H + grow
+	if per != _per_page or cols != _cols:
+		var first := _page * _per_page
+		_per_page = per
+		_cols = cols
+		_grid.columns = cols
+		_page = clampi(first / per, 0, _pages() - 1)
+		_row_h = row_h
+		_build_page()
+	elif row_h != _row_h:
+		_row_h = row_h
+		for card in cards:
+			card.fit_height(row_h)
+
+## Turns the page when a press on the grid travels far enough sideways:
+## finger moving left is the next page, right the previous, the way a book
+## turns. Read in `_input`, ahead of the cards, because every card is a
+## full-rect Button that would otherwise swallow the drag; nothing is
+## marked handled, so a press that stays a tap still reaches its card, and
+## `_open` refuses the one card a swipe started on. Touch and mouse are
+## both read (the project does not emulate one from the other), and only
+## one pointer is tracked at a time.
+func _input(event: InputEvent) -> void:
+	if not _can_swipe():
+		_swipe_id = -1
+		return
+	if event is InputEventScreenTouch:
+		_swipe_press(event, event.index, event.pressed)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_swipe_press(event, MOUSE_ID, event.pressed)
+	elif event is InputEventScreenDrag and event.index == _swipe_id:
+		_swipe_move(event)
+	elif event is InputEventMouseMotion and _swipe_id == MOUSE_ID:
+		_swipe_move(event)
+
+func _can_swipe() -> bool:
+	return _list_root != null and _list_root.visible and _pages() > 1 \
+		and not settings_sheet.visible and not legacy_sheet.visible
+
+func _swipe_press(event: InputEvent, id: int, pressed: bool) -> void:
+	if not pressed:
+		if id == _swipe_id:
+			_swipe_id = -1
+		return
+	if _swipe_id != -1:
+		return
+	_swiped = false
+	var at: Vector2 = _grid.make_input_local(event).position
+	if Rect2(Vector2.ZERO, _grid.size).has_point(at):
+		_swipe_id = id
+		_swipe_from = at
+
+func _swipe_move(event: InputEvent) -> void:
+	var d: Vector2 = _grid.make_input_local(event).position - _swipe_from
+	if absf(d.x) < SWIPE or absf(d.x) < absf(d.y) * SWIPE_SLOPE:
+		return
+	_swipe_id = -1
+	_swiped = true
+	_turn_page(-1 if d.x > 0.0 else 1)
 
 ## Which page is up, and how many there are. One page hides the whole strip
 ## (nothing on the grid or the bar moves either way -- it is an overlay);
@@ -549,7 +681,7 @@ func _on_soon(entry: Dictionary) -> void:
 
 ## Opens one of the seventeen. A `soon` card never gets here.
 func _open(entry: Dictionary) -> void:
-	if Registry.is_soon(entry):
+	if Registry.is_soon(entry) or _swiped:
 		return
 	var host: Control = FlatHost.new()
 	host.setup(entry, 1, Progress.completed(String(entry.id)))
