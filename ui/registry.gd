@@ -537,6 +537,16 @@ const PUZZLES := [
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): 9 pieces on a 5 by 5 frame, 11 on
+		# 5 by 7 or 13 on 6 by 8 (pinwheel_gen.gd's BANDS), and each is its
+		# own daily with its own done mark. The piece count is fixed per band,
+		# so the sheet can name it.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "9 pieces, 5 × 5"},
+			{"difficulty": 1, "name": "Medium", "line": "11 pieces, 5 × 7"},
+			{"difficulty": 2, "name": "Hard", "line": "13 pieces, 6 × 8"},
+		],
 	},
 ]
 
