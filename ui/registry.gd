@@ -426,6 +426,15 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): 11 islets on a 7 by 7 sea, 16 on
+		# 9 by 9 or 24 on 11 by 11 (bridges_gen.gd's BANDS), and each is its
+		# own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "11 islets, 7 × 7"},
+			{"difficulty": 1, "name": "Medium", "line": "16 islets, 9 × 9"},
+			{"difficulty": 2, "name": "Hard", "line": "24 islets, 11 × 11"},
+		],
 	},
 	{
 		"id": "quilt",
