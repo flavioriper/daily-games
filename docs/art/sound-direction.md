@@ -121,13 +121,20 @@ reprocessed for free.
 ## Traps already hit
 
 - **Measure the peak on the mono file, not the stereo take.** Until
-  2026-09-23 the script levelled the stereo take and folded it to mono
-  afterwards (`-ac 1`), and the fold moved the peak: about +3 dB when the
-  two channels were alike, and as much as -5 dB when they differed
-  (Pinwheel's `hint` landed at -10.9 against -5). 93 of 146 files were
-  more than 2 dB off their target. The chain now folds to mono first
-  (`aformat=channel_layouts=mono`), and every set was re-levelled from its
-  cached take -- the same sounds, only the gain changed.
+  2026-09-23 the script levelled the stereo take with `volumedetect` and
+  folded it to mono afterwards (`-ac 1`), and the files came out anything
+  from 3 dB hot (the fold sums two alike channels) to 5 dB short (it cancels
+  two unlike ones; Pinwheel's `hint` landed at -10.9 against -5): 93 of 146
+  were more than 2 dB off. Three things had to change, and each was found
+  by the one before it failing: `volumedetect` measures in 16-bit and reads
+  a fold past full scale as exactly 0 dB, so the peak is read with
+  `astats`; trimming the folded mono cut audible ring-outs (Binairo's
+  `line` lost a tail at -23 dB), so the trim stays on the stereo take; and
+  inside one filter chain ffmpeg chooses where the fold happens, so
+  `to_ogg` now runs each stage as its own file -- trim, fold to float mono,
+  measure, gain and encode. Every set was re-levelled from its cached take
+  (the same sounds, only the gain changed) and all 168 files now land
+  within about a decibel.
 - **`loudnorm` does not work on sub-second clips**: it pushed several to
   0 dBFS and left one at -18. The script levels on peak instead
   (`volumedetect`, then `volume=`).

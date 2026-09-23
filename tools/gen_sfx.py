@@ -12,7 +12,7 @@ is exactly where ui/fx2d.gd's cue() looks. The key is read from
 $ELEVENLABS_API_KEY or ~/.config/elevenlabs/api_key and never stored here.
 Needs ffmpeg on the PATH.
 """
-import json, os, pathlib, re, subprocess, sys, urllib.request
+import json, os, pathlib, re, subprocess, sys, tempfile, urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 API = "https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128"
@@ -290,19 +290,29 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int) -> None:
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
     # fade the last 30 ms so nothing clicks off.
+    #
+    # Each stage is its own file, because inside one filter chain ffmpeg
+    # decides for itself where the stereo-to-mono fold happens, and the
+    # level came out anything from 3 dB hot to 5 dB short depending on it.
+    # The trim runs on the stereo take (in mono it cut audible ring-outs),
+    # the fold is written as 32-bit float (it can pass full scale), and the
+    # peak is read off that mono file with astats -- volumedetect measures
+    # in 16-bit and reads anything over full scale as exactly 0 dB.
     trim = "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01"
-    # Fold to mono first, so the peak is measured on what is written: a take
-    # whose channels differ loses several dB in the fold, and levelling the
-    # stereo peak left those files well under their target.
-    pre = f"aformat=channel_layouts=mono,{trim},areverse,{trim},areverse"
-    probe = subprocess.run(["ffmpeg", "-i", str(mp3), "-af", f"{pre},volumedetect", "-f", "null", "-"],
-                           capture_output=True, text=True).stderr
-    top = float(re.search(r"max_volume: (-?[0-9.]+) dB", probe).group(1))
-    h, m, sec = re.findall(r"time=(\d+):(\d+):([0-9.]+)", probe)[-1]
-    dur = int(h) * 3600 + int(m) * 60 + float(sec)
-    chain = f"{pre},volume={peak - top:.2f}dB,afade=t=out:st={max(dur - 0.03, 0):.3f}:d=0.03"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), "-af", chain,
-                    "-ac", "1", "-ar", "44100", "-c:a", "libvorbis", "-q:a", "5", str(out)], check=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        mono = pathlib.Path(tmp) / "mono.wav"
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
+                        "-af", f"{trim},areverse,{trim},areverse",
+                        "-ac", "1", "-c:a", "pcm_f32le", str(mono)], check=True)
+        probe = subprocess.run(["ffmpeg", "-i", str(mono), "-af",
+                                "astats=measure_overall=Peak_level:measure_perchannel=none",
+                                "-f", "null", "-"], capture_output=True, text=True).stderr
+        top = float(re.search(r"Peak level dB: (-?[0-9.]+)", probe).group(1))
+        dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                    "-of", "csv=p=0", str(mono)], capture_output=True, text=True).stdout)
+        chain = f"volume={peak - top:.2f}dB,afade=t=out:st={max(dur - 0.03, 0):.3f}:d=0.03"
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mono), "-af", chain,
+                        "-ar", "44100", "-c:a", "libvorbis", "-q:a", "5", str(out)], check=True)
 
 
 def main() -> None:
