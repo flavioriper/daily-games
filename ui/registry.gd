@@ -265,6 +265,14 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "tiles",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 5 by 5, 7 by 7 or 9 by 9 picture,
+		# and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "5 × 5"},
+			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
+			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+		],
 	},
 	{
 		"id": "queens",
