@@ -145,6 +145,14 @@ const PUZZLES := [
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): seven, ten or fourteen lanterns, and
+		# each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "7 lanterns"},
+			{"difficulty": 1, "name": "Medium", "line": "10 lanterns"},
+			{"difficulty": 2, "name": "Hard", "line": "14 lanterns"},
+		],
 	},
 	{
 		"id": "shikaku",
