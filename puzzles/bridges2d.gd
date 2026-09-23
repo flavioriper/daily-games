@@ -1381,6 +1381,44 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_refresh()
 
+## A completed daily is rebuilt from its seed, so it opens on bare water. Lay
+## every run the answer lays and settle the card as it stands once the solve's
+## wave has passed: every islet met and ringed, the network lit gold from end
+## to end, no Check marks, no ghosts, no entrance and no sparkle still owed.
+## Not check_solved(): the host owns the win screen and `solved` must not fire
+## a second time.
+func restore_completed_board() -> void:
+	var t := _now()
+	state.runs = {}
+	for key in state.answer:
+		if int(state.answer[key]) > 0:
+			state.runs[key] = int(state.answer[key])
+	state.history.clear()
+	_from = State.NOWHERE
+	_aim = ""
+	_aim_dir = Vector2i.ZERO
+	_on_run = ""
+	_refuse = {}
+	_last = State.NOWHERE
+	_given = {}
+	_wrong = {}
+	_laid = {}
+	_ghosts = []
+	_met_at = {}
+	_shiver_at = {}
+	_hop_at = {}
+	_press_cell = State.NOWHERE
+	_press_up = -1.0
+	# The entrance and the wave both long over: `_front` reads far past the
+	# deepest islet, so every run wears the lit deck and no islet still flares.
+	_opened = t - 100.0
+	_solved_at = t - 100.0
+	_depth = _wave_steps()
+	_sparked = _depth.duplicate()
+	_anim_until = 0.0
+	_say(TIP_REST, Face.Expr.HAPPY)
+	_refresh()
+
 # --- the wave, and the one function that says where its front is ---
 
 ## **Where the front is, in islets deep, at clock time `t`**, and -1 before

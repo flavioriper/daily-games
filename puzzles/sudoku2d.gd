@@ -906,6 +906,37 @@ func _on_solved() -> void:
 				"where": cell_to_local(k, k)})
 	_redraw()
 
+## A completed daily is rebuilt from its seed, so it opens on the givens.
+## Write the answer into every cell and settle the board as it stands once
+## the solve's wave has passed: no selection, no pencil marks, no Check
+## marks, no entrance and no moment still owed. Not check_solved(): the host
+## owns the win screen and `solved` must not fire a second time.
+func restore_completed_board() -> void:
+	if state == null:
+		return
+	var now := _now()
+	_tip_timer.stop()
+	state.grid = state.sol.duplicate()
+	state.notes = PackedInt32Array()
+	state.notes.resize(Gen.CELLS)
+	state.history = []
+	_sel = -1
+	_pencil = false
+	_wrong = {}
+	_flash = {}
+	_bump = {}
+	_drop = {}
+	_shiver = {}
+	_leaving = []
+	_fx_due = []
+	_hold_until = 0.0
+	# The entrance long over, so the grid is at full size and every given
+	# fully inked.
+	_opened = now - 10.0
+	_anim_until = 0.0
+	_say("Every number in its place.", Face.Expr.JOY)
+	_redraw()
+
 ## When the solve's wave reaches anti-diagonal `d` (row + col, 0 to 16).
 ##
 ## **The last two diagonals share a beat and that is left alone.**

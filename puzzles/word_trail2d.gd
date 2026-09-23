@@ -1200,6 +1200,35 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_refresh()
 
+## A reopened daily that was already solved: every word of the answer is
+## locked at once, in index order, with its ribbon drawn whole, its tiles in
+## its colour and its letters in their slots -- no wave, no entrance, no solve
+## hop and no sparkle left to run. `order` keeps every word so share_glyphs()
+## still has the day's shape; Undo stays off because the board is done. Never
+## check_solved(): `solved` must not fire a second time.
+func restore_completed_board() -> void:
+	_state.order.clear()
+	for i in _state.words.size():
+		_state.words[i]["found"] = true
+		_state.order.append(i)
+	# A word with no moment is simply whole (`_front`), so emptying these is
+	# what settles every ribbon, tile and slot.
+	_found_at = {}
+	_lifted_at = {}
+	_pending = []
+	_trail = []
+	_ghost = {}
+	_beam_at = -100.0
+	_press_cell = Vector2i(-1, -1)
+	_press_up = -1.0
+	_solved_at = -1.0
+	_anim_until = 0.0
+	# The field's pop and the slots' drop have already played.
+	_opened = _now() - 100.0
+	_tip_timer.stop()
+	_say("Every letter found its way.", Face.Expr.JOY)
+	_refresh()
+
 ## How much of any word's lock wave is still to run.
 func _wave_left(t: float) -> float:
 	var left := 0.0

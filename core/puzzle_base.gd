@@ -26,6 +26,9 @@ var hints_used: int = 0
 var checks: int = 0
 var _running: bool = false
 var _done: bool = false
+## What completion_record() handed back when this daily was solved, set by the
+## host before restore_completed() on a reopened daily; {} when nothing was kept.
+var completed_record: Dictionary = {}
 
 # --- to override ---
 func puzzle_id() -> String: return "unnamed"
@@ -117,6 +120,13 @@ func restore_completed() -> void:
 ## state is already persisted elsewhere can leave this as a no-op.
 func restore_completed_board() -> void:
 	pass
+
+## The player's own ending, for a board whose solved arrangement is not the
+## only one (Code Break's and Hidden Word's rows of guesses). The host keeps it
+## with the completion and hands it back as `completed_record`; plain values
+## only, since it goes through a ConfigFile.
+func completion_record() -> Dictionary:
+	return {}
 
 func finish_unsolved() -> void:
 	if _done:

@@ -1093,6 +1093,28 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_refresh()
 
+## A completed daily is rebuilt from its seed, so it reopens with a full sky.
+## Launch every plane in the state's own solve order and settle the picture
+## at once: no flight, no wake, no puff, no entrance and no solve wave left
+## to run -- the empty lattice a finished board shows once its wave has gone.
+## Never `check_solved()`: the host owns the win for an already-completed
+## daily and `solved` must not fire a second time.
+func restore_completed_board() -> void:
+	var t := _now()
+	for i in _state.solve_order():
+		_state.launch(i)
+	# Clears the launch history (every cell is already empty), so nothing is
+	# left for an undo to call back.
+	_state.clear_occupancy()
+	_forget()
+	_hint_lit = -1
+	_solved_at = -1.0
+	_anim_until = 0.0
+	_opened = t - 10.0
+	_tip_timer.stop()
+	_say("Every plane found its lane.", Face.Expr.JOY)
+	_refresh()
+
 # --- the win ---
 
 ## No cast and a subtitle, so the win screen keeps the family's sun and moon.

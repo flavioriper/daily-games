@@ -1088,6 +1088,49 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_redraw()
 
+## A completed daily is rebuilt from its seed, so the field opens bare. Lay the
+## generator's partition back down and settle everything as the finished
+## planting wave leaves it: every bed planted, every marker standing and
+## beaming, no entrance, no drag. Not check_solved(): the host owns the win
+## presentation for a daily that was already solved.
+func restore_completed_board() -> void:
+	var now := _now()
+	_stop_all()
+	_clear_drag()
+	_tip_timer.stop()
+	var rects: Array[Rect2i] = []
+	var locked: Array[bool] = []
+	for rect in state.solution:
+		rects.append(rect)
+		locked.append(false)
+	state.rects = rects
+	state.locked = locked
+	state.history.clear()
+	state.reown()
+	_bed_cache = {}
+	_bed_in = {}
+	_gone = []
+	_bed_flash = {}
+	_plant_at = {}
+	_planted = true
+	_pend_key = ""
+	# The entrance long over, so the field and the shadows stand still.
+	_opened = now - 10.0
+	_enter_until = now - 10.0
+	_anim_until = 0.0
+	for i in _markers.size():
+		_pos_tw[i] = null
+		_look_tw[i] = null
+		var marker: MarkerFace = _markers[i]
+		marker.position = Vector2.ZERO
+		marker.rotation = 0.0
+		marker.scale = Vector2.ONE
+	_shadows = null
+	_fence = _build_fence() if _cell > 0.0 else null
+	_refresh_markers()
+	_say("Every plot has its number. The beds go in.", Face.Expr.JOY)
+	_redraw()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

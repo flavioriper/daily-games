@@ -952,6 +952,43 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_refresh()
 
+## A completed daily is rebuilt from its seed with nothing walked. Walk the
+## generator's own Eulerian trail through the state, then settle everything as
+## a finished solve wave leaves it: every plank laid and warmed, every post in
+## place, the walker grinning on the post where the stroke ended. No entrance
+## and no wave play, and `solved` is not emitted a second time.
+func restore_completed_board() -> void:
+	var t := _now()
+	_stop_all()
+	_drawing = false
+	_pressed_post = -1
+	_walker_pressed = false
+	state.reset()
+	var path: Array = State.Gen.find_path(state.edges, state.nodes)
+	if path.is_empty() or not state.begin(int(path[0])):
+		return
+	for k in range(1, path.size()):
+		state.step(int(path[k]))
+	_stroke = {}
+	_post_press = {}
+	_post_hop = {}
+	_cap_bump = {}
+	_post_shiver = {}
+	_post_blush = {}
+	_wrong = {}
+	_gone = []
+	_bright = {}
+	for e in state.trail:
+		_bright[e] = t - 10.0
+	_walker_out = -100.0
+	_opened = t - 10.0
+	_anim_until = 0.0
+	_solved_at = t - 10.0
+	_joy = true
+	_tip_timer.stop()
+	_say("One stroke, and not a line missed.", Face.Expr.JOY)
+	_refresh()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

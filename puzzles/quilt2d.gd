@@ -1201,6 +1201,32 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_refresh()
 
+## A completed daily is dealt again from its seed, so the fresh board comes up
+## with an empty quilt mid-entrance. Sew every patch on at its answer origin
+## with every clock in the past: the entrance over, each landing pop and seam
+## wave long run (so every stitch is drawn whole), nothing held, flying or
+## pending, and the rack left showing only the gone shapes. Never
+## check_solved(): the host owns the win for a restore.
+func restore_completed_board() -> void:
+	var t := _now()
+	_tip_timer.stop()
+	_drag = {}
+	_flying = {}
+	_lifted = {}
+	_refused = {}
+	_pending = []
+	_anim_until = 0.0
+	_solved_at = -1.0
+	_opened = t - 10.0
+	for p in _state.shapes.size():
+		_state.at[p] = int(_state.answer[p])
+		_state.locked[p] = 0
+		_landed[p] = t - 10.0
+	_state.history = []
+	_state.recompute()
+	_say("Not a gap left.", Face.Expr.JOY)
+	_refresh()
+
 func is_solved() -> bool:
 	return _state.is_solved()
 

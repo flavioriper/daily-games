@@ -99,7 +99,9 @@ func _ready() -> void:
 
 func _maybe_show_first_play_tutorial() -> void:
 	var puzzle_id := String(_entry.get("id", ""))
-	if puzzle_id == "" or Progress.tutorial_seen(puzzle_id):
+	# A daily reopened already solved lands on its finished board; teaching
+	# the rules over it would hide the very thing it was opened to see.
+	if puzzle_id == "" or _completed_daily or Progress.tutorial_seen(puzzle_id):
 		return
 	_tutorial = HowToPlay.new()
 	_tutorial.name = "HowToPlay"

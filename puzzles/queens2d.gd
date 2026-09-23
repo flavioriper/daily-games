@@ -1098,6 +1098,47 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_redraw()
 
+## A completed daily is rebuilt from its seed with an empty court. Seat every
+## queen of the generator's answer and settle the court as a finished solve
+## wave leaves it: each bee standing on her colour in JOY, the crosses she
+## derives already cleared away, nothing popping, washing or hopping.
+## `solved` is not emitted a second time.
+func restore_completed_board() -> void:
+	var t := _now()
+	_stop_all()
+	_release_press()
+	_clear_gesture()
+	_tip_timer.stop()
+	state.queens = {}
+	state.crosses = {}
+	state.locked = {}
+	for r in state.n:
+		state.queens[Vector2i(int(state.solution[r]), r)] = true
+	state.history = []
+	state.recompute()
+	_cross_in = {}
+	_cross_out = []
+	_wash = {}
+	_blush = {}
+	_shiver = {}
+	_sunk = {}
+	_opened = t - 10.0
+	_solved_at = t - 10.0
+	_anim_until = 0.0
+	for cell in _bees:
+		_bees[cell].visible = false
+	for cell in state.queens:
+		var bee := _bee_node(cell)
+		bee.visible = true
+		bee.scale = Vector2.ONE
+		bee.position = Vector2.ZERO
+		bee.rotation = 0.0
+		bee.modulate.a = 1.0
+		bee.pinned = false
+		_set_expr(bee, Face.Expr.JOY)
+	_say("Every queen has her seat.", Face.Expr.JOY)
+	_redraw()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

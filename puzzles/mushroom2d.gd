@@ -1351,6 +1351,47 @@ func _on_solved() -> void:
 	_busy_for(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME)
 	_redraw()
 
+## A completed daily is rebuilt from its seed, so it opens on a bare patch.
+## Plant every mushroom of the answer and settle the patch as it stands once
+## the solve's wave has passed: every mushroom standing in JOY, every number
+## in its settled green, the entrance over and no moment still owed. Not
+## check_solved(): the host owns the win screen and `solved` must not fire a
+## second time.
+func restore_completed_board() -> void:
+	var now := _now()
+	_stop_all()
+	_clear_gesture()
+	_tip_timer.stop()
+	state.marks = {}
+	for cell in state.mushrooms:
+		state.marks[cell] = State.FOUND
+	state.pinned = {}
+	state.history = []
+	_pebble_in = {}
+	_pebble_out = []
+	_wash = {}
+	_bump = {}
+	_blush = {}
+	_shiver = {}
+	_wobble = {}
+	_sunk = {}
+	_opened = now - 10.0
+	_solved_at = now - 10.0
+	_anim_until = 0.0
+	_tail = false
+	for cell in state.mushrooms:
+		var face := _cap_node(cell)
+		face.visible = true
+		face.scale = Vector2.ONE
+		face.rotation = 0.0
+		face.position = Vector2.ZERO
+		face.modulate.a = 1.0
+		face.sprig = false
+		_set_expr(face, Face.Expr.JOY)
+	_say("Every patch has its count.", Face.Expr.JOY)
+	_layout()
+	_redraw()
+
 func _solve_delay(cell: Vector2i) -> float:
 	if Motion.reduce:
 		return 0.0

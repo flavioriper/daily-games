@@ -1054,6 +1054,33 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_refresh()
 
+## A completed daily is rebuilt from its seed, so it reopens on its opening
+## orientations. Put every piece on its answer and settle the picture at once:
+## no swing, no stain wave, no entrance, and the solve wave already run, so
+## every edge wears its full warmth and no piece is mid-hop -- exactly a frame
+## whose solve has finished. Never `check_solved()`: the host owns the win for
+## an already-completed daily and `solved` must not fire a second time.
+func restore_completed_board() -> void:
+	var t := _now()
+	_state.turned = _state.answer.duplicate()
+	_state.history = []
+	_state.recompute()
+	_swing = {}
+	_wob = {}
+	_refused = {}
+	_pending = []
+	_pressed = Vector2i(-1, -1)
+	_anim_until = 0.0
+	_opened = t - 10.0
+	for p in _turned_at.size():
+		_turned_at[p] = t - 10.0
+	# In the past, so `_frame_of` reads a landed hop and a full warm edge and
+	# `_animating` finds nothing left of the wave.
+	_solved_at = t - 10.0
+	_tip_timer.stop()
+	_say("Not a gap, not a fold.", Face.Expr.JOY)
+	_refresh()
+
 func is_solved() -> bool:
 	return _state.is_solved()
 

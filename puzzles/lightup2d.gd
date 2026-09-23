@@ -1322,6 +1322,54 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_redraw()
 
+## A completed daily is rebuilt from its seed, so the court opens dark. Set the
+## generator's lanterns back down and settle everything as the finished solve
+## leaves it: every stone already warm, every beam drawn, every numbered block
+## satisfied, every lamp standing and grinning, no chips and no entrance. Not
+## check_solved(): the host owns the win presentation for a daily that was
+## already solved.
+func restore_completed_board() -> void:
+	var now := _now()
+	_stop_all()
+	_clear_gesture()
+	_tip_timer.stop()
+	state.marks = {}
+	state.locked = {}
+	state.history.clear()
+	for cell in state.solution:
+		state.marks[cell] = State.LAMP
+	state.recompute()
+	# Every stone straight to the light it stands in, with no wave crossing.
+	_settle()
+	_beam_out = []
+	_chip_in = {}
+	_chip_out = []
+	_blush = {}
+	_sunk = {}
+	_block_press = {}
+	_block_bump = {}
+	_block_hop = {}
+	_block_nudge = {}
+	_block_shiver = {}
+	_block_flash = {}
+	# The entrance and the clearing both long over.
+	_opened = now - 10.0
+	_solved_at = now - 10.0
+	_anim_until = 0.0
+	for cell in _lamps:
+		_lamps[cell].visible = false
+	for cell in state.solution:
+		var lamp := _lamp_node(cell)
+		lamp.visible = true
+		lamp.position = Vector2.ZERO
+		lamp.rotation = 0.0
+		lamp.scale = Vector2.ONE
+		lamp.modulate.a = 1.0
+		lamp.expression = Face.Expr.JOY
+	_refresh_faces()
+	_say("Not a stone left in the dark.", Face.Expr.JOY)
+	_redraw()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

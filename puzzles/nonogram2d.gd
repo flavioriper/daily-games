@@ -888,6 +888,37 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_refresh()
 
+## A completed daily is rebuilt from its seed with an empty floor. Lay every
+## tile of the picture and settle the board as a finished solve leaves it: the
+## scaffolding gone, no pebbles, every clue in its satisfied ink, nothing
+## popping in or hopping. `solved` is not emitted a second time.
+func restore_completed_board() -> void:
+	var t := _now()
+	_gen += 1
+	_clear_gesture()
+	_tip_timer.stop()
+	state.marks = {}
+	state.locked = {}
+	for y in state.h:
+		for x in state.w:
+			if int(state.bitmap[y][x]) == 1:
+				state.marks[Vector2i(x, y)] = State.FILL
+	state.history = []
+	_arrive = {}
+	_leaving = []
+	_sunk = {}
+	_hop = {}
+	_nudge = {}
+	_wrong = {}
+	_shiver = {}
+	_clue_bump = {}
+	_clue_hop = {}
+	_opened = t - 10.0
+	_solved_at = t - 10.0
+	_anim_until = 0.0
+	_say("There it is. The picture you were counting towards.", Face.Expr.JOY)
+	_refresh()
+
 func is_solved() -> bool:
 	return state.is_solved()
 

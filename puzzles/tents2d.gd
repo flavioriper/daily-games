@@ -1027,6 +1027,52 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_redraw()
 
+## A completed daily is rebuilt from its seed, so the meadow opens bare. Pitch
+## the generator's tents back and settle everything as the finished solve
+## leaves it: every tent and tree standing and grinning, every chip satisfied,
+## no cairns (the win clears them), no entrance. Not check_solved(): the host
+## owns the win presentation for a daily that was already solved.
+func restore_completed_board() -> void:
+	var now := _now()
+	_stop_all()
+	_clear_gesture()
+	_tip_timer.stop()
+	state.marks = {}
+	state.locked = {}
+	state.history.clear()
+	for cell in state.solution:
+		state.marks[cell] = State.TENT
+	_cairn_in = {}
+	_cairn_out = []
+	_blush = {}
+	_shade = {}
+	# The entrance and the clearing both long over.
+	_opened = now - 10.0
+	_solved_at = now - 10.0
+	_anim_until = 0.0
+	for cell in _tents:
+		_tents[cell].visible = false
+	for cell in state.solution:
+		var tent := _tent_node(cell)
+		tent.visible = true
+		_settle_face(tent)
+	for cell in _trees:
+		_settle_face(_trees[cell])
+	for chip in _chips_row + _chips_col:
+		chip.scale = Vector2.ONE
+		chip.rotation = 0.0
+	_refresh_faces()
+	_say("Every tree has its tent. The camp is pitched.", Face.Expr.JOY)
+	_redraw()
+
+## A tree or a tent at rest in its slot, beaming.
+func _settle_face(face: Face) -> void:
+	face.position = Vector2.ZERO
+	face.rotation = 0.0
+	face.scale = Vector2.ONE
+	face.modulate.a = 1.0
+	face.expression = Face.Expr.JOY
+
 func is_solved() -> bool:
 	return state.is_solved()
 

@@ -1179,6 +1179,73 @@ func reset_board() -> void:
 	fx.cue("reset")
 	_refresh()
 
+## The rows the player committed, oldest first, so a reopened daily can lay
+## the same ending back down. Plain strings, because it goes through a
+## ConfigFile.
+func completion_record() -> Dictionary:
+	var out: Array = []
+	for word in state.rows:
+		out.append(String(word))
+	return {"guesses": out}
+
+## A reopened daily that was already solved: the rows go back down already
+## committed and turned, in their marks' colours, the keyboard painted from
+## them, and nothing moving -- no entrance, no flip, no hop, no sparkle. A
+## save from before `completion_record()` existed has no rows to replay, so
+## the answer alone stands on row one. Never check_solved(): the day was
+## solved once and `solved` must not fire a second time.
+func restore_completed_board() -> void:
+	var guesses: Array[String] = _recorded_guesses()
+	state.rows.clear()
+	state.marks.clear()
+	state.typed = ""
+	for word in guesses:
+		state.rows.append(word)
+		state.marks.append(State.mark_guess(word, state.answer))
+	var now := _now()
+	for r in State.ROWS:
+		_row_at[r] = -100.0
+		_shiver_at[r] = -100.0
+	_clear_working()
+	_given_at = {}
+	_flip_at = -100.0
+	_flip_row = -1
+	_keys_due = []
+	_clear_endings()
+	# Settled rather than unset: the rows before the winning one stand at
+	# SOLVE_DIM and its hop has long since landed, which is how a live solve
+	# leaves the card under the win screen. Ten seconds back and not a
+	# hundred: anything under -50 reads as "never solved" (`_row_alpha`).
+	_solved_at = now - 10.0
+	# The entrance has already played.
+	_opened = now - 10.0
+	_anim_until = 0.0
+	if _tray != null:
+		_tray.clear_marks()
+		var marks: Dictionary = {}
+		for word in state.rows:
+			for i in State.LEN:
+				marks[word[i]] = state.key_mark(word[i])
+		_tray.set_marks(marks)
+	_refresh()
+
+## The record's rows if they are a real ending for today's word -- at most six
+## five-letter words, none repeated, the last one the answer -- and the answer
+## alone otherwise.
+func _recorded_guesses() -> Array[String]:
+	var out: Array[String] = []
+	var raw = completed_record.get("guesses", [])
+	if raw is Array and not raw.is_empty() and raw.size() <= State.ROWS:
+		for w in raw:
+			var word := String(w).to_lower()
+			if word.length() != State.LEN or out.has(word):
+				out = []
+				break
+			out.append(word)
+	if out.is_empty() or out[out.size() - 1] != state.answer:
+		out = [state.answer]
+	return out
+
 ## The win screen shows no cast: five green tiles spelling the word are what
 ## stays on the card under it, the way Nonogram leaves its picture.
 func flat_win() -> Dictionary:

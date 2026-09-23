@@ -83,6 +83,10 @@ static func shape(name: String) -> Dictionary:
 ## callback. `hole`, when opaque, fills the shape's hole polygon on top (the
 ## gear's centre takes the button's fill).
 static func paint(ci: CanvasItem, name: String, rect: Rect2, colour: Color, hole := Color.TRANSPARENT) -> void:
+	# A control drawn before it is laid out has no area, and a polygon scaled
+	# to nothing cannot be triangulated -- the engine errors on it.
+	if is_zero_approx(rect.size.x) or is_zero_approx(rect.size.y):
+		return
 	var s := shape(name)
 	var xf := Transform2D(0.0, rect.size, 0.0, rect.position)
 	for poly in s.polys:

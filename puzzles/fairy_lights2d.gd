@@ -360,12 +360,15 @@ func _build_lanterns() -> void:
 
 ## The cell: a round `floor((card - 2 * INSET) / n)` with **no gap taken
 ## out** -- 188, 157 and 134 by band, the largest any flat board has asked
-## for. The width binds at every band, as it does on Word Trail: seven
-## columns is fewer than nine and the slot is tall.
-func _cell_for(_available: float) -> float:
+## for. The width binds at every band while the board is played, as it does
+## on Word Trail: seven columns is fewer than nine and the slot is tall. The
+## win screen's slot is shorter than the card is wide, so the height is a
+## bound too, or the grid runs out of its card under the stats.
+func _cell_for(available: float) -> float:
 	if state.n <= 0:
 		return 0.0
-	return floorf(maxf(0.0, size.x - 2.0 * INSET) / float(state.n))
+	var room := minf(size.x, available) - 2.0 * INSET
+	return floorf(maxf(0.0, room) / float(state.n))
 
 ## The card this board wants: the grid and its two insets, and no more. The
 ## 344 the card does not want is halved into air above and below by the host
@@ -1043,6 +1046,31 @@ func reset_board() -> void:
 	_refresh()
 	_say("A fresh tangle. " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
+
+## A completed daily is dealt again from its seed, so the fresh board comes up
+## scrambled and mid-entrance. Put every piece on its answer, light the whole
+## run with every clock in the past, and reseat the lanterns (new Controls, so
+## the entrance's untracked pop_in tweens go with the old ones) already awake
+## and grinning. Never check_solved(): the host owns the win for a restore.
+func restore_completed_board() -> void:
+	var t := _now()
+	_tip_timer.stop()
+	state.grid = state.sol.duplicate()
+	state.pinned.fill(0)
+	state.history = PackedInt32Array()
+	_clear_clocks()
+	# Every cell seen lit and every lantern long since woken.
+	_live_at.fill(AGO)
+	_opened = t - 10.0
+	_build_lanterns()
+	_layout()
+	_dress(t)
+	for i in _lanterns:
+		var lantern: LanternFace = _lanterns[i]
+		lantern.scale = Vector2.ONE
+		lantern.expression = Face.Expr.JOY
+	_say("Every lantern is lit.", Face.Expr.JOY)
+	_refresh()
 
 ## How many quarter turns clockwise take `from` to `to`; 0 if it is already
 ## there (which is a hint that only pinned a cell, and spins nothing).

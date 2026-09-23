@@ -926,32 +926,76 @@ func reset_board() -> void:
 	_say("Cleared. Back to row one.", Face.Expr.HAPPY)
 	fx.cue("reset")
 
+## The rows the player played, oldest first, each a list of friend indices,
+## so a reopened daily can lay the same scorecard back down.
+func completion_record() -> Dictionary:
+	var out: Array = []
+	for guess in state.guesses:
+		var row: Array = []
+		for v in guess:
+			row.append(int(v))
+		out.append(row)
+	return {"guesses": out}
+
 ## A completed daily is rebuilt from its seed, so its transient Code Break
-## state is empty when the player opens it again. Completion only stores that
-## the daily was solved, not its individual guesses, so rebuild a terminal
-## scorecard: seven deterministic non-winning attempts followed by the answer
-## on row eight. That keeps the visible ending in the same place as a real
-## finished game instead of making a completed board look like it was solved
-## on its first try.
+## state is empty when the player opens it again. The player's own rows come
+## back from `completed_record` and are replayed through the state, so every
+## pouch scores exactly as it did. A save from before completion_record()
+## existed has no rows, so a terminal scorecard is fabricated instead: seven
+## deterministic non-winning attempts followed by the answer on row eight,
+## which keeps the ending where a real finished game's would be rather than
+## making the board look solved on its first try.
 func restore_completed_board() -> void:
 	_stop_all()
 	_busy = false
-	var earlier: Array = state.code.duplicate()
-	# The first friend differs from the code, so this row cannot accidentally
-	# score as a solve, even when the day's code permits repeated friends.
-	earlier[0] = (int(earlier[0]) + 1) % state.palette_size
-	for _guess in State.TRIES - 1:
-		state.row = earlier.duplicate()
+	var rows := _recorded_rows()
+	if rows.is_empty():
+		var earlier: Array = state.code.duplicate()
+		# The first friend differs from the code, so this row cannot
+		# accidentally score as a solve, even when the day's code permits
+		# repeated friends.
+		earlier[0] = (int(earlier[0]) + 1) % state.palette_size
+		for _guess in State.TRIES - 1:
+			rows.append(earlier.duplicate())
+		rows.append(state.code.duplicate())
+	for row in rows:
+		state.row = row.duplicate()
 		state.commit()
-	state.row = state.code.duplicate()
-	state.commit()
+	state.history = []
 	# `build()` gives row one the live-row scale. Restoring has no active row,
-	# so place the large, just-finished treatment on the final scored row.
+	# so the large, just-finished treatment goes on the row that cracked it --
+	# where a live solve leaves it, since the winning row never slides.
+	var last: int = state.guesses.size() - 1
 	for g in State.TRIES:
-		_big[g] = 1.0 if g == State.TRIES - 1 else 0.0
+		_big[g] = 1.0 if g == last else 0.0
 	_place_rows()
 	_refresh_seats()
 	_reveal(true)
+
+## The record's rows if they are a real ending for today's code -- at most
+## TRIES full rows of friends in the palette, only the last one the code --
+## and nothing otherwise, which sends the restore to its fabricated fallback.
+func _recorded_rows() -> Array:
+	var raw = completed_record.get("guesses", [])
+	if not raw is Array or raw.is_empty() or raw.size() > State.TRIES:
+		return []
+	var out: Array = []
+	for r in raw.size():
+		var guess = raw[r]
+		if not guess is Array or guess.size() != length:
+			return []
+		var row: Array = []
+		for v in guess:
+			var friend := int(v)
+			if friend < 0 or friend >= state.palette_size:
+				return []
+			row.append(friend)
+		# Only the last row may crack the code: one earlier would have ended
+		# the game there.
+		if (row == state.code) != (r == raw.size() - 1):
+			return []
+		out.append(row)
+	return out
 
 func _leave_after(g: int, s: int, delay: float) -> void:
 	if delay <= 0.0 or Motion.reduce:

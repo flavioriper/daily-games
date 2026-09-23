@@ -109,9 +109,11 @@ func _ready() -> void:
 func _restore_completed_daily() -> void:
 	if _won or not is_instance_valid(_puzzle):
 		return
-	if _puzzle.has_method("restore_completed"):
-		_puzzle.restore_completed()
 	var saved := Progress.completed_stats(String(_entry.get("id", "")))
+	if _puzzle.has_method("restore_completed"):
+		var record = saved.get("board", {})
+		_puzzle.completed_record = record if record is Dictionary else {}
+		_puzzle.restore_completed()
 	if not saved.is_empty():
 		_puzzle.elapsed = float(saved.get("seconds", _puzzle.elapsed))
 		_puzzle.moves = int(saved.get("moves", _puzzle.moves))
@@ -395,7 +397,12 @@ func _on_solved() -> void:
 	# Keep the result metrics with the completion flag. The menu still listens
 	# to daily_completed for its card state, while a reopened daily can restore
 	# the same time, moves and hints on its finished screen.
-	Progress.mark_completed(puzzle_id, DailySeed.date_key(), _stats())
+	var kept := _stats()
+	if is_instance_valid(_puzzle) and _puzzle.has_method("completion_record"):
+		var record: Dictionary = _puzzle.completion_record()
+		if not record.is_empty():
+			kept["board"] = record
+	Progress.mark_completed(puzzle_id, DailySeed.date_key(), kept)
 	daily_completed.emit(puzzle_id)
 	Analytics.track("puzzle_complete", _stats())
 	_refresh()
