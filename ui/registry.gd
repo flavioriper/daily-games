@@ -375,6 +375,15 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "patch",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): 6 mushrooms in a 6 by 6 patch, 9 in
+		# 7 by 7 or 12 in 8 by 8 (mushroom_gen.gd's SIZES), and each is its
+		# own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "6 mushrooms, 6 × 6"},
+			{"difficulty": 1, "name": "Medium", "line": "9 mushrooms, 7 × 7"},
+			{"difficulty": 2, "name": "Hard", "line": "12 mushrooms, 8 × 8"},
+		],
 	},
 	{
 		"id": "sudoku",
