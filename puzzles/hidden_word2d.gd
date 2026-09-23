@@ -245,6 +245,9 @@ var _ghosts: Array = []
 ## The sparkles still owed, each {"at", "r", "c"}: the solve's five arrive one
 ## SOLVE_STAGGER after another, so they cannot all be fired at the commit.
 var _fx_due: Array = []
+## Sounds waiting on a clock, oldest first: each tile's flip as it starts to
+## turn, and the win or the loss once the row that decided it has landed.
+var _cue_due: Array = []
 ## The sprout the reveal raises. Built on the first ending and kept, because
 ## Reset can put the board back into play and a second sixth row can come.
 var _sprout: Control = null
@@ -321,6 +324,7 @@ func _clear_endings() -> void:
 	_over_at = -100.0
 	_ghosts = []
 	_fx_due = []
+	_cue_due = []
 	if _sprout != null:
 		_sprout.visible = false
 	_bring_keys_back()
@@ -425,6 +429,7 @@ func _process(delta: float) -> void:
 	var now := _now()
 	_deliver_keys(now)
 	_deliver_fx(now)
+	_deliver_cues(now)
 	_expire(now)
 	_send_keys_away(now)
 	_ride_sprout(now)
@@ -946,6 +951,7 @@ func type_letter(letter: String) -> void:
 	_gone_at[i] = -100.0
 	_gone_ch[i] = ""
 	_busy_for(TYPE_POP)
+	fx.cue("type")
 	_refresh()
 
 ## Backspace. The letter shrinks out with the quarter turn; the tile it was
@@ -961,6 +967,7 @@ func erase_letter() -> void:
 	_gone_at[i] = _now()
 	_gone_ch[i] = ch
 	_busy_for(Motion.POP_OUT)
+	fx.cue("erase")
 	_refresh()
 
 ## Enter. On OK the row turns over, a tile at a time; on any of the three
@@ -982,6 +989,7 @@ func commit_row() -> void:
 		_toast = code
 		_toast_at = _now()
 		_busy_for(maxf(Motion.SHIVER_TIME, TOAST_HOLD + Motion.POP_OUT))
+		fx.cue("refused")
 		_refresh()
 		return
 	_flip_row = state.rows.size() - 1
@@ -995,6 +1003,11 @@ func commit_row() -> void:
 	# `landed`, and a row committed on top of a row still turning queues
 	# behind it rather than replacing it.
 	var landed := _flip_at + _flip_length()
+	# One flip a tile as it starts to turn, a touch higher each, so the row
+	# is heard going over the way it is seen; under reduce motion, one.
+	for c in (1 if Motion.reduce else State.LEN):
+		_cue_due.append({"at": _flip_at + float(c) * FLIP_STEP, "cue": "flip",
+			"pitch": 1.0 + 0.04 * float(c)})
 	var due := _keys_payload(_flip_row)
 	due["at"] = landed
 	_keys_due.append(due)
@@ -1008,6 +1021,7 @@ func commit_row() -> void:
 	# fires now, because the host's own win_delay() is measured from here.
 	if state.is_solved():
 		_solved_at = landed
+		_cue_due.append({"at": landed, "cue": "solved"})
 		if not Motion.reduce:
 			for c in State.LEN:
 				_fx_due.append({
@@ -1019,6 +1033,7 @@ func commit_row() -> void:
 	elif state.is_over():
 		_over_at = landed
 		_keys_out_at = landed
+		_cue_due.append({"at": landed, "cue": "lost"})
 		_raise_sprout()
 		_busy_for(landed - _now() + REVEAL_WAIT + REVEAL_TIME)
 		finish_unsolved()
@@ -1066,6 +1081,12 @@ func _deliver_fx(now: float) -> void:
 	while not _fx_due.is_empty() and now >= float(_fx_due[0].at):
 		var due: Dictionary = _fx_due.pop_front()
 		fx.sparkle(cell_to_local(int(due.r), int(due.c)), due.get("colour", Pal.SUN))
+
+## Plays the sounds that have come due (see `_cue_due`).
+func _deliver_cues(now: float) -> void:
+	while not _cue_due.is_empty() and now >= float(_cue_due[0].at):
+		var due: Dictionary = _cue_due.pop_front()
+		fx.cue(due.cue, due.get("pitch", 1.0))
 
 func _clear_working() -> void:
 	_typed_at = []
@@ -1126,6 +1147,7 @@ func hint() -> bool:
 		"marks": {ch: State.HIT}, "letters": [ch],
 	})
 	hints_used += 1
+	fx.cue("hint")
 	_busy_for(Motion.DROP_TIME + Motion.BUMP_TIME)
 	_refresh()
 	check_solved()

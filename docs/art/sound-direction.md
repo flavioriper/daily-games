@@ -3,7 +3,8 @@
 How a board gets its sounds. The first set is Binairo's (2026-09-23,
 `assets/sfx/binairo/`), the second Code Break's (the same day,
 `assets/sfx/mastermind/`), then Balance, Untangle, Shikaku and Tents the
-same afternoon, and Light Up, One Line and Nonogram after them; none had
+same afternoon, then Light Up, One Line and Nonogram, then Queens, Hidden
+Word and Word Trail; none had
 been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
@@ -44,6 +45,14 @@ set is choosing which cues get a file.
   through `cue(name, pitch)` a little higher per cell (4% a cell, capped at
   1.6), so the size of the bed can be heard. Asked for by the user
   2026-09-23. `CUE_GAP` keeps a fast drag from machine-gunning it.
+- **A board with no cue calls gets them written at its real moments.**
+  Hidden Word shipped cueing only `enter` and `reset`; its set added
+  `type`, `erase`, `refused` (an Enter the rules turn down), `hint`, and a
+  `flip` per tile timed to the turn through the board's own `_cue_due`
+  queue (`FLIP_STEP` apart, 4% higher each), with `solved` or `lost` played
+  when the deciding row has *landed*, not when Enter was pressed -- the same
+  rule the board already keeps for its sprout. `lost` is a calm descending
+  phrase, never a fail sting: running out of rows is "maybe tomorrow".
 - A cue that fires per cell in one frame (Binairo's `blush_in`, `line`) is
   fine: `cue()` plays a repeat inside `CUE_GAP` (60 ms) once.
 - Reuse cue names across boards where the moment is the same (`place`,

@@ -143,6 +143,43 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny ceramic and wooden pops rolling in, a mosaic floor appearing", 1.0, -9),
     },
+    # Queens: a little crowned bee seated on a garden court; crosses and
+    # pebbles are the player's own marks.
+    "queens": {
+        "place":    ("a tiny soft wooden tap with a quick gentle buzzy wing flutter, a little bee settling on a flower, very short", 0.5, -6),
+        "remove":   ("a very short soft downward whoosh with a tiny wing flutter, a little bee lifting off, gentle", 0.5, -9),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a quick soft ripple of small wooden pops and a light wing flutter, a garden court swept clear", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a garden court appearing", 1.0, -9),
+    },
+    # Hidden Word (puzzle_id "hiddenword"): type a five-letter guess on a
+    # keyboard, Enter turns the row over a tile at a time.
+    "hiddenword": {
+        "type":     ("a single tiny soft wooden letter tile click, typing on a cozy wooden keyboard, very short and quiet", 0.5, -12),
+        "erase":    ("a tiny soft short downward wooden tick, a letter tile taken back, very short and quiet", 0.5, -13),
+        "flip":     ("a single soft wooden tile flipping over with a light papery flick, very short", 0.5, -9),
+        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a quick ripple of many small soft wooden pops, tiles being swept off a board", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "lost":     ("a gentle warm three-note soft marimba phrase gently descending and resolving, a kind 'maybe tomorrow', calm, not sad, not a buzzer", 1.5, -6),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of letter tiles appearing", 1.0, -9),
+    },
+    # Word Trail (puzzle_id "wordtrail"): drag a trail through letter tiles;
+    # only a right word locks, and a ribbon of colour runs along it.
+    "wordtrail": {
+        "place":    ("a short bright rising kalimba run of four soft notes with a gentle ribbon swish, a hidden word found", 0.8, -6),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a quick ripple of many small soft wooden pops, letter tiles being swept clean", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a field of letter tiles appearing", 1.0, -9),
+    },
 }
 
 
