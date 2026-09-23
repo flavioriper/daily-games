@@ -33,6 +33,14 @@ var sparkles: Array[CPUParticles2D] = []
 var last_cue := ""
 var _next_puff := 0
 var _next_sparkle := 0
+## Sound: a few voices round-robin so quick taps overlap instead of cutting.
+const VOICES := 4
+const CUE_GAP := 60
+var _players: Array[AudioStreamPlayer] = []
+var _next_voice := 0
+var _streams := {}
+var _played_at := {}
+var _puzzle := ""
 
 ## Build the two pools and name the node.
 func _ready() -> void:
@@ -107,9 +115,41 @@ class Ring extends Control:
 	func _draw() -> void:
 		draw_arc(Vector2.ZERO, radius * (0.9 + 0.6 * t), 0.0, TAU, 48, Color(colour, 1.0 - t), 6.0, true)
 
-## Audio hook. Effects name their sound here; nothing plays yet.
+## Audio hook. Effects name their sound here, and it plays
+## assets/sfx/<puzzle_id>/<cue>.ogg when that file exists, so a board with
+## no set (or a cue with no file) stays silent. tools/gen_sfx.py makes the
+## files. A cue fired again inside CUE_GAP plays once: the blush and the
+## line cues fire per cell, several in one frame.
 func cue(cue_name: String) -> void:
 	last_cue = cue_name
+	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
+	if not _streams.has(path):
+		_streams[path] = load(path) if ResourceLoader.exists(path) else null
+	var stream: AudioStream = _streams[path]
+	if stream == null:
+		return
+	var now := Time.get_ticks_msec()
+	if now - int(_played_at.get(path, -CUE_GAP)) < CUE_GAP:
+		return
+	_played_at[path] = now
+	if _players.is_empty():
+		for i in VOICES:
+			var p := AudioStreamPlayer.new()
+			add_child(p)
+			_players.append(p)
+	var player: AudioStreamPlayer = _players[_next_voice]
+	_next_voice = (_next_voice + 1) % VOICES
+	player.stream = stream
+	player.play()
+
+## The board this Fx2D serves: the nearest ancestor that names a puzzle.
+func _puzzle_id() -> String:
+	if _puzzle == "":
+		var n: Node = get_parent()
+		while n != null and not n.has_method("puzzle_id"):
+			n = n.get_parent()
+		_puzzle = n.puzzle_id() if n != null else "none"
+	return _puzzle
 
 func _fire(p: CPUParticles2D, at: Vector2, colour: Color, count: int) -> void:
 	p.position = at
