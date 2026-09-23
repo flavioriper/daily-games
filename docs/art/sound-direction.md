@@ -3,7 +3,8 @@
 How a board gets its sounds. The first set is Binairo's (2026-09-23,
 `assets/sfx/binairo/`), the second Code Break's (the same day,
 `assets/sfx/mastermind/`), then Balance, Untangle, Shikaku and Tents the
-same afternoon, and none had been judged by ear when this was
+same afternoon, and Light Up, One Line and Nonogram after them; none had
+been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
 

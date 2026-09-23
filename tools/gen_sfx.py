@@ -106,6 +106,43 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a campsite of trees appearing", 1.0, -9),
     },
+    # Light Up: paper lamps set down in a stone courtyard light their rows.
+    "lightup": {
+        "place":    ("a tiny soft wooden tap with a warm gentle glow shimmer, a little paper lamp set down and lit, very short", 0.5, -6),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a soft quick ripple of small wooden pops and a gentle airy puff, little lamps being blown out", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden and stone pops rolling in, a courtyard of stones appearing", 1.0, -9),
+    },
+    # One Line: a snail walks every line between posts exactly once.
+    "oneline": {
+        "start":    ("a tiny soft bouncy boing and a wooden post tap, a small snail hopping onto a post, very short", 0.5, -6),
+        "lay":      ("a short soft kalimba pluck with a light gliding slide, a line drawn from one post to the next", 0.5, -7),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a soft quick backward swish with a few small wooden pops, a drawn trail wiped away", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, little wooden posts appearing", 1.0, -9),
+    },
+    # Nonogram: mosaic tiles laid on a floor by row and column clues.
+    "nonogram": {
+        "place":    ("a single soft ceramic mosaic tile tap on wood, a small tile laid down, very short", 0.5, -7),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a quick ripple of many small soft ceramic and wooden clicks, mosaic tiles being swept off a floor", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny ceramic and wooden pops rolling in, a mosaic floor appearing", 1.0, -9),
+    },
 }
 
 
