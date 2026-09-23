@@ -241,6 +241,16 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 3 by 3, 4 by 3 or 4 by 4 lattice
+		# of posts, and each is its own daily with its own done mark. The
+		# lattice is named rather than the lines, which vary a lot within a
+		# level (4 to 19 on easy, 6 to 29 on hard, over 300 seeds each).
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "3 × 3 posts"},
+			{"difficulty": 1, "name": "Medium", "line": "4 × 3 posts"},
+			{"difficulty": 2, "name": "Hard", "line": "4 × 4 posts"},
+		],
 	},
 	{
 		"id": "nonogram",
