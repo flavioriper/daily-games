@@ -103,6 +103,15 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "friends",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): four seats of six friends with no one
+		# twice in the code, the same with repeats, or five seats of seven;
+		# each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "4 friends, all different"},
+			{"difficulty": 1, "name": "Medium", "line": "4 friends, may repeat"},
+			{"difficulty": 2, "name": "Hard", "line": "5 friends, may repeat"},
+		],
 	},
 	{
 		"id": "balance",

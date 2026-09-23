@@ -200,7 +200,8 @@ func title() -> String: return "Code Break"
 
 func rules() -> String:
 	var count := "five" if length == 5 else "four"
-	return "Crack the hidden row of %s friends. Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. Eight rows, three hints." % count
+	var twice := "A friend may sit in it twice." if state.repeats else "No friend sits in it twice."
+	return "Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. Eight rows, three hints." % [count, twice]
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check", "palette"]
