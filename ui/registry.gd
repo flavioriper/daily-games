@@ -198,6 +198,15 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 6 by 6 field with 5 tents, 7 by 7
+		# with 7 or 8 by 8 with 9, and each is its own daily with its own
+		# done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
+			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
+			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
+		],
 	},
 	{
 		"id": "lightup",
