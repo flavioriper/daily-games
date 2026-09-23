@@ -1372,6 +1372,17 @@ pointing `seed_as` at them. Specs:
   the last few froze at four fifths of their fade, two pale lines that never
   arrived. It showed on a rendered frame and in no test.
 
+## Sound
+
+Full rules: `docs/art/sound-direction.md`. Sounds are generated with
+ElevenLabs by `tools/gen_sfx.py <puzzle_id>` into
+`assets/sfx/<puzzle_id>/<cue>.ogg`, and `Fx2D.cue()` plays whichever cue has
+a file -- a missing file is silence, on purpose. Soft wood, marimba, kalimba,
+glockenspiel and paper; never a buzzer; up means good, down means not yet;
+cues that fire on every touch (Binairo's `focus`, `blush_out`) get no file.
+One take per cue; the user listens and names the ones to redo. Binairo is
+the only board with a set (2026-09-23).
+
 ## Art: shading direction
 
 The look everything aims for is in `docs/art/shading-direction.md`: soft
