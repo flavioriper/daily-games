@@ -319,9 +319,9 @@ const PUZZLES := [
 		# bands), and each is its own daily with its own done mark.
 		"pick_difficulty": true,
 		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "Everyday words"},
-			{"difficulty": 1, "name": "Medium", "line": "Less common words"},
-			{"difficulty": 2, "name": "Hard", "line": "Any word"},
+			{"difficulty": 0, "name": "Easy", "line": "HW_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "HW_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "HW_LVL_2"},
 		],
 	},
 	{
@@ -345,9 +345,9 @@ const PUZZLES := [
 		# BANDS), and each is its own daily with its own done mark.
 		"pick_difficulty": true,
 		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "4 words, 5 × 5"},
-			{"difficulty": 1, "name": "Medium", "line": "6 words, 6 × 6"},
-			{"difficulty": 2, "name": "Hard", "line": "6 words, 7 × 7"},
+			{"difficulty": 0, "name": "Easy", "line": "WT_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "WT_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "WT_LVL_2"},
 		],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and

@@ -190,6 +190,8 @@ Append to each entry's `levels` (the line matches Tasks 3-5's provisional knobs)
 | planes | `16 × 22 sky, long planes` |
 | pinwheel | `16 pieces, 7 × 8` |
 
+Hidden Word and Word Trail key their lines (their other three already are): `"line": "HW_LVL_3"` / `"WT_LVL_3"`, with `locale/ui.csv` rows `HW_LVL_3,"Any word, no hints","Qualquer palavra, sem dicas","Cualquier palabra, sin pistas"` and `WT_LVL_3,"6 words, 8 × 8","6 palavras, 8 × 8","6 palabras, 8 × 8"`. If Task 4 falls back on Word Trail's row, the key's text changes, not the registry.
+
 Also change each entry's `"difficulties": [0, 1, 2]` to `[0, 1, 2, 3]` (data only, kept in step).
 
 - [ ] **Step 4: Check every entry has four levels**
