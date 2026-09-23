@@ -1,7 +1,8 @@
 # Sound direction
 
 How a board gets its sounds. The first set is Binairo's (2026-09-23,
-`assets/sfx/binairo/`), and it had not yet been judged by ear when this was
+`assets/sfx/binairo/`), the second Code Break's (the same day,
+`assets/sfx/mastermind/`), and neither had been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
 
@@ -78,6 +79,14 @@ reprocessed for free.
 - **A -50 dB silence trim ate a whole sound**: `reset` (a ripple of soft
   pops) came out 30 ms long. The trim is at -60 dB with 10 ms kept; check
   every duration after a run for anything far under what was asked.
+- **The folder is the `puzzle_id()`, not the card's name.** Code Break's
+  board answers `"mastermind"`, so its set is `SETS["mastermind"]` and
+  `assets/sfx/mastermind/`; a `codebreak` folder would be silently never
+  played. Read `puzzle_id()` off the board before naming the set.
+- **A take can come back nearly empty.** Code Break's first `reset` was a
+  quarter second of sound at about -45 dB RMS followed by silence, so the
+  trimmed file was 0.25 s against 1.0 asked. That was the take, not the
+  trim (check the raw mp3's RMS over time with `astats`); `--new` fixed it.
 - **The key** is read from `$ELEVENLABS_API_KEY` or
   `~/.config/elevenlabs/api_key` (mode 600) and must never be written into
   the repo or pasted into chat. If it is missing, ask the user to run

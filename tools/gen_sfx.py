@@ -38,6 +38,22 @@ SETS = {
         "blush_in": ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of tiles appearing", 1.0, -9),
     },
+    # Code Break (puzzle_id "mastermind"): little round friends fly into
+    # seats, a Check drops score pips into a pouch, lids lift on the answer.
+    "mastermind": {
+        "place":    ("a tiny soft bouncy boing and a wooden seat tap, a small round character hopping into a seat, very short", 0.5, -6),
+        "clear":    ("a very short soft downward whoosh-pop, a small character hopping out of a wooden seat", 0.5, -9),
+        "full":     ("a tiny soft muffled wooden double bump, a row already full, gentle, very short", 0.5, -11),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "score":    ("a few small soft wooden beads dropping one after another into a cloth pouch, then a gentle marimba note", 1.0, -6),
+        "reveal":   ("a soft wooden box lid lifting with a small curious kalimba shimmer, a secret being uncovered", 1.0, -6),
+        "reset":    ("a quick ripple of many small soft wooden pops, pieces being swept off a board", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of seats appearing", 1.0, -9),
+    },
 }
 
 
