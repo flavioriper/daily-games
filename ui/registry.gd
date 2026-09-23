@@ -120,6 +120,14 @@ const PUZZLES := [
 		"tray": "weights",
 		"actions": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): three, four or five kinds of fruit,
+		# and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "3 fruits"},
+			{"difficulty": 1, "name": "Medium", "line": "4 fruits"},
+			{"difficulty": 2, "name": "Hard", "line": "5 fruits"},
+		],
 	},
 	{
 		"id": "untangle",
