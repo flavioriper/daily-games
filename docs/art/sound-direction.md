@@ -5,7 +5,7 @@ How a board gets its sounds. The first set is Binairo's (2026-09-23,
 `assets/sfx/mastermind/`), then Balance, Untangle, Shikaku and Tents the
 same afternoon, then Light Up, One Line and Nonogram, then Queens, Hidden
 Word and Word Trail, then Mushroom Patch, Sudoku and Bridges, then Quilt, Paper Planes and
-Pinwheel -- all eighteen boards; none had
+Pinwheel, then Fairy Lights -- every flat board; none had
 been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
@@ -63,6 +63,12 @@ set is choosing which cues get a file.
   for a note, `line` when a move finishes a row, column or region (checked
   outside the wave, so reduce motion still hears it), and `locked` on a
   refused tap.
+- **Fairy Lights' lanterns chime as the wash reaches them.** Its set adds
+  `wake`, queued in the board's `_settle` at each lantern's own wake moment
+  (`_wake_cues`, delivered in `_process`) and 3% higher per step of depth
+  from the post, capped at 1.5, so a long run is heard travelling out. It
+  is quiet (-12) because a move can wake several; lanterns closer together
+  than `CUE_GAP` chime once.
 - **Pinwheel's `place` is levelled at -11**, not a tap's usual -6/-7: the
   whirr is dense (RMS -14 at -7 peak, against about -22 for the other taps)
   and it plays on every turn.

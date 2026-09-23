@@ -239,6 +239,9 @@ var _anim_until := 0.0
 ## finished waking. win_delay() spends the same figure, so the win screen and
 ## the wash can never disagree about how long the wash is.
 var _wash_end := 0.0
+## The lanterns' wake chimes still to come, oldest first: each lantern chimes
+## when the wash reaches it, a little higher the further out along the wire.
+var _wake_cues: Array = []
 ## Whether the last frame was a moving one, so the board can lay one final
 ## frame at rest rather than stopping wherever the clock left it.
 var _moving := false
@@ -310,6 +313,7 @@ func _clear_clocks() -> void:
 	_wake_at = PackedFloat64Array()
 	_wake_at.resize(cells)
 	_wake_at.fill(AGO)
+	_wake_cues = []
 	_spin_at = PackedFloat64Array()
 	_spin_at.resize(cells)
 	_spin_at.fill(AGO)
@@ -438,6 +442,9 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0 or state.n <= 0:
 		return
 	var t := _now()
+	while not _wake_cues.is_empty() and t >= float(_wake_cues[0].at):
+		var due: Dictionary = _wake_cues.pop_front()
+		fx.cue("wake", float(due.pitch))
 	if _animating(t):
 		_moving = true
 		_dress(t)
@@ -687,6 +694,8 @@ func _settle(before: PackedInt32Array, at: float) -> void:
 				# arrives with the bump: seventeen of them in a ripple rather
 				# than together, because each is on its own depth.
 				_wake_at[i] = moment
+				_wake_cues.append({"at": moment,
+					"pitch": minf(1.0 + 0.03 * float(now_d[i]), 1.5)})
 				last = maxf(last, moment + Motion.BUMP_TIME)
 		else:
 			_out_at[i] = moment
@@ -702,6 +711,7 @@ func _settle(before: PackedInt32Array, at: float) -> void:
 	# wash whose end is in the past costs nothing, both readers taking
 	# `maxf(0.0, _wash_end - now)`.
 	_wash_end = maxf(_wash_end, last)
+	_wake_cues.sort_custom(func(a, b): return float(a.at) < float(b.at))
 	_busy_for(last - _now())
 
 ## A pinned cell reads as a given, in the language every board in this game

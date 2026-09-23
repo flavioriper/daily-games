@@ -256,6 +256,18 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light breezy flutter, little paper pinwheels appearing", 1.0, -9),
     },
+    # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
+    # turn it; wire joined back to the post runs gold and wakes its lanterns.
+    "fairylights": {
+        "place":    ("a single soft wooden click with a tiny light wire tick, a small piece of garden wire turned a quarter, very short", 0.5, -8),
+        "wake":     ("a single tiny warm glass twinkle, a little paper lantern softly lighting up, very short and delicate", 0.5, -12),
+        "refuse":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft quick descending ripple of tiny glass twinkles fading out, garden lanterns dimming one after another", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
+    },
 }
 
 
