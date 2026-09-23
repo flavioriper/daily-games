@@ -180,6 +180,50 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a field of letter tiles appearing", 1.0, -9),
     },
+    # Mushroom Patch: plant a mushroom where one must be, lay a pebble where
+    # none can be; nothing is ever revealed by a tap.
+    "mushroom": {
+        "place":    ("a tiny soft squishy pop with a light earthy wooden tap, a little mushroom popping up from moss, very short", 0.5, -6),
+        "remove":   ("a very short soft downward whoosh-pop, a small thing lifted out of soft moss", 0.5, -9),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a quick soft ripple of small squishy pops and a light leafy rustle, a forest patch cleared", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a mossy forest patch appearing", 1.0, -9),
+    },
+    # Sudoku: numerals in ink on a paper grid; a pencil mode for small notes,
+    # and a row, column or region that fills lights up in a wave.
+    "sudoku": {
+        "place":    ("a single soft pencil tap on thick paper with a tiny wooden knock, writing a number, very short", 0.5, -7),
+        "pencil":   ("a tiny light pencil scribble tick on paper, a small note jotted, very short and quiet", 0.5, -12),
+        "line":     ("a short happy two-note soft kalimba pluck, a row completed", 0.6, -6),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a soft quick eraser rub on paper with a few small wooden pops, a page wiped clean", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny paper and wooden pops rolling in, a grid of numbers appearing", 1.0, -9),
+    },
+    # Bridges: wooden plank bridges laid between islets on a calm sea.
+    "bridges": {
+        "place":    ("a single soft hollow wooden plank knock with a tiny water lap, a small plank laid across, very short", 0.5, -6),
+        "remove":   ("a very short soft downward wooden slide with a tiny splash, planks lifted away", 0.5, -9),
+        "met":      ("a short happy two-note soft kalimba pluck, a little island complete", 0.6, -7),
+        "over":     ("a tiny soft worried wobble, a muffled hollow wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
+        "reset":    ("a quick soft ripple of hollow wooden plank knocks and gentle water laps, bridges being taken up", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a gentle water lap, little islands appearing on a calm sea", 1.0, -9),
+    },
 }
 
 

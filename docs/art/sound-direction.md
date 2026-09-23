@@ -4,7 +4,7 @@ How a board gets its sounds. The first set is Binairo's (2026-09-23,
 `assets/sfx/binairo/`), the second Code Break's (the same day,
 `assets/sfx/mastermind/`), then Balance, Untangle, Shikaku and Tents the
 same afternoon, then Light Up, One Line and Nonogram, then Queens, Hidden
-Word and Word Trail; none had
+Word and Word Trail, then Mushroom Patch, Sudoku and Bridges; none had
 been judged by ear when this was
 written: the rules below are how it was made, not proof it is right. When the
 user corrects a sound, record the correction here.
@@ -53,6 +53,15 @@ set is choosing which cues get a file.
   when the deciding row has *landed*, not when Enter was pressed -- the same
   rule the board already keeps for its sprout. `lost` is a calm descending
   phrase, never a fail sting: running out of rows is "maybe tomorrow".
+- **Bridges was the second board with no cue calls** (only `enter` and
+  `solved`), and got `place`/`remove` on a drag (the plank cycle runs back
+  to 0, so which one is read off the plank count), `met` when an islet's
+  number is satisfied and `over` when it is pushed past it (both in its
+  `_settle`, so undo and hint sound the same), `locked` on a refused drag,
+  and the usual undo, hint, check and reset. Sudoku's set added `pencil`
+  for a note, `line` when a move finishes a row, column or region (checked
+  outside the wave, so reduce motion still hears it), and `locked` on a
+  refused tap.
 - A cue that fires per cell in one frame (Binairo's `blush_in`, `line`) is
   fine: `cue()` plays a repeat inside `CUE_GAP` (60 ms) once.
 - Reuse cue names across boards where the moment is the same (`place`,

@@ -674,7 +674,14 @@ func _apply(i: int, d: int) -> bool:
 		_busy_for(Motion.DROP_TIME)
 	_busy_for(Motion.BUMP_TIME)
 	_settle(before, i, now)
-	fx.cue("place")
+	fx.cue("pencil" if _pencil else "place")
+	# A row, column or region the move finished rings as its wave goes out
+	# (and under reduce motion, where the wave is not drawn, all the same).
+	var after: Array = state.finished_units()
+	for u in after.size():
+		if bool(after[u]) and not bool(before[u]):
+			fx.cue("line")
+			break
 	_redraw()
 	note_move()
 	return true
@@ -714,6 +721,7 @@ func _refuse(i: int, line: String) -> void:
 	_shiver[i] = _now()
 	_busy_for(Motion.SHIVER_TIME)
 	_speak(line, Face.Expr.WORRIED)
+	fx.cue("locked")
 	_redraw()
 
 # --- the HUD's actions ---

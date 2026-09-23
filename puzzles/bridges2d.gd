@@ -1112,11 +1112,14 @@ func _release() -> void:
 		if state.cycle(lane) == before:
 			_refresh()
 			return
+		# The cycle runs 0-1-2-3 and back to 0: a plank laid, or the run lifted.
+		fx.cue("place" if state.planks(lane) > before else "remove")
 		_last = from
 		_after_move(snap)
 		return
 	var wipe_snap := _snapshot()
 	if wipe != "" and state.clear_run(wipe):
+		fx.cue("remove")
 		_after_move(wipe_snap)
 	else:
 		_refresh()
@@ -1130,6 +1133,7 @@ func _release() -> void:
 func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 		line: String) -> void:
 	_say(line, Face.Expr.STRAIN)
+	fx.cue("locked")
 	if not Motion.reduce:
 		_refuse = {"at": _now(), "from": from, "dir": dir, "key": key,
 			"blocker": blocker}
@@ -1206,8 +1210,10 @@ func _settle(snap: Dictionary, when := Callable()) -> void:
 		if now_d == 0:
 			_met_at[cell] = t
 			fx.ring(_at(cell), _islet_r() * RING_R, Pal.GOOD)
+			fx.cue("met")
 		elif now_d > 0 and was_d <= 0:
 			_shiver_at[cell] = t
+			fx.cue("over")
 	_busy_for(longest + maxf(Motion.DROP_TIME,
 		maxf(Motion.BUMP_TIME, maxf(Motion.POP_OUT, Motion.SHIVER_TIME))))
 	_refresh()
@@ -1249,6 +1255,7 @@ func undo() -> bool:
 	_refuse = {}
 	_say(TIP_REST, Face.Expr.HAPPY)
 	_settle(snap)
+	fx.cue("undo")
 	moved.emit()
 	check_solved()
 	return true
@@ -1271,6 +1278,7 @@ func hint() -> bool:
 	_refuse = {}
 	_say("A plank the answer wants is in.", Face.Expr.HAPPY)
 	_settle(snap)
+	fx.cue("hint")
 	# The hint's own pair, over the plank the answer wanted: a ring out of the
 	# lane and sparkles rising off it, which is the Hint row of the table.
 	var at := _lane_middle(key)
@@ -1301,6 +1309,7 @@ func check() -> int:
 	_say("%d %s in the way." % [wrong.size(), "run is" if wrong.size() == 1 else "runs are"]
 		if not wrong.is_empty() else "Nothing you have laid is wrong.",
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
+	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_refresh()
 	return wrong.size()
 
@@ -1330,6 +1339,7 @@ func reset_board() -> void:
 	_running = true
 	_say(TIP_REST, Face.Expr.HAPPY)
 	_settle(snap, _reset_wave)
+	fx.cue("reset")
 	for cell in state.islets:
 		_hop_at[cell] = t + _reset_delay(cell)
 	_busy_for(_reset_delay(Vector2i.ZERO) + Motion.HOP_TIME)
