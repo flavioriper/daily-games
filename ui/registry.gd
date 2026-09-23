@@ -314,6 +314,15 @@ const PUZZLES := [
 		"actions": false,
 		"tip": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): the word comes from the 217
+		# commonest answers, the first 467 or all 968 (content/hidden_word.json's
+		# bands), and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "Everyday words"},
+			{"difficulty": 1, "name": "Medium", "line": "Less common words"},
+			{"difficulty": 2, "name": "Hard", "line": "Any word"},
+		],
 	},
 	{
 		"id": "wordtrail",
