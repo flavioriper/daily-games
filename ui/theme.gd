@@ -6,6 +6,7 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 4.
 
 const Pal = preload("res://core/palette.gd")
+const UiSound = preload("res://ui/ui_sound.gd")
 
 const DISPLAY_PATH := "res://assets/fonts/Fredoka-Variable.ttf"
 const BODY_PATH := "res://assets/fonts/Nunito-Variable.ttf"
@@ -194,12 +195,16 @@ static func paper() -> ShaderMaterial:
 ## `tree` without a material of its own. Installed once, by world/main.gd
 ## before any screen builds, the way the theme is one Theme for the whole HUD:
 ## a stylebox cannot carry a material, and the alternative was every widget
-## remembering to ask. The check runs for every node that enters the tree,
+## remembering to ask. It wires every BaseButton's click (ui/ui_sound.gd)
+## for the same reason. The check runs for every node that enters the tree,
 ## 3D included; it is a type test and costs nothing worth measuring.
 static func dress(tree: SceneTree) -> void:
 	tree.node_added.connect(_dress_node)
 
 static func _dress_node(node: Node) -> void:
+	# Every button clicks, the same way every face takes the paper.
+	if node is BaseButton:
+		UiSound.wire(node)
 	if node is Button or node is Panel or node is PanelContainer:
 		var c := node as CanvasItem
 		if c.material == null:

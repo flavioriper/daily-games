@@ -14,6 +14,7 @@ extends Node2D
 
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
+const UiSound = preload("res://ui/ui_sound.gd")
 
 const PUFF_POOL := 4
 const SPARKLE_POOL := 3
@@ -143,6 +144,8 @@ func cue(cue_name: String, pitch := 1.0) -> void:
 	player.stream = stream
 	player.pitch_scale = pitch
 	player.play()
+	# The board answered: a button pressed this frame keeps its click quiet.
+	UiSound.board_frame = Engine.get_process_frames()
 
 ## The board this Fx2D serves: the nearest ancestor that names a puzzle.
 func _puzzle_id() -> String:

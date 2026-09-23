@@ -51,6 +51,20 @@ set is choosing which cues get a file.
   one family. Do not point one board at another's folder; copy or
   regenerate, so each set can be tuned alone.
 
+## The interface click
+
+Every button in the game clicks (`ui/ui_sound.gd`, `assets/sfx/ui/click.ogg`,
+`tools/gen_sfx.py ui`): `CozyTheme.dress()` wires it to every `BaseButton` that
+enters the tree, so a new button needs nothing. The click waits for the end of
+the frame and **stays quiet if a board played a cue in that frame** (Fx2D
+stamps `UiSound.board_frame`): a tray chip that places, Undo, Hint and Check
+are answered by the board's own sound, and a button on a board with no set
+yet (Hidden Word's keys, Sudoku's pad) still clicks. A button with the meta
+`silent` never clicks. The tip card is not a button, so it calls
+`UiSound.click(self)` itself; anything else tappable that is not a
+`BaseButton` must do the same. Harnesses that skip `main.tscn` never install
+`dress()` and stay quiet.
+
 ## Levels and lengths
 
 - **Chatty cues quiet, rare cues loud.** The third number in each `SETS`

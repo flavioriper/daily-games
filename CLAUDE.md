@@ -1383,7 +1383,8 @@ cues that fire on every touch (Binairo's `focus`, `blush_out`) get no file.
 One take per cue; the user listens and names the ones to redo. The set is
 keyed by `puzzle_id()`, not the card's name (Code Break's is `mastermind`).
 Binairo, Code Break, Balance, Untangle, Shikaku and Tents have sets
-(2026-09-23).
+(2026-09-23). Every button clicks through `ui/ui_sound.gd`, wired by
+`CozyTheme.dress()`, and keeps quiet when a board cue answered the same frame.
 
 ## Art: shading direction
 

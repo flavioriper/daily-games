@@ -24,6 +24,10 @@ STYLE = ("cozy casual mobile puzzle game UI sound, soft warm wooden and "
 
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones)
 SETS = {
+    # The interface, not a board: every button's click (ui/ui_sound.gd).
+    "ui": {
+        "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
+    },
     "binairo": {
         "place":    ("a single soft wooden tile tap with a tiny bubbly pop, very short", 0.5, -6),
         "clear":    ("a very short soft downward whoosh-pop, a small token lifted off a wooden board", 0.5, -9),

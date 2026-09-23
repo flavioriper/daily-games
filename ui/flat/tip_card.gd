@@ -17,6 +17,7 @@ signal open
 
 const Face = preload("res://ui/faces/face.gd")
 const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const UiSound = preload("res://ui/ui_sound.gd")
 
 const HEIGHT := 140.0
 const SPROUT := 88.0
@@ -81,6 +82,7 @@ func _build() -> void:
 
 func _on_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and not event.pressed:
+		UiSound.click(self)
 		open.emit()
 
 ## Reads what the board says is broken and whether it is done.
