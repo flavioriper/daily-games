@@ -6,8 +6,9 @@ extends RefCounted
 ## TranslationServer (locale/turn.csv); this is the part TranslationServer
 ## does not do.
 ##
-## Only the turn flow is keyed so far. The twelve boards keep their hardcoded
-## English until their own pass.
+## Only the turn flow's strings are keyed so far; the boards keep their
+## hardcoded English until their own pass. The two word boards' *words* follow
+## the language already, through content() and fold().
 ## Spec: docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md,
 ## section 6.
 
@@ -66,6 +67,37 @@ static func number(n: float, decimals: int = 0) -> String:
 	grouped = grouped.replace(" ", thousands)
 	var out := grouped if parts.size() == 1 else "%s%s%s" % [grouped, point, parts[1]]
 	return "-" + out if n < 0.0 else out
+
+## `path` as this language ships it: `content/hidden_word.json` is English,
+## `content/hidden_word.pt.json` is Portuguese. A language with no file of
+## its own reads the English one, so a new content file needs no code.
+static func content(path: String) -> String:
+	var dot := path.rfind(".")
+	var own := "%s.%s%s" % [path.substr(0, dot), current(), path.substr(dot)]
+	return own if current() != "en" and FileAccess.file_exists(own) else path
+
+## The letters this language types on Hidden Word's keyboard: A to Z, and
+## Spanish's Ñ, which is a letter there and not an n with a mark on it.
+static func alphabet() -> String:
+	return "abcdefghijklmnopqrstuvwxyzñ" if current() == "es" else "abcdefghijklmnopqrstuvwxyz"
+
+const _BARE := {
+	"á": "a", "à": "a", "â": "a", "ã": "a", "ä": "a",
+	"é": "e", "è": "e", "ê": "e", "ë": "e",
+	"í": "i", "ì": "i", "î": "i", "ï": "i",
+	"ó": "o", "ò": "o", "ô": "o", "õ": "o", "ö": "o",
+	"ú": "u", "ù": "u", "û": "u", "ü": "u",
+	"ç": "c", "ñ": "n",
+}
+
+## `word` lower-cased with its accents taken off, the way a player types it:
+## CORAÇÃO is typed CORACAO. Ñ stays where the keyboard has a key for it.
+static func fold(word: String) -> String:
+	var out := ""
+	var keep := alphabet()
+	for ch in word.to_lower():
+		out += ch if keep.contains(ch) else String(_BARE.get(ch, ch))
+	return out
 
 ## The inverse: reads a number written in any of the three.
 static func parse_number(s: String) -> float:

@@ -1591,7 +1591,7 @@ ratio: within 6 percent is 100, a factor of five is 0.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. Only the turn flow's strings are
-keyed (`locale/turn.csv`); the eighteen boards are still hardcoded English, and
+keyed (`locale/turn.csv`); the eighteen boards' chrome is still hardcoded English, and
 `HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
 own blurbs get keyed. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228
@@ -1599,6 +1599,23 @@ faces, in the same 3,600-5,600-faces-per-glyph range as `GUESS` at 22,356) --
 the only glyphs that need the weight dropped to 550 are digits 8 and 9. That
 was measured once with a throwaway probe; there is no need to re-run it for
 a new accented title.
+
+**The two word boards deal words in the player's language** (2026-09-23).
+`Locale.content(path)` turns `content/hidden_word.json` into
+`content/hidden_word.pt.json` when that file exists and falls back to the
+English one otherwise, and both states cache per language, so a change in the
+settings sheet reaches the next board dealt and never an open one. Hidden
+Word plays on `Locale.fold()`ed words -- accents off, so CORAÇÃO is typed
+CORACAO, the way Portuguese players already know the game -- but **Ñ is a
+letter in Spanish** and gets its own key at the end of the middle row
+(`KeyBoard.ROWS_ES`, ten keys, the top row's width exactly). `state.written`
+keeps the accents for the reveal. The keyboard outlives the board, so
+`match_locale()` re-lays it when the language changed under it. Word Trail
+types nothing, so its tiles wear the accents. The pt and es lists come from
+`wordfreq` (CC-BY-SA 4.0, attributed in each file's `note`), with the answers
+curated by hand to the English rules; the accept lists are every five-letter
+word `wordfreq` knows, folded, because being told a real word is not a word
+is still the worst thing that board can do.
 
 Roadmap: `docs/brainstorm/single-turn-roadmap.md`. Phase 0's design:
 `docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md`.

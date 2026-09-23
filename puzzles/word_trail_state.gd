@@ -22,6 +22,7 @@ const ATTEMPTS := 60
 const RESTARTS := 120
 
 static var _words_cache: Dictionary = {}
+static var _words_lang := ""
 
 var n: int = 5
 var words: Array[Dictionary] = []
@@ -33,18 +34,24 @@ var given: Dictionary = {}
 static func lens_for(difficulty: int) -> Array:
 	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 
-## The shipping list, bucketed by length and read once.
+## The shipping list, bucketed by length and read once per language
+## (content/word_trail.pt.json and its siblings; Locale.content() falls back
+## to English). Words keep their accents: nothing is typed on this board, so
+## a tile can wear the Ç the word is spelt with.
 static func word_bank() -> Dictionary:
-	if not _words_cache.is_empty():
+	if not _words_cache.is_empty() and _words_lang == Locale.current():
 		return _words_cache
-	var f := FileAccess.open(WORDS_PATH, FileAccess.READ)
+	_words_lang = Locale.current()
+	_words_cache = {}
+	var path := Locale.content(WORDS_PATH)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
-		push_error("word_trail: cannot open " + WORDS_PATH)
+		push_error("word_trail: cannot open " + path)
 		return {}
 	var parsed = JSON.parse_string(f.get_as_text())
 	f.close()
 	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("words"):
-		push_error("word_trail: " + WORDS_PATH + " has no words")
+		push_error("word_trail: " + path + " has no words")
 		return {}
 	_words_cache = parsed["words"]
 	return _words_cache

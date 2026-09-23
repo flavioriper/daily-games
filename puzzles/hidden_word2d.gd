@@ -299,6 +299,8 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
+	if _tray != null:
+		_tray.match_locale()
 	_row_at = []
 	_shiver_at = []
 	for _r in State.ROWS:
@@ -341,6 +343,7 @@ func _bring_keys_back() -> void:
 ## from the row it has just marked; nothing else writes to it.
 func set_tray(t: Control) -> void:
 	_tray = t
+	_tray.match_locale()
 	# A handoff is once per board, and the same tray outlives the board that
 	# had it: the settings sheet's New puzzle spawns a fresh one against it.
 	# So the new word starts with the keys untouched, and with the keyboard
@@ -889,7 +892,7 @@ func _draw_reveal(t: float, shown: Array) -> void:
 	_line(CozyTheme.body(500), WORD_LABEL_FONT, Vector2(x, top + WORD_LABEL_Y),
 		"The word was", Color(Pal.TEXT_DIM, a))
 	_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_Y),
-		state.answer.to_upper(), Color(Pal.GOOD, a))
+		state.written.to_upper(), Color(Pal.GOOD, a))
 
 ## How far below its seat the reveal still is, `since` seconds in: REVEAL_RISE
 ## taken home by the back ease, the curve `Motion.slide` would have used on a

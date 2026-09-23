@@ -41,6 +41,9 @@ const WIDE_BACK := 126.0
 const WIDE_ENTER := 157.0
 const RADIUS := 16.0
 const ROWS := ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
+## Spanish types Ñ, and its keyboards put it at the end of the middle row,
+## which makes that row ten keys -- the top row's width exactly.
+const ROWS_ES := ["qwertyuiop", "asdfghjklñ", "zxcvbnm"]
 const FONT_SIZE := 44
 ## The bottom edge under every key's face, and how much a press darkens it --
 ## the family's own ratios (ui/menu/puzzle_card_2d.gd's chips wear the same
@@ -70,6 +73,10 @@ var _bump_tw: Dictionary = {}    # letter -> Tween
 var _row_slots: Array[Control] = []
 var _rows: Array[HBoxContainer] = []
 var _row_tw: Array = [null, null, null]
+## The language the keys were laid out for. The tray outlives the board, and
+## the settings sheet that spawns a New puzzle also carries the language
+## picker, so a board asks match_locale() before it deals a word.
+var _lang := ""
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -83,7 +90,9 @@ func _make_inner() -> Container:
 	return col
 
 func _build() -> void:
-	for r in ROWS.size():
+	_lang = Locale.current()
+	var rows: Array = ROWS_ES if Locale.current() == "es" else ROWS
+	for r in rows.size():
 		var slot := Control.new()
 		slot.name = "RowSlot_%d" % r
 		slot.custom_minimum_size = Vector2(0.0, KEY.y)
@@ -101,13 +110,32 @@ func _build() -> void:
 		slot.resized.connect(_fit_row.bind(r))
 		_fit_row(r)
 
-		var letters: String = ROWS[r]
+		var letters: String = rows[r]
 		if r == 2:
 			_add_special(row, "erase", WIDE_BACK)
 		for i in letters.length():
 			_add_letter(row, letters[i])
 		if r == 2:
 			_add_special(row, "commit", WIDE_ENTER)
+
+## Lays the keys out again when the language has changed since they were
+## laid: Spanish has an Ñ the others do not. Nothing to do otherwise.
+func match_locale() -> void:
+	if _lang == Locale.current():
+		return
+	for r in _row_tw.size():
+		Motion.stop(_row_tw[r])
+	for slot in _row_slots:
+		_inner.remove_child(slot)
+		slot.queue_free()
+	_row_slots = []
+	_rows = []
+	_row_tw = [null, null, null]
+	_keys = {}
+	_chips = []
+	_press_tw = {}
+	_bump_tw = {}
+	_build()
 
 ## Keeps row `r` filling its slot's whole width -- the slot's width is
 ## whatever the VBox leaves it, which is the tray's own width and not a

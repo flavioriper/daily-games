@@ -28,33 +28,44 @@ const HINTS := 2
 
 const GLYPH := ["🟩", "🟨", "⬜"]
 
+## The word folded to what the keyboard types (CORAÇÃO is CORACAO), which is
+## what every rule compares against; `written` keeps its accents for the
+## reveal.
 var answer := ""
+var written := ""
 var rows: Array[String] = []
 var marks: Array = []
 var typed := ""
 var given: Array[int] = []
 var hints_left := HINTS
 
-## The accept list, read once per board and shared by every instance in the
-## process: 15,921 keys is a few ms and half a megabyte, and a harness that
-## builds ten boards should pay for it once.
+## The accept list, read once per language and shared by every instance in
+## the process: 15,921 keys is a few ms and half a megabyte, and a harness
+## that builds ten boards should pay for it once. The lists follow
+## Locale.current() (content/hidden_word.pt.json and its siblings), and a
+## change of language is read on the next board, never under an open one.
+static var _lang := ""
 static var _accept: Dictionary = {}
 static var _answers: Array = []
 static var _bands: Array = []
 
 static func _load() -> void:
-	if not _accept.is_empty():
+	if not _accept.is_empty() and _lang == Locale.current():
 		return
-	for word in FileAccess.get_file_as_string(ACCEPT).split("\n", false):
-		_accept[word.strip_edges()] = true
-	var doc = JSON.parse_string(FileAccess.get_file_as_string(WORDS))
+	_lang = Locale.current()
+	_accept = {}
+	for word in FileAccess.get_file_as_string(Locale.content(ACCEPT)).split("\n", false):
+		_accept[Locale.fold(word.strip_edges())] = true
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(Locale.content(WORDS)))
+	_answers = []
+	_bands = []
 	if typeof(doc) == TYPE_DICTIONARY:
 		_answers = doc.get("answers", [])
 		_bands = doc.get("bands", [])
 	# The board must never refuse its own word. A test asserts the two lists
 	# already agree; this is the belt to that brace, and it is free.
 	for w in _answers:
-		_accept[String(w)] = true
+		_accept[Locale.fold(String(w))] = true
 
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_load()
@@ -64,7 +75,8 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	given = []
 	hints_left = HINTS
 	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()
-	answer = String(_answers[rng.randi() % maxi(band, 1)]) if not _answers.is_empty() else "mossy"
+	written = String(_answers[rng.randi() % maxi(band, 1)]) if not _answers.is_empty() else "mossy"
+	answer = Locale.fold(written)
 
 func accepts(word: String) -> bool:
 	_load()
@@ -97,8 +109,7 @@ func type_letter(letter: String) -> bool:
 	if letter.length() != 1:
 		return false
 	var lower := letter.to_lower()
-	var c := lower.unicode_at(0)
-	if c < 97 or c > 122:
+	if not Locale.alphabet().contains(lower):
 		return false
 	typed += lower
 	return true
