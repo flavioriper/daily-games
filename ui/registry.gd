@@ -177,6 +177,14 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 5 by 6, 6 by 8 or 7 by 9 field,
+		# and each is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "5 × 6"},
+			{"difficulty": 1, "name": "Medium", "line": "6 × 8"},
+			{"difficulty": 2, "name": "Hard", "line": "7 × 9"},
+		],
 	},
 	{
 		"id": "tents",
