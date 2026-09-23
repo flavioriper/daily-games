@@ -482,6 +482,16 @@ const PUZZLES := [
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2],
+		# Asks like Sudoku (2026-09-23): a 5 by 5, 6 by 6 or 7 by 7 garden
+		# (fairy_lights_gen.gd's SIZES), and each is its own daily with its
+		# own done mark. The lanterns are not counted on the sheet: Prim
+		# lays a different number every day.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "5 × 5 garden"},
+			{"difficulty": 1, "name": "Medium", "line": "6 × 6 garden"},
+			{"difficulty": 2, "name": "Hard", "line": "7 × 7 garden"},
+		],
 	},
 	{
 		"id": "planes",
