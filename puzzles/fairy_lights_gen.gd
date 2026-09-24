@@ -37,8 +37,9 @@ const W := 8
 const DR := [-1, 0, 1, 0]
 const DC := [0, 1, 0, -1]
 
-## The field per band: easy, medium, hard.
-const SIZES := [5, 6, 7]
+## The field per band: easy, medium, hard, insane. Insane's row is
+## provisional, replaced by the bank in batch 2.
+const SIZES := [5, 6, 7, 8]
 ## Trees grown before the promise is given up on. Never approached in the
 ## 6,000 boards the spec measured (worst 8, at 7x7); it exists only so a
 ## pathological seed cannot hang the board opening, the way Sudoku's time
@@ -163,7 +164,7 @@ static func solvable(n: int, sol: PackedInt32Array) -> bool:
 ## proved, the dealt board, how many trees were grown and whether the promise
 ## was actually kept.
 static func build(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
-	var band: int = clampi(difficulty, 0, 2)
+	var band: int = clampi(difficulty, 0, SIZES.size() - 1)
 	var n: int = SIZES[band]
 	var cells := n * n
 	# The middle cell. An even side has four of them; the seed picks one.

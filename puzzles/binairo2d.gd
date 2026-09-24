@@ -73,6 +73,10 @@ const LEVELS := [
 	{"size": 6, "min_clues": 12, "signs": 8},
 	{"size": 6, "min_clues": 0, "signs": 6},
 	{"size": 8, "min_clues": 12, "signs": 10},
+	# Insane's fallback: the provisional 10x10/min_clues 14 row blew the
+	# 194 ms gate by orders of magnitude (the strip's backtracking solver is
+	# exponential in the empty-cell count), replaced by the bank in batch 2.
+	{"size": 8, "min_clues": 0, "signs": 6},
 ]
 
 ## The armed brush: -2 none (taps cycle), -1 clear, 0 sun, 1 moon.

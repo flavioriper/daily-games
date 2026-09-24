@@ -17,10 +17,16 @@ const Gen = preload("res://puzzles/shikaku_gen.gd")
 ## drawing: a 1 or a 2 is forced on sight. The island's own numbers, so the
 ## two boards hand out the same puzzle.
 const MAX_AREA := 9
+## Insane's own area cap: an 8x10 field wants bigger plots than MAX_AREA
+## leaves room for.
+const MAX_AREA_INSANE := 12
 const MIN_AREA := 3
 const HINTS := 3
 ## Width, height and the generator's area cap, per difficulty.
-const SIZES := [[5, 6, 6], [6, 8, MAX_AREA], [7, 9, MAX_AREA]]
+# Insane's row is the fallback: MAX_AREA_INSANE's 8x10 missed the 194 ms
+# gate (worst 235 ms over 40 seeds on this Mac), replaced by the bank in
+# batch 2.
+const SIZES := [[5, 6, 6], [6, 8, MAX_AREA], [7, 9, MAX_AREA], [8, 10, MAX_AREA]]
 
 var w: int = 6
 var h: int = 8

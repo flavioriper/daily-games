@@ -27,7 +27,8 @@ const HINTS := 3
 ## (puzzles/oneline3d.gd). Measured over 200 generated boards a step: easy is
 ## about 11.5 lines over 8.4 posts, 4.8 of them diagonal; medium 15.4 over
 ## 10.9; hard 20 over 13.8, 9.3 diagonal.
-const DIMS := [[3, 3, 0.55], [4, 3, 0.5], [4, 4, 0.45]]
+## Insane's provisional band, replaced by the bank in batch 2.
+const DIMS := [[3, 3, 0.55], [4, 3, 0.5], [4, 4, 0.45], [5, 4, 0.45]]
 
 ## What step() did, so the board knows whether to lay a plank, dip the post or
 ## say nothing at all.

@@ -28,7 +28,8 @@ const HINTS := 3
 ## The ladder, the island's exactly. Nine is the island's cap -- a run of ten
 ## has no stone face to sit on -- and this screen keeps it so the two boards
 ## play the same game; widening it is a decision for after the verdict.
-const SIZES := [5, 7, 9]
+## Insane's provisional band, replaced by the bank in batch 2.
+const SIZES := [5, 7, 9, 10]
 
 ## A line's state, which is what its clue numbers wear.
 const LINE_IDLE := 0

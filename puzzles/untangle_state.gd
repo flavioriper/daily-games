@@ -19,7 +19,8 @@ const Gen = preload("res://puzzles/untangle_gen.gd")
 const HINTS := 3
 ## Lanterns per difficulty, the island's ladder: about 12, 17 and 24 cords,
 ## opening at about 9, 22 and 51 crossings.
-const NODES := [7, 10, 14]
+## Insane's provisional band, replaced by the bank in batch 2.
+const NODES := [7, 10, 14, 20]
 
 var nodes: int = 7
 var edges: Array = []                               # [Vector2i], a cord each

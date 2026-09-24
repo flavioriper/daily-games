@@ -22,14 +22,15 @@ extends RefCounted
 ## phone. Spec: docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
 ## section 4.
 
-## n and mushrooms per difficulty: easy, medium, hard.
-const SIZES := [[6, 6], [7, 9], [8, 12]]
+## n and mushrooms per difficulty: easy, medium, hard, insane. Insane's row
+## is provisional, replaced by the bank in batch 2.
+const SIZES := [[6, 6], [7, 9], [8, 12], [9, 16]]
 ## Whether the solver may subtract subsets while carving -- the 1-2-1 pattern.
-## Hard only, which is what makes hard a different kind of thinking and not
+## Hard and up, which is what makes hard a different kind of thinking and not
 ## just a bigger field.
-const SUBSETS := [false, false, true]
+const SUBSETS := [false, false, true, true]
 ## What share of the carved-away numbers is handed back.
-const GIVE_BACK := [0.45, 0.20, 0.0]
+const GIVE_BACK := [0.45, 0.20, 0.0, 0.0]
 const DIRS := [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
 	Vector2i(-1, 0), Vector2i(1, 0),
 	Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]
