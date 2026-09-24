@@ -65,15 +65,17 @@ extends RefCounted
 
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 
-## The three bands: the box the region is grown inside, how many patches, and
+## The four bands: the box the region is grown inside, how many patches, and
 ## the sizes a patch is drawn from. The sizes are deliberately tight against
 ## the box -- band 0's five patches want 20 to 25 cells of a 25-cell box --
 ## because a region that fills most of its box is a shape with a silhouette,
-## and one that fills a third of it is a blot.
+## and one that fills a third of it is a blot. Insane's row is provisional,
+## replaced by the bank in this board's own batch.
 const BANDS := [
 	{"box": 5, "patches": 5, "sizes": [4, 5]},
 	{"box": 6, "patches": 6, "sizes": [4, 5, 6]},
 	{"box": 7, "patches": 8, "sizes": [4, 5, 6]},
+	{"box": 7, "patches": 10, "sizes": [3, 4, 5, 6]},
 ]
 ## A patch's bounding box may not run past this in either direction. Four
 ## is what the rack can hold at a legible size: its two shelves share the
@@ -165,7 +167,7 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			unique = board
 		if d == 0 and int(board.nodes) > EASY_NODES:
 			continue
-		if d == 2 and int(board.nodes) < HARD_NODES:
+		if d >= 2 and int(board.nodes) < HARD_NODES:
 			continue
 		return board
 	if not unique.is_empty():

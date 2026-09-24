@@ -8,13 +8,15 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-20-bridges-flat-design.md, section 4.
 ## Ported from the mock's generator, docs/brainstorm/concepts.html#bridges.
 
-## The three bands (spec section 4). `span` is the furthest a run may reach,
+## The four bands (spec section 4). `span` is the furthest a run may reach,
 ## `loops` how many already-facing pairs the second pass tries to join, and
-## `guess_free` whether propagation alone must finish the board.
+## `guess_free` whether propagation alone must finish the board. Insane's row
+## is provisional, replaced by the bank in this board's own batch.
 const BANDS := [
 	{"n": 7, "islets": 11, "span": 5, "loops": 4, "guess_free": true},
 	{"n": 9, "islets": 16, "span": 5, "loops": 6, "guess_free": false},
 	{"n": 11, "islets": 24, "span": 5, "loops": 10, "guess_free": false},
+	{"n": 11, "islets": 30, "span": 6, "loops": 12, "guess_free": false},
 ]
 const MAX_DEGREE := 6
 const MAX_PLANKS := 3

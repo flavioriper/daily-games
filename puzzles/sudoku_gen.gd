@@ -28,10 +28,11 @@ static var FULL := 511
 ## A region's height and width in cells.
 static var BOX_R := 3
 static var BOX_C := 3
-## The side of the grid, per band: easy, medium, hard.
-const SIZE := [6, 6, 9]
-## Givens aimed at, per band. The mini's are out of 36 cells, not 81.
-const TARGET := [14, 10, 26]
+## The side of the grid, per band: easy, medium, hard, insane.
+const SIZE := [6, 6, 9, 9]
+## Givens aimed at, per band. The mini's are out of 36 cells, not 81. Insane's
+## row is provisional, replaced by the bank in this board's own batch.
+const TARGET := [14, 10, 26, 24]
 ## Tries before the band's technique test is given up on. Measured: six left
 ## one hard day in twelve solvable by singles, ten leaves none.
 const ATTEMPTS := 10

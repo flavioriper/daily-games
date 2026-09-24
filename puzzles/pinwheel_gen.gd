@@ -31,16 +31,18 @@ extends RefCounted
 
 const DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
-## The three bands: the frame, the size multiset the grow partitions it into,
+## The four bands: the frame, the size multiset the grow partitions it into,
 ## the taps a scramble must be worth, and how deep a pile it may open with.
 ## Each multiset sums to exactly `cols * rows`, which is what makes "no cell
 ## bare" and "no cell stained" the same sentence (the spec's rule 7). Band 1
 ## is the 5x7 of eleven pieces counted off the reference screenshot, and it
-## is the band the menu opens.
+## is the band the menu opens. Insane's row is provisional, replaced by the
+## bank in this board's own batch.
 const BANDS := [
 	{"cols": 5, "rows": 5, "sizes": [1, 2, 2, 3, 3, 3, 4, 4, 3], "min_turns": 8, "max_stack": 2},
 	{"cols": 5, "rows": 7, "sizes": [1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 4], "min_turns": 14, "max_stack": 3},
 	{"cols": 6, "rows": 8, "sizes": [2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 4, 4], "min_turns": 20, "max_stack": 3},
+	{"cols": 7, "rows": 8, "sizes": [2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3], "min_turns": 26, "max_stack": 3},
 ]
 
 const ATTEMPTS := 400     ## grows before the loop gives up
