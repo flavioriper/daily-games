@@ -101,7 +101,7 @@ func _ready() -> void:
 	_sub = Label.new()
 	_sub.theme_type_variation = "CardBodyDim"
 	_sub.add_theme_font_size_override("font_size", 34)
-	_sub.text = "Perfect balance!"
+	_sub.text = "WIN_PERFECT"
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sub.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_sub.offset_top = SUB_Y - 24.0

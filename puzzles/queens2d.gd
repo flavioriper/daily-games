@@ -98,11 +98,8 @@ const WIN_WAIT := 1.6
 const HINTS := State.HINTS
 ## How long a teaching line stands before the next, the family's own cycle.
 const TIP_CYCLE := 10.0
-const TIPS := [
-	"One queen in every row, every column and every colour.",
-	"A queen crosses out every seat she can see.",
-	"Two queens never touch, not even at a corner.",
-]
+## Translation keys (locale/ui.csv), read through tr() when said.
+const TIPS := ["QN_TIP_ONE_EACH", "QN_TIP_SEES", "QN_TIP_TOUCH"]
 
 var state = State.new()
 ## Kept for the shared tray contract. Queens input is gesture-driven now: taps
@@ -159,7 +156,7 @@ func puzzle_id() -> String: return "queens"
 func title() -> String: return "Queens"
 
 func rules() -> String:
-	return "Seat one queen in every row, every column and every colour. No two queens may touch, not even at a corner. A queen crosses out every seat she can see."
+	return tr("QN_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -193,7 +190,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -742,7 +739,7 @@ func _wobble(bee: Control) -> void:
 ## A queen refused on `cell`, which a queen already sees: the pebble there
 ## shivers and the cell blushes, and the sprout says why.
 func _refuse_seen(cell: Vector2i) -> void:
-	_say("A queen already sees that seat.", Face.Expr.WORRIED)
+	_say(tr("QN_SEEN"), Face.Expr.WORRIED)
 	fx.cue("locked")
 	if Motion.reduce:
 		return
@@ -753,7 +750,7 @@ func _refuse_seen(cell: Vector2i) -> void:
 ## A lift refused on a given queen: she shivers and strains for a beat while
 ## her cell blushes, and the sprout says why.
 func _refuse_pinned(cell: Vector2i) -> void:
-	_say("That queen was given. She stays.", Face.Expr.WORRIED)
+	_say(tr("QN_PINNED"), Face.Expr.WORRIED)
 	fx.cue("locked")
 	_blush_cell(cell)
 	var bee: BeeFace = _bees.get(cell)
@@ -953,14 +950,14 @@ func _speak() -> void:
 	if is_done():
 		return
 	if state.queens.is_empty() and state.crosses.is_empty():
-		_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+		_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 		return
 	var seated: int = state.queens.size()
 	var left := state.queens_left()
 	if seated == 0:
-		_say("%d queens to seat." % left, Face.Expr.HAPPY)
+		_say(tr("QN_TO_SEAT") % left, Face.Expr.HAPPY)
 		return
-	_say("%d %s seated, %d to go." % [seated, "queen" if seated == 1 else "queens", left],
+	_say((tr("QN_SEATED_ONE") if seated == 1 else tr("QN_SEATED_N")) % [seated, left],
 		Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
@@ -975,7 +972,7 @@ func _cycle_tip() -> void:
 			or not state.crosses.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1044,8 +1041,7 @@ func hint() -> bool:
 	fx.ring(at, _cell * RING_R, Pal.LEAF)
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
-	_say("This queen was given, and she stays." if (out.lifted as Array).is_empty()
-		else "That queen was in the wrong seat. This one was given, and she stays.",
+	_say(tr("QN_HINT") if (out.lifted as Array).is_empty() else tr("QN_HINT_MOVED"),
 		Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
@@ -1065,12 +1061,12 @@ func check() -> int:
 			_wobble(_bees[cell])
 		_blush_cell(cell)
 	if not wrong.is_empty():
-		_say("%d %s in the wrong seat." % [wrong.size(), "queen is" if wrong.size() == 1 else "queens are"],
+		_say((tr("QN_WRONG_ONE") if wrong.size() == 1 else tr("QN_WRONG_N")) % wrong.size(),
 			Face.Expr.WORRIED)
 	elif state.queens.is_empty():
-		_say("Seat a queen first.", Face.Expr.HAPPY)
+		_say(tr("QN_SEAT_FIRST"), Face.Expr.HAPPY)
 	else:
-		_say("Every queen you have seated is right.", Face.Expr.JOY)
+		_say(tr("QN_ALL_RIGHT"), Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_redraw()
 	return wrong.size()
@@ -1094,7 +1090,7 @@ func reset_board() -> void:
 	_shiver = {}
 	moves = 0
 	_running = true
-	_say("The court is cleared. A given queen keeps her seat.", Face.Expr.HAPPY)
+	_say(tr("QN_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_redraw()
 
@@ -1136,7 +1132,7 @@ func restore_completed_board() -> void:
 		bee.modulate.a = 1.0
 		bee.pinned = false
 		_set_expr(bee, Face.Expr.JOY)
-	_say("Every queen has her seat.", Face.Expr.JOY)
+	_say(tr("QN_WIN"), Face.Expr.JOY)
 	_redraw()
 
 func is_solved() -> bool:
@@ -1150,7 +1146,7 @@ func share_glyphs() -> String:
 ## One bee in JOY, and the words. The board stays on the card as it slides
 ## down, every queen on her colour and the crosses gone.
 func flat_win() -> Dictionary:
-	return {"faces": [BeeFace.new()], "subtitle": "Every queen has her seat."}
+	return {"faces": [BeeFace.new()], "subtitle": tr("QN_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -1175,7 +1171,7 @@ func _on_solved() -> void:
 		_grin(bee, delay)
 		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
 		k += 1
-	_say("Every queen has her seat.", Face.Expr.JOY)
+	_say(tr("QN_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME,
 		CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME))

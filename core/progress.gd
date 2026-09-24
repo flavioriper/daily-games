@@ -8,13 +8,13 @@ extends RefCounted
 
 static var path: String = "user://progress.cfg"
 
+## Keys into locale/ui.csv (ISLAND_0 is "Sunlit Cliffs", and so on); the
+## Label that shows one translates it.
 const ISLANDS := [
-	"Sunlit Cliffs", "Moss Harbour", "Lantern Cove", "Driftwood Point",
-	"Heron Shallows", "Fernwater Isle", "Pebble Reach", "Windmere Rock",
-	"Tidepool Terrace", "Quiet Anchorage", "Bramble Key", "Saltgrass Hollow",
-	"Kestrel Ledge", "Cinder Shoal", "Lily Landing", "Foxglove Cay",
-	"Willow Strand", "Marigold Bank", "Otter Narrows", "Copper Cliffs",
-	"Starling Rise", "Seagrass Flats", "Birch Haven", "Puffin Steps",
+	"ISLAND_0", "ISLAND_1", "ISLAND_2", "ISLAND_3", "ISLAND_4", "ISLAND_5",
+	"ISLAND_6", "ISLAND_7", "ISLAND_8", "ISLAND_9", "ISLAND_10", "ISLAND_11",
+	"ISLAND_12", "ISLAND_13", "ISLAND_14", "ISLAND_15", "ISLAND_16", "ISLAND_17",
+	"ISLAND_18", "ISLAND_19", "ISLAND_20", "ISLAND_21", "ISLAND_22", "ISLAND_23",
 ]
 
 ## Records that the player opened a puzzle on `date_key` (a Daily.date_key

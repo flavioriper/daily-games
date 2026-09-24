@@ -257,9 +257,9 @@ const SAND_DEEP := 0.22    # ACORN into TEXT, the wet sand at the waterline
 ## An islet pushed *over* its number is not one of them: it is drawn wrong --
 ## a `BAD` ring and washed turf -- and the finger fixes it, which is the house
 ## rule that feedback beats a mode.
-const TIP_REST := "Press an islet and drag at the one facing it."
-const TIP_NONE := "Nothing faces it across the water."
-const TIP_CROSS := "Another run crosses that lane."
+const TIP_REST := "BR_TIP_REST"
+const TIP_NONE := "BR_TIP_NONE"
+const TIP_CROSS := "BR_TIP_CROSS"
 
 var state = State.new()
 
@@ -339,7 +339,7 @@ var _solved_at := -1.0
 var _depth: Dictionary = {}
 var _sparked: Dictionary = {}
 
-var _tip_text := TIP_REST
+var _tip_text := tr(TIP_REST)
 var _tip_mood := Face.Expr.HAPPY
 
 func puzzle_id() -> String: return "bridges"
@@ -349,11 +349,7 @@ func title() -> String: return "Bridges"
 ## last**, because it is the one the reference's own rules card leaves out and
 ## the one this whole board rests on.
 func rules() -> String:
-	return "Join the islets with plank bridges.\n" \
-		+ "Each islet takes exactly its number of planks.\n" \
-		+ "Bridges run across or down only, never over an islet.\n" \
-		+ "At most three planks join the same two islets, and no two runs may cross.\n" \
-		+ "When you are done, every islet must be joined into one single network."
+	return tr("BR_RULES")
 
 ## Undo, Hint and Check: the plainest shape on the shelf. It picks nothing up,
 ## so the registry gives it no tray, and it has a real Check, so unlike
@@ -392,7 +388,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_depth = {}
 	_sparked = {}
 	_anim_until = 0.0
-	_say(TIP_REST, Face.Expr.HAPPY)
+	_say(tr(TIP_REST), Face.Expr.HAPPY)
 	_enter()
 	_refresh()
 
@@ -1132,7 +1128,7 @@ func _release() -> void:
 ## and the board does not redraw for six tenths of a second to show nothing.
 func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 		line: String) -> void:
-	_say(line, Face.Expr.STRAIN)
+	_say(tr(line), Face.Expr.STRAIN)
 	fx.cue("locked")
 	if not Motion.reduce:
 		_refuse = {"at": _now(), "from": from, "dir": dir, "key": key,
@@ -1147,8 +1143,8 @@ func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 func _after_move(snap: Dictionary) -> void:
 	_wrong = {}
 	_refuse = {}
-	if _tip_text != TIP_REST:
-		_say(TIP_REST, Face.Expr.HAPPY)
+	if _tip_text != tr(TIP_REST):
+		_say(tr(TIP_REST), Face.Expr.HAPPY)
 	_settle(snap)
 	note_move()
 
@@ -1253,7 +1249,7 @@ func undo() -> bool:
 		return false
 	_wrong = {}
 	_refuse = {}
-	_say(TIP_REST, Face.Expr.HAPPY)
+	_say(tr(TIP_REST), Face.Expr.HAPPY)
 	_settle(snap)
 	fx.cue("undo")
 	moved.emit()
@@ -1276,7 +1272,7 @@ func hint() -> bool:
 	_given[key] = true
 	_wrong = {}
 	_refuse = {}
-	_say("A plank the answer wants is in.", Face.Expr.HAPPY)
+	_say(tr("BR_HINT"), Face.Expr.HAPPY)
 	_settle(snap)
 	fx.cue("hint")
 	# The hint's own pair, over the plank the answer wanted: a ring out of the
@@ -1306,8 +1302,8 @@ func check() -> int:
 		_wrong[key] = t
 	if not wrong.is_empty():
 		_busy_for(maxf(Motion.FLASH_IN + Motion.FLASH_OUT, Motion.SHIVER_TIME))
-	_say("%d %s in the way." % [wrong.size(), "run is" if wrong.size() == 1 else "runs are"]
-		if not wrong.is_empty() else "Nothing you have laid is wrong.",
+	_say((tr("BR_CHECK_ONE") if wrong.size() == 1 else tr("BR_CHECK_N") % wrong.size())
+		if not wrong.is_empty() else tr("BR_CHECK_OK"),
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_refresh()
@@ -1337,7 +1333,7 @@ func reset_board() -> void:
 	_sparked = {}
 	moves = 0
 	_running = true
-	_say(TIP_REST, Face.Expr.HAPPY)
+	_say(tr(TIP_REST), Face.Expr.HAPPY)
 	_settle(snap, _reset_wave)
 	fx.cue("reset")
 	for cell in state.islets:
@@ -1367,7 +1363,7 @@ func share_glyphs() -> String:
 ## the win screen, because the board *is* the answer and there is nothing
 ## better to show.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "One network, every islet on it."}
+	return {"faces": [], "subtitle": tr("BR_WIN")}
 
 ## Long enough for the wave that lights the network, which runs outward from
 ## the islet the player finished at. It spends the wave's own clock
@@ -1426,7 +1422,7 @@ func restore_completed_board() -> void:
 	_depth = _wave_steps()
 	_sparked = _depth.duplicate()
 	_anim_until = 0.0
-	_say(TIP_REST, Face.Expr.HAPPY)
+	_say(tr(TIP_REST), Face.Expr.HAPPY)
 	_refresh()
 
 # --- the wave, and the one function that says where its front is ---

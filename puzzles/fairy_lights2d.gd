@@ -190,10 +190,10 @@ const HINTS := 3
 
 const TIP_CYCLE := 8.0
 const TIPS := [
-	"Tap a length of wire to turn it a quarter turn.",
-	"The post in the middle is where the light comes from.",
-	"Warm wire is live. Pale wire has not been reached yet.",
-	"Done when every lantern is lit and no end is loose.",
+	"FL_TIP_TAP",
+	"FL_TIP_POST",
+	"FL_TIP_WARM",
+	"FL_TIP_DONE",
 ]
 
 ## The one truth this board draws. Named `state` because tests/_win.gd
@@ -260,7 +260,7 @@ func puzzle_id() -> String: return "fairylights"
 func title() -> String: return "Fairy Lights"
 
 func rules() -> String:
-	return "Every cell of the garden holds one length of wire, and the lantern post stands in the middle. Tap a piece to turn it a quarter turn clockwise -- that is the only move, and four taps bring it back where it started. A cross is already every way round, so it will not turn. Wire joined all the way back to the post runs warm and gold; everything else is pale, and a stub that meets nothing stops short with a rounded end. The garden is done when every stub meets a stub and every lantern is lit. Nothing can be lost and nothing can be wrong, so there is no Check."
+	return tr("FL_RULES")
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can exist on this board: a garden is unfinished or it is done. So the
@@ -296,7 +296,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 ## Every clock on the board back to "has not happened yet". A cell that has
@@ -900,10 +900,10 @@ func _turn(i: int) -> void:
 	var now := _now()
 	match state.turn(i):
 		State.PINNED:
-			_refuse(i, now, "A hint pinned that one where it belongs.")
+			_refuse(i, now, tr("FL_PINNED"))
 			return
 		State.CROSS:
-			_refuse(i, now, "A cross is already every way round.")
+			_refuse(i, now, tr("FL_CROSS"))
 			return
 	fx.cue("place")
 	_spin(i, 1, now)
@@ -940,8 +940,8 @@ func _left_line() -> String:
 		if depths[i] < 0:
 			dark += 1
 	if loose == 0:
-		return "No loose ends left -- now reach them all."
-	return "One lantern still in the dark." if dark == 1 else "%d still in the dark." % dark
+		return tr("FL_NO_LOOSE")
+	return tr("FL_ONE_DARK") if dark == 1 else tr("FL_N_DARK") % dark
 
 static func _bits(m: int) -> int:
 	return (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1)
@@ -962,7 +962,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or state.turns > 0:
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules.
 func tip_line() -> Dictionary:
@@ -991,7 +991,7 @@ func undo() -> bool:
 	_settle(before, now + _lag())
 	_dress(now)
 	_refresh()
-	_say("Turned back. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("FL_TURNED_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	moved.emit()
 	return true
@@ -1027,7 +1027,7 @@ func hint() -> bool:
 	fx.cue("hint")
 	_dress(now)
 	_refresh()
-	_say("Pinned. That one could only go one way.", Face.Expr.HAPPY)
+	_say(tr("FL_HINT"), Face.Expr.HAPPY)
 	moved.emit()
 	# A hint can finish the garden, and a finished garden is a win however it
 	# was reached.
@@ -1054,7 +1054,7 @@ func reset_board() -> void:
 	_settle(before, now + _lag())
 	_dress(now)
 	_refresh()
-	_say("A fresh tangle. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("FL_RESET") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
 
 ## A completed daily is dealt again from its seed, so the fresh board comes up
@@ -1079,7 +1079,7 @@ func restore_completed_board() -> void:
 		var lantern: LanternFace = _lanterns[i]
 		lantern.scale = Vector2.ONE
 		lantern.expression = Face.Expr.JOY
-	_say("Every lantern is lit.", Face.Expr.JOY)
+	_say(tr("FL_WIN"), Face.Expr.JOY)
 	_refresh()
 
 ## How many quarter turns clockwise take `from` to `to`; 0 if it is already
@@ -1117,7 +1117,7 @@ func flat_win() -> Dictionary:
 		lantern.hue = i
 		lantern.lit = 1.0
 		faces.append(lantern)
-	return {"faces": faces, "subtitle": "Every lantern is lit."}
+	return {"faces": faces, "subtitle": tr("FL_WIN")}
 
 ## Long enough for the last wash to finish and every lantern to wake, and
 ## WIN_WAIT after that. It spends the wash's own clock (`_wash_end`, set by
@@ -1137,7 +1137,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	_dress(_now())
 	_refresh()
-	_say("Every lantern is lit.", Face.Expr.JOY)
+	_say(tr("FL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(maxf(0.0, _wash_end - _now()) + Motion.BUMP_TIME)
 

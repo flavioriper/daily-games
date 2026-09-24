@@ -82,11 +82,8 @@ const WIN_WAIT := 1.6
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
-const TIPS := [
-	"The numbers count the runs of filled cells in each line, in order.",
-	"Drag to paint with the chip you have picked. Drag back over your own paint to rub it out.",
-	"A line's numbers turn green when its runs read exactly as they say.",
-]
+## Translation keys (locale/ui.csv), read through tr() when said.
+const TIPS := ["NG_TIP_RUNS", "NG_TIP_DRAG", "NG_TIP_GREEN"]
 
 var state = State.new()
 ## Which chip the tray has armed: State.FILL or State.MARK. The tray only
@@ -148,7 +145,7 @@ func puzzle_id() -> String: return "nonogram"
 func title() -> String: return "Nonogram"
 
 func rules() -> String:
-	return "The numbers give the lengths of the filled runs in each line, in order, with a gap between runs."
+	return tr("NG_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -185,7 +182,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 # --- layout ---
@@ -579,7 +576,7 @@ func _nudge_around(cell: Vector2i, t: float) -> void:
 ## A press refused on `cell` (a tile a hint grouted in): it shivers and
 ## blushes toward the family's rose, and the sprout says why.
 func _refuse(cell: Vector2i) -> void:
-	_say("That tile is grouted in. A hint laid it.", Face.Expr.PUZZLED)
+	_say(tr("NG_GROUTED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	if Motion.reduce:
 		return
@@ -746,22 +743,21 @@ func _speak() -> void:
 		return
 	var over: int = state.over_lines()
 	if over > 0:
-		_say("One line holds more filled cells than its numbers allow." if over == 1
-			else "%d lines hold more filled cells than their numbers allow." % over,
+		_say(tr("NG_OVER_ONE") if over == 1 else tr("NG_OVER_N") % over,
 			Face.Expr.STRAIN)
 		return
 	var settled: int = state.settled_lines()
 	var lines: int = state.w + state.h
 	if settled == lines:
-		_say("Every line reads as it should. Something is still in the wrong place.",
+		_say(tr("NG_LINES_OK"),
 			Face.Expr.STRAIN)
 		return
 	var left: int = state.tiles_left()
 	if left > 0:
-		_say("%d %s still to lay." % [left, "tile" if left == 1 else "tiles"],
+		_say((tr("NG_LEFT_ONE") if left == 1 else tr("NG_LEFT_N")) % left,
 			Face.Expr.HAPPY)
 		return
-	_say("All the tiles are down. %d lines still disagree." % (lines - settled),
+	_say(tr("NG_DISAGREE") % (lines - settled),
 		Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
@@ -775,7 +771,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -825,7 +821,7 @@ func hint() -> bool:
 	fx.ring(at, _cell * RING_R, Pal.MOSAIC_LOCK)
 	fx.sparkle(at, Pal.MOSAIC_LOCK)
 	fx.cue("hint")
-	_say("That tile belongs to the picture, and it is grouted in for good.",
+	_say(tr("NG_HINT"),
 		Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
@@ -845,8 +841,8 @@ func check() -> int:
 		for cell in wrong:
 			_wrong[cell] = t
 		_busy_for(maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
-	_say("%d %s in the wrong place." % [wrong.size(), "tile is" if wrong.size() == 1 else "tiles are"]
-		if not wrong.is_empty() else "Every tile you have laid belongs to the picture.",
+	_say((tr("NG_WRONG_ONE") if wrong.size() == 1 else tr("NG_WRONG_N")) % wrong.size()
+		if not wrong.is_empty() else tr("NG_ALL_RIGHT"),
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_refresh()
@@ -883,7 +879,7 @@ func reset_board() -> void:
 	_shiver = {}
 	moves = 0
 	_running = true
-	_say("The floor is cleared. The hints you spent are not refunded, only unpinned.",
+	_say(tr("NG_RESET"),
 		Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
@@ -916,7 +912,7 @@ func restore_completed_board() -> void:
 	_opened = t - 10.0
 	_solved_at = t - 10.0
 	_anim_until = 0.0
-	_say("There it is. The picture you were counting towards.", Face.Expr.JOY)
+	_say(tr("NG_SOLVED"), Face.Expr.JOY)
 	_refresh()
 
 func is_solved() -> bool:
@@ -931,7 +927,7 @@ func share_glyphs() -> String:
 ## reveal is the win: the win screen shows no cast, and what stays on the card
 ## under it is the picture as a single shape.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "The numbers made a picture."}
+	return {"faces": [], "subtitle": tr("NG_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -954,7 +950,7 @@ func _on_solved() -> void:
 					var cell := Vector2i(x, y)
 					_hop[cell] = {"at": now + _solve_delay(cell), "height": Motion.SOLVE_HOP,
 						"time": Motion.SOLVE_TIME}
-	_say("There it is. The picture you were counting towards.", Face.Expr.JOY)
+	_say(tr("NG_SOLVED"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
 		maxf(GONE_DELAY + GONE_TIME, CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)))

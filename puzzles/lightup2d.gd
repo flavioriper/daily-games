@@ -138,9 +138,9 @@ const WIN_WAIT := 1.6
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 const TIPS := [
-	"Light every floor stone. A lantern lights its row and column until a block stops it.",
-	"No lantern may light another. Drag across the court to chip the stones you have ruled out.",
-	"A number counts the lanterns touching that block. Half the blocks carry none.",
+	"LU_TIP_LIGHT",
+	"LU_TIP_NO_SEE",
+	"LU_TIP_NUMBER",
 ]
 
 var state = State.new()
@@ -233,7 +233,7 @@ func puzzle_id() -> String: return "lightup"
 func title() -> String: return "Light Up"
 
 func rules() -> String:
-	return "Light every floor stone. A lantern lights its row and column until a block stops it. No lantern may light another. Numbers count the lanterns touching a block."
+	return tr("LU_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -272,7 +272,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_settle()
 	_layout()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -1153,9 +1153,9 @@ func _wobble(lamp: Control) -> void:
 ## A tap refused on `cell`: a block shivers and flashes toward its rose; a
 ## pinned lamp shivers while its stone blushes; the sprout says why.
 func _refuse(cell: Vector2i) -> void:
-	_say("A block of stone stands there. It is what stops the light."
+	_say(tr("LU_REFUSE_BLOCK")
 		if not state.is_white(cell)
-		else "That lantern is lit for good. A hint set it down.", Face.Expr.PUZZLED)
+		else tr("LU_REFUSE_PINNED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	var now := _now()
 	if not state.is_white(cell):
@@ -1185,21 +1185,21 @@ func _speak() -> void:
 		return
 	var seen: int = state.clash.size()
 	if seen > 0:
-		_say("Two lanterns can see each other down that line." if seen <= 2
-			else "%d lanterns are lighting each other." % seen, Face.Expr.STRAIN)
+		_say(tr("LU_SEEN_TWO") if seen <= 2
+			else tr("LU_SEEN_N") % seen, Face.Expr.STRAIN)
 		return
 	var over := state.over_blocks()
 	if over > 0:
-		_say("A block has more lanterns beside it than its number allows." if over == 1
-			else "%d blocks have more lanterns beside them than their numbers allow." % over,
+		_say(tr("LU_OVER_ONE") if over == 1
+			else tr("LU_OVER_N") % over,
 			Face.Expr.STRAIN)
 		return
 	var dark := state.dark()
 	if dark > 0:
-		_say("One stone is still in the dark." if dark == 1
-			else "%d stones are still in the dark." % dark, Face.Expr.HAPPY)
+		_say(tr("LU_DARK_ONE") if dark == 1
+			else tr("LU_DARK_N") % dark, Face.Expr.HAPPY)
 		return
-	_say("Every stone is lit. A number is still not satisfied.", Face.Expr.HAPPY)
+	_say(tr("LU_UNSATISFIED"), Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -1212,7 +1212,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1258,7 +1258,7 @@ func hint() -> bool:
 	fx.ring(at, _cell * 0.5, Pal.LEAF)
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
-	_say("That lantern is lit for good.", Face.Expr.HAPPY)
+	_say(tr("LU_PINNED"), Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
 	check_solved()
@@ -1275,9 +1275,8 @@ func check() -> int:
 		if _lamps.has(cell):
 			_wobble(_lamps[cell])
 		_blush_stone(cell)
-	_say("%d %s in the wrong place." % [wrong.size(),
-		"lantern stands" if wrong.size() == 1 else "lanterns stand"]
-		if not wrong.is_empty() else "Every lantern you have set down is right.",
+	_say((tr("LU_WRONG_ONE") if wrong.size() == 1 else tr("LU_WRONG_N")) % wrong.size()
+		if not wrong.is_empty() else tr("LU_ALL_RIGHT"),
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_redraw()
@@ -1316,7 +1315,7 @@ func reset_board() -> void:
 	moves = 0
 	_running = true
 	_refresh_faces()
-	_say("The court is cleared. The hints you spent are not refunded, only unpinned.",
+	_say(tr("LU_RESET"),
 		Face.Expr.HAPPY)
 	_tip_timer.start()
 	fx.cue("reset")
@@ -1367,7 +1366,7 @@ func restore_completed_board() -> void:
 		lamp.modulate.a = 1.0
 		lamp.expression = Face.Expr.JOY
 	_refresh_faces()
-	_say("Not a stone left in the dark.", Face.Expr.JOY)
+	_say(tr("LU_WIN"), Face.Expr.JOY)
 	_redraw()
 
 func is_solved() -> bool:
@@ -1381,7 +1380,7 @@ func share_glyphs() -> String:
 ## The board is the answer, so the win screen shows no cast: the lit court
 ## stays on the card under it.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Not a stone left in the dark."}
+	return {"faces": [], "subtitle": tr("LU_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -1412,7 +1411,7 @@ func _on_solved() -> void:
 					_block_hop[cell] = {"at": now + _solve_delay(cell), "height": Motion.SOLVE_HOP,
 						"time": Motion.SOLVE_TIME}
 	_refresh_faces()
-	_say("Not a stone left in the dark.", Face.Expr.JOY)
+	_say(tr("LU_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
 		CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME))

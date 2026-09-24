@@ -128,18 +128,18 @@ const SHARE_GLYPHS := ["🟥", "🟨", "🟦", "🟫", "🟪", "🟩"]
 
 const TIP_CYCLE := 8.0
 const TIPS := [
-	"Tap a peg to lift its top ring.",
-	"A ring lands on its own colour, or on an empty peg.",
-	"Four of a colour fills a peg, and it locks.",
-	"Nothing is ever lost here. Undo is right above.",
+	"RG_TIP_LIFT",
+	"RG_TIP_LANDS",
+	"RG_TIP_LOCKS",
+	"RG_TIP_UNDO",
 ]
 
 ## What the toast says when a move leaves nothing legal to play. Exactly the
 ## concept page's own string.
-const STUCK_MSG := "Nothing can move. Undo, or start again."
+const STUCK_MSG := "RG_STUCK"
 ## Insane's budget spent with the pegs unsorted. Same shape as STUCK_MSG,
 ## because it is the same answer: Undo gives a move back.
-const OUT_MSG := "Out of moves. Undo, or start again."
+const OUT_MSG := "RG_OUT"
 ## Insane's moves-left line: its size, and how far under the second row's
 ## ground it sits (clear of the grass band and the toast beneath it).
 const BUDGET_FONT := 34
@@ -225,9 +225,9 @@ func puzzle_id() -> String: return "rings"
 func title() -> String: return "Rings"
 
 func rules() -> String:
-	var line := "Lift the top ring off any peg and set it down on an empty peg or on a ring of its own colour -- nowhere else. Four rings of the same colour fill a peg, and a peg that full locks: nothing ever comes off it again. Nothing here is ever lost, so play freely -- Undo and Reset are always one tap away. The board is done the moment every colour stands alone on a peg of its own."
+	var line := tr("RG_RULES")
 	if _state.par > 0:
-		line += " On Insane you have a budget of moves, only two over the fewest this deal can be sorted in, and no hints. Undo gives a move back."
+		line += " " + tr("RG_RULES_INSANE")
 	return line
 
 ## No hint on Insane: the only solver cheap enough for the phone plays lines
@@ -267,7 +267,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_tip_text = TIPS[0]
+	_tip_text = tr(TIPS[0])
 	_tip_mood = Face.Expr.HAPPY
 	_press_i = -1
 	_shake_at = {}
@@ -358,22 +358,22 @@ func _tap(i: int) -> void:
 			_toast = OUT_MSG
 			_toast_at = _now()
 			fx.cue("refused")
-			_say(OUT_MSG, Face.Expr.WORRIED)
+			_say(tr(OUT_MSG), Face.Expr.WORRIED)
 		elif _state.lift(i):
 			_held_at = _now()
 			fx.cue("lift")
-			_say("Drop it on its own colour, or on an empty peg.", Face.Expr.HAPPY)
+			_say(tr("RG_HELD"), Face.Expr.HAPPY)
 		elif (_state.pegs[i] as Array).is_empty():
 			fx.cue("refused")
-			_say("That peg is empty. Lift from a peg that has a ring.", Face.Expr.HAPPY)
+			_say(tr("RG_EMPTY_PEG"), Face.Expr.HAPPY)
 		else:
 			fx.cue("refused")
-			_say("That colour is home. Nothing comes off a finished peg.", Face.Expr.HAPPY)
+			_say(tr("RG_HOME_PEG"), Face.Expr.HAPPY)
 	elif i == _state.held_from:
 		_state.put_back()
 		_held_at = -100.0
 		fx.cue("drop")
-		_say("Back where it was.", Face.Expr.HAPPY)
+		_say(tr("RG_PUT_BACK"), Face.Expr.HAPPY)
 	else:
 		var from: int = _state.held_from
 		var colour_i: int = _state.held
@@ -381,7 +381,7 @@ func _tap(i: int) -> void:
 		if slot == -1:
 			_shake_at[i] = _now()
 			fx.cue("refused")
-			_say(_state.refusal(i), Face.Expr.WORRIED)
+			_say(tr(_state.refusal(i)), Face.Expr.WORRIED)
 		else:
 			_held_at = -100.0
 			fx.cue("drop")
@@ -464,7 +464,7 @@ func _settle(j: int, at: float) -> void:
 		if not _state.is_solved():
 			fx.cue("lock")
 	if _state.is_solved():
-		_say("Every colour on a peg of its own.", Face.Expr.JOY)
+		_say(tr("RG_WIN"), Face.Expr.JOY)
 	elif _state.locked(j):
 		_say(_home_line(), Face.Expr.JOY)
 	else:
@@ -484,18 +484,18 @@ func _colours_left() -> int:
 func _home_line() -> String:
 	var left := _colours_left()
 	if left <= 0:
-		return "Every colour on a peg of its own."
+		return tr("RG_WIN")
 	if left == 1:
-		return "One colour left to gather."
-	return "That one is home. %d colours left." % left
+		return tr("RG_ONE_LEFT")
+	return tr("RG_HOME_N_LEFT") % left
 
 func _left_line() -> String:
 	var left := _colours_left()
 	if left == _state.colours:
-		return "Lift a ring and find it a peg."
+		return tr("RG_START")
 	if left == 1:
-		return "One colour left to gather."
-	return "%d colours left to gather." % left
+		return tr("RG_ONE_LEFT")
+	return tr("RG_N_LEFT") % left
 
 ## Sets the tip card's line and tells the host to re-read it. The tip card
 ## only re-reads a board when the host refreshes it, and the host refreshes
@@ -529,7 +529,7 @@ func undo() -> bool:
 	var colour_i: int = dst[slot]
 	_fly(colour_i, m.y, m.x, slot, _now(), false)
 	fx.cue("undo")
-	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("RG_TAKEN_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
 	check_solved()
 	return true
@@ -574,7 +574,7 @@ func reset_board() -> void:
 	_land_at = -100.0
 	_solved_at = -100.0
 	fx.cue("reset")
-	_say("The pegs as they were dealt.", Face.Expr.HAPPY)
+	_say(tr("RG_RESET"), Face.Expr.HAPPY)
 	_refresh()
 
 # --- the frame ---
@@ -669,9 +669,9 @@ func _draw_budget() -> void:
 	var left: int = _state.moves_left()
 	if left < 0:
 		return
-	var text := "1 move left" if left == 1 else "%d moves left" % left
+	var text := tr("RG_ONE_MOVE_LEFT") if left == 1 else tr("RG_MOVES_LEFT") % left
 	if _state.is_solved():
-		text = "Sorted with %d to spare" % left
+		text = tr("RG_SPARE") % left
 	var font: Font = CozyTheme.body(700)
 	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUDGET_FONT).x
 	var y: float = _row_y[1] + STATION_H + BUDGET_DROP
@@ -901,6 +901,8 @@ static func _fan_mapped(b, points: PackedVector2Array, colour: Color, map: Calla
 func _draw_toast(t: float, shown: Array) -> void:
 	if _toast == "":
 		return
+	# `_toast` holds a key; the line is translated here, at draw time.
+	var line := tr(_toast)
 	var since := t - _toast_at
 	if since < 0.0 or since >= TOAST_HOLD:
 		return
@@ -910,12 +912,12 @@ func _draw_toast(t: float, shown: Array) -> void:
 		return
 	var font: Font = CozyTheme.body(600)
 	var w: float = minf(size.x - 120.0,
-		font.get_string_size(_toast, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x + TOAST_PAD)
-	if _toast_mesh == null or _toast_mesh_for != _toast:
+		font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x + TOAST_PAD)
+	if _toast_mesh == null or _toast_mesh_for != line:
 		var b := Face.Builder.new()
 		b.fan(Face.Builder.round_rect(Vector2(-w, -TOAST_H) * 0.5, Vector2(w, TOAST_H), TOAST_RADIUS), Pal.TEXT)
 		_toast_mesh = b.mesh() if not b.verts.is_empty() else null
-		_toast_mesh_for = _toast
+		_toast_mesh_for = line
 	if _toast_mesh == null:
 		return
 	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - TOAST_H * 0.5)
@@ -924,7 +926,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 	var where := Vector2(-w * 0.5 + TOAST_PAD * 0.5,
 		font.get_height(TOAST_FONT) * 0.5 - font.get_descent(TOAST_FONT))
 	draw_set_transform(mid, 0.0, Vector2.ONE)
-	font.draw_string(get_canvas_item(), where, _toast, HORIZONTAL_ALIGNMENT_LEFT, -1,
+	font.draw_string(get_canvas_item(), where, line, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		TOAST_FONT, Color(Pal.PAPER, alpha))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -998,7 +1000,7 @@ func _cycle_tip() -> void:
 	if is_done() or not _state.log.is_empty() or _state.held != -1:
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 # --- the state PuzzleBase asks for ---
 
@@ -1034,7 +1036,7 @@ func flat_win() -> Dictionary:
 		icon.ring_colour = RING_COLOURS[i]
 		icon.pips = i + 1
 		faces.append(icon)
-	return {"faces": faces, "subtitle": "Every colour on a peg of its own."}
+	return {"faces": faces, "subtitle": tr("RG_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT

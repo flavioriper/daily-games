@@ -1395,12 +1395,18 @@ all of Hidden Word's and Word Trail's own text. A static Label or IconButton
 holds the key itself, so Godot's auto-translate re-reads it live when the
 language changes; anything formatted, drawn or measured goes through `tr()`
 (`day_row.gd` re-formats on `NOTIFICATION_TRANSLATION_CHANGED`). Board
-titles stay English in every language, by the user's decision, and the
-other sixteen boards' rules, tips, trays and card blurbs are still English
--- `tr()` on an English literal passes it through, so they can be keyed one
-board at a time. And
-`HOWBIG_BLURB` is sitting in the CSV unwired, ready for whenever the registry's
-own blurbs get keyed. Upper-case accented capitals turned out to be fine:
+titles stay English in every language, by the user's decision. **Every
+board is keyed since 2026-09-24**: the other eighteen boards' rules, tips,
+refusals, win lines, share lines, the registry's `short`, `motto`, `blurb`
+and worded level lines, the trays, the first-play card and the island names
+under Day N live in `locale/boards.csv` (500 rows, en/pt-BR/es), beside
+`ui.csv` in `project.godot`'s translation list. A board keeps its tip lines
+as keys in its constants and `tr()`s them when it speaks. A count in a
+sentence is a `_ONE`/`_N` pair of keys, never an English plural built in
+code, because pt and es agree the verb and the gender (Mushroom Patch's
+number words and Balance's fruit have per-gender keys). Registry `footer`s
+stay English because nothing shows them. The pt/es rows are machine-fluent
+and still want a native speaker's pass. Upper-case accented capitals turned out to be fine:
 `ÁÉÍÓÚ` and `ÃÕÇÑ` both extrude cleanly at weight 700 (18,024 and 21,228
 faces, in the same 3,600-5,600-faces-per-glyph range as `GUESS` at 22,356) --
 the only glyphs that need the weight dropped to 550 are digits 8 and 9. That

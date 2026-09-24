@@ -126,10 +126,11 @@ const PLANT_TIME := 0.4
 ## run its length first, and a hard board plants fourteen beds.
 const WIN_WAIT := 2.2
 ## The three lines that teach the gestures, cycled while the field is bare.
+## Translation keys (locale/ui.csv), read through tr() when said.
 const TIPS := [
-	"Drag corner to corner. Each plot holds one number, and that number is how many squares it covers.",
-	"Draw over a plot to replace it; tap inside one to clear it.",
-	"Two numbers in one bed, or none, and the bed blushes.",
+	"SK_TIP_DRAG",
+	"SK_TIP_REDRAW",
+	"SK_TIP_BLUSH",
 ]
 const TIP_CYCLE := 10.0
 
@@ -221,7 +222,7 @@ func puzzle_id() -> String: return "shikaku"
 func title() -> String: return "Shikaku"
 
 func rules() -> String:
-	return "Split the field into plots. Each one holds exactly one number, and that number is its area."
+	return tr("SK_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -259,7 +260,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_markers()
 	_layout()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -907,7 +908,7 @@ func _hop(i: int, height: float, time: float, delay := 0.0) -> void:
 ## A refused drag on pinned bed `who`: its marker shivers, the bed blushes
 ## and the sprout says why.
 func _refuse(who: int) -> void:
-	_say("That bed is pinned. A hint drew it.", Face.Expr.PUZZLED)
+	_say(tr("SK_PINNED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	if who < 0 or who >= state.rects.size():
 		return
@@ -943,19 +944,19 @@ func _bump(i: int) -> void:
 ## of bare squares, and the blushing beds before either.
 func _speak() -> void:
 	if is_done():
-		_say("Every plot has its number. The beds go in.", Face.Expr.JOY)
+		_say(tr("SK_SOLVED"), Face.Expr.JOY)
 		return
 	var blush := state.blushing()
 	if blush > 0:
-		_say("One bed has the wrong number of markers in it." if blush == 1
-			else "%d beds have the wrong number of markers in them." % blush,
+		_say(tr("SK_BLUSH_1") if blush == 1
+			else tr("SK_BLUSH_N") % blush,
 			Face.Expr.PUZZLED)
 		return
 	var bare := state.bare_cells()
 	if bare == 0:
-		_say("Every square is planted, but some plot is the wrong size.", Face.Expr.STRAIN)
+		_say(tr("SK_WRONG_SIZE"), Face.Expr.STRAIN)
 		return
-	_say("%d %s still bare." % [bare, "square" if bare == 1 else "squares"], Face.Expr.HAPPY)
+	_say(tr("SK_BARE_1") if bare == 1 else tr("SK_BARE_N") % bare, Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -969,7 +970,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.rects.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1026,7 +1027,7 @@ func hint() -> bool:
 	hints_used += 1
 	_fence = _build_fence()
 	_refresh_markers()
-	_say("That bed is fenced for good.", Face.Expr.HAPPY)
+	_say(tr("SK_FENCED"), Face.Expr.HAPPY)
 	moved.emit()
 	_redraw()
 	check_solved()
@@ -1046,10 +1047,10 @@ func check() -> int:
 		if who >= 0:
 			_blush(state.rects[who])
 	if wrong.is_empty():
-		_say("Every number is settled.", Face.Expr.JOY)
+		_say(tr("SK_CHECK_OK"), Face.Expr.JOY)
 	else:
-		_say("%d %s not settled yet." % [wrong.size(),
-			"number is" if wrong.size() == 1 else "numbers are"], Face.Expr.STRAIN)
+		_say(tr("SK_CHECK_1") if wrong.size() == 1 else tr("SK_CHECK_N") % wrong.size(),
+			Face.Expr.STRAIN)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_redraw()
 	return wrong.size()
@@ -1086,7 +1087,7 @@ func reset_board() -> void:
 			_redraw())
 	_anim_until = maxf(_anim_until, last + Motion.POP_OUT)
 	_refresh_markers()
-	_say("Cleared. The hints you spent are not refunded, only unpinned.", Face.Expr.HAPPY)
+	_say(tr("SK_CLEARED"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	fx.cue("reset")
 	_redraw()
@@ -1131,7 +1132,7 @@ func restore_completed_board() -> void:
 	_shadows = null
 	_fence = _build_fence() if _cell > 0.0 else null
 	_refresh_markers()
-	_say("Every plot has its number. The beds go in.", Face.Expr.JOY)
+	_say(tr("SK_SOLVED"), Face.Expr.JOY)
 	_redraw()
 
 func is_solved() -> bool:
@@ -1145,7 +1146,7 @@ func share_glyphs() -> String:
 ## The board is the answer, so the win screen shows no cast: the planted
 ## field stays on the card under it, which is what the player made.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "The whole field is planted."}
+	return {"faces": [], "subtitle": tr("SK_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT

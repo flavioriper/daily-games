@@ -104,9 +104,9 @@ const TIP_CYCLE := 10.0
 ## The three lines that teach the board, cycled while there is nothing better
 ## to say.
 const TIPS := [
-	"Start on a green post and walk every line exactly once, without lifting your finger.",
-	"Drag from post to post. A line you have walked turns from stone to warm plank.",
-	"Two green posts mean the stroke has to begin at one of them.",
+	"OL_TIP_START",
+	"OL_TIP_DRAG",
+	"OL_TIP_GREEN",
 ]
 
 var state = State.new()
@@ -184,7 +184,7 @@ func puzzle_id() -> String: return "oneline"
 func title() -> String: return "One Line"
 
 func rules() -> String:
-	return "Start on a green post and walk along every line exactly once, without going over one twice. Walk into a part of the figure you cannot get back out of and the rest is stranded: undo back to the fork."
+	return tr("OL_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -233,7 +233,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 # --- layout ---
@@ -714,9 +714,9 @@ func _begin(n: int) -> void:
 	var t := _now()
 	if not state.begin(n):
 		_refuse(n)
-		_say("The stroke has to begin on one of the two green posts."
+		_say(tr("OL_BEGIN_GREEN")
 			if not state.starts.is_empty()
-			else "Begin anywhere: this figure has no odd post.", Face.Expr.PUZZLED)
+			else tr("OL_BEGIN_ANY"), Face.Expr.PUZZLED)
 		fx.cue("locked")
 		_refresh()
 		return
@@ -727,7 +727,7 @@ func _begin(n: int) -> void:
 		_cap_bump[m] = t
 	_busy_for(maxf(Motion.HOP_TIME, Motion.BUMP_TIME))
 	fx.puff(node_to_local(n), Pal.ACCENT_2)
-	_say("Now walk every line exactly once.", Face.Expr.HAPPY)
+	_say(tr("OL_NOW_WALK"), Face.Expr.HAPPY)
 	fx.cue("start")
 	_refresh()
 
@@ -740,7 +740,7 @@ func _walk_to(n: int) -> void:
 	match state.step(n):
 		State.STEP_WALKED:
 			_refuse(n)
-			_say("That line is walked already. Every line takes exactly one crossing.",
+			_say(tr("OL_WALKED"),
 				Face.Expr.PUZZLED)
 			fx.cue("locked")
 			_refresh()
@@ -769,17 +769,17 @@ func _speak(undone := false) -> void:
 	var lost := state.stranded()
 	if not lost.is_empty():
 		if undone:
-			_say("One line is still stranded behind you." if lost.size() == 1
-				else "%d lines are still stranded behind you." % lost.size(),
+			_say(tr("OL_STILL_ONE") if lost.size() == 1
+				else tr("OL_STILL_N") % lost.size(),
 				Face.Expr.STRAIN)
 		else:
-			_say("One line is stranded behind you now. Undo back to the fork."
+			_say(tr("OL_STRANDED_ONE")
 				if lost.size() == 1
-				else "%d lines are stranded behind you now. Undo back to the fork."
+				else tr("OL_STRANDED_N")
 					% lost.size(), Face.Expr.STRAIN)
 		return
 	var left := state.lines_left()
-	_say("One line still to walk." if left == 1 else "%d lines still to walk." % left,
+	_say(tr("OL_LEFT_ONE") if left == 1 else tr("OL_LEFT_N") % left,
 		Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
@@ -793,7 +793,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY:
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -858,13 +858,13 @@ func hint() -> bool:
 		_busy_for(Motion.BUMP_TIME)
 		_ring_at(n)
 		fx.cue("hint")
-		_say("Begin there.", Face.Expr.HAPPY)
+		_say(tr("OL_HINT_BEGIN"), Face.Expr.HAPPY)
 		_refresh()
 		moved.emit()
 		return true
 	var to := state.safe_step()
 	if to < 0:
-		_say("There is no safe step left from here. Undo back to the fork.",
+		_say(tr("OL_NO_SAFE"),
 			Face.Expr.STRAIN)
 		fx.cue("locked")
 		_refresh()
@@ -898,13 +898,13 @@ func check() -> int:
 		if not lost.is_empty():
 			_busy_for(maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
 	if state.current < 0:
-		_say("Nothing is walked yet, so nothing is stranded. Begin on a green post.",
+		_say(tr("OL_CHECK_BARE"),
 			Face.Expr.HAPPY)
 	elif lost.is_empty():
-		_say("Every line left can still be reached from where you stand.", Face.Expr.JOY)
+		_say(tr("OL_CHECK_OK"), Face.Expr.JOY)
 	else:
-		_say("One line is stranded: nothing can reach it now." if lost.size() == 1
-			else "%d lines are stranded: nothing can reach them now." % lost.size(),
+		_say(tr("OL_LOST_ONE") if lost.size() == 1
+			else tr("OL_LOST_N") % lost.size(),
 			Face.Expr.STRAIN)
 	fx.cue("check" if not lost.is_empty() else "check_ok")
 	_refresh()
@@ -947,7 +947,7 @@ func reset_board() -> void:
 		_busy_for(_reset_wave(0.0) + maxf(Motion.HOP_TIME, maxf(Motion.BUMP_TIME, Motion.POP_OUT)))
 	moves = 0
 	_running = true
-	_say("The jetty is taken up again. The hints you spent are not refunded.",
+	_say(tr("OL_RESET"),
 		Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
@@ -986,7 +986,7 @@ func restore_completed_board() -> void:
 	_solved_at = t - 10.0
 	_joy = true
 	_tip_timer.stop()
-	_say("One stroke, and not a line missed.", Face.Expr.JOY)
+	_say(tr("OL_WIN"), Face.Expr.JOY)
 	_refresh()
 
 func is_solved() -> bool:
@@ -1001,7 +1001,7 @@ func share_glyphs() -> String:
 ## screen shows no cast: the finished figure stays on the card under it with
 ## the walker standing where it finished.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "One stroke, not a line missed."}
+	return {"faces": [], "subtitle": tr("OL_WIN_SUB")}
 
 ## The trail has to finish warming, the last post has to land and the walker
 ## has to come down.
@@ -1043,7 +1043,7 @@ func _on_solved() -> void:
 	else:
 		_joy = true
 	_busy_for(last + maxf(Motion.SOLVE_TIME, BRIGHT_TIME))
-	_say("One stroke, and not a line missed.", Face.Expr.JOY)
+	_say(tr("OL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh()
 

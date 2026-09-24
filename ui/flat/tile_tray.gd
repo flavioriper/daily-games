@@ -61,19 +61,19 @@ const SOCKET_RADIUS := 12.0
 ## mushroom (a MushroomFace, still).
 const MOSAIC := {
 	"values": [NonogramState.FILL, NonogramState.MARK],
-	"labels": ["Tile", "Cross"],
+	"labels": ["TRAY_TILE", "TRAY_CROSS"],
 	"names": ["TileChip", "CrossChip"],
 	"glyphs": ["tile", "pebble"],
 }
 const QUEENS := {
 	"values": [QueensState.QUEEN, QueensState.CROSS],
-	"labels": ["Queen", "Cross"],
+	"labels": ["TRAY_QUEEN", "TRAY_CROSS"],
 	"names": ["QueenChip", "CrossChip"],
 	"glyphs": ["bee", "pebble"],
 }
 const PATCH := {
 	"values": [MushroomState.FOUND, MushroomState.CLEAR],
-	"labels": ["Mushroom", "Pebble"],
+	"labels": ["TRAY_MUSHROOM", "TRAY_PEBBLE"],
 	"names": ["MushroomChip", "PebbleChip"],
 	"glyphs": ["mushroom", "pebble"],
 }

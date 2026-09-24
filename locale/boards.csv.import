@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dybkudrb5i708"
+
+[deps]
+
+files=["res://locale/boards.en.translation", "res://locale/boards.pt.translation", "res://locale/boards.es.translation"]
+
+source_file="res://locale/boards.csv"
+dest_files=["res://locale/boards.en.translation", "res://locale/boards.pt.translation", "res://locale/boards.es.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

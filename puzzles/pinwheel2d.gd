@@ -134,10 +134,10 @@ const HINTS := 3
 
 const TIP_CYCLE := 8.0
 const TIPS := [
-	"Tap a pinwheel. Its piece turns a quarter, round the pin.",
-	"A pin never moves. Only the piece round it turns.",
-	"A darker cell is two pieces on one square. Turn one away.",
-	"No bare ground, no dark cells, and the frame is done.",
+	"PW_TIP_TAP",
+	"PW_TIP_PIN",
+	"PW_TIP_DARK",
+	"PW_TIP_DONE",
 ]
 
 var _state = State.new()
@@ -198,7 +198,7 @@ func puzzle_id() -> String: return "pinwheel"
 func title() -> String: return "Pinwheel"
 
 func rules() -> String:
-	return "Every piece is pinned through one of its own squares by a pinwheel, and that pin never moves. Tap a pinwheel and its piece turns a quarter clockwise about the pin. A quarter that would carry the piece off the frame is skipped rather than refused, so a tap always does something and every way round is reachable. Pieces may lie across each other while you work: a square two pieces are on goes dark and hatched, and a square nobody is on stays bare ground. A piece with only one way to lie is pinned fast; tapping it says so and nothing else. Turn them until there is no dark and no bare ground, and the frame is covered exactly once."
+	return tr("PW_RULES")
 
 ## Undo and Hint, and nothing else. There is no Check because nothing is
 ## hidden: a bare cell is drawn bare and a stained cell is drawn stained. So
@@ -244,7 +244,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_turned_at[p] = _opened + Motion.ENTER_DELAY \
 			+ Motion.stagger(p, Motion.ENTER_STAGGER) + Motion.POP_IN
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 ## Every piece's silhouette in every way it can lie, traced once, plus which
@@ -883,7 +883,7 @@ func _tap(at: Vector2i) -> void:
 		_wob[p] = t
 		_busy_for(maxf(Motion.FLASH_IN + Motion.FLASH_OUT, WOB_TIME))
 		fx.cue("refused")
-		_say("That one is pinned fast. It has nowhere else to go.", Face.Expr.STRAIN)
+		_say(tr("PW_PINNED"), Face.Expr.STRAIN)
 		_refresh()
 		return
 	# Any other cell: point at the handle rather than only naming it. This is
@@ -891,12 +891,12 @@ func _tap(at: Vector2i) -> void:
 	# pin can be the only tap target.
 	var over: Array = _state.pieces_over(at.x, at.y)
 	if over.is_empty():
-		_say("Bare ground. Something has to cover it.", Face.Expr.HAPPY)
+		_say(tr("PW_BARE"), Face.Expr.HAPPY)
 	else:
 		for i: int in over:
 			_wob[i] = t
 		_busy_for(WOB_TIME)
-		_say("Turn a piece by its pinwheel.", Face.Expr.HAPPY)
+		_say(tr("PW_TURN"), Face.Expr.HAPPY)
 	_refresh()
 
 # --- the sprout's line ---
@@ -911,12 +911,12 @@ func _left_line() -> String:
 		elif n > 1:
 			stained += 1
 	if bare == 0 and stained == 0:
-		return "Not a gap, not a fold."
+		return tr("PW_DONE")
 	if stained == 0:
-		return "One square bare." if bare == 1 else "%d squares bare." % bare
+		return tr("PW_ONE_BARE") if bare == 1 else tr("PW_N_BARE") % bare
 	if bare == 0:
-		return "One square doubled." if stained == 1 else "%d squares doubled." % stained
-	return "%d bare, %d doubled." % [bare, stained]
+		return tr("PW_ONE_DOUBLED") if stained == 1 else tr("PW_N_DOUBLED") % stained
+	return tr("PW_BARE_DOUBLED") % [bare, stained]
 
 func _speak() -> void:
 	if is_done():
@@ -934,7 +934,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not _state.history.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules: this
 ## board answers a turn with a count, and a refusal with the rule.
@@ -993,7 +993,7 @@ func undo() -> bool:
 		return false
 	_refused = {}
 	_settle(before, _now(), true)
-	_say("Turned back. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("PW_TURNED_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
 	moved.emit()
@@ -1012,7 +1012,7 @@ func hint() -> bool:
 	var before: PackedInt32Array = _state.turned.duplicate()
 	var out: Dictionary = _state.hint()
 	if out.is_empty():
-		_say("Every piece is already home.", Face.Expr.HAPPY)
+		_say(tr("PW_ALL_HOME"), Face.Expr.HAPPY)
 		return false
 	hints_used = _state.hints_used
 	var p := int(out["piece"])
@@ -1020,7 +1020,7 @@ func hint() -> bool:
 	_settle(before, _now(), false)
 	_fx_at(_pin_point(p), Pal.LEAF)
 	fx.cue("hint")
-	_say("That one was facing the wrong way. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("PW_HINT") + " " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
 	# A hint can finish the frame, and a board that ends on one still ends.
@@ -1050,7 +1050,7 @@ func reset_board() -> void:
 	_settle(before, _now(), true, delays)
 	moves = 0
 	_running = true
-	_say("Back to the start. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("PW_RESET") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
 
@@ -1078,7 +1078,7 @@ func restore_completed_board() -> void:
 	# `_animating` finds nothing left of the wave.
 	_solved_at = t - 10.0
 	_tip_timer.stop()
-	_say("Not a gap, not a fold.", Face.Expr.JOY)
+	_say(tr("PW_DONE"), Face.Expr.JOY)
 	_refresh()
 
 func is_solved() -> bool:
@@ -1096,7 +1096,7 @@ func share_glyphs() -> String:
 ## pinwheels batch into one mesh and a Control per pin would be a node per
 ## pin of a thing with no face on it.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Every piece turned home."}
+	return {"faces": [], "subtitle": tr("PW_WIN")}
 
 ## Long enough for the solve wave to cross the frame. Under reduce-motion
 ## there is no wave, so the win follows the last turn.
@@ -1111,7 +1111,7 @@ func _on_solved() -> void:
 	for p in _state.shapes.size():
 		_fx_at(_pin_point(p), Pal.SUN, _solve_delay(p), false)
 	_busy_for(Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
-	_say("Not a gap, not a fold.", Face.Expr.JOY)
+	_say(tr("PW_DONE"), Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh()
 

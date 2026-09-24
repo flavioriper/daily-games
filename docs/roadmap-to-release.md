@@ -119,9 +119,11 @@ be built.
 - [ ] Every board opens its rules sheet. Hidden Word especially.
 
 ### Localisation: pt and es
-- [ ] Key all 20 boards' rules, tips, trays, card blurbs and difficulty
-      lines. Today only the shared chrome and the two word boards are keyed
-      in `locale/ui.csv`.
+- [x] (2026-09-24, `feat/localise-boards`) Key all 20 boards' rules, tips,
+      trays, card blurbs and difficulty lines: 500 rows in
+      `locale/boards.csv`, plus the first-play card and the island names.
+      No key shows on any board in any language (probe), suite 122,581/0,
+      and the pt and es card grids fit on a frame at 810x1440.
 - [ ] Key the new Stats, Streak, purchase and consent strings.
 - [ ] pt is pt-BR (`ui.csv`). `locale/turn.csv` is pt-PT, but it goes with
       How Big?.

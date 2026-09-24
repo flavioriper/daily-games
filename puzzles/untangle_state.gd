@@ -97,7 +97,7 @@ func is_solved() -> bool:
 	return Gen.is_untangled(edges, pos)
 
 func share_glyphs() -> String:
-	return "🏮 %d lanterns · %d cords" % [nodes, edges.size()]
+	return tr("UT_SHARE") % [nodes, edges.size()]
 
 # --- moves ---
 

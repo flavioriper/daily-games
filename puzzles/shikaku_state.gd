@@ -157,7 +157,7 @@ func is_solved() -> bool:
 	return covered.size() == w * h
 
 func share_glyphs() -> String:
-	return "▦ %dx%d · %d plots" % [w, h, rects.size()]
+	return "▦ %dx%d · " % [w, h] + tr("SK_SHARE_PLOTS") % rects.size()
 
 # --- the fence ---
 

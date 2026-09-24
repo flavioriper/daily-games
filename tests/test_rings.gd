@@ -124,10 +124,10 @@ static func _test_drop_rules(t) -> void:
 	s.colours = 3
 	t.check(s.lift(0), "lifted a 0")
 	t.check(not s.can_drop(1), "1's top is a different colour")
-	t.eq(s.refusal(1), "A ring only lands on its own colour.", "the mismatch line, verbatim")
+	t.eq(s.refusal(1), "RG_WRONG_COLOUR", "the mismatch line's key")
 	t.check(s.can_drop(2), "the empty peg takes anything")
 	t.check(not s.can_drop(3), "a full peg takes nothing")
-	t.eq(s.refusal(3), "That peg is full.", "the full line, verbatim")
+	t.eq(s.refusal(3), "RG_FULL", "the full line's key")
 	t.eq(s.drop(2), 0, "landed in the empty peg's first slot")
 	t.eq(s.log.size(), 1, "one move logged")
 	t.eq(s.held, -1, "the hand is empty")

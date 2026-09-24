@@ -124,7 +124,7 @@ func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
 
 func rules() -> String:
-	return "Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical.\n\nAn = between two cells means they hold the same symbol. An × means they hold opposite ones."
+	return tr("BN_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]

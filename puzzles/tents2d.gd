@@ -103,9 +103,9 @@ const WIN_WAIT := 1.6
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 const TIPS := [
-	"One tent orthogonally beside every tree. Tents never touch, not even corner to corner.",
-	"Drag across the meadow to lay cairns on ground you have ruled out.",
-	"The numbers count the tents in each line.",
+	"TN_TIP_BESIDE",
+	"TN_TIP_CAIRNS",
+	"TN_TIP_NUMBERS",
 ]
 
 var state = State.new()
@@ -179,7 +179,7 @@ func puzzle_id() -> String: return "tents"
 func title() -> String: return "Tents"
 
 func rules() -> String:
-	return "Pitch one tent orthogonally beside every tree. Tents never touch, not even corner to corner, and the numbers count the tents in each line."
+	return tr("TN_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -210,7 +210,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -874,8 +874,8 @@ func _wobble(face: Control) -> void:
 ## A tap refused on `cell`, a tree's or a pegged tent's: the piece shivers,
 ## the cell blushes and the sprout says why.
 func _refuse(cell: Vector2i) -> void:
-	_say("A tree stands there. Tents go beside them." if state.trees.has(cell)
-		else "That tent is pegged down. A hint pitched it.", Face.Expr.PUZZLED)
+	_say(tr("TN_REFUSE_TREE") if state.trees.has(cell)
+		else tr("TN_REFUSE_PEGGED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	_blush_cell(cell)
 	var face := _face_on(cell)
@@ -895,22 +895,22 @@ func _speak() -> void:
 		return
 	var bad := state.bad_tents()
 	if bad > 0:
-		_say("One tent is in trouble: it touches another, or it has no tree beside it."
+		_say(tr("TN_BAD_ONE")
 			if bad == 1 else
-			"%d tents are in trouble: touching another, or with no tree beside them." % bad,
+			tr("TN_BAD_N") % bad,
 			Face.Expr.STRAIN)
 		return
 	var over := state.over_lines()
 	if over > 0:
-		_say("One line has more tents than its number allows." if over == 1
-			else "%d lines have more tents than their numbers allow." % over,
+		_say(tr("TN_OVER_ONE") if over == 1
+			else tr("TN_OVER_N") % over,
 			Face.Expr.STRAIN)
 		return
 	var left := state.tents_left()
 	if left <= 0:
-		_say("Every tent is pitched. Something is still not matched up.", Face.Expr.STRAIN)
+		_say(tr("TN_UNMATCHED"), Face.Expr.STRAIN)
 		return
-	_say("%d %s still to pitch." % [left, "tent" if left == 1 else "tents"], Face.Expr.HAPPY)
+	_say((tr("TN_LEFT_ONE") if left == 1 else tr("TN_LEFT_N")) % left, Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -923,7 +923,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -965,7 +965,7 @@ func hint() -> bool:
 	fx.ring(at, _cell * 0.5, Pal.LEAF)
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
-	_say("That tent is pegged down for good.", Face.Expr.HAPPY)
+	_say(tr("TN_PEGGED"), Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
 	check_solved()
@@ -982,8 +982,8 @@ func check() -> int:
 		if _tents.has(cell):
 			_wobble(_tents[cell])
 		_blush_cell(cell)
-	_say("%d %s in the wrong place." % [wrong.size(), "tent is" if wrong.size() == 1 else "tents are"]
-		if not wrong.is_empty() else "Every tent you have pitched is right.",
+	_say((tr("TN_WRONG_ONE") if wrong.size() == 1 else tr("TN_WRONG_N")) % wrong.size()
+		if not wrong.is_empty() else tr("TN_ALL_RIGHT"),
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_redraw()
@@ -1021,7 +1021,7 @@ func reset_board() -> void:
 	moves = 0
 	_running = true
 	_refresh_faces()
-	_say("The meadow is cleared. The hints you spent are not refunded, only unpinned.",
+	_say(tr("TN_RESET"),
 		Face.Expr.HAPPY)
 	_tip_timer.start()
 	fx.cue("reset")
@@ -1062,7 +1062,7 @@ func restore_completed_board() -> void:
 		chip.scale = Vector2.ONE
 		chip.rotation = 0.0
 	_refresh_faces()
-	_say("Every tree has its tent. The camp is pitched.", Face.Expr.JOY)
+	_say(tr("TN_WIN"), Face.Expr.JOY)
 	_redraw()
 
 ## A tree or a tent at rest in its slot, beaming.
@@ -1084,7 +1084,7 @@ func share_glyphs() -> String:
 ## The board is the answer, so the win screen shows no cast: the pitched camp
 ## stays on the card under it.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Every tree has its camp."}
+	return {"faces": [], "subtitle": tr("TN_WIN_SUB")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -1113,7 +1113,7 @@ func _on_solved() -> void:
 		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
 		k += 1
 	_refresh_faces()
-	_say("Every tree has its tent. The camp is pitched.", Face.Expr.JOY)
+	_say(tr("TN_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)
 	_redraw()

@@ -174,7 +174,7 @@ func puzzle_id() -> String: return "balance"
 func title() -> String: return "Balance"
 
 func rules() -> String:
-	return "Every scale balances, and one weight is given. Use a fruit's minus and plus to change what it weighs; the beams follow at once. Solve it when every beam sits level."
+	return tr("BAL_RULES")
 
 ## No check: every beam already answers that question, every frame. Reading
 ## the board is the whole puzzle, so there is nothing for a Check to do --
@@ -515,12 +515,11 @@ func step_weight(i: int, delta: int) -> bool:
 		return false
 	if not state.step(i, delta):
 		if state.locked[i]:
-			_say("That one is given. The scales do the rest.", Face.Expr.HAPPY)
+			_say(tr("BAL_GIVEN"), Face.Expr.HAPPY)
 		elif delta < 0:
-			_say("A thing always weighs at least one.", Face.Expr.WORRIED)
+			_say(tr("BAL_MIN"), Face.Expr.WORRIED)
 		else:
-			var cap := "Twelve" if state.max_w == 12 else "Nine"
-			_say("%s is as heavy as anything gets." % cap, Face.Expr.WORRIED)
+			_say(tr("BAL_MAX_12") if state.max_w == 12 else tr("BAL_MAX_9"), Face.Expr.WORRIED)
 		fx.cue("refused")
 		return false
 	_update_scales()
@@ -575,7 +574,7 @@ func hint() -> bool:
 	for k in HINT_SPARKLES:
 		fx.sparkle(at + Vector2((randf() - 0.5) * size.x / float(state.shapes) * 0.7, 0.0),
 			Fruit.colour(i))
-	_say("That one is settled. The scales do the rest.", Face.Expr.HAPPY)
+	_say(tr("BAL_HINT"), Face.Expr.HAPPY)
 	fx.cue("hint")
 	moved.emit()
 	check_solved()
@@ -595,7 +594,7 @@ func reset_board() -> void:
 	_running = true
 	_update_scales(BAND_STAGGER)
 	_hop_kinds(changed)
-	_say("Back to one each. Start from the scales.", Face.Expr.HAPPY)
+	_say(tr("BAL_CLEARED"), Face.Expr.HAPPY)
 	fx.cue("reset")
 
 ## A completed daily is rebuilt from its seed, so its transient weights start
@@ -620,7 +619,7 @@ func is_solved() -> bool:
 	return state.is_solved()
 
 func share_glyphs() -> String:
-	return "⚖️ %d kinds · %d scales" % [state.shapes, state.scales.size()]
+	return "⚖️ " + tr("BAL_SHARE") % [state.shapes, state.scales.size()]
 
 # --- the tip card ---
 
@@ -660,8 +659,8 @@ func _sentence(i: int) -> String:
 		return ""
 	var sc: Dictionary = state.scales[i]
 	var left: String = _side_words(sc.left)
-	var verb := " weighs" if (sc.left as Array).size() == 1 else " weigh"
-	return "%s%s the same as %s." % [left.substr(0, 1).to_upper() + left.substr(1), verb, _side_words(sc.right)]
+	var line: String = tr("BAL_SAYS_1") if (sc.left as Array).size() == 1 else tr("BAL_SAYS_N")
+	return line % [left.substr(0, 1).to_upper() + left.substr(1), _side_words(sc.right)]
 
 ## One side in words: "two apples", or "one pear and two acorns".
 func _side_words(side: Array) -> String:
@@ -675,11 +674,24 @@ func _side_words(side: Array) -> String:
 		counts[i] = int(counts[i]) + 1
 	var parts: Array[String] = []
 	for i in order:
-		parts.append(Fruit.counted(i, int(counts[i])))
+		parts.append(_counted(i, int(counts[i])))
 	if parts.size() == 1:
 		return parts[0]
 	var last: String = parts.pop_back()
-	return "%s and %s" % [", ".join(parts), last]
+	return tr("BAL_AND") % [", ".join(parts), last]
+
+## "one apple", "three pumpkins", in the player's language: Fruit.counted's
+## English, keyed. One and two are per fruit (pt's um/uma and dois/duas agree
+## with the noun); three and up put a number word into the fruit's plural.
+## Ten and up fall back to the digit, which the generator never reaches.
+func _counted(i: int, n: int) -> String:
+	var f: int = i % Fruit.count()
+	if n == 1:
+		return tr("BAL_FRUIT_%d_ONE" % f)
+	if n == 2:
+		return tr("BAL_FRUIT_%d_TWO" % f)
+	var word: String = tr("BAL_NUM_%d" % n) if n < 10 else str(n)
+	return tr("BAL_FRUIT_%d_MANY" % f) % word
 
 # --- the win ---
 
@@ -689,7 +701,7 @@ func _side_words(side: Array) -> String:
 ## this (win_delay).
 func _on_solved() -> void:
 	_tip_timer.stop()
-	_say("Everything sits level. Beautifully weighed.", Face.Expr.JOY)
+	_say(tr("BAL_SOLVED"), Face.Expr.JOY)
 	var rest := _piece_rest_y()
 	var k := 0
 	for i in _beams.size():
@@ -717,7 +729,7 @@ func flat_win() -> Dictionary:
 	for i in state.shapes:
 		faces.append(Fruit.make(i, 140.0, Vector2.ZERO))
 		labels.append(str(int(state.secret[i])))
-	return {"faces": faces, "labels": labels, "subtitle": "Everything balances!"}
+	return {"faces": faces, "labels": labels, "subtitle": tr("BAL_WIN")}
 
 func win_delay() -> float:
 	return WIN_DELAY_STILL if Motion.reduce else WIN_DELAY

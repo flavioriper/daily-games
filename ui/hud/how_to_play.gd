@@ -45,7 +45,7 @@ func _build() -> void:
 
 	var heading := Label.new()
 	heading.theme_type_variation = "SheetTitle"
-	heading.text = "How to play %s" % String(_entry.get("title", ""))
+	heading.text = tr("HTP_TITLE") % String(_entry.get("title", ""))
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.custom_minimum_size.y = 74
 	col.add_child(heading)
@@ -61,7 +61,7 @@ func _build() -> void:
 
 	var title := Label.new()
 	title.theme_type_variation = "CardTitle"
-	title.text = "Tap in the missing symbol" if is_binairo else "Start with one move"
+	title.text = "HTP_BINAIRO_MOVE" if is_binairo else "HTP_START"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
 
@@ -75,7 +75,7 @@ func _build() -> void:
 
 	var note := Label.new()
 	note.theme_type_variation = "SheetBodyDim"
-	note.text = "Tip: %s" % _tip_text()
+	note.text = tr("HTP_TIP") % _tip_text()
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.custom_minimum_size.x = 760
@@ -83,7 +83,7 @@ func _build() -> void:
 
 	var button := Button.new()
 	button.theme_type_variation = "PrimaryButton"
-	button.text = "Continue"
+	button.text = "HTP_CONTINUE"
 	button.custom_minimum_size = Vector2(430, 108)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_ALL
@@ -93,12 +93,14 @@ func _build() -> void:
 func _rules_text() -> String:
 	if _puzzle != null and _puzzle.has_method("rules"):
 		return String(_puzzle.rules())
-	return String(_entry.get("blurb", "Solve today's puzzle."))
+	return tr(String(_entry.get("blurb", "HTP_FALLBACK_RULES")))
 
 func _tip_text() -> String:
-	var blurb := String(_entry.get("blurb", "Look for the simplest move first."))
-	var first := blurb.split(".", false)[0].strip_edges()
-	return first.to_lower() + "." if first != "" else "look for the simplest move first."
+	# The registry's `blurb` is a key; its first sentence, lower-cased, is
+	# the tip in whatever language it translated to.
+	var blurb := tr(String(_entry.get("blurb", "HTP_FALLBACK_TIP")))
+	var first := blurb.split(".", false)[0].strip_edges() if blurb != "" else ""
+	return first.to_lower() + "." if first != "" else tr("HTP_FALLBACK_TIP").to_lower()
 
 func _card_style() -> StyleBoxFlat:
 	var sb := CozyTheme.card(Pal.PAPER, 34, Pal.LINE, 6, 36)

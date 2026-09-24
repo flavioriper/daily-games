@@ -1,0 +1,501 @@
+keys,en,pt,es
+BN_RULES,"Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical.\n\nAn = between two cells means they hold the same symbol. An × means they hold opposite ones.","Preencha cada casa com um sol ou uma lua. Nunca três iguais em linha. Cada linha tem a mesma quantidade de cada um, e não há duas linhas iguais.\n\nUm = entre duas casas quer dizer que elas têm o mesmo símbolo. Um × quer dizer que têm símbolos opostos.","Llena cada casilla con un sol o una luna. Nunca tres iguales en línea. Cada línea tiene la misma cantidad de cada uno, y no hay dos líneas iguales.\n\nUn = entre dos casillas significa que tienen el mismo símbolo. Un × significa que tienen símbolos opuestos."
+CB_RULES,"Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. %s rows, three hints.","Descubra a fileira escondida de %s amigos. %s Toque num amigo para sentá-lo, e Conferir pontua a fileira: um ponto cheio é um amigo no lugar certo, um anel vazio é um amigo certo no lugar errado. Nenhum dos dois diz qual lugar. %s fileiras, três dicas.","Descifra la fila oculta de %s amigos. %s Toca un amigo para sentarlo, y Comprobar puntúa la fila: un punto lleno es un amigo en el lugar correcto, un aro vacío es un amigo correcto en el lugar equivocado. Ninguno dice qué lugar. %s filas, tres pistas."
+CB_REPEATS,A friend may sit in it twice.,Um amigo pode aparecer duas vezes.,Un amigo puede aparecer dos veces.
+CB_NO_REPEATS,No friend sits in it twice.,Nenhum amigo aparece duas vezes.,Ningún amigo aparece dos veces.
+CB_NUM_2,Two,Dois,Dos
+CB_NUM_3,Three,Três,Tres
+CB_NUM_4,Four,Quatro,Cuatro
+CB_NUM_5,Five,Cinco,Cinco
+CB_NUM_7,Seven,Sete,Siete
+CB_NUM_8,Eight,Oito,Ocho
+CB_TIP_SEAT,Tap a friend to seat them. Check scores the row.,Toque num amigo para sentá-lo. Conferir pontua a fileira.,Toca un amigo para sentarlo. Comprobar puntúa la fila.
+CB_TIP_READY,Check when you are ready.,Confira quando estiver pronto.,Comprueba cuando estés listo.
+CB_HINT_STAYS,A hinted friend stays where the hint put them.,Um amigo da dica fica onde a dica o colocou.,Un amigo de la pista se queda donde la pista lo puso.
+CB_HINT_SITS,This one sits here. That seat is settled.,Este fica aqui. Esse lugar está resolvido.,Este va aquí. Ese lugar está resuelto.
+CB_NEED_FULL,Every seat needs a friend before a Check can score.,Todo lugar precisa de um amigo antes de Conferir.,Cada lugar necesita un amigo antes de Comprobar.
+CB_SOLVED,Cracked it. Lovely reading of the pips.,Descobriu! Que bela leitura dos pontos.,¡Lo descifraste! Qué buena lectura de los puntos.
+CB_LOST,Here it was. Come back tomorrow.,Era este. Volte amanhã.,Era este. Vuelve mañana.
+CB_CLEARED,Cleared. Back to row one.,Limpo. De volta à primeira fileira.,Limpio. De vuelta a la primera fila.
+CB_WIN,Cracked it!,Descobriu!,¡Lo descifraste!
+CB_THE_CODE,THE CODE,O CÓDIGO,EL CÓDIGO
+CB_SCORE_NONE,Not one of those %s is in the code.,Nenhum desses %s está no código.,Ninguno de esos %s está en el código.
+CB_SCORE_WRONG_1,"One right friend, in the wrong seat.","Um amigo certo, no lugar errado.","Un amigo correcto, en el lugar equivocado."
+CB_SCORE_WRONG_N,"%s right friends, every one in the wrong seat.","%s amigos certos, todos no lugar errado.","%s amigos correctos, todos en el lugar equivocado."
+CB_SCORE_RIGHT_1,One sat in the right seat,Um está no lugar certo,Uno está en el lugar correcto
+CB_SCORE_RIGHT_N,%s sat in the right seat,%s estão no lugar certo,%s están en el lugar correcto
+CB_SCORE_REST_OUT,%s. The rest are not in the code.,%s. Os outros não estão no código.,%s. Los demás no están en el código.
+CB_SCORE_MORE_1,"%s, and one more belongs somewhere else.","%s, e mais um vai em outro lugar.","%s, y uno más va en otro lugar."
+CB_SCORE_MORE_N,"%s, and %s more belong somewhere else.","%s, e mais %s vão em outro lugar.","%s, y %s más van en otro lugar."
+BAL_RULES,"Every scale balances, and one weight is given. Use a fruit's minus and plus to change what it weighs; the beams follow at once. Solve it when every beam sits level.","Toda balança se equilibra, e um peso já vem dado. Use o menos e o mais de cada fruta para mudar quanto ela pesa; as hastes acompanham na hora. Resolva quando todas as hastes ficarem retas.","Cada balanza se equilibra, y un peso ya viene dado. Usa el menos y el más de cada fruta para cambiar cuánto pesa; los brazos se mueven al instante. Resuélvelo cuando todos los brazos queden nivelados."
+BAL_GIVEN,That one is given. The scales do the rest.,Esse já vem dado. As balanças fazem o resto.,Ese ya viene dado. Las balanzas hacen el resto.
+BAL_MIN,A thing always weighs at least one.,Tudo pesa pelo menos um.,Todo pesa al menos uno.
+BAL_MAX_12,Twelve is as heavy as anything gets.,Doze é o máximo que algo pode pesar.,Doce es lo máximo que algo puede pesar.
+BAL_MAX_9,Nine is as heavy as anything gets.,Nove é o máximo que algo pode pesar.,Nueve es lo máximo que algo puede pesar.
+BAL_HINT,That one is settled. The scales do the rest.,Esse está resolvido. As balanças fazem o resto.,Ese está resuelto. Las balanzas hacen el resto.
+BAL_CLEARED,Back to one each. Start from the scales.,De volta a um cada. Comece pelas balanças.,De vuelta a uno cada uno. Empieza por las balanzas.
+BAL_SOLVED,Everything sits level. Beautifully weighed.,Tudo equilibrado. Que bela pesagem.,Todo nivelado. Qué bien pesado.
+BAL_WIN,Everything balances!,Tudo se equilibra!,¡Todo se equilibra!
+BAL_SHARE,%d kinds · %d scales,%d tipos · %d balanças,%d tipos · %d balanzas
+BAL_SAYS_1,%s weighs the same as %s.,%s pesa o mesmo que %s.,%s pesa lo mismo que %s.
+BAL_SAYS_N,%s weigh the same as %s.,%s pesam o mesmo que %s.,%s pesan lo mismo que %s.
+BAL_AND,%s and %s,%s e %s,%s y %s
+BAL_FRUIT_0_ONE,one apple,uma maçã,una manzana
+BAL_FRUIT_0_TWO,two apples,duas maçãs,dos manzanas
+BAL_FRUIT_0_MANY,%s apples,%s maçãs,%s manzanas
+BAL_FRUIT_1_ONE,one pear,uma pera,una pera
+BAL_FRUIT_1_TWO,two pears,duas peras,dos peras
+BAL_FRUIT_1_MANY,%s pears,%s peras,%s peras
+BAL_FRUIT_2_ONE,one pumpkin,uma abóbora,una calabaza
+BAL_FRUIT_2_TWO,two pumpkins,duas abóboras,dos calabazas
+BAL_FRUIT_2_MANY,%s pumpkins,%s abóboras,%s calabazas
+BAL_FRUIT_3_ONE,one acorn,uma bolota,una bellota
+BAL_FRUIT_3_TWO,two acorns,duas bolotas,dos bellotas
+BAL_FRUIT_3_MANY,%s acorns,%s bolotas,%s bellotas
+BAL_FRUIT_4_ONE,one mushroom,um cogumelo,un hongo
+BAL_FRUIT_4_TWO,two mushrooms,dois cogumelos,dos hongos
+BAL_FRUIT_4_MANY,%s mushrooms,%s cogumelos,%s hongos
+BAL_NUM_3,three,três,tres
+BAL_NUM_4,four,quatro,cuatro
+BAL_NUM_5,five,cinco,cinco
+BAL_NUM_6,six,seis,seis
+BAL_NUM_7,seven,sete,siete
+BAL_NUM_8,eight,oito,ocho
+BAL_NUM_9,nine,nove,nueve
+SK_RULES,"Split the field into plots. Each one holds exactly one number, and that number is its area.","Divida o campo em canteiros. Cada um tem exatamente um número, e esse número é a sua área.","Divide el campo en parcelas. Cada una tiene exactamente un número, y ese número es su área."
+SK_TIP_DRAG,"Drag corner to corner. Each plot holds one number, and that number is how many squares it covers.","Arraste de canto a canto. Cada canteiro tem um número, e esse número é quantas casas ele cobre.","Arrastra de esquina a esquina. Cada parcela tiene un número, y ese número es cuántas casillas cubre."
+SK_TIP_REDRAW,Draw over a plot to replace it; tap inside one to clear it.,Desenhe por cima de um canteiro para trocá-lo; toque dentro dele para apagá-lo.,Dibuja sobre una parcela para cambiarla; toca dentro de ella para borrarla.
+SK_TIP_BLUSH,"Two numbers in one bed, or none, and the bed blushes.","Dois números num canteiro, ou nenhum, e ele fica corado.","Dos números en una parcela, o ninguno, y se sonroja."
+SK_PINNED,That bed is pinned. A hint drew it.,Esse canteiro está fixo. Uma dica o desenhou.,Esa parcela está fija. Una pista la dibujó.
+SK_SOLVED,Every plot has its number. The beds go in.,Cada canteiro tem seu número. Hora de plantar.,Cada parcela tiene su número. A plantar.
+SK_BLUSH_1,One bed has the wrong number of markers in it.,Um canteiro está com a quantidade errada de números.,Una parcela tiene la cantidad equivocada de números.
+SK_BLUSH_N,%d beds have the wrong number of markers in them.,%d canteiros estão com a quantidade errada de números.,%d parcelas tienen la cantidad equivocada de números.
+SK_WRONG_SIZE,"Every square is planted, but some plot is the wrong size.","Todas as casas estão plantadas, mas algum canteiro tem o tamanho errado.","Todas las casillas están plantadas, pero alguna parcela tiene el tamaño equivocado."
+SK_BARE_1,1 square still bare.,Falta 1 casa.,Falta 1 casilla.
+SK_BARE_N,%d squares still bare.,Faltam %d casas.,Faltan %d casillas.
+SK_FENCED,That bed is fenced for good.,Esse canteiro está cercado de vez.,Esa parcela quedó cercada para siempre.
+SK_CHECK_OK,Every number is settled.,Todos os números estão certos.,Todos los números están resueltos.
+SK_CHECK_1,1 number is not settled yet.,1 número ainda não está certo.,1 número aún no está resuelto.
+SK_CHECK_N,%d numbers are not settled yet.,%d números ainda não estão certos.,%d números aún no están resueltos.
+SK_CLEARED,"Cleared. The hints you spent are not refunded, only unpinned.","Limpo. As dicas usadas não voltam, só deixam de estar fixas.","Limpio. Las pistas usadas no se devuelven, solo se sueltan."
+SK_WIN,The whole field is planted.,O campo todo está plantado.,Todo el campo está plantado.
+SK_SHARE_PLOTS,%d plots,%d canteiros,%d parcelas
+UT_TIP_DRAG,Drag a lantern. No two cords may cross.,Arraste uma lanterna. Nenhum fio pode cruzar outro.,Arrastra un farol. Ningún cordón puede cruzar otro.
+UT_TIP_KNOT,A knot is drawn exactly where two cords meet. Pull one of them off it.,Um nó aparece bem onde dois fios se cruzam. Tire um deles de lá.,Aparece un nudo justo donde se cruzan dos cordones. Saca uno de ahí.
+UT_TIP_APART,Keep the lanterns apart. A heap in one corner is not an answer.,Deixe as lanternas separadas. Um monte num canto não é resposta.,Mantén los faroles separados. Un montón en una esquina no es respuesta.
+UT_RULES,Drag the lanterns until no two cords cross. A knot is drawn wherever two of them do. Keep the lanterns apart -- a heap in one corner does not count.,Arraste as lanternas até que nenhum fio cruze outro. Um nó aparece onde dois deles se cruzam. Deixe as lanternas separadas -- um monte num canto não vale.,Arrastra los faroles hasta que ningún cordón cruce otro. Aparece un nudo donde dos de ellos se cruzan. Mantén los faroles separados -- un montón en una esquina no cuenta.
+UT_CROWDED,"No cords cross, but give them room. A pile is not a solution.","Nenhum fio se cruza, mas dê espaço a eles. Um monte não é solução.","Ningún cordón se cruza, pero dales espacio. Un montón no es solución."
+UT_ONE_KNOT_LEFT,One knot left. Nearly there.,Falta um nó. Quase lá.,Queda un nudo. Ya casi.
+UT_GONE_ONE,One knot gone. %d still to go.,Um nó a menos. Faltam %d.,Un nudo menos. Quedan %d.
+UT_GONE_N,%d knots gone. %d still to go.,%d nós a menos. Faltam %d.,%d nudos menos. Quedan %d.
+UT_PINNED,That one is on its peg now. It will not move again.,Essa está presa no gancho agora. Não sai mais do lugar.,Ese ya está en su gancho. No se moverá más.
+UT_RESET,Back to the tangle you were given.,De volta ao emaranhado do começo.,De vuelta al enredo del principio.
+UT_WIN_SUB,Not a knot left.,Nenhum nó sobrou.,No queda ni un nudo.
+UT_WIN,Not a knot left. The lights go on.,Nenhum nó sobrou. As luzes acendem.,No queda ni un nudo. Se encienden las luces.
+UT_SHARE,🏮 %d lanterns · %d cords,🏮 %d lanternas · %d fios,🏮 %d faroles · %d cordones
+TN_TIP_BESIDE,"One tent orthogonally beside every tree. Tents never touch, not even corner to corner.","Uma barraca ao lado de cada árvore, nunca na diagonal. Barracas nunca se tocam, nem pelas quinas.","Una carpa al lado de cada árbol, nunca en diagonal. Las carpas nunca se tocan, ni por las esquinas."
+TN_TIP_CAIRNS,Drag across the meadow to lay cairns on ground you have ruled out.,Arraste pelo campo para pôr pedrinhas onde você já descartou.,Arrastra por el prado para poner piedritas donde ya descartaste.
+TN_TIP_NUMBERS,The numbers count the tents in each line.,Os números contam as barracas de cada linha.,Los números cuentan las carpas de cada línea.
+TN_RULES,"Pitch one tent orthogonally beside every tree. Tents never touch, not even corner to corner, and the numbers count the tents in each line.","Arme uma barraca ao lado de cada árvore, nunca na diagonal. Barracas nunca se tocam, nem pelas quinas, e os números contam as barracas de cada linha.","Arma una carpa al lado de cada árbol, nunca en diagonal. Las carpas nunca se tocan, ni por las esquinas, y los números cuentan las carpas de cada línea."
+TN_REFUSE_TREE,A tree stands there. Tents go beside them.,Ali tem uma árvore. As barracas vão ao lado delas.,Ahí hay un árbol. Las carpas van a su lado.
+TN_REFUSE_PEGGED,That tent is pegged down. A hint pitched it.,Essa barraca está fincada. Uma dica a armou.,Esa carpa está clavada. La armó una pista.
+TN_BAD_ONE,"One tent is in trouble: it touches another, or it has no tree beside it.",Uma barraca está com problema: encosta em outra ou não tem árvore ao lado.,Una carpa tiene un problema: toca otra o no tiene un árbol al lado.
+TN_BAD_N,"%d tents are in trouble: touching another, or with no tree beside them.",%d barracas estão com problema: encostam em outra ou não têm árvore ao lado.,%d carpas tienen un problema: tocan otra o no tienen un árbol al lado.
+TN_OVER_ONE,One line has more tents than its number allows.,Uma linha tem mais barracas do que o número permite.,Una línea tiene más carpas de las que su número permite.
+TN_OVER_N,%d lines have more tents than their numbers allow.,%d linhas têm mais barracas do que os números permitem.,%d líneas tienen más carpas de las que sus números permiten.
+TN_UNMATCHED,Every tent is pitched. Something is still not matched up.,Todas as barracas estão armadas. Ainda tem algo que não bate.,Todas las carpas están armadas. Algo todavía no cuadra.
+TN_LEFT_ONE,%d tent still to pitch.,Falta armar %d barraca.,Falta armar %d carpa.
+TN_LEFT_N,%d tents still to pitch.,Faltam armar %d barracas.,Faltan armar %d carpas.
+TN_PEGGED,That tent is pegged down for good.,Essa barraca ficou fincada de vez.,Esa carpa quedó clavada para siempre.
+TN_WRONG_ONE,%d tent is in the wrong place.,%d barraca está no lugar errado.,%d carpa está en el lugar equivocado.
+TN_WRONG_N,%d tents are in the wrong place.,%d barracas estão no lugar errado.,%d carpas están en el lugar equivocado.
+TN_ALL_RIGHT,Every tent you have pitched is right.,Todas as barracas que você armou estão certas.,Todas las carpas que armaste están bien.
+TN_RESET,"The meadow is cleared. The hints you spent are not refunded, only unpinned.","O campo está limpo. As dicas usadas não voltam, só ficam soltas.","El prado está despejado. Las pistas usadas no se devuelven, solo se sueltan."
+TN_WIN,Every tree has its tent. The camp is pitched.,Cada árvore tem sua barraca. O acampamento está pronto.,Cada árbol tiene su carpa. El campamento está listo.
+TN_WIN_SUB,Every tree has its camp.,Cada árvore tem seu acampamento.,Cada árbol tiene su campamento.
+LU_TIP_LIGHT,Light every floor stone. A lantern lights its row and column until a block stops it.,Ilumine cada pedra do chão. Uma lanterna ilumina sua linha e coluna até um bloco barrar.,Ilumina cada piedra del suelo. Un farol ilumina su fila y su columna hasta que un bloque lo detiene.
+LU_TIP_NO_SEE,No lantern may light another. Drag across the court to chip the stones you have ruled out.,Nenhuma lanterna pode iluminar outra. Arraste pelo pátio para marcar as pedras que você descartou.,Ningún farol puede iluminar a otro. Arrastra por el patio para marcar las piedras que descartaste.
+LU_TIP_NUMBER,A number counts the lanterns touching that block. Half the blocks carry none.,Um número conta as lanternas encostadas naquele bloco. Metade dos blocos não tem número.,Un número cuenta los faroles que tocan ese bloque. La mitad de los bloques no tiene número.
+LU_RULES,Light every floor stone. A lantern lights its row and column until a block stops it. No lantern may light another. Numbers count the lanterns touching a block.,Ilumine cada pedra do chão. Uma lanterna ilumina sua linha e coluna até um bloco barrar. Nenhuma lanterna pode iluminar outra. Os números contam as lanternas encostadas num bloco.,Ilumina cada piedra del suelo. Un farol ilumina su fila y su columna hasta que un bloque lo detiene. Ningún farol puede iluminar a otro. Los números cuentan los faroles que tocan un bloque.
+LU_REFUSE_BLOCK,A block of stone stands there. It is what stops the light.,Ali tem um bloco de pedra. É ele que barra a luz.,Ahí hay un bloque de piedra. Es lo que detiene la luz.
+LU_REFUSE_PINNED,That lantern is lit for good. A hint set it down.,Essa lanterna está acesa de vez. Uma dica a colocou.,Ese farol quedó encendido para siempre. Lo puso una pista.
+LU_SEEN_TWO,Two lanterns can see each other down that line.,Duas lanternas se enxergam nessa linha.,Dos faroles se ven en esa línea.
+LU_SEEN_N,%d lanterns are lighting each other.,%d lanternas estão iluminando umas às outras.,%d faroles se están iluminando entre sí.
+LU_OVER_ONE,A block has more lanterns beside it than its number allows.,Um bloco tem mais lanternas ao lado do que o número permite.,Un bloque tiene más faroles al lado de los que su número permite.
+LU_OVER_N,%d blocks have more lanterns beside them than their numbers allow.,%d blocos têm mais lanternas ao lado do que os números permitem.,%d bloques tienen más faroles al lado de los que sus números permiten.
+LU_DARK_ONE,One stone is still in the dark.,Uma pedra ainda está no escuro.,Una piedra sigue a oscuras.
+LU_DARK_N,%d stones are still in the dark.,%d pedras ainda estão no escuro.,%d piedras siguen a oscuras.
+LU_UNSATISFIED,Every stone is lit. A number is still not satisfied.,Todas as pedras estão iluminadas. Ainda falta um número bater.,Todas las piedras están iluminadas. Todavía hay un número que no cuadra.
+LU_PINNED,That lantern is lit for good.,Essa lanterna ficou acesa de vez.,Ese farol quedó encendido para siempre.
+LU_WRONG_ONE,%d lantern stands in the wrong place.,%d lanterna está no lugar errado.,%d farol está en el lugar equivocado.
+LU_WRONG_N,%d lanterns stand in the wrong place.,%d lanternas estão no lugar errado.,%d faroles están en el lugar equivocado.
+LU_ALL_RIGHT,Every lantern you have set down is right.,Todas as lanternas que você pôs estão certas.,Todos los faroles que pusiste están bien.
+LU_RESET,"The court is cleared. The hints you spent are not refunded, only unpinned.","O pátio está limpo. As dicas usadas não voltam, só ficam soltas.","El patio está despejado. Las pistas usadas no se devuelven, solo se sueltan."
+LU_WIN,Not a stone left in the dark.,Nenhuma pedra ficou no escuro.,Ni una piedra quedó a oscuras.
+OL_TIP_START,"Start on a green post and walk every line exactly once, without lifting your finger.","Comece num poste verde e passe por cada linha uma única vez, sem tirar o dedo.","Empieza en un poste verde y recorre cada línea una sola vez, sin levantar el dedo."
+OL_TIP_DRAG,Drag from post to post. A line you have walked turns from stone to warm plank.,Arraste de poste em poste. A linha percorrida vira de pedra em tábua.,Arrastra de poste en poste. La línea recorrida pasa de piedra a tabla.
+OL_TIP_GREEN,Two green posts mean the stroke has to begin at one of them.,Dois postes verdes: o traço tem que começar em um deles.,Dos postes verdes: el trazo tiene que empezar en uno de ellos.
+OL_RULES,"Start on a green post and walk along every line exactly once, without going over one twice. Walk into a part of the figure you cannot get back out of and the rest is stranded: undo back to the fork.","Comece num poste verde e passe por cada linha uma única vez, sem repetir nenhuma. Se você entrar numa parte da figura de onde não dá para sair, o resto fica isolado: desfaça até a bifurcação.","Empieza en un poste verde y recorre cada línea una sola vez, sin pasar dos veces por ninguna. Si entras en una parte de la figura de la que no puedes salir, el resto queda aislado: deshaz hasta la bifurcación."
+OL_BEGIN_GREEN,The stroke has to begin on one of the two green posts.,O traço tem que começar num dos dois postes verdes.,El trazo tiene que empezar en uno de los dos postes verdes.
+OL_BEGIN_ANY,Begin anywhere: this figure has no odd post.,Comece onde quiser: esta figura não tem poste ímpar.,Empieza donde quieras: esta figura no tiene poste impar.
+OL_NOW_WALK,Now walk every line exactly once.,Agora passe por cada linha uma única vez.,Ahora recorre cada línea una sola vez.
+OL_WALKED,That line is walked already. Every line takes exactly one crossing.,Essa linha já foi percorrida. Cada linha só se cruza uma vez.,Esa línea ya está recorrida. Cada línea se cruza una sola vez.
+OL_STILL_ONE,One line is still stranded behind you.,Uma linha ainda está isolada atrás de você.,Una línea sigue aislada detrás de ti.
+OL_STILL_N,%d lines are still stranded behind you.,%d linhas ainda estão isoladas atrás de você.,%d líneas siguen aisladas detrás de ti.
+OL_STRANDED_ONE,One line is stranded behind you now. Undo back to the fork.,Uma linha ficou isolada atrás de você. Desfaça até a bifurcação.,Una línea quedó aislada detrás de ti. Deshaz hasta la bifurcación.
+OL_STRANDED_N,%d lines are stranded behind you now. Undo back to the fork.,%d linhas ficaram isoladas atrás de você. Desfaça até a bifurcação.,%d líneas quedaron aisladas detrás de ti. Deshaz hasta la bifurcación.
+OL_LEFT_ONE,One line still to walk.,Falta uma linha.,Queda una línea.
+OL_LEFT_N,%d lines still to walk.,Faltam %d linhas.,Quedan %d líneas.
+OL_HINT_BEGIN,Begin there.,Comece ali.,Empieza ahí.
+OL_NO_SAFE,There is no safe step left from here. Undo back to the fork.,Não há mais passo seguro daqui. Desfaça até a bifurcação.,No queda ningún paso seguro desde aquí. Deshaz hasta la bifurcación.
+OL_CHECK_BARE,"Nothing is walked yet, so nothing is stranded. Begin on a green post.","Nada foi percorrido, então nada está isolado. Comece num poste verde.","Todavía no recorriste nada, así que nada está aislado. Empieza en un poste verde."
+OL_CHECK_OK,Every line left can still be reached from where you stand.,Todas as linhas que faltam ainda dá para alcançar daqui.,Todas las líneas que faltan se pueden alcanzar desde aquí.
+OL_LOST_ONE,One line is stranded: nothing can reach it now.,Uma linha está isolada: nada chega mais até ela.,Una línea está aislada: ya nada puede llegar a ella.
+OL_LOST_N,%d lines are stranded: nothing can reach them now.,%d linhas estão isoladas: nada chega mais até elas.,%d líneas están aisladas: ya nada puede llegar a ellas.
+OL_RESET,The jetty is taken up again. The hints you spent are not refunded.,O píer foi desmontado. As dicas usadas não voltam.,El muelle se desarmó. Las pistas usadas no se devuelven.
+OL_WIN,"One stroke, and not a line missed.","Um traço só, e nenhuma linha esquecida.","Un solo trazo, y ninguna línea olvidada."
+OL_WIN_SUB,"One stroke, not a line missed.","Um traço só, nenhuma linha esquecida.","Un solo trazo, ninguna línea olvidada."
+OL_SHARE,✏️ %d lines in one stroke,✏️ %d linhas num traço só,✏️ %d líneas en un solo trazo
+NG_TIP_RUNS,"The numbers count the runs of filled cells in each line, in order.","Os números contam as sequências de casas pintadas em cada linha, em ordem.","Los números cuentan las tiras de casillas pintadas en cada línea, en orden."
+NG_TIP_DRAG,Drag to paint with the chip you have picked. Drag back over your own paint to rub it out.,Arraste para pintar com a peça escolhida. Passe de novo por cima para apagar.,Arrastra para pintar con la ficha elegida. Vuelve a pasar por encima para borrar.
+NG_TIP_GREEN,A line's numbers turn green when its runs read exactly as they say.,Os números de uma linha ficam verdes quando as sequências batem com eles.,Los números de una línea se ponen verdes cuando sus tiras coinciden con ellos.
+NG_RULES,"The numbers give the lengths of the filled runs in each line, in order, with a gap between runs.","Os números dão o tamanho das sequências pintadas em cada linha, em ordem, com um espaço entre elas.","Los números dan el largo de las tiras pintadas en cada línea, en orden, con un hueco entre ellas."
+NG_GROUTED,That tile is grouted in. A hint laid it.,Essa peça está fixa. Uma dica a colocou.,Esa ficha está fija. La puso una pista.
+NG_OVER_ONE,One line holds more filled cells than its numbers allow.,Uma linha tem mais casas pintadas do que seus números permitem.,Una línea tiene más casillas pintadas de lo que sus números permiten.
+NG_OVER_N,%d lines hold more filled cells than their numbers allow.,%d linhas têm mais casas pintadas do que seus números permitem.,%d líneas tienen más casillas pintadas de lo que sus números permiten.
+NG_LINES_OK,Every line reads as it should. Something is still in the wrong place.,Todas as linhas batem. Mas algo ainda está no lugar errado.,Todas las líneas cuadran. Pero algo sigue en el lugar equivocado.
+NG_LEFT_ONE,%d tile still to lay.,Falta %d peça.,Falta %d ficha.
+NG_LEFT_N,%d tiles still to lay.,Faltam %d peças.,Faltan %d fichas.
+NG_DISAGREE,All the tiles are down. %d lines still disagree.,Todas as peças estão no lugar. %d linhas ainda não batem.,Todas las fichas están puestas. %d líneas aún no cuadran.
+NG_HINT,"That tile belongs to the picture, and it is grouted in for good.",Essa peça faz parte do desenho e fica fixa de vez.,Esa ficha es parte del dibujo y queda fija para siempre.
+NG_WRONG_ONE,%d tile is in the wrong place.,%d peça está no lugar errado.,%d ficha está en el lugar equivocado.
+NG_WRONG_N,%d tiles are in the wrong place.,%d peças estão no lugar errado.,%d fichas están en el lugar equivocado.
+NG_ALL_RIGHT,Every tile you have laid belongs to the picture.,Todas as peças que você colocou fazem parte do desenho.,Todas las fichas que pusiste son parte del dibujo.
+NG_RESET,"The floor is cleared. The hints you spent are not refunded, only unpinned.","Tudo limpo. As dicas usadas não voltam, só deixam de estar fixas.","Todo limpio. Las pistas usadas no se devuelven, solo se sueltan."
+NG_SOLVED,There it is. The picture you were counting towards.,Aí está. O desenho que você vinha contando.,Ahí está. El dibujo que venías contando.
+NG_WIN,The numbers made a picture.,Os números viraram um desenho.,Los números formaron un dibujo.
+QN_TIP_ONE_EACH,"One queen in every row, every column and every colour.","Uma rainha em cada linha, cada coluna e cada cor.","Una reina en cada fila, cada columna y cada color."
+QN_TIP_SEES,A queen crosses out every seat she can see.,Uma rainha risca todas as casas que ela vê.,Una reina tacha todas las casillas que ve.
+QN_TIP_TOUCH,"Two queens never touch, not even at a corner.","Duas rainhas nunca se tocam, nem na diagonal.","Dos reinas nunca se tocan, ni siquiera en diagonal."
+QN_RULES,"Seat one queen in every row, every column and every colour. No two queens may touch, not even at a corner. A queen crosses out every seat she can see.","Coloque uma rainha em cada linha, cada coluna e cada cor. Duas rainhas não podem se tocar, nem na diagonal. Uma rainha risca todas as casas que ela vê.","Coloca una reina en cada fila, cada columna y cada color. Dos reinas no pueden tocarse, ni siquiera en diagonal. Una reina tacha todas las casillas que ve."
+QN_SEEN,A queen already sees that seat.,Uma rainha já vê essa casa.,Una reina ya ve esa casilla.
+QN_PINNED,That queen was given. She stays.,Essa rainha veio de presente. Ela fica.,Esa reina venía dada. Se queda.
+QN_TO_SEAT,%d queens to seat.,Faltam %d rainhas.,Faltan %d reinas.
+QN_SEATED_ONE,"%d queen seated, %d to go.","%d rainha no lugar, faltam %d.","%d reina colocada, faltan %d."
+QN_SEATED_N,"%d queens seated, %d to go.","%d rainhas no lugar, faltam %d.","%d reinas colocadas, faltan %d."
+QN_HINT,"This queen was given, and she stays.","Esta rainha veio de presente, e ela fica.","Esta reina te la dimos, y se queda."
+QN_HINT_MOVED,"That queen was in the wrong seat. This one was given, and she stays.","Aquela rainha estava no lugar errado. Esta veio de presente, e fica.","Esa reina estaba en el lugar equivocado. Esta te la dimos, y se queda."
+QN_WRONG_ONE,%d queen is in the wrong seat.,%d rainha está no lugar errado.,%d reina está en el lugar equivocado.
+QN_WRONG_N,%d queens are in the wrong seat.,%d rainhas estão no lugar errado.,%d reinas están en el lugar equivocado.
+QN_SEAT_FIRST,Seat a queen first.,Coloque uma rainha primeiro.,Coloca una reina primero.
+QN_ALL_RIGHT,Every queen you have seated is right.,Todas as rainhas que você colocou estão certas.,Todas las reinas que colocaste están bien.
+QN_RESET,The court is cleared. A given queen keeps her seat.,Tabuleiro limpo. Uma rainha dada fica no lugar.,Tablero limpio. Una reina dada conserva su lugar.
+QN_WIN,Every queen has her seat.,Cada rainha tem seu lugar.,Cada reina tiene su lugar.
+MP_TIP_COUNT,A number counts the mushrooms in the eight cells touching it.,Um número conta os cogumelos nas oito casas ao redor dele.,Un número cuenta los hongos en las ocho casillas a su alrededor.
+MP_TIP_PLANT,Plant a mushroom where you are sure. Lay a pebble where you are not.,Plante um cogumelo onde tiver certeza. Ponha uma pedrinha onde não houver.,Planta un hongo donde estés seguro. Pon una piedrita donde no haya.
+MP_TIP_GREEN,A number goes green the moment it has all its mushrooms.,Um número fica verde assim que tem todos os seus cogumelos.,Un número se pone verde en cuanto tiene todos sus hongos.
+MP_RULES,A number counts the mushrooms in the eight cells touching it. Plant a mushroom where you have proved one is; lay a pebble where you have proved one is not. A number turns green when it has exactly its mushrooms and rose when it has too many. Nothing is ever hidden from you and the patch can never be lost.,"Um número conta os cogumelos nas oito casas ao redor dele. Plante um cogumelo onde você provou que há um; ponha uma pedrinha onde provou que não há. Um número fica verde quando tem exatamente seus cogumelos e rosa quando tem demais. Nada fica escondido de você, e a horta nunca está perdida.","Un número cuenta los hongos en las ocho casillas a su alrededor. Planta un hongo donde demostraste que hay uno; pon una piedrita donde demostraste que no hay. Un número se pone verde cuando tiene justo sus hongos y rosa cuando tiene de más. Nada se te oculta, y la huerta nunca se pierde."
+MP_TALLY_ONE,one mushroom still hidden,um cogumelo ainda escondido,un hongo sigue escondido
+MP_TALLY_N,%s mushrooms still hidden,%s cogumelos ainda escondidos,%s hongos siguen escondidos
+MP_TALLY_ALL,every mushroom is planted,todos os cogumelos plantados,todos los hongos plantados
+MP_TALLY_OVER,%s too many planted,plantou %s a mais,plantaste %s de más
+MP_TURNED,That cell is already turned over. Its number is the clue.,Essa casa já está aberta. O número dela é a pista.,Esa casilla ya está abierta. Su número es la pista.
+MP_PINNED,That mushroom was given. It stays.,Esse cogumelo veio de presente. Ele fica.,Ese hongo venía dado. Se queda.
+MP_FOUND_ONE,"one mushroom found, %s to go.","um cogumelo achado, mais %s por achar.","un hongo encontrado, %s por encontrar."
+MP_FOUND_N,"%s mushrooms found, %s to go.","%s cogumelos achados, mais %s por achar.","%s hongos encontrados, %s por encontrar."
+MP_MISPLACED,Every mushroom is spoken for. One of them is in the wrong place.,Todos os cogumelos foram plantados. Um deles está no lugar errado.,Todos los hongos están plantados. Uno está en el lugar equivocado.
+MP_HINT,"One mushroom found for you, and pinned. It is a fact now.","Um cogumelo achado para você, e fixado. Agora é certeza.","Un hongo encontrado para ti, y fijado. Ya es un hecho."
+MP_WRONG_ONE,One mark is wrong.,Uma marca está errada.,Una marca está mal.
+MP_WRONG_TWO,Two marks are wrong.,Duas marcas estão erradas.,Dos marcas están mal.
+MP_WRONG_N,%s marks are wrong.,%s marcas estão erradas.,%s marcas están mal.
+MP_PLANT_FIRST,Plant a mushroom first.,Plante um cogumelo primeiro.,Planta un hongo primero.
+MP_ALL_RIGHT,Every mark you have made is right.,Todas as suas marcas estão certas.,Todas tus marcas están bien.
+MP_RESET,The patch is cleared. What a hint gave stays given.,Horta limpa. O que uma dica deu continua dado.,Huerta limpia. Lo que dio una pista se queda.
+MP_WIN,Every patch has its count.,Cada canteiro tem sua conta.,Cada parcela tiene su cuenta.
+MP_NUM_0,no,nenhum,ninguno
+MP_NUM_1,one,um,uno
+MP_NUM_2,two,dois,dos
+MP_NUM_3,three,três,tres
+MP_NUM_4,four,quatro,cuatro
+MP_NUM_5,five,cinco,cinco
+MP_NUM_6,six,seis,seis
+MP_NUM_7,seven,sete,siete
+MP_NUM_8,eight,oito,ocho
+MP_NUM_9,nine,nove,nueve
+MP_NUM_10,ten,dez,diez
+MP_NUM_11,eleven,onze,once
+MP_NUM_12,twelve,doze,doce
+MP_NUM_13,thirteen,treze,trece
+MP_NUM_14,fourteen,catorze,catorce
+SD_TIP_UNITS,"Every row, every column and every region holds 1 to %d once.","Cada linha, cada coluna e cada região tem de 1 a %d uma vez só.","Cada fila, cada columna y cada región tiene del 1 al %d una sola vez."
+SD_TIP_TAP,"Tap a cell, then a number. Tap that number again to take it out.","Toque numa casa, depois num número. Toque de novo para tirar.",Toca una casilla y luego un número. Tócalo otra vez para quitarlo.
+SD_TIP_CROSS,The cross takes out whatever is in the selected cell.,O X tira o que estiver na casa escolhida.,La X quita lo que haya en la casilla elegida.
+SD_TIP_PALE,A number already placed %d times goes pale in the pad.,Um número já colocado %d vezes fica apagado no teclado.,Un número ya puesto %d veces se ve pálido en el teclado.
+SD_RULES,"Fill the grid so every row, every column and every %d-by-%d region holds the numbers 1 to %d, each exactly once.\n\nTap a cell, then tap a number. Tapping the number a cell already holds takes it out again.\n\nThe cross takes out whatever is in the selected cell.\n\nCheck marks anything that disagrees with the answer, and costs nothing but a count.","Preencha a grade para que cada linha, cada coluna e cada região de %d por %d tenha os números de 1 a %d, cada um exatamente uma vez.\n\nToque numa casa, depois num número. Tocar o número que a casa já tem tira ele de novo.\n\nO X tira o que estiver na casa escolhida.\n\nConferir marca tudo o que não bate com a resposta, e só custa uma contagem.","Llena la cuadrícula para que cada fila, cada columna y cada región de %d por %d tenga los números del 1 al %d, cada uno exactamente una vez.\n\nToca una casilla y luego un número. Tocar el número que ya tiene la casilla lo quita otra vez.\n\nLa X quita lo que haya en la casilla elegida.\n\nComprobar marca todo lo que no coincide con la respuesta, y solo cuesta una cuenta."
+SD_TAP_CELL,Tap a cell first,Toque numa casa primeiro,Toca una casilla primero
+SD_GIVEN,That one came with the puzzle,Esse já veio no desafio,Ese ya venía en el reto
+SD_EMPTY,That cell is already empty,Essa casa já está vazia,Esa casilla ya está vacía
+SD_PENCIL,Pencil marks go in an empty cell,Anotações só em casa vazia,Las notas van en una casilla vacía
+SD_HINT,There it is. That one had the fewest numbers left to be.,Aí está. Essa era a casa com menos opções.,Ahí está. Esa era la casilla con menos opciones.
+SD_CHECK_OK,Every number you have put down belongs there.,Todos os números que você colocou estão no lugar certo.,Todos los números que pusiste van ahí.
+SD_CHECK_ONE,One number to look at again.,Um número para olhar de novo.,Un número para revisar.
+SD_CHECK_N,%d numbers to look at again.,%d números para olhar de novo.,%d números para revisar.
+SD_RESET,The board is back to its givens. The hints you spent are not refunded.,O tabuleiro voltou ao início. As dicas usadas não voltam.,El tablero volvió al inicio. Las pistas usadas no se devuelven.
+SD_WIN,Every number in its place.,Cada número no seu lugar.,Cada número en su lugar.
+BR_TIP_REST,Press an islet and drag at the one facing it.,Toque numa ilhota e arraste até a que fica de frente.,Toca un islote y arrastra hacia el que tiene enfrente.
+BR_TIP_NONE,Nothing faces it across the water.,"Nada à frente, do outro lado da água.","Nada enfrente, al otro lado del agua."
+BR_TIP_CROSS,Another run crosses that lane.,Outra ponte cruza esse caminho.,Otro puente cruza ese camino.
+BR_RULES,"Join the islets with plank bridges.\nEach islet takes exactly its number of planks.\nBridges run across or down only, never over an islet.\nAt most three planks join the same two islets, and no two runs may cross.\nWhen you are done, every islet must be joined into one single network.","Ligue as ilhotas com pontes de tábuas.\nCada ilhota recebe exatamente o seu número de tábuas.\nAs pontes só correm na horizontal ou na vertical, nunca por cima de uma ilhota.\nNo máximo três tábuas ligam as mesmas duas ilhotas, e duas pontes nunca se cruzam.\nNo fim, todas as ilhotas precisam estar ligadas numa única rede.","Une los islotes con puentes de tablas.\nCada islote lleva exactamente su número de tablas.\nLos puentes van solo en horizontal o en vertical, nunca por encima de un islote.\nComo mucho tres tablas unen los mismos dos islotes, y dos puentes nunca se cruzan.\nAl terminar, todos los islotes deben quedar unidos en una sola red."
+BR_HINT,A plank the answer wants is in.,Entrou uma tábua que a resposta pede.,Ya está una tabla que la respuesta pide.
+BR_CHECK_ONE,1 run is in the way.,1 ponte está atrapalhando.,1 puente está estorbando.
+BR_CHECK_N,%d runs are in the way.,%d pontes estão atrapalhando.,%d puentes están estorbando.
+BR_CHECK_OK,Nothing you have laid is wrong.,Nada do que você colocou está errado.,Nada de lo que pusiste está mal.
+BR_WIN,"One network, every islet on it.","Uma rede só, com todas as ilhotas.","Una sola red, con todos los islotes."
+BR_SHARE,🌉 %dx%d · %d islets · %d planks,🌉 %dx%d · %d ilhotas · %d tábuas,🌉 %dx%d · %d islotes · %d tablas
+QL_TIP_DRAG,Drag a patch onto the quilt.,Arraste um retalho para a colcha.,Arrastra un retazo a la colcha.
+QL_TIP_EDGE,A patch may not hang off the edge.,Um retalho não pode sair pela borda.,Un retazo no puede salirse del borde.
+QL_TIP_SHARE,Two patches never share a cell.,Dois retalhos nunca dividem uma casa.,Dos retazos nunca comparten una casilla.
+QL_TIP_ALL,Every patch goes on. That is the whole of it.,Todos os retalhos entram. É só isso.,Todos los retazos entran. Eso es todo.
+QL_HINTED_FAST,That one was sewn on for you.,Esse foi costurado para você.,Ese lo cosimos por ti.
+QL_REFUSE_OVER,That cell already has a patch on it.,Essa casa já tem um retalho.,Esa casilla ya tiene un retazo.
+QL_REFUSE_OFF,Every square of a patch has to be on the quilt.,Cada quadradinho do retalho tem que ficar na colcha.,Cada cuadrito del retazo tiene que quedar en la colcha.
+QL_WIN,Not a gap left.,Nenhum buraco sobrando.,No queda ni un hueco.
+QL_ONE_LEFT,One patch left.,Falta um retalho.,Queda un retazo.
+QL_N_LEFT,%d patches left.,Faltam %d retalhos.,Quedan %d retazos.
+QL_TAKEN_BACK,Taken back.,Desfeito.,Deshecho.
+QL_HINT,That one goes here.,Esse vai aqui.,Ese va aquí.
+QL_CLEAN,A clean quilt.,Colcha limpa.,Colcha limpia.
+QL_RULES,"Every patch on the rack goes onto the quilt. Drag one up and it snaps to the cells: it must lie wholly on the backing, with no corner hanging off, and it may not cover a patch already sewn on. Patches never turn -- each one goes on the way it is drawn. Drag a patch that is already on to take it off again. The patches hold exactly as many cells as the quilt does, so when the last one is sewn on the quilt is whole and the board is done; there is nothing to check along the way, only a fit to find.","Todos os retalhos da prateleira vão para a colcha. Arraste um para cima e ele se encaixa nas casas: precisa ficar inteiro sobre o forro, sem nenhum canto para fora, e não pode cobrir um retalho já costurado. Os retalhos nunca giram -- cada um entra do jeito que está desenhado. Arraste um retalho que já está na colcha para tirá-lo de novo. Os retalhos somam exatamente as casas da colcha, então, quando o último é costurado, a colcha fica completa e o tabuleiro termina; não há nada para conferir no caminho, só um encaixe para achar.","Todos los retazos del estante van a la colcha. Arrastra uno hacia arriba y se encaja en las casillas: debe quedar entero sobre el forro, sin ninguna esquina afuera, y no puede tapar un retazo ya cosido. Los retazos nunca giran -- cada uno entra tal como está dibujado. Arrastra un retazo que ya está en la colcha para quitarlo otra vez. Los retazos suman exactamente las casillas de la colcha, así que cuando coses el último la colcha queda completa y el tablero termina; no hay nada que comprobar por el camino, solo un encaje que encontrar."
+PP_TIP_TAP,Tap a plane and it flies out the way it points.,Toque num avião e ele sai voando para onde aponta.,Toca un avión y sale volando hacia donde apunta.
+PP_TIP_LANE,Its lane has to be clear all the way off the board.,O caminho dele tem que estar livre até sair do tabuleiro.,Su camino tiene que estar libre hasta salir del tablero.
+PP_TIP_SAFE,"Nothing here can go wrong. Any plane that can go, can go.","Aqui nada dá errado. Todo avião que pode sair, pode sair.","Aquí nada sale mal. Todo avión que puede salir, puede salir."
+PP_TIP_FRONT,Send the one in front first.,Mande primeiro o da frente.,Manda primero el de adelante.
+PP_SAID_1,Off it goes. That lane was clear the whole way.,Lá vai ele. O caminho estava livre até o fim.,Allá va. El camino estaba libre hasta el final.
+PP_SAID_2,"Any plane with a clear lane can go, in whatever order you like.","Qualquer avião com o caminho livre pode sair, na ordem que você quiser.","Cualquier avión con el camino libre puede salir, en el orden que quieras."
+PP_SAID_3,"Send the one in front, and the one behind it is free.","Mande o da frente, e o de trás fica livre.","Manda el de adelante, y el de atrás queda libre."
+PP_REFUSE,That lane is not clear. Send the one in its way first.,Esse caminho não está livre. Mande primeiro o que está na frente.,Ese camino no está libre. Manda primero el que estorba.
+PP_UNDO,Called back. It is on the field again.,Chamado de volta. Está no campo de novo.,De vuelta. Está otra vez en el campo.
+PP_HINT,This one has a clear lane.,Este tem o caminho livre.,Este tiene el camino libre.
+PP_RESET,All of them back on the field.,Todos de volta ao campo.,Todos de vuelta en el campo.
+PP_WIN,Every plane found its lane.,Cada avião achou seu caminho.,Cada avión encontró su camino.
+PP_RULES,"Every plane points somewhere, and its lane is every cell straight ahead of it, out to the edge of the board. Tap a plane and it launches along its own trail and away, but only if that lane is completely empty. A tap on a plane whose lane is blocked costs you nothing at all -- there is nothing to lose here and no order of launches that can strand you, so clear the sky in whatever order you like.","Cada avião aponta para algum lado, e o caminho dele são todas as casas bem à frente, até a borda do tabuleiro. Toque num avião e ele decola pela própria trilha e vai embora, mas só se esse caminho estiver totalmente vazio. Tocar num avião com o caminho bloqueado não custa nada -- aqui não há o que perder nem ordem de decolagem que deixe você sem saída, então limpe o céu na ordem que quiser.","Cada avión apunta hacia algún lado, y su camino son todas las casillas justo delante, hasta el borde del tablero. Toca un avión y despega por su propia estela y se va, pero solo si ese camino está completamente vacío. Tocar un avión con el camino bloqueado no te cuesta nada -- aquí no hay nada que perder ni orden de despegue que te deje sin salida, así que despeja el cielo en el orden que quieras."
+PW_TIP_TAP,"Tap a pinwheel. Its piece turns a quarter, round the pin.",Toque num cata-vento. A peça gira um quarto em volta do pino.,Toca un molinete. Su pieza gira un cuarto alrededor del alfiler.
+PW_TIP_PIN,A pin never moves. Only the piece round it turns.,O pino nunca sai do lugar. Só a peça em volta gira.,El alfiler nunca se mueve. Solo gira la pieza a su alrededor.
+PW_TIP_DARK,A darker cell is two pieces on one square. Turn one away.,Uma casa escura são duas peças no mesmo quadrado. Gire uma para longe.,Una casilla oscura son dos piezas en el mismo cuadro. Gira una.
+PW_TIP_DONE,"No bare ground, no dark cells, and the frame is done.","Sem chão vazio e sem casas escuras, o quadro está pronto.","Sin suelo vacío ni casillas oscuras, el marco está listo."
+PW_DONE,"Not a gap, not a fold.","Nem um buraco, nem uma dobra.","Ni un hueco, ni un pliegue."
+PW_ONE_BARE,One square bare.,Um quadrado vazio.,Un cuadro vacío.
+PW_N_BARE,%d squares bare.,%d quadrados vazios.,%d cuadros vacíos.
+PW_ONE_DOUBLED,One square doubled.,Um quadrado dobrado.,Un cuadro doble.
+PW_N_DOUBLED,%d squares doubled.,%d quadrados dobrados.,%d cuadros dobles.
+PW_BARE_DOUBLED,"%d bare, %d doubled.","%d vazios, %d dobrados.","%d vacíos, %d dobles."
+PW_PINNED,That one is pinned fast. It has nowhere else to go.,Essa está bem presa. Não tem outro jeito de ficar.,Esa está bien sujeta. No tiene otra forma de quedar.
+PW_BARE,Bare ground. Something has to cover it.,Chão vazio. Alguma peça tem que cobrir.,Suelo vacío. Algo tiene que cubrirlo.
+PW_TURN,Turn a piece by its pinwheel.,Gire uma peça pelo cata-vento.,Gira una pieza con su molinete.
+PW_TURNED_BACK,Turned back.,Desfeito.,Deshecho.
+PW_ALL_HOME,Every piece is already home.,Todas as peças já estão no lugar.,Todas las piezas ya están en su lugar.
+PW_HINT,That one was facing the wrong way.,Essa estava virada para o lado errado.,Esa miraba hacia el lado equivocado.
+PW_RESET,Back to the start.,De volta ao começo.,De vuelta al inicio.
+PW_WIN,Every piece turned home.,Cada peça girou até o lugar.,Cada pieza giró a su lugar.
+PW_RULES,"Every piece is pinned through one of its own squares by a pinwheel, and that pin never moves. Tap a pinwheel and its piece turns a quarter clockwise about the pin. A quarter that would carry the piece off the frame is skipped rather than refused, so a tap always does something and every way round is reachable. Pieces may lie across each other while you work: a square two pieces are on goes dark and hatched, and a square nobody is on stays bare ground. A piece with only one way to lie is pinned fast; tapping it says so and nothing else. Turn them until there is no dark and no bare ground, and the frame is covered exactly once.","Cada peça está presa por um cata-vento num dos seus próprios quadrados, e esse pino nunca sai do lugar. Toque num cata-vento e a peça gira um quarto no sentido horário em volta do pino. Um quarto que levaria a peça para fora do quadro é pulado, não recusado, então um toque sempre faz alguma coisa e dá para chegar a qualquer posição. As peças podem ficar umas sobre as outras enquanto você joga: um quadrado com duas peças fica escuro e riscado, e um quadrado sem nenhuma fica como chão vazio. Uma peça com um só jeito de ficar está bem presa; tocar nela só avisa isso. Gire as peças até não sobrar nada escuro nem chão vazio, e o quadro fica coberto exatamente uma vez.","Cada pieza está sujeta por un molinete en uno de sus propios cuadros, y ese alfiler nunca se mueve. Toca un molinete y su pieza gira un cuarto en el sentido de las agujas del reloj alrededor del alfiler. Un cuarto que sacaría la pieza del marco se salta en vez de rechazarse, así que un toque siempre hace algo y se puede llegar a cualquier posición. Las piezas pueden quedar unas sobre otras mientras juegas: un cuadro con dos piezas se oscurece y se raya, y un cuadro sin ninguna queda como suelo vacío. Una pieza con una sola forma de quedar está bien sujeta; tocarla solo te lo dice. Gira las piezas hasta que no quede nada oscuro ni suelo vacío, y el marco queda cubierto exactamente una vez."
+BN_BLURB,Suns and moons. Never three alike in a line.,Sóis e luas. Nunca três iguais em linha.,Soles y lunas. Nunca tres iguales en línea.
+BN_SHORT,"Suns and moons,\nnever three alike.","Sóis e luas,\nnunca três iguais.","Soles y lunas,\nnunca tres iguales."
+BN_MOTTO,Balance brings harmony,Equilíbrio é harmonia,Equilibrio es armonía
+CB_BLURB,Crack the hidden row from the feedback.,Descubra a fileira oculta pelas pistas.,Descubre la fila oculta con las pistas.
+CB_SHORT,Crack the hidden\nrow of friends.,Descubra a fileira\nde amigos oculta.,Descubre la fila\nde amigos oculta.
+CB_MOTTO,Crack the hidden code,Quebre o código,Descifra el código
+CB_LVL_0,"4 friends, all different","4 amigos, todos diferentes","4 amigos, todos distintos"
+CB_LVL_1,"4 friends, may repeat","4 amigos, podem repetir","4 amigos, pueden repetirse"
+CB_LVL_2,"5 friends, may repeat","5 amigos, podem repetir","5 amigos, pueden repetirse"
+CB_LVL_3,"5 friends of 7, 7 tries","5 amigos de 7, 7 tentativas","5 amigos de 7, 7 intentos"
+BAL_BLURB,Work out what each fruit weighs.,Descubra quanto pesa cada fruta.,Averigua cuánto pesa cada fruta.
+BAL_SHORT,What does each\nfruit weigh?,Quanto pesa\ncada fruta?,¿Cuánto pesa\ncada fruta?
+BAL_MOTTO,Find the weight of things,O peso de cada coisa,El peso de cada cosa
+BAL_LVL_0,3 fruits,3 frutas,3 frutas
+BAL_LVL_1,4 fruits,4 frutas,4 frutas
+BAL_LVL_2,5 fruits,5 frutas,5 frutas
+BAL_LVL_3,"5 fruits, weights to 12","5 frutas, pesos até 12","5 frutas, pesos hasta 12"
+UT_BLURB,Drag the lanterns until no cords cross.,Arraste as lanternas até nenhum fio se cruzar.,Arrastra los faroles hasta que ningún cordón se cruce.
+UT_SHORT,Pull the lanterns\nuntil none cross.,Puxe as lanternas\naté nada cruzar.,Mueve los faroles\nsin que se crucen.
+UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace
+UT_LVL_0,7 lanterns,7 lanternas,7 faroles
+UT_LVL_1,10 lanterns,10 lanternas,10 faroles
+UT_LVL_2,14 lanterns,14 lanternas,14 faroles
+UT_LVL_3,20 lanterns,20 lanternas,20 faroles
+SK_BLURB,Cut the field into numbered plots.,Divida o campo em canteiros numerados.,Divide el campo en parcelas numeradas.
+SK_SHORT,Cut the field into\nnumbered plots.,Divida o campo em\ncanteiros numerados.,Divide el campo en\nparcelas numeradas.
+SK_MOTTO,Every plot has its number,"Cada canteiro, seu número","Cada parcela, su número"
+SK_LVL_3,"7 × 9, big plots","7 × 9, canteiros grandes","7 × 9, parcelas grandes"
+TN_BLURB,One tent beside every tree.,Uma barraca ao lado de cada árvore.,Una carpa junto a cada árbol.
+TN_SHORT,One tent beside\nevery tree.,Uma barraca\npara cada árvore.,Una carpa junto\na cada árbol.
+TN_MOTTO,A camp for every tree,Uma barraca por árvore,Una carpa por árbol
+LU_BLURB,"Light every cell, and no bulb may see another.","Ilumine cada casa, e nenhuma lanterna pode ver outra.","Ilumina cada casilla, y ningún farol puede ver a otro."
+LU_SHORT,"Light every cell,\nblind every bulb.","Luz em cada pedra,\nlanternas às cegas.","Luz en cada piedra,\nfaroles a ciegas."
+LU_MOTTO,Let there be light,Faça-se a luz,Hágase la luz
+OL_BLURB,Trace every line in a single stroke.,Percorra cada linha num só traço.,Recorre cada línea en un solo trazo.
+OL_SHORT,"Every line, walked\nin one stroke.","Cada linha, num\nsó traço.","Cada línea,\nen un solo trazo."
+OL_MOTTO,"One stroke, no lifting","Um traço só, sem parar","Un trazo, sin levantar"
+OL_LVL_0,3 × 3 posts,3 × 3 postes,3 × 3 postes
+OL_LVL_1,4 × 3 posts,4 × 3 postes,4 × 3 postes
+OL_LVL_2,4 × 4 posts,4 × 4 postes,4 × 4 postes
+OL_LVL_3,5 × 4 posts,5 × 4 postes,5 × 4 postes
+NG_BLURB,Fill the runs and reveal the picture.,Preencha as sequências e revele a imagem.,Rellena las tiras y revela el dibujo.
+NG_SHORT,The numbers make\na picture.,Os números formam\numa imagem.,Los números forman\nun dibujo.
+NG_MOTTO,Numbers make a picture,Números formam imagens,Los números dibujan
+QN_BLURB,"Seat one queen in every row, column and colour.","Ponha uma rainha em cada linha, coluna e cor.","Sienta una reina en cada fila, columna y color."
+QN_SHORT,"One queen per row,\ncolumn and colour.","Uma rainha por\nlinha, coluna e cor.","Una reina por fila,\ncolumna y color."
+QN_MOTTO,Every queen has her seat,Cada rainha em seu trono,Cada reina en su trono
+HW_BLURB,"Five letters, six tries. A new word every day.","Cinco letras, seis tentativas. Uma palavra nova por dia.","Cinco letras, seis intentos. Una palabra nueva cada día."
+WT_BLURB,Trace every hidden word. The lengths are the only clue.,Trace cada palavra escondida. Os tamanhos são a única pista.,Traza cada palabra oculta. Las longitudes son la única pista.
+MP_BLURB,Every number counts the mushrooms around it. Find them all.,Cada número conta os cogumelos ao redor. Ache todos.,Cada número cuenta los hongos a su alrededor. Encuéntralos todos.
+MP_SHORT,The numbers count\nwhat is hidden.,Os números contam\no que se esconde.,Los números cuentan\nlo que se esconde.
+MP_MOTTO,Every patch has its count,"Cada canteiro, sua conta","Cada parcela, su cuenta"
+MP_LVL_0,"6 mushrooms, 6 × 6","6 cogumelos, 6 × 6","6 hongos, 6 × 6"
+MP_LVL_1,"9 mushrooms, 7 × 7","9 cogumelos, 7 × 7","9 hongos, 7 × 7"
+MP_LVL_2,"12 mushrooms, 8 × 8","12 cogumelos, 8 × 8","12 hongos, 8 × 8"
+MP_LVL_3,"16 mushrooms, 9 × 9","16 cogumelos, 9 × 9","16 hongos, 9 × 9"
+SD_BLURB,"Every number once in every row, column and region.","Cada número uma vez em cada linha, coluna e região.","Cada número una vez en cada fila, columna y región."
+SD_SHORT,"Every number once,\nevery way you look.","Um de cada número,\nem todo sentido.","Un número de cada,\nen todo sentido."
+SD_MOTTO,Every number has its place,Cada número em seu lugar,Cada número en su lugar
+SD_LVL_3,"9 × 9, 22 clues","9 × 9, 22 pistas","9 × 9, 22 pistas"
+BR_BLURB,"Plank every islet to its number, and join them all.",Dê a cada ilhota suas pontes e ligue todas.,Dale a cada islote sus puentes y únelos todos.
+BR_SHORT,Plank every islet\nto its number.,Cada ilhota com\nas pontes certas.,Cada islote con\nsus puentes justos.
+BR_MOTTO,Join every islet,Una todas as ilhotas,Une todos los islotes
+BR_LVL_0,"11 islets, 7 × 7","11 ilhotas, 7 × 7","11 islotes, 7 × 7"
+BR_LVL_1,"16 islets, 9 × 9","16 ilhotas, 9 × 9","16 islotes, 9 × 9"
+BR_LVL_2,"24 islets, 11 × 11","24 ilhotas, 11 × 11","24 islotes, 11 × 11"
+BR_LVL_3,"30 islets, 11 × 11","30 ilhotas, 11 × 11","30 islotes, 11 × 11"
+QL_BLURB,"Fit every patch onto the quilt, with not a gap left.","Encaixe cada retalho na colcha, sem deixar vão.","Encaja cada retazo en la colcha, sin dejar huecos."
+QL_SHORT,Fit every patch.\nLeave no gap.,"Cada retalho no\nlugar, sem vãos.",Encaja cada retazo.\nSin dejar huecos.
+QL_MOTTO,Make the blanket whole,Complete a colcha,Completa la colcha
+QL_LVL_0,"5 patches, 5 × 5","5 retalhos, 5 × 5","5 retazos, 5 × 5"
+QL_LVL_1,"6 patches, 6 × 6","6 retalhos, 6 × 6","6 retazos, 6 × 6"
+QL_LVL_2,"8 patches, 7 × 7","8 retalhos, 7 × 7","8 retazos, 7 × 7"
+QL_LVL_3,"10 patches, 7 × 7","10 retalhos, 7 × 7","10 retazos, 7 × 7"
+FL_BLURB,Turn the wire until every lantern is lit.,Gire o fio até acender todas as lanternas.,Gira el cable hasta encender todos los faroles.
+FL_SHORT,"Turn the wire,\nlight the garden.","Gire o fio,\nacenda o jardim.","Gira el cable,\nilumina el jardín."
+FL_MOTTO,Wake every lantern,Acenda cada lanterna,Enciende cada farol
+FL_LVL_0,5 × 5 garden,Jardim 5 × 5,Jardín de 5 × 5
+FL_LVL_1,6 × 6 garden,Jardim 6 × 6,Jardín de 6 × 6
+FL_LVL_2,7 × 7 garden,Jardim 7 × 7,Jardín de 7 × 7
+FL_LVL_3,8 × 8 garden,Jardim 8 × 8,Jardín de 8 × 8
+PP_BLURB,"Tap a plane whose lane to the edge is clear, and off it goes.","Toque num avião com o caminho livre até a borda, e lá vai ele.","Toca un avión con el camino libre hasta el borde, y allá va."
+PP_SHORT,Send every plane\noff a clear lane.,Solte cada avião\npelo caminho livre.,Lanza cada avión\npor camino libre.
+PP_MOTTO,A clear lane and away,"Caminho livre, e lá vai","Camino libre, y a volar"
+PP_LVL_0,10 × 14 sky,Céu 10 × 14,Cielo de 10 × 14
+PP_LVL_1,13 × 18 sky,Céu 13 × 18,Cielo de 13 × 18
+PP_LVL_2,16 × 22 sky,Céu 16 × 22,Cielo de 16 × 22
+PP_LVL_3,"16 × 22 sky, long planes","Céu 16 × 22, aviões longos","Cielo de 16 × 22, aviones largos"
+PW_BLURB,Turn each pinned piece until the frame is full.,Gire cada peça presa até o quadro ficar cheio.,Gira cada pieza fija hasta llenar el marco.
+PW_SHORT,Turn each piece\ntill the frame fills.,Gire as peças até\npreencher o quadro.,Gira las piezas\ny llena el marco.
+PW_MOTTO,Turn it till it fits,Gire até encaixar,Gira hasta que encaje
+PW_LVL_0,"9 pieces, 5 × 5","9 peças, 5 × 5","9 piezas, 5 × 5"
+PW_LVL_1,"11 pieces, 5 × 7","11 peças, 5 × 7","11 piezas, 5 × 7"
+PW_LVL_2,"13 pieces, 6 × 8","13 peças, 6 × 8","13 piezas, 6 × 8"
+PW_LVL_3,"16 pieces, 7 × 8","16 peças, 7 × 8","16 piezas, 7 × 8"
+RG_BLURB,Gather every colour onto a peg of its own.,Junte cada cor num pino só dela.,Reúne cada color en un poste propio.
+RG_SHORT,"Sort the rings,\na colour a peg.","Separe os anéis,\numa cor por pino.","Ordena los aros,\nun color por poste."
+RG_MOTTO,Every ring finds its peg,Cada anel acha seu pino,Cada aro halla su poste
+RG_LVL_0,"4 colours, 6 pegs","4 cores, 6 pinos","4 colores, 6 postes"
+RG_LVL_1,"5 colours, 7 pegs","5 cores, 7 pinos","5 colores, 7 postes"
+RG_LVL_2,"6 colours, 8 pegs","6 cores, 8 pinos","6 colores, 8 postes"
+RG_LVL_3,"Near the fewest moves, no hints","Quase o mínimo de jogadas, sem dicas","Casi el mínimo de jugadas, sin pistas"
+RG_TIP_LIFT,Tap a peg to lift its top ring.,Toque num pino para erguer o anel de cima.,Toca un poste para levantar el aro de arriba.
+RG_TIP_LANDS,"A ring lands on its own colour, or on an empty peg.",Um anel só pousa na própria cor ou num pino vazio.,Un aro solo cae sobre su color o en un poste vacío.
+RG_TIP_LOCKS,"Four of a colour fills a peg, and it locks.","Quatro da mesma cor enchem um pino, e ele trava.","Cuatro del mismo color llenan un poste, y se bloquea."
+RG_TIP_UNDO,Nothing is ever lost here. Undo is right above.,Aqui nada se perde. Desfazer está logo acima.,Aquí nada se pierde. Deshacer está justo arriba.
+RG_STUCK,"Nothing can move. Undo, or start again.",Nada se move. Desfaça ou recomece.,Nada se puede mover. Deshaz o empieza de nuevo.
+RG_OUT,"Out of moves. Undo, or start again.",Acabaram as jogadas. Desfaça ou recomece.,Sin jugadas. Deshaz o empieza de nuevo.
+RG_HELD,"Drop it on its own colour, or on an empty peg.",Solte na mesma cor ou num pino vazio.,Suéltalo en su color o en un poste vacío.
+RG_EMPTY_PEG,That peg is empty. Lift from a peg that has a ring.,Esse pino está vazio. Erga de um pino que tenha anel.,Ese poste está vacío. Levanta de un poste que tenga aro.
+RG_HOME_PEG,That colour is home. Nothing comes off a finished peg.,Essa cor já está em casa. Nada sai de um pino completo.,Ese color ya está en casa. Nada sale de un poste completo.
+RG_PUT_BACK,Back where it was.,De volta ao lugar.,De vuelta a su lugar.
+RG_WIN,Every colour on a peg of its own.,Cada cor no seu próprio pino.,Cada color en su propio poste.
+RG_ONE_LEFT,One colour left to gather.,Falta juntar uma cor.,Queda un color por reunir.
+RG_HOME_N_LEFT,That one is home. %d colours left.,Essa está em casa. Faltam %d cores.,Ese ya está en casa. Quedan %d colores.
+RG_START,Lift a ring and find it a peg.,Erga um anel e ache um pino para ele.,Levanta un aro y búscale un poste.
+RG_N_LEFT,%d colours left to gather.,Faltam juntar %d cores.,Quedan %d colores por reunir.
+RG_TAKEN_BACK,Taken back.,Desfeito.,Deshecho.
+RG_RESET,The pegs as they were dealt.,Os pinos como vieram.,Los postes como al principio.
+RG_ONE_MOVE_LEFT,1 move left,Resta 1 jogada,Queda 1 jugada
+RG_MOVES_LEFT,%d moves left,Restam %d jogadas,Quedan %d jugadas
+RG_SPARE,Sorted with %d to spare,Resolvido com %d de sobra,Resuelto con %d de sobra
+RG_FULL,That peg is full.,Esse pino está cheio.,Ese poste está lleno.
+RG_WRONG_COLOUR,A ring only lands on its own colour.,Um anel só pousa na própria cor.,Un aro solo cae sobre su color.
+RG_RULES,"Lift the top ring off any peg and set it down on an empty peg or on a ring of its own colour -- nowhere else. Four rings of the same colour fill a peg, and a peg that full locks: nothing ever comes off it again. Nothing here is ever lost, so play freely -- Undo and Reset are always one tap away. The board is done the moment every colour stands alone on a peg of its own.","Erga o anel de cima de qualquer pino e solte-o num pino vazio ou sobre um anel da mesma cor -- em nenhum outro lugar. Quatro anéis da mesma cor enchem um pino, e um pino cheio trava: nada sai dele de novo. Aqui nada se perde, então jogue à vontade -- Desfazer e Recomeçar estão sempre a um toque. O tabuleiro termina quando cada cor fica sozinha num pino só dela.","Levanta el aro de arriba de cualquier poste y suéltalo en un poste vacío o sobre un aro de su mismo color -- en ningún otro lugar. Cuatro aros del mismo color llenan un poste, y un poste lleno se bloquea: ya nada sale de él. Aquí nada se pierde, así que juega con calma -- Deshacer y Reiniciar siempre están a un toque. El tablero termina cuando cada color queda solo en un poste propio."
+RG_RULES_INSANE,"On Insane you have a budget of moves, only two over the fewest this deal can be sorted in, and no hints. Undo gives a move back.","No Insano você tem um limite de jogadas, só duas a mais que o mínimo para resolver esta rodada, e nenhuma dica. Desfazer devolve uma jogada.","En Demencial tienes un límite de jugadas, solo dos más que el mínimo para resolver esta partida, y ninguna pista. Deshacer te devuelve una jugada."
+FL_TIP_TAP,Tap a length of wire to turn it a quarter turn.,Toque num pedaço de fio para girá-lo um quarto de volta.,Toca un tramo de cable para girarlo un cuarto de vuelta.
+FL_TIP_POST,The post in the middle is where the light comes from.,A luz vem do poste no meio.,La luz sale del poste del centro.
+FL_TIP_WARM,Warm wire is live. Pale wire has not been reached yet.,Fio quente está aceso. Fio pálido ainda não foi alcançado.,El cable cálido está encendido. El pálido aún no recibe luz.
+FL_TIP_DONE,Done when every lantern is lit and no end is loose.,Pronto quando toda lanterna acende e nenhuma ponta fica solta.,Listo cuando cada farol se enciende y no queda ninguna punta suelta.
+FL_PINNED,A hint pinned that one where it belongs.,Uma dica prendeu esse no lugar certo.,Una pista fijó ese en su lugar.
+FL_CROSS,A cross is already every way round.,Uma cruz já é igual de todo lado.,Una cruz ya es igual por todos lados.
+FL_NO_LOOSE,No loose ends left -- now reach them all.,Nenhuma ponta solta -- agora acenda todas.,Ninguna punta suelta -- ahora enciéndelos todos.
+FL_ONE_DARK,One lantern still in the dark.,Falta acender uma lanterna.,Queda un farol a oscuras.
+FL_N_DARK,%d still in the dark.,Faltam %d no escuro.,Quedan %d a oscuras.
+FL_TURNED_BACK,Turned back.,Desfeito.,Deshecho.
+FL_HINT,Pinned. That one could only go one way.,Preso. Esse só podia ficar de um jeito.,Fijado. Ese solo podía ir de una forma.
+FL_RESET,A fresh tangle.,Um emaranhado novo.,Un enredo nuevo.
+FL_WIN,Every lantern is lit.,Todas as lanternas acesas.,Todos los faroles encendidos.
+FL_RULES,"Every cell of the garden holds one length of wire, and the lantern post stands in the middle. Tap a piece to turn it a quarter turn clockwise -- that is the only move, and four taps bring it back where it started. A cross is already every way round, so it will not turn. Wire joined all the way back to the post runs warm and gold; everything else is pale, and a stub that meets nothing stops short with a rounded end. The garden is done when every stub meets a stub and every lantern is lit. Nothing can be lost and nothing can be wrong, so there is no Check.","Cada casa do jardim tem um pedaço de fio, e o poste das lanternas fica no meio. Toque numa peça para girá-la um quarto de volta no sentido horário -- é a única jogada, e quatro toques a trazem de volta ao começo. Uma cruz já é igual de todo lado, então não gira. O fio ligado até o poste fica quente e dourado; o resto fica pálido, e uma ponta que não encontra nada termina arredondada. O jardim fica pronto quando cada ponta encontra outra e todas as lanternas acendem. Nada se perde e nada fica errado, então não há Conferir.","Cada casilla del jardín tiene un tramo de cable, y el poste de los faroles está en el centro. Toca una pieza para girarla un cuarto de vuelta en sentido horario -- es la única jugada, y cuatro toques la dejan como empezó. Una cruz ya es igual por todos lados, así que no gira. El cable unido hasta el poste se vuelve cálido y dorado; lo demás queda pálido, y una punta que no encuentra nada termina redondeada. El jardín está listo cuando cada punta encuentra otra y todos los faroles se encienden. Nada se pierde y nada puede estar mal, así que no hay Comprobar."
+HTP_TITLE,How to play %s,Como jogar %s,Cómo jugar %s
+HTP_BINAIRO_MOVE,Tap in the missing symbol,Toque o símbolo que falta,Toca el símbolo que falta
+HTP_START,Start with one move,Comece com uma jogada,Empieza con una jugada
+HTP_TIP,Tip: %s,Dica: %s,Consejo: %s
+HTP_CONTINUE,Continue,Continuar,Continuar
+HTP_FALLBACK_RULES,Solve today's puzzle.,Resolva o desafio de hoje.,Resuelve el reto de hoy.
+HTP_FALLBACK_TIP,Look for the simplest move first.,Procure primeiro a jogada mais simples.,Busca primero la jugada más sencilla.
+HTP_TWO_MOONS,Two moons need a sun,Duas luas pedem um sol,Dos lunas piden un sol
+HTP_LESSON_CB,"Place friends, then use the feedback",Posicione amigos e use as pistas,Coloca amigos y usa las pistas
+HTP_LESSON_BAL,Compare both sides to find each weight,Compare os dois lados para achar cada peso,Compara ambos lados para hallar cada peso
+HTP_LESSON_UT,Drag lanterns until no cords cross,Arraste lanternas até nenhum fio se cruzar,Arrastra faroles hasta que ningún cordón se cruce
+HTP_LESSON_SK,Drag a rectangle around the right number of cells,Arraste um retângulo com o número certo de casas,Arrastra un rectángulo con el número justo de casillas
+HTP_LESSON_TN,Place one tent beside each tree,Ponha uma barraca ao lado de cada árvore,Pon una carpa junto a cada árbol
+HTP_LESSON_LU,Place lanterns so every open cell is lit,Ponha lanternas para iluminar cada casa livre,Pon faroles para iluminar cada casilla libre
+HTP_LESSON_OL,Trace every path without lifting,Trace todo o caminho sem tirar o dedo,Traza todo el camino sin levantar el dedo
+HTP_LESSON_NG,The clue tells you how many cells to fill,A pista diz quantas casas pintar,La pista dice cuántas casillas pintar
+HTP_LESSON_QN,"Place one queen in each row, column and colour","Ponha uma rainha em cada linha, coluna e cor","Pon una reina en cada fila, columna y color"
+HTP_LESSON_HW,Type a word and use the colour clues,Digite uma palavra e use as cores como pista,Escribe una palabra y usa las pistas de color
+HTP_LESSON_WT,Drag through neighbouring letters to make a word,Arraste por letras vizinhas para formar uma palavra,Arrastra por letras vecinas para formar una palabra
+HTP_LESSON_MP,Mark the cells that hide mushrooms,Marque as casas que escondem cogumelos,Marca las casillas que esconden hongos
+HTP_LESSON_SD,"Use each number once in every row, column and box","Use cada número uma vez em cada linha, coluna e bloco","Usa cada número una vez en cada fila, columna y bloque"
+HTP_LESSON_BR,Connect islands with one or two bridges,Ligue as ilhas com uma ou duas pontes,Une las islas con uno o dos puentes
+HTP_LESSON_QL,Join matching patches into the shown shape,Junte os retalhos na forma mostrada,Junta los retazos en la forma indicada
+HTP_LESSON_PP,Draw each plane from its head in a straight line,"Trace cada avião a partir da ponta, em linha reta","Traza cada avión desde su punta, en línea recta"
+HTP_LESSON_RG,Rotate rings until every colour lines up,Gire os anéis até alinhar cada cor,Gira los aros hasta alinear cada color
+HTP_LESSON_ANY,Make one clear move at a time,Faça uma jogada clara de cada vez,Haz una jugada clara a la vez
+TRAY_TILE,Tile,Bloco,Bloque
+TRAY_CROSS,Cross,Xis,Cruz
+TRAY_QUEEN,Queen,Rainha,Reina
+TRAY_MUSHROOM,Mushroom,Cogumelo,Hongo
+TRAY_PEBBLE,Pebble,Pedrinha,Piedrita
+TRAY_GIVEN,GIVEN,DADO,DADO
+WIN_PERFECT,Perfect balance!,Equilíbrio perfeito!,¡Equilibrio perfecto!
+WIN_ONE_MOVE,1 move,1 jogada,1 jugada
+WIN_N_MOVES,%d moves,%d jogadas,%d jugadas
+WIN_ONE_HINT,1 hint,1 dica,1 pista
+WIN_N_HINTS,%d hints,%d dicas,%d pistas
+ISLAND_0,Sunlit Cliffs,Falésias do Sol,Acantilados del Sol
+ISLAND_1,Moss Harbour,Porto do Musgo,Puerto del Musgo
+ISLAND_2,Lantern Cove,Enseada das Lanternas,Cala de los Faroles
+ISLAND_3,Driftwood Point,Ponta do Tronco,Punta del Tronco
+ISLAND_4,Heron Shallows,Baixio das Garças,Bajío de las Garzas
+ISLAND_5,Fernwater Isle,Ilha das Samambaias,Isla de los Helechos
+ISLAND_6,Pebble Reach,Praia dos Seixos,Playa de los Guijarros
+ISLAND_7,Windmere Rock,Rochedo dos Ventos,Roca de los Vientos
+ISLAND_8,Tidepool Terrace,Terraço das Poças,Terraza de las Pozas
+ISLAND_9,Quiet Anchorage,Ancoradouro Sereno,Fondeadero Sereno
+ISLAND_10,Bramble Key,Ilhota das Amoras,Cayo de las Zarzas
+ISLAND_11,Saltgrass Hollow,Vale do Sal,Hondonada del Salitre
+ISLAND_12,Kestrel Ledge,Mirante do Falcão,Cornisa del Cernícalo
+ISLAND_13,Cinder Shoal,Banco das Cinzas,Bajo de las Cenizas
+ISLAND_14,Lily Landing,Cais dos Lírios,Muelle de los Lirios
+ISLAND_15,Foxglove Cay,Ilhota das Dedaleiras,Cayo de las Dedaleras
+ISLAND_16,Willow Strand,Praia dos Salgueiros,Playa de los Sauces
+ISLAND_17,Marigold Bank,Margem das Calêndulas,Ribera de las Caléndulas
+ISLAND_18,Otter Narrows,Estreito das Lontras,Estrecho de las Nutrias
+ISLAND_19,Copper Cliffs,Falésias de Cobre,Acantilados de Cobre
+ISLAND_20,Starling Rise,Colina dos Estorninhos,Loma de los Estorninos
+ISLAND_21,Seagrass Flats,Campos de Algas,Llanos de Algas
+ISLAND_22,Birch Haven,Refúgio das Bétulas,Refugio de los Abedules
+ISLAND_23,Puffin Steps,Degraus das Gaivotas,Escalones del Frailecillo

@@ -199,10 +199,10 @@ func puzzle_id() -> String: return "mastermind"
 func title() -> String: return "Code Break"
 
 func rules() -> String:
-	var count := "five" if length == 5 else "four"
-	var twice := "A friend may sit in it twice." if state.repeats else "No friend sits in it twice."
-	var rows := "Seven" if state.tries == 7 else "Eight"
-	return "Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. %s rows, three hints." % [count, twice, rows]
+	var count: String = _num(5 if length == 5 else 4).to_lower()
+	var twice: String = tr("CB_REPEATS") if state.repeats else tr("CB_NO_REPEATS")
+	var rows: String = _num(7 if state.tries == 7 else 8)
+	return tr("CB_RULES") % [count, twice, rows]
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check", "palette"]
@@ -224,7 +224,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_busy = false
 	_tip = ""
-	_say("Tap a friend to seat them. Check scores the row.", Face.Expr.HAPPY)
+	_say(tr("CB_TIP_SEAT"), Face.Expr.HAPPY)
 	_build_column()
 	_layout()
 	_refresh_seats()
@@ -255,7 +255,7 @@ func _build_column() -> void:
 	_row_tw = []
 
 	_code_label = Label.new()
-	_code_label.text = "THE CODE"
+	_code_label.text = "CB_THE_CODE"
 	_code_label.theme_type_variation = "FlatMotto"
 	_code_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_child(_code_label)
@@ -554,7 +554,7 @@ func pick(i: int) -> bool:
 	_refresh_seats()
 	_fly(g, slot, i)
 	_nudge_neighbours(g, slot)
-	_say("Check when you are ready." if state.full() else "Tap a friend to seat them. Check scores the row.",
+	_say(tr("CB_TIP_READY") if state.full() else tr("CB_TIP_SEAT"),
 		Face.Expr.HAPPY)
 	fx.cue("place")
 	moved.emit()
@@ -612,14 +612,14 @@ func _send_back(s: int) -> void:
 	var g := state.active()
 	if state.locked[s] and state.row[s] != -1:
 		_shiver(g, s)
-		_say("A hinted friend stays where the hint put them.", Face.Expr.WORRIED)
+		_say(tr("CB_HINT_STAYS"), Face.Expr.WORRIED)
 		fx.cue("locked")
 		return
 	if state.pop(s) < 0:
 		return
 	_leave(g, s)
 	_refresh_seats()
-	_say("Tap a friend to seat them. Check scores the row.", Face.Expr.HAPPY)
+	_say(tr("CB_TIP_SEAT"), Face.Expr.HAPPY)
 	fx.cue("clear")
 	moved.emit()
 
@@ -676,7 +676,7 @@ func undo() -> bool:
 	else:
 		_refresh_seats()
 		_fly(g, s, int(got.colour))
-	_say("Tap a friend to seat them. Check scores the row.", Face.Expr.HAPPY)
+	_say(tr("CB_TIP_SEAT"), Face.Expr.HAPPY)
 	fx.cue("undo")
 	moved.emit()
 	return true
@@ -704,7 +704,7 @@ func hint() -> bool:
 	fx.ring(at, _piece_big * 0.55 * _scale)
 	for k in 4:
 		fx.sparkle(at + Vector2((randf() - 0.5) * 90.0 * _scale, 0.0), Pal.SUN)
-	_say("Check when you are ready." if state.full() else "This one sits here. That seat is settled.",
+	_say(tr("CB_TIP_READY") if state.full() else tr("CB_HINT_SITS"),
 		Face.Expr.HAPPY)
 	fx.cue("hint")
 	moved.emit()
@@ -723,7 +723,7 @@ func check() -> int:
 			if state.row[s] == -1:
 				Motion.wobble2d(_seat[g][s])
 				_flash_socket(g, s)
-		_say("Every seat needs a friend before a Check can score.", Face.Expr.WORRIED)
+		_say(tr("CB_NEED_FULL"), Face.Expr.WORRIED)
 		fx.cue("check")
 		return -1
 	var m: Dictionary = state.commit()
@@ -845,14 +845,14 @@ func _reveal(won: bool) -> void:
 			for q in 3:
 				_after(0.25 + s * 0.1 + q * 0.07, func() -> void:
 					fx.sparkle(at + Vector2((randf() - 0.5) * 100.0 * _scale, 0.0), Pal.SUN))
-		_say("Cracked it. Lovely reading of the pips.", Face.Expr.JOY)
+		_say(tr("CB_SOLVED"), Face.Expr.JOY)
 	else:
 		# Out of tries ends the day: the board goes quiet under the answer,
 		# and the HUD reads it as done, so nothing stays live to press.
 		_done = true
 		_running = false
 		_refresh_seats()
-		_say("Here it was. Come back tomorrow.", Face.Expr.WORRIED)
+		_say(tr("CB_LOST"), Face.Expr.WORRIED)
 	focus_changed.emit()
 	fx.cue("reveal")
 
@@ -925,7 +925,7 @@ func reset_board() -> void:
 		_pouch[g].clear()
 	_place_rows()
 	_refresh_seats()
-	_say("Cleared. Back to row one.", Face.Expr.HAPPY)
+	_say(tr("CB_CLEARED"), Face.Expr.HAPPY)
 	fx.cue("reset")
 
 ## The rows the player played, oldest first, each a list of friend indices,
@@ -1016,7 +1016,7 @@ func share_glyphs() -> String:
 ## The Check pill keeps its word: a lost day stays lost, and a fresh code
 ## comes from the settings sheet's New puzzle, as on every other board.
 func check_label() -> String:
-	return "Check"
+	return "ACT_CHECK"
 
 # --- what the flat chrome reads ---
 
@@ -1041,7 +1041,7 @@ func flat_win() -> Dictionary:
 	var faces: Array[Control] = []
 	for s in length:
 		faces.append(Friends.make(state.code[s], PIECE_MAX, Vector2.ZERO))
-	return {"faces": faces, "subtitle": "Cracked it!"}
+	return {"faces": faces, "subtitle": tr("CB_WIN")}
 
 ## How long the host waits before the win screen: the lids, the code's pop
 ## and its sparkles all have to land first.
@@ -1062,24 +1062,28 @@ func _say(text: String, mood: int) -> void:
 	_tip_mood = mood
 	focus_changed.emit()
 
-const WORD := ["none", "One", "Two", "Three", "Four", "Five"]
+## A count in words, capitalised ("Two"): keys CB_NUM_2 to CB_NUM_8.
+func _num(n: int) -> String:
+	return tr("CB_NUM_%d" % n)
 
 ## The score read out in words. The pips are the record and this is the
-## teaching -- and like the pips it never names a seat.
+## teaching -- and like the pips it never names a seat. One and many are
+## separate keys, because the verb agrees with the count in pt and es.
 func _sentence(exact: int, colour: int) -> String:
 	if exact == length:
-		return "Cracked it!"
-	var count := "five" if length == 5 else "four"
+		return tr("CB_WIN")
 	if exact == 0 and colour == 0:
-		return "Not one of those %s is in the code." % count
+		return tr("CB_SCORE_NONE") % _num(5 if length == 5 else 4).to_lower()
 	if exact == 0:
 		if colour == 1:
-			return "One right friend, in the wrong seat."
-		return "%s right friends, every one in the wrong seat." % WORD[colour]
-	var said: String = "%s sat in the right seat" % WORD[exact]
+			return tr("CB_SCORE_WRONG_1")
+		return tr("CB_SCORE_WRONG_N") % _num(colour)
+	var said: String = tr("CB_SCORE_RIGHT_1") if exact == 1 else tr("CB_SCORE_RIGHT_N") % _num(exact)
 	if colour == 0:
-		return said + ". The rest are not in the code."
-	return "%s, and %s more %s somewhere else." % [said, WORD[colour].to_lower(), "belongs" if colour == 1 else "belong"]
+		return tr("CB_SCORE_REST_OUT") % said
+	if colour == 1:
+		return tr("CB_SCORE_MORE_1") % said
+	return tr("CB_SCORE_MORE_N") % [said, _num(colour).to_lower()]
 
 # --- entrance and housekeeping ---
 

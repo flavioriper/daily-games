@@ -519,7 +519,7 @@ func _stats_text() -> String:
 	var secs := int(round(_puzzle.elapsed))
 	var hints: int = _puzzle.hints_used
 	var moves: int = _puzzle.moves
-	return "%d:%02d · %d %s · %d %s" % [
+	return "%d:%02d · %s · %s" % [
 		secs / 60, secs % 60,
-		moves, "move" if moves == 1 else "moves",
-		hints, "hint" if hints == 1 else "hints"]
+		tr("WIN_ONE_MOVE") if moves == 1 else tr("WIN_N_MOVES") % moves,
+		tr("WIN_ONE_HINT") if hints == 1 else tr("WIN_N_HINTS") % hints]

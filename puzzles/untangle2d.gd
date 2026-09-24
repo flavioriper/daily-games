@@ -148,9 +148,9 @@ const TIP_CYCLE := 9.0
 ## The three lines that teach the board, cycled while there is nothing better
 ## to say.
 const TIPS := [
-	"Drag a lantern. No two cords may cross.",
-	"A knot is drawn exactly where two cords meet. Pull one of them off it.",
-	"Keep the lanterns apart. A heap in one corner is not an answer.",
+	"UT_TIP_DRAG",
+	"UT_TIP_KNOT",
+	"UT_TIP_APART",
 ]
 
 var state = State.new()
@@ -223,7 +223,7 @@ func puzzle_id() -> String: return "untangle"
 func title() -> String: return "Untangle"
 
 func rules() -> String:
-	return "Drag the lanterns until no two cords cross. A knot is drawn wherever two of them do. Keep the lanterns apart -- a heap in one corner does not count."
+	return tr("UT_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
@@ -264,7 +264,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	fx.cue("enter")
 
@@ -800,15 +800,15 @@ func _speak(gone: int) -> void:
 		return
 	var left: int = state.crossings()
 	if left == 0 and not state.crowded.is_empty():
-		_say("No cords cross, but give them room. A pile is not a solution.", Face.Expr.STRAIN)
+		_say(tr("UT_CROWDED"), Face.Expr.STRAIN)
 		return
 	if gone <= 0 or left <= 0:
 		return
 	if left == 1:
-		_say("One knot left. Nearly there.", Face.Expr.HAPPY)
+		_say(tr("UT_ONE_KNOT_LEFT"), Face.Expr.HAPPY)
 		return
-	_say("%s %d still to go." % [
-		"One knot gone." if gone == 1 else "%d knots gone." % gone, left], Face.Expr.HAPPY)
+	_say(tr("UT_GONE_ONE") % left if gone == 1
+		else tr("UT_GONE_N") % [gone, left], Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -821,7 +821,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood == Face.Expr.JOY:
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -871,7 +871,7 @@ func hint() -> bool:
 		fx.sparkle(peg, Pal.GOOD))
 	fx.cue("hint")
 	_after_scan(t)
-	_say("That one is on its peg now. It will not move again.", Face.Expr.HAPPY)
+	_say(tr("UT_PINNED"), Face.Expr.HAPPY)
 	moved.emit()
 	check_solved()
 	return true
@@ -886,7 +886,7 @@ func reset_board() -> void:
 	moves = 0
 	_running = true
 	if not walking.is_empty():
-		_say("Back to the tangle you were given.", Face.Expr.HAPPY)
+		_say(tr("UT_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_after_scan(t)
 
@@ -929,7 +929,7 @@ func share_glyphs() -> String:
 ## The board is the answer, so the win screen shows no cast: the drawing the
 ## player made stays on the card under it, lit.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Not a knot left."}
+	return {"faces": [], "subtitle": tr("UT_WIN_SUB")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -972,7 +972,7 @@ func _on_solved() -> void:
 		var wait := _lit_at[i] - t
 		_hop(i, Motion.SOLVE_HOP, Motion.SOLVE_TIME, wait)
 		_after(wait, _spark_at.bind(i))
-	_say("Not a knot left. The lights go on.", Face.Expr.JOY)
+	_say(tr("UT_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh(t)
 

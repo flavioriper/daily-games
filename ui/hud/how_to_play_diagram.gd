@@ -189,24 +189,24 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 
 func _lesson() -> String:
 	match puzzle_id:
-		"mastermind": return "Place friends, then use the feedback"
-		"balance": return "Compare both sides to find each weight"
-		"untangle": return "Drag lanterns until no cords cross"
-		"shikaku": return "Drag a rectangle around the right number of cells"
-		"tents": return "Place one tent beside each tree"
-		"lightup": return "Place lanterns so every open cell is lit"
-		"oneline": return "Trace every path without lifting"
-		"nonogram": return "The clue tells you how many cells to fill"
-		"queens": return "Place one queen in each row, column and colour"
-		"hiddenword": return "Type a word and use the colour clues"
-		"wordtrail": return "Drag through neighbouring letters to make a word"
-		"mushroom": return "Mark the cells that hide mushrooms"
-		"sudoku": return "Use each number once in every row, column and box"
-		"bridges": return "Connect islands with one or two bridges"
-		"quilt": return "Join matching patches into the shown shape"
-		"planes": return "Draw each plane from its head in a straight line"
-		"rings": return "Rotate rings until every colour lines up"
-		_: return "Make one clear move at a time"
+		"mastermind": return tr("HTP_LESSON_CB")
+		"balance": return tr("HTP_LESSON_BAL")
+		"untangle": return tr("HTP_LESSON_UT")
+		"shikaku": return tr("HTP_LESSON_SK")
+		"tents": return tr("HTP_LESSON_TN")
+		"lightup": return tr("HTP_LESSON_LU")
+		"oneline": return tr("HTP_LESSON_OL")
+		"nonogram": return tr("HTP_LESSON_NG")
+		"queens": return tr("HTP_LESSON_QN")
+		"hiddenword": return tr("HTP_LESSON_HW")
+		"wordtrail": return tr("HTP_LESSON_WT")
+		"mushroom": return tr("HTP_LESSON_MP")
+		"sudoku": return tr("HTP_LESSON_SD")
+		"bridges": return tr("HTP_LESSON_BR")
+		"quilt": return tr("HTP_LESSON_QL")
+		"planes": return tr("HTP_LESSON_PP")
+		"rings": return tr("HTP_LESSON_RG")
+		_: return tr("HTP_LESSON_ANY")
 
 func _board_rect() -> Rect2:
 	var side := minf(size.x - 180.0, size.y - 64.0)

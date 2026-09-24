@@ -110,10 +110,10 @@ const HINTS := 3
 
 const TIP_CYCLE := 8.0
 const TIPS := [
-	"Drag a patch onto the quilt.",
-	"A patch may not hang off the edge.",
-	"Two patches never share a cell.",
-	"Every patch goes on. That is the whole of it.",
+	"QL_TIP_DRAG",
+	"QL_TIP_EDGE",
+	"QL_TIP_SHARE",
+	"QL_TIP_ALL",
 ]
 
 var _state = State.new()
@@ -172,7 +172,7 @@ func puzzle_id() -> String: return "quilt"
 func title() -> String: return "Quilt"
 
 func rules() -> String:
-	return "Every patch on the rack goes onto the quilt. Drag one up and it snaps to the cells: it must lie wholly on the backing, with no corner hanging off, and it may not cover a patch already sewn on. Patches never turn -- each one goes on the way it is drawn. Drag a patch that is already on to take it off again. The patches hold exactly as many cells as the quilt does, so when the last one is sewn on the quilt is whole and the board is done; there is nothing to check along the way, only a fit to find."
+	return tr("QL_RULES")
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can be sitting on the quilt to check: an illegal drop is never taken. So
@@ -208,7 +208,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 ## Every patch's silhouette and the backing's, traced once. A patch is a
@@ -929,7 +929,7 @@ func _grab(local: Vector2) -> void:
 		# A hint's patch is a given: it is not the player's to move.
 		_refused = {"patch": p, "at": _now()}
 		_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
-		_say("That one was sewn on for you.", Face.Expr.WORRIED)
+		_say(tr("QL_HINTED_FAST"), Face.Expr.WORRIED)
 		_refresh()
 		return
 	var from := int(_state.at[p])
@@ -1035,9 +1035,9 @@ func _release() -> void:
 func _reason(code: int) -> String:
 	match code:
 		State.OVER:
-			return "That cell already has a patch on it."
+			return tr("QL_REFUSE_OVER")
 		_:
-			return "Every square of a patch has to be on the quilt."
+			return tr("QL_REFUSE_OFF")
 
 ## Sends a patch home to its bay from the point `at`, which is where the
 ## hand let go of it, or where it was sitting on the quilt. `after` delays
@@ -1059,8 +1059,8 @@ func _left_line() -> String:
 		if int(_state.at[p]) < 0:
 			left += 1
 	if left <= 0:
-		return "Not a gap left."
-	return "One patch left." if left == 1 else "%d patches left." % left
+		return tr("QL_WIN")
+	return tr("QL_ONE_LEFT") if left == 1 else tr("QL_N_LEFT") % left
 
 func _speak() -> void:
 	if is_done():
@@ -1078,7 +1078,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not _state.history.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules: this
 ## board answers a drop with a count, and a refusal with the rule.
@@ -1134,7 +1134,7 @@ func undo() -> bool:
 	_refused = {}
 	_settle(before, t)
 	_busy_for(maxf(Motion.POP_IN, FLY_TIME))
-	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("QL_TAKEN_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
 	moved.emit()
@@ -1163,7 +1163,7 @@ func hint() -> bool:
 	_fx_at(_origin() + _centroid(p) * _cell(), Pal.LEAF)
 	_busy_for(maxf(Motion.RING_TIME, Motion.POP_IN + _seam_span(p)))
 	fx.cue("hint")
-	_say("That one goes here. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("QL_HINT") + " " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
 	# A hint can finish the quilt, and a board that ends on one still ends.
@@ -1197,7 +1197,7 @@ func reset_board() -> void:
 	_busy_for(Motion.stagger(_state.cols + _state.rows - 2, Motion.RESET_STAGGER) + FLY_TIME)
 	moves = 0
 	_running = true
-	_say("A clean quilt. " + _left_line(), Face.Expr.HAPPY)
+	_say(tr("QL_CLEAN") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
 
@@ -1224,7 +1224,7 @@ func restore_completed_board() -> void:
 		_landed[p] = t - 10.0
 	_state.history = []
 	_state.recompute()
-	_say("Not a gap left.", Face.Expr.JOY)
+	_say(tr("QL_WIN"), Face.Expr.JOY)
 	_refresh()
 
 func is_solved() -> bool:
@@ -1236,7 +1236,7 @@ func share_glyphs() -> String:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Not a gap left."}
+	return {"faces": [], "subtitle": tr("QL_WIN")}
 
 ## Long enough for the hem's stitch to run all the way round the finished
 ## quilt. Under reduce-motion there is no wave, so the win follows the last
@@ -1258,7 +1258,7 @@ func _on_solved() -> void:
 		_fx_at(_origin() + _centroid(p) * _cell(), Pal.SUN,
 			Motion.SOLVE_DELAY + Motion.stagger(at.x + at.y, Motion.SOLVE_STAGGER), false)
 	_busy_for(Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
-	_say("Not a gap left.", Face.Expr.JOY)
+	_say(tr("QL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh()
 

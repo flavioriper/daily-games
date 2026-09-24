@@ -129,8 +129,7 @@ func _build() -> void:
 	blurb.theme_type_variation = "CardBlurb"
 	# The registry's `short` is written to two lines at this width; `blurb`
 	# is the long one the rules sheet wants.
-	# A word board's `short` is a translation key; the rest are English
-	# text for now, which a Label passes through untranslated.
+	# Every `short` is a translation key, which the Label translates itself.
 	blurb.text = String(entry.get("short", entry.get("blurb", "")))
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	blurb.max_lines_visible = 2

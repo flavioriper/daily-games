@@ -205,7 +205,7 @@ func is_solved() -> bool:
 	return not edges.is_empty() and walked.size() == edges.size()
 
 func share_glyphs() -> String:
-	return "✏️ %d lines in one stroke" % edges.size()
+	return tr("OL_SHARE") % edges.size()
 
 # --- moves ---
 

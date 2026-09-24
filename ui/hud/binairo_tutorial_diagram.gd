@@ -82,7 +82,7 @@ func _build_board() -> void:
 
 	_caption = Label.new()
 	_caption.theme_type_variation = "SheetBodyDim"
-	_caption.text = "Two moons need a sun"
+	_caption.text = "HTP_TWO_MOONS"
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -135,7 +135,7 @@ func _reset_lesson() -> void:
 	_target_face.visible = false
 	_target_face.scale = Vector2.ONE
 	_target_glow.modulate.a = 1.0
-	_caption.text = "Two moons need a sun"
+	_caption.text = "HTP_TWO_MOONS"
 	var tile := _tiles[TARGET.y * N + TARGET.x]
 	tile.scale = Vector2.ONE
 	var pulse := create_tween()
@@ -152,7 +152,7 @@ func _press_target() -> void:
 func _show_answer(immediate: bool) -> void:
 	_target_face.visible = true
 	_target_glow.modulate.a = 0.0
-	_caption.text = "Two moons need a sun  ✓"
+	_caption.text = tr("HTP_TWO_MOONS") + "  ✓"
 	if immediate:
 		_target_face.scale = Vector2.ONE
 		return

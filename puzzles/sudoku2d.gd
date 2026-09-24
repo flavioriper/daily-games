@@ -93,13 +93,9 @@ const WIN_WAIT := 1.4
 ## How long a refusal holds the tip card before the cycling rules resume.
 const SAY_HOLD := 2.2
 const TIP_CYCLE := 10.0
-## "%d" is the grid's size, filled in by _tip().
-const TIPS := [
-	"Every row, every column and every region holds 1 to %d once.",
-	"Tap a cell, then a number. Tap that number again to take it out.",
-	"The cross takes out whatever is in the selected cell.",
-	"A number already placed %d times goes pale in the pad.",
-]
+## Translation keys (locale/ui.csv). A "%d" in a line is the grid's size,
+## filled in by _tip() after tr().
+const TIPS := ["SD_TIP_UNITS", "SD_TIP_TAP", "SD_TIP_CROSS", "SD_TIP_PALE"]
 
 ## The remove chip's seat in the tray, ui/flat/digit_pad.gd's REMOVE.
 ## Declared here rather than preloaded off the pad on purpose: the tray asks
@@ -171,7 +167,7 @@ func title() -> String: return "Sudoku"
 
 func rules() -> String:
 	var n := Gen.N
-	return ("Fill the grid so every row, every column and every %d-by-%d region holds the numbers 1 to %d, each exactly once." % [Gen.BOX_R, Gen.BOX_C, n]) + "\n\nTap a cell, then tap a number. Tapping the number a cell already holds takes it out again.\n\nThe cross takes out whatever is in the selected cell.\n\nCheck marks anything that disagrees with the answer, and costs nothing but a count."
+	return tr("SD_RULES") % [Gen.BOX_R, Gen.BOX_C, n]
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -660,7 +656,7 @@ func pick(i: int) -> bool:
 	if state == null or is_done():
 		return false
 	if _sel < 0:
-		_speak("Tap a cell first", Face.Expr.PUZZLED)
+		_speak(tr("SD_TAP_CELL"), Face.Expr.PUZZLED)
 		return false
 	if i == REMOVE_CHIP:
 		return _erase(_sel)
@@ -674,10 +670,10 @@ func _erase(i: int) -> bool:
 	var before: Array = state.finished_units()
 	match state.erase(i):
 		State.GIVEN:
-			_refuse(i, "That one came with the puzzle")
+			_refuse(i, tr("SD_GIVEN"))
 			return false
 		State.EMPTY:
-			_refuse(i, "That cell is already empty")
+			_refuse(i, tr("SD_EMPTY"))
 			return false
 	var now := _now()
 	_wrong.erase(i)
@@ -703,10 +699,10 @@ func _apply(i: int, d: int) -> bool:
 	var code: int = state.mark(i, d) if _pencil else state.place(i, d)
 	match code:
 		State.GIVEN:
-			_refuse(i, "That one came with the puzzle")
+			_refuse(i, tr("SD_GIVEN"))
 			return false
 		State.FILLED:
-			_refuse(i, "Pencil marks go in an empty cell")
+			_refuse(i, tr("SD_PENCIL"))
 			return false
 	var now := _now()
 	_wrong.erase(i)
@@ -850,7 +846,7 @@ func hint() -> bool:
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
 	_settle(before, i, now)
-	_say("There it is. That one had the fewest numbers left to be.", Face.Expr.HAPPY)
+	_say(tr("SD_HINT"), Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
 	check_solved()
@@ -880,10 +876,10 @@ func check() -> int:
 
 func _check_line(wrong: int) -> String:
 	if wrong == 0:
-		return "Every number you have put down belongs there."
+		return tr("SD_CHECK_OK")
 	if wrong == 1:
-		return "One number to look at again."
-	return "%d numbers to look at again." % wrong
+		return tr("SD_CHECK_ONE")
+	return tr("SD_CHECK_N") % wrong
 
 ## Back to the givens, in a wave from the far corner. The hints spent are not
 ## refunded: a hint's effect on the grid is undoable and its cost is not,
@@ -925,7 +921,7 @@ func reset_board() -> void:
 	_drop = {}
 	_shiver = {}
 	moves = 0
-	_say("The board is back to its givens. The hints you spent are not refunded.",
+	_say(tr("SD_RESET"),
 		Face.Expr.HAPPY)
 	fx.cue("reset")
 	_redraw()
@@ -939,7 +935,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	_sel = -1
 	_wrong = {}
-	_say("Every number in its place.", Face.Expr.JOY)
+	_say(tr("SD_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	if not Motion.reduce:
 		for i in Gen.CELLS:
@@ -987,7 +983,7 @@ func restore_completed_board() -> void:
 	# fully inked.
 	_opened = now - 10.0
 	_anim_until = 0.0
-	_say("Every number in its place.", Face.Expr.JOY)
+	_say(tr("SD_WIN"), Face.Expr.JOY)
 	_redraw()
 
 ## When the solve's wave reaches anti-diagonal `d` (row + col, 0 to 16).
@@ -1048,7 +1044,7 @@ func _resume_tips() -> void:
 	_say(_tip(_tip_idx), Face.Expr.HAPPY)
 
 func _tip(k: int) -> String:
-	var line: String = TIPS[k]
+	var line: String = tr(TIPS[k])
 	return line % Gen.N if line.contains("%d") else line
 
 func _cycle_tip() -> void:

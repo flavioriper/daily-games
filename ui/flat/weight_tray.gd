@@ -161,7 +161,7 @@ func _make_cards(count: int) -> void:
 
 		var tag := Label.new()
 		tag.theme_type_variation = "GivenTag"
-		tag.text = "GIVEN"
+		tag.text = "TRAY_GIVEN"
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE

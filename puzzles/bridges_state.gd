@@ -298,4 +298,4 @@ func share_glyphs() -> String:
 	var planked := 0
 	for key in runs:
 		planked += int(runs[key])
-	return "🌉 %dx%d · %d islets · %d planks" % [n, n, islets.size(), planked]
+	return tr("BR_SHARE") % [n, n, islets.size(), planked]

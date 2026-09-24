@@ -188,10 +188,10 @@ const WIN_WAIT := 2.7
 
 const TIP_CYCLE := 8.0
 const TIPS := [
-	"Tap a plane and it flies out the way it points.",
-	"Its lane has to be clear all the way off the board.",
-	"Nothing here can go wrong. Any plane that can go, can go.",
-	"Send the one in front first.",
+	"PP_TIP_TAP",
+	"PP_TIP_LANE",
+	"PP_TIP_SAFE",
+	"PP_TIP_FRONT",
 ]
 
 ## What the sprout says after a launch, and **it stops** (spec section 13).
@@ -203,9 +203,9 @@ const TIPS := [
 ## the player. That is Mushroom Patch's rule about a running commentary,
 ## taken further because this field is five times the size of that patch.
 const SAID := [
-	"Off it goes. That lane was clear the whole way.",
-	"Any plane with a clear lane can go, in whatever order you like.",
-	"Send the one in front, and the one behind it is free.",
+	"PP_SAID_1",
+	"PP_SAID_2",
+	"PP_SAID_3",
 ]
 
 var _state = State.new()
@@ -275,7 +275,7 @@ func title() -> String: return "Paper Planes"
 ## The three sentences of the spec's section 3: what a lane is, what a tap
 ## does, and that a blocked tap costs nothing.
 func rules() -> String:
-	return "Every plane points somewhere, and its lane is every cell straight ahead of it, out to the edge of the board. Tap a plane and it launches along its own trail and away, but only if that lane is completely empty. A tap on a plane whose lane is blocked costs you nothing at all -- there is nothing to lose here and no order of launches that can strand you, so clear the sky in whatever order you like."
+	return tr("PP_RULES")
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can ever be sitting on the board: a launch only empties cells, so the
@@ -314,7 +314,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
 # --- layout ---
@@ -957,7 +957,7 @@ func _wake(before: Dictionary, from: Vector2i, t: float) -> void:
 ## a refusal here is frequent by design), no counter, no analytics event, no
 ## move counted, and no mark left on the board once the band has gone.
 func _refuse_tap(i: int, blocked: int, t: float) -> void:
-	_say("That lane is not clear. Send the one in its way first.", Face.Expr.PUZZLED)
+	_say(tr("PP_REFUSE"), Face.Expr.PUZZLED)
 	if Motion.reduce:
 		return
 	var cells: Array[Vector2i] = []
@@ -983,7 +983,7 @@ func _speak() -> void:
 	var gone: int = _state.planes.size() - _state.left()
 	if gone < 1 or gone > SAID.size():
 		return
-	_say(SAID[gone - 1], Face.Expr.HAPPY)
+	_say(tr(SAID[gone - 1]), Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -996,7 +996,7 @@ func _cycle_tip() -> void:
 	if is_done() or _state.left() < _state.planes.size():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules: there
 ## is no rule a tap can break on this board.
@@ -1029,7 +1029,7 @@ func undo() -> bool:
 	# because a plane mid-beat that is also mid-flight reads as a stutter.
 	_beat.erase(i)
 	_fly_back(i, _now(), 0.0)
-	_say("Called back. It is on the field again.", Face.Expr.HAPPY)
+	_say(tr("PP_UNDO"), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
 	moved.emit()
@@ -1059,7 +1059,7 @@ func hint() -> bool:
 		_beat[i] = _now()
 	_busy_for(Motion.RING_TIME)
 	fx.cue("hint")
-	_say("This one has a clear lane.", Face.Expr.HAPPY)
+	_say(tr("PP_HINT"), Face.Expr.HAPPY)
 	_refresh()
 	moved.emit()
 	check_solved()
@@ -1089,7 +1089,7 @@ func reset_board() -> void:
 	_solved_at = -1.0
 	moves = 0
 	_running = true
-	_say("All of them back on the field.", Face.Expr.HAPPY)
+	_say(tr("PP_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
 
@@ -1112,7 +1112,7 @@ func restore_completed_board() -> void:
 	_anim_until = 0.0
 	_opened = t - 10.0
 	_tip_timer.stop()
-	_say("Every plane found its lane.", Face.Expr.JOY)
+	_say(tr("PP_WIN"), Face.Expr.JOY)
 	_refresh()
 
 # --- the win ---
@@ -1123,7 +1123,7 @@ func restore_completed_board() -> void:
 ## one screen's sake, which is exactly the bargain that section declines.
 ## Nonogram, Word Trail and Sudoku all answer this way for the same reason.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": "Every plane found its lane."}
+	return {"faces": [], "subtitle": tr("PP_WIN")}
 
 ## How long the host holds the win screen back. See `WIN_WAIT` for the
 ## arithmetic; under reduce-motion there is neither a flight nor a wave to
@@ -1148,7 +1148,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	_hint_lit = -1
 	_refuse = {}
-	_say("Every plane found its lane.", Face.Expr.JOY)
+	_say(tr("PP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_refresh()
 	if Motion.reduce:

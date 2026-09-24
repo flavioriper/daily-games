@@ -126,14 +126,15 @@ func can_drop(j: int) -> bool:
 	return dst.is_empty() or int(dst.back()) == held
 
 ## Why a drop on `j` would be refused right now, or "" when it would not be.
-## Exactly these two strings; the board puts them on the tip card verbatim.
+## Exactly these two keys (RG_FULL, RG_WRONG_COLOUR); the board puts them
+## on the tip card through tr().
 func refusal(j: int) -> String:
 	if can_drop(j):
 		return ""
 	var dst: Array = pegs[j]
 	if dst.size() >= Gen.CAP:
-		return "That peg is full."
-	return "A ring only lands on its own colour."
+		return "RG_FULL"
+	return "RG_WRONG_COLOUR"
 
 ## Lands the held ring on peg `j`. Refused (returns -1) when nothing is held
 ## or can_drop(j) is false. On success, logs the move, clears the hand, and

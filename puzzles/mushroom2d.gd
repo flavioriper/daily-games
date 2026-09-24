@@ -112,16 +112,15 @@ const WIN_WAIT := 1.6
 const HINTS := 3
 ## How long a teaching line stands before the next, the family's own cycle.
 const TIP_CYCLE := 10.0
-const TIPS := [
-	"A number counts the mushrooms in the eight cells touching it.",
-	"Plant a mushroom where you are sure. Lay a pebble where you are not.",
-	"A number goes green the moment it has all its mushrooms.",
-]
+## Translation keys (locale/ui.csv), read through tr() when said.
+const TIPS := ["MP_TIP_COUNT", "MP_TIP_PLANT", "MP_TIP_GREEN"]
 ## The tally strip and the sprout count in words, as the mock does: the
 ## strip is a label and not a score, and a numeral there would read as a
 ## second clue beside the ones on the field.
-const WORDS := ["no", "one", "two", "three", "four", "five", "six", "seven",
-	"eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen"]
+## Keys MP_NUM_0 to MP_NUM_14 (locale/ui.csv): "no", "one" ... "fourteen".
+## A word here always stands alone or counts mushrooms; a sentence that needs
+## "one" in front of a noun, or a feminine two, has a key of its own.
+const WORDS := 15
 
 ## The tally strip's own geometry, the mock's: the little mushroom's seat and
 ## where it and the line sit in the run, and the line's font.
@@ -192,7 +191,7 @@ func puzzle_id() -> String: return "mushroom"
 func title() -> String: return "Mushroom Patch"
 
 func rules() -> String:
-	return "A number counts the mushrooms in the eight cells touching it. Plant a mushroom where you have proved one is; lay a pebble where you have proved one is not. A number turns green when it has exactly its mushrooms and rose when it has too many. Nothing is ever hidden from you and the patch can never be lost."
+	return tr("MP_RULES")
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -228,7 +227,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
-	_say(TIPS[0], Face.Expr.HAPPY)
+	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -621,10 +620,10 @@ func _draw_tally(now: float) -> void:
 ## is planted*, and an over-planted field says so rather than clamping.
 func _tally_line(left: int) -> String:
 	if left > 0:
-		return "%s mushroom%s still hidden" % [_word(left), "" if left == 1 else "s"]
+		return tr("MP_TALLY_ONE") if left == 1 else tr("MP_TALLY_N") % _word(left)
 	if left == 0:
-		return "every mushroom is planted"
-	return "%s too many planted" % _word(-left)
+		return tr("MP_TALLY_ALL")
+	return tr("MP_TALLY_OVER") % _word(-left)
 
 ## `k` in words while there is a word for it, and as a numeral past that.
 ## Counting in words is a choice about how the strip and the sprout read;
@@ -632,9 +631,9 @@ func _tally_line(left: int) -> String:
 ## knows is false -- on hard a player can plant fifty-two wrong marks, and
 ## "Fourteen marks are wrong" is worse than a numeral, not better.
 func _word(k: int) -> String:
-	if k < 0 or k >= WORDS.size():
+	if k < 0 or k >= WORDS:
 		return str(k)
-	return WORDS[k]
+	return tr("MP_NUM_%d" % k)
 
 func _layout_tally() -> void:
 	if _tally_face == null or not _slots.has(_tally_face):
@@ -955,7 +954,7 @@ func _wobble_cap(face: Control) -> void:
 ## refused, or tapping every cell in turn would read the answer off what
 ## stuck.
 func _refuse_given(cell: Vector2i) -> void:
-	_say("That cell is already turned over. Its number is the clue.", Face.Expr.STRAIN)
+	_say(tr("MP_TURNED"), Face.Expr.STRAIN)
 	fx.cue("locked")
 	if Motion.reduce:
 		return
@@ -966,7 +965,7 @@ func _refuse_given(cell: Vector2i) -> void:
 ## A press refused on a hint's mushroom, with either chip: she shivers and
 ## strains for a beat while her cell blushes, and the sprout says why.
 func _refuse_pinned(cell: Vector2i) -> void:
-	_say("That mushroom was given. It stays.", Face.Expr.PUZZLED)
+	_say(tr("MP_PINNED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	_blush_cell(cell)
 	var face: MushroomFace = _caps.get(cell)
@@ -1178,14 +1177,13 @@ func _speak() -> void:
 	var planted: int = state.mushrooms.size() - state.left()
 	var left: int = state.left()
 	if planted <= 0:
-		_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+		_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 		return
 	if left > 0:
-		_say("%s mushroom%s found, %s to go." % [_word(planted),
-			"" if planted == 1 else "s",
-			"one" if left == 1 else _word(left)], Face.Expr.HAPPY)
+		_say(tr("MP_FOUND_ONE") % _word(left) if planted == 1
+			else tr("MP_FOUND_N") % [_word(planted), _word(left)], Face.Expr.HAPPY)
 		return
-	_say("Every mushroom is spoken for. One of them is in the wrong place.",
+	_say(tr("MP_MISPLACED"),
 		Face.Expr.STRAIN)
 
 func _say(text: String, mood: int) -> void:
@@ -1199,7 +1197,7 @@ func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
 	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(TIPS[_tip_idx], Face.Expr.HAPPY)
+	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1250,7 +1248,7 @@ func hint() -> bool:
 	fx.ring(at, _cell * RING_R, Pal.LEAF)
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
-	_say("One mushroom found for you, and pinned. It is a fact now.", Face.Expr.HAPPY)
+	_say(tr("MP_HINT"), Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
 	check_solved()
@@ -1274,12 +1272,13 @@ func check() -> int:
 			_busy_for(Motion.WOBBLE_TIME)
 		_blush_cell(cell)
 	if not wrong.is_empty():
-		_say("%s mark%s wrong." % [_word(wrong.size()).capitalize(),
-			" is" if wrong.size() == 1 else "s are"], Face.Expr.STRAIN)
+		var count := wrong.size()
+		_say(tr("MP_WRONG_ONE") if count == 1 else tr("MP_WRONG_TWO") if count == 2
+			else tr("MP_WRONG_N") % _word(count).capitalize(), Face.Expr.STRAIN)
 	elif state.marks.is_empty():
-		_say("Plant a mushroom first.", Face.Expr.HAPPY)
+		_say(tr("MP_PLANT_FIRST"), Face.Expr.HAPPY)
 	else:
-		_say("Every mark you have made is right.", Face.Expr.JOY)
+		_say(tr("MP_ALL_RIGHT"), Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_redraw()
 	return wrong.size()
@@ -1305,7 +1304,7 @@ func reset_board() -> void:
 	_wobble = {}
 	moves = 0
 	_running = true
-	_say("The patch is cleared. What a hint gave stays given.", Face.Expr.HAPPY)
+	_say(tr("MP_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_redraw()
 
@@ -1320,7 +1319,7 @@ func share_glyphs() -> String:
 ## One mushroom in JOY, and the words. The board stays on the card as it
 ## slides down, every mushroom planted and every number green.
 func flat_win() -> Dictionary:
-	return {"faces": [MushroomFace.new()], "subtitle": "Every patch has its count."}
+	return {"faces": [MushroomFace.new()], "subtitle": tr("MP_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -1346,7 +1345,7 @@ func _on_solved() -> void:
 		_grin(face, delay)
 		_after(delay, _spark_at.bind(k, cell_centre(cell)))
 		k += 1
-	_say("Every patch has its count.", Face.Expr.JOY)
+	_say(tr("MP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME)
 	_redraw()
@@ -1388,7 +1387,7 @@ func restore_completed_board() -> void:
 		face.modulate.a = 1.0
 		face.sprig = false
 		_set_expr(face, Face.Expr.JOY)
-	_say("Every patch has its count.", Face.Expr.JOY)
+	_say(tr("MP_WIN"), Face.Expr.JOY)
 	_layout()
 	_redraw()
 
