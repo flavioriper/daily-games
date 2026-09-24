@@ -243,6 +243,9 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-menu .refs figure{margin:0}
 #tab-menu .refs img{border-radius:14px}
 #tab-menu .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
+#tab-progress .phone{background:#f6efe3}
+#tab-progress .phone canvas{cursor:pointer}
+#pg-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 #mn-caption{max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
 /* ---------- flat quilt mock extras ---------- */
 #tab-quilt .phone{background:#f6efe3}
@@ -267,6 +270,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <div class="brand"><h1>Peeplet Daily · Concepts</h1><span>design notes with a picture attached, one tab per puzzle</span></div>
   <nav class="tabs" role="tablist">
     <button data-tab="menu" class="active">Menu &middot; flat</button>
+    <button data-tab="progress">Stats &amp; Streak</button>
     <button data-tab="pipes">Pipes</button>
     <button data-tab="horse">Horse Pen</button>
     <button data-tab="binairo">Binairo · flat</button>
@@ -2713,6 +2717,8 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 <section class="tab-panel" id="tab-fairylights">
   <h2>Fairy Lights &middot; flat, the fifteenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
   <p class="lede">A garden strung with wire. A lantern post stands in the middle cell and every other cell holds one length of garden wire &mdash; a straight, an elbow, a tee, a cross, or a paper lantern on a stub. <b>One tap turns a piece a quarter turn clockwise</b>, and that is the only gesture on the screen: no drag, no second direction, no locking. Wire joined all the way back to the post runs warm and gold; everything else is pale and cool, and the light washes outward one step at a time every time a turn changes what is reachable. Done when every stub meets a stub and every lantern is lit. The game is Netwalk, which is nobody's property and has been in every puzzle collection for thirty years; the garden is ours.</p>
+  <p style="font-size:14px;color:var(--muted)">The rest of this tab, its mock included, was lost in a merge; <code>ea359cb</code> has it. The unclosed section it left behind had hidden every tab after it until 2026-09-24.</p>
+</section>
 
 <!-- ============================ PAPER PLANES ============================ -->
 <section class="tab-panel" id="tab-planes">
@@ -3160,6 +3166,84 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Easy's cell is 180, which is the largest on any flat board.</b> It is capped there &mdash; it wanted 183 &mdash; and it is bigger than Sudoku's 100 and Queens' 103 by a long way. Nine chunky pieces on a 5&times;5 may read as a toy rather than as a puzzle; the lever is the cap, and every 10 taken off it is 50 more of air round the frame.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?t=</code> seconds in, plus <code>?d=0|1|2</code> for the band, <code>?seed=</code>, <code>?rm=1</code> for reduce motion, <code>?freeze=1</code> to hold the clock at <code>?t=</code> so a frame mid-swing can be shot, <code>?turn=k</code> to pre-turn piece <b>k</b>, <code>?refuse=1</code> for the pinned-fast refusal, <code>?hint=1</code> for one hint spent, <code>?reset=1</code> to turn a few and then clear them, and <code>?win=1</code> for the win screen. Pick the tab with <code>#pinwheel</code>.</p>
+</section>
+<section class="tab-panel" id="tab-progress">
+  <h2>Stats and Streak <span class="pill blue">concept &middot; 2026-09-24</span></h2>
+  <p class="lede">The two inert tabs in the bottom bar become real, and the day row's three hearts stop being a picture. <b>Three solves a day keep a streak.</b> Each run of seven kept days earns a <b>rest day</b> that covers one miss by itself. Stats is a page of numbers per board and per difficulty, and the calendar on Streak is the history.</p>
+
+  <div class="hero">
+    <div>
+      <div class="note"><b>Decided with the user on 2026-09-24:</b> a day is <b>kept by three solves</b>, and the day row's hearts count them. A missed day spends an <b>earned freeze</b>: one for every seven kept days, holding two at most. The header's calendar badge shows the <b>current streak</b> and opens Streak. The user took every other recommendation on this page wholesale ("do all recommended"), so everything else here is marked <span class="pill" style="margin-left:0">recommended</span> and stays open to overturning.</div>
+      <h3 style="margin-top:10px">Try it</h3>
+      <ul>
+        <li><b>Solve a board</b> fills today's next heart; the third keeps the day, and the badge and the streak go up by one.</li>
+        <li><b>End the day</b> moves to tomorrow. If today had fewer than three solves, a rest day covers it when one is held. Otherwise the streak goes back to zero.</li>
+        <li><b>Miss a day</b> ends today and tomorrow both with nothing solved, so you can watch a rest day being spent.</li>
+        <li>The history is made up: forty days at a 70% solve rate from a fixed seed. <b>Fresh player</b> clears it.</li>
+      </ul>
+    </div>
+    <div class="demo">
+      <div class="phone"><canvas id="pg" width="390" height="720"></canvas></div>
+      <div class="demo-controls">
+        <button id="pg-stats">Stats</button>
+        <button id="pg-streak" class="on">Streak</button>
+        <button id="pg-solve">Solve a board</button>
+        <button id="pg-end">End the day</button>
+        <button id="pg-miss">Miss a day</button>
+        <button id="pg-fresh">Fresh player</button>
+        <button id="pg-diff">Stats: Easy</button>
+      </div>
+      <div id="pg-caption"></div>
+    </div>
+  </div>
+
+  <h3>1. What counts <span class="pill blue">decided</span></h3>
+  <table>
+    <tr><th style="width:22%">Thing</th><th>Rule</th></tr>
+    <tr><td class="k">A solve</td><td>The first time a board is solved at a difficulty on a day. A <b>replay</b> of a daily already solved never counts again, so it cannot inflate a best time, since it is the same puzzle a second time. A Hidden Word that runs out of rows is not a solve.</td></tr>
+    <tr><td class="k">A heart</td><td>One per <b>distinct board</b> solved today, at any difficulty, up to three. Binairo on Easy and then Binairo on Hard is one heart and not two: the goal is three different puzzles, which is the point of a shelf of twenty.</td></tr>
+    <tr><td class="k">A kept day</td><td>Three hearts. The day is the boards' own day, <code>Daily.date_key()</code> in UTC, so the streak rolls over at the same instant the puzzles do (21:00 in Brazil). A different clock for the streak than for the boards would let a player solve "today's" boards on "yesterday's" streak.</td></tr>
+    <tr><td class="k">The streak</td><td>Consecutive kept days, counted back from yesterday. Today joins it the moment its third heart fills. Until then today is <em>pending</em>, not missed, so an evening player never sees their streak read 0 at breakfast.</td></tr>
+    <tr><td class="k">A rest day</td><td>Every seventh kept day in a row earns one, and a player holds two at most. A day that ends unkept spends one automatically; the streak neither grows nor breaks across it. With none held, the streak goes back to 0. The earning count carries across a rest day but is cut by a break. <span class="pill" style="margin-left:0">recommended</span> The word is <b>rest day</b>, not "freeze": it is the cosy word, and it is not another app's.</td></tr>
+    <tr><td class="k">When it starts</td><td>At the first day anything was solved. The days before it are neither missed nor kept, so an old player's first streak is whatever their history already says (section 4).</td></tr>
+  </table>
+  <p><b>None of the streak is stored.</b> Current, best, rest days held and the progress toward the next one are all <b>derived</b> by walking the solve log from its first day to today. That makes it the <code>_settle</code> idea again, applied to a calendar: nothing is kept that could drift from the log, and a day-rollover bug cannot leave a stale counter behind. At a solve a day for a decade the walk is 3,650 steps, which is nothing.</p>
+
+  <h3>2. The screens <span class="pill">recommended</span></h3>
+  <p>The header and the bottom bar stay put, and a tab's body takes the room the day row, the grid and the pager had (1,270 of 1,920). Switching tabs fades the body across. The header's sun and moon keep turning, so the three tabs read as one screen with three pages rather than three places.</p>
+  <table>
+    <tr><th style="width:18%">Streak</th><th>From the top</th></tr>
+    <tr><td class="k">Streak card</td><td>The current streak huge on the left (Fredoka 700 at 160) over "day streak". On the right: <b>Best</b>, the rest days held as two leaf discs (filled or outlined), and seven pips toward the next one.</td></tr>
+    <tr><td class="k">Today card</td><td>The day row's three hearts at the same size, with one line under them: "One more keeps the streak", "Day kept" and so on.</td></tr>
+    <tr><td class="k">Calendar</td><td>A month, Monday first, with chevrons to earlier months (back to the first solve, never past today). A <b>kept</b> day is a filled <code>ACCENT_2</code> disc. A <b>rest</b> day is a pale disc with a leaf. A <b>partial</b> day (one or two solves, then missed) is a hollow ring showing its count. A day with nothing is a faint dot. <b>Today</b> wears an ink ring. This is the history the roadmap asked for.</td></tr>
+  </table>
+  <table>
+    <tr><th style="width:18%">Stats</th><th>From the top</th></tr>
+    <tr><td class="k">Three tiles</td><td><b>Solved</b> (every counted solve), <b>Days played</b> (days with at least one), <b>Best streak</b>.</td></tr>
+    <tr><td class="k">Difficulty strip</td><td>Easy, Medium, Hard and Insane as four chips, remembered between visits. Insane is the night chip, ink with paper lettering, as it is on the difficulty sheet.</td></tr>
+    <tr><td class="k">Twenty boards</td><td>A 4&times;5 grid of small cards, in registry order, each with the board's own <code>CAT</code> colour as a dot, its name, the count solved and <b>best &middot; average</b> time. A board never solved at that difficulty reads a dash, and its card is dimmed to 60%. All twenty fit at 1080&times;1920 with no scroll (tiles 238 by 178). A 21st board would need a sixth row, and at 1080&times;1920 that comes out of the tile height (to about 145). That is written down here so nobody finds it by accident.</td></tr>
+  </table>
+  <p><b>Times are the board's own <code>elapsed</code></b>, the figure the win screen already shows, in <code>m:ss</code>. <b>The average is a mean</b>, and a single abandoned-then-finished board can pull it; a median would be steadier, but it is harder to explain on a card and harder to believe. Moves and hints are logged too, but not shown in 1.0.</p>
+
+  <h3>3. Where the hearts show up <span class="pill">recommended</span></h3>
+  <ul>
+    <li><b>The day row</b> fills its hearts from today's count. Coming back from a board that earned one, the new heart <b>pops</b> in (<code>Motion</code>'s pop, delayed until the row has entered). The chevron opens Streak.</li>
+    <li><b>The win screen's day card</b> swaps the island name under "Day N" for the hearts line, so the solve that fills the third heart says <b>"Day kept &middot; 5-day streak"</b> right where the player is looking.</li>
+    <li><b>The header's calendar badge</b> shows the current streak and hides at 0. It grows into a pill for two and three digits. Tapping it opens Streak.</li>
+  </ul>
+
+  <h3>4. The data <span class="pill">recommended</span></h3>
+  <p><code>core/progress.gd</code> gains an append-only <b>solve log</b>: a <code>log</code> section keyed by date, each holding one small record per counted solve (<code>id</code>, <code>d</code>, <code>t</code> seconds, <code>m</code> moves, <code>h</code> hints). A record is written only if no record for that board and difficulty is already on that day, which is where "a replay never counts twice" lives. <code>clear_completed</code>, the replay button's eraser, does not touch it.</p>
+  <p><b>Old players keep their history.</b> On the first read, the existing <code>completed</code> and <code>completed_stats</code> keys are folded into the log once (<code>20260923_queens_1</code> is Queens on Medium on the 23rd), and a flag records that it ran. A key without a difficulty suffix is the menu's own duplicate mark, and it is dropped when a suffixed one for the same board and day exists. The one hole it cannot fill is a daily that was replayed and never re-solved: its completion was erased, so that day lost the solve.</p>
+  <p><b>Cloud backup is not in this design.</b> The roadmap keeps it as its own item. The log is one ConfigFile section, a shape that uploads as one document when the time comes.</p>
+
+  <h3>5. What has to be felt on the phone <span class="pill rose">owed</span></h3>
+  <ul>
+    <li><b>Three a day is a real ask.</b> Twenty boards at five minutes each makes it a fifteen-minute habit. Rest days are the pressure valve, but whether the rule feels like a goal or a chore only shows after a week of playing.</li>
+    <li><b>The UTC rollover at 21:00 in Brazil.</b> The boards already roll over then, so it is not new, but a streak makes it matter. A player who finishes their third board at 21:05 local has kept tomorrow, not today.</li>
+    <li><b>Twenty stat tiles at 238 wide.</b> "Mushroom Patch" is the longest name, and it has to fit on one line at the tile's name size, or be lettered smaller as the top bar does.</li>
+  </ul>
+  <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?tab=stats|streak</code>, <code>?solved=0..3</code> for today's hearts, <code>?fresh=1</code> for an empty history, and <code>?d=0..3</code> for the Stats difficulty. Pick the tab with <code>#progress</code>.</p>
 </section>
 </main>
 
@@ -17827,6 +17911,271 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       if(rc2.length===2&&rc2[0]>=0&&rc2[0]<n&&rc2[1]>=0&&rc2[1]<n) auto.push({at,fn:tt=>turn(rc2[0]*n+rc2[1],tt)});}
     caption();
   })();
+  frame();
+})();
+
+/* ---------- Stats and Streak: the two bottom-bar tabs ---------- */
+(function(){
+  const cv=document.getElementById('pg'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    accent:'#4c9a94',accent2:'#e2825f',sun:'#f5a623',sunRay:'#f9c04a',moon:'#7d8fd9',moonDeep:'#6273c0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',sunTile:'#fbe3c8',cheek:'#f4a7a0',white:'#ffffff'};
+  const CAT=['#4c9a94','#e2825f','#7cb06b','#9b86c9','#d9605a','#6bb1d6','#d3b04a','#9a948c'];
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const BOARDS=['Binairo','Code Break','Balance','Untangle','Shikaku','Tents','Light Up','One Line','Nonogram','Queens',
+    'Hidden Word','Word Trail','Mushroom Patch','Sudoku','Bridges','Quilt','Fairy Lights','Paper Planes','Pinwheel','Rings'];
+  const DIFFS=['Easy','Medium','Hard','Insane'];
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function rr(x,y,w,h,r){ctx.beginPath();const k=Math.min(r,w/2,h/2);
+    ctx.moveTo(x+k,y);ctx.lineTo(x+w-k,y);ctx.quadraticCurveTo(x+w,y,x+w,y+k);
+    ctx.lineTo(x+w,y+h-k);ctx.quadraticCurveTo(x+w,y+h,x+w-k,y+h);
+    ctx.lineTo(x+k,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-k);
+    ctx.lineTo(x,y+k);ctx.quadraticCurveTo(x,y,x+k,y);ctx.closePath();}
+  function paper(x,y,w,h,r,fill,edge){
+    rr(x,y+6,w,h-6,r); ctx.fillStyle=edge||C.surfaceHi; ctx.fill();
+    rr(x,y,w,h-8,r); ctx.fillStyle=fill||C.surface; ctx.fill();
+    rr(x,y,w,h-8,r); ctx.strokeStyle=rgba(C.line,.5); ctx.lineWidth=2; ctx.stroke();}
+  function txt(s,x,y,font,size,col,align,weight){
+    ctx.font=(weight||600)+' '+size+'px '+font; ctx.fillStyle=col;
+    ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic'; ctx.fillText(s,x,y);}
+  function circle(x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();}
+  function ring(x,y,r,col,w){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();}
+  function heart(x,y,s,col,outline){
+    ctx.beginPath();ctx.moveTo(x,y+s*0.36);
+    ctx.bezierCurveTo(x-s*0.62,y-s*0.05,x-s*0.4,y-s*0.5,x,y-s*0.22);
+    ctx.bezierCurveTo(x+s*0.4,y-s*0.5,x+s*0.62,y-s*0.05,x,y+s*0.36);ctx.closePath();
+    if(outline){ctx.strokeStyle=col;ctx.lineWidth=s*0.09;ctx.stroke();}else{ctx.fillStyle=col;ctx.fill();}}
+  function leaf(x,y,s,col){ctx.save();ctx.translate(x,y);ctx.rotate(-0.6);
+    ctx.beginPath();ctx.ellipse(0,0,s*0.5,s*0.26,0,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+    ctx.beginPath();ctx.moveTo(-s*0.45,0);ctx.lineTo(s*0.4,0);ctx.strokeStyle=rgba(C.white,.6);ctx.lineWidth=s*0.06;ctx.stroke();
+    ctx.restore();}
+  function chevron(x,y,s,col,dir){ctx.beginPath();ctx.lineWidth=s*0.22;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle=col;const d=dir||1;
+    ctx.moveTo(x-s*0.24*d,y-s*0.4);ctx.lineTo(x+s*0.2*d,y);ctx.lineTo(x-s*0.24*d,y+s*0.4);ctx.stroke();}
+
+  // ---- the log: date index -> {boards solved (distinct), records} ----
+  // Days are plain integers here; the game uses Daily.date_key() and steps
+  // them through Time. Day 0 is Monday 2026-08-17.
+  const EPOCH=Date.UTC(2026,7,17);
+  let log={}, today=0, tab=Q.get('tab')||'streak', diff=parseInt(Q.get('d')||'0',10), calMonth=null;
+  function seedRng(s){return ()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};}
+  function history(){
+    log={}; const r=seedRng(7); today=38;
+    for(let d=0;d<today;d++){
+      let n=r()<0.7?3+(r()<0.3?Math.floor(r()*3):0):(r()<0.5?Math.floor(r()*3):0);
+      if(d>=24&&d<28) n=3;              // a run into the present
+      if(d===29) n=1;                   // a partial day a rest day covers
+      if(d>=30) n=3;
+      log[d]=[]; const used=new Set();
+      while(log[d].length<n){const b=Math.floor(r()*20); if(used.has(b)) continue; used.add(b);
+        log[d].push({b, d:Math.floor(r()*4), t:60+Math.floor(r()*420)});}
+    }
+    log[today]=[];
+  }
+  function fresh(){log={0:[]};today=0;}
+  const hearts=d=>Math.min(3,(log[d]||[]).length);
+
+  // Streak, derived and never stored (section 1). Walk from the first day
+  // with a solve through yesterday; today joins only when it is kept.
+  function streak(){
+    const days=Object.keys(log).map(Number).filter(d=>(log[d]||[]).length>0);
+    const out={cur:0,best:0,rest:0,toward:0,status:{}};
+    if(!days.length){return out;}
+    const first=Math.min(...days);
+    let cur=0,best=0,rest=0,toward=0;
+    for(let d=first;d<=today;d++){
+      const kept=hearts(d)>=3;
+      if(kept){cur++;toward++;if(toward===7){toward=0;rest=Math.min(2,rest+1);}best=Math.max(best,cur);out.status[d]='kept';}
+      else if(d===today){out.status[d]='today';}
+      else if(rest>0){rest--;out.status[d]='rest';}
+      else {cur=0;toward=0;out.status[d]=hearts(d)>0?'partial':'missed';}
+    }
+    Object.assign(out,{cur,best,rest,toward});
+    return out;
+  }
+
+  // ---- layout, design space ----
+  const HEAD_Y=M, HEAD_H=380, BODY_Y=M+HEAD_H+20, NAV_H=150, NAV_Y=H-M-NAV_H, BODY_H=NAV_Y-20-BODY_Y;
+  let fadeAt=-9;
+  const cap=document.getElementById('pg-caption');
+  function say(s){if(cap)cap.textContent=s;}
+
+  function header(st,t){
+    // Just enough of the first screen's header to place the tabs under it.
+    txt('Daily',M+10,HEAD_Y+190,FD,150,C.text,'left',700);
+    circle(M+300,HEAD_Y+78,13,C.sun);
+    txt('Small puzzles',M+14,HEAD_Y+260,FB,36,C.dim,'left',600);
+    txt('brighter days',M+14,HEAD_Y+304,FB,36,C.dim,'left',600);
+    const sx=W-M-250, sy=HEAD_Y+230, spin=t*Math.PI*2/40;
+    ctx.save();ctx.translate(sx,sy);ctx.rotate(spin);
+    for(let i=0;i<8;i++){ctx.save();ctx.rotate(i*Math.PI/4);ctx.beginPath();ctx.lineWidth=14;ctx.lineCap='round';
+      ctx.strokeStyle=C.sunRay;ctx.moveTo(0,-74);ctx.lineTo(0,-100);ctx.stroke();ctx.restore();}
+    ctx.restore(); circle(sx,sy,66,C.sun);
+    circle(sx+130,sy+20,56,C.moon); circle(sx+160,sy+6,48,C.paper);
+    // settings and calendar, with the badge
+    for(const [i,ic] of [[0,'gear'],[1,'cal']]){const bx=W-M-110-(1-i)*130, by=HEAD_Y;
+      paper(bx,by,110,110,30);
+      if(ic==='cal'){rr(bx+30,by+30,50,44,8);ctx.strokeStyle=C.text;ctx.lineWidth=6;ctx.stroke();
+        ctx.beginPath();ctx.moveTo(bx+30,by+44);ctx.lineTo(bx+80,by+44);ctx.stroke();}
+      else{ring(bx+55,by+51,20,C.text,8);}
+      if(ic==='cal'&&st.cur>0){const s=String(st.cur),bw=Math.max(52,24+s.length*22);
+        rr(bx+110-bw+14,by-14,bw,52,26);ctx.fillStyle=C.accent2;ctx.fill();
+        txt(s,bx+110-bw/2+14,by+26,FD,34,C.white,'center',700);}
+    }
+  }
+
+  function bar(){
+    paper(M,NAV_Y,COL,NAV_H,36);
+    const tabs=[['home','Home'],['stats','Stats'],['streak','Streak']], w=COL/3;
+    tabs.forEach(([k,l],i)=>{const x=M+i*w;
+      if(k===tab){rr(x+14,NAV_Y+12,w-28,NAV_H-32,26);ctx.fillStyle=C.sunTile;ctx.fill();}
+      const col=k===tab?C.accent2:C.text;
+      if(k==='home'){ctx.beginPath();ctx.moveTo(x+w/2-26,NAV_Y+62);ctx.lineTo(x+w/2,NAV_Y+36);ctx.lineTo(x+w/2+26,NAV_Y+62);
+        ctx.lineTo(x+w/2+26,NAV_Y+84);ctx.lineTo(x+w/2-26,NAV_Y+84);ctx.closePath();ctx.strokeStyle=col;ctx.lineWidth=7;ctx.lineJoin='round';ctx.stroke();}
+      else if(k==='stats'){rr(x+w/2-22,NAV_Y+38,44,34,8);ctx.strokeStyle=col;ctx.lineWidth=7;ctx.stroke();
+        ctx.fillStyle=col;ctx.fillRect(x+w/2-4,NAV_Y+72,8,12);ctx.fillRect(x+w/2-16,NAV_Y+82,32,6);}
+      else{for(let k2=0;k2<3;k2++){ctx.fillStyle=col;rr(x+w/2-26+k2*19,NAV_Y+84-18-k2*13,14,18+k2*13,4);ctx.fill();}}
+      txt(l,x+w/2,NAV_Y+118,FB,30,col,'center',k===tab?800:700);
+    });
+  }
+
+  function mmss(s){return Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0');}
+  function dateOf(d){return new Date(EPOCH+d*86400000);}
+
+  function drawStreak(st){
+    let y=BODY_Y;
+    // streak card
+    paper(M,y,COL,330,36);
+    txt(String(st.cur),M+60,y+200,FD,170,st.cur>0?C.accent2:C.dim,'left',700);
+    txt(st.cur===1?'day streak':'day streak',M+64,y+262,FB,38,C.dim,'left',700);
+    const rx=M+560;
+    txt('Best',rx,y+84,FB,32,C.dim,'left',700); txt(String(st.best),W-M-50,y+84,FD,44,C.text,'right',700);
+    txt('Rest days',rx,y+160,FB,32,C.dim,'left',700);
+    for(let i=0;i<2;i++){const cx=W-M-80-(1-i)*70;
+      if(i<st.rest){circle(cx,y+148,28,rgba(C.leaf,.25));leaf(cx,y+148,40,C.leafDeep);}
+      else ring(cx,y+148,26,rgba(C.line,.8),4);}
+    txt('Next rest day',rx,y+238,FB,28,C.dim,'left',700);
+    for(let i=0;i<7;i++){const px=rx+8+i*56;
+      if(i<st.toward) circle(px,y+272,17,C.leaf); else ring(px,y+272,15,rgba(C.line,.8),4);}
+    y+=350;
+    // today card
+    paper(M,y,COL,190,36);
+    txt('TODAY',M+44,y+62,FB,28,C.dim,'left',800);
+    const n=hearts(today);
+    for(let i=0;i<3;i++) heart(M+80+i*86,y+122,70,i<n?C.accent2:C.line,i>=n);
+    const line=n>=3?'Day kept':n===2?'One more keeps the streak':n===1?'Two more keep the streak':'Solve three to keep the streak';
+    txt(line,M+340,y+118,FB,36,C.text,'left',700);
+    y+=210;
+    // calendar
+    const ch=BODY_Y+BODY_H-y; paper(M,y,COL,ch,36);
+    const td=dateOf(today); const m=calMonth===null?[td.getUTCFullYear(),td.getUTCMonth()]:calMonth;
+    const first=new Date(Date.UTC(m[0],m[1],1));
+    const name=first.toLocaleString('en',{month:'long',timeZone:'UTC'})+' '+m[0];
+    txt(name,W/2,y+84,FD,48,C.text,'center',700);
+    chevron(M+70,y+68,40,C.text,-1); chevron(W-M-70,y+68,40,C.text,1);
+    const cw=(COL-80)/7, gx=M+40, gy=y+130;
+    'MTWTFSS'.split('').forEach((l,i)=>txt(l,gx+cw*i+cw/2,gy+10,FB,28,C.dim,'center',800));
+    const lead=(first.getUTCDay()+6)%7, dim=new Date(Date.UTC(m[0],m[1]+1,0)).getUTCDate();
+    const rowH=Math.min(112,(ch-190)/6);
+    for(let k=0;k<dim;k++){
+      const cell=lead+k, cx=gx+cw*(cell%7)+cw/2, cy=gy+60+rowH*Math.floor(cell/7);
+      const di=Math.round((Date.UTC(m[0],m[1],k+1)-EPOCH)/86400000);
+      const s=st.status[di], r=rowH*0.36;
+      if(s==='kept'){circle(cx,cy,r,C.accent2);txt(String(k+1),cx,cy+12,FD,32,C.white,'center',700);}
+      else if(s==='rest'){circle(cx,cy,r,rgba(C.leaf,.22));leaf(cx,cy,r*1.2,C.leafDeep);}
+      else if(s==='partial'){ring(cx,cy,r-3,C.accent2,5);txt(hearts(di)+'/3',cx,cy+10,FD,26,C.accent2,'center',700);}
+      else {txt(String(k+1),cx,cy+12,FD,32,di>today?rgba(C.dim,.35):C.dim,'center',600);}
+      if(di===today){ring(cx,cy,r+8,C.text,5);}
+    }
+  }
+
+  function drawStats(st){
+    let y=BODY_Y;
+    const all=Object.values(log).flat();
+    const played=Object.values(log).filter(a=>a.length>0).length;
+    const tiles=[['Solved',all.length],['Days played',played],['Best streak',st.best]];
+    const tw=(COL-40)/3;
+    tiles.forEach(([l,v],i)=>{const x=M+i*(tw+20); paper(x,y,tw,190,30);
+      txt(String(v),x+tw/2,y+104,FD,72,C.text,'center',700); txt(l,x+tw/2,y+156,FB,30,C.dim,'center',700);});
+    y+=210;
+    const dw=(COL-60)/4;
+    DIFFS.forEach((l,i)=>{const x=M+i*(dw+20), on=i===diff, night=i===3;
+      rr(x,y,dw,96,30); ctx.fillStyle=night?(on?C.text:rgba(C.text,.75)):(on?C.sunTile:C.surface); ctx.fill();
+      if(on&&!night){ctx.strokeStyle=C.accent2;ctx.lineWidth=5;ctx.stroke();}
+      if(on&&night){ctx.strokeStyle=C.sun;ctx.lineWidth=5;ctx.stroke();}
+      txt(l,x+dw/2,y+62,FB,32,night?C.paper:(on?C.accent2:C.text),'center',800);});
+    y+=116;
+    const rows=5, gap=16, bw=(COL-3*gap)/4, bh=(BODY_Y+BODY_H-y-(rows-1)*gap)/rows;
+    BOARDS.forEach((b,i)=>{
+      const x=M+(i%4)*(bw+gap), yy=y+Math.floor(i/4)*(bh+gap);
+      const recs=all.filter(r=>r.b===i&&r.d===diff);
+      ctx.globalAlpha=recs.length?1:0.6;
+      paper(x,yy,bw,bh,24);
+      circle(x+30,yy+40,12,CAT[i%CAT.length]);
+      let size=30; ctx.font='700 '+size+'px '+FD; while(ctx.measureText(b).width>bw-66&&size>18){size--;ctx.font='700 '+size+'px '+FD;}
+      txt(b,x+50,yy+51,FD,size,C.text,'left',700);
+      if(recs.length){
+        const ts=recs.map(r=>r.t), best=Math.min(...ts), avg=ts.reduce((a,c)=>a+c,0)/ts.length;
+        txt(recs.length+' solved',x+22,yy+100,FB,28,C.text,'left',800);
+        txt(mmss(best)+' · '+mmss(avg),x+22,yy+142,FB,26,C.dim,'left',700);
+      } else txt('—',x+22,yy+110,FB,34,C.dim,'left',700);
+      ctx.globalAlpha=1;
+    });
+  }
+
+  function frame(){
+    const t=performance.now()/1000;
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    const st=streak();
+    header(st,t);
+    const a=Math.min(1,(t-fadeAt)/0.2);
+    ctx.globalAlpha=a; ctx.save(); ctx.translate(0,(1-a)*30);
+    if(tab==='stats') drawStats(st); else drawStreak(st);
+    ctx.restore(); ctx.globalAlpha=1;
+    bar();
+    requestAnimationFrame(frame);
+  }
+
+  const $=id=>document.getElementById(id);
+  function setTab(k){tab=k;fadeAt=performance.now()/1000;$('pg-stats').classList.toggle('on',k==='stats');$('pg-streak').classList.toggle('on',k==='streak');}
+  function endDay(){const st=streak(); const n=hearts(today); today++; log[today]=log[today]||[]; calMonth=null;
+    const after=streak();
+    say(n>=3?'Yesterday was kept. The streak is '+after.cur+'.':after.status[today-1]==='rest'
+      ?'Yesterday ended with '+n+' of 3, and a rest day covered it. The streak holds at '+after.cur+'.'
+      :'Yesterday ended with '+n+' of 3 and no rest day was held. The streak starts again.');}
+  $('pg-stats').onclick=()=>setTab('stats');
+  $('pg-streak').onclick=()=>setTab('streak');
+  $('pg-solve').onclick=()=>{const used=new Set(log[today].map(r=>r.b));
+    if(used.size>=20){say('Every board is solved today.');return;}
+    let b;do{b=Math.floor(Math.random()*20);}while(used.has(b));
+    log[today].push({b,d:diff,t:60+Math.floor(Math.random()*400)});
+    const n=hearts(today);
+    say(n===3&&log[today].length===3?'Third heart: the day is kept, and the streak is '+streak().cur+'.':
+      log[today].length>3?BOARDS[b]+' solved. The hearts are already full, but it still counts in Stats.':
+      BOARDS[b]+' solved: '+n+' of 3 today.');};
+  $('pg-end').onclick=endDay;
+  $('pg-miss').onclick=()=>{endDay();endDay();};
+  $('pg-fresh').onclick=()=>{fresh();calMonth=null;say('A new player: no history, no badge, and the streak starts at the first solve.');};
+  $('pg-diff').onclick=()=>{diff=(diff+1)%4;$('pg-diff').textContent='Stats: '+DIFFS[diff];if(tab!=='stats')setTab('stats');};
+  cv.addEventListener('click',e=>{
+    const r=cv.getBoundingClientRect(), x=(e.clientX-r.left)/S, y=(e.clientY-r.top)/S;
+    if(y>NAV_Y){const i=Math.floor((x-M)/(COL/3)); if(i===1)setTab('stats'); if(i===2)setTab('streak');
+      if(i===0)say('Home is the page of cards (#menu).');return;}
+    if(tab==='stats'&&y>BODY_Y+210&&y<BODY_Y+306){diff=Math.max(0,Math.min(3,Math.floor((x-M)/((COL)/4))));$('pg-diff').textContent='Stats: '+DIFFS[diff];return;}
+    if(y<HEAD_Y+130&&x>W-M-110){setTab('streak');say('The badge is the streak, and it opens Streak.');}
+  });
+
+  if(Q.get('fresh')==='1') fresh(); else history();
+  if(Q.has('solved')){const n=parseInt(Q.get('solved'),10);for(let i=0;i<n;i++)log[today].push({b:i,d:0,t:120});}
+  $('pg-diff').textContent='Stats: '+DIFFS[diff]; setTab(tab); fadeAt=-9;
   frame();
 })();
 </script>
