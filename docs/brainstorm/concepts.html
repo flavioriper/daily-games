@@ -261,6 +261,65 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 #tab-fairylights .refs img{border-radius:14px}
 #tab-fairylights .hero figcaption{font-size:13.5px;color:var(--muted);margin-top:8px}
 #fl-caption{max-width:470px;text-align:center;font-size:14px;color:var(--muted);min-height:44px}
+
+/* ---------- menu · painted (#menu2) ---------- */
+.m2-phone{position:relative;width:390px;height:693px;border-radius:34px;overflow:hidden;
+  box-shadow:0 18px 50px rgba(20,30,60,.35),inset 0 0 0 6px #2b2b30;background:#f6efe3}
+.m2-stage{position:absolute;left:0;top:0;width:1080px;height:1920px;transform:scale(.36111);transform-origin:0 0;
+  background:#f6efe3;color:#3b3028;font-family:Nunito,sans-serif;overflow:hidden}
+.m2-stage *{box-sizing:border-box}
+.m2-head{position:absolute;left:0;top:0;width:1080px;height:560px;background:url(../../assets/art/menu/vista_dusk.png) 88% 70%/auto 620px no-repeat;
+  -webkit-mask-image:linear-gradient(#000 62%,transparent 96%);mask-image:linear-gradient(#000 62%,transparent 96%)}
+.m2-head::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(246,239,227,.78) 0%,rgba(246,239,227,.5) 38%,rgba(246,239,227,0) 62%)}
+.m2-pair{position:absolute;right:-10px;top:170px;width:700px;height:258px;background:url(cast/binairo.png) center/contain no-repeat;
+  filter:drop-shadow(0 10px 10px rgba(60,30,20,.25))}
+.m2-word{position:absolute;left:52px;top:78px;font:700 170px/1 Fredoka,sans-serif;letter-spacing:-2px;color:#3b3028}
+.m2-word .i{position:relative}
+.m2-word .dot{position:absolute;left:50%;top:28px;width:34px;height:34px;margin-left:18px;border-radius:50%;background:#f5a623;
+  box-shadow:0 0 0 7px rgba(245,166,35,.28)}
+.m2-sprig{position:absolute;left:180px;top:62px;width:60px;height:70px}
+.m2-sprig i{position:absolute;left:28px;bottom:0;width:6px;height:30px;background:#6a9c5a;border-radius:3px}
+.m2-sprig::before,.m2-sprig::after{content:"";position:absolute;bottom:24px;width:34px;height:22px;background:#7cb06b;border-radius:22px 2px}
+.m2-sprig::before{left:-2px;transform:rotate(-24deg)}
+.m2-sprig::after{right:-4px;transform:scaleX(-1) rotate(-24deg)}
+.m2-tag{position:absolute;left:58px;top:262px;font:600 44px/1.25 Nunito,sans-serif;color:#6e6255}
+.m2-icon{position:absolute;top:44px;width:112px;height:112px;border-radius:32px;background:#fffdf8;
+  box-shadow:0 8px 22px rgba(80,50,20,.18);display:flex;align-items:center;justify-content:center;font:700 54px Fredoka;color:#3b3028}
+.m2-badge{position:absolute;top:-10px;right:-10px;width:48px;height:48px;border-radius:50%;background:#e2825f;color:#fff;
+  font:700 28px/48px Fredoka;text-align:center;box-shadow:0 0 0 5px #fffdf8}
+.m2-day{position:absolute;left:40px;top:440px;width:1000px;height:200px;border-radius:40px;overflow:hidden;
+  background-size:cover;box-shadow:0 12px 28px rgba(80,50,20,.18),0 0 0 3px rgba(255,253,248,.9)}
+.m2-day::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,253,248,.94) 0%,rgba(255,253,248,.82) 36%,rgba(255,253,248,0) 66%)}
+.m2-day .t{position:absolute;left:52px;top:34px}
+.m2-day .k{font:800 26px Nunito;letter-spacing:6px;color:#e2825f}
+.m2-day .n{font:700 72px/1 Fredoka;margin-top:4px}
+.m2-day .s{font:600 34px Nunito;color:#6e6255;margin-top:6px}
+.m2-hearts{position:absolute;right:170px;top:72px;display:flex;gap:14px}
+.m2-heart{width:58px;height:54px;position:relative}
+.m2-heart svg{width:100%;height:100%;filter:drop-shadow(0 3px 3px rgba(80,30,20,.25))}
+.m2-go{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
+.m2-go svg{width:44%;height:44%}
+.m2-grid{position:absolute;left:40px;top:660px;width:1000px;display:grid;grid-template-columns:490px 490px;grid-auto-rows:246px;gap:20px}
+.m2-card{position:relative;border-radius:36px;background:#fffdf8;box-shadow:0 10px 24px rgba(90,60,30,.14),0 0 0 2px rgba(184,168,146,.35);
+  cursor:pointer;transition:transform .18s}
+.m2-card:active{transform:scale(.97)}
+.m2-ban{position:absolute;left:10px;top:10px;width:470px;height:116px;border-radius:28px;overflow:hidden;background-repeat:no-repeat}
+.m2-wash{position:absolute;inset:0;background:radial-gradient(46% 70% at 50% 58%,rgba(255,253,248,.62),rgba(255,253,248,0) 100%)}
+.m2-cast{position:absolute;inset:0;background-position:center;background-size:auto 100%;background-repeat:no-repeat;
+  filter:drop-shadow(0 4px 4px rgba(50,30,20,.22))}
+.m2-name{position:absolute;left:28px;top:138px;font:600 44px/1.1 Fredoka;white-space:nowrap}
+.m2-blurb{position:absolute;left:28px;top:188px;font:600 26px/1.15 Nunito;color:#7a6d60;white-space:pre-line}
+.m2-card .m2-go{right:22px;top:146px;width:80px;height:80px;box-shadow:0 6px 12px rgba(60,40,20,.22),inset 0 -5px 0 rgba(0,0,0,.12)}
+.m2-pager{position:absolute;left:50%;top:1708px;transform:translateX(-50%);height:52px;padding:0 20px;border-radius:26px;background:#fffdf8;
+  box-shadow:0 6px 16px rgba(80,50,20,.16);display:flex;align-items:center;gap:18px;font:700 30px Fredoka;color:#8a7b6b}
+.m2-pager i{width:14px;height:14px;border-radius:50%;background:#d8ccb9;display:block}
+.m2-pager i.on{background:#e2825f;width:30px;border-radius:7px}
+.m2-bar{position:absolute;left:40px;top:1764px;width:1000px;height:120px;border-radius:60px;background:#fffdf8;
+  box-shadow:0 10px 28px rgba(80,50,20,.16);display:flex;align-items:center;justify-content:space-around;padding:0 16px}
+.m2-tab{display:flex;align-items:center;gap:14px;font:700 32px Nunito;color:#6e6255;padding:18px 36px;border-radius:44px}
+.m2-tab.on{background:#fbe3d6;color:#e2825f}
+.m2-tab b{font:700 40px Fredoka}
+#m2-table table td,#m2-table table th{font-size:14px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -270,6 +329,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <div class="brand"><h1>Peeplet Daily · Concepts</h1><span>design notes with a picture attached, one tab per puzzle</span></div>
   <nav class="tabs" role="tablist">
     <button data-tab="menu" class="active">Menu &middot; flat</button>
+    <button data-tab="menu2">Menu &middot; painted</button>
     <button data-tab="progress">Stats &amp; Streak</button>
     <button data-tab="pipes">Pipes</button>
     <button data-tab="horse">Horse Pen</button>
@@ -406,6 +466,60 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Draw calls and idle frame time</b>, against the campsite's 338 and ~13&nbsp;ms at 1080&times;1920. Twelve drawn cards should be a fraction of that; until <code>tests/_shot_menu.gd</code> prints it, "cheaper" is a claim.</li>
     <li><b>The 254-tall card on a real phone.</b> Three lines of blurb do not fit; two do. Whether two are enough to tell twelve puzzles apart is a thing to look at on the device, not in a browser.</li>
     <li><b>Twelve cached face meshes at once.</b> Gl_compatibility pays per draw command, and twenty live vector faces measured 4&nbsp;ms once before they were cached into meshes. These are cards, not boards, so each should be one command &mdash; worth confirming rather than assuming.</li>
+  </ul>
+</section>
+
+<!-- ============================ MENU · PAINTED ============================ -->
+<section class="tab-panel" id="tab-menu2">
+  <h2>The first screen &middot; painted <span class="pill blue">concept &middot; 2026-09-24</span></h2>
+  <p class="lede">The page of cards, taken toward the user's painted mock: two columns instead of three, a painted scene behind the header, a vista under the day, and a painted banner across the top of every card, with the board's own cast still drawn in code on top of it. Same bones as <a href="#menu">the flat menu</a> (wordmark, day card, cards, go-buttons, a three-tab bar), with more depth and more air.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-menu-painted2.png" alt="The user's painted mock: a Daily wordmark over a treehouse scene with the sun and moon on the deck, a beach vista behind the day card, and a two-column grid of cards each with a painted banner">
+        <figcaption>The user's mock, 2026-09-24. Two columns, painted banners, a vista day card and a floating bar. This tab follows it with two differences. Pages stay (a 2&times;4 page of eight, per the earlier <em>pages, not scroll</em> decision), and the banners are six shared vistas cropped per card, not twenty paintings.</figcaption>
+      </figure>
+      <figure>
+        <img src="../../assets/art/menu/vista_beach.png" alt="Beach vista" style="border-radius:12px">
+        <figcaption>The six vistas, supplied by the user on 2026-09-24: <code>beach</code>, <code>dusk</code> (treehouse at sunset), <code>meadow</code> (windmill), <code>night</code>, <code>autumn</code> and <code>sky</code> (floating islands). Each came out of the sheet at about 877&times;288.</figcaption>
+      </figure>
+    </div>
+
+    <div class="demo">
+      <div class="m2-phone"><div class="m2-stage" id="m2"></div></div>
+      <div class="demo-controls">
+        <button id="m2-page">Page 1 of 3</button>
+        <button id="m2-art">Banners: painted</button>
+        <button id="m2-wash">Wash under cast: on</button>
+        <button id="m2-day">Day 11 &middot; Pebble Reach</button>
+        <button id="m2-hearts">Hearts: 2</button>
+      </div>
+      <div id="m2-caption" style="font-size:13px;color:var(--muted);max-width:390px">Tap a card to see its vista and crop.</div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The phone is the game's own 1080&times;1920 design space scaled to 390 wide, so every number below is in the units <code>ui/menu.gd</code> is written in. The characters on the banners are <b>the real card art</b>, rendered out of Godot (<code>ui/menu/card_art.gd</code>) onto transparent PNGs in <code>docs/brainstorm/cast/</code>, not redrawn here. <span class="pill blue" style="margin-left:0">decided</span> with the user on 2026-09-24: hybrid medium (painted backdrops, cast in code), two columns paged, about six vistas, and the user supplies the paintings.</div>
+
+  <h3>1. The height budget <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th style="width:18%">Row</th><th style="width:12%">Height</th><th>What is in it</th></tr>
+    <tr><td class="k">Header</td><td>40 + 380</td><td>The <code>dusk</code> vista, full-bleed to the top edge and fading into the page behind the day card. <code>Daily</code> at 150 with its sun-dot and sprig and the two-line motto on the left, the sun and moon seated on the treehouse deck at the right, and settings and calendar at the top right.</td></tr>
+    <tr><td class="k">Day card</td><td>200</td><td>The day's vista with a paper scrim from the left. <code>TODAY</code> in <code>ACCENT_2</code> capitals, <code>Day N</code> at 64, the island under it, then three hearts (filled red when earned) and the chevron.</td></tr>
+    <tr><td class="k">Grid</td><td>1044</td><td>Two across and four down: 490&times;246 cards with 20 gaps. A 116 banner inset 10 into the card, the name at 44, two blurb lines at 28, and a go-button of 80 in the card's colour.</td></tr>
+    <tr><td class="k">Bar</td><td>60 + 120</td><td>A 60 seam (the pager pill sits in it) and then a floating 120 pill with a soft shadow: Home, Stats and Streak.</td></tr>
+  </table>
+  <p style="font-size:14px;color:var(--muted)">40 + 380 + 20 + 200 + 20 + 1044 + 60 + 120 + 36 = 1920. The pager pill sits in the seam between the grid and the bar. Twenty cards make pages of 8, 8 and 4, and the last page's four fill two whole rows. <code>_fit_grid</code> still hands a taller phone more rows (9:20 fits 2&times;5).</p>
+
+  <h3>2. Which vista each card crops <span class="pill">proposed</span></h3>
+  <p>Six paintings for twenty banners. Each card names a vista, a zoom and a focus point, so two cards on the same vista show different parts of it. The pairing follows the board's own world: the sea for Bridges, night for anything lit, autumn woods for the forest boards, and open sky for things that fly or hang.</p>
+  <div id="m2-table"></div>
+
+  <h3>3. What has to be looked at <span class="pill rose">open</span></h3>
+  <ul>
+    <li><b>The cast over a busy painting.</b> The vistas were painted as whole scenes, not as banners with a clear middle the way the mock's were. The <em>wash</em> (a soft paper glow behind the cast) is what keeps the characters legible. Toggle it off to see why it is there.</li>
+    <li><b>Resolution.</b> At about 877 wide, a vista is upscaled 1.15&times; across the day card and 1.23&times; across the header. Full-size originals would make them crisp.</li>
+    <li><b>Dusk twice.</b> The header is always <code>dusk</code>, and some islands also map to dusk for the day card. The two crops differ (the header shows the treehouse, the day card the valley), but it is worth a look.</li>
   </ul>
 </section>
 
@@ -18177,6 +18291,102 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   if(Q.has('solved')){const n=parseInt(Q.get('solved'),10);for(let i=0;i<n;i++)log[today].push({b:i,d:0,t:120});}
   $('pg-diff').textContent='Stats: '+DIFFS[diff]; setTab(tab); fadeAt=-9;
   frame();
+})();
+
+/* ---------- menu · painted (#menu2) ---------- */
+(function(){
+  const stage=document.getElementById('m2'); if(!stage) return;
+  const V=n=>'../../assets/art/menu/vista_'+n+'.png';
+  const CAT=['#4c9a94','#e2825f','#7cb06b','#9b86c9','#d9605a','#6bb1d6','#d3b04a','#9a948c'];
+  // id, title, blurb, vista, zoom (banner width as % of the vista's cover width), focus x%, y%
+  const CARDS=[
+    ['binairo','BINAiRO','Suns and moons,\nnever three alike.','sky',150,30,30],
+    ['mastermind','Code Break','Crack the hidden\nrow of friends.','meadow',160,70,55],
+    ['balance','Balance','What does each\nfruit weigh?','sky',140,80,45],
+    ['untangle','Untangle','Pull the lanterns\nuntil none cross.','night',150,60,40],
+    ['shikaku','Shikaku','Cut the field into\nnumbered plots.','meadow',150,20,70],
+    ['tents','Tents','One tent beside\nevery tree.','autumn',150,70,40],
+    ['lightup','Light Up','Light every cell,\nblind every bulb.','night',170,85,60],
+    ['oneline','One Line','Every line, walked\nin one stroke.','meadow',140,45,80],
+    ['nonogram','Nonogram','The numbers make\na picture.','dusk',150,20,35],
+    ['queens','Queens','One queen per row,\ncolumn and colour.','meadow',180,90,85],
+    ['hiddenword','Hidden Word','Five letters,\nsix tries.','dusk',150,55,55],
+    ['wordtrail','Word Trail','Trace the words,\nfill the field.','autumn',160,40,20],
+    ['mushroom','Mushroom Patch','The numbers count\nwhat is hidden.','autumn',170,15,80],
+    ['sudoku','Sudoku','Every number once,\nevery way you look.','dusk',170,85,75],
+    ['bridges','Bridges','Plank every islet\nto its number.','beach',150,70,65],
+    ['quilt','Quilt','Fit every patch.\nLeave no gap.','dusk',180,92,70],
+    ['fairylights','Fairy Lights','Turn the wire,\nlight the garden.','night',160,20,70],
+    ['planes','Paper Planes','Send every plane\noff a clear lane.','sky',140,50,20],
+    ['pinwheel','Pinwheel','Turn each piece\ntill the frame fills.','beach',160,20,55],
+    ['rings','Rings','Sort the rings,\na colour a peg.','meadow',150,40,30],
+  ];
+  const ISLANDS=[['Sunlit Cliffs','beach'],['Moss Harbour','meadow'],['Lantern Cove','night'],['Driftwood Point','beach'],
+    ['Heron Shallows','dusk'],['Fernwater Isle','autumn'],['Pebble Reach','beach'],['Windmere Rock','meadow'],
+    ['Tidepool Terrace','beach'],['Quiet Anchorage','night'],['Bramble Key','autumn'],['Saltgrass Hollow','meadow'],
+    ['Kestrel Ledge','sky'],['Cinder Shoal','dusk'],['Lily Landing','meadow'],['Foxglove Cay','autumn'],
+    ['Willow Strand','dusk'],['Marigold Bank','autumn'],['Otter Narrows','dusk'],['Copper Cliffs','autumn'],
+    ['Starling Rise','sky'],['Seagrass Flats','beach'],['Birch Haven','night'],['Puffin Steps','sky']];
+  // where each vista's day-card crop looks
+  const DAYPOS={beach:'50% 62%',dusk:'30% 55%',meadow:'50% 60%',night:'55% 60%',autumn:'50% 55%',sky:'50% 45%'};
+  const PER=8;
+  const st={page:0,art:true,wash:true,day:6,hearts:2};
+  const chev='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+  const heart=f=>'<svg viewBox="0 0 24 22"><path d="M12 21s-9-5.6-9-12.2C3 5.1 5.6 3 8.3 3c1.7 0 3 .9 3.7 2.1C12.7 3.9 14 3 15.7 3 18.4 3 21 5.1 21 8.8 21 15.4 12 21 12 21z" fill="'+(f?'#e0574f':'#fffdf8')+'" stroke="'+(f?'#c4443d':'#d8ccb9')+'" stroke-width="1.6"/></svg>';
+  function mix(hex,t){const n=parseInt(hex.slice(1),16),p=[246,239,227];const c=[n>>16,(n>>8)&255,n&255].map((v,i)=>Math.round(v*(1-t)+p[i]*t));return 'rgb('+c+')';}
+
+  function render(){
+    const isl=ISLANDS[st.day%ISLANDS.length];
+    let h='<div class="m2-head"></div><div class="m2-pair"></div>'+
+      '<div class="m2-sprig"><i></i></div><div class="m2-word">Da<span class="i">ı<span class="dot"></span></span>ly</div>'+
+      '<div class="m2-tag">Small puzzles<br>brighter days</div>'+
+      '<div class="m2-icon" style="right:176px">&#9881;</div>'+
+      '<div class="m2-icon" style="right:40px">&#9638;<div class="m2-badge">3</div></div>';
+    h+='<div class="m2-day" style="background-image:url('+V(isl[1])+');background-position:'+DAYPOS[isl[1]]+'">'+
+      '<div class="t"><div class="k">TODAY</div><div class="n">Day '+(st.day+5)+'</div><div class="s">'+isl[0]+'</div></div>'+
+      '<div class="m2-hearts">'+[0,1,2].map(i=>'<div class="m2-heart">'+heart(i<st.hearts)+'</div>').join('')+'</div>'+
+      '<div class="m2-go" style="right:40px;top:50px;width:100px;height:100px;background:#fffdf8;color:#3b3028;box-shadow:0 6px 14px rgba(80,50,20,.2)">'+chev+'</div></div>';
+    h+='<div class="m2-grid">';
+    CARDS.slice(st.page*PER,st.page*PER+PER).forEach((c,k)=>{
+      const i=st.page*PER+k, col=CAT[i%CAT.length];
+      const bg=st.art
+        ? 'background-image:url('+V(c[3])+');background-size:'+c[4]+'% auto;background-position:'+c[5]+'% '+c[6]+'%'
+        : 'background:linear-gradient('+mix(col,.82)+' 0%,'+mix(col,.7)+' 62%,'+mix(col,.55)+' 62%,'+mix(col,.5)+' 100%)';
+      h+='<div class="m2-card" data-i="'+i+'"><div class="m2-ban" style="'+bg+'">'+(st.wash&&st.art?'<div class="m2-wash"></div>':'')+
+        '<div class="m2-cast" style="background-image:url(cast/'+c[0]+'.png)"></div></div>'+
+        '<div class="m2-name">'+c[1]+'</div><div class="m2-blurb">'+c[2]+'</div>'+
+        '<div class="m2-go" style="background:'+col+'">'+chev+'</div></div>';
+    });
+    h+='</div>';
+    const pages=Math.ceil(CARDS.length/PER);
+    h+='<div class="m2-pager">&lsaquo;'+Array.from({length:pages},(_,p)=>'<i class="'+(p===st.page?'on':'')+'"></i>').join('')+'&rsaquo;</div>';
+    h+='<div class="m2-bar"><div class="m2-tab on"><b>&#8962;</b>Home</div><div class="m2-tab"><b>&#9733;</b>Stats</div><div class="m2-tab"><b>&#9650;</b>Streak</div></div>';
+    stage.innerHTML=h;
+    stage.querySelectorAll('.m2-card').forEach(el=>el.addEventListener('click',()=>{
+      const c=CARDS[+el.dataset.i];
+      document.getElementById('m2-caption').textContent=c[1]+' crops "'+c[3]+'" at '+c[4]+'%, focus '+c[5]+'% '+c[6]+'%.';
+    }));
+    document.getElementById('m2-page').textContent='Page '+(st.page+1)+' of '+pages;
+    document.getElementById('m2-art').textContent='Banners: '+(st.art?'painted':'gradient fallback');
+    document.getElementById('m2-wash').textContent='Wash under cast: '+(st.wash?'on':'off');
+    document.getElementById('m2-day').textContent='Day '+(st.day+5)+' · '+isl[0]+' ('+isl[1]+')';
+    document.getElementById('m2-hearts').textContent='Hearts: '+st.hearts;
+  }
+  const q=new URLSearchParams(location.search);
+  if(q.has('m2page')) st.page=+q.get('m2page');
+  if(q.get('m2art')==='0') st.art=false;
+  if(q.get('m2wash')==='0') st.wash=false;
+  if(q.has('m2day')) st.day=+q.get('m2day');
+  document.getElementById('m2-page').onclick=()=>{st.page=(st.page+1)%Math.ceil(CARDS.length/PER);render();};
+  document.getElementById('m2-art').onclick=()=>{st.art=!st.art;render();};
+  document.getElementById('m2-wash').onclick=()=>{st.wash=!st.wash;render();};
+  document.getElementById('m2-day').onclick=()=>{st.day=(st.day+1)%ISLANDS.length;render();};
+  document.getElementById('m2-hearts').onclick=()=>{st.hearts=(st.hearts+1)%4;render();};
+  // the vista table
+  let t='<table><tr><th>Card</th><th>Vista</th><th>Zoom</th><th>Focus</th></tr>';
+  CARDS.forEach(c=>{t+='<tr><td class="k">'+c[1]+'</td><td><code>'+c[3]+'</code></td><td>'+c[4]+'%</td><td>'+c[5]+'% '+c[6]+'%</td></tr>';});
+  document.getElementById('m2-table').innerHTML=t+'</table><p style="font-size:14px;color:var(--muted)">The day card maps each of the 24 islands to the vista its name suggests: Pebble Reach to <code>beach</code>, Windmere Rock to <code>meadow</code> (it has a windmill), Lantern Cove to <code>night</code>, Kestrel Ledge to <code>sky</code>, and so on. Cycle the Day button to see them all.</p>';
+  render();
 })();
 </script>
 </body>
