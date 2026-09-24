@@ -5,14 +5,14 @@ extends "res://ui/hud/panel.gd"
 ## (ui/flat/flat_day_card.gd) at the menu's size, with the two decorations
 ## the mock puts on it.
 ##
-## **The hearts and the chevron are decoration**, by decision with the user
-## on 2026-09-18, and this comment is the place that says so plainly: they
-## are drawn exactly as the mock draws them -- two of three filled -- and
-## they count nothing. There is no three-a-day goal, no streak health and no
-## lives. The day whose number and name it shows is real
-## (core/progress.gd); everything else on this row is a picture of a feature
-## that has not been designed. The chevron squashes and does nothing.
+## **The hearts count today's distinct boards solved** (`Progress.hearts`),
+## three of which keep the streak, and **the chevron opens Streak**
+## (spec `2026-09-24-stats-streak-design.md`, section 4). The day whose
+## number and name it shows is real (core/progress.gd), and so now is
+## everything else on this row.
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 4.
+
+signal open_streak
 
 const Icons = preload("res://ui/icons.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
@@ -23,11 +23,22 @@ const TREE := 84.0
 const HEART := 46.0
 const HEART_GAP := 16.0
 const HEARTS := 3
-const HEARTS_FULL := 2
 const CHEVRON := 110.0
+
+## The pop waits for the row's own entrance to land.
+const POP_DELAY := 0.45
 
 var _day: Label
 var _island: Label
+var _hearts_ci: Control
+var _hearts := 0
+var _known := false
+var _popping := -1
+var _pop_t := 0.0:
+	set(value):
+		_pop_t = value
+		if is_instance_valid(_hearts_ci):
+			_hearts_ci.queue_redraw()
 
 func _init() -> void:
 	enter_from = Vector2(0, 30)
@@ -76,6 +87,7 @@ func _build() -> void:
 	hearts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hearts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hearts.draw.connect(_draw_hearts.bind(hearts))
+	_hearts_ci = hearts
 	row.add_child(hearts)
 
 	var go := IconButton.new("chevron_right")
@@ -84,17 +96,38 @@ func _build() -> void:
 	go.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE_HI, int(CHEVRON * 0.5), Pal.LINE, 5, 8))
 	go.add_theme_stylebox_override("hover", CozyTheme.card(Pal.SURFACE_HI, int(CHEVRON * 0.5), Pal.LINE, 5, 8))
 	go.add_theme_stylebox_override("pressed", CozyTheme.card(Pal.SURFACE_HI.darkened(0.08), int(CHEVRON * 0.5), Pal.LINE, 2, 8))
+	go.pressed.connect(func() -> void: open_streak.emit())
 	row.add_child(go)
 
 	set_day(1, "")
 
+## Today's count. The first call only sets it; a later rise pops the newest
+## heart in, so coming back from the solve that earned it shows it arriving.
+func set_hearts(n: int) -> void:
+	n = clampi(n, 0, HEARTS)
+	var rose := _known and n > _hearts
+	_hearts = n
+	_known = true
+	_popping = n - 1 if rose else -1
+	if rose and not Motion.reduce:
+		_pop_t = 0.0
+		create_tween().tween_property(self, "_pop_t", Motion.POP_IN, Motion.POP_IN).set_delay(POP_DELAY)
+	else:
+		_pop_t = Motion.POP_IN
+	if is_instance_valid(_hearts_ci):
+		_hearts_ci.queue_redraw()
+
 func _draw_hearts(on: Control) -> void:
 	for i in HEARTS:
-		var box := Rect2(Vector2(i * (HEART + HEART_GAP), 0.0), Vector2(HEART, HEART))
-		if i < HEARTS_FULL:
+		var centre := Vector2(i * (HEART + HEART_GAP) + HEART * 0.5, HEART * 0.5)
+		var s := Motion.pop_in_scale(_pop_t) if i == _popping else Vector2.ONE
+		on.draw_set_transform(centre, 0.0, s)
+		var box := Rect2(Vector2(-HEART, -HEART) * 0.5, Vector2(HEART, HEART))
+		if i < _hearts:
 			Icons.paint(on, "heart", box, Pal.ACCENT_2)
 		else:
 			Icons.paint(on, "heart_line", box, Pal.LINE)
+	on.draw_set_transform(Vector2.ZERO)
 
 var _day_n := 1
 

@@ -35,6 +35,10 @@ const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const BottomBar = preload("res://ui/menu/bottom_bar.gd")
 const DifficultySheet = preload("res://ui/menu/difficulty_sheet.gd")
 const Icons = preload("res://ui/icons.gd")
+const Analytics = preload("res://core/analytics.gd")
+const StreakTab = preload("res://ui/menu/streak_tab.gd")
+const StatsTab = preload("res://ui/menu/stats_tab.gd")
+const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
 const GAP := 20
@@ -139,6 +143,10 @@ var _fillers: Array = []
 var header: Control
 var day_row: Control
 var bar: Control
+var streak_tab: Control
+var stats_tab: Control
+var _tab := "home"
+var _tab_tw: Tween
 var _list_root: Control
 var _grid: GridContainer
 var _page := 0
@@ -211,12 +219,12 @@ func _build_list() -> void:
 	header = MenuHeader.new()
 	header.name = "Header"
 	header.settings.connect(func() -> void: settings_sheet.open())
-	header.calendar.pressed.connect(func() -> void:
-		_say(tr("MENU_CALENDAR_SOON")))
+	header.calendar.pressed.connect(func() -> void: _show_tab("streak"))
 	root.add_child(header)
 
 	day_row = DayRow.new()
 	day_row.name = "DayRow"
+	day_row.open_streak.connect(func() -> void: _show_tab("streak"))
 	root.add_child(day_row)
 
 	# --- the cards, a page at a time ---
@@ -228,11 +236,20 @@ func _build_list() -> void:
 	_grid.add_theme_constant_override("v_separation", GAP)
 	root.add_child(_grid)
 
+	# Stats and Streak take the day row's, the grid's and the pager's room
+	# when picked; the header and the bar stay (spec 2026-09-24, section 4).
+	streak_tab = StreakTab.new()
+	streak_tab.name = "StreakTab"
+	streak_tab.visible = false
+	root.add_child(streak_tab)
+	stats_tab = StatsTab.new()
+	stats_tab.name = "StatsTab"
+	stats_tab.visible = false
+	root.add_child(stats_tab)
+
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
 	bar.picked.connect(_on_tab)
-	bar.unbuilt.connect(func(tab: String) -> void:
-		_say(tr("MENU_TAB_SOON") % tr("BAR_" + tab.to_upper())))
 	root.add_child(bar)
 
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
@@ -400,6 +417,8 @@ func _queue_fit() -> void:
 ## first on screen, so a rotation or a resize never jumps the player back.
 func _fit_grid() -> void:
 	_fit_queued = false
+	if not _grid.visible:
+		return
 	if _column == null or _column.size.x <= 0.0:
 		return
 	var room_w := _list_root.size.x - _margins.get_theme_constant("margin_left") \
@@ -452,7 +471,7 @@ func _input(event: InputEvent) -> void:
 
 func _can_swipe() -> bool:
 	return _list_root != null and _list_root.visible and _pages() > 1 \
-		and not settings_sheet.visible
+		and not settings_sheet.visible and _grid.visible
 
 func _swipe_press(event: InputEvent, id: int, pressed: bool) -> void:
 	if not pressed:
@@ -614,7 +633,10 @@ func _show_list() -> void:
 		_page = clamped
 		_build_page()
 	day_row.set_day(Progress.day(), Progress.island_name())
-	bar.show_tab("home")
+	var today := Daily.date_key()
+	day_row.set_hearts(Progress.hearts(today))
+	header.set_streak(int(Streak.compute(Progress.solve_log(), today).current))
+	_show_tab("home")
 	_enter()
 
 func _enter() -> void:
@@ -660,8 +682,30 @@ func _say(text: String) -> void:
 			Motion.stop(_toast_tw)
 			_toast_tw = Motion.appear(_toast, _toast.modulate.a, 0.0, TOAST_FADE, 0.0))
 
-func _on_tab(_tab: String) -> void:
-	pass
+func _on_tab(tab: String) -> void:
+	_show_tab(tab)
+
+## Home is the day row, the grid and the pager; Stats and Streak each put
+## their body in that room. A tab's body fades in; Home re-fits the grid,
+## which is not measured while it is hidden.
+func _show_tab(key: String) -> void:
+	_tab = key
+	bar.show_tab(key)
+	var home := key == "home"
+	day_row.visible = home
+	_grid.visible = home
+	streak_tab.visible = key == "streak"
+	stats_tab.visible = key == "stats"
+	Motion.stop(_tab_tw)
+	if home:
+		_set_pager(_page, _pages())
+		_queue_fit()
+		return
+	_pager.visible = false
+	var body: Control = streak_tab if key == "streak" else stats_tab
+	body.refresh()
+	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
+	Analytics.track("tab_opened", {"tab": key})
 
 ## A card that names a board nobody has drawn flat yet.
 func _on_soon(entry: Dictionary) -> void:

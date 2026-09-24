@@ -19,9 +19,9 @@ extends Control
 ## and the sun and moon rise a beat apart. The utility buttons stay quiet and
 ## simply scale into place. Once the pair has landed, its ordinary idle starts.
 ##
-## **The calendar button and its badge are decoration**, by decision with the
-## user on 2026-09-18. There is no calendar behind it and the `1` counts
-## nothing; it squashes and does nothing else.
+## **The calendar badge shows the current streak** and hides at 0; **the
+## calendar opens Streak** (spec `2026-09-24-stats-streak-design.md`,
+## section 4).
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, sections 1
 ## and 4.
 
@@ -85,6 +85,8 @@ const MOON_AT := 0.17
 
 var gear: Button
 var calendar: Button
+var _badge: Control
+var _streak := 0
 var _title: Label
 var _motto: Label
 var _title_block: VBoxContainer
@@ -122,7 +124,9 @@ func _build() -> void:
 	badge.offset_top = -BADGE * 0.3
 	badge.offset_bottom = BADGE * 0.7
 	badge.draw.connect(_draw_badge.bind(badge))
+	badge.visible = false
 	calendar.add_child(badge)
+	_badge = badge
 
 	gear = _button("gear")
 	gear.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -237,14 +241,30 @@ func _smoothstep(edge_a: float, edge_b: float, value: float) -> float:
 	var t := clampf((value - edge_a) / (edge_b - edge_a), 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
 
-## The calendar's badge: a disc with a 1 on it, and it means nothing.
+## The current streak on the calendar; hidden at 0, a pill past one digit.
+func set_streak(n: int) -> void:
+	_streak = maxi(n, 0)
+	if _badge == null:
+		return
+	_badge.visible = _streak > 0
+	var w := maxf(BADGE, _badge_font().get_string_size(str(_streak), HORIZONTAL_ALIGNMENT_LEFT, -1, int(BADGE * 0.56)).x + BADGE * 0.5)
+	_badge.offset_left = -w - BUTTON.x * 0.06
+	_badge.queue_redraw()
+
+func _badge_font() -> Font:
+	return CozyTheme.display(700)
+
 func _draw_badge(ci: Control) -> void:
 	var r := BADGE * 0.5
-	ci.draw_circle(Vector2(r, r), r, Pal.ACCENT_2)
-	var font := CozyTheme.display(700)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Pal.ACCENT_2
+	sb.set_corner_radius_all(int(r))
+	sb.anti_aliasing = true
+	ci.draw_style_box(sb, Rect2(Vector2.ZERO, Vector2(ci.size.x, BADGE)))
 	var sz := int(BADGE * 0.56)
-	var w := font.get_string_size("1", HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-	ci.draw_string(font, Vector2(r - w * 0.5, r + sz * 0.36), "1",
+	var s := str(_streak)
+	var w := _badge_font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
+	ci.draw_string(_badge_font(), Vector2(ci.size.x * 0.5 - w * 0.5, r + sz * 0.36), s,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, sz, Pal.SURFACE)
 
 ## The entrance, and the idle the two characters keep afterwards. The faces

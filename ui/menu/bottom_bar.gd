@@ -3,16 +3,12 @@ extends "res://ui/hud/panel.gd"
 ## The first screen's bottom bar: Home, Stats, Streak.
 ##
 ## More left with the 3D game on 2026-09-24 (settings has its own button in
-## the header). Home is the screen you are on. **Stats and Streak are drawn
-## and inert until they are built for release** (docs/roadmap-to-release.md).
-## Pressing one says so
-## through `unbuilt`, which the menu turns into a line on screen rather than
-## a dead tap.
+## the header). Home is the screen you are on. **All three tabs are real
+## since 2026-09-24** (docs/superpowers/specs/2026-09-24-stats-streak-design.md):
+## Stats and Streak each open a body over the day row and the grid.
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 1.
 
 signal picked(tab: String)
-## An inert tab was pressed; the menu says what it will be.
-signal unbuilt(tab: String)
 
 const Icons = preload("res://ui/icons.gd")
 
@@ -20,8 +16,8 @@ const HEIGHT := 150.0
 const ICON := 56.0
 const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "home", "live": true},
-	{"key": "stats", "label": "BAR_STATS", "icon": "trophy", "live": false},
-	{"key": "streak", "label": "BAR_STREAK", "icon": "bars", "live": false},
+	{"key": "stats", "label": "BAR_STATS", "icon": "trophy", "live": true},
+	{"key": "streak", "label": "BAR_STREAK", "icon": "bars", "live": true},
 ]
 
 var current := "home"
@@ -92,9 +88,6 @@ func _make_tab(tab: Dictionary) -> Control:
 	return holder
 
 func _on_tab(tab: Dictionary) -> void:
-	if not bool(tab.live):
-		unbuilt.emit(String(tab.key))
-		return
 	picked.emit(String(tab.key))
 
 ## Which tab reads as the one you are on.

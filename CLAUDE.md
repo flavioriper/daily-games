@@ -211,12 +211,18 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   dimmed cards scattered through the grid read as a bug rather than as a
   plan; and the pill hangs off the card, **not** off `_inner`, which is a
   PanelContainer where a second child is stretched over everything.
-- **The hearts, the calendar badge and the day chevron are decoration**, by
-  the user's decision on 2026-09-18. `Day N` and the day's name are real
-  (`core/progress.gd`); nothing else on that row counts anything. There is
-  no three-a-day goal, no streak health and no lives, and nobody should read
-  a progression system into a drawing of one. Stats and Streak in the bar
-  are drawn and inert for the same reason, and say so when pressed.
+- **The hearts, the calendar badge and Stats and Streak are real since
+  2026-09-24** (spec `2026-09-24-stats-streak-design.md`). The hearts count
+  today's distinct boards solved, up to three, and three keep the streak;
+  the badge is the current streak, hidden at zero; the day row's chevron and
+  the header's calendar badge both open Streak. Stats and Streak are real
+  tabs whose bodies replace the day row and the grid in that same room while
+  the header and the bar stay put (`ui/menu.gd`'s `_show_tab`). Every figure
+  on both screens is derived from `Progress.solve_log()`, never stored.
+  Measured with `tests/_shot_menu.gd -- streak` and `-- stats` at
+  `--resolution 810x1440` (second reading of two, the first including this
+  session's shader compile): **330** draw calls on Home (the control, twice),
+  **142** on Streak and **148** on Stats, both well inside the 855 budget.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (eighteen
   flat boards, no `soon`); `Registry.LEGACY` is the old game. A grid entry
   carries `short`, the card's own two-line blurb -- at 320 wide a card fits

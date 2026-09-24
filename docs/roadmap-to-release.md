@@ -90,14 +90,18 @@ be built.
       so the old records are no longer controls.
 
 ### Stats and Streak
-- [ ] Spec first (the concept page, then the spec, as for every screen).
-      Stats: solves, best and average times per board and difficulty, and a
-      history. Streak: consecutive days with a solve, the best streak, and a
-      calendar.
-- [ ] Decide what the day-row hearts and the calendar badge mean now. Today
-      they are decoration; a real streak probably makes them real.
-- [ ] Extend `core/progress.gd` to record what the tabs need. Today it
-      stores done marks and `completed_stats` per board per day.
+- [x] (2026-09-24) Spec first: `docs/superpowers/specs/2026-09-24-stats-streak-design.md`,
+      off the concept page (`docs/brainstorm/concepts.html#progress`). Stats
+      is solves, best and average times per board and difficulty, plus a
+      history; Streak is consecutive kept days, the best streak, earned rest
+      days and a calendar.
+- [x] (2026-09-24) The day-row hearts and the calendar badge are real: a
+      heart is one distinct board solved today, three keep the streak, and
+      the badge is the current streak. Both open Streak.
+- [x] (2026-09-24) `core/progress.gd` carries a solve log (`log_solve`,
+      `solve_log`, `hearts`), one record per board and difficulty per day;
+      `core/streak.gd` and `core/player_stats.gd` derive Streak and Stats
+      from it, nothing stored.
 - [ ] Back up progress to the cloud. A player who reinstalls or changes
       phones loses their streak. Anonymous Firebase auth can be upgraded to
       Sign in with Apple and Google, which is also how the remove-ads
