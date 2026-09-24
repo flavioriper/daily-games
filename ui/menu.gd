@@ -30,6 +30,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const MenuHeader = preload("res://ui/menu/menu_header.gd")
+const Vistas = preload("res://ui/menu/vistas.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const BottomBar = preload("res://ui/menu/bottom_bar.gd")
@@ -42,6 +43,9 @@ const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
 const GAP := 20
+## How far the header's scene runs behind the day card before it has faded
+## out.
+const BACKDROP_BLEED := 140.0
 const COLS := 2
 ## The narrowest a card may be drawn: two across in the 1000 between the
 ## margins, less one 20 gap (spec 2026-09-24-painted-menu, section 2).
@@ -147,6 +151,7 @@ var streak_tab: Control
 var stats_tab: Control
 var _tab := "home"
 var _tab_tw: Tween
+var _backdrop: ColorRect
 var _list_root: Control
 var _grid: GridContainer
 var _page := 0
@@ -240,7 +245,16 @@ func _build_list() -> void:
 	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_list_root.add_child(page)
+	# The header's painted scene, full-bleed from the top edge (under the
+	# safe area) to past the day card's top, where it fades into the paper;
+	# the wordmark stands on its left scrim (spec 2026-09-24-painted-menu,
+	# section 5). Laid under the margins, so no row of the column moves.
+	_backdrop = Vistas.header_plate()
+	_backdrop.name = "Backdrop"
+	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_list_root.add_child(_backdrop)
 	var insets := SafeArea.insets(self)
+	_backdrop.offset_bottom = MARGIN + insets.x + MenuHeader.HEIGHT + BACKDROP_BLEED
 	var margins := MarginContainer.new()
 	margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margins.add_theme_constant_override("margin_left", MARGIN)

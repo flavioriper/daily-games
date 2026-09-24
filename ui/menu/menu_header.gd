@@ -50,9 +50,14 @@ const BUTTON_GAP := 20.0
 const BADGE := 48.0
 ## The sun's and the moon's seats, and where the pair sits: right-aligned,
 ## under the buttons.
-const SUN_SEAT := 190.0
-const MOON_SEAT := 166.0
-const PAIR_TOP := 128.0
+const SUN_SEAT := 250.0
+const MOON_SEAT := 220.0
+## Measured against the dusk vista's deck on the 810x1440 frame,
+## 2026-09-24: the sun seat's bottom (PAIR_TOP + SUN_SEAT, header-local)
+## rests 10px above the deck's floor line (the wood post/table top edge
+## found at design y~395, header top at 40), and the moon clears the
+## hanging lantern with room to spare at PAIR_RIGHT.
+const PAIR_TOP := 95.0
 const PAIR_RIGHT := 8.0
 ## The sprig over the wordmark grows out of the a -- the letter before the
 ## sun's i, where the Binairo lockup roots its own sprout (the A of BINAiRO)
@@ -178,6 +183,10 @@ func _button(icon: String) -> Button:
 	var b := IconButton.new(icon)
 	b.custom_minimum_size = BUTTON
 	b.size = BUTTON
+	var r := int(BUTTON.x * 0.29)
+	b.add_theme_stylebox_override("normal", CozyTheme.lifted(Pal.SURFACE, r, 8))
+	b.add_theme_stylebox_override("hover", CozyTheme.lifted(Pal.SURFACE, r, 8))
+	b.add_theme_stylebox_override("pressed", CozyTheme.lifted(Pal.SURFACE_HI.darkened(0.06), r, 8))
 	add_child(b)
 	return b
 
