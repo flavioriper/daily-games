@@ -1,46 +1,15 @@
 # Agent guidelines
 
-## Art: Blender models
+## The game is 2D only
 
-Full rules: `docs/art/blender-contract.md`. The short version every agent must
-follow when touching a model:
-
-- **One mesh per layer.** Every visual layer (each colour region or detail:
-  body, colour cap, each ear, each eye, muzzle, nose, mouth, tongue, each
-  cheek, each foot, tail) is its own mesh object with its own material. Never
-  merge layers into one mesh, never put two materials on one mesh. This is
-  what makes a layer textureable on its own later. Two lobes of the *same*
-  layer (one material) may share a mesh.
-- **The `.blend` is the source.** Mascots are modelled in the live Blender
-  session and saved to `art/mascot_<name>.blend` (tracked in git). Never write
-  a script that rebuilds a mascot from scratch; the Blender MCP is a remote
-  control for edits, not a generator.
-- **Export through the contract check**, never by hand:
-  `Blender -b art/mascot_pom.blend --python tools/blender_export.py -- Mascot_Pom`
-  then `godot --headless --path . --import`.
-- **Preview on the real stage** with `tests/_shot_model.gd` (toon shader,
-  outlines) before calling a model done; Blender's viewport colours are not
-  what the game shows.
-
-## Art: never bake a model down to an image
-
-**A model ships as a model.** Never render a `.blend` to a PNG, an atlas or a
-sprite sheet and put that on screen in place of the geometry -- not for HUD
-chrome, not for menu cards, not for a title, not for anything. Export the
-`.glb` through `tools/blender_export.py` and put the real thing in the scene.
-
-**Why:** a baked image throws away everything the model was modelled for. It
-cannot be lit by the scene, cannot take the toon shader or the outline pass,
-cannot be recoloured or textured per layer (which is the entire point of the
-one-mesh-per-layer rule above), cannot animate or be turned, and goes soft as
-soon as it is drawn larger than the resolution it was baked at. It also freezes
-the art at one camera and one light, so it stops matching the game the moment
-either of those changes -- and it will, this game has already re-pitched its
-camera once.
-
-If draw calls are the reason to hesitate, say so out loud and measure it
-against the budget in `docs/art/blender-contract.md`. Do not quietly trade the
-model away for a picture of it.
+**The 3D game was removed on 2026-09-24** (`feat/remove-3d`): `legacy/` (the
+thirteen island boards, the campsite, How Big?, the stage, the toon and model
+pipeline, the island HUD), `assets/models/`, the 3D shaders, every `art/*.blend`
+and the Blender export tools, and the More tab that reached them. Git history
+has all of it. Nothing in the game loads a model or a `World3D` now, and a new
+board is drawn in 2D like the other twenty. The Blender rules that used to open
+this file went with it; if a model ever comes back, recover them from history
+(`docs/art/blender-contract.md` is still in the tree).
 
 ## What the harnesses actually measure
 
@@ -94,8 +63,8 @@ grid once a second page is needed, and a bottom bar. Eighteen cards are in
 the registry, so there are two pages: twelve on the first, and Mushroom
 Patch, Sudoku, Bridges, Quilt, Paper Planes and Pinwheel on the second. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
-not even carry a Stage node any more. It replaced the campsite, which is
-still reachable; see "legacy/" below.
+not even carry a Stage node any more. It replaced the campsite, which was
+removed with the rest of the 3D game on 2026-09-24.
 Spec: `docs/superpowers/specs/2026-09-18-flat-menu-design.md`.
 Mock: `docs/art/concept-menu-flat.png`, playable at
 `docs/brainstorm/concepts.html#menu`.
@@ -317,191 +286,6 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   alone cost 12 and the rest predates it: the header's turning, glinting sun
   and later changes since 291 was first measured.
 
-## legacy/: the old 3D game
-
-Everything built on the 3D stage moved to `legacy/` on 2026-09-18 and still
-runs: the thirteen island boards, How Big?, the campsite menu, the stage,
-the toon and model pipeline and the island HUD. Reached from the first
-screen's **More** tab (`ui/menu/legacy_sheet.gd`), whose last row is the
-campsite menu itself. Nothing new belongs in there, and the notes below are
-kept because they are hard-won, not because they describe the game now.
-
-- **Nothing live loads a line of it, and it has to stay that way.** Two
-  knots were cut to make that true, and neither may be retied.
-  `core/puzzle_base.gd` used to extend `StageView`, so every flat board
-  inherited stage mounting, camera fitting and ray picking it never called;
-  it is a plain `Control` now, and the island boards extend
-  `legacy/core/stage_board.gd`, which carries the stage machinery **and a
-  frozen copy of the contract** (GDScript is single-inheritance, and a
-  frozen copy also means a change to the live contract cannot break thirteen
-  retired boards). `class_name StageView` is gone so nothing can reach the
-  stage by a global name. And `ui/flat/flat_host.gd` used to extend the
-  island host, whose chrome pulls the carved sign, the model views and the
-  whole toon pipeline behind it; `ui/puzzle_host.gd` is shell-neutral now,
-  with `_build_chrome` and `_enter` the two methods a shell fills, and
-  `legacy/ui/island_host.gd` is the island's. `ui/fx2d.gd` owns its own star
-  texture for the same reason.
-- **The stage is mounted on demand.** `ui/menu.gd`'s `_raise_stage`
-  instantiates `legacy/world/stage.tscn` beside the UI canvas when something
-  from More opens, and frees it when that host closes.
-
-### The title signs, and the campsite that was the first screen
-
-Every puzzle's HUD row carries a carved wood sign as its title. It is a real
-model on screen, not a picture of one: `assets/models/title_sign.glb`,
-instanced through `Models.instance("title_sign")` so it takes the toon shader,
-the grain on its plank, its own cast shadow and the outline pass.
-
-- **The board is modelled; the words are data.** `art/sign.blend` holds three
-  layers (plank, leaf sprigs, screws) exported as the `Title_Sign` collection
-  by `tools/build_models.sh`. The title and motto are **not** in the .blend:
-  `legacy/ui/hud/sign_view.gd` extrudes them with `TextMesh` through
-  `legacy/core/lettering.gd`, so a new puzzle costs a registry line and no export.
-- **Every model in the HUD stands in a `legacy/ui/hud/model_view.gd`**: a SubViewport
-  with its own `World3D`, the stage's calibrated light (0.46 sun over 0.115
-  ambient, *measured* against a rendered frame because gl_compatibility
-  renders brighter than the shader maths predicts) and an orthographic camera
-  framed on a box. It draws **on demand**, not per frame: over a dozen live at
-  once on the menu, and on UPDATE_WHEN_VISIBLE they cost 18.6 ms against a
-  ~5 ms idle baseline. Call `redraw()` after anything that changes what one
-  shows. The sign, the menu's title letters (`title_view.gd`) and the cards'
-  dioramas (`card_scene.gd`) are its three users.
-- **Outline shells get their own thin materials here** (`Lettering.outline`,
-  0.005 rather than Toon's 0.014): a sign is drawn far larger than a stage
-  piece, so the world-space shells read several times too thick. Never set a
-  width on `Toon.line()`'s materials; those are shared with the stage.
-- **TextMesh cannot extrude every glyph.** The display face's digits 8 and 9
-  and the question marks `?` `¿` cross themselves at weight 700 and vanish,
-  and even at 550 their caps come and go with the font size under TextMesh's
-  default curve step; `legacy/core/lettering.gd` drops a line that carries a digit
-  or a question mark to weight 550 *and* a curve step of three hundredths of
-  its font size, the pair measured to extrude them whole at every size tried.
-  Upper-case everything that goes on a board.
-
-**The campsite was the first screen until 2026-09-18**, and is now the last
-row of the More sheet (`legacy/ui/camp_menu.gd`, which draws a back button
-and emits `closed` when it is opened that way, and whose cards are
-`Registry.LEGACY`). `legacy/world/camp.gd`
-is mounted on the stage in place of a board, staged the way the concept
-banner (`docs/art/concept-menu-banner.png`) frames it: the scout
-(`mascot_scout`, alive through `legacy/world/mascot.gd`) reading his map on the
-dock with the river behind him, the day sign lettered live at his left, the
-lantern between them on the path, the tent and the tree line behind, and
-the "A puzzle a brighter you" board at the dock's corner. The fence diorama
-(`camp_sign`) that used to close the frame at the bottom with a motto plank
-was dropped on 2026-09-17 at the user's request; the lawn runs to the
-bottom and the page buttons stand on it. `tests/preview_tree.tscn` mounts
-the same `Camp` under a fixed camera, so the editor shows the real thing.
-The menu frames `camp.hero_box()` in the screen above the cards after
-every layout change.
-
-- **The menu camera is a shift lens** (`CameraRig.shift_fov_deg`, passed as
-  `fit_camera`'s `shift_fov`), posed the way the camp asks (`Camp.VIEW_PITCH`,
-  `VIEW_YAW`, `VIEW_FOV`): from a step to the left of the camp, 13.7 degrees
-  down, 90 degrees across the hero strip, with the frustum slid so the strip
-  lands at the top of the screen. Standing close and off to the left through
-  a wide field is what shows the scout's left side and lays the dock and the
-  day sign at an angle; the head-on 54-degree view it replaced read flat. The
-  ordinary perspective had to aim under the camp through a narrow field to
-  hold it up there, which flattened and shrank it. `tests/preview_tree.gd`
-  takes the same pose off the camp, so the editor shows the menu's view.
-  It is Godot's frustum projection with an offset, and in 4.7
-  `project_position` and `project_ray_normal` mis-scale that offset while
-  `unproject_position` is right: anything that needs a ray or a pixel size
-  on the menu asks the rig (`ray_origin`, `ray_normal`,
-  `pixels_per_unit_at`), never `Camera3D` directly.
-- **The campsite has its own light, palette and soft focus; boards do
-  not.** Its light and colour aim at the painted frame
-  `docs/art/concept-menu-painted.png` (2026-09-17), not the banner; the
-  section "The first screen's light" in `docs/art/shading-direction.md`
-  holds the calibration. `Stage.show_setting(true)` applies `grade_camp` (a
-  low golden sun from the right over a dark cool bounce, contrast up and
-  saturation left alone, a soft bloom, a deep sky over a warm horizon, the
-  shared water in deep teal) and shows `legacy/world/soft_focus.gd`, a full-screen
-  quad that blurs by view distance past the framed thing by reading the
-  screen texture's mip levels, since Compatibility has no depth of field;
-  it also blurs and darkens what stands nearer than the framed thing, in
-  the top of the frame only (`near_gate`; the lawn under the cards is as
-  near and already takes the vignette), and lays a soft vignette over the 3D
-  world. `show_setting(false)` restores the boards' measured pair, the
-  sun's direction, the sky and the water colours and hides the pass, so a
-  piece is lit exactly as calibrated. The camp's own greens are
-  `Pal.CAMP_*`; a board's TURF and LEAF never changed. On Compatibility the
-  screen and depth textures only exist during the transparent pass, so the
-  quad is `blend_mix` with a low `render_priority`; anything that must stay
-  in front of the blur has to draw in the opaque pass (the clouds went to
-  alpha scissor for this). `SCREEN_UV.y` runs top-down in a spatial shader
-  here. Measured on this Mac at phone resolution: the whole menu idles at
-  about 13 ms against 10 before the painted pass, the soft focus itself is
-  2.8 ms, the grade 1.2 ms and the lawn under the cards 2.3 ms; if a phone
-  drops frames on the menu, `Camp.NEAR_GRASS` and the soft focus's
-  visibility are the two levers, in that order.
-- **The camp has weather, and boards do not.** `wind_gust` is the second
-  global shader parameter beside `motion_scale` (`legacy/world/ambient.gd`,
-  `shaders/wind.gdshaderinc`): 0 everywhere, and 1 only while the campsite
-  is on the stage, so a board's rim grass keeps exactly the flutter it was
-  calibrated with. `Stage.show_setting` sets it with the pollen and the
-  grade, and reduce-motion stills it along with everything else (measured:
-  two frames 1.5 s apart come out pixel-identical). Over the old flutter it
-  lays a gust -- a band travelling across the world along `wind_dir`, one
-  crest every 13 units, cubed so the lull is long and the crest arrives
-  quickly. `toon_wind`, `outline` and `card_wind` all `#include` the same
-  file, because a gust each shader reads differently is a shimmer rather
-  than a wind; the gust's direction is taken back through the model's own
-  basis so every prop leans the same way in the world however it is turned,
-  which the flutter never had to bother with.
-  What blows: the grass, the blossom and foliage cards, the bushes and every
-  tree crown. A layer's lean is shaped by four `sway_*` parameters
-  (`Toon.SWAY_BLADE`, `SWAY_CROWN`, `SWAY_BUSH`, `SWAY_CARD`), read in the
-  model's own units so the prop's scale carries them, and `Toon.line_for`
-  copies them onto the outline shell -- a line left on the shader's defaults
-  peels off the layer it rings. Aim `wind_dir` much further toward the camera
-  and the field leans down the view, which reads as growing, not bending.
-- **The lawn is sown to what the camera actually sees, which is far less
-  than it looks.** The near lawn under the cards is the wedge from
-  (x -2.9..3.4, z 7.9) to (x -0.9..0.9, z 10.5) in the camp's space -- about
-  eleven square units -- because at the bottom of the screen the shift lens
-  is looking almost straight down from (0, 2.7, 10.8). Cast the rig's rays
-  at the screen's own pixels before sowing anything: a MultiMesh is culled as
-  one thing and never per instance, so a tuft off screen costs its vertices
-  every frame and shows nothing. Two grasses carry the ground:
-  `grass_patch` (480 triangles) where the camera is close and `grass_clump`
-  (98) for the wide fill. Three new fields cost three draw calls (326 to 329
-  on the menu, against the 855 budget) -- the bill is triangles and fill,
-  never calls.
-- **Instance shader parameters are unusable here; nothing may reintroduce
-  one.** Any canvas item or mesh whose material's shader *declares* an
-  `instance uniform` reserves a 16-item block of the global shader buffer,
-  set or not, and the gl_compatibility shaders declare that buffer as 256
-  items -- **sixteen instances in the whole frame**. Past that, index is out
-  of the array's range: a desktop driver reads on into the real 4096-item
-  buffer and looks perfectly right, which is why this Mac never showed it,
-  and a mobile driver hands back garbage. Measured on Android 2026-09-17:
-  twenty-five wood meshes stood on the How Big? screen (the deck, the day
-  card, and the menu's card dioramas still in the tree behind the host); the
-  deck's grain came back as chopped dashes, because a garbage `grain_seed`
-  throws the figure's noise coordinates where `floor`/`fract` lose precision,
-  and the day card's carved edge chewed the card into a lattice of blocks,
-  because a garbage `plank_size` turns the silhouette's alpha cut into a
-  staircase. `--rendering-driver opengl3_angle` reproduces the class on this
-  Mac (it reads zero rather than garbage, so the cut simply vanishes) and is
-  the cheapest way to check anything suspected of being mobile-only.
-  The two that used it now use plain uniforms: the wood's log seed with one
-  material cached per log (`legacy/core/toon.gd`, `GRAIN_LOGS`), and the day card's
-  `plank_size` on the panel's own material (`CozyTheme.plank`). Neither costs
-  a draw call (338 on the menu either way); the wood cache went 6 to 22.
-- **The camp stands at y 2** (`Camp.LIFT`): the backdrop's hills ring is a flat
-  plateau at about y 1.4, and the menu camera stands out over that ring where
-  a board's never does. At y 0 the camp's feet are buried in it.
-- **The campsite's cards came in pages of nine**, turned with the buttons
-  under the grid, not a scroll. The flat screen went without a pager while
-  twelve fit, and got its own back on 2026-09-20 once a thirteenth card
-  did not -- see "The first screen" above. Each card's picture is a live diorama of that puzzle's own pieces
-  (`legacy/ui/hud/card_scene.gd`), never an image; a new puzzle costs one builder. A
-  full page of nine measures 318 draw calls against the 855 budget, on this
-  Mac at phone resolution -- the cards are what a page costs, so a page, not
-  the whole registry, is the unit to measure against the budget.
-
 ## The flat screens
 
 Eighteen cards open a flat 2D board under flat chrome: **Binairo**
@@ -617,9 +401,9 @@ pointing `seed_as` at them. Specs:
   grey not in it. **The commit is the one irreversible move on any flat
   board**: there is no Undo and no Check, an Enter spends a row, and when the
   sixth is spent the board calls `PuzzleBase.finish_unsolved()`, which sets
-  `_done` and emits **`ended`** rather than `solved`. The host connects that
-  behind `has_signal`, because `legacy/core/stage_board.gd` carries a frozen
-  copy of the contract that predates it and must stay frozen. The keyboard is
+  `_done` and emits **`ended`** rather than `solved`. The host connects it
+  on every board (the `has_signal` guard for the frozen island contract went
+  with the 3D game on 2026-09-24). The keyboard is
   its tray (`ui/flat/key_board.gd`, `"tray": "keys"`), and it is the first
   board with **no tip card** (`"tip": false`) and no actions row. Its
   `rules()` string is real and the rules sheet is built and refreshed for it
@@ -1214,8 +998,8 @@ pointing `seed_as` at them. Specs:
 - **The rules live in a scene-free state class** the flat board draws
   (`puzzles/binairo_state.gd`, `puzzles/codebreak_state.gd`), and they are
   the island's move for move, so what was on trial was the screen and not
-  the game. The island scripts in `legacy/` still carry their own copy,
-  frozen; the state class is the one truth to keep.
+  the game. The state class is the one truth (the island copies were
+  removed with the 3D game).
 - **Faces are code, not images** (`ui/faces/`): one Control per character,
   drawn from a few tweened properties (`expression`, `eye_open`, `spin`,
   `rock`) as one cached `ArrayMesh` per layer, because gl_compatibility pays
@@ -1228,14 +1012,8 @@ pointing `seed_as` at them. Specs:
   their colour, not a face, not the order things animate in. That is why the
   pouch is a loose pile with no socket for a miss, and why a checked row
   wears one expression rather than one per seat.
-- **The flat host still hides the stage** (`Stage.visible = false` and
-  `show_setting(false)`) while it is up, under an opaque paper page, and
-  shows it again on exit. Since 2026-09-18 there is usually no stage there
-  to hide -- it is mounted only for something opened from More -- and the
-  guard stays because a flat board opened over one has to cover it.
-- **The registry picks the shell**: `Registry.shell(entry)` is "island"
-  unless the entry says `"shell": "flat"`; `ui/menu.gd` builds the flat host
-  and `legacy/ui/island_host.gd` is the other, and both fill
+- **The registry picks the shell**: `Registry.shell(entry)` is "flat", the
+  only shell left since the island one was removed on 2026-09-24; it fills
   `ui/puzzle_host.gd`'s `_build_chrome` and `_enter`. The base has no rows
   of its own and errors rather than falling back. It picks the tray too
   (`"tray": "none"`, `"friends"`, `"weights"`, `"tiles"`, `"queens"`,
@@ -1424,14 +1202,6 @@ painted cel, no harsh black outlines, warm muted pastels, diffuse and
 painterly surfaces, soft coloured shadows, minimal specular, depth through
 colour rather than fog. Read it before touching a shader, palette or light.
 
-Every lit material is on it (2026-09-17), through `legacy/core/toon.gd`: the eased
-ramp, the eased sky rim and the painterly wash come with `Toon.material()`
-and its variants, and a shell wears the layer's own colour's line. Two rules
-keep it that way: set a mesh's material *before* `Toon.add_outline`, which
-reads the colour off it, and call `Toon.reline` after any recolour that
-does not go through `Models.tint` or `tint_named`. Nothing may hand a layer
-the shared ink `Toon.outline()` or a hard ramp again.
-
 The HUD's paper takes the same wash through `CozyTheme.dress()`, installed
 once by `world/main.gd` before any screen builds: every Button, Panel and
 PanelContainer that enters the tree without a material gets the one shared
@@ -1496,12 +1266,10 @@ export stays on the non-gradle path.
 ## Turns and the backend
 
 A **turn** is one committed input a day, an immediate reveal and a graded
-result -- never a pass or a fail. Turns sit on the camp grid as cards beside
-the boards (`ui/registry.gd` says `"kind": "turn"`), and cost a
-`legacy/core/turn_base.gd` subclass plus a registry line, the way a puzzle costs a
-`PuzzleBase3D`. Both stand on `legacy/core/stage_view.gd`, which owns the stage
-mounting, the camera fit and the picking maths; `PuzzleBase` extends it too,
-because GDScript is single-inheritance.
+result -- never a pass or a fail. The only one, How Big?, was 3D and was
+removed on 2026-09-24 with the rest of the 3D game; a future turn would be
+drawn flat and would need its own host again (`legacy/ui/turn_host.gd` and
+`legacy/core/turn_base.gd` are in git history).
 
 **The live project is `daily-games-420bf`** (provisioned 2026-09-17; it
 replaced `peeplet-daily`, which now holds nothing this game uses). Firestore
@@ -1577,28 +1345,10 @@ writes one day's document the way `publishDay` would (create-only), for the
 day a game ships on, which the 03:00 scheduler never reaches. How Big?'s
 first two days (2026-09-17 and -18) were seeded this way.
 
-**How Big?** (`legacy/turns/how_big.gd`, phase 1) is the first real turn, and it
-**went to legacy with the rest of the 3D on 2026-09-18**: it is a scout on a
-dock and a silhouetted model, so it could not stay on a flat first screen.
-The turn flow, the backend, the histogram reveal and the seeded days all
-still work, behind More; phase 1 is parked until the turn is redrawn flat.
-It
-replaced the Guess stub outright. The scout stands on a dock at a stated
-height and the day's thing from the model set stands beside him as a black
-silhouette (`Models.silhouette`, flat `Toon.ink`, no outline), so the player
-sizes a shape and the reveal has the painted model to show; the finger
-holds the thing's top (the turn overrides `_gui_input` and meets the touch
-ray with the thing's frontal plane, because StageView drops any ray that
-misses the ground plane and at 7 degrees the top half of the screen is sky).
-The camera never moves: every item in the table fits four scout heights, so
-the roadmap's pull-back was dropped along with the oak. `content/how_big.json`
-is the one table -- the server's `npm run build` copies it into
-`server/functions/src/`, gitignored there, so the two sides cannot drift --
-and both pick the day's item by `fnv1a("how_big|<day>") % items`. A
-published day names `item` and `metres`, and the published height wins, which
-is how a day gets hand-picked. `TurnBase.result_text()` is the one line the
-host's reveal panel shows under the score. The grade is symmetric in the log
-ratio: within 6 percent is 100, a factor of five is 0.
+**How Big?**, the only turn, was removed with the 3D game on 2026-09-24.
+The backend, the functions and `content/how_big.json` are still in place;
+whether they stay for a future flat turn is open in
+`docs/roadmap-to-release.md`.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. The turn flow's strings are keyed

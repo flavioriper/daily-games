@@ -7,8 +7,8 @@ extends Control
 ## A plain Control. Until 2026-09-18 this extended StageView, so every flat
 ## board inherited stage mounting, camera fitting and board-plane ray picking
 ## it never called -- and the 2D game could not be built without the 3D one.
-## The stage machinery went to legacy/ with the boards that use it
-## (legacy/core/stage_board.gd); nothing here knows the stage exists.
+## The stage machinery left with the 3D game (removed 2026-09-24)
+## ; nothing here knows a stage ever existed.
 
 signal solved
 signal moved

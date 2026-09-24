@@ -1,12 +1,13 @@
 extends RefCounted
 
-## What stands on the first screen, and what stands behind More.
+## What stands on the first screen.
 ##
 ## `PUZZLES` is the grid: **eighteen cards over two pages**, in the order
 ## they are drawn. **All eighteen open a flat board, and there is no `soon`
 ## card left on the screen.** Snake Apple's left the grid on 2026-09-19 to make
 ## room for Queens, Horse Pen's the same day for Hidden Word, and Pipes' on
-## 2026-09-20 for Word Trail; all three keep their island board under More.
+## 2026-09-20 for Word Trail. The 3D game those island boards lived in was
+## removed on 2026-09-24.
 ## The dimmed-card machinery -- the `soon` flag, the `SOON` pill, the 55% ink
 ## and ui/menu.gd's `blocked` signal -- stays in the code for the next board
 ## that is named before it is drawn, but nothing exercises it now.
@@ -57,15 +58,9 @@ extends RefCounted
 ## pager rather than of today's card count. See
 ## docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 7.
 ##
-## `LEGACY` is the old game: every board that still lives on the 3D stage,
-## plus the one turn, reached only through the first screen's More sheet.
-## Nothing new belongs in it. Its entries keep `seed_as` pointing at the flat
-## card they shadow, so an island and its flat twin still hand out the same
-## day's puzzle.
-##
 ## A grid entry's `short` is the card's own two-line blurb: at 320 wide a
 ## card fits about seventeen characters a line, which the registry's longer
-## `blurb` (still used by the rules sheet and the legacy menu) does not.
+## `blurb` (still used by the rules sheet) does not.
 ## `sizes` are the per-round difficulty steps we want to feel out on device.
 
 const PUZZLES := [
@@ -569,172 +564,9 @@ const PUZZLES := [
 	},
 ]
 
-## The old game. Every one of these mounts the 3D stage and wears the island
-## chrome (legacy/ui/island_host.gd), or in How Big?'s case the turn host.
-## Reached from the first screen's More sheet and from nowhere else.
-const LEGACY := [
-	{
-		"id": "binairo_island",
-		"kind": "puzzle",
-		"title": "Binairo",
-		"blurb": "The island board.",
-		"motto": "Balance brings harmony",
-		"footer": "Think · Balance · Complete",
-		"script": "res://legacy/puzzles/binairo3d.gd",
-		"seed_as": "binairo",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "mastermind_island",
-		"kind": "puzzle",
-		"title": "Code Break",
-		"blurb": "The island board.",
-		"motto": "Crack the hidden code",
-		"footer": "Small puzzles · Brighter days",
-		"script": "res://legacy/puzzles/codebreak3d.gd",
-		"seed_as": "mastermind",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "balance_island",
-		"kind": "puzzle",
-		"title": "Balance",
-		"blurb": "The island board.",
-		"motto": "Find the weight of things",
-		"footer": "Weigh · Reason · Settle",
-		"script": "res://legacy/puzzles/balance3d.gd",
-		"seed_as": "balance",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "untangle_island",
-		"kind": "puzzle",
-		"title": "Untangle",
-		"blurb": "The island board.",
-		"motto": "Every knot comes undone",
-		"footer": "Drag · Loosen · Untangle",
-		"script": "res://legacy/puzzles/untangle3d.gd",
-		"seed_as": "untangle",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "shikaku_island",
-		"kind": "puzzle",
-		"title": "Shikaku",
-		"blurb": "The island board.",
-		"motto": "Every plot has its number",
-		"footer": "Divide · Count · Enclose",
-		"script": "res://legacy/puzzles/shikaku3d.gd",
-		"seed_as": "shikaku",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "tents_island",
-		"kind": "puzzle",
-		"title": "Tents",
-		"blurb": "The island board.",
-		"motto": "A camp for every tree",
-		"footer": "Pitch · Count · Rest",
-		"script": "res://legacy/puzzles/tents3d.gd",
-		"seed_as": "tents",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "lightup_island",
-		"kind": "puzzle",
-		"title": "Light Up",
-		"blurb": "The island board.",
-		"motto": "Let there be light",
-		"footer": "Place · Light · Reveal",
-		"script": "res://legacy/puzzles/lightup3d.gd",
-		"seed_as": "lightup",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "oneline_island",
-		"kind": "puzzle",
-		"title": "One Line",
-		"blurb": "The island board.",
-		"motto": "One stroke, no lifting",
-		"footer": "Walk · Lay · Finish",
-		"script": "res://legacy/puzzles/oneline3d.gd",
-		"seed_as": "oneline",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "nonogram_island",
-		"kind": "puzzle",
-		"title": "Nonogram",
-		"blurb": "The island board.",
-		"motto": "Numbers make a picture",
-		"footer": "Count · Lay · Reveal",
-		"script": "res://legacy/puzzles/nonogram3d.gd",
-		"seed_as": "nonogram",
-		"difficulties": [0, 1, 2],
-	},
-	# The four that were never drawn flat. They keep `seed_as` at the grid's
-	# id so the day's puzzle does not move when one of them is finally drawn.
-	{
-		"id": "pipes_island",
-		"kind": "puzzle",
-		"title": "Pipes",
-		"blurb": "Route the water. It won't climb without a pump.",
-		"motto": "Make the water flow",
-		"footer": "Think · Connect · Flow",
-		"script": "res://legacy/puzzles/pipes_iso.gd",
-		"seed_as": "pipes",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "horse_island",
-		"kind": "puzzle",
-		"title": "Horse Pen",
-		"blurb": "Pen the horse in with hay bales. Keep the meadow.",
-		"motto": "Pen the wandering horse",
-		"footer": "Bale · Enclose · Keep",
-		"script": "res://legacy/puzzles/horse3d.gd",
-		"seed_as": "horse",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "snake_island",
-		"kind": "puzzle",
-		"title": "Snake Apple",
-		"blurb": "Eat every apple, then slip into the burrow.",
-		"motto": "Room to wriggle",
-		"footer": "Slide · Eat · Burrow",
-		"script": "res://legacy/puzzles/snake3d.gd",
-		"seed_as": "snake",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "rope",
-		"kind": "puzzle",
-		"title": "The Rope",
-		"blurb": "Lay the rope over every square, pegs in order.",
-		"motto": "Every peg in its turn",
-		"footer": "Lay · Cover · Finish",
-		"script": "res://legacy/puzzles/rope3d.gd",
-		"difficulties": [0, 1, 2],
-	},
-	{
-		"id": "how_big",
-		"kind": "turn",
-		"title": "How Big?",
-		"blurb": "How tall is a horse beside the scout? Drag it to size, one go.",
-		"motto": "Size it up",
-		"footer": "Drag · Lock · Reveal",
-		"script": "res://legacy/turns/how_big.gd",
-		"difficulties": [0],
-	},
-]
-
-## Every entry either list holds, the grid first.
+## Every entry the game knows.
 static func all() -> Array:
-	var out: Array = []
-	out.append_array(PUZZLES)
-	out.append_array(LEGACY)
-	return out
+	return PUZZLES
 
 static func find(id: String) -> Dictionary:
 	for p in all():
@@ -747,10 +579,10 @@ static func find(id: String) -> Dictionary:
 static func kind(entry: Dictionary) -> String:
 	return str(entry.get("kind", "puzzle"))
 
-## Which shell hosts the entry: "island" (legacy/ui/island_host.gd, the stage
-## and its wood signs) unless the entry asks for "flat" (ui/flat/flat_host.gd).
+## Which shell hosts the entry. Only "flat" (ui/flat/flat_host.gd) is left
+## since the island shell went with the 3D game on 2026-09-24.
 static func shell(entry: Dictionary) -> String:
-	return str(entry.get("shell", "island"))
+	return str(entry.get("shell", "flat"))
 
 ## The key a board's daily completion is saved under. A card that asks for
 ## its difficulty keeps one per difficulty, so finishing the easy board does

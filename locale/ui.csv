@@ -4,20 +4,16 @@ MENU_TODAY,TODAY,HOJE,HOY
 MENU_DAY,Day %d,Dia %d,Día %d
 MENU_CALENDAR_SOON,The calendar is a picture for now — there is nothing behind it yet.,Por enquanto o calendário é só um desenho — ainda não há nada por trás dele.,Por ahora el calendario es solo un dibujo: todavía no hay nada detrás.
 MENU_TAB_SOON,%s is drawn but not built yet.,%s: por enquanto é só o desenho.,%s: por ahora es solo el dibujo.
-MENU_NO_FLAT,%s has no flat board yet. Its island version is under More.,%s ainda não tem tabuleiro plano. A versão da ilha está em Mais.,%s aún no tiene tablero plano. Su versión de la isla está en Más.
+MENU_NO_FLAT,%s is coming soon.,%s chega em breve.,%s llega pronto.
 BAR_HOME,Home,Início,Inicio
 BAR_STATS,Stats,Números,Datos
 BAR_STREAK,Streak,Sequência,Racha
-BAR_MORE,More,Mais,Más
 CARD_SOON,SOON,EM BREVE,PRONTO
 DIFF_PICK,Pick a board for today.,Escolha um tabuleiro para hoje.,Elige un tablero para hoy.
 DIFF_EASY,Easy,Fácil,Fácil
 DIFF_MEDIUM,Medium,Médio,Medio
 DIFF_HARD,Hard,Difícil,Difícil
 DIFF_INSANE,Insane,Insano,Demencial
-LEGACY_TITLE,The old game,O jogo antigo,El juego antiguo
-LEGACY_BLURB,Every board that was built on the 3D stage. All of it still runs.,Todos os tabuleiros feitos no palco 3D. Tudo ainda funciona.,Todos los tableros hechos en el escenario 3D. Todo sigue funcionando.
-LEGACY_CAMP,The campsite menu,O menu do acampamento,El menú del campamento
 SETTINGS_TITLE,Settings,Configurações,Ajustes
 SETTINGS_REDUCE_MOTION,Reduce motion,Reduzir movimento,Reducir movimiento
 SETTINGS_NEW_PUZZLE,New puzzle (prototype),Novo desafio (protótipo),Nuevo reto (prototipo)

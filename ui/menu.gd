@@ -5,11 +5,9 @@ extends Control
 ## bottom bar. Everything on it is drawn in 2D -- there is no stage, no
 ## World3D and no model anywhere on this screen.
 ##
-## It replaced the campsite (legacy/ui/camp_menu.gd) on 2026-09-18. What the
-## campsite did that this does not: a painted 3D setting under a shift lens,
-## its own light and soft focus, a live diorama in every card, and pages of
-## nine turned with buttons. Twelve cards fit on one screen, so the pager
-## went with it -- and came back on 2026-09-20 once a thirteenth card
+## It replaced the 3D campsite on 2026-09-18, and the whole 3D game was
+## removed from the repo on 2026-09-24. Twelve cards fit on one screen, so
+## the campsite's pager went with it -- and came back on 2026-09-20 once a thirteenth card
 ## needed a second page, in its own strip between the grid and the bottom
 ## bar (`_pager`, built the way `_toast` already is: an overlay on
 ## `_list_root`, not a row of the column). A prev chevron first grew out of
@@ -21,12 +19,6 @@ extends Control
 ## Opening a card hands the puzzle to a FlatHost and hides the grid; the
 ## host's close shows it again. The host is always this node's last child
 ## while it lives, which the harnesses rely on.
-##
-## The old game is not gone: **More** opens ui/menu/legacy_sheet.gd, and
-## picking a line there mounts legacy/world/stage.tscn, builds the island
-## host (or the turn host, or the campsite menu itself) and frees the stage
-## again on the way back. The live game never mounts it, which is why
-## world/main.tscn no longer carries one.
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md.
 
 const Pal = preload("res://core/palette.gd")
@@ -41,15 +33,8 @@ const MenuHeader = preload("res://ui/menu/menu_header.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const BottomBar = preload("res://ui/menu/bottom_bar.gd")
-const LegacySheet = preload("res://ui/menu/legacy_sheet.gd")
 const DifficultySheet = preload("res://ui/menu/difficulty_sheet.gd")
 const Icons = preload("res://ui/icons.gd")
-
-## The old game's scene and its two hosts, loaded only when More opens one.
-const STAGE_SCENE := "res://legacy/world/stage.tscn"
-const ISLAND_HOST := "res://legacy/ui/island_host.gd"
-const TURN_HOST := "res://legacy/ui/turn_host.gd"
-const CAMP_MENU := "res://legacy/ui/camp_menu.gd"
 
 const MARGIN := 40
 const GAP := 20
@@ -146,7 +131,6 @@ const SWIPE_SLOPE := 1.5
 const MOUSE_ID := -2
 
 var settings_sheet: Control
-var legacy_sheet: Control
 var difficulty_sheet: Control
 var cards: Array = []
 ## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
@@ -179,8 +163,6 @@ var _prev: Button
 var _next: Button
 var _dots: Control
 var _pager_tw: Tween
-## The stage, while something from More is open on it.
-var _stage: Node
 
 func _ready() -> void:
 	theme = CozyTheme.make()
@@ -190,12 +172,6 @@ func _ready() -> void:
 	settings_sheet.name = "SettingsSheet"
 	settings_sheet.reduce_changed.connect(header.refresh_motion)
 	add_child(settings_sheet)
-	legacy_sheet = LegacySheet.new()
-	legacy_sheet.name = "LegacySheet"
-	legacy_sheet.chose.connect(_open_legacy)
-	legacy_sheet.chose_camp.connect(_open_camp)
-	legacy_sheet.closed.connect(func() -> void: bar.show_tab("home"))
-	add_child(legacy_sheet)
 	difficulty_sheet = DifficultySheet.new()
 	difficulty_sheet.name = "DifficultySheet"
 	difficulty_sheet.chose.connect(_open_at)
@@ -476,7 +452,7 @@ func _input(event: InputEvent) -> void:
 
 func _can_swipe() -> bool:
 	return _list_root != null and _list_root.visible and _pages() > 1 \
-		and not settings_sheet.visible and not legacy_sheet.visible
+		and not settings_sheet.visible
 
 func _swipe_press(event: InputEvent, id: int, pressed: bool) -> void:
 	if not pressed:
@@ -684,13 +660,8 @@ func _say(text: String) -> void:
 			Motion.stop(_toast_tw)
 			_toast_tw = Motion.appear(_toast, _toast.modulate.a, 0.0, TOAST_FADE, 0.0))
 
-func _on_tab(tab: String) -> void:
-	match tab:
-		"home":
-			legacy_sheet.close()
-		"more":
-			bar.show_tab("more")
-			legacy_sheet.open()
+func _on_tab(_tab: String) -> void:
+	pass
 
 ## A card that names a board nobody has drawn flat yet.
 func _on_soon(entry: Dictionary) -> void:
@@ -712,35 +683,11 @@ func _open_at(entry: Dictionary, difficulty: int) -> void:
 	host.setup(entry, difficulty, Progress.completed(Registry.progress_id(entry, difficulty)))
 	_mount_host(host)
 
-## Opens something from the old game: the stage goes up first, because the
-## island boards and the turn are Node3Ds that look for it by group, and
-## comes down again when the host closes.
-func _open_legacy(entry: Dictionary) -> void:
-	legacy_sheet.close()
-	_raise_stage()
-	var host: Control
-	if Registry.kind(entry) == "turn":
-		host = load(TURN_HOST).new()
-		host.setup(entry)
-	else:
-		host = load(ISLAND_HOST).new()
-		host.setup(entry, 1)
-	_mount_host(host)
-
-## The campsite menu itself, the screen the game used to open on.
-func _open_camp() -> void:
-	legacy_sheet.close()
-	_raise_stage()
-	var camp_menu: Control = load(CAMP_MENU).new()
-	camp_menu.embedded = true
-	_mount_host(camp_menu)
-
 func _mount_host(host: Control) -> void:
 	if host.has_signal("daily_completed"):
 		host.daily_completed.connect(_on_daily_completed)
 	host.closed.connect(func() -> void:
 		host.queue_free()
-		_drop_stage()
 		_show_list())
 	add_child(host)
 	_list_root.visible = false
@@ -753,29 +700,3 @@ func _on_daily_completed(puzzle_id: String) -> void:
 		if is_instance_valid(card) and String(card.entry.get("id", "")) == puzzle_id:
 			card.set_completed(true)
 			break
-
-## Puts legacy/world/stage.tscn in the tree above this screen's canvas, for
-## as long as something needs it. world/main.tscn has not carried one since
-## 2026-09-18, so the flat game never pays for a World3D.
-func _raise_stage() -> void:
-	if get_tree().get_first_node_in_group("stage") != null:
-		return
-	var root := _world_root()
-	if root == null:
-		return
-	_stage = load(STAGE_SCENE).instantiate()
-	root.add_child(_stage)
-	root.move_child(_stage, 0)
-
-func _drop_stage() -> void:
-	if is_instance_valid(_stage):
-		_stage.queue_free()
-	_stage = null
-
-## The node under the window root that the stage belongs beside: Main in the
-## shipped tree, and whatever a harness put at the top in a harness.
-func _world_root() -> Node:
-	var n: Node = self
-	while n.get_parent() != null and not (n.get_parent() is Window):
-		n = n.get_parent()
-	return n

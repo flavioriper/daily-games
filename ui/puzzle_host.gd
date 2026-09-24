@@ -7,11 +7,8 @@ extends Control
 ## (PuzzleBase.capabilities) and the panels hide the rest.
 ##
 ## The rows are the subclass's business. `_build_chrome` and `_enter` are the
-## two methods a shell fills, and there are two shells: ui/flat/flat_host.gd
-## (the nine flat screens) and legacy/ui/island_host.gd (the boards on the
-## stage). Until 2026-09-18 the island rows were built here and the flat host
-## inherited and overrode them, which meant every flat board loaded the
-## carved sign, the model views and the whole toon pipeline behind them.
+## two methods a shell fills; ui/flat/flat_host.gd is the one shell left since
+## the 3D island shell was removed on 2026-09-24.
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md.
 
 signal closed
@@ -120,10 +117,8 @@ func _apply_insets() -> void:
 ## The rows of this shell's chrome, top to bottom, into `root`. The host
 ## itself has no opinion about them: it fills `top_bar`, `day_card` and
 ## (optionally) `action_bar`, and every handler below talks to the puzzle
-## through those fields. Two shells implement it -- ui/flat/flat_host.gd for
-## the nine flat screens and legacy/ui/island_host.gd for the boards still on
-## the stage -- and neither is the default, because a host with no chrome is
-## a bug rather than a fallback.
+## through those fields. ui/flat/flat_host.gd implements it, and the base has
+## no default, because a host with no chrome is a bug rather than a fallback.
 func _build_chrome(_root: VBoxContainer) -> void:
 	push_error("PuzzleHost: a shell must override _build_chrome")
 
@@ -174,21 +169,12 @@ func _spawn(the_seed: int) -> void:
 	_board_holder.add_child(_puzzle)
 	_puzzle.solved.connect(_on_solved)
 	# Hidden Word's ending that is not a solve (PuzzleBase.finish_unsolved).
-	# The thirteen legacy boards stand on legacy/core/stage_board.gd, a frozen
-	# copy of this contract that predates `ended` and must stay frozen (see
-	# spec 2026-09-19-hidden-word-flat-design.md, section 8): connecting
-	# unconditionally throws on every one of them, and the throw aborts this
-	# function before start() ever runs, leaving a blank dead board.
-	if _puzzle.has_signal("ended"):
-		_puzzle.ended.connect(_on_ended)
+	_puzzle.ended.connect(_on_ended)
 	_puzzle.moved.connect(_refresh)
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = the_seed
-	# legacy/core/stage_board.gd is a frozen contract that predates bank_step;
-	# an island board has no such property and the assignment would throw.
-	if "bank_step" in _puzzle:
-		_puzzle.bank_step = _bank_step
+	_puzzle.bank_step = _bank_step
 	_puzzle.start(rng, _difficulty)
 	_card.visible = not _puzzle.is_3d()
 	_overlay.visible = false

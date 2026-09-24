@@ -1,12 +1,11 @@
 extends "res://ui/hud/panel.gd"
 
-## The first screen's bottom bar: Home, Stats, Streak, More.
+## The first screen's bottom bar: Home, Stats, Streak.
 ##
-## Two of the four do something. Home is the screen you are on, and More
-## opens the sheet the old 3D game lives behind (ui/menu/legacy_sheet.gd).
-## **Stats and Streak are drawn and inert**, by decision with the user on
-## 2026-09-18: the mock's bar has four tabs, and drawing two of them is a
-## worse lie than drawing four and saying which work. Pressing one says so
+## More left with the 3D game on 2026-09-24 (settings has its own button in
+## the header). Home is the screen you are on. **Stats and Streak are drawn
+## and inert until they are built for release** (docs/roadmap-to-release.md).
+## Pressing one says so
 ## through `unbuilt`, which the menu turns into a line on screen rather than
 ## a dead tap.
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 1.
@@ -23,7 +22,6 @@ const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "home", "live": true},
 	{"key": "stats", "label": "BAR_STATS", "icon": "trophy", "live": false},
 	{"key": "streak", "label": "BAR_STREAK", "icon": "bars", "live": false},
-	{"key": "more", "label": "BAR_MORE", "icon": "leaf", "live": true},
 ]
 
 var current := "home"
@@ -99,7 +97,7 @@ func _on_tab(tab: Dictionary) -> void:
 		return
 	picked.emit(String(tab.key))
 
-## Which tab reads as the one you are on. More lights while its sheet is up.
+## Which tab reads as the one you are on.
 func show_tab(key: String) -> void:
 	current = key
 	_repaint()
