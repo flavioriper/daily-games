@@ -1,9 +1,10 @@
 extends Control
 
 ## The first screen: the wordmark and the two characters at the top, the day
-## row under them, a page of twelve puzzle cards in a grid of three, and the
-## bottom bar. Everything on it is drawn in 2D -- there is no stage, no
-## World3D and no model anywhere on this screen.
+## row under them, a page of eight puzzle cards in a grid of two (490x246
+## cards, since the painted menu of 2026-09-24 -- twelve in a grid of three
+## before that), and the bottom bar. Everything on it is drawn in 2D -- there
+## is no stage, no World3D and no model anywhere on this screen.
 ##
 ## It replaced the 3D campsite on 2026-09-18, and the whole 3D game was
 ## removed from the repo on 2026-09-24. Twelve cards fit on one screen, so
@@ -51,12 +52,18 @@ const COLS := 2
 ## margins, less one 20 gap (spec 2026-09-24-painted-menu, section 2).
 ## `_fit_grid` fits as many columns of it as the screen is wide.
 const MIN_CARD_W := 490.0
-## How far the gap between card rows may close to keep a row. The day row is
-## 200 and the grid has 36 of slack at 1920, so the gap rarely closes; it is
-## kept for shorter screens.
+## How far the gap between card rows may close to keep a row. Restated
+## 2026-09-24 (final fix wave): with the pager seam counted in (PAGER_SEAM
+## below), the slack at 1080x1920 is 1040 - 4*246 - 3*20 = -4, so the four-row
+## gap already closes below GAP on the reference screen -- `_fit_grid` takes
+## it to 18 there -- and MIN_ROW_GAP 16 is the floor under that, kept for a
+## screen shorter still.
 const MIN_ROW_GAP := 16
 ## Eight cards a page: two across and four down is what 80 of margin, 60 of
-## gaps, a 380 header, a 200 day row and a 120 bar leave for rows of 246.
+## gaps, a 380 header, a 200 day row and a 120 bar leave -- 1080 of 1920 --
+## before the pager seam takes its own 20px plus one more 20 gap (PAGER_SEAM
+## below), leaving 1040 for four rows of 246 at an 18 gap (1032; see
+## MIN_ROW_GAP above for why the gap is 18 and not 20).
 ## That is the 1080x1920 page, and the one every other screen starts from:
 ## since 2026-09-23 the page is *fitted* (`_fit_grid`). The canvas is 1080
 ## wide and never shorter than 1920 (`stretch/aspect="expand"`), so a taller
@@ -103,7 +110,7 @@ const PAGER_SEAM := 20.0
 ## day row, the grid, the seam and the bar already spend the screen exactly
 ## (see the toast's own comment in _build_list), so this is an overlay on
 ## `_list_root` rather than a row of the column, and it costs the grid
-## nothing -- a card stays 252 whether or not a second page exists.
+## nothing -- a card stays 246 whether or not a second page exists.
 ##
 ## The pill sits in its own seam since 2026-09-24 (painted menu): PAGER_SEAM
 ## opened a real gap between the grid and the bar for it, rather than the
@@ -255,6 +262,14 @@ func _build_list() -> void:
 	_list_root.add_child(_backdrop)
 	var insets := SafeArea.insets(self)
 	_backdrop.offset_bottom = MARGIN + insets.x + MenuHeader.HEIGHT + BACKDROP_BLEED
+	## F1 (final fix wave, 2026-09-24): the line above grows the plate by the
+	## top inset so the header clears a punch-hole cutout, but Vistas' crop is
+	## `cover` and sizes off the plate's own height -- left alone, that inset
+	## would rescale and slide the whole painting, walking the sun and moon
+	## off the deck (see Vistas.set_top_pad's own comment). Telling the crop
+	## to ignore exactly `insets.x` px keeps it pixel-identical to the inset-0
+	## case, shifted down by the inset.
+	Vistas.set_top_pad(_backdrop, insets.x)
 	var margins := MarginContainer.new()
 	margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	margins.add_theme_constant_override("margin_left", MARGIN)
@@ -331,8 +346,15 @@ func _build_list() -> void:
 	_pager.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_pager.offset_left = 0.0
 	_pager.offset_right = 0.0
-	_pager.offset_top = -PAGER_MID - PAGER_SLOT_H * 0.5
-	_pager.offset_bottom = -PAGER_MID + PAGER_SLOT_H * 0.5
+	# F2 (final fix wave, 2026-09-24): PAGER_MID is measured off the bar's own
+	# height, margin and seam, but the bar itself sits `insets.y` higher than
+	# the screen's bottom edge (margin_bottom above), which this anchor
+	# (PRESET_BOTTOM_WIDE) does not know about. Without subtracting it, a
+	# phone with a bottom inset (the ad banner via Ads.bottom_inset(), or a
+	# gesture-bar cutout) draws the pill below the seam it is meant to float
+	# in. `insets` is still the one read at the top of this function.
+	_pager.offset_top = -PAGER_MID - PAGER_SLOT_H * 0.5 - insets.y
+	_pager.offset_bottom = -PAGER_MID + PAGER_SLOT_H * 0.5 - insets.y
 	_list_root.add_child(_pager)
 	# CenterContainer, not anchors: the pill hugs its own content (prev, the
 	# dots, next) rather than spanning the margin-to-margin width every
@@ -377,8 +399,12 @@ func _build_list() -> void:
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_toast.offset_left = MARGIN
 	_toast.offset_right = -MARGIN
-	_toast.offset_top = -TOAST_OVER - TOAST_H
-	_toast.offset_bottom = -TOAST_OVER
+	# F2 (final fix wave, 2026-09-24): the same fix as the pager above --
+	# TOAST_OVER is measured off the bar's height and margin, not the
+	# screen's true bottom edge, so a bottom inset needs subtracting here too
+	# or the toast drifts below the bar it is meant to float over.
+	_toast.offset_top = -TOAST_OVER - TOAST_H - insets.y
+	_toast.offset_bottom = -TOAST_OVER - insets.y
 	_list_root.add_child(_toast)
 
 	# Built last: _set_pager (called from _build_page) reaches into _pager,
@@ -429,9 +455,10 @@ func _build_page() -> void:
 	# leftover width: GridContainer sizes a column to the widest cell it
 	# actually has, and a column with no cell in that row does not compete
 	# for the row's stretch at all. Padding out to COLS with zero-minimum,
-	# EXPAND_FILL fillers keeps three columns competing on every row, on any
-	# page, so a card is 320 wide everywhere rather than however many empty
-	# columns' worth wider. The mirror of the height floor
+	# EXPAND_FILL fillers keeps both columns competing on every row, on any
+	# page, so a card is 490 wide everywhere rather than however many empty
+	# columns' worth wider (COLS was three and a card 320 before the painted
+	# menu, 2026-09-24). The mirror of the height floor
 	# puzzle_card_2d.gd's CARD_H sets on the other axis.
 	#
 	# **At eighteen cards this does not run**: page two holds six, COLS is

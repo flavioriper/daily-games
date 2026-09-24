@@ -34,7 +34,8 @@ const ART_H := 100.0
 ## own minimum and does not hand a row any of the grid's leftover height,
 ## whether the grid has four rows or one. `_update_min` below floors this
 ## card's reported minimum at CARD_H so every row is exactly the budget
-## regardless of how many rows share the page -- the twelve-card page and
+## regardless of how many rows share the page -- the eight-card page
+## (1080x1920, since the painted menu of 2026-09-24; twelve before it) and
 ## the pager's short last page alike (task 8, 2026-09-20).
 const CARD_H := 246.0
 ## How much taller than ART_H a picture may grow when the menu hands a card

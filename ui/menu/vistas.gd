@@ -116,13 +116,40 @@ static func point_at(plate: ColorRect, vista: String, zoom: float, focus: Vector
 	plate.set_meta("focus", focus)
 	_refit(plate)
 
+## F1 (final fix wave, 2026-09-24): a plate's top pad, in px -- the header
+## plate is asked to grow by exactly the top safe-area inset
+## (ui/menu.gd's `_build_list`, `MenuHeader.HEIGHT`'s own budget is fixed),
+## and this crop is `cover`, sized off the plate's own height, so growing the
+## plate without accounting for the pad rescales and slides the whole
+## painting rather than opening a band at the top -- the sun and moon seated
+## on the deck (`menu_header.gd`'s `PAIR_TOP`) walked down the picture with
+## it. `set_top_pad` records the pad so `_refit` can cover the plate at its
+## *pre-pad* height and extend the UV rect upward by the pad's own share of
+## that crop, leaving the picture below the pad pixel-identical to the
+## pad-0 case, shifted down by the pad.
+static func set_top_pad(plate: ColorRect, px: float) -> void:
+	plate.set_meta("top_pad", maxf(px, 0.0))
+	_refit(plate)
+
 static func _refit(plate: ColorRect) -> void:
 	var mat := plate.material as ShaderMaterial
 	mat.set_shader_parameter("rect_size", plate.size)
 	var tex: Texture2D = mat.get_shader_parameter("vista")
 	if tex == null:
 		return
-	var r := crop(plate.size, tex.get_size(), float(plate.get_meta("zoom", 1.0)), plate.get_meta("focus", Vector2(0.5, 0.5)))
+	var top_pad := float(plate.get_meta("top_pad", 0.0))
+	var crop_size := Vector2(plate.size.x, maxf(plate.size.y - top_pad, 1.0))
+	var r := crop(crop_size, tex.get_size(), float(plate.get_meta("zoom", 1.0)), plate.get_meta("focus", Vector2(0.5, 0.5)))
+	if top_pad > 0.0:
+		# The pad's own share of the crop, in UV: r.size.y is the crop's UV
+		# height for crop_size.y px, so top_pad px of it is
+		# r.size.y * (top_pad / crop_size.y). Extending the rect upward by
+		# that (rather than resizing the whole crop) is what keeps the image
+		# below the pad identical to the pad-0 case -- a negative uv.y is
+		# left for the sampler's edge clamp (repeat_disable) to fill.
+		var pad_uv := r.size.y * (top_pad / crop_size.y)
+		r.position.y -= pad_uv
+		r.size.y += pad_uv
 	mat.set_shader_parameter("uv_rect", Vector4(r.position.x, r.position.y, r.size.x, r.size.y))
 
 static func card_plate(id: String, tint: Color) -> ColorRect:
