@@ -64,3 +64,24 @@ WT_LVL_3,"6 words, 8 × 8","6 palavras, 8 × 8","6 palabras, 8 × 8"
 WIN_HEARTS,%d of 3 today,%d de 3 hoje,%d de 3 hoy
 WIN_DAY_KEPT,Day kept · streak %d,Dia garantido · sequência %d,Día conseguido · racha %d
 WIN_STREAK,Streak %d,Sequência %d,Racha %d
+STREAK_DAYS,day streak,dias seguidos,días seguidos
+STREAK_BEST,Best,Recorde,Récord
+STREAK_REST,Rest days,Dias de folga,Días de descanso
+STREAK_NEXT_REST,Next rest day,Próxima folga,Próximo descanso
+TODAY_LINE_0,Solve three to keep the streak,Resolva três para manter a sequência,Resuelve tres para mantener la racha
+TODAY_LINE_1,Two more keep the streak,Mais dois mantêm a sequência,Dos más mantienen la racha
+TODAY_LINE_2,One more keeps the streak,Mais um mantém a sequência,Uno más mantiene la racha
+TODAY_LINE_3,Day kept,Dia garantido,Día conseguido
+WEEKDAY_INITIALS,MTWTFSS,STQQSSD,LMXJVSD
+MONTH_1,January,Janeiro,Enero
+MONTH_2,February,Fevereiro,Febrero
+MONTH_3,March,Março,Marzo
+MONTH_4,April,Abril,Abril
+MONTH_5,May,Maio,Mayo
+MONTH_6,June,Junho,Junio
+MONTH_7,July,Julho,Julio
+MONTH_8,August,Agosto,Agosto
+MONTH_9,September,Setembro,Septiembre
+MONTH_10,October,Outubro,Octubre
+MONTH_11,November,Novembro,Noviembre
+MONTH_12,December,Dezembro,Diciembre
