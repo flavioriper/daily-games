@@ -63,6 +63,13 @@ jobs:
       - name: Put Godot on PATH
         run: echo "$HOME/godot" >> "$GITHUB_PATH"
 
+      # The export runs Gradle (the Android build template), which Play's AAB,
+      # the ads plugin and billing all need. Its dependencies are the slow part
+      # of a cold run, so they are cached like the engine.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: false
+
       # The debug keystore has to be the one this project always signs with:
       # Android refuses to install a build signed by a different key over the
       # copy already on the phone.
@@ -126,7 +133,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/android
-          godot --headless --path . --export-debug Android build/android/peeplet-daily.apk
+          # --install-android-build-template unpacks android/build from the
+          # engine's android_source.zip; android/ is not in git.
+          godot --headless --path . --install-android-build-template \
+            --export-debug Android build/android/peeplet-daily.apk
           test -s build/android/peeplet-daily.apk
 
       # Keyless: the run's own GitHub token is exchanged for the App

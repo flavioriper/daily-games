@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the native Android APK and push it to Firebase App Distribution, so the
+# Build the native Android APK (Gradle build) and push it to Firebase App Distribution, so the
 # game can be installed and played on a phone.
 #
 #   tools/deploy_android.sh            build + distribute
@@ -25,7 +25,9 @@ mkdir -p build/android
 
 # The export reads the .godot import cache, so make sure it is current.
 "$godot_bin" --headless --path . --import >/dev/null
-"$godot_bin" --headless --path . --export-debug Android "$out"
+# Gradle build: the template in android/ is unpacked from the engine's own
+# android_source.zip, so it always matches the engine (android/ is not in git).
+"$godot_bin" --headless --path . --install-android-build-template --export-debug Android "$out"
 
 [[ -s "$out" ]] || { echo "export produced no apk"; exit 1; }
 echo "built $out ($(du -h "$out" | cut -f1))"

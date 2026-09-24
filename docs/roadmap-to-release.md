@@ -138,14 +138,26 @@ be built.
 ## Phase 2: Builds, ads and the purchase
 
 ### Android
-- [ ] **Move the export to the Gradle build.** Play only accepts AAB for new
-      apps, and AAB, the AdMob plugin and Play Billing all need Gradle. CI
-      changes with it.
+- [x] (2026-09-24, `feat/gradle-export`) **Move the export to the Gradle
+      build.** Play only accepts AAB for new apps, and AAB, the AdMob plugin
+      and Play Billing all need Gradle. The preset has
+      `use_gradle_build=true`, and CI and `tools/deploy_android.sh` pass
+      `--install-android-build-template` (`android/` stays out of git and is
+      unpacked from the engine's own `android_source.zip`); CI caches Gradle.
+      The tester APK is **84.2 MB** against 32.3 MB before, and that is
+      packaging, not content: Gradle stores `libgodot_android.so`
+      uncompressed (76.2 MB, page-aligned, Android's modern default) where the
+      prebuilt template compressed it. A debug **AAB** exported from the same
+      preset (`export_format=1`) is **32.3 MB**, and Play compresses per
+      device, so players never see the 84. Not yet run on a phone: the first
+      CI build after this merges is the on-device check.
 - [ ] Release signing: generate an upload keystore, store it as a CI secret,
       and turn on Play App Signing. **(you)** keep an offline backup of the
       upload key. Keep the debug lane to App Distribution for testers.
-- [ ] Target SDK: `gradle_build/target_sdk` is blank. Check Godot 4.7's
-      default against Play's current minimum target API level.
+- [ ] Target SDK: now set explicitly to **36** (min 24), Godot 4.7's own
+      template defaults and the newest platform installed; the APK's manifest
+      reads `targetSdkVersion 36`. Still to do: confirm Play's current
+      minimum target level when the Play account exists.
 - [ ] Launcher icons: the three `launcher_icons/*` slots are empty.
 
 ### iOS
