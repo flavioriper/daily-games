@@ -32,6 +32,8 @@ Decided with the user on 2026-09-24:
 
 ## 2. Height budget (1080×1920 design space)
 
+Figures below are the design; see §13 for what shipped.
+
 | Row | Height | Was |
 |---|---|---|
 | Margins, top and bottom | 40 + 40 | 40 + 40 |
@@ -199,6 +201,33 @@ section 10, and states that "never an image" now means never a character.
 The flat-menu spec gets a one-line pointer to this one.
 
 ## 13. Measured
+
+### Superseded in implementation
+
+Sections 2-7 above are left as the design record, not corrected in place.
+Where the shipped code differs:
+
+- **`TextureRect`** (§3, §4) shipped as a `ColorRect` with the vista as a
+  `sampler2D` uniform, not `TEXTURE`, so a missing file can still draw the
+  fallback gradient -- `TextureRect` has no hook for that.
+- **`plate(name, zoom, focus, ...) -> TextureRect`** (§4) shipped as five
+  named calls on `ui/menu/vistas.gd` -- `card_plate`, `day_plate`,
+  `header_plate`, `set_day_vista`, and `set_top_pad` (added in the
+  2026-09-24 final fix wave, F1) -- rather than one generic constructor,
+  because the header, the day card and a card banner each need a different
+  set of shader parameters wired (`scrim`, `wash`, `fade`) and a single
+  `plate()` would need to take all of them optionally.
+- **`ART_H` 108** (§7) shipped as **100**: a properly-settled probe (task 2,
+  fix round 1) measured the name and blurb's real font metrics at 122, not
+  the 96 the 108 figure assumed, so 108 ran the card 8 over its 246 budget.
+- **The backdrop's "+120"** (§5) shipped as **`BACKDROP_BLEED` 140**: the
+  extra 20 is how far past the day-card's own fade the dusk vista needed to
+  run for the fade band itself to read as a fade rather than a hard cut.
+- **"The pager stays an overlay"** (§2): true, but it gained its own 20px
+  seam (`PAGER_SEAM`) rather than floating on the bare column gap, because
+  the 490x246 card put the old bare-gap position about 18px over the last
+  row's blurb. `_fit_grid` now reserves `PAGER_SEAM` plus one more `GAP` out
+  of the grid's room for it (see CLAUDE.md's "The first screen" section).
 
 Taken 2026-09-24 with `tests/_shot_menu.gd` at `--resolution 810x1440`,
 `--resolution` before `--script` in every invocation, `git checkout --

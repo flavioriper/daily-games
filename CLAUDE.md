@@ -82,8 +82,12 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
 - **The heights are a budget, not a taste.** At 1080x1920 since 2026-09-24:
   80 of margin (`ui/menu.gd`'s `MARGIN` 40, top and bottom), 60 of gaps
   (`GAP` 20 between the header, the day card, the grid and the bar), a 380
-  header, a 200 day card and a 120 bar leave 1080 for four rows of `CARD_H`
-  246, spent as a 10 `INSET`, a 100 banner, the name and blurb in a column
+  header, a 200 day card and a 120 bar leave 1080 -- restated in the final
+  fix wave (2026-09-24) to count the pager seam it left out: `PAGER_SEAM`
+  20 plus one more `GAP` 20 take 40 more, leaving 1040 for four rows of
+  `CARD_H` 246 at an 18 gap (`MIN_ROW_GAP`, below `_fit_grid`'s own comment
+  in `ui/menu.gd`), not the 20 the 1080 figure alone would allow -- spent
+  as a 10 `INSET`, a 100 banner, the name and blurb in a column
   beside an 80 `GO` button, and 10 back out to the edge
   (`ui/menu/puzzle_card_2d.gd`). The banner was first built at 108, the
   brief's own figure, on the naive assumption that a 44 name plus two 26
@@ -101,24 +105,33 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
 - **The page is fitted to the screen since 2026-09-23** (`ui/menu.gd`,
   `_fit_grid`). The canvas is 1080 wide and never shorter than 1920
   (`stretch/aspect="expand"`), so a taller phone gets height and a wider
-  screen gets width, and a fixed 3x4 left a tall phone (9:20, the user's)
-  a ~530 px empty band under the fourth row. The grid now takes as many
-  columns of `MIN_CARD_W` 320 and rows of `CARD_H` 252 as the room holds;
+  screen gets width, and a fixed grid left a tall phone (9:20, the user's)
+  an empty band under the last row. The grid takes as many
+  columns of `MIN_CARD_W` and rows of `CARD_H` as the room holds;
   the spare height grows every picture up to `ART_GROW` 26 (plate 92 to
-  118, the mock's) and then opens the row gaps. `PER_PAGE` 12 is only the
-  default before the first fit. Measured with `tests/_shot_menu.gd`:
-  `810x1440` is still 3x4 (345 / 176 draw calls on pages one and two, the
-  same as the build before the change), `660x1500` (9:20) is 3x6 with
-  eighteen cards on page one and 426 calls, and `1080x1440` (3:4) is 4x4
-  at 400. Row gaps may close to `MIN_ROW_GAP` 16: the day row really
-  measures 188 against the 180 budgeted, so four rows at a 20 gap were 6
-  over the 1920 room and the column had been overflowing its bottom margin;
-  they fit at 18. **A swipe across the grid turns the page** (finger left
+  118, the mock's) and then opens the row gaps. `PER_PAGE` is only the
+  default before the first fit. **The figures below predate the painted
+  menu and are stale since 2026-09-24** (found in the final fix wave's docs
+  review): `MIN_CARD_W` is 490 now, not 320, `CARD_H` is 246, not 252, and
+  `PER_PAGE` is 8, not 12 -- see "The heights are a budget" above. Every
+  reading below this sentence was retaken at the final fix wave rather than
+  carried forward: `810x1440` is **2x4**, not 3x4 (255 draw calls on page
+  one -- see "Measured again on 2026-09-24" further down for the same
+  figure), `660x1500` (9:20) is **2x6** with **twelve** cards on page one
+  and **334** calls, not eighteen at 426, and `1080x1440` (3:4), never
+  measured before, is **2x4** at **255** as well -- the same layout as
+  810x1440, because a third column now needs 1510 design px of room
+  (`3*490 + 2*20`), wider than any of these three, so nothing here reaches
+  three columns any more. Row gaps may close to `MIN_ROW_GAP` 16: at
+  1080x1920 the pager seam now makes the slack negative (see `ui/menu.gd`'s
+  own `MIN_ROW_GAP` comment), so the reference screen's gap already closes
+  to 18, not 20.
+  **A swipe across the grid turns the page** (finger left
   is next), read in `_input` from both touch and mouse because the project
   does not emulate one from the other; the card a swipe started on does not
   open. Which cards stand on page one is therefore a property of the phone
-  as well as of the card count -- the "twelve on the first" figures in this
-  file are the 1080x1920 page.
+  as well as of the card count -- the "eight on the first" figures in this
+  file (twelve, before 2026-09-24) are the 1080x1920 page.
 - **The pager came back on 2026-09-20**, once a thirteenth card needed a
   second page (`ui/menu.gd`, `ui/menu/puzzle_card_2d.gd`; the campsite's own
   pager of nine had left with it on 2026-09-18). A five-row grid was
@@ -128,12 +141,23 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   says a new row may not spend. Pagination alone does not hold the budget
   either: a `GridContainer` sizes each row to its own content and never
   redistributes leftover height, so it is `puzzle_card_2d.gd`'s own
-  `CARD_H := 252` floor that keeps a card at 252 regardless of how many rows
+  `CARD_H` floor (252 then, **246 since the painted menu of 2026-09-24**)
+  that keeps a card at that floor regardless of how many rows
   share the page -- the pager is what makes a second page possible, not what
   keeps a card's height. The strip itself costs the grid nothing: it is laid
   over the seam between the grid and the bottom bar as its own paper pill,
   an overlay on `_list_root` the way `_toast` already is, never a row of the
-  column, so a card stays 252 whether or not a second page exists. A short
+  column, so a card stays at its `CARD_H` floor (252 then, 246 now) whether
+  or not a second page exists.
+  **The seam grew a real gap of its own on 2026-09-24** (`ui/menu.gd`'s
+  `PAGER_SEAM`, 20): before the painted menu the pill simply floated on the
+  bare 20px column gap between the grid and the bar, and at 490x246 cards
+  that put it about 18px over the last row's blurb. `PAGER_SEAM` opens a
+  second, dedicated 20px gap after the grid (a spacer control, shown only on
+  the home tab) so the pill has its own seam to sit in rather than one it
+  shares with a card's text; `_fit_grid` subtracts it, plus one more `GAP`,
+  from the room a page's rows are fitted into (see "The heights are a
+  budget" above). A short
   last row -- one whose cards do not fill `COLS` -- needs invisible
   `SIZE_EXPAND_FILL` filler `Control`s padded out to the column count, or
   `GridContainer` hands the real cells the empty column's leftover width and
@@ -177,6 +201,32 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   the old menu never drew a background and the viewport's clear colour --
   the stage's sky -- showed through. With nothing behind this screen,
   `_build_list` lays a `Pal.PAPER` rect under everything.
+- **The header stands in the treehouse at dusk, full-bleed** (`ui/menu.gd`'s
+  `_backdrop`, `Vistas.header_plate()`, 2026-09-24). The plate is laid under
+  the margins so no row of the column moves, anchored top-wide from the
+  screen's own top edge and run down to `MARGIN + insets.x +
+  MenuHeader.HEIGHT + BACKDROP_BLEED` -- `BACKDROP_BLEED` 140, how far the
+  painting runs behind the day card before it has faded to paper
+  (`Vistas.HEADER_FADE`). The sun and the moon sit seated on the deck at
+  `menu_header.gd`'s `SUN_SEAT` 250 and `MOON_SEAT` 220, `PAIR_TOP` 95:
+  measured against the dusk vista's own floor line on the 810x1440 frame so
+  the sun's seat rests 10px above the deck's wood post/table edge and the
+  moon clears the hanging lantern. **The crop is inset-independent since
+  the final fix wave (2026-09-24, F1)**: growing the plate by a top
+  safe-area inset (a punch-hole phone) used to rescale and slide the whole
+  painting, because `Vistas.crop()` covers the plate off its own height --
+  walking the pair off the deck on any inset above zero. `Vistas.set_top_pad
+  (plate, px)` now tells the crop to cover the plate at its pre-pad height
+  and extends the UV rect upward by the pad's own share of that crop, so
+  the picture below the pad is pixel-identical to the pad-0 case, shifted
+  down by the pad; `ui/menu.gd` calls it with `insets.x` right after sizing
+  the plate. Verified with a forced inset of 100 at 810x1440 (this Mac
+  reports 0, so the probe forced `SafeArea.insets()`'s return value):
+  cross-correlation against the inset-0 shot found the best alignment at
+  exactly 75px down (100 * the harness's 0.75 design scale), mean grayscale
+  diff 2.9/255 at that offset (reduce-motion, so the sun and moon's own
+  idle animation could not jitter the two shots out of phase) -- the small
+  remainder is antialiasing rounding, not drift.
 - **A card's picture is a painted plate under the board's own cast**
   (`ui/menu/vistas.gd`, `shaders/painted_plate_2d.gdshader`, 2026-09-24).
   Six vistas the user supplied (`assets/art/menu/vista_<name>.png`: sky,
@@ -213,7 +263,12 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   this file -- **the same picture costs 1**. gl_compatibility pays per
   `draw_*` command, and a card's picture is not exempt -- the painted plate
   under it is one more `draw_mesh` a card, not a reason to relax that.
-- **Eighteen cards, all eighteen live, and no `soon` card left.** Three left
+- **Eighteen cards, all eighteen live, and no `soon` card left** (as of
+  2026-09-20; **the registry grew to twenty since**, with Fairy Lights and
+  Rings -- see "The flat screens" section below for each -- and
+  `Registry.PUZZLES.size()` reads 20 today, not eighteen; neither was
+  swapped in over a `soon` card or bumped anything off the grid, the same
+  as the six before them). Three left
   the grid in a week, each being redesigned outright and each keeping its
   island board under More: Snake Apple's on 2026-09-19 to make room for
   Queens (`seed_as` still `snake`), Horse Pen's the same day for Hidden Word
@@ -226,10 +281,15 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   and Pinwheel the eighteenth, all four the same day again and none of them
   displacing anything; all six stand on page two, which is what page two is
   for.
-  `PER_PAGE` is twelve, so page one keeps exactly the same twelve cards in
-  the same order and the fifteenth through the eighteenth cost it
-  nothing at all -- which is what paging buys over reflowing, and the first
-  time that promise has been collected on rather than argued for. **The
+  `PER_PAGE` was twelve at the time, so page one kept exactly the same
+  twelve cards in the same order and the fifteenth through the eighteenth
+  cost it nothing at all -- which is what paging buys over reflowing.
+  **Restated 2026-09-24 (final fix wave)**: the painted menu's `PER_PAGE`
+  is 8, not twelve (see "The heights are a budget" above), so page one now
+  keeps its own same eight cards while everything from the ninth entry on
+  -- Fairy Lights and Rings included -- lands on page two or three without
+  moving page one at all; it is the same promise, collected on again at a
+  different `PER_PAGE`. **The
   dimmed-card machinery is now unexercised**: the registry's `soon` flag,
   the 55% ink, the pale `SOON` pill and `ui/menu.gd`'s `blocked` signal
   (which answered with a line saying the island version is under More) are
@@ -252,10 +312,31 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   `--resolution 810x1440` (second reading of two, the first including this
   session's shader compile): **330** draw calls on Home (the control, twice),
   **142** on Streak and **148** on Stats, both well inside the 855 budget.
-- **The registry is two lists.** `Registry.PUZZLES` is the grid (eighteen
-  flat boards, no `soon`); `Registry.LEGACY` is the old game. A grid entry
-  carries `short`, the card's own two-line blurb -- at 320 wide a card fits
-  about seventeen characters a line, which `blurb` does not.
+- **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
+  flat boards since Fairy Lights and Rings, no `soon`; eighteen before
+  2026-09-24); `Registry.LEGACY` is the old game. A grid entry
+  carries `short`, the card's own two-line blurb. **Restated for the 490
+  card** (final fix wave, 2026-09-24): the text column beside the go button
+  is 470 (card minus the panel's 20 of `INSET`) less an 18+8 `TEXT_INSET`
+  margin less the 80 `GO` button and its 12 separation -- 352 px, up from
+  320 -- and `CardBlurb`'s own font (Nunito 600 at 26, measured with a
+  throwaway probe) averages 11.9 px a character on the registry's real
+  `short` strings, so 352 has room for about thirty, not the seventeen the
+  320-wide card was said to fit. Nobody has rewritten `short` for the extra
+  room, so today's lines still run 12-18 characters -- the seventeen figure
+  was always closer to how long the authored strings are than to a hard
+  fit limit, and remains true of the text itself, if not of the column.
+  `blurb`'s label carries `line_spacing` -6 and
+  `TextServer.OVERRUN_NO_TRIMMING`, not the ordinary
+  `OVERRUN_TRIM_ELLIPSIS` (`ui/menu/puzzle_card_2d.gd`, task 2, 2026-09-24):
+  once the label sits inside a `VBoxContainer` ("words") inside an
+  `HBoxContainer` ("row") beside the go button, `OVERRUN_TRIM_ELLIPSIS`
+  rendered only the first of its two lines and ellipsised the rest, even
+  though the label's own reported size and line count were both already
+  correct -- a Godot 4.7 quirk of that particular nesting, confirmed by a
+  throwaway probe at the time. `OVERRUN_NO_TRIMMING` shows both lines
+  correctly in the same nesting and simply drops a third line with no dots,
+  which nothing in the registry's `short` strings ever reaches.
 - **Measured on this Mac** (`tests/_shot_menu.gd` at `--resolution 810x1440`,
   which is the true 1080x1920 of design space -- see "What the harnesses
   actually measure" above): **335** draw calls on **page one** against the
