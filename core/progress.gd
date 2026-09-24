@@ -99,7 +99,8 @@ static func clear_completed(puzzle_id: String, date_key: int = Daily.date_key())
 
 static func log_solve(id: String, difficulty: int, stats: Dictionary = {}, date_key: int = Daily.date_key()) -> bool:
 	var cfg := ConfigFile.new()
-	cfg.load(path)
+	if not _readable(cfg.load(path)):
+		return false
 	_migrate(cfg)
 	var key := str(date_key)
 	var day: Array = cfg.get_value("log", key, [])
@@ -118,7 +119,8 @@ static func log_solve(id: String, difficulty: int, stats: Dictionary = {}, date_
 ## Every day's records, keyed by the int date key.
 static func solve_log() -> Dictionary:
 	var cfg := ConfigFile.new()
-	cfg.load(path)
+	if not _readable(cfg.load(path)):
+		return {}
 	_migrate(cfg)
 	var out := {}
 	if cfg.has_section("log"):
@@ -144,6 +146,11 @@ static func set_stats_difficulty(d: int) -> void:
 	cfg.set_value("stats", "difficulty", clampi(d, 0, 3))
 	cfg.save(path)
 
+## A missing file is an empty save; any other load error is a file that
+## failed to parse, and it is left exactly as it is rather than saved over.
+static func _readable(err: Error) -> bool:
+	return err == OK or err == ERR_FILE_NOT_FOUND
+
 static func _has_record(day: Array, id: String, difficulty: int) -> bool:
 	for r in day:
 		if String(r.get("id", "")) == id and int(r.get("d", -1)) == difficulty:
@@ -154,7 +161,8 @@ static func _has_record(day: Array, id: String, difficulty: int) -> bool:
 ## is `<date>_<progress_id>`; a progress_id ending `_<digit>` carries its
 ## difficulty. The menu also marks the plain id, so a plain record is dropped
 ## when a suffixed one for the same board and day exists. Saves only when it
-## ran.
+## ran. Only ever handed a cfg whose load passed `_readable`, so a file that
+## failed to parse is never saved over.
 static func _migrate(cfg: ConfigFile) -> void:
 	if bool(cfg.get_value("log_meta", "migrated", false)):
 		return

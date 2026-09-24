@@ -16,9 +16,10 @@ extends SceneTree
 ## /tmp/shot_menu_1.png and /tmp/shot_menu_page2.png), and prints the mean
 ## frame time and the peak draw-call count over the idle window before each
 ## shot, so a change to the first screen can be measured as well as looked
-## at. With `streak` or `stats`, phase 0's shot also prints a `tab idle`
+## at. With `streak` or `stats`, the tab is opened right after the Home shot
+## at FIRST_AT, and phase 1's shot (/tmp/shot_menu_2.png) prints a `tab idle`
 ## line for the tab's own draw calls, sampled over the last 0.5s before
-## FIRST_AT; with no arg, phase 1 just shoots Home again.
+## SECOND_AT; with no arg, phase 1 just shoots Home again.
 
 const FIRST_AT := 1.8
 const SECOND_AT := 2.8

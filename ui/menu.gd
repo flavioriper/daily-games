@@ -171,6 +171,8 @@ var _prev: Button
 var _next: Button
 var _dots: Control
 var _pager_tw: Tween
+## The date key the list last showed; _check_day refreshes when it moves.
+var _shown_day := 0
 
 func _ready() -> void:
 	theme = CozyTheme.make()
@@ -184,7 +186,44 @@ func _ready() -> void:
 	difficulty_sheet.name = "DifficultySheet"
 	difficulty_sheet.chose.connect(_open_at)
 	add_child(difficulty_sheet)
+	# A menu left open across 00:00 UTC catches up within a minute.
+	var day_timer := Timer.new()
+	day_timer.name = "DayTimer"
+	day_timer.wait_time = 60.0
+	day_timer.autostart = true
+	day_timer.timeout.connect(_check_day)
+	add_child(day_timer)
 	_show_list()
+
+## A resumed app, or one brought back to the front, may be on a new day.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_check_day()
+
+## When the day has changed under a visible list, re-read what _show_list
+## reads -- the cards' done marks, Day N, the hearts and the badge, and the
+## open tab -- without replaying the entrance.
+func _check_day() -> void:
+	if _list_root == null or not _list_root.visible or Daily.date_key() == _shown_day:
+		return
+	Progress.touch()
+	_build_page()
+	if _tab != "home":
+		_pager.visible = false
+	_refresh_day()
+	if _tab == "streak":
+		streak_tab.refresh()
+	elif _tab == "stats":
+		stats_tab.refresh()
+
+## Day N, today's hearts and the streak badge, from one read of the log.
+func _refresh_day() -> void:
+	var today := Daily.date_key()
+	_shown_day = today
+	day_row.set_day(Progress.day(), Progress.island_name())
+	var solves := Progress.solve_log()
+	day_row.set_hearts(Streak.hearts(solves.get(today, [])))
+	header.set_streak(int(Streak.compute(solves, today).current))
 
 func _build_list() -> void:
 	_list_root = Control.new()
@@ -632,10 +671,7 @@ func _show_list() -> void:
 	if clamped != _page:
 		_page = clamped
 		_build_page()
-	day_row.set_day(Progress.day(), Progress.island_name())
-	var today := Daily.date_key()
-	day_row.set_hearts(Progress.hearts(today))
-	header.set_streak(int(Streak.compute(Progress.solve_log(), today).current))
+	_refresh_day()
 	_show_tab("home")
 	_enter()
 
@@ -689,6 +725,10 @@ func _on_tab(tab: String) -> void:
 ## their body in that room. A tab's body fades in; Home re-fits the grid,
 ## which is not measured while it is hidden.
 func _show_tab(key: String) -> void:
+	# Re-picking the open tab does nothing; Home always runs, because
+	# _show_list relies on it to restore the grid and fit it.
+	if key == _tab and key != "home":
+		return
 	_tab = key
 	bar.show_tab(key)
 	var home := key == "home"
@@ -699,8 +739,12 @@ func _show_tab(key: String) -> void:
 	Motion.stop(_tab_tw)
 	if home:
 		_set_pager(_page, _pages())
+		_pager.modulate.a = 1.0
 		_queue_fit()
 		return
+	# A pager fade still queued from the entrance would bring the pill back
+	# over the tab.
+	Motion.stop(_pager_tw)
 	_pager.visible = false
 	var body: Control = streak_tab if key == "streak" else stats_tab
 	body.refresh()

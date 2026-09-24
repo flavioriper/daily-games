@@ -86,4 +86,4 @@ MONTH_12,December,Dezembro,Diciembre
 STATS_SOLVED,Solved,Resolvidos,Resueltos
 STATS_DAYS,Days played,Dias jogados,Días jugados
 STATS_BEST_STREAK,Best streak,Melhor sequência,Mejor racha
-STATS_COUNT,%d solved,%d resolvidos,%d resueltos
+STATS_COUNT,Solved: %d,Resolvidos: %d,Resueltos: %d

@@ -143,7 +143,9 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   screen with a pixel to spare. The user overturned it on main for a reason
   that branch never weighed: a pager beside **Day N** reads as a way to
   change the *day*. `ui/menu/day_row.gd` is back to what it was, chevron,
-  hearts and all, and is untouched by any of this.
+  hearts and all, and the pager never came back to it. Since 2026-09-24
+  (Stats and Streak) its hearts count today's boards and its chevron opens
+  the Streak tab -- still not a way to change the day.
 - **The sun-dot is the i's dot, not a sticker over it** (`ui/sun_dot.gd`,
   2026-09-19). It sets the label's lowercase i in Fredoka's dotless `ı`
   and seats a small sun where the font's dot was, measured off the
@@ -1268,7 +1270,8 @@ export stays on the non-gradle path.
   `GA_API_SECRET`. Missing secret means the game runs untracked, not broken.
 - Events: `game_open`, `puzzle_start`, `puzzle_complete`, `puzzle_abandon`,
   `hint_used`, `undo_used`, `check_used`, `board_reset`, `rules_opened`,
-  `new_puzzle`, `reduce_motion`, and on a board that can be turned,
+  `new_puzzle`, `reduce_motion`, `tab_opened` (the menu's Stats or Streak
+  tab, with `tab`), and on a board that can be turned,
   `view_turn` and `peek_used`. A daily turn adds `turn_lock`, `turn_reveal`,
   `turn_share` and `crowd_reveal_opened`. Board events carry puzzle_id,
   difficulty, day, seconds, moves, hints, checks; the last two tell us
@@ -1280,7 +1283,10 @@ export stays on the non-gradle path.
   `puzzle_complete` with `solved: false` from `ui/puzzle_host.gd`'s
   `_on_ended` -- a lost board is still a terminal event, and without one a
   player who reads six rows and backs out looks identical to a crash. Every
-  other board only ever sends `solved: true`, from `_on_solved`.
+  other board only ever sends `solved: true`, from `_on_solved`. Since
+  2026-09-24 a flat daily solve's `puzzle_complete` also carries `hearts`
+  (that day's boards, 0-3) and `streak`; a board dealt from New carries
+  neither, because it is not a daily and is not logged.
 - **`locale` rides on every event**, stamped by `Analytics.track()` beside
   `session_id` and `engagement_time_msec` on whatever it is handed, so any
   event can be split by language without a caller remembering to pass it.

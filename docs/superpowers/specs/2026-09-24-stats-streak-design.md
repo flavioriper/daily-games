@@ -86,7 +86,9 @@ checked in isolation.
 - `PlayerStats.summary(log) -> Dictionary`: `solved` (all records),
   `days` (dates with at least one record).
 - `PlayerStats.boards(log, difficulty) -> Dictionary`: `{id: {count, best,
-  mean}}` over the records at that difficulty with `t > 0`.
+  mean}}` over the records at that difficulty with `t > 0`. A record with
+  `t <= 0` still counts as a solve; it is simply not timed, so it adds to
+  `count` and never to `best` or `mean`.
 
 ## 4. Screens
 
@@ -117,7 +119,7 @@ instant. Swiping pages only works on Home.
   choice is kept in `progress.cfg` under `stats/difficulty`.
 - **A board grid**: every `Registry.PUZZLES` entry, four across, rows as
   needed, in registry order. Each tile: a `Pal.CAT` dot (the card's own
-  colour, by index), the title fitted down to 18 px, "N solved" and
+  colour, by index), the title fitted down to 18 px, "Solved: N" and
   "best · average" in `m:ss`. An unsolved tile shows a dash and is drawn at
   60% alpha. The whole grid is drawn in one `_draw` so twenty tiles are not
   twenty nodes.
@@ -133,8 +135,8 @@ instant. Swiping pages only works on Home.
 
 **The win screen** (`ui/flat/flat_host.gd`): the stats card's second line,
 the island name, becomes the hearts line after the solve: "2 of 3 today",
-"Day kept · 5-day streak", or "5-day streak" once the hearts were already
-full.
+"Day kept · streak 5", or "Streak 5" once the hearts were already full.
+The number comes last so pt and es never need a plural.
 
 ## 5. Analytics
 

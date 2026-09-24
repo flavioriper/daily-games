@@ -92,8 +92,16 @@ var _bottom_play := 0.0
 ## its own handoff.
 var _tray_given := false
 var _hearts_line := ""
+## The date key of the daily this board was dealt from, taken when the daily
+## seed spawned it; 0 for a board from a random seed (the settings sheet's
+## New). A solve is logged under this day, not the one it ends on, so a board
+## opened before 00:00 UTC and solved after still counts for its own day; a
+## non-daily board earns no heart and no best time.
+var _day_key := 0
 
 func _ready() -> void:
+	# puzzle_host's _ready spawns the daily seed; the day is taken with it.
+	_day_key = DailySeed.date_key()
 	super()
 	# Nothing 3D shows under the opaque page, so nothing 3D is drawn while
 	# this screen is up; the menu's _show_list brings the setting back and
@@ -404,22 +412,38 @@ func _on_solved() -> void:
 		var record: Dictionary = _puzzle.completion_record()
 		if not record.is_empty():
 			kept["board"] = record
-	Progress.mark_completed(_progress_id(), DailySeed.date_key(), kept)
-	var today := DailySeed.date_key()
-	var before := Progress.hearts(today)
-	Progress.log_solve(puzzle_id, _difficulty, kept, today)
-	var after := Progress.hearts(today)
-	var streak := int(Streak.compute(Progress.solve_log(), today).current)
-	if after < Streak.KEPT:
-		_hearts_line = tr("WIN_HEARTS") % after
-	elif before < Streak.KEPT:
-		_hearts_line = tr("WIN_DAY_KEPT") % streak
-	else:
-		_hearts_line = tr("WIN_STREAK") % streak
-	daily_completed.emit(puzzle_id)
 	var event := _stats()
-	event["hearts"] = after
-	event["streak"] = streak
+	event["solved"] = true
+	if _day_key == 0:
+		Progress.mark_completed(_progress_id(), DailySeed.date_key(), kept)
+	else:
+		var day := _day_key
+		Progress.mark_completed(_progress_id(), day, kept)
+		# One read of the log: the heart count before, the write, and the
+		# count and the streak after, with the new record appended in memory
+		# only when log_solve took it (its own dedupe).
+		var solves := Progress.solve_log()
+		var records: Array = (solves.get(day, []) as Array).duplicate()
+		var before := Streak.hearts(records)
+		if Progress.log_solve(puzzle_id, _difficulty, kept, day):
+			records.append({
+				"id": puzzle_id, "d": _difficulty,
+				"t": float(kept.get("seconds", 0.0)),
+				"m": int(kept.get("moves", 0)),
+				"h": int(kept.get("hints", 0)),
+			})
+			solves[day] = records
+		var after := Streak.hearts(records)
+		var streak := int(Streak.compute(solves, day).current)
+		if after < Streak.KEPT:
+			_hearts_line = tr("WIN_HEARTS") % after
+		elif before < Streak.KEPT:
+			_hearts_line = tr("WIN_DAY_KEPT") % streak
+		else:
+			_hearts_line = tr("WIN_STREAK") % streak
+		event["hearts"] = after
+		event["streak"] = streak
+	daily_completed.emit(puzzle_id)
 	Analytics.track("puzzle_complete", event)
 	_refresh()
 	# A board whose win has an animation of its own to play out first says
@@ -475,7 +499,15 @@ func _on_redo() -> void:
 	_hearts_line = ""
 	Analytics.track("puzzle_redo", {"puzzle_id": puzzle_id})
 	_bank_step = 0
+	_day_key = DailySeed.date_key()
 	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", puzzle_id)), _difficulty))
+
+## The settings sheet's New deals from a random seed: not a daily, so its
+## solve is not logged (see _day_key).
+func _on_new() -> void:
+	_day_key = 0
+	_hearts_line = ""
+	super()
 
 ## Where today's completion is saved: the card's id, or the id and the
 ## difficulty for a card that asks which (ui/registry.gd `progress_id`).

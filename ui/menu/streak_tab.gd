@@ -176,9 +176,11 @@ func _draw_calendar(ci: Control) -> void:
 				ci.draw_circle(c, r, Pal.LEAF_TILE)
 				Icons.paint(ci, "leaf", Rect2(c - Vector2(r, r) * 0.7, Vector2(r, r) * 1.4), Pal.LEAF_DEEP)
 			"partial":
-				ci.draw_arc(c, r - 3, 0, TAU, 40, Pal.ACCENT_2, 5, true)
-				var n := Streak.hearts(_log.get(key, []))
-				Ink.text(ci, _head, "%d/3" % n, c + Vector2(0, 9), 26, Pal.ACCENT_2, HORIZONTAL_ALIGNMENT_CENTER)
+				_draw_partial(ci, c, r, Streak.hearts(_log.get(key, [])))
+			"today" when Streak.hearts(_log.get(key, [])) > 0:
+				# Today with one or two boards shows its count the way a
+				# partial day does; the ink today-ring still goes round it.
+				_draw_partial(ci, c, r, Streak.hearts(_log.get(key, [])))
 			_:
 				var col := Pal.TEXT_DIM
 				if key > _today:
@@ -188,3 +190,8 @@ func _draw_calendar(ci: Control) -> void:
 			ci.draw_arc(c, r + 8, 0, TAU, 48, Pal.TEXT, 5, true)
 		key = Streak.next_day(key)
 		cell += 1
+
+## A day with one or two boards: an ACCENT_2 ring and "n/3" inside it.
+func _draw_partial(ci: Control, c: Vector2, r: float, n: int) -> void:
+	ci.draw_arc(c, r - 3, 0, TAU, 40, Pal.ACCENT_2, 5, true)
+	Ink.text(ci, _head, "%d/3" % n, c + Vector2(0, 9), 26, Pal.ACCENT_2, HORIZONTAL_ALIGNMENT_CENTER)
