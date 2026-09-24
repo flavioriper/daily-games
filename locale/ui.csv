@@ -61,3 +61,6 @@ WT_LVL_0,"4 words, 5 × 5","4 palavras, 5 × 5","4 palabras, 5 × 5"
 WT_LVL_1,"6 words, 6 × 6","6 palavras, 6 × 6","6 palabras, 6 × 6"
 WT_LVL_2,"6 words, 7 × 7","6 palavras, 7 × 7","6 palabras, 7 × 7"
 WT_LVL_3,"6 words, 8 × 8","6 palavras, 8 × 8","6 palabras, 8 × 8"
+WIN_HEARTS,%d of 3 today,%d de 3 hoje,%d de 3 hoy
+WIN_DAY_KEPT,Day kept · streak %d,Dia garantido · sequência %d,Día conseguido · racha %d
+WIN_STREAK,Streak %d,Sequência %d,Racha %d

@@ -49,6 +49,7 @@ const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
+const Streak = preload("res://core/streak.gd")
 
 ## The two slots' heights while playing and on the win (spec section 8). The
 ## bottom's playing height is measured in _build_chrome from the rows it
@@ -90,6 +91,7 @@ var _bottom_play := 0.0
 ## after the board is spawned" means. Cleared by _spawn so a new board gets
 ## its own handoff.
 var _tray_given := false
+var _hearts_line := ""
 
 func _ready() -> void:
 	super()
@@ -403,8 +405,22 @@ func _on_solved() -> void:
 		if not record.is_empty():
 			kept["board"] = record
 	Progress.mark_completed(_progress_id(), DailySeed.date_key(), kept)
+	var today := DailySeed.date_key()
+	var before := Progress.hearts(today)
+	Progress.log_solve(puzzle_id, _difficulty, kept, today)
+	var after := Progress.hearts(today)
+	var streak := int(Streak.compute(Progress.solve_log(), today).current)
+	if after < Streak.KEPT:
+		_hearts_line = tr("WIN_HEARTS") % after
+	elif before < Streak.KEPT:
+		_hearts_line = tr("WIN_DAY_KEPT") % streak
+	else:
+		_hearts_line = tr("WIN_STREAK") % streak
 	daily_completed.emit(puzzle_id)
-	Analytics.track("puzzle_complete", _stats())
+	var event := _stats()
+	event["hearts"] = after
+	event["streak"] = streak
+	Analytics.track("puzzle_complete", event)
 	_refresh()
 	# A board whose win has an animation of its own to play out first says
 	# how long it needs; Code Break's lids and code take nearly two seconds.
@@ -420,7 +436,10 @@ func _show_win() -> void:
 	# Every completed flat board gets the same compact result line: elapsed
 	# time, move count and hints used. Prepare it independently of the
 	# optional celebration art below.
-	stats_card.set_day(Progress.day(), Progress.island_name())
+	# After a live solve the island's name gives way to today's hearts; a
+	# reopened finished daily has no line and keeps the name.
+	stats_card.set_day(Progress.day(),
+		_hearts_line if _hearts_line != "" else Progress.island_name())
 	stats_card.set_stats(_stats_text())
 	# A board whose answer is a row of characters shows it instead of the
 	# sun and the moon (flat_win).
@@ -453,6 +472,7 @@ func _on_redo() -> void:
 		return
 	Progress.clear_completed(_progress_id(), DailySeed.date_key())
 	_completed_daily = false
+	_hearts_line = ""
 	Analytics.track("puzzle_redo", {"puzzle_id": puzzle_id})
 	_bank_step = 0
 	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", puzzle_id)), _difficulty))
