@@ -580,14 +580,16 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: rings_gen.gd's BANDS, and each is its own daily
-		# with its own done mark. Four rings a peg at every band.
+		# with its own done mark. Four rings a peg at every band. Insane is
+		# Hard's deal inside a move budget (rings_state.gd's `par`).
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "4 colours, 6 pegs"},
 			{"difficulty": 1, "name": "Medium", "line": "5 colours, 7 pegs"},
 			{"difficulty": 2, "name": "Hard", "line": "6 colours, 8 pegs"},
+			{"difficulty": 3, "name": "Insane", "line": "Near the fewest moves, no hints"},
 		],
 	},
 ]

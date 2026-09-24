@@ -979,9 +979,19 @@ pointing `seed_as` at them. Specs:
   is still missing. After merging a parallel board, diff the merge against
   **both** parents, not only against the side you were on. On the grid it is
   the eighth card on page two at 1080x1920 (8 % 3 = 2, so one filler), page
-  two reads **181** draw calls and the board **58**. It has three levels and
-  no Insane yet: its screen caps it at 8 pegs and 6 colours, and less slack
-  (6 on 7, 7 on 8) makes 85-93% of deals unsolvable and the rest *shorter*.
+  two reads **181** draw calls and the board **58** (47 on Insane).
+  **Its Insane is a move budget, not a harder deal**: the screen caps it at
+  8 pegs and 6 colours, and less slack (6 on 7, 7 on 8) makes 85-93% of
+  deals unsolvable and the survivors *shorter*. So Insane is Hard's deal
+  sorted within the **shortest** solve plus `PAR_SLACK` 2
+  (`rings_state.gd`'s `par`), shown as "N moves left" under the second row;
+  Undo gives a move back, so the budget binds the finishing line and not the
+  exploring, and there is no hint, because the game's own depth-first solver
+  plays lines of 35-63 against optima of 16-24. The optimum is a
+  breadth-first search of 90-600 ms a deal on this Mac, so it is mined
+  (`tools/insane/rings_ladder.gd`, `content/insane/rings.json`, optima
+  22-26) -- the first board with an Insane bank. Its sounds are wired and
+  generated (lift, drop, lock, refused, undo, hint, reset, solved, enter).
 - **Nothing under `tests/` loaded a board's `*2d.gd` until 2026-09-20**, and
   that was true of all boards, not one -- and since the merge that brought
   Bridges and Quilt in, the guard covers every entry in the registry, which

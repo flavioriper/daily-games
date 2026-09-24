@@ -137,6 +137,13 @@ const TIPS := [
 ## What the toast says when a move leaves nothing legal to play. Exactly the
 ## concept page's own string.
 const STUCK_MSG := "Nothing can move. Undo, or start again."
+## Insane's budget spent with the pegs unsorted. Same shape as STUCK_MSG,
+## because it is the same answer: Undo gives a move back.
+const OUT_MSG := "Out of moves. Undo, or start again."
+## Insane's moves-left line: its size, and how far under the second row's
+## ground it sits (clear of the grass band and the toast beneath it).
+const BUDGET_FONT := 34
+const BUDGET_DROP := 70.0
 
 ## The toast pill's own shape -- layout, not motion, so these sit outside
 ## this board's six. Matches the concept page's own pill.
@@ -218,9 +225,16 @@ func puzzle_id() -> String: return "rings"
 func title() -> String: return "Rings"
 
 func rules() -> String:
-	return "Lift the top ring off any peg and set it down on an empty peg or on a ring of its own colour -- nowhere else. Four rings of the same colour fill a peg, and a peg that full locks: nothing ever comes off it again. Nothing here is ever lost, so play freely -- Undo and Reset are always one tap away. The board is done the moment every colour stands alone on a peg of its own."
+	var line := "Lift the top ring off any peg and set it down on an empty peg or on a ring of its own colour -- nowhere else. Four rings of the same colour fill a peg, and a peg that full locks: nothing ever comes off it again. Nothing here is ever lost, so play freely -- Undo and Reset are always one tap away. The board is done the moment every colour stands alone on a peg of its own."
+	if _state.par > 0:
+		line += " On Insane you have a budget of moves, only two over the fewest this deal can be sorted in, and no hints. Undo gives a move back."
+	return line
 
+## No hint on Insane: the only solver cheap enough for the phone plays lines
+## twice the budget, so a hint would spend moves the player cannot win back.
 func capabilities() -> Array[String]:
+	if _state.par > 0:
+		return ["undo"]
 	return ["undo", "hint"]
 
 func can_undo() -> bool:
@@ -249,7 +263,7 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.build(rng, difficulty)
+	_state.build(rng, difficulty, bank_step)
 	_layout()
 	_enter()
 	_tip_idx = 0
@@ -340,16 +354,25 @@ func _tap(i: int) -> void:
 	if is_done():
 		return
 	if _state.held == -1:
-		if _state.lift(i):
+		if _state.out_of_moves():
+			_toast = OUT_MSG
+			_toast_at = _now()
+			fx.cue("refused")
+			_say(OUT_MSG, Face.Expr.WORRIED)
+		elif _state.lift(i):
 			_held_at = _now()
+			fx.cue("lift")
 			_say("Drop it on its own colour, or on an empty peg.", Face.Expr.HAPPY)
 		elif (_state.pegs[i] as Array).is_empty():
+			fx.cue("refused")
 			_say("That peg is empty. Lift from a peg that has a ring.", Face.Expr.HAPPY)
 		else:
+			fx.cue("refused")
 			_say("That colour is home. Nothing comes off a finished peg.", Face.Expr.HAPPY)
 	elif i == _state.held_from:
 		_state.put_back()
 		_held_at = -100.0
+		fx.cue("drop")
 		_say("Back where it was.", Face.Expr.HAPPY)
 	else:
 		var from: int = _state.held_from
@@ -357,9 +380,11 @@ func _tap(i: int) -> void:
 		var slot := _state.drop(i)
 		if slot == -1:
 			_shake_at[i] = _now()
+			fx.cue("refused")
 			_say(_state.refusal(i), Face.Expr.WORRIED)
 		else:
 			_held_at = -100.0
+			fx.cue("drop")
 			# The flight has to exist before note_move()'s check_solved() can
 			# fire solved -- _on_solved reads _flight for the landing moment
 			# its hop wave waits on.
@@ -436,6 +461,8 @@ func _settle(j: int, at: float) -> void:
 		var colour: Color = RING_COLOURS[int(_state.pegs[j][0])]
 		fx.ring(top_pt, RING_W * 0.5, colour)
 		fx.sparkle(top_pt, colour)
+		if not _state.is_solved():
+			fx.cue("lock")
 	if _state.is_solved():
 		_say("Every colour on a peg of its own.", Face.Expr.JOY)
 	elif _state.locked(j):
@@ -444,6 +471,9 @@ func _settle(j: int, at: float) -> void:
 		_say(_left_line(), Face.Expr.HAPPY)
 	if not _state.is_solved() and _state.is_stuck():
 		_toast = STUCK_MSG
+		_toast_at = at
+	elif _state.out_of_moves():
+		_toast = OUT_MSG
 		_toast_at = at
 
 ## How many colours are still loose, in the tip's own two shapes: after a
@@ -498,6 +528,7 @@ func undo() -> bool:
 	var slot := dst.size() - 1
 	var colour_i: int = dst[slot]
 	_fly(colour_i, m.y, m.x, slot, _now(), false)
+	fx.cue("undo")
 	_say("Taken back. " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
 	check_solved()
@@ -519,6 +550,7 @@ func hint() -> bool:
 			_toast_at = _now()
 		return false
 	hints_used += 1
+	fx.cue("hint")
 	var dst: Array = _state.pegs[m.y]
 	var slot := dst.size() - 1
 	var colour_i: int = dst[slot]
@@ -541,6 +573,7 @@ func reset_board() -> void:
 	_land_slot = -1
 	_land_at = -100.0
 	_solved_at = -100.0
+	fx.cue("reset")
 	_say("The pegs as they were dealt.", Face.Expr.HAPPY)
 	_refresh()
 
@@ -615,6 +648,7 @@ func _refresh() -> void:
 
 func _enter() -> void:
 	_opened = _now()
+	fx.cue("enter")
 	_refresh()
 
 func _draw() -> void:
@@ -626,7 +660,23 @@ func _draw() -> void:
 	if _mesh != null:
 		draw_mesh(_mesh, null)
 	_shown = [_mesh]
+	_draw_budget()
 	_draw_toast(t, _shown)
+
+## Insane's moves left, centred under the second row. Drawn text rather than a
+## mesh, like the toast's line, and only when there is a budget at all.
+func _draw_budget() -> void:
+	var left: int = _state.moves_left()
+	if left < 0:
+		return
+	var text := "1 move left" if left == 1 else "%d moves left" % left
+	if _state.is_solved():
+		text = "Sorted with %d to spare" % left
+	var font: Font = CozyTheme.body(700)
+	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUDGET_FONT).x
+	var y: float = _row_y[1] + STATION_H + BUDGET_DROP
+	var ink: Color = Pal.BAD if left == 0 and not _state.is_solved() else Pal.TEXT
+	draw_string(font, Vector2((size.x - w) * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUDGET_FONT, ink)
 
 # --- the mesh ---
 

@@ -268,6 +268,19 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
     },
+    # Rings: lift the top ring off a wooden peg and drop it on an empty peg
+    # or on its own colour; four of a colour fill a peg and lock it.
+    "rings": {
+        "lift":     ("a tiny soft hollow wooden ring sliding up off a smooth peg, a light airy lift, very short", 0.5, -12),
+        "drop":     ("a single soft hollow wooden ring settling down onto a stack of rings on a peg, a gentle clack, very short", 0.5, -8),
+        "lock":     ("a short happy two-note soft kalimba pluck with a tiny sparkle, a peg filled with one colour", 0.7, -6),
+        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a quick soft ripple of hollow wooden rings clacking down onto pegs, a set being put back", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny hollow wooden clacks rolling in, stacks of rings on pegs appearing", 1.0, -9),
+    },
 }
 
 

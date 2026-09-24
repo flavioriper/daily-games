@@ -10,7 +10,7 @@ be built.
 
 - **19 flat boards on the grid**, every one with Easy, Medium and Hard, plus a
   provisional Insane row (`ui/registry.gd`). Rings is back on the grid as
-  the twentieth (2026-09-24), with no Insane row yet.
+  the twentieth (2026-09-24), Insane included.
 - **CI is green**: the last three pushes to `main` ran tests, the APK and App
   Distribution with no failures (`gh run list`).
 - **Android testers only.** The build is a debug-signed APK sent through
@@ -70,14 +70,17 @@ be built.
       second parent. Suite 122,581/0; `_win.gd` solves it (22 moves).
 - [x] (2026-09-24) Give it a difficulty sheet (`pick_difficulty`): Easy,
       Medium, Hard.
-- [ ] Its Insane row. **Needs a design call**: the screen caps it at 8 pegs
-      and 6 colours, less slack makes 85-93% of deals dead and the rest
-      shorter, and keeping the solver-hardest of 16 Hard deals only stretches
-      the solve from 50 to 59 moves. Likely a rule change (e.g. hidden rings,
-      or five a peg) rather than a harder deal.
-- [ ] Record its sound set (`tools/gen_sfx.py rings`). The board only cues
-      `solved` today, so wire its cues (lift, drop, refused, undo, hint,
-      reset, enter) and add its list to `gen_sfx.py` first.
+- [x] (2026-09-24) Its Insane row: **a move budget**, not a harder deal (the
+      screen caps it at 8 pegs and 6 colours, and less slack only deals dead
+      boards). Hard's deal, sorted within the shortest solve + 2, no hints,
+      Undo gives a move back. The shortest solve costs 90-600 ms here, so it
+      is mined: `content/insane/rings.json`, 300 deals of 755 kept from 900,
+      optima 22-26 against Hard's 16-24 (`tools/insane/rings_ladder.gd`).
+      Without the bank it deals live with the game solver's line as a far
+      looser budget (76 on one deal whose optimum is 23).
+- [x] (2026-09-24) Record its sound set: lift, drop, lock, refused, undo,
+      hint, reset, solved, enter, wired and generated (one take each). **(you)**
+      listen and name any to redo.
 - [x] (2026-09-24) Check its card picture. Page two holds 8, the filler runs,
       and the card is the same width as its neighbours.
 - [x] (2026-09-24) Title fit and draw calls. Motto 363 against the

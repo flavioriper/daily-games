@@ -27,8 +27,13 @@ extends RefCounted
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
 const Gen = preload("res://puzzles/rings_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 const HINTS := 3
+## Moves Insane allows over the shortest solve the bank records. Undo gives a
+## move back, so this is slack on the line the player finishes on, not on
+## how much they may explore.
+const PAR_SLACK := 2
 
 var pegs: Array = []
 var deal: Array = []
@@ -37,12 +42,34 @@ var held := -1
 var held_from := -1
 var colours := 6
 var hints_used := 0
+## Insane's move budget: moves the pegs may take from the deal, or 0 for no
+## limit (every other band). `log.size()` is what it is spent against.
+var par := 0
 
 ## The day's deal, proved solvable by Gen. Keeps a duplicate of it in `deal`
 ## so reset_board() can go back to exactly what was dealt, not to one undo
 ## at a time.
-func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	pegs = Gen.deal(rng, difficulty)
+##
+## Insane (band 3) reads the day's deal and its shortest solve from the bank
+## (content/insane/rings.json, mined by tools/insane/rings_ladder.gd) and
+## allows that plus PAR_SLACK. Without a bank it deals Hard's knobs live and
+## takes the game's own solver's line as the budget: looser, since that
+## solver is not shortest-first, but the card is never empty.
+func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	par = 0
+	var banked: Dictionary = InsaneBank.pick("rings", bank_step) if difficulty == 3 else {}
+	if banked.get("pegs") is Array:
+		pegs = []
+		for s in banked["pegs"]:
+			var peg: Array = []
+			for c in s:
+				peg.append(int(c))
+			pegs.append(peg)
+		par = int(banked["grade"]["rung"]) + PAR_SLACK
+	else:
+		pegs = Gen.deal(rng, difficulty)
+		if difficulty == 3:
+			par = Gen.solve(pegs).size() + PAR_SLACK
 	deal = []
 	for s in pegs:
 		deal.append((s as Array).duplicate())
@@ -59,7 +86,15 @@ func locked(i: int) -> bool:
 ## A ring may be lifted off a peg that has one, is not locked, and only when
 ## the hand is empty.
 func can_lift(i: int) -> bool:
-	return held == -1 and not (pegs[i] as Array).is_empty() and not locked(i)
+	return held == -1 and not out_of_moves() and not (pegs[i] as Array).is_empty() and not locked(i)
+
+## Moves left in Insane's budget; -1 when there is no budget.
+func moves_left() -> int:
+	return par - log.size() if par > 0 else -1
+
+## The budget is spent and the pegs are not sorted. Undo gives a move back.
+func out_of_moves() -> bool:
+	return par > 0 and log.size() >= par and not is_solved()
 
 ## Takes the top ring off peg `i` into the hand. Refused (and `false`) on an
 ## empty peg, a locked peg, or with a ring already in hand.
@@ -164,7 +199,7 @@ func reset_board() -> void:
 ## happened when it did not, nor lose a count for one that never played.
 func hint() -> Vector2i:
 	put_back()
-	if hints_used >= HINTS or is_solved():
+	if par > 0 or hints_used >= HINTS or is_solved():
 		return Vector2i(-1, -1)
 	var path: Array = Gen.solve(pegs)
 	if path.is_empty():

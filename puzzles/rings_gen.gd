@@ -34,6 +34,11 @@ const BANDS := [
 	{"colours": 4, "pegs": 6},
 	{"colours": 5, "pegs": 7},
 	{"colours": 6, "pegs": 8},
+	# Insane: Hard's deal, because the screen holds no more pegs and the
+	# palette no more colours, and less slack only deals dead boards. What
+	# makes it Insane is rings_state.gd's move budget, read from
+	# content/insane/rings.json (tools/insane/rings_ladder.gd).
+	{"colours": 6, "pegs": 8},
 ]
 
 ## Deals tried before the day gives up and takes the last one anyway. Measured
@@ -43,7 +48,7 @@ const ATTEMPTS := 40
 ## Nodes a single verdict may cost. Measured worst: 267.
 const NODE_BUDGET := 20000
 
-## The day's deal, proved solvable. `difficulty` is 0, 1 or 2.
+## The day's deal, proved solvable. `difficulty` is 0 to 3.
 static func deal(rng: RandomNumberGenerator, difficulty: int) -> Array:
 	var band: Dictionary = BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 	var last: Array = []
