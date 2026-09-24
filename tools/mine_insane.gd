@@ -107,6 +107,8 @@ func _ensure_dir(dir_res_path: String) -> void:
 	if not DirAccess.dir_exists_absolute(abs):
 		DirAccess.make_dir_recursive_absolute(abs)
 
+## Histograms every candidate that passed the gate, not just the top `count`
+## actually written -- a thin ladder should show up here before truncation.
 func _print_histogram(kept: Array, tries: int) -> void:
 	var counts: Dictionary = {}
 	for entry in kept:
