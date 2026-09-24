@@ -51,6 +51,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
 const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
 const PinWheel = preload("res://ui/faces/pin_wheel.gd")
+const Rings2D = preload("res://puzzles/rings2d.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
 const ART := Vector2(320.0, 118.0)
@@ -140,6 +141,8 @@ var _sky_mesh: ArrayMesh
 ## Pinwheel's frame, its pieces, the stain over them and every wheel, again
 ## for the RID reason and not for the arithmetic.
 var _pinwheel_mesh: ArrayMesh
+## Rings' three pegs, held for the same reason as _band_mesh above.
+var _rings_mesh: ArrayMesh
 
 func _init(the_id := "") -> void:
 	id = the_id
@@ -266,6 +269,28 @@ func _build() -> void:
 				lamp.hue = int(LIGHTS_HUES[i])
 				lamp.lit = 1.0
 				_seat(lamp, lamp_seat, float(LIGHTS_LAMPS[i]), LIGHTS_Y)
+		"rings":
+			# No cast: Rings seats no character, joining Nonogram, Hidden
+			# Word, Word Trail and Sudoku. Its whole picture is three pegs
+			# drawn with the board's own ring shape (Rings2D._append_ring)
+			# scaled down, so -- like Word Trail's field -- it is one plain
+			# Control this branch wires its own draw to, rather than a
+			# branch of the top _draw() match: there is no furniture
+			# distinct from the piece here, so there is nothing for that
+			# match to add.
+			# This calls three of rings2d.gd's own underscore-prefixed
+			# helpers and its RING_COLOURS directly (below) rather than a
+			# published API -- deliberately, so the card draws the board's
+			# real ring instead of a second copy of it; see that file's
+			# header for what this costs.
+			var field := Control.new()
+			field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			field.size = Vector2(300.0, 112.0) * _u
+			field.position = at(0.0, 0.0) - field.size * 0.5
+			field.draw.connect(_draw_rings_pegs.bind(field))
+			add_child(field)
+		_:
+			pass
 		_:
 			pass
 
@@ -949,3 +974,53 @@ func _shifted(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 	for i in pts.size():
 		out[i] = pts[i] + by
 	return out
+
+## Rings: three pegs in a 300 by 112 design box, one full of a colour (four
+## rings, locked) and two still part-sorted (two rings apiece, mixed
+## colours) -- the same three states `_tap_rings()`'s harness engineers on
+## the board itself. Every post is drawn its full height first, `Gen.CAP`
+## slots tall, and the rings are stacked on top of it from the base up, so a
+## part-sorted peg's post pokes out proud exactly the way the board's own
+## `_build_station` leaves it: a glance at how much post shows above the
+## rings says how much room is left. `RH`..`POST_UP` are this box's own
+## scale-down of the board's RING_H..POST_UP (each ratio to RING_H copied
+## across; POST_W and BASE_H happen to share the board's own 30, which is
+## this file's coincidence to note and not to lean on), never the board's
+## own constants directly -- a card this small does not want the board's
+## touch targets, only its shape.
+func _draw_rings_pegs(field: Control) -> void:
+	const CAP := 4  # Rings_gen.gd's Gen.CAP, copied rather than read across
+	                # scripts (rings2d.gd's own comment: a const from
+	                # another script does not always fold in GDScript).
+	const RH := 19.0
+	const RW := 41.0
+	const GAP := 1.25
+	const BASE_H := 6.2
+	const BASE_W := 37.6
+	const POST_W := 6.2
+	const POST_UP := 10.0
+	var ground_y := 104.0
+	var base_top := ground_y - BASE_H
+	var stack_full := float(CAP) * RH + float(CAP - 1) * GAP
+	var post_top := base_top - stack_full - POST_UP
+	var post_col: Color = Pal.CHEEK.lerp(Pal.SURFACE, 0.62)
+	var pegs := [
+		{"cx": 50.0, "colours": [3, 3, 3, 3]},
+		{"cx": 150.0, "colours": [0, 1]},
+		{"cx": 250.0, "colours": [2, 5]},
+	]
+	var b := Face.Builder.new()
+	var map := func(p: Vector2) -> Vector2: return p * _u
+	for peg in pegs:
+		var cx: float = peg["cx"]
+		Rings2D._fan_mapped(b, Face.Builder.round_rect(Vector2(cx - POST_W * 0.5, post_top),
+			Vector2(POST_W, base_top - post_top), POST_W * 0.5), post_col, map)
+		Rings2D._slab_mapped(b, Vector2(cx - BASE_W * 0.5, base_top), Vector2(BASE_W, BASE_H),
+			BASE_H * 0.5, 1.5, Pal.SURFACE_HI, Pal.LINE, map)
+		var colours: Array = peg["colours"]
+		for k in colours.size():
+			var ci: int = colours[k]
+			var cy := base_top - RH * 0.5 - float(k) * (RH + GAP)
+			Rings2D._append_ring(b, cx, cy, RW, RH, Rings2D.RING_COLOURS[ci], ci + 1, 1.0, map)
+	_rings_mesh = b.mesh()
+	field.draw_mesh(_rings_mesh, null)

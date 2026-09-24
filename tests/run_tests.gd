@@ -35,6 +35,7 @@ func _initialize() -> void:
 		"planes": "res://tests/test_planes.gd",
 		"pinwheel": "res://tests/test_pinwheel.gd",
 		"pinwheel_gen": "res://tests/test_pinwheel_gen.gd",
+		"rings": "res://tests/test_rings.gd",
 	}
 	for suite_name in suites:
 		_t.current = suite_name

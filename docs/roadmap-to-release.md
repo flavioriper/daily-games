@@ -64,14 +64,27 @@ be built.
       tracked. CI never had them.
 
 ### Rings, the twentieth board
-- [ ] Put it back in `Registry.PUZZLES`.
-- [ ] Give it a difficulty sheet (`pick_difficulty`) and an Insane row, like
-      the other nineteen.
-- [ ] Record its sound set (`tools/gen_sfx.py rings`).
-- [ ] Check its card picture. Page two at 1080x1920 goes from 7 cards to 8,
-      so the short last row needs a filler (`8 % 3 = 2`).
-- [ ] Re-sweep its title fit and measure its draw calls against the
-      controls.
+- [x] (2026-09-24) Put it back in `Registry.PUZZLES`. It had been on the grid
+      and was dropped by Pinwheel's merge (`57c8539`); registry entry, card
+      picture, `rings` suite and `_win.gd` solver restored from that merge's
+      second parent. Suite 122,581/0; `_win.gd` solves it (22 moves).
+- [x] (2026-09-24) Give it a difficulty sheet (`pick_difficulty`): Easy,
+      Medium, Hard.
+- [ ] Its Insane row. **Needs a design call**: the screen caps it at 8 pegs
+      and 6 colours, less slack makes 85-93% of deals dead and the rest
+      shorter, and keeping the solver-hardest of 16 Hard deals only stretches
+      the solve from 50 to 59 moves. Likely a rule change (e.g. hidden rings,
+      or five a peg) rather than a harder deal.
+- [ ] Record its sound set (`tools/gen_sfx.py rings`). The board only cues
+      `solved` today, so wire its cues (lift, drop, refused, undo, hint,
+      reset, enter) and add its list to `gen_sfx.py` first.
+- [x] (2026-09-24) Check its card picture. Page two holds 8, the filler runs,
+      and the card is the same width as its neighbours.
+- [x] (2026-09-24) Title fit and draw calls. Motto 363 against the
+      five-button 370 (15948e3); nothing is fitted, confirmed on a frame. Board
+      **58**, page two **181** twice, page one 330. Word Trail, the control,
+      read 47 against its recorded 65, which predates the tip card's removal,
+      so the old records are no longer controls.
 
 ### Stats and Streak
 - [ ] Spec first (the concept page, then the spec, as for every screen).
@@ -243,7 +256,12 @@ be built.
       and Queens still fail in it. The same three also fail on `main`
       before the 3D removal (main scored 7/19 in that run; the branch
       scored 16/19), so it is the harness and its timing, not the boards.
-      Fix it before the quality gate leans on it.
+      Fix it before the quality gate leans on it. On 2026-09-24 it scored
+      **8/20**: most failures now read `hud=false`, likely the tip card's
+      removal, and four boards free their host before the check.
+- [ ] Pinwheel's merge (`57c8539`) dropped `ui/menu.gd`'s
+      `Ads.banner_changed` → `_apply_insets` hook, so the menu does not move
+      its margins when a banner appears. Restore it with the ads work.
 - [x] (2026-09-24) `ui/flat/tip_card.gd` and `ui/hud/binairo_tutorial.gd`
       were loaded by nothing live; deleted.
 

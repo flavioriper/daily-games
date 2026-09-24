@@ -968,6 +968,20 @@ pointing `seed_as` at them. Specs:
   board here has recorded; the reduce-motion pair 1.5 s apart is
   pixel-identical, in both runs. Generation worst **9.08 ms** in the quiet
   session and 16.42 ms in a loaded one, against the 194 ms gate.
+- **Rings is the twentieth card, and the one a merge deleted** (built
+  2026-09-20, `puzzles/rings2d.gd`, spec `2026-09-20-rings-flat-design.md`).
+  Pinwheel's `merge: main into pinwheel` (`57c8539`) took Pinwheel's side of
+  every conflict and dropped Rings' registry entry, card picture, suite line
+  and win-harness solver without a conflict marker saying so. The board, its
+  state and its tests survived, so it sat built and unreachable for three
+  days; it came back on 2026-09-24 from that merge's second parent. The same
+  merge also dropped `ui/menu.gd`'s `Ads.banner_changed` inset handler, which
+  is still missing. After merging a parallel board, diff the merge against
+  **both** parents, not only against the side you were on. On the grid it is
+  the eighth card on page two at 1080x1920 (8 % 3 = 2, so one filler), page
+  two reads **181** draw calls and the board **58**. It has three levels and
+  no Insane yet: its screen caps it at 8 pegs and 6 colours, and less slack
+  (6 on 7, 7 on 8) makes 85-93% of deals unsolvable and the rest *shorter*.
 - **Nothing under `tests/` loaded a board's `*2d.gd` until 2026-09-20**, and
   that was true of all boards, not one -- and since the merge that brought
   Bridges and Quilt in, the guard covers every entry in the registry, which

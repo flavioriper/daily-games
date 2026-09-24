@@ -562,6 +562,34 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "16 pieces, 7 × 8"},
 		],
 	},
+	{
+		"id": "rings",
+		"kind": "puzzle",
+		"title": "Rings",
+		"blurb": "Gather every colour onto a peg of its own.",
+		"short": "Sort the rings,\na colour a peg.",
+		"motto": "Every ring finds its peg",
+		"footer": "Lift · Drop · Sort",
+		# It picks nothing up, so it asks for no tray; and there is **no
+		# Check** -- a solved board is solved in plain sight and there is no
+		# wrong ring to find, only a wasted move -- so it has no actions row
+		# either and Reset rides up into the top bar. It was built on
+		# 2026-09-20 and fell off the grid in Pinwheel's merge (57c8539), which
+		# took Pinwheel's side of every conflict; back on 2026-09-24.
+		"script": "res://puzzles/rings2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2],
+		# Asks like Sudoku: rings_gen.gd's BANDS, and each is its own daily
+		# with its own done mark. Four rings a peg at every band.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "4 colours, 6 pegs"},
+			{"difficulty": 1, "name": "Medium", "line": "5 colours, 7 pegs"},
+			{"difficulty": 2, "name": "Hard", "line": "6 colours, 8 pegs"},
+		],
+	},
 ]
 
 ## Every entry the game knows.
