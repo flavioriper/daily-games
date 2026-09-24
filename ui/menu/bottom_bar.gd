@@ -12,7 +12,7 @@ signal picked(tab: String)
 
 const Icons = preload("res://ui/icons.gd")
 
-const HEIGHT := 150.0
+const HEIGHT := 120.0
 const ICON := 56.0
 const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "home", "live": true},
@@ -27,7 +27,7 @@ func _init() -> void:
 	enter_from = Vector2(0, 40)
 
 func _build() -> void:
-	_inner.add_theme_stylebox_override("panel", CozyTheme.card(Pal.SURFACE, 36, Pal.LINE, 6, 12))
+	_inner.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, int(HEIGHT * 0.5), 12))
 	_inner.custom_minimum_size.y = HEIGHT
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
@@ -46,7 +46,7 @@ func _make_tab(tab: Dictionary) -> Control:
 	pill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pill.offset_left = 14.0
 	pill.offset_right = -14.0
-	pill.add_theme_stylebox_override("panel", CozyTheme.card(Pal.SUN_TILE, 26, Pal.SUN_TILE, 0, 0))
+	pill.add_theme_stylebox_override("panel", CozyTheme.card(Pal.SUN_TILE, int((HEIGHT - 24.0) * 0.5), Pal.SUN_TILE, 0, 0))
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pill.visible = false
 	holder.add_child(pill)

@@ -87,33 +87,31 @@ const ENTER_FADE := 0.3
 const TOAST_TIME := 2.6
 const TOAST_FADE := 0.25
 ## Where the line sits: this far above the screen's bottom, and this tall.
-const TOAST_OVER := 150.0 + 40.0 + 10.0
+const TOAST_OVER := BottomBar.HEIGHT + MARGIN + 10.0
 const TOAST_H := 88.0
+## Room between the grid and the bar, reserved so the pager pill never lies
+## over a card's text (spec 2026-09-24-painted-menu: cards are now 490 wide
+## with a two-line blurb at their bottom, and the pill used to float on the
+## bare 20px seam between the grid and the bar, which put it right over the
+## last row's text). The budget at 1920: 1920 - 80 margins - 380 header -
+## 200 day - 120 bar - 60 gaps - 20 seam - 20 extra gap = 1040 for four 246
+## rows at 18 gaps (1032). `_fit_grid` subtracts it (and one more GAP) from
+## `room_h` when the seam is standing, and `_build_list` gives it its own
+## spacer control between `_grid` and the bar.
+const PAGER_SEAM := 20.0
 ## The pager strip, laid over the bar the way the toast is: the header, the
-## day row, the grid and the bar already spend the screen exactly (see the
-## toast's own comment in _build_list), so this is an overlay on
+## day row, the grid, the seam and the bar already spend the screen exactly
+## (see the toast's own comment in _build_list), so this is an overlay on
 ## `_list_root` rather than a row of the column, and it costs the grid
 ## nothing -- a card stays 252 whether or not a second page exists.
 ##
-## The screen leaves no free band for it: the true gap between the grid and
-## the bar is GAP (20), the same 20 already spent as separation everywhere
-## else. Rather than a bare row of tiny controls straddling that seam (which
-## reads as ink on the card whose rim it crosses, not a control of its own --
-## found by review, 2026-09-20), the pager is its own paper pill (built in
-## _build_list below, `CozyTheme.card` -- the HUD's usual card stylebox)
-## that floats across the seam: PAGER_MID is the seam's vertical centre,
-## and the pill is centred there and centred horizontally, so wherever it
-## overlaps a neighbour it reads as a chip laid over the page rather than a
-## mark on either one.
-##
-## That overlap is real and was measured by review, 2026-09-20: the pill's
-## buttons sit about 18px inside the last card row's bottom rim. Kept rather
-## than pushed lower, on the ruling that the pill is drawn on top and, once
-## _enter_pager below stops it being tappable while it is still fading in,
-## a tap that lands there correctly belongs to whichever control the player
-## can actually see -- and the bar sits directly under it with no spare band
-## to push into.
-const PAGER_MID := 150.0 + 40.0 + 10.0
+## The pill sits in its own seam since 2026-09-24 (painted menu): PAGER_SEAM
+## opened a real gap between the grid and the bar for it, rather than the
+## bare 20px separation the rest of the column uses, so PAGER_MID is that
+## seam's vertical centre and the pill floats there without lying over
+## either neighbour. Before the painted menu the pill overlapped the last
+## card row by about 18px; that overlap is gone now that the seam exists.
+const PAGER_MID := BottomBar.HEIGHT + MARGIN + GAP + PAGER_SEAM * 0.5
 ## The pill's own slot: taller than the pill needs, so CenterContainer never
 ## clips it.
 const PAGER_SLOT_H := 64.0
@@ -154,6 +152,8 @@ var _tab_tw: Tween
 var _backdrop: ColorRect
 var _list_root: Control
 var _grid: GridContainer
+## The seam-spacer between the grid and the bar; see PAGER_SEAM above.
+var _pager_seam: Control
 var _page := 0
 ## The fitted page (`_fit_grid`): cards a page, columns, a row's height.
 var _per_page := PER_PAGE
@@ -289,6 +289,16 @@ func _build_list() -> void:
 	_grid.add_theme_constant_override("v_separation", GAP)
 	root.add_child(_grid)
 
+	# The seam the pager pill floats in (PAGER_SEAM above): a plain spacer
+	# between the grid and the bar, standing only on the home tab (hidden and
+	# shown together with _grid in _show_tab), so Stats and Streak do not
+	# inherit a stray gap where the grid used to be.
+	_pager_seam = Control.new()
+	_pager_seam.name = "PagerSeam"
+	_pager_seam.custom_minimum_size.y = PAGER_SEAM
+	_pager_seam.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_pager_seam)
+
 	# Stats and Streak take the day row's, the grid's and the pager's room
 	# when picked; the header and the bar stay (spec 2026-09-24, section 4).
 	streak_tab = StreakTab.new()
@@ -333,7 +343,7 @@ func _build_list() -> void:
 	pager_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pager.add_child(pager_center)
 	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", CozyTheme.card(Pal.SURFACE, 24, Pal.LINE, 4, 8))
+	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 24, 8))
 	pager_center.add_child(pill)
 	var pager_row := HBoxContainer.new()
 	pager_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -478,6 +488,8 @@ func _fit_grid() -> void:
 		- _margins.get_theme_constant("margin_right")
 	var room_h := _list_root.size.y - _margins.get_theme_constant("margin_top") \
 		- _margins.get_theme_constant("margin_bottom") - header.size.y - day_row.size.y - bar.size.y - GAP * 3
+	if _pager_seam.visible:
+		room_h -= PAGER_SEAM + GAP
 	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
 	var rows := maxi(1, floori((room_h + MIN_ROW_GAP) / (PuzzleCard.CARD_H + MIN_ROW_GAP)))
 	var slack := room_h - rows * PuzzleCard.CARD_H - (rows - 1) * GAP
@@ -750,6 +762,7 @@ func _show_tab(key: String) -> void:
 	var home := key == "home"
 	day_row.visible = home
 	_grid.visible = home
+	_pager_seam.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
 	Motion.stop(_tab_tw)
