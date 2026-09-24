@@ -443,7 +443,7 @@ func _on_solved() -> void:
 			_hearts_line = tr("WIN_STREAK") % streak
 		event["hearts"] = after
 		event["streak"] = streak
-	daily_completed.emit(puzzle_id)
+	daily_completed.emit(puzzle_id, _day_key if _day_key != 0 else DailySeed.date_key())
 	Analytics.track("puzzle_complete", event)
 	_refresh()
 	# A board whose win has an animation of its own to play out first says

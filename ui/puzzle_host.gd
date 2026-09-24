@@ -14,7 +14,9 @@ extends Control
 signal closed
 ## Emitted once when this host's puzzle is solved, so the menu can persist
 ## the daily completion without making the board know about menu cards.
-signal daily_completed(puzzle_id: String)
+## date_key is the day the solved board was dealt on, which is not today
+## when a board opened before 00:00 UTC is solved after it.
+signal daily_completed(puzzle_id: String, date_key: int)
 
 const Pal = preload("res://core/palette.gd")
 const DailySeed = preload("res://core/daily.gd")
@@ -275,7 +277,7 @@ func _on_reduce_changed(_on: bool) -> void:
 	_refresh()
 
 func _on_solved() -> void:
-	daily_completed.emit(String(_entry.get("id", "")))
+	daily_completed.emit(String(_entry.get("id", "")), DailySeed.date_key())
 	_overlay_label.text = (tr("HOST_STATS") % [_puzzle.elapsed, _puzzle.moves]) + "\n\n" + _puzzle.share_glyphs()
 	_overlay.visible = true
 	Analytics.track("puzzle_complete", _stats().merged({"solved": true}))

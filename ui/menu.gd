@@ -668,7 +668,9 @@ func _show_list() -> void:
 	_list_root.visible = true
 	Progress.touch()
 	var clamped := clampi(_page, 0, _pages() - 1)
-	if clamped != _page:
+	# A new day since the list was last shown (a board left open across
+	# 00:00 UTC) rebuilds the page, so yesterday's done marks come off.
+	if clamped != _page or (_shown_day != 0 and Daily.date_key() != _shown_day):
 		_page = clamped
 		_build_page()
 	_refresh_day()
@@ -780,10 +782,14 @@ func _mount_host(host: Control) -> void:
 	add_child(host)
 	_list_root.visible = false
 
-func _on_daily_completed(puzzle_id: String) -> void:
+## Marks the day the board was dealt on. A board dealt yesterday and solved
+## after 00:00 UTC completes yesterday's card, so today's stays open.
+func _on_daily_completed(puzzle_id: String, date_key: int) -> void:
 	if puzzle_id.is_empty():
 		return
-	Progress.mark_completed(puzzle_id)
+	Progress.mark_completed(puzzle_id, date_key)
+	if date_key != _shown_day:
+		return
 	for card in cards:
 		if is_instance_valid(card) and String(card.entry.get("id", "")) == puzzle_id:
 			card.set_completed(true)
