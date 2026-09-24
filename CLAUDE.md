@@ -100,6 +100,17 @@ Spec: `docs/superpowers/specs/2026-09-18-flat-menu-design.md`.
 Mock: `docs/art/concept-menu-flat.png`, playable at
 `docs/brainstorm/concepts.html#menu`.
 
+- **Insane is a fourth level on every sheet**, not a twentieth card
+  (2026-09-23, difficulty 3, locale key `DIFF_INSANE`), drawn as the sheet's
+  one night row: ink fill, paper lettering, a sun-coloured crescent. Band 3
+  is a provisional generator row on every board -- the same generator, one
+  step harder -- until that board's batch is mined into a bank
+  (`core/insane_bank.gd`, `tools/mine_insane.gd`, `content/insane/`); a
+  board then reads its bank and falls back to the row without one. Spec: `docs/superpowers/specs/2026-09-23-insane-level-design.md`.
+  Two provisional rows miss the 194 ms gate and are accepted by ruling
+  rather than weakened: Binairo's Insane is its Hard row again, and Sudoku's
+  22-given Insane shares Hard's own 300 ms budget. `tools/` never reaches
+  the APK (`export_presets.cfg`'s `exclude_filter`).
 - **The heights are a budget, not a taste.** At 1080x1920: 80 of margin, 60
   of gaps, a 380 header, a 180 day row and a 150 bar leave 1070 for four
   rows, so a card is 252 and spends it on a 92 picture, a 34 name, two 23

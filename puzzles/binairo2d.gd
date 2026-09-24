@@ -73,6 +73,12 @@ const LEVELS := [
 	{"size": 6, "min_clues": 12, "signs": 8},
 	{"size": 6, "min_clues": 0, "signs": 6},
 	{"size": 8, "min_clues": 12, "signs": 10},
+	# Insane's provisional band is exactly Hard's row: the 10x10/min_clues 14
+	# row and the 8x8/min_clues 0 fallback both blew the 194 ms gate (2381 ms
+	# worst) -- every row tried past Hard's own measured 4x and up slower --
+	# so there is nothing harder to give it live; the bank in its own batch
+	# is what makes this band Insane.
+	{"size": 8, "min_clues": 12, "signs": 10},
 ]
 
 ## The armed brush: -2 none (taps cycle), -1 clear, 0 sun, 1 moon.

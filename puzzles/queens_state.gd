@@ -32,7 +32,9 @@ const AUTO := 3
 ## Three a board, as every flat board gives.
 const HINTS := 3
 ## The ladder: easy, medium, hard. The menu opens medium.
-const SIZES := [7, 8, 9]
+## Insane's row is the same court as Hard: the bank in batch 2 is what makes
+## it insane, not the size.
+const SIZES := [7, 8, 9, 9]
 ## Why a seat or a lift was turned down.
 const OK := 0
 const SEEN := 1

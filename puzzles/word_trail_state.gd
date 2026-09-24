@@ -13,11 +13,12 @@ extends RefCounted
 const WORDS_PATH := "res://content/word_trail.json"
 
 ## The bands. A wall is whatever the words do not cover, so the wall count is
-## a property of the band and never a dial: 7, 7 and 11. One word per length
-## would leave 16 walls on the 7x7, a third of the field, so the two larger
-## bands repeat a length instead. Six words at most, which is what the
-## palette's six chip colours cover.
-const BANDS := [[3, 4, 5, 6], [3, 4, 4, 5, 6, 7], [4, 5, 6, 7, 8, 8]]
+## a property of the band and never a dial: 7, 7, 11 and 19. One word per
+## length would leave 16 walls on the 7x7, a third of the field, so the two
+## larger bands repeat a length instead. Six words at most, which is what the
+## palette's six chip colours cover. Insane's row is provisional, replaced by
+## the bank in this board's own batch.
+const BANDS := [[3, 4, 5, 6], [3, 4, 4, 5, 6, 7], [4, 5, 6, 7, 8, 8], [6, 7, 8, 8, 8, 8]]
 const ATTEMPTS := 60
 const RESTARTS := 120
 
@@ -58,7 +59,7 @@ static func word_bank() -> Dictionary:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var lens: Array = lens_for(difficulty)
-	n = 5 + clampi(difficulty, 0, 2)
+	n = 5 + clampi(difficulty, 0, BANDS.size() - 1)
 	var best: Array = []
 	var best_score := 1 << 30
 	var loose: Array = []

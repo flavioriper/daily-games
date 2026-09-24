@@ -25,7 +25,8 @@ const TENT := 1
 const GRASS := 2
 const HINTS := 3
 ## Width, height and tents per difficulty: the island's ladder exactly.
-const SIZES := [[6, 6, 5], [7, 7, 7], [8, 8, 9]]
+## Insane's provisional band, replaced by the bank in batch 2.
+const SIZES := [[6, 6, 5], [7, 7, 7], [8, 8, 9], [10, 10, 14]]
 
 ## A line's state, which is what its count chip wears.
 const LINE_IDLE := 0

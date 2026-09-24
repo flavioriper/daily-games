@@ -143,7 +143,7 @@ var length: int:
 var palette_size: int:
 	get: return state.palette_size
 var max_guesses: int:
-	get: return State.TRIES
+	get: return state.tries
 ## The win harness reads the code and the rows played off the board, exactly
 ## as it does on the island.
 var _code: Array:
@@ -201,7 +201,8 @@ func title() -> String: return "Code Break"
 func rules() -> String:
 	var count := "five" if length == 5 else "four"
 	var twice := "A friend may sit in it twice." if state.repeats else "No friend sits in it twice."
-	return "Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. Eight rows, three hints." % [count, twice]
+	var rows := "Seven" if state.tries == 7 else "Eight"
+	return "Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. %s rows, three hints." % [count, twice, rows]
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check", "palette"]
@@ -277,7 +278,7 @@ func _build_column() -> void:
 		seat.add_child(lid)
 		_lid.append(lid)
 
-	for g in State.TRIES:
+	for g in state.tries:
 		var row := Control.new()
 		row.name = "Row_%d" % g
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -361,7 +362,7 @@ func _layout() -> void:
 	var pitch := (SEAT_R - SEAT_L) / length
 	_piece_big = minf(PIECE_MAX, pitch - PIECE_SLACK)
 	_piece_small = _piece_big * PIECE_SMALL
-	_need = CODE_TOP + _piece_big + ROWS_AFTER + RH_SMALL * (State.TRIES - 1) + RH_BIG
+	_need = CODE_TOP + _piece_big + ROWS_AFTER + RH_SMALL * (state.tries - 1) + RH_BIG
 	_scale = minf(size.x / COL_W, maxf(0.05, (size.y - 2.0 * PAD) / _need))
 	_column.size = Vector2(COL_W, _need)
 	_column.scale = Vector2.ONE * _scale
@@ -394,7 +395,7 @@ func _code_rest(s: int) -> Vector2:
 ## Every row's y, from the running sum of the heights their bigness gives.
 func _place_rows() -> void:
 	var y := CODE_TOP + _piece_big + ROWS_AFTER
-	for g in State.TRIES:
+	for g in state.tries:
 		var h := _row_h(g)
 		var row: Control = _rows[g]
 		row.position = Vector2(0.0, y)
@@ -477,7 +478,7 @@ func _fit_faces(g: int) -> void:
 ## a seat whose friend has not changed keeps its node, so an idling face is
 ## never restarted under the player.
 func _refresh_seats() -> void:
-	for g in State.TRIES:
+	for g in state.tries:
 		for s in length:
 			var want := -1
 			if g < state.guesses.size():
@@ -805,10 +806,10 @@ func _peek() -> void:
 func _slide(g: int) -> void:
 	Motion.stop(_slide_tw)
 	var from_a: float = _big[g]
-	var from_b: float = _big[g + 1] if g + 1 < State.TRIES else 0.0
+	var from_b: float = _big[g + 1] if g + 1 < state.tries else 0.0
 	var apply := func(u: float) -> void:
 		_big[g] = lerpf(from_a, 0.0, u)
-		if g + 1 < State.TRIES:
+		if g + 1 < state.tries:
 			_big[g + 1] = lerpf(from_b, 1.0, u)
 		_place_rows()
 	if Motion.reduce:
@@ -904,7 +905,7 @@ func reset_board() -> void:
 	_running = true
 	moves = 0
 	var k := 0
-	for g in range(State.TRIES - 1, -1, -1):
+	for g in range(state.tries - 1, -1, -1):
 		for s in range(length - 1, -1, -1):
 			if _face[g][s] == null:
 				continue
@@ -919,7 +920,7 @@ func reset_board() -> void:
 		_code_face[s].visible = false
 		_code_face[s].set_idle(false)
 		_lid_seat[s].position = _code_rest(s)
-	for g in State.TRIES:
+	for g in state.tries:
 		_big[g] = 1.0 if g == 0 else 0.0
 		_pouch[g].clear()
 	_place_rows()
@@ -942,10 +943,10 @@ func completion_record() -> Dictionary:
 ## state is empty when the player opens it again. The player's own rows come
 ## back from `completed_record` and are replayed through the state, so every
 ## pouch scores exactly as it did. A save from before completion_record()
-## existed has no rows, so a terminal scorecard is fabricated instead: seven
-## deterministic non-winning attempts followed by the answer on row eight,
-## which keeps the ending where a real finished game's would be rather than
-## making the board look solved on its first try.
+## existed has no rows, so a terminal scorecard is fabricated instead: tries
+## minus one deterministic non-winning attempts followed by the answer on the
+## last row, which keeps the ending where a real finished game's would be
+## rather than making the board look solved on its first try.
 func restore_completed_board() -> void:
 	_stop_all()
 	_busy = false
@@ -956,7 +957,7 @@ func restore_completed_board() -> void:
 		# accidentally score as a solve, even when the day's code permits
 		# repeated friends.
 		earlier[0] = (int(earlier[0]) + 1) % state.palette_size
-		for _guess in State.TRIES - 1:
+		for _guess in state.tries - 1:
 			rows.append(earlier.duplicate())
 		rows.append(state.code.duplicate())
 	for row in rows:
@@ -967,7 +968,7 @@ func restore_completed_board() -> void:
 	# so the large, just-finished treatment goes on the row that cracked it --
 	# where a live solve leaves it, since the winning row never slides.
 	var last: int = state.guesses.size() - 1
-	for g in State.TRIES:
+	for g in state.tries:
 		_big[g] = 1.0 if g == last else 0.0
 	_place_rows()
 	_refresh_seats()
@@ -978,7 +979,7 @@ func restore_completed_board() -> void:
 ## and nothing otherwise, which sends the restore to its fabricated fallback.
 func _recorded_rows() -> Array:
 	var raw = completed_record.get("guesses", [])
-	if not raw is Array or raw.is_empty() or raw.size() > State.TRIES:
+	if not raw is Array or raw.is_empty() or raw.size() > state.tries:
 		return []
 	var out: Array = []
 	for r in raw.size():
@@ -1088,7 +1089,7 @@ func _sentence(exact: int, colour: int) -> String:
 ## after them.
 func _enter() -> void:
 	_stop_entrance()
-	for g in State.TRIES:
+	for g in state.tries:
 		var at := ENTER_ROW + Motion.stagger(g, Motion.ENTER_STAGGER)
 		var pop: Tween = Motion.slide(_rows[g], "scale", Vector2.ONE * Motion.ENTER_WIDE_FROM, Vector2.ONE, Motion.ENTER_POP, at)
 		if pop != null:

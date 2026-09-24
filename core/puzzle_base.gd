@@ -24,6 +24,10 @@ var moves: int = 0
 var elapsed: float = 0.0
 var hints_used: int = 0
 var checks: int = 0
+## How many times New was pressed since this board's card opened; a banked
+## Insane board (core/insane_bank.gd) steps its pick by it. The host sets it
+## before start().
+var bank_step := 0
 var _running: bool = false
 var _done: bool = false
 ## What completion_record() handed back when this daily was solved, set by the

@@ -79,7 +79,7 @@ const PUZZLES := [
 		"footer": "Think · Balance · Complete",
 		"script": "res://puzzles/binairo2d.gd",
 		"shell": "flat",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): easy and medium are 6x6, hard is 8x8,
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -87,6 +87,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
+			{"difficulty": 3, "name": "Insane", "line": "8 × 8"},
 		],
 	},
 	{
@@ -102,7 +103,7 @@ const PUZZLES := [
 		"script": "res://puzzles/codebreak2d.gd",
 		"shell": "flat",
 		"tray": "friends",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): four seats of six friends with no one
 		# twice in the code, the same with repeats, or five seats of seven;
 		# each is its own daily with its own done mark.
@@ -111,6 +112,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "4 friends, all different"},
 			{"difficulty": 1, "name": "Medium", "line": "4 friends, may repeat"},
 			{"difficulty": 2, "name": "Hard", "line": "5 friends, may repeat"},
+			{"difficulty": 3, "name": "Insane", "line": "5 friends of 7, 7 tries"},
 		],
 	},
 	{
@@ -128,7 +130,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "weights",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): three, four or five kinds of fruit,
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -136,6 +138,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "3 fruits"},
 			{"difficulty": 1, "name": "Medium", "line": "4 fruits"},
 			{"difficulty": 2, "name": "Hard", "line": "5 fruits"},
+			{"difficulty": 3, "name": "Insane", "line": "5 fruits, weights to 12"},
 		],
 	},
 	{
@@ -153,7 +156,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): seven, ten or fourteen lanterns, and
 		# each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -161,6 +164,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "7 lanterns"},
 			{"difficulty": 1, "name": "Medium", "line": "10 lanterns"},
 			{"difficulty": 2, "name": "Hard", "line": "14 lanterns"},
+			{"difficulty": 3, "name": "Insane", "line": "20 lanterns"},
 		],
 	},
 	{
@@ -176,7 +180,7 @@ const PUZZLES := [
 		"script": "res://puzzles/shikaku2d.gd",
 		"shell": "flat",
 		"tray": "none",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 6, 6 by 8 or 7 by 9 field,
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -184,6 +188,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "5 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 8"},
 			{"difficulty": 2, "name": "Hard", "line": "7 × 9"},
+			{"difficulty": 3, "name": "Insane", "line": "7 × 9, big plots"},
 		],
 	},
 	{
@@ -197,7 +202,7 @@ const PUZZLES := [
 		"script": "res://puzzles/tents2d.gd",
 		"shell": "flat",
 		"tray": "none",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 6 by 6 field with 5 tents, 7 by 7
 		# with 7 or 8 by 8 with 9, and each is its own daily with its own
 		# done mark.
@@ -206,6 +211,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
 			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
+			{"difficulty": 3, "name": "Insane", "line": "10 × 10"},
 		],
 	},
 	{
@@ -219,7 +225,7 @@ const PUZZLES := [
 		"script": "res://puzzles/lightup2d.gd",
 		"shell": "flat",
 		"tray": "none",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 5, 6 by 6 or 7 by 7 court,
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -227,6 +233,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "5 × 5"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "7 × 7"},
+			{"difficulty": 3, "name": "Insane", "line": "8 × 8"},
 		],
 	},
 	{
@@ -240,7 +247,7 @@ const PUZZLES := [
 		"script": "res://puzzles/oneline2d.gd",
 		"shell": "flat",
 		"tray": "none",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 3 by 3, 4 by 3 or 4 by 4 lattice
 		# of posts, and each is its own daily with its own done mark. The
 		# lattice is named rather than the lines, which vary a lot within a
@@ -250,6 +257,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "3 × 3 posts"},
 			{"difficulty": 1, "name": "Medium", "line": "4 × 3 posts"},
 			{"difficulty": 2, "name": "Hard", "line": "4 × 4 posts"},
+			{"difficulty": 3, "name": "Insane", "line": "5 × 4 posts"},
 		],
 	},
 	{
@@ -264,7 +272,7 @@ const PUZZLES := [
 		"script": "res://puzzles/nonogram2d.gd",
 		"shell": "flat",
 		"tray": "tiles",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 5, 7 by 7 or 9 by 9 picture,
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -272,6 +280,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "5 × 5"},
 			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
 			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+			{"difficulty": 3, "name": "Insane", "line": "10 × 10"},
 		],
 	},
 	{
@@ -287,7 +296,7 @@ const PUZZLES := [
 		"script": "res://puzzles/queens2d.gd",
 		"shell": "flat",
 		"tray": "queens",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 7 by 7, 8 by 8 or 9 by 9 court,
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
@@ -295,6 +304,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "7 × 7"},
 			{"difficulty": 1, "name": "Medium", "line": "8 × 8"},
 			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+			{"difficulty": 3, "name": "Insane", "line": "9 × 9"},
 		],
 	},
 	{
@@ -313,7 +323,7 @@ const PUZZLES := [
 		"tray": "keys",
 		"actions": false,
 		"tip": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): the word comes from the 217
 		# commonest answers, the first 467 or all 968 (content/hidden_word.json's
 		# bands), and each is its own daily with its own done mark.
@@ -322,6 +332,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "HW_LVL_0"},
 			{"difficulty": 1, "name": "Medium", "line": "HW_LVL_1"},
 			{"difficulty": 2, "name": "Hard", "line": "HW_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "HW_LVL_3"},
 		],
 	},
 	{
@@ -339,7 +350,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): four words on a 5 by 5 field, six
 		# on 6 by 6 or six longer ones on 7 by 7 (word_trail_state.gd's
 		# BANDS), and each is its own daily with its own done mark.
@@ -348,6 +359,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "WT_LVL_0"},
 			{"difficulty": 1, "name": "Medium", "line": "WT_LVL_1"},
 			{"difficulty": 2, "name": "Hard", "line": "WT_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "WT_LVL_3"},
 		],
 	},
 	# --- page two, from here down: `ui/menu.gd`'s PER_PAGE is twelve, and
@@ -374,7 +386,7 @@ const PUZZLES := [
 		"script": "res://puzzles/mushroom2d.gd",
 		"shell": "flat",
 		"tray": "patch",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 6 mushrooms in a 6 by 6 patch, 9 in
 		# 7 by 7 or 12 in 8 by 8 (mushroom_gen.gd's SIZES), and each is its
 		# own daily with its own done mark.
@@ -383,6 +395,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 mushrooms, 6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "9 mushrooms, 7 × 7"},
 			{"difficulty": 2, "name": "Hard", "line": "12 mushrooms, 8 × 8"},
+			{"difficulty": 3, "name": "Insane", "line": "16 mushrooms, 9 × 9"},
 		],
 	},
 	{
@@ -399,7 +412,7 @@ const PUZZLES := [
 		"script": "res://puzzles/sudoku2d.gd",
 		"shell": "flat",
 		"tray": "digits",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Easy and medium are the 6x6 mini and hard the 9x9, so the card asks
 		# which before it opens (ui/menu/difficulty_sheet.gd), and each is its
 		# own daily with its own done mark (progress_id below).
@@ -408,6 +421,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+			{"difficulty": 3, "name": "Insane", "line": "9 × 9, 22 clues"},
 		],
 	},
 	{
@@ -425,7 +439,7 @@ const PUZZLES := [
 		"script": "res://puzzles/bridges2d.gd",
 		"shell": "flat",
 		"tray": "none",
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 11 islets on a 7 by 7 sea, 16 on
 		# 9 by 9 or 24 on 11 by 11 (bridges_gen.gd's BANDS), and each is its
 		# own daily with its own done mark.
@@ -434,6 +448,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "11 islets, 7 × 7"},
 			{"difficulty": 1, "name": "Medium", "line": "16 islets, 9 × 9"},
 			{"difficulty": 2, "name": "Hard", "line": "24 islets, 11 × 11"},
+			{"difficulty": 3, "name": "Insane", "line": "30 islets, 11 × 11"},
 		],
 	},
 	{
@@ -455,7 +470,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 5 patches on a 5 by 5 backing, 6 on
 		# 6 by 6 or 8 on 7 by 7 (quilt_gen.gd's BANDS), and each is its own
 		# daily with its own done mark.
@@ -464,6 +479,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "5 patches, 5 × 5"},
 			{"difficulty": 1, "name": "Medium", "line": "6 patches, 6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "8 patches, 7 × 7"},
+			{"difficulty": 3, "name": "Insane", "line": "10 patches, 7 × 7"},
 		],
 	},
 	{
@@ -481,7 +497,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 5, 6 by 6 or 7 by 7 garden
 		# (fairy_lights_gen.gd's SIZES), and each is its own daily with its
 		# own done mark. The lanterns are not counted on the sheet: Prim
@@ -491,6 +507,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "5 × 5 garden"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6 garden"},
 			{"difficulty": 2, "name": "Hard", "line": "7 × 7 garden"},
+			{"difficulty": 3, "name": "Insane", "line": "8 × 8 garden"},
 		],
 	},
 	{
@@ -510,7 +527,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 10 by 14, 13 by 18 or 16 by 22 sky
 		# (planes_state.gd's BANDS), and each is its own daily with its own
 		# done mark. The planes are not counted on the sheet: 300 seeds a
@@ -520,6 +537,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "10 × 14 sky"},
 			{"difficulty": 1, "name": "Medium", "line": "13 × 18 sky"},
 			{"difficulty": 2, "name": "Hard", "line": "16 × 22 sky"},
+			{"difficulty": 3, "name": "Insane", "line": "16 × 22 sky, long planes"},
 		],
 	},
 	{
@@ -536,7 +554,7 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
-		"difficulties": [0, 1, 2],
+		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 9 pieces on a 5 by 5 frame, 11 on
 		# 5 by 7 or 13 on 6 by 8 (pinwheel_gen.gd's BANDS), and each is its
 		# own daily with its own done mark. The piece count is fixed per band,
@@ -546,6 +564,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "9 pieces, 5 × 5"},
 			{"difficulty": 1, "name": "Medium", "line": "11 pieces, 5 × 7"},
 			{"difficulty": 2, "name": "Hard", "line": "13 pieces, 6 × 8"},
+			{"difficulty": 3, "name": "Insane", "line": "16 pieces, 7 × 8"},
 		],
 	},
 ]

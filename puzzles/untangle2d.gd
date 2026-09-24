@@ -52,7 +52,8 @@ const PAD_TOP := 84.0
 const PAD_BOTTOM := 176.0
 ## A lantern's radius per difficulty, and the field width they were drawn at;
 ## a narrower card takes them down with it.
-const R_OF := [54.0, 48.0, 42.0]
+## Insane's provisional band, replaced by the bank in batch 2.
+const R_OF := [54.0, 48.0, 42.0, 38.0]
 const R_WIDTH := 780.0
 
 # --- the cord ---

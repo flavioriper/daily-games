@@ -19,11 +19,15 @@ const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), 
 ## The bands (spec section 6). Hard is the reference's own 16 x 22. The
 ## weights pick a plane's length: the middle lengths are the common ones,
 ## because a board of two-cell darts reads as confetti and a board of
-## ten-cell ones cannot be packed.
+## ten-cell ones cannot be packed. Insane keeps Hard's field and raises the
+## floor of a plane's length instead, so every plane reads as a real flight
+## rather than a two-cell hop; its row is provisional, replaced by the bank
+## in this board's own batch.
 const BANDS: Array[Dictionary] = [
 	{"cols": 10, "rows": 14, "min_len": 2, "max_len": 8, "weights": [2, 3, 4, 5, 5, 4, 3], "floor": 0.72},
 	{"cols": 13, "rows": 18, "min_len": 2, "max_len": 9, "weights": [2, 3, 4, 5, 5, 5, 4, 3], "floor": 0.72},
 	{"cols": 16, "rows": 22, "min_len": 2, "max_len": 10, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.72},
+	{"cols": 16, "rows": 22, "min_len": 4, "max_len": 12, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.80},
 ]
 ## How many boards to make before keeping the fullest, and how many failed
 ## placements in a row end a board.

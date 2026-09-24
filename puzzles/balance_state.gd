@@ -24,8 +24,12 @@ var shapes: int = 0
 var secret: Array = []
 var scales: Array = []
 var anchor: Dictionary = {}
-## The player's answer, one weight per shape, always in [1, Gen.MAX_W].
+## The player's answer, one weight per shape, always in [1, max_w].
 var guess: Array = []
+## The top of a weight's range for this puzzle: Gen.MAX_W by default, 12 on
+## Insane. Comes from the generator's own output, so the guess never runs
+## ahead of the range the secret was actually drawn from.
+var max_w := Gen.MAX_W
 ## Per shape: the weight is fixed and its card takes no presses. The anchor
 ## from the start, plus anything a hint has revealed.
 var locked: Array = []
@@ -42,6 +46,7 @@ func setup(out: Dictionary) -> void:
 	for sc in out.scales:
 		scales.append({"left": (sc.left as Array).duplicate(), "right": (sc.right as Array).duplicate()})
 	anchor = (out.anchor as Dictionary).duplicate()
+	max_w = int(out.get("max_w", Gen.MAX_W))
 	shapes = secret.size()
 	guess = []
 	locked = []
@@ -54,13 +59,13 @@ func setup(out: Dictionary) -> void:
 # --- moves ---
 
 ## Whether shape `i` can take a step of `delta` right now: an unlocked shape
-## whose weight would stay inside [1, MAX_W]. The weight cards grey a button
+## whose weight would stay inside [1, max_w]. The weight cards grey a button
 ## out by this, and a refused press is what makes a card shiver.
 func can_step(i: int, delta: int) -> bool:
 	if locked[i]:
 		return false
 	var next: int = int(guess[i]) + delta
-	return next >= 1 and next <= Gen.MAX_W
+	return next >= 1 and next <= max_w
 
 ## The move: one unit onto or off shape `i`'s weight. False when the shape is
 ## given or the range runs out, so the board can answer with a shiver and the

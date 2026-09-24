@@ -30,7 +30,9 @@ const HINTS := 3
 ## The four ways out of a cell, and the ladder: width, height and how much of
 ## the court is sown with blocks. The island's own numbers.
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
-const SIZES := [[5, 5, 0.24], [6, 6, 0.22], [7, 7, 0.20]]
+## Insane's row is the fallback: 9x9 missed the 194 ms gate (worst 978 ms
+## over 40 seeds on this Mac), replaced by the bank in batch 2.
+const SIZES := [[5, 5, 0.24], [6, 6, 0.22], [7, 7, 0.20], [8, 8, 0.18]]
 
 ## What a numbered block wears.
 const BLOCK_IDLE := 0
