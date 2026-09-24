@@ -1,5 +1,8 @@
 # The first screen, flat — and the legacy split
 
+> Layout superseded by 2026-09-24-painted-menu-design.md (two columns,
+> painted plates); behaviour unchanged.
+
 **Date:** 2026-09-18
 **Mock:** `docs/art/concept-menu-flat.png` (the user's), playable at
 `docs/brainstorm/concepts.html#menu`

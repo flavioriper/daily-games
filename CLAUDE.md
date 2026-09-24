@@ -58,10 +58,9 @@ draw-call count, a budget figure or a design-space constant is fine.
 
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the
 wordmark in ink with its golden sun-dot and the sun and moon beside it, a day
-row, a page of puzzle cards three across and four down, a pager under the
-grid once a second page is needed, and a bottom bar. Eighteen cards are in
-the registry, so there are two pages: twelve on the first, and Mushroom
-Patch, Sudoku, Bridges, Quilt, Paper Planes and Pinwheel on the second. There is no
+row, a page of puzzle cards two across and four down, a pager under the
+grid once a second page is needed, and a bottom bar. Twenty cards, so three
+pages at 1080x1920: eight, eight and four. There is no
 stage on it, no `World3D`, and no model anywhere -- `world/main.tscn` does
 not even carry a Stage node any more. It replaced the campsite, which was
 removed with the rest of the 3D game on 2026-09-24.
@@ -80,14 +79,25 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   rather than weakened: Binairo's Insane is its Hard row again, and Sudoku's
   22-given Insane shares Hard's own 300 ms budget. `tools/` never reaches
   the APK (`export_presets.cfg`'s `exclude_filter`).
-- **The heights are a budget, not a taste.** At 1080x1920: 80 of margin, 60
-  of gaps, a 380 header, a 180 day row and a 150 bar leave 1070 for four
-  rows, so a card is 252 and spends it on a 92 picture, a 34 name, two 23
-  blurb lines and a 16 inset. The card carries its own paper stylebox
-  rather than `CozyTheme.paper_card()` for that inset: the HUD's usual 24
-  and the mock's 118 picture came to 277 a card and pushed the bar off the
-  screen. Anything added to the header, the day row or the bar comes out of
-  the pictures.
+- **The heights are a budget, not a taste.** At 1080x1920 since 2026-09-24:
+  80 of margin (`ui/menu.gd`'s `MARGIN` 40, top and bottom), 60 of gaps
+  (`GAP` 20 between the header, the day card, the grid and the bar), a 380
+  header, a 200 day card and a 120 bar leave 1080 for four rows of `CARD_H`
+  246, spent as a 10 `INSET`, a 100 banner, the name and blurb in a column
+  beside an 80 `GO` button, and 10 back out to the edge
+  (`ui/menu/puzzle_card_2d.gd`). The banner was first built at 108, the
+  brief's own figure, on the naive assumption that a 44 name plus two 26
+  blurb lines summed to 96 with a little to spare; a properly-settled probe
+  (task 2, fix round 1, 2026-09-24) measured the name and blurb's real font
+  metrics at 122, not 96, so 108 ran the card 8 over its 246 budget and
+  `ART_H` was lowered to 100, the floor the brief allows. Before 2026-09-24
+  the budget was a 180 day row and a 150 bar leaving 1070 for four rows
+  across three columns, so a card was 252 and spent it on a 92 picture, a
+  34 name, two 23 blurb lines and a 16 inset. The card carries its own
+  paper stylebox rather than `CozyTheme.paper_card()` for that inset: the
+  HUD's usual 24 and the mock's 118 picture came to 277 a card and pushed
+  the bar off the screen. Anything added to the header, the day card or the
+  bar still comes out of the pictures.
 - **The page is fitted to the screen since 2026-09-23** (`ui/menu.gd`,
   `_fit_grid`). The canvas is 1080 wide and never shorter than 1920
   (`stretch/aspect="expand"`), so a taller phone gets height and a wider
@@ -167,13 +177,29 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   the old menu never drew a background and the viewport's clear colour --
   the stage's sky -- showed through. With nothing behind this screen,
   `_build_list` lays a `Pal.PAPER` rect under everything.
-- **A card's picture is the board's own cast** (`ui/menu/card_art.gd`):
-  `ui/faces/` characters seated in a 320 by 118 box and scaled to the card,
-  plus whatever furniture they stand on drawn under them. Twelve of the
-  eighteen are almost entirely reuse; the six that borrow nothing are
-  Nonogram, Sudoku, Bridges, Quilt, Paper Planes and Pinwheel, none of which
-  has a character to borrow, and none of which has a branch of `_build` at
-  all.
+- **A card's picture is a painted plate under the board's own cast**
+  (`ui/menu/vistas.gd`, `shaders/painted_plate_2d.gdshader`, 2026-09-24).
+  Six vistas the user supplied (`assets/art/menu/vista_<name>.png`: sky,
+  meadow, night, autumn, beach, dusk) are cropped as fractions of the
+  picture, never pixels, so a full-size original can replace a file with no
+  change to the crop table, and each is drawn as one `ColorRect` through the
+  shader -- one draw call apiece for the header, the day card and every one
+  of the twenty card banners. A vista that is not on disk, or an id the
+  table does not name, draws a sky-over-ground colour gradient instead,
+  never an error, the way `Fx2D.cue()` plays silence for a missing sound.
+  Confirmed 2026-09-24 by moving `vista_night.png` and its import cache
+  aside and reshooting page one: Untangle's and Light Up's banners drew as
+  gradients, with no error or warning in the run's log. The plate sits
+  *under* `ui/menu/card_art.gd`'s own drawing, unchanged by this task --
+  **characters are still never images** -- so a card's picture is now a
+  plate plus a cast, not one replacing the other.
+  Before 2026-09-24 the plate under the cast was a plain `Pal.PAPER` rect
+  and the cast was the whole picture: `ui/faces/` characters seated in a
+  320 by 118 box and scaled to the card, plus whatever furniture they stand
+  on drawn under them. Twelve of the eighteen were almost entirely reuse;
+  the six that borrowed nothing were Nonogram, Sudoku, Bridges, Quilt, Paper
+  Planes and Pinwheel, none of which has a character to borrow, and none of
+  which has a branch of `_build` at all.
   **Quilt's is the board's own drawing rather than a second one**: the card
   and the board both lay their patches through `ui/faces/patch_cloth.gd`, so
   they cannot drift apart. **Pinwheel's is the second of those**, through
@@ -185,7 +211,8 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   **48** draw calls on its own; built into one `Face.Builder` mesh and issued
   as a single `draw_mesh` -- the technique Hidden Word's band already used in
   this file -- **the same picture costs 1**. gl_compatibility pays per
-  `draw_*` command, and a card's picture is not exempt.
+  `draw_*` command, and a card's picture is not exempt -- the painted plate
+  under it is one more `draw_mesh` a card, not a reason to relax that.
 - **Eighteen cards, all eighteen live, and no `soon` card left.** Three left
   the grid in a week, each being redesigned outright and each keeping its
   island board under More: Snake Apple's on 2026-09-19 to make room for
@@ -292,7 +319,31 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   picture is 7 of that 311 -- checked on the same build with its `_draw`
   branch stubbed out, at 304, twice. Of the older rise, the Queens card
   alone cost 12 and the rest predates it: the header's turning, glinting sun
-  and later changes since 291 was first measured.
+  and later changes since 291 was first measured. **All of the above is
+  before 2026-09-24**, the three-column grid this file measured up to
+  Pinwheel and Rings.
+- **Measured again on 2026-09-24, the painted two-column screen**
+  (`tests/_shot_menu.gd` at `--resolution 810x1440`, two readings taken
+  one after another and the second quoted): **255** draw calls on **page
+  one**, well below the pre-painting 334 even though eight cards now stand
+  where twelve did, and a mean idle of 8.33 ms both times -- the same
+  120 Hz vsync ceiling this file has read since the flat menu shipped, so
+  still not a frame-time measurement. **Page two reads 224** (`-- page2`,
+  8.39 then 8.33 ms), **Streak 112** and **Stats 149** (`-- streak` and
+  `-- stats`, 8.33 and 8.33 ms, then 8.33 and 8.34 ms), all comfortably
+  inside the 855 budget. A card measured 364-365 px wide on
+  `/tmp/shot_menu_1.png` at two rows clear of any art or text (the shadow
+  the lifted stylebox casts softens the true edge by a few pixels either
+  side), against the 367-368 `MIN_CARD_W` 490 times the 810x1440 harness's
+  0.75 scale predicts -- close enough to confirm `--resolution` landed
+  before `--script` and not after, where a card would read nearer 430.
+  Run again under `--rendering-driver opengl3_angle`: the same 255 draw
+  calls and a painted plate on every card; compared against the default
+  driver's page-one shot with Pillow, only 695 of 1,166,400 pixels differ
+  by more than 30 levels, and every one of them sits inside the header's
+  sun-and-moon box (x497-773, y105-284) -- the sun-dot's glint, on its own
+  clock, differing between two runs of the same build, the way this file
+  has recorded for every other board's ANGLE check.
 
 ## The flat screens
 

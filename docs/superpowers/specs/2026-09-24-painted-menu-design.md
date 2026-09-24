@@ -197,3 +197,47 @@ page and the pale-swatch card picture to two columns, eight a page and
 painted plates. It states the new budget and the draw-call readings from
 section 10, and states that "never an image" now means never a character.
 The flat-menu spec gets a one-line pointer to this one.
+
+## 13. Measured
+
+Taken 2026-09-24 with `tests/_shot_menu.gd` at `--resolution 810x1440`,
+`--resolution` before `--script` in every invocation, `git checkout --
+project.godot` after each, two sequential readings with the second quoted:
+
+- **Page one**: 255 / 255 draw calls, 8.33 / 8.33 ms mean idle. **255**
+  against the section 10 estimate of "fewer than thirty" over the old 334 --
+  it landed lower still, because eight cards now stand where twelve did.
+- **Page two** (`-- page2`): 255 / 255 on the Home shot and 224 / 224 on the
+  turned page, 8.39 then 8.33 ms (page2's own idle 8.33 both times).
+- **Streak** (`-- streak`): 112 / 112 draw calls, 8.33 / 8.33 tab idle.
+- **Stats** (`-- stats`): 149 / 149 draw calls, 8.33 / 8.34 tab idle.
+
+All four are well inside the 855 budget.
+
+- **Card width**: measured on `/tmp/shot_menu_1.png` (810x1440) at two rows
+  clear of any art or text (y=680 and y=700), where the card's shadow-lifted
+  panel runs a clean 364-365 px between background-coloured margins and
+  the inter-column gap. Expected 367-368 (490 x 0.75); the few pixels short
+  are the lifted stylebox's own shadow blur softening the true edge, not a
+  scale error. A card anywhere near 430 wide would have meant the flag
+  landed after `--script`; it did not.
+- **ANGLE**: `--rendering-driver opengl3_angle` read the same 255 draw
+  calls, with a painted plate on every card. Compared against the default
+  driver's page-one shot with Pillow (`ImageChops.difference`), max delta
+  190 and a bbox of the whole frame at the loosest threshold, but only 695
+  of 1,166,400 pixels differ by more than 30 levels, and their bounding box
+  (x497-773, y105-284) sits entirely inside the header's sun-and-moon box --
+  the sun-dot's glint, on its own clock, differing between two runs of the
+  same build. No plate anywhere is missing or garbled.
+- **Missing vista**: `assets/art/menu/vista_night.png`, its `.import` file,
+  and the matching `.godot/imported/vista_night.png-*.ctex`/`.md5` were
+  moved aside (moving the source alone was not enough -- Godot's import
+  cache still serves the old texture) and the page-one shot re-run. The log
+  had no `error` or `warn` line. Untangle's and Light Up's banners drew the
+  sky-over-ground colour gradient in place of the night vista, and draw
+  calls held at 255. Every moved file was restored byte-for-byte afterwards;
+  `git status` on `assets/art/menu/` came back clean.
+
+The suite (`godot --headless --path . --script tests/run_tests.gd`) passed
+at `failed=0` after these readings, with `project.godot` checked out clean
+between every windowed run.
