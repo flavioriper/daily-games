@@ -50,10 +50,8 @@ be built.
       Streak. Settings already has its own button in the header.
 - [x] (2026-09-24) Legacy boards' `seed_as` goes with them. Check that no flat board seeds
       from an island id.
-- [ ] Backend: How Big? was the only turn. Decide whether to disable
-      `publishDay`, `rollupTally` and `submitTurn` (Cloud Functions plus
-      scheduler costs) or keep them for a future flat turn. Take
-      `core/backend.gd` out of the startup path if nothing uses it.
+- [x] (2026-09-24) Backend: **kept**. A new, flat How Big? is coming, so the
+      functions, `core/backend.gd` and `content/how_big.json` stay.
 - [x] (2026-09-24) Rewrite CLAUDE.md's legacy/ and turns sections to match.
 - [ ] Measure the APK size again. It was 31.7 MB on 2026-09-15 with the 3D in
       it.
@@ -239,9 +237,8 @@ be built.
       before the 3D removal (main scored 7/19 in that run; the branch
       scored 16/19), so it is the harness and its timing, not the boards.
       Fix it before the quality gate leans on it.
-- [ ] `ui/flat/tip_card.gd` and `ui/hud/binairo_tutorial.gd` are loaded by
-      nothing live. Check whether the first-play tutorial replaced them, and
-      delete them if so.
+- [x] (2026-09-24) `ui/flat/tip_card.gd` and `ui/hud/binairo_tutorial.gd`
+      were loaded by nothing live; deleted.
 
 ## Phase 5: Launch
 

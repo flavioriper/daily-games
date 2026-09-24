@@ -1019,9 +1019,9 @@ func _enter() -> void:
 	_busy_for(_enter_delay(Gen.CELLS - 1) + Motion.DROP_TIME)
 	fx.cue("enter")
 
-## What the tip card shows. A Dictionary, because that is what
-## ui/flat/tip_card.gd reads: a board that answers this owns its own line and
-## its own cycle, and the card stops cycling its Binairo rules for it.
+## What the tip card showed. The card (ui/flat/tip_card.gd) was removed on
+## 2026-09-24 as nothing had loaded it since the first-play tutorial replaced
+## it; the line stays for whatever speaks the board's tips next.
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
 
