@@ -2,7 +2,8 @@ extends RefCounted
 
 ## Balance scales: visual simultaneous equations.
 ##
-## Weights are integers in [1, MAX_W]. Each scale is a homogeneous linear
+## Weights are integers in [1, max_w] (MAX_W by default, 12 on Insane -- see
+## `generate`'s `max_w` param). Each scale is a homogeneous linear
 ## equation over the shapes -- which means the solution set is closed under
 ## scaling, so scales alone can NEVER pin down a unique answer. One shape's
 ## weight is therefore revealed as an anchor. With the anchor fixed, brute
@@ -10,12 +11,15 @@ extends RefCounted
 
 const MAX_W := 9
 
-static func generate(rng: RandomNumberGenerator, shapes: int) -> Dictionary:
+## `max_w` is the top of a weight's range: 9 by default, 12 on Insane
+## (registry difficulty 3), threaded through to every place a weight is
+## drawn or bounded.
+static func generate(rng: RandomNumberGenerator, shapes: int, max_w: int = MAX_W) -> Dictionary:
 	# Build the secret so every shape after the first is the sum of shapes
 	# already introduced. That guarantees a relating scale actually exists --
 	# with sides capped at three, a secret like (1, 9) has no expressible
 	# relation at all and could never be pinned down.
-	var built := _build_secret(rng, shapes)
+	var built := _build_secret(rng, shapes, max_w)
 	var secret: Array = built.secret
 	var defs: Array = built.defs
 
@@ -42,7 +46,7 @@ static func generate(rng: RandomNumberGenerator, shapes: int) -> Dictionary:
 		var tmp = order[i]; order[i] = order[j]; order[j] = tmp
 	for cand in order:
 		var a := {"shape": cand, "value": secret[cand]}
-		if count_solutions(scales, shapes, 2, a) == 1:
+		if count_solutions(scales, shapes, 2, a, max_w) == 1:
 			anchor = a
 			break
 
@@ -51,16 +55,17 @@ static func generate(rng: RandomNumberGenerator, shapes: int) -> Dictionary:
 	for sc in scales:
 		var trial: Array = trimmed.duplicate()
 		trial.erase(sc)
-		if count_solutions(trial, shapes, 2, anchor) == 1:
+		if count_solutions(trial, shapes, 2, anchor, max_w) == 1:
 			trimmed = trial
 	return {
 		"secret": secret,
 		"scales": trimmed,
 		"anchor": anchor,
-		"unique": count_solutions(trimmed, shapes, 2, anchor) == 1,
+		"unique": count_solutions(trimmed, shapes, 2, anchor, max_w) == 1,
+		"max_w": max_w,
 	}
 
-static func _build_secret(rng: RandomNumberGenerator, shapes: int) -> Dictionary:
+static func _build_secret(rng: RandomNumberGenerator, shapes: int, max_w: int = MAX_W) -> Dictionary:
 	var secret: Array = [rng.randi_range(1, 4)]
 	var defs: Array = [[]]
 	for i in range(1, shapes):
@@ -71,7 +76,7 @@ static func _build_secret(rng: RandomNumberGenerator, shapes: int) -> Dictionary
 				side.append(rng.randi_range(0, i - 1))
 			side.sort()
 			var total := _sum(side, secret)
-			if total >= 1 and total <= MAX_W:
+			if total >= 1 and total <= max_w:
 				secret.append(total)
 				defs.append(side)
 				placed = true
@@ -87,27 +92,27 @@ static func _build_secret(rng: RandomNumberGenerator, shapes: int) -> Dictionary
 static func balances(sc: Dictionary, weights: Array) -> bool:
 	return _sum(sc.left, weights) == _sum(sc.right, weights)
 
-static func count_solutions(scales: Array, shapes: int, limit: int, anchor: Dictionary) -> int:
+static func count_solutions(scales: Array, shapes: int, limit: int, anchor: Dictionary, max_w: int = MAX_W) -> int:
 	var w: Array = []
 	for i in shapes:
 		w.append(1)
-	return _enumerate(scales, shapes, w, 0, limit, anchor)
+	return _enumerate(scales, shapes, w, 0, limit, anchor, max_w)
 
-static func _enumerate(scales: Array, shapes: int, w: Array, idx: int, limit: int, anchor: Dictionary) -> int:
+static func _enumerate(scales: Array, shapes: int, w: Array, idx: int, limit: int, anchor: Dictionary, max_w: int = MAX_W) -> int:
 	if idx == shapes:
 		for sc in scales:
 			if not balances(sc, w):
 				return 0
 		return 1
 	var lo := 1
-	var hi := MAX_W
+	var hi := max_w
 	if int(anchor.shape) == idx:
 		lo = int(anchor.value)
 		hi = int(anchor.value)
 	var found := 0
 	for v in range(lo, hi + 1):
 		w[idx] = v
-		found += _enumerate(scales, shapes, w, idx + 1, limit - found, anchor)
+		found += _enumerate(scales, shapes, w, idx + 1, limit - found, anchor, max_w)
 		if found >= limit:
 			return found
 	return found

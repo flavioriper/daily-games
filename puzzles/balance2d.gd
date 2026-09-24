@@ -207,7 +207,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	# `shapes - 1` independent scales is exactly what a unique board needs,
 	# and the generator trims every scale the others already imply.
 	var shapes := clampi(3 + difficulty, 3, Fruit.count())
-	state.setup(Gen.generate(rng, shapes))
+	# Insane keeps the same five fruit (shapes is already clamped there) and
+	# widens the weight range instead, so heavier arithmetic is the challenge.
+	var max_w := 12 if difficulty >= 3 else Gen.MAX_W
+	state.setup(Gen.generate(rng, shapes, max_w))
 	_build_scales()
 	_layout()
 	_tip_idx = 0
@@ -516,7 +519,8 @@ func step_weight(i: int, delta: int) -> bool:
 		elif delta < 0:
 			_say("A thing always weighs at least one.", Face.Expr.WORRIED)
 		else:
-			_say("Nine is as heavy as anything gets.", Face.Expr.WORRIED)
+			var cap := "Twelve" if state.max_w == 12 else "Nine"
+			_say("%s is as heavy as anything gets." % cap, Face.Expr.WORRIED)
 		fx.cue("refused")
 		return false
 	_update_scales()

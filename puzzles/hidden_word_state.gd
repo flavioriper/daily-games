@@ -74,6 +74,8 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	typed = ""
 	given = []
 	hints_left = HINTS
+	if difficulty >= 3:
+		hints_left = 0
 	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()
 	written = String(_answers[rng.randi() % maxi(band, 1)]) if not _answers.is_empty() else "mossy"
 	answer = Locale.fold(written)

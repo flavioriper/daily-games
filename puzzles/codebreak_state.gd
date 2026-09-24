@@ -27,6 +27,8 @@ enum Kind { MISS, COLOUR, EXACT }
 var length := 4
 var palette_size := 6
 var repeats := false
+## Insane trims this to 7; every other band keeps TRIES.
+var tries := TRIES
 ## The hidden row.
 var code: Array = []
 ## The rows played, oldest first, and their scores as
@@ -44,9 +46,10 @@ var lost := false
 
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	match difficulty:
-		0: length = 4; palette_size = 6; repeats = false
-		1: length = 4; palette_size = 6; repeats = true
-		_: length = 5; palette_size = 7; repeats = true
+		0: length = 4; palette_size = 6; repeats = false; tries = TRIES
+		1: length = 4; palette_size = 6; repeats = true; tries = TRIES
+		3: length = 5; palette_size = 7; repeats = true; tries = 7
+		_: length = 5; palette_size = 7; repeats = true; tries = TRIES
 	code = Gen.make_code(rng, length, palette_size, repeats)
 	guesses = []
 	marks = []
@@ -162,7 +165,7 @@ func commit() -> Dictionary:
 	var m := _score(row)
 	guesses.append(row.duplicate())
 	marks.append(m)
-	if int(m.exact) < length and guesses.size() >= TRIES:
+	if int(m.exact) < length and guesses.size() >= tries:
 		lost = true
 	if open():
 		_fresh_row()
