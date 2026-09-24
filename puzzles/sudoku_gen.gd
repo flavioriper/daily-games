@@ -31,8 +31,13 @@ static var BOX_C := 3
 ## The side of the grid, per band: easy, medium, hard, insane.
 const SIZE := [6, 6, 9, 9]
 ## Givens aimed at, per band. The mini's are out of 36 cells, not 81. Insane's
-## row is provisional, replaced by the bank in this board's own batch.
-const TARGET := [14, 10, 26, 24]
+## row is provisional, replaced by the bank in this board's own batch: its
+## fallback of 24 bought no time over 22 (the same 3-in-40 seeds miss the
+## shared TIME_BUDGET_MS on either, and on Hard's own 26, because the slow
+## part is full_grid()'s backtracking rather than the dig target), and
+## TIME_BUDGET_MS already degrades those seeds to graded:false rather than
+## hanging, so the provisional row stands.
+const TARGET := [14, 10, 26, 22]
 ## Tries before the band's technique test is given up on. Measured: six left
 ## one hard day in twelve solvable by singles, ten leaves none.
 const ATTEMPTS := 10
