@@ -163,6 +163,7 @@ var _per_page := PER_PAGE
 var _cols := COLS
 var _row_h := PuzzleCard.CARD_H
 var _column: VBoxContainer
+var _margins: MarginContainer
 var _fit_queued := false
 ## The press a swipe is measured from, and which finger or mouse it is.
 var _swipe_id := -1
@@ -224,6 +225,7 @@ func _build_list() -> void:
 	margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
 	margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
 	_list_root.add_child(margins)
+	_margins = margins
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", GAP)
 	margins.add_child(root)
@@ -407,6 +409,13 @@ func _queue_fit() -> void:
 ## after the header, the day row and the bar (measured off the column rather
 ## than the grid, because the grid's own size is at least its content's and
 ## a page too tall for the screen would report the overflow as room).
+## Not off the column's own size either: a VBoxContainer grows to its
+## content's minimum too, so a full page a few pixels over the screen
+## measured those pixels as room, the next (shorter) page measured without
+## them, and on a phone sitting on a row boundary the page size flipped on
+## the turn -- Quilt stood on page one, again on page two, and then on
+## neither (2026-09-24). The room is the full-rect list root less the
+## margins, which no page's content can move.
 ## Columns of MIN_CARD_W and rows of CARD_H go in as many as fit; what is
 ## left over grows every row's picture up to ART_GROW and then opens the
 ## gaps between rows, so a tall phone gets bigger pictures and a little air
@@ -417,8 +426,10 @@ func _fit_grid() -> void:
 	_fit_queued = false
 	if _column == null or _column.size.x <= 0.0:
 		return
-	var room_w := _column.size.x
-	var room_h := _column.size.y - header.size.y - day_row.size.y - bar.size.y - GAP * 3
+	var room_w := _list_root.size.x - _margins.get_theme_constant("margin_left") \
+		- _margins.get_theme_constant("margin_right")
+	var room_h := _list_root.size.y - _margins.get_theme_constant("margin_top") \
+		- _margins.get_theme_constant("margin_bottom") - header.size.y - day_row.size.y - bar.size.y - GAP * 3
 	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
 	var rows := maxi(1, floori((room_h + MIN_ROW_GAP) / (PuzzleCard.CARD_H + MIN_ROW_GAP)))
 	var slack := room_h - rows * PuzzleCard.CARD_H - (rows - 1) * GAP
