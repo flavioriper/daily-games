@@ -1,4 +1,5 @@
 extends RefCounted
+class_name InsaneBank
 
 ## Insane boards mined on the Mac (tools/mine_insane.gd) and shipped as
 ## content, one file a board: content/insane/<puzzle_id>.json, shaped

@@ -185,7 +185,10 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = the_seed
-	_puzzle.bank_step = _bank_step
+	# legacy/core/stage_board.gd is a frozen contract that predates bank_step;
+	# an island board has no such property and the assignment would throw.
+	if "bank_step" in _puzzle:
+		_puzzle.bank_step = _bank_step
 	_puzzle.start(rng, _difficulty)
 	_card.visible = not _puzzle.is_3d()
 	_overlay.visible = false
