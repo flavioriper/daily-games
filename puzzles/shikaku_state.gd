@@ -23,10 +23,11 @@ const MAX_AREA_INSANE := 12
 const MIN_AREA := 3
 const HINTS := 3
 ## Width, height and the generator's area cap, per difficulty.
-# Insane's row is the fallback: MAX_AREA_INSANE's 8x10 missed the 194 ms
-# gate (worst 235 ms over 40 seeds on this Mac), replaced by the bank in
-# batch 2.
-const SIZES := [[5, 6, 6], [6, 8, MAX_AREA], [7, 9, MAX_AREA], [8, 10, MAX_AREA]]
+# Insane's provisional band: Hard's own 7x9 frame with MAX_AREA_INSANE's
+# bigger plots -- 8x10 (either area cap) missed the 194 ms gate (worst
+# 235-431 ms), but the smaller field with the same bigger cap clears it
+# (worst ~70 ms over 40 seeds on this Mac). Replaced by the bank in batch 2.
+const SIZES := [[5, 6, 6], [6, 8, MAX_AREA], [7, 9, MAX_AREA], [7, 9, MAX_AREA_INSANE]]
 
 var w: int = 6
 var h: int = 8

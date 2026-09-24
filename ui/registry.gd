@@ -87,7 +87,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
-			{"difficulty": 3, "name": "Insane", "line": "8 × 8, bare"},
+			{"difficulty": 3, "name": "Insane", "line": "8 × 8"},
 		],
 	},
 	{
@@ -188,7 +188,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "5 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 8"},
 			{"difficulty": 2, "name": "Hard", "line": "7 × 9"},
-			{"difficulty": 3, "name": "Insane", "line": "8 × 10"},
+			{"difficulty": 3, "name": "Insane", "line": "7 × 9, big plots"},
 		],
 	},
 	{
