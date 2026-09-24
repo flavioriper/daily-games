@@ -14,6 +14,9 @@ const TEXT        := Color("3b3028")
 const TEXT_DIM    := Color("8a7b6b")
 const ACCENT      := Color("4c9a94")
 const ACCENT_2    := Color("e2825f")
+## An earned heart on the first screen's day card: a warm red that holds up
+## over a painted vista, where ACCENT_2's orange sank into the sand.
+const HEART := Color("e0574f")
 ## ACCENT's own pair, the two shades every other chip colour already carries.
 ## Rings is what wanted them: its sixth ring colour is the palette's teal, and
 ## a ring needs a deeper edge and a pale tile like every other piece here.
