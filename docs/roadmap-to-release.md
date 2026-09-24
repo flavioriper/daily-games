@@ -9,8 +9,8 @@ be built.
 ## Where we are (checked 2026-09-24)
 
 - **19 flat boards on the grid**, every one with Easy, Medium and Hard, plus a
-  provisional Insane row (`ui/registry.gd`). Rings is built but not on the
-  grid.
+  provisional Insane row (`ui/registry.gd`). Rings is back on the grid as
+  the twentieth (2026-09-24), with no Insane row yet.
 - **CI is green**: the last three pushes to `main` ran tests, the APK and App
   Distribution with no failures (`gh run list`).
 - **Android testers only.** The build is a debug-signed APK sent through
