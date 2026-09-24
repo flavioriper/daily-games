@@ -38,10 +38,10 @@ static func make() -> Theme:
 	theme.set_constant("shadow_offset_x", "Motto", 1)
 	theme.set_constant("shadow_offset_y", "Motto", 2)
 	_label(theme, "CardTitle", display(600), 40, Pal.TEXT)
-	# The menu's puzzle cards: a chunky name and a quiet one-line blurb, sized
-	# for three cards across a 1080 screen.
-	_label(theme, "CardName", display(700), 32, Pal.TEXT)
-	_label(theme, "CardBlurb", body(500), 22, Pal.TEXT_DIM)
+	# The menu's puzzle cards: a chunky name and a quiet two-line blurb, sized
+	# for two cards across a 1080 screen (2026-09-24, painted menu).
+	_label(theme, "CardName", display(700), 44, Pal.TEXT)
+	_label(theme, "CardBlurb", body(600), 26, Pal.TEXT_DIM)
 	# The motto under the menu's title letters: the Motto face, larger, on
 	# two lines over the sky.
 	_label(theme, "TitleMotto", body(800, 2), 30, Pal.SURFACE)
@@ -165,6 +165,20 @@ static func card(fill: Color, radius: int, border: Color, border_w: int, margin:
 	sb.set_content_margin_all(margin)
 	sb.border_width_bottom = border_w
 	sb.border_color = border
+	return sb
+
+## A card lifted off the page by a soft warm shadow instead of card()'s hard
+## bottom edge: the painted first screen's paper (spec 2026-09-24-painted-menu,
+## section 8). Only the menu's own widgets wear it.
+static func lifted(fill: Color, radius: int, margin: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(radius)
+	sb.set_content_margin_all(margin)
+	sb.shadow_color = Color(0.35, 0.23, 0.12, 0.14)
+	sb.shadow_size = 12
+	sb.shadow_offset = Vector2(0.0, 6.0)
+	sb.anti_aliasing_size = 1.2
 	return sb
 
 static func paper_card() -> StyleBoxFlat:

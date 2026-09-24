@@ -19,29 +19,29 @@ signal blocked
 const CardArt = preload("res://ui/menu/card_art.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
+const Vistas = preload("res://ui/menu/vistas.gd")
 
-## The picture's slot, the card's own inset, and the go button. Both are
-## measured against the vertical budget: at 1080 by 1920 a row of cards gets
-## 252, of which the inset takes 32 and the name and the two blurb lines
-## about 111. The HUD's usual 24 inset and a 118 picture came to 277, which
-## pushed the bottom bar off the screen.
-const ART_H := 92.0
-## The row's own budgeted height. The card's content (the inset, the art
-## plate, the name and the two blurb lines) only ever measures to about 240:
-## GridContainer sizes every row to the tallest cell's own minimum and does
-## not hand a row any of the grid's leftover height, whether the grid has
-## four rows or one. `_update_min` below floors this card's reported
-## minimum at CARD_H so every row is exactly the budget regardless of how
-## many rows share the page -- the twelve-card page and the pager's short
-## last page alike (task 8, 2026-09-20).
-const CARD_H := 252.0
+## The picture's slot: 10 inset + 108 banner + 4 + a 44 name and two 26 blurb
+## lines beside an 80 go-button + 10.
+const ART_H := 108.0
+## The row's own budgeted height: 10 inset + 108 banner + 4 + a 44 name and
+## two 26 blurb lines beside an 80 go-button + 10. GridContainer sizes every
+## row to the tallest cell's own minimum and does not hand a row any of the
+## grid's leftover height, whether the grid has four rows or one.
+## `_update_min` below floors this card's reported minimum at CARD_H so every
+## row is exactly the budget regardless of how many rows share the page --
+## the twelve-card page and the pager's short last page alike (task 8,
+## 2026-09-20).
+const CARD_H := 246.0
 ## How much taller than ART_H a picture may grow when the menu hands a card
 ## spare height on a tall screen (`fit_height`): 118 is the mock's picture,
 ## and past it the plate only gains empty paper, so the rest of the spare
 ## height goes into the gaps between rows instead (ui/menu.gd, `_fit_grid`).
 const ART_GROW := 26.0
-const INSET := 16
-const GO := 68.0
+## The banner's inset from the card's edge; the text sits TEXT_INSET further in.
+const INSET := 10
+const TEXT_INSET := 18
+const GO := 80.0
 const PILL := Vector2(88.0, 40.0)
 ## The done seal: a green disc in a paper ring, pinned over the picture's
 ## top right corner and hanging SEAL_HANG past it on both edges.
@@ -53,12 +53,6 @@ const SQUASH_SOON := 0.03
 const SQUASH_TIME := 0.18
 ## How far a soon card's picture and words fade back.
 const SOON_INK := 0.55
-## Each puzzle picture sits on a pale swatch of its own category colour. The
-## swatch is the grid's one expressive device: it makes twelve small pictures
-## scan as distinct puzzles without adding another label or taking height from
-## their art.
-const ART_TINT := 0.13
-const ART_RADIUS := 18
 
 var entry: Dictionary
 var colour: Color
@@ -83,12 +77,9 @@ func _init(the_entry: Dictionary, the_colour: Color, is_completed := false) -> v
 
 func _make_inner() -> Container:
 	var box := PanelContainer.new()
-	var paper := CozyTheme.card(Color(Pal.SURFACE, 0.96), 28, Pal.LINE, 6, INSET)
-	# The old bottom edge stays the tactile shadow. A fine outline completes
-	# the silhouette against the page, especially on bright phone screens.
-	paper.border_width_left = 2
-	paper.border_width_top = 2
-	paper.border_width_right = 2
+	var paper := CozyTheme.lifted(Pal.SURFACE, 36, INSET)
+	paper.set_border_width_all(2)
+	paper.border_color = Color(Pal.LINE, 0.35)
 	box.add_theme_stylebox_override("panel", paper)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return box
@@ -104,13 +95,34 @@ func _build() -> void:
 	_art_plate = art_plate
 	art_plate.custom_minimum_size = Vector2(0.0, ART_H + clampf(card_h - CARD_H, 0.0, ART_GROW))
 	art_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art_plate.add_theme_stylebox_override("panel", _art_style())
+	art_plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	col.add_child(art_plate)
+	# The painted banner under the cast: one draw call (ui/menu/vistas.gd).
+	var banner := Vistas.card_plate(String(entry.get("id", "")), colour)
+	banner.modulate.a = SOON_INK if soon else 1.0
+	art_plate.add_child(banner)
 	art = CardArt.new(String(entry.get("id", "")))
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	art.modulate.a = SOON_INK if soon else 1.0
 	art_plate.add_child(art)
+
+	# Name and blurb in a column beside the go button, centred against both
+	# lines together the way the mock sets it; TEXT_INSET in from the banner.
+	var text_margin := MarginContainer.new()
+	text_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_margin.add_theme_constant_override("margin_left", TEXT_INSET)
+	text_margin.add_theme_constant_override("margin_right", TEXT_INSET - INSET)
+	col.add_child(text_margin)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 12)
+	text_margin.add_child(row)
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_theme_constant_override("separation", 0)
+	row.add_child(words)
 
 	var name_label := Label.new()
 	name_label.theme_type_variation = "CardName"
@@ -118,13 +130,9 @@ func _build() -> void:
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if soon:
 		name_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
-	col.add_child(name_label)
+	words.add_child(name_label)
 	name_label.add_child(SunDot.new(name_label, SOON_INK if soon else 1.0))
 
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 8)
-	col.add_child(row)
 	var blurb := Label.new()
 	blurb.theme_type_variation = "CardBlurb"
 	# The registry's `short` is written to two lines at this width; `blurb`
@@ -133,15 +141,24 @@ func _build() -> void:
 	blurb.text = String(entry.get("short", entry.get("blurb", "")))
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	blurb.max_lines_visible = 2
-	blurb.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	blurb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	blurb.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# Deviation from the brief (task 2, 2026-09-24): OVERRUN_TRIM_ELLIPSIS,
+	# once `blurb` sits inside a VBoxContainer ("words") that is itself inside
+	# an HBoxContainer ("row") beside the go button, renders only the first
+	# line and ellipsises the rest -- confirmed by a throwaway probe with the
+	# label's own reported size and line count both correct (2 lines, 62px)
+	# while the drawn frame still showed one. OVERRUN_NO_TRIMMING, autowrap
+	# and max_lines_visible unchanged, shows both lines correctly in the same
+	# nesting, and simply drops any third line with no dots rather than
+	# mis-rendering the second -- every `short` is written to fit two lines
+	# at this width, so the difference is never exercised in practice.
+	blurb.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	blurb.add_theme_constant_override("line_spacing", -6)
 	blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(blurb)
+	words.add_child(blurb)
 	if not soon:
 		var go := IconButton.new("chevron_right")
 		go.custom_minimum_size = Vector2(GO, GO)
-		go.size_flags_vertical = Control.SIZE_SHRINK_END
+		go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		go.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_paint_go(go)
 		row.add_child(go)
@@ -235,24 +252,24 @@ func _build_pill() -> void:
 	add_child(pill)
 
 ## The go button as a round disc in the puzzle's colour with a cream chevron:
-## the same paper button, re-dressed.
+## lifted off the card the way the card is lifted off the page.
 func _paint_go(go: Button) -> void:
 	var r := int(GO * 0.5)
-	go.add_theme_stylebox_override("normal", CozyTheme.card(colour, r, colour.darkened(0.28), 5, 8))
-	go.add_theme_stylebox_override("hover", CozyTheme.card(colour, r, colour.darkened(0.28), 5, 8))
-	go.add_theme_stylebox_override("pressed", CozyTheme.card(colour.darkened(0.12), r, colour.darkened(0.28), 2, 8))
-	go.add_theme_stylebox_override("disabled", CozyTheme.card(Color(colour, 0.55), r, Color(colour.darkened(0.28), 0.55), 5, 8))
+	var up := CozyTheme.lifted(colour, r, 8)
+	up.shadow_size = 6
+	up.shadow_offset = Vector2(0.0, 4.0)
+	up.border_width_bottom = 5
+	up.border_color = colour.darkened(0.14)
+	var down := CozyTheme.lifted(colour.darkened(0.12), r, 8)
+	down.shadow_size = 2
+	for state in ["normal", "hover"]:
+		go.add_theme_stylebox_override(state, up)
+	go.add_theme_stylebox_override("pressed", down)
+	var off := up.duplicate()
+	off.bg_color = Color(colour, 0.55)
+	go.add_theme_stylebox_override("disabled", off)
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		go.add_theme_color_override(state, Pal.SURFACE)
-
-func _art_style() -> StyleBoxFlat:
-	var fill := Pal.SURFACE_HI.lerp(colour, ART_TINT)
-	var plate := StyleBoxFlat.new()
-	plate.bg_color = fill
-	plate.set_corner_radius_all(ART_RADIUS)
-	plate.set_border_width_all(2)
-	plate.border_color = Color(colour, 0.22 if soon else 0.34)
-	return plate
 
 func _press() -> void:
 	Motion.stop(_press_tw)

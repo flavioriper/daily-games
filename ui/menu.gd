@@ -42,17 +42,17 @@ const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
 const GAP := 20
-const COLS := 3
-## The narrowest a card may be drawn: the width the card art's 320 by 118
-## box and `short`'s seventeen characters a line are written against.
+const COLS := 2
+## The narrowest a card may be drawn: two across in the 1000 between the
+## margins, less one 20 gap (spec 2026-09-24-painted-menu, section 2).
 ## `_fit_grid` fits as many columns of it as the screen is wide.
-const MIN_CARD_W := 320.0
-## How far the gap between card rows may close to keep a row. The day row
-## measures 188 against the 180 in the budget above, so on the 1920 page
-## four rows at the full GAP come out 6 over the room; they fit at 18.
+const MIN_CARD_W := 490.0
+## How far the gap between card rows may close to keep a row. The day row is
+## 200 and the grid has 36 of slack at 1920, so the gap rarely closes; it is
+## kept for shorter screens.
 const MIN_ROW_GAP := 16
-## Twelve cards a page: three across and four down is what 80 of margin, 60
-## of gaps, a 380 header, a 180 day row and a 150 bar leave for rows of 252.
+## Eight cards a page: two across and four down is what 80 of margin, 60 of
+## gaps, a 380 header, a 200 day row and a 120 bar leave for rows of 246.
 ## That is the 1080x1920 page, and the one every other screen starts from:
 ## since 2026-09-23 the page is *fitted* (`_fit_grid`). The canvas is 1080
 ## wide and never shorter than 1920 (`stretch/aspect="expand"`), so a taller
@@ -69,7 +69,7 @@ const MIN_ROW_GAP := 16
 ## fifteen, sixteen, seventeen and eighteen the same day, so page two grew
 ## from one card to six; nothing here had to change for any of them, which
 ## is the whole point of paging the grid rather than counting the cards.
-const PER_PAGE := 12
+const PER_PAGE := 8
 ## Entrance delays: the header first, then the day row, then a wave down the
 ## cards, then the bar.
 const ENTER_HEADER := 0.0
