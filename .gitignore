@@ -70,8 +70,10 @@ __pycache__/
 # it was pulled into; the cut-down model in the tracked .blend is the source.
 art/assets/
 
-# Android export output; tools/deploy_android.sh rebuilds it
-/build/
+# Android export output; tools/deploy_android.sh rebuilds it. Its .gdignore
+# is tracked: without it Godot imports build/sfx_raw's mp3s and packs them.
+/build/*
+!/build/.gdignore
 
 # The GA4 Measurement Protocol secret the game ships with: machine-local,
 # packed by the export preset, never in git.

@@ -53,8 +53,15 @@ be built.
 - [x] (2026-09-24) Backend: **kept**. A new, flat How Big? is coming, so the
       functions, `core/backend.gd` and `content/how_big.json` stay.
 - [x] (2026-09-24) Rewrite CLAUDE.md's legacy/ and turns sections to match.
-- [ ] Measure the APK size again. It was 31.7 MB on 2026-09-15 with the 3D in
-      it.
+- [x] (2026-09-24) Measure the APK size again. **32.3 MB**, against 50.2 MB
+      for CI's last build with the 3D in it (run 35982761844: 11.1 MB of
+      `.glb`, 5.7 MB of textures). The 31.7 MB of 2026-09-15 predates most of
+      the models, so it is not the comparison. The engine
+      (`libgodot_android.so`) is 25.5 MB of the 32.3 and is the floor; the
+      game itself is about 4 MB, half of it sound. A local build was also
+      packing `build/sfx_raw`'s 176 ElevenLabs mp3s (+2.6 MB, never loaded),
+      because git ignored `build/` and Godot did not; `build/.gdignore` is now
+      tracked. CI never had them.
 
 ### Rings, the twentieth board
 - [ ] Put it back in `Registry.PUZZLES`.
