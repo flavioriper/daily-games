@@ -21,17 +21,21 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 
-## The picture's slot: 10 inset + 108 banner + 4 + a 44 name and two 26 blurb
-## lines beside an 80 go-button + 10.
-const ART_H := 108.0
-## The row's own budgeted height: 10 inset + 108 banner + 4 + a 44 name and
-## two 26 blurb lines beside an 80 go-button + 10. GridContainer sizes every
-## row to the tallest cell's own minimum and does not hand a row any of the
-## grid's leftover height, whether the grid has four rows or one.
-## `_update_min` below floors this card's reported minimum at CARD_H so every
-## row is exactly the budget regardless of how many rows share the page --
-## the twelve-card page and the pager's short last page alike (task 8,
-## 2026-09-20).
+## The picture's slot: 10 inset + 100 banner + 4 + a name-and-blurb column
+## beside an 80 go-button + 10. 108 (the brief's own figure) measured 254 at
+## 490 wide in a properly-settled probe (task 2, fix round 1, 2026-09-24):
+## the name and two-line blurb come to 122 in the real font metrics, not the
+## naively-summed 44 + 2*26 = 96 the brief's comment assumed, so 108 ran the
+## card 8 over CARD_H. Lowered to 100, the floor the brief allows.
+const ART_H := 100.0
+## The row's own budgeted height: 10 inset + 100 banner + 4 + a 122 name-and
+## -blurb column (54 name, 68 two-line blurb at the real font metrics) beside
+## an 80 go-button + 10. GridContainer sizes every row to the tallest cell's
+## own minimum and does not hand a row any of the grid's leftover height,
+## whether the grid has four rows or one. `_update_min` below floors this
+## card's reported minimum at CARD_H so every row is exactly the budget
+## regardless of how many rows share the page -- the twelve-card page and
+## the pager's short last page alike (task 8, 2026-09-20).
 const CARD_H := 246.0
 ## How much taller than ART_H a picture may grow when the menu hands a card
 ## spare height on a tall screen (`fit_height`): 118 is the mock's picture,
