@@ -19,9 +19,9 @@ banner_unit_id=""
 config/name="Peeplet Daily"
 config/description="A handful of calm puzzles, new every day"
 run/main_scene="res://world/main.tscn"
+config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/show_image=false
-config/quit_on_go_back=false
 
 [autoload]
 
