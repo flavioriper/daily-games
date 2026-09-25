@@ -314,6 +314,14 @@ func _initialize() -> void:
 	if _reduce:
 		_shots.append(float(_shots[_shots.size() - 1]) + RM_PAIR)
 		_idle_to = maxf(_idle_to, float(_shots[_shots.size() - 1]) + 0.2)
+	# A throwaway progress file: a daily already solved on this Mac would
+	# otherwise open straight onto its win screen and the strip shoots that.
+	var progress_path := "user://_shot_anim_progress.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress_path))
+	var progress = load("res://core/progress.gd")
+	progress.path = progress_path
+	for e in load("res://ui/registry.gd").PUZZLES:
+		progress.mark_tutorial_seen(String(e.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
