@@ -646,3 +646,13 @@ Both were in the board as Task 2 shipped it and both were fixed in Task 3.
 - **No test covers the board**, only the state class
   (`tests/test_word_trail.gd`), which is where every other flat board
   stands.
+
+Amendment (2026-09-25): tracing is heard and spelt. Every tile taken or
+given back ticks (`select`, a short kalimba pluck) at a pitch that climbs
+with the trail's length, Shikaku's count tick. And the trail being traced is
+spelt into the slots as it grows: into the smallest unfound word it still
+fits (the first of those in the slots' order), its boxes leaning to the
+beam's sun with the letters in ink and the rest of that word's boxes rimmed
+in it, stepping to the next size up as the trail outgrows each. It tells no
+more than the lengths already do: a wrong trail is spelt the same way, and
+the preview goes when the finger lifts.

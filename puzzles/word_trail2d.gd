@@ -82,6 +82,8 @@ const WALL_RIM := 0.2
 const TILE_RIM := 1.0 / 6.0
 const FOUND_RIM := 0.45
 const SLOT_RIM := 0.4
+## How far a previewed box's face leans to the beam's sun.
+const PREVIEW_FILL := 0.55
 ## The leaf on a wall: where on the cell it starts, how long, how it leans
 ## and how far its ink is let through.
 const WALL_LEAF_AT := Vector2(0.32, 0.52)
@@ -760,6 +762,25 @@ static func _dashes(pts: PackedVector2Array, on: float, off: float) -> Array:
 		out.append(cur)
 	return out
 
+## The slot group the trail being traced is spelt into, or -1: the smallest
+## unfound word it still fits, the first of those in the slots' order, so a
+## growing trail steps along to the next size up as it outgrows each one.
+## It says nothing about whether the trail is right -- only lengths are a
+## clue here, and the preview spends no more of one than the slots already do.
+func _preview_slot() -> int:
+	if _trail.is_empty():
+		return -1
+	var best := -1
+	var best_len := 0
+	for i in _state.words.size():
+		if bool(_state.words[i]["found"]):
+			continue
+		var n := (_state.words[i]["path"] as Array).size()
+		if n >= _trail.size() and (best < 0 or n < best_len):
+			best = i
+			best_len = n
+	return best
+
 ## The empty length boxes, and the ones a word's wave has reached. Each line
 ## is centred across the card and the block is centred in the slots' band.
 ## The groups drop in after the field, ENTER_STAGGER apart -- a group and not
@@ -772,6 +793,7 @@ func _build_slots(t: float) -> ArrayMesh:
 	var tall := float(lines.size()) * SLOT_H + float(lines.size() - 1) * LINE_GAP
 	var y := _slots_top() + (SLOTS_H - tall) * 0.5
 	var group := 0
+	var preview := _preview_slot()
 	for line in lines:
 		var x := size.x * 0.5 - float(line["w"]) * 0.5
 		for item in line["items"]:
@@ -786,6 +808,15 @@ func _build_slots(t: float) -> ArrayMesh:
 					var lit := float(k) < front
 					var face: Color = WORD_TILES[i % WORD_TILES.size()] if lit else Pal.SURFACE_HI
 					var rim: Color = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], SLOT_RIM) if lit else Pal.LINE
+					# The trail being traced, spelt into the slot it fits: its
+					# boxes take the beam's own sun, the rest of that word's
+					# boxes a rim of it, so the length still to go reads.
+					if i == preview and not lit:
+						if k < _trail.size():
+							face = Pal.SURFACE_HI.lerp(Pal.SUN_RAY, PREVIEW_FILL)
+							rim = Pal.SUN
+						else:
+							rim = Pal.SUN_RAY
 					_slab(b, Vector2(x + float(k) * (SLOT_W + SLOT_GAP), y),
 						Vector2(SLOT_W, SLOT_H), SLOT_RADIUS, SLOT_EDGE,
 						Color(face, face.a * seen), Color(rim, rim.a * seen), xf)
@@ -832,6 +863,7 @@ func _draw_slot_letters(t: float) -> void:
 	var tall := float(lines.size()) * SLOT_H + float(lines.size() - 1) * LINE_GAP
 	var y := _slots_top() + (SLOTS_H - tall) * 0.5
 	var group := 0
+	var preview := _preview_slot()
 	for line in lines:
 		var x := size.x * 0.5 - float(line["w"]) * 0.5
 		for item in line["items"]:
@@ -839,6 +871,13 @@ func _draw_slot_letters(t: float) -> void:
 			var since := _slot_since(group, t)
 			var seen := Motion.appear_level(since)
 			var front := _front(i, t)
+			if seen > 0.0 and i == preview:
+				var lift := Motion.drop_in_lift(since)
+				for k in _trail.size():
+					_glyph(font, SLOT_FONT, String(_state.letters[_trail[k]]),
+						Color(Pal.TEXT, seen),
+						Vector2(x + float(k) * (SLOT_W + SLOT_GAP) + SLOT_W * 0.5,
+							y + SLOT_H * 0.5 - lift))
 			if seen > 0.0 and front > 0.0:
 				var word: String = _state.words[i]["word"]
 				var ink: Color = WORD_DEEPS[i % WORD_DEEPS.size()]
@@ -968,6 +1007,7 @@ func _gui_input(event: InputEvent) -> void:
 			if cell.x >= 0 and _state.can_trace(cell):
 				_trail = [cell]
 				_take(cell)
+				_tick()
 				_refresh()
 				accept_event()
 		else:
@@ -988,9 +1028,11 @@ func _gui_input(event: InputEvent) -> void:
 		if at >= 0 and at == _trail.size() - 2:
 			_trail.resize(_trail.size() - 1)          # retracting takes the beam back
 			_take(_trail[_trail.size() - 1])
+			_tick()
 		elif at < 0 and _state.can_trace(cell) and _adjacent(_trail[_trail.size() - 1], cell):
 			_trail.append(cell)
 			_take(cell)
+			_tick()
 		_refresh()
 		accept_event()
 
@@ -1005,6 +1047,12 @@ func _take(cell: Vector2i) -> void:
 	_press_at = t
 	_press_up = -1.0
 	_busy_for(maxf(BEAM_TIME, Motion.PRESS_TIME))
+
+## A tile taken or given back: one soft tick that climbs with the trail's
+## length (Shikaku's count tick), so a word's size can be heard as it grows
+## and a retraction steps back down.
+func _tick() -> void:
+	fx.cue("select", minf(1.0 + 0.05 * float(_trail.size() - 1), 1.6))
 
 ## Side-adjacent, never diagonal. The bending is the whole puzzle, and a
 ## diagonal step would make a straight line of it.

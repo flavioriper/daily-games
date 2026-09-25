@@ -174,6 +174,7 @@ SETS = {
     # Word Trail (puzzle_id "wordtrail"): drag a trail through letter tiles;
     # only a right word locks, and a ribbon of colour runs along it.
     "wordtrail": {
+        "select":   ("a single tiny soft kalimba tick, one light plucked tine, very short and quiet, no reverb tail", 0.5, -12),
         "place":    ("a short bright rising kalimba run of four soft notes with a gentle ribbon swish, a hidden word found", 0.8, -6),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),

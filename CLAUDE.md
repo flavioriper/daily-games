@@ -623,7 +623,9 @@ pointing `seed_as` at them. Specs:
   `_front(i, t)` is the one truth four things read (which tile wears the
   colour, how far the ribbon is drawn, which slot box is lit, which letter
   has arrived), and Undo and Reset run the same wave backwards. Its only two
-  motion constants are `WAVE_STEP` and `BEAM_TIME`. Its band is Hidden
+  motion constants are `WAVE_STEP` and `BEAM_TIME`. Since 2026-09-25 a trace ticks (`select`,
+  pitch climbing with length) and is spelt into the smallest unfound slot it
+  fits (`_preview_slot`), stepping up a size as it grows. Its band is Hidden
   Word's, appended to the board's own builder rather than mounted as a
   `Scenery` node, so it is one draw call. Measured on this Mac with
   `tests/_shot_anim.gd -- wordtrail` at `--resolution 810x1440`, 2026-09-20:
