@@ -63,6 +63,8 @@ BAL_NUM_7,seven,sete,siete
 BAL_NUM_8,eight,oito,ocho
 BAL_NUM_9,nine,nove,nueve
 SK_RULES,"Split the field into plots. Each one holds exactly one number, and that number is its area.","Divida o campo em canteiros. Cada um tem exatamente um número, e esse número é a sua área.","Divide el campo en parcelas. Cada una tiene exactamente un número, y ese número es su área."
+SK_RULES_SHAPE,"A square, tall or wide sign asks for a plot of that shape. A sign with no number may be any size, so long as it is its shape.","Uma placa quadrada, alta ou larga pede um canteiro com esse formato. Uma placa sem número pode ter qualquer tamanho, desde que tenha o formato certo.","Un cartel cuadrado, alto o ancho pide una parcela con esa forma. Un cartel sin número puede tener cualquier tamaño, siempre que tenga su forma."
+SK_TIP_SHAPE,"The sign's shape is the plot's shape: square, tall or wide. No number means any size.","O formato da placa é o do canteiro: quadrado, alto ou largo. Sem número, qualquer tamanho.","La forma del cartel es la de la parcela: cuadrada, alta o ancha. Sin número, cualquier tamaño."
 SK_TIP_DRAG,"Drag corner to corner. Each plot holds one number, and that number is how many squares it covers.","Arraste de canto a canto. Cada canteiro tem um número, e esse número é quantas casas ele cobre.","Arrastra de esquina a esquina. Cada parcela tiene un número, y ese número es cuántas casillas cubre."
 SK_TIP_REDRAW,Draw over a plot to replace it; tap inside one to clear it.,Desenhe por cima de um canteiro para trocá-lo; toque dentro dele para apagá-lo.,Dibuja sobre una parcela para cambiarla; toca dentro de ella para borrarla.
 SK_TIP_BLUSH,"Two numbers in one bed, or none, and the bed blushes.","Dois números num canteiro, ou nenhum, e ele fica corado.","Dos números en una parcela, o ninguno, y se sonroja."
@@ -70,7 +72,7 @@ SK_PINNED,That bed is pinned. A hint drew it.,Esse canteiro está fixo. Uma dica
 SK_SOLVED,Every plot has its number. The beds go in.,Cada canteiro tem seu número. Hora de plantar.,Cada parcela tiene su número. A plantar.
 SK_BLUSH_1,One bed has the wrong number of markers in it.,Um canteiro está com a quantidade errada de números.,Una parcela tiene la cantidad equivocada de números.
 SK_BLUSH_N,%d beds have the wrong number of markers in them.,%d canteiros estão com a quantidade errada de números.,%d parcelas tienen la cantidad equivocada de números.
-SK_WRONG_SIZE,"Every square is planted, but some plot is the wrong size.","Todas as casas estão plantadas, mas algum canteiro tem o tamanho errado.","Todas las casillas están plantadas, pero alguna parcela tiene el tamaño equivocado."
+SK_WRONG_SIZE,"Every square is planted, but some plot is the wrong size or shape.","Todas as casas estão plantadas, mas algum canteiro tem o tamanho ou o formato errado.","Todas las casillas están plantadas, pero alguna parcela tiene el tamaño o la forma equivocados."
 SK_BARE_1,1 square still bare.,Falta 1 casa.,Falta 1 casilla.
 SK_BARE_N,%d squares still bare.,Faltam %d casas.,Faltan %d casillas.
 SK_FENCED,That bed is fenced for good.,Esse canteiro está cercado de vez.,Esa parcela quedó cercada para siempre.

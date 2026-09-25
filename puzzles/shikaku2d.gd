@@ -100,11 +100,22 @@ const DISC_SHARE := 0.42
 const DISC_MAX := 54.0
 const DISC_RIM := 5.0
 const DISC_TEXT := 1.05
-## The crop that comes up when the field is done.
-const SEED_SIZE := 0.46
-const SEED_AT := Vector2(0.5, 0.78)
-const SEED_STEPS := 8
+## The crop that comes up when the field is done: a flower a cell, the stem
+## SEED_SIZE of a cell tall from its foot at SEED_AT, one colour to a bed.
+## A bloom is drawn in SEED_STEPS frames of its own, cached.
+const SEED_SIZE := 0.5
+const SEED_AT := Vector2(0.5, 0.8)
+const SEED_STEPS := 24
 const SEED_VARIANTS := 3
+## Petal and heart colours, one pair to a bed: pink, butter, daisy, lilac
+## and cornflower, all already in the palette.
+const BLOOMS := [
+	[Pal.FLOWER, Pal.SUN_RAY],
+	[Pal.SUN_RAY, Pal.ACORN_DEEP],
+	[Pal.SURFACE, Pal.SUN],
+	[Pal.SHADOW_TINT, Pal.SUN_RAY],
+	[Pal.CLOUD, Pal.SUN_TILE],
+]
 ## Hint count, not refunded by reset (HUD spec, section 3).
 const HINTS := 3
 
@@ -117,14 +128,14 @@ const CORNER_STARS := 3
 ## The planting wave: the beds come up one per PLANT_STEP from the top-left
 ## (a bed is a row, not a cell, so it is paced like one), the wave never
 ## longer than PLANT_WAVE, and inside a bed the cells a PLANT_CELL apart,
-## each seedling growing over PLANT_TIME.
+## each flower blooming over PLANT_TIME.
 const PLANT_STEP := 0.1
 const PLANT_WAVE := 1.2
 const PLANT_CELL := 0.04
-const PLANT_TIME := 0.4
+const PLANT_TIME := 0.7
 ## How long the host waits before the win screen: the planting wave has to
 ## run its length first, and a hard board plants fourteen beds.
-const WIN_WAIT := 2.2
+const WIN_WAIT := 2.4
 ## The three lines that teach the gestures, cycled while the field is bare.
 ## Translation keys (locale/ui.csv), read through tr() when said.
 const TIPS := [
@@ -169,6 +180,8 @@ var _gen := 0
 var _bed_cache: Dictionary = {}
 ## Growth step and variant -> one seedling's mesh.
 var _seed_cache: Dictionary = {}
+## Bed key -> its BLOOMS index, filled by _colour_beds once the field is done.
+var _blooms: Dictionary = {}
 var _ground: ArrayMesh
 var _fence: ArrayMesh
 var _shadows: ArrayMesh
@@ -222,7 +235,11 @@ func puzzle_id() -> String: return "shikaku"
 func title() -> String: return "Shikaku"
 
 func rules() -> String:
-	return tr("SK_RULES")
+	return tr("SK_RULES") + ("\n\n" + tr("SK_RULES_SHAPE") if state.has_shapes() else "")
+
+## The lines the sprout cycles: a board with shaped signs leads with them.
+func _tips() -> Array:
+	return (["SK_TIP_SHAPE"] + TIPS) if state.has_shapes() else TIPS
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -260,7 +277,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_markers()
 	_layout()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
@@ -282,6 +299,7 @@ func _build_markers() -> void:
 		var marker := MarkerFace.new()
 		marker.name = "face"
 		marker.number = int(state.clues[i].area)
+		marker.shape = int(state.clues[i].get("shape", 0))
 		# The shadow is the board's, on the ground (see _build_shadows).
 		marker.casts = false
 		# Nothing until the field is up; _enter pops each one in.
@@ -439,7 +457,7 @@ func _build_bed(rect: Rect2i, lock: bool, blush: bool, planted: bool) -> ArrayMe
 		for x in rect.size.x:
 			for y in rect.size.y:
 				_seedling(b, at + (Vector2(x, y) + SEED_AT) * _cell, 1.0,
-					_seed_variant(rect, x, y))
+					_seed_variant(rect, x, y), _bloom_of(rect))
 	return b.mesh()
 
 ## The whole fence: one line to a run, laid over its own shade, and a post
@@ -522,17 +540,76 @@ func _dashes(b, from: Vector2, to: Vector2, width: float, colour: Color,
 		dash: float, gap: float) -> void:
 	_dash_path(b, PackedVector2Array([from, to]), false, width, colour, dash, gap)
 
-## One seedling at `at`, `u` of the way up: a stem with two leaves. Drawn
-## into `b` in the space it is handed.
-func _seedling(b, at: Vector2, u: float, variant: int) -> void:
+## One flower at `at`, `u` of the way through its bloom, drawn into `b` in
+## the space it is handed. It comes up in overlapping stages, each on its
+## own back ease so every part lands with the family's overshoot: the earth
+## heaves, the stem rises with a bend, the leaves unfurl off it, a bud
+## swells at the tip and opens into petals that turn as they spread, and the
+## heart pops in last.
+func _seedling(b, at: Vector2, u: float, variant: int, bloom: int) -> void:
 	if u <= 0.0:
 		return
-	var s := _cell * SEED_SIZE * Motion.back_out(u)
-	var jitter := (variant - 1) * 0.125
-	b.stroke(PackedVector2Array([at, at + Vector2(0.0, -s * 0.7)]), s * 0.13, Pal.LEAF)
-	var tip := at + Vector2(0.0, -s * 0.66)
-	_leaf(b, tip, s * 0.5, -2.5 + jitter, Pal.LEAF_LIGHT)
-	_leaf(b, tip, s * 0.44, -0.6 - jitter, Pal.LEAF)
+	var s := _cell * SEED_SIZE
+	var lean := (variant - 1) * 0.16
+	var petal: Color = BLOOMS[bloom][0]
+	var heart: Color = BLOOMS[bloom][1]
+	# The earth heaved up round the foot.
+	var heave := Motion.back_out(_phase(u, 0.0, 0.22))
+	if heave > 0.0:
+		b.ellipse(at + Vector2(0.0, s * 0.02), s * 0.26 * heave, s * 0.08 * heave,
+			Color(Pal.BED_FURROW, 0.75))
+	# The stem, bending the way the variant leans.
+	var rise := Motion.back_out(_phase(u, 0.08, 0.5))
+	if rise <= 0.0:
+		return
+	var tip := at + Vector2(s * lean * 0.5, -s * rise)
+	var bend := at + Vector2(s * lean * -0.25, -s * rise * 0.55)
+	b.stroke(Face.Builder.bezier2(at, bend, tip, 8), maxf(2.0, s * 0.09), Pal.LEAF)
+	# Two leaves, folded up against the stem and opening out to the sides.
+	var unfurl := Motion.back_out(_phase(u, 0.3, 0.62))
+	if unfurl > 0.0:
+		var node := at.lerp(bend, 0.7)
+		_leaf(b, node, s * 0.42 * unfurl, lerpf(-1.75, -0.35 - lean, unfurl), Pal.LEAF_LIGHT)
+		_leaf(b, node + Vector2(0.0, s * 0.06), s * 0.38 * unfurl,
+			lerpf(-1.4, -2.8 - lean, unfurl), Pal.LEAF)
+	# The bud, then the head opening out of it.
+	var swell := Motion.back_out(_phase(u, 0.42, 0.66))
+	var open := Motion.back_out(_phase(u, 0.58, 0.94))
+	var r := s * 0.34
+	if open > 0.0:
+		var n := 5 + variant % 2
+		var turn := (1.0 - open) * -0.9 + lean
+		for k in n:
+			var ang := turn + TAU * k / n - PI * 0.5
+			var dir := Vector2.from_angle(ang)
+			_petal(b, tip + dir * r * 0.15 * open, r * open, ang, petal)
+	elif swell > 0.0:
+		b.ellipse(tip + Vector2(0.0, -r * 0.3 * swell), r * 0.42 * swell, r * 0.6 * swell,
+			petal.lerp(Pal.LEAF, 0.3))
+	var pop := Motion.back_out(_phase(u, 0.72, 1.0))
+	if pop > 0.0:
+		b.disc(tip, r * 0.36 * pop, heart)
+		b.disc(tip + Vector2(-r, -r) * 0.1 * pop, r * 0.13 * pop, Color(Pal.SURFACE, 0.55))
+
+## Where `u` stands inside the stage running from `from` to `to`, 0 to 1.
+func _phase(u: float, from: float, to: float) -> float:
+	return clampf((u - from) / (to - from), 0.0, 1.0)
+
+## One petal: a round-ended paddle of length `ln` out from `at` along `ang`,
+## deepened a shade at the root so the head reads as a cup.
+func _petal(b, at: Vector2, ln: float, ang: float, colour: Color) -> void:
+	if ln <= 0.5:
+		return
+	var turn := Transform2D(ang, at)
+	var pts := Face.Builder.bezier2(Vector2.ZERO, Vector2(ln * 0.2, -ln * 0.5), Vector2(ln * 0.72, -ln * 0.34), 6)
+	pts.append_array(Face.Builder.bezier2(Vector2(ln * 0.72, -ln * 0.34), Vector2(ln * 1.12, 0.0), Vector2(ln * 0.72, ln * 0.34), 8))
+	pts.append_array(Face.Builder.bezier2(Vector2(ln * 0.72, ln * 0.34), Vector2(ln * 0.2, ln * 0.5), Vector2.ZERO, 6))
+	var out := PackedVector2Array()
+	for p in pts:
+		out.append(turn * p)
+	b.polygon(out, colour)
+	b.ellipse(turn * Vector2(ln * 0.28, 0.0), ln * 0.2, ln * 0.12,
+		colour.lerp(Pal.FLOWER_DEEP, 0.18))
 
 ## One leaf: a lens of length `ln` from `at`, turned by `ang`.
 func _leaf(b, at: Vector2, ln: float, ang: float, colour: Color) -> void:
@@ -544,17 +621,43 @@ func _leaf(b, at: Vector2, ln: float, ang: float, colour: Color) -> void:
 		out.append(turn * p)
 	b.polygon(out, colour)
 
+## Which of BLOOMS a bed flowers in: worked out for the whole field at once,
+## the first time it is asked after the field is done, so no two beds that
+## touch (corners included) flower alike.
+func _bloom_of(rect: Rect2i) -> int:
+	if _blooms.is_empty():
+		_colour_beds()
+	return int(_blooms.get(_bed_key(rect), 0))
+
+## Greedy, in the beds' own order, each starting from a colour of its own so
+## the field is not striped in palette order.
+func _colour_beds() -> void:
+	var done: Array = []
+	for rect: Rect2i in state.rects:
+		var taken: Dictionary = {}
+		for other: Rect2i in done:
+			if rect.grow(1).intersects(other):
+				taken[_blooms[_bed_key(other)]] = true
+		var start := posmod(hash(rect.position * 31 + rect.size), BLOOMS.size())
+		var pick := start
+		for k in BLOOMS.size():
+			if not taken.has((start + k) % BLOOMS.size()):
+				pick = (start + k) % BLOOMS.size()
+				break
+		_blooms[_bed_key(rect)] = pick
+		done.append(rect)
+
 ## Which of the three seedling drawings a cell grows, fixed per cell.
 func _seed_variant(rect: Rect2i, x: int, y: int) -> int:
 	return posmod(hash(Vector2i(rect.position.x + x, rect.position.y + y)), SEED_VARIANTS)
 
 ## A seedling's mesh at growth step `step` of SEED_STEPS, about its own foot.
-func _seed_mesh(step: int, variant: int) -> ArrayMesh:
-	var key := "%d|%d|%d" % [step, variant, int(_cell)]
+func _seed_mesh(step: int, variant: int, bloom: int) -> ArrayMesh:
+	var key := "%d|%d|%d|%d" % [step, variant, bloom, int(_cell)]
 	var mesh: ArrayMesh = _seed_cache.get(key)
 	if mesh == null:
 		var b := Face.Builder.new()
-		_seedling(b, Vector2.ZERO, float(step) / SEED_STEPS, variant)
+		_seedling(b, Vector2.ZERO, float(step) / SEED_STEPS, variant, bloom)
 		mesh = b.mesh()
 		_seed_cache[key] = mesh
 	return mesh
@@ -679,7 +782,7 @@ func _draw_crop(i: int, now: float) -> bool:
 			if u < 1.0:
 				growing = true
 			var step := clampi(int(ceil(minf(u, 1.0) * SEED_STEPS)), 1, SEED_STEPS)
-			draw_mesh(_seed_mesh(step, _seed_variant(rect, x, y)), null,
+			draw_mesh(_seed_mesh(step, _seed_variant(rect, x, y), _bloom_of(rect)), null,
 				Transform2D(0.0, origin + (Vector2(x, y) + SEED_AT) * _cell))
 	return growing
 
@@ -712,8 +815,8 @@ func _draw_pending(now: float) -> bool:
 	draw_mesh(_pend_mesh, null, Transform2D(0.0, Vector2(grown, grown), 0.0, px.get_center()))
 	return e < Motion.POP_IN
 
-## Green when the rectangle's area matches the single number inside it, rose
-## when it does not, and plain ink when it holds no number or two.
+## Green when the rectangle is the size and shape the single clue inside it
+## asks for, rose when it is not, and plain ink when it holds no clue or two.
 func _pending_colour(pend: Rect2i) -> Color:
 	var inside: Array = []
 	for c in state.clues:
@@ -721,7 +824,7 @@ func _pending_colour(pend: Rect2i) -> Color:
 			inside.append(c)
 	if inside.size() != 1:
 		return Pal.TEXT_DIM
-	return Pal.LEAF if int(inside[0].area) == pend.size.x * pend.size.y else Pal.BAD
+	return Pal.LEAF if State.Gen.fits(inside[0], pend.size.x, pend.size.y) else Pal.BAD
 
 # --- input ---
 
@@ -969,8 +1072,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.rects.is_empty():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1116,6 +1220,7 @@ func restore_completed_board() -> void:
 	_gone = []
 	_bed_flash = {}
 	_plant_at = {}
+	_blooms = {}
 	_planted = true
 	_pend_key = ""
 	# The entrance long over, so the field and the shadows stand still.
@@ -1155,6 +1260,7 @@ func win_delay() -> float:
 ## filling in rather than by a banner arriving; each bed's marker hops the
 ## solve wave's hop as its crop comes up, and sparkles.
 func _on_solved() -> void:
+	_blooms = {}
 	_clear_drag()
 	_tip_timer.stop()
 	var order: Array = []
@@ -1172,12 +1278,14 @@ func _on_solved() -> void:
 		last = maxf(last, at)
 		_plant_at[_bed_key(rect)] = at
 		_hop_inside(rect, Motion.SOLVE_HOP, Motion.SOLVE_TIME, at - now)
-		_after(at - now, _spark_at.bind(k, _rect_px(rect).get_center()))
+		var opens := 0.0 if Motion.reduce else PLANT_TIME * 0.6
+		_after(at - now + opens, _spark_at.bind(k, _rect_px(rect).get_center(),
+			BLOOMS[_bloom_of(rect)][0]))
 	_speak()
 	fx.cue("solved")
 	# Once the whole field is up, the crop is folded into the bed meshes and
 	# the per-seedling draws stop; under reduce-motion it is already there.
-	var grow := 0.0 if Motion.reduce else (last - now) + PLANT_TIME + h * PLANT_CELL
+	var grow := 0.0 if Motion.reduce else (last - now) + PLANT_TIME + (w + h) * PLANT_CELL
 	if grow <= 0.0:
 		_finish_planting()
 	else:
@@ -1185,14 +1293,14 @@ func _on_solved() -> void:
 	_anim_until = maxf(_anim_until, now + grow + 0.2)
 	_redraw()
 
-## A spark as bed `k` is planted. The two pools are used in turn: a run of
-## fourteen a tenth of a second apart would otherwise recycle one pool fast
-## enough to cut each burst in half.
-func _spark_at(k: int, at: Vector2) -> void:
+## A spark as bed `k` opens, in its petals' colour. The two pools are used
+## in turn: a run of fourteen a tenth of a second apart would otherwise
+## recycle one pool fast enough to cut each burst in half.
+func _spark_at(k: int, at: Vector2, colour: Color) -> void:
 	if k % 2 == 0:
-		fx.sparkle(at, Pal.LEAF_LIGHT)
+		fx.sparkle(at, colour)
 	else:
-		fx.puff(at, Pal.LEAF, 4)
+		fx.puff(at, colour, 4)
 
 func _finish_planting() -> void:
 	_planted = true

@@ -28,10 +28,15 @@ const HINTS := 3
 # 235-431 ms), but the smaller field with the same bigger cap clears it
 # (worst ~70 ms over 40 seeds on this Mac). Replaced by the bank in batch 2.
 const SIZES := [[5, 6, 6], [6, 8, MAX_AREA], [7, 9, MAX_AREA], [7, 9, MAX_AREA_INSANE]]
+## The shape ladder, per difficulty: the share of clues that carry a shape,
+## and the share of those whose number is then taken off (kept off only
+## where the answer stays unique). Easy is numbers alone; Medium adds
+## shapes; Hard starts taking numbers away; Insane is mostly shapes.
+const SHAPES := [[0.0, 0.0], [0.4, 0.0], [0.5, 0.4], [0.8, 0.75]]
 
 var w: int = 6
 var h: int = 8
-var clues: Array = []            # [{pos: Vector2i, area: int}], the generator's
+var clues: Array = []            # [{pos: Vector2i, area: int, shape: int}], the generator's; area 0 is no number
 var solution: Array = []         # [Rect2i], the partition they came from
 var rects: Array[Rect2i] = []    # the plots the player has drawn
 var locked: Array[bool] = []     # in step with `rects`: a plot a hint pinned
@@ -43,10 +48,11 @@ var history: Array[Dictionary] = []
 
 ## Builds a board for `difficulty`, the island's ladder exactly.
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var step: Array = SIZES[clampi(difficulty, 0, SIZES.size() - 1)]
+	var band := clampi(difficulty, 0, SIZES.size() - 1)
+	var step: Array = SIZES[band]
 	w = step[0]
 	h = step[1]
-	var out: Dictionary = Gen.generate(rng, w, h, step[2], MIN_AREA)
+	var out: Dictionary = Gen.generate(rng, w, h, step[2], MIN_AREA, SHAPES[band][0], SHAPES[band][1])
 	clues = out.clues
 	solution = out.rects
 	rects = []
@@ -90,15 +96,15 @@ func clues_in(i: int) -> Array:
 func plot_blushes(i: int) -> bool:
 	return clues_in(i).size() != 1
 
-## Whether the plot around clue `i` satisfies it: exactly one number in the
-## plot and the areas equal. False while the clue's cell is unclaimed.
+## Whether the plot around clue `i` satisfies it: exactly one clue in the
+## plot, and the plot the size and shape the clue asks for. False while the clue's cell is unclaimed.
 func clue_ok(i: int) -> bool:
 	var clue: Dictionary = clues[i]
 	var who := owner_at(clue.pos.y, clue.pos.x)
 	if who < 0:
 		return false
 	var rect: Rect2i = rects[who]
-	return clues_in(who).size() == 1 and rect.size.x * rect.size.y == int(clue.area)
+	return clues_in(who).size() == 1 and Gen.fits(clue, rect.size.x, rect.size.y)
 
 ## The index of a clue inside plot `i`, or -1 when it holds none.
 func clue_index_in(i: int) -> int:
@@ -108,7 +114,7 @@ func clue_index_in(i: int) -> int:
 			return j
 	return -1
 
-## What a marker wears: 0 idle, 1 settled, 2 the wrong size, 3 lost (its
+## What a marker wears: 0 idle, 1 settled, 2 the wrong size or shape, 3 lost (its
 ## plot holds two numbers or none).
 func clue_state(i: int) -> int:
 	var clue: Dictionary = clues[i]
@@ -118,7 +124,7 @@ func clue_state(i: int) -> int:
 	if plot_blushes(who):
 		return 3
 	var rect: Rect2i = rects[who]
-	return 1 if rect.size.x * rect.size.y == int(clue.area) else 2
+	return 1 if Gen.fits(clue, rect.size.x, rect.size.y) else 2
 
 ## Cells no plot claims.
 func bare_cells() -> int:
@@ -145,7 +151,7 @@ func is_solved() -> bool:
 		for c in clues:
 			if r.has_point(c.pos):
 				inside += 1
-				if int(c.area) != r.size.x * r.size.y:
+				if not Gen.fits(c, r.size.x, r.size.y):
 					return false
 		if inside != 1:
 			return false
@@ -155,6 +161,13 @@ func is_solved() -> bool:
 					return false
 				covered[Vector2i(x, y)] = true
 	return covered.size() == w * h
+
+## Whether any clue on this board carries a shape.
+func has_shapes() -> bool:
+	for c in clues:
+		if int(c.get("shape", Gen.Shape.ANY)) != Gen.Shape.ANY:
+			return true
+	return false
 
 func share_glyphs() -> String:
 	return "▦ %dx%d · " % [w, h] + tr("SK_SHARE_PLOTS") % rects.size()

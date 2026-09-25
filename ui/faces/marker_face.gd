@@ -45,12 +45,35 @@ const NUM_SIZE := 0.4
 const FACE_AT := Vector2(0.0, -0.02)
 ## The face is drawn at 52 units in the mock and scaled by s * 0.0042.
 const FACE_R := 52.0 * 0.0042
+## The plaque for each clue shape (puzzles/shikaku_gen.gd's Shape: any,
+## square, tall, wide), so the sign *is* the shape it asks for: [corner,
+## size, numeral centre, face centre], in R. ANY is the mock's own card
+## above. Every plaque keeps the mock's centre line, -0.13, so a row of mixed
+## signs stands level on its stakes.
+const PLAQUES := [
+	[PLAQUE_AT, PLAQUE_SIZE, Vector2(0.0, NUM_Y), FACE_AT],
+	[Vector2(-0.45, -0.58), Vector2(0.9, 0.9), Vector2(0.0, -0.3), Vector2(0.0, 0.03)],
+	[Vector2(-0.31, -0.66), Vector2(0.62, 1.06), Vector2(0.0, -0.41), Vector2(0.0, 0.09)],
+	[Vector2(-0.6, -0.44), Vector2(1.2, 0.62), Vector2(-0.25, -0.15), Vector2(0.27, -0.12)],
+]
+## A square, tall or wide sign has its corner drawn tighter than the card's
+## and a thin frame inked inside its edge -- the outline is the rule -- so it
+## never reads as the plain card, whose proportions a square is close to.
+const SHAPED_RADIUS := 0.07
+const FRAME_INSET := 0.07
+const FRAME_WIDTH := 0.035
 
-## The number on the plaque. It is drawn over the cached mesh, so changing it
-## only asks for a redraw.
+## The number on the plaque, 0 for none. It is drawn over the cached mesh,
+## so changing it only asks for a redraw -- except to or from none, which
+## moves the face to the middle of the sign.
 var number: int = 1:
 	set(v):
 		number = v
+		queue_redraw()
+## The shape the sign asks for, and is drawn as.
+var shape: int = 0:
+	set(v):
+		shape = clampi(v, 0, PLAQUES.size() - 1)
 		queue_redraw()
 ## Whether the marker casts its own shadow layer. A board that draws the
 ## shadows on its own ground (Shikaku builds them into one mesh, so a hopping
@@ -61,7 +84,7 @@ var casts: bool = true:
 		queue_redraw()
 
 func _kind() -> String:
-	return "marker"
+	return "marker%d%s" % [shape, "" if number > 0 else "_"]
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
@@ -93,19 +116,33 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			b.fan(Builder.round_rect(STAKE_AT * R, STAKE_SIZE * R, STAKE_RADIUS * R), Pal.FENCE_DARK)
 		"plaque":
 			var skin := _skin()
+			var plaque: Array = PLAQUES[shape]
+			var at: Vector2 = plaque[0]
+			var span: Vector2 = plaque[1]
+			var corner := PLAQUE_RADIUS if shape == 0 else SHAPED_RADIUS
 			# The rim is the card at full height and the fill the same card
 			# short of its bottom edge, which is how every cream card on the
 			# flat screens gets its soft lip.
-			b.fan(Builder.round_rect(PLAQUE_AT * R, PLAQUE_SIZE * R, PLAQUE_RADIUS * R), skin[1])
-			b.fan(Builder.round_rect(PLAQUE_AT * R,
-				(PLAQUE_SIZE - Vector2(0.0, PLAQUE_EDGE)) * R, PLAQUE_RADIUS * R), skin[0])
-			_face_parts(b, FACE_R * R, FACE_AT * R, skin[2], eye)
+			b.fan(Builder.round_rect(at * R, span * R, corner * R), skin[1])
+			b.fan(Builder.round_rect(at * R,
+				(span - Vector2(0.0, PLAQUE_EDGE)) * R, corner * R), skin[0])
+			if shape != 0:
+				var inset := Vector2.ONE * FRAME_INSET
+				b.stroke(Builder.round_rect((at + inset) * R,
+					(span - Vector2(0.0, PLAQUE_EDGE) - inset * 2.0) * R, corner * 0.5 * R),
+					FRAME_WIDTH * R, Color(skin[2], 0.35), true)
+			# A sign with no number wears its face in the middle.
+			var face: Vector2 = plaque[3] if number > 0 \
+				else at + (span - Vector2(0.0, PLAQUE_EDGE)) * 0.5
+			_face_parts(b, FACE_R * R * (1.0 if number > 0 else 1.25), face * R, skin[2], eye)
 
 ## The numeral, over the plaque's mesh. Centred on the mock's own baseline.
 func _draw() -> void:
 	super()
 	var R := _R_for(minf(size.x, size.y))
 	if R <= 0.0:
+		return
+	if number <= 0:
 		return
 	var font: Font = CozyTheme.display(700)
 	var px := int(roundf(NUM_SIZE * R))
@@ -115,5 +152,6 @@ func _draw() -> void:
 	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	# draw_string sits on the baseline; the mock's text() centres on the
 	# glyph, so half the ascent puts the two in the same place.
-	var at := size * 0.5 + Vector2(-wide * 0.5, NUM_Y * R + font.get_ascent(px) * 0.5)
+	var centre: Vector2 = PLAQUES[shape][2]
+	var at := size * 0.5 + Vector2(centre.x * R - wide * 0.5, centre.y * R + font.get_ascent(px) * 0.5)
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, _skin()[2])
