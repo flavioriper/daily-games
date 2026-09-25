@@ -831,6 +831,12 @@ func _open_at(entry: Dictionary, difficulty: int) -> void:
 func _mount_host(host: Control) -> void:
 	if host.has_signal("daily_completed"):
 		host.daily_completed.connect(_on_daily_completed)
+	# The win's invite to the next level: this board leaves and the same
+	# card opens at that level, without a stop at the list in between.
+	if host.has_signal("play_level"):
+		host.play_level.connect(func(difficulty: int) -> void:
+			host.queue_free()
+			_open_at(host._entry, difficulty))
 	host.closed.connect(func() -> void:
 		host.queue_free()
 		_show_list())

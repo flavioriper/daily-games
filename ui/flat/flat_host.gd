@@ -50,6 +50,11 @@ const WellDone = preload("res://ui/flat/well_done.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const Streak = preload("res://core/streak.gd")
+const Registry = preload("res://ui/registry.gd")
+
+## Asks the menu to swap this board for the same card at `difficulty` (the
+## win's invite to the next level up); the menu mounts a fresh host.
+signal play_level(difficulty: int)
 
 ## The two slots' heights while playing and on the win (spec section 8). The
 ## bottom's playing height is measured in _build_chrome from the rows it
@@ -59,6 +64,11 @@ const TOP_PLAY := 180.0 + 20.0 + 120.0
 const TOP_WIN := WellDone.HEIGHT
 const BOTTOM_WIN := 120.0 + 20.0 + 130.0
 const CAMP_BUTTON := 130.0
+## The invite to the next level up, a row of its own over Redo and Back; the
+## win's bottom slot grows by it (and a gap) only when there is one to make.
+const NEXT_BUTTON := 130.0
+## Registry level names to their locale keys (the difficulty sheet's table).
+const LEVEL_KEYS := {"Easy": "DIFF_EASY", "Medium": "DIFF_MEDIUM", "Hard": "DIFF_HARD", "Insane": "DIFF_INSANE"}
 ## Entrance delays per row (the island's order; ENTER_TOP, ENTER_CARDS and
 ## ENTER_ACTIONS come from the base host).
 const ENTER_TRAY := 0.2
@@ -83,6 +93,12 @@ var _win_stack: VBoxContainer
 var _stage: Node
 var _won := false
 var redo_button: Button
+var next_button: Button
+var _next_name: Label
+var _next_line: Label
+var _camp_chevron: Control
+## The level the win's invite would open, or -1 when there is none.
+var _next_level := -1
 ## The bottom slot's playing height, summed from the rows this screen has.
 var _bottom_play := 0.0
 ## set_tray is a one-time handoff, not a per-move refresh: _refresh() runs on
@@ -297,6 +313,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	stats_card = FlatDayCard.new()
 	stats_card.name = "StatsCard"
 	_win_stack.add_child(stats_card)
+	_build_next_button()
 	var win_buttons := HBoxContainer.new()
 	win_buttons.name = "WinButtons"
 	win_buttons.add_theme_constant_override("separation", GAP)
@@ -324,12 +341,104 @@ func _build_chrome(root: VBoxContainer) -> void:
 	chevron.offset_bottom = 30.0
 	chevron.draw.connect(func() -> void: Icons.paint(chevron, "chevron_right", Rect2(Vector2.ZERO, chevron.size), Pal.SURFACE))
 	camp_button.add_child(chevron)
+	_camp_chevron = chevron
 
 	# The base host's fields this layout has no panel for.
 	help_card = Control.new()
 	footer = Label.new()
 	footer.visible = false
 	add_child(footer)
+
+## The win's invite to the next level up: the level's name and its line on
+## the sun (the night's ink for Insane, as on the difficulty sheet), and a
+## chevron. Hidden until _show_win finds a level to offer.
+func _build_next_button() -> void:
+	next_button = Button.new()
+	next_button.name = "NextButton"
+	next_button.focus_mode = Control.FOCUS_NONE
+	next_button.theme_type_variation = "SunButton"
+	next_button.custom_minimum_size.y = NEXT_BUTTON
+	next_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	next_button.visible = false
+	next_button.button_down.connect(func() -> void: Motion.squash(next_button, 0.10, 0.18))
+	next_button.resized.connect(func() -> void: next_button.pivot_offset = next_button.size * 0.5)
+	next_button.pressed.connect(_on_next)
+	_win_stack.add_child(next_button)
+	var text := HBoxContainer.new()
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	text.offset_left = 40.0
+	text.offset_right = -110.0
+	text.add_theme_constant_override("separation", 20)
+	next_button.add_child(text)
+	_next_name = Label.new()
+	_next_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_next_name.add_theme_font_override("font", CozyTheme.display(700))
+	_next_name.add_theme_font_size_override("font_size", 44)
+	_next_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	text.add_child(_next_name)
+	_next_line = Label.new()
+	_next_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_next_line.add_theme_font_override("font", CozyTheme.body(600))
+	_next_line.add_theme_font_size_override("font_size", 30)
+	_next_line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_next_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_next_line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_next_line.clip_text = true
+	text.add_child(_next_line)
+	var chevron := Control.new()
+	chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chevron.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	chevron.offset_left = -90.0
+	chevron.offset_right = -30.0
+	chevron.offset_top = -30.0
+	chevron.offset_bottom = 30.0
+	chevron.draw.connect(func() -> void:
+		Icons.paint(chevron, "chevron_right", Rect2(Vector2.ZERO, chevron.size),
+			Pal.MOON if _next_level == 3 else Pal.SURFACE))
+	next_button.add_child(chevron)
+
+## The next level up that today has not been solved yet, or -1: past one the
+## player has already done is the one after it, and above Insane is nothing.
+func _find_next_level() -> int:
+	for level: Dictionary in _entry.get("levels", []):
+		var d := int(level.get("difficulty", -1))
+		if d > _difficulty and not Progress.completed(Registry.progress_id(_entry, d)):
+			return d
+	return -1
+
+## Fills the invite for `_next_level` and gives the win's buttons their
+## looks: the invite takes the sun and Back steps down to paper, or, with no
+## invite, Back keeps the sun as it always had.
+func _dress_win_buttons() -> void:
+	var inviting := _next_level >= 0
+	next_button.visible = inviting
+	camp_button.theme_type_variation = "IconButton" if inviting else "SunButton"
+	_camp_chevron.visible = not inviting
+	if not inviting:
+		return
+	var level := {}
+	for l: Dictionary in _entry.get("levels", []):
+		if int(l.get("difficulty", -1)) == _next_level:
+			level = l
+	var name_key := String(level.get("name", ""))
+	var night := _next_level == 3
+	next_button.theme_type_variation = "DarkButton" if night else "SunButton"
+	_next_name.text = tr("WIN_NEXT") % tr(LEVEL_KEYS.get(name_key, name_key))
+	_next_name.add_theme_color_override("font_color", Pal.MOON if night else Pal.TEXT)
+	_next_line.text = tr(String(level.get("line", "")))
+	_next_line.add_theme_color_override("font_color",
+		Color(Pal.MOON, 0.72) if night else Color(Pal.TEXT, 0.72))
+
+func _on_next() -> void:
+	if _next_level < 0:
+		return
+	Analytics.track("next_level", {
+		"puzzle_id": _entry.get("id", ""),
+		"difficulty": _difficulty,
+		"to": _next_level,
+	})
+	play_level.emit(_next_level)
 
 ## A column of rows across the top of `slot`, sized to its own content, so a
 ## tween on the slot's minimum height moves the rows around it and not them.
@@ -535,6 +644,9 @@ func _show_win() -> void:
 	stats_card.set_day(Progress.day(),
 		_hearts_line if _hearts_line != "" else Progress.island_name())
 	stats_card.set_stats(_stats_text())
+	_next_level = _find_next_level()
+	_dress_win_buttons()
+	var bottom_win := BOTTOM_WIN + (NEXT_BUTTON + GAP if _next_level >= 0 else 0.0)
 	# A board whose answer is a row of characters shows it instead of the
 	# sun and the moon (flat_win).
 	if _puzzle.has_method("flat_win"):
@@ -556,7 +668,7 @@ func _show_win() -> void:
 		_thaw_board()
 	else:
 		slots.finished.connect(_thaw_board)
-	Motion.slide(_bottom_slot, "custom_minimum_size:y", _bottom_play, BOTTOM_WIN, SLOT_TIME, 0.0, false)
+	Motion.slide(_bottom_slot, "custom_minimum_size:y", _bottom_play, bottom_win, SLOT_TIME, 0.0, false)
 	well_done.enter(ART_DELAY)
 	_win_stack.visible = true
 	Motion.slide(_win_stack, "position:y", 120.0, 0.0, STATS_SLIDE, STATS_DELAY)

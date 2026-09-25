@@ -443,3 +443,17 @@ Amendment (2026-09-18, in play): every free cell is plain `SURFACE` white,
 whether empty or filled by the player; the checker of two creams in section
 4 is gone and `TILE_LIGHT` with it. Givens keep their sand. The user asked
 for it on the first run of the real screen.
+
+Amendment (2026-09-25, every flat board): the win invites the next level
+up. When a harder level of the same card is still unsolved today, a full-width
+row sits between the stats card and Redo / Back: "Try Hard" with the level's
+own line, on the sun (Insane in the night's slate, as on the difficulty
+sheet), and a chevron. Back steps down to paper while the invite is shown.
+It offers the first harder level not solved today, so a solved Hard is
+skipped and the invite goes to Insane, and it offers nothing after Insane
+or when every harder level is done; then the screen is exactly as before.
+The bottom slot grows from 270 to 420 (a 130 row and a 20 gap) only when
+the invite is up. Pressing it fires `next_level` (puzzle_id, difficulty,
+to) and `play_level(difficulty)`; the menu frees the host and mounts a
+fresh one at that level, without stopping at the list, because a level can
+change the board's size and its day card line.

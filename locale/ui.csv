@@ -24,6 +24,7 @@ ACT_ALL_GOOD,All good,Tudo certo,Todo bien
 WIN_WELL_DONE,Well done!,Muito bem!,¡Muy bien!
 WIN_REDO,Redo,De novo,Otra vez
 WIN_BACK,Back to camp,Voltar,Volver
+WIN_NEXT,Try %s,Tente o %s,Prueba el %s
 HOST_SOLVED,Solved,Resolvido,Resuelto
 HOST_STATS,%.1fs  ·  %d moves,%.1fs  ·  %d jogadas,%.1fs  ·  %d jugadas
 KEY_ENTER,Enter,Enviar,Enviar
