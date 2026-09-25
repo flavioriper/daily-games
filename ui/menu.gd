@@ -497,10 +497,11 @@ func _free_nodes(from: Node, nodes: Array) -> void:
 ## Builds `page`'s cards into `grid`, appending them to `into` and any
 ## fillers to `pad`.
 func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
+	var today: Array = Progress.solve_log().get(Daily.date_key(), [])
 	for row in _page_entries(page):
 		var entry: Dictionary = row.entry
 		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()],
-			Progress.completed(String(entry.id)))
+			Progress.completed(String(entry.id)), Progress.levels_in(today, String(entry.id)))
 		card.name = "Card_" + entry.id
 		card.fit_height(_row_h)
 		card.open.connect(_open.bind(entry))
@@ -1015,4 +1016,5 @@ func _on_daily_completed(puzzle_id: String, date_key: int) -> void:
 	for card in cards:
 		if is_instance_valid(card) and String(card.entry.get("id", "")) == puzzle_id:
 			card.set_completed(true)
+			card.set_levels(Progress.levels_done(puzzle_id, date_key))
 			break

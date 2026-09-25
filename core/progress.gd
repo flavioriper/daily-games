@@ -130,6 +130,21 @@ static func solve_log() -> Dictionary:
 				out[int(key)] = day
 	return out
 
+## The difficulties board `id` was solved at on `date_key`, sorted: what the
+## card's done seal fills its ring from.
+static func levels_done(id: String, date_key: int = Daily.date_key()) -> Array:
+	return levels_in(solve_log().get(date_key, []), id)
+
+## The same, off one day's records already read.
+static func levels_in(day: Array, id: String) -> Array:
+	var out := []
+	for r in day:
+		var d := int(r.get("d", -1))
+		if String(r.get("id", "")) == id and d >= 0 and not out.has(d):
+			out.append(d)
+	out.sort()
+	return out
+
 ## Today's hearts: distinct boards solved, up to three.
 static func hearts(date_key: int = Daily.date_key()) -> int:
 	return Streak.hearts(solve_log().get(date_key, []))

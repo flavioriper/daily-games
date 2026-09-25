@@ -17,6 +17,7 @@ signal open
 signal blocked
 
 const CardArt = preload("res://ui/menu/card_art.gd")
+const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
@@ -48,11 +49,20 @@ const INSET := 10
 const TEXT_INSET := 18
 const GO := 80.0
 const PILL := Vector2(88.0, 40.0)
-## The done seal: a green disc in a paper ring, pinned over the picture's
-## top right corner and hanging SEAL_HANG past it on both edges.
-const SEAL_R := 23.0
-const SEAL_RING := 4
+## The done seal: a green disc inside a ring of four arcs, one a difficulty
+## clockwise from twelve (Easy, Medium, Hard, Insane), on a paper disc pinned
+## over the picture's top right corner and hanging SEAL_HANG past it on both
+## edges. An arc lights as its level is solved today; with all four the disc
+## turns gold.
+const SEAL_R := 30.0
 const SEAL_HANG := 9.0
+## The arcs' band, measured in from SEAL_R, and the paper left between them.
+const ARC_OUT := 3.0
+const ARC_W := 7.0
+const ARC_GAP := 0.30
+## The disc inside the ring, in from SEAL_R.
+const DISC_IN := 15.0
+const LEVELS := 4
 const SQUASH := 0.06
 const SQUASH_SOON := 0.03
 const SQUASH_TIME := 0.18
@@ -64,19 +74,23 @@ var colour: Color
 var art: Control
 var soon := false
 var completed := false
+## The difficulties solved today, sorted (Progress.levels_done).
+var levels: Array = []
 var _tap: Button
 var _art_plate: PanelContainer
 var _seal: Control
+var _seal_mesh: ArrayMesh
 ## This card's row height: CARD_H on a 1080x1920 screen, more on a taller
 ## one (see `fit_height`).
 var card_h := CARD_H
 var _press_tw: Tween
 
-func _init(the_entry: Dictionary, the_colour: Color, is_completed := false) -> void:
+func _init(the_entry: Dictionary, the_colour: Color, is_completed := false, the_levels := []) -> void:
 	entry = the_entry
 	colour = the_colour
 	soon = bool(the_entry.get("soon", false))
-	completed = is_completed and not soon
+	levels = the_levels.duplicate()
+	completed = (is_completed or not levels.is_empty()) and not soon
 	enter_from = Vector2(0, 60)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
@@ -189,34 +203,54 @@ func _build() -> void:
 	if completed:
 		_build_done_badge()
 
-## The completion marker: a check seal pinned over the picture's corner like
-## a sticker, with no word on it. It rides a layer laid over the art plate
-## (a PanelContainer stretches it to the picture's own rect, and nothing up
-## the chain clips) so it squashes with the card, and it covers only the
-## plate's empty corner: the old DONE pill sat over the picture itself and cut
-## into Code Break's pouch, Nonogram's clues and Word Trail's tiles, and a
-## page of them read louder than the one card still to play. The chevron is
-## still the way back in. Two draw commands: the stylebox and the check.
+## The completion marker: a seal pinned over the picture's corner like a
+## sticker, with no word on it, that fills as the day's levels are solved --
+## a ring of four arcs round a checked disc, the Insane arc in night ink with
+## a line of sun through it, and the disc gold once all four are lit. It
+## rides a layer laid over the art plate (a PanelContainer stretches it to
+## the picture's own rect, and nothing up the chain clips) so it squashes
+## with the card, and it covers only the plate's empty corner: the old DONE
+## pill sat over the picture itself and cut into Code Break's pouch,
+## Nonogram's clues and Word Trail's tiles. The chevron is still the way back
+## in. A board solved only off New is completed with no level logged, and
+## wears the disc in an unlit ring.
 func _build_done_badge() -> void:
 	if _seal != null or _art_plate == null:
 		return
 	_seal = Control.new()
 	_seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var disc := CozyTheme.card(Pal.GOOD, int(SEAL_R), Pal.SURFACE, 0, 0)
-	disc.set_border_width_all(SEAL_RING)
-	disc.shadow_color = Color(Pal.GOOD.darkened(0.45), 0.35)
-	disc.shadow_size = 2
-	disc.shadow_offset = Vector2(0.0, 3.0)
-	disc.anti_aliasing_size = 1.2
 	_seal.draw.connect(func() -> void:
-		var c := Vector2(_seal.size.x - SEAL_R + SEAL_HANG, SEAL_R - SEAL_HANG)
-		var box := Rect2(c - Vector2.ONE * SEAL_R, Vector2.ONE * SEAL_R * 2.0)
-		_seal.draw_style_box(disc, box)
-		var k := SEAL_R - float(SEAL_RING)
-		var tick := PackedVector2Array([
-			c + Vector2(-0.46, 0.02) * k, c + Vector2(-0.14, 0.34) * k, c + Vector2(0.48, -0.30) * k])
-		_seal.draw_polyline(tick, Pal.SURFACE, k * 0.30, true))
+		if _seal_mesh == null:
+			_seal_mesh = _seal_build()
+		_seal.draw_mesh(_seal_mesh, null,
+			Transform2D(0.0, Vector2(_seal.size.x - SEAL_R + SEAL_HANG, SEAL_R - SEAL_HANG))))
 	_art_plate.add_child(_seal)
+
+## The whole seal about its own centre, as one mesh: antialiased arcs cost
+## gl_compatibility several commands apiece, and seven seals drawn that way
+## added about a hundred calls to a page. Kept in `_seal_mesh` until the
+## levels change, so the canvas never draws a freed RID.
+func _seal_build() -> ArrayMesh:
+	var b := Face.Builder.new()
+	b.disc(Vector2(0.0, 3.0), SEAL_R + 1.0, Color(Pal.LINE.darkened(0.35), 0.28))
+	b.disc(Vector2.ZERO, SEAL_R, Pal.SURFACE)
+	var r := SEAL_R - ARC_OUT - ARC_W * 0.5
+	var quarter := TAU / LEVELS
+	for i in LEVELS:
+		var from := -PI * 0.5 + quarter * i + ARC_GAP * 0.5
+		var arc := Face.Builder.arc_points(Vector2.ZERO, r, from, from + quarter - ARC_GAP)
+		var lit := levels.has(i)
+		var ink: Color = Color(Pal.LINE, 0.55)
+		if lit:
+			ink = Pal.TEXT if i == LEVELS - 1 else Pal.GOOD
+		b.stroke(arc, ARC_W, ink, false, false)
+		if lit and i == LEVELS - 1:
+			b.stroke(arc, ARC_W * 0.34, Pal.SUN, false, false)
+	var k := SEAL_R - DISC_IN
+	b.disc(Vector2.ZERO, k, Pal.SUN if levels.size() >= LEVELS else Pal.GOOD)
+	b.stroke(PackedVector2Array([Vector2(-0.46, 0.02) * k, Vector2(-0.14, 0.34) * k,
+		Vector2(0.48, -0.30) * k]), k * 0.30, Pal.SURFACE)
+	return b.mesh()
 
 func set_completed(value: bool) -> void:
 	if completed == value or soon:
@@ -227,6 +261,15 @@ func set_completed(value: bool) -> void:
 	elif _seal != null:
 		_seal.queue_free()
 		_seal = null
+
+## Today's solved difficulties changed; the ring relights.
+func set_levels(value: Array) -> void:
+	levels = value.duplicate()
+	_seal_mesh = null
+	if not levels.is_empty():
+		set_completed(true)
+	if _seal != null:
+		_seal.queue_redraw()
 
 ## The SOON pill, over the picture's top right corner. It rides the art
 ## rather than the blurb's row: two lines of text and a pill in the same
