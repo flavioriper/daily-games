@@ -321,12 +321,13 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   paper tiles with the neighbouring months greyed in. The rest-days row is
   not in the mock and was kept by the user's decision. Measured the same way:
   **Stats 484** (all twenty banners stand at once -- the heaviest screen in
-  the game) and **Streak 194**. The 855 figure is inherited from the 3D
+  the game) and **Streak 257**. The 855 figure is inherited from the 3D
   island (755 plus 100 for the HUD, 2026-09-14), not a phone measurement.
   The Streak cards and the Stats chips opt out of `CozyTheme.dress()`'s wash
   with a plain material, because the mocks' paper is clean. The two Streak
-  pictures are crops of existing vistas standing in for art the mock draws
-  (a heart signpost, a sprout on a rock).
+  pictures are crops of existing vistas with the mock's props drawn over
+  them in code (a heart signpost on a rock, the sprout on a rock): the
+  vistas are the user's paintings, and nothing new is painted into them.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

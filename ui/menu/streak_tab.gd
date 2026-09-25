@@ -67,14 +67,16 @@ func _init() -> void:
 	_streak_ci = _card(STREAK_H, _draw_streak)
 	_side_art(_streak_ci, Vistas.STREAK, STREAK_ART_W)
 	_today_ci = _card(TODAY_H, _draw_today)
+	_props(_streak_ci.get_child(0), _draw_signpost)
 	var today_art := _side_art(_today_ci, Vistas.TODAY, TODAY_ART_W)
+	_props(today_art, _draw_rock)
 	var sprout := SproutFace.new()
 	sprout.size = Vector2(92, 92)
 	sprout.set_anchors_preset(Control.PRESET_CENTER)
 	sprout.offset_left = 10
 	sprout.offset_right = 102
-	sprout.offset_top = -40
-	sprout.offset_bottom = 52
+	sprout.offset_top = -50
+	sprout.offset_bottom = 42
 	today_art.add_child(sprout)
 	_cal_ci = _card(0.0, _draw_calendar)
 	_cal_ci.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -109,6 +111,67 @@ func _side_art(ci: Control, row: Array, w: float) -> Control:
 	plate.offset_bottom = 0
 	ci.add_child(plate)
 	return plate
+
+## A layer drawn over one of the side pictures, the mock's props: the
+## vistas are the user's paintings, and what the mock stands in them is
+## drawn here in the cast's own palette rather than painted in.
+func _props(plate: Control, painter: Callable) -> void:
+	var layer := Control.new()
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.clip_contents = true
+	layer.draw.connect(painter.bind(layer))
+	plate.add_child(layer)
+
+static func _oval(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 28:
+		var a := TAU * i / 28.0
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return pts
+
+## A rounded rock rising out of the picture's bottom edge: a warm stone
+## dome, a sunlit cap on its upper left and a cool shade along its foot.
+static func _boulder(ci: Control, c: Vector2, rx: float, ry: float) -> void:
+	var dome := _oval(c, rx, ry)
+	ci.draw_colored_polygon(dome, Pal.ROCK)
+	# A polygon has no antialiasing of its own; a feather in its colour does.
+	dome.append(dome[0])
+	ci.draw_polyline(dome, Pal.ROCK, 1.5, true)
+	ci.draw_colored_polygon(_oval(c + Vector2(-rx * 0.18, -ry * 0.28), rx * 0.66, ry * 0.6), Pal.ROCK.lightened(0.3))
+	ci.draw_colored_polygon(_oval(c + Vector2(rx * 0.1, ry * 0.55), rx * 0.95, ry * 0.3), Color(Pal.SHADOW_TINT, 0.35))
+
+## A small flower: five petals round a pale eye.
+static func _flower(ci: Control, c: Vector2, r: float, col: Color) -> void:
+	for i in 5:
+		var a := TAU * i / 5.0 - PI * 0.5
+		ci.draw_circle(c + Vector2(cos(a), sin(a)) * r * 0.62, r * 0.48, col, true, -1.0, true)
+	ci.draw_circle(c, r * 0.36, Pal.SUN_RAY, true, -1.0, true)
+
+## The run's card: a wooden sign with a heart on it, on a rock among
+## flowers, as the mock stands it.
+func _draw_signpost(ci: Control) -> void:
+	var w := ci.size.x
+	var h := ci.size.y
+	var foot := Vector2(w * 0.6, h - 30.0)
+	_boulder(ci, Vector2(foot.x - 10, h + 10), 96, 50)
+	ci.draw_rect(Rect2(foot + Vector2(-9, -128), Vector2(18, 132)), Pal.PLAQUE_DEEP)
+	var board := Rect2(foot + Vector2(-72, -150), Vector2(144, 88))
+	var sign := CozyTheme.card(Pal.PLAQUE, 14, Pal.PLAQUE_DEEP, 8, 0)
+	sign.shadow_color = Color(0.25, 0.15, 0.08, 0.25)
+	sign.shadow_size = 6
+	sign.shadow_offset = Vector2(0, 4)
+	ci.draw_style_box(sign, board)
+	Icons.paint(ci, "heart", Rect2(board.get_center() - Vector2(26, 28), Vector2(52, 52)), Pal.FLOWER_TILE)
+	_flower(ci, foot + Vector2(-88, -8), 16, Pal.SURFACE)
+	_flower(ci, foot + Vector2(78, -2), 18, Pal.FLOWER_TILE)
+	_flower(ci, foot + Vector2(104, -34), 13, Pal.SURFACE)
+
+## Today's card: the rock the sprout sits on, and a flower beside it.
+func _draw_rock(ci: Control) -> void:
+	var c := Vector2(ci.size.x * 0.5 + 56.0, ci.size.y + 8.0)
+	_boulder(ci, c, 70, 34)
+	_flower(ci, c + Vector2(84, -26), 13, Pal.SURFACE)
 
 func _chevron(icon: String, step: int) -> Button:
 	var b := IconButton.new(icon)
