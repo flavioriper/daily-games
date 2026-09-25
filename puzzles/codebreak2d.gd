@@ -71,6 +71,14 @@ const POUCH := Vector2(118.0, 74.0)
 const PIP_R := 13.0
 const PIP_STEP := 34.0
 const PIP_JITTER := 5.0
+## A compact row's pouch is this fraction of the full one, pips and all, so
+## it sits inside its 72-tall card instead of hanging over the card's hem.
+const POUCH_SMALL := 0.74
+## A filled seat's socket is its friend's own chip tint, deepened this far
+## toward the friend's colour, and ringed in that colour at this alpha: the
+## history reads by colour at a glance. It shows the guess, never the score.
+const SEAT_TINT := 0.14
+const SEAT_RIM := 0.45
 ## A row wears faces only once it is more than this big; below it the
 ## friends are silhouettes, because 62 units is 22 pixels on a phone.
 const FACES_ABOVE := 0.35
@@ -112,6 +120,17 @@ const DIP_TIME := 0.4
 const PIP_AT := 0.35
 const PIP_STAGGER := 0.09
 const PIP_POP := 0.26
+## A pip falls this far into the pouch, lands on the first 60% of its slice
+## and spends the rest settling from a squash.
+const PIP_FALL := 26.0
+const PIP_LAND := 0.6
+## The whole row draws in its breath together as it is scored: every seat
+## at once, so the beat says "counting" and never "this seat".
+const CHECK_SQUASH := 0.14
+const CHECK_SQUASH_TIME := 0.28
+## The next row gives this small beat as it finishes growing.
+const ARRIVE_BUMP := 0.035
+const ARRIVE_TIME := 0.3
 const SAY_AT := 0.45
 const SLIDE_AT := 0.78
 const SLIDE_TIME := 0.35
@@ -119,20 +138,37 @@ const PEEK_AT := 0.5
 const PEEK_LIFT := 10.0
 const PEEK_TIME := 0.5
 const PEEK_STAGGER := 0.05
+## ... and rattles as it lifts, three swings that die out.
+const PEEK_RATTLE := 0.07
 const REVEAL_WIN := 1.05
 const REVEAL_LOST := 1.1
 const LID_STAGGER := 0.12
-const LID_TIME := 0.55
 const LID_SLIDE := 170.0
 const LID_FALL := 520.0
+## A lost game's lids go slowly, the way a thing is put down.
+const LID_TIME_LOST := 0.85
+## A cracked code's lids are tossed: each pops up and spins off outward like
+## a flipped coin, a puff of sawdust where it lifted.
+const FLIP_STAGGER := 0.08
+const FLIP_TIME := 0.62
+const FLIP_RISE := 360.0
+const FLIP_GRAVITY := 540.0
+const FLIP_DRIFT := 110.0
+const FLIP_TURNS := 1.1
+## Once the code is out, it and the row that cracked it hop together, seat
+## by seat -- the answer and the guess are the same four friends.
+const JOINT_HOP_AT := 0.8
+const JOINT_HOP := -16.0
+const JOINT_STAGGER := 0.08
 const CODE_POP_TIME := 0.4
-const CODE_POP_WIN := 0.3
+const CODE_POP_WIN := 0.25
 const CODE_POP_LOST := 0.25
-const CODE_POP_STAGGER := 0.1
+const CODE_POP_STAGGER := 0.08
 const RESET_STAGGER := 0.05
-## How long the host waits before the win screen: the lids, the code's pop
-## and its sparkles all land first.
-const WIN_DELAY := 1.9
+## How long the host waits before the win screen: the lids, the code's pop,
+## its sparkles and the joint hop all land first (REVEAL_WIN + JOINT_HOP_AT
+## + three JOINT_STAGGERs + a SOLVE_TIME comes to 2.49).
+const WIN_DELAY := 2.5
 const WIN_DELAY_STILL := 0.3
 
 var state = State.new()
@@ -443,6 +479,7 @@ func _fit_row(g: int, h: float) -> void:
 		if not Motion.running(_seat_tw[g][s]):
 			seat.position = _seat_rest(g, s)
 			seat.scale = Vector2.ONE * k
+			seat.z_index = 0
 		var sb: StyleBoxFlat = _socket_sb[g][s]
 		sb.set_corner_radius_all(int(_piece_big * 0.22))
 		var socket: Panel = _socket[g][s]
@@ -455,9 +492,8 @@ func _fit_row(g: int, h: float) -> void:
 		ring.mesh = _dash_ring(_piece_big * 0.28, 10.0, 12.0, 5.0, Color(Pal.LINE, 0.8))
 	_fit_faces(g)
 	var pouch: Pouch = _pouch[g]
-	pouch.size = POUCH
-	pouch.pivot_offset = POUCH * 0.5
-	pouch.position = Vector2(PIP_X - POUCH.x * 0.5, cy - POUCH.y * 0.5)
+	pouch.fit(lerpf(POUCH_SMALL, 1.0, b))
+	pouch.position = Vector2(PIP_X - pouch.size.x * 0.5, cy - pouch.size.y * 0.5)
 	pouch.modulate.a = 1.0 if pouch.scored else lerpf(POUCH_DIM, 1.0, b)
 
 ## A friend keeps the mesh it was built with -- its seat carries the row's
@@ -522,10 +558,17 @@ func _set_friend(g: int, s: int, v: int) -> void:
 func _paint_sockets(g: int) -> void:
 	var active := g == state.active() and state.open()
 	for s in length:
-		var filled: bool = _face[g][s] != null
+		var face: Control = _face[g][s]
+		var filled := face != null
+		var v: int = int(face.get_meta("friend")) if filled else -1
 		var sb: StyleBoxFlat = _socket_sb[g][s]
-		sb.bg_color = _socket_fill(filled)
-		sb.border_color = Pal.SUN if active and state.locked[s] else Pal.LINE
+		sb.bg_color = _socket_fill(v)
+		if active and state.locked[s]:
+			sb.border_color = Pal.SUN
+		elif filled:
+			sb.border_color = Color(Friends.colour(v), SEAT_RIM)
+		else:
+			sb.border_color = Pal.LINE
 		var ring: Control = _ring[g][s]
 		if not filled and not ring.visible:
 			ring.visible = true
@@ -533,8 +576,11 @@ func _paint_sockets(g: int) -> void:
 		elif filled:
 			ring.visible = false
 
-func _socket_fill(filled: bool) -> Color:
-	return Pal.SURFACE_HI if filled else Pal.SURFACE_HI.lerp(Pal.PARCHMENT, 0.6)
+## An empty socket is pale parchment; a seated one takes its friend's tint.
+func _socket_fill(friend: int) -> Color:
+	if friend < 0:
+		return Pal.SURFACE_HI.lerp(Pal.PARCHMENT, 0.6)
+	return Friends.tile(friend).lerp(Friends.colour(friend), SEAT_TINT)
 
 # --- the moves ---
 
@@ -581,6 +627,9 @@ func _fly(g: int, s: int, friend: int) -> void:
 		return
 	var row: Control = _rows[g]
 	var from: Vector2 = _chip_at(friend) - row.position - Vector2(_piece_big, _piece_big) * 0.5
+	# The rows below are drawn after this one, so a friend running up from
+	# the tray would pass under their cards without this.
+	seat.z_index = 1
 	var step := func(u: float) -> void:
 		var e := _back_out(u)
 		seat.position = from.lerp(rest, e) - Vector2(0.0, FLY_ARC * sin(PI * u))
@@ -588,12 +637,23 @@ func _fly(g: int, s: int, friend: int) -> void:
 	var land := func() -> void:
 		seat.position = rest
 		seat.scale = Vector2.ONE * k
+		seat.z_index = 0
 		fx.puff(cell_to_local(g, s), Friends.colour(friend), 5)
 		_seat_tw[g][s] = Motion.squash(seat, LAND_SQUASH)
 	var tw := create_tween()
 	tw.tween_method(step, 0.0, 1.0, FLY_TIME)
 	tw.tween_callback(land)
 	_seat_tw[g][s] = tw
+
+## Ends whatever the seat was doing -- a flight still in the air, a nudge --
+## and stands it at rest, so a move that only animates one axis (a hop) does
+## not strand it halfway across the board.
+func _land_seat(g: int, s: int) -> void:
+	Motion.stop(_seat_tw[g][s])
+	var seat: Control = _seat[g][s]
+	seat.position = _seat_rest(g, s)
+	seat.scale = Vector2.ONE * lerpf(_piece_small, _piece_big, _big[g]) / _piece_big
+	seat.z_index = 0
 
 ## The seats either side lean away from the landing and come back.
 func _nudge_neighbours(g: int, s: int) -> void:
@@ -732,6 +792,12 @@ func check() -> int:
 	_busy = true
 	_refresh_seats()
 	_dip(g)
+	# On the faces, not the seats: a quick Check can land while the last
+	# friend is still in the air, and the seat's flight owns the seat.
+	for s in length:
+		var face: Control = _face[g][s]
+		if face != null:
+			Motion.squash(face, CHECK_SQUASH, CHECK_SQUASH_TIME)
 	_pouch[g].reveal_from(PIP_AT)
 	var exact := int(m.exact)
 	var colour := int(m.colour)
@@ -757,7 +823,7 @@ func check() -> int:
 ## way a Binairo cell that fails a check does.
 func _flash_socket(g: int, s: int) -> void:
 	var sb: StyleBoxFlat = _socket_sb[g][s]
-	var base := _socket_fill(false)
+	var base := _socket_fill(-1)
 	var setter := func(v: float) -> void: sb.bg_color = base.lerp(Pal.BAD_TILE, v)
 	var key := g * 16 + s
 	Motion.stop(_flash_tw.get(key))
@@ -777,7 +843,9 @@ func _dip(g: int) -> void:
 		return
 	var row: Control = _rows[g]
 	var rest := row.position.y
+	# The row's own arrival bump may still be running on it.
 	Motion.stop(_row_tw[g])
+	row.scale = Vector2.ONE
 	var step := func(u: float) -> void:
 		row.position.y = rest + DIP * sin(PI * u)
 	var tw := create_tween()
@@ -795,10 +863,13 @@ func _peek() -> void:
 		var rest := _code_rest(s)
 		var step := func(u: float) -> void:
 			seat.position = rest - Vector2(0.0, PEEK_LIFT * sin(PI * u))
+			seat.rotation = PEEK_RATTLE * sin(3.0 * TAU * u) * (1.0 - u)
 		var tw := create_tween()
 		tw.tween_interval(PEEK_AT + s * PEEK_STAGGER)
 		tw.tween_method(step, 0.0, 1.0, PEEK_TIME)
-		tw.tween_callback(func() -> void: seat.position = rest)
+		tw.tween_callback(func() -> void:
+			seat.position = rest
+			seat.rotation = 0.0)
 
 ## The played row shrinks while the next grows by exactly as much over the
 ## same ease, so the column's height never changes and the rows between them
@@ -821,20 +892,27 @@ func _slide(g: int) -> void:
 	_slide_tw.tween_method(apply, 0.0, 1.0, SLIDE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_slide_tw.tween_callback(func() -> void:
 		_refresh_seats()
+		if g + 1 < state.tries:
+			Motion.stop(_row_tw[g + 1])
+			_row_tw[g + 1] = Motion.bump(_rows[g + 1], ARRIVE_BUMP, ARRIVE_TIME)
 		focus_changed.emit())
 
-## The lids slide off to the right and fall away, and the code stands up
-## underneath: beaming with sparkles when a row cracked it, plainly and
-## without the pop when the eight rows ran out.
+## The code comes out from under its lids. Cracked, the lids are tossed off
+## one after another, the code pops up beaming among sparkles and then hops
+## in step with the row that found it. Out of rows, the lids slide off slowly
+## and fall away, and the code stands up underneath looking worried for you.
 func _reveal(won: bool) -> void:
 	_busy = false
 	_sparks.flash(0.0, 1.6 if won else 1.0)
 	for s in length:
-		_lid_away(s, s * LID_STAGGER)
+		if won:
+			_lid_flip(s, s * FLIP_STAGGER)
+		else:
+			_lid_away(s, s * LID_STAGGER)
 		var seat: Control = _lid_seat[s]
 		_code_face[s].queue_free()
 		var friend := Friends.make(state.code[s], _piece_big, seat.size * 0.5)
-		friend.expression = Face.Expr.JOY if won else Face.Expr.HAPPY
+		friend.expression = Face.Expr.JOY if won else Face.Expr.WORRIED
 		friend.visible = false
 		seat.add_child(friend)
 		_code_face[s] = friend
@@ -845,6 +923,7 @@ func _reveal(won: bool) -> void:
 			for q in 3:
 				_after(0.25 + s * 0.1 + q * 0.07, func() -> void:
 					fx.sparkle(at + Vector2((randf() - 0.5) * 100.0 * _scale, 0.0), Pal.SUN))
+		_after(JOINT_HOP_AT, _joint_hop)
 		_say(tr("CB_SOLVED"), Face.Expr.JOY)
 	else:
 		# Out of tries ends the day: the board goes quiet under the answer,
@@ -862,6 +941,9 @@ func _lid_away(s: int, delay: float) -> void:
 		lid.visible = false
 		return
 	var from := lid.position
+	# The rows are drawn after the code, so a falling lid would drop behind
+	# them without this.
+	lid.z_index = 2
 	var step := func(u: float) -> void:
 		if not is_instance_valid(lid):
 			return
@@ -871,8 +953,48 @@ func _lid_away(s: int, delay: float) -> void:
 		lid.modulate.a = 1.0 - clampf((u - 0.7) / 0.3, 0.0, 1.0)
 	var tw := lid.create_tween()
 	tw.tween_interval(delay)
-	tw.tween_method(step, 0.0, 1.0, LID_TIME)
+	tw.tween_method(step, 0.0, 1.0, LID_TIME_LOST)
 	tw.tween_callback(func() -> void: lid.visible = false)
+	lid.set_meta("tw", tw)
+
+## A cracked code's lid is tossed like a coin: it jumps, spins outward --
+## the left pair to the left, the right pair to the right -- and falls away
+## fading, with a puff of sawdust where it lifted.
+func _lid_flip(s: int, delay: float) -> void:
+	var lid: Control = _lid[s]
+	if Motion.reduce:
+		lid.visible = false
+		return
+	var from := lid.position
+	var out := -1.0 if s * 2 + 1 < length else (1.0 if s * 2 + 1 > length else 0.0)
+	var turn := (out if out != 0.0 else 1.0) * TAU * FLIP_TURNS
+	lid.z_index = 2
+	var step := func(u: float) -> void:
+		if not is_instance_valid(lid):
+			return
+		lid.position = from + Vector2(FLIP_DRIFT * out * u, -FLIP_RISE * u + FLIP_GRAVITY * u * u)
+		lid.rotation = turn * (1.0 - pow(1.0 - u, 1.6))
+		lid.scale = Vector2.ONE * lerpf(1.0, 0.8, u)
+		lid.modulate.a = 1.0 - clampf((u - 0.55) / 0.45, 0.0, 1.0)
+	var at := _column.position + (_code_rest(s) + Vector2(_piece_big, _piece_big) * 0.5) * _scale
+	_after(delay, func() -> void: fx.puff(at, Pal.WOOD, 6))
+	var tw := lid.create_tween()
+	tw.tween_interval(delay)
+	tw.tween_method(step, 0.0, 1.0, FLIP_TIME)
+	tw.tween_callback(func() -> void: lid.visible = false)
+	lid.set_meta("tw", tw)
+
+## The code and the row that cracked it hop together, seat by seat.
+func _joint_hop() -> void:
+	var g: int = state.guesses.size() - 1
+	for s in length:
+		var delay := s * JOINT_STAGGER
+		Motion.hop(_lid_seat[s], JOINT_HOP, Motion.SOLVE_TIME, delay, _code_rest(s).y)
+		if g < 0 or _face[g][s] == null:
+			continue
+		_land_seat(g, s)
+		_seat_tw[g][s] = Motion.hop(_seat[g][s], JOINT_HOP * _seat[g][s].scale.y, Motion.SOLVE_TIME,
+			delay, _seat_rest(g, s).y)
 
 func _pop_code(s: int, delay: float) -> void:
 	var face: Control = _code_face[s]
@@ -913,8 +1035,13 @@ func reset_board() -> void:
 			k += 1
 	for s in length:
 		var lid: Control = _lid[s]
+		if lid.has_meta("tw"):
+			Motion.stop(lid.get_meta("tw"))
+			lid.remove_meta("tw")
 		lid.visible = true
 		lid.rotation = 0.0
+		lid.scale = Vector2.ONE
+		lid.z_index = 0
 		lid.modulate.a = 1.0
 		lid.position = Vector2.ZERO
 		_code_face[s].visible = false
@@ -1164,7 +1291,7 @@ func _on_solved() -> void:
 		var face: Control = _face[g][s]
 		if face != null:
 			face.expression = Face.Expr.JOY
-		Motion.stop(_seat_tw[g][s])
+		_land_seat(g, s)
 		_seat_tw[g][s] = Motion.hop(_seat[g][s], Motion.SOLVE_HOP, Motion.SOLVE_TIME,
 			Motion.SOLVE_DELAY + Motion.stagger(s, Motion.SOLVE_STAGGER), _seat_rest(g, s).y)
 	fx.cue("solved")
@@ -1316,21 +1443,27 @@ class Sparks extends Control:
 		draw_mesh(_mesh, null, Transform2D(0.0, Vector2(k, k), 0.0, Vector2(right_x, cy)), tint)
 		draw_mesh(_mesh, null, Transform2D(0.0, Vector2(-k, k), 0.0, Vector2(left_x, cy)), tint)
 
-## A wooden lid over one seat of the code: a plank with a screw and a carved
-## question mark. It slides off to the right and falls away when the game
-## ends.
+## A wooden lid over one seat of the code: a plank with a lit top edge, a
+## little broken grain, a screw in each top corner and a carved question mark
+## -- the screws kept clear of the mark, where one used to sit on it like the
+## dot of an i. The grain, shine and screws are one cached mesh a size, so a
+## lid costs one command over its panel and its mark. Tossed off when the
+## code is cracked, slid off when the rows run out.
 class Lid extends Panel:
+	static var _cache := {}
 	var _mark: Label
-	var _screw: Control
+	var _decor: Control
+	var _mesh: ArrayMesh
 
 	func _ready() -> void:
 		mouse_filter = MOUSE_FILTER_IGNORE
 		material = null
-		_screw = Control.new()
-		_screw.mouse_filter = MOUSE_FILTER_IGNORE
-		_screw.draw.connect(func() -> void:
-			_screw.draw_circle(_screw.size * 0.5, _screw.size.x * 0.5, Color(Pal.WOOD_DEEP, 0.55)))
-		add_child(_screw)
+		_decor = Control.new()
+		_decor.mouse_filter = MOUSE_FILTER_IGNORE
+		_decor.draw.connect(func() -> void:
+			if _mesh != null:
+				_decor.draw_mesh(_mesh, null))
+		add_child(_decor)
 		_mark = Label.new()
 		_mark.text = "?"
 		_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1345,12 +1478,45 @@ class Lid extends Panel:
 		size = Vector2(px, px)
 		pivot_offset = size * 0.5
 		add_theme_stylebox_override("panel", CozyTheme.card(Pal.WOOD, int(px * 0.22), Pal.WOOD_DEEP, 7, 0))
-		var r := px * 0.045
-		_screw.size = Vector2(r * 2.0, r * 2.0)
-		_screw.position = Vector2(px * 0.5 - r, px * 0.22 - r)
-		_screw.queue_redraw()
+		_mesh = _plank(px)
+		_decor.size = size
+		_decor.queue_redraw()
 		_mark.size = size
 		_mark.add_theme_font_size_override("font_size", int(px * 0.44))
+
+	static func _plank(px: float) -> ArrayMesh:
+		var key := int(px)
+		if _cache.has(key):
+			return _cache[key]
+		var b := Face.Builder.new()
+		# The lit top edge.
+		b.polygon(Face.Builder.round_rect(Vector2(px * 0.26, px * 0.055), Vector2(px * 0.48, px * 0.045), px * 0.0225),
+			Color(Pal.WOOD.lightened(0.4), 0.4))
+		# Grain: short runs with gaps, as a plank's grain breaks, and none
+		# through the middle where the mark is carved.
+		var grain := Color(Pal.WOOD_DEEP, 0.22)
+		for run: Array in [[0.30, 0.10, 0.34, 0.0], [0.30, 0.68, 0.90, 1.3],
+				[0.56, 0.10, 0.28, 2.1], [0.62, 0.74, 0.90, 0.6],
+				[0.80, 0.16, 0.40, 1.7], [0.78, 0.60, 0.86, 2.8]]:
+			var pts := PackedVector2Array()
+			var y: float = run[0]
+			var x0: float = run[1]
+			var x1: float = run[2]
+			var phase: float = run[3]
+			for i in 9:
+				var x := lerpf(x0, x1, i / 8.0)
+				pts.append(Vector2(x, y + 0.012 * sin(x * 14.0 + phase)) * px)
+			b.stroke(pts, px * 0.016, grain)
+		# Two screws with their slots.
+		for c: Vector2 in [Vector2(0.17, 0.2), Vector2(0.83, 0.2)]:
+			var at := c * px
+			var r := px * 0.036
+			b.disc(at, r, Color(Pal.WOOD_DEEP, 0.6))
+			var slot := Vector2(cos(0.7 + c.x * 3.0), sin(0.7 + c.x * 3.0)) * r * 0.75
+			b.stroke(PackedVector2Array([at - slot, at + slot]), px * 0.012, Color(Pal.WOOD.lightened(0.25), 0.9), false, false)
+		var mesh := b.mesh()
+		_cache[key] = mesh
+		return mesh
 
 ## The pouch at the right of a played row: a filled slate pip for every
 ## friend in the right seat and a hollow ring for every right friend in the
@@ -1371,13 +1537,29 @@ class Pouch extends Panel:
 		set(v):
 			reveal = v
 			queue_redraw()
+	## The pouch's size as a fraction of POUCH; the pips scale with it.
+	var k := 1.0
 	var _tw: Tween
+	var _sb: StyleBoxFlat
 
 	func _ready() -> void:
 		mouse_filter = MOUSE_FILTER_IGNORE
 		material = null
-		add_theme_stylebox_override("panel", CozyTheme.card(
-			Pal.PARCHMENT.lerp(Pal.SURFACE, 0.5), int(POUCH.y * 0.5), Color(Pal.LINE, 0.5), 5, 0))
+		_sb = CozyTheme.card(Pal.PARCHMENT.lerp(Pal.SURFACE, 0.5), int(POUCH.y * k * 0.5), Color(Pal.LINE, 0.5),
+			maxi(3, int(roundf(5.0 * k))), 0)
+		add_theme_stylebox_override("panel", _sb)
+
+	## Sizes the pouch to `to` of its full size, rounding and pips with it.
+	func fit(to: float) -> void:
+		if is_equal_approx(to, k) and size == POUCH * k:
+			return
+		k = to
+		size = POUCH * k
+		pivot_offset = size * 0.5
+		if _sb != null:
+			_sb.set_corner_radius_all(int(size.y * 0.5))
+			_sb.border_width_bottom = maxi(3, int(roundf(5.0 * k)))
+		queue_redraw()
 
 	func set_score(ex: int, co: int) -> void:
 		if scored and exact == ex and colours == co:
@@ -1395,9 +1577,10 @@ class Pouch extends Panel:
 		reveal = 1.0
 		queue_redraw()
 
-	## The pips drop in one per PIP_STAGGER after `delay`, filled ones before
-	## the rings, in the pile's own order and never the seats'; the pouch
-	## gives a beat as the first lands.
+	## The pips fall in one per PIP_STAGGER after `delay`, filled ones before
+	## the rings, in the pile's own order and never the seats'; each lands
+	## with a squash and settles, and the pouch gives a beat as the first
+	## lands.
 	func reveal_from(delay: float) -> void:
 		Motion.stop(_tw)
 		if Motion.reduce:
@@ -1407,7 +1590,7 @@ class Pouch extends Panel:
 		_tw = create_tween()
 		_tw.tween_interval(delay)
 		_tw.tween_property(self, "reveal", 1.0, _span())
-		Motion.bump(self, 0.12, 0.24, delay)
+		Motion.bump(self, 0.12, 0.24, delay + PIP_POP * PIP_LAND)
 
 	func _span() -> float:
 		return maxi(1, exact + colours) * PIP_STAGGER + PIP_POP
@@ -1419,9 +1602,9 @@ class Pouch extends Panel:
 		var clock := reveal * _span()
 		if n == 0:
 			if clock >= PIP_POP:
-				var y := size.y * 0.5 - 3.0
-				draw_line(Vector2(size.x * 0.5 - 17.0, y), Vector2(size.x * 0.5 + 17.0, y),
-					Color(Pal.TEXT_DIM, 0.75), 5.0, true)
+				var y := size.y * 0.5 - 3.0 * k
+				draw_line(Vector2(size.x * 0.5 - 17.0 * k, y), Vector2(size.x * 0.5 + 17.0 * k, y),
+					Color(Pal.TEXT_DIM, 0.75), 5.0 * k, true)
 			return
 		# Two bands from two pips up, so the pouch is always a pile and never
 		# a line lying parallel to the seats.
@@ -1429,22 +1612,36 @@ class Pouch extends Panel:
 		var idx := 0
 		for bi in bands.size():
 			var c: int = bands[bi]
-			var by: float = size.y * 0.5 - 3.0 + (0.0 if bands.size() == 1 else (bi - 0.5) * PIP_STEP * 0.94)
+			var by: float = size.y * 0.5 - 3.0 * k + (0.0 if bands.size() == 1 else (bi - 0.5) * PIP_STEP * 0.94 * k)
 			for q in c:
-				var jx := (_hash(idx * 17 + q, idx * 5 + 3) - 0.5) * PIP_JITTER
-				var jy := (_hash(idx * 11 + 2, q * 7 + 1) - 0.5) * PIP_JITTER
-				var at := Vector2(size.x * 0.5 + (q - (c - 1) * 0.5) * PIP_STEP + jx, by + jy)
+				var jx := (_hash(idx * 17 + q, idx * 5 + 3) - 0.5) * PIP_JITTER * k
+				var jy := (_hash(idx * 11 + 2, q * 7 + 1) - 0.5) * PIP_JITTER * k
+				var at := Vector2(size.x * 0.5 + (q - (c - 1) * 0.5) * PIP_STEP * k + jx, by + jy)
 				var u := clampf((clock - idx * PIP_STAGGER) / PIP_POP, 0.0, 1.0)
 				var filled := idx < exact
 				idx += 1
 				if u <= 0.0:
 					continue
-				var r: float = PIP_R * _back_out(u)
-				if filled:
-					draw_circle(at, r, Color(Pal.TEXT, 0.88))
+				# Falling: accelerating in from above, fading up as it comes.
+				# Landed: a squash that springs back to round.
+				var r := PIP_R * k
+				var squash := Vector2.ONE
+				var alpha := 1.0
+				if u < PIP_LAND:
+					var f := u / PIP_LAND
+					at.y -= PIP_FALL * k * (1.0 - f * f)
+					alpha = clampf(f * 2.5, 0.0, 1.0)
 				else:
-					draw_circle(at, r, Pal.SURFACE)
-					draw_arc(at, r, 0.0, TAU, 24, Color(Pal.TEXT_DIM, 0.9), 5.0, true)
+					var e := (u - PIP_LAND) / (1.0 - PIP_LAND)
+					var give := 0.28 * (1.0 - _back_out(e))
+					squash = Vector2(1.0 + give * 0.6, 1.0 - give)
+				draw_set_transform(at + Vector2(0.0, r * (1.0 - squash.y)), 0.0, squash)
+				if filled:
+					draw_circle(Vector2.ZERO, r, Color(Pal.TEXT, 0.88 * alpha))
+				else:
+					draw_circle(Vector2.ZERO, r, Color(Pal.SURFACE, alpha))
+					draw_arc(Vector2.ZERO, r, 0.0, TAU, 24, Color(Pal.TEXT_DIM, 0.9 * alpha), 5.0 * k, true)
+		draw_set_transform(Vector2.ZERO)
 
 	static func _back_out(u: float) -> float:
 		u = clampf(u, 0.0, 1.0)

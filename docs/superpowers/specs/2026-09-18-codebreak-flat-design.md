@@ -317,3 +317,56 @@ entrance, a flight with its lit chip, a seated row, the incomplete-check
 flash, the hint's drop and ring, a score, the slide, a send-back, the solve
 wave, the lids falling, the code out, the win screen, a full row's "?", a
 zero score's dash, and a reduce-motion crack landing on the win screen.
+
+## 12. Amendment: the polish of 2026-09-25
+
+Three defects found on the first frames of the day, and four passes the user
+picked in chat (no plan document; a bounded polish).
+
+**Defects.**
+
+- **A flight ran under the rows below it.** Each row is added to the column
+  after the one above, so a friend running up from the tray to row 3 passed
+  *under* the cards of rows 4 to 8. The seat now flies at `z_index` 1 and
+  lands back at 0; a lid thrown or dropped at the end rides at 2 for the same
+  reason.
+- **The pouch overhung a compact row.** At 74 tall in a 72-tall card it ran
+  over the card's hem and read as a doubled pill. It now fits to the row's
+  bigness like the seats do (`POUCH_SMALL` 0.74, pips, dash and rim with it).
+- **The lid's one screw sat on the "?"** and read as the dot of an i.
+  The lid is now a plank: a short lit top edge, broken grain kept clear of
+  the mark, and a slotted screw in each top corner, all one cached mesh a
+  size, so a lid still costs one command over its panel and its mark.
+- Found while building: a Check pressed while the last friend was still in
+  the air stranded that seat, because the solve hop animates only y and
+  stopped the flight that owned x. `_land_seat` stands a seat at rest before
+  anything that moves one axis takes it. And the row's arrival bump, stopped
+  by the dip that shares its tween slot, left the row at 1.03; the dip resets
+  the scale.
+
+**What changed, moment by moment.**
+
+| Moment | Now |
+|---|---|
+| A seated friend | the socket takes the friend's own chip tint, deepened 0.14 toward its colour (`SEAT_TINT`), with a rim of that colour at 0.45 (`SEAT_RIM`), in the active row and the history alike. The history now reads by colour at a glance. It shows the guess and never the score, so the count-not-map rule is untouched |
+| Check | every face in the row squashes at once (0.14 over 0.28): the same beat whatever the score, and with no order to it, so it says "counting" and never "this seat". It is on the faces, not the seats, because a quick Check can land while a seat's flight still owns it |
+| The pips | each falls 26 into the pouch, accelerating and fading up over the first 60% of its slice, then lands in a squash that springs back round; the pouch's bump waits for the first landing |
+| The next row | gives a 0.035 bump as it finishes growing |
+| Peek | the lids rattle as they lift, three swings of 0.07 rad dying out |
+| Cracked | the lids are tossed, 0.08 apart: each jumps, spins 1.1 turns outward (the left pair left, the right pair right), drifts 110, falls and fades, with a puff of `WOOD` where it lifted. The code pops beaming, and at 0.8 it and the cracked row hop together seat by seat (-16, 0.08 apart) |
+| Out of rows | the lids slide off and fall over 0.85 instead of 0.55, and the code comes out `WORRIED` rather than `HAPPY` |
+
+`WIN_DELAY` goes from 1.9 to **2.5** for the joint hop to land before the
+win screen (reveal 1.05 + 0.8 + three staggers + a 0.4 hop). Paper Planes'
+2.7 is still the longest.
+
+**Measured** with `tests/_shot_anim.gd -- mastermind` at `--resolution
+810x1440`, two readings a state, against the pre-change build shot the same
+hour: fullest board **232** draw calls before and after (3.16 ms before;
+3.21 and 3.15 ms after), bare board **179** before and after (3.03, 2.92
+before; 3.02, 3.07 after), reduce motion 228. The draw count does not move
+because every new line of wood is inside the lid's one mesh and the tint is
+the socket's own stylebox. Suite 122,583 passed, 0 failed; `tests/_win.gd`
+windowed 21/21. A throwaway copy of the harness played a win and a loss and
+shot the reveal every 0.2 s: the pips' fall, the toss, the joint hop, the
+slow slide and the worried code all read on the frames.
