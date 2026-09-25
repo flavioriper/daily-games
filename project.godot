@@ -26,6 +26,7 @@ boot_splash/show_image=false
 [autoload]
 
 MCPGameBridge="res://addons/godot_mcp/game_bridge/mcp_game_bridge.gd"
+Store="*res://core/store.gd"
 Ads="*res://core/ads.gd"
 GodotIapPlugin="*uid://c8xt82r1xtwn0"
 
