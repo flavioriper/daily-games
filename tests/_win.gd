@@ -25,11 +25,18 @@ func _initialize() -> void:
 	# the harness walks only the entries that do.
 	# A harness plays the real game: its solves must not land in the
 	# player's own save, where they mark today's boards done.
-	load("res://core/progress.gd").path = "user://progress_harness.cfg"
+	# Cleared every run: a board this file already holds as solved today opens
+	# straight onto its win screen, and the solver's taps land on its buttons
+	# (six boards read "host or board freed" that way on 2026-09-25).
+	var progress_path := "user://progress_harness.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress_path))
+	var progress = load("res://core/progress.gd")
+	progress.path = progress_path
 	_entries = []
 	for e in load("res://ui/registry.gd").PUZZLES:
 		if not e.get("soon", false):
 			_entries.append(e)
+			progress.mark_tutorial_seen(String(e.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -593,7 +600,9 @@ func _solve_queens() -> void:
 		var cell := Vector2i(int(_puzzle.state.solution[r]), r)
 		if _puzzle.state.queens.has(cell):
 			continue
-		_tap_local(_puzzle.cell_to_local(r, cell.x))
+		# A tap cycles blank -> cross -> queen (d57e17a), so a queen is two.
+		for k in 2:
+			_tap_local(_puzzle.cell_to_local(r, cell.x))
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 
