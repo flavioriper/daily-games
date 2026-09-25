@@ -104,6 +104,10 @@ func open() -> void:
 	_tw = Motion.slide(_slot, "position:y", OFFSET, 0.0, SLIDE)
 	Motion.appear(_scrim, 0.0, 1.0, FADE)
 
+## Up, or on its way up: Android's back closes a sheet that is_open().
+func is_open() -> bool:
+	return visible and not _closing
+
 func close() -> void:
 	if not visible or _closing:
 		return

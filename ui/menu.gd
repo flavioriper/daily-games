@@ -248,6 +248,8 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		_check_day()
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		go_back()
 
 ## When the day has changed under a visible list, re-read what _show_list
 ## reads -- the cards' done marks, Day N, the hearts and the badge, and the
@@ -992,6 +994,33 @@ func _show_tab(key: String) -> void:
 ## A card that names a board nobody has drawn flat yet.
 func _on_soon(entry: Dictionary) -> void:
 	_say(tr("MENU_NO_FLAT") % entry.get("title", ""))
+
+## Android's back (`quit_on_go_back` is off, so it arrives through
+## _notification): the topmost thing open goes first -- a sheet, then the
+## first-play card, then the board -- then Stats or Streak go Home, and only
+## Home quits.
+func go_back() -> void:
+	var nodes := find_children("*", "", true, false)
+	nodes.reverse()
+	for node in nodes:
+		if node.has_method("is_open") and node.is_open():
+			node.close()
+			return
+	var host: Node = null
+	for child in get_children():
+		if child is FlatHost and not child.is_queued_for_deletion():
+			host = child
+	if host != null:
+		var card := host.get_node_or_null("HowToPlay")
+		if card != null:
+			card._continue()
+			return
+		host._on_back()
+		return
+	if _tab != "home":
+		_show_tab("home")
+		return
+	get_tree().quit()
 
 ## Opens one of the seventeen. A `soon` card never gets here.
 func _open(entry: Dictionary) -> void:

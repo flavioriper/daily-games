@@ -11,6 +11,12 @@ var _init_done := false
 
 func _initialize() -> void:
 	_t = load("res://tests/t.gd").new()
+	# The suite plays in English whatever this machine speaks: a saved or
+	# system language would deal Hidden Word from its own list and fail the
+	# English list's checks. In memory only; nothing is written to the
+	# player's settings.
+	load("res://core/locale.gd")._current = "en"
+	TranslationServer.set_locale("en")
 	var suites := {
 		"palette": "res://tests/test_palette.gd",
 		"motion": "res://tests/test_motion.gd",

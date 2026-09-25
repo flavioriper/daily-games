@@ -6,6 +6,7 @@ extends Node
 ## Spec: docs/superpowers/specs/2026-09-14-binairo-hud-design.md, section 6.
 
 const Motion = preload("res://core/motion.gd")
+const Sound = preload("res://core/sound.gd")
 const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
@@ -14,6 +15,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 
 func _enter_tree() -> void:
 	Motion.load_settings()
+	Sound.load_settings()
 	Locale.apply()
 	# Every paper face in the HUD takes its painted wash from here on, the
 	# one place that runs before any screen builds (ui/theme.gd dress()).

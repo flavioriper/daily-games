@@ -1,8 +1,8 @@
 extends "res://ui/hud/sheet.gd"
 
-## The settings sheet: the Reduce motion toggle, the language, How to play
-## and a New puzzle row (both only on a board; the menu leaves them out) and
-## Close. How to play is the rules sheet's only door since the tip card went
+## The settings sheet: the Reduce motion and Sound switches, the language,
+## How to play and a New puzzle row (both only on a board; the menu leaves
+## them out), Credits and Close. How to play is the rules sheet's only door since the tip card went
 ## (1a04e0a, 2026-09-21). The sheet applies the
 ## toggle itself, persisting it and stilling the world, so the menu and the
 ## puzzle host share one behaviour and only refresh their own chrome on
@@ -11,6 +11,9 @@ extends "res://ui/hud/sheet.gd"
 
 const Locale = preload("res://core/locale.gd")
 const Icons = preload("res://ui/icons.gd")
+const Sound = preload("res://core/sound.gd")
+const CreditsSheet = preload("res://ui/hud/credits_sheet.gd")
+const Analytics = preload("res://core/analytics.gd")
 
 ## The language dropdown's rows, and the chevron and check drawn on them.
 const CHOICE_H := 108.0
@@ -22,10 +25,13 @@ signal rules
 
 var with_new := true
 var toggle: CheckButton
+var sound_toggle: CheckButton
+var credits_button: Button
+## Opens over this sheet, so closing it lands back here.
+var credits_sheet: Control
 var rules_button: Button
 var new_button: Button
 var close_button: Button
-var _switch: Control
 ## The language dropdown: the row that shows the current language, the
 ## chevron on it, and the list it opens inside the sheet.
 var lang_button: Button
@@ -41,27 +47,12 @@ func _build_sheet(col: VBoxContainer) -> void:
 	title.theme_type_variation = "SheetTitle"
 	title.text = "SETTINGS_TITLE"
 	col.add_child(title)
-	toggle = CheckButton.new()
-	toggle.text = "SETTINGS_REDUCE_MOTION"
-	toggle.add_theme_font_override("font", CozyTheme.body(700))
-	toggle.add_theme_font_size_override("font_size", 34)
-	toggle.custom_minimum_size.y = ROW
-	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_style_toggle()
-	toggle.set_pressed_no_signal(Motion.reduce)
-	_switch = Control.new()
-	_switch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_switch.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-	_switch.offset_left = -108.0
-	_switch.offset_right = -20.0
-	_switch.offset_top = -26.0
-	_switch.offset_bottom = 26.0
-	_switch.draw.connect(_draw_switch)
-	toggle.add_child(_switch)
-	toggle.toggled.connect(func(on: bool) -> void:
-		_switch.queue_redraw()
-		_set_reduce(on))
+	toggle = _switch_row("SETTINGS_REDUCE_MOTION", Motion.reduce, _set_reduce)
 	col.add_child(toggle)
+	sound_toggle = _switch_row("SETTINGS_SOUND", Sound.on, func(on: bool) -> void:
+		Sound.set_on(on)
+		Analytics.track("sound_toggled", {"on": on}))
+	col.add_child(sound_toggle)
 	col.add_child(_build_language())
 	rules_button = IconButton.new("help", "RULES_TITLE", "IconButton")
 	rules_button.custom_minimum_size.y = ROW
@@ -78,15 +69,26 @@ func _build_sheet(col: VBoxContainer) -> void:
 	new_button.pressed.connect(func() -> void:
 		close_then(new_puzzle.emit))
 	col.add_child(new_button)
+	credits_button = IconButton.new("heart", "SETTINGS_CREDITS", "IconButton")
+	credits_button.custom_minimum_size.y = ROW
+	credits_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	credits_button.pressed.connect(func() -> void: credits_sheet.open())
+	col.add_child(credits_button)
 	close_button = IconButton.new("check", "BTN_CLOSE", "PrimaryButton")
 	close_button.custom_minimum_size.y = ROW
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_button.pressed.connect(close)
 	col.add_child(close_button)
 
+func _ready() -> void:
+	super()
+	credits_sheet = CreditsSheet.new()
+	credits_sheet.name = "CreditsSheet"
+	add_child(credits_sheet)
+
 func _on_open() -> void:
-	toggle.set_pressed_no_signal(Motion.reduce)
-	_switch.queue_redraw()
+	_set_switch(toggle, Motion.reduce)
+	_set_switch(sound_toggle, Sound.on)
 	_show_languages(false)
 
 ## The language is a dropdown drawn inside the sheet, not an OptionButton.
@@ -194,27 +196,55 @@ func _show_languages(open_: bool) -> void:
 	for row in _lang_list.get_children():
 		(row.get_child(0) as Control).queue_redraw()
 
-func _style_toggle() -> void:
+## A row with a label on the left and a drawn switch on the right; `changed`
+## gets the new state. The CheckButton's own box is blanked, because the
+## switch is drawn.
+func _switch_row(key: String, on: bool, changed: Callable) -> CheckButton:
+	var row := CheckButton.new()
+	row.text = key
+	row.add_theme_font_override("font", CozyTheme.body(700))
+	row.add_theme_font_size_override("font_size", 34)
+	row.custom_minimum_size.y = ROW
+	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var blank_image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	blank_image.fill(Color.TRANSPARENT)
 	var blank := ImageTexture.create_from_image(blank_image)
 	for state in ["checked", "unchecked", "checked_disabled", "unchecked_disabled"]:
-		toggle.add_theme_icon_override(state, blank)
+		row.add_theme_icon_override(state, blank)
 	var normal := CozyTheme.card(Pal.SURFACE_HI, 26, Pal.LINE, 6, 28)
 	var pressed := CozyTheme.card(Pal.SURFACE_HI.darkened(0.05), 26, Pal.LINE, 3, 28)
-	toggle.add_theme_stylebox_override("normal", normal)
-	toggle.add_theme_stylebox_override("hover", normal)
-	toggle.add_theme_stylebox_override("pressed", pressed)
-	toggle.add_theme_stylebox_override("hover_pressed", pressed)
+	row.add_theme_stylebox_override("normal", normal)
+	row.add_theme_stylebox_override("hover", normal)
+	row.add_theme_stylebox_override("pressed", pressed)
+	row.add_theme_stylebox_override("hover_pressed", pressed)
+	row.set_pressed_no_signal(on)
+	var knob := Control.new()
+	knob.name = "Switch"
+	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	knob.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	knob.offset_left = -108.0
+	knob.offset_right = -20.0
+	knob.offset_top = -26.0
+	knob.offset_bottom = 26.0
+	knob.draw.connect(_draw_switch.bind(row, knob))
+	row.add_child(knob)
+	row.toggled.connect(func(value: bool) -> void:
+		knob.queue_redraw()
+		changed.call(value))
+	return row
 
-func _draw_switch() -> void:
-	var on := toggle.button_pressed
+func _set_switch(row: CheckButton, on: bool) -> void:
+	row.set_pressed_no_signal(on)
+	row.get_node("Switch").queue_redraw()
+
+func _draw_switch(row: CheckButton, knob: Control) -> void:
+	var on := row.button_pressed
 	var track := StyleBoxFlat.new()
 	track.bg_color = Pal.ACCENT if on else Pal.LINE
 	track.set_corner_radius_all(26)
-	_switch.draw_style_box(track, Rect2(Vector2.ZERO, _switch.size))
-	var knob_x := _switch.size.x - 26.0 if on else 26.0
-	_switch.draw_circle(Vector2(knob_x, _switch.size.y * 0.5), 19.0, Pal.SURFACE)
+	knob.draw_style_box(track, Rect2(Vector2.ZERO, knob.size))
+	var knob_x := knob.size.x - 26.0 if on else 26.0
+	knob.draw_circle(Vector2(knob_x, knob.size.y * 0.5), 19.0, Pal.SURFACE)
 
 ## Persist the toggle and still (or wake) the world, then tell the screen.
 func _set_reduce(on: bool) -> void:

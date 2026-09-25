@@ -96,3 +96,10 @@ STATS_COUNT,Solved: %d,Resolvidos: %d,Resueltos: %d
 STATS_WEEK,+%d this week,+%d esta semana,+%d esta semana
 STATS_KEEP_GOING,Keep going!,Continue assim!,¡Sigue así!
 STATS_START_STREAK,Start one today,Comece hoje,Empieza hoy
+SETTINGS_SOUND,Sound,Som,Sonido
+SETTINGS_CREDITS,Credits,Créditos,Créditos
+CREDITS_TITLE,Credits,Créditos,Créditos
+CREDITS_FONTS,Typefaces,Fontes,Tipografías
+CREDITS_WORDS,Word lists,Listas de palavras,Listas de palabras
+CREDITS_SOUND,Sound,Som,Sonido
+CREDITS_ENGINE,Engine,Motor,Motor
