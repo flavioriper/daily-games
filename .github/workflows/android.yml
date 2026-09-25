@@ -134,10 +134,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/android
-          # --install-android-build-template unpacks android/build from the
-          # engine's android_source.zip; android/ is not in git.
-          godot --headless --path . --install-android-build-template \
-            --export-debug Android build/android/peeplet-daily.apk
+          # android/ is not in git. The patch script unpacks android/build from
+          # the engine's android_source.zip and raises its AGP for godot-iap;
+          # the export must not reinstall it, so no
+          # --install-android-build-template here.
+          tools/patch_android_template.sh
+          godot --headless --path . --export-debug Android build/android/peeplet-daily.apk
           test -s build/android/peeplet-daily.apk
 
       # Keyless: the run's own GitHub token is exchanged for the App
