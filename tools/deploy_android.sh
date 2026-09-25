@@ -25,6 +25,9 @@ mkdir -p build/android
 
 # The export reads the .godot import cache, so make sure it is current.
 "$godot_bin" --headless --path . --import >/dev/null
+# The editor-only MCP addon stays out of the build; both files it edits are
+# restored below.
+tools/strip_dev_addons.sh
 # Gradle build: the template in android/ is unpacked from the engine's own
 # android_source.zip, so it always matches the engine (android/ is not in git).
 "$godot_bin" --headless --path . --install-android-build-template --export-debug Android "$out"
@@ -34,7 +37,7 @@ echo "built $out ($(du -h "$out" | cut -f1))"
 
 # Godot rewrites project.godot with an editor header on some runs; that is a
 # by-product of exporting, not a change worth keeping.
-git checkout -- project.godot 2>/dev/null || true
+git checkout -- project.godot export_presets.cfg 2>/dev/null || true
 
 [[ "${1:-}" == "--local" ]] && exit 0
 
