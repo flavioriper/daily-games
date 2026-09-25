@@ -138,7 +138,10 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   a paper slide (`assets/sfx/ui/page.ogg`, `UiSound.page`), never the click:
   the pager buttons carry the `silent` meta. Which cards stand on page one is therefore a property of the phone
   as well as of the card count -- the "eight on the first" figures in this
-  file (twelve, before 2026-09-24) are the 1080x1920 page.
+  file (twelve, before 2026-09-24) are the 1080x1920 page. **They are also
+  the no-banner page** (2026-09-25): with a 180 banner up, `_fit_grid` only
+  fits 3 rows (6 cards) on page one, not 4, so the same 21 cards take four
+  pages instead of three. See "Ads and the purchase" below.
 - **The pager came back on 2026-09-20**, once a thirteenth card needed a
   second page (`ui/menu.gd`, `ui/menu/puzzle_card_2d.gd`; the campsite's own
   pager of nine had left with it on 2026-09-18). A five-row grid was
@@ -1467,7 +1470,11 @@ export stays on the non-gradle path.
   `view_turn` and `peek_used`. A daily turn adds `turn_lock`, `turn_reveal`,
   `turn_share` and `crowd_reveal_opened`. Board events carry puzzle_id,
   difficulty, day, seconds, moves, hints, checks; the last two tell us
-  whether Pipes' third dimension is a puzzle or a nuisance.
+  whether Pipes' third dimension is a puzzle or a nuisance. Since 2026-09-25:
+  `store_opened` (with `door`: banner, header or settings), `purchase_started`,
+  `purchase_complete`, `purchase_failed` (with `reason`), `restore_used` (with
+  `found`), `consent_failed`, and `ad_banner_loaded` / `ad_banner_failed` /
+  `ad_banner_impression` -- see "Ads and the purchase" below.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had
   nothing to say either way. Hidden Word can run out of rows
@@ -1490,6 +1497,88 @@ export stays on the non-gradle path.
   then sends one DebugView-tagged event, so the wiring is visible rather than
   assumed. GA4's collect endpoint answers 204 to everything, so DebugView is
   the only proof a secret actually works.
+
+## Ads and the purchase
+
+A banner (Poing's `godot-admob-plugin` v5.1.0) and a lifetime remove-ads
+purchase (`godot-iap` 3.5.2, `hyodotdev/openiap`), built 2026-09-25
+(`docs/superpowers/specs/2026-09-25-ads-and-remove-ads-design.md`) on branch
+`feat/ads-store`. **Two adapters, and a screen never touches a plugin**:
+`core/ads.gd` (autoload `Ads`) owns the banner and consent, `core/store.gd`
+(autoload `Store`) owns the purchase, both to the rule `core/ads.gd` already
+stated before the 3D game left.
+
+- **`Ads.start()` runs once, from `world/main.gd`**, so tests never ask for
+  an ad -- `Analytics.start()`'s own discipline. Order: if
+  `Store.owns_remove_ads()`, stop for good; else Google's UMP consent
+  update, its form when required, `MobileAds.initialize`, then an anchored
+  adaptive bottom banner. A failed consent update still proceeds to ads
+  (non-personalised) rather than a blank band forever. iOS has no ATT call
+  of its own: the tracking prompt is UMP's IDFA message, set up in the
+  AdMob console, showing Apple's system dialog; Info.plist still carries
+  `NSUserTrackingUsageDescription`. `Store.owned_changed(true)` calls
+  `Ads.remove()`, which destroys the banner and never reloads it this run.
+- **`ADS_FAKE_BANNER=<design px>` and `STORE_FAKE=1`**, debug-build-only env
+  overrides, walk the whole flow on this Mac with no device or plugin:
+  the first reports a banner of that height everywhere (`ui/ads/banner_host.gd`
+  paints a grey "AD" stand-in), the second makes `Store.buy()` /
+  `Store.restore()` succeed at once, at a fake `$1.99`.
+- **The owned flag lives in `user://store.cfg`**, holding offline and across
+  restarts, but re-checked against the store's real purchases on every
+  launch -- except a *failed* query (offline, store unreachable) never
+  clears it; only a query that succeeded and found `remove_ads` missing is a
+  refund. Android acknowledges every purchase the moment it is seen,
+  launch-found ones included, because Play auto-refunds an unacknowledged
+  one after three days.
+- **`godot-iap`'s GDExtension is iOS-only and stays `.disabled` elsewhere**
+  (editor, CI, this Mac). `tools/export_ios.sh` renames it on, runs the
+  plugin's `fix_ios_embed.sh` to embed its frameworks, and renames it back
+  (clearing `.godot/extension_list.cfg`, which the editor would otherwise
+  error on next run) whichever way the export goes. It raises the **iOS
+  minimum to 17.0**, dropping iPhones stuck on iOS 16 (8 and X).
+- **Both plugins run on Google's published test IDs until the user's AdMob
+  account exists** (`project.godot`'s `ads/` keys, per-platform overrides).
+  The AdMob app IDs are Poing's own registered *defaults* for those same
+  test values, not something this project set explicitly.
+- **The Android template needs AGP 8.9.1, not Godot 4.7's stock 8.6.1**:
+  `godot-iap`'s `openiap-google` 3.5.2 pulls `androidx.core:core:1.18.0`,
+  which refuses an older AGP. Godot only honours
+  `--install-android-build-template` inside a full export, which would run
+  Gradle on the unpatched template first -- so `tools/patch_android_template.sh`
+  installs the template itself (Godot's own way, when
+  `android/.build_version` is missing) and bumps the pinned AGP line; CI and
+  `tools/deploy_android.sh` call it **instead of**
+  `--install-android-build-template`, before a plain `--export-debug`. Safe
+  to run twice; fails loudly if neither AGP line is found.
+- **Both plugins' native libraries are committed**: `addons/admob` 17M,
+  `addons/godot-iap` 27M (mostly `SwiftGodotRuntime.framework`, 21M). Each
+  installer's own `bin/.gitignore` was deleted on purpose so the binaries
+  ship, the same call already made for Poing's other `/bin` folders.
+- **`tools/strip_dev_addons.sh` now edits a multi-plugin list**: `admob` and
+  `godot-iap` stay enabled through export (their exporters run during it)
+  while only `godot_mcp`'s entry and its `MCPGameBridge` autoload strip out.
+- **iOS needs an app icon, not only the Team ID.** A dummy Team ID alone
+  gets past the (expected) Team ID stop and fails next on "Invalid icon" --
+  the project has no icon, and none of the three `launcher_icons/*` Android
+  slots either.
+- **Every bottom-anchored node clears the inset**, not only the two
+  screens' own margins: every `ui/hud/sheet.gd` subclass re-offsets its card
+  from `SafeArea.insets()` on open and on `Ads.banner_changed`, and the
+  first-play card (`ui/hud/how_to_play.gd`) centres in the room above the
+  inset rather than the whole screen -- Pinwheel's card (1636 tall in
+  pt-BR) clears a 180 banner by 24 px and would not fit a 1080x1920 phone
+  with a 180 banner plus a top inset over ~48. Height-bound boards lose
+  cell size in proportion to the slot at a 180 banner (Hidden Word 1140 to
+  904, Sudoku 1114 to 878, Code Break 1180 to 944) -- still playable in
+  every shot, but tap size wants a phone to judge it. iOS banner height
+  (points vs. pixels) is unverified on a device. See "The first screen"
+  above for the grid's own page-count change.
+- **The purchase sheet has three doors**: a paper "Remove ads" tab
+  (`Ads.TAB_H` 56) `ui/ads/banner_host.gd` stands on the banner's top edge,
+  a third header icon button, and Remove ads / Restore purchases rows in
+  settings -- all hidden once owned. `price_text()` is empty until the store
+  answers, so nothing shows a price until a real product exists in Play
+  Console or App Store Connect.
 
 ## Turns and the backend
 

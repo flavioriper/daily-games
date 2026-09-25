@@ -135,8 +135,9 @@ be built.
 - [x] (2026-09-25) Sound switch in the settings sheet: mutes the Master bus,
       saved beside Reduce motion (`core/sound.gd`).
 - [ ] Decide whether 1.0 has music. None exists.
-- [ ] Add **Remove ads** and **Restore purchases** rows. Apple rejects apps
-      with a non-consumable purchase and no Restore.
+- [x] (2026-09-25) Add **Remove ads** and **Restore purchases** rows. Apple
+      rejects apps with a non-consumable purchase and no Restore
+      (`ui/hud/settings_sheet.gd`).
 - [ ] Add rows for the privacy policy and the privacy / consent choices
       (need the policy's URL and the consent form). Credits is done.
 - [x] (2026-09-25) Credits sheet, opened from settings: Fredoka and Nunito
@@ -197,33 +198,45 @@ be built.
 
 ### Ads
 - [ ] **(you)** AdMob account, with one app per platform and a banner unit
-      for each.
-- [ ] Add Godot AdMob plugins for Android and iOS, and fill in
-      `ads/provider_singleton`, `ads/app_id` and `ads/banner_unit_id` for
-      each platform.
-- [ ] Consent: Google's UMP form for the EEA, the UK and Brazil (LGPD), shown
-      before the first ad request.
-- [ ] iOS App Tracking Transparency: show the prompt and write its usage
-      string, or serve non-personalised ads only and skip tracking.
-- [ ] Publish `app-ads.txt` on the developer site.
-- [ ] Place the banner so it never covers a board, a tray or the bottom bar,
-      on either platform (`ui/safe_area.gd` already reads `Ads.bottom_inset()`).
-- [ ] Decide where it shows: the menu only, or on boards too. A banner over a
-      board being solved is the likeliest one-star review.
+      for each. Until it exists, both plugins run on Google's published test
+      IDs (`project.godot`'s `ads/` keys).
+- [x] (2026-09-25) Add Godot AdMob plugins for Android and iOS: Poing's
+      `godot-admob-plugin` v5.1.0, wired through `core/ads.gd`. Real
+      `ads/app_id` and `ads/banner_unit_id` values still wait on the AdMob
+      account above.
+- [x] (2026-09-25) Consent: Google's UMP form for the EEA, the UK and Brazil
+      (LGPD), shown before the first ad request (`core/ads.gd`'s `_consent()`).
+      The code path is done; **(you)** still has to configure the EEA
+      consent message itself in the AdMob console.
+- [x] (2026-09-25) iOS App Tracking Transparency: the usage string
+      (`NSUserTrackingUsageDescription`) is set in the export preset. Poing
+      has no ATT call of its own -- the prompt is UMP's IDFA explainer
+      message, which **(you)** sets up in the AdMob console.
+- [ ] **(you)** Publish `app-ads.txt` on the developer site.
+- [x] (2026-09-25) Place the banner so it never covers a board, a tray or the
+      bottom bar, on either platform (`ui/safe_area.gd` reads
+      `Ads.bottom_inset()`); every sheet, overlay and the first-play card
+      clears it too. Swept all 21 boards at a 150/180 design-px banner with
+      `ADS_FAKE_BANNER`; no board needed a layout fix.
+- [x] (2026-09-25) Decide where it shows: **everywhere** -- the menu, Stats,
+      Streak and every board.
 
 ### Remove ads (lifetime, non-consumable)
 - [ ] **(you)** Create the product in Play Console and App Store Connect with
       the same product ID, and set the price.
-- [ ] Add Godot billing plugins: Play Billing on Android and StoreKit 2 on
-      iOS.
-- [ ] Add a `core/store.gd` adapter in the shape of `core/ads.gd`, so screens
-      never depend on a plugin.
-- [ ] Owning it hides the banner at once, stops ad requests and survives a
-      restart. Keep the flag on the device and restore it from the store.
-- [ ] Restore purchases works on a fresh install on both platforms.
+- [x] (2026-09-25) Add Godot billing plugins: `godot-iap` 3.5.2
+      (StoreKit 2 on iOS, Play Billing v8 on Android).
+- [x] (2026-09-25) Add a `core/store.gd` adapter in the shape of
+      `core/ads.gd`, so screens never depend on a plugin.
+- [x] (2026-09-25) Owning it hides the banner at once, stops ad requests and
+      survives a restart. The flag lives in `user://store.cfg` and is
+      re-synced against the store's real purchases on every launch.
+- [ ] Restore purchases works on a fresh install on both platforms. Code is
+      done (`Store.restore()`); unverified on a device.
 - [ ] Android: acknowledge the purchase within three days, or Play refunds
-      it.
-- [ ] Test with Play license testers and the StoreKit sandbox, including a
+      it. Code is done (`Store._on_purchase_updated()` acknowledges at once,
+      launch-found purchases included); unverified on a device.
+- [ ] **(you)** Test with Play license testers and the StoreKit sandbox, including a
       purchase refunded after the fact.
 
 ## Phase 3: Store and legal
