@@ -7,7 +7,8 @@ extends RefCounted
 
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
-	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil"]
+	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
+	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -77,6 +78,20 @@ static func shape(name: String) -> Dictionary:
 			return {"polys": [_heart()], "lines": []}
 		"heart_line":
 			return {"polys": [], "lines": [_heart()]}
+		"puzzle":
+			return _puzzle()
+		"flame":
+			return _flame()
+		"cloud":
+			return _cloud()
+		"mountain":
+			return _mountain()
+		"sparkle":
+			return _sparkle()
+		"trend":
+			return _trend()
+		"crown":
+			return _crown()
 	return {"polys": [], "lines": []}
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw
@@ -353,3 +368,62 @@ static func _heart() -> PackedVector2Array:
 		var y := 13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)
 		pts.append(Vector2(0.5 + x / 38.0, 0.46 - y / 38.0))
 	return pts
+
+
+# --- the Stats tab (ui/menu/stats_tab.gd) ---
+
+## A jigsaw piece: a square body with a knob out of its top and its right.
+static func _puzzle() -> Dictionary:
+	var body := PackedVector2Array([Vector2(0.14, 0.3), Vector2(0.72, 0.3), Vector2(0.72, 0.88), Vector2(0.14, 0.88)])
+	return {"polys": [body, circle(Vector2(0.43, 0.22), 0.13), circle(Vector2(0.8, 0.59), 0.13)], "lines": []}
+
+## A flame: a round belly drawn up to a tip leaning right, and a smaller one
+## inside it as the hole, which the Stats tile paints a lighter colour.
+static func _flame_shape(c: Vector2, r: float, tip: Vector2) -> PackedVector2Array:
+	var pts := arc(c, r, -0.35, PI + 0.35, 20)
+	pts.append(c + Vector2(-r * 0.7, -r * 1.1))
+	pts.append(tip)
+	pts.append(c + Vector2(r * 0.95, -r * 0.9))
+	return pts
+
+static func _flame() -> Dictionary:
+	return {"polys": [_flame_shape(Vector2(0.5, 0.62), 0.3, Vector2(0.54, 0.06))], "lines": [],
+		"hole": _flame_shape(Vector2(0.5, 0.72), 0.15, Vector2(0.53, 0.42))}
+
+## Three puffs over a flat base.
+static func _cloud() -> Dictionary:
+	var base := PackedVector2Array([Vector2(0.2, 0.52), Vector2(0.8, 0.52), Vector2(0.8, 0.78), Vector2(0.2, 0.78)])
+	return {"polys": [base, circle(Vector2(0.24, 0.62), 0.16), circle(Vector2(0.76, 0.62), 0.16),
+		circle(Vector2(0.44, 0.5), 0.22), circle(Vector2(0.64, 0.46), 0.17)], "lines": []}
+
+## A peak and a lower one behind it; the hole is the snow cap.
+static func _mountain() -> Dictionary:
+	var peak := PackedVector2Array([Vector2(0.44, 0.14), Vector2(0.86, 0.86), Vector2(0.04, 0.86)])
+	var low := PackedVector2Array([Vector2(0.72, 0.4), Vector2(0.98, 0.86), Vector2(0.5, 0.86)])
+	var cap := PackedVector2Array([Vector2(0.44, 0.14), Vector2(0.56, 0.35), Vector2(0.48, 0.31),
+		Vector2(0.42, 0.37), Vector2(0.36, 0.3), Vector2(0.32, 0.34)])
+	return {"polys": [low, peak], "lines": [], "hole": cap}
+
+## A four-pointed star with a small one beside it.
+static func _star4(c: Vector2, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 8:
+		var a := TAU * i / 8.0 - PI * 0.5
+		pts.append(c + Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * 0.3))
+	return pts
+
+static func _sparkle() -> Dictionary:
+	return {"polys": [_star4(Vector2(0.44, 0.54), 0.4), _star4(Vector2(0.8, 0.2), 0.16)], "lines": []}
+
+## A line zigzagging up to the right with an arrowhead on its end.
+static func _trend() -> Dictionary:
+	return {"polys": [], "lines": [
+		PackedVector2Array([Vector2(0.08, 0.78), Vector2(0.36, 0.48), Vector2(0.56, 0.64), Vector2(0.9, 0.28)]),
+		PackedVector2Array([Vector2(0.62, 0.26), Vector2(0.9, 0.26), Vector2(0.9, 0.54)])]}
+
+## A crown: three points over a band (Streak's best-streak row).
+static func _crown() -> Dictionary:
+	var body := PackedVector2Array([Vector2(0.1, 0.28), Vector2(0.32, 0.5), Vector2(0.5, 0.2),
+		Vector2(0.68, 0.5), Vector2(0.9, 0.28), Vector2(0.82, 0.72), Vector2(0.18, 0.72)])
+	var band := PackedVector2Array([Vector2(0.18, 0.78), Vector2(0.82, 0.78), Vector2(0.82, 0.88), Vector2(0.18, 0.88)])
+	return {"polys": [body, band], "lines": []}

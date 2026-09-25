@@ -51,6 +51,12 @@ const CARDS := {
 	"rings": ["meadow", 1.5, Vector2(0.40, 0.30)],
 }
 
+## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
+## today's, each washed to the card's paper on its left edge.
+const STREAK := ["meadow", 1.4, Vector2(0.85, 0.75)]
+const TODAY := ["meadow", 1.8, Vector2(0.25, 0.85)]
+const SIDE_SCRIM := Vector3(1.0, 0.0, 0.45)
+
 ## Island key (core/progress.gd's ISLANDS) to the vista its name suggests.
 ## Keyed on the key, never the translated name, so every language sees the
 ## same picture.
@@ -174,4 +180,14 @@ static func header_plate() -> ColorRect:
 	mat.set_shader_parameter("scrim", HEADER_SCRIM)
 	mat.set_shader_parameter("fade", HEADER_FADE)
 	point_at(plate, HEADER[0], HEADER[1], HEADER[2], Pal.ACCENT)
+	return plate
+
+## A picture set into the side of a Streak card: `row` is [vista, zoom,
+## focus], washed into `paper` (the card's own fill) along its left edge.
+static func side_plate(row: Array, radius: float, paper: Color) -> ColorRect:
+	var plate := _plate(radius)
+	var mat := plate.material as ShaderMaterial
+	mat.set_shader_parameter("scrim", SIDE_SCRIM)
+	mat.set_shader_parameter("paper", paper)
+	point_at(plate, row[0], row[1], row[2], Pal.LEAF)
 	return plate

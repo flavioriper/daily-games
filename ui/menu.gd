@@ -323,6 +323,7 @@ func _build_list() -> void:
 	stats_tab = StatsTab.new()
 	stats_tab.name = "StatsTab"
 	stats_tab.visible = false
+	stats_tab.open_streak.connect(func() -> void: _show_tab("streak"))
 	root.add_child(stats_tab)
 
 	bar = BottomBar.new()

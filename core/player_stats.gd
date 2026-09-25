@@ -36,3 +36,20 @@ static func boards(log: Dictionary, difficulty: int) -> Dictionary:
 		row.erase("_sum")
 		row.erase("_timed")
 	return out
+
+## The last `n` days ending on `today`, oldest first: whether each was played,
+## and how many boards were solved across them (the Solved tile's "this week"
+## and the Days tile's dots).
+static func recent(log: Dictionary, today: int, n := 7) -> Dictionary:
+	var unix := int(Time.get_unix_time_from_datetime_dict({
+		"year": today / 10000, "month": (today / 100) % 100, "day": today % 100,
+		"hour": 12, "minute": 0, "second": 0}))
+	var played: Array[bool] = []
+	var solved := 0
+	for i in range(n - 1, -1, -1):
+		var d := Time.get_date_dict_from_unix_time(unix - i * 86400)
+		var key := int(d.year) * 10000 + int(d.month) * 100 + int(d.day)
+		var count := (log.get(key, []) as Array).size()
+		played.append(count > 0)
+		solved += count
+	return {"played": played, "solved": solved}

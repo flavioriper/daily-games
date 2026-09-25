@@ -71,6 +71,11 @@ TODAY_LINE_1,Two more keep the streak,Mais dois mantêm a sequência,Dos más ma
 TODAY_LINE_2,One more keeps the streak,Mais um mantém a sequência,Uno más mantiene la racha
 TODAY_LINE_3,Day kept,Dia garantido,Día conseguido
 WEEKDAY_INITIALS,MTWTFSS,STQQSSD,LMXJVSD
+WEEKDAY_SHORT,Mon Tue Wed Thu Fri Sat Sun,Seg Ter Qua Qui Sex Sáb Dom,Lun Mar Mié Jue Vie Sáb Dom
+STREAK_TOTAL_DAYS,Total days played,Total de dias jogados,Total de días jugados
+STREAK_SOLVED,Puzzles solved,Quebra-cabeças resolvidos,Rompecabezas resueltos
+STREAK_BEST_STREAK,Best streak,Melhor sequência,Mejor racha
+TODAY_TITLE,Today,Hoje,Hoy
 MONTH_1,January,Janeiro,Enero
 MONTH_2,February,Fevereiro,Febrero
 MONTH_3,March,Março,Marzo
@@ -87,3 +92,6 @@ STATS_SOLVED,Solved,Resolvidos,Resueltos
 STATS_DAYS,Days played,Dias jogados,Días jugados
 STATS_BEST_STREAK,Best streak,Melhor sequência,Mejor racha
 STATS_COUNT,Solved: %d,Resolvidos: %d,Resueltos: %d
+STATS_WEEK,+%d this week,+%d esta semana,+%d esta semana
+STATS_KEEP_GOING,Keep going!,Continue assim!,¡Sigue así!
+STATS_START_STREAK,Start one today,Comece hoje,Empieza hoy
