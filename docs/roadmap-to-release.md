@@ -25,7 +25,7 @@ be built.
 
 - **Platforms: Android and iOS**, launching together.
 - **Name: Peeplet Daily, package `com.peeplet.daily`** (the export preset's
-  values). `project.godot`'s `config/name` still says `Daily`, so align it.
+  values; `config/name` aligned 2026-09-25).
   The iOS bundle ID should match.
 - **Monetisation: banner ads, plus a one-time purchase that removes ads for
   life.**
@@ -132,15 +132,16 @@ be built.
       that reads wrong is worse than English.
 
 ### Settings
-- [ ] Add a sound on/off toggle. The sheet has Reduce motion and Language
-      today.
+- [x] (2026-09-25) Sound switch in the settings sheet: mutes the Master bus,
+      saved beside Reduce motion (`core/sound.gd`).
 - [ ] Decide whether 1.0 has music. None exists.
 - [ ] Add **Remove ads** and **Restore purchases** rows. Apple rejects apps
       with a non-consumable purchase and no Restore.
-- [ ] Add rows for the privacy policy, the privacy / consent choices, and
-      credits.
-- [ ] Credits: Fredoka, the wordfreq word lists (CC-BY-SA 4.0, attribution
-      required), ElevenLabs sound, and Godot's licence.
+- [ ] Add rows for the privacy policy and the privacy / consent choices
+      (need the policy's URL and the consent form). Credits is done.
+- [x] (2026-09-25) Credits sheet, opened from settings: Fredoka and Nunito
+      (OFL), wordfreq (CC-BY-SA 4.0), ElevenLabs, and the Godot and FreeType
+      notices with the engine's licence text.
 
 ## Phase 2: Builds, ads and the purchase
 
@@ -170,9 +171,10 @@ be built.
 ### iOS
 - [ ] **(you)** Apple Developer Program membership ($99 a year), and the
       bundle ID `com.peeplet.daily` registered.
-- [ ] Install Godot 4.7's iOS export templates (none are in the export
-      templates directory today), and add an iOS preset: icons, launch
-      screen, portrait only, and the team ID.
+- [x] (2026-09-25) Godot 4.7's iOS template is installed and there is an
+      iOS preset (`com.peeplet.daily`, iPhone only, portrait, Xcode project
+      only). Still to fill: **(you)** the App Store Team ID, which the export
+      stops on, and the icons and launch screen.
 - [ ] Export to Xcode, and build and run on a real iPhone.
 - [ ] CI for iOS: a macOS runner that exports, signs with App Store Connect
       API keys, and uploads to TestFlight. Alternatively, build locally on
@@ -187,8 +189,9 @@ be built.
 - [ ] Set `version/name` to 1.0.0. Android's `version/code` is the CI run
       number; iOS needs its own build number.
 - [ ] Splash: `boot_splash/show_image=false`. Decide the cold-start frame.
-- [ ] Release hygiene: the `MCPGameBridge` autoload must not ship, and no
-      probe, harness or test may either. `tools/` is already excluded.
+- [x] (2026-09-25) Release hygiene: `tools/strip_dev_addons.sh` takes the
+      MCP addon and its autoload out of CI's and `deploy_android.sh`'s
+      exports, and `tests/` is excluded; checked on a built APK.
 - [ ] Crash reporting: there is none. Firebase Crashlytics on both platforms
       needs native plugins.
 
@@ -266,7 +269,9 @@ be built.
       support.
 - [ ] Screens: 9:16, 9:20, iPhone with a notch or Dynamic Island, and iPad if
       it is supported.
-- [ ] Android back: it closes a sheet, then a board, then the app. Pausing
+- [ ] Android back: built 2026-09-25 (`ui/menu.gd`'s `go_back`: a sheet,
+      the first-play card, the board, Stats/Streak to Home, then quit) and
+      probed on the desktop; feel it on a phone. Pausing
       and resuming on both platforms keeps the board's state.
 - [ ] Upgrade from a 0.x tester build: saves load, and the loss of the 3D
       boards breaks nothing that was saved.
