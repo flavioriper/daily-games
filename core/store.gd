@@ -89,8 +89,16 @@ func restore() -> void:
 	_set_busy(true)
 	if _iap.has_method("restore_purchases"):
 		await _iap.restore_purchases()
-	var found := await _sync_owned()
+	var sync := await _sync_owned()
 	_set_busy(false)
+	if not sync.get("ok", false):
+		# The query itself failed (offline, store unreachable): this is not
+		# the same as "queried and remove_ads wasn't there", so it must not
+		# be reported as "nothing to restore".
+		Analytics.track("restore_used", {"found": false, "reason": "store_error"})
+		_fail("store_error")
+		return
+	var found: bool = sync.get("found", false)
 	Analytics.track("restore_used", {"found": found})
 	if not found:
 		_fail("nothing_to_restore")
@@ -108,12 +116,14 @@ func _connect() -> void:
 			price_ready.emit()
 	await _sync_owned()
 
-## Reads the store's current purchases. Returns whether remove_ads is among
-## them; clears the flag only when the query itself succeeded.
-func _sync_owned() -> bool:
+## Reads the store's current purchases. Returns {ok, found}: `ok` is whether
+## the query itself succeeded, `found` is whether remove_ads was among the
+## purchases -- only meaningful when `ok` is true. The owned flag is touched
+## only on a successful query, so an offline caller never has it cleared.
+func _sync_owned() -> Dictionary:
 	var result: Dictionary = await _iap.get_available_purchases_result()
 	if not result.get("success", false):
-		return _owned
+		return {"ok": false, "found": false}
 	var found := false
 	for p in result.get("purchases", []):
 		var d: Dictionary = p if p is Dictionary else p.to_dict()
@@ -121,7 +131,7 @@ func _sync_owned() -> bool:
 			found = true
 			await _iap.finish_transaction_dict(d, false)
 	_set_owned(found)
-	return found
+	return {"ok": true, "found": found}
 
 func _on_purchase_updated(purchase: Dictionary) -> void:
 	if String(purchase.get("productId", "")) != PRODUCT:
