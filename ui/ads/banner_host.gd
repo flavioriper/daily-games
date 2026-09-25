@@ -16,6 +16,7 @@ signal tapped
 
 const CozyTheme = preload("res://ui/theme.gd")
 const Pal = preload("res://core/palette.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
 
 ## The tab's lettering and padding, sized to stand inside TAB_H: the theme's
 ## IconButton (34 on a 24 margin) would be ~100 tall.
@@ -73,15 +74,15 @@ func _on_banner_changed(visible_: bool, _height: float) -> void:
 	_place_tab()
 	queue_redraw()
 
-## The tab's foot on the banner's top edge. The banner's height is design px
-## when faked and window px when real, so a real one is scaled to the canvas.
+## The tab's foot on the banner's top edge. The banner is anchored inside
+## the safe area, so on a phone it stands on the system's bottom inset (home
+## indicator, nav bar), and the tab stands on it. Derived from the very inset
+## ui/safe_area.gd hands the screens (system + banner + TAB_H, design px) less
+## the tab itself, so the tab and the reserved band cannot drift apart.
 func _place_tab() -> void:
 	if tab == null:
 		return
-	var band := Ads.fake_height()
-	if band <= 0.0:
-		var win := DisplayServer.window_get_size()
-		band = Ads.bottom_inset() * get_viewport_rect().size.y / float(win.y) if win.y > 0 else 0.0
+	var band := maxf(0.0, SafeArea.insets(self).y - Ads.TAB_H) if Ads.is_banner_visible() else 0.0
 	var w := tab.get_combined_minimum_size().x
 	tab.offset_left = -w * 0.5
 	tab.offset_right = w * 0.5
