@@ -65,8 +65,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	new_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	new_button.visible = with_new
 	new_button.pressed.connect(func() -> void:
-		new_puzzle.emit()
-		close())
+		close_then(new_puzzle.emit))
 	col.add_child(new_button)
 	close_button = IconButton.new("check", "BTN_CLOSE", "PrimaryButton")
 	close_button.custom_minimum_size.y = ROW

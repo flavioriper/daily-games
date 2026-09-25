@@ -52,8 +52,7 @@ func ask(entry: Dictionary) -> void:
 		var d := int(level.get("difficulty", i))
 		var done := Progress.completed(Registry.progress_id(entry, d))
 		_list.add_child(_row(level, i, done, func() -> void:
-			close()
-			chose.emit(_entry, d)))
+			close_then(chose.emit.bind(_entry, d))))
 	open()
 
 func _row(level: Dictionary, index: int, done: bool, on_press: Callable) -> Control:

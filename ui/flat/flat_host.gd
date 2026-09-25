@@ -98,6 +98,9 @@ var _hearts_line := ""
 ## opened before 00:00 UTC and solved after still counts for its own day; a
 ## non-daily board earns no heart and no best time.
 var _day_key := 0
+## The card's span (_card_span) the board was laid out at when the win's
+## slide froze it.
+var _frozen := Vector2.ZERO
 
 func _ready() -> void:
 	# puzzle_host's _ready spawns the daily seed; the day is taken with it.
@@ -112,6 +115,26 @@ func _ready() -> void:
 		_stage.visible = false
 	if _completed_daily:
 		call_deferred("_restore_completed_daily")
+	else:
+		_warm_win()
+
+## Draws the win's art and its stats and buttons for a couple of frames,
+## all but invisible, while the board comes in: a panel's first draw is where
+## its meshes are built, its glyphs are rasterised and, on gl_compatibility,
+## any shader it is the first to use is compiled (the renderer precompiles
+## nothing there), and on a phone that first draw landing on the win's first
+## frame is a visible hitch.
+func _warm_win() -> void:
+	for panel: CanvasItem in [well_done, _win_stack]:
+		panel.modulate.a = 0.01
+		panel.visible = true
+	for i in 2:
+		await get_tree().process_frame
+	if _won or not is_inside_tree():
+		return
+	for panel: CanvasItem in [well_done, _win_stack]:
+		panel.visible = false
+		panel.modulate.a = 1.0
 
 ## A completed daily has no saved move history to replay. Restore the board's
 ## terminal lifecycle state, then use the same solved presentation as a live
@@ -368,15 +391,61 @@ func _on_step(i: int, delta: int) -> void:
 func _fit_card() -> void:
 	if _board_holder == null or _card == null:
 		return
-	var want: float = _board_holder.size.y
+	var span := _card_span(_board_holder.size.y)
+	_card.offset_top = span.x
+	_card.offset_bottom = span.x + span.y - _board_holder.size.y
+
+## Where the card stands in a slot `h` tall: its top (x) and its height (y).
+func _card_span(h: float) -> Vector2:
+	var want := h
 	var centred := false
 	if is_instance_valid(_puzzle) and _puzzle.has_method("card_height"):
-		want = minf(want, _puzzle.card_height(_board_holder.size.y))
+		want = minf(want, _puzzle.card_height(h))
 		centred = _puzzle.has_method("card_centred") and _puzzle.card_centred()
-	var slack: float = _board_holder.size.y - want
-	var above: float = slack * 0.5 if centred else 0.0
-	_card.offset_top = above
-	_card.offset_bottom = above - slack
+	return Vector2((h - want) * 0.5 if centred else 0.0, want)
+
+## The win's slots slide by tweening their minimum heights, so the board's
+## slot changes size on every frame of it -- and a board lays itself out and
+## rebuilds its whole mesh, and every face on it, on every resize. On a phone
+## that is the stutter. So for the slide the board keeps the size it was laid
+## out at and is scaled and moved to follow its card instead, and it is laid
+## out once, at the new size, when the slide is over (_thaw_board).
+func _freeze_board() -> void:
+	if not is_instance_valid(_puzzle) or _board_holder.size.y <= 0.0:
+		return
+	_frozen = _card_span(_board_holder.size.y)
+	if _frozen.y <= 0.0:
+		return
+	# set_anchor keeps the rect by moving the offsets, so the board is never
+	# resized on the way into the freeze.
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		_puzzle.set_anchor(side, 0.0)
+	_puzzle.pivot_offset = Vector2(_puzzle.size.x * 0.5, 0.0)
+	_board_holder.resized.connect(_follow_board)
+
+## The frozen board, scaled so its card lands on the card's own span.
+func _follow_board() -> void:
+	if not is_instance_valid(_puzzle):
+		return
+	var span := _card_span(_board_holder.size.y)
+	var k := span.y / _frozen.y
+	_puzzle.scale = Vector2(k, k)
+	_puzzle.position.y = span.x - k * _frozen.x
+
+func _thaw_board() -> void:
+	if _board_holder.resized.is_connected(_follow_board):
+		_board_holder.resized.disconnect(_follow_board)
+	if not is_instance_valid(_puzzle):
+		return
+	_puzzle.scale = Vector2.ONE
+	_puzzle.pivot_offset = Vector2.ZERO
+	# Placed at the slot's size first, then anchored in place: a preset
+	# writes one side at a time, and every side in between is a resize, and
+	# so a whole relayout of the board.
+	_puzzle.position = Vector2.ZERO
+	_puzzle.size = _board_holder.size
+	_puzzle.set_anchor(SIDE_RIGHT, 1.0)
+	_puzzle.set_anchor(SIDE_BOTTOM, 1.0)
 
 func _on_brush(v: int) -> void:
 	if is_instance_valid(_puzzle) and _puzzle.has_method("set_brush"):
@@ -388,6 +457,7 @@ func _on_brush(v: int) -> void:
 func _spawn(the_seed: int) -> void:
 	if _won:
 		_won = false
+		_thaw_board()
 		_top_slot.custom_minimum_size.y = TOP_PLAY
 		_bottom_slot.custom_minimum_size.y = _bottom_play
 		well_done.visible = false
@@ -480,7 +550,12 @@ func _show_win() -> void:
 		_top_stack.visible = false
 		_bottom_stack.visible = false)
 	# The slots make room; the VBox slides the board card down between them.
-	Motion.slide(_top_slot, "custom_minimum_size:y", TOP_PLAY, TOP_WIN, SLOT_TIME, 0.0, false)
+	_freeze_board()
+	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", TOP_PLAY, TOP_WIN, SLOT_TIME, 0.0, false)
+	if slots == null:
+		_thaw_board()
+	else:
+		slots.finished.connect(_thaw_board)
 	Motion.slide(_bottom_slot, "custom_minimum_size:y", _bottom_play, BOTTOM_WIN, SLOT_TIME, 0.0, false)
 	well_done.enter(ART_DELAY)
 	_win_stack.visible = true

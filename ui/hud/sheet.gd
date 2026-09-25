@@ -30,6 +30,9 @@ var _scrim: ColorRect
 var _slot: Control
 var _card: PanelContainer
 var _tw: Tween
+## Set from close() until the next open(): a second tap on a choice while the
+## sheet slides away must not set the choice off twice.
+var _closing := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -90,14 +93,16 @@ func content_width() -> float:
 
 func open() -> void:
 	visible = true
+	_closing = false
 	_on_open()
 	Motion.stop(_tw)
 	_tw = Motion.slide(_slot, "position:y", OFFSET, 0.0, SLIDE)
 	Motion.appear(_scrim, 0.0, 1.0, FADE)
 
 func close() -> void:
-	if not visible:
+	if not visible or _closing:
 		return
+	_closing = true
 	Motion.stop(_tw)
 	var slide: Tween = Motion.slide(_slot, "position:y", 0.0, OFFSET, SLIDE, 0.0, false)
 	Motion.appear(_scrim, 1.0, 0.0, FADE)
@@ -109,3 +114,13 @@ func close() -> void:
 	slide.finished.connect(func() -> void:
 		visible = false
 		closed.emit())
+
+## Closes, and runs `then` once the slide is over. Anything heavy a choice
+## sets off (dealing and building a board) waits for the sheet to be gone:
+## on a phone a build in the same frame as the slide's first stalls the
+## whole slide.
+func close_then(then: Callable) -> void:
+	if not visible or _closing:
+		return
+	closed.connect(then, CONNECT_ONE_SHOT)
+	close()
