@@ -142,6 +142,21 @@ const SWIPE := 90.0
 const SWIPE_SLOPE := 1.5
 ## The pointer id a mouse press tracks under, beside a touch's index.
 const MOUSE_ID := -2
+## The page follows the finger once a press has moved this far sideways
+## (and SWIPE_SLOPE times more sideways than down); before that it is still
+## a tap. Let go past PAGE_COMMIT of a page's width, or flicked faster than
+## PAGE_FLICK px/s, and the turn completes; otherwise the page slides back.
+## Past the first or the last page the drag gives only PAGE_EDGE of the
+## finger's travel, a rubber band with nothing behind it.
+const DRAG_START := 16.0
+const PAGE_COMMIT := 0.25
+const PAGE_FLICK := 700.0
+const PAGE_EDGE := 0.3
+## A full page's slide, whether a chevron's or the rest of a let-go drag
+## (which takes the share of it that is left, but never less than
+## PAGE_SLIDE_MIN).
+const PAGE_SLIDE := 0.34
+const PAGE_SLIDE_MIN := 0.14
 
 var settings_sheet: Control
 var difficulty_sheet: Control
@@ -159,6 +174,26 @@ var _tab_tw: Tween
 var _backdrop: ColorRect
 var _list_root: Control
 var _grid: GridContainer
+## The page slides in a plain slot of its own: `_grid` holds the page that is
+## up and `_peek` the one beside it while a drag or a turn is showing it;
+## the two swap when a turn lands. A container would put a child's position
+## back on every sort, so the grids are anchored in a plain Control and move
+## by their own offset.
+var _grid_slot: Control
+var _peek: GridContainer
+var _peek_page := -1
+var _peek_cards: Array = []
+var _peek_fillers: Array = []
+var _slide_tw: Tween
+## Where the running slide is heading: 0 back to rest, +-1 a turn.
+var _slide_go := 0
+## Where the page stands under a drag, px, and the target page it is heading
+## for (the page up, or the one beside it).
+var _drag_x := 0.0
+var _dragging := false
+## The last two pointer samples, for the flick's speed at the let-go.
+var _drag_t := 0.0
+var _drag_v := 0.0
 ## The seam-spacer between the grid and the bar; see PAGER_SEAM above.
 var _pager_seam: Control
 var _page := 0
@@ -295,14 +330,15 @@ func _build_list() -> void:
 	day_row.open_streak.connect(func() -> void: _show_tab("streak"))
 	root.add_child(day_row)
 
-	# --- the cards, a page at a time ---
-	_grid = GridContainer.new()
-	_grid.name = "Grid"
-	_grid.columns = COLS
-	_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_grid.add_theme_constant_override("h_separation", GAP)
-	_grid.add_theme_constant_override("v_separation", GAP)
-	root.add_child(_grid)
+	# --- the cards, a page at a time, in a slot they can slide in ---
+	_grid_slot = Control.new()
+	_grid_slot.name = "GridSlot"
+	_grid_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_grid_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_grid_slot)
+	_grid = _new_grid("Grid")
+	_peek = _new_grid("Peek")
+	_peek.visible = false
 
 	# The seam the pager pill floats in (PAGER_SEAM above): a plain spacer
 	# between the grid and the bar, standing only on the home tab (hidden and
@@ -416,6 +452,17 @@ func _build_list() -> void:
 	# render only ever showed one dot.
 	_build_page()
 
+func _new_grid(grid_name: String) -> GridContainer:
+	var g := GridContainer.new()
+	g.name = grid_name
+	g.columns = COLS
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.add_theme_constant_override("h_separation", GAP)
+	g.add_theme_constant_override("v_separation", GAP)
+	g.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_grid_slot.add_child(g)
+	return g
+
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
 func _pages() -> int:
@@ -424,23 +471,32 @@ func _pages() -> int:
 ## The entries on the page that is up, with the index each has in the
 ## registry -- the colour comes off that index, so a card keeps its colour
 ## whichever page it lands on.
-func _page_entries() -> Array:
+func _page_entries(page := _page) -> Array:
 	var out: Array = []
-	var from := _page * _per_page
+	var from := page * _per_page
 	for i in range(from, mini(from + _per_page, Registry.PUZZLES.size())):
 		out.append({"i": i, "entry": Registry.PUZZLES[i]})
 	return out
 
 func _build_page() -> void:
-	for c in cards:
-		_grid.remove_child(c)
-		c.queue_free()
-	cards.clear()
-	for f in _fillers:
-		_grid.remove_child(f)
-		f.queue_free()
-	_fillers.clear()
-	for row in _page_entries():
+	_drop_peek()
+	_free_nodes(_grid, cards)
+	_free_nodes(_grid, _fillers)
+	_grid.position.x = 0.0
+	_fill(_grid, _page, cards, _fillers)
+	_set_pager(_page, _pages())
+
+func _free_nodes(from: Node, nodes: Array) -> void:
+	for n: Node in nodes:
+		if n.get_parent() == from:
+			from.remove_child(n)
+		n.queue_free()
+	nodes.clear()
+
+## Builds `page`'s cards into `grid`, appending them to `into` and any
+## fillers to `pad`.
+func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
+	for row in _page_entries(page):
 		var entry: Dictionary = row.entry
 		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()],
 			Progress.completed(String(entry.id)))
@@ -448,8 +504,8 @@ func _build_page() -> void:
 		card.fit_height(_row_h)
 		card.open.connect(_open.bind(entry))
 		card.blocked.connect(_on_soon.bind(entry))
-		cards.append(card)
-		_grid.add_child(card)
+		into.append(card)
+		grid.add_child(card)
 	# A short last row -- one whose cards do not fill COLS -- hands the real
 	# columns it does have the empty
 	# one's
@@ -469,16 +525,15 @@ func _build_page() -> void:
 	# exactly where it is rather than being deleted the moment a page happens
 	# to come out square. Whether it runs is a property of today's card
 	# count, never of the pager.
-	var short := cards.size() % _cols
+	var short := into.size() % _cols
 	if short > 0:
 		for i in _cols - short:
 			var filler := Control.new()
 			filler.name = "Filler_%d" % i
 			filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_fillers.append(filler)
-			_grid.add_child(filler)
-	_set_pager(_page, _pages())
+			pad.append(filler)
+			grid.add_child(filler)
 
 ## The fit is worked out once the column has its size, and never inside the
 ## layout pass that resized it: rebuilding the page there would resize the
@@ -508,7 +563,7 @@ func _queue_fit() -> void:
 ## first on screen, so a rotation or a resize never jumps the player back.
 func _fit_grid() -> void:
 	_fit_queued = false
-	if not _grid.visible:
+	if not _grid_slot.visible:
 		return
 	if _column == null or _column.size.x <= 0.0:
 		return
@@ -525,7 +580,8 @@ func _fit_grid() -> void:
 	var gap := GAP
 	if rows > 1:
 		gap = maxi(MIN_ROW_GAP, GAP + floori((slack - grow * rows) / (rows - 1)))
-	_grid.add_theme_constant_override("v_separation", gap)
+	for g: GridContainer in [_grid, _peek]:
+		g.add_theme_constant_override("v_separation", gap)
 	var per := cols * rows
 	var row_h := PuzzleCard.CARD_H + grow
 	if per != _per_page or cols != _cols:
@@ -533,12 +589,13 @@ func _fit_grid() -> void:
 		_per_page = per
 		_cols = cols
 		_grid.columns = cols
+		_peek.columns = cols
 		_page = clampi(first / per, 0, _pages() - 1)
 		_row_h = row_h
 		_build_page()
 	elif row_h != _row_h:
 		_row_h = row_h
-		for card in cards:
+		for card in cards + _peek_cards:
 			card.fit_height(row_h)
 
 ## Turns the page when a press on the grid travels far enough sideways:
@@ -551,6 +608,8 @@ func _fit_grid() -> void:
 ## one pointer is tracked at a time.
 func _input(event: InputEvent) -> void:
 	if not _can_swipe():
+		if _swipe_id != -1 and _dragging:
+			_let_go()
 		_swipe_id = -1
 		return
 	if event is InputEventScreenTouch:
@@ -564,28 +623,106 @@ func _input(event: InputEvent) -> void:
 
 func _can_swipe() -> bool:
 	return _list_root != null and _list_root.visible and _pages() > 1 \
-		and not settings_sheet.visible and _grid.visible
+		and not settings_sheet.visible and _grid_slot.visible
 
 func _swipe_press(event: InputEvent, id: int, pressed: bool) -> void:
 	if not pressed:
 		if id == _swipe_id:
 			_swipe_id = -1
+			if _dragging:
+				_let_go()
 		return
 	if _swipe_id != -1:
 		return
 	_swiped = false
-	var at: Vector2 = _grid.make_input_local(event).position
-	if Rect2(Vector2.ZERO, _grid.size).has_point(at):
+	_dragging = false
+	var at: Vector2 = _grid_slot.make_input_local(event).position
+	if Rect2(Vector2.ZERO, _grid_slot.size).has_point(at):
 		_swipe_id = id
 		_swipe_from = at
 
+## Before the drag has started, a press that wanders further down than
+## sideways is let go (a tap or a scroll, never a turn); once it has, the
+## page follows the finger and the speed is sampled for the flick.
 func _swipe_move(event: InputEvent) -> void:
-	var d: Vector2 = _grid.make_input_local(event).position - _swipe_from
-	if absf(d.x) < SWIPE or absf(d.x) < absf(d.y) * SWIPE_SLOPE:
+	var d: Vector2 = _grid_slot.make_input_local(event).position - _swipe_from
+	if not _dragging:
+		if absf(d.x) >= DRAG_START and absf(d.x) >= absf(d.y) * SWIPE_SLOPE:
+			_dragging = true
+			_swiped = true
+			# A drag caught mid-slide picks the page up where the slide
+			# has it, so a quick second swipe never jumps.
+			_grab_slide()
+			_swipe_from.x = _grid_slot.make_input_local(event).position.x - _drag_x
+			_drag_t = Time.get_ticks_msec() / 1000.0
+			_drag_v = 0.0
+		elif absf(d.y) >= DRAG_START * SWIPE_SLOPE:
+			_swipe_id = -1
 		return
-	_swipe_id = -1
-	_swiped = true
-	_turn_page(-1 if d.x > 0.0 else 1)
+	var x := d.x
+	var now := Time.get_ticks_msec() / 1000.0
+	var dt := now - _drag_t
+	if dt > 0.0:
+		# Smoothed, so one jittery sample at the let-go does not decide it.
+		_drag_v = lerpf(_drag_v, (x - _drag_x) / dt, 0.6)
+	_drag_t = now
+	_drag_to(x)
+
+## The page's width plus the margin, so the page beside it waits just off
+## the screen's edge and the two travel a margin apart.
+func _span() -> float:
+	return _grid_slot.size.x + MARGIN
+
+## Stands the page at `x` (finger travel), with the one beside it in view
+## on the side it is being pulled from; past either end there is none, and
+## the page only gives a little.
+func _drag_to(x: float) -> void:
+	var dir := 1 if x < 0.0 else -1
+	var target := _page + dir
+	if x == 0.0 or target < 0 or target >= _pages():
+		_drag_x = x * PAGE_EDGE
+		_hide_peek()
+	else:
+		_drag_x = x
+		_show_peek(target)
+		_peek.position.x = _drag_x + dir * _span()
+	_grid.position.x = _drag_x
+
+## Finishes a drag: on to the page beside if it was pulled far or fast
+## enough toward it, back to rest otherwise.
+func _let_go() -> void:
+	_dragging = false
+	var span := _span()
+	var go := 0
+	if _peek.visible and _peek_page >= 0:
+		var dir := _peek_page - _page
+		var toward := -dir * _drag_x
+		var fling := -dir * _drag_v
+		if toward > span * PAGE_COMMIT or (fling > PAGE_FLICK and toward > 0.0):
+			go = dir
+	_slide_to(go)
+
+## Builds `page` into the peek grid if it is not the one standing there.
+func _show_peek(page: int) -> void:
+	if _peek_page != page:
+		_free_nodes(_peek, _peek_cards)
+		_free_nodes(_peek, _peek_fillers)
+		_fill(_peek, page, _peek_cards, _peek_fillers)
+		_peek_page = page
+	_peek.visible = true
+
+func _hide_peek() -> void:
+	_peek.visible = false
+
+func _drop_peek() -> void:
+	Motion.stop(_slide_tw)
+	_free_nodes(_peek, _peek_cards)
+	_free_nodes(_peek, _peek_fillers)
+	_peek_page = -1
+	_peek.visible = false
+	_peek.position.x = 0.0
+	_grid.position.x = 0.0
+	_drag_x = 0.0
 
 ## Which page is up, and how many there are. One page hides the whole strip
 ## (nothing on the grid or the bar moves either way -- it is an overlay);
@@ -646,66 +783,85 @@ func _page_button(icon: String) -> Button:
 	return btn
 
 ## A page change is not an entrance: the header, the day row and the bar
-## stay where they are, the outgoing cards fade rather than cut, and the
-## incoming ones play the same per-page stagger the first page gets. The
-## outgoing cards are handed to `_fade_out_page` and `cards` is emptied
-## before `_build_page` runs, so its own free-the-old-page loop finds
-## nothing to do and only builds.
+## stay where they are, and the page slides -- the one up leaves to one side
+## as the next comes in from the other, a margin apart, the way the drag
+## moves them. A chevron plays the whole slide; a turn asked for while one
+## is still sliding lands that one first, then plays its own.
 func _turn_page(by: int) -> void:
+	_grab_slide()
 	var want := clampi(_page + by, 0, _pages() - 1)
 	if want == _page:
 		return
-	_page = want
-	_fade_out_page(cards)
-	cards = []
-	_build_page()
-	for i in cards.size():
-		cards[i].enter(Motion.stagger(i, CARD_STEP, CARD_CAP))
+	if _peek_page != want:
+		_drag_x = 0.0
+		_grid.position.x = 0.0
+	_show_peek(want)
+	_peek.position.x = _drag_x + signf(want - _page) * _span()
+	_slide_to(want - _page)
 
-## Pulls every card the page turn is leaving behind out of the grid, so the
-## grid is free to lay out the incoming page without the outgoing cards
-## still claiming a cell, and onto the list root at the exact spot it was
-## already standing -- a plain Control with no layout of its own, so it can
-## hold a card at an arbitrary position while the grid moves on without it.
-## It lands there *after* `margins` (which holds `_grid`), so for the whole
-## fade it sits on top of the incoming page at the same screen rect, which
-## is the point of a crossfade -- and also why `disable_tap()` matters: the
-## card's own hit surface is a full-rect Button (`_tap`, in
-## puzzle_card_2d.gd), and Godot hands input to the front-most one under
-## the finger regardless of fade alpha, so a card left tappable here would
-## win every tap over whatever just arrived underneath it. Each card then
-## fades on its own tween (Motion.appear, reusing the screen's own
-## ENTER_FADE rather than a new constant) and frees itself when that tween
-## lands, mirroring how a leaving face is freed elsewhere (binairo2d.gd's
-## `_swap_face`). A second page turn before this one's fades land only ever
-## calls this again with whatever `cards` holds by then -- a fresh page
-## `_build_page` only just built, never the nodes already fading -- so no
-## card is ever asked to fade or free twice, and every card that starts
-## fading is guaranteed its own free.
-func _fade_out_page(leaving: Array) -> void:
-	for card in leaving:
-		var rect: Rect2 = card.get_global_rect()
-		_grid.remove_child(card)
-		_list_root.add_child(card)
-		# `add_child` appends, which would draw a fading card over the pager
-		# pill -- right where the finger just pressed to turn the page (found
-		# by review, 2026-09-20). `_pager` is built before `_toast` (see
-		# _build_list) specifically so this puts the card under both.
-		_list_root.move_child(card, _pager.get_index())
-		card.global_position = rect.position
-		card.disable_tap()
-		# A card turned onto this page moments ago may still be mid-entrance
-		# (panel.gd's `_entrance`, driving the same modulate:a this fade
-		# drives): stop those first, or a fast page-turn-and-back leaves two
-		# tweens racing the alpha and a one-frame flicker before this card
-		# frees itself.
-		for tw in card._entrance:
-			Motion.stop(tw)
-		var out := Motion.appear(card, card.modulate.a, 0.0, ENTER_FADE)
-		if out == null:
-			card.queue_free()
-		else:
-			out.finished.connect(card.queue_free)
+## Slides the page up to rest (`go` 0) or off to the side so the peek page
+## lands (`go` +-1, the direction of the turn), over the share of
+## PAGE_SLIDE the distance left asks for.
+func _slide_to(go: int) -> void:
+	Motion.stop(_slide_tw)
+	var span := _span()
+	var end_x := -go * span
+	if go == 0 and not _peek.visible:
+		end_x = 0.0
+	var peek_dir := signf(_peek_page - _page) if _peek_page >= 0 else 0.0
+	if Motion.reduce:
+		_land(go)
+		return
+	_slide_go = go
+	var share := absf(end_x - _drag_x) / span
+	var time := maxf(PAGE_SLIDE_MIN, PAGE_SLIDE * share)
+	_slide_tw = create_tween().set_parallel(true) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_slide_tw.tween_method(func(x: float) -> void:
+		_drag_x = x
+		_grid.position.x = x
+		_peek.position.x = x + peek_dir * span, _drag_x, end_x, time)
+	_slide_tw.chain().tween_callback(_land.bind(go))
+	if go != 0:
+		# The dots and chevrons answer at the start of the slide, not its end.
+		_set_pager(_page + go, _pages())
+
+## Where a slide ends: on a turn the peek grid becomes the page up and the
+## old one is emptied into the peek's place; either way both stand at rest.
+func _land(go: int) -> void:
+	Motion.stop(_slide_tw)
+	if go != 0 and _peek_page >= 0:
+		var g := _grid
+		_grid = _peek
+		_peek = g
+		var c := cards
+		cards = _peek_cards
+		_peek_cards = c
+		var f := _fillers
+		_fillers = _peek_fillers
+		_peek_fillers = f
+		_page = _peek_page
+		_peek_page = -1
+		_free_nodes(_peek, _peek_cards)
+		_free_nodes(_peek, _peek_fillers)
+		_grid.name = "Grid"
+		_peek.name = "Peek"
+	_hide_peek()
+	_drag_x = 0.0
+	_grid.position.x = 0.0
+	_peek.position.x = 0.0
+	_set_pager(_page, _pages())
+
+## A slide still running is landed where it was heading before anything
+## else moves the page, except a drag, which picks it up mid-way.
+func _grab_slide() -> void:
+	if not Motion.running(_slide_tw):
+		return
+	Motion.stop(_slide_tw)
+	if _dragging:
+		return
+	# Land it on the page it was going to: the dots already say which.
+	_land(_slide_go)
 
 ## Shows the grid with the day current and plays the entrance; at start and
 ## on every return from a puzzle. Opening the app is what counts a day.
@@ -789,7 +945,7 @@ func _show_tab(key: String) -> void:
 	bar.show_tab(key)
 	var home := key == "home"
 	day_row.visible = home
-	_grid.visible = home
+	_grid_slot.visible = home
 	_pager_seam.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"

@@ -129,7 +129,12 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   **A swipe across the grid turns the page** (finger left
   is next), read in `_input` from both touch and mouse because the project
   does not emulate one from the other; the card a swipe started on does not
-  open. Which cards stand on page one is therefore a property of the phone
+  open. **Since 2026-09-25 the page slides rather than fades**: past 16 px
+  sideways it follows the finger with the neighbour page a margin beside it
+  (a second grid, `_peek`, in a plain `_grid_slot` so no container resets
+  the offsets), and on let-go it lands past a quarter of the width or a
+  700 px/s flick, else slides back; the ends rubber-band. The chevrons play
+  the same slide. Draw calls at rest are unchanged (253 / 222). Which cards stand on page one is therefore a property of the phone
   as well as of the card count -- the "eight on the first" figures in this
   file (twelve, before 2026-09-24) are the 1080x1920 page.
 - **The pager came back on 2026-09-20**, once a thirteenth card needed a

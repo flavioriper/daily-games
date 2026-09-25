@@ -260,3 +260,14 @@ seal is drawn on a layer inside the picture's plate, so it squashes with the
 card when pressed. It costs two draw commands a card, not three, so
 page one went from 390 to 379 with eleven cards done (`tests/_shot_menu.gd`
 at `810x1440`, two readings each).
+
+Amendment (2026-09-25): the page turn is a slide, not a crossfade. The grid
+stands in a plain slot beside a second, hidden grid; a sideways drag (16 px,
+1.5x more sideways than down) moves the page with the finger and builds the
+neighbour page into the second grid a margin away. Let go past a quarter of
+the width, or flicked faster than 700 px/s, the turn lands (ease-out cubic,
+the remaining share of 0.34 s); otherwise it slides back. Past the first or
+last page the drag gives 0.3 of the finger's travel. The chevrons play the
+same slide; a turn asked for mid-slide lands the running one first, and a
+drag caught mid-slide picks the page up where it is. On landing the two
+grids swap roles, so no card is rebuilt. Reduce motion lands at once.
