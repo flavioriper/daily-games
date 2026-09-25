@@ -41,11 +41,18 @@ var _phase := 0
 var _idle: Array[float] = []
 var _draws := 0
 var _page2 := false
+## `page3`: the same shot one page further on, the second turn a beat after
+## the first so the slide is not asked to jump two pages at once.
+var _second_turn_at := INF
+var _settle := PAGE2_SETTLE
 var _tab_arg := ""
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
-	_page2 = args.has("page2")
+	_page2 = args.has("page2") or args.has("page3")
+	if args.has("page3"):
+		_second_turn_at = FIRST_AT + 0.8
+		_settle = PAGE2_SETTLE + 0.8
 	for a in ["streak", "stats"]:
 		if args.has(a):
 			_tab_arg = a
@@ -78,10 +85,13 @@ func _process(delta: float) -> bool:
 			_draws = 0
 		_phase = 1
 	elif _phase == 1 and _page2:
-		if _t >= FIRST_AT + PAGE2_SETTLE - PAGE2_IDLE:
+		if _t >= _second_turn_at:
+			_second_turn_at = INF
+			_menu._turn_page(1)
+		if _t >= FIRST_AT + _settle - PAGE2_IDLE:
 			_idle.append(delta * 1000.0)
 			_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
-		if _t >= FIRST_AT + PAGE2_SETTLE:
+		if _t >= FIRST_AT + _settle:
 			var mean2 := 0.0
 			for ms in _idle:
 				mean2 += ms

@@ -1157,6 +1157,14 @@ pointing `seed_as` at them. Specs:
   (`tools/insane/rings_ladder.gd`, `content/insane/rings.json`, optima
   22-26) -- the first board with an Insane bank. Its sounds are wired and
   generated (lift, drop, lock, refused, undo, hint, reset, solved, enter).
+  **Polished on 2026-09-25** (the spec's amendment): the rings are donuts with
+  the post going into the top ring's hole, drawn through one `_append_peg` that
+  the menu card shares; the board lays out in a 1000-wide design box scaled to
+  the card, so the win screen shrinks it rather than spilling it; a lock is a
+  glint and a gold cap, never a wash; a drop is threaded down its post. 54 draw
+  calls bare, 60 played. **Run windowed harnesses with `--always-on-top`**: a
+  covered window stops presenting after about 1.7 s and every later shot repeats
+  the last frame.
 - **Caterpillar is the twenty-first card** (2026-09-25,
   `puzzles/caterpillar2d.gd`, spec `2026-09-25-caterpillar-flat-design.md`,
   mock `docs/brainstorm/concepts.html#caterpillar`). Drag one walk from leaf

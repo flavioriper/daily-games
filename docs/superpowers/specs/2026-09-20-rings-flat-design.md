@@ -432,3 +432,64 @@ derived from `Registry.PUZZLES`.**
   The levers, in order, are a peg less at the hard band (section 3's second probe), a
   solver-vetted refusal (already rejected), or leaving it alone because Undo is
   unlimited and a lost board costs only the taps to walk back out of it.
+
+---
+
+## Amendment, 2026-09-25: the polish pass
+
+The user judged the board's animation and composition "terrible next to the other
+games". Shot beside Pinwheel and the reference, five things were wrong, and this is
+what replaced each (`puzzles/rings2d.gd`, `ui/menu/card_art.gd`):
+
+- **A ring is a donut seen from a little above, not a pill.** The pill with a post
+  standing behind it was the biggest gap from the reference. A ring is now a band (with
+  its lower half turned from the light and a lit strip under the face, both edged on
+  the ring's own ellipse, so the shading curves like a torus), a lighter top face and a
+  dark hole, and **the post ends on the front half of its own cross-section at the top
+  ring's hole**, which is what makes it read as going in. The ring above covers the one
+  below past its hole (`SIDE + FACE - PITCH` > the hole's depth), so only a lip of each
+  lower face shows, like the reference's seams. Pips stay on the band. Every proportion
+  is a fraction of the ring's width, and `_append_peg` draws a whole peg, which is what
+  the menu card now calls at 41 px: one drawing, not two.
+- **The board is laid out in a design box and scaled to the card.** 1000 wide, at
+  least `MIN_H` tall, one transform (`_s`). The win screen shrinks the card, and the
+  old fixed layout spilled the second row out behind the stats card and "Try Hard";
+  now the board shrinks with it. Spare height goes four tenths above the rows, three
+  between them and three to the band, so the rows sit in the card's middle instead of
+  hanging from its top over 300 px of bare paper. Each row stands on a wooden shelf and
+  each peg in a cream dish, so nothing floats. The grass band is slimmer.
+- **A lock is a glint and a gold cap, never a wash.** The old wash lerped a locked
+  peg's rings toward `SUN_RAY` and turned four pink rings orange: a state shown as a
+  shade of the piece's own colour, which Pinwheel's amendment already forbade on a board
+  coloured by index. The rings keep their colour; a white glint runs down the stack on
+  `WAVE_STEP`, and a gold cap pops onto the post and stays, the lasting mark (under
+  reduce motion, the cap alone).
+- **The motion has a signature: the thread.** A lift slides up the post with a
+  stretch and pops clear to breathe. A drop arcs over, leaning into its travel
+  (`TILT`), and is then threaded down the target post, the post drawn back over the
+  ring so it is visibly on it. It lands with a squash and a bump that runs down the
+  stack under it (`BUMP_STEP`). An undo or a hint rises off its post first; a put-back
+  threads back down its own. A refused drop dips the held ring toward the peg that
+  refused it (`DIP`) and shivers that peg; a refused lift shivers its peg. The solve
+  hop stretches the rings. New constants are shape or timing of this board's own
+  (`RISE_TIME`, `ARC_TIME`, `ARC_LIFT`, `TILT`, `THREAD_TIME`, `BUMP_STEP`, `DIP`);
+  everything else is a `core/motion.gd` reader.
+- **Two meshes.** Holding a ring used to rebuild the whole board (about 21k vertices)
+  every frame of its breath. The stations, shelves and band are now one mesh rebuilt
+  only while something on them moves; the ring in hand or in flight is its own. A
+  throwaway probe at the hard band: the stations 3,270 vertices at 2.2 ms a build, the
+  held ring 1,386 at 0.9 ms, and only the second runs every frame.
+
+Measured with `tests/_shot_anim.gd -- rings` at `--resolution 810x1440
+--always-on-top` (see below): **54** draw calls bare and under reduce motion, **60**
+played (the lock's ring and sparkles), against the 855 budget; the reduce-motion pair
+1.5 s apart is pixel-identical; ANGLE (`--rendering-driver opengl3_angle`) agrees on 54
+and matches the default driver to 1/255 everywhere. Menu page three
+(`tests/_shot_menu.gd -- page3`, new) reads **142**. Suite: 122,583 passed, 0 failed.
+
+**Two harness traps found on the way**, both fixed in the harnesses rather than worked
+around: a windowed harness whose window is covered stops presenting frames after about
+1.7 s, and every later shot silently repeats the last one (Pinwheel's strip did it
+too), so run them with `--always-on-top`; and `_shot_anim.gd` read the real progress
+file, so a daily already solved on this Mac opened straight onto its win screen. It now
+uses a throwaway file with every tutorial marked seen.
