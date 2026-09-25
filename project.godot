@@ -10,9 +10,9 @@ config_version=5
 
 [ads]
 
-provider_singleton=""
-app_id=""
 banner_unit_id=""
+banner_unit_id.android="ca-app-pub-3940256099942544/9214589741"
+banner_unit_id.ios="ca-app-pub-3940256099942544/2435281174"
 
 [application]
 
@@ -27,6 +27,7 @@ boot_splash/show_image=false
 
 MCPGameBridge="res://addons/godot_mcp/game_bridge/mcp_game_bridge.gd"
 Ads="*res://core/ads.gd"
+GodotIapPlugin="*uid://c8xt82r1xtwn0"
 
 [display]
 
@@ -38,7 +39,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/admob/plugin.cfg", "res://addons/godot-iap/plugin.cfg")
 
 [godot_mcp]
 

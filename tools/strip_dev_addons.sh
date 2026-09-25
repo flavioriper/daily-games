@@ -7,7 +7,10 @@
 # (tools/deploy_android.sh does `git checkout` on both files).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-perl -ni -e 'print unless /^MCPGameBridge=/ || m{^enabled=PackedStringArray\("res://addons/godot_mcp/plugin\.cfg"\)}' project.godot
+# Only godot_mcp's entry leaves the plugin list: the store plugins (AdMob,
+# godot-iap) stay enabled, because their exporters run during the export.
+perl -ni -e 'print unless /^MCPGameBridge=/' project.godot
+perl -pi -e 's{"res://addons/godot_mcp/plugin\.cfg",\s*}{}; s{,\s*"res://addons/godot_mcp/plugin\.cfg"}{}; s{^enabled=PackedStringArray\("res://addons/godot_mcp/plugin\.cfg"\)\n}{}' project.godot
 perl -pi -e 's{^exclude_filter="([^"]*)"}{my $f = $1; $f =~ /addons\/godot_mcp/ ? qq(exclude_filter="$f") : qq(exclude_filter="$f, addons/godot_mcp/*")}e' export_presets.cfg
 if grep -q 'MCPGameBridge\|addons/godot_mcp/plugin' project.godot; then
   echo "strip_dev_addons: godot_mcp is still in project.godot" >&2
