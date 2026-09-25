@@ -131,6 +131,7 @@ func _build_overlay() -> void:
 	(_overlay as ColorRect).color = Color(Pal.PAPER, 0.85)
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.visible = false
+	_overlay.z_index = RulesSheet.OVER_BOARD
 	add_child(_overlay)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", CozyTheme.paper_card())

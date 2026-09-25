@@ -23,6 +23,10 @@ const FADE := 0.2
 const OFFSET := 300.0
 const MARGIN := 40.0
 const ROW := 128.0
+## Above anything a board lifts with z_index (its signs and Fx, at 1 and 2):
+## z_index outranks tree order, so a sheet at 0 had a board's markers drawn
+## over it.
+const OVER_BOARD := 10
 const SHEET_GAP := 28
 const SHEET_INSET := 32.0
 
@@ -36,6 +40,7 @@ var _closing := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	z_index = OVER_BOARD
 	visible = false
 	_scrim = ColorRect.new()
 	_scrim.color = Color(Pal.OUTLINE, 0.35)

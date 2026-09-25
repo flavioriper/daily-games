@@ -21,6 +21,8 @@ func setup(entry: Dictionary, puzzle: Control) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Over the board's own lifted layers, as the sheets are (sheet.gd).
+	z_index = preload("res://ui/hud/sheet.gd").OVER_BOARD
 	_build()
 
 func _build() -> void:
