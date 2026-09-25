@@ -1,7 +1,9 @@
 extends "res://ui/hud/sheet.gd"
 
-## The settings sheet: the Reduce motion toggle, the language, a New puzzle
-## row (a prototype affordance the menu leaves out) and Close. The sheet applies the
+## The settings sheet: the Reduce motion toggle, the language, How to play
+## and a New puzzle row (both only on a board; the menu leaves them out) and
+## Close. How to play is the rules sheet's only door since the tip card went
+## (1a04e0a, 2026-09-21). The sheet applies the
 ## toggle itself, persisting it and stilling the world, so the menu and the
 ## puzzle host share one behaviour and only refresh their own chrome on
 ## reduce_changed.
@@ -16,9 +18,11 @@ const MARK := 40.0
 
 signal reduce_changed(on: bool)
 signal new_puzzle
+signal rules
 
 var with_new := true
 var toggle: CheckButton
+var rules_button: Button
 var new_button: Button
 var close_button: Button
 var _switch: Control
@@ -59,6 +63,13 @@ func _build_sheet(col: VBoxContainer) -> void:
 		_set_reduce(on))
 	col.add_child(toggle)
 	col.add_child(_build_language())
+	rules_button = IconButton.new("help", "RULES_TITLE", "IconButton")
+	rules_button.custom_minimum_size.y = ROW
+	rules_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rules_button.visible = with_new
+	rules_button.pressed.connect(func() -> void:
+		close_then(rules.emit))
+	col.add_child(rules_button)
 	new_button = IconButton.new("reset", "SETTINGS_NEW_PUZZLE", "IconButton")
 	new_button.custom_minimum_size.y = ROW
 	# Buttons keep their own width, centred, rather than the sheet's.

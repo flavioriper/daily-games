@@ -89,6 +89,7 @@ func _ready() -> void:
 	settings_sheet.name = "SettingsSheet"
 	settings_sheet.reduce_changed.connect(_on_reduce_changed)
 	settings_sheet.new_puzzle.connect(_on_new)
+	settings_sheet.rules.connect(_open_rules)
 	add_child(settings_sheet)
 
 	# A second card for the same board (the island Binairo beside the flat one)

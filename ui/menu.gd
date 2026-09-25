@@ -225,6 +225,7 @@ var _shown_day := 0
 func _ready() -> void:
 	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	Ads.banner_changed.connect(func(_visible: bool, _height: float) -> void: _apply_insets())
 	_build_list()
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
@@ -536,6 +537,24 @@ func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 			filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			pad.append(filler)
 			grid.add_child(filler)
+
+## A banner arriving or leaving changes the bottom inset after the list was
+## built, so everything _build_list placed off `insets` is placed again: the
+## margins (the column resizes and refits its grid), the header plate and
+## its crop, and the pager and toast that float over the bar. Pinwheel's
+## merge (57c8539) dropped this hook; the board host kept its own.
+func _apply_insets() -> void:
+	if not is_instance_valid(_margins):
+		return
+	var insets := SafeArea.insets(self)
+	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
+	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
+	_backdrop.offset_bottom = MARGIN + insets.x + MenuHeader.HEIGHT + BACKDROP_BLEED
+	Vistas.set_top_pad(_backdrop, insets.x)
+	_pager.offset_top = -PAGER_MID - PAGER_SLOT_H * 0.5 - insets.y
+	_pager.offset_bottom = -PAGER_MID + PAGER_SLOT_H * 0.5 - insets.y
+	_toast.offset_top = -TOAST_OVER - TOAST_H - insets.y
+	_toast.offset_bottom = -TOAST_OVER - insets.y
 
 ## The fit is worked out once the column has its size, and never inside the
 ## layout pass that resized it: rebuilding the page there would resize the
