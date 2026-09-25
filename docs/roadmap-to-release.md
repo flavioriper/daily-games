@@ -116,7 +116,8 @@ be built.
       which is plausibly 400-600 ms on a phone. Past the 300 ms budget the
       grid silently comes out easier (`graded: false`). Time it on an older
       iPhone and a mid-range Android.
-- [ ] Every board opens its rules sheet. Hidden Word especially.
+- [x] (2026-09-25) Every board opens its rules sheet, through How to play
+      in the board's settings sheet.
 
 ### Localisation: pt and es
 - [x] (2026-09-24, `feat/localise-boards`) Key all 20 boards' rules, tips,
@@ -272,17 +273,21 @@ be built.
 
 ## Found on the way
 
-- [ ] `tests/_win.gd` is stale: it now removes the first-play tutorial and no
-      longer loops on a board whose host goes away, but Binairo, Code Break
-      and Queens still fail in it. The same three also fail on `main`
-      before the 3D removal (main scored 7/19 in that run; the branch
-      scored 16/19), so it is the harness and its timing, not the boards.
-      Fix it before the quality gate leans on it. On 2026-09-24 it scored
-      **8/20**: most failures now read `hud=false`, likely the tip card's
-      removal, and four boards free their host before the check.
-- [ ] Pinwheel's merge (`57c8539`) dropped `ui/menu.gd`'s
-      `Ads.banner_changed` → `_apply_insets` hook, so the menu does not move
-      its margins when a banner appears. Restore it with the ads work.
+- [x] (2026-09-25) `tests/_win.gd` is **21/21**, twice. It kept a progress
+      file across runs, so a board solved in an earlier run opened on its win
+      screen and the solver's taps closed it; it now starts from a fresh file
+      with the tutorials seen. Queens seats a queen in two taps since its
+      tap cycle (`d57e17a`).
+- [x] (2026-09-25) Restored the menu's `Ads.banner_changed` hook that
+      Pinwheel's merge (`57c8539`) dropped: `_apply_insets` moves the
+      margins, the header plate, the pager and the toast. Checked with a
+      forced 150 px banner (bottom margin 40 to 240, and back).
+- [x] (2026-09-25) No board could open its rules sheet after the tip card
+      left (`1a04e0a`). The board's settings sheet now has **How to play**;
+      checked on all 21 boards.
+- [x] (2026-09-25) Boards lift their signs and Fx with `z_index`, so
+      Binairo's markers drew over the settings sheet. Sheets, the first-play
+      card and the solved overlay now sit at `OVER_BOARD`.
 - [x] (2026-09-24) `ui/flat/tip_card.gd` and `ui/hud/binairo_tutorial.gd`
       were loaded by nothing live; deleted.
 
