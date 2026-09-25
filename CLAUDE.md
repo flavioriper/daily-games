@@ -1445,8 +1445,9 @@ The game ships as a native APK through Firebase App Distribution (project
 to export and distribute; the build lands in the Firebase App Tester app on
 the phone. Nothing deploys on push.
 
-The export is the non-gradle (prebuilt template) path, arm64-v8a only,
-debug-signed. Machine-local setup it depends on: the Android SDK at
+The export is the Gradle path (`use_gradle_build=true`, since
+`feat/gradle-export`), arm64-v8a only, debug-signed. Machine-local setup it
+depends on: the Android SDK at
 `/opt/homebrew/share/android-commandlinetools` and `~/.android/debug.keystore`,
 both wired into Godot's editor settings, plus the 4.7 Android export
 templates. `build/` is ignored -- it is output.
@@ -1454,8 +1455,9 @@ templates. `build/` is ignored -- it is output.
 ## Analytics
 
 Gameplay events go to Firebase (project `daily-games-420bf`) over the GA4
-Measurement Protocol, in `core/analytics.gd`. No native SDK, so the Android
-export stays on the non-gradle path.
+Measurement Protocol, in `core/analytics.gd`. No native SDK of its own --
+the Android export moved to the Gradle path for AdMob's and godot-iap's,
+see "Ads and the purchase" below.
 
 - **Nothing sends unless `Analytics.start()` runs**, and only `world/main.gd`
   calls it. Tests and harnesses build the same screens and stay silent; keep
@@ -1575,8 +1577,10 @@ stated before the 3D game left.
   above for the grid's own page-count change.
 - **The purchase sheet has three doors**: a paper "Remove ads" tab
   (`Ads.TAB_H` 56) `ui/ads/banner_host.gd` stands on the banner's top edge,
-  a third header icon button, and Remove ads / Restore purchases rows in
-  settings -- all hidden once owned. `price_text()` is empty until the store
+  a third header icon button, and a Remove ads row in settings (Restore
+  purchases lives on the sheet itself, one tap away). The tab and the header
+  icon go for good once owned; the settings row is the one door that stays,
+  disabled, reading "Ads removed". `price_text()` is empty until the store
   answers, so nothing shows a price until a real product exists in Play
   Console or App Store Connect.
 

@@ -26,6 +26,17 @@ var _owned := false
 var _price := ""
 var _busy := false
 var _fake := false
+## True from the first await in buy() until purchase_updated or
+## purchase_error resolves it, so a later purchase_updated replaying an old
+## transaction (iOS restore) is never mistaken for the purchase this flag
+## was watching.
+var _buying := false
+## True for the span of restore()'s own await on restore_purchases(): that
+## call can itself emit purchase_error on failure (godot-iap), which would
+## otherwise clear busy and report a failure mid-restore, before the
+## restore's own _sync_owned() has had its say. restore() reports once, at
+## the end.
+var _restoring := false
 
 func _ready() -> void:
 	_owned = _load_owned()
@@ -68,6 +79,7 @@ func buy() -> void:
 		_fail("unavailable")
 		return
 	_set_busy(true)
+	_buying = true
 	var platforms = _types.RequestPurchasePropsByPlatforms.new()
 	platforms.apple = _types.RequestPurchaseIosProps.new()
 	platforms.apple.sku = PRODUCT
@@ -87,8 +99,10 @@ func restore() -> void:
 		_fail("unavailable")
 		return
 	_set_busy(true)
+	_restoring = true
 	if _iap.has_method("restore_purchases"):
 		await _iap.restore_purchases()
+	_restoring = false
 	var sync := await _sync_owned()
 	_set_busy(false)
 	if not sync.get("ok", false):
@@ -143,13 +157,25 @@ func _on_purchase_updated(purchase: Dictionary) -> void:
 			await _iap.finish_transaction_dict(purchase, false)
 			_set_busy(false)
 			_set_owned(true)
-			Analytics.track("purchase_complete", {"product": PRODUCT})
+			# iOS replays old transactions through this same signal on a
+			# restore; only a buy() actually in flight is a fresh purchase.
+			# A restore's own find is counted once by restore_used instead.
+			if _buying:
+				Analytics.track("purchase_complete", {"product": PRODUCT})
+			_buying = false
 		"pending":
 			# Play's slow payment methods: not owned until it completes.
 			_set_busy(false)
+			_buying = false
 			_fail("pending")
 
 func _on_purchase_error(error: Dictionary) -> void:
+	if _restoring:
+		# restore_purchases() itself can emit this on failure; restore()
+		# reports once, from its own _sync_owned() outcome, once _restoring
+		# clears.
+		return
+	_buying = false
 	_set_busy(false)
 	_fail(String(error.get("code", "unknown")))
 

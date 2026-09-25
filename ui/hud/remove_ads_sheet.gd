@@ -6,9 +6,9 @@ extends "res://ui/hud/sheet.gd"
 ## analytics). A failure is a line on the sheet, never a silence; a
 ## cancelled purchase says nothing.
 ##
-## Store's signals are connected to methods, not lambdas: the puzzle host's
-## copy of this sheet is freed with the board, and a method connection is
-## dropped with its object where a lambda's is not.
+## Store's signals are connected to methods, not lambdas, so each slot has a
+## name traceable back to this sheet's three doors rather than an anonymous
+## closure in a stack trace.
 ## Spec: docs/superpowers/specs/2026-09-25-ads-and-remove-ads-design.md, section 4.
 
 const Analytics = preload("res://core/analytics.gd")
@@ -61,6 +61,8 @@ func _build_sheet(col: VBoxContainer) -> void:
 	Store.purchase_failed.connect(_on_failed)
 
 func open_from(door: String) -> void:
+	if is_open():
+		return
 	Analytics.track("store_opened", {"door": door})
 	open()
 

@@ -33,10 +33,21 @@ func _ready() -> void:
 	$UI/BannerHost.tapped.connect(_open_store)
 
 ## The banner's "Remove ads" tab: the purchase sheet over whatever is up --
-## the open board's own, else the menu's.
+## the open board's own, else the menu's. BannerHost stands last under UI, so
+## its tab would otherwise take taps through any modal already up (a sheet,
+## or the first-play card) -- z_index doesn't reorder input, only drawing --
+## and do nothing useful underneath it. Does nothing while one is up, the
+## same "is anything open" check ui/menu.gd's go_back uses to find the
+## topmost thing, minus the closing.
 func _open_store() -> void:
 	var host: Node = get_tree().get_first_node_in_group("puzzle_host")
-	if host != null and not host.is_queued_for_deletion():
-		host.remove_ads_sheet.open_from("banner")
-	else:
-		$UI/Menu.remove_ads_sheet.open_from("banner")
+	var root: Node = host if (host != null and not host.is_queued_for_deletion()) else $UI/Menu
+	if _modal_open(root):
+		return
+	root.remove_ads_sheet.open_from("banner")
+
+func _modal_open(root: Node) -> bool:
+	for node in root.find_children("*", "", true, false):
+		if node.has_method("is_open") and node.is_open():
+			return true
+	return root.get_node_or_null("HowToPlay") != null
