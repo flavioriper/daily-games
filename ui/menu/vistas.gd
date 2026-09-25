@@ -49,6 +49,7 @@ const CARDS := {
 	"planes": ["sky", 1.4, Vector2(0.50, 0.20)],
 	"pinwheel": ["beach", 1.6, Vector2(0.20, 0.55)],
 	"rings": ["meadow", 1.5, Vector2(0.40, 0.30)],
+	"caterpillar": ["meadow", 1.7, Vector2(0.65, 0.75)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

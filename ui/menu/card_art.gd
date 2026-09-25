@@ -51,6 +51,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
 const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
 const PinWheel = preload("res://ui/faces/pin_wheel.gd")
+const Cat = preload("res://ui/faces/caterpillar.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
@@ -121,6 +122,15 @@ const PIN_TURNED := [2, Vector2i(4, 1), [Vector2i(3, 0), Vector2i(4, 0),
 	Vector2i(3, 1), Vector2i(4, 1), Vector2i(5, 1)]]
 const PIN_STAINED := [Vector2i(3, 0), Vector2i(5, 1)]
 
+## Caterpillar's card: Pinwheel's 8 by 3 strip of ground, the caterpillar
+## part-way through its walk -- leaves 1 and 2 eaten under it, 3 and 4 still
+## ahead -- and one fence. The walk is tail first.
+const CAT_WALK := [Vector2i(0, 2), Vector2i(0, 1), Vector2i(0, 0), Vector2i(1, 0),
+	Vector2i(1, 1), Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2), Vector2i(3, 1),
+	Vector2i(3, 0), Vector2i(4, 0), Vector2i(5, 0)]
+const CAT_LEAVES := [Vector2i(0, 2), Vector2i(1, 1), Vector2i(7, 1), Vector2i(5, 2)]
+const CAT_FENCE := [Vector2i(5, 1), Vector2i(5, 2)]
+
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
 var _u := 1.0
@@ -141,6 +151,7 @@ var _sky_mesh: ArrayMesh
 ## Pinwheel's frame, its pieces, the stain over them and every wheel, again
 ## for the RID reason and not for the arithmetic.
 var _pinwheel_mesh: ArrayMesh
+var _caterpillar_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -316,6 +327,7 @@ func _draw() -> void:
 		"fairylights": _draw_lights()
 		"planes": _draw_planes()
 		"pinwheel": _draw_pinwheel()
+		"caterpillar": _draw_caterpillar()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1024,3 +1036,57 @@ func _draw_rings_pegs(field: Control) -> void:
 			Rings2D._append_ring(b, cx, cy, RW, RH, Rings2D.RING_COLOURS[ci], ci + 1, 1.0, map)
 	_rings_mesh = b.mesh()
 	field.draw_mesh(_rings_mesh, null)
+
+## Caterpillar: the board's own drawing, through `ui/faces/caterpillar.gd`,
+## the file `puzzles/caterpillar2d.gd` draws with, so the card and the board
+## cannot drift apart. One mesh, and the four leaf numbers over it.
+## Spec: docs/superpowers/specs/2026-09-25-caterpillar-flat-design.md, section 4.
+func _draw_caterpillar() -> void:
+	var cell := PIN_CELL * _u
+	var origin := at(-float(PIN_COLS) * PIN_CELL * 0.5, -float(PIN_ROWS) * PIN_CELL * 0.5)
+	var centre := func(c: Vector2i) -> Vector2: return origin + (Vector2(c) + Vector2(0.5, 0.5)) * cell
+	var b := Face.Builder.new()
+	var pad := PIN_PAD * _u
+	var panel := Face.Builder.round_rect(origin - Vector2.ONE * pad,
+		Vector2(PIN_COLS, PIN_ROWS) * cell + Vector2.ONE * (2.0 * pad), 0.24 * cell)
+	b.polygon(panel, Pal.BED_GROUND)
+	var rule := maxf(1.0, cell * 0.018)
+	for c in range(1, PIN_COLS):
+		var x := origin.x + float(c) * cell
+		b.stroke(PackedVector2Array([Vector2(x, origin.y),
+			Vector2(x, origin.y + float(PIN_ROWS) * cell)]), rule, Pal.BED_LINE, false, false)
+	for r in range(1, PIN_ROWS):
+		var y := origin.y + float(r) * cell
+		b.stroke(PackedVector2Array([Vector2(origin.x, y),
+			Vector2(origin.x + float(PIN_COLS) * cell, y)]), rule, Pal.BED_LINE, false, false)
+	b.stroke(panel, maxf(1.5, cell * 0.038), Pal.LINE, true)
+	var mid: Vector2 = (centre.call(CAT_FENCE[0]) + centre.call(CAT_FENCE[1])) * 0.5
+	var th := cell * 0.13
+	b.fan(Face.Builder.round_rect(mid - Vector2(cell * 0.49, th * 0.5), Vector2(cell * 0.98, th), th * 0.5), Pal.FENCE_DARK)
+	for x: float in [-0.44, 0.0, 0.44]:
+		b.disc(mid + Vector2(x * cell, 0.0), th * 0.78, Pal.FENCE_POST)
+	var pts := PackedVector2Array()
+	var scales: Array = []
+	var breath := PackedFloat32Array()
+	for c: Vector2i in CAT_WALK:
+		pts.append(centre.call(c))
+		scales.append(Vector2.ONE)
+		breath.append(1.0)
+	Cat.body(b, pts, cell, scales, breath)
+	for i in CAT_LEAVES.size():
+		var at_c: Vector2 = centre.call(CAT_LEAVES[i])
+		var r := cell * 0.27
+		if i < 2:
+			b.disc(at_c, r + cell * 0.06, Pal.SUN)
+		b.disc(at_c, r, Pal.TEXT)
+	Cat.head(b, pts[pts.size() - 1], Vector2(1.0, 0.0), cell, 1.0, Vector2.ONE, Face.Expr.HAPPY, 1.0)
+	_caterpillar_mesh = b.mesh()
+	draw_mesh(_caterpillar_mesh, null)
+	var font: Font = CozyTheme.display(700)
+	var px := int(round(cell * 0.3))
+	for i in CAT_LEAVES.size():
+		var text := str(i + 1)
+		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+		var rise := font.get_height(px) * 0.5 - font.get_descent(px)
+		draw_string(font, centre.call(CAT_LEAVES[i]) + Vector2(-wide * 0.5, rise), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, Pal.SURFACE)

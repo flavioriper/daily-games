@@ -270,6 +270,11 @@ func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> Array
 func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) -> void:
 	if plain:
 		return
+	face_parts(b, R, centre, ink, eye, expression)
+
+## The same face for a drawing that bakes one into its own mesh rather than
+## standing a Control up for it (the caterpillar's head, ui/faces/caterpillar.gd).
+static func face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float, expression: int) -> void:
 	var cheek := Color(Pal.CHEEK, 0.85)
 	b.ellipse(centre + Vector2(-0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
 	b.ellipse(centre + Vector2(0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)

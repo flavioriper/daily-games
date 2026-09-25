@@ -127,6 +127,9 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"rings": return "%d pegs, %d colours, %d moves" % [
 			_puzzle._state.pegs.size(), _puzzle._state.colours, _puzzle.moves]
+		"caterpillar": return "%dx%d garden, %d leaves, %d strokes, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.last_leaf(),
+			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -156,6 +159,7 @@ func _solve(id: String) -> void:
 		"rings": _solve_rings()
 		"fairylights": _solve_fairylights()
 		"pinwheel": _solve_pinwheel()
+		"caterpillar": _solve_caterpillar()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -340,6 +344,25 @@ func _solve_quilt() -> void:
 ## case. There is no Check on this board -- nothing is hidden, and the stain
 ## a second piece lays on a cell is the answer a Check would give -- so
 ## `_hud_ok` watches the hint alone, as Quilt's and Word Trail's do.
+## Caterpillar: one hint through the HUD, which grows the answer from leaf 1
+## to the next leaf, then one drag from the head along the rest of the
+## answer -- the whole board in two strokes, the second of them real touch.
+func _solve_caterpillar() -> void:
+	var st = _puzzle._state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and st.body.size() > 1
+	var pts: Array[Vector2] = []
+	for i in range(st.body.size() - 1, st.path.size()):
+		var c: int = st.path[i]
+		pts.append(_puzzle.cell_to_local(c / st.cols, c % st.cols))
+	_drag_path_local(pts)
+
 func _solve_pinwheel() -> void:
 	var st = _puzzle._state
 	# Fit check: every cell centre must land inside the board slot, and so

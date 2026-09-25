@@ -499,3 +499,26 @@ ISLAND_20,Starling Rise,Colina dos Estorninhos,Loma de los Estorninos
 ISLAND_21,Seagrass Flats,Campos de Algas,Llanos de Algas
 ISLAND_22,Birch Haven,Refúgio das Bétulas,Refugio de los Abedules
 ISLAND_23,Puffin Steps,Degraus das Gaivotas,Escalones del Frailecillo
+CP_TIP_START,Start on leaf 1 and drag. Every square grows a segment.,Comece na folha 1 e arraste. Cada quadrado vira um gomo.,Empieza en la hoja 1 y arrastra. Cada cuadro suma un segmento.
+CP_TIP_ORDER,"Eat the leaves in order: 1, then 2, then 3.","Coma as folhas em ordem: 1, depois 2, depois 3.","Come las hojas en orden: 1, luego 2, luego 3."
+CP_TIP_FILL,Fill every square. The last leaf is the last bite.,Preencha todos os quadrados. A última folha é a última mordida.,Llena todos los cuadros. La última hoja es el último bocado.
+CP_TIP_BACK,Drag back over the body to take steps back.,Arraste de volta sobre o corpo para desfazer passos.,Arrastra de vuelta sobre el cuerpo para deshacer pasos.
+CP_TIP_FENCE,Fences stand between squares. Go round them.,As cercas ficam entre os quadrados. Dê a volta.,Las cercas están entre los cuadros. Rodéalas.
+CP_START,Start on leaf 1.,Comece na folha 1.,Empieza en la hoja 1.
+CP_FROM_HEAD,Drag from the caterpillar's head.,Arraste a partir da cabeça da lagarta.,Arrastra desde la cabeza de la oruga.
+CP_NO_FENCE,A fence. The caterpillar goes round it.,Uma cerca. A lagarta dá a volta.,Una cerca. La oruga la rodea.
+CP_NO_ORDER,Leaf %d can wait. Leaf %d comes first.,A folha %d pode esperar. A folha %d vem antes.,La hoja %d puede esperar. Primero va la hoja %d.
+CP_NO_LAST,Leaf %d is the last bite. Fill every square first.,A folha %d é a última mordida. Preencha todos os quadrados antes.,La hoja %d es el último bocado. Llena todos los cuadros antes.
+CP_LEAF_ONE,Leaf %d. One to go.,Folha %d. Falta uma.,Hoja %d. Queda una.
+CP_LEAF_N,Leaf %d. %d to go.,Folha %d. Faltam %d.,Hoja %d. Quedan %d.
+CP_UNDONE,One stroke taken back.,Um traço desfeito.,Un trazo deshecho.
+CP_HINT,"The next stretch, from the answer.","O próximo trecho, direto da resposta.","El siguiente tramo, sacado de la respuesta."
+CP_WIN,"The whole garden, leaf by leaf.","O jardim inteiro, folha por folha.","Todo el jardín, hoja por hoja."
+CP_RULES,"Press leaf 1 and drag: every square you cross grows the caterpillar one segment. It moves side to side or up and down, never onto itself and never through a fence. It eats the leaves in order, and the last leaf must be its last bite. Fill every square of the garden and end on the last leaf. Drag back over the body to take steps back, or press anywhere on it to cut it back to there.","Toque na folha 1 e arraste: cada quadrado que você cruza faz a lagarta crescer um gomo. Ela anda para os lados ou para cima e para baixo, nunca por cima de si mesma e nunca através de uma cerca. Ela come as folhas em ordem, e a última folha tem que ser a última mordida. Preencha todos os quadrados do jardim e termine na última folha. Arraste de volta sobre o corpo para desfazer passos, ou toque em qualquer ponto dele para cortá-lo até ali.","Pulsa la hoja 1 y arrastra: cada cuadro que cruzas hace crecer a la oruga un segmento. Se mueve de lado o hacia arriba y abajo, nunca sobre sí misma ni a través de una cerca. Come las hojas en orden, y la última hoja debe ser su último bocado. Llena todos los cuadros del jardín y termina en la última hoja. Arrastra de vuelta sobre el cuerpo para deshacer pasos, o pulsa cualquier punto de él para cortarlo hasta ahí."
+CP_BLURB,"Walk every square, eating the leaves in order.","Passe por todos os quadrados, comendo as folhas em ordem.",Recorre todos los cuadros comiendo las hojas en orden.
+CP_SHORT,"Every square,\nleaf by leaf.","Cada quadrado,\nfolha por folha.","Cada cuadro,\nhoja por hoja."
+CP_MOTTO,"Leaf by leaf, every square","Folha por folha, cada quadrado","Hoja a hoja, cada cuadro"
+CP_LVL_0,5 × 5 garden,Jardim 5 × 5,Jardín 5 × 5
+CP_LVL_1,"6 × 6 garden, fences","Jardim 6 × 6, com cercas","Jardín 6 × 6, con cercas"
+CP_LVL_2,"7 × 7 garden, fences","Jardim 7 × 7, com cercas","Jardín 7 × 7, con cercas"
+CP_LVL_3,"8 × 8 garden, fences","Jardim 8 × 8, com cercas","Jardín 8 × 8, con cercas"

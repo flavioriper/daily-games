@@ -251,6 +251,18 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.8, 2.2, 3.2, 4.2]
 		_idle_from = 3.2
 		_idle_to = 5.2
+	if _id == "caterpillar" and not _empty:
+		# The walk is dragged a square every TRAIL_STEP from TAP_AT: half the
+		# answer by default, all of it under `full` so the solve wave and the
+		# butterfly run, which take SOLVE_SPAN and BUTTERFLY_TIME past it.
+		if _mode == "full":
+			_shots = [0.35, 3.0, 6.2, 6.8, 7.3, 7.8, 8.3, 9.8]
+			_idle_from = 10.0
+			_idle_to = 12.0
+		else:
+			_shots = [0.35, 0.9, 1.65, 2.2, 2.8, 3.6, 4.4]
+			_idle_from = 4.6
+			_idle_to = 6.6
 	if _id == "pinwheel" and not _empty:
 		# The swing is over in TURN_TIME, but the stain it lays fans out of
 		# the pin for another half-second after the piece has landed
@@ -402,6 +414,8 @@ func _process(delta: float) -> bool:
 			_lay_bridges()
 		elif _entry.id == "quilt" and not _empty:
 			_drag_quilt()
+		elif _entry.id == "caterpillar" and not _empty:
+			_drag_caterpillar()
 		elif _entry.id == "pinwheel" and not _empty:
 			_tap_pinwheel()
 			# The swing runs TURN_TIME 0.26 and the blades another half as
@@ -914,6 +928,37 @@ func _begin_tents_sweep() -> void:
 ## trail bends, so it is a list of waypoints and not a straight drag, and one
 ## step passes between the last cell and the release so the strip can catch
 ## the beam whole before the wave takes over.
+## Caterpillar: press leaf 1 and drag along the answer, a square a step --
+## half of it, or all of it under `full`; under `refuse` the drag stops
+## short and the last step aims at the next leaf but one, so the strip
+## catches the head's shiver and the badge's flash.
+func _drag_caterpillar() -> void:
+	var st = _puzzle._state
+	var n: int = st.path.size() if _mode == "full" else st.path.size() / 2
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	_trail_cells = []
+	for i in n:
+		var c: int = st.path[i]
+		_trail_cells.append(xf * _puzzle.cell_to_local(c / st.cols, c % st.cols))
+	if _mode == "refuse":
+		# the first square next to the walk's end that holds a leaf out of turn
+		var due := 0
+		for i in n:
+			if st.clue[st.path[i]] != 0:
+				due += 1
+		for i in range(n, st.path.size()):
+			var c: int = st.path[i]
+			if st.clue[c] > due + 1 and st.adjacent(c, st.path[n - 1]):
+				_trail_cells.append(xf * _puzzle.cell_to_local(c / st.cols, c % st.cols))
+				break
+	_trail_last = _trail_cells.pop_front()
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = _trail_last
+	root.push_input(down, true)
+	_trail_at = _t + TRAIL_STEP
+
 func _drag_wordtrail() -> void:
 	var cells: Array = _puzzle._state.words[0]["path"]
 	if cells.size() < 2:

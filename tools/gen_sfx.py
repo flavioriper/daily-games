@@ -256,6 +256,19 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light breezy flutter, little paper pinwheels appearing", 1.0, -9),
     },
+    # Caterpillar: drag from leaf 1 and every square grows the caterpillar a
+    # segment; it eats the leaves in order. `step` fires on every square, so
+    # it gets no file (docs/art/sound-direction.md).
+    "caterpillar": {
+        "place":    ("a tiny soft leafy rustle with a small wooden tick, a little caterpillar waking up, very short", 0.5, -11),
+        "munch":    ("a tiny soft crisp leaf nibble, two quick gentle crunches with a small rising marimba blip, cute, very short", 0.5, -8),
+        "refuse":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft quick descending ripple of leafy rustles, a caterpillar curling back up small", 1.0, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish rising into a light airy flutter of butterfly wings, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little garden of leaves appearing", 1.0, -9),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

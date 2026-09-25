@@ -1148,6 +1148,21 @@ pointing `seed_as` at them. Specs:
   (`tools/insane/rings_ladder.gd`, `content/insane/rings.json`, optima
   22-26) -- the first board with an Insane bank. Its sounds are wired and
   generated (lift, drop, lock, refused, undo, hint, reset, solved, enter).
+- **Caterpillar is the twenty-first card** (2026-09-25,
+  `puzzles/caterpillar2d.gd`, spec `2026-09-25-caterpillar-flat-design.md`,
+  mock `docs/brainstorm/concepts.html#caterpillar`). Drag one walk from leaf
+  1 through every square, eating the numbered leaves in order, never across a
+  fence; the walk is drawn as the caterpillar (`ui/faces/caterpillar.gd`) and
+  the solve turns it into a butterfly. LinkedIn ships the genre under its own
+  name; **it is called Caterpillar and nothing else**. Two things travel:
+  **a proof capped by a node count is never a proof** -- the first generator
+  read a capped search that had found one walk as unique and 14 of 60 hard
+  and insane boards had two (`tests/_probe_cat_gen.gd` re-proves uncapped) --
+  and **a board whose idle breath rebuilds its whole mesh pays for it every
+  frame**: 12.2 ms idle until only the head's small mesh breathed (3.3 ms,
+  Pinwheel 2.44 as the control). 58 draw calls on Hard, ANGLE included.
+  **The tip card is gone from every board** since `1a04e0a` (2026-09-21): the
+  bottom-slot figures and tip-card rules elsewhere in this file predate that.
 - **Nothing under `tests/` loaded a board's `*2d.gd` until 2026-09-20**, and
   that was true of all boards, not one -- and since the merge that brought
   Bridges and Quilt in, the guard covers every entry in the registry, which

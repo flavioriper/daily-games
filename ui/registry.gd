@@ -592,6 +592,35 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "RG_LVL_3"},
 		],
 	},
+	{
+		"id": "caterpillar",
+		"kind": "puzzle",
+		"title": "Caterpillar",
+		"blurb": "CP_BLURB",
+		"short": "CP_SHORT",
+		"motto": "CP_MOTTO",
+		"footer": "Walk · Eat · Fill",
+		# Nothing is picked up, and nothing wrong can sit on the garden: a
+		# fence, a leaf out of turn and the last leaf too soon are refused at
+		# the step. So no tray and no Check; Undo, Reset and Hint ride in the
+		# top bar and the tip card stands alone -- Pinwheel's shape.
+		"script": "res://puzzles/caterpillar2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: a 5 by 5, 6 by 6, 7 by 7 or 8 by 8 garden
+		# (caterpillar_gen.gd's BANDS), each its own daily with its own done
+		# mark. The leaves are not counted on the sheet: the proof decides
+		# how many a day needs.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "CP_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "CP_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "CP_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "CP_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.
