@@ -23,6 +23,7 @@ extends Control
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md.
 
 const Pal = preload("res://core/palette.gd")
+const UiSound = preload("res://ui/ui_sound.gd")
 const Motion = preload("res://core/motion.gd")
 const Progress = preload("res://core/progress.gd")
 const Registry = preload("res://ui/registry.gd")
@@ -761,6 +762,8 @@ func _draw_dots(on: Control) -> void:
 ## as a button the way the bar's tabs and a card's own go button do.
 func _page_button(icon: String) -> Button:
 	var btn := Button.new()
+	# The turn plays the page's slide (_slide_to), not the button's click.
+	btn.set_meta("silent", true)
 	btn.custom_minimum_size = PAGER_BTN
 	btn.focus_mode = Control.FOCUS_NONE
 	var r := int(PAGER_BTN.y * 0.5)
@@ -804,6 +807,8 @@ func _turn_page(by: int) -> void:
 ## PAGE_SLIDE the distance left asks for.
 func _slide_to(go: int) -> void:
 	Motion.stop(_slide_tw)
+	if go != 0:
+		UiSound.page(self)
 	var span := _span()
 	var end_x := -go * span
 	if go == 0 and not _peek.visible:

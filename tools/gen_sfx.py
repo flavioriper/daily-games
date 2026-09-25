@@ -27,6 +27,7 @@ SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
         "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
+        "page":     ("a single soft quick paper swish, a sheet of thick paper sliding sideways across a wooden table, airy whoosh, no click, no tap", 0.5, -14),
     },
     "binairo": {
         "place":    ("a single soft wooden tile tap with a tiny bubbly pop, very short", 0.5, -6),

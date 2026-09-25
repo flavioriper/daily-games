@@ -10,12 +10,15 @@ extends RefCounted
 ## The file is assets/sfx/ui/click.ogg (tools/gen_sfx.py ui).
 
 const CLICK := "res://assets/sfx/ui/click.ogg"
+## The menu's page turn: a paper slide in place of the click (ui/menu.gd).
+const PAGE := "res://assets/sfx/ui/page.ogg"
 
 ## The frame a board last played a cue in; ui/fx2d.gd stamps it.
 static var board_frame := -1
 static var _player: AudioStreamPlayer
 static var _stream: AudioStream
 static var _pending := false
+static var _page_player: AudioStreamPlayer
 
 ## Wire `button` to click when pressed, once however often it re-enters.
 static func wire(button: BaseButton) -> void:
@@ -45,3 +48,16 @@ static func _flush(tree: SceneTree) -> void:
 		tree.root.add_child(_player)
 	_player.stream = _stream
 	_player.play()
+
+## The page turn's slide, played at once on its own player so a quick second
+## turn restarts it rather than waiting on the click's frame. A missing file
+## is silence, like every other cue.
+static func page(from: Node) -> void:
+	if not from.is_inside_tree() or not ResourceLoader.exists(PAGE):
+		return
+	if not is_instance_valid(_page_player):
+		_page_player = AudioStreamPlayer.new()
+		_page_player.name = "UiPage"
+		_page_player.stream = load(PAGE)
+		from.get_tree().root.add_child(_page_player)
+	_page_player.play()
