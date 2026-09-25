@@ -21,6 +21,10 @@ extends Node
 signal banner_changed(visible: bool, height: float)
 
 const Analytics = preload("res://core/analytics.gd")
+## The "Remove ads" tab BannerHost stands on the banner's top edge, in design
+## pixels whatever the banner's own unit: ui/safe_area.gd adds it to the
+## bottom inset, unscaled, whenever a banner is up.
+const TAB_H := 56.0
 
 var _ad_view: Object
 var _banner_visible := false

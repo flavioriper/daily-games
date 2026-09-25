@@ -30,3 +30,13 @@ func _ready() -> void:
 	# The backend wakes here and nowhere else, same as telemetry: the suite
 	# and the harnesses build these screens and stay offline.
 	Backend.start(self)
+	$UI/BannerHost.tapped.connect(_open_store)
+
+## The banner's "Remove ads" tab: the purchase sheet over whatever is up --
+## the open board's own, else the menu's.
+func _open_store() -> void:
+	var host: Node = get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and not host.is_queued_for_deletion():
+		host.remove_ads_sheet.open_from("banner")
+	else:
+		$UI/Menu.remove_ads_sheet.open_from("banner")

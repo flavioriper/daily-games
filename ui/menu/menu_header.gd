@@ -2,8 +2,10 @@ extends Control
 
 ## The first screen's header: `Daily` lettered in ink with a golden sun for
 ## the dot of its i (ui/sun_dot.gd), the sprig growing out of the a beside
-## it and the motto under; the sun and the moon sit beside it, with settings
-## and calendar above them.
+## it and the motto under; the sun and the moon sit beside it, with remove-ads,
+## settings and calendar above them. The remove-ads button is the purchase
+## sheet's door from the first screen and goes for good once remove_ads is
+## owned (spec 2026-09-25-ads-and-remove-ads-design.md, section 4).
 ##
 ## The wordmark is a Label, not the extruded letters the campsite carried
 ## (legacy/ui/hud/title_view.gd): no SubViewport, no World3D, no TextMesh.
@@ -26,6 +28,7 @@ extends Control
 ## and 4.
 
 signal settings
+signal remove_ads
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -89,6 +92,7 @@ const SUN_AT := 0.08
 const MOON_AT := 0.17
 
 var gear: Button
+var no_ads: Button
 var calendar: Button
 var _badge: Control
 var _streak := 0
@@ -116,7 +120,7 @@ func _init() -> void:
 	_build()
 
 func _build() -> void:
-	# --- the two buttons, top right ---
+	# --- the three buttons, top right ---
 	calendar = _button("calendar")
 	calendar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	calendar.offset_left = -BUTTON.x
@@ -139,6 +143,15 @@ func _build() -> void:
 	gear.offset_right = -BUTTON.x - BUTTON_GAP
 	gear.offset_bottom = BUTTON.y
 	gear.pressed.connect(func() -> void: settings.emit())
+
+	no_ads = _button("no_ads")
+	no_ads.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	no_ads.offset_left = -BUTTON.x * 3.0 - BUTTON_GAP * 2.0
+	no_ads.offset_right = -BUTTON.x * 2.0 - BUTTON_GAP * 2.0
+	no_ads.offset_bottom = BUTTON.y
+	no_ads.pressed.connect(func() -> void: remove_ads.emit())
+	no_ads.visible = not Store.owns_remove_ads()
+	Store.owned_changed.connect(func(owned: bool) -> void: no_ads.visible = not owned)
 
 	# --- the lettering ---
 	_title_block = VBoxContainer.new()
@@ -293,6 +306,7 @@ func enter(delay: float, fade: float) -> void:
 	_title.modulate.a = 0.0
 	_motto.modulate.a = 0.0
 	_sprig_progress = 0.0
+	_prepare_button(no_ads)
 	_prepare_button(gear)
 	_prepare_button(calendar)
 	_sun.position = Vector2(0.0, FACE_RISE)
@@ -314,6 +328,7 @@ func enter(delay: float, fade: float) -> void:
 	_entrance_tw.tween_property(_motto, "modulate:a", 1.0, text_fade).set_delay(delay + MOTTO_AT)
 	_scale_in(gear, delay + BUTTON_AT, BUTTON_TIME)
 	_scale_in(calendar, delay + BUTTON_AT + 0.06, BUTTON_TIME)
+	_scale_in(no_ads, delay + BUTTON_AT + 0.12, BUTTON_TIME)
 	_entrance_tw.tween_property(self, "_sprig_progress", 1.0, SPRIG_TIME).set_delay(delay + SPRIG_AT_TIME) \
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
 	_rise_face(_sun, Vector2.ZERO, delay + SUN_AT, SUN_TIME)
@@ -346,7 +361,7 @@ func _set_entrance_final() -> void:
 	_title.modulate.a = 1.0
 	_motto.modulate.a = 1.0
 	_sprig_progress = 1.0
-	for button in [gear, calendar]:
+	for button in [no_ads, gear, calendar]:
 		button.scale = Vector2.ONE
 		button.modulate.a = 1.0
 	_sun.position = Vector2.ZERO

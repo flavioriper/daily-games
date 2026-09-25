@@ -103,3 +103,16 @@ CREDITS_FONTS,Typefaces,Fontes,Tipografías
 CREDITS_WORDS,Word lists,Listas de palavras,Listas de palabras
 CREDITS_SOUND,Sound,Som,Sonido
 CREDITS_ENGINE,Engine,Motor,Motor
+ADS_TAB,Remove ads,Remover anúncios,Quitar anuncios
+STORE_TITLE,No more ads,Sem anúncios,Sin anuncios
+STORE_BODY,"One purchase, for good. Every puzzle stays free, and the banner never comes back.","Uma compra, para sempre. Todos os puzzles continuam grátis e o banner nunca mais volta.","Una compra, para siempre. Todos los puzles siguen gratis y el banner no vuelve nunca."
+STORE_BUY,Remove ads · %s,Remover anúncios · %s,Quitar anuncios · %s
+STORE_BUY_NO_PRICE,Remove ads,Remover anúncios,Quitar anuncios
+STORE_UNAVAILABLE,Not available here,Indisponível aqui,No disponible aquí
+STORE_RESTORE,Restore purchases,Restaurar compras,Restaurar compras
+STORE_THANKS,Thank you! The ads are gone.,Obrigado! Os anúncios sumiram.,¡Gracias! Los anuncios se han ido.
+STORE_OWNED,Ads removed,Anúncios removidos,Anuncios quitados
+STORE_FAIL,The purchase didn't go through.,A compra não foi concluída.,La compra no se completó.
+STORE_PENDING,Waiting for the payment to clear.,Aguardando o pagamento ser confirmado.,Esperando a que se confirme el pago.
+STORE_NOTHING,No purchase to restore on this account.,Nenhuma compra para restaurar nesta conta.,No hay compras que restaurar en esta cuenta.
+SETTINGS_PRIVACY,Privacy choices,Opções de privacidade,Opciones de privacidad

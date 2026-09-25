@@ -8,7 +8,7 @@ extends RefCounted
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
-	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown"]
+	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -92,6 +92,10 @@ static func shape(name: String) -> Dictionary:
 			return _trend()
 		"crown":
 			return _crown()
+		"no_ads":
+			return {"polys": [], "lines": [
+				PackedVector2Array([Vector2(0.18, 0.3), Vector2(0.82, 0.3), Vector2(0.82, 0.7), Vector2(0.18, 0.7), Vector2(0.18, 0.3)]),
+				PackedVector2Array([Vector2(0.22, 0.82), Vector2(0.78, 0.18)])]}
 	return {"polys": [], "lines": []}
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw

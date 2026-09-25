@@ -2,7 +2,10 @@ extends "res://ui/hud/sheet.gd"
 
 ## The settings sheet: the Reduce motion and Sound switches, the language,
 ## How to play and a New puzzle row (both only on a board; the menu leaves
-## them out), Credits and Close. How to play is the rules sheet's only door since the tip card went
+## them out), Remove ads (the purchase sheet's door; "Ads removed" and
+## disabled once owned -- Restore lives on that sheet, one tap away, which
+## is Apple's rule), Privacy choices (only when UMP says the region needs
+## the door), Credits and Close. How to play is the rules sheet's only door since the tip card went
 ## (1a04e0a, 2026-09-21). The sheet applies the
 ## toggle itself, persisting it and stilling the world, so the menu and the
 ## puzzle host share one behaviour and only refresh their own chrome on
@@ -22,11 +25,14 @@ const MARK := 40.0
 signal reduce_changed(on: bool)
 signal new_puzzle
 signal rules
+signal remove_ads
 
 var with_new := true
 var toggle: CheckButton
 var sound_toggle: CheckButton
 var credits_button: Button
+var ads_button: Button
+var privacy_button: Button
 ## Opens over this sheet, so closing it lands back here.
 var credits_sheet: Control
 var rules_button: Button
@@ -69,6 +75,16 @@ func _build_sheet(col: VBoxContainer) -> void:
 	new_button.pressed.connect(func() -> void:
 		close_then(new_puzzle.emit))
 	col.add_child(new_button)
+	ads_button = IconButton.new("no_ads", "ADS_TAB", "IconButton")
+	ads_button.custom_minimum_size.y = ROW
+	ads_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ads_button.pressed.connect(func() -> void: close_then(remove_ads.emit))
+	col.add_child(ads_button)
+	privacy_button = IconButton.new("eye", "SETTINGS_PRIVACY", "IconButton")
+	privacy_button.custom_minimum_size.y = ROW
+	privacy_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	privacy_button.pressed.connect(func() -> void: close_then(Ads.show_privacy_options))
+	col.add_child(privacy_button)
 	credits_button = IconButton.new("heart", "SETTINGS_CREDITS", "IconButton")
 	credits_button.custom_minimum_size.y = ROW
 	credits_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -90,6 +106,11 @@ func _on_open() -> void:
 	_set_switch(toggle, Motion.reduce)
 	_set_switch(sound_toggle, Sound.on)
 	_show_languages(false)
+	# IconButton letters a child Label and keeps Button.text empty.
+	var owned := Store.owns_remove_ads()
+	ads_button.set_label(tr("STORE_OWNED") if owned else tr("ADS_TAB"))
+	ads_button.set_enabled(not owned)
+	privacy_button.visible = Ads.privacy_options_required()
 
 ## The language is a dropdown drawn inside the sheet, not an OptionButton.
 ## An OptionButton opens a PopupMenu, and a PopupMenu picks and dismisses on

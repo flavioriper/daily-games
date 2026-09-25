@@ -17,6 +17,7 @@ const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Pal = preload("res://core/palette.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
 
 const SLIDE := 0.3
 const FADE := 0.2
@@ -76,6 +77,7 @@ func _ready() -> void:
 	col.add_theme_constant_override("separation", SHEET_GAP)
 	_card.add_child(col)
 	_build_sheet(col)
+	Ads.banner_changed.connect(_on_banner_changed)
 
 ## Fill the card's column. Called once from _ready.
 func _build_sheet(_col: VBoxContainer) -> void:
@@ -99,10 +101,21 @@ func content_width() -> float:
 func open() -> void:
 	visible = true
 	_closing = false
+	_fit_bottom()
 	_on_open()
 	Motion.stop(_tw)
 	_tw = Motion.slide(_slot, "position:y", OFFSET, 0.0, SLIDE)
 	Motion.appear(_scrim, 0.0, 1.0, FADE)
+
+## Stand clear of the bottom inset -- the banner and its tab included. A real
+## banner is a native view over the whole app, so a card under it would have
+## its last row (Close, often) covered. Re-read at every open and whenever the
+## banner comes or goes (a purchase takes it away under an open sheet).
+func _fit_bottom() -> void:
+	_card.offset_bottom = -MARGIN - SafeArea.insets(self).y
+
+func _on_banner_changed(_visible: bool, _height: float) -> void:
+	_fit_bottom()
 
 ## Up, or on its way up: Android's back closes a sheet that is_open().
 func is_open() -> bool:
