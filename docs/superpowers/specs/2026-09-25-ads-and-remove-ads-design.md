@@ -115,3 +115,30 @@ probes that show each piece working.
 
 `app-ads.txt`, the privacy policy, store privacy labels, the AdMob and store
 accounts, and cloud backup of the purchase across devices.
+
+## Amendments
+
+**2026-09-25, plugin research (before any code).** Section 2 named the
+wrong project. The two plugins are:
+
+- **Ads: `poingstudios/godot-admob-plugin` v5.1.0** (2026-09-13). It ships
+  native templates per engine up to 4.7.2 and has the `MobileAds` /
+  `AdView` / `UserMessagingPlatform` API, including the privacy options
+  form. `godot-sdk-integrations/godot-admob` is Cengiz's plugin: it has no
+  privacy options form and an open "v7.0 not initializing on 4.7" issue.
+  Poing has **no ATT call of its own**. The tracking prompt is UMP's IDFA
+  explainer message, configured in the AdMob UI, which shows Apple's dialog
+  itself; Info.plist still needs `NSUserTrackingUsageDescription`.
+- **Purchase: godot-iap 3.5.2** (2026-09-18), now in
+  `hyodotdev/openiap/libraries/godot-iap`. It raises the iOS minimum to
+  **17.0**, which drops iPhones stuck on iOS 16 (iPhone 8 and X). Its
+  GDExtension is iOS-only, so on this Mac, on CI's Linux and in the editor
+  it stays renamed to `.disabled`. `tools/export_ios.sh` enables it for an
+  iOS export and runs the plugin's `fix_ios_embed.sh`.
+- Test IDs: Android app `ca-app-pub-3940256099942544~3347511713`, adaptive
+  banner `ca-app-pub-3940256099942544/9214589741`; iOS app
+  `ca-app-pub-3940256099942544~1458002511`, adaptive banner
+  `ca-app-pub-3940256099942544/2435281174`.
+- The native banner is drawn over the whole Godot view, so **every sheet
+  and overlay anchored to the bottom** has to rise by the inset, as well as
+  the two screens' margins. That joins the twenty-board sweep in section 4.
