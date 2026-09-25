@@ -142,3 +142,27 @@ wrong project. The two plugins are:
 - The native banner is drawn over the whole Godot view, so **every sheet
   and overlay anchored to the bottom** has to rise by the inset, as well as
   the two screens' margins. That joins the twenty-board sweep in section 4.
+
+**2026-09-25, the banner sweep (task 5).** Shot at `--resolution 810x1440`
+under `ADS_FAKE_BANNER=150` and `180` (inset 206 and 236 with the 56 tab),
+not the 100 section 4 named: 150-180 is what an adaptive banner measures on
+the phone.
+
+- **No board needed a fix.** The flat host's bottom slot sits inside the
+  margins, which already carry the inset, so the board slot is what gives:
+  it loses exactly the inset (e.g. Hidden Word 1140 to 934 / 904, Sudoku
+  1114 to 908 / 878, Code Break 1180 to 974 / 944), every board lays out
+  into what is left, and the lowest chrome ends 40 above the tab (the
+  margin) on all twenty-one, at difficulty 1 and again at Insane. The win
+  layout's board card drops from 740 to 534 / 504 and still reads; its
+  buttons end 21 above the tab.
+- **Sheets** (every `sheet.gd` subclass, from task 4) end 40 above the tab
+  on the menu and on a board.
+- **The first-play card** (`ui/hud/how_to_play.gd`) was centred on the whole
+  screen; it is now centred in the room above the inset and re-fits on
+  `Ads.banner_changed`. Pinwheel's card is 1636 tall in pt-BR, so centred on
+  the screen it ran 94 under the tab at 180; now it clears by 24. At
+  1080x1920 it would not fit a 180 banner plus a top inset over ~48, which a
+  16:9 phone does not have and a 9:20 phone has room for.
+- The old solved overlay in `ui/puzzle_host.gd` is centred and the flat
+  shell never shows it; the menu's toast and pager were inset-aware already.

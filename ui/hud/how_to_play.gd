@@ -9,10 +9,14 @@ signal completed
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Progress = preload("res://core/progress.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
 
 var _entry: Dictionary
 var _puzzle: Control
 var _diagram: Control
+## The room the card is centred in: the screen less the safe-area insets,
+## the banner and its tab included, so the card never sits under the ad.
+var _area: Control
 
 func setup(entry: Dictionary, puzzle: Control) -> void:
 	_entry = entry
@@ -24,6 +28,15 @@ func _ready() -> void:
 	# Over the board's own lifted layers, as the sheets are (sheet.gd).
 	z_index = preload("res://ui/hud/sheet.gd").OVER_BOARD
 	_build()
+	_fit_area()
+	Ads.banner_changed.connect(func(_visible: bool, _height: float) -> void: _fit_area())
+
+## Re-read on every banner change: the card is up on a board's first open,
+## which is also when the first banner is most likely to arrive.
+func _fit_area() -> void:
+	var insets := SafeArea.insets(self)
+	_area.offset_top = insets.x
+	_area.offset_bottom = -insets.y
 
 func _build() -> void:
 	var scrim := ColorRect.new()
@@ -32,6 +45,11 @@ func _build() -> void:
 	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(scrim)
 
+	_area = Control.new()
+	_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_area)
+
 	var dialog := PanelContainer.new()
 	dialog.name = "HowToPlayCard"
 	dialog.add_theme_stylebox_override("panel", _card_style())
@@ -39,7 +57,7 @@ func _build() -> void:
 	dialog.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	dialog.grow_vertical = Control.GROW_DIRECTION_BOTH
 	dialog.custom_minimum_size = Vector2(900, 1360)
-	add_child(dialog)
+	_area.add_child(dialog)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 24)
