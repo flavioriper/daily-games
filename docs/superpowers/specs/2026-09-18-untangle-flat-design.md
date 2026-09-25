@@ -285,3 +285,57 @@ on the moment the board is solved).
 Open, still, from section 10: whether the straight cord is worth the rope,
 and the phone question generally. Nothing here answers it; it only makes the
 flat board move with the same hand as the other three.
+
+## 12. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, as Code Break's and Balance's second passes were the same evening;
+this amendment is the record. The rules, the layout, the knots and both
+springs of section 11 are unchanged.
+
+**The lanterns are folded paper.** `LanternFace.pleats`, **off by default**
+and on the cache key, draws a pleat bowing down each side, a band of shade
+low in the belly, a lit edge on the cap and, as the win's light arrives, a
+candle's warmth in the middle of the paper. Light Up's lamp, Fairy Lights'
+garden and the menu card do not set it and are untouched.
+
+**The cords are rope.** A groove across each cord every `TWIST_STEP` 15 px
+at forty-five degrees, in the cord's own shade, and a faint shadow of every
+cord on the card (`CORD_SHADOW`, the lanterns' own light), both in the one
+cord mesh. The grooves are written as raw quads rather than through
+`Builder.stroke`, because a hard board lays about a thousand of them a
+rebuilt frame.
+
+**The ring is a bead.** A sheen up and left on it; under the finger it
+swells by `GRIP_SWELL` with the family's overshoot and a warm glow comes up
+round it, and the held lantern's own cords go `HELD_MIX` toward paper, so
+the player can see which lines they are moving. The grip eases over
+`LIFT_TIME` in and `RELEASE_TIME` out.
+
+**A crossing is eased, and a cord that comes free twangs.** The crossing
+colour comes and goes over `HEAT_TIME` 0.14 rather than on the frame the
+lines meet, so a fast drag flickers less. A cord that loses its last
+crossing is plucked (`PLUCK_KICK`) and rings sideways on a stiff spring
+(about 8 Hz, gone in half a second), sub-stepped at 240 Hz like Balance's
+swing; a cord still ringing is not plucked again. Both read the drawn scan,
+never the logical one, as the red always has.
+
+**The win's light travels.** It leaves each end of a cord as that end's
+lantern lights and runs the cord in one `LIGHT_STEP`, so it arrives at the
+next lantern exactly as that lantern lights, and two fronts meet in the
+middle of a cord between two lanterns lit together. Each front carries a
+bead of lit paper with a halo. A completed daily reopened is lit at once,
+with no run.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- untangle`, before and after in the same session:
+draw calls unchanged (**63** medium, **67** hard); a board at rest 2.00 and
+2.01 ms against 2.05 and 2.06 before; a rebuilding frame (the harness's drag
+settling into the window) 3.90-4.11 ms on medium against 3.48 and 4.62-4.65
+on hard against 3.79 -- the grooves and the cord shadows, paid only while
+something moves. Under reduce motion the pair 1.5 s apart is
+pixel-identical; ANGLE agrees on 63 with a max channel delta of 1/255.
+Suite 122583/0; `tests/_win.gd` windowed 21/21. A throwaway probe untangled
+every lantern but one, threw that one across the drawing and walked it
+home: the red easing out, the freed cords bowing and the light running
+lantern to lantern all land in that order.

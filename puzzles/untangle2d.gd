@@ -63,10 +63,37 @@ const CORD_LIGHT := 6.0
 const SAG_DRAW := 2.0
 ## How far a lit cord goes toward the sun behind the light.
 const LIT_MIX := 0.55
+## The rope's twist: a groove across the cord every TWIST_STEP along it, at
+## forty-five degrees, in the cord's own shade. The grooves are what make a
+## cord read as rope rather than as a ruled line.
+const TWIST_STEP := 15.0
+const TWIST_WIDTH := 2.2
+const TWIST_ALPHA := 0.5
+## The shadow a cord throws on the card, the lanterns' own light: down and a
+## little right, in R, faint.
+const CORD_SHADOW := Vector2(0.06, 0.2)
+const CORD_SHADOW_ALPHA := 0.07
+## A cord takes the crossing colour, and gives it back, over this rather
+## than on the frame the lines meet.
+const HEAT_TIME := 0.14
+## While a lantern is in the hand its own cords go this far toward paper, so
+## the player can see which lines they are moving.
+const HELD_MIX := 0.3
+## The light's front as it runs along a cord at the win: a bead of lit paper
+## and its halo, in cord widths.
+const BEAD_R := 0.8
+const BEAD_GLOW := 2.6
 
 # --- the lantern, in R ---
 const RING_R := 0.16
 const RING_PIP := 0.06
+## The bead's sheen, up and left on the ring, in ring radii.
+const RING_SHINE := 0.42
+## The ring swells this much under the finger, with a warm glow round it
+## GRIP_GLOW rings wide: the point being moved is the point the rule is about.
+const GRIP_SWELL := 0.45
+const GRIP_GLOW := 2.4
+const GRIP_ALPHA := 0.3
 const ARM_WIDTH := 0.09
 ## A tap grabs the nearest lantern within this of its ring or its body.
 const GRAB_R := 1.9
@@ -111,6 +138,15 @@ const SWING_KICK := 0.1
 const SWING_MAX := 4.0
 const SWING_REST := 0.002
 const SWING_REST_V := 0.02
+## The twang: a cord that comes free of its last crossing is plucked, and
+## rings sideways on a stiff spring for about half a second. It is sub-stepped
+## at PLUCK_HZ because a spring this stiff is not stable at a frame's step.
+const PLUCK_K := 2600.0
+const PLUCK_DAMP := 9.0
+const PLUCK_KICK := 520.0
+const PLUCK_REST := 0.08
+const PLUCK_REST_V := 2.0
+const PLUCK_HZ := 240.0
 ## How far a drag has to travel before it counts as a move, in field pixels.
 const DRAG_SLOP := 0.4
 
@@ -191,6 +227,15 @@ var _swing_v := PackedFloat32Array()
 var _sag := PackedFloat32Array()
 var _sag_v := PackedFloat32Array()
 var _lit_at := PackedFloat32Array()
+## [e] -> the cord's crossing colour, 0 to 1, easing toward _bad_drawn.
+var _heat := PackedFloat32Array()
+## [e] -> the sideways twang, in pixels, and its velocity.
+var _pluck := PackedFloat32Array()
+var _pluck_v := PackedFloat32Array()
+## [i] -> how far the ring is in the hand, 0 to 1.
+var _grip := PackedFloat32Array()
+## The cords the last drawn scan found crossed.
+var _bad_drawn: Dictionary = {}
 ## Queued walks home, oldest first: {"node": int, "at": float}.
 var _walk: Array = []
 var _opened := 0.0
@@ -283,6 +328,18 @@ func _build_lanterns() -> void:
 	_lit_at = PackedFloat32Array(); _lit_at.resize(state.nodes)
 	_sag = PackedFloat32Array(); _sag.resize(state.edges.size())
 	_sag_v = PackedFloat32Array(); _sag_v.resize(state.edges.size())
+	_heat = PackedFloat32Array(); _heat.resize(state.edges.size())
+	_pluck = PackedFloat32Array(); _pluck.resize(state.edges.size())
+	_pluck_v = PackedFloat32Array(); _pluck_v.resize(state.edges.size())
+	_grip = PackedFloat32Array(); _grip.resize(state.nodes)
+	# The opening tangle is already red when the string is hung: the heat
+	# starts where the state's own scan says, not easing in from rope.
+	_bad_drawn = {}
+	for knot in state.knots:
+		for part in String(knot.key).split("_"):
+			_bad_drawn[int(part)] = true
+	for e in _bad_drawn:
+		_heat[e] = 1.0
 	for i in state.nodes:
 		_lit_at[i] = 1.0e9
 		_mv.append({"from": Vector2.ZERO, "at": -100.0})
@@ -296,6 +353,7 @@ func _build_lanterns() -> void:
 		lantern.name = "lantern_%d" % i
 		lantern.hue = i
 		lantern.casts = false
+		lantern.pleats = true
 		lantern.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		# Nothing until the string is hung; _enter pops each one in.
 		lantern.scale = Vector2.ZERO
@@ -435,6 +493,35 @@ func _springs(dt: float) -> void:
 		if absf(_swing[i]) < SWING_REST and absf(_swing_v[i]) < SWING_REST_V:
 			_swing[i] = 0.0
 			_swing_v[i] = 0.0
+	for e in _heat.size():
+		var hot := 1.0 if _bad_drawn.has(e) else 0.0
+		_heat[e] = hot if Motion.reduce else move_toward(_heat[e], hot, dt / HEAT_TIME)
+	for i in _grip.size():
+		var held := 1.0 if i == _held else 0.0
+		if Motion.reduce:
+			_grip[i] = held
+		else:
+			_grip[i] = move_toward(_grip[i], held, dt / (Motion.LIFT_TIME if held > 0.0 else Motion.RELEASE_TIME))
+	_twang(dt)
+
+## The plucked cords, on their stiff spring, sub-stepped. A cord at rest is
+## skipped, so a settled board does no work here.
+func _twang(dt: float) -> void:
+	var steps := maxi(1, ceili(dt * PLUCK_HZ))
+	var h := dt / steps
+	for e in _pluck.size():
+		if _pluck[e] == 0.0 and _pluck_v[e] == 0.0:
+			continue
+		if Motion.reduce:
+			_pluck[e] = 0.0
+			_pluck_v[e] = 0.0
+			continue
+		for k in steps:
+			_pluck_v[e] += (-PLUCK_K * _pluck[e] - PLUCK_DAMP * _pluck_v[e]) * h
+			_pluck[e] += _pluck_v[e] * h
+		if absf(_pluck[e]) < PLUCK_REST and absf(_pluck_v[e]) < PLUCK_REST_V:
+			_pluck[e] = 0.0
+			_pluck_v[e] = 0.0
 
 ## Reset's walk home, one lantern per HOME_STEP, so the tangle visibly
 ## re-forms rather than snapping back.
@@ -470,6 +557,13 @@ func _animating(t: float) -> bool:
 			return true
 	for e in _sag.size():
 		if _sag[e] != 0.0 or _sag_v[e] != 0.0:
+			return true
+		if _pluck[e] != 0.0 or _pluck_v[e] != 0.0:
+			return true
+		if _heat[e] != (1.0 if _bad_drawn.has(e) else 0.0):
+			return true
+	for i in _grip.size():
+		if _grip[i] != (1.0 if i == _held else 0.0):
 			return true
 	return false
 
@@ -552,27 +646,51 @@ func _build_cords(t: float) -> ArrayMesh:
 		px.append(_ring_px(i, t))
 	var shown := _scan_px(px)
 	var bad: Dictionary = shown.bad
+	# A cord that has just come free of its last crossing twangs.
+	if not Motion.reduce:
+		for e in _bad_drawn:
+			if not bad.has(e) and absf(_pluck[e]) < 1.0:
+				_pluck_v[e] = PLUCK_KICK * (1.0 if e % 2 == 0 else -1.0)
+	_bad_drawn = bad
 	_knots_px = shown.pts
 	_knot_alpha = clampf((KNOT_FADE - _knots_px.size()) / KNOT_SPAN, 0.0, 1.0)
 	for i in state.nodes:
 		_shadow(b, i, px[i])
+	var curves: Array = []
+	for e in state.edges.size():
+		var edge: Vector2i = state.edges[e]
+		var run := px[edge.y] - px[edge.x]
+		var side := run.orthogonal().normalized() if run.length_squared() > 1.0 else Vector2.ZERO
+		var mid := (px[edge.x] + px[edge.y]) * 0.5 \
+			+ (Vector2(0.0, _sag[e]) + side * _pluck[e]) * SAG_DRAW
+		var curve := Face.Builder.bezier2(px[edge.x], mid, px[edge.y])
+		curve.append(px[edge.y])
+		curves.append(curve)
+		var alpha := minf(_enter_u(edge.x, t), _enter_u(edge.y, t))
+		if alpha > 0.0:
+			var off := CORD_SHADOW * _r
+			var dark := PackedVector2Array()
+			for p in curve:
+				dark.append(p + off)
+			b.stroke(dark, CORD_WIDTH, Color(Pal.TEXT, CORD_SHADOW_ALPHA * alpha))
 	for e in state.edges.size():
 		var edge: Vector2i = state.edges[e]
 		var alpha := minf(_enter_u(edge.x, t), _enter_u(edge.y, t))
 		if alpha <= 0.0:
 			continue
-		var mid := (px[edge.x] + px[edge.y]) * 0.5 + Vector2(0.0, _sag[e] * SAG_DRAW)
-		var curve := Face.Builder.bezier2(px[edge.x], mid, px[edge.y])
-		curve.append(px[edge.y])
-		var caught: bool = bad.has(e)
-		var lit_now: bool = _solved_at >= 0.0 and t >= maxf(_lit_at[edge.x], _lit_at[edge.y])
-		var light := Pal.CORD
-		if caught:
-			light = Pal.KNOT
-		elif lit_now:
-			light = Pal.CORD.lerp(Pal.SUN, LIT_MIX)
-		b.stroke(curve, CORD_WIDTH, Color(Pal.KNOT_DEEP if caught else Pal.CORD_DEEP, alpha))
+		var curve: PackedVector2Array = curves[e]
+		var heat := _heat[e]
+		var deep := Pal.CORD_DEEP.lerp(Pal.KNOT_DEEP, heat)
+		var light := Pal.CORD.lerp(Pal.KNOT, heat)
+		var held := maxf(_grip[edge.x], _grip[edge.y])
+		if held > 0.0:
+			light = light.lerp(Pal.PAPER, HELD_MIX * held)
+		b.stroke(curve, CORD_WIDTH, Color(deep, alpha))
 		b.stroke(curve, CORD_LIGHT, Color(light, alpha))
+		var cum := _lengths(curve)
+		if _solved_at >= 0.0:
+			_light_run(b, curve, cum, e, t)
+		_twists(b, curve, cum, Color(deep, TWIST_ALPHA * alpha))
 	for i in state.nodes:
 		var u := _enter_u(i, t)
 		if u <= 0.0:
@@ -582,14 +700,113 @@ func _build_cords(t: float) -> ArrayMesh:
 		var ring := px[i]
 		var arm := ring + Vector2(0.0, LanternFace.ARM * _r * grown).rotated(_swing[i])
 		b.stroke(PackedVector2Array([ring, arm]), ARM_WIDTH * _r * grown, Pal.CORD_DEEP)
-		# The ring is the node the rule is about, so it stays a point; a peg
-		# turns it green and puts a hole through it.
-		b.disc(ring, RING_R * _r * grown, Pal.GOOD if state.locked[i] else Pal.CORD_DEEP)
+		# The ring is the node the rule is about, so it stays a point: a bead
+		# with a sheen, swelling under the finger; a peg turns it green and
+		# puts a hole through it.
+		var grip := _grip[i]
+		var rr := RING_R * _r * grown * (1.0 + GRIP_SWELL * _back_out(grip))
+		if grip > 0.0:
+			Scenery.soft_disc(b, ring, rr * GRIP_GLOW, rr * GRIP_GLOW, Color(Pal.SUN, GRIP_ALPHA * grip))
 		if state.locked[i]:
+			b.disc(ring, rr, Pal.GOOD)
 			b.disc(ring, RING_PIP * _r * grown, Pal.PARCHMENT)
+		else:
+			b.disc(ring, rr, Pal.CORD_DEEP)
+			b.disc(ring + Vector2(-0.3, -0.3) * rr, rr * RING_SHINE, Pal.CORD.lerp(Pal.PAPER, 0.45))
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
+
+## The win's light along cord `e`: it leaves each end as that end's lantern
+## lights and runs the cord's length in one LIGHT_STEP, so on a tree edge it
+## arrives at the far lantern exactly as that one lights, and on a cord
+## between two lanterns lit together the two fronts meet in the middle. The
+## lit part is drawn over the cord's light strip, and each moving front
+## carries a bead of lit paper with a halo.
+func _light_run(b: Face.Builder, curve: PackedVector2Array, cum: PackedFloat32Array, e: int, t: float) -> void:
+	var edge: Vector2i = state.edges[e]
+	var total := cum[cum.size() - 1]
+	if total <= 0.0:
+		return
+	var fa := _dec((t - _lit_at[edge.x]) / LIGHT_STEP)
+	var fb := _dec((t - _lit_at[edge.y]) / LIGHT_STEP)
+	if t < _lit_at[edge.x]:
+		fa = 0.0
+	if t < _lit_at[edge.y]:
+		fb = 0.0
+	var lit := Pal.CORD.lerp(Pal.SUN, LIT_MIX)
+	if fa + fb >= 1.0:
+		b.stroke(curve, CORD_LIGHT, lit)
+		return
+	if fa > 0.0:
+		b.stroke(_sub(curve, cum, 0.0, fa * total), CORD_LIGHT, lit)
+		_bead(b, _at(curve, cum, fa * total))
+	if fb > 0.0:
+		b.stroke(_sub(curve, cum, (1.0 - fb) * total, total), CORD_LIGHT, lit)
+		_bead(b, _at(curve, cum, (1.0 - fb) * total))
+
+func _bead(b: Face.Builder, at: Vector2) -> void:
+	var r := CORD_WIDTH * BEAD_R
+	Scenery.soft_disc(b, at, r * BEAD_GLOW, r * BEAD_GLOW, Color(Pal.SUN, 0.45))
+	b.disc(at, r, Pal.LANTERN_LIT)
+
+## The rope's grooves, one every TWIST_STEP along the curve, each a short
+## stroke across the cord at forty-five degrees to it.
+func _twists(b: Face.Builder, curve: PackedVector2Array, cum: PackedFloat32Array, colour: Color) -> void:
+	var total := cum[cum.size() - 1]
+	var half := CORD_WIDTH * 0.5
+	var clear := Color(colour, 0.0)
+	var s := TWIST_STEP * 0.5
+	var k := 1
+	while s < total:
+		while k < cum.size() - 1 and cum[k] < s:
+			k += 1
+		var p0 := curve[k - 1]
+		var p1 := curve[k]
+		var seg := cum[k] - cum[k - 1]
+		var p := p0.lerp(p1, (s - cum[k - 1]) / seg if seg > 0.0 else 0.0)
+		var tn := (p1 - p0).normalized()
+		var d := (tn + tn.orthogonal()) * 0.5 * half
+		# The stroke's own four-across quad, written out: a groove is two
+		# points, and this runs a thousand times a frame on a hard board.
+		var nrm := d.normalized().orthogonal()
+		var w := nrm * (TWIST_WIDTH * 0.5)
+		var f := nrm * (TWIST_WIDTH * 0.5 + Face.FEATHER)
+		var base := b.verts.size()
+		for end in [p - d, p + d]:
+			b.verts.append(end - f); b.cols.append(clear)
+			b.verts.append(end - w); b.cols.append(colour)
+			b.verts.append(end + w); b.cols.append(colour)
+			b.verts.append(end + f); b.cols.append(clear)
+		for k2 in 3:
+			b.idx.append_array([base + k2, base + 4 + k2, base + 5 + k2,
+				base + k2, base + 5 + k2, base + k2 + 1])
+		s += TWIST_STEP
+
+## The running length along a polyline, from its first point.
+func _lengths(curve: PackedVector2Array) -> PackedFloat32Array:
+	var cum := PackedFloat32Array()
+	cum.resize(curve.size())
+	for i in range(1, curve.size()):
+		cum[i] = cum[i - 1] + curve[i - 1].distance_to(curve[i])
+	return cum
+
+## The point `s` along a polyline.
+func _at(curve: PackedVector2Array, cum: PackedFloat32Array, s: float) -> Vector2:
+	for i in range(1, curve.size()):
+		if cum[i] >= s:
+			var seg := cum[i] - cum[i - 1]
+			return curve[i - 1].lerp(curve[i], (s - cum[i - 1]) / seg if seg > 0.0 else 0.0)
+	return curve[curve.size() - 1]
+
+## The part of a polyline from `s0` to `s1` along it.
+func _sub(curve: PackedVector2Array, cum: PackedFloat32Array, s0: float, s1: float) -> PackedVector2Array:
+	var out := PackedVector2Array([_at(curve, cum, s0)])
+	for i in curve.size():
+		if cum[i] > s0 and cum[i] < s1:
+			out.append(curve[i])
+	out.append(_at(curve, cum, s1))
+	return out
 
 ## Lantern `i`'s shadow on the parchment behind it. It arrives with the paper
 ## (read off the paper's own scale, which the pop-in drives from nothing) and
@@ -907,11 +1124,18 @@ func restore_completed_board() -> void:
 	state.history.clear()
 	state.scan()
 	_crowded_was = state.crowded.duplicate()
+	_bad_drawn = {}
+	for e in state.edges.size():
+		_heat[e] = 0.0
+		_pluck[e] = 0.0
+		_pluck_v[e] = 0.0
 	for i in state.nodes:
 		_mv[i] = {"from": state.pos[i], "at": t - SLIDE_TIME}
 		_swing[i] = 0.0
 		_swing_v[i] = 0.0
-		_lit_at[i] = t
+		# Lit long ago, so the light does not run along the cords again.
+		_lit_at[i] = t - 10.0
+		_grip[i] = 0.0
 		Motion.stop(_hop_tw[i])
 		_hop_tw[i] = null
 		_lanterns[i].position = _hang_rest(i)

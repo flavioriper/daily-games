@@ -75,9 +75,20 @@ var dims: bool = false:
 		dims = v
 		queue_redraw()
 
+## Whether the paper is drawn folded: a pleat bowing down each side, a band
+## of shade low in the belly, a lit edge on the cap and, as the light comes
+## up, a candle's warmth in the middle of the paper. Untangle's lanterns hang
+## large and alone on a bare card, where the plain paper read as a sweet;
+## **off by default**, so Light Up's lamp, Fairy Lights' garden and the menu
+## card are untouched to the pixel. It rides the cache key.
+var pleats: bool = false:
+	set(v):
+		pleats = v
+		queue_redraw()
+
 func _kind() -> String:
-	return "lantern%d_%d%s" % [hue % Pal.LANTERN_PAPER.size(),
-		int(_lit_level() * 4.0), "d" if dims else ""]
+	return "lantern%d_%d%s%s" % [hue % Pal.LANTERN_PAPER.size(),
+		int(_lit_level() * 4.0), "d" if dims else "", "p" if pleats else ""]
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
@@ -109,6 +120,8 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 		"body":
 			b.fan(Builder.round_rect(Vector2(-0.42, -1.02) * R, Vector2(0.84, 0.24) * R, 0.1 * R), deep)
 			b.fan(Builder.round_rect(Vector2(-0.86, -0.86) * R, Vector2(1.72, 1.72) * R, 0.62 * R), body)
+			if pleats:
+				_folds(b, R, paper, deep, level)
 			b.fan(Builder.round_rect(Vector2(-0.7, -0.7) * R, Vector2(0.4, 1.36) * R, 0.2 * R),
 				Color(1.0, 1.0, 1.0, 0.2))
 			# The rib keeps the paper's own deep colour whatever the light is
@@ -118,6 +131,22 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			b.fan(Builder.round_rect(Vector2(-0.34, 0.8) * R, Vector2(0.68, 0.2) * R, 0.08 * R), deep)
 			b.stroke(PackedVector2Array([Vector2(0.0, 1.0) * R, Vector2(0.0, 1.28) * R]), 0.1 * R, deep)
 			_face_parts(b, 0.9 * R, Vector2(0.0, -0.04 * R), Pal.TEXT, eye)
+
+## The folded paper, drawn over the body and under its sheen: the belly's
+## shade, the candle's warmth once lit, two pleats bowing out from the cap to
+## the base, and a lit edge along the cap's top.
+func _folds(b: Builder, R: float, paper: Array, deep: Color, level: float) -> void:
+	b.fan(Builder.round_rect(Vector2(-0.8, 0.26) * R, Vector2(1.6, 0.54) * R, 0.5 * R),
+		Color(deep, 0.2 * (1.0 - 0.6 * level)))
+	if level > 0.0:
+		b.ellipse(Vector2(0.0, 0.08) * R, 0.5 * R, 0.56 * R, Color(Pal.LANTERN_LIT, 0.55 * level))
+	for side in [-1.0, 1.0]:
+		var pleat := Builder.bezier2(Vector2(0.3 * side, -0.82) * R,
+			Vector2(0.62 * side, 0.0) * R, Vector2(0.3 * side, 0.82) * R, 10)
+		pleat.append(Vector2(0.3 * side, 0.82) * R)
+		b.stroke(pleat, 0.05 * R, Color(paper[1], 0.32))
+	b.stroke(PackedVector2Array([Vector2(-0.32, -0.98) * R, Vector2(0.32, -0.98) * R]),
+		0.05 * R, Color(1.0, 1.0, 1.0, 0.3))
 
 ## The halo: a disc of light at GLOW_INNER fading to nothing at GLOW_R, built
 ## as two rings and the band between them, which is what a canvas radial
