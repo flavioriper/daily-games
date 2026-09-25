@@ -312,6 +312,21 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   `--resolution 810x1440` (second reading of two, the first including this
   session's shader compile): **330** draw calls on Home (the control, twice),
   **142** on Streak and **148** on Stats, both well inside the 855 budget.
+  **Redrawn to the user's mocks on 2026-09-25**: Stats' totals carry icon
+  plaques and a second line (solves this week, the last seven days as dots,
+  and a best-streak tile that opens Streak), its chips carry icons, and each
+  board's cell stands under its home card's banner with a done seal; Streak
+  is a flame and a best/days/solved/rest-days list with a painted picture
+  set into the card, today's hearts with a three-part bar, and a calendar of
+  paper tiles with the neighbouring months greyed in. The rest-days row is
+  not in the mock and was kept by the user's decision. Measured the same way:
+  **Stats 484** (all twenty banners stand at once -- the heaviest screen in
+  the game) and **Streak 194**. The 855 figure is inherited from the 3D
+  island (755 plus 100 for the HUD, 2026-09-14), not a phone measurement.
+  The Streak cards and the Stats chips opt out of `CozyTheme.dress()`'s wash
+  with a plain material, because the mocks' paper is clean. The two Streak
+  pictures are crops of existing vistas standing in for art the mock draws
+  (a heart signpost, a sprout on a rock).
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry
