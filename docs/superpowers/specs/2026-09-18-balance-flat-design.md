@@ -260,3 +260,66 @@ written; a face is now written only when its look changes. Suite 2086/0.
 and plus. Throwaway probes shot the entrance, a step, a refusal and its
 settled card, a hint's reveal, a reset, the solve wave and the win, each
 with and without reduce-motion.
+
+## 11. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. A short
+design was agreed in chat and built directly; this amendment is the record.
+The rules, the tray and the layout are unchanged, and the air above the
+weight cards (section 3) is kept.
+
+**The wood reads as wood.** A lit strip along the beam's top and capped
+ends past the knots; a lit edge down the post; the base in two steps, each
+with its lit top; a glint on the hub and on each knot; a band of shade low
+in the bowl and a glint high on its near side, with the lip's own lit edge.
+Every highlight is `SCALE_WOOD` lifted toward `PAPER` (`_lit_wood`), the
+soft cel's one highlight and never a specular. All of it lives in the
+meshes that already existed, so it costs no draw call.
+
+**The fruit stand in the dish, not on it.** The dish is two meshes now: the
+back (cords, knot and the bowl's far wall, `WELL_*`, which shows over the
+lip because the board is looked at a little from above) under the fruit,
+and the front (bowl and lip, `_dish_front_mesh`) as the dish's last child,
+over them. `PIECE_LIFT` went from 12 to 28, so about a sixth of each seat is
+hidden behind the wood; 22 was tried first and cut the acorn at the chin.
+
+**A pointer.** A needle hangs from the hub in the beam's own mesh, so it
+turns with it, over a pale plate low on the post. Under its tip is a notch
+(`_mark_mesh`, its own node between the stand and the beam) that is faint
+wood while the scale tips and leaf green on a soft glow while it is level.
+A lean of one is only four degrees of beam; the needle's tip is what makes
+that readable, and it says nothing the beam does not already say. Faint
+side ticks at a lean of one were tried and dropped as noise.
+
+**The swing is a spring.** The beam's tween became a damped spring on the
+board's own clock (`SWING_K` 150, `SWING_C` 11: about 20% overshoot, settled
+in about 0.7 s), sub-stepped at 240 Hz and never taking a frame as more than
+a twentieth of a second -- Untangle's precedent for integrated motion. A
+change landing mid-swing carries the beam's momentum into the new target,
+and a bigger change overshoots by more, which is what makes the fruit read
+as weight. A reset still unwinds down the column: each scale's new target
+waits for its band's stagger (`_aim`'s delay). Each dish tips on its cords
+with the beam's speed (`SWAY_GAIN`) on a looser spring, capped at
+`SWAY_MAX` 0.12, so it leans into a swing and rocks back upright after the
+beam has stopped. A scale at rest is skipped entirely, so a settled board
+does no work; under reduce motion the swing snaps, as the tween did.
+
+**The level moment waits for the beam.** It used to fire on the press,
+before the beam had moved. Now a scale that comes level in the state is
+marked as arriving, and when the swing gets within `LEVEL_NEAR` of level
+the fulcrum rings, two sparkles come off the hub, the notch lights with the
+family's bump and both dishes beam. A scale leaving level puts its notch out
+at once, without ceremony. The faces read low and high off where the beam
+is heading rather than where the spring has it, so an overshoot past level
+never flashes a worried face.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- balance`: **158** draw calls on medium (149 before:
+a front a dish and a notch a scale), 121 on easy, and an idle mean of 2.66
+to 2.70 ms over three readings against 2.69 before the change in the same
+session. Under reduce motion the pair 1.5 s apart is pixel-identical. ANGLE
+agrees on 158, with a max channel delta of 1/255 against the default
+driver. Suite 122583/0; `tests/_win.gd` windowed passes all 21 boards. A
+throwaway probe set every weight right but one and pressed the last, then
+shot the swing into level at 0 to 1 s: the overshoot, the dishes' lean, the
+ring on arrival and the notch lighting all land in that order.

@@ -18,11 +18,14 @@ extends "res://core/puzzle_base.gd"
 ## vocabulary"; docs/art/flat-motion.md is the table): the scales pop in as
 ## wide things and their fruit land a beat later with the squash, which is
 ## what swings each beam to its angle; a kind whose weight changed hops in
-## every dish it stands in; a beam that comes level rings; the solve is the
-## hop wave. What is this board's alone is the tilt itself (`TILT_*`), the
-## column's pace (`BAND_STAGGER`: a scale is a row, not a cell) and the
-## ground -- a soft shadow under every dish that follows it up and down, the
-## stand's own, and the scenery behind the column (ui/flat/scenery.gd).
+## every dish it stands in; a beam that swings into level rings; the solve
+## is the hop wave. What is this board's alone is the swing itself -- a
+## damped spring on the board's clock (`SWING_*`), with each dish tipping on
+## its cords behind it (`SWAY_*`) -- the pointer whose notch lights when the
+## beam arrives level, the column's pace (`BAND_STAGGER`: a scale is a row,
+## not a cell) and the ground -- a soft shadow under every dish that follows
+## it up and down, the stand's own, and the scenery behind the column
+## (ui/flat/scenery.gd).
 ##
 ## The wood is drawn as **cached meshes, not canvas commands**: gl_compatibility
 ## pays per draw command, so a scale is a handful of draw_mesh calls (ground,
@@ -83,10 +86,33 @@ const DISH_CTRL := 0.4
 const LIP_Y := 7.0
 const LIP_H := 12.0
 const LIP_R := 6.0
-## A fruit in a dish, and how close together three of them stand.
+## The bowl's far wall, seen over the lip because the board is looked at a
+## little from above, and the lip's own highlight.
+const WELL_RY := 9.0
+const WELL_Y := 6.0
+const LIP_TOP := 3.0
+## A fruit in a dish, and how close together three of them stand. The fruit
+## sit *in* the bowl: the bowl's front and its lip are a second mesh drawn
+## over them (`_dish_front_mesh`), so the bottom of every fruit is hidden
+## behind the wood, which PIECE_LIFT sizes -- about a sixth of the seat.
 const PIECE := 62.0
 const PITCH_MAX := 56.0
-const PIECE_LIFT := 12.0
+const PIECE_LIFT := 28.0
+## The pointer: a needle hung from the hub, turning with the beam, over a
+## plate on the post with a notch that lights when the beam is level. A lean
+## of one is only four degrees of beam, and the needle's tip is what makes
+## that readable at a glance.
+const NEEDLE_L := 84.0
+const NEEDLE_W := 8.0
+const PLATE_TOP := 56.0
+const PLATE_W := 54.0
+const PLATE_H := 50.0
+const PLATE_R := 12.0
+const PLATE_RIM := 4.0
+const MARK_Y := 92.0
+const MARK_W := 16.0
+const MARK_H := 11.0
+const MARK_GLOW := 15.0
 
 ## The ground (spec section 10): the floor the stand's base sits on, in art
 ## units below the fulcrum, and the shadows on it. A dish's shadow is widest
@@ -117,7 +143,27 @@ const CORNER_TUFT := 40.0
 ## which is what keeps a wildly wrong guess from burying a dish in the card.
 const TILT_CAP := 3
 const TILT_MAX := 0.22
-const TILT_TIME := 0.42
+## The beam swings on a damped spring on the board's own clock rather than a
+## tween (Untangle's precedent for a board whose motion is integrated): a
+## change can land mid-swing and the beam simply carries its momentum into
+## the new target, and a bigger change overshoots by more, which is what
+## makes the fruit read as weight. About 20% overshoot, settled in ~0.7 s.
+const SWING_K := 150.0
+const SWING_C := 11.0
+## The dishes on their cords: each tips with the beam's speed (SWAY_GAIN,
+## radians per radian a second) on a looser, slower spring, so it leans into
+## a swing and rocks back upright after the beam has stopped.
+const SWAY_GAIN := 0.06
+const SWAY_K := 80.0
+const SWAY_C := 5.0
+const SWAY_MAX := 0.12
+## A swing is over, and snaps to rest, under these.
+const REST_ANGLE := 0.0004
+const REST_SPEED := 0.004
+## How near level the swinging beam has to come before the level moment
+## fires: the ring and the notch wait for the beam, not for the arithmetic.
+const LEVEL_NEAR := 0.012
+const HUB_SPARKLES := 2
 ## Hint count, not refunded by reset (HUD spec, section 3).
 const HINTS := 3
 
@@ -147,12 +193,28 @@ var _lifts: Array[Control] = []        # [i] -> the entrance's node, 0 at rest
 var _grounds: Array[Control] = []      # [i] -> the shadows on the floor
 var _stands: Array[Control] = []       # [i] -> the post and base mesh
 var _beams: Array[Control] = []        # [i] -> the turning node
-var _dishes: Array = []                # [i] -> [left, right] Controls, always level
+var _dishes: Array = []                # [i] -> [left, right] Controls, hung from the knot
+var _fronts: Array = []                # [i] -> [left, right] the bowl fronts over the fruit
+var _marks: Array[Control] = []        # [i] -> the pointer's notch
 var _pieces: Array = []                # [i] -> [[Face...], [Face...]]
-var _tilt_tw: Array = []               # [i]
-var _shown_angle: Array[float] = []    # [i] -> the angle the dishes were last hung from
-var _level_until: Array[float] = []    # [i] -> msec the dishes keep beaming to
+## The swing, per scale: the beam's angle and speed, the angle it is heading
+## for and the one it will head for once `_goal_at` passes (so a reset can
+## unwind down the column), and whether it is at rest and costs nothing.
+var _ang: Array[float] = []
+var _vel: Array[float] = []
+var _goal: Array[float] = []
+var _next_goal: Array[float] = []
+var _goal_at: Array[float] = []
+var _resting: Array[bool] = []
+## Each dish's own tip on its cords, and its speed: [i * 2 + side].
+var _sway: Array[float] = []
+var _sway_vel: Array[float] = []
+var _level_until: Array[float] = []    # [i] -> seconds the dishes keep beaming to
 var _was_level: Array[bool] = []
+## The beam has come level in the state and the swing has not got there yet:
+## the level moment fires when it does.
+var _arriving: Array[bool] = []
+var _lit: Array[bool] = []
 var _entrance: Array[Tween] = []
 var _hops: Dictionary = {}             # face -> its hop
 var _scenery: Control
@@ -238,11 +300,21 @@ func _build_scales() -> void:
 	_stands = []
 	_beams = []
 	_dishes = []
+	_fronts = []
+	_marks = []
 	_pieces = []
-	_tilt_tw = []
-	_shown_angle = []
+	_ang = []
+	_vel = []
+	_goal = []
+	_next_goal = []
+	_goal_at = []
+	_resting = []
+	_sway = []
+	_sway_vel = []
 	_level_until = []
 	_was_level = []
+	_arriving = []
+	_lit = []
 	_hops = {}
 	for i in state.scales.size():
 		_build_scale(i)
@@ -287,12 +359,19 @@ func _build_scale(i: int) -> void:
 	lift.add_child(stand)
 	_stands.append(stand)
 
+	# Between the stand and the beam, so the needle passes over it.
+	var mark := Wood.new()
+	mark.name = "Mark"
+	lift.add_child(mark)
+	_marks.append(mark)
+
 	var beam := Wood.new()
 	beam.name = "Beam"
 	lift.add_child(beam)
 	_beams.append(beam)
 
 	var dishes: Array[Control] = []
+	var fronts: Array[Control] = []
 	var pieces: Array = []
 	for side in [-1, 1]:
 		var dish := Wood.new()
@@ -308,12 +387,26 @@ func _build_scale(i: int) -> void:
 			row.append(face)
 			face.set_idle(true)
 		pieces.append(row)
+		# Last, so the bowl's front is drawn over the fruit standing in it.
+		var front := Wood.new()
+		front.name = "Front"
+		dish.add_child(front)
+		fronts.append(front)
 	_dishes.append(dishes)
+	_fronts.append(fronts)
 	_pieces.append(pieces)
-	_tilt_tw.append(null)
-	_shown_angle.append(INF)
+	_ang.append(0.0)
+	_vel.append(0.0)
+	_goal.append(0.0)
+	_next_goal.append(0.0)
+	_goal_at.append(0.0)
+	_resting.append(true)
+	_sway.append_array([0.0, 0.0])
+	_sway_vel.append_array([0.0, 0.0])
 	_level_until.append(0.0)
 	_was_level.append(state.is_level(i))
+	_arriving.append(false)
+	_lit.append(state.is_level(i))
 
 ## Places everything from the card's current size: the band height, the art
 ## scale that follows from it, every scale's meshes and dishes, and the
@@ -332,12 +425,16 @@ func _layout() -> void:
 		ground.art = _art
 		ground.reach = ARM * _art
 		(_stands[i] as Wood).mesh = _stand_mesh()
+		var mark: Control = _marks[i]
+		mark.position = Vector2(0.0, MARK_Y * _art)
+		(mark as Wood).mesh = _mark_mesh(_lit[i])
 		var beam: Control = _beams[i]
 		beam.pivot_offset = Vector2.ZERO
 		(beam as Wood).mesh = _beam_mesh()
 		for side in 2:
 			var dish: Wood = _dishes[i][side]
 			dish.mesh = _dish_mesh()
+			(_fronts[i][side] as Wood).mesh = _dish_front_mesh()
 			_fit_pieces(i, side)
 	_place_dishes(true)
 	_dress()
@@ -388,30 +485,121 @@ func _dress() -> void:
 	_scenery.tufts = tufts
 	_scenery.rebuild()
 
-## Both dishes of every scale, hung from wherever their beam end now is, and
-## the ground told the angle so the shadows follow. Driven per frame rather
-## than tweened alongside the beam: the beam's own tween can be stopped and
-## replaced mid-swing, and a second tween chasing it would drift -- the
-## island board's reason for doing the same. A beam that has not moved costs
-## nothing: its dishes are left where they hang.
-func _place_dishes(force := false) -> void:
+## Scale `i` as the swing has it now: the beam at its angle, both dishes hung
+## from wherever their beam end is and tipped on their cords, and the ground
+## told the angle so the shadows follow. The dish hangs from its knot (the
+## dish mesh is drawn from the knot down), so its rotation is a tip about
+## the knot and the fruit in it ride along.
+func _hang(i: int) -> void:
+	var a: float = _ang[i]
+	_beams[i].rotation = a
+	var d := Vector2(cos(a), sin(a)) * ARM * _art
+	for side in 2:
+		# -1 hangs the left dish, +1 the right.
+		var way := -1.0 if side == 0 else 1.0
+		var dish: Control = _dishes[i][side]
+		dish.position = d * way
+		dish.rotation = _sway[i * 2 + side]
+	(_grounds[i] as Ground).angle = a
+
+## Every scale hung afresh, whether or not it is swinging: after a layout.
+func _place_dishes(_force := false) -> void:
 	for i in _beams.size():
-		var a: float = _beams[i].rotation
-		if not force and absf(a - _shown_angle[i]) < 0.0002:
-			continue
-		_shown_angle[i] = a
-		var reach := ARM * _art
-		var d := Vector2(cos(a), sin(a)) * reach
-		for side in 2:
-			# -1 hangs the left dish, +1 the right.
-			var way := -1.0 if side == 0 else 1.0
-			(_dishes[i][side] as Control).position = d * way
-		(_grounds[i] as Ground).angle = a
+		_hang(i)
 
 func _process(delta: float) -> void:
 	super(delta)
-	_place_dishes()
+	_swing(delta)
 	_refresh_faces()
+
+## One frame of every swing. A scale at rest is skipped entirely, so a
+## settled board costs nothing here. Sub-stepped at 240 Hz so the spring
+## stays stable on a slow frame, and a frame is never taken as more than a
+## twentieth of a second, so a hitch does not fling the beam.
+func _swing(delta: float) -> void:
+	var now := _now()
+	var dt: float = minf(delta, 0.05)
+	var steps: int = maxi(1, ceili(dt * 240.0))
+	var h: float = dt / float(steps)
+	for i in _ang.size():
+		if _goal_at[i] <= now and _goal[i] != _next_goal[i]:
+			_goal[i] = _next_goal[i]
+			_resting[i] = false
+		if _resting[i]:
+			continue
+		if Motion.reduce:
+			_rest(i)
+			continue
+		for s in steps:
+			var acc: float = SWING_K * (_goal[i] - _ang[i]) - SWING_C * _vel[i]
+			_vel[i] += acc * h
+			_ang[i] += _vel[i] * h
+			for side in 2:
+				var k := i * 2 + side
+				var want: float = clampf(_vel[i] * SWAY_GAIN, -SWAY_MAX, SWAY_MAX)
+				_sway_vel[k] += (SWAY_K * (want - _sway[k]) - SWAY_C * _sway_vel[k]) * h
+				_sway[k] = clampf(_sway[k] + _sway_vel[k] * h, -SWAY_MAX, SWAY_MAX)
+		if _arriving[i] and absf(_ang[i] - _goal[i]) < LEVEL_NEAR:
+			_arrive(i)
+		var still: bool = absf(_ang[i] - _goal[i]) < REST_ANGLE and absf(_vel[i]) < REST_SPEED
+		for side in 2:
+			var k := i * 2 + side
+			still = still and absf(_sway[k]) < REST_ANGLE and absf(_sway_vel[k]) < REST_SPEED
+		if still:
+			_rest(i)
+		else:
+			_hang(i)
+
+## Scale `i` stops where it was going, with its dishes upright.
+func _rest(i: int) -> void:
+	_ang[i] = _goal[i]
+	_vel[i] = 0.0
+	for side in 2:
+		_sway[i * 2 + side] = 0.0
+		_sway_vel[i * 2 + side] = 0.0
+	_resting[i] = true
+	if _arriving[i]:
+		_arrive(i)
+	_hang(i)
+
+## Sends scale `i` swinging toward `goal` once `delay` has passed. Under
+## reduce motion the swing is not skipped but snapped: the tilt is the state
+## itself, so the board still shows the truth, only without moving.
+func _aim(i: int, goal: float, delay := 0.0) -> void:
+	_next_goal[i] = goal
+	_goal_at[i] = _now() + delay
+	if delay <= 0.0:
+		_goal[i] = goal
+	_resting[i] = false
+	if Motion.reduce:
+		_goal[i] = goal
+		_rest(i)
+
+## The beam has swung into level: the fulcrum rings, a glint comes off the
+## hub, the notch under the needle lights with a bump, and both dishes beam
+## for a moment. This waits for the swing to get there, rather than firing
+## on the press, so the eye sees the cause before the praise.
+func _arrive(i: int) -> void:
+	_arriving[i] = false
+	var hub: Vector2 = _scales[i].position
+	fx.ring(hub, LEVEL_RING * _art, Pal.LEAF)
+	for s in HUB_SPARKLES:
+		fx.sparkle(hub + Vector2((randf() - 0.5) * HUB_R * 2.0 * _art, -HUB_R * _art), Pal.SUN)
+	_level_until[i] = maxf(_level_until[i], _now() + LEVEL_JOY)
+	_light(i, true)
+	fx.cue("level")
+
+## The notch under the needle, lit or not. Lighting bumps it; going out is
+## quiet, because a beam leaving level is already moving and needs no help.
+func _light(i: int, on: bool) -> void:
+	if _lit[i] == on:
+		return
+	_lit[i] = on
+	var mark: Wood = _marks[i]
+	mark.mesh = _mark_mesh(on)
+	if on:
+		mark.scale = Vector2.ONE
+		Motion.bump(mark)
 
 # --- the tilt ---
 
@@ -424,23 +612,23 @@ func _tilt_for(i: int) -> float:
 
 ## Swings every beam to what the current guess says, each after its band's
 ## share of `per` (a reset unwinds down the column; a step moves them all at
-## once), and rings the fulcrum of any scale that has just come level. The
-## tilt is the state itself and not decoration, so under reduce-motion it
-## snaps rather than being skipped: Motion.slide sets the angle and returns
-## null, which is the board showing the truth without moving.
+## once). A scale that has just come level is marked as arriving, and its
+## level moment fires when the swing gets there (`_arrive`); one that has
+## just left level puts its notch out at once.
 func _update_scales(per := 0.0) -> void:
 	for i in _beams.size():
-		var beam: Control = _beams[i]
 		var target := _tilt_for(i)
-		Motion.stop(_tilt_tw[i])
-		_tilt_tw[i] = Motion.slide(beam, "rotation", beam.rotation, target, TILT_TIME, Motion.stagger(i, per))
+		if target != _next_goal[i]:
+			_aim(i, target, Motion.stagger(i, per))
 		var level := state.is_level(i)
 		if level and not _was_level[i]:
-			fx.ring(_scales[i].position, LEVEL_RING * _art, Pal.LEAF)
-			_level_until[i] = _now() + LEVEL_JOY
-			fx.cue("level")
+			_arriving[i] = true
+			if _resting[i]:
+				_arrive(i)
+		elif not level:
+			_arriving[i] = false
+			_light(i, false)
 		_was_level[i] = level
-	_place_dishes()
 	_refresh_faces()
 
 ## Every fruit of the kinds in `kinds` hops in its dish, down the column at
@@ -462,12 +650,14 @@ func _hop_kinds(kinds: Array) -> void:
 ## level beam for a moment, the low dish's fruit look strained, and the high
 ## dish's rides up content. Nothing is hidden on this board -- the beams are
 ## the whole information channel -- so a face may say whatever the beam
-## already says, and none of them ever reacts to being *correct*. A face is
-## only written when its look changes, since writing it redraws it.
+## already says, and none of them ever reacts to being *correct*. Read off
+## where the beam is heading rather than where the spring has it, so an
+## overshoot past level does not flash a worried face. A face is only
+## written when its look changes, since writing it redraws it.
 func _refresh_faces() -> void:
 	var now := _now()
 	for i in _beams.size():
-		var a: float = _beams[i].rotation
+		var a: float = _next_goal[i]
 		var beaming: bool = now < _level_until[i]
 		for side in 2:
 			var way := -1.0 if side == 0 else 1.0
@@ -488,8 +678,9 @@ func _now() -> float:
 func dish_to_local(i: int, side: int) -> Vector2:
 	if i < 0 or i >= _dishes.size():
 		return Vector2.ZERO
+	var dish: Control = _dishes[i][side]
 	return _scales[i].position + _lifts[i].position \
-		+ (_dishes[i][side] as Control).position + Vector2(0.0, CORD * _art)
+		+ dish.position + Vector2(0.0, CORD * _art).rotated(dish.rotation)
 
 # --- the weight cards ---
 
@@ -606,13 +797,14 @@ func restore_completed_board() -> void:
 	state.guess = state.secret.duplicate()
 	state.history.clear()
 	for i in _beams.size():
-		Motion.stop(_tilt_tw[i])
-		_tilt_tw[i] = null
-		_beams[i].rotation = _tilt_for(i)
-		_shown_angle[i] = INF
+		_next_goal[i] = _tilt_for(i)
+		_goal[i] = _next_goal[i]
+		_goal_at[i] = 0.0
+		_arriving[i] = false
+		_rest(i)
 		_level_until[i] = INF
 		_was_level[i] = true
-	_place_dishes(true)
+		_light(i, true)
 	_refresh_faces()
 
 func is_solved() -> bool:
@@ -764,10 +956,14 @@ func _enter() -> void:
 				if drop != null:
 					_entrance.append(drop)
 				q += 1
-		var beam: Control = _beams[i]
-		Motion.stop(_tilt_tw[i])
-		_tilt_tw[i] = Motion.slide(beam, "rotation", 0.0, _tilt_for(i), TILT_TIME, land + Motion.POP_IN * 0.6)
+		# Level first, then swung to the weights as they land.
+		_next_goal[i] = 0.0
+		_goal[i] = 0.0
+		_rest(i)
+		_aim(i, _tilt_for(i), land + Motion.POP_IN * 0.6)
 		_was_level[i] = state.is_level(i)
+		_arriving[i] = false
+		_light(i, _was_level[i])
 	fx.cue("enter")
 
 ## Cuts the entrance short: everything lands where it was going.
@@ -787,8 +983,6 @@ func _stop_entrance() -> void:
 func _stop_all() -> void:
 	_gen += 1
 	_stop_entrance()
-	for tw in _tilt_tw:
-		Motion.stop(tw)
 	for tw in _hops.values():
 		Motion.stop(tw)
 	_hops = {}
@@ -802,30 +996,78 @@ func _after(delay: float, what: Callable) -> void:
 
 # --- the wood, as meshes ---
 
-## The post and its carved base, below the fulcrum.
+## The wood's lit face: SCALE_WOOD lifted toward paper, for the strip of
+## light along the top of every piece -- the soft cel's one highlight, never
+## a specular.
+static func _lit_wood(amount := 0.35) -> Color:
+	return Pal.SCALE_WOOD.lerp(Pal.PAPER, amount)
+
+## The post with its lit edge, the pointer's plate on it, and the carved base
+## in two steps, below the fulcrum.
 func _stand_mesh() -> ArrayMesh:
 	return _wood("stand", func(b: Face.Builder, k: float) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(-POST_W * 0.5, 0.0) * k,
 			Vector2(POST_W, POST_H) * k, POST_R * k), Pal.SCALE_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(-POST_W * 0.5 + 5.0, 16.0) * k,
+			Vector2(6.0, POST_H - 32.0) * k, 3.0 * k), Color(_lit_wood(0.2), 0.55))
+		# The plate: a wood rim round a pale face, low on the post where
+		# the needle's tip sweeps.
+		b.fan(Face.Builder.round_rect(Vector2(-PLATE_W * 0.5, PLATE_TOP) * k,
+			Vector2(PLATE_W, PLATE_H) * k, PLATE_R * k), Pal.SCALE_DARK)
+		b.fan(Face.Builder.round_rect(Vector2(-PLATE_W * 0.5 + PLATE_RIM, PLATE_TOP + PLATE_RIM) * k,
+			Vector2(PLATE_W - PLATE_RIM * 2.0, PLATE_H - PLATE_RIM * 2.0) * k, (PLATE_R - PLATE_RIM) * k),
+			_lit_wood(0.5))
+		# The base: a narrow step on a wide plinth, each with its lit top.
 		b.fan(Face.Builder.round_rect(Vector2(-BASE_W * 0.5, BASE_Y) * k,
-			Vector2(BASE_W, BASE_H) * k, BASE_R * k), Pal.SCALE_DARK))
+			Vector2(BASE_W, BASE_H) * k, BASE_R * k), Pal.SCALE_DARK)
+		b.fan(Face.Builder.round_rect(Vector2(-BASE_W * 0.5 + 10.0, BASE_Y + 3.0) * k,
+			Vector2(BASE_W - 20.0, 4.0) * k, 2.0 * k), Color(_lit_wood(0.1), 0.45))
+		b.fan(Face.Builder.round_rect(Vector2(-BASE_W * 0.33, BASE_Y - 10.0) * k,
+			Vector2(BASE_W * 0.66, 14.0) * k, 7.0 * k), Pal.SCALE_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(-BASE_W * 0.33 + 7.0, BASE_Y - 8.0) * k,
+			Vector2(BASE_W * 0.66 - 14.0, 3.5) * k, 1.75 * k), Color(_lit_wood(0.2), 0.5)))
 
-## The beam, its underside shade and the hub it turns on. The hub's two
-## circles are concentric with the fulcrum, so they can live in the turning
-## mesh without ever looking turned.
+## The notch under the needle's tip: a small caret in faint wood, or in leaf
+## green on a soft glow when the beam is level. Its own mesh on its own node,
+## so lighting it swaps one mesh and the bump scales it about the notch.
+func _mark_mesh(lit: bool) -> ArrayMesh:
+	return _wood("mark_lit" if lit else "mark", func(b: Face.Builder, k: float) -> void:
+		if lit:
+			b.disc(Vector2(0.0, 1.0) * k, MARK_GLOW * k, Color(Pal.LEAF, 0.22))
+		b.polygon(PackedVector2Array([Vector2(0.0, -MARK_H * 0.5) * k,
+			Vector2(MARK_W * 0.5, MARK_H * 0.5) * k, Vector2(-MARK_W * 0.5, MARK_H * 0.5) * k]),
+			Pal.LEAF if lit else Color(Pal.SCALE_DARK, 0.45)))
+
+## The beam, its lit top, its underside shade, the capped ends past the
+## knots, the needle hanging under it and the hub it turns on. The needle is
+## laid first, so the beam covers its root; the hub's two circles are
+## concentric with the fulcrum, so they can live in the turning mesh without
+## ever looking turned.
 func _beam_mesh() -> ArrayMesh:
 	return _wood("beam", func(b: Face.Builder, k: float) -> void:
-		var w := (ARM + BEAM_OVER) * 2.0 * k
-		b.fan(Face.Builder.round_rect(Vector2(-(ARM + BEAM_OVER) * k, -BEAM_H * 0.5 * k),
+		b.polygon(PackedVector2Array([Vector2(-NEEDLE_W * 0.5, 0.0) * k,
+			Vector2(NEEDLE_W * 0.5, 0.0) * k, Vector2(1.2, NEEDLE_L) * k,
+			Vector2(-1.2, NEEDLE_L) * k]), Pal.SCALE_DARK)
+		var end := (ARM + BEAM_OVER) * k
+		var w := end * 2.0
+		b.fan(Face.Builder.round_rect(Vector2(-end, -BEAM_H * 0.5 * k),
 			Vector2(w, BEAM_H * k), BEAM_R * k), Pal.SCALE_WOOD)
-		b.fan(Face.Builder.round_rect(Vector2(-(ARM + BEAM_OVER) * k, SHADE_Y * k),
+		b.fan(Face.Builder.round_rect(Vector2(-end, SHADE_Y * k),
 			Vector2(w, SHADE_H * k), SHADE_R * k), Color(Pal.SCALE_DEEP, 0.55))
+		b.fan(Face.Builder.round_rect(Vector2(-end + 8.0 * k, (-BEAM_H * 0.5 + 3.0) * k),
+			Vector2(w - 16.0 * k, 3.5 * k), 1.75 * k), Color(_lit_wood(), 0.8))
+		for sx: float in [-1.0, 1.0]:
+			var cap_x: float = (ARM + 4.0) * k if sx > 0.0 else -end
+			b.fan(Face.Builder.round_rect(Vector2(cap_x, (-BEAM_H * 0.5 - 1.0) * k),
+				Vector2((BEAM_OVER - 4.0) * k, (BEAM_H + 2.0) * k), BEAM_R * k), Pal.SCALE_DEEP)
 		b.disc(Vector2.ZERO, HUB_R * k, Pal.SCALE_DARK)
-		b.disc(Vector2.ZERO, HUB_IN * k, Color(Pal.SCALE_WOOD, 0.9)))
+		b.disc(Vector2.ZERO, HUB_IN * k, Color(Pal.SCALE_WOOD, 0.9))
+		b.disc(Vector2(-2.5, -2.5) * k, HUB_IN * 0.4 * k, Color(_lit_wood(0.6), 0.9)))
 
-## A dish on its two cords, drawn from the beam end it hangs under: the cords
-## out to the rim, the knot they hang from, the bowl swung under them, and
-## the rim laid over the top.
+## A dish's back, drawn from the knot it hangs from: the cords out to the rim,
+## the knot, and the bowl's far wall, which shows over the lip because the
+## board is looked at a little from above. The fruit stand on this; the
+## front is `_dish_front_mesh`, drawn over them.
 func _dish_mesh() -> ArrayMesh:
 	return _wood("dish", func(b: Face.Builder, k: float) -> void:
 		var ry := CORD * k
@@ -834,17 +1076,39 @@ func _dish_mesh() -> ArrayMesh:
 			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(sx * DISH_W * CORD_X * k, ry)]),
 				CORD_W * k, Color(Pal.SCALE_DARK, 0.8))
 		b.disc(Vector2.ZERO, KNOT_R * k, Pal.SCALE_DARK)
+		b.disc(Vector2(-1.5, -1.5) * k, KNOT_R * 0.4 * k, Color(_lit_wood(0.3), 0.7))
+		b.ellipse(Vector2(0.0, ry - WELL_Y * k), half - 3.0 * k, WELL_RY * k, Pal.SCALE_DARK))
+
+## A dish's front, laid over the fruit: the bowl swung under the rim with a
+## band of shade low in it and a glint of light high on its near side, and
+## the lip laid over the top with its own lit edge.
+func _dish_front_mesh() -> ArrayMesh:
+	return _wood("dish_front", func(b: Face.Builder, k: float) -> void:
+		var ry := CORD * k
+		var half := DISH_W * 0.5 * k
+		var deep := DISH_DEEP * k
 		# bezier2 includes its start and drops its end, so the rim's right
 		# corner comes from the first curve and nothing is doubled --
 		# a repeated vertex makes triangulate_polygon hand back nothing.
 		var bowl := PackedVector2Array([Vector2(-half, ry)])
 		bowl.append_array(Face.Builder.bezier2(Vector2(half, ry),
-			Vector2(DISH_W * DISH_CTRL * k, ry + DISH_DEEP * k), Vector2(0.0, ry + DISH_DEEP * k)))
-		bowl.append_array(Face.Builder.bezier2(Vector2(0.0, ry + DISH_DEEP * k),
-			Vector2(-DISH_W * DISH_CTRL * k, ry + DISH_DEEP * k), Vector2(-half, ry)))
+			Vector2(DISH_W * DISH_CTRL * k, ry + deep), Vector2(0.0, ry + deep)))
+		bowl.append_array(Face.Builder.bezier2(Vector2(0.0, ry + deep),
+			Vector2(-DISH_W * DISH_CTRL * k, ry + deep), Vector2(-half, ry)))
 		b.polygon(bowl, Pal.SCALE_DEEP)
+		# The shade: the same curve, shallower, following the bowl's bottom.
+		var shade := Face.Builder.bezier2(Vector2(half * 0.72, ry + deep * 0.52),
+			Vector2(DISH_W * DISH_CTRL * 0.7 * k, ry + deep * 0.9), Vector2(0.0, ry + deep * 0.9))
+		shade.append_array(Face.Builder.bezier2(Vector2(0.0, ry + deep * 0.9),
+			Vector2(-DISH_W * DISH_CTRL * 0.7 * k, ry + deep * 0.9), Vector2(-half * 0.72, ry + deep * 0.52)))
+		b.stroke(shade, 5.0 * k, Color(Pal.SCALE_DARK, 0.3))
+		b.stroke(Face.Builder.bezier2(Vector2(-half * 0.74, ry + 10.0 * k),
+			Vector2(-half * 0.6, ry + deep * 0.62), Vector2(-half * 0.3, ry + deep * 0.72)),
+			4.0 * k, Color(_lit_wood(0.25), 0.55))
 		b.fan(Face.Builder.round_rect(Vector2(-half, ry - LIP_Y * k),
-			Vector2(DISH_W * k, LIP_H * k), LIP_R * k), Color(Pal.SCALE_WOOD, 0.95)))
+			Vector2(DISH_W * k, LIP_H * k), LIP_R * k), Color(Pal.SCALE_WOOD, 0.97))
+		b.fan(Face.Builder.round_rect(Vector2(-half + 8.0 * k, ry - (LIP_Y - 2.0) * k),
+			Vector2(DISH_W * k - 16.0 * k, LIP_TOP * k), LIP_TOP * 0.5 * k), Color(_lit_wood(), 0.85)))
 
 ## Builds `shape` at the current art scale, or hands back the one already
 ## built: every scale on the board is the same size, so the whole column
