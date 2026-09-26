@@ -107,5 +107,30 @@ func hint_move() -> int:
 	var line := Gen.solve(g, you, foes, cap)
 	return -1 if line.is_empty() else line[0]
 
+## A lost position -- no line from here, or none inside Insane's moves left
+## -- undone back to the most recent one in history that still has a line.
+## Returns how many moves it undid: 0 when the position already has a line
+## or when none behind it does (which the opening always has).
+func rewind_to_live() -> int:
+	if won or hint_move() >= 0:
+		return 0
+	for j in range(history.size() - 1, -1, -1):
+		var h: Dictionary = history[j]
+		if _has_line(int(h.you), h.foes, j):
+			var n := history.size() - j
+			while history.size() > j:
+				undo()
+			return n
+	return 0
+
+## Whether the position after `kept` kept moves has a line within its budget.
+func _has_line(at: int, fs: PackedInt32Array, kept: int) -> bool:
+	var cap := 64
+	if budget() > 0:
+		cap = budget() - kept
+		if cap <= 0:
+			return false
+	return not Gen.solve(g, at, fs, cap).is_empty()
+
 func is_solved() -> bool:
 	return won

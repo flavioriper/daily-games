@@ -557,6 +557,7 @@ KN_L,"A knight moves in an L: two one way, one across.","O cavalo anda em L: dua
 KN_NO_MOVES,"No moves left. Undo one, or start again.","Sem lances restantes. Desfaça um, ou comece de novo.","No quedan jugadas. Deshaz una, o empieza de nuevo."
 KN_LAST_MOVE,"That was the last move. Undo one, or start again.","Esse foi o último lance. Desfaça um, ou comece de novo.","Esa fue la última jugada. Deshaz una, o empieza de nuevo."
 KN_UNDONE,One move taken back.,Um lance desfeito.,Una jugada deshecha.
+KN_REWOUND,"No way through from there. Back to where there was one.","Não havia saída dali. De volta aonde havia.","No había salida desde allí. De vuelta a donde la había."
 KN_WIN,Check and mate. The rose king is yours.,Xeque-mate. O rei rosa é seu.,Jaque mate. El rey rosa es tuyo.
 KN_MOVES_LEFT,%d moves left,Restam %d lances,Quedan %d jugadas
 KN_ONE_MOVE_LEFT,1 move left,Resta 1 lance,Queda 1 jugada

@@ -18,6 +18,10 @@ extends RefCounted
 const DX := [1, 2, 2, 1, -1, -2, -2, -1]
 const DY := [-2, -1, 1, 2, 2, 1, -1, -2]
 const ATTEMPTS := 600
+## How many fresh seeds `generate` tries when a whole run of ATTEMPTS finds no
+## board at all (never seen; a guard, so `state.build` never reads `g.w` off
+## an empty deal).
+const RETRIES := 4
 ## How far the naive line is walked before it is called a failure.
 const NAIVE_CAP := 40
 ## `solve`'s node cap during generation only: measured accepted-board node
@@ -247,8 +251,20 @@ static func naive_wins(g: Dictionary) -> bool:
 ## The day's board. The king first; the rose knights stand guard within two
 ## Ls of him and you start at least `far` Ls away, clear of every rose
 ## knight's reach. Kept only if the naive line fails and the shortest line
-## falls in the level's range; after ATTEMPTS, the longest line found.
+## falls in the level's range; after ATTEMPTS, the longest line found. A run
+## that finds nothing at all is reported and retried on a seed derived from
+## the rng, at most RETRIES times.
 static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
+	var g := _generate_once(rng, difficulty)
+	var tries := 0
+	while not g.has("w") and tries < RETRIES:
+		tries += 1
+		push_error("knight_gen: no board in %d attempts (level %d); retrying on a fresh seed" % [ATTEMPTS, difficulty])
+		rng.seed = rng.randi()
+		g = _generate_once(rng, difficulty)
+	return g
+
+static func _generate_once(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	var bd := band(difficulty)
 	var w: int = bd.w
 	var n := w * w

@@ -218,7 +218,10 @@ standing 0.04 cells above centre so the ear rises into the square behind.
 `TOPPLE_TIME`. Everything else is a recipe; **nothing is added to
 `core/motion.gd`**.
 
-**Tips.** These are keys, and each board state speaks one:
+**Tips.** These are keys, and each board state speaks one. The tip card is
+gone from every board, so the explanations below reach the player as a
+toast over the foot of the card (section 10, item 8); the opening's rotation
+does not toast:
 
 - the opening's rotation: tap a dot, take the king, they answer, the
   corners, taking;
@@ -275,6 +278,12 @@ harness had to be adapted around to get there).
   on every level.
 - The dot pulse is dropped in the port (section 7). If the user misses it,
   it goes in a small third mesh.
+- **Should a dead end be flagged before any hint?** About 1 in 6 safe first
+  moves on Medium and more than 1 in 3 on Hard leave a position with no
+  winning line, and nothing says so until the player spends a Hint (which
+  now rewinds, section 10, item 9). Whether the board should say it the
+  moment it happens -- a toast, a dimmed dot -- is the user's call after
+  playing it.
 
 ## 10. Amendments, as built (2026-09-26)
 
@@ -322,3 +331,30 @@ the design, and why. They are the record now.
    rather than rebuilt on every call, which is what brought Insane's worst
    case down from roughly 230 ms to 120.0 ms, comfortably under the 194 ms
    gate; and `ATTEMPTS` is 600, not the 1,500 this spec named above.
+8. **The board toasts its explanations** (section 7, "Tips"). The tip card
+   left every board in `1a04e0a`, so `tip_line()` and `focus_changed` reach
+   no screen; they are kept, but every line that explains an event -- caught,
+   taken, the refusals (`KN_L`, `KN_NO_MOVES`), `KN_LAST_MOVE`, `KN_STUCK`,
+   `KN_HINT`, `KN_UNDONE`, `KN_REWOUND` -- also goes up as a toast drawn in
+   `_draw` over the foot of the card: Rings' toast, its constants
+   (`TOAST_HOLD` 2.6, `TOAST_H` 84, `TOAST_PAD` 80, `TOAST_RADIUS` 28,
+   `TOAST_FONT` 32, `TOAST_MARGIN` 66) copied into `knight2d.gd`. Knight's
+   lines are longer than Rings', so a line too wide for the card wraps and
+   the pill grows a line height a row. The rotating opening tips never toast.
+   The toast is a redraw, not a mesh rebuild, while it is up.
+9. **A Hint on a lost position rewinds.** When `hint_move()` finds no line
+   (or none inside Insane's moves left), `knight_state.gd`'s
+   `rewind_to_live()` undoes back to the most recent position in history
+   that still has one; the board slides there (`_slide_to_state`), spends the
+   hint and toasts `KN_REWOUND`. With no hints left it stays refused.
+   `KN_STUCK` now only speaks if even the opening had no line, which the
+   generator never deals; the key stays.
+10. **Smaller fixes.** A language change redraws the board
+    (`NOTIFICATION_TRANSLATION_CHANGED`), so Insane's budget line and a toast
+    still up re-translate. A catch's slide-back cues `slide`. A slide starts
+    from where each piece is drawn (`from_px`), so a Reset or Undo mid-hop
+    no longer snaps; a taken rose knight still pops back in. `_later` skips
+    its callable once the board has left the tree. And `knight_gen.gd`'s
+    `generate` no longer hands back an empty deal: a run of `ATTEMPTS` that
+    finds nothing is `push_error`ed and retried on a seed derived from the
+    rng, at most `RETRIES` 4 times.

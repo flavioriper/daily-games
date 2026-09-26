@@ -60,6 +60,19 @@ const BUDGET_FONT := 40
 const BUDGET_DROP := 64.0
 const TIP_CYCLE := 8.0
 const TIPS := ["KN_TIP_TAP", "KN_TIP_GOAL", "KN_TIP_ANSWER", "KN_TIP_CORNERS", "KN_TIP_TAKE"]
+## The toast: the board's own line for what just happened (a catch, a take,
+## a refusal, a hint, an undo), drawn over the foot of the card. The tip card
+## that used to carry these is gone from every board, so without it they
+## reach no screen. Rings' toast, measure for measure; a line too long for
+## the card wraps and the pill grows a row a line.
+const TOAST_HOLD := 2.6
+const TOAST_H := 84.0
+const TOAST_PAD := 80.0
+const TOAST_RADIUS := 28.0
+const TOAST_FONT := 32
+const TOAST_MARGIN := 66.0
+const STUCK_MSG := "KN_STUCK"
+const REWOUND_MSG := "KN_REWOUND"
 
 var _state = State.new()
 var fx: Node2D
@@ -94,6 +107,12 @@ var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
 var _tip_timer: Timer
+## The toast's key (translated as it is drawn, so a language change reaches
+## it) and when it went up; "" when none.
+var _toast := ""
+var _toast_at := -100.0
+var _toast_mesh: ArrayMesh
+var _toast_mesh_for := ""
 
 func puzzle_id() -> String: return "knight"
 func title() -> String: return "Knight"
@@ -126,6 +145,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_shake_at = -100.0
 	_bump_at = -100.0
 	_solved_at = -1.0
+	_toast = ""
+	_toast_at = -100.0
 	_opened = _now()
 	# The marks wait for the pieces' entrance, then fade in.
 	if not Motion.reduce:
@@ -206,7 +227,8 @@ func _where(a: Dictionary, t: float) -> Dictionary:
 	var from: int = a.from if int(a.from) >= 0 else a.to
 	var u := 1.0 if Motion.reduce else clampf((t - float(a.at)) / maxf(float(a.dur), 0.001), 0.0, 1.0)
 	var e := 0.5 - 0.5 * cos(PI * u)
-	return {"at": _centre(from).lerp(_centre(a.to), e), "lift": sin(PI * u) * float(a.arc) * _cell(),
+	var start: Vector2 = a.from_px if a.has("from_px") else _centre(from)
+	return {"at": start.lerp(_centre(a.to), e), "lift": sin(PI * u) * float(a.arc) * _cell(),
 		"land": float(a.at) + float(a.dur)}
 
 func _land_squash(land: float, t: float) -> Vector2:
@@ -278,10 +300,11 @@ func _play(to: int, from_hint := false) -> void:
 			if turn != _turn:
 				return
 			fx.cue("caught")
-			_say(tr("KN_CAUGHT"), Face.Expr.STRAIN))
+			_tell("KN_CAUGHT", Face.Expr.STRAIN))
 		_later(last - t + CAUGHT_HOLD, func():
 			if turn == _turn and not _caught.is_empty():
 				_caught = {}
+				fx.cue("slide")
 				_slide_to_state(_now(), 0.0))
 		_refresh()
 		return
@@ -289,28 +312,34 @@ func _play(to: int, from_hint := false) -> void:
 	_busy_for(last - t + MARK_FADE)
 	note_move()
 	if took >= 0:
-		_say(tr("KN_TAKEN"), Face.Expr.HAPPY)
+		_tell("KN_TAKEN", Face.Expr.HAPPY)
 	elif from_hint:
-		_say(tr("KN_HINT"), Face.Expr.HAPPY)
+		_tell("KN_HINT", Face.Expr.HAPPY)
 	elif _tip_mood == Face.Expr.STRAIN:
 		_say(tr(TIPS[1]), Face.Expr.HAPPY)
 	if _state.moves_left() == 0:
-		_say(tr("KN_LAST_MOVE"), Face.Expr.STRAIN)
+		_tell("KN_LAST_MOVE", Face.Expr.STRAIN)
 	_refresh()
 
 ## Every piece slides from where it is drawn to where the state has it:
-## after a catch, an Undo or a Reset. A rose knight taken in the undone move
-## pops back in where it stood.
+## after a catch, an Undo, a hint's rewind or a Reset. It starts from the
+## pixel each piece is drawn at right now (`from_px`), so a Reset or an Undo
+## mid-hop slides from the air rather than snapping to the hop's end first.
+## A rose knight taken in the undone move pops back in where it stood.
 func _slide_to_state(t: float, stagger: float) -> void:
 	var dur := 0.001 if Motion.reduce else SLIDE_BACK
 	_turn += 1
 	_caught = {}
 	_shake_at = -100.0
+	var you_now := _where(_you_a, t)
 	_you_a = {"from": int(_you_a.to), "to": _state.you, "at": t, "dur": dur, "arc": 0.0, "pop": false}
+	if not you_now.is_empty():
+		_you_a["from_px"] = you_now.at
 	var k := 0
 	for i in _state.foes.size():
 		var want: int = _state.foes[i]
 		var shown: int = int(_foe_a[i].to)
+		var drawn := _where(_foe_a[i], t)
 		var at := t + Motion.stagger(k, stagger)
 		if want < 0:
 			_foe_a[i] = _still_at(-1)
@@ -318,20 +347,26 @@ func _slide_to_state(t: float, stagger: float) -> void:
 			_foe_a[i] = {"from": want, "to": want, "at": at, "dur": dur, "arc": 0.0, "pop": true}
 		else:
 			_foe_a[i] = {"from": shown, "to": want, "at": at, "dur": dur, "arc": 0.0, "pop": false}
+			if not drawn.is_empty():
+				_foe_a[i]["from_px"] = drawn.at
 		k += 1
 	_gone = []
 	_busy_until = t + Motion.stagger(k, stagger) + dur
 	_busy_for(_busy_until - t + MARK_FADE)
 	_refresh()
 
+## Runs `fn` after `delay`, unless the board has left the tree meanwhile
+## (Mushroom Patch's `_after`); the turn guard inside each `fn` does the rest.
 func _later(delay: float, fn: Callable) -> void:
-	get_tree().create_timer(maxf(0.0, delay)).timeout.connect(fn)
+	get_tree().create_timer(maxf(0.0, delay)).timeout.connect(func():
+		if is_inside_tree():
+			fn.call())
 
 func _refuse(key: String) -> void:
 	_bump_at = _now()
 	_busy_for(Motion.SHIVER_TIME * 2.0)
 	fx.cue("refuse")
-	_say(tr(key), Face.Expr.STRAIN)
+	_tell(key, Face.Expr.STRAIN)
 	_refresh()
 
 # --- frames ---
@@ -340,8 +375,16 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _cell() <= 0.0 or _state.size() == 0:
 		return
-	if _animating(_now()):
+	var t := _now()
+	if _animating(t):
 		_refresh()
+	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
+		# the toast is drawn apart from the meshes: a redraw, not a rebuild
+		queue_redraw()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		queue_redraw()
 
 ## Moving while anything travels, the marks are still fading in, or the
 ## pieces are still entering.
@@ -392,8 +435,9 @@ func _draw() -> void:
 		if m != null:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
-	_shown = shown
 	_draw_budget()
+	_draw_toast(t, shown)
+	_shown = shown
 
 ## The wooden frame, its shadow and the squares. None of it ever moves.
 func _build_still() -> ArrayMesh:
@@ -541,6 +585,52 @@ func _draw_budget() -> void:
 	var ink: Color = Pal.BAD if left == 0 and not _state.is_solved() else Pal.TEXT
 	draw_string(font, Vector2((size.x - w) * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUDGET_FONT, ink)
 
+## The toast over the foot of the card, fading in and out over
+## Motion.DROP_FADE -- Rings' `_draw_toast`, in the card's own pixels and
+## wrapped to the card's width. Never under the board's shake or entrance.
+func _draw_toast(t: float, shown: Array) -> void:
+	if _toast == "":
+		return
+	var since := t - _toast_at
+	if since < 0.0 or since >= TOAST_HOLD:
+		return
+	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
+		Motion.appear_level(TOAST_HOLD - since, Motion.DROP_FADE))
+	if alpha <= 0.0:
+		return
+	var line := tr(_toast)
+	var font: Font = CozyTheme.body(600)
+	var room := maxf(TOAST_PAD, size.x - 120.0)
+	var text_room := room - TOAST_PAD
+	var one: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
+	var lines := 1
+	var text_w := one
+	if one > text_room:
+		var wrapped: Vector2 = font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, text_room, TOAST_FONT)
+		var lh := font.get_height(TOAST_FONT)
+		lines = maxi(1, int(round(wrapped.y / lh)))
+		text_w = minf(text_room, wrapped.x)
+	var w := minf(room, text_w + TOAST_PAD)
+	var h := TOAST_H + float(lines - 1) * font.get_height(TOAST_FONT)
+	var key := "%s|%d|%d" % [line, int(w), lines]
+	if _toast_mesh == null or _toast_mesh_for != key:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
+		_toast_mesh = b.mesh() if not b.verts.is_empty() else null
+		_toast_mesh_for = key
+	if _toast_mesh == null:
+		return
+	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - h * 0.5)
+	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
+	shown.append(_toast_mesh)
+	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
+	var left := mid.x - w * 0.5 + TOAST_PAD * 0.5
+	if lines == 1:
+		draw_string(font, Vector2(left, top), line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT, Color(Pal.PAPER, alpha))
+	else:
+		draw_multiline_string(font, Vector2(left, top), line, HORIZONTAL_ALIGNMENT_CENTER, w - TOAST_PAD,
+			TOAST_FONT, lines, Color(Pal.PAPER, alpha))
+
 func _ring_at(at: Vector2, when: float) -> void:
 	if Motion.reduce:
 		return
@@ -584,6 +674,15 @@ func _say(text: String, mood: int) -> void:
 	_tip_mood = mood
 	focus_changed.emit()
 
+## An explanation of what just happened: the sprout's line (which no screen
+## shows since the tip card left every board) and the toast, which one does.
+## The rotating opening tips never come through here -- they would be noise.
+func _tell(key: String, mood: int) -> void:
+	_say(tr(key), mood)
+	_toast = key
+	_toast_at = _now()
+	queue_redraw()
+
 func _cycle_tip() -> void:
 	if is_done() or _state.can_undo():
 		return
@@ -603,7 +702,7 @@ func undo() -> bool:
 	if is_done() or _now() < _busy_until or not _state.undo():
 		return false
 	_slide_to_state(_now(), 0.0)
-	_say(tr("KN_UNDONE"), Face.Expr.HAPPY)
+	_tell("KN_UNDONE", Face.Expr.HAPPY)
 	fx.cue("undo")
 	moved.emit()
 	return true
@@ -611,13 +710,22 @@ func undo() -> bool:
 func hints_left() -> int:
 	return maxi(0, HINTS - hints_used)
 
-## Plays the next hop of the shortest line from here for you.
+## Plays the next hop of the shortest line from here for you. From a lost
+## position -- no line left, or none inside Insane's moves left -- it spends
+## the hint rewinding to the last position that still had one instead.
 func hint() -> bool:
 	if is_done() or hints_left() <= 0 or _now() < _busy_until:
 		return false
 	var m: int = _state.hint_move()
 	if m < 0:
-		_say(tr("KN_STUCK"), Face.Expr.STRAIN)
+		if _state.rewind_to_live() > 0:
+			hints_used += 1
+			_slide_to_state(_now(), 0.0)
+			_tell(REWOUND_MSG, Face.Expr.HAPPY)
+			fx.cue("hint")
+			moved.emit()
+			return true
+		_tell(STUCK_MSG, Face.Expr.STRAIN)
 		fx.cue("refuse")
 		return false
 	hints_used += 1
@@ -631,6 +739,8 @@ func reset_board() -> void:
 	_slide_to_state(_now(), Motion.RESET_STAGGER)
 	_rings = []
 	_solved_at = -1.0
+	_toast = ""
+	_toast_at = -100.0
 	moves = 0
 	_running = true
 	_say(tr(TIPS[0]), Face.Expr.HAPPY)

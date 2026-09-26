@@ -1245,7 +1245,9 @@ pointing `seed_as` at them. Specs:
   corners show it without a word. Its drawing is `ui/faces/chess_piece.gd`,
   shared with the menu card. 67 draw calls bare, 66 played, 71 solved,
   ANGLE agreeing. Sounds are prompts in `tools/gen_sfx.py`, not yet
-  generated.
+  generated. The board toasts its own explanations (Rings' toast), because
+  the tip card is gone and `tip_line()` reaches no screen, and a Hint on a
+  lost position rewinds to the last one that still has a line (`KN_REWOUND`).
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

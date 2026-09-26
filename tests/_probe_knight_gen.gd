@@ -63,6 +63,7 @@ func _check_state() -> void:
 	var fails := 0
 	var caught_checks := 0
 	var budget_checks := 0
+	var rewind_checks := 0
 	for d in 4:
 		for s in 10:
 			var rng := RandomNumberGenerator.new()
@@ -132,4 +133,27 @@ func _check_state() -> void:
 				fails += 1
 				print("  undo did not give a move back d=%d s=%d" % [d, s])
 			st.g["budget"] = orig_budget
-	print("state: %d failures, %d budget checks, %d caught checks" % [fails, budget_checks, caught_checks])
+			# a lost position rewinds to one that still has a line: walk safe
+			# hops that are off the line until hint_move() has nothing
+			st.reset_board()
+			var lost := false
+			for i in 12:
+				if st.hint_move() < 0:
+					lost = true
+					break
+				var reach2: Dictionary = st.reach()
+				var moved := false
+				for m in st.legal():
+					if m != st.king and not reach2.has(m) and m != st.hint_move():
+						if not st.play(m).is_empty() and not st.is_solved():
+							moved = true
+							break
+				if not moved:
+					break
+			if lost:
+				rewind_checks += 1
+				var n: int = st.rewind_to_live()
+				if n <= 0 or st.hint_move() < 0:
+					fails += 1
+					print("  rewind_to_live wrong d=%d s=%d n=%d" % [d, s, n])
+	print("state: %d failures, %d budget checks, %d caught checks, %d rewind checks" % [fails, budget_checks, caught_checks, rewind_checks])
