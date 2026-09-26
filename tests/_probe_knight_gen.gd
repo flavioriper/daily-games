@@ -61,6 +61,8 @@ func _initialize() -> void:
 ## rose knight returns on Undo, and Insane's budget refuses the move past it.
 func _check_state() -> void:
 	var fails := 0
+	var caught_checks := 0
+	var budget_checks := 0
 	for d in 4:
 		for s in 10:
 			var rng := RandomNumberGenerator.new()
@@ -71,16 +73,17 @@ func _check_state() -> void:
 			var reach: Dictionary = st.reach()
 			for m in st.legal():
 				if reach.has(m) and m != st.king:
+					caught_checks += 1
 					var you0: int = st.you
 					var r: Dictionary = st.play(m)
 					if int(r.caught) < 0 or st.you != you0 or not st.history.is_empty():
 						fails += 1
 						print("  caught move kept d=%d s=%d" % [d, s])
 					break
-			# the line wins, and the budget is never short of it
+			# the line wins
 			for m in st.g.line:
 				st.play(m)
-			if not st.is_solved() or st.moves_left() == 0 and d < 3:
+			if not st.is_solved():
 				fails += 1
 				print("  line did not win d=%d s=%d" % [d, s])
 			# reset puts back the opening, including taken rose knights
@@ -105,25 +108,28 @@ func _check_state() -> void:
 			if not st.is_solved():
 				fails += 1
 				print("  hints did not solve d=%d s=%d" % [d, s])
-			# Insane: spend the budget on anything uncaught, then a move is refused
-			if d == 3:
-				st.reset_board()
-				while st.moves_left() > 0:
-					var safe := -1
-					var rc: Dictionary = st.reach()
-					for m in st.legal():
-						if not rc.has(m) and m != st.king:
-							safe = m
-							break
-					if safe < 0:
-						break
-					st.play(safe)
-				if st.moves_left() == 0 and (not st.play(st.legal()[0]).is_empty() or st.hint_move() != -1):
-					fails += 1
-					print("  budget not enforced s=%d" % s)
-				if st.moves_left() == 0:
-					st.undo()
-					if st.moves_left() != 1:
-						fails += 1
-						print("  undo did not give a move back s=%d" % s)
-	print("state: %d failures" % fails)
+			# a forced budget always binds, on every level: the shortest line's
+			# first two hops are never caught, so this runs the same way on
+			# every seed rather than depending on the greedy walk finding an
+			# uncaught square before the real budget runs out
+			st.reset_board()
+			var orig_budget = st.g.get("budget", 0)
+			st.g["budget"] = 2
+			st.play(st.g.line[0])
+			st.play(st.g.line[1])
+			budget_checks += 1
+			if st.moves_left() != 0:
+				fails += 1
+				print("  budget not spent d=%d s=%d" % [d, s])
+			if not st.play(st.legal()[0]).is_empty():
+				fails += 1
+				print("  budget not enforced d=%d s=%d" % [d, s])
+			if st.hint_move() != -1:
+				fails += 1
+				print("  hint ignored budget d=%d s=%d" % [d, s])
+			st.undo()
+			if st.moves_left() != 1:
+				fails += 1
+				print("  undo did not give a move back d=%d s=%d" % [d, s])
+			st.g["budget"] = orig_budget
+	print("state: %d failures, %d budget checks, %d caught checks" % [fails, budget_checks, caught_checks])
