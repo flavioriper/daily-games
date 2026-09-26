@@ -68,34 +68,65 @@ const SHADOW_AT := Vector2(0.0, 0.54)
 const SHADOW_RX := 0.34
 const SHADOW_RY := 0.1
 const SHADOW_ALPHA := 0.2
-## A bed: inset from its cells, the dashed grain along each of its rows, and
-## the inner line a pinned one takes.
+## A bed: a raised plot of tilled earth inset from its cells, standing on a
+## lip of darker soil, with the inner line a pinned one takes.
 const BED_INSET := 2.0
 const BED_RADIUS := 10.0
 const BED_BLUSH_MIX := 0.55
-const FURROW_MARGIN := 0.22
-const FURROW_WIDTH := 0.05
-const FURROW_MIN := 2.0
-const FURROW_ALPHA := 0.5
-const DASH := 0.1
-const DASH_GAP := 0.09
+const BED_LIP := 0.035
+const BED_LIP_MIN := 3.0
+## The till: two mounds of earth along every row of a bed, broken at every
+## column seam, so a bed's cells can still be counted after it has covered
+## the grid lines. A mound is a round-ended hump a shade lighter than the
+## soil, over the shadow it throws and under a thin lit crest. Positions and
+## widths are in cells.
+const RIDGES := [0.34, 0.7]
+const RIDGE_MARGIN := 0.12
+const RIDGE_WIDTH := 0.11
+const RIDGE_MIN := 5.0
+const RIDGE_LIGHT := 0.1
+const CREST_LIGHT := 0.3
+const CREST_SHARE := 0.28
+const GROOVE_ALPHA := 0.5
+## A new bed is raked in: row after row, each ridge drawn left to right,
+## over TILL_TIME in TILL_STEPS cached frames.
+const TILL_TIME := 0.36
+const TILL_ROW := 0.35
+const TILL_STEPS := 10
 const LOCK_INSET := 6.0
 const LOCK_RADIUS := 8.0
 const LOCK_WIDTH := 0.05
 const LOCK_MIN := 3.0
 const LOCK_ALPHA := 0.85
-## The fence: one line to a run, its shade laid half a width below it, and a
-## post only where runs meet, turn or cross.
+## The fence: a rail along every seam over its shade, a lit line along its
+## top, and a post at every lattice point it passes -- a small one mid-run,
+## so a side can be counted cell by cell, and a capped one where runs meet,
+## turn or cross.
 const FENCE_WIDTH := 0.075
 const FENCE_MIN := 5.0
 const RAIL_SHARE := 0.72
+const RAIL_LIT := 0.28
 const POST_SHARE := 0.72
+const MID_POST_SHARE := 0.46
+const POST_CAP := 0.4
+## The fence going up: every new stretch of rail grows out of the post
+## nearer where the move began, FENCE_STEP a cell further round, over
+## RAIL_TIME, and its far post pops as the rail reaches it. A stretch taken
+## away shrinks to its middle over the family's POP_OUT.
+const FENCE_STEP := 0.035
+const FENCE_WAVE := 0.5
+const RAIL_TIME := 0.16
 ## The rectangle under the finger and the disc carrying its area.
 const PEND_ALPHA := 0.22
 const PEND_DASH := 0.22
 const PEND_GAP := 0.16
 const PEND_WIDTH := 0.055
 const PEND_MIN := 4.0
+## The rectangle glides after the finger rather than jumping cell to cell:
+## an exponential ease at PEND_EASE a second. Its dashes crawl round it at
+## ANTS a second, in cells.
+const PEND_EASE := 26.0
+const ANTS := 0.9
 const DISC_SHARE := 0.42
 const DISC_MAX := 54.0
 const DISC_RIM := 5.0
@@ -184,6 +215,13 @@ var _seed_cache: Dictionary = {}
 var _blooms: Dictionary = {}
 var _ground: ArrayMesh
 var _fence: ArrayMesh
+## Every stretch of fence standing or on its way, one per unit seam:
+## Vector3i(vertical, line, index) -> {"at": when it starts to grow, "from_a":
+## whether it grows out of its first lattice point, "gone": when it starts to
+## leave, or -1}. The fence mesh is rebuilt off it every frame until
+## _fence_until, and cached after.
+var _edges: Dictionary = {}
+var _fence_until := -1.0e9
 var _shadows: ArrayMesh
 var _cell := 0.0
 var _origin := Vector2.ZERO
@@ -203,6 +241,13 @@ var _count_at := -1.0e9
 ## The pending rectangle's mesh and the rectangle-and-colour it was cut for.
 var _pend_mesh: ArrayMesh
 var _pend_key := ""
+## Where the rectangle is drawn, easing after where it is, and the clock the
+## ease last read.
+var _pend_px := Rect2()
+var _pend_t := 0.0
+## The clue the rectangle under the finger last fitted, so its sign bobs once
+## as the fit arrives and not on every recount.
+var _fit_clue := -1
 
 # --- what the beds are doing ---
 ## Bed key -> {"at": float, "drop": bool}: a bed arriving, popping in wide
@@ -273,6 +318,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_bed_flash = {}
 	_plant_at = {}
 	_planted = false
+	_edges = {}
+	_fence_until = -1.0e9
 	_clear_drag()
 	_build_markers()
 	_layout()
@@ -352,7 +399,8 @@ func _layout() -> void:
 	_bed_cache = {}
 	_seed_cache = {}
 	_ground = _build_ground()
-	_fence = _build_fence()
+	_fence_sync(Vector2.ZERO, 0.0, true)
+	_fence = null
 	_shadows = null
 	if not _idling:
 		_idling = true
@@ -432,26 +480,55 @@ func _build_shadows() -> ArrayMesh:
 		return null
 	return b.mesh()
 
-## One bed: tilled earth inset from its cells, the dashed grain along each of
-## its rows, the pinned line when a hint drew it, and the crop once the field
-## is planted. Built about the plot's own centre, so the pop is a transform.
-func _build_bed(rect: Rect2i, lock: bool, blush: bool, planted: bool) -> ArrayMesh:
+## One bed: a raised plot of tilled earth inset from its cells on a lip of
+## darker soil, two ridges along each of its rows broken at every column, the
+## pinned line when a hint drew it, and the crop once the field is planted.
+## `till` is how far the rake has come, 0 to 1. Built about the plot's own
+## centre, so the pop is a transform.
+func _build_bed(rect: Rect2i, lock: bool, blush: bool, planted: bool, till := 1.0) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var span := Vector2(rect.size) * _cell
 	var at := -span * 0.5
 	var soil: Color = Pal.BED_SOIL.lerp(Pal.BED_BLUSH, BED_BLUSH_MIX) if blush else Pal.BED_SOIL
-	b.fan(Face.Builder.round_rect(at + Vector2.ONE * BED_INSET,
-		span - Vector2.ONE * 2.0 * BED_INSET, BED_RADIUS), soil)
-	var furrow := Color(Pal.BED_FURROW, FURROW_ALPHA)
-	var fw := maxf(FURROW_MIN, _cell * FURROW_WIDTH)
-	for k in rect.size.y:
-		var y := at.y + (k + 0.5) * _cell
-		_dashes(b, Vector2(at.x + _cell * FURROW_MARGIN, y),
-			Vector2(at.x + span.x - _cell * FURROW_MARGIN, y),
-			fw, furrow, _cell * DASH, _cell * DASH_GAP)
+	var deep: Color = Pal.BED_FURROW.lerp(Pal.BED_BLUSH, BED_BLUSH_MIX * 0.6) if blush else Pal.BED_FURROW
+	var inner := span - Vector2.ONE * 2.0 * BED_INSET
+	var lip := maxf(BED_LIP_MIN, _cell * BED_LIP)
+	# The lip is the plot at full height and the soil the same plot short of
+	# it, the family's soft foot, so the bed stands proud of the ground.
+	b.fan(Face.Builder.round_rect(at + Vector2.ONE * BED_INSET, inner, BED_RADIUS), deep)
+	b.fan(Face.Builder.round_rect(at + Vector2.ONE * BED_INSET, inner - Vector2(0.0, lip),
+		BED_RADIUS), soil)
+	var rw := maxf(RIDGE_MIN, _cell * RIDGE_WIDTH)
+	var mound: Color = soil.lerp(Pal.SURFACE, RIDGE_LIGHT)
+	var crest: Color = soil.lerp(Pal.SURFACE, CREST_LIGHT)
+	var groove := Color(deep, GROOVE_ALPHA)
+	var rows := rect.size.y
+	for k in rows:
+		# Each row's rake sets off TILL_ROW of the whole later than the top
+		# row's, spread over the rows, and crosses its bed in the rest.
+		var start := TILL_ROW * k / maxf(1.0, rows - 1.0)
+		var reach := _phase(till, start, start + 1.0 - TILL_ROW) * rect.size.x
+		if reach <= 0.0:
+			continue
+		for c in rect.size.x:
+			var grown := clampf(reach - c, 0.0, 1.0)
+			if grown <= 0.0:
+				break
+			var x0 := at.x + (c + RIDGE_MARGIN) * _cell
+			var x1 := lerpf(x0, at.x + (c + 1.0 - RIDGE_MARGIN) * _cell, grown)
+			for r in RIDGES:
+				var y: float = at.y + (k + float(r)) * _cell - lip * 0.5
+				b.stroke(PackedVector2Array([Vector2(x0, y + rw * 0.35), Vector2(x1, y + rw * 0.35)]),
+					rw, groove)
+				b.stroke(PackedVector2Array([Vector2(x0, y), Vector2(x1, y)]), rw, mound)
+				var top := y - rw * 0.2
+				var pull := minf(rw * 0.5, (x1 - x0) * 0.5)
+				if x1 - x0 > rw:
+					b.stroke(PackedVector2Array([Vector2(x0 + pull, top), Vector2(x1 - pull, top)]),
+						rw * CREST_SHARE, crest)
 	if lock:
 		b.stroke(Face.Builder.round_rect(at + Vector2.ONE * LOCK_INSET,
-			span - Vector2.ONE * 2.0 * LOCK_INSET, LOCK_RADIUS),
+			span - Vector2.ONE * 2.0 * LOCK_INSET - Vector2(0.0, lip), LOCK_RADIUS),
 			maxf(LOCK_MIN, _cell * LOCK_WIDTH), Color(Pal.LEAF, LOCK_ALPHA), true)
 	if planted:
 		for x in rect.size.x:
@@ -460,28 +537,147 @@ func _build_bed(rect: Rect2i, lock: bool, blush: bool, planted: bool) -> ArrayMe
 					_seed_variant(rect, x, y), _bloom_of(rect))
 	return b.mesh()
 
-## The whole fence: one line to a run, laid over its own shade, and a post
-## wherever runs meet, turn or cross. In the grid's own space.
-func _build_fence() -> ArrayMesh:
-	var runs := state.fence_runs()
-	# A field with nothing drawn on it has no seam, and a Builder handed no
-	# shapes makes a surface with no vertices, which the renderer rejects.
-	if runs.is_empty():
+# --- the fence ---
+
+## The unit seam `key`'s two lattice points, in cells.
+func _edge_ends(key: Vector3i) -> Array:
+	if key.x == 1:
+		return [Vector2i(key.y, key.z), Vector2i(key.y, key.z + 1)]
+	return [Vector2i(key.z, key.y), Vector2i(key.z + 1, key.y)]
+
+## Brings the fence in line with the partition: every seam the state now has
+## and the fence does not starts to grow, out of its end nearer `from` (a
+## point in cells), FENCE_STEP a cell of distance later than the one before
+## it, all of it `delay` from now; every stretch the partition no longer has
+## starts to leave on the same wave. `instant` stands the fence as it is,
+## with no wave, as a layout or a restored daily wants it.
+func _fence_sync(from: Vector2, delay := 0.0, instant := false) -> void:
+	var now := _now()
+	var still := instant or Motion.reduce
+	var live: Dictionary = {}
+	for v in 2:
+		var lines := (w if v == 1 else h) + 1
+		var count := h if v == 1 else w
+		for line in lines:
+			for index in count:
+				if state.is_seam(v == 1, line, index):
+					live[Vector3i(v, line, index)] = true
+	var far := now
+	for key: Vector3i in live:
+		var had: Dictionary = _edges.get(key, {})
+		if not had.is_empty() and float(had.gone) < 0.0:
+			continue
+		var ends := _edge_ends(key)
+		var a := Vector2(ends[0])
+		var b := Vector2(ends[1])
+		var near := minf(a.distance_to(from), b.distance_to(from))
+		var at := now - 10.0 if still else now + delay + minf(near * FENCE_STEP, FENCE_WAVE)
+		_edges[key] = {"at": at, "from_a": a.distance_to(from) <= b.distance_to(from), "gone": -1.0}
+		far = maxf(far, at + RAIL_TIME * 2.0 + Motion.POP_IN)
+	for key: Vector3i in _edges.keys():
+		if live.has(key):
+			continue
+		var e: Dictionary = _edges[key]
+		if float(e.gone) >= 0.0:
+			continue
+		if still:
+			_edges.erase(key)
+			continue
+		var ends := _edge_ends(key)
+		var mid := (Vector2(ends[0]) + Vector2(ends[1])) * 0.5
+		e.gone = now + delay + minf(mid.distance_to(from) * FENCE_STEP, FENCE_WAVE)
+		far = maxf(far, float(e.gone) + Motion.POP_OUT)
+	if not still:
+		_fence_until = maxf(_fence_until, far)
+		_anim_until = maxf(_anim_until, far)
+	_fence = null
+
+## How far a stretch has grown at `now`, 0 to 1 -- and as it leaves, how much
+## of it is left.
+func _edge_level(e: Dictionary, now: float) -> float:
+	if float(e.gone) >= 0.0 and now >= float(e.gone):
+		return Motion.pop_out_scale(now - float(e.gone))
+	var u := clampf((now - float(e.at)) / RAIL_TIME, 0.0, 1.0)
+	return 1.0 - pow(1.0 - u, 3.0)
+
+## The whole fence as it stands at `now`, in the grid's own space: every
+## stretch's shade, then every rail and its lit top, then the posts over them.
+## A post takes the largest of its stretches' pops -- a growing stretch's
+## near post as it sets off, its far one as the rail arrives -- and is capped
+## where the fence meets, turns or crosses.
+func _build_fence(now: float) -> ArrayMesh:
+	var fw := maxf(FENCE_MIN, _cell * FENCE_WIDTH)
+	var shades := []
+	var rails := []
+	var posts: Dictionary = {}   # Vector2i -> scale
+	for key: Vector3i in _edges.keys():
+		var e: Dictionary = _edges[key]
+		var leaving := float(e.gone) >= 0.0 and now >= float(e.gone)
+		if leaving and now >= float(e.gone) + Motion.POP_OUT:
+			_edges.erase(key)
+			continue
+		var level := _edge_level(e, now)
+		var ends := _edge_ends(key)
+		var a := _lattice(ends[0].x, ends[0].y)
+		var b := _lattice(ends[1].x, ends[1].y)
+		var p0: Vector2
+		var p1: Vector2
+		if leaving:
+			var mid := (a + b) * 0.5
+			p0 = mid.lerp(a, level)
+			p1 = mid.lerp(b, level)
+			for end in ends:
+				posts[end] = maxf(float(posts.get(end, 0.0)), level)
+		else:
+			var start: Vector2i = ends[0] if e.from_a else ends[1]
+			var stop: Vector2i = ends[1] if e.from_a else ends[0]
+			var t := now - float(e.at)
+			posts[start] = maxf(float(posts.get(start, 0.0)), Motion.pop_in_scale(t).x)
+			posts[stop] = maxf(float(posts.get(stop, 0.0)), Motion.pop_in_scale(t - RAIL_TIME * 0.8).x)
+			p0 = _lattice(start.x, start.y)
+			p1 = p0.lerp(_lattice(stop.x, stop.y), level)
+		if level <= 0.0 or p0.distance_to(p1) < 0.5:
+			continue
+		shades.append([p0, p1])
+		rails.append([p0, p1, key.x == 1])
+	if shades.is_empty() and posts.is_empty():
 		return null
 	var b := Face.Builder.new()
-	var fw := maxf(FENCE_MIN, _cell * FENCE_WIDTH)
-	for run in runs:
-		var vertical: bool = run[0]
-		var line: int = run[1]
-		var from: Vector2 = _lattice(line if vertical else run[2], run[2] if vertical else line)
-		var to: Vector2 = _lattice(line if vertical else run[2] + run[3],
-			run[2] + run[3] if vertical else line)
-		var shade := Vector2(0.0, fw * 0.5)
-		b.stroke(PackedVector2Array([from + shade, to + shade]), fw, Pal.FENCE_DARK)
-		b.stroke(PackedVector2Array([from, to]), fw * RAIL_SHARE, Pal.FENCE_RAIL)
-	for post in state.fence_posts():
-		b.disc(_lattice(post.x, post.y), fw * POST_SHARE, Pal.FENCE_POST)
+	var shade := Vector2(0.0, fw * 0.5)
+	for s in shades:
+		b.stroke(PackedVector2Array([s[0] + shade, s[1] + shade]), fw, Pal.FENCE_DARK)
+	var lit: Color = Pal.FENCE_RAIL.lerp(Pal.SURFACE, 0.55)
+	for r in rails:
+		b.stroke(PackedVector2Array([r[0], r[1]]), fw * RAIL_SHARE, Pal.FENCE_RAIL)
+		# The light falls from above, so a lying rail is lit along its top
+		# edge; an upright one is seen end on to it and takes none.
+		if not r[2]:
+			var up := Vector2(0.0, -fw * RAIL_SHARE * 0.22)
+			b.stroke(PackedVector2Array([r[0] + up, r[1] + up]), fw * RAIL_SHARE * RAIL_LIT, lit)
+	for at: Vector2i in posts:
+		var grown: float = posts[at]
+		if grown <= 0.0:
+			continue
+		var big := _is_junction(at)
+		var r := fw * (POST_SHARE if big else MID_POST_SHARE) * grown
+		var c := _lattice(at.x, at.y)
+		b.disc(c + Vector2(0.0, r * 0.35), r, Pal.FENCE_DARK)
+		b.disc(c, r, Pal.FENCE_POST if big else Pal.FENCE_RAIL.lerp(Pal.FENCE_POST, 0.5))
+		if big:
+			b.disc(c + Vector2(-r, -r) * 0.25, r * POST_CAP, lit)
+	if b.verts.is_empty():
+		return null
 	return b.mesh()
+
+## Whether the fence meets, turns or crosses at lattice point `at`, in the
+## stretches standing now: the state's own rule for where a post goes.
+func _is_junction(at: Vector2i) -> bool:
+	var up := at.y > 0 and state.is_seam(true, at.x, at.y - 1)
+	var down := at.y < h and state.is_seam(true, at.x, at.y)
+	var left := at.x > 0 and state.is_seam(false, at.y, at.x - 1)
+	var right := at.x < w and state.is_seam(false, at.y, at.x)
+	var count := int(up) + int(down) + int(left) + int(right)
+	return count != 2 or not ((up and down) or (left and right))
 
 ## A lattice point in the grid's own space.
 func _lattice(i: int, j: int) -> Vector2:
@@ -497,8 +693,12 @@ func _lattice(i: int, j: int) -> Vector2:
 ## `while` that advances by a computed step. The first draft was the latter
 ## and its step could round to zero on a segment boundary, which is not a slow
 ## frame but an endless one appending vertices until the machine gives out.
+##
+## `phase` slides the dashes along the path, the crawl. A closed path is cut
+## into a whole number of periods, so the dash crossing its first point joins
+## up with itself rather than leaving a stub there.
 func _dash_path(b, pts: PackedVector2Array, closed: bool, width: float,
-		colour: Color, dash: float, gap: float) -> void:
+		colour: Color, dash: float, gap: float, phase := 0.0) -> void:
 	var n := pts.size()
 	var period := dash + maxf(gap, 0.0)
 	if n < 2 or dash <= 0.0 or period <= 0.0:
@@ -513,9 +713,14 @@ func _dash_path(b, pts: PackedVector2Array, closed: bool, width: float,
 	var total: float = acc[segs]
 	if total <= 0.0:
 		return
-	for k in int(ceil(total / period)):
-		var from := k * period
-		var to := minf(from + dash, total)
+	if closed:
+		var fit := maxf(1.0, roundf(total / period))
+		dash *= total / (fit * period)
+		period = total / fit
+	var shift := fposmod(phase, period) - period
+	for k in int(ceil(total / period)) + 1:
+		var from := maxf(k * period + shift, 0.0)
+		var to := minf(k * period + shift + dash, total)
 		if to - from <= 0.0:
 			continue
 		var out := PackedVector2Array()
@@ -534,11 +739,6 @@ func _dash_path(b, pts: PackedVector2Array, closed: bool, width: float,
 				out.append(end)
 		if out.size() >= 2:
 			b.stroke(out, width, colour, false, false)
-
-## One dashed straight line, a furrow along a bed's row.
-func _dashes(b, from: Vector2, to: Vector2, width: float, colour: Color,
-		dash: float, gap: float) -> void:
-	_dash_path(b, PackedVector2Array([from, to]), false, width, colour, dash, gap)
 
 ## One flower at `at`, `u` of the way through its bloom, drawn into `b` in
 ## the space it is handed. It comes up in overlapping stages, each on its
@@ -672,13 +872,20 @@ func _bed_mesh(i: int) -> ArrayMesh:
 
 ## A bed's mesh for the look asked for. The blushing variant of a bed that
 ## is not blushing is what a flash draws over it.
-func _bed_variant(rect: Rect2i, lock: bool, blush: bool) -> ArrayMesh:
-	var key := "%s_%d_%d_%d" % [_bed_key(rect), int(lock), int(blush), int(_planted)]
+## `till` is the rake's step of TILL_STEPS, the whole bed by default.
+func _bed_variant(rect: Rect2i, lock: bool, blush: bool, till := TILL_STEPS) -> ArrayMesh:
+	var key := "%s_%d_%d_%d_%d" % [_bed_key(rect), int(lock), int(blush), int(_planted), till]
 	var mesh: ArrayMesh = _bed_cache.get(key)
 	if mesh == null:
-		mesh = _build_bed(rect, lock, blush, _planted)
+		mesh = _build_bed(rect, lock, blush, _planted, float(till) / TILL_STEPS)
 		_bed_cache[key] = mesh
 	return mesh
+
+## The rake's step for a bed that arrived `e` seconds ago.
+func _till_step(e: float) -> int:
+	if Motion.reduce:
+		return TILL_STEPS
+	return clampi(int(ceil(e / TILL_TIME * TILL_STEPS)), 0, TILL_STEPS)
 
 # --- drawing ---
 
@@ -719,24 +926,30 @@ func _draw() -> void:
 		var px := _rect_px(rect)
 		var xf := Transform2D(0.0, px.get_center())
 		var tint := Color.WHITE
+		var till := TILL_STEPS
 		var arrival: Dictionary = _bed_in.get(key, {})
 		if not arrival.is_empty():
 			var e: float = now - float(arrival.at)
 			tint.a = Motion.appear_level(e)
+			till = _till_step(e)
+			if till < TILL_STEPS:
+				busy = true
 			if arrival.drop:
 				xf.origin.y -= Motion.drop_in_lift(e)
 				if e < Motion.DROP_TIME:
 					busy = true
-				else:
+				elif till >= TILL_STEPS:
 					_bed_in.erase(key)
 			else:
 				var grown := Motion.wide_pop_scale(e, Motion.POP_IN)
 				xf = xf.scaled_local(Vector2(grown, grown))
 				if e < Motion.POP_IN:
 					busy = true
-				else:
+				elif till >= TILL_STEPS:
 					_bed_in.erase(key)
-		draw_mesh(_bed_mesh(i), null, xf, tint)
+		var bed: ArrayMesh = _bed_mesh(i) if till >= TILL_STEPS \
+			else _bed_variant(rect, state.locked[i], state.plot_blushes(i), till)
+		draw_mesh(bed, null, xf, tint)
 		if _bed_flash.has(key):
 			var e: float = now - float(_bed_flash[key])
 			var level := Motion.flash_level(e)
@@ -756,8 +969,14 @@ func _draw() -> void:
 			busy = true
 	if _shadows != null:
 		draw_mesh(_shadows, null)
+	# The fence is cached while it stands and rebuilt every frame it moves.
+	if _fence == null or now < _fence_until:
+		_fence = _build_fence(now)
+		if now < _fence_until:
+			busy = true
 	if _fence != null:
 		draw_mesh(_fence, null, Transform2D(0.0, _origin))
+		shown.append(_fence)
 	if _drag_from.x >= 0 and not is_done():
 		busy = _draw_pending(now) or busy
 		shown.append(_pend_mesh)
@@ -787,19 +1006,22 @@ func _draw_crop(i: int, now: float) -> bool:
 	return growing
 
 ## The rectangle under the finger: its cells washed in the colour the count
-## has earned, under a dashed edge, popping in wide as the finger lands. The
-## disc carrying the count is drawn by the overlay, over the markers. True
-## while the pop is still running.
+## has earned, under a dashed edge crawling round it, popping in wide as the
+## finger lands and gliding after it from cell to cell. The disc carrying the
+## count is drawn by the overlay, over the markers. True while any of it is
+## still moving.
 func _draw_pending(now: float) -> bool:
 	var pend := _pending()
 	var colour := _pending_colour(pend)
-	var px := _rect_px(pend)
-	# Cached by the rectangle and the colour it earned: a drag moves the
-	# finger far more often than it moves the rectangle, and the dashed edge
-	# is a hundred small strokes to build. Built about the rectangle's own
+	var px := _pend_rect(now)
+	var moving := not px.is_equal_approx(_rect_px(pend))
+	var crawl := 0.0 if Motion.reduce else now * ANTS * _cell
+	# Cut again only when the drawn rectangle, its colour or the crawl has
+	# moved: a finger held still over a still rectangle still crawls, but a
+	# reduced one costs one mesh a rectangle. Built about the rectangle's own
 	# centre, so the pop is a transform.
-	var key := "%d_%d_%d_%d_%s" % [pend.position.x, pend.position.y,
-		pend.size.x, pend.size.y, colour.to_html(false)]
+	var key := "%d_%d_%s_%d" % [roundi(px.size.x), roundi(px.size.y), colour.to_html(false),
+		roundi(crawl)]
 	if key != _pend_key:
 		_pend_key = key
 		var at := -px.size * 0.5
@@ -808,12 +1030,27 @@ func _draw_pending(now: float) -> bool:
 			px.size - Vector2.ONE * 2.0 * BED_INSET, BED_RADIUS), Color(colour, PEND_ALPHA))
 		_dash_path(b, Face.Builder.round_rect(at + Vector2.ONE * 3.0,
 			px.size - Vector2.ONE * 6.0, BED_RADIUS), true,
-			maxf(PEND_MIN, _cell * PEND_WIDTH), colour, _cell * PEND_DASH, _cell * PEND_GAP)
+			maxf(PEND_MIN, _cell * PEND_WIDTH), colour, _cell * PEND_DASH, _cell * PEND_GAP, crawl)
 		_pend_mesh = b.mesh()
 	var e := now - _drag_at
 	var grown := Motion.wide_pop_scale(e, Motion.POP_IN)
 	draw_mesh(_pend_mesh, null, Transform2D(0.0, Vector2(grown, grown), 0.0, px.get_center()))
-	return e < Motion.POP_IN
+	return e < Motion.POP_IN or moving or not Motion.reduce
+
+## Where the rectangle under the finger is drawn at `now`: easing after the
+## cells it covers, read once a frame, so its edges glide rather than jump.
+func _pend_rect(now: float) -> Rect2:
+	var goal := _rect_px(_pending())
+	if Motion.reduce or not _pend_px.has_area():
+		_pend_px = goal
+	else:
+		var k := 1.0 - exp(-maxf(now - _pend_t, 0.0) * PEND_EASE)
+		_pend_px = Rect2(_pend_px.position.lerp(goal.position, k), _pend_px.size.lerp(goal.size, k))
+		if _pend_px.position.distance_to(goal.position) < 0.5 \
+				and _pend_px.size.distance_to(goal.size) < 0.5:
+			_pend_px = goal
+	_pend_t = now
+	return _pend_px
 
 ## Green when the rectangle is the size and shape the single clue inside it
 ## asks for, rose when it is not, and plain ink when it holds no clue or two.
@@ -860,6 +1097,8 @@ func _press(cell: Vector2i) -> void:
 	_count = 1
 	_count_at = -1.0e9
 	_pend_key = ""
+	_pend_px = Rect2()
+	_fit_clue = -1
 	_anim_until = maxf(_anim_until, _drag_at + Motion.POP_IN)
 	fx.cue("select")
 	_redraw()
@@ -874,11 +1113,32 @@ func _recount() -> void:
 	# The tick climbs as the bed grows, so its size can be heard.
 	fx.cue("select", minf(1.0 + 0.04 * (area - 1), 1.6))
 	_anim_until = maxf(_anim_until, _count_at + Motion.BUMP_TIME)
+	# The sign the rectangle has just come to fit bobs: that one is mine.
+	var fit := _fitted_clue(_pending())
+	if fit != _fit_clue:
+		_fit_clue = fit
+		if fit >= 0:
+			_bump(fit)
+
+## The one clue `rect` holds when it is exactly the plot that clue asks for,
+## or -1.
+func _fitted_clue(rect: Rect2i) -> int:
+	var found := -1
+	for i in state.clues.size():
+		if rect.has_point(state.clues[i].pos):
+			if found >= 0:
+				return -1
+			found = i
+	if found < 0 or not State.Gen.fits(state.clues[found], rect.size.x, rect.size.y):
+		return -1
+	return found
 
 func _release() -> void:
 	if _drag_from.x < 0:
 		return
 	var pend := _pending()
+	# The fence goes up from where the finger went down.
+	var start := Vector2(_drag_from) + Vector2(0.5, 0.5)
 	_clear_drag()
 	if is_done():
 		_redraw()
@@ -897,12 +1157,12 @@ func _release() -> void:
 			_nudge_around(rect)
 			_puff_corners(rect, Pal.BED_FURROW)
 			fx.cue("plot")
-			_after_move()
+			_after_move(start)
 		"clear":
 			_leave_missing(before, _now())
 			_hop_inside(out.rect, Motion.HOP, Motion.HOP_TIME)
 			fx.cue("clear")
-			_after_move()
+			_after_move(Vector2(out.rect.position) + Vector2(out.rect.size) * 0.5)
 	_redraw()
 
 ## A drag that wanders off the field holds its far corner on the edge cell,
@@ -923,8 +1183,8 @@ func _clear_drag() -> void:
 	_drag_to = Vector2i(-1, -1)
 
 ## Everything a change to the partition drives.
-func _after_move() -> void:
-	_fence = _build_fence()
+func _after_move(from: Vector2) -> void:
+	_fence_sync(from)
 	_refresh_markers()
 	_speak()
 	note_move()
@@ -1096,10 +1356,12 @@ func undo() -> bool:
 	for was in before:
 		if not state.rects.has(was.rect):
 			_hop_inside(was.rect, Motion.HOP, Motion.HOP_TIME)
+	var from := Vector2(w, h) * 0.5
 	for rect in back:
 		_arrive(rect, false)
 		_hop_inside(rect, Motion.HOP, Motion.HOP_TIME)
-	_fence = _build_fence()
+		from = Vector2(rect.position) + Vector2(rect.size) * 0.5
+	_fence_sync(from)
 	_refresh_markers()
 	_speak()
 	fx.cue("undo")
@@ -1129,7 +1391,7 @@ func hint() -> bool:
 	fx.sparkle(px.get_center(), Pal.LEAF)
 	fx.cue("hint")
 	hints_used += 1
-	_fence = _build_fence()
+	_fence_sync(Vector2(target.position) + Vector2(target.size) * 0.5, Motion.DROP_TIME * 0.6)
 	_refresh_markers()
 	_say(tr("SK_FENCED"), Face.Expr.HAPPY)
 	moved.emit()
@@ -1182,13 +1444,9 @@ func reset_board() -> void:
 		_hop(i, Motion.RESET_HOP, Motion.HOP_TIME,
 			Motion.stagger((h - 1 - at.y) + (w - 1 - at.x), Motion.RESET_STAGGER))
 	moves = 0
-	# The fence stands until the last bed has gone, then comes down with it.
-	if Motion.reduce or before.is_empty():
-		_fence = _build_fence()
-	else:
-		_after(last - now + Motion.POP_OUT, func() -> void:
-			_fence = _build_fence()
-			_redraw())
+	# The fence comes down stretch by stretch on the beds' own wave, from the
+	# far corner.
+	_fence_sync(Vector2(w, h))
 	_anim_until = maxf(_anim_until, last + Motion.POP_OUT)
 	_refresh_markers()
 	_say(tr("SK_CLEARED"), Face.Expr.HAPPY)
@@ -1235,7 +1493,8 @@ func restore_completed_board() -> void:
 		marker.rotation = 0.0
 		marker.scale = Vector2.ONE
 	_shadows = null
-	_fence = _build_fence() if _cell > 0.0 else null
+	_edges = {}
+	_fence_sync(Vector2.ZERO, 0.0, true)
 	_refresh_markers()
 	_say(tr("SK_SOLVED"), Face.Expr.JOY)
 	_redraw()
@@ -1383,7 +1642,7 @@ class Overlay extends Control:
 		if board == null or board._drag_from.x < 0 or board.is_done():
 			return
 		var pend: Rect2i = board._pending()
-		var px: Rect2 = board._rect_px(pend)
+		var px: Rect2 = board._pend_px if board._pend_px.has_area() else board._rect_px(pend)
 		var colour: Color = board._pending_colour(pend)
 		var r: float = minf(board._cell * DISC_SHARE, DISC_MAX)
 		var centre := px.get_center()

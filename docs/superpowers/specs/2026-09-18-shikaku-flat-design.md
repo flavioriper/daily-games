@@ -329,3 +329,61 @@ Open, still, from section 10: the area disc's generosity, the hard cell, the
 crowd of fourteen faces and whether the bed should blush at all. Nothing here
 answers them; it only makes the flat board move with the same hand as the
 other four.
+
+## 12. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, as Code Break's, Balance's and Untangle's second passes were the
+same evening; this amendment is the record. The rules, the layout, the
+markers and section 11's motion table are unchanged except where named.
+
+**A bed is raised and tilled by the cell.** It stands on a lip of its own
+darker soil (`BED_LIP`, the family's soft foot), and the dashed grain is gone
+for two mounds of earth along every row (`RIDGES`), each a round-ended hump
+a shade lighter than the soil over the shadow it throws and under a thin lit
+crest. The mounds break at every column seam, which is the point of them: a
+bed used to cover the grid lines, so its rows could be counted by the grain
+and its columns could not. Now both can. A blushing bed's lip and grooves
+take the blush with its soil.
+
+**The fence has a post at every cell.** A small post at every lattice point
+a run passes (`MID_POST_SHARE`), and the capped one of before where runs
+meet, turn or cross, so a side can be counted post to post as well. A lying
+rail is lit along its top; an upright one takes no light.
+
+**The fence goes up post by post.** It is kept per unit seam now (`_edges`)
+and diffed against the partition on every move (`_fence_sync`): a new
+stretch grows out of its end nearer where the move began -- the cell the
+finger went down on, a hint's bed after it has dropped, an undo's returning
+bed -- `FENCE_STEP` a cell further round (capped at `FENCE_WAVE`), over
+`RAIL_TIME`, its near post popping as it sets off and its far one as the
+rail arrives. A stretch taken away shrinks to its middle over `POP_OUT` on
+the same wave, so Reset's fence now comes down with the beds from the far
+corner instead of standing until the last one has gone. The mesh is rebuilt
+only while a stretch moves and cached after.
+
+**A new bed is raked in.** Under its wide pop the mounds are drawn in row
+after row, each left to right, over `TILL_TIME` in `TILL_STEPS` cached
+frames.
+
+**The drag.** The rectangle glides after the finger (`PEND_EASE`, an
+exponential ease) instead of jumping a cell at a time, and the count's disc
+rides it; its dashes crawl round it at `ANTS` cells a second, cut to a whole
+number of periods so no stub sits where the path begins. When the rectangle
+comes to fit the one sign inside it -- green -- that sign bobs, once, with
+the family's bump.
+
+Under reduce motion none of it moves: the fence stands or goes at once, a
+bed arrives raked, the rectangle is where the finger is and its dashes stand
+still.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- shikaku`, before and after on the same day's board:
+draw calls unchanged (**100** with the harness's bed, **95/94** bare); a
+settled board 2.46 and 2.48 ms against 2.39 and 2.42 before (idle window
+moved to 3.2-5.2 s, because the harness's 2.2 s window catches the fence
+still going up and reads 2.9). Reduce-motion pair 1.5 s apart
+pixel-identical; ANGLE agrees on 100 with a max channel delta of 2/255, in
+the wordmark's sun-dot. Suite 122583/0; `tests/_win.gd` windowed 21/21. A
+throwaway probe ran two hints, a reset and a full solve through the
+planting wave to the win screen with no error.
