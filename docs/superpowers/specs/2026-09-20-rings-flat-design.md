@@ -493,3 +493,42 @@ around: a windowed harness whose window is covered stops presenting frames after
 too), so run them with `--always-on-top`; and `_shot_anim.gd` read the real progress
 file, so a daily already solved on this Mac opened straight onto its win screen. It now
 uses a throwaway file with every tutorial marked seen.
+
+---
+
+## Amendment, 2026-09-26: toward the reference, again
+
+The user asked for the board polished toward the reference
+(`docs/art/concept-rings-ref.png`): a sunny paved terrace, mossy wooden planks with
+leaves and daisies on their ends, wooden dowels, and rings with a cream inner lip and an
+inlaid emblem. What changed (`puzzles/rings2d.gd`, `ui/menu/card_art.gd`):
+
+- **Emblems replace pips.** Each colour wears one inlaid shape -- heart, sprout, circle,
+  flower, diamond, triangle (`EMBLEMS`, in `RING_COLOURS`' order) -- in cream over a thin
+  shade, so it reads as set into the ring. The rule it serves is unchanged: colour never
+  stands alone. A shape reads at a glance where five dots had to be counted. The win
+  screen's ring icons and the menu card wear them too.
+- **A ring stands on the wood.** The cream dish is gone; each stack casts a shadow down
+  and right across the plank, and an empty peg's dowel goes into a socket in the wood.
+  The post is a wooden dowel with a shaded right side, a lit left and its end grain on
+  top. The ring's top face has a paler inner lip round a deeper hole.
+- **The plank** (`_append_plank`, shared with the menu card) is thicker: a lit top with
+  grain and a knot, a darker front with a crack or two, moss along its front edge, and a
+  clump of leaves with daisies on each end, over a shadow on the terrace.
+- **The terrace** replaces the plain card and the grass band: crazy-paving flagstones in
+  a sandy grout, dappled shade, fallen leaves, foliage hanging into the top corners and
+  daisy bushes along the foot. It never moves, so it is **a third mesh built once a
+  layout** -- the stations' mesh, rebuilt while anything moves, did not grow.
+- **The lock's lasting mark is a daisy on the post top**, popping in where the gold cap
+  did; the glint down the stack is unchanged.
+- **The motion.** The ring in hand turns slowly on its post's axis (`HOLD_SPIN`, eased in
+  over `HOLD_SPIN_IN`), which only its emblems show, walking round the band -- two
+  emblems, opposite, so one is always to the front at a whole half turn. A flight whirls
+  it on to the next half turn but one, so it always lands with an emblem square to the
+  front. A ring landing on the wood kicks up a small puff. The solve hop turns every
+  ring a half turn, neighbours in a stack turning opposite ways.
+
+Measured with `tests/_shot_anim.gd -- rings` at `--resolution 810x1440 --always-on-top`:
+**56** draw calls bare (54 before: the terrace's mesh and the sun-dot's glint), **61**
+played, 45 on the win screen; ANGLE 55 bare; the reduce-motion pair pixel-identical.
+Suite 122,583 passed, 0 failed; win harness 21/21, Rings solved.

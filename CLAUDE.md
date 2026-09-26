@@ -1184,7 +1184,13 @@ pointing `seed_as` at them. Specs:
   the menu card shares; the board lays out in a 1000-wide design box scaled to
   the card, so the win screen shrinks it rather than spilling it; a lock is a
   glint and a gold cap, never a wash; a drop is threaded down its post. 54 draw
-  calls bare, 60 played. **Run windowed harnesses with `--always-on-top`**: a
+  calls bare, 60 played. **Polished again on 2026-09-26** (toward the same
+  reference): a paved terrace built once into a third mesh, mossy planks with
+  leafy daisy clumps (`_append_plank`, shared with the menu card), wooden
+  dowels, and an inlaid emblem per colour in place of the pips (heart, sprout,
+  circle, flower, diamond, triangle). A held ring turns on its post, shown by
+  its emblem walking round the band; a flight whirls it to the next half turn;
+  the lock's cap is a daisy; the solve spins every ring. 56 bare, 61 played. **Run windowed harnesses with `--always-on-top`**: a
   covered window stops presenting after about 1.7 s and every later shot repeats
   the last frame.
 - **Caterpillar is the twenty-first card** (2026-09-25,

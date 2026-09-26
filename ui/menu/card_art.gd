@@ -956,14 +956,15 @@ func _shifted(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 	return out
 
 ## Rings: three pegs in a 300 by 112 design box, one full of a colour (four
-## rings, locked, its gold cap on) and two still part-sorted -- the same
-## three states `_tap_rings()`'s harness engineers on the board itself. Each
+## rings, locked, its daisy on) and two still part-sorted -- the same
+## three states `_tap_rings()`'s harness engineers on the board itself, on
+## the board's own plank. Each
 ## peg is the board's own `Rings2D._append_peg` at a 41-wide ring, so the
 ## card and the board are one drawing: every proportion there is a fraction
 ## of the ring's width, and nothing here is copied from it.
 func _draw_rings_pegs(field: Control) -> void:
 	const RW := 41.0
-	const GROUND := 108.0
+	const GROUND := 100.0
 	var pegs := [
 		{"cx": 50.0, "colours": [3, 3, 3, 3], "cap": 1.0},
 		{"cx": 150.0, "colours": [0, 1], "cap": 0.0},
@@ -971,6 +972,7 @@ func _draw_rings_pegs(field: Control) -> void:
 	]
 	var b := Face.Builder.new()
 	var map := func(p: Vector2) -> Vector2: return p * _u
+	Rings2D._append_plank(b, 14.0, GROUND, 272.0, RW, map, 3)
 	for peg in pegs:
 		Rings2D._append_peg(b, float(peg["cx"]), GROUND, RW, peg["colours"], map, 1.0, [], [], float(peg["cap"]))
 	_rings_mesh = b.mesh()
