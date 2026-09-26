@@ -439,6 +439,9 @@ func _solve_knight() -> void:
 		for c in st.w:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
+	# The harness drives synchronously a few frames after opening, inside
+	# the board's entrance wait.
+	_puzzle._busy_until = -100.0
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and st.history.size() == 1
 	for i in 64:
