@@ -296,6 +296,11 @@ func _build_chrome(root: VBoxContainer) -> void:
 			tray = TileTray.new(TileTray.PATCH)
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
+		"lawn":
+			# Hedgehogs' rake and flag: the same tray, with the lawn set.
+			tray = TileTray.new(TileTray.LAWN)
+			tray.pick.connect(_on_brush)
+			rows.append(TileTray.HEIGHT)
 		"keys":
 			# Hidden Word types: the tray is a keyboard, and the board takes
 			# its three signals directly rather than through a brush.

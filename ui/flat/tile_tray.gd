@@ -31,11 +31,13 @@ signal pick(v: int)
 const NonogramState = preload("res://puzzles/nonogram_state.gd")
 const QueensState = preload("res://puzzles/queens_state.gd")
 const MushroomState = preload("res://puzzles/mushroom_state.gd")
+const HedgehogsState = preload("res://puzzles/hedgehogs_state.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const CrossMark = preload("res://ui/faces/cross_mark.gd")
+const Lawn = preload("res://ui/faces/leaf_pile.gd")
 
 const CHIP := Vector2(300.0, 130.0)
 const GAP := 40.0
@@ -77,6 +79,14 @@ const PATCH := {
 	"labels": ["TRAY_MUSHROOM", "TRAY_PEBBLE"],
 	"names": ["MushroomChip", "PebbleChip"],
 	"glyphs": ["mushroom", "pebble"],
+}
+## Hedgehogs' rake and flag, asked for with `"tray": "lawn"`: the chip armed
+## is what a tap on a covered pile does, and a long press does the other.
+const LAWN := {
+	"values": [HedgehogsState.RAKE, HedgehogsState.FLAG],
+	"labels": ["TRAY_RAKE", "TRAY_FLAG"],
+	"names": ["RakeChip", "FlagChip"],
+	"glyphs": ["rake", "flag"],
 }
 
 var chips: Array[Button] = []
@@ -157,6 +167,11 @@ func _draw_glyph(glyph: Control, i: int) -> void:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
 			Pal.SOCKET_OUT)
 		CrossMark.draw(b, centre, GLYPH, Vector2.ONE, 1.0)
+	elif str(_set.glyphs[i]) == "rake":
+		# Hedgehogs' rake and flag, the drawings the lawn itself uses.
+		Lawn.rake(b, centre, GLYPH)
+	elif str(_set.glyphs[i]) == "flag":
+		Lawn.flag(b, centre + Vector2(-GLYPH * 0.1, GLYPH * 0.05), GLYPH * 0.5)
 	else:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
 			Pal.SOCKET_OUT)

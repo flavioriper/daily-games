@@ -531,3 +531,25 @@ const CAMP_GRASS     := Color("5d8c3a")   # the blades standing in it, a shade l
 const CAMP_SOIL      := Color("a67f52")
 const CAMP_LEAF      := Color("4c8538")
 const CAMP_LEAF_DEEP := Color("3d6a2e")   # the trees framing the frame's edges, in shade
+
+# --- Hedgehogs (2026-09-26): an autumn lawn under leaf piles, and the
+# hedgehogs asleep under them. The mock's own values
+# (docs/brainstorm/concepts.html#hedgehogs, HG). ---
+const LAWN          := Color("9fc27c")   # a covered cell's turf
+const LAWN_DEEP     := Color("7fa362")   # its rim and its grass tufts
+const RAKED         := Color("e4ecc9")   # a raked cell's grass
+const RAKED_EDGE    := Color("cfdab0")
+const PILE          := Color("e3b574")   # a leaf pile's mound
+const PILE_DEEP     := Color("c8924f")
+const AUTUMN_LEAVES := [Color("e0913f"), Color("c9652f"), Color("e8b54a"), Color("b5532e"), Color("d9a441")]
+const HOG_SPINE      := Color("8b6a4c")
+const HOG_SPINE_DEEP := Color("6e5139")
+const HOG_SPINE_HI   := Color("a8876a")
+const HOG_FACE       := Color("f2dcbc")
+const HOG_FACE_DEEP  := Color("dcbf98")
+const PENNANT        := SUN               # a flag's pennant
+const PENNANT_DEEP   := SUN_DEEP
+## A number's ink by its count: 1 leaf, 2 teal, 3 brick, 4 plum, 5 bark,
+## 6 teal, 7 and 8 ink. Index 0 is never drawn.
+const NUM_INK := [TEXT, Color("4a7a36"), Color("2f6f7c"), Color("b0483f"), Color("6c4a8c"),
+	Color("7f4f22"), Color("2f6f7c"), TEXT, TEXT]
