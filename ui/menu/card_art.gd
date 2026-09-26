@@ -53,6 +53,7 @@ const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
 const PinWheel = preload("res://ui/faces/pin_wheel.gd")
 const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
+const SunParts = preload("res://ui/faces/sunbeam_parts.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
@@ -132,6 +133,20 @@ const CAT_WALK := [Vector2i(0, 2), Vector2i(0, 1), Vector2i(0, 0), Vector2i(1, 0
 const CAT_LEAVES := [Vector2i(0, 2), Vector2i(1, 1), Vector2i(7, 1), Vector2i(5, 2)]
 const CAT_FENCE := [Vector2i(5, 1), Vector2i(5, 2)]
 
+## Sunbeam's card: the same 8 by 3 strip, the sun in its window at the left,
+## the light turned up by one mirror and along by another into a cup, which
+## sends it back one lane over, through a dewdrop, into the bud. Every piece
+## home and the light arriving, so the card shows the rule in one picture.
+const SB_LAMP := Vector2i(0, 2)
+const SB_BEAM := [Vector2(0.5, 2.5), Vector2(2.5, 2.5), Vector2(2.5, 0.5), Vector2(5.5, 0.5)]
+const SB_MIRRORS := [[Vector2i(2, 2), true], [Vector2i(2, 0), true]]
+const SB_CUP := [Vector2i(5, 0), Vector2i(5, 1)]
+const SB_RAILS := [[Vector2(2.5, 2.5), Vector2(4.5, 2.5)], [Vector2(1.5, 0.5), Vector2(3.5, 0.5)],
+	[Vector2(5.5, 1.0), Vector2(7.5, 1.0)]]
+const SB_DROPS := [Vector2i(1, 2), Vector2i(4, 1)]
+const SB_BUD := Vector2i(3, 1)
+const SB_POT := Vector2i(7, 2)
+
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
 var _u := 1.0
@@ -153,6 +168,7 @@ var _sky_mesh: ArrayMesh
 ## for the RID reason and not for the arithmetic.
 var _pinwheel_mesh: ArrayMesh
 var _caterpillar_mesh: ArrayMesh
+var _sunbeam_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -329,6 +345,7 @@ func _draw() -> void:
 		"planes": _draw_planes()
 		"pinwheel": _draw_pinwheel()
 		"caterpillar": _draw_caterpillar()
+		"sunbeam": _draw_sunbeam()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1030,3 +1047,54 @@ func _draw_caterpillar() -> void:
 		var rise := font.get_height(px) * 0.5 - font.get_descent(px)
 		draw_string(font, centre.call(CAT_LEAVES[i]) + Vector2(-wide * 0.5, rise), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, Pal.SURFACE)
+
+## Sunbeam: the board's own drawing, through `ui/faces/sunbeam_parts.gd`, the
+## file `puzzles/sunbeam2d.gd` draws with, so the card and the board cannot
+## drift apart. One mesh.
+## Spec: docs/superpowers/specs/2026-09-26-sunbeam-flat-design.md, section 4.
+func _draw_sunbeam() -> void:
+	var cell := PIN_CELL * _u
+	var origin := at(-float(PIN_COLS) * PIN_CELL * 0.5, -float(PIN_ROWS) * PIN_CELL * 0.5)
+	var px := func(v: Vector2) -> Vector2: return origin + v * cell
+	var mid := func(c: Vector2i) -> Vector2: return origin + (Vector2(c) + Vector2(0.5, 0.5)) * cell
+	var b := Face.Builder.new()
+	var pad := PIN_PAD * _u
+	var floor_size := Vector2(PIN_COLS, PIN_ROWS) * cell
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * (pad + cell * 0.12), floor_size + Vector2.ONE * (2.0 * pad + cell * 0.24),
+		0.3 * cell), Pal.GLASS_FRAME)
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * pad, floor_size + Vector2.ONE * (2.0 * pad), 0.24 * cell), Pal.FLOOR_GROUT)
+	var gap := maxf(1.0, cell * 0.04)
+	for r in PIN_ROWS:
+		for c in PIN_COLS:
+			var tone := Pal.FLOOR_TILE_HI if (r + c) % 3 == 0 else Pal.FLOOR_TILE
+			b.fan(Face.Builder.round_rect(origin + Vector2(c, r) * cell + Vector2.ONE * gap,
+				Vector2.ONE * (cell - 2.0 * gap), cell * 0.1), tone)
+	for rail: Array in SB_RAILS:
+		var a: Vector2 = px.call(rail[0])
+		var z: Vector2 = px.call(rail[1])
+		var pegs := PackedVector2Array()
+		var n := int(round(a.distance_to(z) / cell)) + 1
+		for k in n:
+			pegs.append(a.lerp(z, float(k) / float(maxi(n - 1, 1))))
+		SunParts.rail(b, a, z, cell, pegs)
+	SunParts.pot(b, mid.call(SB_POT), cell)
+	SunParts.window(b, mid.call(SB_LAMP), cell)
+	var f := Vector2(-1.0, 0.0)
+	var cup_a: Vector2 = mid.call(SB_CUP[0])
+	var cup_z: Vector2 = mid.call(SB_CUP[1])
+	SunParts.cup(b, SunParts.cup_path(cup_a, cup_z, cell, f), cell, f)
+	var beam := PackedVector2Array()
+	for v: Vector2 in SB_BEAM:
+		beam.append(px.call(v))
+	var round_ := SunParts.cup_path(cup_a, cup_z, cell, f)
+	beam.append_array(round_.slice(1, round_.size() - 1))
+	beam.append(mid.call(SB_BUD))
+	SunParts.beam(b, beam, cell)
+	for d: Vector2i in SB_DROPS:
+		SunParts.drop(b, mid.call(d), cell, true)
+	for m: Array in SB_MIRRORS:
+		SunParts.mirror(b, mid.call(m[0]), cell, m[1])
+	SunParts.bud(b, mid.call(SB_BUD), cell, 0.0, true)
+	SunParts.sun(b, mid.call(SB_LAMP), cell)
+	_sunbeam_mesh = b.mesh()
+	draw_mesh(_sunbeam_mesh, null)

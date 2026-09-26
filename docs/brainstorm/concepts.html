@@ -355,6 +355,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="planes">Paper Planes &middot; flat</button>
     <button data-tab="pinwheel">Pinwheel &middot; flat</button>
     <button data-tab="caterpillar">Caterpillar &middot; flat</button>
+    <button data-tab="sunbeam">Sunbeam &middot; flat</button>
   </nav>
 </header>
 
@@ -3340,6 +3341,71 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li>The leaves as ink badges with a leaf on the shoulder (readability first), gold-ringed once eaten.</li>
     <li>Fences drawn in Shikaku's fence woods on the edge between two squares (the first cut drew green hedges, and they read as a second caterpillar).</li>
     <li>The butterfly the solve ends in, and the hint (cut back to the right stretch, then grow to the next leaf, four squares at most).</li>
+  </ul>
+</section>
+
+<section class="tab-panel" id="tab-sunbeam">
+  <h2>Sunbeam &middot; flat, the twenty-second board <span class="pill blue">concept &middot; 2026-09-26</span></h2>
+  <p class="lede">A greenhouse floor at morning. The sun comes in through a gap in the glass as one golden beam, and a handful of <b>brass mirrors and copper cups ride wooden rails</b> across the floor. <b>Drag a piece along its rail and the light follows it live.</b> Light every dewdrop, then end the beam in the bud, which blooms. The reference ships as <i>LIT: Bend the Light</i>, which this page names once in order to forbid it: <b>the name here is Sunbeam</b> and nothing else &mdash; Code Break, Hidden Word, Word Trail, Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar and now Sunbeam.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <div class="noref">
+        <p><b>Decided with the user on 2026-09-26:</b> the pieces <b>slide on rails</b> (LIT's own gesture, and the one thing that keeps this from being Fairy Lights on a beam); the set is <b>mirrors and U-cups</b> (a cup takes the light back the way it came, one lane over &mdash; the zig-zag of the reference); the dressing is <b>a sunbeam in a greenhouse</b>; and the board is <b>snapped to a grid</b>, so every arrangement can be searched and every day proved to have exactly one answer.</p>
+        <p><b>How it differs from its neighbours.</b> Fairy Lights turns pieces in place; Light Up places lamps; Paper Planes launches along a lane. Here nothing is placed or turned &mdash; each piece has one degree of freedom, its place on its own rail &mdash; and the beam is one continuous line the whole board answers to. Nothing wrong can sit on the floor (the beam <i>is</i> the check), so there is <b>no Check</b>, no tray and no actions row: the tip card stands alone at 140, and Undo, Reset and Hint ride in the top bar, Pinwheel's shape.</p>
+        <p style="font-size:13.5px;color:var(--muted)">URL parameters for screenshots: <code>?d=0..3</code>, <code>&amp;seed=N</code>, <code>&amp;home=N</code> (the first N pieces along the answer's beam put home), <code>&amp;win=1</code>, <code>&amp;rm=1</code>, <code>&amp;t=</code>/<code>&amp;freeze=1</code>.</p>
+      </div>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="sb" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="sb-rm">Reduce motion: off</button>
+        <button id="sb-diff">Medium &middot; 6&times;7</button>
+        <span class="lbl" id="sb-seedlab">seed 3</span>
+        <button id="sb-seed-">&lsaquo; seed</button>
+        <button id="sb-seed+">seed &rsaquo;</button>
+        <button id="sb-new">New puzzle</button>
+        <button id="sb-hint">Hint</button>
+        <button id="sb-undo">Undo</button>
+        <button id="sb-reset">Reset</button>
+        <button id="sb-solve">Light it home</button>
+      </div>
+      <div id="sb-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The mock is the whole screen in the game's own 1080-wide design space, scaled to the phone. It plays: drag a mirror or a cup along its rail, or tap an empty peg to send that rail's piece there. A piece hops over a peg another piece stands on. The generator here is ported line for line to <code>puzzles/sunbeam_gen.gd</code>, and the caption shows its proof for the board on screen.</div>
+
+  <h3>1. The rules <span class="pill green">decided</span></h3>
+  <ul>
+    <li><b>The lamp</b> is an edge cell; the beam leaves it straight into the floor.</li>
+    <li><b>A mirror</b> is one cell and turns the beam 90&deg;. Both faces reflect. Its angle never changes &mdash; only its place on the rail.</li>
+    <li><b>A cup</b> is two side-by-side cells with its mouth one way. Light going into the mouth comes out of the other cell, going back the way it came. Light that meets the back of a cup stops.</li>
+    <li><b>The beam</b> may cross itself and runs over the rails. A pot stops it, and so does the lamp; off the floor, it is gone.</li>
+    <li><b>Solved</b> when every dewdrop is lit and the beam ends in the bud. What is judged is the light, never where the pieces stand &mdash; and the generator proves exactly one arrangement does it, so every piece is needed.</li>
+    <li>Reaching the bud with a drop still dry is <b>not</b> a solve: the bud glows, stays shut, and the tip card says how many drops are left.</li>
+  </ul>
+
+  <h3>2. The ladder <span class="pill blue">measured</span></h3>
+  <table>
+    <tr><th>Level</th><th>Floor</th><th>Pieces</th><th>Cups</th><th>Rail pegs</th><th>Drops</th><th>Pots</th><th>JS, 40 seeds</th></tr>
+    <tr><td class="k">Easy</td><td>5&times;6</td><td>3</td><td>0&ndash;1</td><td>3&ndash;4</td><td>2&ndash;3</td><td>0&ndash;1</td><td>0.3 ms mean, 1.8 worst</td></tr>
+    <tr><td class="k">Medium</td><td>6&times;7</td><td>4&ndash;5</td><td>1</td><td>3&ndash;5</td><td>3&ndash;4</td><td>1&ndash;2</td><td>0.7 ms mean, 2.4 worst</td></tr>
+    <tr><td class="k">Hard</td><td>7&times;8</td><td>6</td><td>1&ndash;2</td><td>4&ndash;5 (shortened to 3 if a rail will not fit)</td><td>4&ndash;5</td><td>1&ndash;3</td><td>1.7 ms mean, 7.8 worst</td></tr>
+    <tr><td class="k">Insane</td><td>7&times;8</td><td>7</td><td>1&ndash;2</td><td>4&ndash;6, <b>rails cross</b></td><td>4&ndash;6</td><td>1&ndash;3</td><td>0.4 ms mean, 1.4 worst</td></tr>
+  </table>
+  <p><b>The proof is exhaustive, not capped.</b> The search follows the beam out of the lamp and branches only where it reaches a rail peg &mdash; a piece stands here, or none does &mdash; so a piece the beam never meets is counted over every spot left to it. Every one of the 160 boards above was re-proved by a second, independent count (cap 3): all exactly one. Generation is two orders of magnitude inside the 194&nbsp;ms gate in JavaScript; GDScript is typically 20&ndash;30&times; slower here, which still leaves room.</p>
+
+  <h3>3. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Is it a puzzle?</b> The generator proves one answer, not that finding it takes thought. Play a few seeds per level and say whether it wants more pieces, longer rails or more drops.</li>
+    <li>The beam: its width, its glow on warm tiles, the motes drifting down it, and how fast it runs down a new stretch (34 cells a second).</li>
+    <li>The pieces: the brass mirror on its round mount; the copper cup as a horseshoe with the light in its channel and a turning cog on the bend.</li>
+    <li>The greenhouse: sage-painted iron frame, warm tiles, the sun in its window, terracotta pots, the dewdrops (also shown on the day card, filling gold), and the bud that blooms.</li>
+    <li>A hint slides the next piece along the answer's beam home and <b>pins</b> it there (gold mount); a pinned piece shivers if you try to drag it.</li>
   </ul>
 </section>
 
@@ -19011,6 +19077,782 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       if(ref){const next=eaten()+1;
         const h=body[body.length-1];const out=nbrs(B.w,B.h,h).find(c=>body.indexOf(c)<0&&B.clue[c]&&B.clue[c]!==next);
         if(out!=null) refuse('order',out,-0.1); else tipSet('No leaf out of turn beside the head on this seed.','happy',-0.1);}}
+    caption(); frame();
+  })();
+})();
+
+
+(function(){
+  const cv=document.getElementById('sb'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  // The phone is 1080x1920; this canvas is 1080x1994 in the same design
+  // space, so the whole 1920 stack is centred in it and every row, gap and
+  // margin below is the shipping number.
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B2=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B2[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  // Every colour on this screen is already in core/palette.gd. A piece is
+  // Pal.CLOTH[k] -- the eight cloths Quilt added, the set chosen to be the
+  // strongest surface on the card rather than the palest -- and the frame's
+  // bare ground is QUILT_BACK over QUILT_RULE, which is Shikaku's unclaimed
+  // plot, the one entry already picked to read as bare ground on parchment.
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',
+    good:'#7cb06b',bad:'#d9605a',back:'#e6d8b8',rule:'#d3c19c',flower:'#e58fb5',
+    fenceRail:'#dcbb8c',fenceDark:'#8d6c41',fencePost:'#a3814f'};
+  const CLOTH=['#f0c86f','#9bbfe8','#ef938c','#a9cd87','#bda3e0','#f2ab73','#82c6c0','#eaa2c4'];
+  const pieceCol=i=>CLOTH[colOf[i]%CLOTH.length];
+  const pieceEdge=i=>mixHex(pieceCol(i),C.text,0.36);
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the vocabulary (core/motion.gd, docs/art/flat-motion.md) ----
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.86,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,LIFT_SCALE:1.1,LIFT_TIME:0.12,
+    POP_IN:0.22,POP_SQUASH:0.15,DROP:40,DROP_TIME:0.3,RING_TIME:0.5,
+    FLASH_IN:0.15,FLASH_OUT:0.45,HOP:-6,HOP_TIME:0.3,
+    SOLVE_HOP:-10,SOLVE_TIME:0.4,SOLVE_STAGGER:0.04,SOLVE_DELAY:0.25,
+    SHIVER_PX:2,SHIVER_TIME:0.2,RESET_STAGGER:0.02,STAGGER_CAP:0.6};
+  // This board's own two, and there are only two. TURN_TIME is the quarter-turn
+  // swing -- the one thing on this screen nothing else in the game does.
+  // WAVE_STEP is *not* new: it is Queens' own step, 0.045 a cell of king-move
+  // distance, and it is named here only because the stain settles on it.
+  // How long a swing takes. A multi-quarter spin (a hint) is longer but not
+  // n times longer, or a three-quarter hint reads as a stall.
+  const STAIN_POP=0.20;     // how long one cell of stain takes to arrive
+  const stag=(i,per)=>RM?0:Math.min(i*per,MO.STAGGER_CAP);
+  const widePopScale=s=>RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(clamp(s/MO.ENTER_POP)));
+  const popInScale=s=>{if(RM) return [1,1]; const u=clamp(s/MO.POP_IN),g=lerp(0.01,1,backOut(u)),sq=MO.POP_SQUASH*Math.sin(Math.PI*u); return [g*(1+sq),g*(1-sq)];};
+  const flashLevel=s=>{if(RM||s<0) return 0; if(s<MO.FLASH_IN) return s/MO.FLASH_IN; const u=(s-MO.FLASH_IN)/MO.FLASH_OUT; return u>=1?0:1-u;};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*Math.sin(u*Math.PI*6)*(1-u);};
+  const hopLift=s=>{if(RM||s<0||s>=MO.HOP_TIME) return 0; return MO.HOP*Math.sin(Math.PI*s/MO.HOP_TIME);};
+  // The solve's own hop, not the press's scaled up by hand: a number that has
+  // to differ goes through a recipe's parameter, never a copied constant.
+  const solveHop=s=>{if(RM||s<0||s>=MO.SOLVE_TIME) return 0; return MO.SOLVE_HOP*Math.sin(Math.PI*s/MO.SOLVE_TIME);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  // ---- canvas helpers (the flat Binairo mock's) ----
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,Math.abs(w)/2,Math.abs(h)/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur2='';
+    for(const w of ws){const test=cur2?cur2+' '+w:w; if(ctx.measureText(test).width>maxw&&cur2){out.push(cur2); cur2=w;} else cur2=test;}
+    if(cur2) out.push(cur2); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    else if(name==='tree'){ctx.fillStyle=C.bark; ctx.fillRect(-s*0.07,s*0.05,s*0.14,s*0.36); ctx.fillStyle=C.leaf; circle(0,-s*0.1,s*0.3); circle(-s*0.16,s*0.02,s*0.2); circle(s*0.16,s*0.02,s*0.2); ctx.fillStyle=C.leafLight; circle(-s*0.08,-s*0.18,s*0.1);}
+    ctx.restore();}
+  function faceParts(Rr,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-Rr*0.46,cy+Rr*0.16,Rr*0.13,Rr*0.09); ellipse(cx+Rr*0.46,cy+Rr*0.16,Rr*0.13,Rr*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*Rr*0.34,ey=cy-Rr*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+Rr*0.04,Rr*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,Rr*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,Rr*0.1,Math.max(Rr*0.012,Rr*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-Rr*0.03,ey-Rr*0.035,Rr*0.03);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.arc(cx,cy+Rr*0.3,Rr*0.2,Math.PI*1.18,Math.PI*1.82); stroke(ink,Rr*0.07); return;}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?Rr*0.08:Rr*0.1),big?Rr*0.28:Rr*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,Rr*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+Rr*0.08,Rr*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+Rr*0.08,Rr*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(Rr,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,Rr*0.14,Rr*1.05,Rr*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-Rr*0.8); ctx.lineTo(0,-Rr*1.15); stroke(C.leaf,Rr*0.09);
+    leaf(0,-Rr*1.12,Rr*0.62,-2.6); leaf(0,-Rr*1.12,Rr*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,Rr,Rr*0.9); ctx.beginPath(); ctx.ellipse(0,0,Rr,Rr*0.9,0,0,Math.PI*2); stroke(C.line,Rr*0.07);
+    faceParts(Rr*0.9,0,Rr*0.12,o);
+  }
+
+  // ============ the generator (puzzles/sunbeam_gen.gd, to be ported) ============
+  // A greenhouse floor of w x h cells. The lamp is an edge cell throwing the
+  // beam inward; the bud is a cell the beam must end in; dewdrops are cells it
+  // must cross first; pots stop it. Every bender rides its own straight rail
+  // of anchor cells. A mirror is one cell ('/' or '\', both faces reflect); a
+  // cup is two side-by-side cells whose mouth faces `f`: a beam going into the
+  // mouth (moving opposite f) comes out of the other cell moving f.
+  //
+  // The answer is grown first -- the beam walked out of the lamp, a bender
+  // dropped at every turn -- then each bender gets a rail through its answer
+  // cell, and then the whole board is *proved*: a search that follows the
+  // beam, and only when it reaches a rail cell branches on "a piece sits here
+  // / none does", counts every arrangement that lights every drop and ends in
+  // the bud. Exactly one, or the board is thrown away.
+  const DX=[1,0,-1,0],DY=[0,1,0,-1];
+  const SLASH=[3,2,1,0],BACK=[1,0,3,2];   // right,down,left,up after '/' and '\'
+  const BANDS=[
+    {label:'Easy · 5×6',  w:5,h:6,K:[3,3],U:[0,1],rail:[3,4],drops:[2,3],pots:[0,1],cross:false},
+    {label:'Medium · 6×7',w:6,h:7,K:[4,5],U:[1,1],rail:[3,5],drops:[3,4],pots:[1,2],cross:false},
+    {label:'Hard · 7×8',  w:7,h:8,K:[6,6],U:[1,2],rail:[4,5],drops:[4,5],pots:[1,3],cross:false},
+    {label:'Insane · 7×8',w:7,h:8,K:[7,7],U:[1,2],rail:[4,6],drops:[4,6],pots:[1,3],cross:true},
+  ];
+  // The cells a piece covers when it stands on anchor q of its rail.
+  function cellsOf(B,p,q){const P=B.pieces[p],a=P.rail[q];
+    if(P.kind==='m') return [a];
+    return [a,a+DX[P.s]+DY[P.s]*B.w];}
+  // Where a beam goes on entering cell c (a piece of index p on anchor q)
+  // moving d: [nextCell, nextDir, extraLitCell] or null when it is stopped.
+  function bend(B,p,q,c,d){const P=B.pieces[p];
+    if(P.kind==='m'){const nd=P.t==='/'?SLASH[d]:BACK[d]; return [c,nd,-1];}
+    if(d!==(P.f+2)%4) return null;
+    const cs=cellsOf(B,p,q),o=cs[0]===c?cs[1]:cs[0];
+    return [o,P.f,o];}
+
+  // The whole beam for one arrangement: the cells in order, how it ended,
+  // and the drops it lit. `pos[p]` is each piece's anchor index.
+  function traceCells(B,pos){const n=B.w*B.h,occ=new Int16Array(n).fill(-1);
+    pos.forEach((q,p)=>{for(const c of cellsOf(B,p,q)) occ[c]=p;});
+    const seen=new Uint8Array(n*4),lit=new Set(),steps=[];
+    let x=B.lamp%B.w,y=(B.lamp/B.w)|0,d=B.dir,end='out';
+    for(let k=0;k<n*4+8;k++){x+=DX[d];y+=DY[d];
+      if(x<0||y<0||x>=B.w||y>=B.h){end='out';break;}
+      let c=y*B.w+x;
+      if(seen[c*4+d]){end='loop';break;} seen[c*4+d]=1;
+      if(c===B.bud){steps.push({c:c,d:d,k:'bud'});end='bud';break;}
+      if(B.pot.has(c)){steps.push({c:c,d:d,k:'pot'});end='pot';break;}
+      if(c===B.lamp){steps.push({c:c,d:d,k:'lamp'});end='lamp';break;}
+      const p=occ[c];
+      if(p<0){lit.add(c);steps.push({c:c,d:d,k:''});continue;}
+      const r=bend(B,p,pos[p],c,d);
+      if(!r){steps.push({c:c,d:d,k:'back',p:p});end='cup';break;}
+      lit.add(c);
+      if(B.pieces[p].kind==='m'){steps.push({c:c,d:d,k:'m',p:p,nd:r[1]});d=r[1];}
+      else{steps.push({c:c,d:d,k:'u',p:p,o:r[0],nd:r[1]});lit.add(r[0]);x=r[0]%B.w;y=(r[0]/B.w)|0;d=r[1];}
+    }
+    let litDrops=0; for(const c of B.drops) if(lit.has(c)) litDrops++;
+    return {steps:steps,end:end,lit:lit,litDrops:litDrops,won:end==='bud'&&litDrops===B.drops.length};}
+
+  // Counts arrangements that light every drop and end in the bud, up to `cap`.
+  function countSolutions(B,cap){
+    const n=B.w*B.h,P=B.pieces.length,occ=new Int16Array(n).fill(-1),pos=new Int8Array(P).fill(-1);
+    const excl=B.pieces.map(pc=>new Uint8Array(pc.rail.length));
+    const cover=Array.from({length:n},()=>[]);
+    B.pieces.forEach((pc,p)=>pc.rail.forEach((a,q)=>{for(const c of cellsOf(B,p,q)) cover[c].push([p,q]);}));
+    const isDrop=new Uint8Array(n); for(const c of B.drops) isDrop[c]=1;
+    const litN=new Uint8Array(n),seen=new Uint8Array(n*4);
+    let litDrops=0,count=0,nodes=0,found=null;
+    const fits=(p,q)=>cellsOf(B,p,q).every(c=>occ[c]<0);
+    const place=(p,q)=>{pos[p]=q;for(const c of cellsOf(B,p,q)) occ[c]=p;};
+    const unplace=p=>{for(const c of cellsOf(B,p,pos[p])) occ[c]=-1;pos[p]=-1;};
+    function lightOn(c){if(!litN[c]++&&isDrop[c]) litDrops++;}
+    function lightOff(c){if(!--litN[c]&&isDrop[c]) litDrops--;}
+    // the pieces the beam never reached: every spot left to them, no overlaps
+    function completions(i){if(count>=cap) return 0;
+      while(i<P&&pos[i]>=0) i++;
+      if(i>=P){if(!found) found=Array.from(pos); return 1;}
+      let s=0;
+      for(let q=0;q<B.pieces[i].rail.length&&count+s<cap;q++){if(excl[i][q]||!fits(i,q)) continue;
+        place(i,q); s+=completions(i+1); unplace(i);}
+      return s;}
+    function walk(x,y,d){
+      nodes++; if(count>=cap) return;
+      x+=DX[d];y+=DY[d];
+      if(x<0||y<0||x>=B.w||y>=B.h) return;
+      const c=y*B.w+x;
+      if(seen[c*4+d]) return;
+      if(c===B.bud){if(litDrops===B.drops.length) count+=completions(0); return;}
+      if(B.pot.has(c)||c===B.lamp) return;
+      seen[c*4+d]=1;
+      if(occ[c]>=0) follow(occ[c],c,d);
+      else{
+        const opts=cover[c].filter(([p,q])=>pos[p]<0&&!excl[p][q]);
+        for(const [p,q] of opts){if(!fits(p,q)) continue; place(p,q); follow(p,c,d); unplace(p); if(count>=cap) break;}
+        if(count<cap){
+          for(const [p,q] of opts) excl[p][q]=1;
+          lightOn(c); walk(x,y,d); lightOff(c);
+          for(const [p,q] of opts) excl[p][q]=0;}
+      }
+      seen[c*4+d]=0;}
+    function follow(p,c,d){const r=bend(B,p,pos[p],c,d); if(!r) return;
+      lightOn(c); if(r[2]>=0) lightOn(r[2]);
+      walk(r[0]%B.w,(r[0]/B.w)|0,r[1]);
+      if(r[2]>=0) lightOff(r[2]); lightOff(c);}
+    walk(B.lamp%B.w,(B.lamp/B.w)|0,B.dir);
+    return {count:count,nodes:nodes,found:found};}
+
+  function sunbeamBoard(seed,d){
+    const bd=BANDS[d],rnd=mulberry32((seed*9973+d*7919+17)|0);
+    const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+    const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+    const w=bd.w,h=bd.h,n=w*h,inb=(x,y)=>x>=0&&y>=0&&x<w&&y<h;
+    let attempts=0,proofs=0,nodes=0,last=null;
+    for(;attempts<20000;){attempts++;
+      const b=grow(); if(!b) continue;
+      proofs++; const r=countSolutions(b,2); nodes+=r.nodes;
+      last=b;
+      if(r.count===1){b.unique=true;b.attempts=attempts;b.proofs=proofs;b.nodes=nodes;return b;}}
+    last.unique=false;last.attempts=attempts;last.proofs=proofs;last.nodes=nodes;return last;
+
+    function grow(){
+      const K=ri(bd.K[0],bd.K[1]),nU=ri(bd.U[0],bd.U[1]);
+      const kinds=Array(K).fill('m'); shuffle([...Array(K).keys()]).slice(0,nU).forEach(i=>kinds[i]='u');
+      // the lamp: an edge cell, never a corner, throwing the beam inward
+      const side=ri(0,3); let lx,ly;
+      if(side===0){lx=0;ly=ri(1,h-2);} else if(side===1){ly=0;lx=ri(1,w-2);}
+      else if(side===2){lx=w-1;ly=ri(1,h-2);} else {ly=h-1;lx=ri(1,w-2);}
+      const dir0=side===0?0:side===1?1:side===2?2:3;
+      const lamp=ly*w+lx,reserved=new Uint8Array(n),axis=new Uint8Array(n);
+      reserved[lamp]=1;
+      const pieces=[]; let x=lx,y=ly,dir=dir0;
+      // a run of r cells from (x,y) along dir, every cell but the last free to
+      // cross; the last is where the next thing stands
+      const runOk=(r,endFree)=>{for(let i=1;i<=r;i++){const X=x+DX[dir]*i,Y=y+DY[dir]*i; if(!inb(X,Y)) return false;
+        const c=Y*w+X; if(reserved[c]) return false; const ax=dir%2?2:1;
+        if(i<r&&(axis[c]&ax)) return false;
+        if(i===r&&endFree&&axis[c]) return false;}
+        return true;};
+      const commit=r=>{for(let i=1;i<r;i++){const c=(y+DY[dir]*i)*w+x+DX[dir]*i; axis[c]|=dir%2?2:1;}};
+      for(let k=0;k<K;k++){let ok=false;
+        for(let tries=0;tries<24&&!ok;tries++){
+          const r=ri(1,Math.max(w,h)-1); if(!runOk(r,true)) continue;
+          const ax=x+DX[dir]*r,ay=y+DY[dir]*r,A=ay*w+ax;
+          if(kinds[k]==='m'){const nd=rnd()<0.5?(dir+1)%4:(dir+3)%4;
+            if(!inb(ax+DX[nd],ay+DY[nd])) continue;
+            commit(r); reserved[A]=1;
+            pieces.push({kind:'m',t:SLASH[dir]===nd?'/':'\\',sol:A});
+            x=ax;y=ay;dir=nd;ok=true;}
+          else{const s=rnd()<0.5?(dir+1)%4:(dir+3)%4,bx=ax+DX[s],by=ay+DY[s];
+            if(!inb(bx,by)) continue; const Bc=by*w+bx; if(reserved[Bc]||axis[Bc]) continue;
+            const f=(dir+2)%4; if(!inb(bx+DX[f],by+DY[f])) continue;
+            commit(r); reserved[A]=1; reserved[Bc]=1;
+            pieces.push({kind:'u',f:f,s:s,sol:A});
+            x=bx;y=by;dir=f;ok=true;}}
+        if(!ok) return null;}
+      let bud=-1;
+      for(let tries=0;tries<24&&bud<0;tries++){const r=ri(2,Math.max(w,h)-1);
+        if(!runOk(r,true)) continue; commit(r); bud=(y+DY[dir]*r)*w+x+DX[dir]*r;}
+      if(bud<0) return null;
+      const B={w:w,h:h,n:n,lamp:lamp,dir:dir0,bud:bud,pieces:pieces,drops:[],pot:new Set()};
+      // the answer's beam, walked for real
+      pieces.forEach(p=>{p.rail=[p.sol];});
+      const sol=traceCells(B,pieces.map(()=>0));
+      if(sol.end!=='bud') return null;
+      // dewdrops: one from each stretch of the beam's free cells
+      const free=[];const seenC=new Set();
+      for(const st of sol.steps) if(st.k===''&&!seenC.has(st.c)){seenC.add(st.c);free.push(st.c);}
+      const D=ri(bd.drops[0],bd.drops[1]); if(free.length<D) return null;
+      for(let i=0;i<D;i++){const lo=Math.floor(i*free.length/D),hi=Math.floor((i+1)*free.length/D)-1; B.drops.push(free[ri(lo,hi)]);}
+      const isDrop=new Set(B.drops);
+      // rails: a straight run of anchors through each answer cell
+      const railCell=new Int16Array(n).fill(-1); let crossings=0;
+      for(const p of shuffle([...pieces.keys()])){const P=pieces[p]; let done=false;
+        // a rail that will not fit at its drawn length is tried shorter, never
+        // below three: two spots is a switch, not a slide
+        for(let tries=0;tries<48&&!done;tries++){
+          const ax=ri(0,1),L=Math.max(3,ri(bd.rail[0],bd.rail[1])-(tries>>4)),off=ri(0,L-1),dd=ax?1:0;
+          const sx=P.sol%w,sy=(P.sol/w)|0,rail=[],cells=[];let ok=true,cr=0;
+          for(let j=0;j<L&&ok;j++){const X=sx+DX[dd]*(j-off),Y=sy+DY[dd]*(j-off);
+            if(!inb(X,Y)){ok=false;break;} const a=Y*w+X;
+            const cs=P.kind==='m'?[a]:[a,a+DX[P.s]+DY[P.s]*w];
+            if(P.kind==='u'){const bx=X+DX[P.s],by=Y+DY[P.s]; if(!inb(bx,by)){ok=false;break;}}
+            for(const c of cs){if(c===lamp||c===bud||isDrop.has(c)){ok=false;break;}
+              if(railCell[c]>=0&&railCell[c]!==p){if(!bd.cross){ok=false;break;} cr++;}}
+            rail.push(a);cells.push(...cs);}
+          if(!ok) continue;
+          P.rail=rail;P.solQ=off;for(const c of cells) if(railCell[c]<0) railCell[c]=p;
+          crossings+=cr;done=true;}
+        if(!done) return null;}
+      if(bd.cross&&crossings===0) return null;
+      // pots: off the answer's beam and off every rail
+      const nP=ri(bd.pots[0],bd.pots[1]),cand=[];
+      for(let c=0;c<n;c++) if(!sol.lit.has(c)&&railCell[c]<0&&c!==lamp&&c!==bud) cand.push(c);
+      shuffle(cand).slice(0,nP).forEach(c=>B.pot.add(c));
+      // the opening: every piece somewhere other than its answer, no overlaps,
+      // and not already solved
+      const solPos=pieces.map(P=>P.solQ);
+      B.solPos=solPos;
+      for(let tries=0;tries<40;tries++){
+        const occ=new Int16Array(n).fill(-1),start=[];let ok=true;
+        for(let p=0;p<pieces.length&&ok;p++){const opts=shuffle([...pieces[p].rail.keys()].filter(q=>q!==solPos[p]&&cellsOf(B,p,q).every(c=>occ[c]<0)));
+          if(!opts.length){ok=false;break;} start.push(opts[0]); for(const c of cellsOf(B,p,opts[0])) occ[c]=p;}
+        if(!ok) continue;
+        if(traceCells(B,start).won) continue;
+        B.start=start; return B;}
+      return null;}
+  }
+
+  // ================= state =================
+  const HINTS=3,WIN_WAIT=2.6;
+  // This board's own motion: the beam's speed down a new stretch (cells a
+  // second), the snap of a let-go piece onto its peg, and how fast a cut-off
+  // stretch of old beam fades. Everything else is a recipe.
+  const CUP_BULGE=0.36,BEAM_SPEED=34,SNAP_TIME=0.16,BEAM_FADE=0.18,WAVE_STEP=0.045;
+  const G={floor:'#dcc7a3',floorHi:'#e6d4b2',tile:'#cdb58e',frame:'#a9c4b6',frameDeep:'#7f9f8e',glass:'#e4efe8',
+    rail:'#b58d5e',railDeep:'#86653f',peg:'#6f5134',brass:'#d2a54f',brassDeep:'#9a7330',brassHi:'#f1d58f',
+    glassM:'#e9f3f6',glassEdge:'#86a7b3',copper:'#cc7d4f',copperDeep:'#8f4f2c',copperHi:'#eeaa7c',
+    drop:'#bfe2ee',dropEdge:'#6fa7bd',pot:'#cf7a52',potDeep:'#a65a37',beam:'#ffd35e',beamCore:'#fff7df',
+    bud:'#e58fb5',budDeep:'#c0648f',sepal:'#6ba845',sun:'#f5a623',sunHi:'#ffd36b'};
+  let B=null,diff=0,seed=3,genMs=0,pos=[],hist=[],hintsLeft=HINTS,moves=0,pinned=new Set();
+  let openedAt=0,hasSolve=false,solvedAt=0,winAt=0,sparked=false,L=null;
+  let beam=null,beamPts=[],beamLen=[],beamAt=-1e9,beamFrom=0,oldBeam=null,oldAt=-1e9;
+  let drag=null;                   // {p, s0, p0:[x,y], s, q}
+  const disp=[];                   // per piece {from, at} for the snap ease
+  const btnPress={},particles=[],rings=[],bumped={};
+  const open=()=>!hasSolve;
+  const cx=c=>c%B.w,cy=c=>(c/B.w)|0;
+  function build(d,sd,t){diff=d;seed=sd;const t0=performance.now();B=sunbeamBoard(seed,diff);genMs=performance.now()-t0;
+    pos=B.start.slice();hist=[];hintsLeft=HINTS;moves=0;pinned=new Set();hasSolve=false;sparked=false;openedAt=t;
+    disp.length=0;B.pieces.forEach((P,p)=>disp.push({from:pos[p],at:-1e9}));
+    particles.length=0;rings.length=0;drag=null;beamPts=[];beamLen=[];beam=null;oldBeam=null;
+    retrace(t+(RM?0:0.55),true);tipSet(TIPS[0],'happy',t);caption();}
+
+  // ---- the beam as a polyline, in cell units ----
+  // Every cell centre it passes, the arc round a cup, and the stub where it
+  // stops: against a pot, a cup's back, the lamp, or the edge of the floor.
+  function beamPoly(tr){const pts=[[cx(B.lamp)+0.5,cy(B.lamp)+0.5]],marks=[];
+    for(const st of tr.steps){const X=cx(st.c)+0.5,Y=cy(st.c)+0.5;
+      if(st.k===''||st.k==='m'){pts.push([X,Y]); if(B.drops.includes(st.c)) marks.push({c:st.c,i:pts.length-1});}
+      else if(st.k==='bud'){pts.push([X,Y]);}
+      else if(st.k==='u'){const P=B.pieces[st.p],o=st.o,OX=cx(o)+0.5,OY2=cy(o)+0.5;
+        pts.push([X,Y]); const mx=(X+OX)/2,my=(Y+OY2)/2,ux=X-mx,uy=Y-my,vx=DX[(P.f+2)%4]*CUP_BULGE,vy=DY[(P.f+2)%4]*CUP_BULGE;
+        for(let k=1;k<=10;k++){const a=Math.PI*k/10; pts.push([mx+ux*Math.cos(a)+vx*Math.sin(a),my+uy*Math.cos(a)+vy*Math.sin(a)]);}}
+      else pts.push([X-DX[st.d]*0.34,Y-DY[st.d]*0.34]);}
+    if(tr.end==='out'||tr.end==='loop'){const last=pts[pts.length-1],d=tr.steps.length?tr.steps[tr.steps.length-1].nd:B.dir,
+        dd=d==null?(tr.steps.length?tr.steps[tr.steps.length-1].d:B.dir):d;
+      pts.push([last[0]+DX[dd]*0.62,last[1]+DY[dd]*0.62]);}
+    const len=[0]; for(let i=1;i<pts.length;i++) len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+    const dropAt={}; for(const m of marks) if(dropAt[m.c]==null) dropAt[m.c]=len[m.i];
+    return {pts:pts,len:len,dropAt:dropAt};}
+  const drawnLen=t=>beam?Math.min(beam.len[beam.len.length-1],RM?1e9:beamFrom+Math.max(0,t-beamAt)*BEAM_SPEED):0;
+  // A new arrangement: keep the stretch of beam the two share, fade the old
+  // remainder, and send the light down the new one from the fork.
+  function retrace(t,fresh){const tr=traceCells(B,pos),bp=beamPoly(tr);
+    let k=0; if(beam&&!fresh){while(k<bp.pts.length&&k<beam.pts.length&&Math.abs(bp.pts[k][0]-beam.pts[k][0])<1e-6&&Math.abs(bp.pts[k][1]-beam.pts[k][1])<1e-6) k++;}
+    const shared=k>0?bp.len[k-1]:0;
+    if(beam&&!fresh&&k<beam.pts.length){oldBeam={pts:beam.pts.slice(Math.max(0,k-1)),upTo:drawnLen(t)-(k>0?beam.len[k-1]:0)};oldAt=t;}
+    beamFrom=fresh?0:Math.min(shared,drawnLen(t)); beamAt=t;
+    beam=Object.assign(bp,{tr:tr});}
+  const litNow=(c,t)=>beam&&beam.dropAt[c]!=null&&drawnLen(t)>=beam.dropAt[c]-1e-6;
+  const arrived=t=>beam&&drawnLen(t)>=beam.len[beam.len.length-1]-1e-6;
+
+  // ---- moves ----
+  const occupied=(p,q)=>{const mine=cellsOf(B,p,q);
+    for(let o=0;o<B.pieces.length;o++){if(o===p) continue; const th=cellsOf(B,o,pos[o]); if(mine.some(c=>th.includes(c))) return true;} return false;};
+  // The nearest free peg to a float index along the rail: a piece hops a peg
+  // another piece is standing on rather than stopping short of it.
+  function snapTo(p,s){const R=B.pieces[p].rail.length,order=[...Array(R).keys()].sort((a,b)=>Math.abs(a-s)-Math.abs(b-s));
+    for(const q of order) if(!occupied(p,q)) return q; return pos[p];}
+  function moveTo(p,q,t,from){if(pos[p]===q) return; disp[p]={from:from==null?pos[p]:from,at:t}; pos[p]=q; retrace(t,false);}
+  function commitMove(before,t){if(before.join()===pos.join()) return false; hist.push(before);moves++;caption();return true;}
+  function undo(t){if(!open()||!hist.length) return; const prev=hist.pop();
+    prev.forEach((q,p)=>{if(pos[p]!==q){disp[p]={from:pos[p],at:t};}}); pos=prev.slice(); retrace(t,false);
+    tipSet('One slide taken back.','happy',t);caption();}
+  function reset(t){if(!open()) return; const before=pos.slice();
+    B.pieces.forEach((P,p)=>{if(pinned.has(p)) return; if(pos[p]!==B.start[p]) disp[p]={from:pos[p],at:t+stag(p,MO.RESET_STAGGER)}; pos[p]=B.start[p];});
+    // a pinned piece keeps its answer; anything the opening put under it steps aside
+    B.pieces.forEach((P,p)=>{if(!pinned.has(p)&&occupied(p,pos[p])){const q=snapTo(p,pos[p]); pos[p]=q;}});
+    if(commitMove(before,t)){retrace(t,false);tipSet(TIPS[0],'happy',t);}}
+  // Slides the first piece along the answer's beam that is not home onto its
+  // peg, and pins it there. Whoever stands in the way steps to the nearest
+  // free peg of its own rail.
+  function hint(t){if(!open()||hintsLeft<=0) return;
+    const order=[];for(const st of traceCells(B,B.solPos).steps) if(st.p!=null&&!order.includes(st.p)) order.push(st.p);
+    const p=order.find(p=>pos[p]!==B.solPos[p]&&!pinned.has(p)); if(p==null) return;
+    const before=pos.slice(),target=B.solPos[p],mine=cellsOf(B,p,target);
+    B.pieces.forEach((P,o)=>{if(o===p) return; if(cellsOf(B,o,pos[o]).some(c=>mine.includes(c))){
+      const was=pos[o]; pos[p]=target; const q=snapTo(o,pos[o]); pos[p]=before[p]; disp[o]={from:was,at:t}; pos[o]=q;}});
+    disp[p]={from:pos[p],at:t}; pos[p]=target; pinned.add(p); hintsLeft--;
+    commitMove(before,t); retrace(t,false); ring(ctrOfPiece(p,target),t+SNAP_TIME);
+    tipSet('That one is home. It stays pinned.','happy',t);}
+  function win(t){hasSolve=true;solvedAt=t;winAt=t+(RM?0.3:WIN_WAIT);
+    tipSet('Every dewdrop, and the bud is open.','joy',t);caption();}
+  function ring(p,t0){if(RM) return; rings.push({x:p[0],y:p[1],t0:t0});}
+  function sparkle(p,t0,col){if(RM) return;
+    for(let k=0;k<6;k++) particles.push({x:p[0],y:p[1],vx:(hash(k*5,p[0]|0)-0.5)*220,vy:-160-hash(p[1]|0,k)*80,t0:t0+k*0.02,life:0.7,rad:9,g:260,col:col||C.sunRay});}
+
+  // ================= layout =================
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1340 of board, 20,
+  // 140 of tip card, 40 of margin -- 1920 exactly. Nothing is picked up and
+  // nothing wrong can sit on the floor (the beam *is* the check), so there
+  // is no tray and no Check: Paper Planes' and Pinwheel's shape.
+  const TOP_H=180,DAY_H=120,BOARD_H=1340,TIP_H=140,ROW_GAP=20;
+  const INSET=44,CELL_CAP=180;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,tipY=by+BOARD_H+ROW_GAP;
+    const cw=COL-2*INSET,ch=BOARD_H-2*INSET;
+    const cell=Math.min(cw/B.w,ch/B.h,CELL_CAP);
+    const gw=cell*B.w,gh=cell*B.h,gx=M+INSET+(cw-gw)/2,gy=by+INSET+(ch-gh)/2;
+    return {top:{y:topY},day:{y:dayY},board:{y:by},tip:{y:tipY},cell:cell,gx:gx,gy:gy,gw:gw,gh:gh,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};}
+  const px=(X,Y)=>[L.gx+X*L.cell,L.gy+Y*L.cell];
+  const ctr=c=>px(cx(c)+0.5,cy(c)+0.5);
+  // where a piece stands, at a float peg index (between two pegs mid-slide)
+  function anchorAt(p,s){const R=B.pieces[p].rail,i=Math.max(0,Math.min(R.length-1,Math.floor(s))),j=Math.min(R.length-1,i+1),u=Math.max(0,Math.min(1,s-i));
+    return [lerp(cx(R[i]),cx(R[j]),u)+0.5,lerp(cy(R[i]),cy(R[j]),u)+0.5];}
+  function pieceS(p,t){if(drag&&drag.p===p) return drag.s;
+    const D=disp[p],u=RM?1:clamp((t-D.at)/SNAP_TIME); return u>=1?pos[p]:lerp(D.from,pos[p],backOut(u));}
+  // a cup's centre is between its two cells
+  function pieceCentre(p,s){const a=anchorAt(p,s),P=B.pieces[p]; if(P.kind==='m') return a; return [a[0]+DX[P.s]*0.5,a[1]+DY[P.s]*0.5];}
+  const ctrOfPiece=(p,q)=>{const c=pieceCentre(p,q);return px(c[0],c[1]);};
+
+  // ================= the floor =================
+  function drawFloor(t,e){const c=L.cell;
+    // the board card
+    card(M,L.board.y,COL,BOARD_H,36,C.surface,C.line,6);
+    // the greenhouse's painted iron frame and its glass, then the tiled floor
+    const fx=L.gx-22,fy=L.gy-22,fw=L.gw+44,fh=L.gh+44;
+    ctx.fillStyle=G.frameDeep; rr(fx,fy+6,fw,fh,30); ctx.fill();
+    ctx.fillStyle=G.frame; rr(fx,fy,fw,fh,30); ctx.fill();
+    ctx.fillStyle=G.floor; rr(L.gx,L.gy,L.gw,L.gh,10); ctx.fill();
+    for(let y=0;y<B.h;y++) for(let x=0;x<B.w;x++){const [X,Y]=px(x,y),v=hash(x+7,y+3);
+      ctx.fillStyle=v<0.33?G.floorHi:v<0.66?G.floor:mixHex(G.floor,G.tile,0.45); rr(X+4,Y+4,c-8,c-8,c*0.08); ctx.fill();}
+    // the window's panes on the frame: a few bright glints on the iron
+    ctx.fillStyle='rgba(255,255,255,0.55)'; rr(fx+30,fy+6,fw*0.18,6,3); ctx.fill(); rr(fx+fw*0.62,fy+fh-12,fw*0.2,6,3); ctx.fill();
+  }
+  function drawRail(p){const P=B.pieces[p],c=L.cell,R=P.rail;
+    const a=pieceCentre(p,0),b=pieceCentre(p,R.length-1),[ax,ay]=px(a[0],a[1]),[bx,by]=px(b[0],b[1]);
+    const wd=c*0.3;
+    ctx.beginPath(); ctx.moveTo(ax,ay+4); ctx.lineTo(bx,by+4); stroke(G.railDeep,wd+8);
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); stroke(G.rail,wd);
+    ctx.beginPath(); ctx.moveTo(ax,ay-wd*0.18); ctx.lineTo(bx,by-wd*0.18); stroke('rgba(255,236,200,0.35)',wd*0.18);
+    for(let q=0;q<R.length;q++){const m=pieceCentre(p,q),[X,Y]=px(m[0],m[1]); ctx.fillStyle=G.peg; circle(X,Y,c*0.055);}}
+  function drawPot(cc,t){const [X,Y]=ctr(cc),c=L.cell;
+    ctx.fillStyle='rgba(59,48,40,0.14)'; ellipse(X,Y+c*0.3,c*0.32,c*0.08);
+    ctx.fillStyle=G.leafDeep||C.leafDeep; leaf(X,Y-c*0.14,c*0.34,-2.2,C.leafDeep); leaf(X,Y-c*0.14,c*0.36,-0.9,C.leaf); leaf(X,Y-c*0.14,c*0.3,-1.6,C.leafLight);
+    ctx.fillStyle=G.pot; ctx.beginPath(); ctx.moveTo(X-c*0.26,Y-c*0.1); ctx.lineTo(X+c*0.26,Y-c*0.1); ctx.lineTo(X+c*0.19,Y+c*0.3); ctx.lineTo(X-c*0.19,Y+c*0.3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=G.potDeep; rr(X-c*0.3,Y-c*0.16,c*0.6,c*0.12,c*0.04); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.2)'; rr(X-c*0.16,Y-c*0.02,c*0.06,c*0.24,c*0.03); ctx.fill();}
+  function drawDrop(cc,t,e){const [X,Y]=ctr(cc),c=L.cell,on=litNow(cc,t),at=beam&&beam.dropAt[cc]!=null?beamAt+(beam.dropAt[cc]-beamFrom)/BEAM_SPEED:0;
+    const [sx,sy]=on?squash(at,t,0.16,0.26):[1,1],r=c*0.17;
+    if(on){const g=ctx.createRadialGradient(X,Y,0,X,Y,c*0.5); g.addColorStop(0,'rgba(255,226,140,0.7)'); g.addColorStop(1,'rgba(255,226,140,0)'); ctx.fillStyle=g; circle(X,Y,c*0.5);}
+    ctx.save(); ctx.translate(X,Y+r*0.2); ctx.scale(sx*e,sy*e);
+    ctx.fillStyle=on?'#fff0b8':G.drop; ctx.beginPath(); ctx.moveTo(0,-r*1.55); ctx.bezierCurveTo(r*0.5,-r*0.8,r,-r*0.2,r,r*0.25); ctx.arc(0,r*0.25,r,0,Math.PI); ctx.bezierCurveTo(-r,-r*0.2,-r*0.5,-r*0.8,0,-r*1.55); ctx.fill();
+    ctx.strokeStyle=on?'#e0a53a':G.dropEdge; ctx.lineWidth=4; ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.9)'; ellipse(-r*0.35,-r*0.05,r*0.16,r*0.26);
+    ctx.restore();
+    if(on&&!RM){const tw=(t*1.3+hash(cc,5))%2.4; if(tw<0.5) star4(X+r*0.9,Y-r*1.1,c*0.07*Math.sin(Math.PI*tw/0.5),t,C.white);}}
+  function drawLamp(t,e){const [X,Y]=ctr(B.lamp),c=L.cell;
+    // an arched gap in the glass with the morning sun sitting in it
+    ctx.save(); ctx.translate(X,Y); ctx.scale(e,e); ctx.rotate([0,Math.PI/2,Math.PI,-Math.PI/2][B.dir]);
+    ctx.fillStyle=mixHex(G.glass,G.sunHi,0.35); rr(-c*0.42,-c*0.42,c*0.84,c*0.84,c*0.2); ctx.fill();
+    ctx.strokeStyle=G.frameDeep; ctx.lineWidth=6; ctx.stroke();
+    ctx.restore();
+    ctx.save(); ctx.translate(X,Y); ctx.scale(e,e);
+    const rot=RM?0:t*0.35; ctx.fillStyle=G.sunHi;
+    for(let i=0;i<10;i++){const a=rot+i*Math.PI/5; ctx.save(); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(c*0.22,-c*0.045); ctx.lineTo(c*0.36,0); ctx.lineTo(c*0.22,c*0.045); ctx.closePath(); ctx.fill(); ctx.restore();}
+    ctx.fillStyle=G.sun; circle(0,0,c*0.2); ctx.fillStyle=G.sunHi; circle(-c*0.05,-c*0.05,c*0.1);
+    ctx.restore();}
+  function drawBud(t,e){const [X,Y]=ctr(B.bud),c=L.cell,won=hasSolve,reach=beam&&beam.tr.end==='bud'&&arrived(t);
+    const open=won?dec((t-solvedAt)/0.7):0;
+    ctx.save(); ctx.translate(X,Y+c*0.14); ctx.scale(e,e);
+    ctx.fillStyle='rgba(59,48,40,0.14)'; ellipse(0,c*0.2,c*0.3,c*0.08);
+    ctx.fillStyle='#8a6a4a'; ellipse(0,c*0.18,c*0.26,c*0.1);
+    ctx.beginPath(); ctx.moveTo(0,c*0.16); ctx.quadraticCurveTo(c*0.04,0,0,-c*0.12); stroke(C.leafDeep,c*0.05);
+    leaf(0,c*0.08,c*0.26,-0.4,C.leaf); leaf(0,c*0.1,c*0.24,-2.7,C.leafDeep);
+    if(reach&&!won){const g=ctx.createRadialGradient(0,-c*0.2,0,0,-c*0.2,c*0.4); g.addColorStop(0,'rgba(255,226,140,0.6)'); g.addColorStop(1,'rgba(255,226,140,0)'); ctx.fillStyle=g; circle(0,-c*0.2,c*0.4);}
+    ctx.translate(0,-c*0.2);
+    if(open>0){const k=backOut(open);
+      for(let i=0;i<5;i++){ctx.save(); ctx.rotate(i*Math.PI*2/5+(RM?0:t*0.2)); ctx.fillStyle=i%2?G.bud:mixHex(G.bud,'#ffffff',0.2);
+        ellipse(0,-c*0.16*k,c*0.11*k,c*0.17*k); ctx.restore();}
+      ctx.fillStyle=G.sunHi; circle(0,0,c*0.09*k); ctx.fillStyle=G.sun; circle(0,0,c*0.05*k);}
+    else{const br=RM?0:Math.sin(t*2)*0.03;
+      ctx.fillStyle=G.budDeep; ctx.beginPath(); ctx.ellipse(0,0,c*0.12,c*(0.17+br),0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=G.bud; ctx.beginPath(); ctx.ellipse(-c*0.03,-c*0.01,c*0.08,c*(0.15+br),0,0,Math.PI*2); ctx.fill();
+      leaf(0,c*0.1,c*0.14,-1.1,C.leaf); leaf(0,c*0.1,c*0.14,-2.05,C.leaf);}
+    ctx.restore();}
+
+  // ---- the benders ----
+  function drawMirror(p,s,t,lift){const P=B.pieces[p],m=pieceCentre(p,s),[X,Y]=px(m[0],m[1]),c=L.cell,pin=pinned.has(p);
+    ctx.save(); ctx.translate(X,Y-lift*6);
+    ctx.fillStyle='rgba(59,48,40,'+(0.18+lift*0.08)+')'; ellipse(0,c*0.06+lift*10,c*0.36,c*0.3);
+    ctx.scale(1+lift*0.06,1+lift*0.06);
+    // the brass mount, with a small cog at its foot
+    ctx.fillStyle=G.brassDeep; circle(0,4,c*0.33); ctx.fillStyle=pin?G.sun:G.brass; circle(0,0,c*0.33);
+    ctx.fillStyle=G.brassHi; ctx.beginPath(); ctx.arc(0,0,c*0.33,Math.PI*1.1,Math.PI*1.5); ctx.lineTo(0,0); ctx.closePath(); ctx.globalAlpha*=0.35; ctx.fill(); ctx.globalAlpha/=0.35;
+    ctx.fillStyle=mixHex(G.brass,G.floor,0.25); circle(0,0,c*0.24);
+    // the glass, on its diagonal
+    ctx.rotate(P.t==='/'?-Math.PI/4:Math.PI/4);
+    ctx.fillStyle=G.glassEdge; rr(-c*0.4,-c*0.075+3,c*0.8,c*0.15,c*0.06); ctx.fill();
+    ctx.fillStyle=G.glassM; rr(-c*0.4,-c*0.075,c*0.8,c*0.15,c*0.06); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.95)'; rr(-c*0.3,-c*0.045,c*0.34,c*0.03,c*0.015); ctx.fill();
+    ctx.fillStyle=G.brassDeep; circle(-c*0.4,0,c*0.05); circle(c*0.4,0,c*0.05);
+    ctx.restore();}
+  function cupPath(p,s,r){const P=B.pieces[p],a=anchorAt(p,s),bx=a[0]+DX[P.s],by=a[1]+DY[P.s],mx=(a[0]+bx)/2,my=(a[1]+by)/2;
+    const ux=a[0]-mx,uy=a[1]-my,vx=DX[(P.f+2)%4]*CUP_BULGE,vy=DY[(P.f+2)%4]*CUP_BULGE,fx=DX[P.f],fy=DY[P.f],arm=0.3;
+    const pts=[[a[0]+fx*arm,a[1]+fy*arm]];
+    for(let k=0;k<=16;k++){const q=Math.PI*k/16; pts.push([mx+ux*Math.cos(q)*r+vx*Math.sin(q)*r,my+uy*Math.cos(q)*r+vy*Math.sin(q)*r]);}
+    pts.push([bx+fx*arm,by+fy*arm]); return pts;}
+  function strokePts(pts,col,w,dy){ctx.beginPath(); pts.forEach((q,i)=>{const [X,Y]=px(q[0],q[1]); i?ctx.lineTo(X,Y+(dy||0)):ctx.moveTo(X,Y+(dy||0));}); stroke(col,w);}
+  function drawCup(p,s,t,lift){const c=L.cell,pin=pinned.has(p),pts=cupPath(p,s,1);
+    ctx.save(); ctx.translate(0,-lift*6);
+    strokePts(pts,'rgba(59,48,40,0.16)',c*0.34,10+lift*10);
+    strokePts(pts,G.copperDeep,c*0.3,5);
+    strokePts(pts,pin?G.sun:G.copper,c*0.3,0);
+    strokePts(pts,G.copperHi,c*0.07,-c*0.07);
+    // the channel the light runs in
+    strokePts(pts,mixHex(G.copperDeep,G.floor,0.3),c*0.1,0);
+    // two rivets on the arms and a cog on the bend, LIT's nod
+    const m=pieceCentre(p,s),P=B.pieces[p],[X,Y]=px(m[0]+DX[(P.f+2)%4]*CUP_BULGE,m[1]+DY[(P.f+2)%4]*CUP_BULGE);
+    ctx.save(); ctx.translate(X,Y); ctx.rotate(RM?0:t*0.4); ctx.fillStyle=G.brassDeep;
+    for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-c*0.025,-c*0.11,c*0.05,c*0.05); ctx.restore();}
+    ctx.fillStyle=G.brass; circle(0,0,c*0.075); ctx.fillStyle=G.brassDeep; circle(0,0,c*0.028); ctx.restore();
+    ctx.restore();}
+  function drawBeam(t){if(!beam) return; const c=L.cell;
+    const passes=(pts,upTo,alpha)=>{if(upTo<=0) return; let acc=0; ctx.beginPath();
+      const p0=px(pts[0][0],pts[0][1]); ctx.moveTo(p0[0],p0[1]);
+      for(let i=1;i<pts.length;i++){const sl=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);
+        if(acc+sl>=upTo){const u=(upTo-acc)/sl,q=px(lerp(pts[i-1][0],pts[i][0],u),lerp(pts[i-1][1],pts[i][1],u)); ctx.lineTo(q[0],q[1]); break;}
+        const q=px(pts[i][0],pts[i][1]); ctx.lineTo(q[0],q[1]); acc+=sl;}
+      ctx.globalAlpha=alpha*0.22; stroke(G.beam,c*0.42);
+      ctx.globalAlpha=alpha*0.5; stroke(G.beam,c*0.2);
+      ctx.globalAlpha=alpha; stroke(G.beamCore,c*0.07); ctx.globalAlpha=1;};
+    if(oldBeam){const a=1-clamp((t-oldAt)/BEAM_FADE); if(a>0&&!RM) passes(oldBeam.pts,oldBeam.upTo,a); else oldBeam=null;}
+    const dl=drawnLen(t); passes(beam.pts,dl,1);
+    // motes drifting down the light
+    if(!RM){const tot=Math.min(dl,beam.len[beam.len.length-1]);
+      for(let k=0;k<Math.floor(tot*1.2);k++){const s=((k/1.2)+t*1.6)%tot,i=beam.len.findIndex(v=>v>=s); if(i<1) continue;
+        const u=(s-beam.len[i-1])/(beam.len[i]-beam.len[i-1]),q=px(lerp(beam.pts[i-1][0],beam.pts[i][0],u),lerp(beam.pts[i-1][1],beam.pts[i][1],u));
+        ctx.fillStyle='rgba(255,255,255,'+(0.5+0.4*Math.sin(k*1.7+t*3))+')'; circle(q[0]+Math.sin(k+t)*c*0.05,q[1]+Math.cos(k*1.3+t)*c*0.05,c*0.018);}}
+    // the stub where the light stops short
+    if(arrived(t)&&['pot','cup','lamp'].includes(beam.tr.end)){const e=beam.pts[beam.pts.length-1],[X,Y]=px(e[0],e[1]);
+      ctx.fillStyle='rgba(255,230,160,0.8)'; circle(X,Y,c*0.07);}}
+  // a glint on every mirror the drawn beam has reached
+  function drawGlints(t){if(!beam) return; const dl=drawnLen(t),c=L.cell; let i=0;
+    for(const st of beam.tr.steps){if(st.k!=='m') continue; const [X,Y]=ctr(st.c);
+      let s=0; for(let k=1;k<beam.pts.length;k++){if(Math.abs(beam.pts[k][0]-cx(st.c)-0.5)<1e-6&&Math.abs(beam.pts[k][1]-cy(st.c)-0.5)<1e-6){s=beam.len[k];break;}}
+      if(dl>=s){ctx.fillStyle='rgba(255,247,223,0.95)'; circle(X,Y,c*0.075); star4(X,Y,c*0.18,RM?0:t*0.6+i,'rgba(255,240,190,0.9)');} i++;}}
+  function drawBoard(t){const e0=ent(t,0.06,0,60),ex=exitU(t),a=e0.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e0.y+80*sineIO(ex));
+    drawFloor(t);
+    const pe=i=>{if(RM) return 1; const s=t-openedAt-MO.ENTER_DELAY-0.2-stag(i,0.05); return s<=0?0.01:popInScale(s)[0];};
+    B.pieces.forEach((P,p)=>drawRail(p));
+    for(const cc of B.pot) drawPot(cc,t);
+    // cups under the light, the light, then mirrors over it
+    B.pieces.forEach((P,p)=>{if(P.kind==='u'){ctx.save(); const m=ctrOfPiece(p,pieceS(p,t)),e=pe(p); ctx.translate(m[0],m[1]); ctx.scale(e,e); ctx.translate(-m[0],-m[1]);
+      drawCup(p,pieceS(p,t),t,drag&&drag.p===p?1:0); ctx.restore();}});
+    drawLamp(t,pe(0));
+    drawBeam(t);
+    B.drops.forEach((cc,i)=>drawDrop(cc,t,pe(i+2)));
+    B.pieces.forEach((P,p)=>{if(P.kind==='m'){ctx.save(); const m=ctrOfPiece(p,pieceS(p,t)),e=pe(p),sh=shiverOffset(t-(bumped[p]||-1e9)); ctx.translate(m[0]+sh,m[1]); ctx.scale(e,e); ctx.translate(-m[0],-m[1]);
+      drawMirror(p,pieceS(p,t),t,drag&&drag.p===p?1:0); ctx.restore();}});
+    drawGlints(t);
+    drawBud(t,pe(B.pieces.length));
+    for(const r of rings){const u=(t-r.t0)/MO.RING_TIME; if(u<0) continue; ctx.beginPath(); ctx.arc(r.x,r.y,L.cell*(0.3+0.5*u),0,Math.PI*2); ctx.globalAlpha=a*(1-u); stroke(C.sun,8); ctx.globalAlpha=a;}
+    for(const q of particles){const s=t-q.t0; if(s<0) continue; const u=s/q.life; ctx.globalAlpha=a*(1-u); star4(q.x+q.vx*s,q.y+q.vy*s+0.5*q.g*s*s,q.rad,s*4,q.col); ctx.globalAlpha=a;}
+    ctx.restore();}
+
+  // ================= the chrome =================
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a:a};};
+  const exitU=t=>!hasSolve||t<winAt?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha*=0.4; icon(name,size/2,size/2-3,60,C.text);
+    if(opt.badge!=null){ctx.fillStyle=C.sun; circle(size-8,8,22); text(String(opt.badge),size-8,9,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  const TITLE='Sunbeam',MOTTO='EVERY DROP, THEN THE BUD';
+  const BAND_X=M+126,BAND_W=(W-M-504)-(M+126);
+  function fitSize(s,base,band,mk,sp){
+    const meas=n=>{ctx.font=mk(n); ctx.letterSpacing=sp||'0px'; const w=ctx.measureText(s).width; ctx.letterSpacing='0px'; return w;};
+    if(meas(base)<=band) return base; let fs=Math.floor(base*band/meas(base)); while(fs>8&&meas(fs)>band) fs--; return fs;}
+  let fitted=null;
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'reset','reset',t,{disabled:pos.join()===B.start.join()});
+    iconButton(W-M-488,y,'undo','undo',t,{disabled:!hist.length});
+    const cxx=BAND_X+BAND_W/2,by=L.top.y+98;
+    const fs=fitSize(TITLE,84,BAND_W,n=>'700 '+n+'px '+FD);
+    text(TITLE,cxx,by-14,'700 '+fs+'px '+FD,C.text);
+    ctx.font='700 '+fs+'px '+FD; const tw=ctx.measureText(TITLE).width;
+    const lx=cxx+tw*0.22,ly=by-14-fs*0.42;
+    ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-14,lx+2,ly-26); stroke(C.leaf,6);
+    leaf(lx+2,ly-23,fs*0.42,-2.7); leaf(lx+2,ly-26,fs*0.34,-0.5);
+    const ms=fitSize(MOTTO,24,BAND_W,n=>'700 '+n+'px '+FB,'1.5px');
+    fitted={title:fs,motto:ms};
+    text(MOTTO,cxx,by+34,'700 '+ms+'px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dropIcon(x,y,r,col,edge){ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x,y-r*1.55); ctx.bezierCurveTo(x+r*0.5,y-r*0.8,x+r,y-r*0.2,x+r,y+r*0.25); ctx.arc(x,y+r*0.25,r,0,Math.PI); ctx.bezierCurveTo(x-r,y-r*0.2,x-r*0.5,y-r*0.8,x,y-r*1.55); ctx.fill(); ctx.strokeStyle=edge; ctx.lineWidth=3; ctx.stroke();}
+  function dayCardAt(y,a,right,t){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6); icon('tree',M+24+32,y+56,64,C.text);
+    text('Day 16',M+24+64+18,y+40,'600 40px '+FD,C.text,'left'); text('Glasshouse Row',M+24+64+18,y+82,'500 30px '+FB,C.dim,'left');
+    if(right) text(right,W-M-24,y+58,'700 30px '+FB,C.text,'right');
+    else if(B){// the dewdrops, one icon each, filling gold as the light reaches them
+      const n=B.drops.length,sp=46,x0=W-M-34-(n-1)*sp;
+      B.drops.forEach((cc,i)=>{const on=t!=null&&litNow(cc,t); dropIcon(x0+i*sp,y+62,14,on?'#ffe08a':G.drop,on?'#d99a2b':G.dropEdge);});}
+    ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a,null,t); ctx.restore();}
+  const TIPS=['Drag a mirror along its rail. The light follows.',
+    'Light every dewdrop, then end in the bud.',
+    'A copper cup sends the light back, one lane over.',
+    'Mirrors turn the light on either face.',
+    'A pot stops the light. So does the back of a cup.'];
+  let tip={text:TIPS[0],mood:'happy',at:-1e9,idx:0},budTold=null;
+  function tipSet(s,mood,t){if(!s) return; tip={text:s,mood:mood||'happy',at:t,idx:tip?tip.idx:0};}
+  function drawTip(t){const e=ent(t,0.35,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tip.y; card(M,y,COL,TIP_H,28,C.surface,C.line,6);
+    let eye=1; if(!RM){const m=(t+1.3)%4.6; if(m<0.14) eye=1-0.9*Math.sin(Math.PI*m/0.14);}
+    let hop=0; if(!RM){const u=(t-tip.at)/0.35; if(u>=0&&u<1) hop=-8*Math.sin(Math.PI*u);}
+    ctx.save(); ctx.translate(M+24+44,y+76+hop); sprout(40,{eye:eye,expr:tip.mood}); ctx.restore();
+    const fa=dec((t-tip.at)/0.25); ctx.globalAlpha=a*fa; const lines=wrap(tip.text,COL-300,'500 32px '+FB),x0=M+24+88+24;
+    lines.slice(0,2).forEach((ln,i)=>text(ln,x0,y+67-(lines.length>1?20:0)+i*40,'500 32px '+FB,C.text,'left'));
+    ctx.globalAlpha=a; text('Rules',W-M-40,y+70,'700 28px '+FB,C.dim,'right'); ctx.restore();}
+  function drawWin(t){if(!hasSolve||t<winAt) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      ctx.save(); ctx.translate(W/2,250); let hop=0; if(!RM){const m=t%3.2; if(m<0.4) hop=-14*Math.sin(Math.PI*m/0.4);} ctx.translate(0,hop); sprout(120,{expr:'joy'}); ctx.restore();
+      text('Well done!',W/2,452,'700 96px '+FD,C.text); text('The light found every drop and the bud.',W/2,534,'600 34px '+FB,C.dim);
+      // the day's beam, small, on its floor
+      const cs=Math.min(640/B.w,640/B.h),bx=W/2-cs*B.w/2,byy=620;
+      ctx.fillStyle=G.frame; rr(bx-14,byy-14,cs*B.w+28,cs*B.h+28,20); ctx.fill();
+      ctx.fillStyle=G.floor; rr(bx,byy,cs*B.w,cs*B.h,8); ctx.fill();
+      ctx.beginPath(); beam.pts.forEach((q,i)=>{const X=bx+q[0]*cs,Y=byy+q[1]*cs; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+      ctx.globalAlpha=a1*0.4; stroke(G.beam,cs*0.3); ctx.globalAlpha=a1; stroke(G.beamCore,cs*0.08);
+      for(const c of B.drops) dropIcon(bx+(cx(c)+0.5)*cs,byy+(cy(c)+0.5)*cs,cs*0.13,'#ffe08a','#d99a2b');
+      ctx.fillStyle=G.bud; circle(bx+(cx(B.bud)+0.5)*cs,byy+(cy(B.bud)+0.5)*cs,cs*0.2);
+      ctx.fillStyle=G.sun; circle(bx+(cx(B.lamp)+0.5)*cs,byy+(cy(B.lamp)+0.5)*cs,cs*0.2);
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=HINTS-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+moves+(moves===1?' slide':' slides')+' · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp==null?-1e9:btnPress.camp,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to camp',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}
+  }
+
+  const capEl=document.getElementById('sb-caption');
+  function caption(){if(!capEl||!B) return;
+    const nU=B.pieces.filter(P=>P.kind==='u').length,rails=B.pieces.map(P=>P.rail.length).join('/');
+    const base=B.w+'×'+B.h+' · '+(B.pieces.length-nU)+' mirrors, '+nU+(nU===1?' cup':' cups')+' · rails '+rails+' · '+B.drops.length+' drops · '+B.pot.size+(B.pot.size===1?' pot':' pots');
+    if(hasSolve){capEl.textContent='Solved in '+moves+(moves===1?' slide':' slides')+' and '+(HINTS-hintsLeft)+' hints. '+base+'.'; return;}
+    capEl.textContent=base+' · '+(B.unique?'proved one answer':'NOT proved')+' ('+B.proofs+' proofs, '+B.attempts+' grows, '+B.nodes+' nodes) in '+genMs.toFixed(1)+' ms';}
+
+  // ================= the frame =================
+  function frame(){const t=now(); L=layout();
+    if(tip.mood==='happy'&&open()&&!hist.length&&t-tip.at>8){tip.idx=(tip.idx+1)%TIPS.length; tipSet(TIPS[tip.idx],'happy',t);}
+    if(tip.mood==='strain'&&t-tip.at>2.5) tip.mood='happy';
+    for(let i=particles.length-1;i>=0;i--) if(t-particles[i].t0>=particles[i].life) particles.splice(i,1);
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    // the win lands when the light does, never mid-drag
+    if(open()&&!drag&&beam&&beam.tr.won&&arrived(t)) win(t);
+    else if(open()&&!drag&&beam&&beam.tr.end==='bud'&&!beam.tr.won&&arrived(t)&&budTold!==beamAt){
+      const left=B.drops.length-beam.tr.litDrops; tipSet('The bud wants every drop first. '+left+(left===1?' is':' are')+' still dry.','strain',t); budTold=beamAt;}
+    if(hasSolve&&!sparked&&t>=solvedAt){sparked=true;
+      B.drops.forEach((c,i)=>sparkle(ctr(c),solvedAt+i*WAVE_STEP*3)); sparkle(ctr(B.bud),solvedAt+0.2,G.bud);}
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTip(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ================= the finger =================
+  let pressTarget=null;
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  // the piece under a point: a mirror's disc, a cup's two cells -- the last
+  // one drawn wins where two rails cross
+  function pieceAt(p,t){let hitP=-1;
+    B.pieces.forEach((P,i)=>{const s=pieceS(i,t),a=anchorAt(i,s);
+      const cells=P.kind==='m'?[a]:[a,[a[0]+DX[P.s],a[1]+DY[P.s]]];
+      for(const q of cells){const [X,Y]=px(q[0],q[1]); if(Math.abs(p[0]-X)<L.cell*0.5&&Math.abs(p[1]-Y)<L.cell*0.5) hitP=i;}});
+    return hitP;}
+  // an empty peg under a point: tapping one slides that rail's piece to it
+  function pegAt(p){const x=Math.floor((p[0]-L.gx)/L.cell),y=Math.floor((p[1]-L.gy)/L.cell); if(x<0||y<0||x>=B.w||y>=B.h) return null;
+    const c=y*B.w+x; for(let i=0;i<B.pieces.length;i++){const q=B.pieces[i].rail.indexOf(c); if(q>=0) return {p:i,q:q};} return null;}
+  // the float peg index under the finger, projected onto the rail's axis
+  function railS(p,pp){const R=B.pieces[p].rail,a0=pieceCentre(p,0),a1=pieceCentre(p,Math.max(1,R.length-1));
+    const [X0,Y0]=px(a0[0],a0[1]),[X1,Y1]=px(a1[0],a1[1]),dx=X1-X0,dy=Y1-Y0,l2=dx*dx+dy*dy;
+    return Math.max(0,Math.min(R.length-1,((pp[0]-X0)*dx+(pp[1]-Y0)*dy)/l2*Math.max(1,R.length-1)));}
+  function hit(p,t){
+    if(hasSolve&&t-winAt>0.5) return inRect(p,M,L.camp.y,COL,130)?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'reset'};
+    if(inRect(p,W-M-488,y,110,110)) return {kind:'undo'};
+    if(inRect(p,M,L.tip.y,COL,TIP_H)) return {kind:'tip'};
+    const pc=pieceAt(p,t); if(pc>=0) return {kind:'piece',p:pc};
+    const pg=pegAt(p); return pg?{kind:'peg',p:pg.p,q:pg.q}:null;}
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); cv.setPointerCapture(e.pointerId); const t=now(),pp=pt(e),hh=hit(pp,t); pressTarget=hh;
+    if(!hh) return;
+    if(hh.kind==='piece'){if(!open()) return;
+      if(pinned.has(hh.p)){bumped[hh.p]=t; tipSet('That one is home. The hint pinned it.','strain',t); pressTarget=null; return;}
+      const s=pieceS(hh.p,t); drag={p:hh.p,s:s,off:s-railS(hh.p,pp),q:pos[hh.p],before:pos.slice(),moved:false};}
+    else if(hh.kind!=='peg') btnPress[hh.kind]=t;});
+  cv.addEventListener('pointermove',e=>{if(!drag) return; const t=now(),pp=pt(e),R=B.pieces[drag.p].rail.length;
+    drag.s=Math.max(0,Math.min(R-1,railS(drag.p,pp)+drag.off));
+    const q=snapTo(drag.p,drag.s); if(q!==pos[drag.p]){pos[drag.p]=q; drag.moved=true; retrace(t,false);}});
+  function up(e){const t=now(),hh=hit(pt(e),t);
+    if(drag){const p=drag.p; disp[p]={from:drag.s,at:t}; const before=drag.before; drag=null;
+      if(!commitMove(before,t)) tipSet(TIPS[0],'happy',t);
+      pressTarget=null; return;}
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind){pressTarget=null; return;}
+    pressTarget=null;
+    if(hh.kind==='peg'){if(!open()||pinned.has(hh.p)) return; if(occupied(hh.p,hh.q)){tipSet('Another piece stands there.','strain',t); return;}
+      const before=pos.slice(); moveTo(hh.p,hh.q,t); commitMove(before,t);}
+    else if(hh.kind==='hint') hint(t);
+    else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t);
+    else if(hh.kind==='tip') tipSet(TIPS[1],'happy',t);
+    else if(hh.kind==='gear') tipSet('The rules sheet opens here.','happy',t);
+    else if(hh.kind==='back') tipSet('Back to the cards.','happy',t);
+    else if(hh.kind==='camp') build(diff,seed+1,t);}
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',()=>{if(drag){disp[drag.p]={from:drag.s,at:now()}; commitMove(drag.before,now()); drag=null;} pressTarget=null;});
+
+  // ---- the page's own controls ----
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('sb-hint',t=>hint(t)); btn('sb-undo',t=>undo(t)); btn('sb-reset',t=>reset(t));
+  btn('sb-new',t=>{build(diff,seed+1,t); showSeed();});
+  // not a board action: a page control, so the solve can be watched without
+  // playing the whole board first
+  btn('sb-solve',t=>{if(!open()) return; const before=pos.slice();
+    B.pieces.forEach((P,p)=>{if(pos[p]!==B.solPos[p]) disp[p]={from:pos[p],at:t+stag(p,0.06)};}); pos=B.solPos.slice(); commitMove(before,t); retrace(t,false);});
+  const seedEl=document.getElementById('sb-seedlab');
+  const showSeed=()=>{if(seedEl) seedEl.textContent='seed '+seed;};
+  btn('sb-seed-',t=>{build(diff,Math.max(0,seed-1),t); showSeed();});
+  btn('sb-seed+',t=>{build(diff,seed+1,t); showSeed();});
+  const diffEl=document.getElementById('sb-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{build((diff+1)%BANDS.length,seed,now()); diffEl.textContent=BANDS[diff].label;});
+  const rmEl=document.getElementById('sb-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  // ---- the opening: ?home=N puts the first N pieces (in the answer's beam
+  // order) home, ?win=1 all of them -- for screenshots ----
+  (function(){
+    build(parseInt(Q.get('d')||'1')||0,parseInt(Q.get('seed')||'3')||3,0);
+    L=layout(); if(diffEl) diffEl.textContent=BANDS[diff].label; showSeed();
+    const hm=Q.get('home'),win1=Q.get('win')==='1';
+    if(hm!=null||win1){openedAt=-12;
+      const order=[];for(const st of traceCells(B,B.solPos).steps) if(st.p!=null&&!order.includes(st.p)) order.push(st.p);
+      const k=win1?order.length:Math.max(0,Math.min(order.length,parseInt(hm)||0));
+      for(const p of order.slice(0,k)){const mine=cellsOf(B,p,B.solPos[p]);
+        B.pieces.forEach((P,o)=>{if(o!==p&&cellsOf(B,o,pos[o]).some(c=>mine.includes(c))){pos[p]=B.solPos[p]; pos[o]=snapTo(o,pos[o]);}});
+        pos[p]=B.solPos[p];}
+      B.pieces.forEach((P,p)=>disp[p]={from:pos[p],at:-1e9});
+      retrace(-12,true); beamAt=-12;
+      if(win1) win(-3);}
     caption(); frame();
   })();
 })();

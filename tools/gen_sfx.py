@@ -271,6 +271,23 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish rising into a light airy flutter of butterfly wings, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little garden of leaves appearing", 1.0, -9),
     },
+    # Sunbeam: drag a brass mirror or a copper cup along its wooden rail and
+    # the light follows; wet every dewdrop, then the bud blooms. `step` fires
+    # on every peg a drag crosses, so it gets no file
+    # (docs/art/sound-direction.md).
+    "sunbeam": {
+        "lift":     ("a tiny soft brass click, a small mirror lifted off a wooden peg, very short", 0.4, -12),
+        "slide":    ("a short soft wooden slide ending in a gentle brass tick, a mirror settling onto a peg, cozy", 0.5, -10),
+        "drop":     ("a tiny soft brass tick on wood, very short and quiet", 0.3, -14),
+        "dew":      ("a single tiny bright glass droplet chime, a dewdrop catching sunlight, soft glockenspiel, very short", 0.6, -9),
+        "dry":      ("a soft gentle two-note downward marimba, not yet, warm and patient", 0.6, -10),
+        "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft quick descending ripple of wooden ticks, pieces sliding back along rails", 1.0, -8),
+        "solved":   ("a warm celebratory glockenspiel and marimba flourish rising into a soft airy shimmer, a flower opening in morning sunlight, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny brass clicks and a light warm shimmer, a greenhouse waking in the morning sun", 1.0, -9),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

@@ -448,6 +448,8 @@ func _process(delta: float) -> bool:
 			_drag_wordtrail()
 		elif _entry.id == "planes" and not _empty:
 			_tap_planes()
+		elif _entry.id == "sunbeam" and not _empty:
+			_slide_sunbeam()
 		elif _entry.id == "rings" and not _empty:
 			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
@@ -639,6 +641,48 @@ func _mushroom_wash_count(cell: Vector2i) -> int:
 ## nothing else. A piece with only one in-frame orientation is skipped: it
 ## is pinned fast, and tapping it is the board's refusal rather than its
 ## move.
+## Sunbeam: the first piece along the answer's beam whose home is free is
+## dragged home by real touch, a peg a step, so the strip shows the lift, the
+## light re-routing from the fork and the settle. Under `full` every other
+## piece is put home through the state first, so that one drag is the solve
+## and the strip shows the light reaching the bud and the bloom.
+func _slide_sunbeam() -> void:
+	var st = _puzzle._state
+	var order: Array = st.answer_order()
+	if _mode == "full" and order.size() > 1:
+		for p: int in order.slice(0, order.size() - 1):
+			if not st.taken(p, st.home(p)):
+				st.pos[p] = st.home(p)
+		st.retrace()
+		_puzzle._retrace(_puzzle._now(), true)
+		for p in st.pos.size():
+			_puzzle._disp[p] = {"from": float(st.pos[p]), "at": -100.0}
+		order = [order[order.size() - 1]]
+	for p: int in order:
+		if st.pos[p] == st.home(p) or st.taken(p, st.home(p)):
+			continue
+		var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+		var q: int = st.pos[p]
+		var step := 1 if st.home(p) > q else -1
+		var at: Vector2 = xf * _puzzle._pt(_puzzle._piece_mid(p, float(q)))
+		var down := InputEventScreenTouch.new()
+		down.index = 0
+		down.pressed = true
+		down.position = at
+		root.push_input(down, true)
+		while q != st.home(p):
+			q += step
+			var drag := InputEventScreenDrag.new()
+			drag.index = 0
+			drag.position = xf * _puzzle._pt(_puzzle._piece_mid(p, float(q)))
+			root.push_input(drag, true)
+		var up := InputEventScreenTouch.new()
+		up.index = 0
+		up.pressed = false
+		up.position = xf * _puzzle._pt(_puzzle._piece_mid(p, float(q)))
+		root.push_input(up, true)
+		return
+
 func _tap_pinwheel() -> void:
 	var st = _puzzle._state
 	if _mode == "solve":

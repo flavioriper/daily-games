@@ -1214,6 +1214,20 @@ pointing `seed_as` at them. Specs:
   reduce motion, ANGLE agreeing.
   **The tip card is gone from every board** since `1a04e0a` (2026-09-21): the
   bottom-slot figures and tip-card rules elsewhere in this file predate that.
+- **Sunbeam is the twenty-second card** (2026-09-26, `puzzles/sunbeam2d.gd`,
+  spec `2026-09-26-sunbeam-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#sunbeam`). A greenhouse floor: drag brass
+  mirrors and copper cups along their rails, the beam re-traced live; light
+  every dewdrop, then end in the bud. The reference ships as a game this
+  repo names once in the spec to forbid; **it is called Sunbeam and nothing
+  else**. Two things travel: **a proof bounded by the pieces' own freedom
+  needs no cap** -- `sunbeam_gen.gd`'s `count()` follows the beam and
+  branches only on a peg it reaches, so it is exhaustive at 83 ms worst
+  (Hard) -- and **hit-test a two-cell piece as the box round both cells**:
+  a cup's middle is the line between them, the point a thumb aims at, and a
+  per-cell strict test missed it. Its drawing is `ui/faces/sunbeam_parts.gd`,
+  shared with the menu card. 65 draw calls played, 68 solved, ANGLE agreeing.
+  Sounds are prompts in `tools/gen_sfx.py`, not yet generated.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

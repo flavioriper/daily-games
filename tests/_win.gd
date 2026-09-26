@@ -137,6 +137,9 @@ func _note(id: String) -> String:
 		"caterpillar": return "%dx%d garden, %d leaves, %d strokes, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.last_leaf(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"sunbeam": return "%dx%d floor, %d pieces, %d drops, %d slides, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.pieces().size(),
+			_puzzle._state.drops().size(), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -167,6 +170,7 @@ func _solve(id: String) -> void:
 		"fairylights": _solve_fairylights()
 		"pinwheel": _solve_pinwheel()
 		"caterpillar": _solve_caterpillar()
+		"sunbeam": _solve_sunbeam()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -368,6 +372,55 @@ func _solve_caterpillar() -> void:
 	for i in range(st.body.size() - 1, st.path.size()):
 		var c: int = st.path[i]
 		pts.append(_puzzle.cell_to_local(c / st.cols, c % st.cols))
+	_drag_path_local(pts)
+
+## Sunbeam: one hint through the HUD, which slides the first piece along the
+## answer's beam home and pins it, then every other piece dragged home along
+## its rail by real touch, a peg a step. A piece whose home another piece is
+## standing on waits for a later pass; after two passes with nothing moved,
+## the blocker is dragged to any free peg first.
+func _solve_sunbeam() -> void:
+	var st = _puzzle._state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows:
+		for c in st.cols:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and st.pinned.size() == 1
+	for pass_i in 12:
+		var moved := false
+		for p in st.pieces().size():
+			var home: int = st.home(p)
+			if st.pos[p] == home:
+				continue
+			if st.taken(p, home):
+				continue
+			_slide_sunbeam(p, home)
+			moved = true
+		if st.is_solved():
+			break
+		if not moved:
+			for p in st.pieces().size():
+				if st.pos[p] != st.home(p):
+					for o in st.pieces().size():
+						if o != p and not st.pinned.has(o) and st.cells_of(o, st.pos[o]).has(st.cells_of(p, st.home(p))[0]):
+							for q in st.g.pieces[o].rail.size():
+								if q != st.pos[o] and not st.taken(o, q):
+									_slide_sunbeam(o, q)
+									break
+					break
+
+func _slide_sunbeam(p: int, to: int) -> void:
+	var from: int = _puzzle._state.pos[p]
+	var pts: Array[Vector2] = []
+	var step := 1 if to > from else -1
+	var q := from
+	pts.append(_puzzle._pt(_puzzle._piece_mid(p, float(q))))
+	while q != to:
+		q += step
+		pts.append(_puzzle._pt(_puzzle._piece_mid(p, float(q))))
 	_drag_path_local(pts)
 
 func _solve_pinwheel() -> void:

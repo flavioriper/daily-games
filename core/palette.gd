@@ -453,6 +453,36 @@ const CLOTH := [
 const QUILT_BACK := BED_GROUND
 const QUILT_RULE := BED_LINE
 
+# Sunbeam's greenhouse (puzzles/sunbeam2d.gd, ui/faces/sunbeam_parts.gd). The
+# beam is the one bright thing on the card, so the floor is a warm tile a few
+# steps darker than PAPER and the glass behind it a pale sage: gold reads on
+# both, where on PAPER it washed out. Taken from the concept page's mock.
+const GLASSHOUSE   := Color("e4efe8")   # the glass wall behind the floor
+const GLASS_FRAME  := Color("a9c4b6")   # the painted iron round the floor
+const GLASS_FRAME_DEEP := Color("7f9f8e")
+const FLOOR_TILE   := Color("dcc7a3")
+const FLOOR_TILE_HI := Color("e6d4b2")
+const FLOOR_GROUT  := Color("cdb58e")
+const RAIL         := Color("b58d5e")   # a piece's wooden rail
+const RAIL_DEEP    := Color("86653f")
+const RAIL_PEG     := Color("6f5134")
+const BRASS        := Color("d2a54f")   # a mirror's mount, a cup's cog
+const BRASS_DEEP   := Color("9a7330")
+const BRASS_HI     := Color("f1d58f")
+const MIRROR_GLASS := Color("e9f3f6")
+const MIRROR_EDGE  := Color("86a7b3")
+const COPPER       := Color("cc7d4f")   # a cup
+const COPPER_DEEP  := Color("8f4f2c")
+const COPPER_HI    := Color("eeaa7c")
+const DEW          := Color("bfe2ee")   # a dewdrop still dry
+const DEW_EDGE     := Color("6fa7bd")
+const DEW_LIT      := Color("fff0b8")   # one the light has reached
+const DEW_LIT_EDGE := Color("e0a53a")
+const POT_CLAY     := Color("cf7a52")
+const POT_RIM      := Color("a65a37")
+const BEAM         := Color("ffd35e")   # the beam's glow
+const BEAM_CORE    := Color("fff7df")   # and its white-gold core
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

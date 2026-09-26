@@ -621,6 +621,33 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "CP_LVL_3"},
 		],
 	},
+	{
+		"id": "sunbeam",
+		"kind": "puzzle",
+		"title": "Sunbeam",
+		"blurb": "SB_BLURB",
+		"short": "SB_SHORT",
+		"motto": "SB_MOTTO",
+		"footer": "Slide · Bend · Bloom",
+		# Nothing is picked up, and nothing wrong can sit on the floor: the
+		# beam is traced after every step of a drag and is the check. So no
+		# tray and no Check; Undo, Reset and Hint ride in the top bar and the
+		# tip card stands alone -- Pinwheel's shape.
+		"script": "res://puzzles/sunbeam2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each floor size (sunbeam_gen.gd's BANDS) is its
+		# own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "SB_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "SB_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "SB_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "SB_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

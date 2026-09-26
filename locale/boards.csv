@@ -524,3 +524,23 @@ CP_LVL_0,5 × 5 garden,Jardim 5 × 5,Jardín 5 × 5
 CP_LVL_1,"6 × 6 garden, fences","Jardim 6 × 6, com cercas","Jardín 6 × 6, con cercas"
 CP_LVL_2,"7 × 7 garden, fences","Jardim 7 × 7, com cercas","Jardín 7 × 7, con cercas"
 CP_LVL_3,"8 × 8 garden, fences","Jardim 8 × 8, com cercas","Jardín 8 × 8, con cercas"
+SB_TIP_DRAG,Drag a mirror along its rail. The light follows.,Arraste um espelho pelo trilho. A luz vai junto.,Arrastra un espejo por su riel. La luz lo sigue.
+SB_TIP_GOAL,"Light every dewdrop, then end in the bud.",Acenda todas as gotas de orvalho e termine no botão.,Ilumina todas las gotas de rocío y termina en el capullo.
+SB_TIP_CUP,"A copper cup sends the light back, one lane over.","Uma concha de cobre devolve a luz, uma faixa ao lado.","Una copa de cobre devuelve la luz, un carril más allá."
+SB_TIP_MIRROR,Mirrors turn the light on either face.,Os espelhos desviam a luz pelos dois lados.,Los espejos desvían la luz por ambas caras.
+SB_TIP_STOP,A pot stops the light. So does the back of a cup.,Um vaso bloqueia a luz. As costas de uma concha também.,Una maceta detiene la luz. También el dorso de una copa.
+SB_PINNED,That one is home. The hint pinned it.,Esse já está no lugar. A dica o fixou.,Esa ya está en su sitio. La pista la fijó.
+SB_TAKEN,Another piece stands there.,Outra peça está ali.,Otra pieza está ahí.
+SB_BUD_DRY_ONE,The bud wants every drop first. One is still dry.,O botão quer todas as gotas antes. Uma ainda está seca.,El capullo quiere todas las gotas antes. Una sigue seca.
+SB_BUD_DRY_N,The bud wants every drop first. %d are still dry.,O botão quer todas as gotas antes. %d ainda estão secas.,El capullo quiere todas las gotas antes. %d siguen secas.
+SB_UNDONE,One slide taken back.,Um deslize desfeito.,Un deslizamiento deshecho.
+SB_HINT,That one is home. It stays pinned.,Esse está no lugar. Fica fixo.,Esa está en su sitio. Queda fija.
+SB_WIN,"Every dewdrop, and the bud is open.","Todas as gotas, e o botão se abriu.","Todas las gotas, y el capullo se abrió."
+SB_RULES,"The sun comes in through a gap in the glass as one beam. Drag a brass mirror or a copper cup along its rail, or tap an empty peg to send its piece there, and the light follows live. A mirror turns the light on either face; a cup takes it back the way it came, one lane over, and stops it at its back. Pots stop it too. Light every dewdrop, then end the beam in the bud.","O sol entra por uma fresta no vidro como um único raio. Arraste um espelho de latão ou uma concha de cobre pelo trilho, ou toque num pino vazio para mandar a peça até lá, e a luz acompanha na hora. Um espelho desvia a luz pelos dois lados; uma concha a devolve por onde veio, uma faixa ao lado, e a bloqueia pelas costas. Os vasos também bloqueiam. Acenda todas as gotas de orvalho e termine o raio no botão.","El sol entra por una rendija del cristal como un solo rayo. Arrastra un espejo de latón o una copa de cobre por su riel, o toca una clavija vacía para enviar su pieza allí, y la luz lo sigue al instante. Un espejo desvía la luz por ambas caras; una copa la devuelve por donde vino, un carril más allá, y la detiene por el dorso. Las macetas también la detienen. Ilumina todas las gotas de rocío y termina el rayo en el capullo."
+SB_BLURB,Slide the mirrors and bend the light to the bud.,Deslize os espelhos e leve a luz até o botão.,Desliza los espejos y lleva la luz al capullo.
+SB_SHORT,"Every drop,\nthen the bud.","Cada gota,\ndepois o botão.","Cada gota,\nluego el capullo."
+SB_MOTTO,"Every drop, then the bud","Cada gota, depois o botão","Cada gota, luego el capullo"
+SB_LVL_0,"5 × 6 floor, 3 pieces","Piso 5 × 6, 3 peças","Suelo 5 × 6, 3 piezas"
+SB_LVL_1,"6 × 7 floor, 4–5 pieces","Piso 6 × 7, 4–5 peças","Suelo 6 × 7, 4–5 piezas"
+SB_LVL_2,"7 × 8 floor, 6 pieces","Piso 7 × 8, 6 peças","Suelo 7 × 8, 6 piezas"
+SB_LVL_3,"7 × 8 floor, 7 pieces, crossing rails","Piso 7 × 8, 7 peças, trilhos cruzados","Suelo 7 × 8, 7 piezas, rieles cruzados"
