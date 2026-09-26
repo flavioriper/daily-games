@@ -357,6 +357,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="caterpillar">Caterpillar &middot; flat</button>
     <button data-tab="sunbeam">Sunbeam &middot; flat</button>
     <button data-tab="knight">Knight &middot; flat</button>
+    <button data-tab="hedgehogs">Hedgehogs &middot; flat</button>
   </nav>
 </header>
 
@@ -3470,6 +3471,86 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li>The pieces: the carved cream knight with its blush, the rose knights, the round rose king in a gold crown who tips over on the win.</li>
     <li>The table: cream and pale sage squares in a wooden frame; the faint dashed trail of the squares you have landed on.</li>
     <li>The motion: your hop arcs over the board; the rose side answers a beat later, one after another; a catch holds, then everything slides back.</li>
+  </ul>
+</section>
+
+<section class="tab-panel" id="tab-hedgehogs">
+  <h2>Hedgehogs &middot; flat, the twenty-fourth board <span class="pill blue">concept &middot; 2026-09-26</span></h2>
+  <p class="lede">An autumn lawn under leaf piles, and hedgehogs asleep under some of them. <b>Rake a pile</b> and the grass under it shows how many hedgehogs sleep in the eight cells around; a nought blows its neighbours clear in a gust. <b>Flag</b> the piles a hedgehog must be under. Rake every bare cell and the day is done. <b>A wrong rake is never a loss</b>: the hedgehog wakes, curls up grumpy, and you carry on. The genre ships as Minesweeper, and the reference as <i>Campo Minado</i>; <b>the name here is Hedgehogs</b> in every language.</p>
+
+  <div class="hero">
+    <div class="refs">
+      <figure>
+        <img src="../art/concept-hedgehogs-ref.png" alt="The user's reference: a green How-to-play sheet over a Campo Minado board, a four by four grid of numbered white cells and pale blue covered cells with one red cell under a pointing hand, a shovel chip and a flag chip under it">
+        <figcaption>The user's reference, sent again on 2026-09-26 as &ldquo;our next new game&rdquo;. Mushroom Patch was drawn from this same picture on 2026-09-20 and took the dig, the flag and the red cell <i>out</i>. This board is what the picture actually shows: <b>a dig chip and a flag chip</b>, a tap that <b>reveals</b>, and a <b>red cell</b> where a dig went wrong.</figcaption>
+      </figure>
+      <div class="noref">
+        <p><b>Decided on 2026-09-26</b> (the user asked for every recommended call while away): the dig is a <b>rake</b>, the mine a <b>sleeping hedgehog</b>; a wrong rake <b>wakes</b> it, the cell blushes rose, it stays a known hedgehog and is counted (<code>woken</code>), never a game over; the day <b>opens with one bare patch raked</b> and every board is <b>proved by logic alone</b> from there; a raked number whose flags match it <b>rakes its other neighbours</b> (a chord); a <b>long press</b> does the unarmed chip's action; flags are not needed to win.</p>
+        <p style="font-size:13.5px;color:var(--muted)">URL parameters for screenshots: <code>?d=0..3</code>, <code>&amp;seed=N</code>, <code>&amp;walk=N</code> (N deductions played), <code>&amp;win=1</code>, <code>&amp;woke=1</code>, <code>&amp;wrong=1</code> (a wrong flag, checked), <code>&amp;flag=1</code>, <code>&amp;rm=1</code>, <code>&amp;t=</code>/<code>&amp;freeze=1</code>.</p>
+      </div>
+    </div>
+
+    <div class="demo">
+      <div class="phone">
+        <canvas id="hh" width="390" height="720"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="hh-rm">Reduce motion: off</button>
+        <button id="hh-diff">Medium &middot; 9&times;11</button>
+        <span class="lbl" id="hh-seedlab">seed 4</span>
+        <button id="hh-seed-">&lsaquo; seed</button>
+        <button id="hh-seed+">seed &rsaquo;</button>
+        <button id="hh-new">New puzzle</button>
+        <button id="hh-hint">Hint</button>
+        <button id="hh-undo">Undo</button>
+        <button id="hh-check">Check</button>
+        <button id="hh-reset">Reset</button>
+        <button id="hh-solve">Play it out</button>
+      </div>
+      <div id="hh-caption"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The whole screen in the game's 1080-wide design space, scaled to the phone, with Mushroom Patch's rows less the tip card (gone from every board since <code>1a04e0a</code>): a 1180 board card, the two-chip tray and Reset / Check. It plays: tap a pile with Rake armed to rake it, with Flag armed to flag it; hold a pile for the other one; tap a number to chord. The generator and the solver are written to be ported line for line to <code>puzzles/hedgehogs_gen.gd</code>; the caption shows the proof of the board on screen.</div>
+
+  <h3>1. The rules <span class="pill green">decided</span></h3>
+  <ul>
+    <li><b>Rake:</b> a covered pile is raked. Bare, it shows how many hedgehogs sleep in its eight neighbours; a nought rakes its neighbours too, and the gust carries on through every nought it reaches.</li>
+    <li><b>Flag:</b> a twig with a sun-coloured pennant, laid or lifted on a covered pile. A flag keeps the rake off (a rake on it is refused with a nudge and a line). Flags are never needed to win.</li>
+    <li><b>Chord:</b> tap a raked number whose flags (and woken hedgehogs) already match it, and its other covered neighbours are raked at once. With a wrong flag among them, that can wake a hedgehog.</li>
+    <li><b>Woken:</b> rake a hedgehog and it curls up grumpy on a rose cell. It stays there, known, and the day goes on. The count shows on the win screen and in the share line. Undo does not put it back to sleep.</li>
+    <li><b>Done:</b> every bare cell raked. The sleepers left are uncovered in a wave from the last cell raked and wake happy.</li>
+    <li><b>Undo</b> takes back one gesture (a whole gust or chord is one). <b>Hint</b> plays the next thing logic can prove (a bare cell raked, else a hedgehog flagged, pinned). <b>Check</b> turns every wrong flag rose and holds it until the next move. <b>Reset</b> goes back to the opening, keeping woken hedgehogs and a hint's flags.</li>
+  </ul>
+
+  <h3>2. The ladder <span class="pill blue">measured</span></h3>
+  <table>
+    <tr><th>Level</th><th>Lawn</th><th>Hedgehogs</th><th>Cell</th><th>Logic</th><th>Opening</th><th>JS, 200 seeds</th></tr>
+    <tr><td class="k">Easy</td><td>8&times;10</td><td>12 (15%)</td><td>104.0</td><td>singles + count</td><td>12&ndash;40 (mean 28.9)</td><td>4.5 deals mean, 25 worst; 0.37 ms mean, 2.3 worst</td></tr>
+    <tr><td class="k">Medium</td><td>9&times;11</td><td>17 (17%)</td><td>94.5</td><td>singles + count</td><td>12&ndash;36 (mean 26.5)</td><td>9.3 deals mean, 42 worst; 0.68 ms mean, 2.8 worst</td></tr>
+    <tr><td class="k">Hard</td><td>10&times;11</td><td>21 (19%)</td><td>93.2</td><td>+ subsets, needed &ge; 1</td><td>9&ndash;30 (mean 20.7)</td><td>9.4 deals mean, 64 worst; 1.0 ms mean, 6.2 worst</td></tr>
+    <tr><td class="k">Insane</td><td>10&times;11</td><td>24 (22%)</td><td>93.2</td><td>+ subsets, needed &ge; 2</td><td>9&ndash;28 (mean 19.3)</td><td>26.3 deals mean, 131 worst; 2.5 ms mean, 11.6 worst</td></tr>
+  </table>
+  <p><b>The proof is the play.</b> The opening cell is dealt away from the edge and its 3&times;3 kept clear, so it is a nought and floods. From there a solver that never guesses plays the whole lawn: <i>singles</i> (a number's covered neighbours are all bare, or all hedgehogs), then <i>subsets</i> (one number's covered set inside another's &mdash; the 1-2-1), then the <i>global count</i>. A deal is kept only if it rakes every bare cell, with the opening in the level's range. Easy and Medium are proved without subsets; <b>Hard must need one at least once and Insane twice</b>, which is what makes them a different kind of thinking and not just a bigger lawn. With subsets allowed and not required, 85 easy, 127 medium, 142 hard and 173 insane boards of 200 would have needed one. After 400 deals with no board meeting the subset quota, the first proved one is handed back ungraded (Sudoku's <code>graded: false</code>); 0 of 800 seeds reached it.</p>
+  <p><b>The cells.</b> The board card is 1000 by 1180; a 34 inset and a 72 tally strip leave 932 by 1040, so 8&times;10 gives 104, 9&times;11 gives 94.5 and 10&times;11 gives 93.2 &mdash; every level at Queens' and Nonogram's size or above, and 9&times;12 (86.7) was rejected for that. Unlike Paper Planes, a thumb here taps a single cell, so the floor matters.</p>
+
+  <h3>3. Proposals <span class="pill">recommended</span></h3>
+  <table>
+    <tr><th>What</th><th>Proposal</th><th></th></tr>
+    <tr><td class="k">Numbers</td><td>Fredoka 700 at 0.54 of a cell, each count in its own muted ink (1 leaf, 2 teal, 3 brick, 4 plum, 5 bark) so a glance reads the lawn; noughts draw nothing.</td><td><span class="pill">proposed</span></td></tr>
+    <tr><td class="k">The gust</td><td>A raked pile's six leaves fly off away from where the rake began, spinning and fading over 0.45 s; the gust reaches each cell at its flood ring &times; <code>Motion.WAVE_STEP</code>, and the number pops in 0.12 s after its leaves go.</td><td><span class="pill green">decided</span></td></tr>
+    <tr><td class="k">Woken</td><td>The cell washes to 38% <code>BAD</code> and holds; the hedgehog pops up curled, shivers, and keeps its frown. A toast says so, kindly.</td><td><span class="pill green">decided</span></td></tr>
+    <tr><td class="k">Flag</td><td>A bark twig and a <code>SUN</code> pennant; a hint's flag wears a sun dot at its foot; a wrong flag after Check turns its pennant rose.</td><td><span class="pill">proposed</span></td></tr>
+    <tr><td class="k">Tally</td><td>&ldquo;N hedgehogs asleep&rdquo; over the field: the count less flags and woken, rose when negative. It is the global count the solver uses, given free.</td><td><span class="pill">proposed</span></td></tr>
+    <tr><td class="k">Win</td><td>The sleepers' leaves blow off in a wave out of the last cell raked and each hedgehog hops awake; then the family's win screen with three hedgehogs in place of the sprout.</td><td><span class="pill">proposed</span></td></tr>
+  </table>
+
+  <h3>4. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>Is it different enough from Mushroom Patch?</b> Same numbers, but here a tap reveals and a mistake costs something (a grumpy hedgehog on your record). Play a Mushroom Patch and a Hedgehogs back to back.</li>
+    <li><b>The hedgehog.</b> Asleep with a drifting z, curled and grumpy, up and smiling on the win. It is the cast's first new animal since the bee.</li>
+    <li><b>The lawn.</b> Leaf piles in five autumn colours on sage turf; raked cells a pale grass paper. Is the lawn too busy under ninety-nine piles?</li>
+    <li><b>The long press.</b> Hold for the other chip. Should it be there at all, or is the chip enough?</li>
   </ul>
 </section>
 
@@ -20428,6 +20509,550 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
       busyTill=-1e9; youA=still(you); foeA=foes.map(still); gone=[];
       if(win1){solvedAt=-4; winAt=-3;}
       if(cg){const R=reach(),q=legal().find(m=>R.has(m)&&m!==B.king); if(q!=null) play(q,-0.2);}}
+    caption(); frame();
+  })();
+})();
+
+(function(){
+  const cv=document.getElementById('hh'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S,M=40,COL=W-2*M;
+  const OY=(H-1920)/2;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const T0=parseFloat(Q.get('t')||'0'), tStart=performance.now();
+  const FREEZE=Q.get('freeze')==='1';
+  const now=()=>FREEZE?T0:T0+(performance.now()-tStart)/1000;
+  let RM=Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const sineIO=u=>{u=clamp(u);return 0.5-0.5*Math.cos(Math.PI*u);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const dec=u=>RM?1:clamp(u);
+  const hex=c=>[parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];
+  const mixHex=(a,b,u)=>{const A=hex(a),B2=hex(b);return '#'+[0,1,2].map(i=>Math.round(lerp(A[i],B2[i],u)).toString(16).padStart(2,'0')).join('');};
+  const rgba=(c,a)=>{const A=hex(c);return 'rgba('+A[0]+','+A[1]+','+A[2]+','+a+')';};
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',sunRay:'#f9c04a',parchment:'#f3e9d2',cheek:'#f4a7a0',
+    leaf:'#6ba845',leafDeep:'#4f8a31',leafLight:'#9dc063',bark:'#8a6a4a',white:'#ffffff',good:'#7cb06b',bad:'#d9605a'};
+  // The garden table: a paper chessboard of cream and pale sage squares in a
+  // wooden frame; your knight is carved in cream, the other side in rose.
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  const MO={ENTER_DELAY:0.18,ENTER_POP:0.25,ENTER_STAGGER:0.03,ENTER_WIDE_FROM:0.86,
+    PRESS_SCALE:0.94,PRESS_TIME:0.08,RELEASE_TIME:0.25,POP_IN:0.22,POP_SQUASH:0.15,RING_TIME:0.5,
+    FLASH_IN:0.15,FLASH_OUT:0.45,HOP:-6,HOP_TIME:0.3,SOLVE_HOP:-10,SOLVE_TIME:0.4,
+    SHIVER_PX:2,SHIVER_TIME:0.2,RESET_STAGGER:0.02,STAGGER_CAP:0.6};
+  const popInScale=s=>{if(RM) return [1,1]; const u=clamp(s/MO.POP_IN),g=lerp(0.01,1,backOut(u)),sq=MO.POP_SQUASH*Math.sin(Math.PI*u); return [g*(1+sq),g*(1-sq)];};
+  const shiverOffset=s=>{if(RM||s<0||s>=MO.SHIVER_TIME) return 0; const u=s/MO.SHIVER_TIME; return MO.SHIVER_PX*4*Math.sin(u*Math.PI*6)*(1-u);};
+  const squash=(at,t,amt,dur)=>{amt=amt||0.1; dur=dur||0.18; const u=(t-at)/dur; if(RM||u<0||u>=1) return [1,1]; const s=Math.sin(Math.PI*u); return [1+amt*0.5*s,1-amt*s];};
+
+  function rr(x,y,w,h,r){ctx.beginPath(); ctx.roundRect(x,y,w,h,Math.min(r,Math.abs(w)/2,Math.abs(h)/2));}
+  function card(x,y,w,h,r,fill,rim,rimW){if(rimW>0){ctx.fillStyle=rim; rr(x,y,w,h,r); ctx.fill();} ctx.fillStyle=fill; rr(x,y,w,h-rimW,r); ctx.fill();}
+  function circle(x,y,r){ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();}
+  function ellipse(x,y,rx,ry){ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2); ctx.fill();}
+  function text(s,x,y,font,col,align,spacing){ctx.font=font; ctx.fillStyle=col; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.letterSpacing=spacing||'0px'; ctx.fillText(s,x,y); ctx.letterSpacing='0px';}
+  function stroke(col,w){ctx.strokeStyle=col; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();}
+  function leaf(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col||C.leaf; ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(ln*0.55,-ln*0.42,ln,0); ctx.quadraticCurveTo(ln*0.55,ln*0.42,0,0); ctx.fill(); ctx.restore();}
+  function star4(x,y,r,rot,col){ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=col; ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,rad=i%2?r*0.38:r; ctx.lineTo(Math.cos(a)*rad,Math.sin(a)*rad);} ctx.closePath(); ctx.fill(); ctx.restore();}
+  function wrap(s,maxw,font){ctx.font=font; const ws=s.split(' '),out=[]; let cur2='';
+    for(const w of ws){const test=cur2?cur2+' '+w:w; if(ctx.measureText(test).width>maxw&&cur2){out.push(cur2); cur2=w;} else cur2=test;}
+    if(cur2) out.push(cur2); return out;}
+  function icon(name,x,y,s,col){ctx.save(); ctx.translate(x,y); const w=s*0.12;
+    if(name==='chevron'){ctx.beginPath(); ctx.moveTo(s*0.15,-s*0.3); ctx.lineTo(-s*0.15,0); ctx.lineTo(s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='chevronR'){ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.3); ctx.lineTo(s*0.15,0); ctx.lineTo(-s*0.15,s*0.3); stroke(col,w);}
+    else if(name==='reset'){ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w);}
+    else if(name==='undo'){ctx.save(); ctx.scale(-1,1);
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,-Math.PI/2,Math.PI,false); stroke(col,w);
+      ctx.beginPath(); ctx.moveTo(-s*0.44,s*0.02); ctx.lineTo(-s*0.3,-s*0.15); ctx.lineTo(-s*0.16,s*0.02); stroke(col,w); ctx.restore();}
+    else if(name==='bulb'){ctx.fillStyle=col; circle(0,-s*0.08,s*0.24); ctx.fillRect(-s*0.11,s*0.14,s*0.22,s*0.1); ctx.fillRect(-s*0.07,s*0.27,s*0.14,s*0.06);}
+    else if(name==='gear'){ctx.fillStyle=col; for(let i=0;i<8;i++){ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(-s*0.08,-s*0.4,s*0.16,s*0.22); ctx.restore();} circle(0,0,s*0.28); ctx.fillStyle=C.surfaceHi; circle(0,0,s*0.11);}
+    ctx.restore();}
+  function faceParts(Rr,cx,cy,o){
+    const ink=C.text,expr=o.expr||'happy',eye=expr==='joy'?1:(o.eye==null?1:o.eye);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(cx-Rr*0.46,cy+Rr*0.16,Rr*0.13,Rr*0.09); ellipse(cx+Rr*0.46,cy+Rr*0.16,Rr*0.13,Rr*0.09);
+    for(const sx of [-1,1]){const ex=cx+sx*Rr*0.34,ey=cy-Rr*0.1;
+      if(expr==='joy'){ctx.beginPath(); ctx.arc(ex,ey+Rr*0.04,Rr*0.13,Math.PI*1.1,Math.PI*1.9); stroke(ink,Rr*0.075);}
+      else {ctx.fillStyle=ink; ellipse(ex,ey,Rr*0.1,Math.max(Rr*0.012,Rr*0.1*eye)); if(eye>0.5){ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-Rr*0.03,ey-Rr*0.035,Rr*0.03);}}}
+    if(expr==='strain'){ctx.beginPath(); ctx.arc(cx,cy+Rr*0.3,Rr*0.2,Math.PI*1.18,Math.PI*1.82); stroke(ink,Rr*0.07); return;}
+    const big=expr==='joy'; ctx.beginPath(); ctx.arc(cx,cy+(big?Rr*0.08:Rr*0.1),big?Rr*0.28:Rr*0.22,Math.PI*(big?0.1:0.18),Math.PI*(big?0.9:0.82)); stroke(ink,Rr*0.07);
+    if(big){ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(cx,cy+Rr*0.08,Rr*0.28,Math.PI*0.1,Math.PI*0.9); ctx.closePath(); ctx.fill(); ctx.fillStyle=rgba(C.cheek,0.9); ctx.beginPath(); ctx.arc(cx,cy+Rr*0.08,Rr*0.28,Math.PI*0.3,Math.PI*0.7); ctx.closePath(); ctx.fill();}
+  }
+  function sprout(Rr,o){
+    ctx.fillStyle='rgba(59,48,40,0.08)'; ellipse(0,Rr*0.14,Rr*1.05,Rr*0.95);
+    ctx.beginPath(); ctx.moveTo(0,-Rr*0.8); ctx.lineTo(0,-Rr*1.15); stroke(C.leaf,Rr*0.09);
+    leaf(0,-Rr*1.12,Rr*0.62,-2.6); leaf(0,-Rr*1.12,Rr*0.55,-0.55);
+    ctx.fillStyle=C.surface; ellipse(0,0,Rr,Rr*0.9); ctx.beginPath(); ctx.ellipse(0,0,Rr,Rr*0.9,0,0,Math.PI*2); stroke(C.line,Rr*0.07);
+    faceParts(Rr*0.9,0,Rr*0.12,o);
+  }
+
+
+  // ============ the generator (puzzles/hedgehogs_gen.gd, to be ported) ============
+  // A cols x rows lawn under leaf piles, k hedgehogs asleep under some of them.
+  // The day opens with one bare patch already raked: the opening cell and its
+  // eight neighbours are kept clear of hedgehogs, so the opening is a nought
+  // and floods. The board is kept only if a logic solver, starting from that
+  // opening and never guessing, rakes every bare cell -- singles (a number's
+  // covered neighbours are all bare or all hedgehogs), subsets (one number's
+  // covered set inside another's) where the level allows them, and the
+  // global count. Hard must need a subset at least once, Insane twice,
+  // Easy and Medium never. Seeded only by (seed, band).
+  const HBANDS=[
+    {label:'Easy · 8×10',cols:8,rows:10,k:12,subsets:false,needSub:0,open:[12,40]},
+    {label:'Medium · 9×11',cols:9,rows:11,k:17,subsets:false,needSub:0,open:[10,36]},
+    {label:'Hard · 10×11',cols:10,rows:11,k:21,subsets:true,needSub:1,open:[8,30]},
+    {label:'Insane · 10×11',cols:10,rows:11,k:24,subsets:true,needSub:2,open:[6,28]}];
+  const HATTEMPTS=400;
+  function hNbrs(B,c){const x=c%B.cols,y=(c/B.cols)|0,out=[];
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){if(!dx&&!dy) continue; const X=x+dx,Y=y+dy;
+      if(X>=0&&Y>=0&&X<B.cols&&Y<B.rows) out.push(Y*B.cols+X);} return out;}
+  // Rake c on `open` (a Uint8Array, 1 = raked): a nought floods through its
+  // neighbours. Returns the cells raked, in breadth-first order with their
+  // ring (distance from c), which is the gust's timing.
+  function hFlood(B,open,c){const out=[]; if(open[c]||B.hog[c]) return out; open[c]=1; let q=[[c,0]];
+    while(q.length){const nq=[]; for(const [p,d] of q){out.push([p,d]); if(B.num[p]!==0) continue;
+      for(const r of hNbrs(B,p)) if(!open[r]&&!B.hog[r]){open[r]=1; nq.push([r,d+1]);}} q=nq;}
+    return out;}
+  // One round of deduction from what is known: `open` (raked cells, whose
+  // numbers are read) and `known` (hedgehogs known -- woken, or proved).
+  // Returns {rule, safe:[cells], hogs:[cells]} for the first rule family that
+  // decides anything, in the order singles, subsets, count; null when none.
+  // The player's flags are never read: a flag may be wrong.
+  function hDeduce(B,open,known,subsets){
+    const cons=[];
+    for(let c=0;c<B.n;c++){if(!open[c]) continue; const U=[]; let need=B.num[c];
+      for(const r of hNbrs(B,c)){if(known[r]) need--; else if(!open[r]) U.push(r);}
+      if(U.length) cons.push({U:U,need:need});}
+    const safe=new Set(),hogs=new Set();
+    for(const k of cons){if(k.need===0) k.U.forEach(r=>safe.add(r)); else if(k.need===k.U.length) k.U.forEach(r=>hogs.add(r));}
+    if(safe.size||hogs.size) return {rule:'single',safe:[...safe].sort((a,b)=>a-b),hogs:[...hogs].sort((a,b)=>a-b)};
+    if(subsets){
+      for(const a of cons) for(const b of cons){if(a===b||a.U.length>=b.U.length) continue;
+        const inB=new Set(b.U); if(!a.U.every(r=>inB.has(r))) continue;
+        const inA=new Set(a.U),diff=b.U.filter(r=>!inA.has(r)),dn=b.need-a.need;
+        if(dn===0) diff.forEach(r=>safe.add(r)); else if(dn===diff.length) diff.forEach(r=>hogs.add(r));}
+      if(safe.size||hogs.size) return {rule:'subset',safe:[...safe].sort((a,b)=>a-b),hogs:[...hogs].sort((a,b)=>a-b)};}
+    let left=B.k,unk=[]; for(let c=0;c<B.n;c++){if(known[c]) left--; else if(!open[c]) unk.push(c);}
+    if(unk.length&&left===0) return {rule:'count',safe:unk,hogs:[]};
+    if(unk.length&&left===unk.length) return {rule:'count',safe:[],hogs:unk};
+    return null;}
+  // Play the whole board out by logic from the opening. {ok, rounds, subsetRounds, countRounds}
+  function hProve(B,subsets){const open=new Uint8Array(B.n),known=new Uint8Array(B.n);
+    hFlood(B,open,B.start); let rounds=0,sub=0,cnt=0,safeLeft=0;
+    for(let c=0;c<B.n;c++) if(!B.hog[c]&&!open[c]) safeLeft++;
+    while(safeLeft>0){const d=hDeduce(B,open,known,subsets); if(!d) return {ok:false,rounds,sub,cnt};
+      rounds++; if(d.rule==='subset') sub++; if(d.rule==='count') cnt++;
+      d.hogs.forEach(r=>known[r]=1);
+      for(const r of d.safe) if(!open[r]) safeLeft-=hFlood(B,open,r).length;}
+    return {ok:true,rounds,sub,cnt};}
+  function hedgehogBoard(seed,band){const Bd=HBANDS[band],cols=Bd.cols,rows=Bd.rows,n=cols*rows,
+      rnd=mulberry32(seed*7919+band*104729+29);
+    let fallback=null;
+    for(let attempt=1;attempt<=HATTEMPTS;attempt++){
+      // the opening, never on the lawn's edge, so its clear 3x3 is whole
+      const sx=1+Math.floor(rnd()*(cols-2)),sy=1+Math.floor(rnd()*(rows-2)),start=sy*cols+sx;
+      const free=[]; for(let c=0;c<n;c++){const x=c%cols,y=(c/cols)|0; if(Math.abs(x-sx)>1||Math.abs(y-sy)>1) free.push(c);}
+      for(let i=free.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1)); const t=free[i]; free[i]=free[j]; free[j]=t;}
+      const hog=new Uint8Array(n); for(let i=0;i<Bd.k;i++) hog[free[i]]=1;
+      const B={cols,rows,n,k:Bd.k,hog,num:new Int8Array(n),start,band};
+      for(let c=0;c<n;c++) if(!hog[c]) B.num[c]=hNbrs(B,c).reduce((s,r)=>s+hog[r],0);
+      const o=new Uint8Array(n),opened=hFlood(B,o,start).length;
+      if(opened<Bd.open[0]||opened>Bd.open[1]) continue;
+      const p=hProve(B,Bd.subsets); if(!p.ok) continue;
+      B.attempts=attempt; B.opened=opened; B.proof=p;
+      if(p.sub<Bd.needSub){if(!fallback) fallback=B; continue;}
+      B.graded=true; return B;}
+    // No deal met the level's subset quota: hand back the first proved one,
+    // ungraded, rather than nothing (Sudoku's `graded: false`).
+    if(fallback) fallback.graded=false;
+    return fallback;}
+
+  // An autumn lawn: pale raked grass under a sage rim, leaf piles in five
+  // autumn colours over the covered cells, and brown hedgehogs asleep.
+  const HG={lawn:'#9fc27c',lawnDeep:'#7fa362',raked:'#e4ecc9',rakedEdge:'#cfdab0',pile:'#e3b574',pileDeep:'#c8924f',
+    leaves:['#e0913f','#c9652f','#e8b54a','#b5532e','#d9a441'],spine:'#8b6a4c',spineDeep:'#6e5139',spineHi:'#a8876a',
+    face:'#f2dcbc',faceDeep:'#dcbf98',nose:'#3b3028',stick:'#8a6a4a',pennant:'#f5a623',pennantDeep:'#d88a12',
+    nums:['#3b3028','#4a7a36','#2f6f7c','#b0483f','#6c4a8c','#7f4f22','#2f6f7c','#3b3028','#3b3028']};
+  // This board's own motion: how long a pile's leaves take to blow off, how
+  // far (in cells) they travel, and how long after the gust reaches a cell
+  // its number pops in. The gust itself is Motion.WAVE_STEP a ring.
+  const WAVE_STEP=0.045,LEAF_TIME=0.45,LEAF_FLY=0.9,NUM_LAG=0.12,GRUMP_HOLD=2.4,LONG_PRESS=0.4;
+  const stag=(i,per)=>RM?0:Math.min(i*per,MO.STAGGER_CAP);
+
+  // ================= state =================
+  // Mirrors puzzles/hedgehogs_state.gd: `open` (raked), `flag` (the player's
+  // flags), `woke` (hedgehogs a wrong rake woke; a fact, never undone),
+  // `pin` (a hint's flag, not the player's to lift), and a history of
+  // gestures -- a whole flood or a chord is one.
+  const HINTS=3,WIN_WAIT=2.2;
+  let B=null,diff=0,seed=4,genMs=0,open,flag,woke,pin,wrongShown,hist=[],hintsLeft=HINTS,checks=0,moves=0,woken=0;
+  let mode='rake',openedAt=0,hasSolve=false,solvedAt=0,winAt=0,lastCell=0;
+  let L=null;
+  // per cell: when its leaves blew (and from where), when a flag went in or
+  // out, when it was refused, when a hedgehog woke there
+  let blowAt,blowFrom,flagAt,unflagAt,bumpAt,wokeAt,coverAt;
+  const particles=[],rings=[],btnPress={};
+  let toast={text:'',at:-1e9};
+  const cxx=c=>c%B.cols,cyy=c=>(c/B.cols)|0;
+  function build(d,sd,t){diff=d;seed=sd;const t0=performance.now();B=hedgehogBoard(seed,diff);genMs=performance.now()-t0;
+    const n=B.n; open=new Uint8Array(n);flag=new Uint8Array(n);woke=new Uint8Array(n);pin=new Uint8Array(n);wrongShown=new Uint8Array(n);
+    blowAt=new Float64Array(n).fill(-1e9);blowFrom=new Int32Array(n).fill(-1);flagAt=new Float64Array(n).fill(-1e9);unflagAt=new Float64Array(n).fill(-1e9);
+    bumpAt=new Float64Array(n).fill(-1e9);wokeAt=new Float64Array(n).fill(-1e9);coverAt=new Float64Array(n).fill(-1e9);
+    hist=[];hintsLeft=HINTS;checks=0;moves=0;woken=0;hasSolve=false;openedAt=t;particles.length=0;rings.length=0;toast={text:'',at:-1e9};
+    // the opening is raked before the day is handed over; its gust plays as
+    // part of the entrance
+    gust(B.start,t+0.45,false); caption();}
+  const safeLeft=()=>{let s=0; for(let c=0;c<B.n;c++) if(!B.hog[c]&&!open[c]) s++; return s;};
+  const flagsAround=c=>hNbrs(B,c).reduce((s,r)=>s+((flag[r]||woke[r])?1:0),0);
+  function say(s,t){toast={text:s,at:t};}
+  // Rake from c: a flood, each cell's leaves blown off when the gust
+  // reaches it (its ring times WAVE_STEP), away from c.
+  function gust(c,t,record){const out=hFlood(B,open,c);
+    out.forEach(([p,d])=>{blowAt[p]=t+(RM?0:d*WAVE_STEP); blowFrom[p]=c; if(flag[p]&&!pin[p]) flag[p]=0;});
+    return out.map(([p])=>p);}
+  function clearWrong(){wrongShown.fill(0);}
+  function wake(c,t){woke[c]=1; woken++; flag[c]=0; wokeAt[c]=t; blowAt[c]=t; blowFrom[c]=c;
+    say(woken===1?'Oh! You woke a hedgehog. It curls up grumpy. Carry on.':'Another one woke up grumpy.',t);}
+  function rake(c,t){if(hasSolve) return;
+    if(open[c]){chord(c,t); return;}
+    if(woke[c]) return;
+    if(flag[c]){bumpAt[c]=t; say(pin[c]?'A hint put that flag there.':'A flag keeps the rake off. Lift it first.',t); return;}
+    clearWrong(); moves++; lastCell=c;
+    if(B.hog[c]){wake(c,t); after(t); return;}
+    const raked=gust(c,t,true); hist.push({raked:raked,flags:[]}); after(t);}
+  // Tapping a number whose flags (and woken hedgehogs) match it rakes the
+  // rest of its covered neighbours: one gesture, one gust from the number.
+  function chord(c,t){const v=B.num[c],around=hNbrs(B,c),cov=around.filter(r=>!open[r]&&!flag[r]&&!woke[r]);
+    if(!v||!cov.length) return;
+    if(flagsAround(c)!==v){bumpAt[c]=t; say(flagsAround(c)<v?'Flag '+v+' around this number first.':'Too many flags around this number.',t); return;}
+    clearWrong(); moves++; lastCell=c; const raked=[];
+    for(const r of cov){if(open[r]) continue; if(B.hog[r]){wake(r,t); continue;}
+      const out=hFlood(B,open,r); out.forEach(([p,d])=>{blowAt[p]=t+(RM?0:(d+1)*WAVE_STEP); blowFrom[p]=c; if(flag[p]&&!pin[p]) flag[p]=0; raked.push(p);});}
+    if(raked.length) hist.push({raked:raked,flags:[]}); after(t);}
+  function toggleFlag(c,t){if(hasSolve||open[c]||woke[c]) return;
+    if(pin[c]){bumpAt[c]=t; say('A hint put that flag there.',t); return;}
+    clearWrong(); moves++; hist.push({raked:[],flags:[[c,flag[c]]]});
+    if(flag[c]){flag[c]=0; unflagAt[c]=t;} else {flag[c]=1; flagAt[c]=t;} after(t);}
+  function after(t){if(safeLeft()===0) win(t); caption();}
+  function undo(t){if(hasSolve||!hist.length) return; const h=hist.pop(); clearWrong();
+    h.raked.forEach((p,i)=>{open[p]=0; coverAt[p]=t+stag(h.raked.length-1-i,0.012);});
+    h.flags.forEach(([c,was])=>{if(was){flag[c]=1; flagAt[c]=t;} else {flag[c]=0; unflagAt[c]=t;}});
+    say('One move taken back.',t); caption();}
+  // Everything back to the opening, but a woken hedgehog stays awake and a
+  // hint's flag stays put: both are facts, not moves.
+  function reset(t){if(hasSolve) return; clearWrong(); const keep=new Uint8Array(B.n); hFlood(B,keep,B.start);
+    for(let c=0;c<B.n;c++){if(open[c]&&!keep[c]){open[c]=0; const d=Math.abs(cxx(c)-cxx(B.start))+Math.abs(cyy(c)-cyy(B.start)); coverAt[c]=t+stag(d,MO.RESET_STAGGER);}
+      if(flag[c]&&!pin[c]){flag[c]=0; unflagAt[c]=t;}}
+    hist=[]; say('Back to the first patch.',t); caption();}
+  // The next thing logic can prove from what you can see: rake a cell that
+  // must be bare, else flag one that must be a hedgehog. Flags you laid are
+  // only trusted once logic proves them.
+  function hint(t){if(hasSolve||hintsLeft<=0) return; clearWrong();
+    const known=new Uint8Array(B.n); for(let c=0;c<B.n;c++) if(woke[c]||pin[c]) known[c]=1;
+    for(let guard=0;guard<B.n;guard++){const d=hDeduce(B,open,known,true); if(!d) return;
+      const s=d.safe.find(r=>!open[r]);
+      if(s!=null){hintsLeft--; if(flag[s]){flag[s]=0; unflagAt[s]=t;} ring(ctr(s),t); moves++; lastCell=s;
+        const raked=gust(s,t,true); hist.push({raked:raked,flags:[]}); say('That one must be bare: raked.',t); after(t); return;}
+      const h=d.hogs.find(r=>!flag[r]);
+      if(h!=null){hintsLeft--; flag[h]=1; pin[h]=1; flagAt[h]=t; ring(ctr(h),t); say('A hedgehog must sleep there: flagged.',t); caption(); return;}
+      d.hogs.forEach(r=>known[r]=1);}}
+  function check(t){if(hasSolve) return; checks++; let bad=0;
+    for(let c=0;c<B.n;c++) if(flag[c]&&!B.hog[c]){wrongShown[c]=1; bumpAt[c]=t; bad++;}
+    say(bad?(bad===1?'One flag has no hedgehog under it.':bad+' flags have no hedgehog under them.'):'Every flag is right so far.',t);}
+  function win(t){hasSolve=true; solvedAt=t;
+    // the sleepers left under their piles: the leaves blow off them in a
+    // wave out of the last cell raked, and each one wakes as it is reached
+    let far=0;
+    for(let c=0;c<B.n;c++) if(B.hog[c]&&!woke[c]){const d=Math.max(Math.abs(cxx(c)-cxx(lastCell)),Math.abs(cyy(c)-cyy(lastCell)));
+      far=Math.max(far,d); blowAt[c]=t+0.3+stag(d,WAVE_STEP*2); blowFrom[c]=lastCell; flag[c]=1;}
+    winAt=t+(RM?0.3:WIN_WAIT+Math.min(far*WAVE_STEP*2,MO.STAGGER_CAP)); say('',t); caption();}
+  function ring(p,t0){if(RM) return; rings.push({x:p[0],y:p[1],t0:t0});}
+
+  // ================= layout =================
+  // 40 of margin, 180 of top bar, 20, 120 of day card, 20, 1180 of board,
+  // 20, 150 of tray, 20, 130 of actions, 40 of margin -- 1920. Since
+  // 1a04e0a no board has a tip card, so this is Mushroom Patch's slot less it.
+  const TOP_H=180,DAY_H=120,BOARD_H=1180,TRAY_H=150,ACT_H=130,ROW_GAP=20,PAD=34,TALLY=72;
+  function layout(){
+    const topY=OY+M,dayY=topY+TOP_H+ROW_GAP,by=dayY+DAY_H+ROW_GAP,trayY=by+BOARD_H+ROW_GAP,actY=trayY+TRAY_H+ROW_GAP;
+    const cw=COL-2*PAD,ch=BOARD_H-2*PAD-TALLY,cell=Math.min(cw/B.cols,ch/B.rows);
+    const gw=cell*B.cols,gh=cell*B.rows,gx=M+PAD+(cw-gw)/2,gy=by+PAD+TALLY+(ch-gh)/2;
+    return {top:{y:topY},day:{y:dayY},board:{y:by,h:BOARD_H},tray:{y:trayY},act:{y:actY},tally:gy-TALLY/2,cell,gx,gy,gw,gh,
+      stats:{y:OY+1920-M-130-20-120},camp:{y:OY+1920-M-130}};}
+  const ctr=c=>[L.gx+(cxx(c)+0.5)*L.cell,L.gy+(cyy(c)+0.5)*L.cell];
+
+  // ================= the pieces =================
+  function almond(x,y,ln,ang,col){ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(-ln/2,0);
+    ctx.quadraticCurveTo(0,-ln*0.36,ln/2,0); ctx.quadraticCurveTo(0,ln*0.36,-ln/2,0); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-ln*0.42,0); ctx.lineTo(ln*0.4,0); stroke('rgba(90,50,20,0.35)',Math.max(1.5,ln*0.05)); ctx.restore();}
+  // A hedgehog, R its body's half-width, facing left. expr: 'sleep' (eyes
+  // shut, a Zz), 'grump' (curled into a ball, the face peeking, a frown),
+  // 'joy' (up on its feet, eyes shut in a smile), 'happy' (awake).
+  function hedgehog(R,expr,t){
+    ctx.fillStyle='rgba(59,48,40,0.14)'; ellipse(0,R*0.62,R*1.05,R*0.2);
+    if(expr==='grump'){
+      // a ball of spines with the snout tucked in
+      ctx.fillStyle=HG.spineDeep; ctx.beginPath(); const N=22;
+      for(let i=0;i<=N*2;i++){const a=i/(N*2)*Math.PI*2,r=i%2?R*0.78:R*0.95; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r*0.92);} ctx.closePath(); ctx.fill();
+      ctx.fillStyle=HG.spine; ellipse(0,0,R*0.74,R*0.68);
+      ctx.fillStyle=HG.face; ellipse(-R*0.2,R*0.18,R*0.44,R*0.36);
+      ctx.fillStyle=HG.nose; circle(-R*0.56,R*0.16,R*0.09);
+      ctx.fillStyle=rgba(C.cheek,0.9); ellipse(-R*0.04,R*0.3,R*0.1,R*0.07);
+      for(const ex of [-R*0.34,-R*0.06]){ctx.beginPath(); ctx.moveTo(ex-R*0.07,R*0.02); ctx.lineTo(ex+R*0.07,R*0.07); stroke(C.text,R*0.06);}
+      ctx.beginPath(); ctx.arc(-R*0.24,R*0.42,R*0.1,Math.PI*1.15,Math.PI*1.85); stroke(C.text,R*0.05);
+      return;}
+    const up=expr==='joy'||expr==='happy';
+    if(up){ctx.fillStyle=HG.faceDeep; for(const fx of [-R*0.45,R*0.35]) ellipse(fx,R*0.55,R*0.14,R*0.1);}
+    // the spiny back: a dome of spikes, then a paler dome inside
+    ctx.fillStyle=HG.spineDeep; ctx.beginPath(); ctx.moveTo(R*1.0,R*0.45); const N=16;
+    for(let i=0;i<=N*2;i++){const a=i/(N*2)*Math.PI,r=i%2?R*0.86:R*1.04; ctx.lineTo(Math.cos(a)*r*1.02,R*0.45-Math.sin(a)*r*1.02);}
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle=HG.spine; ctx.beginPath(); ctx.ellipse(R*0.05,R*0.45,R*0.84,R*0.84,0,Math.PI,0); ctx.fill();
+    ctx.strokeStyle=HG.spineHi; ctx.lineWidth=R*0.05; ctx.lineCap='round';
+    for(let i=0;i<7;i++){const a=Math.PI*(0.2+i*0.1); ctx.beginPath(); ctx.moveTo(R*0.05+Math.cos(a)*R*0.4,R*0.45-Math.sin(a)*R*0.4); ctx.lineTo(R*0.05+Math.cos(a)*R*0.66,R*0.45-Math.sin(a)*R*0.66); ctx.stroke();}
+    // the face: a cream snout to the left, the nose at its tip
+    ctx.fillStyle=HG.face; ctx.beginPath(); ctx.moveTo(-R*0.35,-R*0.05); ctx.quadraticCurveTo(-R*1.05,R*0.12,-R*1.08,R*0.32);
+    ctx.quadraticCurveTo(-R*0.9,R*0.58,-R*0.2,R*0.52); ctx.quadraticCurveTo(-R*0.1,R*0.2,-R*0.35,-R*0.05); ctx.fill();
+    ctx.fillStyle=HG.nose; circle(-R*1.06,R*0.3,R*0.1);
+    ctx.fillStyle=rgba(C.cheek,0.85); ellipse(-R*0.42,R*0.38,R*0.11,R*0.07);
+    const ex=-R*0.55,ey=R*0.16;
+    if(expr==='happy'){ctx.fillStyle=C.text; circle(ex,ey,R*0.075); ctx.fillStyle='rgba(255,255,255,0.9)'; circle(ex-R*0.025,ey-R*0.03,R*0.025);}
+    else {ctx.beginPath(); ctx.arc(ex,ey-(expr==='joy'?R*0.03:0),R*0.08,expr==='joy'?Math.PI*1.1:Math.PI*0.1,expr==='joy'?Math.PI*1.9:Math.PI*0.9); stroke(C.text,R*0.05);}
+    if(expr==='joy'){ctx.beginPath(); ctx.arc(-R*0.74,R*0.4,R*0.08,Math.PI*0.1,Math.PI*0.9); stroke(C.text,R*0.045);}
+    if(expr==='sleep'&&!RM&&t){const k=(t*0.5)%1; ctx.save(); ctx.globalAlpha*=Math.sin(Math.PI*k);
+      text('z',R*0.2,-R*0.75-k*R*0.35,'700 '+Math.round(R*0.42)+'px '+FD,C.dim); ctx.restore();}}
+  // A flag: a twig pushed into the pile with a sun-coloured pennant.
+  function flagMark(R,wrong){ctx.fillStyle='rgba(59,48,40,0.16)'; ellipse(0,R*0.62,R*0.34,R*0.1);
+    ctx.beginPath(); ctx.moveTo(-R*0.08,R*0.62); ctx.lineTo(-R*0.08,-R*0.7); stroke(HG.stick,R*0.12);
+    ctx.fillStyle=wrong?C.bad:HG.pennant; ctx.beginPath(); ctx.moveTo(-R*0.02,-R*0.7); ctx.lineTo(R*0.66,-R*0.44); ctx.lineTo(-R*0.02,-R*0.16); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=wrong?'#b54a45':HG.pennantDeep; ctx.beginPath(); ctx.moveTo(-R*0.02,-R*0.44); ctx.lineTo(R*0.66,-R*0.44); ctx.lineTo(-R*0.02,-R*0.16); ctx.closePath(); ctx.fill();}
+  // A leaf pile on a covered cell, its leaves hashed from the cell so the
+  // same pile is drawn every frame. `blow` (0..1) carries them off along
+  // `dir` and fades them.
+  function pile(c,x,y,s,blow,dir){
+    if(blow<=0){ctx.fillStyle=HG.pileDeep; ellipse(x,y+s*0.1,s*0.4,s*0.3); ctx.fillStyle=HG.pile; ellipse(x,y+s*0.05,s*0.37,s*0.26);}
+    for(let i=0;i<5;i++){const hx=(hash(c*7+i,11)-0.5)*s*0.5,hy=(hash(c*5+i,23)-0.5)*s*0.4,ang=hash(c+i*3,31)*Math.PI*2,
+        col=HG.leaves[Math.floor(hash(c*3+i,47)*HG.leaves.length)];
+      if(blow>0){const u=blow,fly=u*u*LEAF_FLY*s,spin=u*(hash(i,c)-0.5)*6;
+        ctx.save(); ctx.globalAlpha*=1-u; almond(x+hx+dir[0]*fly+(hash(i,c*2)-0.5)*u*s*0.5,y+hy+dir[1]*fly-Math.sin(Math.PI*u)*s*0.3,s*0.34,ang+spin,col); ctx.restore();}
+      else almond(x+hx,y+hy,s*0.34,ang,col);}}
+  function drawCell(c,t){const s=L.cell,[x,y]=ctr(c),inset=s*0.04,r=s*0.18;
+    const shake=shiverOffset(t-bumpAt[c])*s*0.012;
+    const bl=blowAt[c],gone=t>=bl;
+    const shownOpen=(open[c]||woke[c]||(hasSolve&&B.hog[c]))&&gone;
+    // the ground: raked grass once the gust has passed, lawn under a pile
+    if(shownOpen){card(x-s/2+inset,y-s/2+inset,s-2*inset,s-2*inset,r,woke[c]?mixHex(HG.raked,C.bad,0.38):HG.raked,HG.rakedEdge,s*0.03);}
+    else {card(x-s/2+inset,y-s/2+inset,s-2*inset,s-2*inset,r,HG.lawn,HG.lawnDeep,s*0.05);
+      ctx.save(); ctx.globalAlpha*=0.5; ctx.strokeStyle=HG.lawnDeep; ctx.lineWidth=s*0.025;
+      for(let i=0;i<3;i++){const tx=x+(hash(c,i+70)-0.5)*s*0.7,ty=y+s*0.3; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx-s*0.03,ty-s*0.08); ctx.moveTo(tx,ty); ctx.lineTo(tx+s*0.03,ty-s*0.09); ctx.stroke();}
+      ctx.restore();}
+    // re-covered by an undo: the pile drops back in
+    const cov=t-coverAt[c],covering=!open[c]&&!woke[c]&&cov>=0&&cov<MO.POP_IN;
+    const dir=(()=>{const f=blowFrom[c]; if(f<0||f===c) return [hash(c,5)-0.5,-0.6]; const [fx,fy]=ctr(f),dx=x-fx,dy=y-fy,l=Math.hypot(dx,dy)||1; return [dx/l,dy/l];})();
+    if(!shownOpen){ctx.save(); ctx.translate(x+shake,y); if(covering){const [a,b]=popInScale(cov); ctx.scale(a,b);}
+      // a flagged pile is pressed down under its twig, so the pennant reads
+      if(flag[c]) ctx.globalAlpha*=0.45; pile(c,0,0,s,0,dir); ctx.restore();}
+    else if(!RM&&t-bl<LEAF_TIME){pile(c,x,y,s,clamp((t-bl)/LEAF_TIME),dir);}
+    // the number, popping in just after its leaves go
+    if(shownOpen&&open[c]&&B.num[c]>0){const [a,b]=popInScale(t-bl-NUM_LAG); if(t-bl-NUM_LAG>=0||RM){
+      ctx.save(); ctx.translate(x+shake,y+s*0.02); ctx.scale(a,b); text(String(B.num[c]),0,0,'700 '+Math.round(s*0.54)+'px '+FD,HG.nums[B.num[c]]); ctx.restore();}}
+    // a hedgehog: woken (curled, grumpy), or every sleeper on the solve
+    if(shownOpen&&B.hog[c]){const w=woke[c],since=t-(w?wokeAt[c]:bl);
+      const [a,b]=popInScale(since); ctx.save(); ctx.translate(x+(w?shiverOffset(since)*s*0.02:0),y+s*0.02);
+      let hop=0; if(!w&&hasSolve&&!RM){const u=(since-0.15)/0.4; if(u>0&&u<1) hop=-s*0.12*Math.sin(Math.PI*u);}
+      ctx.translate(0,hop); ctx.scale(a,b); hedgehog(s*0.34,w?'grump':(since<0.15?'sleep':'joy'),t); ctx.restore();}
+    // a flag (a woken hedgehog needs none; it is plainly there)
+    const fl=flag[c]&&!woke[c]&&!(hasSolve&&gone);
+    const out=t-unflagAt[c];
+    if(fl||(out>=0&&out<0.2&&!RM)){const [a,b]=fl?popInScale(t-flagAt[c]):[1-out/0.2,1-out/0.2];
+      ctx.save(); ctx.translate(x+shake,y-s*0.02); ctx.scale(a,b); flagMark(s*0.46,fl&&wrongShown[c]); ctx.restore();
+      if(fl&&pin[c]){ctx.fillStyle=C.sun; circle(x+s*0.3,y+s*0.3,s*0.06);}}}
+  function drawBoard(t){
+    const b=L.board,e=clamp((t-openedAt-MO.ENTER_DELAY)/MO.ENTER_POP),sc=RM?1:lerp(MO.ENTER_WIDE_FROM,1,backOut(e));
+    const ex=exitU(t);
+    ctx.save(); ctx.globalAlpha=dec(e*2)*(1-ex); if(ctx.globalAlpha<=0){ctx.restore(); return;}
+    ctx.translate(W/2,b.y+b.h/2); ctx.scale(sc,sc); ctx.translate(-W/2,-(b.y+b.h/2));
+    card(M,b.y,COL,b.h,40,C.parchment,C.line,10);
+    // the tally: hedgehogs still asleep and not yet flagged
+    let fl=0; for(let c=0;c<B.n;c++) if(flag[c]||woke[c]) fl++;
+    const left=B.k-fl;
+    const tally=hasSolve?'every hedgehog slept on'+(woken?' but '+woken:''):(left>=0?left+(left===1?' hedgehog asleep':' hedgehogs asleep'):(-left)+(left===-1?' flag too many':' flags too many'));
+    ctx.font='700 34px '+FD; const tw=ctx.measureText(tally).width,run=tw+74;
+    ctx.save(); ctx.translate(W/2-run/2,L.tally); ctx.save(); ctx.translate(28,4); hedgehog(26,'sleep',0); ctx.restore();
+    text(tally,74,2,'700 34px '+FD,left>=0?C.text:C.bad,'left'); ctx.restore();
+    for(let c=0;c<B.n;c++) drawCell(c,t);
+    // the toast: a refusal or a woken hedgehog is said over the field
+    if(toast.text&&t-toast.at<3.2){const u=dec((t-toast.at)/0.2),v=t-toast.at>2.8?1-(t-toast.at-2.8)/0.4:1;
+      ctx.save(); ctx.globalAlpha*=u*v; const lines=wrap(toast.text,760,'600 32px '+FB),h=40+lines.length*40,ty=b.y+b.h-h-30;
+      card(W/2-420,ty,840,h,28,C.surface,C.line,6); lines.forEach((ln,i)=>text(ln,W/2,ty+38+i*40,'600 32px '+FB,C.text)); ctx.restore();}
+    for(const rg of rings){const u=clamp((t-rg.t0)/MO.RING_TIME); if(u<=0) continue; ctx.save(); ctx.globalAlpha*=1-u; ctx.beginPath(); ctx.arc(rg.x,rg.y,L.cell*(0.3+0.4*u),0,Math.PI*2); stroke(C.sun,6); ctx.restore();}
+    ctx.restore();}
+
+  // ================= the chrome =================
+  const ent=(t,delay,fx,fy)=>{const u=dec((t-openedAt-delay)/0.35),a=dec((t-openedAt-delay)/0.25); return {x:fx*(1-backOut(u)),y:fy*(1-backOut(u)),a:a};};
+  const exitU=t=>!hasSolve||t<winAt?0:dec((t-winAt)/0.25);
+  function iconButton(x,y,name,k,t,opt){opt=opt||{}; const [sx,sy]=squash(btnPress[k]==null?-1e9:btnPress[k],t),size=110;
+    ctx.save(); ctx.translate(x+size/2,y+size/2); ctx.scale(sx,sy); ctx.translate(-size/2,-size/2);
+    card(0,0,size,size,28,C.surfaceHi,C.line,6); if(opt.disabled) ctx.globalAlpha*=0.4; icon(name,size/2,size/2-3,60,C.text);
+    if(opt.badge!=null){ctx.fillStyle=C.sun; circle(size-8,8,22); text(String(opt.badge),size-8,9,'700 26px '+FD,C.white);}
+    ctx.restore();}
+  const TITLE='Hedgehogs',MOTTO='LET SLEEPING ONES LIE';
+  const BAND_X=M+126,BAND_W=(W-M-378)-(M+126);
+  function drawTopBar(t){const e=ent(t,0,0,-80),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(e.x,e.y-60*sineIO(ex)); const y=L.top.y+35;
+    iconButton(M,y,'chevron','back',t); iconButton(W-M-110,y,'gear','gear',t);
+    iconButton(W-M-236,y,'bulb','hint',t,{badge:hintsLeft,disabled:hintsLeft<=0});
+    iconButton(W-M-362,y,'undo','undo',t,{disabled:!hist.length});
+    const cx0=BAND_X+BAND_W/2,by=L.top.y+98;
+    ctx.font='700 84px '+FD; let fs=84; while(ctx.measureText(TITLE).width>BAND_W&&fs>40){fs--; ctx.font='700 '+fs+'px '+FD;}
+    text(TITLE,cx0,by-14,'700 '+fs+'px '+FD,C.text);
+    const tw=ctx.measureText(TITLE).width,lx=cx0+tw*0.1,ly=by-14-fs*0.42;
+    ctx.beginPath(); ctx.moveTo(lx,ly); ctx.quadraticCurveTo(lx+4,ly-14,lx+2,ly-26); stroke(C.leaf,6);
+    leaf(lx+2,ly-23,fs*0.42,-2.7); leaf(lx+2,ly-26,fs*0.34,-0.5);
+    ctx.font='700 24px '+FB; let ms=24; while(ctx.measureText(MOTTO).width>BAND_W&&ms>14){ms--; ctx.font='700 '+ms+'px '+FB;}
+    text(MOTTO,cx0,by+34,'700 '+ms+'px '+FB,C.dim,'center','1.5px'); ctx.restore();}
+  function dayCardAt(y,a,right){ctx.save(); ctx.globalAlpha=a; card(M,y,COL,120,28,C.surface,C.line,6);
+    ctx.save(); ctx.translate(M+24+34,y+56); hedgehog(34,'sleep',0); ctx.restore();
+    text('Day 16',M+24+64+22,y+40,'600 40px '+FD,C.text,'left'); text('The Autumn Lawn',M+24+64+22,y+82,'500 30px '+FB,C.dim,'left');
+    text(right||HBANDS[diff].label.split(' · ')[0],W-M-24,y+60,'700 30px '+FB,C.text,'right');
+    ctx.restore();}
+  function drawDayCard(t){const e=ent(t,0.1,-120,0),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return; ctx.save(); ctx.translate(e.x,-60*sineIO(ex)); dayCardAt(L.day.y,a,null); ctx.restore();}
+  function rakeIcon(x,y,s,col){ctx.save(); ctx.translate(x,y); ctx.rotate(-0.5);
+    ctx.beginPath(); ctx.moveTo(0,s*0.5); ctx.lineTo(0,-s*0.2); stroke(HG.stick,s*0.1);
+    ctx.beginPath(); ctx.moveTo(-s*0.3,-s*0.2); ctx.lineTo(s*0.3,-s*0.2); stroke(col,s*0.09);
+    for(let i=0;i<5;i++){const tx=-s*0.28+i*s*0.14; ctx.beginPath(); ctx.moveTo(tx,-s*0.2); ctx.lineTo(tx,-s*0.42); stroke(col,s*0.06);} ctx.restore();}
+  function drawTray(t){const e=ent(t,0.25,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.tray.y,cw=300,ch=130,gap=40,x0=W/2-cw-gap/2;
+    for(let i=0;i<2;i++){const v=i?'flag':'rake',x=x0+i*(cw+gap),on=mode===v;
+      const [sx,sy]=squash(btnPress['chip'+i]||-1e9,t),lift=on?-10:0;
+      ctx.save(); ctx.translate(x+cw/2,y+ch/2+lift); ctx.scale(sx,sy); ctx.translate(-cw/2,-ch/2);
+      card(0,0,cw,ch,36,on?C.surface:C.surfaceHi,on?C.sun:C.line,on?10:6);
+      ctx.save(); ctx.translate(72,64); if(v==='rake') rakeIcon(0,0,84,HG.pileDeep); else flagMark(34,false); ctx.restore();
+      text(v==='rake'?'Rake':'Flag',132,62,'700 34px '+FD,C.text,'left'); ctx.restore();}
+    ctx.restore();}
+  function pill(x,y,pw,ph,label,iconName,k,t,primary){const [sx,sy]=squash(btnPress[k]||-1e9,t);
+    ctx.save(); ctx.translate(x+pw/2,y+ph/2); ctx.scale(sx,sy); ctx.translate(-pw/2,-ph/2);
+    card(0,0,pw,ph,32,primary?C.sun:C.surfaceHi,primary?C.sunDeep:C.line,primary?8:6);
+    const col=primary?C.white:C.text; ctx.font='700 40px '+FD; const tw=ctx.measureText(label).width,total2=tw+60+14,x0=pw/2-total2/2;
+    icon(iconName,x0+30,ph/2-3,52,col); text(label,x0+74,ph/2-4,'700 40px '+FD,col,'left'); ctx.restore();}
+  function drawActions(t){const e=ent(t,0.3,0,100),ex=exitU(t),a=e.a*(1-ex); if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(0,e.y+100*sineIO(ex));
+    const y=L.act.y,ph=120,pw=(COL-20)/2;
+    pill(M,y+5,pw,ph,'Reset','reset','reset',t,false); pill(M+pw+20,y+5,pw,ph,'Check','check','check',t,true); ctx.restore();}
+  function drawWin(t){if(!hasSolve||t<winAt) return;
+    const u1=dec((t-winAt-0.2)/0.4),a1=dec((t-winAt-0.2)/0.2);
+    if(a1>0){ctx.save(); ctx.globalAlpha=a1; ctx.translate(0,-160*(1-backOut(u1)));
+      leaf(72,430,110,-0.7); leaf(1008,430,110,-2.45);
+      star4(212,272,22,t*0.8,C.sun); star4(880,290,16,t*1.1,C.sun); star4(300,130,14,t*0.6,C.sunRay);
+      // three of the day's hedgehogs, up and hopping one after another
+      for(let i=0;i<3;i++){let hop=0; if(!RM){const m=(t+i*0.25)%2.4; if(m<0.4) hop=-18*Math.sin(Math.PI*m/0.4);}
+        ctx.save(); ctx.translate(W/2+(i-1)*190,280+hop); if(i===2) ctx.scale(-1,1); hedgehog(i===1?90:72,'joy',t); ctx.restore();}
+      text('Well done!',W/2,452,'700 96px '+FD,C.text);
+      text(woken?(woken===1?'One hedgehog woke up grumpy.':woken+' hedgehogs woke up grumpy.'):'Not one hedgehog woke.',W/2,534,'600 34px '+FB,C.dim);
+      // the day's lawn, small: every cell raked, every hedgehog where it slept
+      const cs=Math.min(640/B.cols,640/B.rows),bx=W/2-cs*B.cols/2,byy=620;
+      card(bx-20,byy-20,cs*B.cols+40,cs*B.rows+40,28,C.parchment,C.line,6);
+      for(let c=0;c<B.n;c++){const X=bx+cxx(c)*cs,Y=byy+cyy(c)*cs;
+        ctx.fillStyle=woke[c]?mixHex(HG.raked,C.bad,0.38):HG.raked; rr(X+2,Y+2,cs-4,cs-4,cs*0.18); ctx.fill();
+        if(B.hog[c]){ctx.save(); ctx.translate(X+cs/2,Y+cs/2); hedgehog(cs*0.32,woke[c]?'grump':'sleep',0); ctx.restore();}}
+      ctx.restore();}
+    const u2=dec((t-winAt-0.35)/0.35),a2=dec((t-winAt-0.35)/0.2);
+    if(a2>0){ctx.save(); ctx.globalAlpha=a2; ctx.translate(0,120*(1-backOut(u2)));
+      const secs=Math.max(0,Math.round(solvedAt-openedAt)),mm=Math.floor(secs/60),ss=String(secs%60).padStart(2,'0'),hu=HINTS-hintsLeft;
+      dayCardAt(L.stats.y,1,mm+':'+ss+' · '+woken+' woken · '+hu+(hu===1?' hint':' hints'));
+      const [sx,sy]=squash(btnPress.camp==null?-1e9:btnPress.camp,t); ctx.save(); ctx.translate(W/2,L.camp.y+65); ctx.scale(sx,sy); ctx.translate(-W/2,-(L.camp.y+65));
+      card(M,L.camp.y,COL,130,32,C.sun,C.sunDeep,8); text('Back to the cards',W/2,L.camp.y+61,'700 40px '+FD,C.white); icon('chevronR',W-M-60,L.camp.y+62,52,C.white); ctx.restore(); ctx.restore();}}
+
+  const capEl=document.getElementById('hh-caption');
+  function caption(){if(!capEl||!B) return;
+    const base=B.cols+'×'+B.rows+' · '+B.k+' hedgehogs · cell '+L0().cell.toFixed(1)+' · opening '+B.opened+' cells · '+B.proof.rounds+' logic rounds, '+B.proof.sub+' needing a subset, '+B.proof.cnt+' the count';
+    if(hasSolve){capEl.textContent='Solved: '+woken+' woken, '+(HINTS-hintsLeft)+' hints, '+checks+' checks, '+moves+' moves. '+base+'.'; return;}
+    capEl.textContent=base+' · '+B.attempts+(B.attempts===1?' deal':' deals')+(B.graded?'':' (ungraded)')+', '+genMs.toFixed(1)+' ms';}
+  const L0=()=>L||layout();
+
+  // ================= the frame =================
+  function frame(){const t=now(); L=layout();
+    for(let i=rings.length-1;i>=0;i--) if(t-rings[i].t0>=MO.RING_TIME) rings.splice(i,1);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    ctx.fillStyle=C.paper; ctx.fillRect(0,0,W,H);
+    drawBoard(t); drawTopBar(t); drawDayCard(t); drawTray(t); drawActions(t); drawWin(t);
+    requestAnimationFrame(frame);}
+
+  // ================= the finger =================
+  let pressTarget=null,pressAt=0,longFired=false,longTimer=null;
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  const inRect=(p,x,y,pw,ph)=>p[0]>=x&&p[0]<x+pw&&p[1]>=y&&p[1]<y+ph;
+  function hit(p,t){
+    if(hasSolve&&t-winAt>0.5) return inRect(p,M,L.camp.y,COL,130)?{kind:'camp'}:null;
+    const y=L.top.y+35;
+    if(inRect(p,M,y,110,110)) return {kind:'back'};
+    if(inRect(p,W-M-110,y,110,110)) return {kind:'gear'};
+    if(inRect(p,W-M-236,y,110,110)) return {kind:'hint'};
+    if(inRect(p,W-M-362,y,110,110)) return {kind:'undo'};
+    const x0=W/2-300-20; if(inRect(p,x0,L.tray.y,300,130)) return {kind:'chip0'}; if(inRect(p,x0+340,L.tray.y,300,130)) return {kind:'chip1'};
+    const pw=(COL-20)/2; if(inRect(p,M,L.act.y,pw,130)) return {kind:'reset'}; if(inRect(p,M+pw+20,L.act.y,pw,130)) return {kind:'check'};
+    const x=Math.floor((p[0]-L.gx)/L.cell),yy=Math.floor((p[1]-L.gy)/L.cell);
+    if(x>=0&&yy>=0&&x<B.cols&&yy<B.rows) return {kind:'cell',c:yy*B.cols+x};
+    return null;}
+  // the cell's action: the armed chip's, or the other one on a long press;
+  // a raked number always chords
+  function act(c,t,other){const m=other?(mode==='rake'?'flag':'rake'):mode;
+    if(open[c]){chord(c,t); return;} if(m==='rake') rake(c,t); else toggleFlag(c,t);}
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const t=now(),hh=hit(pt(e),t); pressTarget=hh; pressAt=t; longFired=false;
+    if(hh&&hh.kind!=='cell') btnPress[hh.kind]=t;
+    if(hh&&hh.kind==='cell'){clearTimeout(longTimer); longTimer=setTimeout(()=>{if(pressTarget===hh){longFired=true; act(hh.c,now(),true);}},LONG_PRESS*1000);}});
+  cv.addEventListener('pointerup',e=>{clearTimeout(longTimer); const t=now(),hh=hit(pt(e),t);
+    if(!hh||!pressTarget||hh.kind!==pressTarget.kind||longFired){pressTarget=null; return;} pressTarget=null;
+    if(hh.kind==='cell') act(hh.c,t,false);
+    else if(hh.kind==='chip0') mode='rake'; else if(hh.kind==='chip1') mode='flag';
+    else if(hh.kind==='hint') hint(t); else if(hh.kind==='undo') undo(t);
+    else if(hh.kind==='reset') reset(t); else if(hh.kind==='check') check(t);
+    else if(hh.kind==='gear') say('The rules sheet opens here.',t);
+    else if(hh.kind==='back') say('Back to the cards.',t);
+    else if(hh.kind==='camp'){build(diff,seed+1,t); showSeed();}});
+  cv.addEventListener('pointerleave',()=>{clearTimeout(longTimer); pressTarget=null;});
+
+  const btn=(id,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{fn(now());});};
+  btn('hh-hint',t=>hint(t)); btn('hh-undo',t=>undo(t)); btn('hh-reset',t=>reset(t)); btn('hh-check',t=>check(t));
+  btn('hh-new',t=>{build(diff,seed+1,t); showSeed();});
+  // a page control, not a board action: plays the logic out, one deduction a beat
+  btn('hh-solve',t=>{const step=()=>{if(hasSolve) return; const h0=hintsLeft; hintsLeft=99; hint(now()); hintsLeft=h0; if(!hasSolve) setTimeout(step,260);}; step();});
+  const seedEl=document.getElementById('hh-seedlab');
+  const showSeed=()=>{if(seedEl) seedEl.textContent='seed '+seed;};
+  btn('hh-seed-',t=>{build(diff,Math.max(1,seed-1),t); showSeed();});
+  btn('hh-seed+',t=>{build(diff,seed+1,t); showSeed();});
+  const diffEl=document.getElementById('hh-diff');
+  if(diffEl) diffEl.addEventListener('click',()=>{build((diff+1)%HBANDS.length,seed,now()); diffEl.textContent=HBANDS[diff].label;});
+  const rmEl=document.getElementById('hh-rm');
+  if(rmEl) rmEl.addEventListener('click',()=>{RM=!RM; rmEl.textContent='Reduce motion: '+(RM?'on':'off'); rmEl.classList.toggle('on',RM);});
+
+  // ---- the opening: ?walk=N plays N deductions, ?win=1 all of them,
+  // ?woke=1 rakes a hedgehog, ?flag=1 arms the flag, ?wrong=1 lays a wrong
+  // flag and checks -- for screenshots ----
+  (function(){
+    build(parseInt(Q.get('d')||'1')||0,parseInt(Q.get('seed')||'4')||4,0);
+    L=layout(); if(diffEl) diffEl.textContent=HBANDS[diff].label; showSeed();
+    const wk=Q.get('walk'),win1=Q.get('win')==='1';
+    if(wk!=null||win1||Q.get('woke')==='1'||Q.get('wrong')==='1'){openedAt=-12; blowAt.fill(-20);
+      const n=win1?9999:parseInt(wk||'0')||0;
+      for(let i=0;i<n&&!hasSolve;i++){const h0=hintsLeft; hintsLeft=99; hint(-10); hintsLeft=h0;}
+      pin.fill(0); hintsLeft=HINTS; rings.length=0;
+      for(let c=0;c<B.n;c++) if(blowAt[c]>-20) blowAt[c]=-20;
+      if(win1){solvedAt=-4; winAt=-3;}
+      if(Q.get('woke')==='1'){const c=[...Array(B.n).keys()].find(c=>B.hog[c]&&!flag[c]&&hNbrs(B,c).some(r=>open[r])); if(c!=null) rake(c,-0.3);}
+      if(Q.get('wrong')==='1'){const c=[...Array(B.n).keys()].find(c=>!B.hog[c]&&!open[c]&&hNbrs(B,c).some(r=>open[r])); if(c!=null){toggleFlag(c,-2); check(-0.3);}}
+      toast.at=Math.min(toast.at,-0.3);}
+    if(Q.get('flag')==='1') mode='flag';
     caption(); frame();
   })();
 })();
