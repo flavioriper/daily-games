@@ -163,6 +163,54 @@ const WORD_COLS := [Pal.LEAF, Pal.SUN, Pal.MOON_INK, Pal.BERRY, Pal.ACORN, Pal.F
 const WORD_TILES := [Pal.LEAF_TILE, Pal.SUN_TILE, Pal.MOON_TILE, Pal.BERRY_TILE, Pal.ACORN_TILE, Pal.FLOWER_TILE]
 const WORD_DEEPS := [Pal.LEAF_DEEP, Pal.SUN_DEEP, Pal.MOON_DEEP, Pal.BERRY_DEEP, Pal.ACORN_DEEP, Pal.FLOWER_DEEP]
 
+# --- the second polish (2026-09-25; the spec's section 16) ---
+## A wall is a bed sunk into the card rather than a slab standing on it: a
+## floor a shade under the stone with a shadow lip BED_LIP of a cell deep
+## along its top, the leaf pressed into the floor. A raised grey slab read as
+## one more tile with no letter on it.
+const BED := Color("e2d4b6")
+const BED_SHADE := Color("cdbb98")
+const BED_LIP := 0.07
+## A tile is a paper piece with a bevel: a lit rim round a crown PAPER_CROWN
+## toward SURFACE_HI, over a lip toward LINE. A found tile is the same piece
+## in its word's pale, its rim RIM_LIGHT toward SURFACE. BEVEL is in cells;
+## TONE is how far a cell's hash moves its face, so the field reads as laid
+## by hand.
+const PAPER_CROWN := 0.2
+const PAPER_LIP := 0.5
+const RIM_LIGHT := 0.35
+const BEVEL := 0.05
+const TONE := 0.03
+## A tile on the trail being traced is lit TRAIL_LIT toward the sun, and the
+## beam's head sits on the finger's tile as a sun disc HEAD_R of a cell over a
+## soft halo HALO_R of a cell, so the finger always shows where it is.
+const TRAIL_LIT := 0.32
+const HEAD_R := 0.19
+const HALO_R := 0.5
+const HALO_A := 0.4
+## As a lock's wave reaches a tile it hops LOCK_HOP of a cell as well as
+## bumping, so the colour arrives as a thing landing and not only a tint.
+const LOCK_HOP := -0.07
+## Once a word is whole, a light runs down its ribbon from its first letter to
+## its last: GLINT_LEN tiles long, GLINT_STEP a tile, SURFACE at GLINT_A over
+## GLINT_W of the ribbon's width.
+const GLINT_LEN := 1.4
+const GLINT_STEP := 0.045
+const GLINT_A := 0.6
+const GLINT_W := 0.42
+## The solve hop is also a light crossing the field: each tile shines SHINE
+## toward SURFACE at the top of its hop.
+const SHINE := 0.4
+## The slots grow into the scenery band until it is BAND_KEEP tall, by at most
+## SLOT_ROOM more than SLOTS_H, and a box grows with them up to SLOT_GROW of
+## its size -- so a short easy row is a row of real boxes and not a strip of
+## pips. An empty box is a bed like a wall, a lit one a bevelled piece in its
+## word's pale, and each piece pops into its bed as its letter arrives.
+const BAND_KEEP := 150.0
+const SLOT_ROOM := 80.0
+const SLOT_GROW := 1.45
+const SLOT_BEVEL := 3.0
+
 const TIP_CYCLE := 8.0
 const TIPS := [
 	"WT_TIP_DRAG",
@@ -182,6 +230,9 @@ var _trail: Array[Vector2i] = []
 ## When the beam last reached a new tile: the beam grows from the tile before
 ## it to the finger over BEAM_TIME from here.
 var _beam_at := -100.0
+## When the trail last grew a tile: the slot box that letter was spelt into
+## pops in from here. A retraction does not set it, so nothing pops backwards.
+var _grew_at := -100.0
 ## The tile under the finger, when it went down and when it came up (-1 while
 ## it is still down): what Motion.press_scale is handed. The trail's other
 ## tiles sit half-way into the same press.
@@ -251,6 +302,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
 	_trail = []
 	_beam_at = -100.0
+	_grew_at = -100.0
 	_press_cell = Vector2i(-1, -1)
 	_press_up = -1.0
 	_ghost = {}
@@ -349,15 +401,17 @@ func _layout() -> void:
 ## One group of boxes per word, shortest first, wrapped to as many lines as
 ## it takes -- one on easy, two on the others. Length is the whole clue.
 ## Returns [{"items": [{"i": int, "w": float}], "w": float}].
-func _slot_lines() -> Array:
+func _slot_lines(k := -1.0) -> Array:
+	if k < 0.0:
+		k = _slot_k()
 	var wide := size.x - 2.0 * INSET
 	var lines: Array = []
 	var cur: Array = []
 	var cur_w := 0.0
 	for i in _state.words.size():
 		var span := float((_state.words[i]["path"] as Array).size())
-		var group := span * SLOT_W + (span - 1.0) * SLOT_GAP
-		var add := (GROUP_GAP if not cur.is_empty() else 0.0) + group
+		var group := span * SLOT_W * k + (span - 1.0) * SLOT_GAP * k
+		var add := (GROUP_GAP * k if not cur.is_empty() else 0.0) + group
 		if not cur.is_empty() and cur_w + add > wide:
 			lines.append({"items": cur, "w": cur_w})
 			cur = []
@@ -368,6 +422,33 @@ func _slot_lines() -> Array:
 	if not cur.is_empty():
 		lines.append({"items": cur, "w": cur_w})
 	return lines
+
+## The height the slots may take: SLOTS_H, and as much of the scenery band as
+## leaves it BAND_KEEP tall, up to SLOT_ROOM more. The field never gives up a
+## pixel for this -- _cell_for still reads SLOTS_H -- so on a short screen the
+## slots are simply what they were.
+func _slots_room() -> float:
+	var band := size.y - INSET - (_slots_top() + SLOTS_H)
+	return SLOTS_H + clampf(band - BAND_KEEP, 0.0, SLOT_ROOM)
+
+## How much bigger than the mock's a box is: the largest scale up to
+## SLOT_GROW whose wrapped lines still fit the slots' room, in 0.05 steps.
+func _slot_k() -> float:
+	var room := _slots_room()
+	var k := SLOT_GROW
+	while k > 1.0:
+		var n := float(_slot_lines(k).size())
+		if n * SLOT_H * k + (n - 1.0) * LINE_GAP * k <= room:
+			return k
+		k -= 0.05
+	return 1.0
+
+## The top of the slots' block, centred in their room, for boxes of scale `k`
+## over `lines`.
+func _slots_block_top(lines: Array, k: float) -> float:
+	var n := float(lines.size())
+	var tall := n * SLOT_H * k + (n - 1.0) * LINE_GAP * k
+	return _slots_top() + (_slots_room() - tall) * 0.5
 
 # --- the frame ---
 
@@ -405,7 +486,8 @@ func _animating(t: float) -> bool:
 	# reset, with the bump and the slot letter's drop the last tile still owes.
 	for i in _state.words.size():
 		var span := float((_state.words[i]["path"] as Array).size())
-		var settled := span * WAVE_STEP + maxf(Motion.BUMP_TIME, Motion.DROP_TIME)
+		var settled := span * WAVE_STEP + maxf(maxf(Motion.BUMP_TIME, Motion.DROP_TIME),
+			maxf(Motion.HOP_TIME, _glint_length(i)))
 		if _found_at.has(i) and t - float(_found_at[i]) < settled:
 			return true
 		if _lifted_at.has(i) and t - float(_lifted_at[i]) < span * WAVE_STEP:
@@ -413,6 +495,8 @@ func _animating(t: float) -> bool:
 	# The live beam growing to the finger, and the tile under it pressing or
 	# springing back.
 	if not _trail.is_empty() and t - _beam_at < BEAM_TIME:
+		return true
+	if not _trail.is_empty() and t - _grew_at < Motion.POP_IN:
 		return true
 	if _press_cell.x >= 0 and (_press_up < 0.0 or t - _press_up < Motion.RELEASE_TIME):
 		return true
@@ -536,29 +620,75 @@ func _slab(b, at: Vector2, box: Vector2, r: float, edge: float, face: Color, rim
 	b.fan(xf * Face.Builder.round_rect(at, box, r), rim)
 	b.fan(xf * Face.Builder.round_rect(at, Vector2(box.x, box.y - edge), r), face)
 
-## A wall: the mock's grey slab in the family's warm grey, with a leaf
-## pressed into it. The cool grey the mock draws goes muddy on cream, which
-## is Hidden Word's finding.
+## A bevelled piece: the lip in `lip`, the face over it in `rim`, and the
+## crown BEVEL down and in from the rim in `face`, so the piece is lit along
+## its top and sides. `bevel` is in pixels.
+func _piece(b, at: Vector2, box: Vector2, r: float, edge: float, bevel: float,
+		face: Color, rim: Color, lip: Color, xf := Transform2D.IDENTITY) -> void:
+	b.fan(xf * Face.Builder.round_rect(at, box, r), lip)
+	b.fan(xf * Face.Builder.round_rect(at, Vector2(box.x, box.y - edge), r), rim)
+	b.fan(xf * Face.Builder.round_rect(at + Vector2(bevel * 0.7, bevel),
+		Vector2(box.x - bevel * 1.4, box.y - edge - bevel), maxf(r - bevel * 0.5, 0.0)), face)
+
+## A bed sunk into the card: its shadow lip along the top in `shade`, the
+## floor over it `lip` pixels down.
+func _bed(b, at: Vector2, box: Vector2, r: float, lip: float, floor_col: Color, shade: Color,
+		xf := Transform2D.IDENTITY) -> void:
+	b.fan(xf * Face.Builder.round_rect(at, box, r), shade)
+	b.fan(xf * Face.Builder.round_rect(at + Vector2(0.0, lip), Vector2(box.x, box.y - lip), r),
+		floor_col)
+
+## A wall: a bed sunk into the card in the family's warm stone, with a leaf
+## pressed into its floor. It is a hole in the field and not a blank tile.
 func _wall(b, cell: Vector2i) -> void:
 	var s := _cell()
 	var at := _corner(cell)
-	_slab(b, at, Vector2(s, s), s * RADIUS, WALL_EDGE,
-		Pal.STONE_GIVEN, Pal.STONE_GIVEN.lerp(Pal.TEXT, WALL_RIM))
-	_leaf(b, at + WALL_LEAF_AT * s, s * WALL_LEAF, WALL_LEAF_ANGLE,
-		Color(Pal.TEXT, WALL_LEAF_INK))
+	_bed(b, at, Vector2(s, s), s * RADIUS, s * BED_LIP, BED, BED_SHADE)
+	_leaf(b, at + WALL_LEAF_AT * s + Vector2(0.0, s * BED_LIP * 0.5), s * WALL_LEAF,
+		WALL_LEAF_ANGLE, Color(Pal.TEXT, WALL_LEAF_INK))
 
-## One open tile: plain SURFACE with a rim a sixth of the way to ink, or its
-## word's pale face once the wave has reached it, wearing whatever it is
-## wearing this frame.
+## A cell's own tone, -1 to 1, off its hash.
+static func _tone(cell: Vector2i) -> float:
+	return _hash(cell.x * 16 + cell.y, 3) * 2.0 - 1.0
+
+static func _toned(c: Color, tone: float) -> Color:
+	return c.lightened(tone * TONE) if tone > 0.0 else c.darkened(-tone * TONE)
+
+## One open tile: a paper piece toned off its cell, lit toward the sun while
+## it is on the trail being traced, or its word's pale once the wave has
+## reached it; shining while the solve hop crosses it, and wearing whatever
+## else it is wearing this frame.
 func _tile(b, cell: Vector2i, t: float) -> void:
 	var s := _cell()
-	var face: Color = Pal.SURFACE
-	var rim: Color = Pal.SURFACE.lerp(Pal.TEXT, TILE_RIM)
+	var tone := _tone(cell)
+	var face: Color = _toned(Pal.SURFACE.lerp(Pal.SURFACE_HI, PAPER_CROWN), tone)
+	var rim: Color = Pal.SURFACE
+	var lip: Color = Pal.SURFACE_HI.lerp(Pal.LINE, PAPER_LIP)
 	var i := _lit_word(cell, t)
 	if i >= 0:
-		face = WORD_TILES[i % WORD_TILES.size()]
-		rim = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], FOUND_RIM)
-	_slab(b, _corner(cell), Vector2(s, s), s * RADIUS, TILE_EDGE, face, rim, _tile_xf(cell, t))
+		face = _toned(WORD_TILES[i % WORD_TILES.size()], tone)
+		rim = face.lerp(Pal.SURFACE, RIM_LIGHT)
+		lip = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], FOUND_RIM)
+	elif _trail.has(cell):
+		face = face.lerp(Pal.SUN_RAY, TRAIL_LIT)
+		rim = rim.lerp(Pal.SUN_RAY, TRAIL_LIT * 0.5)
+		lip = lip.lerp(Pal.SUN, TRAIL_LIT)
+	var shine := _solve_shine(cell, t)
+	if shine > 0.0:
+		face = face.lerp(Pal.SURFACE, shine * SHINE)
+		rim = rim.lerp(Pal.SURFACE, shine * SHINE)
+	_piece(b, _corner(cell), Vector2(s, s), s * RADIUS, TILE_EDGE, s * BEVEL,
+		face, rim, lip, _tile_xf(cell, t))
+
+## How far into the solve hop `cell` is, as the light's level: nothing either
+## side of its hop, all of it at the top.
+func _solve_shine(cell: Vector2i, t: float) -> float:
+	if _solved_at < 0.0 or Motion.reduce:
+		return 0.0
+	var since := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(cell.x + cell.y, _solve_per())
+	if since <= 0.0 or since >= Motion.SOLVE_TIME:
+		return 0.0
+	return sin(PI * since / Motion.SOLVE_TIME)
 
 ## The word whose colour this cell is wearing, or -1: the one that owns it,
 ## once its wave has reached this far. A lock's wave runs from the word's
@@ -592,18 +722,19 @@ func _front(i: int, t: float) -> float:
 ## off core/motion.gd handed the seconds since its moment began.
 func _tile_xf(cell: Vector2i, t: float) -> Transform2D:
 	var grow := 1.0
+	var lift := 0.0
 	var i := _lit_word(cell, t)
 	if i >= 0 and _found_at.has(i):
 		var idx := (_state.words[i]["path"] as Array).find(cell)
 		var wave := float(_found_at[i]) + float(idx) * _wave_step()
 		grow *= Motion.bump_scale(t - wave)
+		lift += Motion.hop_lift(t - wave, LOCK_HOP * _cell())
 	if cell == _press_cell:
 		grow *= Motion.press_scale(t - _press_at, -1.0 if _press_up < 0.0 else t - _press_up)
 	elif not Motion.reduce and _trail.has(cell):
 		grow *= lerpf(1.0, Motion.PRESS_SCALE, 0.5)
-	var lift := 0.0
 	if _solved_at >= 0.0:
-		lift = Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
+		lift += Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
 			- Motion.stagger(cell.x + cell.y, _solve_per()), Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 	var mid := _centre(cell)
 	return Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow) + Vector2(0.0, lift))
@@ -624,6 +755,7 @@ func _ribbons(b, t: float) -> void:
 		# from tile to tile.
 		_ribbon(b, _state.words[i]["path"], s * RIBBON_W,
 			Color(WORD_COLS[i % WORD_COLS.size()], RIBBON_ALPHA), maxf(front - 1.0, 0.0))
+		_glint(b, i, t)
 	if not _ghost.is_empty():
 		var u := clampf((t - float(_ghost["at"])) / BEAM_TIME, 0.0, 1.0)
 		if u >= 1.0 or Motion.reduce:
@@ -643,6 +775,51 @@ func _ribbons(b, t: float) -> void:
 			reach = minf(span, maxf(span - 1.0, 0.0)
 				+ clampf((t - _beam_at) / BEAM_TIME, 0.0, 1.0))
 		_ribbon(b, _trail, s * BEAM_W, Color(Pal.SUN_RAY, BEAM_ALPHA), reach)
+		# The head: a sun disc over a soft halo, wherever the beam has got to.
+		var pts := PackedVector2Array()
+		for cell: Vector2i in _trail:
+			pts.append(_centre(cell))
+		var head := _upto(pts, reach)[-1]
+		Scenery.soft_disc(b, head, s * HALO_R, s * HALO_R, Color(Pal.SUN_RAY, HALO_A))
+		b.disc(head, s * HEAD_R, Color(Pal.SUN, BEAM_ALPHA))
+
+## The light running down word `i`'s ribbon once its wave has finished: a
+## short, pale stroke inside the ribbon, head first from the first letter to
+## the last. Nothing under reduce-motion or on a word with no moment.
+func _glint(b, i: int, t: float) -> void:
+	if Motion.reduce or not _found_at.has(i) or not bool(_state.words[i]["found"]):
+		return
+	var path: Array = _state.words[i]["path"]
+	var span := float(path.size() - 1)
+	var since := t - float(_found_at[i]) - float(path.size()) * WAVE_STEP
+	if since <= 0.0 or span <= 0.0:
+		return
+	var lead := since / GLINT_STEP
+	var from := clampf(lead - GLINT_LEN, 0.0, span)
+	var to := clampf(lead, 0.0, span)
+	if to - from <= 0.01:
+		return
+	var pts := PackedVector2Array()
+	for cell: Vector2i in path:
+		pts.append(_centre(cell))
+	var fade := 1.0 - clampf((lead - span) / GLINT_LEN, 0.0, 1.0)
+	b.stroke(_between(pts, from, to), _cell() * RIBBON_W * GLINT_W,
+		Color(Pal.SURFACE, GLINT_A * fade))
+
+## How long word `i`'s glint runs after its wave, head in to tail out.
+func _glint_length(i: int) -> float:
+	return (float((_state.words[i]["path"] as Array).size() - 1) + GLINT_LEN) * GLINT_STEP
+
+## The part of `pts` from `a` segments along to `b` segments along.
+static func _between(pts: PackedVector2Array, a: float, b: float) -> PackedVector2Array:
+	var upto := _upto(pts, b)
+	var whole := clampi(int(floor(a)), 0, upto.size() - 1)
+	var out := PackedVector2Array()
+	if whole + 1 < upto.size():
+		out.append(upto[whole].lerp(upto[whole + 1], a - float(whole)))
+	for k in range(whole + 1, upto.size()):
+		out.append(upto[k])
+	return out
 
 ## One ribbon along `cells`, `reach` segments of it (all of them by default).
 func _ribbon(b, cells: Array, width: float, colour: Color, reach := -1.0) -> void:
@@ -657,7 +834,20 @@ func _ribbon(b, cells: Array, width: float, colour: Color, reach := -1.0) -> voi
 		if pts.size() == 1:
 			b.disc(pts[0], width * 0.5, colour)
 		return
-	b.stroke(_filleted(pts, width * 0.5), width, colour)
+	var line := _filleted(pts, width * 0.5)
+	b.stroke(line, width, colour, false, false)
+	_cap(b, line[0], line[0] - line[1], width * 0.5, colour)
+	_cap(b, line[-1], line[-1] - line[-2], width * 0.5, colour)
+
+## A round end on a flat-ended stroke: the half disc facing `out`. A whole
+## disc laid over the stroke's end, which is what the builder's own caps are,
+## doubles the alpha where the two overlap, and a half-alpha ribbon wore a
+## darker crescent at each end.
+static func _cap(b, at: Vector2, out: Vector2, r: float, colour: Color) -> void:
+	if out.length_squared() <= 0.0:
+		return
+	var a := out.angle()
+	b.fan(Face.Builder.arc_points(at, r, a - PI * 0.5, a + PI * 0.5), colour)
 
 ## The first `reach` segments of `pts`, the last one cut part-way.
 static func _upto(pts: PackedVector2Array, reach: float) -> PackedVector2Array:
@@ -786,12 +976,14 @@ func _preview_slot() -> int:
 ## The groups drop in after the field, ENTER_STAGGER apart -- a group and not
 ## a box, because six boxes 0.03 apart is one box.
 func _build_slots(t: float) -> ArrayMesh:
-	var lines := _slot_lines()
+	var q := _slot_k()
+	var lines := _slot_lines(q)
 	if lines.is_empty():
 		return null
 	var b := Face.Builder.new()
-	var tall := float(lines.size()) * SLOT_H + float(lines.size() - 1) * LINE_GAP
-	var y := _slots_top() + (SLOTS_H - tall) * 0.5
+	var box := Vector2(SLOT_W, SLOT_H) * q
+	var r := SLOT_RADIUS * q
+	var y := _slots_block_top(lines, q)
 	var group := 0
 	var preview := _preview_slot()
 	for line in lines:
@@ -801,28 +993,47 @@ func _build_slots(t: float) -> ArrayMesh:
 			var since := _slot_since(group, t)
 			var seen := Motion.appear_level(since)
 			if seen > 0.0:
-				var xf := Transform2D(0.0, Vector2(0.0, -Motion.drop_in_lift(since)))
+				var drop := Transform2D(0.0, Vector2(0.0, -Motion.drop_in_lift(since)))
 				var front := _front(i, t)
 				var span: int = (_state.words[i]["path"] as Array).size()
+				var deep: Color = WORD_DEEPS[i % WORD_DEEPS.size()]
 				for k in span:
-					var lit := float(k) < front
-					var face: Color = WORD_TILES[i % WORD_TILES.size()] if lit else Pal.SURFACE_HI
-					var rim: Color = face.lerp(WORD_DEEPS[i % WORD_DEEPS.size()], SLOT_RIM) if lit else Pal.LINE
-					# The trail being traced, spelt into the slot it fits: its
-					# boxes take the beam's own sun, the rest of that word's
-					# boxes a rim of it, so the length still to go reads.
-					if i == preview and not lit:
-						if k < _trail.size():
-							face = Pal.SURFACE_HI.lerp(Pal.SUN_RAY, PREVIEW_FILL)
-							rim = Pal.SUN
-						else:
-							rim = Pal.SUN_RAY
-					_slab(b, Vector2(x + float(k) * (SLOT_W + SLOT_GAP), y),
-						Vector2(SLOT_W, SLOT_H), SLOT_RADIUS, SLOT_EDGE,
-						Color(face, face.a * seen), Color(rim, rim.a * seen), xf)
-			x += float(item["w"]) + GROUP_GAP
+					var at := Vector2(x + float(k) * (SLOT_W + SLOT_GAP) * q, y)
+					var rest := BED.lerp(Pal.SUN_RAY, PREVIEW_FILL * 0.4) \
+						if i == preview and k >= _trail.size() else BED
+					_bed(b, at, box, r, SLOT_EDGE * q, Color(rest, seen),
+						Color(BED_SHADE, seen), drop)
+					# A lit box is a piece in its word's pale popping into its
+					# bed as the wave brings its letter; the trail being traced,
+					# spelt into the slot it fits, stands on paper lit toward
+					# the sun, each piece popping in as the finger reaches it.
+					var face := Color(0.0, 0.0, 0.0, 0.0)
+					var rim: Color
+					var lip: Color
+					var moment := -100.0
+					if float(k) < front:
+						face = WORD_TILES[i % WORD_TILES.size()]
+						rim = face.lerp(Pal.SURFACE, RIM_LIGHT)
+						lip = face.lerp(deep, SLOT_RIM)
+						moment = _slot_wave(i, k, t)
+					elif i == preview and k < _trail.size():
+						face = Pal.SURFACE.lerp(Pal.SUN_RAY, PREVIEW_FILL)
+						rim = Pal.SURFACE
+						lip = Pal.SUN
+						if k == _trail.size() - 1:
+							moment = _grew_at
+					if face.a <= 0.0:
+						continue
+					var pop := Motion.pop_in_scale(t - moment)
+					if pop.x <= 0.0:
+						continue
+					var mid := at + box * 0.5
+					var xf := drop * Transform2D(0.0, pop, 0.0, mid - mid * pop)
+					_piece(b, at, box, r, SLOT_EDGE * q, SLOT_BEVEL * q,
+						Color(face, seen), Color(rim, seen), Color(lip, seen), xf)
+			x += float(item["w"]) + GROUP_GAP * q
 			group += 1
-		y += SLOT_H + LINE_GAP
+		y += (SLOT_H + LINE_GAP) * q
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## The seconds since slot group `index` was due to drop in: after the field's
@@ -856,14 +1067,17 @@ func _draw_letters(t: float, grow: float, mid: Vector2, seen: float) -> void:
 ## with it; the letter's arrival is a third of the family's drop over it, so
 ## it settles into a box that has already landed.
 func _draw_slot_letters(t: float) -> void:
-	var lines := _slot_lines()
+	var q := _slot_k()
+	var lines := _slot_lines(q)
 	if lines.is_empty():
 		return
 	var font: Font = CozyTheme.display(700)
-	var tall := float(lines.size()) * SLOT_H + float(lines.size() - 1) * LINE_GAP
-	var y := _slots_top() + (SLOTS_H - tall) * 0.5
+	var px := int(round(SLOT_FONT * q))
+	var y := _slots_block_top(lines, q)
 	var group := 0
 	var preview := _preview_slot()
+	# The glyph sits on the piece's crown, which is the edge's height up.
+	var seat := (SLOT_H - SLOT_EDGE) * 0.5 * q
 	for line in lines:
 		var x := size.x * 0.5 - float(line["w"]) * 0.5
 		for item in line["items"]:
@@ -874,10 +1088,15 @@ func _draw_slot_letters(t: float) -> void:
 			if seen > 0.0 and i == preview:
 				var lift := Motion.drop_in_lift(since)
 				for k in _trail.size():
-					_glyph(font, SLOT_FONT, String(_state.letters[_trail[k]]),
+					var grew := Motion.pop_in_scale(t - (_grew_at if k == _trail.size() - 1 else -100.0))
+					# A glyph smaller than this is not there yet, and a font
+					# size of nought is an engine error.
+					if px * grew.y < 4.0:
+						continue
+					_glyph(font, int(round(px * grew.y)), String(_state.letters[_trail[k]]),
 						Color(Pal.TEXT, seen),
-						Vector2(x + float(k) * (SLOT_W + SLOT_GAP) + SLOT_W * 0.5,
-							y + SLOT_H * 0.5 - lift))
+						Vector2(x + (float(k) * (SLOT_W + SLOT_GAP) + SLOT_W * 0.5) * q,
+							y + seat - lift))
 			if seen > 0.0 and front > 0.0:
 				var word: String = _state.words[i]["word"]
 				var ink: Color = WORD_DEEPS[i % WORD_DEEPS.size()]
@@ -889,14 +1108,14 @@ func _draw_slot_letters(t: float) -> void:
 					# A quarter of its own box, through the recipe's own
 					# height: the family's 40 is most of a 52-tall slot, and
 					# a letter would arrive from the line above.
-					var fell := Motion.drop_in_lift(t - wave, SLOT_H * 0.25)
-					_glyph(font, SLOT_FONT, word.substr(k, 1),
+					var fell := Motion.drop_in_lift(t - wave, SLOT_H * 0.25 * q)
+					_glyph(font, px, word.substr(k, 1),
 						Color(ink, ink.a * seen * Motion.appear_level(t - wave)),
-						Vector2(x + float(k) * (SLOT_W + SLOT_GAP) + SLOT_W * 0.5,
-							y + SLOT_H * 0.5 - box_lift - fell))
-			x += float(item["w"]) + GROUP_GAP
+						Vector2(x + (float(k) * (SLOT_W + SLOT_GAP) + SLOT_W * 0.5) * q,
+							y + seat - box_lift - fell))
+			x += float(item["w"]) + GROUP_GAP * q
 			group += 1
-		y += SLOT_H + LINE_GAP
+		y += (SLOT_H + LINE_GAP) * q
 
 ## When word `i`'s wave reached its k-th tile, and so when that letter is due
 ## in its box. A word being lifted has no moment to drop from -- it is going,
@@ -917,7 +1136,7 @@ func _slot_wave(i: int, k: int, t: float) -> float:
 ## draw call. It never moves -- only the field takes the entrance -- so it is
 ## built once per layout and drawn with no transform.
 func _build_band() -> ArrayMesh:
-	var top := _slots_top() + SLOTS_H
+	var top := _slots_top() + _slots_room()
 	var tall := size.y - INSET - top
 	if _cell() <= 0.0 or tall <= 0.0:
 		return null
@@ -1027,7 +1246,7 @@ func _gui_input(event: InputEvent) -> void:
 		# trail mid-drag and leave the finger holding nothing.
 		if at >= 0 and at == _trail.size() - 2:
 			_trail.resize(_trail.size() - 1)          # retracting takes the beam back
-			_take(_trail[_trail.size() - 1])
+			_take(_trail[_trail.size() - 1], false)
 			_tick()
 		elif at < 0 and _state.can_trace(cell) and _adjacent(_trail[_trail.size() - 1], cell):
 			_trail.append(cell)
@@ -1040,13 +1259,15 @@ func _gui_input(event: InputEvent) -> void:
 ## the tile under it starts sinking. The tile it left springs back to the
 ## trail's own shallower press, which is the mock's behaviour and the reason
 ## a single pressed cell is enough here.
-func _take(cell: Vector2i) -> void:
+func _take(cell: Vector2i, grew := true) -> void:
 	var t := _now()
 	_beam_at = t
+	if grew:
+		_grew_at = t
 	_press_cell = cell
 	_press_at = t
 	_press_up = -1.0
-	_busy_for(maxf(BEAM_TIME, Motion.PRESS_TIME))
+	_busy_for(maxf(maxf(BEAM_TIME, Motion.PRESS_TIME), Motion.POP_IN))
 
 ## A tile taken or given back: one soft tick that climbs with the trail's
 ## length (Shikaku's count tick), so a word's size can be heard as it grows
@@ -1266,6 +1487,7 @@ func restore_completed_board() -> void:
 	_trail = []
 	_ghost = {}
 	_beam_at = -100.0
+	_grew_at = -100.0
 	_press_cell = Vector2i(-1, -1)
 	_press_up = -1.0
 	_solved_at = -1.0

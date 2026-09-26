@@ -656,3 +656,63 @@ beam's sun with the letters in ink and the rest of that word's boxes rimmed
 in it, stepping to the next size up as the trail outgrows each. It tells no
 more than the lengths already do: a wrong trail is spelt the same way, and
 the preview goes when the finger lifts.
+
+## 16. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of the other flat boards the same evening,
+and this amendment is the record. The rules, the layout of the field, the
+colours of the words, the wave's timing, the hint and the sprout's lines are
+unchanged.
+
+**A wall is a bed sunk into the card** (`BED`, `BED_SHADE`, `BED_LIP`), with
+its leaf pressed into the floor. It used to be a raised grey slab, which
+read as one more tile with no letter on it; now the field reads as tiles
+standing round holes.
+
+**A tile is a bevelled paper piece.** It has a lit rim round a crown
+`PAPER_CROWN` toward `SURFACE_HI`, and each cell's face moves up to `TONE`
+off its hash. `PAPER_CROWN` was 0.45 first, and at that the whole field went
+beige. A found tile is the same piece in its word's pale, its rim
+`RIM_LIGHT` toward `SURFACE`.
+
+**The trail being traced is lit and has a head.** Its tiles lean
+`TRAIL_LIT` toward the sun as well as sitting in their half-press, and a sun
+disc (`HEAD_R`) over a soft halo (`HALO_R`) sits wherever the beam has got
+to. So the finger's position shows even under the finger.
+
+**A lock lands.** As the wave reaches a tile, the tile hops `LOCK_HOP` of a
+cell as well as bumping. Once the word is whole, a light runs down its
+ribbon from the first letter to the last (`GLINT_*`). The glint is this
+board's signature: the trail catching the light.
+
+**The ribbon's ends are half discs.** The builder's own round caps are whole
+discs laid over the stroke, so a half-alpha ribbon wore a darker crescent at
+each end. `_cap` draws only the outward half.
+
+**The slots grow into the band.** They may take the scenery band down to
+`BAND_KEEP` tall, at most `SLOT_ROOM` more than `SLOTS_H`, and the boxes
+scale up to `SLOT_GROW` (`_slot_k`, 0.05 steps) while their wrapped lines
+still fit. The field never gives up a pixel for this, because `_cell_for`
+still reads `SLOTS_H`. On the medium board at 1080x1920 the room is 230 and
+the boxes come out 1.4 times the mock's. An empty box is a bed like a wall.
+A lit box is a bevelled piece in its word's pale, popping into its bed as the
+wave brings its letter. The preview's pieces are paper lit toward the sun,
+each popping in as the finger reaches its tile (`_grew_at`; a retraction
+does not pop).
+
+**The solve hop is also a light.** Each tile shines `SHINE` toward
+`SURFACE` at the top of its hop.
+
+Under reduce motion nothing moves: no hop, no glint, no pop, no shine.
+
+The harness gained `-- wordtrail solve` (section 15.5's open item). It locks
+every word but the first straight on the state, and the one drag it makes
+wins the board.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- wordtrail`: **62** draw calls, the same as before
+the pass on the same build, and idle 2.45-2.49 ms against 2.21 before.
+`solve` reads 80. Under reduce motion it is 58, and the pair 1.5 s apart is
+pixel-identical. ANGLE matches the default driver to a max channel delta of
+1/255 on the same 58 calls. Suite 122583/0.

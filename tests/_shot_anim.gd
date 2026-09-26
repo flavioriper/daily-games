@@ -971,6 +971,13 @@ func _drag_wordtrail() -> void:
 	var cells: Array = _puzzle._state.words[0]["path"]
 	if cells.size() < 2:
 		return
+	if _mode == "solve":
+		# Every other word already locked (no moment, so each is simply
+		# whole), so the one drag the strip watches wins the board and the
+		# frames after it catch the solve hop and its light.
+		for i in range(1, _puzzle._state.words.size()):
+			_puzzle._state.trace(_puzzle._state.words[i]["path"])
+		_puzzle._refresh()
 	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
 	_trail_cells = []
 	for cell: Vector2i in cells:
