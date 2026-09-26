@@ -648,6 +648,33 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "SB_LVL_3"},
 		],
 	},
+	{
+		"id": "knight",
+		"kind": "puzzle",
+		"title": "Knight",
+		"blurb": "KN_BLURB",
+		"short": "KN_SHORT",
+		"motto": "KN_MOTTO",
+		"footer": "Hop · Dodge · Take",
+		# Nothing is picked up, and nothing wrong can sit on the board: a
+		# catch is undone as it happens. So no tray and no Check; Undo, Reset
+		# and Hint ride in the top bar and the tip card stands alone --
+		# Pinwheel's shape.
+		"script": "res://puzzles/knight2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each board size (knight_gen.gd's BANDS) is its
+		# own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "KN_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "KN_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "KN_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "KN_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

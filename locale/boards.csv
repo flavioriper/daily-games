@@ -544,3 +544,27 @@ SB_LVL_0,"5 × 6 floor, 3 pieces","Piso 5 × 6, 3 peças","Suelo 5 × 6, 3 pieza
 SB_LVL_1,"6 × 7 floor, 4–5 pieces","Piso 6 × 7, 4–5 peças","Suelo 6 × 7, 4–5 piezas"
 SB_LVL_2,"7 × 8 floor, 6 pieces","Piso 7 × 8, 6 peças","Suelo 7 × 8, 6 piezas"
 SB_LVL_3,"7 × 8 floor, 7 pieces, crossing rails","Piso 7 × 8, 7 peças, trilhos cruzados","Suelo 7 × 8, 7 piezas, rieles cruzados"
+KN_TIP_TAP,Tap a dot. Your knight hops in an L.,Toque num ponto. Seu cavalo salta em L.,Toca un punto. Tu caballo salta en L.
+KN_TIP_GOAL,Take the rose king to win.,Capture o rei rosa para vencer.,Captura al rey rosa para ganar.
+KN_TIP_ANSWER,"Every rose knight answers your move, hopping toward you.","Cada cavalo rosa responde ao seu lance, saltando na sua direção.","Cada caballo rosa responde a tu jugada, saltando hacia ti."
+KN_TIP_CORNERS,Never land on a square with rose corners. A rose knight reaches it.,Nunca pare numa casa com cantos rosa. Um cavalo rosa alcança ela.,Nunca caigas en una casilla con esquinas rosa. Un caballo rosa la alcanza.
+KN_TIP_TAKE,Land on a rose knight and it is taken.,Pare sobre um cavalo rosa e ele é capturado.,Cae sobre un caballo rosa y queda capturado.
+KN_CAUGHT,Caught! That square was in a rose knight's reach. One move back.,Pego! Aquela casa estava ao alcance de um cavalo rosa. Um lance atrás.,¡Atrapado! Esa casilla estaba al alcance de un caballo rosa. Una jugada atrás.
+KN_TAKEN,Taken. One fewer to answer you.,Capturado. Um a menos para responder.,Capturado. Uno menos para responderte.
+KN_HINT,That is the next move of the shortest way.,Esse é o próximo lance do caminho mais curto.,Esa es la siguiente jugada del camino más corto.
+KN_STUCK,"No way through from here. Undo, or start again.","Não há saída daqui. Desfaça, ou comece de novo.","No hay salida desde aquí. Deshaz, o empieza de nuevo."
+KN_L,"A knight moves in an L: two one way, one across.","O cavalo anda em L: duas casas para um lado, uma para o outro.","El caballo se mueve en L: dos casillas hacia un lado, una hacia el otro."
+KN_NO_MOVES,"No moves left. Undo one, or start again.","Sem lances restantes. Desfaça um, ou comece de novo.","No quedan jugadas. Deshaz una, o empieza de nuevo."
+KN_LAST_MOVE,"That was the last move. Undo one, or start again.","Esse foi o último lance. Desfaça um, ou comece de novo.","Esa fue la última jugada. Deshaz una, o empieza de nuevo."
+KN_UNDONE,One move taken back.,Um lance desfeito.,Una jugada deshecha.
+KN_WIN,Check and mate. The rose king is yours.,Xeque-mate. O rei rosa é seu.,Jaque mate. El rey rosa es tuyo.
+KN_MOVES_LEFT,%d moves left,Restam %d lances,Quedan %d jugadas
+KN_ONE_MOVE_LEFT,1 move left,Resta 1 lance,Queda 1 jugada
+KN_RULES,"Your cream knight hops in an L, two squares one way and one across, as in chess. Take the rose king to win: land on his square. The king never moves, but after every hop of yours each rose knight answers: it takes you if it can reach you, and otherwise hops to the square nearest you. Rose corners mark every square a rose knight reaches right now; land on one and you are caught, and the board goes back one move. Land on a rose knight and it is taken.","Seu cavalo creme salta em L, duas casas para um lado e uma para o outro, como no xadrez. Capture o rei rosa para vencer: pare na casa dele. O rei nunca se move, mas depois de cada salto seu cada cavalo rosa responde: captura você se alcançar, senão salta para a casa mais perto de você. Cantos rosa marcam cada casa que um cavalo rosa alcança agora; pare numa delas e você é pego, e o tabuleiro volta um lance. Pare sobre um cavalo rosa e ele é capturado.","Tu caballo crema salta en L, dos casillas hacia un lado y una hacia el otro, como en el ajedrez. Captura al rey rosa para ganar: cae en su casilla. El rey nunca se mueve, pero tras cada salto tuyo cada caballo rosa responde: te captura si te alcanza, y si no salta a la casilla más cercana a ti. Las esquinas rosa marcan cada casilla que un caballo rosa alcanza ahora; cae en una y te atrapan, y el tablero vuelve una jugada. Cae sobre un caballo rosa y queda capturado."
+KN_BLURB,Hop your knight past the guards and take the king.,Salte com seu cavalo pelos guardas e capture o rei.,Salta con tu caballo entre los guardias y captura al rey.
+KN_SHORT,"Hop in Ls,\ntake the king.","Salte em L,\ncapture o rei.","Salta en L,\ncaptura al rey."
+KN_MOTTO,Take the king,Capture o rei,Captura al rey
+KN_LVL_0,"5 × 5 board, 1 rose knight","Tabuleiro 5 × 5, 1 cavalo rosa","Tablero 5 × 5, 1 caballo rosa"
+KN_LVL_1,"6 × 6 board, 2 rose knights","Tabuleiro 6 × 6, 2 cavalos rosa","Tablero 6 × 6, 2 caballos rosa"
+KN_LVL_2,"7 × 7 board, 2–3 rose knights","Tabuleiro 7 × 7, 2–3 cavalos rosa","Tablero 7 × 7, 2–3 caballos rosa"
+KN_LVL_3,"8 × 8 board, 3 rose knights, a move budget","Tabuleiro 8 × 8, 3 cavalos rosa, lances contados","Tablero 8 × 8, 3 caballos rosa, jugadas contadas"
