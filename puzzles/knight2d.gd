@@ -73,6 +73,9 @@ var _gone: Array = []
 ## A catch in progress: {"at"} when the rose knight lands on you; empty when none.
 var _caught := {}
 var _shake_at := -100.0
+## Which turn the timers _play schedules belong to: a Reset, an Undo, a
+## catch's slide-back or a new deal bumps it, and a stale timer does nothing.
+var _turn := 0
 ## Your knight's shiver on a refused tap.
 var _bump_at := -100.0
 var _rings: Array = []
@@ -117,6 +120,7 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
+	_turn += 1
 	_snap_to_state()
 	_rings = []
 	_shake_at = -100.0
@@ -127,6 +131,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	if not Motion.reduce:
 		_busy_until = _opened + Motion.ENTER_DELAY + 0.2 \
 			+ Motion.stagger(_state.foes.size() + 1, 0.07) + Motion.POP_IN
+		_busy_for(_busy_until - _now() + MARK_FADE)
 	_layout()
 	fx.cue("enter")
 	_tip_idx = 0
@@ -236,7 +241,10 @@ func _play(to: int, from_hint := false) -> void:
 	if took >= 0:
 		_gone.append({"c": to, "at": land})
 		_foe_a[took] = _still_at(-1)
+		var turn := _turn
 		_later(jt, func():
+			if turn != _turn:
+				return
 			fx.puff(_centre(to), Pal.KNIGHT_ROSE, 7)
 			fx.cue("take"))
 	var last := land
@@ -251,7 +259,10 @@ func _play(to: int, from_hint := false) -> void:
 		last = at + jt
 		k += 1
 	if k > 0:
-		_later(land - t + (0.0 if Motion.reduce else ANSWER_GAP), func(): fx.cue("answer"))
+		var turn := _turn
+		_later(land - t + (0.0 if Motion.reduce else ANSWER_GAP), func():
+			if turn == _turn:
+				fx.cue("answer"))
 	if bool(r.won):
 		_busy_until = land
 		_busy_for(jt)
@@ -262,11 +273,14 @@ func _play(to: int, from_hint := false) -> void:
 		_shake_at = last
 		_busy_until = last + CAUGHT_HOLD + (0.0 if Motion.reduce else SLIDE_BACK)
 		_busy_for(_busy_until - t + MARK_FADE)
+		var turn := _turn
 		_later(last - t, func():
+			if turn != _turn:
+				return
 			fx.cue("caught")
 			_say(tr("KN_CAUGHT"), Face.Expr.STRAIN))
 		_later(last - t + CAUGHT_HOLD, func():
-			if not _caught.is_empty():
+			if turn == _turn and not _caught.is_empty():
 				_caught = {}
 				_slide_to_state(_now(), 0.0))
 		_refresh()
@@ -289,7 +303,9 @@ func _play(to: int, from_hint := false) -> void:
 ## pops back in where it stood.
 func _slide_to_state(t: float, stagger: float) -> void:
 	var dur := 0.001 if Motion.reduce else SLIDE_BACK
+	_turn += 1
 	_caught = {}
+	_shake_at = -100.0
 	_you_a = {"from": int(_you_a.to), "to": _state.you, "at": t, "dur": dur, "arc": 0.0, "pop": false}
 	var k := 0
 	for i in _state.foes.size():
