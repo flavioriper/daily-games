@@ -11,11 +11,12 @@ extends "res://core/puzzle_base.gd"
 ## in two rings. Seeing the split network is the thing being solved, and
 ## Check is the only door to it (spec section 10).
 ##
-## How it is drawn, and it is Word Trail's arrangement wholesale. One
-## `ArrayMesh` carries everything with no glyph on it -- the pool, its rim and
-## shallow band, the ripples, the lit lane under the finger, a refusal's band,
-## the hint glows, the planks, the islets and their
-## rings -- and the numbers go over the top as `draw_string` commands, because
+## How it is drawn, and it is Word Trail's arrangement wholesale. A still
+## mesh carries the sea (its basin, shallows, sandbars and ripples), a small
+## one the laps spreading on it while one is, and one `ArrayMesh` everything
+## else with no glyph on it -- the lit lane under the finger, a refusal's
+## band, the hint glows, the planks and their pilings, the islets and their
+## coins -- and the numbers go over the top as `draw_string` commands, because
 ## a glyph in a mesh cache key multiplies every state by ten. With it comes
 ## Word Trail's hard-won rule: **a canvas command holds a mesh by RID and not
 ## by reference**, so the mesh the last `_draw` handed over is kept in
@@ -37,6 +38,7 @@ const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The sea pool's inset from the card, and the lattice's own inset inside the
@@ -62,60 +64,76 @@ const WAVE_EDGE := 0.14
 const WAVE_HOLD := 0.06
 
 # --- the pool, in the mock's own pixels ---
-## The pool's corner, the rim it stands on, and the paler band of shallows
-## inside that rim: how far in it sits, how thick it is, its corner and how
-## far its colour is let through.
+## The pool's corner.
 const POOL_RADIUS := 34.0
-const POOL_EDGE := 9.0
-const SHALLOW_INSET := 9.0
-const SHALLOW_W := 26.0
-const SHALLOW_RADIUS := 26.0
-const SHALLOW_ALPHA := 0.85
 ## The ripples: how many, how thick, how far they are let through, and the
-## box they are sown in -- in from the pool's left, down from its top, and
-## how much of the pool's width and height they spread over. The span is
-## short of the pool by more than a ripple's length on purpose: the mock
-## clipped them to the pool and a mesh cannot, so they are sown clear of the
-## rim instead of cut at it.
-const RIPPLES := 9
-const RIPPLE_W := 8.0
-const RIPPLE_ALPHA := 0.24
+## box they are sown in -- in from the water's left, down from its top, and
+## how much of its width and height they spread over. The span is short of the
+## pool by more than a ripple's length on purpose: a mesh cannot be clipped to
+## the pool, so they are sown clear of the rim instead of cut at it.
+const RIPPLES := 12
+const RIPPLE_W := 6.0
+const RIPPLE_ALPHA := 0.26
 const RIPPLE_AT := Vector2(60.0, 70.0)
 const RIPPLE_SPAN := Vector2(190.0, 140.0)
 const RIPPLE_LEN := Vector2(40.0, 60.0)
 const RIPPLE_BOW := 8.0
 
 # --- an islet, in cells or in fractions of its own radius ---
-## The turf disc's radius as a fraction of the cell, and everything else as a
-## fraction of that radius: the coloured shadow under it, the sand rim it
-## stands on, the turf itself, the sun cap on the turf's shoulder, the ring a
-## satisfied islet wears, and where the number sits.
+## The islet's radius as a fraction of the cell, and everything else as a
+## fraction of that radius. An islet is a small island standing in the water
+## (the polish, 2026-09-26): a soft shadow on the sea, a wet-sand foot under a
+## dry beach lit along its top, a turf crown standing proud of the beach with
+## its own lit rim, and a paper coin on the turf that carries the number.
 const ISLET_R := 0.40
-const SHADOW_AT := 0.30
-const SHADOW_RX := 1.02
-const SHADOW_RY := 0.40
-const SHADOW_ALPHA := 0.30
-const SAND_DROP := 0.07
-const TURF_R := 0.80
-const TURF_DROP := 0.04
-const CAP_AT := Vector2(-0.22, -0.34)
-const CAP_R := Vector2(0.30, 0.17)
-const CAP_ALPHA := 0.55
-## **The satisfied ring, and it is not the aim ring.** This is the standing
-## `GOOD`/`BAD` band a met or over-filled islet wears, drawn on the islet's
-## own scale with its own floor of 4 px. The gold ring the finger's drag
-## throws round the islet it is about to join is `BEAM_RING` below, with a
-## separate floor of 5 px -- two rings, two floors, and the spec's section 9
-## discusses only the second. Do not collapse them.
+## The shadow the island throws on the water: how far down, how wide and tall.
+const SHADOW_AT := 0.34
+const SHADOW_RX := 1.18
+const SHADOW_RY := 0.62
+const SHADOW_ALPHA := 0.34
+## The beach: the wet foot shows SAND_DROP below the dry sand, whose face sits
+## SAND_TOP under a rim lit SAND_LIT toward SURFACE.
+const SAND_DROP := 0.10
+const SAND_TOP := 0.06
+const SAND_LIT := 0.34
+## The turf crown: its radius, the foot it stands on (TURF_DROP down, in
+## BANK_DEEP), its rim lit TURF_LIT toward SURFACE and its face TURF_TOP under
+## that rim, toned off the islet's hash within TONE so no two read stamped.
+const TURF_R := 0.84
+const TURF_DROP := 0.07
+const TURF_TOP := 0.05
+const TURF_LIT := 0.30
+const TONE := 0.035
+## One islet in TUFT_SHARE carries a tuft of three blades TUFT_H tall on the
+## turf's shoulder, beside the coin, so the turf reads as grass.
+const TUFT_SHARE := 0.55
+const TUFT_H := 0.40
+## **The number stands on a paper coin**, as every other board's clues stand on
+## paper: COIN_R of the islet, lifted COIN_LIFT over its own edge, which shows
+## COIN_LIP under it in COIN_EDGE toward ink, with a soft shadow on the turf.
+## The coin is what answers for the islet's count, the way Mushroom Patch's
+## numbers do: LEAF_TILE with its numeral in LEAF_DEEP once the number is met
+## exactly, BAD_TILE with BAD ink once the finger has pushed it over, and gold
+## once the solve's wave has reached it. **It replaces the standing ring** the
+## first cut drew round a met islet: a wash on the thing carrying the number
+## reads at a glance on the 11x11, where a 4 px ring was a hair.
+const COIN_R := 0.58
+const COIN_LIFT := 0.08
+const COIN_LIP := 0.11
+const COIN_EDGE := 0.20
+const COIN_SHADOW := 0.16
+## LEAF_TILE alone sat too close to the paper coin beside it to read as a
+## change of state at a glance, so a met coin is carried COIN_MET toward GOOD.
+const COIN_MET := 0.22
+## The ring `fx` throws off an islet as it meets its number, in islet radii.
 const RING_R := 1.13
-const RING_W := 0.13
-const RING_MIN := 4.0
-const RING_ALPHA := 0.95
-const NUMBER_SIZE := 0.95
-const NUMBER_AT := -0.04
-## How far a met islet's ink is let down toward the paper: a number that has
-## been answered steps back rather than shouting.
-const NUMBER_MET := 0.38
+const NUMBER_SIZE := 0.86
+const NUMBER_AT := -0.02
+## An islet that has just come right glints: its coin shines SHINE toward
+## SURFACE over GLINT_TIME, GLINT_LAG after it is met.
+const GLINT_TIME := 0.42
+const GLINT_LAG := 0.1
+const SHINE := 0.7
 ## How much wider than the turf a press may land and still take the islet: an
 ## islet is round and the corners of its cell are water.
 const GRAB := 1.25
@@ -143,8 +161,8 @@ const BEAM_ALPHA := 0.72
 ## under that thickness so an 11x11 still draws a ring rather than a hair,
 ## and how far its gold is let through. **This is the ring the spec's
 ## section 9 measures** -- at the 11x11's 84 px cell the ratio gives 4.7 px
-## and the 5 px floor is what saves it. The standing `GOOD`/`BAD` ring a met
-## islet wears is `RING_R` above, and its floor is 4.
+## and the 5 px floor is what saves it. A met islet wears no standing ring
+## since the polish (2026-09-26): its coin is washed instead.
 const BEAM_RING := 1.22
 const BEAM_RING_W := 0.14
 const BEAM_RING_MIN := 5.0
@@ -169,6 +187,35 @@ const SLAT_STEP := 0.30
 const SLAT_ALPHA := 0.28
 const SLAT_W := 0.022
 const SLAT_MIN := 2.0
+## The light along a plank's upper edge (its left on a vertical run): DECK
+## toward SURFACE by PLANK_LIT, PLANK_BEVEL of the plank's thickness wide. Each
+## plank in a run is toned off its lane and index within PLANK_TONE, so a run
+## of three reads as three boards and not as a striped one.
+const PLANK_LIT := 0.38
+const PLANK_BEVEL := 0.2
+const PLANK_TONE := 0.06
+## The pilings a run stands on: one each side of it at both ends, POST_R of a
+## cell, stood POST_OUT of their own radius out into the water from the beach.
+const POST_R := 0.052
+const POST_OUT := 1.3
+const POST_LIT := 0.34
+## **A plank is laid across from the islet the finger left** (the polish's
+## signature): it rolls out along the lane over LAY_TIME with the cubic ease,
+## lifted LAY_LIFT of its thickness while it travels, and lands on the far
+## islet at LAND_AT of that time -- which is when the far islet bumps
+## LAND_BUMP, the water splashes and a number that came right answers. A run
+## lifted to nothing draws back into the islet it was pulled from over
+## PULL_TIME. A plank nobody's finger laid (a hint, an undo) rolls out from its
+## middle both ways.
+const LAY_TIME := 0.3
+const LAY_LIFT := 0.9
+const LAND_AT := 0.8
+const LAND_BUMP := 0.12
+const PULL_TIME := 0.22
+## The next state of the lane under the finger, shown before the finger lets
+## go: the plank the drag would lay at PREVIEW_ALPHA, or the run it would lift
+## faded to it.
+const PREVIEW_ALPHA := 0.5
 
 # --- the hint's glow, and the check's mark ---
 ## The halo round a run a hint laid: its pad off the run's own box, its
@@ -239,7 +286,6 @@ const WAVE_FLARE := 0.62
 ## **shallow band is paler** than the open water, not deeper.
 const SEA := 0.46          # WATER_HI into PAPER -- #a4cde6, the open water
 const SEA_PALE := 0.74     # WATER_HI into PAPER -- #cfdfe4, the shallows
-const SEA_DEEP := 0.20     # WATER_HI into TEXT  -- #5896c2, the pool's edge
 const SEA_SHADE := 0.35    # WATER into TEXT     -- #336e99, an islet's shadow
 ## The islet: turf is BANK on an **ACORN** beach. The beach was STONE in the
 ## first cut and the islets stopped reading entirely -- STONE is value 237
@@ -248,6 +294,42 @@ const SEA_SHADE := 0.35    # WATER into TEXT     -- #336e99, an islet's shadow
 const BANK_HI := 0.26      # BANK into SURFACE, the turf's sun cap
 const BANK_DEEP := 0.28    # BANK into TEXT, the turf's own lip
 const SAND_DEEP := 0.22    # ACORN into TEXT, the wet sand at the waterline
+
+# --- the sea as a basin (the polish, 2026-09-26) ---
+## **The pool is sunk into the card**, the family's bed: its wall shows
+## BASIN_WALL along the top, the open water WALL_DEEP of the way to ink, so the
+## water reads as lying below the paper rather than as a slab laid on it. The
+## water pales toward its edge over SHORE_W -- the open water's blue in the
+## middle, SEA_PALE at the wall -- and round every islet the shallows over its
+## sandbar pale it again, SANDBAR islet radii out at SANDBAR_ALPHA.
+const BASIN_WALL := 14.0
+const WALL_DEEP := 0.24
+const SHORE_W := 64.0
+const SANDBAR := 2.0
+const SANDBAR_ALPHA := 0.8
+## The ripples: a dark arc in WATER over a lit one in SURFACE RIPPLE_LIT under
+## it, kept RIPPLE_CLEAR cells off every islet so none runs under a beach.
+const RIPPLE_LIT := 0.5
+const RIPPLE_CLEAR := 0.9
+## **The sea is alive at rest, and it costs no rebuild.** Every LAP_EVERY
+## seconds (give or take a fifth) one islet laps: a ring of foam SURFACE at
+## LAP_ALPHA spreads from LAP_FROM to LAP_TO of its radius over LAP_TIME,
+## thinning as it goes, and a second follows LAP_GAP behind it. The rings are
+## their own small mesh drawn between the sea and the board, so the board's
+## own mesh is not rebuilt for them, and nothing laps under reduce motion.
+const LAP_EVERY := 2.4
+const LAP_TIME := 1.7
+const LAP_GAP := 0.4
+const LAP_FROM := 1.02
+const LAP_TO := 1.9
+const LAP_W := 0.13
+const LAP_ALPHA := 0.6
+## The solve's islets hop as the wave reaches them, and once it has crossed
+## the network a light runs over it along the diagonal: it sets off
+## WIN_GLINT_AT after the wave and reaches each islet and run WIN_GLINT_STEP a
+## diagonal later.
+const WIN_GLINT_AT := 0.12
+const WIN_GLINT_STEP := 0.035
 
 ## The tip card names the rule a gesture just broke; it is the only thing on
 ## this screen that explains itself, and it is the board's only door to the
@@ -273,7 +355,18 @@ var fx: Node2D
 ## `_draw` rebuilds it; the second is held because a canvas command keeps a
 ## mesh by RID and not by reference.
 var _mesh: ArrayMesh
-var _shown: ArrayMesh
+## The still sea -- basin, shallows, sandbars and ripples -- built once a size
+## and a board, and dropped only by a resize or a new board.
+var _sea: ArrayMesh
+## Every mesh the last `_draw` handed over: the sea, the laps and the board.
+var _shown: Array = []
+
+## The laps on the water: `[{"cell": Vector2i, "at": float}]`, when the next
+## one is due, and the draw keeps running while one is still spreading. Their
+## own generator, so an idle never touches the puzzle's.
+var _laps: Array = []
+var _next_lap := 0.0
+var _lap_rng := RandomNumberGenerator.new()
 
 ## When the board opened, and how long anything on it is still moving. The
 ## card redraws while the clock has not passed `_anim_until` and stands still
@@ -321,6 +414,15 @@ var _ghosts: Array = []
 ## just pushed over: the first bumps and rings, the second shivers.
 var _met_at: Dictionary = {}
 var _shiver_at: Dictionary = {}
+## The far islet a rolling plank lands on, by the moment it lands: it bumps.
+var _land_at: Dictionary = {}
+## When each islet's coin glints, and each run's deck: a number come right,
+## and the win's light crossing the network.
+var _glint: Dictionary = {}
+var _glint_run: Dictionary = {}
+## What waits for a plank to land -- the splash, a met islet's ring and cue:
+## `[{"at": float, "call": Callable}]`, fired from `_process`.
+var _pending: Array = []
 ## Reset's wave: each islet's hop, by the moment it begins.
 var _hop_at: Dictionary = {}
 ## The islet under the finger, when it went down and when it came up (-1 while
@@ -364,7 +466,7 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
-	resized.connect(_refresh)
+	resized.connect(_resized)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
@@ -382,12 +484,19 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_met_at = {}
 	_shiver_at = {}
 	_hop_at = {}
+	_land_at = {}
+	_glint = {}
+	_glint_run = {}
+	_pending = []
+	_laps = []
+	_sea = null
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
 	_solved_at = -1.0
 	_depth = {}
 	_sparked = {}
 	_anim_until = 0.0
+	_lap_rng.seed = hash(state.islets)
 	_say(tr(TIP_REST), Face.Expr.HAPPY)
 	_enter()
 	_refresh()
@@ -482,11 +591,17 @@ func _refresh() -> void:
 	_mesh = null
 	queue_redraw()
 
+## A new size moves every islet, so the still sea is rebuilt with the board.
+func _resized() -> void:
+	_sea = null
+	_refresh()
+
 # --- the drawing ---
 
-## One mesh for everything with no glyph on it, then the numbers over the top.
-## The order is the only one that works: an islet is opaque and a run ends
-## under one.
+## Three meshes and then the numbers over the top: the still sea, the laps
+## spreading on it, and the board -- everything else with no glyph on it. The
+## order is the only one that works: an islet is opaque and a run ends under
+## one, and a lap is water, so it goes under both.
 ## The whole card pops in wide about the pool's centre and fades as it comes
 ## (rule 7: a wide thing enters from most of the way, because the back ease's
 ## tenth of overshoot on a thousand units of width is a wobble), and the
@@ -496,30 +611,37 @@ func _draw() -> void:
 	if state.islets.is_empty() or _cell() <= 0.0:
 		return
 	var t := _now()
+	if _sea == null:
+		_sea = _build_sea()
 	if _mesh == null:
 		_mesh = _build(t)
+	var lap := _build_laps(t)
 	var since := t - _opened - Motion.ENTER_DELAY
 	var seen := Motion.appear_level(since, Motion.ENTER_POP)
 	var grow := Motion.wide_pop_scale(since)
 	var mid := _pool().get_center()
 	var page := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
-	if _mesh != null and seen > 0.0:
-		draw_mesh(_mesh, null, page, Color(1.0, 1.0, 1.0, seen))
-	_shown = _mesh
 	if seen > 0.0:
+		for m in [_sea, lap, _mesh]:
+			if m != null:
+				draw_mesh(m, null, page, Color(1.0, 1.0, 1.0, seen))
 		_draw_numbers(t, page, seen)
+	_shown = [_sea, lap, _mesh]
 
 ## The order the mock draws in, and it is not a preference either: the lit
 ## lane and a refusal's band go **under** the runs, so a highlight on the run
 ## in the way reads as a glow beneath it rather than a coat of paint over it,
-## and everything goes under the islets, which are opaque.
+## and everything goes under the islets, which are opaque. The lane under the
+## finger is drawn with the runs even while it is bare, because its preview
+## is the plank the drag would lay.
 func _build(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	_water(b)
 	_aim_band(b)
 	_refusal(b, t)
 	for key in state.runs:
 		_run(b, String(key), t)
+	if _aim != "" and state.planks(_aim) <= 0:
+		_run(b, _aim, t)
 	for ghost: Dictionary in _ghosts:
 		_ghost(b, ghost, t)
 	for cell in state.islets:
@@ -627,6 +749,7 @@ func _enter() -> void:
 		far = maxi(far, cell.x + cell.y)
 	_busy_for(maxf(_enter_delay(far) + Motion.POP_IN,
 		Motion.ENTER_DELAY + Motion.ENTER_POP))
+	_next_lap = _anim_until + LAP_EVERY * 0.5
 	if fx != null:
 		fx.cue("enter")
 
@@ -641,10 +764,34 @@ func _process(delta: float) -> void:
 	if state.islets.is_empty() or _cell() <= 0.0:
 		return
 	var t := _now()
+	_fire(t)
 	_sweep(t)
 	_spark(t)
+	_lap(t)
 	if t < _anim_until:
 		_refresh()
+	elif not _laps.is_empty():
+		# A lap is its own mesh: the board's stands as it is.
+		queue_redraw()
+
+## Runs what was waiting on a plank to land.
+func _fire(t: float) -> void:
+	if _pending.is_empty():
+		return
+	var keep: Array = []
+	for job: Dictionary in _pending:
+		if t >= float(job.at):
+			(job.call as Callable).call()
+		else:
+			keep.append(job)
+	_pending = keep
+
+## Calls `call` at clock time `at`, or now if that has passed.
+func _later(at: float, call: Callable) -> void:
+	if at <= _now():
+		call.call()
+	else:
+		_pending.append({"at": at, "call": call})
 
 ## Drops the refusal once its flash has died -- the flash outlasts the lean,
 ## so it is the one that says when the refusal is over -- and the ghosts of
@@ -657,46 +804,157 @@ func _sweep(t: float) -> void:
 		return
 	var keep: Array = []
 	for ghost: Dictionary in _ghosts:
-		if t - float(ghost["at"]) < Motion.POP_OUT:
+		if t - float(ghost["at"]) < maxf(Motion.POP_OUT, PULL_TIME):
 			keep.append(ghost)
 	if keep.size() != _ghosts.size():
 		_ghosts = keep
 		_refresh()
 
-## The pool: its face over a bottom edge in the deeper blue, the paler band of
-## shallows inside the rim, and a few ripples over the open water.
-func _water(b) -> void:
+## The still sea, sunk into the card: the basin's wall along the top, the
+## water paling from the open blue in the middle to the shallows at the wall,
+## the sandbars paling it round every islet, and the ripples over the open
+## water. Built once a size and a board -- nothing here moves -- so the board's
+## own mesh can be rebuilt as often as it likes without this one.
+func _build_sea() -> ArrayMesh:
 	var p := _pool()
-	var deep: Color = Pal.WATER_HI.lerp(Pal.TEXT, SEA_DEEP)
+	if p.size.x <= 2.0 * SHORE_W or p.size.y <= 2.0 * SHORE_W + BASIN_WALL:
+		return null
+	var b := Face.Builder.new()
 	var sea: Color = Pal.WATER_HI.lerp(Pal.PAPER, SEA)
+	var wall: Color = sea.lerp(Pal.TEXT, WALL_DEEP)
 	var pale: Color = Pal.WATER_HI.lerp(Pal.PAPER, SEA_PALE)
-	b.fan(Face.Builder.round_rect(p.position, p.size, POOL_RADIUS), deep)
-	b.fan(Face.Builder.round_rect(p.position, Vector2(p.size.x, p.size.y - POOL_EDGE),
-		POOL_RADIUS), sea)
-	b.stroke(Face.Builder.round_rect(p.position + Vector2.ONE * SHALLOW_INSET,
-		p.size - Vector2.ONE * 2.0 * SHALLOW_INSET, SHALLOW_RADIUS),
-		SHALLOW_W, Color(pale, SHALLOW_ALPHA), true)
+	b.fan(Face.Builder.round_rect(p.position, p.size, POOL_RADIUS), wall)
+	var water := Rect2(p.position + Vector2(0.0, BASIN_WALL), p.size - Vector2(0.0, BASIN_WALL))
+	b.fan(Face.Builder.round_rect(water.position, water.size, POOL_RADIUS), pale)
+	var deep := water.grow(-SHORE_W)
+	_shore(b, water, deep, POOL_RADIUS, pale, sea)
+	b.fan(Face.Builder.round_rect(deep.position, deep.size, 0.0), sea)
+	var r := _islet_r()
+	for cell in state.islets:
+		Scenery.soft_disc(b, _at(cell), r * SANDBAR, r * SANDBAR, Color(pale, SANDBAR_ALPHA))
+	_ripples(b, water)
+	return b.mesh()
+
+## The band of water between the basin's edge and the open water, coloured
+## `outer` at the wall and `inner` where the open water starts, so the sea
+## pales toward the wall with no step in it. Both outlines take the same
+## number of points, corner for corner, which is what lets them be stitched.
+func _shore(b, outer: Rect2, inner: Rect2, radius: float, outer_col: Color,
+		inner_col: Color) -> void:
+	var o := _corners(outer, radius)
+	var i := _corners(inner, 0.0)
+	var n := o.size()
+	var first: int = b.verts.size()
+	for k in n:
+		b.vertex(o[k], outer_col)
+	for k in n:
+		b.vertex(i[k], inner_col)
+	for k in n:
+		var j := (k + 1) % n
+		b.tri(first + k, first + j, first + n + k)
+		b.tri(first + j, first + n + j, first + n + k)
+
+## A rounded rectangle's outline with a fixed count of points a corner, so two
+## of them of different radii line up point for point.
+static func _corners(rect: Rect2, radius: float) -> PackedVector2Array:
+	const SEG := 8
+	var rr := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
+	var at := rect.position
+	var sz := rect.size
+	var out := PackedVector2Array()
+	var centres := [at + Vector2(sz.x - rr, rr), at + Vector2(sz.x - rr, sz.y - rr),
+		at + Vector2(rr, sz.y - rr), at + Vector2(rr, rr)]
+	for c in 4:
+		var from := -PI * 0.5 + PI * 0.5 * c
+		for k in SEG + 1:
+			out.append(centres[c] + Vector2.from_angle(from + PI * 0.5 * k / SEG) * rr)
+	return out
+
+## The ripples over the open water: a dark arc with a lit one under it, sown
+## off the hash and kept clear of every islet, so none runs under a beach.
+func _ripples(b, water: Rect2) -> void:
 	var ink := Color(Pal.WATER, RIPPLE_ALPHA)
-	for i in RIPPLES:
-		var at := p.position + RIPPLE_AT + Vector2(
-			_hash(i, 7) * (p.size.x - RIPPLE_SPAN.x),
-			_hash(i, 11) * (p.size.y - RIPPLE_SPAN.y))
+	var lit := Color(Pal.SURFACE, RIPPLE_LIT)
+	var clear := _cell() * RIPPLE_CLEAR
+	var placed := 0
+	var i := 0
+	while placed < RIPPLES and i < RIPPLES * 8:
 		var span := RIPPLE_LEN.x + _hash(i, 3) * RIPPLE_LEN.y
+		var at := water.position + RIPPLE_AT + Vector2(
+			_hash(i, 7) * (water.size.x - RIPPLE_SPAN.x),
+			_hash(i, 11) * (water.size.y - RIPPLE_SPAN.y))
+		i += 1
+		if _near_islet(at + Vector2(span * 0.5, 0.0), clear + span * 0.5):
+			continue
+		var under := Vector2(0.0, RIPPLE_W * 0.9)
+		b.stroke(Face.Builder.bezier2(at + under, at + under + Vector2(span * 0.5, -RIPPLE_BOW),
+			at + under + Vector2(span, 0.0)), RIPPLE_W, lit)
 		b.stroke(Face.Builder.bezier2(at, at + Vector2(span * 0.5, -RIPPLE_BOW),
 			at + Vector2(span, 0.0)), RIPPLE_W, ink)
+		placed += 1
+
+func _near_islet(at: Vector2, within: float) -> bool:
+	for cell in state.islets:
+		if _at(cell).distance_to(at) < within:
+			return true
+	return false
+
+## The laps spreading on the water, as their own small mesh: two rings of foam
+## an islet sends out, the second LAP_GAP behind the first, each widening with
+## the ease out and thinning as it fades. Null while nothing laps.
+func _build_laps(t: float) -> ArrayMesh:
+	if _laps.is_empty():
+		return null
+	var b := Face.Builder.new()
+	var r := _islet_r()
+	for lap: Dictionary in _laps:
+		for k in 2:
+			var e := t - float(lap.at) - float(k) * LAP_GAP
+			if e <= 0.0 or e >= LAP_TIME:
+				continue
+			var u := e / LAP_TIME
+			var rad := r * lerpf(LAP_FROM, LAP_TO, 1.0 - pow(1.0 - u, 2.0))
+			var a := LAP_ALPHA * (1.0 - u) * minf(1.0, u * 6.0) * (1.0 if k == 0 else 0.6)
+			b.stroke(Face.Builder.ring(_at(lap.cell), rad, rad), r * LAP_W * (1.0 - 0.6 * u),
+				Color(Pal.SURFACE, a), true)
+	return b.mesh() if not b.verts.is_empty() else null
+
+## Sends an islet lapping every LAP_EVERY or so, once the board has entered
+## and while nothing else on it is moving, and retires the laps that have
+## spread out. Nothing laps under reduce motion.
+func _lap(t: float) -> void:
+	if not _laps.is_empty():
+		var keep: Array = []
+		for lap: Dictionary in _laps:
+			if t - float(lap.at) < LAP_TIME + LAP_GAP:
+				keep.append(lap)
+		if keep.size() != _laps.size():
+			_laps = keep
+			queue_redraw()
+	if Motion.reduce or t < _next_lap:
+		return
+	if t >= _anim_until and _from == State.NOWHERE:
+		var cell: Vector2i = state.islets[_lap_rng.randi() % state.islets.size()]
+		_laps.append({"cell": cell, "at": t})
+	_next_lap = t + LAP_EVERY * _lap_rng.randf_range(0.8, 1.2)
 
 ## One run as it stands: the halo if a hint laid it, then a plank per count,
-## each on its own coloured shadow. Three recipes meet on a run and every one
-## of them is read as a curve -- a plank that has just been laid is still
-## falling in with `Motion.drop_in_lift` and fading with `appear_level`, a run
-## the last Check marked blushes toward BAD with `flash_level` and rattles
-## across its own lane with `shiver_offset`, and a run the solve wave has
-## reached wears the lit deck from the end the front came in at.
+## each on its own coloured shadow, and the pilings at its ends. Three recipes
+## meet on a run and every one of them is read as a curve -- a plank that has
+## just been laid is still rolling out across the lane, a run the last Check
+## marked blushes toward BAD with `flash_level` and rattles across its own lane
+## with `shiver_offset`, and a run the solve wave has reached wears the lit
+## deck from the end the front came in at.
+##
+## The lane under the finger shows what letting go would do: the plank the
+## drag would lay, faint, beside the ones standing, or the whole run faint
+## when the drag would lift it.
 func _run(b, key: String, t: float) -> void:
 	var count: int = state.planks(key)
-	if count <= 0:
+	var next := _preview(key)
+	if count <= 0 and next <= 0:
 		return
-	if _given.has(key) and not is_done():
+	if _given.has(key) and not is_done() and count > 0:
 		_glow(b, _lane_ends(key), _run_width(count))
 	var laid: Dictionary = _laid.get(key, {})
 	# The check's mark, in one level: the flash while it lasts, and never
@@ -708,20 +966,58 @@ func _run(b, key: String, t: float) -> void:
 	if _wrong.has(key):
 		since_wrong = t - float(_wrong[key])
 		mark = maxf(BAD_HELD, Motion.flash_level(since_wrong))
-	_planks(b, key, count, 1.0,
-		t - float(laid.get("at", 1.0e9)), int(laid.get("from", count)),
-		since_wrong, mark, _wave_of(key, t))
+	var look := {
+		"since": t - float(laid.get("at", -1.0e9)),
+		"first_new": int(laid.get("from", count)),
+		"src": laid.get("src", State.NOWHERE),
+		"since_wrong": since_wrong,
+		"blush": mark,
+		"wave": _wave_of(key, t),
+		"shine": _shine(_glint_run, key, t),
+	}
+	if next == 0:
+		look["alpha"] = PREVIEW_ALPHA
+	elif next > count:
+		look["faint_from"] = count
+		count = next
+	_planks(b, key, count, look)
 
-## A run that has gone, still shrinking away where it stood: the whole run at
-## its old count, its planks closing to nothing with `Motion.pop_out_scale`.
+## What the lane under the finger would hold once the finger lets go, or -1
+## when `key` is not that lane or the lane is refused.
+func _preview(key: String) -> int:
+	if key != _aim or _from == State.NOWHERE or not state.lanes.has(key):
+		return -1
+	if state.blocked_by(key) != "":
+		return -1
+	return (state.planks(key) + 1) % (State.MAX_PLANKS + 1)
+
+## A run that has gone, still leaving: drawn back into the islet the finger
+## pulled it from, or closing to nothing about its planks' own centres with
+## `Motion.pop_out_scale` when nobody's finger pulled it (a wipe, an undo,
+## Reset's wave).
 func _ghost(b, ghost: Dictionary, t: float) -> void:
 	var key := String(ghost["key"])
-	if not state.lanes.has(key):
+	if not state.lanes.has(key) or Motion.reduce:
 		return
-	var grow := Motion.pop_out_scale(t - float(ghost["at"]))
-	if grow <= 0.0:
-		return
-	_planks(b, key, int(ghost["count"]), grow, 1.0e9, int(ghost["count"]), -1.0e9, 0.0, {})
+	var e := t - float(ghost["at"])
+	var src: Vector2i = ghost.get("src", State.NOWHERE)
+	var look := {}
+	if src != State.NOWHERE:
+		if e >= PULL_TIME:
+			return
+		look = {"pull": 1.0 - _ease(e / PULL_TIME), "src": src,
+			"posts": Motion.pop_out_scale(e, PULL_TIME)}
+	else:
+		var grow := Motion.pop_out_scale(e)
+		if grow <= 0.0:
+			return
+		look = {"grow": grow, "posts": grow}
+	_planks(b, key, int(ghost["count"]), look)
+
+## The cubic ease out a plank rolls with, 0 to 1.
+static func _ease(u: float) -> float:
+	u = clampf(u, 0.0, 1.0)
+	return 1.0 - pow(1.0 - u, 3.0)
 
 ## The thickness a run of `count` planks and the air between them comes to:
 ## what the hint's halo is drawn round.
@@ -729,25 +1025,54 @@ func _run_width(count: int) -> float:
 	var s := _cell()
 	return float(count) * s * PLANK + float(count - 1) * s * PLANK_GAP
 
-## The planks themselves. `grow` closes them about their own centres (one
-## while they stand, `pop_out_scale` while a ghost of them leaves); `since`
-## and `first_new` say which of them are still dropping in and from when;
-## `since_wrong` is the moment Check marked the run, which only the rattle
-## reads, and `blush` is how far the mark carries the wood toward BAD -- the
-## flash while it lasts and BAD_HELD for as long as the mark stands after it;
-## `wave` is what `_front` said about this lane, `{}` when no wave is running.
-func _planks(b, key: String, count: int, grow: float, since: float,
-		first_new: int, since_wrong: float, blush: float, wave: Dictionary) -> void:
+## Which end of `key`'s drawn lane `src` stands at: 1 the low end (`g.a`), -1
+## the high end, 0 when no islet laid it and it grows from its middle.
+func _side(key: String, src: Vector2i) -> int:
+	if src == State.NOWHERE or not state.lanes.has(key):
+		return 0
+	var lane: Dictionary = state.lanes[key]
+	if src != lane.a and src != lane.b:
+		return 0
+	var other: Vector2i = lane.b if src == lane.a else lane.a
+	var p := _at(src)
+	var q := _at(other)
+	return 1 if p.x + p.y < q.x + q.y else -1
+
+## The planks themselves, and the pilings at their ends. `look` says how they
+## stand, every key optional:
+## - `grow`: closes them about their own centres (a ghost leaving);
+## - `since`, `first_new`, `src`: which of them are still rolling out, from
+##   when and from which islet;
+## - `pull`: how much of the lane a run being drawn back still spans;
+## - `since_wrong`, `blush`: Check's rattle and how far its mark carries the
+##   wood toward BAD;
+## - `wave`: what `_front` said about this lane;
+## - `shine`: the win's light crossing the deck;
+## - `alpha`, `faint_from`: the preview -- the whole run faint, or the planks
+##   from that index on;
+## - `posts`: the pilings' own scale when a ghost takes them away.
+func _planks(b, key: String, count: int, look: Dictionary) -> void:
 	var s := _cell()
 	var g := _lane_ends(key)
 	var horiz: bool = g.horiz
 	var thick := s * PLANK
 	var air := s * PLANK_GAP
 	var total := float(count) * thick + float(count - 1) * air
-	var rattle := Motion.shiver_offset(since_wrong)
+	var grow: float = look.get("grow", 1.0)
+	var since: float = look.get("since", 1.0e9)
+	var first_new: int = look.get("first_new", count)
+	var side := _side(key, look.get("src", State.NOWHERE))
+	var pull: float = look.get("pull", 1.0)
+	var alpha: float = look.get("alpha", 1.0)
+	var faint_from: int = look.get("faint_from", count)
+	var blush: float = look.get("blush", 0.0)
+	var shine: float = look.get("shine", 0.0)
+	var wave: Dictionary = look.get("wave", {})
+	var rattle := Motion.shiver_offset(look.get("since_wrong", -1.0e9))
 	var shake := Vector2(0.0, rattle) if horiz else Vector2(rattle, 0.0)
 	var face: Color = Pal.DECK.lerp(Pal.BAD, BAD_MIX * blush)
 	var deep: Color = Pal.WOOD_DEEP.lerp(Pal.BAD, BAD_DEEP_MIX * blush)
+	var shade: Color = Pal.WATER.lerp(Pal.TEXT, SEA_SHADE)
 	var lo: Vector2 = Vector2(minf(g.a.x, g.b.x), minf(g.a.y, g.b.y))
 	var run: float = absf(g.b.x - g.a.x) if horiz else absf(g.b.y - g.a.y)
 	for i in count:
@@ -765,27 +1090,87 @@ func _planks(b, key: String, count: int, grow: float, since: float,
 			box *= grow
 			at = mid - box * 0.5
 		at += shake
-		var fade := 1.0
-		if i >= first_new:
-			fade = Motion.appear_level(since)
-			if fade <= 0.0:
-				continue
+		# How much of the lane this plank spans: all of it standing, less while
+		# it rolls out or is drawn back, anchored at the islet it comes from.
+		var u := pull
+		var a := alpha * (PREVIEW_ALPHA if i >= faint_from else 1.0)
+		if i >= first_new and i < faint_from and not Motion.reduce:
+			u = _ease(since / LAY_TIME)
+			a *= Motion.appear_level(since)
+		if u <= 0.0 or a <= 0.0:
+			continue
+		var lift := 0.0
+		if u < 1.0:
+			var span := run * u
+			var slack := run - span
+			var shift := 0.0 if side > 0 else (slack if side < 0 else slack * 0.5)
+			if horiz:
+				at.x += shift
+				box.x = span
+			else:
+				at.y += shift
+				box.y = span
+			lift = thick * LAY_LIFT * (1.0 - u) if pull >= 1.0 else 0.0
 		var r := minf(box.x, box.y) * PLANK_RADIUS
 		b.fan(Face.Builder.round_rect(at + PLANK_SHADOW, box, r),
-			Color(Pal.TEXT, PLANK_SHADOW_ALPHA * fade))
-		if i >= first_new:
-			at.y -= Motion.drop_in_lift(since)
-		_plank(b, at, box, horiz, r, Color(face, fade), Color(deep, fade), wave)
+			Color(shade, PLANK_SHADOW_ALPHA * a))
+		at.y -= lift
+		var tone := (_hash(hash(key) % 997, i) - 0.5) * 2.0 * PLANK_TONE
+		var toned: Color = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
+		_plank(b, at, box, horiz, r, Color(toned.lerp(Pal.SURFACE, shine * SHINE * 0.5), a),
+			Color(deep, a), wave)
+	_posts(b, g, total, shake, look, since, side)
 
-## A plank: WOOD_DEEP under DECK, with a lip along its lower edge and slats
-## across it -- the mock's own shape. `wave` lays the solve wave's gold over
-## the part of it the front has already crossed, from the end the front came
-## in at, so the light runs along the plank rather than switching it on.
+## The pilings a run stands on: one each side of it at both of its ends, out
+## in the water off the beach. A run rolling out drives the posts at the islet
+## it came from first and the far pair as the plank lands; a ghost takes them
+## with it at `look.posts`.
+func _posts(b, g: Dictionary, total: float, shake: Vector2, look: Dictionary,
+		since: float, side: int) -> void:
+	var horiz: bool = g.horiz
+	var pr := _cell() * POST_R
+	var alpha: float = look.get("alpha", 1.0)
+	if int(look.get("first_new", 1)) == 0 and int(look.get("faint_from", 99)) == 0:
+		alpha *= PREVIEW_ALPHA
+	var along := Vector2(1.0, 0.0) if horiz else Vector2(0.0, 1.0)
+	var across := Vector2(0.0, 1.0) if horiz else Vector2(1.0, 0.0)
+	var ends: Array = [g.a, g.b]
+	# g.a is the low end whichever way the lane is stored.
+	if horiz and g.a.x > g.b.x or not horiz and g.a.y > g.b.y:
+		ends = [g.b, g.a]
+	var shade: Color = Pal.WATER.lerp(Pal.TEXT, SEA_SHADE)
+	var lit: Color = Pal.DECK.lerp(Pal.SURFACE, POST_LIT)
+	for e in 2:
+		var inward := along if e == 0 else -along
+		# Which end the plank lands at: the far one from the islet it left, or
+		# both at once when it grew from its middle.
+		var far := side == 0 or (side > 0) == (e == 1)
+		var grow: float = look.get("posts", 1.0)
+		if int(look.get("first_new", 1)) == 0 and not Motion.reduce and since < 1.0e8:
+			grow *= Motion.pop_in_scale(since - (LAY_TIME * LAND_AT if far else 0.0)).x
+		if grow <= 0.001:
+			continue
+		var base: Vector2 = Vector2(ends[e]) + inward * pr * POST_OUT + shake
+		for sgn in [-1.0, 1.0]:
+			var at: Vector2 = base + across * sgn * (total * 0.5 + pr * 1.2)
+			var rr := pr * grow
+			b.disc(at + PLANK_SHADOW * 0.5, rr * 1.1, Color(shade, PLANK_SHADOW_ALPHA * alpha))
+			b.disc(at, rr, Color(Pal.WOOD_DEEP, alpha))
+			b.disc(at - Vector2(0.0, rr * 0.28), rr * 0.72, Color(lit, alpha))
+
+## A plank: WOOD_DEEP under DECK, with a lip along its lower edge, the light
+## along its upper one and slats across it. `wave` lays the solve wave's gold
+## over the part of it the front has already crossed, from the end the front
+## came in at, so the light runs along the plank rather than switching it on.
 func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color,
 		deep: Color, wave: Dictionary) -> void:
 	b.fan(Face.Builder.round_rect(at, box, r), deep)
 	var top := Vector2(box.x, box.y - PLANK_EDGE) if horiz else Vector2(box.x - PLANK_EDGE, box.y)
 	b.fan(Face.Builder.round_rect(at, top, r), face)
+	var bevel := maxf(1.5, minf(box.x, box.y) * PLANK_BEVEL)
+	var lit := Color(Color(face, 1.0).lerp(Pal.SURFACE, PLANK_LIT), face.a)
+	var strip := Vector2(top.x, bevel) if horiz else Vector2(bevel, top.y)
+	b.fan(Face.Builder.round_rect(at, strip, bevel * 0.5), lit)
 	var ink := Color(deep, SLAT_ALPHA * deep.a)
 	var wide := maxf(SLAT_MIN, _cell() * SLAT_W)
 	var step := _cell() * SLAT_STEP
@@ -815,6 +1200,9 @@ func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color,
 		else Vector2(lit_box.x - PLANK_EDGE, lit_box.y)
 	b.fan(Face.Builder.round_rect(lit_at, lit_top, r),
 		Color(Pal.DECK.lerp(Pal.SUN_RAY, WAVE_GOLD), face.a))
+	var gold_strip := Vector2(lit_top.x, bevel) if horiz else Vector2(bevel, lit_top.y)
+	b.fan(Face.Builder.round_rect(lit_at, gold_strip, bevel * 0.5),
+		Color(Pal.SUN_RAY.lerp(Pal.SURFACE, PLANK_LIT), face.a))
 
 ## The halo a hint leaves round a whole run, so a given reads at a glance
 ## rather than plank by plank: a pale gold box under a dashed gold outline,
@@ -835,12 +1223,14 @@ func _glow(b, g: Dictionary, total: float) -> void:
 	for dash in _dashes(ring, s * DASH_ON, s * DASH_OFF):
 		b.stroke(dash as PackedVector2Array, maxf(DASH_MIN, s * DASH_W), Pal.SUN_DEEP)
 
-## An islet: a coloured shadow on the water, a sand rim, the turf disc on it
-## with a sun cap on its shoulder, and the ring it wears once its number is
-## met -- GOOD when it is met exactly, BAD when the finger has pushed it over.
-## An over-filled islet is **drawn wrong and never refused** (spec section 5).
-## `lean` is the nudge a refused islet takes, which is why the whole thing is
-## drawn about `mid` rather than about its cell.
+## An islet: a soft shadow on the water, a wet-sand foot under a beach lit
+## along its top, a turf crown standing proud of it with its own lit rim and
+## now and then a tuft, and the paper coin that carries the number. The coin
+## answers for the count: LEAF_TILE once it is met, BAD_TILE once the finger
+## has pushed it over -- **drawn wrong, never refused** (spec section 5) --
+## and gold once the solve's wave has reached it. `lean` is the nudge a
+## refused islet takes, which is why the whole thing is drawn about `mid`
+## rather than about its cell.
 func _islet(b, cell: Vector2i, t: float) -> void:
 	var sc := _islet_scale(cell, t)
 	if sc.x <= 0.001 or sc.y <= 0.001:
@@ -851,38 +1241,94 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	var ry := r * sc.y
 	var want: int = int(state.need[cell])
 	var got: int = state.degree(cell)
-	var met := got == want
 	var over := got > want
-	# The wave's flare, which is also the gold the planks wear: it rises as
-	# the front arrives and settles again behind it, read off `flash_level`.
-	var flare := 0.0
+	Scenery.soft_disc(b, mid + Vector2(0.0, ry * SHADOW_AT), rx * SHADOW_RX, ry * SHADOW_RY,
+		Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
+	# The beach: the wet foot, the dry sand's lit rim, and its face under it.
+	b.ellipse(mid + Vector2(0.0, ry * SAND_DROP), rx, ry, Pal.ACORN.lerp(Pal.TEXT, SAND_DEEP))
+	b.ellipse(mid, rx, ry, Pal.ACORN.lerp(Pal.SURFACE, SAND_LIT))
+	b.ellipse(mid + Vector2(0.0, ry * SAND_TOP), rx * (1.0 - SAND_TOP), ry * (1.0 - SAND_TOP),
+		Pal.ACORN)
+	# The turf crown, toned a hair off its neighbours.
+	var tone := (_hash(cell.x, cell.y) - 0.5) * 2.0 * TONE
+	var turf: Color = Pal.BANK.lightened(tone) if tone > 0.0 else Pal.BANK.darkened(-tone)
+	if over:
+		turf = turf.lerp(Pal.BAD, OVER_MIX)
+	var tr_x := rx * TURF_R
+	var tr_y := ry * TURF_R
+	b.ellipse(mid + Vector2(0.0, tr_y * TURF_DROP), tr_x, tr_y, Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
+	b.ellipse(mid, tr_x, tr_y, turf.lerp(Pal.SURFACE, TURF_LIT))
+	b.ellipse(mid + Vector2(0.0, tr_y * TURF_TOP), tr_x * (1.0 - TURF_TOP),
+		tr_y * (1.0 - TURF_TOP), turf)
+	if _hash(cell.x + 31, cell.y) < TUFT_SHARE:
+		var lean := -1.0 if _hash(cell.x, cell.y + 17) < 0.5 else 1.0
+		var root := mid + Vector2(lean * tr_x * 0.78, tr_y * 0.30)
+		_tuft(b, root, r * TUFT_H * sc.y, Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
+	# The coin: its shadow on the turf, its edge, its face.
+	var coin := _coin_colour(cell, t, want, got)
+	var cx := rx * COIN_R
+	var cy := ry * COIN_R
+	var at := mid - Vector2(0.0, ry * COIN_LIFT)
+	Scenery.soft_disc(b, mid + Vector2(0.0, ry * COIN_LIP * 0.8), cx * 1.14, cy * 1.08,
+		Color(Pal.TEXT, COIN_SHADOW))
+	b.ellipse(at + Vector2(0.0, ry * COIN_LIP), cx, cy, coin.lerp(Pal.TEXT, COIN_EDGE))
+	b.ellipse(at, cx, cy, coin)
+
+## Three slim blades from `root`, the middle one tallest.
+static func _tuft(b, root: Vector2, h: float, col: Color) -> void:
+	for blade in [Vector2(0.0, -1.0), Vector2(-0.52, -0.7), Vector2(0.55, -0.66)]:
+		var tip: Vector2 = root + blade * h
+		var side := (tip - root).orthogonal().normalized() * h * 0.14
+		b.fan(PackedVector2Array([root - side, tip, root + side]), col)
+
+## What an islet's coin is washed with at `t`: paper, LEAF_TILE met, BAD_TILE
+## over, gold as the wave reaches it (with the wave's flare on the way), and
+## the glint's shine over whichever.
+func _coin_colour(cell: Vector2i, t: float, want: int, got: int) -> Color:
+	var coin: Color = Pal.SURFACE
+	if got > want:
+		coin = Pal.BAD_TILE
+	elif got == want:
+		coin = Pal.LEAF_TILE.lerp(Pal.GOOD, COIN_MET)
 	var arrived := _arrived(cell, t)
 	if arrived >= 0.0:
-		flare = Motion.flash_level(arrived, WAVE_EDGE) * WAVE_FLARE
-	b.ellipse(mid + Vector2(0.0, ry * SHADOW_AT), rx * SHADOW_RX, ry * SHADOW_RY,
-		Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
-	b.ellipse(mid + Vector2(0.0, ry * SAND_DROP), rx, ry, Pal.ACORN.lerp(Pal.TEXT, SAND_DEEP))
-	b.ellipse(mid, rx, ry, Pal.ACORN)
-	b.ellipse(mid + Vector2(0.0, ry * TURF_DROP), rx * TURF_R, ry * TURF_R,
-		Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
-	var turf: Color = Pal.BANK.lerp(Pal.BAD, OVER_MIX) if over else Pal.BANK
-	b.ellipse(mid, rx * TURF_R, ry * TURF_R, turf.lerp(Pal.SUN_RAY, flare))
-	b.ellipse(mid + Vector2(CAP_AT.x * rx, CAP_AT.y * ry), rx * CAP_R.x, ry * CAP_R.y,
-		Color(Pal.BANK.lerp(Pal.SURFACE, BANK_HI), CAP_ALPHA))
-	if met or over:
-		var ring: Color = Pal.BAD if over else Pal.GOOD
-		b.stroke(Face.Builder.ring(mid, rx * RING_R, ry * RING_R),
-			maxf(RING_MIN, r * RING_W),
-			Color(ring.lerp(Pal.SUN_RAY, flare), RING_ALPHA), true)
+		coin = coin.lerp(Pal.SUN_TILE, clampf(arrived / WAVE_EDGE, 0.0, 1.0))
+		coin = coin.lerp(Pal.SUN_RAY, Motion.flash_level(arrived, WAVE_EDGE) * WAVE_FLARE)
+	return coin.lerp(Pal.SURFACE, _shine(_glint, cell, t) * SHINE)
+
+## The ink an islet's number is drawn in: TEXT, LEAF_DEEP met, BAD over, and
+## the plaque's brown once the wave has turned its coin gold.
+func _number_ink(cell: Vector2i, t: float) -> Color:
+	var want: int = int(state.need[cell])
+	var got: int = state.degree(cell)
+	var ink: Color = Pal.TEXT
+	if got > want:
+		ink = Pal.BAD
+	elif got == want:
+		ink = Pal.LEAF_DEEP
+	var arrived := _arrived(cell, t)
+	if arrived >= 0.0:
+		ink = ink.lerp(Pal.PLAQUE_DEEP, clampf(arrived / WAVE_EDGE, 0.0, 1.0))
+	return ink
+
+## How far into its glint `key` is in `glints`, 0 to 1 and back.
+func _shine(glints: Dictionary, key, t: float) -> float:
+	if Motion.reduce or not glints.has(key):
+		return 0.0
+	var e: float = t - float(glints[key])
+	if e <= 0.0 or e >= GLINT_TIME:
+		return 0.0
+	return sin(PI * e / GLINT_TIME)
 
 ## An islet's scale: the entrance pop it came in on, the bump it took when it
-## met its number, and the bump the wave's front gives it on the way past.
-## Every one of them is a reader off `core/motion.gd` handed the seconds since
-## its own moment began, and they multiply, so an islet that is bumped
-## mid-entrance does both rather than losing one.
+## met its number or a plank landed on it, and the bump the wave's front gives
+## it on the way past. Every one of them is a reader off `core/motion.gd`
+## handed the seconds since its own moment began, and they multiply, so an
+## islet that is bumped mid-entrance does both rather than losing one.
 func _islet_scale(cell: Vector2i, t: float) -> Vector2:
 	var sc := Motion.pop_in_scale(t - _opened - _enter_delay(cell.x + cell.y))
 	sc *= Motion.bump_scale(t - float(_met_at.get(cell, -1.0e9)))
+	sc *= Motion.bump_scale(t - float(_land_at.get(cell, -1.0e9)), LAND_BUMP)
 	if cell == _press_cell:
 		sc *= Motion.press_scale(t - _press_at,
 			-1.0 if _press_up < 0.0 else t - _press_up)
@@ -893,7 +1339,8 @@ func _islet_scale(cell: Vector2i, t: float) -> Vector2:
 
 ## Where an islet stands against its cell: the lean a refused drag gives the
 ## islet under the finger, the shiver of one the finger has just pushed over
-## its number, and the hop Reset's wave carries it away on.
+## its number, the hop Reset's wave carries it away on, and the hop the
+## solve's wave gives it as it arrives.
 ##
 ## **The over-filled islet takes `shiver_offset` and not `nudge_offset`, on
 ## purpose.** `shiver_offset` is the vocabulary's reader for a shiver, which
@@ -906,16 +1353,16 @@ func _islet_off(cell: Vector2i, t: float) -> Vector2:
 	off.x += Motion.shiver_offset(t - float(_shiver_at.get(cell, -1.0e9)))
 	off.y += Motion.hop_lift(t - float(_hop_at.get(cell, -1.0e9)),
 		Motion.RESET_HOP, Motion.HOP_TIME)
+	var arrived := _arrived(cell, t)
+	if arrived >= 0.0:
+		off.y += Motion.hop_lift(arrived, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 	return off
 
-## The numbers, over the mesh: one `draw_string` each, as Nonogram draws its
-## clues and Word Trail its letters. A met number steps back toward the paper
-## and an over-filled one goes to BAD.
-## The numbers, over the mesh. Each one takes its islet's own scale and the
-## page's entrance through one `draw_set_transform_matrix` -- Nonogram's way
-## with its clue lines -- so a glyph pops in, bumps and leans with the turf it
-## stands on rather than floating over a piece that has moved out from under
-## it.
+## The numbers, over the mesh, one `draw_string` each, standing on their
+## coins. Each one takes its islet's own scale and the page's entrance
+## through one `draw_set_transform_matrix` -- Nonogram's way with its clue
+## lines -- so a glyph pops in, bumps, hops and leans with the coin it stands
+## on rather than floating over a piece that has moved out from under it.
 func _draw_numbers(t: float, page: Transform2D, seen: float) -> void:
 	var r := _islet_r()
 	var font: Font = CozyTheme.display(700)
@@ -925,19 +1372,13 @@ func _draw_numbers(t: float, page: Transform2D, seen: float) -> void:
 		var sc := _islet_scale(cell, t)
 		if sc.x <= 0.001 or sc.y <= 0.001:
 			continue
-		var want: int = int(state.need[cell])
-		var got: int = state.degree(cell)
-		var ink: Color = Pal.TEXT
-		if got > want:
-			ink = Pal.BAD
-		elif got == want:
-			ink = Pal.TEXT.lerp(Pal.PAPER, NUMBER_MET)
+		var ink := _number_ink(cell, t)
 		var mid := _at(cell) + _islet_off(cell, t)
 		draw_set_transform_matrix(page * Transform2D(0.0, sc, 0.0,
 			Vector2(mid.x * (1.0 - sc.x), mid.y * (1.0 - sc.y))))
 		drawn = true
-		_glyph(font, px, str(want), Color(ink, ink.a * seen),
-			mid + Vector2(0.0, r * NUMBER_AT))
+		_glyph(font, px, str(int(state.need[cell])), Color(ink, ink.a * seen),
+			mid + Vector2(0.0, r * (NUMBER_AT - COIN_LIFT)))
 	if drawn:
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 
@@ -1111,7 +1552,7 @@ func _release() -> void:
 		# The cycle runs 0-1-2-3 and back to 0: a plank laid, or the run lifted.
 		fx.cue("place" if state.planks(lane) > before else "remove")
 		_last = from
-		_after_move(snap)
+		_after_move(snap, from)
 		return
 	var wipe_snap := _snapshot()
 	if wipe != "" and state.clear_run(wipe):
@@ -1140,12 +1581,12 @@ func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 ## them -- and the refusal standing over it, hands the pieces that changed
 ## their moments, and counts itself, which is what ends the puzzle when the
 ## last plank lands on one single network.
-func _after_move(snap: Dictionary) -> void:
+func _after_move(snap: Dictionary, src := State.NOWHERE) -> void:
 	_wrong = {}
 	_refuse = {}
 	if _tip_text != tr(TIP_REST):
 		_say(tr(TIP_REST), Face.Expr.HAPPY)
-	_settle(snap)
+	_settle(snap, Callable(), src)
 	note_move()
 
 # --- what changed, and when each piece answers for it ---
@@ -1167,8 +1608,12 @@ func _snapshot() -> Dictionary:
 ## saying how long that piece waits. Reset passes its wave; a move passes
 ## nothing and everything answers at once. This is Queens' `_settle` in this
 ## board's terms: one place that decides who moves, and one Callable that
-## decides when.
-func _settle(snap: Dictionary, when := Callable()) -> void:
+## decides when. `src` is the islet the finger dragged from, when there was
+## one: a plank rolls out of it and lands on the far islet, and a run lifted
+## to nothing is drawn back into it. **The far end answers when the plank
+## lands** -- its bump, the splash, and any islet the move met, whose ring and
+## glint wait for the landing so the count comes right as the wood touches.
+func _settle(snap: Dictionary, when := Callable(), src := State.NOWHERE) -> void:
 	var t := _now()
 	var was_runs: Dictionary = snap["runs"]
 	var was_islets: Dictionary = snap["islets"]
@@ -1178,6 +1623,7 @@ func _settle(snap: Dictionary, when := Callable()) -> void:
 	for key in state.runs:
 		keys[key] = true
 	var longest := 0.0
+	var landed := 0.0
 	for k in keys:
 		var key := String(k)
 		var was := int(was_runs.get(key, 0))
@@ -1188,31 +1634,57 @@ func _settle(snap: Dictionary, when := Callable()) -> void:
 		if when.is_valid():
 			delay = float(when.call(key))
 		longest = maxf(longest, delay)
+		var lane: Dictionary = state.lanes[key]
+		var from := src if src == lane.a or src == lane.b else State.NOWHERE
 		if now_count > was:
-			_laid[key] = {"at": t + delay, "from": was}
-			fx.puff(_lane_middle(key), Pal.DECK)
+			_laid[key] = {"at": t + delay, "from": was, "src": from}
+			var land := 0.0 if Motion.reduce else LAY_TIME * LAND_AT
+			landed = maxf(landed, delay + land)
+			if from != State.NOWHERE:
+				var far: Vector2i = lane.b if from == lane.a else lane.a
+				_land_at[far] = t + delay + land
+				_later(t + delay + land, _splash.bind(key, far))
+			else:
+				_later(t + delay + land, _splash.bind(key, State.NOWHERE))
 		else:
 			_laid.erase(key)
 			# Only a run that went **to zero** leaves a ghost: a run going 3
 			# to 2 re-centres the planks it keeps, so there is no one plank
 			# that left for a ghost to stand in for.
 			if now_count == 0:
-				_ghosts.append({"key": key, "count": was, "at": t + delay})
+				_ghosts.append({"key": key, "count": was, "at": t + delay, "src": from})
 	for cell in state.islets:
 		var was_d := int(was_islets.get(cell, -999))
 		var now_d := state.degree(cell) - int(state.need[cell])
 		if now_d == was_d:
 			continue
 		if now_d == 0:
-			_met_at[cell] = t
-			fx.ring(_at(cell), _islet_r() * RING_R, Pal.GOOD)
-			fx.cue("met")
+			_met_at[cell] = t + landed
+			_glint[cell] = t + landed + GLINT_LAG
+			_later(t + landed, _met.bind(cell))
 		elif now_d > 0 and was_d <= 0:
 			_shiver_at[cell] = t
 			fx.cue("over")
-	_busy_for(longest + maxf(Motion.DROP_TIME,
-		maxf(Motion.BUMP_TIME, maxf(Motion.POP_OUT, Motion.SHIVER_TIME))))
+	_busy_for(maxf(longest + maxf(LAY_TIME, maxf(Motion.BUMP_TIME,
+		maxf(PULL_TIME, Motion.SHIVER_TIME))), landed + GLINT_LAG + GLINT_TIME))
 	_refresh()
+
+## The water a landing plank throws up: at the far islet's beach when it was
+## laid across from the other, at the lane's middle when it grew from there.
+func _splash(key: String, far: Vector2i) -> void:
+	if not state.lanes.has(key):
+		return
+	var at := _lane_middle(key)
+	if far != State.NOWHERE:
+		var g := _lane_ends(key)
+		at = Vector2(g.a) if Vector2(g.a).distance_to(_at(far)) < Vector2(g.b).distance_to(_at(far)) \
+			else Vector2(g.b)
+	fx.puff(at, Pal.WATER_HI)
+
+## An islet that has just come right: its ring and its note.
+func _met(cell: Vector2i) -> void:
+	fx.ring(_at(cell), _islet_r() * RING_R, Pal.GOOD)
+	fx.cue("met")
 
 ## The middle of a lane in the board's own pixels: where a plank's puff goes.
 func _lane_middle(key: String) -> Vector2:
@@ -1326,6 +1798,10 @@ func reset_board() -> void:
 	_wrong = {}
 	_met_at = {}
 	_shiver_at = {}
+	_land_at = {}
+	_glint = {}
+	_glint_run = {}
+	_pending = []
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
 	_solved_at = -1.0
@@ -1372,18 +1848,31 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return _wave_at(_wave_depth())
+	return _land_lag() + _wave_at(_wave_depth()) + Motion.SOLVE_TIME * 0.5
+
+## How long after the last move the wave sets off: the last plank has to land
+## before the light can run along it.
+func _land_lag() -> float:
+	return 0.0 if Motion.reduce else LAY_TIME * LAND_AT
 
 ## The solve: the wave's graph is the network the player built, walked once
 ## from the islet the last plank was laid at and then never walked again.
 func _on_solved() -> void:
-	_solved_at = _now()
+	_solved_at = _now() + _land_lag()
 	_depth = _wave_steps()
 	_sparked = {}
 	_refuse = {}
 	_wrong = {}
-	_busy_for(_wave_at(_wave_depth()) + Motion.FLASH_IN + Motion.FLASH_OUT
-		+ Motion.BUMP_TIME)
+	# Once the wave has crossed the network, a light runs over it along the
+	# diagonal: every coin and every deck glints as it passes.
+	var light := _solved_at + _wave_at(_wave_depth()) + Motion.SOLVE_TIME * 0.5 + WIN_GLINT_AT
+	for cell: Vector2i in state.islets:
+		_glint[cell] = light + float(cell.x + cell.y) * WIN_GLINT_STEP
+	for key in state.runs:
+		var lane: Dictionary = state.lanes[key]
+		_glint_run[key] = light + float(lane.a.x + lane.a.y + lane.b.x + lane.b.y) * 0.5 \
+			* WIN_GLINT_STEP
+	_busy_for(light - _now() + float(2 * state.n) * WIN_GLINT_STEP + GLINT_TIME)
 	fx.cue("solved")
 	_refresh()
 
@@ -1413,6 +1902,10 @@ func restore_completed_board() -> void:
 	_met_at = {}
 	_shiver_at = {}
 	_hop_at = {}
+	_land_at = {}
+	_glint = {}
+	_glint_run = {}
+	_pending = []
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
 	# The entrance and the wave both long over: `_front` reads far past the
@@ -1491,7 +1984,7 @@ func _wave_of(key: String, t: float) -> Dictionary:
 ## apart. Nothing under reduce motion: `ui/fx2d.gd` draws neither a sparkle
 ## nor a ring there, and the front does not travel to have reached anything.
 func _spark(t: float) -> void:
-	if _solved_at < 0.0 or Motion.reduce or _sparked.size() >= _depth.size():
+	if _solved_at < 0.0 or t < _solved_at or Motion.reduce or _sparked.size() >= _depth.size():
 		return
 	var f := _front(t)
 	for cell in _depth:

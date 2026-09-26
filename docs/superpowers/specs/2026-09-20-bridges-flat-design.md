@@ -841,3 +841,64 @@ Five, none of them blocking, all measured or argued rather than guessed:
    other flat board was ported from a mock the user had seen; this one
    inverts that order, and section 6's numbers should be treated as a first
    pitch rather than a settled composition.
+
+## 16. The polish, 2026-09-26
+
+The user asked for the design and the animation to be polished: the board read
+as too simple beside the flat boards' second passes (a flat blue slab, flat
+green discs, thin sticks). Built directly, like those passes, and this is the
+record. The rules, the layout, the gesture, both refusals, Check's held mark and
+the solve wave's clock are unchanged.
+
+- **The sea is sunk into the card.** Its wall shows `BASIN_WALL` along the top,
+  the open water `WALL_DEEP` toward ink -- the family's bed, where the first cut
+  drew a lip along the bottom and read as a slab laid on the paper. The water
+  pales from the open blue to `SEA_PALE` at the wall over `SHORE_W` (one band
+  stitched point for point, no step in it), and the shallows over each islet's
+  sandbar pale it again (`SANDBAR`). Ripples are a dark arc over a lit one and
+  keep clear of every islet. All of it is a **still mesh**, rebuilt only on a
+  resize or a new board, so the board's own mesh no longer carries the sea.
+- **An islet is a small island.** A soft shadow on the water, a wet-sand foot
+  under a beach lit along its top, a turf crown toned off the islet's hash
+  with its own lit rim, and a tuft on about half of them.
+- **The number stands on a paper coin**, as every other board's clues stand on
+  paper, lifted over its own edge. **The coin replaces the standing ring**: it
+  washes `LEAF_TILE` carried `COIN_MET` toward `GOOD` (numeral `LEAF_DEEP`)
+  when the islet is met, `BAD_TILE` (numeral `BAD`) when it is over, and gold
+  when the solve's wave reaches it. A 4 px ring was a hair on the 11x11; a wash
+  on the thing carrying the number reads at a glance. The ring `fx` throws off
+  a met islet stays, and a met coin glints.
+- **Planks are decking**: a lit upper edge, the lip under it, each plank toned
+  a hair off its neighbours, a softer shadow in the sea's shade, and a pair of
+  pilings at each end of a run, out in the water off the beach.
+- **The next state shows before the finger lets go.** Under the lit lane the
+  plank the drag would lay stands at `PREVIEW_ALPHA`, or the whole run fades
+  to it when the drag would lift it.
+- **A plank is laid across from the islet the finger left** -- the pass's
+  signature. It rolls out along the lane over `LAY_TIME`, lifted as it
+  travels, the near pilings driven first; at `LAND_AT` the far pilings go in,
+  the far islet bumps (`LAND_BUMP`), the water splashes there, and an islet the
+  move met takes its ring, its note and its glint only then, so the count
+  comes right as the wood touches. A run lifted to nothing by a drag draws back
+  into that islet (`PULL_TIME`); a wipe, an undo or Reset still closes it in
+  place. A hint's or an undo's plank rolls out from its middle.
+- **The sea is alive at rest, for one extra draw call.** Every `LAP_EVERY`
+  seconds or so one islet laps: two foam rings spread off its beach and fade.
+  They are their own small mesh between the sea and the board, so the board is
+  not rebuilt for them; nothing laps while anything else moves, and nothing
+  laps under reduce motion.
+- **The win**: the wave sets off when the last plank lands (`win_delay()`
+  waits for that and for the last islet's hop), every islet hops as the front
+  reaches it and its coin turns gold, and once the wave has crossed, a light
+  runs over the network along the diagonal, glinting every coin and deck.
+
+`tests/_shot_anim.gd -- bridges solve` lays the answer through the state but
+one plank and drags that one, so the strip shows the roll-out, the wave, the
+hops and the light.
+
+Measured at `--resolution 810x1440`: **63-64** draw calls played (62 before:
++1 for the still sea, +1 while a lap is spreading), **62** under reduce motion,
+**63** on the 11x11. Idle 2.85-3.09 ms against 2.42 before in the same
+session; the laps redraw the card while they spread. Reduce motion is
+pixel-identical across its 1.5 s pair, and ANGLE agrees on 62 and matches the
+default driver within 1/255 on the board. Suite 122583/0, win harness 21/21.

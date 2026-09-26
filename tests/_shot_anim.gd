@@ -39,6 +39,9 @@ extends SceneTree
 ## the planks dropping in and that islet taking its GOOD ring. It gets an
 ## extra frame and a later idle window for that, because a run costs two
 ## steps and the islet is not satisfied until the last of them lands.
+## `solve` after the id lays the answer but one plank through the state and
+## drags that one, so the strip catches it rolling out, the wave, the hops
+## and the light crossing the network.
 ## Hidden Word has a five-letter guess typed on its keyboard and committed a
 ## beat later, so the strip shows the letters popping in, the row caught
 ## mid-flip and the row landed with the keys repainted behind it. The guess is
@@ -253,6 +256,13 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.65, 1.8, 2.2, 3.2, 4.2]
 		_idle_from = 3.2
 		_idle_to = 5.2
+	if _id == "bridges" and _mode == "solve":
+		# One drag from TAP_AT: the plank lands a quarter second after the
+		# release, the wave and the hops run a few tenths behind it, and the
+		# light crosses the network after them.
+		_shots = [0.35, 1.72, 1.95, 2.25, 2.6, 3.0, 4.0]
+		_idle_from = 4.2
+		_idle_to = 6.0
 	if _id == "caterpillar" and not _empty:
 		# The walk is dragged a square every TRAIL_STEP from TAP_AT: half the
 		# answer by default, all of it under `full` so the solve wave and the
@@ -1045,6 +1055,25 @@ func _trail_step() -> void:
 ## planks is two drags.
 func _lay_bridges() -> void:
 	var st = _puzzle.state
+	if _mode == "solve":
+		# Every run of the answer through the state but one plank of the
+		# first, and that plank dragged, so the strip catches the last plank
+		# rolling out, the wave lighting the network, the islets hopping and
+		# the light crossing it.
+		var last := ""
+		for key in st.answer:
+			if int(st.answer[key]) > 0:
+				st.runs[key] = int(st.answer[key])
+				if last == "":
+					last = String(key)
+		st.runs[last] = int(st.runs[last]) - 1
+		if int(st.runs[last]) == 0:
+			st.runs.erase(last)
+		_puzzle._refresh()
+		var lane: Dictionary = st.lanes[last]
+		_bridge_drags = [[lane.a, lane.b]]
+		_bridge_at = _t
+		return
 	var best := Vector2i(-1, -1)
 	var best_cost := 99
 	var spare := Vector2i(-1, -1)
