@@ -45,6 +45,7 @@ const StatsTab = preload("res://ui/menu/stats_tab.gd")
 const VersusTab = preload("res://ui/menu/versus_tab.gd")
 const SnookerScreen = preload("res://versus/snooker_screen.gd")
 const ChessScreen = preload("res://versus/chess_screen.gd")
+const CheckersScreen = preload("res://versus/checkers_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
@@ -1076,6 +1077,9 @@ func _open_versus(game: String, level: int) -> void:
 		"chess":
 			screen = ChessScreen.new(level)
 			screen.name = "Chess"
+		"checkers":
+			screen = CheckersScreen.new(level)
+			screen.name = "Checkers"
 		_:
 			return
 	screen.closed.connect(func() -> void:

@@ -63,6 +63,8 @@ const CARDS := {
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],
 	# The meadow the garden set's lawn squares were mown from.
 	"chess": ["meadow", 1.4, Vector2(0.45, 0.6)],
+	# Checkers' lawn is chess's, looked at from further along the meadow.
+	"checkers": ["meadow", 1.5, Vector2(0.7, 0.7)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

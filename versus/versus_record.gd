@@ -59,7 +59,7 @@ static func set_last_colour(game: String, colour: int) -> void:
 	cfg.set_value("colour", game, colour)
 	cfg.save(PATH)
 
-## The piece set chosen for a game; skins are to come (versus/chess_skin.gd),
-## so for now this reads the house set.
+## The piece set chosen for a game; skins are to come (versus/chess_skin.gd,
+## versus/checkers_skin.gd), so for now this reads the house set.
 static func skin(game: String) -> String:
 	return String(_load().get_value("skin", game, "garden"))

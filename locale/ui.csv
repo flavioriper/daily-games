@@ -172,3 +172,13 @@ CHS_DRAW_STALEMATE,"Stalemate: no move left, but no check","Afogamento: nenhum l
 CHS_DRAW_FIFTY,Fifty moves with no capture and no pawn move,Cinquenta lances sem captura nem lance de peão,Cincuenta jugadas sin captura ni movimiento de peón
 CHS_DRAW_REPEAT,The same position three times,A mesma posição três vezes,La misma posición tres veces
 CHS_DRAW_MATERIAL,Not enough pieces left to checkmate,Não restam peças suficientes para dar xeque-mate,No quedan piezas suficientes para dar jaque mate
+VS_CHECKERS_BLURB,"A game against the computer: hop, jump chains of pieces, and crown your men.","Uma partida contra o computador: pule, capture em sequência e coroe suas pedras.","Una partida contra el ordenador: salta, captura en cadena y corona tus fichas."
+CKR_MOTTO,JUMP OVER THE MOON,PULE POR CIMA DA LUA,SALTA SOBRE LA LUNA
+CKR_CAPTURE,Capture!,Capture!,¡Captura!
+CKR_MUST,"A capture is on elsewhere, and capturing is a must","Há uma captura em outro lugar, e capturar é obrigatório","Hay una captura en otro lado, y capturar es obligatorio"
+CKR_MUST_FIRST,"You must capture, and take all you can: the ringed pieces can","Você tem de capturar, e o máximo que puder: as peças com anel podem","Tienes que capturar, y todo lo que puedas: las piezas con anillo pueden"
+CKR_STUCK,That piece has nowhere to go yet,Essa peça ainda não tem para onde ir,Esa pieza aún no tiene adónde ir
+CKR_ALL_TAKEN,"Every piece taken, on move %d","Todas as peças capturadas, no lance %d","Todas las piezas capturadas, en la jugada %d"
+CKR_BLOCKED,"No moves left, on move %d","Sem lances possíveis, no lance %d","Sin jugadas posibles, en la jugada %d"
+CKR_DRAW_QUIET,Twenty moves each with only kings and no capture,Vinte lances de cada lado só com damas e sem captura,Veinte jugadas de cada lado solo con damas y sin captura
+CKR_DRAW,A draw,Empate,Empate

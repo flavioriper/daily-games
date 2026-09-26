@@ -1519,7 +1519,8 @@ pointing `seed_as` at them. Specs:
 
 **The bar has four tabs since 2026-09-26**: Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
-holds games played against someone; the first is **snooker**, against the
+holds games played against someone -- snooker, chess and checkers; the first
+is **snooker**, against the
 computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
 a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
 screen, mounted by `ui/menu.gd`'s `_open_versus` the way a board host is,
@@ -1597,6 +1598,34 @@ calls on the tab).
   the screen with `load()` at run time, because a `preload` compiles before
   the `Ads` autoload exists). All put `user://versus.cfg` back.
 
+**Checkers is the third Versus game** (2026-09-26, spec
+`2026-09-26-versus-checkers-design.md`), against the computer, built the way
+chess is: rules, computer, skin contract, house set, board, screen.
+
+- **Brazilian rules** (`versus/checkers_rules.gd`): flying kings, men take
+  backwards, compulsory capture of the most pieces, captured pieces lifted
+  at the end of the move. English draughts is the same class's AMERICAN
+  flag, kept because its published perft (7 ... 36768 to depth 6) is what
+  proves the move generator -- run `tests/_probe_checkers.gd` after touching
+  it. A move is a `PackedInt32Array`, not chess's int: a chain can take
+  eight.
+- **Seen from straight above**: a pose's `lift` is drawn as growth, a rise
+  up the screen and a sliding shadow; `flip` turns a piece over (the board
+  draws the underside past a quarter). A piece is two meshes, `build_base`
+  unturned and `build` turned by `spin`, so a twirl does not swing the
+  edge band round the disc. Every piece's eyes are the board's to point
+  (`_gaze_of`), quantised to eight directions and baked into the mesh key.
+- A piece a move will take leaves `_at_sq` for its tray list the moment
+  the move is played, but is `doomed` until the jumper is over it: it stays
+  on its square watching, worried, not asleep. Anything that counts a tray
+  must skip the doomed and the ones still in the air.
+- 125 draw calls on the Versus tab, 130-136 at the board, ANGLE agreeing.
+  The tab now fits its three cards to the room (`versus_tab.gd`'s `_fit`),
+  dropping the blurbs and then picture height rather than the bar.
+- Harnesses: `tests/_shot_checkers.gd` (every beat; `reduce` after the
+  outdir), `tests/_probe_checkers_game.gd` (a whole game, `UNDO=1` takes
+  moves back). Both put `user://versus.cfg` back.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1667,7 +1696,8 @@ see "Ads and the purchase" below.
   `ad_banner_impression` -- see "Ads and the purchase" below. Since 2026-09-26
   (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
-  `undos`, `colour`) and `versus_abandon`; snooker's hint and reset
+  `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and
+  `versus_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had
