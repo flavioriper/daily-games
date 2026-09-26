@@ -20,7 +20,7 @@ extends "res://versus/checkers_skin.gd"
 const EDGE := 0.075
 ## A king stands this much higher than a man, in cells: the second piece.
 const STACK := 0.1
-const LINE_CREAM := Color("8a7358")
+const LINE_CREAM := Color("7a6149")
 const FELT := Color("7fa05f")
 const FELT_DEEP := Color("5f7f45")
 
@@ -76,7 +76,10 @@ func _top(b: Face.Builder, c: Vector2, r: float, s: float, col: Color, deep: Col
 		b.polygon(_moved(part, c), Color(deep, 0.35))
 	for part: PackedVector2Array in _crescent(r, Vector2(0.06, 0.08)):
 		b.polygon(_moved(part, c), Color(1, 1, 1, 0.42))
-	b.stroke(Face.Builder.ring(c, r, r), s * 0.03, line, true)
+	# the wood's grain: a few broken rings between the groove and the rim
+	for g: Vector3 in [Vector3(0.84, 0.3, 2.1), Vector3(0.9, 3.4, 1.6), Vector3(0.8, 4.2, 1.2)]:
+		b.stroke(Face.Builder.arc_points(c, r * g.x, g.y, g.y + g.z), s * 0.008, Color(deep, 0.32))
+	b.stroke(Face.Builder.ring(c, r, r), s * 0.036, line, true)
 
 static func _moved(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -203,7 +206,7 @@ func _face(b: Face.Builder, c: Vector2, r: float, s: float, face: int, gaze: Vec
 func step_time(type: int, from: Vector2, to: Vector2) -> float:
 	if type == Rules.KING:
 		return 0.34 + 0.08 * from.distance_to(to)
-	return 0.42
+	return 0.48
 
 func step_pose(type: int, from: Vector2, to: Vector2, u: float) -> Pose:
 	var dir := to - from
@@ -219,17 +222,24 @@ func step_pose(type: int, from: Vector2, to: Vector2, u: float) -> Pose:
 		if u > 0.85:
 			p.squash = _land((u - 0.85) / 0.15, 0.1)
 		return p
-	# a hop, then a coin's wobble as it settles
-	if u < 0.78:
-		var t := u / 0.78
+	# a crouch, a hop, then a coin's wobble as it settles
+	if u < STEP_CROUCH:
+		var c := u / STEP_CROUCH
+		p.at = from
+		p.squash = Vector2(1.0 + 0.12 * sin(PI * 0.5 * c), 1.0 - 0.14 * sin(PI * 0.5 * c))
+		return p
+	if u < 0.8:
+		var t := (u - STEP_CROUCH) / (0.8 - STEP_CROUCH)
 		p.at = from.lerp(to, _ease_in_out(t))
 		p.lift = 0.42 * sin(PI * t)
 		p.squash = _hop_squash(t)
 		p.spin = 0.18 * sin(TAU * t) * (1.0 if dir.x >= 0.0 else -1.0)
 		return p
 	p.at = to
-	p.squash = _wobble((u - 0.78) / 0.22, 0.09)
+	p.squash = _wobble((u - 0.8) / 0.2, 0.1)
 	return p
+
+const STEP_CROUCH := 0.12
 
 func jump_time(type: int, from: Vector2, to: Vector2, leg: int) -> float:
 	if type == Rules.KING:
@@ -315,11 +325,18 @@ func crowned_pose(at: Vector2, u: float) -> Pose:
 	var p := Pose.at_cell(at)
 	p.gaze = Vector2(0.0, -1.0)
 	var land := crown_land()
-	if u > land:
+	if u > land - 0.2 and u <= land:
+		# it stretches up to catch it
+		var k := (u - (land - 0.2)) / 0.2
+		p.squash = Vector2(1.0 - 0.07 * k, 1.0 + 0.1 * k)
+		p.lift = 0.1 * k
+	elif u > land:
 		var k := (u - land) / (1.0 - land)
-		p.squash = _land(minf(k * 2.0, 1.0), 0.24)
-		p.lift = 0.22 * sin(PI * k) * (1.0 if k > 0.3 else 0.0)
-		p.spin = 0.3 * sin(PI * k) * (1.0 - k)
+		p.squash = _land(minf(k * 2.5, 1.0), 0.3)
+		p.lift = 0.34 * sin(PI * clampf((k - 0.25) / 0.75, 0.0, 1.0))
+		p.spin = 0.35 * sin(TAU * k) * (1.0 - k)
+		if k > 0.85:
+			p.squash = _land((k - 0.85) / 0.15, 0.14)
 	return p
 
 func idle_pose(type: int, at: Vector2, clock: float, phase: float, selected: bool) -> Pose:
@@ -387,9 +404,10 @@ func cheer_time() -> float:
 
 func cheer_pose(at: Vector2, u: float) -> Pose:
 	var p := Pose.at_cell(at)
-	p.lift = 0.45 * sin(PI * u)
+	p.lift = 0.6 * sin(PI * u)
 	p.squash = _hop_squash(u)
 	p.spin = TAU * _ease_in_out(u)
+	p.gaze = Vector2(0.0, -1.0)
 	return p
 
 func yield_time() -> float:

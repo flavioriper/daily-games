@@ -47,7 +47,10 @@ const TRAY := 0.66
 const TRAY_MAX := 1.0
 const TRAY_GAP := 0.12
 const FRAME := 0.3
-const TRAY_STEP := 0.62
+const TRAY_STEP := 0.44
+## A taken piece lies this far above or below the tray's middle, turn
+## about, so a row of them reads as a heap rather than a queue.
+const TRAY_ZIG := 0.09
 const TRAY_SCALE := 0.62
 const DRAG_START := 14.0
 ## How much a piece grows and rises up the screen a cell of lift.
@@ -67,6 +70,7 @@ const PETAL_FALL := 2.6
 const LIGHT := Color("f1e1c1")
 const DARK := Color("a4c088")
 const DARK_DEEP := Color("8fab74")
+const DARK_LIT := Color("b1cb95")
 const FRAME_COL := Color("74492c")
 const FRAME_DEEP := Color("4f311d")
 const FRAME_LIP := Color("a97a4f")
@@ -320,7 +324,8 @@ func sq_at(p: Vector2) -> int:
 ## Where a taken piece lies in its tray: tray 0 below the board (what the
 ## player took), 1 above (what the computer took).
 func tray_cell(tray: int, slot: int) -> Vector2:
-	var at := Vector2(origin.x + (0.42 + slot * TRAY_STEP) * cell, _tray_mid(tray))
+	var zig := (TRAY_ZIG if slot % 2 == 0 else -TRAY_ZIG) * (tray_h / TRAY)
+	var at := Vector2(origin.x + (0.42 + slot * TRAY_STEP) * cell, _tray_mid(tray) + zig * cell)
 	return cell_at(at)
 
 func _tray_mid(tray: int) -> float:
@@ -598,7 +603,7 @@ func finish(outcome: String) -> void:
 		var prng := RandomNumberGenerator.new()
 		prng.seed = 4711
 		for i in PETALS:
-			_petals.append([prng.randf_range(-0.3, 8.3), 0.6 + prng.randf_range(0.0, 1.6),
+			_petals.append([prng.randf_range(-0.3, 8.3), 0.15 + prng.randf_range(0.0, 1.4),
 				prng.randf_range(4.5, 8.4), prng.randf() * TAU, prng.randf_range(0.8, 1.2), i % 3])
 	var winners := 0 if outcome == "won" else 1
 	var centre := cell_of(_last[_last.size() - 1]) if not _last.is_empty() else Vector2(3.5, 3.5)
@@ -607,11 +612,13 @@ func finish(outcome: String) -> void:
 		if a.sq < 0:
 			continue
 		if a.side == winners:
-			var delay := 0.4 + a.at.distance_to(centre) * 0.07
-			for k in 2:
-				_after(delay + k * 0.7, func() -> void:
+			var delay := 0.2 + a.at.distance_to(centre) * 0.07
+			for k in 3:
+				_after(delay + k * 0.68, func() -> void:
 					if a.kind == "":
-						_start(a, "cheer", skin.cheer_time(), a.at, a.at))
+						_start(a, "cheer", skin.cheer_time(), a.at, a.at)
+						if k == 0 and _fx != null:
+							_fx.sparkle(px(a.at), Pal.SUN_RAY))
 		else:
 			losers.append(a)
 	losers.sort_custom(func(x: Actor, y: Actor) -> bool: return x.at.x + x.at.y * 0.5 < y.at.x + y.at.y * 0.5)
@@ -638,8 +645,28 @@ func _fidget() -> void:
 	if idle.is_empty():
 		return
 	var a: Actor = idle[_rng.randi() % idle.size()]
+	if _rng.randf() < 0.3 and _chat(a, idle):
+		return
 	a.fidget = _rng.randi() % int(skin.fidget_kinds())
 	_start(a, "fidget", skin.fidget_time(a.type, a.fidget), a.at, a.at)
+
+## Two neighbours of a side turn to each other, lean in and smile, as if
+## one had said something. False if `a` has no idle neighbour to talk to.
+func _chat(a: Actor, idle: Array) -> bool:
+	for o: Actor in idle:
+		if o == a or o.side != a.side or o.at.distance_to(a.at) > 1.5:
+			continue
+		for pair: Array in [[a, o], [o, a]]:
+			var x: Actor = pair[0]
+			var y: Actor = pair[1]
+			x.dir = y.at - x.at
+			_start(x, "nudge", skin.nudge_time(), x.at, x.at, 0.0 if x == a else 0.25)
+			x.glance = _quant(x.dir)
+			x.glance_until = _now + 1.6
+			x.face = CheckersSkin.F_JOY
+			x.face_until = _now + 1.2
+		return true
+	return false
 
 func _shiver(a: Actor) -> void:
 	_start(a, "shiver", skin.shiver_time(), a.at, a.at)
@@ -1131,6 +1158,22 @@ func _build_board() -> ArrayMesh:
 			b.disc(q, cell * rng.randf_range(0.02, 0.045), Color(MOSS_DEEP, 0.55) if k % 3 else Color(1, 1, 1, 0.16))
 		for end: float in [soil.position.x + cell * 0.2, soil.end.x - cell * 0.2]:
 			Scenery.tuft(b, Vector2(end, soil.end.y - cell * 0.04), cell * 0.26)
+		# the far end, where no taken piece reaches for a long while: a
+		# pebble, a toadstool and a few daisies
+		var far := soil.end.x - cell * 0.62
+		var mid_y := soil.get_center().y
+		b.ellipse(Vector2(far - cell * 0.5, mid_y + cell * 0.1), cell * 0.1, cell * 0.065, Color("b9ab98"))
+		b.ellipse(Vector2(far - cell * 0.52, mid_y + cell * 0.08), cell * 0.07, cell * 0.04, Color(1, 1, 1, 0.3))
+		var stem := Vector2(far, mid_y + cell * 0.1)
+		b.fan(Face.Builder.round_rect(stem - Vector2(cell * 0.035, cell * 0.1), Vector2(cell * 0.07, cell * 0.12), cell * 0.03), Color("f4ead6"))
+		b.fan(Face.Builder.arc_points(stem - Vector2(0, cell * 0.08), cell * 0.12, PI, TAU), Pal.BERRY)
+		for q: Vector2 in [Vector2(-0.05, -0.13), Vector2(0.04, -0.15), Vector2(0.0, -0.11)]:
+			b.disc(stem + q * cell, cell * 0.018, Color(1, 1, 1, 0.9))
+		for k in 3:
+			var q := Vector2(far + cell * (0.3 + 0.16 * k), mid_y + cell * (0.12 if k % 2 == 0 else -0.08))
+			for j in 5:
+				b.disc(q + Vector2.from_angle(TAU * j / 5.0) * cell * 0.03, cell * 0.024, Color(1, 1, 1, 0.9))
+			b.disc(q, cell * 0.02, Pal.SUN_RAY)
 	# the frame: a soft drop shadow, the deep edge, the face, the lip
 	Scenery.soft_disc(b, fr.get_center() + Vector2(0, cell * 0.2), fr.size.x * 0.62, fr.size.y * 0.6, Color(0.2, 0.1, 0.04, 0.18))
 	b.fan(Face.Builder.round_rect(fr.position + Vector2(0, 8), fr.size, r), FRAME_DEEP)
@@ -1160,24 +1203,31 @@ func _build_board() -> ArrayMesh:
 			b.disc(Vector2(cx, cy), band * 0.2, BRASS_DEEP)
 			b.disc(Vector2(cx, cy - 1.0), band * 0.15, BRASS)
 			b.disc(Vector2(cx - band * 0.05, cy - band * 0.06), band * 0.05, Color(1, 1, 1, 0.7))
-	# the squares: the played ones a mown lawn with a lighter stripe, the
-	# others sandstone flecked a little darker
+	# the squares: the played ones a mown lawn, striped where the mower
+	# went and bevelled like turf laid in a tray; the others sandstone
+	# flecked a little darker, with a daisy now and then in the cracks
+	var bev := cell * 0.05
 	for row in 8:
 		for col in 8:
 			var sq := sq_of(Vector2i(col, row))
 			var at := origin + Vector2(col, row) * cell
 			if Rules.is_dark(sq):
 				b.fan(_square(at), DARK)
-				b.fan(PackedVector2Array([at + Vector2(0, cell * 0.5), at + Vector2(cell, cell * 0.5),
-					at + Vector2(cell, cell), at + Vector2(0, cell)]), Color(DARK_DEEP, 0.35))
+				for stripe: Vector2 in [Vector2(0.18, 0.5), Vector2(0.82, 1.14), Vector2(1.46, 1.78)]:
+					b.fan(_band(at, stripe.x, stripe.y), Color(DARK_LIT, 0.55))
+				_bevel(b, at, bev, Color(1, 1, 1, 0.16), Color(DARK_DEEP, 0.55))
 				for k in 3:
-					var tuft := at + Vector2(rng.randf_range(0.12, 0.88), rng.randf_range(0.15, 0.88)) * cell
-					b.stroke(PackedVector2Array([tuft, tuft + Vector2(-0.03, -0.07) * cell]), cell * 0.018, Color(DARK_DEEP, 0.8))
-					b.stroke(PackedVector2Array([tuft, tuft + Vector2(0.03, -0.06) * cell]), cell * 0.018, Color(DARK_DEEP, 0.8))
+					var tuft := at + Vector2(rng.randf_range(0.14, 0.86), rng.randf_range(0.18, 0.86)) * cell
+					for lean: float in [-0.035, 0.0, 0.035]:
+						b.stroke(PackedVector2Array([tuft, tuft + Vector2(lean, -0.07 + absf(lean) * 0.6) * cell]), cell * 0.017, Color(DARK_DEEP, 0.75))
+				if rng.randf() < 0.22:
+					# a clover
+					var q := at + Vector2(rng.randf_range(0.22, 0.78), rng.randf_range(0.22, 0.78)) * cell
+					for k in 3:
+						b.disc(q + Vector2.from_angle(TAU * k / 3.0 - PI * 0.5) * cell * 0.03, cell * 0.032, Color(DARK_DEEP, 0.7))
 			else:
 				b.fan(_square(at), LIGHT)
-				b.fan(PackedVector2Array([at, at + Vector2(cell, 0), at + Vector2(cell, cell * 0.06), at + Vector2(0, cell * 0.06)]),
-					Color(1, 1, 1, 0.25))
+				_bevel(b, at, bev, Color(1, 1, 1, 0.34), Color(0.62, 0.5, 0.33, 0.2))
 				for k in 4:
 					var q := at + Vector2(rng.randf_range(0.12, 0.88), rng.randf_range(0.15, 0.88)) * cell
 					b.ellipse(q, cell * rng.randf_range(0.02, 0.04), cell * rng.randf_range(0.012, 0.025), Color(0.62, 0.5, 0.33, 0.14))
@@ -1187,11 +1237,43 @@ func _build_board() -> ArrayMesh:
 					for k in 5:
 						b.disc(q + Vector2.from_angle(TAU * k / 5.0) * cell * 0.035, cell * 0.028, Color(1, 1, 1, 0.8))
 					b.disc(q, cell * 0.022, Pal.SUN_RAY)
-	b.fan(PackedVector2Array([origin, origin + Vector2(8.0 * cell, 0), origin + Vector2(8.0 * cell, cell * 0.07), origin + Vector2(0, cell * 0.07)]),
-		Color(FRAME_DEEP, 0.18))
-	b.fan(PackedVector2Array([origin, origin + Vector2(cell * 0.05, 0), origin + Vector2(cell * 0.05, 8.0 * cell), origin + Vector2(0, 8.0 * cell)]),
-		Color(FRAME_DEEP, 0.12))
+	# the frame's shade falling in over the squares, deepest at the top left
+	for k in 3:
+		var d := cell * (0.04 + 0.05 * k)
+		var a := 0.1 - 0.03 * k
+		var sq8 := 8.0 * cell
+		b.fan(PackedVector2Array([origin, origin + Vector2(sq8, 0), origin + Vector2(sq8, d), origin + Vector2(0, d)]), Color(FRAME_DEEP, a))
+		b.fan(PackedVector2Array([origin, origin + Vector2(d, 0), origin + Vector2(d, sq8), origin + Vector2(0, sq8)]), Color(FRAME_DEEP, a * 0.8))
+		b.fan(PackedVector2Array([origin + Vector2(0, sq8 - d * 0.6), origin + Vector2(sq8, sq8 - d * 0.6), origin + Vector2(sq8, sq8), origin + Vector2(0, sq8)]), Color(FRAME_DEEP, a * 0.5))
+		b.fan(PackedVector2Array([origin + Vector2(sq8 - d * 0.6, 0), origin + Vector2(sq8, 0), origin + Vector2(sq8, sq8), origin + Vector2(sq8 - d * 0.6, sq8)]), Color(FRAME_DEEP, a * 0.5))
 	return b.mesh()
+
+## A band of a square at `at` between the diagonals x + y = `lo` and `hi`
+## (in cells, 0 to 2): one stripe of the mower.
+func _band(at: Vector2, lo: float, hi: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	# walk the square's outline, keeping what lies between the two lines
+	var sq := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+	var poly := PackedVector2Array()
+	for q: Vector2 in sq:
+		poly.append(q)
+	var strip := PackedVector2Array([Vector2(lo, 0) + Vector2(-2, 2), Vector2(lo, 0) + Vector2(2, -2),
+		Vector2(hi, 0) + Vector2(2, -2), Vector2(hi, 0) + Vector2(-2, 2)])
+	var out: Array = Geometry2D.intersect_polygons(poly, strip)
+	if out.is_empty():
+		return pts
+	for q: Vector2 in out[0]:
+		pts.append(at + q * cell)
+	return pts
+
+## A square's bevel: lit along the top and left, shaded along the bottom
+## and right.
+func _bevel(b: Face.Builder, at: Vector2, w: float, lit: Color, shade: Color) -> void:
+	var c := cell
+	b.fan(PackedVector2Array([at, at + Vector2(c, 0), at + Vector2(c - w, w), at + Vector2(w, w)]), lit)
+	b.fan(PackedVector2Array([at, at + Vector2(w, w), at + Vector2(w, c - w), at + Vector2(0, c)]), Color(lit, lit.a * 0.6))
+	b.fan(PackedVector2Array([at + Vector2(0, c), at + Vector2(w, c - w), at + Vector2(c - w, c - w), at + Vector2(c, c)]), shade)
+	b.fan(PackedVector2Array([at + Vector2(c, 0), at + Vector2(c, c), at + Vector2(c - w, c - w), at + Vector2(c - w, w)]), Color(shade, shade.a * 0.7))
 
 func _draw_coords() -> void:
 	if _font == null or still:
@@ -1225,7 +1307,7 @@ func _draw_advantage() -> void:
 	var n: int = me if tray == 0 else them
 	var text := "+%d" % absi(me - them)
 	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var x := minf(origin.x + (0.42 + n * TRAY_STEP) * cell - cell * 0.1, origin.x + 8.0 * cell - w - fs * 0.7)
+	var x := minf(origin.x + (0.42 + n * TRAY_STEP) * cell, origin.x + 8.0 * cell - w - fs * 0.7)
 	var mid := _tray_mid(tray)
 	var tag := Rect2(Vector2(x, mid - fs * 0.62), Vector2(w + fs * 0.7, fs * 1.24))
 	draw_rect(Rect2(tag.position + Vector2(0, 3), tag.size), Color(SOIL_DEEP, 0.6))
@@ -1262,10 +1344,12 @@ func _build_marks() -> ArrayMesh:
 		# where it came from, faintly; where it ended, warmly; and a trail of
 		# footprints along the route
 		var at := origin + cell_of(_last[0]) * cell
-		b.fan(_square(at), Color(MARK_LAST, 0.2))
-		b.stroke(Face.Builder.round_rect(at + Vector2.ONE * cell * 0.08, Vector2.ONE * cell * 0.84, cell * 0.14),
-			cell * 0.03, Color(MARK_LAST, 0.7), true)
-		b.fan(_square(origin + cell_of(_last[_last.size() - 1]) * cell), MARK_LAST)
+		b.stroke(Face.Builder.round_rect(at + Vector2.ONE * cell * 0.1, Vector2.ONE * cell * 0.8, cell * 0.16),
+			cell * 0.028, Color(MARK_LAST, 0.6), true)
+		var end := origin + cell_of(_last[_last.size() - 1]) * cell
+		Scenery.soft_disc(b, end + Vector2.ONE * cell * 0.5, cell * 0.5, cell * 0.5, Color(MARK_LAST, 0.5))
+		b.stroke(Face.Builder.round_rect(end + Vector2.ONE * cell * 0.06, Vector2.ONE * cell * 0.88, cell * 0.18),
+			cell * 0.03, Color(MARK_LAST, 0.85), true)
 		for i in _last.size() - 1:
 			var p0 := cell_of(_last[i])
 			var p1 := cell_of(_last[i + 1])
@@ -1276,10 +1360,10 @@ func _build_marks() -> ArrayMesh:
 					continue
 				var side := (p1 - p0).normalized().orthogonal() * (0.06 if k % 2 == 0 else -0.06)
 				b.ellipse(px(q + side), cell * 0.045, cell * 0.035, Color(0.8, 0.55, 0.2, 0.42))
-	if _selected >= 0:
-		b.fan(_square(origin + cell_of(_selected) * cell), MARK_PICK)
 	if _hover >= 0:
-		b.fan(_square(origin + cell_of(_hover) * cell), Color(MARK_PICK, 0.35))
+		var h := origin + cell_of(_hover) * cell
+		b.stroke(Face.Builder.round_rect(h + Vector2.ONE * cell * 0.06, Vector2.ONE * cell * 0.88, cell * 0.18),
+			cell * 0.045, Color(MARK_PICK, 0.8), true)
 	return null if b.verts.is_empty() else b.mesh()
 
 func _square(at: Vector2) -> PackedVector2Array:
@@ -1307,6 +1391,8 @@ func _build_under() -> ArrayMesh:
 		var c := px(cell_of(_selected))
 		var s := 1.0 if reduce else CheckersSkin._back_out_k(clampf((_now - _select_at) / 0.2, 0.0, 1.0))
 		var w := cell * (0.05 + (0.0 if reduce else 0.012 * sin(_now * 5.0)))
+		var glow := 0.45 if reduce else 0.4 + 0.12 * sin(_now * 5.0)
+		Scenery.soft_disc(b, c, cell * 0.62 * s, cell * 0.62 * s, Color(Pal.SUN_RAY, glow))
 		b.stroke(Face.Builder.ring(c, cell * 0.47 * s, cell * 0.47 * s), w, Color(Pal.SUN, 0.85), true)
 		_route_marks(b)
 		_target_marks(b, _targets, _selected, _select_at, true)
@@ -1330,6 +1416,8 @@ func _build_under() -> ArrayMesh:
 	_ripples = keep
 	if not reduce:
 		for a: Actor in _actors:
+			if a.kind == "move" and _now >= a.t0:
+				_air_trail(b, a)
 			if a.kind == "move" and a.type == Rules.KING and _now >= a.t0:
 				_speed_lines(b, a)
 			elif a.kind == "crown" and _now >= a.t0:
@@ -1400,9 +1488,13 @@ func _target_marks(b: Face.Builder, targets: Dictionary, from: int, since: float
 			continue
 		var c := px(tc)
 		if ends.has(sq) or not coming:
-			# a seed: a soft dark pip with a glint
-			b.disc(c, cell * 0.15 * s, MARK_DOT)
-			b.disc(c + Vector2(-0.035, -0.035) * cell * s, cell * 0.05 * s, Color(1, 1, 1, 0.24))
+			# a landing: a pale pad breathing gently round a seed
+			var breathe := 1.0 if Motion.reduce else 1.0 + 0.06 * sin(_now * 4.0 - dist)
+			var pr := cell * 0.24 * s * breathe
+			b.disc(c, pr, Color(1, 1, 1, 0.3))
+			b.stroke(Face.Builder.ring(c, pr, pr), cell * 0.03, Color(1, 1, 1, 0.75), true)
+			b.disc(c, cell * 0.1 * s, MARK_DOT)
+			b.disc(c + Vector2(-0.025, -0.025) * cell * s, cell * 0.035 * s, Color(1, 1, 1, 0.3))
 		else:
 			# a stepping stone on the way: a smaller gold ring
 			b.stroke(Face.Builder.ring(c, cell * 0.14 * s, cell * 0.14 * s), cell * 0.035, Color(Pal.SUN, 0.8), true)
@@ -1448,6 +1540,27 @@ func _hint_route(b: Face.Builder) -> void:
 		var back := tip - dir * cell * 0.34 * head
 		b.fan(PackedVector2Array([tip, back + side * cell * 0.22, back - side * cell * 0.22]), Color(HINT, 0.85 * glow))
 	b.stroke(Face.Builder.ring(pts[0], cell * 0.46, cell * 0.46), cell * 0.06, Color(HINT, 0.8 * glow), true)
+
+## A dotted arc left in the air behind a piece leaping over what it takes.
+func _air_trail(b: Face.Builder, a: Actor) -> void:
+	var t := _now - a.t0
+	var first := 1 if int(a.legs[0][4]) == LEG_RETURN else 0
+	var n := a.legs.size()
+	for i in range(first, n):
+		var leg: Array = a.legs[i]
+		if int(leg[4]) != LEG_JUMP or t < float(leg[2]) or t > float(leg[2]) + float(leg[3]) + 0.2:
+			continue
+		var u := (t - float(leg[2])) / float(leg[3])
+		for k in 10:
+			var uu := u - 0.06 * float(k + 1)
+			if uu < 0.12 or uu > 1.0:
+				continue
+			var pose: RefCounted = skin.jump_pose(a.move_type, leg[0], leg[1], uu, i - first, n - first)
+			if pose.lift < 0.12:
+				continue
+			var q := px(pose.at) - Vector2(0.0, clampf(pose.lift, 0.0, 3.0) * cell * LIFT_RISE)
+			var fade := (1.0 - float(k) / 10.0) * clampf(1.0 - (u - 1.0) / 0.2, 0.0, 1.0)
+			b.disc(q, cell * (0.05 * fade + 0.012), Color(1, 1, 1, 0.7 * fade))
 
 ## Three soft lines streaming behind a king gliding along the lawn.
 func _speed_lines(b: Face.Builder, a: Actor) -> void:
@@ -1497,6 +1610,17 @@ func _build_over(poses: Array) -> ArrayMesh:
 		var p = e[2]
 		var up := clampf(p.lift, 0.0, 3.0)
 		var centre := px(p.at) - Vector2(0.0, up * cell * LIFT_RISE)
+		if a.kind == "crown" and a.crown_at >= 0.0 and not reduce and a.type != Rules.KING:
+			var u := clampf((_now - a.crown_at) / maxf(a.dur, 0.01), 0.0, 1.0)
+			var seat: Vector2 = skin.crown_seat(cell)
+			for k in 6:
+				var uu := u - 0.035 * float(k + 1)
+				if uu < 0.0:
+					break
+				var cp: RefCounted = skin.crown_pose(uu)
+				var q := centre + seat - Vector2(0.0, clampf(cp.lift, 0.0, 4.0) * cell * 0.45) + Vector2(sin(float(k) * 2.3) * 0.12 * cell, 0.0)
+				var fade := 1.0 - float(k) / 6.0
+				_star(b, q, cell * 0.07 * fade, cell * 0.028 * fade, 4, _now * 4.0 + k, Color(Pal.SUN_RAY, 0.9 * fade))
 		if a.kind == "knock" and not reduce:
 			for i in 3:
 				var ang := _now * 7.0 + TAU * float(i) / 3.0
@@ -1537,7 +1661,7 @@ func _build_over(poses: Array) -> ArrayMesh:
 			var flip := absf(cos(fall * 7.0 + float(pt[3]))) if t < 1.0 else 0.8
 			for k in 12:
 				var ang := TAU * float(k) / 12.0
-				var rr := cell * 0.15 * (0.6 + 0.4 * cos(ang * 0.5) * cos(ang * 0.5))
+				var rr := cell * 0.19 * (0.6 + 0.4 * cos(ang * 0.5) * cos(ang * 0.5))
 				body.append(c + Vector2(cos(ang) * rr, sin(ang) * rr * 0.55 * maxf(flip, 0.25)).rotated(spin))
 			b.polygon(body, Color(cols[int(pt[5])], alpha))
 	return null if b.verts.is_empty() else b.mesh()

@@ -1619,8 +1619,11 @@ chess is: rules, computer, skin contract, house set, board, screen.
   the move is played, but is `doomed` until the jumper is over it: it stays
   on its square watching, worried, not asleep. Anything that counts a tray
   must skip the doomed and the ones still in the air.
-- 125 draw calls on the Versus tab, 130-136 at the board, ANGLE agreeing.
-  The tab now fits its three cards to the room (`versus_tab.gd`'s `_fit`),
+- 125 draw calls on the Versus tab, 130-136 at the board, ANGLE agreeing,
+  unchanged by the polish of 2026-09-26 (spec section 10: a striped,
+  bevelled lawn, glows in place of flat marks, heaped trays, the toast over
+  the top planter, a crouch before a hop, a capture's air trail, the crown's
+  sparkles, a fuller win, neighbours who chat). The tab now fits its three cards to the room (`versus_tab.gd`'s `_fit`),
   dropping the blurbs and then picture height rather than the bar.
 - Harnesses: `tests/_shot_checkers.gd` (every beat; `reduce` after the
   outdir), `tests/_probe_checkers_game.gd` (a whole game, `UNDO=1` takes

@@ -183,3 +183,42 @@ worried rose one.
   back.
 - No concept-page tab was made first (the user was away).
 - Online play, as for the other two.
+
+## 10. Amendment: polish (2026-09-26)
+
+Asked for by the user ("polish and improve design and animation"), after a
+look at every beat of `tests/_shot_checkers.gd`.
+
+- **The lawn**: the played squares carry mower stripes (three diagonal
+  bands in `DARK_LIT`), a bevel lit top-left and shaded bottom-right,
+  three-bladed tufts and now and then a clover; the sandstone squares are
+  bevelled too, and the frame's shade falls in over the squares in three
+  soft steps, deepest at the top left. All of it is the one board mesh.
+- **Marks**: the flat yellow squares are gone. The picked piece stands in a
+  warm glow under its ring; hover is a rounded outline; the last move's
+  start is a faint rounded outline and its end a soft glow with a rounded
+  rim. A landing is a pale pad breathing round a seed, popping in a step
+  a square out as before.
+- **Trays**: taken pieces heap rather than queue (0.44 a cell apart,
+  alternately 0.09 above and below the middle), and the far end of each
+  planter has a pebble, a toadstool and three daisies, so an empty planter
+  is not a bare strip.
+- **The toast** sits over the computer's planter at the top, not over the
+  middle of the board, where it covered the pieces it was talking about.
+- **Pieces**: broken grain rings between the groove and the rim, and a
+  deeper cream line (`7a6149`) at a heavier stroke, so a cream piece holds
+  its edge on sandstone.
+- **Motion**: a man crouches in place before it hops (`STEP_CROUCH`, a step
+  0.48 s from 0.42); a capture leaves a dotted arc in the air behind it;
+  a falling crown trails sparkles, the man stretches up to catch it and
+  bounces higher after; the winners hop three times in a wave, higher, with
+  a sparkle on the first, and the petals start sooner and are larger (the
+  win used to be mostly over or not yet begun at any given moment); now and
+  then two resting neighbours turn to each other, lean in and smile
+  (`_chat`, three fidgets in ten).
+
+Draw calls unchanged: 125 on the tab, 130-136 at the board, 69-96 later in
+a game, 92 on the end card; ANGLE agrees on every count, and its frames
+differ from the default driver's only on the pieces' own breathing and
+glances. Under reduce motion none of the new motion runs. A whole game
+with undo (`SEED=3 UNDO=1 tests/_probe_checkers_game.gd`) reaches its end.

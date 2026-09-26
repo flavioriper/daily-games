@@ -184,11 +184,11 @@ func _process(delta: float) -> bool:
 		23:
 			_s._on_chosen(find("c3", "e5") if not find("c3", "e5").is_empty() else find("e3", "c5"))
 			_step = 24
-			_wait = _t + 1.6
+			_wait = _t + 2.3
 		24:
 			_shot("16_won")
 			_step = 25
-			_wait = _t + 2.2
+			_wait = _t + 1.8
 		25:
 			_shot("17_end")
 			_s._end.queue_free()

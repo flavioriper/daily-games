@@ -698,14 +698,14 @@ func _hush() -> void:
 	_toast_tw = create_tween()
 	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.2)
 
-## Over the board, a little above its middle.
+## Over the computer's planter at the top, where it hides no piece in play.
 func _place_toast() -> void:
 	_toast.reset_size()
 	var at: Rect2 = board.get_global_rect()
 	var frame: Rect2 = board.frame_rect()
-	var w := _toast.get_combined_minimum_size().x
-	_toast.global_position = Vector2(at.position.x + frame.get_center().x - w * 0.5,
-		at.position.y + frame.position.y + frame.size.y * 0.4)
+	var sz := _toast.get_combined_minimum_size()
+	var top := maxf(at.position.y + board.used_rect.position.y, at.position.y + frame.position.y + board.cell * 0.4 - sz.y)
+	_toast.global_position = Vector2(at.position.x + frame.get_center().x - sz.x * 0.5, top)
 
 func _on_reset() -> void:
 	if _state == State.ANIM or _state == State.REWIND:
