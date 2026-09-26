@@ -207,3 +207,58 @@ The milliseconds are this Mac's and comparable only within a session.
   playing.
 - pt-BR and es strings are machine-fluent and want a native pass, like every
   other board's.
+
+## 10. Amendment: the polish (2026-09-26)
+
+Asked for by the user the day the board shipped ("polish and improve design
+and animation"), designed in chat and built directly.
+
+- **The greenhouse is dressed.** The bands of bare glass over and under the
+  floor now hold a potting shelf (three pots: leaves, one in flower, a
+  seedling) and a terracotta window box brimming with leaf mounds, flowers
+  and trailing ivy; slant light shafts fall across the glass, cut to the
+  card; each tile is a slab with a shaded lip and a lit edge, a few weathered
+  warmer, and moss grows where some grout lines cross. All of it is in the
+  still mesh, so it costs nothing at rest. A band shorter than `BAND_MIN` 90
+  (the win screen's shrunk board) gets no dressing.
+- **The light pools on the floor** by the glow pass alone: `BEAM_GLOW` is
+  0.8 of a cell at 0.17 now, not 0.42 at 0.22. A separate pool stroke was
+  built first and cost about 0.7 ms on every drag frame for the same look.
+- **At rest the light flows**: bright pulses run out of the sun along the
+  core (`PULSE_GAP`, `PULSE_LEN`, `PULSE_SPEED`), and every mirror the light
+  strikes wears a slowly turning, twinkling four-point star. Both are in the
+  air mesh, with the bud, which moved there so an open flower can sway.
+- **The first run has a leading spark**, a soft glow and a star at the tip.
+- **A held piece** rises over `Motion.LIFT_TIME` rather than jumping, and
+  settles back down as it lands; the peg it will land on glows under it; a
+  mirror's glass carries a sheen that slides with it. A let-go piece lands
+  with a dip and a rebound (`LAND`, `LAND_TIME`, through `Motion.bump_scale`)
+  and a small puff off the rail. The mirror's glass is bevelled, and a
+  pinned mirror wears a lit ring.
+- **A drop the light reaches** swells its glow as it squashes.
+- **The bloom is rebuilt, and fixes a bug**: the shut bud used to vanish the
+  frame the bloom began, leaving an empty stem while the petals were still
+  specks. `Parts.bud`'s `open` is now linear progress: the bud swells, its
+  sepals part, an outer and an inner ring of petals unfurl with the back ease
+  and a twist, and the shut bud shrinks into them. `BLOOM_TIME` is 1.0.
+- **The win is a wave**: a gold band runs the beam from the sun to the bud at
+  `WAVE_SPEED` 22 cells a second (never longer than `WAVE_MAX` 1 s), each
+  drop sparkling and each mirror puffing light as it passes; the bud opens
+  when it arrives, with pollen and a sparkle, and `PETALS` 6 petals drift off
+  over `PETAL_LIFE` 2.2 s while the flower sways. `win_delay()` is the bloom's
+  start plus `BLOOM_TIME` plus `WIN_HOLD` 1.1; `WIN_WAIT` is gone.
+- **Dropped in the build**: the pots' leaves swaying on the win (it moved the
+  pots into the live mesh and cost every drag frame), and dry drops wobbling
+  at rest (drops sit between the beam and the mirrors in the live mesh, so
+  animating them at rest would rebuild it).
+
+Measured with `tests/_shot_anim.gd -- sunbeam` at `--resolution 810x1440`:
+**65** draw calls at rest (unchanged) and **69** solved (68 before), 48
+solved under reduce motion (`rm`), where two frames a second apart are
+pixel-identical. Idle 4.8-5.5 ms over four runs, against 4.0-5.0 before in the
+same session. **A drag frame costs more**: `hold` read 10.9 ms twice against
+9.2 twice on the pre-polish build, the same session -- the lift, the sheen,
+the landing peg and a busier air mesh. ANGLE agrees on 65, and the only pixels
+more than 30 levels apart lie in the beam's row, where the moving pulses and
+motes differ in phase between runs. `tests/_win.gd` 24/24; the suite
+`passed=122589 failed=0`.

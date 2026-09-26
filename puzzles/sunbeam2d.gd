@@ -65,6 +65,14 @@ const BUD_HALF := 0.3
 const LAMP_HALF := 0.42
 const DROP_REACH := 0.22
 const MAX_BOUNCES := 64
+## The dressing: a band over or under the floor shorter than this gets none;
+## the glass's light shafts as (left edge, width) fractions of the card; and
+## how many grout crossings grow moss.
+const BAND_MIN := 90.0
+const SHAFTS := [Vector2(-0.2, 0.13), Vector2(0.02, 0.05), Vector2(0.3, 0.16), Vector2(0.55, 0.06)]
+const MOSS := 0.16
+## Where ivy trails over the window box's lip, as fractions of its length.
+const IVY := [0.0, 0.3, 0.72, 1.0]
 const EPS := 1e-4
 
 # --- this board's own motion ---
@@ -82,10 +90,26 @@ const BEAM_DELAY := 0.55
 const SUN_TURN := 0.35
 const MOTE_SPEED := 1.6
 const MOTE_DENSITY := 1.2
-## The solve: the bud opens over BLOOM_TIME once the light has reached it,
-## the drops sparkle WAVE_STEP apart, and the win screen waits WIN_WAIT more.
-const BLOOM_TIME := 0.7
-const WIN_WAIT := 2.6
+## At rest bright pulses flow out of the sun along the beam's core: one every
+## PULSE_GAP cells, PULSE_LEN long, at PULSE_SPEED cells a second.
+const PULSE_GAP := 2.6
+const PULSE_LEN := 0.55
+const PULSE_SPEED := 2.4
+## A let-go piece lands with a dip and a rebound of LAND over LAND_TIME, and a
+## puff off the rail.
+const LAND := -0.1
+const LAND_TIME := 0.26
+## The solve: a gold wave runs the beam from the sun to the bud at
+## WAVE_SPEED cells a second (faster on a long beam, so it takes at most
+## WAVE_MAX), each drop sparkling as it passes; then the bud opens over
+## BLOOM_TIME, petals drift off for PETAL_LIFE, and the win screen waits
+## WIN_HOLD past the bloom.
+const WAVE_SPEED := 22.0
+const WAVE_MAX := 1.0
+const BLOOM_TIME := 1.0
+const PETAL_LIFE := 2.2
+const PETALS := 6
+const WIN_HOLD := 1.1
 const HINTS := 3
 
 const TIP_CYCLE := 8.0
@@ -118,6 +142,9 @@ var _rings: Array = []
 var _opened := 0.0
 var _anim_until := 0.0
 var _solved_at := -1.0
+## When the solve's wave reaches the bud and it starts to open.
+var _bloom_at := -1.0
+var _wave_speed := WAVE_SPEED
 var _still: ArrayMesh
 var _live: ArrayMesh
 var _air: ArrayMesh
@@ -156,7 +183,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
 	_disp = []
 	for p in _state.pieces().size():
-		_disp.append({"from": float(_state.pos[p]), "at": -100.0})
+		_disp.append({"from": float(_state.pos[p]), "at": -100.0, "lift": false})
 	_drag = {}
 	_peg_press = {}
 	_refused = {"at": -100.0, "p": -1}
@@ -166,6 +193,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_bud_told = ""
 	_anim_until = 0.0
 	_solved_at = -1.0
+	_bloom_at = -1.0
 	_opened = _now()
 	_beam_at = _opened + (0.0 if Motion.reduce else BEAM_DELAY)
 	_tr = {}
@@ -552,7 +580,8 @@ func _build_still() -> ArrayMesh:
 	var s := _cell()
 	var o := _origin()
 	var g := _grid_size()
-	b.fan(Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0), Pal.GLASSHOUSE)
+	var card := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
+	b.fan(card, Pal.GLASSHOUSE)
 	# The panes: white-painted mullions a few across and one rail across the
 	# top third, with a long soft glint over two of them.
 	var pw := (size.x - 4.0) / float(PANES)
@@ -574,6 +603,13 @@ func _build_still() -> ArrayMesh:
 			ang = ang if side > 0.0 else PI - ang
 			var col: Color = [Pal.LEAF_DEEP, Pal.LEAF, Pal.LEAF_LIGHT][q % 3]
 			Parts.leaf(b, root + Vector2(side * float(q) * 9.0, float(q) * 5.0), 70.0 - float(q) * 4.0, ang, col)
+	_shafts(b, card)
+	var top := o.y - FRAME
+	if top > BAND_MIN:
+		_shelf(b, top)
+	var bottom := o.y + g.y + FRAME + 6.0
+	if size.y - bottom > BAND_MIN:
+		_window_box(b, bottom, size.y - bottom)
 	# The frame, its shadow, and the floor inside it.
 	var out := o - Vector2.ONE * FRAME
 	var out_size := g + Vector2.ONE * FRAME * 2.0
@@ -589,7 +625,25 @@ func _build_still() -> ArrayMesh:
 		var y: int = c / _state.cols
 		var v := _hash(x + 7, y + 3)
 		var tone := Pal.FLOOR_TILE_HI if v < 0.33 else (Pal.FLOOR_TILE if v < 0.66 else Pal.FLOOR_TILE.lerp(Pal.FLOOR_GROUT, 0.45))
-		b.fan(Face.Builder.round_rect(o + Vector2(x, y) * s + Vector2.ONE * TILE_GAP, Vector2.ONE * (s - TILE_GAP * 2.0), s * TILE_R), tone)
+		# a warmer tile now and then, as terracotta weathers unevenly
+		if _hash(x + 31, y + 17) < 0.2:
+			tone = tone.lerp(Pal.POT_CLAY, 0.1)
+		var at := o + Vector2(x, y) * s + Vector2.ONE * TILE_GAP
+		var ts := Vector2.ONE * (s - TILE_GAP * 2.0)
+		# each tile a slab: its lower lip in shade, a lit edge along its top
+		b.fan(Face.Builder.round_rect(at + Vector2(0.0, 3.0), ts, s * TILE_R), tone.lerp(Pal.FLOOR_GROUT, 0.6))
+		b.fan(Face.Builder.round_rect(at, ts - Vector2(0.0, 3.0), s * TILE_R), tone)
+		b.fan(Face.Builder.round_rect(at + Vector2(s * 0.12, 3.0), Vector2(ts.x - s * 0.24, 3.0), 1.5), Color(1.0, 1.0, 1.0, 0.28))
+	# moss in the grout, where four tiles meet
+	for y in range(1, _state.rows):
+		for x in range(1, _state.cols):
+			if _hash(x * 3 + 5, y * 7 + 11) < MOSS:
+				var at := o + Vector2(x, y) * s
+				var v := _hash(x + 13, y + 29)
+				var r := s * (0.03 + 0.015 * v)
+				b.disc(at + Vector2(-r * 0.8, r * 0.3), r, Color(Pal.LEAF_DEEP, 0.75))
+				b.disc(at + Vector2(r * 0.7, r * 0.5), r * 0.85, Color(Pal.LEAF, 0.75))
+				b.disc(at + Vector2(0.0, -r * 0.5), r * 0.8, Color(Pal.LEAF_LIGHT, 0.8))
 	for p in _state.pieces().size():
 		var rail: PackedInt32Array = _state.g.pieces[p].rail
 		var pegs := PackedVector2Array()
@@ -600,6 +654,96 @@ func _build_still() -> ArrayMesh:
 		Parts.pot(b, _centre(c), s)
 	Parts.window(b, _centre(_state.g.lamp), s)
 	return b.mesh()
+
+## Morning light falling slant through the glass wall: a few pale shafts,
+## cut to the card. The floor is drawn over them, so they only show on the
+## glass.
+func _shafts(b: Face.Builder, card: PackedVector2Array) -> void:
+	var drift := size.y * 0.42
+	for k in SHAFTS.size():
+		var sh: Vector2 = SHAFTS[k]
+		var x0 := size.x * sh.x
+		var w := size.x * sh.y
+		var quad := PackedVector2Array([Vector2(x0, 0.0), Vector2(x0 + w, 0.0),
+			Vector2(x0 + w + drift, size.y), Vector2(x0 + drift, size.y)])
+		for poly: PackedVector2Array in Geometry2D.intersect_polygons(quad, card):
+			b.polygon(poly, Color(Pal.BEAM_CORE, 0.55) if k % 2 == 0 else Color(Pal.BEAM, 0.16))
+
+## The potting shelf in the band over the floor: a plank on two brackets with
+## three pots on it -- leaves, a flowering one, and a seedling.
+func _shelf(b: Face.Builder, band: float) -> void:
+	var y := band * 0.74
+	var x0 := size.x * 0.16
+	var x1 := size.x * 0.84
+	for x: float in [x0 + 30.0, x1 - 30.0]:
+		b.fan(PackedVector2Array([Vector2(x - 6.0, y), Vector2(x + 6.0, y), Vector2(x + 6.0, y + band * 0.16),
+			Vector2(x - 6.0, y + band * 0.1)]), Pal.RAIL_DEEP)
+	Scenery.soft_disc(b, Vector2((x0 + x1) * 0.5, y + 22.0), (x1 - x0) * 0.5, 12.0, Color(Pal.TEXT, 0.12))
+	b.fan(Face.Builder.round_rect(Vector2(x0, y + 4.0), Vector2(x1 - x0, 14.0), 6.0), Pal.RAIL_DEEP)
+	b.fan(Face.Builder.round_rect(Vector2(x0, y), Vector2(x1 - x0, 14.0), 6.0), Pal.RAIL)
+	b.fan(Face.Builder.round_rect(Vector2(x0 + 8.0, y + 2.0), Vector2(x1 - x0 - 16.0, 3.0), 1.5), Color(Pal.BEAM_CORE, 0.4))
+	var ps := minf(band * 0.72, 130.0)
+	for k in 3:
+		var at := Vector2(lerpf(x0, x1, 0.22 + 0.28 * float(k)), y - ps * 0.3)
+		match k:
+			0:
+				Parts.pot(b, at, ps)
+			1:
+				# a pot in flower: the leaves, and three pink heads over them
+				Parts.pot(b, at, ps * 0.9)
+				for q in 3:
+					var fh := at + Vector2((float(q) - 1.0) * ps * 0.16, -ps * (0.38 + 0.08 * float(q % 2)))
+					for i in 5:
+						b.disc(fh + Vector2.from_angle(float(i) * TAU / 5.0) * ps * 0.045, ps * 0.045, Pal.FLOWER)
+					b.disc(fh, ps * 0.035, Pal.SUN)
+			_:
+				# a seedling: a low pot and two round leaves on a stalk
+				Parts.pot(b, at + Vector2(0.0, ps * 0.08), ps * 0.75)
+				var stem := at + Vector2(0.0, -ps * 0.1)
+				b.stroke(PackedVector2Array([stem, stem + Vector2(0.0, -ps * 0.28)]), ps * 0.04, Pal.LEAF_DEEP)
+				b.ellipse(stem + Vector2(-ps * 0.1, -ps * 0.32), ps * 0.1, ps * 0.06, Pal.LEAF_LIGHT)
+				b.ellipse(stem + Vector2(ps * 0.1, -ps * 0.34), ps * 0.1, ps * 0.06, Pal.LEAF)
+
+## The window box in the band under the floor: a terracotta trough brimming
+## with leaves and a few flowers, ivy trailing over its lip.
+func _window_box(b: Face.Builder, y0: float, band: float) -> void:
+	var h := minf(band * 0.34, 64.0)
+	var y := y0 + band * 0.42
+	var x0 := size.x * 0.1
+	var x1 := size.x * 0.9
+	# the foliage behind the lip: a back row of deep mounds, a front row of
+	# lit ones, a few leaves poking up out of them, and flowers on top
+	var n := int((x1 - x0) / (h * 0.7))
+	for row in 2:
+		for i in n:
+			var x := lerpf(x0 + h * 0.4, x1 - h * 0.4, (float(i) + 0.5 * float(row)) / float(n))
+			var v := _hash(i + 3, 91 + row)
+			var r := h * (0.42 + 0.14 * v) * (1.0 if row == 0 else 0.85)
+			var c := Vector2(x, y - r * 0.35 + float(row) * h * 0.12)
+			b.disc(c, r, Pal.LEAF_DEEP if row == 0 else Pal.LEAF)
+			b.disc(c + Vector2(-r * 0.25, -r * 0.3), r * 0.45, Color(Pal.LEAF_LIGHT, 0.55 if row == 1 else 0.3))
+	for i in n / 2:
+		var x := lerpf(x0 + h, x1 - h, (float(i) + 0.3) / float(maxi(n / 2, 1)))
+		var v := _hash(i + 5, 57)
+		Parts.leaf(b, Vector2(x, y - h * 0.3), h * (0.55 + 0.3 * v), -PI * 0.5 + (v - 0.5) * 1.2, Pal.LEAF_LIGHT if i % 2 == 0 else Pal.LEAF)
+	for i in 5:
+		var fh := Vector2(lerpf(x0 + 50.0, x1 - 50.0, float(i) / 4.0) + (_hash(i, 7) - 0.5) * 30.0, y - h * (0.45 + 0.3 * _hash(i, 13)))
+		for q in 5:
+			b.disc(fh + Vector2.from_angle(float(q) * TAU / 5.0) * h * 0.11, h * 0.11, Pal.FLOWER if i % 2 == 0 else Pal.SURFACE)
+		b.disc(fh, h * 0.08, Pal.SUN)
+	Scenery.soft_disc(b, Vector2((x0 + x1) * 0.5, y + h + 8.0), (x1 - x0) * 0.52, 14.0, Color(Pal.TEXT, 0.14))
+	b.fan(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1 - 16.0, y + h), Vector2(x0 + 16.0, y + h)]), Pal.POT_CLAY)
+	b.fan(Face.Builder.round_rect(Vector2(x0 - 8.0, y - 6.0), Vector2(x1 - x0 + 16.0, 16.0), 6.0), Pal.POT_RIM)
+	b.fan(Face.Builder.round_rect(Vector2(x0 + 30.0, y + 18.0), Vector2((x1 - x0) * 0.3, 5.0), 2.5), Color(1.0, 1.0, 1.0, 0.18))
+	# ivy trailing over the lip
+	for k in IVY.size():
+		var at := Vector2(lerpf(x0 + 30.0, x1 - 30.0, IVY[k]), y + 6.0)
+		for q in 4:
+			var p := at + Vector2(sin(float(q) * 1.3 + float(k)) * 7.0, float(q) * h * 0.3)
+			if q > 0:
+				b.stroke(PackedVector2Array([at + Vector2(sin(float(q - 1) * 1.3 + float(k)) * 7.0, float(q - 1) * h * 0.3), p]),
+					2.5, Pal.LEAF_DEEP)
+			Parts.leaf(b, p, h * 0.34, PI * 0.5 + (0.8 if q % 2 == 0 else -0.8), Pal.LEAF if q % 2 == 0 else Pal.LEAF_DEEP)
 
 ## A stable hash of two ints, 0 to 1: the floor's tile tones.
 static func _hash(a: int, b: int) -> float:
@@ -613,12 +757,24 @@ func _entry(i: int, t: float) -> float:
 	var e := t - _opened - Motion.ENTER_DELAY - 0.2 - Motion.stagger(i, 0.05)
 	return 0.01 if e <= 0.0 else Motion.pop_in_scale(e).x
 
-## The cups under the light, the light, the drops, the mirrors over it, the
-## bud, and a hint's ring.
+## The peg a held piece will land on, the cups under the light, the light, the drops, the mirrors over it,
+## and a hint's ring. The bud, the glints and everything that moves at rest
+## are the air's.
 func _build_live(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := _cell()
 	var n: int = _state.pieces().size()
+	if _tr.is_empty():
+		_tr = _trace_live(t)
+	var drawn := _drawn(t)
+	var bpts: PackedVector2Array = _tr.pts
+	var lit := _cut(bpts, drawn)
+	if not _drag.is_empty():
+		# the peg the held piece lands on if let go now
+		var hp: int = _drag.p
+		var at := _pt(_piece_mid(hp, float(_state.pos[hp])))
+		Scenery.soft_disc(b, at, s * 0.42, s * 0.42, Color(Pal.BEAM, 0.45))
+		b.stroke(Face.Builder.ring(at, s * 0.2, s * 0.2), 3.0, Color(Pal.BEAM_CORE, 0.9), true)
 	for p in n:
 		var pc: Dictionary = _state.g.pieces[p]
 		if pc.kind != "u":
@@ -627,43 +783,40 @@ func _build_live(t: float) -> ArrayMesh:
 		var a := _anchor(p, peg)
 		var z := a + Vector2(Gen.DX[pc.s], Gen.DY[pc.s])
 		var f := Vector2(Gen.DX[pc.f], Gen.DY[pc.f])
-		var e := _entry(p, t)
+		var e := _entry(p, t) * _land(p, t)
 		var sh := Vector2(_shiver(p, t), 0.0)
 		var mid := _pt(_piece_mid(p, peg))
 		var pts := Parts.cup_path(_pt(a) + sh, _pt(z) + sh, s, f)
-		if e < 0.999:
+		if absf(e - 1.0) > 0.001:
 			for i in pts.size():
 				pts[i] = mid + (pts[i] - mid) * e
-		Parts.cup(b, pts, s * e, f, _lift(p), _state.pinned.has(p))
-	if _tr.is_empty():
-		_tr = _trace_live(t)
-	var drawn := _drawn(t)
-	var bpts: PackedVector2Array = _tr.pts
-	Parts.beam(b, _cut(bpts, drawn), s)
+		Parts.cup(b, pts, s * e, f, _lift(p, t), _state.pinned.has(p))
+	Parts.beam(b, lit, s)
 	if _arrived(t) and String(_tr.end) in ["pot", "cup", "lamp"]:
 		b.disc(_pt(bpts[bpts.size() - 1]), s * 0.07, Color(Pal.BEAM, 0.8))
+	elif not _arrived(t) and drawn > 0.0:
+		# the light's leading spark on its first run out of the lamp
+		var tip := _along(drawn)
+		Scenery.soft_disc(b, tip, s * 0.4, s * 0.4, Color(Pal.BEAM, 0.7))
+		Parts.star(b, tip, s * 0.24, Pal.BEAM_CORE, drawn * 0.4)
 	for i in _state.drops().size():
 		var c: int = _state.drops()[i]
 		var wet: bool = _wet.has(c)
 		var sc := Vector2.ONE * _entry(i + 2, t)
+		var glow := 1.0
 		if wet:
-			sc *= Vector2(1.0, 1.0) + Vector2(0.08, -0.16) * _pulse(t - float(_chimed.get(c, -100.0)), 0.26)
-		Parts.drop(b, _centre(c), s, wet, sc)
+			var pu := _pulse(t - float(_chimed.get(c, -100.0)), 0.26)
+			sc *= Vector2(1.0, 1.0) + Vector2(0.08, -0.16) * pu
+			glow += 0.6 * _pulse(t - float(_chimed.get(c, -100.0)), 0.5)
+		Parts.drop(b, _centre(c), s, wet, sc, glow)
 	for p in n:
 		var pc: Dictionary = _state.g.pieces[p]
 		if pc.kind != "m":
 			continue
 		var at := _pt(_piece_mid(p, _peg_now(p, t))) + Vector2(_shiver(p, t), 0.0)
-		Parts.mirror(b, at, s, pc.t == "/", _lift(p), _state.pinned.has(p), _entry(p, t))
-	# a glint where the drawn light strikes each mirror's glass
-	for gl: Array in _tr.glints:
-		if float(gl[1]) <= drawn:
-			b.disc(_pt(gl[0]), s * 0.075, Color(Pal.BEAM_CORE, 0.95))
-	var open := 0.0
-	if _solved_at >= 0.0:
-		open = 1.0 if Motion.reduce else Motion.back_out(clampf((t - _solved_at) / BLOOM_TIME, 0.0, 1.0))
-	var glow: bool = _tr.end == "bud" and _arrived(t) and _solved_at < 0.0
-	Parts.bud(b, _centre(_state.g.bud), s * _entry(n + 1, t), open, glow)
+		var lift := _lift(p, t)
+		var sheen := fposmod(_peg_now(p, t) * 0.8, 1.0) if lift > 0.0 else -1.0
+		Parts.mirror(b, at, s, pc.t == "/", lift, _state.pinned.has(p), _entry(p, t) * _land(p, t), sheen)
 	_drop_rings(t)
 	for r: Dictionary in _rings:
 		var u := (t - float(r.at)) / Motion.RING_TIME
@@ -672,34 +825,123 @@ func _build_live(t: float) -> ArrayMesh:
 			b.stroke(Face.Builder.ring(r.pos, rad, rad), s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
 	return b.mesh() if not b.verts.is_empty() else null
 
+## How far the bloom has got, 0 to 1, linear (the bud eases it).
+func _bloom(t: float) -> float:
+	if _bloom_at < 0.0:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	return clampf((t - _bloom_at) / BLOOM_TIME, 0.0, 1.0)
+
+## A let-go piece's scale as it lands on its peg: a dip and a rebound.
+func _land(p: int, t: float) -> float:
+	var d: Dictionary = _disp[p]
+	if not d.get("lift", false):
+		return 1.0
+	return Motion.bump_scale(t - float(d.at) - SNAP_TIME, LAND, LAND_TIME)
+
 ## 0 to 1 and back over `time`, once: a drop's squash as it is wet.
 func _pulse(e: float, time: float) -> float:
 	if Motion.reduce or e < 0.0 or e >= time:
 		return 0.0
 	return sin(PI * e / time)
 
-func _lift(p: int) -> float:
-	return 1.0 if not _drag.is_empty() and int(_drag.p) == p else 0.0
+## How far piece `p` is raised off the floor: up over LIFT_TIME as a finger
+## takes it, down again as it settles onto its peg.
+func _lift(p: int, t: float) -> float:
+	if not _drag.is_empty() and int(_drag.p) == p:
+		return 1.0 if Motion.reduce else clampf((t - float(_drag.at)) / Motion.LIFT_TIME, 0.0, 1.0)
+	var d: Dictionary = _disp[p]
+	if Motion.reduce or not d.get("lift", false):
+		return 0.0
+	return 1.0 - clampf((t - float(d.at)) / SNAP_TIME, 0.0, 1.0)
 
 func _shiver(p: int, t: float) -> float:
 	if int(_refused.p) != p:
 		return 0.0
 	return Motion.shiver_offset(t - float(_refused.at)) * 3.0
 
-## The sun's turning rays and the motes drifting down the light.
+## Everything that moves at rest, rebuilt every frame and nothing else: the
+## sun's turning rays, the motes drifting down the light, the pulses flowing
+## along its core, a twinkling glint on every mirror it strikes, the bud (it
+## sways once open), and on the solve the gold wave and the drifting petals.
 func _build_air(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := _cell()
 	var lamp := _centre(_state.g.lamp)
 	Parts.sun(b, lamp, s * _entry(0, t), 0.0 if Motion.reduce else t * SUN_TURN)
+	var tot := _drawn(t)
 	if not Motion.reduce:
-		var tot := _drawn(t)
 		var count := int(tot * MOTE_DENSITY)
 		for k in count:
 			var at := fmod(float(k) / MOTE_DENSITY + t * MOTE_SPEED, tot)
 			var p := _along(at) + Vector2(sin(float(k) + t), cos(float(k) * 1.3 + t)) * s * 0.05
 			b.disc(p, s * 0.018, Color(1.0, 1.0, 1.0, 0.5 + 0.4 * sin(float(k) * 1.7 + t * 3.0)))
+		if _arrived(t) and tot > PULSE_LEN:
+			var n := int(ceil(tot / PULSE_GAP))
+			for k in n:
+				var head := fmod(t * PULSE_SPEED + float(k) * PULSE_GAP, float(n) * PULSE_GAP)
+				if head > tot:
+					continue
+				var fade := clampf(head / 0.8, 0.0, 1.0) * clampf((tot - head) / 0.8, 0.0, 1.0)
+				Scenery.soft_disc(b, _along(head), s * 0.2, s * 0.2, Color(Pal.BEAM, 0.45 * fade))
+				_stroke(b, _span(head - PULSE_LEN, head), s * 0.09, Color(Pal.BEAM_CORE, 0.9 * fade))
+	# a glint where the drawn light strikes each mirror's glass
+	for k in _tr.glints.size():
+		var gl: Array = _tr.glints[k]
+		if float(gl[1]) <= tot:
+			var tw := 1.0 if Motion.reduce else 0.85 + 0.25 * sin(t * 2.2 + float(k) * 1.7)
+			var at := _pt(gl[0])
+			Scenery.soft_disc(b, at, s * 0.22, s * 0.22, Color(Pal.BEAM, 0.55))
+			Parts.star(b, at, s * 0.21 * tw, Pal.BEAM_CORE, 0.0 if Motion.reduce else t * 0.5 + float(k))
+			b.disc(at, s * 0.05, Color.WHITE)
+	# the solve's wave, from the sun to the bud
+	if _solved_at >= 0.0 and not Motion.reduce:
+		var head := (t - _solved_at) * _wave_speed
+		if head > 0.0 and head < _total() + 1.5:
+			_stroke(b, _span(head - 1.8, head), s * 0.26, Color(Pal.BEAM_CORE, 0.5))
+			_stroke(b, _span(head - 1.0, head), s * 0.12, Color.WHITE)
+			if head < _total():
+				Scenery.soft_disc(b, _along(head), s * 0.5, s * 0.5, Color(Pal.BEAM, 0.7))
+	var open := _bloom(t)
+	var glow: bool = _tr.end == "bud" and _arrived(t) and _solved_at < 0.0
+	var sway := 0.0
+	if open >= 1.0 and not Motion.reduce:
+		sway = sin((t - _bloom_at) * 1.3) * 0.07
+	var bud := _centre(_state.g.bud)
+	Parts.bud(b, bud, s * _entry(_state.pieces().size() + 1, t), open, glow, 0.0, sway)
+	if _bloom_at >= 0.0 and not Motion.reduce:
+		var e := t - _bloom_at - BLOOM_TIME * 0.4
+		if e > 0.0 and e < PETAL_LIFE:
+			var u := e / PETAL_LIFE
+			for i in PETALS:
+				var ang := -PI * 0.5 + (float(i) - float(PETALS - 1) * 0.5) * 0.6
+				var out := Vector2.from_angle(ang) * s * (0.3 + 1.3 * (1.0 - exp(-2.2 * e)))
+				var at := bud + Vector2(0.0, -s * 0.06) + out \
+					+ Vector2(sin(e * 3.0 + float(i) * 1.9) * s * 0.14, e * e * s * 0.22)
+				Parts.petal(b, at, s * 0.09, e * 2.4 + float(i), 1.0 - u * u)
 	return b.mesh()
+
+## A stroke along `pts`, if there is one to draw.
+static func _stroke(b: Face.Builder, pts: PackedVector2Array, w: float, col: Color) -> void:
+	if pts.size() >= 2:
+		b.stroke(pts, w, col)
+
+## The beam between `a` and `z` cells along it, in pixels.
+func _span(a: float, z: float) -> PackedVector2Array:
+	var pts: PackedVector2Array = _tr.pts
+	var lens: PackedFloat32Array = _tr.len
+	a = maxf(a, 0.0)
+	z = minf(z, _total())
+	var out := PackedVector2Array()
+	if z <= a:
+		return out
+	out.append(_along(a))
+	for i in range(1, lens.size() - 1):
+		if lens[i] > a and lens[i] < z:
+			out.append(_pt(pts[i]))
+	out.append(_along(z))
+	return out
 
 # --- input ---
 
@@ -772,7 +1014,7 @@ func _press(local: Vector2) -> void:
 			_refuse(p, t)
 			return
 		var s := _peg_now(p, t)
-		_drag = {"p": p, "s": s, "off": s - _rail_s(p, local), "before": _state.pos.duplicate()}
+		_drag = {"p": p, "s": s, "off": s - _rail_s(p, local), "before": _state.pos.duplicate(), "at": t}
 		fx.cue("lift")
 		_refresh()
 		return
@@ -794,10 +1036,11 @@ func _release(local: Vector2) -> void:
 	var t := _now()
 	if not _drag.is_empty():
 		var p: int = _drag.p
-		_disp[p] = {"from": float(_drag.s), "at": t}
+		_disp[p] = {"from": float(_drag.s), "at": t, "lift": true}
 		var before: PackedInt32Array = _drag.before
 		_drag = {}
-		_busy_for(SNAP_TIME)
+		_busy_for(SNAP_TIME + LAND_TIME)
+		_land_puff(p)
 		if _state.commit(before):
 			fx.cue("slide")
 			note_move()
@@ -822,12 +1065,20 @@ func _release(local: Vector2) -> void:
 	var before: PackedInt32Array = _state.pos.duplicate()
 	var from := float(_state.pos[p])
 	if _state.place(p, pg.q):
-		_disp[p] = {"from": from, "at": t}
-		_busy_for(SNAP_TIME)
+		_disp[p] = {"from": from, "at": t, "lift": true}
+		_busy_for(SNAP_TIME + LAND_TIME)
+		_land_puff(p)
 		_state.commit(before)
 		fx.cue("slide")
 		note_move()
 		_refresh()
+
+## A little puff off the rail where piece `p` lands, as it lands.
+func _land_puff(p: int) -> void:
+	if Motion.reduce:
+		return
+	var at := _pt(_piece_mid(p, float(_state.pos[p]))) + Vector2(0.0, _cell() * 0.22)
+	get_tree().create_timer(SNAP_TIME).timeout.connect(func(): fx.puff(at, Pal.SURFACE, 4))
 
 func _refuse(p: int, t: float, line := "SB_PINNED") -> void:
 	_refused = {"at": t, "p": p}
@@ -872,7 +1123,7 @@ func _settle(before: PackedInt32Array, t: float, stagger := 0.0) -> void:
 	var k := 0
 	for p in before.size():
 		if before[p] != _state.pos[p]:
-			_disp[p] = {"from": float(before[p]), "at": t + Motion.stagger(k, stagger)}
+			_disp[p] = {"from": float(before[p]), "at": t + Motion.stagger(k, stagger), "lift": false}
 			k += 1
 	_busy_for(Motion.stagger(k, stagger) + SNAP_TIME)
 
@@ -923,6 +1174,7 @@ func reset_board() -> void:
 	_settle(before, t, Motion.RESET_STAGGER)
 	_rings = []
 	_solved_at = -1.0
+	_bloom_at = -1.0
 	moves = 0
 	_running = true
 	_say(tr(TIPS[0]), Face.Expr.HAPPY)
@@ -941,31 +1193,40 @@ func share_glyphs() -> String:
 func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": tr("SB_WIN")}
 
-## The win screen waits for the light to reach the bud, then for the bloom.
+## The win screen waits for the light to reach the bud, the wave to run the
+## beam, and the bloom.
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return maxf(0.0, _solved_at - _now()) + WIN_WAIT
+	return maxf(0.0, _bloom_at - _now()) + BLOOM_TIME + WIN_HOLD
 
 func _on_solved() -> void:
 	var t := _now()
 	_drag = {}
-	# The bloom waits for the let-go piece to land, and on a first-run beam
-	# for the light to get there.
-	_solved_at = t + maxf(_arrive_in(t), 0.0 if Motion.reduce else SNAP_TIME)
+	# The wave waits for the let-go piece to land, and on a first-run beam
+	# for the light to get there; the bloom waits for the wave.
+	_solved_at = t + maxf(_arrive_in(t), 0.0 if Motion.reduce else SNAP_TIME + LAND_TIME * 0.5)
 	_tip_timer.stop()
 	if not Motion.reduce:
+		_wave_speed = maxf(WAVE_SPEED, _total() / WAVE_MAX)
+		_bloom_at = _solved_at + _total() / _wave_speed
 		var drops: PackedInt32Array = _state.drops()
-		for i in drops.size():
-			var c: int = drops[i]
-			get_tree().create_timer(_solved_at - t + Motion.WAVE_STEP * 3.0 * float(i)).timeout.connect(
+		for c in drops:
+			var along: float = _tr.drop_at.get(c, 0.0)
+			get_tree().create_timer(_solved_at - t + along / _wave_speed).timeout.connect(
 				func(): fx.sparkle(_centre(c), Pal.SUN))
-		get_tree().create_timer(_solved_at - t + 0.2).timeout.connect(
-			func(): fx.sparkle(_centre(_state.g.bud), Pal.FLOWER))
+		for gl: Array in _tr.glints:
+			var gat := _pt(gl[0])
+			get_tree().create_timer(_solved_at - t + float(gl[1]) / _wave_speed).timeout.connect(
+				func(): fx.puff(gat, Pal.BEAM_CORE, 4))
+		var bud := _centre(_state.g.bud)
+		get_tree().create_timer(_bloom_at - t + 0.25).timeout.connect(func(): fx.sparkle(bud, Pal.FLOWER))
+		get_tree().create_timer(_bloom_at - t + 0.4).timeout.connect(func(): fx.puff(bud, Pal.SUN, 8))
 		get_tree().create_timer(_solved_at - t).timeout.connect(func(): fx.cue("solved"))
 	else:
+		_bloom_at = _solved_at
 		fx.cue("solved")
-	_busy_for(_solved_at - t + BLOOM_TIME)
+	_busy_for(_bloom_at - t + BLOOM_TIME)
 	_say(tr("SB_WIN"), Face.Expr.JOY)
 	_refresh()
 
@@ -978,13 +1239,14 @@ func restore_completed_board() -> void:
 	var t := _now()
 	_beam_at = t - 100.0
 	for p in _disp.size():
-		_disp[p] = {"from": float(_state.pos[p]), "at": -100.0}
+		_disp[p] = {"from": float(_state.pos[p]), "at": -100.0, "lift": false}
 	# Every drop already wet, so reopening a solved day chimes nothing.
 	_wet = {}
 	for c in _state.drops():
 		_wet[c] = true
 	_tr = _trace_live(t)
 	_solved_at = t - 100.0
+	_bloom_at = t - 100.0
 	_anim_until = 0.0
 	_opened = t - 100.0
 	_tip_timer.stop()

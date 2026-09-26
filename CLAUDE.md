@@ -1231,6 +1231,13 @@ pointing `seed_as` at them. Specs:
   grid trace, which alone decides the win. Its drawing is `ui/faces/sunbeam_parts.gd`,
   shared with the menu card. 65 draw calls played, 68 solved, ANGLE agreeing.
   Sounds generated (2026-09-26), one take a cue, awaiting the user's listen.
+  **Polished on 2026-09-26** (the spec's amendment): a dressed greenhouse (a
+  potting shelf, a window box, light shafts, slab tiles, moss), the glow wide
+  enough to pool on the floor, pulses flowing out of the sun and a twinkling
+  star on every struck mirror at rest, a lift, a sheen and a landing peg on
+  a held piece and a dip and a puff when it lands, a bloom that unfurls (the
+  shut bud used to vanish as it began), and a gold wave down the beam on the
+  win. 65 at rest, 69 solved; a drag frame costs ~1.7 ms more on this Mac.
 - **Knight is the twenty-third card** (2026-09-26, `puzzles/knight2d.gd`,
   spec `2026-09-26-knight-flat-design.md`, mock
   `docs/brainstorm/concepts.html#knight`). Hop a cream knight in Ls to take
