@@ -569,3 +569,42 @@ KN_LVL_0,"5 × 5 board, 1 rose knight","Tabuleiro 5 × 5, 1 cavalo rosa","Tabler
 KN_LVL_1,"6 × 6 board, 2 rose knights","Tabuleiro 6 × 6, 2 cavalos rosa","Tablero 6 × 6, 2 caballos rosa"
 KN_LVL_2,"7 × 7 board, 2–3 rose knights","Tabuleiro 7 × 7, 2–3 cavalos rosa","Tablero 7 × 7, 2–3 caballos rosa"
 KN_LVL_3,"8 × 8 board, 3 rose knights, a move budget","Tabuleiro 8 × 8, 3 cavalos rosa, lances contados","Tablero 8 × 8, 3 caballos rosa, jugadas contadas"
+TRAY_RAKE,Rake,Rastelo,Rastrillo
+TRAY_FLAG,Flag,Bandeira,Bandera
+HH_TIP_RAKE,Rake a pile. The number is how many hedgehogs sleep around it.,Rastele um monte. O número diz quantos ouriços dormem em volta.,Rastrilla un montón. El número dice cuántos erizos duermen alrededor.
+HH_TIP_NUMBER,"A number counts the eight cells touching it, corners too.","Um número conta as oito casas em volta, cantos também.","Un número cuenta las ocho casillas que lo tocan, esquinas incluidas."
+HH_TIP_FLAG,Flag a pile a hedgehog must be under. A flag keeps the rake off.,Marque com bandeira o monte onde um ouriço tem de estar. A bandeira segura o rastelo.,Marca con bandera el montón donde debe haber un erizo. La bandera frena el rastrillo.
+HH_TIP_CHORD,Tap a number whose flags are all laid to rake the rest around it.,Toque num número com todas as bandeiras postas para rastelar o resto em volta.,Toca un número con todas sus banderas puestas para rastrillar el resto alrededor.
+HH_TIP_WOKE,A wrong rake only wakes a hedgehog. It curls up grumpy and you carry on.,Rastelar errado só acorda um ouriço. Ele se enrola emburrado e você segue.,Rastrillar mal solo despierta a un erizo. Se enrolla gruñón y sigues.
+HH_WOKE_FIRST,Oh! You woke a hedgehog. It curls up grumpy. Carry on.,Ops! Você acordou um ouriço. Ele se enrolou emburrado. Siga em frente.,¡Uy! Despertaste a un erizo. Se enrolla gruñón. Sigue adelante.
+HH_WOKE_AGAIN,Another one woke up grumpy.,Mais um acordou emburrado.,Otro se despertó gruñón.
+HH_FLAGGED,A flag keeps the rake off. Lift it first.,A bandeira segura o rastelo. Tire-a primeiro.,La bandera frena el rastrillo. Quítala primero.
+HH_PINNED,A hint put that flag there.,Uma dica pôs essa bandeira aí.,Una pista puso esa bandera ahí.
+HH_CHORD_FEW,Flag every hedgehog around this number first.,Marque primeiro todos os ouriços em volta deste número.,Marca primero todos los erizos alrededor de este número.
+HH_CHORD_MANY,Too many flags around this number.,Bandeiras demais em volta deste número.,Demasiadas banderas alrededor de este número.
+HH_UNDONE,One move taken back.,Um lance desfeito.,Una jugada deshecha.
+HH_RESET,Back to the first patch.,De volta ao primeiro pedaço.,De vuelta al primer claro.
+HH_HINT_RAKE,That one must be bare: raked.,Esse só pode estar vazio: rastelado.,Ese tiene que estar vacío: rastrillado.
+HH_HINT_FLAG,A hedgehog must sleep there: flagged.,Um ouriço tem de dormir ali: marcado.,Ahí tiene que dormir un erizo: marcado.
+HH_CHECK_OK,Every flag is right so far.,Todas as bandeiras estão certas até aqui.,Todas las banderas están bien por ahora.
+HH_CHECK_ONE,One flag has no hedgehog under it.,Uma bandeira não tem ouriço embaixo.,Una bandera no tiene erizo debajo.
+HH_CHECK_N,%s flags have no hedgehog under them.,%s bandeiras não têm ouriço embaixo.,%s banderas no tienen erizo debajo.
+HH_TALLY_ONE,1 hedgehog asleep,1 ouriço dormindo,1 erizo dormido
+HH_TALLY_N,%d hedgehogs asleep,%d ouriços dormindo,%d erizos dormidos
+HH_TALLY_OVER_ONE,1 flag too many,1 bandeira a mais,1 bandera de más
+HH_TALLY_OVER_N,%d flags too many,%d bandeiras a mais,%d banderas de más
+HH_TALLY_DONE,Every hedgehog is awake,Todos os ouriços acordaram,Todos los erizos despertaron
+HH_WIN_NONE,Not one hedgehog woke.,Nenhum ouriço acordou.,Ningún erizo se despertó.
+HH_WIN_WOKE_ONE,One hedgehog woke up grumpy.,Um ouriço acordou emburrado.,Un erizo se despertó gruñón.
+HH_WIN_WOKE_N,%d hedgehogs woke up grumpy.,%d ouriços acordaram emburrados.,%d erizos se despertaron gruñones.
+HH_SHARE_NONE,Not one hedgehog woke.,Nenhum ouriço acordou.,Ningún erizo se despertó.
+HH_SHARE_ONE,1 hedgehog woke.,1 ouriço acordou.,1 erizo se despertó.
+HH_SHARE_N,%d hedgehogs woke.,%d ouriços acordaram.,%d erizos se despertaron.
+HH_RULES,"Hedgehogs sleep under some of the leaf piles. Rake a pile and the grass under it shows how many hedgehogs sleep in the eight cells touching it; a pile with none around it rakes its neighbours too. Flag a pile a hedgehog must be under, and the rake leaves it alone. Tap a number whose flags are all laid to rake the rest around it, and hold a pile to use the other tool. Rake every pile with no hedgehog under it to finish. Rake a hedgehog by mistake and it only wakes up grumpy: nothing is lost.","Ouriços dormem sob alguns montes de folhas. Rastele um monte e a grama embaixo mostra quantos ouriços dormem nas oito casas em volta; um monte sem nenhum em volta rastela os vizinhos também. Marque com bandeira o monte onde um ouriço tem de estar, e o rastelo o deixa em paz. Toque num número com todas as bandeiras postas para rastelar o resto em volta, e segure um monte para usar a outra ferramenta. Rastele todos os montes sem ouriço para terminar. Rastele um ouriço por engano e ele só acorda emburrado: nada se perde.","Hay erizos durmiendo bajo algunos montones de hojas. Rastrilla un montón y la hierba de debajo muestra cuántos erizos duermen en las ocho casillas que lo tocan; un montón sin ninguno alrededor rastrilla también a sus vecinos. Marca con bandera el montón donde debe haber un erizo, y el rastrillo lo deja en paz. Toca un número con todas sus banderas puestas para rastrillar el resto alrededor, y mantén pulsado un montón para usar la otra herramienta. Rastrilla todos los montones sin erizo para terminar. Si rastrillas un erizo por error, solo se despierta gruñón: no se pierde nada."
+HH_BLURB,Rake the leaves and let the sleeping hedgehogs lie.,Rastele as folhas e deixe os ouriços dormirem.,Rastrilla las hojas y deja dormir a los erizos.
+HH_SHORT,"Rake the leaves,\nlet them sleep.","Rastele as folhas,\ndeixe-os dormir.","Rastrilla las hojas,\ndéjalos dormir."
+HH_MOTTO,Let sleeping ones lie,Deixe quem dorme dormir,Deja dormir a quien duerme
+HH_LVL_0,"8 × 10 lawn, 12 hedgehogs","Gramado 8 × 10, 12 ouriços","Césped 8 × 10, 12 erizos"
+HH_LVL_1,"9 × 11 lawn, 17 hedgehogs","Gramado 9 × 11, 17 ouriços","Césped 9 × 11, 17 erizos"
+HH_LVL_2,"10 × 11 lawn, 21 hedgehogs","Gramado 10 × 11, 21 ouriços","Césped 10 × 11, 21 erizos"
+HH_LVL_3,"10 × 11 lawn, 24 hedgehogs","Gramado 10 × 11, 24 ouriços","Césped 10 × 11, 24 erizos"

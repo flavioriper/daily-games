@@ -675,6 +675,30 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "KN_LVL_3"},
 		],
 	},
+	{
+		"id": "hedgehogs",
+		"kind": "puzzle",
+		"title": "Hedgehogs",
+		"blurb": "HH_BLURB",
+		"short": "HH_SHORT",
+		"motto": "HH_MOTTO",
+		"footer": "Rake · Count · Flag",
+		# Mushroom Patch's rows: the two-chip tray (Rake, Flag) and the
+		# actions row (Reset, Check); Undo and Hint ride in the top bar.
+		"script": "res://puzzles/hedgehogs2d.gd",
+		"shell": "flat",
+		"tray": "lawn",
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each lawn (hedgehogs_gen.gd's BANDS) is its own
+		# daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "HH_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "HH_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "HH_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "HH_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.
