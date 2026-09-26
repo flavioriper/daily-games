@@ -1280,6 +1280,14 @@ pointing `seed_as` at them. Specs:
   `ui/faces/hedgehog_face.gd`. 79 draw calls bare, 80 raked, 83 with one
   woken and 115 on the win wave, ANGLE agreeing.
   Sounds generated (2026-09-26), one take a cue, awaiting the user's listen.
+  **Polished on 2026-09-26** (the spec's section 11): an autumn lawn with a
+  wooden bed round the grid, heaped piles of almond, maple and oak leaves, a
+  flag that drops in and presses its pile down, a rake pulled across each
+  raked cell, leaves that spiral off and settle, wind streaks on a big flood,
+  a breeze through one row at a time, a woken hedgehog that peeks, and a win
+  where the sleepers stretch, yawn and hop under a swirl of leaves. The
+  still mesh is cut into bands of three rows rebuilt only when a cell's look
+  changes. 84 bare, 85 played, 119 on the win, ANGLE agreeing.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

@@ -481,3 +481,58 @@ page one 254; Hedgehogs is the eighth card of page three, beside Knight.
   to answer with a chord's refusal.
 - **One finger a press.** The press tracks the touch's index: a second
   finger landing neither starts a press nor ends the first's.
+
+## 11. Polished (2026-09-26, design agreed in chat, built directly)
+
+- **The setting.** The card is an autumn lawn: grass in mown bands with soft
+  shade, fallen leaves, acorns, tufts and the odd toadstool in the margins
+  (never under the bed or behind the tally's words), and a wooden garden bed
+  round the grid (`FRAME` 14, Caterpillar's frame) with soil between the
+  cells. It is a third mesh, `_lawn`, built once a layout and drawn outside
+  the entrance's grow. `PAD` went 34 to 44 so the bed clears the card's hem.
+- **The pile** (`ui/faces/leaf_pile.gd`) is a heap: a soft shadow, a lumpy
+  scalloped mound in a warmer tone with a lit crown, three leaves fanned
+  round its rim in the deeper colours and four on top. Leaves come in three
+  shapes (almond, maple, oak), each a unit outline triangulated once, with a
+  pale midrib. Raked grass carries two faint rake lines. A flagged pile is
+  pressed down (`PRESSED`) at full colour instead of fading to 0.45, which
+  read as mud; the menu card follows.
+- **The rake and the gust.** A rake of the player's draws the rake pulled
+  across the cell (`RAKE_TIME` 0.3), and the leaves go `RAKE_LEAD` 0.12 into
+  it. Blown leaves spiral off, flipping edge-on as they tumble, and one in
+  four drops short and settles before it fades. A flood over `GUST_CELLS`
+  draws five curving streaks of wind, each ending in a curl, cut at the
+  lawn's edge.
+- **The flag** drops in (`FLAG_DROP` 0.26 from `FLAG_FALL` 0.4 of a cell),
+  thunks into its pile with a squash and a flutter; it has a knot and a
+  side twig now, and the pennant is curved.
+- **A wrong rake**: the hedgehog pops in curled after the rake's lead,
+  bristles (a bump once the pop is done -- `Motion.bump` reads the scale it
+  starts from, so it cannot be scheduled while the face is still at zero),
+  shivers and huffs a puff.
+- **At rest**, moments and never a loop: every `BREEZE_MIN`..`BREEZE_MAX`
+  seconds one row's piles rustle cell by cell (top leaves lift and turn,
+  pennants flutter). Every covered pile takes it alike, so it says nothing
+  about what sleeps where. A woken hedgehog may peek out of its ball
+  meanwhile (`WORRIED` on the curled drawing: one eye open). The tally's
+  sleeper breathes and lets out a z, a Label under its face on a tween of
+  its own, so neither redraws the board.
+- **The hedgehog** (`ui/faces/hedgehog_face.gd`) has two rows of spines
+  across its dome, an ear, and spine rings and a lit crown on the ball.
+- **The win.** Leaves swirl up out of the last cell raked and across the
+  lawn (`SWIRL_LEAVES` 26 over `SWIRL_TIME` 1.8); each sleeper pops up still
+  asleep, stretches tall into the yawn (JOY's face) and hops; the woken ones
+  cheer and hop too. `WIN_WAIT` is unchanged.
+- **The still mesh is cut into bands of `BAND` 3 rows**, each rebuilt only
+  when the looks of its cells change (a signature compared every draw), and
+  the bands are built one a frame while the card is still hidden before its
+  entrance. The richer piles made a whole-lawn build 40 ms on this Mac; a
+  per-cell cache of flattened triangles was tried first and was worse (55 ms
+  of the 95 went to flattening), so bands it is, at a few draw calls each.
+- **Measured** with `tests/_shot_anim.gd -- hedgehogs` at `--resolution
+  810x1440`, old and new builds read back to back, two readings each: bare
+  (`empty`) **84** draw calls against 79, idle 3.77/3.85 ms against
+  4.33/4.13; played **85** against 80, 4.36/4.50 ms against 4.28/4.06;
+  woken **89** (was 83); the win **119** (was 115). ANGLE agrees on 84 and
+  matches the default driver to 1/255. Reduce motion: two frames 1.5 s
+  apart are pixel-identical. Suite 122,589/0, win harness 24/24.
