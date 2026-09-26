@@ -1585,7 +1585,12 @@ calls on the tab).
   the rules' mirror (one actor a piece), the clock, the trays and the cues.
   `Skin` is a native Godot class, so the constant is `ChessSkin`.
 - The player's pieces are always cream at the bottom; the colour they move
-  as swaps every game. 166-170 draw calls at the board, ANGLE agreeing.
+  as swaps every game. 122-129 draw calls at the board since the polish
+  of 2026-09-26 (166-170 before; the terrace became one mesh), ANGLE
+  agreeing. The board draws two live meshes, one under the pieces and one
+  over, rebuilt a frame at a time: marks popping in, ripples, speed lines,
+  the impact star, z's, the check's "!", the thought bubble and petals.
+  Under reduce motion nothing idles, and two frames are pixel-identical.
 - Harnesses: `tests/_shot_chess.gd` (every animation beat and the end card),
   `tests/_tap_chess.gd` (tap and drag by input), `tests/_probe_chess_game.gd`
   (a whole game through the real screen, both sides the computer; it loads

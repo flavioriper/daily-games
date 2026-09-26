@@ -198,3 +198,9 @@ func blink_gap() -> Vector2:
 
 static func _ease_in_out(u: float) -> float:
 	return u * u * (3.0 - 2.0 * u)
+
+## Overshoots a little past 1 and settles: a mark or a badge popping in.
+static func _back_out_k(u: float) -> float:
+	var c := 1.7
+	var t := u - 1.0
+	return 1.0 + (c + 1.0) * t * t * t + c * t * t

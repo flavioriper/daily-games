@@ -54,6 +54,8 @@ enum State { ENTER, YOURS, THINK, ANIM, REWIND, OVER }
 var level := 1
 var rules: RefCounted
 var board: Control
+var _deck_mesh: ArrayMesh
+var _deck_key := Rect2()
 var top_bar: Control
 var settings_sheet: Control
 ## The colour the player moves this game.
@@ -184,43 +186,90 @@ func _apply_insets() -> void:
 	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + SCORE_H + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
-## The same wooden terrace snooker's table stands on, cut to hug the board
-## so a tall phone's spare height is paper round it rather than planks.
+## The same wooden terrace snooker's table stands on, the whole height of
+## the deck: planks with their joints, grain and knots, and petals and
+## leaves blown into the room round the board. One mesh, built once a
+## layout.
 func _draw_deck(deck: Control) -> void:
-	var rect := Rect2(Vector2.ZERO, deck.size)
-	if board != null and board.used_rect.size.y > 0.0:
-		rect = Rect2(0.0, board.used_rect.position.y, deck.size.x, board.used_rect.size.y + DECK_PAD * 2.0)
-	var box := StyleBoxFlat.new()
-	box.set_corner_radius_all(36)
-	box.bg_color = Color("a8744c")
-	deck.draw_style_box(box, rect)
-	var plank := 58.0
+	if deck.size.x <= 0.0 or board == null or board.used_rect.size.y <= 0.0:
+		return
+	var key := Rect2(deck.size, board.used_rect.position + board.used_rect.size)
+	if _deck_mesh == null or key != _deck_key:
+		_deck_key = key
+		_deck_mesh = _build_deck(deck.size)
+	deck.draw_mesh(_deck_mesh, null)
+
+func _build_deck(sz: Vector2) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var radius := 36.0
+	var clip := Face.Builder.round_rect(Vector2.ZERO, sz, radius)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
+	b.fan(clip, Color("a06d45"))
+	var plank := 58.0
 	var y := 0.0
-	while y < rect.size.y:
-		var h := minf(plank, rect.size.y - y)
-		var shade := Color("b98457").lerp(Color("a06d45"), rng.randf())
-		var r := Rect2(rect.position + Vector2(0.0, y), Vector2(rect.size.x, h))
-		box.bg_color = shade
-		box.set_corner_radius_all(0)
-		if y == 0.0:
-			box.corner_radius_top_left = 36
-			box.corner_radius_top_right = 36
-		if y + h >= rect.size.y:
-			box.corner_radius_bottom_left = 36
-			box.corner_radius_bottom_right = 36
-		deck.draw_style_box(box, r.grow_side(SIDE_BOTTOM, -3.0))
-		var joint := rng.randf_range(0.2, 0.8) * rect.size.x
-		deck.draw_line(rect.position + Vector2(joint, y + 4.0), rect.position + Vector2(joint, y + h - 6.0), Color(0.3, 0.17, 0.08, 0.35), 3.0)
+	while y < sz.y:
+		var h := minf(plank, sz.y - y)
+		var tone := Color("b98457").lerp(Color("a06d45"), rng.randf())
+		_clip_into(b, _plank_rect(Vector2(0.0, y), Vector2(sz.x, h - 3.0)), tone, clip)
+		_clip_into(b, _plank_rect(Vector2(0.0, y), Vector2(sz.x, 2.0)), Color(1, 1, 1, 0.12), clip)
+		var joint := rng.randf_range(0.2, 0.8) * sz.x
+		_clip_into(b, _plank_rect(Vector2(joint, y + 4.0), Vector2(3.0, h - 10.0)), Color(0.3, 0.17, 0.08, 0.35), clip)
+		for g in 2:
+			var gy := y + h * (0.3 + 0.35 * g) + rng.randf_range(-4.0, 4.0)
+			var ph := rng.randf() * TAU
+			var x0 := radius + rng.randf_range(0.0, sz.x * 0.3)
+			var x1 := minf(sz.x - radius, x0 + rng.randf_range(sz.x * 0.3, sz.x * 0.6))
+			var pts := PackedVector2Array()
+			var x := x0
+			while x <= x1:
+				pts.append(Vector2(x, gy + sin(x / 60.0 + ph) * 2.5))
+				x += 18.0
+			if pts.size() > 1:
+				b.stroke(pts, 1.8, Color(0.35, 0.2, 0.1, 0.14))
+		if rng.randf() < 0.3:
+			var kp := Vector2(rng.randf_range(radius * 2.0, sz.x - radius * 2.0), y + h * 0.5)
+			b.stroke(Face.Builder.ring(kp, 13.0, 5.5), 2.0, Color(0.35, 0.2, 0.1, 0.25), true)
 		y += plank
+	# the edge of the terrace falls into shade
 	for k in 3:
-		var s := StyleBoxFlat.new()
-		s.set_corner_radius_all(36)
-		s.bg_color = Color.TRANSPARENT
-		s.set_border_width_all(10 + k * 10)
-		s.border_color = Color(0.25, 0.12, 0.05, 0.07)
-		deck.draw_style_box(s, rect)
+		b.stroke(Face.Builder.round_rect(Vector2.ONE * (5.0 + k * 10.0), sz - Vector2.ONE * (10.0 + k * 20.0), radius - 5.0 - k * 10.0),
+			10.0, Color(0.25, 0.12, 0.05, 0.08), true)
+	# petals and leaves blown on, never under the board
+	var keep_out := Rect2(board.used_rect.position + Vector2.ONE * DECK_PAD, board.used_rect.size).grow(16.0)
+	var placed := 0
+	var tries := 0
+	while placed < 14 and tries < 300:
+		tries += 1
+		var p := Vector2(rng.randf_range(40.0, sz.x - 40.0), rng.randf_range(34.0, sz.y - 34.0))
+		if keep_out.has_point(p):
+			continue
+		var ang := rng.randf() * TAU
+		var pts := PackedVector2Array()
+		var leaf := placed % 3 == 2
+		var r := rng.randf_range(18.0, 26.0) if leaf else rng.randf_range(12.0, 17.0)
+		for k in 14:
+			var a := TAU * float(k) / 14.0
+			var rr := r * (0.55 + 0.45 * cos(a * 0.5) * cos(a * 0.5)) if not leaf else r
+			pts.append(p + Vector2(cos(a) * rr, sin(a) * rr * (0.42 if leaf else 0.6)).rotated(ang))
+		var shade := PackedVector2Array()
+		for q in pts:
+			shade.append(q + Vector2(2.0, 3.0))
+		b.polygon(shade, Color(0.3, 0.15, 0.05, 0.25))
+		var col: Color = Pal.LEAF if leaf else (Pal.FLOWER_TILE if placed % 2 == 0 else Pal.FLOWER)
+		b.polygon(pts, col)
+		if leaf:
+			b.stroke(PackedVector2Array([p - Vector2(r * 1.2, 0.0).rotated(ang), p + Vector2(r * 0.8, 0.0).rotated(ang)]), 2.0,
+				Color(Pal.LEAF_DEEP, 0.7))
+		placed += 1
+	return b.mesh()
+
+static func _plank_rect(at: Vector2, sz: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([at, at + Vector2(sz.x, 0.0), at + sz, at + Vector2(0.0, sz.y)])
+
+static func _clip_into(b: Face.Builder, pts: PackedVector2Array, col: Color, clip: PackedVector2Array) -> void:
+	for piece in Geometry2D.intersect_polygons(pts, clip):
+		b.polygon(piece, col)
 
 func _build_scoreboard() -> Control:
 	var row := HBoxContainer.new()
@@ -377,6 +426,7 @@ func _start_turn() -> void:
 	else:
 		_state = State.THINK
 		board.interactive = false
+		board.set_thinking(true)
 		if _history.is_empty():
 			_say(tr("CHS_BOT_FIRST"))
 		_think("ai")
@@ -463,6 +513,7 @@ func _poll_think() -> void:
 ## The computer picks its piece up, holds it a beat, and moves.
 func _bot_moves(m: int) -> void:
 	_state = State.ANIM
+	board.set_thinking(false)
 	board.set_lifted(Rules.mv_from(m))
 	var game := _game
 	get_tree().create_timer(0.0 if Motion.reduce else PONDER).timeout.connect(func() -> void:

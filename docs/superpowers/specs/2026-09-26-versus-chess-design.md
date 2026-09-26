@@ -145,3 +145,73 @@ once a game has been drawn.
   prove the contract and is not meant to ship as a choice.
 - No concept-page tab was made first (the user was away).
 - Online play, as for snooker.
+
+## 10. Amendment: polish (2026-09-26)
+
+Asked for by the user ("polish and improve design and animation of
+chess"); the design was agreed in chat and built in one pass.
+
+**Look.**
+- The terrace fills the whole deck, where it used to hug the board and
+  leave bare paper above and below. It is one mesh now (planks, joints,
+  grain, knots, shaded edges, petals and leaves blown into the room round
+  the board) instead of a stylebox a plank, which is most of why the board
+  fell from 166-170 draw calls to **122-129**.
+- The trays are planters with a moss bed and a tuft of grass at each end.
+  They grow from 0.66 to 1.0 cells deep into a tall phone's spare height,
+  and the taken pieces grow with them (scale 0.5 to 0.62). "+N" sits on a
+  paper tag.
+- The frame has grain round all four sides, brass corner pegs, and an inner
+  edge that shades the first row and column. The light squares are
+  sandstone (`f1e1c1`, was `f5e9cf`) with faint flecks.
+- Cream pieces were losing their edge on light squares. The Garden set's
+  cream outline is deeper (`CREAM_LINE` 6b5640) and thicker, and every
+  piece casts a sun shadow down and to the right beside a tight contact
+  shadow. A lifted piece's shadow slides further out.
+
+**Marks.** The last move shows as a faint outlined origin square, a warm
+destination square, and a trail of footprints between them that goes round
+the corner of a knight's L. Picking a piece up pops a gold ring round it,
+and its moves pop in as a wave out from the piece (`MARK_STEP` 0.035 s a
+square). A quiet move is a seed pip; a capture is a slowly turning ring of
+rose dashes. They pop back out on deselect. The hint's arrow draws itself
+from the piece and its head pops on at the end.
+
+**Motion.**
+- Every landing leaves a ripple and a little dust (knight and rook still
+  throw their bigger puff). A bishop, rook or queen streams three speed
+  lines side by side behind it.
+- A capturing piece leans into the hit at the skin's contact moment. The
+  hit throws a white and gold impact star, and the knocked piece tumbles
+  with dizzy stars round it. In the tray it sleeps with a z drifting up
+  every few seconds.
+- Check: a rose "!" badge pops over the king, a bead of sweat slides down
+  beside its face, and a dashed rose line runs from each checking piece to
+  the king for a second (`rules.attackers_of`).
+- While the computer thinks, its pieces lean to follow a roaming point, as
+  if looking round the board, and a thought bubble with three pulsing dots
+  stands by its king (`board.set_thinking`). The piece it picks does a
+  "hmm" wobble before it goes.
+- A promotion throws turning gold rays. A win drops 26 petals over the
+  board. A draw sets a z over some of the sleepers.
+
+All of this lives in the board, not the skin: it frames the pieces rather
+than being how they move, so every skin gets it. The skin gained one curve
+(`_back_out_k`). The live layers are two meshes, under and over the pieces,
+rebuilt a frame at a time, and each is kept one frame past its replacement.
+
+**Reduce motion** had been leaking: pieces breathed, blinked and the check
+square pulsed. Now nothing idles, the marks and the badge appear whole, and
+the capture ring does not turn. Two frames 1.5 s apart are pixel-identical,
+on a selection and on a mate.
+
+**Not done.** The mated king's crown does not pop off, because it is baked
+into the king's mesh. Doing it properly means a skin call that builds a
+crownless king and a loose crown.
+
+Measured with `tests/_shot_chess.gd` at `--resolution 810x1440`: 99 on the
+tab, **122-129** at the board, 75-106 in the endings. ANGLE agrees on every
+count and matches the default driver to 1/255 in the still regions. The
+piece regions differ because each piece's breathing phase is random per
+run. `tests/_probe_chess_game.gd` played a whole game to mate through the
+real screen, and the suite reads 122,589 passed, 0 failed.

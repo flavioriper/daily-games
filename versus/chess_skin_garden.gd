@@ -23,6 +23,7 @@ const ChessPiece = preload("res://ui/faces/chess_piece.gd")
 ## the same box ui/faces/chess_piece.gd draws Knight's pieces in.
 const PIECE := 1.25
 const FOOT := Vector2(0.0, 0.34)
+const CREAM_LINE := Color("6b5640")
 
 func id() -> String:
 	return "garden"
@@ -94,7 +95,9 @@ const FACE_AT := {
 func build(b: Face.Builder, type: int, side: int, s: float, face: int, look: float) -> void:
 	var col: Color = Pal.KNIGHT_CREAM if side == 0 else Pal.KNIGHT_ROSE
 	var deep: Color = Pal.KNIGHT_CREAM_DEEP if side == 0 else Pal.KNIGHT_ROSE_DEEP
-	var line: Color = Pal.KNIGHT_CREAM_LINE if side == 0 else Pal.KNIGHT_ROSE_LINE
+	# Knight's cream line, taken deeper: on the chessboard's sandstone the
+	# cream pieces have to hold their own edge.
+	var line: Color = CREAM_LINE if side == 0 else Pal.KNIGHT_ROSE_LINE
 	var u := s * PIECE
 	# The knight's outline looks left; a knight looking right is mirrored.
 	var flip := -1.0 if type == Rules.KNIGHT and look > 0.0 else 1.0
@@ -136,7 +139,7 @@ func build(b: Face.Builder, type: int, side: int, s: float, face: int, look: flo
 		b.polygon(shape.call(part), Color(deep, 0.55))
 	for part: PackedVector2Array in ChessPiece._crescent(key + "_light", outline, Vector2(0.03, 0.035)):
 		b.polygon(shape.call(part), Color(1.0, 1.0, 1.0, 0.4))
-	b.stroke(body, u * 0.028, line, true)
+	b.stroke(body, u * (0.034 if side == 0 else 0.028), line, true)
 	match type:
 		Rules.PAWN:
 			var head := Vector2(0.0, -0.17)
