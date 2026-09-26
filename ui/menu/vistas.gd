@@ -61,6 +61,8 @@ const CARDS := {
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],
+	# The meadow the garden set's lawn squares were mown from.
+	"chess": ["meadow", 1.4, Vector2(0.45, 0.6)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

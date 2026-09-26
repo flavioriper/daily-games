@@ -30,3 +30,36 @@ static func set_last_level(game: String, level: int) -> void:
 	var cfg := _load()
 	cfg.set_value("last", game, level)
 	cfg.save(PATH)
+
+## Drawn games, for a game that can draw (chess).
+static func add_draw(game: String, level: int) -> void:
+	var cfg := _load()
+	var key := "%s_%d" % [game, level]
+	cfg.set_value(key, "drawn", int(cfg.get_value(key, "drawn", 0)) + 1)
+	cfg.save(PATH)
+
+static func get_draws(game: String, level: int) -> int:
+	return int(_load().get_value("%s_%d" % [game, level], "drawn", 0))
+
+## The record as one line: won and lost, and drawn once there is one.
+static func record_line(game: String, level: int) -> String:
+	var rec := get_record(game, level)
+	var drawn := get_draws(game, level)
+	if drawn > 0:
+		return TranslationServer.translate("VS_RECORD_DRAWN") % [rec.x, rec.y, drawn]
+	return TranslationServer.translate("VS_RECORD") % [rec.x, rec.y]
+
+## The colour the player moved last game (chess swaps it every game), 0
+## white.
+static func last_colour(game: String) -> int:
+	return int(_load().get_value("colour", game, 0))
+
+static func set_last_colour(game: String, colour: int) -> void:
+	var cfg := _load()
+	cfg.set_value("colour", game, colour)
+	cfg.save(PATH)
+
+## The piece set chosen for a game; skins are to come (versus/chess_skin.gd),
+## so for now this reads the house set.
+static func skin(game: String) -> String:
+	return String(_load().get_value("skin", game, "garden"))

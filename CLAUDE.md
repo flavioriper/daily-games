@@ -1562,6 +1562,36 @@ reaches it through the `versus_host` group.
   `user://versus.cfg` back afterwards; a harness that finishes a frame some
   other way must do the same, or it writes a fake win into this Mac's save.
 
+**Chess is the second Versus game** (2026-09-26, spec
+`2026-09-26-versus-chess-design.md`), against the computer. The tab now holds
+one card a game (banner, name and record, a line, levels beside Play), each
+remembering its own level; the "more soon" card went to make room (99 draw
+calls on the tab).
+
+- **The rules are pure data** (`versus/chess_rules.gd`: every rule, draws
+  included, make/unmake, Zobrist hashes). `tests/_probe_chess.gd` runs perft
+  on five reference positions -- run it after touching move generation.
+- **The computer** (`versus/chess_ai.gd`) is alpha-beta + quiescence in a
+  time budget on a worker thread; the levels are depth and a blur on the
+  scores. A move that fails low can tie the best on its bound, so an
+  iterative-deepening root must keep the proven best first or a round cut
+  short by the clock trusts a blunder (it played Nxf2 into Kxf2 until fixed).
+- **A skin is the look and the motion, the board is everything else**:
+  `versus/chess_skin.gd` is the contract (build a piece's mesh at its foot;
+  answer a `Pose` for every moment: move per type, knock, idle, fidget,
+  shiver, tremble, topple, cheer, promote, enter), `versus/chess_skin_garden.gd`
+  the house set. Meshes are cached per type, side, face and look and moved by
+  transform, never rebuilt to move. The board (`versus/chess_board.gd`) owns
+  the rules' mirror (one actor a piece), the clock, the trays and the cues.
+  `Skin` is a native Godot class, so the constant is `ChessSkin`.
+- The player's pieces are always cream at the bottom; the colour they move
+  as swaps every game. 166-170 draw calls at the board, ANGLE agreeing.
+- Harnesses: `tests/_shot_chess.gd` (every animation beat and the end card),
+  `tests/_tap_chess.gd` (tap and drag by input), `tests/_probe_chess_game.gd`
+  (a whole game through the real screen, both sides the computer; it loads
+  the screen with `load()` at run time, because a `preload` compiles before
+  the `Ads` autoload exists). All put `user://versus.cfg` back.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1631,7 +1661,8 @@ see "Ads and the purchase" below.
   `found`), `consent_failed`, and `ad_banner_loaded` / `ad_banner_failed` /
   `ad_banner_impression` -- see "Ads and the purchase" below. Since 2026-09-26
   (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
-  shots, your highest break) and `versus_abandon`; snooker's hint and reset
+  shots, your highest break; chess: `result` won/lost/draw, `moves`,
+  `undos`, `colour`) and `versus_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

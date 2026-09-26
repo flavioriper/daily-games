@@ -324,6 +324,24 @@ SETS = {
         "win":      ("a warm celebratory marimba run rising with a soft clack of snooker balls, joyful and cozy", 2.0, -3),
         "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
     },
+    # Chess (Versus, versus/chess_screen.gd): wooden pieces on a wooden board
+    # as foley, the verdicts in the house marimba. `hop` is the knight's leap.
+    "chess": {
+        "lift":     ("a single small wooden chess piece lifted off a wooden board, a tiny soft felt scrape, close mic, very short", 0.5, -14, FOLEY),
+        "place":    ("a single wooden chess piece set down on a wooden chessboard, a soft warm felt-bottomed knock, close mic, very short", 0.5, -7, FOLEY),
+        "slide":    ("a wooden chess piece sliding briefly across a wooden board on felt, a short soft swish, close mic", 0.5, -14, FOLEY),
+        "capture":  ("a wooden chess piece knocking another wooden chess piece over, a crisp wooden clack then a small tumble and roll, close mic, short", 0.8, -6, FOLEY),
+        "castle":   ("two wooden chess pieces set down on a wooden board one right after the other, two soft knocks, close mic, short", 0.6, -7, FOLEY),
+        "hop":      ("a short playful soft airy whoosh with a tiny springy boing, a little wooden horse leaping", 0.5, -12),
+        "check":    ("two soft bright glockenspiel notes, a gentle alert, a king in danger, not alarming", 0.8, -7),
+        "promote":  ("a gentle magical rising sparkle shimmer with a soft marimba swell, a small piece transforming", 1.2, -6),
+        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "enter":    ("a quick soft cascade of wooden chess pieces being set out on a wooden board one after another", 1.2, -9, FOLEY),
+        "win":      ("a warm celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
+        "draw":     ("two soft even marimba notes, calm and balanced, a friendly handshake", 1.0, -6),
+    },
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
     # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.
     "hedgehogs": {

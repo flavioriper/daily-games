@@ -44,6 +44,7 @@ const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const StatsTab = preload("res://ui/menu/stats_tab.gd")
 const VersusTab = preload("res://ui/menu/versus_tab.gd")
 const SnookerScreen = preload("res://versus/snooker_screen.gd")
+const ChessScreen = preload("res://versus/chess_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
@@ -1067,10 +1068,16 @@ func _open_at(entry: Dictionary, difficulty: int) -> void:
 ## A game on the Versus tab: its own screen over the list, and back to the
 ## Versus tab when it closes.
 func _open_versus(game: String, level: int) -> void:
-	if game != "snooker":
-		return
-	var screen: Control = SnookerScreen.new(level)
-	screen.name = "Snooker"
+	var screen: Control
+	match game:
+		"snooker":
+			screen = SnookerScreen.new(level)
+			screen.name = "Snooker"
+		"chess":
+			screen = ChessScreen.new(level)
+			screen.name = "Chess"
+		_:
+			return
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
 		_show_list("versus"))

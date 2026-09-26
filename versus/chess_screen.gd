@@ -1,0 +1,668 @@
+extends Control
+
+## A game of chess against the computer: the second game on the Versus
+## tab. The flat boards' top bar (back, the title in ink with its sprout,
+## undo, reset, a hint with its count, settings), a scoreboard with the sun
+## for you and the moon for the computer and the move number between them,
+## and the board on the same wooden deck snooker's table stands on.
+##
+## You always play the cream pieces at the bottom; which colour they move
+## as swaps every game (Play again), so the computer opens every other one.
+## Local only for now: the other player is versus/chess_ai.gd, thinking on
+## a worker thread. The rules are versus/chess_rules.gd, the board and its
+## animation versus/chess_board.gd, the look and the motion of the pieces a
+## skin (versus/chess_skin.gd).
+
+signal closed
+
+const Rules = preload("res://versus/chess_rules.gd")
+const AI = preload("res://versus/chess_ai.gd")
+const Board = preload("res://versus/chess_board.gd")
+const ChessSkin = preload("res://versus/chess_skin.gd")
+const Record = preload("res://versus/versus_record.gd")
+const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const Pal = preload("res://core/palette.gd")
+const Motion = preload("res://core/motion.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
+const Vistas = preload("res://ui/menu/vistas.gd")
+const Fx2D = preload("res://ui/fx2d.gd")
+const SunFace = preload("res://ui/faces/sun_face.gd")
+const MoonFace = preload("res://ui/faces/moon_face.gd")
+const Face = preload("res://ui/faces/face.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
+const Analytics = preload("res://core/analytics.gd")
+
+const GAME := "chess"
+const MARGIN := 40
+const GAP := 20
+const SCORE_H := 128.0
+const DECK_PAD := 18
+const BACKDROP_BLEED := 90.0
+const HINTS := 3
+## Pauses, seconds: the shortest the computer seems to think, how long it
+## holds its piece up before moving it, and the beat before the end card.
+const THINK_MIN := 0.6
+const PONDER := 0.35
+const END_WAIT := 1.8
+const TOAST_HOLD := 2.2
+const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD"]
+
+enum State { ENTER, YOURS, THINK, ANIM, REWIND, OVER }
+
+var level := 1
+var rules: RefCounted
+var board: Control
+var top_bar: Control
+var settings_sheet: Control
+## The colour the player moves this game.
+var player := Rules.WHITE
+var _state := State.ENTER
+var _history: Array = []
+var _rewinds := 0
+var _hints := HINTS
+var _undos := 0
+var _game := 0
+var _task := -1
+var _box: Array = []
+var _task_for := ""
+var _task_game := 0
+var _think_at := 0.0
+var _rng := RandomNumberGenerator.new()
+var _fx: Node2D
+var _backdrop: ColorRect
+var _margins: MarginContainer
+var _toast: PanelContainer
+var _toast_label: Label
+var _toast_tw: Tween
+var _end: Control
+var _plates: Array = []
+var _faces: Array = []
+var _status: Array[Label] = []
+var _move_label: Label
+
+func _init(the_level := 1) -> void:
+	level = clampi(the_level, 0, 2)
+
+func puzzle_id() -> String:
+	return GAME
+
+func _ready() -> void:
+	add_to_group("versus_host")
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = CozyTheme.make()
+	_rng.randomize()
+	_build()
+	settings_sheet = SettingsSheet.new(false)
+	settings_sheet.name = "SettingsSheet"
+	add_child(settings_sheet)
+	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
+	player = Rules.WHITE if Record.last_colour(GAME) == Rules.WHITE else Rules.BLACK
+	_new_game()
+	top_bar.enter(0.0)
+	Analytics.track("versus_start", {"game": GAME, "level": level})
+
+func _exit_tree() -> void:
+	if _task != -1:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+
+# --- building ---
+
+func _build() -> void:
+	var page := ColorRect.new()
+	page.color = Pal.PAPER
+	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(page)
+	_backdrop = Vistas.board_plate(GAME, Pal.ACCENT)
+	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	add_child(_backdrop)
+
+	_margins = MarginContainer.new()
+	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_margins)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", GAP)
+	_margins.add_child(col)
+
+	top_bar = FlatTopBar.new("Chess", tr("CHS_MOTTO"), true)
+	top_bar.name = "TopBar"
+	top_bar.back.connect(_on_back)
+	top_bar.undo.connect(_on_undo)
+	top_bar.reset.connect(_on_reset)
+	top_bar.hint.connect(_on_hint)
+	top_bar.settings.connect(func() -> void: settings_sheet.open())
+	col.add_child(top_bar)
+	col.add_child(_build_scoreboard())
+
+	var deck := Control.new()
+	deck.name = "Deck"
+	deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	deck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deck.draw.connect(_draw_deck.bind(deck))
+	deck.resized.connect(deck.queue_redraw)
+	col.add_child(deck)
+	var inset := MarginContainer.new()
+	inset.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		inset.add_theme_constant_override("margin_" + side, DECK_PAD)
+	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deck.add_child(inset)
+	board = Board.new()
+	board.name = "Board"
+	board.skin = ChessSkin.named(Record.skin(GAME))
+	board.resized.connect(deck.queue_redraw)
+	board.chosen.connect(_on_chosen)
+	board.settled.connect(_on_settled)
+	board.refused.connect(func(reason: String) -> void:
+		_say(tr("CHS_KING_SAFE") if reason == "king" else tr("CHS_STUCK")))
+	inset.add_child(board)
+	_fx = Fx2D.new()
+	add_child(_fx)
+
+	_toast = PanelContainer.new()
+	_toast.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 30, 14))
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast.modulate.a = 0.0
+	_toast_label = Label.new()
+	_toast_label.theme_type_variation = "SheetBody"
+	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toast_label.custom_minimum_size.x = 560
+	_toast.add_child(_toast_label)
+	add_child(_toast)
+	_apply_insets()
+
+func _apply_insets() -> void:
+	var insets := SafeArea.insets(self)
+	_margins.add_theme_constant_override("margin_left", MARGIN)
+	_margins.add_theme_constant_override("margin_right", MARGIN)
+	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
+	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
+	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + SCORE_H + BACKDROP_BLEED
+	Vistas.set_top_pad(_backdrop, insets.x)
+
+## The same wooden terrace snooker's table stands on, cut to hug the board
+## so a tall phone's spare height is paper round it rather than planks.
+func _draw_deck(deck: Control) -> void:
+	var rect := Rect2(Vector2.ZERO, deck.size)
+	if board != null and board.used_rect.size.y > 0.0:
+		rect = Rect2(0.0, board.used_rect.position.y, deck.size.x, board.used_rect.size.y + DECK_PAD * 2.0)
+	var box := StyleBoxFlat.new()
+	box.set_corner_radius_all(36)
+	box.bg_color = Color("a8744c")
+	deck.draw_style_box(box, rect)
+	var plank := 58.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var y := 0.0
+	while y < rect.size.y:
+		var h := minf(plank, rect.size.y - y)
+		var shade := Color("b98457").lerp(Color("a06d45"), rng.randf())
+		var r := Rect2(rect.position + Vector2(0.0, y), Vector2(rect.size.x, h))
+		box.bg_color = shade
+		box.set_corner_radius_all(0)
+		if y == 0.0:
+			box.corner_radius_top_left = 36
+			box.corner_radius_top_right = 36
+		if y + h >= rect.size.y:
+			box.corner_radius_bottom_left = 36
+			box.corner_radius_bottom_right = 36
+		deck.draw_style_box(box, r.grow_side(SIDE_BOTTOM, -3.0))
+		var joint := rng.randf_range(0.2, 0.8) * rect.size.x
+		deck.draw_line(rect.position + Vector2(joint, y + 4.0), rect.position + Vector2(joint, y + h - 6.0), Color(0.3, 0.17, 0.08, 0.35), 3.0)
+		y += plank
+	for k in 3:
+		var s := StyleBoxFlat.new()
+		s.set_corner_radius_all(36)
+		s.bg_color = Color.TRANSPARENT
+		s.set_border_width_all(10 + k * 10)
+		s.border_color = Color(0.25, 0.12, 0.05, 0.07)
+		deck.draw_style_box(s, rect)
+
+func _build_scoreboard() -> Control:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = SCORE_H
+	row.add_theme_constant_override("separation", 16)
+	for p in 2:
+		var plate := PanelContainer.new()
+		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var inner := HBoxContainer.new()
+		inner.add_theme_constant_override("separation", 12)
+		inner.alignment = BoxContainer.ALIGNMENT_BEGIN if p == 0 else BoxContainer.ALIGNMENT_END
+		plate.add_child(inner)
+		var seat := Control.new()
+		seat.custom_minimum_size = Vector2(88, 88)
+		seat.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var face: Control = SunFace.new() if p == 0 else MoonFace.new()
+		face.size = Vector2(88, 88)
+		seat.add_child(face)
+		_faces.append(face)
+		var words := VBoxContainer.new()
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.add_theme_constant_override("separation", -4)
+		var align := HORIZONTAL_ALIGNMENT_LEFT if p == 0 else HORIZONTAL_ALIGNMENT_RIGHT
+		var name_l := Label.new()
+		name_l.text = "SNK_YOU" if p == 0 else "SNK_BOT"
+		name_l.theme_type_variation = "SheetTitle"
+		name_l.horizontal_alignment = align
+		var status := Label.new()
+		status.theme_type_variation = "CardBlurb"
+		status.horizontal_alignment = align
+		words.add_child(name_l)
+		words.add_child(status)
+		_status.append(status)
+		if p == 0:
+			inner.add_child(seat)
+			inner.add_child(words)
+		else:
+			inner.add_child(words)
+			inner.add_child(seat)
+		_plates.append(plate)
+		if p == 1:
+			row.add_child(_build_move_panel())
+		row.add_child(plate)
+	return row
+
+func _build_move_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 10))
+	panel.custom_minimum_size.x = 200
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", -6)
+	panel.add_child(col)
+	var kicker := Label.new()
+	kicker.text = "CHS_MOVE"
+	kicker.theme_type_variation = "MenuKicker"
+	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(kicker)
+	_move_label = Label.new()
+	_move_label.theme_type_variation = "DayBig"
+	_move_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_move_label)
+	return panel
+
+## Whose turn it is, on the plates: the one to move lit and saying so.
+func _refresh_board() -> void:
+	var over := _state == State.OVER
+	for p in 2:
+		var mine: bool = not over and (rules.turn == player) == (p == 0)
+		var box := CozyTheme.lifted(Pal.SURFACE if mine else Color("f7f0e4"), 30, 10)
+		if mine:
+			box.border_color = Pal.ACCENT_2
+			box.set_border_width_all(4)
+		_plates[p].add_theme_stylebox_override("panel", box)
+		_plates[p].modulate.a = 1.0 if mine or over else 0.82
+		var colour_key := "CHS_FIRST" if (player == Rules.WHITE) == (p == 0) else "CHS_SECOND"
+		var line := tr(colour_key)
+		if mine:
+			line = tr("CHS_TO_MOVE") if p == 0 else tr("CHS_THINKS")
+			# Not before the checking piece has landed.
+			if rules.in_check() and _state != State.ANIM:
+				line = tr("CHS_IN_CHECK")
+		_status[p].text = line
+	var shown := str(rules.fullmove)
+	if _move_label.text != shown:
+		_move_label.text = shown
+		_move_label.pivot_offset = _move_label.size * 0.5
+		if _state != State.ENTER:
+			Motion.bump(_move_label, 0.2, 0.25)
+	top_bar.refresh(self)
+
+# --- the top bar's view of this screen (FlatTopBar.refresh) ---
+
+func capabilities() -> Array:
+	return ["undo", "hint"]
+
+func is_done() -> bool:
+	return _state == State.OVER
+
+func is_solved() -> bool:
+	return false
+
+func can_undo() -> bool:
+	return _state == State.YOURS and _history.size() >= (2 if player == Rules.WHITE else 3)
+
+func hints_left() -> int:
+	return _hints if _state == State.YOURS else 0
+
+# --- the game ---
+
+func _new_game() -> void:
+	_game += 1
+	rules = Rules.new()
+	_history.clear()
+	_hints = HINTS
+	_undos = 0
+	_state = State.ENTER
+	if _end != null:
+		_end.queue_free()
+		_end = null
+	for f in _faces:
+		f.expression = Face.Expr.HAPPY
+	board.interactive = false
+	board.setup(rules, player, true)
+	_refresh_board()
+	if Motion.reduce:
+		_start_turn.call_deferred()
+
+func _on_settled() -> void:
+	match _state:
+		State.ENTER:
+			_start_turn()
+		State.ANIM:
+			_after_move()
+		State.REWIND:
+			if _rewinds > 0:
+				_rewind_one()
+			else:
+				_start_turn()
+
+func _start_turn() -> void:
+	var status: int = rules.status()
+	if status != Rules.PLAYING:
+		_finish(status)
+		return
+	var mine: bool = rules.turn == player
+	if mine:
+		_state = State.YOURS
+		board.interactive = true
+		if rules.in_check():
+			_say(tr("CHS_CHECK"))
+		elif _history.size() < 2:
+			_say(tr("CHS_YOUR_MOVE"))
+	else:
+		_state = State.THINK
+		board.interactive = false
+		if _history.is_empty():
+			_say(tr("CHS_BOT_FIRST"))
+		_think("ai")
+	_refresh_board()
+
+func _on_chosen(m: int) -> void:
+	if _state != State.YOURS:
+		return
+	_play(m)
+
+func _play(m: int) -> void:
+	var d: Dictionary = rules.describe(m)
+	rules.make(m)
+	_history.append(d)
+	_state = State.ANIM
+	board.interactive = false
+	board.set_hint(-1)
+	_hush()
+	board.play(d)
+	_refresh_board()
+	if int(d.captured) != 0:
+		var taker := 0 if int(d.side) == player else 1
+		_react(taker, Face.Expr.JOY)
+		_react(1 - taker, Face.Expr.WORRIED)
+
+func _after_move() -> void:
+	if rules.in_check():
+		var king: int = rules.kings[rules.turn]
+		board.set_check(king)
+		board.tremble(king)
+		_fx.cue("check")
+		_react(0 if rules.turn == player else 1, Face.Expr.WORRIED)
+	else:
+		board.set_check(-1)
+	_start_turn()
+
+## A face on the scoreboard shows `expr` for a moment.
+func _react(p: int, expr: int) -> void:
+	var face: Control = _faces[p]
+	face.expression = expr
+	var game := _game
+	get_tree().create_timer(1.6).timeout.connect(func() -> void:
+		if is_instance_valid(face) and _game == game and _state != State.OVER:
+			face.expression = Face.Expr.HAPPY)
+
+# --- thinking, for the computer and the hint ---
+
+func _process(_delta: float) -> void:
+	_poll_think()
+
+func _think(kind: String) -> void:
+	if _task != -1:
+		return
+	var copy: RefCounted = rules.copy()
+	var lv := level if kind == "ai" else 2
+	var budget := -1 if kind == "ai" else AI.HINT_BUDGET_MS
+	var seed := _rng.randi()
+	var box: Array = [-1]
+	_box = box
+	_task_for = kind
+	_task_game = _game
+	_think_at = Time.get_ticks_msec() / 1000.0
+	_task = WorkerThreadPool.add_task(func() -> void: box[0] = AI.new().plan(copy, lv, seed, budget))
+
+func _poll_think() -> void:
+	if _task == -1 or not WorkerThreadPool.is_task_completed(_task):
+		return
+	var kind := _task_for
+	if kind == "ai" and Time.get_ticks_msec() / 1000.0 - _think_at < THINK_MIN:
+		return
+	WorkerThreadPool.wait_for_task_completion(_task)
+	_task = -1
+	var m: int = _box[0]
+	if kind == "ai" and _task_game == _game and _state == State.THINK and m >= 0:
+		_bot_moves(m)
+		return
+	if kind == "hint" and _task_game == _game and _state == State.YOURS and m >= 0:
+		board.set_hint(m)
+		_fx.cue("hint")
+		_say(tr("CHS_HINT_LINE"))
+	if _state == State.THINK:
+		_think("ai")
+
+## The computer picks its piece up, holds it a beat, and moves.
+func _bot_moves(m: int) -> void:
+	_state = State.ANIM
+	board.set_lifted(Rules.mv_from(m))
+	var game := _game
+	get_tree().create_timer(0.0 if Motion.reduce else PONDER).timeout.connect(func() -> void:
+		if _game != game or not is_inside_tree():
+			return
+		_state = State.THINK
+		_play(m))
+
+func _on_hint() -> void:
+	if _state != State.YOURS or _hints <= 0 or _task != -1:
+		return
+	_hints -= 1
+	top_bar.refresh(self)
+	_say(tr("CHS_THINKING"))
+	_think("hint")
+	Analytics.track("hint_used", {"puzzle_id": GAME, "hints": HINTS - _hints})
+
+# --- undo ---
+
+## Takes back your last move and the computer's answer to it.
+func _on_undo() -> void:
+	if not can_undo():
+		return
+	_undos += 1
+	_rewinds = 2
+	_state = State.REWIND
+	board.interactive = false
+	board.set_hint(-1)
+	_hush()
+	_rewind_one()
+	Analytics.track("undo_used", {"puzzle_id": GAME, "undos": _undos})
+
+func _rewind_one() -> void:
+	_rewinds -= 1
+	var d: Dictionary = _history.pop_back()
+	rules.unmake()
+	board.rewind(d)
+	if rules.in_check():
+		board.set_check(rules.kings[rules.turn])
+	_refresh_board()
+
+# --- the end ---
+
+func _finish(status: int) -> void:
+	_state = State.OVER
+	board.interactive = false
+	var outcome := "draw"
+	var reason := ""
+	var king := -1
+	match status:
+		Rules.MATE:
+			var loser: int = rules.turn
+			king = rules.kings[loser]
+			outcome = "lost" if loser == player else "won"
+		Rules.STALEMATE:
+			reason = "CHS_DRAW_STALEMATE"
+		Rules.FIFTY:
+			reason = "CHS_DRAW_FIFTY"
+		Rules.REPETITION:
+			reason = "CHS_DRAW_REPEAT"
+		_:
+			reason = "CHS_DRAW_MATERIAL"
+	board.finish(outcome, king)
+	_refresh_board()
+	if outcome == "draw":
+		Record.add_draw(GAME, level)
+	else:
+		Record.add(GAME, level, outcome == "won")
+	Analytics.track("versus_end", {"game": GAME, "level": level, "won": outcome == "won",
+		"result": outcome, "moves": rules.fullmove, "undos": _undos,
+		"colour": "white" if player == Rules.WHITE else "black"})
+	_fx.cue({"won": "win", "lost": "lose", "draw": "draw"}[outcome])
+	_faces[0].expression = Face.Expr.JOY if outcome == "won" else (Face.Expr.WORRIED if outcome == "lost" else Face.Expr.SLEEPY)
+	_faces[1].expression = Face.Expr.JOY if outcome == "lost" else (Face.Expr.WORRIED if outcome == "won" else Face.Expr.SLEEPY)
+	if reason != "":
+		_say(tr(reason))
+	var game := _game
+	get_tree().create_timer(0.3 if Motion.reduce else END_WAIT).timeout.connect(func() -> void:
+		if _game != game or not is_inside_tree():
+			return
+		_end = _build_end(outcome, reason)
+		add_child(_end)
+		Motion.appear(_end, 0.0, 1.0, 0.3)
+		_celebrate(outcome == "won"))
+
+func _build_end(outcome: String, reason: String) -> Control:
+	var scrim := ColorRect.new()
+	scrim.color = Color(Pal.OUTLINE, 0.35)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := PanelContainer.new()
+	card.name = "Card"
+	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 40))
+	card.custom_minimum_size.x = 820
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 18)
+	card.add_child(col)
+	var seat := Control.new()
+	seat.custom_minimum_size = Vector2(0, 170)
+	var face: Control = MoonFace.new() if outcome == "lost" else SunFace.new()
+	face.size = Vector2(170, 170)
+	face.position = Vector2(820 * 0.5 - 40 - 85, 0)
+	face.expression = Face.Expr.SLEEPY if outcome == "draw" else Face.Expr.JOY
+	seat.add_child(face)
+	col.add_child(seat)
+	var head := Label.new()
+	head.text = {"won": "CHS_WIN", "lost": "CHS_LOSE", "draw": "CHS_DRAW"}[outcome]
+	head.theme_type_variation = "WellDone"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(head)
+	var why := Label.new()
+	why.text = tr(reason) if reason != "" else tr("CHS_MATE_IN") % rules.fullmove
+	why.theme_type_variation = "SheetBody"
+	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(why)
+	var line := Label.new()
+	line.text = "%s  ·  %s" % [tr(LEVELS[level]), Record.record_line(GAME, level)]
+	line.theme_type_variation = "SheetBodyDim"
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(line)
+	var again := IconButton.new("reset", tr("SNK_AGAIN"), "SunButton")
+	again.custom_minimum_size.y = 120
+	again.pressed.connect(func() -> void:
+		player = 1 - player
+		Record.set_last_colour(GAME, player)
+		_new_game())
+	col.add_child(again)
+	var back := IconButton.new("chevron_left", tr("SNK_BACK"))
+	back.custom_minimum_size.y = 110
+	back.pressed.connect(_on_back)
+	col.add_child(back)
+	return scrim
+
+func _celebrate(won: bool) -> void:
+	var card: Control = _end.get_node("Center/Card")
+	if Motion.reduce:
+		return
+	card.pivot_offset = Vector2(card.custom_minimum_size.x * 0.5, 200.0)
+	card.scale = Vector2.ONE * 0.86
+	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not won:
+		return
+	var fx := Fx2D.new()
+	_end.add_child(fx)
+	var cols := [Pal.KNIGHT_CREAM, Pal.KNIGHT_ROSE, Pal.CROWN, Pal.LEAF, Pal.SUN_RAY]
+	var mid := size * 0.5
+	for k in 8:
+		var at := mid + Vector2.from_angle(TAU * k / 8.0 - PI * 0.5) * Vector2(400.0, 330.0)
+		var t := get_tree().create_timer(0.25 + 0.14 * k)
+		t.timeout.connect(func() -> void:
+			if is_instance_valid(fx):
+				fx.puff(at, cols[k % cols.size()], 12))
+
+# --- chrome ---
+
+func _say(text: String) -> void:
+	_toast_label.text = text
+	_place_toast.call_deferred()
+	Motion.stop(_toast_tw)
+	_toast_tw = create_tween()
+	_toast_tw.tween_property(_toast, "modulate:a", 1.0, 0.18)
+	_toast_tw.tween_interval(TOAST_HOLD)
+	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.3)
+
+func _hush() -> void:
+	if _toast.modulate.a <= 0.0:
+		return
+	Motion.stop(_toast_tw)
+	_toast_tw = create_tween()
+	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.2)
+
+## Over the board, a little above its middle.
+func _place_toast() -> void:
+	_toast.reset_size()
+	var at: Rect2 = board.get_global_rect()
+	var frame: Rect2 = board.frame_rect()
+	var w := _toast.get_combined_minimum_size().x
+	_toast.global_position = Vector2(at.position.x + frame.get_center().x - w * 0.5,
+		at.position.y + frame.position.y + frame.size.y * 0.4)
+
+func _on_reset() -> void:
+	if _state == State.ANIM or _state == State.REWIND:
+		return
+	Analytics.track("board_reset", {"puzzle_id": GAME})
+	_new_game()
+
+func _on_back() -> void:
+	if _state != State.OVER and _history.size() > 0:
+		Analytics.track("versus_abandon", {"game": GAME, "level": level, "moves": rules.fullmove})
+	closed.emit()
+
+## Android's back, through the menu: a sheet first, then the screen.
+func go_back() -> void:
+	if settings_sheet.is_open():
+		settings_sheet.close()
+		return
+	_on_back()

@@ -148,3 +148,27 @@ SNK_AGAIN,Play again,Jogar de novo,Jugar otra vez
 SNK_BACK,Back,Voltar,Volver
 SNK_THINKING,Finding a shot…,Procurando uma jogada…,Buscando una jugada…
 SNK_HINT_LINE,"Try this line, about %d%% power","Tente esta linha, com cerca de %d%% de força","Prueba esta línea, con un %d%% de fuerza"
+VS_CHESS_BLURB,"A game against the computer: every piece moves its own way, and the king must be caught.","Uma partida contra o computador: cada peça anda do seu jeito, e o rei tem de ser encurralado.","Una partida contra el ordenador: cada pieza se mueve a su manera, y hay que atrapar al rey."
+VS_RECORD_DRAWN,Won %d · Lost %d · Drawn %d,Venceu %d · Perdeu %d · Empatou %d,Ganadas %d · Perdidas %d · Tablas %d
+CHS_MOTTO,CHECKMATE THE MOON,DÊ XEQUE-MATE NA LUA,DALE JAQUE MATE A LA LUNA
+CHS_MOVE,MOVE,LANCE,JUGADA
+CHS_FIRST,Moves first,Joga primeiro,Juega primero
+CHS_SECOND,Moves second,Joga depois,Juega segundo
+CHS_TO_MOVE,Your move,Sua vez,Tu turno
+CHS_THINKS,Thinking…,Pensando…,Pensando…
+CHS_IN_CHECK,In check!,Em xeque!,¡En jaque!
+CHS_YOUR_MOVE,"Your move: tap a piece, then where it goes (or drag it)","Sua vez: toque numa peça e depois onde ela vai (ou arraste)","Tu turno: toca una pieza y luego adónde va (o arrástrala)"
+CHS_BOT_FIRST,"The bot moves first this game","O bot joga primeiro nesta partida","El bot juega primero esta partida"
+CHS_CHECK,Check! Your king must get out of danger,Xeque! Seu rei precisa sair do perigo,¡Jaque! Tu rey tiene que salir del peligro
+CHS_KING_SAFE,That would leave your king in check,Isso deixaria seu rei em xeque,Eso dejaría a tu rey en jaque
+CHS_STUCK,That piece has nowhere to go yet,Essa peça ainda não tem para onde ir,Esa pieza aún no tiene adónde ir
+CHS_THINKING,Finding a move…,Procurando um lance…,Buscando una jugada…
+CHS_HINT_LINE,Try this move,Tente este lance,Prueba esta jugada
+CHS_WIN,You win!,Você venceu!,¡Ganaste!
+CHS_LOSE,The bot wins,O bot venceu,Gana el bot
+CHS_DRAW,A draw,Empate,Tablas
+CHS_MATE_IN,Checkmate on move %d,Xeque-mate no lance %d,Jaque mate en la jugada %d
+CHS_DRAW_STALEMATE,"Stalemate: no move left, but no check","Afogamento: nenhum lance possível, mas sem xeque","Ahogado: no queda jugada, pero no hay jaque"
+CHS_DRAW_FIFTY,Fifty moves with no capture and no pawn move,Cinquenta lances sem captura nem lance de peão,Cincuenta jugadas sin captura ni movimiento de peón
+CHS_DRAW_REPEAT,The same position three times,A mesma posição três vezes,La misma posición tres veces
+CHS_DRAW_MATERIAL,Not enough pieces left to checkmate,Não restam peças suficientes para dar xeque-mate,No quedan piezas suficientes para dar jaque mate

@@ -59,7 +59,7 @@ func _process(delta: float) -> bool:
 		1:
 			if _t > 1.8:
 				print("tab now ", _menu._tab)
-				var play: Control = _menu.versus_tab.find_children("*", "Button", true, false).back()
+				var play: Control = _menu.versus_tab.find_child("Play_snooker", true, false)
 				_tap(play)
 				_step = 2
 		2:
