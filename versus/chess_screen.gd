@@ -46,6 +46,8 @@ const HINTS := 3
 const THINK_MIN := 0.6
 const PONDER := 0.35
 const END_WAIT := 1.8
+## A mate waits longer: the king's crown is still rolling to a stop.
+const MATE_WAIT := 2.6
 const TOAST_HOLD := 2.2
 const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD"]
 
@@ -591,7 +593,8 @@ func _finish(status: int) -> void:
 	if reason != "":
 		_say(tr(reason))
 	var game := _game
-	get_tree().create_timer(0.3 if Motion.reduce else END_WAIT).timeout.connect(func() -> void:
+	var wait := MATE_WAIT if king >= 0 else END_WAIT
+	get_tree().create_timer(0.3 if Motion.reduce else wait).timeout.connect(func() -> void:
 		if _game != game or not is_inside_tree():
 			return
 		_end = _build_end(outcome, reason)

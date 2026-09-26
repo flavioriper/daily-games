@@ -60,8 +60,9 @@ func foot_drop() -> float:
 ## Appends a piece to `b`, foot at the origin, in pixels for a cell of `s`.
 ## `side` is the player's (0, cream) or the computer's (1, rose), never
 ## white or black: the player's pieces look the same whichever colour they
-## move as. `look` -1 faces left, 1 right.
-func build(b: Face.Builder, type: int, side: int, s: float, face: int, _look: float) -> void:
+## move as. `look` -1 faces left, 1 right. `bare` draws a piece that
+## has_crown() without it, once the crown has come off.
+func build(b: Face.Builder, type: int, side: int, s: float, face: int, _look: float, _bare := false) -> void:
 	var col := Pal.KNIGHT_CREAM if side == 0 else Pal.KNIGHT_ROSE
 	var deep := Pal.KNIGHT_CREAM_LINE if side == 0 else Pal.KNIGHT_ROSE_LINE
 	var r := s * (0.26 + 0.02 * type)
@@ -73,6 +74,39 @@ func build(b: Face.Builder, type: int, side: int, s: float, face: int, _look: fl
 		b.disc(c + Vector2.from_angle(a) * r * 0.55, s * 0.035, deep)
 	if face == F_DIZZY:
 		b.stroke(Face.Builder.ring(c, r * 0.4, r * 0.4), s * 0.02, deep, true)
+
+## A crown that can come off: the mated king's is knocked flying as he
+## goes over, and lies on the board after. A skin whose pieces wear none
+## answers false and the rest of this section is never asked.
+func has_crown(_type: int) -> bool:
+	return false
+
+## Appends the crown alone to `b`, centred on the origin, in pixels for a
+## cell of `s`.
+func build_crown(_b: Face.Builder, _type: int, _side: int, _s: float) -> void:
+	pass
+
+## Where the crown's centre sits on the standing piece: pixels from its
+## foot, for a cell of `s`.
+func crown_seat(_type: int, s: float) -> Vector2:
+	return Vector2(0.0, -s * 0.8)
+
+## When, as a fraction of the topple, the crown comes off.
+func crown_pop() -> float:
+	return 0.3
+
+## The crown's flight, seconds.
+func crown_time() -> float:
+	return 0.9
+
+## The crown `u` of the way through its flight off a king whose foot is
+## the origin (cells), knocked toward `dir` (-1 or 1), starting `seat` cells
+## up. `at` is where it is over the board, `lift` how high; it rests at u 1.
+func crown_pose(u: float, dir: float, seat: float) -> Pose:
+	var p := Pose.at_cell(Vector2(dir * 1.2 * u, 0.0))
+	p.lift = lerpf(seat, 0.0, u) + 0.6 * sin(PI * u)
+	p.tilt = dir * TAU * u
+	return p
 
 ## The soft shadow under a piece, as a fraction of a cell across.
 func shadow_size() -> Vector2:

@@ -92,7 +92,7 @@ const FACE_AT := {
 	Rules.KING: Vector2(0.0, -0.04),
 }
 
-func build(b: Face.Builder, type: int, side: int, s: float, face: int, look: float) -> void:
+func build(b: Face.Builder, type: int, side: int, s: float, face: int, look: float, bare := false) -> void:
 	var col: Color = Pal.KNIGHT_CREAM if side == 0 else Pal.KNIGHT_ROSE
 	var deep: Color = Pal.KNIGHT_CREAM_DEEP if side == 0 else Pal.KNIGHT_ROSE_DEEP
 	# Knight's cream line, taken deeper: on the chessboard's sandstone the
@@ -162,9 +162,14 @@ func build(b: Face.Builder, type: int, side: int, s: float, face: int, look: flo
 				b.disc(map.call(tip + Vector2(-0.006, -0.006)), u * 0.018, Pal.PAPER)
 			b.disc(map.call(Vector2(0.0, -0.225)), u * 0.028, Pal.BERRY)
 		Rules.KING:
-			ChessPiece._crown_into(b, map, u)
-			b.stroke(ChessPiece._mapped(PackedVector2Array([Vector2(0.0, -0.44), Vector2(0.0, -0.56)]), map), u * 0.04, Pal.CROWN_DEEP)
-			b.stroke(ChessPiece._mapped(PackedVector2Array([Vector2(-0.05, -0.51), Vector2(0.05, -0.51)]), map), u * 0.04, Pal.CROWN_DEEP)
+			if bare:
+				# the crown gone: a bald crown of the head, and a sprig of
+				# three hairs standing up where it was
+				for dx: float in [-0.035, 0.0, 0.035]:
+					b.stroke(ChessPiece._mapped(Face.Builder.bezier2(Vector2(dx * 0.4, -0.16), Vector2(dx * 1.6, -0.22),
+						Vector2(dx * 2.2, -0.25), 6), map), u * 0.016, line)
+			else:
+				_crown(b, map, u)
 		Rules.KNIGHT:
 			for i in 3:
 				var yy := -0.28 + float(i) * 0.13
@@ -179,6 +184,58 @@ func build(b: Face.Builder, type: int, side: int, s: float, face: int, look: flo
 		_knight_face(b, map, u, face, line)
 	else:
 		_face(b, map, u, FACE_AT[type], face, line)
+
+## The king's crown and its cross, in the piece's unit box.
+static func _crown(b: Face.Builder, map: Callable, u: float) -> void:
+	ChessPiece._crown_into(b, map, u)
+	b.stroke(ChessPiece._mapped(PackedVector2Array([Vector2(0.0, -0.44), Vector2(0.0, -0.56)]), map), u * 0.04, Pal.CROWN_DEEP)
+	b.stroke(ChessPiece._mapped(PackedVector2Array([Vector2(-0.05, -0.51), Vector2(0.05, -0.51)]), map), u * 0.04, Pal.CROWN_DEEP)
+
+## The crown's centre in the piece's unit box: halfway up the band and the
+## points, below the cross.
+const CROWN_AT := Vector2(0.0, -0.33)
+
+func has_crown(type: int) -> bool:
+	return type == Rules.KING
+
+func build_crown(b: Face.Builder, _type: int, _side: int, s: float) -> void:
+	var u := s * PIECE
+	_crown(b, func(p: Vector2) -> Vector2: return (p - CROWN_AT) * u, u)
+
+func crown_seat(_type: int, s: float) -> Vector2:
+	return Vector2(0.0, (CROWN_AT.y - FOOT.y) * s * PIECE)
+
+func crown_pop() -> float:
+	# as the wobble ends and he starts to go over
+	return 0.32
+
+func crown_time() -> float:
+	return 1.15
+
+## Knocked up and away the way he falls, turning over once; it lands, hops
+## once, and rolls to a stop leaning on its rim.
+func crown_pose(u: float, dir: float, seat: float) -> Pose:
+	var p := Pose.new()
+	if u < 0.55:
+		var t := u / 0.55
+		p.at = Vector2(dir * 1.05 * t, 0.0)
+		p.lift = lerpf(seat, 0.0, t) + 0.75 * sin(PI * t)
+		p.tilt = dir * TAU * _ease_out(t)
+		if t > 0.85:
+			p.squash = _land((t - 0.85) / 0.15, 0.2)
+		return p
+	if u < 0.8:
+		var t := (u - 0.55) / 0.25
+		p.at = Vector2(dir * (1.05 + 0.3 * t), 0.0)
+		p.lift = 0.18 * sin(PI * t)
+		p.tilt = dir * (TAU + 0.6 * t)
+		return p
+	var t := (u - 0.8) / 0.2
+	var e := _ease_out(t)
+	p.at = Vector2(dir * (1.35 + 0.12 * e), 0.0)
+	# rocks on its rim and settles askew
+	p.tilt = dir * (TAU + 0.6 - 0.25 * e) + 0.12 * sin(t * PI * 3.0) * (1.0 - t)
+	return p
 
 ## Two eyes, two cheeks and a mouth at `c`, in the state `face`.
 func _face(b: Face.Builder, map: Callable, u: float, c: Vector2, face: int, line: Color) -> void:

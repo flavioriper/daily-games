@@ -117,6 +117,10 @@ class Actor:
 	## The fraction of its move at which this piece strikes what it takes,
 	## -1 when it takes nothing: it leans into the hit there.
 	var hit_u := -1.0
+	## When its crown was knocked off (the board's clock), -1 while it has
+	## it on, and the way it flew.
+	var crown_off := -1.0
+	var crown_dir := 1.0
 
 var _actors: Array = []
 var _at_sq := {}
@@ -219,6 +223,7 @@ func setup(the_rules: RefCounted, as_colour: int, enter := true) -> void:
 		if p == 0:
 			continue
 		var a := Actor.new()
+		a.crown_off = -1.0
 		a.type = absi(p)
 		a.side = 0 if Rules.side_of(p) == player else 1
 		a.sq = sq
@@ -564,6 +569,21 @@ func finish(outcome: String, king_sq := -1) -> void:
 		_start(k, "topple", skin.topple_time(), k.at, k.at, 0.2)
 		k.face = ChessSkin.F_DIZZY
 		k.face_until = INF
+		if skin.has_crown(k.type):
+			# knocked off the way he falls, unless that would throw it off
+			# the board, then the other way
+			var dir := -1.0 if k.side == 0 else 1.0
+			if k.at.x + dir * 1.5 < -0.2 or k.at.x + dir * 1.5 > 7.2:
+				dir = -dir
+			k.crown_dir = dir
+			_after(0.2 + skin.topple_time() * skin.crown_pop(), func() -> void:
+				k.crown_off = _now
+				_cue("lift", 1.3)
+				if _fx != null:
+					_fx.sparkle(_foot(k.at) + skin.crown_seat(k.type, cell), Pal.SUN))
+			_after(0.2 + skin.topple_time() * skin.crown_pop() + skin.crown_time() * 0.48, func() -> void:
+				_cue("place", 1.35)
+				_ripple(k.at + Vector2(k.crown_dir * 1.05, 0.0), 0.6))
 	if outcome == "draw":
 		return
 	if outcome == "won":
@@ -819,23 +839,49 @@ func _draw() -> void:
 		var a: Actor = e[1]
 		var pose = e[2]
 		var look: float = pose.look if pose.look != 0.0 else a.look
-		var mesh := _mesh(a.type, a.side, _face_of(a), look)
+		var bare := a.crown_off >= 0.0 and _now >= a.crown_off
+		var mesh := _mesh(a.type, a.side, _face_of(a), look, bare)
 		var xf := Transform2D(pose.tilt, pose.squash * pose.scale, 0.0, _foot(pose.at) - Vector2(0.0, pose.lift * cell))
 		draw_mesh(mesh, null, xf, Color(1, 1, 1, pose.alpha))
+		if bare:
+			_draw_crown(a)
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null)
 	_draw_picker()
 	_draw_advantage()
 
-func _foot(c: Vector2) -> Vector2:
-	return px(c) + Vector2(0.0, skin.foot_drop() * cell)
-
-func _mesh(type: int, side: int, face: int, look: float) -> ArrayMesh:
-	var key := "%d|%d|%d|%d" % [type, side, face, 1 if look > 0.0 else 0]
+## A crown knocked off its king: in flight, then lying where it stopped,
+## with its own shadow.
+func _draw_crown(a: Actor) -> void:
+	var key := "crown|%d|%d" % [a.type, a.side]
 	var m: ArrayMesh = _meshes.get(key)
 	if m == null:
 		var b := Face.Builder.new()
-		skin.build(b, type, side, cell, face, look)
+		skin.build_crown(b, a.type, a.side, cell)
+		m = b.mesh()
+		_meshes[key] = m
+	# the crown's centre rides REST over the ground when it lies there, so
+	# its flight starts that much under its seat
+	var rest := cell * 0.12
+	var seat: float = -skin.crown_seat(a.type, cell).y / cell - 0.12
+	var u := clampf((_now - a.crown_off) / skin.crown_time(), 0.0, 1.0)
+	var p: RefCounted = skin.crown_pose(u, a.crown_dir, seat)
+	var foot := _foot(a.at + p.at)
+	var up := clampf(p.lift, 0.0, 2.0)
+	var k := 0.55 * (1.0 - up * 0.25)
+	draw_mesh(_shadow_mesh, null, Transform2D(0.0, Vector2(k, k * 0.8), 0.0, foot + Vector2(up * 0.22, up * 0.04) * cell),
+		Color(1, 1, 1, 1.0 - up * 0.35))
+	draw_mesh(m, null, Transform2D(p.tilt, p.squash * p.scale, 0.0, foot - Vector2(0.0, p.lift * cell + rest)))
+
+func _foot(c: Vector2) -> Vector2:
+	return px(c) + Vector2(0.0, skin.foot_drop() * cell)
+
+func _mesh(type: int, side: int, face: int, look: float, bare := false) -> ArrayMesh:
+	var key := "%d|%d|%d|%d|%d" % [type, side, face, 1 if look > 0.0 else 0, 1 if bare else 0]
+	var m: ArrayMesh = _meshes.get(key)
+	if m == null:
+		var b := Face.Builder.new()
+		skin.build(b, type, side, cell, face, look, bare)
 		m = b.mesh()
 		_meshes[key] = m
 	return m

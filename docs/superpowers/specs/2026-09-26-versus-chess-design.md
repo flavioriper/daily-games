@@ -205,9 +205,17 @@ square pulsed. Now nothing idles, the marks and the badge appear whole, and
 the capture ring does not turn. Two frames 1.5 s apart are pixel-identical,
 on a selection and on a mate.
 
-**Not done.** The mated king's crown does not pop off, because it is baked
-into the king's mesh. Doing it properly means a skin call that builds a
-crownless king and a loose crown.
+**The crown comes off** (done the same evening, on the user's word). The
+skin contract grew a crown: `has_crown(type)`, `build_crown()` (the crown
+alone, centred), `crown_seat()` (where it sits on the standing piece),
+`crown_pop()` (when in the topple it goes), `crown_time()`, `crown_pose()`,
+and a `bare` flag on `build()`. The plain base set has no crown. On mate the
+Garden king's crown is knocked flying the way he falls, or the other way if
+that would throw it off the board. It turns over once, lands with a ripple,
+hops, and rolls to a stop leaning on its rim. The king under it is bald,
+with three hairs standing up. The mate's end card now waits 2.6 s rather
+than 1.8 so the crown is seen landing. Nothing changes under reduce motion,
+where the king never topples. 83 draw calls on the topple, ANGLE agreeing.
 
 Measured with `tests/_shot_chess.gd` at `--resolution 810x1440`: 99 on the
 tab, **122-129** at the board, 75-106 in the endings. ANGLE agrees on every
