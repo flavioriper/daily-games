@@ -636,7 +636,18 @@ the sod is not wholly down, so a cell is never bare card mid-moment.
 **She is rooted.** Every mushroom scales and turns about the foot of her
 stem (`MushroomFace.FOOT`), not her middle: the pop grows her up out of the
 bed, the press squashes her into it, Check's wobble rocks her on her root.
-Pulled up, she rises `PLUCK` of a cell as she shrinks out. Every
+Pulled up, she rises `PLUCK` of a cell as she shrinks out.
+
+**She grows like a mushroom, not a pop** (the user's ask, the same
+evening). A tap no longer pops her in with the family's squash: `_sprout`
+waits `SPROUT_LAG` for her sod to start lifting, pushes a narrow closed
+button (`BUTTON_W` wide) up to `BUTTON_H` of her height over `SPROUT_PUSH`,
+opens her cap `CAP_FLARE` past its width over `SPROUT_OPEN` while her eyes
+open, and settles with the back ease over `SPROUT_SETTLE` -- about 0.7 s in
+all. Soil (`PLOT_SOIL`) puffs at her foot as she breaks through. A hint
+still drops her in from above; a press, a wobble or a restore that cuts a
+sprout short puts her eyes back open. Draw calls unchanged (72), reduce
+motion still pixel-identical, suite 122583/0. Every
 `SWAY_EVERY` seconds one planted mushroom with nothing else moving her sways
 (`wobble2d` at `SWAY_ANGLE` over `SWAY_TIME`) -- her own node turning, so
 nothing on the field is rebuilt and the idle's draw calls do not move.

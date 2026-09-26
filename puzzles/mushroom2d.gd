@@ -131,6 +131,19 @@ const SOD_TIME := 0.18
 const SOD_LIFT := 0.12
 ## The sod settles back this long after the piece on its cell starts to go.
 const SOD_BACK_LAG := 0.12
+## A planted mushroom sprouts: after SPROUT_LAG, as her sod lifts, a closed
+## button BUTTON_W wide pushes up to BUTTON_H of her height over SPROUT_PUSH,
+## then her cap opens CAP_FLARE past its width over SPROUT_OPEN and settles
+## over SPROUT_SETTLE. Soil puffs at her foot, SOIL_AT of a cell below the
+## centre, as she breaks through.
+const SPROUT_LAG := 0.05
+const SPROUT_PUSH := 0.24
+const SPROUT_OPEN := 0.2
+const SPROUT_SETTLE := 0.2
+const BUTTON_W := 0.42
+const BUTTON_H := 1.08
+const CAP_FLARE := 0.14
+const SOIL_AT := 0.3
 ## A mushroom pulled up rises this much of a cell as she shrinks out.
 const PLUCK := 0.2
 ## A number that has just come right glints: its bed shines SHINE toward
@@ -1088,14 +1101,41 @@ func _cap_up(cell: Vector2i, delay: float, drop: bool) -> void:
 	face.rotation = 0.0
 	face.position = Vector2.ZERO
 	face.modulate.a = 1.0
+	face.eye_open = 1.0
 	_set_expr(face, Face.Expr.HAPPY)
 	if drop:
 		face.scale = Vector2.ONE
 		_pos_tw[face] = Motion.drop_in(face, Motion.DROP, Motion.DROP_TIME, delay)
 		_busy_for(delay + Motion.DROP_TIME)
 	else:
-		_look_tw[face] = Motion.pop_in(face, Motion.POP_IN, delay)
-		_busy_for(delay + Motion.POP_IN)
+		_look_tw[face] = _sprout(face, delay)
+		_busy_for(delay + SPROUT_LAG + SPROUT_PUSH + SPROUT_OPEN + SPROUT_SETTLE)
+		if not Motion.reduce:
+			_after(delay + SPROUT_LAG, func() -> void:
+				if face.visible and _slots.has(face):
+					fx.puff(cell_centre(cell) + Vector2(0.0, _cell * SOIL_AT), Pal.PLOT_SOIL, 4))
+
+## She grows the way a mushroom does, about the foot of her stem: a narrow
+## closed button pushes up out of the soil, a little taller than she will
+## stand, then her cap unfurls wide past its size and settles, and her eyes
+## open as it does. Under reduce-motion she is simply there.
+func _sprout(face: MushroomFace, delay: float) -> Tween:
+	if Motion.reduce:
+		face.scale = Vector2.ONE
+		return null
+	face.scale = Vector2(BUTTON_W, 0.0)
+	face.eye_open = 0.0
+	var tw := face.create_tween()
+	tw.tween_interval(delay + SPROUT_LAG)
+	tw.tween_property(face, "scale", Vector2(BUTTON_W, BUTTON_H), SPROUT_PUSH) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(face, "scale", Vector2(1.0 + CAP_FLARE, 1.0 - CAP_FLARE * 0.5), SPROUT_OPEN) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(face, "eye_open", 1.0, SPROUT_OPEN) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(face, "scale", Vector2.ONE, SPROUT_SETTLE) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
 
 ## A mushroom is pulled up off `cell`: she shrinks to nothing with the quarter
 ## turn after `delay` and is hidden once gone, unless something planted her
@@ -1158,6 +1198,7 @@ func _wobble_cap(face: Control) -> void:
 	Motion.stop(_look_tw.get(face))
 	face.rotation = 0.0
 	face.scale = Vector2.ONE
+	face.eye_open = 1.0
 	_look_tw[face] = Motion.wobble2d(face)
 	_busy_for(Motion.WOBBLE_TIME)
 
@@ -1231,6 +1272,7 @@ func _press(cell: Vector2i) -> void:
 	if mark == State.FOUND and _caps.has(cell):
 		_pressed = _caps[cell]
 		Motion.stop(_look_tw.get(_pressed))
+		_pressed.eye_open = 1.0
 		_look_tw[_pressed] = Motion.press(_pressed, true)
 	if brush == State.FOUND:
 		_sink_cell(cell)
@@ -1606,6 +1648,7 @@ func restore_completed_board() -> void:
 		var face := _cap_node(cell)
 		face.visible = true
 		face.scale = Vector2.ONE
+		face.eye_open = 1.0
 		face.rotation = 0.0
 		face.position = Vector2.ZERO
 		face.modulate.a = 1.0
