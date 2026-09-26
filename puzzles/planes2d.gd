@@ -12,13 +12,15 @@ extends "res://core/puzzle_base.gd"
 ## convenience rather than repair, and a refused tap costs nothing at all --
 ## no life, no counter, no mark left behind.
 ##
-## How it is drawn. One mesh and no Controls: the dots, the hint's wash, every
-## trail, every dart and every crease go into a single `ArrayMesh`, because
-## none of them has a face on it and a Control per plane would be fifty-two
-## nodes on the hard band. The mesh is rebuilt only when something changed --
-## a launch, an undo, a reset, a relayout, or a frame of the entrance -- and
-## the one the last `_draw` handed over is kept in `_shown` until the next
-## replaces it: **a canvas command holds a mesh by RID and not by reference**,
+## How it is drawn. Two meshes and no Controls, because nothing here has a face
+## on it and a Control per plane would be fifty-two nodes on the hard band. The
+## **still** mesh is the paper panel, the hint's glow and every plane at rest;
+## the **live** one is the dots, the leaves, the refusal's band, the contrails
+## and every plane that is moving. The still one is rebuilt only when the set
+## of moving planes changes, so a flight rebuilds one plane and not fifty. The
+## planes themselves are `ui/faces/paper_plane.gd`'s drawing, which the menu
+## card makes too. Each mesh the last `_draw` handed over is kept (`_shown`,
+## `_still_shown`) until the next replaces it: **a canvas command holds a mesh by RID and not by reference**,
 ## so dropping the only reference to a mesh still on the item's command list
 ## leaves the renderer drawing a freed one ("Parameter mesh is null", and an
 ## empty card) on any frame a harness forces with
@@ -44,6 +46,7 @@ extends "res://core/puzzle_base.gd"
 ## constants they differ on, and each says which number was taken and why.
 
 const State = preload("res://puzzles/planes_state.gd")
+const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
@@ -61,26 +64,16 @@ const INSET := 28.0
 ## reference's picture gets exactly right.
 const DOT := 0.05
 const DOT_ALPHA := 0.45
-## The trail's stroke, round-capped at the tail and round-jointed at every
-## bend: the reference's 5 px on a 32 px lattice, said as a fraction.
-const TRAIL := 0.17
-## The dart, forward of the head cell's centre along the plane's direction:
-## the tip, how far back the wings sit, how far aside they spread, and how
-## deep the tail notch is cut. **A solid arrowhead is a symbol; a dart is an
-## object** -- the notch and the crease below are the whole re-theme.
-const DART_TIP := 0.42
-const DART_BACK := 0.26
-const DART_WING := 0.30
-const DART_NOTCH := 0.12
-## The crease down the dart's spine, in PAPER: its width, and the two ends it
-## runs between -- not the whole spine, a fold slit near the tip. **All three
-## are the mock's, and the width corrects the spec's 0.09**, which was
-## reasoned rather than looked at: at 0.09 the crease hollows the dart out
-## and the head stops reading as the solid ink the reference's arrowhead is.
-## A dart is solid with a fine fold in it.
-const CREASE := 0.06
-const CREASE_FROM := 0.22
-const CREASE_TO := -0.05
+## The paper panel the field is pressed into: how far it stands out round the
+## grid, its rim, and its corner. Pixels, because the card's own inset is.
+const PANEL_PAD := 13.0
+const PANEL_RIM := 7.0
+const PANEL_RADIUS := 22.0
+## Leaves lying between the cells: one lattice corner in this many that has
+## room for one, never fewer than MIN_SPRIGS, and how big one is.
+const SPRIG_EVERY := 4
+const MIN_SPRIGS := 4
+const SPRIG_R := 0.4
 ## The lane band a refusal lays down the cells ahead of a dart. **0.34 was drawn
 ## against 0.86 at the hard band's 58 px cell and kept** (Task 4): a stripe
 ## a third of a cell wide runs down the middle of the lane and leaves the
@@ -155,6 +148,10 @@ const WAKE_STEP := 0.04
 ## as a scolding. The *shape* is still the family's, compressed into this:
 ## see `_flash_now`.
 const BLOCK_FLASH := 0.35
+## How long a stretch of contrail holds after the dart has passed over it.
+const CONTRAIL := 0.55
+## How long a dart takes to rise off the paper as it launches.
+const LIFT_TIME := 0.14
 
 ## How long the win screen waits behind the board, and **it is arithmetic
 ## rather than taste** -- the two things that still have to happen when the
@@ -169,14 +166,16 @@ const BLOCK_FLASH := 0.35
 ##   a body of 9 cells behind the head, a lane of 20 to the far edge, and one
 ##   more cell for the tail to leave on, for `_s_end` 30. 30 / 22 = 1.364 s,
 ##   the longest flight this game can generate; the worst actually measured
-##   over 120 generated boards was `_s_end` 29 (1.318 s).
+##   over 120 generated boards was `_s_end` 29 (1.318 s). **Since the
+##   polish pass the tail flies on past the card's margin** rather than one
+##   cell, which is at most about a cell more on the hard band: 1.41 s.
 ## - **The solve wave after it: 1.25 s.** `SOLVE_DELAY` (0.25) plus the far
 ##   corner's own stagger, which `Motion.stagger` caps at 0.6 however wide
 ##   the field is (rule 4, and a 16 x 22 field reaches that cap), plus
 ##   `SOLVE_TIME` (0.4).
 ##
-## 1.364 + 1.25 = 2.614, rounded up. `WIN_WAIT` stays at 2.7 -- it now has
-## *more* headroom than the arithmetic it was set against claimed, not less.
+## 1.41 + 1.25 = 2.66, rounded up. `WIN_WAIT` stays at 2.7, with 0.04 s to
+## spare now that the tail clears the margin.
 ## It is the longest wait of any flat board -- Shikaku's 2.2 was the previous
 ## -- and the cost is named rather than hidden: when the last plane's flight
 ## is a short one, which is the common case, the board stands empty and still
@@ -227,6 +226,14 @@ var _field: ArrayMesh
 ## at the top: a canvas command holds it by RID, so it is kept until the next
 ## one takes its place.
 var _shown: ArrayMesh
+## The still mesh, the key of the moving planes it was built without, and the
+## one last handed over.
+var _still: ArrayMesh
+var _still_key := ""
+var _still_shown: ArrayMesh
+## The leaves on the paper: {"at": lattice corner, "ang", "flower"}, chosen
+## once a board off its own layout.
+var _sprigs: Array[Dictionary] = []
 
 var _opened := 0.0
 var _anim_until := 0.0
@@ -311,6 +318,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_solved_at = -1.0
 	_solve_from = Vector2i.ZERO
 	_forget()
+	_place_sprigs()
 	_layout()
 	_enter()
 	_tip_idx = 0
@@ -332,7 +340,7 @@ func _layout() -> void:
 			(size.y - 2.0 * INSET) / float(_state.rows))))
 		_origin = Vector2(size.x - float(_state.cols) * _cell,
 			size.y - float(_state.rows) * _cell) * 0.5
-	_refresh()
+	_refresh_all()
 
 ## The card this board wants: every pixel it is given. The grid is taller
 ## than it is wide in a slot that is taller than it is wide, so the height
@@ -417,7 +425,9 @@ func _retire(t: float) -> bool:
 	var dirty := false
 	for i in _fly.keys():
 		var f: Dictionary = _fly[i]
-		if t >= float(f["at"]) + float(f["dur"]):
+		# An outbound flight stays in the book until its contrail has faded.
+		var tail := 0.0 if bool(f["back"]) else CONTRAIL
+		if t >= float(f["at"]) + float(f["dur"]) + tail:
 			_fly.erase(i)
 			dirty = true
 	for i in _beat.keys():
@@ -497,45 +507,99 @@ func _refresh() -> void:
 	_field = null
 	queue_redraw()
 
+## Drops both meshes: the layout moved, or the board changed under the still
+## one without a plane starting or stopping (an undo under reduce motion).
+func _refresh_all() -> void:
+	_still = null
+	_refresh()
+
 # --- the drawing ---
 
-## One mesh, one draw command, and one transform over it: the field pops in
-## wide about its centre (rule 7 -- a wide thing comes from most of the way)
-## while each plane pops in about its own head.
+## Two meshes, one transform over both: the field pops in wide about its
+## centre (rule 7 -- a wide thing comes from most of the way) while each plane
+## pops in about its own head. The still mesh is rebuilt only when its key
+## moves -- which planes are moving, which have gone, which is hinted.
 func _draw() -> void:
 	if _cell <= 0.0 or _state.planes.is_empty():
 		return
 	var t := _now()
+	var moving := _moving(t)
+	var key := _key(moving)
+	if _still == null or key != _still_key:
+		_still = _build_still(moving)
+		_still_key = key
 	if _field == null:
-		_field = _build_field(t)
-	if _field == null:
-		return
+		_field = _build_field(t, moving)
 	var grow := Motion.wide_pop_scale(t - _opened - Motion.ENTER_DELAY)
 	var mid := _origin + Vector2(float(_state.cols), float(_state.rows)) * _cell * 0.5
-	draw_mesh(_field, null, Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow)))
+	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	draw_mesh(_still, null, xf)
+	_still_shown = _still
+	if _field != null:
+		draw_mesh(_field, null, xf)
 	_shown = _field
 
-## Everything on the field, in the one order that works: the dots on the
-## empty cells, the hint's wash and any lane band **under** the ink, then
-## every plane's trail and its dart over them.
-##
-## The washes go under rather than over, which is the mock's order and not
-## the spec's table: a lane band is BAD_TILE at the flash's own level, drawn
-## on a refusal, and the thing it explains is the ink it would be covering --
-## a band laid over a dart rubs out the dart. Nothing is lost by it: the
-## band's cells are empty by definition except the blocker's, and the blocker
-## is exactly what the player is being pointed at.
-func _build_field(t: float) -> ArrayMesh:
+## Every plane that has to be drawn frame by frame right now: in the air (or
+## still trailing its contrail), beating, shivering, nudging, or not yet done
+## popping in.
+func _moving(t: float) -> Dictionary:
+	var out: Dictionary = {}
+	for book in [_fly, _beat, _shiver, _nudge]:
+		for i in book:
+			out[i] = true
+	if not Motion.reduce and t - _opened < Motion.ENTER_DELAY + ENTER_CAP + Motion.POP_IN:
+		for i in _state.planes.size():
+			out[i] = true
+	return out
+
+func _key(moving: Dictionary) -> String:
+	var k := PackedStringArray([str(_hint_lit)])
+	for i in _state.planes.size():
+		k.append("m" if moving.has(i) else ("g" if _state.planes[i]["gone"] else "."))
+	return "".join(k)
+
+## The paper panel, the hint's glow and every plane at rest.
+func _build_still(moving: Dictionary) -> ArrayMesh:
+	var b := Face.Builder.new()
+	_panel(b)
+	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
+		PaperPlane.band(b, _cell_pts(_state.planes[_hint_lit]["cells"]), _cell,
+			GLOW_W * _cell, Color(Pal.SUN_RAY, GLOW_ALPHA))
+	for i in _state.planes.size():
+		if not moving.has(i) and not _state.planes[i]["gone"]:
+			_plane(b, i, 1e9)
+	return b.mesh()
+
+## The field pressed into the card: a soft drop under it, a tan rim with a lit
+## inner edge, and a paper a shade creamier than the card's own.
+func _panel(b) -> void:
+	var span := Vector2(float(_state.cols), float(_state.rows)) * _cell
+	var at := _origin - Vector2.ONE * (PANEL_PAD + PANEL_RIM)
+	var sz := span + Vector2.ONE * 2.0 * (PANEL_PAD + PANEL_RIM)
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 3.0), sz, PANEL_RADIUS),
+		Color(Pal.ACORN_DEEP, 0.18))
+	b.fan(Face.Builder.round_rect(at, sz, PANEL_RADIUS), PaperPlane.rim_colour())
+	var inner := _origin - Vector2.ONE * PANEL_PAD
+	var isz := span + Vector2.ONE * 2.0 * PANEL_PAD
+	var ir := PANEL_RADIUS - PANEL_RIM
+	b.fan(Face.Builder.round_rect(inner, isz, ir), Pal.ACORN.lerp(Pal.STONE_GIVEN, 0.55))
+	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 3.0), isz - Vector2(0.0, 3.0), ir),
+		Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45))
+
+## The dots, the leaves, the refusal's band, the contrails and every moving
+## plane, rebuilt on every frame something moves.
+func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 	var b := Face.Builder.new()
 	_dots(b, _covers(t), t)
-	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
-		_ink(b, _state.planes[_hint_lit]["cells"], GLOW_W * _cell,
-			Color(Pal.SUN_RAY, GLOW_ALPHA))
+	_draw_sprigs(b, t)
 	if not _refuse.is_empty():
 		var lv := _flash_now(t - float(_refuse["at"]))
 		if lv > 0.0:
-			_ink(b, _refuse["cells"], LANE_W * _cell, Color(Pal.BAD_TILE, lv))
-	for i in _state.planes.size():
+			PaperPlane.band(b, _cell_pts(_refuse["cells"]), _cell, LANE_W * _cell,
+				Color(Pal.BAD_TILE.lerp(Pal.BAD, 0.25), lv))
+	for i in _fly:
+		_contrail(b, i, t)
+	for i in moving:
 		# A plane in the air is drawn from its flight and not from the state:
 		# the state let it go on the tap, and a returning one is back in the
 		# state before it has flown home.
@@ -549,10 +613,9 @@ func _build_field(t: float) -> ArrayMesh:
 ## cells a plane leaves are places, not holes, and each of them comes back
 ## the moment the tail passes over it.
 ##
-## The solve wave rides here too, and nowhere else: when the sky is empty the
-## dots are the only thing left on the card, so the family's wave is a hop on
-## each of them. It is read as a curve off `Motion` the way everything on
-## this board is -- no tween, no node -- and the whole of it is `_hop`.
+## The solve wave rides here too: when the sky is empty the dots and the
+## leaves are the only things left on the card, so the family's wave is a hop
+## on each of them, read as a curve off `Motion` -- the whole of it is `_hop`.
 func _dots(b, cover: Dictionary, t: float) -> void:
 	var r := DOT * _cell
 	for y in _state.rows:
@@ -600,13 +663,119 @@ func _covers(t: float) -> Dictionary:
 			out[cells[j]] = lv if back else 1.0 - lv
 	return out
 
-## One plane: its trail, its dart and the crease down the dart, wearing every
-## moment it is in at once -- the entrance's pop about its **head** (that is
-## where the eye is; a body scaling about its tail swings), the wake's beat
-## across its wings, and the refusal's shiver or nudge under the whole of it.
-## While it is in the air the body is the slice of its track between the tail
-## and the head, so the tail follows the head through every bend the plane
-## ever made.
+## Leaves lie on lattice corners -- between four cells, never on one -- where
+## no dart's wing can reach, so a resting trail never covers one and a leaf
+## never hides whether a cell is empty. Chosen off the board's own layout, so
+## a day keeps its leaves.
+func _place_sprigs() -> void:
+	_sprigs = []
+	var room: Array[Vector2i] = []
+	# Which way each corner's free cells lie: a leaf points into them, so one
+	# beside a trail lies away from it.
+	var lean: Dictionary = {}
+	for y in range(1, _state.rows):
+		for x in range(1, _state.cols):
+			var free := 0
+			var head := false
+			var toward := Vector2.ZERO
+			for c in [Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x - 1, y), Vector2i(x, y)]:
+				var i := _state.plane_at(c)
+				if i < 0:
+					free += 1
+					toward += Vector2(c) + Vector2.ONE * 0.5 - Vector2(x, y)
+				elif (_state.planes[i]["cells"] as Array).back() == c:
+					head = true
+			if free >= 2 and not head:
+				room.append(Vector2i(x, y))
+				lean[Vector2i(x, y)] = toward
+	var want := maxi(MIN_SPRIGS, room.size() / SPRIG_EVERY)
+	var seed_h: int = absi(hash(Vector2i(_state.cols * 31 + _state.rows, _state.planes.size())))
+	var k := 0
+	while not room.is_empty() and _sprigs.size() < want:
+		var h: int = absi(hash(Vector2i(seed_h, k)))
+		var corner: Vector2i = room[h % room.size()]
+		room.erase(corner)
+		k += 1
+		# Never two leaves side by side: a clump reads as a bush, not a leaf.
+		var near := false
+		for sp in _sprigs:
+			if _king(sp["at"], corner) < 2:
+				near = true
+		if near:
+			continue
+		var toward: Vector2 = lean[corner]
+		var ang := float(h % 628) / 100.0
+		if toward.length() > 0.1:
+			ang = toward.angle() + float((h >> 3) % 60 - 30) / 100.0 - 0.45
+		_sprigs.append({"at": corner, "ang": ang,
+			"flower": (h >> 7) % 3 == 0})
+
+## The leaves, each fluttering as a plane goes by and hopping with the dots on
+## the solve.
+func _draw_sprigs(b, t: float) -> void:
+	for sp in _sprigs:
+		var corner: Vector2i = sp["at"]
+		var at := _origin + Vector2(corner) * _cell
+		var lift := 0.0
+		if _solved_at >= 0.0:
+			lift = Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
+				- Motion.stagger(_king(corner, _solve_from), Motion.SOLVE_STAGGER),
+				Motion.SOLVE_HOP, Motion.SOLVE_TIME)
+		PaperPlane.sprig(b, at + Vector2(0.0, lift), SPRIG_R * _cell,
+			float(sp["ang"]) + _flutter(corner, t), sp["flower"])
+
+## How far a leaf is turned by the planes going past it: the family's wobble,
+## timed from the moment a dart's head draws level with it. A leaf beside a
+## lane is passed once on the way out and once again on an undo's way home.
+func _flutter(corner: Vector2i, t: float) -> float:
+	var angle := 0.0
+	for i in _fly:
+		var f: Dictionary = _fly[i]
+		var cells: Array = _state.planes[i]["cells"]
+		var n := cells.size()
+		var dir := Vector2(_state.planes[i]["dir"])
+		var rel := Vector2(corner) - (Vector2(cells[n - 1]) + Vector2.ONE * 0.5)
+		var along := rel.dot(dir)
+		if absf(rel.cross(dir)) > 0.75 or along < -0.5:
+			continue
+		var u := _ease_inv(clampf((float(n - 1) + along) / float(f["s_end"]), 0.0, 1.0))
+		var when := float(f["at"]) + float(f["dur"]) * (1.0 - u if bool(f["back"]) else u)
+		angle += Motion.wobble_angle(t - when, Motion.WOBBLE_ANGLE * 2.5)
+	return angle
+
+## The dashed line a launched dart leaves down its lane, each stretch fading
+## CONTRAIL after the dart went over it. Only on the way out: a plane coming
+## home is going back to where it was, not somewhere new.
+func _contrail(b, i: int, t: float) -> void:
+	var f: Dictionary = _fly[i]
+	if bool(f["back"]):
+		return
+	var cells: Array = _state.planes[i]["cells"]
+	var n := cells.size()
+	var dir := Vector2(_state.planes[i]["dir"])
+	var head := _centre(cells[n - 1])
+	var reach := float(f["s_end"]) - float(n - 1)
+	var on := PaperPlane.STITCH_ON * _cell * 1.3
+	var gap := PaperPlane.STITCH_OFF * _cell * 1.6
+	var d := 0.3 * _cell
+	var colour := PaperPlane.paper(i)
+	while d < reach * _cell:
+		var e := d / _cell
+		var u := _ease_inv(clampf((float(n - 1) + e + 0.3) / float(f["s_end"]), 0.0, 1.0))
+		var since := t - (float(f["at"]) + float(f["dur"]) * u)
+		if since >= 0.0 and since < CONTRAIL:
+			var a := 0.7 * (1.0 - since / CONTRAIL)
+			b.stroke(PackedVector2Array([head + dir * d, head + dir * (d + on)]),
+				PaperPlane.STITCH_W * _cell * 1.25, Color(colour, a), false, true)
+		d += on + gap
+
+## One plane: its groove and its dart, wearing every moment it is in at once
+## -- the entrance's pop about its **head** (that is where the eye is; a body
+## scaling about its tail swings), the wake's beat across its wings, the lift
+## off the paper as it launches, and the refusal's shiver or nudge under the
+## whole of it. While it is in the air the body is the slice of its track
+## between the tail and the head, so the tail follows the head through every
+## bend the plane ever made, and the stitch travels with it.
 func _plane(b, i: int, t: float) -> void:
 	var cells: Array = _state.planes[i]["cells"]
 	var n := cells.size()
@@ -623,76 +792,34 @@ func _plane(b, i: int, t: float) -> void:
 		return
 	# The refusal's two movers, both read as curves: the blocker shivers
 	# across the board and the tapped plane leans the way it wanted to go.
-	# Both take the vocabulary's own pixels -- the family measures a shiver
-	# and a nudge in the 1080-wide design space, not in cells -- so neither
-	# costs this board a constant.
+	# Both take the vocabulary's own pixels, so neither costs a constant.
 	var off := Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0) \
 		+ dir * Motion.nudge_offset(t - float(_nudge.get(i, -1e9)))
 	var xf := Transform2D(0.0, grow, 0.0, head - head * grow + off)
-	var ink := Color(Pal.TEXT, seen)
-	_ink_pts(b, _body(i, s) if flying else _cell_pts(cells), TRAIL * _cell, ink, xf)
-	_dart(b, head, dir.angle(), seen, xf,
-		Motion.bump_scale(t - float(_beat.get(i, -1e9))))
+	var pts: PackedVector2Array = xf * (_body(i, s) if flying else _cell_pts(cells))
+	PaperPlane.trail(b, pts, _cell * grow.x, i, seen, s * _cell)
+	var beat := Motion.bump_scale(t - float(_beat.get(i, -1e9)))
+	PaperPlane.dart(b, xf * head, dir.angle(), _cell * grow.x, i, seen,
+		Vector2(1.0 + (beat - 1.0) * 0.3, beat), _lift(i, t))
 
-## A trail, a wash or a band: **one round-capped stroke** along the cell
-## centres of `cells`, with a disc at every bend -- never a rounded rect a
-## cell. Laid side by side those leave a four-pointed hole where their
-## corners meet, and a lane full of little stars reads as a bug; the mock
-## found that with a screenshot. The discs are not decoration either: a
-## stroke's own join averages the two tangents, so at the right angle every
-## one of these paths turns it pinches to seven tenths of its width and
-## leaves a notch on the outside of the corner.
-func _ink(b, cells: Array, width: float, colour: Color) -> void:
-	_ink_pts(b, _cell_pts(cells), width, colour)
+## How far a dart has risen off the paper: up over LIFT_TIME as it launches,
+## and down again over the same as a plane coming home lands.
+func _lift(i: int, t: float) -> float:
+	if not _fly.has(i):
+		return 0.0
+	var f: Dictionary = _fly[i]
+	var u := clampf((t - float(f["at"])) / LIFT_TIME, 0.0, 1.0)
+	if bool(f["back"]):
+		u = clampf((float(f["at"]) + float(f["dur"]) - t) / LIFT_TIME, 0.0, 1.0)
+	return Motion.back_out(u)
 
 ## The centres of `cells`, which is what a plane standing still is drawn
-## along. A plane in flight hands `_ink_pts` its track's points instead.
+## along. A plane in flight hands its track's points instead.
 func _cell_pts(cells: Array) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for cell: Vector2i in cells:
 		pts.append(_centre(cell))
 	return pts
-
-func _ink_pts(b, pts: PackedVector2Array, width: float, colour: Color,
-		xf := Transform2D.IDENTITY) -> void:
-	if pts.is_empty() or width <= 0.0:
-		return
-	pts = xf * pts
-	if pts.size() < 2:
-		b.disc(pts[0], width * 0.5, colour)
-		return
-	b.stroke(pts, width * xf.get_scale().x, colour)
-	for i in range(1, pts.size() - 1):
-		b.disc(pts[i], width * 0.5 * xf.get_scale().x, colour)
-
-## The folded dart at a plane's head: the four-point outline (tip, wing,
-## notch, wing) turned to the plane's heading, with the crease laid down its
-## spine in PAPER. The notch is what stops it reading as an arrow.
-##
-## `beat` is the wake's `bump_scale`, and it opens the **wings**: the bump
-## whole across the spine and three tenths of it along, which is the mock's
-## proportion and the reason a beating dart reads as flapping rather than as
-## swelling. It is a shape and not a timing -- the timing is the family's
-## `BUMP_TIME` -- so it stands here beside `DART_WING` rather than among this
-## board's three motion constants. A dart at rest is handed 1.0 and the
-## arithmetic falls out to the plain dart.
-func _dart(b, head: Vector2, angle: float, seen: float, xf: Transform2D,
-		beat: float) -> void:
-	var turn := Transform2D(angle, head)
-	var wings := Vector2(1.0 + (beat - 1.0) * 0.3, beat) * _cell
-	var pts := PackedVector2Array([
-		Vector2(DART_TIP, 0.0) * wings,
-		Vector2(-DART_BACK, DART_WING) * wings,
-		Vector2(-DART_NOTCH, 0.0) * wings,
-		Vector2(-DART_BACK, -DART_WING) * wings,
-	])
-	b.polygon(xf * (turn * pts), Color(Pal.TEXT, seen))
-	var spine := PackedVector2Array([
-		Vector2(CREASE_FROM, 0.0) * wings,
-		Vector2(CREASE_TO, 0.0) * wings,
-	])
-	b.stroke(xf * (turn * spine), CREASE * _cell * xf.get_scale().x,
-		Color(Pal.PAPER, seen))
 
 ## King-move distance, the step every wave on this board is staggered by.
 static func _king(a: Vector2i, z: Vector2i) -> int:
@@ -728,12 +855,19 @@ func _body(i: int, s: float) -> PackedVector2Array:
 	return pts
 
 ## The whole flight, in cells: the body's own length, the lane it crosses,
-## and one more cell, which is where the tail leaves the board. `lane()` is
-## geometry and not occupancy, so this is the same number before the launch,
-## during it, and on the way home.
+## half a cell to the edge of the grid, and then however far it is from there
+## to the edge of this Control -- where the clip is -- plus the groove's round
+## cap, so the tail is gone and not parked in the margin round the panel.
+## `lane()` is geometry and not occupancy, so this is the same number before
+## the launch, during it, and on the way home.
 func _s_end(i: int) -> float:
 	var n: int = (_state.planes[i]["cells"] as Array).size()
-	return float(n - 1 + _state.lane(i).size() + 1)
+	var dir: Vector2i = _state.planes[i]["dir"]
+	var span := Vector2(float(_state.cols), float(_state.rows)) * _cell
+	var margin := _origin.y if dir.y < 0 else (size.y - _origin.y - span.y if dir.y > 0
+		else (_origin.x if dir.x < 0 else size.x - _origin.x - span.x))
+	var out := 0.5 + (maxf(margin, 0.0) + PaperPlane.WIDTH * 0.6 * _cell) / maxf(_cell, 1.0)
+	return float(n - 1 + _state.lane(i).size()) + out
 
 ## How long that flight takes. The floor is the family's `POP_IN` rather than
 ## a constant of this board's: a launch is never quicker than the pop a piece

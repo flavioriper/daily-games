@@ -999,11 +999,21 @@ pointing `seed_as` at them. Specs:
   with it. **It is the one flat board that clips** (`clip_contents = true`):
   a launch runs up to a body-length past the grid and would otherwise draw
   over the day card and the top bar, so the cut lands on the board card's own
-  hem. It adds **nothing to `ui/faces/`** and **no entry to the palette** --
-  the sixth board to add no character and the fourth to seat none at all,
-  after Sudoku, Bridges and Quilt -- and its field, dots, trails, darts,
-  lane band and hint glow
-  are **one `ArrayMesh`**, kept in `_shown` until the next one replaces it.
+  hem. It adds **no character and no entry to the palette** -- the fourth
+  board to seat none at all, after Sudoku, Bridges and Quilt. **Since the
+  polish of 2026-09-26** (toward the user's reference) a plane is a drawing
+  in `ui/faces/paper_plane.gd`, shared with its menu card: a pressed paper
+  groove with a stitched centre and rounded bends, and a two-tone origami
+  dart in one of three papers (identity, never state). The field is **two
+  meshes**, a still one (the paper panel, the hint's glow, every plane at
+  rest), rebuilt only when the set of moving planes changes, and a live one
+  (dots, leaves, the refusal's band, contrails, moving planes), each kept in
+  `_still_shown`/`_shown` until the next replaces it. A launch lifts the
+  dart (its shadow falls away), leaves a fading dashed contrail, turns the
+  leaves beside the lane, and flies on until the tail clears the card's
+  margin. **53** draw calls at rest after the polish (2026-09-26, twice),
+  reduce motion pixel-identical, ANGLE agreeing on 53. The figures below are
+  the pre-polish board's.
   Measured with `tests/_shot_anim.gd -- planes` at `--resolution 810x1440`,
   2026-09-20: **55** draw calls on every run anyone has taken of it -- three
   in the session that first measured it (idle means 2.13, 2.07 and 1.98 ms),
@@ -1375,9 +1385,10 @@ pointing `seed_as` at them. Specs:
   read as folded cloth), because tiling a patch out of rounded squares
   would draw the seams the game has not sewn yet -- and those are exactly
   the information the player is looking for.
-  Paper Planes is the sixth to add nothing and the **fourth to seat none**:
-  its pieces are folded paper, drawn straight into
-  the field mesh, and the only face on that screen is the sprout again.
+  Paper Planes was the sixth to add nothing and is the **fourth to seat
+  none**: its pieces are folded paper, and since 2026-09-26 they are a
+  drawing of their own (`ui/faces/paper_plane.gd`) rather than shapes in the
+  board's mesh code, shared with the menu card -- a drawing, not a character.
   **Pinwheel is the fifth to seat none and the third to add a drawing rather
   than a character**, after Nonogram's tile and Quilt's cloth:
   `ui/faces/pin_wheel.gd` is builder shapes and not a Control, for the same

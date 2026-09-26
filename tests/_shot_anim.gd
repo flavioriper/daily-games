@@ -340,6 +340,18 @@ func _initialize() -> void:
 		_shots.append_array([4.6, 5.6])
 		_idle_from = 5.8
 		_idle_to = 7.8
+	if _id == "planes" and _mode == "long":
+		# The free plane with the longest lane, so the strip catches the dart
+		# lifted mid-lane, the contrail fading behind it and the leaves beside
+		# the lane turning as it goes by.
+		_shots = [0.35, 1.7, 1.8, 1.95, 2.15, 2.5, 3.8]
+	elif _id == "planes" and _mode == "solve":
+		# Every plane but one launched through the state, and the last tapped,
+		# so the strip catches its flight, the dots and leaves hopping in the
+		# solve wave out of where it stood, and the empty sky at rest.
+		_shots = [0.35, 1.75, 1.95, 2.3, 2.55, 2.8, 3.4, 4.4]
+		_idle_from = 4.5
+		_idle_to = 6.0
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -933,6 +945,49 @@ func _tap_planes() -> void:
 	var st = _puzzle._state
 	var free: Array = st.free_planes()
 	if free.is_empty():
+		return
+	if _mode == "hint":
+		_puzzle.hint()
+		return
+	if _mode == "refuse":
+		# The blocked plane whose lane is longest to its blocker, tapped, so
+		# the strip catches the band, the shiver and the nudge.
+		var worst := -1
+		var reach := -1
+		for i in st.planes.size():
+			var who: int = st.blocker(i)
+			if who < 0:
+				continue
+			var n := 0
+			for c in st.lane(i):
+				n += 1
+				if st.plane_at(c) == who:
+					break
+			if n > reach:
+				reach = n
+				worst = i
+		var wc: Array = st.planes[worst]["cells"]
+		var wh: Vector2i = wc[wc.size() - 1]
+		_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(wh.y, wh.x))
+		_shots[2] = _t + 0.08
+		_shots[3] = _t + 0.16
+		return
+	if _mode == "long" or _mode == "solve":
+		var pick: int = free[0]
+		if _mode == "solve":
+			var order: Array = st.solve_order()
+			pick = order[order.size() - 1]
+			for i in order:
+				if i != pick:
+					st.launch(i)
+			_puzzle._refresh()
+		else:
+			for i in free:
+				if st.lane(i).size() > st.lane(pick).size():
+					pick = i
+		var pc: Array = st.planes[pick]["cells"]
+		var ph: Vector2i = pc[pc.size() - 1]
+		_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(ph.y, ph.x))
 		return
 	var best: int = free[0]
 	var best_key: Array = [true, INF]

@@ -51,6 +51,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
 const PatchCloth = preload("res://ui/faces/patch_cloth.gd")
 const PinWheel = preload("res://ui/faces/pin_wheel.gd")
+const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
@@ -786,43 +787,36 @@ func _glow(b, centre: Vector2, inner: float, outer: float, warm: Color) -> void:
 		b.tri(mid, ring_i + i, ring_i + j)
 		b.tri(ring_i + i, ring_o + i, ring_o + j)
 		b.tri(ring_i + i, ring_o + j, ring_i + j)
-## Paper Planes: the empty sky's own faint dots, and three bent ink trails
-## laid over them, each ending in a folded paper dart -- the board's own
-## shapes (puzzles/planes2d.gd's DOT, TRAIL and DART_*/CREASE_* fractions),
-## **copied** here as bare literals rather than shared, drawn at card scale
-## rather than a cell's, so the card and the board read as the same object at
-## two different sizes. This file preloads no puzzle script and should not
-## start; a literal is the price of that. Two of the copies differ from the
-## board **on purpose**: the dot's alpha is 0.4 here against the board's
-## `DOT_ALPHA` 0.45 (a card is read at a glance, not played on, and a touch
-## fainter reads right at that distance), and the trail's width is 9.0 px
-## against this card's 32 px step -- about 0.28 of it -- against the board's
-## `TRAIL` of 0.17 of a cell, because a card this small needs a heavier line
-## to read as ink rather than a hairline. Every other figure here is meant to
-## track the board's exactly, `CREASE`'s 0.06 included -- **and CREASE has
-## already moved once on this branch, 0.09 to 0.06** (see planes2d.gd's own
-## note), silently as far as this file is concerned. Nothing here would
-## notice a second move; if the board's numbers change again, sweep this
-## function by hand. No cast: this is the fifth board Nonogram's decision
-## reaches, after Sudoku, Bridges and Quilt.
+## Paper Planes: the empty sky's own faint dots, and three planes laid over
+## them -- a groove each, ending in a folded dart of each of the three papers.
+## **The board's own drawing and not a second one**: grooves and darts go
+## through `ui/faces/paper_plane.gd`, which `puzzles/planes2d.gd` draws with,
+## so the card and the board cannot drift apart. The lattice step here stands
+## in for the board's cell, and the dot is a touch fainter because a card is
+## read at a glance rather than played on. No cast.
 ##
-## Baked into **one mesh**, the way Hidden Word's turf band is
-## (`_draw_letters`) rather than a `draw_circle`/`draw_polyline` per piece:
-## gl_compatibility pays per `draw_*` command, a repeated field of dots is
-## exactly what a baked mesh is for, and it is what the board itself does for
-## its own dots, trails and darts (`Face.Builder`, `puzzles/planes2d.gd`).
-## The 27 discs of the dot lattice alone were 27 of this card's original +48
-## draw calls (Task 5's review, round 1); baking the trails and darts in
-## beside them costs nothing extra and matches the board's own technique.
+## Baked into **one mesh**, the way Hidden Word's turf band is: gl_compatibility
+## pays per `draw_*` command, and the board bakes its own planes the same way.
 func _draw_planes() -> void:
 	var b := Face.Builder.new()
+	# The board's paper panel, so the planes read on paper and not on the
+	# painted sky behind: a tan rim round a cream field, the board's own.
+	var lo := at(-170.0, -52.0)
+	var sz := at(170.0, 48.0) - lo
+	b.fan(Face.Builder.round_rect(lo + Vector2(0.0, 2.0 * _u), sz, 12.0 * _u),
+		Color(Pal.ACORN_DEEP, 0.25))
+	b.fan(Face.Builder.round_rect(lo, sz, 12.0 * _u), PaperPlane.rim_colour())
+	b.fan(Face.Builder.round_rect(lo + Vector2.ONE * 4.0 * _u, sz - Vector2.ONE * 8.0 * _u,
+		8.0 * _u), Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45))
 	_dots_sky(b)
+	var k := 0
 	for trail in [
 		[Vector2(-146.0, -34.0), Vector2(-66.0, -34.0), Vector2(-66.0, 18.0)],
 		[Vector2(-34.0, -6.0), Vector2(56.0, -6.0)],
 		[Vector2(84.0, -40.0), Vector2(84.0, 30.0), Vector2(138.0, 30.0)],
 	]:
-		_plane_trail(b, trail)
+		_plane_trail(b, trail, k)
+		k += 1
 	_sky_mesh = b.mesh()
 	draw_mesh(_sky_mesh, null)
 
@@ -836,45 +830,16 @@ func _dots_sky(b) -> void:
 		for gx in range(-4, 5):
 			b.disc(at(gx * step, gy * step), r, Color(Pal.LINE, 0.4))
 
-## One trail, drawn tail to head with a disc at every bend (the board's own
-## `_ink_pts`: a stroke's own join pinches at a corner, and a disc there is
-## what keeps the bend round rather than notched), and a folded dart turned
-## to face the way the last segment points. `caps=false` on the stroke keeps
-## its own ends flat, the way `draw_polyline` always drew them.
-func _plane_trail(b, pts: Array) -> void:
+## One plane, tail to head, in paper `k`: the lattice step is its cell.
+func _plane_trail(b, pts: Array, k: int) -> void:
 	var canvas_pts := PackedVector2Array()
 	for v in pts:
 		canvas_pts.append(at(v.x, v.y))
-	var width := 9.0 * _u
-	b.stroke(canvas_pts, width, Pal.TEXT, false, false)
-	for i in range(1, canvas_pts.size() - 1):
-		b.disc(canvas_pts[i], width * 0.5, Pal.TEXT)
-	var head: Vector2 = pts[pts.size() - 1]
-	var dir: Vector2 = (head - pts[pts.size() - 2]).normalized()
-	_dart_card(b, head, dir)
-
-## The size a dart is drawn at, in the box's own units -- this card has no
-## cell to measure against, so the board's DART_TIP/BACK/WING/NOTCH fractions
-## (puzzles/planes2d.gd) are read against this instead.
-const _DART_SIZE := 36.0
-
-## A folded dart at `head` (box units), turned to `dir`: the board's own
-## four-point outline (tip, wing, notch, wing) in TEXT, with its crease slit
-## near the tip in PAPER. The notch and the crease are the whole re-theme
-## (planes2d.gd's own note): a solid arrowhead is a symbol, a dart is an
-## object.
-func _dart_card(b, head: Vector2, dir: Vector2) -> void:
-	var turn := Transform2D(dir.angle(), at(head.x, head.y))
-	var pts := PackedVector2Array([
-		Vector2(0.42, 0.0), Vector2(-0.26, 0.30),
-		Vector2(-0.12, 0.0), Vector2(-0.26, -0.30),
-	])
-	for i in pts.size():
-		pts[i] = pts[i] * _DART_SIZE * _u
-	b.polygon(turn * pts, Pal.TEXT)
-	var spine := PackedVector2Array([Vector2(0.22, 0.0) * _DART_SIZE * _u,
-		Vector2(-0.05, 0.0) * _DART_SIZE * _u])
-	b.stroke(turn * spine, 0.06 * _DART_SIZE * _u, Pal.PAPER, false, false)
+	var cell := 32.0 * _u
+	PaperPlane.trail(b, canvas_pts, cell, k)
+	var head: Vector2 = canvas_pts[canvas_pts.size() - 1]
+	var dir: Vector2 = (head - canvas_pts[canvas_pts.size() - 2]).normalized()
+	PaperPlane.dart(b, head, dir.angle(), cell * 1.15, k)
 
 ## Pinwheel: a frame of five pinned pieces with one of them turned off its
 ## square, so the card carries the two hatched cells where it now sits on its

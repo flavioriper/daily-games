@@ -773,3 +773,51 @@ Each amendment already made in place is indexed rather than repeated.
   (the timing probe behind section 6's GDScript rows) and
   `tools/_planes_shot.sh` were all scratch and none is kept. Section 5 names
   the probe's numbers without naming a file that no longer exists.
+
+### Polish toward the user's reference (2026-09-26)
+
+The user supplied a painted reference of this board and asked for the design
+and the motion to be polished toward it. What changed, and why:
+
+- **A plane is a drawing in `ui/faces/paper_plane.gd`**, shared with the menu
+  card so the two cannot drift. The body is no longer an ink stroke but a
+  groove pressed into the paper: a tan rim, a fill a shade under the field, a
+  stitched dashed centre and rounded bends (`fillet`, radius up to 0.36 of a
+  cell; an end segment gives its whole length so a tail sliding round a bend
+  in flight takes the curve). The stitch rides the flight's own distance, so
+  it travels with a moving body.
+- **The dart is folded paper in one of three colours** (orange, coral, blue;
+  plane index mod 3). One half is lit and one in shade off a light standing
+  up and to the left, with a pale fold down the spine, a keel in the notch
+  and a soft shadow. The colour is identity and never state -- the refusal is
+  still the lane band, the hint still a glow under the plane. Only the dart
+  carries colour; the stitch takes a fifth of it so a trail can be followed
+  back to its dart on a crowded board.
+- **The field sits in a paper panel** with a tan rim, inside the card's
+  inset. The menu card carries the same panel, because a groove on the
+  painted vista did not read.
+- **Leaves and small flowers lie on lattice corners**, never on a cell: only
+  where no dart's wing can reach and at least two of the four cells are
+  empty, pointing into the free ones, never two side by side. They say
+  nothing about the rules.
+- **Motion**: the dart rises off the paper over `LIFT_TIME` as it launches
+  (bigger, its shadow falling away) and settles again as a plane lands home;
+  the lane keeps a dashed contrail in the dart's colour for `CONTRAIL` after
+  the dart passes; the leaves beside a lane turn as a dart draws level (the
+  family's wobble); on the solve the leaves hop with the dots. An outbound
+  flight stays in `_fly` until its contrail has faded.
+- **The flight runs on until the tail clears the card**, not one cell past
+  the grid: the panel's margin used to catch a parked tail. At most about a
+  cell more on the hard band, so the longest flight is ~1.41 s and
+  `WIN_WAIT` 2.7 still covers flight plus wave (2.66).
+- **Two meshes.** The still mesh (panel, hint glow, planes at rest) is keyed
+  on which planes are moving, gone or hinted and rebuilt only when that key
+  moves; the live one (dots, leaves, band, contrails, moving planes) is
+  rebuilt on animating frames as before. A flight therefore rebuilds one
+  plane and not fifty.
+- **Measured** at `--resolution 810x1440`: 53 draw calls at rest (55
+  before), idle 2.8-3.1 ms on the hard band; reduce motion pixel-identical
+  1.5 s apart; ANGLE agrees on 53 with 2 pixels over 30 levels, on an
+  antialiased edge. The harness gained `long` (the longest lane, for the
+  lift and contrail), `solve`, `hint` and `refuse` modes for this board.
+  Suite 122583/0, win harness 21/21.
