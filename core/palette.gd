@@ -483,6 +483,26 @@ const POT_RIM      := Color("a65a37")
 const BEAM         := Color("ffd35e")   # the beam's glow
 const BEAM_CORE    := Color("fff7df")   # and its white-gold core
 
+# Knight's garden table (puzzles/knight2d.gd, ui/faces/chess_piece.gd): a
+# paper chessboard of cream and pale sage squares in a wooden frame; your
+# knight carved in cream, the other side in rose under a gold crown. Taken
+# from the concept page's mock.
+const CHESS_LIGHT      := Color("f5ecd8")
+const CHESS_DARK       := Color("d8e3c8")
+const CHESS_DARK_EDGE  := Color("c4d3b0")   # a sage square's lower lip
+const CHESS_FRAME      := Color("b58d5e")
+const CHESS_FRAME_DEEP := Color("86653f")
+const KNIGHT_CREAM      := Color("fbf3e2")   # yours
+const KNIGHT_CREAM_DEEP := Color("d9c7a6")
+const KNIGHT_CREAM_LINE := Color("8a7358")
+const KNIGHT_ROSE       := Color("e8959a")   # the other side, king included
+const KNIGHT_ROSE_DEEP  := Color("b95f69")
+const KNIGHT_ROSE_LINE  := Color("8a3f4a")
+const KNIGHT_MOVE  := Color("7fa66a")   # a square you can hop to
+const KNIGHT_REACH := Color("d9606e")   # a square a rose knight reaches
+const CROWN        := Color("f2c04e")
+const CROWN_DEEP   := Color("c8912a")
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [
