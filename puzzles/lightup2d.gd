@@ -72,11 +72,47 @@ const STONE_RADIUS := 0.13
 const STONE_EDGE := 0.05
 ## The beam: how wide it runs down a line, how strong it is on the stone next
 ## to the lamp, and how it thins per cell travelled.
-const BEAM_HALF := 0.19
-const BEAM_ALPHA := 0.45
+const BEAM_HALF := 0.3
+const BEAM_ALPHA := 0.5
 const BEAM_FALL := 0.22
 ## Below this there is no light on the stone worth drawing.
 const BEAM_MIN := 0.02
+## The shaft is soft: clear at its sides, full down the middle, with a
+## narrower bright core of BEAM_CORE of its half-width at CORE_ALPHA over it.
+const BEAM_CORE := 0.4
+const CORE_ALPHA := 0.35
+## The stretch of beam between two lamps that can see each other runs rose
+## rather than white: the broken rule drawn where it is broken.
+const CLASH_ALPHA := 0.55
+## Every stone is cut a little differently: its tone within STONE_TONE, a
+## light along its crest, and a few specks (SPECK_SHARE of the stones) or a
+## hairline crack (CRACK_SHARE), all off fixed hashes of the stone.
+const STONE_TONE := 0.05
+const CREST_ALPHA := 0.13
+const SPECK_SHARE := 0.55
+const SPECK_ALPHA := 0.22
+const CRACK_SHARE := 0.18
+const CRACK_ALPHA := 0.3
+## The front of the light: a stone flashes toward white as it warms, peaking
+## half-way, so the travel out from a lamp reads as a bright edge moving.
+const GLINT_ALPHA := 0.4
+## The wick catching: a warm disc on the floor under a lamp as it lands,
+## FLARE_R cells across at its widest and gone over FLARE_TIME.
+const FLARE_R := 0.62
+const FLARE_ALPHA := 0.55
+const FLARE_TIME := 0.45
+## The light a lit stone throws on the side of a block beside it.
+const RIM_ALPHA := 0.7
+const RIM_WIDTH := 0.07
+## The win warms the mortar bed toward lamplight over WARM_TIME, and a glint
+## crosses every stone on the solve wave over WIN_GLINT.
+const WARM_ALPHA := 0.3
+const WARM_TIME := 0.9
+const WIN_GLINT := 0.5
+## Once every stone is lit the shafts have nothing left to say, and ten of
+## them crossing wash the court white: on the win they sink into the floor,
+## down to WIN_BEAM of their strength over WARM_TIME.
+const WIN_BEAM := 0.25
 ## How far a sinking stone goes into its own shade at the bottom of the
 ## press, and the blush a stone takes when Check points at its lamp or a tap
 ## is refused on it.
@@ -202,6 +238,8 @@ var _block_hop: Dictionary = {}
 var _block_nudge: Dictionary = {}
 var _block_shiver: Dictionary = {}
 var _block_flash: Dictionary = {}
+## Vector2i -> the second a lamp's wick catches on it (FLARE_*).
+var _flare: Dictionary = {}
 var _floor: ArrayMesh
 var _ground: ArrayMesh
 var _ground_dirty := true
@@ -221,7 +259,11 @@ var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
 
 var _opened := -1.0e9
-var _solved_at := -1.0
+## When the court was solved, or NEVER. Not a negative number: a completed
+## daily is restored as solved ten seconds ago, which is before zero on a
+## clock that started a moment earlier.
+const NEVER := -1.0e9
+var _solved_at := NEVER
 ## Redraw every frame until this second: a pop, a wave, the light moving.
 var _anim_until := 0.0
 var _tip_text := ""
@@ -266,8 +308,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_block_nudge = {}
 	_block_shiver = {}
 	_block_flash = {}
+	_flare = {}
 	_clear_gesture()
-	_solved_at = -1.0
+	_solved_at = NEVER
 	_build_pieces()
 	_settle()
 	_layout()
@@ -329,7 +372,7 @@ func _refresh_faces() -> void:
 		if lamp.bad != bad:
 			lamp.bad = bad
 		# The win writes JOY on each lamp as the wave reaches it.
-		if _solved_at >= 0.0:
+		if _solved_at > NEVER:
 			continue
 		_set_expr(lamp, Face.Expr.STRAIN if bad else Face.Expr.HAPPY)
 
@@ -517,8 +560,13 @@ func _build_floor(now: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field := Vector2(_cell * state.w, _cell * state.h)
 	var origin := -field * 0.5
+	# The bed warms toward lamplight once the court is solved.
+	var bed := Color(Pal.TEXT, MORTAR_ALPHA)
+	if _solved_at > NEVER:
+		var won := _dec((now - _solved_at - Motion.SOLVE_DELAY) / WARM_TIME)
+		bed = bed.lerp(Color(Pal.SUN, WARM_ALPHA), _sine_io(won))
 	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
-		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), Color(Pal.TEXT, MORTAR_ALPHA))
+		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), bed)
 	var gone: Array = []
 	for y in state.h:
 		for x in state.w:
@@ -528,6 +576,8 @@ func _build_floor(now: float) -> ArrayMesh:
 			var warm := _warmth(cell, now)
 			var deep: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm)
 			var face: Color = Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm)
+			var tone := (_hash(cell) - 0.5) * 2.0 * STONE_TONE
+			face = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
 			# A stone under the finger sinks, drawn (press_scale), and goes
 			# a little into its own shade as it does.
 			var grown := 1.0
@@ -542,10 +592,80 @@ func _build_floor(now: float) -> ArrayMesh:
 					face = face.lerp(deep, SINK_SHADE * depth)
 			b.fan(_tile(cell, 0.0, origin, grown), deep)
 			b.fan(_tile(cell, STONE_EDGE, origin, grown), face)
+			_dress_stone(b, cell, origin, grown, deep)
+			var glint := _glint(cell, now)
+			if glint > 0.0:
+				b.fan(_tile(cell, STONE_EDGE, origin, grown), Color(1.0, 1.0, 1.0, GLINT_ALPHA * glint))
 	for cell in gone:
 		_sunk.erase(cell)
 	_build_beams(b, now, origin)
+	_build_flares(b, now, origin)
 	return b.mesh()
+
+## What makes a flagstone a stone and not a tile: a light along its crest,
+## and on some a few specks or a hairline crack in its own deep colour. All of
+## it is placed off two fixed hashes, so a court is the same court every time
+## it is drawn.
+func _dress_stone(b, cell: Vector2i, origin: Vector2, grown: float, deep: Color) -> void:
+	var centre := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
+	var s := _cell * grown
+	var wide := s * (1.0 - 2.0 * GAP - 2.0 * STONE_RADIUS)
+	var top := centre.y - s * (0.5 - GAP) + s * 0.07
+	b.fan(Face.Builder.round_rect(Vector2(centre.x - wide * 0.5, top - s * 0.03), Vector2(wide, s * 0.06),
+		s * 0.03), Color(1.0, 1.0, 1.0, CREST_ALPHA))
+	var h1 := _hash(cell)
+	var h2 := _hash2(cell)
+	if h2 < SPECK_SHARE:
+		for i in 3:
+			var at := Vector2(fposmod(h1 * 7.3 + i * 0.37, 0.56) - 0.28, fposmod(h2 * 5.1 + i * 0.29, 0.44) - 0.24)
+			b.ellipse(centre + at * s, s * (0.022 + 0.01 * i), s * (0.018 + 0.008 * i), Color(deep, SPECK_ALPHA))
+	elif h2 > 1.0 - CRACK_SHARE:
+		var side := 1.0 if h1 > 0.5 else -1.0
+		var p0 := centre + Vector2(0.4 * side, -0.1 + h1 * 0.2) * s
+		var p1 := centre + Vector2(0.2 * side, 0.02 + h1 * 0.08) * s
+		var p2 := centre + Vector2(0.08 * side, 0.2) * s
+		b.stroke(PackedVector2Array([p0, p1, p2]), s * 0.022, Color(deep, CRACK_ALPHA))
+
+## How bright the front of the light is on `cell` right now: a sine hump over
+## the stone's own warming, and on the win over the solve wave reaching it.
+func _glint(cell: Vector2i, now: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var level := 0.0
+	var rec: Dictionary = _warm.get(cell, {})
+	if not rec.is_empty() and float(rec.to) > float(rec.from):
+		var u := (now - float(rec.at)) / float(rec.dur)
+		if u > 0.0 and u < 1.0:
+			level = sin(PI * u) * (float(rec.to) - float(rec.from))
+	if _solved_at > NEVER:
+		var e := (now - _solved_at - _solve_delay(cell)) / WIN_GLINT
+		if e > 0.0 and e < 1.0:
+			level = maxf(level, sin(PI * e))
+	return level
+
+## The wick catching under each lamp that has just landed: a warm disc that
+## swells and fades.
+func _build_flares(b, now: float, origin: Vector2) -> void:
+	var gone: Array = []
+	for cell in _flare:
+		var u: float = (now - float(_flare[cell])) / FLARE_TIME
+		if u >= 1.0:
+			gone.append(cell)
+			continue
+		if u <= 0.0:
+			continue
+		var r := _cell * FLARE_R * (0.55 + 0.45 * Motion.back_out(u))
+		Scenery.soft_disc(b, origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell, r, r,
+			Color(Pal.SUN_RAY, FLARE_ALPHA * (1.0 - u) * (1.0 - u)))
+	for cell in gone:
+		_flare.erase(cell)
+
+## The wick catches on `cell` at `at`. Under reduce-motion nothing flares.
+func _flare_at(cell: Vector2i, at: float) -> void:
+	if Motion.reduce:
+		return
+	_flare[cell] = at
+	_anim_until = maxf(_anim_until, at + FLARE_TIME)
 
 ## The outline of one stone, `short` of a cell shorter than the joint allows,
 ## with the court's top-left corner at `origin` and the stone `grown` of its
@@ -563,8 +683,11 @@ func _tile(cell: Vector2i, short: float, origin: Vector2, grown := 1.0) -> Packe
 ## travels with the light rather than switching on along the whole line. A
 ## lamp on its way out keeps its beam, withdrawing with the floor it lit.
 func _build_beams(b, now: float, origin: Vector2) -> void:
+	var strength := 1.0
+	if _solved_at > NEVER:
+		strength = lerpf(1.0, WIN_BEAM, _sine_io(_dec((now - _solved_at - Motion.SOLVE_DELAY) / WARM_TIME)))
 	for cell in state.lamps():
-		_beam(b, cell, now, origin, 1.0)
+		_beam(b, cell, now, origin, strength)
 	var still: Array = []
 	for out in _beam_out:
 		var gone := clampf((now - float(out.at)) / LIGHT_OUT, 0.0, 1.0)
@@ -574,27 +697,56 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 		_beam(b, out.cell, now, origin, 1.0 - gone)
 	_beam_out = still
 
+## One lamp's four shafts. Each cell's length of shaft fades from the strength
+## it enters with to the strength it leaves with, so the fall along the line
+## is smooth rather than a stair; a shaft that runs into another lamp is rose
+## as far as that lamp.
 func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> void:
 	var half := _cell * BEAM_HALF
 	var centre := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
 	for d in State.DIRS:
+		var run: Array = []
 		var p: Vector2i = cell + d
-		var n := 1
 		while state.is_white(p):
-			var warm := _warmth(p, now) * strength
-			if warm > BEAM_MIN:
-				var at := origin + Vector2(p) * _cell
-				var shine := Color(1.0, 1.0, 1.0, BEAM_ALPHA * warm / (1.0 + BEAM_FALL * n))
-				if d.x != 0:
-					b.fan(_quad(Vector2(at.x, centre.y - half), Vector2(_cell, half * 2.0)), shine)
-				else:
-					b.fan(_quad(Vector2(centre.x - half, at.y), Vector2(half * 2.0, _cell)), shine)
+			run.append(p)
 			p += d
-			n += 1
+		var seen := run.size()
+		if not is_done():
+			for i in run.size():
+				if state.mark_at(run[i]) == State.LAMP:
+					seen = i
+					break
+		var dv := Vector2(d)
+		for i in run.size():
+			var q: Vector2i = run[i]
+			var warm := _warmth(q, now) * strength
+			if warm <= BEAM_MIN:
+				continue
+			var n := float(i + 1)
+			var a0 := warm / (1.0 + BEAM_FALL * (n - 0.5))
+			var a1 := warm / (1.0 + BEAM_FALL * (n + 0.5))
+			var tint := Color(Pal.BAD, CLASH_ALPHA) if i < seen and seen < run.size() else Color(1.0, 1.0, 1.0, BEAM_ALPHA)
+			# From the near edge of the stone to the far one, along the line.
+			var from := centre + dv * _cell * (float(i) + 0.5)
+			var to := from + dv * _cell
+			_shaft(b, from, to, half, Color(tint, tint.a * a0), Color(tint, tint.a * a1))
+			_shaft(b, from, to, half * BEAM_CORE,
+				Color(1.0, 1.0, 1.0, CORE_ALPHA * a0), Color(1.0, 1.0, 1.0, CORE_ALPHA * a1))
 
-static func _quad(at: Vector2, extent: Vector2) -> PackedVector2Array:
-	return PackedVector2Array([at, at + Vector2(extent.x, 0.0), at + extent,
-		at + Vector2(0.0, extent.y)])
+## A length of soft shaft from `from` to `to`, `half` wide each side: clear
+## at both sides, `c0` down the middle where it starts and `c1` where it ends.
+static func _shaft(b, from: Vector2, to: Vector2, half: float, c0: Color, c1: Color) -> void:
+	var side := (to - from).normalized().orthogonal() * half
+	var i: int = b.vertex(from - side, Color(c0, 0.0))
+	b.vertex(from, c0)
+	b.vertex(from + side, Color(c0, 0.0))
+	b.vertex(to - side, Color(c1, 0.0))
+	b.vertex(to, c1)
+	b.vertex(to + side, Color(c1, 0.0))
+	b.tri(i, i + 1, i + 4)
+	b.tri(i, i + 4, i + 3)
+	b.tri(i + 1, i + 2, i + 5)
+	b.tri(i + 1, i + 5, i + 4)
 
 ## Everything standing on the court that is not a lamp, in one mesh: the
 ## blush of a pointed-at stone, the shadow under every lamp, the blocks with
@@ -633,7 +785,7 @@ func _build_ground(now: float) -> Dictionary:
 			if pose.is_empty():
 				continue
 			busy = busy or bool(pose.busy)
-			_block(b, cell, pose)
+			_block(b, cell, pose, now)
 	# Chips on their way out, drawn from the shape the state has forgotten.
 	var still: Array = []
 	for out in _chip_out:
@@ -662,7 +814,7 @@ func _build_ground(now: float) -> Dictionary:
 			else:
 				gone.append(cell)
 		var alpha := 1.0
-		if _solved_at >= 0.0:
+		if _solved_at > NEVER:
 			var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 			if cleared >= 1.0:
 				continue
@@ -760,7 +912,7 @@ func _block_pose(cell: Vector2i, now: float) -> Dictionary:
 ## nothing to be satisfied about, so it never goes green: half of a generated
 ## court's stone says nothing, and a blank block is information too -- it
 ## stops the light.
-func _block(b, cell: Vector2i, pose: Dictionary) -> void:
+func _block(b, cell: Vector2i, pose: Dictionary, now: float) -> void:
 	var s := _cell * BLOCK_SIZE
 	var at := cell_to_local(cell.y, cell.x)
 	var scale: Vector2 = pose.scale
@@ -785,10 +937,39 @@ func _block(b, cell: Vector2i, pose: Dictionary) -> void:
 	var xf := Transform2D(0.0, scale, 0.0, at + (pose.offset as Vector2))
 	_shape(b, xf, Face.Builder.round_rect(-Vector2.ONE * 0.46 * s, Vector2.ONE * 0.92 * s, 0.15 * s), deep)
 	_shape(b, xf, Face.Builder.round_rect(-Vector2.ONE * 0.46 * s, Vector2(0.92, 0.8) * s, 0.15 * s), face)
-	_shape(b, xf, Face.Builder.round_rect(Vector2(-0.36, -0.38) * s, Vector2(0.34, 0.15) * s, 0.06 * s),
-		Color(1.0, 1.0, 1.0, 0.08))
-	_shape(b, xf, Face.Builder.round_rect(Vector2(0.06, 0.1) * s, Vector2(0.3, 0.14) * s, 0.06 * s),
-		Color(0.0, 0.0, 0.0, 0.07))
+	# Cut stone, lit from up and left: the right side of the crown in shade,
+	# a bevel of light along the top and down the left.
+	_shape(b, xf, Face.Builder.round_rect(Vector2(0.22, -0.46) * s, Vector2(0.24, 0.8) * s, 0.15 * s),
+		Color(0.0, 0.0, 0.0, 0.1))
+	_line(b, xf, [Vector2(-0.3, -0.4), Vector2(0.28, -0.4)], s, 0.045, Color(1.0, 1.0, 1.0, 0.16))
+	_line(b, xf, [Vector2(-0.4, -0.3), Vector2(-0.4, 0.2)], s, 0.04, Color(1.0, 1.0, 1.0, 0.09))
+	if int(state.grid[cell.y][cell.x]) >= 0:
+		# The number is carved into a plaque sunk in the crown, with the light
+		# catching the plaque's lower lip.
+		_shape(b, xf, Face.Builder.round_rect(Vector2(-0.25, -0.31) * s, Vector2(0.5, 0.5) * s, 0.14 * s),
+			Color(deep, 0.55))
+		_line(b, xf, [Vector2(-0.14, 0.2), Vector2(0.14, 0.2)], s, 0.035, Color(1.0, 1.0, 1.0, 0.12))
+	else:
+		# A blank block wears two chisel marks instead.
+		var h := _hash(cell)
+		_scratch(b, xf, [Vector2(-0.2 + 0.1 * h, -0.12), Vector2(0.02 + 0.1 * h, -0.02)], s, 0.035,
+			Color(0.0, 0.0, 0.0, 0.14))
+		_scratch(b, xf, [Vector2(-0.06, 0.12 - 0.1 * h), Vector2(0.14, 0.2 - 0.1 * h)], s, 0.03,
+			Color(0.0, 0.0, 0.0, 0.1))
+	# The light the lit stones beside it throw on its sides.
+	for d in State.DIRS:
+		var n: Vector2i = cell + d
+		if not state.is_white(n):
+			continue
+		var warm := _warmth(n, now)
+		if warm <= BEAM_MIN:
+			continue
+		var along := Vector2(d).orthogonal() * 0.3
+		# A side is centred on the crown; the bottom is the front face's hem.
+		var edge := Vector2(d) * 0.44
+		if d.x != 0:
+			edge.y = -0.06
+		_line(b, xf, [edge - along, edge + along], s, RIM_WIDTH, Color(Pal.SUN_RAY, RIM_ALPHA * warm))
 
 ## The chip the player has ruled a stone out with: cool slate, never a small
 ## warm block of the court's own stone. Drawn about `at` through `grow` and
@@ -805,6 +986,25 @@ func _chip(b, at: Vector2, s: float, grow: Vector2, turn: float, alpha: float) -
 		Color(Pal.CHIP, alpha))
 	_shape(b, xf, Face.Builder.round_rect(Vector2(-0.19, -0.11) * s, Vector2(0.2, 0.07) * s, 0.035 * s),
 		Color(1.0, 1.0, 1.0, 0.16 * alpha))
+
+## A straight bar on a piece from `a` to `b_` (axis-aligned), `width` thick,
+## all in units of `s`, rounded at its ends and put through the piece's
+## transform. A fan rather than a stroke: a stroke's round caps overlap its
+## body and double the alpha at each end, which on a highlight reads as a
+## groove.
+func _line(b, xf: Transform2D, pts: Array, s: float, width: float, colour: Color) -> void:
+	var a: Vector2 = pts[0]
+	var z: Vector2 = pts[1]
+	var lo := Vector2(minf(a.x, z.x), minf(a.y, z.y)) - Vector2.ONE * width * 0.5
+	var hi := Vector2(maxf(a.x, z.x), maxf(a.y, z.y)) + Vector2.ONE * width * 0.5
+	_shape(b, xf, Face.Builder.round_rect(lo * s, (hi - lo) * s, width * 0.5 * s), colour)
+
+## A mark at any angle on a piece, flat-ended so no cap doubles its ends.
+func _scratch(b, xf: Transform2D, pts: Array, s: float, width: float, colour: Color) -> void:
+	var out := PackedVector2Array()
+	for p in pts:
+		out.append(xf * ((p as Vector2) * s))
+	b.stroke(out, width * s * absf(xf.get_scale().y), colour, false, false)
 
 ## One shape of a piece, put through the piece's transform.
 func _shape(b, xf: Transform2D, pts: PackedVector2Array, colour: Color) -> void:
@@ -1061,9 +1261,11 @@ func _lamp_up(cell: Vector2i, delay: float, drop: bool) -> void:
 		lamp.scale = Vector2.ONE
 		_pos_tw[lamp] = Motion.drop_in(lamp, Motion.DROP, Motion.DROP_TIME, delay)
 		_busy_for(delay + Motion.DROP_TIME)
+		_flare_at(cell, _now() + delay + Motion.DROP_TIME * 0.8)
 	else:
 		_look_tw[lamp] = Motion.pop_in(lamp, Motion.POP_IN, delay)
 		_busy_for(delay + Motion.POP_IN)
+		_flare_at(cell, _now() + delay)
 
 ## A lamp comes up off `cell`: it shrinks to nothing with the quarter turn
 ## after `delay`, its beam withdrawing with the floor, and is hidden once gone
@@ -1311,6 +1513,7 @@ func reset_board() -> void:
 	_blush = {}
 	_chip_in = {}
 	_block_flash = {}
+	_flare = {}
 	_block_shiver = {}
 	moves = 0
 	_running = true
@@ -1351,6 +1554,7 @@ func restore_completed_board() -> void:
 	_block_nudge = {}
 	_block_shiver = {}
 	_block_flash = {}
+	_flare = {}
 	# The entrance and the clearing both long over.
 	_opened = now - 10.0
 	_solved_at = now - 10.0
@@ -1401,6 +1605,7 @@ func _on_solved() -> void:
 		var delay := _solve_delay(cell)
 		_hop(lamp, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
 		_grin(lamp, delay)
+		_flare_at(cell, now + delay)
 		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
 		k += 1
 	if not Motion.reduce:
@@ -1413,8 +1618,8 @@ func _on_solved() -> void:
 	_refresh_faces()
 	_say(tr("LU_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
-	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
-		CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME))
+	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + maxf(Motion.SOLVE_TIME, WIN_GLINT),
+		maxf(CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME, Motion.SOLVE_DELAY + WARM_TIME)))
 	_redraw()
 
 func _solve_delay(cell: Vector2i) -> float:
@@ -1510,3 +1715,7 @@ static func _sine_io(u: float) -> float:
 ## scatter rather than a wave.
 static func _hash(cell: Vector2i) -> float:
 	return float(posmod(hash(cell), 1000)) / 1000.0
+
+## A second one, independent of the first, for a stone's dressing.
+static func _hash2(cell: Vector2i) -> float:
+	return float(posmod(hash(cell * 7 + Vector2i(3, 11)), 997)) / 997.0

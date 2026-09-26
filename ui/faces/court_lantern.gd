@@ -29,6 +29,11 @@ const GLOW_COURT := 0.3
 ## The paper, by index into Pal.LANTERN_PAPER: the court's lamps are all amber,
 ## because here the colour is a state and not a name.
 const PAPER := 0
+## The candle inside: the halo breathes by up to FLICKER of its size, on two
+## sines, one FLICKER_PERIOD long and one a third of that. It is a transform
+## on the glow layer, so a flickering lamp rebuilds no mesh.
+const FLICKER := 0.05
+const FLICKER_PERIOD := 2.2
 
 ## A lamp that can see another lamp down a line.
 var bad: bool = false:
@@ -40,6 +45,29 @@ var pinned: bool = false:
 	set(v):
 		pinned = v
 		queue_redraw()
+
+## The halo's scale this frame, 1 at rest; the idle motion moves it.
+var flicker: float = 1.0:
+	set(v):
+		flicker = v
+		queue_redraw()
+
+func _idle_motion() -> Tween:
+	var phase := randf() * TAU
+	var tw := create_tween().set_loops()
+	tw.tween_method(func(t: float) -> void:
+		flicker = 1.0 + FLICKER * (0.6 * sin(TAU * t + phase) + 0.4 * sin(3.0 * TAU * t + 2.0 * phase)),
+		0.0, 1.0, FLICKER_PERIOD)
+	return tw
+
+func _stop_idle() -> void:
+	super()
+	flicker = 1.0
+
+func _layer_transform(name: String, R: float, centre: Vector2) -> Transform2D:
+	if name == "glow":
+		return Transform2D(0.0, Vector2.ONE * flicker, 0.0, centre)
+	return super(name, R, centre)
 
 func _kind() -> String:
 	return "courtlamp%d%d_%d" % [int(bad), int(pinned), int(_lit_level() * 4.0)]
@@ -76,6 +104,9 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			b.fan(Builder.round_rect(Vector2(-0.5, -1.08) * R, Vector2(1.0, 0.24) * R, 0.09 * R), iron)
 			b.fan(Builder.round_rect(Vector2(-0.86, -0.86) * R, Vector2(1.72, 1.72) * R, 0.62 * R), deep)
 			b.fan(Builder.round_rect(Vector2(-0.86, -0.86) * R, Vector2(1.72, 1.56) * R, 0.6 * R), body)
+			# Folded paper and the candle behind it, the parent's own, with a
+			# blushing lamp's candle kept low for the reason its body is.
+			_folds(b, R, [skin, edge], deep, level * (0.4 if bad else 1.0))
 			b.fan(Builder.round_rect(Vector2(-0.7, -0.68) * R, Vector2(0.38, 1.3) * R, 0.19 * R),
 				Color(1.0, 1.0, 1.0, 0.2))
 			b.stroke(PackedVector2Array([Vector2(-0.84, -0.04) * R, Vector2(0.84, -0.04) * R]),

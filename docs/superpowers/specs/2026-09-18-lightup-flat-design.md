@@ -332,3 +332,80 @@ Open, still, from section 10: the beam's second voice, the dull untouched
 court, the travelling wave's pace, the ten glowing faces, the pinning hint
 and the centred card. Nothing here answers them; it only makes the flat
 board move with the same hand as the other six.
+
+## 12. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of Code Break, Balance, Untangle, Shikaku
+and Tents the same evening, and this amendment is the record. The rules,
+the layout, the chips and section 8's table are unchanged except where
+named.
+
+**A flagstone is a stone.** Each is cut within `STONE_TONE` of its tint,
+carries a soft light along its crest (`CREST_ALPHA`), and on some a few
+specks (`SPECK_SHARE`) or a hairline crack (`CRACK_SHARE`) in its own deep
+colour, all off two fixed hashes of the stone, so a court is drawn the same
+every time. The highlights are thin fans and not strokes: a stroke's round
+caps overlap its body and double the alpha at each end, which on a light
+line reads as a groove.
+
+**The beam is a shaft.** It is clear at its sides and full down the middle,
+with a brighter core (`BEAM_CORE`, `CORE_ALPHA`), and each stone's length of
+it fades from the strength it enters with to the strength it leaves with, so
+the fall along a line is smooth rather than a stair. `BEAM_HALF` went from
+0.19 to 0.3 because a soft shaft reads narrower than a hard one. **Where two
+lamps see each other the beam between them is rose** (`CLASH_ALPHA`): section
+10's "second voice" answered by drawing the broken rule where it is broken.
+The straining faces and the sprout's line are unchanged.
+
+**The light has a front.** A stone flashes toward white as it warms, peaking
+half-way through its own `LIGHT_IN` (`GLINT_ALPHA`), so the travel out from a
+lamp reads as a bright edge moving down the lines. **A landing lamp's wick
+catches**: a warm disc swells and fades on the floor under it (`FLARE_*`),
+on a tap, an undo that puts a lamp back, a hint's drop as it lands, and on
+the win. A lit stone throws light on the side of any block beside it
+(`RIM_ALPHA`, `RIM_WIDTH`).
+
+**A block is cut stone.** The odd pale and dark lozenges are gone: its crown
+has a bevel of light along the top and down the left and its right side in
+shade. A numbered block's number is carved into a sunk plaque with a lit
+lower lip; a blank block wears two chisel marks instead. A satisfied block
+still goes green and an over one rose, as before.
+
+**The lamp is folded paper with a candle in it.** `CourtLantern` calls the
+parent's `_folds`, which Untangle's pass added, with its own skin and edge
+and a blushing lamp's candle kept low. Its halo flickers on two sines
+(`FLICKER`, `FLICKER_PERIOD`) as a transform on the glow layer, so a flicker
+rebuilds no mesh and costs the lamp's own redraw only. The menu card and the
+how-to-play diagram draw this lamp and pick up the folds; neither idles it, so
+neither flickers.
+
+**The win settles into lamplight.** A glint crosses every stone on the solve
+wave (`WIN_GLINT`), every lamp's wick catches as the wave reaches it, the
+mortar bed warms toward `SUN` (`WARM_ALPHA`, `WARM_TIME`), and the shafts sink
+to `WIN_BEAM` of their strength over the same time. Ten crossing shafts at
+full strength washed the solved court white on the first rendered frame, and
+once every stone is lit they have nothing left to say.
+`restore_completed_board()` opens onto that settled picture.
+
+**A bug this found.** `restore_completed_board()` marks the court solved ten
+seconds ago, and the board tested `_solved_at >= 0.0` -- which is false
+within ten seconds of the clock starting, so a daily reopened early in a
+session drew as unsolved. It only showed now because the win's look depends
+on it (before, it gated only the chips' clearing, and a restored court has
+no chips). `_solved_at` now starts at `NEVER`.
+
+Under reduce motion none of it moves: no glint, no flare, no flicker, and the
+win's warm bed and settled shafts are there at once.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- lightup`, before and after in the same session.
+Draw calls are unchanged: **64-65** played and **62-63** bare. The played
+idle reads 2.25 and 2.29 ms against 2.16 and 2.14 before, which is the one
+lit lamp's flicker redrawing every frame. The bare board reads 2.23 and
+2.14 against 2.14 and 2.14. The reduce-motion pair a second apart is
+pixel-identical, and under reduce motion ANGLE matches the default driver
+to a max channel delta of 1/255. The menu reads 260 calls before and after.
+Suite 122583/0; `tests/_win.gd` windowed 21/21. A throwaway probe set down
+two lamps that see each other, undid them, took a hint, Checked a wrong lamp,
+solved the court and restored a completed daily, and shot each.
