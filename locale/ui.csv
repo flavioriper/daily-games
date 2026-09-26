@@ -3,7 +3,7 @@ MENU_MOTTO,Small puzzles\nbrighter days,Pequenos desafios\ndias mais leves,Peque
 MENU_TODAY,TODAY,HOJE,HOY
 MENU_DAY,Day %d,Dia %d,Día %d
 MENU_NO_FLAT,%s is coming soon.,%s chega em breve.,%s llega pronto.
-BAR_HOME,Home,Início,Inicio
+BAR_HOME,Puzzles,Puzzles,Puzles
 BAR_STATS,Stats,Números,Datos
 BAR_STREAK,Streak,Sequência,Racha
 CARD_SOON,SOON,EM BREVE,PRONTO
@@ -116,3 +116,36 @@ STORE_FAIL,The purchase didn't go through.,A compra não foi concluída.,La comp
 STORE_PENDING,Waiting for the payment to clear.,Aguardando o pagamento ser confirmado.,Esperando a que se confirme el pago.
 STORE_NOTHING,No purchase to restore on this account.,Nenhuma compra para restaurar nesta conta.,No hay compras que restaurar en esta cuenta.
 SETTINGS_PRIVACY,Privacy choices,Opções de privacidade,Opciones de privacidad
+BAR_VERSUS,Versus,Duelos,Duelos
+VS_AGAINST,VS COMPUTER,VS COMPUTADOR,VS ORDENADOR
+VS_SNOOKER_BLURB,"A frame against the computer: pot a red, then a colour, then clear the colours in order.","Uma partida contra o computador: encaçape uma vermelha, depois uma cor, e por fim as cores em ordem.","Un frame contra el ordenador: mete una roja, luego un color, y al final los colores en orden."
+VS_RECORD,Won %d · Lost %d,Venceu %d · Perdeu %d,Ganadas %d · Perdidas %d
+VS_PLAY,Play,Jogar,Jugar
+VS_SOON,More duels soon,Mais duelos em breve,Más duelos pronto
+VS_SOON_LINE,Playing friends online is on the way.,Jogar online com amigos está a caminho.,Jugar en línea con amigos está en camino.
+SNK_MOTTO,"POT A RED, THEN A COLOUR","UMA VERMELHA, DEPOIS UMA COR","UNA ROJA, LUEGO UN COLOR"
+SNK_YOU,You,Você,Tú
+SNK_BOT,Bot,Bot,Bot
+SNK_BALL_ON,BALL ON,BOLA DA VEZ,BOLA EN JUEGO
+SNK_FREE_BALL,FREE BALL,BOLA LIVRE,BOLA LIBRE
+SNK_BREAK,Break %d,Tacada %d,Tacada %d
+SNK_LEFT,%d on the table,%d na mesa,%d en la mesa
+SNK_SPIN,SPIN,EFEITO,EFECTO
+SNK_POWER,POWER,FORÇA,FUERZA
+SNK_YOUR_TURN,"Your shot: aim on the table, pull the power down","Sua vez: mire na mesa e puxe a força para baixo","Tu turno: apunta en la mesa y tira de la fuerza hacia abajo"
+SNK_BOT_TURN,Bot is lining up…,O bot está mirando…,El bot está apuntando…
+SNK_IN_HAND,"Ball in hand: drag it anywhere in the D","Bola na mão: arraste-a para qualquer lugar do D","Bola en mano: arrástrala a cualquier lugar de la D"
+SNK_FREE,"Free ball: any ball counts as the ball on","Bola livre: qualquer bola vale como a bola da vez","Bola libre: cualquier bola cuenta como la bola en juego"
+SNK_FOUL_MISS,Foul: nothing was hit,Falta: não acertou nenhuma bola,Falta: no tocó ninguna bola
+SNK_FOUL_FIRST,Foul: the wrong ball was hit first,Falta: acertou primeiro a bola errada,Falta: tocó primero la bola equivocada
+SNK_FOUL_POT,Foul: a ball not on went in,Falta: encaçapou uma bola que não era a da vez,Falta: entró una bola que no estaba en juego
+SNK_FOUL_IN_OFF,Foul: the cue ball went in,Falta: a bola branca caiu,Falta: la bola blanca entró
+SNK_FOUL_TO,+%d to %s,+%d para %s,+%d para %s
+SNK_RESPOT_BLACK,"All square: the black is re-spotted","Empate: a preta volta à mesa","Empate: la negra vuelve a la mesa"
+SNK_WIN,Frame won!,Partida ganha!,¡Frame ganado!
+SNK_LOSE,Frame lost,Partida perdida,Frame perdido
+SNK_HIGH,Highest break %d,Maior tacada %d,Mejor tacada %d
+SNK_AGAIN,Play again,Jogar de novo,Jugar otra vez
+SNK_BACK,Back,Voltar,Volver
+SNK_THINKING,Finding a shot…,Procurando uma jogada…,Buscando una jugada…
+SNK_HINT_LINE,"Try this line, about %d%% power","Tente esta linha, com cerca de %d%% de força","Prueba esta línea, con un %d%% de fuerza"

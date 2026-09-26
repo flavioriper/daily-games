@@ -1,6 +1,11 @@
 extends "res://ui/hud/panel.gd"
 
-## The first screen's bottom bar: Home, Stats, Streak.
+## The first screen's bottom bar: Puzzles, Versus, Stats, Streak.
+##
+## The first tab was Home until 2026-09-26, when the daily grid became
+## Puzzles and Versus joined beside it for the games played against someone
+## (snooker first, against the computer; versus/snooker_screen.gd). The key
+## stays "home": it is still the screen the app opens on.
 ##
 ## More left with the 3D game on 2026-09-24 (settings has its own button in
 ## the header). Home is the screen you are on. **All three tabs are real
@@ -15,7 +20,8 @@ const Icons = preload("res://ui/icons.gd")
 const HEIGHT := 120.0
 const ICON := 56.0
 const TABS := [
-	{"key": "home", "label": "BAR_HOME", "icon": "home", "live": true},
+	{"key": "home", "label": "BAR_HOME", "icon": "puzzle", "live": true},
+	{"key": "versus", "label": "BAR_VERSUS", "icon": "versus", "live": true},
 	{"key": "stats", "label": "BAR_STATS", "icon": "trophy", "live": true},
 	{"key": "streak", "label": "BAR_STREAK", "icon": "bars", "live": true},
 ]

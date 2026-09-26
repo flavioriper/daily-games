@@ -58,6 +58,9 @@ const CARDS := {
 	"sunbeam": ["sky", 1.5, Vector2(0.75, 0.30)],
 	"knight": ["meadow", 1.6, Vector2(0.30, 0.60)],
 	"hedgehogs": ["autumn", 1.6, Vector2(0.60, 0.70)],
+	# Versus (not a grid card): the treehouse terrace the reference stands
+	# the snooker table in.
+	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

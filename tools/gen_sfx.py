@@ -303,6 +303,19 @@ SETS = {
         "solved":   ("a warm celebratory marimba run rising, ending in a small wooden piece toppling over with a soft clack, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden taps, chess pieces being set on a paper board", 1.0, -9),
     },
+    # Snooker (Versus, versus/snooker_screen.gd): real table sounds first --
+    # resin balls and a leather tip -- kept soft, then the game's own marimba
+    # for the verdicts. `clack` plays for every contact, pitched by speed.
+    "snooker": {
+        "strike":   ("a single soft leather cue tip striking a snooker cue ball, a muted wooden tock, very short", 0.5, -9),
+        "clack":    ("a single short clean click of two resin snooker balls touching, soft, very short, no echo", 0.5, -10),
+        "cushion":  ("a single soft dull thud of a snooker ball against a rubber cushion, muted, very short", 0.5, -13),
+        "pot":      ("a snooker ball dropping into a leather pocket with a soft hollow thunk and a short roll, cozy", 0.8, -8),
+        "foul":     ("a soft gentle two-note downward kalimba, not yet, never a buzzer", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "win":      ("a warm celebratory marimba run rising with a soft clack of snooker balls, joyful and cozy", 2.0, -3),
+        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
+    },
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
     # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.
     "hedgehogs": {

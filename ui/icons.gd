@@ -8,7 +8,7 @@ extends RefCounted
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
-	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads"]
+	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -80,6 +80,8 @@ static func shape(name: String) -> Dictionary:
 			return {"polys": [], "lines": [_heart()]}
 		"puzzle":
 			return _puzzle()
+		"versus":
+			return _versus()
 		"flame":
 			return _flame()
 		"cloud":
@@ -431,3 +433,10 @@ static func _crown() -> Dictionary:
 		Vector2(0.68, 0.5), Vector2(0.9, 0.28), Vector2(0.82, 0.72), Vector2(0.18, 0.72)])
 	var band := PackedVector2Array([Vector2(0.18, 0.78), Vector2(0.82, 0.78), Vector2(0.82, 0.88), Vector2(0.18, 0.88)])
 	return {"polys": [body, band], "lines": []}
+
+## A cue lined up on a ball: the bar's Versus tab, where snooker lives.
+static func _versus() -> Dictionary:
+	var ball := circle(Vector2(0.72, 0.28), 0.17)
+	var cue := PackedVector2Array([Vector2(0.1, 0.9), Vector2(0.5, 0.5)])
+	var small := circle(Vector2(0.3, 0.26), 0.1)
+	return {"polys": [ball, small], "lines": [cue]}

@@ -42,6 +42,8 @@ const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const StatsTab = preload("res://ui/menu/stats_tab.gd")
+const VersusTab = preload("res://ui/menu/versus_tab.gd")
+const SnookerScreen = preload("res://versus/snooker_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
@@ -174,6 +176,7 @@ var day_row: Control
 var bar: Control
 var streak_tab: Control
 var stats_tab: Control
+var versus_tab: Control
 var _tab := "home"
 var _tab_tw: Tween
 var _backdrop: ColorRect
@@ -374,6 +377,11 @@ func _build_list() -> void:
 	stats_tab.visible = false
 	stats_tab.open_streak.connect(func() -> void: _show_tab("streak"))
 	root.add_child(stats_tab)
+	versus_tab = VersusTab.new()
+	versus_tab.name = "VersusTab"
+	versus_tab.visible = false
+	versus_tab.play.connect(_open_versus)
+	root.add_child(versus_tab)
 
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
@@ -910,7 +918,7 @@ func _grab_slide() -> void:
 ## `_page`'s own default of 0 already gives it. `_page` is clamped rather
 ## than trusted outright, in case a registry that shrinks below the current
 ## page count ever makes today's "cannot happen" possible.
-func _show_list() -> void:
+func _show_list(tab := "home") -> void:
 	_list_root.visible = true
 	Progress.touch()
 	var clamped := clampi(_page, 0, _pages() - 1)
@@ -920,7 +928,11 @@ func _show_list() -> void:
 		_page = clamped
 		_build_page()
 	_refresh_day()
-	_show_tab("home")
+	# Coming back to a tab that is already the open one still has to lay it
+	# out again (the Versus tab's record has moved).
+	if tab != "home":
+		_tab = ""
+	_show_tab(tab)
 	_enter()
 
 func _enter() -> void:
@@ -929,7 +941,8 @@ func _enter() -> void:
 	for i in cards.size():
 		cards[i].enter(ENTER_CARDS + Motion.stagger(i, CARD_STEP, CARD_CAP))
 	bar.enter(ENTER_BAR)
-	_enter_pager()
+	if _tab == "home":
+		_enter_pager()
 
 ## Fades the pager in with the last card, the way Motion.appear would -- but
 ## Motion.appear only zeroes `modulate.a`, and a Control at alpha 0 is still
@@ -985,6 +998,7 @@ func _show_tab(key: String) -> void:
 	_pager_seam.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
+	versus_tab.visible = key == "versus"
 	Motion.stop(_tab_tw)
 	if home:
 		_set_pager(_page, _pages())
@@ -995,7 +1009,7 @@ func _show_tab(key: String) -> void:
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = streak_tab if key == "streak" else stats_tab
+	var body: Control = {"streak": streak_tab, "stats": stats_tab, "versus": versus_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
@@ -1017,6 +1031,9 @@ func go_back() -> void:
 			return
 	var host: Node = null
 	for child in get_children():
+		if child.is_in_group("versus_host") and not child.is_queued_for_deletion():
+			child.go_back()
+			return
 		if child is FlatHost and not child.is_queued_for_deletion():
 			host = child
 	if host != null:
@@ -1046,6 +1063,19 @@ func _open_at(entry: Dictionary, difficulty: int) -> void:
 	var host: Control = FlatHost.new()
 	host.setup(entry, difficulty, Progress.completed(Registry.progress_id(entry, difficulty)))
 	_mount_host(host)
+
+## A game on the Versus tab: its own screen over the list, and back to the
+## Versus tab when it closes.
+func _open_versus(game: String, level: int) -> void:
+	if game != "snooker":
+		return
+	var screen: Control = SnookerScreen.new(level)
+	screen.name = "Snooker"
+	screen.closed.connect(func() -> void:
+		screen.queue_free()
+		_show_list("versus"))
+	add_child(screen)
+	_list_root.visible = false
 
 func _mount_host(host: Control) -> void:
 	if host.has_signal("daily_completed"):

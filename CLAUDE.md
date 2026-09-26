@@ -1515,6 +1515,38 @@ pointing `seed_as` at them. Specs:
   the last few froze at four fifths of their fade, two pale lines that never
   arrived. It showed on a rendered frame and in no test.
 
+## Versus
+
+**The bar has four tabs since 2026-09-26**: Puzzles (the daily grid, which
+was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
+holds games played against someone; the first is **snooker**, against the
+computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
+a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
+screen, mounted by `ui/menu.gd`'s `_open_versus` the way a board host is,
+closing back to the Versus tab (`_show_list("versus")`), and Android's back
+reaches it through the `versus_host` group.
+
+- **The physics is pure data** (`versus/snooker_sim.gd`, metres and
+  seconds, regulation table on end, balls and pockets 1.3x): slide-then-roll
+  cloth, spin as surface speed, collisions rewound to their time of impact.
+  Run `tests/_probe_snooker.gd` after touching it.
+- **The referee reads the table as it stood before the shot**: pots are off
+  the table by the time `judge()` runs, so the colour on is
+  `next_colour_before(pots)`. Reading it afterwards made every legal colour
+  a foul and no frame ever ended; `tests/_probe_snooker_frame.gd` (computer
+  against computer, `LEVEL`, `SEED`, `VERBOSE`) is what caught it and should
+  finish a frame at every level.
+- **The computer plans on a worker thread** against a copy of the table,
+  inside a 1.8 s budget; the screen polls the task every frame whatever its
+  state, so a hint still thinking when the turn passes never blocks the
+  computer's own turn.
+- 146 draw calls at the table, 91 on the tab (810x1440, ANGLE agreeing).
+  The tab's picture is the real table drawn `still`, so it costs the menu
+  no per-frame work.
+- `tests/_shot_snooker.gd` forces a won frame for its end-card shot and puts
+  `user://versus.cfg` back afterwards; a harness that finishes a frame some
+  other way must do the same, or it writes a fake win into this Mac's save.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1582,7 +1614,10 @@ see "Ads and the purchase" below.
   `store_opened` (with `door`: banner, header or settings), `purchase_started`,
   `purchase_complete`, `purchase_failed` (with `reason`), `restore_used` (with
   `found`), `consent_failed`, and `ad_banner_loaded` / `ad_banner_failed` /
-  `ad_banner_impression` -- see "Ads and the purchase" below.
+  `ad_banner_impression` -- see "Ads and the purchase" below. Since 2026-09-26
+  (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
+  shots, your highest break) and `versus_abandon`; snooker's hint and reset
+  send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had
   nothing to say either way. Hidden Word can run out of rows
