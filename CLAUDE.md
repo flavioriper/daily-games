@@ -1231,6 +1231,21 @@ pointing `seed_as` at them. Specs:
   grid trace, which alone decides the win. Its drawing is `ui/faces/sunbeam_parts.gd`,
   shared with the menu card. 65 draw calls played, 68 solved, ANGLE agreeing.
   Sounds are prompts in `tools/gen_sfx.py`, not yet generated.
+- **Knight is the twenty-third card** (2026-09-26, `puzzles/knight2d.gd`,
+  spec `2026-09-26-knight-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#knight`). Hop a cream knight in Ls to take
+  the rose king; rose knights answer every hop by a fixed greedy rule, and a
+  hop into their reach is caught and slid back one move. The reference is a
+  Portuguese app's *Cavalo*; **it is called Knight**. Two things travel:
+  **a deterministic opponent makes the whole game a graph** -- a position is
+  only where everyone stands, so `knight_gen.gd`'s `solve` is a plain
+  breadth-first search and the proof is the shortest line -- and **a knight
+  always changes colour**, so a rose knight on your colour can catch you and
+  you can never take it, and one on the other colour the reverse; the
+  corners show it without a word. Its drawing is `ui/faces/chess_piece.gd`,
+  shared with the menu card. 67 draw calls bare, 66 played, 71 solved,
+  ANGLE agreeing. Sounds are prompts in `tools/gen_sfx.py`, not yet
+  generated.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

@@ -55,8 +55,9 @@ every language (board titles stay English, by the user's standing decision).
 - **Caught.** The rose knight hops onto you, the board shakes, a beat
   passes, and everything slides back to the position before your move. The
   move is not counted and not kept in history.
-- **Insane only:** a budget of the shortest line plus `SLACK` 2 moves, shown
-  as "N moves left" on the day card (Rings' pattern). Undo gives a move back.
+- **Insane only:** a budget of the shortest line plus `SLACK` 2 moves,
+  drawn as "N moves left" centred under the board, Rings' way (the day card
+  is the host's). Undo gives a move back.
   With none left, a tap is refused with a tip saying to undo or reset.
 - **What the board shows.** Your legal squares carry a sage dot.
   - Every square a rose knight reaches *right now* carries four rose corner
@@ -180,8 +181,8 @@ rather than paid for every frame (Caterpillar's lesson).
 
 - **Your hop.** The knight travels along the L, eased by `sineIO`, and rises
   on an arc of `HOP_ARC` 0.55 cells at mid-flight. It lands with a squash
-  (`Motion.bump_scale`), a shadow shrinks under it in the air, and a piece in
-  the air draws over everything.
+  (`LAND_TIME` 0.2, `LAND_SQUASH` 0.14, the mock's own), a shadow shrinks
+  under it in the air, and a piece in the air draws over everything.
 - **The answer.** The rose knights hop the same way.
   - The first starts `ANSWER_GAP` 0.08 s after you land.
   - The rest follow at `ANSWER_STEP` 0.09.
@@ -199,9 +200,8 @@ rather than paid for every frame (Caterpillar's lesson).
   `RESET_STAGGER`.
 - **Input.** Taps are ignored while the board is moving.
 - **The win.** The king tips over (`backOut` to 1.2 rad about his foot), a
-  gold ring and two sparkle bursts rise, and `WIN_WAIT` 2.2 s later the win
-  screen shows the day's board small, with your route drawn across it and
-  the fallen king.
+  gold ring and two sparkle bursts rise, and `WIN_WAIT` 2.2 s later the
+  host's win screen, with the subtitle KN_WIN.
 - **The trail.** A faint dashed line joins the squares you have landed on.
 
 **Pieces.** A piece's drawing is `PIECE` 1.25 cells of its own unit,
@@ -213,8 +213,9 @@ standing 0.04 cells above centre so the ear rises into the square behind.
   face. His eyes are crosses once he has fallen.
 
 **Motion constants.** The board's own are `PIECE`, `HOP_ARC`, `JUMP_TIME`
-0.3, `ANSWER_GAP`, `ANSWER_STEP`, `CAUGHT_HOLD`, `SLIDE_BACK` and
-`WIN_WAIT`. Everything else is a recipe; **nothing is added to
+0.3, `ANSWER_GAP`, `ANSWER_STEP`, `CAUGHT_HOLD`, `SLIDE_BACK`, `WIN_WAIT`,
+`LAND_TIME`, `LAND_SQUASH`, `TAKE_TIME`, `MARK_FADE`, `TOPPLE` and
+`TOPPLE_TIME`. Everything else is a recipe; **nothing is added to
 `core/motion.gd`**.
 
 **Tips.** These are keys, and each board state speaks one:
@@ -235,14 +236,37 @@ toppling clack), and `enter`.
 
 ## 8. Measured
 
-Filled in at build. The following are to measure and record here:
+**Generator, GDScript on this Mac** (`tests/_probe_knight_gen.gd`, 40 seeds a
+level, second reading): Easy 0.8 ms worst, Medium 11.4 ms, Hard 40.1 ms,
+Insane 120.0 ms (mean 32.3 ms) -- comfortably under the 194 ms gate, once
+`hop_table` caches the knight-move table per board size (section 10, item 7
+below; the first reading, before that cache, put Insane at roughly 230 ms).
+Shortest
+lines measured 4-6 / 6-8 / 8-12 / 10-16, matching section 3's table, all 160
+boards verified.
 
-- draw calls bare, mid-hop and on the win screen, with `tests/_shot_anim.gd
-  -- knight` at `--resolution 810x1440 --always-on-top`;
-- ANGLE agreement;
-- a reduce-motion pair;
-- the GDScript worst case of `tests/_probe_knight_gen.gd` over 40 seeds a
-  level.
+**Draw calls** (`tests/_shot_anim.gd -- knight` at `--resolution 810x1440
+--always-on-top`, second of two readings a mode):
+
+| Mode | Draw calls | Idle |
+| --- | --- | --- |
+| bare | 67 | 2.78 ms |
+| played | 66 | 3.45 ms |
+| caught | 66 | 4.79 ms |
+| solve | 71 | 3.50 ms |
+| ANGLE, played | 66 | 5.07 ms |
+
+All well inside the 855 budget. ANGLE's 66 matches the default driver's
+`played` reading exactly. The Pinwheel control run in the same session read
+67 dc / 3.39 ms idle: the shared chrome has grown since Pinwheel's own
+recorded 56 bare / 57 played (2026-09-26's polish pass), so boards are only
+comparable within a session, not against another board's own spec figure.
+
+A reduce-motion pair was not taken this pass.
+
+**Win harness**: `tests/_win.gd` reports `PASS knight ... hud=true`,
+`winnable=23/23` (see section 10, item 4 for the entrance-lock race the
+harness had to be adapted around to get there).
 
 ## 9. Open
 
@@ -251,3 +275,50 @@ Filled in at build. The following are to measure and record here:
   on every level.
 - The dot pulse is dropped in the port (section 7). If the user misses it,
   it goes in a small third mesh.
+
+## 10. Amendments, as built (2026-09-26)
+
+Everything above is what was agreed; these are the places the build changed
+the design, and why. They are the record now.
+
+1. **Insane's moves-left line moved off the day card** (section 2): it is
+   drawn centred under the board itself, Rings' way, rather than shown on the
+   day card, because the day card belongs to the host and the board has no
+   door into it.
+2. **The win screen is the host's** (section 7): Knight ends on the shared
+   win screen with the subtitle `KN_WIN`, the same screen every other board
+   uses, rather than a bespoke small-board-and-route picture of its own.
+3. **The landing squash is the board's own** (section 7): `LAND_TIME` 0.2 and
+   `LAND_SQUASH` 0.14 (the mock's own numbers), not `Motion.bump_scale`. The
+   board's own constants grew past section 7's original list to include
+   `TAKE_TIME`, `MARK_FADE`, `TOPPLE` and `TOPPLE_TIME`.
+4. **The whole entrance is locked, not just the marks' fade-in.** For about
+   0.8 s after `build()` (`Motion.ENTER_DELAY + 0.2 +
+   Motion.stagger(foes.size() + 1, 0.07) + Motion.POP_IN`), the corner marks
+   stay hidden and both a tap and Hint are refused (`_busy_until`), so nobody
+   can act before the opening deal has finished popping in. This raced
+   `tests/_win.gd`'s fixed seven-frame gap from opening a board to driving
+   its first scripted hint press, which landed inside the lock and silently
+   no-opped (`hints_used` stayed 0, so the harness's own `hud` check failed).
+   The ruling kept the board's lock and adapted the harness instead: fix
+   round 1 clears `_puzzle._busy_until` immediately before `_solve_knight`'s
+   opening hint press, the same way the loop already clears it before its own
+   taps -- see the win-harness line in section 8.
+5. **A hint counts as a move.** `hint()` plays the shortest line's next hop
+   through the same `_play()` a tap uses, so `moves` increments and, on
+   Insane, the hint spends from the same budget as any other hop -- there is
+   no free look.
+6. **A Reset or Undo cancels the turn's pending timers.** Every animated
+   sequence (a hop, an answer, a catch's shake-and-slide) captures the
+   board's `_turn` counter when it starts and checks it again before acting;
+   `_slide_to_state()`, called by both `undo()` and `reset_board()`, bumps
+   `_turn` first. A catch or an answer already in flight when the player
+   resets or undoes therefore finds its captured turn stale and does nothing,
+   rather than playing out on a board that has already moved on.
+7. **The generator's numbers moved from the brief** (section 5, section 8).
+   `solve` takes an optional `max_nodes` (`NODE_CAP` 1500, bounding
+   generation's own search only -- a live hint's `solve` call is unbounded);
+   the knight-move table (`hop_table`) is now cached once per board size
+   rather than rebuilt on every call, which is what brought Insane's worst
+   case down from roughly 230 ms to 120.0 ms, comfortably under the 194 ms
+   gate; and `ATTEMPTS` is 600, not the 1,500 this spec named above.

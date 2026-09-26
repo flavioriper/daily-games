@@ -288,6 +288,21 @@ SETS = {
         "solved":   ("a warm celebratory glockenspiel and marimba flourish rising into a soft airy shimmer, a flower opening in morning sunlight, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny brass clicks and a light warm shimmer, a greenhouse waking in the morning sun", 1.0, -9),
     },
+    # Knight: a cream knight hops in Ls to take the rose king; rose knights
+    # answer every hop. A catch slides the board back one move.
+    "knight": {
+        "hop":      ("a single soft wooden chess piece tap on a paper board, light and cozy, very short", 0.4, -10),
+        "answer":   ("a lower softer felt-bottomed wooden chess piece tap, very short", 0.4, -12),
+        "take":     ("a bright small wooden knock, one chess piece taking another, cozy, very short", 0.5, -9),
+        "caught":   ("a soft gentle two-note downward marimba, not yet, warm and patient", 0.6, -10),
+        "slide":    ("a short soft paper slide, pieces sliding back on a board", 0.5, -11),
+        "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft quick descending ripple of wooden ticks, chess pieces set back in place", 1.0, -8),
+        "solved":   ("a warm celebratory marimba run rising, ending in a small wooden piece toppling over with a soft clack, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of tiny wooden taps, chess pieces being set on a paper board", 1.0, -9),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

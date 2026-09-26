@@ -54,6 +54,7 @@ const PinWheel = preload("res://ui/faces/pin_wheel.gd")
 const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const SunParts = preload("res://ui/faces/sunbeam_parts.gd")
+const ChessPiece = preload("res://ui/faces/chess_piece.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
@@ -147,6 +148,14 @@ const SB_DROPS := [Vector2i(1, 2), Vector2i(4, 1)]
 const SB_BUD := Vector2i(3, 1)
 const SB_POT := Vector2i(7, 2)
 
+## Knight's card: the same 8 by 3 strip laid as a chessboard, your knight in
+## mid-hop along its L toward the rose king, one rose knight standing guard
+## beside him and the hop's dashed arc behind -- the rule in one picture.
+const KN_FROM := Vector2i(1, 2)
+const KN_TO := Vector2i(3, 1)
+const KN_GUARD := Vector2i(5, 2)
+const KN_KING := Vector2i(6, 1)
+
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
 var _u := 1.0
@@ -169,6 +178,7 @@ var _sky_mesh: ArrayMesh
 var _pinwheel_mesh: ArrayMesh
 var _caterpillar_mesh: ArrayMesh
 var _sunbeam_mesh: ArrayMesh
+var _knight_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -346,6 +356,7 @@ func _draw() -> void:
 		"pinwheel": _draw_pinwheel()
 		"caterpillar": _draw_caterpillar()
 		"sunbeam": _draw_sunbeam()
+		"knight": _draw_knight()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1098,3 +1109,34 @@ func _draw_sunbeam() -> void:
 	SunParts.sun(b, mid.call(SB_LAMP), cell)
 	_sunbeam_mesh = b.mesh()
 	draw_mesh(_sunbeam_mesh, null)
+
+## Knight: the board's own drawing, through `ui/faces/chess_piece.gd`, the
+## file `puzzles/knight2d.gd` draws with, so the card and the board cannot
+## drift apart. One mesh.
+## Spec: docs/superpowers/specs/2026-09-26-knight-flat-design.md, section 4.
+func _draw_knight() -> void:
+	var cell := PIN_CELL * _u
+	var origin := at(-float(PIN_COLS) * PIN_CELL * 0.5, -float(PIN_ROWS) * PIN_CELL * 0.5)
+	var mid := func(c: Vector2i) -> Vector2: return origin + (Vector2(c) + Vector2(0.5, 0.5)) * cell
+	var b := Face.Builder.new()
+	var pad := PIN_PAD * _u
+	var board := Vector2(PIN_COLS, PIN_ROWS) * cell
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * pad, board + Vector2.ONE * (2.0 * pad), 0.24 * cell), Pal.CHESS_FRAME)
+	b.fan(PackedVector2Array([origin, origin + Vector2(board.x, 0.0), origin + board, origin + Vector2(0.0, board.y)]), Pal.CHESS_LIGHT)
+	for r in PIN_ROWS:
+		for c in PIN_COLS:
+			if (r + c) % 2 == 1:
+				var p := origin + Vector2(c, r) * cell
+				b.fan(PackedVector2Array([p, p + Vector2(cell, 0.0), p + Vector2(cell, cell), p + Vector2(0.0, cell)]), Pal.CHESS_DARK)
+	var a: Vector2 = mid.call(KN_FROM)
+	var z: Vector2 = mid.call(KN_TO)
+	var top := (a + z) * 0.5 + Vector2(0.0, -cell * 0.9)
+	var arc := Face.Builder.bezier2(a, top, z, 12)
+	for k in range(0, arc.size() - 1, 2):
+		b.stroke(PackedVector2Array([arc[k], arc[k + 1]]), cell * 0.05, Color(Pal.KNIGHT_CREAM_LINE, 0.35))
+	ChessPiece.king(b, mid.call(KN_KING), cell)
+	ChessPiece.knight(b, mid.call(KN_GUARD), cell, ChessPiece.ROSE, -1.0)
+	var fly := a.lerp(z, 0.7)
+	ChessPiece.knight(b, fly, cell, ChessPiece.CREAM, 1.0, cell * 0.45)
+	_knight_mesh = b.mesh()
+	draw_mesh(_knight_mesh, null)
