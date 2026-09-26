@@ -353,13 +353,17 @@ static func _trophy() -> Dictionary:
 	var foot := PackedVector2Array([Vector2(0.26, 0.76), Vector2(0.74, 0.76), Vector2(0.74, 0.9), Vector2(0.26, 0.9)])
 	return {"polys": [bowl, left, right, stem, foot], "lines": []}
 
-## Three bars rising to the right.
+## Three bars rising to the right, their tops rounded.
 static func _bars() -> Dictionary:
 	var out: Array = []
+	var r := 0.1
 	for i in 3:
-		var x := 0.16 + i * 0.27
-		var top := 0.62 - i * 0.24
-		out.append(PackedVector2Array([Vector2(x, top), Vector2(x + 0.2, top), Vector2(x + 0.2, 0.9), Vector2(x, 0.9)]))
+		var x := 0.14 + i * 0.26
+		var top := 0.58 - i * 0.22
+		var bar := arc(Vector2(x + r, top + r), r, PI, TAU, 10)
+		bar.append(Vector2(x + 2.0 * r, 0.88))
+		bar.append(Vector2(x, 0.88))
+		out.append(bar)
 	return {"polys": out, "lines": []}
 
 ## Two lobes over a point. Used filled on the day row and as a line for an
@@ -378,10 +382,24 @@ static func _heart() -> PackedVector2Array:
 
 # --- the Stats tab (ui/menu/stats_tab.gd) ---
 
-## A jigsaw piece: a square body with a knob out of its top and its right.
+## A jigsaw piece with rounded corners, a knob out of its top and its right
+## and a socket into its left, traced as one outline so the knobs grow out of
+## the body on a pinched neck rather than sitting on it as loose discs.
 static func _puzzle() -> Dictionary:
-	var body := PackedVector2Array([Vector2(0.14, 0.3), Vector2(0.72, 0.3), Vector2(0.72, 0.88), Vector2(0.14, 0.88)])
-	return {"polys": [body, circle(Vector2(0.43, 0.22), 0.13), circle(Vector2(0.8, 0.59), 0.13)], "lines": []}
+	var pts := PackedVector2Array()
+	var c := 0.07
+	pts.append_array(arc(Vector2(0.12 + c, 0.28 + c), c, PI, PI * 1.5, 6))
+	pts.append_array(arc(Vector2(0.42, 0.165), 0.115, deg_to_rad(121.5), deg_to_rad(418.5), 20))
+	pts.append_array(arc(Vector2(0.72 - c, 0.28 + c), c, PI * 1.5, TAU, 6))
+	pts.append_array(arc(Vector2(0.835, 0.58), 0.115, deg_to_rad(211.5), deg_to_rad(508.5), 20))
+	pts.append_array(arc(Vector2(0.72 - c, 0.88 - c), c, 0.0, PI * 0.5, 6))
+	pts.append_array(arc(Vector2(0.12 + c, 0.88 - c), c, PI * 0.5, PI, 6))
+	# The socket runs the other way round its circle: into the body.
+	pts.append_array(arc(Vector2(0.21, 0.58), 0.1, deg_to_rad(143.1), deg_to_rad(-143.1), 16))
+	var body := PackedVector2Array()
+	for p in pts:
+		body.append(p + Vector2(-0.035, 0.035))
+	return {"polys": [body], "lines": []}
 
 ## A flame: a round belly drawn up to a tip leaning right, and a smaller one
 ## inside it as the hole, which the Stats tile paints a lighter colour.
@@ -393,8 +411,14 @@ static func _flame_shape(c: Vector2, r: float, tip: Vector2) -> PackedVector2Arr
 	return pts
 
 static func _flame() -> Dictionary:
-	return {"polys": [_flame_shape(Vector2(0.5, 0.62), 0.3, Vector2(0.54, 0.06))], "lines": [],
-		"hole": _flame_shape(Vector2(0.5, 0.72), 0.15, Vector2(0.53, 0.42))}
+	# A round belly, a lick off its left shoulder and the main tongue leaning
+	# right: a teardrop alone read as a raindrop at bar size.
+	var body := arc(Vector2(0.5, 0.64), 0.28, deg_to_rad(-15.0), deg_to_rad(195.0), 18)
+	body.append_array(PackedVector2Array([Vector2(0.21, 0.44), Vector2(0.27, 0.27),
+		Vector2(0.37, 0.39), Vector2(0.43, 0.2), Vector2(0.55, 0.05),
+		Vector2(0.68, 0.22), Vector2(0.78, 0.42)]))
+	return {"polys": [body], "lines": [],
+		"hole": _flame_shape(Vector2(0.5, 0.72), 0.15, Vector2(0.52, 0.42))}
 
 ## Three puffs over a flat base.
 static func _cloud() -> Dictionary:
@@ -434,9 +458,18 @@ static func _crown() -> Dictionary:
 	var band := PackedVector2Array([Vector2(0.18, 0.78), Vector2(0.82, 0.78), Vector2(0.82, 0.88), Vector2(0.18, 0.88)])
 	return {"polys": [body, band], "lines": []}
 
-## A cue lined up on a ball: the bar's Versus tab, where snooker lives.
+## Two cues crossed like duelling swords over a ball: the bar's Versus tab,
+## where snooker lives. Each cue is a tapered shaft with a rounded butt and
+## tip, so it reads as a cue and not as a wand; the hole is the ball's spot.
 static func _versus() -> Dictionary:
-	var ball := circle(Vector2(0.72, 0.28), 0.17)
-	var cue := PackedVector2Array([Vector2(0.1, 0.9), Vector2(0.5, 0.5)])
-	var small := circle(Vector2(0.3, 0.26), 0.1)
-	return {"polys": [ball, small], "lines": [cue]}
+	var polys: Array = []
+	for side in [-1.0, 1.0]:
+		var butt := Vector2(0.5 - side * 0.36, 0.86)
+		var tip := Vector2(0.5 + side * 0.4, 0.08)
+		var d := (tip - butt).normalized()
+		var n := Vector2(d.y, -d.x)
+		var cue := arc(butt, 0.085, n.angle(), n.angle() - PI, 8)
+		cue.append_array(arc(tip, 0.035, n.angle() + PI, n.angle(), 6))
+		polys.append(cue)
+	polys.append(circle(Vector2(0.5, 0.66), 0.26))
+	return {"polys": polys, "lines": [], "hole": circle(Vector2(0.43, 0.59), 0.09)}

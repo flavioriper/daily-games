@@ -22,8 +22,8 @@ const ICON := 56.0
 const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "puzzle", "live": true},
 	{"key": "versus", "label": "BAR_VERSUS", "icon": "versus", "live": true},
-	{"key": "stats", "label": "BAR_STATS", "icon": "trophy", "live": true},
-	{"key": "streak", "label": "BAR_STREAK", "icon": "bars", "live": true},
+	{"key": "stats", "label": "BAR_STATS", "icon": "bars", "live": true},
+	{"key": "streak", "label": "BAR_STREAK", "icon": "flame", "live": true},
 ]
 
 var current := "home"
@@ -68,10 +68,13 @@ func _make_tab(tab: Dictionary) -> Control:
 	icon.custom_minimum_size = Vector2(ICON, ICON)
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.resized.connect(func() -> void: icon.pivot_offset = icon.size * 0.5)
+	# The idle ink is the label's own dim, so a tab reads as one piece. A hole
+	# (the flame's core, the ball's spot) is paper at rest and sun when on.
 	icon.draw.connect(func() -> void:
 		var on: bool = current == tab.key
 		Icons.paint(icon, String(tab.icon), Rect2(Vector2.ZERO, icon.size),
-			Pal.ACCENT_2 if on else Pal.TEXT))
+			Pal.ACCENT_2 if on else Pal.TEXT_DIM, Pal.SUN if on else Pal.SURFACE))
 	col.add_child(icon)
 	var label := Label.new()
 	label.name = "Label"
@@ -98,6 +101,8 @@ func _on_tab(tab: Dictionary) -> void:
 
 ## Which tab reads as the one you are on.
 func show_tab(key: String) -> void:
+	if key != current and _tabs.has(key):
+		Motion.bump(_tabs[key].icon, 0.18)
 	current = key
 	_repaint()
 
