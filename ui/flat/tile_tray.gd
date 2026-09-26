@@ -168,16 +168,12 @@ func _draw_glyph(glyph: Control, i: int) -> void:
 		# it on the node is what stops the renderer drawing a freed one.
 		glyph.set_meta("mesh", mesh)
 
-## Its look, resting or armed: cream with the theme's bottom edge, and when
-## armed a fuller sun border all round, exactly as Binairo's chips take it.
+## Its look, resting or armed: cream lifted off the page, and when armed a
+## sun border all round, exactly as Binairo's chips take it.
 func _style(chip: Button, armed: bool) -> void:
 	var fill: Color = Pal.SURFACE if armed else Pal.SURFACE_HI
-	var sb := CozyTheme.card(fill, 32, Pal.LINE, 6, 0)
-	if armed:
-		sb.set_border_width_all(4)
-		sb.border_width_bottom = 10
-		sb.border_color = Pal.SUN
-	var pressed := CozyTheme.card(fill.lerp(Pal.LINE, 0.15), 32, Pal.LINE, 2, 0)
+	var sb := CozyTheme.chip(fill, 32, Pal.SUN, 5 if armed else 0)
+	var pressed := CozyTheme.chip(fill, 32, Pal.SUN, 5 if armed else 0, true)
 	for state in ["normal", "hover", "focus"]:
 		chip.add_theme_stylebox_override(state, sb)
 	chip.add_theme_stylebox_override("pressed", pressed)

@@ -83,17 +83,13 @@ func _build() -> void:
 		if face.has_method("set_idle"):
 			face.set_idle(true)
 
-## The chip's look, resting or armed: its own fill, the theme's bottom edge,
-## and when armed a border all round in its symbol's colour.
+## The chip's look, resting or armed: its own fill lifted off the page, and
+## when armed a border all round in its symbol's colour.
 func _style(chip: Button, i: int, armed: bool) -> void:
 	var fill: Color = [Pal.SUN_TILE, Pal.MOON_TILE, Pal.SURFACE_HI][i]
 	var edge: Color = [Pal.SUN, Pal.MOON_INK, Pal.LINE][i]
-	var sb := CozyTheme.card(fill, 28, Pal.LINE, 6, 0)
-	if armed:
-		sb.set_border_width_all(4)
-		sb.border_width_bottom = 8
-		sb.border_color = edge
-	var pressed := CozyTheme.card(fill.lerp(Pal.LINE, 0.15), 28, Pal.LINE, 2, 0)
+	var sb := CozyTheme.chip(fill, 28, edge, 5 if armed else 0)
+	var pressed := CozyTheme.chip(fill, 28, edge, 5 if armed else 0, true)
 	for state in ["normal", "hover", "focus"]:
 		chip.add_theme_stylebox_override(state, sb)
 	chip.add_theme_stylebox_override("pressed", pressed)

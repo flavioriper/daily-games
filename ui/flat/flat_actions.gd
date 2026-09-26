@@ -1,7 +1,8 @@
 extends "res://ui/hud/panel.gd"
 
-## The flat screen's action row: Reset in paper at the column's left edge,
-## Check in sun with a white label at its right. The same two signals and the
+## The flat screen's action row: Reset in lifted paper at the column's left
+## edge, Check at its right in the board's own colour (the GO button of the
+## card it was opened from, `accent`) with a white label. The same two signals and the
 ## same `check_button` field as ui/hud/action_bar.gd, so the host's handlers
 ## and the win harness read it unchanged; a clean Check still says All good.
 ## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, section 3.
@@ -13,11 +14,14 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 
 const BUTTON := Vector2(260, 130)
 const ALL_GOOD_TIME := 1.2
+const RADIUS := 40
 
 var reset_button: Button
 var check_button: Button
 var _all_good: Tween
 var _check_label := "ACT_CHECK"
+## The board's card colour; Check wears it. Set before the row enters the tree.
+var accent := Pal.SUN
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -30,6 +34,7 @@ func _make_inner() -> Container:
 func _build() -> void:
 	reset_button = IconButton.new("reset", "ACT_RESET", "IconButton")
 	reset_button.custom_minimum_size = BUTTON
+	CozyTheme.lift_button(reset_button, Pal.SURFACE, RADIUS)
 	reset_button.pressed.connect(func() -> void: reset.emit())
 	_inner.add_child(reset_button)
 	var spacer := Control.new()
@@ -38,6 +43,7 @@ func _build() -> void:
 	_inner.add_child(spacer)
 	check_button = IconButton.new("check", "ACT_CHECK", "SunButton")
 	check_button.custom_minimum_size = BUTTON
+	CozyTheme.accent_button(check_button, accent, RADIUS)
 	check_button.pressed.connect(func() -> void: check.emit())
 	_inner.add_child(check_button)
 

@@ -154,10 +154,12 @@ func _fit(label: Label, wide: float) -> void:
 	label.add_theme_font_size_override("font_size", px)
 
 ## A button keeps its own square and sits centred on the row, as the other
-## top bar's do.
+## top bar's do, dressed as the first screen's header buttons are.
 func _button(icon: String, sig: Signal) -> Button:
 	var b := IconButton.new(icon)
 	b.custom_minimum_size = BUTTON
+	# The menu header's utility buttons: white paper lifted off the painting.
+	CozyTheme.lift_button(b, Pal.SURFACE, int(BUTTON.x * 0.29))
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(func() -> void: sig.emit())
 	_inner.add_child(b)

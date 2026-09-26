@@ -55,8 +55,7 @@ const BUTTON_H := 56.0
 const BUTTON_INSET := 24.0
 const BUTTON_GAP := 14.0
 const CARD_RADIUS := 32
-const CARD_EDGE := 6
-## The given card's sun rim, all round, over the shared bottom edge.
+## The given card's sun rim, all round.
 const GIVEN_RIM := 4
 const BUTTON_RADIUS := 20
 const BUTTON_EDGE := 5
@@ -181,16 +180,11 @@ func _make_cards(count: int) -> void:
 		_fit(i)
 		face.set_idle(true)
 
-## The card's paper: its fruit's own tile with the ordinary line under it
-## while the player owns the weight; sand rimmed in sun all round once it is
-## given.
+## The card's paper: its fruit's own tile lifted off the page while the
+## player owns the weight; sand rimmed in sun all round once it is given.
 func _look(i: int, given: bool) -> StyleBoxFlat:
-	var sb := CozyTheme.card(Pal.SURFACE_HI if given else Fruit.tile(i), CARD_RADIUS,
-		Pal.SUN_DEEP if given else Pal.LINE, CARD_EDGE, 0)
-	if given:
-		sb.set_border_width_all(GIVEN_RIM)
-		sb.border_width_bottom = CARD_EDGE
-	return sb
+	return CozyTheme.chip(Pal.SURFACE_HI if given else Fruit.tile(i), CARD_RADIUS,
+		Pal.SUN_DEEP, GIVEN_RIM if given else 0)
 
 ## A pale pill on the tinted card, as the re-render draws them.
 func _make_button(card: Panel, i: int, delta: int) -> Button:

@@ -181,6 +181,42 @@ static func lifted(fill: Color, radius: int, margin: int) -> StyleBoxFlat:
 	sb.anti_aliasing_size = 1.2
 	return sb
 
+## Dresses `b` in lifted paper (or `fill`): the menu's utility buttons, worn
+## by the flat screen's chrome too. Pressed sinks onto a smaller shadow and
+## darkens; disabled keeps the shape at 55 percent.
+static func lift_button(b: Button, fill: Color, radius: int, margin := 8) -> void:
+	var up := lifted(fill, radius, margin)
+	var down := lifted(fill.darkened(0.08), radius, margin)
+	down.shadow_size = 3
+	down.shadow_offset = Vector2(0.0, 2.0)
+	var off := lifted(Color(fill, 0.55), radius, margin)
+	off.shadow_color = Color(off.shadow_color, 0.06)
+	b.add_theme_stylebox_override("normal", up)
+	b.add_theme_stylebox_override("hover", up)
+	b.add_theme_stylebox_override("pressed", down)
+	b.add_theme_stylebox_override("disabled", off)
+
+## Dresses `b` as a coloured primary on lifted paper, lettered in SURFACE:
+## the menu card's GO button, for the one action a flat screen leads with.
+static func accent_button(b: Button, colour: Color, radius: int, margin := 8) -> void:
+	lift_button(b, colour, radius, margin)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(state, Pal.SURFACE)
+	b.add_theme_color_override("font_disabled_color", Color(Pal.SURFACE, 0.7))
+
+## A tray chip on lifted paper: `fill`, and when `border_w` is given a
+## border all round in `border` (an armed chip). `pressed` sinks it onto a
+## short shadow and darkens it. The flat trays' chips, since 2026-09-26.
+static func chip(fill: Color, radius: int, border := Color.TRANSPARENT, border_w := 0, pressed := false) -> StyleBoxFlat:
+	var sb := lifted(fill.darkened(0.08) if pressed else fill, radius, 0)
+	if pressed:
+		sb.shadow_size = 3
+		sb.shadow_offset = Vector2(0.0, 2.0)
+	if border_w > 0:
+		sb.set_border_width_all(border_w)
+		sb.border_color = border
+	return sb
+
 static func paper_card() -> StyleBoxFlat:
 	return card(Color(Pal.PAPER, 0.94), 28, Pal.LINE, 6, 24)
 

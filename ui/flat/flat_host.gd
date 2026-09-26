@@ -51,6 +51,7 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const Streak = preload("res://core/streak.gd")
 const Registry = preload("res://ui/registry.gd")
+const Vistas = preload("res://ui/menu/vistas.gd")
 
 ## Asks the menu to swap this board for the same card at `difficulty` (the
 ## win's invite to the next level up); the menu mounts a fresh host.
@@ -80,6 +81,10 @@ const CHROME_OUT := 0.25
 const ART_DELAY := 0.2
 const STATS_DELAY := 0.35
 const STATS_SLIDE := 0.35
+## How far the board's painting runs down past the day card before it has
+## faded into the paper (the menu's BACKDROP_BLEED, for a shorter header).
+const BACKDROP_BLEED := 90.0
+const BUTTON_RADIUS := 40
 
 var tray: Control
 var well_done: Control
@@ -91,6 +96,10 @@ var _top_stack: VBoxContainer
 var _bottom_stack: VBoxContainer
 var _win_stack: VBoxContainer
 var _stage: Node
+var _backdrop: ColorRect
+## The colour of the card this board was opened from (the menu's
+## `Pal.CAT[index]`), worn by Check and the win's lead button.
+var _accent := Pal.SUN
 var _won := false
 var redo_button: Button
 var next_button: Button
@@ -183,6 +192,19 @@ func _build_chrome(root: VBoxContainer) -> void:
 	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(page)
 	move_child(page, 0)
+	# The board's own banner, painted full-bleed behind the top bar and the
+	# day card and faded into the paper under them: the first screen's
+	# header, with the picture of the card that was tapped.
+	var id := String(_entry.get("id", ""))
+	for i in Registry.PUZZLES.size():
+		if String(Registry.PUZZLES[i].get("id", "")) == id:
+			_accent = Pal.CAT[i % Pal.CAT.size()]
+	_backdrop = Vistas.board_plate(id, _accent)
+	_backdrop.name = "Backdrop"
+	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	add_child(_backdrop)
+	move_child(_backdrop, 1)
+	_place_backdrop()
 
 	# --- the top slot: top bar and day card, and the win art over them ---
 	_top_slot = Control.new()
@@ -220,7 +242,13 @@ func _build_chrome(root: VBoxContainer) -> void:
 	root.add_child(_board_holder)
 	_card = Panel.new()
 	_card.name = "BoardCard"
-	_card.add_theme_stylebox_override("panel", CozyTheme.card(Pal.PARCHMENT, 32, Pal.LINE, 6, 24))
+	var paper := CozyTheme.lifted(Pal.PARCHMENT, 36, 24)
+	paper.border_width_left = 2
+	paper.border_width_top = 2
+	paper.border_width_right = 2
+	paper.border_width_bottom = 2
+	paper.border_color = Color(Pal.LINE, 0.35)
+	_card.add_theme_stylebox_override("panel", paper)
 	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_board_holder.add_child(_card)
@@ -298,6 +326,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 		_bottom_stack.add_child(tray)
 	if with_actions:
 		action_bar = FlatActions.new()
+		action_bar.accent = _accent
 		action_bar.name = "Actions"
 		action_bar.reset.connect(_on_reset)
 		action_bar.check.connect(_on_check)
@@ -322,6 +351,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	redo_button = IconButton.new("reset", "WIN_REDO", "IconButton")
 	redo_button.name = "RedoButton"
 	redo_button.custom_minimum_size.y = CAMP_BUTTON
+	CozyTheme.lift_button(redo_button, Pal.SURFACE, BUTTON_RADIUS)
 	redo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	redo_button.pressed.connect(_on_redo)
 	win_buttons.add_child(redo_button)
@@ -414,6 +444,14 @@ func _dress_win_buttons() -> void:
 	var inviting := _next_level >= 0
 	next_button.visible = inviting
 	camp_button.theme_type_variation = "IconButton" if inviting else "SunButton"
+	# Back leads when there is nothing to invite to, in the board's colour;
+	# under an invite it steps down to lifted paper beside Redo.
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		camp_button.remove_theme_color_override(state)
+	if inviting:
+		CozyTheme.lift_button(camp_button, Pal.SURFACE, BUTTON_RADIUS)
+	else:
+		CozyTheme.accent_button(camp_button, _accent, BUTTON_RADIUS)
 	_camp_chevron.visible = not inviting
 	if not inviting:
 		return
@@ -424,11 +462,15 @@ func _dress_win_buttons() -> void:
 	var name_key := String(level.get("name", ""))
 	var night := _next_level == 3
 	next_button.theme_type_variation = "DarkButton" if night else "SunButton"
+	if night:
+		CozyTheme.lift_button(next_button, Pal.SLATE, BUTTON_RADIUS)
+	else:
+		CozyTheme.accent_button(next_button, _accent, BUTTON_RADIUS)
 	_next_name.text = tr("WIN_NEXT") % tr(LEVEL_KEYS.get(name_key, name_key))
-	_next_name.add_theme_color_override("font_color", Pal.MOON if night else Pal.TEXT)
+	_next_name.add_theme_color_override("font_color", Pal.MOON if night else Pal.SURFACE)
 	_next_line.text = tr(String(level.get("line", "")))
 	_next_line.add_theme_color_override("font_color",
-		Color(Pal.MOON, 0.72) if night else Color(Pal.TEXT, 0.72))
+		Color(Pal.MOON, 0.72) if night else Color(Pal.SURFACE, 0.85))
 
 func _on_next() -> void:
 	if _next_level < 0:
@@ -439,6 +481,20 @@ func _on_next() -> void:
 		"to": _next_level,
 	})
 	play_level.emit(_next_level)
+
+## The painting runs from the screen's top edge (under the safe area) to a
+## little past the day card, as the menu's does; its crop ignores the top
+## inset so a punch-hole phone sees the same picture, shifted down.
+func _place_backdrop() -> void:
+	if _backdrop == null:
+		return
+	var insets := SafeArea.insets(self)
+	_backdrop.offset_bottom = MARGIN + insets.x + TOP_PLAY + BACKDROP_BLEED
+	Vistas.set_top_pad(_backdrop, insets.x)
+
+func _apply_insets() -> void:
+	super()
+	_place_backdrop()
 
 ## A column of rows across the top of `slot`, sized to its own content, so a
 ## tween on the slot's minimum height moves the rows around it and not them.
@@ -578,6 +634,7 @@ func _spawn(the_seed: int) -> void:
 		_enter()
 	_tray_given = false
 	super(the_seed)
+	day_card.set_hearts(Progress.hearts())
 	_fit_card()
 
 ## The board's wave plays first; then the rows make way for the win screen.

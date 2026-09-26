@@ -29,7 +29,6 @@ const SQUASH_TIME := 0.18
 const DIM := 0.45
 ## The lit chip's border, all round and a heavier foot, as Binairo's armed chip.
 const LIT_BORDER := 4
-const LIT_FOOT := 8
 
 var chips: Array[Button] = []
 var _faces: Array[Control] = []
@@ -66,11 +65,9 @@ func _make_chips(count: int) -> void:
 		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		chip.custom_minimum_size.y = CHIP_H
 		var fill := Friends.tile(i)
-		var rest := CozyTheme.card(fill, 28, Pal.LINE, 6, 0)
-		var lit := CozyTheme.card(fill, 28, Friends.colour(i), 6, 0)
-		lit.set_border_width_all(LIT_BORDER)
-		lit.border_width_bottom = LIT_FOOT
-		var down := CozyTheme.card(fill.lerp(Pal.LINE, 0.15), 28, Pal.LINE, 2, 0)
+		var rest := CozyTheme.chip(fill, 28)
+		var lit := CozyTheme.chip(fill, 28, Friends.colour(i), LIT_BORDER)
+		var down := CozyTheme.chip(fill, 28, Color.TRANSPARENT, 0, true)
 		chip.add_theme_stylebox_override("pressed", down)
 		chip.pressed.connect(_on_pressed.bind(i))
 		_inner.add_child(chip)

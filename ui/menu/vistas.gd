@@ -27,6 +27,11 @@ const CARD_RADIUS := 28.0
 const CARD_WASH := 0.62
 const DAY_RADIUS := 36.0
 const DAY_SCRIM := Vector3(0.94, 0.25, 0.66)
+## The board header's even veil (a scrim whose ramp starts past the right
+## edge), the centred wash under the title, and its fade to paper.
+const BOARD_SCRIM := Vector3(0.30, 2.0, 3.0)
+const BOARD_WASH := 0.50
+const BOARD_FADE := Vector2(0.55, 0.97)
 
 const CARDS := {
 	"binairo": ["sky", 1.5, Vector2(0.30, 0.30)],
@@ -162,6 +167,20 @@ static func _refit(plate: ColorRect) -> void:
 static func card_plate(id: String, tint: Color) -> ColorRect:
 	var plate := _plate(CARD_RADIUS)
 	(plate.material as ShaderMaterial).set_shader_parameter("wash", CARD_WASH)
+	var row: Array = CARDS.get(id, ["", 1.0, Vector2(0.5, 0.5)])
+	point_at(plate, row[0], row[1], row[2], tint)
+	return plate
+
+## A board's own banner vista, full-bleed behind the flat screen's top bar
+## and day card (ui/flat/flat_host.gd): the same crop as its menu card, so
+## the board opens under the picture the player just tapped. Washed toward
+## paper where the centred title stands, and faded to paper at its foot.
+static func board_plate(id: String, tint: Color) -> ColorRect:
+	var plate := _plate(0.0)
+	var mat := plate.material as ShaderMaterial
+	mat.set_shader_parameter("scrim", BOARD_SCRIM)
+	mat.set_shader_parameter("wash", BOARD_WASH)
+	mat.set_shader_parameter("fade", BOARD_FADE)
 	var row: Array = CARDS.get(id, ["", 1.0, Vector2(0.5, 0.5)])
 	point_at(plate, row[0], row[1], row[2], tint)
 	return plate
