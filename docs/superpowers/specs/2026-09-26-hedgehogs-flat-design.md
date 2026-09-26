@@ -381,7 +381,7 @@ was built: every line of `hedgehogs2d.gd`, `hedgehogs_state.gd`,
 `leaf_pile.gd` and `hedgehog_face.gd` is the plan's code as written, and the
 rendered board needed no fix against the mock, which stays the reference.
 
-**Sounds** (`tools/gen_sfx.py hedgehogs`):
+**Sounds** (`tools/gen_sfx.py hedgehogs`, generated 2026-09-26 into `assets/sfx/hedgehogs/`, one take a cue; `rake`, `flag` and `unflag` were asked at 0.5 s, the API's floor, and trimmed):
 
 | Cue | What it is |
 | --- | --- |

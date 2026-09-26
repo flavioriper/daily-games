@@ -306,10 +306,10 @@ SETS = {
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
     # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.
     "hedgehogs": {
-        "rake":     ("a short soft sweep of a rake through dry autumn leaves, cozy, very short", 0.4, -10),
+        "rake":     ("a short soft sweep of a rake through dry autumn leaves, cozy, very short", 0.5, -10),
         "gust":     ("a soft airy flurry of dry leaves blown off a lawn by a light breeze, cozy", 0.8, -9),
-        "flag":     ("a small wooden twig pushed softly into a pile of dry leaves, very short", 0.3, -10),
-        "unflag":   ("a small twig pulled out of dry leaves with a tiny rustle, very short", 0.3, -11),
+        "flag":     ("a small wooden twig pushed softly into a pile of dry leaves, very short", 0.5, -10),
+        "unflag":   ("a small twig pulled out of dry leaves with a tiny rustle, very short", 0.5, -11),
         "woke":     ("a tiny grumpy hedgehog snuffle and huff, then a soft gentle two-note downward marimba, cute, never harsh", 0.9, -9),
         "chord":    ("two quick soft rake sweeps through dry leaves, very short", 0.5, -10),
         "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),

@@ -1230,7 +1230,7 @@ pointing `seed_as` at them. Specs:
   (mid-drag, mid-settle) so it bends continuously, and on pegs it equals the
   grid trace, which alone decides the win. Its drawing is `ui/faces/sunbeam_parts.gd`,
   shared with the menu card. 65 draw calls played, 68 solved, ANGLE agreeing.
-  Sounds are prompts in `tools/gen_sfx.py`, not yet generated.
+  Sounds generated (2026-09-26), one take a cue, awaiting the user's listen.
 - **Knight is the twenty-third card** (2026-09-26, `puzzles/knight2d.gd`,
   spec `2026-09-26-knight-flat-design.md`, mock
   `docs/brainstorm/concepts.html#knight`). Hop a cream knight in Ls to take
@@ -1265,7 +1265,7 @@ pointing `seed_as` at them. Specs:
   `ui/faces/leaf_pile.gd` (shared with the tray and the card) and
   `ui/faces/hedgehog_face.gd`. 79 draw calls bare, 80 raked, 83 with one
   woken and 115 on the win wave, ANGLE agreeing.
-  Sounds are prompts in `tools/gen_sfx.py`, not yet generated.
+  Sounds generated (2026-09-26), one take a cue, awaiting the user's listen.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of
