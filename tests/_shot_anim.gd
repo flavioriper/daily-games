@@ -450,6 +450,8 @@ func _process(delta: float) -> bool:
 			_tap_planes()
 		elif _entry.id == "sunbeam" and not _empty:
 			_slide_sunbeam()
+		elif _entry.id == "knight" and not _empty:
+			_tap_knight()
 		elif _entry.id == "rings" and not _empty:
 			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
@@ -698,6 +700,34 @@ func _slide_sunbeam() -> void:
 		up.position = xf * _puzzle._pt(_puzzle._piece_mid(p, float(q)))
 		root.push_input(up, true)
 		return
+
+## Knight: the next hop of the shortest line tapped by real touch, so the
+## strip shows the arc, the landing and the rose side answering. `caught`
+## taps a square in a rose knight's reach instead, so the strip catches the
+## catch, the shake, the hold and the slide back. `solve` plays all but the
+## last hop through the state and taps the last, so the strip shows the king
+## falling.
+func _tap_knight() -> void:
+	var st = _puzzle._state
+	var target := -1
+	if _mode == "caught":
+		var reach: Dictionary = st.reach()
+		for m in st.legal():
+			if reach.has(m) and m != st.king:
+				target = m
+				break
+	elif _mode == "solve":
+		var line: PackedInt32Array = st.g.line
+		for i in line.size() - 1:
+			st.play(line[i])
+		_puzzle._snap_to_state()
+		target = line[line.size() - 1]
+	else:
+		target = st.hint_move()
+	if target < 0:
+		return
+	_puzzle._busy_until = -100.0
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(target / st.w, target % st.w))
 
 func _tap_pinwheel() -> void:
 	var st = _puzzle._state

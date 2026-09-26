@@ -140,6 +140,9 @@ func _note(id: String) -> String:
 		"sunbeam": return "%dx%d floor, %d pieces, %d drops, %d slides, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.pieces().size(),
 			_puzzle._state.drops().size(), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"knight": return "%dx%d board, %d rose knights, shortest %d, %d moves, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.w, _puzzle._state.w, _puzzle._state.foes.size(), _puzzle._state.opt(),
+			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -171,6 +174,7 @@ func _solve(id: String) -> void:
 		"pinwheel": _solve_pinwheel()
 		"caterpillar": _solve_caterpillar()
 		"sunbeam": _solve_sunbeam()
+		"knight": _solve_knight()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -422,6 +426,29 @@ func _slide_sunbeam(p: int, to: int) -> void:
 		q += step
 		pts.append(_puzzle._pt(_puzzle._piece_mid(p, float(q))))
 	_drag_path_local(pts)
+
+## Knight: one hint through the HUD, which plays the shortest line's next hop
+## for you, then the rest of the line tapped square by square by real touch.
+## The board ignores taps while its pieces travel, and this drives input
+## synchronously, so each tap first clears that wait.
+func _solve_knight() -> void:
+	var st = _puzzle._state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.w:
+		for c in st.w:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and st.history.size() == 1
+	for i in 64:
+		if st.is_solved():
+			break
+		var m: int = st.hint_move()
+		if m < 0:
+			break
+		_puzzle._busy_until = -100.0
+		_tap_local(_puzzle.cell_to_local(m / st.w, m % st.w))
 
 func _solve_pinwheel() -> void:
 	var st = _puzzle._state
