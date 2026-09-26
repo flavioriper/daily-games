@@ -614,3 +614,49 @@ register: named and left standing, not silently fixed in place.
   `disable_tap()`). Nothing was ported. One behaviour differs and `main`'s
   is better: this branch reset to page one on every return from a board,
   `main` keeps the page you were on.
+
+## 16. The polish, 2026-09-25
+
+The flat grid read as a spreadsheet: a heavy ink rule over white cells, square
+washes and digits that simply appeared. The pass puts it in the family's
+language (Hidden Word's beds, Word Trail's glint, Mushroom Patch's win light)
+without a single extra draw call -- all of it is still the one grid mesh and
+the numerals over it.
+
+- **A wooden tray, and each region a paper panel laid in it.** The heavy
+  rule is no longer a stroke: it is the tray's floor, `FLOOR_DARKEN` under
+  its face, showing in an 8-wide `GUTTER` between panels (the rule was 6; a
+  groove reads narrower than an ink line of the same width). The tray runs
+  `FRAME` 15 round the grid over a `WOOD_DEEP` lip, lit along its top edge,
+  and still fits the 22 of hem. Panels keep the region chequer, are toned a
+  hair apart, stand `PANEL_LIP` proud of the floor and round their corners;
+  the thin rules run inside each panel and never cross a gutter. Cell
+  geometry and input are unchanged.
+- **Washes are rounded tiles**, `WASH_INSET` in from the cell, so a lit row
+  or a wave reads as tiles catching the light.
+- **A twin is a sun coin under its digit** (`TWIN_R`), not a square: the eye
+  is scanning for digits, so the mark sits on the digit.
+- **The selected cell is a lifted tile**: a soft shadow on its panel, a lip
+  in the sun's deep, a face washed as the cell is (gold, or rose while it
+  clashes or Check points at it), the gold rim, and its digit raised
+  `SEL_LIFT` with it. It still takes the cell's shiver and bump.
+- **A written digit lands.** Its shadow gathers under it as it falls, it
+  squashes wide and low on touching down (`LAND_AT`, where `back_out` first
+  reaches the rest), and a ring of its own ink spreads from it -- rose if it
+  landed in a clash. `_drop` joined `_mesh_moving` for the shadow and ring.
+- **The wave hops every digit it reaches** (`WAVE_HOP`), row, column, region
+  and the solve's diagonal alike, over the gold it already washed.
+- **The givens drop in with their region** on the entrance (`ENTER_DROP`) as
+  they fade.
+- **The win warms the tray** toward `SUN_RAY` and it stays warm -- a reopened
+  solved daily shows the gold tray -- and a glint runs once round it,
+  clockwise from the top left, over `GLINT_TIME`. One soft disc peaks only at
+  its centre and read as nothing on a frame this narrow, so the glint is a
+  wide light with a hot core.
+
+Measured with `tests/_shot_anim.gd -- sudoku d=2` at `--resolution 810x1440`:
+**84** draw calls played (84 before), **52** on the settled win, reduce motion
+pixel-identical 1.5 s apart, ANGLE within 1/255 on the board. Suite
+122583/0, win harness 21/21. The harness gained a sudoku `solve` timing and
+its taps now read the grid's size, so `d=0` and `d=1` (the six-by-six mini)
+can be shot played -- they indexed a nine-by-nine and errored before.

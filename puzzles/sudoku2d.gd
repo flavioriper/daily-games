@@ -38,6 +38,7 @@ const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 ## The grid is nine cells of 100 -- 900 -- and not the 104.9 the card's 28
 ## inset would allow, because the heavy rule is drawn ROUND the grid and the
@@ -53,10 +54,9 @@ const GRID := 900.0
 const HEM := 22.0
 const CARD_INSET := 28.0
 const PAD := HEM + CARD_INSET
-const RULE_W := 6.0
 const THIN_W := 2.0
 const THIN_ALPHA := 0.8
-## The heavy rule's corner radius where it runs round the grid.
+## The tray's corner radius, less half its FRAME.
 const CORNER := 14.0
 ## The selected cell's gold edge: inset from the cell's own square so the
 ## rule beside it still reads, and rounded to match the frame.
@@ -72,7 +72,6 @@ const RING_R := 0.4
 
 ## The washes, by what they mean (spec section 10). All derived; none stored.
 const WASH_SELECTED := 0.34
-const WASH_TWIN := 0.20
 const WASH_PEER := 0.08
 const WASH_CLASH := 0.18
 const WASH_WRONG := 0.22
@@ -89,6 +88,58 @@ const WASH_FLASH := 0.55
 ## core/motion.gd, read as a curve (rule 8 of docs/art/flat-motion.md).
 const WAVE_FLASH := 0.5
 const WIN_WAIT := 1.4
+
+# --- the polish (2026-09-25; the spec's section 16) ---
+## The grid is a wooden tray and each region a paper panel laid in it: the
+## heavy rule is the tray's own floor showing in the GUTTER between panels,
+## not a stroke drawn over the paper; 8 where the rule was 6, because a groove
+## reads narrower than an ink line of the same width. The
+## tray's face runs FRAME of a 100 cell round the grid over a WOOD_DEEP lip
+## TRAY_LIP deep; its floor is the tray's wood FLOOR_DARKEN darker, so the
+## gutters read as grooves; a panel stands PANEL_LIP proud of it.
+const GUTTER := 8.0
+const FRAME := 15.0
+const TRAY_LIP := 4.0
+const FLOOR_DARKEN := 0.22
+const PANEL_R := 7.0
+const PANEL_LIP := 2.0
+const PANEL_TONE := 0.012
+const TRAY_SHINE := 0.35
+## A cell's wash is a rounded square WASH_INSET in from the cell, so a lit
+## row reads as tiles catching the light rather than a spreadsheet fill.
+const WASH_INSET := 3.0
+const WASH_R := 9.0
+## The selected cell is a paper tile lifted SEL_LIFT off its panel over a soft
+## shadow, rimmed in the sun; its digit rises with it.
+const SEL_LIFT := 6.0
+const SEL_SHADOW_A := 0.22
+## A twin is a sun coin under the digit, TWIN_R of a cell, and not a square:
+## the eye is scanning for digits, so the mark sits on the digit.
+const TWIN_R := 0.36
+const WASH_TWIN_COIN := 0.3
+## A written digit lands: its shadow gathers under it as it falls, it squashes
+## SQUASH on touching down (LAND_AT into the drop, where back_out first
+## reaches the rest) over SQUASH_TIME, and a ring of its own ink RIPPLE_A
+## strong spreads from RIPPLE_FROM to RIPPLE_TO of a cell over RIPPLE_TIME.
+const LAND_AT := 0.37 * Motion.DROP_TIME
+const SQUASH := 0.14
+const SQUASH_TIME := 0.16
+const RIPPLE_TIME := 0.4
+const RIPPLE_FROM := 0.24
+const RIPPLE_TO := 0.47
+const RIPPLE_A := 0.45
+const FALL_SHADOW_A := 0.16
+## The givens drop ENTER_DROP in with their region as they fade in.
+const ENTER_DROP := 14.0
+## The wave hops each digit it reaches, WAVE_HOP at a 100 cell.
+const WAVE_HOP := -9.0
+## On the win the tray warms toward SUN_RAY by WIN_GLOW and stays warm, and a
+## glint GLINT_TIME long runs once round it, clockwise from the top left.
+const WIN_GLOW := 0.4
+const GLOW_TIME := 0.35
+const GLINT_TIME := 1.1
+const GLINT_LEN := 110.0
+const GLINT_A := 1.0
 
 ## How long a refusal holds the tip card before the cycling rules resume.
 const SAY_HOLD := 2.2
@@ -148,6 +199,9 @@ var _cell := 0.0
 var _grid := Vector2.ZERO
 
 var _opened := -1.0e9
+## When the board was solved, for the tray's glow and glint; far past on a
+## board not solved.
+var _won_at := -1.0e9
 var _anim_until := 0.0
 var _dirty := true
 var _grid_mesh: ArrayMesh
@@ -198,6 +252,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_shiver = {}
 	_leaving = []
 	_fx_due = []
+	_won_at = -1.0e9
 	_layout()
 	_tip_idx = 0
 	_hold_until = 0.0
@@ -294,20 +349,28 @@ func _moving(now: float) -> bool:
 		return true
 	return _live(_flash, now, WAVE_FLASH) \
 		or _live(_bump, now, Motion.BUMP_TIME) \
-		or _live(_drop, now, Motion.DROP_TIME) \
-		or _live(_shiver, now, Motion.SHIVER_TIME)
+		or _live(_drop, now, LAND_AT + RIPPLE_TIME) \
+		or _live(_shiver, now, Motion.SHIVER_TIME) \
+		or _winning(now)
 
 ## True while anything the **mesh** draws is moving. Deliberately narrower
 ## than `_moving`: the entrance is one transform laid over the finished mesh
 ## and a fade that lives entirely in the numerals, so for its whole 0.84 s
 ## not one vertex of the grid changes, and rebuilding eighty-one cells sixty
-## times over would buy exactly nothing. `_drop` is out for the same reason,
-## a falling digit being a numeral and not a cell, and `_anim_until` is out
-## because every wave it is ever set for has its own book listed here.
+## times over would buy exactly nothing. `_drop` is in since the polish,
+## because a falling digit's shadow and its landing ring are the mesh's;
+## `_anim_until` is out because every wave it is ever set for has its own
+## book listed here.
 func _mesh_moving(now: float) -> bool:
 	return _live(_flash, now, WAVE_FLASH) \
 		or _live(_bump, now, Motion.BUMP_TIME) \
-		or _live(_shiver, now, Motion.SHIVER_TIME)
+		or _live(_drop, now, LAND_AT + RIPPLE_TIME) \
+		or _live(_shiver, now, Motion.SHIVER_TIME) \
+		or _winning(now)
+
+## True while the win's glow is rising or its glint is going round the tray.
+func _winning(now: float) -> bool:
+	return not Motion.reduce and now < _won_at + Motion.SOLVE_DELAY + maxf(GLOW_TIME, GLINT_TIME)
 
 static func _live(book: Dictionary, now: float, span: float) -> bool:
 	for at in book.values():
@@ -351,10 +414,11 @@ func _draw() -> void:
 		draw_mesh(_shown, null, Transform2D(0.0, Vector2.ONE * pop, 0.0, centre * (1.0 - pop)))
 	_draw_numerals(now, pop, centre)
 
-## Everything but the numerals, in the order section 10's table is written:
-## the region chequer, the selection's washes over it, the wave's gold over
-## those, then the thin rules between cells, the heavy rules between regions
-## and round the grid, and last the selected cell's own gold edge.
+## Everything but the numerals: the wooden tray and its floor, the region
+## panels laid in it, the thin rules inside each panel, the washes, the wave's
+## gold, a falling digit's shadow and its landing ring, and last the selected
+## cell's lifted tile. The heavy rule is no longer a stroke: it is the tray's
+## floor showing between the panels (section 16).
 func _build_grid(now: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var k := _scale()
@@ -369,58 +433,194 @@ func _build_grid(now: float) -> ArrayMesh:
 		for j in state.twins(_sel):
 			twins[j] = true
 	var clash: Dictionary = _clash
+	_tray(b, now, field, k)
+	_panels(b, k)
 	for i in Gen.CELLS:
-		var at := _corner_of(i)
-		var region_shaded := ((Gen.row_of(i) / Gen.BOX_R) + (Gen.col_of(i) / Gen.BOX_C)) % 2 == 1
-		b.fan(_square(at, _cell), Pal.GRID_TINT if region_shaded else Pal.SURFACE)
-		var wash := _wash_of(i, peers, twins, clash)
-		var lit := _flash_level(now, i)
-		if wash.a <= 0.0 and lit <= 0.0:
+		if i == _sel:
 			continue
-		# The cell's own layers ride the cell's own motion; see _cell_quad.
-		var quad := _cell_quad(i, _cell_shift(now, i), _cell_grow(now, i))
+		var grow := _cell_grow(now, i)
+		var shift := _cell_shift(now, i)
+		var wash := _wash_of(i, peers, twins, clash)
 		if wash.a > 0.0:
-			b.fan(quad, wash)
+			b.fan(_wash_quad(i, shift, grow), wash)
+		elif twins.has(i):
+			var mid := cell_to_local(Gen.row_of(i), Gen.col_of(i)) + Vector2(shift, 0.0)
+			b.disc(mid, _cell * TWIN_R * grow, Color(Pal.SUN, WASH_TWIN_COIN))
+		var lit := _flash_level(now, i)
 		if lit > 0.0:
-			b.fan(quad, Color(Pal.SUN_RAY, WASH_FLASH * lit))
-	# The thin rule between two cells of one region, and the heavy one
-	# between two regions. Flat-ended: a round cap would bulge past the
-	# frame the heavy rule draws round the whole grid.
-	var thin := Color(Pal.LINE, THIN_ALPHA)
-	# A region is BOX_R tall and BOX_C wide -- two by three on the mini --
-	# so the heavy rules fall on different steps down and across.
-	for step in range(1, Gen.N):
-		var d: float = step * _cell
-		var across := step % Gen.BOX_C == 0
-		b.stroke(PackedVector2Array([_grid + Vector2(d, 0.0), _grid + Vector2(d, field)]),
-			(RULE_W if across else THIN_W) * k, Pal.GRID_RULE if across else thin, false, false)
-		var down := step % Gen.BOX_R == 0
-		b.stroke(PackedVector2Array([_grid + Vector2(0.0, d), _grid + Vector2(field, d)]),
-			(RULE_W if down else THIN_W) * k, Pal.GRID_RULE if down else thin, false, false)
-	# The frame: the heavy rule run round the grid, its centreline pushed out
-	# by half its width so its inner edge lands on the grid's own edge. This
-	# is the mock's wooden frame, which a flat board draws rather than builds.
-	var half := RULE_W * k * 0.5
-	b.stroke(Face.Builder.round_rect(_grid - Vector2.ONE * half,
-		Vector2.ONE * (field + RULE_W * k), CORNER * k), RULE_W * k, Pal.GRID_RULE, true)
+			b.fan(_wash_quad(i, shift, grow), Color(Pal.SUN_RAY, WASH_FLASH * lit))
+	_landings(b, now, k)
 	if _sel >= 0:
-		# The gold edge is the clearest thing on the cell, so it is the thing
-		# that has to shake when the cell is refused: it takes the same shift
-		# and the same swell as the washes under it.
-		var grow := _cell_grow(now, _sel)
-		var inset := EDGE_INSET * k
-		var side := (_cell - 2.0 * inset) * grow
-		var mid := _corner_of(_sel) + Vector2.ONE * (_cell * 0.5) \
-			+ Vector2(_cell_shift(now, _sel), 0.0)
-		b.stroke(Face.Builder.round_rect(mid - Vector2.ONE * (side * 0.5),
-			Vector2.ONE * side, EDGE_RADIUS * k * grow), EDGE_W * k * grow, Pal.SUN, true)
+		_selected_tile(b, now, k, _wash_of(_sel, peers, twins, clash))
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
 
-## A cell's square from its top-left corner.
-static func _square(at: Vector2, s: float) -> PackedVector2Array:
-	return PackedVector2Array([at, at + Vector2(s, 0.0), at + Vector2.ONE * s, at + Vector2(0.0, s)])
+## The tray: a WOOD_DEEP lip under a face in the rule's own wood, lit along
+## its top edge, and inside it the floor the panels stand on, darker so the
+## gutters between them read as grooves. On the win the wood warms toward the
+## sun and a glint runs once round it.
+func _tray(b: Face.Builder, now: float, field: float, k: float) -> void:
+	var f := FRAME * k
+	var outer := _grid - Vector2.ONE * f
+	var side := Vector2.ONE * (field + 2.0 * f)
+	var r := (CORNER + FRAME * 0.5) * k
+	var glow := _glow(now)
+	var face: Color = Pal.GRID_RULE.lerp(Pal.SUN_RAY, WIN_GLOW * glow)
+	var lip: Color = Pal.WOOD_DEEP.lerp(Pal.SUN, WIN_GLOW * glow * 0.5)
+	b.fan(Face.Builder.round_rect(outer + Vector2(0.0, TRAY_LIP * k), side, r), lip)
+	b.fan(Face.Builder.round_rect(outer, side, r), face)
+	var shine: Color = face.lerp(Pal.SURFACE, TRAY_SHINE)
+	b.stroke(PackedVector2Array([outer + Vector2(r, 2.0 * k), outer + Vector2(side.x - r, 2.0 * k)]),
+		2.5 * k, Color(shine, 0.8), false, true)
+	_glint(b, now, field, k)
+	var floor_col: Color = face.darkened(FLOOR_DARKEN)
+	b.fan(Face.Builder.round_rect(_grid - Vector2.ONE * k, Vector2.ONE * (field + 2.0 * k),
+		PANEL_R * k), floor_col)
+
+## How warm the tray is: nothing before the win, rising over GLOW_TIME once
+## the solve's wave has started, and full for good after. Under reduce motion
+## it is simply full, which is a state and not a motion.
+func _glow(now: float) -> float:
+	var since := now - _won_at - Motion.SOLVE_DELAY
+	if since < -1.0e8:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	return clampf(since / GLOW_TIME, 0.0, 1.0)
+
+## The win's glint: a soft light GLINT_LEN long riding the tray's midline once
+## round, clockwise from the top left, easing in and out of its lap.
+func _glint(b: Face.Builder, now: float, field: float, k: float) -> void:
+	if Motion.reduce:
+		return
+	var since := now - _won_at - Motion.SOLVE_DELAY
+	if since <= 0.0 or since >= GLINT_TIME:
+		return
+	var u := since / GLINT_TIME
+	var a := GLINT_A * sin(PI * u)
+	var half := FRAME * k * 0.5
+	var lo := _grid - Vector2.ONE * half
+	var edge := field + 2.0 * half
+	# Where on the lap u = 0..1 is, eased so the light gathers and settles.
+	var d := (0.5 - 0.5 * cos(PI * u)) * edge * 4.0
+	var at: Vector2
+	var along := true
+	if d < edge:
+		at = lo + Vector2(d, 0.0)
+	elif d < edge * 2.0:
+		at = lo + Vector2(edge, d - edge)
+		along = false
+	elif d < edge * 3.0:
+		at = lo + Vector2(edge * 3.0 - d, edge)
+	else:
+		at = lo + Vector2(0.0, edge * 4.0 - d)
+		along = false
+	# A wide soft light and a hot core inside it: one soft disc alone peaks
+	# only at its very centre, and on a frame this narrow that read as nothing.
+	for layer in [[1.0, 0.7], [0.45, 1.0]]:
+		var long: float = GLINT_LEN * k * 0.5 * layer[0]
+		var short: float = FRAME * k * 0.75 * layer[0]
+		Scenery.soft_disc(b, at, long if along else short, short if along else long,
+			Color(Pal.SURFACE, a * float(layer[1])))
+
+## The region panels: paper laid in the tray a half gutter in from the
+## region's edges, each over a lip PANEL_LIP proud of the floor, the chequer
+## kept and every panel toned a hair off its neighbour's so they read as
+## laid by hand. The thin rules between the cells of a panel run inside it
+## and stop short of its rounded corners, so none crosses a gutter.
+func _panels(b: Face.Builder, k: float) -> void:
+	var g := GUTTER * k * 0.5
+	var r := PANEL_R * k
+	var thin := Color(Pal.LINE, THIN_ALPHA)
+	var size := Vector2(Gen.BOX_C, Gen.BOX_R) * _cell
+	for br in Gen.N / Gen.BOX_R:
+		for bc in Gen.N / Gen.BOX_C:
+			var at := _grid + Vector2(bc, br) * size
+			var shaded := (br + bc) % 2 == 1
+			var paper: Color = Pal.GRID_TINT if shaded else Pal.SURFACE
+			var tone := _hash(br, bc) * 2.0 - 1.0
+			paper = paper.lightened(tone * PANEL_TONE) if tone > 0.0 else paper.darkened(-tone * PANEL_TONE)
+			var lip: Color = paper.lerp(Pal.GRID_RULE, 0.45)
+			var inner := size - Vector2.ONE * (2.0 * g)
+			b.fan(Face.Builder.round_rect(at + Vector2(g, g + PANEL_LIP * k), inner, r), lip)
+			b.fan(Face.Builder.round_rect(at + Vector2.ONE * g, inner, r), paper)
+			for c in range(1, Gen.BOX_C):
+				var x := at.x + c * _cell
+				b.stroke(PackedVector2Array([Vector2(x, at.y + g + r * 0.5),
+					Vector2(x, at.y + size.y - g - r * 0.5)]), THIN_W * k, thin, false, false)
+			for rr in range(1, Gen.BOX_R):
+				var y := at.y + rr * _cell
+				b.stroke(PackedVector2Array([Vector2(at.x + g + r * 0.5, y),
+					Vector2(at.x + size.x - g - r * 0.5, y)]), THIN_W * k, thin, false, false)
+
+## `i`'s wash: a rounded square WASH_INSET in from its cell under the cell's
+## own shiver and bump.
+##
+## **The cell moves, not only its numeral.** A refused tap once shook a digit
+## inside a square that never budged, and a cell whose digit had just been
+## taken out bumped with nothing on it to see. What moves is everything that
+## is *this cell* rather than the board: its washes, the wave's gold, its
+## twin coin and the selected tile -- tents2d.gd's rule 9, a piece with no
+## skin of its own blushing through its cell, applied to motion. The panels
+## and the rules between the cells do **not** move: they are the paper the
+## grid is ruled on, and a rule that shivered with one cell would tear it.
+func _wash_quad(i: int, shift: float, grow: float) -> PackedVector2Array:
+	var k := _scale()
+	var inset := WASH_INSET * k
+	var side := (_cell - 2.0 * inset) * grow
+	var mid := _corner_of(i) + Vector2(_cell * 0.5 + shift, _cell * 0.5)
+	return Face.Builder.round_rect(mid - Vector2.ONE * (side * 0.5), Vector2.ONE * side, WASH_R * k * grow)
+
+## A falling digit's shadow gathering under it, and its ring of ink spreading
+## once it has touched down.
+func _landings(b: Face.Builder, now: float, k: float) -> void:
+	if Motion.reduce:
+		return
+	for i in _drop:
+		var fell := now - float(_drop[i])
+		if fell < 0.0 or fell >= LAND_AT + RIPPLE_TIME or state.grid[i] == 0:
+			continue
+		var mid := cell_to_local(Gen.row_of(i), Gen.col_of(i)) + Vector2(_cell_shift(now, i), 0.0)
+		var height := Motion.DROP * k
+		var lift := Motion.drop_in_lift(fell, height)
+		if lift > 0.5:
+			var far := clampf(lift / height, 0.0, 1.0)
+			Scenery.soft_disc(b, mid + Vector2(0.0, _cell * 0.3), _cell * 0.26 * (1.0 - 0.35 * far),
+				_cell * 0.07, Color(Pal.TEXT, FALL_SHADOW_A * (1.0 - 0.6 * far) * Motion.appear_level(fell)))
+		var since := fell - LAND_AT
+		if since > 0.0:
+			var u := since / RIPPLE_TIME
+			var ease := 1.0 - (1.0 - u) * (1.0 - u)
+			var rad := _cell * lerpf(RIPPLE_FROM, RIPPLE_TO, ease)
+			b.stroke(Face.Builder.ring(mid, rad, rad), 3.0 * k * (1.0 - u) + 0.5,
+				Color(_digit_ink(i), RIPPLE_A * (1.0 - u)), true)
+
+## The selected cell as a paper tile lifted off its panel: a soft shadow on
+## the panel, a lip in the sun's deep, a face washed as the cell is (gold, or
+## rose while it clashes), and the gold rim. It takes the cell's shiver and
+## bump, so a refusal still shakes the clearest thing on the cell.
+func _selected_tile(b: Face.Builder, now: float, k: float, wash: Color) -> void:
+	var grow := _cell_grow(now, _sel)
+	var inset := EDGE_INSET * k
+	var side := (_cell - 2.0 * inset) * grow
+	var mid := _corner_of(_sel) + Vector2.ONE * (_cell * 0.5) + Vector2(_cell_shift(now, _sel), 0.0)
+	Scenery.soft_disc(b, mid + Vector2(0.0, _cell * 0.34), side * 0.56, _cell * 0.16,
+		Color(Pal.TEXT, SEL_SHADOW_A))
+	var top := mid - Vector2(side * 0.5, side * 0.5 + SEL_LIFT * k)
+	var r := EDGE_RADIUS * k * grow
+	b.fan(Face.Builder.round_rect(top + Vector2(0.0, SEL_LIFT * k), Vector2.ONE * side, r),
+		Pal.SUN.darkened(0.12))
+	b.fan(Face.Builder.round_rect(top, Vector2.ONE * side, r), Pal.SURFACE.lerp(Color(wash, 1.0), wash.a))
+	var lit := _flash_level(now, _sel)
+	if lit > 0.0:
+		b.fan(Face.Builder.round_rect(top, Vector2.ONE * side, r), Color(Pal.SUN_RAY, WASH_FLASH * lit))
+	var w := EDGE_W * k * grow
+	b.stroke(Face.Builder.round_rect(top + Vector2.ONE * (w * 0.5), Vector2.ONE * (side - w),
+		maxf(r - w * 0.5, 0.0)), w, Pal.SUN, true)
+
+static func _hash(a: int, c: int) -> float:
+	return float(posmod(hash(Vector2i(a, c)), 1000)) / 1000.0
 
 ## How far `i` is shoved sideways this frame: the refusal's and the Check's
 ## shiver, read off the family's curve at the cell's own scale.
@@ -431,29 +631,6 @@ func _cell_shift(now: float, i: int) -> float:
 ## a hint, Reset's wave and the solve's wave all stamp.
 func _cell_grow(now: float, i: int) -> float:
 	return Motion.bump_scale(now - float(_bump.get(i, -1.0e9)))
-
-## `i`'s square under whatever the cell is doing: the shiver along x, and the
-## bump about the square's own centre.
-##
-## **The cell moves, not only its numeral.** `_shiver` used to be read by
-## `_draw_numerals` alone, so a refused tap shook a digit inside a square
-## that never budged -- and a cell whose digit had just been taken out, or
-## that Reset had just emptied, bumped with nothing on it to see. What moves
-## instead is everything that is *this cell* rather than the board: its
-## washes, the wave's gold and, below, the selected cell's gold edge. That is
-## tents2d.gd's rule 9 -- a piece with no skin of its own blushing through
-## its cell -- applied to motion instead of colour.
-##
-## What does **not** move is the region chequer under it and the rules
-## between the cells. They are the paper the grid is ruled on, not the cell;
-## a chequer that slid would open a seam of bare card at its edge, and a rule
-## that shivered with one cell would tear the grid in two.
-func _cell_quad(i: int, shift: float, grow: float) -> PackedVector2Array:
-	var at := _corner_of(i) + Vector2(shift, 0.0)
-	if is_equal_approx(grow, 1.0):
-		return _square(at, _cell)
-	var half := _cell * 0.5
-	return _square(at + Vector2.ONE * (half - half * grow), _cell * grow)
 
 ## What `i` is washed with: what the last Check found and any clash first,
 ## then the selection, then its twins -- the most useful scan in sudoku, and
@@ -473,7 +650,7 @@ func _wash_of(i: int, peers: Dictionary, twins: Dictionary, clash: Dictionary) -
 	if i == _sel:
 		return Color(Pal.SUN, WASH_SELECTED)
 	if twins.has(i):
-		return Color(Pal.SUN, WASH_TWIN)
+		return Color(1.0, 1.0, 1.0, 0.0)
 	if peers.has(i):
 		return Color(Pal.SUN, WASH_PEER)
 	return Color(1.0, 1.0, 1.0, 0.0)
@@ -508,13 +685,14 @@ func _draw_numerals(now: float, pop: float, centre: Vector2) -> void:
 			continue
 		var at := cell_to_local(Gen.row_of(i), Gen.col_of(i))
 		at.x += _cell_shift(now, i)
+		at.y += _numeral_rise(now, i, k)
 		var grow := _cell_grow(now, i)
 		var d: int = state.grid[i]
 		if d > 0:
 			var fell := now - float(_drop.get(i, -1.0e9))
 			at.y -= Motion.drop_in_lift(fell, Motion.DROP * k)
 			var alpha := seen * (Motion.appear_level(fell) if _drop.has(i) else 1.0)
-			_seat(at, centre, pop, grow)
+			_seat(at, centre, pop, grow, _squash(fell))
 			_numeral(digit_font, digit_px, digit_rise, str(d), Vector2.ZERO,
 				Color(_digit_ink(i), alpha))
 		elif state.notes[i] != 0:
@@ -580,8 +758,30 @@ func _note_spot(n: int) -> Vector2:
 ## Puts the canvas at `at` under the entrance's pop about `centre`, scaled by
 ## the cell's own bump: one transform, so a numeral never drifts off the cell
 ## the mesh drew under it.
-func _seat(at: Vector2, centre: Vector2, pop: float, grow: float) -> void:
-	draw_set_transform(centre + (at - centre) * pop, 0.0, Vector2.ONE * (pop * grow))
+func _seat(at: Vector2, centre: Vector2, pop: float, grow: float, squash := Vector2.ONE) -> void:
+	draw_set_transform(centre + (at - centre) * pop, 0.0, squash * (pop * grow))
+
+## How far `i`'s numeral stands off its cell, negative up: raised with the
+## selected tile, hopped by the wave as it passes, and a given dropping in
+## with its region on the entrance.
+func _numeral_rise(now: float, i: int, k: float) -> float:
+	var y := 0.0
+	if i == _sel:
+		y -= SEL_LIFT * k
+	if _flash.has(i):
+		y += Motion.hop_lift(now - float(_flash[i]), WAVE_HOP * k)
+	if state.is_given(i):
+		y -= Motion.drop_in_lift(now - _opened - _enter_delay(i), ENTER_DROP * k)
+	return y
+
+## A written digit's squash as it touches down, `fell` into its drop: wide
+## and low for SQUASH_TIME, then round again.
+func _squash(fell: float) -> Vector2:
+	var since := fell - LAND_AT
+	if Motion.reduce or since <= 0.0 or since >= SQUASH_TIME:
+		return Vector2.ONE
+	var s := SQUASH * sin(PI * since / SQUASH_TIME)
+	return Vector2(1.0 + s, 1.0 - s)
 
 ## How much of `i`'s numeral is on screen. A given fades in with its region,
 ## ENTER_STAGGER apart, so the board assembles as three by three and not as
@@ -933,6 +1133,7 @@ func reset_board() -> void:
 func _on_solved() -> void:
 	var now := _now()
 	_tip_timer.stop()
+	_won_at = now
 	_sel = -1
 	_wrong = {}
 	_say(tr("SD_WIN"), Face.Expr.JOY)
@@ -982,6 +1183,7 @@ func restore_completed_board() -> void:
 	# The entrance long over, so the grid is at full size and every given
 	# fully inked.
 	_opened = now - 10.0
+	_won_at = now - 10.0
 	_anim_until = 0.0
 	_say(tr("SD_WIN"), Face.Expr.JOY)
 	_redraw()

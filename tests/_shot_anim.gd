@@ -307,6 +307,13 @@ func _initialize() -> void:
 		_shots = [0.35, 1.62, 1.72, 2.1, 2.45, 2.8, 3.8]
 		_idle_from = 4.0
 		_idle_to = 6.0
+	if _id == "sudoku" and _mode == "solve":
+		# The answer goes in at TAP_AT, so the strip catches the diagonal
+		# wave hopping the digits, the tray warming, the glint part-way and
+		# most of the way round it, and the board settled under the win.
+		_shots = [0.35, 1.75, 1.95, 2.25, 2.6, 2.9, 3.8]
+		_idle_from = 4.0
+		_idle_to = 6.0
 	if _id == "rings" and _mode == "win":
 		# The drop lands about 0.74 s after the id opens (TAP_AT plus the
 		# drop delay plus the flight), the wash runs another 0.18 s and the
@@ -748,8 +755,10 @@ func _tap_rings_station(i: int) -> void:
 ## is the frame to compare a lone placement against.
 func _tap_sudoku() -> void:
 	var p = _puzzle
+	# Six on the mini (easy and medium), nine on hard.
+	var n := int(round(sqrt(float(p.state.grid.size()))))
 	if _mode == "tap":
-		for i in 81:
+		for i in n * n:
 			if p.state.grid[i] == 0:
 				_write_sudoku(i)
 				return
@@ -757,20 +766,20 @@ func _tap_sudoku() -> void:
 	if _mode == "refuse":
 		# A given, then a chip: the one refusal the grid can hand out, and
 		# the frame that shows the cell shivering rather than its digit.
-		for i in 81:
+		for i in n * n:
 			if p.state.given[i] != 0:
-				_tap_global(p.get_global_transform_with_canvas() * p.cell_to_local(i / 9, i % 9))
+				_tap_global(p.get_global_transform_with_canvas() * p.cell_to_local(i / n, i % n))
 				_tap_key("Digit0")
 				return
 		return
 	if _mode == "check":
 		# Two digits that are not the answer, then the real Check button.
 		var written := 0
-		for i in 81:
+		for i in n * n:
 			if p.state.grid[i] != 0:
 				continue
-			_tap_global(p.get_global_transform_with_canvas() * p.cell_to_local(i / 9, i % 9))
-			_tap_key("Digit%d" % (int(p.state.sol[i]) % 9))
+			_tap_global(p.get_global_transform_with_canvas() * p.cell_to_local(i / n, i % n))
+			_tap_key("Digit%d" % (int(p.state.sol[i]) % n))
 			written += 1
 			if written == 2:
 				break
@@ -785,7 +794,7 @@ func _tap_sudoku() -> void:
 		# Eight rows written, so the wave from the far corner has the whole
 		# board to cross, and Reset a beat later so the strip catches the
 		# digits going out.
-		for i in 72:
+		for i in n * (n - 1):
 			if p.state.grid[i] == 0:
 				_write_sudoku(i)
 		_reset_at = _t + RESET_AFTER
@@ -793,7 +802,7 @@ func _tap_sudoku() -> void:
 	if _mode == "solve":
 		# The whole answer through the real pad, the way tests/_win.gd writes
 		# it, so the strip catches the diagonal wave off the last digit.
-		for i in 81:
+		for i in n * n:
 			if p.is_done():
 				return
 			var d: int = p.state.sol[i]
@@ -804,16 +813,16 @@ func _tap_sudoku() -> void:
 	# The row with the fewest holes: filling it is one wave and few taps.
 	var row := 0
 	var fewest := 99
-	for r in 9:
+	for r in n:
 		var holes := 0
-		for c in 9:
-			if p.state.grid[r * 9 + c] == 0:
+		for c in n:
+			if p.state.grid[r * n + c] == 0:
 				holes += 1
 		if holes > 0 and holes < fewest:
 			fewest = holes
 			row = r
-	for c in 9:
-		var i: int = row * 9 + c
+	for c in n:
+		var i: int = row * n + c
 		if p.state.grid[i] != 0:
 			continue
 		_write_sudoku(i)
@@ -821,7 +830,8 @@ func _tap_sudoku() -> void:
 ## One cell selected and its answer written, both through real touches: the
 ## pair of taps is the only way anything gets into this grid.
 func _write_sudoku(i: int) -> void:
-	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(i / 9, i % 9))
+	var n := int(round(sqrt(float(_puzzle.state.grid.size()))))
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(i / n, i % n))
 	_tap_key("Digit%d" % (int(_puzzle.state.sol[i]) - 1))
 
 ## Fairy Lights: one real touch on a dark cell beside the live run, turning
