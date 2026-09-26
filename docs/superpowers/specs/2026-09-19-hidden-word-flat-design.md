@@ -464,3 +464,50 @@ tap. The settings sheet has no rules entry either. This is not something to
 fix by inventing a second door on this board alone: whether and how the tip
 card is replaced is a decision across all eleven flat boards, since it is
 being retired everywhere, and it belongs to the user. Left open until then.
+
+## 14. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of the other flat boards the same evening,
+and this amendment is the record. The rules, the layout, the keyboard, the
+toast, the hint, the reveal and the flip's own timing are unchanged.
+
+**An empty cell is a bed sunk into the card** (`BED`, `BED_SHADE`,
+`BED_LIP`): a floor a few points under the parchment with a shadow lip along
+its top. It used to be a pale raised card, which on parchment read as almost
+nothing and looked the same as a cell holding a letter. **A typed letter
+stands on a paper piece** raised out of its bed, with a lit rim round a crown
+a shade toward `SURFACE_HI`, and it pops into the bed. The flip turns that
+paper piece over into the mark, so the front of the tile is what was typed.
+
+**The row being typed is lit** `ROW_LIT` toward the sun, and **the bed the
+next letter goes into wears a sun caret** (`CARET`). Neither shows once the
+board is solved or spent. Both are static, so an idle board costs nothing.
+
+**A committed tile is bevelled and toned** like Nonogram's: the rim is the
+face `RIM_LIGHT` toward `SURFACE` and the crown sits `BEVEL` down and in from
+it. Each tile's face moves up to `TONE` lighter or darker off its cell's
+hash, so the rows read as laid by hand.
+
+**The flip lifts the tile off the card.** At edge-on it has grown
+`FLIP_SWELL` and risen `FLIP_RISE` of a cell over a soft shadow (drawn into
+the grid mesh with `Scenery.soft_disc`). It lands with a `LAND_BUMP` bump off
+`Motion.bump_scale`, and its letter rides the same pose. A squash in place
+read as a tile folding, not turning.
+
+**The right letters catch the light.** Once a row is face-up, a glint runs
+across its green tiles (`GLINT_*`, toward `SURFACE` by `SHINE`). On the
+winning row all five are green, so the glint crosses the whole word while it
+hops. That is the win light. A restored board has no moment and never glints.
+`SHINE` was 0.45 first, and at that the paper letters washed out at the
+glint's peak.
+
+Under reduce motion nothing moves: no lift, no bump, no glint.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- hiddenword`: **110-111** draw calls with a row
+committed (110-111 before), 111 with a hint, 112 with the toast, 113 on the
+solve and 55 in the losing reveal. Everything new goes into the existing grid
+mesh. The reduce-motion pair 1.5 s apart is pixel-identical, and under reduce
+motion ANGLE matches the default driver to a max channel delta of 1/255 on
+the same 110 calls. Suite 122583/0; `tests/_win.gd` windowed 21/21.

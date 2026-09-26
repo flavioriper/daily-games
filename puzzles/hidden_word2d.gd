@@ -182,6 +182,45 @@ const BUSH_LIT_WASH := 0.12
 ## The three marks' faces, in the order HIT, NEAR, MISS.
 const MARK := [Pal.GOOD, Pal.WORD_NEAR, Pal.WORD_MISS]
 
+# --- the second polish (2026-09-25; the spec's section 12) ---
+## An empty cell is a bed sunk into the card, not a card standing on it: its
+## floor a few points under the parchment, with a shadow lip along its top
+## BED_LIP of a cell deep. A pale raised card on parchment read as nothing.
+const BED := Color("eadcc0")
+const BED_SHADE := Color("d9c8a7")
+const BED_LIP := 0.055
+## The row being typed is lit ROW_LIT toward the sun, and the bed the next
+## letter goes into wears a sun rim CARET of a cell wide, so the eye always
+## knows where the keyboard is writing.
+const ROW_LIT := 0.12
+const CARET := 0.032
+const CARET_A := 0.75
+## A typed letter stands on a paper piece, raised out of its bed: the paper's
+## crown is PAPER_CROWN toward SURFACE_HI inside a lit rim, over a lip in LINE.
+const PAPER_CROWN := 0.4
+const PAPER_LIP := 0.55
+## A piece's bevel, in cells: the crown sits this far down and in from the
+## rim. A mark's rim is its face RIM_LIGHT toward SURFACE, so it is lit from
+## above; TONE is how far lighter or darker a tile's hash moves its face, so
+## the rows read as laid by hand.
+const BEVEL := 0.055
+const RIM_LIGHT := 0.3
+const TONE := 0.035
+## The flip lifts the tile off the card: at edge-on it has grown FLIP_SWELL
+## and risen FLIP_RISE of a cell over a soft shadow, and it lands with a
+## LAND_BUMP bump. A squash in place read as a tile folding, not turning.
+const FLIP_SWELL := 0.08
+const FLIP_RISE := 0.07
+const FLIP_SHADOW_A := 0.22
+const LAND_BUMP := 0.07
+## A light runs across a landed row's green tiles, GLINT_STEP a tile after
+## GLINT_DELAY, each shining over GLINT_TIME toward SURFACE by SHINE -- the
+## right letters catch the light, and on the winning row all five do.
+const GLINT_DELAY := 0.06
+const GLINT_STEP := 0.07
+const GLINT_TIME := 0.36
+const SHINE := 0.35
+
 var state = State.new()
 ## The board's own effects node, as on every flat board: the hint's ring
 ## and sparkle (func hint(), below) come through it and nowhere else.
@@ -622,55 +661,95 @@ func _flower(b, at: Vector2) -> void:
 		b.disc(at + Vector2(cos(a), sin(a)) * FLOWER_R, PETAL_R, Pal.SURFACE)
 	b.disc(at, FLOWER_EYE_R, Pal.SUN)
 
-## The thirty tiles, in one mesh: an empty bed in SURFACE_HI, a typed tile
-## arriving with the pop, and a committed tile mid-turn or landed in its
-## mark's colour. A refused row shivers as one, so the offset is read per row
-## and not per tile.
+## The thirty cells, in one mesh. Every cell is a bed sunk into the card; a
+## typed letter stands on a paper piece popping into its bed, and a committed
+## tile is that piece turning over into its mark's colour, lifted off the card
+## while it turns and bumping as it lands. The row being typed is lit and the
+## bed its next letter goes into wears a caret. A refused row shivers as one,
+## so the offset is read per row and not per tile.
 ##
-## There is no `Mosaic.socket` under the tile, and the mock has none either:
-## every cell here is the *same* rounded card in one of four colours, so an
-## empty tile already is its own bed and a socket laid under it would be
-## covered by the thing it was meant to seat. What Nonogram needs a socket
-## for -- a floor that shows through where no tile has been laid -- this
-## board never has, because all thirty cells are always there.
+## There is no `Mosaic.socket` here: a bed is this board's own, because the
+## piece that lands in it is a card and not a tile, and it has to show under a
+## piece squashed edge-on by the flip.
 func _build_grid(t: float) -> ArrayMesh:
 	var cell := _cell()
 	var b := Face.Builder.new()
 	var work := _working_row()
+	var lit_row := -1 if state.is_solved() else work
 	for r in State.ROWS:
 		var shake := Motion.shiver_offset(t - _shiver_at[r])
 		var fade := _row_alpha(r, t)
 		for c in State.LEN:
 			var at := _tile_at(r, c) + Vector2(shake, _solve_lift(r, c, t))
-			var grow := Vector2.ONE
-			var fill: Color = Pal.SURFACE_HI
-			var deep: Color = Pal.SURFACE_HI.lerp(Pal.TEXT, EMPTY_MIX)
+			var caret: bool = r == lit_row and c == state.typed.length()
+			_bed(b, at, cell, fade, 1.0 if r == lit_row else 0.0, caret)
 			if r < state.rows.size():
-				var turn := _flip(r, c, t)
-				grow.y = turn.x
-				if turn.y >= 1.0:
-					var m := int(state.marks[r][c])
-					fill = MARK[m]
-					deep = fill.lerp(Pal.TEXT, EDGE_MIX)
+				var pose := _pose(r, c, t)
+				var up := at + Vector2(0.0, pose.z * cell)
+				var swell := _swell(r, c, t)
+				if swell > 0.0:
+					Scenery.soft_disc(b, at + Vector2(cell * 0.5, cell * 0.96),
+						cell * 0.5, cell * 0.12, Color(Pal.TEXT, FLIP_SHADOW_A * swell * fade))
+				var grow := Vector2(pose.x, pose.y)
+				if _flip(r, c, t).y >= 1.0:
+					_mark_tile(b, up, cell, int(state.marks[r][c]), r, c, grow, fade,
+						0.0, _shine(r, c, t))
+				else:
+					_paper_tile(b, up, cell, grow, fade)
 			elif r == work and c < state.typed.length():
-				grow = Motion.pop_in_scale(t - _typed_at[c], TYPE_POP)
-			_tile_face(b, at, cell, fill, deep, grow, fade)
+				_paper_tile(b, at, cell, Motion.pop_in_scale(t - _typed_at[c], TYPE_POP), fade)
 	# Reset's wave, over the beds the tiles have just gone back to being: a
 	# committed tile keeps its mark's colour and turns out where it stood.
 	for g in _ghosts:
 		var elapsed: float = t - float(g.at)
-		var m := int(g.m)
-		var fill: Color = MARK[m]
-		var deep: Color = fill.lerp(Pal.TEXT, EDGE_MIX)
 		var at := _tile_at(int(g.r), int(g.c))
 		if elapsed < 0.0:
-			_tile_face(b, at, cell, fill, deep, Vector2.ONE)
+			_mark_tile(b, at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE)
 			continue
 		var out := Motion.pop_out_scale(elapsed)
 		if out <= 0.0:
 			continue
-		_tile_face(b, at, cell, fill, deep, Vector2.ONE * out, 1.0, _turn_out(elapsed))
+		_mark_tile(b, at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE * out, 1.0,
+			_turn_out(elapsed))
 	return b.mesh() if not b.verts.is_empty() else null
+
+## A committed tile's pose at `t`: x and y its scale, z how far it has risen,
+## in cells (negative is up). The flip squashes y; the swell grows both and
+## lifts it; the landing bumps both once it is face-up again.
+func _pose(r: int, c: int, t: float) -> Vector3:
+	var turn := _flip(r, c, t)
+	var swell := _swell(r, c, t)
+	var grow := (1.0 + FLIP_SWELL * swell) * _land(r, c, t)
+	return Vector3(grow, grow * turn.x, -FLIP_RISE * swell)
+
+## How far into its lift a turning tile is: nothing at either end of its turn
+## and all of it edge-on, where the colour changes.
+func _swell(r: int, c: int, t: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var since := t - (_row_at[r] + float(c) * FLIP_STEP)
+	if since <= 0.0 or since >= FLIP_TIME:
+		return 0.0
+	return sin(PI * since / FLIP_TIME)
+
+## The bump a tile lands with, the family's own reader at this board's size.
+func _land(r: int, c: int, t: float) -> float:
+	return Motion.bump_scale(t - (_row_at[r] + float(c) * FLIP_STEP + FLIP_TIME), LAND_BUMP)
+
+## How far a landed green tile is into its glint. Only HITs catch the light,
+## a tile after the one before, once the whole row is face-up; a row put back
+## by a restore has no moment and never glints.
+func _shine(r: int, c: int, t: float) -> float:
+	if Motion.reduce or _row_at[r] < -50.0 or int(state.marks[r][c]) != State.HIT:
+		return 0.0
+	var since := t - (_row_at[r] + _flip_length() + GLINT_DELAY + float(c) * GLINT_STEP)
+	if since <= 0.0 or since >= GLINT_TIME:
+		return 0.0
+	return sin(PI * since / GLINT_TIME)
+
+## How long a landed row's glint runs, from the landing to the last tile's end.
+func _glint_length() -> float:
+	return GLINT_DELAY + float(State.LEN - 1) * GLINT_STEP + GLINT_TIME
 
 ## The quarter turn a thing leaving takes with it, `elapsed` into its pop out.
 func _turn_out(elapsed: float) -> float:
@@ -714,11 +793,52 @@ func _flip(r: int, c: int, t: float) -> Vector2:
 	var u := since / FLIP_TIME
 	return Vector2(absf(cos(PI * u)), 1.0 if u >= 0.5 else 0.0)
 
-## One tile: its face over a bottom edge in a darker shade of itself, the
+## An empty bed at `at` (its top-left): the lip in BED_SHADE, the floor over
+## it a little down, lit `lit` of ROW_LIT toward the sun on the row being
+## typed, and ringed in the sun when the next letter goes here.
+func _bed(b, at: Vector2, s: float, alpha: float, lit: float, caret: bool) -> void:
+	if alpha <= 0.0:
+		return
+	var r := s * RADIUS
+	if caret:
+		var w := s * CARET
+		b.fan(Face.Builder.round_rect(at - Vector2.ONE * w, Vector2.ONE * (s + w * 2.0), r + w),
+			Color(Pal.SUN, CARET_A * alpha))
+	var floor_col: Color = BED.lerp(Pal.SUN, ROW_LIT * lit)
+	var shade: Color = BED_SHADE.lerp(Pal.SUN, ROW_LIT * lit * 0.5)
+	var lip := s * BED_LIP
+	b.fan(Face.Builder.round_rect(at, Vector2(s, s), r), Color(shade, alpha))
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, lip), Vector2(s, s - lip), r),
+		Color(floor_col, alpha))
+
+## A typed letter's piece: paper with a lit rim round a crown a shade toward
+## SURFACE_HI, over a lip toward LINE.
+func _paper_tile(b, at: Vector2, s: float, grow: Vector2, alpha: float) -> void:
+	var crown: Color = Pal.SURFACE.lerp(Pal.SURFACE_HI, PAPER_CROWN)
+	var deep: Color = Pal.SURFACE_HI.lerp(Pal.LINE, PAPER_LIP)
+	_tile_face(b, at, s, crown, deep, grow, alpha, 0.0, Pal.SURFACE)
+
+## A committed tile in mark `m`'s colour, toned off its cell's hash, bevelled,
+## and shining `shine` of SHINE toward SURFACE at the top of a glint.
+func _mark_tile(b, at: Vector2, s: float, m: int, r: int, c: int, grow: Vector2,
+		alpha := 1.0, angle := 0.0, shine := 0.0) -> void:
+	var fill: Color = MARK[m]
+	var tone := _hash(r * State.LEN + c, 3) * 2.0 - 1.0
+	fill = fill.lightened(tone * TONE) if tone > 0.0 else fill.darkened(-tone * TONE)
+	var deep: Color = fill.lerp(Pal.TEXT, EDGE_MIX)
+	var rim: Color = fill.lerp(Pal.SURFACE, RIM_LIGHT)
+	if shine > 0.0:
+		fill = fill.lerp(Pal.SURFACE, shine * SHINE)
+		rim = rim.lerp(Pal.SURFACE, shine * SHINE)
+	_tile_face(b, at, s, fill, deep, grow, alpha, angle, rim)
+
+## One piece: its face over a bottom edge in a darker shade of itself, the
 ## soft lip every card on these screens wears, drawn at `grow` of its size
-## about its own centre so the flip's squash reads.
+## about its own centre so the flip's squash reads. With a `rim`, the face is
+## the rim and the crown sits BEVEL down and in from it, so the piece is lit
+## along its top and sides.
 func _tile_face(b, at: Vector2, s: float, fill: Color, deep: Color, grow: Vector2,
-		alpha := 1.0, angle := 0.0) -> void:
+		alpha := 1.0, angle := 0.0, rim := Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
 		return
 	var edge := maxf(EDGE_MIN, s * EDGE)
@@ -726,7 +846,13 @@ func _tile_face(b, at: Vector2, s: float, fill: Color, deep: Color, grow: Vector
 	var corner := -Vector2.ONE * (s * 0.5)
 	var xf := Transform2D(angle, grow, 0.0, at + Vector2.ONE * (s * 0.5))
 	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s), r), Color(deep, deep.a * alpha))
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), Color(fill, fill.a * alpha))
+	if rim.a <= 0.0:
+		b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), Color(fill, fill.a * alpha))
+		return
+	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), Color(rim, rim.a * alpha))
+	var bev := s * BEVEL
+	b.fan(xf * Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
+		Vector2(s - bev * 1.4, s - edge - bev), maxf(r - bev * 0.5, 0.0)), Color(fill, fill.a * alpha))
 
 ## The letters, over the grid's mesh and inside the same entrance: the
 ## working row's in ink, a committed row's in paper once its tile has turned
@@ -753,9 +879,10 @@ func _draw_letters(t: float) -> void:
 				var turn := _flip(r, c, t)
 				if absf(turn.x) <= LETTER_EDGE:
 					continue
+				var pose := _pose(r, c, t)
 				var ink: Color = Pal.PAPER if turn.y >= 1.0 else Pal.TEXT
-				Mosaic.letter(self, seat, cell, state.rows[r][c],
-					Vector2(pop, turn.x * pop), ink, font, fade)
+				Mosaic.letter(self, seat + Vector2(0.0, pose.z * cell * pop), cell,
+					state.rows[r][c], Vector2(pose.x, pose.y) * pop, ink, font, fade)
 			elif r == work:
 				if c < state.typed.length():
 					var grow := Motion.pop_in_scale(t - _typed_at[c], TYPE_POP)
@@ -1017,7 +1144,7 @@ func commit_row() -> void:
 	_keys_due.append(due)
 	if Motion.reduce:
 		_deliver_keys(landed)
-	_busy_for(landed - _flip_at + Motion.BUMP_TIME)
+	_busy_for(landed - _flip_at + maxf(Motion.BUMP_TIME, _glint_length()))
 	# The row that ends the game does it when it has **landed**, not when
 	# Enter was pressed: a sprout that named the word while the sixth row was
 	# still face-down would answer the board before it had finished asking.
