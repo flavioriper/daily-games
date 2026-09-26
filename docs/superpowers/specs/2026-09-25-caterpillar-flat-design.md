@@ -190,3 +190,51 @@ generated yet: a missing file is silence.
 - `tests/_shot_anim.gd`, `tests/_win.gd`, `tests/_probe_cat_gen.gd`
 - `tools/gen_sfx.py`
 - `docs/brainstorm/concepts.html#caterpillar`
+
+## Amendment, 2026-09-26: the polish
+
+Built directly on `feat/caterpillar-polish` after a short design in chat; no
+reference image, so it was drawn toward the house style Rings and Fairy
+Lights set that same day.
+
+- **The garden** (`_build_still`, built once a layout): a mown lawn over the
+  whole card, clipped to its corner, with stripes, dappled shade, tufts and
+  daisies off the bed, foliage hanging into the top corners and daisy bushes
+  along the foot. The bed is a wooden frame (Fairy Lights' planks) round a
+  checker of pale grass tiles in `MEADOW`, a clover or a few blades on some.
+  Rings' leaf, daisy and hash statics are shared rather than copied.
+  `INSET` 28 to 40 to seat the frame.
+- **Leaves** are a real leaf lying on the square *under* the body, with the
+  ink badge and number still over it; an eaten leaf carries a bite per chew.
+- **Fences** are a rail with a lit top, grain, a shadow and square capped posts.
+- **The caterpillar** (`ui/faces/caterpillar.gd`): a soft shadow, a chubbier
+  tube, two sun spots on every segment, a stubby leg pair out to either side,
+  the last two segments tapering, a two-tone head with swaying antennae. The
+  butterfly has real fore- and hindwings, spots and a segmented body.
+- **Motion.** A crawl swell leaves the head on every step (`RIPPLE_*`). While
+  it walks, each leg pair steps in a wave tail to head, left and right in
+  opposition, a swinging leg tucked in and pale-footed, the body wiggling
+  across; the gait eases out over `WALK_FADE` 0.4 after the last square.
+  **Eating** is `CHEWS` 3 chews of `CHEW` 0.17: each one smooth cosine that
+  squashes the head, leans it into the leaf and opens its mouth on a leaf
+  scrap that shrinks chew by chew, eyes shut; a bite and a few crumbs a chew,
+  then a gulp runs back down the body (`GULP_*`). **A cut back** (press or drag
+  onto an earlier segment) no longer jumps: the head runs back along its own
+  body, `RETREAT_STEP` 0.05 a square capped at `RETREAT_MAX` 0.6 in all, on a
+  smoothstep, folding the body up behind it. Undo, Hint and Reset pop the
+  segments they take away (`GHOST_TIME`; Reset tail first). The solve warms
+  each segment toward paper white as the hop passes (a shade of gold turned
+  the greens khaki), and the butterfly unfolds out of the head, flies a loop
+  and leaves over the top.
+- **At rest only the head moves**, as before: its breath, blink and antennae
+  are its own small mesh. The walk, chew, gulp and run each keep the live mesh
+  rebuilding only while they last.
+
+Measured at `--resolution 810x1440`: **58** draw calls half-walked, **57**
+under `rm`, **50** after the full solve; reduce motion's pair 1.5 s apart is
+pixel-identical; ANGLE agrees on 57 with a max channel delta of 11/255. Idle
+~3.0 ms on the bare board, which is the painted garden's cost and the same as
+Rings (3.00) and Fairy Lights (2.96) in the same session (1.73 before).
+Menu page one still 255, and the menu card has the new bed and body. Suite
+122,583 / 0; `tests/_win.gd` 21/21. The harness gained `munch` (stops on
+leaf 2 and shoots the chewing) and `cut` (drags back eight squares).

@@ -990,17 +990,16 @@ func _draw_caterpillar() -> void:
 	var pad := PIN_PAD * _u
 	var panel := Face.Builder.round_rect(origin - Vector2.ONE * pad,
 		Vector2(PIN_COLS, PIN_ROWS) * cell + Vector2.ONE * (2.0 * pad), 0.24 * cell)
-	b.polygon(panel, Pal.BED_GROUND)
-	var rule := maxf(1.0, cell * 0.018)
-	for c in range(1, PIN_COLS):
-		var x := origin.x + float(c) * cell
-		b.stroke(PackedVector2Array([Vector2(x, origin.y),
-			Vector2(x, origin.y + float(PIN_ROWS) * cell)]), rule, Pal.BED_LINE, false, false)
-	for r in range(1, PIN_ROWS):
-		var y := origin.y + float(r) * cell
-		b.stroke(PackedVector2Array([Vector2(origin.x, y),
-			Vector2(origin.x + float(PIN_COLS) * cell, y)]), rule, Pal.BED_LINE, false, false)
-	b.stroke(panel, maxf(1.5, cell * 0.038), Pal.LINE, true)
+	# The board's bed: a wooden frame round a checker of pale grass tiles.
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * (pad + cell * 0.12), Vector2(PIN_COLS, PIN_ROWS) * cell
+		+ Vector2.ONE * (2.0 * pad + cell * 0.24), 0.3 * cell), Pal.PLAQUE)
+	b.polygon(panel, Pal.MEADOW_LINE)
+	var gap := maxf(1.0, cell * 0.03)
+	for r in PIN_ROWS:
+		for c in PIN_COLS:
+			var tone := Pal.MEADOW.lerp(Pal.SURFACE, 0.34 if (r + c) % 2 == 0 else 0.18)
+			b.fan(Face.Builder.round_rect(origin + Vector2(c, r) * cell + Vector2.ONE * gap,
+				Vector2.ONE * (cell - 2.0 * gap), cell * 0.12), tone)
 	var mid: Vector2 = (centre.call(CAT_FENCE[0]) + centre.call(CAT_FENCE[1])) * 0.5
 	var th := cell * 0.13
 	b.fan(Face.Builder.round_rect(mid - Vector2(cell * 0.49, th * 0.5), Vector2(cell * 0.98, th), th * 0.5), Pal.FENCE_DARK)

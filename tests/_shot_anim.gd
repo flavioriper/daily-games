@@ -1088,10 +1088,22 @@ func _begin_tents_sweep() -> void:
 ## Caterpillar: press leaf 1 and drag along the answer, a square a step --
 ## half of it, or all of it under `full`; under `refuse` the drag stops
 ## short and the last step aims at the next leaf but one, so the strip
-## catches the head's shiver and the badge's flash.
+## catches the head's shiver and the badge's flash; under `munch` it stops on
+## leaf 2 and shoots the chewing and the gulp frame by frame; under `cut` it
+## drags back onto the body and shoots the head running back.
 func _drag_caterpillar() -> void:
 	var st = _puzzle._state
 	var n: int = st.path.size() if _mode == "full" else st.path.size() / 2
+	if _mode == "munch":
+		# Up to and onto leaf 2, then a frame every chew-fraction through the
+		# chewing and the gulp that runs back down the body after it.
+		n = st.path.find(st.leaves[1]) + 1
+		var land: float = _t + float(n - 1) * TRAIL_STEP + 0.11
+		_shots = [0.35]
+		for d: float in [0.0, 0.08, 0.17, 0.25, 0.34, 0.51, 0.62, 0.74]:
+			_shots.append(land + d)
+		_idle_from = land + 1.6
+		_idle_to = land + 3.0
 	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
 	_trail_cells = []
 	for i in n:
@@ -1108,6 +1120,17 @@ func _drag_caterpillar() -> void:
 			if st.clue[c] > due + 1 and st.adjacent(c, st.path[n - 1]):
 				_trail_cells.append(xf * _puzzle.cell_to_local(c / st.cols, c % st.cols))
 				break
+	if _mode == "cut":
+		# Back onto the body eight squares from the head, so the head runs
+		# back over them: frames every few hundredths through the run.
+		var back: int = st.path[n - 9]
+		_trail_cells.append(xf * _puzzle.cell_to_local(back / st.cols, back % st.cols))
+		var cut_at: float = _t + float(n) * TRAIL_STEP + 0.02
+		_shots = [0.35]
+		for d: float in [0.0, 0.08, 0.16, 0.24, 0.32, 0.45, 0.8]:
+			_shots.append(cut_at + d)
+		_idle_from = cut_at + 1.2
+		_idle_to = cut_at + 2.6
 	_trail_last = _trail_cells.pop_front()
 	var down := InputEventScreenTouch.new()
 	down.index = 0
