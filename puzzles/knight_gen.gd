@@ -43,21 +43,38 @@ const BANDS := [
 ## Positions the last `solve` expanded, for the probe.
 static var last_nodes := 0
 static var _dists := {}
+static var _hop_tables := {}
 
 static func band(difficulty: int) -> Dictionary:
 	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 
+## The whole knight-move table for board size w, built once a size:
+## hop_table(w)[c] is the squares a knight on c reaches, in L order -- the
+## same array `hops` returns, cached the way `dist` already is so the inner
+## loops of `step`, `solve` and `naive_wins` (many attempts, many positions a
+## generate call) don't recompute a bounds-checked neighbour list on every
+## call.
+static func hop_table(w: int) -> Array:
+	if _hop_tables.has(w):
+		return _hop_tables[w]
+	var n := w * w
+	var table: Array = []
+	for c in n:
+		var out := PackedInt32Array()
+		var x := c % w
+		var y := c / w
+		for i in 8:
+			var nx: int = x + DX[i]
+			var ny: int = y + DY[i]
+			if nx >= 0 and ny >= 0 and nx < w and ny < w:
+				out.append(ny * w + nx)
+		table.append(out)
+	_hop_tables[w] = table
+	return table
+
 ## The squares a knight on `c` reaches, in L order.
 static func hops(w: int, c: int) -> PackedInt32Array:
-	var out := PackedInt32Array()
-	var x := c % w
-	var y := c / w
-	for i in 8:
-		var nx: int = x + DX[i]
-		var ny: int = y + DY[i]
-		if nx >= 0 and ny >= 0 and nx < w and ny < w:
-			out.append(ny * w + nx)
-	return out
+	return hop_table(w)[c]
 
 ## Knight-move distance between every pair of squares on the empty board,
 ## built once a size: dist(w)[a][b].
@@ -96,6 +113,7 @@ static func step(g: Dictionary, you: int, foes: PackedInt32Array, to: int) -> Di
 	var w: int = g.w
 	var king: int = g.king
 	var d: Array = dist(w)
+	var ht := hop_table(w)
 	var fs := foes.duplicate()
 	var moved: Array[Vector2i] = []
 	for f in fs:
@@ -110,7 +128,7 @@ static func step(g: Dictionary, you: int, foes: PackedInt32Array, to: int) -> Di
 		var f: int = fs[i]
 		if f < 0:
 			continue
-		var ms := hops(w, f)
+		var ms: PackedInt32Array = ht[f]
 		if ms.has(to):
 			fs[i] = to
 			moved[i] = Vector2i(f, to)
@@ -149,6 +167,7 @@ static func _key(you: int, foes: PackedInt32Array, base: int) -> int:
 ## be accepted anyway. `state.gd`'s future `hint_move` calls this uncapped.
 static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max_nodes: int = 0) -> PackedInt32Array:
 	var w: int = g.w
+	var ht := hop_table(w)
 	var base := w * w + 1
 	var root := _key(you, foes, base)
 	# key -> Vector2i(parent key, the square landed on to get here)
@@ -169,7 +188,7 @@ static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max
 		h += 1
 		if depth >= cap:
 			continue
-		for m in hops(w, y):
+		for m in ht[y]:
 			var r := step(g, y, fs, m)
 			if r.won:
 				var line := PackedInt32Array([m])
@@ -198,7 +217,9 @@ static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max
 ## circles, or not there within NAIVE_CAP.
 static func naive_wins(g: Dictionary) -> bool:
 	var w: int = g.w
+	var king: int = g.king
 	var d: Array = dist(w)
+	var ht := hop_table(w)
 	var you: int = g.you
 	var foes: PackedInt32Array = g.foes
 	var seen := {}
@@ -209,8 +230,8 @@ static func naive_wins(g: Dictionary) -> bool:
 		seen[k] = true
 		var best := -1
 		var bd := 99
-		for m in hops(w, you):
-			var dm: int = d[m][int(g.king)]
+		for m in ht[you]:
+			var dm: int = d[m][king]
 			if dm < bd:
 				bd = dm
 				best = m
