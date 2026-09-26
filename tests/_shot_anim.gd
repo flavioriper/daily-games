@@ -645,7 +645,9 @@ func _mushroom_wash_count(cell: Vector2i) -> int:
 ## dragged home by real touch, a peg a step, so the strip shows the lift, the
 ## light re-routing from the fork and the settle. Under `full` every other
 ## piece is put home through the state first, so that one drag is the solve
-## and the strip shows the light reaching the bud and the bloom.
+## and the strip shows the light reaching the bud and the bloom. Under `hold`
+## the finger stops between two pegs and stays down, so the strip shows the
+## beam bent off the piece's glass mid-slide rather than on a peg.
 func _slide_sunbeam() -> void:
 	var st = _puzzle._state
 	var order: Array = st.answer_order()
@@ -654,22 +656,36 @@ func _slide_sunbeam() -> void:
 			if not st.taken(p, st.home(p)):
 				st.pos[p] = st.home(p)
 		st.retrace()
-		_puzzle._retrace(_puzzle._now(), true)
+		_puzzle._refresh()
 		for p in st.pos.size():
 			_puzzle._disp[p] = {"from": float(st.pos[p]), "at": -100.0}
 		order = [order[order.size() - 1]]
+	if _mode == "hold":
+		# the first mirror the light strikes now, whatever the answer wants
+		for stp: Dictionary in st.beam.steps:
+			if stp.k == "m":
+				order = [stp.p]
+				break
 	for p: int in order:
-		if st.pos[p] == st.home(p) or st.taken(p, st.home(p)):
+		if _mode != "hold" and (st.pos[p] == st.home(p) or st.taken(p, st.home(p))):
 			continue
 		var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
 		var q: int = st.pos[p]
 		var step := 1 if st.home(p) > q else -1
+		if _mode == "hold":
+			step = 1 if q + 1 < (st.g.pieces[p].rail as PackedInt32Array).size() else -1
 		var at: Vector2 = xf * _puzzle._pt(_puzzle._piece_mid(p, float(q)))
 		var down := InputEventScreenTouch.new()
 		down.index = 0
 		down.pressed = true
 		down.position = at
 		root.push_input(down, true)
+		if _mode == "hold":
+			var drag_h := InputEventScreenDrag.new()
+			drag_h.index = 0
+			drag_h.position = xf * _puzzle._pt(_puzzle._piece_mid(p, float(q) + 0.3 * float(step)))
+			root.push_input(drag_h, true)
+			return
 		while q != st.home(p):
 			q += step
 			var drag := InputEventScreenDrag.new()

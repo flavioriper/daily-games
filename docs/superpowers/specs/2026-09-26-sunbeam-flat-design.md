@@ -143,12 +143,29 @@ Three meshes (`_still`, `_live`, `_air`):
   thing that moves at rest, and small, so an idle floor rebuilds that alone
   (Caterpillar's lesson: a whole-mesh idle rebuild cost 12 ms a frame).
 
-**The light travels.** After a move, the stretch the old and new beams share
-stays lit; the old remainder fades over `BEAM_FADE` 0.18 s; the light runs
-down the new stretch at `BEAM_SPEED` 34 cells a second from the fork. A drop
-rings and chimes as the light reaches it, pitch rising with each. The win is
-`solved` at the release, but `win_delay()` waits for the light to reach the
-bud (`_arrive_in`), then `WIN_WAIT` 2.6 s for the bloom and sparkles.
+**The beam bends with the piece** (the user's call on 2026-09-26, the day it
+shipped: the first cut re-routed only when a dragged piece crossed into the
+next peg, and read as jumping). What is *drawn* is `_trace_live`, a ray cast
+out of the lamp against every piece where it is drawn this frame -- under the
+finger or settling onto its peg -- not where it stands in the rules. A mirror
+is its glass, a diagonal the ray can strike anywhere within `MIRROR_REACH`
+0.35 of its centre, so the reflected beam slides sideways as the mirror
+slides; a cup takes light into its mouth within `CUP_REACH` 0.65 of its
+middle and hands it back mirrored about it, the U-turn's depth scaled with
+the offset, so it widens and narrows as the cup moves; pots, the bud and the
+lamp are boxes. When every piece stands on a peg the ray runs on cell centres
+and is exactly the grid's trace -- and only the grid's trace decides
+anything: the win, the proof, the dry-bud line. A drop is wet by light
+passing within `DROP_REACH` 0.22 of it and chimes as it wets, not again
+inside `CHIME_QUIET` 0.3 s, so a drag sweeping the light over it does not
+chatter. The light only *travels* on its first run out of the lamp as the
+floor opens (`BEAM_SPEED` 34 cells a second after `BEAM_DELAY`); after that
+it is always whole. The win is `solved` at the release; `win_delay()` waits
+for the let-go piece to land, then `WIN_WAIT` 2.6 s for the bloom.
+
+`tests/_shot_anim.gd -- sunbeam hold` stops a finger between two pegs on the
+first mirror the light strikes and keeps it down, so the strip shows the
+beam bent off the glass mid-slide.
 
 **The beam is stroked in runs**, cut at every sharp turn: a
 `Face.Builder.stroke` joint pinches at a right angle, so each straight is its
@@ -161,8 +178,8 @@ the line between its cells, and the very point a thumb aims at -- was in
 neither. The animation harness found it: its drag pressed there and nothing
 moved.
 
-The board's own motion constants: `BEAM_SPEED`, `BEAM_FADE`, `SNAP_TIME`
-0.16, `BEAM_DELAY` 0.55 (the light waits for the pieces' entrance),
+The board's own motion constants: `BEAM_SPEED`, `SNAP_TIME` 0.16,
+`CHIME_QUIET`, `BEAM_DELAY` 0.55 (the light waits for the pieces' entrance),
 `SUN_TURN`, `MOTE_SPEED`, `MOTE_DENSITY`, `BLOOM_TIME` 0.7 and `WIN_WAIT`.
 Everything else is a recipe from `core/motion.gd`; it added nothing there.
 

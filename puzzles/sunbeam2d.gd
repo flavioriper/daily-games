@@ -51,17 +51,30 @@ const PANES := 5
 const MULLION := 10.0
 ## How far past the floor's edge light that leaves it is drawn, in cells.
 const OUT_STUB := 0.3
-## Where the light stops short against a pot, a cup's back or the lamp, in
-## cells back from the cell's centre.
-const STOP_SHORT := 0.34
+## What the light meets, in cells: a mirror's glass reaches this far along
+## each axis from its centre; a cup takes light into its mouth this far either
+## side of its middle, and its body is a box that deep, sitting this far back;
+## a pot, the bud and the lamp are boxes of these half-sizes; and a drop is
+## wet by light passing this close. A ray bounces at most MAX_BOUNCES times.
+const MIRROR_REACH := 0.35
+const CUP_REACH := 0.65
+const CUP_DEPTH := 0.4
+const CUP_SHIFT := 0.1
+const POT_HALF := 0.3
+const BUD_HALF := 0.3
+const LAMP_HALF := 0.42
+const DROP_REACH := 0.22
+const MAX_BOUNCES := 64
+const EPS := 1e-4
 
 # --- this board's own motion ---
-## The light's speed down a new stretch, in cells a second; how long a cut-off
-## stretch of old beam takes to fade; and how long a let-go piece takes to
-## settle onto its peg. Everything else is a recipe from core/motion.gd.
+## The light's speed on its first run out of the lamp, in cells a second;
+## how long a let-go piece takes to settle onto its peg (the beam bends with
+## it the whole way); and how soon a drop may chime again. Everything else is
+## a recipe from core/motion.gd.
 const BEAM_SPEED := 34.0
-const BEAM_FADE := 0.18
 const SNAP_TIME := 0.16
+const CHIME_QUIET := 0.3
 ## The light waits for the pieces' entrance before it leaves the lamp.
 const BEAM_DELAY := 0.55
 ## The sun's rays turn this fast at rest; motes drift down the light this
@@ -81,22 +94,16 @@ const TIPS := ["SB_TIP_DRAG", "SB_TIP_GOAL", "SB_TIP_CUP", "SB_TIP_MIRROR", "SB_
 var _state = State.new()
 var fx: Node2D
 
-## The beam as a polyline in cell units, its running length, and where along
-## it each drop is.
-var _pts := PackedVector2Array()
-var _len := PackedFloat32Array()
-var _drop_at := {}
-## When the light set off down its newest stretch, and from how far along.
+## The light this frame (_trace_live's), rebuilt while anything moves.
+var _tr := {}
+var _tr_dirty := true
+## When the light leaves the lamp on its first run.
 var _beam_at := -100.0
-var _beam_from := 0.0
-## The stretch a move cut off, fading: its points, how much of it was lit, when.
-var _old_pts := PackedVector2Array()
-var _old_upto := 0.0
-var _old_at := -100.0
-## Drops the drawn light has reached, so each is rung once as it arrives.
+## Drops the drawn light is wetting now, and when each last chimed.
 var _wet := {}
-## The beam a dry-bud line was said for, so it is said once.
-var _bud_told := -1.0
+var _chimed := {}
+## The arrangement a dry-bud line was said for, so it is said once.
+var _bud_told := ""
 
 ## Each piece's settle onto its peg: {"from": float peg, "at": time}.
 var _disp: Array = []
@@ -155,12 +162,14 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_refused = {"at": -100.0, "p": -1}
 	_rings = []
 	_wet = {}
-	_bud_told = -1.0
+	_chimed = {}
+	_bud_told = ""
 	_anim_until = 0.0
 	_solved_at = -1.0
 	_opened = _now()
-	_old_pts = PackedVector2Array()
-	_retrace(_opened + (0.0 if Motion.reduce else BEAM_DELAY), true)
+	_beam_at = _opened + (0.0 if Motion.reduce else BEAM_DELAY)
+	_tr = {}
+	_tr_dirty = true
 	_layout()
 	fx.cue("enter")
 	_tip_idx = 0
@@ -242,95 +251,173 @@ func _peg_now(p: int, t: float) -> float:
 
 # --- the beam ---
 
-## The beam as a polyline in cell units: every cell centre it passes, the arc
-## round a cup, and the stub where it stops or leaves the floor.
-func _poly(tr_: Dictionary) -> Dictionary:
-	var pts := PackedVector2Array([_cv(_state.g.lamp)])
-	var drop_i := {}
-	var is_drop := {}
-	for c in _state.drops():
-		is_drop[c] = true
-	var last_d: int = _state.g.dir
-	for st: Dictionary in tr_.steps:
-		var at := _cv(st.c)
-		var d: int = st.d
-		match String(st.k):
-			"", "m":
-				pts.append(at)
-				if is_drop.has(st.c) and not drop_i.has(st.c):
-					drop_i[st.c] = pts.size() - 1
-				last_d = int(st.get("nd", d))
+## The light as it looks this frame: a ray cast out of the lamp against every
+## piece where it is *drawn* -- under the finger, or settling onto its peg --
+## rather than where it stands in the rules, so the beam bends continuously as
+## a piece slides instead of jumping a peg at a time. A mirror is its glass, a
+## diagonal it can be struck anywhere along; a cup takes light into its mouth
+## and hands it back mirrored about its middle, so the U-turn widens and
+## narrows as the cup moves; pots, the bud and the lamp are boxes. When every
+## piece stands on a peg this is exactly the grid's beam (sunbeam_gen.gd's
+## trace), and only that one decides anything: the win, the proof, the dry bud.
+## {pts (cell units), len (running length), drop_at {cell: length along},
+##  glints [[point, length along]], end}
+func _trace_live(t: float) -> Dictionary:
+	var g: Dictionary = _state.g
+	var mirrors: Array = []
+	var cups: Array = []
+	for p in _state.pieces().size():
+		var pc: Dictionary = g.pieces[p]
+		var peg := _peg_now(p, t)
+		if pc.kind == "m":
+			mirrors.append([_anchor(p, peg), pc.t == "/"])
+		else:
+			var sv := Vector2(Gen.DX[pc.s], Gen.DY[pc.s])
+			cups.append([_anchor(p, peg) + sv * 0.5, sv, Vector2(Gen.DX[pc.f], Gen.DY[pc.f])])
+	var boxes: Array = [[_cv(g.bud), BUD_HALF, "bud"], [_cv(g.lamp), LAMP_HALF, "lamp"]]
+	for c in g.pots:
+		boxes.append([_cv(c), POT_HALF, "pot"])
+	var at := _cv(g.lamp)
+	var d := Vector2(Gen.DX[g.dir], Gen.DY[g.dir])
+	var pts := PackedVector2Array([at])
+	var lens := PackedFloat32Array([0.0])
+	var glints: Array = []
+	var drop_at := {}
+	var end := "loop"
+	for bounce in MAX_BOUNCES:
+		var run: float = lens[lens.size() - 1]
+		var best := _exit_t(at, d)
+		var what := "out"
+		var arg: Array = []
+		for bx: Array in boxes:
+			var tb := _box_t(at, d, bx[0], Vector2.ONE * float(bx[1]))
+			if tb < best:
+				best = tb
+				what = bx[2]
+		for m: Array in mirrors:
+			var tm := _mirror_t(at, d, m[0], m[1])
+			if tm < best:
+				best = tm
+				what = "m"
+				arg = m
+		for cu: Array in cups:
+			var mid: Vector2 = cu[0]
+			var sv: Vector2 = cu[1]
+			var f: Vector2 = cu[2]
+			if d.dot(f) < -0.5:
+				var e := (at - mid).dot(sv)
+				var tc := (at - mid).dot(f)
+				if absf(e) <= CUP_REACH and tc > EPS and tc < best:
+					best = tc
+					what = "u"
+					arg = [mid, sv, f, e]
+			else:
+				var tb := _box_t(at, d, mid - f * CUP_SHIFT, sv.abs() * CUP_REACH + f.abs() * CUP_DEPTH)
+				if tb < best:
+					best = tb
+					what = "cup"
+		# the drops this straight passes close enough to wet
+		for c in _state.drops():
+			if drop_at.has(c):
+				continue
+			var dc := _cv(c) - at
+			var along := dc.dot(d)
+			if along >= 0.0 and along <= best and absf(dc.cross(d)) <= DROP_REACH:
+				drop_at[c] = run + along
+		var hit := at + d * best
+		match what:
+			"out":
+				_push(pts, lens, at + d * (best + OUT_STUB))
+				end = "out"
+				break
 			"bud":
-				pts.append(at)
+				_push(pts, lens, at + d * (best + BUD_HALF))
+				end = "bud"
+				break
+			"m":
+				_push(pts, lens, hit)
+				glints.append([hit, lens[lens.size() - 1]])
+				d = Vector2(-d.y, -d.x) if arg[1] else Vector2(d.y, d.x)
+				at = hit
 			"u":
-				var pc: Dictionary = _state.g.pieces[st.p]
-				var o := _cv(st.o)
-				var mid := (at + o) * 0.5
-				var u := at - mid
-				var back := (int(pc.f) + 2) % 4
-				var v := Vector2(Gen.DX[back], Gen.DY[back]) * Parts.CUP_BULGE
-				pts.append(at)
+				var mid: Vector2 = arg[0]
+				var sv: Vector2 = arg[1]
+				var f: Vector2 = arg[2]
+				var e: float = arg[3]
+				var depth := Parts.CUP_BULGE * 2.0 * absf(e)
+				_push(pts, lens, hit)
 				for k in range(1, 11):
 					var q := PI * float(k) / 10.0
-					pts.append(mid + u * cos(q) + v * sin(q))
-				last_d = int(st.nd)
+					_push(pts, lens, mid + sv * e * cos(q) - f * depth * sin(q))
+				at = pts[pts.size() - 1]
+				d = f
 			_:
-				pts.append(at - Vector2(Gen.DX[d], Gen.DY[d]) * STOP_SHORT)
-	if tr_.end == "out" or tr_.end == "loop":
-		var e := pts[pts.size() - 1]
-		var to := e + Vector2(Gen.DX[last_d], Gen.DY[last_d]) * (0.5 + OUT_STUB)
-		pts.append(to)
-	var lens := PackedFloat32Array([0.0])
-	for i in range(1, pts.size()):
-		lens.append(lens[i - 1] + pts[i].distance_to(pts[i - 1]))
-	var at_len := {}
-	for c in drop_i:
-		at_len[c] = lens[drop_i[c]]
-	return {"pts": pts, "len": lens, "drop_at": at_len}
+				_push(pts, lens, hit)
+				end = what
+				break
+	return {"pts": pts, "len": lens, "drop_at": drop_at, "glints": glints, "end": end}
 
-## A new arrangement: keep the stretch of light the two share, fade what the
-## old beam had past the fork, and send the light down the new one from there.
-func _retrace(t: float, fresh := false) -> void:
-	var bp := _poly(_state.beam)
-	var np: PackedVector2Array = bp.pts
-	var k := 0
-	if not fresh:
-		while k < np.size() and k < _pts.size() and np[k].is_equal_approx(_pts[k]):
-			k += 1
-	var shared: float = bp.len[k - 1] if k > 0 else 0.0
-	var drawn := _drawn(t)
-	if not fresh and k < _pts.size() and not Motion.reduce:
-		_old_pts = _pts.slice(maxi(0, k - 1))
-		_old_upto = drawn - (_len[k - 1] if k > 0 else 0.0)
-		_old_at = t
-	_beam_from = 0.0 if fresh else minf(shared, drawn)
-	_beam_at = t
-	_pts = np
-	_len = bp.len
-	_drop_at = bp.drop_at
-	var keep := {}
-	for c in _wet:
-		if _drop_at.has(c) and float(_drop_at[c]) <= _beam_from + 1e-4:
-			keep[c] = true
-	_wet = keep
-	_busy_for(_arrive_in(t) + BEAM_FADE)
+static func _push(pts: PackedVector2Array, lens: PackedFloat32Array, p: Vector2) -> void:
+	lens.append(lens[lens.size() - 1] + p.distance_to(pts[pts.size() - 1]))
+	pts.append(p)
+
+## How far an axis-aligned ray from `at` along `d` runs before leaving the floor.
+func _exit_t(at: Vector2, d: Vector2) -> float:
+	if d.x > 0.5:
+		return float(_state.cols) - at.x
+	if d.x < -0.5:
+		return at.x
+	if d.y > 0.5:
+		return float(_state.rows) - at.y
+	return at.y
+
+## Where an axis-aligned ray meets a box of half-size `half` about `c` from
+## outside, or INF. A ray that starts inside one (the lamp's, a cup's own
+## body after its U-turn) passes out of it untouched.
+static func _box_t(at: Vector2, d: Vector2, c: Vector2, half: Vector2) -> float:
+	if absf(d.x) > 0.5:
+		if absf(at.y - c.y) > half.y:
+			return INF
+		var tx := (c.x - half.x * signf(d.x) - at.x) * signf(d.x)
+		return tx if tx > EPS else INF
+	if absf(at.x - c.x) > half.x:
+		return INF
+	var ty := (c.y - half.y * signf(d.y) - at.y) * signf(d.y)
+	return ty if ty > EPS else INF
+
+## Where an axis-aligned ray meets a mirror's glass -- the diagonal through
+## `m`, "/" or "\", reaching MIRROR_REACH along each axis -- or INF.
+static func _mirror_t(at: Vector2, d: Vector2, m: Vector2, slash: bool) -> float:
+	if absf(d.x) > 0.5:
+		var off := at.y - m.y
+		if absf(off) > MIRROR_REACH:
+			return INF
+		var x := m.x - off if slash else m.x + off
+		var tx := (x - at.x) * signf(d.x)
+		return tx if tx > EPS else INF
+	var off2 := at.x - m.x
+	if absf(off2) > MIRROR_REACH:
+		return INF
+	var y := m.y - off2 if slash else m.y + off2
+	var ty := (y - at.y) * signf(d.y)
+	return ty if ty > EPS else INF
 
 func _total() -> float:
-	return _len[_len.size() - 1] if not _len.is_empty() else 0.0
+	var lens: PackedFloat32Array = _tr.get("len", PackedFloat32Array())
+	return lens[lens.size() - 1] if not lens.is_empty() else 0.0
 
-## How much of the beam is drawn at `t`, in cells.
+## How much of the beam is drawn at `t`, in cells: all of it, but for the
+## light's first run out of the lamp as the floor opens.
 func _drawn(t: float) -> float:
-	if _len.is_empty():
-		return 0.0
 	if Motion.reduce:
 		return _total()
-	return minf(_total(), _beam_from + maxf(0.0, t - _beam_at) * BEAM_SPEED)
+	return minf(_total(), maxf(0.0, t - _beam_at) * BEAM_SPEED)
 
-## Seconds from `t` until the light reaches the end of the beam.
+## Seconds from `t` until that first run reaches the end of the beam.
 func _arrive_in(t: float) -> float:
 	if Motion.reduce:
 		return 0.0
-	return maxf(0.0, _beam_at + (_total() - _beam_from) / BEAM_SPEED - t)
+	return maxf(0.0, _beam_at + _total() / BEAM_SPEED - t)
 
 func _arrived(t: float) -> bool:
 	return _drawn(t) >= _total() - 1e-4
@@ -353,11 +440,13 @@ func _cut(pts: PackedVector2Array, upto: float) -> PackedVector2Array:
 
 ## The point `at` cells along the beam, in pixels.
 func _along(at: float) -> Vector2:
-	for i in range(1, _len.size()):
-		if _len[i] >= at:
-			var u := (at - _len[i - 1]) / maxf(_len[i] - _len[i - 1], 1e-6)
-			return _pt(_pts[i - 1].lerp(_pts[i], u))
-	return _pt(_pts[_pts.size() - 1])
+	var pts: PackedVector2Array = _tr.pts
+	var lens: PackedFloat32Array = _tr.len
+	for i in range(1, lens.size()):
+		if lens[i] >= at:
+			var u := (at - lens[i - 1]) / maxf(lens[i] - lens[i - 1], 1e-6)
+			return _pt(pts[i - 1].lerp(pts[i], u))
+	return _pt(pts[pts.size() - 1])
 
 # --- the frame ---
 
@@ -366,8 +455,12 @@ func _process(delta: float) -> void:
 	if _cell() <= 0.0 or _state.size() == 0:
 		return
 	var t := _now()
+	var moving := _animating(t)
+	if moving or _tr_dirty or _tr.is_empty():
+		_tr = _trace_live(t)
+		_tr_dirty = false
 	_arrivals(t)
-	if _animating(t):
+	if moving:
 		_refresh()
 	elif not Motion.reduce:
 		# At rest only the sun's rays and the motes move, and they are their
@@ -375,22 +468,36 @@ func _process(delta: float) -> void:
 		_air = null
 		queue_redraw()
 
-## The light reaching things: a drop it has just wet rings and chimes, and a
-## bud reached with a drop still dry says so, once a beam.
+## The light reaching things: a drop it has just wet rings and chimes (not
+## twice inside CHIME_QUIET, so a drag sweeping the light back and forth over
+## one does not chatter), and a bud reached with a drop still dry says so,
+## once an arrangement, only once the pieces are at rest.
 func _arrivals(t: float) -> void:
 	var drawn := _drawn(t)
-	for c in _drop_at:
-		if not _wet.has(c) and drawn >= float(_drop_at[c]) - 1e-4:
-			_wet[c] = true
-			if t - _opened > BEAM_DELAY + 0.05:
-				_ring_at(_centre(c), t)
-				fx.cue("dew", 1.0 + 0.08 * float(_wet.size() - 1))
+	var now_wet := {}
+	for c in _tr.drop_at:
+		if drawn >= float(_tr.drop_at[c]) - 1e-4:
+			now_wet[c] = true
+	for c in now_wet:
+		if not _wet.has(c) and t - float(_chimed.get(c, -100.0)) > CHIME_QUIET:
+			_chimed[c] = t
+			_ring_at(_centre(c), t)
+			fx.cue("dew", 1.0 + 0.08 * float(now_wet.size() - 1))
+	_wet = now_wet
 	var tr_: Dictionary = _state.beam
-	if _drag.is_empty() and tr_.end == "bud" and not tr_.won and _arrived(t) and _bud_told != _beam_at:
-		_bud_told = _beam_at
+	var key := str(_state.pos)
+	if _drag.is_empty() and _settled(t) and tr_.end == "bud" and not tr_.won and _arrived(t) and _bud_told != key:
+		_bud_told = key
 		var left: int = _state.drops().size() - _state.lit_drops()
 		_say(tr("SB_BUD_DRY_ONE") if left == 1 else tr("SB_BUD_DRY_N") % left, Face.Expr.STRAIN)
 		fx.cue("dry")
+
+## Whether every piece has landed on its peg.
+func _settled(t: float) -> bool:
+	for d: Dictionary in _disp:
+		if t - float(d.at) < SNAP_TIME:
+			return false
+	return true
 
 func _animating(t: float) -> bool:
 	if t < _anim_until:
@@ -405,6 +512,7 @@ func _busy_for(seconds: float) -> void:
 	_anim_until = maxf(_anim_until, _now() + seconds)
 
 func _refresh() -> void:
+	_tr_dirty = true
 	_live = null
 	_air = null
 	queue_redraw()
@@ -527,23 +635,19 @@ func _build_live(t: float) -> ArrayMesh:
 			for i in pts.size():
 				pts[i] = mid + (pts[i] - mid) * e
 		Parts.cup(b, pts, s * e, f, _lift(p), _state.pinned.has(p))
-	if not _old_pts.is_empty():
-		var fade := 1.0 - clampf((t - _old_at) / BEAM_FADE, 0.0, 1.0)
-		if fade > 0.0 and not Motion.reduce:
-			Parts.beam(b, _cut(_old_pts, _old_upto), s, fade)
-		else:
-			_old_pts = PackedVector2Array()
+	if _tr.is_empty():
+		_tr = _trace_live(t)
 	var drawn := _drawn(t)
-	Parts.beam(b, _cut(_pts, drawn), s)
-	if _arrived(t) and String(_state.beam.end) in ["pot", "cup", "lamp"]:
-		b.disc(_pt(_pts[_pts.size() - 1]), s * 0.07, Color(Pal.BEAM, 0.8))
+	var bpts: PackedVector2Array = _tr.pts
+	Parts.beam(b, _cut(bpts, drawn), s)
+	if _arrived(t) and String(_tr.end) in ["pot", "cup", "lamp"]:
+		b.disc(_pt(bpts[bpts.size() - 1]), s * 0.07, Color(Pal.BEAM, 0.8))
 	for i in _state.drops().size():
 		var c: int = _state.drops()[i]
-		var wet: bool = _drop_at.has(c) and drawn >= float(_drop_at[c]) - 1e-4
+		var wet: bool = _wet.has(c)
 		var sc := Vector2.ONE * _entry(i + 2, t)
-		if wet and _drop_at.has(c):
-			var at := _beam_at + (float(_drop_at[c]) - _beam_from) / BEAM_SPEED
-			sc *= Vector2(1.0, 1.0) + Vector2(0.08, -0.16) * _pulse(t - at, 0.26)
+		if wet:
+			sc *= Vector2(1.0, 1.0) + Vector2(0.08, -0.16) * _pulse(t - float(_chimed.get(c, -100.0)), 0.26)
 		Parts.drop(b, _centre(c), s, wet, sc)
 	for p in n:
 		var pc: Dictionary = _state.g.pieces[p]
@@ -551,19 +655,14 @@ func _build_live(t: float) -> ArrayMesh:
 			continue
 		var at := _pt(_piece_mid(p, _peg_now(p, t))) + Vector2(_shiver(p, t), 0.0)
 		Parts.mirror(b, at, s, pc.t == "/", _lift(p), _state.pinned.has(p), _entry(p, t))
-	# a glint on every mirror the drawn light has reached
-	var along := 0.0
-	for i in range(1, _pts.size()):
-		along = _len[i]
-		if along > drawn:
-			break
-		for p in n:
-			if _state.g.pieces[p].kind == "m" and _pts[i].is_equal_approx(_anchor(p, float(_state.pos[p]))) and _drag.get("p", -1) != p:
-				b.disc(_pt(_pts[i]), s * 0.075, Color(Pal.BEAM_CORE, 0.95))
+	# a glint where the drawn light strikes each mirror's glass
+	for gl: Array in _tr.glints:
+		if float(gl[1]) <= drawn:
+			b.disc(_pt(gl[0]), s * 0.075, Color(Pal.BEAM_CORE, 0.95))
 	var open := 0.0
 	if _solved_at >= 0.0:
 		open = 1.0 if Motion.reduce else Motion.back_out(clampf((t - _solved_at) / BLOOM_TIME, 0.0, 1.0))
-	var glow: bool = _state.beam.end == "bud" and _arrived(t) and _solved_at < 0.0
+	var glow: bool = _tr.end == "bud" and _arrived(t) and _solved_at < 0.0
 	Parts.bud(b, _centre(_state.g.bud), s * _entry(n + 1, t), open, glow)
 	_drop_rings(t)
 	for r: Dictionary in _rings:
@@ -688,7 +787,6 @@ func _move(local: Vector2) -> void:
 	_drag.s = clampf(_rail_s(p, local) + float(_drag.off), 0.0, float(n - 1))
 	var q: int = _state.snap(p, float(_drag.s))
 	if q != _state.pos[p] and _state.place(p, q):
-		_retrace(t)
 		fx.cue("step")
 	_refresh()
 
@@ -726,7 +824,6 @@ func _release(local: Vector2) -> void:
 	if _state.place(p, pg.q):
 		_disp[p] = {"from": from, "at": t}
 		_busy_for(SNAP_TIME)
-		_retrace(t)
 		_state.commit(before)
 		fx.cue("slide")
 		note_move()
@@ -789,7 +886,6 @@ func undo() -> bool:
 		return false
 	var t := _now()
 	_settle(before, t)
-	_retrace(t)
 	_say(tr("SB_UNDONE"), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
@@ -810,7 +906,6 @@ func hint() -> bool:
 		return false
 	hints_used += 1
 	_settle(before, t)
-	_retrace(t)
 	var p: int = r.piece
 	_ring_at(_pt(_piece_mid(p, float(_state.pos[p]))), t + SNAP_TIME)
 	_say(tr("SB_HINT"), Face.Expr.HAPPY)
@@ -826,7 +921,6 @@ func reset_board() -> void:
 	var t := _now()
 	_drag = {}
 	_settle(before, t, Motion.RESET_STAGGER)
-	_retrace(t)
 	_rings = []
 	_solved_at = -1.0
 	moves = 0
@@ -856,7 +950,9 @@ func win_delay() -> float:
 func _on_solved() -> void:
 	var t := _now()
 	_drag = {}
-	_solved_at = t + _arrive_in(t)
+	# The bloom waits for the let-go piece to land, and on a first-run beam
+	# for the light to get there.
+	_solved_at = t + maxf(_arrive_in(t), 0.0 if Motion.reduce else SNAP_TIME)
 	_tip_timer.stop()
 	if not Motion.reduce:
 		var drops: PackedInt32Array = _state.drops()
@@ -880,13 +976,14 @@ func restore_completed_board() -> void:
 	_state.pos = _state.home_pos()
 	_state.retrace()
 	var t := _now()
-	_retrace(t, true)
-	_beam_from = _total()
+	_beam_at = t - 100.0
 	for p in _disp.size():
 		_disp[p] = {"from": float(_state.pos[p]), "at": -100.0}
+	# Every drop already wet, so reopening a solved day chimes nothing.
 	_wet = {}
-	for c in _drop_at:
+	for c in _state.drops():
 		_wet[c] = true
+	_tr = _trace_live(t)
 	_solved_at = t - 100.0
 	_anim_until = 0.0
 	_opened = t - 100.0

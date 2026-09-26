@@ -1225,7 +1225,10 @@ pointing `seed_as` at them. Specs:
   branches only on a peg it reaches, so it is exhaustive at 83 ms worst
   (Hard) -- and **hit-test a two-cell piece as the box round both cells**:
   a cup's middle is the line between them, the point a thumb aims at, and a
-  per-cell strict test missed it. Its drawing is `ui/faces/sunbeam_parts.gd`,
+  per-cell strict test missed it. **What is drawn is a ray, what is judged
+  is the grid**: the beam is cast against each piece where it is drawn
+  (mid-drag, mid-settle) so it bends continuously, and on pegs it equals the
+  grid trace, which alone decides the win. Its drawing is `ui/faces/sunbeam_parts.gd`,
   shared with the menu card. 65 draw calls played, 68 solved, ANGLE agreeing.
   Sounds are prompts in `tools/gen_sfx.py`, not yet generated.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
