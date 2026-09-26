@@ -301,14 +301,19 @@ const POST_SPENT := STONE_GIVEN   # a post with no line left to walk
 ## a brighter plank for the finished trail, one colour for a line nothing can
 ## reach any more -- which the island draws as a rose flash and nothing else,
 ## because a stage has no room for a fifth state -- and the snail.
+## The second polish (2026-09-25) lifted the flat ford off `SLATE` to
+## `FORD_STONE`: on parchment with no island sun on it the old slate read as
+## a black bar, against the shading direction's "no harsh black"; it is still
+## dark to the plank's light, and still well apart from `PLANK_LOST`.
 const PLANK_HI    := Color("e3c39b")   # a plank on the finished trail
 const PLANK_LOST  := Color("8d94a3")   # a line the stroke can no longer reach
+const FORD_STONE  := Color("58606c")   # a line not walked yet, on the flat board
 const POST_STONE  := Color("c3b7a4")   # the drum a cap sits on
 const POST_DEEP   := Color("9c9083")
 const SHELL       := Color("e0a257")   # the walker's shell, and its spiral
 const SHELL_DEEP  := Color("b87d3a")
-const SNAIL_FOOT  := Color("f3e1c4")
-const SNAIL_DEEP  := Color("d9c29c")
+const SNAIL_FOOT  := Color("ecd6b0")
+const SNAIL_DEEP  := Color("b99a70")
 
 # Queens (docs/superpowers/specs/2026-09-19-queens-flat-design.md, section
 # 5): a court cut into as many coloured regions as it has rows, under an ink

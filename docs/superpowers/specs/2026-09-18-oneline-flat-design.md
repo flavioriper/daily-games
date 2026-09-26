@@ -330,3 +330,72 @@ Open, still, from section 10: medium's air, the snail as a species, the drag
 on a phone, the refused live reachability and the missing count. Nothing here
 answers them; it only makes the flat board move with the same hand as the
 other eight.
+
+## 12. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of Code Break, Balance, Untangle, Shikaku,
+Tents and Light Up the same evening, and this amendment is the record. The
+rules, the layout, the gesture and the caps' four meanings are unchanged.
+
+**A ford is stone, not a black bar.** On parchment with no island sun the
+old `SLATE` line read as near-black, against the shading direction; it is
+`FORD_STONE` now, still dark to the plank's light and well apart from
+`PLANK_LOST`. Each ford casts a soft shadow down the page (`FORD_SHADOW`)
+and carries a lit crest along whichever side faces up (`CREST_*`), drawn
+without caps for Light Up's reason: round caps double a light line's alpha
+at its ends.
+
+**A plank is a boardwalk.** The deep wood runs underneath and the slats go
+over it about `SLAT` long with a `SEAM` of it showing between each, cut
+within `SLAT_TONE` of the plank's colour off a fixed hash of the line, so a
+figure is laid the same every time, each with a light along its upper edge.
+While the walker lays a plank **each slat lands as the walker clears it**
+(`SLAT_POP`, pop-in's squash read across the plank), and a wet sheen runs
+down the plank's middle behind the snail, brightest at it, fading over
+`SHEEN_FADE` once it lands. Reset's shrinking planks keep their slats.
+
+**A post has a cut face and a lipped cap**: a light on the drum's upper rim
+and a darker crescent under the cap (`CAP_LIP`). **Before the stroke begins
+the posts it may begin at glow green** under their drums (`GLOW_*`), which
+says "start here" louder than the cap alone; the glow is in the one mesh and
+static, so it costs nothing while the board is still.
+
+**The snail was redrawn** (`ui/faces/snail_face.gd`, so the menu card and
+the first-play diagram have it too). Its pale foot sank into the parchment
+and an eye on its head beside two eyed stalks read as a second face: the
+foot and a raised head now sit on a deep rim, the eyes are white bulbs on
+the stalk tips with the pupils looking ahead, and the head keeps the mouth
+and a rose cheek. STRAIN lowers the lids as well as flattening the mouth.
+`SNAIL_FOOT` and `SNAIL_DEEP` are darker to match. `SNAIL_R` is 0.2, not
+0.15, because the walker was a speck beside a post.
+
+**The walker crawls.** On a post it stands on the drum's rim above the cap
+(`POST_LIFT`), which it must never hide; out on a line it comes down to ride
+the plank it is laying (`PLANK_LIFT`), climbing between the two within
+`CLIMB` of a post. On the line it leans with the line up to `TILT_MAX`, and
+it stretches and gathers (`CRAWL`, `CRAWL_RATE`) where it used to rock. A
+change of heading turns it round over `TURN`, narrowing to its edge and never
+to nothing, where it used to flip on one frame.
+
+**The win lights the jetty.** As the warmth runs back along the trail in walk
+order a glint runs down each plank (`GLINT`), and every cap turns toward
+`SUN_RAY` as the wave reaches its post (`CAP_WARM`).
+`restore_completed_board()` opens onto the settled picture, golden caps
+included.
+
+Under reduce motion none of it moves: no slat lands, no sheen, no glint, no
+crawl, lean or turn, and the win's caps are golden at once.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- oneline`, before and after in the same session.
+Draw calls are unchanged: **63** played and **60-61** bare. The played idle
+reads 2.20 and 2.19 ms against 1.83 and 1.82 before, and that is the
+harness's window and not a settled board: an instrumented run showed the
+board rebuilding until the sheen's fade ends, about 0.1 s into the window,
+and nothing after. The bare board reads 2.04 and 2.05 against 1.95 and 1.95.
+The reduce-motion pair 1.5 s apart is pixel-identical, and under reduce
+motion ANGLE matches the default driver to a max channel delta of 1/255. The
+menu reads 260 calls. Suite 122583/0; `tests/_win.gd` windowed 21/21. A
+throwaway probe walked a whole figure a tap at a time and shot every walk
+mid-line and the win as it played and settled.

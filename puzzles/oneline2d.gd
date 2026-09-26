@@ -62,15 +62,65 @@ const POST_R := 0.17
 const LINE_W := 0.13
 const PLANK_DEEP_W := 0.15
 const PLANK_W := 0.115
-const SNAIL_R := 0.15
-## How high above the line the walker rides, so it sits on the plank rather
-## than inside it.
-const SNAIL_LIFT := 0.34
+## The walker's radius. 0.15 left a snail a third the size of a post's
+## drum, which read as a speck beside the figure it is meant to be walking.
+const SNAIL_R := 0.2
+## How high above the line the walker rides: on a post it stands on the
+## drum's rim above the cap, which is the one thing it must never hide; out
+## on a line it comes down to ride the plank it is laying. It climbs between
+## the two within CLIMB of a post.
+const POST_LIFT := 0.3
+const PLANK_LIFT := 0.12
+const CLIMB := 0.3
+## Out on a line the walker leans with it, up to TILT_MAX, so it climbs a
+## diagonal rather than skating along it; on a post it stands level.
+const TILT_MAX := 0.5
+## A change of heading turns the walker round over TURN rather than
+## flipping it on one frame.
+const TURN := 0.14
+## The crawl: a snail does not rock, it stretches and gathers. The walker's
+## length swells by CRAWL at CRAWL_RATE while it is on the move.
+const CRAWL := 0.07
+const CRAWL_RATE := 26.0
 ## How close a tap or a drag has to pass a post to take it. The line between
 ## two posts is never in doubt, so there is nothing to aim at but the post:
 ## this is simply a thumb-sized reach, and it is the tightest gesture of the
 ## eight flat screens (37 CSS pixels on hard).
 const REACH := 0.42
+## The ford: a soft shadow under each stone line, and a lit crest along its
+## upper side, both in steps. The crest is drawn without caps: a stroke's
+## round caps overlap its body and double the alpha at each end.
+const FORD_SHADOW := Vector2(0.0, 0.035)
+const FORD_SHADOW_A := 0.1
+const CREST_W := 0.03
+const CREST_A := 0.16
+## The plank is a boardwalk: slats about SLAT long, with a seam of the deep
+## wood between them, each cut within SLAT_TONE of the plank's colour off a
+## hash of its line and place, so a figure is laid the same way every time.
+## A slat lands over SLAT_POP once the walker is past it, flat and then wide.
+const SLAT := 0.21
+const SEAM := 0.018
+const SLAT_TONE := 0.06
+const SLAT_POP := 0.2
+const SLAT_LIGHT_A := 0.28
+## The walker's sheen: a wet shine along the middle of the plank behind it,
+## SHEEN long and SHEEN_A at the snail, fading out over SHEEN_FADE once it
+## lands.
+const SHEEN := 0.55
+const SHEEN_A := 0.42
+const SHEEN_FADE := 0.45
+## Before the stroke begins, the posts it may begin at glow in the family's
+## green: a soft disc under the drum, GLOW_SPREAD post radii across.
+const GLOW_A := 0.26
+const GLOW_SPREAD := 1.85
+## A cap's lip: a darker crescent under it, so it sits in the drum.
+const CAP_LIP := 0.18
+## On the win the glint that runs down each plank as it warms, GLINT long
+## in steps, and every cap turns toward the sun as the warmth reaches it.
+const GLINT := 0.3
+const GLINT_A := 0.55
+const CAP_WARM := 0.75
+
 ## The post's shadow on the parchment: the family's soft disc, whose rim
 ## fades, so it needs about twice the peak of the flat 0.13 ellipse it
 ## replaced to read the same.
@@ -147,6 +197,7 @@ var _post_shiver: Dictionary = {} # post -> at: a refused press
 var _post_blush: Dictionary = {}  # post -> at: the drum blushes
 var _wrong: Dictionary = {}       # line -> at: Check found it stranded
 var _bright: Dictionary = {}      # line -> at: it warms on the win
+var _warm: Dictionary = {}        # post -> at: its cap turns on the win
 ## Planks taken up by Reset, shrinking to nothing where they lay:
 ## [{"from": Vector2, "to": Vector2, "at": float}].
 var _gone: Array = []
@@ -155,6 +206,10 @@ var _gone: Array = []
 var _walker_rest := Vector2.ZERO
 var _walker_out := -100.0
 var _walker_dir := 1.0
+## The walker's facing as drawn, easing toward _walker_dir through a turn,
+## and the clock the ease last read.
+var _face := 1.0
+var _placed_at := 0.0
 var _joy := false
 var _opened := 0.0
 var _anim_until := 0.0
@@ -224,6 +279,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_post_blush = {}
 	_wrong = {}
 	_bright = {}
+	_warm = {}
 	_gone = []
 	_walker_out = -100.0
 	_joy = false
@@ -336,9 +392,12 @@ func _refresh() -> void:
 # --- the walker ---
 
 ## The snail rides the stroke: on the post it stands on, or part way along the
-## line it is crossing, facing the way it is heading and rocking as it goes.
-## The slot carries all of that; the snail inside it carries the recipes.
+## line it is crossing, facing the way it is heading, leaning with the line
+## and stretching as it crawls. The slot carries all of that; the snail inside
+## it carries the recipes.
 func _place_walker(t: float) -> void:
+	var dt := clampf(t - _placed_at, 0.0, 0.1)
+	_placed_at = t
 	var leaving := t < _walker_out + Motion.POP_OUT and not Motion.reduce
 	if state.current < 0 and not leaving:
 		_seat.visible = false
@@ -347,17 +406,30 @@ func _place_walker(t: float) -> void:
 	var at := _walker_rest
 	var dir := _walker_dir
 	var moving := false
+	var tilt := 0.0
 	if state.current >= 0:
 		var ride := _ride(t)
-		at = ride.at - Vector2(0.0, _step * SNAIL_LIFT)
+		at = ride.at - Vector2(0.0, _step * lerpf(POST_LIFT, PLANK_LIFT, ride.out))
 		dir = ride.dir
 		moving = ride.moving
+		tilt = ride.tilt * ride.out
 		_walker_rest = at
 		_walker_dir = dir
+	if Motion.reduce:
+		_face = dir
+	else:
+		_face = move_toward(_face, dir, dt * 2.0 / TURN)
+		if not is_equal_approx(_face, dir):
+			_busy_for(TURN)
+	# Through the turn the walker narrows to its edge and never to nothing.
+	var across := signf(_face if _face != 0.0 else dir) * maxf(absf(_face), 0.2)
+	var stretch := 0.0
+	if moving and not Motion.reduce:
+		stretch = CRAWL * sin(t * CRAWL_RATE)
 	_seat.position = at - _seat.size * 0.5
-	_seat.scale = Vector2(dir, 1.0)
-	_seat.rotation = 0.0 if Motion.reduce else sin(t * ROCK_RATE) * ROCK \
-		* (1.0 if moving else ROCK_STILL)
+	_seat.scale = Vector2(across * (1.0 + stretch), 1.0 - stretch * 0.6)
+	var rock := 0.0 if Motion.reduce or moving else sin(t * ROCK_RATE) * ROCK * ROCK_STILL
+	_seat.rotation = tilt + rock
 	if _joy:
 		snail.expression = Face.Expr.JOY
 	elif not state.stranded().is_empty():
@@ -365,20 +437,28 @@ func _place_walker(t: float) -> void:
 	else:
 		snail.expression = Face.Expr.HAPPY
 
-## Where the walker is, which way it faces, and whether it is on the move.
+## Where the walker is, which way it faces, whether it is on the move, how far
+## out on the line it is (0 on a post, 1 once it is CLIMB clear of both), and
+## the lean the line asks of it.
 func _ride(t: float) -> Dictionary:
 	var at := node_to_local(state.current)
 	var dir := 1.0
 	var moving := false
+	var out := 0.0
+	var tilt := 0.0
 	if not _stroke.is_empty():
 		var a := node_to_local(int(_stroke.from))
 		var b := node_to_local(int(_stroke.to))
 		var u := _dec((t - float(_stroke.at)) / LAY_TIME)
+		dir = 1.0 if b.x >= a.x else -1.0
 		if u < 1.0:
 			at = a.lerp(b, u)
 			moving = true
-		dir = 1.0 if b.x >= a.x else -1.0
-	return {"at": at, "dir": dir, "moving": moving}
+			var clear := minf(u, 1.0 - u) * a.distance_to(b)
+			out = smoothstep(0.0, _step * CLIMB, clear)
+			var d := b - a
+			tilt = clampf(atan2(d.y, absf(d.x)) * dir, -TILT_MAX, TILT_MAX)
+	return {"at": at, "dir": dir, "moving": moving, "out": out, "tilt": tilt}
 
 ## The walker arrives on a post: with the squash when a tap stood it there,
 ## or from above when a hint did (the Hint moment).
@@ -417,11 +497,11 @@ func _draw() -> void:
 	if _shown != null:
 		draw_mesh(_shown, null)
 
-## The whole figure in one mesh: every post's shadow, every line as stone,
-## every plank walked over it, then the posts. The stone runs in one pass
-## before any plank, so a walked line is never cut where an unwalked one
-## crosses it -- the island cannot do that at all, since its planks are
-## solids at the same height.
+## The whole figure in one mesh: every post's shadow and glow, every line as
+## stone, every plank walked over it, then the posts. The stone runs in one
+## pass before any plank, so a walked line is never cut where an unwalked one
+## crosses it -- the island cannot do that at all, since its planks are solids
+## at the same height.
 func _build_figure(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var lost: Dictionary = {}
@@ -429,18 +509,34 @@ func _build_figure(t: float) -> ArrayMesh:
 		lost[e] = true
 	for n in state.nodes:
 		_build_shadow(b, n, t)
+	var lines: Dictionary = {}
 	for i in state.edges.size():
 		var line := _line_geometry(i, t)
-		if line.is_empty():
-			continue
-		var stone: Color = Pal.PLANK_LOST if lost.has(i) else Pal.PLANK_BARE
+		if not line.is_empty():
+			lines[i] = line
+	for i in lines:
+		var line: Dictionary = lines[i]
+		var off: Vector2 = FORD_SHADOW * _step
+		b.stroke(PackedVector2Array([line.a + off, line.b + off]), _step * LINE_W * 1.2,
+			Color(Pal.TEXT, FORD_SHADOW_A * line.alpha))
+	for i in lines:
+		var line: Dictionary = lines[i]
+		var stone: Color = Pal.PLANK_LOST if lost.has(i) else Pal.FORD_STONE
 		var blush := Motion.flash_level(t - float(_wrong.get(i, -100.0)))
 		if blush > 0.0:
 			stone = stone.lerp(Pal.BAD_TILE, blush)
-		b.stroke(PackedVector2Array([line.a, line.b]), _step * LINE_W, Color(stone, line.alpha))
-	for i in state.edges.size():
-		if _line_geometry(i, t).is_empty():
-			continue
+		var ends := PackedVector2Array([line.a, line.b])
+		b.stroke(ends, _step * LINE_W, Color(stone, line.alpha))
+		# The crest sits on whichever side faces up the page, so a light falls
+		# on every ford from the same sky.
+		var along: Vector2 = (line.b - line.a).normalized()
+		var up := Vector2(along.y, -along.x)
+		if up.y > 0.0:
+			up = -up
+		var lift := up * _step * (LINE_W * 0.5 - CREST_W * 0.7)
+		b.stroke(PackedVector2Array([line.a + lift, line.b + lift]), _step * CREST_W,
+			Color(1.0, 1.0, 1.0, CREST_A * line.alpha), false, false)
+	for i in lines:
 		_build_plank(b, i, t)
 	_build_gone(b, t)
 	for n in state.nodes:
@@ -467,29 +563,112 @@ func _line_geometry(i: int, t: float) -> Dictionary:
 	return {"a": mid - half, "b": mid + half, "alpha": Motion.appear_level(elapsed)}
 
 ## The plank laid over line `i`, as far along as the walker has taken it. It
-## grows from the post the walker crossed *from*, and on the win it warms a
-## shade brighter in walk order, so the finished figure draws itself once more.
+## grows from the post the walker crossed *from*, slat by slat, each slat
+## landing as the walker clears it, with the walker's wet sheen behind it;
+## on the win it warms a shade brighter in walk order with a glint running
+## down it, so the finished figure draws itself once more.
 func _build_plank(b, i: int, t: float) -> void:
 	var u := 1.0 if state.walked.has(i) else 0.0
 	var anchor: int = int(state.lay_from.get(i, state.edges[i].x))
-	if not _stroke.is_empty() and int(_stroke.edge) == i:
+	var laying := -1.0
+	var live := not _stroke.is_empty() and int(_stroke.edge) == i
+	if live:
 		var prog := _dec((t - float(_stroke.at)) / LAY_TIME)
 		u = prog if bool(_stroke.up) else 1.0 - prog
 		anchor = int(_stroke.from) if bool(_stroke.up) else int(_stroke.to)
+		if bool(_stroke.up):
+			laying = float(_stroke.at)
 	if u <= 0.0:
 		return
 	var edge: Vector2i = state.edges[i]
 	var from := node_to_local(anchor)
 	var to := node_to_local(edge.y if anchor == edge.x else edge.x)
 	var warm: Color = Pal.PLANK_LAID
+	var glint := -1.0
 	if _bright.has(i):
-		warm = warm.lerp(Pal.PLANK_HI, _dec((t - float(_bright[i])) / BRIGHT_TIME))
-	_plank(b, from, from.lerp(to, u), warm, 1.0)
+		var g := (t - float(_bright[i])) / BRIGHT_TIME
+		warm = warm.lerp(Pal.PLANK_HI, _dec(g))
+		if g > 0.0 and g < 1.0 and not Motion.reduce:
+			glint = g
+	_plank(b, from, to, u, warm, 1.0, i, laying)
+	if glint >= 0.0:
+		var along := (to - from).normalized()
+		var at := from.lerp(to, glint)
+		var reach := along * _step * GLINT * 0.5
+		var fade := sin(glint * PI)
+		b.stroke(PackedVector2Array([at - reach, at + reach]), _step * PLANK_W * 0.5,
+			Color(1.0, 1.0, 1.0, GLINT_A * fade))
+	if live and bool(_stroke.up):
+		_build_sheen(b, from, to, u, t)
 
-func _plank(b, from: Vector2, to: Vector2, warm: Color, grow: float) -> void:
-	var line := PackedVector2Array([from, to])
-	b.stroke(line, _step * PLANK_DEEP_W * grow, Pal.WOOD_DEEP)
-	b.stroke(line, _step * PLANK_W * grow, warm)
+## The walker's wet shine down the middle of the plank behind it: a run of
+## short strokes brightening toward the snail, fading out once it lands.
+func _build_sheen(b, from: Vector2, to: Vector2, u: float, t: float) -> void:
+	if Motion.reduce:
+		return
+	var landed := t - float(_stroke.at) - LAY_TIME
+	var level := 1.0 - clampf(landed / SHEEN_FADE, 0.0, 1.0)
+	if level <= 0.0:
+		return
+	var span := from.distance_to(to)
+	if span <= 0.0:
+		return
+	var head := u * span
+	var tail := maxf(0.0, head - _step * SHEEN)
+	const PARTS := 5
+	for k in PARTS:
+		var p0 := lerpf(tail, head, float(k) / PARTS)
+		var p1 := lerpf(tail, head, float(k + 1) / PARTS)
+		var a := SHEEN_A * level * float(k + 1) / PARTS
+		b.stroke(PackedVector2Array([from.lerp(to, p0 / span), from.lerp(to, p1 / span)]),
+			_step * PLANK_W * 0.28, Color(1.0, 1.0, 1.0, a), false, false)
+
+## A plank from `from` toward `to`, laid as far as `u` of the way: the deep
+## wood underneath as far as it reaches, then the slats over it with a seam
+## between each. `grain` cuts each slat's tone; `laying` is the second the
+## walker set off down it, or negative for a plank already down, and then a
+## slat lands as the walker clears it.
+func _plank(b, from: Vector2, to: Vector2, u: float, warm: Color, grow: float,
+		grain: int, laying := -1.0) -> void:
+	var span := from.distance_to(to)
+	if span <= 0.0:
+		return
+	var along := (to - from) / span
+	var tip := from + along * span * u
+	b.stroke(PackedVector2Array([from, tip]), _step * PLANK_DEEP_W * grow, Pal.WOOD_DEEP)
+	var count := maxi(1, roundi(span / (_step * SLAT)))
+	var cut := span / count
+	var gap := _step * SEAM * 0.5
+	var t := _now()
+	for k in count:
+		var start := k * cut
+		var reach := minf((k + 1) * cut, span * u)
+		if reach <= start:
+			break
+		var wide := grow
+		if laying >= 0.0:
+			var clear := t - laying - (k + 1) * cut / span * LAY_TIME
+			wide *= Motion.pop_in_scale(clear + SLAT_POP * 0.35, SLAT_POP).x
+		if wide <= 0.0:
+			continue
+		var tone := _hash(grain * 31 + k) * 2.0 - 1.0
+		var slat := warm.lightened(tone * SLAT_TONE) if tone > 0.0 else warm.darkened(-tone * SLAT_TONE)
+		var a := from + along * (start + gap)
+		var z := from + along * maxf(start + gap, reach - gap)
+		var w := _step * PLANK_W * wide
+		b.stroke(PackedVector2Array([a, z]), w, slat, false, false)
+		var up := Vector2(along.y, -along.x)
+		if up.y > 0.0:
+			up = -up
+		var edge := up * w * 0.32
+		b.stroke(PackedVector2Array([a + edge, z + edge]), w * 0.22,
+			Color(1.0, 1.0, 1.0, SLAT_LIGHT_A), false, false)
+
+## A fixed 0..1 hash of `k`, so a slat is cut the same every time it is drawn.
+func _hash(k: int) -> float:
+	var h := (k * 374761393 + 668265263) & 0x7fffffff
+	h = ((h ^ (h >> 13)) * 1274126177) & 0x7fffffff
+	return float(h % 1000) / 999.0
 
 ## The planks Reset took up: each shrinks to nothing about its own middle in
 ## the wave from the far corner (the Remove moment, without the quarter turn a
@@ -504,17 +683,21 @@ func _build_gone(b, t: float) -> void:
 		keep.append(g)
 		var mid: Vector2 = (g.from as Vector2).lerp(g.to, 0.5)
 		var half: Vector2 = ((g.to as Vector2) - mid) * grow
-		_plank(b, mid - half, mid + half, Pal.PLANK_LAID, grow)
+		_plank(b, mid - half, mid + half, 1.0, Pal.PLANK_LAID, grow, int(g.seed))
 	_gone = keep
 
 ## The post's soft shadow on the parchment, at the post's rest: a hopping post
 ## leaves it behind, which is what makes the hop read as height. It arrives
-## with the post's own pop.
+## with the post's own pop. A post the stroke may begin at glows green under
+## it until the stroke has begun.
 func _build_shadow(b, n: int, t: float) -> void:
 	var grow := _post_entrance(n, t)
 	if grow.y <= 0.0:
 		return
 	var R := _step * POST_R
+	if state.current < 0 and state.may_start(n) and not is_done():
+		Scenery.soft_disc(b, node_to_local(n), GLOW_SPREAD * R * grow.x, GLOW_SPREAD * R * grow.y,
+			Color(Pal.GOOD, GLOW_A))
 	var at := node_to_local(n) + Vector2(0.05, 0.3) * R
 	Scenery.soft_disc(b, at, 0.92 * R * SHADOW_SPREAD * grow.x, 0.8 * R * SHADOW_SPREAD * grow.y,
 		Color(Pal.TEXT, SHADOW_A))
@@ -525,7 +708,7 @@ func _build_shadow(b, n: int, t: float) -> void:
 ## start cannot start it. Drawn off the readers: it pops in with the squash
 ## along the diagonal, sinks under the finger, hops when the walker lands and
 ## on the waves, shivers and blushes when it refuses, and its cap bumps when
-## the count it shows has changed.
+## the count it shows has changed. On the win the cap turns toward the sun.
 func _build_post(b, n: int, t: float) -> void:
 	var grow := _post_entrance(n, t)
 	if grow.y <= 0.0:
@@ -552,9 +735,17 @@ func _build_post(b, n: int, t: float) -> void:
 	var ry := R * grow.y
 	b.ellipse(at + Vector2(0.0, 0.1) * ry, rx, ry, deep)
 	b.ellipse(at, rx, ry, drum)
+	# The drum's cut face catches the light on its upper rim.
+	b.stroke(Face.Builder.arc_points(at, 0.86 * rx, PI * 1.05, PI * 1.7), 0.07 * rx,
+		Color(1.0, 1.0, 1.0, 0.3), false, false)
 	var cap := Motion.bump_scale(t - float(_cap_bump.get(n, -100.0)))
-	b.ellipse(at + Vector2(0.0, -0.04) * ry, 0.62 * rx * cap, 0.62 * ry * cap, _cap_colour(n, t))
-	b.ellipse(at + Vector2(-0.2, -0.26) * ry, 0.26 * rx, 0.16 * ry, Color(1.0, 1.0, 1.0, 0.22))
+	var colour := _cap_colour(n, t)
+	if _warm.has(n):
+		colour = colour.lerp(Pal.SUN_RAY, CAP_WARM * _dec((t - float(_warm[n])) / BRIGHT_TIME))
+	var centre := at + Vector2(0.0, -0.04) * ry
+	b.ellipse(centre + Vector2(0.0, 0.07) * ry, 0.64 * rx * cap, 0.64 * ry * cap, colour.darkened(CAP_LIP))
+	b.ellipse(centre, 0.6 * rx * cap, 0.6 * ry * cap, colour)
+	b.ellipse(at + Vector2(-0.2, -0.26) * ry, 0.26 * rx * cap, 0.16 * ry * cap, Color(1.0, 1.0, 1.0, 0.28))
 
 ## The post's entrance scale: pop_in's squash along the diagonal, a beat after
 ## the lines begin. Zero before it starts.
@@ -748,7 +939,7 @@ func _walk_to(n: int) -> void:
 			_stroke = {"edge": state.trail[-1], "from": from, "to": n,
 				"at": t, "up": true, "to_cap": to_cap}
 			_release_walker()
-			_busy_for(LAY_TIME)
+			_busy_for(LAY_TIME + SHEEN_FADE)
 			_depart(from)
 			_land(n, t + (0.0 if Motion.reduce else LAY_TIME), true)
 			_speak()
@@ -923,7 +1114,7 @@ func reset_board() -> void:
 		var other: int = edge.y if anchor == edge.x else edge.x
 		var diagonal := 0.5 * float(_diagonal(anchor) + _diagonal(other))
 		_gone.append({"from": node_to_local(anchor), "to": node_to_local(other),
-			"at": now + _reset_wave(diagonal)})
+			"at": now + _reset_wave(diagonal), "seed": e})
 	if state.current >= 0:
 		_walker_out = now
 		Motion.stop(_look_tw)
@@ -938,6 +1129,7 @@ func reset_board() -> void:
 	_post_blush = {}
 	_wrong = {}
 	_bright = {}
+	_warm = {}
 	_joy = false
 	if not Motion.reduce:
 		for n in state.nodes:
@@ -978,8 +1170,11 @@ func restore_completed_board() -> void:
 	_wrong = {}
 	_gone = []
 	_bright = {}
+	_warm = {}
 	for e in state.trail:
 		_bright[e] = t - 10.0
+	for n in state.nodes:
+		_warm[n] = t - 10.0
 	_walker_out = -100.0
 	_opened = t - 10.0
 	_anim_until = 0.0
@@ -1028,6 +1223,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	_solved_at = t
 	_bright = {}
+	_warm = {}
 	var last := _solve_delay(state.trail.size())
 	for k in state.trail.size():
 		_bright[state.trail[k]] = t + _solve_delay(k)
@@ -1035,6 +1231,7 @@ func _on_solved() -> void:
 		for k in state.walk.size():
 			_post_hop[state.walk[k]] = {"at": t + _solve_delay(k),
 				"height": Motion.SOLVE_HOP, "time": Motion.SOLVE_TIME}
+			_warm[state.walk[k]] = minf(float(_warm.get(state.walk[k], INF)), t + _solve_delay(k))
 		_walker_hop(Motion.SOLVE_HOP, Motion.SOLVE_TIME, last)
 		_after(last, func() -> void:
 			_joy = true
@@ -1042,6 +1239,8 @@ func _on_solved() -> void:
 			_refresh())
 	else:
 		_joy = true
+		for n in state.nodes:
+			_warm[n] = t
 	_busy_for(last + maxf(Motion.SOLVE_TIME, BRIGHT_TIME))
 	_say(tr("OL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
