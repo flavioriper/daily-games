@@ -433,3 +433,54 @@ The 855 draw-call budget is the binding one; the idle number is a report.
     against 319 (the card's bee's wings) at the 8.33 ms vsync cap; suite 2406
     checks, 0 failures; `tests/_win.gd` 10/10 with Queens solved through the
     hint path.
+
+## 14. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished, and for a
+drag over cells with pebbles to take the pebbles off. Built directly, like
+the second passes of the other boards the same evening. The rules, the
+layout, the tap cycle and the queen's wave are unchanged.
+
+**A stroke that starts on one of the player's own pebbles picks pebbles up**
+along its path; any other stroke lays them, as before. A queen and a cross a
+queen laid are left alone either way. Queens' own genre works this way, and
+before this a drag could only ever add. **The court answers under the finger
+now**: each cell changes as the stroke reaches it (`State.sweep_step`), where
+before nothing landed until the release. The stroke is still one move and
+one undo -- its first change opens a history entry and the rest join it --
+and it is counted once, on the release. A laid pebble pops in with its cell
+springing back under it; a lifted one shrinks out with a small puff. The
+note climbs `STROKE_PITCH` a cell for up to `STROKE_PITCH_CAP` cells, as
+Word Trail's trace does.
+
+**The dot on a bare cell is fainter** (`DOT_ALPHA` 0.32 to 0.2, `DOT_R`
+0.05): at the mock's 0.32 it and a pebble read as the same mark at two
+sizes. **A cross a queen laid is smaller than the player's own**
+(`AUTO_SCALE` 0.8, `AUTO_ALPHA` 0.7), so what the player noted stands out
+from what the queens derived.
+
+**Every cell has a shade and a bevel**: a tone off its hash within `TONE`,
+a lit top lip and a shaded foot (`BEVEL*`), so a region reads as laid tiles
+rather than a flat fill. **A seated queen's cell takes a warm wash**
+(`HALO_ALPHA`), coming and going with her; a disc under her was tried first
+and she covered it.
+
+**A refused seat names the queen who refused it**: every queen who sees the
+cell wobbles while the cell blushes, so the player learns whose reach it is
+in. **A lifted queen leaves a small gold puff.** **On the win a pale light
+crosses the court along the diagonal** (`WIN_GLINT_*`) while the pebbles
+scatter. It is `SUN_TILE` and not the wave's gold, which over the blue and
+lilac regions mixed to grey on the first rendered frame.
+
+Under reduce motion none of it moves: strokes land at once with no puff,
+nothing wobbles, and no light crosses the win.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- queens`: **68** draw calls played, unchanged from the
+reading taken before the pass in the same session, and 65 bare. Played idle
+2.61 and 2.79 ms against 2.70 before. The reduce-motion pair 1.5 s apart is
+pixel-identical, and under reduce motion ANGLE matches the default driver to
+a max channel delta of 1/255 on the same 68 calls. Suite 122583/0;
+`tests/_win.gd` windowed 21/21. A throwaway probe drove a laying stroke, a
+lifting stroke from a pebble (7 crosses to 3, one history entry each, one
+undo back to 7), a refusal and a solve, and shot each.

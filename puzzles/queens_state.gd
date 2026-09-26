@@ -201,6 +201,23 @@ func sweep(cells: Array, on: bool) -> Array:
 		history.append(entry)
 	return changed
 
+## One cell of a sweep still under the finger: lays the player's cross on a
+## bare `cell` (`on`) or takes the player's cross off it, at once, so the
+## court answers the finger as it moves. A stroke is still one move: the
+## first cell it changes opens a history entry (`fresh`) and every later one
+## joins it. True when the cell changed.
+func sweep_step(cell: Vector2i, on: bool, fresh: bool) -> bool:
+	var prev := BLANK if on else CROSS
+	if on:
+		if not _lay_cross(cell):
+			return false
+	elif not _take_cross(cell):
+		return false
+	if fresh or history.is_empty():
+		history.append([])
+	(history[history.size() - 1] as Array).append({"cell": cell, "prev": prev})
+	return true
+
 ## Takes back the last gesture. Returns the cells it touched.
 func undo() -> Array:
 	if history.is_empty():

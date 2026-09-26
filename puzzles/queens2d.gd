@@ -50,8 +50,18 @@ const FRAME_RADIUS := 16.0
 const SEAM := 5.0
 const GRID := 2.0
 const GRID_ALPHA := 0.28
-const DOT_R := 0.055
-const DOT_ALPHA := 0.32
+const DOT_R := 0.05
+## Fainter than the mock's 0.32 since the second polish: at 0.32 the dot on a
+## bare cell and a pebble read as the same mark at two sizes.
+const DOT_ALPHA := 0.2
+## Each cell's own shade, off its hash, within this much lighter or darker,
+## so a region reads as laid by hand rather than poured.
+const TONE := 0.035
+## The lit top edge and the shaded foot every cell carries, in cells, and how
+## far toward paper and ink they go.
+const BEVEL := 0.07
+const BEVEL_LIT := 0.3
+const BEVEL_SHADE := 0.07
 ## How far a pressed cell goes toward the ink at the bottom of its press. The
 ## cells are flush, so a press here shades rather than shrinks (a shrunk cell
 ## would show the frame's ink round it); the piece on the cell sinks.
@@ -80,8 +90,23 @@ const SHIVER := 0.03
 ## genuinely differs from Sudoku's.
 ## The gold wash's peak alpha as the wave reaches a cell.
 const WAVE_FLASH := 0.35
-## A cross a queen laid, against the player's own at one.
-const AUTO_ALPHA := 0.75
+## A cross a queen laid, against the player's own at one: fainter and smaller,
+## so the player's own notes stand out from what the queens derived.
+const AUTO_ALPHA := 0.7
+const AUTO_SCALE := 0.8
+## The warm wash a seated queen's cell takes, so a claimed seat reads at a
+## glance under her. A disc under her was tried first and she covered it.
+const HALO_ALPHA := 0.42
+## A stroke's note rises this much a cell, up to this many cells.
+const STROKE_PITCH := 0.03
+const STROKE_PITCH_CAP := 8
+## On the win a light crosses the court along the diagonal once the pebbles
+## have gone: when it sets off, and its step a diagonal.
+const WIN_GLINT_AT := 0.35
+const WIN_GLINT_STEP := 0.035
+## The light is paper-pale and not the wave's gold: gold over the blue and
+## lilac regions mixed to grey on the first rendered frame.
+const WIN_GLINT_ALPHA := 0.55
 ## How long a refused given queen strains before her face settles.
 const STRAIN_TIME := 0.6
 ## The pebbles clear away in a scatter on the win, as Nonogram's do.
@@ -124,6 +149,7 @@ var _gen := 0
 var _cross_in: Dictionary = {}  # cell -> at: its pebble pops in then
 var _cross_out: Array = []      # [{"cell", "at", "alpha"}]: pebbles shrinking out
 var _wash: Dictionary = {}      # cell -> at: the wave reaches it then
+var _glint: Dictionary = {}     # cell -> at: the win's light crosses it then
 var _blush: Dictionary = {}     # cell -> at: Check pointed at it, or a refusal
 var _shiver: Dictionary = {}    # cell -> at: a refused pebble
 var _sunk: Dictionary = {}      # cell -> {"down", "up"}: the finger has it
@@ -139,7 +165,7 @@ var _shown: Array = []
 var _press_cell := Vector2i(-1, -1)
 var _pressed: Control       # the bee under the finger, if one
 var _dragged := false
-var _lay := true            # retained for the shared sweep bookkeeping
+var _lay := true            # the stroke lays pebbles (true) or picks them up
 var _swept: Dictionary = {}
 var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
@@ -182,6 +208,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_cross_in = {}
 	_cross_out = []
 	_wash = {}
+	_glint = {}
 	_blush = {}
 	_shiver = {}
 	_sunk = {}
@@ -386,7 +413,15 @@ func _build_floor(now: float) -> ArrayMesh:
 					var grown := Motion.press_scale(now - float(pr.down), released)
 					var depth := clampf((1.0 - grown) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
 					col = col.lerp(Pal.TEXT, SINK_SHADE * depth)
-			b.fan(_square(origin + Vector2(x, y) * _cell, _cell), col)
+			if _hash(cell) > 0.5:
+				col = col.lightened(TONE * 2.0 * (_hash(cell) - 0.5))
+			else:
+				col = col.darkened(TONE * 2.0 * (0.5 - _hash(cell)))
+			var at: Vector2 = origin + Vector2(x, y) * _cell
+			b.fan(_square(at, _cell), col)
+			var lip := _cell * BEVEL
+			b.fan(_rect(at, Vector2(_cell, lip)), col.lerp(Pal.PAPER, BEVEL_LIT))
+			b.fan(_rect(at + Vector2(0.0, _cell - lip), Vector2(_cell, lip)), col.lerp(Pal.TEXT, BEVEL_SHADE))
 	for cell in gone:
 		_sunk.erase(cell)
 	# The grid: every line across the whole court, faint and flat-ended.
@@ -423,6 +458,10 @@ func _build_floor(now: float) -> ArrayMesh:
 					Color(Pal.TEXT, DOT_ALPHA))
 	return b.mesh()
 
+## A rectangle from its top-left corner.
+static func _rect(at: Vector2, s: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([at, at + Vector2(s.x, 0.0), at + s, at + Vector2(0.0, s.y)])
+
 ## A cell's square from its top-left corner.
 static func _square(at: Vector2, s: float) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(s, 0.0), at + Vector2.ONE * s, at + Vector2(0.0, s)])
@@ -448,6 +487,19 @@ func _build_ground(now: float) -> Dictionary:
 		_cell_wash(b, cell, Color(Pal.QUEEN_WASH, WAVE_FLASH * Motion.flash_level(e)))
 	for cell in gone:
 		_wash.erase(cell)
+	gone = []
+	for cell in _glint:
+		var e: float = now - float(_glint[cell])
+		if e < 0.0:
+			busy = true
+			continue
+		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
+			gone.append(cell)
+			continue
+		busy = true
+		_cell_wash(b, cell, Color(Pal.SUN_TILE, WIN_GLINT_ALPHA * Motion.flash_level(e)))
+	for cell in gone:
+		_glint.erase(cell)
 	# The blush: toward the family's rose and back.
 	gone = []
 	for cell in _blush:
@@ -464,6 +516,7 @@ func _build_ground(now: float) -> Dictionary:
 	for cell in _bees:
 		var bee: BeeFace = _bees[cell]
 		if bee.visible:
+			_bee_halo(b, bee, cell)
 			_bee_shadow(b, bee, cell)
 	# Pebbles on their way out, drawn from the shape the state has forgotten.
 	var still: Array = []
@@ -475,6 +528,8 @@ func _build_ground(now: float) -> Dictionary:
 		still.append(out)
 		busy = true
 		var turn := PI * 0.5 * clampf(e / Motion.POP_OUT, 0.0, 1.0)
+		if float(out.alpha) < 1.0:
+			shrunk *= AUTO_SCALE
 		Mosaic.pebble(b, cell_to_local(out.cell.y, out.cell.x), _cell, Vector2.ONE * shrunk,
 			float(out.alpha), turn)
 	_cross_out = still
@@ -501,6 +556,8 @@ func _build_ground(now: float) -> Dictionary:
 					gone.append(cell)
 			grow *= _sink(cell, now)
 			var alpha := AUTO_ALPHA if mark == State.AUTO else 1.0
+			if mark == State.AUTO:
+				grow *= AUTO_SCALE
 			if _solved_at >= 0.0:
 				var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 				if cleared >= 1.0:
@@ -529,6 +586,13 @@ func _build_ground(now: float) -> Dictionary:
 ## A wash over the whole of `cell`.
 func _cell_wash(b: Face.Builder, cell: Vector2i, colour: Color) -> void:
 	b.fan(_square(_grid + Vector2(cell) * _cell, _cell), colour)
+
+## The warm wash a seated queen's cell takes, coming and going with her.
+func _bee_halo(b: Face.Builder, bee: Control, cell: Vector2i) -> void:
+	var seen := clampf(bee.scale.y, 0.0, 1.0) * clampf(bee.modulate.a, 0.0, 1.0)
+	if seen <= 0.0:
+		return
+	_cell_wash(b, cell, Color(Pal.QUEEN_WASH, HALO_ALPHA * seen))
 
 ## The family's soft disc under `bee` on `cell`, scaled by how much of her
 ## is there and faded with her while she drops in.
@@ -746,6 +810,11 @@ func _refuse_seen(cell: Vector2i) -> void:
 	_shiver[cell] = _now()
 	_blush_cell(cell)
 	_busy_for(Motion.SHIVER_TIME)
+	# The queen who sees it answers too, so the refusal says whose reach the
+	# cell is in rather than only that it is taken.
+	for q in state.queens:
+		if (state.sees(q) as Array).has(cell) and _bees.has(q):
+			_wobble(_bees[q])
 
 ## A lift refused on a given queen: she shivers and strains for a beat while
 ## her cell blushes, and the sprout says why.
@@ -768,9 +837,9 @@ func _refuse_pinned(cell: Vector2i) -> void:
 
 # --- input ---
 
-## A tap cycles a cell blank -> player cross -> queen -> blank. A drag always
-## lays player crosses, including when it starts on a queen or an existing
-## cross.
+## A tap cycles a cell blank -> player cross -> queen -> blank. A drag that
+## starts on one of the player's own pebbles picks pebbles up along its path;
+## any other drag lays them. Either way the court answers under the finger.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
@@ -810,14 +879,18 @@ func _release_press() -> void:
 	_pressed = null
 
 ## Every cell between the last one painted and this one is swept, so a fast
-## finger leaves no holes. Queens always lays crosses while dragging.
+## finger leaves no holes. A stroke that starts on one of the player's own
+## pebbles picks pebbles up; any other stroke lays them.
 func _drag(at: Vector2) -> void:
 	var cell := _cell_at(at)
 	if cell.x < 0 or cell == _last_paint:
 		return
-	_dragged = true
 	# Delay painting until movement proves this is a drag, but once it is,
-	# include the cell where the finger first went down in the stroke.
+	# include the cell where the finger first went down in the stroke, and
+	# let that cell say what the stroke does.
+	if not _dragged:
+		_dragged = true
+		_lay = state.mark_at(_press_cell) != State.CROSS
 	if _last_paint.x < 0:
 		_paint(_press_cell)
 	if _last_paint.x >= 0:
@@ -828,8 +901,10 @@ func _drag(at: Vector2) -> void:
 	_paint(cell)
 	_redraw()
 
-## A stroke paints a cell once. A queen or an existing cross is left alone;
-## only blank cells can receive a new player cross.
+## A stroke paints a cell once, and at once: a laying stroke drops a pebble on
+## a bare cell as the finger reaches it, a lifting stroke takes the player's
+## pebble off. A queen, and a cross a queen laid, are left alone. The whole
+## stroke is still one move (State.sweep_step folds it into one entry).
 func _paint(cell: Vector2i) -> void:
 	if not state.in_field(cell):
 		return
@@ -838,47 +913,48 @@ func _paint(cell: Vector2i) -> void:
 		return
 	_swept[cell] = true
 	var mark := state.mark_at(cell)
-	if mark != State.BLANK:
+	if mark != (State.BLANK if _lay else State.CROSS):
 		return
-	_sink_cell(cell)
+	var before := _snapshot()
+	if not state.sweep_step(cell, _lay, _pending.is_empty()):
+		return
 	_pending.append(cell)
+	var now := _now()
+	if _lay:
+		_sink_cell(cell)
+		_settle(before, now, _at_once())
+		# The cell springs back as its pebble lands, and not when the finger
+		# lets go: the finger has already moved on.
+		_sunk[cell].up = now + Motion.PRESS_TIME
+	else:
+		_settle(before, now, _at_once())
+		if not Motion.reduce:
+			fx.puff(cell_to_local(cell.y, cell.x), Pal.SOCKET_PEBBLE, 3)
+	# The stroke's note climbs as it grows, as Word Trail's trace does.
+	fx.cue("place" if _lay else "remove", 1.0 + STROKE_PITCH * mini(_pending.size() - 1, STROKE_PITCH_CAP))
 
 func _release(at_cell: Vector2i) -> void:
 	var cell := _press_cell
 	var was_drag := _dragged
-	var lay := _lay
 	var pending := _pending
 	var now := _now()
 	_release_press()
 	_clear_gesture()
+	_end_sinks(now)
 	if cell.x < 0 or is_done():
-		_end_sinks(now)
 		_redraw()
 		return
-	_end_sinks(now)
 	# A tap is the only gesture that advances the cell through its three
 	# states. A finger that wandered off is a drag, even if it painted nothing.
 	if at_cell == cell and not was_drag:
 		_tap_cycle(cell, now)
 		_redraw()
 		return
+	# A stroke already laid or lifted its pebbles as the finger went; all that
+	# is left is to count it, once, however many cells it crossed.
 	if not pending.is_empty():
-		var before := _snapshot()
-		var changed: Array = state.sweep(pending, lay)
-		var arrivals := _settle(before, now, _along(pending) if was_drag else _at_once())
-		_end_sinks(now, arrivals)
-		if not changed.is_empty():
-			# One stroke is one move, however many cells it crossed. A sweep
-			# lays its pebbles in a wave along the finger's path and puffs
-			# none; a single tap puffs.
-			if not was_drag and lay:
-				fx.puff(cell_to_local(cell.y, cell.x), Pal.SOCKET_PEBBLE)
-			fx.cue("place")
-			_speak()
-			_redraw()
-			note_move()
-			return
-	_end_sinks(now)
+		_speak()
+		note_move()
 	_redraw()
 
 ## The queen chip on `cell`: a queen there is lifted (or refuses, if given),
@@ -892,6 +968,8 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 				_refuse_pinned(cell)
 			return
 		_settle(before, now, _wave_from(cell))
+		if not Motion.reduce:
+			fx.puff(cell_to_local(cell.y, cell.x), Pal.QUEEN_WASH, 4)
 		fx.cue("remove")
 		_speak()
 		note_move()
@@ -1115,6 +1193,7 @@ func restore_completed_board() -> void:
 	_cross_in = {}
 	_cross_out = []
 	_wash = {}
+	_glint = {}
 	_blush = {}
 	_shiver = {}
 	_sunk = {}
@@ -1171,6 +1250,10 @@ func _on_solved() -> void:
 		_grin(bee, delay)
 		_after(delay, _spark_at.bind(k, cell_to_local(cell.y, cell.x)))
 		k += 1
+	if not Motion.reduce:
+		for y in state.n:
+			for x in state.n:
+				_glint[Vector2i(x, y)] = now + WIN_GLINT_AT + (x + y) * WIN_GLINT_STEP
 	_say(tr("QN_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME,
