@@ -101,6 +101,11 @@ var _faces: Array = []
 var _on_draw: Control
 var _on_label: Label
 var _break_label: Label
+## The scores as last shown, counted up toward the real ones; the ball on
+## as last drawn, so a change can pop.
+var _shown_scores := [0, 0]
+var _count_tw: Tween
+var _last_on := ""
 
 func _init(the_level := 1) -> void:
 	level = clampi(the_level, 0, 2)
@@ -370,8 +375,8 @@ func _draw_on() -> void:
 		_on_draw.draw_arc(Vector2(_on_draw.size.x * 0.5, y), minf(_on_draw.size.x * 0.5, step * ids.size() * 0.5 + 6.0), 0, TAU, 48, Pal.SUN, 3.0, true)
 
 func _refresh_board() -> void:
+	_count_up()
 	for p in 2:
-		_scores[p].text = str(rules.scores[p])
 		var on: bool = rules.turn == p and not rules.over
 		var box := CozyTheme.lifted(Pal.SURFACE if on else Color("f7f0e4"), 30, 10)
 		if on:
@@ -387,7 +392,56 @@ func _refresh_board() -> void:
 	_break_label.text = "  ·  ".join(bits)
 	_on_label.text = "SNK_FREE_BALL" if rules.free_ball else "SNK_BALL_ON"
 	_on_draw.queue_redraw()
+	var on_now := "%s/%s/%s" % [str(rules.phase), str(rules.next_colour()), str(rules.free_ball)]
+	if on_now != _last_on and _last_on != "":
+		_on_draw.pivot_offset = _on_draw.size * 0.5
+		Motion.bump(_on_draw, 0.3, 0.3)
+	_last_on = on_now
 	top_bar.refresh(self)
+
+## The scores tick up to what they are now, a point at a time, and a score
+## that went down (a new frame) simply shows.
+func _count_up() -> void:
+	Motion.stop(_count_tw)
+	var from: Array = _shown_scores.duplicate()
+	var to: Array = [rules.scores[0], rules.scores[1]]
+	var steps := maxi(to[0] - from[0], to[1] - from[1])
+	if steps <= 0 or Motion.reduce:
+		_shown_scores = to
+		for p in 2:
+			_scores[p].text = str(to[p])
+		return
+	_count_tw = create_tween()
+	_count_tw.tween_method(func(u: float) -> void:
+		for p in 2:
+			var v := int(round(lerpf(from[p], to[p], u))) if to[p] >= from[p] else int(to[p])
+			if _scores[p].text != str(v):
+				_scores[p].text = str(v)
+		_shown_scores = [int(_scores[0].text), int(_scores[1].text)],
+		0.0, 1.0, clampf(0.08 * steps, 0.2, 0.9))
+
+## "+N" rises off a score plate in the sun's gold and fades.
+func _float_points(player: int, n: int) -> void:
+	if Motion.reduce:
+		return
+	var l := Label.new()
+	l.text = "+%d" % n
+	l.theme_type_variation = "DayBig"
+	l.add_theme_color_override("font_color", Pal.SUN)
+	l.add_theme_color_override("font_outline_color", Pal.SURFACE)
+	l.add_theme_constant_override("outline_size", 10)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	var at: Rect2 = _scores[player].get_global_rect()
+	l.reset_size()
+	l.pivot_offset = l.size * 0.5
+	l.global_position = at.get_center() - l.size * 0.5 + Vector2(90.0 if player == 0 else -90.0, 10.0)
+	l.scale = Vector2.ONE * 0.6
+	var tw := l.create_tween().set_parallel()
+	tw.tween_property(l, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:y", l.position.y - 70.0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.6)
+	tw.chain().tween_callback(l.queue_free)
 
 # --- the top bar's view of this screen (FlatTopBar.refresh) ---
 
@@ -417,6 +471,8 @@ func _new_frame() -> void:
 	table.power = 0.0
 	table.hint_dir = Vector2.ZERO
 	table.aim_dir = Vector2(0.0, -1.0)
+	table.cue_away()
+	_shown_scores = [0, 0]
 	_hints = HINTS
 	_shots = 0
 	_break_off = true
@@ -438,7 +494,7 @@ func _start_turn() -> void:
 	if rules.in_hand:
 		_seat_cue_ball()
 	table.targets = rules.legal_first()
-	table.show_cue = true
+	table.cue_in()
 	_refresh_board()
 	var mine: bool = rules.turn == 0
 	for p in 2:
@@ -515,6 +571,7 @@ static func _power_for(speed: float) -> float:
 
 func _shoot(dir: Vector2, speed: float, tip: Vector2) -> void:
 	_state = State.STROKE
+	_hush()
 	_controls(false)
 	table.in_hand = false
 	table.hint_dir = Vector2.ZERO
@@ -525,7 +582,6 @@ func _shoot(dir: Vector2, speed: float, tip: Vector2) -> void:
 	table.play_stroke(func() -> void:
 		sim.strike(dir, speed, tip)
 		_fx.cue("strike", lerpf(0.9, 1.15, speed / Sim.MAX_SPEED))
-		table.show_cue = false
 		table.power = 0.0
 		_state = State.ROLL
 		_acc = 0.0)
@@ -552,15 +608,20 @@ func _play_events() -> void:
 		match String(e.kind):
 			"ball":
 				_fx.cue("clack", clampf(0.85 + float(e.speed) * 0.08, 0.85, 1.25))
+				table.flash("ball", e.at, float(e.speed) / 2.5)
 			"cushion":
 				if float(e.speed) > 0.25:
 					_fx.cue("cushion")
+					table.flash("cushion", e.at, float(e.speed) / 2.0)
 			"pot":
+				var out: Vector2 = sim.pockets[int(e.pocket)].out
 				if e.has("from"):
-					table.sink(int(e.id), e.from, (e.at as Vector2) + (sim.pockets[int(e.pocket)].out as Vector2) * 0.03)
+					table.sink(int(e.id), e.from, (e.at as Vector2) + out * 0.03)
 				_fx.cue("pot")
+				table.flash("pot", (e.at as Vector2) + out * 0.03, 1.0)
 				if int(e.id) != Sim.CUE:
-					_fx.puff(table.px(e.at), Pal.SUN_RAY, 5)
+					var col: Color = Table.RED if Sim.is_red(int(e.id)) else Table.BALL[int(e.id)]
+					_fx.puff(table.px(e.at), col.lightened(0.2), 6)
 	sim.events.clear()
 
 func _judge() -> void:
@@ -575,9 +636,11 @@ func _judge() -> void:
 		_say(tr(String(res.reason)) + "\n" + tr("SNK_FOUL_TO") % [int(res.penalty), who])
 		_fx.cue("foul")
 		_faces[player].expression = Face.Expr.WORRIED
-		Motion.shiver(_scores[1 - player])
+		Motion.shiver(_scores[player])
+		_float_points(1 - player, int(res.penalty))
 	elif int(res.scored) > 0:
-		_say("+%d" % int(res.scored))
+		_float_points(player, int(res.scored))
+		_scores[player].pivot_offset = _scores[player].size * 0.5
 		Motion.bump(_scores[player])
 		_faces[player].expression = Face.Expr.JOY
 	if rules.respotted_black and not rules.over and rules.phase == Rules.SEQUENCE and sim.on[Sim.BLACK] and rules.in_hand and _respot_said == false:
@@ -676,7 +739,7 @@ func _show_hint(plan: Dictionary) -> void:
 func _finish() -> void:
 	_state = State.OVER
 	_controls(false)
-	table.show_cue = false
+	table.cue_away()
 	_refresh_board()
 	var won: bool = rules.winner == 0
 	Record.add(GAME, level, won)
@@ -689,15 +752,18 @@ func _finish() -> void:
 	_end = _build_end(won)
 	add_child(_end)
 	Motion.appear(_end, 0.0, 1.0, 0.3)
+	_celebrate(won)
 
 func _build_end(won: bool) -> Control:
 	var scrim := ColorRect.new()
 	scrim.color = Color(Pal.OUTLINE, 0.35)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
+	center.name = "Center"
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scrim.add_child(center)
 	var card := PanelContainer.new()
+	card.name = "Card"
 	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 40))
 	card.custom_minimum_size.x = 820
 	center.add_child(card)
@@ -742,6 +808,28 @@ func _build_end(won: bool) -> Control:
 	col.add_child(back)
 	return scrim
 
+## The card drops in with a little overshoot; a won frame throws the
+## colours up round it, a lost one only settles.
+func _celebrate(won: bool) -> void:
+	var card: Control = _end.get_node("Center/Card")
+	if Motion.reduce:
+		return
+	card.pivot_offset = Vector2(card.custom_minimum_size.x * 0.5, 200.0)
+	card.scale = Vector2.ONE * 0.86
+	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not won:
+		return
+	var fx := Fx2D.new()
+	_end.add_child(fx)
+	var cols := [Table.RED, Table.BALL[Sim.YELLOW], Table.BALL[Sim.GREEN], Table.BALL[Sim.BLUE], Table.BALL[Sim.PINK], Pal.SUN_RAY]
+	var mid := size * 0.5
+	for k in 8:
+		var at := mid + Vector2.from_angle(TAU * k / 8.0 - PI * 0.5) * Vector2(400.0, 330.0)
+		var t := get_tree().create_timer(0.25 + 0.14 * k)
+		t.timeout.connect(func() -> void:
+			if is_instance_valid(fx):
+				fx.puff(at, cols[k % cols.size()], 12))
+
 # --- chrome ---
 
 func _say(text: String) -> void:
@@ -755,7 +843,7 @@ func _say(text: String) -> void:
 
 ## A line already read gives way to the player's hands.
 func _hush() -> void:
-	if _toast.modulate.a <= 0.0 or _state != State.AIM:
+	if _toast.modulate.a <= 0.0 or not (_state == State.AIM or _state == State.STROKE):
 		return
 	Motion.stop(_toast_tw)
 	_toast_tw = create_tween()

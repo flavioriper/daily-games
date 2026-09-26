@@ -144,34 +144,63 @@ class PowerBar extends Control:
 		var s := _slot()
 		var r := s.size.x * 0.5
 		var box := StyleBoxFlat.new()
-		box.set_corner_radius_all(int(r))
+		box.set_corner_radius_all(int(r + 10.0))
+		box.anti_aliasing = true
+		# The wooden housing, lit along its top, and a pale groove let into it.
 		box.bg_color = Color("5e3a22")
+		draw_style_box(box, s.grow(10.0).grow_side(SIDE_BOTTOM, 3.0))
+		box.bg_color = Color("9a6440")
 		draw_style_box(box, s.grow(10.0))
-		box.bg_color = Color("8f5a36")
-		draw_style_box(box, s.grow(6.0))
-		box.bg_color = Color("2a1a10")
+		box.set_corner_radius_all(int(r))
+		box.bg_color = Color("d9c7a6")
 		draw_style_box(box, s)
+		box.bg_color = Color("efe4cd")
+		draw_style_box(box, Rect2(s.position + Vector2(0.0, 5.0), s.size - Vector2(0.0, 5.0)))
 		if power > 0.0:
-			var h := s.size.y * power
-			var fill := Rect2(s.position, Vector2(s.size.x, maxf(h, s.size.x)))
-			box.bg_color = Color("7cc46b").lerp(Color("f2c233"), clampf(power * 1.6, 0.0, 1.0)).lerp(Color("e0574f"), clampf(power * 2.0 - 1.0, 0.0, 1.0))
-			draw_style_box(box, fill.grow(-4.0))
-		# Ticks every tenth.
+			# The fill warms down the slot: every band keeps the colour of
+			# its own depth, so a hard pull reads hot at the bottom.
+			var h := maxf(s.size.y * power, s.size.x)
+			var bands := 24
+			var inner := s.grow(-5.0)
+			for k in bands:
+				var y0 := inner.position.y + inner.size.y * k / bands
+				var y1 := inner.position.y + inner.size.y * (k + 1) / bands
+				if y0 >= inner.position.y + h - 5.0:
+					break
+				y1 = minf(y1, inner.position.y + h - 5.0)
+				var u := float(k) / bands
+				var col := Color("8fcf7a").lerp(Color("f2c233"), clampf(u * 1.8, 0.0, 1.0)).lerp(Color("e0574f"), clampf(u * 2.0 - 1.0, 0.0, 1.0))
+				var band := Rect2(Vector2(inner.position.x, y0), Vector2(inner.size.x, y1 - y0 + 0.5))
+				box.bg_color = col
+				box.set_corner_radius_all(0)
+				if k == 0:
+					box.corner_radius_top_left = int(inner.size.x * 0.5)
+					box.corner_radius_top_right = int(inner.size.x * 0.5)
+				draw_style_box(box, band)
+			box.set_corner_radius_all(int(r))
+		# Ticks every tenth, longer at the half.
 		for i in range(1, 10):
 			var y := s.position.y + s.size.y * i / 10.0
-			var w := s.size.x * (0.3 if i % 5 else 0.5)
-			draw_line(Vector2(s.get_center().x - w * 0.5, y), Vector2(s.get_center().x + w * 0.5, y), Color(1, 1, 1, 0.22), 2.0)
+			var w := s.size.x * (0.28 if i % 5 else 0.5)
+			draw_line(Vector2(s.get_center().x - w * 0.5, y), Vector2(s.get_center().x + w * 0.5, y), Color(0.37, 0.23, 0.13, 0.28), 2.0, true)
 		if mark > 0.0:
 			var y := s.position.y + s.size.y * mark
-			draw_line(Vector2(s.position.x - 12.0, y), Vector2(s.end.x + 12.0, y), Pal.SUN_RAY, 5.0, true)
-		# The cue's butt, riding down the slot with the pull.
-		var butt_y := s.position.y + s.size.y * power
-		var knob := Rect2(Vector2(s.get_center().x - r * 1.25, butt_y - 18.0), Vector2(r * 2.5, 36.0))
+			draw_line(Vector2(s.position.x - 14.0, y), Vector2(s.end.x + 14.0, y), Pal.SUN_RAY, 6.0, true)
+			draw_circle(Vector2(s.end.x + 14.0, y), 6.0, Pal.SUN_RAY)
+		# The cue's butt, riding down the slot with the pull: ebony with a
+		# brass ring and a rubber cap, and its shadow on the groove.
+		var butt_y := s.position.y + maxf(s.size.y * power, 18.0)
+		var knob := Rect2(Vector2(s.get_center().x - r * 1.2, butt_y - 20.0), Vector2(r * 2.4, 40.0))
+		box.set_corner_radius_all(14)
+		box.bg_color = Color(0.2, 0.1, 0.05, 0.25)
+		draw_style_box(box, knob.grow(2.0).grow_side(SIDE_BOTTOM, 5.0))
 		box.bg_color = Color("4a3024")
-		box.set_corner_radius_all(12)
 		draw_style_box(box, knob)
+		box.bg_color = Color("6a4636")
+		draw_style_box(box, Rect2(knob.position + Vector2(4.0, 3.0), Vector2(knob.size.x - 8.0, 10.0)))
+		box.set_corner_radius_all(3)
 		box.bg_color = Color("d2a857")
-		draw_style_box(box, Rect2(knob.position + Vector2(0, 12), Vector2(knob.size.x, 8)))
+		draw_style_box(box, Rect2(knob.position + Vector2(0, 16), Vector2(knob.size.x, 8)))
 		if not enabled:
 			box.bg_color = Color(Pal.PAPER, 0.45)
 			box.set_corner_radius_all(int(r))

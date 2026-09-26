@@ -1540,7 +1540,7 @@ reaches it through the `versus_host` group.
   inside a 1.8 s budget; the screen polls the task every frame whatever its
   state, so a hint still thinking when the turn passes never blocks the
   computer's own turn.
-- 146 draw calls at the table, 91 on the tab (810x1440, ANGLE agreeing).
+- 149 draw calls at the table (146 before the polish of 2026-09-26, spec section 8), 91 on the tab (810x1440, ANGLE agreeing).
   The tab's picture is the real table drawn `still`, so it costs the menu
   no per-frame work.
 - `tests/_shot_snooker.gd` forces a won frame for its end-card shot and puts

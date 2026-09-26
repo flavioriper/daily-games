@@ -124,3 +124,38 @@ computer lines up, **163** on the end card; the same under
 - The sounds are one take each, not yet listened to.
 - No concept-page tab was made before the Godot code this time (the user
   was away and asked for everything to be built).
+
+## 8. Amendment: polish (2026-09-26)
+
+Built directly after the first pass, on the same day.
+
+- **Table**: cushions read as raised rubber (a darker body, a shaded back
+  edge, a lit nose over the cloth) and the rail carries a lit inner edge; the
+  cloth has a warm lamp pool along its length and a faint nap of short
+  strokes (first drawn long and bright, which read as rain); pockets deepen
+  toward the back.
+- **Motion on the table**: a fast ball leaves a short smear of its own colour
+  that catches up with it as it slows; two balls meeting flash and ring at
+  the contact, scaled by the speed; a hard cushion strike glints; a potted
+  ball rolls over the jaw and drops, shrinking and darkening, under a gold
+  ring at the pocket and a puff in its own colour.
+- **The cue** slides up behind the ball at every turn, feathers slightly
+  while you line up, goes through the ball and a little past it from the
+  point it was struck (not chasing the ball), and fades away. The guide's
+  dashes march toward the target and the ghost ball is filled; the D glows
+  while the ball is in hand.
+- **The toast now clears on the strike**: before, it hid whatever rolled
+  through the table's middle.
+- **Power slot**: a pale groove in a wooden housing instead of the black
+  tube, which was the heaviest thing on the screen; the fill warms by depth,
+  and the cue's butt carries a shadow.
+- **Scoreboard**: scores tick up a point at a time, the points (or a foul's
+  penalty) rise as "+N" in gold beside the score they go to (this replaced
+  the "+N" toast), and the ball-on pops when it changes. The end card drops
+  in with an overshoot, and a won frame throws bursts in the ball colours
+  round it.
+- Every decorative piece is off under reduce-motion.
+
+Measured with `tests/_shot_snooker.gd` at `--resolution 810x1440`: **149**
+at the table (146 before), 157 while the computer lines up, 170 on the end
+card; the same under `--rendering-driver opengl3_angle`.
