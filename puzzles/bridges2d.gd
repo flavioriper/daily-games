@@ -71,9 +71,9 @@ const POOL_RADIUS := 34.0
 ## how much of its width and height they spread over. The span is short of the
 ## pool by more than a ripple's length on purpose: a mesh cannot be clipped to
 ## the pool, so they are sown clear of the rim instead of cut at it.
-const RIPPLES := 12
-const RIPPLE_W := 6.0
-const RIPPLE_ALPHA := 0.26
+const RIPPLES := 14
+const RIPPLE_W := 5.0
+const RIPPLE_ALPHA := 0.7
 const RIPPLE_AT := Vector2(60.0, 70.0)
 const RIPPLE_SPAN := Vector2(190.0, 140.0)
 const RIPPLE_LEN := Vector2(40.0, 60.0)
@@ -85,29 +85,31 @@ const RIPPLE_BOW := 8.0
 ## (the polish, 2026-09-26): a soft shadow on the sea, a wet-sand foot under a
 ## dry beach lit along its top, a turf crown standing proud of the beach with
 ## its own lit rim, and a paper coin on the turf that carries the number.
-const ISLET_R := 0.40
-## The shadow the island throws on the water: how far down, how wide and tall.
-const SHADOW_AT := 0.34
-const SHADOW_RX := 1.18
-const SHADOW_RY := 0.62
+const ISLET_R := 0.43
+## The islet is drawn from a little above (the reference, 2026-09-26): its
+## top is an ellipse TOP_Y as tall as it is wide, and under it the drum's side
+## shows SIDE of a radius deep, SIDE_R as wide as the top, wet from WET_AT of
+## the way down.
+const TOP_Y := 0.86
+const SIDE := 0.52
+const SIDE_R := 0.94
+const WET_AT := 0.62
+## The shadow the drum throws on the water: how wide and tall.
+const SHADOW_RX := 1.2
+const SHADOW_RY := 0.5
 const SHADOW_ALPHA := 0.34
-## The beach: the wet foot shows SAND_DROP below the dry sand, whose face sits
-## SAND_TOP under a rim lit SAND_LIT toward SURFACE.
-const SAND_DROP := 0.10
-const SAND_TOP := 0.06
-const SAND_LIT := 0.34
-## The turf crown: its radius, the foot it stands on (TURF_DROP down, in
-## BANK_DEEP), its rim lit TURF_LIT toward SURFACE and its face TURF_TOP under
-## that rim, toned off the islet's hash within TONE so no two read stamped.
-const TURF_R := 0.84
-const TURF_DROP := 0.07
-const TURF_TOP := 0.05
-const TURF_LIT := 0.30
+## The moss on top: the hanging lip TURF_DROP under it in BANK_DEEP, the lit
+## rim toward LEAF_LIGHT by TURF_LIT, and the face TURF_R of the top, sitting
+## TURF_TOP down, toned off the islet's hash within TONE.
+const TURF_R := 0.86
+const TURF_DROP := 0.06
+const TURF_TOP := 0.07
+const TURF_LIT := 0.5
 const TONE := 0.035
-## One islet in TUFT_SHARE carries a tuft of three blades TUFT_H tall on the
-## turf's shoulder, beside the coin, so the turf reads as grass.
-const TUFT_SHARE := 0.55
-const TUFT_H := 0.40
+## The sprouts on the moss's back edge, TUFT_H of a radius tall, and the
+## share of islets that carry a flower.
+const TUFT_H := 0.3
+const FLOWER_SHARE := 0.3
 ## **The number stands on a paper coin**, as every other board's clues stand on
 ## paper: COIN_R of the islet, lifted COIN_LIFT over its own edge, which shows
 ## COIN_LIP under it in COIN_EDGE toward ink, with a soft shadow on the turf.
@@ -154,7 +156,7 @@ const BEAM_RADIUS := 0.4
 ## How far the lit lane is let in under the two islets it joins, in islet
 ## radii, so it meets the turf instead of stopping short of it.
 const BEAM_TUCK := 0.4
-const BEAM_ALPHA := 0.72
+const BEAM_ALPHA := 0.86
 ## **The aim ring, and it is not the satisfied ring.** The gold band the drag
 ## throws round the islet the finger is about to join, for as long as the
 ## finger is down: its radius and its thickness in islet radii, the floor
@@ -284,8 +286,8 @@ const WAVE_FLARE := 0.62
 ## **ripples are darker** than the water they lie on (WATER_HI strokes
 ## vanished, so the old sea's blue became the new sea's mark), and the
 ## **shallow band is paler** than the open water, not deeper.
-const SEA := 0.46          # WATER_HI into PAPER -- #a4cde6, the open water
-const SEA_PALE := 0.74     # WATER_HI into PAPER -- #cfdfe4, the shallows
+const SEA := 0.10          # WATER_HI into PAPER -- #6cb5e7, the open water
+const SEA_PALE := 0.34     # WATER_HI into PAPER -- #92c6e6, the shallows
 const SEA_SHADE := 0.35    # WATER into TEXT     -- #336e99, an islet's shadow
 ## The islet: turf is BANK on an **ACORN** beach. The beach was STONE in the
 ## first cut and the islets stopped reading entirely -- STONE is value 237
@@ -297,20 +299,33 @@ const SAND_DEEP := 0.22    # ACORN into TEXT, the wet sand at the waterline
 
 # --- the sea as a basin (the polish, 2026-09-26) ---
 ## **The pool is sunk into the card**, the family's bed: its wall shows
-## BASIN_WALL along the top, the open water WALL_DEEP of the way to ink, so the
-## water reads as lying below the paper rather than as a slab laid on it. The
-## water pales toward its edge over SHORE_W -- the open water's blue in the
-## middle, SEA_PALE at the wall -- and round every islet the shallows over its
-## sandbar pale it again, SANDBAR islet radii out at SANDBAR_ALPHA.
+## BASIN_WALL along the top in WATER WALL_DEEP toward ink, so the water reads
+## as lying below the paper. The water pales from the clear blue in the middle
+## to SEA_PALE at the wall over SHORE_W, and a line of foam FOAM_W wide runs
+## round it FOAM_IN in from the edge.
 const BASIN_WALL := 14.0
-const WALL_DEEP := 0.24
+const WALL_DEEP := 0.18
 const SHORE_W := 64.0
-const SANDBAR := 2.0
-const SANDBAR_ALPHA := 0.8
-## The ripples: a dark arc in WATER over a lit one in SURFACE RIPPLE_LIT under
-## it, kept RIPPLE_CLEAR cells off every islet so none runs under a beach.
-const RIPPLE_LIT := 0.5
+const FOAM_IN := 7.0
+const FOAM_W := 4.0
+const FOAM_ALPHA := 0.55
+## Every islet stands in a patch of paler water, SANDBAR radii across, with a
+## ring of white FOOT_RING radii out at its waterline.
+const SANDBAR := 1.8
+const SANDBAR_ALPHA := 0.7
+const FOOT_RING := 1.28
+const FOOT_RING_ALPHA := 0.45
+## A few deeper patches over the open water, WATER at DEPTH_ALPHA.
+const DEPTHS := 7
+const DEPTH_ALPHA := 0.3
+## The ripples keep RIPPLE_CLEAR cells off every islet.
 const RIPPLE_CLEAR := 0.9
+## The pool's dressing: DRESS_SPOTS places round the rim for a rock, a plant
+## or a pad, and up to PADS lily pads in the open water, one corner between
+## cells in PAD_SHARE; anything that would crowd an islet is left out.
+const DRESS_SPOTS := 14
+const PADS := 6
+const PAD_SHARE := 0.22
 ## **The sea is alive at rest, and it costs no rebuild.** Every LAP_EVERY
 ## seconds (give or take a fifth) one islet laps: a ring of foam SURFACE at
 ## LAP_ALPHA spreads from LAP_FROM to LAP_TO of its radius over LAP_TIME,
@@ -568,8 +583,8 @@ func _lane_ends(key: String) -> Dictionary:
 		var lo := minf(a.x, b.x) + r
 		var hi := maxf(a.x, b.x) - r
 		return {"horiz": true, "a": Vector2(lo, a.y), "b": Vector2(hi, a.y)}
-	var top := minf(a.y, b.y) + r
-	var bot := maxf(a.y, b.y) - r
+	var top := minf(a.y, b.y) + r * (TOP_Y + SIDE)
+	var bot := maxf(a.y, b.y) - r * TOP_Y
 	return {"horiz": false, "a": Vector2(a.x, top), "b": Vector2(a.x, bot)}
 
 ## Every pixel it is given: the pool fills the card and the lattice is centred
@@ -811,29 +826,248 @@ func _sweep(t: float) -> void:
 		_refresh()
 
 ## The still sea, sunk into the card: the basin's wall along the top, the
-## water paling from the open blue in the middle to the shallows at the wall,
-## the sandbars paling it round every islet, and the ripples over the open
-## water. Built once a size and a board -- nothing here moves -- so the board's
-## own mesh can be rebuilt as often as it likes without this one.
+## clear blue paling to the shallows at the wall, a thin line of foam round
+## the water's edge, a few deeper patches, the ring of lighter water at every
+## islet's foot, the white ripple dashes, and the pool's dressing -- rocks and
+## leafy plants on the rim and lily pads in the open water. Built once a size
+## and a board -- nothing here moves -- so the board's own mesh can be
+## rebuilt as often as it likes without this one.
 func _build_sea() -> ArrayMesh:
 	var p := _pool()
 	if p.size.x <= 2.0 * SHORE_W or p.size.y <= 2.0 * SHORE_W + BASIN_WALL:
 		return null
 	var b := Face.Builder.new()
 	var sea: Color = Pal.WATER_HI.lerp(Pal.PAPER, SEA)
-	var wall: Color = sea.lerp(Pal.TEXT, WALL_DEEP)
 	var pale: Color = Pal.WATER_HI.lerp(Pal.PAPER, SEA_PALE)
+	var wall: Color = Pal.WATER.lerp(Pal.TEXT, WALL_DEEP)
 	b.fan(Face.Builder.round_rect(p.position, p.size, POOL_RADIUS), wall)
 	var water := Rect2(p.position + Vector2(0.0, BASIN_WALL), p.size - Vector2(0.0, BASIN_WALL))
 	b.fan(Face.Builder.round_rect(water.position, water.size, POOL_RADIUS), pale)
 	var deep := water.grow(-SHORE_W)
 	_shore(b, water, deep, POOL_RADIUS, pale, sea)
 	b.fan(Face.Builder.round_rect(deep.position, deep.size, 0.0), sea)
+	b.stroke(Face.Builder.round_rect(water.position + Vector2.ONE * FOAM_IN,
+		water.size - Vector2.ONE * 2.0 * FOAM_IN, POOL_RADIUS - FOAM_IN), FOAM_W,
+		Color(Pal.SURFACE, FOAM_ALPHA), true)
+	_depths(b, water)
 	var r := _islet_r()
 	for cell in state.islets:
-		Scenery.soft_disc(b, _at(cell), r * SANDBAR, r * SANDBAR, Color(pale, SANDBAR_ALPHA))
+		var foot := _at(cell) + Vector2(0.0, r * (SIDE + 0.1))
+		Scenery.soft_disc(b, foot, r * SANDBAR, r * SANDBAR * 0.8, Color(pale, SANDBAR_ALPHA))
+		b.stroke(Face.Builder.ring(foot, r * FOOT_RING, r * FOOT_RING * 0.8), r * 0.07,
+			Color(Pal.SURFACE, FOOT_RING_ALPHA), true)
 	_ripples(b, water)
+	_dress(b, p, water)
 	return b.mesh()
+
+## A few deeper patches in the open water: soft blots of WATER, kept off
+## the islets so none reads as an islet's shadow.
+func _depths(b, water: Rect2) -> void:
+	var s := _cell()
+	var ink := Color(Pal.WATER, DEPTH_ALPHA)
+	var placed := 0
+	var i := 0
+	while placed < DEPTHS and i < DEPTHS * 10:
+		var at := water.position + Vector2(_hash(i, 41 + _salt()), _hash(i, 43)) * water.size
+		var rad := s * (0.18 + 0.2 * _hash(i, 47))
+		i += 1
+		if not water.grow(-rad * 2.0).has_point(at) or _near_islet(at, _islet_r() * 1.8 + rad):
+			continue
+		Scenery.soft_disc(b, at, rad * 1.3, rad, ink)
+		Scenery.soft_disc(b, at + Vector2(rad * 0.9, rad * 0.5), rad * 0.8, rad * 0.6, ink)
+		placed += 1
+
+## A salt off the board, so two boards of the same size are dressed apart.
+func _salt() -> int:
+	var h := 0
+	for cell: Vector2i in state.islets:
+		h += cell.x * 7 + cell.y * 13
+	return posmod(h, 97)
+
+## The pool's dressing, all of it off the hash and kept clear of the islets
+## so nothing sits where a finger lands or a plank has to run: rocks and
+## leafy plants on the rim, standing half on the paper and half in the water,
+## and lily pads in the open water, some carrying a white flower.
+func _dress(b, pool: Rect2, water: Rect2) -> void:
+	var s := _cell()
+	var r := _islet_r()
+	var salt := _salt()
+	# Every piece placed so far, as [centre, radius], so none lands on another.
+	var taken: Array = []
+	# The corners first, always dressed: a bush with a rock tucked in, or a
+	# pair of rocks, sized down or left bare only where an islet crowds them.
+	var corners := [pool.position, Vector2(pool.end.x, pool.position.y),
+		Vector2(pool.position.x, pool.end.y), pool.end]
+	for ci in 4:
+		var c: Vector2 = corners[ci]
+		var inward := (pool.get_center() - c).normalized()
+		var size := s * 0.5
+		var at: Vector2 = c + inward * size * 1.1
+		while size > s * 0.2 and _near_islet(at, r * 1.3 + size):
+			size *= 0.75
+			at = c + inward * size * 1.1
+		if size <= s * 0.2:
+			continue
+		taken.append([at, size * 1.6])
+		if _hash(ci, 81 + salt) < 0.55:
+			_plant(b, at, size, -inward, ci + salt)
+			var along := Vector2(signf(inward.x), 0.0) if ci < 2 else Vector2(0.0, signf(inward.y))
+			_rocks(b, at + along * size * 0.9, size * 0.55, ci + 5 + salt)
+		else:
+			_rocks(b, at, size * 0.8, ci + salt)
+	# The rim, walked round from the top-left corner.
+	var perimeter := 2.0 * (pool.size.x + pool.size.y)
+	var spots := DRESS_SPOTS
+	for i in spots:
+		var u := (float(i) + 0.3 + 0.4 * _hash(i, 3 + salt)) / float(spots)
+		var d := u * perimeter
+		var at: Vector2
+		var out: Vector2
+		if d < pool.size.x:
+			at = pool.position + Vector2(d, BASIN_WALL * 0.5)
+			out = Vector2.UP
+		elif d < pool.size.x + pool.size.y:
+			at = pool.position + Vector2(pool.size.x, d - pool.size.x)
+			out = Vector2.RIGHT
+		elif d < 2.0 * pool.size.x + pool.size.y:
+			at = pool.position + Vector2(pool.size.x - (d - pool.size.x - pool.size.y), pool.size.y)
+			out = Vector2.DOWN
+		else:
+			at = pool.position + Vector2(0.0, pool.size.y - (d - 2.0 * pool.size.x - pool.size.y))
+			out = Vector2.LEFT
+		# Pulled in off the corners' curve, so nothing hangs over bare card.
+		at = at.clamp(pool.position + Vector2.ONE * POOL_RADIUS * 0.6,
+			pool.end - Vector2.ONE * POOL_RADIUS * 0.6)
+		var size := s * (0.3 + 0.16 * _hash(i, 5 + salt))
+		if _near_islet(at, r * 1.4 + size):
+			size *= 0.6
+			if _near_islet(at, r * 1.4 + size):
+				continue
+		if _crowded(taken, at, size):
+			continue
+		taken.append([at, size])
+		var kind := _hash(i, 9 + salt)
+		if kind < 0.45:
+			_rocks(b, at - out * size * 0.25, size, i + salt)
+		elif kind < 0.8:
+			_plant(b, at - out * size * 0.2, size * 1.1, out, i + salt)
+		else:
+			_pad(b, at - out * size * 1.1, size * 0.62, i + salt, true)
+	# The pads in the open water, at the corners between cells.
+	var o := _origin()
+	var pads := 0
+	for gy in range(1, state.n):
+		for gx in range(1, state.n):
+			if pads >= PADS or _hash(gx * 31 + gy, 17 + salt) > PAD_SHARE:
+				continue
+			var at := o + Vector2(gx, gy) * s + (Vector2(_hash(gx, gy + 3), _hash(gy, gx + 5))
+				- Vector2.ONE * 0.5) * s * 0.3
+			var size := s * (0.13 + 0.07 * _hash(gx, gy + 11))
+			if _near_islet(at, r * 1.45 + size) or not water.grow(-size * 2.0).has_point(at) \
+					or _crowded(taken, at, size):
+				continue
+			taken.append([at, size])
+			_pad(b, at, size, gx * 7 + gy + salt, _hash(gx + 2, gy) < 0.35)
+			pads += 1
+
+## True when a piece of `size` at `at` would land on one already `taken`.
+static func _crowded(taken: Array, at: Vector2, size: float) -> bool:
+	for piece in taken:
+		if (piece[0] as Vector2).distance_to(at) < float(piece[1]) + size * 1.2:
+			return true
+	return false
+
+## One rock, or a big one with a smaller beside it: a rounded blob in BOULDER
+## on its own shade, lit across the top, with a soft shadow into the water.
+func _rocks(b, at: Vector2, size: float, seed_i: int) -> void:
+	var shade := Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), 0.3)
+	var parts := [[Vector2.ZERO, 1.0]]
+	var side := 0.9 if _hash(seed_i, 23) < 0.5 else -0.9
+	if _hash(seed_i, 21) < 0.75:
+		parts.append([Vector2(side, 0.35), 0.62])
+	if _hash(seed_i, 25) < 0.4:
+		parts.append([Vector2(-side * 0.8, 0.45), 0.45])
+	for part in parts:
+		var c: Vector2 = at + (part[0] as Vector2) * size
+		var rs: float = size * float(part[1])
+		if part != parts[0]:
+			c += Vector2(0.0, size * 0.1)
+		Scenery.soft_disc(b, c + Vector2(0.0, rs * 0.55), rs * 1.3, rs * 0.55, shade)
+		b.fan(_blob(c + Vector2(0.0, rs * 0.12), rs, rs * 0.78, seed_i), Pal.BOULDER.lerp(Pal.TEXT, 0.28))
+		b.fan(_blob(c, rs * 0.96, rs * 0.72, seed_i), Pal.BOULDER)
+		b.fan(_blob(c + Vector2(-rs * 0.18, -rs * 0.3), rs * 0.6, rs * 0.34, seed_i + 1),
+			Pal.BOULDER.lerp(Pal.SURFACE, 0.4))
+
+## A lumpy, roughly round outline: an ellipse with its radius nudged by two
+## slow waves off the hash, so no two stones are the same.
+func _blob(c: Vector2, rx: float, ry: float, seed_i: int) -> PackedVector2Array:
+	var pts := Face.Builder.ring(c, rx, ry)
+	var ph := _hash(seed_i, 29) * TAU
+	for k in pts.size():
+		var a := TAU * float(k) / float(pts.size())
+		var wob := 1.0 + 0.07 * sin(3.0 * a + ph) + 0.04 * sin(5.0 * a + ph * 2.0)
+		pts[k] = c + (pts[k] - c) * wob
+	return pts
+
+## A leafy bush on the rim, three layers of broad leaves fanned out of a
+## root and leaning off the paper into the water -- the back ring in shade,
+## the middle in leaf, the front lit -- and now and then a white flower.
+func _plant(b, at: Vector2, size: float, out: Vector2, seed_i: int) -> void:
+	var lean := (-out).angle()
+	Scenery.soft_disc(b, at + Vector2.from_angle(lean) * size * 0.5 + Vector2(0.0, size * 0.3),
+		size * 1.1, size * 0.6, Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), 0.25))
+	var layers := [[Pal.LEAF_DEEP, 6, 2.6, 0.95], [Pal.LEAF, 5, 2.0, 0.78],
+		[Pal.LEAF_LIGHT, 3, 1.3, 0.58]]
+	for li in layers.size():
+		var layer: Array = layers[li]
+		var n: int = layer[1]
+		for k in n:
+			var u := float(k) / float(n - 1) - 0.5
+			var ang := lean + u * float(layer[2]) + (_hash(seed_i, 33 + k + li * 9) - 0.5) * 0.35
+			var lng := size * float(layer[3]) * (0.8 + 0.35 * _hash(seed_i, 37 + k + li * 9))
+			_leaf(b, at, ang, lng, lng * 0.8, layer[0])
+	if _hash(seed_i, 39) < 0.6:
+		_flower(b, at + Vector2.from_angle(lean + 0.4) * size * 0.55, size * 0.22)
+
+## One leaf from `root` pointing along `ang`: two arcs meeting at a tip.
+func _leaf(b, root: Vector2, ang: float, lng: float, wide: float, col: Color) -> void:
+	var dir := Vector2.from_angle(ang)
+	var side := dir.orthogonal() * wide * 0.5
+	var tip := root + dir * lng
+	var pts := PackedVector2Array()
+	pts.append_array(Face.Builder.bezier2(root, root + dir * lng * 0.45 + side, tip, 8))
+	pts.append_array(Face.Builder.bezier2(tip, root + dir * lng * 0.45 - side, root, 8))
+	b.polygon(pts, col)
+
+## A lily pad: a round leaf with its wedge cut out, on a darker rim, with a
+## lit vein or two; `bloom` sets a white flower on it.
+func _pad(b, at: Vector2, size: float, seed_i: int, bloom: bool) -> void:
+	var turn := _hash(seed_i, 51) * TAU
+	var pts := PackedVector2Array([at])
+	var n := 20
+	for k in n + 1:
+		var a := turn + 0.5 + (TAU - 1.0) * float(k) / float(n)
+		pts.append(at + Vector2(cos(a), sin(a) * 0.82) * size)
+	var shade := Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), 0.22)
+	Scenery.soft_disc(b, at + Vector2(0.0, size * 0.35), size * 1.15, size * 0.6, shade)
+	var foot := PackedVector2Array()
+	for q in pts:
+		foot.append(q + Vector2(0.0, size * 0.12))
+	b.polygon(foot, Pal.LEAF_DEEP)
+	b.polygon(pts, Pal.MOSS)
+	b.stroke(PackedVector2Array([at, at + Vector2.from_angle(turn + PI) * size * 0.7]),
+		maxf(1.0, size * 0.08), Color(Pal.LEAF_LIGHT, 0.8))
+	if bloom:
+		_flower(b, at + Vector2.from_angle(turn + PI * 0.7) * size * 0.3, size * 0.42)
+
+## A small white flower: five petals round a sun-yellow eye.
+func _flower(b, at: Vector2, size: float) -> void:
+	for k in 5:
+		var a := TAU * float(k) / 5.0 - PI * 0.5
+		b.ellipse(at + Vector2.from_angle(a) * size * 0.55 + Vector2(0.0, size * 0.08),
+			size * 0.42, size * 0.38, Pal.SURFACE.lerp(Pal.LINE, 0.35))
+		b.ellipse(at + Vector2.from_angle(a) * size * 0.55, size * 0.42, size * 0.38, Pal.SURFACE)
+	b.disc(at, size * 0.28, Pal.SUN_RAY)
 
 ## The band of water between the basin's edge and the open water, coloured
 ## `outer` at the wall and `inner` where the open water starts, so the sea
@@ -870,27 +1104,28 @@ static func _corners(rect: Rect2, radius: float) -> PackedVector2Array:
 			out.append(centres[c] + Vector2.from_angle(from + PI * 0.5 * k / SEG) * rr)
 	return out
 
-## The ripples over the open water: a dark arc with a lit one under it, sown
-## off the hash and kept clear of every islet, so none runs under a beach.
+## The ripples over the open water: short white dashes with a bow in them,
+## some with a shorter twin under, sown off the hash and kept clear of every
+## islet, so none runs under one.
 func _ripples(b, water: Rect2) -> void:
-	var ink := Color(Pal.WATER, RIPPLE_ALPHA)
-	var lit := Color(Pal.SURFACE, RIPPLE_LIT)
+	var ink := Color(Pal.SURFACE, RIPPLE_ALPHA)
 	var clear := _cell() * RIPPLE_CLEAR
 	var placed := 0
 	var i := 0
 	while placed < RIPPLES and i < RIPPLES * 8:
 		var span := RIPPLE_LEN.x + _hash(i, 3) * RIPPLE_LEN.y
 		var at := water.position + RIPPLE_AT + Vector2(
-			_hash(i, 7) * (water.size.x - RIPPLE_SPAN.x),
+			_hash(i, 7 + _salt()) * (water.size.x - RIPPLE_SPAN.x),
 			_hash(i, 11) * (water.size.y - RIPPLE_SPAN.y))
 		i += 1
 		if _near_islet(at + Vector2(span * 0.5, 0.0), clear + span * 0.5):
 			continue
-		var under := Vector2(0.0, RIPPLE_W * 0.9)
-		b.stroke(Face.Builder.bezier2(at + under, at + under + Vector2(span * 0.5, -RIPPLE_BOW),
-			at + under + Vector2(span, 0.0)), RIPPLE_W, lit)
 		b.stroke(Face.Builder.bezier2(at, at + Vector2(span * 0.5, -RIPPLE_BOW),
 			at + Vector2(span, 0.0)), RIPPLE_W, ink)
+		if _hash(i, 13) < 0.5:
+			var twin := at + Vector2(span * 0.3, RIPPLE_W * 3.2)
+			b.stroke(Face.Builder.bezier2(twin, twin + Vector2(span * 0.3, -RIPPLE_BOW * 0.6),
+				twin + Vector2(span * 0.6, 0.0)), RIPPLE_W * 0.8, Color(ink, RIPPLE_ALPHA * 0.7))
 		placed += 1
 
 func _near_islet(at: Vector2, within: float) -> bool:
@@ -1223,14 +1458,16 @@ func _glow(b, g: Dictionary, total: float) -> void:
 	for dash in _dashes(ring, s * DASH_ON, s * DASH_OFF):
 		b.stroke(dash as PackedVector2Array, maxf(DASH_MIN, s * DASH_W), Pal.SUN_DEEP)
 
-## An islet: a soft shadow on the water, a wet-sand foot under a beach lit
-## along its top, a turf crown standing proud of it with its own lit rim and
-## now and then a tuft, and the paper coin that carries the number. The coin
-## answers for the count: LEAF_TILE once it is met, BAD_TILE once the finger
-## has pushed it over -- **drawn wrong, never refused** (spec section 5) --
-## and gold once the solve's wave has reached it. `lean` is the nudge a
-## refused islet takes, which is why the whole thing is drawn about `mid`
-## rather than about its cell.
+## An islet, seen from a little above: an earth drum standing in the water --
+## its side in soil, darker at the waterline, with a stratum or two -- under
+## a mossy top whose edge is lumpy and hangs a little over the side, a few
+## sprouts along its back edge and now and then a white flower, and the paper
+## coin on top that carries the number. The top's centre is the cell's, so a
+## finger lands where it always did. The coin answers for the count:
+## LEAF_TILE once it is met, BAD_TILE once the finger has pushed it over --
+## **drawn wrong, never refused** (spec section 5) -- and gold once the
+## solve's wave has reached it. `lean` is the nudge a refused islet takes,
+## which is why the whole thing is drawn about `mid` rather than its cell.
 func _islet(b, cell: Vector2i, t: float) -> void:
 	var sc := _islet_scale(cell, t)
 	if sc.x <= 0.001 or sc.y <= 0.001:
@@ -1242,29 +1479,43 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	var want: int = int(state.need[cell])
 	var got: int = state.degree(cell)
 	var over := got > want
-	Scenery.soft_disc(b, mid + Vector2(0.0, ry * SHADOW_AT), rx * SHADOW_RX, ry * SHADOW_RY,
-		Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
-	# The beach: the wet foot, the dry sand's lit rim, and its face under it.
-	b.ellipse(mid + Vector2(0.0, ry * SAND_DROP), rx, ry, Pal.ACORN.lerp(Pal.TEXT, SAND_DEEP))
-	b.ellipse(mid, rx, ry, Pal.ACORN.lerp(Pal.SURFACE, SAND_LIT))
-	b.ellipse(mid + Vector2(0.0, ry * SAND_TOP), rx * (1.0 - SAND_TOP), ry * (1.0 - SAND_TOP),
-		Pal.ACORN)
-	# The turf crown, toned a hair off its neighbours.
+	var seed_i := cell.x * 17 + cell.y * 5
+	var top_y := ry * TOP_Y
+	var depth := ry * SIDE
+	Scenery.soft_disc(b, mid + Vector2(0.0, depth + top_y * 0.55), rx * SHADOW_RX,
+		ry * SHADOW_RY, Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
+	# The drum's side: its foot dark with wet, then the soil over it.
+	var sx := rx * SIDE_R
+	var sy := top_y * SIDE_R
+	b.ellipse(mid + Vector2(0.0, depth), sx, sy, Pal.BED_FURROW)
+	b.fan(Face.Builder.round_rect(mid - Vector2(sx, 0.0), Vector2(2.0 * sx, depth * WET_AT), 0.0),
+		Pal.CAMP_SOIL)
+	b.ellipse(mid + Vector2(0.0, depth * WET_AT), sx, sy, Pal.CAMP_SOIL)
+	for k in 2:
+		var y := mid.y + depth * (0.35 + 0.3 * k) + sy * 0.55
+		var x0 := mid.x + sx * (-0.7 + 0.5 * _hash(seed_i, 61 + k))
+		b.stroke(PackedVector2Array([Vector2(x0, y), Vector2(x0 + sx * 0.45, y + sy * 0.06)]),
+			maxf(1.0, r * 0.05), Color(Pal.BED_FURROW, 0.55))
+	# The mossy top: its hanging lip in shade, the lit moss, then its face.
 	var tone := (_hash(cell.x, cell.y) - 0.5) * 2.0 * TONE
 	var turf: Color = Pal.BANK.lightened(tone) if tone > 0.0 else Pal.BANK.darkened(-tone)
 	if over:
 		turf = turf.lerp(Pal.BAD, OVER_MIX)
-	var tr_x := rx * TURF_R
-	var tr_y := ry * TURF_R
-	b.ellipse(mid + Vector2(0.0, tr_y * TURF_DROP), tr_x, tr_y, Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
-	b.ellipse(mid, tr_x, tr_y, turf.lerp(Pal.SURFACE, TURF_LIT))
-	b.ellipse(mid + Vector2(0.0, tr_y * TURF_TOP), tr_x * (1.0 - TURF_TOP),
-		tr_y * (1.0 - TURF_TOP), turf)
-	if _hash(cell.x + 31, cell.y) < TUFT_SHARE:
-		var lean := -1.0 if _hash(cell.x, cell.y + 17) < 0.5 else 1.0
-		var root := mid + Vector2(lean * tr_x * 0.78, tr_y * 0.30)
-		_tuft(b, root, r * TUFT_H * sc.y, Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
-	# The coin: its shadow on the turf, its edge, its face.
+	b.fan(_moss(mid + Vector2(0.0, ry * TURF_DROP), rx, top_y, seed_i, true),
+		Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
+	b.fan(_moss(mid, rx, top_y, seed_i, false), turf.lerp(Pal.LEAF_LIGHT, TURF_LIT))
+	b.ellipse(mid + Vector2(0.0, top_y * TURF_TOP), rx * TURF_R, top_y * TURF_R, turf)
+	# Sprouts on the back edge, and a flower on some.
+	var sprouts := 2 + int(_hash(seed_i, 63) * 2.0)
+	for k in sprouts:
+		var a := -PI * 0.5 + (float(k) - (sprouts - 1) * 0.5) * 0.5 \
+			+ (_hash(seed_i, 65 + k) - 0.5) * 0.3
+		var root := mid + Vector2(cos(a) * rx * 0.8, sin(a) * top_y * 0.8)
+		_sprout(b, root, r * TUFT_H * sc.y, Pal.LEAF_DEEP.lerp(Pal.BANK, 0.3))
+	if _hash(seed_i, 67) < FLOWER_SHARE:
+		var side := -1.0 if _hash(seed_i, 69) < 0.5 else 1.0
+		_flower(b, mid + Vector2(side * rx * 0.72, top_y * 0.3), r * 0.16)
+	# The coin: its shadow on the moss, its edge, its face.
 	var coin := _coin_colour(cell, t, want, got)
 	var cx := rx * COIN_R
 	var cy := ry * COIN_R
@@ -1274,12 +1525,28 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	b.ellipse(at + Vector2(0.0, ry * COIN_LIP), cx, cy, coin.lerp(Pal.TEXT, COIN_EDGE))
 	b.ellipse(at, cx, cy, coin)
 
-## Three slim blades from `root`, the middle one tallest.
-static func _tuft(b, root: Vector2, h: float, col: Color) -> void:
-	for blade in [Vector2(0.0, -1.0), Vector2(-0.52, -0.7), Vector2(0.55, -0.66)]:
-		var tip: Vector2 = root + blade * h
-		var side := (tip - root).orthogonal().normalized() * h * 0.14
-		b.fan(PackedVector2Array([root - side, tip, root + side]), col)
+## The moss's outline about `c`: an ellipse whose edge is lumpy off the hash,
+## and, for the hanging lip (`drips`), a few tongues that run a little down
+## the front of the drum.
+func _moss(c: Vector2, rx: float, ry: float, seed_i: int, drips: bool) -> PackedVector2Array:
+	var n := 40
+	var ph := _hash(seed_i, 71) * TAU
+	var pts := PackedVector2Array()
+	pts.resize(n)
+	for k in n:
+		var a := TAU * float(k) / float(n)
+		var wob := 1.0 + 0.045 * sin(9.0 * a + ph)
+		var p := c + Vector2(cos(a) * rx, sin(a) * ry) * wob
+		if drips and sin(a) > 0.0:
+			p.y += ry * 0.1 * maxf(0.0, sin(4.0 * a + ph)) * sin(a)
+		pts[k] = p
+	return pts
+
+## A sprout: three small leaves out of `root`, standing up.
+func _sprout(b, root: Vector2, h: float, col: Color) -> void:
+	_leaf(b, root, -PI * 0.5 - 0.55, h * 0.8, h * 0.42, col)
+	_leaf(b, root, -PI * 0.5 + 0.55, h * 0.8, h * 0.42, col.lerp(Pal.LEAF_LIGHT, 0.3))
+	_leaf(b, root, -PI * 0.5, h, h * 0.36, col.lerp(Pal.LEAF_LIGHT, 0.15))
 
 ## What an islet's coin is washed with at `t`: paper, LEAF_TILE met, BAD_TILE
 ## over, gold as the wave reaches it (with the wave's flare on the way), and

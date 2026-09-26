@@ -902,3 +902,44 @@ Measured at `--resolution 810x1440`: **63-64** draw calls played (62 before:
 session; the laps redraw the card while they spread. Reduce motion is
 pixel-identical across its 1.5 s pair, and ANGLE agrees on 62 and matches the
 default driver within 1/255 on the board. Suite 122583/0, win harness 21/21.
+
+## 17. Toward the user's reference, 2026-09-26
+
+The same day the user supplied a painted reference (a clear-blue pond, islets
+as earth drums with mossy tops, the rim dressed with rocks, bushes and lily
+pads) and asked for the design to go toward it. The layout, the gesture and
+every motion from section 16 are unchanged; this is the drawing.
+
+- **The water is clear blue now**, `SEA` 0.10 and `SEA_PALE` 0.34 of the way
+  into paper, where section 7 had let it down to 0.46 and 0.74. That section's
+  worry -- the sea as the loudest surface in the game -- is overruled by the
+  user's own picture. The ripples are **white dashes** again (some with a
+  shorter twin), a line of foam runs round the water's edge, and a few soft
+  deeper patches lie in the open water. The lit lane's gold went up to 0.86 so
+  it stays gold over the stronger blue. On the stronger blue it is **BAD at
+  0.88** again (section 7's mauve risk, which the pale sea had removed); it was
+  not re-shot here and is the one thing worth a look on the phone.
+- **An islet is an earth drum seen from a little above**: a top TOP_Y as tall
+  as it is wide, a soil side SIDE of a radius deep, dark and wet toward the
+  water, with a stratum or two, and a mossy top whose lumpy edge hangs a
+  little over the side. Sprouts stand on its back edge and a flower on some.
+  The coin, its washes and the finger's target are section 16's. `ISLET_R`
+  grew 0.40 to 0.43 to carry the drum. A vertical run now leaves the upper
+  drum at its foot and meets the lower one at its top.
+- **Every islet stands in paler water with a white ring at its waterline**,
+  which the idle laps spread out from.
+- **The rim is dressed** off the hash and never over an islet: every corner
+  gets a leafy bush with a rock tucked in, or a pair of rocks; DRESS_SPOTS
+  places round the rim take a rock, a bush or a pad; and up to PADS lily pads
+  (a round leaf with its wedge cut out, some with a white flower) sit at the
+  corners between cells in the open water. No piece lands on another, and
+  each is shrunk or dropped where an islet crowds it. A pad may lie under a
+  bridge: keeping pads off every possible lane leaves almost none, and
+  keeping them off only the answer's lanes would tell the answer.
+- Everything above is in the still sea mesh or the board's own, so **draw
+  calls are unchanged**: 63 played, 62 under reduce motion and 63 on the
+  11x11. Idle 3.0-3.2 ms. Reduce motion is pixel-identical across its pair,
+  and ANGLE matches the default driver within 1/255 on the board. Suite
+  122583/0, win harness 21/21.
+- **The day card's painted strip in the reference is not done here**: it is
+  the shared chrome every board wears, not this board's drawing.
