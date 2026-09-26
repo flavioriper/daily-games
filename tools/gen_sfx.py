@@ -22,7 +22,13 @@ STYLE = ("cozy casual mobile puzzle game UI sound, soft warm wooden and "
          "marimba tones, gentle, rounded, no harsh transients, clean, dry, "
          "no music bed, no voice")
 
-# cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones)
+# Real-object sounds (a table's balls, not a toy's) take this instead of STYLE:
+# the house style's "marimba, no harsh transients" turned a ball's clack into
+# a soft wooden boop.
+FOLEY = "realistic foley recording, dry, no music, no voice"
+
+# cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
+#       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
@@ -276,9 +282,10 @@ SETS = {
     # on every peg a drag crosses, so it gets no file
     # (docs/art/sound-direction.md).
     "sunbeam": {
-        "lift":     ("a tiny soft brass click, a small mirror lifted off a wooden peg, very short", 0.4, -12),
+        "lift":     ("a tiny soft brass click, a small mirror lifted off a wooden peg, very short", 0.5, -12),
+        "step":     ("a single tiny soft wooden rail tick, a small brass piece passing a peg as it slides, very short and quiet", 0.5, -15),
         "slide":    ("a short soft wooden slide ending in a gentle brass tick, a mirror settling onto a peg, cozy", 0.5, -10),
-        "drop":     ("a tiny soft brass tick on wood, very short and quiet", 0.3, -14),
+        "drop":     ("a tiny soft brass tick on wood, very short and quiet", 0.5, -14),
         "dew":      ("a single tiny bright glass droplet chime, a dewdrop catching sunlight, soft glockenspiel, very short", 0.6, -9),
         "dry":      ("a soft gentle two-note downward marimba, not yet, warm and patient", 0.6, -10),
         "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
@@ -291,8 +298,8 @@ SETS = {
     # Knight: a cream knight hops in Ls to take the rose king; rose knights
     # answer every hop. A catch slides the board back one move.
     "knight": {
-        "hop":      ("a single soft wooden chess piece tap on a paper board, light and cozy, very short", 0.4, -10),
-        "answer":   ("a lower softer felt-bottomed wooden chess piece tap, very short", 0.4, -12),
+        "hop":      ("a single soft wooden chess piece tap on a paper board, light and cozy, very short", 0.5, -10),
+        "answer":   ("a lower softer felt-bottomed wooden chess piece tap, very short", 0.5, -12),
         "take":     ("a bright small wooden knock, one chess piece taking another, cozy, very short", 0.5, -9),
         "caught":   ("a soft gentle two-note downward marimba, not yet, warm and patient", 0.6, -10),
         "slide":    ("a short soft paper slide, pieces sliding back on a board", 0.5, -11),
@@ -307,10 +314,11 @@ SETS = {
     # resin balls and a leather tip -- kept soft, then the game's own marimba
     # for the verdicts. `clack` plays for every contact, pitched by speed.
     "snooker": {
-        "strike":   ("a single soft leather cue tip striking a snooker cue ball, a muted wooden tock, very short", 0.5, -9),
-        "clack":    ("a single short clean click of two resin snooker balls touching, soft, very short, no echo", 0.5, -10),
-        "cushion":  ("a single soft dull thud of a snooker ball against a rubber cushion, muted, very short", 0.5, -13),
-        "pot":      ("a snooker ball dropping into a leather pocket with a soft hollow thunk and a short roll, cozy", 0.8, -8),
+        "strike":   ("a single leather cue tip striking a snooker cue ball, a crisp short tock, close mic, very short", 0.5, -8, FOLEY),
+        "clack":    ("a single sharp clack of one resin snooker ball hitting another on a table, crisp click, close mic, very short, no echo", 0.5, -6, FOLEY),
+        "cushion":  ("a single dull thump of a snooker ball bouncing off the rubber cushion of a snooker table rail, close mic, very short", 0.5, -8, FOLEY),
+        "pot":      ("a snooker ball dropping into a leather pocket with a soft hollow thunk and a short roll, cozy", 0.8, -8, FOLEY),
+        "roll":     ("continuous steady low rumble of snooker balls rolling across a felt cloth table, smooth, constant, no hits, no clicks", 3.0, -10, FOLEY, "loop"),
         "foul":     ("a soft gentle two-note downward kalimba, not yet, never a buzzer", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         "win":      ("a warm celebratory marimba run rising with a soft clack of snooker balls, joyful and cozy", 2.0, -3),
@@ -373,12 +381,16 @@ def key() -> str:
     return k
 
 
-def generate(api_key: str, prompt: str, seconds: float) -> bytes:
-    body = json.dumps({
-        "text": f"{prompt}. {STYLE}",
+def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop: bool = False) -> bytes:
+    body = {
+        "text": f"{prompt}. {style}",
         "duration_seconds": seconds,
         "prompt_influence": 0.6,
-    }).encode()
+    }
+    if loop:
+        body["loop"] = True
+        body["model_id"] = "eleven_text_to_sound_v2"
+    body = json.dumps(body).encode()
     req = urllib.request.Request(API, data=body, method="POST", headers={
         "xi-api-key": api_key, "Content-Type": "application/json", "Accept": "audio/mpeg"})
     try:
@@ -388,7 +400,7 @@ def generate(api_key: str, prompt: str, seconds: float) -> bytes:
         sys.exit(f"ElevenLabs answered {e.code}: {e.read().decode(errors='replace')[:400]}")
 
 
-def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int) -> None:
+def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False) -> None:
     # Trim silence at both ends (reverse trick for the tail) with a low
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
@@ -401,7 +413,8 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int) -> None:
     # the fold is written as 32-bit float (it can pass full scale), and the
     # peak is read off that mono file with astats -- volumedetect measures
     # in 16-bit and reads anything over full scale as exactly 0 dB.
-    trim = "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01"
+    # A loop keeps every sample: a trim or a fade would put a gap in its seam.
+    trim = "anull" if loop else "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01"
     with tempfile.TemporaryDirectory() as tmp:
         mono = pathlib.Path(tmp) / "mono.wav"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
@@ -413,7 +426,8 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int) -> None:
         top = float(re.search(r"Peak level dB: (-?[0-9.]+)", probe).group(1))
         dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
                                     "-of", "csv=p=0", str(mono)], capture_output=True, text=True).stdout)
-        chain = f"volume={peak - top:.2f}dB,afade=t=out:st={max(dur - 0.03, 0):.3f}:d=0.03"
+        chain = f"volume={peak - top:.2f}dB" if loop else \
+            f"volume={peak - top:.2f}dB,afade=t=out:st={max(dur - 0.03, 0):.3f}:d=0.03"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mono), "-af", chain,
                         "-ar", "44100", "-c:a", "libvorbis", "-q:a", "5", str(out)], check=True)
 
@@ -429,12 +443,14 @@ def main() -> None:
     raw_dir = ROOT / "build/sfx_raw" / board
     raw_dir.mkdir(parents=True, exist_ok=True)
     for cue in cues:
-        prompt, seconds, peak = SETS[board][cue]
+        prompt, seconds, peak, *rest = SETS[board][cue]
+        style = rest[0] if rest else STYLE
+        loop = "loop" in rest[1:]
         raw = raw_dir / f"{cue}.mp3"
         if "--new" in flags or not raw.exists():
-            raw.write_bytes(generate(key(), prompt, seconds))
+            raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
-        to_ogg(raw, out, peak)
+        to_ogg(raw, out, peak, loop)
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

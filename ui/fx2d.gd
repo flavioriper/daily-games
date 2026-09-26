@@ -121,8 +121,10 @@ class Ring extends Control:
 ## no set (or a cue with no file) stays silent. tools/gen_sfx.py makes the
 ## files. A cue fired again inside CUE_GAP plays once: the blush and the
 ## line cues fire per cell, several in one frame. `pitch` scales the
-## playback rate, for a cue that should climb (Shikaku's select tick).
-func cue(cue_name: String, pitch := 1.0) -> void:
+## playback rate, for a cue that should climb (Shikaku's select tick), and
+## `volume_db` its level, for a hit that should be as loud as it was hard
+## (snooker's clack).
+func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	last_cue = cue_name
 	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
 	if not _streams.has(path):
@@ -143,6 +145,7 @@ func cue(cue_name: String, pitch := 1.0) -> void:
 	_next_voice = (_next_voice + 1) % VOICES
 	player.stream = stream
 	player.pitch_scale = pitch
+	player.volume_db = volume_db
 	player.play()
 	# The board answered: a button pressed this frame keeps its click quiet.
 	UiSound.board_frame = Engine.get_process_frames()

@@ -86,6 +86,9 @@ var _think_at := 0.0
 var _ai_shot := {}
 var _ai_tw: Tween
 var _fx: Node2D
+## The cloth's rumble: one looping voice whose level follows how fast the
+## balls are running, so a break roars and a last creeping ball fades out.
+var _roll: AudioStreamPlayer
 var _backdrop: ColorRect
 var _margins: MarginContainer
 var _toast: PanelContainer
@@ -208,6 +211,14 @@ func _build() -> void:
 	row.add_child(table)
 	_fx = Fx2D.new()
 	table.add_child(_fx)
+	_roll = AudioStreamPlayer.new()
+	_roll.volume_db = -80.0
+	var roll_path := "res://assets/sfx/snooker/roll.ogg"
+	if ResourceLoader.exists(roll_path):
+		var stream: AudioStreamOggVorbis = (load(roll_path) as AudioStreamOggVorbis).duplicate()
+		stream.loop = true
+		_roll.stream = stream
+	add_child(_roll)
 
 	_toast = PanelContainer.new()
 	_toast.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 30, 14))
@@ -598,20 +609,45 @@ func _process(delta: float) -> void:
 			_play_events()
 			if not sim.moving():
 				_judge()
+	_roll_sound(delta)
 	# The worker's answer is picked up whatever the screen is doing: a hint
 	# still thinking when the shot is played must not hold the thread when
 	# the computer's turn comes round.
 	_poll_think()
 
+## Loud as the contact was hard: a kiss at a walking pace is a tick, a break
+## a crack. `speed` is the closing speed in metres a second.
+func _hit_db(speed: float, full: float) -> float:
+	return linear_to_db(clampf(0.12 + 0.88 * speed / full, 0.12, 1.0))
+
+func _roll_sound(delta: float) -> void:
+	if _roll == null or _roll.stream == null:
+		return
+	var run := 0.0
+	if _state == State.ROLL:
+		for i in Sim.COUNT:
+			if sim.on[i]:
+				run += sim.vel[i].length()
+	# Heard from a crawl, full by about two metres a second of ball on the cloth.
+	var want := clampf(run / 2.0, 0.0, 1.0)
+	var now := db_to_linear(_roll.volume_db)
+	now = move_toward(now, want, delta * (6.0 if want > now else 2.5))
+	_roll.volume_db = linear_to_db(maxf(now, 0.0001))
+	_roll.pitch_scale = lerpf(0.85, 1.1, want)
+	if now > 0.002 and not _roll.playing:
+		_roll.play()
+	elif now <= 0.002 and _roll.playing:
+		_roll.stop()
+
 func _play_events() -> void:
 	for e in sim.events:
 		match String(e.kind):
 			"ball":
-				_fx.cue("clack", clampf(0.85 + float(e.speed) * 0.08, 0.85, 1.25))
+				_fx.cue("clack", clampf(0.85 + float(e.speed) * 0.08, 0.85, 1.25), _hit_db(float(e.speed), 3.0))
 				table.flash("ball", e.at, float(e.speed) / 2.5)
 			"cushion":
-				if float(e.speed) > 0.25:
-					_fx.cue("cushion")
+				if float(e.speed) > 0.08:
+					_fx.cue("cushion", clampf(0.9 + float(e.speed) * 0.05, 0.9, 1.1), _hit_db(float(e.speed), 3.0))
 					table.flash("cushion", e.at, float(e.speed) / 2.0)
 			"pot":
 				var out: Vector2 = sim.pockets[int(e.pocket)].out

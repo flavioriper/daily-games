@@ -1251,8 +1251,8 @@ pointing `seed_as` at them. Specs:
   you can never take it, and one on the other colour the reverse; the
   corners show it without a word. Its drawing is `ui/faces/chess_piece.gd`,
   shared with the menu card. 67 draw calls bare, 66 played, 71 solved,
-  ANGLE agreeing. Sounds are prompts in `tools/gen_sfx.py`, not yet
-  generated. The board toasts its own explanations (Rings' toast), because
+  ANGLE agreeing. Sounds generated (2026-09-26), one take a cue, awaiting
+  the user's listen. The board toasts its own explanations (Rings' toast), because
   the tip card is gone and `tip_line()` reaches no screen, and a Hint on a
   lost position rewinds to the last one that still has a line (`KN_REWOUND`).
   **Polished on 2026-09-26** (the spec's amendment): a garden table under the
@@ -1540,6 +1540,12 @@ reaches it through the `versus_host` group.
   inside a 1.8 s budget; the screen polls the task every frame whatever its
   state, so a hint still thinking when the turn passes never blocks the
   computer's own turn.
+- **Its table sounds are foley, not the house style** (2026-09-26):
+  `gen_sfx.py` appends a marimba-and-no-transients `STYLE` to every prompt,
+  which turned a ball's clack into a soft boop, so a cue may name its own
+  style (`FOLEY`). Clacks and cushions are as loud as the contact was hard
+  (`Fx2D.cue`'s `volume_db`), and `roll` is a looping voice whose level
+  follows the balls' summed speed (`_roll_sound`).
 - 149 draw calls at the table (146 before the polish of 2026-09-26, spec section 8), 91 on the tab (810x1440, ANGLE agreeing).
   The tab's picture is the real table drawn `still`, so it costs the menu
   no per-frame work.
