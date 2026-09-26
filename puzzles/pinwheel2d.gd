@@ -28,11 +28,10 @@ extends "res://core/puzzle_base.gd"
 ## another cell set), and the cached loops are per **(piece, orientation)** --
 ## four entries a piece at most -- rather than traced on the frame.
 ##
-## `Cloth.laid()` takes a scale but no angle, so the swing cannot go through
-## it: a swinging piece is laid out in board pixels and then turned about its
-## pin, point by point. It pops about its pin too, which `laid` does carry --
-## the span it squashes about is `2 * pin + 1`, whose middle is exactly the
-## pin's own centre.
+## Every part of a piece goes through `Cloth.place` with the span `2 * pin +
+## 1`, whose middle is exactly the pin's own centre, so the pop, the lift and
+## the swing's turn (`place`'s `rot`) all happen about the pin, and the print
+## and the stitch can never be left behind by a swing.
 ##
 ## Spec: docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 7.
 ## Ported from the canvas mock at docs/brainstorm/concepts.html#pinwheel,
@@ -75,13 +74,14 @@ const EDGE_W := 0.04
 const HALO_W := 0.085
 ## The pinwheel's radius, in cells. One of this board's own two constants,
 ## and both are shape rather than timing.
-const PIN_R := 0.19
-## How far a pinwheel's hub is taken toward the ink off its own piece's
-## cloth. That the hub wears the piece's colour is the only thing saying
-## whose handle it is, and on a board where a pin can sit underneath another
-## piece -- nothing prevents it -- that started as prettiness and is now
-## load-bearing.
-const HUB_MIX := 0.42
+## 0.19 until the polish of 2026-09-26, when it was lost on butter and sky.
+const PIN_R := 0.28
+## The pinwheel's coloured vanes wear their piece's deep cloth (its lip), not
+## the cloth itself, which vanished on its own piece: blue on blue. That the vanes wear the piece's colour is the only thing
+## saying whose handle it is, and on a board where a pin can sit underneath
+## another piece -- nothing prevents it -- that started as prettiness and is
+## now load-bearing. (Until the polish the hub carried it, at a quarter of
+## the area.)
 
 # --- the stain ---
 ## The wash a stained cell takes, and the hatch over it. This board's other
@@ -95,8 +95,15 @@ const HUB_MIX := 0.42
 ## as maroon and a butter reading as olive. A hatch cannot be a cloth --
 ## nothing else on this screen is drawn in lines -- so a hatched cell is
 ## unambiguously "two pieces here" whatever is under it.
-const STAIN_ALPHA := 0.30
-const HATCH_ALPHA := 0.20
+## The wash was 0.30 until the polish of 2026-09-26, and it turned a third
+## of the board into darker cloths; the hatch and the dashed outline round
+## each contested region carry the state now, and the wash only tones it.
+const STAIN_ALPHA := 0.12
+const HATCH_ALPHA := 0.22
+const OUTLINE_W := 0.04
+const OUTLINE_ON := 0.12
+const OUTLINE_OFF := 0.08
+const OUTLINE_ALPHA := 0.4
 const HATCH_W := 0.035
 const HATCH_STEP := 0.24
 ## A stained cell's corner, and how it arrives: from a third of its size with
@@ -132,6 +139,39 @@ const WIN_WAIT := 1.6
 ## Three, as every flat board gives.
 const HINTS := 3
 
+# --- the polish (spec amendment, 2026-09-26) ---
+## The backing is a tufted quilt, as Quilt's is: every cell a soft puff of
+## batting inset this far, and a tie of thread where four cells meet, so a
+## bare cell reads as an empty socket and not as beige.
+const PUFF_INSET := 0.07
+const PUFF_R := 0.2
+const PUFF_ALPHA := 0.26
+const TIE_LEN := 0.055
+const TIE_W := 0.028
+## Every piece casts a short shadow on whatever it lies over, which is what
+## says which of two overlapping pieces is on top. A swinging piece is lifted
+## off the frame: it grows by LIFT_GROW, its shadow falls away to
+## LIFT_SHADOW, and it comes down on the pin with a squash of LAND_SQUASH
+## and a puff of its own cloth.
+const REST_SHADOW := Vector2(0.03, 0.07)
+const REST_LEVEL := 0.55
+const LIFT_SHADOW := Vector2(0.08, 0.22)
+const LIFT_GROW := 0.05
+const LAND_SQUASH := 0.035
+## The idle breeze: every GUST_EVERY seconds (and up to GUST_JITTER more) one
+## pinwheel catches a gust and spins GUST_TURN over GUST_TIME. A half turn,
+## because the vanes alternate two papers and a half turn lands on the same
+## picture it left. Never a continuous spin: a board whose idle rebuilds its
+## mesh every frame pays for it every frame (Caterpillar's 12.2 ms).
+const GUST_EVERY := 3.2
+const GUST_JITTER := 2.4
+const GUST_TURN := PI
+const GUST_TIME := 1.1
+## On the solve the breeze crosses the frame in the solve wave and every
+## pinwheel spins a whole turn as it passes.
+const WIN_TURN := TAU
+const WIN_SPIN := 1.0
+
 const TIP_CYCLE := 8.0
 const TIPS := [
 	"PW_TIP_TAP",
@@ -144,6 +184,16 @@ var _state = State.new()
 ## The board's own effects node: the hint's ring and every sparkle come
 ## through it and nowhere else.
 var fx: Node2D
+
+## Pinwheels spinning in a gust: piece -> {"at", "turn", "time"}. Only the
+## blades read it; the piece does not move.
+var _gust: Dictionary = {}
+var _next_gust := 0.0
+var _gust_rng := RandomNumberGenerator.new()
+## Per piece, the moment its last swing came down, for the landing squash.
+var _landed: Dictionary = {}
+## Each piece's quilting line per orientation: [p][o] -> loops, in cells.
+var _insets: Array = []
 
 ## The pieces mid-swing: piece -> {"at": float, "quarters": int}. Clockwise
 ## is positive, so an undo's swing is negative and goes back the way it came.
@@ -226,6 +276,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_wob = {}
 	_refused = {}
 	_pending = []
+	_gust = {}
+	_landed = {}
+	_next_gust = 0.0
+	_gust_rng.randomize()
 	_pressed = Vector2i(-1, -1)
 	_anim_until = 0.0
 	_solved_at = -1.0
@@ -255,16 +309,20 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 func _shape_cache() -> void:
 	_loops = []
 	_quarter = []
+	_insets = []
 	for p in _state.shapes.size():
 		var list: Array = _state.shapes[p]
 		var pin := _state.pin_cell(p)
 		var loops: Array = []
 		var quarters: Array = []
+		var insets: Array = []
 		for o in list.size():
 			loops.append(Cloth.loops(list[o]))
 			quarters.append(_quarter_of(list[0], list[o], pin))
+			insets.append(Cloth.inset_loops(list[o]))
 		_loops.append(loops)
 		_quarter.append(quarters)
+		_insets.append(insets)
 	# The far corner of the frame from the nearest pin is the longest any
 	# stain wave can run; one number, asked once.
 	_wave_span = float(maxi(_state.cols, _state.rows)) * Motion.WAVE_STEP + STAIN_POP
@@ -370,6 +428,7 @@ func _process(delta: float) -> void:
 	# out of `_live` and back into index order -- so the frame it ends on has
 	# to be redrawn even if nothing else on the card is moving.
 	var settled := _retire(t)
+	settled = _breeze(t) or settled
 	_fire_pending(t)
 	if settled or _animating(t):
 		_refresh()
@@ -382,6 +441,9 @@ func _fire_pending(t: float) -> void:
 	for e: Dictionary in _pending:
 		if t < float(e["at"]):
 			keep.append(e)
+			continue
+		if bool(e.get("puff", false)):
+			fx.puff(e["point"], e["colour"], 4)
 			continue
 		if bool(e["ring"]):
 			fx.ring(e["point"], _cell() * RING_R, e["colour"])
@@ -398,6 +460,42 @@ func _fx_at(point: Vector2, colour: Color, after := 0.0, ring := true) -> void:
 		return
 	_pending.append({"at": _now() + after, "point": point, "colour": colour, "ring": ring})
 	_busy_for(after + Motion.RING_TIME)
+
+## The idle breeze: retires the gusts that have blown out, and sets a new one
+## off on a pinwheel that can turn once the last is due. Nothing under
+## reduce-motion, before the frame has filled, or once the board is done
+## (the win's own gust is set off by `_on_solved`). True when a gust ended,
+## so the frame it ends on is drawn.
+func _breeze(t: float) -> bool:
+	var gone := false
+	for p in _gust.keys():
+		var g: Dictionary = _gust[p]
+		if t - float(g["at"]) >= float(g["time"]):
+			_gust.erase(p)
+			gone = true
+	if Motion.reduce or _done or t < _next_gust:
+		return gone
+	if _next_gust <= 0.0:
+		_next_gust = t + GUST_EVERY + _gust_rng.randf() * GUST_JITTER
+		return gone
+	var can: Array = []
+	for p in _state.shapes.size():
+		if not _state.fixed(p) and not _swing.has(p) and not _gust.has(p):
+			can.append(p)
+	if not can.is_empty():
+		var p: int = can[_gust_rng.randi() % can.size()]
+		_gust[p] = {"at": t, "turn": GUST_TURN, "time": GUST_TIME}
+	_next_gust = t + GUST_EVERY + _gust_rng.randf() * GUST_JITTER
+	return gone
+
+## How far a gust has spun piece `p`'s blades: fast as it hits, coasting to
+## a stop on the turn.
+func _gusted(p: int, t: float) -> float:
+	if not _gust.has(p):
+		return 0.0
+	var g: Dictionary = _gust[p]
+	var u := clampf((t - float(g["at"])) / float(g["time"]), 0.0, 1.0)
+	return float(g["turn"]) * (1.0 - pow(1.0 - u, 3.0))
 
 ## A swing that has settled -- blades and all -- stops being a swing;
 ## otherwise `_animating` would have to keep asking about it for ever. The
@@ -432,8 +530,11 @@ func _animating(t: float) -> bool:
 		+ Motion.stagger(maxi(_state.shapes.size() - 1, 0), Motion.ENTER_STAGGER) + Motion.POP_IN
 	if t - _opened < entrance:
 		return true
-	if not _swing.is_empty():
+	if not _swing.is_empty() or not _gust.is_empty():
 		return true
+	for p in _landed:
+		if t - float(_landed[p]) < Motion.BUMP_TIME:
+			return true
 	# The stain fans out of a pin *after* the piece that moved has landed.
 	for p in _turned_at.size():
 		if t - float(_turned_at[p]) < _wave_span:
@@ -509,7 +610,24 @@ func _frame_of(p: int, t: float) -> Dictionary:
 		var at := _solved_at + _solve_delay(p)
 		offset.y += Motion.hop_lift(t - at, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 		warm = 1.0 if Motion.reduce else clampf((t - at) / WARM_TIME, 0.0, 1.0)
-	return {"sc": sc, "angle": _swung(p, t), "offset": offset, "warm": warm}
+	var lift := _lift(p, t)
+	var grow := 1.0 + LIFT_GROW * lift
+	if _landed.has(p):
+		grow *= 2.0 - Motion.bump_scale(t - float(_landed[p]), LAND_SQUASH)
+	return {"sc": sc * grow, "angle": _swung(p, t), "offset": offset, "warm": warm,
+		"lift": lift}
+
+## How far piece `p` is lifted off the frame, 0 to 1: up over the first fifth
+## of its swing, held while it turns, and down over the last quarter, so it
+## lands as the turn settles onto the quarter.
+func _lift(p: int, t: float) -> float:
+	if not _swing.has(p):
+		return 0.0
+	var a: Dictionary = _swing[p]
+	var u := (t - float(a["at"])) / maxf(_swing_time(int(a["quarters"])), 0.001)
+	if u <= 0.0 or u >= 1.0:
+		return 0.0
+	return smoothstep(0.0, 0.2, u) * (1.0 - smoothstep(0.75, 1.0, u))
 
 ## When the solve wave reaches piece `p`: the delay, then a king move a cell
 ## out from the pin of the piece that finished the board.
@@ -580,6 +698,19 @@ func _build_frame() -> ArrayMesh:
 		var y := _origin().y + float(r) * cell
 		b.stroke(PackedVector2Array([Vector2(_origin().x, y),
 			Vector2(_origin().x + float(_state.cols) * cell, y)]), w, rule, false, false)
+	var o := _origin()
+	var puff := Color(Pal.SURFACE, PUFF_ALPHA)
+	for r in _state.rows:
+		for c in _state.cols:
+			b.polygon(Face.Builder.round_rect(o + (Vector2(c, r) + Vector2.ONE * PUFF_INSET) * cell,
+				Vector2.ONE * (1.0 - 2.0 * PUFF_INSET) * cell, PUFF_R * cell), puff)
+	var tie := Color(Pal.LINE, 0.85)
+	var d := TIE_LEN * cell
+	for r in range(1, _state.rows):
+		for c in range(1, _state.cols):
+			var at2 := o + Vector2(c, r) * cell
+			b.stroke(PackedVector2Array([at2 + Vector2(-d, -d), at2 + Vector2(d, d)]), TIE_W * cell, tie)
+			b.stroke(PackedVector2Array([at2 + Vector2(d, -d), at2 + Vector2(-d, d)]), TIE_W * cell, tie)
 	b.stroke(panel, FRAME_RIM, Pal.LINE, true)
 	return _mesh(b)
 
@@ -626,47 +757,51 @@ func _build_live(t: float) -> ArrayMesh:
 func _mesh(b) -> ArrayMesh:
 	return b.mesh() if not b.verts.is_empty() else null
 
-## One piece's silhouette, laid out in board pixels and then turned about its
-## pin. `Cloth.laid()` carries a scale but no angle, so the turn is applied
-## point by point after it -- the same bargain `quilt2d.gd` makes with its
-## entrance `grow`, one level further in.
-##
-## The span handed to `laid` is `2 * pin + 1`, whose middle is exactly the
-## pin's own centre, so the pop squashes about the pin rather than about the
-## piece's bounding box. A piece of five cells cannot enclose a hole -- it
-## takes eight -- so every loop off `Cloth.loops` here is an outer one.
-func _piece_pts(p: int, o: int, sc: Vector2, angle: float, offset: Vector2) -> Array:
-	var cell := _cell()
+## Where piece `p` is laid this frame: the frame's origin moved by the
+## shiver and the hop, and the span handed to `Cloth.place` -- `2 * pin + 1`,
+## whose middle is exactly the pin's own centre -- so the pop, the lift and
+## the swing's turn all happen about the pin and not about the piece's
+## bounding box. Every part of a piece (its shadow, cloth, print, quilting
+## and edge) goes through `Cloth.place` with these, so none can be left
+## behind by a swing. A piece of five cells cannot enclose a hole -- it takes
+## eight -- so every loop off `Cloth.loops` here is an outer one.
+func _span(p: int) -> Vector2i:
 	var pin := _state.pin_cell(p)
-	var span := Vector2i(pin.x * 2 + 1, pin.y * 2 + 1)
-	var at := _pin_point(p)
-	var out: Array = []
-	for loop: PackedVector2Array in (_loops[p] as Array)[o]:
-		var pts := Cloth.laid(loop, _origin(), cell, span, sc)
-		if absf(angle) > 0.0001 or offset != Vector2.ZERO:
-			for i in pts.size():
-				pts[i] = at + (pts[i] - at).rotated(angle) + offset
-		out.append(pts)
-	return out
+	return Vector2i(pin.x * 2 + 1, pin.y * 2 + 1)
 
-## One piece: its cloth over its own lip, a solid edge round it, and the rose
-## halo if it has just been refused.
+## One piece: its shadow, its cloth over its own lip, the cloth's print, the
+## quilting stitch inside its edge, a solid edge round it, and the rose halo
+## if it has just been refused.
 func _piece(b, p: int, f: Dictionary) -> void:
 	var sc: Vector2 = f["sc"]
 	if sc.x <= 0.0 or sc.y <= 0.0:
 		return
 	var cell := _cell()
 	var ci := int(_state.cloth[p])
+	var o := int(_state.turned[p])
 	var warm := float(f["warm"])
+	var lift := float(f["lift"])
+	var rot := float(f["angle"])
+	var pos := _origin() + (f["offset"] as Vector2)
+	var span := _span(p)
+	var loops: Array = (_loops[p] as Array)[o]
 	var edge := Cloth.cloth_stitch(ci)
+	var thread := Cloth.cloth_thread(ci)
 	if warm > 0.0:
 		edge = edge.lerp(Pal.SUN_RAY, warm * WARM_MIX)
-	var lip := Vector2(0.0, Cloth.EDGE * cell)
-	var pts_all := _piece_pts(p, int(_state.turned[p]), sc, float(f["angle"]), f["offset"])
-	for pts: PackedVector2Array in pts_all:
-		b.polygon(_moved(pts, lip), Cloth.cloth_deep(ci))
-		b.polygon(pts, Cloth.cloth(ci))
+		thread = thread.lerp(Pal.SUN_RAY, warm * WARM_MIX)
+	Cloth.shadow(b, loops, pos, cell, span, REST_SHADOW.lerp(LIFT_SHADOW, lift) * cell,
+		lerpf(REST_LEVEL, 1.0, lift), sc, rot)
+	Cloth.patch(b, loops, pos, cell, span, Cloth.cloth(ci), Cloth.cloth_deep(ci), sc, 1.0, rot)
+	Cloth.print_cloth(b, (_state.shapes[p] as Array)[o], ci, pos, cell, span, sc, 1.0, rot)
+	for loop: PackedVector2Array in (_insets[p] as Array)[o]:
+		Cloth.dash_loop(b, Cloth.laid(loop, pos, cell, span, sc, rot, Cloth.RADIUS * 0.6),
+			Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell, Cloth.QUILT_OFF * cell, thread)
+	var pts_all: Array = []
+	for loop: PackedVector2Array in loops:
+		var pts := Cloth.laid(loop, pos, cell, span, sc, rot)
 		b.stroke(pts, EDGE_W * cell, edge, true)
+		pts_all.append(pts)
 	_halo(b, p, pts_all)
 
 ## A piece that is being turned down wears a rose **halo** round its
@@ -741,6 +876,19 @@ func _stain(b, t: float) -> void:
 				b.stroke(PackedVector2Array([Vector2(lo + cc, lo), Vector2(hi + cc, hi)]),
 					maxf(3.0, cell * HATCH_W), ink, false, false)
 			j += 1
+	# One dashed outline round each contested region, over the cells the wave
+	# has already reached: the hatch says "two pieces here" and the outline
+	# says where that stops, without darkening a cloth to do it.
+	var reached: Array = []
+	for at: Vector2i in stained:
+		if _stain_level(t, at, stained[at]) > 0.0:
+			reached.append(at)
+	if reached.is_empty():
+		return
+	var line := Color(Pal.TEXT, OUTLINE_ALPHA)
+	for loop: PackedVector2Array in Cloth.loops(reached):
+		Cloth.dash_loop(b, Cloth.laid(loop, _origin(), cell, Vector2i.ZERO, Vector2.ONE, 0.0,
+			STAIN_RADIUS), OUTLINE_W * cell, OUTLINE_ON * cell, OUTLINE_OFF * cell, line)
 
 ## How far a stained cell has arrived: nothing before its moment, then from a
 ## third of its size to all of it with the back ease.
@@ -813,24 +961,19 @@ func _pins(b, t: float) -> void:
 		# cannot use.
 		var r := cell * PIN_R * sqrt(sc.x * sc.y)
 		var at := _pin_point(p) + (f["offset"] as Vector2)
+		# A lifted piece carries its pinwheel up with it.
+		r *= 1.0 + LIFT_GROW * float(f["lift"])
 		PinWheel.shadow(b, at, r, Pal.TEXT)
 		if _state.fixed(p):
-			PinWheel.pin(b, at, r, Pal.LINE, Pal.SURFACE)
+			PinWheel.pin(b, at, r, Pal.LINE)
 			continue
 		var rest := float((_quarter[p] as Array)[int(_state.turned[p])]) * PI * 0.5
 		var wob := 0.0
 		if _wob.has(p):
 			wob = Motion.wobble_angle(t - float(_wob[p]), WOB_ANGLE, WOB_TIME)
-		var hub := Cloth.cloth(int(_state.cloth[p])).lerp(Pal.TEXT, HUB_MIX)
-		PinWheel.wheel(b, at, r, rest + _swung(p, t, HUB_FACTOR) + wob,
-			Pal.LINE, Pal.SURFACE, hub)
-
-func _moved(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	out.resize(pts.size())
-	for i in pts.size():
-		out[i] = pts[i] + by
-	return out
+		var vane := Cloth.cloth_deep(int(_state.cloth[p]))
+		PinWheel.wheel(b, at, r, rest + _swung(p, t, HUB_FACTOR) + wob + _gusted(p, t),
+			Pal.LINE, Pal.SURFACE, PinWheel.BRASS, vane)
 
 ## The chrome is the host's. The frame's entrance is one wide pop about its
 ## centre while it fades, and the pieces pop in behind it; both are read off
@@ -973,6 +1116,10 @@ func _settle(before: PackedInt32Array, t: float, back: bool, delays := {}) -> vo
 		if not Motion.reduce:
 			_swing[p] = {"at": at, "quarters": quarters}
 		_turned_at[p] = at + _swing_time(quarters)
+		if not Motion.reduce:
+			_landed[p] = at + _swing_time(quarters)
+			_pending.append({"at": _landed[p], "point": _pin_point(p),
+				"colour": Cloth.cloth(int(_state.cloth[p])), "ring": false, "puff": true})
 		_last_turned = p
 		longest = maxf(longest, at - t + _hub_time(quarters))
 	if longest > 0.0 or not delays.is_empty():
@@ -1069,6 +1216,8 @@ func restore_completed_board() -> void:
 	_wob = {}
 	_refused = {}
 	_pending = []
+	_gust = {}
+	_landed = {}
 	_pressed = Vector2i(-1, -1)
 	_anim_until = 0.0
 	_opened = t - 10.0
@@ -1110,6 +1259,10 @@ func _on_solved() -> void:
 	# over a finished frame is a firework.
 	for p in _state.shapes.size():
 		_fx_at(_pin_point(p), Pal.SUN, _solve_delay(p), false)
+		# The breeze crosses the frame with the wave, and every wheel it
+		# passes spins a whole turn.
+		if not Motion.reduce and not _state.fixed(p):
+			_gust[p] = {"at": _solved_at + _solve_delay(p), "turn": WIN_TURN, "time": WIN_SPIN}
 	_busy_for(Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
 	_say(tr("PW_DONE"), Face.Expr.JOY)
 	fx.cue("solved")

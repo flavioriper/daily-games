@@ -891,8 +891,8 @@ func _draw_pinwheel() -> void:
 	_pin_piece(b, PIN_TURNED, origin, cell)
 	for stained: Vector2i in PIN_STAINED:
 		_pin_stain(b, stained, origin, cell)
-	# Every wheel over everything, because a wheel is the handle. Its hub
-	# wears its own piece's cloth taken toward the ink, which is the only
+	# Every wheel over everything, because a wheel is the handle. Two of its
+	# vanes wear its own piece's deep cloth, which is the only
 	# thing saying whose handle it is -- and on a board where a pin can end
 	# up underneath another piece, that is load-bearing rather than pretty.
 	var all: Array = PIN_PIECES.duplicate()
@@ -903,7 +903,7 @@ func _draw_pinwheel() -> void:
 		var r := cell * PIN_WHEEL_R
 		PinWheel.shadow(b, seat, r, Pal.TEXT)
 		PinWheel.wheel(b, seat, r, float(i) * PI * 0.5, Pal.LINE, Pal.SURFACE,
-			PatchCloth.cloth(int(piece[0])).lerp(Pal.TEXT, 0.42))
+			PinWheel.BRASS, PatchCloth.cloth_deep(int(piece[0])))
 	_pinwheel_mesh = b.mesh()
 	draw_mesh(_pinwheel_mesh, null)
 
@@ -918,7 +918,10 @@ func _pin_piece(b, piece: Array, origin: Vector2, cell: float) -> void:
 		var pts := PatchCloth.laid(loop, origin, cell, Vector2i.ZERO)
 		b.polygon(_shifted(pts, lip), PatchCloth.cloth_deep(ci))
 		b.polygon(pts, PatchCloth.cloth(ci))
-		b.stroke(pts, edge, PatchCloth.cloth_stitch(ci), true)
+	PatchCloth.print_cloth(b, piece[2] as Array, ci, origin, cell, Vector2i.ZERO)
+	for loop: PackedVector2Array in PatchCloth.loops(piece[2] as Array):
+		b.stroke(PatchCloth.laid(loop, origin, cell, Vector2i.ZERO), edge,
+			PatchCloth.cloth_stitch(ci), true)
 
 ## One contested cell: the wash, and the hatch over it. The hatch's phase
 ## comes off the frame and not off the cell, the way the board's does, so two
@@ -927,8 +930,8 @@ func _pin_stain(b, at_cell: Vector2i, origin: Vector2, cell: float) -> void:
 	var lo := origin + Vector2(at_cell) * cell
 	var hi := lo + Vector2.ONE * cell
 	b.polygon(Face.Builder.round_rect(lo, Vector2.ONE * cell, 0.22 * cell),
-		Color(Pal.TEXT, 0.30))
-	var ink := Color(Pal.TEXT, 0.20)
+		Color(Pal.TEXT, 0.12))
+	var ink := Color(Pal.TEXT, 0.22)
 	var step := cell * 0.24
 	var width := maxf(1.0, cell * 0.045)
 	var phase := origin.x - origin.y

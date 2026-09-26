@@ -1146,6 +1146,15 @@ pointing `seed_as` at them. Specs:
   board here has recorded; the reduce-motion pair 1.5 s apart is
   pixel-identical, in both runs. Generation worst **9.08 ms** in the quiet
   session and 16.42 ms in a loaded one, against the 194 ms gate.
+  **Polished on 2026-09-26** (the spec's amendment): Quilt's printed cloth
+  and quilting stitch on every piece, a resting shadow that says which of
+  two pieces is on top, a tufted backing, the stain's wash down to 0.12
+  with a dashed outline carrying the state, and folded pinwheels at 0.28
+  with the piece's deep cloth on two vanes and a brass hub (a push-pin for a
+  piece pinned fast). A swing lifts and lands with a squash and a puff. An
+  idle breeze spins one wheel a half turn every few seconds, never
+  continuously, and the win is a gust through every wheel. 56 draw calls
+  bare, 57 played, ANGLE agreeing.
 - **Rings is the twentieth card, and the one a merge deleted** (built
   2026-09-20, `puzzles/rings2d.gd`, spec `2026-09-20-rings-flat-design.md`).
   Pinwheel's `merge: main into pinwheel` (`57c8539`) took Pinwheel's side of

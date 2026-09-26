@@ -740,3 +740,49 @@ through the input layer rather than by poking the state.
 No existing board's file changes except the four shared ones above, and none of
 those four changes behaviour for an existing board: `turn_angle` is additive,
 the registry entry is appended, and the `card_art` branch is a new `match` arm.
+
+---
+
+## Amendment: the polish (2026-09-26)
+
+A bounded polish, designed in chat and built directly.
+
+- **The cloth is Quilt's, print and all.** A piece wears `Cloth.print_cloth`
+  for its cloth index and the quilting stitch inside its edge
+  (`Cloth.inset_loops`, cached per orientation). `Cloth.place`'s `rot` turns
+  about the middle of the span, and the span is `2 * pin + 1`, so the print,
+  the stitch, the shadow and the edge all swing about the pin through the
+  same mapping; the board's own point-by-point rotation went.
+- **Every piece casts a short shadow**, `REST_SHADOW` at `REST_LEVEL`, which
+  is what says which of two overlapping pieces is on top.
+- **The backing is tufted**, as Quilt's is: a puff of batting in every cell
+  and a tie of thread at every inner corner, so a bare cell reads as an empty
+  socket.
+- **The stain's wash drops from 0.30 to 0.12.** At 0.30 it turned a third of
+  the board into darker cloths. The hatch (0.22) and a dashed ink outline
+  round each contested region, drawn over the cells the wave has reached,
+  now carry the state. No state is signalled by a shade of a piece's colour.
+- **The pinwheel is bigger (`PIN_R` 0.19 to 0.28) and folded.** The vanes
+  alternate paper and the piece's deep cloth (the lip colour; the cloth
+  itself vanished on its own piece, blue on blue). Each vane carries a fold
+  shadow and a crease. The hub is brass on every wheel, and a pinned-fast
+  piece's pin is a brass push-pin.
+- **The swing lifts.** Up over the first fifth of the swing, down over the
+  last quarter: the piece grows `LIFT_GROW` and its shadow falls away to
+  `LIFT_SHADOW`, then it lands with a `LAND_SQUASH` squash
+  (`Motion.bump_scale` read inverted) and a puff of its own cloth at the pin.
+- **An idle breeze.** Every 3.2-5.6 s one pinwheel spins a half turn over
+  1.1 s. A half turn lands on the same picture because the vanes alternate
+  two papers. It is never a continuous spin: rebuilding the mesh every frame
+  is Caterpillar's 12.2 ms. Nothing moves under reduce motion, and nothing
+  moves once the board is done.
+- **The win is a gust.** Every wheel spins a whole turn as the solve wave
+  reaches it.
+- **The menu card follows**: the print, the lighter stain, and the new
+  wheels.
+
+Measured with `tests/_shot_anim.gd -- pinwheel` at `--resolution 810x1440`:
+**56** draw calls bare (twice), 57 played, against 56 before the polish.
+Reduce motion is pixel-identical over the 1.5 s pair. ANGLE agrees on 56 and
+matches the default driver to a max channel delta of 1. The harness gained a
+`solve` mode. Suite 122583/0, win harness 21/21.

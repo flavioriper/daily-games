@@ -283,7 +283,14 @@ func _initialize() -> void:
 			_shots = [0.35, 0.9, 1.65, 2.2, 2.8, 3.6, 4.4]
 			_idle_from = 4.6
 			_idle_to = 6.6
-	if _id == "pinwheel" and not _empty:
+	if _id == "pinwheel" and _mode == "solve":
+		# Every piece but one already home and the last a quarter short, so
+		# the strip catches the last swing landing, the breeze crossing the
+		# frame with the solve wave and every wheel spinning a turn.
+		_shots = [0.35, 1.75, 1.95, 2.15, 2.4, 2.7, 3.1, 4.4]
+		_idle_from = 4.6
+		_idle_to = 6.6
+	elif _id == "pinwheel" and not _empty:
 		# The swing is over in TURN_TIME, but the stain it lays fans out of
 		# the pin for another half-second after the piece has landed
 		# (`_wave_span`: the frame's longer side at WAVE_STEP a cell, plus
@@ -634,6 +641,18 @@ func _mushroom_wash_count(cell: Vector2i) -> int:
 ## move.
 func _tap_pinwheel() -> void:
 	var st = _puzzle._state
+	if _mode == "solve":
+		for q in (st.shapes as Array).size():
+			if st.fixed(q):
+				continue
+			var m: int = (st.shapes[q] as Array).size()
+			st.turned = st.answer.duplicate()
+			st.turned[q] = posmod(int(st.answer[q]) - 1, m)
+			st.recompute()
+			_puzzle._refresh()
+			var at: Vector2i = st.pin_cell(q)
+			_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(at.x, at.y))
+			return
 	var best := -1
 	var best_score := -1
 	for p in (st.shapes as Array).size():
