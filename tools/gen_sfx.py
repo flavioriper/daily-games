@@ -303,6 +303,24 @@ SETS = {
         "solved":   ("a warm celebratory marimba run rising, ending in a small wooden piece toppling over with a soft clack, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden taps, chess pieces being set on a paper board", 1.0, -9),
     },
+    # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
+    # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.
+    "hedgehogs": {
+        "rake":     ("a short soft sweep of a rake through dry autumn leaves, cozy, very short", 0.4, -10),
+        "gust":     ("a soft airy flurry of dry leaves blown off a lawn by a light breeze, cozy", 0.8, -9),
+        "flag":     ("a small wooden twig pushed softly into a pile of dry leaves, very short", 0.3, -10),
+        "unflag":   ("a small twig pulled out of dry leaves with a tiny rustle, very short", 0.3, -11),
+        "woke":     ("a tiny grumpy hedgehog snuffle and huff, then a soft gentle two-note downward marimba, cute, never harsh", 0.9, -9),
+        "chord":    ("two quick soft rake sweeps through dry leaves, very short", 0.5, -10),
+        "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "check":    ("a soft two-note downward kalimba, gentle, not yet", 0.6, -9),
+        "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -8),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft rustle of leaves settling back onto a lawn, gentle", 1.0, -8),
+        "solved":   ("a warm celebratory marimba run rising with a soft leaf flurry and tiny happy squeaks, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy rustle of autumn leaves settling onto grass", 1.0, -9),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

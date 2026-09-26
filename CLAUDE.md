@@ -1248,6 +1248,24 @@ pointing `seed_as` at them. Specs:
   generated. The board toasts its own explanations (Rings' toast), because
   the tip card is gone and `tip_line()` reaches no screen, and a Hint on a
   lost position rewinds to the last one that still has a line (`KN_REWOUND`).
+- **Hedgehogs is the twenty-fourth card** (2026-09-26,
+  `puzzles/hedgehogs2d.gd`, spec `2026-09-26-hedgehogs-flat-design.md`, mock
+  `docs/brainstorm/concepts.html#hedgehogs`). Rake an autumn lawn's leaf
+  piles; a number counts the hedgehogs asleep in the eight cells round it,
+  a nought blows its neighbours clear, and a wrong rake only wakes one up
+  grumpy (`woken`, on the win screen and the share line). It is the
+  dig-and-flag game Mushroom Patch was drawn *away* from, off the same
+  reference; **it is called Hedgehogs**. Two things travel: **a proof that
+  plays the day out from its opening is also its uniqueness** --
+  `hedgehogs_gen.gd`'s `prove` rakes every bare cell by singles, subsets and
+  the count, never guessing, so no separate second-answer search is asked --
+  and **a board whose moves all resolve in the state at once needs no input
+  lock**: every cell carries its own gust timers, so a tap mid-gust is taken
+  and the drawing still lands on the state. Its drawings are
+  `ui/faces/leaf_pile.gd` (shared with the tray and the card) and
+  `ui/faces/hedgehog_face.gd`. 79 draw calls bare, 80 raked, 83 with one
+  woken and 115 on the win wave, ANGLE agreeing.
+  Sounds are prompts in `tools/gen_sfx.py`, not yet generated.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

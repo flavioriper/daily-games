@@ -376,6 +376,11 @@ the solver uses, given free, the way Mushroom Patch's tally is.
 a cell, in `Pal.NUM_INK[n]`: 1 leaf, 2 teal, 3 brick, 4 plum, 5 bark, 6
 teal, 7 and 8 ink. Noughts draw nothing.
 
+**As built (2026-09-26).** Nothing in this section changed while the board
+was built: every line of `hedgehogs2d.gd`, `hedgehogs_state.gd`,
+`leaf_pile.gd` and `hedgehog_face.gd` is the plan's code as written, and the
+rendered board needed no fix against the mock, which stays the reference.
+
 **Sounds** (`tools/gen_sfx.py hedgehogs`):
 
 | Cue | What it is |
@@ -400,20 +405,6 @@ a mean idle of 4.13 ms (one reading, first of its session, so not a figure
 to quote). A headless drive of the board (wake, flag, refused rake, Check,
 Undo, rake, Reset, hints to the solve, restore) passed, with `solved` firing
 once.
-
-Filled in at build. To measure and record here:
-
-- the GDScript worst case of `tests/_probe_hedgehogs_gen.gd`, over 40 seeds
-  a level;
-- draw calls, with `tests/_shot_anim.gd -- hedgehogs` at `--resolution
-  810x1440 --always-on-top` (two readings, quote the second):
-  - bare;
-  - after a rake;
-  - with a hedgehog woken;
-  - on the win screen, with every hedgehog awake;
-- ANGLE agreement;
-- a reduce-motion pair;
-- Mushroom Patch as the control in the same session.
 
 The win screen seats up to 24 `HedgehogFace`s at two layers each, so it is
 the heaviest state and the one to watch against the 855 budget.
@@ -446,6 +437,11 @@ both runs. `tests/_win.gd` solves it through touch (9x11 lawn, 17 hedgehogs,
 woken 0, one hint, one Check that found nothing, board fit and HUD true),
 24/24 winnable.
 
+The card (Task 6): `tests/_shot_menu.gd -- page3` at `--resolution 810x1440
+--always-on-top`, two readings, page three at **175** draw calls both times
+(idle 8.14 ms, 8.36 first -- the 120 Hz vsync ceiling, not a measurement),
+page one 254; Hedgehogs is the eighth card of page three, beside Knight.
+
 ## 9. Open
 
 - **Is it different enough from Mushroom Patch?** The user plays one of each
@@ -458,3 +454,11 @@ woken 0, one hint, one Check that found nothing, board fit and HUD true),
   leaves.
 - **Numbers in colour** is a proposal. The family's other numbered boards
   (Mushroom Patch, Sudoku) keep ink.
+
+## 10. Amendments, as built (2026-09-26)
+
+- **The win strip's tally runs ahead of the wave.** On the solve the tally
+  reads all awake (`HH_TALLY_DONE`, "Every hedgehog is awake") a moment
+  before the win wave has reached the last sleepers: the text is set from
+  the state at once, while the drawing waits out the win delay. Recorded,
+  not fixed.

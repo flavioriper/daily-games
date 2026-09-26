@@ -57,6 +57,7 @@ const CARDS := {
 	"caterpillar": ["meadow", 1.7, Vector2(0.65, 0.75)],
 	"sunbeam": ["sky", 1.5, Vector2(0.75, 0.30)],
 	"knight": ["meadow", 1.6, Vector2(0.30, 0.60)],
+	"hedgehogs": ["autumn", 1.6, Vector2(0.60, 0.70)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

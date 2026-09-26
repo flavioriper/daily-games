@@ -55,6 +55,8 @@ const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const SunParts = preload("res://ui/faces/sunbeam_parts.gd")
 const ChessPiece = preload("res://ui/faces/chess_piece.gd")
+const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
+const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
 ## The box every picture is composed in. The card scales it to fit.
@@ -155,6 +157,18 @@ const KN_FROM := Vector2i(1, 2)
 const KN_TO := Vector2i(3, 1)
 const KN_GUARD := Vector2i(5, 2)
 const KN_KING := Vector2i(6, 1)
+## Hedgehogs' card: a 6 by 2 strip of the lawn -- raked cells with their
+## numbers, three leaf piles (one flagged), and one hedgehog asleep on a
+## raked cell. The numbers agree with the two hedgehogs the strip holds (the
+## flagged pile and the sleeper), so the card never shows a wrong count.
+const HH_CELL := 42.0
+const HH_COLS := 6
+const HH_ROWS := 2
+const HH_ORIGIN := Vector2(-126.0, -42.0)
+const HH_PILES := [Vector2i(3, 0), Vector2i(4, 1), Vector2i(5, 1)]
+const HH_FLAG := Vector2i(3, 0)
+const HH_HOG := Vector2i(4, 0)
+const HH_NUMS := {Vector2i(2, 0): 1, Vector2i(5, 0): 1, Vector2i(2, 1): 1, Vector2i(3, 1): 2}
 
 var id := ""
 ## Design units per pixel, and the box's centre, both set by _relayout.
@@ -179,6 +193,7 @@ var _pinwheel_mesh: ArrayMesh
 var _caterpillar_mesh: ArrayMesh
 var _sunbeam_mesh: ArrayMesh
 var _knight_mesh: ArrayMesh
+var _hedgehogs_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -290,6 +305,12 @@ func _build() -> void:
 			# the strip's top (24), fully clear of it, rather than sunk in.
 			_seat(MushroomFace.new(), 62.0, -104.0, -1.0)
 			_seat(MushroomFace.new(), 48.0, -26.0, 5.0)
+		"hedgehogs":
+			# One hedgehog asleep on the raked strip _draw lays under it.
+			var hog := HedgehogFace.new()
+			hog.expression = Face.Expr.SLEEPY
+			_seat(hog, HH_CELL * 1.05, HH_ORIGIN.x + (HH_HOG.x + 0.5) * HH_CELL,
+				HH_ORIGIN.y + (HH_HOG.y + 0.5) * HH_CELL)
 		"fairylights":
 			# Two paper lanterns strung on the run _draw lays under them, and
 			# **lit**: `lit` is 1, so each wears the warmed paper, its face
@@ -357,6 +378,7 @@ func _draw() -> void:
 		"caterpillar": _draw_caterpillar()
 		"sunbeam": _draw_sunbeam()
 		"knight": _draw_knight()
+		"hedgehogs": _draw_hedgehogs()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1140,3 +1162,28 @@ func _draw_knight() -> void:
 	ChessPiece.knight(b, fly, cell, ChessPiece.CREAM, 1.0, cell * 0.45)
 	_knight_mesh = b.mesh()
 	draw_mesh(_knight_mesh, null)
+
+## Hedgehogs: the board's own drawing, through `ui/faces/leaf_pile.gd`, the
+## file `puzzles/hedgehogs2d.gd` draws with, so the card and the board cannot
+## drift apart. One mesh, then the numbers as text.
+## Spec: docs/superpowers/specs/2026-09-26-hedgehogs-flat-design.md, section 4.
+func _draw_hedgehogs() -> void:
+	var cell := HH_CELL * _u
+	var b := Face.Builder.new()
+	for r in HH_ROWS:
+		for c in HH_COLS:
+			var p := Vector2i(c, r)
+			var centre := at(HH_ORIGIN.x + (float(c) + 0.5) * HH_CELL, HH_ORIGIN.y + (float(r) + 0.5) * HH_CELL)
+			var id := r * HH_COLS + c
+			var covered := HH_PILES.has(p)
+			Lawn.ground(b, centre, cell, id, not covered, false)
+			if covered:
+				Lawn.pile(b, centre, cell, id, 0.0, Vector2.UP, Vector2.ONE, 0.45 if p == HH_FLAG else 1.0)
+	var fc := at(HH_ORIGIN.x + (float(HH_FLAG.x) + 0.5) * HH_CELL, HH_ORIGIN.y + (float(HH_FLAG.y) + 0.5) * HH_CELL)
+	Lawn.flag(b, fc, cell * 0.46)
+	_hedgehogs_mesh = b.mesh()
+	draw_mesh(_hedgehogs_mesh, null)
+	for p: Vector2i in HH_NUMS:
+		var n: int = HH_NUMS[p]
+		_text(str(n), HH_ORIGIN.x + (float(p.x) + 0.5) * HH_CELL, HH_ORIGIN.y + (float(p.y) + 0.5) * HH_CELL + HH_CELL * 0.19,
+			HH_CELL * 0.54, Pal.NUM_INK[n])
