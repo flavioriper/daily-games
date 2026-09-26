@@ -418,6 +418,34 @@ Filled in at build. To measure and record here:
 The win screen seats up to 24 `HedgehogFace`s at two layers each, so it is
 the heaviest state and the one to watch against the 855 budget.
 
+**Measured at build (2026-09-26, Task 5).** Generator, `tests/_probe_hedgehogs_gen.gd`
+headless, 40 seeds a level, GDScript on this Mac: Easy 8x10/12 mean 1.6 ms,
+worst 4.6; Medium 9x11/17 mean 4.0, worst 12.5; Hard 10x11/21 mean 5.7,
+worst 27.1 (subset rounds mean 2.00); Insane 10x11/24 mean 16.1, worst
+**53.5 ms** (subset rounds mean 3.12) against the 194 ms gate; ungraded 0/40
+on every level, PROBE PASS.
+
+`tests/_shot_anim.gd` at `--resolution 810x1440 --always-on-top`, two
+readings each one after another, the second quoted (first in brackets):
+
+| state | draw calls | idle mean |
+|---|---|---|
+| bare (`empty`) | **79** (79) | 4.35 ms (4.46) |
+| after a rake (default) | **80** (80) | 3.93 ms (4.57) |
+| a hedgehog woken (`woke`) | **83** (83) | 3.83 ms (4.06) |
+| the win, every hedgehog awake (`solve`) | **115** (115) | 4.21 ms (4.51) |
+| after a rake, reduce motion (`rm`) | **80** (80) | 3.68 ms (3.90) |
+
+Mushroom Patch, the control in the same session: **83** twice, 3.47 ms
+(3.34). The win's 115 is the heaviest state and far inside the 855 budget.
+ANGLE (`--rendering-driver opengl3_angle`, after a rake): **80** twice (idle
+9.23 ms, 7.28, not comparable across drivers); the settled frame against the
+default driver's differs on 219,714 of 1,166,400 pixels by **at most 1/255**.
+The reduce-motion pair 1.5 s apart is pixel-identical (0 of 1,166,400), in
+both runs. `tests/_win.gd` solves it through touch (9x11 lawn, 17 hedgehogs,
+woken 0, one hint, one Check that found nothing, board fit and HUD true),
+24/24 winnable.
+
 ## 9. Open
 
 - **Is it different enough from Mushroom Patch?** The user plays one of each

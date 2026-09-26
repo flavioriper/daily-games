@@ -143,6 +143,9 @@ func _note(id: String) -> String:
 		"knight": return "%dx%d board, %d rose knights, shortest %d, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.w, _puzzle._state.w, _puzzle._state.foes.size(), _puzzle._state.opt(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"hedgehogs": return "%dx%d lawn, %d hedgehogs, woken=%d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.cols(), _puzzle._state.rows(), int(_puzzle._state.g.k), _puzzle._state.woken,
+			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -175,6 +178,7 @@ func _solve(id: String) -> void:
 		"caterpillar": _solve_caterpillar()
 		"sunbeam": _solve_sunbeam()
 		"knight": _solve_knight()
+		"hedgehogs": _solve_hedgehogs()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -452,6 +456,35 @@ func _solve_knight() -> void:
 			break
 		_puzzle._busy_until = -100.0
 		_tap_local(_puzzle.cell_to_local(m / st.w, m % st.w))
+
+## Hedgehogs: Check spent first on the opening, where nothing is flagged and
+## it must find nothing wrong; one hint through the HUD; then every bare cell
+## logic proves is raked by real touch with the rake chip the tray arms by
+## default. A hedgehog logic proves is flagged through the state, since the
+## win never needs a flag.
+func _solve_hedgehogs() -> void:
+	var st = _puzzle._state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in st.rows():
+		for c in st.cols():
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_puzzle._busy_until = -100.0
+	_press(_host.action_bar.check_button)
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1 and st.woken == 0
+	for i in 400:
+		if _puzzle.is_done():
+			break
+		var h: Dictionary = st.hint_step()
+		if h.is_empty():
+			break
+		if h.kind == "flag":
+			st.apply_hint(h)
+			continue
+		var c: int = h.cell
+		_tap_local(_puzzle.cell_to_local(c / st.cols(), c % st.cols()))
 
 func _solve_pinwheel() -> void:
 	var st = _puzzle._state

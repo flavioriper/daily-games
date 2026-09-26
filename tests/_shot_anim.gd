@@ -452,6 +452,8 @@ func _process(delta: float) -> bool:
 			_slide_sunbeam()
 		elif _entry.id == "knight" and not _empty:
 			_tap_knight()
+		elif _entry.id == "hedgehogs" and not _empty:
+			_tap_hedgehogs()
 		elif _entry.id == "rings" and not _empty:
 			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
@@ -728,6 +730,50 @@ func _tap_knight() -> void:
 		return
 	_puzzle._busy_until = -100.0
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(target / st.w, target % st.w))
+
+## Hedgehogs: one real touch, with the rake chip the tray arms by default.
+## By default the touch rakes the next cell logic proves bare, so the strip
+## catches a gust. `woke` rakes a hedgehog beside the opening instead, so the
+## strip catches the rose wash, the curl and the shiver. `solve` rakes
+## everything but the last bare cell through the state and touches that one,
+## so the strip shows the sleepers' wave and every hedgehog hopping awake.
+func _tap_hedgehogs() -> void:
+	var st = _puzzle._state
+	var target := -1
+	if _mode == "woke":
+		for c in st.size():
+			if st.is_hog(c) and st.woke[c] == 0:
+				for r: int in st.g.nb[c]:
+					if st.open[r] == 1:
+						target = c
+						break
+			if target >= 0:
+				break
+	else:
+		for i in 400:
+			var h: Dictionary = st.hint_step()
+			if h.is_empty():
+				break
+			if h.kind == "flag":
+				st.apply_hint(h)
+				continue
+			if _mode != "solve":
+				target = h.cell
+				break
+			var left := 0
+			for c in st.size():
+				if not st.is_hog(c) and st.open[c] == 0:
+					left += 1
+			var probe: PackedByteArray = st.open.duplicate()
+			if st.Gen.flood(st.g, probe, h.cell).size() == left:
+				target = h.cell
+				break
+			st.apply_hint(h)
+		_puzzle._layout()
+	if target < 0:
+		return
+	_puzzle._busy_until = -100.0
+	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(target / st.cols(), target % st.cols()))
 
 func _tap_pinwheel() -> void:
 	var st = _puzzle._state
