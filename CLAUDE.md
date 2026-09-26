@@ -1255,6 +1255,13 @@ pointing `seed_as` at them. Specs:
   generated. The board toasts its own explanations (Rings' toast), because
   the tip card is gone and `tip_line()` reaches no screen, and a Hint on a
   lost position rewinds to the last one that still has a line (`KN_REWOUND`).
+  **Polished on 2026-09-26** (the spec's amendment): a garden table under the
+  board (a third mesh, clipped to the card), shaded pieces, a hop that
+  crouches and leans with dust on landing, a taken knight knocked tumbling
+  away, a caught one knocked aside dizzy, hoofprints along the last three
+  Ls, a blink and a dozing king at rest, and a win where the king is shoved
+  over, his crown spins off, your knight rears and petals fall. 68 bare, 67
+  played, 73 on the win, ANGLE agreeing.
 - **Hedgehogs is the twenty-fourth card** (2026-09-26,
   `puzzles/hedgehogs2d.gd`, spec `2026-09-26-hedgehogs-flat-design.md`, mock
   `docs/brainstorm/concepts.html#hedgehogs`). Rake an autumn lawn's leaf

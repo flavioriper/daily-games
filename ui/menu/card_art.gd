@@ -1159,7 +1159,7 @@ func _draw_knight() -> void:
 	ChessPiece.king(b, mid.call(KN_KING), cell)
 	ChessPiece.knight(b, mid.call(KN_GUARD), cell, ChessPiece.ROSE, -1.0)
 	var fly := a.lerp(z, 0.7)
-	ChessPiece.knight(b, fly, cell, ChessPiece.CREAM, 1.0, cell * 0.45)
+	ChessPiece.knight(b, fly, cell, ChessPiece.CREAM, 1.0, cell * 0.45, Vector2.ONE, false, 1.0, 0.22)
 	_knight_mesh = b.mesh()
 	draw_mesh(_knight_mesh, null)
 

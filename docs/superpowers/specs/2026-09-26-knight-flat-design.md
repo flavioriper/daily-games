@@ -358,3 +358,56 @@ the design, and why. They are the record now.
     `generate` no longer hands back an empty deal: a run of `ATTEMPTS` that
     finds nothing is `push_error`ed and retried on a seed derived from the
     rng, at most `RETRIES` 4 times.
+11. **Polished on 2026-09-26** (design agreed in chat, built directly).
+    - **The setting.** The card is a garden table: planks a shade apart with
+      butt joints, grain and the odd knot, a few petals and leaves blown on
+      beside the board, clipped to the card's rounded rect (`CARD_RADIUS`
+      32, Rings' figure). It is a third mesh, `_table`, built once a layout
+      and drawn outside the entrance's grow and fade. The frame gained rail
+      grain, brass corner pegs and an inner lip; the sage squares a faint
+      inset tile, the paper ones a speckle.
+    - **The pieces** (`ui/faces/chess_piece.gd`) are shaded: the outline
+      less a copy nudged toward the light is a crescent down the back (the
+      deep tone), less a copy nudged away a rim of light along the brow and
+      nose, both cached in unit space. The plinth has a lit rim, the ear an
+      inner fold, the king a robe band with a pale trim. `knight()` takes a
+      `tilt` (about the plinth's foot, which is now also where a squash
+      pivots, so a landing stays planted), an `eye` (a blink) and `dizzy` (a
+      swirl); `king()` takes `crowned` and `doze`; `crown()` draws the crown
+      alone. The menu card's flying knight leans 0.22 into its descent.
+    - **The hop** crouches first (`CROUCH` 0.08 s, `CROUCH_SQUASH` 0.12),
+      springs into a stretch (`TAKEOFF_STRETCH` 0.09) and leans into the L
+      (`LEAN` 0.3: nose up rising, nose down coming in, level at both ends);
+      a piece looks the way it hops. Every landing kicks dust off both sides
+      of the plinth (`DUST_TIME` 0.35). The answer hops the same way.
+    - **A take** knocks the rose knight off its square: it tumbles away from
+      you on an arc, spinning `TUMBLE_SPIN` 2.6 rad with a swirled eye, and
+      fades over `TAKE_TIME`, now 0.5.
+    - **A catch** knocks your knight aside (`KNOCK` 0.28 cells,
+      `KNOCK_TILT` 0.45 rad over `KNOCK_TIME` 0.18, away from the side the
+      rose knight came from) with a swirl in its eye, in place of the faded
+      ghost; the slide back starts from there and rights it on the way.
+    - **The win.** The king falls toward the board's middle (`TOPPLE` now
+      1.35) and is shoved `KING_SHOVE` 0.42 cells aside as he goes, so he
+      lies beside your knight rather than under it; his crown pops off and
+      spins to rest a square over (`CROWN_FLY` 0.6, `CROWN_ARC` 0.9); your
+      knight rears (`REAR` 0.4 over `REAR_TIME` 0.55); `PETALS` 18 drift
+      down over `PETAL_TIME` 2.0. `WIN_WAIT` is unchanged.
+    - **The trail** is hoofprints along the real L, long leg first, for the
+      last `TRAIL_HOPS` 3 hops only, the oldest faintest; the hop in flight
+      prints only once it lands. Every hop's prints made a long line
+      unreadable.
+    - **At rest**, moments rather than a loop: your knight blinks every
+      `BLINK_EVERY` 4.3 s, and the king dozes every `DOZE_EVERY` 7 s for
+      `DOZE_TIME` 1.6 s with a small nod and two rising z's. The live mesh
+      rebuilds only while one is on.
+    - **Measured** with `tests/_shot_anim.gd -- knight` at `--resolution
+      810x1440`: **68** draw calls bare, **67** played, **70** caught and
+      **73** on the win's petals. Idle was 3.6 ms bare, and 5.0 ms twice
+      over the played window, against the old build's 3.6 and 3.8 in the
+      same session. The extra is rebuild cost in the answer's tail (the
+      shaded pieces cost more to build); switching off the blink and doze
+      moved it by less than the noise. ANGLE agrees on 67 and matches the
+      default driver to 2/255; the old build read 9.5 ms there against the
+      new 9.7. Reduce motion: two frames 1.5 s apart are pixel-identical.
+      Suite 122,589/0, win harness 24/24.
