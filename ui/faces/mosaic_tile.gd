@@ -42,10 +42,22 @@ const RADIUS_SHUT := 0.015
 ## Its bottom edge, the soft lip every card on these screens wears.
 const EDGE_OPEN := 0.05
 const EDGE_SHUT := 0.01
-const HI_AT := Vector2(-0.3, -0.32)
-const HI_SIZE := Vector2(0.28, 0.1)
-const HI_RADIUS := 0.04
-const HI_ALPHA := 0.5
+## The bevel (the second polish, 2026-09-25): the crown sits BEVEL of a cell
+## down and in from the tile's rim, and the rim round it is the face lifted
+## RIM_LIGHT toward MOSAIC_HI, so a tile is lit from above along its top and
+## sides. It replaced a single highlight dash, which on a 9x9 read as eighty
+## small marks rather than as eighty raised tiles.
+const BEVEL := 0.06
+const RIM_LIGHT := 0.5
+## A hand-laid floor: `tone` runs -1 to 1 per tile, off a hash the board owns,
+## and moves the face this far lighter or darker.
+const TONE := 0.05
+## How far a shining tile goes toward GLAZE_LIT at the top of a glint. Paper
+## and sun were both tried and both read as the picture going grey -- a warm
+## light over a cool glaze mixes to a dead midtone -- so the glint stays in the
+## glaze's own hue, the way light on a glazed tile does.
+const SHINE := 0.6
+const GLAZE_LIT := Color("aebfe0")
 ## How far a blushing tile goes toward BAD_TILE at the top of its flash: slate
 ## to full pale rose is a flashbulb, and seven tenths reads as a blush.
 const BLUSH := 0.7
@@ -65,9 +77,13 @@ const PEBBLE_SHADOW_A := 0.2
 ## An empty cell, or one ruled out (`out`). `at` is the cell's top-left.
 ## `sink` is press_scale's value: below one the socket shrinks about its
 ## centre and darkens toward the floor's line, the way a stone under a finger
-## does.
-static func socket(b, at: Vector2, s: float, out: bool, alpha: float, sink := 1.0) -> void:
+## does. `tint` washes the socket toward its colour by its alpha: the row and
+## the column under the finger.
+static func socket(b, at: Vector2, s: float, out: bool, alpha: float, sink := 1.0,
+		tint := Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	var col: Color = Pal.SOCKET_OUT if out else Pal.SOCKET
+	if tint.a > 0.0:
+		col = col.lerp(Color(tint, 1.0), tint.a)
 	var box := Vector2.ONE * (s * SOCKET_SIZE)
 	var corner := at + Vector2.ONE * (s * SOCKET_INSET)
 	if sink < 1.0:
@@ -87,14 +103,22 @@ static func socket(b, at: Vector2, s: float, out: bool, alpha: float, sink := 1.
 ## as noise across it rather than as relief. `blush` is flash_level's value,
 ## toward the family's rose.
 static func tile(b, at: Vector2, s: float, grow: Vector2, held: bool,
-		grout: float, alpha: float, angle := 0.0, blush := 0.0) -> void:
+		grout: float, alpha: float, angle := 0.0, blush := 0.0, tone := 0.0, shine := 0.0) -> void:
 	if grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var face: Color = Pal.MOSAIC_LOCK if held else Pal.MOSAIC
 	var deep: Color = Pal.MOSAIC_LOCK_DEEP if held else Pal.MOSAIC_DEEP
+	if tone > 0.0:
+		face = face.lightened(tone * TONE)
+	elif tone < 0.0:
+		face = face.darkened(-tone * TONE)
 	if blush > 0.0:
 		face = face.lerp(Pal.BAD_TILE, blush * BLUSH)
 		deep = deep.lerp(Pal.BAD, blush * BLUSH * 0.6)
+	var rim := face.lerp(Pal.MOSAIC_HI, RIM_LIGHT * (1.0 - grout))
+	if shine > 0.0:
+		face = face.lerp(GLAZE_LIT, shine * SHINE)
+		rim = rim.lerp(GLAZE_LIT, shine * SHINE)
 	var inset := s * lerpf(GROUT_OPEN, GROUT_SHUT, grout)
 	var radius := s * lerpf(RADIUS_OPEN, RADIUS_SHUT, grout)
 	var edge := s * lerpf(EDGE_OPEN, EDGE_SHUT, grout)
@@ -103,11 +127,12 @@ static func tile(b, at: Vector2, s: float, grow: Vector2, held: bool,
 	var xf := Transform2D(angle, grow, 0.0, at)
 	b.fan(xf * Face.Builder.round_rect(corner, box, radius), Color(deep, alpha))
 	b.fan(xf * Face.Builder.round_rect(corner, box - Vector2(0.0, edge), radius),
-		Color(face, alpha))
-	var glint := HI_ALPHA * (1.0 - grout) * alpha
-	if glint > 0.0:
-		b.fan(xf * Face.Builder.round_rect(HI_AT * s, HI_SIZE * s, HI_RADIUS * s),
-			Color(Pal.MOSAIC_HI, glint))
+		Color(rim, alpha))
+	var bev := s * BEVEL * (1.0 - grout)
+	if bev > 0.5:
+		b.fan(xf * Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
+			box - Vector2(bev * 1.4, edge + bev), maxf(radius - bev * 0.5, 0.0)),
+			Color(face, alpha))
 
 ## A letter centred in the cell, taking the piece's own `grow` so it squashes
 ## with the tile it is on. Hidden Word's only addition to this file. `at` is

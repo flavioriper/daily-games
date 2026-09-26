@@ -363,3 +363,69 @@ Open, still, from section 10: the 88 px cell, the empty cast, the abstract
 picture, the two chips, the breakable lock, Check's silence on crosses and
 the ladder. Nothing here answers them; it only makes the flat board move with
 the same hand as the other eight.
+
+## 12. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of Code Break, Balance, Untangle, Shikaku,
+Tents, Light Up and One Line the same evening, and this amendment is the
+record. The rules, the layout, the gesture, the two chips and every motion in
+section 11 are unchanged.
+
+**A tile is glazed ink blue, not slate.** On parchment with nothing else as
+dark, `SLATE` read as a black square, against the shading direction;
+`Pal.MOSAIC` is `4a5672` now, with `MOSAIC_DEEP` and `MOSAIC_HI` to match, so
+the picture is still the darkest thing on the card. The menu card and the
+tray's chip take it through the same constants. **A tile has a bevel**
+(`Mosaic.BEVEL`, `RIM_LIGHT`): the crown sits a little down and in from a rim
+lit toward `MOSAIC_HI`, so it is lit from above along its top and sides. That
+replaced the single highlight dash, which on a 9x9 read as eighty small marks
+rather than eighty raised tiles. The bevel closes with the grout on the win,
+as the dash did. Each tile carries a `tone` off its cell's hash, within
+`TONE` 5% lighter or darker, so the floor reads as laid by hand and a tile
+keeps its shade from one day to the next.
+
+**Every line's numbers sit on a paper tab** (`TAB_*`), which says which line
+a number belongs to rather than leaving it floating in the band. A tab washes
+toward its line's verdict over `WASH_TIME` as the tile that decided it lands:
+a third of the way to `GOOD` when the line reads right, most of the way to
+`BAD_TILE` when it holds too much. The numbers keep their green and rose
+ink. The tabs leave with the rest of the scaffolding on the win.
+
+**The row and the column under the finger light up** toward the sun, sockets
+`FOCUS` and tabs `FOCUS_TAB` of the way, so the clues a stroke is checked
+against are lit while it is drawn. They follow the finger along a locked
+stroke and fade out over `FOCUS_OUT` on the release.
+
+**A dragged stroke shows its length**: an ink pill with the count in paper
+from two cells on, popping in and bumping as the run grows or shrinks. It
+stands `BADGE_OFF` cells off the finger, above a row stroke and left of a
+column stroke, or below and right on the first row and column. The first
+draft put it above the finger always, which on the top row covered the very
+column clue the run was being counted against. It costs two draw commands
+and only while a finger is dragging.
+
+**A line that comes out right glints.** Its numbers hop and a light runs out
+of its clue along its tiles at `Motion.WAVE_STEP` a cell (`GLINT_*`),
+starting as the tile that decided it lands. It does not glint on the move
+that finishes the picture, whose own wave says it louder. **On the win a
+light crosses the finished picture** along the diagonal (`WIN_GLINT_*`) once
+the grout has closed. The shine goes toward `Mosaic.GLAZE_LIT`, a lighter
+blue. Paper and then `SUN_TILE` were tried first and both turned the picture
+grey, because warm light over a cool glaze mixes to a dull midtone.
+
+Under reduce motion none of it moves: the washes land at once, nothing
+glints, and the finger's line is lit or not with no fade.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- nonogram`, before and after in the same session.
+Draw calls are unchanged at **65**, played and bare. Bare idle reads 1.99 and
+1.97 ms against 2.10 before. Played idle reads 2.48 and 2.49 against 2.12
+and 2.27, and that is the harness's window, not a settled board. The swept
+row completes two columns, so their glints run on to 0.76 s after the
+release, about half a second into the window. An instrumented run showed no
+rebuild after that. The reduce-motion pair 1 s apart is pixel-identical, and
+under reduce motion ANGLE matches the default driver to a max channel delta
+of 1/255 on the same 65 calls. The menu reads 258. Suite 122583/0;
+`tests/_win.gd` windowed 21/21. A throwaway probe shot a stroke mid-drag
+with its count, a line's glint, the settled row and the win's hop and glint.

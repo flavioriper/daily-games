@@ -34,8 +34,10 @@ extends "res://core/puzzle_base.gd"
 ## quarter turn; Check wobbles and blushes; Reset runs its wave from the far
 ## corner. What is this board's own is the reveal: the pebbles clearing in a
 ## scatter, the sockets fading back to parchment and the grout closing up.
+## The second polish added the paper tabs under the clues, the lit row and
+## column under the finger, the stroke's count and the glints.
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, and the
-## amendment in its section 11; the mock it is ported from is
+## amendments in its sections 11 and 12; the mock it is ported from is
 ## docs/brainstorm/concepts.html#nonogram.
 
 const State = preload("res://puzzles/nonogram_state.gd")
@@ -45,6 +47,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 # --- the floor ---
 const PAD := 30.0
@@ -79,6 +82,44 @@ const CLEAR_DELAY := 0.2
 const CLEAR_SPREAD := 0.3
 const CLEAR_TIME := 0.5
 const WIN_WAIT := 1.6
+
+# --- the second polish (2026-09-25) ---
+## The clue tabs: a strip of paper behind each line's numbers, TAB_INSET of a
+## cell in from its neighbours' and TAB_GAP clear of the floor, so a number
+## reads as belonging to its line rather than floating beside it. A tab
+## washes toward its line's verdict over WASH_TIME -- TAB_OK of the way to the
+## family's green, TAB_OVER to the pale rose -- as the tile that decided it
+## lands.
+const TAB_INSET := 0.07
+const TAB_GAP := 0.1
+const TAB_RADIUS := 0.16
+const TAB_A := 0.7
+const TAB_OK := 0.32
+const TAB_OVER := 0.75
+const WASH_TIME := 0.25
+## The row and the column under the finger wash toward the sun, sockets
+## FOCUS and tabs FOCUS_TAB of the way, in over FOCUS_IN and out over
+## FOCUS_OUT: the clues a stroke is being checked against are lit while it is
+## drawn.
+const FOCUS := 0.2
+const FOCUS_TAB := 0.5
+const FOCUS_IN := 0.1
+const FOCUS_OUT := 0.2
+## The stroke's count: a pill BADGE_OFF cells off the finger, BADGE_H of a
+## cell tall, saying how long the run being drawn is, from two cells on.
+const BADGE_OFF := 0.95
+const BADGE_H := 0.56
+const BADGE_SIZE := 0.36
+## A line that comes out right: its numbers hop and a glint runs out of its
+## clue along its tiles, WAVE_STEP a cell, each tile's shine a bell over
+## GLINT_TIME, starting GLINT_DELAY after the tile that decided it lands.
+const GLINT_DELAY := 0.1
+const GLINT_TIME := 0.3
+## The win's glint: once the grout has closed, a light crosses the picture
+## along the diagonal, WIN_GLINT_STEP a diagonal.
+const WIN_GLINT_AT := 1.1
+const WIN_GLINT_STEP := 0.06
+const WIN_GLINT_TIME := 0.3
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
@@ -115,6 +156,18 @@ var _wrong: Dictionary = {}     # cell -> at: Check pointed at it (wobble and bl
 var _shiver: Dictionary = {}    # cell -> at: a refused press
 var _clue_bump: Dictionary = {} # "r3" / "c5" -> at: the line was recounted
 var _clue_hop: Dictionary = {}  # line key -> {"at", "height", "time"}
+var _lines: Dictionary = {}     # line key -> {"state", "was", "to", "at"}: its tab's wash
+var _glint: Dictionary = {}     # line key -> at: the glint runs out of its clue
+## The cell the finger is on, and when it went down and came up (INF while
+## down): the row and the column it lights.
+var _focus_cell := Vector2i(-1, -1)
+var _focus_down := -100.0
+var _focus_up := -100.0
+## When the stroke's count first showed, and when it last changed.
+var _badge_at := -1.0
+var _badge_bump := -100.0
+var _badge_n := 0
+var _badge_shown: ArrayMesh
 
 # --- the gesture ---
 var _press_cell := Vector2i(-1, -1)
@@ -177,8 +230,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_shiver = {}
 	_clue_bump = {}
 	_clue_hop = {}
+	_glint = {}
+	_focus_cell = Vector2i(-1, -1)
 	_clear_gesture()
 	_solved_at = -1.0
+	_seed_verdicts()
 	_layout()
 	_enter()
 	_tip_idx = 0
@@ -274,6 +330,7 @@ func _draw() -> void:
 		draw_mesh(_shown, null, Transform2D(0.0, Vector2.ONE * grow, 0.0, c * (1.0 - grow)),
 			Color(1.0, 1.0, 1.0, Motion.appear_level(elapsed)))
 	_draw_clues()
+	_draw_badge()
 
 ## Everything on the floor in one mesh, in the order the mock paints it: the
 ## sockets, the five-cell guides over them, the pieces on their way out, and
@@ -281,11 +338,15 @@ func _draw() -> void:
 func _build_floor(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var gone := _gone(t)
+	var focus := _focus_level(t)
+	_tabs(b, gone, focus, t)
 	for y in state.h:
 		for x in state.w:
 			var cell := Vector2i(x, y)
+			var lit := focus if focus > 0.0 and (x == _focus_cell.x or y == _focus_cell.y) else 0.0
 			Mosaic.socket(b, _grid + Vector2(x, y) * _cell, _cell,
-				state.mark_at(cell) == State.MARK, 1.0 - gone, _sink(cell, t))
+				state.mark_at(cell) == State.MARK, 1.0 - gone, _sink(cell, t),
+				Color(Pal.SUN, FOCUS * lit))
 	_guides(b, gone)
 	_build_leaving(b, t)
 	for cell in state.marks:
@@ -296,6 +357,124 @@ func _build_floor(t: float) -> ArrayMesh:
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
+
+## The paper tabs behind the clue numbers, one a line, each washed toward its
+## line's verdict and toward the sun while the finger is on its line. They
+## leave with the rest of the scaffolding on the win.
+func _tabs(b, gone: float, focus: float, t: float) -> void:
+	var alpha := TAB_A * (1.0 - gone)
+	if alpha <= 0.0:
+		return
+	var inset := _cell * TAB_INSET
+	var r := _cell * TAB_RADIUS
+	for y in state.h:
+		var ink := _tab_colour("r%d" % y, state.row_state(y), t)
+		if focus > 0.0 and y == _focus_cell.y:
+			ink = ink.lerp(Pal.SUN_TILE, FOCUS_TAB * focus)
+		b.fan(Face.Builder.round_rect(Vector2(_grid.x - _band.x, _grid.y + y * _cell + inset),
+			Vector2(_band.x - _cell * TAB_GAP, _cell - 2.0 * inset), r), Color(ink, alpha))
+	for x in state.w:
+		var ink := _tab_colour("c%d" % x, state.col_state(x), t)
+		if focus > 0.0 and x == _focus_cell.x:
+			ink = ink.lerp(Pal.SUN_TILE, FOCUS_TAB * focus)
+		b.fan(Face.Builder.round_rect(Vector2(_grid.x + x * _cell + inset, _grid.y - _band.y),
+			Vector2(_cell - 2.0 * inset, _band.y - _cell * TAB_GAP), r), Color(ink, alpha))
+
+## What a tab is washed to for a line in `line_state`.
+func _verdict_ink(line_state: int) -> Color:
+	match line_state:
+		State.LINE_OK: return Pal.SURFACE.lerp(Pal.GOOD, TAB_OK)
+		State.LINE_OVER: return Pal.SURFACE.lerp(Pal.BAD_TILE, TAB_OVER)
+		_: return Pal.SURFACE
+
+## A tab's colour now, partway through its wash.
+func _tab_colour(key: String, line_state: int, t: float) -> Color:
+	if not _lines.has(key):
+		return _verdict_ink(line_state)
+	var l: Dictionary = _lines[key]
+	var u := _dec((t - float(l.at)) / WASH_TIME)
+	return (l.was as Color).lerp(l.to, u * u * (3.0 - 2.0 * u))
+
+## Every line's verdict as it stands, with no wash: a fresh or restored board.
+func _seed_verdicts() -> void:
+	_lines = {}
+	for y in state.h:
+		var ink := _verdict_ink(state.row_state(y))
+		_lines["r%d" % y] = {"state": state.row_state(y), "was": ink, "to": ink, "at": -100.0}
+	for x in state.w:
+		var ink := _verdict_ink(state.col_state(x))
+		_lines["c%d" % x] = {"state": state.col_state(x), "was": ink, "to": ink, "at": -100.0}
+
+## Every line whose verdict a move changed washes its tab as the last of its
+## own cells in `arrivals` lands; one that has just come out right hops its
+## numbers and runs a glint along its tiles -- unless the move finished the
+## picture, whose own wave says it louder.
+func _verdicts(t: float, arrivals: Dictionary) -> void:
+	for y in state.h:
+		_verdict("r%d" % y, state.row_state(y), _line_lands(arrivals, t, y, -1), state.w)
+	for x in state.w:
+		_verdict("c%d" % x, state.col_state(x), _line_lands(arrivals, t, -1, x), state.h)
+
+func _verdict(key: String, line_state: int, at: float, length: int) -> void:
+	if not _lines.has(key):
+		_seed_verdicts()
+		return
+	var l: Dictionary = _lines[key]
+	if int(l.state) == line_state:
+		return
+	l.was = _tab_colour(key, int(l.state), _now())
+	l.to = _verdict_ink(line_state)
+	l.state = line_state
+	l.at = at
+	_busy_for(at - _now() + WASH_TIME)
+	if line_state != State.LINE_OK or Motion.reduce or state.is_solved():
+		return
+	var go := at + GLINT_DELAY
+	_glint[key] = go
+	_clue_hop[key] = {"at": go, "height": Motion.HOP, "time": Motion.HOP_TIME}
+	_busy_for(go - _now() + maxf(Motion.stagger(length - 1, Motion.WAVE_STEP, 9.0) + GLINT_TIME,
+		Motion.HOP_TIME))
+
+## When the last of a line's cells in `arrivals` lands (row `y`, or column `x`
+## when `y` is negative), or `t` when none of them moved.
+func _line_lands(arrivals: Dictionary, t: float, y: int, x: int) -> float:
+	var out := t
+	for cell in arrivals:
+		if (y >= 0 and cell.y == y) or (y < 0 and cell.x == x):
+			out = maxf(out, float(arrivals[cell]))
+	return out
+
+## How far a tile shines now: the glint of a line that came out right, running
+## out of its clue, and on the win the light crossing the picture.
+func _shine(cell: Vector2i, t: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var out := 0.0
+	if _glint.has("r%d" % cell.y):
+		out = _bell(t - float(_glint["r%d" % cell.y]) - cell.x * Motion.WAVE_STEP, GLINT_TIME)
+	if _glint.has("c%d" % cell.x):
+		out = maxf(out, _bell(t - float(_glint["c%d" % cell.x]) - cell.y * Motion.WAVE_STEP, GLINT_TIME))
+	if _solved_at >= 0.0:
+		out = maxf(out, _bell(t - _solved_at - WIN_GLINT_AT - (cell.x + cell.y) * WIN_GLINT_STEP,
+			WIN_GLINT_TIME))
+	return out
+
+static func _bell(elapsed: float, time: float) -> float:
+	if elapsed <= 0.0 or elapsed >= time:
+		return 0.0
+	return sin(PI * elapsed / time)
+
+## How lit the finger's row and column are now.
+func _focus_level(t: float) -> float:
+	if _focus_cell.x < 0:
+		return 0.0
+	var held := is_inf(_focus_up)
+	if Motion.reduce:
+		return 1.0 if held else 0.0
+	var level := clampf((t - _focus_down) / FOCUS_IN, 0.0, 1.0)
+	if not held:
+		level = minf(level, 1.0 - clampf((t - _focus_up) / FOCUS_OUT, 0.0, 1.0))
+	return level
 
 ## The heavier line every fifth cell. A 5x5 has none to rule; on the 9x9 it is
 ## the difference between counting and glancing.
@@ -335,7 +514,8 @@ func _draw_tile(b, cell: Vector2i, t: float, gone: float) -> void:
 	var at := cell_to_local(cell.y, cell.x) + _offset(cell, t)
 	var angle := Motion.wobble_angle(t - float(_wrong.get(cell, -100.0)))
 	var blush := Motion.flash_level(t - float(_wrong.get(cell, -100.0)))
-	Mosaic.tile(b, at, _cell, grow, state.locked.has(cell), gone, _alpha(cell, t), angle, blush)
+	Mosaic.tile(b, at, _cell, grow, state.locked.has(cell), gone, _alpha(cell, t), angle, blush,
+		_tone(cell), _shine(cell, t))
 
 ## A pebble: the same arrival, sink and lean, and on the win it clears away
 ## in a scatter -- a hard board finishes with 38 of its 81 cells under
@@ -369,7 +549,7 @@ func _build_leaving(b, t: float) -> void:
 		if int(g.kind) == State.MARK:
 			Mosaic.pebble(b, at, _cell, Vector2.ONE * grow, 1.0, angle)
 		else:
-			Mosaic.tile(b, at, _cell, Vector2.ONE * grow, bool(g.held), 0.0, 1.0, angle)
+			Mosaic.tile(b, at, _cell, Vector2.ONE * grow, bool(g.held), 0.0, 1.0, angle, 0.0, _tone(cell))
 	_leaving = keep
 
 ## A piece's scale now: its arrival's pop (the squash) or one, times the sink
@@ -510,6 +690,9 @@ func _sink_cell(cell: Vector2i) -> void:
 ## Lets go of every cell the gesture still holds down: each springs back when
 ## the piece it is under arrives, or now.
 func _end_sinks(now: float, arrivals: Dictionary = {}) -> void:
+	if _focus_cell.x >= 0 and is_inf(_focus_up):
+		_focus_up = now
+		_busy_for(FOCUS_OUT)
 	var last := now
 	for cell in _sunk:
 		var pr: Dictionary = _sunk[cell]
@@ -541,6 +724,7 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 			_arrive.erase(cell)
 		if prev == State.FILL or mark == State.FILL:
 			_recount(cell, at)
+	_verdicts(t, arrivals)
 	return arrivals
 
 ## The piece `kind` on `cell` leaves at `at`: kept on a list, since the state
@@ -619,6 +803,10 @@ func _press(cell: Vector2i) -> void:
 	if is_done() or cell.x < 0:
 		return
 	_press_cell = cell
+	_focus_cell = cell
+	_focus_down = _now()
+	_focus_up = INF
+	_busy_for(FOCUS_IN)
 	# The stroke's job is read off the cell it began on, exactly as Tents' and
 	# Light Up's sweeps are, so there is no eraser chip to arm and no mode to
 	# get stuck in.
@@ -650,6 +838,17 @@ func _drag(at: Vector2) -> void:
 				roundi(lerpf(_last_paint.x, on_line.x, float(i) / steps)),
 				roundi(lerpf(_last_paint.y, on_line.y, float(i) / steps))))
 	_paint(on_line)
+	_focus_cell = on_line
+	var n := absi(on_line.x - _press_cell.x) + absi(on_line.y - _press_cell.y) + 1
+	if n != _badge_n:
+		var now := _now()
+		if _badge_at < 0.0 and n >= 2:
+			_badge_at = now
+			_busy_for(Motion.POP_IN)
+		elif n >= 2:
+			_badge_bump = now
+			_busy_for(Motion.BUMP_TIME)
+		_badge_n = n
 	_refresh()
 
 ## A stroke never disturbs a tile a hint grouted in, and never paints a cell
@@ -726,6 +925,8 @@ func _clear_gesture() -> void:
 	_painted = {}
 	_pending = []
 	_last_paint = Vector2i(-1, -1)
+	_badge_at = -1.0
+	_badge_n = 0
 
 ## The tray armed a chip.
 func set_brush(v: int) -> void:
@@ -877,6 +1078,8 @@ func reset_board() -> void:
 	_nudge = {}
 	_wrong = {}
 	_shiver = {}
+	_glint = {}
+	_verdicts(now, {})
 	moves = 0
 	_running = true
 	_say(tr("NG_RESET"),
@@ -909,6 +1112,9 @@ func restore_completed_board() -> void:
 	_shiver = {}
 	_clue_bump = {}
 	_clue_hop = {}
+	_glint = {}
+	_focus_cell = Vector2i(-1, -1)
+	_seed_verdicts()
 	_opened = t - 10.0
 	_solved_at = t - 10.0
 	_anim_until = 0.0
@@ -954,7 +1160,43 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
 		maxf(GONE_DELAY + GONE_TIME, CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)))
+	_busy_for(WIN_GLINT_AT + (state.w + state.h) * WIN_GLINT_STEP + WIN_GLINT_TIME)
 	_refresh()
+
+# --- the stroke's count ---
+
+## While a stroke is being dragged, a pill over the finger says how long the
+## run is: counting cells is what every deduction on this board comes down
+## to, and a finger covers the cells it is counting. It pops in at two cells
+## and bumps each time the run grows or shrinks. Two draw commands, and only
+## while a finger is dragging.
+func _draw_badge() -> void:
+	if not _dragged or _badge_at < 0.0 or _badge_n < 2 or _focus_cell.x < 0:
+		return
+	var t := _now()
+	var grow := Motion.pop_in_scale(t - _badge_at) * Motion.bump_scale(t - _badge_bump)
+	if grow.x <= 0.0:
+		return
+	var font: Font = CozyTheme.display(700)
+	var px := int(roundf(_cell * BADGE_SIZE))
+	var text := str(_badge_n)
+	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+	var box := Vector2(maxf(wide + _cell * 0.3, _cell * BADGE_H), _cell * BADGE_H)
+	var b := Face.Builder.new()
+	Scenery.soft_disc(b, Vector2(0.0, box.y * 0.5), box.x * 0.6, box.y * 0.3,
+		Color(Pal.TEXT, 0.18))
+	b.fan(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.TEXT)
+	_badge_shown = b.mesh()
+	# Beside the stroke, toward the floor's inside: never over a band, where it
+	# would cover the very clue the run is being counted against.
+	var off := Vector2(0.0, -1.0 if _focus_cell.y > 0 else 1.0) if _axis == 1 \
+		else Vector2(-1.0 if _focus_cell.x > 0 else 1.0, 0.0)
+	var centre := cell_to_local(_focus_cell.y, _focus_cell.x) + off * _cell * BADGE_OFF
+	draw_set_transform(centre, 0.0, grow)
+	draw_mesh(_badge_shown, null)
+	draw_string(font, Vector2(-wide * 0.5, font.get_ascent(px) * 0.5 - 1.0), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, Pal.PAPER)
+	draw_set_transform(Vector2.ZERO)
 
 # --- odds and ends ---
 
@@ -963,6 +1205,11 @@ func _now() -> float:
 
 func _dec(u: float) -> float:
 	return 1.0 if Motion.reduce else clampf(u, 0.0, 1.0)
+
+## A tile's tone, -1 to 1 off the cell's hash, so the floor reads as laid by
+## hand and every tile keeps its own shade from one day to the next.
+static func _tone(cell: Vector2i) -> float:
+	return _hash(cell + Vector2i(17, 31)) * 2.0 - 1.0
 
 ## A fixed pseudo-random number per cell, so the crosses clear away in a
 ## scatter rather than a wave.

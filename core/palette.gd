@@ -261,7 +261,11 @@ const SOCKET      := STONE        # an empty cell
 ## not, and still nowhere near the slate of a laid tile -- a ruled-out cell
 ## must never be mistaken for a filled one.
 const SOCKET_OUT  := Color("c9b998")  # a cell the player has ruled out
-const MOSAIC      := SLATE        # a laid tile: the picture
+## A laid tile: the picture. It was SLATE until the second polish
+## (2026-09-25), which on parchment with nothing else as dark read as a black
+## square; a glazed ink blue keeps the picture the darkest thing on the card
+## without the harsh black the shading direction rules out.
+const MOSAIC      := Color("4a5672")
 ## A tile a hint laid. Teal rather than a darker slate, for the reason Light
 ## Up's lantern collar is pale stone: two neighbouring darks are the one thing
 ## the toon ramp will not keep, and a given has to be visible or the player
@@ -275,8 +279,8 @@ const MOSAIC_LOCK := ACCENT
 ## eighty of them on a finished picture read as noise across it rather than
 ## as relief. The pebble on a ruled-out socket is drawn against SOCKET_OUT
 ## and not against parchment, so it is its own deeper shade of the same sand.
-const MOSAIC_DEEP := SLATE_GIVEN       # a laid tile's bottom edge
-const MOSAIC_HI   := Color("596273")   # the sliver of light on its crown
+const MOSAIC_DEEP := Color("343d53")   # a laid tile's bottom edge
+const MOSAIC_HI   := Color("7c8aa8")   # the light along its upper bevel
 const MOSAIC_LOCK_DEEP := Color("3a7772")
 const SOCKET_PEBBLE := Color("b5a482") # the pebble that rules a cell out
 ## The clue numbers' ink. Idle they are TEXT; a line that reads exactly as it
