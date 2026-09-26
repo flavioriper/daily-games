@@ -20,6 +20,9 @@ extends "res://ui/faces/face.gd"
 
 ## R as a fraction of the seat, the mock's `r`.
 const RATIO := 0.40
+## How far below the centre the foot of the stem is, in R: where Mushroom
+## Patch roots her so she grows, sways and squashes from the ground.
+const FOOT := 1.02
 ## The hint's leaf: where it is rooted, how long it is and which way it points
 ## -- the mock's `leaf(R*0.74, -R*0.66, R*0.42, -0.9)`.
 const SPRIG_AT := Vector2(0.74, -0.66)

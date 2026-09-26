@@ -67,10 +67,6 @@ const CELL_INSET := 0.035
 const CELL_RADIUS := 0.18
 const FACE_DROP := 0.015
 const FACE_SHORT := 0.05
-## The rim under a cell's face: the meadow's own green under a covered cell,
-## the card's line under a turned-over one, both faint.
-const RIM_ALPHA := 0.35
-const RIM_GIVEN_ALPHA := 0.55
 ## The pieces, each as a fraction of a cell: the mushroom's R (the face's
 ## own radius, which MushroomFace takes as RATIO of the seat it is given),
 ## the pebble's R and its body against that R, and the numeral's font.
@@ -108,6 +104,52 @@ const WASH_OVER := 0.34
 const STRAIN_TIME := 0.6
 ## The win screen waits for the solve wave to hop every mushroom.
 const WIN_WAIT := 1.6
+
+# --- the second polish (2026-09-25; the spec's section 16) ---
+## A covered cell is a sod of turf standing on the card and a turned one is a
+## bed sunk into it, so what is still to find and what is known read as
+## relief and not only as colour. The turf's face is toned off its cell's
+## hash within TONE, lit BEVEL of a cell round its crown TURF_LIT toward
+## SURFACE, and stands on a foot TURF_FOOT of the way to TURF.
+const TONE := 0.03
+const BEVEL := 0.055
+const TURF_LIT := 0.34
+const TURF_FOOT := 0.6
+## A bed's wall is its floor BED_WALL toward TEXT and shows BED_LIP of a cell
+## along the top, where the card's edge shades the hole.
+const BED_WALL := 0.16
+const BED_LIP := 0.06
+## One sod in TUFT_SHARE carries a small tuft of three blades TUFT_H of a
+## cell tall, in TURF at TUFT_ALPHA, so the meadow reads as grass.
+const TUFT_SHARE := 0.42
+const TUFT_H := 0.17
+const TUFT_ALPHA := 0.75
+## The sod lifts off a cell as a mark lands in it, shrinking over SOD_TIME
+## and rising SOD_LIFT of a cell, and settles back with the pop when the mark
+## is taken away.
+const SOD_TIME := 0.18
+const SOD_LIFT := 0.12
+## The sod settles back this long after the piece on its cell starts to go.
+const SOD_BACK_LAG := 0.12
+## A mushroom pulled up rises this much of a cell as she shrinks out.
+const PLUCK := 0.2
+## A number that has just come right glints: its bed shines SHINE toward
+## SURFACE over GLINT_TIME, GLINT_LAG after its wash starts crossing.
+const GLINT_TIME := 0.42
+const GLINT_LAG := 0.12
+const SHINE := 0.5
+## On the win a light crosses the patch along the diagonal: when it sets off
+## and its step a diagonal.
+const WIN_GLINT_AT := 0.3
+const WIN_GLINT_STEP := 0.035
+## Every SWAY_EVERY seconds one planted mushroom sways about her foot.
+const SWAY_EVERY := 3.4
+const SWAY_ANGLE := 0.06
+const SWAY_TIME := 0.9
+## The tally's paper pill: its padding round the run, washed LEAF_TILE once
+## every mushroom is planted and BAD_TILE past that. It bumps as it recounts.
+const PILL_PAD := Vector2(22.0, 10.0)
+const PILL_EDGE := 4.0
 
 const HINTS := 3
 ## How long a teaching line stands before the next, the family's own cycle.
@@ -159,6 +201,10 @@ var _blush: Dictionary = {}      # cell -> at: Check pointed at it, or a refusal
 var _shiver: Dictionary = {}     # cell -> at: a refused press
 var _wobble: Dictionary = {}     # cell -> at: Check pointed at a drawn pebble
 var _sunk: Dictionary = {}       # cell -> {"down", "up"}: the finger has it
+var _sod: Dictionary = {}        # cell -> {"at", "back"}: its turf lifting off or settling back
+var _glint: Dictionary = {}      # cell -> at: a light crosses its bed then
+var _tally_at := -100.0          # the tally recounted then
+var _sway_timer: Timer
 var _floor: ArrayMesh
 var _ground: ArrayMesh
 var _ground_dirty := true
@@ -207,6 +253,10 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	_sway_timer = Timer.new()
+	_sway_timer.wait_time = SWAY_EVERY
+	_sway_timer.timeout.connect(_sway)
+	add_child(_sway_timer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -222,6 +272,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_shiver = {}
 	_wobble = {}
 	_sunk = {}
+	_sod = {}
+	_glint = {}
+	_tally_at = -100.0
 	_clear_gesture()
 	_solved_at = -1.0
 	_build_pieces()
@@ -229,6 +282,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_idx = 0
 	_say(tr(TIPS[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+	_sway_timer.start()
 	_enter()
 
 # --- the cast ---
@@ -325,14 +379,17 @@ func _layout() -> void:
 	_redraw()
 
 ## Seats `face` `px` square about `centre`: her slot takes the place, and her
-## own place inside it is left to the motion.
+## own place inside it is left to the motion. She turns and scales about the
+## foot of her stem, not her middle (set after the size, which Face resets it
+## on): the pop grows her up out of the soil, the press squashes her into it
+## and a sway or a wobble rocks her on her root.
 func _seat(face: Control, centre: Vector2, px: float) -> void:
 	var seat := Vector2.ONE * px
 	var slot: Control = _slots[face]
 	slot.size = seat
 	slot.position = centre - seat * 0.5
 	face.size = seat
-	face.pivot_offset = seat * 0.5
+	face.pivot_offset = seat * 0.5 + Vector2(0.0, px * MushroomFace.RATIO * MushroomFace.FOOT)
 
 ## The cell a slot of `available` height holds, capped by the width. The
 ## tally strip comes out of the height before the field is measured.
@@ -465,6 +522,7 @@ func _build_floor(now: float) -> ArrayMesh:
 	var origin: Vector2 = -Vector2.ONE * (_cell * state.n * 0.5)
 	var gone: Array = []
 	var settled: Array = []
+	var lifted: Array = []
 	for y in state.n:
 		for x in state.n:
 			var cell := Vector2i(x, y)
@@ -473,10 +531,8 @@ func _build_floor(now: float) -> ArrayMesh:
 				continue
 			var given: bool = state.given.has(cell)
 			var mark: int = int(state.marks.get(cell, State.BLANK))
-			var base: Color = Pal.SURFACE if given else Pal.TURF_REACH
-			if not given and mark == State.CLEAR:
-				base = Pal.SOCKET_OUT
-			elif not given and mark == State.FOUND:
+			var base: Color = Pal.SURFACE if given else Pal.SOCKET_OUT
+			if not given and mark == State.FOUND:
 				base = Pal.MUSHROOM_TILE
 			if given:
 				var w := _wash_of(cell, now)
@@ -497,18 +553,27 @@ func _build_floor(now: float) -> ArrayMesh:
 					sink = Motion.press_scale(now - float(pr.down), released)
 			var at := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
 			at.x += Motion.shiver_offset(now - float(_shiver.get(cell, -100.0)), _cell * SHIVER)
-			var rim: Color = Pal.LINE if given else Pal.TURF
-			var rim_a: float = RIM_GIVEN_ALPHA if given else RIM_ALPHA
 			var side := _cell * (1.0 - 2.0 * CELL_INSET) * sink
 			var radius := _cell * CELL_RADIUS * sink
-			b.fan(Face.Builder.round_rect(at - Vector2.ONE * (side * 0.5),
-				Vector2.ONE * side, radius), Color(rim, rim_a * seen))
-			b.fan(Face.Builder.round_rect(
-				at - Vector2(side * 0.5, side * 0.5 - _cell * FACE_DROP * sink),
-				Vector2(side, side - _cell * FACE_SHORT * sink), radius),
-				Color(base, seen))
+			var shine := _shine(cell, now)
+			var sod := _sod_pose(cell, now, not given and mark == State.BLANK, lifted)
+			# The bed shows wherever the sod is not wholly down: under a mark,
+			# and under a sod on its way off or back.
+			if given or mark != State.BLANK or sod.x < 1.0 or sod.z < 1.0:
+				_bed(b, at, side, radius, base.lerp(Pal.SURFACE, shine * SHINE), seen)
+			if sod.z > 0.0:
+				_turf(b, at + Vector2(0.0, sod.y * _cell), side, radius,
+					Vector2(sod.x, sod.z), cell, seen, shine)
 	for cell in gone:
 		_sunk.erase(cell)
+	for cell in lifted:
+		_sod.erase(cell)
+	gone = []
+	for cell in _glint:
+		if now - float(_glint[cell]) >= GLINT_TIME:
+			gone.append(cell)
+	for cell in gone:
+		_glint.erase(cell)
 	for cell in settled:
 		_wash.erase(cell)
 		_bump.erase(cell)
@@ -517,6 +582,84 @@ func _build_floor(now: float) -> ArrayMesh:
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
+
+## Where `cell`'s sod is at `now`: x and z its scale across and down, y how
+## far it has risen, in cells (negative is up); z of nought means no sod is
+## drawn. A covered cell with no moment owed stands in its sod; a sod lifting
+## off shrinks and rises with pop_out's curve, and one settling back pops in.
+## A finished moment is added to `lifted` for the caller to forget.
+func _sod_pose(cell: Vector2i, now: float, covered: bool, lifted: Array) -> Vector3:
+	if not _sod.has(cell):
+		return Vector3(1.0, 0.0, 1.0) if covered else Vector3.ZERO
+	var e: float = now - float(_sod[cell].at)
+	if bool(_sod[cell].back):
+		if e >= Motion.POP_IN:
+			lifted.append(cell)
+		var grow := Motion.pop_in_scale(e)
+		return Vector3(grow.x, 0.0, grow.y)
+	if e >= SOD_TIME:
+		lifted.append(cell)
+		return Vector3.ZERO
+	var u := Motion.pop_out_scale(e, SOD_TIME)
+	return Vector3(u, -SOD_LIFT * (1.0 - u), u)
+
+## A bed sunk into the card about `at`: its wall in a shade of `floor_col`,
+## showing BED_LIP of a cell along the top, and its floor under it.
+func _bed(b: Face.Builder, at: Vector2, side: float, radius: float, floor_col: Color,
+		alpha: float) -> void:
+	var corner := at - Vector2.ONE * (side * 0.5)
+	var lip := _cell * BED_LIP
+	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * side, radius),
+		Color(floor_col.lerp(Pal.TEXT, BED_WALL), alpha))
+	b.fan(Face.Builder.round_rect(corner + Vector2(0.0, lip), Vector2(side, side - lip), radius),
+		Color(floor_col, alpha))
+
+## A sod of turf about `at`, drawn at `grow` of its size: a foot in TURF, a lit
+## rim and the crown toned off the cell's hash, and on some sods a tuft.
+## `shine` is the win's light crossing it.
+func _turf(b: Face.Builder, at: Vector2, side: float, radius: float, grow: Vector2,
+		cell: Vector2i, alpha: float, shine: float) -> void:
+	var tone := _hash(cell) * 2.0 - 1.0
+	var face: Color = Pal.TURF_REACH.lightened(tone * TONE) if tone > 0.0 \
+		else Pal.TURF_REACH.darkened(-tone * TONE)
+	var foot: Color = face.lerp(Pal.TURF, TURF_FOOT)
+	var rim: Color = face.lerp(Pal.SURFACE, TURF_LIT)
+	if shine > 0.0:
+		face = face.lerp(Pal.SURFACE, shine * SHINE)
+		rim = rim.lerp(Pal.SURFACE, shine * SHINE)
+	var xf := Transform2D(0.0, grow, 0.0, at)
+	var corner := -Vector2.ONE * (side * 0.5)
+	var edge := side * (FACE_SHORT + FACE_DROP)
+	var bev := _cell * BEVEL
+	b.fan(xf * Face.Builder.round_rect(corner, Vector2.ONE * side, radius), Color(foot, alpha))
+	b.fan(xf * Face.Builder.round_rect(corner, Vector2(side, side - edge), radius), Color(rim, alpha))
+	b.fan(xf * Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
+		Vector2(side - bev * 1.4, side - edge - bev), maxf(radius - bev * 0.5, 0.0)),
+		Color(face, alpha))
+	if _hash(cell, 1) < TUFT_SHARE:
+		var root := Vector2((_hash(cell, 2) - 0.5) * 0.5, 0.2 + 0.12 * _hash(cell, 3)) * side
+		_tuft(b, xf, root, _cell * TUFT_H, Color(Pal.TURF, TUFT_ALPHA * alpha))
+
+## Three slim blades from `root`, the middle one tallest, under `xf`.
+static func _tuft(b: Face.Builder, xf: Transform2D, root: Vector2, h: float, col: Color) -> void:
+	for blade in [Vector2(0.0, -1.0), Vector2(-0.52, -0.7), Vector2(0.55, -0.66)]:
+		var tip: Vector2 = root + blade * h
+		var side := (tip - root).orthogonal().normalized() * h * 0.13
+		b.fan(xf * PackedVector2Array([root - side, tip, root + side]), col)
+
+## How far into its glint `cell` is, 0 to 1 and back.
+func _shine(cell: Vector2i, now: float) -> float:
+	if Motion.reduce or not _glint.has(cell):
+		return 0.0
+	var e: float = now - float(_glint[cell])
+	if e <= 0.0 or e >= GLINT_TIME:
+		return 0.0
+	return sin(PI * e / GLINT_TIME)
+
+## A steady 0-1 value per cell, so a sod's tone and tuft never change.
+static func _hash(cell: Vector2i, salt := 0) -> float:
+	var h := sin(float(cell.x) * 12.9898 + float(cell.y) * 78.233 + float(salt) * 37.719) * 43758.5453
+	return h - floorf(h)
 
 ## What `cell`'s number is washed with now: the colour its standing asks for
 ## at the level it asks for, crossed over WASH_TIME from whatever it wore
@@ -578,7 +721,7 @@ func _draw_numerals(now: float, grown: float) -> void:
 		var scale := grown * _sink(cell, now) * Motion.bump_scale(now - float(_bump.get(cell, -100.0)))
 		if scale <= 0.0:
 			continue
-		var at := cell_centre(cell)
+		var at := cell_centre(cell) + Vector2(0.0, _cell * BED_LIP * 0.5)
 		at.x += Motion.shiver_offset(now - float(_shiver.get(cell, -100.0)), _cell * SHIVER)
 		at = centre + (at - centre) * grown
 		draw_set_transform(at, 0.0, Vector2.ONE * scale)
@@ -598,13 +741,13 @@ func _draw_tally(now: float) -> void:
 	var font: Font = CozyTheme.display(700)
 	var left := state.left()
 	var line := _tally_line(left)
-	var wide := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TALLY_SIZE).x
-	var run := wide + TALLY_TEXT_X
-	var start := size.x * 0.5 - run * 0.5
-	var grow := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY)
+	var start := size.x * 0.5 - _tally_run() * 0.5
+	var grow := _tally_grow(now)
 	if grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var ink: Color = Pal.TEXT if left >= 0 else Pal.BAD
+	if left == 0:
+		ink = Pal.LEAF_DEEP
 	var at := Vector2(start + TALLY_TEXT_X, _tally_y)
 	draw_set_transform(at, 0.0, grow)
 	draw_string(font, Vector2(0.0, font.get_ascent(TALLY_SIZE) * 0.5), line,
@@ -615,6 +758,37 @@ func _draw_tally(now: float) -> void:
 		var want := Vector2(start + TALLY_GLYPH_X, _tally_y) - Vector2.ONE * (TALLY_GLYPH * 0.5)
 		if slot.position != want:
 			slot.position = want
+
+## The tally's run, its little mushroom and its line, in pixels.
+func _tally_run() -> float:
+	var font: Font = CozyTheme.display(700)
+	return font.get_string_size(_tally_line(state.left()), HORIZONTAL_ALIGNMENT_LEFT, -1.0,
+		TALLY_SIZE).x + TALLY_TEXT_X
+
+## The tally's scale at `now`: its pop in with the field, and its bump when it
+## recounts.
+func _tally_grow(now: float) -> Vector2:
+	return Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY) \
+		* Motion.bump_scale(now - _tally_at, Motion.BUMP * 0.4)
+
+## The tally's paper pill under its run, washed with how the count stands,
+## growing about the run's own centre with the tally's pop and bump.
+func _tally_pill(b: Face.Builder, now: float) -> void:
+	var grow := _tally_grow(now)
+	if grow.x <= 0.0 or grow.y <= 0.0:
+		return
+	var left := state.left()
+	var paper: Color = Pal.SURFACE
+	if left == 0:
+		paper = Pal.LEAF_TILE
+	elif left < 0:
+		paper = Pal.BAD_TILE
+	var box := Vector2(_tally_run(), TALLY_GLYPH) + PILL_PAD * 2.0
+	var xf := Transform2D(0.0, grow, 0.0, Vector2(size.x * 0.5, _tally_y))
+	var corner := -box * 0.5
+	b.fan(xf * Face.Builder.round_rect(corner + Vector2(0.0, PILL_EDGE), box, box.y * 0.5),
+		Color(Pal.LINE, 0.55))
+	b.fan(xf * Face.Builder.round_rect(corner, box, box.y * 0.5), paper)
 
 ## How many mushrooms are still hidden, in words; nought is *every mushroom
 ## is planted*, and an over-planted field says so rather than clamping.
@@ -646,6 +820,7 @@ func _layout_tally() -> void:
 func _build_ground(now: float) -> Dictionary:
 	var b := Face.Builder.new()
 	var busy := not _sunk.is_empty()
+	_tally_pill(b, now)
 	# The blush: toward the family's rose and back.
 	var gone: Array = []
 	for cell in _blush:
@@ -796,6 +971,10 @@ func _snapshot() -> Dictionary:
 ## second each changed cell's piece arrives, for the sinks to wait on.
 func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false) -> Dictionary:
 	var arrivals: Dictionary = {}
+	var planted_before := 0
+	for cell in before:
+		if int(before[cell]) == State.FOUND:
+			planted_before += 1
 	for cell in before:
 		var prev := int(before[cell])
 		var mark := int(state.marks.get(cell, State.BLANK))
@@ -803,6 +982,18 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false) ->
 			continue
 		var going: float = t + float(delay_of.call(cell, true))
 		var coming: float = t + float(delay_of.call(cell, false))
+		# The sod lifts off as a mark lands in a covered cell and settles back
+		# as the last mark leaves it; a mushroom swapped for a pebble keeps
+		# the bed open.
+		if not Motion.reduce and not state.given.has(cell):
+			if prev == State.BLANK:
+				_sod[cell] = {"at": coming, "back": false}
+				_busy_for(coming - t + SOD_TIME)
+			elif mark == State.BLANK:
+				# Once the piece leaving it is most of the way gone.
+				var back := going + SOD_BACK_LAG
+				_sod[cell] = {"at": back, "back": true}
+				_busy_for(back - t + Motion.POP_IN)
 		if prev == State.FOUND:
 			_cap_down(cell, going - t)
 		elif prev == State.CLEAR:
@@ -814,8 +1005,23 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false) ->
 			_pebble_arrives(cell, coming)
 			arrivals[cell] = coming
 	_settle_wash(before, t, delay_of)
+	var planted := 0
+	for cell in state.marks:
+		if int(state.marks[cell]) == State.FOUND:
+			planted += 1
+	if planted != planted_before:
+		_recount()
 	_refresh_faces()
 	return arrivals
+
+## The tally has a new count: its pill bumps and its little mushroom hops.
+func _recount() -> void:
+	if Motion.reduce:
+		return
+	_tally_at = _now()
+	_busy_for(Motion.BUMP_TIME)
+	if _tally_face != null:
+		_hop(_tally_face, Motion.HOP, Motion.HOP_TIME)
 
 ## The count wash, after a move: every given whose standing changed takes the
 ## colour its new standing asks for, crossing from the one it wore, and its
@@ -836,7 +1042,10 @@ func _settle_wash(before: Dictionary, t: float, delay_of: Callable) -> void:
 			"ink": worn.ink}
 		if not Motion.reduce:
 			_bump[g] = at
-		_busy_for(at - t + maxf(WASH_TIME, Motion.BUMP_TIME))
+			# A number that has just come right catches the light.
+			if is_now == State.SETTLED and int(state.given[g]) > 0:
+				_glint[g] = at + GLINT_LAG
+		_busy_for(at - t + maxf(WASH_TIME, GLINT_LAG + GLINT_TIME))
 
 ## `g`'s standing read off a snapshot rather than off the state: what the
 ## number said before the move. The state's own standing() reads `marks`,
@@ -896,16 +1105,20 @@ func _cap_down(cell: Vector2i, delay: float) -> void:
 	if face == null:
 		return
 	Motion.stop(_look_tw.get(face))
-	var tw := Motion.pop_out(face, Motion.POP_OUT, delay)
+	Motion.stop(_pos_tw.get(face))
+	face.position = Vector2.ZERO
+	face.modulate.a = 1.0
+	var tw := Motion.pop_out(face, Motion.POP_OUT * 1.5, delay, _cell * PLUCK)
 	if tw == null:
 		face.visible = false
 		return
 	_look_tw[face] = tw
-	_busy_for(delay + Motion.POP_OUT)
+	_busy_for(delay + Motion.POP_OUT * 1.5)
 	tw.chain().tween_callback(func() -> void:
 		if int(state.marks.get(cell, State.BLANK)) != State.FOUND:
 			face.visible = false
-			face.rotation = 0.0)
+			face.rotation = 0.0
+			face.position = Vector2.ZERO)
 
 func _pebble_arrives(cell: Vector2i, at: float) -> void:
 	_pebble_in[cell] = at
@@ -1143,12 +1356,14 @@ func _tap(cell: Vector2i, now: float) -> void:
 	_settle(before, now, _at_once())
 	var at := cell_centre(cell)
 	var mark := int(state.marks.get(cell, State.BLANK))
+	# A mark on a covered cell throws its sod off in a puff of turf.
+	var dug: bool = int(before.get(cell, State.BLANK)) == State.BLANK
 	if mark == State.FOUND:
 		fx.ring(at, _cell * RING_R, Pal.SUN_RAY)
-		fx.puff(at, Pal.LEAF)
+		fx.puff(at, Pal.TURF if dug else Pal.LEAF)
 		fx.cue("place")
 	elif mark == State.CLEAR:
-		fx.puff(at, Pal.SOCKET_PEBBLE)
+		fx.puff(at, Pal.TURF if dug else Pal.SOCKET_PEBBLE)
 		fx.cue("place")
 	else:
 		fx.cue("remove")
@@ -1345,6 +1560,12 @@ func _on_solved() -> void:
 		_grin(face, delay)
 		_after(delay, _spark_at.bind(k, cell_centre(cell)))
 		k += 1
+	# A light crosses the patch along the diagonal behind the hops.
+	if not Motion.reduce:
+		for y in state.n:
+			for x in state.n:
+				_glint[Vector2i(x, y)] = now + WIN_GLINT_AT + float(x + y) * WIN_GLINT_STEP
+		_busy_for(WIN_GLINT_AT + float(2 * state.n - 2) * WIN_GLINT_STEP + GLINT_TIME)
 	_say(tr("MP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME)
@@ -1374,6 +1595,9 @@ func restore_completed_board() -> void:
 	_shiver = {}
 	_wobble = {}
 	_sunk = {}
+	_sod = {}
+	_glint = {}
+	_tally_at = -100.0
 	_opened = now - 10.0
 	_solved_at = now - 10.0
 	_anim_until = 0.0
@@ -1413,6 +1637,27 @@ func _spark_at(k: int, at: Vector2) -> void:
 		fx.puff(at, Pal.SUN, 4)
 
 # --- odds and ends ---
+
+## Now and then one planted mushroom sways on her root, so a patch left alone
+## still breathes. Only a mushroom with nothing else moving her takes it, and
+## the sway is her own node turning: nothing on the field is rebuilt for it.
+func _sway() -> void:
+	if Motion.reduce or _cell <= 0.0:
+		return
+	var standing: Array = []
+	for cell in _caps:
+		var face: MushroomFace = _caps[cell]
+		if face.visible and face != _pressed \
+				and int(state.marks.get(cell, State.BLANK)) == State.FOUND \
+				and not _tweening(_look_tw.get(face)) and not _tweening(_pos_tw.get(face)):
+			standing.append(face)
+	if standing.is_empty():
+		return
+	var face: MushroomFace = standing[randi() % standing.size()]
+	_look_tw[face] = Motion.wobble2d(face, SWAY_ANGLE, SWAY_TIME)
+
+static func _tweening(tw) -> bool:
+	return tw != null and (tw as Tween).is_valid() and (tw as Tween).is_running()
 
 ## Kills every tween the previous board still tracks and retires its pending
 ## callbacks, so a rebuild never inherits a hop aimed at a mushroom that is

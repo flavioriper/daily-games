@@ -605,3 +605,58 @@ almost nothing beside the header, day row and bar that already stood.
 Confirmed in the same run: the canvas is 1080x1920, every card on both pages
 measures **320 x 252** with a **92** picture plate, and the lone page-two
 card is 320 rather than 334, which is the filler `Control`s doing their job.
+
+## 16. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of the other flat boards the same evening,
+and this amendment is the record. The rules, the layout, the tray, the
+gesture, the count wash's colours and every refusal are unchanged.
+
+**What is covered and what is known now read as relief, not only as
+colour.** A covered cell is a sod of turf standing on the card: a foot
+toward `TURF`, a lit rim `TURF_LIT` toward `SURFACE`, and a crown toned off
+the cell's hash within `TONE` (0.04 read blotchy on the first frame, as if
+some sods were in another state; 0.03 reads as laid by hand). One sod in
+`TUFT_SHARE` carries a three-blade tuft in `TURF`. Every turned cell -- a
+given, a pebble, a mushroom -- is a bed sunk into the card (`_bed`): its
+wall `BED_WALL` toward ink shows `BED_LIP` of a cell along the top. A
+pebbled cell's bed is `SOCKET_OUT`, so a ruled-out cell reads as ground the
+player dug, not as turf with a stone on it. The numerals sit half a lip
+lower, on the bed's floor.
+
+**The sod lifts off.** A mark landing on a covered cell sends its sod up and
+out over `SOD_TIME` with pop_out's curve, rising `SOD_LIFT`, and the tap
+puffs `TURF`; the last mark leaving a cell settles its sod back with the pop
+`SOD_BACK_LAG` after the piece starts to go (at the same instant, the sod
+popped back up under a mushroom still standing on it). A sweep's sods lift
+along its path, on the same wave as the pebbles. The bed is drawn wherever
+the sod is not wholly down, so a cell is never bare card mid-moment.
+
+**She is rooted.** Every mushroom scales and turns about the foot of her
+stem (`MushroomFace.FOOT`), not her middle: the pop grows her up out of the
+bed, the press squashes her into it, Check's wobble rocks her on her root.
+Pulled up, she rises `PLUCK` of a cell as she shrinks out. Every
+`SWAY_EVERY` seconds one planted mushroom with nothing else moving her sways
+(`wobble2d` at `SWAY_ANGLE` over `SWAY_TIME`) -- her own node turning, so
+nothing on the field is rebuilt and the idle's draw calls do not move.
+
+**A number that comes right glints**: its bed shines `SHINE` toward
+`SURFACE` over `GLINT_TIME`, `GLINT_LAG` into its wash. On the win a light
+crosses the whole patch along the diagonal behind the hops
+(`WIN_GLINT_AT`, `WIN_GLINT_STEP`), through turf and beds alike.
+
+**The tally stands on a paper pill** in the ground mesh, washed `LEAF_TILE`
+with its line in `LEAF_DEEP` once every mushroom is planted and `BAD_TILE`
+past that. It bumps and its little mushroom hops whenever the count of
+planted mushrooms changes.
+
+`tests/_shot_anim.gd -- mushroom solve` plants all but the last mushroom
+and taps the last, so the strip shows the sods lifting, the solve's hops and
+the light crossing.
+
+Measured at `--resolution 810x1440`: **72** draw calls with one mushroom
+planted, as before the pass, and 72 on the solved board; idle 2.41-2.42 ms
+against 2.26 before (the same session; this harness's spread). Reduce motion
+is pixel-identical across its 1.5 s pair, and ANGLE agrees on 72 and matches
+the default driver within 2/255. Suite 122583/0, win harness 21/21.

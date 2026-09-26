@@ -56,7 +56,9 @@ extends SceneTree
 ## Mushroom Patch has the answer's first mushroom planted with the mushroom
 ## chip the tray arms by default, so the strip shows the pop, the ring, the
 ## puff and -- the point of the shot -- the count wash arriving on the givens
-## around it as their numerals bump and turn green.
+## around it as their numerals bump and turn green. `solve` after the id
+## plants every mushroom but the last at once and taps the last, so the strip
+## catches the sods lifting, the solve's hops and the light crossing the patch.
 ## Fairy Lights has one dark cell beside the live run turned a quarter turn
 ## clockwise, chosen so the turn joins it to the post and **the wash** --
 ## this board's signature -- actually runs: the light walking out along the
@@ -297,6 +299,14 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.75, 1.95, 2.1, 2.3, 2.9, 3.9]
 		_idle_from = 2.7
 		_idle_to = 4.7
+	if _id == "mushroom" and _mode == "solve":
+		# Every mushroom but one is planted a frame before TAP_AT and the
+		# last is tapped, so the strip catches the sods lifting under the
+		# wave of plants, the last one sprouting, the solve's hops with the
+		# light crossing the patch, and the board settled under the win.
+		_shots = [0.35, 1.62, 1.72, 2.1, 2.45, 2.8, 3.8]
+		_idle_from = 4.0
+		_idle_to = 6.0
 	if _id == "rings" and _mode == "win":
 		# The drop lands about 0.74 s after the id opens (TAP_AT plus the
 		# drop delay plus the flight), the wash runs another 0.18 s and the
@@ -548,6 +558,14 @@ func _tap_mushroom() -> void:
 	var cells: Array = st.mushrooms.keys()
 	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	if _mode == "solve":
+		# `solve`: the rest are planted through the board's own tap, the last
+		# by a real touch.
+		for i in cells.size() - 1:
+			_puzzle._tap(cells[i], _puzzle._now())
+		var last: Vector2i = cells[cells.size() - 1]
+		_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(last.y, last.x))
+		return
 	var best: Vector2i = cells[0]
 	if _mushroom_wash_count(cells[0]) == 0:
 		var best_score := 0
