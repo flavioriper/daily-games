@@ -6,6 +6,7 @@ extends SceneTree
 ## line proved to fail. A harness, not a suite entry.
 ##     godot --headless --path . --script tests/_probe_knight_gen.gd
 const G := preload("res://puzzles/knight_gen.gd")
+const S := preload("res://puzzles/knight_state.gd")
 
 func _initialize() -> void:
 	for d in 4:
@@ -52,4 +53,77 @@ func _initialize() -> void:
 		print("level %d: mean %.1f ms worst %.1f ms, shortest %d-%d, below min %d, attempts max %d, bad %d" % [
 			d, sum / cnt, worst, lo, hi, short, att_max, bad])
 		print("  nodes: max %d mean %.1f" % [node_max, float(node_sum) / cnt])
+	_check_state()
 	quit()
+
+## The state, driven the way the board drives it: a caught move keeps
+## nothing, the day's line wins, Undo and Reset put everything back, a taken
+## rose knight returns on Undo, and Insane's budget refuses the move past it.
+func _check_state() -> void:
+	var fails := 0
+	for d in 4:
+		for s in 10:
+			var rng := RandomNumberGenerator.new()
+			rng.seed = s * 7919 + d
+			var st = S.new()
+			st.build(rng, d)
+			# a caught move is not kept
+			var reach: Dictionary = st.reach()
+			for m in st.legal():
+				if reach.has(m) and m != st.king:
+					var you0: int = st.you
+					var r: Dictionary = st.play(m)
+					if int(r.caught) < 0 or st.you != you0 or not st.history.is_empty():
+						fails += 1
+						print("  caught move kept d=%d s=%d" % [d, s])
+					break
+			# the line wins, and the budget is never short of it
+			for m in st.g.line:
+				st.play(m)
+			if not st.is_solved() or st.moves_left() == 0 and d < 3:
+				fails += 1
+				print("  line did not win d=%d s=%d" % [d, s])
+			# reset puts back the opening, including taken rose knights
+			st.reset_board()
+			if st.you != int(st.g.you) or st.foes != st.g.foes or st.is_solved() or st.can_undo():
+				fails += 1
+				print("  reset wrong d=%d s=%d" % [d, s])
+			# undo after every step of the line walks it back
+			for m in st.g.line.slice(0, st.g.line.size() - 1):
+				st.play(m)
+			while st.can_undo():
+				st.undo()
+			if st.you != int(st.g.you) or st.foes != st.g.foes:
+				fails += 1
+				print("  undo walk wrong d=%d s=%d" % [d, s])
+			# hints alone solve it
+			for i in 64:
+				var h: int = st.hint_move()
+				if h < 0:
+					break
+				st.play(h)
+			if not st.is_solved():
+				fails += 1
+				print("  hints did not solve d=%d s=%d" % [d, s])
+			# Insane: spend the budget on anything uncaught, then a move is refused
+			if d == 3:
+				st.reset_board()
+				while st.moves_left() > 0:
+					var safe := -1
+					var rc: Dictionary = st.reach()
+					for m in st.legal():
+						if not rc.has(m) and m != st.king:
+							safe = m
+							break
+					if safe < 0:
+						break
+					st.play(safe)
+				if st.moves_left() == 0 and (not st.play(st.legal()[0]).is_empty() or st.hint_move() != -1):
+					fails += 1
+					print("  budget not enforced s=%d" % s)
+				if st.moves_left() == 0:
+					st.undo()
+					if st.moves_left() != 1:
+						fails += 1
+						print("  undo did not give a move back s=%d" % s)
+	print("state: %d failures" % fails)
