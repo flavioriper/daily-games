@@ -8,7 +8,7 @@ cell and the day is done. **A wrong rake is never a loss**: the hedgehog
 wakes, curls up grumpy on a rose cell, and you carry on.
 
 **Why this is not Mushroom Patch.** The reference is the same screenshot of
-another app's *Campo Minado* that Mushroom Patch was drawn from on
+another app's screenshot that Mushroom Patch was drawn from on
 2026-09-20 (`docs/art/concept-hedgehogs-ref.png`, a copy of
 `concept-mushroom-ref.png`). The user sent it again on 2026-09-26 as "our
 next new game". Mushroom Patch took the picture's field of numbers and its
@@ -462,3 +462,22 @@ page one 254; Hedgehogs is the eighth card of page three, beside Knight.
   before the win wave has reached the last sleepers: the text is set from
   the state at once, while the drawing waits out the win delay. Recorded,
   not fixed.
+- **Undo keeps a hint's pin and the woken.** A flag gesture's undo used to
+  put back the flag a cell had before, even when a hint had pinned it or a
+  rake had woken it since: the hint's flag vanished and the next rake woke
+  a proved hedgehog. `undo()` now leaves a pinned or woken cell as it is.
+- **A reopened day keeps its wakes.** `completion_record()` keeps the woken
+  cells (`{"woke": [...]}`, Code Break's and Hidden Word's pattern), and
+  `restore_completed_board()` reads them back, so the win's subtitle, the
+  rose cells and the share line say how many woke. A record that names a
+  cell with no hedgehog, or none at all, restores as a day nobody woke.
+- **A hint is not a move.** A hint's rake or pin emits `moved` and checks
+  the solve itself rather than through `note_move()`, and a hint whose rake
+  finishes the lawn leaves the win's line alone instead of toasting over it.
+- **One `moved` a move.** `note_move()` emits it; the board no longer emits
+  it a second time.
+- **A tap mid-gust waits.** A cell raked in the state but not yet reached by
+  its gust still looks covered, so a tap on it does nothing, where it used
+  to answer with a chord's refusal.
+- **One finger a press.** The press tracks the touch's index: a second
+  finger landing neither starts a press nor ends the first's.

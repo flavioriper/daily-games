@@ -173,7 +173,7 @@ func toggle_flag(c: int) -> Dictionary:
 
 ## Takes back the last gesture: {"raked" (re-covered, in flood order),
 ## "flags" ([[cell, restored value]])}, or {} with nothing to undo. A woken
-## hedgehog stays awake.
+## hedgehog stays awake, and a pinned or woken cell keeps its flag as it is.
 func undo() -> Dictionary:
 	if history.is_empty():
 		return {}
@@ -184,8 +184,13 @@ func undo() -> Dictionary:
 		open[c] = 0
 	var flags: Array = []
 	for f: Array in h.flags:
-		flag[int(f[0])] = int(f[1])
-		flags.append([int(f[0]), int(f[1])])
+		var c := int(f[0])
+		# A cell a hint pinned or a rake woke since is a fact now: the
+		# flag it had before stays where the fact put it.
+		if pin[c] == 1 or woke[c] == 1:
+			continue
+		flag[c] = int(f[1])
+		flags.append([c, int(f[1])])
 	# A flood lifts the unpinned flags it crosses; they are not put back,
 	# since logic had proved those cells bare.
 	return {"raked": raked, "flags": flags}

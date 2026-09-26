@@ -1174,11 +1174,11 @@ func _draw_hedgehogs() -> void:
 		for c in HH_COLS:
 			var p := Vector2i(c, r)
 			var centre := at(HH_ORIGIN.x + (float(c) + 0.5) * HH_CELL, HH_ORIGIN.y + (float(r) + 0.5) * HH_CELL)
-			var id := r * HH_COLS + c
+			var cell_id := r * HH_COLS + c
 			var covered := HH_PILES.has(p)
-			Lawn.ground(b, centre, cell, id, not covered, false)
+			Lawn.ground(b, centre, cell, cell_id, not covered, false)
 			if covered:
-				Lawn.pile(b, centre, cell, id, 0.0, Vector2.UP, Vector2.ONE, 0.45 if p == HH_FLAG else 1.0)
+				Lawn.pile(b, centre, cell, cell_id, 0.0, Vector2.UP, Vector2.ONE, 0.45 if p == HH_FLAG else 1.0)
 	var fc := at(HH_ORIGIN.x + (float(HH_FLAG.x) + 0.5) * HH_CELL, HH_ORIGIN.y + (float(HH_FLAG.y) + 0.5) * HH_CELL)
 	Lawn.flag(b, fc, cell * 0.46)
 	_hedgehogs_mesh = b.mesh()

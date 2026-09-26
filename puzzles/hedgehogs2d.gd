@@ -126,6 +126,11 @@ var _shown: Array = []
 ## The press in progress: its cell, and whether its long press has fired.
 var _press_cell := -1
 var _press_id := 0
+## The finger holding the press (-1 the mouse), -2 with no press; a second
+## finger neither starts a press nor ends the first's.
+var _press_finger := -2
+## Whether the move being shown is a hint's, which counts no move.
+var _hinting := false
 var _long_fired := false
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
@@ -173,6 +178,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_clear_faces()
 	_rings = []
 	_solved_at = -1.0
+	_press_cell = -1
+	_press_finger = -2
 	_toast = ""
 	_toast_at = -100.0
 	_last = int(_state.g.start)
@@ -334,6 +341,10 @@ func _act(c: int, use: int) -> void:
 	if is_done() or c < 0 or _now() < _busy_until:
 		return
 	if _state.open[c] == 1:
+		# Raked, but its gust has not reached it yet: it still looks
+		# covered, so a tap there waits rather than chording.
+		if _now() < float(_blow_at[c]):
+			return
 		_show_chord(_state.chord(c), c)
 		return
 	if use == State.FLAG:
@@ -383,9 +394,15 @@ func _show_chord(r: Dictionary, c: int) -> void:
 		"too_many":
 			_refuse(c, "HH_CHORD_MANY")
 
+## A move counts (note_move emits `moved` and checks the solve); a hint's
+## does not, so it emits and checks for itself, as PuzzleBase's contract has
+## it.
 func _after_move() -> void:
-	note_move()
-	moved.emit()
+	if _hinting:
+		moved.emit()
+		check_solved()
+	else:
+		note_move()
 	_refresh()
 
 ## Runs `fn` after `delay`, unless the board has left the tree meanwhile or
@@ -642,7 +659,8 @@ func _ring_at(c: int) -> void:
 # --- input ---
 
 ## A touch resolves on release; a press held LONG_PRESS fires the other
-## chip's action at once and the release is then ignored.
+## chip's action at once and the release is then ignored. One finger holds
+## the press: another landing meanwhile is ignored, press and release.
 func _gui_input(event: InputEvent) -> void:
 	if _done:
 		return
@@ -650,8 +668,12 @@ func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		accept_event()
+		var finger: int = event.index if event is InputEventScreenTouch else -1
 		var c := _cell_at(event.position)
 		if event.pressed:
+			if _press_finger != -2 and finger != _press_finger:
+				return
+			_press_finger = finger
 			_press_cell = c
 			_long_fired = false
 			_press_id += 1
@@ -662,10 +684,15 @@ func _gui_input(event: InputEvent) -> void:
 						_long_fired = true
 						_act(c, State.FLAG if brush == State.RAKE else State.RAKE))
 			return
+		if finger != _press_finger:
+			return
 		var was := _press_cell
 		_press_cell = -1
+		_press_finger = -2
 		_press_id += 1
 		if _long_fired or c < 0 or c != was:
+			return
+		if event is InputEventScreenTouch and event.canceled:
 			return
 		_act(c, brush)
 
@@ -751,6 +778,7 @@ func hint() -> bool:
 	var r: Dictionary = _state.apply_hint(step)
 	_ring_at(c)
 	fx.cue("hint")
+	_hinting = true
 	if String(r.kind) == "pinned":
 		_flag_at[c] = _now()
 		_touch(c, _now() + Motion.POP_IN)
@@ -758,7 +786,10 @@ func hint() -> bool:
 		_after_move()
 	else:
 		_show_rake(r, c)
-		_tell("HH_HINT_RAKE", Face.Expr.HAPPY)
+		# A rake that finished the lawn has the win's line; leave it.
+		if not is_done():
+			_tell("HH_HINT_RAKE", Face.Expr.HAPPY)
+	_hinting = false
 	return true
 
 ## Every wrong flag's pennant turns rose and shivers, and holds until the
@@ -873,12 +904,29 @@ func _on_solved() -> void:
 	_say(tr("HH_WIN_NONE") if _state.woken == 0 else tr("HH_TIP_WOKE"), Face.Expr.JOY)
 	_refresh()
 
+## The hedgehogs a rake woke, so a reopened daily can say how many and wash
+## the same cells rose. Plain ints, because it goes through a ConfigFile.
+func completion_record() -> Dictionary:
+	var out: Array = []
+	for c in _state.size():
+		if _state.woke[c] == 1:
+			out.append(c)
+	return {"woke": out}
+
 ## A reopened daily that was already solved: every bare cell raked and every
-## hedgehog awake on it. Never check_solved(): `solved` must not fire twice.
+## hedgehog awake on it, the ones a rake woke back on their rose cells from
+## `completed_record` (a save from before completion_record() existed has
+## none, and reads as a day nobody woke). Never check_solved(): `solved`
+## must not fire twice.
 func restore_completed_board() -> void:
 	for c in _state.size():
 		if not _state.is_hog(c):
 			_state.open[c] = 1
+	_state.woke.fill(0)
+	_state.woken = 0
+	for w in _recorded_woke():
+		_state.woke[w] = 1
+		_state.woken += 1
 	_state.history = []
 	var t := _now()
 	_solved_at = t - 100.0
@@ -889,9 +937,23 @@ func restore_completed_board() -> void:
 		if _state.is_hog(c):
 			_face_at(c, Face.Expr.JOY)
 	_tip_timer.stop()
-	_say(tr("HH_WIN_NONE"), Face.Expr.JOY)
+	_say(tr("HH_WIN_NONE") if _state.woken == 0 else tr("HH_TIP_WOKE"), Face.Expr.JOY)
 	_still = null
 	_refresh()
+
+## The record's woken cells if every one is a hedgehog on today's lawn, each
+## once, and none otherwise.
+func _recorded_woke() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var raw = completed_record.get("woke", [])
+	if not raw is Array:
+		return out
+	for v in raw:
+		var c := int(v)
+		if c < 0 or c >= _state.size() or not _state.is_hog(c) or out.has(c):
+			return PackedInt32Array()
+		out.append(c)
+	return out
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
