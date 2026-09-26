@@ -16,6 +16,8 @@ func _initialize() -> void:
 		var bad := 0
 		var short := 0
 		var att_max := 0
+		var node_max := 0
+		var node_sum := 0
 		var cnt := 40
 		for s in cnt:
 			var rng := RandomNumberGenerator.new()
@@ -26,6 +28,9 @@ func _initialize() -> void:
 			worst = maxf(worst, ms)
 			sum += ms
 			att_max = maxi(att_max, int(g.attempts))
+			var nodes: int = g.nodes
+			node_max = maxi(node_max, nodes)
+			node_sum += nodes
 			var opt: int = g.opt
 			lo = mini(lo, opt)
 			hi = maxi(hi, opt)
@@ -46,4 +51,5 @@ func _initialize() -> void:
 				print("  BAD d=%d s=%d" % [d, s])
 		print("level %d: mean %.1f ms worst %.1f ms, shortest %d-%d, below min %d, attempts max %d, bad %d" % [
 			d, sum / cnt, worst, lo, hi, short, att_max, bad])
+		print("  nodes: max %d mean %.1f" % [node_max, float(node_sum) / cnt])
 	quit()

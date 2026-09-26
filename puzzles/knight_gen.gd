@@ -20,6 +20,16 @@ const DY := [-2, -1, 1, 2, 2, 1, -1, -2]
 const ATTEMPTS := 600
 ## How far the naive line is walked before it is called a failure.
 const NAIVE_CAP := 40
+## `solve`'s node cap during generation only: measured accepted-board node
+## counts (`tests/_probe_knight_gen.gd`'s "nodes" line) topped out at 669 on
+## Insane, the deepest band, over 40 seeds a level; NODE_CAP is about twice
+## that, rounded up to a round number, so a deal that would need far more
+## search than any accepted board ever has is abandoned early rather than
+## walked to `bd.max`. A capped BFS can only reject a deal early -- it never
+## accepts a longer line than an uncapped search would, because BFS finds the
+## shortest line first and the cap only ever cuts the search off before it
+## gets there.
+const NODE_CAP := 1500
 ## Per level: board size, rose knights (least, most), the shortest line's
 ## range, how many Ls from the king you start at least, and Insane's slack
 ## (the move budget is the shortest line plus this; 0 means no budget).
@@ -129,8 +139,15 @@ static func _key(you: int, foes: PackedInt32Array, base: int) -> int:
 
 ## The shortest winning line from a position, as the squares you land on;
 ## empty when there is none within `cap` moves. A move that gets you caught
-## is never part of a line.
-static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int) -> PackedInt32Array:
+## is never part of a line. `max_nodes` (0 = unlimited) is generation's own
+## early-out: once more than that many positions have been expanded, the
+## search gives up and returns empty, exactly as if the line did not exist
+## within `cap`. This can only ever make a hard deal get rejected sooner --
+## it can never hand back a longer line than an uncapped search would,
+## because a breadth-first search finds the shortest line first, before it
+## has expanded enough positions to hit the cap on any deal that was going to
+## be accepted anyway. `state.gd`'s future `hint_move` calls this uncapped.
+static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max_nodes: int = 0) -> PackedInt32Array:
 	var w: int = g.w
 	var base := w * w + 1
 	var root := _key(you, foes, base)
@@ -142,6 +159,9 @@ static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int) -> 
 	var qk := PackedInt32Array([root])
 	var h := 0
 	while h < qy.size():
+		if max_nodes > 0 and h >= max_nodes:
+			last_nodes = h
+			return PackedInt32Array()
 		var y := qy[h]
 		var fs: PackedInt32Array = qf[h]
 		var depth := qd[h]
@@ -245,7 +265,7 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 		var g := {"w": w, "king": king, "you": you, "foes": foes}
 		if naive_wins(g):
 			continue
-		var line := solve(g, you, foes, int(bd.max))
+		var line := solve(g, you, foes, int(bd.max), NODE_CAP)
 		if line.is_empty():
 			continue
 		g["line"] = line
