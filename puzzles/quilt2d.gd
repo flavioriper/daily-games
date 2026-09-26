@@ -108,6 +108,48 @@ const WIN_WAIT := 1.6
 ## Three, as every flat board gives.
 const HINTS := 3
 
+# --- the polish (spec amendment, 2026-09-26) ---
+## The backing is a tufted quilt: every cell a soft puff of batting, inset
+## this far, and a tie of thread where four puffs meet.
+const PUFF_INSET := 0.07
+const PUFF_R := 0.2
+const PUFF_ALPHA := 0.26
+const TIE_LEN := 0.055
+const TIE_W := 0.028
+## The rack stands on a felt mat with a stitched border.
+const MAT_PAD := 14.0
+const MAT_R := 26.0
+const MAT := Color("e4e2c6")
+const MAT_EDGE := Color("cfcaa6")
+const MAT_STITCH := Color("f7f3e4")
+## A patch that has left the rack leaves its outline in tailor's chalk.
+const CHALK_W := 0.05
+const CHALK_ON := 0.14
+const CHALK_OFF := 0.1
+## Taken hold of, a patch grows from the rack's cell to the quilt's over
+## GROW_TIME and rises HOLD_LIFT above the thumb as it does, so it leaves the
+## rack from exactly where it lay; it casts HELD_SHADOW (in cells) while it
+## is up, and leans with the drag -- SWAY_GAIN radians per pixel a second,
+## never past SWAY_MAX -- the way a piece of cloth held by one corner trails.
+const GROW_TIME := 0.16
+const HELD_SHADOW := Vector2(0.07, 0.24)
+const SWAY_GAIN := 0.00005
+const SWAY_MAX := 0.07
+## Let go where it fits, a patch glides down onto its snapped cells over the
+## first LAND_GLIDE of LAND_TIME and lands with a squash of LAND_SQUASH.
+## Then a needle runs the quilting stitch round inside its edge over
+## SEW_TIME, and the seams it now shares sew themselves after it.
+const LAND_TIME := 0.32
+const LAND_GLIDE := 0.34
+const LAND_SQUASH := 0.06
+const SEW_TIME := 0.5
+## A patch flying home rises this far (in its starting cells) on the way.
+const FLY_ARC := 0.4
+## On the solve a light crosses the quilt, lifting each cloth this far toward
+## the surface as it passes. A celebration and not a state: it is gone again
+## before the win screen comes up.
+const SHEEN := 0.36
+
 const TIP_CYCLE := 8.0
 const TIPS := [
 	"QL_TIP_DRAG",
@@ -150,6 +192,12 @@ var _solved_at := -1.0
 var _quilt: ArrayMesh
 var _rack: ArrayMesh
 var _hand: ArrayMesh
+## The tufted backing, which never changes while the card keeps its size:
+## built once and kept, rather than retraced on every frame of a drag.
+var _ground: ArrayMesh
+## Patches that landed out of the hand, with the corner the hand let them go
+## at: they glide down from there rather than popping in.
+var _glide: Dictionary = {}
 ## The meshes the last _draw actually handed to the canvas item. A canvas
 ## command holds a mesh by RID and not by reference, so dropping the only
 ## reference to a mesh still on the item's command list leaves the renderer
@@ -162,6 +210,9 @@ var _spans: Array = []
 ## The backing's own loops and the faint rules inside it, likewise.
 var _back_loops: Array = []
 var _back_rules: Array = []
+var _back_cells: Array = []
+## Each patch's quilting line: its loop shrunk by Cloth.QUILT_INSET.
+var _insets: Array = []
 
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
@@ -200,6 +251,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_flying = {}
 	_landed = {}
 	_lifted = {}
+	_glide = {}
 	_refused = {}
 	_pending = []
 	_anim_until = 0.0
@@ -217,9 +269,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 func _shape_cache() -> void:
 	_loops = []
 	_spans = []
+	_insets = []
+	_ground = null
 	for p in _state.shapes.size():
 		var cells: Array = _state.shapes[p]
 		_loops.append(Cloth.loops(cells))
+		_insets.append(Cloth.inset_loops(cells))
 		var span := Vector2i.ZERO
 		for c: Vector2i in cells:
 			span.x = maxi(span.x, c.x + 1)
@@ -231,6 +286,7 @@ func _shape_cache() -> void:
 			if _state.in_region(c, r):
 				back.append(Vector2i(c, r))
 	_back_loops = Cloth.loops(back)
+	_back_cells = back
 	# The rules between two backing cells, drawn once as a hint of the grid
 	# the patches snap to. Only the inner edges: the outer ones are the hem.
 	_back_rules = []
@@ -386,6 +442,7 @@ func card_centred() -> bool:
 	return false
 
 func _layout() -> void:
+	_ground = null
 	_refresh()
 
 # --- the frame ---
@@ -395,10 +452,25 @@ func _process(delta: float) -> void:
 	if _cell() <= 0.0 or _state.shapes.is_empty():
 		return
 	var t := _now()
+	_sway(delta)
 	_retire(t)
 	_fire_pending(t)
 	if _animating(t):
 		_refresh()
+
+## The lean of the patch in the hand: toward the drag's own speed across,
+## eased so a jerk of the finger swings it rather than snapping it, and back
+## to upright when the finger rests. Nothing under reduce-motion.
+func _sway(delta: float) -> void:
+	if _drag.is_empty():
+		return
+	var point: Vector2 = _drag["point"]
+	var last: Vector2 = _drag.get("last", point)
+	_drag["last"] = point
+	var want := 0.0
+	if not Motion.reduce and delta > 0.0:
+		want = clampf((point.x - last.x) / delta * SWAY_GAIN, -SWAY_MAX, SWAY_MAX)
+	_drag["sway"] = lerpf(float(_drag.get("sway", 0.0)), want, 1.0 - exp(-delta * 10.0))
 
 ## Every ring and sparkle whose moment has come.
 func _fire_pending(t: float) -> void:
@@ -453,7 +525,7 @@ func _animating(t: float) -> bool:
 	# Every patch's landing pop and the seam wave that ran out of it, and
 	# every lift's pop-out.
 	for p in _landed:
-		if t - float(_landed[p]) < Motion.POP_IN + _seam_span(int(p)):
+		if t - _sewn_at(int(p)) < maxf(maxf(Motion.POP_IN, SEW_TIME), _seam_span(int(p))):
 			return true
 	for p in _lifted:
 		if t - float(_lifted[p]) < Motion.POP_OUT:
@@ -473,6 +545,14 @@ func _seam_span(p: int) -> float:
 	var reach := float(span.x + span.y)
 	return reach * STITCH_STEP + STITCH_TIME
 
+## When patch `p`'s stitching starts: the moment it landed, or, for one that
+## glided down out of the hand, the moment it touched the backing.
+func _sewn_at(p: int) -> float:
+	var at := float(_landed.get(p, -100.0))
+	if _glide.has(p) and not Motion.reduce:
+		at += LAND_TIME * LAND_GLIDE
+	return at
+
 ## How long the solve wave takes to cross the quilt: the far corner's delay.
 func _solve_span() -> float:
 	return Motion.stagger(maxi(_state.cols + _state.rows - 2, 0), Motion.SOLVE_STAGGER)
@@ -485,6 +565,8 @@ func _busy_for(seconds: float) -> void:
 ## draw. What the last _draw handed over is still held by _shown, so the
 ## renderer is never left pointing at a freed RID.
 func _refresh() -> void:
+	if _state.shapes.is_empty():
+		_ground = null
 	_quilt = null
 	_rack = null
 	_hand = null
@@ -493,41 +575,101 @@ func _refresh() -> void:
 # --- where each patch is, this frame ---
 
 ## A patch's place on the card right now: the top-left of its bounding box,
-## the cell it is drawn at, the squash on it and how solid it is. One
-## function for the four states a patch can be in -- waiting, held, flying
-## home and sewn on -- so no two of them can disagree about where it is.
+## the cell it is drawn at, the squash and the lean on it, how solid it is,
+## how far off the cloth it is held (its shadow) and the colour of its face.
+## One function for the four states a patch can be in -- waiting, held,
+## flying home and sewn on -- so no two of them can disagree about where it
+## is.
 func _frame_of(p: int, t: float) -> Dictionary:
 	var sc := Vector2.ONE
 	var alpha := 1.0
 	var pos: Vector2
 	var cell := _cell()
+	var rot := 0.0
+	var lift := 0.0
+	var face: Color = Cloth.cloth(p)
 	if not _drag.is_empty() and int(_drag["patch"]) == p:
-		pos = _held_corner()
-		sc = Vector2.ONE * Motion.LIFT_SCALE
+		var g := _grow(t)
+		cell = lerpf(float(_drag["c0"]), _cell(), g)
+		pos = _held_corner_at(cell, g)
+		sc = Vector2.ONE * lerpf(1.0, Motion.LIFT_SCALE, g)
+		rot = float(_drag.get("sway", 0.0))
+		lift = g
 	elif _flying.has(p):
 		var f: Dictionary = _flying[p]
 		var u := clampf((t - float(f["at"])) / FLY_TIME, 0.0, 1.0)
 		var e := Motion.back_out(u)
 		pos = (f["from"] as Vector2).lerp(f["to"] as Vector2, e)
 		cell = lerpf(float(f["c0"]), float(f["c1"]), e)
+		if not Motion.reduce:
+			pos.y -= sin(u * PI) * FLY_ARC * float(f["c0"])
+			lift = sin(u * PI)
 		if _refused.has("patch") and int(_refused["patch"]) == p:
 			pos.x += Motion.shiver_offset(t - float(_refused["at"]))
 	elif int(_state.at[p]) >= 0:
 		pos = _corner_of(int(_state.at[p]))
-		sc = Motion.pop_in_scale(t - float(_landed.get(p, -100.0)))
+		var since := t - float(_landed.get(p, -100.0))
+		if _glide.has(p):
+			var land := _land(p, pos, since)
+			pos = land["pos"]
+			sc = land["sc"]
+			lift = float(land["lift"])
+		else:
+			sc = Motion.pop_in_scale(since)
 		# A given refusing to be picked up shivers where it lies; it has no
 		# flight to shiver along.
 		if not _refused.is_empty() and int(_refused["patch"]) == p:
 			pos.x += Motion.shiver_offset(t - float(_refused["at"]))
 		if _solved_at >= 0.0:
 			pos.y += _solve_hop(p, t)
+			face = face.lerp(Pal.SURFACE, SHEEN * _sheen(p, t))
 	else:
 		pos = _bay_home(p)
 		cell = _rack_cell()
 		var since := t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER)
 		sc = Motion.pop_in_scale(since)
 		alpha = Motion.appear_level(since, Motion.ENTER_POP)
-	return {"pos": pos, "cell": cell, "sc": sc, "alpha": alpha}
+	return {"pos": pos, "cell": cell, "sc": sc, "alpha": alpha, "rot": rot,
+		"lift": lift, "face": face}
+
+## How far the patch in the hand has grown from the cell it was picked up at
+## to the quilt's, 0 to 1, with the back ease so it overshoots a touch.
+func _grow(t: float) -> float:
+	if Motion.reduce:
+		return 1.0
+	return Motion.back_out(clampf((t - float(_drag["since"])) / GROW_TIME, 0.0, 1.0))
+
+## The patch in the hand drawn at `cell` and `g` of the way up: the cell it
+## was taken hold of stays under the finger, and it rises HOLD_LIFT above
+## the thumb as it grows. At g = 1 this is `_held_corner()` exactly.
+func _held_corner_at(cell: float, g: float) -> Vector2:
+	var grab: Vector2i = _drag["grab"]
+	var point: Vector2 = _drag["point"]
+	return point - Vector2(float(grab.x) + 0.5, float(grab.y) + 0.5 + HOLD_LIFT * g) * cell
+
+## A patch let go where it fits: it glides from where the hand held it onto
+## its snapped cells, shrinking from the hand's lift as its shadow closes
+## under it, then lands -- wide and low, and back, once. {"pos", "sc",
+## "lift"}.
+func _land(p: int, corner: Vector2, since: float) -> Dictionary:
+	if Motion.reduce or since >= LAND_TIME:
+		return {"pos": corner, "sc": Vector2.ONE, "lift": 0.0}
+	var u := clampf(since / LAND_TIME, 0.0, 1.0)
+	if u < LAND_GLIDE:
+		var g := u / LAND_GLIDE
+		var e := g * g * (3.0 - 2.0 * g)
+		return {"pos": (_glide[p] as Vector2).lerp(corner, e),
+			"sc": Vector2.ONE * lerpf(Motion.LIFT_SCALE, 1.0, e), "lift": 1.0 - e}
+	var v := (u - LAND_GLIDE) / (1.0 - LAND_GLIDE)
+	var a := LAND_SQUASH * sin(v * TAU) * (1.0 - v)
+	return {"pos": corner, "sc": Vector2(1.0 + a, 1.0 - a), "lift": 0.0}
+
+## The solve's light on patch `p`: 0 to 1 and back as the diagonal front
+## crosses its middle.
+func _sheen(p: int, t: float) -> float:
+	var mid := _centroid(p)
+	return Motion.flash_level(t - _solved_at - Motion.SOLVE_DELAY
+		- Motion.stagger(int(mid.x + mid.y), Motion.SOLVE_STAGGER), Motion.FLASH_IN, Motion.SOLVE_TIME)
 
 ## The top-left of the patch in the hand: the cell under the finger, less the
 ## cell of the patch that was taken hold of, and lifted HOLD_LIFT above the
@@ -618,10 +760,10 @@ func _seams() -> Array:
 				else:
 					a = here; b = here + Vector2(1.0, 0.0)
 				var owner := p
-				var when := float(_landed.get(p, -100.0))
-				if q >= 0 and float(_landed.get(q, -100.0)) > when:
+				var when := _sewn_at(p)
+				if q >= 0 and _sewn_at(q) > when:
 					owner = q
-					when = float(_landed.get(q, -100.0))
+					when = _sewn_at(q)
 				out.append({
 					"a": o + a * cell, "b": o + b * cell,
 					"owner": owner, "at": when,
@@ -656,14 +798,20 @@ func _draw() -> void:
 	var since := t - _opened - Motion.ENTER_DELAY
 	var seen := Motion.appear_level(since, Motion.ENTER_POP)
 	var grow := Motion.wide_pop_scale(since)
+	if _rack == null:
+		_rack = _build_rack(t)
 	if seen > 0.0:
+		var mid := _field_centre()
+		var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+		if _ground == null:
+			_ground = _build_ground()
+		if _ground != null:
+			draw_mesh(_ground, null, xf, Color(1.0, 1.0, 1.0, seen))
+			shown.append(_ground)
 		if _quilt == null:
 			_quilt = _build_quilt(t)
 		if _quilt != null:
-			var mid := _field_centre()
-			draw_mesh(_quilt, null,
-				Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow)),
-				Color(1.0, 1.0, 1.0, seen))
+			draw_mesh(_quilt, null, xf, Color(1.0, 1.0, 1.0, seen))
 			shown.append(_quilt)
 	if _rack == null:
 		_rack = _build_rack(t)
@@ -683,23 +831,51 @@ func _draw() -> void:
 ## under a patch is a seam nobody sees.
 func _build_quilt(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var cell := _cell()
-	# The backing is drawn with the patches' own silhouette and lip, so the
-	# quilt reads as one more piece of cloth -- the pale one underneath.
-	Cloth.patch(b, _back_loops, _origin(), cell, Vector2i.ZERO,
-		Pal.QUILT_BACK, Pal.LINE)
-	var rule := Color(Pal.QUILT_RULE, RULE_ALPHA)
-	for pair: Array in _back_rules:
-		b.stroke(PackedVector2Array([_origin() + (pair[0] as Vector2) * cell,
-			_origin() + (pair[1] as Vector2) * cell]), RULE_W * cell, rule, false, false)
 	_ghost(b, t)
+	# Landed patches first and the one still gliding down last, so a patch
+	# on its way onto the quilt passes over its neighbours and not under.
+	var order: Array = []
 	for p in _state.shapes.size():
 		if int(_state.at[p]) < 0 or (not _drag.is_empty() and int(_drag["patch"]) == p):
 			continue
-		_patch(b, p, _frame_of(p, t))
+		order.append(p)
+	order.sort_custom(func(a: int, z: int) -> bool:
+		return float(_landed.get(a, -100.0)) < float(_landed.get(z, -100.0)))
+	for p: int in order:
+		var f := _frame_of(p, t)
+		_patch(b, p, f, true)
 		if int(_state.locked[p]) == 1:
-			_hint_glow(b, p, _frame_of(p, t))
+			_hint_glow(b, p, f)
 	_stitches(b, t)
+	return _mesh(b)
+
+## The backing, built once a layout: a pale piece of cloth with the
+## patches' own silhouette and lip, the faint rules of the grid the patches
+## snap to, a puff of batting in every cell and a tie of thread wherever four
+## puffs meet. A tufted quilt top, before anything is sewn onto it.
+func _build_ground() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var cell := _cell()
+	var o := _origin()
+	Cloth.patch(b, _back_loops, o, cell, Vector2i.ZERO, Pal.QUILT_BACK, Pal.LINE)
+	var rule := Color(Pal.QUILT_RULE, RULE_ALPHA)
+	for pair: Array in _back_rules:
+		b.stroke(PackedVector2Array([o + (pair[0] as Vector2) * cell,
+			o + (pair[1] as Vector2) * cell]), RULE_W * cell, rule, false, false)
+	var puff := Color(Pal.SURFACE, PUFF_ALPHA)
+	for c: Vector2i in _back_cells:
+		b.polygon(Face.Builder.round_rect(o + (Vector2(c) + Vector2.ONE * PUFF_INSET) * cell,
+			Vector2.ONE * (1.0 - 2.0 * PUFF_INSET) * cell, PUFF_R * cell), puff)
+	var tie := Color(Pal.LINE, 0.85)
+	for c: Vector2i in _back_cells:
+		# The tie at this cell's top-left corner, where it meets three others.
+		if not (_state.in_region(c.x - 1, c.y) and _state.in_region(c.x, c.y - 1)
+				and _state.in_region(c.x - 1, c.y - 1)):
+			continue
+		var at := o + Vector2(c) * cell
+		var d := TIE_LEN * cell
+		b.stroke(PackedVector2Array([at + Vector2(-d, -d), at + Vector2(d, d)]), TIE_W * cell, tie)
+		b.stroke(PackedVector2Array([at + Vector2(d, -d), at + Vector2(-d, d)]), TIE_W * cell, tie)
 	return _mesh(b)
 
 ## The rack: every patch still waiting, any flying home to it, and the faint
@@ -715,16 +891,38 @@ func _build_quilt(t: float) -> ArrayMesh:
 func _build_rack(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var cell := _rack_cell()
+	_mat(b)
+	var chalk := Color(MAT_STITCH, 0.95)
 	for p in _state.shapes.size():
-		if not _drag.is_empty() and int(_drag["patch"]) == p:
-			continue
-		if int(_state.at[p]) >= 0 and not _flying.has(p):
+		var held: bool = not _drag.is_empty() and int(_drag["patch"]) == p
+		if held or (int(_state.at[p]) >= 0 and not _flying.has(p)):
 			for loop: PackedVector2Array in _loops[p]:
-				b.polygon(Cloth.laid(loop, _bay_home(p), cell, _spans[p]),
-					Color(Cloth.cloth(p), GONE_ALPHA))
+				var pts := Cloth.laid(loop, _bay_home(p), cell, _spans[p])
+				b.polygon(pts, Color(Cloth.cloth(p), GONE_ALPHA))
+				Cloth.dash_loop(b, pts, CHALK_W * cell, CHALK_ON * cell, CHALK_OFF * cell, chalk)
 			continue
-		_patch(b, p, _frame_of(p, t))
+		if not _flying.has(p):
+			_patch(b, p, _frame_of(p, t))
+	# The flights last, so a patch on its way home passes over the ones
+	# still waiting rather than under them.
+	for p in _flying:
+		_patch(b, int(p), _frame_of(int(p), t))
 	return _mesh(b)
+
+## The felt mat the rack's patches wait on: a soft sage felt with a lip and
+## a stitched border, so the rack reads as a place the cloth is kept and not
+## as patches floating on the card.
+func _mat(b) -> void:
+	var box := _rack_box().grow(MAT_PAD)
+	box.size.y = minf(box.size.y, size.y - INSET * 0.5 - box.position.y)
+	if box.size.x <= 0.0 or box.size.y <= 0.0:
+		return
+	var pts := Face.Builder.round_rect(box.position, box.size, MAT_R)
+	b.polygon(Cloth._moved(pts, Vector2(0.0, 5.0)), MAT_EDGE)
+	b.polygon(pts, MAT)
+	var inner := box.grow(-12.0)
+	Cloth.dash_loop(b, Face.Builder.round_rect(inner.position, inner.size, MAT_R - 10.0),
+		3.5, 12.0, 8.0, MAT_STITCH)
 
 ## The patch in the hand, alone, so it draws over the quilt and the rack
 ## alike. Refused, it is drawn in the family's rose instead of its cloth.
@@ -745,10 +943,45 @@ func _mesh(b) -> ArrayMesh:
 
 ## One patch, in its cloth -- or in the family's rose while it is being
 ## refused, which is the one thing that can change a patch's colour.
-func _patch(b, p: int, f: Dictionary) -> void:
-	Cloth.patch(b, _loops[p], f["pos"], float(f["cell"]), _spans[p],
-		Cloth.cloth(p), Cloth.cloth_deep(p), f["sc"], float(f["alpha"]))
+##
+## Every patch wears its print; a patch sewn on the quilt (`sewn`) also wears
+## the quilting stitch just inside its edge, which is what tells a patch that
+## is sewn from one only lying there -- and a lifted one casts its shadow.
+func _patch(b, p: int, f: Dictionary, sewn := false) -> void:
+	var cell := float(f["cell"])
+	var lift := float(f.get("lift", 0.0))
+	Cloth.shadow(b, _loops[p], f["pos"], cell, _spans[p], HELD_SHADOW * cell * lift,
+		minf(lift * 1.5, 1.0) * float(f["alpha"]), f["sc"], float(f.get("rot", 0.0)))
+	Cloth.patch(b, _loops[p], f["pos"], cell, _spans[p],
+		f.get("face", Cloth.cloth(p)), Cloth.cloth_deep(p), f["sc"], float(f["alpha"]),
+		float(f.get("rot", 0.0)))
+	Cloth.print_cloth(b, _state.shapes[p], p, f["pos"], cell, _spans[p],
+		f["sc"], float(f["alpha"]), float(f.get("rot", 0.0)))
+	if sewn:
+		_quilting(b, p, f)
 	_blush(b, p, f)
+
+## The quilting stitch round inside a sewn patch's edge, run by a needle over
+## SEW_TIME from the moment the patch touched the backing. It is there the
+## moment the patch is under reduce-motion.
+func _quilting(b, p: int, f: Dictionary) -> void:
+	var t := _now()
+	var u := 1.0 if Motion.reduce else clampf((t - _sewn_at(p)) / SEW_TIME, 0.0, 1.0)
+	if u <= 0.0:
+		return
+	var cell := float(f["cell"])
+	var ink := Cloth.cloth_thread(p)
+	if _solved_at >= 0.0:
+		ink = ink.lerp(Pal.SUN_RAY, _sheen(p, t))
+	for loop: PackedVector2Array in _insets[p]:
+		var pts := Cloth.laid(loop, f["pos"], cell, _spans[p], f["sc"],
+			float(f.get("rot", 0.0)), Cloth.RADIUS * 0.6)
+		var total := Cloth.perimeter(pts)
+		Cloth.dash_loop(b, pts, Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell,
+			Cloth.QUILT_OFF * cell, ink, total * u)
+		if u < 1.0:
+			var head: Array = Cloth.along(pts, total * u)
+			Cloth.needle(b, head[0], head[1], cell, ink)
 
 ## A patch that is being turned down wears a rose **halo** round its
 ## silhouette. It does not blush.
@@ -780,7 +1013,7 @@ func _blush(b, p: int, f: Dictionary) -> void:
 		return
 	var cell := float(f["cell"])
 	for loop: PackedVector2Array in _loops[p]:
-		b.stroke(Cloth.laid(loop, f["pos"], cell, _spans[p], f["sc"]),
+		b.stroke(Cloth.laid(loop, f["pos"], cell, _spans[p], f["sc"], float(f.get("rot", 0.0))),
 			HALO_W * cell, Color(Pal.BAD, HALO_ALPHA * level), true)
 
 ## The glow a hint's patch keeps: a soft sun ring round its silhouette, so a
@@ -933,6 +1166,10 @@ func _grab(local: Vector2) -> void:
 		_refresh()
 		return
 	var from := int(_state.at[p])
+	# The cell it is picked up at: the quilt's, or the rack's smaller one, so
+	# it grows from exactly the size it was lying at.
+	var c0 := _cell() if from >= 0 else _rack_cell()
+	_glide.erase(p)
 	if from >= 0:
 		# Taken off the quilt with no history of its own: one gesture is one
 		# undo, so the entry is pushed when the hand lets go and knows where
@@ -940,7 +1177,8 @@ func _grab(local: Vector2) -> void:
 		_state.take(p)
 		_lifted[p] = _now()
 		_landed.erase(p)
-	_drag = {"patch": p, "grab": hit["cell"], "point": local, "from": from, "since": _now()}
+	_drag = {"patch": p, "grab": hit["cell"], "point": local, "from": from, "since": _now(),
+		"c0": c0}
 	_refused = {}
 	_flying.erase(p)
 	fx.cue("lift")
@@ -997,8 +1235,9 @@ func _release() -> void:
 	if code == State.OK:
 		_state.drop(p, origin, from)
 		_landed[p] = _now()
+		_glide[p] = hand
 		_lifted.erase(p)
-		_busy_for(Motion.POP_IN + _seam_span(p))
+		_busy_for(LAND_TIME + maxf(SEW_TIME, _seam_span(p)))
 		fx.cue("place")
 		if from == origin:
 			# Back where it came from. Nothing happened, so nothing is said
@@ -1050,6 +1289,7 @@ func _fly_home(p: int, at: Vector2, after := 0.0) -> void:
 	}
 	_lifted[p] = _now()
 	_landed.erase(p)
+	_glide.erase(p)
 
 # --- the sprout's line ---
 
@@ -1112,6 +1352,7 @@ func _settle(before: Array, t: float) -> void:
 			continue
 		if now >= 0:
 			_landed[i] = t
+			_glide.erase(i)
 			_lifted.erase(i)
 			_flying.erase(i)
 		elif was >= 0:
@@ -1213,6 +1454,7 @@ func restore_completed_board() -> void:
 	_drag = {}
 	_flying = {}
 	_lifted = {}
+	_glide = {}
 	_refused = {}
 	_pending = []
 	_anim_until = 0.0

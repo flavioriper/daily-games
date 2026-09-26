@@ -802,3 +802,38 @@ Two things are left open and named rather than fixed:
   everything in its way, so the board it leaves is always legal and
   finishable. No seed in 1,500 has produced an unproved board, so this path
   is reasoned rather than observed.
+
+## Amendment, 2026-09-26: the polish pass
+
+- **Every cloth carries a print**, by index (`patch_cloth.gd`'s
+  `print_cloth`): polka dots, gingham, a flower sprig, pinstripes, little
+  crosses, broad stripes, pin dots and diamonds, in the cloth taken toward
+  the surface (light) or the ink (woven), never another hue. The print is
+  identity and never state, so section 5's rule stands. It also tells two
+  cloths apart by more than their hue. Every motif stays inside its cell,
+  or runs the length of a row or column of the patch and stops
+  `PRINT_MARGIN` short of the edge, so nothing has to be clipped.
+- **A sewn patch wears a quilting stitch** in pale thread `QUILT_INSET` inside
+  its edge. A patch waiting on the rack has none, so the stitch is what says
+  "sewn". A needle runs it round over `SEW_TIME` once the patch touches the
+  backing, and the seams wave out after it, as before.
+- **The backing is tufted**: a puff of batting in every cell and a tie of
+  thread wherever four meet. It is built once per layout into its own mesh
+  (`_ground`, +1 draw call), not rebuilt on every frame of a drag.
+- **The rack is a felt mat** with a stitched border. A patch that has left
+  the rack, or is in the hand, leaves its outline in tailor's chalk.
+- **Motion**: a patch taken hold of grows from the cell it lay at to the
+  quilt's over `GROW_TIME`, rising `HOLD_LIFT` as it does so it leaves from
+  exactly where it lay. It casts a shadow while held and leans with the
+  drag's speed (`SWAY_MAX` 0.07 rad). Let go where it fits, it glides from
+  the hand onto its snapped cells and lands with a squash (`LAND_TIME`), in
+  place of the old pop from nothing. A hint or an undo still pops. A patch
+  going home arcs up `FLY_ARC` and draws over the rack's waiting patches. On
+  the solve a light crosses the quilt diagonally (`SHEEN`) and warms every
+  quilting stitch with the hem.
+- Measured at `--resolution 810x1440`: 56 draw calls with one patch
+  laid (55 before) and 78 on the fullest board (80 recorded). Idle is
+  2.1-2.3 ms, 57 on a refusal. Reduce motion is pixel-identical at rest,
+  and ANGLE matches the default driver to 0/255. Suite 122583/0, win
+  harness 21/21. The menu card is unchanged: at its 22-33 px cell a print
+  would be a smudge.
