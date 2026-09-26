@@ -257,3 +257,75 @@ Open, still, from section 9: the hard cell, the crowd of eighteen faces, the
 tree that reacts to nothing, the automatic cairns and the centred card.
 Nothing here answers them; it only makes the flat board move with the same
 hand as the other five.
+
+## 11. Amendment: the second polish, 2026-09-25
+
+The user asked for the design and the animation to be polished. Built
+directly, like the second passes of Code Break, Balance, Untangle and Shikaku
+the same evening, and this amendment is the record. The rules, the layout,
+the chips and section 10's table are unchanged except where named.
+
+**The meadow is dressed, but never inside a square.** Section 10's reason
+for no tufts still holds -- a tuft in a cell would read as a piece -- so a
+tuft (`Scenery.tuft`, made public for this) stands on some of the grid's
+inner crossings (`TUFT_SHARE`) and a small five-petal flower on a few more
+(`FLOWER_SHARE`). A crossing belongs to no square, so nothing a player puts
+down ever stands on one. A light runs along the turf's top edge
+(`RIM_LIGHT`). All of it is in the cached meadow mesh.
+
+**The tree and the tent are shaded.** Each of the conifer's tiers has a lit
+left half and a shaded right half, with its hem bowed up between the tips so
+they droop (`HEM_BOW`, `TIER_SHADE`), and its trunk has a dark side. The tent
+has poles crossed over its ridge, a seam down the lit slope with light along
+its outer edge, its door flap rolled back to show the lining, and a wooden
+peg at the foot of each guy line. On JOY its doorway is lamp-lit (`SUN`
+toward the canvas, with a paler core), and JOY only ever comes with the win.
+The menu card and the how-to-play diagram draw these same faces and pick up
+the change. Nothing else draws them, so it is not opt-in the way Untangle's
+pleats were.
+
+**A cairn has three tiers and no two are alike.** Each stone is lit along
+its crest (`CREST`). A square leans its cairn by up to `CAIRN_TILT`, sizes it
+within `CAIRN_JITTER` and slides the cap by up to `CAIRN_SHIFT`, all off two
+fixed hashes of the square, so a swept row no longer reads as one stamp laid
+seven times.
+
+**A tent is pitched, not popped.** It stands on a pivot at the foot of its
+fabric (`FOOT`), so it comes up out of the ground: flat and wide
+(`PITCH_FROM`), stretched past its height (`PITCH_STRETCH`), and home on the
+back ease over `PITCH_TIME`. Struck, whether by a tap, an undo or Reset, it
+folds back down into the ground over `STRIKE_TIME` instead of shrinking with
+the quarter turn. With the new pivot, the press, Check's wobble and the solve
+hop all rock it on its foot. A hint's tent still drops in from above.
+
+**A cairn is stacked a stone at a time.** First the two at its foot with the
+shadow, then the middle one, then the cap, `STACK_STEP` apart. Each drops on
+from `STACK_DROP` of the cairn's height, reading `Motion.drop_in_lift` and
+`pop_in_scale` over `STACK_TIME`; the cap's glint grows with the cap. Taken
+away, the cap goes first (`UNSTACK_STEP`), each tier rising `UNSTACK_LIFT` as
+it shrinks.
+
+**The win is a camp.** The cairns no longer fade. They sink into the turf in
+the same scatter as before (`CLEAR_*`). As each one is half down, a tuft grows
+on `WIN_TUFT_SHARE` of the squares nothing stands on (those tufts are inside
+squares, but nothing more can be put down by then). As the solve wave reaches
+each tent, its doorway lights and throws a warm pool on the grass in front
+(`GLOW_*`). `restore_completed_board()` opens onto the same picture, because
+the tufts are chosen by square and not by whether a cairn was there.
+
+Under reduce motion none of it moves. A tent is up or gone, a cairn stands
+whole or is gone, and the win's camp is there at once.
+
+**Measured** on this Mac at `--resolution 810x1440` with
+`tests/_shot_anim.gd -- tents`, before and after on the same day's board.
+Draw calls are unchanged: **94** swept and bare, and 94 under reduce motion.
+The harness's 2.2 s idle window catches the stacking's tail and reads 2.57
+and 2.62 ms against 2.42 and 2.41 before. With the window moved to 3.2-5.2 s,
+a settled board reads **2.25 and 2.24 ms against 2.28 and 2.31 before**. The
+reduce-motion pair 1.5 s apart is pixel-identical. Under reduce motion, ANGLE
+agrees on 94 with a max channel delta of 1/255 (compared under reduce motion
+because the trees' sway has a random phase each run). Suite 122583/0;
+`tests/_win.gd` windowed 21/21. The menu reads 260 calls both before and
+after. A throwaway probe pitched the answer's tents, a wrong one, a sweep,
+Check, two undos, a full sweep, the solve and `restore_completed_board()`, and
+shot each of them.

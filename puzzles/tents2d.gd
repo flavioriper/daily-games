@@ -35,8 +35,11 @@ extends "res://core/puzzle_base.gd"
 ## neighbour's landing, wobbles on Check and shivers when it refuses. The
 ## cairns, the shade and the blush are drawn, so they read the same recipes
 ## as curves (Motion.pop_in_scale and its siblings; the doc's rule 8) and
-## never copy a number. The cairns clearing away on the win are this board's
-## own signature.
+## never copy a number. This board's own signatures: a tent is pitched up out
+## of the ground from its foot and struck back into it, a cairn is stacked a
+## stone at a time and taken down cap first, and on the win the cairns sink
+## into the turf, tufts come up where some of them stood and every doorway is
+## lit.
 ## Spec: docs/superpowers/specs/2026-09-18-tents-flat-design.md, sections 2
 ## to 7 and the amendment at its end, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#tents).
@@ -99,6 +102,50 @@ const CLEAR_SHRINK := 0.4
 ## How long the host waits before the win screen: the solve wave and the
 ## clearing both have to run their length first.
 const WIN_WAIT := 1.6
+## A tent is pitched up out of the ground rather than popped from its middle:
+## it stands on a pivot at the foot of its fabric (FOOT, in its seat), comes
+## up from flat and wide, stretches past its height and settles on the back
+## ease. Struck, it folds back down into the ground the same way.
+const FOOT := 0.9
+const PITCH_TIME := 0.3
+const PITCH_FROM := Vector2(1.2, 0.0)
+const PITCH_STRETCH := Vector2(0.92, 1.12)
+const STRIKE_TIME := 0.16
+## A cairn is stacked a stone at a time -- the two at its foot, the middle
+## one, the cap -- each dropping on from STACK_DROP of the cairn's height with
+## the pop's squash; taken away, the cap goes first.
+const STACK_STEP := 0.07
+const STACK_TIME := 0.18
+const STACK_DROP := 0.3
+const UNSTACK_STEP := 0.04
+const UNSTACK_LIFT := 0.12
+const CAIRN_IN := 2.0 * STACK_STEP + STACK_TIME
+const CAIRN_OUT := 2.0 * UNSTACK_STEP + Motion.POP_OUT
+## Every square leans its cairn and sizes it a little differently, so a row
+## of them is a row of cairns and not one stamped seven times.
+const CAIRN_TILT := 0.14
+const CAIRN_JITTER := 0.06
+const CAIRN_SHIFT := 0.05
+## Each stone's lit crest, toward white.
+const CREST := 0.3
+## The meadow's dressing: a tuft of grass on some of the grid's crossings and
+## a flower on a few more, never inside a square, so nothing a player puts
+## down stands on one. And the light along the turf's top edge.
+const TUFT_SHARE := 0.3
+const FLOWER_SHARE := 0.1
+const TUFT_H := 0.16
+const FLOWER_R := 0.045
+const RIM_LIGHT := 0.35
+## The win: the cairns sink into the turf, and on some of the squares they
+## leave a tuft grows up where they stood, so the last picture is a camp in a
+## meadow. Each lamp-lit doorway throws a warm pool on the grass in front.
+const WIN_TUFT_SHARE := 0.4
+const WIN_TUFT_H := 0.24
+const GLOW_TIME := 0.4
+const GLOW_AT := Vector2(0.0, 0.43)
+const GLOW_RX := 0.36
+const GLOW_RY := 0.1
+const GLOW_ALPHA := 0.5
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
@@ -278,7 +325,7 @@ func _tent_node(cell: Vector2i) -> TentFace:
 	tent.set_idle(true)
 	_tents[cell] = tent
 	if _cell > 0.0:
-		_seat(tent, cell_to_local(cell.y, cell.x), _cell * TENT_SIZE)
+		_seat(tent, cell_to_local(cell.y, cell.x), _cell * TENT_SIZE, Vector2(0.5, FOOT))
 	return tent
 
 ## The tree or the standing tent on `cell`, or null for bare ground and a
@@ -345,15 +392,17 @@ func _layout() -> void:
 	for cell in _trees:
 		_seat(_trees[cell], cell_to_local(cell.y, cell.x), _cell * TREE_SIZE)
 	for cell in _tents:
-		_seat(_tents[cell], cell_to_local(cell.y, cell.x), _cell * TENT_SIZE)
+		_seat(_tents[cell], cell_to_local(cell.y, cell.x), _cell * TENT_SIZE, Vector2(0.5, FOOT))
 	_meadow = _build_meadow()
 	_refresh_faces()
 	_redraw()
 
 ## Seats `face` `px` square about `centre`: its slot, when it stands in one,
 ## with the face's own place inside the slot left to the motion; the face
-## itself when it does not (a chip).
-func _seat(face: Control, centre: Vector2, px: float) -> void:
+## itself when it does not (a chip). `pivot` is where it scales and turns
+## about, as a share of the seat: a tent's is the foot of its fabric, so it
+## is pitched up out of the ground and rocks on it.
+func _seat(face: Control, centre: Vector2, px: float, pivot := Vector2(0.5, 0.5)) -> void:
 	var seat := Vector2.ONE * px
 	var slot: Control = _slots.get(face)
 	if slot != null:
@@ -362,7 +411,7 @@ func _seat(face: Control, centre: Vector2, px: float) -> void:
 	else:
 		face.position = centre - seat * 0.5
 	face.size = seat
-	face.pivot_offset = seat * 0.5
+	face.pivot_offset = seat * pivot
 
 ## The cell a slot of `available` height holds, capped by the width.
 func _cell_for(available: float) -> float:
@@ -440,6 +489,10 @@ func _build_meadow() -> ArrayMesh:
 	# soft foot.
 	b.fan(Face.Builder.round_rect(at, field + Vector2(0.0, TURF_EDGE), TURF_RADIUS), Pal.LINE)
 	b.fan(Face.Builder.round_rect(at, field, TURF_RADIUS), Pal.MEADOW)
+	# The light along the turf's top edge, where the card's own light falls.
+	b.stroke(PackedVector2Array([at + Vector2(TURF_RADIUS, GRID_WIDTH),
+		at + Vector2(field.x - TURF_RADIUS, GRID_WIDTH)]), GRID_WIDTH * 1.5,
+		Color(1.0, 1.0, 1.0, RIM_LIGHT))
 	var line := Color(Pal.MEADOW_LINE, GRID_ALPHA)
 	for x in range(1, state.w):
 		b.stroke(PackedVector2Array([at + Vector2(x * _cell, 0.0),
@@ -447,7 +500,24 @@ func _build_meadow() -> ArrayMesh:
 	for y in range(1, state.h):
 		b.stroke(PackedVector2Array([at + Vector2(0.0, y * _cell),
 			at + Vector2(field.x, y * _cell)]), GRID_WIDTH, line, false, false)
+	# The dressing, on the inner crossings only: a crossing belongs to no
+	# square, so nothing the player puts down ever stands on it.
+	for y in range(1, state.h):
+		for x in range(1, state.w):
+			var lot := _hash2(Vector2i(x + 100, y + 100))
+			var p := at + Vector2(x, y) * _cell
+			if lot < TUFT_SHARE:
+				Scenery.tuft(b, p + Vector2(0.0, TUFT_H * _cell * 0.35), TUFT_H * _cell)
+			elif lot < TUFT_SHARE + FLOWER_SHARE:
+				_flower(b, p, FLOWER_R * _cell)
 	return b.mesh()
+
+## A meadow flower: five petals round a pale eye.
+func _flower(b, at: Vector2, r: float) -> void:
+	for k in 5:
+		var a := TAU * k / 5.0 - PI * 0.5
+		b.disc(at + Vector2(cos(a), sin(a)) * r, r * 0.75, Pal.FLOWER)
+	b.disc(at, r * 0.6, Pal.FLOWER_EYE)
 
 ## Everything on the ground that is not a character, in one mesh: the shade
 ## under the finger, the blush of a pointed-at cell, the shadow under every
@@ -496,46 +566,42 @@ func _build_ground(now: float) -> Dictionary:
 		var tent: TentFace = _tents[cell]
 		if tent.visible:
 			_shadow(b, tent, cell, TENT_SIZE, TENT_SHADOW_AT, TENT_SHADOW_RX, TENT_SHADOW_RY)
-	# Cairns on their way out, drawn from the shape the state has forgotten.
+	# Cairns on their way out, cap first, drawn from the shape the state has
+	# forgotten.
 	var still: Array = []
 	for out in _cairn_out:
 		var e: float = now - float(out.at)
-		var shrunk := Motion.pop_out_scale(e)
-		if shrunk <= 0.0:
+		if e >= CAIRN_OUT or Motion.reduce:
 			continue
 		still.append(out)
 		busy = true
-		var turn := PI * 0.5 * clampf(e / Motion.POP_OUT, 0.0, 1.0)
-		_cairn(b, cell_to_local(out.cell.y, out.cell.x), _cell * CAIRN_SIZE,
-			Vector2(shrunk, shrunk), turn, 1.0)
+		_cairn(b, out.cell, INF, e, 0.0)
 	_cairn_out = still
-	# The cairns that are here: popping in with the squash, standing, or
-	# clearing away on the win.
+	# The cairns that are here: stacking, standing, or sinking into the turf
+	# on the win.
 	gone = []
 	for cell in state.marks:
 		if int(state.marks[cell]) != State.GRASS:
 			continue
-		var grow := Vector2.ONE
+		var since := INF
 		if _cairn_in.has(cell):
-			var e: float = now - float(_cairn_in[cell])
-			grow = Motion.pop_in_scale(e)
-			if e < Motion.POP_IN:
+			since = now - float(_cairn_in[cell])
+			if since < CAIRN_IN and not Motion.reduce:
 				busy = true
 			else:
 				gone.append(cell)
-		var alpha := 1.0
+				since = INF
+		var sunk := 0.0
 		if _solved_at >= 0.0:
-			var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
-			if cleared >= 1.0:
+			sunk = _cleared(cell, now)
+			if sunk >= 1.0:
 				continue
 			busy = true
-			alpha = 1.0 - cleared
-			grow *= 1.0 - cleared * CLEAR_SHRINK
-		if grow.x <= 0.0 or grow.y <= 0.0:
-			continue
-		_cairn(b, cell_to_local(cell.y, cell.x), _cell * CAIRN_SIZE, grow, 0.0, alpha)
+		_cairn(b, cell, since, -1.0, sunk)
 	for cell in gone:
 		_cairn_in.erase(cell)
+	if _solved_at >= 0.0:
+		busy = _build_camp(b, now) or busy
 	if b.verts.is_empty():
 		return {"mesh": null, "busy": busy}
 	return {"mesh": b.mesh(), "busy": busy}
@@ -559,27 +625,113 @@ func _shadow(b, face: Control, cell: Vector2i, share: float, at: Vector2, rx: fl
 		rx * seat * seen, ry * seat * seen, Color(Pal.TEXT, SHADOW_ALPHA * seen))
 
 ## A cairn: the mark the puzzle is actually solved with, so it is a thing on
-## the ground and not a shade of grass. Drawn about `at` through `grow` and
-## `turn`, so a pop is a transform on the same shapes.
-func _cairn(b, at: Vector2, s: float, grow: Vector2, turn: float, alpha: float) -> void:
-	var xf := Transform2D(turn, grow, 0.0, at)
-	_pebble(b, xf, Vector2(0.0, 0.32) * s, 0.33 * s, 0.09 * s, Color(Pal.TEXT, 0.13 * alpha))
-	var deep := Color(Pal.CAIRN_DEEP, alpha)
-	_pebble(b, xf, Vector2(-0.15, 0.19) * s, 0.19 * s, 0.13 * s, deep)
-	_pebble(b, xf, Vector2(0.16, 0.21) * s, 0.17 * s, 0.12 * s, deep)
-	var stone := Color(Pal.CAIRN_STONE, alpha)
-	_pebble(b, xf, Vector2(0.0, 0.01) * s, 0.2 * s, 0.14 * s, stone)
-	_pebble(b, xf, Vector2(-0.03, -0.2) * s, 0.14 * s, 0.11 * s, stone)
-	_pebble(b, xf, Vector2(-0.06, -0.24) * s, 0.06 * s, 0.04 * s, Color(1.0, 1.0, 1.0, 0.3 * alpha))
+## the ground and not a shade of grass. Three tiers of stones -- the two at
+## its foot with the shadow, the middle one, the cap -- each lit along its
+## crest, leaned and sized by its square so no two stand alike.
+## `since` is the seconds since it began to be stacked (INF once it stands),
+## `leaving` the seconds since it began to come apart (negative while it
+## stays), and `sunk` how far into the turf the win has taken it, 0 to 1.
+func _cairn(b, cell: Vector2i, since: float, leaving: float, sunk: float) -> void:
+	var s := _cell * CAIRN_SIZE
+	var h := _hash(cell)
+	var h2 := _hash2(cell)
+	var grown := 1.0 + (h2 - 0.5) * 2.0 * CAIRN_JITTER
+	var xf := Transform2D((h - 0.5) * 2.0 * CAIRN_TILT, Vector2(grown, grown), 0.0,
+		cell_to_local(cell.y, cell.x))
+	var shift := (h2 - 0.5) * 2.0 * CAIRN_SHIFT
+	var flat := 1.0 - sunk
+	var alpha := 1.0 - sunk
+	for tier in 3:
+		var sc := Vector2.ONE
+		var lift := 0.0
+		if since < INF:
+			var e := since - tier * STACK_STEP
+			if e <= 0.0:
+				continue
+			sc = Motion.pop_in_scale(e, STACK_TIME)
+			lift = Motion.drop_in_lift(e, STACK_DROP * s, STACK_TIME)
+		if leaving >= 0.0:
+			var k := Motion.pop_out_scale(leaving - (2 - tier) * UNSTACK_STEP)
+			if k <= 0.0:
+				continue
+			sc *= k
+			lift += (1.0 - k) * UNSTACK_LIFT * s
+		var foot := Vector2(0.0, 0.4) * s
+		match tier:
+			0:
+				_pebble(b, xf, Vector2(0.0, 0.32) * s, 0.33 * s, 0.09 * s,
+					Color(Pal.TEXT, 0.13 * alpha), sc, 0.0, flat, foot, false)
+				var deep := Color(Pal.CAIRN_DEEP, alpha)
+				_pebble(b, xf, Vector2(-0.15, 0.19) * s, 0.19 * s, 0.13 * s, deep, sc, lift, flat, foot)
+				_pebble(b, xf, Vector2(0.16, 0.21) * s, 0.17 * s, 0.12 * s, deep, sc, lift, flat, foot)
+			1:
+				_pebble(b, xf, Vector2(0.0, 0.01) * s, 0.2 * s, 0.14 * s,
+					Color(Pal.CAIRN_STONE, alpha), sc, lift, flat, foot)
+			2:
+				var cap := Vector2(-0.03 + shift, -0.2) * s
+				_pebble(b, xf, cap, 0.14 * s, 0.11 * s,
+					Color(Pal.CAIRN_STONE, alpha), sc, lift, flat, foot)
+				# The glint grows with the cap it sits on, not about itself.
+				_ellipse(b, xf, cap, cap + Vector2(-0.03, -0.04) * s, 0.06 * s, 0.04 * s,
+					Color(1.0, 1.0, 1.0, 0.3 * alpha), sc, lift, flat, foot)
 
-## One ellipse of the cairn, put through the cairn's transform.
-func _pebble(b, xf: Transform2D, centre: Vector2, rx: float, ry: float, colour: Color) -> void:
+## One stone of the cairn: grown `sc` about its own centre, pressed `flat`
+## toward the cairn's `foot`, put through the cairn's transform and raised
+## `lift` pixels. A stone with a `crest` is lit along its top.
+func _pebble(b, xf: Transform2D, centre: Vector2, rx: float, ry: float, colour: Color,
+		sc: Vector2, lift: float, flat: float, foot: Vector2, crest := true) -> void:
+	_ellipse(b, xf, centre, centre, rx, ry, colour, sc, lift, flat, foot)
+	if crest:
+		_ellipse(b, xf, centre, centre + Vector2(-0.18 * rx, -0.32 * ry), rx * 0.55, ry * 0.4,
+			Color(colour.lerp(Color.WHITE, CREST), colour.a), sc, lift, flat, foot)
+
+func _ellipse(b, xf: Transform2D, pivot: Vector2, centre: Vector2, rx: float, ry: float,
+		colour: Color, sc: Vector2, lift: float, flat: float, foot: Vector2) -> void:
 	var pts := Face.Builder.ring(centre, rx, ry)
 	var out := PackedVector2Array()
 	out.resize(pts.size())
 	for i in pts.size():
-		out[i] = xf * pts[i]
+		var p := pivot + (pts[i] - pivot) * sc
+		p = foot + (p - foot) * Vector2(1.0, flat)
+		out[i] = xf * p - Vector2(0.0, lift)
 	b.fan(out, colour)
+
+## How far the win has taken the cairn on `cell` into the turf, 0 to 1: in a
+## scatter rather than a wave.
+func _cleared(cell: Vector2i, now: float) -> float:
+	return _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
+
+## The camp once it is done: a tuft grown on some of the squares nothing
+## stands on, each as the cairn that may have been there has half sunk, and a
+## warm pool in front of each tent as its lamp is lit. Returns whether any of
+## it is still growing.
+func _build_camp(b, now: float) -> bool:
+	var busy := false
+	var seat := _cell * TENT_SIZE
+	for cell in state.tents():
+		var e := now - _solved_at - _solve_delay(cell)
+		var lit := _dec(e / GLOW_TIME)
+		if lit < 1.0:
+			busy = true
+		if lit > 0.0:
+			Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + GLOW_AT * seat,
+				GLOW_RX * seat * lit, GLOW_RY * seat * lit, Color(Pal.SUN, GLOW_ALPHA * lit))
+	for r in state.h:
+		for c in state.w:
+			var cell := Vector2i(c, r)
+			if state.trees.has(cell) or state.mark_at(cell) == State.TENT:
+				continue
+			if _hash2(cell) >= WIN_TUFT_SHARE:
+				continue
+			var e := now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD - CLEAR_TIME * 0.5
+			var grow := Motion.pop_in_scale(e)
+			if e < Motion.POP_IN and not Motion.reduce:
+				busy = true
+			if grow.y <= 0.0:
+				continue
+			var root := cell_to_local(r, c) + Vector2((_hash(cell) - 0.5) * 0.3, 0.22) * _cell
+			Scenery.tuft(b, root, WIN_TUFT_H * _cell * grow.y)
+	return busy
 
 # --- input ---
 
@@ -783,8 +935,8 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 	_refresh_faces()
 	return arrivals
 
-## A tent goes up on `cell`: it pops in with the squash after `delay`, or
-## drops in from above when a hint pitched it.
+## A tent goes up on `cell`: it is pitched up out of the ground after
+## `delay`, or drops in from above when a hint pitched it.
 func _tent_up(cell: Vector2i, delay: float, drop: bool) -> void:
 	var tent := _tent_node(cell)
 	tent.visible = true
@@ -798,30 +950,55 @@ func _tent_up(cell: Vector2i, delay: float, drop: bool) -> void:
 		_pos_tw[tent] = Motion.drop_in(tent, Motion.DROP, Motion.DROP_TIME, delay)
 		_busy_for(delay + Motion.DROP_TIME)
 	else:
-		_look_tw[tent] = Motion.pop_in(tent, Motion.POP_IN, delay)
-		_busy_for(delay + Motion.POP_IN)
+		_look_tw[tent] = _pitch(tent, delay)
+		_busy_for(delay + PITCH_TIME)
 
-## A tent comes down off `cell`: it shrinks to nothing with the quarter turn
-## after `delay`, and is hidden once gone unless something put it back.
+## A tent comes down off `cell`: it folds back down into the ground after
+## `delay`, and is hidden once gone unless something put it back.
 func _tent_down(cell: Vector2i, delay: float) -> void:
 	var tent: TentFace = _tents.get(cell)
 	if tent == null:
 		return
 	Motion.stop(_look_tw.get(tent))
-	var tw := Motion.pop_out(tent, Motion.POP_OUT, delay)
+	var tw := _strike(tent, delay)
 	if tw == null:
 		tent.visible = false
 		return
 	_look_tw[tent] = tw
-	_busy_for(delay + Motion.POP_OUT)
+	_busy_for(delay + STRIKE_TIME)
 	tw.chain().tween_callback(func() -> void:
 		if state.mark_at(cell) != State.TENT:
 			tent.visible = false
 			tent.rotation = 0.0)
 
+## The pitch: from flat and wide on the ground, up past its height and home
+## on the back ease, about the pivot at its foot. Under reduce-motion it is
+## simply up.
+func _pitch(tent: Control, delay: float) -> Tween:
+	if Motion.reduce:
+		tent.scale = Vector2.ONE
+		return null
+	tent.scale = PITCH_FROM
+	var tw := tent.create_tween()
+	tw.tween_property(tent, "scale", PITCH_STRETCH, PITCH_TIME * 0.55).set_delay(delay) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(tent, "scale", Vector2.ONE, PITCH_TIME * 0.45) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return tw
+
+## The strike: the pitch run back, flat and wide into the ground. Null under
+## reduce-motion, and the caller hides the tent itself.
+func _strike(tent: Control, delay: float) -> Tween:
+	if Motion.reduce:
+		return null
+	var tw := tent.create_tween()
+	tw.tween_property(tent, "scale", PITCH_FROM, STRIKE_TIME).set_delay(delay) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	return tw
+
 func _cairn_arrives(cell: Vector2i, at: float) -> void:
 	_cairn_in[cell] = at
-	_anim_until = maxf(_anim_until, at + Motion.POP_IN)
+	_anim_until = maxf(_anim_until, at + CAIRN_IN)
 
 ## A cairn leaves `cell` from `at`. Under reduce-motion it is simply gone, as
 ## pop_out would have it.
@@ -830,7 +1007,7 @@ func _cairn_leaves(cell: Vector2i, at: float) -> void:
 	if Motion.reduce:
 		return
 	_cairn_out.append({"cell": cell, "at": at})
-	_anim_until = maxf(_anim_until, at + Motion.POP_OUT)
+	_anim_until = maxf(_anim_until, at + CAIRN_OUT)
 
 ## A cell blushes toward the family's rose and settles: Check pointing at its
 ## tent, or a tap refused on it.
@@ -1206,3 +1383,7 @@ func _dec(u: float) -> float:
 ## scatter rather than a wave.
 static func _hash(cell: Vector2i) -> float:
 	return float(posmod(hash(cell), 1000)) / 1000.0
+
+## A second one, unrelated to the first: a cairn's size and a tuft's lot.
+static func _hash2(cell: Vector2i) -> float:
+	return float(posmod(hash(Vector2i(cell.x * 31 + 7, cell.y * 17 + 3)), 1000)) / 1000.0

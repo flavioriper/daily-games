@@ -67,7 +67,7 @@ func _build() -> ArrayMesh:
 	for c in clouds:
 		cloud(b, Vector2(c.x, c.y), c.z, puff)
 	for t in tufts:
-		_tuft(b, Vector2(t.x, t.y), t.z)
+		tuft(b, Vector2(t.x, t.y), t.z)
 	return b.mesh()
 
 ## A cloud: a flat base under three puffs, the middle one tallest, the way
@@ -84,7 +84,7 @@ static func cloud(b: Face.Builder, at: Vector2, r: float, colour: Color) -> void
 ## A tuft: five blades from one root, the middle one tallest and darkest, the
 ## outer pairs leaning out and shorter, each a slim triangle with a curved
 ## back so it reads as grass and not as a spike.
-static func _tuft(b: Face.Builder, root: Vector2, h: float) -> void:
+static func tuft(b: Face.Builder, root: Vector2, h: float) -> void:
 	var blades := [
 		[Vector2(0.0, -1.0), Pal.LEAF_DEEP],
 		[Vector2(-0.42, -BLADE_SIDE), Pal.LEAF],

@@ -1,14 +1,16 @@
 extends "res://ui/faces/face.gd"
 
-## A canvas tent: two slopes over a dark doorway, guy lines pegged out either
-## side, and the face low on the lit slope.
+## A canvas tent: two slopes over a dark doorway with its flap rolled back,
+## poles crossed over the ridge, a seam down the lit slope, guy lines tied to
+## pegs either side, and the face low on the lit slope.
 ##
 ## It carries the two rules it can be seen breaking on its own -- it touches
 ## another tent, diagonals included, or it stands beside no tree at all -- as
 ## a blush over the whole fabric. Nothing else: a tent never says which tree
 ## it belongs to. The state rides on `expression`, so the fabric's colour and
 ## the face follow from it together and the base's cache key is enough:
-## HAPPY is pitched, STRAIN is in trouble, JOY is the win.
+## HAPPY is pitched, STRAIN is in trouble, JOY is the win, and lights a lamp
+## in the doorway.
 ## Ported number for number from the canvas mock
 ## (docs/brainstorm/concepts.html#tents, `tent`).
 ## Spec: docs/superpowers/specs/2026-09-18-tents-flat-design.md, section 4.
@@ -26,6 +28,16 @@ const PEG_AT := Vector2(0.0, 0.36)
 const PEG_R := 0.3
 const PEG_WIDTH := 0.045
 const PEG_MIN := 3.0
+## The poles over the ridge, the seam down the lit slope and the light along
+## its edge, in R.
+const POLE_WIDTH := 0.035
+const SEAM_WIDTH := 0.018
+const SEAM_ALPHA := 0.55
+const EDGE_LIGHT := 0.35
+## The doorway on the win: SUN this far toward the canvas, and a paler core
+## the lamp itself stands in.
+const LAMP_MIX := 0.25
+const LAMP_CORE := 0.45
 
 ## A tent a hint pitched, pegged down for good. It is part of the cache key,
 ## because the arc is drawn into the same mesh as the fabric.
@@ -71,14 +83,36 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 				b.stroke(PackedVector2Array([
 					Vector2(side * 0.44, 0.4) * R, Vector2(side * 0.16, -0.3) * R]),
 					0.035 * R, Color(Pal.TENT_DARK, 0.55))
+				# The peg the line is tied to, driven in at its foot.
+				b.fan(Builder.round_rect(Vector2(side * 0.44 - 0.025, 0.35) * R,
+					Vector2(0.05, 0.09) * R, 0.02 * R), Pal.BARK)
 		"body":
 			var skin := _skin()
+			# The poles cross over the ridge and stand out of it.
+			for side: float in [-1.0, 1.0]:
+				b.stroke(PackedVector2Array([Vector2(-side * 0.025, -0.41) * R,
+					Vector2(side * 0.05, -0.52) * R]), POLE_WIDTH * R, Pal.BARK)
 			b.fan(PackedVector2Array([Vector2(0.0, -0.46) * R,
 				Vector2(0.42, 0.4) * R, Vector2(-0.42, 0.4) * R]), skin[1])
 			b.fan(PackedVector2Array([Vector2(0.0, -0.46) * R,
 				Vector2(0.2, 0.4) * R, Vector2(-0.42, 0.4) * R]), skin[0])
+			# The seam down the lit slope, and the light along its outer edge.
+			b.stroke(PackedVector2Array([Vector2(0.0, -0.44) * R, Vector2(-0.13, 0.4) * R]),
+				SEAM_WIDTH * R, Color(skin[1], SEAM_ALPHA), false, false)
+			b.stroke(PackedVector2Array([Vector2(-0.02, -0.42) * R, Vector2(-0.39, 0.38) * R]),
+				SEAM_WIDTH * R, Color(1.0, 1.0, 1.0, EDGE_LIGHT), false, false)
+			# The doorway: dark, or lamp-lit once the camp is done.
+			var lit := expression == Expr.JOY
 			b.fan(PackedVector2Array([Vector2(0.0, -0.1) * R,
-				Vector2(0.15, 0.4) * R, Vector2(-0.15, 0.4) * R]), Pal.TENT_DARK)
+				Vector2(0.15, 0.4) * R, Vector2(-0.15, 0.4) * R]),
+				Pal.SUN.lerp(Pal.TENT_CANVAS, LAMP_MIX) if lit else Pal.TENT_DARK)
+			if lit:
+				b.fan(PackedVector2Array([Vector2(0.0, 0.08) * R,
+					Vector2(0.09, 0.4) * R, Vector2(-0.09, 0.4) * R]),
+					Pal.SUN.lerp(Color.WHITE, LAMP_CORE))
+			# The flap, rolled back off the doorway and showing its lining.
+			b.fan(PackedVector2Array([Vector2(0.0, -0.1) * R,
+				Vector2(-0.15, 0.4) * R, Vector2(-0.25, 0.4) * R]), skin[1])
 			_face_parts(b, FACE_R * R, FACE_AT * R, Pal.TEXT, eye)
 			if pegged:
 				b.stroke(Builder.arc_points(PEG_AT * R, PEG_R * R, PI * 0.1, PI * 0.9),
