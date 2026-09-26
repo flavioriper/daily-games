@@ -86,9 +86,25 @@ var pleats: bool = false:
 		pleats = v
 		queue_redraw()
 
+## Fairy Lights' lantern (its second polish, 2026-09-26, after the user's
+## reference): glass in the paper's own colour under an iron cap and ring,
+## between two iron bars, on an iron base -- a garden lantern rather than a
+## paper one. Lit, the glass takes a candle's core and the halo glows in the
+## glass's colour rather than in plain sun. Off everywhere else.
+var iron: bool = false:
+	set(v):
+		iron = v
+		queue_redraw()
+## A two-leaf sprig on the iron cap, for a lantern the garden has grown over.
+var sprig: bool = false:
+	set(v):
+		sprig = v
+		queue_redraw()
+
 func _kind() -> String:
 	return "lantern%d_%d%s%s" % [hue % Pal.LANTERN_PAPER.size(),
-		int(_lit_level() * 4.0), "d" if dims else "", "p" if pleats else ""]
+		int(_lit_level() * 4.0), "d" if dims else "", "p" if pleats else ""] \
+		+ ("i" if iron else "") + ("s" if sprig else "")
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
@@ -114,9 +130,14 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 		deep = paper[1].lerp(Pal.FLAGSTONE, DIM_DEEP)
 	match name:
 		"glow":
-			_halo(b, R, GLOW_ALPHA * level)
+			if iron:
+				_halo(b, R, GLOW_ALPHA * level * 1.3, paper[0].lerp(Pal.SUN, 0.25))
+			else:
+				_halo(b, R, GLOW_ALPHA * level)
 		"shadow":
 			b.ellipse(Vector2(0.1, 1.16) * R, 0.82 * R, 0.2 * R, Color(Pal.TEXT, DROP_ALPHA))
+		"body" when iron:
+			_iron_body(b, R, eye, paper, level)
 		"body":
 			b.fan(Builder.round_rect(Vector2(-0.42, -1.02) * R, Vector2(0.84, 0.24) * R, 0.1 * R), deep)
 			b.fan(Builder.round_rect(Vector2(-0.86, -0.86) * R, Vector2(1.72, 1.72) * R, 0.62 * R), body)
@@ -151,11 +172,55 @@ func _folds(b: Builder, R: float, paper: Array, deep: Color, level: float) -> vo
 ## The halo: a disc of light at GLOW_INNER fading to nothing at GLOW_R, built
 ## as two rings and the band between them, which is what a canvas radial
 ## gradient comes to once it is triangles.
-func _halo(b: Builder, R: float, alpha: float) -> void:
+## The iron lantern's body (see `iron`). The glass is the paper's colour,
+## dimmed like the paper when `dims` is on and the lantern is dark, and lit
+## with a candle's core in LANTERN_LIT; the face sits on the glass.
+func _iron_body(b: Builder, R: float, eye: float, paper: Array, level: float) -> void:
+	var ink: Color = Pal.LANTERN
+	var ink_hi: Color = Pal.LANTERN.lerp(Pal.SURFACE, 0.28)
+	var glass: Color = paper[0].lerp(Pal.LANTERN_LIT, 0.45 * level)
+	var rim: Color = paper[1].lerp(Pal.SUN, 0.3 * level)
+	if dims and level <= 0.0:
+		glass = paper[0].lerp(Pal.STONE, DIM_BODY)
+		rim = paper[1].lerp(Pal.FLAGSTONE, DIM_DEEP)
+	# The ring it hangs by, and the cap.
+	b.stroke(Builder.arc_points(Vector2(0.0, -1.2) * R, 0.17 * R, PI * 0.9, PI * 2.1),
+		0.09 * R, ink)
+	b.fan(PackedVector2Array([Vector2(-0.42, -1.12) * R, Vector2(0.42, -1.12) * R,
+		Vector2(0.86, -0.74) * R, Vector2(-0.86, -0.74) * R]), ink)
+	b.stroke(PackedVector2Array([Vector2(-0.36, -1.06) * R, Vector2(0.36, -1.06) * R]),
+		0.06 * R, ink_hi)
+	# The glass, its rim in the paper's deep colour, and the candle's light.
+	b.fan(Builder.round_rect(Vector2(-0.7, -0.78) * R, Vector2(1.4, 1.52) * R, 0.36 * R), rim)
+	b.fan(Builder.round_rect(Vector2(-0.6, -0.72) * R, Vector2(1.2, 1.4) * R, 0.3 * R), glass)
+	if level > 0.0:
+		b.ellipse(Vector2(0.0, 0.02) * R, 0.42 * R, 0.52 * R, Color(Pal.LANTERN_LIT, 0.8 * level))
+		b.ellipse(Vector2(0.0, 0.06) * R, 0.2 * R, 0.26 * R, Color(1.0, 1.0, 1.0, 0.55 * level))
+	b.fan(Builder.round_rect(Vector2(-0.5, -0.62) * R, Vector2(0.22, 1.12) * R, 0.11 * R),
+		Color(1.0, 1.0, 1.0, 0.28))
+	# The two bars and the base.
+	for side in [-1.0, 1.0]:
+		b.stroke(PackedVector2Array([Vector2(0.7 * side, -0.74) * R, Vector2(0.7 * side, 0.74) * R]),
+			0.12 * R, ink)
+	b.fan(Builder.round_rect(Vector2(-0.8, 0.7) * R, Vector2(1.6, 0.24) * R, 0.1 * R), ink)
+	b.fan(Builder.round_rect(Vector2(-0.3, 0.92) * R, Vector2(0.6, 0.28) * R, 0.08 * R), ink)
+	b.stroke(PackedVector2Array([Vector2(-0.7, 0.74) * R, Vector2(0.7, 0.74) * R]),
+		0.05 * R, ink_hi)
+	if sprig:
+		for side in [-1.0, 1.0]:
+			var tip := Vector2(0.62 * side, -1.3) * R
+			var root := Vector2(0.2 * side, -1.0) * R
+			var bow := Vector2(-0.16, -0.14 * side) * R
+			b.polygon(Builder.bezier2(root, (root + tip) * 0.5 + bow, tip, 6)
+				+ Builder.bezier2(tip, (root + tip) * 0.5 - bow, root, 6),
+				Pal.MOSS if side < 0.0 else Pal.LEAF_DEEP)
+	_face_parts(b, 0.78 * R, Vector2(0.0, 0.02 * R), Pal.TEXT, eye)
+
+func _halo(b: Builder, R: float, alpha: float, colour: Color = Pal.SUN) -> void:
 	if alpha <= 0.0:
 		return
-	var warm := Color(Pal.SUN, alpha)
-	var clear := Color(Pal.SUN, 0.0)
+	var warm := Color(colour, alpha)
+	var clear := Color(colour, 0.0)
 	var centre := b.vertex(Vector2.ZERO, warm)
 	var inner := b.verts.size()
 	for i in GLOW_SEGMENTS:

@@ -240,6 +240,14 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 2.3]
 		_idle_from = TAP_AT + 0.05
 		_idle_to = TAP_AT + 0.45
+	elif _id == "fairylights" and _mode == "solve":
+		# The answer but one piece is laid through the state a frame before
+		# TAP_AT and the last is tapped, so the strip catches the wash
+		# lighting the garden, the lanterns waking, the win's chase running
+		# out from the post and the lit garden at rest, twinkling.
+		_shots = [0.35, 1.8, 2.1, 2.5, 2.9, 3.2, 3.5, 4.0, 5.8]
+		_idle_from = 4.2
+		_idle_to = 6.2
 	elif _id == "fairylights" and not _empty:
 		# The spin is TURN_TIME and the wash behind it runs a depth every
 		# WAVE_STEP with a lantern's bump on the end, so a long branch is
@@ -855,6 +863,35 @@ func _write_sudoku(i: int) -> void:
 func _tap_fairylights() -> void:
 	var st = _puzzle.state
 	var cells: int = st.n * st.n
+	if _mode == "solve":
+		# `solve`: every piece on its answer but the one whose quarter turn
+		# back cuts off the most of the garden, and that one tapped.
+		var last := -1
+		var cut := -1
+		var before: PackedInt32Array = st.depths()
+		for i in cells:
+			if st.pinned[i] == 1 or FairyGen.degree(st.sol[i]) == 4:
+				continue
+			var back: int = FairyGen.ccw(st.sol[i])
+			if back == st.sol[i]:
+				continue
+			st.grid = st.sol.duplicate()
+			st.grid[i] = back
+			var dark := 0
+			for d in st.depths():
+				if d < 0:
+					dark += 1
+			if dark > cut:
+				cut = dark
+				last = i
+		st.grid = st.sol.duplicate()
+		st.grid[last] = FairyGen.ccw(st.sol[last])
+		st.history = PackedInt32Array()
+		_puzzle._settle(before, _puzzle._now())
+		_puzzle._refresh()
+		_tap_global(_puzzle.get_global_transform_with_canvas()
+			* _puzzle.cell_to_local(last / st.n, last % st.n))
+		return
 	var before: PackedInt32Array = st.depths()
 	var best := -1
 	var best_score := 0

@@ -644,3 +644,78 @@ in their own specs before either board is judged on them.
 6. **Whether the post should turn.** It does, being an ordinary piece that
    happens to draw a post. Fixing it would be a free given on every board.
 7. **Three hints.** See section 8.
+
+## 13. Amendment: the second polish, toward the user's reference, 2026-09-26
+
+The user asked for the design and the animation to be polished and supplied a
+painted reference mid-pass (a wooden frame dressed with vines and white
+flowers, cream paving, chunky grey wire, a glowing gold run strung with bright
+points, and iron-framed glass lanterns glowing in their own colours). Built
+directly, like the other boards' second passes. The rules, the layout, the
+gesture, the wash's moments, Undo, Hint, Reset and every refusal are
+unchanged.
+
+- **The garden is a terrace in a wooden frame.** The hairline rules are gone:
+  every cell is a paving stone set `TILE_GAP` into a grout of `GROUT`,
+  standing `TILE_LIP` on a darker edge with a lit line along its top, toned
+  off its hash within `TONE`, and a share of them (`SPECK_SHARE`) carry a
+  speck of moss. The Sudoku rule round the grid became a frame `FRAME` wide in
+  `PLAQUE` and `WOOD` inside the card's `INSET`, with faint grain, and vine
+  clusters of leaves and five-petal flowers sit on its corners and at six
+  places along its sides, off the board's hash. A wire still runs over the
+  grout, so no join is broken (section 2.1's reason holds).
+- **All of that is a still mesh** built once a layout and drawn under the
+  board's own: +1 draw call. A lit stone warms by a `SUN_RAY` wash over its
+  face in the board's mesh (`WARM`), so the still mesh never rebuilds.
+- **The wire is a cable.** A dark wire has a paler back (`TOP`, raised
+  `TOP_RISE`) over its face and a `SHADE_DROP` lip, so it reads as a rounded
+  cable standing on the stone; lit, the back is a `LANTERN_LIT` sheen.
+- **The glow no longer beads.** The first pass drew two alpha strokes an arm
+  with round caps at both ends, and the caps stacked into bright beads at
+  every join. `_glow` now draws a straight or an elbow as one polyline through
+  the middle, with flat ends wherever it meets a neighbour, so two cells'
+  glows meet edge to edge; only a loose end is round. Three passes,
+  `GLOWS`, widest first across the whole board.
+- **Beads are the fairy lights**: a bright point with a glow in the middle of
+  every live piece (a lantern and the post have their own light there) and on
+  every east and south join, so a join shared by two cells gets one bead.
+- **The lanterns are iron** (`LanternFace.iron`, off everywhere else):
+  glass in the paper's colour under an iron cap and ring, between two bars, on
+  an iron base; lit, a candle's core and a halo in the glass's own colour. The
+  face stays -- it is still what waking looks like. About a third wear a
+  two-leaf sprig on the cap (`sprig`). The win screen's five are iron too.
+- **Motion.** The light **fades up** over `LIGHT_FADE` as the wash reaches a
+  cell, and down the same way as it is pulled back, where it used to snap;
+  each bead pops with `BEAD_BUMP` as it lights. A turning piece is **lifted**
+  (`TURN_LIFT` of scale at mid-turn, its shade falling `LIFT_SHADE` further)
+  and set down; a lantern's slot lifts with it. At rest, **one lit bead
+  twinkles** every `TWINKLE_EVERY` or so -- a cached star-and-glow mesh drawn
+  through a transform, so a twinkle rebuilds nothing and costs one draw call
+  while it shows. On the win, **a chase** leaves the post `CHASE_LAG` after the
+  winning wash lands and runs out along the tree a depth every `CHASE_STEP`
+  (capped to `CHASE_SPAN` end to end, so it fits in `WIN_WAIT`), flaring every
+  bead, warming every stone and hopping every lantern as it passes.
+
+`tests/_shot_anim.gd -- fairylights solve` lays the answer but one piece
+through the state and taps that one, so the strip shows the wash lighting the
+garden, the lanterns waking, the chase, and the win screen.
+
+Measured at `--resolution 810x1440`: **79** draw calls at rest (78 before: +1
+for the still mesh), **80** while a twinkle shows, 79 under reduce motion.
+Idle 2.99-3.22 ms against 2.52 before in the same session; the twinkle
+redraws the card while it shows. **A moving frame's rebuild is cheaper than
+before**: `_build` measured 5.6 ms and 9.0k vertices a frame on the `wash`
+harness's board against the first pass's 11.9 ms and 21.6k (headless, a lit
+7x7: 8.9 ms against 31.0). The `wash` mode's mean frame reads *higher*
+(8.7 ms against 5.6) only because more of its window is now moving -- the
+fade and the bead pops keep the card alive past where the first pass had
+already settled -- so that mean is not a like-for-like comparison. A first
+draft of this pass kept everything in one mesh with round-capped arms and
+full-resolution discs and read 22.7 ms there; the still mesh, flat-ended arms
+and a 12-point `_dot` are what brought it down. Reduce motion is
+pixel-identical across its pair; ANGLE agrees on 79 and matches the default
+driver within 1/255 on the board. Suite 122583/0, win harness 21/21.
+
+**Not done here**: the reference's painted header and day card, and its
+Recomeçar/Conferir buttons, are the shared chrome, not this board -- and this
+board has no Check by design (section 8).

@@ -22,20 +22,23 @@ extends "res://core/puzzle_base.gd"
 ## that says "not finished here", and it is half of what the win is defined
 ## by.
 ##
-## How it is drawn (spec section 6). The ground, the fence, the cell rules,
-## the pinned washes, the halos, the wire and the post all go into **one
-## `ArrayMesh`**, rebuilt on change; the lanterns are `ui/faces/lantern_face.gd`
-## Controls in slots this board owns, which is Untangle's arrangement,
-## because a lantern has a face and a face is a Control here. **The post is
-## in the mesh**: it is iron and glass with no face on it, and there is no
-## post in `ui/faces/` to borrow -- adding one would be the new character
-## this screen is written not to need.
+## How it is drawn (spec section 6, and section 13's second polish after the
+## user's reference). **Two meshes**: a still one, built once a layout --
+## the wooden frame, the grout, the paving stones and the vines -- and the
+## board's own, rebuilt on change -- the warm wash on a lit stone, the pinned
+## washes, the glow under every live run, the wire's shade, face and back,
+## the beads and the post. The lanterns are `ui/faces/lantern_face.gd`
+## Controls in its `iron` style, in slots this board owns, which is
+## Untangle's arrangement, because a lantern has a face and a face is a
+## Control here. **The post is in the mesh**: it is iron and glass with no
+## face on it.
 ##
-## **The order is the one the mock paints in and no other**: the fence, the
-## ground, the rules, a pinned cell's wash, then the halo under *every* live
-## run, then the wire's shade and the wire over it, then the post. A halo
-## drawn after the wire is a smear over it; a halo drawn per cell as the
-## wire is drawn washes out its own neighbour's cable.
+## **The order is fixed**: the glow under *every* live run before any wire,
+## widest pass first; then every shade, then every face, then the beads. A
+## glow drawn after the wire is a smear over it; a glow drawn per cell as the
+## wire is drawn washes out its own neighbour's cable. And the glow never
+## stacks round caps at a join (see `_glow`), which is what beaded the first
+## pass's halo.
 ##
 ## **The spin and the wash** (spec section 7). A turn spins the piece a
 ## quarter turn with `back_out`'s overshoot over TURN_TIME, pulling its arms
@@ -91,16 +94,24 @@ const LanternFace = preload("res://ui/faces/lantern_face.gd")
 ## The card's own inset. The grid is what is left of the card's width, cut
 ## into n cells with **no gap**: 188 at 5x5, 157 at 6x6, 134 at 7x7.
 const INSET := 28.0
-## The fence round the grid: Sudoku's heavy rule, 6 wide, drawn outside the
-## cells because they run to the inset's edge and it has nowhere else to go.
-const FENCE := 6.0
-## The ground's corner and the fence's, which is the ground's plus the rule.
+## The terrace's corner.
 const GROUND_RADIUS := 20.0
-const FENCE_RADIUS := 26.0
-## The rules between two cells: a hairline, so the cells are visible and no
-## more. The wire is the drawing.
-const RULE_W := 2.0
-const RULE_ALPHA := 0.34
+## The terrace (second polish, 2026-09-26): every cell is a paving stone
+## set into a grout of `GROUT`, TILE_GAP in from its cell on every side, so
+## the joins read as mortar and not as a ruled line. A stone stands TILE_LIP
+## on its own darker edge, is toned off its hash within TONE so the terrace
+## reads as laid by hand, and warms toward `SUN_RAY` by WARM as the light
+## reaches the wire on it -- the light spilling onto the stone. The wire runs
+## straight over the grout, so the joins between cells are never broken.
+const TILE_GAP := 3.0
+const TILE_RADIUS := 0.12
+const TILE_LIP := 4.0
+const TONE := 0.35
+const WARM := 0.07
+const GROUT := Color("e2d5ba")
+const TILE_EDGE := Color("dccdb0")
+## How much more the stones warm while the win's chase crosses them.
+const WIN_WARM := 0.18
 
 # --- the pieces, as fractions of a cell (all the mock's) ---
 ## The wire's own width, and how far a loose end falls short of the edge.
@@ -111,17 +122,53 @@ const LOOSE := 0.7
 ## than as a joint.
 const COLLAR := 0.62
 ## How far the wire's shade sits under its face, in pixels -- the soft lip
-## every piece on these screens wears.
-const SHADE_DROP := 4.0
-## The halo under a live run, drawn before any wire: two passes, so a live
-## branch reads as light before it reads as cable.
-const HALO_WIDE := 2.7
-const HALO_WIDE_ALPHA := 0.15
-const HALO_NEAR := 1.6
-const HALO_NEAR_ALPHA := 0.22
+## every piece on these screens wears. The face carries a paler back, TOP of
+## the wire's width and TOP_RISE of it up, so a dark wire reads as a rounded
+## cable standing on the stone (the user's reference, 2026-09-26).
+const SHADE_DROP := 5.0
+const TOP := 0.42
+const TOP_RISE := 0.16
+const TOP_ALPHA := 0.35
 ## The highlight along a live cable's back.
-const SHEEN := 0.3
-const SHEEN_ALPHA := 0.55
+const SHEEN := 0.36
+const SHEEN_ALPHA := 0.8
+## **The glow under a live run**, three passes wide to narrow in `SUN_RAY`.
+## Each cell draws its arms as *one* polyline where it can (a straight or an
+## elbow is one stroke through the middle) and every end that meets a
+## neighbour is left flat, so two cells' glows abut at the edge instead of
+## stacking round caps into beads, which is what the first pass's did. A tee
+## or a cross doubles in the middle only, where the bead sits anyway.
+const GLOWS: Array[Vector2] = [Vector2(3.4, 0.08), Vector2(2.5, 0.11), Vector2(1.7, 0.16)]
+## **The beads**: bright points on a live wire, one at every join between two
+## cells and one in the middle of every piece, the reference's string of
+## fairy lights. BEAD of the wire's width, with a glow of BEAD_GLOW beads.
+const BEAD := 0.62
+const BEAD_GLOW := 2.6
+const BEAD_GLOW_ALPHA := 0.5
+const BEAD_SEGMENTS := 10
+## A bead pops as the light reaches it, harder than the family's bump,
+## because it is a small thing and 0.25 of a small thing is not seen.
+const BEAD_BUMP := 0.6
+## See _dot.
+const DOT_POINTS := 12
+const DOT_RING: Array[Vector2] = [
+	Vector2(1.0, 0.0), Vector2(0.866, 0.5), Vector2(0.5, 0.866), Vector2(0.0, 1.0),
+	Vector2(-0.5, 0.866), Vector2(-0.866, 0.5), Vector2(-1.0, 0.0), Vector2(-0.866, -0.5),
+	Vector2(-0.5, -0.866), Vector2(0.0, -1.0), Vector2(0.5, -0.866), Vector2(0.866, -0.5),
+]
+
+# --- the frame and its dressing (the reference's wooden border) ---
+## A wooden frame FRAME wide round the grid, inside the card's INSET, with a
+## lit inner rail and a darker outer lip; vines of leaves and small white
+## flowers hang on its corners and on a few places along it.
+const FRAME := 22.0
+const FRAME_RADIUS := 22.0
+const RAIL := 4.0
+const LEAF := 0.26
+const FLOWER_R := 0.085
+## A few stones carry a speck of moss or a fallen leaf, off the hash.
+const SPECK_SHARE := 0.22
+
 ## A pinned cell: Word Trail's hint mark, unchanged -- a SUN_RAY wash under a
 ## dotted SUN_DEEP ring. Each inset from the cell's corner, its corner, and
 ## the dash's on and off runs.
@@ -178,6 +225,29 @@ const ENTER_WASH := 0.2
 ## family's 2 px on a piece that wide is not a shiver, it is a rounding
 ## error. Four times it is the mock's own amplitude.
 const REFUSE_PX := Motion.SHIVER_PX * 4.0
+## How long a cell takes to come up to full light, or go down from it, once
+## the wash reaches it. The first pass snapped; this is a lamp warming.
+const LIGHT_FADE := 0.16
+## How far a turning piece lifts off its stone at the middle of the turn, as
+## a scale, and how much further its shade falls, in pixels.
+const TURN_LIFT := 0.07
+const LIFT_SHADE := 5.0
+## **The twinkle**: at rest, one lit bulb somewhere flares every
+## TWINKLE_EVERY or so (jittered by TWINKLE_JITTER either way), a star and a
+## glow drawn as one cached mesh through a transform, so nothing is rebuilt
+## for it. FLARE is its size in bulb radii.
+const TWINKLE_EVERY := 0.9
+const TWINKLE_JITTER := 0.45
+const TWINKLE_IN := 0.12
+const TWINKLE_OUT := 0.5
+const FLARE := 2.4
+## **The win's chase**: once the wash that won has landed, a light runs out
+## from the post along the tree a depth every CHASE_STEP -- never more than
+## CHASE_SPAN from the post to the far end, so a deep garden is inside
+## WIN_WAIT -- flaring every bulb and hopping every lantern as it passes.
+const CHASE_LAG := 0.15
+const CHASE_STEP := 0.035
+const CHASE_SPAN := 0.6
 ## A moment far enough in the future never to arrive, and one far enough in
 ## the past that every curve reader is already past the end of it.
 const FAR := 1.0e9
@@ -245,12 +315,29 @@ var _wake_cues: Array = []
 ## Whether the last frame was a moving one, so the board can lay one final
 ## frame at rest rather than stopping wherever the clock left it.
 var _moving := false
+## The win's chase: when it leaves the post, and its step for this garden's
+## depth. FAR until the garden is won.
+var _chase_at := FAR
+var _chase_step := CHASE_STEP
+## The twinkle: when the one now showing began, where it is, when the next is
+## due, and whether a frame with one in it still has to be cleared.
+var _tw_at := AGO
+var _tw_pos := Vector2.ZERO
+var _tw_next := 0.0
+var _tw_shown := false
+## The twinkle's star and glow, built once in unit size and drawn through a
+## transform, so a twinkle never rebuilds the board.
+var _flare: ArrayMesh
 
 var _opened := 0.0
 var _mesh: ArrayMesh
 ## The mesh the last _draw actually handed to the canvas item -- see the
 ## header. Never dropped until the next _draw has handed one over.
 var _shown: ArrayMesh
+## The still mesh (see _build_still), dropped when the layout or the board
+## changes, and the one the last _draw handed over, for _shown's reason.
+var _still: ArrayMesh
+var _still_shown: ArrayMesh
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -326,6 +413,9 @@ func _clear_clocks() -> void:
 	_anim_until = 0.0
 	_wash_end = 0.0
 	_moving = false
+	_chase_at = FAR
+	_tw_at = AGO
+	_tw_shown = false
 
 # --- the cast ---
 
@@ -356,6 +446,10 @@ func _build_lanterns() -> void:
 		# the gold be told from an unlit amber, which is this screen's one
 		# job. `dims` is off everywhere else.
 		lantern.dims = true
+		# The reference's garden lantern: glass under iron, and every third
+		# or so grown over with a sprig.
+		lantern.iron = true
+		lantern.sprig = posmod(hash(Vector2i(i, state.n)), 3) == 0
 		slot.add_child(lantern)
 		_slots[i] = slot
 		_lanterns[i] = lantern
@@ -398,6 +492,7 @@ func _layout() -> void:
 	# the card to card_height().
 	var tall := minf(size.y, span + 2.0 * INSET)
 	_grid = Vector2(size.x * 0.5 - span * 0.5, (size.y - tall) * 0.5 + INSET)
+	_still = null
 	var seat: float = _cell * LANTERN_R * LanternFace.SEAT
 	for i in _slots:
 		var slot: Control = _slots[i]
@@ -453,6 +548,42 @@ func _process(delta: float) -> void:
 		_moving = false
 		_dress(t)
 		_refresh()
+	else:
+		_twinkle(t)
+
+## At rest, one lit bead somewhere flares now and then. The board is not
+## rebuilt for it: _draw lays the cached flare over the cached mesh, so a
+## twinkle costs a redraw and one draw call while it shows. Nothing under
+## reduce-motion, and none while anything else moves (the process above).
+func _twinkle(t: float) -> void:
+	if Motion.reduce:
+		return
+	if t - _tw_at < TWINKLE_IN + TWINKLE_OUT:
+		_tw_shown = true
+		queue_redraw()
+		return
+	if _tw_shown:
+		_tw_shown = false
+		queue_redraw()
+	if t < _tw_next:
+		return
+	_tw_next = t + TWINKLE_EVERY + randf_range(-TWINKLE_JITTER, TWINKLE_JITTER)
+	var spots := PackedVector2Array()
+	var depths: PackedInt32Array = state.depths()
+	for i in state.n * state.n:
+		if depths[i] < 0:
+			continue
+		if i != state.post and not _lanterns.has(i):
+			spots.append(cell_centre(i))
+		for d in [1, 2]:
+			if state.grid[i] & (1 << d) and state.matched(i, 1 << d):
+				spots.append(cell_centre(i) + _arm_end(i, d, 1.0))
+	if spots.is_empty():
+		return
+	_tw_pos = spots[randi() % spots.size()]
+	_tw_at = t
+	_tw_shown = true
+	queue_redraw()
 
 ## Whether anything on this card is still moving: the entrance, or a wave
 ## that has not run out yet. **Every** wave has to be accounted for here --
@@ -497,75 +628,112 @@ func _draw() -> void:
 	var seen := Motion.appear_level(since, Motion.ENTER_POP)
 	if seen <= 0.0:
 		return
+	if _still == null:
+		_still = _build_still()
 	if _mesh == null:
 		_mesh = _build(now)
 	if _mesh == null:
 		return
 	var grow := Motion.wide_pop_scale(since)
 	var mid := _grid + Vector2.ONE * (_cell * float(state.n) * 0.5)
-	draw_mesh(_mesh, null,
-		Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow)),
-		Color(1.0, 1.0, 1.0, seen))
+	var at := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	draw_mesh(_still, null, at, Color(1.0, 1.0, 1.0, seen))
+	draw_mesh(_mesh, null, at, Color(1.0, 1.0, 1.0, seen))
 	_shown = _mesh
+	_still_shown = _still
+	var k := Motion.flash_level(now - _tw_at, TWINKLE_IN, TWINKLE_OUT)
+	if k > 0.0 and not _animating(now):
+		if _flare == null:
+			_flare = _flare_mesh()
+		var r := _cell * WIRE * BEAD * 0.5 * FLARE * (0.6 + 0.4 * k)
+		draw_mesh(_flare, null, Transform2D(k * 0.5, Vector2.ONE * r, 0.0, _tw_pos),
+			Color(1.0, 1.0, 1.0, k))
 
-## Everything on the board with no face on it, in the mock's own order, as it
-## stands `t` seconds into whatever is moving.
+## The twinkle's drawing in unit size: a warm glow and a four-pointed star.
+func _flare_mesh() -> ArrayMesh:
+	var b := Face.Builder.new()
+	_halo(b, Vector2.ZERO, 0.2, 1.4, Color(Pal.LANTERN_LIT, 0.8), BEAD_SEGMENTS)
+	for a in [0.0, PI * 0.5]:
+		var u := Vector2.from_angle(a)
+		var v := Vector2.from_angle(a + PI * 0.5)
+		b.fan(PackedVector2Array([u * 1.7, v * 0.16, -u * 1.7, -v * 0.16]), Color.WHITE)
+	b.disc(Vector2.ZERO, 0.42, Color.WHITE)
+	return b.mesh()
+
+## Everything on the board with no face on it, as it stands `t` seconds into
+## whatever is moving: the frame and its vines, the terrace, the pinned
+## washes, the glow under every live run, the wire's shade, face and back,
+## the beads, and the post.
 func _build(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var span := _cell * float(state.n)
-	# The fence, and the ground over it so only the rule shows round the edge.
-	b.fan(Face.Builder.round_rect(_grid - Vector2.ONE * FENCE,
-		Vector2.ONE * (span + 2.0 * FENCE), FENCE_RADIUS), Pal.GRID_RULE)
-	b.fan(Face.Builder.round_rect(_grid, Vector2.ONE * span, GROUND_RADIUS),
-		Pal.SURFACE.lerp(Pal.PARCHMENT, 0.5))
-	var rule := Color(Pal.LINE, RULE_ALPHA)
-	for k in range(1, state.n):
-		var at := float(k) * _cell
-		b.stroke(PackedVector2Array([_grid + Vector2(at, 0.0), _grid + Vector2(at, span)]),
-			RULE_W, rule, false, false)
-		b.stroke(PackedVector2Array([_grid + Vector2(0.0, at), _grid + Vector2(span, at)]),
-			RULE_W, rule, false, false)
 	var cells: int = state.n * state.n
-	for i in cells:
-		if state.pinned[i] == 1:
-			_pin(b, i)
 	# What is live, recomputed here and never kept; the wash only decides when
-	# the eye is allowed to see it. One frame and one pull a cell, read once
-	# and handed to every pass, so the halo, the shade, the face and the
-	# sheen can never disagree about where a spinning piece is.
+	# the eye is allowed to see it and how far up it has come. One frame, one
+	# pull, one lift, one level and one chase flare a cell, read once and
+	# handed to every pass, so no two passes disagree about a moving piece.
 	var depths: PackedInt32Array = state.depths()
 	var frames: Array[Transform2D] = []
 	frames.resize(cells)
 	var pulls := PackedFloat32Array()
 	pulls.resize(cells)
-	var live := PackedByteArray()
-	live.resize(cells)
+	var lifts := PackedFloat32Array()
+	lifts.resize(cells)
+	var levels := PackedFloat32Array()
+	levels.resize(cells)
+	var chase := PackedFloat32Array()
+	chase.resize(cells)
 	for i in cells:
 		frames[i] = _frame(i, t)
 		pulls[i] = _spin_pull(i, t)
-		live[i] = 1 if _shown_live(i, depths, t) else 0
-	# The halo under every live run first: a live branch has to read as light
-	# before it reads as cable, which it cannot do if the wire is under it.
+		lifts[i] = _spin_lift(i, t)
+		levels[i] = _level(i, depths, t)
+		chase[i] = _chase(i, depths, t)
+	# The light spilling onto the stones: a wash over each lit stone's face,
+	# since the stones themselves are in the still mesh.
 	for i in cells:
-		if live[i] == 0:
-			continue
-		_arms(b, i, frames[i], pulls[i], HALO_WIDE, Color(Pal.SUN_RAY, HALO_WIDE_ALPHA))
-		_arms(b, i, frames[i], pulls[i], HALO_NEAR, Color(Pal.SUN, HALO_NEAR_ALPHA))
+		var warm := WARM * levels[i] + WIN_WARM * chase[i]
+		if warm > 0.0:
+			# An octagon inside the stone's rounded face: a rounded rect's
+			# arcs cost more than everything else in the wash put together.
+			var at := _stone_at(i)
+			var sz := Vector2.ONE * (_cell - 2.0 * TILE_GAP) - Vector2(0.0, TILE_LIP)
+			var c := _cell * TILE_RADIUS * 0.6
+			b.fan(PackedVector2Array([at + Vector2(c, 0.0), at + Vector2(sz.x - c, 0.0),
+				at + Vector2(sz.x, c), at + Vector2(sz.x, sz.y - c), at + Vector2(sz.x - c, sz.y),
+				at + Vector2(c, sz.y), at + Vector2(0.0, sz.y - c), at + Vector2(0.0, c)]),
+				Color(Pal.SUN_RAY, warm))
+	for i in cells:
+		if state.pinned[i] == 1:
+			_pin(b, i)
+	# The glow under every live run first, widest pass across the whole board
+	# before the next, so a narrower band never lands under a wider one.
+	for g in GLOWS:
+		for i in cells:
+			if levels[i] > 0.0:
+				_glow(b, i, frames[i], pulls[i], g.x,
+					Color(Pal.SUN_RAY, g.y * (levels[i] + 0.8 * chase[i])))
 	# Then the wire: every shade first, then every face over the lot, so a
 	# neighbour's shade never lands on this cell's cable.
-	for pass_i in 2:
-		for i in cells:
-			var lit := live[i] == 1
-			var shade := pass_i == 0
-			var col: Color = (Pal.SUN_DEEP if lit else Pal.FLAGSTONE_DEEP) if shade \
-				else (Pal.SUN if lit else Pal.FLAGSTONE)
-			var drop := Vector2(0.0, SHADE_DROP) if shade else Vector2.ZERO
-			_arms(b, i, frames[i], pulls[i], 1.0, col, drop)
-			if Gen.degree(state.grid[i]) >= 3:
-				b.disc(frames[i] * drop, _cell * WIRE * COLLAR, col)
-			if not shade and lit:
-				_arms(b, i, frames[i], pulls[i], SHEEN,
-					Color(Pal.LANTERN_LIT, SHEEN_ALPHA))
+	for i in cells:
+		var lv := levels[i]
+		var drop := Vector2(0.0, SHADE_DROP + LIFT_SHADE * lifts[i] / TURN_LIFT)
+		var col: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv)
+		_arms(b, i, frames[i], pulls[i], 1.0, col, drop)
+		if Gen.degree(state.grid[i]) >= 3:
+			_dot(b, frames[i] * drop, _cell * WIRE * COLLAR, col)
+	for i in cells:
+		var lv := levels[i]
+		var col: Color = Pal.FLAGSTONE.lerp(Pal.SUN, lv)
+		_arms(b, i, frames[i], pulls[i], 1.0, col)
+		if Gen.degree(state.grid[i]) >= 3:
+			_dot(b, frames[i].origin, _cell * WIRE * COLLAR, col)
+		var back := Color(Pal.SURFACE.lerp(Pal.LANTERN_LIT, lv), TOP_ALPHA + (SHEEN_ALPHA - TOP_ALPHA) * lv)
+		_glow(b, i, frames[i], pulls[i], TOP if lv <= 0.0 else SHEEN, back,
+			Vector2(0.0, -_cell * WIRE * TOP_RISE * (1.0 - lv)))
+	for i in cells:
+		if levels[i] > 0.0:
+			_beads(b, i, frames[i], pulls[i], levels[i], chase[i], depths, t)
 	# The post stands level however its own cell is turning, the way a lantern
 	# does: it takes the cell's place, not the cell's turn.
 	_post(b, frames[state.post].origin)
@@ -583,14 +751,207 @@ func _arms(b, i: int, frame: Transform2D, pull: float, weight: float,
 	if m == 0:
 		return
 	var mid := frame * drop
-	var half := _cell * 0.5
+	var w := _cell * WIRE * weight
+	# Flat-ended strokes with one disc in the middle and a cap only on a
+	# loose end: a round cap on both ends of every arm was most of what a
+	# moving frame cost (10 ms of the wire's 17 on a lit 7x7).
+	_dot(b, mid, w * 0.5, colour)
 	for d in 4:
 		if m & (1 << d) == 0:
 			continue
-		var reach := (half if state.matched(i, 1 << d) else half * LOOSE) * pull
-		var out := Vector2(float(Gen.DC[d]), float(Gen.DR[d])) * reach
-		b.stroke(PackedVector2Array([mid, frame * (drop + out)]),
-			_cell * WIRE * weight, colour)
+		var end := frame * (drop + _arm_end(i, d, pull))
+		b.stroke(PackedVector2Array([mid, end]), w, colour, false, false)
+		if not state.matched(i, 1 << d):
+			_dot(b, end, w * 0.5, colour)
+
+## Where arm `d` of cell `i` ends, in the cell's own frame: its edge when it
+## meets a stub, LOOSE of the way when it does not.
+func _arm_end(i: int, d: int, pull: float) -> Vector2:
+	var half := _cell * 0.5
+	var reach := (half if state.matched(i, 1 << d) else half * LOOSE) * pull
+	return Vector2(float(Gen.DC[d]), float(Gen.DR[d])) * reach
+
+## The glow under cell `i`'s wire, `weight` wires wide. A straight or an elbow
+## is one polyline through the middle, so it never overlaps itself; a tee or
+## a cross is one polyline and the odd arm. An end that meets a neighbour is
+## flat, so the two cells' glows meet edge to edge; a loose end is round.
+func _glow(b, i: int, frame: Transform2D, pull: float, weight: float, colour: Color,
+		drop := Vector2.ZERO) -> void:
+	var m: int = state.grid[i]
+	if m == 0 or colour.a <= 0.0:
+		return
+	var arms: Array[int] = []
+	for d in 4:
+		if m & (1 << d):
+			arms.append(d)
+	var w := _cell * WIRE * weight
+	var mid := frame * drop
+	if arms.size() == 1:
+		_glow_run(b, [frame * (drop + _arm_end(i, arms[0], pull)), mid], [i, arms[0]], [-1, -1], w, colour)
+		return
+	_glow_run(b, [frame * (drop + _arm_end(i, arms[0], pull)), mid,
+		frame * (drop + _arm_end(i, arms[1], pull))], [i, arms[0]], [i, arms[1]], w, colour)
+	for k in range(2, arms.size()):
+		_glow_run(b, [mid, frame * (drop + _arm_end(i, arms[k], pull))], [-1, -1], [i, arms[k]], w, colour)
+
+## One glow stroke along `pts`, with a round cap at an end that is a loose
+## arm (`head`/`tail` name the cell and arm the end belongs to, -1 for the
+## middle, which the bead covers) and flat everywhere else.
+func _glow_run(b, pts: Array, head: Array, tail: Array, w: float, colour: Color) -> void:
+	b.stroke(PackedVector2Array(pts), w, colour, false, false)
+	for end in [[head, pts[0]], [tail, pts[pts.size() - 1]]]:
+		var who: Array = end[0]
+		if who[0] >= 0 and not state.matched(who[0], 1 << who[1]):
+			_dot(b, end[1], w * 0.5, colour)
+
+## The beads on a live piece: one in its middle (the post and a lantern have
+## their own light there) and one on every join it makes to the east or the
+## south, so a join shared by two cells gets one bead and not two. Each pops
+## with BEAD_BUMP as the light reaches it and flares with the win's chase.
+func _beads(b, i: int, frame: Transform2D, pull: float, level: float, flare: float,
+		depths: PackedInt32Array, t: float) -> void:
+	var m: int = state.grid[i]
+	var pop := Motion.bump_scale(t - _live_at[i], BEAD_BUMP) if depths[i] >= 0 else 1.0
+	var r := _cell * WIRE * BEAD * 0.5 * pop * frame.get_scale().x
+	if i != state.post and not _lanterns.has(i):
+		_bead(b, frame.origin, r, level, flare)
+	for d in [1, 2]:
+		if m & (1 << d) and state.matched(i, 1 << d):
+			_bead(b, frame * _arm_end(i, d, pull), r, level, flare)
+
+func _bead(b, at: Vector2, r: float, level: float, flare: float) -> void:
+	var k := clampf(level + flare, 0.0, 1.6)
+	_halo(b, at, r * 0.6, r * (BEAD_GLOW + 1.4 * flare),
+		Color(Pal.LANTERN_LIT, BEAD_GLOW_ALPHA * k), BEAD_SEGMENTS)
+	_dot(b, at, r * (1.0 + 0.3 * flare), Color(Pal.LANTERN_LIT.lerp(Color.WHITE, 0.5), level))
+
+## A small round dot of `r`: DOT_POINTS round, where Builder.disc spends a
+## point every three pixels. On a wire joint, a cap or a bead the difference
+## cannot be seen and is most of a moving frame's vertices.
+static func _dot(b, at: Vector2, r: float, colour: Color) -> void:
+	var pts := PackedVector2Array()
+	pts.resize(DOT_POINTS)
+	for k in DOT_POINTS:
+		pts[k] = at + DOT_RING[k] * r
+	b.fan(pts, colour)
+
+## The top-left corner of cell `i`'s stone.
+func _stone_at(i: int) -> Vector2:
+	return _grid + Vector2(float(i % state.n), float(i / state.n)) * _cell \
+		+ Vector2.ONE * TILE_GAP
+
+## Everything on the card that never moves -- the frame, the grout, the
+## stones and the vines -- built once a layout and drawn under the board's
+## own mesh, so a moving frame rebuilds only what moves. It was all in the
+## one mesh on the first draft of this pass, and a frame of the wash cost
+## 22.7 ms against 5.6 before it.
+func _build_still() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var span := _cell * float(state.n)
+	_frame_wood(b, span)
+	b.fan(Face.Builder.round_rect(_grid, Vector2.ONE * span, GROUND_RADIUS), GROUT)
+	for i in state.n * state.n:
+		_stone(b, i)
+	_vines(b, span)
+	return b.mesh()
+
+## A paving stone: set TILE_GAP into its cell, standing TILE_LIP on its own
+## edge, toned off its hash, with a lit line along its top.
+func _stone(b, i: int) -> void:
+	var at := _stone_at(i)
+	var sz := Vector2.ONE * (_cell - 2.0 * TILE_GAP)
+	var r := _cell * TILE_RADIUS
+	var h: int = absi(hash(Vector2i(i, state.post * 17 + state.n)))
+	var tone := float(h % 1000) / 999.0
+	var face: Color = Pal.SURFACE.lerp(Pal.PARCHMENT, 0.3 + TONE * tone)
+	b.fan(Face.Builder.round_rect(at, sz, r), TILE_EDGE)
+	b.fan(Face.Builder.round_rect(at, sz - Vector2(0.0, TILE_LIP), r), face)
+	b.stroke(PackedVector2Array([at + Vector2(r, 1.5), at + Vector2(sz.x - r, 1.5)]),
+		2.0, Color(Pal.SURFACE, 0.9))
+	# A speck of moss or a fallen leaf in one corner of some stones.
+	if float((h / 1000) % 100) / 100.0 < SPECK_SHARE:
+		var corner := Vector2(0.2 if (h >> 3) & 1 else 0.8, 0.8 if (h >> 4) & 1 else 0.22)
+		var p := at + sz * corner
+		var ang := float((h >> 5) % 628) / 100.0
+		var lr := _cell * 0.045
+		b.ellipse(p, lr * 1.5, lr, Color(Pal.MOSS, 0.55))
+		b.ellipse(p + Vector2.from_angle(ang) * lr * 1.4, lr * 1.1, lr * 0.7, Color(Pal.LEAF_DEEP, 0.4))
+
+## The wooden frame round the grid: a darker outer lip, the wood, and a lit
+## rail along its inner edge. It sits inside the card's INSET.
+func _frame_wood(b, span: float) -> void:
+	var out := _grid - Vector2.ONE * FRAME
+	var size := Vector2.ONE * (span + 2.0 * FRAME)
+	b.fan(Face.Builder.round_rect(out + Vector2(0.0, 5.0), size, FRAME_RADIUS), Pal.PLAQUE_DEEP)
+	b.fan(Face.Builder.round_rect(out, size, FRAME_RADIUS), Pal.PLAQUE)
+	b.fan(Face.Builder.round_rect(out + Vector2.ONE * 3.0, size - Vector2.ONE * 6.0,
+		FRAME_RADIUS - 3.0), Pal.WOOD)
+	b.fan(Face.Builder.round_rect(_grid - Vector2.ONE * RAIL, Vector2.ONE * (span + 2.0 * RAIL),
+		GROUND_RADIUS + RAIL), Pal.PLAQUE)
+	# The grain: a few long faint strokes along each side.
+	var grain := Color(Pal.PLAQUE_DEEP, 0.22)
+	var mid := FRAME * 0.5 + RAIL * 0.5
+	for k: float in [-1.0, 1.0]:
+		var off: float = k * 3.5
+		b.stroke(PackedVector2Array([_grid + Vector2(span * 0.12, -mid + off), _grid + Vector2(span * 0.46, -mid + off)]), 1.5, grain)
+		b.stroke(PackedVector2Array([_grid + Vector2(span * 0.58, span + mid + off), _grid + Vector2(span * 0.9, span + mid + off)]), 1.5, grain)
+		b.stroke(PackedVector2Array([_grid + Vector2(-mid + off, span * 0.3), _grid + Vector2(-mid + off, span * 0.7)]), 1.5, grain)
+		b.stroke(PackedVector2Array([_grid + Vector2(span + mid + off, span * 0.16), _grid + Vector2(span + mid + off, span * 0.52)]), 1.5, grain)
+
+## Vines on the frame: a cluster of leaves and a flower or two on every
+## corner, and a smaller sprig at a few places along the sides, off the
+## board's own hash so a day keeps its garden. Drawn after the stones, so a
+## leaf may reach a little way over the terrace's edge, never over a wire's
+## middle.
+func _vines(b, span: float) -> void:
+	var seed_h: int = absi(hash(Vector2i(state.post, state.n * 7)))
+	var spots: Array = [
+		[Vector2(0.0, 0.0), 1.0], [Vector2(1.0, 0.0), 0.8], [Vector2(0.0, 1.0), 0.9],
+		[Vector2(1.0, 1.0), 1.0],
+	]
+	var sides := [Vector2(0.5, 0.0), Vector2(0.0, 0.5), Vector2(1.0, 0.5), Vector2(0.5, 1.0)]
+	for k in 6:
+		var side: Vector2 = sides[(k + (seed_h >> (k * 2))) % 4]
+		var along := 0.2 + 0.6 * float((seed_h >> (k * 3 + 5)) % 100) / 100.0
+		var p := side
+		if side.x == 0.5:
+			p.x = along
+		else:
+			p.y = along
+		spots.append([p, 0.6])
+	for s_i in spots.size():
+		var where: Vector2 = spots[s_i][0]
+		var size: float = spots[s_i][1]
+		var at := _grid + where * span
+		# Pushed out onto the wood, so the cluster sits on the frame.
+		at += (where - Vector2(0.5, 0.5)).sign() * Vector2(where.x != 0.5, where.y != 0.5) * FRAME * 0.5
+		_cluster(b, at, size, absi(hash(Vector2i(seed_h, s_i))))
+
+func _cluster(b, at: Vector2, size: float, h: int) -> void:
+	var L := _cell * LEAF * size
+	var leaves := 5 + h % 3
+	for k in leaves:
+		var ang := TAU * float(k) / float(leaves) + float((h >> (k + 2)) % 100) / 100.0
+		var len := L * (0.8 + 0.4 * float((h >> (k * 2)) % 10) / 10.0)
+		var c := at + Vector2.from_angle(ang) * len * 0.55
+		var tip := at + Vector2.from_angle(ang) * len * 1.3
+		var side := Vector2.from_angle(ang + PI * 0.5) * len * 0.34
+		var green: Color = Pal.MOSS if k % 2 == 0 else Pal.LEAF_DEEP
+		b.polygon(Face.Builder.bezier2(at, c + side * 1.6, tip, 6) \
+			+ Face.Builder.bezier2(tip, c - side * 1.6, at, 6), green)
+		b.stroke(PackedVector2Array([at.lerp(tip, 0.1), at.lerp(tip, 0.8)]), 1.5,
+			Color(Pal.LEAF_TILE, 0.45))
+	var flowers := 1 + int(size > 0.7) + (h >> 9) % 2 * int(size > 0.9)
+	for k in flowers:
+		var ang := float((h >> (k * 4 + 3)) % 628) / 100.0
+		var p := at + Vector2.from_angle(ang) * L * (0.55 + 0.25 * float(k))
+		_flower(b, p, _cell * FLOWER_R * (0.8 + 0.3 * size))
+
+func _flower(b, at: Vector2, r: float) -> void:
+	for k in 5:
+		b.disc(at + Vector2.from_angle(TAU * k / 5.0 - PI * 0.5) * r * 0.62, r * 0.5,
+			Pal.SURFACE)
+	b.disc(at, r * 0.36, Pal.SUN_RAY)
 
 # --- the spin, and the wash behind it ---
 
@@ -600,7 +961,7 @@ func _arms(b, i: int, frame: Transform2D, pull: float, weight: float,
 func _frame(i: int, t: float) -> Transform2D:
 	var at := cell_centre(i)
 	at.x += Motion.shiver_offset(t - _refuse_at[i], REFUSE_PX)
-	return Transform2D(_spin_angle(i, t), at)
+	return Transform2D(_spin_angle(i, t), Vector2.ONE * (1.0 + _spin_lift(i, t)), 0.0, at)
 
 ## How far cell `i` still has to turn, `t` seconds in. The piece is already
 ## where the turn put it, so the angle runs from a quarter turn *behind* (or
@@ -627,6 +988,37 @@ func _spin_pull(i: int, t: float) -> float:
 	if u >= 1.0:
 		return 1.0
 	return 1.0 - ARM_PULL * sin(PI * u)
+
+## How far cell `i` is lifted off its stone, `t` seconds in, as a scale over
+## one: TURN_LIFT at the middle of its spin and nothing at either end, so the
+## piece is picked up, turned and set down.
+func _spin_lift(i: int, t: float) -> float:
+	var q: int = _spin_q[i]
+	if Motion.reduce or q == 0:
+		return 0.0
+	var u := (t - _spin_at[i]) / _spin_time(q)
+	if u <= 0.0 or u >= 1.0:
+		return 0.0
+	return TURN_LIFT * sin(PI * u)
+
+## How far up cell `i`'s light has come at `t`, 0 to 1. A live cell warms up
+## over LIGHT_FADE from the moment the wash reaches it; a cut-off cell cools
+## over the same from the moment the wave pulls it back, and never shows more
+## than it had reached. Under reduce-motion it is on or off.
+func _level(i: int, depths: PackedInt32Array, t: float) -> float:
+	if Motion.reduce:
+		return 1.0 if _shown_live(i, depths, t) else 0.0
+	var on := clampf((t - _live_at[i]) / LIGHT_FADE, 0.0, 1.0)
+	if depths[i] >= 0:
+		return on
+	return minf(on, 1.0 - clampf((t - _out_at[i]) / LIGHT_FADE, 0.0, 1.0))
+
+## The win's chase at cell `i`: a flash as the light running out from the
+## post passes its depth. Nothing before the win and nothing on a dark cell.
+func _chase(i: int, depths: PackedInt32Array, t: float) -> float:
+	if depths[i] < 0 or _chase_at >= FAR:
+		return 0.0
+	return Motion.flash_level(t - _chase_at - float(depths[i]) * _chase_step)
 
 static func _spin_time(q: int) -> float:
 	return TURN_TIME * (0.7 * maxf(1.0, float(absi(q))) + 0.3)
@@ -712,7 +1104,7 @@ func _settle(before: PackedInt32Array, at: float) -> void:
 	# `maxf(0.0, _wash_end - now)`.
 	_wash_end = maxf(_wash_end, last)
 	_wake_cues.sort_custom(func(a, b): return float(a.at) < float(b.at))
-	_busy_for(last - _now())
+	_busy_for(last - _now() + LIGHT_FADE + Motion.BUMP_TIME)
 
 ## A pinned cell reads as a given, in the language every board in this game
 ## uses: a pale sun wash under a dotted ring. Word Trail's hint mark.
@@ -795,11 +1187,11 @@ func _post(b, at: Vector2) -> void:
 ## rings and the band between them -- what a canvas radial gradient comes to
 ## once it is triangles. `ui/faces/lantern_face.gd`'s own halo, in the
 ## board's coordinates rather than a face's.
-func _halo(b, at: Vector2, inner: float, outer: float, warm: Color) -> void:
+func _halo(b, at: Vector2, inner: float, outer: float, warm: Color,
+		segments: int = LanternFace.GLOW_SEGMENTS) -> void:
 	if warm.a <= 0.0:
 		return
 	var clear := Color(warm, 0.0)
-	var segments: int = LanternFace.GLOW_SEGMENTS
 	var centre: int = b.vertex(at, warm)
 	var ring_i: int = b.verts.size()
 	for i in segments:
@@ -847,7 +1239,12 @@ func _dress(t: float) -> void:
 		var frame := _frame(i, t)
 		slot.position = frame.origin
 		slot.rotation = frame.get_rotation()
-		slot.scale = Vector2.ONE * (Motion.bump_scale(t - _wake_at[i]) if live else 1.0)
+		var bump := 1.0
+		if live:
+			bump = Motion.bump_scale(t - _wake_at[i])
+			if _chase_at < FAR:
+				bump *= Motion.bump_scale(t - _chase_at - float(depths[i]) * _chase_step)
+		slot.scale = frame.get_scale() * bump
 		lantern.rotation = -slot.rotation
 
 # --- the moments ---
@@ -1116,6 +1513,7 @@ func flat_win() -> Dictionary:
 		var lantern := LanternFace.new()
 		lantern.hue = i
 		lantern.lit = 1.0
+		lantern.iron = true
 		faces.append(lantern)
 	return {"faces": faces, "subtitle": tr("FL_WIN")}
 
@@ -1139,7 +1537,15 @@ func _on_solved() -> void:
 	_refresh()
 	_say(tr("FL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
-	_busy_for(maxf(0.0, _wash_end - _now()) + Motion.BUMP_TIME)
+	# The chase leaves the post once the winning wash has landed.
+	var depths: PackedInt32Array = state.depths()
+	var far := 1
+	for d in depths:
+		far = maxi(far, d)
+	_chase_step = minf(CHASE_STEP, CHASE_SPAN / float(far))
+	_chase_at = _now() + maxf(0.0, _wash_end - _now()) + CHASE_LAG
+	_busy_for(_chase_at - _now() + float(far) * _chase_step
+		+ Motion.FLASH_IN + Motion.FLASH_OUT + Motion.BUMP_TIME)
 
 # --- odds and ends ---
 
