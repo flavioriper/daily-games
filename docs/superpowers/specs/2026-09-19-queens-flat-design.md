@@ -484,3 +484,15 @@ a max channel delta of 1/255 on the same 68 calls. Suite 122583/0;
 `tests/_win.gd` windowed 21/21. A throwaway probe drove a laying stroke, a
 lifting stroke from a pebble (7 crosses to 3, one history entry each, one
 undo back to 7), a refusal and a solve, and shot each.
+
+**The X, the same evening.** The user found the marks too hard to see, and
+asked for an X or something cozier in place of the dot. **A ruled-out cell
+now carries a soft hand-drawn X** (`ui/faces/cross_mark.gd`): two gently
+bowed, round-ended strokes in `BARK` over a faint copy a little lower, so it
+sits on the cell. It replaces the pebble on the court, in the strokes, on the
+win's scatter and on the tray's cross chip. A cross a queen laid is the same
+X at `AUTO_SCALE` in `TEXT_DIM`, so the player's own notes stay the boldest
+mark on the court. **The dot on a bare cell is gone**: with an X for a
+ruled-out cell, a bare cell is simply bare, and the dot was the mark being
+confused with the note. Still 68 draw calls played, the reduce-motion pair
+pixel-identical, suite 122583/0, `tests/_win.gd` 21/21.

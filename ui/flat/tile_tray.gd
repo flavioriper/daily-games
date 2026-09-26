@@ -35,6 +35,7 @@ const BeeFace = preload("res://ui/faces/bee_face.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
+const CrossMark = preload("res://ui/faces/cross_mark.gd")
 
 const CHIP := Vector2(300.0, 130.0)
 const GAP := 40.0
@@ -57,7 +58,7 @@ const LABEL_Y := 62.0
 const SOCKET_RADIUS := 12.0
 
 ## The three sets. `glyphs` names what the chip's picture is: a laid tile, a
-## pebble on its socket, the bee (a BeeFace seated on the chip, alive) or the
+## pebble on its socket, Queens' X on its socket, the bee (a BeeFace seated on the chip, alive) or the
 ## mushroom (a MushroomFace, still).
 const MOSAIC := {
 	"values": [NonogramState.FILL, NonogramState.MARK],
@@ -69,7 +70,7 @@ const QUEENS := {
 	"values": [QueensState.QUEEN, QueensState.CROSS],
 	"labels": ["TRAY_QUEEN", "TRAY_CROSS"],
 	"names": ["QueenChip", "CrossChip"],
-	"glyphs": ["bee", "pebble"],
+	"glyphs": ["bee", "cross"],
 }
 const PATCH := {
 	"values": [MushroomState.FOUND, MushroomState.CLEAR],
@@ -151,6 +152,11 @@ func _draw_glyph(glyph: Control, i: int) -> void:
 	var centre := glyph.size * 0.5
 	if str(_set.glyphs[i]) == "tile":
 		Mosaic.tile(b, centre, GLYPH, Vector2.ONE, false, 0.0, 1.0)
+	elif str(_set.glyphs[i]) == "cross":
+		# Queens' X, on the socket, the mark the board leaves.
+		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
+			Pal.SOCKET_OUT)
+		CrossMark.draw(b, centre, GLYPH, Vector2.ONE, 1.0)
 	else:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
 			Pal.SOCKET_OUT)
