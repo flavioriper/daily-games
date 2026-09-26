@@ -1546,7 +1546,16 @@ reaches it through the `versus_host` group.
   style (`FOLEY`). Clacks and cushions are as loud as the contact was hard
   (`Fx2D.cue`'s `volume_db`), and `roll` is a looping voice whose level
   follows the balls' summed speed (`_roll_sound`).
-- 149 draw calls at the table (146 before the polish of 2026-09-26, spec section 8), 91 on the tab (810x1440, ANGLE agreeing).
+- **The pace is the cue drawn back, not a slot** (2026-09-26): press on the
+  cue behind the ball and drag it back along its line; the pace is how far
+  it was drawn, and letting go plays (`snooker_table.gd`'s `pulling` and
+  `released`). A full draw is `REACH` 380 design px, or the room left to the
+  screen's edge when the cue points at one -- a break from the D gets about
+  190 -- never under `REACH_MIN` 150, and the cue follows the finger one to
+  one. A ruler beside the cue fills with the pull and carries the hint's
+  gold notch. The side column holds the spin pad alone.
+  `tests/_tap_snooker.gd` drives it by input.
+- 139 draw calls at the table since the slot went (149 with it, 146 before the polish of 2026-09-26, spec section 8), 91 on the tab (810x1440).
   The tab's picture is the real table drawn `still`, so it costs the menu
   no per-frame work.
 - `tests/_shot_snooker.gd` forces a won frame for its end-card shot and puts

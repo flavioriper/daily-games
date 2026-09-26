@@ -13,11 +13,15 @@ extends Control
 ##
 ## Input: press on the table to aim at that point and drag to swing the
 ## aim; with the cue ball in hand, press on the ball to carry it round the D.
-## The power and the tip live in the screen's side column; this only draws
-## what they say.
+## Press on the cue itself and drag it back, the way a cue is drawn, and let
+## go to play: the pace is how far it was drawn, and pushing it back to where
+## it was picked up calls the shot off. The tip lives in the screen's side
+## column.
 
 signal aimed
 signal placed
+signal pulling
+signal released(power: float)
 
 const Sim = preload("res://versus/snooker_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -29,8 +33,17 @@ const Motion = preload("res://core/motion.gd")
 const CUSHION := 0.034
 const RAIL := 0.095
 const FRAME_R := 0.07
-## How far the cue can be drawn back at full power, metres.
+## How far the cue can be drawn back at full power, metres -- and never less
+## than REACH design px, because a finger needs room for touch and 0.30 m is
+## about a hundred pixels on a phone. The cue follows the finger one to one.
+## When the cue lies toward a screen edge (the break, from the D) a full
+## draw is whatever room is left to that edge, never under REACH_MIN.
 const PULL := 0.30
+const REACH := 380.0
+const REACH_MIN := 150.0
+const EDGE := 24.0
+## How near the cue a press has to land to pick it up, px either side.
+const GRAB := 46.0
 const CUE_LEN := 1.45
 ## How long the cue takes to go through the ball, seconds.
 const STROKE := 0.08
@@ -102,6 +115,8 @@ var in_hand := false
 var targets: Array = []
 ## A suggested aim from the hint, drawn as a faint second line.
 var hint_dir := Vector2.ZERO
+## The hint's suggested pull, 0..1, a gold notch on the pull ruler (0 none).
+var hint_power := 0.0
 ## A picture, not a game (the Versus tab's card): drawn once per resize and
 ## never again, so it costs the menu nothing a frame.
 var still := false
@@ -116,6 +131,10 @@ var _stroke_from := 0.0
 var _stroke_done: Callable
 var _sinking: Array = []
 var _drag := ""
+## Where the cue was picked up, px, for measuring the draw-back from.
+var _grab_at := Vector2.ZERO
+## The full draw for this pick-up, px (0: the default reach).
+var _reach := 0.0
 var _time := 0.0
 ## Recent pixel positions of each moving ball, newest last.
 var _trails := {}
@@ -140,6 +159,23 @@ func _relayout() -> void:
 	origin = (size - used) * 0.5 + Vector2.ONE * (CUSHION + RAIL) * ppm
 	_table = null
 	queue_redraw()
+
+## How far back the cue goes at full power, px.
+func reach() -> float:
+	return _reach if _reach > 0.0 else maxf(PULL * ppm, REACH)
+
+## Room from `at` (this control's px) to the screen's edge going along `d`.
+func _room(at: Vector2, d: Vector2) -> float:
+	var xf := get_global_transform()
+	var from := xf * at
+	var dir := (xf.basis_xform(d)).normalized()
+	var r := get_viewport_rect().grow(-EDGE)
+	var t := INF
+	if dir.x > 0.0001: t = minf(t, (r.end.x - from.x) / dir.x)
+	if dir.x < -0.0001: t = minf(t, (r.position.x - from.x) / dir.x)
+	if dir.y > 0.0001: t = minf(t, (r.end.y - from.y) / dir.y)
+	if dir.y < -0.0001: t = minf(t, (r.position.y - from.y) / dir.y)
+	return maxf(t, 0.0) / maxf(xf.get_scale().x, 0.0001)
 
 func px(p: Vector2) -> Vector2:
 	return origin + p * ppm
@@ -215,6 +251,7 @@ func flash(kind: String, at: Vector2, strength: float) -> void:
 ## The cue comes up behind the ball at the start of a turn.
 func cue_in() -> void:
 	show_cue = true
+	_reach = 0.0
 	_follow_t = -1.0
 	if _cue_tw != null and _cue_tw.is_valid():
 		_cue_tw.kill()
@@ -274,6 +311,11 @@ func _gui_input(event: InputEvent) -> void:
 	if release:
 		if _drag == "ball":
 			placed.emit()
+		elif _drag == "pull":
+			var p := power
+			_drag = ""
+			released.emit(p)
+			return
 		_drag = ""
 		return
 	var cue: Vector2 = sim.pos[Sim.CUE]
@@ -281,6 +323,16 @@ func _gui_input(event: InputEvent) -> void:
 		_drag = "aim"
 		if in_hand and px(cue).distance_to(at) < Sim.R * ppm * 3.2:
 			_drag = "ball"
+		elif _on_cue(at):
+			_drag = "pull"
+			_grab_at = at
+			_reach = clampf(_room(at, -aim_dir), REACH_MIN, maxf(PULL * ppm, REACH))
+	if _drag == "pull":
+		# Only the draw along the cue counts: a sideways wobble of the thumb
+		# neither aims nor adds pace.
+		power = clampf((at - _grab_at).dot(-aim_dir) / reach(), 0.0, 1.0)
+		pulling.emit()
+		return
 	if _drag == "ball":
 		var p := Sim.clamp_d(metres(at))
 		if sim.free_at(p, Sim.CUE):
@@ -292,6 +344,13 @@ func _gui_input(event: InputEvent) -> void:
 			aim_dir = d.normalized()
 			hint_dir = Vector2.ZERO
 			aimed.emit()
+
+## Whether a press lands on the cue lying behind the ball.
+func _on_cue(at: Vector2) -> bool:
+	var rel := at - px(sim.pos[Sim.CUE])
+	var along := rel.dot(-aim_dir)
+	var r := Sim.R * ppm
+	return along > r * 0.8 and along < CUE_LEN * ppm and absf(rel.dot(Vector2(-aim_dir.y, aim_dir.x))) < maxf(GRAB, r * 2.2)
 
 # --- drawing ---
 
@@ -532,8 +591,46 @@ func _build_live() -> ArrayMesh:
 			_guide(b, hint_dir, Color(Pal.SUN_RAY, 0.8))
 		_guide(b, aim_dir, Color(1.0, 1.0, 1.0, 0.8))
 	if show_cue and (sim.on[Sim.CUE] or _follow_t >= 0.0):
+		_ruler(b)
 		_cue(b)
 	return b.mesh()
+
+## The pull ruler: a groove laid beside the cue, as long as a full draw,
+## that fills from green to red as the cue comes back, with the hint's gold
+## notch across it. Shown while there is a pull or a notch to show.
+func _ruler(b: Face.Builder) -> void:
+	if _stroke_t >= 0.0 or _follow_t >= 0.0 or not interactive and power <= 0.0:
+		return
+	if power <= 0.0 and hint_power <= 0.0:
+		return
+	var d := aim_dir
+	var n := Vector2(-d.y, d.x)
+	var r := Sim.R * ppm
+	var c := px(sim.pos[Sim.CUE])
+	var side := n * (r * 1.3 + 16.0)
+	var a := c - d * (r + 5.0) + side
+	var full := reach()
+	b.stroke(PackedVector2Array([a, a - d * full]), 12.0, Color(0.1, 0.2, 0.12, 0.35))
+	b.stroke(PackedVector2Array([a, a - d * full]), 8.0, Color(1.0, 0.98, 0.9, 0.55))
+	for i in range(1, 10):
+		var t := a - d * full * i / 10.0
+		var w := 7.0 if i % 5 else 11.0
+		b.stroke(PackedVector2Array([t - n * w, t + n * w]), 2.0, Color(1.0, 0.98, 0.9, 0.45), false, false)
+	if power > 0.0:
+		# Every band keeps the colour of its own depth, so a hard pull reads
+		# hot at the far end.
+		var bands := 20
+		for k in bands:
+			var u0 := float(k) / bands
+			if u0 >= power:
+				break
+			var u1 := minf(float(k + 1) / bands, power)
+			var col := Color("8fcf7a").lerp(Color("f2c233"), clampf(u0 * 1.8, 0.0, 1.0)).lerp(Color("e0574f"), clampf(u0 * 2.0 - 1.0, 0.0, 1.0))
+			b.stroke(PackedVector2Array([a - d * full * u0, a - d * full * u1]), 8.0, col, false, k == 0)
+	if hint_power > 0.0:
+		var t := a - d * full * hint_power
+		b.stroke(PackedVector2Array([t - n * 14.0, t + n * 14.0]), 5.0, Pal.SUN_RAY)
+		b.disc(t + n * 14.0, 5.0, Pal.SUN_RAY)
 
 ## One ball: the darker body, the lit face toward the light, a soft bloom
 ## and a highlight; the cue ball's spots turned by its spin.
@@ -626,7 +723,7 @@ func _cue(b: Face.Builder) -> void:
 	elif _follow_t >= 0.0:
 		# Through the ball and a little beyond, held, then drawn back as it fades.
 		var u := clampf(_follow_t / CUE_OUT, 0.0, 1.0)
-		pull = -0.02 - FOLLOW / PULL * sin(minf(1.0, u * 2.2) * PI * 0.5) + 0.12 * maxf(0.0, u - 0.45)
+		pull = -0.02 - FOLLOW * ppm / reach() * sin(minf(1.0, u * 2.2) * PI * 0.5) + 0.12 * maxf(0.0, u - 0.45)
 		alpha *= 1.0 - smoothstep(0.35, 1.0, u)
 	elif interactive and power <= 0.0 and not Motion.reduce:
 		# Feathering: the cue eases back and forth a little while you line up.
@@ -637,7 +734,7 @@ func _cue(b: Face.Builder) -> void:
 	var following := _follow_t >= 0.0
 	var c := px(_struck_at if following else sim.pos[Sim.CUE])
 	var r := Sim.R * ppm
-	var gap := r + 5.0 + pull * PULL * ppm + slide * ppm
+	var gap := r + 5.0 + pull * reach() + slide * ppm
 	if not following:
 		gap = maxf(r * 0.7, gap)
 	var tip_at := c - d * gap

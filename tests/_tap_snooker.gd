@@ -1,8 +1,8 @@
 extends SceneTree
 
 ## Drives a frame of snooker by input alone: open it from the Versus tab's
-## Play button, drag the cue ball in the D, tap the table to aim, pull the
-## power slot down and let go; then Back returns to the Versus tab.
+## Play button, drag the cue ball in the D, tap the table to aim, pick the
+## cue up and draw it back, and let go; then Back returns to the Versus tab.
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_tap_snooker.gd -- <outdir>
 
@@ -11,6 +11,8 @@ var _screen: Node
 var _t := 0.0
 var _out := "/tmp"
 var _step := 0
+var _grab := Vector2.ZERO
+var _pulled := Vector2.ZERO
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -81,19 +83,24 @@ func _process(delta: float) -> bool:
 				_step = 3
 		3:
 			if _t > 3.4:
-				var bar: Control = _screen.power_bar
-				var r := bar.get_global_rect()
-				var top := r.position + Vector2(r.size.x * 0.5, 40.0)
-				_mouse(top, true)
-				_move(top + Vector2(0, r.size.y * 0.35))
-				_move(top + Vector2(0, r.size.y * 0.6))
+				var table: Control = _screen.table
+				var xf: Transform2D = table.get_global_transform()
+				var ball: Vector2 = table.px(_screen.sim.pos[0])
+				_grab = xf * (ball - table.aim_dir * 90.0)
+				_mouse(_grab, true)
+				# The full draw is fixed at the pick-up: read it after.
+				_pulled = _grab + xf.basis_xform(-table.aim_dir * table.reach() * 0.6)
+				_move(_grab.lerp(_pulled, 0.5))
+				_move(_pulled)
+				print("reach ", snappedf(table.reach(), 1.0), " pulled power ", snappedf(table.power, 0.01), " (want 0.6)")
+				_step = 31
+		31:
+			if _t > 3.6:
 				_shot("pull")
 				_step = 4
 		4:
-			if _t > 3.7:
-				var bar: Control = _screen.power_bar
-				var r := bar.get_global_rect()
-				_mouse(r.position + Vector2(r.size.x * 0.5, 40.0 + r.size.y * 0.6), false)
+			if _t > 3.8:
+				_mouse(_pulled, false)
 				_step = 5
 		5:
 			if _t > 4.2:

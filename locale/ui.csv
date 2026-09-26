@@ -131,8 +131,7 @@ SNK_FREE_BALL,FREE BALL,BOLA LIVRE,BOLA LIBRE
 SNK_BREAK,Break %d,Tacada %d,Tacada %d
 SNK_LEFT,%d on the table,%d na mesa,%d en la mesa
 SNK_SPIN,SPIN,EFEITO,EFECTO
-SNK_POWER,POWER,FORÇA,FUERZA
-SNK_YOUR_TURN,"Your shot: aim on the table, pull the power down","Sua vez: mire na mesa e puxe a força para baixo","Tu turno: apunta en la mesa y tira de la fuerza hacia abajo"
+SNK_YOUR_TURN,"Your shot: aim on the table, then drag the cue back and let go","Sua vez: mire na mesa, depois puxe o taco para trás e solte","Tu turno: apunta en la mesa, luego tira del taco hacia atrás y suéltalo"
 SNK_BOT_TURN,Bot is lining up…,O bot está mirando…,El bot está apuntando…
 SNK_IN_HAND,"Ball in hand: drag it anywhere in the D","Bola na mão: arraste-a para qualquer lugar do D","Bola en mano: arrástrala a cualquier lugar de la D"
 SNK_FREE,"Free ball: any ball counts as the ball on","Bola livre: qualquer bola vale como a bola da vez","Bola libre: cualquier bola cuenta como la bola en juego"

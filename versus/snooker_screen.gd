@@ -4,11 +4,12 @@ extends Control
 ## tab. The flat boards' top bar (back, the title in ink with its sprout,
 ## reset and a hint with its count, settings), a scoreboard with the sun for
 ## you and the moon for the computer, and under them the table on a wooden
-## deck with the spin pad and the power slot in a column beside it -- the
-## reference layout's ball tally column, given the controls instead, since
-## the scoreboard already says what is on.
+## deck with the spin pad in a column beside it -- the reference layout's
+## ball tally column, given the control instead, since the scoreboard
+## already says what is on.
 ##
-## Play: press the table to aim, pull the power slot down and let go. With
+## Play: press the table to aim, then drag the cue itself back and let go;
+## the pace is how far it was drawn (versus/snooker_table.gd). With
 ## the cue ball in hand, drag it round the D first. The hint (three a frame)
 ## asks the computer's own planner for your best shot and lays its line,
 ## tip and pace out for you to play or ignore.
@@ -66,7 +67,6 @@ var rules: RefCounted
 var table: Control
 var top_bar: Control
 var spin_pad: Control
-var power_bar: Control
 var settings_sheet: Control
 var _state := State.WAIT
 var _acc := 0.0
@@ -189,25 +189,15 @@ func _build() -> void:
 	spin_pad = Controls.SpinPad.new()
 	spin_pad.changed.connect(func() -> void: table.tip = spin_pad.tip)
 	side_col.add_child(spin_pad)
-	var gap := Control.new()
-	gap.custom_minimum_size.y = 14
-	side_col.add_child(gap)
-	side_col.add_child(_caption("SNK_POWER"))
-	power_bar = Controls.PowerBar.new()
-	power_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	power_bar.pulling.connect(func() -> void:
-		table.power = power_bar.power
-		_hush())
-	power_bar.released.connect(_on_release)
-	side_col.add_child(power_bar)
 
 	table = Table.new()
 	table.name = "Table"
 	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	table.aimed.connect(func() -> void:
-		power_bar.mark = 0.0
-		power_bar.queue_redraw()
+		table.hint_power = 0.0
 		_hush())
+	table.pulling.connect(_hush)
+	table.released.connect(_on_release)
 	row.add_child(table)
 	_fx = Fx2D.new()
 	table.add_child(_fx)
@@ -498,9 +488,8 @@ func _start_turn() -> void:
 		_finish()
 		return
 	table.hint_dir = Vector2.ZERO
-	power_bar.mark = 0.0
+	table.hint_power = 0.0
 	table.power = 0.0
-	power_bar.set_power(0.0)
 	table.in_hand = rules.in_hand
 	if rules.in_hand:
 		_seat_cue_ball()
@@ -531,9 +520,7 @@ func _start_turn() -> void:
 func _controls(on: bool) -> void:
 	table.interactive = on
 	spin_pad.enabled = on
-	power_bar.enabled = on
 	spin_pad.queue_redraw()
-	power_bar.queue_redraw()
 	if on:
 		spin_pad.set_tip(Vector2.ZERO)
 		table.tip = Vector2.ZERO
@@ -738,12 +725,10 @@ func _play_ai(plan: Dictionary) -> void:
 	_ai_tw.tween_method(func(a: float) -> void: table.aim_dir = Vector2.from_angle(a),
 		from, from + wrapf(to - from, -PI, PI), AIM_SWING).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var pull := _power_for(float(shot.speed))
-	_ai_tw.tween_method(func(p: float) -> void:
-		table.power = p
-		power_bar.set_power(p), 0.0, pull, AIM_PULL).set_trans(Tween.TRANS_SINE)
+	_ai_tw.tween_method(func(p: float) -> void: table.power = p,
+		0.0, pull, AIM_PULL).set_trans(Tween.TRANS_SINE)
 	_ai_tw.tween_interval(0.15)
 	_ai_tw.tween_callback(func() -> void:
-		power_bar.set_power(0.0)
 		_shoot(shot.dir, float(shot.speed), shot.tip))
 
 func _on_hint() -> void:
@@ -764,11 +749,10 @@ func _show_hint(plan: Dictionary) -> void:
 	table.hint_dir = plan.dir
 	spin_pad.set_tip(plan.tip)
 	table.tip = plan.tip
-	power_bar.mark = _power_for(float(plan.speed))
-	power_bar.queue_redraw()
+	table.hint_power = _power_for(float(plan.speed))
 	_fx.sparkle(table.px(sim.pos[Sim.CUE]))
 	_fx.cue("hint")
-	_say(tr("SNK_HINT_LINE") % int(round(power_bar.mark * 100.0)))
+	_say(tr("SNK_HINT_LINE") % int(round(table.hint_power * 100.0)))
 
 # --- the end ---
 
