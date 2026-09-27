@@ -152,6 +152,9 @@ func _note(id: String) -> String:
 		"hedgehogs": return "%dx%d lawn, %d hedgehogs, woken=%d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols(), _puzzle._state.rows(), int(_puzzle._state.g.k), _puzzle._state.woken,
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"pixelgarden": return "%s %dx%d, %d beads, %d moves, hints=%d, checks=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.pic_id, _puzzle._state.n, _puzzle._state.n, _puzzle._state.target,
+			_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -186,6 +189,7 @@ func _solve(id: String) -> void:
 		"knight": _solve_knight()
 		"hedgehogs": _solve_hedgehogs()
 		"slider": _solve_slider()
+		"pixelgarden": _solve_pixelgarden()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -991,3 +995,38 @@ func _tap_key(key_name: String) -> void:
 	var chip = _host.tray.find_child(key_name, true, false)
 	if chip is Button:
 		_press(chip)
+
+## Pixel Garden: the hint seats (or fixes) one peg, Check rings nothing on a
+## board with no wrong beads; then one wrong bead is seated and lifted again
+## (a tap on a bead of the chosen colour lifts it), and every colour's chip
+## is tapped and its pegs tapped in turn.
+func _solve_pixelgarden() -> void:
+	var st = _puzzle._state
+	var n: int = st.n
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in n:
+		for c in n:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	# A wrong bead on a bare peg, then lifted by tapping it again.
+	for c in st.size():
+		if int(st.want[c]) == -1:
+			_tap_local(_puzzle.chip_to_local(0))
+			_tap_local(_puzzle.cell_to_local(c / n, c % n))
+			if int(st.beads[c]) != 0:
+				_hud_ok = false
+			_tap_local(_puzzle.cell_to_local(c / n, c % n))
+			if int(st.beads[c]) != -1:
+				_hud_ok = false
+			break
+	for k in st.names.size():
+		_tap_local(_puzzle.chip_to_local(k))
+		for c in st.size():
+			if _puzzle.is_done():
+				return
+			if int(st.want[c]) == k and int(st.beads[c]) != k:
+				_tap_local(_puzzle.cell_to_local(c / n, c % n))

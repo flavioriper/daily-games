@@ -332,6 +332,13 @@ func _initialize() -> void:
 		_shots = [0.35, 1.62, 1.72, 2.1, 2.45, 2.8, 3.8]
 		_idle_from = 4.0
 		_idle_to = 6.0
+	if _id == "pixelgarden" and _mode == "solve":
+		# Every peg but one seated through the state and the last tapped at
+		# TAP_AT: the strip catches the solve's hop, the iron crossing the
+		# board part-way and most of the way, and the pegs gone under it.
+		_shots = [0.35, 1.7, 2.0, 2.3, 2.6, 3.0, 4.2]
+		_idle_from = 4.4
+		_idle_to = 6.0
 	if _id == "sudoku" and _mode == "solve":
 		# The answer goes in at TAP_AT, so the strip catches the diagonal
 		# wave hopping the digits, the tray warming, the glint part-way and
@@ -468,6 +475,8 @@ func _process(delta: float) -> bool:
 			_tap_hedgehogs()
 		elif _entry.id == "slider" and not _empty:
 			_slide_slider()
+		elif _entry.id == "pixelgarden" and not _empty:
+			_stroke_pixelgarden()
 		elif _entry.id == "marigold" and not _empty:
 			_shoot_marigold()
 		elif _entry.id == "rings" and not _empty:
@@ -1618,3 +1627,43 @@ func _shoot_marigold() -> void:
 		ev.pressed = pressed
 		ev.position = at
 		root.push_input(ev, true)
+
+## Pixel Garden: a stroke dragged along the row with the longest run of the
+## chosen colour, from its first such peg to its last, seating a bead on
+## every peg crossed. `solve` seats every peg but the last through the state
+## and taps that one instead, with its colour chosen.
+func _stroke_pixelgarden() -> void:
+	var st = _puzzle._state
+	var n: int = st.n
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	if _mode == "solve":
+		var last := -1
+		for c in st.size():
+			if int(st.want[c]) != -1:
+				last = c
+		st.begin_stroke()
+		for c in st.size():
+			if c != last and int(st.want[c]) != -1:
+				st.put(c, int(st.want[c]))
+		st.end_stroke()
+		_puzzle._bands = []
+		_puzzle.set_brush(int(st.want[last]))
+		_tap_global(xf * _puzzle.cell_to_local(last / n, last % n))
+		return
+	var k: int = _puzzle.brush
+	var best := Vector3i(-1, 0, 0)
+	for y in n:
+		var first := -1
+		var end := -1
+		for x in n:
+			if int(st.want[y * n + x]) == k:
+				if first < 0:
+					first = x
+				end = x
+		if first >= 0 and end - first > best.z - best.y:
+			best = Vector3i(y, first, end)
+	if best.x < 0:
+		return
+	var from: Vector2 = xf * _puzzle.cell_to_local(best.x, best.y)
+	var to: Vector2 = xf * _puzzle.cell_to_local(best.x, best.z)
+	_begin_drag(from, to - from)

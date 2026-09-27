@@ -650,3 +650,64 @@ MG_LVL_0,12 marigolds · 10 seeds,12 calêndulas · 10 sementes,12 caléndulas �
 MG_LVL_1,18 marigolds · 10 seeds,18 calêndulas · 10 sementes,18 caléndulas · 10 semillas
 MG_LVL_2,25 marigolds · 10 seeds,25 calêndulas · 10 sementes,25 caléndulas · 10 semillas
 MG_LVL_3,25 marigolds · 8 seeds,25 calêndulas · 8 sementes,25 caléndulas · 8 semillas
+PG_RULES,"Copy the little picture onto the pegboard, bead for bead. Pick a colour from the kit, then tap a peg to seat a bead, or drag across the pegs to seat a run. Tap or drag over a bead of the chosen colour to lift it back into the kit.\n\nThe kit holds exactly the beads the picture needs: the number under each colour is how many are left. If a colour runs out before its shape is done, one of its beads is in the wrong place. Hold the picture to see it big. Check rings every bead that is out of place.","Copie a figurinha no pinboard, conta por conta. Escolha uma cor do kit e toque num pino para encaixar uma conta, ou arraste pelos pinos para encaixar uma fileira. Toque ou arraste sobre uma conta da cor escolhida para devolvê-la ao kit.\n\nO kit tem exatamente as contas que a figura pede: o número embaixo de cada cor diz quantas faltam. Se uma cor acabar antes de a forma ficar pronta, uma das contas dela está no lugar errado. Segure a figura para vê-la grande. Conferir circula toda conta fora do lugar.","Copia el dibujito en el tablero de clavijas, cuenta a cuenta. Elige un color del kit y toca una clavija para poner una cuenta, o arrastra por las clavijas para poner una fila. Toca o arrastra sobre una cuenta del color elegido para devolverla al kit.\n\nEl kit tiene exactamente las cuentas que pide el dibujo: el número bajo cada color dice cuántas quedan. Si un color se acaba antes de terminar su forma, una de sus cuentas está en el lugar equivocado. Mantén pulsado el dibujo para verlo en grande. Comprobar rodea cada cuenta fuera de lugar."
+PG_BLURB,Copy the picture onto the pegboard one bead at a time.,Copie a figura no pinboard uma conta de cada vez.,Copia el dibujo en el tablero una cuenta a la vez.
+PG_SHORT,"Bead by bead,\ncopy the picture.","Conta por conta,\ncopie a figura.","Cuenta a cuenta,\ncopia el dibujo."
+PG_MOTTO,Bead by bead,Conta por conta,Cuenta a cuenta
+PG_LVL_0,"10 × 10, 3–4 colours","10 × 10, 3–4 cores","10 × 10, 3–4 colores"
+PG_LVL_1,"12 × 12, 4–5 colours","12 × 12, 4–5 cores","12 × 12, 4–5 colores"
+PG_LVL_2,"14 × 14, 5–6 colours","14 × 14, 5–6 cores","14 × 14, 5–6 colores"
+PG_LVL_3,"16 × 16, 6–7 colours","16 × 16, 6–7 cores","16 × 16, 6–7 colores"
+PG_FUSED,A hint fixed that peg for good.,Uma dica fixou esse pino de vez.,Una pista fijó esa clavija para siempre.
+PG_NONE_LEFT,That colour is used up. One of its beads is in the wrong place.,Essa cor acabou. Uma das contas dela está no lugar errado.,Ese color se acabó. Una de sus cuentas está en el lugar equivocado.
+PG_ALL_SEATED,"Every bead is on the board. Check it, or look again.","Todas as contas estão no tabuleiro. Confira, ou olhe de novo.","Todas las cuentas están en el tablero. Compruébalo, o vuelve a mirar."
+PG_HINT_LIFT,That bead did not belong there.,Essa conta não era daí.,Esa cuenta no iba ahí.
+PG_HINT_SWAP,That peg wanted another colour.,Esse pino pedia outra cor.,Esa clavija pedía otro color.
+PG_HINT_SEAT,One more bead in its place.,Mais uma conta no lugar.,Una cuenta más en su lugar.
+PG_CHECK_OK,Every bead is in its place.,Todas as contas estão no lugar.,Todas las cuentas están en su lugar.
+PG_CHECK_OK_ONE,"All right so far, and 1 bead to go.","Tudo certo até aqui, e falta 1 conta.","Todo bien por ahora, y falta 1 cuenta."
+PG_CHECK_OK_N,"All right so far, and %s beads to go.","Tudo certo até aqui, e faltam %s contas.","Todo bien por ahora, y faltan %s cuentas."
+PG_CHECK_ONE,One bead is out of place.,Uma conta está fora do lugar.,Una cuenta está fuera de lugar.
+PG_CHECK_N,%s beads are out of place.,%s contas estão fora do lugar.,%s cuentas están fuera de lugar.
+PG_RESET,Every bead back in the kit.,Todas as contas de volta ao kit.,Todas las cuentas de vuelta al kit.
+PG_WIN,"%s, finished and ironed.",Figura pronta e passada a ferro: %s.,Dibujo terminado y planchado: %s.
+PG_PIC_STRAWBERRY,Strawberry,Morango,Fresa
+PG_PIC_MUSHROOM,Mushroom,Cogumelo,Seta
+PG_PIC_TULIP,Tulip,Tulipa,Tulipán
+PG_PIC_APPLE,Apple,Maçã,Manzana
+PG_PIC_CHERRIES,Cherries,Cerejas,Cerezas
+PG_PIC_CARROT,Carrot,Cenoura,Zanahoria
+PG_PIC_LADYBIRD,Ladybird,Joaninha,Mariquita
+PG_PIC_ACORN,Acorn,Bolota,Bellota
+PG_PIC_DAISY,Daisy,Margarida,Margarita
+PG_PIC_TREE,Tree,Árvore,Árbol
+PG_PIC_SNAIL,Snail,Caracol,Caracol
+PG_PIC_SUNFLOWER,Sunflower,Girassol,Girasol
+PG_PIC_BEE,Bee,Abelha,Abeja
+PG_PIC_BUTTERFLY,Butterfly,Borboleta,Mariposa
+PG_PIC_FROG,Frog,Sapo,Rana
+PG_PIC_DUCK,Duck,Pato,Pato
+PG_PIC_WATERMELON,Watermelon,Melancia,Sandía
+PG_PIC_CACTUS,Cactus,Cacto,Cactus
+PG_PIC_BIRDHOUSE,Birdhouse,Casinha de Passarinho,Casita para Pájaros
+PG_PIC_BIRD,Garden Bird,Pássaro do Jardim,Pájaro del Jardín
+PG_PIC_ROBIN,Robin,Pisco-de-peito-ruivo,Petirrojo
+PG_PIC_HEDGEHOG,Hedgehog,Ouriço,Erizo
+PG_PIC_OWL,Owl,Coruja,Búho
+PG_PIC_WATERING_CAN,Watering Can,Regador,Regadera
+PG_PIC_COTTAGE,Cottage,Chalé,Casita de Campo
+PG_PIC_PUMPKIN,Pumpkin,Abóbora,Calabaza
+PG_PIC_TURTLE,Turtle,Tartaruga,Tortuga
+PG_PIC_TEACUP,Teacup,Xícara de Chá,Taza de Té
+PG_PIC_BUNNY,Bunny,Coelhinho,Conejito
+PG_PIC_RAINBOW,Rainbow,Arco-íris,Arcoíris
+PG_PIC_FOX,Fox,Raposa,Zorro
+PG_PIC_SQUIRREL,Squirrel,Esquilo,Ardilla
+PG_PIC_SHEEP,Sheep,Ovelha,Oveja
+PG_PIC_KOI_POND,Koi Pond,Lago de Carpas,Estanque de Carpas
+PG_PIC_MUSHROOM_HOUSE,Mushroom House,Casa de Cogumelo,Casa de Seta
+PG_PIC_CAT,Cat,Gato,Gato
+PG_PIC_CATERPILLAR,Caterpillar,Lagarta,Oruga
+PG_PIC_BEEHIVE,Beehive,Colmeia,Colmena
+PG_PIC_DRAGONFLY,Dragonfly,Libélula,Libélula
+PG_PIC_FRUIT_BASKET,Fruit Basket,Cesta de Frutas,Cesta de Frutas
