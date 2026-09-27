@@ -642,6 +642,19 @@ MG_FEVER,Full bloom!,Florada total!,¡Floración total!
 MG_CLOSE,So close!,Quase!,¡Casi!
 MG_WIN,%s points in %d shots.,%s pontos em %d lançamentos.,%s puntos en %d tiros.
 MG_DONE,Every marigold is in bloom.,Todas as calêndulas floresceram.,Todas las caléndulas florecieron.
+MG_WORD_1,Nice!,Boa!,¡Bien!
+MG_WORD_2,Blooming!,Florindo!,¡Floreciendo!
+MG_WORD_3,Petal power!,Poder das pétalas!,¡Poder de pétalos!
+MG_WORD_4,Flower-ful!,Flor-midável!,¡Flor-midable!
+MG_WORD_5,Legendary!,Lendário!,¡Legendario!
+MG_BUNCH_2,Double!,Dupla!,¡Doble!
+MG_BUNCH_3,Triple!,Tripla!,¡Triple!
+MG_BUNCH_4,Bouquet x%d!,Buquê x%d!,¡Ramo x%d!
+MG_MULT,Points x%d!,Pontos x%d!,¡Puntos x%d!
+MG_CAUGHT,Caught!,Pegou!,¡Atrapada!
+MG_BIG_SHOT,Big shot!,Jogadaça!,¡Tirazo!
+MG_JACKPOT,Jackpot!,Bolada!,¡Premio gordo!
+MG_BLOOMS,%d blooms,%d flores,%d flores
 MG_RULES,"Drag anywhere to aim the sun, and let go to shoot a seed. The seed bounces down through the buds, and every bud it touches blooms; the blooms are picked when the seed is gone. Bloom every orange marigold to finish the garden.\n\nBluebells are worth 10, marigolds 100 and the violet 500, which moves after every shot; the more marigolds bloom, the higher the multiplier. A clover splits the seed in two. A seed that lands in the sliding pot comes back, and a shot worth 25,000 gives one back too. Run out of seeds and the garden grows back for another try.","Arraste em qualquer lugar para mirar o sol e solte para lançar uma semente. A semente quica para baixo entre os botões, e cada botão que ela toca floresce; as flores são colhidas quando a semente se vai. Faça florescer todas as calêndulas laranja para terminar o jardim.\n\nCampânulas valem 10, calêndulas 100 e a violeta 500, e ela muda de lugar a cada lançamento; quanto mais calêndulas florescem, maior o multiplicador. Um trevo divide a semente em duas. Uma semente que cai no vaso que desliza volta para você, e uma jogada que vale 25.000 também devolve uma. Se as sementes acabarem, o jardim volta a crescer para mais uma tentativa.","Arrastra en cualquier lugar para apuntar el sol y suelta para lanzar una semilla. La semilla rebota hacia abajo entre los capullos, y cada capullo que toca florece; las flores se recogen cuando la semilla se va. Haz florecer todas las caléndulas naranjas para terminar el jardín.\n\nLas campanillas valen 10, las caléndulas 100 y la violeta 500, que cambia de lugar tras cada tiro; cuantas más caléndulas florecen, mayor es el multiplicador. Un trébol divide la semilla en dos. Una semilla que cae en la maceta que se desliza vuelve a ti, y un tiro que vale 25.000 también devuelve una. Si se acaban las semillas, el jardín vuelve a crecer para otro intento."
 MG_BLURB,Bounce seeds off the buds and bloom every marigold.,Quique sementes nos botões e faça florescer todas as calêndulas.,Rebota semillas en los capullos y haz florecer todas las caléndulas.
 MG_SHORT,"Shoot a seed,\nbloom the garden.","Lance uma semente,\nfaça o jardim florir.","Lanza una semilla,\nhaz florecer el jardín."

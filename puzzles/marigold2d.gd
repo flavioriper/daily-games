@@ -122,6 +122,25 @@ const TOAST_MARGIN := 40.0
 const TIPS := ["MG_TIP_AIM", "MG_TIP_GOAL", "MG_TIP_POT"]
 const BUD_BANDS := 6
 
+# --- the rewards, made loud (the spec's third amendment) ---
+## A long shot's words, by blooms in the shot, lettered bigger the higher.
+const WORDS := [[30, "MG_WORD_5"], [22, "MG_WORD_4"], [15, "MG_WORD_3"], [10, "MG_WORD_2"], [6, "MG_WORD_1"]]
+## Marigolds in one shot: two, three, four or more.
+const BUNCH := ["", "", "MG_BUNCH_2", "MG_BUNCH_3", "MG_BUNCH_4"]
+const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+const GOLD := Color("f2b632")
+const ROSE := Color("ff6f8e")
+const PETALS := [Color("f08a2c"), Color("fcc271"), Color("f9c04a"), Color("f4a3a0"), Color("c6b0ea"), Color("fbf7ee")]
+## Where the stickers stand, in field rows: the first free one is taken.
+const STICKER_ROWS := [40.0, 55.0, 70.0, 85.0]
+const MAX_BITS := 260
+## The bloom counter shows from this many blooms in a shot.
+const COUNT_FROM := 4
+const COUNT_FONT_BIG := 44
+const HOP_TIME := 0.4
+const KICK_TIME := 0.35
+const SEED_FLY := 0.55
+
 var _state = State.new()
 var fx: Node2D
 
@@ -187,6 +206,29 @@ var _glint_i := -1
 var _glint_at := -100.0
 ## The trough holds this many seeds: the try's first handful.
 var _seeds_start := 10
+## The rewards. Bits thrown in the garden (pixels before the view, moving on
+## the garden's clock, so the full bloom's slow motion slows them too) and
+## in the air over it (the card's pixels, real time); the stickers, lettered
+## a hopping letter at a time; the warm glow round the card while a shot
+## runs long, the flash, the view's shake and the rain.
+var _bits: Array = []
+var _air_bits: Array = []
+var _stickers: Array = []
+var _heat := 0.0
+var _flash := 0.0
+var _flash_col := Color.WHITE
+var _shake := 0.0
+var _rain := 0.0
+var _rain_coins := false
+## The loudest word shown this shot, the sun's hop, the score's kick and the
+## bloom counter's bump.
+var _word_tier := -1
+var _hop_at := -100.0
+var _kick_at := -100.0
+var _count_at := -100.0
+## Seeds flying into the trough: {"from" (px), "t"}.
+var _seed_flies: Array = []
+var _air: ArrayMesh
 
 var _still: ArrayMesh
 ## The closed buds in BUD_BANDS strips down the field, so a bloom rebuilds
@@ -304,6 +346,12 @@ func _fresh(t: float) -> void:
 	_score_shown = float(_state.score)
 	_shot_at = -100.0
 	_seeds_start = _state.seeds
+	_bits = []
+	_stickers = []
+	_seed_flies = []
+	_heat = 0.0
+	_shake = 0.0
+	_word_tier = -1
 
 # --- layout ---
 
@@ -369,6 +417,7 @@ func _process(delta: float) -> void:
 	elif not _done:
 		_state.step_pot(sd)
 	_camera(t, delta)
+	_tick_rewards(t, delta)
 	if _state.pot_dir != _pot_last_dir:
 		_pot_last_dir = _state.pot_dir
 		_pot_turn_at = t
@@ -459,6 +508,8 @@ func _camera(t: float, delta: float) -> void:
 	c.x = clampf(c.x, size.x - (size.x - _focus.x) * _zoom, _focus.x * _zoom)
 	c.y = clampf(c.y, size.y - (size.y - _focus.y) * _zoom, _focus.y * _zoom)
 	_cam = Transform2D(0.0, Vector2.ONE * _zoom, 0.0, c - _focus * _zoom)
+	if _shake > 0.0 and not Motion.reduce:
+		_cam.origin += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 16.0 * _shake * _shake
 	fx.transform = _cam
 	_drumroll(delta)
 
@@ -475,7 +526,11 @@ func _near_miss() -> void:
 	_near_spent = true
 	fx.cue("close")
 	_mood(Face.Expr.WORRIED, 1.2)
-	_tell("MG_CLOSE", Face.Expr.WORRIED)
+	_say(tr("MG_CLOSE"), Face.Expr.WORRIED)
+	var last := _pt(_state.pos[_last_marigold()])
+	_sticker(tr("MG_CLOSE"), _row_at("close"), 76, 1.5, false, ROSE, false, "close")
+	_spray(_bits, last, Pal.MG_ORANGE_HI, 8, 300.0, "spark")
+	_shake = maxf(_shake, 0.45)
 
 ## The drumroll swells with the approach and stops the moment it ends.
 func _drumroll(delta: float) -> void:
@@ -550,16 +605,21 @@ func _tick_garden(t: float, delta: float) -> void:
 		_score_shown = minf(target, _score_shown + maxf((target - _score_shown) * minf(1.0, delta * 9.0), 60.0 * delta))
 	var m: int = _state.mult()
 	if m != _mult_shown:
-		if m > _mult_shown and not Motion.reduce:
-			_mult_at = t
-			fx.ring(_tag_centre(), 70.0, Pal.MG_ORANGE_HI, 0.5)
-			fx.sparkle(_tag_centre(), Pal.SUN_RAY)
+		if m > _mult_shown:
+			if not Motion.reduce:
+				_mult_at = t
+				fx.ring(_tag_centre(), 70.0, Pal.MG_ORANGE_HI, 0.5)
+				fx.sparkle(_tag_centre(), Pal.SUN_RAY)
+			_step_up(m)
 		_mult_shown = m
 		_pill = null
 	var keep: Array = []
 	for f: Dictionary in _flies:
 		if t - float(f.t) >= FLY_TIME:
-			fx.sparkle(_pip_at(_pips_filled(t)), Pal.SUN_RAY)
+			var pip := _pip_at(_pips_filled(t))
+			fx.sparkle(pip, Pal.SUN_RAY)
+			_ring(_air_bits, pip, 34.0, Color(GOLD, 0.9))
+			_spray(_air_bits, pip, GOLD, 4, 260.0, "star", 0.6)
 		else:
 			keep.append(f)
 	if keep.size() != _flies.size():
@@ -606,18 +666,26 @@ func _handle(events: Array, t: float) -> void:
 				_dirty_bud(i)
 				var step: int = SCALE[mini(int(e.n) - 1, SCALE.size() - 1)]
 				fx.cue("hit", pow(2.0, float(step) / 12.0))
+				var at := _pt(_state.pos[i])
+				_bloom_bits(i, int(e.n))
 				match _state.kind[i]:
 					State.ORANGE:
 						_shot_oranges += 1
 						_mood(Face.Expr.JOY, 0.8)
-						fx.puff(_pt(_state.pos[i]), Pal.MG_ORANGE_HI, 4)
+						fx.puff(at, Pal.MG_ORANGE_HI, 4)
+						if _shot_oranges >= 2 and not _state.fever:
+							_bunch(_shot_oranges)
 					State.PURPLE:
 						fx.cue("violet")
-						fx.sparkle(_pt(_state.pos[i]), Pal.MG_PURPLE_HI)
-						_float(_pt(_state.pos[i]), "+%s" % Locale.number(500 * _state.mult()), Pal.MG_PURPLE_HI)
+						fx.sparkle(at, Pal.MG_PURPLE_HI)
+						_sticker("+%s" % Locale.number(500 * _state.mult()), _cam * at - Vector2(0.0, 56.0), 60, 1.1, false,
+							Pal.MG_PURPLE_HI, false, "violet")
+						_flash_now(Pal.MG_PURPLE_HI, 0.18)
 					State.GREEN:
 						fx.cue("clover")
-						fx.sparkle(_pt(_state.pos[i]), Pal.MG_GREEN_HI)
+						fx.sparkle(at, Pal.MG_GREEN_HI)
+				_count_at = t
+				_shot_word(int(e.n))
 			"split":
 				_tell("MG_SPLIT", Face.Expr.JOY)
 			"wall":
@@ -631,6 +699,7 @@ func _handle(events: Array, t: float) -> void:
 				fx.sparkle(_pt(e.at), Pal.SUN)
 				_float(_pt(e.at) - Vector2(0.0, s * 3.0), tr("MG_SEED_BACK"), Pal.SUN_RAY)
 				_mood(Face.Expr.JOY, 1.0)
+				_caught(_pt(e.at), t)
 			"fever":
 				_fever_at = t
 				_fever_from = _pt(e.at)
@@ -648,6 +717,7 @@ func _handle(events: Array, t: float) -> void:
 							_music.play())
 				fx.ring(_pt(e.at), s * 6.0, Pal.SUN, 0.9)
 				_mood(Face.Expr.JOY, 30.0)
+				_full_bloom(_pt(e.at))
 			"fever_pot":
 				_fever_pot = int(e.k)
 				_fever_pot_at = t
@@ -655,7 +725,7 @@ func _handle(events: Array, t: float) -> void:
 				var at := _pt(Vector2((float(e.k) + 0.5) * State.W / float(State.FEVER_POTS.size()), State.POT_Y))
 				fx.sparkle(at, Pal.SUN)
 				fx.puff(at, Pal.MG_ORANGE_HI, 8)
-				_float(at - Vector2(0.0, s * 5.0), "+%s" % Locale.number(State.FEVER_POTS[e.k]), Pal.SUN_RAY)
+				_jackpot(int(e.k), at)
 			"drain":
 				fx.cue("drain", 1.0, -6.0)
 			"unstick":
@@ -692,9 +762,9 @@ func _end_shot(t: float) -> void:
 		_log += "🌈"
 	var pts: int = _pick_result.points
 	if pts > 0:
-		var foot := _pt(Vector2(State.W * 0.5, State.POT_Y - 8.0))
 		get_tree().create_timer(_pick_done - t).timeout.connect(func():
-			_float(foot, "+%s" % Locale.number(pts), Pal.PAPER))
+			if is_inside_tree():
+				_shot_total(pts))
 
 ## The blooms are picked: bank the shot and go on -- the next aim, the
 ## garden growing back, or the win.
@@ -707,10 +777,12 @@ func _after_pick(t: float) -> void:
 	if free > 0:
 		_tell("MG_FREE_ONE" if free == 1 else "MG_FREE", Face.Expr.JOY, [free])
 		fx.cue("free")
+		_big_shot(free, t)
 	if _state.oranges_left <= 0:
 		_phase = "won"
 		if _state.left_bonus > 0:
-			_float(_pt(Vector2(State.W * 0.5, 60.0)), tr("MG_LEFT") % [Locale.number(_state.left_bonus)], Pal.SUN_RAY)
+			_sticker(tr("MG_LEFT") % [Locale.number(_state.left_bonus)], _row_at("left"), 56, 2.0, false, GOLD, true, "left")
+			_kick_at = t
 		check_solved()
 		return
 	if _state.is_out():
@@ -743,6 +815,281 @@ func _float(at: Vector2, text: String, col: Color) -> void:
 func _mood(expr: int, seconds: float) -> void:
 	_expr = expr
 	_expr_until = _now() + seconds
+
+# --- the rewards ---
+
+## What a bloom throws: petals in its own colour and sparks, more the
+## further into the shot; a marigold gold stars and a ring, a violet a burst
+## of its own stars, a clover its leaves.
+func _bloom_bits(i: int, n: int) -> void:
+	var at := _pt(_state.pos[i])
+	var s := _s()
+	var k := s / 9.5
+	var c: Array = Parts.colours(_state.kind[i])
+	var loud := mini(n, 24)
+	_spray(_bits, at, c[1], 3 + loud / 4, 200.0 + 10.0 * float(loud), "petal", k)
+	_spray(_bits, at, Color("fffaf0"), 1 + loud / 6, 240.0 + 8.0 * float(loud), "spark", k)
+	match _state.kind[i]:
+		State.ORANGE:
+			_spray(_bits, at, GOLD, 4, 340.0, "star", k)
+			_spray(_bits, at, Pal.MG_ORANGE, 3, 260.0, "petal", k * 1.3)
+			_ring(_bits, at, s * 5.0, Color(GOLD, 0.85))
+		State.PURPLE:
+			_spray(_bits, at, Pal.MG_PURPLE_HI, 10, 420.0, "star", k)
+			_ring(_bits, at, s * 6.0, Color(Pal.MG_PURPLE_HI, 0.85))
+		State.GREEN:
+			_spray(_bits, at, Pal.MG_GREEN_HI, 8, 320.0, "leaf", k * 1.2)
+			_ring(_bits, at, s * 4.5, Color(Pal.MG_GREEN_HI, 0.8))
+	if n >= 15:
+		_spray(_bits, at, STICKER_COLS[n % STICKER_COLS.size()], 3, 380.0, "star", k * 0.8)
+
+## A long shot's word, the loudest it has reached, over the garden; the sun
+## hops and the card flashes from the third.
+func _shot_word(n: int) -> void:
+	for w in WORDS.size():
+		if n < int(WORDS[w][0]):
+			continue
+		var tier := WORDS.size() - 1 - w
+		if tier <= _word_tier:
+			return
+		_word_tier = tier
+		_sticker(tr(WORDS[w][1]), _row_at("word"), 64 + 10 * tier, 1.3 + 0.15 * float(tier), true, Color.WHITE, tier >= 2, "word")
+		fx.cue("free", 1.0 + 0.08 * float(tier), -6.0)
+		_hop_at = _now()
+		_mood(Face.Expr.JOY, 1.0)
+		if tier >= 2:
+			_flash_now(Color("fff4c2"), 0.2 + 0.08 * float(tier - 2))
+			_shake = maxf(_shake, 0.3 + 0.1 * float(tier))
+		return
+
+## Two, three, four marigolds in one shot.
+func _bunch(n: int) -> void:
+	var key: String = BUNCH[mini(n, BUNCH.size() - 1)]
+	var text := tr(key) % n if n >= BUNCH.size() - 1 else tr(key)
+	_sticker(text, _row_at("bunch"), 60, 1.3, false, Pal.MG_ORANGE_HI, n >= 3, "bunch")
+	_hop_at = _now()
+
+## The multiplier steps up: the tag throws stars, and its new worth is
+## lettered across the garden over a sunburst.
+func _step_up(m: int) -> void:
+	_sticker(tr("MG_MULT") % m, _row_at("mult"), 84, 1.6, false, Pal.MG_ORANGE_HI, true, "mult")
+	_spray(_air_bits, _tag_centre(), GOLD, 10, 520.0, "star", 1.0)
+	_spray(_air_bits, _tag_centre(), Color("fffaf0"), 8, 420.0, "spark", 1.2)
+	_ring(_air_bits, _tag_centre(), 110.0, Color(Pal.MG_ORANGE_HI, 0.9))
+	_flash_now(Color("ffd58a"), 0.3)
+	_shake = maxf(_shake, 0.35)
+	fx.cue("free", 1.25, -4.0)
+
+## A seed caught by the pot: a word over it, a burst of gold, and the seed
+## flying back up into the trough.
+func _caught(at: Vector2, t: float) -> void:
+	_sticker(tr("MG_CAUGHT"), _cam * at - Vector2(0.0, 150.0), 64, 1.2, false, Color("7fd66a"), false, "caught")
+	_spray(_bits, at, GOLD, 8, 420.0, "star", _s() / 9.5)
+	_spray(_bits, at, Color("b8f0a0"), 8, 360.0, "spark", _s() / 9.5)
+	_ring(_bits, at, _s() * 7.0, Color(Pal.SUN_RAY, 0.9))
+	if not Motion.reduce:
+		_seed_flies.append({"from": _cam * at, "t": t + 0.1})
+		_hud = null
+
+## The shot's points, lettered over the garden as the blooms are banked,
+## bigger and brighter the more; the score kicks and throws stars.
+func _shot_total(pts: int) -> void:
+	var text := "+%s" % Locale.number(pts)
+	var tier := 0
+	for edge: int in [1000, 5000, 15000, 40000]:
+		if pts >= edge:
+			tier += 1
+	var cols := [Pal.PAPER, Pal.SUN_RAY, Pal.MG_ORANGE_HI, GOLD, GOLD]
+	_sticker(text, _row_at("total"), 52 + 8 * tier, 1.3 + 0.1 * float(tier), tier >= 4, cols[tier], tier >= 3, "total")
+	_kick_at = _now()
+	var score_at := Vector2(size.x * 0.5, 40.0)
+	_spray(_air_bits, score_at, GOLD, 3 + 2 * tier, 300.0 + 60.0 * float(tier), "star", 0.8)
+	if tier >= 2:
+		_ring(_air_bits, score_at, 90.0 + 20.0 * float(tier), Color(GOLD, 0.8))
+	if tier >= 3:
+		_flash_now(Color("fff4c2"), 0.25)
+		_rain = maxf(_rain, 0.8)
+		_rain_coins = true
+
+## A shot big enough to hand seeds back: a word, and the seeds flying from
+## the score into the trough.
+func _big_shot(free: int, t: float) -> void:
+	_sticker(tr("MG_BIG_SHOT"), _row_at("big"), 80, 1.8, true, Color.WHITE, true, "big")
+	_flash_now(Color("fff4c2"), 0.35)
+	_shake = maxf(_shake, 0.5)
+	_hop_at = t
+	if Motion.reduce:
+		return
+	for k in free:
+		_seed_flies.append({"from": Vector2(size.x * 0.5, 60.0), "t": t + 0.25 + 0.15 * float(k)})
+	_hud = null
+
+## The last marigold opens: FULL BLOOM lettered over a sunburst, the card
+## flashing gold, and petals and confetti raining down the whole garden.
+func _full_bloom(at: Vector2) -> void:
+	_stickers = []
+	_sticker(tr("MG_FEVER"), Vector2(size.x * 0.5, _pt(Vector2(0.0, 48.0)).y), BANNER_FONT, BANNER_TIME, true, Color.WHITE, true, "fever")
+	_flash_now(Color("fff4c2"), 0.6)
+	_shake = maxf(_shake, 0.8)
+	_rain = maxf(_rain, PETAL_TIME - 1.0)
+	_rain_coins = false
+	var s := _s()
+	_spray(_bits, at, GOLD, 16, 620.0, "star", s / 9.5)
+	_spray(_bits, at, Pal.MG_ORANGE_HI, 18, 520.0, "petal", s / 9.5 * 1.3)
+	_ring(_bits, at, s * 10.0, Color(GOLD, 0.9))
+	_ring(_bits, at, s * 16.0, Color(Pal.MG_ORANGE_HI, 0.7), 0.12)
+
+## A pot of the full bloom: its worth lettered over it, gold raining, and
+## the middle pot's hundred thousand a jackpot of its own.
+func _jackpot(k: int, at: Vector2) -> void:
+	var worth: int = State.FEVER_POTS[k]
+	var top := worth >= 100000
+	_sticker("+%s" % Locale.number(worth), _cam * at - Vector2(0.0, 220.0), 72 if not top else 88, 2.2, top, GOLD, true, "pot")
+	if top:
+		_sticker(tr("MG_JACKPOT"), _row_at("jackpot"), 96, 2.4, true, Color.WHITE, true, "jackpot")
+	_spray(_bits, at, GOLD, 14 if top else 8, 600.0, "coin", _s() / 9.5)
+	_spray(_bits, at, Color("fffaf0"), 10, 480.0, "spark", _s() / 9.5)
+	_ring(_bits, at, _s() * 12.0, Color(GOLD, 0.9))
+	_flash_now(Color("ffe39a"), 0.5 if top else 0.3)
+	_shake = maxf(_shake, 0.9 if top else 0.6)
+	_rain = maxf(_rain, 3.0 if top else 1.6)
+	_rain_coins = true
+	_kick_at = _now()
+
+## The rewards' own clocks: the bits, the stickers, the glow, the flash,
+## the shake and the rain.
+func _tick_rewards(t: float, delta: float) -> void:
+	_step_bits(_bits, delta * _slow)
+	_step_bits(_air_bits, delta)
+	for st: Dictionary in _stickers:
+		st.t += delta
+	_stickers = _stickers.filter(func(st: Dictionary) -> bool: return st.t < st.life)
+	_flash = maxf(0.0, _flash - delta * 2.0)
+	_shake = maxf(0.0, _shake - delta * 2.2)
+	var want := 0.0
+	if _phase == "shot":
+		want = clampf(float(_state.shot_hits - 5) / 15.0, 0.0, 1.0)
+	_heat = move_toward(_heat, want, delta * (1.5 if want > _heat else 0.6))
+	var keep: Array = []
+	for f: Dictionary in _seed_flies:
+		if t - float(f.t) < SEED_FLY:
+			keep.append(f)
+	for j in _seed_flies.size() - keep.size():
+		var slot := _trough_at(_state.seeds - keep.size() - 1 - j)
+		_ring(_air_bits, slot, 30.0, Color(GOLD, 0.9))
+		_spray(_air_bits, slot, Color("fffaf0"), 5, 220.0, "spark", 0.7)
+	if keep.size() != _seed_flies.size():
+		_seed_flies = keep
+		_hud = null
+	if _rain > 0.0:
+		_rain -= delta
+		if not Motion.reduce and randf() < delta * 34.0:
+			var r := randf()
+			var kind := "coin" if _rain_coins and r < 0.45 else ("star" if r < (0.6 if _rain_coins else 0.25) else "petal")
+			var col: Color = GOLD if kind != "petal" else PETALS[randi() % PETALS.size()]
+			_air_bits.append({"pos": Vector2(randf_range(0.0, size.x), -30.0), "vel": Vector2(randf_range(-50.0, 50.0), randf_range(150.0, 280.0)),
+				"rot": randf() * TAU, "spin": randf_range(-4.0, 4.0), "t": 0.0, "life": 4.0, "kind": kind, "col": col,
+				"size": randf_range(1.0, 1.5), "float": true})
+
+## The seeds in the air, not yet in the trough.
+func _seeds_flying(t: float) -> int:
+	var n := 0
+	for f: Dictionary in _seed_flies:
+		if t - float(f.t) < SEED_FLY:
+			n += 1
+	return n
+
+## The middle of the `k`th seed's place in the trough.
+func _trough_at(k: int) -> Vector2:
+	return Vector2(INSET + 22.0 + float(clampi(k, 0, 9)) * 30.0, 38.0)
+
+## Bits move: thrown, pulled down, slowed by the air; rain drifts down
+## swaying.
+func _step_bits(bits: Array, delta: float) -> void:
+	if bits.is_empty():
+		return
+	var drag := exp(-delta * 2.2)
+	for b: Dictionary in bits:
+		b.t += delta
+		if b.t < 0.0 or String(b.kind) == "ring":
+			continue
+		var v: Vector2 = b.vel
+		if b.get("float", false):
+			v.y = minf(v.y + 100.0 * delta, 280.0)
+			b.pos += Vector2(v.x + sin(b.t * 3.0 + b.rot) * 60.0, v.y) * delta
+		else:
+			v *= drag
+			v.y += (700.0 if String(b.kind) in ["petal", "leaf"] else 1500.0) * delta
+			b.pos += v * delta
+		b.vel = v
+		b.rot += float(b.spin) * delta
+	var keep := bits.filter(func(b: Dictionary) -> bool: return b.t < b.life)
+	bits.clear()
+	bits.append_array(keep)
+
+## Throws `n` bits of `kind` out of `at` at up to `speed` pixels a second.
+func _spray(bits: Array, at: Vector2, col: Color, n: int, speed: float, kind := "spark", sz := 1.0, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	n = mini(n, MAX_BITS - bits.size())
+	for i in n:
+		var v := Vector2.from_angle(randf() * TAU) * speed * randf_range(0.35, 1.0) + Vector2(0, -speed * 0.45)
+		bits.append({"pos": at, "vel": v, "rot": randf() * TAU, "spin": randf_range(-10.0, 10.0), "t": -delay,
+			"life": randf_range(0.55, 0.95) + (0.5 if kind in ["petal", "leaf", "coin"] else 0.0), "kind": kind,
+			"col": col, "size": sz * randf_range(0.7, 1.25)})
+
+## A ring swelling out of `at` to `radius` and fading.
+func _ring(bits: Array, at: Vector2, radius: float, col: Color, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	bits.append({"pos": at, "vel": Vector2.ZERO, "rot": 0.0, "spin": 0.0, "t": -delay, "life": 0.45, "kind": "ring",
+		"col": col, "size": radius})
+
+func _flash_now(col: Color, amount: float) -> void:
+	if Motion.reduce:
+		return
+	_flash = maxf(_flash, amount)
+	_flash_col = col
+
+## The first sticker row over the garden no other sticker is standing in,
+## in the card's pixels.
+func _row_at(id: String) -> Vector2:
+	for y: float in STICKER_ROWS:
+		var p := Vector2(size.x * 0.5, _pt(Vector2(0.0, y)).y)
+		var free := true
+		for st: Dictionary in _stickers:
+			if String(st.id) != id and absf(Vector2(st.at).y - p.y) < 60.0 and st.t < float(st.life) - 0.3:
+				free = false
+				break
+		if free:
+			return p
+	return Vector2(size.x * 0.5, _pt(Vector2(0.0, STICKER_ROWS[0])).y)
+
+## A word lettered at `at` (the card's pixels), each letter hopping in on
+## its own and fitted to the card. `rainbow` letters it in the sticker
+## colours, else in `col`; `rays` sets a sunburst turning behind it. A
+## sticker with an `id` replaces the one before it with the same id.
+func _sticker(text: String, at: Vector2, px: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "") -> void:
+	if id != "":
+		_stickers = _stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != id)
+	var room := size.x - 80.0
+	var w: float = CozyTheme.display(700).get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	if w > room:
+		px = int(float(px) * room / w)
+		w = room
+	at.x = clampf(at.x, w * 0.5 + 40.0, size.x - w * 0.5 - 40.0)
+	at.y = clampf(at.y, BAND + px * 0.6, size.y - px)
+	# the letters' advances, measured once
+	var font: Font = CozyTheme.display(700)
+	var adv := PackedFloat32Array()
+	var total := 0.0
+	for i in text.length():
+		adv.append(font.get_char_size(text.unicode_at(i), px).x)
+		total += adv[i]
+	_stickers.append({"text": text, "at": at, "t": 0.0, "life": life, "size": px, "rainbow": rainbow, "col": col,
+		"rays": rays and not Motion.reduce, "tilt": 0.0 if Motion.reduce else randf_range(-0.08, 0.08), "id": id,
+		"adv": adv, "w": total})
+	queue_redraw()
 
 # --- the drawing ---
 
@@ -821,7 +1168,10 @@ func _draw() -> void:
 	draw_set_transform_matrix(_cam)
 	_draw_floats(t, seen)
 	draw_set_transform(Vector2.ZERO)
-	_draw_banner(t, seen)
+	_air = _build_air(t)
+	_put(_air, hud, tint, shown)
+	_draw_count(t, hud, seen)
+	_draw_stickers(hud, seen)
 	_draw_toast(t, shown)
 	_shown = shown
 
@@ -1237,6 +1587,9 @@ func _draw_sun(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		if e < RECOIL_TIME:
 			q = sin(PI * e / RECOIL_TIME) * (1.0 - 0.5 * e / RECOIL_TIME)
 		bob = Vector2(0.0, sin(t * 1.7) * 0.22 * s)
+		var h := t - _hop_at
+		if h < HOP_TIME:
+			bob.y -= sin(PI * h / HOP_TIME) * s * 1.3
 	var back := -State.aim_dir(_aim) * q * s
 	_put(_rays, xf * Transform2D(spin, Vector2.ONE * (1.0 + 0.1 * q), 0.0, c + bob), tint, shown)
 	_put(_spout, xf * Transform2D(State.aim_dir(_aim).angle(), c + bob + back * 1.2), tint, shown)
@@ -1249,7 +1602,8 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 	var mult: int = _state.mult()
 	var total: int = _state.orange_total
 	var got := _pips_filled(t)
-	var key := "%d|%d|%d|%d|%d" % [_state.seeds, got, total, _seeds_start, int(size.x)]
+	var in_trough: int = _state.seeds - _seeds_flying(t)
+	var key := "%d|%d|%d|%d|%d" % [in_trough, got, total, _seeds_start, int(size.x)]
 	if _hud == null or _hud_for != key:
 		var b := Face.Builder.new()
 		# the trough, the seeds lying in it and the dents of the ones shot
@@ -1259,7 +1613,7 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(INSET + 5.0, 17.0), Vector2(tw, 40.0), 20.0), Pal.MG_ARBOR_DEEP)
 		b.fan(Face.Builder.round_rect(Vector2(INSET + 10.0, 22.0), Vector2(tw - 10.0, 30.0), 15.0), Pal.MG_ARBOR_DEEP.darkened(0.3))
 		b.stroke(PackedVector2Array([Vector2(INSET + 22.0, 19.5), Vector2(INSET + tw - 12.0, 19.5)]), 2.0, Color(Pal.MG_ARBOR_HI, 0.6))
-		var shown_seeds := mini(_state.seeds, 10)
+		var shown_seeds := mini(in_trough, 10)
 		for k in slots:
 			var at := Vector2(INSET + 22.0 + float(k) * 30.0, 38.0)
 			if k < shown_seeds:
@@ -1315,9 +1669,17 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 			Color(Pal.PAPER, 0.8 * a))
 	var sc := Locale.number(int(_score_shown))
 	var sw: float = font.get_string_size(sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT).x
-	var sat := xf * Vector2((size.x - sw) * 0.5, 58.0)
+	# the score kicks when a shot is banked, and glows gold while it rolls
+	var kick := 1.0
+	if not Motion.reduce and t - _kick_at < KICK_TIME:
+		var u := (t - _kick_at) / KICK_TIME
+		kick = 1.0 + 0.3 * sin(PI * u) * (1.0 - 0.5 * u)
+	var rolling := clampf((float(_state.score + (_state.shot_points if _phase == "shot" else 0)) - _score_shown) / 400.0, 0.0, 1.0)
+	draw_set_transform_matrix(xf * Transform2D(0.0, Vector2.ONE * kick, 0.0, Vector2(size.x * 0.5, 40.0)))
+	var sat := Vector2(-sw * 0.5, 18.0)
 	draw_string_outline(font, sat, sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT, 8, Color(Pal.MG_CARD_DEEP.darkened(0.3), 0.6 * a))
-	draw_string(font, sat, sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT, Color(Pal.PAPER, a))
+	draw_string(font, sat, sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT, Color(Pal.PAPER.lerp(Pal.SUN_RAY, rolling), a))
+	draw_set_transform(Vector2.ZERO)
 	var m := "×%d" % mult
 	var mw: float = font.get_string_size(m, HORIZONTAL_ALIGNMENT_LEFT, -1, MULT_FONT).x
 	draw_set_transform_matrix(tag)
@@ -1457,6 +1819,7 @@ func _build_live(t: float) -> ArrayMesh:
 			var col: Color = cols[k % cols.size()]
 			col.a = minf(1.0, (1.0 - u) * 4.0)
 			Parts.leaf(b, _pt(at), Vector2.from_angle(e * 3.0 + float(k)), s * 1.5, s * 0.5, col)
+	_draw_bits(b, _bits)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A four-pointed glint at `at`, `r` to a point.
@@ -1505,25 +1868,160 @@ func _draw_floats(t: float, seen: float) -> void:
 		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FLOAT_FONT, Color(f.col, alpha))
 	_floats = keep
 
-## FULL BLOOM, big across the field, as the last marigold opens.
-func _draw_banner(t: float, seen: float) -> void:
-	var e := t - _fever_at
-	if e < 0.0 or e >= BANNER_TIME:
+## Over everything, in the card's own pixels: the flash, the warm glow
+## round the card while a shot runs long, the sunbursts behind the loud
+## stickers, the seeds flying into the trough, and the bits in the air.
+func _build_air(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	if _flash > 0.0:
+		b.fan(Face.Builder.round_rect(Vector2.ZERO, size, CARD_RADIUS), Color(_flash_col, _flash * 0.55))
+	if _heat > 0.01:
+		_draw_heat(b, t)
+	for st: Dictionary in _stickers:
+		if not st.rays:
+			continue
+		var grow := Motion.back_out(clampf(float(st.t) / 0.35, 0.0, 1.0))
+		var a := 1.0 - clampf((float(st.t) - (float(st.life) - 0.35)) / 0.35, 0.0, 1.0)
+		var w: float = st.w
+		var r := maxf(w * 0.62, float(st.size) * 1.5) * grow
+		var at: Vector2 = st.at
+		b.disc(at, r * 0.6, Color(Color("fff4c2"), 0.35 * a))
+		Parts.sunrays(b, at, r * 0.2, r, 16, t * 0.8, Color(Color("ffe39a"), 0.28 * a))
+		Parts.sunrays(b, at, r * 0.2, r * 0.8, 16, -t * 0.5 + 0.1, Color(Color("fffaf0"), 0.24 * a))
+	var in_trough: int = _state.seeds - _seeds_flying(t)
+	var n := 0
+	for f: Dictionary in _seed_flies:
+		var e := t - float(f.t)
+		if e < 0.0 or e >= SEED_FLY:
+			n += 1
+			continue
+		var to := _trough_at(in_trough + n)
+		n += 1
+		var from: Vector2 = f.from
+		var ctrl := from.lerp(to, 0.4) + Vector2(0.0, -220.0)
+		for j in range(5, -1, -1):
+			var u := clampf((e - 0.03 * float(j)) / SEED_FLY, 0.0, 1.0)
+			var ease := u * u * (3.0 - 2.0 * u)
+			var p := from.lerp(ctrl, ease).lerp(ctrl.lerp(to, ease), ease)
+			if j == 0:
+				Parts.kernel(b, p, lerpf(14.0, 9.5, ease), e * 14.0)
+			else:
+				b.disc(p, 9.0 - float(j) * 1.3, Color(GOLD.lightened(0.2), 0.14 * float(6 - j)))
+	_draw_bits(b, _air_bits)
+	return b.mesh() if not b.verts.is_empty() else null
+
+## A warm glow beating round the card's edge, rising with a long shot.
+func _draw_heat(b: Face.Builder, t: float) -> void:
+	var s := size
+	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(t * 9.0)
+	var tint := Color("ffb03b").lerp(Color("ff6f61"), _heat)
+	var edge := Color(tint, (0.22 + 0.2 * beat) * _heat)
+	var none := Color(tint, 0.0)
+	var w := (70.0 + 40.0 * beat) * (0.6 + 0.4 * _heat)
+	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), Vector2(s.x - w, w), Vector2(w, w)], [edge, edge, none, none])
+	_quad(b, [Vector2(0, s.y), Vector2(w, s.y - w), Vector2(s.x - w, s.y - w), s], [edge, none, none, edge])
+	_quad(b, [Vector2.ZERO, Vector2(w, w), Vector2(w, s.y - w), Vector2(0, s.y)], [edge, none, none, edge])
+	_quad(b, [Vector2(s.x, 0), Vector2(s.x, s.y), Vector2(s.x - w, s.y - w), Vector2(s.x - w, w)], [edge, edge, none, none])
+
+static func _quad(b: Face.Builder, pts: Array, cols: Array) -> void:
+	var i0 := b.vertex(pts[0], cols[0])
+	var i1 := b.vertex(pts[1], cols[1])
+	var i2 := b.vertex(pts[2], cols[2])
+	var i3 := b.vertex(pts[3], cols[3])
+	b.idx.append_array([i0, i1, i2, i0, i2, i3])
+
+## The bits flung about, each fading out over the end of its life.
+func _draw_bits(b: Face.Builder, bits: Array) -> void:
+	for bit: Dictionary in bits:
+		if bit.t < 0.0:
+			continue
+		var life: float = bit.life
+		var a := clampf((life - bit.t) / (life * 0.35), 0.0, 1.0)
+		var col: Color = bit.col
+		col.a *= a
+		var at: Vector2 = bit.pos
+		var sz: float = bit.size
+		var rot: float = bit.rot
+		match String(bit.kind):
+			"petal":
+				Parts.petal(b, at, 13.0 * sz, rot, 0.35 + 0.65 * absf(cos(bit.t * 4.0 + rot)), col)
+			"leaf":
+				Parts.leaf(b, at, Vector2.from_angle(rot), 16.0 * sz, 5.0 * sz, col)
+			"star":
+				Parts.star(b, at, 13.0 * sz * (0.6 + 0.4 * a), col, rot)
+			"spark":
+				Parts.spark(b, at, 20.0 * sz * a, rot, col)
+			"coin":
+				# a gold coin turning over as it falls
+				var face := absf(cos(bit.t * 6.0 + rot))
+				b.ellipse(at, 12.0 * sz * maxf(0.15, face), 12.0 * sz, Color(GOLD.darkened(0.25), col.a))
+				b.ellipse(at, 9.5 * sz * maxf(0.12, face), 9.5 * sz, col)
+				b.ellipse(at + Vector2(-3.0 * sz * face, -3.0 * sz), 2.5 * sz * face, 2.5 * sz, Color(1, 1, 1, 0.6 * col.a))
+			"ring":
+				var k := clampf(bit.t / life, 0.0, 1.0)
+				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
+				b.stroke(Face.Builder.ring(at, r, r), maxf(2.0, 14.0 * (1.0 - k)), Color(bit.col, (bit.col as Color).a * (1.0 - k)), true)
+
+## The blooms of this shot counted under the sun, bumping with each one and
+## warming as it climbs.
+func _draw_count(t: float, xf: Transform2D, seen: float) -> void:
+	if _phase != "shot" and _phase != "pick":
 		return
-	var text := tr("MG_FEVER")
+	var n: int = _state.shot_hits
+	if n < COUNT_FROM:
+		return
 	var font: Font = CozyTheme.display(700)
-	var size_px := BANNER_FONT
-	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
-	if w > size.x - 60.0:
-		size_px = int(float(size_px) * (size.x - 60.0) / w)
-		w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
-	var alpha := minf(Motion.appear_level(e, 0.2), clampf((BANNER_TIME - e) / 0.4, 0.0, 1.0)) * seen
-	var pop := 1.0 if Motion.reduce else Motion.pop_in_scale(e, 0.35).x
-	var mid := _pt(Vector2(State.W * 0.5, 48.0))
-	draw_set_transform(mid, 0.0, Vector2.ONE * pop)
-	var at := Vector2(-w * 0.5, size_px * 0.35)
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px, 18, Color(Pal.MG_ORANGE_DEEP, alpha))
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px, Color(Pal.SUN_RAY.lightened(0.3), alpha))
+	var text := tr("MG_BLOOMS") % n
+	# one size of the face, grown by the transform
+	var px := COUNT_FONT_BIG
+	var bump := 1.0 + 0.025 * float(mini(n - COUNT_FROM, 16))
+	if not Motion.reduce and t - _count_at < 0.25:
+		bump *= 1.0 + 0.3 * sin(PI * (t - _count_at) / 0.25)
+	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	var col := Pal.SUN_RAY.lerp(Color("ff6f61"), clampf(float(n - COUNT_FROM) / 20.0, 0.0, 1.0))
+	var a := seen
+	if _phase == "pick":
+		a *= clampf(1.0 - (t - (_pick_done - 0.4)) / 0.4, 0.0, 1.0)
+	var at := _pt(Vector2(State.W * 0.5, 20.5))
+	draw_set_transform_matrix(xf * Transform2D(0.0, Vector2.ONE * bump, 0.0, at))
+	var o := Vector2(-w * 0.5, px * 0.36)
+	draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(px * 0.3), Color(Color("fffaf0"), a))
+	draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(px * 0.13), Color(col.darkened(0.5), a))
+	draw_string(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(col, a))
+	draw_set_transform(Vector2.ZERO)
+
+## The stickers' letters: each hops in on its own, rocks for a moment and
+## the word swells away at the end; a white rim and a dark one under the
+## colour, so it reads over anything.
+func _draw_stickers(xf: Transform2D, seen: float) -> void:
+	var font: Font = CozyTheme.display(700)
+	for st: Dictionary in _stickers:
+		var text: String = st.text
+		var px: int = st.size
+		var advs: PackedFloat32Array = st.adv
+		var x := -float(st.w) * 0.5
+		var tt: float = st.t
+		var out_a := (1.0 - clampf((tt - (float(st.life) - 0.3)) / 0.3, 0.0, 1.0)) * seen
+		var swell := 1.0 + 0.2 * (1.0 - out_a)
+		var tilt: float = st.tilt
+		for i in text.length():
+			var ch := text[i]
+			var adv := advs[i]
+			var k := clampf((tt - float(i) * 0.035) / 0.28, 0.0, 1.0)
+			if k <= 0.0 and not Motion.reduce:
+				x += adv
+				continue
+			var sc := 1.0 if Motion.reduce else Motion.back_out(k)
+			var hop := 0.0 if Motion.reduce else -sin(tt * 8.0 - float(i) * 0.55) * px * 0.09 * exp(-tt * 1.4)
+			var centre: Vector2 = Vector2(st.at) + (Vector2(x + adv * 0.5, hop) * swell).rotated(tilt)
+			var rock := 0.0 if Motion.reduce else sin(tt * 7.0 + float(i)) * 0.08 * exp(-tt * 1.2)
+			draw_set_transform_matrix(xf * Transform2D(tilt + rock, Vector2(sc, sc) * swell, 0.0, centre))
+			var o := Vector2(-adv * 0.5, px * 0.36)
+			var col: Color = STICKER_COLS[i % STICKER_COLS.size()] if st.rainbow else st.col
+			draw_char_outline(font, o, ch, px, int(px * 0.3), Color(Color("fffaf0"), out_a))
+			draw_char_outline(font, o, ch, px, int(px * 0.13), Color(col.darkened(0.5), out_a))
+			draw_char(font, o, ch, px, Color(col, out_a))
+			x += adv
 	draw_set_transform(Vector2.ZERO)
 
 ## The toast over the foot of the card -- Super Slider's.
@@ -1727,6 +2225,11 @@ func _on_solved() -> void:
 				fx.sparkle(at, Pal.SUN_RAY)
 				fx.puff(at, Pal.MG_ORANGE_HI, 5))
 		fx.ring(_pt(State.SUN_C), SUN_R * s * 2.0, Pal.SUN, 0.8)
+		_rain = maxf(_rain, 3.0)
+		_rain_coins = true
+		_flash_now(Color("fff4c2"), 0.35)
+		_spray(_air_bits, _pt(State.SUN_C), GOLD, 14, 640.0, "star", 1.1)
+		_ring(_air_bits, _pt(State.SUN_C), 220.0, Color(GOLD, 0.9))
 	_say(tr("MG_WIN") % [Locale.number(_state.score), _state.shots], Face.Expr.JOY)
 
 func completion_record() -> Dictionary:

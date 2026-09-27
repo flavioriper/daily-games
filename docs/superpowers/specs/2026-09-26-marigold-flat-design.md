@@ -209,3 +209,49 @@ floats and the pot worths all go through. The HUD band, the banner and the
 toast stay still. It never shows past the card's edge. Under reduce motion
 there is no slowdown and no zoom; the sounds still play. **91** draw calls in
 the full bloom, twice, as before.
+
+## Amendment 3 (2026-09-27): the rewards made loud
+
+Stackwood's sticker and bits kit, carried into the garden, so a good shot
+looks as good as it sounds. All in `puzzles/marigold2d.gd`'s rewards
+section; the drawings (star, spark, sunburst, petal) are in
+`ui/faces/marigold_parts.gd`.
+
+- **Every bloom throws** petals in its own colour and sparks, more the
+  further into the shot; a marigold adds gold stars and a ring, a violet a
+  burst of its stars and its points lettered over it, a clover its leaves.
+  These bits live in the garden, so the full bloom's slow motion slows them.
+- **A long shot is counted and named.** From four blooms, "N blooms" stands
+  under the sun, bumping with each. At 6, 10, 15, 22 and 30 blooms the shot
+  earns a word (`MG_WORD_1..5`: Nice!, Blooming!, Petal power!,
+  Flower-ful!, Legendary!), lettered a hopping letter at a time, bigger the
+  higher, with a sunburst, a flash and a shake from the third. The sun hops.
+  From six blooms a warm glow beats round the card's edge, rising with the
+  count. Two or more marigolds in one shot say Double!, Triple! or
+  Bouquet xN!.
+- **The multiplier stepping up** letters "Points xN!" across the garden,
+  throws stars out of the tag, flashes and shakes.
+- **A seed caught by the pot** says Caught! over a burst of gold, and the
+  seed flies back up into the trough, which holds it only when it lands.
+  A shot big enough to give seeds back says Big shot! and flies them from
+  the score to the trough.
+- **The shot's points** are lettered over the garden as the blooms are
+  banked, bigger and warmer from 1,000, 5,000, 15,000 and 40,000, with the
+  score kicking and throwing stars (a gold rain from 15,000). The score
+  glows gold while it rolls up.
+- **The full bloom** letters FULL BLOOM over a sunburst in place of the old
+  banner, clears the other words, flashes, shakes and rains petals; each of
+  its pots letters its worth, the hundred thousand adds Jackpot! and rains
+  gold coins. The win rains coins and stars.
+- **So close!** is a sticker now, not a toast, with a shake.
+
+Stickers stand in the first free row over the garden (`STICKER_ROWS`) and
+are drawn in the card's pixels, so the zoom never makes them unreadable.
+Under reduce motion the words still show, still, with no hops, sunbursts,
+bits, flash or shake. Measured with `tests/_shot_anim.gd -- marigold` at
+810x1440: **78** draw calls at rest (unchanged), **~159** mid-shot at a
+long shot's peak (83 before), ANGLE agreeing. That peak costs ~2.6 ms a
+frame on this Mac against `main` in the same sitting (10.6 against 8.0),
+spread across the letters, the bits and the air layer, and only while a
+loud shot is in the air. The words reuse the `free` cue at rising pitch;
+there are no new sounds.

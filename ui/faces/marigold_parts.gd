@@ -223,3 +223,42 @@ static func spout(b: Face.Builder, R: float, loaded: bool, reach := 1.4) -> void
 	b.ellipse(Vector2(len, 0.0), R * 0.14, R * 0.38, Pal.MG_GREEN_DEEP)
 	if loaded:
 		kernel(b, Vector2(len - R * 0.02, 0.0), R * 0.26)
+
+# --- the rewards' bits, Stackwood's kit in the garden's colours ---
+
+## A five-pointed star of radius `r`, with a darker drop and a shine.
+static func star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0) -> void:
+	for pass_ in 2:
+		var pts := PackedVector2Array()
+		var at := c + (Vector2(r * 0.04, r * 0.1) if pass_ == 0 else Vector2.ZERO)
+		var rr := r * (1.08 if pass_ == 0 else 1.0)
+		for i in 10:
+			var a := TAU * i / 10.0 - PI * 0.5 + turn
+			pts.append(at + Vector2.from_angle(a) * (rr if i % 2 == 0 else rr * 0.52))
+		b.polygon(pts, Color(col.darkened(0.35), col.a) if pass_ == 0 else col)
+	b.ellipse(c + Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, Color(1, 1, 1, 0.5 * col.a))
+
+## A four-pointed spark of radius `r`, turned by `turn`.
+static func spark(b: Face.Builder, c: Vector2, r: float, turn: float, col: Color) -> void:
+	b.disc(c, r * 0.45, Color(col, col.a * 0.26))
+	for k in 4:
+		var d := Vector2.from_angle(TAU * k / 4.0 + turn)
+		var side := d.orthogonal() * r * 0.13
+		b.polygon(PackedVector2Array([c + side, c + d * r * (1.0 if k % 2 == 0 else 0.7), c - side]), col)
+	b.disc(c, r * 0.14, Color(1, 1, 1, col.a))
+
+## A sunburst: `n` rays between `r0` and `r1`.
+static func sunrays(b: Face.Builder, c: Vector2, r0: float, r1: float, n: int, turn: float, col: Color) -> void:
+	var half := PI / n * 0.5
+	for i in n:
+		var a := TAU * i / n + turn
+		b.polygon(PackedVector2Array([c + Vector2.from_angle(a - half * 0.4) * r0, c + Vector2.from_angle(a - half) * r1,
+			c + Vector2.from_angle(a + half) * r1, c + Vector2.from_angle(a + half * 0.4) * r0]), col)
+
+## A loose petal turned by `rot`, pointed at its tip, flipping as it falls
+## (`flip` 0..1 is how much of its face shows).
+static func petal(b: Face.Builder, c: Vector2, r: float, rot: float, flip: float, col: Color) -> void:
+	var d := Vector2.from_angle(rot)
+	var n := d.orthogonal() * r * maxf(0.12, flip)
+	b.polygon(PackedVector2Array([c + d * r, c + d * r * 0.3 + n * 0.62, c - d * r * 0.4 + n * 0.5, c - d * r,
+		c - d * r * 0.4 - n * 0.5, c + d * r * 0.3 - n * 0.62]), col)

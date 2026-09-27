@@ -1357,6 +1357,15 @@ pointing `seed_as` at them. Specs:
   sound in the game not made by ElevenLabs, because the tune has to be
   exact. The view is `_cam`; the HUD never goes through it. 91 in the full
   bloom, unchanged.
+  **Rewards made loud on 2026-09-27** (the spec's third amendment):
+  Stackwood's sticker and bits kit -- petals, sparks and stars off every
+  bloom, a bloom counter under the sun, hopping words by blooms in a shot
+  (Nice! to Legendary!), Double!/Triple!/Bouquet!, Points xN!, Caught! with
+  the seed flying back to the trough, the shot's points lettered and the
+  score kicking, a warm edge glow on a long shot, FULL BLOOM and Jackpot!
+  as stickers with coin rain. Stickers are in the card's pixels, never the
+  view's. 78 at rest, ~159 at a long shot's peak (+2.6 ms here), ANGLE
+  agreeing.
 - **Pixel Garden is the twenty-seventh card** (2026-09-27,
   `puzzles/pixel_garden2d.gd`, `puzzles/pixel_garden_state.gd`, spec
   `2026-09-27-pixel-garden-flat-design.md`, no concept tab -- built while the
