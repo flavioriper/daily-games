@@ -107,7 +107,24 @@ static func pebble(v: int, s: float) -> ArrayMesh:
 	for i in 7:
 		var p := Vector2.from_angle(rng.randf() * TAU) * r * rng.randf_range(0.2, 0.75)
 		b.disc(p, r * rng.randf_range(0.018, 0.035), Color(deep if i % 2 == 0 else base.lightened(0.3), 0.45))
-	# the sheen
+	# a stone dresses up as it grows: a painted band round it from 5, a
+	# second one from 9, and flecks of gold from 10
+	if v >= 5 and v < 13:
+		var band := _outline(v, r * 0.74)
+		for i in band.size():
+			band[i] = band[i] + Vector2(-r * 0.025, -r * 0.05)
+		b.stroke(band, maxf(1.5, s * 0.03), Color(base.lightened(0.42), 0.55), true)
+		if v >= 9:
+			var inner := _outline(v, r * 0.64)
+			for i in inner.size():
+				inner[i] = inner[i] + Vector2(-r * 0.025, -r * 0.05)
+			b.stroke(inner, maxf(1.0, s * 0.014), Color(base.darkened(0.2), 0.45), true)
+		if v >= 10:
+			for i in 5:
+				var a := TAU * (i + 0.3) / 5.0 + float(v)
+				b.disc(Vector2.from_angle(a) * r * 0.74 + Vector2(-r * 0.025, -r * 0.05), maxf(1.2, r * 0.035), Color(GOLD.lightened(0.2), 0.9))
+	# the rim light along the upper left edge, and the sheen
+	b.stroke(Face.Builder.arc_points(Vector2(-r * 0.025, -r * 0.05), r * 0.86, PI * 1.02, PI * 1.62), maxf(1.5, s * 0.022), Color(1, 1, 1, 0.3))
 	b.ellipse(Vector2(-r * 0.36, -r * 0.46), r * 0.2, r * 0.1, Color(1, 1, 1, 0.55))
 	b.disc(Vector2(-r * 0.12, -r * 0.6), r * 0.045, Color(1, 1, 1, 0.5))
 	if v == 13:
@@ -131,6 +148,36 @@ static func halo(v: int, s: float) -> ArrayMesh:
 	b.disc(Vector2.ZERO, r * 1.2, Color(c, 0.18))
 	b.disc(Vector2.ZERO, r * 1.08, Color(c, 0.3))
 	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 1.06, r * 1.06), maxf(2.0, s * 0.035), Color("fffaf0", 0.9), true)
+	var m := b.mesh()
+	_cache[key] = m
+	return m
+
+## A four-pointed twinkle of radius `r` at `c`, turned by `turn`, laid into
+## a builder: the glint that runs over a pebble now and then.
+static func glint(b: Face.Builder, c: Vector2, r: float, turn: float) -> void:
+	b.disc(c, r * 0.45, Color(1, 1, 0.92, 0.25))
+	for k in 4:
+		var d := Vector2.from_angle(TAU * k / 4.0 + turn)
+		var side := d.orthogonal() * r * 0.13
+		b.polygon(PackedVector2Array([c + side, c + d * r * (1.0 if k % 2 == 0 else 0.7), c - side]), Color(1, 1, 0.95, 0.95))
+	b.disc(c, r * 0.14, Color(1, 1, 1, 1.0))
+
+## A sunburst of `n` soft rays, `s` across, in `c`, for a new number.
+static func rays(s: float, c: Color, n := 12) -> ArrayMesh:
+	var key := "r%d_%s_%d" % [roundi(s), c.to_html(), n]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := s * 0.5
+	b.disc(Vector2.ZERO, r * 0.55, Color(c, 0.22))
+	b.disc(Vector2.ZERO, r * 0.4, Color(c, 0.25))
+	for k in n:
+		var a := TAU * k / n
+		var w := PI / n * 0.55
+		var i0 := b.vertex(Vector2.from_angle(a) * r * 0.2, Color(c, 0.5))
+		var i1 := b.vertex(Vector2.from_angle(a - w) * r, Color(c, 0.0))
+		var i2 := b.vertex(Vector2.from_angle(a + w) * r, Color(c, 0.0))
+		b.tri(i0, i1, i2)
 	var m := b.mesh()
 	_cache[key] = m
 	return m

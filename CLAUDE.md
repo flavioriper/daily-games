@@ -1938,6 +1938,12 @@ is 13, and a tray with no three touching is stuck. Clovers buy five tools
   card, ANGLE agreeing. 19 sounds (`CARTOON` pebbles, `ARCADE` jingles),
   awaiting the user's listen. `tests/_shot_thirteen.gd` puts
   `user://arcade.cfg` back.
+- **Polished on 2026-09-27** (the spec's section 6), screen and art only:
+  banded pebbles that glint and wiggle, a chain held up off the sand with
+  flowing beads and a tether to the finger, merges that knock their
+  neighbours, a new number from 7 revealed big and flown to the plate, words
+  on paper pills and a stuck card. 125-135 draw calls in play, ~143 on the
+  13's reveal.
 
 ## Sound
 

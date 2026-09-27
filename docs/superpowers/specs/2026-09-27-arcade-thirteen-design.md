@@ -118,3 +118,42 @@ refused, start, game_over, new_best). Awaiting the user's listen.
 `arcade_start`, `arcade_end` (score, stage = the biggest number, seconds,
 moves, merges, chain, tools, reached = a 13 was made, best) and
 `arcade_abandon`.
+
+## 6. Polish (2026-09-27, amendment)
+
+Screen and art only; the sim is untouched.
+
+- **Pebbles dress up as they grow**: a painted band from 5, a second from 9,
+  gold flecks from 10, and a rim light on every stone. Now and then a pebble
+  at rest glints (a twinkle over its sheen; a 13 glints more often) and
+  another gives a small wiggle.
+- **The chain is held up off the sand**: its pebbles lift, their shadows and a
+  glow stay on the sand, the newest hops and the rest bob in a wave down the
+  chain. Beads of light flow along the ribbon toward its end (gold from five
+  pebbles), the end's sun ring breathes, a dotted tether runs from the last
+  pebble to the finger, and the number to come grows and wobbles as the
+  chain lengthens. Letting go drops every pebble back with a squash; a pebble
+  dragged back off the chain squashes as it drops.
+- **The merge**: the rolling pebbles keep their numbers and leave a fading
+  trail in their paint; the pebbles round the merge are knocked outward and
+  rock back; a falling pebble stretches with its speed.
+- **A new biggest number from 7 up is a reveal**: the pebble rises out of its
+  merge to the middle of the tray, big, over a turning sunburst (gold for the
+  13, whose line is lettered under it, fitted to the tray), then flies up
+  into the Biggest plate, which keeps the old number until it lands. The
+  13's fanfare and confetti land with the merge. Reduce motion keeps the old
+  text banner.
+- **Words sit on paper**: a tool's instruction or a refusal is a paper pill
+  over the tray (it used to be white lettering over the pebbles and wrapped
+  badly in pt-BR); the stuck tray is a paper card with the line and End game,
+  shown only once the tray has settled and any reveal or banner has gone,
+  while the tools the bank can buy nudge now and then. Its line does not
+  autowrap: a wrapped label shown before its first layout measured the card
+  hundreds of pixels tall.
+- **An armed tool rings the pebbles it may be used on** (Swap, after its
+  first pick, the pebbles of other numbers).
+- The bed has a few scallop shells and grit between the hollows.
+
+Draw calls at 810x1440: 125-135 in play, ~143 on the 13's reveal, 99-100 on
+the end card; reduce motion drops the reveal, glints, wiggles, bob, tether
+flow and knocks.
