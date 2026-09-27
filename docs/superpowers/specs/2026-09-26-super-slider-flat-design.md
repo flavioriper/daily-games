@@ -149,3 +149,42 @@ the solver, plays each out by hints with an undo and a reset on the way:
 Owed: a listen to the eleven sounds (one take each), the hint's wait on a
 real phone for a 100k-position Insane graph, and the user's call on the
 name.
+
+## 8. Polish (amendment, 2026-09-26)
+
+Asked for as "polish and improve design and animation", built directly.
+
+**The drawing.** The lawn gets a bush tucked into each corner, clover,
+tufts and daisies off the tray and the path, and stepping stones with a lit
+top and a tuft beside them, running to the card's hem. The walnut frame
+carries wavy grain down all four sides and two knots, and a brass peg at
+each corner joint; the floor has a faint speckle, and every empty cell is a
+shallow hollow (in the live mesh, since the holes move). The gate's doors
+are planks with a hinge strap and a brass latch knob, and they ride up as
+they fold back. Each block carries a faint grain along its long way; a lifted
+block casts a second, spreading shadow and takes a sheen. The lit mat
+breathes a halo past its edge (`SLIDE_MAT_HI`). New palette entries:
+`SLIDE_STONE_HI`, `SLIDE_MAT_HI`, `SLIDE_BRASS(_HI)`, `SLIDE_CLOVER`,
+`SLIDE_BUSH(_HI/_DEEP)`.
+
+**The motion.** The held block's drawn anchor chases the finger's at
+`FOLLOW` 28 a second, so a step between cells glides instead of snapping,
+and its speed leans it along its travel (`LEAN_PER` 0.012 a cell a second,
+at most `LEAN_MAX` 0.07: the leading edge runs ahead, the sides draw in). A
+step kicks a wisp of dust off the trailing edge. A knock into a wall or a
+block shivers the block (`KNOCK` 0.035 of a cell over `KNOCK_TIME` 0.24),
+and the block in its way flinches (`FLINCH` 0.03). The big block watches the
+held block, its face moving up to `GAZE` 0.07 of a cell, looks worried when
+it is itself knocked, looks down at the gate once solved, and blinks every
+2.8-5.5 s (the live mesh rebuilds only for the blink). The blocks drop in
+`ENTER_DROP` 0.35 of a cell as they pop in. A hint leaves a dotted trail in
+`SUN` down its path, drawn a beat ahead of the block and faded over
+`TRAIL_FADE` 0.6. On the win the big block walks out in `EXIT_STEPS` 3 hops,
+each landing with a squash and a puff on the stones, and a sparkle rises
+over each other block as its hop comes round.
+
+**Figures** (`tests/_shot_anim.gd -- slider` at 810x1440): 68 draw calls
+played (67 before), 67 held (`hold`), up to 72 across the win, 67 on ANGLE;
+idle 3.73 ms against 3.95 before, in the same session. Under `rm` two frames
+1.5 s apart are pixel-identical. `tests/_win.gd -- slider` passes; the suite
+122,591/0.

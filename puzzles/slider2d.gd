@@ -61,6 +61,26 @@ const EXIT := 1.8
 const EXIT_TIME := 0.85
 const WIN_HOLD := 0.9
 const HINTS := 3
+## The polish (the spec's section 8). A held block leans along its travel by
+## LEAN_PER a cell a second, at most LEAN_MAX a side; the drawn anchor chases
+## the finger's at FOLLOW a second so a step glides rather than snaps. A
+## knocked block shivers KNOCK of a cell over KNOCK_TIME and the block in its
+## way flinches FLINCH. The big block watches the held one, its face moving
+## up to GAZE of a cell, and blinks every BLINK_MIN to BLINK_MAX seconds. The
+## hint leaves a trail of dots that fades over TRAIL_FADE. The big block
+## walks out in EXIT_STEPS hops.
+const LEAN_PER := 0.012
+const LEAN_MAX := 0.07
+const FOLLOW := 28.0
+const KNOCK := 0.035
+const KNOCK_TIME := 0.24
+const FLINCH := 0.03
+const GAZE := 0.07
+const BLINK_MIN := 2.8
+const BLINK_MAX := 5.5
+const TRAIL_FADE := 0.6
+const EXIT_STEPS := 3
+const ENTER_DROP := 0.35
 ## The toast: Knight's, measure for measure.
 const TOAST_HOLD := 2.6
 const TOAST_H := 84.0
@@ -82,6 +102,14 @@ var _disp: Array = []
 ## (the anchor as drawn), "bumped"}; empty when none.
 var _drag := {}
 var _rings: Array = []
+## Knocks and flinches: {"p", "at", "dir" (unit, cells), "amp"}.
+var _knocks: Array = []
+## The hint's trail: {"pts" (centres, cells), "at", "dur"}; empty when none.
+var _trail := {}
+## Where the big block's face is looking (fraction of a cell), eased.
+var _gaze := Vector2.ZERO
+var _blink_at := 0.0
+var _last_dust := 0.0
 var _opened := 0.0
 var _anim_until := 0.0
 ## When the big block stood on the mat, and the gate starts to open.
@@ -134,6 +162,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_disp.append(_still_at(p))
 	_drag = {}
 	_rings = []
+	_knocks = []
+	_trail = {}
+	_gaze = Vector2.ZERO
+	_blink_at = _now() + 2.0
 	_toast = ""
 	_toast_at = -100.0
 	_anim_until = 0.0
@@ -249,6 +281,38 @@ func _entry(i: int, t: float) -> float:
 	var e := t - _opened - Motion.ENTER_DELAY - 0.15 - Motion.stagger(i, 0.05)
 	return 0.01 if e <= 0.0 else Motion.pop_in_scale(e).x
 
+## How far block `i` still has to fall into the tray as it enters, in cells:
+## the blocks drop in down the reading order as they pop.
+func _entry_drop(i: int, t: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var e := t - _opened - Motion.ENTER_DELAY - 0.15 - Motion.stagger(i, 0.05)
+	return ENTER_DROP * (1.0 if e <= 0.0 else Motion.drop_in_lift(e, 1.0, Motion.DROP_TIME))
+
+## The big block's eyes: shut for a blink, else open.
+func _eye(t: float) -> float:
+	if Motion.reduce or _solved_at >= 0.0:
+		return 1.0
+	var e := t - _blink_at
+	if e < 0.0 or e > Face.BLINK_TIME:
+		return 1.0
+	return absf(cos(PI * e / Face.BLINK_TIME))
+
+## A knock's or a flinch's offset on block `p`, in cells.
+func _knock(p: int, t: float) -> Vector2:
+	if Motion.reduce:
+		return Vector2.ZERO
+	var off := Vector2.ZERO
+	for k: Dictionary in _knocks:
+		if int(k.p) != p:
+			continue
+		var e := t - float(k.at)
+		if e < 0.0 or e >= KNOCK_TIME:
+			continue
+		# a damped wobble along the push: out, back past, and still
+		off += Vector2(k.dir) * float(k.amp) * sin(TAU * 1.5 * e / KNOCK_TIME) * (1.0 - e / KNOCK_TIME)
+	return off
+
 # --- the win's clock ---
 
 func _glow(t: float) -> float:
@@ -272,7 +336,20 @@ func _exit(t: float) -> float:
 	if Motion.reduce:
 		return EXIT
 	var u := clampf((t - _solved_at - GLOW_TIME - DOOR_TIME * 0.6) / EXIT_TIME, 0.0, 1.0)
-	return EXIT * u * u * (3.0 - 2.0 * u)
+	# EXIT_STEPS hops: each one eases its own share of the way
+	var n := float(EXIT_STEPS)
+	var k := minf(floorf(u * n), n - 1.0)
+	var f := u * n - k
+	return EXIT * (k + f * f * (3.0 - 2.0 * f)) / n
+
+## The big block's hop as it walks out: up and down once a step, in cells.
+func _exit_hop(t: float) -> float:
+	if _solved_at < 0.0 or Motion.reduce:
+		return 0.0
+	var u := (t - _solved_at - GLOW_TIME - DOOR_TIME * 0.6) / EXIT_TIME
+	if u <= 0.0 or u >= 1.0:
+		return 0.0
+	return 0.22 * sin(PI * fmod(u * float(EXIT_STEPS), 1.0))
 
 ## The others' hop as the big block leaves: a wave out from the gate.
 func _cheer(p: int, t: float) -> float:
@@ -290,7 +367,12 @@ func _process(delta: float) -> void:
 	if _cell() <= 0.0 or _state.blocks.is_empty():
 		return
 	var t := _now()
-	if _animating(t):
+	_ease_gaze(t, delta)
+	if not Motion.reduce and _solved_at < 0.0 and t > _blink_at + Face.BLINK_TIME:
+		_blink_at = t + randf_range(BLINK_MIN, BLINK_MAX)
+	if not _drag.is_empty():
+		_chase(delta)
+	if _animating(t) or _blinking(t):
 		_refresh()
 	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
 		# the toast is drawn apart from the meshes: a redraw, not a rebuild
@@ -303,6 +385,56 @@ func _animating(t: float) -> bool:
 		return false
 	var entrance := Motion.ENTER_DELAY + 0.15 + Motion.stagger(_state.blocks.size(), 0.05) + Motion.POP_IN + 0.1
 	return t - _opened < entrance
+
+func _blinking(t: float) -> bool:
+	return not Motion.reduce and t >= _blink_at and t <= _blink_at + Face.BLINK_TIME + 0.05
+
+## Where the big block wants to look: at the held block, else at the gate
+## when it stands over the mat, else ahead. Eased toward it; while it is still
+## turning its eyes the tray keeps drawing.
+func _ease_gaze(t: float, delta: float) -> void:
+	var want := Vector2.ZERO
+	var big: int = _state.big()
+	if big < 0:
+		return
+	var me := _xy(_state.at(big)) + Vector2.ONE
+	if not _drag.is_empty() and int(_drag.p) != big:
+		var p: int = _drag.p
+		var there: Vector2 = Vector2(_drag.v) + Vector2(_state.size_of(p)) * 0.5
+		want = (there - me).limit_length(1.0) * GAZE
+	elif _solved_at >= 0.0:
+		want = Vector2(0.0, GAZE)
+	if Motion.reduce:
+		_gaze = want
+		return
+	var was := _gaze
+	_gaze = _gaze.lerp(want, 1.0 - exp(-delta * 10.0))
+	if _gaze.distance_to(was) > 0.0005:
+		_busy_for(0.05)
+
+## The drawn anchor of the held block chases the finger's, so a step between
+## cells glides, and its speed leans the block.
+func _chase(delta: float) -> void:
+	var want: Vector2 = _drag.want
+	var was: Vector2 = _drag.v
+	var v := want if Motion.reduce else was.lerp(want, 1.0 - exp(-delta * FOLLOW))
+	if v.distance_to(want) < 0.002:
+		v = want
+	var vel := (v - was) / maxf(delta, 1e-3)
+	_drag.vel = Vector2(_drag.vel).lerp(vel, 0.5)
+	_drag.v = v
+
+## The held block's lean, signed along its travel, in cells.
+func _lean(p: int) -> Vector2:
+	if Motion.reduce or _drag.is_empty() or int(_drag.p) != p:
+		return Vector2.ZERO
+	var vel: Vector2 = _drag.vel
+	var l := Vector2(clampf(vel.x * LEAN_PER, -LEAN_MAX, LEAN_MAX), clampf(vel.y * LEAN_PER, -LEAN_MAX, LEAN_MAX))
+	if absf(l.x) >= absf(l.y):
+		l.y = 0.0
+	else:
+		l.x = 0.0
+	return l if l.length() > 0.004 else Vector2.ZERO
 
 func _busy_for(seconds: float) -> void:
 	_anim_until = maxf(_anim_until, _now() + seconds)
@@ -356,21 +488,39 @@ func _build_still() -> ArrayMesh:
 				Vector2(minf(x0 + stripe, size.x - 2.0), size.y - 12.0), Vector2(x0, size.y - 12.0)]), Color(1.0, 1.0, 1.0, 0.07))
 		x0 += stripe
 		k += 1
-	for i in 14:
-		var at := Vector2(_hash(i, 3) * size.x, _hash(i, 11) * size.y)
-		var inside := Rect2(o - Vector2.ONE * s * 0.4, g + Vector2(s * 0.8, s * (0.4 + PATH + 0.4)))
-		if inside.has_point(at):
-			continue
-		_tuft(b, at, s * (0.14 + 0.08 * _hash(i, 17)))
-	# the path out of the gate: a few flat stones down to the card's hem
+	var inside := Rect2(o - Vector2.ONE * s * 0.45, g + Vector2(s * 0.9, s * (0.45 + PATH + 0.45)))
 	var gx := o.x + s * float(Gen.GOAL % Gen.COLS)
+	var path := Rect2(Vector2(gx - s * 0.3, o.y + g.y), Vector2(s * 2.6, size.y))
+	# bushes tucked into the card's corners, clipped by its edge
+	for corner: Vector2 in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+		var at := Vector2(corner.x * size.x, corner.y * size.y) + (Vector2.ONE - corner * 2.0) * s * 0.42
+		_bush(b, at, s * 0.3, int(corner.x + corner.y * 2.0))
+	# clover and tufts, and daisies here and there, off the tray and the path
+	for i in 120:
+		var at := Vector2(_hash(i, 3) * size.x, 14.0 + _hash(i, 11) * (size.y - 28.0))
+		if inside.has_point(at) or path.has_point(at):
+			continue
+		match i % 4:
+			0, 1:
+				_tuft(b, at, s * (0.13 + 0.08 * _hash(i, 17)))
+			2:
+				_clover(b, at, s * (0.07 + 0.03 * _hash(i, 19)), _hash(i, 23) * TAU)
+			3:
+				_daisy(b, at, s * (0.06 + 0.02 * _hash(i, 29)))
+	# the path out of the gate: flat stones down to the card's hem, a tuft
+	# beside every other one
 	var y := o.y + g.y + Block.FRAME * s + s * 0.18
 	var n := 0
-	while y < size.y - s * 0.1 and n < 6:
-		var w := s * (1.3 - 0.08 * float(n))
+	while y < size.y + s * 0.3 and n < 7:
+		var w := s * (1.3 - 0.06 * float(n))
 		var c := Vector2(gx + s + (s * 0.12 if n % 2 == 0 else -s * 0.12), y + s * 0.2)
-		b.ellipse(c + Vector2(0.0, s * 0.04), w * 0.5, s * 0.2, Pal.SLIDE_LAWN_DEEP)
+		b.ellipse(c + Vector2(0.0, s * 0.05), w * 0.52, s * 0.21, Pal.SLIDE_LAWN_DEEP)
 		b.ellipse(c, w * 0.5, s * 0.18, Pal.SLIDE_STONE)
+		b.ellipse(c + Vector2(-w * 0.08, -s * 0.05), w * 0.3, s * 0.07, Pal.SLIDE_STONE_HI)
+		if n % 2 == 1:
+			_tuft(b, c + Vector2(w * 0.62, s * 0.12), s * 0.14)
+		else:
+			_tuft(b, c + Vector2(-w * 0.62, s * 0.12), s * 0.12)
 		y += s * 0.5
 		n += 1
 	Block.tray(b, o, s)
@@ -381,6 +531,31 @@ static func _tuft(b: Face.Builder, at: Vector2, h: float) -> void:
 		var ang := -PI * 0.5 + (float(k) - 1.0) * 0.45
 		var tip := at + Vector2(cos(ang), sin(ang)) * h
 		b.fan(PackedVector2Array([at + Vector2(-h * 0.12, 0.0), tip, at + Vector2(h * 0.12, 0.0)]), Pal.SLIDE_LAWN_DEEP)
+
+## A round bush of three lobes in two greens, a few leaves lit on top.
+static func _bush(b: Face.Builder, at: Vector2, r: float, k: int) -> void:
+	var lobes := [Vector2(-0.7, 0.15), Vector2(0.7, 0.2), Vector2(0.0, -0.25)]
+	for l: Vector2 in lobes:
+		b.disc(at + l * r + Vector2(0.0, r * 0.12), r * 0.75, Pal.SLIDE_BUSH_DEEP)
+	for l: Vector2 in lobes:
+		b.disc(at + l * r, r * 0.7, Pal.SLIDE_BUSH)
+	for i in 4:
+		var a := -PI * 0.5 + (_hash(k, i) - 0.5) * 2.4
+		b.ellipse(at + Vector2(cos(a), sin(a)) * r * 0.75, r * 0.14, r * 0.08, Pal.SLIDE_BUSH_HI)
+
+## A three-leaf clover at `at`, leaves `r` across, turned `turn`.
+static func _clover(b: Face.Builder, at: Vector2, r: float, turn: float) -> void:
+	for k in 3:
+		var a := turn + TAU * float(k) / 3.0
+		b.disc(at + Vector2(cos(a), sin(a)) * r * 0.55, r * 0.55, Pal.SLIDE_CLOVER)
+	b.disc(at, r * 0.18, Pal.SLIDE_LAWN_DEEP)
+
+## A small daisy: five white petals and a yellow eye.
+static func _daisy(b: Face.Builder, at: Vector2, r: float) -> void:
+	for k in 5:
+		var a := TAU * float(k) / 5.0
+		b.ellipse(at + Vector2(cos(a), sin(a)) * r * 0.6, r * 0.42, r * 0.42, Pal.PAPER)
+	b.disc(at, r * 0.36, Pal.SLIDE_SQ)
 
 static func _hash(a: int, b: int) -> float:
 	var h := (a * 374761393 + b * 668265263) ^ (a * b * 1274126177)
@@ -396,6 +571,10 @@ func _build_live(t: float) -> ArrayMesh:
 	var glow := _glow(t)
 	if glow > 0.0:
 		Block.mat(b, o, s, glow)
+	for c in Gen.N:
+		if _state.block_at(c) < 0:
+			Block.hollow(b, _pt(_xy(c)), s)
+	_draw_trail(b, t)
 	_drop_rings(t)
 	for r: Dictionary in _rings:
 		var u := (t - float(r.at)) / Motion.RING_TIME
@@ -417,6 +596,33 @@ func _build_live(t: float) -> ArrayMesh:
 		Block.doors(b, o, s, _door(t))
 	return b.mesh() if not b.verts.is_empty() else null
 
+## The hint's trail: a dotted line down the way the block goes, drawn ahead
+## of it as it slides and fading once it has landed.
+func _draw_trail(b: Face.Builder, t: float) -> void:
+	if _trail.is_empty() or Motion.reduce:
+		return
+	var e := t - float(_trail.at)
+	var dur: float = _trail.dur
+	var fade := 1.0 - clampf((e - dur) / TRAIL_FADE, 0.0, 1.0)
+	if e < 0.0 or fade <= 0.0:
+		if e >= dur + TRAIL_FADE:
+			_trail = {}
+		return
+	var pts: PackedVector2Array = _trail.pts
+	var total := 0.0
+	for i in range(1, pts.size()):
+		total += pts[i].distance_to(pts[i - 1])
+	var s := _cell()
+	var n := int(total / 0.22)
+	for k in range(1, n):
+		var u := float(k) / float(n)
+		var at := _pt(_along(pts, u))
+		# dots pop in down the way, a beat ahead of the block
+		var shown := clampf((e / maxf(dur, 1e-3) + 0.25 - u) * 5.0, 0.0, 1.0)
+		if shown <= 0.0:
+			continue
+		b.disc(at, s * 0.045 * shown, Color(Pal.SUN, 0.8 * fade))
+
 static func _rank(p: int, held: int, big: int) -> int:
 	if p == held:
 		return 2
@@ -430,13 +636,27 @@ func _block(b: Face.Builder, p: int, t: float) -> void:
 	var v := _vis(p, t)
 	var lift := _lift(p, t)
 	var expr := Face.Expr.HAPPY
+	var squash := _squash(p, t)
+	var look := Vector2.ZERO
+	var eye := 1.0
 	if p == _state.big():
 		v.y += _exit(t)
+		look = _gaze
+		eye = _eye(t)
 		if _solved_at >= 0.0:
 			expr = Face.Expr.JOY
-			lift = maxf(lift, 0.35 * sin(PI * clampf(_exit(t) / EXIT, 0.0, 1.0)))
+			var hop := _exit_hop(t)
+			v.y -= hop
+			lift = maxf(lift, hop * 3.0)
+			# each hop lands with a small squash
+			if hop > 0.0 and hop < 0.05:
+				squash = maxf(squash, 0.05 - hop)
+		elif _knocked(p, t):
+			expr = Face.Expr.WORRIED
 	else:
 		v.y += _cheer(p, t)
+	v += _knock(p, t)
+	v.y -= _entry_drop(p, t)
 	var at := _pt(v)
 	var e := _entry(p, t)
 	var cell := s
@@ -444,7 +664,13 @@ func _block(b: Face.Builder, p: int, t: float) -> void:
 		var mid := at + Vector2(cells) * s * 0.5
 		cell = s * e
 		at = mid - Vector2(cells) * cell * 0.5
-	Block.block(b, at, cells, cell, _state.kind(p), lift, _squash(p, t), expr)
+	Block.block(b, at, cells, cell, _state.kind(p), lift, squash, expr, _lean(p), look, eye)
+
+func _knocked(p: int, t: float) -> bool:
+	for k: Dictionary in _knocks:
+		if int(k.p) == p and t - float(k.at) < KNOCK_TIME * 2.0:
+			return true
+	return false
 
 ## The count over the tray: moves so far against the day's shortest.
 func _draw_count(alpha: float) -> void:
@@ -530,7 +756,7 @@ func _press(local: Vector2) -> void:
 		return
 	var t := _now()
 	var a := _xy(_state.at(p))
-	_drag = {"p": p, "grab": v - a, "before": _state.snapshot(), "at": t, "v": a, "bumped": {}}
+	_drag = {"p": p, "grab": v - a, "before": _state.snapshot(), "at": t, "v": a, "want": a, "vel": Vector2.ZERO, "bumped": {}}
 	fx.cue("lift")
 	_refresh()
 
@@ -554,6 +780,7 @@ func _move(local: Vector2) -> void:
 			var dy := int(signf(comp)) if axis == 1 else 0
 			if _state.step(p, dx, dy):
 				fx.cue("step", 1.0 + 0.04 * float(randi() % 3))
+				_dust(p, Vector2(dx, dy))
 				stepped = true
 				break
 			_bump(p, dx, dy)
@@ -566,7 +793,9 @@ func _move(local: Vector2) -> void:
 		off.y = 0.0
 	else:
 		off.x = 0.0
-	_drag.v = a + off
+	_drag.want = a + off
+	if Motion.reduce:
+		_drag.v = _drag.want
 	_refresh()
 
 ## How far a block drawn under the finger may lean off its cell along one
@@ -593,6 +822,46 @@ func _bump(p: int, dx: int, dy: int) -> void:
 		return
 	_drag.bumped[key] = true
 	fx.cue("bump")
+	var t := _now()
+	var dir := Vector2(dx, dy)
+	_knocks.append({"p": p, "at": t, "dir": dir, "amp": KNOCK})
+	# whatever stands just past the leading edge flinches away from the knock,
+	# one cell per row or column the block spans
+	var here := _xy(_state.at(p))
+	var sz := Vector2(_state.size_of(p))
+	var edge := here + (Vector2(sz.x, 0.0) if dx > 0 else Vector2(0.0, sz.y) if dy > 0 else dir)
+	var along := Vector2(0.0, 1.0) if dx != 0 else Vector2(1.0, 0.0)
+	var hit := {}
+	for i in int(sz.y if dx != 0 else sz.x):
+		var ahead := edge + along * float(i)
+		if ahead.x < 0 or ahead.y < 0 or ahead.x >= Gen.COLS or ahead.y >= Gen.ROWS:
+			continue
+		var q: int = _state.block_at(int(ahead.y) * Gen.COLS + int(ahead.x))
+		if q >= 0 and q != p and not hit.has(q):
+			hit[q] = true
+			_knocks.append({"p": q, "at": t + 0.03, "dir": dir, "amp": FLINCH})
+	_drop_knocks(t)
+	_busy_for(KNOCK_TIME * 2.0 + 0.05)
+
+func _drop_knocks(t: float) -> void:
+	var keep: Array = []
+	for k: Dictionary in _knocks:
+		if t - float(k.at) < KNOCK_TIME * 2.0:
+			keep.append(k)
+	_knocks = keep
+
+## A wisp of dust off the trailing edge of block `p` as it steps `dir`.
+func _dust(p: int, dir: Vector2) -> void:
+	if Motion.reduce:
+		return
+	var t := _now()
+	if t - _last_dust < 0.07:
+		return
+	_last_dust = t
+	var sz := Vector2(_state.size_of(p))
+	var mid := _xy(_state.at(p)) + sz * 0.5
+	var back := mid - dir * (sz * 0.5 + Vector2.ONE * 0.1)
+	fx.puff(_pt(back), Pal.SLIDE_GROOVE, 3)
 
 func _release() -> void:
 	if _drag.is_empty():
@@ -728,7 +997,11 @@ func hint() -> bool:
 	var t := _now()
 	var dur := _travel(pts)
 	_disp[p] = {"pts": pts, "at": t, "dur": dur, "land": true}
-	_busy_for(dur + LAND_TIME)
+	var centres := PackedVector2Array()
+	for q in pts:
+		centres.append(q + Vector2(_state.size_of(p)) * 0.5)
+	_trail = {"pts": centres, "at": t, "dur": dur}
+	_busy_for(dur + LAND_TIME + TRAIL_FADE)
 	_ring_at(_pt(_xy(m.to) + Vector2(_state.size_of(p)) * 0.5), t + dur)
 	_land_puff(p, dur)
 	_tell("SL_HINT", Face.Expr.HAPPY)
@@ -741,6 +1014,8 @@ func hint() -> bool:
 func reset_board() -> void:
 	var before: Array = _state.snapshot()
 	_drag = {}
+	_trail = {}
+	_knocks = []
 	if _state.reset_board():
 		_settle(before, _now(), Motion.RESET_STAGGER)
 	_solved_at = -1.0
@@ -792,9 +1067,23 @@ func _on_solved() -> void:
 		get_tree().create_timer(_solved_at - t + GLOW_TIME).timeout.connect(func(): fx.cue("gate"))
 		get_tree().create_timer(_solved_at - t + GLOW_TIME + DOOR_TIME * 0.6).timeout.connect(func():
 			fx.puff(gate, Pal.SURFACE, 6))
+		var walk := _solved_at - t + GLOW_TIME + DOOR_TIME * 0.6
+		for k in EXIT_STEPS:
+			var y := EXIT * float(k + 1) / float(EXIT_STEPS)
+			get_tree().create_timer(walk + EXIT_TIME * float(k + 1) / float(EXIT_STEPS)).timeout.connect(func():
+				fx.puff(_pt(_xy(Gen.GOAL) + Vector2(1.0, 2.0 + y)), Pal.SLIDE_STONE, 4))
 		get_tree().create_timer(_solved_at - t + GLOW_TIME + DOOR_TIME + EXIT_TIME * 0.5).timeout.connect(func():
 			fx.sparkle(gate + Vector2(0.0, s * 0.6), Pal.SUN)
 			fx.cue("solved"))
+		# the others cheer: a sparkle over each as its hop comes round
+		for p in _state.blocks.size():
+			if p == big:
+				continue
+			var c := _xy(_state.at(p)) + Vector2(_state.size_of(p)) * 0.5
+			var far := c.distance_to(_xy(Gen.GOAL) + Vector2.ONE)
+			var col: Color = Pal.SLIDE_SQ_HI if _state.kind(p) == Gen.SQ else Pal.SLIDE_BAR_HI
+			get_tree().create_timer(_solved_at - t + GLOW_TIME + DOOR_TIME + far * 0.08 + Motion.SOLVE_TIME * 0.4).timeout.connect(func():
+				fx.sparkle(_pt(c), col))
 	else:
 		fx.cue("solved")
 	_say(tr("SL_WIN") % [moves, _state.par], Face.Expr.JOY)

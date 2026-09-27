@@ -1309,6 +1309,13 @@ pointing `seed_as` at them. Specs:
   because the big block walks out past the frame. 67 draw calls bare and
   played, 68 on ANGLE. Sounds generated (2026-09-26), one take a cue,
   awaiting the user's listen.
+  **Polished on 2026-09-26** (the spec's section 8): bushes, clover and
+  daisies on the lawn, a grained frame with brass corner pegs, hollows in the
+  empty cells, plank doors with a latch, grained blocks; a held block glides
+  after the finger and leans with its speed, kicks dust, knocks and makes its
+  neighbour flinch; the big block watches the held one and blinks; a hint
+  leaves a dotted trail; the big block hops out in three steps. 68 played,
+  67 on ANGLE, reduce motion pixel-still.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of
