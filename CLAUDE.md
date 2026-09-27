@@ -1968,6 +1968,14 @@ bloom as breezes, then the next day is dealt. Its "furthest" is the day.
 - 236 draw calls on the tab with eight cards, 131-151 in play, 100-104 on
   the end card, ANGLE agreeing. 26 sounds (`CARTOON` garden, `ARCADE`
   shimmer and jingles), awaiting the user's listen.
+- **Polished on 2026-09-27** (the spec's section 6), screen and art only:
+  the rewards made loud -- words lettered a hopping letter at a time over
+  sunbursts (day, cascades, combos, specials made, last move), petals,
+  leaves, sparks and stars thrown by every pick and blast, a flashing bed and
+  a cascade's edge glow, stamped goal seals, and a day's end of one to three
+  stars, a petal rain, every spare move thrown from the moves plate as a gold
+  star, and the gift flown to its tool. 148-200 draw calls in play, ~254 at
+  the day's end peak, ANGLE agreeing.
 
 ## Sound
 

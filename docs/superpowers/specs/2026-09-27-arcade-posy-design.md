@@ -109,3 +109,53 @@ game_over, new_best). Awaiting the user's listen.
 
 `arcade_start`, `arcade_end` (score, stage = the day, seconds, moves, made,
 cascade, picked, tools, best) and `arcade_abandon`.
+
+## 6. Polish: the rewards (2026-09-27)
+
+The user's ask: "polish and improve design and animation of posy. The
+rewards even if silly should be way more visual to keep users playing".
+Screen and art only; the sim is untouched.
+
+- **Stickers**: words lettered over everything a letter at a time
+  (`_sticker`, drawn in `_air`): each letter hops in, rocks and the word
+  swells away, a white rim and a dark one under the colour. Big words are
+  lettered in six colours with a sunburst turning behind them: the day's
+  title on the deal, *Day done!*, the cascade words (a fourth, *Unbe-leaf-
+  able!*, at step 9) and *Super combo!* when two or more specials go off on
+  the move's first step. A counter, *Cascade xN*, sits on the bed's top edge
+  from the second step. A special made says so over its tile (*Breeze!*,
+  *Seed bomb!*, *Rainbow!*); *Last move!* hangs under the moves plate;
+  *Done!* under a goal plate; *A gift!* over the day's tool.
+- **Bits**: petals, leaves, sparks, stars, seeds, confetti and rings, in the
+  field (`_bits`) and in the air (`_air_bits`), laid into the live meshes,
+  capped at 420 a layer. Every picked tile throws petals of its colour (a
+  leaf throws leaves) and a ring; a made special a sunburst behind it,
+  stars and a ring; a breeze sheds leaves down its line behind two comet
+  heads; a bomb throws sparks, stars and seeds with two rings; a rainbow's
+  threads curve and each carries a twinkle, with six coloured rings.
+- **The bed flashes** on a blast, and a long cascade warms its edges with a
+  glow that grows by step (Molehill's frenzy glow).
+- **Goals**: a flight trails a tail of its colour and lands with petals and a
+  ring; a goal met stamps its seal on (it slams in and turns), throws stars
+  and leaves, and says *Done!*. The goal cue now fires on the stamp, when
+  the last tile lands, not when the sim met it.
+- **The day's end**: *Day done!* with one to three stars slammed in (one
+  for finishing, two with a fifth of the day's moves left, three with two
+  fifths), a rain of petals and confetti over the whole screen, the bed
+  flashing; then **every move left is thrown from the moves plate as a gold
+  star** to the tile it turns into a breeze, the plate counting down as they
+  land, each worth its +250; then the gift flies from the bed to its tool
+  (its badge waits for it) and lands with a burst and a *+1*.
+- **At rest** the tiles breathe (a slight squash, out of phase across the
+  bed); the moves pulse red from five. Score pops are coloured by the kind
+  picked and the big ones wobble.
+- **The end card**: a sunburst behind the posy, the score running up from
+  nothing, the three stats popping in one after another, confetti every
+  time (more for a new best).
+- Reduce motion drops the bits, rays, hops, flights, breath and count-up;
+  the stickers still appear, still.
+- New keys `PS_WORD_4`, `PS_MADE_*`, `PS_CASCADE`, `PS_COMBO`,
+  `PS_LAST_MOVE`, `PS_GOAL_DONE`, `PS_GIFT`. `tests/_shot_posy.gd` adds 10b
+  (the stars thrown) and 10c (the gift in flight).
+- Draw calls at 810x1440: 148 at the deal, 150-200 in play, ~254 at the
+  peak of the day's end, 97 on the end card; ANGLE agreeing.

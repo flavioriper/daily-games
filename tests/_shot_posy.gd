@@ -24,6 +24,7 @@ var _at := 0.0
 var _before := ""
 var _had := false
 var _move: Array = []
+var _extra := {}
 const PATH := "user://arcade.cfg"
 
 func _initialize() -> void:
@@ -193,6 +194,12 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 14
 		14:
+			if not _extra.has("b") and _t > _at + 0.9:
+				_extra["b"] = true
+				_shot("10b_bloom_stars")
+			if not _extra.has("c") and _s._flights.any(func(f: Dictionary) -> bool: return String(f.get("kind", "")) == "tool" and f.t > 0.35):
+				_extra["c"] = true
+				_shot("10c_gift")
 			if not _s.busy() and _t > _at + 0.5:
 				_shot("11_next_day")
 				_s.sim.moves_left = 1

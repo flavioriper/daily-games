@@ -203,12 +203,40 @@ static func _rainbow(b: Face.Builder, r: float) -> void:
 	b.disc(Vector2.ZERO, r * 0.27, CREAM)
 	_star(b, Vector2.ZERO, r * 0.2, Color(GOLD, 0.95))
 
-static func _star(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
+static func _star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0) -> void:
 	var pts := PackedVector2Array()
 	for i in 10:
-		var a := TAU * i / 10.0 - PI * 0.5
+		var a := TAU * i / 10.0 - PI * 0.5 + turn
 		pts.append(c + Vector2.from_angle(a) * (r if i % 2 == 0 else r * 0.45))
 	b.polygon(pts, col)
+
+## A fat five-pointed star laid into a builder, with a darker rim under it
+## and a shine on its upper left: the rewards' star.
+static func star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0) -> void:
+	_star(b, c + Vector2(r * 0.04, r * 0.1), r * 1.08, Color(col.darkened(0.35), col.a), turn)
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := TAU * i / 10.0 - PI * 0.5 + turn
+		pts.append(c + Vector2.from_angle(a) * (r if i % 2 == 0 else r * 0.52))
+	b.polygon(pts, col)
+	b.ellipse(c + Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, Color(1, 1, 1, 0.5 * col.a))
+
+## A sunburst: `n` rays between `r0` and `r1`, turned by `turn`.
+static func rays(b: Face.Builder, c: Vector2, r0: float, r1: float, n: int, turn: float, col: Color) -> void:
+	var half := PI / n * 0.5
+	for i in n:
+		var a := TAU * i / n + turn
+		b.polygon(PackedVector2Array([c + Vector2.from_angle(a - half * 0.4) * r0, c + Vector2.from_angle(a - half) * r1,
+			c + Vector2.from_angle(a + half) * r1, c + Vector2.from_angle(a + half * 0.4) * r0]), col)
+
+## A petal (or, long and green, a leaf; flat, a scrap of confetti): an
+## ellipse turned by `rot`.
+static func petal(b: Face.Builder, c: Vector2, rx: float, ry: float, rot: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := TAU * i / 10.0
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry).rotated(rot))
+	b.fan(pts, col)
 
 ## A breeze laid over a tile, streaking across it (turn it a quarter for a
 ## column): white streaks and an arrowhead at each end.

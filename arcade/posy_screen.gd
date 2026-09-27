@@ -58,7 +58,17 @@ const HINT_AFTER := 5.0
 const FLIGHT_T := 0.55
 const CONFETTI := [Color("e8453c"), Color("f6c53d"), Color("3fa3ea"), Color("5dbb4a"), Color("9b52c4")]
 ## The words a long cascade earns, by its step.
-const WORDS := {3: "PS_WORD_1", 5: "PS_WORD_2", 7: "PS_WORD_3"}
+const WORDS := {3: "PS_WORD_1", 5: "PS_WORD_2", 7: "PS_WORD_3", 9: "PS_WORD_4"}
+## What a special says when it is made.
+const MADE_WORDS := {Sim.Sp.ROW: "PS_MADE_BREEZE", Sim.Sp.COL: "PS_MADE_BREEZE", Sim.Sp.BOMB: "PS_MADE_BOMB", Sim.Sp.RAINBOW: "PS_MADE_RAINBOW"}
+## The stickers' letters, cycled for the big words.
+const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+## The most bits (petals, sparks, stars) alive at once, in each layer.
+const MAX_BITS := 420
+## A star from the moves plate to each tile the day's end turns: the gap
+## between two, and how long each flies.
+const BLOOM_STEP := 0.08
+const BLOOM_FLIGHT := 0.42
 
 var sim: RefCounted
 var top_bar: Control
@@ -134,6 +144,35 @@ var _hint: Array = []
 var _glints: Array = []
 var _glint_wait := 1.5
 var _over_said := false
+## Petals, leaves, sparks, stars and rings flung about, in the field's
+## pixels and in the air's: {pos, vel, rot, spin, t, life, kind, col, size}.
+## A bit whose `t` is below zero is still waiting to be thrown.
+var _bits: Array = []
+var _air_bits: Array = []
+## Words lettered over everything, each letter hopping in on its own:
+## {text, at (air px), t, life, size, rainbow, col, rays, tilt, id}.
+var _stickers: Array = []
+## Sunbursts behind a special just made: {pos (cells), t, col}.
+var _bursts: Array = []
+## A flash over the whole bed, and the glow a long cascade builds up
+## round its edges.
+var _flash := 0.0
+var _flash_col := Color.WHITE
+var _heat := 0.0
+## The stars a day's end hands out: {n, t, at (air px), said}.
+var _stars := {}
+## Seconds of petals still to rain after a day is done.
+var _rain := 0.0
+var _day_moves := 20
+var _blooming := false
+## Goals whose completion has been cheered on the plate: index -> seconds.
+var _goal_cheer := {}
+## Tools given as a gift still in the air, so the badge waits for them.
+var _gift_owed := {}
+var _air_live: ArrayMesh
+var _seat_mesh: ArrayMesh
+var _end_score: Label
+var _end_at := 0.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -343,10 +382,16 @@ func _draw_goal_icon(ci: Control, i: int) -> void:
 	var c := ci.size * 0.5
 	ci.draw_mesh(Art.tile(int(g.k), s), null, Transform2D(0.0, c))
 	if int(g.got) - int(_owed.get(i, 0)) >= int(g.need):
-		# done: a little green seal with a tick
+		# done: a green seal with a tick, stamped on
+		var since := float(_goal_cheer.get(i, 1.0))
+		var sc := 1.0 if Motion.reduce else lerpf(2.4, 1.0, Motion.back_out(clampf(since / 0.3, 0.0, 1.0)))
 		var at := c + Vector2(s * 0.34, s * 0.3)
-		ci.draw_circle(at, s * 0.2, Art.LEAF_DEEP)
-		ci.draw_polyline(PackedVector2Array([at + Vector2(-s * 0.09, 0), at + Vector2(-s * 0.02, s * 0.07), at + Vector2(s * 0.1, -s * 0.07)]), Color("fffaf0"), maxf(2.0, s * 0.05))
+		ci.draw_set_transform(at, (1.0 - clampf(since / 0.3, 0.0, 1.0)) * -0.6, Vector2(sc, sc))
+		ci.draw_circle(Vector2(0, 2), s * 0.23, Color(0.1, 0.25, 0.05, 0.3))
+		ci.draw_circle(Vector2.ZERO, s * 0.23, Art.LEAF_DEEP)
+		ci.draw_arc(Vector2.ZERO, s * 0.19, 0.0, TAU, 24, Color(1, 1, 1, 0.35), 2.0)
+		ci.draw_polyline(PackedVector2Array([Vector2(-s * 0.1, 0), Vector2(-s * 0.02, s * 0.08), Vector2(s * 0.11, -s * 0.08)]), Color("fffaf0"), maxf(2.0, s * 0.06))
+		ci.draw_set_transform(Vector2.ZERO)
 
 ## The four tools, each a paper chip with its picture and a badge of how
 ## many are left.
@@ -384,7 +429,7 @@ func _tool_chip(tool: int) -> Control:
 func _draw_badge(ci: Control, tool: int) -> void:
 	if sim == null:
 		return
-	var n := int(sim.tools.get(tool, 0))
+	var n := int(sim.tools.get(tool, 0)) - int(_gift_owed.get(tool, 0))
 	var c := ci.size * 0.5
 	var r := ci.size.x * 0.44
 	ci.draw_circle(c + Vector2(0, 3), r, Color(0.1, 0.2, 0.35, 0.25))
@@ -469,6 +514,18 @@ func _new_game() -> void:
 	_hint = []
 	_glints.clear()
 	_over_said = false
+	_bits.clear()
+	_air_bits.clear()
+	_stickers.clear()
+	_bursts.clear()
+	_flash = 0.0
+	_heat = 0.0
+	_stars = {}
+	_rain = 0.0
+	_blooming = false
+	_goal_cheer.clear()
+	_gift_owed.clear()
+	_end_score = null
 	for tool: int in _tool_buttons:
 		_style_chip(_tool_buttons[tool], false)
 	_best = Record.best(GAME)
@@ -504,8 +561,10 @@ func _process(delta: float) -> void:
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	field.queue_redraw()
-	if not _flights.is_empty():
+	if _air_busy():
 		_air.queue_redraw()
+	if _end_score != null and is_instance_valid(_end_score):
+		_count_end()
 
 ## The sim's new events join the back of the queue.
 func _take_events() -> void:
@@ -519,7 +578,7 @@ func busy() -> bool:
 func _moving() -> bool:
 	for id in _tiles:
 		var t: Dictionary = _tiles[id]
-		if float(t.hold) > 0.0 or t.pos != Vector2(t.to):
+		if float(t.hold) > 0.0 or t.pos != Vector2(t.to) or not (t.turn as Dictionary).is_empty():
 			return true
 	return false
 
@@ -535,7 +594,11 @@ func _run_queue(delta: float) -> void:
 
 func _new_tile(pos: Vector2, to: Vector2i, k: int, sp: int) -> Dictionary:
 	return {"pos": pos, "to": to, "k": k, "sp": sp, "lit": false, "vel": 0.0, "hold": 0.0, "pop": -1.0,
-		"squash": -1.0, "amt": 0.0, "bump": -1.0, "glow": -1.0, "wig": -1.0}
+		"squash": -1.0, "amt": 0.0, "bump": -1.0, "glow": -1.0, "wig": -1.0, "turn": {}}
+
+## Whether the air layer has anything to draw this frame.
+func _air_busy() -> bool:
+	return not (_flights.is_empty() and _air_bits.is_empty() and _stickers.is_empty() and _stars.is_empty() and _rain <= 0.0)
 
 func _animate(delta: float) -> void:
 	for id in _tiles:
@@ -560,6 +623,10 @@ func _animate(delta: float) -> void:
 				t[key] = float(t[key]) + delta
 		if float(t.wig) > 0.8:
 			t.wig = -1.0
+		if not (t.turn as Dictionary).is_empty():
+			t.turn.wait = float(t.turn.wait) - delta
+			if float(t.turn.wait) <= 0.0:
+				_turn_now(t)
 	for d: Dictionary in _dying:
 		d.t += delta
 	_dying = _dying.filter(func(d: Dictionary) -> bool: return d.t < PICK_T + 0.05 or (d.has("vel") and d.t < 1.4))
@@ -589,9 +656,110 @@ func _animate(delta: float) -> void:
 		if _idle >= HINT_AFTER and _hint.is_empty():
 			_hint = sim.hint()
 	_twinkle(delta)
+	_animate_rewards(delta)
 	if sim.is_over() and not _over_said and not busy():
 		_over_said = true
 		_game_over()
+
+## The rewards' own clocks: the bits in both layers, the stickers, the
+## sunbursts, the flash, the cascade's glow, the day's stars and its rain.
+func _animate_rewards(delta: float) -> void:
+	_step_bits(_bits, delta)
+	_step_bits(_air_bits, delta)
+	for st: Dictionary in _stickers:
+		st.t += delta
+	_stickers = _stickers.filter(func(st: Dictionary) -> bool: return st.t < st.life)
+	for b: Dictionary in _bursts:
+		b.t += delta
+	_bursts = _bursts.filter(func(b: Dictionary) -> bool: return b.t < 0.9)
+	_flash = maxf(0.0, _flash - delta * 2.6)
+	if not busy():
+		_heat = maxf(0.0, _heat - delta * 0.8)
+	for i in _goal_cheer:
+		_goal_cheer[i] = float(_goal_cheer[i]) + delta
+	if not _stars.is_empty():
+		_stars.t = float(_stars.t) + delta
+		for i in 3:
+			var land := 0.35 + 0.28 * i
+			if float(_stars.t) >= land and not (_stars.said as Dictionary).has(i):
+				_stars.said[i] = true
+				var at: Vector2 = _stars.at + Vector2((i - 1) * 110.0, -18.0 if i == 1 else 0.0)
+				if i < int(_stars.n):
+					_fx.cue("goal", 1.0 + 0.18 * i, -2.0)
+					_spray(_air_bits, at, Art.GOLD, 10, 520.0, "star", 1.2)
+					_spray(_air_bits, at, Color("fffaf0"), 6, 380.0, "spark", 1.0)
+					_ring(_air_bits, at, 90.0, Art.GOLD)
+		if float(_stars.t) > 2.4:
+			_stars = {}
+	if _rain > 0.0:
+		_rain -= delta
+		if not Motion.reduce and randf() < delta * 26.0:
+			var w := _air.size.x
+			var col: Color = CONFETTI[randi() % CONFETTI.size()] if randf() < 0.6 else Art.RAINBOW[randi() % Art.RAINBOW.size()]
+			_air_bits.append({"pos": Vector2(randf_range(0.0, w), -30.0), "vel": Vector2(randf_range(-60.0, 60.0), randf_range(120.0, 260.0)),
+				"rot": randf() * TAU, "spin": randf_range(-4.0, 4.0), "t": 0.0, "life": 3.2, "kind": "petal" if randf() < 0.55 else "confetti",
+				"col": col, "size": randf_range(0.9, 1.4), "float": true})
+
+## Bits move: thrown, pulled down, slowed by the air, a petal fluttering
+## side to side as it falls.
+func _step_bits(bits: Array, delta: float) -> void:
+	if bits.is_empty():
+		return
+	var drag := exp(-delta * 2.2)
+	for b: Dictionary in bits:
+		b.t += delta
+		if b.t < 0.0 or String(b.kind) == "ring":
+			continue
+		var v: Vector2 = b.vel
+		if b.get("float", false):
+			v.y = minf(v.y + 120.0 * delta, 240.0)
+			b.pos += Vector2(v.x + sin(b.t * 3.0 + b.rot) * 70.0, v.y) * delta
+		else:
+			v *= drag
+			v.y += (1500.0 if String(b.kind) != "petal" and String(b.kind) != "leaf" else 700.0) * delta
+			b.pos += v * delta
+			if String(b.kind) == "petal" or String(b.kind) == "leaf":
+				b.pos.x += sin(b.t * 7.0 + b.rot) * 40.0 * delta
+		b.vel = v
+		b.rot += float(b.spin) * delta
+	var keep := bits.filter(func(b: Dictionary) -> bool: return b.t < b.life)
+	bits.clear()
+	bits.append_array(keep)
+
+## Throws `n` bits of `kind` out of `at`, into `bits` (the field's or the
+## air's), at up to `speed` pixels a second.
+func _spray(bits: Array, at: Vector2, col: Color, n: int, speed: float, kind := "petal", size := 1.0, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	n = mini(n, MAX_BITS - bits.size())
+	for i in n:
+		var v := Vector2.from_angle(randf() * TAU) * speed * randf_range(0.35, 1.0) + Vector2(0, -speed * 0.35)
+		bits.append({"pos": at, "vel": v, "rot": randf() * TAU, "spin": randf_range(-10.0, 10.0), "t": -delay,
+			"life": randf_range(0.55, 0.95) + (0.4 if kind == "petal" or kind == "leaf" else 0.0), "kind": kind,
+			"col": col, "size": size * randf_range(0.7, 1.25)})
+
+## A ring swelling out of `at` to `radius` and fading.
+func _ring(bits: Array, at: Vector2, radius: float, col: Color, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	bits.append({"pos": at, "vel": Vector2.ZERO, "rot": 0.0, "spin": 0.0, "t": -delay, "life": 0.45, "kind": "ring",
+		"col": col, "size": radius})
+
+## A word lettered at `at` in the air's pixels, each letter hopping in on
+## its own. `rainbow` letters it in the sticker colours, else in `col`;
+## `rays` sets a sunburst turning behind it. A sticker with an `id`
+## replaces the one before it with the same id.
+func _sticker(text: String, at: Vector2, size: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "") -> void:
+	if id != "":
+		_stickers = _stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != id)
+	_stickers.append({"text": text, "at": at, "t": 0.0, "life": life, "size": size, "rainbow": rainbow, "col": col,
+		"rays": rays and not Motion.reduce, "tilt": 0.0 if Motion.reduce else randf_range(-0.08, 0.08), "id": id})
+	_air.queue_redraw()
+
+## Where the bed's centre is, in the air's pixels, give or take a fraction
+## of the bed.
+func _bed_at(fx: float, fy: float) -> Vector2:
+	return _in_air(field, _origin + Vector2(Sim.COLS * _u * fx, Sim.ROWS * _u * fy))
 
 func _squash(t: Dictionary, amt: float) -> void:
 	if Motion.reduce:
@@ -622,15 +790,60 @@ func _fly(delta: float) -> void:
 		return
 	for f: Dictionary in _flights:
 		f.t += delta
-		if f.t >= FLIGHT_T and not f.get("home", false):
+		if f.t >= float(f.get("time", FLIGHT_T)) and not f.get("home", false):
 			f.home = true
-			var i: int = f.goal
-			_owed[i] = maxi(0, int(_owed.get(i, 0)) - 1)
-			if i < _goal_plates.size():
-				_kick(_goal_plates[i].pic, 0.14, 0.2)
-			_fx.cue("collect", randf_range(0.95, 1.2), -6.0)
+			match String(f.get("kind", "goal")):
+				"star":
+					_star_home(f)
+				"tool":
+					_gift_home(f)
+				_:
+					var i: int = f.goal
+					_owed[i] = maxi(0, int(_owed.get(i, 0)) - 1)
+					if i < _goal_plates.size():
+						_kick(_goal_plates[i].pic, 0.22, 0.24)
+						var col := Art.paint(int(f.k))
+						_spray(_air_bits, f.to, col.lightened(0.25), 4, 300.0, "petal", 0.8)
+						_ring(_air_bits, f.to, 46.0, col.lightened(0.3))
+					_fx.cue("collect", randf_range(0.95, 1.2), -6.0)
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return not f.get("home", false))
 	_air.queue_redraw()
+
+## A bloom star lands on its tile: the tile turns, the moves count down.
+func _star_home(f: Dictionary) -> void:
+	if _tiles.has(f.id):
+		_turn_now(_tiles[f.id])
+
+## The tile turns to what the sim made of it: a breeze, at the day's end.
+func _turn_now(t: Dictionary) -> void:
+	var turn: Dictionary = t.turn
+	if turn.is_empty():
+		return
+	t.turn = {}
+	t.k = int(turn.k)
+	t.sp = int(turn.sp)
+	t.glow = 0.0
+	t.bump = 0.0
+	var at := px(t.pos.x, t.pos.y)
+	_fx.sparkle(at, Art.GOLD)
+	if bool(turn.get("bloom", false)):
+		_shown_moves = maxi(0, _shown_moves - 1)
+		_fx.cue("convert", 1.0 + 0.04 * float(turn.get("n", 0)), -4.0)
+		_spray(_bits, at, Art.GOLD, 6, 420.0, "star", 0.8)
+		_pops.append({"pos": at, "text": "+%d" % Sim.MOVE_BONUS, "t": 0.0, "col": Pal.SUN, "big": false})
+
+## The day's gift lands in its chip.
+func _gift_home(f: Dictionary) -> void:
+	var tool: int = f.tool
+	_gift_owed[tool] = maxi(0, int(_gift_owed.get(tool, 0)) - 1)
+	var b: Control = _tool_buttons[tool]
+	_kick(b, 0.3, 0.4)
+	var at := _in_air(b, b.size * 0.5)
+	_spray(_air_bits, at, Pal.SUN, 12, 520.0, "star", 1.1)
+	_ring(_air_bits, at, 120.0, Art.GOLD)
+	_sticker("+1", at + Vector2(0, -110), 60, 1.1, false, Pal.SUN)
+	_fx.cue("gift")
+	_badges[tool].queue_redraw()
 
 # --- input ---
 
@@ -784,6 +997,8 @@ func _apply(ev: Dictionary) -> void:
 					_shown_moves -= 1
 					if _shown_moves <= 5 and _shown_moves > 0:
 						_kick(_moves_plate, 0.16, 0.3)
+					if _shown_moves == 1:
+						_sticker(tr("PS_LAST_MOVE"), _in_air(_moves_plate, _moves_plate.size * 0.5) + Vector2(-60, 120), 46, 1.4, false, Color("ff6f61"))
 				_wait = 0.0 if quick else SWAP_T
 			else:
 				_fx.cue("bad_swap")
@@ -816,16 +1031,24 @@ func _apply(ev: Dictionary) -> void:
 				_fx.cue("land", randf_range(0.9, 1.1), -8.0)
 			_settle = true
 		"convert":
-			for c: Dictionary in ev.tiles:
-				if _tiles.has(c.id):
-					var t: Dictionary = _tiles[c.id]
-					t.k = int(c.k)
-					t.sp = int(c.sp)
-					t.glow = 0.0
-					t.bump = 0.0
-					_fx.sparkle(px(c.cell.x, c.cell.y), Art.GOLD)
-			_fx.cue("convert")
-			_wait = 0.1 if quick else (0.55 if bool(ev.get("bloom", false)) else 0.35)
+			if bool(ev.get("bloom", false)) and not quick:
+				_bloom_stars(ev.tiles)
+				_wait = BLOOM_STEP * (ev.tiles as Array).size() + BLOOM_FLIGHT + 0.25
+			else:
+				for c: Dictionary in ev.tiles:
+					if _tiles.has(c.id):
+						var t: Dictionary = _tiles[c.id]
+						t.k = int(c.k)
+						t.sp = int(c.sp)
+						t.glow = 0.0
+						t.bump = 0.0
+						var at := px(c.cell.x, c.cell.y)
+						_fx.sparkle(at, Art.GOLD)
+						_spray(_bits, at, Art.GOLD, 4, 360.0, "star", 0.7)
+				if bool(ev.get("bloom", false)):
+					_shown_moves = 0
+				_fx.cue("convert")
+				_wait = 0.1 if quick else 0.35
 		"shuffle":
 			for s: Dictionary in ev.tiles:
 				if _tiles.has(s.id):
@@ -836,22 +1059,42 @@ func _apply(ev: Dictionary) -> void:
 			_wait = 0.1 if quick else 0.5
 			_settle = true
 		"goal_done":
-			_fx.cue("goal")
+			pass
 		"day_done":
 			_fx.cue("day_done")
-			_show_banner(tr("PS_DAY_DONE"), tr("PS_BONUS") % [int(ev.left), Record.grouped(int(ev.bonus))], 1.4)
+			_blooming = true
+			_heat = 0.0
+			var left := int(ev.left)
+			var n := 1 + int(left >= ceili(_day_moves * 0.2)) + int(left >= ceili(_day_moves * 0.4))
+			var mid := _bed_at(0.5, 0.3)
+			_sticker(tr("PS_DAY_DONE"), mid, 96, 2.4, true, Color.WHITE, true, "day")
+			_show_banner("", tr("PS_BONUS") % [left, Record.grouped(int(ev.bonus))], 1.8, 0.64)
+			if not quick:
+				_stars = {"n": n, "t": 0.0, "at": mid + Vector2(0, 150), "said": {}}
+				_rain = 3.2
 			_shown_score += int(ev.bonus)
-			_shown_moves = 0
+			_flash_col = Color("fff4c2")
+			_flash = 0.6
 			_confetti()
-			_wait = 0.2 if quick else 1.3
+			_wait = 0.2 if quick else 1.6
 		"gift":
 			var tool: int = Sim.TOOL_KEYS.find_key(String(ev.tool))
 			var b: Control = _tool_buttons[tool]
-			_kick(b, 0.2, 0.35)
-			_air_fx.sparkle(_in_air(b, b.size * 0.5), Pal.SUN)
-			_fx.cue("gift")
-			_badges[tool].queue_redraw()
-			_wait = 0.1 if quick else 0.4
+			if quick:
+				_kick(b, 0.2, 0.35)
+				_fx.cue("gift")
+				_badges[tool].queue_redraw()
+				_wait = 0.1
+			else:
+				_gift_owed[tool] = int(_gift_owed.get(tool, 0)) + 1
+				_badges[tool].queue_redraw()
+				var from := _bed_at(0.5, 0.5)
+				var to := _in_air(b, b.size * 0.5)
+				_flights.append({"kind": "tool", "tool": tool, "from": from, "ctrl": from.lerp(to, 0.5) + Vector2(260.0, -120.0),
+					"to": to, "t": -0.15, "time": 0.8, "goal": -1, "k": 0})
+				_sticker(tr("PS_GIFT"), from + Vector2(0, -150), 58, 1.3, false, Pal.SUN)
+				_fx.cue("arm", 1.2, -4.0)
+				_wait = 1.0
 		"tool":
 			_badges[Sim.TOOL_KEYS.find_key(String(ev.tool))].queue_redraw()
 			var cell: Vector2i = ev.cell
@@ -889,8 +1132,27 @@ func _on_deal(ev: Dictionary) -> void:
 	for p: Dictionary in _goal_plates:
 		p.pic.queue_redraw()
 	_fx.cue("deal")
-	_show_banner(tr("PS_DAY") % _shown_day, _goal_line(), 1.3)
+	_day_moves = int(ev.moves)
+	_blooming = false
+	_goal_cheer.clear()
+	_sticker(tr("PS_DAY") % _shown_day, _bed_at(0.5, 0.3), 104, 1.8, true, Color.WHITE, true, "day")
+	_show_banner("", _goal_line(), 1.3, 0.5)
 	_kick(_day_l, 0.2, 0.3)
+
+## Every tile the day's end turns gets a star thrown from the moves plate,
+## one after another, and turns when it lands.
+func _bloom_stars(tiles: Array) -> void:
+	var from := _in_air(_moves_plate, _moves_plate.size * 0.5)
+	_kick(_moves_plate, 0.25, 0.4)
+	for i in tiles.size():
+		var c: Dictionary = tiles[i]
+		if not _tiles.has(c.id):
+			continue
+		var t: Dictionary = _tiles[c.id]
+		t.turn = {"k": int(c.k), "sp": int(c.sp), "wait": BLOOM_STEP * i + BLOOM_FLIGHT + 0.6, "bloom": true, "n": i}
+		var to := _in_air(field, px(c.cell.x, c.cell.y))
+		_flights.append({"kind": "star", "id": c.id, "from": from, "ctrl": from.lerp(to, 0.5) + Vector2(randf_range(-200.0, 200.0), -260.0),
+			"to": to, "t": -BLOOM_STEP * i, "time": BLOOM_FLIGHT, "goal": -1, "k": int(c.k)})
 
 ## The day's goals in words: "12 flowers, 12 leaves".
 func _goal_line() -> String:
@@ -931,7 +1193,12 @@ func _on_clear(ev: Dictionary) -> void:
 					_owed[i] = int(_owed.get(i, 0)) + 1
 				break
 		if into.get(cell, Vector2.INF) == Vector2.INF:
-			_fx.puff(px(cell.x, cell.y), Art.paint(int(g.k)).lightened(0.2), 3)
+			var at := px(cell.x, cell.y)
+			var many := (ev.tiles as Array).size() > 18
+			_spray(_bits, at, Art.paint(int(g.k)).lightened(0.1), 2 if many else 4, 460.0, "leaf" if int(g.k) == 1 else "petal", 1.0)
+			if not many:
+				_spray(_bits, at, Color("fffaf0"), 2, 300.0, "spark", 0.7)
+				_ring(_bits, at, _u * 0.55, Color(Art.paint(int(g.k)).lightened(0.5), 0.9))
 	_shown_goals = (ev.goals as Array).duplicate(true)
 	for p: Dictionary in _goal_plates:
 		p.pic.queue_redraw()
@@ -945,6 +1212,12 @@ func _on_clear(ev: Dictionary) -> void:
 		var at := px(m.cell.x, m.cell.y)
 		_fx.sparkle(at, Color("fffaf0"))
 		_fx.ring(at, 0.8 * _u, Art.GOLD)
+		var bright: Color = Art.RAINBOW[randi() % 6] if int(m.sp) == Sim.Sp.RAINBOW else (Art.GOLD if int(m.sp) == Sim.Sp.BOMB else Color("5cb8ff"))
+		_bursts.append({"pos": Vector2(m.cell), "t": 0.0, "col": bright})
+		_spray(_bits, at, Art.GOLD, 8, 520.0, "star", 0.9)
+		_ring(_bits, at, _u * 1.3, Color("fffaf0"))
+		_sticker(tr(MADE_WORDS[int(m.sp)]), _in_air(field, at + Vector2(0, -_u * 0.9)), 54 if int(m.sp) != Sim.Sp.RAINBOW else 64,
+			1.1, int(m.sp) == Sim.Sp.RAINBOW, bright, false, "made%d" % int(m.id))
 		match int(m.sp):
 			Sim.Sp.RAINBOW:
 				_fx.cue("made_rainbow")
@@ -957,21 +1230,46 @@ func _on_clear(ev: Dictionary) -> void:
 			_tiles[id].lit = true
 			_tiles[id].bump = 0.0
 	var loud := {}
+	var board := Vector2(Sim.COLS, Sim.ROWS) * _u
 	for b: Dictionary in ev.blasts:
 		var beam := b.duplicate()
 		beam.t = 0.0
+		if String(b.kind) == "rainbow":
+			beam.bend = randf_range(-0.5, 0.5)
 		_beams.append(beam)
 		var cell: Vector2i = b.cell
+		var at := px(cell.x, cell.y)
 		match String(b.kind):
 			"row", "col":
 				loud["breeze"] = true
+				# leaves shed along the line behind the gust as it runs out
+				var along := Vector2(1, 0) if String(b.kind) == "row" else Vector2(0, 1)
+				for q in 7:
+					for side in [-1.0, 1.0]:
+						var p: Vector2 = at + along * side * (q + 0.5) * _u
+						if Rect2(_origin, board).grow(4.0).has_point(p):
+							_spray(_bits, p, Color("7fd66a") if q % 2 == 0 else Color("fffaf0"), 1, 260.0, "leaf" if q % 2 == 0 else "spark", 0.9, q * 0.03)
+				_flash_col = Color("e8f7ff")
+				_flash = maxf(_flash, 0.18)
 			"bomb", "all":
 				loud["bomb"] = true
-				_shake = maxf(_shake, 0.35 if int(b.get("r", 1)) <= 1 else 0.6)
-				_fx.puff(px(cell.x, cell.y), Color("f7d44a"), 10)
+				var big := String(b.kind) == "all" or int(b.get("r", 1)) > 1
+				_shake = maxf(_shake, 0.45 if not big else 0.8)
+				_fx.puff(at, Color("f7d44a"), 10)
+				_spray(_bits, at, Color("ffb03b"), 10 if not big else 18, 900.0, "spark", 1.2)
+				_spray(_bits, at, Color("f7d44a"), 6 if not big else 12, 700.0, "star", 1.0)
+				_spray(_bits, at, Color("7a5230"), 6, 600.0, "seed", 1.0)
+				_ring(_bits, at, _u * (2.2 if not big else 4.0), Color("fff1b0"))
+				_ring(_bits, at, _u * (1.4 if not big else 2.8), Color("ffb03b"), 0.06)
+				_flash_col = Color("fff1b0")
+				_flash = maxf(_flash, 0.35 if not big else 0.7)
 			"rainbow":
 				loud["rainbow"] = true
-				_shake = maxf(_shake, 0.3)
+				_shake = maxf(_shake, 0.4)
+				for i in 6:
+					_ring(_bits, at, _u * (1.2 + 0.5 * i), Art.RAINBOW[i], 0.04 * i)
+				_flash_col = Color("fff6ff")
+				_flash = maxf(_flash, 0.45)
 			"dig":
 				pass
 	for k: String in loud:
@@ -981,11 +1279,24 @@ func _on_clear(ev: Dictionary) -> void:
 		centre /= float((ev.tiles as Array).size())
 		var pts: int = ev.points
 		_shown_score += pts
+		var first: Dictionary = (ev.tiles as Array)[0]
 		_pops.append({"pos": px(centre.x, centre.y), "text": "+%s" % Record.grouped(pts), "t": 0.0,
-			"col": Color("fffaf0") if step < 3 else Pal.SUN, "big": pts >= 500})
+			"col": Art.paint(int(first.k)) if int(first.k) >= 0 else Pal.SUN, "big": pts >= 500})
+	if _blooming:
+		return
+	# the cascade: a counter over the bed from the second step, a glow
+	# building up round it, and a word at the long ones
+	if step >= 2:
+		_heat = minf(1.0, maxf(_heat, (step - 1) * 0.2))
+		_sticker(tr("PS_CASCADE") % step, _bed_at(0.5, 0.0) + Vector2(0, -8), 44 + mini(step, 8) * 3, 1.2, false,
+			STICKER_COLS[(step - 2) % STICKER_COLS.size()], false, "cascade")
 	if WORDS.has(step):
-		_show_banner(tr(WORDS[step]), "", 0.6)
+		_sticker(tr(WORDS[step]), _bed_at(0.5, 0.42), 88 + 6 * (step - 3), 1.5, true, Color.WHITE, true, "word")
 		_fx.cue("cheer", 1.0 + 0.1 * (step - 3) / 2.0)
+		_spray(_air_bits, _bed_at(0.5, 0.42), Art.GOLD, 14, 700.0, "star", 1.1)
+	elif step == 1 and (ev.blasts as Array).size() >= 2:
+		_sticker(tr("PS_COMBO"), _bed_at(0.5, 0.42), 84, 1.3, true, Color.WHITE, true, "word")
+		_fx.cue("cheer", 1.1)
 
 ## A bump that starts from rest, so a run of them never grows a label.
 func _kick(node: Control, amount: float, time: float) -> void:
@@ -1010,14 +1321,14 @@ func _confetti() -> void:
 			if is_instance_valid(_fx):
 				_fx.puff(at, CONFETTI[k % CONFETTI.size()], 10))
 
-func _show_banner(text: String, sub: String, hold: float) -> void:
+func _show_banner(text: String, sub: String, hold: float, at_y := 0.32) -> void:
 	_banner.text = text
 	_banner.visible = text != ""
 	_sub.text = sub
 	_sub_pill.visible = sub != ""
 	var box: Control = _banner.get_meta("box")
 	box.size = Vector2(field.size.x - 48.0, 0)
-	box.position = Vector2(24, field.size.y * 0.32)
+	box.position = Vector2(24, field.size.y * at_y)
 	box.pivot_offset = Vector2(box.size.x * 0.5, 60.0)
 	Motion.stop(_banner_tw)
 	_banner_tw = create_tween()
@@ -1056,6 +1367,9 @@ func _refresh_hud(delta := 0.0) -> void:
 	if _moves_l.text != mv:
 		_moves_l.text = mv
 	_moves_l.add_theme_color_override("font_color", Color("d0503f") if _shown_moves <= 5 else Art.INK)
+	_moves_l.pivot_offset = _moves_l.size * 0.5
+	var low := _shown_moves <= 5 and _shown_moves > 0 and not _blooming and not Motion.reduce
+	_moves_l.scale = Vector2.ONE * (1.0 + 0.1 * maxf(0.0, sin(_clock * (7.0 if _shown_moves <= 2 else 4.5)))) if low else Vector2.ONE
 	for i in _goal_plates.size():
 		var p: Dictionary = _goal_plates[i]
 		p.plate.visible = i < _shown_goals.size()
@@ -1067,7 +1381,18 @@ func _refresh_hud(delta := 0.0) -> void:
 		if p.count.text != text:
 			p.count.text = text
 			p.pic.queue_redraw()
+		elif float(_goal_cheer.get(i, 1.0)) < 0.5:
+			p.pic.queue_redraw()
 		p.count.add_theme_color_override("font_color", Art.LEAF_DEEP if got >= int(g.need) else Art.INK)
+		if got >= int(g.need) and not _goal_cheer.has(i):
+			_goal_cheer[i] = 0.0
+			var at := _in_air(p.pic, p.pic.size * 0.5)
+			_kick(p.plate, 0.2, 0.4)
+			_fx.cue("goal")
+			_spray(_air_bits, at, Art.GOLD, 12, 560.0, "star", 1.0)
+			_spray(_air_bits, at, Art.LEAF, 6, 420.0, "leaf", 1.0)
+			_ring(_air_bits, at, 110.0, Art.LEAF)
+			_sticker(tr("PS_GOAL_DONE"), at + Vector2(0, 118), 40, 1.0, false, Art.LEAF)
 	for tool: int in _tool_buttons:
 		var b: Button = _tool_buttons[tool]
 		var ok: bool = sim.can_use(tool)
@@ -1175,6 +1500,9 @@ func _draw_field() -> void:
 			var other: Vector2i = _hint[1] if hint_ids[id] == _hint[0] else _hint[0]
 			var dir := Vector2(other - (hint_ids[id] as Vector2i))
 			at += dir * _u * 0.07 * maxf(0.0, sin(_clock * 6.0))
+		if not Motion.reduce and t.pos == Vector2(t.to) and (float(t.squash) < 0.0 or float(t.squash) > 0.6) and (float(t.bump) < 0.0 or float(t.bump) > 0.4):
+			var ph: float = _clock * 2.2 + t.pos.x * 0.7 + t.pos.y * 0.45
+			sc *= Vector2(1.0 - 0.018 * sin(ph), 1.0 + 0.028 * sin(ph))
 		var cell := Vector2i(roundi(t.pos.x), roundi(t.pos.y))
 		if (cell == _selected or cell == _swap_a) and t.pos == Vector2(t.to) and not Motion.reduce:
 			sc *= 1.0 + 0.06 * sin(_clock * 8.0)
@@ -1227,6 +1555,14 @@ func _draw_under(b: Face.Builder, s: float) -> void:
 				var ok: bool = sim.can_target(_armed, _swap_a, cell) if _armed == Sim.Tool.SWAP and _swap_a.x >= 0 else sim.can_target(_armed, cell)
 				if ok and (_armed != Sim.Tool.SWAP or _swap_a.x >= 0):
 					b.stroke(Face.Builder.ring(px(c, r), s * 0.56, s * 0.56), maxf(2.0, s * 0.03), Color(Pal.SUN, 0.3 + 0.4 * pulse), true)
+	# a special just made: a sunburst turning behind it
+	for bu: Dictionary in _bursts:
+		var k := clampf(bu.t / 0.9, 0.0, 1.0)
+		var grow := Motion.back_out(clampf(bu.t / 0.25, 0.0, 1.0))
+		var at := px(bu.pos.x, bu.pos.y)
+		var col: Color = bu.col
+		b.disc(at, _u * 0.8 * grow, Color(col, 0.35 * (1.0 - k)))
+		Art.rays(b, at, _u * 0.3, _u * 1.25 * grow, 12, bu.t * 1.6, Color(col.lightened(0.3), 0.55 * (1.0 - k)))
 	# a blast's scorch under the tiles
 	for bm: Dictionary in _beams:
 		if String(bm.kind) == "bomb":
@@ -1254,6 +1590,9 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 				var z := at + (Vector2(board.x, 0) if horiz else Vector2(0, board.y)) * reach
 				b.stroke(PackedVector2Array([a, z]), w * 1.6, Color(Color("fff4c2"), 0.35 * fade))
 				b.stroke(PackedVector2Array([a, z]), w * 0.6, Color(Color("fffaf0"), 0.9 * fade))
+				if reach < 1.0 or t < 0.3:
+					for head in [a, z]:
+						Art.glint(b, head, _u * 0.55 * (1.0 - k * 0.5), t * 10.0, Color(1, 1, 0.92, fade))
 				# gusts running out along it
 				for q in 4:
 					var d := (0.25 + 0.2 * q) * reach
@@ -1268,13 +1607,21 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 			"rainbow":
 				var cells: Array = bm.get("cells", [])
 				var reach := minf(1.0, t / 0.2)
+				var bend: float = bm.get("bend", 0.3)
 				for i in cells.size():
 					var to: Vector2i = cells[i]
-					var z := at.lerp(px(to.x, to.y), reach)
+					var end := px(to.x, to.y)
+					var ctrl := at.lerp(end, 0.5) + (end - at).orthogonal() * bend
 					var col: Color = Art.RAINBOW[i % Art.RAINBOW.size()]
-					b.stroke(PackedVector2Array([at, z]), maxf(2.0, _u * 0.07), Color(col, 0.9 * fade))
-					b.disc(z, _u * 0.12 * fade, Color(col.lightened(0.4), fade))
-				b.disc(at, _u * 0.6 * fade, Color(Color("fffaf0"), 0.4 * fade))
+					var arc := Face.Builder.bezier2(at, ctrl, end, 10)
+					var n := maxi(2, ceili(arc.size() * reach))
+					var part := arc.slice(0, n)
+					var head: Vector2 = part[part.size() - 1]
+					b.stroke(part, maxf(3.0, _u * 0.1), Color(col, 0.9 * fade))
+					b.stroke(part, maxf(1.5, _u * 0.035), Color(1, 1, 1, 0.7 * fade))
+					Art.glint(b, head, _u * 0.3 * fade, t * 6.0 + i)
+				b.disc(at, _u * 0.7 * fade, Color(Color("fffaf0"), 0.5 * fade))
+				Art.rays(b, at, _u * 0.3, _u * 1.6 * (0.5 + k), 12, t * 3.0, Color(Color("fff6c8"), 0.5 * fade))
 			"dig":
 				pass
 	for g: Dictionary in _glints:
@@ -1284,6 +1631,13 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 		var k: float = g.t / 0.7
 		var at := px(t.pos.x, t.pos.y) + Vector2(-s * 0.2, -s * 0.24)
 		Art.glint(b, at, s * 0.16 * sin(k * PI), k * 1.2)
+	_draw_bits(b, _bits)
+	# the whole bed flashes on a big blast
+	if _flash > 0.0:
+		b.polygon(Face.Builder.round_rect(Vector2.ZERO, field.size, 28.0), Color(_flash_col, 0.55 * _flash * _flash))
+	# a long cascade warms the bed's edges
+	if _heat > 0.0:
+		_draw_heat(b)
 	# the lit bombs spit sparks
 	if not Motion.reduce:
 		for id in _tiles:
@@ -1291,6 +1645,59 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 			if bool(t.lit):
 				var at := px(t.pos.x, t.pos.y) + Vector2.from_angle(_clock * 9.0) * s * 0.45
 				Art.glint(b, at, s * 0.14, _clock * 4.0, Color("f7d44a"))
+
+## A warm glow breathing in from the bed's edges while a cascade runs on.
+func _draw_heat(b: Face.Builder) -> void:
+	var s := field.size
+	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
+	var tint := Color("ffb03b").lerp(Color("ff6f61"), _heat)
+	var edge := Color(tint, (0.25 + 0.2 * beat) * _heat)
+	var none := Color(tint, 0.0)
+	var w := (70.0 + 40.0 * beat) * (0.6 + 0.4 * _heat)
+	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), Vector2(s.x - w, w), Vector2(w, w)], [edge, edge, none, none])
+	_quad(b, [Vector2(0, s.y), Vector2(w, s.y - w), Vector2(s.x - w, s.y - w), s], [edge, none, none, edge])
+	_quad(b, [Vector2.ZERO, Vector2(w, w), Vector2(w, s.y - w), Vector2(0, s.y)], [edge, none, none, edge])
+	_quad(b, [Vector2(s.x, 0), Vector2(s.x, s.y), Vector2(s.x - w, s.y - w), Vector2(s.x - w, w)], [edge, edge, none, none])
+
+static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
+	var i0 := b.vertex(p[0], c[0])
+	var i1 := b.vertex(p[1], c[1])
+	var i2 := b.vertex(p[2], c[2])
+	var i3 := b.vertex(p[3], c[3])
+	b.tri(i0, i1, i2)
+	b.tri(i0, i2, i3)
+
+## The bits flung about: petals, leaves, sparks, stars, seeds, confetti and
+## rings, each fading out over the end of its life.
+func _draw_bits(b: Face.Builder, bits: Array) -> void:
+	for bit: Dictionary in bits:
+		if bit.t < 0.0:
+			continue
+		var life: float = bit.life
+		var a := clampf((life - bit.t) / (life * 0.35), 0.0, 1.0)
+		var col: Color = bit.col
+		col.a *= a
+		var at: Vector2 = bit.pos
+		var sz: float = bit.size
+		var rot: float = bit.rot
+		match String(bit.kind):
+			"petal":
+				Art.petal(b, at, 13.0 * sz, 8.0 * sz, rot, col)
+			"leaf":
+				Art.petal(b, at, 15.0 * sz, 6.0 * sz, rot, col)
+				b.stroke(PackedVector2Array([at - Vector2(13.0 * sz, 0).rotated(rot), at + Vector2(12.0 * sz, 0).rotated(rot)]), 1.5, Color(col.darkened(0.3), col.a))
+			"confetti":
+				Art.petal(b, at, 11.0 * sz, 6.0 * sz * absf(cos(bit.t * 5.0 + rot)) + 1.0, rot, col)
+			"seed":
+				Art.petal(b, at, 7.0 * sz, 5.0 * sz, rot, col)
+			"star":
+				Art.star(b, at, 13.0 * sz * (0.6 + 0.4 * a), col, rot)
+			"spark":
+				Art.glint(b, at, 22.0 * sz * a, rot, Color(col, col.a))
+			"ring":
+				var k := clampf(bit.t / life, 0.0, 1.0)
+				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
+				b.stroke(Face.Builder.ring(at, r, r), maxf(2.0, 14.0 * (1.0 - k)), Color(bit.col, (bit.col as Color).a * (1.0 - k)), true)
 
 ## How a tile is scaled this frame: popping in, the bump when it turns
 ## special, the squash when it lands, stretched as it falls.
@@ -1319,25 +1726,131 @@ func _draw_pops() -> void:
 		var rise := 60.0 * (1.0 - exp(-p.t * 4.5))
 		var at: Vector2 = p.pos + Vector2(0, -rise) + _shake_off
 		at.x = clampf(at.x, 90.0, field.size.x - 90.0)
-		var full := 56 if p.big else 42
+		var full := 64 if p.big else 46
 		var fs := full if Motion.reduce else maxi(8, int(lerpf(14.0, full * 1.0, Motion.back_out(minf(1.0, p.t / 0.22)))))
 		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var o := at + Vector2(-w * 0.5, 0)
-		field.draw_string_outline(font, o + Vector2(0, 4), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.2, 0.12, 0.05, 0.35 * a))
-		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(Art.INK, a))
-		field.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
+		var tilt := 0.0 if Motion.reduce or not p.big else sin(p.t * 14.0) * 0.12 * exp(-p.t * 3.0)
+		field.draw_set_transform(at, tilt)
+		var o := Vector2(-w * 0.5, 0)
+		var col: Color = p.col
+		field.draw_string_outline(font, o + Vector2(0, 5), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 18, Color(0.2, 0.12, 0.05, 0.35 * a))
+		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 16, Color(Color("fffaf0"), a))
+		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(col.darkened(0.45), a))
+		field.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(col.lightened(0.15), a))
+	field.draw_set_transform(Vector2.ZERO)
 
-## The tiles flying up to their goals, over everything.
+## Where a flight is `t` seconds in, on its curve.
+func _flight_at(f: Dictionary, t: float) -> Vector2:
+	var k := clampf(t / float(f.get("time", FLIGHT_T)), 0.0, 1.0)
+	var e := k * k * (3.0 - 2.0 * k)
+	return (f.from as Vector2).lerp(f.ctrl, e).lerp((f.ctrl as Vector2).lerp(f.to, e), e)
+
+## Over everything: the stickers' sunbursts, the flights and their trails,
+## the day's stars, the air's bits, then the tiles and tools in flight and
+## the stickers' letters.
 func _draw_air() -> void:
+	var b := Face.Builder.new()
+	var font := Art.font()
+	for st: Dictionary in _stickers:
+		if not st.rays:
+			continue
+		var grow := Motion.back_out(clampf(st.t / 0.35, 0.0, 1.0))
+		var a := 1.0 - clampf((st.t - (st.life - 0.35)) / 0.35, 0.0, 1.0)
+		var w := font.get_string_size(st.text, HORIZONTAL_ALIGNMENT_LEFT, -1, st.size).x
+		var r := maxf(w * 0.62, float(st.size) * 1.5) * grow
+		b.disc(st.at, r * 0.6, Color(Color("fff4c2"), 0.35 * a))
+		Art.rays(b, st.at, r * 0.2, r, 16, _clock * 0.8, Color(Color("ffe39a"), 0.34 * a))
+		Art.rays(b, st.at, r * 0.2, r * 0.8, 16, -_clock * 0.5 + 0.1, Color(Color("fffaf0"), 0.24 * a))
 	for f: Dictionary in _flights:
 		if f.t < 0.0:
 			continue
-		var k := clampf(f.t / FLIGHT_T, 0.0, 1.0)
-		var e := k * k * (3.0 - 2.0 * k)
-		var p: Vector2 = (f.from as Vector2).lerp(f.ctrl, e).lerp((f.ctrl as Vector2).lerp(f.to, e), e)
-		var sc := lerpf(1.0, 0.6, e)
-		_air.draw_set_transform(p, sin(f.t * 10.0) * 0.2, Vector2(sc, sc))
-		_air.draw_mesh(Art.tile(int(f.k), _u * 0.7), null, Transform2D.IDENTITY)
+		var kind := String(f.get("kind", "goal"))
+		var col := Art.GOLD if kind != "goal" else Art.paint(int(f.k)).lightened(0.35)
+		for j in range(6, 0, -1):
+			var back: float = f.t - j * 0.028
+			if back < 0.0:
+				continue
+			b.disc(_flight_at(f, back), (7.0 - j) * (2.4 if kind != "tool" else 4.5), Color(col, 0.1 * (7 - j)))
+		if kind == "star":
+			var at := _flight_at(f, f.t)
+			Art.star(b, at, 26.0, Art.GOLD, f.t * 9.0)
+	_draw_day_stars(b)
+	_draw_bits(b, _air_bits)
+	if not b.verts.is_empty():
+		_air_live = b.mesh()
+		_air.draw_mesh(_air_live, null)
+	for f: Dictionary in _flights:
+		if f.t < 0.0:
+			continue
+		var kind := String(f.get("kind", "goal"))
+		var k := clampf(f.t / float(f.get("time", FLIGHT_T)), 0.0, 1.0)
+		var p := _flight_at(f, f.t)
+		if kind == "goal":
+			var sc := lerpf(1.0, 0.6, k * k * (3.0 - 2.0 * k))
+			_air.draw_set_transform(p, sin(f.t * 10.0) * 0.2, Vector2(sc, sc))
+			_air.draw_mesh(Art.tile(int(f.k), _u * 0.7), null, Transform2D.IDENTITY)
+		elif kind == "tool":
+			var sc := 1.0 + 0.8 * sin(k * PI)
+			_air.draw_set_transform(p, f.t * 8.0, Vector2(sc, sc))
+			_air.draw_mesh(Art.tool_icon(Sim.TOOL_KEYS[int(f.tool)], 110.0), null, Transform2D.IDENTITY)
+	_air.draw_set_transform(Vector2.ZERO)
+	_draw_stickers(font)
+
+## The day's stars under its sticker: earned ones slammed in one after
+## another, the rest left as grey slots.
+func _draw_day_stars(b: Face.Builder) -> void:
+	if _stars.is_empty():
+		return
+	var t: float = _stars.t
+	var a := 1.0 - clampf((t - 2.0) / 0.4, 0.0, 1.0)
+	for i in 3:
+		var at: Vector2 = _stars.at + Vector2((i - 1) * 110.0, -18.0 if i == 1 else 0.0)
+		var r := 58.0 if i == 1 else 46.0
+		var slot := clampf((t - 0.05) / 0.2, 0.0, 1.0)
+		Art.star(b, at, r * slot, Color(Color("d8cbb2"), 0.9 * a), (i - 1) * 0.15)
+		if i >= int(_stars.n):
+			continue
+		var land := 0.35 + 0.28 * i
+		var k := clampf((t - (land - 0.2)) / 0.2, 0.0, 1.0)
+		if k <= 0.0:
+			continue
+		var sc := lerpf(2.8, 1.0, k * k)
+		if t > land:
+			sc *= 1.0 + 0.1 * sin((t - land) * 5.0) * exp(-(t - land) * 2.0)
+		b.disc(at, r * 1.3 * sc, Color(Color("fff4c2"), 0.3 * a))
+		Art.star(b, at, r * sc, Color(Art.GOLD, a), (i - 1) * 0.15 + (1.0 - k) * 1.2)
+
+## The stickers' letters: each hops in on its own, rocks for a moment and
+## the word swells away at the end; a white rim and a dark one under the
+## colour, so it reads over anything.
+func _draw_stickers(font: Font) -> void:
+	for st: Dictionary in _stickers:
+		var text: String = st.text
+		var size: int = st.size
+		var total := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var x := -total * 0.5
+		var out_a := 1.0 - clampf((st.t - (st.life - 0.3)) / 0.3, 0.0, 1.0)
+		var swell := 1.0 + 0.2 * (1.0 - out_a)
+		var tilt: float = st.tilt
+		for i in text.length():
+			var ch := text[i]
+			var adv := font.get_char_size(ch.unicode_at(0), size).x
+			var k := clampf((st.t - i * 0.035) / 0.28, 0.0, 1.0)
+			if k <= 0.0 and not Motion.reduce:
+				x += adv
+				continue
+			var sc := 1.0 if Motion.reduce else Motion.back_out(k)
+			var hop := 0.0 if Motion.reduce else -sin(st.t * 8.0 - i * 0.55) * size * 0.09 * exp(-st.t * 1.4)
+			var centre: Vector2 = st.at + (Vector2(x + adv * 0.5, hop) * swell).rotated(tilt)
+			var rock := 0.0 if Motion.reduce else sin(st.t * 7.0 + i) * 0.08 * exp(-st.t * 1.2)
+			_air.draw_set_transform(centre, tilt + rock, Vector2(sc, sc) * swell)
+			var o := Vector2(-adv * 0.5, size * 0.36)
+			var col: Color = STICKER_COLS[i % STICKER_COLS.size()] if st.rainbow else st.col
+			_air.draw_char_outline(font, o + Vector2(0, size * 0.09), ch, size, int(size * 0.34), Color(0.25, 0.15, 0.05, 0.35 * out_a))
+			_air.draw_char_outline(font, o, ch, size, int(size * 0.3), Color(Color("fffaf0"), out_a))
+			_air.draw_char_outline(font, o, ch, size, int(size * 0.13), Color(col.darkened(0.5), out_a))
+			_air.draw_char(font, o, ch, size, Color(col, out_a))
+			x += adv
 	_air.draw_set_transform(Vector2.ZERO)
 
 # --- the end ---
@@ -1404,6 +1917,13 @@ func _build_end(better: bool) -> Control:
 		var since := _clock - shown_at
 		var mid := Vector2(seat.size.x * 0.5, 250.0)
 		var s := 104.0
+		if not Motion.reduce:
+			var rb := Face.Builder.new()
+			var grow := Motion.back_out(clampf(since / 0.5, 0.0, 1.0))
+			rb.disc(mid + Vector2(0, -150), 150.0 * grow, Color(Color("fff4c2"), 0.6))
+			Art.rays(rb, mid + Vector2(0, -150), 40.0, 250.0 * grow, 16, _clock * 0.5, Color(Color("ffe39a") if better else Color("f3e6c8"), 0.55))
+			_seat_mesh = rb.mesh()
+			seat.draw_mesh(_seat_mesh, null)
 		for i in 5:
 			var ang := lerpf(-0.9, 0.9, i / 4.0)
 			var rise := 1.0 if Motion.reduce else Motion.back_out(clampf((since - 0.1 * i) / 0.35, 0.0, 1.0))
@@ -1420,7 +1940,10 @@ func _build_end(better: bool) -> Control:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
 	var score := Label.new()
-	score.text = Record.grouped(sim.score)
+	score.text = Record.grouped(0 if not Motion.reduce else sim.score)
+	if not Motion.reduce:
+		_end_score = score
+		_end_at = _clock
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score)
@@ -1446,6 +1969,16 @@ func _build_end(better: bool) -> Control:
 		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		words.add_child(kicker)
 		stats.add_child(plate)
+		if not Motion.reduce:
+			plate.modulate.a = 0.0
+			var tw := plate.create_tween()
+			tw.tween_interval(0.9 + 0.18 * stats.get_child_count())
+			tw.tween_callback(func() -> void:
+				plate.pivot_offset = plate.size * 0.5
+				plate.scale = Vector2(0.4, 0.4)
+				_fx.cue("land", 1.2 + 0.1 * plate.get_index(), -4.0))
+			tw.tween_property(plate, "modulate:a", 1.0, 0.12)
+			tw.parallel().tween_property(plate, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	col.add_child(stats)
 	var best_line := Label.new()
 	best_line.text = tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
@@ -1463,6 +1996,20 @@ func _build_end(better: bool) -> Control:
 	col.add_child(back)
 	return scrim
 
+## The end card's score runs up from nothing to what the game made.
+func _count_end() -> void:
+	var k := clampf((_clock - _end_at - 0.3) / 1.1, 0.0, 1.0)
+	var shown := int(sim.score * (1.0 - pow(1.0 - k, 3.0)))
+	var text := Record.grouped(shown)
+	if _end_score.text != text:
+		_end_score.text = text
+		if int(_clock * 20.0) % 2 == 0:
+			_fx.cue("collect", 0.9 + 0.5 * k, -12.0)
+	if k >= 1.0:
+		_end_score.pivot_offset = _end_score.size * 0.5
+		_kick(_end_score, 0.25, 0.4)
+		_end_score = null
+
 func _celebrate(better: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
 	if Motion.reduce:
@@ -1470,14 +2017,12 @@ func _celebrate(better: bool) -> void:
 	card.pivot_offset = Vector2(card.custom_minimum_size.x * 0.5, 200.0)
 	card.scale = Vector2.ONE * 0.86
 	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if not better:
-		return
 	var fx := Fx2D.new()
 	_end.add_child(fx)
 	var mid := size * 0.5
-	for k in 8:
-		var at := mid + Vector2.from_angle(TAU * k / 8.0 - PI * 0.5) * Vector2(400.0, 330.0)
-		var t := get_tree().create_timer(0.25 + 0.14 * k)
+	for k in (14 if better else 5):
+		var at := mid + Vector2.from_angle(TAU * k / (14.0 if better else 5.0) - PI * 0.5) * Vector2(400.0, 330.0)
+		var t := get_tree().create_timer(0.25 + 0.1 * k)
 		t.timeout.connect(func() -> void:
 			if is_instance_valid(fx):
 				fx.puff(at, CONFETTI[k % CONFETTI.size()], 12))

@@ -489,6 +489,15 @@ PS_BONUS,%d moves left: +%s,%d movimentos sobrando: +%s,%d movimientos de sobra:
 PS_WORD_1,Lovely!,Que lindo!,¡Precioso!
 PS_WORD_2,Blooming!,Florindo!,¡Floreciendo!
 PS_WORD_3,Full bloom!,Em plena flor!,¡En plena flor!
+PS_WORD_4,Unbe-leaf-able!,In-crí-vel!,¡In-creí-ble!
+PS_MADE_BREEZE,Breeze!,Brisa!,¡Brisa!
+PS_MADE_BOMB,Seed bomb!,Bomba de sementes!,¡Bomba de semillas!
+PS_MADE_RAINBOW,Rainbow!,Arco-íris!,¡Arcoíris!
+PS_CASCADE,Cascade x%d,Cascata x%d,Cascada x%d
+PS_COMBO,Super combo!,Supercombo!,¡Supercombo!
+PS_LAST_MOVE,Last move!,Último movimento!,¡Último movimiento!
+PS_GOAL_DONE,Done!,Feito!,¡Hecho!
+PS_GIFT,A gift!,Um presente!,¡Un regalo!
 PS_OUT,Out of moves,Sem movimentos,Sin movimientos
 PS_END_CARD,The garden rests,O jardim descansa,El jardín descansa
 PS_STAT_DAY,day,dia,día
