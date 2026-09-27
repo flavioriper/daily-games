@@ -139,3 +139,30 @@ Screen and art only; the sim is untouched.
 - Draw calls at 810x1440: 67 at the ready (the peeking moles), 54-57 in
   play, 63-65 with the cast up, 93 on the end card (the jeering moles and
   the stat plates); the Arcade tab unchanged at 134. Suite 122,593/0.
+
+## Amendment 2026-09-27: the cast redrawn
+
+The user found the creatures "too round and simple": every one was an egg
+with an oval belly and two pink mitts. `arcade/molehill_art.gd` alone
+changed; origin, height and looks are the same, so the screen, the clip and
+the card needed nothing.
+
+- **Silhouettes are traced, not ellipses**: a right half of cubic segments
+  mirrored (`_sil`), cel-shaded by a smaller copy shifted left over a deep
+  fill (`_inset`), with a rim of light up the left. The mole is a broad
+  head on shoulders with a pinch at the neck; the rabbit a round-cheeked
+  head on a pear of a body.
+- **The mole**: a crown tuft and cheek flicks (`_spike`), a cream bib, bead
+  eyes in soft dark patches under light brows, a long creased snout ending
+  in a pink bulb with nostrils, dotted whisker pads, a w of a mouth and two
+  buck teeth, and shovel hands, a pink palm with five pale claws spread
+  over the rim. Worried adds a bead of sweat.
+- **The golden mole** wears a tilted crown with three gems, knocked over
+  one ear when dizzy, and sheen streaks down its fur.
+- **The potted mole**: the pot sits down to the brow with a cream painted
+  band, and the mole under it looks out with its lids lowered ("stern").
+- **The rabbit**: fluffy cheeks, a tuft on the brow, one tall ear and one
+  bent at the knee, big glossy eyes with a lash, two muzzle puffs over her
+  teeth, a scalloped bib, and the carrot held by a paw either side.
+- Draw calls unchanged (one mesh a look): 67 at the ready, 57-58 in play,
+  63-65 with the cast up, 93 on the end card, 134 on the tab; ANGLE agrees.
