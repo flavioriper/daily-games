@@ -1830,6 +1830,31 @@ a million. Its best is the **quickest retirement**, the first timed record:
   user's listen. 149 draw calls on the tab, 113-118 on a grown farm, ANGLE
   agreeing. `tests/_shot_henhouse.gd` puts `user://arcade.cfg` back.
 
+**Millstream is the fifth** (2026-09-27, spec
+`2026-09-27-arcade-millstream-design.md`): a small factory in a painted
+valley after the factory-builder genre, whose reference the spec names once
+to forbid; **it is called Millstream**. Seen from above and played by touch
+like a city builder (no avatar): one finger pans, two pinch, a tap acts.
+Slice 1 is live: dig iron ore by hand (tap, or hold to keep digging), build
+kilns that smelt on their own (a tap collects and loads), hand 20 ingots in
+at the Mill. Drills, belts and the rest of the milestones are next.
+
+- **Persistent, unlike the other Arcade games**: `user://millstream.cfg`
+  (the sim's `to_dict`, plus the camera), saved on leaving, on focus loss,
+  after every build and every 30 s. The factory pauses while the app is
+  closed; restart starts a new valley.
+- **The game is pure data** (`arcade/millstream_sim.gd`, a grid of tiles,
+  fixed 1/30 s); `tests/_probe_millstream.gd -- [taps a second]` plays the
+  slice and checks refusals and the save round trip.
+- **Everything is drawn through the camera's transform**: the valley is one
+  mesh built once, the buildings one mesh rebuilt on a change, one live mesh
+  a frame. 61-82 draw calls in play, 162 on the tab with five cards (810x1440).
+- `tests/_shot_millstream.gd -- <outdir> [reduce]` digs, places two kilns,
+  tends, pans, zooms and hands in, all by input through the viewport, and
+  puts both save files back.
+- 12 sounds (`CARTOON` hands, `ARCADE` jingles, a `FOLEY` brook loop),
+  awaiting the user's listen.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with

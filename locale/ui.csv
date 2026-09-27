@@ -387,3 +387,37 @@ HH_STAT_EARNED,earned,ganhos,ganado
 HH_STAT_SOLD,eggs sold,ovos vendidos,huevos vendidos
 HH_STAT_FLOCK,biggest flock,maior bando,mayor bandada
 HH_BEST_TIME,Best time %s,Melhor tempo %s,Mejor tiempo %s
+ARC_MILLSTREAM_BLURB,"A small factory in a valley: dig ore by hand, build kilns that smelt it on their own, and grow the Mill milestone by milestone.","Uma pequena fábrica num vale: cave minério à mão, construa fornos que fundem sozinhos e faça o Moinho crescer marco a marco.","Una pequeña fábrica en un valle: excava mineral a mano, construye hornos que funden solos y haz crecer el Molino hito a hito."
+ARC_NOT_BUILT,Not finished yet,Ainda não terminou,Aún sin terminar
+ARC_BEST_MILESTONE,Milestones: %d,Marcos: %d,Hitos: %d
+MS_MOTTO,"Dig it, smelt it, build it","Cave, funda, construa","Excava, funde, construye"
+MS_ORE,IRON ORE,MINÉRIO DE FERRO,MINERAL DE HIERRO
+MS_INGOTS,INGOTS,LINGOTES,LINGOTES
+MS_HAND_IN,Hand in,Entregar,Entregar
+MS_MILESTONE_N,MILESTONE %d,MARCO %d,HITO %d
+MS_M1,First ingots,Primeiros lingotes,Primeros lingotes
+MS_M1_DONE,First ingots!,Primeiros lingotes!,¡Primeros lingotes!
+MS_M1_NEXT,Done in %s. Drills come next.,Feito em %s. As brocas vêm a seguir.,Hecho en %s. Las perforadoras vienen después.
+MS_ALL_DONE,More milestones soon,Mais marcos em breve,Más hitos pronto
+MS_NEED_INGOTS,The Mill wants iron ingots: %d / %d,O Moinho quer lingotes de ferro: %d / %d,El Molino quiere lingotes de hierro: %d / %d
+MS_TOOL_KILN,Kiln,Forno,Horno
+MS_TOOL_ERASER,Eraser,Borracha,Borrador
+MS_TOOL_DRILL,Drill,Broca,Perforadora
+MS_COST_ORE,%d iron ore,%d minério,%d mineral
+MS_REFUND,Full refund,Reembolso total,Reembolso total
+MS_LATER,Later,Depois,Después
+MS_DRILL_LATER,Drills come with the next milestone,As brocas vêm no próximo marco,Las perforadoras llegan con el próximo hito
+MS_KILN_COST_SHORT,A kiln costs %d iron ore: dig some more,Um forno custa %d de minério: cave mais,Un horno cuesta %d de mineral: excava más
+MS_NO_ROOM_WATER,A kiln can't stand in the stream,Um forno não fica no riacho,Un horno no puede estar en el arroyo
+MS_NO_ROOM_TAKEN,There's something there already,Já tem algo ali,Ya hay algo ahí
+MS_NO_ROOM_EDGE,Too close to the edge of the valley,Perto demais da borda do vale,Demasiado cerca del borde del valle
+MS_ERASE_WHAT,Tap a kiln to lift it,Toque num forno para removê-lo,Toca un horno para quitarlo
+MS_LOCKED_COPPER,Copper comes later,O cobre vem depois,El cobre viene después
+MS_LOCKED_STONE,Stone comes later,A pedra vem depois,La piedra viene después
+MS_KILN_FULL,The kiln's shelf is full: tap it to collect,A prateleira do forno está cheia: toque para recolher,El estante del horno está lleno: tócalo para recoger
+MS_KILN_NO_ORE,The kiln needs ore: dig some and tap it again,O forno precisa de minério: cave e toque de novo,El horno necesita mineral: excava y tócalo otra vez
+MS_HINT_DIG,Tap the rusty rocks to dig iron ore (hold to keep digging),Toque nas rochas enferrujadas para cavar minério (segure para continuar),Toca las rocas oxidadas para excavar mineral (mantén para seguir)
+MS_HINT_KILN,You can afford a kiln: pick it below and tap the grass,Dá para comprar um forno: escolha abaixo e toque na grama,Ya puedes comprar un horno: elígelo abajo y toca la hierba
+MS_HINT_PLACE,Tap free grass to build the kiln there,Toque na grama livre para construir o forno,Toca hierba libre para construir el horno
+MS_HINT_TEND,Tap the kiln: it takes your ore and smelts it by itself,Toque no forno: ele pega seu minério e funde sozinho,Toca el horno: toma tu mineral y lo funde solo
+MS_HINT_HAND_IN,Enough ingots: hand them in at the Mill,Lingotes suficientes: entregue no Moinho,Suficientes lingotes: entrégalos en el Molino

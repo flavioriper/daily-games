@@ -51,6 +51,7 @@ const FireflyScreen = preload("res://arcade/firefly_screen.gd")
 const HedgerowScreen = preload("res://arcade/hedgerow_screen.gd")
 const MolehillScreen = preload("res://arcade/molehill_screen.gd")
 const HenhouseScreen = preload("res://arcade/henhouse_screen.gd")
+const MillstreamScreen = preload("res://arcade/millstream_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
@@ -1117,6 +1118,9 @@ func _open_arcade(game: String) -> void:
 		"henhouse":
 			screen = HenhouseScreen.new()
 			screen.name = "Henhouse"
+		"millstream":
+			screen = MillstreamScreen.new()
+			screen.name = "Millstream"
 		_:
 			return
 	screen.closed.connect(func() -> void:

@@ -75,6 +75,8 @@ const CARDS := {
 	"molehill": ["meadow", 1.7, Vector2(0.4, 0.75)],
 	# Henhouse keeps its pen in the meadow's far corner.
 	"henhouse": ["meadow", 1.6, Vector2(0.7, 0.65)],
+	# Millstream's valley is the meadow's near side, by the water.
+	"millstream": ["meadow", 1.5, Vector2(0.25, 0.7)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

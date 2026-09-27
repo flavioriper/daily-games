@@ -553,6 +553,24 @@ SETS = {
         "game_over":    ("a gentle slow descending retro melody, the farm closes, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new best time", 2.4, -4, ARCADE),
     },
+    # Millstream (Arcade, arcade/millstream_screen.gd): a small factory in a
+    # valley. The hands and the machines are CARTOON; the jingles ARCADE.
+    # dig and smelt fire all the time, so they sit low; brook is the valley's
+    # bed, looped very quietly under everything.
+    "millstream": {
+        "dig":       ("a single small pickaxe chip on a rock, a light stony clink with a few pebbles falling, very short", 0.5, -12, CARTOON),
+        "place":     ("a soft heavy thunk of a small brick oven set down on grass, with a little puff of dust, short", 0.6, -7, CARTOON),
+        "remove":    ("a soft whoosh and a pop, a small brick building lifted away in a puff, short", 0.6, -9, CARTOON),
+        "load":      ("a handful of small rocks tumbling into a metal hopper, a short rattling pour", 0.7, -9, CARTOON),
+        "collect":   ("a few small metal bars clinking together as they are picked up, bright and short", 0.6, -8, CARTOON),
+        "smelt":     ("a tiny soft puff of fire and a faint metal tink, an ingot finished in a little furnace, very short and quiet", 0.5, -18, CARTOON),
+        "hand_in":   ("metal bars clattering into a wooden crate followed by a warm happy two-note chime, short", 1.0, -6, CARTOON),
+        "refused":   ("a soft low short 'bonk' blip, not allowed, gentle, not harsh", 0.5, -10, ARCADE),
+        "milestone": ("a warm triumphant retro fanfare with a bright sparkle at the end, a milestone reached, about two seconds", 2.2, -4, ARCADE),
+        "start":     ("a short cheerful retro arcade game start jingle, a bouncy workshop tune, about two seconds", 2.2, -4, ARCADE),
+        "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new best time", 2.4, -4, ARCADE),
+        "brook":     ("a gentle babbling brook and a slowly turning wooden water wheel creaking softly, calm ambience, even, no ending", 6.0, -20, FOLEY, "loop"),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {
