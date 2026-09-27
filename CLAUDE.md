@@ -1702,7 +1702,7 @@ chess is: rules, computer, skin contract, house set, board, screen.
 ## Arcade
 
 **A fifth tab since 2026-09-27**, between Versus and Stats: games played
-alone for a score (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
+alone for a score (or, Henhouse, a time) (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
 it is not a registry entry: `ui/menu/arcade_tab.gd` holds one card a game,
 `ui/menu.gd`'s `_open_arcade` mounts the game's own screen and closes back
 to the tab, and the screen joins the `versus_host` group so Android's back
@@ -1805,6 +1805,31 @@ best streak.
   smear and an impact star; sticker numbers kept clear of the time bar; a
   frenzy glow from the edges. 54-57 draw calls in play, 93 on the end card.
 
+**Henhouse is the fourth** (2026-09-27, spec
+`2026-09-27-arcade-henhouse-design.md`): an egg-farm idle clicker after a
+game the spec names once to forbid; **it is called Henhouse**. Buy hens,
+keep the water tank and feed silo full (a tap refills; dry, they stop
+laying and are lost), drag eggs to the crate, stroke hens to make them lay
+faster, then the belt, washer, stamp, packer, basket, squirrels, a rooster
+(fertile eggs hatch into chicks; a tap puts a chick to sleep) and retire on
+a million. Its best is the **quickest retirement**, the first timed record:
+`arcade_record.gd`'s `add_time()`, and the tab's `TIMED`.
+
+- **The game is pure data** (`arcade/henhouse_sim.gd`, field units, fixed
+  1/30 s). `tests/_probe_henhouse.gd -- [seed] [skill 0-2]` retires in
+  ~11.5 / 12.5-15 / 18.5 min; run it after touching the numbers.
+- **The tab's card puts Play beside the name** since this game, so four
+  cards stand; `_fit` has a third level (pictures 104 tall).
+- **A harness's mouse events are in window coordinates**: map a canvas
+  point with `root.get_final_transform()` or it lands 0.75x off at
+  810x1440. `tests/_shot_henhouse.gd` does; Molehill's big hit boxes hid it.
+- **An autowrapping Label resized in the frame its text changed measures
+  at its old width** and comes out thousands tall; the toast wraps its own
+  lines (`_wrap`).
+- 26 sounds (`CARTOON` farm, `ARCADE` shop, a `radio` loop), awaiting the
+  user's listen. 149 draw calls on the tab, 113-118 on a grown farm, ANGLE
+  agreeing. `tests/_shot_henhouse.gd` puts `user://arcade.cfg` back.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1880,7 +1905,9 @@ see "Ads and the purchase" below.
   `arcade_end` (score, stage, seconds, fired, hits, kills, best; Hedgerow
   sends stage as the wave, and leaks, won, towers and picks in place of
   fired and hits; Molehill sends stage as the best streak, and whacked,
-  escaped, missed and bunnies) and `arcade_abandon`; snooker's hint and reset
+  escaped, missed and bunnies; Henhouse sends score as the seconds to
+  retire, 0 if the farm closed, stage as the biggest flock, and won,
+  earned, sold, hatched and lost) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

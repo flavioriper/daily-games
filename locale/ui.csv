@@ -327,3 +327,63 @@ MH_BEST_STREAK,best streak %d,melhor sequência %d,mejor racha %d
 MH_STAT_WHACKED,whacked,acertadas,golpeados
 MH_STAT_STREAK,best streak,melhor sequência,mejor racha
 MH_STAT_AIM,on target,de acerto,de acierto
+ARC_HENHOUSE_BLURB,"From one hen to a million: sell the eggs, build the barn, treat the hens well and retire.","De uma galinha a um milhão: venda os ovos, monte o celeiro, trate bem as galinhas e aposente-se.","De una gallina a un millón: vende los huevos, monta el granero, cuida a las gallinas y jubílate."
+ARC_BEST_FLOCK,Biggest flock: %d,Maior bando: %d,Mayor bandada: %d
+ARC_NOT_RETIRED,Not retired yet,Ainda não se aposentou,Aún sin jubilarte
+HH_MOTTO,Treat the hens well,Trate bem as galinhas,Cuida bien a las gallinas
+HH_MONEY,MONEY,DINHEIRO,DINERO
+HH_FLOCK,FLOCK,BANDO,BANDADA
+HH_READY,Morning on the farm,Bom dia na fazenda,Buenos días en la granja
+HH_READY_LINE,"Sell the eggs, grow the farm, retire on a million","Venda os ovos, faça a fazenda crescer, aposente-se com um milhão","Vende los huevos, haz crecer la granja, jubílate con un millón"
+HH_HELLO,Cluck! I'm %s,Có-có! Sou a %s,¡Coc-coc! Soy %s
+HH_NEED,You need $%s,Você precisa de $%s,Necesitas $%s
+HH_LOST,%s has gone to a better farm,%s foi para uma fazenda melhor,%s se fue a una granja mejor
+HH_FOR_SALE,Belt for sale,Esteira à venda,Cinta en venta
+HH_TAB_FARM,Farm,Fazenda,Granja
+HH_TAB_FACTORY,Barn,Celeiro,Granero
+HH_RETIRE,Retire,Aposentar,Jubilarse
+HH_OWNED,Owned,Comprado,Comprado
+HH_FULL,Pen full,Cercado cheio,Corral lleno
+HH_I_HEN,Hen,Galinha,Gallina
+HH_D_HEN,Lays eggs,Bota ovos,Pone huevos
+HH_I_ROOSTER,Rooster,Galo,Gallo
+HH_D_ROOSTER,Some eggs hatch,Alguns ovos chocam,Algunos huevos eclosionan
+HH_I_RADIO,Radio,Rádio,Radio
+HH_D_RADIO,Lay 25% faster,Botam 25% mais rápido,Ponen un 25% más rápido
+HH_I_FEED,Better feed,Ração melhor,Mejor pienso
+HH_D_FEED,Eggs worth x2,Ovos valem x2,Huevos valen x2
+HH_I_AUTO_FEED,Auto-feeder,Comedouro auto,Comedero auto
+HH_D_AUTO_FEED,Refills the feed,Repõe a ração,Repone el pienso
+HH_I_AUTO_WATER,Auto-waterer,Bebedouro auto,Bebedero auto
+HH_D_AUTO_WATER,Refills the water,Repõe a água,Repone el agua
+HH_I_BELT,Belt,Esteira,Cinta
+HH_D_BELT,Rolls eggs to the crate,Leva ovos ao caixote,Lleva huevos a la caja
+HH_I_BASKET,Basket,Cesta,Cesta
+HH_D_BASKET,Carry 6 eggs at once,Leva 6 ovos de uma vez,Lleva 6 huevos a la vez
+HH_I_SQUIRREL,Squirrel,Esquilo,Ardilla
+HH_D_SQUIRREL,Fetches the eggs,Busca os ovos,Recoge los huevos
+HH_I_WASHER,Washer,Lavadora,Lavadora
+HH_D_WASHER,Eggs worth x1.5,"Ovos valem x1,5","Huevos valen x1,5"
+HH_I_STAMP,Stamp,Carimbo,Sello
+HH_D_STAMP,Eggs worth x2,Ovos valem x2,Huevos valen x2
+HH_I_PACKER,Packer,Embaladora,Empacadora
+HH_D_PACKER,Eggs worth x3,Ovos valem x3,Huevos valen x3
+HH_HINT_DRAG,Drag the egg to the crate to sell it,Arraste o ovo até o caixote para vendê-lo,Arrastra el huevo a la caja para venderlo
+HH_HINT_BELT,Buy the belt in the Barn tab: eggs on it roll to the crate,Compre a esteira na aba Celeiro: os ovos nela rolam até o caixote,Compra la cinta en la pestaña Granero: los huevos ruedan hasta la caja
+HH_HINT_BELT_BOUGHT,Drop eggs on the belt and it carries them to the crate,Solte ovos na esteira e ela os leva ao caixote,Suelta huevos en la cinta y ella los lleva a la caja
+HH_HINT_BASKET,Press near a few eggs to scoop them all up,Toque perto de vários ovos para pegar todos,Toca cerca de varios huevos para cogerlos todos
+HH_HINT_REFILL,Running low! Tap the water tank or the feed silo to refill,Acabando! Toque no bebedouro ou no silo de ração para encher,¡Se acaba! Toca el depósito de agua o el silo de pienso para rellenar
+HH_HINT_STARVING,"The hens are hungry: they stop laying, and one may be lost",As galinhas estão com fome: param de botar e uma pode se perder,Las gallinas tienen hambre: dejan de poner y una puede perderse
+HH_HINT_PET,Stroke your hens with a finger: happy hens lay faster,Faça carinho nas galinhas com o dedo: galinhas felizes botam mais rápido,Acaricia a tus gallinas con el dedo: las gallinas felices ponen más rápido
+HH_HINT_ROOSTER,Blue eggs hatch if you leave them. Chicks grow into hens,Ovos azuis chocam se você deixá-los. Pintinhos viram galinhas,Los huevos azules eclosionan si los dejas. Los pollitos se hacen gallinas
+HH_HINT_CHICK,Chicks eat double. Tap one to let it sleep,Pintinhos comem o dobro. Toque em um para deixá-lo dormir,Los pollitos comen el doble. Toca uno para dejarlo dormir
+HH_HINT_RETIRE,You have a million! Press Retire,Você tem um milhão! Toque em Aposentar,¡Tienes un millón! Pulsa Jubilarse
+HH_RETIRED,Retired!,Aposentado!,¡Jubilado!
+HH_CLOSED,The farm closes,A fazenda fecha,La granja cierra
+HH_NEW_BEST,A new best time!,Novo melhor tempo!,¡Nuevo mejor tiempo!
+HH_END_WON,Retired in %s,Aposentado em %s,Jubilado en %s
+HH_END_LOST,The last hen is gone. Keep the troughs full next time.,A última galinha se foi. Mantenha os cochos cheios da próxima vez.,La última gallina se fue. Mantén los comederos llenos la próxima vez.
+HH_STAT_EARNED,earned,ganhos,ganado
+HH_STAT_SOLD,eggs sold,ovos vendidos,huevos vendidos
+HH_STAT_FLOCK,biggest flock,maior bando,mayor bandada
+HH_BEST_TIME,Best time %s,Melhor tempo %s,Mejor tiempo %s

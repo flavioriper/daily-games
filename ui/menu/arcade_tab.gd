@@ -4,7 +4,8 @@ extends VBoxContainer
 ## day's board or against someone: Firefly (arcade/firefly_screen.gd) and
 ## Hedgerow (arcade/hedgerow_screen.gd). Its body takes the day
 ## row's and the grid's room, as Versus, Stats and Streak do. Molehill
-## (arcade/molehill_screen.gd) is the third.
+## (arcade/molehill_screen.gd) is the third, Henhouse
+## (arcade/henhouse_screen.gd) the fourth, whose best is a time.
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
 ## drawn once), the name and the best score, a line, and the best stage
@@ -24,19 +25,23 @@ const HedgeArt = preload("res://arcade/hedgerow_art.gd")
 const HedgeSim = preload("res://arcade/hedgerow_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
 const MoleArt = preload("res://arcade/molehill_art.gd")
+const HenArt = preload("res://arcade/henhouse_art.gd")
 
 const GAP := 20
 const PAD := 24
 const RADIUS := 36
 const ART_H := 260.0
 const ART_H_SHORT := 150.0
+const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "hedgerow", "molehill"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB"}
+const GAMES := ["firefly", "hedgerow", "molehill", "henhouse"]
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB"}
+## Games whose best is the quickest time rather than the highest score.
+const TIMED := ["henhouse"]
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -68,54 +73,58 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
+	# The name with the best under it, and Play beside them: one row, so
+	# four cards stand on a phone.
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 16)
 	col.add_child(head)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", -4)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_child(words)
 	var name_l := Label.new()
 	name_l.text = NAMES[game]
 	name_l.theme_type_variation = "CardName"
-	head.add_child(name_l)
+	words.add_child(name_l)
 	name_l.add_child(SunDot.new(name_l))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 14)
+	words.add_child(line)
 	var best := Label.new()
 	best.theme_type_variation = "CardBlurb"
-	best.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	best.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	best.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	head.add_child(best)
+	line.add_child(best)
 	_best[game] = best
+	var stage := Label.new()
+	stage.theme_type_variation = "CardBlurb"
+	stage.modulate.a = 0.8
+	line.add_child(stage)
+	_stage[game] = stage
+	var go := IconButton.new("chevron_right", tr("VS_PLAY"), "SunButton")
+	go.name = "Play_" + game
+	go.custom_minimum_size = Vector2(260, CHIP_H)
+	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	go.pressed.connect(func() -> void: play.emit(game))
+	head.add_child(go)
 	var blurb := Label.new()
 	blurb.text = BLURBS[game]
 	blurb.theme_type_variation = "CardBlurb"
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(blurb)
 	_blurbs.append(blurb)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	col.add_child(row)
-	var stage := Label.new()
-	stage.theme_type_variation = "CardBlurb"
-	stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stage.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(stage)
-	_stage[game] = stage
-	var go := IconButton.new("chevron_right", tr("VS_PLAY"), "SunButton")
-	go.name = "Play_" + game
-	go.custom_minimum_size = Vector2(300, CHIP_H)
-	go.pressed.connect(func() -> void: play.emit(game))
-	row.add_child(go)
 	return card
 
 func refresh() -> void:
 	for game: String in GAMES:
 		var best := Record.best(game)
-		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
+		var shown := "%d:%02d" % [best / 60, best % 60] if game in TIMED else Record.grouped(best)
+		(_best[game] as Label).text = tr("ARC_BEST") % shown if best > 0 else tr("ARC_NO_BEST" if game not in TIMED else "ARC_NOT_RETIRED")
 		var st := Record.best_stage(game)
-		(_stage[game] as Label).text = tr(FURTHEST[game]) % st if st > 0 else ""
+		(_stage[game] as Label).text = "· " + tr(FURTHEST[game]) % st if st > 0 else ""
 	_fit.call_deferred()
 
 func _ready() -> void:
@@ -173,12 +182,14 @@ func _fit() -> void:
 		_compact(0)
 	elif bare > room:
 		_compact(2)
+		if get_combined_minimum_size().y > room:
+			_compact(3)
 
 func _compact(level: int) -> void:
 	for b in _blurbs:
 		b.visible = level == 0
 	for a in _arts:
-		a.custom_minimum_size.y = ART_H_SHORT if level >= 2 else ART_H
+		a.custom_minimum_size.y = ART_H_TINY if level >= 3 else (ART_H_SHORT if level >= 2 else ART_H)
 
 ## Firefly's banner: a strip of the swarm in its rows over the night plate,
 ## a moth diving with its beam half open, and the firefly under them with a
@@ -322,3 +333,42 @@ class MolehillBanner extends Control:
 		var head := Vector2(xs[1], foot - 50.0 * u)
 		var hand := head - Vector2(0, -MoleArt.HEAD_AT * u).rotated(-0.55)
 		draw_mesh(MoleArt.mallet(u), null, Transform2D(-0.55, hand))
+
+## Henhouse's banner: a strip of pen with hens in their three plumages, a
+## chick, the rooster, eggs in the straw and a boxed one on its way to the
+## crate. Drawn once.
+class HenhouseBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := minf(size.y / 50.0, size.x / 190.0)
+		var foot := size.y * 0.8
+		var mid := size.x * 0.5
+		var b := Face.Builder.new()
+		b.fan(PackedVector2Array([Vector2(0, foot - 16.0 * u), Vector2(size.x, foot - 16.0 * u), size, Vector2(0, size.y)]), Color("d8bf8c", 0.8))
+		for k in 22:
+			var x := size.x * k / 21.0
+			b.stroke(PackedVector2Array([Vector2(x, foot - 12.0 * u + (k % 3) * 3.0 * u), Vector2(x + 7.0 * u, foot - 14.0 * u + (k % 2) * 6.0 * u)]), 1.0 * u, Color("ecd08a"))
+		# a rail of fence behind them
+		for rail in [26.0, 16.0]:
+			b.stroke(PackedVector2Array([Vector2(0, foot - rail * u), Vector2(size.x, foot - rail * u)]), 2.4 * u, HenArt.WOOD_DEEP)
+		for k in 8:
+			var x := size.x * (k + 0.5) / 8.0
+			b.fan(Face.Builder.round_rect(Vector2(x - 2.0 * u, foot - 32.0 * u), Vector2(4.0 * u, 20.0 * u), 1.4 * u), HenArt.WOOD)
+		for q in [[-40.0, false, false], [-34.0, true, false], [26.0, false, false], [62.0, false, true]]:
+			HenArt.egg(b, Vector2(mid + float(q[0]) * u, foot - 4.0 * u), 4.2 * u, q[2], q[1], false, false, false)
+		HenArt.egg(b, Vector2(mid + 80.0 * u, foot - 5.0 * u), 4.2 * u, false, false, true, true, true)
+		var ground := b.mesh()
+		_keep.append(ground)
+		draw_mesh(ground, null)
+		var cast := [[HenArt.Look.ROOSTER, 0, -62.0, 1.0], [HenArt.Look.HEN, 0, -18.0, 1.0], [HenArt.Look.HEN_PECK, 1, 10.0, -1.0],
+			[HenArt.Look.CHICK, 0, 40.0, -1.0], [HenArt.Look.HEN_HAPPY, 2, 50.0 + 20.0, -1.0]]
+		for c: Array in cast:
+			draw_mesh(HenArt.mesh(c[0], u, c[1]), null, Transform2D(0.0, Vector2(c[3], 1.0), 0.0, Vector2(mid + float(c[2]) * u, foot)))

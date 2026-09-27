@@ -37,3 +37,17 @@ static func add(game: String, score: int, stage: int) -> bool:
 ## A score as the player's language groups it: 12,340 or 12.340.
 static func grouped(n: int) -> String:
 	return Locale.number(n)
+
+## Records a finished game played against the clock, where the best is the
+## quickest: `secs` 0 is a game that never finished (it counts a play and
+## its stage, never a best). True when it is a new best.
+static func add_time(game: String, secs: int, stage: int) -> bool:
+	var cfg := _load()
+	var was := int(cfg.get_value(game, "best", 0))
+	cfg.set_value(game, "plays", int(cfg.get_value(game, "plays", 0)) + 1)
+	cfg.set_value(game, "best_stage", maxi(stage, int(cfg.get_value(game, "best_stage", 0))))
+	var better := secs > 0 and (was == 0 or secs < was)
+	if better:
+		cfg.set_value(game, "best", secs)
+	cfg.save(PATH)
+	return better

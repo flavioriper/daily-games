@@ -522,6 +522,37 @@ SETS = {
         "game_over":   ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":    ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
+    # Henhouse (Arcade, arcade/henhouse_screen.gd): an egg farm run to
+    # retirement. The hens and the farm are cartoon; the shop and the jingles
+    # ARCADE. lay, sell, pet, wash and pick fire all the time, so they sit low.
+    "henhouse": {
+        "cluck":        ("a single cute cartoon hen cluck, a happy little 'bawk', short", 0.6, -8, CARTOON),
+        "lay":          ("a tiny soft 'plop' of an egg laid onto straw, with a proud little hen cluck, very short", 0.6, -14, CARTOON),
+        "pick":         ("a tiny soft tap of picking up an egg, a light hollow tick, very short", 0.5, -16, CARTOON),
+        "drop":         ("a soft small clack of an egg set down on a rubber conveyor belt, very short", 0.5, -14, CARTOON),
+        "sell":         ("a tiny bright coin clink, one coin dropping in a tin, very short", 0.5, -15, ARCADE),
+        "sell_gold":    ("a bright sparkling jingle of coins and a shimmer, a golden egg sold, short", 0.9, -6, ARCADE),
+        "buy":          ("a cheerful two-note purchase chime with a coin, a shop item bought, short", 0.6, -7, ARCADE),
+        "refused":      ("a soft low short 'bonk' blip, not enough money, gentle, not harsh", 0.5, -10, ARCADE),
+        "feed":         ("dry grain and corn kernels poured into a wooden trough, a short rushing pour", 1.0, -8, CARTOON),
+        "water":        ("water poured from a watering can into a metal trough, a short splashy pour", 1.0, -8, CARTOON),
+        "pet":          ("a soft content cooing purr of a happy hen being stroked, very short, gentle", 0.5, -15, CARTOON),
+        "hatch":        ("a small eggshell cracking open and a tiny chick's 'peep peep', short", 0.9, -7, CARTOON),
+        "grow":         ("a quick rising sparkle and a proud hen cluck, a chick grown up, short", 0.9, -7, CARTOON),
+        "sleep":        ("a tiny sleepy cartoon chick yawn and a soft 'zzz' whistle, short", 0.7, -10, CARTOON),
+        "rooster":      ("a cheerful cartoon rooster crow, 'cock-a-doodle-doo', about two seconds", 2.0, -6, CARTOON),
+        "hungry":       ("a worried little hen cluck twice, anxious, a soft warning, short", 0.7, -8, CARTOON),
+        "lost":         ("a gentle sad slow descending two-note whistle, a hen gone, soft and kind", 1.0, -9, ARCADE),
+        "wash":         ("a very short soft spray of water, a little shower, very short", 0.5, -17, CARTOON),
+        "stamp":        ("a soft rubber stamp thunk on an eggshell, very short", 0.5, -15, CARTOON),
+        "box":          ("a small cardboard box flap folding shut, a soft papery tuck, very short", 0.5, -15, CARTOON),
+        "squirrel":     ("a cheerful cartoon squirrel chitter, quick and cute, short", 0.7, -8, CARTOON),
+        "radio":        ("a jaunty cheerful little country banjo and whistle tune on an old radio, soft, even, loopable, no ending", 6.0, -16, CARTOON, "loop"),
+        "start":        ("a short cheerful retro arcade game start jingle, a bouncy farmyard tune, about two seconds", 2.2, -4, ARCADE),
+        "retire":       ("a joyful triumphant retro fanfare with a rooster crow at the end, retiring rich, about three seconds", 3.0, -4, ARCADE),
+        "game_over":    ("a gentle slow descending retro melody, the farm closes, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new best time", 2.4, -4, ARCADE),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {

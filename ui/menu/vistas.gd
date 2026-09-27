@@ -73,6 +73,8 @@ const CARDS := {
 	"hedgerow": ["meadow", 1.5, Vector2(0.5, 0.6)],
 	# Molehill is a lawn in the meadow too, nearer the grass.
 	"molehill": ["meadow", 1.7, Vector2(0.4, 0.75)],
+	# Henhouse keeps its pen in the meadow's far corner.
+	"henhouse": ["meadow", 1.6, Vector2(0.7, 0.65)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
