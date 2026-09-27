@@ -1586,7 +1586,8 @@ pointing `seed_as` at them. Specs:
 
 ## Versus
 
-**The bar has four tabs since 2026-09-26**: Puzzles (the daily grid, which
+**The bar has four tabs since 2026-09-26** (five since 2026-09-27, with
+Arcade -- see below): Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
 holds games played against someone -- snooker, chess and checkers; the first
 is **snooker**, against the
@@ -1698,6 +1699,39 @@ chess is: rules, computer, skin contract, house set, board, screen.
   outdir), `tests/_probe_checkers_game.gd` (a whole game, `UNDO=1` takes
   moves back). Both put `user://versus.cfg` back.
 
+## Arcade
+
+**A fifth tab since 2026-09-27**, between Versus and Stats: games played
+alone for a score (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
+it is not a registry entry: `ui/menu/arcade_tab.gd` holds one card a game,
+`ui/menu.gd`'s `_open_arcade` mounts the game's own screen and closes back
+to the tab, and the screen joins the `versus_host` group so Android's back
+reaches it. Scores live in `user://arcade.cfg` (`arcade/arcade_record.gd`).
+
+**Firefly is the first**: a formation shooter after Namco's 1981 game,
+which the spec names once to forbid; **it is called Firefly and nothing
+else**. A firefly against gnats, ladybirds and moths in a night garden,
+with the arcade's rules kept (two volleys, looping entrances, escorted
+dives, a moth's silk beam that carries your ship off and a rescue that
+makes a pair, a flyby bonus stage third and every fourth after).
+
+- **The game is pure data** (`arcade/firefly_sim.gd`, field units, fixed
+  1/120 s). `tests/_probe_firefly.gd -- [seed] [minutes] [skill]` plays it
+  with a bot and tallies the events; run it after touching the sim.
+- **The cast is built once and turned by the transform**
+  (`arcade/firefly_art.gd`, cached per look, frame and scale), shared with
+  the tab's banner. One `draw_mesh` a bug; 82 draw calls with the swarm
+  seated, 101 on the tab (810x1440).
+- **A slide, not a spot**: the firefly follows the finger's movement at
+  1.35x, and holding fires.
+- **A wrapped Label hidden before its first layout measures thousands of
+  pixels tall** (it has a width of one), so the tab's fit measures its lines
+  off the font instead. The Versus tab reads its labels and may have the
+  same trouble.
+- Sounds take a new style in `tools/gen_sfx.py`, `ARCADE` (soft 8-bit
+  synth), awaiting the user's listen. `tests/_shot_firefly.gd` shoots every
+  beat and puts `user://arcade.cfg` back.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1769,7 +1803,9 @@ see "Ads and the purchase" below.
   (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
   `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and
-  `versus_abandon`; snooker's hint and reset
+  `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
+  `arcade_end` (score, stage, seconds, fired, hits, kills, best) and
+  `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

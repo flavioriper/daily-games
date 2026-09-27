@@ -182,3 +182,31 @@ CKR_ALL_TAKEN,"Every piece taken, on move %d","Todas as peças capturadas, no la
 CKR_BLOCKED,"No moves left, on move %d","Sem lances possíveis, no lance %d","Sin jugadas posibles, en la jugada %d"
 CKR_DRAW_QUIET,Twenty moves each with only kings and no capture,Vinte lances de cada lado só com damas e sem captura,Veinte jugadas de cada lado solo con damas y sin captura
 CKR_DRAW,A draw,Empate,Empate
+BAR_ARCADE,Arcade,Arcade,Arcade
+ARC_FIREFLY_BLURB,"Hold back the night swarm: slide to fly, hold to shoot, and win back a firefly the moths carry off.","Segure o enxame da noite: deslize para voar, segure para atirar e resgate o vaga-lume que as mariposas levarem.","Detén al enjambre nocturno: desliza para volar, mantén para disparar y rescata a la luciérnaga que se lleven las polillas."
+ARC_BEST,Best %s,Recorde %s,Récord %s
+ARC_NO_BEST,No score yet,Ainda sem pontos,Aún sin puntos
+ARC_BEST_STAGE,Furthest: stage %d,Mais longe: fase %d,Más lejos: fase %d
+ARC_SOON,More arcade soon,Mais fliperama em breve,Más arcade pronto
+ARC_SOON_LINE,New games to play on your own are on the way.,Novos jogos para jogar sozinho estão a caminho.,Nuevos juegos para jugar solo están en camino.
+FF_MOTTO,Keep the garden lit,Mantenha o jardim aceso,Mantén el jardín encendido
+FF_SCORE,SCORE,PONTOS,PUNTOS
+FF_BEST,BEST,RECORDE,RÉCORD
+FF_STAGE,STAGE,FASE,FASE
+FF_STAGE_N,Stage %d,Fase %d,Fase %d
+FF_READY,Ready,Pronto,Listo
+FF_FLYBY,Flyby!,Revoada!,¡Desfile!
+FF_FLYBY_LINE,They won't shoot: catch all forty,Elas não atiram: pegue as quarenta,No disparan: atrapa a las cuarenta
+FF_HITS,%d of %d,%d de %d,%d de %d
+FF_PERFECT,Perfect!,Perfeito!,¡Perfecto!
+FF_BONUS,Bonus %s,Bônus %s,Bonus %s
+FF_EXTRA,Extra firefly!,Vaga-lume extra!,¡Luciérnaga extra!
+FF_GAME_OVER,Game over,Fim de jogo,Fin del juego
+FF_GAME_OVER_CARD,The night wins this time,A noite venceu desta vez,Esta vez ganó la noche
+FF_NEW_BEST,A new best!,Novo recorde!,¡Nuevo récord!
+FF_ACCURACY,%d%% on target,%d%% de acerto,%d%% de acierto
+FF_BEST_LINE,Best %s,Recorde %s,Récord %s
+FF_AGAIN,Play again,Jogar de novo,Jugar otra vez
+FF_BACK,Back to the arcade,Voltar ao fliperama,Volver al arcade
+FF_PAUSED,Paused,Pausado,En pausa
+FF_RESUME,Tap to go on,Toque para continuar,Toca para seguir

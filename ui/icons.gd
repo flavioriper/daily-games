@@ -8,7 +8,7 @@ extends RefCounted
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
-	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus"]
+	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -80,6 +80,8 @@ static func shape(name: String) -> Dictionary:
 			return {"polys": [], "lines": [_heart()]}
 		"puzzle":
 			return _puzzle()
+		"arcade":
+			return _arcade()
 		"versus":
 			return _versus()
 		"flame":
@@ -473,3 +475,12 @@ static func _versus() -> Dictionary:
 		polys.append(cue)
 	polys.append(circle(Vector2(0.5, 0.66), 0.26))
 	return {"polys": polys, "lines": [], "hole": circle(Vector2(0.43, 0.59), 0.09)}
+
+## A joystick on its base with a fire button beside it: the bar's Arcade
+## tab. The hole is the ball's shine.
+static func _arcade() -> Dictionary:
+	var base := arc(Vector2(0.25, 0.77), 0.13, PI * 0.5, PI * 1.5, 8)
+	base.append_array(arc(Vector2(0.75, 0.77), 0.13, -PI * 0.5, PI * 0.5, 8))
+	var stick := PackedVector2Array([Vector2(0.45, 0.36), Vector2(0.55, 0.36), Vector2(0.55, 0.7), Vector2(0.45, 0.7)])
+	return {"polys": [base, stick, circle(Vector2(0.5, 0.3), 0.2), circle(Vector2(0.81, 0.57), 0.085)], "lines": [],
+		"hole": circle(Vector2(0.43, 0.23), 0.065)}

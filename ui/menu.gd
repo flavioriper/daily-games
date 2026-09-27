@@ -46,6 +46,8 @@ const VersusTab = preload("res://ui/menu/versus_tab.gd")
 const SnookerScreen = preload("res://versus/snooker_screen.gd")
 const ChessScreen = preload("res://versus/chess_screen.gd")
 const CheckersScreen = preload("res://versus/checkers_screen.gd")
+const ArcadeTab = preload("res://ui/menu/arcade_tab.gd")
+const FireflyScreen = preload("res://arcade/firefly_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
@@ -179,6 +181,7 @@ var bar: Control
 var streak_tab: Control
 var stats_tab: Control
 var versus_tab: Control
+var arcade_tab: Control
 var _tab := "home"
 var _tab_tw: Tween
 var _backdrop: ColorRect
@@ -384,6 +387,11 @@ func _build_list() -> void:
 	versus_tab.visible = false
 	versus_tab.play.connect(_open_versus)
 	root.add_child(versus_tab)
+	arcade_tab = ArcadeTab.new()
+	arcade_tab.name = "ArcadeTab"
+	arcade_tab.visible = false
+	arcade_tab.play.connect(_open_arcade)
+	root.add_child(arcade_tab)
 
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
@@ -1001,6 +1009,7 @@ func _show_tab(key: String) -> void:
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
 	versus_tab.visible = key == "versus"
+	arcade_tab.visible = key == "arcade"
 	Motion.stop(_tab_tw)
 	if home:
 		_set_pager(_page, _pages())
@@ -1011,7 +1020,7 @@ func _show_tab(key: String) -> void:
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = {"streak": streak_tab, "stats": stats_tab, "versus": versus_tab}[key]
+	var body: Control = {"streak": streak_tab, "stats": stats_tab, "versus": versus_tab, "arcade": arcade_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
@@ -1085,6 +1094,22 @@ func _open_versus(game: String, level: int) -> void:
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
 		_show_list("versus"))
+	add_child(screen)
+	_list_root.visible = false
+
+## A game on the Arcade tab: its own screen over the list, and back to the
+## Arcade tab when it closes.
+func _open_arcade(game: String) -> void:
+	var screen: Control
+	match game:
+		"firefly":
+			screen = FireflyScreen.new()
+			screen.name = "Firefly"
+		_:
+			return
+	screen.closed.connect(func() -> void:
+		screen.queue_free()
+		_show_list("arcade"))
 	add_child(screen)
 	_list_root.visible = false
 

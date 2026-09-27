@@ -27,6 +27,12 @@ STYLE = ("cozy casual mobile puzzle game UI sound, soft warm wooden and "
 # a soft wooden boop.
 FOLEY = "realistic foley recording, dry, no music, no voice"
 
+# The Arcade tab's games: a soft retro arcade voice rather than the house
+# marimba, because a shooter's zaps and pops want a synth -- but warm and
+# rounded, so it still sits beside the rest of the game.
+ARCADE = ("retro arcade video game sound effect, soft warm 8-bit chiptune "
+          "synth, rounded, gentle, not harsh, clean, dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade]])
 SETS = {
@@ -428,6 +434,33 @@ SETS = {
         "reset":    ("a soft quick descending ripple of tiny glass twinkles fading out, garden lanterns dimming one after another", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
+    },
+    # Firefly (Arcade, arcade/firefly_screen.gd): a formation shooter in a
+    # night garden. `shoot` fires several times a second, so it is short
+    # and quiet; `beam` is the moth's silk beam, looped while it is open.
+    "firefly": {
+        "shoot":    ("a tiny soft bright 'pew', a small glowing spark shot upward, very short and light", 0.5, -14, ARCADE),
+        "pop":      ("a small soft bubbly pop with a tiny sparkle, a little bug zapped, very short", 0.5, -9, ARCADE),
+        "pop_moth": ("a bigger round pop with a bright sparkling chime burst, a big moth defeated, short and satisfying", 0.7, -6, ARCADE),
+        "hurt":     ("a short hollow metallic 'donk', an armoured bug hit but not beaten yet, very short", 0.5, -9, ARCADE),
+        "dive":     ("a descending soft whistling swoop, a bug diving down to attack, quick", 0.8, -13, ARCADE),
+        "beam_open":("a rising shimmering sweep opening up, a tractor beam of light switching on, sci-fi but gentle", 0.8, -8, ARCADE),
+        "beam":     ("a steady soft wavering shimmering hum, a tractor beam of light, continuous, even, no ending", 3.0, -12, ARCADE, "loop"),
+        "captured": ("a sad wobbling descending warble, a little ship caught and pulled up into a beam", 1.2, -7, ARCADE),
+        "carried":  ("a short low minor two-note chime, a ship lost", 0.8, -9, ARCADE),
+        "rescue":   ("a bright happy rising arpeggio with sparkles, a friend set free", 1.0, -5, ARCADE),
+        "docked":   ("a cheerful double chime click, two ships joining together, power up", 0.7, -5, ARCADE),
+        "rogue":    ("an ominous short low synth warble, something turning against you", 0.8, -9, ARCADE),
+        "ship_pop": ("a soft crunchy explosion burst fading into falling sparkles, the player's ship destroyed, not too loud", 1.2, -5, ARCADE),
+        "start":    ("a short cheerful retro arcade game start jingle, a bouncy rising melody, about three seconds", 3.0, -4, ARCADE),
+        "stage":    ("a short bright three-note fanfare, a new stage beginning", 1.2, -6, ARCADE),
+        "clear":    ("a quick happy rising chime run, a wave cleared", 1.0, -6, ARCADE),
+        "flyby":    ("a playful bouncy retro jingle, a bonus round starting", 1.8, -5, ARCADE),
+        "result":   ("a short friendly score tally jingle, counting points up", 1.2, -6, ARCADE),
+        "perfect":  ("a triumphant sparkling retro fanfare, a perfect bonus round, joyful", 2.2, -4, ARCADE),
+        "extra":    ("a bright retro one-up jingle, an extra life earned, rising notes", 1.0, -5, ARCADE),
+        "game_over":("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best": ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.

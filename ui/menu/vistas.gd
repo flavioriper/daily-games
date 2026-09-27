@@ -67,6 +67,8 @@ const CARDS := {
 	"chess": ["meadow", 1.4, Vector2(0.45, 0.6)],
 	# Checkers' lawn is chess's, looked at from further along the meadow.
 	"checkers": ["meadow", 1.5, Vector2(0.7, 0.7)],
+	# Arcade (not a grid card): Firefly flies the night garden.
+	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
