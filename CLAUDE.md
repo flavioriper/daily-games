@@ -1720,8 +1720,14 @@ makes a pair, a flyby bonus stage third and every fourth after).
   with a bot and tallies the events; run it after touching the sim.
 - **The cast is built once and turned by the transform**
   (`arcade/firefly_art.gd`, cached per look, frame and scale), shared with
-  the tab's banner. One `draw_mesh` a bug; 82 draw calls with the swarm
-  seated, 101 on the tab (810x1440).
+  the tab's banner. One `draw_mesh` a bug; 101 draw calls with the swarm
+  seated since the polish (82 before), 101 on the tab (810x1440).
+- **Polished on 2026-09-27** (the spec's section 8), screen-side only: a
+  leaning, recoiling firefly with a wake, bobbing and squashing seats, a
+  wriggle into a dive, kill bursts, shake and hit-stop on a lost firefly,
+  a better beam, a swaying, living garden. The grass, clouds and stars are
+  built once and moved by transform: laid into the live mesh they cost
+  4.65 ms a frame on this Mac, now about 1 ms.
 - **A slide, not a spot**: the firefly follows the finger's movement at
   1.35x, and holding fires.
 - **A wrapped Label hidden before its first layout measures thousands of

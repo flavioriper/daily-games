@@ -115,3 +115,55 @@ kills, best), `arcade_abandon` (score, stage); restart sends the boards'
 - Difficulty is tuned by a bot, not a thumb: a phone session should judge
   the dive rate, bullet speed and the 1.35 slide gain.
 - The pt/es strings are machine-fluent.
+
+## 8. Amendment: polish (2026-09-27)
+
+Design and motion only; `arcade/firefly_sim.gd` is untouched, so the game
+plays exactly as before. Everything below is the screen's own clock
+(`_clock`, stopped by the pause) laid over what the sim holds.
+
+- **The firefly** leans into its movement (off the slide's speed, eased),
+  thins as it banks and flaps faster, kicks down a little and flashes a
+  star at its head with each volley, leaves a wake of lantern motes, and
+  breathes a halo. After a respawn it rises in from under the hedge with
+  the back ease and blinks for 1.3 s.
+- **The swarm**: a seated bug bobs on its own phase, squashes as it lands
+  in its seat and trembles once hurt (a moth); a diver wriggles as it
+  peels off; a hit bug is knocked back and swells as it flashes. Bugs in
+  flight leave a soft streak of their own colour.
+- **A kill** is a burst: a flash that swells and collapses at full
+  strength, a ring going out, and shards of the bug's colour flung wide
+  and falling -- bigger for a moth, a rogue or the firefly. **A light
+  fading through alpha over the night sky reads as grey smoke**, which is
+  what the first flash did, so the flash shrinks rather than fades and the
+  ring thins rather than fades. A moth's kill shakes the field a little; a
+  lost firefly shakes it hard and holds the sim 0.12 s (hit-stop). Only
+  the play shakes: the sky, the grass and the corner marks stay put.
+- **Shots** are sparks with a tapered trail; **bullets** are tumbling rose
+  seeds with a trail; the **beam** is a gradient cone with rim lines, silk
+  motes drifting down it and a pool of light where it lands, and a caught
+  firefly hangs on three silk threads.
+- **The garden**: a dusk glow over a third ridge of hills and shrub tops on
+  the hedge; the grass and flowers sway; clouds cross the moon; a star
+  falls every nine seconds; nine fireflies blink over the hedge. Spare
+  lanterns breathe and the stage flags wave.
+- **The chrome**: banners pop in from 0.6 with the back ease and leave
+  lifting; the score rolls up to the real one and beats when it changes;
+  the best beats once when it is passed; score pops spring up from small
+  (800 and up in the sun's gold); the end card's firefly hovers.
+- **Nothing that only moves is rebuilt to move.** The first build laid the
+  grass, clouds and stars into the live mesh and cost **4.65 ms a frame**
+  on this Mac (grass 1.90, clouds 1.21, stars 1.08) -- a phone is two to
+  three times slower. The grass is now four clumps built once and swayed
+  by a skew about their roots, the clouds two meshes slid by transform,
+  and the stars six twinkle groups (two depths, three clocks) drawn twice a
+  period apart so they wrap. The live layers cost **about 1 ms** together,
+  under the original build's 1.3.
+- Reduce motion stills the lean, bob, squash, wriggle, streaks, shake,
+  sway, drift and the falling star; the blink after a respawn stays,
+  because it says the firefly is back.
+
+Measured with `tests/_shot_firefly.gd` at `--resolution 810x1440`: **101**
+draw calls with the swarm seated (82 before), **62** on the stage banner,
+**69** in a flyby, 101 on the tab (unchanged) -- the stars' twelve draws
+and the grass's four are most of the rise, and all of it is inside 855.

@@ -49,6 +49,10 @@ const STAR := Color("fff6c9")
 const SHOT := Color("fff1a8")
 const BULLET := Color("f4a7a0")
 const BEAM := Color("d9dcff")
+const DUSK := Color("b07aa0")
+const CLOUD := Color("a79fd0")
+const PETAL := Color("c7a6d8")
+const PETAL_WARM := Color("f2b5a0")
 
 var sim: RefCounted
 var top_bar: Control
@@ -80,8 +84,41 @@ var _u := 4.0
 var _origin := Vector2.ZERO
 var _sky: ArrayMesh
 var _live: ArrayMesh
+var _back: ArrayMesh
 var _beam_voice: AudioStreamPlayer
-var _pops: Array = []   # {pos, text, t}
+var _pops: Array = []   # {pos, text, t, big}
+## The screen's own clock, for motion the sim does not own; it stops with
+## the pause.
+var _clock := 0.0
+## Each bug's last state and when it changed, by id: the seat's landing
+## squash and the dive's wind-up read it.
+var _vis := {}
+## Kill bursts: {pos (field units), t, col, big, seed}.
+var _bursts: Array = []
+## Shake and hit-stop, both decaying in seconds.
+var _shake := 0.0
+var _shake_off := Vector2.ZERO
+var _freeze := 0.0
+## The firefly's lean into its movement, the muzzle flash, when it last
+## rose in, and the lantern's wake (field units, newest last).
+var _lean := 0.0
+var _prev_px := 0.0
+var _muzzle := 0.0
+var _ready_at := -10.0
+var _wake: Array = []
+var _wake_t := 0.0
+## The score as shown, rolling up to the real one.
+var _roll := 0.0
+var _beat_best := false
+## Built once a size and moved by the draw transform, never rebuilt to
+## move: the grass in four clumps that sway by skew, the two clouds, and
+## the stars in six twinkle groups (two depths, three clocks) that scroll.
+var _grass_meshes: Array = []   # {mesh, phase}
+var _cloud_meshes: Array = []
+var _star_meshes: Array = []
+var _grass_base := 0.0
+var _over: ArrayMesh
+var _seat: Control
 
 func puzzle_id() -> String:
 	return GAME
@@ -257,6 +294,16 @@ func _new_game() -> void:
 	_acc = 0.0
 	_paused = false
 	_pops.clear()
+	_bursts.clear()
+	_vis.clear()
+	_wake.clear()
+	_shake = 0.0
+	_freeze = 0.0
+	_lean = 0.0
+	_prev_px = sim.px
+	_ready_at = _clock
+	_roll = 0.0
+	_beat_best = false
 	_best = Record.best(GAME)
 	_shown_score = -1
 	_started_at = Time.get_ticks_msec()
@@ -287,18 +334,60 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	if not _paused:
+		_clock += delta
 		_hands()
-		_acc += minf(delta, Sim.DT * MAX_STEPS)
-		while _acc >= Sim.DT:
-			_acc -= Sim.DT
-			sim.step()
-			_play_events()
+		if _freeze > 0.0:
+			_freeze -= delta
+		else:
+			_acc += minf(delta, Sim.DT * MAX_STEPS)
+			while _acc >= Sim.DT:
+				_acc -= Sim.DT
+				sim.step()
+				_play_events()
+		_animate(delta)
+	_beam_sound()
+	_refresh_hud(delta)
+	if _seat != null and is_instance_valid(_seat):
+		_seat.queue_redraw()
+	field.queue_redraw()
+
+## The screen's own motion, a frame at a time: pops and bursts age, the
+## shake dies, the firefly leans and its wake is laid.
+func _animate(delta: float) -> void:
 	for p: Dictionary in _pops:
 		p.t += delta
 	_pops = _pops.filter(func(p: Dictionary) -> bool: return p.t < 0.9)
-	_beam_sound()
-	_refresh_hud()
-	field.queue_redraw()
+	for bu: Dictionary in _bursts:
+		bu.t += delta
+	_bursts = _bursts.filter(func(bu: Dictionary) -> bool: return bu.t < (0.9 if bu.big else 0.55))
+	_shake = maxf(0.0, _shake - delta * 2.4)
+	if _shake > 0.0 and not Motion.reduce:
+		var amp := 16.0 * _shake * _shake
+		_shake_off = Vector2(sin(_clock * 71.0), cos(_clock * 57.0)) * amp
+	else:
+		_shake_off = Vector2.ZERO
+	_muzzle = maxf(0.0, _muzzle - delta)
+	var vx: float = (sim.px - _prev_px) / maxf(delta, 0.0001)
+	_prev_px = sim.px
+	var want := 0.0 if Motion.reduce else clampf(vx / 300.0 * 0.4, -0.34, 0.34)
+	_lean = lerpf(_lean, want, 1.0 - exp(-delta * 12.0))
+	_wake_t += delta
+	if _wake_t >= 0.03:
+		_wake_t = 0.0
+		if sim.ship == Sim.Ship.ALIVE:
+			for x: float in sim.ship_xs():
+				_wake.append({"pos": Vector2(x, Sim.PLAYER_Y + 5.0), "t": 0.0})
+	for w: Dictionary in _wake:
+		w.t += delta
+	_wake = _wake.filter(func(w: Dictionary) -> bool: return w.t < 0.4)
+	# Each bug's state changes, for the landing and the wind-up.
+	var seen := {}
+	for e: Dictionary in sim.enemies:
+		var v: Dictionary = _vis.get(e.id, {})
+		if v.is_empty() or int(v.st) != int(e.st):
+			v = {"st": e.st, "was": v.get("st", Sim.St.WAIT), "since": _clock}
+		seen[e.id] = v
+	_vis = seen
 
 func _hands() -> void:
 	var axis := 0.0
@@ -402,14 +491,19 @@ func _play_events() -> void:
 		match String(ev.type):
 			"shoot":
 				_fx.cue("shoot", randf_range(0.96, 1.06), -4.0)
+				_muzzle = 0.09
 			"pop":
 				var kind: int = ev.kind
 				var colour: Color = {Sim.Kind.GNAT: Art.GNAT_BODY, Sim.Kind.BEETLE: Art.BEETLE_SHELL,
 					Sim.Kind.MOTH: Art.MOTH_WING, Sim.Kind.ROGUE: Art.ROGUE_BODY}[kind]
-				_fx.puff(at, colour, 9 if kind == Sim.Kind.MOTH else 6)
+				_fx.puff(at, colour, 7 if kind == Sim.Kind.MOTH else 4)
 				_fx.cue("pop_moth" if kind == Sim.Kind.MOTH else "pop", randf_range(0.92, 1.1))
+				var big := kind == Sim.Kind.MOTH or kind == Sim.Kind.ROGUE
+				_burst(ev.pos, colour, big)
+				if big:
+					_shake = maxf(_shake, 0.32)
 				if int(ev.points) >= 150 and not sim.challenge() or int(ev.points) >= 400:
-					_pops.append({"pos": ev.pos, "text": str(ev.points), "t": 0.0})
+					_pops.append({"pos": ev.pos, "text": str(ev.points), "t": 0.0, "big": int(ev.points) >= 800})
 			"hurt":
 				_fx.cue("hurt")
 				_fx.sparkle(at, Art.MOTH_HURT)
@@ -420,25 +514,34 @@ func _play_events() -> void:
 				_fx.cue("beam_open")
 			"captured":
 				_fx.cue("captured")
+				_shake = maxf(_shake, 0.4)
 			"carried":
 				_fx.cue("carried")
 			"rescue":
 				_fx.cue("rescue")
 				_fx.sparkle(at, Art.GLOW)
+				_burst(ev.pos, Art.GLOW, false)
 			"docked":
 				_fx.cue("docked")
 				_fx.ring(at, 30.0 * _u * 0.3, Art.GLOW)
 			"captive_lost":
 				_fx.puff(at, Art.FIREFLY_SHIELD, 6)
+				_burst(ev.pos, Art.FIREFLY_SHIELD, false)
 				_fx.cue("ship_pop")
 			"rogue":
 				_fx.cue("rogue")
 			"ship_pop":
 				_fx.puff(at, Art.GLOW, 12)
 				_fx.puff(at, Art.FIREFLY_SHIELD, 8)
+				_burst(ev.pos, Art.GLOW, true)
+				_burst(ev.pos, Art.FIREFLY_SHIELD, false)
 				_fx.cue("ship_pop")
+				_shake = 1.0
+				_freeze = 0.12
+				_wake.clear()
 			"ready":
 				_show_banner(tr("FF_READY"), "", 1.2)
+				_ready_at = _clock
 			"stage_start":
 				_show_banner(tr("FF_STAGE_N") % ev.stage, "", 1.8)
 				if int(ev.stage) > 1:
@@ -480,36 +583,63 @@ func _show_banner(text: String, sub: String, hold: float) -> void:
 	box.reset_size()
 	box.size.x = field.size.x
 	box.position = Vector2(0, field.size.y * 0.34)
+	box.pivot_offset = Vector2(box.size.x * 0.5, box.size.y * 0.5)
 	Motion.stop(_banner_tw)
 	_banner_tw = create_tween()
-	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.2)
-	_banner_tw.tween_interval(hold)
-	_banner_tw.tween_property(box, "modulate:a", 0.0, 0.35)
+	if Motion.reduce:
+		box.scale = Vector2.ONE
+		_banner_tw.tween_property(box, "modulate:a", 1.0, 0.2)
+		_banner_tw.tween_interval(hold)
+		_banner_tw.tween_property(box, "modulate:a", 0.0, 0.35)
+		return
+	# In with a pop from small, out lifting and fading a little larger.
+	box.scale = Vector2(0.6, 0.6)
+	_banner_tw.set_parallel(true)
+	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.16)
+	_banner_tw.tween_property(box, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_banner_tw.chain().tween_interval(hold)
+	_banner_tw.chain().tween_property(box, "modulate:a", 0.0, 0.35)
+	_banner_tw.tween_property(box, "scale", Vector2(1.12, 1.12), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 func _say_small(text: String) -> void:
 	_pops.append({"pos": Vector2(Sim.W * 0.5, Sim.H * 0.6), "text": text, "t": 0.0})
 
-func _refresh_hud() -> void:
+## The score rolls up to the real one and gives a beat when it lands; the
+## best follows it once it is passed, with a beat of its own.
+func _refresh_hud(delta := 0.0) -> void:
 	if sim == null:
 		return
 	if sim.score != _shown_score:
+		if sim.score > _shown_score and _shown_score >= 0:
+			_score_l.pivot_offset = _score_l.size * 0.5
+			Motion.bump(_score_l, 0.14, 0.26)
 		_shown_score = sim.score
-		_score_l.text = Record.grouped(sim.score)
-		_best_l.text = Record.grouped(maxi(_best, sim.score))
+		if not _beat_best and _best > 0 and sim.score > _best:
+			_beat_best = true
+			_best_l.pivot_offset = _best_l.size * 0.5
+			Motion.bump(_best_l, 0.3, 0.4)
+	if Motion.reduce or sim.score < _roll:
+		_roll = sim.score
+	else:
+		_roll = move_toward(_roll, sim.score, maxf(delta * (sim.score - _roll) * 9.0, delta * 400.0))
+	var shown := Record.grouped(int(_roll))
+	if _score_l.text != shown:
+		_score_l.text = shown
+		_best_l.text = Record.grouped(maxi(_best, int(_roll)))
 	_stage_l.text = str(sim.stage)
 
 # --- drawing ---
 
+## The still backdrop, built on resize: the sky with a dusk glow over the
+## hills, the moon, the far hills and the near hedge. The grass and the
+## flowers on the hedge are laid out here but drawn live, so they sway.
 func _build_sky() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := field.size
 	# The sky, a gradient down to the hedges' dusk.
-	var top := b.vertex(Vector2.ZERO, SKY_TOP)
-	b.vertex(Vector2(s.x, 0), SKY_TOP)
-	b.vertex(Vector2(s.x, s.y), SKY_LOW)
-	b.vertex(Vector2(0, s.y), SKY_LOW)
-	b.tri(top, top + 1, top + 2)
-	b.tri(top, top + 2, top + 3)
+	_quad(b, Vector2.ZERO, s, SKY_TOP, SKY_LOW)
+	# A warm glow along the horizon, under the hills.
+	_quad(b, Vector2(0, s.y - 230.0), Vector2(s.x, 130.0), Color(DUSK, 0.0), Color(DUSK, 0.32))
 	# The moon, with a soft halo.
 	var moon := Vector2(s.x * 0.8, s.y * 0.1)
 	var r := s.x * 0.06
@@ -520,32 +650,132 @@ func _build_sky() -> ArrayMesh:
 	b.disc(moon + Vector2(-r * 0.3, r * 0.35), r * 0.16, Color("e6dfcf"))
 	# Far hills and the near hedge along the bottom, the firefly flying over.
 	var far := PackedVector2Array()
+	var mid := PackedVector2Array()
 	var near := PackedVector2Array()
 	var n := 24
 	for i in n + 1:
 		var x := s.x * i / n
 		far.append(Vector2(x, s.y - 110.0 - 40.0 * sin(i * 0.7) - 20.0 * sin(i * 1.9)))
+		mid.append(Vector2(x, s.y - 78.0 - 18.0 * sin(i * 1.1 + 2.0) - 8.0 * sin(i * 2.7)))
 		near.append(Vector2(x, s.y - 46.0 - 16.0 * absf(sin(i * 1.3))))
-	far.append(Vector2(s.x, s.y))
-	far.append(Vector2(0, s.y))
-	near.append(Vector2(s.x, s.y))
-	near.append(Vector2(0, s.y))
+	for foot in [Vector2(s.x, s.y), Vector2(0, s.y)]:
+		far.append(foot)
+		mid.append(foot)
+		near.append(foot)
 	b.polygon(far, HEDGE_FAR)
+	b.polygon(mid, HEDGE_FAR.lerp(HEDGE, 0.55))
 	b.polygon(near, HEDGE)
-	# Tall grass and a few flower heads on the hedge.
+	# Rounded shrub tops along the hedge line.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
-	for i in 34:
-		var x := rng.randf() * s.x
-		var base := Vector2(x, s.y - 30.0)
-		var tip := base + Vector2(rng.randf_range(-14, 14), -rng.randf_range(30, 70))
-		b.stroke(Face.Builder.bezier2(base, base.lerp(tip, 0.5) + Vector2(rng.randf_range(-8, 8), 0), tip, 6), 4.0, HEDGE.lightened(0.08))
-	for i in 7:
-		var c := Vector2(rng.randf() * s.x, s.y - rng.randf_range(50, 80))
-		for k in 5:
-			b.disc(c + Vector2.from_angle(TAU * k / 5.0) * 6.0, 5.0, Color("c7a6d8", 0.8))
-		b.disc(c, 4.0, Color("fff1a8", 0.9))
+	for i in 9:
+		var c := Vector2(rng.randf() * s.x, s.y - rng.randf_range(44.0, 58.0))
+		b.ellipse(c, rng.randf_range(26.0, 44.0), rng.randf_range(16.0, 24.0), HEDGE.lightened(0.04))
+	_build_grass(s, rng)
+	_build_clouds()
+	_build_stars(s)
 	return b.mesh()
+
+## The grass and the flowers in four clumps across the hedge, each built
+## with its base on y 0 so a skew sways the tips and leaves the roots.
+func _build_grass(s: Vector2, rng: RandomNumberGenerator) -> void:
+	_grass_base = s.y - 26.0
+	var clumps: Array = []
+	for g in 4:
+		clumps.append(Face.Builder.new())
+	for i in 40:
+		var x := rng.randf() * s.x
+		var cb: Face.Builder = clumps[mini(int(x / s.x * 4.0), 3)]
+		var base := Vector2(x, 0)
+		var tip := base + Vector2(rng.randf_range(-14, 14), -rng.randf_range(30, 72))
+		var ctrl := base.lerp(tip, 0.5) + Vector2(rng.randf_range(-8, 8), 0)
+		cb.stroke(Face.Builder.bezier2(base, ctrl, tip, 6), 4.0, HEDGE.lightened(rng.randf_range(0.05, 0.14)))
+	for i in 8:
+		var c := Vector2(rng.randf() * s.x, -rng.randf_range(24, 56))
+		var cb: Face.Builder = clumps[mini(int(c.x / s.x * 4.0), 3)]
+		for k in 5:
+			cb.disc(c + Vector2.from_angle(TAU * k / 5.0 + i) * 6.0, 5.0, Color(PETAL if i % 3 else PETAL_WARM, 0.85))
+		cb.disc(c, 4.0, Color("fff1a8", 0.95))
+	_grass_meshes.clear()
+	for g in 4:
+		var cb: Face.Builder = clumps[g]
+		if not cb.verts.is_empty():
+			_grass_meshes.append({"mesh": cb.mesh(), "phase": g * 0.9})
+
+func _build_clouds() -> void:
+	_cloud_meshes.clear()
+	for k in 2:
+		var cb := Face.Builder.new()
+		var grow := 1.0 + k * 0.3
+		for p in [Vector2(-60, 8), Vector2(-20, -6), Vector2(24, -2), Vector2(62, 10)]:
+			cb.ellipse(p * grow, 48.0 * grow, 22.0 * grow, Color(CLOUD, 0.16 - k * 0.04))
+		_cloud_meshes.append(cb.mesh())
+
+## The stars over one period of their scroll, so a mesh drawn twice, one
+## period apart, wraps; the brightest wear a cross.
+func _build_stars(s: Vector2) -> void:
+	_star_meshes.clear()
+	var period := s.y - 60.0
+	var groups: Array = []
+	for g in 6:
+		groups.append(Face.Builder.new())
+	for layer in 2:
+		for i in 34:
+			var h := float((i * 7919 + layer * 104729) % 1000) / 1000.0
+			var k := float((i * 3571 + layer * 7) % 1000) / 1000.0
+			var at := Vector2(h * s.x, k * period)
+			var r := (1.6 if layer == 0 else 2.4) * (0.7 + 0.5 * h)
+			var sb: Face.Builder = groups[layer * 3 + i % 3]
+			var col := Color(STAR, 0.35 if layer == 0 else 0.7)
+			sb.disc(at, r, col)
+			if layer == 1 and i % 6 == 0:
+				var arm := r * 2.6
+				sb.stroke(PackedVector2Array([at - Vector2(arm, 0), at + Vector2(arm, 0)]), 1.2, Color(STAR, 0.4))
+				sb.stroke(PackedVector2Array([at - Vector2(0, arm), at + Vector2(0, arm)]), 1.2, Color(STAR, 0.4))
+	for g in 6:
+		_star_meshes.append((groups[g] as Face.Builder).mesh())
+
+## A rectangle with a vertical gradient.
+static func _quad(b: Face.Builder, at: Vector2, size: Vector2, top_col: Color, low_col: Color) -> void:
+	var i := b.vertex(at, top_col)
+	b.vertex(at + Vector2(size.x, 0), top_col)
+	b.vertex(at + size, low_col)
+	b.vertex(at + Vector2(0, size.y), low_col)
+	b.tri(i, i + 1, i + 2)
+	b.tri(i, i + 2, i + 3)
+
+## A soft streak from `head` back to `tail`, full colour at the head and
+## nothing at the tail.
+static func _streak(b: Face.Builder, head: Vector2, tail: Vector2, width: float, col: Color) -> void:
+	var d := head - tail
+	if d.length_squared() < 0.01:
+		return
+	var side := d.normalized().orthogonal() * width * 0.5
+	var i := b.vertex(head + side, col)
+	b.vertex(head - side, col)
+	b.vertex(tail, Color(col, 0.0))
+	b.tri(i, i + 1, i + 2)
+	var cap := b.vertex(head + d.normalized() * width * 0.5, col)
+	b.tri(i, cap, i + 1)
+
+static func _kind_colour(kind: int) -> Color:
+	match kind:
+		Sim.Kind.GNAT:
+			return Art.GNAT_BODY
+		Sim.Kind.BEETLE:
+			return Art.BEETLE_SHELL
+		Sim.Kind.MOTH:
+			return Art.MOTH_WING
+	return Art.ROGUE_BODY
+
+## A pseudo-random 0..1 from two numbers, for bursts that must look the
+## same every frame they are drawn.
+static func _hash(a: float, b: float) -> float:
+	var v := sin(a * 12.9898 + b * 78.233) * 43758.5453
+	return v - floorf(v)
+
+func _burst(at: Vector2, col: Color, big: bool) -> void:
+	_bursts.append({"pos": at, "t": 0.0, "col": col, "big": big, "seed": randf() * 100.0})
 
 func _draw_field() -> void:
 	if _sky == null:
@@ -554,13 +784,26 @@ func _draw_field() -> void:
 		field.draw_mesh(_sky, null)
 	if sim == null:
 		return
+	# The backdrop's live layer, which never shakes.
+	_draw_stars()
+	_draw_clouds()
+	_draw_grass()
 	var b := Face.Builder.new()
-	_draw_stars(b)
-	_draw_beams(b)
-	_draw_shots(b)
+	_draw_sky_life(b)
 	_draw_ships_left(b)
-	_live = b.mesh()
-	field.draw_mesh(_live, null)
+	if not b.verts.is_empty():
+		_live = b.mesh()
+		field.draw_mesh(_live, null)
+	# Everything in play shakes together.
+	field.draw_set_transform(_shake_off)
+	var a := Face.Builder.new()
+	_draw_beams(a)
+	_draw_trails(a)
+	_draw_halos(a)
+	_draw_shots(a)
+	if not a.verts.is_empty():
+		_back = a.mesh()
+		field.draw_mesh(_back, null)
 	var frame := int(sim.t * 7.0) % 2
 	for e: Dictionary in sim.enemies:
 		if e.st == Sim.St.WAIT or e.st == Sim.St.DEAD:
@@ -568,45 +811,140 @@ func _draw_field() -> void:
 		var look: int = {Sim.Kind.GNAT: Art.Look.GNAT, Sim.Kind.BEETLE: Art.Look.BEETLE,
 			Sim.Kind.MOTH: Art.Look.MOTH_HURT if e.hurt else Art.Look.MOTH, Sim.Kind.ROGUE: Art.Look.ROGUE}[e.kind]
 		var f := frame if e.st != Sim.St.FORM else (int(sim.t * 3.0 + e.slot.x * 0.5) % 2)
-		var rot: float = e.heading + PI * 0.5
+		var xf := _bug_xform(e)
 		if e.captive:
 			var hang: Vector2 = e.pos + Sim.captive_offset(e)
-			field.draw_mesh(Art.mesh(Art.Look.CAPTIVE, 0, _u), null, Transform2D(rot + PI, px(hang)))
-		var tint := Color(1.7, 1.7, 1.7) if e.flash > 0.0 else Color.WHITE
-		field.draw_mesh(Art.mesh(look, f, _u), null, Transform2D(rot, px(e.pos)), tint)
+			var sway := 0.0 if Motion.reduce else sin(_clock * 2.6) * 0.18
+			field.draw_mesh(Art.mesh(Art.Look.CAPTIVE, 0, _u), null, Transform2D(e.heading + PI * 1.5 + sway, px(hang)))
+		var tint := Color(1.8, 1.8, 1.8) if e.flash > 0.0 else Color.WHITE
+		field.draw_mesh(Art.mesh(look, f, _u), null, xf, tint)
+	_draw_player(frame)
+	var o := Face.Builder.new()
+	_draw_bursts(o)
+	_draw_muzzle(o)
+	if not o.verts.is_empty():
+		_over = o.mesh()
+		field.draw_mesh(_over, null)
+	_draw_pops()
+	field.draw_set_transform(Vector2.ZERO)
+
+## A bug's draw transform: its heading, and the screen's own beats on top
+## of where the sim put it -- a seated bug bobs on its own phase and
+## squashes as it lands, a diver wriggles as it peels off, a hit one is
+## knocked back and swells.
+func _bug_xform(e: Dictionary) -> Transform2D:
+	var pos: Vector2 = e.pos
+	var rot: float = e.heading + PI * 0.5
+	var sc := Vector2.ONE
+	if not Motion.reduce:
+		var v: Dictionary = _vis.get(e.id, {})
+		var since := _clock - float(v.get("since", -10.0))
+		var was: int = v.get("was", Sim.St.WAIT)
+		match int(e.st):
+			Sim.St.FORM:
+				var ph: float = _clock * 2.4 + e.slot.x * 0.7 + e.slot.y * 1.3
+				pos.y += sin(ph) * 0.9
+				sc.y *= 1.0 + 0.04 * sin(ph * 2.0)
+				if was == Sim.St.RETURN and since < 0.4:
+					var u := since / 0.4
+					var amt := 0.26 * sin(u * PI) * (1.0 - u)
+					sc *= Vector2(1.0 + amt, 1.0 - amt)
+				if e.hurt:
+					rot += sin(_clock * 17.0) * 0.06
+			Sim.St.DIVE:
+				if was == Sim.St.FORM and since < 0.45:
+					var u := since / 0.45
+					rot += sin(u * PI * 3.0) * 0.45 * (1.0 - u)
+					sc *= 1.0 + 0.16 * sin(u * PI)
+			Sim.St.BEAM:
+				pos.y += sin(_clock * 3.0) * 0.8
+		if e.flash > 0.0:
+			var k: float = e.flash / 0.12
+			sc *= 1.0 + 0.22 * k
+			pos.y -= 1.6 * k
+	return Transform2D(rot, sc, 0.0, px(pos))
+
+## Where the firefly is drawn: rising in after a respawn, kicked down a
+## little by each volley.
+func _ship_at(x: float) -> Vector2:
+	var y := Sim.PLAYER_Y
+	var since := _clock - _ready_at
+	if since < 0.5 and not Motion.reduce:
+		y += (1.0 - Motion.back_out(since / 0.5)) * 34.0
+	y += _muzzle / 0.09 * 1.4
+	return px(Vector2(x, y))
+
+func _draw_player(frame: int) -> void:
+	var flap := int(_clock * (11.0 if absf(_lean) > 0.08 else 7.0)) % 2
 	if sim.ship == Sim.Ship.ALIVE:
+		var since := _clock - _ready_at
+		var alpha := 1.0
+		if since < 1.3:
+			alpha = 0.4 if int(since * 12.0) % 2 == 0 else 1.0
+		var sc := Vector2(1.0 - absf(_lean) * 0.22, 1.0)
 		for x: float in sim.ship_xs():
-			field.draw_mesh(Art.mesh(Art.Look.FIREFLY, frame, _u), null, Transform2D(0.0, px(Vector2(x, Sim.PLAYER_Y))))
+			field.draw_mesh(Art.mesh(Art.Look.FIREFLY, flap, _u), null, Transform2D(_lean, sc, 0.0, _ship_at(x)), Color(1, 1, 1, alpha))
 	elif sim.ship == Sim.Ship.CAPTURED:
 		field.draw_mesh(Art.mesh(Art.Look.FIREFLY, 0, _u), null, Transform2D(sim.caught_spin, px(sim.caught_pos)), Color(1, 0.8, 0.85))
 	if not sim.freed.is_empty():
 		field.draw_mesh(Art.mesh(Art.Look.FIREFLY, frame, _u), null, Transform2D(sim.freed.spin, px(sim.freed.pos)))
-	var font := get_theme_font("font", "SheetTitle")
-	for p: Dictionary in _pops:
-		var a := 1.0 - clampf((p.t - 0.5) / 0.4, 0.0, 1.0)
-		var at := px(p.pos) + Vector2(0, -p.t * 40.0)
-		var size := 34
-		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		field.draw_string(font, at + Vector2(-w * 0.5 + 2, 3), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.1, 0.08, 0.2, 0.5 * a))
-		field.draw_string(font, at + Vector2(-w * 0.5, 0), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(Art.GLOW_HOT, a))
 
-## The starfield drifts down past the swarm, two depths of it; each star
-## twinkles on its own clock.
-func _draw_stars(b: Face.Builder) -> void:
-	var s := field.size
+## The starfield drifts down past the swarm, two depths of it, each
+## group of stars twinkling on its own clock.
+func _draw_stars() -> void:
+	var period := field.size.y - 60.0
 	var scroll: float = 0.0 if Motion.reduce else sim.t
-	for layer in 2:
-		var speed := 14.0 if layer == 0 else 30.0
-		for i in 34:
-			var h := float((i * 7919 + layer * 104729) % 1000) / 1000.0
-			var k := float((i * 3571 + layer * 7) % 1000) / 1000.0
-			var y := fmod(k * s.y + scroll * speed, s.y - 60.0)
-			var x := h * s.x
-			var tw := 0.55 + 0.45 * sin(sim.t * (1.5 + h * 2.0) + i)
-			var r := (1.6 if layer == 0 else 2.4) * (0.7 + 0.5 * h)
-			b.disc(Vector2(x, y), r, Color(STAR, (0.35 if layer == 0 else 0.7) * tw))
+	for g in _star_meshes.size():
+		var layer := int(g / 3.0)
+		var o := fmod(scroll * (14.0 if layer == 0 else 30.0), period)
+		var tw := 0.55 + 0.45 * sin(sim.t * (1.5 + (g % 3) * 0.9) + g * 2.1)
+		for shift in [o, o - period]:
+			field.draw_mesh(_star_meshes[g], null, Transform2D(0.0, Vector2(0, shift)), Color(1, 1, 1, tw))
 
-## A moth's silk beam: a cone of pale light in bands that ripple downward.
+func _draw_clouds() -> void:
+	var s := field.size
+	var drift := 0.0 if Motion.reduce else _clock
+	for k in _cloud_meshes.size():
+		var w := s.x + 360.0
+		var x := fmod(drift * (7.0 + k * 4.0) + k * w * 0.55, w) - 180.0
+		field.draw_mesh(_cloud_meshes[k], null, Transform2D(0.0, Vector2(x, s.y * (0.09 + k * 0.1))))
+
+## The night's own life: a star that falls now and then, and the
+## garden's fireflies blinking over the hedge.
+func _draw_sky_life(b: Face.Builder) -> void:
+	var s := field.size
+	if not Motion.reduce:
+		var period := 9.0
+		var n := floorf(_clock / period)
+		var lt := _clock - n * period
+		if lt < 0.8:
+			var u := lt / 0.8
+			var start := Vector2((0.35 + 0.6 * _hash(n, 1.0)) * s.x, (0.04 + 0.22 * _hash(n, 2.0)) * s.y)
+			var dir := Vector2(-0.82, 0.5).normalized()
+			var head := start + dir * u * s.x * 0.5
+			var a := sin(u * PI)
+			_streak(b, head, head - dir * s.x * 0.16 * a, 3.2, Color(STAR, 0.85 * a))
+			b.disc(head, 2.6, Color(Color.WHITE, a))
+	for i in 9:
+		var base := Vector2(_hash(i, 3.0) * s.x, s.y - 70.0 - _hash(i, 4.0) * 150.0)
+		var a := 0.6
+		if not Motion.reduce:
+			base += Vector2(sin(_clock * 0.4 + i * 1.7) * 30.0, sin(_clock * 0.6 + i) * 14.0)
+			a = clampf(sin(_clock * (0.8 + 0.1 * i) + i * 2.1) * 1.6 - 0.5, 0.0, 1.0)
+		if a <= 0.0:
+			continue
+		b.disc(base, 10.0, Color(Art.GLOW, 0.12 * a))
+		b.disc(base, 3.2, Color(Art.GLOW_HOT, 0.9 * a))
+
+## The hedge's grass and flowers, each clump swaying on its own phase.
+func _draw_grass() -> void:
+	for g: Dictionary in _grass_meshes:
+		var skew := 0.0 if Motion.reduce else sin(_clock * 1.4 + float(g.phase)) * 0.09
+		field.draw_mesh(g.mesh, null, Transform2D(0.0, Vector2.ONE, skew, Vector2(0, _grass_base)))
+
+## A moth's silk beam: a cone of pale light brightest at the moth, bands
+## that ripple downward, silk motes drifting in it and a pool of light
+## where it meets the ground. A caught firefly hangs on silk threads.
 func _draw_beams(b: Face.Builder) -> void:
 	for e: Dictionary in sim.enemies:
 		if e.st != Sim.St.BEAM or e.beam <= 0.0:
@@ -615,37 +953,160 @@ func _draw_beams(b: Face.Builder) -> void:
 		var bottom_y := px(Vector2(0, Sim.PLAYER_Y + 10.0)).y
 		var half: float = 16.0 * _u * e.beam
 		var reach: float = lerpf(top.y, bottom_y, e.beam)
-		var cone := PackedVector2Array([top + Vector2(-3.0 * _u, 0), top + Vector2(3.0 * _u, 0),
-			Vector2(top.x + half, reach), Vector2(top.x - half, reach)])
-		b.fan(cone, Color(BEAM, 0.18))
+		var i := b.vertex(top + Vector2(-3.0 * _u, 0), Color(BEAM, 0.42))
+		b.vertex(top + Vector2(3.0 * _u, 0), Color(BEAM, 0.42))
+		b.vertex(Vector2(top.x + half, reach), Color(BEAM, 0.1))
+		b.vertex(Vector2(top.x - half, reach), Color(BEAM, 0.1))
+		b.tri(i, i + 1, i + 2)
+		b.tri(i, i + 2, i + 3)
+		for side in [-1.0, 1.0]:
+			b.stroke(PackedVector2Array([top + Vector2(side * 3.0 * _u, 0), Vector2(top.x + side * half, reach)]), 0.5 * _u, Color(BEAM, 0.4))
 		var bands := 7
 		for k in bands:
 			var f := fmod(float(k) / bands + sim.t * 0.9, 1.0)
 			var y := lerpf(top.y, reach, f)
 			var w := lerpf(3.0 * _u, half, f)
 			b.stroke(PackedVector2Array([Vector2(top.x - w, y), Vector2(top.x + w, y)]), 0.9 * _u, Color(BEAM, 0.55 * (1.0 - f * 0.6)))
+		for k in 10:
+			var f := fmod(k * 0.137 + sim.t * 0.55, 1.0)
+			var y := lerpf(top.y, reach, f)
+			var w := lerpf(3.0 * _u, half, f)
+			var x := top.x + sin(k * 3.1 + sim.t * 2.0) * w * 0.75
+			b.disc(Vector2(x, y), 0.7 * _u, Color(Color.WHITE, 0.7 * sin(f * PI)))
+		if e.beam >= 1.0:
+			b.ellipse(Vector2(top.x, bottom_y), half * 1.1, 3.0 * _u, Color(BEAM, 0.22))
+	if sim.ship == Sim.Ship.CAPTURED:
+		for e: Dictionary in sim.enemies:
+			if e.id == sim.caught_by:
+				var from := px(e.pos + Vector2(0, 6))
+				var to := px(sim.caught_pos)
+				for k in 3:
+					var bow := sin(sim.t * 4.0 + k * 2.0) * 3.0 * _u + (k - 1) * 2.0 * _u
+					var ctrl := from.lerp(to, 0.5) + Vector2(bow, 0)
+					b.stroke(Face.Builder.bezier2(from + Vector2((k - 1) * 1.5 * _u, 0), ctrl, to, 10), 0.35 * _u, Color(Art.SILK, 0.7))
+
+## Bugs in flight leave a soft streak of their own colour.
+func _draw_trails(b: Face.Builder) -> void:
+	if Motion.reduce:
+		return
+	for e: Dictionary in sim.enemies:
+		var st: int = e.st
+		if st != Sim.St.DIVE and st != Sim.St.ENTER and st != Sim.St.RETURN and st != Sim.St.FLYBY:
+			continue
+		var dir := Vector2.from_angle(e.heading)
+		var head := px(e.pos - dir * 3.0)
+		var tail := px(e.pos - dir * 15.0)
+		_streak(b, head, tail, 4.0 * _u, Color(_kind_colour(e.kind).lerp(Color.WHITE, 0.3), 0.3))
+
+## The firefly's lantern breathes a halo round it, and a moving firefly
+## leaves a wake of glowing motes.
+func _draw_halos(b: Face.Builder) -> void:
+	for w: Dictionary in _wake:
+		var a: float = 1.0 - w.t / 0.4
+		var p := px(w.pos + Vector2(0, w.t * 22.0))
+		b.disc(p, (1.8 * a + 0.5) * _u, Color(Art.GLOW, 0.4 * a))
+	if sim.ship != Sim.Ship.ALIVE:
+		return
+	var pulse := 0.5 + 0.5 * sin(_clock * 4.2)
+	if Motion.reduce:
+		pulse = 0.5
+	for x: float in sim.ship_xs():
+		var c := _ship_at(x) + Vector2(0, 5.2 * _u).rotated(_lean)
+		b.disc(c, (12.0 + 2.5 * pulse) * _u, Color(Art.GLOW, 0.05 + 0.04 * pulse))
+		b.disc(c, 7.0 * _u, Color(Art.GLOW, 0.1 + 0.05 * pulse))
 
 func _draw_shots(b: Face.Builder) -> void:
 	for s: Dictionary in sim.shots:
 		var at := px(s.pos)
-		b.ellipse(at, 2.2 * _u, 3.6 * _u, Color(Art.GLOW, 0.25))
+		_streak(b, at, at + Vector2(0, 11.0 * _u), 2.6 * _u, Color(Art.GLOW, 0.55))
+		b.ellipse(at, 2.4 * _u, 3.8 * _u, Color(Art.GLOW, 0.22))
 		b.ellipse(at, 0.9 * _u, 2.4 * _u, SHOT)
-		b.ellipse(at, 0.45 * _u, 1.4 * _u, Color.WHITE)
+		b.ellipse(at + Vector2(0, -0.4 * _u), 0.45 * _u, 1.4 * _u, Color.WHITE)
 	for bl: Dictionary in sim.bullets:
 		var at := px(bl.pos)
-		b.disc(at, 2.2 * _u, Color(BULLET, 0.25))
-		b.disc(at, 1.1 * _u, BULLET)
-		b.disc(at + Vector2(-0.3, -0.3) * _u, 0.45 * _u, Color.WHITE)
+		var vel: Vector2 = bl.vel
+		_streak(b, at, at - vel.normalized() * 6.0 * _u, 2.2 * _u, Color(BULLET, 0.35))
+		var pulse := 0.5 + 0.5 * sin(_clock * 14.0 + at.x)
+		b.disc(at, (2.2 + 0.5 * pulse) * _u, Color(BULLET, 0.22))
+		var spin := _clock * 10.0 + at.x * 0.1
+		var seed_xf := Transform2D(spin, at)
+		b.fan(seed_xf * Face.Builder.ring(Vector2.ZERO, 0.9 * _u, 1.4 * _u), BULLET)
+		b.disc(seed_xf * Vector2(-0.25 * _u, -0.45 * _u), 0.4 * _u, Color.WHITE)
 
-## The ships in reserve as small lanterns in the bottom-left corner, and a
-## flag a stage in the bottom-right.
+## A kill's burst: a flash, a ring going out and shards of the bug's colour
+## flung wide and falling. A big one (a moth, a rogue, the firefly) throws
+## further and lasts longer.
+func _draw_bursts(b: Face.Builder) -> void:
+	for bu: Dictionary in _bursts:
+		var big: bool = bu.big
+		var life := 0.9 if big else 0.55
+		var u: float = bu.t / life
+		var ease := 1.0 - pow(1.0 - u, 3.0)
+		var col: Color = bu.col
+		var c := px(bu.pos)
+		var fade := (1.0 - u)
+		# The flash swells and collapses at full strength: a light fading
+		# through alpha over the night sky reads as grey smoke.
+		var k := u * 3.2
+		if k < 1.0:
+			var swell := sin(k * PI) * (1.0 - k * 0.3)
+			b.disc(c, (_flash_r(big) * swell + 0.5) * _u, Color(Art.GLOW_HOT, 0.9))
+			b.disc(c, (_flash_r(big) * 0.5 * swell + 0.3) * _u, Color.WHITE)
+		var r := (4.0 + (20.0 if big else 11.0) * ease) * _u
+		b.stroke(Face.Builder.ring(c, r, r), 1.4 * _u * fade, col.lerp(Color.WHITE, 0.35), true)
+		var n := 12 if big else 8
+		for i in n:
+			var sd: float = bu.seed
+			var dir := Vector2.from_angle(TAU * i / n + _hash(sd, i) * 0.6)
+			var d := (22.0 if big else 14.0) * (0.6 + 0.8 * _hash(sd + 1.0, i)) * ease
+			var p := c + (dir * d + Vector2(0, 10.0 * u * u)) * _u
+			var sz := (2.2 if big else 1.6) * fade * _u
+			var side := dir.orthogonal()
+			var shard := col if i % 2 == 0 else col.lerp(Color.WHITE, 0.55)
+			b.fan(PackedVector2Array([p + dir * sz * 1.6, p + side * sz * 0.7, p - dir * sz * 1.6, p - side * sz * 0.7]), shard)
+
+static func _flash_r(big: bool) -> float:
+	return 9.0 if big else 5.5
+
+## A volley's flash at the firefly's head.
+func _draw_muzzle(b: Face.Builder) -> void:
+	if _muzzle <= 0.0 or sim.ship != Sim.Ship.ALIVE:
+		return
+	var k := _muzzle / 0.09
+	for x: float in sim.ship_xs():
+		var head := _ship_at(x) + Vector2(0, -10.0 * _u).rotated(_lean)
+		b.disc(head, 4.5 * _u * k, Color(Art.GLOW, 0.4 * k))
+		b.fan(PackedVector2Array([head + Vector2(0, -7.0 * _u * k), head + Vector2(1.0 * _u, 0),
+			head + Vector2(0, 2.0 * _u * k), head + Vector2(-1.0 * _u, 0)]), Color(Art.GLOW_HOT, k))
+		b.fan(PackedVector2Array([head + Vector2(-4.0 * _u * k, 0), head + Vector2(0, -0.8 * _u),
+			head + Vector2(4.0 * _u * k, 0), head + Vector2(0, 0.8 * _u)]), Color(Art.GLOW_HOT, 0.8 * k))
+
+## Score pops spring up from small and rise as they fade.
+func _draw_pops() -> void:
+	var font := get_theme_font("font", "SheetTitle")
+	for p: Dictionary in _pops:
+		var a := 1.0 - clampf((p.t - 0.5) / 0.4, 0.0, 1.0)
+		var at := px(p.pos) + Vector2(0, -p.t * 40.0)
+		var big: bool = p.get("big", false)
+		var full := 44 if big else 34
+		var size := full if Motion.reduce else maxi(8, int(lerpf(12.0, full, Motion.back_out(p.t / 0.28))))
+		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var col := Pal.SUN if big else Art.GLOW_HOT
+		field.draw_string(font, at + Vector2(-w * 0.5 + 2, 3), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.1, 0.08, 0.2, 0.5 * a))
+		field.draw_string(font, at + Vector2(-w * 0.5, 0), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, a))
+
+## The ships in reserve as small lanterns in the bottom-left corner, each
+## breathing its glow, and a flag a stage in the bottom-right, waving.
 func _draw_ships_left(b: Face.Builder) -> void:
 	var s := field.size
+	var still := Motion.reduce
 	var left: int = sim.ships - (1 if sim.ship != Sim.Ship.DEAD else 0)
 	for i in clampi(left, 0, 6):
 		var c := Vector2(30.0 + i * 38.0, s.y - 26.0)
-		b.disc(c, 13.0, Color(Art.GLOW, 0.25))
+		var pulse := 0.5 if still else 0.5 + 0.5 * sin(_clock * 3.0 + i * 1.3)
+		b.disc(c, 12.0 + 3.0 * pulse, Color(Art.GLOW, 0.16 + 0.12 * pulse))
 		b.ellipse(c, 7.0, 8.5, Art.GLOW)
+		b.ellipse(c + Vector2(0, 2), 4.0, 4.5, Art.GLOW_HOT)
 		b.ellipse(c + Vector2(0, -7), 6.0, 4.5, Art.FIREFLY_SHIELD)
 	var flags: int = sim.stage
 	var tens := int(flags / 10.0)
@@ -658,7 +1119,9 @@ func _draw_ships_left(b: Face.Builder) -> void:
 		b.stroke(PackedVector2Array([foot, foot + Vector2(0, -h)]), 4.0, Color("e9ecfa", 0.9))
 		var cloth := Pal.SUN if big else Pal.FLOWER
 		var w := 24.0 if big else 19.0
-		b.fan(PackedVector2Array([foot + Vector2(-1.0, -h), foot + Vector2(-w, -h + 7.0), foot + Vector2(-1.0, -h + 15.0)]), cloth)
+		var flap := 0.0 if still else sin(_clock * 4.5 + i * 0.9) * 3.0
+		b.fan(PackedVector2Array([foot + Vector2(-1.0, -h), foot + Vector2(-w, -h + 7.0 + flap),
+			foot + Vector2(-1.0, -h + 15.0)]), cloth)
 		x -= 27.0 if big else 22.0
 
 # --- the end ---
@@ -701,10 +1164,16 @@ func _build_end(better: bool) -> Control:
 	card.add_child(col)
 	var seat := Control.new()
 	seat.custom_minimum_size = Vector2(0, 170)
+	# The firefly hovers over the card, bobbing and flapping, its lantern
+	# breathing.
 	seat.draw.connect(func() -> void:
-		var c := Vector2(seat.size.x * 0.5, 90)
-		seat.draw_mesh(Art.mesh(Art.Look.FIREFLY, 0, 8.0), null, Transform2D(0.0, c)))
+		var t := 0.0 if Motion.reduce else _clock
+		var c := Vector2(seat.size.x * 0.5, 90 + sin(t * 2.6) * 7.0)
+		var pulse := 0.5 + 0.5 * sin(t * 4.2)
+		seat.draw_circle(c + Vector2(0, 42), 58.0 + 8.0 * pulse, Color(Art.GLOW, 0.12 + 0.06 * pulse))
+		seat.draw_mesh(Art.mesh(Art.Look.FIREFLY, int(t * 8.0) % 2, 8.0), null, Transform2D(sin(t * 1.3) * 0.08, c)))
 	col.add_child(seat)
+	_seat = seat
 	var head := Label.new()
 	head.text = "FF_NEW_BEST" if better else "FF_GAME_OVER_CARD"
 	head.theme_type_variation = "WellDone"
