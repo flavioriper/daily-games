@@ -1335,6 +1335,14 @@ pointing `seed_as` at them. Specs:
   bloom rebuilds one. 74 draw calls bare, 76-78 played, 87 in the full
   bloom, 78 on ANGLE. Sixteen sounds generated (2026-09-26), one take a cue,
   awaiting the user's listen.
+  **Polished on 2026-09-26** (the spec's amendment): leaf-collared buds, a
+  kernel seed that points along its flight, the pond's reflections and a
+  moon's road, a garland and lanterns on the arch, a wooden seed trough, pip
+  groove and tag; ripples round every bloom, each marigold flying up to its
+  pip, picked blooms rising, the sun's recoil, the pot's wobble and catch
+  squash, the tag's pop, a rolling score, fireflies and a full bloom of
+  falling petals, carried by two small live meshes. 78 bare, 83 played, 91
+  in the full bloom, ANGLE agreeing.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

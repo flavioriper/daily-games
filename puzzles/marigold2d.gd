@@ -18,6 +18,13 @@ extends "res://core/puzzle_base.gd"
 ##   lit   -- the blooms and the ones being picked, while any of them moves;
 ##   guide -- the dotted aim, when the aim moves;
 ##   trail -- the seed's wake, while a seed is out;
+##   live  -- the garden's small breath, every frame, in two: under the
+##            buds, fireflies, twinkling stars, drifting glints, the
+##            lanterns' flicker and the ripples round every bloom; over
+##            everything, a glint on a marigold now and then, the marigolds
+##            flying up to their pips and the full bloom's petals;
+##   pill  -- the multiplier's tag, rebuilt when it steps and popped by
+##            transform;
 ##   the pot, the seed and the sun's three parts are built once and moved by
 ##   transform, so an idle garden rebuilds nothing.
 ##
@@ -69,6 +76,23 @@ const POT_GLOW_TIME := 0.5
 const OUT_WAIT := 2.4
 const WIN_HOLD := 1.2
 const HINTS := 3
+## A bloom rings the water RIPPLE_TIME; a picked bloom rises PICK_RISE units
+## and turns as it fades; a bloomed marigold flies up to its pip over
+## FLY_TIME. The sun recoils over RECOIL_TIME, the pot wobbles WOBBLE_TIME
+## after it turns at an end and squashes CATCH_TIME when it catches a seed,
+## the tag pops TAG_TIME when the multiplier steps. A marigold glints every
+## GLINT_EVERY; the full bloom's petals fall for PETAL_TIME.
+const RIPPLE_TIME := 0.5
+const PICK_RISE := 2.6
+const FLY_TIME := 0.6
+const RECOIL_TIME := 0.32
+const WOBBLE_TIME := 0.9
+const CATCH_TIME := 0.34
+const TAG_TIME := 0.4
+const GLINT_EVERY := 1.7
+const GLINT_TIME := 0.6
+const PETAL_TIME := 4.5
+const FIREFLIES := 8
 ## The reference's rising scale, one step a bloom within a shot: a major
 ## scale up an octave and a fifth, then held at the top.
 const SCALE := [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19]
@@ -120,6 +144,20 @@ var _log := ""
 var _think := {}
 var _shot_oranges := 0
 var _shot_pot := false
+var _shot_at := -100.0
+var _pot_turn_at := -100.0
+var _pot_last_dir := 1.0
+## Ripples on the water: {"at" (field units), "t", "col"}.
+var _ripples: Array = []
+## Marigolds flying up to their pips: {"from" (px), "t"}.
+var _flies: Array = []
+var _mult_shown := 1
+var _mult_at := -100.0
+var _score_shown := 0.0
+var _glint_i := -1
+var _glint_at := -100.0
+## The trough holds this many seeds: the try's first handful.
+var _seeds_start := 10
 
 var _still: ArrayMesh
 ## The closed buds in BUD_BANDS strips down the field, so a bloom rebuilds
@@ -137,6 +175,10 @@ var _body_for := ""
 var _spout: ArrayMesh
 var _spout_for := -1
 var _back: ArrayMesh
+var _live: ArrayMesh
+var _live_back: ArrayMesh
+var _pill: ArrayMesh
+var _pill_for := -1
 var _hud: ArrayMesh
 var _hud_for := ""
 var _toast_mesh: ArrayMesh
@@ -215,6 +257,14 @@ func _fresh(t: float) -> void:
 	_back = null
 	_hud = null
 	_buds = []
+	_ripples = []
+	_flies = []
+	_mult_shown = _state.mult()
+	_mult_at = -100.0
+	_pill = null
+	_score_shown = float(_state.score)
+	_shot_at = -100.0
+	_seeds_start = _state.seeds
 
 # --- layout ---
 
@@ -252,6 +302,7 @@ func _layout() -> void:
 	_spout = null
 	_back = null
 	_hud = null
+	_pill = null
 	queue_redraw()
 
 # --- the frame loop ---
@@ -278,6 +329,10 @@ func _process(delta: float) -> void:
 			_end_shot(t)
 	elif not _done:
 		_state.step_pot(sd)
+	if _state.pot_dir != _pot_last_dir:
+		_pot_last_dir = _state.pot_dir
+		_pot_turn_at = t
+	_tick_garden(t, delta)
 	if not _think.is_empty() and WorkerThreadPool.is_task_completed(int(_think.id)):
 		WorkerThreadPool.wait_for_task_completion(int(_think.id))
 		var box: Dictionary = _think.box
@@ -334,6 +389,55 @@ func _buds_moving(t: float) -> bool:
 func _entrance_time() -> float:
 	return Motion.ENTER_DELAY + 0.1 + 0.9 + Motion.POP_IN + 0.05
 
+## The small things that run on the frame clock: the score rolling up to
+## what it is, the tag stepping, the flying marigolds landing on their pips,
+## the ripples dying, and the next marigold to glint.
+func _tick_garden(t: float, delta: float) -> void:
+	var target := float(_state.score + (_state.shot_points if _phase == "shot" else 0))
+	if Motion.reduce or target < _score_shown:
+		_score_shown = target
+	else:
+		_score_shown = minf(target, _score_shown + maxf((target - _score_shown) * minf(1.0, delta * 9.0), 60.0 * delta))
+	var m: int = _state.mult()
+	if m != _mult_shown:
+		if m > _mult_shown and not Motion.reduce:
+			_mult_at = t
+			fx.ring(_tag_centre(), 70.0, Pal.MG_ORANGE_HI, 0.5)
+			fx.sparkle(_tag_centre(), Pal.SUN_RAY)
+		_mult_shown = m
+		_pill = null
+	var keep: Array = []
+	for f: Dictionary in _flies:
+		if t - float(f.t) >= FLY_TIME:
+			fx.sparkle(_pip_at(_pips_filled(t)), Pal.SUN_RAY)
+		else:
+			keep.append(f)
+	if keep.size() != _flies.size():
+		_flies = keep
+		_hud = null
+	var alive: Array = []
+	for r: Dictionary in _ripples:
+		if t - float(r.t) < RIPPLE_TIME:
+			alive.append(r)
+	_ripples = alive
+	if t - _glint_at > GLINT_EVERY and not Motion.reduce and _phase != "won":
+		_glint_at = t
+		_glint_i = -1
+		var up: Array = []
+		for i in _state.pos.size():
+			if _state.kind[i] == State.ORANGE and _state.st[i] == State.UP:
+				up.append(i)
+		if not up.is_empty():
+			_glint_i = up[randi() % up.size()]
+
+## The pips lit: every marigold bloomed, less the ones still flying up.
+func _pips_filled(t: float) -> int:
+	var n: int = _state.orange_total - _state.oranges_left
+	for f: Dictionary in _flies:
+		if t - float(f.t) < FLY_TIME:
+			n -= 1
+	return maxi(0, n)
+
 # --- a shot's events ---
 
 func _handle(events: Array, t: float) -> void:
@@ -343,6 +447,11 @@ func _handle(events: Array, t: float) -> void:
 			"hit":
 				var i: int = e.i
 				_hit_at[i] = t
+				if not Motion.reduce:
+					_ripples.append({"at": _state.pos[i], "t": t, "col": Parts.colours(_state.kind[i])[1]})
+					if _state.kind[i] == State.ORANGE:
+						_flies.append({"from": _pt(_state.pos[i]), "t": t + BLOOM_TIME * 0.6})
+						_hud = null
 				_order.append(i)
 				_dirty_bud(i)
 				var step: int = SCALE[mini(int(e.n) - 1, SCALE.size() - 1)]
@@ -366,6 +475,7 @@ func _handle(events: Array, t: float) -> void:
 					fx.cue("wall", 1.0, -4.0)
 			"pot":
 				_pot_glow_at = t
+				_ripples.append({"at": Vector2(e.at), "t": t, "col": Pal.SUN_RAY})
 				_shot_pot = true
 				fx.cue("pot")
 				fx.sparkle(_pt(e.at), Pal.SUN)
@@ -498,6 +608,9 @@ func _draw() -> void:
 		if _back == null or t - _fever_at < 2.0:
 			_back = _build_back(t)
 		_put(_back, xf, tint, shown)
+	if not Motion.reduce:
+		_live_back = _build_live_back(t)
+		_put(_live_back, xf, tint, shown)
 	if _buds.size() != BUD_BANDS:
 		_buds = []
 		for k in BUD_BANDS:
@@ -526,18 +639,22 @@ func _draw() -> void:
 			Parts.pot(b, _state.pot_w * s, float(gk) / 8.0)
 			_pot = b.mesh()
 			_pot_for = gk
-		_put(_pot, xf * Transform2D(0.0, _pt(Vector2(_state.pot_x, State.POT_Y))), tint, shown)
+		_put(_pot, xf * _pot_xf(t), tint, shown)
 	# the seeds
 	if _seed == null:
 		var b := Face.Builder.new()
-		Parts.bead(b, Vector2.ZERO, State.BALL_R * s)
+		Parts.kernel(b, Vector2.ZERO, State.BALL_R * s)
 		_seed = b.mesh()
 	for ball: Dictionary in _state.balls:
-		_put(_seed, xf * Transform2D(0.0, _pt(ball.p)), tint, shown)
+		var v: Vector2 = ball.v
+		_put(_seed, xf * Transform2D(v.angle() if v.length() > 1.0 else PI * 0.5, _pt(ball.p)), tint, shown)
 	_draw_sun(t, xf, tint, shown)
 	if _state.fever:
 		_draw_pot_worths(xf, seen)
-	_draw_hud(xf, tint, shown)
+	_draw_hud(t, xf, tint, shown)
+	if not Motion.reduce:
+		_live = _build_live(t)
+		_put(_live, xf, tint, shown)
 	_draw_floats(t, seen)
 	_draw_banner(t, seen)
 	_draw_toast(t, shown)
@@ -588,7 +705,29 @@ func _build_still() -> ArrayMesh:
 	# the pond, its far shore's reflection and its glints
 	_vgrad(b, Rect2(o + Vector2(0.0, horizon * s), Vector2(fw, fh - horizon * s)), Pal.MG_POND, Pal.MG_POND_DEEP)
 	_vgrad(b, Rect2(o + Vector2(0.0, horizon * s), Vector2(fw, 7.0 * s)), Color(Pal.MG_HILL_NEAR, 0.45), Color(Pal.MG_HILL_NEAR, 0.0))
-	b.ellipse(_pt(Vector2(81.0, horizon + 14.0)), 3.0 * s, 1.0 * s, Color(Pal.MG_SHINE, 0.35))
+	# the near range and the castle upside down in the water, faint
+	var mirror := PackedVector2Array()
+	for k in 41:
+		var x := State.W * float(k) / 40.0
+		var y := horizon - 10.0 * absf(sin(x * 0.11 + 4.1)) - 3.5 * sin(x * 0.11 * 2.3 + 8.2)
+		mirror.append(_pt(Vector2(x, horizon + (horizon - y) * 0.55)))
+	mirror.append(_pt(Vector2(State.W, horizon)))
+	mirror.append(_pt(Vector2(0.0, horizon)))
+	b.polygon(mirror, Color(Pal.MG_HILL_NEAR, 0.22))
+	for r: Rect2 in [Rect2(ca + Vector2(0.0, 6.0), Vector2(8.0, 3.3)), Rect2(ca + Vector2(-1.2, 6.0), Vector2(2.6, 5.5)),
+			Rect2(ca + Vector2(6.6, 6.0), Vector2(2.6, 6.0))]:
+		b.fan(PackedVector2Array([_pt(r.position), _pt(r.position + Vector2(r.size.x, 0.0)),
+			_pt(r.end), _pt(r.position + Vector2(0.0, r.size.y))]), Color(Pal.MG_HILL_NEAR.darkened(0.1), 0.25))
+	# the moon's road across the water, breaking up as it comes near
+	for k in 10:
+		var y := horizon + 2.0 + float(k) * 3.6
+		var half := (3.4 - float(k) * 0.22) * (0.55 + 0.45 * _hash(k, 81))
+		var dx := (_hash(k, 83) - 0.5) * 1.6
+		b.stroke(PackedVector2Array([_pt(Vector2(81.0 + dx - half, y)), _pt(Vector2(81.0 + dx + half, y))]), s * 0.5,
+			Color(Pal.MG_SHINE, 0.5 - 0.04 * float(k)))
+	# mist lying along the far shore
+	_vgrad(b, Rect2(o + Vector2(0.0, (horizon - 4.0) * s), Vector2(fw, 4.0 * s)), Color(Pal.MG_SNOW, 0.0), Color(Pal.MG_SNOW, 0.35))
+	_vgrad(b, Rect2(o + Vector2(0.0, horizon * s), Vector2(fw, 3.5 * s)), Color(Pal.MG_SNOW, 0.3), Color(Pal.MG_SNOW, 0.0))
 	for k in 22:
 		var y := horizon + 3.0 + _hash(k, 13) * 70.0
 		var x := 6.0 + _hash(k, 17) * 88.0
@@ -599,6 +738,18 @@ func _build_still() -> ArrayMesh:
 		var c := _pt(Vector2(p.x, p.y))
 		b.ellipse(c + Vector2(0.0, s * 0.3), p.z * s, p.z * 0.42 * s, Color(Pal.MG_POND_DEEP.darkened(0.1), 0.6))
 		b.ellipse(c, p.z * s, p.z * 0.4 * s, Color(Pal.MG_BANK_DEEP, 0.55))
+		# the pad's notch
+		b.fan(PackedVector2Array([c, c + Vector2(p.z * 0.9, -p.z * 0.12) * s, c + Vector2(p.z * 0.9, p.z * 0.2) * s]),
+			Color(Pal.MG_POND_DEEP, 0.9))
+	# a water lily open on the first pad
+	var lily := _pt(Vector2(11.0, 117.2))
+	for k in 7:
+		var a := PI + PI * float(k) / 6.0
+		b.ellipse(lily + Vector2(cos(a) * 1.3, sin(a) * 0.55) * s, s * 0.75, s * 0.42, Color("f3c9d6"))
+	for k in 4:
+		var a := PI + PI * (float(k) + 0.5) / 4.0
+		b.ellipse(lily + Vector2(cos(a) * 0.7, sin(a) * 0.5 - 0.3) * s, s * 0.6, s * 0.38, Color("fbe3ea"))
+	b.disc(lily + Vector2(0.0, -0.3) * s, s * 0.4, Pal.SUN_RAY)
 	# the bank the pot slides on
 	var bank := State.POT_Y + 3.2
 	var pts := PackedVector2Array([o + Vector2(0.0, bank * s)])
@@ -610,6 +761,19 @@ func _build_still() -> ArrayMesh:
 	b.polygon(pts, Pal.MG_BANK)
 	b.fan(PackedVector2Array([_pt(Vector2(0.0, bank + 1.2)), _pt(Vector2(State.W, bank + 1.2)),
 		o + Vector2(fw, fh + FOOT), o + Vector2(0.0, fh + FOOT)]), Pal.MG_BANK_DEEP)
+	# the bank's lit lip, and clover and daisies along it
+	b.stroke(pts.slice(1, 22), s * 0.4, Color(Pal.MG_VINE_HI, 0.7))
+	for k in 13:
+		var x := 9.0 + float(k) * 6.8 + (_hash(k, 91) - 0.5) * 2.0
+		var foot := Vector2(x, bank + 0.6 + _hash(k, 93) * 0.8)
+		for j in 3:
+			var d := Vector2.from_angle(-PI * 0.5 + (float(j) - 1.0) * 0.6)
+			Parts.leaf(b, _pt(foot), d, s * 1.1, s * 0.4, Pal.MG_GREEN_DEEP if j != 1 else Pal.MG_VINE)
+		if k % 2 == 0:
+			var head := _pt(foot + Vector2(0.4, -1.3))
+			for j in 6:
+				b.disc(head + Vector2.from_angle(TAU * float(j) / 6.0) * s * 0.42, s * 0.3, Color("fbf7ee"))
+			b.disc(head, s * 0.26, Pal.SUN_RAY)
 	for side: float in [0.0, 1.0]:
 		for k in 5:
 			var x := 1.5 + float(k) * 1.3 if side == 0.0 else State.W - 1.5 - float(k) * 1.3
@@ -647,8 +811,42 @@ func _build_still() -> ArrayMesh:
 	for k in 41:
 		var u := float(k) / 40.0
 		arch.append(o + Vector2(u * fw, s * (2.0 - 2.4 * sin(PI * u)) - s * 1.2))
-	b.stroke(arch, s * 1.4, Pal.MG_ARBOR_DEEP)
-	b.stroke(arch, s * 0.9, Pal.MG_ARBOR)
+	b.stroke(arch, s * 2.2, Pal.MG_ARBOR_DEEP)
+	b.stroke(arch, s * 1.6, Pal.MG_ARBOR)
+	var lit := PackedVector2Array()
+	for p in arch:
+		lit.append(p + Vector2(0.0, -s * 0.45))
+	b.stroke(lit, s * 0.35, Color(Pal.MG_ARBOR_HI, 0.8))
+	# the lanterns, hanging from the arch with a warm glow
+	for k in 2:
+		var cap := _pt(_lantern_at(k))
+		var hook := cap - Vector2(0.0, s * 1.8)
+		b.stroke(PackedVector2Array([hook, cap]), s * 0.16, Pal.MG_ARBOR_DEEP)
+		b.disc(cap + Vector2(0.0, s * 1.5), s * 2.8, Color(Pal.SUN_RAY, 0.16))
+		b.fan(Face.Builder.round_rect(cap + Vector2(-1.1, 0.0) * s, Vector2(2.2, 3.0) * s, s * 0.8), Color("f6d28b"))
+		b.fan(Face.Builder.round_rect(cap + Vector2(-0.5, 0.45) * s, Vector2(1.0, 2.1) * s, s * 0.45), Color("fff1c4"))
+		for side: float in [-1.0, 1.0]:
+			b.stroke(PackedVector2Array([cap + Vector2(side * 0.55, 0.2) * s, cap + Vector2(side * 0.55, 2.8) * s]), s * 0.12,
+				Color(Pal.MG_ARBOR_DEEP, 0.5))
+		b.fan(Face.Builder.round_rect(cap + Vector2(-1.3, -0.35) * s, Vector2(2.6, 0.7) * s, s * 0.3), Pal.MG_ARBOR_DEEP)
+		b.fan(Face.Builder.round_rect(cap + Vector2(-0.9, 2.8) * s, Vector2(1.8, 0.55) * s, s * 0.25), Pal.MG_ARBOR_DEEP)
+	# a garland swagged along the arch: leaves, and a marigold in each swag
+	var swag := PackedVector2Array()
+	for k in 81:
+		var u := float(k) / 80.0
+		var p := arch[mini(40, int(round(u * 40.0)))]
+		swag.append(Vector2(o.x + u * fw, p.y + s * (0.7 + 1.5 * absf(sin(PI * u * 4.0)))))
+	b.stroke(swag, s * 0.3, Pal.MG_VINE)
+	for k in range(2, 79, 3):
+		var side := 1.0 if k % 2 == 0 else -1.0
+		var d := (swag[k + 1] - swag[k - 1]).normalized()
+		Parts.leaf(b, swag[k], (d.rotated(side * 1.1)).normalized(), s * 1.0, s * 0.34, Pal.MG_VINE if k % 4 else Pal.MG_VINE_HI)
+	for k in 4:
+		var at := swag[10 + 20 * k] + Vector2(0.0, s * 0.3)
+		Parts.bloom(b, at, s * 1.0, State.ORANGE, 1.0)
+	# a soft light round the sun
+	b.disc(_pt(State.SUN_C), s * 7.0, Color(Pal.SUN_RAY, 0.12))
+	b.disc(_pt(State.SUN_C), s * 5.2, Color(Pal.SUN_RAY, 0.14))
 	return b.mesh()
 
 ## A range of hills along `base`, `amp` high, rolling at `freq`; the far
@@ -767,17 +965,22 @@ func _build_lit(t: float) -> ArrayMesh:
 		var pick := _pick_at[i]
 		var alpha := 1.0
 		var sc := 1.0
+		var lift := 0.0
+		var spin := 0.0
 		if pick >= 0.0:
 			var e := t - pick
 			if e >= PICK_TIME or (Motion.reduce and e >= 0.0):
 				continue
 			if e > 0.0:
-				alpha = 1.0 - e / PICK_TIME
-				sc = 1.0 + 0.35 * e / PICK_TIME
+				var u := e / PICK_TIME
+				alpha = 1.0 - u * u
+				sc = 1.0 + 0.35 * u
+				lift = PICK_RISE * s * u
+				spin = 1.4 * u
 		elif _state.st[i] != State.LIT:
 			continue
 		var open := 1.0 if Motion.reduce else Motion.back_out(clampf((t - hit) / BLOOM_TIME, 0.0, 1.0))
-		Parts.bloom(b, _pt(_state.pos[i]), r, _state.kind[i], open, sc, alpha)
+		Parts.bloom(b, _pt(_state.pos[i]) - Vector2(0.0, lift), r, _state.kind[i], open, sc, alpha, spin)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## The aim: dots down the seed's way to the first bud it will touch (the
@@ -820,7 +1023,10 @@ func _build_trail() -> ArrayMesh:
 		var n := tr_pts.size()
 		for k in n:
 			var u := float(k + 1) / float(n + 1)
-			b.disc(_pt(tr_pts[k]), s * State.BALL_R * (0.25 + 0.55 * u), Color(Pal.MG_SEED, 0.4 * u))
+			b.disc(_pt(tr_pts[k]), s * State.BALL_R * (0.2 + 0.6 * u), Color(Pal.SUN_RAY, 0.32 * u))
+			if k % 3 == 1:
+				var off := Vector2(_hash(k, n) - 0.5, _hash(n, k) - 0.5) * s * 1.6
+				b.disc(_pt(tr_pts[k]) + off, s * 0.2, Color(1.0, 1.0, 1.0, 0.7 * u))
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## The sun: rays turning slowly, the body and face looking down the aim,
@@ -858,68 +1064,250 @@ func _draw_sun(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		Parts.sun_body(b, R, maxf(0.05, float(int(eye * 6.0)) / 6.0), expr, look)
 		_body = b.mesh()
 		_body_for = key
-	_put(_rays, xf * Transform2D(spin, c), tint, shown)
-	_put(_spout, xf * Transform2D(State.aim_dir(_aim).angle(), c), tint, shown)
-	_put(_body, xf * Transform2D(0.0, c), tint, shown)
+	# a shot kicks the sun back up its aim and squashes it; at rest it bobs
+	var q := 0.0
+	var bob := Vector2.ZERO
+	if not Motion.reduce:
+		var e := t - _shot_at
+		if e < RECOIL_TIME:
+			q = sin(PI * e / RECOIL_TIME) * (1.0 - 0.5 * e / RECOIL_TIME)
+		bob = Vector2(0.0, sin(t * 1.7) * 0.22 * s)
+	var back := -State.aim_dir(_aim) * q * s
+	_put(_rays, xf * Transform2D(spin, Vector2.ONE * (1.0 + 0.1 * q), 0.0, c + bob), tint, shown)
+	_put(_spout, xf * Transform2D(State.aim_dir(_aim).angle(), c + bob + back * 1.2), tint, shown)
+	_put(_body, xf * Transform2D(0.0, Vector2(1.0 + 0.12 * q, 1.0 - 0.1 * q), 0.0, c + bob + back * 0.5), tint, shown)
 
-## The band over the field: the seeds left, the score, the multiplier, and
-## a row of marigold pips that fill as they bloom, gapped where the
-## multiplier steps.
-func _draw_hud(xf: Transform2D, tint: Color, shown: Array) -> void:
-	var s := _s()
+## The band over the field: the seeds left in a wooden trough, the score
+## rolling up, the multiplier on a tag, and a groove of marigold pips that
+## fill as the marigolds fly up to them, gapped where the multiplier steps.
+func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 	var mult: int = _state.mult()
 	var total: int = _state.orange_total
-	var got: int = total - _state.oranges_left
-	var key := "%d|%d|%d|%d|%d" % [_state.seeds, got, total, mult, int(size.x)]
-	var pip := clampf((size.x - 2.0 * INSET - 40.0) / float(maxi(total, 1) + 4), 12.0, 30.0)
-	var steps: Array = []
-	for k in range(1, State.STEPS.size()):
-		steps.append(int(ceil(float(State.STEPS[k]) * float(total) - 1e-6)))
-	var row_w := pip * float(total) + pip * 0.5 * float(steps.size())
-	var row_y := BAND - 30.0
-	var row_x := (size.x - row_w) * 0.5
+	var got := _pips_filled(t)
+	var key := "%d|%d|%d|%d|%d" % [_state.seeds, got, total, _seeds_start, int(size.x)]
 	if _hud == null or _hud_for != key:
 		var b := Face.Builder.new()
-		# the seeds, as a row of little beads
+		# the trough, the seeds lying in it and the dents of the ones shot
+		var slots := clampi(maxi(_seeds_start, _state.seeds), 1, 10)
+		var tw := 30.0 * float(slots) + 14.0
+		b.fan(Face.Builder.round_rect(Vector2(INSET + 5.0, 20.0), Vector2(tw, 40.0), 20.0), Pal.MG_ARBOR_DEEP.darkened(0.2))
+		b.fan(Face.Builder.round_rect(Vector2(INSET + 5.0, 17.0), Vector2(tw, 40.0), 20.0), Pal.MG_ARBOR_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(INSET + 10.0, 22.0), Vector2(tw - 10.0, 30.0), 15.0), Pal.MG_ARBOR_DEEP.darkened(0.3))
+		b.stroke(PackedVector2Array([Vector2(INSET + 22.0, 19.5), Vector2(INSET + tw - 12.0, 19.5)]), 2.0, Color(Pal.MG_ARBOR_HI, 0.6))
 		var shown_seeds := mini(_state.seeds, 10)
-		for k in shown_seeds:
-			Parts.bead(b, Vector2(INSET + 22.0 + float(k) * 30.0, 38.0), 11.0)
-		# the multiplier's pill
-		var pill := Rect2(Vector2(size.x - INSET - 118.0, 12.0), Vector2(108.0, 54.0))
-		b.fan(Face.Builder.round_rect(pill.position + Vector2(0.0, 4.0), pill.size, 27.0), Pal.MG_CARD_DEEP.darkened(0.2))
-		b.fan(Face.Builder.round_rect(pill.position, pill.size, 27.0), Pal.MG_ORANGE if mult > 1 else Pal.MG_CARD_DEEP)
-		# the pips
-		b.fan(Face.Builder.round_rect(Vector2(row_x - 12.0, row_y - pip * 0.5 - 6.0), Vector2(row_w + 24.0, pip + 12.0), pip * 0.5 + 6.0),
-			Color(Pal.MG_CARD_DEEP.darkened(0.25), 0.8))
-		var x := row_x
-		for k in total:
-			if steps.has(k):
-				x += pip * 0.5
-			var at := Vector2(x + pip * 0.5, row_y)
-			if k < got:
-				b.disc(at, pip * 0.42, Pal.MG_ORANGE)
-				b.disc(at, pip * 0.2, Pal.MG_ORANGE_HI)
+		for k in slots:
+			var at := Vector2(INSET + 22.0 + float(k) * 30.0, 38.0)
+			if k < shown_seeds:
+				Parts.kernel(b, at, 9.5, -PI * 0.5 + (0.2 if k % 2 == 0 else -0.2))
 			else:
-				b.disc(at, pip * 0.32, Color(Pal.MG_SHINE, 0.25))
-			x += pip
+				b.ellipse(at + Vector2(0.0, 3.0), 7.0, 4.0, Color(Pal.TEXT, 0.25))
+		# the pips' groove
+		var g := _pip_geom()
+		var pip: float = g.pip
+		var row_x: float = g.x
+		var row_w: float = g.w
+		var row_y: float = g.y
+		b.fan(Face.Builder.round_rect(Vector2(row_x - 12.0, row_y - pip * 0.5 - 4.0), Vector2(row_w + 24.0, pip + 12.0), pip * 0.5 + 6.0),
+			Pal.MG_ARBOR_DEEP.darkened(0.2))
+		b.fan(Face.Builder.round_rect(Vector2(row_x - 12.0, row_y - pip * 0.5 - 6.0), Vector2(row_w + 24.0, pip + 12.0), pip * 0.5 + 6.0),
+			Pal.MG_ARBOR_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(row_x - 8.0, row_y - pip * 0.5 - 2.0), Vector2(row_w + 16.0, pip + 4.0), pip * 0.5 + 2.0),
+			Pal.MG_ARBOR_DEEP.darkened(0.3))
+		for k in total:
+			var at := _pip_at(k)
+			if k < got:
+				Parts.bloom(b, at, pip * 0.3, State.ORANGE, 1.0)
+			else:
+				b.disc(at, pip * 0.27, Color(Pal.MG_ARBOR, 0.9))
+				b.disc(at + Vector2(0.0, pip * 0.04), pip * 0.2, Pal.MG_ARBOR_DEEP.darkened(0.15))
 		_hud = b.mesh()
 		_hud_for = key
 	_put(_hud, xf, tint, shown)
+	# the tag, popping when the multiplier steps
+	if _pill == null or _pill_for != mult:
+		var b := Face.Builder.new()
+		var sz := Vector2(108.0, 54.0)
+		var face := Pal.MG_ORANGE if mult > 1 else Pal.MG_ARBOR
+		b.fan(Face.Builder.round_rect(-sz * 0.5 + Vector2(0.0, 4.0), sz, 27.0), face.darkened(0.35))
+		b.fan(Face.Builder.round_rect(-sz * 0.5, sz, 27.0), face)
+		b.stroke(Face.Builder.arc_points(Vector2(-sz.x * 0.5 + 27.0, 0.0), 21.0, PI * 1.05, PI * 1.5), 3.0, Color(1.0, 1.0, 1.0, 0.3), false, false)
+		b.disc(Vector2(-sz.x * 0.5 + 15.0, 0.0), 5.0, face.darkened(0.45))
+		_pill = b.mesh()
+		_pill_for = mult
+	var pop := 1.0
+	if not Motion.reduce and t - _mult_at < TAG_TIME:
+		var u := (t - _mult_at) / TAG_TIME
+		pop = 1.0 + 0.4 * sin(PI * u) * (1.0 - 0.4 * u)
+	var tag := xf * Transform2D(0.0, Vector2.ONE * pop, 0.0, _tag_centre())
+	_put(_pill, tag, tint, shown)
 	var font: Font = CozyTheme.body(800)
 	var a := tint.a
 	if _state.seeds > 10:
-		draw_string(font, xf * Vector2(INSET + 322.0, 50.0), "+%d" % (_state.seeds - 10), HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_FONT,
+		draw_string(font, xf * Vector2(INSET + 336.0, 50.0), "+%d" % (_state.seeds - 10), HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_FONT,
 			Color(Pal.PAPER, a))
 	elif _state.seeds == 0:
-		draw_string(font, xf * Vector2(INSET + 8.0, 50.0), tr("MG_NO_SEEDS"), HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_FONT,
-			Color(Pal.PAPER, 0.7 * a))
-	var shown_score: int = _state.score + (_state.shot_points if _phase == "shot" else 0)
-	var sc := Locale.number(shown_score)
+		draw_string(font, xf * Vector2(INSET + 20.0, 50.0), tr("MG_NO_SEEDS"), HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_FONT,
+			Color(Pal.PAPER, 0.8 * a))
+	var sc := Locale.number(int(_score_shown))
 	var sw: float = font.get_string_size(sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT).x
-	draw_string(font, xf * Vector2((size.x - sw) * 0.5, 58.0), sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT, Color(Pal.PAPER, a))
+	var sat := xf * Vector2((size.x - sw) * 0.5, 58.0)
+	draw_string_outline(font, sat, sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT, 8, Color(Pal.MG_CARD_DEEP.darkened(0.3), 0.6 * a))
+	draw_string(font, sat, sc, HORIZONTAL_ALIGNMENT_LEFT, -1, SCORE_FONT, Color(Pal.PAPER, a))
 	var m := "×%d" % mult
 	var mw: float = font.get_string_size(m, HORIZONTAL_ALIGNMENT_LEFT, -1, MULT_FONT).x
-	draw_string(font, xf * Vector2(size.x - INSET - 64.0 - mw * 0.5, 54.0), m, HORIZONTAL_ALIGNMENT_LEFT, -1, MULT_FONT, Color(Pal.PAPER, a))
+	draw_set_transform_matrix(tag)
+	draw_string(font, Vector2(-mw * 0.5 + 6.0, 15.0), m, HORIZONTAL_ALIGNMENT_LEFT, -1, MULT_FONT, Color(Pal.PAPER, a))
+	draw_set_transform(Vector2.ZERO)
+
+## Where the multiplier's tag sits, its middle.
+func _tag_centre() -> Vector2:
+	return Vector2(size.x - INSET - 64.0, 39.0)
+
+## The pips' row: the pip's pitch, where it starts, how wide, its line.
+func _pip_geom() -> Dictionary:
+	var total: int = _state.orange_total
+	var pip := clampf((size.x - 2.0 * INSET - 40.0) / float(maxi(total, 1) + 4), 12.0, 30.0)
+	var gaps := State.STEPS.size() - 1
+	var w := pip * float(total) + pip * 0.5 * float(gaps)
+	return {"pip": pip, "x": (size.x - w) * 0.5, "w": w, "y": BAND - 30.0}
+
+## The middle of the `k`th pip, the gaps where the multiplier steps counted.
+func _pip_at(k: int) -> Vector2:
+	var g := _pip_geom()
+	var total: int = _state.orange_total
+	var pip: float = g.pip
+	var x: float = g.x + pip * float(k)
+	for j in range(1, State.STEPS.size()):
+		if int(ceil(float(State.STEPS[j]) * float(total) - 1e-6)) <= k:
+			x += pip * 0.5
+	return Vector2(x + pip * 0.5, g.y)
+
+## The pot's place, with its wobble after it turns at an end and its squash
+## when it catches a seed, both about its foot.
+func _pot_xf(t: float) -> Transform2D:
+	var at := _pt(Vector2(_state.pot_x, State.POT_Y))
+	if Motion.reduce:
+		return Transform2D(0.0, at)
+	var foot: float = _state.pot_w * _s() * 0.62
+	var e := t - _pot_turn_at
+	var ang := 0.0
+	if e < WOBBLE_TIME:
+		ang = -0.12 * _state.pot_dir * sin(e * 15.0) * exp(-e * 4.5)
+	var sc := Vector2.ONE
+	var c := t - _pot_glow_at
+	if c < CATCH_TIME:
+		var q := sin(PI * c / CATCH_TIME) * (1.0 - 0.4 * c / CATCH_TIME)
+		sc = Vector2(1.0 + 0.16 * q, 1.0 - 0.18 * q)
+	return Transform2D(0.0, at + Vector2(0.0, foot)) * Transform2D(ang, sc, 0.0, Vector2.ZERO) * Transform2D(0.0, Vector2(0.0, -foot))
+
+## Under the buds, every frame: fireflies, the stars twinkling, glints
+## drifting across the pond, the lanterns' flicker, and the ripples round
+## every bud that bloomed.
+func _build_live_back(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var s := _s()
+	var horizon := 58.0
+	for k in 5:
+		var j := k * 3 + 1
+		var at := Vector2(4.0 + _hash(j, 3) * 92.0, 3.0 + _hash(j, 7) * 30.0)
+		if at.distance_to(Vector2(81.0, 15.0)) < 9.0:
+			continue
+		var a := pow(maxf(0.0, sin(t * (1.1 + 0.3 * _hash(j, 11)) + float(j) * 1.9)), 6.0)
+		if a > 0.05:
+			_twinkle(b, _pt(at), s * 1.3 * a, Color(Pal.MG_SHINE, 0.9 * a), 0.0)
+	for k in 7:
+		var y := horizon + 5.0 + _hash(k, 61) * 62.0
+		var span := 110.0
+		var x := fmod(_hash(k, 63) * span + t * (0.8 + 0.8 * _hash(k, 65)), span) - 5.0
+		var w := 2.0 + 2.5 * _hash(k, 67)
+		var a := 0.4 * sin(PI * clampf((x + 5.0) / span, 0.0, 1.0))
+		var x0 := clampf(x, 1.0, State.W - 1.0)
+		var x1 := clampf(x + w, 1.0, State.W - 1.0)
+		if x1 - x0 > 0.3:
+			b.stroke(PackedVector2Array([_pt(Vector2(x0, y)), _pt(Vector2(x1, y))]), s * 0.32, Color(Pal.MG_SHINE, a))
+	for k in FIREFLIES:
+		var low := k % 2 == 0
+		var base := Vector2(6.0 + _hash(k, 51) * 88.0, (108.0 + _hash(k, 53) * 18.0) if low else (10.0 + _hash(k, 53) * 12.0))
+		var p := base + Vector2(sin(t * 0.37 + float(k) * 1.7) * 4.0, sin(t * 0.53 + float(k) * 2.3) * 2.2)
+		var glow := pow(maxf(0.0, sin(t * (0.8 + 0.5 * _hash(k, 57)) + float(k) * 2.1)), 3.0)
+		if glow < 0.03:
+			continue
+		b.disc(_pt(p), s * 1.4, Color(Pal.SUN_RAY, 0.2 * glow))
+		b.disc(_pt(p), s * 0.36, Color(Color("fff6c8"), 0.95 * glow))
+	for k in 2:
+		var at := _lantern_at(k) + Vector2(0.0, 1.5)
+		var f := 0.5 + 0.3 * sin(t * 6.3 + float(k) * 2.0) + 0.2 * sin(t * 10.7 + float(k))
+		b.disc(_pt(at), s * (2.3 + 0.35 * f), Color(Pal.SUN_RAY, 0.12 + 0.1 * f))
+	for r: Dictionary in _ripples:
+		var u := clampf((t - float(r.t)) / RIPPLE_TIME, 0.0, 1.0)
+		var rad := State.PEG_R * s * (1.1 + 2.4 * Motion.back_out(u) * 0.8 + 0.4 * u)
+		b.stroke(Face.Builder.arc_points(_pt(r.at), rad, 0.0, TAU), s * 0.3 * (1.0 - 0.5 * u), Color(Color(r.col), 0.6 * (1.0 - u)),
+			true, false)
+	return b.mesh() if not b.verts.is_empty() else null
+
+## Over everything, every frame: a glint on a marigold now and then, the
+## marigolds flying up to their pips, and the full bloom's falling petals.
+func _build_live(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var s := _s()
+	if _glint_i >= 0 and _glint_i < _state.pos.size() and _state.st[_glint_i] == State.UP:
+		var e := t - _glint_at
+		if e < GLINT_TIME:
+			var a := sin(PI * e / GLINT_TIME)
+			var at := _pt(_state.pos[_glint_i] + Vector2(-0.7, -0.8) * State.PEG_R)
+			_twinkle(b, at, s * 1.5 * a, Color(1.0, 1.0, 0.95, 0.95 * a), e * 2.0)
+	var in_air := 0
+	var filled := _pips_filled(t)
+	var g := _pip_geom()
+	for f: Dictionary in _flies:
+		var e := t - float(f.t)
+		if e >= FLY_TIME:
+			continue
+		var k := filled + in_air
+		in_air += 1
+		if e < 0.0:
+			continue
+		var u := e / FLY_TIME
+		var ease := u * u * (3.0 - 2.0 * u)
+		var from: Vector2 = f.from
+		var to := _pip_at(k)
+		var side := -1.0 if from.x > size.x * 0.5 else 1.0
+		var ctrl := from.lerp(to, 0.35) + Vector2(side * 160.0, -40.0)
+		var p := from.lerp(ctrl, ease).lerp(ctrl.lerp(to, ease), ease)
+		var r := lerpf(State.PEG_R * s * 1.1, float(g.pip) * 0.3, ease)
+		for j in 3:
+			var ub := maxf(0.0, ease - 0.06 * float(j + 1))
+			var pb := from.lerp(ctrl, ub).lerp(ctrl.lerp(to, ub), ub)
+			b.disc(pb, r * (0.4 - 0.1 * float(j)), Color(Pal.SUN_RAY, 0.5 - 0.12 * float(j)))
+		Parts.bloom(b, p, r, State.ORANGE, 1.0, 1.0 + 0.25 * sin(PI * u), 1.0, u * TAU)
+	if _state.fever and t - _fever_at < PETAL_TIME:
+		var cols := [Pal.MG_ORANGE, Pal.MG_ORANGE_HI, Pal.SUN_RAY, Color("f4a3a0"), Pal.MG_PURPLE_HI]
+		for k in 26:
+			var e := t - _fever_at - _hash(k, 71) * 1.8
+			var fall := 2.4 + _hash(k, 75)
+			if e < 0.0 or e > fall:
+				continue
+			var u := e / fall
+			var at := Vector2(_hash(k, 73) * State.W + sin(e * 2.2 + float(k)) * 4.0, -3.0 + u * (State.H * 0.9))
+			var col: Color = cols[k % cols.size()]
+			col.a = minf(1.0, (1.0 - u) * 4.0)
+			Parts.leaf(b, _pt(at), Vector2.from_angle(e * 3.0 + float(k)), s * 1.5, s * 0.5, col)
+	return b.mesh() if not b.verts.is_empty() else null
+
+## A four-pointed glint at `at`, `r` to a point.
+static func _twinkle(b: Face.Builder, at: Vector2, r: float, col: Color, turn: float) -> void:
+	if r <= 0.3:
+		return
+	for k in 2:
+		var d := Vector2.from_angle(turn + PI * 0.5 * float(k))
+		var n := Vector2(-d.y, d.x)
+		b.fan(PackedVector2Array([at - d * r, at - n * r * 0.18, at + d * r, at + n * r * 0.18]), col)
+	b.disc(at, r * 0.2, col)
+
+## Where the `k`th lantern hangs from the arch, its cap.
+func _lantern_at(k: int) -> Vector2:
+	var u := 0.25 if k == 0 else 0.75
+	return Vector2(u * State.W, 2.0 - 2.4 * sin(PI * u) - 1.2 + 1.8)
 
 ## Each of the full bloom's pots carries what it is worth on its belly.
 func _draw_pot_worths(xf: Transform2D, seen: float) -> void:
@@ -1078,6 +1466,7 @@ func _shoot() -> void:
 	_acc = 0.0
 	_super = false
 	_trails = []
+	_shot_at = _now()
 	fx.cue("shoot")
 	fx.puff(_pt(State.SUN_C + State.aim_dir(_aim) * State.MUZZLE), Pal.MG_GREEN_HI, 3)
 	note_move()

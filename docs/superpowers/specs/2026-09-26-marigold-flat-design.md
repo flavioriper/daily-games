@@ -139,3 +139,40 @@ garden growing back through the real board.
 Owed: a listen to the sixteen sounds (one take each; `hit` is pitched up the
 scale, so it has to be a single clean note), the hint's
 wait on a phone, and the user's call on the name.
+
+---
+
+## Amendment: the polish of 2026-09-26
+
+Bounded, built directly. **The look**: bluebells and marigolds sit in a
+collar of two leaves, a bluebell carries bell seams and a marigold a warm
+halo (it is the goal); every bud's reflection lies under it; the blooms'
+petals have lit tips and a marigold stamens. The seed is a striped kernel
+(`Parts.kernel`) pointing along its flight, turned by transform; its wake is
+pollen. The pot has a painted band and a marigold on its belly. The pond
+holds the near range and the castle upside down, a moon's road and mist
+along the far shore; a water lily opens on one pad; clover and daisies line
+the bank. The arch is a thicker grained beam with a swagged garland (a
+marigold in each swag) and two lanterns; the sun has a soft light round it.
+The band's seeds lie in a wooden trough with dents for the ones shot, the
+pips sit in a wooden groove and fill with tiny marigolds, the multiplier is
+a wooden tag that turns orange past x1.
+
+**The motion**, all off under reduce motion: every bloom rings the water
+(`RIPPLE_TIME`); a bloomed marigold flies up to its pip (`FLY_TIME`), which
+fills only when it lands, with a sparkle; a picked bloom rises and turns as
+it fades (`PICK_RISE`); the sun bobs, and a shot kicks it back up its aim
+and squashes it (`RECOIL_TIME`); the pot wobbles when it turns at an end
+(`WOBBLE_TIME`) and squashes about its foot on a catch (`CATCH_TIME`); the
+tag pops with a ring when the multiplier steps (`TAG_TIME`); the score rolls
+up; fireflies, twinkling stars, glints drifting across the pond and the
+lanterns' flicker breathe under the buds; a marigold glints now and then
+(`GLINT_EVERY`); the full bloom rains petals (`PETAL_TIME`). Two small
+live meshes carry all of it, one under the buds and one over everything.
+
+**Figures** (`tests/_shot_anim.gd -- marigold`, 810x1440): **78** draw
+calls bare (74 before) at 4.40 / 4.33 ms idle over two readings (3.44
+before), **83** with a seed out (76-78 before) at 7.93 / 7.97 ms (5.81 read
+the same session before the polish), **91** in the full bloom (87 before),
+84 on ANGLE rendering the same, and the menu's last page still 118. The
+suite: 122,593 passed, 0 failed; the probe solves every band.
