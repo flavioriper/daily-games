@@ -64,6 +64,13 @@ const FLIGHT_T := 0.6
 const REVEAL_HOLD := 0.75
 const REVEAL_FLY := 0.42
 const CONFETTI := [Color("f2b632"), Color("ec7f8c"), Color("6fb4e2"), Color("5fae5a"), Color("c98ac6")]
+## A long chain's word, by the chain's length, longest first.
+const WORDS := [[10, "LT_WORD_5"], [8, "LT_WORD_4"], [6, "LT_WORD_3"], [5, "LT_WORD_2"], [4, "LT_WORD_1"]]
+## The lengths a chain being drawn rings out at.
+const TIERS := [4, 5, 6, 8, 10]
+const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+## The most bits alive in one layer at once.
+const MAX_BITS := 420
 
 var sim: RefCounted
 var top_bar: Control
@@ -140,6 +147,28 @@ var _reveal := {}
 var _stuck_pulse := 0.0
 var _sub_pill: Control
 var _stuck_said := true
+## Bits flung about, in the field's pixels and in the air's: chips, sparks,
+## stars, coins, clovers, confetti and rings.
+## {pos, vel, rot, spin, t, life, kind, col, size, float?}
+var _bits: Array = []
+var _air_bits: Array = []
+## Words lettered a hopping letter at a time: {text, at, t, life, size,
+## rainbow, col, rays, tilt, id}.
+var _stickers: Array = []
+## The tray's flash after a big merge, fading, and its colour.
+var _flash := 0.0
+var _flash_col := Color.WHITE
+## Chains of four or more in a row, and the warm glow round the tray it
+## lights (0..1).
+var _streak := 0
+var _heat := 0.0
+## Seconds of coins and clovers still raining down over the screen.
+var _rain := 0.0
+## The longest tier the chain being drawn has rung out at.
+var _tier := 0
+var _air_live: ArrayMesh
+var _end_score: Label
+var _end_at := 0.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -473,6 +502,15 @@ func _new_game() -> void:
 	_newest = Vector2i(-1, -1)
 	_stuck_box.visible = false
 	_stuck_said = true
+	_bits.clear()
+	_air_bits.clear()
+	_stickers.clear()
+	_flash = 0.0
+	_streak = 0
+	_heat = 0.0
+	_rain = 0.0
+	_tier = 0
+	_end_score = null
 	for tool: int in _tool_buttons:
 		_style_chip(_tool_buttons[tool], false)
 	_best = Record.best(GAME)
@@ -515,8 +553,9 @@ func _process(delta: float) -> void:
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	field.queue_redraw()
-	if not _reveal.is_empty():
-		_air.queue_redraw()
+	_air.queue_redraw()
+	if _end_score != null and is_instance_valid(_end_score):
+		_count_end()
 
 func _new_vis(pos: Vector2, v: int) -> Dictionary:
 	return {"pos": pos, "v": v, "vel": 0.0, "hold": 0.0, "squash": -1.0, "amt": 0.0, "bump": -1.0, "pop": -1.0, "pending": 0, "pend_t": 0.0,
@@ -610,6 +649,7 @@ func _animate(delta: float) -> void:
 			_hint = sim.hint()
 	_twinkle(delta)
 	_advance_reveal(delta)
+	_animate_rewards(delta)
 	if sim.phase == Sim.Phase.STUCK and not _stuck_said and _reveal.is_empty() and not busy() \
 			and (_banner.get_meta("box") as Control).modulate.a < 0.05:
 		_stuck_said = true
@@ -684,13 +724,127 @@ func _advance_reveal(delta: float) -> void:
 	if _reveal.is_empty():
 		return
 	_reveal.t += delta
+	# the moment it arrives, big, in the middle: stars and rings burst out of
+	# it; a thirteen flashes the tray gold and sets coins raining
+	if _reveal.t >= 0.3 and not _reveal.get("burst", false):
+		_reveal.burst = true
+		var v: int = _reveal.v
+		var mid := _in_air(field, Vector2(field.size.x * 0.5, field.size.y * 0.4))
+		var gold := v >= Sim.GOAL
+		_spray(_air_bits, mid, Art.GOLD, 22 if gold else 12, 900.0 if gold else 700.0, "star", 1.4)
+		_spray(_air_bits, mid, Color("fffaf0"), 14, 700.0, "spark", 1.3)
+		_spray(_air_bits, mid, Art.paint(v), 16, 800.0, "chip", 1.4)
+		_ring(_air_bits, mid, _u * 2.4, Color(Art.paint(v).lightened(0.4), 0.9))
+		_ring(_air_bits, mid, _u * 3.4, Color(Art.GOLD, 0.7), 0.12)
+		if gold:
+			_ring(_air_bits, mid, _u * 4.4, Color("fffaf0", 0.8), 0.24)
+			_spray(_air_bits, mid, Art.GOLD, 16, 900.0, "coin", 1.3)
+			_spray(_air_bits, mid, Art.CLOVER, 10, 800.0, "clover", 1.2)
+			_flash_now(Art.GOLD, 0.8)
+			_rain = maxf(_rain, 3.2 if v == Sim.GOAL else 1.8)
+			_sticker(tr("LT_LUCKY") if v == Sim.GOAL else tr("LT_BEYOND"), _in_air(field, Vector2(field.size.x * 0.5, field.size.y * 0.12)), 92, 2.6, true, Color.WHITE, true, "word")
+		else:
+			_flash_now(Art.paint(v).lightened(0.5), 0.35)
+			_sticker(tr("LT_NEW"), _in_air(field, Vector2(field.size.x * 0.5, field.size.y * 0.13)), 70, 1.5, true, Color.WHITE, false, "word")
 	if _reveal.t >= float(_reveal.hold) + REVEAL_FLY:
+		var landed: int = _reveal.v
 		_reveal = {}
 		_big_t = 0.0
 		_kick(_big_view, 0.3, 0.35)
-		_air_fx.sparkle(_in_air(_big_view, _big_view.size * 0.5), Color("fffaf0"))
+		var plate := _in_air(_big_view, _big_view.size * 0.5)
+		_air_fx.sparkle(plate, Color("fffaf0"))
+		_spray(_air_bits, plate, Art.GOLD, 10, 520.0, "star", 0.9)
+		_spray(_air_bits, plate, Art.paint(landed), 8, 420.0, "chip", 0.8)
+		_ring(_air_bits, plate, 110.0, Color(Art.GOLD, 0.9))
 		_fx.cue("land", 1.3, -2.0)
 		_air.queue_redraw()
+
+## The rewards' own clocks: the bits in both layers, the stickers, the
+## flash, the streak's glow and the rain.
+func _animate_rewards(delta: float) -> void:
+	_step_bits(_bits, delta)
+	_step_bits(_air_bits, delta)
+	for st: Dictionary in _stickers:
+		st.t += delta
+	_stickers = _stickers.filter(func(st: Dictionary) -> bool: return st.t < st.life)
+	_flash = maxf(0.0, _flash - delta * 2.4)
+	var want := clampf((_streak - 1) / 4.0, 0.0, 1.0)
+	_heat = move_toward(_heat, want, delta * (1.5 if want > _heat else 0.5))
+	if _rain > 0.0:
+		_rain -= delta
+		if not Motion.reduce and randf() < delta * 30.0:
+			var w := _air.size.x
+			var r := randf()
+			var kind := "coin" if r < 0.45 else ("clover" if r < 0.7 else "confetti")
+			_air_bits.append({"pos": Vector2(randf_range(0.0, w), -40.0), "vel": Vector2(randf_range(-60.0, 60.0), randf_range(160.0, 300.0)),
+				"rot": randf() * TAU, "spin": randf_range(-4.0, 4.0), "t": 0.0, "life": 3.6, "kind": kind,
+				"col": CONFETTI[randi() % CONFETTI.size()], "size": randf_range(1.0, 1.5), "float": true})
+
+## Bits move: thrown, pulled down, slowed by the air; rain drifts down
+## swaying.
+func _step_bits(bits: Array, delta: float) -> void:
+	if bits.is_empty():
+		return
+	var drag := exp(-delta * 2.2)
+	for b: Dictionary in bits:
+		b.t += delta
+		if b.t < 0.0 or String(b.kind) == "ring":
+			continue
+		var v: Vector2 = b.vel
+		if b.get("float", false):
+			v.y = minf(v.y + 120.0 * delta, 300.0)
+			b.pos += Vector2(v.x + sin(b.t * 3.0 + b.rot) * 70.0, v.y) * delta
+		else:
+			v *= drag
+			v.y += (800.0 if String(b.kind) == "confetti" or String(b.kind) == "clover" else 1700.0) * delta
+			b.pos += v * delta
+		b.vel = v
+		b.rot += float(b.spin) * delta
+	var keep := bits.filter(func(b: Dictionary) -> bool: return b.t < b.life)
+	bits.clear()
+	bits.append_array(keep)
+
+## Throws `n` bits of `kind` out of `at`, into `bits` (the field's or the
+## air's), at up to `speed` pixels a second.
+func _spray(bits: Array, at: Vector2, col: Color, n: int, speed: float, kind := "spark", size := 1.0, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	n = mini(n, MAX_BITS - bits.size())
+	for i in n:
+		var v := Vector2.from_angle(randf() * TAU) * speed * randf_range(0.35, 1.0) + Vector2(0, -speed * 0.4)
+		bits.append({"pos": at, "vel": v, "rot": randf() * TAU, "spin": randf_range(-10.0, 10.0), "t": -delay,
+			"life": randf_range(0.55, 0.95) + (0.5 if kind == "confetti" or kind == "clover" or kind == "coin" else 0.0), "kind": kind,
+			"col": col, "size": size * randf_range(0.7, 1.25)})
+
+## A ring swelling out of `at` to `radius` and fading.
+func _ring(bits: Array, at: Vector2, radius: float, col: Color, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	bits.append({"pos": at, "vel": Vector2.ZERO, "rot": 0.0, "spin": 0.0, "t": -delay, "life": 0.45, "kind": "ring",
+		"col": col, "size": radius})
+
+## The tray flashes `col`, `amount` at most.
+func _flash_now(col: Color, amount: float) -> void:
+	if Motion.reduce:
+		return
+	_flash = maxf(_flash, amount)
+	_flash_col = col
+
+## A word lettered at `at` in the air's pixels, each letter hopping in on
+## its own, fitted to the tray's width. `rainbow` letters it in the sticker
+## colours, else in `col`; `rays` sets a sunburst turning behind it. A
+## sticker with an `id` replaces the one before it with the same id.
+func _sticker(text: String, at: Vector2, size: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "") -> void:
+	if id != "":
+		_stickers = _stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != id)
+	var room := field.size.x - 40.0
+	var w := Art.font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	if w > room:
+		size = int(size * room / w)
+	var edge := _in_air(field, Vector2.ZERO).x
+	at.x = clampf(at.x, edge + minf(w, room) * 0.5 + 20.0, edge + field.size.x - minf(w, room) * 0.5 - 20.0)
+	_stickers.append({"text": text, "at": at, "t": 0.0, "life": life, "size": size, "rainbow": rainbow, "col": col,
+		"rays": rays and not Motion.reduce, "tilt": 0.0 if Motion.reduce else randf_range(-0.08, 0.08), "id": id})
 
 func _fly(delta: float) -> void:
 	if _flights.is_empty():
@@ -702,6 +856,12 @@ func _fly(delta: float) -> void:
 			_owed = maxi(0, _owed - int(f.value))
 			_kick(_clover_icon, 0.22, 0.22)
 			_kick(_clover_l, 0.14, 0.22)
+			var bank := _in_air(_clover_icon, _clover_icon.size * 0.5)
+			_spray(_air_bits, bank, Art.CLOVER, 3, 300.0, "clover", 0.6)
+			_spray(_air_bits, bank, Color("fffaf0"), 3, 260.0, "spark", 0.7)
+			if f.get("first", false):
+				_ring(_air_bits, bank, 80.0, Color(Art.CLOVER.lightened(0.3), 0.9))
+				_sticker("+%d" % int(f.total), bank + Vector2(0, -70.0), 46, 0.8, false, Art.CLOVER, false, "clover")
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return not f.get("home", false))
 	_air.queue_redraw()
 
@@ -839,7 +999,15 @@ func _play_events() -> void:
 				_chain_t = 0.0
 				_newest = ev.cell
 				_fx.cue("select", minf(0.9 + 0.07 * (int(ev.n) - 1), 1.9))
+				if int(ev.n) == 1:
+					_tier = 0
+				_ring_tier(ev.cell, int(ev.n))
 			"unselect":
+				# a tier given back rings again when the chain regrows past it
+				_tier = 0
+				for t: int in TIERS:
+					if sim.path.size() >= t:
+						_tier = t
 				_chain_t = 0.0
 				_newest = sim.path[-1] if not sim.path.is_empty() else Vector2i(-1, -1)
 				var gone: Dictionary = sim.at(ev.cell)
@@ -910,7 +1078,7 @@ func _on_merge(ev: Dictionary) -> void:
 		vis.pend_t = 0.0001 if Motion.reduce else JOIN_T + JOIN_STEP
 	var at := px(into.x, into.y)
 	var big := int(ev.v) >= 10
-	_pop(Vector2(into) + Vector2(0, -0.3), "+%s" % Record.grouped(int(ev.points)), Color("fffaf0") if n < 6 else Pal.SUN, big)
+	_pop(Vector2(into) + Vector2(0, -0.3), "+%s" % Record.grouped(int(ev.points)), Art.paint(int(ev.v)).lightened(0.4) if n < 6 else Pal.SUN, big or n >= 5)
 	var delay := 0.0 if Motion.reduce else JOIN_T
 	get_tree().create_timer(delay).timeout.connect(func() -> void:
 		if not is_instance_valid(_fx):
@@ -919,6 +1087,7 @@ func _on_merge(ev: Dictionary) -> void:
 		_fx.ring(at, 0.75 * _u, Art.paint(int(ev.v)).lightened(0.25))
 		_fx.cue("merge", clampf(0.85 + 0.05 * int(ev.v), 0.85, 1.6))
 		_knock(into, 0.05 + 0.012 * n)
+		_merge_burst(ev, at)
 		if bool(ev.get("new_max", false)):
 			_fx.sparkle(at, Color("fffaf0"))
 			if int(ev.v) != Sim.GOAL:
@@ -935,6 +1104,7 @@ func _on_merge(ev: Dictionary) -> void:
 		if big:
 			_fx.ring(at, 1.2 * _u, Art.GOLD))
 	_launch_clovers(ev)
+	_streak = _streak + 1 if n >= 4 else 0
 	if n >= 6:
 		_kick(_score_k, 0.3, 0.35)
 		_shake = maxf(_shake, 0.1 + 0.02 * n)
@@ -951,6 +1121,53 @@ func _knock(at: Vector2i, amt: float) -> void:
 			continue
 		vis.nudge = d / far * amt * (1.6 - far * 0.5)
 		vis.nudge_t = 0.0
+
+## A chain being drawn that reaches four, five, six, eight or ten rings
+## out from its newest pebble and throws a few sparks, brighter each tier.
+func _ring_tier(cell: Vector2i, n: int) -> void:
+	if not TIERS.has(n) or n <= _tier:
+		return
+	_tier = n
+	var at := px(cell.x, cell.y) - Vector2(0, _u * LIFT)
+	var i := TIERS.find(n)
+	var col: Color = STICKER_COLS[i % STICKER_COLS.size()]
+	_ring(_bits, at, _u * (0.8 + 0.15 * i), Color(col, 0.9))
+	_spray(_bits, at, Color("fffaf0"), 4 + 2 * i, 380.0 + 60.0 * i, "spark", _u / 110.0)
+	if n >= 6:
+		_spray(_bits, at, Art.GOLD, 2 + i, 420.0, "star", _u / 150.0)
+
+## What a merge throws, as the chain lands in its last pebble: chips of the
+## old number's paint, sparks, stars for a long one; a word for four or
+## more, lettered bigger the longer the chain, and the streak under it; a
+## flash for six or more.
+func _merge_burst(ev: Dictionary, at: Vector2) -> void:
+	var n: int = ev.n
+	var v: int = ev.v
+	var k := _u / 110.0
+	_spray(_bits, at, Art.paint(v - 1), mini(4 + n * 2, 26), 360.0 + 45.0 * n, "chip", k)
+	_spray(_bits, at, Color("fffaf0"), 3 + n, 320.0 + 30.0 * n, "spark", k)
+	if n >= 5:
+		_spray(_bits, at, Art.GOLD, n, 520.0 + 30.0 * n, "star", k * 0.8)
+		_ring(_bits, at, _u * (1.2 + 0.12 * n), Color(Art.paint(v).lightened(0.3), 0.8), 0.06)
+	if n >= 6:
+		_flash_now(Color("fffaf0"), minf(0.65, 0.3 + 0.05 * (n - 6)))
+		_spray(_air_bits, _in_air(_score_l, _score_l.size * 0.5), Pal.SUN, 8, 380.0, "star", 0.9, 0.25)
+	# the word, over the merge (or up top, out of a reveal's way)
+	var word := ""
+	var tier := 0
+	for i in WORDS.size():
+		if n >= int(WORDS[i][0]):
+			word = tr(WORDS[i][1])
+			tier = WORDS.size() - 1 - i
+			break
+	var reveal: bool = bool(ev.get("new_max", false)) and v >= 7 and not Motion.reduce
+	var spot := Vector2(field.size.x * 0.5, field.size.y * 0.12) if reveal else px(ev.cell.x, ev.cell.y) - Vector2(0, _u * 0.95)
+	spot.y = clampf(spot.y, 70.0, field.size.y - 90.0)
+	if word != "" and not reveal:
+		_sticker(word, _in_air(field, spot), 64 + 10 * tier, 1.0 + 0.15 * tier, true, Color.WHITE, tier >= 2, "word")
+	if _streak >= 2:
+		_sticker(tr("LT_STREAK") % _streak, _in_air(field, spot + Vector2(0, 70.0 + 8.0 * tier)), 44, 1.2, false, Color("ff8a3d"), false, "streak")
+		_spray(_bits, at, Color("ffb03b"), mini(2 * _streak, 12), 440.0, "spark", k)
 
 func _on_tool_event(ev: Dictionary) -> void:
 	_kick(_clover_l, 0.25, 0.3)
@@ -970,6 +1187,7 @@ func _on_tool_event(ev: Dictionary) -> void:
 			var cell: Vector2i = ev.cell
 			_fling(int(ev.v), px(cell.x, cell.y))
 			_fx.puff(px(cell.x, cell.y), Art.SAND_DEEP, 8)
+			_spray(_bits, px(cell.x, cell.y), Art.paint(int(ev.v)), 10, 500.0, "chip", _u / 110.0)
 			_vis.erase(ev.id)
 		"shuffle":
 			_fx.cue("shuffle")
@@ -984,6 +1202,7 @@ func _on_tool_event(ev: Dictionary) -> void:
 			var cell: Vector2i = ev.cell
 			_fx.sparkle(px(cell.x, cell.y), Art.GOLD)
 			_fx.ring(px(cell.x, cell.y), 0.8 * _u, Art.GOLD)
+			_spray(_bits, px(cell.x, cell.y), Art.GOLD, 8, 460.0, "star", _u / 150.0)
 
 ## The clovers a merge earned fly up out of it and into the bank, a few at
 ## a time; the bank counts each as it lands.
@@ -998,7 +1217,8 @@ func _launch_clovers(ev: Dictionary) -> void:
 	for k in n:
 		var ctrl := from.lerp(to, 0.35) + Vector2(randf_range(-160.0, 160.0), -240.0)
 		var value := got / n + (1 if k < got % n else 0)
-		_flights.append({"from": from, "ctrl": ctrl, "to": to, "t": -JOIN_T - 0.07 * k, "value": value, "spin": randf_range(-6.0, 6.0)})
+		_flights.append({"from": from, "ctrl": ctrl, "to": to, "t": -JOIN_T - 0.07 * k, "value": value, "spin": randf_range(-6.0, 6.0),
+			"first": k == 0, "total": got})
 		_owed += value
 
 ## A bump that starts from rest, so a run of them never grows a label.
@@ -1247,6 +1467,8 @@ func _draw_field() -> void:
 	if not over.verts.is_empty():
 		_live_over = over.mesh()
 		field.draw_mesh(_live_over, null, Transform2D(0.0, _shake_off))
+	if _flash > 0.0:
+		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.5))
 	if stuck:
 		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(0.25, 0.16, 0.08, 0.28))
 	# what the chain will make, over its last pebble
@@ -1263,6 +1485,22 @@ func _draw_field() -> void:
 		field.draw_set_transform(bc, tilt, Vector2(grow, grow))
 		field.draw_mesh(Art.pebble(nv, bs), null, Transform2D.IDENTITY)
 		Art.number(field, font, Vector2.ZERO, nv, bs)
+		# four or more: how long the chain is, in the colour of its tier
+		if sim.path.size() >= 4:
+			var n: int = sim.path.size()
+			var label := "x%d" % n
+			var fs := int(bs * 0.5)
+			var tf := get_theme_font("font", "SheetTitle")
+			var w := tf.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var ti := 0
+			for t: int in TIERS:
+				if n >= t:
+					ti = TIERS.find(t)
+			var tc: Color = STICKER_COLS[ti % STICKER_COLS.size()]
+			var o := Vector2(-w * 0.5, bs * 0.5 + fs * 0.95)
+			field.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color("fffaf0"))
+			field.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, tc.darkened(0.5))
+			field.draw_string(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
 		field.draw_set_transform(Vector2.ZERO)
 	# pebbles plucked out or tumbling at the end
 	for d: Dictionary in _debris:
@@ -1385,6 +1623,9 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 		var k: float = g.t / 0.7
 		var at := px(vis.pos.x, vis.pos.y) + Vector2(-s * 0.2, -s * 0.24) + _nudge(vis) * _u
 		Art.glint(b, at, s * 0.17 * sin(k * PI), k * 1.2)
+	if _heat > 0.01:
+		_draw_heat(b)
+	_draw_bits(b, _bits)
 
 ## How far a merge has knocked a pebble off its seat, in cells.
 func _nudge(vis: Dictionary) -> Vector2:
@@ -1416,6 +1657,34 @@ func _scale(vis: Dictionary) -> Vector2:
 
 ## The clovers in the air, over everything.
 func _draw_air() -> void:
+	var b := Face.Builder.new()
+	var font := Art.font()
+	for st: Dictionary in _stickers:
+		if not st.rays:
+			continue
+		var grow := Motion.back_out(clampf(st.t / 0.35, 0.0, 1.0))
+		var a := 1.0 - clampf((st.t - (st.life - 0.35)) / 0.35, 0.0, 1.0)
+		var w := font.get_string_size(st.text, HORIZONTAL_ALIGNMENT_LEFT, -1, st.size).x
+		var r := maxf(w * 0.62, float(st.size) * 1.5) * grow
+		b.disc(st.at, r * 0.6, Color(Color("fff4c2"), 0.35 * a))
+		Art.sunrays(b, st.at, r * 0.2, r, 16, _clock * 0.8, Color(Color("ffe39a"), 0.34 * a))
+		Art.sunrays(b, st.at, r * 0.2, r * 0.8, 16, -_clock * 0.5 + 0.1, Color(Color("fffaf0"), 0.24 * a))
+	# the clovers' trails: a fading green comet behind each
+	for f: Dictionary in _flights:
+		if f.t < 0.0:
+			continue
+		for j in range(6, 0, -1):
+			var back: float = f.t - j * 0.03
+			if back < 0.0:
+				continue
+			var kk := clampf(back / FLIGHT_T, 0.0, 1.0)
+			var ee := kk * kk * (3.0 - 2.0 * kk)
+			var tp: Vector2 = (f.from as Vector2).lerp(f.ctrl, ee).lerp((f.ctrl as Vector2).lerp(f.to, ee), ee)
+			b.disc(tp, (7.0 - j) * 2.6, Color(Art.CLOVER.lightened(0.35), 0.1 * (7 - j)))
+	_draw_bits(b, _air_bits)
+	if not b.verts.is_empty():
+		_air_live = b.mesh()
+		_air.draw_mesh(_air_live, null)
 	for f: Dictionary in _flights:
 		if f.t < 0.0:
 			continue
@@ -1425,6 +1694,84 @@ func _draw_air() -> void:
 		var sc := Motion.back_out(minf(1.0, f.t / 0.18)) * lerpf(1.0, 0.7, e)
 		_air.draw_mesh(Art.clover(52.0), null, Transform2D(float(f.spin) * f.t, Vector2(sc, sc), 0.0, p))
 	_draw_reveal()
+	_draw_stickers(font)
+
+## The warm glow a streak of long chains lights round the tray's edge,
+## beating.
+func _draw_heat(b: Face.Builder) -> void:
+	var s := field.size
+	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
+	var tint := Color("ffb03b").lerp(Color("ff6f61"), _heat)
+	var edge := Color(tint, (0.25 + 0.2 * beat) * _heat)
+	var none := Color(tint, 0.0)
+	var w := (70.0 + 40.0 * beat) * (0.6 + 0.4 * _heat)
+	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), Vector2(s.x - w, w), Vector2(w, w)], [edge, edge, none, none])
+	_quad(b, [Vector2(0, s.y), Vector2(w, s.y - w), Vector2(s.x - w, s.y - w), s], [edge, none, none, edge])
+	_quad(b, [Vector2.ZERO, Vector2(w, w), Vector2(w, s.y - w), Vector2(0, s.y)], [edge, none, none, edge])
+	_quad(b, [Vector2(s.x, 0), Vector2(s.x, s.y), Vector2(s.x - w, s.y - w), Vector2(s.x - w, w)], [edge, edge, none, none])
+
+## The bits flung about, each fading out over the end of its life.
+func _draw_bits(b: Face.Builder, bits: Array) -> void:
+	for bit: Dictionary in bits:
+		if bit.t < 0.0:
+			continue
+		var life: float = bit.life
+		var a := clampf((life - bit.t) / (life * 0.35), 0.0, 1.0)
+		var col: Color = bit.col
+		col.a *= a
+		var at: Vector2 = bit.pos
+		var sz: float = bit.size
+		var rot: float = bit.rot
+		match String(bit.kind):
+			"chip":
+				Art.chip(b, at, 11.0 * sz, rot, col)
+			"confetti":
+				Art.petal(b, at, 11.0 * sz, 6.0 * sz * absf(cos(bit.t * 5.0 + rot)) + 1.0, rot, col)
+			"star":
+				Art.star(b, at, 14.0 * sz * (0.6 + 0.4 * a), col, rot)
+			"spark":
+				Art.glint(b, at, 22.0 * sz * a, rot, Color(col, col.a))
+			"coin":
+				Art.coin(b, at, 13.0 * sz, cos(bit.t * 7.0 + rot), a)
+			"clover":
+				Art._clover(b, at, 11.0 * sz, rot)
+			"ring":
+				var k := clampf(bit.t / life, 0.0, 1.0)
+				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
+				b.stroke(Face.Builder.ring(at, r, r), maxf(2.0, 14.0 * (1.0 - k)), Color(bit.col, (bit.col as Color).a * (1.0 - k)), true)
+
+## The stickers' letters: each hops in on its own, rocks for a moment and
+## the word swells away at the end; a white rim and a dark one under the
+## colour, so it reads over anything.
+func _draw_stickers(font: Font) -> void:
+	for st: Dictionary in _stickers:
+		var text: String = st.text
+		var size: int = st.size
+		var total := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var x := -total * 0.5
+		var out_a := 1.0 - clampf((st.t - (st.life - 0.3)) / 0.3, 0.0, 1.0)
+		var swell := 1.0 + 0.2 * (1.0 - out_a)
+		var tilt: float = st.tilt
+		for i in text.length():
+			var ch := text[i]
+			var adv := font.get_char_size(ch.unicode_at(0), size).x
+			var k := clampf((st.t - i * 0.035) / 0.28, 0.0, 1.0)
+			if k <= 0.0 and not Motion.reduce:
+				x += adv
+				continue
+			var sc := 1.0 if Motion.reduce else Motion.back_out(k)
+			var hop := 0.0 if Motion.reduce else -sin(st.t * 8.0 - i * 0.55) * size * 0.09 * exp(-st.t * 1.4)
+			var centre: Vector2 = st.at + (Vector2(x + adv * 0.5, hop) * swell).rotated(tilt)
+			var rock := 0.0 if Motion.reduce else sin(st.t * 7.0 + i) * 0.08 * exp(-st.t * 1.2)
+			_air.draw_set_transform(centre, tilt + rock, Vector2(sc, sc) * swell)
+			var o := Vector2(-adv * 0.5, size * 0.36)
+			var col: Color = STICKER_COLS[i % STICKER_COLS.size()] if st.rainbow else st.col
+			_air.draw_char_outline(font, o + Vector2(0, size * 0.09), ch, size, int(size * 0.34), Color(0.25, 0.15, 0.05, 0.35 * out_a))
+			_air.draw_char_outline(font, o, ch, size, int(size * 0.3), Color(Color("fffaf0"), out_a))
+			_air.draw_char_outline(font, o, ch, size, int(size * 0.13), Color(col.darkened(0.5), out_a))
+			_air.draw_char(font, o, ch, size, Color(col, out_a))
+			x += adv
+	_air.draw_set_transform(Vector2.ZERO)
 
 ## A new biggest number: the pebble rises out of its merge to the middle of
 ## the tray, big, over a turning sunburst, then flies up into the plate.
@@ -1555,7 +1902,10 @@ func _show_end(better: bool) -> void:
 	_fx.cue("new_best" if better else "game_over")
 	_end = _build_end(better)
 	add_child(_end)
+	# the air (its rain and bursts) stays over the card
+	move_child(_air, get_child_count() - 1)
 	Motion.appear(_end, 0.0, 1.0, 0.3)
+	_end_at = _clock
 	_celebrate(better)
 
 func _build_end(better: bool) -> Control:
@@ -1600,6 +1950,13 @@ func _build_end(better: bool) -> Control:
 			var q := 0.22 * exp(-after * 8.0) * cos(after * 26.0)
 			sq = Vector2(1.0 + q * 0.75, 1.0 - q)
 		var top := mid + Vector2(0, -s * 1.3 - (1.0 - land) * 260.0 + bob + (1.0 - sq.y) * s * 0.55)
+		# a sunburst turns behind it once it has landed, gold for a thirteen
+		var glow := 1.0 if Motion.reduce else clampf((since - 0.55) / 0.3, 0.0, 1.0)
+		if glow > 0.0:
+			var rc := Art.GOLD if biggest >= Sim.GOAL else Art.paint(biggest).lightened(0.35)
+			var rs := s * 3.2 * Motion.back_out(glow) / 512.0
+			seat.draw_mesh(Art.rays(512.0, rc, 14), null, Transform2D(t * 0.5, Vector2(rs, rs), 0.0, top))
+			seat.draw_mesh(Art.rays(512.0, Color("fffaf0"), 8), null, Transform2D(-t * 0.3, Vector2(rs, rs) * 0.7, 0.0, top))
 		seat.draw_set_transform(top, sin(t * 1.5) * 0.05, sq)
 		seat.draw_mesh(Art.pebble(biggest, s * 1.15), null, Transform2D.IDENTITY)
 		Art.number(seat, font, Vector2.ZERO, biggest, s * 1.15, 1.0 if since > 0.3 or Motion.reduce else 0.0)
@@ -1612,7 +1969,9 @@ func _build_end(better: bool) -> Control:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
 	var score := Label.new()
-	score.text = Record.grouped(sim.score)
+	score.text = Record.grouped(sim.score) if Motion.reduce else "0"
+	if not Motion.reduce:
+		_end_score = score
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score)
@@ -1638,6 +1997,14 @@ func _build_end(better: bool) -> Control:
 		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		words.add_child(kicker)
 		stats.add_child(plate)
+		if not Motion.reduce:
+			var i := stats.get_child_count() - 1
+			plate.modulate.a = 0.0
+			plate.resized.connect(func() -> void: plate.pivot_offset = plate.size * 0.5)
+			plate.scale = Vector2(0.4, 0.4)
+			var tw := plate.create_tween().set_parallel(true)
+			tw.tween_property(plate, "modulate:a", 1.0, 0.2).set_delay(1.3 + 0.15 * i)
+			tw.tween_property(plate, "scale", Vector2.ONE, 0.4).set_delay(1.3 + 0.15 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	col.add_child(stats)
 	var best_line := Label.new()
 	best_line.text = tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
@@ -1655,6 +2022,25 @@ func _build_end(better: bool) -> Control:
 	col.add_child(back)
 	return scrim
 
+## The end card's score runs up from nothing to what the game made, with
+## a burst when it gets there.
+func _count_end() -> void:
+	var k := clampf((_clock - _end_at - 0.4) / 1.1, 0.0, 1.0)
+	var shown := int(sim.score * (1.0 - pow(1.0 - k, 3.0)))
+	var text := Record.grouped(shown)
+	if _end_score.text != text:
+		_end_score.text = text
+		if int(_clock * 20.0) % 2 == 0:
+			_fx.cue("select", 0.9 + 0.8 * k, -12.0)
+	if k >= 1.0:
+		_end_score.pivot_offset = _end_score.size * 0.5
+		_kick(_end_score, 0.25, 0.4)
+		var at := _in_air(_end_score, _end_score.size * 0.5)
+		_spray(_air_bits, at, Art.GOLD, 14, 620.0, "star", 1.1)
+		_spray(_air_bits, at, Color("fffaf0"), 8, 480.0, "spark", 1.1)
+		_ring(_air_bits, at, 220.0, Color(Art.GOLD, 0.9))
+		_end_score = null
+
 func _celebrate(better: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
 	if Motion.reduce:
@@ -1662,14 +2048,16 @@ func _celebrate(better: bool) -> void:
 	card.pivot_offset = Vector2(card.custom_minimum_size.x * 0.5, 200.0)
 	card.scale = Vector2.ONE * 0.86
 	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if not better:
-		return
+	var lucky: bool = sim.max_v >= Sim.GOAL
+	if better or lucky:
+		_rain = 3.5
 	var fx := Fx2D.new()
 	_end.add_child(fx)
 	var mid := size * 0.5
-	for k in 8:
-		var at := mid + Vector2.from_angle(TAU * k / 8.0 - PI * 0.5) * Vector2(400.0, 330.0)
-		var t := get_tree().create_timer(0.25 + 0.14 * k)
+	var puffs := 14 if better else (8 if lucky else 4)
+	for k in puffs:
+		var at := mid + Vector2.from_angle(TAU * k / float(puffs) - PI * 0.5) * Vector2(400.0, 330.0)
+		var t := get_tree().create_timer(0.25 + 0.1 * k)
 		t.timeout.connect(func() -> void:
 			if is_instance_valid(fx):
 				fx.puff(at, CONFETTI[k % CONFETTI.size()], 12))

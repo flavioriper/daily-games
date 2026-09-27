@@ -157,3 +157,35 @@ Screen and art only; the sim is untouched.
 Draw calls at 810x1440: 125-135 in play, ~143 on the 13's reveal, 99-100 on
 the end card; reduce motion drops the reveal, glints, wiggles, bob, tether
 flow and knocks.
+
+## 7. Rewards made loud (2026-09-27, amendment)
+
+Screen and art only; the sim is untouched. The user asked for rewards far
+more visual, silly or not, to keep people playing; Posy's reward kit
+(stickers, bits, flash, heat) was carried over.
+
+- **A chain being drawn rings out** at 4, 5, 6, 8 and 10 pebbles (a ring
+  and sparks from the newest, stars from 6), and from four the preview
+  pebble carries an `xN` in its tier's colour.
+- **Every merge throws chips** of the old number's paint and sparks; five
+  or more add gold stars and a second ring, six or more flash the tray and
+  throw stars at the score plate. Score pops take the new number's paint.
+- **Words, a hopping letter at a time** over the merge: Nice!, Great!,
+  Rock on!, Ma-rock-velous!, Legendary! (4/5/6/8/10), bigger and over a
+  sunburst from six. Chains of four or more in a row are a **streak**
+  (`Streak xN` under the word) that lights a beating warm glow round the
+  tray; a chain of three breaks it.
+- **The reveal bursts** when it arrives (stars, chips, rings, a flash in
+  its paint, "New number!"); a 13 flashes gold, throws coins and clovers,
+  letters "LUCKY 13!" and rains coins, clovers and confetti over the
+  screen for three seconds (past 13: "Beyond lucky!"). Landing in the
+  plate throws stars.
+- **Clovers fly with green comet trails**; the bank throws leaves as each
+  lands and the first letters the `+N`.
+- **The end card**: the air layer moves over it, the score runs up from
+  nothing and bursts, a sunburst turns behind the biggest pebble, the
+  stats pop in one after another, and a new best or a 13 rains coins.
+
+Reduce motion keeps the words (still) and drops the bits, flash, rain and
+count. Draw calls at 810x1440: 131-192 in play, 166 on the 13's burst, 94
+on the end card.

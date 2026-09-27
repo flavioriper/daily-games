@@ -1944,6 +1944,12 @@ is 13, and a tray with no three touching is stuck. Clovers buy five tools
   neighbours, a new number from 7 revealed big and flown to the plate, words
   on paper pills and a stuck card. 125-135 draw calls in play, ~143 on the
   13's reveal.
+- **Rewards made loud on 2026-09-27** (the spec's section 7): Posy's
+  sticker and bits kit carried over -- tier rings while a chain is drawn,
+  chips and stars off every merge, chain words (Nice! to Legendary!), a
+  streak of long chains with a warm edge glow, a 13 that flashes gold and
+  rains coins, clover comet trails, an end card that counts up. 131-192
+  draw calls in play, 94 on the end card.
 
 **Posy is the eighth** (2026-09-27, spec
 `2026-09-27-arcade-posy-design.md`): a swap-three garden after the

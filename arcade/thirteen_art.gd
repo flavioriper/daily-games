@@ -154,13 +154,58 @@ static func halo(v: int, s: float) -> ArrayMesh:
 
 ## A four-pointed twinkle of radius `r` at `c`, turned by `turn`, laid into
 ## a builder: the glint that runs over a pebble now and then.
-static func glint(b: Face.Builder, c: Vector2, r: float, turn: float) -> void:
-	b.disc(c, r * 0.45, Color(1, 1, 0.92, 0.25))
+static func glint(b: Face.Builder, c: Vector2, r: float, turn: float, col := Color(1, 1, 0.95, 0.95)) -> void:
+	b.disc(c, r * 0.45, Color(col, col.a * 0.26))
 	for k in 4:
 		var d := Vector2.from_angle(TAU * k / 4.0 + turn)
 		var side := d.orthogonal() * r * 0.13
-		b.polygon(PackedVector2Array([c + side, c + d * r * (1.0 if k % 2 == 0 else 0.7), c - side]), Color(1, 1, 0.95, 0.95))
-	b.disc(c, r * 0.14, Color(1, 1, 1, 1.0))
+		b.polygon(PackedVector2Array([c + side, c + d * r * (1.0 if k % 2 == 0 else 0.7), c - side]), col)
+	b.disc(c, r * 0.14, Color(1, 1, 1, col.a))
+
+## A five-pointed star of radius `r`, with a darker drop and a shine.
+static func star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0) -> void:
+	for pass_ in 2:
+		var pts := PackedVector2Array()
+		var at := c + (Vector2(r * 0.04, r * 0.1) if pass_ == 0 else Vector2.ZERO)
+		var rr := r * (1.08 if pass_ == 0 else 1.0)
+		for i in 10:
+			var a := TAU * i / 10.0 - PI * 0.5 + turn
+			pts.append(at + Vector2.from_angle(a) * (rr if i % 2 == 0 else rr * 0.52))
+		b.polygon(pts, Color(col.darkened(0.35), col.a) if pass_ == 0 else col)
+	b.ellipse(c + Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, Color(1, 1, 1, 0.5 * col.a))
+
+## A sunburst laid into a builder: `n` rays between `r0` and `r1`.
+static func sunrays(b: Face.Builder, c: Vector2, r0: float, r1: float, n: int, turn: float, col: Color) -> void:
+	var half := PI / n * 0.5
+	for i in n:
+		var a := TAU * i / n + turn
+		b.polygon(PackedVector2Array([c + Vector2.from_angle(a - half * 0.4) * r0, c + Vector2.from_angle(a - half) * r1,
+			c + Vector2.from_angle(a + half) * r1, c + Vector2.from_angle(a + half * 0.4) * r0]), col)
+
+## An ellipse turned by `rot`: a scrap of confetti.
+static func petal(b: Face.Builder, c: Vector2, rx: float, ry: float, rot: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := TAU * i / 10.0
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry).rotated(rot))
+	b.fan(pts, col)
+
+## A chip knocked off a pebble by a merge: a lopsided shard in its paint,
+## lit on one face.
+static func chip(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 5:
+		var a := TAU * i / 5.0 + rot
+		pts.append(c + Vector2.from_angle(a) * r * (1.0 if i % 2 == 0 else 0.62))
+	b.polygon(pts, Color(col.darkened(0.2), col.a))
+	b.polygon(PackedVector2Array([c, pts[0], pts[1]]), Color(col.lightened(0.35), col.a))
+
+## A gold coin turning over: `turn` in 0..1 is how much of its face shows.
+static func coin(b: Face.Builder, c: Vector2, r: float, turn: float, a := 1.0) -> void:
+	var w := maxf(0.12, absf(turn))
+	b.ellipse(c, r * w, r, Color(Color("b9811c"), a))
+	b.ellipse(c, r * w * 0.8, r * 0.8, Color(GOLD, a))
+	b.ellipse(c + Vector2(-r * w * 0.25, -r * 0.3), r * w * 0.22, r * 0.2, Color(1, 1, 0.9, 0.7 * a))
 
 ## A sunburst of `n` soft rays, `s` across, in `c`, for a new number.
 static func rays(s: float, c: Color, n := 12) -> ArrayMesh:

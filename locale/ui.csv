@@ -472,6 +472,15 @@ LT_END_LUCKY,A lucky thirteen!,Um treze da sorte!,¡Un trece de la suerte!
 LT_STAT_BIGGEST,biggest,maior,mayor
 LT_STAT_MOVES,moves,jogadas,jugadas
 LT_STAT_CHAIN,longest chain,maior corrente,cadena más larga
+LT_WORD_1,Nice!,Boa!,¡Bien!
+LT_WORD_2,Great!,Ótimo!,¡Genial!
+LT_WORD_3,Rock on!,Arrasou!,¡Arrasaste!
+LT_WORD_4,Ma-rock-velous!,Pedra-vilhoso!,¡Pie-dra-villoso!
+LT_WORD_5,Legendary!,Lendário!,¡Legendario!
+LT_STREAK,Streak x%d,Sequência x%d,Racha x%d
+LT_NEW,New number!,Número novo!,¡Número nuevo!
+LT_LUCKY,LUCKY 13!,TREZE DA SORTE!,¡TRECE DE SUERTE!
+LT_BEYOND,Beyond lucky!,Além da sorte!,¡Más que suerte!
 ARC_POSY_BLURB,"Swap neighbouring tiles to line up three or more. Collect what each day asks for before the moves run out.","Troque peças vizinhas para alinhar três ou mais. Colete o que cada dia pede antes que os movimentos acabem.","Intercambia piezas vecinas para alinear tres o más. Reúne lo que pide cada día antes de quedarte sin movimientos."
 ARC_BEST_DAY,Furthest: day %d,Mais longe: dia %d,Más lejos: día %d
 PS_MOTTO,Pick the garden's posy,Colha o buquê do jardim,Recoge el ramillete del jardín
