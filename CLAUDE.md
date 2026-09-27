@@ -1835,6 +1835,13 @@ a bomb and a zap. Its "furthest" is the biggest block.
   gravity settles, merge gulp and flash, acorns flying into the bank.
   `Motion.bump` compounds when bumps overlap; the screen's `_kick` restarts
   from one. 69-75 draw calls in play, ~135 at a chain's peak.
+- **Rewards made loud on 2026-09-27** (the spec's section 8): Lucky
+  Thirteen's sticker and bits kit carried over -- splinters and sparks off
+  every merge, hopping words (Nice! to Legendary!) with `Chain xN` and
+  `Combo xN` under them, a warm edge glow for a combo of merging drops, a
+  new biggest block lettered up top, a gold flash and acorn rain from 2048,
+  Phew! off the line, acorn comet trails, an end card that counts up.
+  81-127 draw calls in play, ~250 at a big chain's peak.
 
 **Lucky Thirteen is the fourth** (2026-09-27, spec
 `2026-09-27-arcade-thirteen-design.md`): a chain-merge number game after a

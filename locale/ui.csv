@@ -344,6 +344,14 @@ SW_END_CARD,The shelf tumbles,A prateleira desabou,El estante se derrumbó
 SW_STAT_BLOCK,biggest block,maior bloco,mayor bloque
 SW_STAT_MERGES,merges,fusões,fusiones
 SW_STAT_CHAIN,best chain,melhor corrente,mejor cadena
+SW_WORD_1,Nice!,Boa!,¡Bien!
+SW_WORD_2,Great!,Ótimo!,¡Genial!
+SW_WORD_3,Timber!,Madeira!,¡Madera!
+SW_WORD_4,Wood-erful!,Madeira-vilhoso!,¡Made-ravilloso!
+SW_WORD_5,Legendary!,Lendário!,¡Legendario!
+SW_COMBO,Combo x%d,Combo x%d,Combo x%d
+SW_NEW_BLOCK,A new biggest block!,Um novo maior bloco!,¡Un nuevo bloque récord!
+SW_PHEW,Phew!,Ufa!,¡Uf!
 ARC_THIRTEEN_BLURB,Drag through three or more touching pebbles of a number to merge them one higher. Can you make a 13?,Arraste por três ou mais pedrinhas vizinhas do mesmo número para fundi-las em uma a mais. Consegue chegar ao 13?,Arrastra por tres o más piedras vecinas del mismo número para fundirlas en una más alta. ¿Llegarás al 13?
 ARC_BEST_NUMBER,Biggest: %d,Maior: %d,Mayor: %d
 LT_MOTTO,Make a thirteen,Chegue ao treze,Llega al trece

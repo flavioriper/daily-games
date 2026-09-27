@@ -61,6 +61,13 @@ const SETTLE_V0 := 4.0
 const FLIGHT_T := 0.6
 const BUNTING := [Color("f7dc9c"), Color("ee8d6e"), Color("9fcfb6"), Color("9391dc"), Color("f5b77e")]
 const CONFETTI := [Color("f7dc9c"), Color("ee8d6e"), Color("9391dc"), Color("5fc1ad"), Color("f2b632")]
+## A merge's word, by how loud it was (the chain, plus one for every extra
+## block a single block took in at once), loudest first.
+const WORDS := [[6, "SW_WORD_5"], [5, "SW_WORD_4"], [4, "SW_WORD_3"], [3, "SW_WORD_2"], [2, "SW_WORD_1"]]
+const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+const COMBO := Color("ff8a3d")
+## The most bits alive in one layer at once.
+const MAX_BITS := 420
 
 var sim: RefCounted
 var top_bar: Control
@@ -127,6 +134,30 @@ var _afford := {}
 var _air: Control
 var _air_fx: Node2D
 var _next_t := 1.0
+## Bits flung about, in the field's pixels and in the air's: splinters,
+## sparks, stars, acorns, confetti and rings.
+## {pos, vel, rot, spin, t, life, kind, col, size, float?}
+var _bits: Array = []
+var _air_bits: Array = []
+## Words lettered a hopping letter at a time: {text, at, t, life, size,
+## rainbow, col, rays, tilt, id}.
+var _stickers: Array = []
+## The shelf's flash after a big moment, fading, and its colour.
+var _flash := 0.0
+var _flash_col := Color.WHITE
+## Drops in a row that merged, and the warm glow round the shelf it lights
+## (0..1). A drop has landed since the last spawn; it has merged.
+var _streak := 0
+var _heat := 0.0
+var _landed := false
+var _drop_merged := false
+## Seconds of acorns and confetti still raining down over the screen.
+var _rain := 0.0
+## The newest biggest block, waiting for its merge to say where it is.
+var _new_max := 0
+var _air_live: ArrayMesh
+var _end_score: Label
+var _end_at := 0.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -402,6 +433,17 @@ func _new_game() -> void:
 	_flights.clear()
 	_owed = 0
 	_afford.clear()
+	_bits.clear()
+	_air_bits.clear()
+	_stickers.clear()
+	_flash = 0.0
+	_streak = 0
+	_heat = 0.0
+	_landed = false
+	_drop_merged = false
+	_rain = 0.0
+	_new_max = 0
+	_end_score = null
 	_piece_id = -1
 	_milestones.clear()
 	_shake = 0.0
@@ -451,6 +493,9 @@ func _process(delta: float) -> void:
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	field.queue_redraw()
+	_air.queue_redraw()
+	if _end_score != null and is_instance_valid(_end_score):
+		_count_end()
 
 func _animate(delta: float) -> void:
 	# every block on the shelf settles toward its cell
@@ -519,7 +564,10 @@ func _animate(delta: float) -> void:
 			danger = true
 	if danger and not _danger and not sim.is_over():
 		_fx.cue("warn")
+	elif _danger and not danger and not sim.is_over():
+		_phew()
 	_danger = danger
+	_animate_rewards(delta)
 
 func _new_vis(pos: Vector2, v: int) -> Dictionary:
 	return {"pos": pos, "v": v, "bump": -1.0, "vel": 0.0, "squash": -1.0, "amt": 0.0, "dip": 9.0, "dip_amt": 0.0}
@@ -563,6 +611,12 @@ func _fly(delta: float) -> void:
 			_owed = maxi(0, _owed - int(f.value))
 			_kick(_acorn_icon, 0.22, 0.22)
 			_kick(_acorn_l, 0.14, 0.22)
+			var bank := _in_air(_acorn_icon, _acorn_icon.size * 0.5)
+			_spray(_air_bits, bank, Art.ACORN, 2, 280.0, "acorn", 0.5)
+			_spray(_air_bits, bank, Color("fffaf0"), 3, 260.0, "spark", 0.7)
+			if f.get("first", false):
+				_ring(_air_bits, bank, 80.0, Color(Art.GOLD, 0.9))
+				_sticker("+%d" % int(f.total), bank + Vector2(0, -80.0), 46, 0.8, false, Art.ACORN.lightened(0.15), false, "acorns")
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return not f.get("home", false))
 	_air.queue_redraw()
 
@@ -675,6 +729,10 @@ func _play_events() -> void:
 				_fx.cue("drop", randf_range(0.95, 1.05))
 			"spawn":
 				_next_t = 0.0
+				# a drop that landed and merged nothing breaks the combo
+				if _landed and not _drop_merged:
+					_streak = 0
+				_landed = false
 			"land":
 				var vis := _new_vis(Vector2(ev.col, ev.row), int(ev.v))
 				vis.bump = 0.0 if ev.wild else -1.0
@@ -689,6 +747,10 @@ func _play_events() -> void:
 					under.dip = -0.035 * (down - 1.0)
 					under.dip_amt = (0.07 if _was_dropping else 0.04) * pow(0.7, down - 1.0)
 				_fx.cue("land", randf_range(0.92, 1.06))
+				_landed = true
+				_drop_merged = false
+				if _was_dropping:
+					_spray(_bits, px(ev.col, ev.row - 0.45), Art.WOOD_HI, 5, 260.0, "splinter", _u / 150.0)
 				for side in [-0.42, 0.42]:
 					_fx.puff(px(ev.col + side, ev.row - 0.48), Color(Art.WOOD_HI, 0.9), 3)
 				if ev.wild:
@@ -709,16 +771,23 @@ func _play_events() -> void:
 				_fx.puff(px(ev.col, ev.row), Color("fffaf0"), 14)
 				_fx.puff(px(ev.col, ev.row), Pal.SUN, 8)
 				_fx.ring(px(ev.col, ev.row), 1.4 * _u, Color("ffb05c"))
+				_spray(_bits, px(ev.col, ev.row), Art.SPARK, 16, 900.0, "spark", _u / 110.0)
+				_spray(_bits, px(ev.col, ev.row), Color("ffb05c"), 10, 800.0, "star", _u / 150.0)
 				_shake = maxf(_shake, 0.8)
 			"blast":
 				for g: Dictionary in ev.blocks:
 					_fling(int(g.v), Vector2(g.col, g.row))
+					_spray(_bits, px(g.col, g.row), Art.paint(int(g.v)), 7, 700.0, "splinter", _u / 110.0)
+				_flash_now(Color("ffcf8a"), 0.6)
 			"zap":
 				_fx.cue("zap")
 				for g: Dictionary in ev.blocks:
 					_bolts.append({"to": px(g.col, g.row), "t": 0.0, "seed": randf() * 10.0})
 					_fling(int(g.v), Vector2(g.col, g.row))
 					_fx.sparkle(px(g.col, g.row), Art.ZAP)
+					_spray(_bits, px(g.col, g.row), Art.ZAP, 5, 520.0, "spark", _u / 110.0)
+					_spray(_bits, px(g.col, g.row), Art.paint(int(g.v)), 4, 560.0, "splinter", _u / 110.0)
+				_flash_now(Art.ZAP.lightened(0.4), 0.5)
 				_shake = maxf(_shake, 0.4)
 			"tool":
 				match String(ev.tool):
@@ -752,7 +821,8 @@ func _on_merge(ev: Dictionary) -> void:
 			_vis[m.id].v = m.v
 			_vis[m.id].bump = 0.0
 		var big := int(m.v) >= 128
-		_pop(to + Vector2(0, 0.3), "+%s" % Record.grouped(int(m.v) * chain), Pal.SUN if chain > 1 else Color("fffaf0"), big)
+		_pop(to + Vector2(0, 0.3), "+%s" % Record.grouped(int(m.v) * chain), Pal.SUN if chain > 1 else Art.paint(int(m.v)).lightened(0.45), big or chain >= 3)
+		_merge_bits(m, chain)
 		_fx.puff(px(to.x, to.y), Art.paint(int(m.v)), 6)
 		if not Motion.reduce:
 			_flashes.append({"id": m.id, "t": 0.0})
@@ -762,15 +832,17 @@ func _on_merge(ev: Dictionary) -> void:
 			_fx.ring(px(to.x, to.y), 1.2 * _u, Art.GOLD)
 	_launch_acorns(ev)
 	_fx.cue("merge", minf(1.0 + 0.09 * (chain - 1), 1.6))
+	if not _drop_merged:
+		_drop_merged = true
+		_streak += 1
 	if chain >= 2:
-		# one chain label at a time: the new count replaces the last
-		_pops = _pops.filter(func(q: Dictionary) -> bool: return not q.rays)
-		var p := _pop(Vector2((Sim.COLS - 1) * 0.5, Sim.ROWS - 1.2), tr("SW_CHAIN") % chain, Pal.SUN, true)
-		p.rays = true
-		p.t = -0.1
 		_fx.cue("chain", minf(1.0 + 0.07 * (chain - 2), 1.5))
 		_kick(_score_k, 0.3, 0.35)
 		_shake = maxf(_shake, 0.15 + 0.05 * chain)
+	if chain >= 3:
+		_flash_now(Color("fffaf0"), minf(0.6, 0.25 + 0.08 * (chain - 3)))
+		_spray(_air_bits, _in_air(_score_l, _score_l.size * 0.5), Pal.SUN, 4 + 2 * chain, 380.0, "star", 0.9, 0.2)
+	_merge_words(ev)
 
 ## The acorns a merge earned fly up out of it and into the bank, a few at a
 ## time; the bank counts each as it lands.
@@ -786,8 +858,161 @@ func _launch_acorns(ev: Dictionary) -> void:
 		var from := _in_air(field, px(m.col, m.row) + _shake_off)
 		var ctrl := from.lerp(to, 0.35) + Vector2(randf_range(-160.0, 160.0), -260.0)
 		var value := nuts / n + (1 if k < nuts % n else 0)
-		_flights.append({"from": from, "ctrl": ctrl, "to": to, "t": -0.12 - 0.07 * k, "value": value, "spin": randf_range(-6.0, 6.0)})
+		_flights.append({"from": from, "ctrl": ctrl, "to": to, "t": -0.12 - 0.07 * k, "value": value, "spin": randf_range(-6.0, 6.0),
+			"first": k == 0, "total": nuts})
 		_owed += value
+
+## What one block's merge throws: splinters of the old number's paint and
+## sparks; from 128 gold stars and a second ring; the newest biggest block
+## a burst of stars in its own paint.
+func _merge_bits(m: Dictionary, chain: int) -> void:
+	var at := px(m.col, m.row)
+	var v: int = m.v
+	var took: int = (m.from as Array).size()
+	var k := _u / 110.0
+	_spray(_bits, at, Art.paint(v >> took), mini(5 + 3 * took + 2 * chain, 24), 380.0 + 50.0 * chain, "splinter", k)
+	_spray(_bits, at, Color("fffaf0"), 3 + 2 * chain, 340.0 + 30.0 * chain, "spark", k)
+	if v >= 128 or chain >= 3:
+		_spray(_bits, at, Art.GOLD, 3 + chain, 520.0 + 30.0 * chain, "star", k * 0.8)
+		_ring(_bits, at, _u * (1.3 + 0.15 * chain), Color(Art.paint(v).lightened(0.3), 0.8), 0.06)
+	if v == _new_max:
+		_new_max = 0
+		_spray(_bits, at, Art.paint(v).lightened(0.2), 12, 760.0, "star", k)
+		_spray(_bits, at, Color("fffaf0"), 8, 640.0, "spark", k * 1.2)
+		_ring(_bits, at, _u * 2.2, Color(Art.GOLD, 0.85), 0.1)
+
+## A loud merge's word over it, lettered bigger the louder it was, with the
+## chain's count under it; drops that merged in a row add the combo.
+func _merge_words(ev: Dictionary) -> void:
+	var chain: int = ev.chain
+	var merges: Array = ev.merges
+	var took := 1
+	for m: Dictionary in merges:
+		took = maxi(took, (m.from as Array).size())
+	var loud := chain + took - 1
+	var word := ""
+	var tier := 0
+	for i in WORDS.size():
+		if loud >= int(WORDS[i][0]):
+			word = tr(WORDS[i][1])
+			tier = WORDS.size() - 1 - i
+			break
+	var m0: Dictionary = merges[0]
+	var spot := px(m0.col, m0.row) - Vector2(0, _u * 0.95)
+	# clear of a new biggest block's number up top
+	var low := field.size.y * (0.34 if _has_sticker("max") else 0.1)
+	spot.x = field.size.x * 0.5
+	# the whole stack (word, chain, combo) stands clear of the floor
+	spot.y = clampf(spot.y, low, field.size.y * 0.55)
+	var under := spot
+	if word != "":
+		_sticker(word, _in_air(field, spot), 64 + 10 * tier, 1.0 + 0.15 * tier, true, Color.WHITE, tier >= 2, "word")
+		under = spot + Vector2(0, 74.0 + 10.0 * tier)
+	if chain >= 2:
+		_sticker(tr("SW_CHAIN") % chain, _in_air(field, under), 44, 1.1, false, Pal.SUN, false, "chain")
+		under += Vector2(0, 64.0)
+	if _streak >= 2:
+		_sticker(tr("SW_COMBO") % _streak, _in_air(field, under), 40, 1.1, false, COMBO, false, "combo")
+		_spray(_bits, px(m0.col, m0.row), COMBO, mini(2 * _streak, 12), 440.0, "spark", _u / 110.0)
+
+func _has_sticker(id: String) -> bool:
+	for st: Dictionary in _stickers:
+		if String(st.id) == id:
+			return true
+	return false
+
+## A stack pulled back from the line: a word and a sigh of sparks.
+func _phew() -> void:
+	var at := Vector2(field.size.x * 0.5, _origin.y + _u * 1.9)
+	_sticker(tr("SW_PHEW"), _in_air(field, at), 68, 1.2, false, Color("7fd66a"), false, "phew")
+	_spray(_bits, at, Color("b8f0a0"), 10, 420.0, "spark", _u / 110.0)
+	_fx.cue("wild", 1.2, -4.0)
+
+## The rewards' own clocks: the bits in both layers, the stickers, the
+## flash, the combo's glow and the rain.
+func _animate_rewards(delta: float) -> void:
+	_step_bits(_bits, delta)
+	_step_bits(_air_bits, delta)
+	for st: Dictionary in _stickers:
+		st.t += delta
+	_stickers = _stickers.filter(func(st: Dictionary) -> bool: return st.t < st.life)
+	_flash = maxf(0.0, _flash - delta * 2.4)
+	var want := clampf((_streak - 2) / 4.0, 0.0, 1.0)
+	_heat = move_toward(_heat, want, delta * (1.5 if want > _heat else 0.5))
+	if _rain > 0.0:
+		_rain -= delta
+		if not Motion.reduce and randf() < delta * 30.0:
+			var r := randf()
+			var kind := "acorn" if r < 0.4 else ("star" if r < 0.55 else "confetti")
+			_air_bits.append({"pos": Vector2(randf_range(0.0, _air.size.x), -40.0), "vel": Vector2(randf_range(-60.0, 60.0), randf_range(160.0, 300.0)),
+				"rot": randf() * TAU, "spin": randf_range(-4.0, 4.0), "t": 0.0, "life": 3.6, "kind": kind,
+				"col": CONFETTI[randi() % CONFETTI.size()], "size": randf_range(1.0, 1.5), "float": true})
+
+## Bits move: thrown, pulled down, slowed by the air; rain drifts down
+## swaying.
+func _step_bits(bits: Array, delta: float) -> void:
+	if bits.is_empty():
+		return
+	var drag := exp(-delta * 2.2)
+	for b: Dictionary in bits:
+		b.t += delta
+		if b.t < 0.0 or String(b.kind) == "ring":
+			continue
+		var v: Vector2 = b.vel
+		if b.get("float", false):
+			v.y = minf(v.y + 120.0 * delta, 300.0)
+			b.pos += Vector2(v.x + sin(b.t * 3.0 + b.rot) * 70.0, v.y) * delta
+		else:
+			v *= drag
+			v.y += (800.0 if String(b.kind) == "confetti" else 1700.0) * delta
+			b.pos += v * delta
+		b.vel = v
+		b.rot += float(b.spin) * delta
+	var keep := bits.filter(func(b: Dictionary) -> bool: return b.t < b.life)
+	bits.clear()
+	bits.append_array(keep)
+
+## Throws `n` bits of `kind` out of `at`, into `bits` (the field's or the
+## air's), at up to `speed` pixels a second.
+func _spray(bits: Array, at: Vector2, col: Color, n: int, speed: float, kind := "spark", size := 1.0, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	n = mini(n, MAX_BITS - bits.size())
+	for i in n:
+		var v := Vector2.from_angle(randf() * TAU) * speed * randf_range(0.35, 1.0) + Vector2(0, -speed * 0.4)
+		bits.append({"pos": at, "vel": v, "rot": randf() * TAU, "spin": randf_range(-10.0, 10.0), "t": -delay,
+			"life": randf_range(0.55, 0.95) + (0.5 if kind == "confetti" or kind == "acorn" else 0.0), "kind": kind,
+			"col": col, "size": size * randf_range(0.7, 1.25)})
+
+## A ring swelling out of `at` to `radius` and fading.
+func _ring(bits: Array, at: Vector2, radius: float, col: Color, delay := 0.0) -> void:
+	if Motion.reduce:
+		return
+	bits.append({"pos": at, "vel": Vector2.ZERO, "rot": 0.0, "spin": 0.0, "t": -delay, "life": 0.45, "kind": "ring",
+		"col": col, "size": radius})
+
+## The shelf flashes `col`, `amount` at most.
+func _flash_now(col: Color, amount: float) -> void:
+	if Motion.reduce:
+		return
+	_flash = maxf(_flash, amount)
+	_flash_col = col
+
+## A word lettered at `at` in the air's pixels, each letter hopping in on
+## its own, fitted to the shelf's width. `rainbow` letters it in the sticker
+## colours, else in `col`; `rays` sets a sunburst turning behind it. A
+## sticker with an `id` replaces the one before it with the same id.
+func _sticker(text: String, at: Vector2, size: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "") -> void:
+	if id != "":
+		_stickers = _stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != id)
+	var room := field.size.x - 40.0
+	var w := Art.font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	if w > room:
+		size = int(size * room / w)
+	var edge := _in_air(field, Vector2.ZERO).x
+	at.x = clampf(at.x, edge + minf(w, room) * 0.5 + 20.0, edge + field.size.x - minf(w, room) * 0.5 - 20.0)
+	_stickers.append({"text": text, "at": at, "t": 0.0, "life": life, "size": size, "rainbow": rainbow, "col": col,
+		"rays": rays and not Motion.reduce, "tilt": 0.0 if Motion.reduce else randf_range(-0.08, 0.08), "id": id})
 
 ## A bump that starts from rest, so a run of them never grows a label.
 func _kick(node: Control, amount: float, time: float) -> void:
@@ -802,21 +1027,27 @@ func _kick(node: Control, amount: float, time: float) -> void:
 func _in_air(c: Control, at: Vector2) -> Vector2:
 	return _air.get_global_transform().affine_inverse() * (c.get_global_transform() * at)
 
+## A new biggest block: from 64 its number is lettered up top over a
+## sunburst and its merge bursts (`_merge_bits`); from 256 it rings out, and
+## from 2048 the shelf flashes gold and acorns and confetti rain.
 func _on_new_max(v: int) -> void:
-	if v < 256 or _milestones.has(v):
+	if v < 64 or _milestones.has(v):
 		return
 	_milestones[v] = true
-	if v == 2048:
-		_show_banner("2048!", tr("SW_2048_LINE"), 1.4)
+	_new_max = v
+	var top := _in_air(field, Vector2(field.size.x * 0.5, field.size.y * 0.12))
+	var gold := v >= 2048
+	_sticker(Record.grouped(v) + "!", top, 104 if gold else (92 if v >= 256 else 80), 2.4 if gold else 1.5, true, Color.WHITE, true, "max")
+	_sticker(tr("SW_2048_LINE") if v == 2048 else tr("SW_NEW_BLOCK"), top + Vector2(0, 86.0 if gold else 74.0), 40, 2.4 if gold else 1.5,
+		false, Color("fffaf0"), false, "max_line")
+	if gold:
 		_fx.cue("milestone")
+		_flash_now(Art.GOLD, 0.8)
+		_rain = maxf(_rain, 3.2)
 		_confetti()
-	elif v > 2048:
-		_show_banner(Record.grouped(v) + "!", "", 1.0)
-		_fx.cue("milestone")
-		_confetti()
-	else:
-		_show_banner(Record.grouped(v) + "!", "", 0.6)
+	elif v >= 256:
 		_fx.cue("big")
+		_flash_now(Art.paint(v).lightened(0.5), 0.35)
 
 func _confetti() -> void:
 	if Motion.reduce:
@@ -1091,10 +1322,15 @@ func _draw_field() -> void:
 	_draw_streaks(over, s)
 	_draw_bolts(over)
 	_draw_rays(over)
+	if _heat > 0.01:
+		_draw_heat(over)
+	_draw_bits(over, _bits)
 	if not over.verts.is_empty():
 		var m := over.mesh()
 		field.set_meta("over", m)
 		field.draw_mesh(m, null)
+	if _flash > 0.0:
+		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.5))
 	_draw_pops()
 
 ## The falling piece, and where it would land.
@@ -1206,6 +1442,34 @@ func _draw_bunting(b: Face.Builder) -> void:
 
 ## The acorns in the air, over everything.
 func _draw_air() -> void:
+	var b := Face.Builder.new()
+	var font := Art.font()
+	for st: Dictionary in _stickers:
+		if not st.rays:
+			continue
+		var grow := Motion.back_out(clampf(st.t / 0.35, 0.0, 1.0))
+		var a := 1.0 - clampf((st.t - (st.life - 0.35)) / 0.35, 0.0, 1.0)
+		var w := font.get_string_size(st.text, HORIZONTAL_ALIGNMENT_LEFT, -1, st.size).x
+		var r := maxf(w * 0.62, float(st.size) * 1.5) * grow
+		b.disc(st.at, r * 0.6, Color(Color("fff4c2"), 0.35 * a))
+		Art.sunrays(b, st.at, r * 0.2, r, 16, _clock * 0.8, Color(Color("ffe39a"), 0.34 * a))
+		Art.sunrays(b, st.at, r * 0.2, r * 0.8, 16, -_clock * 0.5 + 0.1, Color(Color("fffaf0"), 0.24 * a))
+	# the acorns' trails: a fading golden comet behind each
+	for f: Dictionary in _flights:
+		if f.t < 0.0:
+			continue
+		for j in range(6, 0, -1):
+			var back: float = f.t - j * 0.03
+			if back < 0.0:
+				continue
+			var kk := clampf(back / FLIGHT_T, 0.0, 1.0)
+			var ee := kk * kk * (3.0 - 2.0 * kk)
+			var tp: Vector2 = (f.from as Vector2).lerp(f.ctrl, ee).lerp((f.ctrl as Vector2).lerp(f.to, ee), ee)
+			b.disc(tp, (7.0 - j) * 2.6, Color(Art.GOLD.lightened(0.2), 0.1 * (7 - j)))
+	_draw_bits(b, _air_bits)
+	if not b.verts.is_empty():
+		_air_live = b.mesh()
+		_air.draw_mesh(_air_live, null)
 	for f: Dictionary in _flights:
 		if f.t < 0.0:
 			continue
@@ -1214,6 +1478,82 @@ func _draw_air() -> void:
 		var p: Vector2 = (f.from as Vector2).lerp(f.ctrl, e).lerp((f.ctrl as Vector2).lerp(f.to, e), e)
 		var sc := Motion.back_out(minf(1.0, f.t / 0.18)) * lerpf(1.0, 0.7, e)
 		_air.draw_mesh(Art.acorn(52.0), null, Transform2D(float(f.spin) * f.t, Vector2(sc, sc), 0.0, p))
+	_draw_stickers(font)
+
+## The warm glow a combo of merging drops lights round the shelf's edge,
+## beating.
+func _draw_heat(b: Face.Builder) -> void:
+	var s := field.size
+	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
+	var tint := Color("ffb03b").lerp(Color("ff6f61"), _heat)
+	var edge := Color(tint, (0.25 + 0.2 * beat) * _heat)
+	var none := Color(tint, 0.0)
+	var w := (70.0 + 40.0 * beat) * (0.6 + 0.4 * _heat)
+	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), Vector2(s.x - w, w), Vector2(w, w)], [edge, edge, none, none])
+	_quad(b, [Vector2(0, s.y), Vector2(w, s.y - w), Vector2(s.x - w, s.y - w), s], [edge, none, none, edge])
+	_quad(b, [Vector2.ZERO, Vector2(w, w), Vector2(w, s.y - w), Vector2(0, s.y)], [edge, none, none, edge])
+	_quad(b, [Vector2(s.x, 0), Vector2(s.x, s.y), Vector2(s.x - w, s.y - w), Vector2(s.x - w, w)], [edge, edge, none, none])
+
+## The bits flung about, each fading out over the end of its life.
+func _draw_bits(b: Face.Builder, bits: Array) -> void:
+	for bit: Dictionary in bits:
+		if bit.t < 0.0:
+			continue
+		var life: float = bit.life
+		var a := clampf((life - bit.t) / (life * 0.35), 0.0, 1.0)
+		var col: Color = bit.col
+		col.a *= a
+		var at: Vector2 = bit.pos
+		var sz: float = bit.size
+		var rot: float = bit.rot
+		match String(bit.kind):
+			"splinter":
+				Art.splinter(b, at, 13.0 * sz, rot, col)
+			"confetti":
+				Art.petal(b, at, 11.0 * sz, 6.0 * sz * absf(cos(bit.t * 5.0 + rot)) + 1.0, rot, col)
+			"star":
+				Art.star(b, at, 14.0 * sz * (0.6 + 0.4 * a), col, rot)
+			"spark":
+				Art.glint(b, at, 22.0 * sz * a, rot, Color(col, col.a))
+			"acorn":
+				Art.acorn_bit(b, at, 30.0 * sz, sin(rot) * 0.6, a)
+			"ring":
+				var k := clampf(bit.t / life, 0.0, 1.0)
+				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
+				b.stroke(Face.Builder.ring(at, r, r), maxf(2.0, 14.0 * (1.0 - k)), Color(bit.col, (bit.col as Color).a * (1.0 - k)), true)
+
+## The stickers' letters: each hops in on its own, rocks for a moment and
+## the word swells away at the end; a white rim and a dark one under the
+## colour, so it reads over anything.
+func _draw_stickers(font: Font) -> void:
+	for st: Dictionary in _stickers:
+		var text: String = st.text
+		var size: int = st.size
+		var total := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var x := -total * 0.5
+		var out_a := 1.0 - clampf((st.t - (st.life - 0.3)) / 0.3, 0.0, 1.0)
+		var swell := 1.0 + 0.2 * (1.0 - out_a)
+		var tilt: float = st.tilt
+		for i in text.length():
+			var ch := text[i]
+			var adv := font.get_char_size(ch.unicode_at(0), size).x
+			var k := clampf((st.t - i * 0.035) / 0.28, 0.0, 1.0)
+			if k <= 0.0 and not Motion.reduce:
+				x += adv
+				continue
+			var sc := 1.0 if Motion.reduce else Motion.back_out(k)
+			var hop := 0.0 if Motion.reduce else -sin(st.t * 8.0 - i * 0.55) * size * 0.09 * exp(-st.t * 1.4)
+			var centre: Vector2 = st.at + (Vector2(x + adv * 0.5, hop) * swell).rotated(tilt)
+			var rock := 0.0 if Motion.reduce else sin(st.t * 7.0 + i) * 0.08 * exp(-st.t * 1.2)
+			_air.draw_set_transform(centre, tilt + rock, Vector2(sc, sc) * swell)
+			var o := Vector2(-adv * 0.5, size * 0.36)
+			var col: Color = STICKER_COLS[i % STICKER_COLS.size()] if st.rainbow else st.col
+			_air.draw_char_outline(font, o + Vector2(0, size * 0.09), ch, size, int(size * 0.34), Color(0.25, 0.15, 0.05, 0.35 * out_a))
+			_air.draw_char_outline(font, o, ch, size, int(size * 0.3), Color(Color("fffaf0"), out_a))
+			_air.draw_char_outline(font, o, ch, size, int(size * 0.13), Color(col.darkened(0.5), out_a))
+			_air.draw_char(font, o, ch, size, Color(col, out_a))
+			x += adv
+	_air.draw_set_transform(Vector2.ZERO)
 
 ## The column the finger is over, lit from the lane down to where the
 ## block would land.
@@ -1334,7 +1674,9 @@ func _topple() -> void:
 	for id in _vis.keys():
 		var vis: Dictionary = _vis[id]
 		_fling(int(vis.v), vis.pos)
+		_spray(_bits, px(vis.pos.x, vis.pos.y), Art.paint(int(vis.v)), 3, 600.0, "splinter", _u / 110.0)
 	_vis.clear()
+	_streak = 0
 	# the blocks are gone from the drawing, not from the sim; keep them from
 	# coming back on the next frame's settle
 	for c in Sim.COLS:
@@ -1348,7 +1690,10 @@ func _show_end(better: bool) -> void:
 	_fx.cue("new_best" if better else "game_over")
 	_end = _build_end(better)
 	add_child(_end)
+	# the air (its rain and bursts) stays over the card
+	move_child(_air, get_child_count() - 1)
 	Motion.appear(_end, 0.0, 1.0, 0.3)
+	_end_at = _clock
 	_celebrate(better)
 
 func _build_end(better: bool) -> Control:
@@ -1393,6 +1738,18 @@ func _build_end(better: bool) -> Control:
 			var q := 0.22 * exp(-after * 8.0) * cos(after * 26.0)
 			sq = Vector2(1.0 + q * 0.75, 1.0 - q)
 		var top := mid + Vector2(0, -s * 1.5 - (1.0 - land) * 260.0 + bob + (1.0 - sq.y) * s * 0.55)
+		# a sunburst turns behind it once it has landed, gold from 2048
+		var glow := 1.0 if Motion.reduce else clampf((since - 0.55) / 0.3, 0.0, 1.0)
+		if glow > 0.0:
+			var rb := Face.Builder.new()
+			var rc := Art.GOLD if biggest >= 2048 else Art.paint(biggest).lightened(0.35)
+			var rr := s * 1.6 * Motion.back_out(glow)
+			rb.disc(top, rr * 0.55, Color(Color("fff4c2"), 0.45))
+			Art.sunrays(rb, top, rr * 0.2, rr, 14, t * 0.5, Color(rc, 0.55))
+			Art.sunrays(rb, top, rr * 0.2, rr * 0.75, 8, -t * 0.3, Color(Color("fffaf0"), 0.4))
+			var rm := rb.mesh()
+			seat.set_meta("rays", rm)
+			seat.draw_mesh(rm, null)
 		seat.draw_set_transform(top, sin(t * 1.5) * 0.04, sq)
 		seat.draw_mesh(Art.block(biggest, s * 1.1), null, Transform2D.IDENTITY)
 		Art.number(seat, font, Vector2.ZERO, biggest, s * 1.1, 1.0 if since > 0.3 or Motion.reduce else 0.0)
@@ -1405,7 +1762,9 @@ func _build_end(better: bool) -> Control:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
 	var score := Label.new()
-	score.text = Record.grouped(sim.score)
+	score.text = Record.grouped(sim.score) if Motion.reduce else "0"
+	if not Motion.reduce:
+		_end_score = score
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score)
@@ -1431,6 +1790,14 @@ func _build_end(better: bool) -> Control:
 		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		words.add_child(kicker)
 		stats.add_child(plate)
+		if not Motion.reduce:
+			var i := stats.get_child_count() - 1
+			plate.modulate.a = 0.0
+			plate.resized.connect(func() -> void: plate.pivot_offset = plate.size * 0.5)
+			plate.scale = Vector2(0.4, 0.4)
+			var tw := plate.create_tween().set_parallel(true)
+			tw.tween_property(plate, "modulate:a", 1.0, 0.2).set_delay(1.3 + 0.15 * i)
+			tw.tween_property(plate, "scale", Vector2.ONE, 0.4).set_delay(1.3 + 0.15 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	col.add_child(stats)
 	var best_line := Label.new()
 	best_line.text = tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
@@ -1448,6 +1815,26 @@ func _build_end(better: bool) -> Control:
 	col.add_child(back)
 	return scrim
 
+## The end card's score runs up from nothing to what the game made, with
+## a burst when it gets there.
+func _count_end() -> void:
+	var k := clampf((_clock - _end_at - 0.4) / 1.1, 0.0, 1.0)
+	var shown := int(sim.score * (1.0 - pow(1.0 - k, 3.0)))
+	var text := Record.grouped(shown)
+	if _end_score.text != text:
+		_end_score.text = text
+		if int(_clock * 20.0) % 2 == 0:
+			_fx.cue("move", 0.9 + 0.8 * k, -10.0)
+	if k >= 1.0:
+		_end_score.pivot_offset = _end_score.size * 0.5
+		_kick(_end_score, 0.25, 0.4)
+		var at := _in_air(_end_score, _end_score.size * 0.5)
+		_spray(_air_bits, at, Art.GOLD, 14, 620.0, "star", 1.1)
+		_spray(_air_bits, at, Color("fffaf0"), 8, 480.0, "spark", 1.1)
+		_spray(_air_bits, at, Art.ACORN, 6, 520.0, "acorn", 0.8)
+		_ring(_air_bits, at, 220.0, Color(Art.GOLD, 0.9))
+		_end_score = null
+
 func _celebrate(better: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
 	if Motion.reduce:
@@ -1455,14 +1842,16 @@ func _celebrate(better: bool) -> void:
 	card.pivot_offset = Vector2(card.custom_minimum_size.x * 0.5, 200.0)
 	card.scale = Vector2.ONE * 0.86
 	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	if not better:
-		return
+	var grand: bool = sim.max_v >= 2048
+	if better or grand:
+		_rain = 3.5
 	var fx := Fx2D.new()
 	_end.add_child(fx)
 	var mid := size * 0.5
-	for k in 8:
-		var at := mid + Vector2.from_angle(TAU * k / 8.0 - PI * 0.5) * Vector2(400.0, 330.0)
-		var t := get_tree().create_timer(0.25 + 0.14 * k)
+	var puffs := 14 if better else (8 if grand else 4)
+	for k in puffs:
+		var at := mid + Vector2.from_angle(TAU * k / float(puffs) - PI * 0.5) * Vector2(400.0, 330.0)
+		var t := get_tree().create_timer(0.25 + 0.1 * k)
 		t.timeout.connect(func() -> void:
 			if is_instance_valid(fx):
 				fx.puff(at, CONFETTI[k % CONFETTI.size()], 12))

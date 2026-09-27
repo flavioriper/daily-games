@@ -172,6 +172,62 @@ static func _twinkle(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
 		pts.append(c + Vector2.from_angle(-PI * 0.5 + TAU * k / 8.0) * rr)
 	b.polygon(pts, col)
 
+## A four-pointed glint of radius `r` at `c`, turned by `turn`, laid into a
+## builder: a spark thrown by a merge.
+static func glint(b: Face.Builder, c: Vector2, r: float, turn: float, col := Color(1, 1, 0.95, 0.95)) -> void:
+	b.disc(c, r * 0.45, Color(col, col.a * 0.26))
+	for k in 4:
+		var d := Vector2.from_angle(TAU * k / 4.0 + turn)
+		var side := d.orthogonal() * r * 0.13
+		b.polygon(PackedVector2Array([c + side, c + d * r * (1.0 if k % 2 == 0 else 0.7), c - side]), col)
+	b.disc(c, r * 0.14, Color(1, 1, 1, col.a))
+
+## A five-pointed star of radius `r`, with a darker drop and a shine.
+static func star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0) -> void:
+	for pass_ in 2:
+		var pts := PackedVector2Array()
+		var at := c + (Vector2(r * 0.04, r * 0.1) if pass_ == 0 else Vector2.ZERO)
+		var rr := r * (1.08 if pass_ == 0 else 1.0)
+		for i in 10:
+			var a := TAU * i / 10.0 - PI * 0.5 + turn
+			pts.append(at + Vector2.from_angle(a) * (rr if i % 2 == 0 else rr * 0.52))
+		b.polygon(pts, Color(col.darkened(0.35), col.a) if pass_ == 0 else col)
+	b.ellipse(c + Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, Color(1, 1, 1, 0.5 * col.a))
+
+## A sunburst laid into a builder: `n` rays between `r0` and `r1`.
+static func sunrays(b: Face.Builder, c: Vector2, r0: float, r1: float, n: int, turn: float, col: Color) -> void:
+	var half := PI / n * 0.5
+	for i in n:
+		var a := TAU * i / n + turn
+		b.polygon(PackedVector2Array([c + Vector2.from_angle(a - half * 0.4) * r0, c + Vector2.from_angle(a - half) * r1,
+			c + Vector2.from_angle(a + half) * r1, c + Vector2.from_angle(a + half * 0.4) * r0]), col)
+
+## An ellipse turned by `rot`: a scrap of confetti.
+static func petal(b: Face.Builder, c: Vector2, rx: float, ry: float, rot: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := TAU * i / 10.0
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry).rotated(rot))
+	b.fan(pts, col)
+
+## A splinter knocked off a block by a merge: a long sliver of painted wood
+## turned by `rot`, its lit face on one side and bare wood on the other.
+static func splinter(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color) -> void:
+	var d := Vector2.from_angle(rot)
+	var n := d.orthogonal()
+	var pts := PackedVector2Array([c - d * r, c - d * r * 0.2 + n * r * 0.34, c + d * r, c + d * r * 0.1 - n * r * 0.3])
+	b.polygon(pts, Color(col.darkened(0.18), col.a))
+	b.polygon(PackedVector2Array([pts[0], pts[1], pts[2]]), Color(col.lightened(0.25), col.a))
+	b.stroke(PackedVector2Array([pts[2], pts[3], pts[0]]), maxf(1.0, r * 0.14), Color(WOOD_HI, col.a * 0.9), false, false)
+
+## A small acorn laid into a builder, tipped by `rot`: rain and bank bits.
+static func acorn_bit(b: Face.Builder, c: Vector2, s: float, rot: float, a := 1.0) -> void:
+	var up := Vector2.from_angle(rot - PI * 0.5)
+	b.ellipse(c + up * -s * 0.1, s * 0.3, s * 0.36, Color(ACORN, a))
+	b.ellipse(c + up * -s * 0.06 + Vector2(-s * 0.1, 0), s * 0.08, s * 0.15, Color(1, 1, 1, 0.22 * a))
+	b.ellipse(c + up * s * 0.17, s * 0.38, s * 0.2, Color(ACORN_CAP, a))
+	b.stroke(PackedVector2Array([c + up * s * 0.33, c + up * s * 0.47 + up.orthogonal() * s * 0.06]), s * 0.07, Color(ACORN_CAP, a))
+
 ## The zap: a cyan bolt, `s` tall, centred.
 static func zap(s: float) -> ArrayMesh:
 	var key := "z%d" % roundi(s)

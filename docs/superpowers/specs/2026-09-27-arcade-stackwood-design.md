@@ -144,3 +144,39 @@ Screen and art only; the sim is untouched.
   shelf, up to ~135 for the moment a chain's acorns and rings are in the
   air (103-105 under reduce motion), 90 on the end card; the Arcade tab
   unchanged at 194. ANGLE agreeing. Suite 122,593/0.
+
+## 8. Rewards made loud (2026-09-27, amendment)
+
+Screen and art only; the sim is untouched. The user asked for rewards far
+more visual, silly or not, to keep people playing; the kit Lucky Thirteen
+took from Posy (stickers, bits, flash, heat, rain) was carried over.
+
+- **Every merge throws splinters** of the old block's paint and sparks;
+  from 128 or a chain of three, gold stars and a second ring. Score pops
+  take the new block's paint. A hard drop kicks splinters of bare wood.
+- **Words, a hopping letter at a time**, over the merge: Nice!, Great!,
+  Timber!, Wood-erful!, Legendary! by loudness (the chain, plus one for
+  every extra block one block took in at once: 2/3/4/5/6), over a
+  sunburst from Timber!. `Chain xN` stands under it, where the old rayed
+  pop was. Chains of three or more flash the shelf and throw stars at the
+  score plate.
+- **Combo**: drops that merge in a row (`Combo xN` under the word from two)
+  light a beating warm glow round the shelf from three; a drop that merges
+  nothing breaks it.
+- **A new biggest block** from 64 is lettered up top (`512!` over a
+  sunburst, "A new biggest block!" under it) and its merge bursts in its
+  paint; from 256 the shelf flashes; from 2048 it flashes gold and acorns,
+  stars and confetti rain over the screen for three seconds. These replace
+  the old milestone banners.
+- **Phew!** when a merge or a tool pulls every stack back off the line.
+- **Acorns fly with golden comet trails**; the bank throws acorns and
+  sparks as each lands and the first letters `+N`.
+- **Bomb and zap** throw each cleared block's splinters, sparks and stars
+  and flash the shelf (orange, cyan).
+- **The end card**: the air layer moves over it, the score runs up from
+  nothing and bursts, a sunburst turns behind the biggest block, the stats
+  pop in, and a new best or a 2048 rains acorns.
+
+Reduce motion keeps the words (still) and drops the bits, flash, rain and
+count. Draw calls at 810x1440: 81-127 in play, ~235-250 at a big chain's
+peak (135 before), 84-88 on the end card.
