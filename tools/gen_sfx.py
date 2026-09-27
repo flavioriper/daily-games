@@ -617,6 +617,32 @@ SETS = {
         "game_over": ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
+    # Lucky Thirteen (Arcade, arcade/thirteen_screen.gd): numbered river
+    # pebbles merged by drawing chains. The pebbles are CARTOON stone; the
+    # jingles ARCADE. select fires on every pebble a chain takes and is
+    # pitched up the chain by the screen, so it sits low; merge is pitched
+    # up the numbers.
+    "thirteen": {
+        "select":     ("a single tiny soft click of a smooth river pebble tapped, bright and clean, very short", 0.5, -14, CARTOON),
+        "unselect":   ("a tiny soft low tick, a small pebble set back down, very short", 0.5, -18, CARTOON),
+        "short":      ("a soft low short 'bonk' blip, not enough pebbles, gentle, not harsh", 0.5, -10, ARCADE),
+        "merge":      ("a few smooth pebbles clicking together into one with a bright soft chime, satisfying, very short", 0.6, -6, CARTOON),
+        "land":       ("a tiny soft stone 'tock' of a pebble settling onto sand, very short", 0.5, -16, CARTOON),
+        "new_number": ("a bright happy sparkling two-note chime, a new biggest number made, short", 0.8, -5, ARCADE),
+        "goal":       ("a joyful triumphant retro fanfare with sparkles and a lucky chime, the number thirteen reached, about two seconds", 2.4, -4, ARCADE),
+        "stuck":      ("a soft worried descending two-note blip, no moves left, gentle not alarming", 0.7, -8, ARCADE),
+        "arm":        ("a soft quick click and a tiny rising blip, a tool picked up, short", 0.5, -10, ARCADE),
+        "undo":       ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -8, ARCADE),
+        "swap":       ("two small smooth pebbles swishing past each other and trading places, a quick airy double whoosh, short", 0.6, -8, CARTOON),
+        "pluck":      ("a soft cartoon 'pop' of a small pebble plucked out of sand, short", 0.5, -7, CARTOON),
+        "shuffle":    ("a handful of smooth pebbles rattled and shaken in a wooden tray, a quick rolling clatter, about a second", 1.0, -7, CARTOON),
+        "lift":       ("a soft rising magical bloop with a sparkle, a pebble raised up one, short", 0.6, -7, ARCADE),
+        "refused":    ("a soft low short 'bonk' blip, not allowed, gentle, not harsh", 0.5, -10, ARCADE),
+        "tumble":     ("a trayful of smooth pebbles tipped out and tumbling, a cascade of soft stone clatters, about a second and a half", 1.5, -6, CARTOON),
+        "start":      ("a short cheerful retro arcade game start jingle, a bouncy lucky little tune, about two seconds", 2.2, -4, ARCADE),
+        "game_over":  ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":   ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {

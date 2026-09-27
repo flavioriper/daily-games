@@ -7,7 +7,9 @@ extends VBoxContainer
 ## (arcade/molehill_screen.gd) is the third, Henhouse
 ## (arcade/henhouse_screen.gd) the fourth, whose best is a time, and
 ## Millstream (arcade/millstream_screen.gd) the fifth, a small factory, and
-## Stackwood (arcade/stackwood_screen.gd) the sixth, falling blocks that merge.
+## Stackwood (arcade/stackwood_screen.gd) the sixth, falling blocks that merge,
+## and Lucky Thirteen (arcade/thirteen_screen.gd) the seventh, chains of
+## pebbles merged up to 13.
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
 ## drawn once), the name and the best score, a line, and the best stage
@@ -32,6 +34,7 @@ const HenArt = preload("res://arcade/henhouse_art.gd")
 const MillArt = preload("res://arcade/millstream_art.gd")
 const MillSim = preload("res://arcade/millstream_sim.gd")
 const StackArt = preload("res://arcade/stackwood_art.gd")
+const PebbleArt = preload("res://arcade/thirteen_art.gd")
 
 const GAP := 20
 const PAD := 24
@@ -40,16 +43,16 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream", "stackwood"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream", "stackwood": "Stackwood"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB", "stackwood": "ARC_STACKWOOD_BLURB"}
+const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream", "stackwood", "thirteen"]
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB"}
 ## Games whose best is the quickest time rather than the highest score.
 const TIMED := ["henhouse", "millstream"]
 ## What a timed game says before its first finish.
 const NO_TIME := {"henhouse": "ARC_NOT_RETIRED", "millstream": "ARC_NOT_BUILT"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE", "stackwood": "ARC_BEST_BLOCK"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -116,7 +119,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner, "stackwood": StackwoodBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -535,3 +538,48 @@ class StackwoodBanner extends Control:
 		var fc := Vector2(fx, fy)
 		draw_mesh(StackArt.block(8, s), null, Transform2D(0.0, fc))
 		StackArt.number(self, font, fc, 8, s)
+
+## Lucky Thirteen's banner: a row of pebbles on raked sand, three sixes
+## strung on a chain toward a seven, and the gold thirteen at the end.
+## Drawn once.
+class ThirteenBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var s := minf(size.y * 0.42, size.x / 8.5)
+		var mid := size * Vector2(0.5, 0.56)
+		var font := PebbleArt.font()
+		var b := Face.Builder.new()
+		b.fan(PackedVector2Array([Vector2(0, mid.y - s * 0.8), Vector2(size.x, mid.y - s * 0.8), size, Vector2(0, size.y)]), Color(PebbleArt.SAND, 0.85))
+		var y := mid.y - s * 0.6
+		while y < size.y:
+			var pts := PackedVector2Array()
+			for i in 17:
+				var t := i / 16.0
+				pts.append(Vector2(size.x * t, y + sin(t * TAU * 1.5) * 4.0))
+			b.stroke(pts, 2.0, Color(PebbleArt.SAND_DEEP, 0.6))
+			y += 16.0
+		# the chain through the three sixes
+		var row := [3, 6, 6, 6, 9, 13]
+		var at: Array = []
+		for k in row.size():
+			at.append(mid + Vector2((k - 2.5) * s * 1.12, (0.18 if k % 2 == 0 else -0.14) * s))
+		var chain := PackedVector2Array([at[1], at[2], at[3]])
+		b.stroke(chain, s * 0.26, Color(PebbleArt.paint(6).darkened(0.2), 0.9))
+		b.stroke(chain, s * 0.13, Color(PebbleArt.paint(6).lightened(0.45), 0.95))
+		var ground := b.mesh()
+		_keep.append(ground)
+		draw_mesh(ground, null)
+		for k in row.size():
+			var sc := 1.1 if k >= 1 and k <= 3 else 1.0
+			draw_set_transform(at[k], 0.0, Vector2(sc, sc))
+			draw_mesh(PebbleArt.pebble(row[k], s), null, Transform2D.IDENTITY)
+			PebbleArt.number(self, font, Vector2.ZERO, row[k], s)
+		draw_set_transform(Vector2.ZERO)
