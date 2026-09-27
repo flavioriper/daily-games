@@ -67,9 +67,26 @@ const GUIDE_GAP := 2.3
 const GUIDE_LEN := 30.0
 ## The seed's wake: TRAIL points.
 const TRAIL := 14
-## The last marigold slows the garden to SLOW for SLOW_TIME of real time.
-const SLOW := 0.25
-const SLOW_TIME := 1.5
+## The last marigold, as it happens in the reference. A seed heading for it
+## within NEAR units slows the garden toward NEAR_SLOW and pushes the view in
+## toward NEAR_ZOOM, the closer the more, under a drumroll; a seed that came
+## inside CLOSE and turned away without touching it is a near miss. Touching
+## it slams the garden to SLOW and the view to FEVER_ZOOM on the seed for
+## FEVER_HOLD of real time, then eases over FEVER_EASE to FEVER_LATE and the
+## whole field while the seed falls to its pot, under the music. The view and
+## the clock follow their targets at CAM_RATE.
+const NEAR := 18.0
+const CLOSE := 6.0
+const NEAR_SLOW := 0.3
+const NEAR_ZOOM := 1.55
+const SLOW := 0.15
+const FEVER_ZOOM := 2.1
+const FEVER_HOLD := 1.2
+const FEVER_EASE := 1.0
+const FEVER_LATE := 0.5
+const CAM_RATE := 6.0
+## The full bloom's music waits MUSIC_AFTER for the sting to open it.
+const MUSIC_AFTER := 0.35
 const BANNER_TIME := 2.4
 const FLOAT_TIME := 1.1
 const POT_GLOW_TIME := 0.5
@@ -116,7 +133,19 @@ var _aiming := false
 ## The hint's long guide is shown for this aim until the aim moves.
 var _super := false
 var _acc := 0.0
-var _slow_until := -100.0
+## The garden's clock (1: real time), the view's zoom about _focus (px), and
+## the view itself, which every drawing and the fx layer go through.
+var _slow := 1.0
+var _zoom := 1.0
+var _focus := Vector2.ZERO
+var _cam := Transform2D.IDENTITY
+## How close a seed is to the last marigold (0..1), and whether one has come
+## inside CLOSE this shot -- a near miss if it turns away.
+var _near := 0.0
+var _near_armed := false
+var _near_spent := false
+var _roll: AudioStreamPlayer
+var _music: AudioStreamPlayer
 ## Per bud: when it bloomed and when it is picked (-1: not).
 var _hit_at := PackedFloat32Array()
 var _pick_at := PackedFloat32Array()
@@ -208,6 +237,8 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_roll = _voice("roll", true)
+	_music = _voice("music", false)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -243,7 +274,15 @@ func _fresh(t: float) -> void:
 	_super = false
 	_aim = PI * 0.5
 	_acc = 0.0
-	_slow_until = -100.0
+	_slow = 1.0
+	_zoom = 1.0
+	_cam = Transform2D.IDENTITY
+	if fx != null:
+		fx.transform = _cam
+	_near = 0.0
+	_near_armed = false
+	_near_spent = false
+	_quiet_audio()
 	_fever_at = -100.0
 	_fever_pot = -1
 	_fever_pot_at = -100.0
@@ -312,7 +351,7 @@ func _process(delta: float) -> void:
 	if _s() <= 0.0 or _state.pos.is_empty():
 		return
 	var t := _now()
-	var sd := delta * _time_scale(t)
+	var sd := delta * _slow
 	if _phase == "shot":
 		_acc += sd
 		var events: Array = []
@@ -329,6 +368,7 @@ func _process(delta: float) -> void:
 			_end_shot(t)
 	elif not _done:
 		_state.step_pot(sd)
+	_camera(t, delta)
 	if _state.pot_dir != _pot_last_dir:
 		_pot_last_dir = _state.pot_dir
 		_pot_turn_at = t
@@ -356,10 +396,120 @@ func _process(delta: float) -> void:
 		_buds = []
 	queue_redraw()
 
-func _time_scale(t: float) -> float:
+## The last marigold's approach and the full bloom: the clock, the view, the
+## drumroll and the near miss, every frame.
+func _camera(t: float, delta: float) -> void:
+	var want_slow := 1.0
+	var want_zoom := 1.0
+	var want_focus := _focus
+	var near := 0.0
+	if _phase == "shot" and _state.fever and not _state.balls.is_empty():
+		var k := clampf((t - _fever_at - FEVER_HOLD) / FEVER_EASE, 0.0, 1.0)
+		want_slow = lerpf(SLOW, FEVER_LATE, k)
+		want_zoom = lerpf(FEVER_ZOOM, 1.0, k)
+		# the seed nearest where the view already is: a clover's twin
+		# does not steal the camera
+		var best := INF
+		for ball: Dictionary in _state.balls:
+			var p := _pt(ball.p)
+			if p.distance_squared_to(_focus) < best:
+				best = p.distance_squared_to(_focus)
+				want_focus = p
+	elif _phase == "shot" and _state.oranges_left == 1:
+		var last := _last_marigold()
+		var reach := State.PEG_R + State.BALL_R
+		var closing := false
+		for ball: Dictionary in _state.balls:
+			var to: Vector2 = _state.pos[last] - Vector2(ball.p)
+			var d := to.length() - reach
+			var toward: bool = Vector2(ball.v).dot(to) > 0.0
+			if d < CLOSE and not _near_spent:
+				_near_armed = true
+			if toward:
+				closing = closing or d < NEAR
+				var c := 1.0 - clampf(d / (NEAR - reach), 0.0, 1.0)
+				if c > near:
+					near = c
+					want_focus = _pt((Vector2(ball.p) + _state.pos[last]) * 0.5)
+		if _near_armed and not closing:
+			_near_miss()
+		want_slow = lerpf(1.0, NEAR_SLOW, near)
+		want_zoom = lerpf(1.0, NEAR_ZOOM, near)
+	elif _near_armed:
+		# the shot ended with a seed having brushed past it
+		if _state.fever:
+			_near_armed = false
+		else:
+			_near_miss()
+	_near = near
 	if Motion.reduce:
-		return 1.0
-	return SLOW if t < _slow_until else 1.0
+		want_slow = 1.0
+		want_zoom = 1.0
+	var a := 1.0 - exp(-CAM_RATE * delta)
+	_slow = lerpf(_slow, want_slow, a)
+	_zoom = lerpf(_zoom, want_zoom, a)
+	if _zoom < 1.001 and want_zoom <= 1.0:
+		_zoom = 1.0
+	_focus = _focus.lerp(want_focus, minf(1.0, a * 2.0))
+	# zoom about the focus, drawn toward the middle as it deepens, and never
+	# past the card's edge
+	var mid := size * 0.5
+	var pull := clampf((_zoom - 1.0) / (FEVER_ZOOM - 1.0), 0.0, 1.0) * 0.6
+	var c := _focus.lerp(mid, pull)
+	c.x = clampf(c.x, size.x - (size.x - _focus.x) * _zoom, _focus.x * _zoom)
+	c.y = clampf(c.y, size.y - (size.y - _focus.y) * _zoom, _focus.y * _zoom)
+	_cam = Transform2D(0.0, Vector2.ONE * _zoom, 0.0, c - _focus * _zoom)
+	fx.transform = _cam
+	_drumroll(delta)
+
+## The one marigold still up.
+func _last_marigold() -> int:
+	for i in _state.pos.size():
+		if _state.kind[i] == State.ORANGE and _state.st[i] == State.UP:
+			return i
+	return 0
+
+## A seed brushed past the last marigold and turned away.
+func _near_miss() -> void:
+	_near_armed = false
+	_near_spent = true
+	fx.cue("close")
+	_mood(Face.Expr.WORRIED, 1.2)
+	_tell("MG_CLOSE", Face.Expr.WORRIED)
+
+## The drumroll swells with the approach and stops the moment it ends.
+func _drumroll(delta: float) -> void:
+	if _roll == null or _roll.stream == null:
+		return
+	var want := _near if _phase == "shot" and not _state.fever else 0.0
+	var now := db_to_linear(_roll.volume_db)
+	now = move_toward(now, want, delta * (4.0 if want > now else 8.0))
+	_roll.volume_db = linear_to_db(maxf(now, 0.0001))
+	_roll.pitch_scale = lerpf(0.95, 1.15, want)
+	if now > 0.002 and not _roll.playing:
+		_roll.play()
+	elif now <= 0.002 and _roll.playing:
+		_roll.stop()
+
+## A player for a sound the board holds on to: the drumroll loops, the music
+## plays once. Silent (no stream) when the file is not there.
+func _voice(cue_name: String, loop: bool) -> AudioStreamPlayer:
+	var p := AudioStreamPlayer.new()
+	p.volume_db = -80.0 if loop else 0.0
+	var path := "res://assets/sfx/marigold/%s.ogg" % cue_name
+	if ResourceLoader.exists(path):
+		var stream: AudioStreamOggVorbis = (load(path) as AudioStreamOggVorbis).duplicate()
+		stream.loop = loop
+		p.stream = stream
+	add_child(p)
+	return p
+
+func _quiet_audio() -> void:
+	if _roll != null:
+		_roll.stop()
+		_roll.volume_db = -80.0
+	if _music != null:
+		_music.stop()
 
 ## Every seed's wake: the last TRAIL places it was drawn at.
 func _follow_trails() -> void:
@@ -484,9 +634,18 @@ func _handle(events: Array, t: float) -> void:
 			"fever":
 				_fever_at = t
 				_fever_from = _pt(e.at)
-				_slow_until = t + SLOW_TIME
 				_back = null
+				if not Motion.reduce:
+					_slow = SLOW
+					_focus = _fever_from
+				_near_armed = false
+				_roll.stop()
+				_roll.volume_db = -80.0
 				fx.cue("fever")
+				if _music.stream != null:
+					get_tree().create_timer(MUSIC_AFTER).timeout.connect(func():
+						if _state.fever and is_inside_tree():
+							_music.play())
 				fx.ring(_pt(e.at), s * 6.0, Pal.SUN, 0.9)
 				_mood(Face.Expr.JOY, 30.0)
 			"fever_pot":
@@ -597,7 +756,9 @@ func _draw() -> void:
 		return
 	var grow := 1.0 if Motion.reduce else Motion.wide_pop_scale(since)
 	var mid := size * 0.5
-	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	# the HUD stands still; the garden goes through the view
+	var hud := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	var xf := _cam * hud
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	var s := _s()
 	var shown: Array = []
@@ -650,12 +811,16 @@ func _draw() -> void:
 		_put(_seed, xf * Transform2D(v.angle() if v.length() > 1.0 else PI * 0.5, _pt(ball.p)), tint, shown)
 	_draw_sun(t, xf, tint, shown)
 	if _state.fever:
-		_draw_pot_worths(xf, seen)
-	_draw_hud(t, xf, tint, shown)
+		draw_set_transform_matrix(_cam)
+		_draw_pot_worths(hud, seen)
+		draw_set_transform(Vector2.ZERO)
+	_draw_hud(t, hud, tint, shown)
 	if not Motion.reduce:
 		_live = _build_live(t)
 		_put(_live, xf, tint, shown)
+	draw_set_transform_matrix(_cam)
 	_draw_floats(t, seen)
+	draw_set_transform(Vector2.ZERO)
 	_draw_banner(t, seen)
 	_draw_toast(t, shown)
 	_shown = shown
@@ -1040,7 +1205,7 @@ func _draw_sun(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		Parts.sun_rays(b, R)
 		_rays = b.mesh()
 	var spin := 0.0 if Motion.reduce else t * TAU / 40.0
-	if t < _slow_until:
+	if _slow < 0.9:
 		spin *= 3.0
 	if not _think.is_empty() and not Motion.reduce:
 		spin += (t - float(_think.at)) * TAU * 1.5
@@ -1467,6 +1632,8 @@ func _shoot() -> void:
 	_super = false
 	_trails = []
 	_shot_at = _now()
+	_near_armed = false
+	_near_spent = false
 	fx.cue("shoot")
 	fx.puff(_pt(State.SUN_C + State.aim_dir(_aim) * State.MUZZLE), Pal.MG_GREEN_HI, 3)
 	note_move()

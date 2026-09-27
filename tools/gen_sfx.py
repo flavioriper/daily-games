@@ -408,6 +408,8 @@ SETS = {
         "free":     ("a cheerful short marimba jingle of three rising notes, a reward earned", 1.0, -6),
         "drain":    ("a very soft low airy swoosh fading down, a small bead falling away out of sight, gentle", 0.6, -14),
         "fever":    ("a swelling magical harp glissando rising up into a bright shimmering chime, a sudden wonderful moment, joyful", 1.8, -4),
+        "roll":     ("a steady soft rolling tremolo on a low wooden marimba and a felt-mallet tom, a suspenseful drumroll, even and constant, no accents, no ending", 3.0, -8, STYLE, "loop"),
+        "close":    ("a soft playful disappointed 'awww', two marimba notes sliding down with a little wooden wobble, a near miss, gentle and funny, never sad", 0.9, -8),
         "fever_pot":("a bright triumphant bell and marimba hit with a sparkling shimmer, a big prize won, joyful", 1.2, -4),
         "out":      ("a gentle soft two-note downward kalimba, a kind 'try again', never sad or harsh", 0.8, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),

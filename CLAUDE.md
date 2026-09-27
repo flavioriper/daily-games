@@ -1349,6 +1349,14 @@ pointing `seed_as` at them. Specs:
   squash, the tag's pop, a rolling score, fireflies and a full bloom of
   falling petals, carried by two small live meshes. 78 bare, 83 played, 91
   in the full bloom, ANGLE agreeing.
+  **The last marigold since 2026-09-27** (the spec's second amendment): a
+  seed heading for it slows the garden and zooms in under a drumroll, a
+  near miss says so, and the hit slams to x0.15 at 2.1x zoom, easing out
+  while the seed falls, under Ode to Joy arranged in the house instruments.
+  The arrangement is synthesised by `tools/gen_marigold_music.py`, the one
+  sound in the game not made by ElevenLabs, because the tune has to be
+  exact. The view is `_cam`; the HUD never goes through it. 91 in the full
+  bloom, unchanged.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

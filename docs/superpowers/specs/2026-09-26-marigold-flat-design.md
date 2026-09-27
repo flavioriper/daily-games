@@ -176,3 +176,36 @@ before), **83** with a seed out (76-78 before) at 7.93 / 7.97 ms (5.81 read
 the same session before the polish), **91** in the full bloom (87 before),
 84 on ANGLE rendering the same, and the menu's last page still 118. The
 suite: 122,593 passed, 0 failed; the probe solves every band.
+
+## Amendment (2026-09-27): the last marigold, as the reference does it
+
+The full bloom used to start at the hit, for a fixed 1.5 s of x0.25, with a
+1.8 s harp sting and nothing after it. The reference builds up to the hit
+and plays music until the ball lands, and that suspense is what the moment
+is for. So, all in `puzzles/marigold2d.gd`'s `_camera()`, every frame:
+
+- **The approach.** With one marigold left, a seed heading for it within
+  `NEAR` (18 units) slows the garden toward `NEAR_SLOW` (0.3) and pushes the
+  view in toward `NEAR_ZOOM` (1.55), focused between the seed and the
+  marigold. The closer the seed, the stronger both get. A looping drumroll
+  (`roll`, marimba and a felt tom) swells with it.
+- **The near miss.** A seed that came inside `CLOSE` (6 units) and turned
+  away plays `close` (a marimba "awww"), shows "So close!" (`MG_CLOSE`),
+  worries the sun, and lets the view ease back. Once a shot at most.
+- **The hit.** The garden slams to `SLOW` (0.15) and the view to
+  `FEVER_ZOOM` (2.1) on the seed for `FEVER_HOLD` (1.2 s real time), then
+  eases over `FEVER_EASE` to `FEVER_LATE` (0.5) and the whole field while the
+  seed falls to its pot. It returns to real time only when the seed lands.
+- **The music.** `music.ogg`, Beethoven's Ode to Joy (public domain),
+  arranged in the house's instruments: marimba melody doubled by
+  glockenspiel, kalimba off-beat chords, a plucked bass, and a timpani roll
+  into bar one. It is synthesised by `tools/gen_marigold_music.py`, not
+  ElevenLabs, so the tune is exact. It is 31 s, plays once, starts
+  `MUSIC_AFTER` the sting and carries on under the win screen. A new try
+  stops it.
+
+The view is a `_cam` transform that the garden's meshes, the fx layer, the
+floats and the pot worths all go through. The HUD band, the banner and the
+toast stay still. It never shows past the card's edge. Under reduce motion
+there is no slowdown and no zoom; the sounds still play. **91** draw calls in
+the full bloom, twice, as before.
