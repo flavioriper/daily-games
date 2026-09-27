@@ -27,16 +27,19 @@ CB_SCORE_RIGHT_N,%s sat in the right seat,%s estão no lugar certo,%s están en 
 CB_SCORE_REST_OUT,%s. The rest are not in the code.,%s. Os outros não estão no código.,%s. Los demás no están en el código.
 CB_SCORE_MORE_1,"%s, and one more belongs somewhere else.","%s, e mais um vai em outro lugar.","%s, y uno más va en otro lugar."
 CB_SCORE_MORE_N,"%s, and %s more belong somewhere else.","%s, e mais %s vão em outro lugar.","%s, y %s más van en otro lugar."
-BAL_RULES,"Every scale balances, and one weight is given. Use a fruit's minus and plus to change what it weighs; the beams follow at once. Solve it when every beam sits level.","Toda balança se equilibra, e um peso já vem dado. Use o menos e o mais de cada fruta para mudar quanto ela pesa; as hastes acompanham na hora. Resolva quando todas as hastes ficarem retas.","Cada balanza se equilibra, y un peso ya viene dado. Usa el menos y el más de cada fruta para cambiar cuánto pesa; los brazos se mueven al instante. Resuélvelo cuando todos los brazos queden nivelados."
+BAL_RULES,"Every fruit has a secret weight. Drag fruit into the seesaw's cups: a fruit further out pulls harder, and the level over the pivot moves one tick for every unit of pull, so a fruit alone in cup 1 reads its own weight. Put every fruit on the plank with the beam dead level. Pinned fruit stay where they are.","Cada fruta tem um peso secreto. Arraste as frutas para os encaixes da gangorra: quanto mais longe, mais ela puxa, e o nível sobre o eixo anda um risco por unidade de força, então uma fruta sozinha no encaixe 1 mostra o próprio peso. Coloque todas as frutas na tábua com a gangorra perfeitamente nivelada. As frutas presas com alfinete não saem do lugar.","Cada fruta tiene un peso secreto. Arrastra las frutas a los huecos del balancín: cuanto más lejos, más tira, y el nivel sobre el eje se mueve una marca por cada unidad de fuerza, así que una fruta sola en el hueco 1 muestra su propio peso. Pon todas las frutas en la tabla con el balancín perfectamente nivelado. Las frutas con alfiler no se mueven."
+BAL_TIP_DRAG,Drag a fruit onto the seesaw to weigh it,Arraste uma fruta para a gangorra para pesá-la,Arrastra una fruta al balancín para pesarla
+BAL_PINNED,That one is pinned in place,Essa está presa com alfinete,Esa está sujeta con un alfiler
+BAL_LEVEL_MORE,Level! Now fit in the rest of the basket,Nivelada! Agora encaixe o resto da cesta,¡Nivelado! Ahora coloca el resto de la cesta
 BAL_GIVEN,That one is given. The scales do the rest.,Esse já vem dado. As balanças fazem o resto.,Ese ya viene dado. Las balanzas hacen el resto.
 BAL_MIN,A thing always weighs at least one.,Tudo pesa pelo menos um.,Todo pesa al menos uno.
 BAL_MAX_12,Twelve is as heavy as anything gets.,Doze é o máximo que algo pode pesar.,Doce es lo máximo que algo puede pesar.
 BAL_MAX_9,Nine is as heavy as anything gets.,Nove é o máximo que algo pode pesar.,Nueve es lo máximo que algo puede pesar.
-BAL_HINT,That one is settled. The scales do the rest.,Esse está resolvido. As balanças fazem o resto.,Ese está resuelto. Las balanzas hacen el resto.
-BAL_CLEARED,Back to one each. Start from the scales.,De volta a um cada. Comece pelas balanças.,De vuelta a uno cada uno. Empieza por las balanzas.
-BAL_SOLVED,Everything sits level. Beautifully weighed.,Tudo equilibrado. Que bela pesagem.,Todo nivelado. Qué bien pesado.
-BAL_WIN,Everything balances!,Tudo se equilibra!,¡Todo se equilibra!
-BAL_SHARE,%d kinds · %d scales,%d tipos · %d balanças,%d tipos · %d balanzas
+BAL_HINT,That one belongs right there,Essa vai bem ali,Esa va justo ahí
+BAL_CLEARED,Everything back in the basket,Tudo de volta na cesta,Todo de vuelta a la cesta
+BAL_SOLVED,Dead level. Beautifully weighed.,Nivelada no ponto. Que bela pesagem.,Nivelado del todo. Qué bien pesado.
+BAL_WIN,Perfectly balanced!,Equilíbrio perfeito!,¡Equilibrio perfecto!
+BAL_SHARE,%d fruit · %d cups,%d frutas · %d encaixes,%d frutas · %d huecos
 BAL_SAYS_1,%s weighs the same as %s.,%s pesa o mesmo que %s.,%s pesa lo mismo que %s.
 BAL_SAYS_N,%s weigh the same as %s.,%s pesam o mesmo que %s.,%s pesan lo mismo que %s.
 BAL_AND,%s and %s,%s e %s,%s y %s
@@ -310,13 +313,13 @@ CB_LVL_0,"4 friends, all different","4 amigos, todos diferentes","4 amigos, todo
 CB_LVL_1,"4 friends, may repeat","4 amigos, podem repetir","4 amigos, pueden repetirse"
 CB_LVL_2,"5 friends, may repeat","5 amigos, podem repetir","5 amigos, pueden repetirse"
 CB_LVL_3,"5 friends of 7, 7 tries","5 amigos de 7, 7 tentativas","5 amigos de 7, 7 intentos"
-BAL_BLURB,Work out what each fruit weighs.,Descubra quanto pesa cada fruta.,Averigua cuánto pesa cada fruta.
-BAL_SHORT,What does each\nfruit weigh?,Quanto pesa\ncada fruta?,¿Cuánto pesa\ncada fruta?
-BAL_MOTTO,Find the weight of things,O peso de cada coisa,El peso de cada cosa
-BAL_LVL_0,3 fruits,3 frutas,3 frutas
-BAL_LVL_1,4 fruits,4 frutas,4 frutas
-BAL_LVL_2,5 fruits,5 frutas,5 frutas
-BAL_LVL_3,"5 fruits, weights to 12","5 frutas, pesos até 12","5 frutas, pesos hasta 12"
+BAL_BLURB,"Weigh the fruit, then level the seesaw.",Pese as frutas e nivele a gangorra.,Pesa las frutas y nivela el balancín.
+BAL_SHORT,"Weigh the fruit,\nlevel the seesaw","Pese as frutas,\nnivele a gangorra","Pesa las frutas,\nnivela el balancín"
+BAL_MOTTO,"Weigh it, then level it",Pese e depois nivele,Pésalo y luego nivélalo
+BAL_LVL_0,"6 fruit, 3 kinds","6 frutas, 3 tipos","6 frutas, 3 tipos"
+BAL_LVL_1,"8 fruit, 4 kinds","8 frutas, 4 tipos","8 frutas, 4 tipos"
+BAL_LVL_2,"8 fruit, 5 kinds","8 frutas, 5 tipos","8 frutas, 5 tipos"
+BAL_LVL_3,"9 fruit, weights to 12","9 frutas, pesos até 12","9 frutas, pesos hasta 12"
 UT_BLURB,Drag the lanterns until no cords cross.,Arraste as lanternas até nenhum fio se cruzar.,Arrastra los faroles hasta que ningún cordón se cruce.
 UT_SHORT,Pull the lanterns\nuntil none cross.,Puxe as lanternas\naté nada cruzar.,Mueve los faroles\nsin que se crucen.
 UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace
@@ -449,7 +452,7 @@ HTP_FALLBACK_RULES,Solve today's puzzle.,Resolva o desafio de hoje.,Resuelve el 
 HTP_FALLBACK_TIP,Look for the simplest move first.,Procure primeiro a jogada mais simples.,Busca primero la jugada más sencilla.
 HTP_TWO_MOONS,Two moons need a sun,Duas luas pedem um sol,Dos lunas piden un sol
 HTP_LESSON_CB,"Place friends, then use the feedback",Posicione amigos e use as pistas,Coloca amigos y usa las pistas
-HTP_LESSON_BAL,Compare both sides to find each weight,Compare os dois lados para achar cada peso,Compara ambos lados para hallar cada peso
+HTP_LESSON_BAL,"Weigh the fruit on the seesaw, then level it",Pese as frutas na gangorra e nivele,Pesa las frutas en el balancín y nivélalo
 HTP_LESSON_UT,Drag lanterns until no cords cross,Arraste lanternas até nenhum fio se cruzar,Arrastra faroles hasta que ningún cordón se cruce
 HTP_LESSON_SK,Drag a rectangle around the right number of cells,Arraste um retângulo com o número certo de casas,Arrastra un rectángulo con el número justo de casillas
 HTP_LESSON_TN,Place one tent beside each tree,Ponha uma barraca ao lado de cada árvore,Pon una carpa junto a cada árbol
@@ -557,7 +560,7 @@ KN_L,"A knight moves in an L: two one way, one across.","O cavalo anda em L: dua
 KN_NO_MOVES,"No moves left. Undo one, or start again.","Sem lances restantes. Desfaça um, ou comece de novo.","No quedan jugadas. Deshaz una, o empieza de nuevo."
 KN_LAST_MOVE,"That was the last move. Undo one, or start again.","Esse foi o último lance. Desfaça um, ou comece de novo.","Esa fue la última jugada. Deshaz una, o empieza de nuevo."
 KN_UNDONE,One move taken back.,Um lance desfeito.,Una jugada deshecha.
-KN_REWOUND,"No way through from there. Back to where there was one.","Não havia saída dali. De volta aonde havia.","No había salida desde allí. De vuelta a donde la había."
+KN_REWOUND,No way through from there. Back to where there was one.,Não havia saída dali. De volta aonde havia.,No había salida desde allí. De vuelta a donde la había.
 KN_WIN,Check and mate. The rose king is yours.,Xeque-mate. O rei rosa é seu.,Jaque mate. El rey rosa es tuyo.
 KN_MOVES_LEFT,%d moves left,Restam %d lances,Quedan %d jugadas
 KN_ONE_MOVE_LEFT,1 move left,Resta 1 lance,Queda 1 jugada

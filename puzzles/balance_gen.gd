@@ -1,152 +1,189 @@
 extends RefCounted
 
-## Balance scales: visual simultaneous equations.
+## Balance's seesaw: the day's weights, basket and pinned fruit.
 ##
-## Weights are integers in [1, max_w] (MAX_W by default, 12 on Insane -- see
-## `generate`'s `max_w` param). Each scale is a homogeneous linear
-## equation over the shapes -- which means the solution set is closed under
-## scaling, so scales alone can NEVER pin down a unique answer. One shape's
-## weight is therefore revealed as an anchor. With the anchor fixed, brute
-## force over the remaining domain makes uniqueness exact and instant.
+## A cup is a signed distance from the pivot, -D..-1 on the left and 1..D on
+## the right; a fruit of kind k in cup x pulls with weights[k] * x, and the
+## beam is level when those sum to zero. Every kind's weight is hidden from
+## the player, who learns them by weighing on the beam itself.
+##
+## The answer is grown first (fruit scattered into cups until the torque is
+## zero), refused if it would balance whatever the weights were (each kind's
+## own signed distances summing to zero teaches nothing), and then pinned one
+## fruit at a time -- always the pin that leaves the fewest completions under
+## the true weights -- until exactly one completion is left. So the level the
+## player finds is the level, and it depends on what things weigh.
+## Spec: docs/superpowers/specs/2026-09-27-balance-seesaw-design.md, section 4.
 
-const MAX_W := 9
+## Per band: kinds, fruit, reach (cups a side), top weight, and how many of
+## the answer's fruit are pinned at random before the greedy pins begin --
+## the first counts on a wide board are the expensive ones, and those bands
+## end with more pins than that anyway.
+const BANDS := [
+	{"kinds": 3, "fruit": 6, "reach": 3, "max_w": 5},
+	{"kinds": 4, "fruit": 8, "reach": 4, "max_w": 7},
+	{"kinds": 5, "fruit": 8, "reach": 4, "max_w": 9, "seed_pins": 1},
+	{"kinds": 5, "fruit": 9, "reach": 5, "max_w": 12, "seed_pins": 2},
+]
+const ATTEMPTS := 400
+const SCATTERS := 300
+## The greedy pin only needs to rank candidates, so a count stops once it
+## has seen this many completions.
+const COUNT_CAP := 60
 
-## `max_w` is the top of a weight's range: 9 by default, 12 on Insane
-## (registry difficulty 3), threaded through to every place a weight is
-## drawn or bounded.
-static func generate(rng: RandomNumberGenerator, shapes: int, max_w: int = MAX_W) -> Dictionary:
-	# Build the secret so every shape after the first is the sum of shapes
-	# already introduced. That guarantees a relating scale actually exists --
-	# with sides capped at three, a secret like (1, 9) has no expressible
-	# relation at all and could never be pinned down.
-	var built := _build_secret(rng, shapes, max_w)
-	var secret: Array = built.secret
-	var defs: Array = built.defs
+static func band(difficulty: int) -> Dictionary:
+	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 
-	var scales: Array = []
-	for i in range(1, shapes):
-		if not (defs[i] as Array).is_empty():
-			scales.append({"left": [i], "right": (defs[i] as Array).duplicate()})
+static func cups(reach: int) -> Array[int]:
+	var out: Array[int] = []
+	for x in range(-reach, reach + 1):
+		if x != 0:
+			out.append(x)
+	return out
 
-	# A couple of extra true statements so the board is not just one
-	# definition per shape. Trimming keeps whichever subset stays minimal.
-	for _k in 2:
-		var extra := _random_balanced(rng, secret, shapes)
-		if not extra.is_empty() and not _duplicate(scales, extra):
-			scales.append(extra)
-
-	# Anchoring shape 0 always works because the construction is triangular.
-	# Prefer a less predictable anchor when one still yields uniqueness.
-	var anchor := {"shape": 0, "value": secret[0]}
-	var order: Array = []
-	for i in shapes:
-		order.append(i)
-	for i in range(order.size() - 1, 0, -1):
-		var j: int = rng.randi_range(0, i)
-		var tmp = order[i]; order[i] = order[j]; order[j] = tmp
-	for cand in order:
-		var a := {"shape": cand, "value": secret[cand]}
-		if count_solutions(scales, shapes, 2, a, max_w) == 1:
-			anchor = a
-			break
-
-	# Drop any scale the others already imply.
-	var trimmed: Array = scales.duplicate()
-	for sc in scales:
-		var trial: Array = trimmed.duplicate()
-		trial.erase(sc)
-		if count_solutions(trial, shapes, 2, anchor, max_w) == 1:
-			trimmed = trial
-	return {
-		"secret": secret,
-		"scales": trimmed,
-		"anchor": anchor,
-		"unique": count_solutions(trimmed, shapes, 2, anchor, max_w) == 1,
-		"max_w": max_w,
-	}
-
-static func _build_secret(rng: RandomNumberGenerator, shapes: int, max_w: int = MAX_W) -> Dictionary:
-	var secret: Array = [rng.randi_range(1, 4)]
-	var defs: Array = [[]]
-	for i in range(1, shapes):
-		var placed := false
-		for _attempt in 40:
-			var side: Array = []
-			for _k in rng.randi_range(1, 3):
-				side.append(rng.randi_range(0, i - 1))
-			side.sort()
-			var total := _sum(side, secret)
-			if total >= 1 and total <= max_w:
-				secret.append(total)
-				defs.append(side)
-				placed = true
-				break
-		if not placed:
-			# Fall back to copying an existing shape, which is always expressible.
-			var src: int = rng.randi_range(0, i - 1)
-			secret.append(secret[src])
-			defs.append([src])
-	return {"secret": secret, "defs": defs}
-
-## A scale is {left: Array[shape_index], right: Array[shape_index]}.
-static func balances(sc: Dictionary, weights: Array) -> bool:
-	return _sum(sc.left, weights) == _sum(sc.right, weights)
-
-static func count_solutions(scales: Array, shapes: int, limit: int, anchor: Dictionary, max_w: int = MAX_W) -> int:
-	var w: Array = []
-	for i in shapes:
-		w.append(1)
-	return _enumerate(scales, shapes, w, 0, limit, anchor, max_w)
-
-static func _enumerate(scales: Array, shapes: int, w: Array, idx: int, limit: int, anchor: Dictionary, max_w: int = MAX_W) -> int:
-	if idx == shapes:
-		for sc in scales:
-			if not balances(sc, w):
-				return 0
-		return 1
-	var lo := 1
-	var hi := max_w
-	if int(anchor.shape) == idx:
-		lo = int(anchor.value)
-		hi = int(anchor.value)
-	var found := 0
-	for v in range(lo, hi + 1):
-		w[idx] = v
-		found += _enumerate(scales, shapes, w, idx + 1, limit - found, anchor, max_w)
-		if found >= limit:
-			return found
-	return found
-
-static func _random_balanced(rng: RandomNumberGenerator, secret: Array, shapes: int) -> Dictionary:
-	for _attempt in 60:
-		var left: Array = _random_side(rng, shapes)
-		var right: Array = _random_side(rng, shapes)
-		if _sum(left, secret) != _sum(right, secret):
+## {weights: [w per kind], fruit: [kind per fruit], answer: [cup per fruit],
+## pinned: [bool per fruit], reach, unique}. Fruit are listed kind by kind,
+## which is the basket's order.
+static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
+	var bd := band(difficulty)
+	var kinds: int = bd.kinds
+	var n: int = bd.fruit
+	var reach: int = bd.reach
+	var all := cups(reach)
+	for _attempt in ATTEMPTS:
+		var weights := _weights(rng, kinds, int(bd.max_w))
+		var fruit: Array[int] = []
+		for k in kinds:
+			fruit.append(k)
+		for _i in n - kinds:
+			fruit.append(rng.randi_range(0, kinds - 1))
+		fruit.sort()
+		var answer := _scatter(rng, fruit, weights, all)
+		if answer.is_empty() or _structural(fruit, answer, kinds):
 			continue
-		var ls: Array = left.duplicate(); ls.sort()
-		var rs: Array = right.duplicate(); rs.sort()
-		if ls == rs:
-			continue  # vacuously true, teaches nothing
-		return {"left": left, "right": right}
+		var pinned: Array[bool] = []
+		pinned.resize(n)
+		pinned.fill(false)
+		var seeds: Array = range(n)
+		_shuffle(rng, seeds)
+		for i in int(bd.get("seed_pins", 0)):
+			pinned[int(seeds[i])] = true
+		var left := count(reach, weights, fruit, answer, pinned)
+		while left > 1:
+			var best := -1
+			var best_n := 1 << 30
+			var order: Array = range(n)
+			_shuffle(rng, order)
+			for f: int in order:
+				if pinned[f]:
+					continue
+				pinned[f] = true
+				var m := count(reach, weights, fruit, answer, pinned)
+				pinned[f] = false
+				if m >= 1 and m < best_n:
+					best = f
+					best_n = m
+			if best < 0:
+				break
+			pinned[best] = true
+			left = best_n
+		if left != 1:
+			continue
+		# a board with nothing left to place is not a board
+		if pinned.count(false) < 2:
+			continue
+		return {"weights": weights, "fruit": fruit, "answer": answer, "pinned": pinned,
+			"reach": reach, "unique": true}
+	# unreachable in practice; a pinned-to-the-end board is still solvable
 	return {}
 
-static func _random_side(rng: RandomNumberGenerator, shapes: int) -> Array:
-	var side: Array = []
-	for i in rng.randi_range(1, 3):
-		side.append(rng.randi_range(0, shapes - 1))
-	side.sort()
-	return side
+static func _weights(rng: RandomNumberGenerator, kinds: int, top: int) -> Array[int]:
+	var pool: Array = range(1, top + 1)
+	_shuffle(rng, pool)
+	var out: Array[int] = []
+	for k in kinds:
+		out.append(int(pool[k]))
+	return out
 
-static func _sum(side: Array, weights: Array) -> int:
-	var t := 0
-	for s in side:
-		t += int(weights[s])
-	return t
+## Fruit into distinct cups until the torque comes to zero; [] if the
+## scatters run out.
+static func _scatter(rng: RandomNumberGenerator, fruit: Array[int], weights: Array[int], all: Array[int]) -> Array[int]:
+	var spots: Array = all.duplicate()
+	for _s in SCATTERS:
+		_shuffle(rng, spots)
+		var tq := 0
+		for f in fruit.size():
+			tq += weights[fruit[f]] * int(spots[f])
+		if tq == 0:
+			var out: Array[int] = []
+			for f in fruit.size():
+				out.append(int(spots[f]))
+			return out
+	return []
 
-static func _duplicate(scales: Array, sc: Dictionary) -> bool:
-	for existing in scales:
-		if existing.left == sc.left and existing.right == sc.right:
-			return true
-		if existing.left == sc.right and existing.right == sc.left:
-			return true
-	return false
+## True when the answer levels the beam whatever the weights: every kind's
+## own signed distances sum to zero.
+static func _structural(fruit: Array[int], answer: Array[int], kinds: int) -> bool:
+	var per: Array[int] = []
+	per.resize(kinds)
+	per.fill(0)
+	for f in fruit.size():
+		per[fruit[f]] += answer[f]
+	for v in per:
+		if v != 0:
+			return false
+	return true
+
+## How many ways the unpinned fruit can fill the free cups so the beam is
+## level under `weights`, identical fruit counted once, up to COUNT_CAP.
+static func count(reach: int, weights: Array[int], fruit: Array[int], answer: Array[int], pinned: Array[bool]) -> int:
+	var taken := {}
+	var tq := 0
+	var kinds := weights.size()
+	var rem: Array[int] = []
+	rem.resize(kinds)
+	rem.fill(0)
+	for f in fruit.size():
+		if pinned[f]:
+			taken[answer[f]] = true
+			tq += weights[fruit[f]] * answer[f]
+		else:
+			rem[fruit[f]] += 1
+	var free: Array[int] = []
+	for x in cups(reach):
+		if not taken.has(x):
+			free.append(x)
+	var loose := 0
+	for r in rem:
+		loose += r
+	var memo := {}
+	return _walk(free, 0, rem, free.size() - loose, tq, weights, memo)
+
+static func _walk(free: Array[int], i: int, rem: Array[int], empties: int, tq: int, weights: Array[int], memo: Dictionary) -> int:
+	if i == free.size():
+		return 1 if tq == 0 else 0
+	var key := ((i * 16 + empties) * 4096 + (tq + 2048))
+	for r in rem:
+		key = key * 16 + r
+	if memo.has(key):
+		return memo[key]
+	var n := 0
+	if empties > 0:
+		n += _walk(free, i + 1, rem, empties - 1, tq, weights, memo)
+	for k in rem.size():
+		if n >= COUNT_CAP:
+			break
+		if rem[k] > 0:
+			rem[k] -= 1
+			n += _walk(free, i + 1, rem, empties, tq + weights[k] * free[i], weights, memo)
+			rem[k] += 1
+	n = mini(n, COUNT_CAP)
+	memo[key] = n
+	return n
+
+static func _shuffle(rng: RandomNumberGenerator, a: Array) -> void:
+	for i in range(a.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t = a[i]
+		a[i] = a[j]
+		a[j] = t

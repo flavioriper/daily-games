@@ -84,9 +84,16 @@ SETS = {
         "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft wooden creak and gentle clatter, little scale pans swinging back to rest", 1.0, -8),
+        "reset":    ("a quick soft run of little fruit hopping back into a wicker basket, gentle bumps and a light rustle", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, little scales swinging into place", 1.0, -9),
+        "enter":    ("a wooden seesaw creaking once as it tips, then a small fruit landing on a plank with a soft thump", 1.0, -9),
+        # The seesaw (2026-09-27): a fruit picked up, a fruit landing on the
+        # plank (pitched by its weight in the board), the plank's end
+        # bumping down on a hay bale, and the tock of the beam coming to rest.
+        "lift":     ("a tiny soft pluck, a small round fruit lifted out of a wicker basket, very short", 0.5, -12, FOLEY),
+        "land":     ("a small round apple dropped onto a wooden plank, one soft hollow wooden thump, close mic, very short", 0.5, -6, FOLEY),
+        "thud":     ("the end of a wooden seesaw plank bumping down onto a hay bale, a soft muffled thud with a faint straw rustle", 0.6, -6, FOLEY),
+        "tock":     ("a single soft muted wooden tock, a gentle settle, very short", 0.5, -12),
     },
     # Untangle: paper lanterns joined by strings, dragged until no strings cross.
     "untangle": {

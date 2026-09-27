@@ -446,8 +446,8 @@ func _process(delta: float) -> bool:
 			_idle_from = INF
 			_idle_to = INF
 		elif _entry.id == "balance":
-			# One press on the first free weight card, so the strip shows a
-			# beam swing and the kind's hop.
+			# One fruit dragged onto the seesaw, so the strip shows a flight
+			# and the beam's swing.
 			_step_balance()
 		elif _entry.id == "untangle" and not _empty:
 			_begin_untangle_drag()
@@ -1211,11 +1211,16 @@ func _tap_key(name: String) -> void:
 	if chip is Button:
 		_press(chip)
 
-## Balance: plus on the first card the player owns, through the real button.
+## Balance: drag the first basket fruit up and over its answer cup, so the
+## strip shows a flight, a landing and the beam's swing.
 func _step_balance() -> void:
-	for i in _puzzle.state.shapes:
-		if not _puzzle.state.locked[i]:
-			_press(_host.tray.plus_button(i))
+	var st = _puzzle.state
+	for f in st.fruit.size():
+		if st.loose(f) and st.at[f] == 0:
+			var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+			var from: Vector2 = xf * _puzzle.fruit_to_local(f)
+			var to: Vector2 = xf * (_puzzle.cup_to_local(st.answer[f]) + Vector2(0.0, -120.0))
+			_begin_drag(from, to - from)
 			return
 
 ## Untangle: touch the first free lantern's ring and start dragging it.

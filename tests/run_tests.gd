@@ -23,7 +23,6 @@ func _initialize() -> void:
 		"motion_turn": "res://tests/test_motion_turn.gd",
 		"binairo": "res://tests/test_binairo.gd",
 		"mastermind": "res://tests/test_mastermind.gd",
-		"balance": "res://tests/test_balance.gd",
 		"untangle": "res://tests/test_untangle.gd",
 		"shikaku": "res://tests/test_shikaku.gd",
 		"tents": "res://tests/test_tents.gd",

@@ -105,6 +105,13 @@ var plain := false:
 	set(v):
 		plain = v
 		queue_redraw()
+## Leaves out the offset "shadow" layer: a face standing in the open (on
+## Balance's seesaw, against the sky) rather than on a tile, where the ink
+## disc reads as a grey halo instead of a shadow.
+var shadowless := false:
+	set(v):
+		shadowless = v
+		queue_redraw()
 ## Whether set_idle(true) rocks this face. Only a moon reads it, and the owner
 ## turns it on for about a third of them so a board sways rather than nods.
 var rocks := false
@@ -231,6 +238,8 @@ func _draw() -> void:
 	var eye := _eye_level()
 	var centre := size * 0.5
 	for layer in _layers():
+		if shadowless and layer[0] == "shadow":
+			continue
 		var mesh := _mesh_for(layer[0], layer[1], R, eye)
 		draw_mesh(mesh, null, _layer_transform(layer[0], R, centre))
 

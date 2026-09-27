@@ -117,17 +117,17 @@ const PUZZLES := [
 		"blurb": "BAL_BLURB",
 		"short": "BAL_SHORT",
 		"motto": "BAL_MOTTO",
-		"footer": "Weigh · Reason · Settle",
-		# Its tray is a card per fruit, and it has **no actions row**: the
-		# beams are a continuous check, so there is no Check to put in one and
-		# Reset rides in the top bar instead.
+		"footer": "Weigh · Place · Level",
+		# A seesaw since 2026-09-27: the basket is inside the board card, so
+		# no tray, and the beam is its own check, so **no actions row** --
+		# Undo, Reset and Hint ride in the top bar.
 		"script": "res://puzzles/balance2d.gd",
 		"shell": "flat",
-		"tray": "weights",
+		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): three, four or five kinds of fruit,
-		# and each is its own daily with its own done mark.
+		# Asks like Sudoku (2026-09-23): balance_gen.gd's BANDS, and each is
+		# its own daily with its own done mark.
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "BAL_LVL_0"},

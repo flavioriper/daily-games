@@ -1,172 +1,185 @@
 extends RefCounted
 
-## Balance's rules with no scene in them: the shapes, the scales, the given
-## anchor, the player's guess, which weights are fixed and the undo history.
-## The flat board owns one of these and draws whatever it says, the way
-## puzzles/binairo_state.gd and puzzles/codebreak_state.gd do for their
-## screens, so the screen on trial and the game cannot disagree about what a
-## tap, a hint or a reset did. The island board (puzzles/balance3d.gd) still
-## carries its own copy of all of this until the 2D-or-3D verdict; whichever
-## board survives, this is the one truth to keep.
+## Balance's rules with no scene in them: the day's hidden weights, the
+## fruit, which cup each one is in (0 is the basket), which are pinned, and
+## the undo history. The flat board draws the physics of it
+## (puzzles/balance_sim.gd), but what counts -- is a fruit on the plank, is
+## the beam level -- is only ever asked of this, in whole numbers, so the
+## drawing can wobble without the rules wobbling with it.
 ##
 ## Nothing in here counts moves or hints: those are the board's tallies on
-## PuzzleBase, and they follow the board's own rules (a hint that finishes
-## the puzzle counts no move, a reset refunds no hint).
-##
-## A scale is {"left": [shape index...], "right": [...]} exactly as the
-## generator hands it over, and a history entry is {"shape": i, "from": w},
-## as the island's `_history` has it.
-## Spec: docs/superpowers/specs/2026-09-18-balance-flat-design.md, section 2.
+## PuzzleBase.
+## Spec: docs/superpowers/specs/2026-09-27-balance-seesaw-design.md.
 
 const Gen = preload("res://puzzles/balance_gen.gd")
 
-var shapes: int = 0
-var secret: Array = []
-var scales: Array = []
-var anchor: Dictionary = {}
-## The player's answer, one weight per shape, always in [1, max_w].
-var guess: Array = []
-## The top of a weight's range for this puzzle: Gen.MAX_W by default, 12 on
-## Insane. Comes from the generator's own output, so the guess never runs
-## ahead of the range the secret was actually drawn from.
-var max_w := Gen.MAX_W
-## Per shape: the weight is fixed and its card takes no presses. The anchor
-## from the start, plus anything a hint has revealed.
-var locked: Array = []
-## One entry per weight change, newest last. Undo pops one.
+const BASKET := 0
+
+var weights: Array[int] = []
+## Kind per fruit, kind by kind (the basket's order).
+var fruit: Array[int] = []
+## The one arrangement that levels the beam, a cup per fruit.
+var answer: Array[int] = []
+## Pinned from the start: part of the answer and never moved.
+var pinned: Array[bool] = []
+## Pinned by a hint: in its answer cup for good.
+var hinted: Array[bool] = []
+## Where each fruit is: a cup, or BASKET.
+var at: Array[int] = []
+var reach := 3
+## One entry per move, newest last: {"moves": [[f, from], ...]}, every fruit
+## the move shifted and where it came from.
 var history: Array[Dictionary] = []
 
-## Takes a fresh puzzle from Gen.generate: the secret, its scales and the
-## anchor, every unlocked shape starting at one, an empty history. The
-## generator's own arrays are copied, so nothing here is shared with a board
-## that mutates them.
 func setup(out: Dictionary) -> void:
-	secret = (out.secret as Array).duplicate()
-	scales = []
-	for sc in out.scales:
-		scales.append({"left": (sc.left as Array).duplicate(), "right": (sc.right as Array).duplicate()})
-	anchor = (out.anchor as Dictionary).duplicate()
-	max_w = int(out.get("max_w", Gen.MAX_W))
-	shapes = secret.size()
-	guess = []
-	locked = []
-	for i in shapes:
-		var anchored := i == int(anchor.shape)
-		guess.append(int(anchor.value) if anchored else 1)
-		locked.append(anchored)
+	weights.assign(out.weights)
+	fruit.assign(out.fruit)
+	answer.assign(out.answer)
+	pinned.assign(out.pinned)
+	reach = int(out.reach)
+	hinted = []
+	at = []
+	for f in fruit.size():
+		hinted.append(false)
+		at.append(answer[f] if pinned[f] else BASKET)
 	history = []
 
-# --- moves ---
+func kinds() -> int:
+	return weights.size()
 
-## Whether shape `i` can take a step of `delta` right now: an unlocked shape
-## whose weight would stay inside [1, max_w]. The weight cards grey a button
-## out by this, and a refused press is what makes a card shiver.
-func can_step(i: int, delta: int) -> bool:
-	if locked[i]:
-		return false
-	var next: int = int(guess[i]) + delta
-	return next >= 1 and next <= max_w
+func cups() -> Array[int]:
+	return Gen.cups(reach)
 
-## The move: one unit onto or off shape `i`'s weight. False when the shape is
-## given or the range runs out, so the board can answer with a shiver and the
-## sprout's reason -- the island's `_add` and `_remove` in one method, since
-## the flat card's minus and plus are one gesture with two signs.
-func step(i: int, delta: int) -> bool:
-	if not can_step(i, delta):
+## A fruit the player may pick up.
+func loose(f: int) -> bool:
+	return not pinned[f] and not hinted[f]
+
+## The fruit in cup `x`, or -1.
+func occupant(x: int) -> int:
+	if x == BASKET:
+		return -1
+	for f in fruit.size():
+		if at[f] == x:
+			return f
+	return -1
+
+## Moves fruit `f` to cup `x` (or the basket). False, and nothing changes,
+## for a fixed fruit, a taken cup or no change at all.
+func place(f: int, x: int) -> bool:
+	if not loose(f) or at[f] == x:
 		return false
-	history.append({"shape": i, "from": int(guess[i])})
-	guess[i] = int(guess[i]) + delta
+	if x != BASKET and (occupant(x) >= 0 or absi(x) > reach):
+		return false
+	history.append({"moves": [[f, at[f]]]})
+	at[f] = x
 	return true
 
-## Reverts the last change and says which shape now shows what, as
-## {"shape": i, "to": w}; {} with nothing to undo. No state in the history
-## was ever solved, or the game would have ended there.
-func undo() -> Dictionary:
-	if history.is_empty():
-		return {}
-	var last: Dictionary = history.pop_back()
-	var i := int(last.shape)
-	guess[i] = int(last.from)
-	return {"shape": i, "to": int(guess[i])}
+## The pull of everything on the plank, in whole units: positive leans right.
+func torque() -> int:
+	var t := 0
+	for f in fruit.size():
+		if at[f] != BASKET:
+			t += weights[fruit[f]] * at[f]
+	return t
 
-## Every unlocked shape falls back to one; hints already spent stay spent and
-## the weights they revealed stay locked, as on the island. Clears the
-## history. Returns the shapes whose weight changed, which is what a board
-## has to redraw -- a given, or one already at one, is not among them.
+func in_basket() -> int:
+	return at.count(BASKET)
+
+func is_solved() -> bool:
+	return in_basket() == 0 and torque() == 0
+
+func can_undo() -> bool:
+	return not history.is_empty()
+
+## Takes the last move back. Returns [[f, to], ...] for every fruit it put
+## back, [] with nothing to undo.
+func undo() -> Array:
+	if history.is_empty():
+		return []
+	var last: Dictionary = history.pop_back()
+	var back: Array = []
+	var moves: Array = last.moves
+	for i in range(moves.size() - 1, -1, -1):
+		var f: int = moves[i][0]
+		at[f] = int(moves[i][1])
+		back.append([f, at[f]])
+	return back
+
+## Every loose fruit home to the basket. Returns the fruit that moved.
 func reset() -> Array[int]:
-	var changed: Array[int] = []
-	for i in shapes:
-		if locked[i] or int(guess[i]) == 1:
-			continue
-		guess[i] = 1
-		changed.append(i)
+	var moved: Array[int] = []
+	for f in fruit.size():
+		if loose(f) and at[f] != BASKET:
+			at[f] = BASKET
+			moved.append(f)
 	history = []
-	return changed
+	return moved
 
 # --- help ---
 
-## The shape a hint would reveal: one the player currently has wrong, since
-## revealing a weight already right would teach nothing; else any shape still
-## unlocked. Ties go to the lowest index, so a hint is reproducible. -1 when
-## every shape is locked or already correct.
-func hint_shape() -> int:
-	for i in shapes:
-		if not locked[i] and int(guess[i]) != int(secret[i]):
-			return i
-	for i in shapes:
-		if not locked[i]:
-			return i
-	return -1
+## The next hint: {"f": the fruit to seat, "cup": its answer cup, "bumped":
+## the fruit sitting there now or -1}; {} when there is nothing to give.
+## Cups nearest the pivot first, so hints are reproducible. A fruit already
+## right (its kind is the answer's kind for its cup) is never moved.
+func hint_move() -> Dictionary:
+	var want := {}
+	for f in fruit.size():
+		want[answer[f]] = fruit[f]
+	var order := cups()
+	order.sort_custom(func(a: int, b: int): return absi(a) < absi(b) or (absi(a) == absi(b) and a < b))
+	for x: int in order:
+		if not want.has(x):
+			continue
+		var there := occupant(x)
+		if there >= 0 and fruit[there] == int(want[x]):
+			continue
+		var k: int = want[x]
+		# the fruit to bring: one of that kind in the basket, else one of
+		# that kind standing in a cup that is not its kind's
+		var pick := -1
+		for f in fruit.size():
+			if loose(f) and fruit[f] == k and at[f] == BASKET:
+				pick = f
+				break
+		if pick < 0:
+			for f in fruit.size():
+				if loose(f) and fruit[f] == k and not _right(f, want):
+					pick = f
+					break
+		if pick >= 0:
+			return {"f": pick, "cup": x, "bumped": there}
+	return {}
 
-## Reveals hint_shape()'s true weight and locks it, so the rest of the board
-## has one more fixed point to reason from. That shape's own entries leave
-## the history: an undo must never turn a locked weight back, and there is
-## nothing honest to restore it to. Returns the shape revealed, or -1.
-func apply_hint() -> int:
-	var i := hint_shape()
-	if i < 0:
-		return -1
-	locked[i] = true
-	guess[i] = int(secret[i])
+func _right(f: int, want: Dictionary) -> bool:
+	return at[f] != BASKET and want.has(at[f]) and int(want[at[f]]) == fruit[f]
+
+## Plays hint_move(): the bumped fruit goes home, the hinted one takes its
+## cup and is fixed there. The history keeps the bump but forgets the hinted
+## fruit, which no undo may take back out. Returns the move, {} if none.
+func apply_hint() -> Dictionary:
+	var m := hint_move()
+	if m.is_empty():
+		return {}
+	var f: int = m.f
+	var b: int = m.bumped
+	m["from"] = at[f]
+	if b >= 0:
+		at[b] = BASKET
+	at[f] = int(m.cup)
+	hinted[f] = true
 	var kept: Array[Dictionary] = []
 	for h in history:
-		if int(h.shape) != i:
-			kept.append(h)
+		var moves: Array = []
+		for mv in h.moves:
+			if int(mv[0]) != f:
+				moves.append(mv)
+		if not moves.is_empty():
+			kept.append({"moves": moves})
 	history = kept
-	return i
+	return m
 
-# --- reading the scales ---
-
-func side_total(side: Array) -> int:
-	var t := 0
-	for s in side:
-		t += int(guess[int(s)])
-	return t
-
-## What scale `i` reads under the current guess: its left total less its
-## right, so a positive number means the left dish is the heavy one and dips.
-## (The island's private `_diff` is the other way round; only the sign
-## convention differs, and the flat board's is the mock's, which is the
-## drawing these numbers have to match.)
-func lean(i: int) -> int:
-	var sc: Dictionary = scales[i]
-	return side_total(sc.left) - side_total(sc.right)
-
-func is_level(i: int) -> bool:
-	return lean(i) == 0
-
-## How many scales are still tipping.
-func tipping() -> int:
-	var n := 0
-	for i in scales.size():
-		if not is_level(i):
-			n += 1
-	return n
-
-## Every beam level at once, which on this board is the same as every weight
-## being right: the anchor plus `shapes - 1` independent scales pin down
-## exactly one answer, which is what the generator proves before it ships a
-## board. Asked of the guess rather than the beams so a board with no scales
-## at all could never read as solved.
-func is_solved() -> bool:
-	return guess == secret
+## Puts the answer on the plank, for a daily reopened after it was solved.
+func show_answer() -> void:
+	for f in fruit.size():
+		at[f] = answer[f]
+	history = []

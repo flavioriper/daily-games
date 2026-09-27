@@ -105,7 +105,7 @@ func _note(id: String) -> String:
 	match id:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
-		"balance": return "weights %s, board fit=%s, hud=%s" % [_puzzle.state.guess, _fit_ok, _hud_ok]
+		"balance": return "weights %s, %d moves, board fit=%s, hud=%s" % [_puzzle.state.weights, _puzzle.moves, _fit_ok, _hud_ok]
 		"untangle": return "%d crossings, board fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
 		"shikaku": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, board fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
@@ -233,30 +233,32 @@ func _solve_mastermind() -> void:
 		_press(flat.chips[friend] if flat != null else _host.action_bar.tray.buttons[friend])
 	_press(_host.action_bar.check_button)
 
-## The flat Balance: the weights are dialled in on the host's own cards
-## (ui/flat/weight_tray.gd), since this screen has no live surface on the
-## board at all -- the board only shows what the cards say. Pressing the real
-## minus and plus is therefore the whole input path.
+## Balance's seesaw: a hint through the HUD, then every loose fruit dragged
+## out of the basket onto its answer cup by touch. The flights take seconds
+## to land and settle, longer than this harness waits, so the sim is snapped
+## to rest once every fruit has been let go -- the drags are the input path
+## under test, the physics is the drawing's.
 func _solve_balance_flat() -> void:
-	# Board fit check: every dish must hang inside the card the board asked
-	# for, which is what the tilt cap and the band cap exist to guarantee.
-	var card := Rect2(Vector2.ZERO, Vector2(_puzzle.size.x, _puzzle.card_height(_puzzle.size.y)))
+	var st = _puzzle.state
+	var card := Rect2(Vector2.ZERO, _puzzle.size)
 	_fit_ok = true
-	for i in _puzzle.state.scales.size():
-		for side in 2:
-			if not card.has_point(_puzzle.dish_to_local(i, side)):
-				_fit_ok = false
-	# The HUD's hint reveals and locks one kind; the rest are stepped in.
+	for x in st.cups():
+		if not card.has_point(_puzzle.cup_to_local(x)):
+			_fit_ok = false
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1
-	var tray = _host.tray
-	for i in _puzzle.state.shapes:
-		var target: int = int(_puzzle.state.secret[i])
-		var guard := 0
-		while int(_puzzle.state.guess[i]) != target and guard < 12:
-			guard += 1
-			var up: bool = int(_puzzle.state.guess[i]) < target
-			_press(tray.plus_button(i) if up else tray.minus_button(i))
+	_puzzle.sim.snap()
+	var want := {}
+	for f in st.fruit.size():
+		want[st.answer[f]] = st.fruit[f]
+	for x in st.cups():
+		if not want.has(x) or st.occupant(x) >= 0:
+			continue
+		for f in st.fruit.size():
+			if st.loose(f) and st.at[f] == 0 and st.fruit[f] == int(want[x]):
+				_drag_local(_puzzle.fruit_to_local(f), _puzzle.cup_to_local(x))
+				break
+	_puzzle.sim.snap()
 
 ## Drives both Untangles: the flat board and the island answer the same
 ## names, because the flat one keeps the state's positions under them.
