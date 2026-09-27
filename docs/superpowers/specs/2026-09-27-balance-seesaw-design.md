@@ -129,3 +129,28 @@ settles). `Fx2D.cue` plays silence for any file not yet generated.
   the gauge reading is exact, so the player's own notes are enough to begin
   with. Worth revisiting if the phone play shows people forgetting readings.
 - No par: moves are counted and shown on the win screen, never graded.
+
+## Amendments (the build, 2026-09-27)
+
+- **The cup has a stiff core** (`balance_sim.gd`'s `CORE`, `CORE_DRAG`,
+  `CORE_W`): with only the wide well, a fruit on a plank leaning its full
+  0.16 rad settles 0.13 cup downhill of its cup and never counts as seated,
+  so the beam never read as at rest and the sign stayed dim.
+- **The stops are resting contact**: a knock under 0.12 rad/s no longer
+  bounces, or a plank on a bale micro-bounced for ever.
+- **A held fruit's speed fades while the finger is still**, and an upward
+  fling keeps a third of itself: lifting a fruit out of the basket is not a
+  throw.
+- **Each kind is seated by its drawn radius** (`_drawn_r`): the mushroom and
+  the acorn fill less of their seat than the round fruit and stood a few
+  pixels above the plank.
+- **Faces here are `shadowless`** (a new `Face` flag): against the sky the
+  offset shadow disc read as a grey halo round every fruit on the plank.
+- **The sign carries a little seesaw icon** leaning the way the beam does,
+  not an arrow; the arrow at that size read as "up".
+- The scene: the seesaw stands mid-card and the basket sits on the lawn in
+  front of it; far trees, flowers and tufts dress the lawn.
+- Measured at `--resolution 810x1440`: 87 draw calls, idle 3.3-3.5 ms,
+  ANGLE agreeing on 87 and within 4/255; generation worst 0.7 / 10.4 / 5.9 /
+  29.2 ms (Easy to Insane, 40 seeds a band); the win harness solves it by
+  touch.
