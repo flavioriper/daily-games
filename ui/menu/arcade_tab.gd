@@ -1,8 +1,8 @@
 extends VBoxContainer
 
 ## The Arcade tab: games played alone for a score rather than against the
-## day's board or against someone. Firefly first (arcade/firefly_screen.gd);
-## more are to come, and the card under it says so. Its body takes the day
+## day's board or against someone: Firefly (arcade/firefly_screen.gd) and
+## Hedgerow (arcade/hedgerow_screen.gd). Its body takes the day
 ## row's and the grid's room, as Versus, Stats and Streak do.
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
@@ -19,6 +19,8 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const Art = preload("res://arcade/firefly_art.gd")
+const HedgeArt = preload("res://arcade/hedgerow_art.gd")
+const HedgeSim = preload("res://arcade/hedgerow_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
 
 const GAP := 20
@@ -27,9 +29,12 @@ const RADIUS := 36
 const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const CHIP_H := 84
-const GAMES := ["firefly"]
-const NAMES := {"firefly": "Firefly"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB"}
+const GAMES := ["firefly", "hedgerow"]
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB"}
+## How far a game went, in its own words: a stage, or a wave.
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -44,7 +49,6 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for game: String in GAMES:
 		add_child(_game_card(game))
-	add_child(_soon_card())
 
 func _game_card(game: String) -> Control:
 	var card := PanelContainer.new()
@@ -56,13 +60,13 @@ func _game_card(game: String) -> Control:
 	col.add_theme_constant_override("separation", 12)
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card.add_child(col)
-	var art := Vistas.card_plate(game, Pal.MOON_INK)
+	var art := Vistas.card_plate(game, PLATE_TINT[game])
 	art.custom_minimum_size.y = ART_H
 	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm := FireflyBanner.new()
+	var swarm: Control = FireflyBanner.new() if game == "firefly" else HedgerowBanner.new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -104,33 +108,12 @@ func _game_card(game: String) -> Control:
 	row.add_child(go)
 	return card
 
-func _soon_card() -> Control:
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("f7f0e4"), RADIUS, PAD))
-	card.material = PLAIN
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
-	card.add_child(col)
-	var head := Label.new()
-	head.text = "ARC_SOON"
-	head.theme_type_variation = "CardName"
-	head.modulate = Color(1, 1, 1, 0.6)
-	col.add_child(head)
-	var line := Label.new()
-	line.text = "ARC_SOON_LINE"
-	line.theme_type_variation = "CardBlurb"
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(line)
-	_blurbs.append(line)
-	return card
-
 func refresh() -> void:
 	for game: String in GAMES:
 		var best := Record.best(game)
 		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
 		var st := Record.best_stage(game)
-		(_stage[game] as Label).text = tr("ARC_BEST_STAGE") % st if st > 0 else ""
+		(_stage[game] as Label).text = tr(FURTHEST[game]) % st if st > 0 else ""
 	_fit.call_deferred()
 
 func _ready() -> void:
@@ -246,3 +229,48 @@ class FireflyBanner extends Control:
 	func _put(look: int, frame: int, u: float, xf: Transform2D) -> void:
 		var m := Art.mesh(look, frame, u)
 		draw_mesh(m, null, xf)
+
+## Hedgerow's banner: a strip of lawn with a walk winding between towers,
+## pests coming down it in their elements' colours. Drawn once.
+class HedgerowBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := minf(size.y / 2.6, size.x / 7.5)
+		var mid := size * 0.5
+		var b := Face.Builder.new()
+		# the lawn, and a worn walk snaking across it
+		var lawn := Vector2(u * 7.2, u * 2.3)
+		var at := mid - lawn * 0.5
+		b.fan(Face.Builder.round_rect(at - Vector2(5, 5), lawn + Vector2(10, 10), 16.0), Color("7fa84a", 0.9))
+		b.fan(Face.Builder.round_rect(at, lawn, 12.0), Color("9cc46a", 0.95))
+		var walk := PackedVector2Array()
+		for i in 25:
+			var x := at.x + lawn.x * i / 24.0
+			walk.append(Vector2(x, mid.y + sin(i / 24.0 * TAU * 1.5) * u * 0.62))
+		b.stroke(walk, u * 0.5, Color("c9ae84", 0.8))
+		var mesh := b.mesh()
+		_keep.append(mesh)
+		draw_mesh(mesh, null)
+		# towers above and below the walk
+		var spots := [[0.12, -1, "thorn", 1], [0.3, 1, "sun", 1], [0.47, -1, "acorn", 0], [0.63, 1, "lightning", 1], [0.82, -1, "rain", 2]]
+		for sp: Array in spots:
+			var x: float = at.x + lawn.x * sp[0]
+			var y: float = mid.y + sin(float(sp[0]) * TAU * 1.5) * u * 0.62 + float(sp[1]) * u * 0.78
+			draw_mesh(HedgeArt.tower(sp[2], sp[3], u * 0.9), null, Transform2D(0.0, Vector2(x, y)))
+		# pests on the walk, each in its element
+		var pests := [[0.05, HedgeSim.Kind.APHID, HedgeSim.El.RAIN], [0.2, HedgeSim.Kind.ANT, HedgeSim.El.EMBER],
+			[0.39, HedgeSim.Kind.BEETLE, HedgeSim.El.LEAF], [0.55, HedgeSim.Kind.SLUG, HedgeSim.El.SUN], [0.72, HedgeSim.Kind.BOSS, HedgeSim.El.SHADE]]
+		for pe: Array in pests:
+			var f: float = pe[0]
+			var p := Vector2(at.x + lawn.x * f, mid.y + sin(f * TAU * 1.5) * u * 0.62)
+			var ahead := Vector2(at.x + lawn.x * (f + 0.01), mid.y + sin((f + 0.01) * TAU * 1.5) * u * 0.62)
+			var rot := (ahead - p).angle() + PI * 0.5
+			draw_mesh(HedgeArt.creep(pe[1], pe[2], 0, u * (0.45 if pe[1] == HedgeSim.Kind.BOSS else 0.62)), null, Transform2D(rot, p))

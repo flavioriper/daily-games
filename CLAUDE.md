@@ -1738,6 +1738,36 @@ makes a pair, a flyby bonus stage third and every fourth after).
   synth), awaiting the user's listen. `tests/_shot_firefly.gd` shoots every
   beat and puts `user://arcade.cfg` back.
 
+**Hedgerow is the second** (2026-09-27, spec
+`2026-09-27-arcade-hedgerow-design.md`): a mazing tower defence after the
+element tower-defence genre, which the spec names once to forbid; **it is
+called Hedgerow and nothing else**. Pests walk a 9x12 lawn from the gap in
+the top hedge to the vegetable patch round your towers (a tower closing the
+last way is refused; wasps fly over), six elements in a ring each double
+against the next and half against the one before, four picks of the six at
+waves 1, 7, 14 and 21, and any single element tower fuses with a second
+pick into one of fifteen duals. 40 waves, 20 lives. The tab lost its "more
+arcade soon" card to make room.
+
+- **The game is pure data** (`arcade/hedgerow_sim.gd`, cell units, fixed
+  1/60 s; every tower is one row of `TOWERS`). The maze is a breadth-first
+  distance field from the patch, rebuilt when a tower comes or goes.
+  `tests/_probe_hedgerow.gd -- [seed] [skill 0-2] [picks]` plays 40 waves
+  with a bot; run it after touching the numbers. In zsh, pass a variable of
+  arguments as `${=args}`, or the bot silently gets one argument.
+- **Plain towers do 60% to an elemental pest** (`PLAIN`): without it a
+  thorn-only bot with no maze reached wave 37 and the elements were not
+  worth buying. With it: no maze 21, singles 36-37, duals the final wave.
+- **The panel under the lawn is the whole interface** (next wave and Send;
+  a bare cell's towers; a tower's upgrade, fusions and sale). A panel
+  rebuild detaches its old children before freeing them, so a lookup in the
+  same frame never finds a dying chip.
+- `tests/_shot_hedgerow.gd` shoots every beat, presses the chips and prints
+  a `check` line a move, and puts `user://arcade.cfg` back. 118 draw calls
+  on the tab, 87 on the pick card, 59-75 in play.
+- 28 sounds in the `ARCADE` style, awaiting the user's listen. ElevenLabs
+  refuses a `duration_seconds` under 0.5; `gen_sfx.py` stops the set there.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1810,8 +1840,9 @@ see "Ads and the purchase" below.
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
   `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and
   `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
-  `arcade_end` (score, stage, seconds, fired, hits, kills, best) and
-  `arcade_abandon`; snooker's hint and reset
+  `arcade_end` (score, stage, seconds, fired, hits, kills, best; Hedgerow
+  sends stage as the wave, and leaks, won, towers and picks in place of
+  fired and hits) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

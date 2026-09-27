@@ -462,6 +462,39 @@ SETS = {
         "game_over":("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best": ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
+    # Hedgerow (Arcade, arcade/hedgerow_screen.gd): a mazing tower defence
+    # after the element tower-defence genre, in a daytime garden. The shots
+    # fire many times a second across a board, so they are short and quiet.
+    "hedgerow": {
+        "build":      ("a soft wooden thunk with a small leafy rustle, a little garden tower planted on a grid, short", 0.6, -8, ARCADE),
+        "upgrade":    ("a bright rising three-note chime with a sparkle, a tower growing stronger, short", 0.8, -6, ARCADE),
+        "fuse":       ("a magical swirling shimmer rising into a bright double chime, two elements fusing into one, short", 1.2, -5, ARCADE),
+        "sell":       ("a few soft coins dropping into a pouch, a tower sold back, short", 0.6, -8, ARCADE),
+        "refuse":     ("a tiny soft worried wobble, a muffled 'bonk' with a slight pitch dip, not allowed, gentle", 0.5, -10, ARCADE),
+        "select":     ("a single tiny soft click, selecting a tile, very short and light", 0.5, -14, ARCADE),
+        "pick":       ("a warm magical fanfare with sparkles, a new elemental power chosen, short", 1.4, -5, ARCADE),
+        "wave":       ("a short soft horn call of two rising notes, a wave of garden pests is coming", 1.0, -7, ARCADE),
+        "boss":       ("an ominous low rumbling drum roll with a deep wobble, a giant boss bug appearing", 1.4, -6, ARCADE),
+        "clear":      ("a quick happy rising chime run, a wave cleared", 1.0, -6, ARCADE),
+        "leak":       ("a short sad descending two-note blip, a pest slipped through and a life was lost", 0.6, -7, ARCADE),
+        "kill":       ("a tiny soft bubbly pop, a little bug defeated, very short", 0.5, -14, ARCADE),
+        "kill_big":   ("a big round pop with a sparkling chime burst, a boss bug defeated, satisfying", 0.9, -5, ARCADE),
+        "gold":       ("a light cheerful jingle of a few small coins, earning interest, short", 0.6, -9, ARCADE),
+        "shot_thorn": ("a tiny soft 'thwip', a little thorn dart shot, very short and light", 0.5, -16, ARCADE),
+        "shot_acorn": ("a soft hollow 'thunk-pop', a small acorn lobbed from a catapult, very short", 0.5, -14, ARCADE),
+        "shot_sun":   ("a tiny bright shimmering 'ting', a beam of sunlight, very short", 0.5, -16, ARCADE),
+        "shot_shade": ("a short soft deep 'whum', a heavy shadow bolt, very short", 0.5, -13, ARCADE),
+        "shot_rain":  ("a tiny soft water droplet 'blip', very short", 0.5, -15, ARCADE),
+        "shot_ember": ("a tiny soft fiery 'fwsh', a small flame flicked, very short", 0.5, -16, ARCADE),
+        "shot_leaf":  ("a tiny soft airy leaf swish, very short", 0.5, -16, ARCADE),
+        "shot_stone": ("a short soft low thud with a small ground rumble, a shockwave, very short", 0.5, -12, ARCADE),
+        "zap":        ("a short soft crackling electric zap jumping between targets, gentle, very short", 0.5, -12, ARCADE),
+        "freeze":     ("a tiny crystalline icy tinkle, something frozen for a moment, very short", 0.5, -13, ARCADE),
+        "start":      ("a short cheerful retro arcade game start jingle, a bouncy garden melody, about two seconds", 2.2, -4, ARCADE),
+        "victory":    ("a triumphant sparkling retro fanfare, the garden is saved, joyful", 2.6, -4, ARCADE),
+        "game_over":  ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":   ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {

@@ -210,3 +210,96 @@ FF_AGAIN,Play again,Jogar de novo,Jugar otra vez
 FF_BACK,Back to the arcade,Voltar ao fliperama,Volver al arcade
 FF_PAUSED,Paused,Pausado,En pausa
 FF_RESUME,Tap to go on,Toque para continuar,Toca para seguir
+ARC_HEDGEROW_BLURB,"Plant towers that make the maze: six elements, fifteen fusions, forty waves of garden pests.","Plante torres que formam o labirinto: seis elementos, quinze fusões, quarenta ondas de pragas.","Planta torres que forman el laberinto: seis elementos, quince fusiones, cuarenta oleadas de plagas."
+ARC_BEST_WAVE,Furthest: wave %d,Mais longe: onda %d,Más lejos: oleada %d
+HR_MOTTO,"Grow the maze, guard the patch","Cultive o labirinto, guarde a horta","Cultiva el laberinto, guarda el huerto"
+HR_GOLD,GOLD,OURO,ORO
+HR_LIVES,LIVES,VIDAS,VIDAS
+HR_WAVE,WAVE,ONDA,OLEADA
+HR_WELCOME,Guard the patch,Guarde a horta,Guarda el huerto
+HR_WELCOME_LINE,Your towers are the maze,Suas torres são o labirinto,Tus torres son el laberinto
+HR_WAVE_N,Wave %d,Onda %d,Oleada %d
+HR_K_0,Aphids,Pulgões,Pulgones
+HR_K_1,Ants · quick,Formigas · rápidas,Hormigas · rápidas
+HR_K_2,Gnats · a swarm,Mosquitos · um enxame,Mosquitos · un enjambre
+HR_K_3,Beetles · hard shells,Besouros · casco duro,Escarabajos · caparazón duro
+HR_K_4,Slugs · they heal,Lesmas · se curam,Babosas · se curan
+HR_K_5,Wasps · they fly,Vespas · voam,Avispas · vuelan
+HR_K_6,Stag beetle · a boss,Besouro-veado · um chefe,Ciervo volante · un jefe
+HR_EL_SUN,Sun,Sol,Sol
+HR_EL_SHADE,Shade,Sombra,Sombra
+HR_EL_RAIN,Rain,Chuva,Lluvia
+HR_EL_EMBER,Ember,Brasa,Brasa
+HR_EL_LEAF,Leaf,Folha,Hoja
+HR_EL_STONE,Stone,Pedra,Piedra
+HR_PICK_FIRST,Choose an element first,Escolha um elemento antes,Elige un elemento primero
+HR_INCOMING,Here they come,Lá vêm eles,Ahí vienen
+HR_SEND_FIRST,Send wave 1 · %ds,Mandar onda 1 · %ds,Enviar oleada 1 · %ds
+HR_SEND,Send now · %ds · +%d,Mandar já · %ds · +%d,Enviar ya · %ds · +%d
+HR_CELL,Plant here,Plantar aqui,Plantar aquí
+HR_CELL_LINE,Towers are walls: the pests walk round them,As torres são muros: as pragas contornam,Las torres son muros: las plagas las rodean
+HR_EDGE,The gap and the patch must stay clear,A entrada e a horta ficam livres,La entrada y el huerto quedan libres
+HR_BLOCKS,That would close the last way through,Isso fecharia a última passagem,Eso cerraría el último paso
+HR_BUSY,A pest is standing there,Tem uma praga ali,Hay una plaga ahí
+HR_LEVEL,Lv %d,Nv %d,Nv %d
+HR_UPGRADE,Upgrade,Melhorar,Mejorar
+HR_SELL,Sell,Vender,Vender
+HR_PICK,Choose an element,Escolha um elemento,Elige un elemento
+HR_PICK_N,Element %d of 4,Elemento %d de 4,Elemento %d de 4
+HR_PICK_LINE,Each beats the next in the ring and does half to the one before. Two picked make a fusion.,Cada um vence o próximo do anel e faz metade ao anterior. Dois escolhidos fazem uma fusão.,Cada uno vence al siguiente del anillo y hace la mitad al anterior. Dos elegidos hacen una fusión.
+HR_TAKEN,Already yours,Já é seu,Ya es tuyo
+HR_BEATS,Strong against %s,Forte contra %s,Fuerte contra %s
+HR_PICKED_LINE,Its tower is ready to plant,Sua torre já pode ser plantada,Su torre ya se puede plantar
+HR_CLEAR,Wave held,Onda contida,Oleada contenida
+HR_CLEAR_LINE,+%d bonus · +%d interest,+%d bônus · +%d juros,+%d bonus · +%d interés
+HR_WON,The garden holds!,O jardim resistiu!,¡El jardín resiste!
+HR_WON_CARD,All forty waves held,As quarenta ondas contidas,Las cuarenta oleadas contenidas
+HR_LOST_CARD,The pests got to the patch,As pragas chegaram à horta,Las plagas llegaron al huerto
+HR_WAVES_HELD,Wave %d,Onda %d,Oleada %d
+HR_KILLS,%d pests,%d pragas,%d plagas
+HR_T_THORN,Thorn,Espinho,Espina
+HR_D_THORN,Quick darts. Cheap walls for the maze.,Dardos rápidos. Muros baratos para o labirinto.,Dardos rápidos. Muros baratos para el laberinto.
+HR_T_ACORN,Acorn,Bolota,Bellota
+HR_D_ACORN,Lobs acorns that hit a small crowd.,Lança bolotas que atingem um grupinho.,Lanza bellotas que golpean a un grupito.
+HR_T_SUN,Sun,Sol,Sol
+HR_D_SUN,Long reach; each hit on the same pest burns hotter.,Longo alcance; cada acerto na mesma praga arde mais.,Largo alcance; cada golpe a la misma plaga quema más.
+HR_T_SHADE,Shade,Sombra,Sombra
+HR_D_SHADE,"Slow, heavy bolts; a kill's leftover hits the next.",Raios lentos e pesados; a sobra de um abate atinge o próximo.,Rayos lentos y pesados; lo que sobra de una baja golpea al siguiente.
+HR_T_RAIN,Rain,Chuva,Lluvia
+HR_D_RAIN,A second drop splashes a pest nearby.,Uma segunda gota respinga numa praga perto.,Una segunda gota salpica a una plaga cercana.
+HR_T_EMBER,Ember,Brasa,Brasa
+HR_D_EMBER,Fires fast and heats up the longer it fires.,Atira rápido e esquenta quanto mais atira.,Dispara rápido y se calienta cuanto más dispara.
+HR_T_LEAF,Leaf,Folha,Hoja
+HR_D_LEAF,Hits hard on pests still over half health.,Bate forte em pragas com mais da metade da vida.,Golpea fuerte a plagas con más de media vida.
+HR_T_STONE,Stone,Pedra,Piedra
+HR_D_STONE,A shockwave hits everything around it.,Uma onda de choque atinge tudo em volta.,Una onda de choque golpea todo alrededor.
+HR_T_ECLIPSE,Eclipse,Eclipse,Eclipse
+HR_D_ECLIPSE,Marks its target: every tower hits it harder.,Marca o alvo: toda torre bate mais forte nele.,Marca al objetivo: toda torre le pega más fuerte.
+HR_T_FROST,Frost,Geada,Escarcha
+HR_D_FROST,Freezes its target in place for a moment.,Congela o alvo no lugar por um instante.,Congela al objetivo un momento.
+HR_T_LIGHTNING,Lightning,Relâmpago,Relámpago
+HR_D_LIGHTNING,"Jumps from pest to pest, five in a row.","Salta de praga em praga, cinco seguidas.","Salta de plaga en plaga, cinco seguidas."
+HR_T_BLOOM,Bloom,Flor,Flor
+HR_D_BLOOM,Grows up to triple on the same pest.,Cresce até o triplo na mesma praga.,Crece hasta el triple en la misma plaga.
+HR_T_ATOM,Atom,Átomo,Átomo
+HR_D_ATOM,"Bursts over a crowd, stronger on the same target.","Explode sobre um grupo, mais forte no mesmo alvo.","Estalla sobre un grupo, más fuerte en el mismo objetivo."
+HR_T_POISON,Poison,Veneno,Veneno
+HR_D_POISON,Poisons: damage keeps ticking for three seconds.,Envenena: o dano continua por três segundos.,Envenena: el daño sigue tres segundos.
+HR_T_CINDER,Cinder,Cinza,Ceniza
+HR_D_CINDER,One enormous blow; the leftover carries on.,Um golpe enorme; a sobra segue adiante.,Un golpe enorme; lo que sobra sigue.
+HR_T_BLIGHT,Blight,Praga,Plaga
+HR_D_BLIGHT,"The weaker the pest, the harder it hits.","Quanto mais fraca a praga, mais forte bate.","Cuanto más débil la plaga, más fuerte golpea."
+HR_T_GRAVITY,Gravity,Gravidade,Gravedad
+HR_D_GRAVITY,Slows everything near it and pulses.,Desacelera tudo por perto e pulsa.,Frena todo lo cercano y pulsa.
+HR_T_STEAM,Steam,Vapor,Vapor
+HR_D_STEAM,A jet that hits every pest in a line.,Um jato que atinge toda praga em linha.,Un chorro que golpea a toda plaga en línea.
+HR_T_WELL,Well,Poço,Pozo
+HR_D_WELL,Towers around it fire faster.,Torres em volta atiram mais rápido.,Las torres alrededor disparan más rápido.
+HR_T_MUD,Mud,Lama,Barro
+HR_D_MUD,Splashes a crowd and slows it down.,Respinga num grupo e o desacelera.,Salpica a un grupo y lo frena.
+HR_T_SOLAR,Solar,Solar,Solar
+HR_D_SOLAR,Sets a crowd burning for three seconds.,Põe um grupo em chamas por três segundos.,Prende fuego a un grupo tres segundos.
+HR_T_FORGE,Forge,Forja,Forja
+HR_D_FORGE,Towers around it hit harder.,Torres em volta batem mais forte.,Las torres alrededor golpean más fuerte.
+HR_T_BRAMBLE,Bramble,Silvado,Zarzal
+HR_D_BRAMBLE,Three targets at once.,Três alvos de uma vez.,Tres objetivos a la vez.
