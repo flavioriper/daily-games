@@ -585,3 +585,43 @@ const SLIDE_CLOVER    := Color("8fb873")   # clover on the lawn
 const SLIDE_BUSH      := Color("8cb46e")   # the bushes at the card's corners
 const SLIDE_BUSH_HI   := Color("a9ca86")
 const SLIDE_BUSH_DEEP := Color("739a5b")
+
+# --- Marigold (puzzles/marigold2d.gd, ui/faces/marigold_parts.gd): a dusk
+# pond garden behind a field of flower buds, a sun that shoots seeds, and a
+# terracotta pot along the foot ---
+const MG_SKY_TOP      := Color("b9b6e3")   # the dusk sky over the field
+const MG_SKY_LOW      := Color("f5d3c2")   # its peach horizon
+const MG_HILL_FAR     := Color("c8b7dc")   # the far range
+const MG_HILL_NEAR    := Color("a99bcb")   # the near range
+const MG_SNOW         := Color("f3eef8")   # the peaks' caps
+const MG_POND         := Color("a8c3e2")   # the pond, near the far shore
+const MG_POND_DEEP    := Color("8aa9d3")   # the pond, at the foot
+const MG_SHINE        := Color("e8f0fb")   # the pond's glints
+const MG_BANK         := Color("8fb77a")   # the bank the pot slides on
+const MG_BANK_DEEP    := Color("6f9a60")
+const MG_ARBOR        := Color("a8764f")   # the arbor's posts and arch
+const MG_ARBOR_HI     := Color("c9976b")
+const MG_ARBOR_DEEP   := Color("7e5638")
+const MG_VINE         := Color("7fae66")   # the vine up the posts
+const MG_VINE_HI      := Color("a9cf8e")
+const MG_CARD         := Color("6f8ec4")   # the card round the field
+const MG_CARD_DEEP    := Color("5a78ae")
+const MG_BLUE         := Color("5f86d6")   # a bluebell bud
+const MG_BLUE_HI      := Color("a9c3f1")
+const MG_BLUE_DEEP    := Color("3f63ad")
+const MG_ORANGE       := Color("f08a2c")   # a marigold bud
+const MG_ORANGE_HI    := Color("fcc271")
+const MG_ORANGE_DEEP  := Color("c9651a")
+const MG_GREEN        := Color("63b35a")   # a clover
+const MG_GREEN_HI     := Color("a7dd92")
+const MG_GREEN_DEEP   := Color("3f8a3c")
+const MG_PURPLE       := Color("a06ad6")   # the violet
+const MG_PURPLE_HI    := Color("d3b3f2")
+const MG_PURPLE_DEEP  := Color("7446a8")
+const MG_SEED         := Color("fbf3e0")   # the seed
+const MG_SEED_DEEP    := Color("d9c7a2")
+const MG_SEED_RIM     := Color("7a6450")   # its edge, so it reads on the pale sky
+const MG_POT          := Color("d9825a")   # the terracotta pot
+const MG_POT_HI       := Color("eba67f")
+const MG_POT_DEEP     := Color("a95c3c")
+const MG_SOIL         := Color("6e4a36")
