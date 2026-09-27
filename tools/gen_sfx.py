@@ -428,6 +428,24 @@ SETS = {
         "solved":   ("a joyful celebratory marimba and glockenspiel fanfare, a bright rising melody that lands on a big warm chord with sparkles, triumphant and cozy", 2.8, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
     },
+    # Pixel Garden: copy a little picture onto a pegboard in beads; the
+    # finished picture is ironed. `place` fires on every bead a stroke seats
+    # (pitched a hair apart), so it is tiny and quiet.
+    "pixelgarden": {
+        "place":    ("a single tiny soft click, a small plastic bead dropped onto a peg of a pegboard, light and cute, very short", 0.5, -13),
+        "lift":     ("a tiny soft plucking tick, a small bead pulled off a peg, very short and light", 0.5, -15),
+        "pick":     ("a tiny soft rattle of a few small beads in a little wooden dish, very short", 0.5, -12),
+        "peek":     ("a very short soft paper whoosh, a small card lifted up to look at", 0.5, -14),
+        "refuse":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "check":    ("a soft two-note downward kalimba, gentle, not yet", 0.6, -9),
+        "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -8),
+        "reset":    ("a soft quick cascade of many small beads pouring back into a wooden dish", 1.0, -8),
+        "iron":     ("a soft warm gentle steam puff and a slow shimmering glockenspiel glissando, a warm iron gliding over a finished bead picture, cozy", 1.6, -7),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy handful of small beads poured gently into a wooden dish", 1.0, -10),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

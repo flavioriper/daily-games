@@ -60,6 +60,7 @@ const SlideGen = preload("res://puzzles/slider_gen.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
+const Bead = preload("res://ui/faces/bead.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
@@ -208,6 +209,7 @@ var _knight_mesh: ArrayMesh
 var _slider_mesh: ArrayMesh
 var _hedgehogs_mesh: ArrayMesh
 var _marigold_mesh: ArrayMesh
+var _pixelgarden_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -395,6 +397,7 @@ func _draw() -> void:
 		"slider": _draw_slider()
 		"hedgehogs": _draw_hedgehogs()
 		"marigold": _draw_marigold()
+		"pixelgarden": _draw_pixelgarden()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1298,3 +1301,50 @@ func _draw_marigold() -> void:
 			b.idx.append(base + i)
 	_marigold_mesh = b.mesh()
 	draw_mesh(_marigold_mesh, null)
+
+## Pixel Garden: the board's own pegboard and beads, through
+## `ui/faces/bead.gd`, the file `puzzles/pixel_garden2d.gd` draws with: a
+## toadstool half beaded on a pegboard in its tray, the little picture it is
+## copied from propped beside it, and three loose beads waiting. One mesh.
+const PG_ART := ["..rrrrr..", ".rrwrrrr.", "rrrrrrwrr", "rwrrrrrrr", ".rrrrrrr.",
+	"...ccc...", "...ccc...", "..ccccc..", "........."]
+const PG_CELL := 11.5
+## The pegs still bare in the card's picture: the stroke in hand.
+const PG_BARE := [Vector2i(4, 7), Vector2i(5, 7), Vector2i(6, 7), Vector2i(5, 6)]
+func _draw_pixelgarden() -> void:
+	var b := Face.Builder.new()
+	var cols := {"r": Pal.PG_BEADS.red, "w": Pal.PG_BEADS.white, "c": Pal.PG_BEADS.cream}
+	var cell := PG_CELL * _u
+	var n := PG_ART.size()
+	var origin := at(-20.0 - n * PG_CELL * 0.5, -n * PG_CELL * 0.5)
+	var face := Vector2.ONE * n * cell
+	var rim := 6.0 * _u
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * rim + Vector2(0.0, 3.0 * _u), face + Vector2.ONE * rim * 2.0, rim * 1.6), Pal.PG_TRAY_DEEP)
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * rim, face + Vector2.ONE * rim * 2.0, rim * 1.6), Pal.PG_TRAY)
+	b.fan(Face.Builder.round_rect(origin, face, rim), Pal.PG_BOARD)
+	for y in n:
+		var row: String = PG_ART[y]
+		for x in n:
+			var p := origin + (Vector2(x, y) + Vector2(0.5, 0.5)) * cell
+			Bead.peg(b, p, cell)
+			if row[x] != "." and not PG_BARE.has(Vector2i(x, y)):
+				Bead.bead(b, p, cell, cols[row[x]])
+	# the little picture it is copied from, propped at the left
+	var thumb := Rect2(at(-150.0, -34.0), Vector2(46.0, 46.0) * _u)
+	b.fan(Face.Builder.round_rect(thumb.position + Vector2(0.0, 2.0 * _u), thumb.size, 6.0 * _u), Pal.PG_TRAY_DEEP)
+	b.fan(Face.Builder.round_rect(thumb.position, thumb.size, 6.0 * _u), Pal.PG_TRAY)
+	b.fan(Face.Builder.round_rect(thumb.position + Vector2.ONE * 3.0 * _u, thumb.size - Vector2.ONE * 6.0 * _u, 4.0 * _u), Pal.PG_BOARD)
+	var ps := (thumb.size.x - 10.0 * _u) / n
+	for y in n:
+		var row: String = PG_ART[y]
+		for x in n:
+			var p := thumb.position + Vector2.ONE * 5.0 * _u + (Vector2(x, y) + Vector2(0.5, 0.5)) * ps
+			Bead.pixel(b, p, ps, cols.get(row[x], Color.WHITE), row[x] == ".")
+	# three loose cream beads for the stroke in hand
+	for k in 3:
+		var p := at(64.0 + k * 17.0, 30.0 - (k % 2) * 12.0)
+		Bead.bead(b, p, cell * 1.5, Pal.PG_BEADS.cream)
+	Bead.bead(b, at(84.0, -26.0), cell * 1.5, Pal.PG_BEADS.red)
+	Bead.bead(b, at(104.0, -8.0), cell * 1.5, Pal.PG_BEADS.green)
+	_pixelgarden_mesh = b.mesh()
+	draw_mesh(_pixelgarden_mesh, null)

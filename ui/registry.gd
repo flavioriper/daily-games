@@ -753,6 +753,31 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "MG_LVL_3"},
 		],
 	},
+	{
+		"id": "pixelgarden",
+		"kind": "puzzle",
+		"title": "Pixel Garden",
+		"blurb": "PG_BLURB",
+		"short": "PG_SHORT",
+		"motto": "PG_MOTTO",
+		"footer": "Pick · Seat · Iron",
+		# The kit's chips stand in the board card beside the picture (Quilt's
+		# shape: the pieces live in the card), so no tray; the actions row
+		# carries Reset and Check, and Undo and Hint ride in the top bar.
+		"script": "res://puzzles/pixel_garden2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band of pictures (content/pixel_garden.json)
+		# is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "PG_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "PG_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "PG_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "PG_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

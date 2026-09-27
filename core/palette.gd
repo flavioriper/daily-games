@@ -625,3 +625,25 @@ const MG_POT          := Color("d9825a")   # the terracotta pot
 const MG_POT_HI       := Color("eba67f")
 const MG_POT_DEEP     := Color("a95c3c")
 const MG_SOIL         := Color("6e4a36")
+
+# --- Pixel Garden (puzzles/pixel_garden2d.gd, ui/faces/bead.gd): a pale
+# pegboard in a wooden tray on the garden table, and the bead colours the
+# pictures are drawn in (content/pixel_garden.json names them) ---
+const PG_BOARD        := Color("f1e6cf")   # the pegboard's face
+const PG_BOARD_DEEP   := Color("dccaa6")   # its bevel and the shade under it
+const PG_PEG          := Color("d9c7a3")   # a bare peg
+const PG_PEG_HI       := Color("efe2c6")   # its lit top
+const PG_PEG_DEEP     := Color("bda983")   # its shaded foot
+const PG_TRAY         := Color("c89a6c")   # the wooden tray round the board
+const PG_TRAY_HI      := Color("dcb389")
+const PG_TRAY_DEEP    := Color("9a6f48")
+const PG_TABLE        := Color("e7d6b4")   # the table the tray stands on
+const PG_BEADS := {
+	"red": Color("e0503a"), "orange": Color("f08a2c"), "yellow": Color("f4c640"),
+	"cream": Color("f3e6c8"), "white": Color("fbf7ee"), "pink": Color("f4a3b4"),
+	"rose": Color("d9607a"), "lilac": Color("b99ad8"), "purple": Color("7e5aa6"),
+	"sky": Color("8cc4e8"), "blue": Color("4a7fc1"), "teal": Color("4fae9c"),
+	"lime": Color("a8cf5a"), "green": Color("5fa845"), "forest": Color("2f7a3f"),
+	"tan": Color("d4a56a"), "brown": Color("8a5a36"), "dark": Color("4a3226"),
+	"grey": Color("a9a39a"),
+}
