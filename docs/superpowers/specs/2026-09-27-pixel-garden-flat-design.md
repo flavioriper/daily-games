@@ -126,4 +126,23 @@ so the peek grows it over the board by a transform alone.
 
 ## 7. Figures
 
-Filled in below from this Mac (`--resolution 810x1440`, `--always-on-top`).
+Taken on this Mac (`--resolution 810x1440`, `--always-on-top`), 2026-09-27:
+
+- `tests/_shot_anim.gd -- pixelgarden d=0..3` (a stroke along the longest run
+  of the chosen colour): **77, 78, 78, 77** draw calls, idle 3.41, 3.56,
+  3.39, 3.42 ms -- the size of the board costs nothing measurable, because
+  the pegs are one still mesh and the beads are banded.
+- `-- pixelgarden solve` (the iron): **101-103** draw calls at its peak,
+  3.06-3.15 ms once it has settled.
+- `--rendering-driver opengl3_angle`: the same 78, settled frame within 1/255
+  of the default driver's. `rm`: the pair 1.5 s apart is pixel-identical.
+- `tests/_win.gd -- pixelgarden`: PASS through real touches (hint, check, a
+  wrong bead seated and lifted, every colour).
+- The picture bank's validator (size, 3-7 colours by band, 30-70% filled,
+  never touching all four edges) passes on all forty. Pale beads (cream,
+  white) nearly vanish on the board in bulk, so they are kept to small or
+  outlined areas; the bead's darker rim is what keeps them readable. The
+  squirrel, caterpillar and sheep are the weakest pictures and the first to
+  redraw.
+
+## 8. Amendments

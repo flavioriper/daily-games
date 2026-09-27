@@ -671,3 +671,43 @@ PG_CHECK_ONE,One bead is out of place.,Uma conta está fora do lugar.,Una cuenta
 PG_CHECK_N,%s beads are out of place.,%s contas estão fora do lugar.,%s cuentas están fuera de lugar.
 PG_RESET,Every bead back in the kit.,Todas as contas de volta ao kit.,Todas las cuentas de vuelta al kit.
 PG_WIN,"%s, finished and ironed.",Figura pronta e passada a ferro: %s.,Dibujo terminado y planchado: %s.
+PG_PIC_STRAWBERRY,Strawberry,Morango,Fresa
+PG_PIC_MUSHROOM,Mushroom,Cogumelo,Seta
+PG_PIC_TULIP,Tulip,Tulipa,Tulipán
+PG_PIC_APPLE,Apple,Maçã,Manzana
+PG_PIC_CHERRIES,Cherries,Cerejas,Cerezas
+PG_PIC_CARROT,Carrot,Cenoura,Zanahoria
+PG_PIC_LADYBIRD,Ladybird,Joaninha,Mariquita
+PG_PIC_ACORN,Acorn,Bolota,Bellota
+PG_PIC_DAISY,Daisy,Margarida,Margarita
+PG_PIC_TREE,Tree,Árvore,Árbol
+PG_PIC_SNAIL,Snail,Caracol,Caracol
+PG_PIC_SUNFLOWER,Sunflower,Girassol,Girasol
+PG_PIC_BEE,Bee,Abelha,Abeja
+PG_PIC_BUTTERFLY,Butterfly,Borboleta,Mariposa
+PG_PIC_FROG,Frog,Sapo,Rana
+PG_PIC_DUCK,Duck,Pato,Pato
+PG_PIC_WATERMELON,Watermelon,Melancia,Sandía
+PG_PIC_CACTUS,Cactus,Cacto,Cactus
+PG_PIC_BIRDHOUSE,Birdhouse,Casinha de Passarinho,Casita para Pájaros
+PG_PIC_BIRD,Garden Bird,Pássaro do Jardim,Pájaro del Jardín
+PG_PIC_ROBIN,Robin,Pisco-de-peito-ruivo,Petirrojo
+PG_PIC_HEDGEHOG,Hedgehog,Ouriço,Erizo
+PG_PIC_OWL,Owl,Coruja,Búho
+PG_PIC_WATERING_CAN,Watering Can,Regador,Regadera
+PG_PIC_COTTAGE,Cottage,Chalé,Casita de Campo
+PG_PIC_PUMPKIN,Pumpkin,Abóbora,Calabaza
+PG_PIC_TURTLE,Turtle,Tartaruga,Tortuga
+PG_PIC_TEACUP,Teacup,Xícara de Chá,Taza de Té
+PG_PIC_BUNNY,Bunny,Coelhinho,Conejito
+PG_PIC_RAINBOW,Rainbow,Arco-íris,Arcoíris
+PG_PIC_FOX,Fox,Raposa,Zorro
+PG_PIC_SQUIRREL,Squirrel,Esquilo,Ardilla
+PG_PIC_SHEEP,Sheep,Ovelha,Oveja
+PG_PIC_KOI_POND,Koi Pond,Lago de Carpas,Estanque de Carpas
+PG_PIC_MUSHROOM_HOUSE,Mushroom House,Casa de Cogumelo,Casa de Seta
+PG_PIC_CAT,Cat,Gato,Gato
+PG_PIC_CATERPILLAR,Caterpillar,Lagarta,Oruga
+PG_PIC_BEEHIVE,Beehive,Colmeia,Colmena
+PG_PIC_DRAGONFLY,Dragonfly,Libélula,Libélula
+PG_PIC_FRUIT_BASKET,Fruit Basket,Cesta de Frutas,Cesta de Frutas
