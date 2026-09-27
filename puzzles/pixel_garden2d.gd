@@ -71,6 +71,17 @@ const BAND := 4
 ## the board it covers.
 const PEEK_TIME := 0.18
 const PEEK_COVER := 0.86
+## A bead is seated, not popped: it fades in held above its peg (seen from
+## straight above, nearer reads as bigger and higher, its shade left on the
+## board), falls onto the peg over the first SEAT_FALL of SEAT_TIME, and
+## snaps down with a small press -- the peg shows up its hole only once it
+## is home. Lifting runs the other way over LIFT_TIME: up, nearer, gone.
+const SEAT_TIME := 0.24
+const SEAT_FALL := 0.62
+const SEAT_HIGH := 0.34
+const SEAT_NEAR := 0.16
+const SEAT_PRESS := 0.06
+const LIFT_TIME := 0.16
 ## The win: the solve wave, then the iron crosses along the diagonal, IRON_STEP
 ## a diagonal, each bead fusing over IRON_TIME, and the bare pegs fade out
 ## over PEGS_GONE once it has passed.
@@ -430,11 +441,14 @@ func _build_live(t: float) -> ArrayMesh:
 	var keep: Array = []
 	for g: Dictionary in _leaving:
 		var u: float = t - float(g.at)
-		var s := Motion.pop_out_scale(u)
-		if u < Motion.POP_OUT:
+		if u < LIFT_TIME and not Motion.reduce:
 			keep.append(g)
-		if u >= 0.0 and s > 0.0:
-			Bead.bead(b, _centre(int(g.peg)), _cell, g.colour, Vector2.ONE * s)
+		if u >= 0.0 and u < LIFT_TIME and not Motion.reduce:
+			# Lifted off its peg: rising, nearer, fading.
+			var k := u / LIFT_TIME
+			var h := 1.0 - (1.0 - k) * (1.0 - k)
+			Bead.bead(b, _centre(int(g.peg)), _cell, g.colour, Vector2.ONE * (1.0 + SEAT_NEAR * h),
+				1.0 - k * k, _cell * SEAT_HIGH * h)
 	_leaving = keep
 	for c: int in _moving:
 		_draw_peg(b, c, t)
@@ -469,8 +483,11 @@ func _draw_peg(b: Face.Builder, c: int, t: float) -> void:
 	if _drop[c] == 1:
 		lift = Motion.drop_in_lift(since, _cell * 0.9)
 		alpha = Motion.appear_level(since)
-	elif since < Motion.POP_IN:
-		grow = Motion.pop_in_scale(since)
+	elif since < SEAT_TIME and not Motion.reduce:
+		var seat := _seat(since)
+		lift = seat.x
+		grow = Vector2.ONE * seat.y
+		alpha = seat.z
 	lift += _hop(c, t)
 	var fused := _fused(c, t)
 	Bead.bead(b, at, _cell, _state.colours[k], grow, alpha, lift, fused, _shine(c, t))
@@ -479,6 +496,18 @@ func _draw_peg(b: Face.Builder, c: int, t: float) -> void:
 	if _halo.has(c):
 		var ha := Motion.appear_level(t - _halo_at, 0.12)
 		Bead.halo(b, at - Vector2(0.0, lift), _cell, ha)
+
+## A seating bead `since` seconds in: its lift, its scale and its alpha.
+## The fall is gravity's (slow at the top, fastest at the peg), the fade is
+## done a third of the way down, and the press after it is one dip and home.
+func _seat(since: float) -> Vector3:
+	var u := clampf(since / SEAT_TIME, 0.0, 1.0)
+	if u < SEAT_FALL:
+		var k := u / SEAT_FALL
+		var h := 1.0 - k * k
+		return Vector3(_cell * SEAT_HIGH * h, 1.0 + SEAT_NEAR * h, clampf(k * 3.0, 0.0, 1.0))
+	var v := (u - SEAT_FALL) / (1.0 - SEAT_FALL)
+	return Vector3(0.0, 1.0 - SEAT_PRESS * sin(v * PI), 1.0)
 
 ## The diagonal a peg stands on, from the top left.
 func _diag(c: int) -> int:
@@ -796,10 +825,10 @@ func _paint(c: int) -> void:
 			if _state.beads[c] != State.EMPTY:
 				_arrive_at[c] = t
 				_drop[c] = 0
-				_touch(c, t + Motion.POP_IN)
+				_touch(c, t + SEAT_TIME)
 				fx.cue("place", 0.94 + 0.12 * _h01(c, _painted.size()), 0.0)
 			else:
-				_touch(c, t + Motion.POP_OUT)
+				_touch(c, t + LIFT_TIME)
 				fx.cue("lift", 0.96 + 0.08 * _h01(c, 3))
 			_bar_bump = t
 			_busy_for(Motion.BUMP_TIME)
@@ -893,9 +922,9 @@ func _show_changes(before: PackedInt32Array, pegs: PackedInt32Array, per: float,
 		if _state.beads[c] != State.EMPTY and before[c] != _state.beads[c]:
 			_arrive_at[c] = at
 			_drop[c] = 1 if drop else 0
-			_touch(c, at + (Motion.DROP_TIME if drop else Motion.POP_IN))
+			_touch(c, at + (Motion.DROP_TIME if drop else SEAT_TIME))
 		else:
-			_touch(c, at + Motion.POP_OUT)
+			_touch(c, at + LIFT_TIME)
 	_bar_bump = t
 	_busy_for(Motion.BUMP_TIME + Motion.stagger(pegs.size(), per))
 
@@ -972,7 +1001,7 @@ func reset_board() -> void:
 	for c in pegs:
 		var at := t + (0.0 if Motion.reduce else Motion.stagger(far - _diag(c), Motion.RESET_STAGGER))
 		_leaving.append({"peg": c, "colour": _state.colours[before[c]], "at": at})
-		_touch(c, at + Motion.POP_OUT)
+		_touch(c, at + LIFT_TIME)
 	_halo = {}
 	_bar_bump = t
 	moves = 0

@@ -332,6 +332,10 @@ func _initialize() -> void:
 		_shots = [0.35, 1.62, 1.72, 2.1, 2.45, 2.8, 3.8]
 		_idle_from = 4.0
 		_idle_to = 6.0
+	if _id == "pixelgarden" and _mode != "solve" and not _empty:
+		# A run stroked at TAP_AT: frames close enough to see each bead fade
+		# in above its peg, fall onto it and press home.
+		_shots = [0.35, 1.63, 1.67, 1.71, 1.76, 1.82, 1.9, 2.1]
 	if _id == "pixelgarden" and _mode == "solve":
 		# Every peg but one seated through the state and the last tapped at
 		# TAP_AT: the strip catches the solve's hop, the iron crossing the
