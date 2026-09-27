@@ -428,3 +428,25 @@ MS_KILN_ORE_ONLY,Kilns only take iron ore,Fornos só aceitam minério de ferro,L
 MS_HINT_PICK,Tap the ore on the grass to put it in your bag,Toque no minério na grama para guardar na bolsa,Toca el mineral en la hierba para guardarlo en la bolsa
 MS_HINT_FEED,Open the bag and drag ore onto the kiln,Abra a bolsa e arraste minério até o forno,Abre la bolsa y arrastra mineral al horno
 MS_HINT_INGOT,An ingot! Tap it to pick it up,Um lingote! Toque para recolher,¡Un lingote! Tócalo para recogerlo
+ARC_STACKWOOD_BLURB,"Wooden blocks fall one by one: steer each onto its match, chain the merges and keep the shelf from topping out.","Blocos de madeira caem um a um: leve cada um até o seu par, encadeie as fusões e não deixe a prateleira transbordar.","Los bloques de madera caen uno a uno: lleva cada uno a su pareja, encadena las fusiones y no dejes que el estante se desborde."
+ARC_BEST_BLOCK,Biggest block: %d,Maior bloco: %d,Mayor bloque: %d
+SW_MOTTO,Match and merge,Junte e funda,Junta y fusiona
+SW_NEXT,NEXT,PRÓXIMO,SIGUIENTE
+SW_ACORNS,ACORNS,BOLOTAS,BELLOTAS
+SW_READY_LINE,"Slide to steer, let go to drop","Deslize para guiar, solte para largar","Desliza para guiar, suelta para soltar"
+SW_GO,Stack!,Empilhe!,¡Apila!
+SW_CHAIN,Chain x%d!,Corrente x%d!,¡Cadena x%d!
+SW_2048_LINE,Keep stacking for more,Continue empilhando,Sigue apilando
+SW_RETIRED,No more %d blocks,Chega de blocos %d,Se acabaron los bloques %d
+SW_RETIRED_LINE,The small ones stop falling,Os pequenos param de cair,Los pequeños dejan de caer
+SW_WILD,Rainbow block,Bloco arco-íris,Bloque arcoíris
+SW_WILD_LINE,Joins whatever it lands beside,Junta-se ao que estiver ao lado,Se une a lo que tenga al lado
+SW_BOMB,Bomb,Bomba,Bomba
+SW_BOMB_LINE,Clears the blocks around where it lands,Limpa os blocos em volta de onde cair,Despeja los bloques alrededor de donde caiga
+SW_ZAP,Zap,Raio,Rayo
+SW_ZAP_LINE,Clears every smallest block,Limpa todos os menores blocos,Despeja todos los bloques más pequeños
+SW_TOPPLED,Topped out!,Transbordou!,¡Se desbordó!
+SW_END_CARD,The shelf tumbles,A prateleira desabou,El estante se derrumbó
+SW_STAT_BLOCK,biggest block,maior bloco,mayor bloque
+SW_STAT_MERGES,merges,fusões,fusiones
+SW_STAT_CHAIN,best chain,melhor corrente,mejor cadena

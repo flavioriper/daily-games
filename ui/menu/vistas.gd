@@ -77,6 +77,8 @@ const CARDS := {
 	"henhouse": ["meadow", 1.6, Vector2(0.7, 0.65)],
 	# Millstream's valley is the meadow's near side, by the water.
 	"millstream": ["meadow", 1.5, Vector2(0.25, 0.7)],
+	# Stackwood's shelf stands in the greenhouse light of the sky vista.
+	"stackwood": ["sky", 1.5, Vector2(0.5, 0.55)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

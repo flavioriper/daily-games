@@ -1865,6 +1865,27 @@ and the rest of the milestones are next.
 - 14 sounds (`CARTOON` hands, `ARCADE` jingles, a `FOLEY` brook loop),
   awaiting the user's listen.
 
+**Stackwood is the sixth** (2026-09-27, spec
+`2026-09-27-arcade-stackwood-design.md`): a falling-block number merge
+after a drop-and-merge game the spec names once to forbid; **it is called
+Stackwood**. Numbered wooden blocks fall into a shelf 5 wide and 7 high;
+slide to steer, let go to drop, and a block merges with every touching
+block of its number, doubling once for each, the blocks above falling in
+and chaining. Topping out ends it. Acorns from merges buy a rainbow block,
+a bomb and a zap. Its "furthest" is the biggest block.
+
+- **The game is pure data** (`arcade/stackwood_sim.gd`, fixed 1/60 s).
+  `tests/_probe_stackwood.gd -- [seed] [skill 0-2] [tools 0/1]` plays it
+  with a bot; run it after touching the sim.
+- **Six cards do not stand one above another**: the Arcade tab's `_fit`
+  now ends in two cards a row (Play as a chevron alone). 194 draw calls on
+  the tab, 60-114 in play, 90 on the end card (810x1440).
+- **A new locale key reads as its key until the CSV is reimported**
+  (`godot --headless --import`), and a `%d` key then throws a string
+  formatting error rather than failing quietly.
+- 20 sounds (`CARTOON` wood, `ARCADE` jingles), awaiting the user's listen.
+  `tests/_shot_stackwood.gd` puts `user://arcade.cfg` back.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1942,7 +1963,8 @@ see "Ads and the purchase" below.
   fired and hits; Molehill sends stage as the best streak, and whacked,
   escaped, missed and bunnies; Henhouse sends score as the seconds to
   retire, 0 if the farm closed, stage as the biggest flock, and won,
-  earned, sold, hatched and lost) and `arcade_abandon`; snooker's hint and reset
+  earned, sold, hatched and lost; Stackwood sends stage as the biggest
+  block, and drops, merges, chain and tools) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

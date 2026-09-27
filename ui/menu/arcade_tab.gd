@@ -6,12 +6,14 @@ extends VBoxContainer
 ## row's and the grid's room, as Versus, Stats and Streak do. Molehill
 ## (arcade/molehill_screen.gd) is the third, Henhouse
 ## (arcade/henhouse_screen.gd) the fourth, whose best is a time, and
-## Millstream (arcade/millstream_screen.gd) the fifth, a small factory.
+## Millstream (arcade/millstream_screen.gd) the fifth, a small factory, and
+## Stackwood (arcade/stackwood_screen.gd) the sixth, falling blocks that merge.
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
 ## drawn once), the name and the best score, a line, and the best stage
 ## beside Play. A short screen gives up the line and then some of the
-## picture before it would push the bar off (_fit, the Versus tab's rule).
+## picture before it would push the bar off (_fit, the Versus tab's rule),
+## and past that stands the cards two a row.
 
 signal play(game: String)
 
@@ -29,6 +31,7 @@ const MoleArt = preload("res://arcade/molehill_art.gd")
 const HenArt = preload("res://arcade/henhouse_art.gd")
 const MillArt = preload("res://arcade/millstream_art.gd")
 const MillSim = preload("res://arcade/millstream_sim.gd")
+const StackArt = preload("res://arcade/stackwood_art.gd")
 
 const GAP := 20
 const PAD := 24
@@ -37,16 +40,16 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB"}
+const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream", "stackwood"]
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream", "stackwood": "Stackwood"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB", "stackwood": "ARC_STACKWOOD_BLURB"}
 ## Games whose best is the quickest time rather than the highest score.
 const TIMED := ["henhouse", "millstream"]
 ## What a timed game says before its first finish.
 const NO_TIME := {"henhouse": "ARC_NOT_RETIRED", "millstream": "ARC_NOT_BUILT"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE", "stackwood": "ARC_BEST_BLOCK"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -54,13 +57,48 @@ var _best := {}
 var _stage := {}
 var _blurbs: Array[Label] = []
 var _arts: Array[Control] = []
+var _cards: Array[Control] = []
+var _goes: Array = []
+## Two cards a row: six cards do not fit one above another on a phone even
+## with the smallest pictures, so a short screen pairs them up.
+var _paired := false
 
 func _init() -> void:
 	add_theme_constant_override("separation", GAP)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for game: String in GAMES:
-		add_child(_game_card(game))
+		_cards.append(_game_card(game))
+	_rows(false)
+
+## Lays the cards out one a row, or two.
+func _rows(paired: bool) -> void:
+	_paired = paired
+	for c in _cards:
+		if c.get_parent() != null:
+			c.get_parent().remove_child(c)
+	for r in get_children():
+		remove_child(r)
+		r.queue_free()
+	var per := 2 if paired else 1
+	var i := 0
+	while i < _cards.size():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", GAP)
+		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(row)
+		for k in per:
+			if i < _cards.size():
+				_cards[i].size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				row.add_child(_cards[i])
+			i += 1
+	# paired, Play loses its word and the furthest line goes, to leave the
+	# name its room
+	for g: Array in _goes:
+		(g[0] as Control).custom_minimum_size.x = 110 if paired else 260
+		g[0].set_label("" if paired else tr("VS_PLAY"))
+		(_stage[g[1]] as Label).visible = not paired
 
 func _game_card(game: String) -> Control:
 	var card := PanelContainer.new()
@@ -78,7 +116,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner, "stackwood": StackwoodBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -115,6 +153,7 @@ func _game_card(game: String) -> Control:
 	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	go.pressed.connect(func() -> void: play.emit(game))
 	head.add_child(go)
+	_goes.append([go, game])
 	var blurb := Label.new()
 	blurb.text = BLURBS[game]
 	blurb.theme_type_variation = "CardBlurb"
@@ -152,7 +191,8 @@ func _outer() -> Control:
 	return null
 
 ## The Versus tab's fit: whole if the cards fit, else without the lines,
-## else with shorter pictures too.
+## else with shorter pictures too, else two cards a row (six do not stand
+## one above another on a phone).
 func _fit() -> void:
 	var parent := get_parent() as Control
 	if parent == null or not is_visible_in_tree():
@@ -174,21 +214,47 @@ func _fit() -> void:
 	# read off the labels: a wrapped label hidden before its first layout
 	# has no width, and measures thousands of pixels tall.
 	_compact(1)
-	var bare := get_combined_minimum_size().y
+	var bare := _need(false)
 	var lines := 0.0
 	for b in _blurbs:
 		var holder := b.get_parent() as Control
 		var font := b.get_theme_font("font")
 		var fs := b.get_theme_font_size("font_size")
-		var w := holder.size.x if holder != null and holder.size.x > 0.0 else size.x - PAD * 2
+		var w := holder.size.x if holder != null and holder.size.x > 0.0 and not _paired else size.x - PAD * 2
 		lines += font.get_multiline_string_size(tr(b.text), HORIZONTAL_ALIGNMENT_LEFT, w, fs).y
 		lines += (holder as BoxContainer).get_theme_constant("separation") if holder is BoxContainer else 0
+	var paired := false
 	if bare + lines <= room:
 		_compact(0)
 	elif bare > room:
 		_compact(2)
-		if get_combined_minimum_size().y > room:
+		if _need(false) > room:
 			_compact(3)
+			if _need(false) > room:
+				# one a row will not fit: two a row, with the taller pictures
+				# back if they fit
+				paired = true
+				_compact(2)
+				if _need(true) > room:
+					_compact(3)
+	if paired != _paired:
+		_rows(paired)
+
+## The height the cards want one or two a row, at the pictures' current size.
+func _need(paired: bool) -> float:
+	var per := 2 if paired else 1
+	var total := 0.0
+	var i := 0
+	var rows := 0
+	while i < _cards.size():
+		var tall := 0.0
+		for k in per:
+			if i < _cards.size():
+				tall = maxf(tall, _cards[i].get_combined_minimum_size().y)
+			i += 1
+		total += tall
+		rows += 1
+	return total + GAP * maxi(0, rows - 1)
 
 func _compact(level: int) -> void:
 	for b in _blurbs:
@@ -434,3 +500,38 @@ class MillstreamBanner extends Control:
 		var rm := rest.mesh()
 		_keep.append(rm)
 		draw_mesh(rm, null, Transform2D(0.0, Vector2(k, k), 0.0, Vector2.ZERO))
+
+## Stackwood's banner: a strip of shelf with stacks of numbered blocks on
+## it, a pair about to merge and one falling in from above. Drawn once.
+class StackwoodBanner extends Control:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		var s := minf(size.y * 0.3, size.x / 9.0)
+		var foot := size.y - s * 0.3
+		var mid := size.x * 0.5
+		var font := StackArt.font()
+		draw_rect(Rect2(Vector2(0, foot), Vector2(size.x, size.y - foot)), StackArt.WOOD_DEEP)
+		draw_rect(Rect2(Vector2(0, foot), Vector2(size.x, s * 0.12)), StackArt.WOOD)
+		# column by column, bottom up; 0 is the rainbow block
+		var stacks := [[16, 4], [64, 8, 2], [128, 32], [8, 8], [256, 64, 0], [32]]
+		for k in stacks.size():
+			var x := mid + (k - 2.5) * s * 1.04
+			var col: Array = stacks[k]
+			for i in col.size():
+				var c := Vector2(x, foot - s * 0.5 - i * s * 0.96)
+				draw_mesh(StackArt.block(col[i], s), null, Transform2D(0.0, c))
+				if int(col[i]) > 0:
+					StackArt.number(self, font, c, col[i], s)
+		# one falling in over the pair of eights, with a trail
+		var fx := mid + 0.5 * s * 1.04
+		var fy := foot - s * 2.9
+		for j in 3:
+			draw_rect(Rect2(Vector2(fx - s * 0.06 + (j - 1) * s * 0.22, fy - s * 1.0), Vector2(s * 0.05, s * 0.4)), Color(1, 1, 1, 0.5))
+		var fc := Vector2(fx, fy)
+		draw_mesh(StackArt.block(8, s), null, Transform2D(0.0, fc))
+		StackArt.number(self, font, fc, 8, s)

@@ -573,6 +573,32 @@ SETS = {
         "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new best time", 2.4, -4, ARCADE),
         "brook":     ("a gentle babbling brook and a slowly turning wooden water wheel creaking softly, calm ambience, even, no ending", 6.0, -20, FOLEY, "loop"),
     },
+    # Stackwood (Arcade, arcade/stackwood_screen.gd): numbered wooden toy
+    # blocks that fall and merge. The blocks are CARTOON wood; the jingles
+    # ARCADE. move and land fire on every block, so they sit low; merge is
+    # pitched up the chain by the screen.
+    "stackwood": {
+        "move":      ("a tiny soft wooden tick, a toy block nudged one step sideways, very short", 0.5, -18, CARTOON),
+        "drop":      ("a quick soft airy whoosh of a small wooden block dropping, very short", 0.5, -14, CARTOON),
+        "land":      ("a soft hollow wooden toy block landing on a stack of blocks, a warm 'tock', very short", 0.5, -9, CARTOON),
+        "merge":     ("two wooden toy blocks clicking together into one with a bright soft chime, satisfying, very short", 0.5, -6, CARTOON),
+        "chain":     ("a quick bright rising three-note chime with a sparkle, a chain combo, short", 0.7, -6, ARCADE),
+        "big":       ("a bright happy sparkling two-note chime, a new biggest block made, short", 0.8, -5, ARCADE),
+        "milestone": ("a joyful triumphant retro fanfare with sparkles, the 2048 block reached, about two seconds", 2.2, -4, ARCADE),
+        "wild":      ("a shimmering magical rainbow sparkle swirl, soft and bright, short", 0.8, -7, ARCADE),
+        "buy":       ("a cheerful two-note purchase chime with a tiny coin, a power-up bought, short", 0.6, -7, ARCADE),
+        "fuse":      ("a short soft cartoon fuse hiss and crackle, a little bomb lit, short", 0.7, -10, CARTOON),
+        "bomb":      ("a soft round cartoon 'boom' with wooden blocks scattering, playful, not harsh, short", 0.9, -5, CARTOON),
+        "zap":       ("a soft bright electric zap crackle, a playful lightning bolt, short", 0.7, -7, ARCADE),
+        "refused":   ("a soft low short 'bonk' blip, not enough acorns, gentle, not harsh", 0.5, -10, ARCADE),
+        "warn":      ("a soft worried two-note warning blip, a stack near the top, gentle not alarming", 0.6, -9, ARCADE),
+        "retired":   ("a soft pop and a small descending sparkle, the smallest blocks retired, short", 0.6, -8, ARCADE),
+        "topple":    ("a tall stack of wooden toy blocks toppling and tumbling down, a cascade of hollow wooden clatters, about a second and a half", 1.5, -5, CARTOON),
+        "go":        ("a short bright cheerful 'go' blip of two rising notes, a game starts", 0.6, -5, ARCADE),
+        "start":     ("a short cheerful retro arcade game start jingle, a bouncy toy-box tune, about two seconds", 2.2, -4, ARCADE),
+        "game_over": ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {
