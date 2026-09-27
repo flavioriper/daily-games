@@ -1885,6 +1885,14 @@ a bomb and a zap. Its "furthest" is the biggest block.
   formatting error rather than failing quietly.
 - 20 sounds (`CARTOON` wood, `ARCADE` jingles), awaiting the user's listen.
   `tests/_shot_stackwood.gd` puts `user://arcade.cfg` back.
+- **Polished on 2026-09-27** (the spec's section 7), screen and art only:
+  bevelled blocks dressed up with the number (a frame from 128, gilt and
+  twinkles from 1024), a cabinet with posts, crown, ivy and bunting, a
+  falling block that glides and leans (an exactly solved spring, because
+  the explicit one blew up on a long frame), landing squash and column dip,
+  gravity settles, merge gulp and flash, acorns flying into the bank.
+  `Motion.bump` compounds when bumps overlap; the screen's `_kick` restarts
+  from one. 69-75 draw calls in play, ~135 at a chain's peak.
 
 ## Sound
 

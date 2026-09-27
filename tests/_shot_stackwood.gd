@@ -117,6 +117,9 @@ func _process(delta: float) -> bool:
 		1:
 			if _t > 1.8:
 				_shot("1_tab")
+				# the settings load at start-up resets the flag, so set it again here
+				if OS.get_cmdline_user_args().has("reduce"):
+					load("res://core/motion.gd").reduce = true
 				_menu._open_arcade("stackwood")
 				_s = _menu.get_node("Stackwood")
 				_step = 2

@@ -102,3 +102,45 @@ the user's listen.
 
 `arcade_start`, `arcade_end` (score, stage = the biggest block, seconds,
 drops, merges, chain, tools, best) and `arcade_abandon`.
+
+## 7. Amendment: the polish (2026-09-27)
+
+Screen and art only; the sim is untouched.
+
+- **The blocks** are bevelled (a shaded rim lit up and to the left), with
+  two grain lines, end-grain rings in the lower left corner and a darker
+  foot to the lip. Bigger numbers are dressed up in the cached mesh, so it
+  costs nothing: from 128 a painted frame, from 1024 a gilt frame with brass
+  studs in the corners, and a gilded block twinkles now and then on its own
+  clock (`Art.sparkle`, one draw while it shows).
+- **The shelf is a cabinet in a greenhouse**: grained, nailed back boards
+  with a lit groove between them, turned posts with wooden finials under a
+  moulded crown, ivy trailing down past the posts, the plank on two
+  brackets, the glass's bars and light falling in from the top left.
+  Bunting hangs across the spawn lane and sways (in the live mesh under the
+  blocks, so +1 draw call).
+- **The falling block glides**: its drawing chases its column on a
+  critically damped spring, solved exactly (`_steer`) because the explicit
+  version blew up on a long frame, and it leans and squeezes into the move.
+  Let go, it stretches under speed lines; the bomb's fuse spits sparks.
+- **Landing**: the block squashes about its foot (a damped spring, harder
+  when dropped), the column under it dips in turn a little later the
+  further down, and dust puffs from both corners. Blocks falling into a
+  gap after a merge fall under gravity and land with a squash of their own.
+- **Merging**: the joining block is sucked in, stretched along its way; the
+  survivor gulps (wide, then tall), flashes white and throws a ring in its
+  new paint, gold past 128. The acorns it earned fly out of it and into the
+  bank, which counts each as it lands (`_owed`); a tool the bank has just
+  reached hops and twinkles. The next block drops into its plate.
+- The end card's big block falls onto the two and lands with a squash.
+- **A run of bumps no longer grows a label**: `Motion.bump` scales from the
+  current scale, so overlapping ones compounded (the acorn count swelled
+  past its plate); the screen's `_kick` stops the last and starts from one.
+- Reduce motion: no glide, lean, squash, dip, gravity, gulp, flash, ring,
+  twinkle, flight, sway or pop. `tests/_shot_stackwood.gd`'s `reduce` now
+  sets the flag just before the game opens, because the settings load at
+  start-up had been clearing it.
+- Draw calls at 810x1440: 61 at the ready, 69-75 in play, 101-106 on a full
+  shelf, up to ~135 for the moment a chain's acorns and rings are in the
+  air (103-105 under reduce motion), 90 on the end card; the Arcade tab
+  unchanged at 194. ANGLE agreeing. Suite 122,593/0.

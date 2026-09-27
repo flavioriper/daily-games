@@ -50,6 +50,16 @@ const LANE := Color("fffaf0")
 const DANGER := Color("e2645c")
 const SHELF := Color("b98556")
 const SHELF_DEEP := Color("946440")
+## How fast the falling block's drawing chases its column (the angular
+## frequency of a critically damped spring), and how far it leans into the move.
+const STEER_W := 30.0
+const LEAN := 0.03
+## Cells a second squared a settling block falls with, and the pace it starts at.
+const GRAVITY := 90.0
+const SETTLE_V0 := 4.0
+## How long an acorn takes to fly from a merge to the bank.
+const FLIGHT_T := 0.6
+const BUNTING := [Color("f7dc9c"), Color("ee8d6e"), Color("9fcfb6"), Color("9391dc"), Color("f5b77e")]
 const CONFETTI := [Color("f7dc9c"), Color("ee8d6e"), Color("9391dc"), Color("5fc1ad"), Color("f2b632")]
 
 var sim: RefCounted
@@ -102,6 +112,21 @@ var _lane := -1
 var _danger := false
 var _seat: Control
 var _milestones := {}
+## The falling block's drawn column, its pace, and the piece it belongs to.
+var _px := 2.0
+var _pv := 0.0
+var _piece_id := -1
+var _was_dropping := false
+## Merged blocks flashing white: {pos (cells), t}.
+var _flashes: Array = []
+## Acorns flying from a merge to the bank: {from, ctrl, to (px, in _air), t, value}.
+var _flights: Array = []
+## Acorns earned but still in the air, so the bank counts them as they land.
+var _owed := 0
+var _afford := {}
+var _air: Control
+var _air_fx: Node2D
+var _next_t := 1.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -202,6 +227,14 @@ func _build() -> void:
 	_banner.set_meta("box", over)
 
 	col.add_child(_build_tools())
+	_air = Control.new()
+	_air.name = "Air"
+	_air.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_air.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_air.draw.connect(_draw_air)
+	add_child(_air)
+	_air_fx = Fx2D.new()
+	_air.add_child(_air_fx)
 	_apply_insets()
 
 func _plate(key: String, ratio: float) -> Array:
@@ -365,6 +398,11 @@ func _new_game() -> void:
 	_debris.clear()
 	_bolts.clear()
 	_pops.clear()
+	_flashes.clear()
+	_flights.clear()
+	_owed = 0
+	_afford.clear()
+	_piece_id = -1
 	_milestones.clear()
 	_shake = 0.0
 	_roll = 0.0
@@ -424,12 +462,22 @@ func _animate(delta: float) -> void:
 			seen[bl.id] = true
 			var want := Vector2(c, i)
 			if not _vis.has(bl.id):
-				_vis[bl.id] = {"pos": want, "v": bl.v, "bump": -1.0}
+				_vis[bl.id] = _new_vis(want, bl.v)
 			var vis: Dictionary = _vis[bl.id]
-			if Motion.reduce:
+			if Motion.reduce or vis.pos.y < want.y:
 				vis.pos = want
 			else:
-				vis.pos = Vector2(move_toward(vis.pos.x, want.x, SETTLE_V * delta), move_toward(vis.pos.y, want.y, SETTLE_V * delta))
+				vis.pos.x = move_toward(vis.pos.x, want.x, SETTLE_V * delta)
+				if vis.pos.y > want.y:
+					# it falls into the gap under gravity, and lands with a squash
+					vis.vel = maxf(float(vis.vel), SETTLE_V0) + GRAVITY * delta
+					vis.pos.y = maxf(want.y, vis.pos.y - vis.vel * delta)
+					if vis.pos.y <= want.y:
+						_squash(vis, clampf(float(vis.vel) * 0.012, 0.05, 0.16))
+						vis.vel = 0.0
+			if vis.squash >= 0.0:
+				vis.squash += delta
+			vis.dip += delta
 			if int(vis.v) != int(bl.v):
 				vis.v = bl.v
 				vis.bump = 0.0
@@ -453,6 +501,12 @@ func _animate(delta: float) -> void:
 	for p: Dictionary in _pops:
 		p.t += delta
 	_pops = _pops.filter(func(p: Dictionary) -> bool: return p.t < 0.9)
+	for f: Dictionary in _flashes:
+		f.t += delta
+	_flashes = _flashes.filter(func(f: Dictionary) -> bool: return f.t < 0.25)
+	_next_t += delta
+	_steer(delta)
+	_fly(delta)
 	_shake = maxf(0.0, _shake - delta * 3.0)
 	if _shake > 0.0 and not Motion.reduce:
 		var amp := 14.0 * _shake * _shake
@@ -466,6 +520,51 @@ func _animate(delta: float) -> void:
 	if danger and not _danger and not sim.is_over():
 		_fx.cue("warn")
 	_danger = danger
+
+func _new_vis(pos: Vector2, v: int) -> Dictionary:
+	return {"pos": pos, "v": v, "bump": -1.0, "vel": 0.0, "squash": -1.0, "amt": 0.0, "dip": 9.0, "dip_amt": 0.0}
+
+func _squash(vis: Dictionary, amt: float) -> void:
+	if Motion.reduce:
+		return
+	vis.squash = 0.0
+	vis.amt = amt
+
+## The falling block's drawing chases its column on a spring and leans into
+## the move; a new piece starts over its own column.
+func _steer(delta: float) -> void:
+	if sim.piece.is_empty():
+		return
+	var want := float(sim.piece.col)
+	_was_dropping = bool(sim.piece.dropping)
+	if int(sim.piece.id) != _piece_id or Motion.reduce:
+		_piece_id = int(sim.piece.id)
+		_px = want
+		_pv = 0.0
+		return
+	# the spring solved exactly, so a long frame cannot throw it off
+	var x0 := _px - want
+	var k := _pv + STEER_W * x0
+	var ex := exp(-STEER_W * delta)
+	_px = want + (x0 + k * delta) * ex
+	_pv = (k - STEER_W * (x0 + k * delta)) * ex
+	if absf(want - _px) < 0.002 and absf(_pv) < 0.05:
+		_px = want
+		_pv = 0.0
+
+## Acorns in the air: when one lands in the bank, the bank counts it.
+func _fly(delta: float) -> void:
+	if _flights.is_empty():
+		return
+	for f: Dictionary in _flights:
+		f.t += delta
+		if f.t >= FLIGHT_T and not f.get("home", false):
+			f.home = true
+			_owed = maxi(0, _owed - int(f.value))
+			_kick(_acorn_icon, 0.22, 0.22)
+			_kick(_acorn_l, 0.14, 0.22)
+	_flights = _flights.filter(func(f: Dictionary) -> bool: return not f.get("home", false))
+	_air.queue_redraw()
 
 func _on_field_input(event: InputEvent) -> void:
 	var at := Vector2.INF
@@ -574,10 +673,24 @@ func _play_events() -> void:
 				_fx.cue("move", randf_range(0.95, 1.08), -2.0)
 			"drop":
 				_fx.cue("drop", randf_range(0.95, 1.05))
+			"spawn":
+				_next_t = 0.0
 			"land":
-				_vis[ev.id] = {"pos": Vector2(ev.col, ev.row), "v": ev.v, "bump": 0.0 if ev.wild else -1.0}
+				var vis := _new_vis(Vector2(ev.col, ev.row), int(ev.v))
+				vis.bump = 0.0 if ev.wild else -1.0
+				_vis[ev.id] = vis
+				_squash(vis, 0.2 if _was_dropping else 0.11)
+				# the column under it takes the knock, a little later the further down
+				for id in _vis:
+					var under: Dictionary = _vis[id]
+					if id == ev.id or roundi(under.pos.x) != int(ev.col) or under.pos.y >= float(ev.row):
+						continue
+					var down: float = float(ev.row) - under.pos.y
+					under.dip = -0.035 * (down - 1.0)
+					under.dip_amt = (0.07 if _was_dropping else 0.04) * pow(0.7, down - 1.0)
 				_fx.cue("land", randf_range(0.92, 1.06))
-				_fx.puff(px(ev.col, ev.row - 0.45), Color(Art.WOOD_HI, 0.9), 4)
+				for side in [-0.42, 0.42]:
+					_fx.puff(px(ev.col + side, ev.row - 0.48), Color(Art.WOOD_HI, 0.9), 3)
 				if ev.wild:
 					_fx.cue("wild")
 					_fx.sparkle(px(ev.col, ev.row), Color("fffaf0"))
@@ -617,8 +730,7 @@ func _play_events() -> void:
 						_show_banner(tr("SW_BOMB"), tr("SW_BOMB_LINE"), 0.7)
 					"zap":
 						_show_banner(tr("SW_ZAP"), tr("SW_ZAP_LINE"), 0.7)
-				_acorn_l.pivot_offset = _acorn_l.size * 0.5
-				Motion.bump(_acorn_l, 0.25, 0.3)
+				_kick(_acorn_l, 0.25, 0.3)
 			"refused":
 				_fx.cue("refused")
 				var b: Control = _tool_buttons[{"wild": Sim.Tool.WILD, "bomb": Sim.Tool.BOMB, "zap": Sim.Tool.ZAP}[ev.tool]]
@@ -642,8 +754,13 @@ func _on_merge(ev: Dictionary) -> void:
 		var big := int(m.v) >= 128
 		_pop(to + Vector2(0, 0.3), "+%s" % Record.grouped(int(m.v) * chain), Pal.SUN if chain > 1 else Color("fffaf0"), big)
 		_fx.puff(px(to.x, to.y), Art.paint(int(m.v)), 6)
+		if not Motion.reduce:
+			_flashes.append({"id": m.id, "t": 0.0})
+			_fx.ring(px(to.x, to.y), 0.75 * _u, Art.paint(int(m.v)).lightened(0.2))
 		if big:
 			_fx.sparkle(px(to.x, to.y), Color("fffaf0"))
+			_fx.ring(px(to.x, to.y), 1.2 * _u, Art.GOLD)
+	_launch_acorns(ev)
 	_fx.cue("merge", minf(1.0 + 0.09 * (chain - 1), 1.6))
 	if chain >= 2:
 		# one chain label at a time: the new count replaces the last
@@ -652,9 +769,38 @@ func _on_merge(ev: Dictionary) -> void:
 		p.rays = true
 		p.t = -0.1
 		_fx.cue("chain", minf(1.0 + 0.07 * (chain - 2), 1.5))
-		_score_k.pivot_offset = _score_k.size * 0.5
-		Motion.bump(_score_k, 0.3, 0.35)
+		_kick(_score_k, 0.3, 0.35)
 		_shake = maxf(_shake, 0.15 + 0.05 * chain)
+
+## The acorns a merge earned fly up out of it and into the bank, a few at a
+## time; the bank counts each as it lands.
+func _launch_acorns(ev: Dictionary) -> void:
+	var nuts: int = ev.acorns
+	if nuts <= 0 or Motion.reduce:
+		return
+	var n := mini(nuts, 5)
+	var to := _in_air(_acorn_icon, _acorn_icon.size * 0.5)
+	var merges: Array = ev.merges
+	for k in n:
+		var m: Dictionary = merges[k % merges.size()]
+		var from := _in_air(field, px(m.col, m.row) + _shake_off)
+		var ctrl := from.lerp(to, 0.35) + Vector2(randf_range(-160.0, 160.0), -260.0)
+		var value := nuts / n + (1 if k < nuts % n else 0)
+		_flights.append({"from": from, "ctrl": ctrl, "to": to, "t": -0.12 - 0.07 * k, "value": value, "spin": randf_range(-6.0, 6.0)})
+		_owed += value
+
+## A bump that starts from rest, so a run of them never grows a label.
+func _kick(node: Control, amount: float, time: float) -> void:
+	var old: Tween = node.get_meta("kick") if node.has_meta("kick") else null
+	Motion.stop(old)
+	node.scale = Vector2.ONE
+	node.pivot_offset = node.size * 0.5
+	var tw := Motion.bump(node, amount, time)
+	if tw != null:
+		node.set_meta("kick", tw)
+
+func _in_air(c: Control, at: Vector2) -> Vector2:
+	return _air.get_global_transform().affine_inverse() * (c.get_global_transform() * at)
 
 func _on_new_max(v: int) -> void:
 	if v < 256 or _milestones.has(v):
@@ -717,13 +863,11 @@ func _refresh_hud(delta := 0.0) -> void:
 		return
 	if sim.score != _shown_score:
 		if sim.score > _shown_score and _shown_score >= 0:
-			_score_l.pivot_offset = _score_l.size * 0.5
-			Motion.bump(_score_l, 0.14, 0.26)
+			_kick(_score_l, 0.14, 0.26)
 		_shown_score = sim.score
 		if not _beat_best and _best > 0 and sim.score > _best:
 			_beat_best = true
-			_best_l.pivot_offset = _best_l.size * 0.5
-			Motion.bump(_best_l, 0.3, 0.4)
+			_kick(_best_l, 0.3, 0.4)
 	if Motion.reduce or sim.score < _roll:
 		_roll = sim.score
 	else:
@@ -732,57 +876,131 @@ func _refresh_hud(delta := 0.0) -> void:
 	if _score_l.text != shown:
 		_score_l.text = shown
 		_best_l.text = Record.grouped(maxi(_best, int(_roll)))
-	var nuts := str(sim.acorns)
+	var bank := maxi(0, sim.acorns - _owed)
+	var nuts := str(bank)
 	if _acorn_l.text != nuts:
 		_acorn_l.text = nuts
 	for tool: int in _tool_buttons:
 		var b: Button = _tool_buttons[tool]
-		var ok: bool = sim.acorns >= int(Sim.COSTS[tool]) and not sim.is_over()
+		var ok: bool = bank >= int(Sim.COSTS[tool]) and not sim.is_over()
 		b.modulate.a = 1.0 if ok else 0.5
+		# a tool the bank has just reached hops and twinkles
+		if ok and _afford.has(tool) and not _afford[tool] and not Motion.reduce:
+			_kick(b, 0.12, 0.3)
+			_air_fx.sparkle(_in_air(b, b.size * Vector2(0.5, 0.35)), Pal.SUN)
+		_afford[tool] = ok
 	_next_view.queue_redraw()
 
 # --- drawing ---
 
-## The shelf's back wall: warm painted boards, a faint lane down every
-## column, the dashed line a stack must stay under, and the plank it stands
-## on.
+## The shelf: a wooden cabinet in a greenhouse. Its back is painted boards,
+## one a column, grained and nailed; turned posts stand either side under a
+## moulded crown, with ivy trailing down past them; the dashed line a stack
+## must stay under runs below the spawn lane, and the cabinet stands on a
+## plank held up by two brackets, a pot of seedlings at either end.
 func _build_wall() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := field.size
-	# the room behind the shelf: a soft greenhouse light
+	# the room behind the shelf: a soft greenhouse light, with the panes' bars
 	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), s, Vector2(0, s.y)], [Color("cfe6dc"), Color("cfe6dc"), Color("e9dcc0"), Color("e9dcc0")])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
-	for i in 6:
-		var c := Vector2(rng.randf() * s.x, rng.randf_range(0.0, 0.5) * s.y)
-		b.ellipse(c, rng.randf_range(80.0, 160.0), rng.randf_range(40.0, 70.0), Color(1, 1, 0.9, 0.12))
+	for x in [s.x * 0.08, s.x * 0.92]:
+		b.fan(Face.Builder.round_rect(Vector2(x - 5.0, 0), Vector2(10.0, s.y), 5.0), Color(1, 1, 0.96, 0.45))
+	for y in [s.y * 0.3, s.y * 0.62]:
+		b.fan(Face.Builder.round_rect(Vector2(0, y - 4.0), Vector2(s.x, 8.0), 4.0), Color(1, 1, 0.96, 0.35))
+	# light falling in from the top left
+	for k in 3:
+		var x0 := s.x * (0.05 + 0.3 * k)
+		_quad(b, [Vector2(x0, 0), Vector2(x0 + s.x * 0.12, 0), Vector2(x0 + s.x * 0.12 + s.y * 0.35, s.y), Vector2(x0 + s.y * 0.35, s.y)],
+			[Color(1, 1, 0.9, 0.16), Color(1, 1, 0.9, 0.16), Color(1, 1, 0.9, 0.0), Color(1, 1, 0.9, 0.0)])
 	var o := _origin
 	var board := Vector2(Sim.COLS, Sim.ROWS + 1) * _u
-	# the shelf's back, in boards
-	b.fan(Face.Builder.round_rect(o - Vector2(10, 10), board + Vector2(20, 14), 22.0), Color(WALL_DEEP, 0.95))
+	var foot := o.y + board.y
+	# the cabinet's shadow on the glass, then its back, in boards
+	b.fan(Face.Builder.round_rect(o + Vector2(-8, 4), board + Vector2(28, 10), 22.0), Color(0.25, 0.15, 0.05, 0.12))
 	b.fan(Face.Builder.round_rect(o - Vector2(4, 4), board + Vector2(8, 4), 18.0), WALL)
 	for c in Sim.COLS:
 		var x := o.x + c * _u
 		if c % 2 == 1:
-			b.fan(PackedVector2Array([Vector2(x, o.y + _u), Vector2(x + _u, o.y + _u), Vector2(x + _u, o.y + board.y), Vector2(x, o.y + board.y)]), Color(WALL_DEEP, 0.35))
+			b.fan(PackedVector2Array([Vector2(x, o.y + _u), Vector2(x + _u, o.y + _u), Vector2(x + _u, foot), Vector2(x, foot)]), Color(WALL_DEEP, 0.35))
 		if c > 0:
-			b.stroke(PackedVector2Array([Vector2(x, o.y + _u + 6), Vector2(x, o.y + board.y - 4)]), 2.0, Color(WALL_DEEP.darkened(0.1), 0.6))
+			# the groove between two boards: a shadow and a lit edge
+			b.stroke(PackedVector2Array([Vector2(x, o.y + _u + 6), Vector2(x, foot - 4)]), 2.5, Color(WALL_DEEP.darkened(0.15), 0.7))
+			b.stroke(PackedVector2Array([Vector2(x + 2.5, o.y + _u + 6), Vector2(x + 2.5, foot - 4)]), 1.5, Color(1, 1, 1, 0.45))
+		# grain down the board, and a nail at its head and its foot
+		for g in 2:
+			var gx := x + _u * (0.3 + 0.4 * g) + rng.randf_range(-6.0, 6.0)
+			var pts := PackedVector2Array()
+			for i in 13:
+				var t := i / 12.0
+				pts.append(Vector2(gx + sin(t * PI * (2.0 + g) + c) * _u * 0.035, lerpf(o.y + _u + 10.0, foot - 8.0, t)))
+			b.stroke(pts, 1.5, Color(WALL_DEEP.darkened(0.12), 0.35))
+		for ny in [o.y + _u + 16.0, foot - 14.0]:
+			b.disc(Vector2(x + _u * 0.5, ny), 3.5, Color(WALL_DEEP.darkened(0.3), 0.55))
+			b.disc(Vector2(x + _u * 0.5 - 1.0, ny - 1.0), 1.5, Color(1, 1, 1, 0.4))
 	# knots in the boards
 	for i in 7:
 		var p := o + Vector2(rng.randf() * board.x, _u + rng.randf() * (board.y - _u))
-		b.ellipse(p, 7.0, 4.0, Color(WALL_DEEP.darkened(0.15), 0.35))
+		b.ellipse(p, 8.0, 4.5, Color(WALL_DEEP.darkened(0.2), 0.35))
+		b.ellipse(p, 4.0, 2.0, Color(WALL_DEEP.darkened(0.3), 0.35))
 	# the spawn lane: paler, with the dashed line under it
 	b.fan(Face.Builder.round_rect(o - Vector2(4, 4), Vector2(board.x + 8, _u + 4), 18.0), Color(LANE, 0.55))
 	var y := o.y + _u
+	b.stroke(PackedVector2Array([Vector2(o.x + 6.0, y), Vector2(o.x + board.x - 6.0, y)]), 2.0, Color(DANGER, 0.18))
 	var x0 := o.x + 6.0
 	while x0 < o.x + board.x - 6.0:
-		b.fan(Face.Builder.round_rect(Vector2(x0, y - 3.0), Vector2(minf(22.0, o.x + board.x - 6.0 - x0), 6.0), 3.0), Color(DANGER, 0.45))
+		b.fan(Face.Builder.round_rect(Vector2(x0, y - 3.0), Vector2(minf(22.0, o.x + board.x - 6.0 - x0), 6.0), 3.0), Color(DANGER, 0.5))
 		x0 += 36.0
-	# the plank the shelf stands on
-	var foot := o.y + board.y
+	# the posts either side, turned at the top, and the crown across them
+	var pw := clampf(_u * 0.17, 16.0, 30.0)
+	for side in [0, 1]:
+		var px_ := o.x - 4.0 - pw if side == 0 else o.x + board.x + 4.0
+		b.fan(Face.Builder.round_rect(Vector2(px_, o.y + 6.0), Vector2(pw, board.y - 6.0), pw * 0.4), SHELF_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(px_ + 2.0, o.y + 6.0), Vector2(pw - 5.0, board.y - 8.0), pw * 0.35), SHELF)
+		b.stroke(PackedVector2Array([Vector2(px_ + pw * 0.35, o.y + 20.0), Vector2(px_ + pw * 0.35, foot - 12.0)]), 2.0, Color(1, 1, 1, 0.22))
+		b.stroke(PackedVector2Array([Vector2(px_ + pw * 0.62, o.y + 40.0), Vector2(px_ + pw * 0.6, foot - 30.0)]), 1.5, Color(SHELF_DEEP, 0.6))
+		for ry in [o.y + _u + 2.0, o.y + board.y * 0.55]:
+			b.fan(Face.Builder.round_rect(Vector2(px_ - 2.0, ry - 5.0), Vector2(pw + 4.0, 10.0), 5.0), SHELF_DEEP)
+			b.fan(Face.Builder.round_rect(Vector2(px_ - 1.0, ry - 5.0), Vector2(pw + 2.0, 6.0), 3.0), SHELF.lightened(0.12))
+		# the finial, a wooden ball
+		var fc := Vector2(px_ + pw * 0.5, o.y + 2.0)
+		b.disc(fc + Vector2(0, 2), pw * 0.62, SHELF_DEEP)
+		b.disc(fc, pw * 0.58, SHELF)
+		b.disc(fc + Vector2(-pw * 0.18, -pw * 0.2), pw * 0.18, Color(1, 1, 1, 0.3))
+	# ivy trailing down past the posts from the top corners
+	for side in [0, 1]:
+		var sx := -1.0 if side == 0 else 1.0
+		var top := Vector2(o.x - 4.0 - pw * 0.5 if side == 0 else o.x + board.x + 4.0 + pw * 0.5, o.y + 8.0)
+		var vine := Face.Builder.bezier3(top, top + Vector2(sx * _u * 0.35, _u * 0.9), top + Vector2(-sx * _u * 0.1, _u * 1.8), top + Vector2(sx * _u * 0.25, _u * 2.6), 22)
+		b.stroke(vine, 3.0, Color("6f9c46"))
+		for i in range(2, vine.size(), 3):
+			var at: Vector2 = vine[i]
+			var flip := 1.0 if (i / 3) % 2 == 0 else -1.0
+			var leaf := at + Vector2(flip * _u * 0.09, _u * 0.02)
+			var lr := _u * (0.09 + 0.02 * ((i * 7) % 3))
+			b.ellipse(leaf, lr, lr * 0.7, Color("7fae52") if flip > 0 else Color("8dba58"))
+			b.stroke(PackedVector2Array([at, leaf]), 1.5, Color("6f9c46"))
+	# the crown, a moulded board over the top
+	var crown := Vector2(o.x - pw - 14.0, o.y - 16.0)
+	b.fan(Face.Builder.round_rect(crown + Vector2(0, 3), Vector2(board.x + 2.0 * pw + 28.0, 18.0), 8.0), SHELF_DEEP)
+	b.fan(Face.Builder.round_rect(crown, Vector2(board.x + 2.0 * pw + 28.0, 14.0), 7.0), SHELF)
+	b.fan(Face.Builder.round_rect(crown + Vector2(10, 3), Vector2(board.x + 2.0 * pw + 8.0, 3.0), 1.5), Color(1, 1, 1, 0.3))
+	# the plank the shelf stands on, on two brackets
+	for bx in [o.x + board.x * 0.18, o.x + board.x * 0.82]:
+		var t := Vector2(bx, foot + 0.2 * _u)
+		b.polygon(PackedVector2Array([t + Vector2(-_u * 0.08, 0), t + Vector2(_u * 0.08, 0), t + Vector2(_u * 0.05, _u * 0.18), t + Vector2(-_u * 0.05, _u * 0.18)]), SHELF_DEEP)
+		b.polygon(PackedVector2Array([t + Vector2(-_u * 0.05, 0), t + Vector2(_u * 0.02, 0), t + Vector2(0, _u * 0.14), t + Vector2(-_u * 0.03, _u * 0.14)]), SHELF)
 	b.fan(Face.Builder.round_rect(Vector2(o.x - 22, foot - 2), Vector2(board.x + 44, 0.3 * _u + 12), 12.0), SHELF_DEEP)
 	b.fan(Face.Builder.round_rect(Vector2(o.x - 22, foot - 4), Vector2(board.x + 44, 0.26 * _u), 12.0), SHELF)
 	b.fan(Face.Builder.round_rect(Vector2(o.x - 12, foot), Vector2(board.x + 24, 5.0), 2.5), Color(1, 1, 1, 0.25))
+	for g in 2:
+		var gy := foot + 0.1 * _u + g * 0.08 * _u
+		var pts := PackedVector2Array()
+		for i in 17:
+			var t := i / 16.0
+			pts.append(Vector2(lerpf(o.x - 8.0, o.x + board.x + 8.0, t), gy + sin(t * PI * 3.0 + g) * 2.0))
+		b.stroke(pts, 1.5, Color(SHELF_DEEP, 0.55))
 	# pots of seedlings either end of the plank, when there is room
 	if o.x > 60.0:
 		for side in [-1.0, 1.0]:
@@ -818,6 +1036,7 @@ func _draw_field() -> void:
 	var under := Face.Builder.new()
 	_draw_lane(under)
 	_draw_danger(under)
+	_draw_bunting(under)
 	if not under.verts.is_empty():
 		_live = under.mesh()
 		field.draw_mesh(_live, null)
@@ -827,22 +1046,38 @@ func _draw_field() -> void:
 		var k: float = j.t / JOIN_T
 		var p: Vector2 = (j.from as Vector2).lerp(j.to, k * k)
 		var sc := lerpf(1.0, 0.6, k)
-		field.draw_mesh(Art.block(j.v, s), null, Transform2D(0.0, Vector2(sc, sc), 0.0, px(p.x, p.y)), Color(1, 1, 1, 1.0 - k * 0.6))
+		# sucked in: stretched along the way it is drawn, thinned across it
+		var along := Vector2(sc, sc)
+		if not Motion.reduce:
+			var d: Vector2 = (j.to as Vector2) - (j.from as Vector2)
+			var st := 0.3 * sin(k * PI * 0.5)
+			along = Vector2(sc * (1.0 + st), sc * (1.0 - st * 0.6)) if absf(d.x) > absf(d.y) else Vector2(sc * (1.0 - st * 0.6), sc * (1.0 + st))
+		field.draw_mesh(Art.block(j.v, s), null, Transform2D(0.0, along, 0.0, px(p.x, p.y)), Color(1, 1, 1, 1.0 - k * 0.6))
 	# the blocks on the shelf, bottom row first so a lip sits over the row under
 	var order := _vis.keys()
 	order.sort_custom(func(a, b) -> bool: return float(_vis[a].pos.y) < float(_vis[b].pos.y))
 	for id in order:
 		var vis: Dictionary = _vis[id]
-		var sc := 1.0
-		if vis.bump >= 0.0 and not Motion.reduce:
-			sc = 1.0 + 0.18 * sin(clampf(vis.bump / 0.24, 0.0, 1.0) * PI)
+		var sc := _block_scale(vis)
 		var c := px(vis.pos.x, vis.pos.y)
+		# squashed about its foot, so it stays standing on what is under it
+		c.y += (1.0 - sc.y) * s * 0.5
 		var hot: bool = _danger and sim.height(int(roundf(vis.pos.x))) >= Sim.ROWS - 1 and vis.pos.y >= Sim.ROWS - 2
 		var tint := Color.WHITE
 		if hot and not Motion.reduce:
-			tint = Color(1.0, 1.0 - 0.18 * (0.5 + 0.5 * sin(_clock * 9.0)), 1.0 - 0.2 * (0.5 + 0.5 * sin(_clock * 9.0)))
-		field.draw_mesh(Art.block(vis.v, s), null, Transform2D(0.0, Vector2(sc, sc), 0.0, c), tint)
-		Art.number(field, font, c, vis.v, s * sc)
+			var beat := 0.5 + 0.5 * sin(_clock * 9.0)
+			tint = Color(1.0, 1.0 - 0.18 * beat, 1.0 - 0.2 * beat)
+			c.x += sin(_clock * 43.0 + float(id)) * 1.6
+		field.draw_set_transform(c + _shake_off, 0.0, sc)
+		field.draw_mesh(Art.block(vis.v, s), null, Transform2D.IDENTITY, tint)
+		Art.number(field, font, Vector2.ZERO, vis.v, s)
+		# a gilded block twinkles now and then, each on its own clock
+		if Art.exp_of(int(vis.v)) >= 10 and not Motion.reduce:
+			var tw := fmod(_clock + float(id) * 1.37, 2.6)
+			if tw < 0.5:
+				var k := sin(tw / 0.5 * PI)
+				field.draw_mesh(Art.sparkle(s * 0.16), null, Transform2D(tw * 3.0, Vector2(k, k), 0.0, Vector2(-s * 0.3, -s * 0.28)))
+	field.draw_set_transform(_shake_off)
 	_draw_piece(font, s)
 	# debris: knocked off and tumbling
 	for d: Dictionary in _debris:
@@ -852,6 +1087,8 @@ func _draw_field() -> void:
 		Art.number(field, font, Vector2.ZERO, d.v, s, a)
 	field.draw_set_transform(Vector2.ZERO)
 	var over := Face.Builder.new()
+	_draw_flashes(over, s)
+	_draw_streaks(over, s)
 	_draw_bolts(over)
 	_draw_rays(over)
 	if not over.verts.is_empty():
@@ -871,7 +1108,7 @@ func _draw_piece(font: Font, s: float) -> void:
 	if float(pc.y) - land > 0.6:
 		var g := px(pc.col, land)
 		field.draw_mesh(Art.block(v, s), null, Transform2D(0.0, g), Color(1, 1, 1, 0.28))
-	var c := px(pc.col, float(pc.y))
+	var c := px(_px, float(pc.y))
 	var wob := 0.0
 	var sc := Vector2.ONE
 	if not Motion.reduce:
@@ -879,14 +1116,104 @@ func _draw_piece(font: Font, s: float) -> void:
 			var k := 1.0 - float(pc.hold) / Sim.HOLD
 			sc = Vector2.ONE * Motion.back_out(clampf(k * 1.4, 0.0, 1.0))
 		elif pc.dropping:
-			sc = Vector2(0.9, 1.12)
+			sc = Vector2(0.88, 1.14)
 		else:
 			wob = sin(_clock * 3.0) * 0.04
+		# it leans into a move, and squeezes a little across its speed
+		wob += clampf(-_pv * LEAN, -0.24, 0.24)
+		sc *= Vector2(1.0 + minf(absf(_pv) * 0.012, 0.1), 1.0 - minf(absf(_pv) * 0.008, 0.07))
 	field.draw_mesh(Art.block(v, s), null, Transform2D(wob, sc, 0.0, c))
 	if v > 0:
 		field.draw_set_transform(c + _shake_off, wob, sc)
 		Art.number(field, font, Vector2.ZERO, v, s)
 		field.draw_set_transform(_shake_off)
+
+## How a block on the shelf is scaled this frame: the bump when it grows,
+## the squash when it lands (a damped spring about its foot) and the dip
+## when a block lands on its column.
+func _block_scale(vis: Dictionary) -> Vector2:
+	if Motion.reduce:
+		return Vector2.ONE
+	var sc := Vector2.ONE
+	if vis.bump >= 0.0:
+		# a gulp: wide first, then tall, then home
+		var k := clampf(vis.bump / 0.3, 0.0, 1.0)
+		var w := sin(k * PI) * (1.0 - k * 0.4)
+		sc *= Vector2(1.0 + 0.2 * w - 0.08 * sin(k * TAU), 1.0 + 0.14 * w + 0.08 * sin(k * TAU))
+	if vis.squash >= 0.0 and vis.squash < 0.6:
+		var t: float = vis.squash
+		var q := float(vis.amt) * exp(-t * 11.0) * cos(t * 30.0)
+		sc *= Vector2(1.0 + q * 0.75, 1.0 - q)
+	if vis.dip >= 0.0 and vis.dip < 0.2:
+		var q := float(vis.dip_amt) * sin(vis.dip / 0.2 * PI)
+		sc *= Vector2(1.0 + q * 0.6, 1.0 - q)
+	return sc
+
+## A merged block flashes white as it takes the other in.
+func _draw_flashes(b: Face.Builder, s: float) -> void:
+	for f: Dictionary in _flashes:
+		if not _vis.has(f.id):
+			continue
+		var vis: Dictionary = _vis[f.id]
+		var sc := _block_scale(vis)
+		var c := px(vis.pos.x, vis.pos.y) + _shake_off
+		c.y += (1.0 - sc.y) * s * 0.5
+		var size := Vector2(s, s * 0.91) * sc
+		var a := 0.75 * (1.0 - float(f.t) / 0.25)
+		b.fan(Face.Builder.round_rect(c - Vector2(size.x * 0.5, s * 0.5 * sc.y), size, s * 0.16), Color(1, 1, 0.95, a))
+
+## Speed lines over a block let go, and the bomb's fuse spitting sparks.
+func _draw_streaks(b: Face.Builder, s: float) -> void:
+	if sim.piece.is_empty() or Motion.reduce:
+		return
+	var pc: Dictionary = sim.piece
+	var c := px(_px, float(pc.y)) + _shake_off
+	if pc.dropping:
+		for k in 3:
+			var x := c.x + (k - 1) * s * 0.32
+			var top := c.y - s * (0.7 + 0.5 * _hash(k, float(pc.id)))
+			var run := s * (0.9 + 0.6 * _hash(k + 3, float(pc.id)))
+			_quad(b, [Vector2(x - 3, top - run), Vector2(x + 3, top - run), Vector2(x + 3, top), Vector2(x - 3, top)],
+				[Color(LANE, 0.0), Color(LANE, 0.0), Color(LANE, 0.7), Color(LANE, 0.7)])
+	if int(pc.kind) == Sim.Piece.BOMB:
+		var tip := c + Vector2(s * 0.2, -s * 0.38)
+		for k in 5:
+			var ph := fmod(_clock * 3.0 + k * 0.2, 1.0)
+			var dir := Vector2.from_angle(-PI * 0.5 + (_hash(k, floorf(_clock * 3.0 + k * 0.2)) - 0.5) * 2.4)
+			b.disc(tip + dir * ph * s * 0.3, s * 0.035 * (1.0 - ph), Color(Art.SPARK, 1.0 - ph))
+
+## Bunting strung across the top of the shelf, swaying a little.
+func _draw_bunting(b: Face.Builder) -> void:
+	var board := Vector2(Sim.COLS, Sim.ROWS + 1) * _u
+	var a := _origin + Vector2(-8.0, 4.0)
+	var z := _origin + Vector2(board.x + 8.0, 4.0)
+	var sag := _u * 0.22
+	var pts := PackedVector2Array()
+	for i in 17:
+		var t := i / 16.0
+		pts.append(a.lerp(z, t) + Vector2(0, sag * 4.0 * t * (1.0 - t)))
+	b.stroke(pts, 3.0, Color(Art.WOOD_DEEP, 0.8))
+	var n := 11
+	var w := _u * 0.2
+	for i in n:
+		var t := (i + 0.5) / n
+		var at := a.lerp(z, t) + Vector2(0, sag * 4.0 * t * (1.0 - t))
+		var sway := 0.0 if Motion.reduce else sin(_clock * 1.7 + i * 0.9) * 0.12
+		var tip := at + Vector2.from_angle(PI * 0.5 + sway) * w * 1.25
+		var col: Color = BUNTING[i % BUNTING.size()]
+		b.polygon(PackedVector2Array([at + Vector2(-w * 0.5, 0), at + Vector2(w * 0.5, 0), tip]), col)
+		b.polygon(PackedVector2Array([at + Vector2(-w * 0.5, 0), at + Vector2(-w * 0.1, 0), tip]), Color(col.darkened(0.12), 0.9))
+
+## The acorns in the air, over everything.
+func _draw_air() -> void:
+	for f: Dictionary in _flights:
+		if f.t < 0.0:
+			continue
+		var k := clampf(f.t / FLIGHT_T, 0.0, 1.0)
+		var e := k * k * (3.0 - 2.0 * k)
+		var p: Vector2 = (f.from as Vector2).lerp(f.ctrl, e).lerp((f.ctrl as Vector2).lerp(f.to, e), e)
+		var sc := Motion.back_out(minf(1.0, f.t / 0.18)) * lerpf(1.0, 0.7, e)
+		_air.draw_mesh(Art.acorn(52.0), null, Transform2D(float(f.spin) * f.t, Vector2(sc, sc), 0.0, p))
 
 ## The column the finger is over, lit from the lane down to where the
 ## block would land.
@@ -974,8 +1301,14 @@ func _draw_next() -> void:
 		return
 	var s := minf(_next_view.size.y, 64.0)
 	var c := _next_view.size * 0.5
-	_next_view.draw_mesh(Art.block(v, s), null, Transform2D(0.0, c))
-	Art.number(_next_view, Art.font(), c, v, s)
+	# a new next block drops into the plate and settles
+	var k := 1.0 if Motion.reduce else clampf(_next_t / 0.4, 0.0, 1.0)
+	var sc := Motion.back_out(k)
+	c.y -= (1.0 - minf(1.0, k * 1.6)) * 30.0
+	_next_view.draw_set_transform(c, 0.0, Vector2(sc, sc))
+	_next_view.draw_mesh(Art.block(v, s), null, Transform2D.IDENTITY)
+	Art.number(_next_view, Art.font(), Vector2.ZERO, v, s)
+	_next_view.draw_set_transform(Vector2.ZERO)
 
 static func _hash(a: float, b: float) -> float:
 	var v := sin(a * 12.9898 + b * 78.233) * 43758.5453
@@ -1050,11 +1383,20 @@ func _build_end(better: bool) -> Control:
 			var c := mid + Vector2((k - 0.5) * s * 1.02, -s * 0.5)
 			seat.draw_mesh(Art.block(under[k], s), null, Transform2D(0.0, c))
 			Art.number(seat, font, c, under[k], s)
-		var land := 1.0 if Motion.reduce else Motion.back_out(clampf((since - 0.25) / 0.35, 0.0, 1.0))
+		var fall := clampf((since - 0.25) / 0.3, 0.0, 1.0)
+		var land := 1.0 if Motion.reduce else fall * fall
 		var bob := sin(t * 2.2) * 5.0
-		var top := mid + Vector2(0, -s * 1.5 - (1.0 - land) * 200.0 + bob)
-		seat.draw_mesh(Art.block(biggest, s * 1.1), null, Transform2D(sin(t * 1.5) * 0.04, top))
-		Art.number(seat, font, top, biggest, s * 1.1, clampf(land * 2.0, 0.0, 1.0)))
+		# it lands on the two with a squash that springs back, about its foot
+		var sq := Vector2.ONE
+		var after := since - 0.55
+		if not Motion.reduce and after > 0.0 and after < 0.8:
+			var q := 0.22 * exp(-after * 8.0) * cos(after * 26.0)
+			sq = Vector2(1.0 + q * 0.75, 1.0 - q)
+		var top := mid + Vector2(0, -s * 1.5 - (1.0 - land) * 260.0 + bob + (1.0 - sq.y) * s * 0.55)
+		seat.draw_set_transform(top, sin(t * 1.5) * 0.04, sq)
+		seat.draw_mesh(Art.block(biggest, s * 1.1), null, Transform2D.IDENTITY)
+		Art.number(seat, font, Vector2.ZERO, biggest, s * 1.1, 1.0 if since > 0.3 or Motion.reduce else 0.0)
+		seat.draw_set_transform(Vector2.ZERO))
 	col.add_child(seat)
 	_seat = seat
 	var head := Label.new()
