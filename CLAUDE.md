@@ -1316,6 +1316,25 @@ pointing `seed_as` at them. Specs:
   neighbour flinch; the big block watches the held one and blinks; a hint
   leaves a dotted trail; the big block hops out in three steps. 68 played,
   67 on ANGLE, reduce motion pixel-still.
+- **Marigold is the twenty-sixth card** (2026-09-26,
+  `puzzles/marigold2d.gd`, `puzzles/marigold_state.gd`, spec
+  `2026-09-26-marigold-flat-design.md`, no concept tab -- built while the
+  user was away). The pegs-and-launcher game the user asked for, re-dressed
+  as a dusk pond garden: the family's sun shoots a seed, every bud it touches
+  blooms, bloom every marigold; clovers split the seed, the violet moves, a
+  seed in the sliding pot comes back, and the last marigold is a **full
+  bloom** (slow motion, a rainbow, five worth-labelled pots). The reference's
+  name is written once in the spec to forbid it; **it is called Marigold**.
+  Out of seeds the same garden grows back (a try, never a loss). Two things
+  travel: **a board whose physics is pure data stepped at a fixed `DT` gets
+  an exact guide and an exact hint for free** -- both play the shot on a
+  `clone()`, and the hint's 65-angle search (~330 ms here) runs on a
+  `WorkerThreadPool` task -- and **`seed` is a global function in GDScript**,
+  so a static helper named `seed()` fails to parse where it is called
+  (`marigold_parts.gd`'s is `bead()`). Buds are drawn in six strips so a
+  bloom rebuilds one. 74 draw calls bare, 76-78 played, 87 in the full
+  bloom, 78 on ANGLE. Sixteen sounds generated (2026-09-26), one take a cue,
+  awaiting the user's listen.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of
