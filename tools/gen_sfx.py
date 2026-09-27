@@ -33,6 +33,11 @@ FOLEY = "realistic foley recording, dry, no music, no voice"
 ARCADE = ("retro arcade video game sound effect, soft warm 8-bit chiptune "
           "synth, rounded, gentle, not harsh, clean, dry, no music bed, no voice")
 
+# Molehill's whacks: a cartoon's bonks and squeaks, because a mallet on a
+# mole wants a comic thump more than a synth -- its jingles stay ARCADE.
+CARTOON = ("cute cartoon comedy sound effect, playful, rounded, soft, not harsh, "
+           "clean, dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade]])
 SETS = {
@@ -494,6 +499,28 @@ SETS = {
         "victory":    ("a triumphant sparkling retro fanfare, the garden is saved, joyful", 2.6, -4, ARCADE),
         "game_over":  ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":   ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+    },
+    # Molehill (Arcade, arcade/molehill_screen.gd): whack-a-mole on a lawn.
+    # The whacks are cartoon bonks; pop_up and escape fire constantly, so
+    # they sit low.
+    "molehill": {
+        "pop_up":      ("a tiny soft 'plop' of a small animal popping up out of a hole in the soil, very short", 0.5, -16, CARTOON),
+        "whack":       ("a soft rubbery cartoon 'bonk' of a wooden mallet on a little head, with a tiny squeak, very short", 0.5, -6, CARTOON),
+        "whack_gold":  ("a cartoon mallet 'bonk' followed by a bright jingle of coins and a sparkle, a golden prize, short", 0.8, -5, CARTOON),
+        "clang":       ("a hollow clay flowerpot knocked by a wooden mallet, a round 'clonk' that rings a little, short", 0.5, -7, CARTOON),
+        "crack":       ("a clay flowerpot cracking apart with a soft crunch and a cartoon 'bonk', short", 0.6, -6, CARTOON),
+        "bunny":       ("a startled little cartoon rabbit squeak and a soft 'boing', oops, not hurt, short", 0.6, -6, CARTOON),
+        "miss":        ("a soft dull thud of a wooden mallet on grass and soil, a miss, very short", 0.5, -10, CARTOON),
+        "escape":      ("a tiny cheeky cartoon raspberry giggle of a little mole ducking back down a hole, very short", 0.5, -14, CARTOON),
+        "combo":       ("a bright rising three-note chime with a sparkle, a combo multiplier going up, short", 0.7, -6, ARCADE),
+        "streak_lost": ("a short soft descending two-note blip, a streak broken, gentle", 0.5, -10, ARCADE),
+        "go":          ("a short bright cheerful 'go' horn blip of two rising notes, a round starts", 0.6, -5, ARCADE),
+        "tick":        ("a single soft wooden clock tick with a tiny bell, a countdown second, very short", 0.5, -9, ARCADE),
+        "frenzy":      ("an excited quick rising retro arpeggio with a drum roll, the last ten seconds, double points", 1.2, -5, ARCADE),
+        "time_up":     ("a cheerful alarm clock 'brring' bell, very short, time is up", 0.8, -6, CARTOON),
+        "start":       ("a short cheerful retro arcade game start jingle, a bouncy garden tune, about two seconds", 2.2, -4, ARCADE),
+        "game_over":   ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":    ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.

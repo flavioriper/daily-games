@@ -71,6 +71,8 @@ const CARDS := {
 	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
 	# Hedgerow keeps its garden in the meadow by day.
 	"hedgerow": ["meadow", 1.5, Vector2(0.5, 0.6)],
+	# Molehill is a lawn in the meadow too, nearer the grass.
+	"molehill": ["meadow", 1.7, Vector2(0.4, 0.75)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

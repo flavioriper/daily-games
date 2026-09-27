@@ -1775,6 +1775,31 @@ maze is an expansion), so it was rebuilt the same day (the spec's section
 - 28 sounds in the `ARCADE` style, awaiting the user's listen. ElevenLabs
   refuses a `duration_seconds` under 0.5; `gen_sfx.py` stops the set there.
 
+**Molehill is the third** (2026-09-27, spec
+`2026-09-27-arcade-molehill-design.md`): whack-a-mole after the boardwalk
+cabinet, whose trademark the spec names once to forbid; **it is called
+Molehill**. The brief said "puzzle game"; it went on the Arcade tab because
+it is a timed game for a score with no solve. Twelve molehills (3x4) and a
+minute: moles (10), golden ones (50), flowerpot moles that take two whacks
+(25), and a rabbit who must be left alone (-30). A streak multiplies (x2 at
+5, x3 at 12, x4 at 20) and breaks on a mole let go, an empty whack or the
+rabbit; the last ten seconds count double. The record's "furthest" is the
+best streak.
+
+- **The game is pure data** (`arcade/molehill_sim.gd`, fixed 1/60 s,
+  `whack(hill)` and `events`). `tests/_probe_molehill.gd -- [seed] [react
+  ms] [slips]` plays it with a bot: ~10,000 at 300 ms, ~1,400 at 800 ms.
+- **A mole sinks by a clip, not by a cut mesh**: each hill is a clipping
+  Control whose bottom edge is the hole's mouth, the mole lowered into it by
+  the draw transform, then the mound's front lip as a second child over it,
+  both in row order so a row stands in front of the one behind.
+- `tests/_shot_molehill.gd -- <outdir> [reduce]` shoots every beat, clicks a
+  mole through the viewport (prints whether it counted) and puts
+  `user://arcade.cfg` back. 134 draw calls on the tab with three cards, 55
+  on a bare lawn, 63 with the cast up, 72-75 on the end card, ANGLE agreeing.
+- 17 sounds, whacks in a new `CARTOON` style and jingles in `ARCADE`,
+  awaiting the user's listen.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1849,7 +1874,8 @@ see "Ads and the purchase" below.
   `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
   `arcade_end` (score, stage, seconds, fired, hits, kills, best; Hedgerow
   sends stage as the wave, and leaks, won, towers and picks in place of
-  fired and hits) and `arcade_abandon`; snooker's hint and reset
+  fired and hits; Molehill sends stage as the best streak, and whacked,
+  escaped, missed and bunnies) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

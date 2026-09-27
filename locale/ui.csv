@@ -309,3 +309,18 @@ HR_T_FORGE,Forge,Forja,Forja
 HR_D_FORGE,Towers around it hit harder.,Torres em volta batem mais forte.,Las torres alrededor golpean más fuerte.
 HR_T_BRAMBLE,Bramble,Silvado,Zarzal
 HR_D_BRAMBLE,Three targets at once.,Três alvos de uma vez.,Tres objetivos a la vez.
+ARC_MOLEHILL_BLURB,"A minute on the lawn: whack the moles, mind the rabbit, keep the streak going.","Um minuto no gramado: acerte as toupeiras, poupe o coelho e mantenha a sequência.","Un minuto en el césped: golpea a los topos, respeta al conejo y mantén la racha."
+ARC_BEST_STREAK,Best streak: %d,Melhor sequência: %d,Mejor racha: %d
+MH_MOTTO,Mind the rabbit,Poupe o coelho,Respeta al conejo
+MH_TIME,TIME,TEMPO,TIEMPO
+MH_READY,Ready?,Pronto?,¿Listo?
+MH_READY_LINE,"Whack the moles, not the rabbit","Acerte as toupeiras, não o coelho","Golpea a los topos, no al conejo"
+MH_GO,Whack!,Já!,¡Ya!
+MH_COMBO,x%d!,x%d!,x%d!
+MH_STREAK,Streak %d · x%d,Sequência %d · x%d,Racha %d · x%d
+MH_FRENZY,Frenzy!,Frenesi!,¡Frenesí!
+MH_FRENZY_LINE,Double points to the end,Pontos em dobro até o fim,Puntos dobles hasta el final
+MH_TIME_UP,Time's up!,Acabou o tempo!,¡Se acabó el tiempo!
+MH_END_CARD,The moles go home,As toupeiras voltam para casa,Los topos se van a casa
+MH_WHACKED,%d whacked,%d acertadas,%d golpeados
+MH_BEST_STREAK,best streak %d,melhor sequência %d,mejor racha %d

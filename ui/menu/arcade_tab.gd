@@ -3,7 +3,8 @@ extends VBoxContainer
 ## The Arcade tab: games played alone for a score rather than against the
 ## day's board or against someone: Firefly (arcade/firefly_screen.gd) and
 ## Hedgerow (arcade/hedgerow_screen.gd). Its body takes the day
-## row's and the grid's room, as Versus, Stats and Streak do.
+## row's and the grid's room, as Versus, Stats and Streak do. Molehill
+## (arcade/molehill_screen.gd) is the third.
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
 ## drawn once), the name and the best score, a line, and the best stage
@@ -22,6 +23,7 @@ const Art = preload("res://arcade/firefly_art.gd")
 const HedgeArt = preload("res://arcade/hedgerow_art.gd")
 const HedgeSim = preload("res://arcade/hedgerow_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
+const MoleArt = preload("res://arcade/molehill_art.gd")
 
 const GAP := 20
 const PAD := 24
@@ -29,12 +31,12 @@ const RADIUS := 36
 const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const CHIP_H := 84
-const GAMES := ["firefly", "hedgerow"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB"}
-## How far a game went, in its own words: a stage, or a wave.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP}
+const GAMES := ["firefly", "hedgerow", "molehill"]
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB"}
+## How far a game went, in its own words: a stage, a wave, or a streak.
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -66,7 +68,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = FireflyBanner.new() if game == "firefly" else HedgerowBanner.new()
+	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -279,3 +281,44 @@ class HedgerowBanner extends Control:
 			var ahead := Vector2(at.x + lawn.x * (f + 0.01), mid.y + sin((f + 0.01) * TAU * 1.5) * u * 0.62)
 			var rot := (ahead - p).angle() + PI * 0.5
 			draw_mesh(HedgeArt.creep(pe[1], pe[2], 0, u * (0.45 if pe[1] == HedgeSim.Kind.BOSS else 0.62)), null, Transform2D(rot, p))
+
+## Molehill's banner: three mounds on a strip of lawn, a mole up in the
+## middle one with the mallet coming down on it, a golden one peeking out
+## and the rabbit at the end. Drawn once.
+class MolehillBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := minf(size.y / 95.0, size.x / 260.0)
+		var foot := size.y * 0.8
+		var xs := [size.x * 0.5 - 90.0 * u, size.x * 0.5, size.x * 0.5 + 90.0 * u]
+		var looks := [MoleArt.Look.GOLD, MoleArt.Look.MOLE_DIZZY, MoleArt.Look.BUNNY]
+		var rises := [0.8, 1.0, 1.0]
+		var back := Face.Builder.new()
+		back.fan(PackedVector2Array([Vector2(0, foot - 22.0 * u), Vector2(size.x, foot - 22.0 * u), size, Vector2(0, size.y)]), Color("a9cf78", 0.9))
+		for x: float in xs:
+			MoleArt.mound_back(back, Vector2(x, foot), u)
+		var bm := back.mesh()
+		_keep.append(bm)
+		draw_mesh(bm, null)
+		var front := Face.Builder.new()
+		for x: float in xs:
+			MoleArt.mound_front(front, Vector2(x, foot), u)
+		var fm := front.mesh()
+		_keep.append(fm)
+		for k in 3:
+			# the part of each creature below the hole's mouth is under the lip
+			var drop: float = (1.0 - rises[k]) * 60.0 * u
+			draw_mesh(MoleArt.mesh(looks[k], u), null, Transform2D(0.0, Vector2(xs[k], foot + drop)))
+		draw_mesh(fm, null)
+		# the mallet, just landed on the middle mole's head
+		var head := Vector2(xs[1], foot - 50.0 * u)
+		var hand := head - Vector2(0, -MoleArt.HEAD_AT * u).rotated(-0.55)
+		draw_mesh(MoleArt.mallet(u), null, Transform2D(-0.55, hand))
