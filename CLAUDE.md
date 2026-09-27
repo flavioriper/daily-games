@@ -1190,7 +1190,13 @@ pointing `seed_as` at them. Specs:
   dowels, and an inlaid emblem per colour in place of the pips (heart, sprout,
   circle, flower, diamond, triangle). A held ring turns on its post, shown by
   its emblem walking round the band; a flight whirls it to the next half turn;
-  the lock's cap is a daisy; the solve spins every ring. 56 bare, 61 played. **Run windowed harnesses with `--always-on-top`**: a
+  the lock's cap is a daisy; the solve spins every ring. 56 bare, 61 played. **Fixed on 2026-09-27**:
+  a landed flight left its last frame in `_live_mesh`, a second ring hanging
+  over the one in its slot (the "double ring"), and every station and plank
+  was one mesh of ~30 ms rebuilt on every tap and landing frame (the lag).
+  Each station is now its own rest-pose mesh, rebuilt only when what is on it
+  changes (~2.7 ms), and whole-station motion is the draw transform: 78 draw
+  calls on the animation strip where 72 were, ANGLE agreeing. **Run windowed harnesses with `--always-on-top`**: a
   covered window stops presenting after about 1.7 s and every later shot repeats
   the last frame.
 - **Caterpillar is the twenty-first card** (2026-09-25,

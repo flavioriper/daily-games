@@ -50,13 +50,19 @@ extends "res://core/puzzle_base.gd"
 ## Spare height is shared between the air above, the gap between the rows
 ## and the bushes at the foot, so the two rows sit in the middle of the card.
 ##
-## **Three meshes.** The terrace is built once a layout and never again; the
-## stations and planks are one mesh rebuilt only while something on them
-## moves (`_stations_moving`); the ring in hand or in flight is its own small
-## mesh rebuilt every frame it moves. Caterpillar's
-## lesson: a board whose idle breath rebuilt its whole mesh paid for it every
-## frame. Both are kept in `_shown` until the next ones replace them (a canvas
-## command holds a mesh by RID).
+## **Meshes.** The terrace and the planks are built once a layout and never
+## again; each station is its own mesh in its rest pose, rebuilt only when
+## what is *on* it changes (a ring, a squash, a glint, the cap, the solve's
+## spin -- `_station_look`'s key); the ring in hand or in flight is its own
+## small mesh rebuilt every frame it moves. Everything that moves a station
+## whole -- the entrance's pop and fade, the reset hop, the solve hop, the
+## shiver -- is the draw's transform and modulate, never a rebuild.
+## (2026-09-27: one mesh of every station and plank cost ~30 ms to build on
+## this Mac and was rebuilt on every tap and every frame of a landing; the
+## phone lagged on it.) Caterpillar's lesson again: a board that rebuilt its
+## whole mesh for one moving part paid for all of it every frame. All are
+## kept in `_shown` until the next ones replace them (a canvas command holds
+## a mesh by RID).
 ##
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md (the 2026-09-25
 ## and 2026-09-26 amendments are this drawing). `ui/menu/card_art.gd`'s "rings" branch calls
@@ -194,8 +200,12 @@ var _ground: Array[float] = [HEAD + STATION_H, HEAD + 2.0 * STATION_H + SHELF_H 
 
 ## The terrace under everything, built once a layout: it never moves.
 var _still_mesh: ArrayMesh
-## The stations and planks, rebuilt only while they move.
-var _mesh: ArrayMesh
+## The two planks, in their rest pose, built once a layout.
+var _plank_mesh: ArrayMesh
+## Each station in its rest pose, and the look (`_station_look`'s key) it
+## was built for.
+var _station_meshes: Array = []
+var _station_keys: Array = []
 ## The ring in hand or in flight, rebuilt every frame it moves.
 var _live_mesh: ArrayMesh
 var _shown: Array = []
@@ -322,6 +332,9 @@ func _layout() -> void:
 	_toast_mesh = null
 	_toast_mesh_for = ""
 	_still_mesh = null
+	_plank_mesh = null
+	_station_meshes = []
+	_station_keys = []
 	_refresh()
 
 ## Where peg `i` stands, in design pixels: a short row is centred.
@@ -477,7 +490,11 @@ func _land_flight(at: float) -> void:
 	_land_peg = to
 	_land_slot = slot
 	_land_at = at
-	_mesh = null
+	# The flight's own last frame is in _live_mesh: once the ring is on its
+	# post nothing else rebuilds that mesh, so a stale copy of the ring would
+	# hang over the one now drawn in its slot -- the "double ring".
+	_live_mesh = null
+	queue_redraw()
 	if not Motion.reduce:
 		var st := _station(to)
 		var foot := Vector2(float(st["cx"]), _ring_yt(float(st["ground"]), RING_W, slot) + (SIDE + FACE) * RING_W)
@@ -519,7 +536,7 @@ func _settle(j: int, at: float) -> void:
 	elif _state.out_of_moves():
 		_toast = OUT_MSG
 		_toast_at = at
-	_mesh = null
+	queue_redraw()
 
 func _colours_left() -> int:
 	return _state.colours - _state.home_count()
@@ -630,7 +647,6 @@ func _process(delta: float) -> void:
 			_land_flight(land)
 	var redraw := false
 	if _stations_moving(t):
-		_mesh = null
 		redraw = true
 	if _ring_moving():
 		_live_mesh = null
@@ -684,7 +700,6 @@ func _on_solved() -> void:
 	_refresh()
 
 func _refresh() -> void:
-	_mesh = null
 	_live_mesh = null
 	queue_redraw()
 
@@ -702,15 +717,14 @@ func _draw() -> void:
 		_still_mesh = _build_terrace()
 	if _still_mesh != null:
 		draw_mesh(_still_mesh, null)
-	if _mesh == null:
-		_mesh = _build_mesh(t)
-	if _mesh != null:
-		draw_mesh(_mesh, null)
+	_draw_stations(t)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(_s, _s))
 	if _live_mesh == null:
 		_live_mesh = _build_live(t)
 	if _live_mesh != null:
 		draw_mesh(_live_mesh, null)
-	_shown = [_still_mesh, _mesh, _live_mesh]
+	_shown = [_still_mesh, _plank_mesh, _live_mesh]
+	_shown.append_array(_station_meshes)
 	_draw_budget()
 	_draw_toast(t, _shown)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -731,23 +745,57 @@ func _draw_budget() -> void:
 
 # --- the stations' mesh ---
 
-func _build_mesh(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+## The planks and every station, each from its rest-pose mesh under this
+## moment's transform: the entrance's pop about the board's centre (`wide`),
+## and per station its drop, hops and shiver as an offset and its fade as a
+## modulate. A station's mesh is rebuilt only when its look changed.
+func _draw_stations(t: float) -> void:
 	var centre := Vector2(_dsize.x * 0.5, (float(_ground[0]) + float(_ground[1]) - STATION_H) * 0.5)
 	var wide := 1.0
 	if not Motion.reduce:
 		wide = Motion.wide_pop_scale(t - _opened - Motion.ENTER_DELAY)
-	var gmap := func(p: Vector2) -> Vector2:
-		return centre + (p - centre) * wide
+	if _plank_mesh == null:
+		_plank_mesh = _build_planks()
+	_place(centre, wide, Vector2.ZERO)
+	if _plank_mesh != null:
+		draw_mesh(_plank_mesh, null)
+	var n: int = _state.pegs.size()
+	if _station_meshes.size() != n:
+		_station_meshes.resize(n)
+		_station_keys.resize(n)
+	for i in n:
+		var pose := _station_pose(i, t)
+		var seen: float = pose["seen"]
+		if seen <= 0.0:
+			continue
+		var look := _station_look(i, t, float(pose["hop"]))
+		var key := var_to_str(look)
+		if _station_meshes[i] == null or _station_keys[i] != key:
+			var b := Face.Builder.new()
+			var st := _station(i)
+			_append_peg(b, float(st["cx"]), float(st["ground"]), RING_W, look["pegs"], Callable(), 1.0,
+				look["scales"], look["glints"], float(look["cap"]), look["turns"])
+			_station_meshes[i] = b.mesh() if not b.verts.is_empty() else null
+			_station_keys[i] = key
+		if _station_meshes[i] != null:
+			_place(centre, wide, pose["off"])
+			draw_mesh(_station_meshes[i], null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, seen))
+
+## Sets the canvas transform to carry design point `p` to
+## `(centre + (p + off - centre) * wide) * _s` -- what the old per-vertex map
+## did, as one affine transform.
+func _place(centre: Vector2, wide: float, off: Vector2) -> void:
+	draw_set_transform((centre * (1.0 - wide) + off * wide) * _s, 0.0, Vector2(_s * wide, _s * wide))
+
+func _build_planks() -> ArrayMesh:
+	var b := Face.Builder.new()
 	var counts := _rows_of(_state.pegs.size())
 	for row in 2:
 		var n: int = counts[row]
 		if n <= 0:
 			continue
 		var w := float(n) * STATION_W + 40.0
-		_append_plank(b, (_dsize.x - w) * 0.5, float(_ground[row]), w, RING_W, gmap, row * 7 + n)
-	for i in _state.pegs.size():
-		_build_station(b, i, t, centre, wide)
+		_append_plank(b, (_dsize.x - w) * 0.5, float(_ground[row]), w, RING_W, Callable(), row * 7 + n)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A wooden plank a row of pegs stands on, `ring_w` setting the scale of its
@@ -837,9 +885,11 @@ static func _append_leaf(b, root: Vector2, ang: float, lng: float, wide: float, 
 	var tip := root + dir * lng
 	var pts := Face.Builder.bezier2(root, root + dir * lng * 0.45 + side, tip, 7)
 	pts.append_array(Face.Builder.bezier2(tip, root + dir * lng * 0.45 - side, root, 7))
-	var mapped := PackedVector2Array()
-	for p in pts:
-		mapped.append(map.call(p))
+	var mapped := pts
+	if not map.is_null():
+		mapped = PackedVector2Array()
+		for p in pts:
+			mapped.append(map.call(p))
 	b.polygon(mapped, col)
 	_stroke_mapped(b, PackedVector2Array([root.lerp(tip, 0.15), root.lerp(tip, 0.8)]), maxf(lng * 0.05, 0.6),
 		Color(col.lerp(Color.WHITE, 0.35), 0.5), map)
@@ -868,33 +918,35 @@ static func _blob(c: Vector2, rx: float, ry: float, seed_i: int) -> PackedVector
 static func _h(a: int, b: int) -> float:
 	return float(absi(hash(Vector2i(a, b))) % 10007) / 10006.0
 
-## One station: its entrance, reset hop, solve hop and shiver folded into one
-## map, then `_append_peg` with this moment's squash, glint, turn and cap.
-func _build_station(b, i: int, t: float, centre: Vector2, wide: float) -> void:
-	var st := _station(i)
+## Where station `i` stands as a whole at `t`: its fade (`seen`), the offset
+## its entrance drop, reset hop, solve hop and shiver add up to (`off`), and
+## the solve hop alone (`hop`), which also stretches its rings.
+func _station_pose(i: int, t: float) -> Dictionary:
 	var since := t - _opened - Motion.ENTER_DELAY - Motion.stagger(i, Motion.ENTER_STAGGER)
 	var seen := 1.0
 	var lift := 0.0
 	if not Motion.reduce:
 		seen = Motion.appear_level(since)
 		lift = Motion.drop_in_lift(since)
-	if seen <= 0.0:
-		return
 	lift += -Motion.hop_lift(t - _reset_at - Motion.stagger(i, Motion.RESET_STAGGER), Motion.RESET_HOP, Motion.HOP_TIME)
 	var hop := 0.0
-	var turn := 0.0
 	if _solved_at >= 0.0:
 		var e := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER)
 		hop = -Motion.hop_lift(e, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 		lift += hop * 2.2
-		# The solve spins every ring a half turn on its post while it hops.
-		if not Motion.reduce:
-			var u := clampf(e / Motion.SOLVE_TIME, 0.0, 1.0)
-			turn = PI * u * u * (3.0 - 2.0 * u)
 	var dx := Motion.shiver_offset(t - float(_shake_at.get(i, -100.0)), Motion.SHIVER_PX * 2.0)
-	var map := func(p: Vector2) -> Vector2:
-		return centre + ((p + Vector2(dx, -lift)) - centre) * wide
+	return {"seen": seen, "off": Vector2(dx, -lift), "hop": hop}
 
+## What is on station `i` at `t` -- its rings and this moment's squash, glint,
+## turn and cap: everything its rest-pose mesh is built from, so it doubles as
+## the key that says when that mesh is stale.
+func _station_look(i: int, t: float, hop: float) -> Dictionary:
+	var turn := 0.0
+	if _solved_at >= 0.0 and not Motion.reduce:
+		# The solve spins every ring a half turn on its post while it hops.
+		var e := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER)
+		var u := clampf(e / Motion.SOLVE_TIME, 0.0, 1.0)
+		turn = PI * u * u * (3.0 - 2.0 * u)
 	var pegs: Array = (_state.pegs[i] as Array).duplicate()
 	# The destination slot of a live flight is drawn by the flight itself.
 	if not _flight.is_empty() and int(_flight["to"]) == i and t < float(_flight["at"]) + float(_flight["dur"]):
@@ -920,7 +972,7 @@ func _build_station(b, i: int, t: float, centre: Vector2, wide: float) -> void:
 		cap = 1.0
 		if _lock_at.has(i) and not Motion.reduce:
 			cap = Motion.pop_in_scale(t - float(_lock_at[i]) - float(Gen.CAP - 1) * Motion.WAVE_STEP).x
-	_append_peg(b, float(st["cx"]), float(st["ground"]), RING_W, pegs, map, seen, scales, glints, cap, turns)
+	return {"pegs": pegs, "scales": scales, "glints": glints, "turns": turns, "cap": cap}
 
 ## A whole peg, `w` the ring's width: its shadow on the plank, the rings
 ## bottom-up, the dowel above the top ring (into its hole, or into a socket
@@ -1005,8 +1057,12 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 	if sc != Vector2.ONE or tilt != 0.0:
 		var about := Vector2(cx, yt + SIDE * w * 0.5)
 		var rot := Transform2D(tilt, Vector2.ZERO)
-		smap = func(p: Vector2) -> Vector2:
-			return map.call(about + rot * ((p - about) * sc))
+		if map.is_null():
+			smap = func(p: Vector2) -> Vector2:
+				return about + rot * ((p - about) * sc)
+		else:
+			smap = func(p: Vector2) -> Vector2:
+				return map.call(about + rot * ((p - about) * sc))
 	var rx := w * 0.5
 	var ry := FACE * w
 	var yb := yt + SIDE * w
@@ -1057,7 +1113,8 @@ static func _append_emblem(b, kind: int, at: Vector2, s: float, sx: float, colou
 		var col := deep if pass_i == 0 else ink
 		var off := drop if pass_i == 0 else Vector2.ZERO
 		var to := func(p: Vector2) -> Vector2:
-			return map.call(at + off + Vector2(p.x * s * sx, p.y * s))
+			var q := at + off + Vector2(p.x * s * sx, p.y * s)
+			return q if map.is_null() else map.call(q)
 		match EMBLEMS[kind % EMBLEMS.size()]:
 			Emblem.HEART:
 				var pts := PackedVector2Array()
@@ -1112,6 +1169,9 @@ static func _leaf_to(b, root: Vector2, tip: Vector2, wide: float, col: Color, to
 
 ## `points` carried through `map` and stroked, the width scaled by the map.
 static func _stroke_mapped(b, points: PackedVector2Array, width: float, colour: Color, map: Callable, closed := false) -> void:
+	if map.is_null():
+		b.stroke(points, width, colour, closed)
+		return
 	var mapped := PackedVector2Array()
 	mapped.resize(points.size())
 	for i in points.size():
@@ -1121,6 +1181,9 @@ static func _stroke_mapped(b, points: PackedVector2Array, width: float, colour: 
 
 ## `points`, each carried through `map`, as one fan.
 static func _fan_mapped(b, points: PackedVector2Array, colour: Color, map: Callable) -> void:
+	if map.is_null():
+		b.fan(points, colour)
+		return
 	var mapped := PackedVector2Array()
 	mapped.resize(points.size())
 	for i in points.size():
