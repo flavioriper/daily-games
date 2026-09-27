@@ -699,6 +699,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "HH_LVL_3"},
 		],
 	},
+	{
+		"id": "slider",
+		"kind": "puzzle",
+		"title": "Super Slider",
+		"blurb": "SL_BLURB",
+		"short": "SL_SHORT",
+		"motto": "SL_MOTTO",
+		"footer": "Slide · Shuffle · Out",
+		# Nothing is picked up, and nothing wrong can sit in the tray: a
+		# block only ever slides into empty cells. So no tray and no Check;
+		# Undo, Reset and Hint ride in the top bar -- Pinwheel's shape.
+		"script": "res://puzzles/slider2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band of the bank (slider_gen.gd's BANDS) is
+		# its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "SL_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "SL_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "SL_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "SL_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

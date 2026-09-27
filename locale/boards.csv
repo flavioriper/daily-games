@@ -608,3 +608,20 @@ HH_LVL_0,"8 × 10 lawn, 12 hedgehogs","Gramado 8 × 10, 12 ouriços","Césped 8 
 HH_LVL_1,"9 × 11 lawn, 17 hedgehogs","Gramado 9 × 11, 17 ouriços","Césped 9 × 11, 17 erizos"
 HH_LVL_2,"10 × 11 lawn, 21 hedgehogs","Gramado 10 × 11, 21 ouriços","Césped 10 × 11, 21 erizos"
 HH_LVL_3,"10 × 11 lawn, 24 hedgehogs","Gramado 10 × 11, 24 ouriços","Césped 10 × 11, 24 erizos"
+SL_TIP_DRAG,Drag a block. It slides through the empty cells.,Arraste um bloco. Ele desliza pelas casas vazias.,Arrastra un bloque. Se desliza por las casillas vacías.
+SL_TIP_GOAL,Bring the big red block down to the green gate.,Leve o bloco vermelho grande até o portão verde.,Lleva el bloque rojo grande hasta la puerta verde.
+SL_TIP_CORNER,"One drag can take a block round a corner, and counts as one move.","Um arrasto pode levar um bloco por uma esquina, e conta como um lance.","Un arrastre puede llevar un bloque por una esquina, y cuenta como una jugada."
+SL_HINT,That is a move of the shortest way out.,Esse é um lance do caminho mais curto.,Esa es una jugada del camino más corto.
+SL_UNDONE,One move taken back.,Um lance desfeito.,Una jugada deshecha.
+SL_COUNT_ONE,1 move · shortest %d,1 lance · mínimo %d,1 jugada · mínimo %d
+SL_COUNT,%d moves · shortest %d,%d lances · mínimo %d,%d jugadas · mínimo %d
+SL_WIN,Out in %d moves. The shortest way is %d.,Saiu em %d lances. O caminho mais curto tem %d.,Salió en %d jugadas. El camino más corto tiene %d.
+SL_DONE,The big block is out.,O bloco grande saiu.,El bloque grande salió.
+SL_RULES,"Slide the blocks around the tray to get the big red block out through the green gate at the bottom. Drag a block and it slides through the empty cells, round corners too, but never over another block and never lifted. Each drag is one move, however far it goes. The line over the tray counts your moves against the shortest way out.","Deslize os blocos pela bandeja até tirar o bloco vermelho grande pelo portão verde, embaixo. Arraste um bloco e ele desliza pelas casas vazias, virando esquinas também, mas nunca por cima de outro bloco e nunca levantado. Cada arrasto é um lance, não importa a distância. A linha acima da bandeja conta seus lances contra o caminho mais curto.","Desliza los bloques por la bandeja hasta sacar el bloque rojo grande por la puerta verde de abajo. Arrastra un bloque y se desliza por las casillas vacías, doblando esquinas también, pero nunca por encima de otro bloque y nunca levantado. Cada arrastre es una jugada, llegue hasta donde llegue. La línea sobre la bandeja cuenta tus jugadas contra el camino más corto."
+SL_BLURB,Slide the blocks and get the big red one out of the gate.,Deslize os blocos e tire o vermelho grande pelo portão.,Desliza los bloques y saca el rojo grande por la puerta.
+SL_SHORT,"Slide the blocks,\nfree the red one.","Deslize os blocos,\nsolte o vermelho.","Desliza los bloques,\nlibera el rojo."
+SL_MOTTO,Out through the gate,Para fora pelo portão,Fuera por la puerta
+SL_LVL_0,8–16 moves,8–16 lances,8–16 jugadas
+SL_LVL_1,20–34 moves,20–34 lances,20–34 jugadas
+SL_LVL_2,38–56 moves,38–56 lances,38–56 jugadas
+SL_LVL_3,60 moves or more,60 lances ou mais,60 jugadas o más

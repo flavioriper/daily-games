@@ -553,3 +553,27 @@ const PENNANT_DEEP   := SUN_DEEP
 ## 6 teal, 7 and 8 ink. Index 0 is never drawn.
 const NUM_INK := [TEXT, Color("4a7a36"), Color("2f6f7c"), Color("b0483f"), Color("6c4a8c"),
 	Color("7f4f22"), Color("2f6f7c"), TEXT, TEXT]
+
+# --- Super Slider (2026-09-26): painted wooden blocks in a walnut tray on a
+# lawn, after the handheld's own three colours -- a red big block, blue bars,
+# yellow squares -- let down into the house's warm pastels, and a green mat
+# at the gate. ---
+const SLIDE_LAWN      := Color("b9d49a")   # the card round the tray
+const SLIDE_LAWN_DEEP := Color("9fbf7f")   # its tufts and the path's edge
+const SLIDE_FRAME     := Color("a8764f")   # the tray's walnut frame
+const SLIDE_FRAME_HI  := Color("c9976b")   # its lit top edge
+const SLIDE_FRAME_DEEP := Color("7e5638")  # its shaded lip
+const SLIDE_FLOOR     := Color("efe3cb")   # the tray's floor
+const SLIDE_GROOVE    := Color("e0d0b0")   # the faint grid pressed into it
+const SLIDE_MAT       := Color("a9cf8e")   # the gate's mat
+const SLIDE_MAT_DEEP  := Color("7fae66")   # its carved mark
+const SLIDE_BIG       := Color("e56b5f")   # the big block
+const SLIDE_BIG_HI    := Color("f39a8e")
+const SLIDE_BIG_DEEP  := Color("b94c43")
+const SLIDE_BAR       := Color("6f9fd8")   # a bar, standing or lying
+const SLIDE_BAR_HI    := Color("a3c4ec")
+const SLIDE_BAR_DEEP  := Color("4f7db6")
+const SLIDE_SQ        := Color("f2c14e")   # a square
+const SLIDE_SQ_HI     := Color("f9dd8f")
+const SLIDE_SQ_DEEP   := Color("cf9a2c")
+const SLIDE_STONE     := Color("ddd3bf")   # the stepping stones past the gate
