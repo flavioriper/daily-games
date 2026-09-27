@@ -208,6 +208,22 @@ FF_ACCURACY,%d%% on target,%d%% de acerto,%d%% de acierto
 FF_BEST_LINE,Best %s,Recorde %s,Récord %s
 FF_AGAIN,Play again,Jogar de novo,Jugar otra vez
 FF_BACK,Back to the arcade,Voltar ao fliperama,Volver al arcade
+FF_WORD_1,Nice!,Boa!,¡Bien!
+FF_WORD_2,Great!,Ótimo!,¡Genial!
+FF_WORD_3,Glowing!,Brilhante!,¡Brillante!
+FF_WORD_4,Bug-tastic!,Inseto-tástico!,¡Bicho-tástico!
+FF_WORD_5,Legendary!,Lendário!,¡Legendario!
+FF_CHAIN,Chain x%d,Corrente x%d,Cadena x%d
+FF_ESCORT,Escort bonus x%d!,Bônus de escolta x%d!,¡Bonus de escolta x%d!
+FF_ROGUE_DOWN,Rogue down!,Traidor abatido!,¡Traidor abatido!
+FF_SAVED,Saved!,Salvo!,¡Salvado!
+FF_DOUBLE,Double fire!,Tiro duplo!,¡Doble disparo!
+FF_OH_NO,Oh no!,Ah não!,¡Oh no!
+FF_OUCH,Ouch!,Ai!,¡Ay!
+FF_CLEAR,Clear!,Limpo!,¡Despejado!
+FF_STAT_STAGE,stage,fase,fase
+FF_STAT_KILLS,bugs caught,insetos pegos,bichos atrapados
+FF_STAT_CHAIN,best chain,melhor corrente,mejor cadena
 FF_PAUSED,Paused,Pausado,En pausa
 FF_RESUME,Tap to go on,Toque para continuar,Toca para seguir
 HR_K_0,Aphids,Pulgões,Pulgones
@@ -286,6 +302,22 @@ MH_WHACKED,%d whacked,%d acertadas,%d golpeados
 MH_BEST_STREAK,best streak %d,melhor sequência %d,mejor racha %d
 MH_STAT_WHACKED,whacked,acertadas,golpeados
 MH_STAT_STREAK,best streak,melhor sequência,mejor racha
+MH_WORD_1,Nice!,Boa!,¡Bien!
+MH_WORD_2,Great!,Ótimo!,¡Genial!
+MH_WORD_3,Whack-tastic!,Bate-tástico!,¡Golpe-tástico!
+MH_WORD_4,Mole-arious!,Toupei-rível!,¡Topo-tastrófico!
+MH_WORD_5,Unstoppable!,Imparável!,¡Imparable!
+MH_WORD_6,Legendary!,Lendário!,¡Legendario!
+MH_DOUBLE,Double!,Dupla!,¡Doble!
+MH_TRIPLE,Triple!,Tripla!,¡Triple!
+MH_QUAD,Quadruple!,Quádrupla!,¡Cuádruple!
+MH_GOLDEN,Golden!,Dourada!,¡Dorado!
+MH_SMASH,Smash!,Quebrou!,¡Crash!
+MH_CLANG,Clang!,Clang!,¡Clang!
+MH_NOT_BUNNY,Not the bunny!,O coelho não!,¡Al conejo no!
+MH_OOPS,Oops!,Opa!,¡Uy!
+MH_TOO_SLOW,Too slow!,Lento demais!,¡Muy lento!
+MH_POINTS_X,Points x%d,Pontos x%d,Puntos x%d
 MH_STAT_AIM,on target,de acerto,de acierto
 HH_MOTTO,Treat the hens well,Trate bem as galinhas,Cuida bien a las gallinas
 HH_TAB_FARM,Farm,Fazenda,Granja

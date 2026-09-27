@@ -29,6 +29,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 
 const GAME := "firefly"
 const MARGIN := 40
@@ -53,6 +54,13 @@ const DUSK := Color("b07aa0")
 const CLOUD := Color("a79fd0")
 const PETAL := Color("c7a6d8")
 const PETAL_WARM := Color("f2b5a0")
+## Kills this close together (seconds) run a chain.
+const CHAIN_GAP := 1.5
+## A chain's word, by its length, loudest first.
+const WORDS := [[40, "FF_WORD_5"], [30, "FF_WORD_4"], [20, "FF_WORD_3"], [12, "FF_WORD_2"], [6, "FF_WORD_1"]]
+const HEAT := Color("ffb03b")
+## Every this many points the score is lettered over the field.
+const MILESTONE := 10000
 
 var sim: RefCounted
 var top_bar: Control
@@ -119,6 +127,21 @@ var _star_meshes: Array = []
 var _grass_base := 0.0
 var _over: ArrayMesh
 var _seat: Control
+## The loud rewards over the whole screen (arcade/rewards.gd).
+var _rw: Rewards
+## Kills in a row, each within CHAIN_GAP of the last, and the seconds since
+## the last; the warm glow a long chain lights round the field (0..1).
+var _chain := 0
+var _chain_t := 99.0
+var _best_chain := 0
+var _heat := 0.0
+var _heat_mesh: ArrayMesh
+## The field's flash after a big moment, fading, and its colour.
+var _flash := 0.0
+var _flash_col := Color.WHITE
+var _next_milestone := MILESTONE
+var _end_score: Label
+var _end_at := 0.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -224,6 +247,9 @@ func _build() -> void:
 		stream.loop = true
 		_beam_voice.stream = stream
 		_beam_voice.volume_db = -4.0
+	_rw = Rewards.new()
+	_rw.set_additive(true)
+	add_child(_rw)
 	_apply_insets()
 
 func _build_hud() -> Control:
@@ -304,6 +330,14 @@ func _new_game() -> void:
 	_ready_at = _clock
 	_roll = 0.0
 	_beat_best = false
+	_chain = 0
+	_chain_t = 99.0
+	_best_chain = 0
+	_heat = 0.0
+	_flash = 0.0
+	_next_milestone = MILESTONE
+	_end_score = null
+	_rw.clear()
 	_best = Record.best(GAME)
 	_shown_score = -1
 	_started_at = Time.get_ticks_msec()
@@ -349,6 +383,8 @@ func _process(delta: float) -> void:
 	_refresh_hud(delta)
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
+	if _end_score != null and is_instance_valid(_end_score):
+		_count_end()
 	field.queue_redraw()
 
 ## The screen's own motion, a frame at a time: pops and bursts age, the
@@ -388,6 +424,7 @@ func _animate(delta: float) -> void:
 			v = {"st": e.st, "was": v.get("st", Sim.St.WAIT), "since": _clock}
 		seen[e.id] = v
 	_vis = seen
+	_animate_rewards(delta)
 
 func _hands() -> void:
 	var axis := 0.0
@@ -502,8 +539,9 @@ func _play_events() -> void:
 				_burst(ev.pos, colour, big)
 				if big:
 					_shake = maxf(_shake, 0.32)
-				if int(ev.points) >= 150 and not sim.challenge() or int(ev.points) >= 400:
-					_pops.append({"pos": ev.pos, "text": str(ev.points), "t": 0.0, "big": int(ev.points) >= 800})
+				_pops.append({"pos": ev.pos, "text": "+%d" % int(ev.points), "t": 0.0, "big": int(ev.points) >= 400,
+					"small": int(ev.points) < 150})
+				_on_kill(ev, colour)
 			"hurt":
 				_fx.cue("hurt")
 				_fx.sparkle(at, Art.MOTH_HURT)
@@ -515,15 +553,27 @@ func _play_events() -> void:
 			"captured":
 				_fx.cue("captured")
 				_shake = maxf(_shake, 0.4)
+				_rw.sticker(tr("FF_OH_NO"), _in_rw(ev.pos + Vector2(0, -26.0)), 56, 1.1, false, Art.MOTH_HURT, false, "caught")
 			"carried":
 				_fx.cue("carried")
 			"rescue":
 				_fx.cue("rescue")
 				_fx.sparkle(at, Art.GLOW)
 				_burst(ev.pos, Art.GLOW, false)
+				_rw.sticker(tr("FF_SAVED"), _in_rw(ev.pos + Vector2(0, -22.0)), 60, 1.2, false, Art.GLOW, false, "saved", 30.0)
+				_rw.spray(_in_rw(ev.pos), Art.GLOW, 12, 520.0, "mote", 1.2)
+				_rw.spray(_in_rw(ev.pos), Color("fffaf0"), 6, 480.0, "spark", 1.0)
 			"docked":
 				_fx.cue("docked")
 				_fx.ring(at, 30.0 * _u * 0.3, Art.GLOW)
+				var dock := _in_rw(ev.pos)
+				if sim.pair:
+					_rw.sticker(tr("FF_DOUBLE"), _in_rw(Vector2(Sim.W * 0.5, Sim.H * 0.55)), 78, 1.6, true, Color.WHITE, true, "double")
+					_flash_now(Art.GLOW, 0.35)
+				_rw.ring(dock, 36.0 * _u, Color(Art.GLOW, 0.9))
+				_rw.ring(dock, 22.0 * _u, Color("fffaf0", 0.9), 0.08)
+				_rw.spray(dock, Art.GLOW, 14, 700.0, "star", 0.9)
+				_rw.spray(dock, Color("fffaf0"), 8, 560.0, "spark", 1.1)
 			"captive_lost":
 				_fx.puff(at, Art.FIREFLY_SHIELD, 6)
 				_burst(ev.pos, Art.FIREFLY_SHIELD, false)
@@ -531,6 +581,10 @@ func _play_events() -> void:
 			"rogue":
 				_fx.cue("rogue")
 			"ship_pop":
+				_break_chain()
+				_rw.spray(_in_rw(ev.pos), Art.FIREFLY_SHIELD, 10, 620.0, "shard", 1.0)
+				_rw.spray(_in_rw(ev.pos), Art.GLOW, 10, 520.0, "mote", 1.0)
+				_rw.sticker(tr("FF_OUCH"), _in_rw(ev.pos + Vector2(0, -30.0)), 60, 1.0, false, Art.FIREFLY_SHIELD, false, "ouch", 30.0)
 				_fx.puff(at, Art.GLOW, 12)
 				_fx.puff(at, Art.FIREFLY_SHIELD, 8)
 				_burst(ev.pos, Art.GLOW, true)
@@ -554,11 +608,13 @@ func _play_events() -> void:
 				_show_banner(tr("FF_PERFECT") if perfect else tr("FF_HITS") % [ev.hits, ev.total],
 					tr("FF_BONUS") % Record.grouped(ev.bonus), 3.0)
 				_fx.cue("perfect" if perfect else "result")
+				_flyby_result(perfect, int(ev.bonus))
 			"stage_clear":
 				_fx.cue("clear")
+				_stage_cleared()
 			"extra_ship":
 				_fx.cue("extra")
-				_say_small(tr("FF_EXTRA"))
+				_extra_ship()
 			"game_over":
 				_game_over()
 	sim.events.clear()
@@ -601,8 +657,139 @@ func _show_banner(text: String, sub: String, hold: float) -> void:
 	_banner_tw.chain().tween_property(box, "modulate:a", 0.0, 0.35)
 	_banner_tw.tween_property(box, "scale", Vector2(1.12, 1.12), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-func _say_small(text: String) -> void:
-	_pops.append({"pos": Vector2(Sim.W * 0.5, Sim.H * 0.6), "text": text, "t": 0.0})
+# --- the rewards ---
+
+## A point of the field, in field units, in the rewards layer's pixels.
+func _in_rw(p: Vector2) -> Vector2:
+	return _rw.at(field, px(p) + _shake_off)
+
+## A point of the field, as a fraction of its size, in the rewards layer.
+func _field_at(fx: float, fy: float) -> Vector2:
+	return _rw.at(field, Vector2(field.size.x * fx, field.size.y * fy))
+
+func _plate_at(l: Label) -> Vector2:
+	return _rw.at(l, l.size * 0.5)
+
+## A kill's rewards: scraps of the bug's colour and sparks; a moth or a
+## rogue throws gold stars that fly home to the score; an escort's double
+## and a rogue are lettered; the kill is counted into the chain.
+func _on_kill(ev: Dictionary, colour: Color) -> void:
+	var at := _in_rw(ev.pos)
+	var kind: int = ev.kind
+	var pts: int = ev.points
+	var k := _u / 4.0
+	_rw.spray(at, colour, 6, 460.0, "confetti", 0.8 * k)
+	_rw.spray(at, Art.GLOW_HOT, 4, 400.0, "spark", 0.9 * k)
+	if kind == Sim.Kind.MOTH or kind == Sim.Kind.ROGUE:
+		_rw.spray(at, Pal.SUN, 8, 640.0, "star", 0.9 * k)
+		_rw.ring(at, 26.0 * _u, Color(colour.lightened(0.3), 0.85))
+		_rw.spray(at, Pal.SUN, 3, 500.0, "star", 0.8, 0.05, _plate_at(_score_l))
+	if kind == Sim.Kind.MOTH and pts >= 800 and not sim.challenge():
+		_rw.sticker(tr("FF_ESCORT") % int(pts / 400.0), _in_rw(ev.pos + Vector2(0, -24.0)), 60, 1.5, true, Color.WHITE, true, "escort", 40.0)
+		_rw.spray(at, Color("fffaf0"), 10, 720.0, "spark", 1.2)
+		_rw.ring(at, 44.0 * _u, Color(Pal.SUN, 0.9), 0.08)
+		_flash_now(Art.GLOW, 0.4)
+	elif kind == Sim.Kind.ROGUE:
+		_rw.sticker(tr("FF_ROGUE_DOWN"), _in_rw(ev.pos + Vector2(0, -24.0)), 56, 1.3, false, Art.ROGUE_BODY.lightened(0.3), false, "rogue", 30.0)
+	_count_chain()
+
+## A kill within CHAIN_GAP of the last runs the chain on: from three its
+## count is lettered up in the sky, and at each step of WORDS its word over
+## the field, louder each time, flashing it and flinging stars at the score.
+func _count_chain() -> void:
+	_chain = _chain + 1 if _chain_t <= CHAIN_GAP else 1
+	_chain_t = 0.0
+	_best_chain = maxi(_best_chain, _chain)
+	if _chain >= 3:
+		_rw.sticker(tr("FF_CHAIN") % _chain, _field_at(0.5, 0.045), 40 + mini(_chain, 30), 1.3, false, Pal.SUN.lerp(HEAT, clampf(_chain / 30.0, 0.0, 1.0)), false, "chain", 0.0, true)
+	for i in WORDS.size():
+		if _chain == int(WORDS[i][0]):
+			var tier := WORDS.size() - 1 - i
+			_rw.sticker(tr(WORDS[i][1]), _field_at(0.5, 0.5), 72 + 10 * tier, 1.3 + 0.15 * tier, true, Color.WHITE, tier >= 1, "word", 24.0)
+			_rw.spray(_field_at(0.5, 0.5), Pal.SUN, 6 + 3 * tier, 720.0, "star", 1.0)
+			_rw.spray(_field_at(0.5, 0.5), Color("fffaf0"), 6 + 2 * tier, 620.0, "spark", 1.2)
+			_rw.spray(_field_at(0.5, 0.5), Pal.SUN, 3 + tier, 520.0, "star", 0.8, 0.1, _plate_at(_score_l))
+			_flash_now(Color("fff6c9"), 0.2 + 0.08 * tier)
+			_shake = maxf(_shake, 0.2 + 0.08 * tier)
+			_fx.cue("docked", 1.0 + 0.08 * tier, -2.0)
+			if tier >= 3:
+				_rw.rain(1.6, ["star", "confetti", "mote"], [Art.GLOW, Pal.SUN, Art.MOTH_WING, Art.BEETLE_SHELL, Art.GNAT_BODY])
+			break
+
+func _break_chain() -> void:
+	_chain = 0
+	_chain_t = 99.0
+
+## A stage cleared: lettered over a sunburst, the field flashes, stars fly
+## off the stage flags and a short rain falls.
+func _stage_cleared() -> void:
+	_rw.sticker(tr("FF_CLEAR"), _field_at(0.5, 0.6), 96, 1.5, true, Color.WHITE, true, "clear")
+	_rw.spray(_field_at(0.5, 0.6), Pal.SUN, 14, 800.0, "star", 1.1)
+	_rw.spray(_rw.at(field, field.size - Vector2(60.0, 40.0)), Pal.SUN, 10, 700.0, "star", 1.0)
+	_rw.rain(1.4, ["star", "confetti"], [Art.GLOW, Pal.SUN, Pal.FLOWER, Art.MOTH_WING])
+	_flash_now(Color("fff6c9"), 0.3)
+
+## The flyby's tally: every hit a star flying home to the score; a perfect
+## one lettered in gold with a rain of coins and stars.
+func _flyby_result(perfect: bool, bonus: int) -> void:
+	var at := _field_at(0.5, 0.62)
+	_rw.sticker("+" + Record.grouped(bonus), at, 84 if perfect else 64, 2.6, perfect, Pal.SUN, perfect, "bonus", 40.0)
+	_rw.spray(at, Pal.SUN, mini(4 + int(bonus / 500.0), 24), 620.0, "star", 0.9, 0.3, _plate_at(_score_l))
+	if perfect:
+		_rw.spray(at, Pal.SUN, 20, 900.0, "coin", 1.2)
+		_rw.ring(at, 300.0, Color(Pal.SUN, 0.9))
+		_rw.rain(3.4, ["coin", "star", "confetti"], [Pal.SUN, Art.GLOW, Pal.FLOWER, Art.MOTH_WING])
+		_flash_now(Pal.SUN, 0.6)
+		_shake = maxf(_shake, 0.5)
+
+## An extra firefly: lettered over a sunburst, and lantern motes flying to
+## the spare lanterns in the corner.
+func _extra_ship() -> void:
+	var at := _field_at(0.5, 0.66)
+	_rw.sticker(tr("FF_EXTRA"), at, 70, 1.8, true, Color.WHITE, true, "extra")
+	var left: int = sim.ships - (1 if sim.ship != Sim.Ship.DEAD else 0)
+	var home := _rw.at(field, Vector2(30.0 + clampi(left - 1, 0, 5) * 38.0, field.size.y - 26.0))
+	_rw.spray(at, Art.GLOW, 12, 600.0, "mote", 1.4, 0.2, home)
+	_rw.spray(at, Color("fffaf0"), 10, 600.0, "spark", 1.2)
+	_flash_now(Art.GLOW, 0.3)
+
+## The score passing a round number, and the best being passed: lettered,
+## with stars out of the plate.
+func _score_moments() -> void:
+	if sim.score >= _next_milestone:
+		var m := _next_milestone
+		while _next_milestone <= sim.score:
+			_next_milestone += MILESTONE
+		_rw.sticker(Record.grouped(m) + "!", _field_at(0.5, 0.12), 64, 1.4, true, Color.WHITE, true, "milestone")
+		_rw.spray(_plate_at(_score_l), Pal.SUN, 10, 520.0, "star", 0.9)
+		_rw.ring(_plate_at(_score_l), 140.0, Color(Pal.SUN, 0.9))
+
+func _new_best_passed() -> void:
+	_rw.sticker(tr("FF_NEW_BEST"), _field_at(0.5, 0.2), 64, 1.8, true, Color.WHITE, true, "best")
+	_rw.spray(_plate_at(_best_l), Pal.SUN, 14, 620.0, "star", 1.0)
+	_rw.spray(_plate_at(_best_l), Color("fffaf0"), 8, 520.0, "spark", 1.1)
+	_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
+	_rw.rain(1.6, ["confetti", "star"], [Art.GLOW, Pal.SUN, Pal.FLOWER, Art.MOTH_WING, Art.BEETLE_SHELL])
+	_fx.cue("extra", 1.1, -3.0)
+
+## The field flashes `col`, `amount` at most.
+func _flash_now(col: Color, amount: float) -> void:
+	if Motion.reduce:
+		return
+	_flash = maxf(_flash, amount)
+	_flash_col = col
+
+## The rewards' clocks: the layer, the chain's window, its glow and the
+## flash.
+func _animate_rewards(delta: float) -> void:
+	_rw.bounds = Rect2(_rw.at(field, Vector2.ZERO), field.size)
+	_rw.step(delta)
+	_chain_t += delta
+	if _chain_t > CHAIN_GAP:
+		_chain = 0
+	var want := clampf((_chain - 5) / 15.0, 0.0, 1.0)
+	_heat = move_toward(_heat, want, delta * (1.5 if want > _heat else 0.6))
+	_flash = maxf(0.0, _flash - delta * 2.4)
 
 ## The score rolls up to the real one and gives a beat when it lands; the
 ## best follows it once it is passed, with a beat of its own.
@@ -618,6 +805,8 @@ func _refresh_hud(delta := 0.0) -> void:
 			_beat_best = true
 			_best_l.pivot_offset = _best_l.size * 0.5
 			Motion.bump(_best_l, 0.3, 0.4)
+			_new_best_passed()
+		_score_moments()
 	if Motion.reduce or sim.score < _roll:
 		_roll = sim.score
 	else:
@@ -790,6 +979,9 @@ func _draw_field() -> void:
 	_draw_grass()
 	var b := Face.Builder.new()
 	_draw_sky_life(b)
+	if _heat > 0.01:
+		var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
+		Rewards.edge_glow(b, Rect2(Vector2.ZERO, field.size), HEAT.lerp(Art.BEETLE_SHELL, _heat), _heat, beat)
 	_draw_ships_left(b)
 	if not b.verts.is_empty():
 		_live = b.mesh()
@@ -827,6 +1019,8 @@ func _draw_field() -> void:
 		field.draw_mesh(_over, null)
 	_draw_pops()
 	field.draw_set_transform(Vector2.ZERO)
+	if _flash > 0.0:
+		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.35))
 
 ## A bug's draw transform: its heading, and the screen's own beats on top
 ## of where the sim put it -- a seated bug bobs on its own phase and
@@ -1088,12 +1282,14 @@ func _draw_pops() -> void:
 		var a := 1.0 - clampf((p.t - 0.5) / 0.4, 0.0, 1.0)
 		var at := px(p.pos) + Vector2(0, -p.t * 40.0)
 		var big: bool = p.get("big", false)
-		var full := 44 if big else 34
-		var size := full if Motion.reduce else maxi(8, int(lerpf(12.0, full, Motion.back_out(p.t / 0.28))))
+		var full := 50 if big else (28 if p.get("small", false) else 36)
+		var size := full if Motion.reduce else maxi(8, int(lerpf(12.0, full, Motion.back_out(minf(1.0, p.t / 0.28)))))
 		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 		var col := Pal.SUN if big else Art.GLOW_HOT
-		field.draw_string(font, at + Vector2(-w * 0.5 + 2, 3), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.1, 0.08, 0.2, 0.5 * a))
-		field.draw_string(font, at + Vector2(-w * 0.5, 0), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, a))
+		var o := at + Vector2(-w * 0.5, 0)
+		field.draw_string_outline(font, o + Vector2(0, 3), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 10, Color(0.1, 0.08, 0.2, 0.45 * a))
+		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 8, Color(0.16, 0.12, 0.3, 0.9 * a))
+		field.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, a))
 
 ## The ships in reserve as small lanterns in the bottom-left corner, each
 ## breathing its glow, and a flag a stage in the bottom-right, waving.
@@ -1143,7 +1339,11 @@ func _show_end(better: bool) -> void:
 	_fx.cue("new_best" if better else "game_over")
 	_end = _build_end(better)
 	add_child(_end)
+	# the rewards (their rain and bursts) stay over the card
+	move_child(_rw, get_child_count() - 1)
+	_rw.bounds = Rect2()
 	Motion.appear(_end, 0.0, 1.0, 0.3)
+	_end_at = _clock
 	_celebrate(better)
 
 func _build_end(better: bool) -> Control:
@@ -1166,10 +1366,22 @@ func _build_end(better: bool) -> Control:
 	seat.custom_minimum_size = Vector2(0, 170)
 	# The firefly hovers over the card, bobbing and flapping, its lantern
 	# breathing.
+	var shown_at := _clock
 	seat.draw.connect(func() -> void:
 		var t := 0.0 if Motion.reduce else _clock
 		var c := Vector2(seat.size.x * 0.5, 90 + sin(t * 2.6) * 7.0)
 		var pulse := 0.5 + 0.5 * sin(t * 4.2)
+		# a sunburst turns behind it once the card is up, gold for a best
+		var glow := 1.0 if Motion.reduce else clampf((_clock - shown_at - 0.3) / 0.35, 0.0, 1.0)
+		if glow > 0.0:
+			var rb := Face.Builder.new()
+			var rr := 150.0 * Motion.back_out(glow)
+			rb.disc(c + Vector2(0, 30), rr * 0.5, Color(Color("fff4c2"), 0.4))
+			Rewards.sunrays(rb, c + Vector2(0, 30), rr * 0.2, rr, 14, t * 0.5, Color(Pal.SUN if better else Art.GLOW, 0.5))
+			Rewards.sunrays(rb, c + Vector2(0, 30), rr * 0.2, rr * 0.75, 8, -t * 0.3, Color(Color("fffaf0"), 0.4))
+			var rm := rb.mesh()
+			seat.set_meta("rays", rm)
+			seat.draw_mesh(rm, null)
 		seat.draw_circle(c + Vector2(0, 42), 58.0 + 8.0 * pulse, Color(Art.GLOW, 0.12 + 0.06 * pulse))
 		seat.draw_mesh(Art.mesh(Art.Look.FIREFLY, int(t * 8.0) % 2, 8.0), null, Transform2D(sin(t * 1.3) * 0.08, c)))
 	col.add_child(seat)
@@ -1180,14 +1392,39 @@ func _build_end(better: bool) -> Control:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
 	var score := Label.new()
-	score.text = Record.grouped(sim.score)
+	score.text = Record.grouped(sim.score) if Motion.reduce else "0"
+	if not Motion.reduce:
+		_end_score = score
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score)
+	var stats := HBoxContainer.new()
+	stats.name = "Stats"
+	stats.add_theme_constant_override("separation", 14)
+	for pair in [[str(sim.stage), "FF_STAT_STAGE"], [str(sim.kills), "FF_STAT_KILLS"], [str(_best_chain), "FF_STAT_CHAIN"]]:
+		var plate := PanelContainer.new()
+		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 26, 12))
+		var words := VBoxContainer.new()
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.add_theme_constant_override("separation", -4)
+		plate.add_child(words)
+		var value := Label.new()
+		value.text = pair[0]
+		value.theme_type_variation = "SheetTitle"
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(value)
+		var kicker := Label.new()
+		kicker.text = pair[1]
+		kicker.theme_type_variation = "MenuKicker"
+		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(kicker)
+		stats.add_child(plate)
+		_pop_in(plate, stats.get_child_count() - 1)
+	col.add_child(stats)
 	var line := Label.new()
 	var acc := int(round(100.0 * sim.hits / maxf(1.0, sim.fired)))
-	line.text = "%s  ·  %s  ·  %s" % [tr("FF_STAGE_N") % sim.stage, tr("FF_ACCURACY") % acc,
-		tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))]
+	line.text = "%s  ·  %s" % [tr("FF_ACCURACY") % acc, tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))]
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1203,6 +1440,37 @@ func _build_end(better: bool) -> Control:
 	col.add_child(back)
 	return scrim
 
+## A stat plate pops in after the score has run up, one after another.
+func _pop_in(plate: Control, i: int) -> void:
+	if Motion.reduce:
+		return
+	plate.modulate.a = 0.0
+	plate.resized.connect(func() -> void: plate.pivot_offset = plate.size * 0.5)
+	plate.scale = Vector2(0.4, 0.4)
+	var tw := plate.create_tween().set_parallel(true)
+	tw.tween_property(plate, "modulate:a", 1.0, 0.2).set_delay(1.3 + 0.15 * i)
+	tw.tween_property(plate, "scale", Vector2.ONE, 0.4).set_delay(1.3 + 0.15 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## The end card's score runs up from nothing to what the game made, with
+## a burst when it gets there.
+func _count_end() -> void:
+	var k := clampf((_clock - _end_at - 0.4) / 1.1, 0.0, 1.0)
+	var shown := int(sim.score * (1.0 - pow(1.0 - k, 3.0)))
+	var text := Record.grouped(shown)
+	if _end_score.text != text:
+		_end_score.text = text
+		if int(_clock * 20.0) % 2 == 0:
+			_fx.cue("shoot", 0.9 + 0.8 * k, -10.0)
+	if k >= 1.0:
+		_end_score.pivot_offset = _end_score.size * 0.5
+		Motion.bump(_end_score, 0.25, 0.4)
+		var at := _rw.at(_end_score, _end_score.size * 0.5)
+		_rw.spray(at, Pal.SUN, 14, 620.0, "star", 1.1)
+		_rw.spray(at, Color("fffaf0"), 8, 480.0, "spark", 1.1)
+		_rw.spray(at, Art.GLOW, 8, 520.0, "mote", 1.2)
+		_rw.ring(at, 220.0, Color(Pal.SUN, 0.9))
+		_end_score = null
+
 func _celebrate(better: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
 	if Motion.reduce:
@@ -1212,6 +1480,7 @@ func _celebrate(better: bool) -> void:
 	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if not better:
 		return
+	_rw.rain(3.5, ["confetti", "star", "mote"], [Art.GLOW, Pal.SUN, Art.MOTH_WING, Art.BEETLE_SHELL, Pal.FLOWER])
 	var fx := Fx2D.new()
 	_end.add_child(fx)
 	var cols := [Art.GLOW, Art.BEETLE_SHELL, Art.MOTH_WING, Art.GNAT_BODY, Pal.FLOWER, Pal.SUN_RAY]

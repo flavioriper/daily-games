@@ -166,3 +166,35 @@ the card needed nothing.
   teeth, a scalloped bib, and the carrot held by a paw either side.
 - Draw calls unchanged (one mesh a look): 67 at the ready, 57-58 in play,
   63-65 with the cast up, 93 on the end card, 134 on the tab; ANGLE agrees.
+
+## Amendment 2026-09-27: rewards made loud
+
+Screen only; the sim is untouched. The shared layer `arcade/rewards.gd`
+(see Firefly's spec, section 9) carries the stickers and bits.
+
+- **Every whack** throws clods out of the hole and sparks off the head (gold
+  stars too on a quick one). A golden mole showers spinning coins, rings,
+  letters Golden! and flies stars to the score; a pot breaks into
+  terracotta shards (Smash!), and a knock that leaves it on says Clang!.
+- **Flurries**: whacks within 0.32 s of each other (two thumbs) letter
+  Double!, Triple!, Quadruple!.
+- **The streak** is worded at 5, 10, 15, 20, 30 and 40 (Nice!, Great!,
+  Whack-tastic!, Mole-arious!, Unstoppable!, Legendary!) with stars,
+  sparks, confetti, a flash and a shake, a rain from Mole-arious!. Each
+  multiplier step replaces the old rayed pop with a big `x2!` over a
+  sunburst, `Points x2` under it, rings and stars flying into the score.
+  From five a warm glow beats round the lawn, reddening as the streak grows.
+- **Losing it**: the rabbit letters Not the bunny! with hearts and a carrot
+  in pieces and a rose flash; a lost streak says Too slow! (a mole let go)
+  or Oops! (an empty whack).
+- **The last five seconds** are painted big on the lawn under the moles,
+  thumped in and fading, so they never cover a mole. The frenzy flashes
+  and rains confetti. The score is lettered at 250, 500, 1,000 and on, and
+  passing the best letters A new best! with coins from the best plate.
+- **The end card**: the score runs up and bursts in coins, a sunburst turns
+  behind the mound, the stat plates pop in, and a new best rains coins,
+  confetti and stars over the card.
+
+Reduce motion keeps the words (still) and drops the bits, rays, rain,
+flash and glow. Draw calls at 810x1440: 58-66 at rest in play (unchanged),
+~150-240 at a busy moment, ~210 in the frenzy, 85-95 on the end card.

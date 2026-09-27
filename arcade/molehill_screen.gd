@@ -35,6 +35,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 
 const GAME := "molehill"
 const MARGIN := 40
@@ -66,6 +67,15 @@ const POP_TOP := 96.0
 ## How high a mole peeks out before the round and after it, as a rise.
 const PEEK := 0.58
 const PEEK_OVER := 0.8
+## A streak's word, by its length, loudest first.
+const WORDS := [[40, "MH_WORD_6"], [30, "MH_WORD_5"], [20, "MH_WORD_4"], [15, "MH_WORD_3"], [10, "MH_WORD_2"], [5, "MH_WORD_1"]]
+## Whacks this close together (seconds) are one flurry: Double!, Triple!
+const FLURRY_GAP := 0.32
+const FLURRY := ["", "", "MH_DOUBLE", "MH_TRIPLE", "MH_QUAD"]
+const HEAT := Color("ffb03b")
+const SHARD := Color("d9774a")
+## The score lettered over the lawn as it passes each of these.
+const MILESTONES := [250, 500, 1000, 1500, 2000, 3000, 4000, 5000, 7500, 10000, 15000, 20000]
 
 var sim: RefCounted
 var top_bar: Control
@@ -116,6 +126,22 @@ var _hit_at: Array = []
 var _shake := 0.0
 var _shake_off := Vector2.ZERO
 var _seat: Control
+## The loud rewards over the whole screen (arcade/rewards.gd).
+var _rw: Rewards
+## Whacks in the current flurry, and when the last landed.
+var _flurry := 0
+var _last_whack := -10.0
+## The warm glow a long streak lights round the lawn (0..1).
+var _heat := 0.0
+## The lawn's flash after a big moment, fading, and its colour.
+var _flash := 0.0
+var _flash_col := Color.WHITE
+var _milestone := 0
+## The last seconds, painted big on the lawn under the moles.
+var _count_n := 0
+var _count_at := -10.0
+var _end_score: Label
+var _end_at := 0.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -234,6 +260,8 @@ func _build() -> void:
 	over.add_child(_sub)
 	over.modulate.a = 0.0
 	_banner.set_meta("box", over)
+	_rw = Rewards.new()
+	add_child(_rw)
 	_apply_insets()
 
 func _build_hud() -> Control:
@@ -330,6 +358,14 @@ func _new_game() -> void:
 	_shake = 0.0
 	_roll = 0.0
 	_beat_best = false
+	_flurry = 0
+	_last_whack = -10.0
+	_heat = 0.0
+	_flash = 0.0
+	_milestone = 0
+	_count_n = 0
+	_end_score = null
+	_rw.clear()
 	_best = Record.best(GAME)
 	_shown_score = -1
 	_started_at = Time.get_ticks_msec()
@@ -370,6 +406,8 @@ func _process(delta: float) -> void:
 	_refresh_hud(delta)
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
+	if _end_score != null and is_instance_valid(_end_score):
+		_count_end()
 	_redraw_all()
 
 func _redraw_all() -> void:
@@ -398,6 +436,11 @@ func _animate(delta: float) -> void:
 		_shake_off = Vector2(sin(_clock * 71.0), cos(_clock * 57.0)) * amp
 	else:
 		_shake_off = Vector2.ZERO
+	_rw.bounds = Rect2(_rw.at(field, Vector2.ZERO), field.size)
+	_rw.step(delta)
+	var want := clampf((sim.streak - 4) / 16.0, 0.0, 1.0) if sim.phase == Sim.Phase.PLAY else 0.0
+	_heat = move_toward(_heat, want, delta * (1.5 if want > _heat else 0.8))
+	_flash = maxf(0.0, _flash - delta * 2.6)
 
 func _on_field_input(event: InputEvent) -> void:
 	var at := Vector2.INF
@@ -497,18 +540,26 @@ func _play_events() -> void:
 				if gold:
 					_fx.ring(px(top), 34.0 * _u, Art.GOLD)
 				_shake = maxf(_shake, 0.35 if gold else 0.2)
+				_on_hit(hill, kind, bool(ev.quick))
 			"clang":
 				_hit_at[hill] = _clock
 				_fx.cue("clang", randf_range(0.95, 1.05))
 				_fx.sparkle(px(top + Vector2(0, -16.0)), Art.POT_RIM)
 				_impacts.append({"pos": top + Vector2(0, -20.0), "t": 0.0, "gold": false})
 				_shake = maxf(_shake, 0.2)
+				_rw.spray(_in_rw(top + Vector2(0, -20.0)), SHARD, 4, 460.0, "shard", 0.8)
+				_rw.spray(_in_rw(top + Vector2(0, -20.0)), Color("fffaf0"), 3, 380.0, "spark", 0.8)
+				_rw.sticker(tr("MH_CLANG"), _in_rw(top + Vector2(0, -40.0)), 46, 0.8, false, Art.POT_RIM, false, "clang%d" % hill, 30.0)
 			"bunny":
 				_hit_at[hill] = _clock
 				_fx.cue("bunny")
 				_pop(top + Vector2(0, -16.0), "-%d" % Sim.BUNNY_COST, Color("f4a7a0"), true)
 				_fx.puff(px(top + Vector2(0, -20.0)), Color("f4a7a0"), 6)
 				_shake = maxf(_shake, 0.6)
+				_rw.sticker(tr("MH_NOT_BUNNY"), _in_rw(top + Vector2(0, -52.0)), 60, 1.4, false, Color("f4a7a0"), false, "bunny", 30.0)
+				_rw.spray(_in_rw(top + Vector2(0, -24.0)), Color("f4a7a0"), 8, 480.0, "heart", 1.0)
+				_rw.spray(_in_rw(top + Vector2(0, -24.0)), Art.CARROT, 3, 420.0, "shard", 0.8)
+				_flash_now(Color("f4a7a0"), 0.35)
 			"miss":
 				_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
 				_burst(Sim.hill_pos(hill) + Vector2(0, 2.0), Art.SOIL, false)
@@ -518,21 +569,27 @@ func _play_events() -> void:
 				_fx.puff(px(top + Vector2(3.0, 22.0)), Color("fffaf0"), 4)
 			"combo":
 				_fx.cue("combo", 1.0 + 0.08 * (int(ev.mult) - 2))
-				var combo := _pop(top + Vector2(0, -30.0), tr("MH_COMBO") % ev.mult, Pal.SUN, true)
-				combo.t = -0.25
-				combo.rays = true
+				_on_combo(hill, int(ev.mult))
 				_score_k.pivot_offset = _score_k.size * 0.5
 				Motion.bump(_score_k, 0.3, 0.35)
 			"streak_lost":
 				_fx.cue("streak_lost", 1.0, -3.0)
 				Motion.shiver(_score_k)
+				if String(ev.why) != "bunny":
+					var where := top + Vector2(0, -40.0) if hill >= 0 else Vector2(Sim.W * 0.5, Sim.H * 0.5)
+					_rw.sticker(tr("MH_TOO_SLOW") if String(ev.why) == "escape" else tr("MH_OOPS"), _in_rw(where), 54, 1.1, false,
+						Color("c9c2d6"), false, "lost", 30.0)
 			"frenzy":
 				_show_banner(tr("MH_FRENZY"), tr("MH_FRENZY_LINE"), 1.2)
 				_fx.cue("frenzy")
+				_flash_now(FRENZY_TINT, 0.5)
+				_rw.rain(1.8, ["confetti", "star"], [FRENZY_TINT, Pal.SUN, Color("f4a7a0"), Color("fffaf0")])
 			"tick":
 				_fx.cue("tick", 1.0 + 0.06 * (5 - int(ev.left)))
 				_time_l.pivot_offset = _time_l.size * 0.5
 				Motion.bump(_time_l, 0.2, 0.25)
+				_count_n = int(ev.left)
+				_count_at = _clock
 			"time_up":
 				_time_up()
 	sim.events.clear()
@@ -577,6 +634,8 @@ func _refresh_hud(delta := 0.0) -> void:
 			_beat_best = true
 			_best_l.pivot_offset = _best_l.size * 0.5
 			Motion.bump(_best_l, 0.3, 0.4)
+			_new_best_passed()
+		_score_moments()
 	if Motion.reduce or sim.score < _roll:
 		_roll = sim.score
 	else:
@@ -682,6 +741,27 @@ func _draw_field() -> void:
 		_layout_field()
 	if _lawn != null:
 		field.draw_mesh(_lawn, null)
+	_draw_count()
+
+## The last seconds, a numeral painted big on the lawn under the moles:
+## thumped in, then fading.
+func _draw_count() -> void:
+	var since := _clock - _count_at
+	if _count_n <= 0 or since > 1.0 or sim == null or sim.phase != Sim.Phase.PLAY:
+		return
+	var font := CozyTheme.display(700)
+	var fs := 420
+	var text := str(_count_n)
+	var sc := 1.0 if Motion.reduce else lerpf(1.6, 1.0, Motion.back_out(minf(1.0, since / 0.25)))
+	var a := 1.0 - clampf((since - 0.55) / 0.45, 0.0, 1.0)
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	field.draw_set_transform(field.size * 0.5, 0.0, Vector2(sc, sc))
+	var o := Vector2(-w * 0.5, fs * 0.36)
+	var col := TIME_LATE.lerp(Color("f08a3c"), (_count_n - 1) / 4.0)
+	field.draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 36, Color(Color("fffaf0"), 0.5 * a))
+	field.draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 14, Color(col.darkened(0.35), 0.6 * a))
+	field.draw_string(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(col, 0.6 * a))
+	field.draw_set_transform(Vector2.ZERO)
 
 ## Which look a hill's creature wears now.
 func _look(i: int) -> int:
@@ -835,6 +915,8 @@ func _draw_over() -> void:
 	for m: Dictionary in _mallets:
 		_draw_mallet(m)
 	_draw_pops()
+	if _flash > 0.0:
+		_over.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.4))
 
 ## A quad with a colour at each corner, for the gradients.
 static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
@@ -847,6 +929,9 @@ static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
 
 ## The frenzy: a warm glow breathing in from the lawn's edges.
 func _draw_glow(b: Face.Builder) -> void:
+	if _heat > 0.01:
+		var hb := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
+		Rewards.edge_glow(b, Rect2(Vector2.ZERO, field.size), HEAT.lerp(Color("ff6f61"), _heat), _heat, hb)
 	if not sim.frenzy():
 		return
 	var s := field.size
@@ -1064,6 +1149,100 @@ static func _hash(a: float, b: float) -> float:
 func _burst(at: Vector2, col: Color, big: bool, amount := 1.0) -> void:
 	_bursts.append({"pos": at, "t": 0.0, "col": col, "big": big, "seed": randf() * 100.0, "amount": amount})
 
+# --- the rewards ---
+
+## A point of the lawn, in field units, in the rewards layer's pixels.
+func _in_rw(p: Vector2) -> Vector2:
+	return _rw.at(field, px(p) + _shake_off)
+
+func _plate_at(l: Label) -> Vector2:
+	return _rw.at(l, l.size * 0.5)
+
+## A whack's rewards: clods out of the hole and sparks off the head; a
+## golden mole showers coins and flies stars home to the score; a pot
+## breaks into shards; a quick one sparks gold. Whacks close together are a
+## flurry (Double!, Triple!), and a streak's steps are worded.
+func _on_hit(hill: int, kind: int, quick: bool) -> void:
+	var head := _in_rw(Sim.hill_pos(hill) + Vector2(0, -50.0))
+	var hole := _in_rw(Sim.hill_pos(hill) + Vector2(0, -4.0))
+	var k := _u / 3.0
+	_rw.spray(hole, Art.SOIL_HI, 6, 420.0, "clod", 0.9 * k)
+	_rw.spray(head, Color("fffaf0"), 4, 420.0, "spark", 0.9 * k)
+	if quick:
+		_rw.spray(head, Pal.SUN, 3, 460.0, "star", 0.7 * k)
+	match kind:
+		Sim.Kind.GOLD:
+			_rw.spray(head, Art.GOLD, 16, 760.0, "coin", 1.0 * k)
+			_rw.spray(head, Pal.SUN, 4, 520.0, "star", 0.8, 0.1, _plate_at(_score_l))
+			_rw.ring(head, 48.0 * _u, Color(Art.GOLD, 0.9))
+			_rw.sticker(tr("MH_GOLDEN"), _in_rw(Sim.hill_pos(hill) + Vector2(0, -80.0)), 60, 1.2, true, Color.WHITE, true, "gold%d" % hill, 30.0)
+			_flash_now(Art.GOLD, 0.35)
+		Sim.Kind.POT:
+			_rw.spray(head, SHARD, 12, 640.0, "shard", 1.1 * k)
+			_rw.spray(head, Art.POT_BAND, 5, 520.0, "shard", 0.8 * k)
+			_rw.sticker(tr("MH_SMASH"), _in_rw(Sim.hill_pos(hill) + Vector2(0, -80.0)), 56, 1.0, false, Art.POT_RIM, false, "smash%d" % hill, 30.0)
+	# the flurry
+	_flurry = _flurry + 1 if _clock - _last_whack <= FLURRY_GAP else 1
+	_last_whack = _clock
+	if _flurry >= 2:
+		var word: String = FLURRY[mini(_flurry, FLURRY.size() - 1)]
+		_rw.sticker(tr(word), _in_rw(Sim.hill_pos(hill) + Vector2(0, -100.0)), 58 + 6 * mini(_flurry, 4), 1.0, true, Color.WHITE, _flurry >= 3, "flurry", 30.0)
+		_rw.spray(head, Pal.SUN, 3 * _flurry, 600.0, "star", 0.9)
+	# the streak's steps
+	for i in WORDS.size():
+		if sim.streak == int(WORDS[i][0]):
+			var tier := WORDS.size() - 1 - i
+			var at := _rw.at(field, field.size * Vector2(0.5, 0.42))
+			_rw.sticker(tr(WORDS[i][1]), at, 72 + 8 * tier, 1.3 + 0.12 * tier, true, Color.WHITE, tier >= 1, "word", 24.0)
+			_rw.spray(at, Pal.SUN, 6 + 3 * tier, 760.0, "star", 1.0)
+			_rw.spray(at, Color("fffaf0"), 6 + 2 * tier, 620.0, "spark", 1.2)
+			_rw.spray(at, Rewards.CONFETTI[tier % Rewards.CONFETTI.size()], 8 + 2 * tier, 700.0, "confetti", 1.0)
+			_flash_now(Color("fffaf0"), 0.2 + 0.06 * tier)
+			_shake = maxf(_shake, 0.25 + 0.06 * tier)
+			if tier >= 3:
+				_rw.rain(1.6, ["confetti", "star", "coin"], Rewards.CONFETTI)
+			break
+
+## The streak's multiplier steps up: its number lettered big over a
+## sunburst, stars flying into the score's plate, the lawn flashing.
+func _on_combo(hill: int, mult: int) -> void:
+	var at := _rw.at(field, field.size * Vector2(0.5, 0.56))
+	_rw.sticker(tr("MH_COMBO") % mult, at, 110 + 14 * (mult - 2), 1.4, true, Color.WHITE, true, "combo")
+	_rw.sticker(tr("MH_POINTS_X") % mult, at + Vector2(0, 100.0 + 10.0 * (mult - 2)), 42, 1.4, false, Pal.SUN, false, "combo_line")
+	_rw.spray(at, Pal.SUN, 10 + 4 * mult, 820.0, "star", 1.1)
+	_rw.spray(_in_rw(Sim.hill_pos(hill) + Vector2(0, -50.0)), Pal.SUN, 3 + mult, 520.0, "star", 0.8, 0.15, _plate_at(_score_l))
+	_rw.ring(at, 260.0, Color(Pal.SUN, 0.9))
+	_rw.ring(at, 180.0, Color("fffaf0", 0.9), 0.08)
+	_flash_now(Pal.SUN, 0.3 + 0.08 * mult)
+
+## The score passing a round number, and the best being passed: lettered,
+## with stars out of the plate.
+func _score_moments() -> void:
+	var m := 0
+	for v: int in MILESTONES:
+		if sim.score >= v and v > _milestone:
+			m = v
+	if m > 0:
+		_milestone = m
+		_rw.sticker(Record.grouped(m) + "!", _rw.at(field, field.size * Vector2(0.5, 0.2)), 64, 1.2, true, Color.WHITE, false, "milestone")
+		_rw.spray(_plate_at(_score_l), Pal.SUN, 10, 520.0, "star", 0.9)
+		_rw.ring(_plate_at(_score_l), 140.0, Color(Pal.SUN, 0.9))
+
+func _new_best_passed() -> void:
+	_rw.sticker(tr("FF_NEW_BEST"), _rw.at(field, field.size * Vector2(0.5, 0.3)), 66, 1.8, true, Color.WHITE, true, "best")
+	_rw.spray(_plate_at(_best_l), Pal.SUN, 14, 620.0, "star", 1.0)
+	_rw.spray(_plate_at(_best_l), Art.GOLD, 10, 620.0, "coin", 1.0)
+	_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
+	_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
+	_fx.cue("combo", 1.3, -3.0)
+
+## The lawn flashes `col`, `amount` at most.
+func _flash_now(col: Color, amount: float) -> void:
+	if Motion.reduce:
+		return
+	_flash = maxf(_flash, amount)
+	_flash_col = col
+
 func _pop(at: Vector2, text: String, col: Color, big: bool) -> Dictionary:
 	var p := {"pos": at, "text": text, "t": 0.0, "col": col, "big": big, "rays": false, "drift": randf_range(-1.0, 1.0)}
 	_pops.append(p)
@@ -1088,7 +1267,11 @@ func _show_end(better: bool) -> void:
 	_fx.cue("new_best" if better else "game_over")
 	_end = _build_end(better)
 	add_child(_end)
+	# the rewards (their rain and bursts) stay over the card
+	move_child(_rw, get_child_count() - 1)
+	_rw.bounds = Rect2()
 	Motion.appear(_end, 0.0, 1.0, 0.3)
+	_end_at = _clock
 	_celebrate(better)
 
 func _build_end(better: bool) -> Control:
@@ -1126,6 +1309,18 @@ func _build_end(better: bool) -> Control:
 	seat.draw.connect(func() -> void:
 		var t := 0.0 if Motion.reduce else _clock
 		var c := Vector2(seat.size.x * 0.5, 170.0)
+		# a sunburst turns behind the mound once the card is up, gold for a best
+		var glow := 1.0 if Motion.reduce else clampf((_clock - shown_at - 0.5) / 0.35, 0.0, 1.0)
+		if glow > 0.0:
+			var rb := Face.Builder.new()
+			var rc := c + Vector2(0, -70.0)
+			var rr := 200.0 * Motion.back_out(glow)
+			rb.disc(rc, rr * 0.5, Color(Color("fff4c2"), 0.45))
+			Rewards.sunrays(rb, rc, rr * 0.2, rr, 14, t * 0.5, Color(Art.GOLD if better else Pal.SUN, 0.5))
+			Rewards.sunrays(rb, rc, rr * 0.2, rr * 0.75, 8, -t * 0.3, Color(Color("fffaf0"), 0.4))
+			var rm := rb.mesh()
+			seat.set_meta("rays", rm)
+			seat.draw_mesh(rm, null)
 		seat.draw_mesh(halves[0], null, Transform2D(0.0, c))
 		# it pops out of the hole once the card is up, then bobs about
 		var since := _clock - shown_at
@@ -1143,7 +1338,9 @@ func _build_end(better: bool) -> Control:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
 	var score := Label.new()
-	score.text = Record.grouped(sim.score)
+	score.text = Record.grouped(sim.score) if Motion.reduce else "0"
+	if not Motion.reduce:
+		_end_score = score
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score)
@@ -1170,6 +1367,14 @@ func _build_end(better: bool) -> Control:
 		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		words.add_child(kicker)
 		stats.add_child(plate)
+		if not Motion.reduce:
+			var i := stats.get_child_count() - 1
+			plate.modulate.a = 0.0
+			plate.resized.connect(func() -> void: plate.pivot_offset = plate.size * 0.5)
+			plate.scale = Vector2(0.4, 0.4)
+			var tw := plate.create_tween().set_parallel(true)
+			tw.tween_property(plate, "modulate:a", 1.0, 0.2).set_delay(1.3 + 0.15 * i)
+			tw.tween_property(plate, "scale", Vector2.ONE, 0.4).set_delay(1.3 + 0.15 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	col.add_child(stats)
 	var best_line := Label.new()
 	best_line.text = tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
@@ -1187,6 +1392,26 @@ func _build_end(better: bool) -> Control:
 	col.add_child(back)
 	return scrim
 
+## The end card's score runs up from nothing to what the round made, with
+## a burst of coins when it gets there.
+func _count_end() -> void:
+	var k := clampf((_clock - _end_at - 0.4) / 1.1, 0.0, 1.0)
+	var shown := int(sim.score * (1.0 - pow(1.0 - k, 3.0)))
+	var text := Record.grouped(shown)
+	if _end_score.text != text:
+		_end_score.text = text
+		if int(_clock * 20.0) % 2 == 0:
+			_fx.cue("tick", 0.9 + 0.8 * k, -10.0)
+	if k >= 1.0:
+		_end_score.pivot_offset = _end_score.size * 0.5
+		Motion.bump(_end_score, 0.25, 0.4)
+		var at := _rw.at(_end_score, _end_score.size * 0.5)
+		_rw.spray(at, Pal.SUN, 12, 620.0, "star", 1.1)
+		_rw.spray(at, Art.GOLD, 12, 620.0, "coin", 1.1)
+		_rw.spray(at, Color("fffaf0"), 8, 480.0, "spark", 1.1)
+		_rw.ring(at, 220.0, Color(Pal.SUN, 0.9))
+		_end_score = null
+
 func _celebrate(better: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
 	if Motion.reduce:
@@ -1196,6 +1421,7 @@ func _celebrate(better: bool) -> void:
 	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if not better:
 		return
+	_rw.rain(3.5, ["confetti", "coin", "star"], Rewards.CONFETTI)
 	var fx := Fx2D.new()
 	_end.add_child(fx)
 	var cols := [Art.GOLD, Art.NOSE, Art.POT, Pal.FLOWER, Pal.SUN_RAY, TIME_GOOD]

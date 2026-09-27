@@ -1770,6 +1770,14 @@ makes a pair, a flyby bonus stage third and every fourth after).
   (`arcade/firefly_art.gd`, cached per look, frame and scale), shared with
   the tab's banner. One `draw_mesh` a bug; 101 draw calls with the swarm
   seated since the polish (82 before), 101 on the tab (810x1440).
+- **Rewards made loud on 2026-09-27** (the spec's section 9) through
+  `arcade/rewards.gd`, the sticker-and-bits kit lifted into one layer that
+  Firefly and Molehill share: kill scraps and stars to the score, a chain
+  of kills worded (Nice! to Legendary!) with a warm edge glow, Escort bonus,
+  Saved!, Double fire!, Clear!, a flyby bonus, Extra firefly!, milestones,
+  a new best, and an end card that counts up. **Sunbursts over the night
+  sky are added (`set_additive`), not laid over**: laid over, pale gold
+  read as grey haze. 93-156 draw calls in play, ~420 at a forced pile-up.
 - **Polished on 2026-09-27** (the spec's section 8), screen-side only: a
   leaning, recoiling firefly with a wake, bobbing and squashing seats, a
   wriggle into a dive, kill bursts, shake and hit-stop on a lost firefly,
@@ -1810,6 +1818,13 @@ best streak.
   on a bare lawn, 63 with the cast up, 72-75 on the end card, ANGLE agreeing.
 - 17 sounds, whacks in a new `CARTOON` style and jingles in `ARCADE`,
   awaiting the user's listen.
+- **Rewards made loud on 2026-09-27** (the spec's last amendment), through
+  `arcade/rewards.gd`: clods, coins and shards off every whack, flurries
+  (Double!, Triple!), the streak worded, a big `x2!` over a sunburst at each
+  multiplier step, a warm glow round the lawn, Not the bunny! with hearts,
+  the last five seconds painted on the lawn under the moles, milestones, a
+  new best, and an end card that counts up. ~150-240 draw calls at a busy
+  moment.
 - **Polished on 2026-09-27** (the spec's section 7), screen and art only:
   moles that look about, blink, overshoot and pancake, peek before the
   round and jeer after it; mounds that heave; a mallet with a shadow, a

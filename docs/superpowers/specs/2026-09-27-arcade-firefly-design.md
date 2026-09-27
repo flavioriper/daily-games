@@ -167,3 +167,42 @@ Measured with `tests/_shot_firefly.gd` at `--resolution 810x1440`: **101**
 draw calls with the swarm seated (82 before), **62** on the stage banner,
 **69** in a flyby, 101 on the tab (unchanged) -- the stars' twelve draws
 and the grass's four are most of the rise, and all of it is inside 855.
+
+## 9. Amendment: rewards made loud (2026-09-27)
+
+Screen only; the sim is untouched. The user asked for rewards far more
+visual, silly or not, to keep people playing. The sticker-and-bits kit
+Stackwood, Lucky Thirteen and Posy each carry in their own screen is lifted
+once into `arcade/rewards.gd`, a layer over the whole screen that Firefly
+and Molehill share; a screen only says when to celebrate.
+
+- **Every kill** throws scraps of the bug's colour and sparks, and letters
+  its points (small for a gnat or a beetle). A moth or a rogue throws gold
+  stars and a ring, and three stars fly home into the score plate.
+- **The chain**: kills within 1.5 s of each other. From three, `Chain xN`
+  is lettered at the top of the sky; at 6, 12, 20, 30 and 40 its word
+  (Nice!, Great!, Glowing!, Bug-tastic!, Legendary!) over the field, a
+  sunburst from Great!, the field flashing and shaking, stars to the score,
+  and a rain from Bug-tastic!. From six a warm glow beats round the field.
+  A lost firefly breaks it; the end card shows the best chain.
+- **Named moments**: an escort's double (`Escort bonus x2!`), Rogue down!,
+  Saved! when a captive drops free, Double fire! when the pair docks,
+  Oh no! when the beam takes the firefly, Ouch! with its shards when one is
+  lost, Clear! over a sunburst with a short rain at a stage's end, the
+  flyby's bonus lettered with a star a hit flying to the score (a perfect
+  one gold, with a rain of coins), Extra firefly! with motes flying into the
+  spare lanterns, every 10,000 points lettered, and A new best! with a
+  burst at the best plate the moment it is passed.
+- **Sunbursts are added, not laid over** (`Rewards.set_additive`): pale
+  gold laid over the navy sky read as grey haze, the same trap the kill's
+  flash fell into in section 8; added in a warm, faint gold, they glow.
+- **Stickers make room**: one that would cover a live sticker lands under
+  it, except the chain count, which keeps its place.
+- **The end card**: the score runs up and bursts, a sunburst turns behind
+  the firefly, three plates (stage, bugs caught, best chain) pop in, and a
+  new best rains confetti, stars and motes over the card.
+
+Reduce motion keeps the words (still) and drops the bits, rays, rain,
+flash, glow and count. Draw calls at 810x1440: unchanged at rest (62 on
+the banner), 93-156 in ordinary play, ~420 with a forced pile of moments
+at once (a whole stage killed in a frame), 82-88 on the end card.
