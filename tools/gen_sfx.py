@@ -379,6 +379,21 @@ SETS = {
         "solved":   ("a warm celebratory marimba run rising with a soft leaf flurry and tiny happy squeaks, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy rustle of autumn leaves settling onto grass", 1.0, -9),
     },
+    # Super Slider: painted wooden blocks slid round a walnut tray until the
+    # big one walks out of a little garden gate.
+    "slider": {
+        "lift":     ("a tiny soft wooden block lifted a hair off a wooden tray, a light dry tick, very short", 0.5, -13),
+        "step":     ("a very short soft wooden block sliding one notch across a wooden tray, a tiny dry scrape", 0.5, -16),
+        "bump":     ("a small soft muffled wooden knock, one wooden block nudging against another, gentle, very short", 0.5, -12),
+        "slide":    ("a soft wooden block sliding to a stop on a smooth wooden tray and settling with a gentle tap, short", 0.5, -10),
+        "drop":     ("a tiny soft wooden tap, a block set back down where it was, very short", 0.5, -14),
+        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a quick soft ripple of wooden blocks sliding back into place on a tray", 1.0, -8),
+        "gate":     ("a small wooden garden gate creaking open softly with a bright little kalimba note", 0.8, -8),
+        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":    ("a soft airy cascade of small wooden blocks being set down in a wooden tray", 1.0, -9),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

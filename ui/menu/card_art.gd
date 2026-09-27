@@ -55,6 +55,8 @@ const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const SunParts = preload("res://ui/faces/sunbeam_parts.gd")
 const ChessPiece = preload("res://ui/faces/chess_piece.gd")
+const SlideBlock = preload("res://ui/faces/slider_block.gd")
+const SlideGen = preload("res://puzzles/slider_gen.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
@@ -157,6 +159,14 @@ const KN_FROM := Vector2i(1, 2)
 const KN_TO := Vector2i(3, 1)
 const KN_GUARD := Vector2i(5, 2)
 const KN_KING := Vector2i(6, 1)
+
+## Super Slider's card: a two-row strip of the tray turned on its side, the
+## gate cut in its right-hand end and the big block one slide from it --
+## the rule in one picture. [anchor code, cell] in a 6 by 2 strip.
+const SL_CELL := 37.0
+const SL_COLS := 6
+const SL_ROWS := 2
+const SL_BLOCKS := [[2, Vector2i(0, 0)], [1, Vector2i(1, 0)], [1, Vector2i(1, 1)], [1, Vector2i(2, 0)], [6, Vector2i(3, 0)]]
 ## Hedgehogs' card: a 6 by 2 strip of the lawn -- raked cells with their
 ## numbers, three leaf piles (one flagged), and one hedgehog asleep on a
 ## raked cell. The numbers agree with the two hedgehogs the strip holds (the
@@ -193,6 +203,7 @@ var _pinwheel_mesh: ArrayMesh
 var _caterpillar_mesh: ArrayMesh
 var _sunbeam_mesh: ArrayMesh
 var _knight_mesh: ArrayMesh
+var _slider_mesh: ArrayMesh
 var _hedgehogs_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
@@ -378,6 +389,7 @@ func _draw() -> void:
 		"caterpillar": _draw_caterpillar()
 		"sunbeam": _draw_sunbeam()
 		"knight": _draw_knight()
+		"slider": _draw_slider()
 		"hedgehogs": _draw_hedgehogs()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
@@ -1188,3 +1200,37 @@ func _draw_hedgehogs() -> void:
 		var n: int = HH_NUMS[p]
 		_text(str(n), HH_ORIGIN.x + (float(p.x) + 0.5) * HH_CELL, HH_ORIGIN.y + (float(p.y) + 0.5) * HH_CELL + HH_CELL * 0.19,
 			HH_CELL * 0.54, Pal.NUM_INK[n])
+
+## Super Slider: the board's own tray and blocks, through
+## `ui/faces/slider_block.gd`, the file `puzzles/slider2d.gd` draws with, on
+## a strip turned on its side so the gate stands at the right. One mesh.
+func _draw_slider() -> void:
+	var cell := SL_CELL * _u
+	var origin := at(-float(SL_COLS) * SL_CELL * 0.5, -float(SL_ROWS) * SL_CELL * 0.5)
+	var g := Vector2(SL_COLS, SL_ROWS) * cell
+	var f := SlideBlock.FRAME * cell
+	var b := Face.Builder.new()
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * f + Vector2(0.0, cell * 0.05), g + Vector2.ONE * f * 2.0, f * 1.4), Pal.SLIDE_FRAME_DEEP)
+	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * f, g + Vector2.ONE * f * 2.0, f * 1.4), Pal.SLIDE_FRAME)
+	b.fan(Face.Builder.round_rect(origin, g, cell * 0.08), Pal.SLIDE_FLOOR)
+	# the gate: the right-hand frame cut away, and the mat running out of it
+	var gx := origin.x + g.x
+	b.fan(PackedVector2Array([Vector2(gx - cell * 0.02, origin.y), Vector2(gx + f + cell * 0.05, origin.y),
+		Vector2(gx + f + cell * 0.05, origin.y + g.y), Vector2(gx - cell * 0.02, origin.y + g.y)]), Pal.SLIDE_MAT)
+	b.fan(Face.Builder.round_rect(origin + Vector2(cell * 5.08, cell * 0.08), Vector2(cell * 0.84, g.y - cell * 0.16), cell * 0.12),
+		Color(Pal.SLIDE_MAT, 0.8))
+	for y: float in [0.0, 2.0]:
+		b.disc(Vector2(gx + f * 0.5, origin.y + cell * y), f * 0.62, Pal.SLIDE_FRAME_HI)
+	# the way the big block is going
+	for k in 3:
+		var y := origin.y + cell * (0.55 + 0.45 * float(k))
+		b.stroke(PackedVector2Array([Vector2(origin.x + cell * 2.55, y), Vector2(origin.x + cell * 2.9, y)]), cell * 0.06,
+			Color(Pal.SLIDE_BIG_DEEP, 0.45))
+	for e: Array in SL_BLOCKS:
+		var a: int = e[0]
+		var c: Vector2i = e[1]
+		var sz: Vector2i = SlideGen.SIZE[a]
+		SlideBlock.block(b, origin + Vector2(c) * cell + Vector2(cell * 0.12, 0.0) * float(a == SlideGen.B0), sz, cell, a,
+			0.3 if a == SlideGen.B0 else 0.0)
+	_slider_mesh = b.mesh()
+	draw_mesh(_slider_mesh, null)
