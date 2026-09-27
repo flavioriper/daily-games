@@ -21,7 +21,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 ## A bead's radius and its hole's, as fractions of a cell. 0.47 leaves the
 ## hair of board between two beads the reference shows.
 const R := 0.47
-const HOLE := 0.19
+const HOLE := 0.22
 ## A fused bead's dimple.
 const HOLE_FUSED := 0.07
 ## A bare peg's radius.
@@ -42,7 +42,7 @@ static func peg(b, at: Vector2, s: float, alpha := 1.0, lit := 0.0) -> void:
 ## shade left behind, `fused` closes its hole, `shine` (0..1) washes it toward
 ## white for a passing glint.
 static func bead(b, at: Vector2, s: float, colour: Color, grow := Vector2.ONE, alpha := 1.0,
-		lift := 0.0, fused := 0.0, shine := 0.0) -> void:
+		lift := 0.0, fused := 0.0, shine := 0.0, ground := Pal.PG_BOARD, peg_in := true) -> void:
 	if alpha <= 0.0 or grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var rx := s * R * grow.x
@@ -65,14 +65,28 @@ static func bead(b, at: Vector2, s: float, colour: Color, grow := Vector2.ONE, a
 		lo.append(top + Vector2(cos(a2) * rx, sin(a2) * ry) * 0.72)
 	b.stroke(hi, rx * 0.2, Color(c.lerp(Color.WHITE, 0.55), 0.8 * alpha))
 	b.stroke(lo, rx * 0.16, Color(deep, 0.5 * alpha))
+	# The hole goes right through: a bead is a tube, and what shows down it
+	# is the board it sits on and the peg it is seated over -- the peg's top
+	# pokes up through the middle, lit on its upper left. The tube's far wall
+	# shows as a dark crescent along the top of the hole, and the mouth has a
+	# bevel of the bead's deeper colour. Fusing melts the tube shut round the
+	# peg: the hole closes to a dimple and the board and peg go out of sight.
 	var hole := lerpf(HOLE, HOLE_FUSED, clampf(fused, 0.0, 1.0)) / R
+	var hr := Vector2(rx, ry) * hole
 	var hc := top + Vector2(0.0, ry * 0.02)
-	# The hole: its dark mouth, and the far wall inside it catching the light
-	# on its lower right.
-	b.ellipse(hc, rx * hole * 1.18, ry * hole * 1.18, Color(deep, alpha))
-	b.ellipse(hc, rx * hole, ry * hole, Color(c.darkened(0.55), alpha))
-	b.ellipse(hc + Vector2(rx, ry) * hole * 0.3, rx * hole * 0.55, ry * hole * 0.45,
-		Color(c.darkened(0.2), alpha * (1.0 - fused)))
+	var open := alpha * (1.0 - clampf(fused * 1.5, 0.0, 1.0))
+	b.ellipse(hc, hr.x * 1.2, hr.y * 1.2, Color(deep, alpha))
+	b.ellipse(hc, hr.x, hr.y, Color(c.darkened(0.45), alpha))
+	if open > 0.0:
+		# The board down the tube, in the bead's shade, below the far wall.
+		b.ellipse(hc + Vector2(0.0, hr.y * 0.28), hr.x * 0.8, hr.y * 0.72,
+			Color(ground.darkened(0.28).lerp(c.darkened(0.3), 0.25), open))
+		if peg_in and lift <= s * 0.05:
+			var pr := hr * 0.44
+			var pc := hc + Vector2(0.0, hr.y * 0.3)
+			b.ellipse(pc + Vector2(0.0, pr.y * 0.3), pr.x, pr.y, Color(Pal.PG_PEG_DEEP, open))
+			b.ellipse(pc, pr.x * 0.92, pr.y * 0.92, Color(Pal.PG_PEG, open))
+			b.ellipse(pc - pr * 0.28, pr.x * 0.4, pr.y * 0.4, Color(Pal.PG_PEG_HI, open))
 	if fused > 0.0:
 		# The gloss an iron leaves: a soft white fleck on the upper left.
 		b.ellipse(top + Vector2(-rx * 0.38, -ry * 0.4), rx * 0.22, ry * 0.14,

@@ -605,7 +605,7 @@ func _draw_chip(b: Face.Builder, i: int, t: float) -> void:
 	var bead_at := pos + Vector2(sz.x * 0.5, sz.y * 0.34)
 	var s := minf(CHIP_BEAD * bump, sz.x * 0.86) / (Bead.R * 2.0)
 	var spent: bool = _state.left(i) <= 0
-	Bead.bead(b, bead_at, s, _state.colours[i], Vector2.ONE, 0.45 if spent else 1.0)
+	Bead.bead(b, bead_at, s, _state.colours[i], Vector2.ONE, 0.45 if spent else 1.0, 0.0, 0.0, 0.0, Pal.SURFACE, false)
 	var pill := Rect2(pos + Vector2(8.0, sz.y * 0.66), Vector2(sz.x - 16.0, sz.y * 0.26))
 	b.fan(Face.Builder.round_rect(pill.position, pill.size, pill.size.y * 0.5), Pal.PAPER.darkened(0.03))
 

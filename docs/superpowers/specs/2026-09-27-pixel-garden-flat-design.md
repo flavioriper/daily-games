@@ -146,3 +146,10 @@ Taken on this Mac (`--resolution 810x1440`, `--always-on-top`), 2026-09-27:
   redraw.
 
 ## 8. Amendments
+
+**Hollow beads (2026-09-27, the user's note).** A bead is a tube that fits
+over its peg, and the drawing has to say so: the hole goes right through,
+showing the board down it in the bead's shade, the far wall as a dark
+crescent along its top, and the peg's lit top poking up through the middle.
+A chip's or a loose bead's hole shows the paper or table under it, with no
+peg. Ironing melts the tube shut round the peg to a dimple.

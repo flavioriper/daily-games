@@ -1343,8 +1343,8 @@ func _draw_pixelgarden() -> void:
 	# three loose cream beads for the stroke in hand
 	for k in 3:
 		var p := at(64.0 + k * 17.0, 30.0 - (k % 2) * 12.0)
-		Bead.bead(b, p, cell * 1.5, Pal.PG_BEADS.cream)
-	Bead.bead(b, at(84.0, -26.0), cell * 1.5, Pal.PG_BEADS.red)
-	Bead.bead(b, at(104.0, -8.0), cell * 1.5, Pal.PG_BEADS.green)
+		Bead.bead(b, p, cell * 1.5, Pal.PG_BEADS.cream, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_TABLE, false)
+	Bead.bead(b, at(84.0, -26.0), cell * 1.5, Pal.PG_BEADS.red, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_TABLE, false)
+	Bead.bead(b, at(104.0, -8.0), cell * 1.5, Pal.PG_BEADS.green, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_TABLE, false)
 	_pixelgarden_mesh = b.mesh()
 	draw_mesh(_pixelgarden_mesh, null)
