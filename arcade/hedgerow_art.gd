@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Hedgerow's cast and towers, drawn as builder shapes and shared by the
+## Hedgerow TD's cast and towers, drawn as builder shapes and shared by the
 ## game (arcade/hedgerow_screen.gd) and its card on the Arcade tab. Sizes
 ## are in sixteenths of a cell of `u` pixels. A pest is built at the origin
 ## facing up (-y) and turned to its heading by the draw transform, never
@@ -240,12 +240,43 @@ static func stag(b: Face.Builder, s: float, frame: int, body: Color) -> void:
 # --- the towers ---
 
 static func tower_into(b: Face.Builder, key: String, level: int, u: float, at: Vector2) -> void:
+	base_into(b, key, level, u, at)
+	head_into(b, key, level, u, at)
+
+## What stands still under a tower: the slab, a pot for an element tower,
+## and a pip a level along the slab's foot.
+static func base_into(b: Face.Builder, key: String, level: int, u: float, at: Vector2) -> void:
 	var s := u / 16.0
-	# the slab
 	var half := 7.0 * s
 	b.fan(Face.Builder.round_rect(at + Vector2(-half + 0.8 * s, -half + 1.6 * s), Vector2(half * 2, half * 2), 3.0 * s), SHADOW)
 	b.fan(Face.Builder.round_rect(at + Vector2(-half, -half), Vector2(half * 2, half * 2), 3.0 * s), SLAB_DEEP)
 	b.fan(Face.Builder.round_rect(at + Vector2(-half, -half), Vector2(half * 2, half * 2 - 1.2 * s), 3.0 * s), SLAB)
+	# worn corners on the slab
+	for k in 4:
+		var cx := -1.0 if k % 2 == 0 else 1.0
+		var cy := -1.0 if k < 2 else 1.0
+		b.disc(at + Vector2(cx * (half - 1.6 * s), cy * (half - 2.0 * s)), 0.5 * s, SLAB_DEEP)
+	var els: Array = Sim.TOWERS[key].els
+	if not els.is_empty():
+		var dual := els.size() == 2
+		var r := (4.2 if dual else 3.6) * s + level * 0.35 * s
+		b.disc(at + Vector2(0, 0.8 * s), r + 1.8 * s, POT_DEEP)
+		b.disc(at + Vector2(0, 0.4 * s), r + 1.4 * s, POT)
+		b.disc(at + Vector2(0, 0.4 * s), r + 0.6 * s, POT_DEEP.darkened(0.2))
+		if dual:
+			for sd: float in [-1.0, 1.0]:
+				var lf := Face.Builder.ring(Vector2.ZERO, 1.2 * s, 2.6 * s)
+				b.fan(Transform2D(sd * 0.9, at + Vector2(sd * (r + 0.6 * s), -r * 0.6)) * lf, BRAMBLE)
+	var n := level + 1
+	for i in n:
+		var x := (i - (n - 1) * 0.5) * 2.2 * s
+		b.disc(at + Vector2(x, half - 1.4 * s), 0.85 * s, WOOD_DEEP)
+		b.disc(at + Vector2(x, half - 1.5 * s), 0.6 * s, PIP)
+
+## What moves on a tower: the bramble, the sling or the element's orb. The
+## screen draws it on its own so it can recoil, sway and turn to aim.
+static func head_into(b: Face.Builder, key: String, level: int, u: float, at: Vector2) -> void:
+	var s := u / 16.0
 	var els: Array = Sim.TOWERS[key].els
 	match key:
 		"thorn":
@@ -253,24 +284,28 @@ static func tower_into(b: Face.Builder, key: String, level: int, u: float, at: V
 		"acorn":
 			_sling(b, s, at, level)
 		_:
-			var dual := els.size() == 2
-			var r := (4.2 if dual else 3.6) * s + level * 0.35 * s
-			# the pot
-			b.disc(at + Vector2(0, 0.8 * s), r + 1.8 * s, POT_DEEP)
-			b.disc(at + Vector2(0, 0.4 * s), r + 1.4 * s, POT)
-			b.disc(at + Vector2(0, 0.4 * s), r + 0.6 * s, POT_DEEP.darkened(0.2))
-			if dual:
-				# a dual's leaves: two sprigs under the orb
-				for sd: float in [-1.0, 1.0]:
-					var lf := Face.Builder.ring(Vector2.ZERO, 1.2 * s, 2.6 * s)
-					b.fan(Transform2D(sd * 0.9, at + Vector2(sd * (r + 0.6 * s), -r * 0.6)) * lf, BRAMBLE)
+			var r := (4.2 if els.size() == 2 else 3.6) * s + level * 0.35 * s
 			orb(b, at + Vector2(0, -0.4 * s), r, els)
-	# a pip a level along the slab's foot
-	var n := level + 1
-	for i in n:
-		var x := (i - (n - 1) * 0.5) * 2.2 * s
-		b.disc(at + Vector2(x, half - 1.4 * s), 0.85 * s, WOOD_DEEP)
-		b.disc(at + Vector2(x, half - 1.5 * s), 0.6 * s, PIP)
+
+static func base(key: String, level: int, u: float) -> ArrayMesh:
+	var ck := "b%s/%d/%.1f" % [key, level, u]
+	if _cache.has(ck):
+		return _cache[ck]
+	var b := Face.Builder.new()
+	base_into(b, key, level, u, Vector2.ZERO)
+	var m := b.mesh()
+	_cache[ck] = m
+	return m
+
+static func head(key: String, level: int, u: float) -> ArrayMesh:
+	var ck := "h%s/%d/%.1f" % [key, level, u]
+	if _cache.has(ck):
+		return _cache[ck]
+	var b := Face.Builder.new()
+	head_into(b, key, level, u, Vector2.ZERO)
+	var m := b.mesh()
+	_cache[ck] = m
+	return m
 
 ## A bramble clump bristling with thorns.
 static func _bramble(b: Face.Builder, s: float, at: Vector2, level: int) -> void:

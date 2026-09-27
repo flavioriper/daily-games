@@ -1,11 +1,11 @@
 extends SceneTree
 
-## Plays Hedgerow's sim headless with a simple bot and prints how far it
+## Plays Hedgerow TD's sim headless with a simple bot and prints how far it
 ## got: the wave, lives, gold, score and a tally of events, plus a line a
 ## wave. Run after touching arcade/hedgerow_sim.gd.
 ##   godot --headless --script tests/_probe_hedgerow.gd -- [seed] [skill] [picks]
-## skill 2 builds the serpentine maze and fuses duals, 1 the maze with
-## singles only, 0 no maze (towers along the straight walk). picks is four
+## skill 2 plants round the path's bends and fuses duals, 1 the same with
+## singles only, both on the best 26 cells; 0 plain towers on the best 14. picks is four
 ## letters of s h r e l t (sun shade rain ember leaf stone), default "sreh".
 
 const Sim = preload("res://arcade/hedgerow_sim.gd")
@@ -50,19 +50,27 @@ func _initialize() -> void:
 	print("events: ", tally)
 	quit()
 
-## A serpentine: three walls across the lawn, each open at alternate ends.
+## The grass cells, best first: how much of the walk each covers within a
+## thorn's reach. skill 0 plants only the best dozen, as a player who never
+## looks past the first bends would.
 func _plan() -> void:
-	if skill == 0:
-		for y in range(1, Sim.ROWS - 1):
-			walls.append(Vector2i(Sim.DOOR - 1, y))
-			walls.append(Vector2i(Sim.DOOR + 1, y))
-		return
-	var rows := [2, 5, 8]
-	for i in rows.size():
-		var y: int = rows[i]
-		var xs := range(0, Sim.COLS - 1) if i % 2 == 0 else range(1, Sim.COLS)
-		for x: int in xs:
-			walls.append(Vector2i(x, y))
+	var probe = Sim.new(1)
+	var line: PackedVector2Array = Sim.walk_line()
+	var scored: Array = []
+	for y in Sim.ROWS:
+		for x in Sim.COLS:
+			var c := Vector2i(x, y)
+			if probe.build_block(c) != "":
+				continue
+			var n := 0
+			for i in range(0, line.size(), 2):
+				if Sim.centre(c).distance_to(line[i]) <= 2.4:
+					n += 1
+			scored.append([n, c])
+	scored.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	var cap := 14 if skill == 0 else 26
+	for i in mini(cap, scored.size()):
+		walls.append(scored[i][1])
 
 func _bot(sim) -> void:
 	if sim.pick_pending:

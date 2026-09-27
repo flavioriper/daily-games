@@ -1,18 +1,19 @@
 extends RefCounted
 
-## Hedgerow's whole game as pure data: the second game on the Arcade tab, a
-## mazing tower defence after the element tower-defence genre, re-dressed as
-## a garden (spec docs/superpowers/specs/2026-09-27-arcade-hedgerow-design.md).
+## Hedgerow TD's whole game as pure data: the second game on the Arcade
+## tab, a path tower defence after the element tower-defence genre and the
+## balloon-popping one, re-dressed as a garden (spec docs/superpowers/specs/2026-09-27-arcade-hedgerow-design.md).
 ## The screen (arcade/hedgerow_screen.gd) steps it at a fixed DT, calls the
 ## player's moves (`build`, `upgrade`, `fuse`, `sell`, `pick`, `send_wave`)
 ## and draws what it holds; it reads `events` after every step for sounds
 ## and bursts.
 ##
 ## Cell units, not pixels: the garden is COLS by ROWS cells with y down.
-## Pests come in at the gap in the hedge at the top (DOOR, 0) and make for
-## the vegetable patch at the bottom (DOOR, ROWS - 1) by the shortest walk
-## round whatever stands on the lawn, so the towers are also the maze; a
-## tower that would close the last walk is refused. Wasps fly over it.
+## Pests come in at the gate in the top hedge and walk a fixed paved path
+## (WAYPOINTS) that spirals into the raised bed in the middle; towers are
+## planted on the grass beside it, never on it. Wasps fly a shorter line
+## over the hedges (FLIGHT). Each tower aims by its own rule: the pest
+## furthest along, the last, the strongest or the closest.
 ##
 ## Six elements in a ring, each strong against the next (double damage) and
 ## weak against the one before (half): Sun, Shade, Rain, Ember, Leaf, Stone,
@@ -23,7 +24,6 @@ extends RefCounted
 
 const COLS := 9
 const ROWS := 12
-const DOOR := 4
 const DT := 1.0 / 60.0
 
 const START_GOLD := 110
@@ -42,6 +42,9 @@ const BODY := 0.3
 enum El { NONE, SUN, SHADE, RAIN, EMBER, LEAF, STONE }
 enum Kind { APHID, ANT, GNAT, BEETLE, SLUG, WASP, BOSS }
 enum Phase { BUILD, WAVE, OVER, WON }
+## Which pest in range a tower shoots: the one furthest along the path, the
+## one furthest back, the one with the most health, or the nearest.
+enum Aim { FIRST, LAST, STRONG, CLOSE }
 
 const ELEMENTS := [El.SUN, El.SHADE, El.RAIN, El.EMBER, El.LEAF, El.STONE]
 const EL_KEY := {El.SUN: "sun", El.SHADE: "shade", El.RAIN: "rain", El.EMBER: "ember", El.LEAF: "leaf", El.STONE: "stone"}
@@ -67,6 +70,11 @@ const KINDS := {
 const SHELL := 0.5
 const PLAIN := 0.6
 const REGEN := 0.03
+## A wave's health: HP_BASE at wave 1, HP_GROWTH more each wave. The path is
+## long (about 43 cells of walk) and a tower planted between two lanes hits
+## both, so the curve is steeper than a maze's would be.
+const HP_BASE := 20.0
+const HP_GROWTH := 1.165
 
 ## Every tower. `cost` is the build and then each upgrade; `dmg` a hit at
 ## each level. The rest are what makes a tower itself:
@@ -128,22 +136,18 @@ var score := 0
 var picked: Array = []
 ## A pick is owed before the next wave can come.
 var pick_pending := true
-var towers: Array = []    # {id, cell, key, level, cd, target, streak, heat, idle, spent, kills, haste, might}
+var towers: Array = []    # {id, cell, key, level, cd, target, streak, heat, idle, spent, kills, haste, might, aim, face}
 var creeps: Array = []    # see _spawn
 var events: Array = []
 var kills := 0
 var leaks := 0
-## A tower by its cell, for the maze and taps.
+## A tower by its cell, for placing and taps.
 var at := {}
-## Shortest walk to the patch from every cell, -1 for none; rebuilt when
-## a tower comes or goes.
-var dist := PackedInt32Array()
 var _spawns: Array = []   # {kind, el, t}
 var _ids := 0
 
 func _init(seed_value := 0) -> void:
 	rng.seed = seed_value if seed_value != 0 else int(Time.get_ticks_usec())
-	dist = _flow({})
 
 # --- the rules of the ring ---
 
@@ -191,7 +195,7 @@ static func wave_el(n: int) -> int:
 	return ELEMENTS[(n - 3) % 6]
 
 static func wave_hp(n: int) -> float:
-	return 18.0 * pow(1.15, n - 1) + n * 4.0
+	return HP_BASE * pow(HP_GROWTH, n - 1) + n * 4.0
 
 static func bounty(n: int, kind: int) -> int:
 	var base := 1.0 + n * 0.25
@@ -204,7 +208,7 @@ static func bounty(n: int, kind: int) -> int:
 			base *= 20.0
 	return maxi(1, int(round(base)))
 
-# --- the maze ---
+# --- the garden path ---
 
 static func idx(c: Vector2i) -> int:
 	return c.y * COLS + c.x
@@ -215,93 +219,113 @@ static func inside(c: Vector2i) -> bool:
 static func centre(c: Vector2i) -> Vector2:
 	return Vector2(c.x + 0.5, c.y + 0.5)
 
-static func entrance() -> Vector2i:
-	return Vector2i(DOOR, 0)
+## The paved path, corner to corner through cell centres: in at the gate in
+## the top hedge, down the west side, across the foot, up the east side,
+## back along the top and round an inner hook to the raised bed, a spiral
+## into the middle of the garden. It never changes; towers stand beside it.
+const WAYPOINTS := [Vector2(1.5, -0.9), Vector2(1.5, 10.5), Vector2(7.5, 10.5), Vector2(7.5, 1.5),
+	Vector2(3.5, 1.5), Vector2(3.5, 8.5), Vector2(5.5, 8.5), Vector2(5.5, 4.2)]
+## The wasps' flight: over the hedges, cutting the spiral's corners, so a
+## flying wave reaches the bed in a little over half the walk.
+const FLIGHT := [Vector2(1.5, -0.9), Vector2(2.4, 9.6), Vector2(6.6, 9.6), Vector2(6.6, 2.6), Vector2(5.0, 3.4)]
+## The raised bed the pests are after, two by two in the spiral's heart.
+const BED := Rect2i(4, 2, 2, 2)
+## Grass that holds scenery and cannot be planted: a stump, rocks, a pond.
+const SCENERY := {Vector2i(8, 0): "stump", Vector2i(0, 5): "rock", Vector2i(8, 7): "rock",
+	Vector2i(0, 11): "pond", Vector2i(8, 11): "bush"}
+## How far round a corner a walker cuts, in cells.
+const CORNER := 0.42
 
-static func exit_cell() -> Vector2i:
-	return Vector2i(DOOR, ROWS - 1)
+static var _road := {}
+static var _walk := PackedVector2Array()
+static var _walk_at := PackedFloat32Array()
+static var _fly := PackedVector2Array()
+static var _fly_at := PackedFloat32Array()
 
-const STEPS := [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]
+## Every cell the path covers.
+static func road() -> Dictionary:
+	if _road.is_empty():
+		for i in range(1, WAYPOINTS.size()):
+			var a: Vector2 = WAYPOINTS[i - 1]
+			var z: Vector2 = WAYPOINTS[i]
+			var n := int(ceil(a.distance_to(z) * 4.0))
+			for k in n + 1:
+				var p := a.lerp(z, float(k) / n)
+				var c := Vector2i(floori(p.x), floori(p.y))
+				if inside(c):
+					_road[c] = true
+	return _road
 
-## Breadth first from the patch over every cell no tower stands on.
-static func _flow(blocked: Dictionary) -> PackedInt32Array:
-	var d := PackedInt32Array()
-	d.resize(COLS * ROWS)
-	d.fill(-1)
-	var goal := exit_cell()
-	d[idx(goal)] = 0
-	var queue: Array[Vector2i] = [goal]
-	var head := 0
-	while head < queue.size():
-		var c: Vector2i = queue[head]
-		head += 1
-		for s: Vector2i in STEPS:
-			var n: Vector2i = c + s
-			if inside(n) and d[idx(n)] == -1 and not blocked.has(n):
-				d[idx(n)] = d[idx(c)] + 1
-				queue.append(n)
-	return d
+## The walk as a dense polyline with rounded corners, and the distance
+## along it at each point.
+static func walk_line() -> PackedVector2Array:
+	if _walk.is_empty():
+		_walk = _rounded(WAYPOINTS, CORNER)
+		_walk_at = _lengths(_walk)
+	return _walk
 
-## The next cell on from `c`, keeping to `heading` when that is as short,
-## so a walk runs straight rather than in stairs.
-func next_cell(c: Vector2i, heading: Vector2i) -> Vector2i:
-	var here := dist[idx(c)]
-	var best := Vector2i(-1, -1)
-	for s: Vector2i in [heading] + STEPS:
-		var n: Vector2i = c + s
-		if s == Vector2i.ZERO or not inside(n):
-			continue
-		if dist[idx(n)] >= 0 and dist[idx(n)] == here - 1:
-			return n
-	return best
+static func flight_line() -> PackedVector2Array:
+	if _fly.is_empty():
+		_fly = _rounded(FLIGHT, 1.2)
+		_fly_at = _lengths(_fly)
+	return _fly
 
-## The walk a new pest would take, cell by cell, entrance to patch.
-func route() -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
-	var c := entrance()
-	var heading := Vector2i(0, 1)
-	out.append(c)
-	var guard := 0
-	while c != exit_cell() and guard < COLS * ROWS:
-		var n := next_cell(c, heading)
-		if n.x < 0:
-			break
-		heading = n - c
-		c = n
-		out.append(c)
-		guard += 1
+static func walk_length() -> float:
+	walk_line()
+	return _walk_at[_walk_at.size() - 1]
+
+static func flight_length() -> float:
+	flight_line()
+	return _fly_at[_fly_at.size() - 1]
+
+static func _rounded(pts: Array, r: float) -> PackedVector2Array:
+	var out := PackedVector2Array([pts[0]])
+	for i in range(1, pts.size() - 1):
+		var p: Vector2 = pts[i]
+		var a: Vector2 = (pts[i - 1] - p)
+		var z: Vector2 = (pts[i + 1] - p)
+		var rr := minf(r, minf(a.length(), z.length()) * 0.5)
+		var from := p + a.normalized() * rr
+		var to := p + z.normalized() * rr
+		for k in 9:
+			var t := k / 8.0
+			out.append(from.lerp(p, t).lerp(p.lerp(to, t), t))
+	out.append(pts[pts.size() - 1])
 	return out
 
-## Why a tower may not go on `c`, or "" if it may: off the lawn, the gap or
-## the patch, a tower already there, a pest standing on it, or no walk left.
+static func _lengths(line: PackedVector2Array) -> PackedFloat32Array:
+	var at := PackedFloat32Array([0.0])
+	for i in range(1, line.size()):
+		at.append(at[i - 1] + line[i - 1].distance_to(line[i]))
+	return at
+
+## A point `d` along a line, and the segment it is on (a hint for the next
+## call, which is always further along).
+static func _along(line: PackedVector2Array, at: PackedFloat32Array, d: float, seg: int) -> Array:
+	var i := clampi(seg, 1, line.size() - 1)
+	while i < line.size() - 1 and at[i] < d:
+		i += 1
+	var span := at[i] - at[i - 1]
+	var k := 0.0 if span <= 0.0 else clampf((d - at[i - 1]) / span, 0.0, 1.0)
+	return [line[i - 1].lerp(line[i], k), i]
+
+static func in_bed(c: Vector2i) -> bool:
+	return BED.has_point(c)
+
+## Why a tower may not go on `c`, or "" if it may: off the lawn, the path,
+## the bed, scenery, or a tower already there.
 func build_block(c: Vector2i) -> String:
-	if not inside(c) or c == entrance() or c == exit_cell():
+	if not inside(c):
 		return "edge"
+	if road().has(c):
+		return "road"
+	if in_bed(c):
+		return "bed"
+	if SCENERY.has(c):
+		return "scenery"
 	if at.has(c):
 		return "taken"
-	var ground: Array = []
-	for cr: Dictionary in creeps:
-		if cr.air:
-			continue
-		var here := Vector2i(floori(cr.pos.x), floori(cr.pos.y))
-		var to := Vector2i(floori(cr.to.x), floori(cr.to.y))
-		if here == c or to == c:
-			return "busy"
-		if inside(to):
-			ground.append(to)
-	var blocked := at.duplicate()
-	blocked[c] = true
-	var d := _flow(blocked)
-	if d[idx(entrance())] < 0:
-		return "blocks"
-	for g: Vector2i in ground:
-		if d[idx(g)] < 0:
-			return "blocks"
 	return ""
-
-func _reflow() -> void:
-	dist = _flow(at)
-	_auras()
 
 # --- the player's moves ---
 
@@ -327,10 +351,11 @@ func build(c: Vector2i, key: String) -> bool:
 	gold -= cost
 	_ids += 1
 	var tw := {"id": _ids, "cell": c, "key": key, "level": 0, "cd": 0.0, "target": -1, "streak": 0,
-		"heat": 0.0, "idle": 0.0, "spent": cost, "kills": 0, "haste": 1.0, "might": 1.0}
+		"heat": 0.0, "idle": 0.0, "spent": cost, "kills": 0, "haste": 1.0, "might": 1.0,
+		"aim": Aim.FIRST, "face": PI * 0.5}
 	towers.append(tw)
 	at[c] = tw
-	_reflow()
+	_auras()
 	events.append({"type": "build", "cell": c, "key": key})
 	return true
 
@@ -384,7 +409,7 @@ func sell(tw: Dictionary) -> void:
 	gold += sell_value(tw)
 	towers.erase(tw)
 	at.erase(tw.cell)
-	_reflow()
+	_auras()
 	events.append({"type": "sell", "cell": tw.cell, "key": tw.key})
 
 func pick(e: int) -> bool:
@@ -463,10 +488,10 @@ func _spawn(kind: int, el: int) -> void:
 	if wave == WAVES:
 		hp *= 1.6
 	_ids += 1
-	var start := Vector2(DOOR + 0.5, -0.6)
-	creeps.append({"id": _ids, "kind": kind, "el": el, "hp": hp, "max": hp, "pos": start,
-		"to": centre(entrance()), "heading": Vector2i(0, 1), "speed": float(k.speed),
-		"lives": int(k.lives), "bounty": bounty(wave, kind), "air": kind == Kind.WASP,
+	var air := kind == Kind.WASP
+	creeps.append({"id": _ids, "kind": kind, "el": el, "hp": hp, "max": hp, "pos": WAYPOINTS[0],
+		"d": 0.0, "seg": 1, "len": flight_length() if air else walk_length(), "speed": float(k.speed),
+		"lives": int(k.lives), "bounty": bounty(wave, kind), "air": air,
 		"slow": 0.0, "slow_t": 0.0, "stun_t": 0.0, "dot": 0.0, "dot_t": 0.0, "burn": 0.0, "burn_t": 0.0,
 		"mark_t": 0.0, "left": 99.0, "alive": true, "phase": rng.randf() * TAU})
 	if kind == Kind.BOSS:
@@ -495,13 +520,13 @@ func _creeps_step() -> void:
 			c.stun_t -= DT
 			continue
 		var go: float = c.speed * (1.0 - c.slow) * DT
-		if c.air:
-			c.pos.y += go
-			c.pos.x = DOOR + 0.5 + sin(c.pos.y * 0.7 + c.phase) * 1.4
-			c.left = ROWS + 0.5 - c.pos.y
-		else:
-			_walk(c, go)
-		if c.pos.y > ROWS + 0.4:
+		c.d += go
+		var line := flight_line() if c.air else walk_line()
+		var got := _along(line, _fly_at if c.air else _walk_at, c.d, c.seg)
+		c.pos = got[0]
+		c.seg = got[1]
+		c.left = maxf(0.0, c.len - c.d)
+		if c.d >= c.len:
 			c.alive = false
 			lives -= c.lives
 			leaks += 1
@@ -511,32 +536,6 @@ func _creeps_step() -> void:
 				phase = Phase.OVER
 				events.append({"type": "game_over"})
 				return
-
-func _walk(c: Dictionary, go: float) -> void:
-	while go > 0.0:
-		var d: Vector2 = c.to - c.pos
-		var l := d.length()
-		if l > go:
-			c.pos += d / l * go
-			break
-		c.pos = c.to
-		go -= l
-		var cell := Vector2i(floori(c.pos.x), floori(c.pos.y))
-		if not inside(cell) or cell == exit_cell():
-			c.to = Vector2(DOOR + 0.5, ROWS + 1.0)
-			if c.pos.y >= ROWS + 0.9:
-				break
-			continue
-		var n := next_cell(cell, c.heading)
-		if n.x < 0:
-			break
-		c.heading = n - cell
-		c.to = centre(n)
-	var tcell := Vector2i(floori(c.to.x), floori(c.to.y))
-	if inside(tcell):
-		c.left = dist[idx(tcell)] + (c.to - c.pos).length() + 0.5
-	else:
-		c.left = maxf(0.0, ROWS + 1.0 - c.pos.y)
 
 # --- the towers ---
 
@@ -571,13 +570,26 @@ func _auras_step() -> void:
 func _in_range(from: Vector2, r: float) -> Array:
 	var out := []
 	for c: Dictionary in creeps:
-		if c.alive and c.pos.y > -0.2 and from.distance_to(c.pos) <= r + BODY:
+		if c.alive and c.d > 0.4 and from.distance_to(c.pos) <= r + BODY:
 			out.append(c)
 	return out
 
-## The creeps nearest the patch first.
-static func _by_lead(a: Dictionary, b: Dictionary) -> bool:
-	return a.left < b.left
+## The creeps in range in the order a tower's aim wants them.
+static func _aimed(near: Array, aim: int, from: Vector2) -> void:
+	match aim:
+		Aim.LAST:
+			near.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.left > b.left)
+		Aim.STRONG:
+			near.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.hp > b.hp or (a.hp == b.hp and a.left < b.left))
+		Aim.CLOSE:
+			near.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return from.distance_squared_to(a.pos) < from.distance_squared_to(b.pos))
+		_:
+			near.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.left < b.left)
+
+## Turns a tower's aim to the next rule.
+func cycle_aim(tw: Dictionary) -> void:
+	tw.aim = (int(tw.aim) + 1) % 4
+	events.append({"type": "aim", "cell": tw.cell, "aim": tw.aim})
 
 func _towers_step() -> void:
 	for tw: Dictionary in towers:
@@ -603,8 +615,9 @@ func _towers_step() -> void:
 				_hit(tw, c, dmg)
 			events.append({"type": "pulse", "cell": tw.cell, "key": tw.key, "r": float(d.range)})
 			continue
-		near.sort_custom(_by_lead)
+		_aimed(near, int(tw.aim), from)
 		var first: Dictionary = near[0]
+		tw.face = (first.pos - from).angle()
 		if d.has("heat"):
 			tw.idle = 0.0
 			tw.heat = minf(1.0, tw.heat + float(d.heat) * float(d.rate))

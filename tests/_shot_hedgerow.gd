@@ -1,6 +1,6 @@
 extends SceneTree
 
-## The Arcade tab and a game of Hedgerow, shot at fixed beats:
+## The Arcade tab and a game of Hedgerow TD, shot at fixed beats:
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_hedgerow.gd -- <outdir>
 ##
@@ -36,19 +36,16 @@ func _shot(name: String) -> void:
 	root.get_texture().get_image().save_png("%s/hr_%s.png" % [_out, name])
 	print("shot %s at %.1f draws=%d" % [name, _t, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))])
 
-## A serpentine of towers: three walls across the lawn, open at alternate
-## ends, element towers mixed in.
+## Towers on the grass round the path's bends, element towers mixed in.
 func _maze(sim) -> void:
-	var rows := [2, 5, 8]
+	var spots := [Vector2i(2, 2), Vector2i(2, 5), Vector2i(2, 8), Vector2i(4, 5), Vector2i(4, 6), Vector2i(6, 3),
+		Vector2i(6, 6), Vector2i(6, 9), Vector2i(3, 9), Vector2i(5, 9), Vector2i(8, 4), Vector2i(0, 8)]
 	var keys := ["thorn", "sun", "acorn", "rain", "thorn", "ember"]
-	for i in rows.size():
-		var y: int = rows[i]
-		var xs := range(0, Sim.COLS - 1) if i % 2 == 0 else range(1, Sim.COLS)
-		for x: int in xs:
-			var key: String = keys[(x + y) % keys.size()]
-			if not sim.can_build(key):
-				key = "thorn"
-			sim.build(Vector2i(x, y), key)
+	for i in spots.size():
+		var key: String = keys[i % keys.size()]
+		if not sim.can_build(key):
+			key = "thorn"
+		sim.build(spots[i], key)
 
 func _process(delta: float) -> bool:
 	_t += delta
@@ -82,24 +79,29 @@ func _process(delta: float) -> bool:
 				# the panel's own chips: plant, upgrade, fuse and sell by pressing them
 				_s._tap(Vector2i(0, 10))
 				_press("Build_sun")
+				print("check armed, not planted: ", not sim.at.has(Vector2i(0, 10)) and _s._armed == "sun")
+				_press("Build_sun")
 				print("check build: ", sim.at.has(Vector2i(0, 10)))
 				_s._tap(Vector2i(2, 10))
 				_s._tap(Vector2i(0, 10))
+				_press("Aim")
+				print("check aim: ", sim.at[Vector2i(0, 10)].aim == Sim.Aim.LAST)
 				_press("Upgrade")
 				print("check upgrade: ", sim.at[Vector2i(0, 10)].level == 1)
 				_press("Fuse_frost")
 				print("check fuse: ", sim.at[Vector2i(0, 10)].key == "frost")
 				_press("Sell")
 				print("check sell: ", not sim.at.has(Vector2i(0, 10)))
-				_s._tap(Vector2i(4, 0))
-				print("check gap refused: ", _s._panel_box.find_child("Build_thorn", true, false) == null)
+				_s._tap(Vector2i(1, 4))
+				print("check path refused: ", _s._panel_box.find_child("Build_thorn", true, false) == null)
 				var ev := InputEventMouseButton.new()
 				ev.button_index = MOUSE_BUTTON_LEFT
 				ev.pressed = true
 				ev.position = _s.px(Sim.centre(Vector2i(6, 10)))
 				_s._on_field_input(ev)
 				print("check tap maps to cell: ", _s._sel == Vector2i(6, 10))
-				_s._select(Vector2i(3, 4))
+				_s._select(Vector2i(8, 2))
+				_press("Build_rain")
 				_step = 3
 		3:
 			if _t > 4.2:
@@ -108,7 +110,7 @@ func _process(delta: float) -> bool:
 				_s.sim.wave = 5
 				_s.sim.gold = 400
 				_s._on_send()
-				_s._fast = true
+				_s._speed = 2
 				_step = 4
 		4:
 			if _t > 8.0:
@@ -127,7 +129,7 @@ func _process(delta: float) -> bool:
 				_s.sim.phase = Sim.Phase.BUILD
 				_s.sim.wave = 9
 				_s.sim.pick_pending = false
-				# only the plain towers stay, so the boss gets well into the maze
+				# only the plain towers stay, so the boss gets well along the path
 				for tw: Dictionary in _s.sim.towers.duplicate():
 					if not Sim.BASIC.has(tw.key):
 						_s.sim.sell(tw)

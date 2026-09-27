@@ -1738,33 +1738,40 @@ makes a pair, a flyby bonus stage third and every fourth after).
   synth), awaiting the user's listen. `tests/_shot_firefly.gd` shoots every
   beat and puts `user://arcade.cfg` back.
 
-**Hedgerow is the second** (2026-09-27, spec
-`2026-09-27-arcade-hedgerow-design.md`): a mazing tower defence after the
-element tower-defence genre, which the spec names once to forbid; **it is
-called Hedgerow and nothing else**. Pests walk a 9x12 lawn from the gap in
-the top hedge to the vegetable patch round your towers (a tower closing the
-last way is refused; wasps fly over), six elements in a ring each double
-against the next and half against the one before, four picks of the six at
-waves 1, 7, 14 and 21, and any single element tower fuses with a second
-pick into one of fifteen duals. 40 waves, 20 lives. The tab lost its "more
-arcade soon" card to make room.
+**Hedgerow TD is the second** (2026-09-27, spec
+`2026-09-27-arcade-hedgerow-design.md`): a path tower defence after the
+element tower-defence genre and the balloon-popping one, which the spec
+names once to forbid. It is **Hedgerow TD** on screen (the user's name, the
+id stays `hedgerow`). Pests walk a fixed cobbled path that spirals from a
+gate in the top hedge to a raised bed in the middle of a 9x12 garden;
+towers go on the grass beside it (wasps fly a shortcut), six elements in a
+ring each double against the next and half against the one before, four
+picks of the six at waves 1, 7, 14 and 21, and any single element tower
+fuses with a second pick into one of fifteen duals. 40 waves, 20 lives.
+It was first built as a maze on an open lawn; the user called that an
+empty lawn, and both references run a fixed path in their base games (the
+maze is an expansion), so it was rebuilt the same day (the spec's section
+9).
 
 - **The game is pure data** (`arcade/hedgerow_sim.gd`, cell units, fixed
-  1/60 s; every tower is one row of `TOWERS`). The maze is a breadth-first
-  distance field from the patch, rebuilt when a tower comes or goes.
+  1/60 s; every tower is one row of `TOWERS`). The path is `WAYPOINTS`,
+  walked as a rounded polyline by distance (`walk_line`, `_along`); each
+  tower aims First/Last/Strong/Close (`Aim`).
   `tests/_probe_hedgerow.gd -- [seed] [skill 0-2] [picks]` plays 40 waves
   with a bot; run it after touching the numbers. In zsh, pass a variable of
   arguments as `${=args}`, or the bot silently gets one argument.
-- **Plain towers do 60% to an elemental pest** (`PLAIN`): without it a
-  thorn-only bot with no maze reached wave 37 and the elements were not
-  worth buying. With it: no maze 21, singles 36-37, duals the final wave.
-- **The panel under the lawn is the whole interface** (next wave and Send;
-  a bare cell's towers; a tower's upgrade, fusions and sale). A panel
-  rebuild detaches its old children before freeing them, so a lookup in the
-  same frame never finds a dying chip.
-- `tests/_shot_hedgerow.gd` shoots every beat, presses the chips and prints
-  a `check` line a move, and puts `user://arcade.cfg` back. 118 draw calls
-  on the tab, 87 on the pick card, 59-75 in play.
+- **Plain towers do 60% to an elemental pest** (`PLAIN`), and the health
+  curve (`HP_GROWTH` 1.165) is steeper than the maze's was, because a tower
+  between two lanes hits both. Bot: plain 26, singles 37-40, duals 38-40.
+- **The panel under the garden is the whole interface** (next wave and
+  Send, x1/x2/x3; a grass cell's towers, pressed once to preview and again
+  to plant; a tower's aim, upgrade, fusions and sale). A panel rebuild
+  detaches its old children before freeing them, so a lookup in the same
+  frame never finds a dying chip.
+- Tower bases are one baked mesh; each head is its own draw call so it can
+  recoil and aim. `tests/_shot_hedgerow.gd` shoots every beat, presses the
+  chips and prints a `check` line a move, and puts `user://arcade.cfg`
+  back. 118 draw calls on the tab, 88 on the pick card, 67-92 in play.
 - 28 sounds in the `ARCADE` style, awaiting the user's listen. ElevenLabs
   refuses a `duration_seconds` under 0.5; `gen_sfx.py` stops the set there.
 

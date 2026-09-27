@@ -1,4 +1,4 @@
-# Hedgerow, the second Arcade game
+# Hedgerow TD, the second Arcade game
 
 2026-09-27. Built in one sitting while the user was away, from their brief:
 "add a new arcade game based on element td (check on web for reference,
@@ -141,3 +141,61 @@ between towers and pests on it in their colours, over the meadow vista.
 - The pt/es strings are machine-fluent.
 - The pick card covers the lawn; a player may want to see the maze while
   choosing.
+
+## 9. Amendment, 2026-09-27: a path, and the name Hedgerow TD
+
+The user's verdict on the first build: incomplete, an empty lawn. The
+references are Element TD 2 and the balloon-popping tower defence (Bloons
+TD), and **both run a fixed path in their base game**: the enemies walk a
+set route from a spawn portal to an exit, and towers are planted beside it.
+Mazing is only in Element TD 2's separate Mazing Expansion. Section 1's
+"mazing" came from that expansion, not from the game itself. The user
+asked for a traditional tower defence and a new name, **Hedgerow TD**
+(on the top bar and the tab card; the id stays `hedgerow`).
+
+- **The path** (`WAYPOINTS` in the sim) comes in at a stone gate in the
+  top hedge. It runs down the west side, across the foot and up the east
+  side, then back along the top and round an inner hook. It ends at a 2x2
+  raised bed in the middle (`BED`).
+  - That makes 43 cells of walk, with corners rounded at `CORNER` 0.42.
+  - Pests move by distance along the polyline (`d`), and `left` is what
+    remains of it.
+  - Wasps fly `FLIGHT`, a shortcut over the hedges at about 60% of the walk.
+  - The flow field, the "last way through" refusal and "a pest is
+    standing there" are gone. A cell is refused only for being path, bed
+    or scenery (`SCENERY`: a stump, two rocks, a pond, a bush). That leaves
+    57 cells of grass.
+- **Aim, from Bloons.** Every attacking tower has First / Last / Strong /
+  Close (`Aim`, `cycle_aim`), set with a chip on its panel. `face` is the
+  angle to its last target.
+- **Speed** cycles x1, x2, x3.
+- **Two-tap build.** A build chip's first press shows the tower as a ghost
+  on the cell, with its reach, and names it in the panel head. The second
+  press plants it.
+- **Wave line.** The next wave's line gives its count: "12 × Aphids".
+- **Look.**
+  - Cobbles laid course by course, kerbs, moss, a worn middle.
+  - A swirl in the gate in the colour of the next wave's element, turning
+    faster during a wave.
+  - Arrows drifting along the path during the break; for a wasp wave they
+    follow the flight line instead.
+  - Cabbages in the bed, one of eight eaten for every 2.5 lives lost; the
+    bed shakes on a leak.
+  - Tower heads drawn one by one over a baked base mesh, so a head kicks
+    back when it fires. Slings turn to their target, brambles sway, orbs
+    bob.
+  - Pests flash white when hit and waddle as they walk; a kill leaves a
+    ring as well as a puff.
+- **Tuning.**
+  - A tower between two lanes hits both, and the walk is long, so the
+    health curve is steeper: `HP_GROWTH` 1.165, was 1.15.
+  - The bot (`tests/_probe_hedgerow.gd`) ranks grass cells by how much of
+    the walk each covers.
+  - Plain towers on the best 14 cells: out at wave 26.
+  - Singles on the best 26: out at wave 37-40.
+  - Duals: wave 38-40, at seed 7 and 9.
+- **Measured** (`tests/_shot_hedgerow.gd`, 810x1440, ANGLE agreeing):
+  - 118 draw calls on the tab, 88 on the pick card, 92 on a build panel
+    with its ghost.
+  - 67-91 in play; each tower head is its own draw call.
+  - 89 on the end card.

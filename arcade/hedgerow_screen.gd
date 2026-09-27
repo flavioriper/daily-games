@@ -1,16 +1,21 @@
 extends Control
 
-## Hedgerow: the second game on the Arcade tab, a mazing tower defence
-## after the element tower-defence genre, re-dressed as a garden (spec
+## Hedgerow TD: the second game on the Arcade tab, a path tower defence
+## after the element tower-defence genre and the balloon-popping one,
+## re-dressed as a garden (spec
 ## docs/superpowers/specs/2026-09-27-arcade-hedgerow-design.md). The flat
 ## boards' top bar (back, the title in ink, restart, settings), a paper row
-## with the gold, the lives and the wave, the lawn in a wooden frame, and a
-## paper panel under it that shows what a tap can do.
+## with the gold, the lives and the wave, the garden in a wooden frame --
+## a cobbled path spiralling from the gate in the top hedge to the raised
+## bed in the middle -- and a paper panel under it that shows what a tap
+## can do.
 ##
-## Play: tap a bare cell and the panel offers the towers you can plant
-## there; tap a tower and it offers the upgrade, the duals it can fuse into
-## and the sale. With nothing chosen the panel sends the next wave early
-## (the break's seconds come back as gold) and sets the speed. The game is
+## Play: tap the grass and the panel offers the towers you can plant there;
+## a chip's first press shows the tower and its reach on the cell, the
+## second plants it. Tap a tower for its aim (first, last, strong, close),
+## the upgrade, the duals it can fuse into and the sale. With nothing
+## chosen the panel sends the next wave early (the break's seconds come
+## back as gold) and sets the speed, x1, x2 or x3. The game is
 ## arcade/hedgerow_sim.gd, stepped at its fixed DT; this screen draws it
 ## and plays its events.
 
@@ -38,9 +43,9 @@ const HUD_H := 110.0
 const PANEL_H := 262.0
 const FRAME := 16
 const BACKDROP_BLEED := 90.0
-## Cells of hedge above the lawn and of vegetable patch below it.
-const TOP := 0.75
-const FOOT := 0.95
+## Cells of hedge above the lawn (the gate stands in it) and below it.
+const TOP := 0.8
+const FOOT := 0.3
 const MAX_STEPS := 8
 const SHOT_LIFE := 0.2
 const LAWN := Color("9cc46a")
@@ -53,7 +58,13 @@ const SOIL := Color("8a6242")
 const SOIL_DEEP := Color("6e4a2f")
 const CABBAGE := Color("a9d27a")
 const CABBAGE_DEEP := Color("7fae52")
-const ROUTE := Color(1.0, 0.98, 0.9, 0.5)
+const KERB := Color("8c8475")
+const COBBLE := Color("c9bea9")
+const COBBLE_HI := Color("ddd3bf")
+const COBBLE_LO := Color("b3a78f")
+const MOSS := Color("7c9e4a")
+const WATER := Color("8cc4d8")
+const ARROW := Color(1.0, 0.98, 0.9, 0.55)
 const PICK_HI := Color("fff1a8")
 const BAD_CELL := Color(0.85, 0.3, 0.25, 0.35)
 
@@ -79,7 +90,14 @@ var _end: Control
 var _seat: Control
 var _acc := 0.0
 var _paused := false
-var _fast := false
+var _speed := 1
+## The tower a build chip's first press chose for the selected cell; the
+## second press plants it.
+var _armed := ""
+var _fired := {}          # tower id -> clock of its last shot
+var _bed_mesh: ArrayMesh
+var _bed_lives := -1
+var _bed_bump := -10.0
 var _started_at := 0
 var _best := 0
 var _clock := 0.0
@@ -145,7 +163,7 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", GAP)
 	_margins.add_child(col)
 
-	top_bar = FlatTopBar.new("Hedgerow", tr("HR_MOTTO"), true)
+	top_bar = FlatTopBar.new("Hedgerow TD", tr("HR_MOTTO"), true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.reset.connect(_on_reset)
@@ -260,6 +278,7 @@ func _layout_field() -> void:
 	var used := Vector2(Sim.COLS * _u, (Sim.ROWS + TOP + FOOT) * _u)
 	_origin = Vector2((s.x - used.x) * 0.5, (s.y - used.y) * 0.5 + TOP * _u)
 	_lawn = _build_lawn()
+	_bed_mesh = null
 	_towers_dirty = true
 	var box: Control = _banner.get_meta("box")
 	box.position = Vector2(0, s.y * 0.3)
@@ -284,7 +303,10 @@ func _new_game() -> void:
 	sim = Sim.new()
 	_acc = 0.0
 	_paused = false
-	_fast = false
+	_speed = 1
+	_armed = ""
+	_fired.clear()
+	_bed_lives = -1
 	_sel = Vector2i(-1, -1)
 	_shots.clear()
 	_pulses.clear()
@@ -329,7 +351,7 @@ func _process(delta: float) -> void:
 		return
 	if not _paused and _pick_card == null:
 		_clock += delta
-		var speed := 2.0 if _fast else 1.0
+		var speed := float(_speed)
 		_acc += minf(delta * speed, Sim.DT * MAX_STEPS * speed)
 		while _acc >= Sim.DT:
 			_acc -= Sim.DT
@@ -358,13 +380,19 @@ func _animate(delta: float) -> void:
 	for c: Dictionary in sim.creeps:
 		var want: float
 		if c.air:
-			want = PI * 0.5 + cos(c.pos.y * 0.7 + c.phase) * 0.5
+			want = _heading(c) + sin(_clock * 3.0 + c.phase) * 0.35
 		else:
-			var d: Vector2 = c.to - c.pos
-			want = d.angle() if d.length_squared() > 0.0001 else float(_ang.get(c.id, PI * 0.5))
+			want = _heading(c)
 		var was: float = _ang.get(c.id, want)
 		seen[c.id] = lerp_angle(was, want, 1.0 - exp(-delta * 12.0))
 	_ang = seen
+
+## Which way a pest is going: along its line, a little ahead of where it is.
+func _heading(c: Dictionary) -> float:
+	var line: PackedVector2Array = Sim.flight_line() if c.air else Sim.walk_line()
+	var ahead: Vector2 = Sim._along(line, Sim._fly_at if c.air else Sim._walk_at, c.d + 0.15, c.seg)[0]
+	var d: Vector2 = ahead - c.pos
+	return d.angle() if d.length_squared() > 0.000001 else float(_ang.get(c.id, PI * 0.5))
 
 func _on_field_input(event: InputEvent) -> void:
 	if _paused:
@@ -393,6 +421,7 @@ func _tap(c: Vector2i) -> void:
 
 func _select(c: Vector2i) -> void:
 	_sel = c
+	_armed = ""
 	_refresh_panel(true)
 
 func _pause(on: bool) -> void:
@@ -440,7 +469,7 @@ func _refresh_panel(force := false) -> void:
 		key = "tower/%d/%s/%d/%d" % [tw.id, tw.key, tw.level, sim.picked.size()]
 	elif Sim.inside(_sel):
 		key = "cell/%d,%d/%d/%s" % [_sel.x, _sel.y, sim.picked.size(), sim.build_block(_sel)]
-	key += "/g%d" % _gold_step()
+	key += "/g%d/%s" % [_gold_step(), _armed]
 	if key == _panel_key and not force:
 		return
 	_panel_key = key
@@ -497,24 +526,25 @@ func _panel_wave() -> void:
 		n = Sim.WAVES
 	var kind := Sim.wave_kind(n)
 	var el := Sim.wave_el(n)
-	var what: String = tr("HR_K_%d" % kind)
+	var count: int = 3 if n == Sim.WAVES else int(Sim.KINDS[kind].n)
+	var what: String = "%d × %s" % [count, tr("HR_K_%d" % kind)]
 	if el != Sim.El.NONE:
 		what += "  ·  " + tr("HR_EL_" + String(Sim.EL_KEY[el]).to_upper())
 	_panel_head(tr("HR_WAVE_N") % n, what)
 	var row := _chip_row()
 	var send := IconButton.new("chevron_right", " ", "SunButton")
 	send.name = "Send"
-	send.custom_minimum_size = Vector2(560, 130)
+	send.custom_minimum_size = Vector2(540, 130)
 	send.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	send.pressed.connect(_on_send)
 	row.add_child(send)
 	_send_btn = send
-	var speed := IconButton.new("chevron_right", "x2" if not _fast else "x1")
+	var speed := IconButton.new("chevron_right", "x%d" % _speed, "SunButton") if _speed > 1 else IconButton.new("chevron_right", "x1")
 	speed.name = "Speed"
-	speed.custom_minimum_size = Vector2(200, 130)
+	speed.custom_minimum_size = Vector2(220, 130)
 	speed.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	speed.pressed.connect(func() -> void:
-		_fast = not _fast
+		_speed = _speed % 3 + 1
 		_refresh_panel(true))
 	row.add_child(speed)
 	var sign := _WaveSign.new(kind, el)
@@ -546,24 +576,36 @@ func _update_send() -> void:
 
 func _panel_cell(c: Vector2i) -> void:
 	var why: String = sim.build_block(c)
-	if why == "edge":
+	if why == "road":
+		_panel_head(tr("HR_ROAD"), tr("HR_ROAD_LINE"))
+		return
+	if why != "":
 		_panel_head(tr("HR_CELL"), tr("HR_EDGE"))
 		return
-	_panel_head(tr("HR_CELL"), tr("HR_BLOCKS") if why == "blocks" else (tr("HR_BUSY") if why == "busy" else tr("HR_CELL_LINE")))
-	if why != "":
-		return
+	var line := tr("HR_CELL_LINE")
+	if _armed != "":
+		line = tr("HR_D_" + _armed.to_upper())
+	_panel_head(tr("HR_T_" + _armed.to_upper()) if _armed != "" else tr("HR_CELL"), line)
 	var row := _chip_row()
 	var keys: Array = Sim.BASIC.duplicate()
 	for e: int in sim.picked:
 		keys.append(Sim.EL_KEY[e])
 	for key: String in keys:
 		var cost: int = Sim.TOWERS[key].cost[0]
-		var chip := _TowerChip.new(key, 0, "%d" % cost, sim.gold >= cost)
+		var armed := _armed == key
+		var chip := _TowerChip.new(key, 0, "%d" % cost, sim.gold >= cost, tr("HR_PLANT") if armed else "")
 		chip.name = "Build_" + key
+		chip.armed = armed
 		chip.pressed.connect(func() -> void:
+			if _armed != key:
+				_armed = key
+				_fx.cue("select", 1.15)
+				_refresh_panel(true)
+				return
 			if sim.build(c, key):
 				_grow[c] = _clock
 				_towers_dirty = true
+				_armed = ""
 			_play_events()
 			_refresh_panel(true))
 		row.add_child(chip)
@@ -573,8 +615,20 @@ func _panel_tower(tw: Dictionary) -> void:
 	var title: String = tr("HR_T_" + String(tw.key).to_upper())
 	if (d.cost as Array).size() > 1:
 		title += "  " + tr("HR_LEVEL") % (tw.level + 1)
-	_panel_head(title, tr("HR_D_" + String(tw.key).to_upper()))
+	var line: String = tr("HR_D_" + String(tw.key).to_upper())
+	if int(tw.kills) > 0:
+		line += "  ·  " + tr("HR_KILLS") % tw.kills
+	_panel_head(title, line)
 	var row := _chip_row()
+	if float(d.dmg[0]) > 0.0:
+		var aim := _AimChip.new(int(tw.aim))
+		aim.name = "Aim"
+		aim.pressed.connect(func() -> void:
+			sim.cycle_aim(tw)
+			_fx.cue("select", 1.0 + 0.08 * tw.aim)
+			sim.events.clear()
+			_refresh_panel(true))
+		row.add_child(aim)
 	var up: int = sim.upgrade_cost(tw)
 	if up > 0:
 		var chip := _TowerChip.new(tw.key, tw.level + 1, "%d" % up, sim.gold >= up, tr("HR_UPGRADE"))
@@ -678,8 +732,12 @@ func _play_events() -> void:
 			"shot":
 				var from := Sim.centre(ev.cell)
 				_shots.append({"from": from, "to": ev.to, "key": ev.key, "t": 0.0, "level": ev.level})
+				if sim.at.has(ev.cell):
+					_fired[sim.at[ev.cell].id] = _clock
 				_shot_cue(ev.key)
 			"pulse":
+				if sim.at.has(ev.cell):
+					_fired[sim.at[ev.cell].id] = _clock
 				var els: Array = Sim.TOWERS[ev.key].els
 				_pulses.append({"at": Sim.centre(ev.cell), "r": ev.r, "col": Art.col(els[els.size() - 1]), "t": 0.0})
 				_shot_cue(ev.key)
@@ -687,7 +745,9 @@ func _play_events() -> void:
 				_hit_at[ev.id] = _clock
 			"kill":
 				var boss: bool = ev.kind == Sim.Kind.BOSS
-				_fx.puff(px(ev.pos), Art.col(ev.el), 10 if boss else 4)
+				_fx.puff(px(ev.pos), Art.col(ev.el), 10 if boss else 5)
+				if not Motion.reduce:
+					_fx.ring(px(ev.pos), _u * (1.1 if boss else 0.5), Art.col(ev.el).lightened(0.3))
 				if boss:
 					_fx.sparkle(px(ev.pos), Pal.SUN)
 					_fx.cue("kill_big")
@@ -696,7 +756,10 @@ func _play_events() -> void:
 				_pops.append({"pos": ev.pos, "text": "+%d" % ev.gold, "t": 0.0, "col": Pal.SUN_RAY})
 			"leak":
 				_fx.cue("leak")
-				_pops.append({"pos": Vector2(Sim.DOOR + 0.5, Sim.ROWS + 0.3), "text": "-%d" % ev.lives, "t": 0.0, "col": Pal.BAD})
+				var bed := Vector2(Sim.BED.position) + Vector2(Sim.BED.size) * 0.5
+				_pops.append({"pos": bed, "text": "-%d" % ev.lives, "t": 0.0, "col": Pal.BAD})
+				_fx.puff(px(bed), Pal.BAD, 6)
+				_bed_bump = _clock
 				_lives_l.pivot_offset = _lives_l.size * 0.5
 				Motion.bump(_lives_l, 0.3, 0.35)
 			"stun":
@@ -724,9 +787,7 @@ func _play_events() -> void:
 			"refuse":
 				_fx.cue("refuse")
 				var why := String(ev.why)
-				if why == "blocks":
-					_show_banner(tr("HR_BLOCKS"), "", 1.2)
-				elif why == "gold":
+				if why == "gold":
 					_gold_l.pivot_offset = _gold_l.size * 0.5
 					Motion.bump(_gold_l, 0.25, 0.3)
 			"pick":
@@ -823,16 +884,15 @@ func _refresh_hud() -> void:
 
 # --- drawing ---
 
-## The still lawn, built on resize: hedge round the sides and across the
-## top with the gap the pests come through, the rows of grass in a soft
-## check, and the vegetable patch they are after under the last row.
+## The still garden, built on resize: hedge all round with the gate in the
+## top one, the lawn in a soft check, the cobbled path spiralling in with
+## its kerbs and moss, and the scenery that holds cells no tower can take.
 func _build_lawn() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := field.size
 	b.fan(PackedVector2Array([Vector2.ZERO, Vector2(s.x, 0), s, Vector2(0, s.y)]), HEDGE_DEEP)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 21
-	# hedge texture everywhere; the lawn is laid over it
 	for i in 160:
 		var p := Vector2(rng.randf() * s.x, rng.randf() * s.y)
 		b.disc(p, rng.randf_range(0.18, 0.34) * _u, HEDGE if i % 3 else HEDGE_HI)
@@ -840,36 +900,165 @@ func _build_lawn() -> ArrayMesh:
 	var lawn_size := Vector2(Sim.COLS, Sim.ROWS) * _u
 	b.fan(Face.Builder.round_rect(lawn_at - Vector2(6, 6), lawn_size + Vector2(12, 12), 14.0), LAWN_EDGE)
 	b.fan(Face.Builder.round_rect(lawn_at, lawn_size, 10.0), LAWN)
+	var road: Dictionary = Sim.road()
 	for y in Sim.ROWS:
 		for x in Sim.COLS:
-			if (x + y) % 2 == 1:
+			var c := Vector2i(x, y)
+			if (x + y) % 2 == 1 and not road.has(c) and not Sim.in_bed(c):
 				b.fan(Face.Builder.round_rect(px(Vector2(x, y)) + Vector2(2, 2), Vector2(_u - 4, _u - 4), 8.0), LAWN_ALT)
-	# grass tufts and a few daisies
-	for i in 70:
-		var p := lawn_at + Vector2(rng.randf() * lawn_size.x, rng.randf() * lawn_size.y)
-		for k in 3:
-			var tip := p + Vector2((k - 1) * 0.06 * _u, -0.12 * _u)
-			b.stroke(PackedVector2Array([p, tip]), 0.025 * _u, LAWN_EDGE)
-	for i in 14:
-		var p := lawn_at + Vector2(rng.randf() * lawn_size.x, rng.randf() * lawn_size.y)
-		for k in 5:
-			b.disc(p + Vector2.from_angle(TAU * k / 5.0) * 0.05 * _u, 0.04 * _u, Color(1, 1, 1, 0.85))
-		b.disc(p, 0.035 * _u, Pal.SUN_RAY)
-	# the gap in the top hedge, a worn path out of it
-	var gap := px(Vector2(Sim.DOOR, -TOP))
-	b.fan(Face.Builder.round_rect(gap + Vector2(0.08 * _u, 0), Vector2(0.84 * _u, TOP * _u + 8.0), 10.0), SOIL)
-	b.fan(Face.Builder.round_rect(gap + Vector2(0.16 * _u, 0), Vector2(0.68 * _u, TOP * _u), 8.0), SOIL.lightened(0.12))
-	# the patch: tilled soil and cabbages across the foot
-	var foot := px(Vector2(0, Sim.ROWS)) + Vector2(0, 8)
-	var foot_size := Vector2(Sim.COLS * _u, FOOT * _u - 8)
-	b.fan(Face.Builder.round_rect(foot, foot_size, 14.0), SOIL_DEEP)
-	b.fan(Face.Builder.round_rect(foot + Vector2(4, 4), foot_size - Vector2(8, 10), 12.0), SOIL)
+	# grass tufts and daisies, off the path
+	for i in 110:
+		var q := Vector2(rng.randf() * Sim.COLS, rng.randf() * Sim.ROWS)
+		var qc := Vector2i(floori(q.x), floori(q.y))
+		if road.has(qc) or Sim.in_bed(qc):
+			continue
+		var p := px(q)
+		if i % 6 == 0:
+			for k in 5:
+				b.disc(p + Vector2.from_angle(TAU * k / 5.0) * 0.05 * _u, 0.04 * _u, Color(1, 1, 1, 0.85))
+			b.disc(p, 0.035 * _u, Pal.SUN_RAY)
+		else:
+			for k in 3:
+				var tip := p + Vector2((k - 1) * 0.06 * _u, -0.12 * _u)
+				b.stroke(PackedVector2Array([p, tip]), 0.025 * _u, LAWN_EDGE)
+	_path_into(b, rng)
+	_gate_into(b)
+	for c: Vector2i in Sim.SCENERY:
+		_scenery_into(b, c, String(Sim.SCENERY[c]))
+	# the bed's frame and soil; its cabbages are drawn by lives
+	var bed_at := px(Vector2(Sim.BED.position))
+	var bed_size := Vector2(Sim.BED.size) * _u
+	b.fan(Face.Builder.round_rect(bed_at + Vector2(4, 10), bed_size - Vector2(4, 4), 14.0), Color(0.15, 0.2, 0.08, 0.25))
+	b.fan(Face.Builder.round_rect(bed_at + Vector2(2, 2), bed_size - Vector2(4, 4), 14.0), Art.WOOD_DEEP)
+	b.fan(Face.Builder.round_rect(bed_at + Vector2(2, 2), bed_size - Vector2(4, 10), 14.0), Art.WOOD)
+	var inner := 0.16 * _u
+	b.fan(Face.Builder.round_rect(bed_at + Vector2(inner, inner), bed_size - Vector2(inner, inner) * 2.0, 8.0), SOIL_DEEP)
+	b.fan(Face.Builder.round_rect(bed_at + Vector2(inner, inner + 3), bed_size - Vector2(inner, inner) * 2.0 - Vector2(0, 3), 8.0), SOIL)
 	for k in 3:
-		var y := foot.y + foot_size.y * (0.25 + k * 0.25)
-		b.stroke(PackedVector2Array([Vector2(foot.x + 14, y), Vector2(foot.x + foot_size.x - 14, y)]), 3.0, SOIL_DEEP)
-	for i in Sim.COLS * 2:
-		var c := Vector2(foot.x + (i + 0.5) * _u * 0.5, foot.y + foot_size.y * (0.4 + 0.2 * (i % 2)))
-		_cabbage(b, c, _u * (0.2 + 0.03 * (i % 3)))
+		var y := bed_at.y + inner + (bed_size.y - inner * 2.0) * (0.25 + k * 0.25)
+		b.stroke(PackedVector2Array([Vector2(bed_at.x + inner + 6, y), Vector2(bed_at.x + bed_size.x - inner - 6, y)]), 2.5, SOIL_DEEP)
+	for k in 4:
+		var cx := inner * 0.5 + (bed_size.x - inner) * (k % 2)
+		var cy := inner * 0.5 + (bed_size.y - inner) * (k / 2)
+		b.disc(bed_at + Vector2(cx, cy), 0.07 * _u, Art.WOOD_DEEP)
+	return b.mesh()
+
+## The path: a kerb of darker stone, cobbles laid across it in courses, a
+## worn middle, and moss creeping in at the edges.
+func _path_into(b: Face.Builder, rng: RandomNumberGenerator) -> void:
+	var line := PackedVector2Array()
+	var raw: PackedVector2Array = Sim.walk_line()
+	for p in raw:
+		line.append(px(p))
+	# the entry runs up under the gate
+	line[0] = px(Vector2(raw[0].x, -TOP - 0.1))
+	b.stroke(line, 0.98 * _u, Color(0.15, 0.2, 0.08, 0.18))
+	b.stroke(line, 0.92 * _u, KERB)
+	b.stroke(line, 0.8 * _u, COBBLE)
+	# cobbles, course by course along the walk
+	var at: PackedFloat32Array = Sim._walk_at
+	var total := Sim.walk_length()
+	var d := -0.4
+	var course := 0
+	while d < total:
+		var got: Array = Sim._along(raw, at, clampf(d, 0.0, total), 1)
+		var p: Vector2 = got[0]
+		if d < 0.0:
+			p.y += d
+		var ahead: Vector2 = Sim._along(raw, at, clampf(d + 0.05, 0.0, total), 1)[0]
+		var dir := (ahead - p).normalized() if ahead != p else Vector2.DOWN
+		var side := dir.orthogonal()
+		var n := 4
+		for k in n:
+			var off := ((k + 0.5 + (0.5 if course % 2 else 0.0)) / n - 0.5) * 0.74
+			if absf(off) > 0.36:
+				continue
+			var cpos := px(p + side * off + dir * rng.randf_range(-0.02, 0.02))
+			var w := 0.16 * _u
+			var col := COBBLE_HI if rng.randf() < 0.45 else (COBBLE_LO if rng.randf() < 0.4 else COBBLE)
+			var xf := Transform2D(dir.angle() + rng.randf_range(-0.15, 0.15), cpos)
+			b.fan(xf * Face.Builder.round_rect(Vector2(-w * 0.55, -w * 0.5), Vector2(w * 1.1, w), w * 0.3), col)
+		d += 0.2
+		course += 1
+	# a worn, paler middle where the feet go
+	b.stroke(line, 0.3 * _u, Color(1, 0.98, 0.9, 0.12))
+	# moss at the kerbs
+	for i in 90:
+		var dd := rng.randf() * total
+		var got2: Array = Sim._along(raw, at, dd, 1)
+		var p2: Vector2 = got2[0]
+		var ahead2: Vector2 = Sim._along(raw, at, minf(total, dd + 0.05), 1)[0]
+		var sd := 1.0 if rng.randf() < 0.5 else -1.0
+		var side2 := (ahead2 - p2).normalized().orthogonal() * sd
+		b.disc(px(p2 + side2 * rng.randf_range(0.36, 0.46)), rng.randf_range(0.04, 0.08) * _u, MOSS if i % 3 else MOSS.lightened(0.2))
+
+## The gate in the top hedge: two stone posts and a lintel over the path.
+func _gate_into(b: Face.Builder) -> void:
+	var x: float = Sim.WAYPOINTS[0].x
+	var mid := px(Vector2(x, -TOP * 0.45))
+	var w := 0.62 * _u
+	var h := TOP * _u * 0.9
+	for sd: float in [-1.0, 1.0]:
+		var post := mid + Vector2(sd * w, 0)
+		b.fan(Face.Builder.round_rect(post + Vector2(-0.14 * _u + 3, -h * 0.5 + 5), Vector2(0.28 * _u, h), 6.0), Color(0.1, 0.12, 0.05, 0.3))
+		b.fan(Face.Builder.round_rect(post + Vector2(-0.14 * _u, -h * 0.5), Vector2(0.28 * _u, h), 6.0), KERB)
+		b.fan(Face.Builder.round_rect(post + Vector2(-0.11 * _u, -h * 0.5 + 3), Vector2(0.22 * _u, h - 10), 5.0), COBBLE_LO)
+		b.disc(post + Vector2(0, -h * 0.5), 0.13 * _u, COBBLE_HI)
+	b.fan(Face.Builder.round_rect(mid + Vector2(-w - 0.16 * _u, -h * 0.5 - 0.1 * _u), Vector2(2.0 * w + 0.32 * _u, 0.16 * _u), 5.0), KERB)
+
+func _scenery_into(b: Face.Builder, c: Vector2i, kind: String) -> void:
+	var at := px(Sim.centre(c))
+	var u := _u
+	match kind:
+		"rock":
+			b.ellipse(at + Vector2(3, 0.2 * u), 0.36 * u, 0.2 * u, Color(0.15, 0.2, 0.08, 0.25))
+			b.ellipse(at + Vector2(-0.08 * u, 0.02 * u), 0.3 * u, 0.24 * u, KERB)
+			b.ellipse(at + Vector2(0.14 * u, 0.08 * u), 0.22 * u, 0.17 * u, COBBLE_LO)
+			b.ellipse(at + Vector2(-0.12 * u, -0.06 * u), 0.14 * u, 0.09 * u, COBBLE_HI)
+			b.disc(at + Vector2(0.18 * u, -0.08 * u), 0.06 * u, MOSS)
+		"stump":
+			b.ellipse(at + Vector2(3, 0.16 * u), 0.34 * u, 0.2 * u, Color(0.15, 0.2, 0.08, 0.25))
+			b.disc(at, 0.3 * u, Art.WOOD_DEEP)
+			b.disc(at + Vector2(0, -2), 0.26 * u, Color("d9b78a"))
+			for r in [0.18, 0.1]:
+				b.stroke(Face.Builder.ring(at + Vector2(0, -2), r * u, r * u), 1.5, Color("b89468"), true)
+		"pond":
+			b.ellipse(at, 0.42 * u, 0.34 * u, KERB)
+			b.ellipse(at + Vector2(0, 1), 0.36 * u, 0.28 * u, WATER.darkened(0.15))
+			b.ellipse(at + Vector2(-0.04 * u, -0.02 * u), 0.3 * u, 0.22 * u, WATER)
+			b.ellipse(at + Vector2(-0.12 * u, -0.08 * u), 0.1 * u, 0.04 * u, Color(1, 1, 1, 0.5))
+			b.disc(at + Vector2(0.14 * u, 0.06 * u), 0.08 * u, BRAMBLE_PAD)
+		"bush":
+			b.ellipse(at + Vector2(3, 0.2 * u), 0.4 * u, 0.2 * u, Color(0.15, 0.2, 0.08, 0.25))
+			for k in 5:
+				b.disc(at + Vector2.from_angle(TAU * k / 5.0) * 0.16 * u, 0.2 * u, HEDGE)
+			b.disc(at + Vector2(-0.04 * u, -0.05 * u), 0.2 * u, HEDGE_HI)
+			for k in 3:
+				b.disc(at + Vector2.from_angle(TAU * k / 3.0 + 0.5) * 0.18 * u, 0.045 * u, Pal.BERRY)
+
+const BRAMBLE_PAD := Color("6fae4a")
+
+## The bed's cabbages, one gone for every life lost; rebuilt when the lives
+## change.
+func _build_bed() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var bed_at := px(Vector2(Sim.BED.position))
+	var inner := 0.16 * _u
+	var room := Vector2(Sim.BED.size) * _u - Vector2(inner, inner) * 2.0
+	var left := ceili(8.0 * float(sim.lives) / Sim.START_LIVES)
+	for i in 8:
+		var cx := bed_at.x + inner + room.x * (0.18 + 0.64 * (i % 3) / 2.0)
+		var cy := bed_at.y + inner + room.y * (0.2 + 0.3 * (i / 3))
+		if i >= 6:
+			cx = bed_at.x + inner + room.x * (0.35 + 0.3 * (i - 6))
+			cy = bed_at.y + inner + room.y * 0.82
+		var c := Vector2(cx, cy)
+		if i < left:
+			_cabbage(b, c, _u * (0.15 + 0.02 * (i % 3)))
+		else:
+			# a nibbled stalk where a cabbage was
+			b.disc(c + Vector2(0, 3), 0.05 * _u, CABBAGE_DEEP.darkened(0.2))
+			b.disc(c, 0.04 * _u, CABBAGE_DEEP)
 	return b.mesh()
 
 static func _cabbage(b: Face.Builder, at: Vector2, r: float) -> void:
@@ -879,21 +1068,15 @@ static func _cabbage(b: Face.Builder, at: Vector2, r: float) -> void:
 	b.disc(at, r * 0.7, CABBAGE)
 	b.disc(at + Vector2(-r * 0.2, -r * 0.2), r * 0.3, CABBAGE.lightened(0.2))
 
-## Every tower and the pests' walk, baked into one mesh whenever a tower
-## comes, goes or changes.
+## Every tower's still base, baked into one mesh whenever a tower comes,
+## goes or changes; the heads are drawn one by one so they can move.
 func _build_towers() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var route: Array[Vector2i] = sim.route()
-	for i in range(1, route.size()):
-		var a := px(Sim.centre(route[i - 1]))
-		var z := px(Sim.centre(route[i]))
-		for k in 3:
-			b.disc(a.lerp(z, (k + 0.5) / 3.0), 0.045 * _u, ROUTE)
 	for tw: Dictionary in sim.towers:
 		if _growing(tw.cell):
 			continue
-		Art.tower_into(b, tw.key, tw.level, _u, px(Sim.centre(tw.cell)))
-	return b.mesh()
+		Art.base_into(b, tw.key, tw.level, _u, px(Sim.centre(tw.cell)))
+	return null if b.verts.is_empty() else b.mesh()
 
 func _growing(c: Vector2i) -> bool:
 	return not Motion.reduce and _clock - float(_grow.get(c, -10.0)) < 0.35
@@ -904,6 +1087,18 @@ func _draw_field() -> void:
 	if _lawn == null or sim == null:
 		return
 	field.draw_mesh(_lawn, null)
+	# the bed, and a shake when a pest gets into it
+	if _bed_lives != sim.lives or _bed_mesh == null:
+		_bed_lives = sim.lives
+		_bed_mesh = _build_bed()
+	var bump := _clock - _bed_bump
+	var shake := Vector2.ZERO
+	if bump < 0.35 and not Motion.reduce:
+		shake = Vector2(sin(bump * 60.0) * 5.0 * (1.0 - bump / 0.35), 0)
+	field.draw_mesh(_bed_mesh, null, Transform2D(0.0, shake))
+	var under := Face.Builder.new()
+	_draw_gate(under)
+	_draw_trail(under)
 	var growing := false
 	for c: Vector2i in _grow:
 		if _growing(c):
@@ -911,20 +1106,15 @@ func _draw_field() -> void:
 	if _towers_dirty or growing:
 		_towers_mesh = _build_towers()
 		_towers_dirty = growing
-	field.draw_mesh(_towers_mesh, null)
-	# a tower popping in, drawn on its own until it has landed
-	for c: Vector2i in _grow:
-		if _growing(c) and sim.at.has(c):
-			var tw: Dictionary = sim.at[c]
-			var k := (_clock - float(_grow[c])) / 0.35
-			var sc := Motion.back_out(k)
-			field.draw_mesh(Art.tower(tw.key, tw.level, _u), null, Transform2D(0.0, Vector2(sc, sc), 0.0, px(Sim.centre(c))))
-	var under := Face.Builder.new()
 	_draw_selection(under)
 	_draw_pulses(under)
 	if not under.verts.is_empty():
 		_live = under.mesh()
 		field.draw_mesh(_live, null)
+	if _towers_mesh != null:
+		field.draw_mesh(_towers_mesh, null)
+	_draw_heads()
+	_draw_ghost()
 	_draw_creeps()
 	var o := Face.Builder.new()
 	_draw_bars(o)
@@ -933,6 +1123,86 @@ func _draw_field() -> void:
 		_over = o.mesh()
 		field.draw_mesh(_over, null)
 	_draw_pops()
+
+## Each tower's head: popping in when planted, kicking back when it fires,
+## a bramble swaying, an orb bobbing, a sling turning to its target.
+func _draw_heads() -> void:
+	for tw: Dictionary in sim.towers:
+		var at := px(Sim.centre(tw.cell))
+		if _growing(tw.cell):
+			var k := (_clock - float(_grow[tw.cell])) / 0.35
+			var sc := Motion.back_out(k)
+			field.draw_mesh(Art.base(tw.key, tw.level, _u), null, Transform2D(0.0, Vector2(sc, sc), 0.0, at))
+			field.draw_mesh(Art.head(tw.key, tw.level, _u), null, Transform2D(0.0, Vector2(sc, sc), 0.0, at))
+			continue
+		var rot := 0.0
+		var sc := Vector2.ONE
+		var off := Vector2.ZERO
+		if not Motion.reduce:
+			var since := _clock - float(_fired.get(tw.id, -10.0))
+			var kick := clampf(1.0 - since / 0.18, 0.0, 1.0)
+			sc = Vector2.ONE * (1.0 - 0.14 * kick * kick) if since < 0.06 else Vector2.ONE * (1.0 + 0.1 * kick)
+			match tw.key:
+				"thorn":
+					rot = sin(_clock * 1.6 + tw.id) * 0.06
+				"acorn":
+					rot = float(tw.face) + PI * 0.5
+					off = -Vector2.from_angle(float(tw.face)) * 0.08 * _u * kick
+				_:
+					off = Vector2(0, sin(_clock * 2.2 + tw.id * 0.7) * 0.03 * _u)
+		elif tw.key == "acorn":
+			rot = float(tw.face) + PI * 0.5
+		field.draw_mesh(Art.head(tw.key, tw.level, _u), null, Transform2D(rot, sc, 0.0, at + off))
+
+## A chosen build chip's tower, pale on the cell, with its reach.
+func _draw_ghost() -> void:
+	if _armed == "" or not Sim.inside(_sel) or sim.at.has(_sel):
+		return
+	var at := px(Sim.centre(_sel))
+	var a := 0.6 + (0.0 if Motion.reduce else 0.15 * sin(_clock * 5.0))
+	field.draw_mesh(Art.tower(_armed, 0, _u), null, Transform2D(0.0, at), Color(1, 1, 1, a))
+
+## The swirl in the gate, in the colour of the wave that is on or next.
+func _draw_gate(b: Face.Builder) -> void:
+	var x: float = Sim.WAYPOINTS[0].x
+	var mid := px(Vector2(x, -TOP * 0.35))
+	var n: int = mini(Sim.WAVES, sim.wave + (1 if sim.phase == Sim.Phase.BUILD else 0))
+	var el := Sim.wave_el(maxi(1, n))
+	var col: Color = Art.col(el) if el != Sim.El.NONE else Color("b8d68a")
+	var busy: bool = sim.phase == Sim.Phase.WAVE
+	var spin := 0.0 if Motion.reduce else _clock * (3.0 if busy else 1.2)
+	var r := 0.46 * _u
+	b.ellipse(mid, r, r * 0.62, Color(col.darkened(0.5), 0.8))
+	for arm in 3:
+		var pts := PackedVector2Array()
+		for k in 14:
+			var t := k / 13.0
+			var ang := spin + TAU * arm / 3.0 + t * 2.4
+			pts.append(mid + Vector2(cos(ang) * r * (0.95 - 0.8 * t), sin(ang) * r * 0.6 * (0.95 - 0.8 * t)))
+		b.stroke(pts, 0.07 * _u, Color(col.lightened(0.35), 0.85))
+	b.disc(mid, 0.1 * _u, Color(col.lightened(0.6), 0.9))
+
+## During the break, arrows drift along the path from the gate to the bed,
+## and a flying wave's line is dotted over the lawn.
+func _draw_trail(b: Face.Builder) -> void:
+	if sim.phase != Sim.Phase.BUILD or sim.is_over():
+		return
+	var n: int = mini(Sim.WAVES, sim.wave + 1)
+	var flying := Sim.wave_kind(n) == Sim.Kind.WASP
+	var line: PackedVector2Array = Sim.flight_line() if flying else Sim.walk_line()
+	var at: PackedFloat32Array = Sim._fly_at if flying else Sim._walk_at
+	var total := Sim.flight_length() if flying else Sim.walk_length()
+	var shift := 0.0 if Motion.reduce else fmod(_clock * 1.2, 1.2)
+	var d := shift
+	while d < total - 0.3:
+		var p: Vector2 = Sim._along(line, at, d, 1)[0]
+		var q: Vector2 = Sim._along(line, at, d + 0.1, 1)[0]
+		var dir := (q - p).normalized()
+		var fade := clampf(minf(d, total - d) / 1.5, 0.0, 1.0)
+		var tip := px(p + dir * 0.12)
+		var wing := dir.orthogonal() * 0.12
+		b.stroke(PackedVector2Array([px(p - dir * 0.06 + wing), tip, px(p - dir * 0.06 - wing)]), 0.045 * _u, Color(ARROW, ARROW.a * fade * (0.7 if flying else 1.0)))
+		d += 1.2
 
 func _draw_selection(b: Face.Builder) -> void:
 	if not Sim.inside(_sel):
@@ -944,8 +1214,12 @@ func _draw_selection(b: Face.Builder) -> void:
 		var bad: bool = sim.build_block(_sel) != ""
 		b.fan(Face.Builder.round_rect(at + Vector2(3, 3), Vector2(_u - 6, _u - 6), 10.0), BAD_CELL if bad else Color(1, 1, 0.85, 0.35 + 0.15 * pulse))
 		b.stroke(Face.Builder.round_rect(at + Vector2(3, 3), Vector2(_u - 6, _u - 6), 10.0), 4.0, Color(1, 1, 1, 0.9), true)
-		if not bad:
-			_ring(b, px(Sim.centre(_sel)), float(Sim.TOWERS.thorn.range) * _u, Color(1, 1, 1, 0.5))
+		if not bad and _armed != "":
+			var r0: float = float(Sim.TOWERS[_armed].range) * _u
+			var els0: Array = Sim.TOWERS[_armed].els
+			var tint0: Color = Art.col(els0[0]) if not els0.is_empty() else Color(1, 1, 1)
+			b.disc(px(Sim.centre(_sel)), r0, Color(tint0, 0.14))
+			_ring(b, px(Sim.centre(_sel)), r0, Color(tint0.lightened(0.3), 0.8))
 		return
 	var r: float = float(Sim.TOWERS[tw.key].range) * _u
 	var els: Array = Sim.TOWERS[tw.key].els
@@ -982,8 +1256,13 @@ func _draw_creeps() -> void:
 			sc *= 1.0 + 0.18 * (1.0 - since / 0.12)
 		if c.air and not Motion.reduce:
 			pos.y += sin(_clock * 6.0 + c.phase) * 0.05
+		elif not Motion.reduce and c.stun_t <= 0.0:
+			# a little waddle as it walks
+			rot += sin(_clock * 10.0 + c.phase) * 0.08
 		var tint := Color.WHITE
-		if c.stun_t > 0.0:
+		if since < 0.07 and not Motion.reduce:
+			tint = Color(1.7, 1.7, 1.7)
+		elif c.stun_t > 0.0:
 			tint = Color(0.75, 0.9, 1.0)
 		elif c.slow > 0.0:
 			tint = Color(0.85, 0.92, 1.0)
@@ -1229,6 +1508,9 @@ class _TowerChip extends Button:
 	var price := ""
 	var word := ""
 	var can := true
+	## A build chip's first press: the tower is shown on the cell, and the
+	## next press plants it.
+	var armed := false
 
 	func _init(k: String, lv: int, p: String, ok: bool, w := "") -> void:
 		key = k
@@ -1255,6 +1537,9 @@ class _TowerChip extends Button:
 			draw_circle(c + Vector2(0, 2), 26.0, Color("c99a63"))
 			draw_circle(c + Vector2(-8, -6), 10.0, Pal.SUN_RAY)
 			draw_circle(c + Vector2(10, -2), 10.0, Pal.SUN)
+		if armed:
+			draw_style_box(CozyTheme.chip(Color("fff3c4"), 26, Pal.SUN, 5), Rect2(Vector2.ZERO, size))
+			draw_mesh(Art.tower(key, level, 92.0), null, Transform2D(0.0, c), Color(1, 1, 1, alpha))
 		var font := get_theme_font("font", "SheetTitle")
 		var small := get_theme_font("font", "CardBlurb")
 		var y := 136.0
@@ -1312,3 +1597,41 @@ class _WaveSign extends Control:
 		draw_circle(c, size.x * 0.46, Color("e6f0da"))
 		draw_arc(c, size.x * 0.46, 0, TAU, 48, Art.col(el), 5.0, true)
 		draw_mesh(Art.creep(kind, el, 0, 96.0 if kind != Sim.Kind.BOSS else 60.0), null, Transform2D(0.0, c + Vector2(0, 4)))
+
+## A tower's aim: a target ring with the rule under it; each press moves to
+## the next (first, last, strong, close).
+class _AimChip extends Button:
+	const WORDS := ["HR_AIM_FIRST", "HR_AIM_LAST", "HR_AIM_STRONG", "HR_AIM_CLOSE"]
+	var aim := 0
+
+	func _init(a: int) -> void:
+		aim = a
+		focus_mode = Control.FOCUS_NONE
+		custom_minimum_size = Vector2(146, 170)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		for st in ["normal", "hover", "focus"]:
+			add_theme_stylebox_override(st, CozyTheme.chip(Color("fffdf8"), 26))
+		add_theme_stylebox_override("pressed", CozyTheme.chip(Color("fffdf8"), 26, Color.TRANSPARENT, 0, true))
+		material = CanvasItemMaterial.new()
+
+	func _draw() -> void:
+		var c := Vector2(size.x * 0.5, 60)
+		draw_arc(c, 32.0, 0, TAU, 40, Pal.BAD, 6.0, true)
+		draw_arc(c, 18.0, 0, TAU, 32, Pal.BAD, 5.0, true)
+		draw_circle(c, 6.0, Pal.BAD)
+		for k in 4:
+			var d := Vector2.from_angle(TAU * k / 4.0)
+			draw_line(c + d * 26.0, c + d * 42.0, Pal.TEXT, 4.0, true)
+		# which rule, as a mark: an arrow ahead, an arrow back, a heart, a dot
+		var small := get_theme_font("font", "CardBlurb")
+		var font := get_theme_font("font", "SheetTitle")
+		var kicker := tr("HR_AIM")
+		var kw := small.get_string_size(kicker, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+		draw_string(small, Vector2((size.x - kw) * 0.5, 118), kicker, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Pal.TEXT_DIM)
+		var word := tr(WORDS[aim])
+		var fs := 30
+		var w := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		while w > size.x - 12 and fs > 18:
+			fs -= 1
+			w = font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(font, Vector2((size.x - w) * 0.5, 154), word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)

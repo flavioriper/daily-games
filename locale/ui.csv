@@ -210,14 +210,14 @@ FF_AGAIN,Play again,Jogar de novo,Jugar otra vez
 FF_BACK,Back to the arcade,Voltar ao fliperama,Volver al arcade
 FF_PAUSED,Paused,Pausado,En pausa
 FF_RESUME,Tap to go on,Toque para continuar,Toca para seguir
-ARC_HEDGEROW_BLURB,"Plant towers that make the maze: six elements, fifteen fusions, forty waves of garden pests.","Plante torres que formam o labirinto: seis elementos, quinze fusões, quarenta ondas de pragas.","Planta torres que forman el laberinto: seis elementos, quince fusiones, cuarenta oleadas de plagas."
+ARC_HEDGEROW_BLURB,"Guard the garden path: six elements, fifteen fusions, forty waves of pests.","Defenda o caminho do jardim: seis elementos, quinze fusões, quarenta ondas de pragas.","Defiende el camino del jardín: seis elementos, quince fusiones, cuarenta oleadas de plagas."
 ARC_BEST_WAVE,Furthest: wave %d,Mais longe: onda %d,Más lejos: oleada %d
-HR_MOTTO,"Grow the maze, guard the patch","Cultive o labirinto, guarde a horta","Cultiva el laberinto, guarda el huerto"
+HR_MOTTO,"Hold the path, guard the bed","Segure o caminho, guarde a horta","Defiende el camino, guarda el huerto"
 HR_GOLD,GOLD,OURO,ORO
 HR_LIVES,LIVES,VIDAS,VIDAS
 HR_WAVE,WAVE,ONDA,OLEADA
 HR_WELCOME,Guard the patch,Guarde a horta,Guarda el huerto
-HR_WELCOME_LINE,Your towers are the maze,Suas torres são o labirinto,Tus torres son el laberinto
+HR_WELCOME_LINE,Plant towers beside the path,Plante torres ao lado do caminho,Planta torres junto al camino
 HR_WAVE_N,Wave %d,Onda %d,Oleada %d
 HR_K_0,Aphids,Pulgões,Pulgones
 HR_K_1,Ants · quick,Formigas · rápidas,Hormigas · rápidas
@@ -237,10 +237,16 @@ HR_INCOMING,Here they come,Lá vêm eles,Ahí vienen
 HR_SEND_FIRST,Send wave 1 · %ds,Mandar onda 1 · %ds,Enviar oleada 1 · %ds
 HR_SEND,Send now · %ds · +%d,Mandar já · %ds · +%d,Enviar ya · %ds · +%d
 HR_CELL,Plant here,Plantar aqui,Plantar aquí
-HR_CELL_LINE,Towers are walls: the pests walk round them,As torres são muros: as pragas contornam,Las torres son muros: las plagas las rodean
-HR_EDGE,The gap and the patch must stay clear,A entrada e a horta ficam livres,La entrada y el huerto quedan libres
-HR_BLOCKS,That would close the last way through,Isso fecharia a última passagem,Eso cerraría el último paso
-HR_BUSY,A pest is standing there,Tem uma praga ali,Hay una plaga ahí
+HR_CELL_LINE,"Choose a tower, then tap it again to plant",Escolha uma torre e toque de novo para plantar,Elige una torre y tócala otra vez para plantar
+HR_EDGE,Nothing can be planted here,Nada pode ser plantado aqui,Aquí no se puede plantar
+HR_ROAD,The path,O caminho,El camino
+HR_ROAD_LINE,The pests walk here: plant on the grass beside it,As pragas andam aqui: plante na grama ao lado,Las plagas pasan por aquí: planta en la hierba de al lado
+HR_PLANT,Plant,Plantar,Plantar
+HR_AIM,Aim,Mira,Mira
+HR_AIM_FIRST,First,Primeira,Primera
+HR_AIM_LAST,Last,Última,Última
+HR_AIM_STRONG,Strong,Forte,Fuerte
+HR_AIM_CLOSE,Close,Perto,Cerca
 HR_LEVEL,Lv %d,Nv %d,Nv %d
 HR_UPGRADE,Upgrade,Melhorar,Mejorar
 HR_SELL,Sell,Vender,Vender
@@ -258,7 +264,7 @@ HR_LOST_CARD,The pests got to the patch,As pragas chegaram à horta,Las plagas l
 HR_WAVES_HELD,Wave %d,Onda %d,Oleada %d
 HR_KILLS,%d pests,%d pragas,%d plagas
 HR_T_THORN,Thorn,Espinho,Espina
-HR_D_THORN,Quick darts. Cheap walls for the maze.,Dardos rápidos. Muros baratos para o labirinto.,Dardos rápidos. Muros baratos para el laberinto.
+HR_D_THORN,Quick darts. Cheap and cheerful.,Dardos rápidos. Barato e animado.,Dardos rápidos. Barato y alegre.
 HR_T_ACORN,Acorn,Bolota,Bellota
 HR_D_ACORN,Lobs acorns that hit a small crowd.,Lança bolotas que atingem um grupinho.,Lanza bellotas que golpean a un grupito.
 HR_T_SUN,Sun,Sol,Sol

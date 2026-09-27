@@ -462,7 +462,7 @@ SETS = {
         "game_over":("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best": ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
-    # Hedgerow (Arcade, arcade/hedgerow_screen.gd): a mazing tower defence
+    # Hedgerow TD (Arcade, arcade/hedgerow_screen.gd): a path tower defence
     # after the element tower-defence genre, in a daytime garden. The shots
     # fire many times a second across a board, so they are short and quiet.
     "hedgerow": {

@@ -30,7 +30,7 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const CHIP_H := 84
 const GAMES := ["firefly", "hedgerow"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow"}
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB"}
 ## How far a game went, in its own words: a stage, or a wave.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE"}
@@ -230,7 +230,7 @@ class FireflyBanner extends Control:
 		var m := Art.mesh(look, frame, u)
 		draw_mesh(m, null, xf)
 
-## Hedgerow's banner: a strip of lawn with a walk winding between towers,
+## Hedgerow TD's banner: a strip of lawn with a cobbled path winding between towers,
 ## pests coming down it in their elements' colours. Drawn once.
 class HedgerowBanner extends Control:
 	var _keep: Array = []
@@ -246,7 +246,7 @@ class HedgerowBanner extends Control:
 		var u := minf(size.y / 2.6, size.x / 7.5)
 		var mid := size * 0.5
 		var b := Face.Builder.new()
-		# the lawn, and a worn walk snaking across it
+		# the lawn, and a cobbled path snaking across it
 		var lawn := Vector2(u * 7.2, u * 2.3)
 		var at := mid - lawn * 0.5
 		b.fan(Face.Builder.round_rect(at - Vector2(5, 5), lawn + Vector2(10, 10), 16.0), Color("7fa84a", 0.9))
@@ -255,7 +255,12 @@ class HedgerowBanner extends Control:
 		for i in 25:
 			var x := at.x + lawn.x * i / 24.0
 			walk.append(Vector2(x, mid.y + sin(i / 24.0 * TAU * 1.5) * u * 0.62))
-		b.stroke(walk, u * 0.5, Color("c9ae84", 0.8))
+		b.stroke(walk, u * 0.58, Color("8c8475"))
+		b.stroke(walk, u * 0.48, Color("c9bea9"))
+		for i in range(walk.size() - 1):
+			for k in 3:
+				var q := walk[i].lerp(walk[i + 1], k / 3.0) + Vector2(0, ((i + k) % 3 - 1) * u * 0.12)
+				b.disc(q, u * 0.07, Color("ddd3bf") if (i + k) % 2 else Color("b3a78f"))
 		var mesh := b.mesh()
 		_keep.append(mesh)
 		draw_mesh(mesh, null)
