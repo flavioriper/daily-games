@@ -39,6 +39,14 @@ BAL_HINT,That one belongs right there,Essa vai bem ali,Esa va justo ahí
 BAL_CLEARED,Everything back in the basket,Tudo de volta na cesta,Todo de vuelta a la cesta
 BAL_SOLVED,Dead level. Beautifully weighed.,Nivelada no ponto. Que bela pesagem.,Nivelado del todo. Qué bien pesado.
 BAL_WIN,Perfectly balanced!,Equilíbrio perfeito!,¡Equilibrio perfecto!
+BAL_W_CLOSER,Closer!,Mais perto!,¡Más cerca!
+BAL_W_NICE,Nice!,Boa!,¡Bien!
+BAL_W_GREAT,Great!,Ótimo!,¡Genial!
+BAL_W_SUPERB,Superb!,Incrível!,¡Increíble!
+BAL_W_SO_CLOSE,So close!,Quase lá!,¡Casi!
+BAL_W_LEVEL,Level!,Nivelada!,¡Nivelado!
+BAL_W_BALANCED,Balanced!,Equilibrada!,¡Equilibrado!
+BAL_W_NO_HINTS,No hints needed,Sem nenhuma dica,Sin ninguna pista
 BAL_SHARE,%d fruit · %d cups,%d frutas · %d encaixes,%d frutas · %d huecos
 BAL_SAYS_1,%s weighs the same as %s.,%s pesa o mesmo que %s.,%s pesa lo mismo que %s.
 BAL_SAYS_N,%s weigh the same as %s.,%s pesam o mesmo que %s.,%s pesan lo mismo que %s.

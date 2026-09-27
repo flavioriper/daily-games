@@ -350,6 +350,22 @@ func _initialize() -> void:
 		_shots = [0.35, 1.75, 1.95, 2.25, 2.6, 2.9, 3.8]
 		_idle_from = 4.0
 		_idle_to = 6.0
+	if _id == "balance" and _mode == "win":
+		# Every fruit but one seated on its answer, then the last dragged
+		# on: the landing, the rest, the solve and its rewards.
+		_shots = [0.35, 2.3, 5.0, 5.3, 5.7, 6.2, 6.9, 7.6]
+		_idle_from = 5.0
+		_idle_to = 7.5
+	elif _id == "balance" and _mode == "rest":
+		# The drag, then an idle window long after every sticker is gone.
+		_shots = [0.35, 2.4, 6.0]
+		_idle_from = 6.5
+		_idle_to = 8.5
+	elif _id == "balance" and _mode == "hint":
+		_shots = [0.35, 1.75, 1.85, 1.95, 2.1, 2.3, 2.6]
+	elif _id == "balance" and _mode == "level":
+		# The level moment, called straight: its sticker, confetti and cheer.
+		_shots = [0.35, 1.72, 1.85, 2.0, 2.3, 2.7, 3.4]
 	if _id == "rings" and _mode == "win":
 		# The drop lands about 0.74 s after the id opens (TAP_AT plus the
 		# drop delay plus the flight), the wash runs another 0.18 s and the
@@ -1215,6 +1231,27 @@ func _tap_key(name: String) -> void:
 ## strip shows a flight, a landing and the beam's swing.
 func _step_balance() -> void:
 	var st = _puzzle.state
+	if _mode == "level":
+		_puzzle._cheer_level()
+		return
+	if _mode == "hint":
+		_puzzle.hint()
+		return
+	if _mode == "win":
+		var last := -1
+		for f in st.fruit.size():
+			if st.loose(f):
+				if last < 0:
+					last = f
+					continue
+				st.place(f, st.answer[f])
+				_puzzle.sim.to_cup_now(f, st.answer[f])
+		_puzzle.sim.snap()
+		var xf0: Transform2D = _puzzle.get_global_transform_with_canvas()
+		var from0: Vector2 = xf0 * _puzzle.fruit_to_local(last)
+		var to0: Vector2 = xf0 * (_puzzle.cup_to_local(st.answer[last]) + Vector2(0.0, -120.0))
+		_begin_drag(from0, to0 - from0)
+		return
 	for f in st.fruit.size():
 		if st.loose(f) and st.at[f] == 0:
 			var xf: Transform2D = _puzzle.get_global_transform_with_canvas()

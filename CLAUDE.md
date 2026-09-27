@@ -1410,6 +1410,15 @@ pointing `seed_as` at them. Specs:
   4/255. Four cues generated (`lift`, `land`, `thud`, `tock`; `land` is
   pitched by weight), `enter` and `reset` re-taken, awaiting the user's
   listen.
+  **Rewards made loud on 2026-09-27** (the spec's last amendment): a sky
+  layer behind the board (turning sun, bunting, drifting clouds, a rainbow
+  on the solve) and an air layer over the fruit (trails, sweat, two
+  butterflies), a hanging sign that swings and pops, a picnic blanket
+  under the basket; `arcade/rewards.gd` over the card cheers a move that
+  leaves the beam nearer level (Closer! to Superb!, So close!), a Level!
+  and the Balanced! solve. 91 draw calls at rest, 204 at the solve's peak,
+  ANGLE agreeing. The solve is checked on any calm frame, not only on the
+  step into calm, or a snapped board never solves.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of

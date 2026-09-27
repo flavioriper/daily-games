@@ -154,3 +154,49 @@ settles). `Fx2D.cue` plays silence for any file not yet generated.
   ANGLE agreeing on 87 and within 4/255; generation worst 0.7 / 10.4 / 5.9 /
   29.2 ms (Easy to Insane, 40 seeds a band); the win harness solves it by
   touch.
+
+## Amendment: polish and loud rewards (2026-09-27)
+
+The user asked for more design and animation and for rewards "way more
+visual, even if silly, to keep users playing". Built straight from a chat
+design, no concept tab.
+
+- **The scene**: the sky moved out of the still mesh into a layer behind the
+  board (`_sky`, `show_behind_parent`) that redraws every frame: a smiling
+  sun whose rays turn and swell on a good move, two clouds drifting, a line
+  of bunting that flutters harder after a cheer, and on the solve a rainbow
+  that grows over the seesaw from its left foot (the hills in the still mesh
+  cover its feet). The basket sits lower with fruit higher in it, on a red
+  gingham blanket that runs off the card's foot, with an ear at each end.
+- **The sign hangs** on two ropes from the top of the card, a wooden board
+  that swings after the beam on a spring (`_step_sign`); its number pops
+  whenever the resting reading changes, and it glows at 0.
+- **Motion**: a lifted fruit stretches up out of the basket; a thrown one
+  leans into its flight and leaves a trail in its own colour (gold, with
+  stars, for a hint); a landing kicks dust, leaves and petals off the plank
+  and jolts every fruit already on it; a fruit at the low end sweats; the
+  bubble stretches as it slides; the glass warms gold as the beam nears
+  level. Two butterflies wander over the meadow. These live in a second
+  small layer over the fruit (`_air`), one mesh rebuilt each frame.
+- **Rewards**, through `arcade/rewards.gd` (Firefly's and Molehill's kit,
+  laid over the card): a move after which the beam rests *nearer* level
+  than the last time it rested is cheered -- Closer!, Nice!, Great!,
+  Superb! in a row, So close! within two of level -- with sparks, stars, a
+  ring off the glass and a `tock` pitched up a step each time; a move away
+  just resets the run, never scolds. Level with fruit still in the basket is
+  a big Level! over a sunburst, confetti out of the glass, the plank
+  flashing gold and every fruit on it hopping twice. The solve is
+  Balanced! in rainbow letters, No hints needed under it when none were
+  used, star and confetti rain, every cup bursting in its fruit's colour
+  from the middle outwards, the plank gold and pulsing, three waves of hops
+  and the rainbow. `WIN_HOLD` went from 1.4 to 2.8 s so the win screen lets
+  it play. Words are `BAL_W_*` in `locale/boards.csv`.
+- **The solve is also checked on any calm frame**, not only on the step
+  into calm: a board solved and snapped within one frame (the win harness)
+  never saw the beam move and so never solved. `tests/_win.gd -- balance`
+  failed on `main` for this reason before the fix, and passes now.
+- `tests/_shot_anim.gd -- balance` takes `win`, `level`, `hint` and `rest`.
+- Measured at `--resolution 810x1440`: **91** draw calls at rest (87
+  before), idle 3.65 ms twice (3.43 before); ~130 with a word up; up to
+  **204** at the solve's peak (~10 ms there on this Mac); ANGLE agreeing on
+  91; the reduce-motion pair pixel-identical.
