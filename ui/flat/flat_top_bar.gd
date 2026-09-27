@@ -25,12 +25,9 @@ signal settings
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
-const Ink = preload("res://ui/flat/ink.gd")
 
 const HEIGHT := 180.0
 const BUTTON := Vector2(110, 110)
-## The ink skin's buttons: smaller squares, as the mock draws them.
-const INK_BUTTON := Vector2(96, 96)
 const BADGE_HOP := -6.0
 const BADGE_HOP_TIME := 0.3
 const BADGE_CYCLE := 2.4
@@ -39,14 +36,10 @@ const BADGE_CYCLE := 2.4
 const LEAF_AT := 0.2
 const LEAF := 40.0
 const BRAND_TITLE := "BINAiRO"
-## The ink skin sets its title flush left, this far into the block.
-const INK_INDENT := 22.0
 
 var title_text := ""
 var motto_text := ""
 var brand_binairo := false
-## The ink skin (ui/flat/ink.gd): everything in one charcoal, no sun on the i.
-var ink := false
 ## Whether this bar carries Reset (a board with no actions row).
 var with_reset := false
 var back_button: Button
@@ -62,12 +55,9 @@ var _bounce: Tween
 ## the face the theme gave it rather than the one the last fit left.
 var _base_size: Dictionary = {}
 
-func _init(title := "", motto := "", carry_reset := false, branded := false, inked := false) -> void:
+func _init(title := "", motto := "", carry_reset := false, branded := false) -> void:
 	brand_binairo = branded
-	ink = inked
 	title_text = BRAND_TITLE if brand_binairo else title
-	if ink:
-		title_text = title_text.to_upper()
 	motto_text = motto if brand_binairo else motto.to_upper()
 	with_reset = carry_reset
 	enter_from = Vector2(0, -80)
@@ -87,9 +77,6 @@ func _build() -> void:
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	if ink:
-		col.offset_left = INK_INDENT
-		col.offset_top = 44.0
 	col.add_theme_constant_override("separation", 0)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_block.add_child(col)
@@ -98,20 +85,12 @@ func _build() -> void:
 	_title.text = title_text
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_title)
-	if ink:
-		_title.add_theme_color_override("font_color", Ink.INK)
-		_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	else:
-		_title.add_child(SunDot.new(_title))
+	_title.add_child(SunDot.new(_title))
 	_motto = Label.new()
 	_motto.theme_type_variation = "BinairoMotto" if brand_binairo else "FlatMotto"
 	_motto.text = motto_text
 	_motto.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_motto.visible = motto_text != ""
-	if ink:
-		_motto.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		_motto.add_theme_color_override("font_color", Ink.INK_DIM)
-		_motto.add_theme_font_size_override("font_size", 28)
 	col.add_child(_motto)
 	# The leaf draws over the block once the title has a size to hang from.
 	var leaf := Control.new()
@@ -178,13 +157,9 @@ func _fit(label: Label, wide: float) -> void:
 ## top bar's do, dressed as the first screen's header buttons are.
 func _button(icon: String, sig: Signal) -> Button:
 	var b := IconButton.new(icon)
-	b.custom_minimum_size = INK_BUTTON if ink else BUTTON
+	b.custom_minimum_size = BUTTON
 	# The menu header's utility buttons: white paper lifted off the painting.
-	if ink:
-		Ink.button(b, Ink.CARD, Ink.INK, 24)
-		b.badge_colour = Ink.INK
-	else:
-		CozyTheme.lift_button(b, Pal.SURFACE, int(BUTTON.x * 0.29))
+	CozyTheme.lift_button(b, Pal.SURFACE, int(BUTTON.x * 0.29))
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(func() -> void: sig.emit())
 	_inner.add_child(b)
@@ -200,21 +175,14 @@ func _draw_leaf(ci: Control) -> void:
 	var font := _title.get_theme_font("font")
 	var font_size := _title.get_theme_font_size("font_size")
 	var text_left := _title.position.x + (_title.size.x - text_w) * 0.5
-	if ink:
-		text_left = _title.position.x + INK_INDENT
 	var root_x := _title.position.x + _title.size.x * 0.5 + text_w * LEAF_AT
 	if brand_binairo:
 		var before_a := font.get_string_size("BIN", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		var a_w := font.get_string_size("A", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		root_x = text_left + before_a + a_w * 0.52
 	var top := Vector2(root_x, _title.position.y + _title.size.y * 0.16)
-	if ink:
-		top.y = _title.position.y + _title.size.y * 0.6
 	var tip := top + Vector2(2.0, -30.0)
-	var green := Ink.INK if ink else Pal.LEAF
-	if ink:
-		tip = top + Vector2(2.0, -28.0)
-	ci.draw_polyline(PackedVector2Array([top, top + Vector2(4.0, -16.0), tip]), green, 7.0, true)
+	ci.draw_polyline(PackedVector2Array([top, top + Vector2(4.0, -16.0), tip]), Pal.LEAF, 7.0, true)
 	# The leaf icon's base is at (0.15, 0.85) of its rect and its tip at the
 	# opposite corner, so it points to the upper right from a base at the
 	# lower left; a mirrored rect (negative width) points it to the upper
@@ -222,10 +190,10 @@ func _draw_leaf(ci: Control) -> void:
 	# leaf grows up and outward, as the sprout's do. (Until 2026-09-18 the
 	# rects stood on the wrong sides and the leaves hung with their stalks
 	# outboard and their tips turned in.)
-	var right := LEAF * (1.15 if ink else 1.0)
-	var left := LEAF * (1.0 if ink else 0.85)
-	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-0.15 * right, 2.0 - 0.85 * right), Vector2(right, right)), green)
-	Icons.paint(ci, "leaf", Rect2(tip + Vector2(0.15 * left, 2.0 - 0.85 * left), Vector2(-left, left)), green)
+	var right := LEAF
+	var left := LEAF * 0.85
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(-0.15 * right, 2.0 - 0.85 * right), Vector2(right, right)), Pal.LEAF)
+	Icons.paint(ci, "leaf", Rect2(tip + Vector2(0.15 * left, 2.0 - 0.85 * left), Vector2(-left, left)), Pal.LEAF)
 
 func refresh(puzzle) -> void:
 	var caps: Array = puzzle.capabilities() if puzzle != null else []

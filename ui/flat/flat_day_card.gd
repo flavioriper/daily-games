@@ -11,7 +11,6 @@ extends "res://ui/hud/panel.gd"
 
 const Icons = preload("res://ui/icons.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
-const Ink = preload("res://ui/flat/ink.gd")
 
 const HEIGHT := 120.0
 const RADIUS := 32
@@ -28,28 +27,16 @@ var _island: Label
 var _stats: Label
 var _hearts_ci: Control
 var _hearts := 0
-## The ink skin (ui/flat/ink.gd): plain card, a pale sun over a line of
-## hills in place of the painting, the hearts in ink.
-var ink := false
 
-func _init(inked := false) -> void:
-	ink = inked
+func _init() -> void:
 	enter_from = Vector2(-120, 0)
 
 func _build() -> void:
+	_inner.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, RADIUS, 0))
 	_inner.custom_minimum_size.y = HEIGHT
-	if ink:
-		_inner.add_theme_stylebox_override("panel", Ink.paper(Ink.CARD, RADIUS, 0))
-		_inner.material = Ink.plain()
-		var art := Control.new()
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.draw.connect(_draw_ink_art.bind(art))
-		_inner.add_child(art)
-	else:
-		_inner.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, RADIUS, 0))
-		_vista = Vistas.day_plate()
-		(_vista.material as ShaderMaterial).set_shader_parameter("radius", float(RADIUS))
-		_inner.add_child(_vista)
+	_vista = Vistas.day_plate()
+	(_vista.material as ShaderMaterial).set_shader_parameter("radius", float(RADIUS))
+	_inner.add_child(_vista)
 	var pad := MarginContainer.new()
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for side in ["margin_top", "margin_bottom"]:
@@ -73,9 +60,6 @@ func _build() -> void:
 	_island = Label.new()
 	_island.theme_type_variation = "CardBodyDim"
 	col.add_child(_island)
-	if ink:
-		_day.add_theme_color_override("font_color", Ink.INK)
-		_island.add_theme_color_override("font_color", Ink.INK_DIM)
 	_hearts_ci = Control.new()
 	_hearts_ci.custom_minimum_size = Vector2(HEARTS * HEART + (HEARTS - 1) * HEART_GAP, HEART) + PILL_PAD * 2.0
 	_hearts_ci.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -102,8 +86,7 @@ func set_day(n: int, island: String) -> void:
 	_day.text = tr("MENU_DAY") % n
 	_island.text = island
 	_island.visible = island != ""
-	if _vista != null:
-		Vistas.set_day_vista(_vista, island, Pal.ACCENT)
+	Vistas.set_day_vista(_vista, island, Pal.ACCENT)
 
 ## Today's boards solved, of the three that keep the streak.
 func set_hearts(n: int) -> void:
@@ -117,34 +100,7 @@ func set_stats(text: String) -> void:
 	_stats.visible = text != ""
 	_hearts_ci.visible = text == ""
 
-## The ink card's picture: a pale sun just risen over a thin line of hills,
-## faint enough to read the day over.
-func _draw_ink_art(ci: Control) -> void:
-	var w := ci.size.x
-	var h := ci.size.y
-	if w <= 0.0:
-		return
-	ci.draw_circle(Vector2(w * 0.6, h * 0.5), h * 0.25, Color(Ink.HAZE, 0.45), true, -1.0, true)
-	var pts := PackedVector2Array()
-	for i in 41:
-		var x := w * (0.42 + 0.4 * i / 40.0)
-		var t := float(i) / 40.0
-		pts.append(Vector2(x, h * (0.78 - 0.1 * sin(t * PI * 1.6 + 0.4) - 0.05 * sin(t * PI * 4.0))))
-	var fill := pts.duplicate()
-	fill.append(Vector2(w * 0.82, h))
-	fill.append(Vector2(w * 0.42, h))
-	ci.draw_colored_polygon(fill, Color(Ink.HAZE, 0.22))
-	ci.draw_polyline(pts, Color(Ink.INK, 0.25), 2.0, true)
-
 func _draw_hearts() -> void:
-	if ink:
-		for i in HEARTS:
-			var box := Rect2(PILL_PAD + Vector2(i * (HEART + HEART_GAP), 0.0), Vector2(HEART, HEART))
-			if i < _hearts:
-				Icons.paint(_hearts_ci, "heart", box, Ink.INK)
-			else:
-				Icons.paint(_hearts_ci, "heart_line", box, Ink.INK)
-		return
 	var pill := Rect2(Vector2.ZERO, _hearts_ci.size)
 	var sb := CozyTheme.card(Color(Pal.SURFACE, 0.9), int(pill.size.y * 0.5), Pal.LINE, 0, 0)
 	_hearts_ci.draw_style_box(sb, pill)

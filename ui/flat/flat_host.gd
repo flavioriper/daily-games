@@ -52,8 +52,6 @@ const Icons = preload("res://ui/icons.gd")
 const Streak = preload("res://core/streak.gd")
 const Registry = preload("res://ui/registry.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
-const Ink = preload("res://ui/flat/ink.gd")
-const InkBackdrop = preload("res://ui/flat/ink_backdrop.gd")
 
 ## Asks the menu to swap this board for the same card at `difficulty` (the
 ## win's invite to the next level up); the menu mounts a fresh host.
@@ -64,9 +62,6 @@ signal play_level(difficulty: int)
 ## built, because a screen may have no actions row and a tray of its own
 ## height.
 const TOP_PLAY := 180.0 + 20.0 + 120.0
-## The ink skin's header stands taller by this much, so its hills and sun
-## show between the top bar and the day card.
-const INK_AIR := 60.0
 const TOP_WIN := WellDone.HEIGHT
 const BOTTOM_WIN := 120.0 + 20.0 + 130.0
 const CAMP_BUTTON := 130.0
@@ -102,11 +97,6 @@ var _bottom_stack: VBoxContainer
 var _win_stack: VBoxContainer
 var _stage: Node
 var _backdrop: ColorRect
-## The ink skin's page, in place of the page and the painting (`"skin": "ink"`).
-var _ink_page: Control
-var _ink := false
-## The top slot's playing height: TOP_PLAY, and INK_AIR more on the ink skin.
-var _top_play := TOP_PLAY
 ## The colour of the card this board was opened from (the menu's
 ## `Pal.CAT[index]`), worn by Check and the win's lead button.
 var _accent := Pal.SUN
@@ -194,18 +184,6 @@ func _exit_tree() -> void:
 		_stage.visible = true
 
 func _build_chrome(root: VBoxContainer) -> void:
-	_ink = String(_entry.get("skin", "")) == "ink"
-	if _ink:
-		_ink_page = InkBackdrop.new()
-		_ink_page.name = "InkPage"
-		_ink_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		add_child(_ink_page)
-		move_child(_ink_page, 0)
-		_accent = Ink.INK
-		_top_play = TOP_PLAY + INK_AIR
-		_place_backdrop()
-		_build_rows(root)
-		return
 	# The page: paper under everything, behind the margins.
 	var page := ColorRect.new()
 	page.name = "Page"
@@ -227,14 +205,11 @@ func _build_chrome(root: VBoxContainer) -> void:
 	add_child(_backdrop)
 	move_child(_backdrop, 1)
 	_place_backdrop()
-	_build_rows(root)
 
-## Everything over the page: the top slot, the board card, the bottom slot.
-func _build_rows(root: VBoxContainer) -> void:
 	# --- the top slot: top bar and day card, and the win art over them ---
 	_top_slot = Control.new()
 	_top_slot.name = "TopSlot"
-	_top_slot.custom_minimum_size.y = _top_play
+	_top_slot.custom_minimum_size.y = TOP_PLAY
 	_top_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_top_slot)
 	_top_stack = _stack(_top_slot)
@@ -243,8 +218,7 @@ func _build_rows(root: VBoxContainer) -> void:
 		_entry.get("title", ""),
 		tr(String(_entry.get("motto", ""))),
 		not with_actions,
-		str(_entry.get("id", "")) == "binairo",
-		_ink
+		str(_entry.get("id", "")) == "binairo"
 	)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
@@ -253,17 +227,10 @@ func _build_rows(root: VBoxContainer) -> void:
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(_open_settings)
 	_top_stack.add_child(top_bar)
-	if _ink:
-		var air := Control.new()
-		air.name = "InkAir"
-		air.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		air.custom_minimum_size.y = INK_AIR - GAP
-		_top_stack.add_child(air)
-	day_card = FlatDayCard.new(_ink)
+	day_card = FlatDayCard.new()
 	day_card.name = "DayCard"
 	_top_stack.add_child(day_card)
 	well_done = WellDone.new()
-	well_done.ink = _ink
 	well_done.name = "WellDone"
 	well_done.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_top_slot.add_child(well_done)
@@ -281,10 +248,6 @@ func _build_rows(root: VBoxContainer) -> void:
 	paper.border_width_right = 2
 	paper.border_width_bottom = 2
 	paper.border_color = Color(Pal.LINE, 0.35)
-	if _ink:
-		paper = Ink.paper(Ink.CARD, 36, 24)
-		paper.set_border_width_all(2)
-		paper.border_color = Color(1, 1, 1, 0.7)
 	_card.add_theme_stylebox_override("panel", paper)
 	_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -360,7 +323,7 @@ func _build_rows(root: VBoxContainer) -> void:
 			tray.pick.connect(_on_pick)
 			rows.append(DigitPad.HEIGHT)
 		_:
-			tray = SymbolTray.new(_ink)
+			tray = SymbolTray.new()
 			tray.pick.connect(_on_brush)
 			rows.append(SymbolTray.HEIGHT)
 	if tray != null:
@@ -369,7 +332,6 @@ func _build_rows(root: VBoxContainer) -> void:
 	if with_actions:
 		action_bar = FlatActions.new()
 		action_bar.accent = _accent
-		action_bar.ink = _ink
 		action_bar.name = "Actions"
 		action_bar.reset.connect(_on_reset)
 		action_bar.check.connect(_on_check)
@@ -382,7 +344,7 @@ func _build_rows(root: VBoxContainer) -> void:
 	_win_stack = _stack(_bottom_slot)
 	_win_stack.name = "WinStack"
 	_win_stack.visible = false
-	stats_card = FlatDayCard.new(_ink)
+	stats_card = FlatDayCard.new()
 	stats_card.name = "StatsCard"
 	_win_stack.add_child(stats_card)
 	_build_next_button()
@@ -394,10 +356,7 @@ func _build_rows(root: VBoxContainer) -> void:
 	redo_button = IconButton.new("reset", "WIN_REDO", "IconButton")
 	redo_button.name = "RedoButton"
 	redo_button.custom_minimum_size.y = CAMP_BUTTON
-	if _ink:
-		Ink.button(redo_button, Ink.CARD, Ink.INK, BUTTON_RADIUS)
-	else:
-		CozyTheme.lift_button(redo_button, Pal.SURFACE, BUTTON_RADIUS)
+	CozyTheme.lift_button(redo_button, Pal.SURFACE, BUTTON_RADIUS)
 	redo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	redo_button.pressed.connect(_on_redo)
 	win_buttons.add_child(redo_button)
@@ -494,10 +453,7 @@ func _dress_win_buttons() -> void:
 	# under an invite it steps down to lifted paper beside Redo.
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
 		camp_button.remove_theme_color_override(state)
-	if _ink:
-		Ink.button(camp_button, Ink.CARD if inviting else Ink.INK,
-			Ink.INK if inviting else Ink.CARD, BUTTON_RADIUS)
-	elif inviting:
+	if inviting:
 		CozyTheme.lift_button(camp_button, Pal.SURFACE, BUTTON_RADIUS)
 	else:
 		CozyTheme.accent_button(camp_button, _accent, BUTTON_RADIUS)
@@ -511,16 +467,12 @@ func _dress_win_buttons() -> void:
 	var name_key := String(level.get("name", ""))
 	var night := _next_level == 3
 	next_button.theme_type_variation = "DarkButton" if night else "SunButton"
-	if _ink:
-		Ink.button(next_button, Ink.INK, Ink.CARD, BUTTON_RADIUS)
-	elif night:
+	if night:
 		CozyTheme.lift_button(next_button, Pal.SLATE, BUTTON_RADIUS)
 	else:
 		CozyTheme.accent_button(next_button, _accent, BUTTON_RADIUS)
 	_next_name.text = tr("WIN_NEXT") % tr(LEVEL_KEYS.get(name_key, name_key))
 	_next_name.add_theme_color_override("font_color", Pal.MOON if night else Pal.SURFACE)
-	if _ink:
-		_next_name.add_theme_color_override("font_color", Ink.CARD)
 	_next_line.text = tr(String(level.get("line", "")))
 	_next_line.add_theme_color_override("font_color",
 		Color(Pal.MOON, 0.72) if night else Color(Pal.SURFACE, 0.85))
@@ -539,12 +491,10 @@ func _on_next() -> void:
 ## little past the day card, as the menu's does; its crop ignores the top
 ## inset so a punch-hole phone sees the same picture, shifted down.
 func _place_backdrop() -> void:
-	if _ink_page != null:
-		_ink_page.header_top = MARGIN + SafeArea.insets(self).x
 	if _backdrop == null:
 		return
 	var insets := SafeArea.insets(self)
-	_backdrop.offset_bottom = MARGIN + insets.x + _top_play + BACKDROP_BLEED
+	_backdrop.offset_bottom = MARGIN + insets.x + TOP_PLAY + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
 func _apply_insets() -> void:
@@ -678,7 +628,7 @@ func _spawn(the_seed: int) -> void:
 	if _won:
 		_won = false
 		_thaw_board()
-		_top_slot.custom_minimum_size.y = _top_play
+		_top_slot.custom_minimum_size.y = TOP_PLAY
 		_bottom_slot.custom_minimum_size.y = _bottom_play
 		well_done.visible = false
 		_win_stack.visible = false
@@ -775,7 +725,7 @@ func _show_win() -> void:
 		_bottom_stack.visible = false)
 	# The slots make room; the VBox slides the board card down between them.
 	_freeze_board()
-	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", _top_play, TOP_WIN, SLOT_TIME, 0.0, false)
+	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", TOP_PLAY, TOP_WIN, SLOT_TIME, 0.0, false)
 	if slots == null:
 		_thaw_board()
 	else:
