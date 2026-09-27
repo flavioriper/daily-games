@@ -64,3 +64,35 @@ The first playable cut, so it can be felt on a phone before belts exist.
   slice: a banner, the time, and "Drills come next". The factory stays
   open to play on.
 - Saved and resumed as above; the top bar's restart starts a new valley.
+
+## Amendment, 2026-09-27: the bag, and things to pick up
+
+The user's first refinement after playing slice 1: what the hands and the
+kilns make should land in the valley and be gathered, and the stock
+should be a bag that is opened, not a row of numbers.
+
+- **Dug ore pops out of the vein onto the grass** (`Sim.loose`), 1.35-1.9
+  tiles from the deposit's centre, always on open grass. A tap on the grass
+  picks up everything within a fingertip (0.6 tiles, or 60 screen px,
+  whichever is wider), and each piece flies across the screen into the
+  **bag**, a sack on a paper disc in the valley's bottom-right corner that
+  counts it on arrival. A tap on the rocks still digs, so rocks dig and
+  grass gathers.
+- **The bag is a button**: a tap opens a strip of four slots along the
+  valley's foot (ore, ingots, two for later), and the paper row of stock
+  above the valley is gone (the time moved beside the milestone's name).
+- **A kiln is loaded by dragging**: a slot of ore dragged out of the bag
+  onto a kiln fills its hopper from the bag (up to 20). The drop target is
+  outlined green where the drop will take and rose where it will not; a
+  refused drop flies back into its slot. A tap on a kiln opens the bag and
+  says how, or how much ore it has left.
+- **Each ingot pops out of the kiln's mouth onto the grass in front of it**
+  and is picked up the same way. The kiln's shelf is gone: nothing piles up
+  inside it, so a kiln only stalls for want of ore.
+- **Ingots dragged onto the Mill hand the milestone in**, beside the
+  panel's Hand in button.
+- The save is version 2 (`loose` is kept); a version 1 save loads with its
+  kilns' shelves emptied into the bag.
+- Two new sounds, `pick` and `bag`. The probe finishes at 36 s at 3 taps a
+  second and 48 s at 1.5 (picking every 4 s); nothing lands on water or a
+  building.

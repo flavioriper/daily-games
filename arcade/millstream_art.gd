@@ -49,6 +49,9 @@ const INGOT := Color("b9c2c9")
 const INGOT_DEEP := Color("86919a")
 const INGOT_HI := Color("e4eaee")
 const TAG_PAPER := Color("fffaf0")
+const SACK := Color("d9b98a")
+const SACK_DEEP := Color("b08e5f")
+const SACK_HI := Color("ecd4ac")
 const OK := Color("7fd08a")
 const BAD := Color("e2645c")
 
@@ -254,6 +257,34 @@ static func ingot(b: Face.Builder, c: Vector2, w: float) -> void:
 	b.fan(Face.Builder.round_rect(c - Vector2(w * 0.5, h * 0.5), Vector2(w, h * 0.82), h * 0.3), INGOT)
 	b.fan(Face.Builder.round_rect(c - Vector2(w * 0.36, h * 0.38), Vector2(w * 0.72, h * 0.22), h * 0.1), INGOT_HI)
 
+## The bag: a burlap sack `s` across, centred on `c`, tied at the neck,
+## a lump of ore peeking out of its mouth.
+static func sack(b: Face.Builder, c: Vector2, s: float) -> void:
+	var body := PackedVector2Array()
+	for k in 28:
+		var a := k * TAU / 28.0
+		var r := Vector2(0.4, 0.34) * s
+		# wider at the foot than at the shoulders
+		var widen := 1.0 + 0.16 * sin(a)
+		body.append(c + Vector2(cos(a) * r.x * widen, 0.1 * s + sin(a) * r.y))
+	var deep := PackedVector2Array()
+	for v in body:
+		deep.append(v + Vector2(0, s * 0.05))
+	b.fan(deep, SACK_DEEP)
+	b.fan(body, SACK)
+	b.ellipse(c + Vector2(-0.14, 0.0) * s, s * 0.14, s * 0.1, SACK_HI)
+	# the mouth, gathered above the tie, and what peeks out of it
+	ore(b, c + Vector2(0.02, -0.3) * s, s * 0.12)
+	b.fan(PackedVector2Array([c + Vector2(-0.2, -0.3) * s, c + Vector2(-0.08, -0.2) * s, c + Vector2(0.08, -0.2) * s,
+		c + Vector2(0.22, -0.32) * s, c + Vector2(0.1, -0.14) * s, c + Vector2(-0.1, -0.14) * s]), SACK)
+	b.fan(Face.Builder.round_rect(c + Vector2(-0.16, -0.2) * s, Vector2(0.32, 0.08) * s, s * 0.03), WOOD_DEEP)
+	b.stroke(PackedVector2Array([c + Vector2(0.1, -0.16) * s, c + Vector2(0.2, -0.06) * s]), s * 0.035, WOOD_DEEP)
+	# a patch, stitched on
+	b.fan(Face.Builder.round_rect(c + Vector2(0.08, 0.1) * s, Vector2(0.16, 0.14) * s, s * 0.03), SACK_DEEP)
+	for k in 3:
+		var y := 0.13 + k * 0.045
+		b.stroke(PackedVector2Array([c + Vector2(0.1, y) * s, c + Vector2(0.14, y) * s]), s * 0.015, SACK_HI)
+
 ## A chip's picture, `s` pixels across, centred on the origin: "kiln",
 ## "eraser" or "drill" (the one still to come, drawn quiet).
 static func icon(kind: String, s: float) -> ArrayMesh:
@@ -279,6 +310,18 @@ static func icon(kind: String, s: float) -> ArrayMesh:
 		"drill":
 			b.fan(Face.Builder.round_rect(Vector2(-0.28, -0.3) * s, Vector2(0.56, 0.42) * s, s * 0.08), Color("c9c2b5"))
 			b.fan(PackedVector2Array([Vector2(-0.14, 0.12) * s, Vector2(0.14, 0.12) * s, Vector2(0, 0.42) * s]), Color("a39c92"))
+		"sack":
+			sack(b, Vector2.ZERO, s)
+		"bag_iron_ore":
+			# a small heap: three lumps
+			ore(b, Vector2(-0.2, 0.14) * s, s * 0.2)
+			ore(b, Vector2(0.2, 0.16) * s, s * 0.19)
+			ore(b, Vector2(0.0, -0.1) * s, s * 0.22)
+		"bag_iron_ingot":
+			# a small stack: two bars and one across them
+			ingot(b, Vector2(-0.14, 0.2) * s, s * 0.5)
+			ingot(b, Vector2(0.16, 0.2) * s, s * 0.5)
+			ingot(b, Vector2(0.0, -0.06) * s, s * 0.56)
 	var m := b.mesh()
 	_cache[key] = m
 	return m

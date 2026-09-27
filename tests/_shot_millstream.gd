@@ -5,11 +5,15 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_millstream.gd -- <outdir> [reduce]
 ##
 ## 1 the Arcade tab, 2 a fresh valley, 3 taps on an iron deposit through the
-## viewport (printed: ore dug), 4 the kiln tool with its ghost held over
-## grass, then a tap placing it (printed), 5 two kilns at work after a tend
-## by tap, 6 a drag pans and a wheel zooms (printed: the camera moved),
-## 7 the milestone handed in with the banner. Prints the draw calls at each
-## shot. user://millstream.cfg and user://arcade.cfg are put back.
+## viewport, the ore popping out onto the grass (printed: how many lie
+## there), 4 taps on the grass picking it up, mid-flight into the bag
+## (printed: the bag's ore), 5 the kiln tool's ghost and two kilns placed by
+## tap, 6 the bag opened by a tap on its button, 7 a slot of ore dragged
+## onto a kiln (printed: its hopper), 8 ingots popped out on the grass and
+## picked by tap (printed), 9 a drag pans and a wheel zooms, 10 ingots
+## dragged onto the Mill, the milestone and its banner. Prints the draw
+## calls at each shot. user://millstream.cfg and user://arcade.cfg are put
+## back.
 
 const Sim = preload("res://arcade/millstream_sim.gd")
 const Art = preload("res://arcade/millstream_art.gd")
@@ -79,90 +83,140 @@ func _tap(p: Vector2) -> void:
 func _px(tiles: Vector2) -> Vector2:
 	return _s.screen(tiles * Art.TILE)
 
+func _hop(k: String, t: float) -> bool:
+	if _t > _at + t and not has_meta(k):
+		set_meta(k, true)
+		return true
+	return false
+
+func _next() -> void:
+	_at = _t
+	_step += 1
+
+func _bag_at() -> Vector2:
+	return _s._bag_btn.position + _s._bag_btn.size * 0.5
+
+func _slot_at(i: int) -> Vector2:
+	return _s._strip.position + _s._strip.slot_rect(i).get_center()
+
 func _process(delta: float) -> bool:
 	_t += delta
 	match _step:
 		0:
 			if _t > 0.8:
 				_menu._show_tab("arcade")
-				_step = 1
+				_next()
 		1:
-			if _t > 1.8:
+			if _t > _at + 1.0:
 				_shot("1_tab")
 				_menu._open_arcade("millstream")
 				_s = _menu.get_node("Millstream")
-				_step = 2
+				_next()
 		2:
-			if _t > 3.0:
+			if _t > _at + 1.2:
 				_shot("2_valley")
-				_at = _t
-				_step = 3
+				_next()
 		3:
 			# fourteen taps on the iron deposit at (7, 11), a tenth of a second apart
 			var k := int((_t - _at) / 0.1)
 			if k > int(get_meta("taps", -1)) and k < 14:
 				set_meta("taps", k)
 				_tap(_px(Vector2(8, 12)))
-			if _t > _at + 1.6:
-				print("dug by tap: ", _s.sim.mined)
+			if _hop("dug", 1.45):
+				print("dug by tap: ", _s.sim.mined, " lying on the grass: ", _s.sim.loose.size())
 				_shot("3_dug")
+				_next()
+		4:
+			# a tap on each item lying there, one a frame
+			if _s.sim.loose.size() > 0 and _t < _at + 1.5:
+				_tap(_s.screen((_s.sim.loose[0].p as Vector2) * Art.TILE))
+			elif not has_meta("empty"):
+				set_meta("empty", _t)
+			elif _t > float(get_meta("empty")) + 0.25 and _hop("picked", 0.0):
+				print("picked by tap: bag ore ", _s.sim.stock.iron_ore, " still flying ", _s._inflight, " left on grass ", _s.sim.loose.size())
+				_shot("4_picked")
+				_next()
+		5:
+			if _hop("down", 0.6):
 				_s.sim.stock.iron_ore = 60
 				_s._on_tool("kiln")
-				_at = _t
-				_step = 4
-		4:
-			# the kiln tool chosen: press on grass (the ghost), shoot, let go
-			if not has_meta("down"):
-				set_meta("down", true)
 				_mouse(_px(Vector2(11, 13)), "down")
-			elif _t > _at + 0.3 and not has_meta("up"):
-				set_meta("up", true)
-				_shot("4_ghost")
+			elif _hop("up", 0.9):
+				_shot("5_ghost")
 				_mouse(_px(Vector2(11, 13)), "up")
-			elif _t > _at + 0.5 and not has_meta("second"):
-				set_meta("second", true)
-				print("placed by tap: ", _s.sim.buildings.size(), " tool now: '", _s._tool, "'")
+			elif _hop("second", 1.1):
 				if _s._tool != "kiln":
 					_s._on_tool("kiln")
-				_tap(_px(Vector2(11, 10)))
-			elif _t > _at + 0.7:
-				print("second placed by tap: ", _s.sim.buildings.size())
+				_tap(_px(Vector2(11, 9)))
+			elif _hop("placed", 1.3):
+				print("kilns placed by tap: ", _s.sim.buildings.size())
 				_s._set_tool("")
-				for b: Dictionary in _s.sim.buildings:
-					_tap(_px(Vector2(b.cell) + Vector2(1, 1)))
-				_at = _t
-				_step = 5
-		5:
-			if _t > _at + 0.2:
-				print("kilns loaded by tap: ", _s.sim.buildings.map(func(b: Dictionary) -> int: return b.hopper), " ore left ", _s.sim.stock.iron_ore)
-				_at = _t
-				_step = 6
+				_tap(_bag_at())
+				_next()
 		6:
-			if _t > _at + 3.0:
-				_shot("5_kilns")
+			if _hop("bag", 0.5):
+				print("bag open by tap: ", _s._bag_open)
+				_shot("6_bag")
+				_mouse(_slot_at(0), "down")
+			elif _hop("m1", 0.6):
+				_mouse(_slot_at(0) + Vector2(0, -80), "move")
+			elif _hop("m2", 0.7):
+				_mouse(_px(Vector2(11, 13)) + Vector2(0, 64), "move")
+			elif _hop("m3", 0.85):
+				_shot("7_drag")
+				_mouse(_px(Vector2(11, 13)) + Vector2(0, 64), "up")
+			elif _hop("fed", 1.0):
+				print("dragged onto a kiln: hoppers ", _s.sim.buildings.map(func(b: Dictionary) -> int: return b.hopper), " bag ore ", _s.sim.stock.iron_ore)
+				# the second kiln from the bag too
+				_mouse(_slot_at(0), "down")
+			elif _hop("m4", 1.1):
+				_mouse(_px(Vector2(11, 9)) + Vector2(0, 64), "move")
+			elif _hop("m5", 1.2):
+				_mouse(_px(Vector2(11, 9)) + Vector2(0, 64), "up")
+				_next()
+		7:
+			if _hop("ingots", 5.0):
+				print("second kiln fed: hoppers ", _s.sim.buildings.map(func(b: Dictionary) -> int: return b.hopper), " ingots lying: ", _s.sim.loose.size())
+				_shot("8_ingots")
+				_next()
+		8:
+			if _s.sim.loose.size() > 0 and _t < _at + 1.0:
+				_tap(_s.screen((_s.sim.loose[0].p as Vector2) * Art.TILE))
+			elif _hop("got", 0.0):
+				print("ingots picked by tap: bag ", _s.sim.stock.iron_ingot)
+				_next()
+		9:
+			if _hop("pan", 0.5):
 				set_meta("cam", _s._cam)
 				var from := _px(Vector2(10, 16))
 				_mouse(from, "down")
 				_mouse(from + Vector2(-60, -200), "move")
 				_mouse(from + Vector2(-120, -400), "move")
 				_mouse(from + Vector2(-120, -400), "up")
-				_mouse(_s.field.size * 0.5, "down", MOUSE_BUTTON_WHEEL_DOWN)
-				_mouse(_s.field.size * 0.5, "down", MOUSE_BUTTON_WHEEL_DOWN)
-				_at = _t
-				_step = 7
-		7:
-			if _t > _at + 0.4:
+				for k in 2:
+					_mouse(_s.field.size * 0.5, "down", MOUSE_BUTTON_WHEEL_DOWN)
+					_mouse(_s.field.size * 0.5, "up", MOUSE_BUTTON_WHEEL_DOWN)
+			elif _hop("panned", 0.9):
 				print("panned: ", _s._cam != get_meta("cam"), " zoom=%.3f" % _s._zoom)
-				_shot("6_panned")
+				_shot("9_panned")
 				_s.sim.stock.iron_ingot = 25
-				_tap(_s.screen((Vector2(Sim.MILL.position) + Vector2(1.5, 1.5)) * Art.TILE))
-				_at = _t
-				_step = 8
-		8:
-			if _t > _at + 0.9:
-				print("handed in by tap on the Mill: ", _s.sim.finished())
-				_shot("7_milestone")
-				_step = 9
-		9:
+				_next()
+		10:
+			var mill: Vector2 = _s.screen((Vector2(Sim.MILL.position) + Vector2(1.5, 1.5)) * Art.TILE) + Vector2(0, 64)
+			if _hop("i0", 0.3):
+				_mouse(_slot_at(1), "down")
+			elif _hop("i1", 0.4):
+				_mouse(_slot_at(1) + Vector2(0, -80), "move")
+			elif _hop("i2", 0.5):
+				_mouse(mill, "move")
+			elif _hop("i3", 0.65):
+				print("dragging: ", _s._drag, " strip at ", _s._strip.position, " visible ", _s._strip.visible)
+				_shot("10_drag_mill")
+				_mouse(mill, "up")
+			elif _hop("i4", 1.6):
+				print("handed in by dragging ingots onto the Mill: ", _s.sim.finished())
+				_shot("11_milestone")
+				_next()
+		11:
 			return true
 	return false

@@ -5,13 +5,15 @@ extends RefCounted
 ## factory in a painted valley, seen from above. A grid of tiles with a
 ## stream down its left side, the Mill on the bank, and deposits of ore.
 ## The screen (arcade/millstream_screen.gd) steps this at the fixed DT,
-## hands it the finger's taps (dig, place, tend, remove, hand in) and
-## drains `events`.
+## hands it the finger's taps (dig, pick, place, load, remove, hand in)
+## and drains `events`.
 ##
-## Slice 1: ore is dug by hand from the iron deposits and smelted by kilns
-## that run on their own; copper and stone stand locked. Everything the
-## player owns is in `stock`, which pays for buildings and is handed in at
-## the Mill for the milestones.
+## Slice 1: ore is knocked out of the iron deposits by hand and pops onto
+## the grass beside the vein (`loose`), where a tap picks it up into the
+## bag (`stock`). Kilns are loaded from the bag and smelt on their own, and
+## each ingot pops out onto the grass in front of the kiln to be picked up
+## in turn. Copper and stone stand locked. The bag pays for buildings and
+## is handed in at the Mill for the milestones.
 
 const DT := 1.0 / 30.0
 const COLS := 20
@@ -30,22 +32,30 @@ const DEPOSITS := [
 const LIVE := ["iron"]
 const COSTS := {"kiln": {"iron_ore": 10}}
 const SIZES := {"kiln": Vector2i(2, 2)}
-## A kiln: one ore to one ingot every SMELT seconds (30 a minute), a
-## hopper of HOPPER ore and a shelf of SHELF ingots.
+## A kiln: one ore to one ingot every SMELT seconds (30 a minute) and a
+## hopper of HOPPER ore; each ingot pops out onto the grass.
 const SMELT := 2.0
 const HOPPER := 20
-const SHELF := 50
+## How far (tiles) from a vein's centre its ore lands, and from a kiln's
+## mouth its ingots.
+const DROP_ORE := Vector2(1.35, 1.9)
+const DROP_INGOT := Vector2(0.9, 1.5)
 ## The milestones, handed in at the Mill from the stock.
 const MILESTONES := [
 	{"key": "MS_M1", "need": {"iron_ingot": 20}},
 ]
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 ## Seconds played (the factory pauses while the app is closed).
 var t := 0.0
 var stock := {"iron_ore": 0, "iron_ingot": 0}
-## {id, kind, cell: Vector2i, hopper, shelf, prog}
+## {id, kind, cell: Vector2i, hopper, prog}
 var buildings: Array = []
+## Items lying on the grass: {id, item, p: Vector2 (tiles), from: Vector2
+## (tiles, where it popped out of), born: t}.
+var loose: Array = []
+## Bumped whenever `loose` changes, so a drawing can tell.
+var loose_rev := 0
 var milestone := 0
 ## Seconds played when the last milestone was handed in; 0 until then.
 var done_t := 0.0
@@ -53,10 +63,13 @@ var events: Array = []
 var mined := 0
 var smelted := 0
 var _next_id := 1
+var _next_loose := 1
+var _rng := RandomNumberGenerator.new()
 ## cell -> "mill", "dep:<i>" or "b:<id>"
 var _grid := {}
 
 func _init() -> void:
+	_rng.seed = 2718
 	_index()
 
 # --- the valley ---
@@ -118,7 +131,7 @@ func by_id(id: int) -> Dictionary:
 
 # --- the hands ---
 
-## A tap on a deposit: one ore off it, into the stock.
+## A tap on a deposit: one ore knocked off it, popping onto the grass.
 func dig(c: Vector2i) -> bool:
 	var i := deposit_at(c)
 	if i < 0:
@@ -128,10 +141,52 @@ func dig(c: Vector2i) -> bool:
 		events.append({"type": "locked", "res": res, "dep": i})
 		return false
 	var item := res + "_ore"
-	stock[item] = int(stock.get(item, 0)) + 1
+	var centre := Vector2(deposit_rect(i).position) + Vector2(1, 1)
+	var it := _drop(item, centre, _spot(centre, DROP_ORE, -PI, PI))
 	mined += 1
-	events.append({"type": "dig", "res": res, "dep": i, "item": item})
+	events.append({"type": "dig", "res": res, "dep": i, "item": item, "loose": it.id})
 	return true
+
+## Somewhere on open grass `ring` tiles from `centre`, at an angle
+## between `a0` and `a1`; the nearest free spot if the ring is crowded.
+func _spot(centre: Vector2, ring: Vector2, a0: float, a1: float) -> Vector2:
+	var best := centre + Vector2(0, ring.y)
+	for k in 24:
+		var a := _rng.randf_range(a0, a1)
+		var d := _rng.randf_range(ring.x, ring.y) + k * 0.05
+		var p := centre + Vector2.from_angle(a) * d
+		var c := Vector2i(floori(p.x), floori(p.y))
+		if in_bounds(c) and not is_water(c) and owner_at(c) == "":
+			return p
+		if k == 0:
+			best = p
+	return Vector2(clampf(best.x, 3.3, COLS - 0.3), clampf(best.y, 0.3, ROWS - 0.3))
+
+func _drop(item: String, from: Vector2, p: Vector2) -> Dictionary:
+	var it := {"id": _next_loose, "item": item, "p": p, "from": from, "born": t}
+	_next_loose += 1
+	loose.append(it)
+	loose_rev += 1
+	return it
+
+## The loose items within `r` tiles of `p`, nearest first.
+func loose_near(p: Vector2, r: float) -> Array:
+	var got := loose.filter(func(it: Dictionary) -> bool: return (it.p as Vector2).distance_to(p) <= r)
+	got.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a.p as Vector2).distance_to(p) < (b.p as Vector2).distance_to(p))
+	return got
+
+## Picks loose items up into the bag; the event lists what went where.
+func pick(ids: Array) -> int:
+	var took := []
+	for it: Dictionary in loose.duplicate():
+		if it.id in ids:
+			loose.erase(it)
+			stock[it.item] = int(stock.get(it.item, 0)) + 1
+			took.append({"item": it.item, "p": it.p})
+	if not took.is_empty():
+		loose_rev += 1
+		events.append({"type": "picked", "items": took})
+	return took.size()
 
 func affordable(kind: String) -> bool:
 	for item: String in COSTS[kind]:
@@ -162,32 +217,33 @@ func place(kind: String, c: Vector2i) -> bool:
 		return false
 	for item: String in COSTS[kind]:
 		stock[item] = int(stock[item]) - int(COSTS[kind][item])
-	var b := {"id": _next_id, "kind": kind, "cell": c, "hopper": 0, "shelf": 0, "prog": 0.0}
+	var b := {"id": _next_id, "kind": kind, "cell": c, "hopper": 0, "prog": 0.0}
 	_next_id += 1
 	buildings.append(b)
 	_claim(b)
 	events.append({"type": "placed", "kind": kind, "id": b.id, "cell": c})
 	return true
 
-## A tap on a kiln: its ingots into the stock, and its hopper topped up
-## from the stock's ore.
-func tend(id: int) -> void:
+## Up to `n` of `item` from the bag into a kiln's hopper: how many went.
+func feed(id: int, item: String, n: int) -> int:
 	var b := by_id(id)
 	if b.is_empty():
-		return
-	var got := int(b.shelf)
-	if got > 0:
-		b.shelf = 0
-		stock["iron_ingot"] = int(stock.get("iron_ingot", 0)) + got
-		events.append({"type": "collect", "id": id, "n": got, "item": "iron_ingot"})
+		return 0
+	if item != "iron_ore":
+		events.append({"type": "refused", "why": "wrong_item", "id": id, "item": item})
+		return 0
 	var room := HOPPER - int(b.hopper)
-	var put := mini(room, int(stock.get("iron_ore", 0)))
-	if put > 0:
-		b.hopper += put
-		stock["iron_ore"] -= put
-		events.append({"type": "load", "id": id, "n": put})
-	if got == 0 and put == 0:
-		events.append({"type": "idle", "id": id, "why": "full" if room == 0 else "no_ore"})
+	if room <= 0:
+		events.append({"type": "refused", "why": "hopper_full", "id": id})
+		return 0
+	var put := mini(mini(room, n), int(stock.get(item, 0)))
+	if put <= 0:
+		events.append({"type": "refused", "why": "bag_empty", "id": id, "item": item})
+		return 0
+	b.hopper += put
+	stock[item] -= put
+	events.append({"type": "load", "id": id, "n": put})
+	return put
 
 ## The eraser: the building goes and everything it cost or held comes back.
 func remove(id: int) -> void:
@@ -197,7 +253,6 @@ func remove(id: int) -> void:
 	for item: String in COSTS[b.kind]:
 		stock[item] = int(stock.get(item, 0)) + int(COSTS[b.kind][item])
 	stock["iron_ore"] += int(b.hopper)
-	stock["iron_ingot"] += int(b.shelf)
 	buildings.erase(b)
 	_index()
 	events.append({"type": "removed", "kind": b.kind, "id": id, "cell": b.cell})
@@ -237,47 +292,54 @@ func step() -> void:
 	for b: Dictionary in buildings:
 		if b.kind != "kiln":
 			continue
-		if int(b.hopper) <= 0 or int(b.shelf) >= SHELF:
+		if int(b.hopper) <= 0:
 			continue
 		b.prog += DT
 		if b.prog >= SMELT:
 			b.prog -= SMELT
 			b.hopper -= 1
-			b.shelf += 1
 			smelted += 1
-			events.append({"type": "smelt", "id": b.id})
+			var mouth := Vector2(b.cell) + Vector2(1.0, 1.3)
+			var it := _drop("iron_ingot", mouth, _spot(mouth, DROP_INGOT, PI * 0.15, PI * 0.85))
+			events.append({"type": "smelt", "id": b.id, "loose": it.id})
 
-## What a kiln is doing: "work", "no_ore" or "full".
+## What a kiln is doing: "work" or "no_ore".
 static func kiln_state(b: Dictionary) -> String:
-	if int(b.shelf) >= SHELF:
-		return "full"
-	if int(b.hopper) <= 0:
-		return "no_ore"
-	return "work"
+	return "work" if int(b.hopper) > 0 else "no_ore"
 
 # --- the save ---
 
 func to_dict() -> Dictionary:
 	var bs := []
 	for b: Dictionary in buildings:
-		bs.append({"id": b.id, "kind": b.kind, "x": b.cell.x, "y": b.cell.y, "hopper": b.hopper, "shelf": b.shelf, "prog": b.prog})
-	return {"v": SAVE_VERSION, "t": t, "stock": stock.duplicate(), "buildings": bs, "milestone": milestone,
-		"done_t": done_t, "mined": mined, "smelted": smelted, "next_id": _next_id}
+		bs.append({"id": b.id, "kind": b.kind, "x": b.cell.x, "y": b.cell.y, "hopper": b.hopper, "prog": b.prog})
+	var ls := []
+	for it: Dictionary in loose:
+		ls.append({"id": it.id, "item": it.item, "x": it.p.x, "y": it.p.y})
+	return {"v": SAVE_VERSION, "t": t, "stock": stock.duplicate(), "buildings": bs, "loose": ls, "milestone": milestone,
+		"done_t": done_t, "mined": mined, "smelted": smelted, "next_id": _next_id, "next_loose": _next_loose}
 
 static func from_dict(d: Dictionary) -> RefCounted:
 	var s = load("res://arcade/millstream_sim.gd").new()
-	if int(d.get("v", 0)) != SAVE_VERSION:
+	var v := int(d.get("v", 0))
+	if v < 1 or v > SAVE_VERSION:
 		return s
 	s.t = float(d.get("t", 0.0))
 	for item: String in (d.get("stock", {}) as Dictionary):
 		s.stock[item] = int(d.stock[item])
 	for e: Dictionary in d.get("buildings", []):
 		s.buildings.append({"id": int(e.id), "kind": String(e.kind), "cell": Vector2i(int(e.x), int(e.y)),
-			"hopper": int(e.hopper), "shelf": int(e.shelf), "prog": float(e.prog)})
+			"hopper": int(e.hopper), "prog": float(e.prog)})
+		# a version 1 kiln kept its ingots on a shelf: they go to the bag
+		s.stock["iron_ingot"] = int(s.stock.get("iron_ingot", 0)) + int(e.get("shelf", 0))
+	for e: Dictionary in d.get("loose", []):
+		var p := Vector2(float(e.x), float(e.y))
+		s.loose.append({"id": int(e.id), "item": String(e.item), "p": p, "from": p, "born": -10.0})
 	s.milestone = int(d.get("milestone", 0))
 	s.done_t = float(d.get("done_t", 0.0))
 	s.mined = int(d.get("mined", 0))
 	s.smelted = int(d.get("smelted", 0))
 	s._next_id = int(d.get("next_id", 1))
+	s._next_loose = int(d.get("next_loose", 1))
 	s._index()
 	return s

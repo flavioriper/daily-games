@@ -2,25 +2,31 @@ extends Control
 
 ## Millstream: the fifth game on the Arcade tab, a small factory in a
 ## painted valley (spec docs/superpowers/specs/2026-09-27-arcade-millstream-design.md).
-## The flat boards' top bar (back, the title in ink, restart, settings), a
-## paper row with the stock and the time, the valley in the Arcade's wooden
-## frame, and the panel under it: the milestone card with its Hand in
-## button, and the tools.
+## The flat boards' top bar (back, the title in ink, restart, settings),
+## the valley in the Arcade's wooden frame with the bag in its corner, and
+## the panel under it: the milestone card with its Hand in button and the
+## time, and the tools.
 ##
 ## Play, by touch and never by walking: one finger pans, two pinch to zoom
-## (the wheel on a desktop), and a tap acts. A tap on an iron deposit digs
-## an ore (hold to keep digging), on a kiln collects its ingots and loads
-## its hopper, on the Mill hands the milestone in. With the Kiln tool a tap
-## places one (the ghost shows where while the finger is down), with the
-## eraser a tap lifts one. The game is arcade/millstream_sim.gd, stepped at
-## its fixed DT; this screen draws it, plays its events and keeps the save
+## (the wheel on a desktop), and a tap acts. A tap on an iron deposit knocks
+## an ore out onto the grass (hold to keep digging); a tap on the grass
+## picks up what lies there, and it flies into the bag. The bag opens into
+## a strip of slots along the valley's foot, and a slot is dragged out onto
+## a kiln to load it (ore) or onto the Mill to hand the milestone in
+## (ingots). A kiln smelts on its own and pops each ingot out onto the
+## grass in front of it. With the Kiln tool a tap places one (the ghost
+## shows where while the finger is down), with the eraser a tap lifts one.
+## The game is arcade/millstream_sim.gd, stepped at its fixed DT; this
+## screen draws it, plays its events and keeps the save
 ## (user://millstream.cfg), which the factory resumes from.
 ##
 ## Drawing, all through the camera's transform so a pan or a zoom rebuilds
 ## nothing: the valley (one mesh, built once), the buildings (one mesh,
-## rebuilt when one is placed or lifted), then one live mesh a frame (the
-## wheel, the kilns' fire, smoke and stores, flying ore and ingots, the
-## ghost), then the few numbers as text.
+## rebuilt when one is placed or lifted), what lies on the grass (one mesh,
+## rebuilt when that changes), then one live mesh a frame (the wheel, the
+## kilns' fire and smoke, items popping out, the ghost, the drop target),
+## then the few numbers as text. Over the whole screen, one more mesh: items
+## flying into the bag and the one being dragged out of it.
 
 signal closed
 
@@ -42,7 +48,6 @@ const GAME := "millstream"
 const SAVE_PATH := "user://millstream.cfg"
 const MARGIN := 40
 const GAP := 20
-const HUD_H := 110.0
 const FRAME := 16
 const PANEL_H := 330.0
 const BACKDROP_BLEED := 90.0
@@ -54,6 +59,17 @@ const SLOP := 18.0
 const HOLD := 0.35
 const DIG_EVERY := 0.28
 const HINT_HOLD := 4.5
+## The bag's button, its strip of slots, and a slot.
+const BAG_D := 128.0
+const STRIP_H := 156.0
+const SLOT := 124.0
+const SLOTS := 4
+## The items the bag shows, in its order.
+const ITEMS := ["iron_ore", "iron_ingot"]
+## An item popping out takes this long to land.
+const POP_T := 0.5
+## A dragged item is drawn (and dropped) this far above the finger.
+const LIFT := 64.0
 const TAG := Color("fffaf0")
 const LOW_RED := Color("e2645c")
 
@@ -64,9 +80,6 @@ var field: Control
 var _fx: Node2D
 var _backdrop: ColorRect
 var _margins: MarginContainer
-var _ore_l: Label
-var _ingot_l: Label
-var _time_l: Label
 var _banner: Label
 var _sub: Label
 var _banner_tw: Tween
@@ -104,6 +117,21 @@ var _ground: ArrayMesh
 var _built: ArrayMesh
 var _live: ArrayMesh
 var _built_key := "?"
+var _loose_mesh: ArrayMesh
+var _loose_key := "?"
+var _bag_btn: Button
+var _strip: Control
+var _strip_tw: Tween
+var _bag_open := false
+var _over: Control
+var _over_mesh: ArrayMesh
+## The item being dragged out of the bag: {item, at (field px), moved}.
+var _drag := {}
+## Items on their way into the bag (overlay px): {from, to, t, dur, item}.
+var _to_bag: Array = []
+## How many of each item are still in the air, so the bag counts them on arrival.
+var _inflight := {}
+var _bag_tw: Tween
 ## Effects in world px: fliers {from, to, t, dur, what}, pops {at, text, t, col}.
 var _fliers: Array = []
 var _pops: Array = []
@@ -156,7 +184,6 @@ func _build() -> void:
 	top_bar.reset.connect(_on_reset)
 	top_bar.settings.connect(func() -> void: settings_sheet.open())
 	col.add_child(top_bar)
-	col.add_child(_build_hud())
 
 	var frame := PanelContainer.new()
 	frame.name = "Frame"
@@ -204,6 +231,15 @@ func _build() -> void:
 	over.modulate.a = 0.0
 	_banner.set_meta("box", over)
 
+	_strip = _BagStrip.new(self)
+	_strip.name = "Bag"
+	_strip.visible = false
+	field.add_child(_strip)
+	_bag_btn = _BagButton.new(self)
+	_bag_btn.name = "BagButton"
+	_bag_btn.pressed.connect(_toggle_bag)
+	field.add_child(_bag_btn)
+
 	_toast = PanelContainer.new()
 	_toast.name = "Toast"
 	_toast.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 28, 14))
@@ -217,6 +253,13 @@ func _build() -> void:
 
 	col.add_child(_build_panel())
 
+	_over = Control.new()
+	_over.name = "Over"
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_over.draw.connect(_draw_over)
+	add_child(_over)
+
 	# the valley's bed: the brook and the wheel, looped very quietly
 	_brook = AudioStreamPlayer.new()
 	var brook_path := "res://assets/sfx/%s/brook.ogg" % GAME
@@ -227,36 +270,6 @@ func _build() -> void:
 	_brook.volume_db = -8.0
 	add_child(_brook)
 	_apply_insets()
-
-func _build_hud() -> Control:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = HUD_H
-	row.add_theme_constant_override("separation", 16)
-	var made := []
-	for key in ["MS_ORE", "MS_INGOTS", "MH_TIME"]:
-		var plate := PanelContainer.new()
-		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 8))
-		var words := VBoxContainer.new()
-		words.alignment = BoxContainer.ALIGNMENT_CENTER
-		words.add_theme_constant_override("separation", -6)
-		plate.add_child(words)
-		var kicker := Label.new()
-		kicker.text = key
-		kicker.theme_type_variation = "MenuKicker"
-		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		words.add_child(kicker)
-		var value := Label.new()
-		value.text = "0"
-		value.theme_type_variation = "SheetTitle"
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		words.add_child(value)
-		row.add_child(plate)
-		made.append(value)
-	_ore_l = made[0]
-	_ingot_l = made[1]
-	_time_l = made[2]
-	return row
 
 ## The panel under the valley: the milestone card on top, the tools under.
 func _build_panel() -> Control:
@@ -313,7 +326,7 @@ func _apply_insets() -> void:
 	_margins.add_theme_constant_override("margin_right", MARGIN)
 	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
 	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
-	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + BACKDROP_BLEED
+	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
 func _layout_field() -> void:
@@ -328,7 +341,15 @@ func _layout_field() -> void:
 	var box: Control = _banner.get_meta("box")
 	box.position = Vector2(20, s.y * 0.26)
 	box.size = Vector2(s.x - 40, 0)
+	_bag_btn.size = Vector2(BAG_D, BAG_D)
+	_bag_btn.position = s - Vector2(BAG_D + 18, BAG_D + 18)
+	_bag_btn.pivot_offset = _bag_btn.size * 0.5
+	_strip.size = Vector2(minf(32.0 + SLOTS * SLOT + (SLOTS - 1) * 14.0, s.x - BAG_D - 18 - 18 - 12), STRIP_H)
+	_strip.position = Vector2(18, _strip_y(_bag_open))
 	field.queue_redraw()
+
+func _strip_y(open: bool) -> float:
+	return field.size.y - STRIP_H - 18.0 if open else field.size.y + 12.0
 
 # --- the camera ---
 
@@ -402,7 +423,12 @@ func _begin(resumed: bool) -> void:
 	_save_acc = 0.0
 	_fliers.clear()
 	_pops.clear()
+	_to_bag.clear()
+	_inflight.clear()
+	_drag.clear()
 	_hints_said.clear()
+	_loose_key = "?"
+	_show_bag(false, true)
 	_built_key = "?"
 	_set_tool("")
 	_refresh()
@@ -468,6 +494,18 @@ func _animate(delta: float) -> void:
 	for p: Dictionary in _pops:
 		p.t += delta
 	_pops = _pops.filter(func(p: Dictionary) -> bool: return p.t < 1.0)
+	var landed := false
+	for f: Dictionary in _to_bag:
+		f.t += delta
+		if f.t >= f.dur:
+			landed = true
+			if f.get("back", false):
+				continue
+			_inflight[f.item] = int(_inflight.get(f.item, 0)) - 1
+	if landed:
+		_to_bag = _to_bag.filter(func(f: Dictionary) -> bool: return f.t < f.dur)
+		_bump_bag()
+	_over.queue_redraw()
 	for id in _shake.keys():
 		_shake[id] = float(_shake[id]) - delta
 		if _shake[id] <= 0.0:
@@ -565,7 +603,7 @@ func lift(at: Vector2) -> void:
 
 ## Held still on a live deposit, the finger keeps digging.
 func _held_dig(delta: float) -> void:
-	if _touches.size() != 1 or _panning or _tool != "":
+	if _touches.size() != 1 or _panning or _tool != "" or not _drag.is_empty():
 		return
 	if not _digging:
 		if _clock - _press_t < HOLD:
@@ -608,8 +646,7 @@ func tap(at: Vector2) -> void:
 		return
 	var b: Dictionary = sim.building_at(c)
 	if not b.is_empty():
-		sim.tend(b.id)
-		_play_events()
+		_kiln_told(b)
 		return
 	if sim.owner_at(c) == "mill":
 		if sim.can_hand_in():
@@ -617,6 +654,23 @@ func tap(at: Vector2) -> void:
 		else:
 			_say(_need_text(), 3.0)
 		return
+	# the grass: pick up whatever lies within a fingertip
+	var reach := maxf(0.6, 60.0 / _zoom / Art.TILE)
+	var near := sim.loose_near(world(at) / Art.TILE, reach)
+	if not near.is_empty():
+		sim.pick(near.map(func(it: Dictionary) -> int: return it.id))
+		_play_events()
+
+## A tap on a kiln: what it is doing, and the bag opened to feed it.
+func _kiln_told(b: Dictionary) -> void:
+	if int(sim.stock.get("iron_ore", 0)) > 0:
+		_show_bag(true)
+		_say(tr("MS_KILN_HOW"), 3.0)
+	elif int(b.hopper) > 0:
+		_say(tr("MS_KILN_BUSY") % int(b.hopper), 2.5)
+	else:
+		_say(tr("MS_KILN_NO_ORE"), 3.0)
+		_fx.cue("refused")
 
 func _dig(c: Vector2i) -> void:
 	sim.dig(c)
@@ -656,12 +710,17 @@ func _play_events() -> void:
 			"dig":
 				var r := Sim.deposit_rect(ev.dep)
 				var c := (Vector2(r.position) + Vector2(1, 1)) * Art.TILE
-				var from := c + Vector2(randf_range(-24, 24), randf_range(-24, 8))
-				_fliers.append({"from": from, "to": from + Vector2(randf_range(-30, 30), -90), "t": 0.0, "dur": 0.55, "what": "ore", "arc": 50.0})
-				_pops.append({"at": from + Vector2(0, -40), "text": "+1", "t": 0.0, "col": TAG})
 				_shake["dep:%d" % ev.dep] = 0.12
 				_fx.cue("dig", randf_range(0.9, 1.12), -2.0)
-				_fx.puff(screen(from), Art.ROCK_HI, 3)
+				_fx.puff(screen(c + Vector2(randf_range(-24, 24), randf_range(-24, 8))), Art.ROCK_HI, 3)
+			"picked":
+				var items: Array = ev.items
+				var n := 0
+				for it: Dictionary in items:
+					_send_to_bag(it.item, screen((it.p as Vector2) * Art.TILE), n * 0.035)
+					n += 1
+				var ingots := items.any(func(it: Dictionary) -> bool: return it.item == "iron_ingot")
+				_fx.cue("collect" if ingots else "pick", 0.95 + minf(n, 8) * 0.03)
 			"locked":
 				_say(tr("MS_LOCKED_" + String(ev.res).to_upper()), 3.0)
 				_fx.cue("refused")
@@ -670,7 +729,7 @@ func _play_events() -> void:
 				_fx.cue("place")
 				_fx.puff(screen(at + Vector2(0, 30)), Color("e8dcc4"), 8)
 				_shake["b:%d" % ev.id] = 0.25
-				_hint_once("tend", tr("MS_HINT_TEND"))
+				_hint_once("feed", tr("MS_HINT_FEED"))
 			"removed":
 				var at := (Vector2(ev.cell) + Vector2(1, 1)) * Art.TILE
 				_fx.cue("remove")
@@ -681,34 +740,28 @@ func _play_events() -> void:
 					_say(tr("MS_KILN_COST_SHORT") % int(Sim.COSTS.kiln.iron_ore), 3.0)
 				elif why == "milestone":
 					_say(_need_text(), 3.0)
+				elif why == "wrong_item":
+					_say(tr("MS_KILN_ORE_ONLY"), 2.5)
+				elif why == "hopper_full":
+					_say(tr("MS_KILN_FULL"), 2.5)
+				elif why == "bag_empty":
+					_say(tr("MS_BAG_NO_ORE"), 2.5)
 				else:
 					_say(tr("MS_NO_ROOM_" + why.to_upper()), 2.5)
 				_fx.cue("refused")
 			"load":
 				var b: Dictionary = sim.by_id(ev.id)
 				var mouth := _mouth(b)
-				for k in mini(int(ev.n), 5):
-					var from := mouth + Vector2(randf_range(-60, 60), 70 + k * 6)
-					_fliers.append({"from": from, "to": mouth, "t": -k * 0.06, "dur": 0.4 + k * 0.06, "what": "ore", "arc": 40.0})
+				var from: Vector2 = ev.get("from", mouth + Vector2(0, 70))
+				for k in mini(int(ev.n), 6):
+					var at := from + Vector2(randf_range(-20, 20), randf_range(-14, 14))
+					_fliers.append({"from": at, "to": mouth, "t": -k * 0.05, "dur": 0.34 + k * 0.03, "what": "ore", "arc": 46.0})
 				_pops.append({"at": mouth + Vector2(0, -70), "text": "+%d" % ev.n, "t": 0.0, "col": Art.ORE.iron[2]})
 				_fx.cue("load", randf_range(0.95, 1.08))
-			"collect":
-				var b: Dictionary = sim.by_id(ev.id)
-				var mouth := _mouth(b)
-				for k in mini(int(ev.n), 6):
-					_fliers.append({"from": mouth, "to": mouth + Vector2(randf_range(-40, 40), -110), "t": -k * 0.05, "dur": 0.5 + k * 0.05, "what": "ingot", "arc": 30.0})
-				_pops.append({"at": mouth + Vector2(0, -120), "text": "+%d" % ev.n, "t": 0.0, "col": Art.INGOT_HI})
-				_fx.cue("collect", randf_range(0.95, 1.06))
-			"idle":
-				var why := String(ev.why)
-				_say(tr("MS_KILN_FULL") if why == "full" else tr("MS_KILN_NO_ORE"), 2.5)
-				_fx.cue("refused")
 			"smelt":
-				var b: Dictionary = sim.by_id(ev.id)
 				_fx.cue("smelt", randf_range(0.92, 1.1), -6.0)
 				_shake["glow:%d" % ev.id] = 0.3
-				if not b.is_empty() and int(b.shelf) == Sim.SHELF:
-					_say(tr("MS_KILN_FULL"), 2.5)
+				_hint_once("ingot", tr("MS_HINT_INGOT"))
 			"milestone":
 				_on_milestone(ev)
 	sim.events.clear()
@@ -747,6 +800,9 @@ func _mouth(b: Dictionary) -> Vector2:
 func _hints() -> void:
 	if _clock > 1.2:
 		_hint_once("dig", tr("MS_HINT_DIG"))
+	if not sim.loose.is_empty() and sim.mined <= 3 and not _hints_said.has("pick"):
+		if sim.loose.any(func(it: Dictionary) -> bool: return sim.t - float(it.born) > POP_T + 0.4):
+			_hint_once("pick", tr("MS_HINT_PICK"))
 	if int(sim.stock.iron_ore) >= int(Sim.COSTS.kiln.iron_ore) and sim.buildings.is_empty():
 		_hint_once("kiln", tr("MS_HINT_KILN"))
 	if sim.can_hand_in():
@@ -773,7 +829,7 @@ func _say(text: String, hold: float) -> void:
 	_toast.custom_minimum_size.x = w
 	_toast.reset_size()
 	_toast.size.x = w
-	_toast.position = Vector2((field.size.x - w) * 0.5, field.size.y - _toast.size.y - 24.0)
+	_toast.position = Vector2((field.size.x - w) * 0.5, 24.0)
 	Motion.stop(_toast_tw)
 	_toast_tw = create_tween()
 	_toast_tw.tween_property(_toast, "modulate:a", 1.0, 0.18)
@@ -824,22 +880,190 @@ static func _clock_text(secs: int) -> String:
 	return "%d:%02d" % [secs / 60, secs % 60]
 
 func _refresh() -> void:
-	var ore := Record.grouped(int(sim.stock.get("iron_ore", 0)))
-	if _ore_l.text != ore:
-		_ore_l.text = ore
-	var ing := Record.grouped(int(sim.stock.get("iron_ingot", 0)))
-	if _ingot_l.text != ing:
-		_ingot_l.text = ing
-	var tm := _clock_text(int(sim.t))
-	if _time_l.text != tm:
-		_time_l.text = tm
 	var n := mini(sim.milestone, Sim.MILESTONES.size() - 1)
-	_ms_kicker.text = tr("MS_MILESTONE_N") % (n + 1)
+	var kick := (tr("MS_MILESTONE_N") % (n + 1)) + "  ·  " + _clock_text(int(sim.t))
+	if _ms_kicker.text != kick:
+		_ms_kicker.text = kick
 	_ms_title.text = tr(Sim.MILESTONES[n].key) if not sim.finished() else tr("MS_ALL_DONE")
 	_hand_in.disabled = not sim.can_hand_in()
 	_ms_bar.queue_redraw()
 	for k: String in _chips:
 		(_chips[k] as Control).queue_redraw()
+	_bag_btn.queue_redraw()
+	if _strip.visible:
+		_strip.queue_redraw()
+
+# --- the bag ---
+
+func _toggle_bag() -> void:
+	_show_bag(not _bag_open)
+
+func _show_bag(open: bool, instant := false) -> void:
+	var was := _bag_open
+	_bag_open = open
+	_bag_btn.button_pressed = open
+	_bag_btn.queue_redraw()
+	if field.size.y <= 0.0:
+		return
+	if open != was and not instant:
+		_fx.cue("bag", 1.06 if open else 0.94)
+	Motion.stop(_strip_tw)
+	var y := _strip_y(open)
+	if open:
+		_strip.visible = true
+		_strip.queue_redraw()
+	if instant or Motion.reduce:
+		_strip.position.y = y
+		_strip.visible = open
+		return
+	_strip_tw = create_tween()
+	_strip_tw.tween_property(_strip, "position:y", y, 0.26).set_trans(Tween.TRANS_BACK if open else Tween.TRANS_SINE).set_ease(Tween.EASE_OUT if open else Tween.EASE_IN)
+	if not open:
+		_strip_tw.tween_callback(func() -> void: _strip.visible = _bag_open)
+
+## How many of `item` the bag shows: what it holds, less what is still flying in.
+func bag_count(item: String) -> int:
+	return int(sim.stock.get(item, 0)) - int(_inflight.get(item, 0))
+
+func _bump_bag() -> void:
+	_bag_btn.queue_redraw()
+	_strip.queue_redraw()
+	if Motion.reduce:
+		return
+	Motion.stop(_bag_tw)
+	_bag_btn.scale = Vector2(1.14, 1.14)
+	_bag_tw = create_tween()
+	_bag_tw.tween_property(_bag_btn, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## A field point in the overlay's pixels.
+func _f2o(at: Vector2) -> Vector2:
+	return _over.get_global_transform_with_canvas().affine_inverse() * (field.get_global_transform_with_canvas() * at)
+
+func _bag_mouth() -> Vector2:
+	return _f2o(_bag_btn.position + _bag_btn.size * Vector2(0.5, 0.42))
+
+## An item picked off the grass (at field px) flies into the bag.
+func _send_to_bag(item: String, at: Vector2, delay: float) -> void:
+	_inflight[item] = int(_inflight.get(item, 0)) + 1
+	var from := _f2o(at)
+	_to_bag.append({"from": from, "to": _bag_mouth(), "t": -delay, "dur": 0.34 + from.distance_to(_bag_mouth()) / 5000.0,
+		"item": item, "s0": _zoom, "s1": 1.3})
+
+## A drag out of a slot.
+func drag_begin(item: String, at: Vector2) -> void:
+	_drag = {"item": item, "at": at, "from": at, "moved": false}
+	_strip.queue_redraw()
+
+func drag_move(at: Vector2) -> void:
+	if _drag.is_empty():
+		return
+	_drag.at = at
+	if not _drag.moved and at.distance_to(_drag.from) > SLOP:
+		_drag.moved = true
+		_fx.cue("pick", 0.8, -8.0)
+
+func drag_end(at: Vector2) -> void:
+	if _drag.is_empty():
+		return
+	var item: String = _drag.item
+	var moved: bool = _drag.moved
+	_drag.clear()
+	_strip.queue_redraw()
+	if not moved:
+		_say(tr("MS_BAG_DRAG_ORE") if item == "iron_ore" else tr("MS_BAG_DRAG_INGOT"), 2.5)
+		return
+	var p := at - Vector2(0, LIFT)
+	var tgt := _drop_target(p)
+	var landed := false
+	if tgt.get("kind", "") == "kiln":
+		landed = sim.feed(tgt.b.id, item, 9999) > 0
+		for ev: Dictionary in sim.events:
+			if ev.type == "load":
+				ev["from"] = world(p)
+		_play_events()
+		if landed:
+			save()
+	elif tgt.get("kind", "") == "mill":
+		if item == "iron_ingot" and sim.can_hand_in():
+			_on_hand_in()
+			landed = true
+		else:
+			_say(_need_text(), 3.0)
+			_fx.cue("refused")
+	if not landed:
+		# back into the bag it goes
+		_to_bag.append({"from": _f2o(p), "to": _slot_centre(item), "t": 0.0, "dur": 0.28, "item": item, "s0": 1.3, "s1": 1.1, "back": true})
+
+## The kiln or the Mill under a field point: {kind, b, rect (world px)}.
+func _drop_target(at: Vector2) -> Dictionary:
+	if at.y > _strip.position.y and _strip.visible and at.x < _strip.position.x + _strip.size.x:
+		return {}
+	var c := cell_at(at)
+	var b: Dictionary = sim.building_at(c)
+	if not b.is_empty():
+		return {"kind": "kiln", "b": b, "rect": Rect2(Vector2(b.cell) * Art.TILE, Vector2(Sim.SIZES[b.kind]) * Art.TILE)}
+	if sim.owner_at(c) == "mill":
+		return {"kind": "mill", "rect": Rect2(Vector2(Sim.MILL.position) * Art.TILE, Vector2(Sim.MILL.size) * Art.TILE)}
+	return {}
+
+func _drop_ok(tgt: Dictionary, item: String) -> bool:
+	if tgt.kind == "kiln":
+		return item == "iron_ore" and int(tgt.b.hopper) < Sim.HOPPER
+	return item == "iron_ingot" and sim.can_hand_in()
+
+func _slot_centre(item: String) -> Vector2:
+	var i := ITEMS.find(item)
+	if not _strip.visible or i < 0:
+		return _bag_mouth()
+	return _f2o(_strip.position + (_strip as _BagStrip).slot_rect(i).get_center())
+
+## Over everything: items flying into the bag, and the one being dragged.
+func _draw_over() -> void:
+	if sim == null:
+		return
+	var b := Face.Builder.new()
+	var any := false
+	for f: Dictionary in _to_bag:
+		if f.t < 0.0:
+			continue
+		any = true
+		var k: float = clampf(f.t / f.dur, 0.0, 1.0)
+		# a hop up off the grass, then a swoop into the bag's mouth
+		var e := pow(k, 1.5) if not f.get("back", false) else k * (2.0 - k)
+		var p: Vector2 = (f.from as Vector2).lerp(f.to, e) + Vector2(0, -sin(sqrt(k) * PI) * (30.0 if f.get("back", false) else 90.0))
+		var sc: float = lerpf(f.s0, f.s1, e)
+		if not f.get("back", false) and k > 0.8:
+			sc *= 1.0 - (k - 0.8) * 2.5
+		_lying(b, p, f.item, sc, false)
+	var count_at := Vector2.ZERO
+	var n := 0
+	if not _drag.is_empty() and _drag.moved:
+		any = true
+		var p := _f2o(_drag.at - Vector2(0, LIFT))
+		b.ellipse(p + Vector2(0, 30), 26.0, 9.0, Color(0.2, 0.15, 0.1, 0.25))
+		n = bag_count(_drag.item)
+		for j in mini(n, 3):
+			_lying(b, p + Vector2((j - 1) * 14.0, -j * 5.0), _drag.item, 1.6, false)
+		count_at = p + Vector2(34, 26)
+	if not any:
+		return
+	_over_mesh = b.mesh()
+	_over.draw_mesh(_over_mesh, null)
+	if n > 0:
+		var font := get_theme_font("font", "SheetTitle")
+		var t := "x%d" % n
+		_over.draw_string_outline(font, count_at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, 8, Color(0.23, 0.16, 0.1, 0.8))
+		_over.draw_string(font, count_at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, TAG)
+
+## An item lying at `at` (whatever pixels the builder is in), `s` times its
+## size on the grass at zoom 1; with its small shadow unless `shadow` is off.
+func _lying(b: Face.Builder, at: Vector2, item: String, s: float, shadow := true) -> void:
+	if shadow:
+		b.ellipse(at + Vector2(0, 8.0 * s), 13.0 * s, 4.5 * s, Color(0.2, 0.3, 0.1, 0.22))
+	if item == "iron_ingot":
+		Art.ingot(b, at, 28.0 * s)
+	else:
+		Art.ore(b, at, 12.0 * s)
 
 # --- drawing ---
 
@@ -856,6 +1080,16 @@ func _draw_field() -> void:
 	field.draw_set_transform_matrix(view)
 	field.draw_mesh(_ground, null)
 	field.draw_mesh(_built, null)
+	var settled := sim.loose.filter(func(it: Dictionary) -> bool: return sim.t - float(it.born) >= POP_T)
+	var lkey := "%d:%d" % [sim.loose_rev, settled.size()]
+	if lkey != _loose_key:
+		_loose_key = lkey
+		var lb := Face.Builder.new()
+		for it: Dictionary in settled:
+			_lying(lb, (it.p as Vector2) * Art.TILE, it.item, 1.0)
+		_loose_mesh = lb.mesh() if not settled.is_empty() else null
+	if _loose_mesh != null:
+		field.draw_mesh(_loose_mesh, null)
 	_live = _build_live()
 	field.draw_mesh(_live, null)
 	field.draw_set_transform_matrix(Transform2D.IDENTITY)
@@ -891,6 +1125,30 @@ func _build_live() -> ArrayMesh:
 				b.disc(c + Vector2.from_angle(a) * (26.0 + (1.0 - k) * 26.0) - Vector2(0, 10), 4.0 * k + 1.0, Color(Art.ROCK_HI, k))
 	for bd: Dictionary in sim.buildings:
 		_kiln_live(b, bd)
+	# items popping out of a vein or a kiln's mouth, arcing onto the grass
+	for it: Dictionary in sim.loose:
+		var age := sim.t - float(it.born)
+		if age >= POP_T:
+			continue
+		var k := clampf(age / POP_T, 0.0, 1.0)
+		var from := (it.from as Vector2) * Art.TILE
+		var to := (it.p as Vector2) * Art.TILE
+		var ground := from.lerp(to, 1.0 - pow(1.0 - k, 1.6))
+		var hop := sin(k * PI) * (78.0 if it.item == "iron_ore" else 54.0)
+		b.ellipse(ground + Vector2(0, 8), 12.0 * (0.6 + 0.4 * k), 4.5, Color(0.2, 0.3, 0.1, 0.22 * k))
+		_lying(b, ground - Vector2(0, hop), it.item, 1.0, false)
+	# where a dragged item would go: the kiln or the Mill under it, lit
+	if not _drag.is_empty() and _drag.moved:
+		var tgt := _drop_target(_drag.at - Vector2(0, LIFT))
+		if not tgt.is_empty():
+			var ok := _drop_ok(tgt, _drag.item)
+			var r: Rect2 = tgt.rect
+			var pulse := 0.0 if Motion.reduce else sin(_clock * 8.0) * 3.0
+			var ring := Face.Builder.round_rect(r.position - Vector2(6 + pulse, 6 + pulse), r.size + Vector2(12 + pulse * 2, 12 + pulse * 2), 22.0)
+			var col := Art.OK if ok else Art.BAD
+			b.fan(ring, Color(col, 0.14))
+			ring.append(ring[0])
+			b.stroke(ring, 6.0, Color(col, 0.9))
 	if _tool == "kiln" and _ghost_live:
 		var ok := sim.place_refusal("kiln", _ghost) == ""
 		var at := Vector2(_ghost) * Art.TILE
@@ -914,8 +1172,8 @@ func _build_live() -> ArrayMesh:
 	return b.mesh()
 
 ## A kiln's live parts: the fire in its mouth (flickering while it works,
-## grey embers when it stalls), smoke from the chimney, its progress, and
-## its stores -- ore heaped by the hopper, ingots stacked on the shelf.
+## grey embers and an ore bubble when it has run dry), smoke from the
+## chimney, its progress, and the ore heaped by its hopper.
 func _kiln_live(b: Face.Builder, bd: Dictionary) -> void:
 	var c := (Vector2(bd.cell) + Vector2(1, 1)) * Art.TILE
 	var state := Sim.kiln_state(bd)
@@ -938,23 +1196,16 @@ func _kiln_live(b: Face.Builder, bd: Dictionary) -> void:
 		b.fan(Face.Builder.round_rect(c + Vector2(-w * 0.5, 44), Vector2(maxf(7.0, w * k), 7), 3.5), Art.EMBER)
 	else:
 		b.ellipse(mouth, 12.0, 8.0, Color(Art.ROCK_DEEP, 0.8))
-		# a small sign of what it wants: an ore bubble or a full shelf
+		# a small sign of what it wants: an ore bubble
 		var tip := c + Vector2(-44, -50)
 		var bob := 0.0 if Motion.reduce else sin(_clock * 3.0 + bd.id) * 3.0
 		b.disc(tip + Vector2(0, bob), 20.0, Color(Art.TAG_PAPER, 0.95))
 		b.disc(tip + Vector2(8, 16 + bob), 5.0, Color(Art.TAG_PAPER, 0.95))
-		if state == "no_ore":
-			Art.ore(b, tip + Vector2(0, bob), 10.0)
-		else:
-			Art.ingot(b, tip + Vector2(0, bob), 22.0)
+		Art.ore(b, tip + Vector2(0, bob), 10.0)
 	# the hopper: a heap of ore to the left, taller the fuller
 	var heap := int(ceil(float(bd.hopper) / Sim.HOPPER * 5.0))
 	for j in heap:
 		Art.ore(b, c + Vector2(-54 + (j % 3) * 9, 40 - (j / 3) * 9), 8.0)
-	# the shelf: ingots stacked to the right
-	var stack := int(ceil(float(bd.shelf) / Sim.SHELF * 6.0))
-	for j in stack:
-		Art.ingot(b, c + Vector2(50 + (j % 2) * 4, 44 - j * 7), 20.0)
 
 func _append(into: Face.Builder, from: Face.Builder) -> void:
 	var base := into.verts.size()
@@ -963,15 +1214,15 @@ func _append(into: Face.Builder, from: Face.Builder) -> void:
 	for i in from.idx:
 		into.idx.append(base + i)
 
-## The few numbers: each kiln's shelf count, and the pops.
+## The few numbers: the ore left in each kiln's hopper, and the pops.
 func _draw_words() -> void:
 	var font := get_theme_font("font", "SheetTitle")
-	var fs := 30
+	var fs := 26
 	for bd: Dictionary in sim.buildings:
-		if int(bd.shelf) <= 0:
+		if int(bd.hopper) <= 0:
 			continue
-		var at := screen((Vector2(bd.cell) + Vector2(1, 1)) * Art.TILE + Vector2(52, 70))
-		_word(font, str(bd.shelf), at, fs, TAG)
+		var at := screen((Vector2(bd.cell) + Vector2(1, 1)) * Art.TILE + Vector2(-46, 66))
+		_word(font, str(bd.hopper), at, fs, TAG)
 	for p: Dictionary in _pops:
 		var k: float = p.t
 		var at := screen(p.at as Vector2) + Vector2(0, -k * 40.0)
@@ -1082,3 +1333,143 @@ class _Chip extends Button:
 	func _line(font: Font, text: String, y: float, fs: int, col: Color) -> void:
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_string(font, Vector2((size.x - w) * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+
+## The bag in the valley's corner: a sack on a paper disc, the count of
+## everything in it on a sun badge. A tap opens the strip of slots.
+class _BagButton extends Button:
+	var _s: Control
+	var _keep: ArrayMesh
+
+	func _init(s: Control) -> void:
+		_s = s
+		toggle_mode = true
+		focus_mode = Control.FOCUS_NONE
+		for st in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+
+	func _draw() -> void:
+		var sim = _s.sim
+		var c := size * 0.5
+		var r := size.x * 0.5 - 4.0
+		draw_circle(c + Vector2(0, 5), r, Color(0.2, 0.12, 0.05, 0.22))
+		draw_circle(c, r, Color("fcf7ef"))
+		draw_arc(c, r - 3.0, 0.0, TAU, 48, Pal.SUN if button_pressed else Color("c9ab84"), 5.0, true)
+		_keep = Art.icon("sack", size.x * 0.62)
+		draw_mesh(_keep, null, Transform2D(0.0, c + Vector2(0, 4)))
+		if sim == null:
+			return
+		var n := 0
+		for item: String in ITEMS:
+			n += _s.bag_count(item)
+		if n <= 0:
+			return
+		var font := get_theme_font("font", "MenuKicker")
+		var t := str(n)
+		var fs := 24
+		var w := maxf(34.0, font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 16.0)
+		var at := Vector2(size.x - w * 0.5 - 2.0, 18.0)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Pal.SUN
+		sb.set_corner_radius_all(17)
+		draw_style_box(sb, Rect2(at - Vector2(w * 0.5, 17), Vector2(w, 34)))
+		draw_string(font, at + Vector2(-w * 0.5 + 8.0, fs * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3b3028"))
+
+## The open bag: a paper strip of slots along the valley's foot, one a kind
+## of item with its count. A slot is dragged out onto a kiln or the Mill.
+class _BagStrip extends Control:
+	var _s: Control
+	var _keep := {}
+	var _finger := -1
+
+	func _init(s: Control) -> void:
+		_s = s
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func slot_rect(i: int) -> Rect2:
+		var gap := 14.0
+		var x0 := 16.0
+		return Rect2(Vector2(x0 + i * (SLOT + gap), (size.y - SLOT) * 0.5), Vector2(SLOT, SLOT))
+
+	func _slot_at(at: Vector2) -> int:
+		for i in SLOTS:
+			if slot_rect(i).grow(6.0).has_point(at):
+				return i
+		return -1
+
+	func _gui_input(event: InputEvent) -> void:
+		var at := Vector2.ZERO
+		var phase := 99
+		if event is InputEventScreenTouch:
+			var te := event as InputEventScreenTouch
+			if _finger != -1 and te.index != _finger:
+				return
+			at = te.position
+			phase = 1 if te.pressed else -1
+			_finger = te.index if te.pressed else -1
+		elif event is InputEventScreenDrag:
+			if (event as InputEventScreenDrag).index != _finger:
+				return
+			at = (event as InputEventScreenDrag).position
+			phase = 0
+		elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			at = (event as InputEventMouseButton).position
+			phase = 1 if event.pressed else -1
+		elif event is InputEventMouseMotion and ((event as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			at = (event as InputEventMouseMotion).position
+			phase = 0
+		else:
+			return
+		accept_event()
+		if phase == 1:
+			var i := _slot_at(at)
+			if i >= 0 and i < ITEMS.size() and _s.bag_count(ITEMS[i]) > 0:
+				_s.drag_begin(ITEMS[i], position + at)
+		elif phase == 0:
+			_s.drag_move(position + at)
+		else:
+			_s.drag_end(position + at)
+
+	func _draw() -> void:
+		var sim = _s.sim
+		if sim == null:
+			return
+		var wide: float = slot_rect(SLOTS - 1).end.x + 16.0
+		var panel := StyleBoxFlat.new()
+		panel.bg_color = Color("fcf7ef")
+		panel.set_corner_radius_all(30)
+		panel.border_color = Color("c9ab84")
+		panel.set_border_width_all(4)
+		panel.shadow_color = Color(0.2, 0.12, 0.05, 0.22)
+		panel.shadow_size = 8
+		panel.shadow_offset = Vector2(0, 5)
+		draw_style_box(panel, Rect2(Vector2.ZERO, Vector2(wide, size.y)))
+		var font := get_theme_font("font", "SheetTitle")
+		var empty := true
+		for i in SLOTS:
+			var r := slot_rect(i)
+			var cell := StyleBoxFlat.new()
+			cell.bg_color = Color("efe5d2")
+			cell.set_corner_radius_all(22)
+			draw_style_box(cell, r)
+			if i >= ITEMS.size():
+				continue
+			var item: String = ITEMS[i]
+			var n: int = _s.bag_count(item)
+			if n <= 0:
+				continue
+			empty = false
+			var held: bool = not _s._drag.is_empty() and _s._drag.item == item and _s._drag.moved
+			_keep[item] = Art.icon("bag_" + item, SLOT * 0.62)
+			draw_mesh(_keep[item], null, Transform2D(0.0, r.get_center() - Vector2(0, 8)), Color(1, 1, 1, 0.4 if held else 1.0))
+			var t := str(n)
+			var fs := 30
+			var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var at := r.end - Vector2(w + 12.0, 12.0)
+			draw_string_outline(font, at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color("fcf7ef"))
+			draw_string(font, at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3b3028"))
+		if empty:
+			var t := tr("MS_BAG_EMPTY")
+			var f2 := get_theme_font("font", "MenuKicker")
+			var fs := 24
+			var w := f2.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(f2, Vector2((wide - w) * 0.5, size.y * 0.5 + fs * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3b3028", 0.7))

@@ -1835,9 +1835,12 @@ a million. Its best is the **quickest retirement**, the first timed record:
 valley after the factory-builder genre, whose reference the spec names once
 to forbid; **it is called Millstream**. Seen from above and played by touch
 like a city builder (no avatar): one finger pans, two pinch, a tap acts.
-Slice 1 is live: dig iron ore by hand (tap, or hold to keep digging), build
-kilns that smelt on their own (a tap collects and loads), hand 20 ingots in
-at the Mill. Drills, belts and the rest of the milestones are next.
+Slice 1 is live: dig iron ore by hand (tap, or hold to keep digging) and
+it pops onto the grass; a tap on the grass picks it up into the bag (the
+sack in the valley's corner, a tap opens its strip of slots); drag ore out
+of the bag onto a kiln, which smelts on its own and pops each ingot onto
+the grass; drag 20 ingots onto the Mill (or press Hand in). Drills, belts
+and the rest of the milestones are next.
 
 - **Persistent, unlike the other Arcade games**: `user://millstream.cfg`
   (the sim's `to_dict`, plus the camera), saved on leaving, on focus loss,
@@ -1847,12 +1850,19 @@ at the Mill. Drills, belts and the rest of the milestones are next.
   fixed 1/30 s); `tests/_probe_millstream.gd -- [taps a second]` plays the
   slice and checks refusals and the save round trip.
 - **Everything is drawn through the camera's transform**: the valley is one
-  mesh built once, the buildings one mesh rebuilt on a change, one live mesh
-  a frame. 61-82 draw calls in play, 162 on the tab with five cards (810x1440).
-- `tests/_shot_millstream.gd -- <outdir> [reduce]` digs, places two kilns,
-  tends, pans, zooms and hands in, all by input through the viewport, and
-  puts both save files back.
-- 12 sounds (`CARTOON` hands, `ARCADE` jingles, a `FOLEY` brook loop),
+  mesh built once, the buildings one mesh rebuilt on a change, what lies on
+  the grass one mesh rebuilt when it changes, one live mesh a frame. Items
+  flying into the bag and the one being dragged out of it are drawn over the
+  whole screen (`_over`), because they cross the frame. 60-81 draw calls in
+  play, 162 on the tab with five cards (810x1440).
+- **A harness that sends a mouse press must send its release**, wheel
+  included: an unreleased wheel press keeps the field as the mouse-focus
+  control, and the next left press lands there instead of on the bag.
+- `tests/_shot_millstream.gd -- <outdir> [reduce]` digs, picks up, places
+  two kilns, opens the bag, drags ore onto both kilns, picks up the ingots,
+  pans, zooms and drags ingots onto the Mill, all by input through the
+  viewport, and puts both save files back.
+- 14 sounds (`CARTOON` hands, `ARCADE` jingles, a `FOLEY` brook loop),
   awaiting the user's listen.
 
 ## Sound

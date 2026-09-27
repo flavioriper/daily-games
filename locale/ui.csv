@@ -391,8 +391,6 @@ ARC_MILLSTREAM_BLURB,"A small factory in a valley: dig ore by hand, build kilns 
 ARC_NOT_BUILT,Not finished yet,Ainda não terminou,Aún sin terminar
 ARC_BEST_MILESTONE,Milestones: %d,Marcos: %d,Hitos: %d
 MS_MOTTO,"Dig it, smelt it, build it","Cave, funda, construa","Excava, funde, construye"
-MS_ORE,IRON ORE,MINÉRIO DE FERRO,MINERAL DE HIERRO
-MS_INGOTS,INGOTS,LINGOTES,LINGOTES
 MS_HAND_IN,Hand in,Entregar,Entregar
 MS_MILESTONE_N,MILESTONE %d,MARCO %d,HITO %d
 MS_M1,First ingots,Primeiros lingotes,Primeros lingotes
@@ -414,10 +412,19 @@ MS_NO_ROOM_EDGE,Too close to the edge of the valley,Perto demais da borda do val
 MS_ERASE_WHAT,Tap a kiln to lift it,Toque num forno para removê-lo,Toca un horno para quitarlo
 MS_LOCKED_COPPER,Copper comes later,O cobre vem depois,El cobre viene después
 MS_LOCKED_STONE,Stone comes later,A pedra vem depois,La piedra viene después
-MS_KILN_FULL,The kiln's shelf is full: tap it to collect,A prateleira do forno está cheia: toque para recolher,El estante del horno está lleno: tócalo para recoger
-MS_KILN_NO_ORE,The kiln needs ore: dig some and tap it again,O forno precisa de minério: cave e toque de novo,El horno necesita mineral: excava y tócalo otra vez
-MS_HINT_DIG,Tap the rusty rocks to dig iron ore (hold to keep digging),Toque nas rochas enferrujadas para cavar minério (segure para continuar),Toca las rocas oxidadas para excavar mineral (mantén para seguir)
+MS_KILN_FULL,The kiln's hopper is full,A tremonha do forno está cheia,La tolva del horno está llena
+MS_KILN_NO_ORE,"The kiln needs ore: dig some, pick it up and drag it on","O forno precisa de minério: cave, recolha e arraste até ele","El horno necesita mineral: excava, recógelo y arrástralo encima"
+MS_HINT_DIG,Tap the rusty rocks: ore pops out onto the grass (hold to keep digging),Toque nas rochas enferrujadas: o minério pula na grama (segure para continuar),Toca las rocas oxidadas: el mineral salta a la hierba (mantén para seguir)
 MS_HINT_KILN,You can afford a kiln: pick it below and tap the grass,Dá para comprar um forno: escolha abaixo e toque na grama,Ya puedes comprar un horno: elígelo abajo y toca la hierba
 MS_HINT_PLACE,Tap free grass to build the kiln there,Toque na grama livre para construir o forno,Toca hierba libre para construir el horno
-MS_HINT_TEND,Tap the kiln: it takes your ore and smelts it by itself,Toque no forno: ele pega seu minério e funde sozinho,Toca el horno: toma tu mineral y lo funde solo
 MS_HINT_HAND_IN,Enough ingots: hand them in at the Mill,Lingotes suficientes: entregue no Moinho,Suficientes lingotes: entrégalos en el Molino
+MS_BAG_EMPTY,Your bag is empty,Sua bolsa está vazia,Tu bolsa está vacía
+MS_BAG_DRAG_ORE,Drag the ore onto a kiln,Arraste o minério até um forno,Arrastra el mineral a un horno
+MS_BAG_DRAG_INGOT,Drag the ingots onto the Mill to hand them in,Arraste os lingotes até o Moinho para entregar,Arrastra los lingotes al Molino para entregarlos
+MS_BAG_NO_ORE,No ore in the bag,Sem minério na bolsa,No hay mineral en la bolsa
+MS_KILN_HOW,Drag iron ore from the bag onto the kiln,Arraste minério da bolsa até o forno,Arrastra mineral de la bolsa al horno
+MS_KILN_BUSY,Smelting: %d ore left,Fundindo: resta %d de minério,Fundiendo: queda %d de mineral
+MS_KILN_ORE_ONLY,Kilns only take iron ore,Fornos só aceitam minério de ferro,Los hornos solo aceptan mineral de hierro
+MS_HINT_PICK,Tap the ore on the grass to put it in your bag,Toque no minério na grama para guardar na bolsa,Toca el mineral en la hierba para guardarlo en la bolsa
+MS_HINT_FEED,Open the bag and drag ore onto the kiln,Abra a bolsa e arraste minério até o forno,Abre la bolsa y arrastra mineral al horno
+MS_HINT_INGOT,An ingot! Tap it to pick it up,Um lingote! Toque para recolher,¡Un lingote! Tócalo para recogerlo

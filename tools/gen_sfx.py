@@ -562,6 +562,8 @@ SETS = {
         "place":     ("a soft heavy thunk of a small brick oven set down on grass, with a little puff of dust, short", 0.6, -7, CARTOON),
         "remove":    ("a soft whoosh and a pop, a small brick building lifted away in a puff, short", 0.6, -9, CARTOON),
         "load":      ("a handful of small rocks tumbling into a metal hopper, a short rattling pour", 0.7, -9, CARTOON),
+        "pick":      ("a small rock plucked off the grass and tossed into a cloth sack, a soft thup with a tiny stony tick, very short", 0.5, -10, CARTOON),
+        "bag":       ("a burlap sack opened with a soft cloth rustle and a tiny drawstring swish, very short", 0.5, -12, CARTOON),
         "collect":   ("a few small metal bars clinking together as they are picked up, bright and short", 0.6, -8, CARTOON),
         "smelt":     ("a tiny soft puff of fire and a faint metal tink, an ingot finished in a little furnace, very short and quiet", 0.5, -18, CARTOON),
         "hand_in":   ("metal bars clattering into a wooden crate followed by a warm happy two-note chime, short", 1.0, -6, CARTOON),
