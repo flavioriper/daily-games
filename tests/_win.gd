@@ -33,7 +33,11 @@ func _initialize() -> void:
 	var progress = load("res://core/progress.gd")
 	progress.path = progress_path
 	_entries = []
+	# `-- <id> ...` walks only those boards.
+	var only := OS.get_cmdline_user_args()
 	for e in load("res://ui/registry.gd").PUZZLES:
+		if not only.is_empty() and not only.has(String(e.id)):
+			continue
 		if not e.get("soon", false):
 			_entries.append(e)
 			progress.mark_tutorial_seen(String(e.id))
@@ -143,6 +147,8 @@ func _note(id: String) -> String:
 		"knight": return "%dx%d board, %d rose knights, shortest %d, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.w, _puzzle._state.w, _puzzle._state.foes.size(), _puzzle._state.opt(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"slider": return "band %d, shortest %d, %d moves, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.band, _puzzle._state.par, _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"hedgehogs": return "%dx%d lawn, %d hedgehogs, woken=%d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols(), _puzzle._state.rows(), int(_puzzle._state.g.k), _puzzle._state.woken,
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
@@ -179,6 +185,7 @@ func _solve(id: String) -> void:
 		"sunbeam": _solve_sunbeam()
 		"knight": _solve_knight()
 		"hedgehogs": _solve_hedgehogs()
+		"slider": _solve_slider()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -387,6 +394,31 @@ func _solve_caterpillar() -> void:
 ## its rail by real touch, a peg a step. A piece whose home another piece is
 ## standing on waits for a later pass; after two passes with nothing moved,
 ## the blocker is dragged to any free peg first.
+## Super Slider: one hint through the HUD, which slides the next block of a
+## shortest way out, then the rest of the way dragged block by block by real
+## touch, the finger passing every cell of the block's path so a slide round
+## a corner goes the way the solver meant.
+func _solve_slider() -> void:
+	var st = _puzzle._state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in 5:
+		for c in 4:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and st.history.size() == 1
+	for i in 400:
+		if st.is_solved():
+			break
+		var m: Dictionary = st.hint_move()
+		if m.is_empty():
+			break
+		var pts: Array[Vector2] = []
+		for c: int in m.path:
+			pts.append(_puzzle.cell_to_local(c / 4, c % 4))
+		_drag_path_local(pts)
+
 func _solve_sunbeam() -> void:
 	var st = _puzzle._state
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)

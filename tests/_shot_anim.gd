@@ -454,6 +454,8 @@ func _process(delta: float) -> bool:
 			_tap_knight()
 		elif _entry.id == "hedgehogs" and not _empty:
 			_tap_hedgehogs()
+		elif _entry.id == "slider" and not _empty:
+			_slide_slider()
 		elif _entry.id == "rings" and not _empty:
 			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
@@ -1514,6 +1516,53 @@ func _fill_mastermind_step() -> void:
 ## Presses a HUD button through a touch at its centre, like a player would.
 func _press(btn: Button) -> void:
 	_tap_global(btn.get_global_transform_with_canvas() * (btn.size * 0.5))
+
+## Super Slider: the next block of a shortest way out dragged by real touch
+## along its path, so the strip shows the lift, the slide and the landing.
+## `solve` plays all but the last move through the state first, so the strip
+## shows the big block landing on the mat, the doors and the walk out.
+## `hold` keeps the finger down half a cell into the move, so the strip shows
+## a block held off its cell.
+func _slide_slider() -> void:
+	var st = _puzzle._state
+	if _mode == "solve":
+		for i in 400:
+			if st.distance() <= 1:
+				break
+			var mv: Dictionary = st.hint_move()
+			if mv.is_empty():
+				break
+			st.play(mv.p, mv.to)
+		for p in st.blocks.size():
+			_puzzle._disp[p] = _puzzle._still_at(p)
+		_puzzle._refresh()
+	var m: Dictionary = st.hint_move()
+	if m.is_empty():
+		return
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var pts: Array[Vector2] = []
+	for c: int in m.path:
+		pts.append(xf * _puzzle.cell_to_local(c / 4, c % 4))
+	if _mode == "hold":
+		pts = [pts[0], pts[0].lerp(pts[1], 0.45)]
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = pts[0]
+	root.push_input(down, true)
+	for i in range(1, pts.size()):
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = pts[i]
+		drag.relative = pts[i] - pts[i - 1]
+		root.push_input(drag, true)
+	if _mode == "hold":
+		return
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.pressed = false
+	up.position = pts[pts.size() - 1]
+	root.push_input(up, true)
 
 func _tap_global(at: Vector2) -> void:
 	for pressed in [true, false]:
