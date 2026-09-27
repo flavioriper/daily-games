@@ -394,6 +394,27 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of small wooden blocks being set down in a wooden tray", 1.0, -9),
     },
+    # Marigold: the family's sun shoots a seed down through a pond garden of
+    # flower buds; every bud it touches blooms with the next note of a rising
+    # scale, the blooms are picked, and the last marigold is a full bloom.
+    "marigold": {
+        "shoot":    ("a soft round airy 'thoop', a small seed puffed out of a leaf tube, light and cute, very short", 0.5, -8),
+        "hit":      ("a single clear soft glockenspiel note, one bell tone, bright and short with a quick natural decay, no other notes", 0.5, -8),
+        "wall":     ("a tiny soft wooden tock, a small bead bouncing off a wooden post, very short", 0.5, -16),
+        "clover":   ("a quick bright magical double chime with a soft shimmer, something splitting in two happily", 0.7, -8),
+        "violet":   ("a sweet bright three-note rising kalimba sparkle, a special bonus found", 0.8, -6),
+        "pop":      ("a single tiny soft petal pop, a small flower plucked, light and airy, very short", 0.5, -12),
+        "pot":      ("a small bead dropping into a clay flowerpot with a hollow terracotta clunk and a happy little kalimba note going up", 0.8, -6),
+        "free":     ("a cheerful short marimba jingle of three rising notes, a reward earned", 1.0, -6),
+        "drain":    ("a very soft low airy swoosh fading down, a small bead falling away out of sight, gentle", 0.6, -14),
+        "fever":    ("a swelling magical harp glissando rising up into a bright shimmering chime, a sudden wonderful moment, joyful", 1.8, -4),
+        "fever_pot":("a bright triumphant bell and marimba hit with a sparkling shimmer, a big prize won, joyful", 1.2, -4),
+        "out":      ("a gentle soft two-note downward kalimba, a kind 'try again', never sad or harsh", 0.8, -9),
+        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little garden growing back", 1.0, -8),
+        "solved":   ("a joyful celebratory marimba and glockenspiel fanfare, a bright rising melody that lands on a big warm chord with sparkles, triumphant and cozy", 2.8, -3),
+        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     "fairylights": {

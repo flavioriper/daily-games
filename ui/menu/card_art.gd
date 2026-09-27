@@ -58,6 +58,8 @@ const ChessPiece = preload("res://ui/faces/chess_piece.gd")
 const SlideBlock = preload("res://ui/faces/slider_block.gd")
 const SlideGen = preload("res://puzzles/slider_gen.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
+const MgParts = preload("res://ui/faces/marigold_parts.gd")
+const MgState = preload("res://puzzles/marigold_state.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
 
@@ -205,6 +207,7 @@ var _sunbeam_mesh: ArrayMesh
 var _knight_mesh: ArrayMesh
 var _slider_mesh: ArrayMesh
 var _hedgehogs_mesh: ArrayMesh
+var _marigold_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -391,6 +394,7 @@ func _draw() -> void:
 		"knight": _draw_knight()
 		"slider": _draw_slider()
 		"hedgehogs": _draw_hedgehogs()
+		"marigold": _draw_marigold()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1234,3 +1238,63 @@ func _draw_slider() -> void:
 			0.3 if a == SlideGen.B0 else 0.0)
 	_slider_mesh = b.mesh()
 	draw_mesh(_slider_mesh, null)
+
+## Marigold: the board's own sun, spout, buds, blooms, seed and pot, through
+## `ui/faces/marigold_parts.gd`, the file `puzzles/marigold2d.gd` draws with:
+## the sun at the left shooting down a dotted arc into a field of buds, three
+## of them in bloom, and the pot waiting under them. One mesh.
+func _draw_marigold() -> void:
+	var b := Face.Builder.new()
+	var r := 7.2 * _u
+	# the field: two staggered rows and a smile under them
+	var buds: Array = []
+	for row in 2:
+		for k in 9:
+			buds.append(Vector2(-22.0 + float(k) * 19.0 + (9.5 if row == 1 else 0.0), -28.0 + float(row) * 17.0))
+	for k in 7:
+		var a := PI * (0.12 + 0.76 * float(k) / 6.0)
+		buds.append(Vector2(65.0 + cos(a) * 62.0, -20.0 + sin(a) * 50.0))
+	var kinds := {1: MgState.ORANGE, 4: MgState.ORANGE, 6: MgState.ORANGE, 10: MgState.ORANGE, 12: MgState.ORANGE,
+		15: MgState.ORANGE, 19: MgState.ORANGE, 22: MgState.ORANGE, 8: MgState.GREEN, 20: MgState.PURPLE}
+	var lit := {4: true, 12: true, 13: true}
+	# the aim, a dotted fall from the spout into the first bloom
+	var sun := at(-128.0, -30.0)
+	var aim := Vector2.from_angle(0.5)
+	for k in 11:
+		var u := float(k) / 10.0
+		var p := sun + (aim * 150.0 * u + Vector2(0.0, 55.0 * u * u)) * _u
+		b.disc(p, (2.2 - 1.0 * u) * _u, Color(Pal.MG_SHINE, 0.95 - 0.5 * u))
+	for i in buds.size():
+		var p := at(buds[i].x, buds[i].y)
+		var kd: int = kinds.get(i, MgState.BLUE)
+		if lit.has(i):
+			MgParts.bloom(b, p, r, kd, 1.0)
+		else:
+			MgParts.bud(b, p, r, kd)
+	MgParts.bead(b, at(-2.0, -2.0), 5.4 * _u)
+	var pb := Face.Builder.new()
+	MgParts.pot(pb, 50.0 * _u)
+	var rim := at(118.0, 36.0)
+	var base := b.verts.size()
+	for i in pb.verts.size():
+		b.verts.append(pb.verts[i] + rim)
+		b.cols.append(pb.cols[i])
+	for i in pb.idx:
+		b.idx.append(base + i)
+	# the sun last, over the arc's start
+	var R := 17.0 * _u
+	var parts: Array = [[Face.Builder.new(), 0.0], [Face.Builder.new(), aim.angle()], [Face.Builder.new(), 0.0]]
+	MgParts.sun_rays(parts[0][0], R)
+	MgParts.spout(parts[1][0], R, false)
+	MgParts.sun_body(parts[2][0], R, 1.0, Face.Expr.HAPPY, aim * 0.07)
+	for part: Array in parts:
+		var sb: Face.Builder = part[0]
+		var turn := Transform2D(float(part[1]), sun)
+		base = b.verts.size()
+		for i in sb.verts.size():
+			b.verts.append(turn * sb.verts[i])
+			b.cols.append(sb.cols[i])
+		for i in sb.idx:
+			b.idx.append(base + i)
+	_marigold_mesh = b.mesh()
+	draw_mesh(_marigold_mesh, null)

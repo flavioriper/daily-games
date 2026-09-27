@@ -725,6 +725,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "SL_LVL_3"},
 		],
 	},
+	{
+		"id": "marigold",
+		"kind": "puzzle",
+		"title": "Marigold",
+		"blurb": "MG_BLURB",
+		"short": "MG_SHORT",
+		"motto": "MG_MOTTO",
+		"footer": "Aim · Bounce · Bloom",
+		# Nothing is picked up and nothing can be taken back once a seed has
+		# flown: no tray, no actions row and no Undo. Hint and Reset ride in
+		# the top bar -- Pinwheel's shape.
+		"script": "res://puzzles/marigold2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each garden (marigold_state.gd's BANDS) is its
+		# own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "MG_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "MG_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "MG_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "MG_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.
