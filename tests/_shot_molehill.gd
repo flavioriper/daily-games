@@ -66,6 +66,9 @@ func _force(i: int, kind: int, st: int, hp := 1, done := false) -> void:
 
 func _process(delta: float) -> bool:
 	_t += delta
+	# the window losing focus pauses the game; the harness plays on
+	if _s != null and _s._paused and _s._end == null:
+		_s._pause(false)
 	match _step:
 		0:
 			if _t > 0.8:

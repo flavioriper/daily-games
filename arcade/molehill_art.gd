@@ -33,6 +33,10 @@ const POT := Color("d9774a")
 const POT_DEEP := Color("b85c34")
 const POT_RIM := Color("e8946a")
 const SPROUT := Color("7fa84a")
+const GRASS := Color("6f9c46")
+const GRASS_HI := Color("8dba58")
+const CARROT := Color("f08a3c")
+const CARROT_DEEP := Color("d0692a")
 const BUNNY := Color("f6efe4")
 const BUNNY_DEEP := Color("e2d6c4")
 const EAR_PINK := Color("f4b7c0")
@@ -54,8 +58,10 @@ const DEPTH := 76.0
 
 static var _cache := {}
 
-static func mesh(look: int, u: float) -> ArrayMesh:
-	var key := "m%d/%.2f" % [look, u]
+## `gaze` turns the eyes -1 (left), 0 or 1 (right); `blink` shuts them.
+## Both are baked into the key, three gazes and two lids a look.
+static func mesh(look: int, u: float, gaze := 0, blink := false) -> ArrayMesh:
+	var key := "m%d/%.2f/%d%s" % [look, u, gaze, "b" if blink else ""]
 	if _cache.has(key):
 		return _cache[key]
 	if _cache.size() > 200:
@@ -63,18 +69,18 @@ static func mesh(look: int, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	match look:
 		Look.MOLE:
-			mole(b, u, FUR, FUR_DEEP, BELLY, "open")
+			mole(b, u, FUR, FUR_DEEP, BELLY, "blink" if blink else "open", gaze)
 		Look.MOLE_DIZZY:
 			mole(b, u, FUR, FUR_DEEP, BELLY, "dizzy")
 		Look.MOLE_TEASE:
 			mole(b, u, FUR, FUR_DEEP, BELLY, "tease")
 		Look.GOLD:
-			mole(b, u, GOLD, GOLD_DEEP, GOLD_BELLY, "open")
+			mole(b, u, GOLD, GOLD_DEEP, GOLD_BELLY, "blink" if blink else "open", gaze)
 			_shine(b, u)
 		Look.GOLD_DIZZY:
 			mole(b, u, GOLD, GOLD_DEEP, GOLD_BELLY, "dizzy")
 		Look.POT:
-			mole(b, u, FUR, FUR_DEEP, BELLY, "open")
+			mole(b, u, FUR, FUR_DEEP, BELLY, "blink" if blink else "open", gaze)
 			pot(b, u, false)
 		Look.POT_CRACKED:
 			mole(b, u, FUR, FUR_DEEP, BELLY, "worried")
@@ -82,7 +88,7 @@ static func mesh(look: int, u: float) -> ArrayMesh:
 		Look.POT_DIZZY:
 			mole(b, u, FUR, FUR_DEEP, BELLY, "dizzy")
 		Look.BUNNY:
-			bunny(b, u, false)
+			bunny(b, u, false, gaze, blink)
 		Look.BUNNY_DIZZY:
 			bunny(b, u, true)
 	var m := b.mesh()
@@ -98,6 +104,31 @@ static func mound_back(b: Face.Builder, at: Vector2, u: float) -> void:
 	b.ellipse(at + Vector2(0, -0.6 * s), (HOLE_R.x + 3.0) * s, (HOLE_R.y + 2.2) * s, HOLE_RIM)
 	b.ellipse(at, HOLE_R.x * s, HOLE_R.y * s, HOLE)
 	b.ellipse(at + Vector2(0, -2.5 * s), HOLE_R.x * 0.8 * s, HOLE_R.y * 0.45 * s, HOLE.darkened(0.25))
+	# the hole's back wall, lit a little where the sun gets in
+	var wall := PackedVector2Array()
+	for i in range(3, 16):
+		var a := PI + PI * i / 18.0
+		wall.append(at + Vector2(cos(a) * (HOLE_R.x - 2.5) * s, (sin(a) * (HOLE_R.y - 2.0) + 0.6) * s))
+	b.stroke(wall, 1.6 * s, HOLE_RIM.lightened(0.12))
+	# clods thrown up round the back of the rim
+	for c in [Vector2(-31, -6), Vector2(-20, -12), Vector2(-4, -13.5), Vector2(13, -12.5), Vector2(27, -8), Vector2(36, -2)]:
+		var r := 3.4 + fmod(absf(c.x) * 0.37, 1.6)
+		b.ellipse(at + (c + Vector2(0.4, 0.8)) * s, r * s, r * 0.72 * s, SOIL_DEEP)
+		b.ellipse(at + c * s, r * s, r * 0.7 * s, SOIL_HI if int(c.x) % 2 == 0 else SOIL)
+	# grass growing up round the mound's back
+	for side in [-1.0, 1.0]:
+		tuft(b, at + Vector2(side * (MOUND.x - 2.0), 1.0) * s, s * 1.1, side)
+
+## A tuft of three blades, leaning `lean` (-1 left, 1 right), its foot at
+## `at`; blades in two greens.
+static func tuft(b: Face.Builder, at: Vector2, s: float, lean: float) -> void:
+	for k in 3:
+		var dx := (k - 1) * 2.4
+		var h := 9.0 + (4.0 if k == 1 else 0.0)
+		var foot := at + Vector2(dx, 0) * s
+		var tip := at + Vector2(dx + lean * (2.0 + k * 1.4), -h) * s
+		var ctrl := at + Vector2(dx + lean * 0.4, -h * 0.6) * s
+		b.stroke(Face.Builder.bezier2(foot, ctrl, tip, 6), (1.8 - k * 0.2) * s, GRASS if k != 1 else GRASS_HI)
 
 ## The mound's front lip: the soil in front of the hole, which a mole rises
 ## from behind. Pebbles and a crumb or two on it.
@@ -128,15 +159,29 @@ static func mound_front(b: Face.Builder, at: Vector2, u: float) -> void:
 		b.ellipse(at + (p + Vector2(-0.8, -0.8)) * s, 1.4 * s, 0.8 * s, Color(1, 1, 1, 0.4))
 	for p in [Vector2(-32, 6), Vector2(4, 22), Vector2(24, 20)]:
 		b.disc(at + p * s, 1.8 * s, SOIL_DEEP)
+	# crumbs on the lip's crest, and grass at its foot
+	for p in [Vector2(-24, 7.5), Vector2(-11, 11.5), Vector2(9, 11.8), Vector2(22, 8.2)]:
+		b.ellipse(at + (p + Vector2(0.3, 0.7)) * s, 2.8 * s, 1.9 * s, SOIL_DEEP)
+		b.ellipse(at + p * s, 2.6 * s, 1.7 * s, SOIL_HI)
+	tuft(b, at + Vector2(-38, 17) * s, s, -1.0)
+	tuft(b, at + Vector2(31, 21) * s, s * 0.9, 1.0)
+	tuft(b, at + Vector2(-4, 24.5) * s, s * 0.8, 0.4)
 
 ## A mole standing in the hole: a velvet pear with a lighter belly, spade
 ## paws on the rim, a pink nose and whiskers. `face` is "open", "dizzy"
 ## (spiral eyes, tongue), "tease" (a wink and a tongue) or "worried".
-static func mole(b: Face.Builder, u: float, fur: Color, deep: Color, belly: Color, face: String) -> void:
+static func mole(b: Face.Builder, u: float, fur: Color, deep: Color, belly: Color, face: String, gaze := 0) -> void:
 	var s := u
+	# a tuft of hair on the crown, under the body so only the tips show
+	for k in 3:
+		var foot := Vector2((k - 1) * 3.0 * s, -50.0 * s)
+		var tip := Vector2(((k - 1) * 5.0 + 1.5) * s, (-59.0 + absf(k - 1) * 2.0) * s)
+		b.stroke(Face.Builder.bezier2(foot, Vector2(((k - 1) * 3.0 - 2.0) * s, -56.0 * s), tip, 6), 2.2 * s, deep)
 	b.ellipse(Vector2(0, -22.0 * s), 21.0 * s, 32.0 * s, deep)
 	b.ellipse(Vector2(-1.0 * s, -23.5 * s), 19.5 * s, 30.5 * s, fur)
 	b.ellipse(Vector2(0, -12.0 * s), 12.5 * s, 17.0 * s, belly)
+	# the hole's shadow on the fur, deepest at the mouth
+	b.ellipse(Vector2(0, -1.0 * s), 20.0 * s, 6.0 * s, Color(0.12, 0.07, 0.04, 0.22))
 	# the sheen along the crown
 	b.ellipse(Vector2(-7.0 * s, -44.0 * s), 6.0 * s, 3.2 * s, Color(1, 1, 1, 0.16))
 	# spade paws on the rim, pads and claws
@@ -162,6 +207,10 @@ static func mole(b: Face.Builder, u: float, fur: Color, deep: Color, belly: Colo
 			b.stroke(Face.Builder.bezier2(Vector2(-gap - 2.4 * s, eye_y), Vector2(-gap, eye_y - 2.4 * s), Vector2(-gap + 2.4 * s, eye_y), 8), 1.2 * s, INK)
 			b.ellipse(Vector2(gap, eye_y), 2.0 * s, 2.6 * s, INK)
 			b.disc(Vector2(gap - 0.7 * s, eye_y - 0.9 * s), 0.8 * s, Color.WHITE)
+		"blink":
+			for side in [-1.0, 1.0]:
+				var c := Vector2(side * gap, eye_y)
+				b.stroke(Face.Builder.bezier2(c + Vector2(-2.4 * s, -0.4 * s), c + Vector2(0, 1.8 * s), c + Vector2(2.4 * s, -0.4 * s), 8), 1.1 * s, INK)
 		"worried":
 			for side in [-1.0, 1.0]:
 				var c := Vector2(side * gap, eye_y)
@@ -170,7 +219,7 @@ static func mole(b: Face.Builder, u: float, fur: Color, deep: Color, belly: Colo
 				b.stroke(PackedVector2Array([c + Vector2(-side * 3.0 * s, -4.4 * s), c + Vector2(side * 1.8 * s, -5.6 * s)]), 0.9 * s, INK)
 		_:
 			for side in [-1.0, 1.0]:
-				var c := Vector2(side * gap, eye_y)
+				var c := Vector2(side * gap + gaze * 1.3 * s, eye_y)
 				b.ellipse(c, 2.0 * s, 2.6 * s, INK)
 				b.disc(c + Vector2(-0.7 * s, -0.9 * s), 0.8 * s, Color.WHITE)
 	for side in [-1.0, 1.0]:
@@ -224,7 +273,7 @@ static func pot(b: Face.Builder, u: float, cracked: bool) -> void:
 
 ## The rabbit, who only came to look: cream fur, tall ears with pink
 ## insides, round eyes and a twitchy nose. Dizzy, her ears flop.
-static func bunny(b: Face.Builder, u: float, dizzy: bool) -> void:
+static func bunny(b: Face.Builder, u: float, dizzy: bool, gaze := 0, blink := false) -> void:
 	var s := u
 	for side in [-1.0, 1.0]:
 		var tilt: float = side * (1.25 if dizzy else 0.16)
@@ -246,9 +295,12 @@ static func bunny(b: Face.Builder, u: float, dizzy: bool) -> void:
 		if dizzy:
 			b.stroke(PackedVector2Array([c + Vector2(-2.2, -2.2) * s, c + Vector2(2.2, 2.2) * s]), 1.0 * s, INK)
 			b.stroke(PackedVector2Array([c + Vector2(-2.2, 2.2) * s, c + Vector2(2.2, -2.2) * s]), 1.0 * s, INK)
+		elif blink:
+			b.stroke(Face.Builder.bezier2(c + Vector2(-2.8 * s, -0.4 * s), c + Vector2(0, 2.0 * s), c + Vector2(2.8 * s, -0.4 * s), 8), 1.1 * s, INK)
 		else:
-			b.ellipse(c, 2.6 * s, 3.2 * s, INK)
-			b.disc(c + Vector2(-0.9 * s, -1.1 * s), 1.0 * s, Color.WHITE)
+			var e := c + Vector2(gaze * 1.3 * s, 0)
+			b.ellipse(e, 2.6 * s, 3.2 * s, INK)
+			b.disc(e + Vector2(-0.9 * s, -1.1 * s), 1.0 * s, Color.WHITE)
 		b.ellipse(Vector2(side * 12.0 * s, -27.5 * s), 3.2 * s, 1.9 * s, Color(Pal.CHEEK, 0.8))
 	b.fan(PackedVector2Array([Vector2(-2.4 * s, -30.0 * s), Vector2(2.4 * s, -30.0 * s), Vector2(0, -27.4 * s)]), EAR_PINK.darkened(0.08))
 	b.stroke(Face.Builder.bezier2(Vector2(0, -27.4 * s), Vector2(-1.2 * s, -25.0 * s), Vector2(-3.0 * s, -25.6 * s), 6), 0.7 * s, INK)
@@ -256,6 +308,21 @@ static func bunny(b: Face.Builder, u: float, dizzy: bool) -> void:
 	for side in [-1.0, 1.0]:
 		for k in 2:
 			b.stroke(PackedVector2Array([Vector2(side * 4.0 * s, -28.0 * s), Vector2(side * 15.0 * s, (-30.5 + k * 3.0) * s)]), 0.5 * s, Color(INK, 0.4))
+	if not dizzy:
+		# the carrot she brought, held in both paws: she is only visiting
+		var tip := Vector2(-4.0 * s, -1.0 * s)
+		var top := Vector2(6.0 * s, -19.0 * s)
+		var n := (top - tip).orthogonal().normalized()
+		b.fan(PackedVector2Array([tip, top + n * 3.6 * s, top - n * 3.6 * s]), CARROT)
+		b.fan(PackedVector2Array([tip, top - n * 3.6 * s, top - n * 0.8 * s]), CARROT_DEEP)
+		for k in 3:
+			var at := tip.lerp(top, 0.3 + k * 0.2)
+			b.stroke(PackedVector2Array([at - n * (0.6 + k * 0.5) * s, at + n * 0.4 * s]), 0.6 * s, CARROT_DEEP)
+		for k in 3:
+			var leaf := Transform2D(-0.7 + k * 0.6, top + (top - tip).normalized() * 1.0 * s)
+			b.fan(leaf * Face.Builder.ring(Vector2(0, -4.5 * s), 1.5 * s, 4.8 * s), SPROUT if k != 1 else SPROUT.lightened(0.12))
+		for side in [-1.0, 1.0]:
+			b.ellipse(Vector2(1.0 * s + side * 4.4 * s, -9.0 * s + side * 0.8 * s), 3.6 * s, 2.8 * s, Color("fffaf2"))
 
 ## The mallet, its hand at the origin and its head up the handle at
 ## (0, -HEAD_AT): a turned handle and a barrel head with two iron bands.
@@ -267,17 +334,27 @@ static func mallet(u: float) -> ArrayMesh:
 		return _cache[key]
 	var b := Face.Builder.new()
 	var s := u
-	b.stroke(PackedVector2Array([Vector2(0, 0), Vector2(0, -HEAD_AT * s)]), 5.2 * s, WOOD_DEEP)
-	b.stroke(PackedVector2Array([Vector2(-0.6 * s, -2.0 * s), Vector2(-0.6 * s, -(HEAD_AT - 4.0) * s)]), 3.4 * s, HANDLE)
-	b.disc(Vector2.ZERO, 3.6 * s, WOOD_DEEP)
+	b.stroke(PackedVector2Array([Vector2(0, 0), Vector2(0, -HEAD_AT * s)]), 5.6 * s, WOOD_DEEP)
+	b.stroke(PackedVector2Array([Vector2(-0.7 * s, -2.0 * s), Vector2(-0.7 * s, -(HEAD_AT - 4.0) * s)]), 3.6 * s, HANDLE)
+	# a leather grip bound round the foot of the handle
+	b.fan(Face.Builder.round_rect(Vector2(-3.6, -15.0) * s, Vector2(7.2, 14.0) * s, 2.4 * s), Color("9a4f3a"))
+	for k in 4:
+		var y := (-13.0 + k * 3.4) * s
+		b.stroke(PackedVector2Array([Vector2(-3.4 * s, y + 1.2 * s), Vector2(3.4 * s, y - 0.6 * s)]), 0.9 * s, Color("7a3a2a"))
+	b.disc(Vector2.ZERO, 4.0 * s, WOOD_DEEP)
 	var head := Vector2(0, -HEAD_AT * s)
-	b.fan(Face.Builder.round_rect(head - Vector2(21.0, 12.0) * s, Vector2(42.0, 24.0) * s, 6.0 * s), WOOD_DEEP)
-	b.fan(Face.Builder.round_rect(head - Vector2(20.0, 11.0) * s, Vector2(40.0, 20.0) * s, 5.5 * s), WOOD)
-	b.fan(Face.Builder.round_rect(head - Vector2(18.0, 9.0) * s, Vector2(36.0, 5.0) * s, 2.5 * s), Color(1, 1, 1, 0.2))
+	b.fan(Face.Builder.round_rect(head - Vector2(24.0, 14.0) * s, Vector2(48.0, 28.0) * s, 7.0 * s), WOOD_DEEP)
+	b.fan(Face.Builder.round_rect(head - Vector2(23.0, 13.0) * s, Vector2(46.0, 24.0) * s, 6.5 * s), WOOD)
+	# grain along the barrel
+	for k in 3:
+		var y := (-6.0 + k * 5.5) * s
+		b.stroke(Face.Builder.bezier2(head + Vector2(-17.0 * s, y), head + Vector2(-4.0 * s, y - 2.0 * s), head + Vector2(10.0 * s, y + 0.6 * s), 8), 0.8 * s, Color(WOOD_DEEP, 0.55))
+	b.fan(Face.Builder.round_rect(head - Vector2(21.0, 11.0) * s, Vector2(42.0, 5.5) * s, 2.7 * s), Color(1, 1, 1, 0.22))
 	for side in [-1.0, 1.0]:
-		b.fan(Face.Builder.round_rect(head + Vector2(side * 13.0 - 2.5, -12.0) * s, Vector2(5.0, 24.0) * s, 1.5 * s), WOOD_BAND)
+		b.fan(Face.Builder.round_rect(head + Vector2(side * 15.0 - 2.8, -14.0) * s, Vector2(5.6, 28.0) * s, 1.6 * s), WOOD_BAND)
+		b.fan(Face.Builder.round_rect(head + Vector2(side * 15.0 - 2.0, -12.5) * s, Vector2(1.6, 25.0) * s, 0.8 * s), Color(1, 1, 1, 0.16))
 	for side in [-1.0, 1.0]:
-		b.ellipse(head + Vector2(side * 20.5 * s, 0), 2.2 * s, 10.5 * s, WOOD.lightened(0.12))
+		b.ellipse(head + Vector2(side * 23.5 * s, 0), 2.6 * s, 12.5 * s, WOOD.lightened(0.12))
 	var m := b.mesh()
 	_cache[key] = m
 	return m

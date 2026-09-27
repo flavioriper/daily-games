@@ -47,6 +47,9 @@ const MAX_STEPS := 12
 ## How long a mallet's swing is drawn: down, a beat on the ground, lifted.
 const SWING := 0.09
 const MALLET_LIFE := 0.34
+## The mallet's angle on the ground, and how far back it is raised.
+const MALLET_IMPACT := -0.55
+const MALLET_RAISE := 0.95
 const LAWN := Color("a9cf78")
 const LAWN_STRIPE := Color("9cc46c")
 const LAWN_DEEP := Color("86b35a")
@@ -56,6 +59,13 @@ const PETALS := [Color("f4a7a0"), Color("fbe3a0"), Color("c7a6d8"), Color("fff6e
 const TIME_GOOD := Color("7fa84a")
 const TIME_LATE := Color("e2645c")
 const FRENZY_TINT := Color("ffcf6a")
+const CLOVER := Color("7fae52")
+const IMPACT_LIFE := 0.2
+## The highest a number's baseline may rise, clear of the time bar.
+const POP_TOP := 96.0
+## How high a mole peeks out before the round and after it, as a rise.
+const PEEK := 0.58
+const PEEK_OVER := 0.8
 
 var sim: RefCounted
 var top_bar: Control
@@ -97,8 +107,10 @@ var _clock := 0.0
 var _mallets: Array = []
 ## Dirt bursts: {pos, t, col, seed, big}.
 var _bursts: Array = []
-## Numbers rising off a whack: {pos, text, t, col, big}.
+## Numbers rising off a whack: {pos, text, t, col, big, rays, drift}.
 var _pops: Array = []
+## Impact stars where a mallet lands on a head: {pos, t, gold}.
+var _impacts: Array = []
 ## When each hill last took a whack, for the squash (and a pot's clang).
 var _hit_at: Array = []
 var _shake := 0.0
@@ -312,6 +324,7 @@ func _new_game() -> void:
 	_mallets.clear()
 	_bursts.clear()
 	_pops.clear()
+	_impacts.clear()
 	for i in Sim.HILLS:
 		_hit_at[i] = -10.0
 	_shake = 0.0
@@ -376,6 +389,9 @@ func _animate(delta: float) -> void:
 	for p: Dictionary in _pops:
 		p.t += delta
 	_pops = _pops.filter(func(p: Dictionary) -> bool: return p.t < 0.9)
+	for im: Dictionary in _impacts:
+		im.t += delta
+	_impacts = _impacts.filter(func(im: Dictionary) -> bool: return im.t < IMPACT_LIFE)
 	_shake = maxf(0.0, _shake - delta * 3.0)
 	if _shake > 0.0 and not Motion.reduce:
 		var amp := 12.0 * _shake * _shake
@@ -408,7 +424,8 @@ func tap(p: Vector2) -> void:
 	var where := p
 	if got != "miss" and i >= 0:
 		where = Sim.hill_pos(i) + Vector2(0, -44.0)
-	_mallets.append({"pos": where, "t": 0.0, "hit": got != "miss"})
+	var ground := Sim.hill_pos(i) if got != "miss" and i >= 0 else p
+	_mallets.append({"pos": where, "ground": ground, "t": 0.0, "hit": got != "miss"})
 	if got == "miss" and i < 0:
 		_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
 		_burst(p, LAWN_DEEP, false)
@@ -464,6 +481,7 @@ func _play_events() -> void:
 				_fx.cue("go")
 			"up":
 				_fx.cue("pop_up", randf_range(0.92, 1.12), -8.0)
+				_burst(Sim.hill_pos(hill) + Vector2(0, -3.0), Art.SOIL_HI, false, 0.6)
 			"hit":
 				_hit_at[hill] = _clock
 				var kind: int = ev.kind
@@ -474,29 +492,40 @@ func _play_events() -> void:
 					_fx.sparkle(px(top), Art.GOLD)
 				if kind == Sim.Kind.POT:
 					_fx.puff(px(top + Vector2(0, -14.0)), Art.POT, 7)
-				_pops.append({"pos": top + Vector2(0, -16.0), "text": "+%d" % ev.points, "t": 0.0,
-					"col": Pal.SUN if gold or ev.quick else Color("fffaf0"), "big": gold})
+				_pop(top + Vector2(0, -16.0), "+%d" % ev.points, Pal.SUN if gold or ev.quick else Color("fffaf0"), gold)
+				_impacts.append({"pos": top + Vector2(0, -10.0), "t": 0.0, "gold": gold})
+				if gold:
+					_fx.ring(px(top), 34.0 * _u, Art.GOLD)
 				_shake = maxf(_shake, 0.35 if gold else 0.2)
 			"clang":
 				_hit_at[hill] = _clock
 				_fx.cue("clang", randf_range(0.95, 1.05))
 				_fx.sparkle(px(top + Vector2(0, -16.0)), Art.POT_RIM)
+				_impacts.append({"pos": top + Vector2(0, -20.0), "t": 0.0, "gold": false})
 				_shake = maxf(_shake, 0.2)
 			"bunny":
 				_hit_at[hill] = _clock
 				_fx.cue("bunny")
-				_pops.append({"pos": top + Vector2(0, -16.0), "text": "-%d" % Sim.BUNNY_COST, "t": 0.0, "col": Color("f4a7a0"), "big": true})
+				_pop(top + Vector2(0, -16.0), "-%d" % Sim.BUNNY_COST, Color("f4a7a0"), true)
+				_fx.puff(px(top + Vector2(0, -20.0)), Color("f4a7a0"), 6)
 				_shake = maxf(_shake, 0.6)
 			"miss":
 				_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
 				_burst(Sim.hill_pos(hill) + Vector2(0, 2.0), Art.SOIL, false)
 			"escape":
 				_fx.cue("escape", randf_range(0.95, 1.08), -6.0)
+				# the raspberry it blows on its way down
+				_fx.puff(px(top + Vector2(3.0, 22.0)), Color("fffaf0"), 4)
 			"combo":
 				_fx.cue("combo", 1.0 + 0.08 * (int(ev.mult) - 2))
-				_pops.append({"pos": top + Vector2(0, -16.0), "text": tr("MH_COMBO") % ev.mult, "t": -0.25, "col": Pal.SUN, "big": true})
+				var combo := _pop(top + Vector2(0, -30.0), tr("MH_COMBO") % ev.mult, Pal.SUN, true)
+				combo.t = -0.25
+				combo.rays = true
+				_score_k.pivot_offset = _score_k.size * 0.5
+				Motion.bump(_score_k, 0.3, 0.35)
 			"streak_lost":
 				_fx.cue("streak_lost", 1.0, -3.0)
+				Motion.shiver(_score_k)
 			"frenzy":
 				_show_banner(tr("MH_FRENZY"), tr("MH_FRENZY_LINE"), 1.2)
 				_fx.cue("frenzy")
@@ -590,10 +619,23 @@ func _build_lawn() -> ArrayMesh:
 			var x0 := k * w
 			b.fan(PackedVector2Array([Vector2(x0, 0), Vector2(x0 + w, 0), Vector2(x0 + w - s.y * 0.35, s.y), Vector2(x0 - s.y * 0.35, s.y)]), Color(LAWN_STRIPE, 0.55))
 		k += 1
-	# the hedge along the top edge, scalloped, with blossom in it
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 21
+	# sunlit patches, soft and wide, and clover in the shade between them
+	for i in 5:
+		var c := Vector2(rng.randf() * s.x, rng.randf_range(0.15, 0.95) * s.y)
+		b.ellipse(c, rng.randf_range(120.0, 200.0), rng.randf_range(50.0, 80.0), Color(1, 1, 0.85, 0.07))
+	for i in 14:
+		var c := Vector2(rng.randf() * s.x, rng.randf_range(0.12, 1.0) * s.y)
+		for q in 3:
+			b.disc(c + Vector2.from_angle(TAU * q / 3.0 - PI * 0.5) * 6.0, 6.0, CLOVER)
+			b.disc(c + Vector2.from_angle(TAU * q / 3.0 - PI * 0.5) * 6.0 + Vector2(-1.5, -1.5), 2.4, Color(1, 1, 1, 0.12))
+	# the hedge along the top edge, scalloped, with blossom in it, and the
+	# shade it throws on the lawn
 	var hedge_h := maxf(_origin.y + 10.0 * _u, 26.0)
+	var shade := Color(0.2, 0.3, 0.1, 0.22)
+	var clear := Color(0.2, 0.3, 0.1, 0.0)
+	_quad(b, [Vector2(0, hedge_h), Vector2(s.x, hedge_h), Vector2(s.x, hedge_h + 90.0), Vector2(0, hedge_h + 90.0)], [shade, shade, clear, clear])
 	b.fan(PackedVector2Array([Vector2(0, 0), Vector2(s.x, 0), Vector2(s.x, hedge_h), Vector2(0, hedge_h)]), HEDGE_DEEP)
 	var n := int(s.x / 60.0) + 2
 	for i in n:
@@ -625,6 +667,12 @@ func _build_lawn() -> ArrayMesh:
 			for q in 3:
 				var tip := p + Vector2((q - 1) * 6.0, -14.0 - q % 2 * 5.0)
 				b.stroke(PackedVector2Array([p + Vector2((q - 1) * 2.0, 0), tip]), 3.0, LAWN_DEEP)
+	# the lawn darkens a little toward the frame
+	var dim := Color(0.18, 0.25, 0.08, 0.16)
+	var e := 60.0
+	_quad(b, [Vector2(0, s.y), Vector2(e, s.y - e), Vector2(s.x - e, s.y - e), s], [dim, clear, clear, dim])
+	_quad(b, [Vector2(0, hedge_h), Vector2(e, hedge_h), Vector2(e, s.y - e), Vector2(0, s.y)], [dim, clear, clear, dim])
+	_quad(b, [Vector2(s.x, hedge_h), Vector2(s.x, s.y), Vector2(s.x - e, s.y - e), Vector2(s.x - e, hedge_h)], [dim, dim, clear, clear])
 	for h in Sim.HILLS:
 		Art.mound_back(b, px(Sim.hill_pos(h)), _u)
 	return b.mesh()
@@ -634,10 +682,6 @@ func _draw_field() -> void:
 		_layout_field()
 	if _lawn != null:
 		field.draw_mesh(_lawn, null)
-	# the frenzy's warm pulse over the lawn
-	if sim != null and sim.frenzy() and not Motion.reduce:
-		var a := 0.07 + 0.05 * sin(_clock * 8.0)
-		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(FRENZY_TINT, a))
 
 ## Which look a hill's creature wears now.
 func _look(i: int) -> int:
@@ -659,14 +703,56 @@ func _look(i: int) -> int:
 		return Art.Look.MOLE_TEASE
 	return Art.Look.MOLE
 
+## Where a hill's creature is looking, -1, 0 or 1: each looks about on its
+## own clock, never under reduce motion.
+func _gaze(i: int) -> int:
+	if Motion.reduce:
+		return 0
+	var v := sin(_clock * 0.9 + i * 2.3)
+	return 1 if v > 0.45 else (-1 if v < -0.45 else 0)
+
+func _blinks(i: int) -> bool:
+	return not Motion.reduce and fmod(_clock + i * 0.61, 3.1) < 0.11
+
+## A mesh for a look, turned and blinking when the look has open eyes.
+func _mesh_for(look: int, i: int) -> ArrayMesh:
+	if look in [Art.Look.MOLE, Art.Look.GOLD, Art.Look.POT, Art.Look.BUNNY]:
+		return Art.mesh(look, _u, _gaze(i), _blinks(i))
+	return Art.mesh(look, _u)
+
+## An empty hill's peek: before the round every mole peeks out to look
+## about and ducks on the go; after it they come up to jeer. 0 is hidden.
+func _peek(i: int) -> float:
+	var ease := func(k: float) -> float: return k if Motion.reduce else Motion.back_out(k)
+	match sim.phase:
+		Sim.Phase.READY:
+			var k := clampf((sim.phase_t - 0.3 - _hash(i, 3.0) * 0.8) / 0.22, 0.0, 1.0)
+			return PEEK * ease.call(k)
+		Sim.Phase.PLAY:
+			if sim.phase_t < 0.14:
+				return PEEK * (1.0 - sim.phase_t / 0.14)
+		Sim.Phase.OVER:
+			var k := clampf((sim.phase_t - 0.35 - _hash(i, 5.0) * 0.5) / 0.2, 0.0, 1.0)
+			return PEEK_OVER * ease.call(k)
+	return 0.0
+
 func _draw_mole(i: int) -> void:
 	if sim == null:
 		return
 	var clip: Control = _views[i].clip
 	var h: Dictionary = sim.hills[i]
-	if h.st == Sim.St.EMPTY:
-		return
 	var foot := Vector2(clip.size.x * 0.5, 110.0 * _u)
+	if h.st == Sim.St.EMPTY:
+		var peek := _peek(i)
+		if peek <= 0.0:
+			return
+		var jeer: bool = sim.phase == Sim.Phase.OVER
+		var tilt := 0.0 if Motion.reduce else sin(_clock * (7.0 if jeer else 2.0) + i) * (0.1 if jeer else 0.05)
+		var look := _mesh_for(Art.Look.MOLE, i) if not jeer else Art.mesh(Art.Look.MOLE_TEASE, _u)
+		clip.draw_set_transform(_shake_off, 0.0, Vector2.ONE)
+		clip.draw_mesh(look, null, Transform2D(tilt, foot + Vector2(0, (1.0 - peek) * Art.DEPTH * _u)))
+		clip.draw_set_transform(Vector2.ZERO)
+		return
 	var drop: float = (1.0 - sim.rise(i)) * Art.DEPTH * _u
 	var sc := Vector2.ONE
 	var rot := 0.0
@@ -674,19 +760,28 @@ func _draw_mole(i: int) -> void:
 	if not Motion.reduce:
 		match int(h.st):
 			Sim.St.RISE:
-				sc = Vector2(0.92, 1.1)
+				# stretched thin as it shoots out of the hole
+				sc = Vector2(0.86, 1.16)
 			Sim.St.UP:
+				# the pop's overshoot, then breathing and looking about
+				var k := clampf(h.t / 0.24, 0.0, 1.0)
+				var pop := sin(k * PI) * (1.0 - k)
+				sc = Vector2(1.0 + 0.14 * pop, 1.0 - 0.12 * pop)
 				var ph: float = _clock * 5.0 + i * 1.7
 				sc.y *= 1.0 + 0.035 * sin(ph)
 				rot = sin(_clock * 2.3 + i) * 0.05
 				if h.kind != Sim.Kind.BUNNY and h.t > h.up * 0.72:
 					rot = sin(_clock * 18.0) * 0.1
+			Sim.St.SINK:
+				# ducking: squeezed thin on the way down
+				sc = Vector2(0.9, 1.08)
 		var since: float = _clock - float(_hit_at[i])
-		if since < 0.35:
-			var k := since / 0.35
-			var amt := 0.32 * (1.0 - k) * (1.0 - k)
+		if since < 0.4:
+			var k := since / 0.4
 			if h.st == Sim.St.BONKED or h.done:
-				sc *= Vector2(1.0 + amt, 1.0 - amt)
+				# flattened like a pancake, springing back
+				var wob := cos(k * PI * 2.5) * (1.0 - k) * (1.0 - k) * 0.42
+				sc *= Vector2(1.0 + wob, 1.0 - wob)
 			else:
 				# a pot knocked but still on: a wobble
 				rot += sin(since * 40.0) * 0.18 * (1.0 - k)
@@ -697,22 +792,43 @@ func _draw_mole(i: int) -> void:
 	if since2 < 0.08:
 		tint = Color(1.6, 1.6, 1.6)
 	clip.draw_set_transform(_shake_off, 0.0, Vector2.ONE)
-	clip.draw_mesh(Art.mesh(_look(i), _u), null, Transform2D(rot, sc, 0.0, foot + Vector2(0, drop) + off), tint)
+	clip.draw_mesh(_mesh_for(_look(i), i), null, Transform2D(rot, sc, 0.0, foot + Vector2(0, drop) + off), tint)
 	clip.draw_set_transform(Vector2.ZERO)
 
+## The mound's front lip, which heaves as a mole shoves out of the hole and
+## flattens under a whack, about its foot.
 func _draw_lip(i: int) -> void:
-	if _lip != null:
-		(_views[i].lip as Control).draw_mesh(_lip, null)
+	if _lip == null:
+		return
+	var sc := Vector2.ONE
+	if sim != null and not Motion.reduce:
+		var h: Dictionary = sim.hills[i]
+		if h.st == Sim.St.RISE:
+			var heave := sin(clampf(h.t / Sim.RISE_TIME, 0.0, 1.0) * PI)
+			sc = Vector2(1.0 + 0.03 * heave, 1.0 + 0.09 * heave)
+		var since: float = _clock - float(_hit_at[i])
+		if since < 0.25:
+			var k := (1.0 - since / 0.25) * (1.0 - since / 0.25)
+			sc *= Vector2(1.0 + 0.05 * k, 1.0 - 0.12 * k)
+	var pivot := Vector2(0, (Art.MOUND.y + 4.0) * _u)
+	var xf := Transform2D(0.0, sc, 0.0, pivot) * Transform2D(0.0, -pivot)
+	(_views[i].lip as Control).draw_mesh(_lip, null, Transform2D(0.0, _shake_off) * xf)
 
-## Over everything: the time bar, the dirt, the dizzy stars,
-## the mallets and the numbers.
+## Over everything: the frenzy's glow, the time bar, the dirt, the mallets'
+## shadows and smears, the impact stars, the dizzy stars, a butterfly, the
+## mallets and the numbers.
 func _draw_over() -> void:
 	if sim == null:
 		return
 	var b := Face.Builder.new()
+	_draw_glow(b)
 	_draw_time_bar(b)
 	_draw_bursts(b)
+	_draw_swings(b)
+	_draw_impacts(b)
 	_draw_stars(b)
+	_draw_butterfly(b)
+	_draw_rays(b)
 	if not b.verts.is_empty():
 		_live = b.mesh()
 		_over.draw_mesh(_live, null)
@@ -720,28 +836,134 @@ func _draw_over() -> void:
 		_draw_mallet(m)
 	_draw_pops()
 
+## A quad with a colour at each corner, for the gradients.
+static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
+	var i0 := b.vertex(p[0], c[0])
+	var i1 := b.vertex(p[1], c[1])
+	var i2 := b.vertex(p[2], c[2])
+	var i3 := b.vertex(p[3], c[3])
+	b.tri(i0, i1, i2)
+	b.tri(i0, i2, i3)
+
+## The frenzy: a warm glow breathing in from the lawn's edges.
+func _draw_glow(b: Face.Builder) -> void:
+	if not sim.frenzy():
+		return
+	var s := field.size
+	var beat := 0.5 + 0.5 * sin(_clock * 8.0) if not Motion.reduce else 0.6
+	var edge := Color(FRENZY_TINT, 0.34 + 0.2 * beat)
+	var none := Color(FRENZY_TINT, 0.0)
+	var w := 90.0 + 30.0 * beat
+	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), Vector2(s.x - w, w), Vector2(w, w)], [edge, edge, none, none])
+	_quad(b, [Vector2(0, s.y), Vector2(w, s.y - w), Vector2(s.x - w, s.y - w), s], [edge, none, none, edge])
+	_quad(b, [Vector2.ZERO, Vector2(w, w), Vector2(w, s.y - w), Vector2(0, s.y)], [edge, none, none, edge])
+	_quad(b, [Vector2(s.x, 0), Vector2(s.x, s.y), Vector2(s.x - w, s.y - w), Vector2(s.x - w, w)], [edge, edge, none, none])
+
 ## A bar along the top of the lawn that empties with the minute, leaf green
-## to rose.
+## to rose, a spark at its end; in the frenzy it runs with stripes.
 func _draw_time_bar(b: Face.Builder) -> void:
 	var s := field.size
 	var left: float = sim.time_left() / Sim.ROUND
 	var at := Vector2(24.0, 18.0)
-	var size := Vector2(s.x - 48.0, 16.0)
-	b.fan(Face.Builder.round_rect(at, size, 8.0), Color(0.2, 0.3, 0.1, 0.35))
-	if left > 0.0:
-		var col := TIME_LATE.lerp(TIME_GOOD, clampf((left * Sim.ROUND - 5.0) / 20.0, 0.0, 1.0))
-		b.fan(Face.Builder.round_rect(at + Vector2(2, 2), Vector2(maxf(12.0, (size.x - 4.0) * left), size.y - 4.0), 6.0), col)
+	var size := Vector2(s.x - 48.0, 18.0)
+	b.fan(Face.Builder.round_rect(at + Vector2(0, 2), size, 9.0), Color(0.15, 0.22, 0.08, 0.3))
+	b.fan(Face.Builder.round_rect(at, size, 9.0), Color(0.2, 0.3, 0.1, 0.35))
+	if left <= 0.0:
+		return
+	var col := TIME_LATE.lerp(TIME_GOOD, clampf((left * Sim.ROUND - 5.0) / 20.0, 0.0, 1.0))
+	var fill := Vector2(maxf(14.0, (size.x - 4.0) * left), size.y - 4.0)
+	var f0 := at + Vector2(2, 2)
+	b.fan(Face.Builder.round_rect(f0, fill, 7.0), col)
+	b.fan(Face.Builder.round_rect(f0 + Vector2(4, 2), Vector2(maxf(4.0, fill.x - 8.0), 4.0), 2.0), Color(1, 1, 1, 0.3))
+	if sim.frenzy():
+		var run := 0.0 if Motion.reduce else fmod(_clock * 60.0, 28.0)
+		var x := f0.x - 28.0 + run
+		while x < f0.x + fill.x:
+			var x0 := clampf(x, f0.x + 4.0, f0.x + fill.x - 4.0)
+			var x1 := clampf(x + 12.0, f0.x + 4.0, f0.x + fill.x - 4.0)
+			if x1 - x0 > 1.0:
+				b.fan(PackedVector2Array([Vector2(x0 + 5.0, f0.y), Vector2(x1 + 5.0, f0.y), Vector2(x1, f0.y + fill.y), Vector2(x0, f0.y + fill.y)]), Color(1, 1, 1, 0.22))
+			x += 28.0
+	# the spark at the fill's end, a little sun burning down the fuse
+	var c := f0 + Vector2(fill.x - 4.0, fill.y * 0.5)
+	var flick := 1.0 if Motion.reduce else 1.0 + 0.18 * sin(_clock * (30.0 if sim.frenzy() else 9.0))
+	var spin := 0.0 if Motion.reduce else _clock * 2.0
+	for k in 8:
+		var a := spin + TAU * k / 8.0
+		b.fan(PackedVector2Array([c + Vector2.from_angle(a - 0.22) * 8.0, c + Vector2.from_angle(a) * 16.0 * flick, c + Vector2.from_angle(a + 0.22) * 8.0]), Color(Pal.SUN, 0.85))
+	b.disc(c, 9.0 * flick, Pal.SUN)
+	b.disc(c + Vector2(-2, -2), 4.0, Color("fff6c9"))
 
 func _draw_bursts(b: Face.Builder) -> void:
 	for bu: Dictionary in _bursts:
 		var k: float = bu.t / 0.5
+		var amt: float = bu.get("amount", 1.0)
 		var n := 9 if bu.big else 6
 		for j in n:
 			var a := TAU * j / n + float(bu.seed)
-			var dist := (18.0 + 10.0 * _hash(j, bu.seed)) * k * _u
-			var lift := sin(k * PI) * 10.0 * _u
+			var dist := (18.0 + 10.0 * _hash(j, bu.seed)) * k * _u * amt
+			var lift := sin(k * PI) * 10.0 * _u * amt
 			var at := px(bu.pos) + Vector2(cos(a) * dist, sin(a) * dist * 0.45 - lift)
-			b.disc(at + _shake_off, (3.2 - 2.0 * k) * _u * (1.3 if bu.big else 1.0), Color(bu.col, 1.0 - k))
+			var r := (3.2 - 2.0 * k) * _u * (1.3 if bu.big else 1.0) * lerpf(0.7, 1.0, amt)
+			b.ellipse(at + _shake_off, r, r * 0.8, Color(bu.col, 1.0 - k))
+
+## The mallet's angle at `t` into its swing: raised to one side, swung down
+## on the spot, a beat on the ground, lifted away.
+func _mallet_ang(t: float) -> float:
+	if Motion.reduce:
+		return MALLET_IMPACT
+	if t < SWING:
+		return MALLET_IMPACT + MALLET_RAISE * (1.0 - t / SWING)
+	if t > SWING + 0.1:
+		return MALLET_IMPACT + 0.5 * (t - SWING - 0.1) / (MALLET_LIFE - SWING - 0.1)
+	return MALLET_IMPACT
+
+func _mallet_hand(m: Dictionary) -> Vector2:
+	# The hand sits down and right of the head, so the head lands on the spot.
+	return px(m.pos) - Vector2(0, -Art.HEAD_AT * _u).rotated(MALLET_IMPACT)
+
+## Under each mallet, its shadow on the ground closing in as it comes down;
+## behind it, the smear of the swing.
+func _draw_swings(b: Face.Builder) -> void:
+	for m: Dictionary in _mallets:
+		var t: float = m.t
+		var ang := _mallet_ang(t)
+		var close := 1.0 - clampf(absf(ang - MALLET_IMPACT) / MALLET_RAISE, 0.0, 1.0)
+		var fade := 1.0 - clampf((t - SWING - 0.1) / (MALLET_LIFE - SWING - 0.1), 0.0, 1.0)
+		var g := px(m.ground) + Vector2(0, 6.0 * _u)
+		b.ellipse(g + _shake_off, (12.0 + 12.0 * close) * _u, (4.0 + 3.0 * close) * _u, Color(0.15, 0.08, 0.03, 0.2 * close * fade))
+		if Motion.reduce or t > SWING + 0.06:
+			continue
+		var hand := _mallet_hand(m)
+		var from := MALLET_IMPACT + MALLET_RAISE
+		var to := ang
+		var a := clampf(1.0 - t / (SWING + 0.06), 0.0, 1.0) * 0.4
+		var pts := PackedVector2Array()
+		var n := 8
+		for k in n + 1:
+			pts.append(hand + _shake_off + Vector2(0, -(Art.HEAD_AT + 16.0) * _u).rotated(lerpf(from, to, float(k) / n)))
+		for k in range(n, -1, -1):
+			pts.append(hand + _shake_off + Vector2(0, -(Art.HEAD_AT - 12.0) * _u).rotated(lerpf(from, to, float(k) / n)))
+		b.polygon(pts, Color(1, 0.98, 0.9, a))
+
+## The star a mallet makes landing on a head: a white burst with a sun in
+## it, flung wide and gone.
+func _draw_impacts(b: Face.Builder) -> void:
+	for im: Dictionary in _impacts:
+		var k: float = im.t / IMPACT_LIFE
+		var grow := 1.0 if Motion.reduce else Motion.back_out(minf(1.0, k * 1.6))
+		var c := px(im.pos) + _shake_off
+		var r := lerpf(10.0, 30.0, grow) * _u * 0.5
+		var a := 1.0 - k * k
+		_burst_star(b, c, r * 1.25, Color(1, 1, 1, 0.9 * a), 0.4, k * 0.6)
+		_burst_star(b, c, r * 0.7, Color(Art.GOLD if im.gold else Pal.SUN, a), 0.5, -k * 0.6)
+
+static func _burst_star(b: Face.Builder, c: Vector2, r: float, col: Color, inner: float, turn: float) -> void:
+	var pts := PackedVector2Array()
+	for k in 16:
+		var rr := r if k % 2 == 0 else r * inner
+		pts.append(c + Vector2.from_angle(turn + TAU * k / 16.0) * rr)
+	b.polygon(pts, col)
 
 ## Stars circling a dizzy head.
 func _draw_stars(b: Face.Builder) -> void:
@@ -763,43 +985,75 @@ static func _star(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
 		pts.append(c + Vector2.from_angle(-PI * 0.5 + TAU * k / 10.0) * rr)
 	b.polygon(pts, col)
 
-## The mallet: raised to one side, swung down on the spot, a beat on the
-## ground, lifted away fading.
+## A butterfly wandering along the hedge, clear of the moles.
+func _draw_butterfly(b: Face.Builder) -> void:
+	var t := 4.0 if Motion.reduce else _clock
+	var w := field.size.x
+	var hedge := maxf(_origin.y + 10.0 * _u, 26.0)
+	var c := Vector2(w * (0.5 + 0.42 * sin(t * 0.23)), hedge + 12.0 + 14.0 * sin(t * 0.9) + 6.0 * sin(t * 2.3))
+	var heading := signf(cos(t * 0.23)) if not Motion.reduce else 1.0
+	var flap := 1.0 if Motion.reduce else 0.35 + 0.65 * absf(sin(t * 14.0))
+	var r := 5.0 * _u
+	for side in [-1.0, 1.0]:
+		var x: float = side * flap
+		b.ellipse(c + Vector2(x * r * 0.9, -r * 0.35), r * flap, r * 0.8, Color("f4a7a0"))
+		b.ellipse(c + Vector2(x * r * 0.7, r * 0.5), r * 0.7 * flap, r * 0.55, Color("f7c6a0"))
+		b.disc(c + Vector2(x * r * 0.9, -r * 0.4), r * 0.25 * flap, Color("fffaf0"))
+	b.ellipse(c, r * 0.22, r * 0.75, Art.INK)
+	b.stroke(PackedVector2Array([c + Vector2(0, -r * 0.6), c + Vector2(heading * r * 0.5, -r * 1.3)]), 0.25 * r, Art.INK)
+
+## Rays turning behind a combo's number.
+func _draw_rays(b: Face.Builder) -> void:
+	for p: Dictionary in _pops:
+		if not p.rays or p.t < 0.0:
+			continue
+		var a := 1.0 - clampf((p.t - 0.4) / 0.4, 0.0, 1.0)
+		var c := _pop_at(p) + Vector2(0, -14.0)
+		var grow := 1.0 if Motion.reduce else Motion.back_out(minf(1.0, p.t / 0.3))
+		var spin: float = 0.0 if Motion.reduce else p.t * 1.6
+		for k in 12:
+			var ang: float = spin + TAU * k / 12.0
+			b.fan(PackedVector2Array([c + Vector2.from_angle(ang - 0.1) * 22.0 * grow, c + Vector2.from_angle(ang) * 92.0 * grow, c + Vector2.from_angle(ang + 0.1) * 22.0 * grow]),
+				Color(Pal.SUN if k % 2 == 0 else Color("fffaf0"), 0.45 * a))
+
+## Where a number stands: risen quick at first, then drifting, and never
+## up into the time bar.
+func _pop_at(p: Dictionary) -> Vector2:
+	var rise := 0.0 if p.t <= 0.0 else 64.0 * (1.0 - exp(-p.t * 4.5))
+	var at := px(p.pos) + Vector2(p.drift * 18.0 * maxf(0.0, p.t), -rise)
+	at.y = maxf(at.y, POP_TOP + (40.0 if p.rays else 0.0))
+	return at
+
 func _draw_mallet(m: Dictionary) -> void:
 	var t: float = m.t
-	var impact := -0.55
-	var ang := impact
+	var ang := _mallet_ang(t)
 	var alpha := 1.0
-	if not Motion.reduce:
-		if t < SWING:
-			ang = impact + 0.95 * (1.0 - t / SWING)
-		elif t > SWING + 0.1:
-			var k := (t - SWING - 0.1) / (MALLET_LIFE - SWING - 0.1)
-			ang = impact + 0.5 * k
-			alpha = 1.0 - k
-	else:
+	if Motion.reduce:
 		alpha = 1.0 - t / MALLET_LIFE
-	var head := px(m.pos)
-	# The hand sits down and right of the head, so the head lands on the spot.
-	var hand := head - Vector2(0, -Art.HEAD_AT * _u).rotated(impact)
+	elif t > SWING + 0.1:
+		alpha = 1.0 - (t - SWING - 0.1) / (MALLET_LIFE - SWING - 0.1)
 	var squash := 1.0
 	if t >= SWING and t < SWING + 0.08 and not Motion.reduce:
-		squash = 0.9
-	_over.draw_mesh(Art.mallet(_u), null, Transform2D(ang, Vector2(1.0, squash), 0.0, hand + _shake_off), Color(1, 1, 1, alpha))
+		squash = 0.86
+	_over.draw_mesh(Art.mallet(_u), null, Transform2D(ang, Vector2(1.0, squash), 0.0, _mallet_hand(m) + _shake_off), Color(1, 1, 1, alpha))
 
+## The numbers, lettered like stickers: an ink outline under the colour,
+## popping big and settling, rising and drifting as they fade.
 func _draw_pops() -> void:
 	var font := get_theme_font("font", "SheetTitle")
 	for p: Dictionary in _pops:
 		if p.t < 0.0:
 			continue
 		var a := 1.0 - clampf((p.t - 0.5) / 0.4, 0.0, 1.0)
-		var at := px(p.pos) + Vector2(0, -p.t * 50.0)
+		var at := _pop_at(p)
 		var big: bool = p.get("big", false)
-		var full := 52 if big else 42
-		var fs := full if Motion.reduce else maxi(8, int(lerpf(14.0, full, Motion.back_out(minf(1.0, p.t / 0.26)))))
+		var full := 56 if big else 44
+		var fs := full if Motion.reduce else maxi(8, int(lerpf(14.0, full * 1.0, Motion.back_out(minf(1.0, p.t / 0.24)))))
 		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		_over.draw_string(font, at + Vector2(-w * 0.5 + 2, 3), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.2, 0.12, 0.05, 0.5 * a))
-		_over.draw_string(font, at + Vector2(-w * 0.5, 0), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
+		var o := at + Vector2(-w * 0.5, 0)
+		_over.draw_string_outline(font, o + Vector2(0, 4), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.2, 0.12, 0.05, 0.35 * a))
+		_over.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(Art.INK, a))
+		_over.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
 
 ## A pseudo-random 0..1 from two numbers, for bursts that must look the
 ## same every frame they are drawn.
@@ -807,8 +1061,13 @@ static func _hash(a: float, b: float) -> float:
 	var v := sin(a * 12.9898 + b * 78.233) * 43758.5453
 	return v - floorf(v)
 
-func _burst(at: Vector2, col: Color, big: bool) -> void:
-	_bursts.append({"pos": at, "t": 0.0, "col": col, "big": big, "seed": randf() * 100.0})
+func _burst(at: Vector2, col: Color, big: bool, amount := 1.0) -> void:
+	_bursts.append({"pos": at, "t": 0.0, "col": col, "big": big, "seed": randf() * 100.0, "amount": amount})
+
+func _pop(at: Vector2, text: String, col: Color, big: bool) -> Dictionary:
+	var p := {"pos": at, "text": text, "t": 0.0, "col": col, "big": big, "rays": false, "drift": randf_range(-1.0, 1.0)}
+	_pops.append(p)
+	return p
 
 # --- the end ---
 
@@ -849,7 +1108,10 @@ func _build_end(better: bool) -> Control:
 	col.add_theme_constant_override("separation", 18)
 	card.add_child(col)
 	var seat := Control.new()
-	seat.custom_minimum_size = Vector2(0, 200)
+	# as tall as the mound's foot and clipped there, so the mole rising out
+	# of the hole is hidden until it clears the lip
+	seat.custom_minimum_size = Vector2(0, 226)
+	seat.clip_contents = true
 	# A mole on its mound, bobbing, cheeky with a new best. The mound's two
 	# halves are built once at the origin and kept, so the canvas never
 	# draws a freed mesh.
@@ -860,13 +1122,18 @@ func _build_end(better: bool) -> Control:
 	Art.mound_front(front_b, Vector2.ZERO, u)
 	var halves := [back_b.mesh(), front_b.mesh()]
 	seat.set_meta("keep", halves)
+	var shown_at := _clock
 	seat.draw.connect(func() -> void:
 		var t := 0.0 if Motion.reduce else _clock
 		var c := Vector2(seat.size.x * 0.5, 170.0)
 		seat.draw_mesh(halves[0], null, Transform2D(0.0, c))
+		# it pops out of the hole once the card is up, then bobs about
+		var since := _clock - shown_at
+		var up := 1.0 if Motion.reduce else Motion.back_out(clampf((since - 0.3) / 0.3, 0.0, 1.0))
 		var bob := (0.5 + 0.5 * sin(t * 2.4)) * 10.0
-		seat.draw_mesh(Art.mesh(Art.Look.MOLE_TEASE if better else Art.Look.MOLE, u), null,
-			Transform2D(sin(t * 1.7) * 0.06, c + Vector2(0, bob)))
+		var drop := (1.0 - up) * Art.DEPTH * u
+		var look := Art.mesh(Art.Look.MOLE_TEASE, u) if better else Art.mesh(Art.Look.MOLE, u, 0 if Motion.reduce else roundi(sin(t * 0.8)), fmod(t, 2.8) < 0.12 and not Motion.reduce)
+		seat.draw_mesh(look, null, Transform2D(sin(t * 1.7) * 0.06, c + Vector2(0, bob + drop)))
 		seat.draw_mesh(halves[1], null, Transform2D(0.0, c)))
 	col.add_child(seat)
 	_seat = seat
@@ -880,14 +1147,30 @@ func _build_end(better: bool) -> Control:
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(score)
-	var line := Label.new()
 	var acc := int(round(100.0 * sim.whacked / maxf(1.0, sim.taps)))
-	line.text = "%s  ·  %s  ·  %s" % [tr("MH_WHACKED") % sim.whacked, tr("MH_BEST_STREAK") % sim.best_streak,
-		tr("FF_ACCURACY") % acc]
-	line.theme_type_variation = "SheetBodyDim"
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(line)
+	var stats := HBoxContainer.new()
+	stats.name = "Stats"
+	stats.add_theme_constant_override("separation", 14)
+	for pair in [[str(sim.whacked), "MH_STAT_WHACKED"], [str(sim.best_streak), "MH_STAT_STREAK"], ["%d%%" % acc, "MH_STAT_AIM"]]:
+		var plate := PanelContainer.new()
+		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 26, 12))
+		var words := VBoxContainer.new()
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.add_theme_constant_override("separation", -4)
+		plate.add_child(words)
+		var value := Label.new()
+		value.text = pair[0]
+		value.theme_type_variation = "SheetTitle"
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(value)
+		var kicker := Label.new()
+		kicker.text = pair[1]
+		kicker.theme_type_variation = "MenuKicker"
+		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(kicker)
+		stats.add_child(plate)
+	col.add_child(stats)
 	var best_line := Label.new()
 	best_line.text = tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
 	best_line.theme_type_variation = "SheetBodyDim"

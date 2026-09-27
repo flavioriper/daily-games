@@ -102,3 +102,40 @@ frenzy, game over, new best) and an alarm bell for time up. `pop_up` and
 
 `arcade_start`, `arcade_end` (score, stage = best streak, seconds, whacked,
 escaped, missed, bunnies, best) and `arcade_abandon`, as the other two.
+
+## 7. Amendment: the polish (2026-09-27)
+
+Screen and art only; the sim is untouched.
+
+- **The cast**: a tuft of hair on every mole's crown, the hole's shadow on
+  the fur at the mouth, eyes that look about (a gaze of -1, 0 or 1 on each
+  hill's own clock) and blink, both baked into the mesh key; the rabbit
+  holds a carrot, which says "only visiting" before the rule has to.
+- **The mounds**: clods thrown up round the back of the rim, crumbs on the
+  lip's crest, grass tufts growing round both halves, the hole's back wall
+  lit. The lip heaves as a mole shoves out and flattens under a whack,
+  about its own foot, and a pop throws a few crumbs.
+- **The moles move**: stretched thin shooting out, an overshoot as they
+  land, squeezed on the way down, and a pancake squash that springs back
+  under a whack. Before the round every mole peeks out and looks about,
+  ducking on the go; after it they come up to jeer behind the end card.
+- **The mallet**: bigger, grained, with a leather grip; a shadow on the
+  ground closes in as it comes down, a smear follows the swing, and a
+  white-and-sun impact star bursts on a head (gold on a golden mole, with
+  a ring).
+- **The numbers** are lettered like stickers (an ink outline and a drop),
+  pop, rise and drift, and never rise into the time bar; a combo turns rays
+  behind it and bumps the score's kicker; a lost streak shivers it.
+- **The lawn**: sunlit patches, clover, the hedge's shade, the edges
+  darkening toward the frame, a butterfly along the hedge. The frenzy is a
+  warm glow breathing in from the edges instead of a flat wash, and the
+  time bar burns down with a little sun at its end, striped in the frenzy.
+- **The end card**: the mole pops out of its hole once the card is up (the
+  seat clips at the mound's foot), and the stats are three plates.
+- Reduce motion: no gaze, blink, overshoot, squash, heave, smear, glow
+  beat or butterfly flight; the peeks still come and go, eased linearly.
+- `tests/_shot_molehill.gd` now unpauses the game when the harness window
+  loses focus, which had been pausing it and eating the click.
+- Draw calls at 810x1440: 67 at the ready (the peeking moles), 54-57 in
+  play, 63-65 with the cast up, 93 on the end card (the jeering moles and
+  the stat plates); the Arcade tab unchanged at 134. Suite 122,593/0.

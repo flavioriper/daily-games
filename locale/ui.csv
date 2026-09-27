@@ -324,3 +324,6 @@ MH_TIME_UP,Time's up!,Acabou o tempo!,¡Se acabó el tiempo!
 MH_END_CARD,The moles go home,As toupeiras voltam para casa,Los topos se van a casa
 MH_WHACKED,%d whacked,%d acertadas,%d golpeados
 MH_BEST_STREAK,best streak %d,melhor sequência %d,mejor racha %d
+MH_STAT_WHACKED,whacked,acertadas,golpeados
+MH_STAT_STREAK,best streak,melhor sequência,mejor racha
+MH_STAT_AIM,on target,de acerto,de acierto

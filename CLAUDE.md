@@ -1799,6 +1799,11 @@ best streak.
   on a bare lawn, 63 with the cast up, 72-75 on the end card, ANGLE agreeing.
 - 17 sounds, whacks in a new `CARTOON` style and jingles in `ARCADE`,
   awaiting the user's listen.
+- **Polished on 2026-09-27** (the spec's section 7), screen and art only:
+  moles that look about, blink, overshoot and pancake, peek before the
+  round and jeer after it; mounds that heave; a mallet with a shadow, a
+  smear and an impact star; sticker numbers kept clear of the time bar; a
+  frenzy glow from the edges. 54-57 draw calls in play, 93 on the end card.
 
 ## Sound
 
