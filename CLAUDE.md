@@ -1917,6 +1917,28 @@ a bomb and a zap. Its "furthest" is the biggest block.
   `Motion.bump` compounds when bumps overlap; the screen's `_kick` restarts
   from one. 69-75 draw calls in play, ~135 at a chain's peak.
 
+**Lucky Thirteen is the seventh** (2026-09-27, spec
+`2026-09-27-arcade-thirteen-design.md`): a chain-merge number game after a
+browser game the spec names once to forbid; **it is called Lucky
+Thirteen** (id `thirteen`). Drag through three or more touching pebbles of a
+number (diagonals count) and they merge into the last, one higher; the aim
+is 13, and a tray with no three touching is stuck. Clovers buy five tools
+(undo, swap, pluck, shuffle, lift) whose prices climb with each purchase.
+
+- **The game is pure data with no clock** (`arcade/thirteen_sim.gd`): a
+  move resolves at once and the screen animates the settle after it.
+  `tests/_probe_thirteen.gd -- [seed] [skill 0-2] [tools 0/1] [games]`
+  plays it with a bot; run it after touching the spawn window or the
+  clovers. Random play reaches 9 in ~65% of games, 13 in ~2%.
+- **A connected group of three or more always holds a chain of three**, so
+  "stuck" is a flood fill (`groups_of`), but not every pebble of a group can
+  *end* one (the middle of a star cannot): `chain_through` may come back
+  short, and anything picking an end must try another.
+- 216 draw calls on the tab with seven cards, 125-148 in play, 99 on the end
+  card, ANGLE agreeing. 19 sounds (`CARTOON` pebbles, `ARCADE` jingles),
+  awaiting the user's listen. `tests/_shot_thirteen.gd` puts
+  `user://arcade.cfg` back.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -1995,7 +2017,8 @@ see "Ads and the purchase" below.
   escaped, missed and bunnies; Henhouse sends score as the seconds to
   retire, 0 if the farm closed, stage as the biggest flock, and won,
   earned, sold, hatched and lost; Stackwood sends stage as the biggest
-  block, and drops, merges, chain and tools) and `arcade_abandon`; snooker's hint and reset
+  block, and drops, merges, chain and tools; Lucky Thirteen stage as the
+  biggest number, and moves, merges, chain, tools and reached) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

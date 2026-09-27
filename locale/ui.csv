@@ -450,3 +450,25 @@ SW_END_CARD,The shelf tumbles,A prateleira desabou,El estante se derrumbó
 SW_STAT_BLOCK,biggest block,maior bloco,mayor bloque
 SW_STAT_MERGES,merges,fusões,fusiones
 SW_STAT_CHAIN,best chain,melhor corrente,mejor cadena
+ARC_THIRTEEN_BLURB,Drag through three or more touching pebbles of a number to merge them one higher. Can you make a 13?,Arraste por três ou mais pedrinhas vizinhas do mesmo número para fundi-las em uma a mais. Consegue chegar ao 13?,Arrastra por tres o más piedras vecinas del mismo número para fundirlas en una más alta. ¿Llegarás al 13?
+ARC_BEST_NUMBER,Biggest: %d,Maior: %d,Mayor: %d
+LT_MOTTO,Make a thirteen,Chegue ao treze,Llega al trece
+LT_BIGGEST,BIGGEST,MAIOR,MAYOR
+LT_CLOVERS,CLOVERS,TREVOS,TRÉBOLES
+LT_READY_LINE,Drag through three or more of a number,Arraste por três ou mais do mesmo número,Arrastra por tres o más del mismo número
+LT_SHORT,Three or more!,Três ou mais!,¡Tres o más!
+LT_GOAL_LINE,Lucky thirteen! How far can you go?,Treze da sorte! Até onde você vai?,¡Trece de la suerte! ¿Hasta dónde llegas?
+LT_STUCK,No more moves,Sem jogadas,Sin jugadas
+LT_STUCK_LINE,"Use a tool, or end the game",Use uma ferramenta ou encerre o jogo,Usa una herramienta o termina la partida
+LT_END_GAME,End game,Encerrar,Terminar
+LT_SWAP_LINE,Tap two pebbles to swap them,Toque em duas pedrinhas para trocá-las,Toca dos piedras para cambiarlas
+LT_PLUCK_LINE,Tap a pebble to pluck it out,Toque numa pedrinha para tirá-la,Toca una piedra para quitarla
+LT_LIFT_LINE,Tap a pebble to raise it one,Toque numa pedrinha para subir um número,Toca una piedra para subirla uno
+LT_LIFT_BIGGEST,Not your biggest number,Não no seu maior número,No en tu número más alto
+LT_SWAP_SAME,Pick two different numbers,Escolha dois números diferentes,Elige dos números distintos
+LT_OVER,The tray is settled,A bandeja parou,La bandeja se detuvo
+LT_END_CARD,No more moves,Sem mais jogadas,No quedan jugadas
+LT_END_LUCKY,A lucky thirteen!,Um treze da sorte!,¡Un trece de la suerte!
+LT_STAT_BIGGEST,biggest,maior,mayor
+LT_STAT_MOVES,moves,jogadas,jugadas
+LT_STAT_CHAIN,longest chain,maior corrente,cadena más larga

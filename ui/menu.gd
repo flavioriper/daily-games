@@ -53,6 +53,7 @@ const MolehillScreen = preload("res://arcade/molehill_screen.gd")
 const HenhouseScreen = preload("res://arcade/henhouse_screen.gd")
 const MillstreamScreen = preload("res://arcade/millstream_screen.gd")
 const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
+const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
 const MARGIN := 40
@@ -1125,6 +1126,9 @@ func _open_arcade(game: String) -> void:
 		"stackwood":
 			screen = StackwoodScreen.new()
 			screen.name = "Stackwood"
+		"thirteen":
+			screen = ThirteenScreen.new()
+			screen.name = "Thirteen"
 		_:
 			return
 	screen.closed.connect(func() -> void:
