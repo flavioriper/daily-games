@@ -11,6 +11,7 @@ signal reset
 signal check
 
 const IconButton = preload("res://ui/hud/icon_button.gd")
+const Ink = preload("res://ui/flat/ink.gd")
 
 const BUTTON := Vector2(260, 130)
 const ALL_GOOD_TIME := 1.2
@@ -22,6 +23,9 @@ var _all_good: Tween
 var _check_label := "ACT_CHECK"
 ## The board's card colour; Check wears it. Set before the row enters the tree.
 var accent := Pal.SUN
+## The ink skin (ui/flat/ink.gd): Reset in cream, Check in ink lettered in
+## cream. Set before the row enters the tree.
+var ink := false
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -34,7 +38,10 @@ func _make_inner() -> Container:
 func _build() -> void:
 	reset_button = IconButton.new("reset", "ACT_RESET", "IconButton")
 	reset_button.custom_minimum_size = BUTTON
-	CozyTheme.lift_button(reset_button, Pal.SURFACE, RADIUS)
+	if ink:
+		Ink.button(reset_button, Ink.CARD, Ink.INK, RADIUS)
+	else:
+		CozyTheme.lift_button(reset_button, Pal.SURFACE, RADIUS)
 	reset_button.pressed.connect(func() -> void: reset.emit())
 	_inner.add_child(reset_button)
 	var spacer := Control.new()
@@ -43,7 +50,11 @@ func _build() -> void:
 	_inner.add_child(spacer)
 	check_button = IconButton.new("check", "ACT_CHECK", "SunButton")
 	check_button.custom_minimum_size = BUTTON
-	CozyTheme.accent_button(check_button, accent, RADIUS)
+	if ink:
+		Ink.button(check_button, Ink.INK, Ink.CARD, RADIUS)
+		check_button.custom_minimum_size.x = 300.0
+	else:
+		CozyTheme.accent_button(check_button, accent, RADIUS)
 	check_button.pressed.connect(func() -> void: check.emit())
 	_inner.add_child(check_button)
 

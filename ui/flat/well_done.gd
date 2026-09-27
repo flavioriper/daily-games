@@ -20,6 +20,9 @@ const Icons = preload("res://ui/icons.gd")
 const Face = preload("res://ui/faces/face.gd")
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
+const Ink = preload("res://ui/flat/ink.gd")
+const InkSun = preload("res://ui/faces/ink_sun.gd")
+const InkMoon = preload("res://ui/faces/ink_moon.gd")
 
 const HEIGHT := 640.0
 ## Centres in the column's space (the spec's x less the 40 margin, y less
@@ -70,6 +73,9 @@ var _title: Label
 var _sub: Label
 var _spin: Tween
 var _rock: Tween
+## The ink skin (ui/flat/ink.gd): the pair, the leaves and the stars in ink.
+## Set before the panel enters the tree.
+var ink := false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -79,12 +85,14 @@ func _ready() -> void:
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_art.draw.connect(_draw_art.bind(_art))
 	add_child(_art)
-	sun = SunFace.new()
+	sun = InkSun.new() if ink else SunFace.new()
 	sun.size = Vector2(SUN_SIZE, SUN_SIZE)
 	sun.position = SUN_AT - sun.size * 0.5
 	sun.expression = Face.Expr.JOY
 	add_child(sun)
-	moon = MoonFace.new()
+	moon = InkMoon.new() if ink else MoonFace.new()
+	if ink:
+		moon.rim = true
 	moon.size = Vector2(MOON_SIZE, MOON_SIZE)
 	moon.position = MOON_AT - moon.size * 0.5
 	moon.expression = Face.Expr.JOY
@@ -98,6 +106,8 @@ func _ready() -> void:
 	_title.offset_top = TITLE_Y - 60.0
 	_title.offset_bottom = TITLE_Y + 60.0
 	add_child(_title)
+	if ink:
+		_title.add_theme_color_override("font_color", Ink.INK)
 	_sub = Label.new()
 	_sub.theme_type_variation = "CardBodyDim"
 	_sub.add_theme_font_size_override("font_size", 34)
@@ -116,7 +126,7 @@ func _draw_art(ci: Control) -> void:
 	var row := not _cast.is_empty()
 	var leaf: float = CAST_LEAF if row else LEAF
 	ci.draw_set_transform(CAST_LEAF_L if row else LEAF_L, -0.9, Vector2.ONE)
-	Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
+	Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Ink.INK_DIM if ink else Pal.LEAF)
 	# The right leaf stands at x 934 and the outermost star at 906, which is
 	# inside a cast that had to be closed up to fit -- Balance's five fruit
 	# reach 888 with their weights written under them. The answer is the
@@ -124,7 +134,7 @@ func _draw_art(ci: Control) -> void:
 	# than being drawn through. Four or fewer faces leave the art untouched.
 	if not _cast_wide:
 		ci.draw_set_transform(CAST_LEAF_R if row else LEAF_R, -2.2, Vector2.ONE)
-		Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Pal.LEAF)
+		Icons.paint(ci, "leaf", Rect2(Vector2(-leaf * 0.5, -leaf * 0.5), Vector2(leaf, leaf)), Ink.INK_DIM if ink else Pal.LEAF)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var stars: Array = CAST_STARS if row else STARS
 	if _cast_wide:
@@ -135,8 +145,9 @@ func _draw_art(ci: Control) -> void:
 			var a := i * PI / 4.0
 			var r: float = s[2] if i % 2 == 0 else s[2] * 0.38
 			pts.append(Vector2(s[0], s[1]) + Vector2(cos(a), sin(a)) * r)
-		ci.draw_colored_polygon(pts, Pal.SUN)
-		ci.draw_polyline(pts + PackedVector2Array([pts[0]]), Pal.SUN, 1.5, true)
+		var star: Color = Ink.INK if ink else Pal.SUN
+		ci.draw_colored_polygon(pts, star)
+		ci.draw_polyline(pts + PackedVector2Array([pts[0]]), star, 1.5, true)
 
 ## Puts `faces` across the art in place of the sun and the moon, centred on
 ## the panel at the board's own pitch, and re-words the line under

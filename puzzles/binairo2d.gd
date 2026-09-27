@@ -24,17 +24,20 @@ const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
-const SunFace = preload("res://ui/faces/sun_face.gd")
-const MoonFace = preload("res://ui/faces/moon_face.gd")
+const Ink = preload("res://ui/flat/ink.gd")
+const SunFace = preload("res://ui/faces/ink_sun.gd")
+const MoonFace = preload("res://ui/faces/ink_moon.gd")
 
 ## Layout, in the board card's inner pixels (spec section 4).
 const PAD := 28.0
 const GAP := 12.0
-const TILE_RADIUS := 18
-const TILE_EDGE := 4
-## Face sizes as a fraction of the tile: the sun's rays reach 1.55 R, so its
-## Control is 2 * 1.55 * 0.26 of the tile; the moon's disc is its own radius.
-const SUN_SIZE := 0.26 * 2.0 * 1.55
+const TILE_RADIUS := 16
+## The ink skin's tiles are flat, with a hairline all round and no bottom edge.
+const TILE_EDGE := 0
+const TILE_LINE := 2
+## Face sizes as a fraction of the tile: the ink sun's rays reach 2 R, so its
+## Control is 2 * 2 * 0.19 of the tile; the moon's disc is its own radius.
+const SUN_SIZE := 0.19 * 2.0 * 2.0
 const MOON_SIZE := 0.34 * 2.0
 ## Hint count, not refunded by reset (HUD spec, section 3).
 const HINTS := 3
@@ -61,7 +64,7 @@ const FOCUS_ALPHA := 0.12
 const ROCK_SHARE := 0.34
 ## A sign's badge radius and its glyph's half-width and stroke, as fractions
 ## of the tile.
-const SIGN_R := 0.14
+const SIGN_R := 0.155
 const SIGN_GLYPH := 0.065
 const SIGN_STROKE := 0.028
 ## How long the signs take to fade in once the tiles have landed.
@@ -129,6 +132,14 @@ func rules() -> String:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## The ink skin's card is square round the grid, with the leftover split
+## above and below it.
+func card_height(available: float) -> float:
+	return minf(available, size.x) if size.x > 0.0 else available
+
+func card_centred() -> bool:
+	return true
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
@@ -181,7 +192,8 @@ func _build_tiles() -> void:
 		for c in n:
 			var sb := StyleBoxFlat.new()
 			sb.set_corner_radius_all(TILE_RADIUS)
-			sb.border_width_bottom = TILE_EDGE
+			sb.set_border_width_all(TILE_LINE)
+			sb.anti_aliasing_size = 1.2
 			var tile := Panel.new()
 			tile.name = "tile_%d_%d" % [r, c]
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -326,8 +338,8 @@ func _draw_signs() -> void:
 	for i in state.signs.size():
 		var s: Vector4i = state.signs[i]
 		var at := _sign_at(s)
-		var ink: Color = Pal.BAD if state.sign_broken(i) else Pal.ACORN_DEEP
-		b.disc(at, r + 2.0, Pal.LINE)
+		var ink: Color = Ink.BAD if state.sign_broken(i) else Ink.INK
+		b.disc(at, r + 2.5, Ink.TILE_EDGE.darkened(0.08))
 		b.disc(at, r, Pal.SURFACE)
 		if s.w == 1:
 			for dy in [-0.45, 0.45]:
@@ -347,15 +359,15 @@ func _draw_signs() -> void:
 func _paint(blend: float, r: int, c: int) -> void:
 	_blend[r][c] = blend
 	var locked: bool = state.given[r][c]
-	var base: Color = Pal.STONE_GIVEN if locked else Pal.SURFACE
+	var base: Color = Ink.TILE_GIVEN if locked else (Ink.TILE if state.grid[r][c] == -1 else Ink.TILE_SET)
 	var fill: Color
 	if blend <= 1.0:
-		fill = base.lerp(Pal.BAD_TILE, blend)
+		fill = base.lerp(Ink.BAD_TILE, blend)
 	else:
-		fill = Pal.BAD_TILE.lerp(Pal.BAD, minf(1.0, (blend - 1.0) * 0.5))
+		fill = Ink.BAD_TILE.lerp(Ink.BAD, minf(1.0, (blend - 1.0) * 0.35))
 	var sb: StyleBoxFlat = _styles[r][c]
 	sb.bg_color = fill
-	sb.border_color = Pal.LINE if locked else Color(Pal.LINE, 0.5)
+	sb.border_color = Ink.TILE_EDGE.darkened(0.04) if locked else Ink.TILE_EDGE
 
 ## Rule feedback. Cells whose line just broke blush with two heartbeats and
 ## shiver once, and their faces worry; cells whose line was fixed fade back.
@@ -437,6 +449,8 @@ func _beam(r: int, c: int, delay: float, time: float) -> void:
 func _swap_face(r: int, c: int, v: int, delay := 0.0, drop := false) -> void:
 	var old: Control = _faces[r][c]
 	_faces[r][c] = null
+	# A tile's fill says whether it holds a symbol (the ink skin's grey).
+	_paint(_blend[r][c], r, c)
 	if old != null:
 		old.set_idle(false)
 		var out: Tween = Motion.pop_out(old, Motion.POP_OUT, delay)
@@ -488,7 +502,7 @@ func _focus(r: int, c: int) -> void:
 	_set_focus_alpha(0.0)
 	focus_cell = Vector2i(c, r)
 	var v: int = state.grid[r][c]
-	var colour: Color = Pal.SUN if v == 0 else (Pal.MOON_INK if v == 1 else Pal.LINE)
+	var colour: Color = Ink.INK if v != -1 else Ink.INK_DIM
 	for i in n:
 		(_tints[r][i].get_theme_stylebox("panel") as StyleBoxFlat).bg_color = colour
 		(_tints[i][c].get_theme_stylebox("panel") as StyleBoxFlat).bg_color = colour
@@ -561,7 +575,7 @@ func _tap(r: int, c: int) -> void:
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	_nudge_neighbours(r, c)
 	if v != -1:
-		fx.puff(cell_to_local(r, c), Pal.SUN if v == 0 else Pal.MOON_INK, 5)
+		fx.puff(cell_to_local(r, c), Ink.INK_DIM, 5)
 	fx.cue("place" if v != -1 else "clear")
 	_focus(r, c)
 	_after_change(r, c)

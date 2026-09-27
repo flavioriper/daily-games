@@ -22,6 +22,8 @@ var badge: int = 0:
 	set(v):
 		badge = v
 		_refresh_badge()
+## The badge's disc; the ink skin paints it in its ink.
+var badge_colour := Pal.WATER
 ## Where the badge rests; the top bar's bounce hops from here.
 var badge_rest := Vector2.ZERO
 var _press_tw: Tween
@@ -145,4 +147,4 @@ func _draw_glyph() -> void:
 	Icons.paint(_glyph, icon_name, Rect2(Vector2.ZERO, _glyph.size), _ink(), fill)
 
 func _draw_badge() -> void:
-	_badge.draw_circle(Vector2(BADGE_R, BADGE_R), BADGE_R, Pal.WATER)
+	_badge.draw_circle(Vector2(BADGE_R, BADGE_R), BADGE_R, badge_colour)

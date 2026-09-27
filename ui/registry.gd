@@ -74,6 +74,8 @@ const PUZZLES := [
 		"footer": "Think · Balance · Complete",
 		"script": "res://puzzles/binairo2d.gd",
 		"shell": "flat",
+		# The monochrome ink skin (ui/flat/ink.gd), on trial (2026-09-27).
+		"skin": "ink",
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): easy and medium are 6x6, hard is 8x8,
 		# and each is its own daily with its own done mark.
