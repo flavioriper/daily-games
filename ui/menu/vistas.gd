@@ -82,6 +82,8 @@ const CARDS := {
 	"stackwood": ["sky", 1.5, Vector2(0.5, 0.55)],
 	# Lucky Thirteen's pebbles lie on the beach vista's sand.
 	"thirteen": ["beach", 1.5, Vector2(0.5, 0.65)],
+	# Posy's bed lies in the meadow vista's garden.
+	"posy": ["meadow", 1.5, Vector2(0.5, 0.6)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
