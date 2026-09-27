@@ -643,6 +643,39 @@ SETS = {
         "game_over":  ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":   ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
+    # Posy (Arcade, arcade/posy_screen.gd): a swap-three garden of flowers,
+    # leaves, drops, mushrooms, berries and acorns. The garden's touches are
+    # CARTOON; the specials' shimmer and the jingles ARCADE. match fires on
+    # every cascade step and is pitched up the cascade by the screen, so it
+    # sits low; collect fires on every tile landing on a goal, lower still.
+    "posy": {
+        "select":       ("a single tiny soft click, a small garden tile picked up, bright and clean, very short", 0.5, -14, CARTOON),
+        "swap":         ("a quick soft airy double swish, two small tiles trading places, playful, short", 0.5, -10, CARTOON),
+        "bad_swap":     ("a soft springy boing back, two tiles bumping and sliding back to where they were, gentle, short", 0.6, -10, CARTOON),
+        "match":        ("a soft bubbly pop of three little flowers plucked at once, satisfying, very short", 0.5, -6, CARTOON),
+        "land":         ("a tiny soft patter of small tiles settling into place, very short and quiet", 0.5, -18, CARTOON),
+        "collect":      ("a tiny soft bright tick, a petal landing in a basket, very short", 0.5, -18, ARCADE),
+        "made_breeze":  ("a soft rising whoosh with a bright shimmer, a magical breeze being made, short", 0.6, -8, ARCADE),
+        "made_bomb":    ("a soft rising sparkle and a small warm hum, a seed bomb being made, short", 0.7, -8, ARCADE),
+        "made_rainbow": ("a bright magical rising arpeggio shimmer, a rainbow flower appearing, about a second", 1.0, -6, ARCADE),
+        "breeze":       ("a quick gust of wind sweeping across a garden, a clean whoosh with leaves rustling, short", 0.7, -6, CARTOON),
+        "bomb":         ("a soft cartoon poof blast, a burst of seeds and petals, round and gentle not harsh, short", 0.7, -5, CARTOON),
+        "rainbow":      ("a sparkling magical sweep, a shower of chimes flying out in every direction, about a second", 1.1, -5, ARCADE),
+        "goal":         ("a bright happy two-note chime, a goal completed, short", 0.7, -6, ARCADE),
+        "cheer":        ("a short joyful bright sparkle flourish, a big cascade, happy", 0.8, -7, ARCADE),
+        "day_done":     ("a joyful short garden fanfare with sparkles, a day's goals completed, about two seconds", 2.0, -4, ARCADE),
+        "deal":         ("a soft airy cascade of many small tiles tumbling into a wooden tray, about a second", 1.0, -9, CARTOON),
+        "shuffle":      ("a handful of small wooden tiles shaken and rattled in a tray, a quick rolling clatter, about a second", 1.0, -8, CARTOON),
+        "convert":      ("a soft magical twinkle, a tile turning special, short", 0.6, -9, ARCADE),
+        "gift":         ("a cheerful little present chime with a sparkle, a tool earned, short", 0.8, -7, ARCADE),
+        "trowel":       ("a small garden trowel digging into soft soil, a quick scoop and a soft pop, short", 0.6, -7, CARTOON),
+        "arm":          ("a soft quick click and a tiny rising blip, a tool picked up, short", 0.5, -10, ARCADE),
+        "refused":      ("a soft low short 'bonk' blip, not allowed, gentle, not harsh", 0.5, -10, ARCADE),
+        "out_of_moves": ("a soft slow descending wobble, out of moves, gentle and kind, not sad", 1.0, -7, CARTOON),
+        "start":        ("a short cheerful retro arcade game start jingle, a bouncy flowery little tune, about two seconds", 2.2, -4, ARCADE),
+        "game_over":    ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {

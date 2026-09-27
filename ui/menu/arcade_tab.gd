@@ -8,8 +8,9 @@ extends VBoxContainer
 ## (arcade/henhouse_screen.gd) the fourth, whose best is a time, and
 ## Millstream (arcade/millstream_screen.gd) the fifth, a small factory, and
 ## Stackwood (arcade/stackwood_screen.gd) the sixth, falling blocks that merge,
-## and Lucky Thirteen (arcade/thirteen_screen.gd) the seventh, chains of
-## pebbles merged up to 13.
+## Lucky Thirteen (arcade/thirteen_screen.gd) the seventh, chains of
+## pebbles merged up to 13, and Posy (arcade/posy_screen.gd) the eighth, a
+## swap-three garden played a day at a time.
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
 ## drawn once), the name and the best score, a line, and the best stage
@@ -35,6 +36,7 @@ const MillArt = preload("res://arcade/millstream_art.gd")
 const MillSim = preload("res://arcade/millstream_sim.gd")
 const StackArt = preload("res://arcade/stackwood_art.gd")
 const PebbleArt = preload("res://arcade/thirteen_art.gd")
+const PosyArt = preload("res://arcade/posy_art.gd")
 
 const GAP := 20
 const PAD := 24
@@ -43,16 +45,16 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream", "stackwood", "thirteen"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB"}
+const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream", "stackwood", "thirteen", "posy"]
+const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB"}
 ## Games whose best is the quickest time rather than the highest score.
 const TIMED := ["henhouse", "millstream"]
 ## What a timed game says before its first finish.
 const NO_TIME := {"henhouse": "ARC_NOT_RETIRED", "millstream": "ARC_NOT_BUILT"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -119,7 +121,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -583,3 +585,38 @@ class ThirteenBanner extends Control:
 			draw_mesh(PebbleArt.pebble(row[k], s), null, Transform2D.IDENTITY)
 			PebbleArt.number(self, font, Vector2.ZERO, row[k], s)
 		draw_set_transform(Vector2.ZERO)
+
+## Posy's banner: a strip of the bed's pale cells with a row of garden
+## tiles, a breeze sweeping through the middle and the rainbow posy at the
+## end. Drawn once.
+class PosyBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var s := minf(size.y * 0.5, size.x / 8.6)
+		var mid := size * Vector2(0.5, 0.56)
+		var b := Face.Builder.new()
+		var row := [0, 1, 1, 2, 1, 3, 4, -1]
+		var at: Array = []
+		for k in row.size():
+			at.append(mid + Vector2((k - 3.5) * s * 1.06, 0))
+		var strip := Vector2(s * 1.06 * row.size() + s * 0.3, s * 1.3)
+		b.polygon(Face.Builder.round_rect(mid - strip * 0.5, strip, s * 0.3), Color(PosyArt.BOARD, 0.92))
+		for p: Vector2 in at:
+			b.polygon(Face.Builder.round_rect(p - Vector2(s, s) * 0.48, Vector2(s, s) * 0.96, s * 0.18), PosyArt.CELL)
+		var ground := b.mesh()
+		_keep.append(ground)
+		draw_mesh(ground, null)
+		for k in row.size():
+			draw_mesh(PosyArt.tile(row[k], s * 0.84), null, Transform2D(0.0, at[k]))
+		# the three leaves lined up, and a breeze streaking through them
+		draw_mesh(PosyArt.breeze(s * 0.84), null, Transform2D(0.0, at[2]))
+		draw_mesh(PosyArt.bomb_glow(s * 0.84), null, Transform2D(0.0, at[5]))
+		draw_mesh(PosyArt.tile(3, s * 0.84), null, Transform2D(0.0, at[5]))

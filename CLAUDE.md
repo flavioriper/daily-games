@@ -1945,6 +1945,30 @@ is 13, and a tray with no three touching is stuck. Clovers buy five tools
   on paper pills and a stuck card. 125-135 draw calls in play, ~143 on the
   13's reveal.
 
+**Posy is the eighth** (2026-09-27, spec
+`2026-09-27-arcade-posy-design.md`): a swap-three garden after the
+candy-swapping game the spec names once to forbid; **it is called Posy**
+(the user's mock said Pixel Garden, which the twenty-seventh board already
+is). Swap neighbours to line up three; four leave a breeze (row or column),
+an L or T a seed bomb that goes off twice, five a rainbow posy. Each day
+asks for so many of two or three kinds in so many moves; leftover moves
+bloom as breezes, then the next day is dealt. Its "furthest" is the day.
+
+- **The game is pure data** (`arcade/posy_sim.gd`, no clock): a move
+  resolves at once and leaves every cascade step as an event.
+  `tests/_probe_posy.gd -- [seed] [skill 0-2] [tools 0/1] [games]`; run it
+  after touching the sim or `day_plan()`.
+- **The screen plays the events off a queue and keeps its own picture of
+  the bed** (`_tiles`, id -> where it is going), and the paper row follows
+  the queue: the sim is a whole cascade ahead by the time the first step is
+  drawn, so nothing on screen may read the sim's grid while `busy()`.
+- **A harness must put `user://arcade.cfg` back on every exit path**, a
+  timeout included: the first `_shot_posy` run timed out after its bot had
+  lost a game and left a real Posy score in this Mac's save.
+- 236 draw calls on the tab with eight cards, 131-151 in play, 100-104 on
+  the end card, ANGLE agreeing. 26 sounds (`CARTOON` garden, `ARCADE`
+  shimmer and jingles), awaiting the user's listen.
+
 ## Sound
 
 Full rules: `docs/art/sound-direction.md`. Sounds are generated with
@@ -2024,7 +2048,8 @@ see "Ads and the purchase" below.
   retire, 0 if the farm closed, stage as the biggest flock, and won,
   earned, sold, hatched and lost; Stackwood sends stage as the biggest
   block, and drops, merges, chain and tools; Lucky Thirteen stage as the
-  biggest number, and moves, merges, chain, tools and reached) and `arcade_abandon`; snooker's hint and reset
+  biggest number, and moves, merges, chain, tools and reached; Posy stage
+  as the day, and moves, made, cascade, picked and tools) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

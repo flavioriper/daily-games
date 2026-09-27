@@ -472,3 +472,25 @@ LT_END_LUCKY,A lucky thirteen!,Um treze da sorte!,¡Un trece de la suerte!
 LT_STAT_BIGGEST,biggest,maior,mayor
 LT_STAT_MOVES,moves,jogadas,jugadas
 LT_STAT_CHAIN,longest chain,maior corrente,cadena más larga
+ARC_POSY_BLURB,"Swap neighbouring tiles to line up three or more. Collect what each day asks for before the moves run out.","Troque peças vizinhas para alinhar três ou mais. Colete o que cada dia pede antes que os movimentos acabem.","Intercambia piezas vecinas para alinear tres o más. Reúne lo que pide cada día antes de quedarte sin movimientos."
+ARC_BEST_DAY,Furthest: day %d,Mais longe: dia %d,Más lejos: día %d
+PS_MOTTO,Pick the garden's posy,Colha o buquê do jardim,Recoge el ramillete del jardín
+PS_MOVES,MOVES,MOVIMENTOS,MOVIMIENTOS
+PS_DAY,Day %d,Dia %d,Día %d
+PS_POINTS,%s pts,%s pts,%s pts
+PS_COLLECT,Collect the items!,Colete os itens!,¡Reúne los objetos!
+PS_TROWEL_LINE,Tap a tile to dig it up,Toque numa peça para arrancá-la,Toca una pieza para arrancarla
+PS_SWAP_LINE,Tap two neighbours to swap them,Toque em duas vizinhas para trocá-las,Toca dos vecinas para cambiarlas
+PS_BOMB_LINE,Tap where the bomb should go off,Toque onde a bomba deve explodir,Toca dónde debe estallar la bomba
+PS_RAINBOW_LINE,Tap a tile to make it a rainbow posy,Toque numa peça para virar um buquê arco-íris,Toca una pieza para volverla un ramillete arcoíris
+PS_SHUFFLE,No moves: shuffling,Sem jogadas: embaralhando,Sin jugadas: barajando
+PS_DAY_DONE,Day done!,Dia completo!,¡Día completado!
+PS_BONUS,%d moves left: +%s,%d movimentos sobrando: +%s,%d movimientos de sobra: +%s
+PS_WORD_1,Lovely!,Que lindo!,¡Precioso!
+PS_WORD_2,Blooming!,Florindo!,¡Floreciendo!
+PS_WORD_3,Full bloom!,Em plena flor!,¡En plena flor!
+PS_OUT,Out of moves,Sem movimentos,Sin movimientos
+PS_END_CARD,The garden rests,O jardim descansa,El jardín descansa
+PS_STAT_DAY,day,dia,día
+PS_STAT_MADE,specials,especiais,especiales
+PS_STAT_CASCADE,best cascade,melhor cascata,mejor cascada
