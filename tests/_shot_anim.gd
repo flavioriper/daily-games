@@ -359,6 +359,18 @@ func _initialize() -> void:
 		_shots = [0.35, 1.75, 1.95, 2.3, 2.55, 2.8, 3.4, 4.4]
 		_idle_from = 4.5
 		_idle_to = 6.0
+	if _id == "marigold" and not _empty:
+		# A seed shot down the hint's own line at TAP_AT: the strip catches
+		# it in flight among the blooms, the blooms being picked, and the
+		# next aim. `fever` blooms every marigold but one through the state
+		# and shoots at the last, so the strip catches the full bloom.
+		_shots = [0.35, 1.9, 2.3, 2.8, 3.4, 4.2, 5.4]
+		_idle_from = 6.0
+		_idle_to = 7.5
+		if _mode == "fever":
+			_shots = [0.35, 1.9, 2.3, 2.7, 3.2, 4.0, 5.0, 6.5]
+			_idle_from = 7.0
+			_idle_to = 8.0
 	if _mode == "over":
 		# Six rows take WORD_EVERY each and the last of them another second
 		# to turn over, so the reveal lands well past the usual last shot.
@@ -456,6 +468,8 @@ func _process(delta: float) -> bool:
 			_tap_hedgehogs()
 		elif _entry.id == "slider" and not _empty:
 			_slide_slider()
+		elif _entry.id == "marigold" and not _empty:
+			_shoot_marigold()
 		elif _entry.id == "rings" and not _empty:
 			_tap_rings()
 		elif _entry.id == "sudoku" and not _empty:
@@ -1565,6 +1579,39 @@ func _slide_slider() -> void:
 	root.push_input(up, true)
 
 func _tap_global(at: Vector2) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventScreenTouch.new()
+		ev.index = 0
+		ev.pressed = pressed
+		ev.position = at
+		root.push_input(ev, true)
+
+## Marigold: the sun turned to the hint's line by a real press and let go,
+## so the seed flies. `fever` first blooms and picks every marigold but the
+## one the hint's line reaches first, so the shot ends the garden.
+func _shoot_marigold() -> void:
+	var st = _puzzle._state
+	var a: float = st.best_angle()
+	if _mode == "fever":
+		var r: Dictionary = st.trace(a, 0, 8.0, 1)
+		var keep := -1
+		var c = st.clone()
+		c.fire(a)
+		for n in 240 * 8:
+			var ev: Array = c.step([])
+			for e: Dictionary in ev:
+				if e.t == "hit" and c.kind[e.i] == 1 and keep < 0:
+					keep = e.i
+			if keep >= 0 or c.balls.is_empty():
+				break
+		for i in st.pos.size():
+			if st.kind[i] == 1 and i != keep:
+				st.st[i] = 2
+				st.oranges_left -= 1
+		_puzzle._buds = []
+		_puzzle._hud = null
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	var at: Vector2 = xf * _puzzle._pt(st.SUN_C + st.aim_dir(a) * 30.0)
 	for pressed in [true, false]:
 		var ev := InputEventScreenTouch.new()
 		ev.index = 0
