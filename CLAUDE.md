@@ -1288,6 +1288,27 @@ pointing `seed_as` at them. Specs:
   where the sleepers stretch, yawn and hop under a swirl of leaves. The
   still mesh is cut into bands of three rows rebuilt only when a cell's look
   changes. 84 bare, 85 played, 119 on the win, ANGLE agreeing.
+- **Super Slider is the twenty-fifth card** (2026-09-26,
+  `puzzles/slider2d.gd`, spec `2026-09-26-super-slider-flat-design.md`, no
+  concept tab -- built while the user was away). The 4x5 sliding-block
+  family after a handheld the user brought: drag blocks through the empty
+  cells (round corners, one drag one move) until the big red block walks out
+  of the gate at the bottom. The name is the user's; the handheld sells as
+  *Super Slide*, one letter off. Two things travel: **a position is one int**
+  (twenty 3-bit cell codes, so like blocks are interchangeable and a
+  neighbour is `key - here + there`), and **one breadth-first pass over the
+  whole graph plus one back from the goals gives every position's distance**,
+  so a hint from anywhere is a lookup -- it reproduces the classic layout's
+  published 25,955 positions and 81 moves in 0.3 s on this Mac (1.2 s for
+  the largest shipped graph, 105k positions), and runs on a
+  `WorkerThreadPool` task from the moment the tray opens; a closed tray
+  tells it to stop rather than waiting. The trays are
+  mined (`tools/mine_slider.gd`, `tools/merge_slider.py`,
+  `content/slider.json`), never grown on the phone. Drawing is
+  `ui/faces/slider_block.gd`, shared with the menu card; the board clips,
+  because the big block walks out past the frame. 67 draw calls bare and
+  played, 68 on ANGLE. Sounds generated (2026-09-26), one take a cue,
+  awaiting the user's listen.
 - **Shikaku's clues can ask for a shape** (2026-09-25). A clue is
   `{pos, area, shape}`: `shape` is `shikaku_gen.gd`'s `Shape` (any, square,
   tall, wide) and `area` 0 means no number -- the plot may be any size of
