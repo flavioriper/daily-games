@@ -70,14 +70,8 @@ const CARDS := {
 	"checkers": ["meadow", 1.5, Vector2(0.7, 0.7)],
 	# Arcade (not a grid card): Firefly flies the night garden.
 	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
-	# Hedgerow keeps its garden in the meadow by day.
-	"hedgerow": ["meadow", 1.5, Vector2(0.5, 0.6)],
 	# Molehill is a lawn in the meadow too, nearer the grass.
 	"molehill": ["meadow", 1.7, Vector2(0.4, 0.75)],
-	# Henhouse keeps its pen in the meadow's far corner.
-	"henhouse": ["meadow", 1.6, Vector2(0.7, 0.65)],
-	# Millstream's valley is the meadow's near side, by the water.
-	"millstream": ["meadow", 1.5, Vector2(0.25, 0.7)],
 	# Stackwood's shelf stands in the greenhouse light of the sky vista.
 	"stackwood": ["sky", 1.5, Vector2(0.5, 0.55)],
 	# Lucky Thirteen's pebbles lie on the beach vista's sand.

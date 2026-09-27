@@ -1,16 +1,14 @@
 extends VBoxContainer
 
 ## The Arcade tab: games played alone for a score rather than against the
-## day's board or against someone: Firefly (arcade/firefly_screen.gd) and
-## Hedgerow (arcade/hedgerow_screen.gd). Its body takes the day
-## row's and the grid's room, as Versus, Stats and Streak do. Molehill
-## (arcade/molehill_screen.gd) is the third, Henhouse
-## (arcade/henhouse_screen.gd) the fourth, whose best is a time, and
-## Millstream (arcade/millstream_screen.gd) the fifth, a small factory, and
-## Stackwood (arcade/stackwood_screen.gd) the sixth, falling blocks that merge,
-## Lucky Thirteen (arcade/thirteen_screen.gd) the seventh, chains of
-## pebbles merged up to 13, and Posy (arcade/posy_screen.gd) the eighth, a
-## swap-three garden played a day at a time.
+## day's board or against someone: Firefly (arcade/firefly_screen.gd), a
+## formation shooter, Molehill (arcade/molehill_screen.gd), whack-a-mole,
+## Stackwood (arcade/stackwood_screen.gd), falling blocks that merge, Lucky
+## Thirteen (arcade/thirteen_screen.gd), chains of pebbles merged up to 13,
+## and Posy (arcade/posy_screen.gd), a swap-three garden played a day at a
+## time. Its body takes the day row's and the grid's room, as Versus, Stats
+## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
+## project on 2026-09-27, ~/dev/garden-games.)
 ##
 ## One card a game: the game's own cast lying across a painted banner (still,
 ## drawn once), the name and the best score, a line, and the best stage
@@ -27,13 +25,8 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const Art = preload("res://arcade/firefly_art.gd")
-const HedgeArt = preload("res://arcade/hedgerow_art.gd")
-const HedgeSim = preload("res://arcade/hedgerow_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
 const MoleArt = preload("res://arcade/molehill_art.gd")
-const HenArt = preload("res://arcade/henhouse_art.gd")
-const MillArt = preload("res://arcade/millstream_art.gd")
-const MillSim = preload("res://arcade/millstream_sim.gd")
 const StackArt = preload("res://arcade/stackwood_art.gd")
 const PebbleArt = preload("res://arcade/thirteen_art.gd")
 const PosyArt = preload("res://arcade/posy_art.gd")
@@ -45,16 +38,12 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "hedgerow", "molehill", "henhouse", "millstream", "stackwood", "thirteen", "posy"]
-const NAMES := {"firefly": "Firefly", "hedgerow": "Hedgerow TD", "molehill": "Molehill", "henhouse": "Henhouse", "millstream": "Millstream", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "hedgerow": "ARC_HEDGEROW_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "henhouse": "ARC_HENHOUSE_BLURB", "millstream": "ARC_MILLSTREAM_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB"}
-## Games whose best is the quickest time rather than the highest score.
-const TIMED := ["henhouse", "millstream"]
-## What a timed game says before its first finish.
-const NO_TIME := {"henhouse": "ARC_NOT_RETIRED", "millstream": "ARC_NOT_BUILT"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "hedgerow": "ARC_BEST_WAVE", "molehill": "ARC_BEST_STREAK", "henhouse": "ARC_BEST_FLOCK", "millstream": "ARC_BEST_MILESTONE", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "hedgerow": Pal.LEAF_DEEP, "molehill": Pal.LEAF_DEEP, "henhouse": Pal.LEAF_DEEP, "millstream": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -121,7 +110,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "hedgerow": HedgerowBanner, "molehill": MolehillBanner, "henhouse": HenhouseBanner, "millstream": MillstreamBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -170,8 +159,7 @@ func _game_card(game: String) -> Control:
 func refresh() -> void:
 	for game: String in GAMES:
 		var best := Record.best(game)
-		var shown := "%d:%02d" % [best / 60, best % 60] if game in TIMED else Record.grouped(best)
-		(_best[game] as Label).text = tr("ARC_BEST") % shown if best > 0 else tr(NO_TIME.get(game, "ARC_NO_BEST"))
+		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
 		var st := Record.best_stage(game)
 		(_stage[game] as Label).text = "· " + tr(FURTHEST[game]) % st if st > 0 else ""
 	_fit.call_deferred()
@@ -319,56 +307,6 @@ class FireflyBanner extends Control:
 		var m := Art.mesh(look, frame, u)
 		draw_mesh(m, null, xf)
 
-## Hedgerow TD's banner: a strip of lawn with a cobbled path winding between towers,
-## pests coming down it in their elements' colours. Drawn once.
-class HedgerowBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := minf(size.y / 2.6, size.x / 7.5)
-		var mid := size * 0.5
-		var b := Face.Builder.new()
-		# the lawn, and a cobbled path snaking across it
-		var lawn := Vector2(u * 7.2, u * 2.3)
-		var at := mid - lawn * 0.5
-		b.fan(Face.Builder.round_rect(at - Vector2(5, 5), lawn + Vector2(10, 10), 16.0), Color("7fa84a", 0.9))
-		b.fan(Face.Builder.round_rect(at, lawn, 12.0), Color("9cc46a", 0.95))
-		var walk := PackedVector2Array()
-		for i in 25:
-			var x := at.x + lawn.x * i / 24.0
-			walk.append(Vector2(x, mid.y + sin(i / 24.0 * TAU * 1.5) * u * 0.62))
-		b.stroke(walk, u * 0.58, Color("8c8475"))
-		b.stroke(walk, u * 0.48, Color("c9bea9"))
-		for i in range(walk.size() - 1):
-			for k in 3:
-				var q := walk[i].lerp(walk[i + 1], k / 3.0) + Vector2(0, ((i + k) % 3 - 1) * u * 0.12)
-				b.disc(q, u * 0.07, Color("ddd3bf") if (i + k) % 2 else Color("b3a78f"))
-		var mesh := b.mesh()
-		_keep.append(mesh)
-		draw_mesh(mesh, null)
-		# towers above and below the walk
-		var spots := [[0.12, -1, "thorn", 1], [0.3, 1, "sun", 1], [0.47, -1, "acorn", 0], [0.63, 1, "lightning", 1], [0.82, -1, "rain", 2]]
-		for sp: Array in spots:
-			var x: float = at.x + lawn.x * sp[0]
-			var y: float = mid.y + sin(float(sp[0]) * TAU * 1.5) * u * 0.62 + float(sp[1]) * u * 0.78
-			draw_mesh(HedgeArt.tower(sp[2], sp[3], u * 0.9), null, Transform2D(0.0, Vector2(x, y)))
-		# pests on the walk, each in its element
-		var pests := [[0.05, HedgeSim.Kind.APHID, HedgeSim.El.RAIN], [0.2, HedgeSim.Kind.ANT, HedgeSim.El.EMBER],
-			[0.39, HedgeSim.Kind.BEETLE, HedgeSim.El.LEAF], [0.55, HedgeSim.Kind.SLUG, HedgeSim.El.SUN], [0.72, HedgeSim.Kind.BOSS, HedgeSim.El.SHADE]]
-		for pe: Array in pests:
-			var f: float = pe[0]
-			var p := Vector2(at.x + lawn.x * f, mid.y + sin(f * TAU * 1.5) * u * 0.62)
-			var ahead := Vector2(at.x + lawn.x * (f + 0.01), mid.y + sin((f + 0.01) * TAU * 1.5) * u * 0.62)
-			var rot := (ahead - p).angle() + PI * 0.5
-			draw_mesh(HedgeArt.creep(pe[1], pe[2], 0, u * (0.45 if pe[1] == HedgeSim.Kind.BOSS else 0.62)), null, Transform2D(rot, p))
-
 ## Molehill's banner: three mounds on a strip of lawn, a mole up in the
 ## middle one with the mallet coming down on it, a golden one peeking out
 ## and the rabbit at the end. Drawn once.
@@ -409,102 +347,6 @@ class MolehillBanner extends Control:
 		var head := Vector2(xs[1], foot - 50.0 * u)
 		var hand := head - Vector2(0, -MoleArt.HEAD_AT * u).rotated(-0.55)
 		draw_mesh(MoleArt.mallet(u), null, Transform2D(-0.55, hand))
-
-## Henhouse's banner: a strip of pen with hens in their three plumages, a
-## chick, the rooster, eggs in the straw and a boxed one on its way to the
-## crate. Drawn once.
-class HenhouseBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := minf(size.y / 50.0, size.x / 190.0)
-		var foot := size.y * 0.8
-		var mid := size.x * 0.5
-		var b := Face.Builder.new()
-		b.fan(PackedVector2Array([Vector2(0, foot - 16.0 * u), Vector2(size.x, foot - 16.0 * u), size, Vector2(0, size.y)]), Color("d8bf8c", 0.8))
-		for k in 22:
-			var x := size.x * k / 21.0
-			b.stroke(PackedVector2Array([Vector2(x, foot - 12.0 * u + (k % 3) * 3.0 * u), Vector2(x + 7.0 * u, foot - 14.0 * u + (k % 2) * 6.0 * u)]), 1.0 * u, Color("ecd08a"))
-		# a rail of fence behind them
-		for rail in [26.0, 16.0]:
-			b.stroke(PackedVector2Array([Vector2(0, foot - rail * u), Vector2(size.x, foot - rail * u)]), 2.4 * u, HenArt.WOOD_DEEP)
-		for k in 8:
-			var x := size.x * (k + 0.5) / 8.0
-			b.fan(Face.Builder.round_rect(Vector2(x - 2.0 * u, foot - 32.0 * u), Vector2(4.0 * u, 20.0 * u), 1.4 * u), HenArt.WOOD)
-		for q in [[-40.0, false, false], [-34.0, true, false], [26.0, false, false], [62.0, false, true]]:
-			HenArt.egg(b, Vector2(mid + float(q[0]) * u, foot - 4.0 * u), 4.2 * u, q[2], q[1], false, false, false)
-		HenArt.egg(b, Vector2(mid + 80.0 * u, foot - 5.0 * u), 4.2 * u, false, false, true, true, true)
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		var cast := [[HenArt.Look.ROOSTER, 0, -62.0, 1.0], [HenArt.Look.HEN, 0, -18.0, 1.0], [HenArt.Look.HEN_PECK, 1, 10.0, -1.0],
-			[HenArt.Look.CHICK, 0, 40.0, -1.0], [HenArt.Look.HEN_HAPPY, 2, 50.0 + 20.0, -1.0]]
-		for c: Array in cast:
-			draw_mesh(HenArt.mesh(c[0], u, c[1]), null, Transform2D(0.0, Vector2(c[3], 1.0), 0.0, Vector2(mid + float(c[2]) * u, foot)))
-
-## Millstream's banner: a strip of the valley -- the stream, the Mill with
-## its wheel, a kiln at work and a heap of iron ore. Drawn once.
-class MillstreamBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		# a strip of grass three and a half tiles tall across the banner, the
-		# pieces stood along it: the stream and the Mill, a kiln, a deposit
-		var T := MillArt.TILE
-		var k := size.y / (3.4 * T)
-		var w := size.x / k
-		var b := Face.Builder.new()
-		b.fan(PackedVector2Array([Vector2(0, 0.6 * T), Vector2(w, 0.6 * T), Vector2(w, 3.4 * T), Vector2(0, 3.4 * T)]), Color(MillArt.GRASS, 0.92))
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 3
-		for i in int(w / 40.0):
-			var p := Vector2(rng.randf() * w, rng.randf_range(0.9, 3.2) * T)
-			b.stroke(PackedVector2Array([p, p + Vector2(0, -8)]), 2.4, MillArt.GRASS_DEEP)
-		var mid := w * 0.5
-		# the stream down the left of the Mill
-		var sx := mid - 4.8 * T
-		b.fan(PackedVector2Array([Vector2(sx - 0.2 * T, 0.6 * T), Vector2(sx + 1.4 * T, 0.6 * T), Vector2(sx + 1.2 * T, 3.4 * T), Vector2(sx - 0.4 * T, 3.4 * T)]), MillArt.BANK)
-		b.fan(PackedVector2Array([Vector2(sx - 0.1 * T, 0.6 * T), Vector2(sx + 1.3 * T, 0.6 * T), Vector2(sx + 1.1 * T, 3.4 * T), Vector2(sx - 0.3 * T, 3.4 * T)]), MillArt.WATER)
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null, Transform2D(0.0, Vector2(k, k), 0.0, Vector2.ZERO))
-		# the Mill and its wheel are drawn where the valley has them: moved
-		var mill := Face.Builder.new()
-		MillArt.wheel(mill, 0.4)
-		MillArt.mill(mill)
-		var mm := mill.mesh()
-		_keep.append(mm)
-		var mill_at := Vector2(mid - 3.2 * T, 0.2 * T) - Vector2(MillSim.MILL.position) * T
-		draw_mesh(mm, null, Transform2D(0.0, Vector2(k, k), 0.0, mill_at * k))
-		var rest := Face.Builder.new()
-		var kc := Vector2(mid + 0.6 * T, 0.8 * T)
-		MillArt.kiln(rest, kc)
-		var mouth := kc + Vector2(T, T) + Vector2(0, 18)
-		rest.ellipse(mouth, 16.0, 12.0, MillArt.EMBER)
-		rest.ellipse(mouth + Vector2(0, 3), 9.0, 6.0, MillArt.EMBER_HOT)
-		for j in 3:
-			rest.disc(kc + Vector2(T, T) + Vector2(28.0 + j * 6.0, -84.0 - j * 22.0), 10.0 + j * 5.0, Color(0.93, 0.9, 0.86, 0.55 - j * 0.15))
-		for j in 5:
-			MillArt.ingot(rest, kc + Vector2(T, T) + Vector2(62 + (j % 2) * 4, 44 - j * 7), 20.0)
-		for j in 7:
-			MillArt.ore(rest, Vector2(mid + 4.2 * T, 2.2 * T) + Vector2((j % 4) * 20 - 30, -(j / 4) * 16), 14.0)
-		var rm := rest.mesh()
-		_keep.append(rm)
-		draw_mesh(rm, null, Transform2D(0.0, Vector2(k, k), 0.0, Vector2.ZERO))
 
 ## Stackwood's banner: a strip of shelf with stacks of numbered blocks on
 ## it, a pair about to merge and one falling in from above. Drawn once.

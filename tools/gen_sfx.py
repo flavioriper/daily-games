@@ -485,39 +485,6 @@ SETS = {
         "game_over":("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best": ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
     },
-    # Hedgerow TD (Arcade, arcade/hedgerow_screen.gd): a path tower defence
-    # after the element tower-defence genre, in a daytime garden. The shots
-    # fire many times a second across a board, so they are short and quiet.
-    "hedgerow": {
-        "build":      ("a soft wooden thunk with a small leafy rustle, a little garden tower planted on a grid, short", 0.6, -8, ARCADE),
-        "upgrade":    ("a bright rising three-note chime with a sparkle, a tower growing stronger, short", 0.8, -6, ARCADE),
-        "fuse":       ("a magical swirling shimmer rising into a bright double chime, two elements fusing into one, short", 1.2, -5, ARCADE),
-        "sell":       ("a few soft coins dropping into a pouch, a tower sold back, short", 0.6, -8, ARCADE),
-        "refuse":     ("a tiny soft worried wobble, a muffled 'bonk' with a slight pitch dip, not allowed, gentle", 0.5, -10, ARCADE),
-        "select":     ("a single tiny soft click, selecting a tile, very short and light", 0.5, -14, ARCADE),
-        "pick":       ("a warm magical fanfare with sparkles, a new elemental power chosen, short", 1.4, -5, ARCADE),
-        "wave":       ("a short soft horn call of two rising notes, a wave of garden pests is coming", 1.0, -7, ARCADE),
-        "boss":       ("an ominous low rumbling drum roll with a deep wobble, a giant boss bug appearing", 1.4, -6, ARCADE),
-        "clear":      ("a quick happy rising chime run, a wave cleared", 1.0, -6, ARCADE),
-        "leak":       ("a short sad descending two-note blip, a pest slipped through and a life was lost", 0.6, -7, ARCADE),
-        "kill":       ("a tiny soft bubbly pop, a little bug defeated, very short", 0.5, -14, ARCADE),
-        "kill_big":   ("a big round pop with a sparkling chime burst, a boss bug defeated, satisfying", 0.9, -5, ARCADE),
-        "gold":       ("a light cheerful jingle of a few small coins, earning interest, short", 0.6, -9, ARCADE),
-        "shot_thorn": ("a tiny soft 'thwip', a little thorn dart shot, very short and light", 0.5, -16, ARCADE),
-        "shot_acorn": ("a soft hollow 'thunk-pop', a small acorn lobbed from a catapult, very short", 0.5, -14, ARCADE),
-        "shot_sun":   ("a tiny bright shimmering 'ting', a beam of sunlight, very short", 0.5, -16, ARCADE),
-        "shot_shade": ("a short soft deep 'whum', a heavy shadow bolt, very short", 0.5, -13, ARCADE),
-        "shot_rain":  ("a tiny soft water droplet 'blip', very short", 0.5, -15, ARCADE),
-        "shot_ember": ("a tiny soft fiery 'fwsh', a small flame flicked, very short", 0.5, -16, ARCADE),
-        "shot_leaf":  ("a tiny soft airy leaf swish, very short", 0.5, -16, ARCADE),
-        "shot_stone": ("a short soft low thud with a small ground rumble, a shockwave, very short", 0.5, -12, ARCADE),
-        "zap":        ("a short soft crackling electric zap jumping between targets, gentle, very short", 0.5, -12, ARCADE),
-        "freeze":     ("a tiny crystalline icy tinkle, something frozen for a moment, very short", 0.5, -13, ARCADE),
-        "start":      ("a short cheerful retro arcade game start jingle, a bouncy garden melody, about two seconds", 2.2, -4, ARCADE),
-        "victory":    ("a triumphant sparkling retro fanfare, the garden is saved, joyful", 2.6, -4, ARCADE),
-        "game_over":  ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":   ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
-    },
     # Molehill (Arcade, arcade/molehill_screen.gd): whack-a-mole on a lawn.
     # The whacks are cartoon bonks; pop_up and escape fire constantly, so
     # they sit low.
@@ -539,57 +506,6 @@ SETS = {
         "start":       ("a short cheerful retro arcade game start jingle, a bouncy garden tune, about two seconds", 2.2, -4, ARCADE),
         "game_over":   ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":    ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
-    },
-    # Henhouse (Arcade, arcade/henhouse_screen.gd): an egg farm run to
-    # retirement. The hens and the farm are cartoon; the shop and the jingles
-    # ARCADE. lay, sell, pet, wash and pick fire all the time, so they sit low.
-    "henhouse": {
-        "cluck":        ("a single cute cartoon hen cluck, a happy little 'bawk', short", 0.6, -8, CARTOON),
-        "lay":          ("a tiny soft 'plop' of an egg laid onto straw, with a proud little hen cluck, very short", 0.6, -14, CARTOON),
-        "pick":         ("a tiny soft tap of picking up an egg, a light hollow tick, very short", 0.5, -16, CARTOON),
-        "drop":         ("a soft small clack of an egg set down on a rubber conveyor belt, very short", 0.5, -14, CARTOON),
-        "sell":         ("a tiny bright coin clink, one coin dropping in a tin, very short", 0.5, -15, ARCADE),
-        "sell_gold":    ("a bright sparkling jingle of coins and a shimmer, a golden egg sold, short", 0.9, -6, ARCADE),
-        "buy":          ("a cheerful two-note purchase chime with a coin, a shop item bought, short", 0.6, -7, ARCADE),
-        "refused":      ("a soft low short 'bonk' blip, not enough money, gentle, not harsh", 0.5, -10, ARCADE),
-        "feed":         ("dry grain and corn kernels poured into a wooden trough, a short rushing pour", 1.0, -8, CARTOON),
-        "water":        ("water poured from a watering can into a metal trough, a short splashy pour", 1.0, -8, CARTOON),
-        "pet":          ("a soft content cooing purr of a happy hen being stroked, very short, gentle", 0.5, -15, CARTOON),
-        "hatch":        ("a small eggshell cracking open and a tiny chick's 'peep peep', short", 0.9, -7, CARTOON),
-        "grow":         ("a quick rising sparkle and a proud hen cluck, a chick grown up, short", 0.9, -7, CARTOON),
-        "sleep":        ("a tiny sleepy cartoon chick yawn and a soft 'zzz' whistle, short", 0.7, -10, CARTOON),
-        "rooster":      ("a cheerful cartoon rooster crow, 'cock-a-doodle-doo', about two seconds", 2.0, -6, CARTOON),
-        "hungry":       ("a worried little hen cluck twice, anxious, a soft warning, short", 0.7, -8, CARTOON),
-        "lost":         ("a gentle sad slow descending two-note whistle, a hen gone, soft and kind", 1.0, -9, ARCADE),
-        "wash":         ("a very short soft spray of water, a little shower, very short", 0.5, -17, CARTOON),
-        "stamp":        ("a soft rubber stamp thunk on an eggshell, very short", 0.5, -15, CARTOON),
-        "box":          ("a small cardboard box flap folding shut, a soft papery tuck, very short", 0.5, -15, CARTOON),
-        "squirrel":     ("a cheerful cartoon squirrel chitter, quick and cute, short", 0.7, -8, CARTOON),
-        "radio":        ("a jaunty cheerful little country banjo and whistle tune on an old radio, soft, even, loopable, no ending", 6.0, -16, CARTOON, "loop"),
-        "start":        ("a short cheerful retro arcade game start jingle, a bouncy farmyard tune, about two seconds", 2.2, -4, ARCADE),
-        "retire":       ("a joyful triumphant retro fanfare with a rooster crow at the end, retiring rich, about three seconds", 3.0, -4, ARCADE),
-        "game_over":    ("a gentle slow descending retro melody, the farm closes, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new best time", 2.4, -4, ARCADE),
-    },
-    # Millstream (Arcade, arcade/millstream_screen.gd): a small factory in a
-    # valley. The hands and the machines are CARTOON; the jingles ARCADE.
-    # dig and smelt fire all the time, so they sit low; brook is the valley's
-    # bed, looped very quietly under everything.
-    "millstream": {
-        "dig":       ("a single small pickaxe chip on a rock, a light stony clink with a few pebbles falling, very short", 0.5, -12, CARTOON),
-        "place":     ("a soft heavy thunk of a small brick oven set down on grass, with a little puff of dust, short", 0.6, -7, CARTOON),
-        "remove":    ("a soft whoosh and a pop, a small brick building lifted away in a puff, short", 0.6, -9, CARTOON),
-        "load":      ("a handful of small rocks tumbling into a metal hopper, a short rattling pour", 0.7, -9, CARTOON),
-        "pick":      ("a small rock plucked off the grass and tossed into a cloth sack, a soft thup with a tiny stony tick, very short", 0.5, -10, CARTOON),
-        "bag":       ("a burlap sack opened with a soft cloth rustle and a tiny drawstring swish, very short", 0.5, -12, CARTOON),
-        "collect":   ("a few small metal bars clinking together as they are picked up, bright and short", 0.6, -8, CARTOON),
-        "smelt":     ("a tiny soft puff of fire and a faint metal tink, an ingot finished in a little furnace, very short and quiet", 0.5, -18, CARTOON),
-        "hand_in":   ("metal bars clattering into a wooden crate followed by a warm happy two-note chime, short", 1.0, -6, CARTOON),
-        "refused":   ("a soft low short 'bonk' blip, not allowed, gentle, not harsh", 0.5, -10, ARCADE),
-        "milestone": ("a warm triumphant retro fanfare with a bright sparkle at the end, a milestone reached, about two seconds", 2.2, -4, ARCADE),
-        "start":     ("a short cheerful retro arcade game start jingle, a bouncy workshop tune, about two seconds", 2.2, -4, ARCADE),
-        "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new best time", 2.4, -4, ARCADE),
-        "brook":     ("a gentle babbling brook and a slowly turning wooden water wheel creaking softly, calm ambience, even, no ending", 6.0, -20, FOLEY, "loop"),
     },
     # Stackwood (Arcade, arcade/stackwood_screen.gd): numbered wooden toy
     # blocks that fall and merge. The blocks are CARTOON wood; the jingles

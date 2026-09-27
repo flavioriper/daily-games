@@ -210,15 +210,6 @@ FF_AGAIN,Play again,Jogar de novo,Jugar otra vez
 FF_BACK,Back to the arcade,Voltar ao fliperama,Volver al arcade
 FF_PAUSED,Paused,Pausado,En pausa
 FF_RESUME,Tap to go on,Toque para continuar,Toca para seguir
-ARC_HEDGEROW_BLURB,"Guard the garden path: six elements, fifteen fusions, forty waves of pests.","Defenda o caminho do jardim: seis elementos, quinze fusões, quarenta ondas de pragas.","Defiende el camino del jardín: seis elementos, quince fusiones, cuarenta oleadas de plagas."
-ARC_BEST_WAVE,Furthest: wave %d,Mais longe: onda %d,Más lejos: oleada %d
-HR_MOTTO,"Hold the path, guard the bed","Segure o caminho, guarde a horta","Defiende el camino, guarda el huerto"
-HR_GOLD,GOLD,OURO,ORO
-HR_LIVES,LIVES,VIDAS,VIDAS
-HR_WAVE,WAVE,ONDA,OLEADA
-HR_WELCOME,Guard the patch,Guarde a horta,Guarda el huerto
-HR_WELCOME_LINE,Plant towers beside the path,Plante torres ao lado do caminho,Planta torres junto al camino
-HR_WAVE_N,Wave %d,Onda %d,Oleada %d
 HR_K_0,Aphids,Pulgões,Pulgones
 HR_K_1,Ants · quick,Formigas · rápidas,Hormigas · rápidas
 HR_K_2,Gnats · a swarm,Mosquitos · um enxame,Mosquitos · un enjambre
@@ -232,37 +223,6 @@ HR_EL_RAIN,Rain,Chuva,Lluvia
 HR_EL_EMBER,Ember,Brasa,Brasa
 HR_EL_LEAF,Leaf,Folha,Hoja
 HR_EL_STONE,Stone,Pedra,Piedra
-HR_PICK_FIRST,Choose an element first,Escolha um elemento antes,Elige un elemento primero
-HR_INCOMING,Here they come,Lá vêm eles,Ahí vienen
-HR_SEND_FIRST,Send wave 1 · %ds,Mandar onda 1 · %ds,Enviar oleada 1 · %ds
-HR_SEND,Send now · %ds · +%d,Mandar já · %ds · +%d,Enviar ya · %ds · +%d
-HR_CELL,Plant here,Plantar aqui,Plantar aquí
-HR_CELL_LINE,"Choose a tower, then tap it again to plant",Escolha uma torre e toque de novo para plantar,Elige una torre y tócala otra vez para plantar
-HR_EDGE,Nothing can be planted here,Nada pode ser plantado aqui,Aquí no se puede plantar
-HR_ROAD,The path,O caminho,El camino
-HR_ROAD_LINE,The pests walk here: plant on the grass beside it,As pragas andam aqui: plante na grama ao lado,Las plagas pasan por aquí: planta en la hierba de al lado
-HR_PLANT,Plant,Plantar,Plantar
-HR_AIM,Aim,Mira,Mira
-HR_AIM_FIRST,First,Primeira,Primera
-HR_AIM_LAST,Last,Última,Última
-HR_AIM_STRONG,Strong,Forte,Fuerte
-HR_AIM_CLOSE,Close,Perto,Cerca
-HR_LEVEL,Lv %d,Nv %d,Nv %d
-HR_UPGRADE,Upgrade,Melhorar,Mejorar
-HR_SELL,Sell,Vender,Vender
-HR_PICK,Choose an element,Escolha um elemento,Elige un elemento
-HR_PICK_N,Element %d of 4,Elemento %d de 4,Elemento %d de 4
-HR_PICK_LINE,Each beats the next in the ring and does half to the one before. Two picked make a fusion.,Cada um vence o próximo do anel e faz metade ao anterior. Dois escolhidos fazem uma fusão.,Cada uno vence al siguiente del anillo y hace la mitad al anterior. Dos elegidos hacen una fusión.
-HR_TAKEN,Already yours,Já é seu,Ya es tuyo
-HR_BEATS,Strong against %s,Forte contra %s,Fuerte contra %s
-HR_PICKED_LINE,Its tower is ready to plant,Sua torre já pode ser plantada,Su torre ya se puede plantar
-HR_CLEAR,Wave held,Onda contida,Oleada contenida
-HR_CLEAR_LINE,+%d bonus · +%d interest,+%d bônus · +%d juros,+%d bonus · +%d interés
-HR_WON,The garden holds!,O jardim resistiu!,¡El jardín resiste!
-HR_WON_CARD,All forty waves held,As quarenta ondas contidas,Las cuarenta oleadas contenidas
-HR_LOST_CARD,The pests got to the patch,As pragas chegaram à horta,Las plagas llegaron al huerto
-HR_WAVES_HELD,Wave %d,Onda %d,Oleada %d
-HR_KILLS,%d pests,%d pragas,%d plagas
 HR_T_THORN,Thorn,Espinho,Espina
 HR_D_THORN,Quick darts. Cheap and cheerful.,Dardos rápidos. Barato e animado.,Dardos rápidos. Barato y alegre.
 HR_T_ACORN,Acorn,Bolota,Bellota
@@ -327,23 +287,9 @@ MH_BEST_STREAK,best streak %d,melhor sequência %d,mejor racha %d
 MH_STAT_WHACKED,whacked,acertadas,golpeados
 MH_STAT_STREAK,best streak,melhor sequência,mejor racha
 MH_STAT_AIM,on target,de acerto,de acierto
-ARC_HENHOUSE_BLURB,"From one hen to a million: sell the eggs, build the barn, treat the hens well and retire.","De uma galinha a um milhão: venda os ovos, monte o celeiro, trate bem as galinhas e aposente-se.","De una gallina a un millón: vende los huevos, monta el granero, cuida a las gallinas y jubílate."
-ARC_BEST_FLOCK,Biggest flock: %d,Maior bando: %d,Mayor bandada: %d
-ARC_NOT_RETIRED,Not retired yet,Ainda não se aposentou,Aún sin jubilarte
 HH_MOTTO,Treat the hens well,Trate bem as galinhas,Cuida bien a las gallinas
-HH_MONEY,MONEY,DINHEIRO,DINERO
-HH_FLOCK,FLOCK,BANDO,BANDADA
-HH_READY,Morning on the farm,Bom dia na fazenda,Buenos días en la granja
-HH_READY_LINE,"Sell the eggs, grow the farm, retire on a million","Venda os ovos, faça a fazenda crescer, aposente-se com um milhão","Vende los huevos, haz crecer la granja, jubílate con un millón"
-HH_HELLO,Cluck! I'm %s,Có-có! Sou a %s,¡Coc-coc! Soy %s
-HH_NEED,You need $%s,Você precisa de $%s,Necesitas $%s
-HH_LOST,%s has gone to a better farm,%s foi para uma fazenda melhor,%s se fue a una granja mejor
-HH_FOR_SALE,Belt for sale,Esteira à venda,Cinta en venta
 HH_TAB_FARM,Farm,Fazenda,Granja
 HH_TAB_FACTORY,Barn,Celeiro,Granero
-HH_RETIRE,Retire,Aposentar,Jubilarse
-HH_OWNED,Owned,Comprado,Comprado
-HH_FULL,Pen full,Cercado cheio,Corral lleno
 HH_I_HEN,Hen,Galinha,Gallina
 HH_D_HEN,Lays eggs,Bota ovos,Pone huevos
 HH_I_ROOSTER,Rooster,Galo,Gallo
@@ -368,66 +314,14 @@ HH_I_STAMP,Stamp,Carimbo,Sello
 HH_D_STAMP,Eggs worth x2,Ovos valem x2,Huevos valen x2
 HH_I_PACKER,Packer,Embaladora,Empacadora
 HH_D_PACKER,Eggs worth x3,Ovos valem x3,Huevos valen x3
-HH_HINT_DRAG,Drag the egg to the crate to sell it,Arraste o ovo até o caixote para vendê-lo,Arrastra el huevo a la caja para venderlo
-HH_HINT_BELT,Buy the belt in the Barn tab: eggs on it roll to the crate,Compre a esteira na aba Celeiro: os ovos nela rolam até o caixote,Compra la cinta en la pestaña Granero: los huevos ruedan hasta la caja
-HH_HINT_BELT_BOUGHT,Drop eggs on the belt and it carries them to the crate,Solte ovos na esteira e ela os leva ao caixote,Suelta huevos en la cinta y ella los lleva a la caja
-HH_HINT_BASKET,Press near a few eggs to scoop them all up,Toque perto de vários ovos para pegar todos,Toca cerca de varios huevos para cogerlos todos
-HH_HINT_REFILL,Running low! Tap the water tank or the feed silo to refill,Acabando! Toque no bebedouro ou no silo de ração para encher,¡Se acaba! Toca el depósito de agua o el silo de pienso para rellenar
-HH_HINT_STARVING,"The hens are hungry: they stop laying, and one may be lost",As galinhas estão com fome: param de botar e uma pode se perder,Las gallinas tienen hambre: dejan de poner y una puede perderse
-HH_HINT_PET,Stroke your hens with a finger: happy hens lay faster,Faça carinho nas galinhas com o dedo: galinhas felizes botam mais rápido,Acaricia a tus gallinas con el dedo: las gallinas felices ponen más rápido
-HH_HINT_ROOSTER,Blue eggs hatch if you leave them. Chicks grow into hens,Ovos azuis chocam se você deixá-los. Pintinhos viram galinhas,Los huevos azules eclosionan si los dejas. Los pollitos se hacen gallinas
-HH_HINT_CHICK,Chicks eat double. Tap one to let it sleep,Pintinhos comem o dobro. Toque em um para deixá-lo dormir,Los pollitos comen el doble. Toca uno para dejarlo dormir
-HH_HINT_RETIRE,You have a million! Press Retire,Você tem um milhão! Toque em Aposentar,¡Tienes un millón! Pulsa Jubilarse
-HH_RETIRED,Retired!,Aposentado!,¡Jubilado!
-HH_CLOSED,The farm closes,A fazenda fecha,La granja cierra
-HH_NEW_BEST,A new best time!,Novo melhor tempo!,¡Nuevo mejor tiempo!
-HH_END_WON,Retired in %s,Aposentado em %s,Jubilado en %s
-HH_END_LOST,The last hen is gone. Keep the troughs full next time.,A última galinha se foi. Mantenha os cochos cheios da próxima vez.,La última gallina se fue. Mantén los comederos llenos la próxima vez.
-HH_STAT_EARNED,earned,ganhos,ganado
-HH_STAT_SOLD,eggs sold,ovos vendidos,huevos vendidos
-HH_STAT_FLOCK,biggest flock,maior bando,mayor bandada
-HH_BEST_TIME,Best time %s,Melhor tempo %s,Mejor tiempo %s
-ARC_MILLSTREAM_BLURB,"A small factory in a valley: dig ore by hand, build kilns that smelt it on their own, and grow the Mill milestone by milestone.","Uma pequena fábrica num vale: cave minério à mão, construa fornos que fundem sozinhos e faça o Moinho crescer marco a marco.","Una pequeña fábrica en un valle: excava mineral a mano, construye hornos que funden solos y haz crecer el Molino hito a hito."
-ARC_NOT_BUILT,Not finished yet,Ainda não terminou,Aún sin terminar
-ARC_BEST_MILESTONE,Milestones: %d,Marcos: %d,Hitos: %d
-MS_MOTTO,"Dig it, smelt it, build it","Cave, funda, construa","Excava, funde, construye"
-MS_HAND_IN,Hand in,Entregar,Entregar
-MS_MILESTONE_N,MILESTONE %d,MARCO %d,HITO %d
-MS_M1,First ingots,Primeiros lingotes,Primeros lingotes
-MS_M1_DONE,First ingots!,Primeiros lingotes!,¡Primeros lingotes!
-MS_M1_NEXT,Done in %s. Drills come next.,Feito em %s. As brocas vêm a seguir.,Hecho en %s. Las perforadoras vienen después.
-MS_ALL_DONE,More milestones soon,Mais marcos em breve,Más hitos pronto
-MS_NEED_INGOTS,The Mill wants iron ingots: %d / %d,O Moinho quer lingotes de ferro: %d / %d,El Molino quiere lingotes de hierro: %d / %d
 MS_TOOL_KILN,Kiln,Forno,Horno
 MS_TOOL_ERASER,Eraser,Borracha,Borrador
 MS_TOOL_DRILL,Drill,Broca,Perforadora
-MS_COST_ORE,%d iron ore,%d minério,%d mineral
-MS_REFUND,Full refund,Reembolso total,Reembolso total
-MS_LATER,Later,Depois,Después
-MS_DRILL_LATER,Drills come with the next milestone,As brocas vêm no próximo marco,Las perforadoras llegan con el próximo hito
-MS_KILN_COST_SHORT,A kiln costs %d iron ore: dig some more,Um forno custa %d de minério: cave mais,Un horno cuesta %d de mineral: excava más
 MS_NO_ROOM_WATER,A kiln can't stand in the stream,Um forno não fica no riacho,Un horno no puede estar en el arroyo
 MS_NO_ROOM_TAKEN,There's something there already,Já tem algo ali,Ya hay algo ahí
 MS_NO_ROOM_EDGE,Too close to the edge of the valley,Perto demais da borda do vale,Demasiado cerca del borde del valle
-MS_ERASE_WHAT,Tap a kiln to lift it,Toque num forno para removê-lo,Toca un horno para quitarlo
 MS_LOCKED_COPPER,Copper comes later,O cobre vem depois,El cobre viene después
 MS_LOCKED_STONE,Stone comes later,A pedra vem depois,La piedra viene después
-MS_KILN_FULL,The kiln's hopper is full,A tremonha do forno está cheia,La tolva del horno está llena
-MS_KILN_NO_ORE,"The kiln needs ore: dig some, pick it up and drag it on","O forno precisa de minério: cave, recolha e arraste até ele","El horno necesita mineral: excava, recógelo y arrástralo encima"
-MS_HINT_DIG,Tap the rusty rocks: ore pops out onto the grass (hold to keep digging),Toque nas rochas enferrujadas: o minério pula na grama (segure para continuar),Toca las rocas oxidadas: el mineral salta a la hierba (mantén para seguir)
-MS_HINT_KILN,You can afford a kiln: pick it below and tap the grass,Dá para comprar um forno: escolha abaixo e toque na grama,Ya puedes comprar un horno: elígelo abajo y toca la hierba
-MS_HINT_PLACE,Tap free grass to build the kiln there,Toque na grama livre para construir o forno,Toca hierba libre para construir el horno
-MS_HINT_HAND_IN,Enough ingots: hand them in at the Mill,Lingotes suficientes: entregue no Moinho,Suficientes lingotes: entrégalos en el Molino
-MS_BAG_EMPTY,Your bag is empty,Sua bolsa está vazia,Tu bolsa está vacía
-MS_BAG_DRAG_ORE,Drag the ore onto a kiln,Arraste o minério até um forno,Arrastra el mineral a un horno
-MS_BAG_DRAG_INGOT,Drag the ingots onto the Mill to hand them in,Arraste os lingotes até o Moinho para entregar,Arrastra los lingotes al Molino para entregarlos
-MS_BAG_NO_ORE,No ore in the bag,Sem minério na bolsa,No hay mineral en la bolsa
-MS_KILN_HOW,Drag iron ore from the bag onto the kiln,Arraste minério da bolsa até o forno,Arrastra mineral de la bolsa al horno
-MS_KILN_BUSY,Smelting: %d ore left,Fundindo: resta %d de minério,Fundiendo: queda %d de mineral
-MS_KILN_ORE_ONLY,Kilns only take iron ore,Fornos só aceitam minério de ferro,Los hornos solo aceptan mineral de hierro
-MS_HINT_PICK,Tap the ore on the grass to put it in your bag,Toque no minério na grama para guardar na bolsa,Toca el mineral en la hierba para guardarlo en la bolsa
-MS_HINT_FEED,Open the bag and drag ore onto the kiln,Abra a bolsa e arraste minério até o forno,Abre la bolsa y arrastra mineral al horno
-MS_HINT_INGOT,An ingot! Tap it to pick it up,Um lingote! Toque para recolher,¡Un lingote! Tócalo para recogerlo
 ARC_STACKWOOD_BLURB,"Wooden blocks fall one by one: steer each onto its match, chain the merges and keep the shelf from topping out.","Blocos de madeira caem um a um: leve cada um até o seu par, encadeie as fusões e não deixe a prateleira transbordar.","Los bloques de madera caen uno a uno: lleva cada uno a su pareja, encadena las fusiones y no dejes que el estante se desborde."
 ARC_BEST_BLOCK,Biggest block: %d,Maior bloco: %d,Mayor bloque: %d
 SW_MOTTO,Match and merge,Junte e funda,Junta y fusiona

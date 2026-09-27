@@ -48,10 +48,7 @@ const ChessScreen = preload("res://versus/chess_screen.gd")
 const CheckersScreen = preload("res://versus/checkers_screen.gd")
 const ArcadeTab = preload("res://ui/menu/arcade_tab.gd")
 const FireflyScreen = preload("res://arcade/firefly_screen.gd")
-const HedgerowScreen = preload("res://arcade/hedgerow_screen.gd")
 const MolehillScreen = preload("res://arcade/molehill_screen.gd")
-const HenhouseScreen = preload("res://arcade/henhouse_screen.gd")
-const MillstreamScreen = preload("res://arcade/millstream_screen.gd")
 const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
@@ -1112,18 +1109,9 @@ func _open_arcade(game: String) -> void:
 		"firefly":
 			screen = FireflyScreen.new()
 			screen.name = "Firefly"
-		"hedgerow":
-			screen = HedgerowScreen.new()
-			screen.name = "Hedgerow"
 		"molehill":
 			screen = MolehillScreen.new()
 			screen.name = "Molehill"
-		"henhouse":
-			screen = HenhouseScreen.new()
-			screen.name = "Henhouse"
-		"millstream":
-			screen = MillstreamScreen.new()
-			screen.name = "Millstream"
 		"stackwood":
 			screen = StackwoodScreen.new()
 			screen.name = "Stackwood"

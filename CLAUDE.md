@@ -1725,11 +1725,27 @@ chess is: rules, computer, skin contract, house set, board, screen.
 ## Arcade
 
 **A fifth tab since 2026-09-27**, between Versus and Stats: games played
-alone for a score (or, Henhouse, a time) (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
+alone for a score (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
 it is not a registry entry: `ui/menu/arcade_tab.gd` holds one card a game,
 `ui/menu.gd`'s `_open_arcade` mounts the game's own screen and closes back
 to the tab, and the screen joins the `versus_host` group so Android's back
 reaches it. Scores live in `user://arcade.cfg` (`arcade/arcade_record.gd`).
+
+**Three games left for a side project on 2026-09-27**: Hedgerow TD (a path
+tower defence), Henhouse (an egg-farm idle clicker, the one timed record)
+and Millstream (a factory builder), with Ant March (an incremental gate
+runner, built that afternoon and never merged here), went to
+`~/dev/garden-games`, a full copy of this repo at `9b55e2c` renamed "Garden
+Games" with no git remote, to become a game of its own for the longer
+genres (its `SIDE_PROJECT.md` says what is there). Their code, sounds,
+harnesses, specs, locale keys and `arcade_record.gd`'s `add_time()` went
+from here. Three lessons they taught every harness still apply: **a
+harness's mouse events are in window coordinates** (map a canvas point with
+`root.get_final_transform()`, or it lands 0.75x off at 810x1440); **a
+harness that sends a mouse press must send its release**, wheel included,
+or the next press lands on the old mouse-focus control; and **an
+autowrapping Label resized in the frame its text changed measures at its
+old width** and comes out thousands tall.
 
 **Firefly is the first**: a formation shooter after Namco's 1981 game,
 which the spec names once to forbid; **it is called Firefly and nothing
@@ -1761,44 +1777,7 @@ makes a pair, a flyby bonus stage third and every fourth after).
   synth), awaiting the user's listen. `tests/_shot_firefly.gd` shoots every
   beat and puts `user://arcade.cfg` back.
 
-**Hedgerow TD is the second** (2026-09-27, spec
-`2026-09-27-arcade-hedgerow-design.md`): a path tower defence after the
-element tower-defence genre and the balloon-popping one, which the spec
-names once to forbid. It is **Hedgerow TD** on screen (the user's name, the
-id stays `hedgerow`). Pests walk a fixed cobbled path that spirals from a
-gate in the top hedge to a raised bed in the middle of a 9x12 garden;
-towers go on the grass beside it (wasps fly a shortcut), six elements in a
-ring each double against the next and half against the one before, four
-picks of the six at waves 1, 7, 14 and 21, and any single element tower
-fuses with a second pick into one of fifteen duals. 40 waves, 20 lives.
-It was first built as a maze on an open lawn; the user called that an
-empty lawn, and both references run a fixed path in their base games (the
-maze is an expansion), so it was rebuilt the same day (the spec's section
-9).
-
-- **The game is pure data** (`arcade/hedgerow_sim.gd`, cell units, fixed
-  1/60 s; every tower is one row of `TOWERS`). The path is `WAYPOINTS`,
-  walked as a rounded polyline by distance (`walk_line`, `_along`); each
-  tower aims First/Last/Strong/Close (`Aim`).
-  `tests/_probe_hedgerow.gd -- [seed] [skill 0-2] [picks]` plays 40 waves
-  with a bot; run it after touching the numbers. In zsh, pass a variable of
-  arguments as `${=args}`, or the bot silently gets one argument.
-- **Plain towers do 60% to an elemental pest** (`PLAIN`), and the health
-  curve (`HP_GROWTH` 1.165) is steeper than the maze's was, because a tower
-  between two lanes hits both. Bot: plain 26, singles 37-40, duals 38-40.
-- **The panel under the garden is the whole interface** (next wave and
-  Send, x1/x2/x3; a grass cell's towers, pressed once to preview and again
-  to plant; a tower's aim, upgrade, fusions and sale). A panel rebuild
-  detaches its old children before freeing them, so a lookup in the same
-  frame never finds a dying chip.
-- Tower bases are one baked mesh; each head is its own draw call so it can
-  recoil and aim. `tests/_shot_hedgerow.gd` shoots every beat, presses the
-  chips and prints a `check` line a move, and puts `user://arcade.cfg`
-  back. 118 draw calls on the tab, 88 on the pick card, 67-92 in play.
-- 28 sounds in the `ARCADE` style, awaiting the user's listen. ElevenLabs
-  refuses a `duration_seconds` under 0.5; `gen_sfx.py` stops the set there.
-
-**Molehill is the third** (2026-09-27, spec
+**Molehill is the second** (2026-09-27, spec
 `2026-09-27-arcade-molehill-design.md`): whack-a-mole after the boardwalk
 cabinet, whose trademark the spec names once to forbid; **it is called
 Molehill**. The brief said "puzzle game"; it went on the Arcade tab because
@@ -1828,67 +1807,7 @@ best streak.
   smear and an impact star; sticker numbers kept clear of the time bar; a
   frenzy glow from the edges. 54-57 draw calls in play, 93 on the end card.
 
-**Henhouse is the fourth** (2026-09-27, spec
-`2026-09-27-arcade-henhouse-design.md`): an egg-farm idle clicker after a
-game the spec names once to forbid; **it is called Henhouse**. Buy hens,
-keep the water tank and feed silo full (a tap refills; dry, they stop
-laying and are lost), drag eggs to the crate, stroke hens to make them lay
-faster, then the belt, washer, stamp, packer, basket, squirrels, a rooster
-(fertile eggs hatch into chicks; a tap puts a chick to sleep) and retire on
-a million. Its best is the **quickest retirement**, the first timed record:
-`arcade_record.gd`'s `add_time()`, and the tab's `TIMED`.
-
-- **The game is pure data** (`arcade/henhouse_sim.gd`, field units, fixed
-  1/30 s). `tests/_probe_henhouse.gd -- [seed] [skill 0-2]` retires in
-  ~11.5 / 12.5-15 / 18.5 min; run it after touching the numbers.
-- **The tab's card puts Play beside the name** since this game, so four
-  cards stand; `_fit` has a third level (pictures 104 tall).
-- **A harness's mouse events are in window coordinates**: map a canvas
-  point with `root.get_final_transform()` or it lands 0.75x off at
-  810x1440. `tests/_shot_henhouse.gd` does; Molehill's big hit boxes hid it.
-- **An autowrapping Label resized in the frame its text changed measures
-  at its old width** and comes out thousands tall; the toast wraps its own
-  lines (`_wrap`).
-- 26 sounds (`CARTOON` farm, `ARCADE` shop, a `radio` loop), awaiting the
-  user's listen. 149 draw calls on the tab, 113-118 on a grown farm, ANGLE
-  agreeing. `tests/_shot_henhouse.gd` puts `user://arcade.cfg` back.
-
-**Millstream is the fifth** (2026-09-27, spec
-`2026-09-27-arcade-millstream-design.md`): a small factory in a painted
-valley after the factory-builder genre, whose reference the spec names once
-to forbid; **it is called Millstream**. Seen from above and played by touch
-like a city builder (no avatar): one finger pans, two pinch, a tap acts.
-Slice 1 is live: dig iron ore by hand (tap, or hold to keep digging) and
-it pops onto the grass; a tap on the grass picks it up into the bag (the
-sack in the valley's corner, a tap opens its strip of slots); drag ore out
-of the bag onto a kiln, which smelts on its own and pops each ingot onto
-the grass; drag 20 ingots onto the Mill (or press Hand in). Drills, belts
-and the rest of the milestones are next.
-
-- **Persistent, unlike the other Arcade games**: `user://millstream.cfg`
-  (the sim's `to_dict`, plus the camera), saved on leaving, on focus loss,
-  after every build and every 30 s. The factory pauses while the app is
-  closed; restart starts a new valley.
-- **The game is pure data** (`arcade/millstream_sim.gd`, a grid of tiles,
-  fixed 1/30 s); `tests/_probe_millstream.gd -- [taps a second]` plays the
-  slice and checks refusals and the save round trip.
-- **Everything is drawn through the camera's transform**: the valley is one
-  mesh built once, the buildings one mesh rebuilt on a change, what lies on
-  the grass one mesh rebuilt when it changes, one live mesh a frame. Items
-  flying into the bag and the one being dragged out of it are drawn over the
-  whole screen (`_over`), because they cross the frame. 60-81 draw calls in
-  play, 162 on the tab with five cards (810x1440).
-- **A harness that sends a mouse press must send its release**, wheel
-  included: an unreleased wheel press keeps the field as the mouse-focus
-  control, and the next left press lands there instead of on the bag.
-- `tests/_shot_millstream.gd -- <outdir> [reduce]` digs, picks up, places
-  two kilns, opens the bag, drags ore onto both kilns, picks up the ingots,
-  pans, zooms and drags ingots onto the Mill, all by input through the
-  viewport, and puts both save files back.
-- 14 sounds (`CARTOON` hands, `ARCADE` jingles, a `FOLEY` brook loop),
-  awaiting the user's listen.
-
-**Stackwood is the sixth** (2026-09-27, spec
+**Stackwood is the third** (2026-09-27, spec
 `2026-09-27-arcade-stackwood-design.md`): a falling-block number merge
 after a drop-and-merge game the spec names once to forbid; **it is called
 Stackwood**. Numbered wooden blocks fall into a shelf 5 wide and 7 high;
@@ -1917,7 +1836,7 @@ a bomb and a zap. Its "furthest" is the biggest block.
   `Motion.bump` compounds when bumps overlap; the screen's `_kick` restarts
   from one. 69-75 draw calls in play, ~135 at a chain's peak.
 
-**Lucky Thirteen is the seventh** (2026-09-27, spec
+**Lucky Thirteen is the fourth** (2026-09-27, spec
 `2026-09-27-arcade-thirteen-design.md`): a chain-merge number game after a
 browser game the spec names once to forbid; **it is called Lucky
 Thirteen** (id `thirteen`). Drag through three or more touching pebbles of a
@@ -1951,7 +1870,7 @@ is 13, and a tray with no three touching is stuck. Clovers buy five tools
   rains coins, clover comet trails, an end card that counts up. 131-192
   draw calls in play, 94 on the end card.
 
-**Posy is the eighth** (2026-09-27, spec
+**Posy is the fifth** (2026-09-27, spec
 `2026-09-27-arcade-posy-design.md`): a swap-three garden after the
 candy-swapping game the spec names once to forbid; **it is called Posy**
 (the user's mock said Pixel Garden, which the twenty-seventh board already
@@ -2055,12 +1974,9 @@ see "Ads and the purchase" below.
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
   `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and
   `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
-  `arcade_end` (score, stage, seconds, fired, hits, kills, best; Hedgerow
-  sends stage as the wave, and leaks, won, towers and picks in place of
-  fired and hits; Molehill sends stage as the best streak, and whacked,
-  escaped, missed and bunnies; Henhouse sends score as the seconds to
-  retire, 0 if the farm closed, stage as the biggest flock, and won,
-  earned, sold, hatched and lost; Stackwood sends stage as the biggest
+  `arcade_end` (score, stage, seconds, fired, hits, kills, best;
+  Molehill sends stage as the best streak, and whacked, escaped, missed
+  and bunnies; Stackwood sends stage as the biggest
   block, and drops, merges, chain and tools; Lucky Thirteen stage as the
   biggest number, and moves, merges, chain, tools and reached; Posy stage
   as the day, and moves, made, cascade, picked and tools) and `arcade_abandon`; snooker's hint and reset
