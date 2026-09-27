@@ -29,6 +29,8 @@ const Ink = preload("res://ui/flat/ink.gd")
 
 const HEIGHT := 180.0
 const BUTTON := Vector2(110, 110)
+## The ink skin's buttons: smaller squares, as the mock draws them.
+const INK_BUTTON := Vector2(96, 96)
 const BADGE_HOP := -6.0
 const BADGE_HOP_TIME := 0.3
 const BADGE_CYCLE := 2.4
@@ -176,10 +178,10 @@ func _fit(label: Label, wide: float) -> void:
 ## top bar's do, dressed as the first screen's header buttons are.
 func _button(icon: String, sig: Signal) -> Button:
 	var b := IconButton.new(icon)
-	b.custom_minimum_size = BUTTON
+	b.custom_minimum_size = INK_BUTTON if ink else BUTTON
 	# The menu header's utility buttons: white paper lifted off the painting.
 	if ink:
-		Ink.button(b, Ink.CARD, Ink.INK, int(BUTTON.x * 0.26))
+		Ink.button(b, Ink.CARD, Ink.INK, 24)
 		b.badge_colour = Ink.INK
 	else:
 		CozyTheme.lift_button(b, Pal.SURFACE, int(BUTTON.x * 0.29))

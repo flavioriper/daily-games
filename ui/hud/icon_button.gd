@@ -24,6 +24,9 @@ var badge: int = 0:
 		_refresh_badge()
 ## The badge's disc; the ink skin paints it in its ink.
 var badge_colour := Pal.WATER
+## Draws the glyph instead of ui/icons.gd when set: (canvas, name, rect,
+## colour, fill) -> bool, false to fall back. The ink skin's line icons.
+var glyph_painter: Callable
 ## Where the badge rests; the top bar's bounce hops from here.
 var badge_rest := Vector2.ZERO
 var _press_tw: Tween
@@ -144,6 +147,8 @@ func _refresh_badge() -> void:
 
 func _draw_glyph() -> void:
 	var fill: Color = get_theme_stylebox("normal").bg_color if get_theme_stylebox("normal") is StyleBoxFlat else Color.TRANSPARENT
+	if glyph_painter.is_valid() and glyph_painter.call(_glyph, icon_name, Rect2(Vector2.ZERO, _glyph.size), _ink(), fill):
+		return
 	Icons.paint(_glyph, icon_name, Rect2(Vector2.ZERO, _glyph.size), _ink(), fill)
 
 func _draw_badge() -> void:
