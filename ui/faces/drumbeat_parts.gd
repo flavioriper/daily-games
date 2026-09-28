@@ -299,3 +299,87 @@ static func lantern(r: float, col: Color, glow: float) -> ArrayMesh:
 	var m := b.mesh()
 	_cache[key] = m
 	return m
+
+## The crowd's kinds and their fur: a bunny, a mouse, a bear cub, a chick and
+## a hedgehog.
+const CRITTERS := [Color("f3e6d8"), Color("b9aeb8"), Color("c8906a"), Color("f7d56a"), Color("a67c5b")]
+const CRITTER_BELLY := [Color("fff8ee"), Color("e6dde4"), Color("ecc9a4"), Color("fff0b8"), Color("ecd7b8")]
+
+## One of the festival crowd, `kind` 0..4 at scale `s` (its head's radius),
+## standing with the foot of its body on the origin: a bust with a face, and
+## with `arms_up` both paws in the air, each holding a glow stick of `stick`
+## (transparent for bare paws).
+static func critter(kind: int, s: float, mood := Mood.HAPPY, arms_up := false, stick := Color(0, 0, 0, 0)) -> ArrayMesh:
+	var key := _key(["critter", kind, roundi(s * 4.0), mood, arms_up, stick.to_html()])
+	if _cache.has(key):
+		return _cache[key]
+	kind = clampi(kind, 0, CRITTERS.size() - 1)
+	var fur: Color = CRITTERS[kind]
+	var deep := fur.darkened(0.18)
+	var belly: Color = CRITTER_BELLY[kind]
+	var b := Face.Builder.new()
+	# the arms go behind the body when raised
+	if arms_up:
+		for side in [-1.0, 1.0]:
+			var sh := Vector2(side * s * 0.62, -s * 0.62)
+			var paw := Vector2(side * s * 1.12, -s * 1.72)
+			if stick.a > 0.0:
+				var tip := paw + Vector2(side * s * 0.18, -s * 0.78)
+				b.disc(tip, s * 0.42, Color(stick, 0.22))
+				b.stroke(PackedVector2Array([paw, tip]), s * 0.2, stick.lightened(0.35))
+				b.stroke(PackedVector2Array([paw, tip]), s * 0.09, Color(1, 1, 1, 0.8))
+			b.stroke(PackedVector2Array([sh, paw]), s * 0.3, deep)
+			b.disc(paw, s * 0.2, fur)
+	# the body, a bust cut flat at the foot
+	var body := PackedVector2Array()
+	for i in 17:
+		var a := PI + PI * i / 16.0
+		body.append(Vector2(cos(a) * s * 0.92, sin(a) * s * 0.95))
+	b.polygon(body, deep)
+	var inner := PackedVector2Array()
+	for i in 17:
+		var a := PI + PI * i / 16.0
+		inner.append(Vector2(cos(a) * s * 0.84, sin(a) * s * 0.88 - s * 0.02))
+	b.polygon(inner, fur)
+	b.ellipse(Vector2(0, -s * 0.28), s * 0.44, s * 0.3, belly)
+	var h := Vector2(0, -s * 1.34)
+	# ears and crests behind the head
+	match kind:
+		0:
+			for side in [-1.0, 1.0]:
+				var e := h + Vector2(side * s * 0.42, -s * 1.02)
+				b.ellipse(e, s * 0.24, s * 0.62, deep)
+				b.ellipse(e + Vector2(0, s * 0.06), s * 0.11, s * 0.44, Color("f4b8b8"))
+		1:
+			for side in [-1.0, 1.0]:
+				var e := h + Vector2(side * s * 0.72, -s * 0.62)
+				b.disc(e, s * 0.44, deep)
+				b.disc(e, s * 0.3, Color("f4b8c4"))
+		2:
+			for side in [-1.0, 1.0]:
+				var e := h + Vector2(side * s * 0.7, -s * 0.66)
+				b.disc(e, s * 0.3, deep)
+				b.disc(e, s * 0.17, belly)
+		3:
+			for k in 3:
+				var a := -PI * 0.5 + (k - 1) * 0.45
+				b.stroke(PackedVector2Array([h + Vector2(0, -s * 0.8), h + Vector2.from_angle(a) * s * 1.35]), s * 0.14, deep)
+		4:
+			for k in 11:
+				var a := PI + PI * k / 10.0
+				var root := h + Vector2.from_angle(a) * s * 0.86
+				var d := Vector2.from_angle(a)
+				b.polygon(PackedVector2Array([root - d.orthogonal() * s * 0.2, root + d * s * 0.46, root + d.orthogonal() * s * 0.2]), Color("6e4f3a"))
+	b.disc(h + Vector2(0, s * 0.05), s * 1.0, deep)
+	b.disc(h, s * 0.95, fur)
+	if kind == 4:
+		b.ellipse(h + Vector2(0, s * 0.18), s * 0.72, s * 0.62, belly)
+	b.ellipse(h + Vector2(-s * 0.36, -s * 0.46), s * 0.22, s * 0.12, Color(1, 1, 1, 0.35))
+	_face(b, h + Vector2(0, s * 0.12), s * 0.82, mood)
+	if kind == 3:
+		b.polygon(PackedVector2Array([h + Vector2(-s * 0.14, s * 0.2), h + Vector2(s * 0.14, s * 0.2), h + Vector2(0, s * 0.38)]), Color("f08a3a"))
+	elif kind in [0, 1, 2]:
+		b.ellipse(h + Vector2(0, s * 0.12), s * 0.1, s * 0.07, INK if kind != 0 else Color("e9707e"))
+	var m := b.mesh()
+	_cache[key] = m
+	return m

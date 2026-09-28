@@ -20,6 +20,7 @@ var _out := "/tmp"
 var _level := 2
 var _miss := false
 var _full := false
+var _reduce := false
 var _t := 0.0
 var _step := 0
 var _struck := {}
@@ -28,7 +29,10 @@ var _shots: Array = []
 var _frames: Array = []
 
 func _initialize() -> void:
-	load("res://core/progress.gd").path = "user://progress_harness.cfg"
+	# its own throwaway progress file, emptied first, so a solve from an
+	# earlier run never restores the board instead of playing it
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://progress_drumbeat_shot.cfg"))
+	load("res://core/progress.gd").path = "user://progress_drumbeat_shot.cfg"
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_out = args[0]
@@ -40,7 +44,7 @@ func _initialize() -> void:
 		elif a == "full":
 			_full = true
 		elif a == "reduce":
-			load("res://core/motion.gd").reduce = true
+			_reduce = true
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -91,6 +95,9 @@ func _process(delta: float) -> bool:
 	match _step:
 		0:
 			if _t > 0.8:
+				# set here, not at start: main.tscn loads the saved setting over it
+				if _reduce:
+					load("res://core/motion.gd").reduce = true
 				var entry: Dictionary = load("res://ui/registry.gd").find("drumbeat")
 				_menu._open_at(entry, _level)
 				_host = _menu.get_child(_menu.get_child_count() - 1)
@@ -109,7 +116,7 @@ func _process(delta: float) -> bool:
 					if int(n.type) == State.Type.BALLOON:
 						first_balloon = float(n.t)
 						break
-				_shots = [["2_early", 7.0], ["3_gogo", float(gogo[0][0]) + 1.2 if not gogo.is_empty() else 20.0],
+				_shots = [["2_early", 7.0], ["2b_count", float(_b._st.notes[0].t) - float(song.beat) * 2.5], ["3_gogo", float(gogo[0][0]) + 1.2 if not gogo.is_empty() else 20.0],
 					["4_balloon", first_balloon + 0.35]]
 				_shots.sort_custom(func(a: Array, b: Array) -> bool: return float(a[1]) < float(b[1]))
 				print("song %s level %d, %d notes" % [song.id, _level, _b._st.notes.size()])
@@ -125,7 +132,10 @@ func _process(delta: float) -> bool:
 				_step = 3
 				_t = 0.0
 		3:
-			if _t > (2.0 if _miss else 3.2):
+			if not _miss and _t > 0.9 and not _struck.has(-1):
+				_struck[-1] = true
+				_shot("5a_finale")
+			if _t > (2.0 if _miss else 6.5):
 				_shot("5_end")
 				print("phase %s solved %s all_good %s" % [_b._phase, _b.is_solved(), _b._st.all_good()])
 				quit()

@@ -74,7 +74,24 @@ const FLY_TIME := 0.42
 const BURST_TIME := 0.3
 const RIPPLE_TIME := 0.35
 const FLASH_TIME := 0.18
-const WIN_HOLD := 1.6
+## The finale: fireworks, the crowd on its feet, before the win screen.
+const WIN_HOLD := 3.2
+## A firework's climb and its burst.
+const ROCKET_TIME := 0.35
+const BURST_LIFE := 1.15
+## The crowd: how many can gather, how many come at the start, and a cheer's
+## length.
+const CROWD_MAX := 10
+const CROWD_START := 3
+const CHEER_TIME := 0.7
+## The combo on the drum's skin, and the kick it takes on every hit.
+const DRUM_COMBO_FONT := 150
+const KICK_TIME := 0.16
+## The combo at which each fever tier begins: a gold glow, a hotter one, a
+## rainbow.
+const TIERS := [25, 50, 100]
+const FIREWORK_COLS := [Color("f2c14e"), Color("f08aa6"), Color("8cc8ec"), Color("f59a6a"), Color("b7e07a"), Color("c9a0f0")]
+const STICK_COLS := [Color("ff8fb0"), Color("7fe0ff"), Color("ffe066"), Color("a8ff8a")]
 ## The timing nudge's step and reach, in seconds.
 const OFFSET_STEP := 0.01
 const OFFSET_MAX := 0.3
@@ -135,11 +152,27 @@ var _soul_at := -10.0
 var _mood := Parts.Mood.HAPPY
 var _mood_until := 0.0
 var _balloon_gone := {}   # i -> at
+var _fireworks: Array = [] # {at, pos, col, n, r, turn}
+var _cheer_at := -10.0
+var _worry_until := 0.0
+var _party_until := 0.0
+var _flare_at := -10.0
+var _crowd_n := CROWD_START
+var _joined: Array = []    # the time each crowd seat was filled
+var _combo_at := -10.0
+var _score_shown := 0.0
+var _score_at := -10.0
+var _judge_kick := -10.0
+var _soul_full_said := false
+var _counted := -1         # the last count-in beat lettered
+var _go_said := false
+var _last_t := 0.0
 
 # cached meshes (the canvas keeps a mesh by RID, so each is held until replaced)
 var _still: ArrayMesh
 var _drum: ArrayMesh
 var _shown: Array = []
+var _aura := {}
 
 func puzzle_id() -> String: return "drumbeat"
 func title() -> String: return "Drumbeat"
@@ -208,6 +241,18 @@ func _fresh() -> void:
 	_ripples = []
 	_roll_pop = {}
 	_balloon_gone = {}
+	_fireworks = []
+	_cheer_at = -10.0
+	_worry_until = 0.0
+	_party_until = 0.0
+	_crowd_n = CROWD_START
+	_joined = []
+	for k in CROWD_MAX:
+		_joined.append(-10.0)
+	_score_shown = 0.0
+	_soul_full_said = false
+	_counted = -1
+	_go_said = false
 	_mood = Parts.Mood.HAPPY
 	if _rw != null:
 		_rw.clear()
@@ -270,6 +315,7 @@ func card_centred() -> bool:
 func _layout() -> void:
 	_still = null
 	_drum = null
+	_aura = {}
 	queue_redraw()
 
 func _now() -> float:
@@ -298,9 +344,51 @@ func _process(delta: float) -> void:
 		_sync_clock()
 		_st.update(view_t())
 		_handle()
+		_count_in()
+		_gather()
+	# the score rolls up to what it is, a kick on every rise
+	if _score_shown < _st.score:
+		_score_shown = minf(float(_st.score), _score_shown + maxf(40.0, (_st.score - _score_shown) * minf(1.0, delta * 9.0)))
+	elif _score_shown > _st.score:
+		_score_shown = float(_st.score)
 	_rw.bounds = Rect2(Vector2.ZERO, size)
 	_rw.step(delta)
 	queue_redraw()
+
+## The last three beats before the first note are counted out over the stage,
+## and the first note is met with a Go!
+func _count_in() -> void:
+	if _st.notes.is_empty() or _go_said:
+		return
+	var first := float(_st.notes[0].t)
+	var beat := float(_song.get("beat", 0.5))
+	var left := int(ceil((first - view_t()) / beat))
+	if left <= 1:
+		_go_said = true
+		if not Motion.reduce:
+			_rw.sticker(tr("DB_GO"), _stage_mid(), 88, 0.9, true, Color.WHITE, true, "count", 10.0)
+	elif left <= 4 and left != _counted:
+		# lettered only: the song carries its own wood-block count-in
+		_counted = left
+		_rw.sticker(str(left - 1), _stage_mid(), 96, beat * 0.95, false, Parts.CREAM, false, "count", 0.0)
+
+## The crowd gathers as the soul gauge fills: from CROWD_START to CROWD_MAX,
+## each newcomer popping in with a heart. It never thins within a run.
+func _gather() -> void:
+	var want := CROWD_START + int(floor(_st.gauge / State.GAUGE_MAX * (CROWD_MAX - CROWD_START) + 0.001))
+	want = clampi(want, CROWD_START, CROWD_MAX)
+	while _crowd_n < want:
+		var seat := _crowd_n
+		_crowd_n += 1
+		_joined[seat] = _now()
+		if not Motion.reduce:
+			_rw.spray(_seat(seat) + Vector2(0, -60.0 * _u()), Parts.BALLOON, 3, 180.0, "heart", 0.8)
+		if _crowd_n == CROWD_MAX:
+			_rw.sticker(tr("DB_CROWD"), _stage_mid() + Vector2(0, 60.0 * _u()), 50, 1.2, true, Color.WHITE, false, "crowd", 20.0)
+			_cheer()
+
+func _stage_mid() -> Vector2:
+	return Vector2(size.x * 0.5, _band_h() + STAGE * 0.42 * _u())
 
 ## The clock follows the music: the playback position plus the time since
 ## the last mix, less what the output still holds. Between mixes the
@@ -399,13 +487,27 @@ func _handle() -> void:
 			"judge":
 				var grade := int(ev.grade)
 				_judges.append({"grade": grade, "at": t, "big": bool(ev.big)})
+				_judge_kick = t
 				if grade != State.Grade.BAD:
 					var n: Dictionary = _st.notes[int(ev.i)]
 					_flies.append({"type": int(n.type), "at": t})
 					_bursts.append({"at": t, "col": JUDGE_COLS[grade], "big": bool(ev.big) or grade == State.Grade.GOOD})
+					_combo_at = t
+					_score_at = t
 					moves += 1
-					if grade == State.Grade.GOOD and not Motion.reduce and _st.combo % 10 == 0:
-						_rw.spray(_ring(), GOLD, 3, 300.0, "star", 0.7, 0.0, _gauge_end())
+					if not Motion.reduce:
+						# the berry bursts: juice and a glint off the ring, and a
+						# note floats up off the drum
+						var don := State.is_don(int(n.type))
+						var juice: Color = Parts.DON if don else Parts.KA
+						_rw.spray(_ring(), juice, 3 if grade == State.Grade.GOOD else 2, 420.0, "clod", 0.9)
+						if grade == State.Grade.GOOD:
+							_rw.spray(_ring(), Color(1, 1, 0.9), 2, 260.0, "spark", 0.8)
+							var dc := _drum_c()
+							var side := -1.0 if moves % 2 == 0 else 1.0
+							_rw.spray(dc + Vector2(side * _face_r() * 0.9, -_face_r() * 0.7), juice.lightened(0.15), 1, 120.0, "note", 1.1 + 0.15 * _tier())
+						if grade == State.Grade.GOOD and _st.combo % 10 == 0:
+							_rw.spray(_ring(), GOLD, 3, 300.0, "star", 0.7, 0.0, _gauge_end())
 				elif not bool(ev.passed):
 					_bursts.append({"at": t, "col": JUDGE_COLS[2], "big": false})
 			"big":
@@ -418,33 +520,51 @@ func _handle() -> void:
 			"roll_end":
 				if int(ev.hits) >= 8:
 					_rw.sticker(tr("DB_HITS") % int(ev.hits), _ring() + Vector2(90.0, -110.0) * _u(), 44, 0.9, false, Parts.ROLL, false, "roll", 20.0)
+					_cheer()
 			"balloon":
 				fx.cue("balloon", 1.0 + 0.04 * clampf(float(_st.notes[int(ev.i)].hits), 0.0, 12.0), -4.0)
 			"pop":
 				fx.cue("pop")
 				_rw.spray(_ring(), Parts.BALLOON, 14, 620.0, "confetti", 1.0)
 				_rw.spray(_ring(), GOLD, 6, 520.0, "star", 0.9)
+				_rw.ring(_ring(), 160.0 * _u(), Parts.BALLOON)
 				_rw.sticker(tr("DB_POP"), _ring() + Vector2(120.0, -120.0) * _u(), 64, 1.0, true, Color.WHITE, true, "pop", 24.0)
+				_launch(1, 0.0)
+				_cheer()
 			"balloon_gone":
 				_balloon_gone[int(ev.i)] = t
 				fx.cue("balloon_gone")
 			"combo":
 				var n := int(ev.n)
 				fx.cue("combo", 1.0 + 0.04 * minf(n / 25.0, 6.0))
-				var mid := Vector2(size.x * 0.5, _band_h() + STAGE * 0.42 * _u())
-				_rw.sticker(tr("DB_COMBO_CALL") % n, mid, 56 + mini(n / 25, 4) * 8, 1.2, true, Color.WHITE, n >= 50, "combo", 24.0)
-				if n >= 50:
-					_rw.spray(mid, GOLD, 10, 640.0, "star", 1.0)
+				var mid := _stage_mid()
+				# a word for the streak, the count under it, fireworks by the size
+				var word := 1
+				for c: int in [25, 50, 100, 200]:
+					if n >= c:
+						word += 1
+				_rw.sticker(tr("DB_WORD_%d" % word), mid + Vector2(0, -24.0 * _u()), 60 + word * 8, 1.3, true, Color.WHITE, n >= 50, "combo", 24.0)
+				_rw.sticker(tr("DB_COMBO_CALL") % n, mid + Vector2(0, 58.0 * _u()), 40, 1.3, false, GOLD, false, "combo_n", 16.0, true)
+				_rw.spray(mid, GOLD, 4 + word * 3, 520.0 + word * 60.0, "star", 1.0)
+				if n >= 100:
+					_rw.spray(mid, GOLD, 8, 600.0, "coin", 1.0)
+				_launch(mini(word, 5), 0.0)
+				_flare_at = t
+				_cheer()
 				_set_mood(Parts.Mood.JOY, 1.2)
 			"break":
 				if int(ev.combo) >= 10:
 					fx.cue("break")
 					_set_mood(Parts.Mood.WORRIED, 1.0)
+					_worry_until = t + 1.0
 			"gogo_on":
 				_gogo_at = t
 				fx.cue("gogo")
-				_rw.sticker(tr("DB_GOGO"), Vector2(size.x * 0.5, _band_h() + STAGE * 0.4 * _u()), 72, 1.4, true, Color.WHITE, true, "gogo", 24.0)
-				_rw.spray(Vector2(size.x * 0.5, _band_h() + STAGE * 0.4 * _u()), GOLD, 12, 700.0, "star", 1.0)
+				_rw.sticker(tr("DB_GOGO"), _stage_mid(), 72, 1.4, true, Color.WHITE, true, "gogo", 24.0)
+				_rw.spray(_stage_mid(), GOLD, 12, 700.0, "star", 1.0)
+				_launch(3, 0.0)
+				_flare_at = t
+				_cheer()
 				_set_mood(Parts.Mood.JOY, 1.5)
 			"gogo_off":
 				pass
@@ -453,6 +573,15 @@ func _handle() -> void:
 				fx.cue("soul")
 				_rw.spray(_gauge_line(), GOLD, 8, 420.0, "star", 0.8)
 				_rw.sticker(tr("DB_SOUL_LINE"), _gauge_line() + Vector2(0, 80.0) * _u(), 40, 1.0, false, GOLD, false, "soul", 16.0)
+				_launch(2, 0.0)
+				_cheer()
+			"soul_full":
+				if not _soul_full_said:
+					_soul_full_said = true
+					_soul_at = t
+					_rw.spray(_gauge_end(), GOLD, 10, 480.0, "star", 0.9)
+					_rw.spray(_gauge_end(), Parts.BALLOON, 5, 300.0, "heart", 0.9)
+					_rw.sticker(tr("DB_SOUL_MAX"), _gauge_end() + Vector2(-120.0, 80.0) * _u(), 42, 1.1, true, Color.WHITE, false, "soul", 16.0)
 			"soul_lost":
 				pass
 			"done":
@@ -462,6 +591,41 @@ func _handle() -> void:
 func _set_mood(m: int, hold: float) -> void:
 	_mood = m
 	_mood_until = _now() + hold
+
+## The crowd jumps with its paws up, and Tam with it.
+func _cheer() -> void:
+	_cheer_at = _now()
+
+## `n` fireworks over the stage, a beat of the song apart, the first after
+## `delay` seconds.
+func _launch(n: int, delay: float) -> void:
+	if Motion.reduce:
+		return
+	var u := _u()
+	var gap := float(_song.get("beat", 0.5)) * 0.5
+	for k in n:
+		_fireworks.append({"at": _now() + delay + k * gap,
+			"pos": Vector2(size.x * randf_range(0.14, 0.86), _band_h() + randf_range(80.0, 190.0) * u),
+			"col": FIREWORK_COLS[randi() % FIREWORK_COLS.size()], "n": randi_range(14, 20),
+			"r": randf_range(80.0, 120.0) * u, "turn": randf() * TAU})
+
+## How hot the run is: 0 below the first of TIERS, up to 3.
+func _tier() -> int:
+	var t := 0
+	for c: int in TIERS:
+		if _st != null and _st.combo >= c:
+			t += 1
+	return t
+
+## Where the crowd's seat `i` stands, at the foot of the stage: two rows, the
+## back one (even seats) a little higher and smaller.
+func _seat(i: int) -> Vector2:
+	var u := _u()
+	var order := [4, 5, 3, 6, 2, 7, 1, 8, 0, 9]
+	var slot: int = order[i]
+	var x := lerpf(255.0, 755.0, slot / 9.0) * u
+	var back := slot % 2 == 0
+	return Vector2(x, _lane_top() - (16.0 if back else 0.0) * u)
 
 func _song_over() -> void:
 	_best_score = maxi(_best_score, _st.score)
@@ -478,6 +642,9 @@ func _song_over() -> void:
 	if _st.cleared():
 		_phase = "won"
 		_set_mood(Parts.Mood.JOY, 100.0)
+		# the party runs through the hold and a little past it, then the
+		# stage settles under the win screen
+		_party_until = _now() + WIN_HOLD + 1.5
 		check_solved()
 	else:
 		_phase = "missed"
@@ -498,10 +665,15 @@ func _on_solved() -> void:
 		crown = "DB_FULL_COMBO"
 	fx.cue("full_combo" if _st.full_combo() else "clear")
 	var mid := Vector2(size.x * 0.5, _band_h() + STAGE * 0.45 * _u())
-	_rw.sticker(tr(crown), mid, 84, 2.2, true, Color.WHITE, true, "crown", 24.0)
+	_rw.sticker(tr(crown), mid, 84, WIN_HOLD, true, Color.WHITE, true, "crown", 24.0)
 	if not Motion.reduce:
-		_rw.rain(2.6, ["confetti", "star"], Rewards.CONFETTI)
+		_rw.rain(WIN_HOLD, ["confetti", "star", "note"], Rewards.CONFETTI)
 		_rw.spray(mid, GOLD, 16, 760.0, "star", 1.1)
+		_rw.spray(mid, GOLD, 10, 640.0, "coin", 1.0)
+		# the finale: a volley, then a second one, bigger for a better run
+		var volley := 6 + (3 if _st.full_combo() else 0) + (3 if _st.all_good() else 0)
+		_launch(volley, 0.0)
+		_launch(volley / 2, 1.4)
 
 func reset_board() -> void:
 	_fresh()
@@ -547,6 +719,8 @@ func restore_completed_board() -> void:
 		n.st = State.St.HIT
 	_log = String(completed_record.get("log", ""))
 	_set_mood(Parts.Mood.JOY, 100.0)
+	_crowd_n = CROWD_MAX
+	_score_shown = float(_st.score)
 
 # --- the timing nudge ---
 
@@ -614,32 +788,70 @@ func _draw() -> void:
 	var beats := (vt - first) / beat
 	var gogo := _st.in_gogo and _phase == "play"
 	var calm := Motion.reduce
+	var tier := _tier() if _phase == "play" else 0
+	# 1 on the beat, falling away to 0 before the next
+	var pulse := 0.0 if calm or _phase != "play" else pow(1.0 - fposmod(beats, 1.0), 3.0)
 
-	# the lanterns on their cord, swinging to the beat and lit in Go-Go time
+	# the sky: Go-Go's warmth and the fireworks
+	var sky := Face.Builder.new()
+	if gogo:
+		var top := _band_h()
+		var low := _lane_top()
+		var warm := Color("ff7a59", 0.0)
+		var i0 := sky.vertex(Vector2(0, top), warm)
+		var i1 := sky.vertex(Vector2(size.x, top), warm)
+		var hot := Color("ff7a59", 0.22 + 0.12 * pulse)
+		var i2 := sky.vertex(Vector2(size.x, low), hot)
+		var i3 := sky.vertex(Vector2(0, low), hot)
+		sky.tri(i0, i1, i2)
+		sky.tri(i0, i2, i3)
+	_draw_fireworks(sky, now)
+	_put(sky)
+
+	# the lanterns on their cord, swinging to the beat, lit in Go-Go time
+	# and flaring on a big moment
+	var flare := 1.0 - clampf((now - _flare_at) / 0.8, 0.0, 1.0)
 	var n_l := LANTERN_COLS.size()
 	for k in n_l:
 		var x := size.x * (0.1 + 0.8 * k / float(n_l - 1))
 		var sag := sin(PI * k / float(n_l - 1)) * 34.0 * u
 		var hang := Vector2(x, _band_h() + 34.0 * u + sag)
-		var swing := 0.0 if calm else sin(beats * PI + k) * (0.12 if gogo else 0.05)
-		var glow := 1.0 if gogo else 0.35
-		draw_mesh(Parts.lantern(24.0 * u, LANTERN_COLS[k], glow), null, Transform2D(swing, hang))
+		var swing := 0.0 if calm else sin(beats * PI + k) * ((0.12 if gogo else 0.05) + 0.25 * flare)
+		var glow := 1.0 if gogo or flare > 0.0 or _phase == "won" else 0.35 + 0.15 * tier
+		var sc := 1.0 + (0.0 if calm else 0.08 * pulse * (1.0 if gogo else 0.4))
+		draw_mesh(Parts.lantern(24.0 * u, LANTERN_COLS[k], glow), null, Transform2D(swing, Vector2(sc, sc), 0.0, hang))
 
-	# Tam, drumming on the right of the stage
+	# the crowd at the foot of the stage, and Tam drumming on the right
+	_draw_crowd(now, beats, gogo, tier)
 	_draw_frog(now, beats, gogo)
 
-	# the lane: Go-Go warms it; the bar lines; the notes, the earliest on top
+	# the lane: Go-Go warms it and streaks it; a hot run lights its rails;
+	# the bar lines; the ring breathes on the beat
 	var b := Face.Builder.new()
+	var speed := _speed()
+	var ring := _ring()
 	if gogo:
 		var warm := 0.6 + 0.4 * (0.0 if calm else absf(sin(beats * PI)))
 		b.polygon(Face.Builder.round_rect(Vector2(0, _lane_top() + 10.0 * u), Vector2(size.x, (LANE - 20.0) * u), 20.0 * u), Color(LANE_GOGO, 0.55 * warm))
-	var speed := _speed()
-	var ring := _ring()
+		if not calm:
+			for k in 9:
+				var y := _lane_top() + (26.0 + fmod(k * 37.0, LANE - 52.0)) * u
+				var run := (70.0 + fmod(k * 53.0, 90.0)) * u
+				var x := fposmod(k * 211.0 * u - now * speed * 1.6, size.x + run) - run
+				b.stroke(PackedVector2Array([Vector2(x, y), Vector2(x + run, y)]), 4.0 * u, Color("ffd27a", 0.22))
+	if tier > 0:
+		var rail: Color = [GOLD, Color("ff9a4a"), Color.from_hsv(fmod(now * 0.25, 1.0), 0.55, 1.0)][tier - 1]
+		var a := 0.35 + 0.35 * pulse
+		for y: float in [_lane_top() + 5.0 * u, _lane_bottom() - 5.0 * u]:
+			b.stroke(PackedVector2Array([Vector2(0, y), Vector2(size.x, y)]), (5.0 + 2.0 * tier) * u, Color(rail, a))
 	for bt: float in _song.get("bars", []):
 		var x: float = ring.x + (bt - vt) * speed
 		if x < ring.x - RING_R * u or x > size.x + 10.0:
 			continue
 		b.stroke(PackedVector2Array([Vector2(x, _lane_top() + 14.0 * u), Vector2(x, _lane_bottom() - 14.0 * u)]), 3.0 * u, Color(1, 1, 1, 0.35))
+	if pulse > 0.0:
+		var pr := RING_R * u * (1.08 + 0.1 * pulse)
+		b.stroke(Face.Builder.arc_points(ring, pr, 0.0, TAU), 5.0 * u, Color(GOLD if tier > 0 else Parts.CREAM, 0.5 * pulse), true)
 	# the ring's flash on a stroke, red on the skin, blue on the rim
 	var ff := 1.0 - clampf((now - _hit_face_at) / FLASH_TIME, 0.0, 1.0)
 	var rf := 1.0 - clampf((now - _hit_rim_at) / FLASH_TIME, 0.0, 1.0)
@@ -662,9 +874,10 @@ func _draw() -> void:
 		fb.stroke(Face.Builder.arc_points(ring, r, 0.0, TAU), 10.0 * u * (1.0 - k), Color(col, 0.9 * (1.0 - k)), true)
 		if bu.big:
 			Rewards.sunrays(fb, ring, r * 0.7, r * 1.25, 10, k * 0.6, Color(col, 0.5 * (1.0 - k)))
-	_draw_gauge(fb, now)
+	_draw_gauge(fb, now, pulse)
 	_draw_drum_fx(fb, now)
 	_put(fb)
+	_draw_aura(now, tier, pulse)
 	for f: Dictionary in _flies:
 		var k := (now - float(f.at)) / FLY_TIME
 		if k >= 1.0 or calm:
@@ -677,18 +890,120 @@ func _draw() -> void:
 	_flies = _flies.filter(func(f: Dictionary) -> bool: return now - float(f.at) < FLY_TIME)
 	_bursts = _bursts.filter(func(bu: Dictionary) -> bool: return now - float(bu.at) < BURST_TIME)
 
-	# the drum
+	# the drum, a squash on a stroke and a breath on the beat
 	var dc := _drum_c()
 	var fr := _face_r()
 	if _drum == null:
 		_drum = Parts.drum(fr, fr * RIM_OVER)
 	var squash := 1.0
+	var grow := 1.0
 	if not calm:
-		squash -= 0.03 * (1.0 - clampf((now - _hit_face_at) / 0.12, 0.0, 1.0))
-	draw_mesh(_drum, null, Transform2D(0.0, Vector2(1.0 / squash, squash), 0.0, dc))
-	_draw_drum_ripples(now)
+		squash -= 0.045 * (1.0 - clampf((now - _hit_face_at) / 0.12, 0.0, 1.0))
+		grow += 0.012 * pulse
+	draw_mesh(_drum, null, Transform2D(0.0, Vector2(grow / squash, grow * squash), 0.0, dc))
+	_draw_drum_ripples(now, beats, gogo, tier)
+
+	# the card's edges glow in Go-Go, on a hot run and through the finale
+	var heat := 0.0
+	if gogo:
+		heat = 0.8
+	elif tier >= 2:
+		heat = 0.35 + 0.15 * (tier - 2)
+	if _phase == "won" and now < _party_until:
+		heat = 0.7
+	if heat > 0.0 and not calm:
+		var eg := Face.Builder.new()
+		Rewards.edge_glow(eg, Rect2(Vector2.ZERO, size), Color("ffb347") if tier < 3 or gogo else Color.from_hsv(fmod(now * 0.2, 1.0), 0.5, 1.0), heat, pulse)
+		_put(eg)
 
 	_draw_words(now, vt)
+
+## The fireworks over the stage: a rocket's climb trailing sparks, then the
+## burst -- a flash, a ring of trails falling slowly and fading.
+func _draw_fireworks(b: Face.Builder, now: float) -> void:
+	var u := _u()
+	for fw: Dictionary in _fireworks:
+		var t := now - float(fw.at)
+		if t < 0.0:
+			continue
+		var pos: Vector2 = fw.pos
+		var col: Color = fw.col
+		if t < ROCKET_TIME:
+			var k := t / ROCKET_TIME
+			var from := Vector2(pos.x, _lane_top())
+			var head := from.lerp(pos, 1.0 - pow(1.0 - k, 2.0))
+			var tail := from.lerp(pos, maxf(0.0, 1.0 - pow(1.0 - maxf(0.0, k - 0.3), 2.0)))
+			b.stroke(PackedVector2Array([tail, head]), 4.0 * u, Color(col.lightened(0.4), 0.7))
+			b.disc(head, 5.0 * u, Color(1, 1, 0.9))
+			continue
+		var k := (t - ROCKET_TIME) / BURST_LIFE
+		if k >= 1.0:
+			continue
+		var r: float = fw.r
+		if k < 0.2:
+			b.disc(pos, r * 0.55 * (1.0 - k / 0.2) + 6.0 * u, Color(col.lightened(0.6), 0.5 * (1.0 - k / 0.2)))
+		var a := 1.0 - pow(k, 1.6)
+		var n := int(fw.n)
+		for i in n:
+			var d := Vector2.from_angle(TAU * i / n + float(fw.turn))
+			var out := 1.0 - pow(1.0 - k, 3.0)
+			var drop := Vector2(0, 46.0 * u * k * k)
+			var head := pos + d * r * out + drop
+			var back := pos + d * r * (1.0 - pow(1.0 - maxf(0.0, k - 0.12), 3.0)) + drop * 0.7
+			var c := col if i % 2 == 0 else col.lightened(0.35)
+			b.stroke(PackedVector2Array([back, head]), 4.5 * u * a, Color(c, 0.85 * a))
+			b.disc(head, 4.0 * u * (0.5 + 0.5 * a), Color(c.lightened(0.5), a))
+	_fireworks = _fireworks.filter(func(fw: Dictionary) -> bool: return now - float(fw.at) < ROCKET_TIME + BURST_LIFE)
+
+## The crowd: each critter bobs on the beat (higher on a hot run), jumps with
+## its paws up on a cheer, waves glow sticks through Go-Go and the finale,
+## and frets after a broken combo. Newcomers pop in.
+func _draw_crowd(now: float, beats: float, gogo: bool, tier: int) -> void:
+	var u := _u()
+	var calm := Motion.reduce
+	var party := _phase == "won" and now < _party_until
+	var cheer := now - _cheer_at
+	# the back row first
+	for pass_ in 2:
+		for i in _crowd_n:
+			var at := _seat(i)
+			var back := at.y < _lane_top() - 1.0
+			if back != (pass_ == 0):
+				continue
+			var s := (27.0 if back else 32.0) * u
+			var kind := (i * 3 + 1) % Parts.CRITTERS.size()
+			var ph := i * 0.7
+			var amp: float = [3.0, 6.0, 9.0, 12.0][tier] if _phase == "play" else 2.0
+			if gogo:
+				amp = 13.0
+			var y := 0.0
+			var up := gogo or party
+			var mood := Parts.Mood.HAPPY
+			if not calm:
+				if _phase == "play" or party:
+					y = absf(sin(beats * PI + ph)) * amp * u
+				else:
+					y = absf(sin(now * 2.0 + ph)) * 2.0 * u
+				var ck := (cheer - i * 0.04) / CHEER_TIME
+				if ck > 0.0 and ck < 1.0:
+					y += sin(ck * PI) * 46.0 * u
+					up = true
+				if party:
+					y += absf(sin(now * 5.0 + ph)) * 26.0 * u
+			if up:
+				mood = Parts.Mood.JOY
+			elif now < _worry_until:
+				mood = Parts.Mood.WORRIED
+			elif _phase == "missed":
+				mood = Parts.Mood.SAD
+			var stick: Color = STICK_COLS[i % STICK_COLS.size()] if (gogo or party) else Color(0, 0, 0, 0)
+			var sway := 0.0 if calm else sin(beats * PI * 0.5 + ph) * (0.14 if up else 0.04)
+			# a newcomer pops in
+			var sc := 1.0
+			var since := now - float(_joined[i])
+			if since < 0.4 and not calm:
+				sc = Motion.back_out(clampf(since / 0.4, 0.0, 1.0))
+			draw_mesh(Parts.critter(kind, s, mood, up, stick), null, Transform2D(sway, Vector2(sc, sc), 0.0, at + Vector2(0, -y)))
 
 ## Draws what a builder holds, keeping the mesh until the next frame's
 ## replaces it; an empty builder draws nothing.
@@ -709,6 +1024,12 @@ func _draw_frog(now: float, beats: float, gogo: bool) -> void:
 		bob = absf(sin(now * 2.2)) * 5.0 * u
 	var mood := _mood if now < _mood_until else Parts.Mood.HAPPY
 	var blink := not calm and fmod(now, 3.7) < 0.12
+	if not calm:
+		var ck := (now - _cheer_at) / CHEER_TIME
+		if ck > 0.0 and ck < 1.0:
+			bob += sin(ck * PI) * 40.0 * u
+		if _phase == "won" and now < _party_until:
+			bob += absf(sin(now * 4.4)) * 30.0 * u
 	var at := foot + Vector2(0, -bob)
 	draw_mesh(Parts.frog(s, mood, blink and mood == Parts.Mood.HAPPY), null, Transform2D(0.0, at))
 	# the arms over the body, a stick in each, raised and brought down on
@@ -783,24 +1104,45 @@ func _draw_notes(vt: float, speed: float, ring: Vector2, now: float) -> void:
 		else:
 			draw_mesh(Parts.note(type, r2, mood), null, Transform2D(0.0, Vector2(x, ring.y - hop)))
 
-func _draw_gauge(b: Face.Builder, now: float) -> void:
+func _draw_gauge(b: Face.Builder, now: float, pulse: float) -> void:
 	var u := _u()
 	var r := _gauge_rect()
+	var calm := Motion.reduce
 	b.polygon(Face.Builder.round_rect(r.position - Vector2(4, 4) * u, r.size + Vector2(8, 8) * u, (r.size.y * 0.5 + 4.0 * u)), Color(Parts.INK, 0.55))
 	b.polygon(Face.Builder.round_rect(r.position, r.size, r.size.y * 0.5), GAUGE_BACK)
 	var k := _st.gauge / State.GAUGE_MAX
+	var full := _st.gauge >= State.GAUGE_MAX
 	if k > 0.01:
 		var w := maxf(r.size.y, r.size.x * k)
 		var col := GAUGE_CLEAR if _st.cleared() else GAUGE_FILL
-		if _st.gauge >= State.GAUGE_MAX and not Motion.reduce:
-			col = col.lerp(Color.WHITE, 0.25 + 0.25 * sin(now * 8.0))
 		b.polygon(Face.Builder.round_rect(r.position, Vector2(w, r.size.y), r.size.y * 0.5), col)
+		if full and not calm:
+			# full: a rainbow runs along it
+			var bands := 12
+			for i in bands:
+				var x0 := r.position.x + r.size.y * 0.4 + (r.size.x - r.size.y * 0.8) * i / bands
+				var x1 := r.position.x + r.size.y * 0.4 + (r.size.x - r.size.y * 0.8) * (i + 1) / bands
+				var c := Color.from_hsv(fposmod(i / float(bands) - now * 0.6, 1.0), 0.45, 1.0, 0.55)
+				b.polygon(PackedVector2Array([Vector2(x0, r.position.y + 3.0 * u), Vector2(x1, r.position.y + 3.0 * u),
+					Vector2(x1, r.end.y - 3.0 * u), Vector2(x0, r.end.y - 3.0 * u)]), c)
 		b.polygon(Face.Builder.round_rect(r.position + Vector2(r.size.y * 0.3, r.size.y * 0.16), Vector2(maxf(0.0, w - r.size.y * 0.6), r.size.y * 0.22), r.size.y * 0.11), Color(1, 1, 1, 0.35))
+		# a glint riding the head of the fill
+		if not calm and _phase == "play":
+			Rewards.glint(b, Vector2(r.position.x + w - r.size.y * 0.35, r.get_center().y), r.size.y * (0.7 + 0.5 * pulse), now * 3.0)
+	# every tenth, a faint notch
+	for i in range(1, 10):
+		var x := r.position.x + r.size.x * i / 10.0
+		b.stroke(PackedVector2Array([Vector2(x, r.position.y + 6.0 * u), Vector2(x, r.end.y - 6.0 * u)]), 2.0 * u, Color(Parts.INK, 0.18))
 	# the clear line, a notch with a star over it
 	var line := _gauge_line()
 	b.stroke(PackedVector2Array([line + Vector2(0, -r.size.y * 0.75), line + Vector2(0, r.size.y * 0.75)]), 5.0 * u, Parts.CREAM)
-	var pulse := 1.0 + (0.0 if Motion.reduce else 0.4 * (1.0 - clampf((now - _soul_at) / 0.5, 0.0, 1.0)))
-	Rewards.star(b, line + Vector2(0, -r.size.y * 1.05), 14.0 * u * pulse, GOLD if _st.cleared() else Parts.CREAM)
+	var pop := 1.0 + (0.0 if calm else 0.4 * (1.0 - clampf((now - _soul_at) / 0.5, 0.0, 1.0)))
+	Rewards.star(b, line + Vector2(0, -r.size.y * 1.05), 14.0 * u * pop, GOLD if _st.cleared() else Parts.CREAM, 0.0 if calm or not _st.cleared() else now * 1.5)
+	# the soul: a heart at the end, grey until the line, beating when full
+	var hs := 22.0 * u * (1.0 + (0.25 * pulse if full else 0.0)) * pop
+	var hc := Parts.DON if _st.cleared() else Color("8a7a6e")
+	Rewards.heart(b, Vector2(r.end.x + 4.0 * u, r.get_center().y), hs * 1.12, 0.0, Color(Parts.INK, 0.6))
+	Rewards.heart(b, Vector2(r.end.x + 4.0 * u, r.get_center().y), hs, 0.0, hc)
 
 func _draw_drum_fx(b: Face.Builder, now: float) -> void:
 	var u := _u()
@@ -817,45 +1159,112 @@ func _draw_drum_fx(b: Face.Builder, now: float) -> void:
 		var p := 0.5 + 0.5 * sin(now * 3.0)
 		b.stroke(Face.Builder.arc_points(dc, fr * 0.98, 0.0, TAU), 6.0 * u, Color(Parts.DON, 0.25 + 0.35 * (0.0 if Motion.reduce else p)), true)
 
-func _draw_drum_ripples(now: float) -> void:
+## Under the drum: a hot run's aura round the rim -- gold, then hotter,
+## then a rainbow that turns -- swelling on the beat. Each look is one mesh
+## built once per size and moved by the transform: rebuilt a frame, the
+## rainbow alone cost up to 6 ms on this Mac.
+func _draw_aura(now: float, tier: int, pulse: float) -> void:
+	var party := _phase == "won" and now < _party_until
+	if tier == 0 and not party:
+		return
+	var look := 3 if party else tier
+	var rr := _face_r() * RIM_OVER
+	var key := "%d|%d" % [look, roundi(rr)]
+	if not _aura.has(key):
+		_aura[key] = _build_aura(look, rr)
+	var m: ArrayMesh = _aura[key]
+	var turn := 0.0 if look < 3 or Motion.reduce else now * 0.9
+	var sc := 1.0 + 0.025 * pulse
+	draw_mesh(m, null, Transform2D(turn, Vector2(sc, sc), 0.0, _drum_c()), Color(1, 1, 1, 0.75 + 0.25 * pulse))
+
+func _build_aura(look: int, rr: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var u := _u()
+	var width := (18.0 + 8.0 * look) * u
+	if look >= 3:
+		var n := 36
+		for i in n:
+			var a0 := TAU * i / n
+			var c := Color.from_hsv(i / float(n), 0.5, 1.0, 0.55)
+			b.stroke(Face.Builder.arc_points(Vector2.ZERO, rr + width * 0.5, a0, a0 + TAU / n + 0.02), width, c)
+	else:
+		var col: Color = [GOLD, Color("ff9a4a")][look - 1]
+		b.stroke(Face.Builder.arc_points(Vector2.ZERO, rr + width * 0.5, 0.0, TAU), width, Color(col, 0.4), true)
+		b.stroke(Face.Builder.arc_points(Vector2.ZERO, rr + width * 1.2, 0.0, TAU), width * 0.5, Color(col, 0.18), true)
+	return b.mesh()
+
+## Over the drum: the ripples of the strokes on its skin, and the brass tacks
+## lit like a marquee -- a chase round the rim while a song plays, every
+## other one flashing on the beat in Go-Go, all of them through the finale.
+func _draw_drum_ripples(now: float, beats: float, gogo: bool, tier: int) -> void:
 	if Motion.reduce:
 		_ripples.clear()
 		return
 	var b := Face.Builder.new()
 	var dc := _drum_c()
 	var fr := _face_r()
+	var u := _u()
 	for rp: Dictionary in _ripples:
 		var k := (now - float(rp.at)) / RIPPLE_TIME
 		if k >= 1.0 or not rp.face:
 			continue
-		b.stroke(Face.Builder.arc_points(dc, fr * (0.2 + 0.75 * k), 0.0, TAU), 8.0 * _u() * (1.0 - k), Color(Parts.DON, 0.5 * (1.0 - k)), true)
+		b.stroke(Face.Builder.arc_points(dc, fr * (0.2 + 0.75 * k), 0.0, TAU), 8.0 * u * (1.0 - k), Color(Parts.DON, 0.5 * (1.0 - k)), true)
 	_ripples = _ripples.filter(func(rp: Dictionary) -> bool: return now - float(rp.at) < RIPPLE_TIME)
+	var party := _phase == "won" and now < _party_until
+	if _phase == "play" or party:
+		var rim_r := fr * RIM_OVER
+		var tr_ := (rim_r + fr) * 0.5
+		var tacks := 24
+		var head := fposmod(beats * 4.0, float(tacks))
+		for i in tacks:
+			var lit := 0.0
+			if party:
+				lit = 0.6 + 0.4 * sin(now * 10.0 + i)
+			elif gogo:
+				lit = 1.0 if (i + int(floor(beats))) % 2 == 0 else 0.2
+			else:
+				var behind := fposmod(head - i, float(tacks))
+				lit = clampf(1.0 - behind / (4.0 + 2.0 * tier), 0.0, 1.0)
+			if lit <= 0.02:
+				continue
+			var p := dc + Vector2.from_angle(TAU * i / tacks) * tr_
+			var col := Color(Parts.LANTERN_GLOW) if tier < 3 else Color.from_hsv(fposmod(i / float(tacks) + now * 0.3, 1.0), 0.4, 1.0)
+			b.disc(p, rim_r * 0.055 * lit, Color(col, 0.28 * lit))
+			b.disc(p, rim_r * 0.022, Color(col.lightened(0.4), lit))
 	_put(b)
 
 func _draw_words(now: float, vt: float) -> void:
 	var u := _u()
 	# the score and the gauge's word
 	_label_left(Vector2(INSET * u + 8.0 * u, _band_h() * 0.36), tr("DB_SCORE"), int(KICKER_FONT * u), Color(Parts.INK, 0.7), Color(0, 0, 0, 0))
-	_label_left(Vector2(INSET * u + 8.0 * u, _band_h() * 0.8), Locale.number(_st.score), int(SCORE_FONT * u), Parts.INK, Color(0, 0, 0, 0))
+	var kick := 0.0 if Motion.reduce else 1.0 - clampf((now - _score_at) / KICK_TIME, 0.0, 1.0)
+	var sk := 1.0 + 0.12 * kick
+	draw_set_transform(Vector2(INSET * u + 8.0 * u, _band_h() * 0.8), 0.0, Vector2(sk, sk))
+	_label_left(Vector2.ZERO, Locale.number(int(_score_shown)), int(SCORE_FONT * u), Parts.INK.lerp(Parts.DON_DEEP, kick * 0.6), Color(0, 0, 0, 0))
+	draw_set_transform(Vector2.ZERO)
 	var gr := _gauge_rect()
 	_label_left(Vector2(gr.position.x, gr.position.y - 12.0 * u), tr("DB_SOUL"), int(KICKER_FONT * u), Color(Parts.INK, 0.7), Color(0, 0, 0, 0))
 	# the song and its level, over the stage
 	var level_name: String = tr(["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "DIFF_INSANE"][clampi(_level, 0, 3)])
 	_label(Vector2(size.x * 0.5, _band_h() + 36.0 * u), "%s · %s" % [String(_song.get("title", "")), level_name], int(28 * u), Parts.CREAM, Color(Parts.INK, 0.5))
-	# the combo over the ring
+	# the combo on the drum's skin, kicked on every hit, its colour warming
+	# with the run
 	var ring := _ring()
-	if _st.combo >= 3:
-		_label(ring + Vector2(0, -RING_R * u - 72.0 * u), str(_st.combo), int(COMBO_FONT * u), Parts.CREAM, Parts.INK)
-		_label(ring + Vector2(0, -RING_R * u - 36.0 * u), tr("DB_COMBO"), int(KICKER_FONT * u), Parts.CREAM, Parts.INK)
-	# the latest judgement, rising off the ring
+	if _st.combo >= 3 and _phase == "play":
+		_draw_drum_combo(now)
+	# the latest judgement, stamped over the ring and rising off it
 	if not _judges.is_empty():
 		var j: Dictionary = _judges[_judges.size() - 1]
 		var k := (now - float(j.at)) / JUDGE_TIME
 		if k < 1.0:
-			var rise := 0.0 if Motion.reduce else (1.0 - pow(1.0 - k, 3.0)) * 26.0 * u
+			var rise := 0.0 if Motion.reduce else (1.0 - pow(1.0 - k, 3.0)) * 30.0 * u
 			var a := 1.0 - clampf((k - 0.6) / 0.4, 0.0, 1.0)
 			var col: Color = JUDGE_COLS[int(j.grade)]
-			_label(ring + Vector2(0, RING_R * u + 30.0 * u - rise), tr(JUDGE_KEYS[int(j.grade)]), int(JUDGE_FONT * u), Color(col, a), Color(Parts.INK, 0.8 * a))
+			var pop := 1.0 if Motion.reduce else Motion.back_out(clampf(k / 0.35, 0.0, 1.0))
+			var fs := JUDGE_FONT + (8 if int(j.grade) == State.Grade.GOOD else 0)
+			draw_set_transform(ring + Vector2(0, -RING_R * u - 34.0 * u - rise), 0.0, Vector2(pop, pop))
+			_label(Vector2.ZERO, tr(JUDGE_KEYS[int(j.grade)]), int(fs * u), Color(col, a), Color(Parts.INK, 0.85 * a))
+			draw_set_transform(Vector2.ZERO)
 	if _judges.size() > 8:
 		_judges = _judges.slice(_judges.size() - 4)
 	# a drumroll's count
@@ -869,6 +1278,36 @@ func _draw_words(now: float, vt: float) -> void:
 			_draw_card(tr(head), tr("DB_MISSED_LINE") % int(roundf(_st.gauge)), now)
 		"paused":
 			_draw_card(tr("DB_PAUSED"), tr("DB_RESUME"), now, false)
+
+## The combo in big numerals on the skin: ink at first, then gold, then
+## hot red, then a rainbow a digit at a time; it swells on every hit.
+func _draw_drum_combo(now: float) -> void:
+	var u := _u()
+	var dc := _drum_c()
+	var tier := _tier()
+	var kick := 0.0 if Motion.reduce else 1.0 - clampf((now - _combo_at) / KICK_TIME, 0.0, 1.0)
+	var sc := 1.0 + 0.16 * kick
+	var fs := int(DRUM_COMBO_FONT * u * minf(1.0, _face_r() / (230.0 * u)))
+	var text := str(_st.combo)
+	var font: Font = CozyTheme.display(700)
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var base: Color = [Color(Parts.INK, 0.8), Parts.ROLL_DEEP, Parts.DON][mini(tier, 2)]
+	draw_set_transform(dc + Vector2(0, -18.0 * u), 0.0, Vector2(sc, sc))
+	var x := -w * 0.5
+	for i in text.length():
+		var ch := text[i]
+		var adv := font.get_char_size(ch.unicode_at(0), fs).x
+		var col := base
+		if tier >= 3:
+			col = Rewards.STICKER_COLS[(i + int(now * 6.0)) % Rewards.STICKER_COLS.size()]
+		var o := Vector2(x, fs * 0.36)
+		draw_char_outline(font, o, ch, fs, int(fs * 0.16), Color(Parts.CREAM, 0.95))
+		if tier > 0:
+			draw_char_outline(font, o, ch, fs, int(fs * 0.06), col.darkened(0.45))
+		draw_char(font, o, ch, fs, col)
+		x += adv
+	draw_set_transform(Vector2.ZERO)
+	_label(dc + Vector2(0, fs * 0.62 - 6.0 * u), tr("DB_COMBO"), int(34 * u), Color(Parts.INK, 0.6), Color(0, 0, 0, 0))
 
 ## The start card, the retry card and the pause, written over the stage and
 ## the lane: a head, a line, the legend of the four kinds of note (only

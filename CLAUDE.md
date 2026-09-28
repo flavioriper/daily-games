@@ -1409,6 +1409,17 @@ pointing `seed_as` at them. Specs:
   `tests/_probe_drumbeat.gd` plays every chart headless. 63-73 draw calls
   in play, ~124 in Go-Go, ANGLE agreeing. 16 cues generated, one take a
   cue, and the songs, awaiting the user's listen.
+  **Polished and made loud on 2026-09-28** (the spec's section 7): a crowd
+  of critters (`Parts.critter`) that gathers as the soul gauge fills and
+  cheers, fireworks, fever tiers off the combo (lit rails, a drum aura,
+  edge glow), the combo on the drum's skin, the beat shown by the ring,
+  lanterns, drum and a marquee of its tacks, streak words, a count-in, and
+  a 3.2 s finale. **A look that only turns and swells is a cached mesh
+  under the transform**: the rainbow aura rebuilt a frame cost up to 6 ms
+  here. 79 draw calls in play, ~141 at Go-Go's start, idle 5-8 ms and
+  ~10 ms over Go-Go's burst, ANGLE agreeing; reduce motion ~4-5 ms.
+  `tests/_shot_drumbeat.gd` keeps its own progress file and sets `reduce`
+  after `main.tscn` loads (set before, it never took).
 - **Balance is a seesaw since 2026-09-27** (`puzzles/balance2d.gd`,
   `balance_state.gd`, `balance_sim.gd`, `balance_gen.gd`, spec
   `2026-09-27-balance-seesaw-design.md`; built unattended at the user's word,

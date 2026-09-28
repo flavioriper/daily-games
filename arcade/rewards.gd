@@ -94,7 +94,7 @@ func spray(from: Vector2, col: Color, n: int, speed: float, kind := "spark", siz
 	for i in n:
 		var v := Vector2.from_angle(randf() * TAU) * speed * randf_range(0.35, 1.0) + Vector2(0, -speed * 0.4)
 		var bit := {"pos": from, "vel": v, "rot": randf() * TAU, "spin": randf_range(-10.0, 10.0), "t": -delay - (0.03 * i if to != Vector2.INF else 0.0),
-			"life": randf_range(0.55, 0.95) + (0.6 if kind in ["confetti", "coin", "heart"] else 0.0), "kind": kind,
+			"life": randf_range(0.55, 0.95) + (0.6 if kind in ["confetti", "coin", "heart", "note"] else 0.0), "kind": kind,
 			"col": col, "size": size * randf_range(0.7, 1.25)}
 		if to != Vector2.INF:
 			bit.to = to
@@ -189,6 +189,9 @@ func step(delta: float) -> void:
 						fall = 700.0
 					"mote":
 						fall = -120.0
+					"note":
+						fall = -420.0
+						v.x += sin(b.t * 6.0 + b.rot) * 260.0 * delta
 				v.y += fall * delta
 				b.pos += v * delta
 			b.vel = v
@@ -275,6 +278,8 @@ func _draw_bits(b: Face.Builder) -> void:
 				var n := d.orthogonal()
 				b.polygon(PackedVector2Array([p - d * 10.0 * sz, p + n * 5.0 * sz, p + d * 9.0 * sz, p - n * 4.0 * sz]), col)
 				b.stroke(PackedVector2Array([p - d * 10.0 * sz, p + n * 5.0 * sz]), 2.0 * sz, Color(col.lightened(0.3), col.a), false, false)
+			"note":
+				music_note(b, p, 16.0 * sz, sin(bit.t * 5.0 + rot) * 0.3, col)
 			"mote":
 				b.disc(p, 9.0 * sz * a, Color(col, col.a * 0.25))
 				b.disc(p, 3.4 * sz, col)
@@ -366,6 +371,20 @@ static func coin(b: Face.Builder, c: Vector2, r: float, spin: float, a := 1.0) -
 	b.ellipse(c + Vector2(-r * 0.06 * w, 0), maxf(r * 0.1, r * 0.82 * w), r * 0.82, Color(GOLD, a))
 	if w > 0.4:
 		b.ellipse(c + Vector2(-r * 0.3 * w, -r * 0.3), r * 0.16 * w, r * 0.26, Color(1, 1, 0.9, 0.7 * a))
+
+## An eighth note, its head at `c`, tipped by `rot`: a music bit.
+static func music_note(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color) -> void:
+	var t := Transform2D(rot, c)
+	var dark := Color(col.darkened(0.45), col.a)
+	var head := PackedVector2Array()
+	for i in 12:
+		var a := TAU * i / 12.0
+		head.append(t * Vector2(cos(a) * r * 0.62, sin(a) * r * 0.46).rotated(-0.4))
+	b.polygon(head, col)
+	var top := Vector2(r * 0.5, -r * 1.9)
+	b.stroke(PackedVector2Array([t * Vector2(r * 0.5, -r * 0.1), t * top]), r * 0.2, dark)
+	b.polygon(PackedVector2Array([t * top, t * (top + Vector2(r * 0.75, r * 0.55)), t * (top + Vector2(r * 0.6, r * 0.8)), t * (top + Vector2(0, r * 0.45))]), dark)
+	b.ellipse(t * Vector2(-r * 0.2, -r * 0.14), r * 0.18, r * 0.1, Color(1, 1, 1, 0.55 * col.a))
 
 ## A heart tipped by `rot`.
 static func heart(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color) -> void:

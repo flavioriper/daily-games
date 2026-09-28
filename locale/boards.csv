@@ -771,3 +771,11 @@ DB_ALL_GOOD,All GOOD!,Tudo BOM!,¡Todo BIEN!
 DB_WIN,"%s points, best combo %d.","%s pontos, melhor combo %d.","%s puntos, mejor combo %d."
 DB_PAUSED,Paused,Pausado,En pausa
 DB_RESUME,Tap the drum to go on,Toque no tambor para continuar,Toca el tambor para seguir
+DB_GO,Go!,Vai!,¡Ya!
+DB_WORD_1,Nice!,Boa!,¡Bien!
+DB_WORD_2,Great!,Ótimo!,¡Genial!
+DB_WORD_3,On fire!,Pegando fogo!,¡En llamas!
+DB_WORD_4,Drum master!,Mestre do tambor!,¡Maestro del tambor!
+DB_WORD_5,Legendary!,Lendário!,¡Legendario!
+DB_SOUL_MAX,Soul full!,Alma cheia!,¡Alma llena!
+DB_CROWD,Full house!,Casa cheia!,¡Lleno total!

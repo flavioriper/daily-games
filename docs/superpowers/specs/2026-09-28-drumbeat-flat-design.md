@@ -103,7 +103,48 @@ The songs are synthesised, not ElevenLabs, because they have to be exact.
 sticker up, 68 on the win; ANGLE agrees (73 / 120) and differs only by the
 pulsing prompt and the wordmark's glint. Idle 3.8-6.1 ms. Menu last page 150.
 
-## 7. Open
+## 7. Polish and loud rewards (2026-09-28)
+
+At the user's word ("polish and improve design and animation ... the
+rewards even if silly should be way more visual to keep users playing").
+Screen and art only; the state class is untouched.
+
+- **The crowd gathers.** A row of garden critters (bunny, mouse, bear cub,
+  chick, hedgehog; `Parts.critter`) stands at the foot of the stage, three
+  at the start and one more for every seventh of the soul gauge, up to ten,
+  each popping in with hearts; the tenth says *Full house!*. They never
+  leave within a run. They bob on the beat (higher on a hot run), jump with
+  their paws up on a cheer, wave glow sticks through Go-Go and the finale,
+  fret after a broken combo and droop on the retry card. The crowd is the
+  gauge made visible: playing well fills the stage.
+- **Fireworks** over the dusk sky: a rocket's climb, then a burst of
+  trails, a beat apart. One on a balloon's pop, two on the clear line,
+  three on Go-Go, one to five on a combo call by its size, and a volley of
+  6-12 (more for a full combo and All GOOD) in two waves at the finish.
+- **Fever tiers** off the combo (25 / 50 / 100): the lane's rails light
+  gold, then hot, then a turning rainbow; the drum takes an aura in the
+  same colours; from 50 the card's edges glow (always in Go-Go).
+- **The combo lives on the drum's skin** in big numerals, kicked on every
+  hit and coloured by tier (ink, gold, red, a rainbow a digit at a time).
+  The judgement moved up to where the combo was, over the ring, and is
+  stamped in with a pop.
+- **The beat is shown**: the ring breathes on it, the lanterns swell, the
+  drum breathes, and the drum's brass tacks run a marquee chase (every
+  other one flashing in Go-Go, all of them in the finale).
+- **Every hit pays**: juice drops in the berry's colour and a glint off
+  the ring, a music-note bit (`Rewards` gained a `note` kind) floating up
+  off the drum, the score rolling up with a kick.
+- **Streak words** on the combo calls: Nice!, Great!, On fire!, Drum
+  master!, Legendary! with the count under it; stars, then coins from 100.
+- **The count-in** letters 3, 2, 1 on the last beats before the first note
+  and a Go! over a sunburst.
+- **The soul gauge**: notches every tenth, a glint riding the fill, a heart
+  at its end (grey, red past the line, beating when full), a rainbow when
+  full and a *Soul full!* the first time.
+- **The finale** is 3.2 s (was 1.6): the crown sticker, fireworks, the
+  crowd and Tam jumping, coins and a rain of confetti, stars and notes.
+
+## 8. Open
 
 - Nobody has heard the songs or the cues yet. Listen for the melodies (all
   original, hand-written in scale degrees) and the don/ka feel.
