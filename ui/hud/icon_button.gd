@@ -93,6 +93,14 @@ func _fit_content() -> void:
 	var pad := style.get_minimum_size().x if style != null else 0.0
 	custom_minimum_size.x = maxf(custom_minimum_size.x, _row.get_combined_minimum_size().x + pad)
 
+## A different glyph, for a button whose meaning changes (Trestle's Go).
+func set_icon(name_: String) -> void:
+	if name_ == icon_name:
+		return
+	icon_name = name_
+	if _glyph != null:
+		_glyph.queue_redraw()
+
 ## Enable or disable, dimming the icon and label with the theme's disabled colour.
 func set_enabled(on: bool) -> void:
 	disabled = not on

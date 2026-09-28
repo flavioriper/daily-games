@@ -8,7 +8,7 @@ extends RefCounted
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
-	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade"]
+	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -34,6 +34,8 @@ static func shape(name: String) -> Dictionary:
 			return _gear()
 		"check":
 			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.2, 0.52), Vector2(0.42, 0.74), Vector2(0.8, 0.28)])]}
+		"play":
+			return {"polys": [PackedVector2Array([Vector2(0.3, 0.2), Vector2(0.82, 0.5), Vector2(0.3, 0.8)])], "lines": []}
 		"leaf":
 			return _leaf()
 		"island":

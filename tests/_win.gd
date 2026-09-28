@@ -155,6 +155,9 @@ func _note(id: String) -> String:
 		"pixelgarden": return "%s %dx%d, %d beads, %d moves, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.pic_id, _puzzle._state.n, _puzzle._state.n, _puzzle._state.target,
 			_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"trestle": return "gap %d, cost %d of %d, %d members, %d tests, hints=%d, board fit=%s, hud=%s" % [
+			int(_puzzle.state.level.w), _puzzle.state.cost(), _puzzle.state.budget, _puzzle.state.design.size(),
+			_puzzle.checks, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -190,6 +193,7 @@ func _solve(id: String) -> void:
 		"hedgehogs": _solve_hedgehogs()
 		"slider": _solve_slider()
 		"pixelgarden": _solve_pixelgarden()
+		"trestle": _solve_trestle()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -1032,3 +1036,50 @@ func _solve_pixelgarden() -> void:
 				return
 			if int(st.want[c]) == k and int(st.beads[c]) != k:
 				_tap_local(_puzzle.cell_to_local(c / n, c % n))
+
+## Trestle: the day's proof laid member by member by touch -- each dragged
+## from whichever of its ends already stands (a pin, or a bolt an earlier
+## member left), its material picked on the chips first -- then a member
+## tapped off and put back, then Go. The cart's crossing takes seconds of
+## the sim's clock, past this harness's frame slot, so the test is run to
+## its end through the board's own `run_test_now()`.
+func _solve_trestle() -> void:
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for a in st.anchors():
+		if not slot.has_point(_puzzle.point_to_local(a)):
+			_fit_ok = false
+	var todo: Array = st.proof.duplicate()
+	var stands := {}
+	for a in st.anchors():
+		stands[a] = true
+	var guard := 0
+	while not todo.is_empty() and guard < 400:
+		guard += 1
+		var p: Dictionary = todo.pop_front()
+		var from: Vector2i
+		var to: Vector2i
+		if stands.has(p.a):
+			from = p.a
+			to = p.b
+		elif stands.has(p.b):
+			from = p.b
+			to = p.a
+		else:
+			todo.append(p)
+			continue
+		_tap_local(_puzzle.chip_to_local(int(p.m)))
+		_drag_local(_puzzle.point_to_local(from), _puzzle.point_to_local(to))
+		stands[to] = true
+	# a tap on the first member takes it down; Undo puts it back
+	var first: Dictionary = st.design[0]
+	var mid: Vector2 = (_puzzle.point_to_local(first.a) + _puzzle.point_to_local(first.b)) * 0.5
+	var before: int = st.design.size()
+	_tap_local(mid)
+	_hud_ok = st.design.size() == before - 1
+	_press(_host.top_bar.undo_button)
+	_hud_ok = _hud_ok and st.design.size() == before and st.design.size() == st.proof.size()
+	_press(_host.action_bar.check_button)
+	_puzzle.run_test_now()
+

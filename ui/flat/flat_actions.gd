@@ -53,6 +53,7 @@ func refresh(puzzle) -> void:
 	check_button.visible = caps.has("check")
 	check_button.set_enabled(not done)
 	_check_label = puzzle.check_label() if puzzle != null else "ACT_CHECK"
+	check_button.set_icon(puzzle.check_icon() if puzzle != null else "check")
 	if not Motion.running(_all_good):
 		check_button.set_label(_check_label)
 

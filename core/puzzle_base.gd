@@ -59,6 +59,8 @@ func check() -> int: return -1
 ## What the Check button says for this puzzle; a board that ends on that press
 ## calls it Submit.
 func check_label() -> String: return "ACT_CHECK"
+## The Check button's glyph (ui/icons.gd); Trestle's Go is "play".
+func check_icon() -> String: return "check"
 ## {} when nothing is focused, else {"row": {"index": r, "cells": [...]},
 ## "col": {"index": c, "cells": [...]}} with cells -1 empty, 0 sun, 1 moon.
 func line_state() -> Dictionary: return {}

@@ -779,3 +779,40 @@ DB_WORD_4,Drum master!,Mestre do tambor!,¡Maestro del tambor!
 DB_WORD_5,Legendary!,Lendário!,¡Legendario!
 DB_SOUL_MAX,Soul full!,Alma cheia!,¡Alma llena!
 DB_CROWD,Full house!,Casa cheia!,¡Lleno total!
+TR_RULES,"Build a bridge over the river, then press Go and the cart drives across. Drag from a red pin or a bolt to a point in reach to lay a member, or tap a bolt and then tap points to lay a chain; tap a member to take it down. Road is what the cart drives on, wood holds the road up, and rope pulls but never pushes. Every member costs, and the day has a budget.\n\nWhen the cart sets off, the bridge takes its own weight and then the cart's, and every member shows its load, green to red. A member pushed or pulled past its limit snaps. Get the cart onto the far bank to finish. Triangles are strong; squares fold.","Construa uma ponte sobre o rio e aperte Ir para o carrinho atravessar. Arraste de um pino vermelho ou de um parafuso até um ponto ao alcance para colocar uma peça, ou toque num parafuso e depois nos pontos para fazer uma corrente; toque numa peça para tirá-la. A estrada é onde o carrinho anda, a madeira segura a estrada, e a corda puxa mas nunca empurra. Cada peça custa, e o dia tem um orçamento.\n\nQuando o carrinho sai, a ponte aguenta o próprio peso e depois o do carrinho, e cada peça mostra a carga, do verde ao vermelho. Uma peça empurrada ou puxada além do limite quebra. Leve o carrinho até a outra margem para terminar. Triângulos são fortes; quadrados dobram.","Construye un puente sobre el río y pulsa Ir para que el carrito cruce. Arrastra desde un pasador rojo o un perno hasta un punto a tu alcance para poner una pieza, o toca un perno y luego los puntos para hacer una cadena; toca una pieza para quitarla. La carretera es por donde va el carrito, la madera sostiene la carretera y la cuerda tira pero nunca empuja. Cada pieza cuesta, y el día tiene un presupuesto.\n\nCuando el carrito sale, el puente soporta su propio peso y luego el del carrito, y cada pieza muestra su carga, de verde a rojo. Una pieza empujada o estirada más allá de su límite se rompe. Lleva el carrito a la otra orilla para terminar. Los triángulos son fuertes; los cuadrados se doblan."
+TR_BLURB,Build a bridge on a budget and send the cart across.,Construa uma ponte com o orçamento e mande o carrinho atravessar.,Construye un puente con el presupuesto y haz cruzar al carrito.
+TR_SHORT,"Build a bridge,\nsend the cart.","Construa a ponte,\nmande o carrinho.","Construye el puente,\nmanda el carrito."
+TR_MOTTO,Triangles hold,Triângulos seguram,Los triángulos aguantan
+TR_LVL_0,"A short gap, road and wood","Um vão curto, estrada e madeira","Un hueco corto, carretera y madera"
+TR_LVL_1,"Wider, with rope","Mais largo, com corda","Más ancho, con cuerda"
+TR_LVL_2,"A heavy cart, a tighter budget","Um carrinho pesado, orçamento mais justo","Un carrito pesado, presupuesto más justo"
+TR_LVL_3,"The widest gap, the tightest budget","O vão mais largo, o orçamento mais justo","El hueco más ancho, el presupuesto más justo"
+TR_GO,Go,Ir,Ir
+TR_STOP,Build,Construir,Construir
+TR_MAT_ROAD,Road,Estrada,Carretera
+TR_MAT_WOOD,Wood,Madeira,Madera
+TR_MAT_ROPE,Rope,Corda,Cuerda
+TR_BUDGET,Budget,Orçamento,Presupuesto
+TR_TIP_START,Drag from the red pin to lay the road,Arraste do pino vermelho para fazer a estrada,Arrastra desde el pasador rojo para hacer la carretera
+TR_TOO_LONG,Too long: a member reaches two steps at most,Longa demais: uma peça alcança dois passos no máximo,Demasiado larga: una pieza alcanza dos pasos como mucho
+TR_OFF_ZONE,"Build over the gap, not in the banks or the rock","Construa sobre o vão, não nas margens nem na pedra","Construye sobre el hueco, no en las orillas ni en la roca"
+TR_STEEP,Too steep for the cart: road climbs one in one at most,Íngreme demais para o carrinho: a estrada sobe no máximo um por um,Demasiado empinada para el carrito: la carretera sube uno por uno como mucho
+TR_BUDGET_OUT,Over budget: take something down first,Acima do orçamento: tire alguma peça antes,Por encima del presupuesto: quita alguna pieza antes
+TR_NO_ROPE,No rope today,Sem corda hoje,Hoy no hay cuerda
+TR_HINTED,A hint's member stays,A peça da dica fica,La pieza de la pista se queda
+TR_SNAPPED_ONE,One member snapped: it's marked red,Uma peça quebrou: está marcada em vermelho,Una pieza se rompió: está marcada en rojo
+TR_SNAPPED_N,%d members snapped: they're marked red,%d peças quebraram: estão marcadas em vermelho,%d piezas se rompieron: están marcadas en rojo
+TR_NO_ROAD,The road doesn't reach the far bank,A estrada não chega à outra margem,La carretera no llega a la otra orilla
+TR_STUCK,The cart got stuck,O carrinho ficou preso,El carrito se atascó
+TR_HINT,A member of a bridge that works,Uma peça de uma ponte que funciona,Una pieza de un puente que funciona
+TR_HINT_MORE,A member of a bridge that works: some of yours came down to pay for it,Uma peça de uma ponte que funciona: algumas das suas saíram para pagar por ela,Una pieza de un puente que funciona: algunas de las tuyas se quitaron para pagarla
+TR_HINT_ALL,You already have every member a hint can give,Você já tem todas as peças que uma dica pode dar,Ya tienes todas las piezas que puede dar una pista
+TR_CLEARED,Back to the riverbank,De volta à margem,De vuelta a la orilla
+TR_W_CROSSED,Crossed!,Atravessou!,¡Cruzó!
+TR_W_UNDER,%s left in the budget,Sobraram %s do orçamento,Sobran %s del presupuesto
+TR_W_MASTER,Master builder!,Mestre de obras!,¡Maestro de obras!
+TR_W_NICE,Nice!,Boa!,¡Bien!
+TR_W_GREAT,Great!,Ótimo!,¡Genial!
+TR_W_SUPERB,Superb!,Incrível!,¡Increíble!
+TR_WIN,Built for %s of %s  %s,Construída por %s de %s  %s,Construido por %s de %s  %s
+TR_SHARE,Trestle: crossed for %s of %s in %d tries,Trestle: atravessou por %s de %s em %d tentativas,Trestle: cruzó por %s de %s en %d intentos

@@ -61,6 +61,7 @@ const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
+const TrParts = preload("res://ui/faces/trestle_parts.gd")
 const Bead = preload("res://ui/faces/bead.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
@@ -212,6 +213,7 @@ var _hedgehogs_mesh: ArrayMesh
 var _marigold_mesh: ArrayMesh
 var _pixelgarden_mesh: ArrayMesh
 var _drumbeat_keep: Array = []
+var _trestle_keep: Array = []
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -401,6 +403,7 @@ func _draw() -> void:
 		"marigold": _draw_marigold()
 		"pixelgarden": _draw_pixelgarden()
 		"drumbeat": _draw_drumbeat()
+		"trestle": _draw_trestle()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1392,3 +1395,67 @@ func _draw_pixelgarden() -> void:
 	Bead.bead(b, at(104.0, -8.0), cell * 1.5, Pal.PG_BEADS.green, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_TABLE, false)
 	_pixelgarden_mesh = b.mesh()
 	draw_mesh(_pixelgarden_mesh, null)
+
+## Trestle: a short gap between two banks with a truss bridge over the
+## river and the cart halfway over, through `ui/faces/trestle_parts.gd`, the
+## file `puzzles/trestle2d.gd` draws with. The cart's body and wheels are
+## their own meshes, the way the board moves them.
+const TR_STEP := 36.0
+func _draw_trestle() -> void:
+	_trestle_keep.clear()
+	var b := Face.Builder.new()
+	var u := TR_STEP * _u
+	var g := func(x: float, y: float) -> Vector2: return at(-90.0 + x * TR_STEP, -14.0 - y * TR_STEP)
+	# the river and the banks
+	b.polygon(PackedVector2Array([at(-100.0, 30.0), at(100.0, 30.0), at(100.0, 59.0), at(-100.0, 59.0)]), Color("6fb6de"))
+	b.stroke(PackedVector2Array([at(-86.0, 38.0), at(-50.0, 38.0)]), 2.0 * _u, Color(1, 1, 1, 0.4))
+	b.stroke(PackedVector2Array([at(20.0, 46.0), at(60.0, 46.0)]), 2.0 * _u, Color(1, 1, 1, 0.4))
+	for side in [-1.0, 1.0]:
+		var lip := -90.0 if side < 0.0 else 90.0
+		var edge := -170.0 if side < 0.0 else 170.0
+		b.polygon(PackedVector2Array([at(edge, -14.0), at(lip, -14.0), at(lip - side * 4.0, 20.0), at(lip + side * 3.0, 59.0), at(edge, 59.0)]), Color("b89a78"))
+		var x0 := minf(edge, lip)
+		b.fan(Face.Builder.round_rect(at(x0, -16.0), Vector2(absf(lip - edge), 12.0) * _u, 3.0 * _u), Color("8cb050"))
+		b.fan(Face.Builder.round_rect(at(x0, -17.0), Vector2(absf(lip - edge), 4.0) * _u, 2.0 * _u), Color("d9c49a"))
+	# a Pratt truss under the road
+	var members := []
+	for i in 5:
+		members.append([Vector2(i, 0), Vector2(i + 1, 0), 0])
+	for i in range(1, 5):
+		members.append([Vector2(i, 0), Vector2(i, -1), 1])
+	for i in range(1, 4):
+		members.append([Vector2(i, -1), Vector2(i + 1, -1), 2 if i == 2 else 1])
+	members.append([Vector2(0, 0), Vector2(1, -1), 1])
+	members.append([Vector2(1, -1), Vector2(2, 0), 1])
+	members.append([Vector2(2, -1), Vector2(3, 0), 1])
+	members.append([Vector2(3, 0), Vector2(4, -1), 1])
+	members.append([Vector2(4, -1), Vector2(5, 0), 1])
+	for pass_mat in [2, 1, 0]:
+		for m in members:
+			if m[2] == pass_mat:
+				TrParts.member(b, g.call(m[0].x, m[0].y), g.call(m[1].x, m[1].y), m[2], u)
+	for i in range(1, 5):
+		TrParts.joint(b, g.call(i, -1), u)
+		TrParts.joint(b, g.call(i, 0), u)
+	TrParts.anchor(b, g.call(0, 0), u)
+	TrParts.anchor(b, g.call(5, 0), u)
+	var m := b.mesh()
+	_trestle_keep.append(m)
+	draw_mesh(m, null)
+	# the cart, a berry riding it
+	var cb := Face.Builder.new()
+	TrParts.cart_body(cb, u, 1)
+	var seat := TrParts.seat(u, 1, 0)
+	cb.disc(seat, u * 0.3, Pal.BERRY)
+	cb.disc(seat + Vector2(-0.08, -0.1) * u, u * 0.08, Color(1, 1, 1, 0.5))
+	Face.face_parts(cb, u * 0.3, seat, Pal.TEXT, 1.0, Face.Expr.JOY)
+	var cm := cb.mesh()
+	_trestle_keep.append(cm)
+	var road_top: Vector2 = g.call(2.3, 0.0) - Vector2(0.0, 0.1 * u)
+	draw_mesh(cm, null, Transform2D(0.0, road_top))
+	var wb := Face.Builder.new()
+	TrParts.wheel(wb, u)
+	var wm := wb.mesh()
+	_trestle_keep.append(wm)
+	for w in TrParts.wheel_at(u, 1):
+		draw_mesh(wm, null, Transform2D(0.4, road_top + w))

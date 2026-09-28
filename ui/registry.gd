@@ -802,6 +802,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "DB_LVL_3"},
 		],
 	},
+	{
+		"id": "trestle",
+		"kind": "puzzle",
+		"title": "Trestle",
+		"blurb": "TR_BLURB",
+		"short": "TR_SHORT",
+		"motto": "TR_MOTTO",
+		"footer": "Build · Test · Cross",
+		# The material chips and the budget stand in the board card over the
+		# river, so no tray; the actions row carries Reset and Go (the Check
+		# button, relabelled: the test is the check), and Undo and Hint ride
+		# in the top bar -- Pixel Garden's shape.
+		"script": "res://puzzles/trestle2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band of mined gaps (content/trestle.json) is
+		# its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "TR_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "TR_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "TR_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "TR_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

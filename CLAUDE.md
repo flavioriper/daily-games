@@ -1420,6 +1420,27 @@ pointing `seed_as` at them. Specs:
   ~10 ms over Go-Go's burst, ANGLE agreeing; reduce motion ~4-5 ms.
   `tests/_shot_drumbeat.gd` keeps its own progress file and sets `reduce`
   after `main.tscn` loads (set before, it never took).
+- **Trestle is the twenty-ninth card** (2026-09-28,
+  `puzzles/trestle2d.gd`, `trestle_state.gd`, `trestle_sim.gd`,
+  `trestle_gen.gd`, spec `2026-09-28-trestle-flat-design.md`, no concept
+  tab -- built while the user was away). The physics bridge builder the
+  user's search page showed (Poly Bridge, Build a Bridge!, Bridge Builder);
+  **it is called Trestle** ("Bridges" is Hashiwokakero). Lay road, wood
+  and rope between lattice points from red pins, on a budget, press Go (the
+  Check button relabelled, `check_icon()` "play"): the bridge takes its
+  weight, a cart of fruit drives over, members tint by load and snap past
+  their limit; the cart on the far bank is the solve. Two things travel:
+  **XPBD with small steps measures every member's force for free** (the
+  multiplier a substep needs is the force times h squared), and **a cart as
+  a moving mass lent to its member's joints**, not a wheeled body, is
+  deterministic and cannot wedge. Levels are mined (`tools/mine_trestle.gd`,
+  `tools/merge_trestle.py`, `content/trestle.json`) with a pruned-truss
+  proof that is also the hints; **re-prove the bank after any physics
+  change** with `tests/_probe_trestle_bank.gd -- write`, because moving the
+  cart's start line alone shifts every run. 79-81 draw calls building and
+  testing, ~146 on the win, ANGLE agreeing, vsync-capped in every state
+  once the bridge mesh stopped rebuilding on idle frames. 21 cues generated
+  (`roll` a loop), one take a cue, awaiting the user's listen.
 - **Balance is a seesaw since 2026-09-27** (`puzzles/balance2d.gd`,
   `balance_state.gd`, `balance_sim.gd`, `balance_gen.gd`, spec
   `2026-09-27-balance-seesaw-design.md`; built unattended at the user's word,

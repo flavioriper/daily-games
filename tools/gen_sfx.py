@@ -645,6 +645,33 @@ SETS = {
         "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
         "tick":         ("a single soft wooden clock tick with a tiny bell, very short", 0.5, -9, ARCADE),
     },
+    # Trestle (puzzles/trestle2d.gd): a bridge built of road planks, wooden
+    # beams and rope over a river, then a little cart sent across. The
+    # building is the house marimba; the test is foley and cartoon, because
+    # a beam snapping wants to sound like wood.
+    "trestle": {
+        "enter":      ("a soft airy cascade of small wooden knocks and a river's gentle burble, a building site by a stream appearing", 1.0, -9),
+        "select":     ("a single tiny soft wooden click, choosing a tool, very short", 0.5, -12),
+        "place_road": ("a wooden plank laid down on a frame with one solid soft knock and a tiny nail tap, very short", 0.5, -7, FOLEY),
+        "place_wood": ("a light wooden beam set into place with a soft hollow knock and a small bolt click, very short", 0.5, -8, FOLEY),
+        "place_rope": ("a rope pulled taut with a soft creak and a quick knot tug, very short", 0.5, -9, FOLEY),
+        "remove":     ("a wooden beam lifted off a frame with a soft clatter, very short", 0.5, -9, FOLEY),
+        "refused":    ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "undo":       ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "hint":       ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "reset":      ("a quick soft clatter of small wooden beams being gathered up and stacked", 1.0, -8, FOLEY),
+        "go":         ("a cheerful little toy train whistle toot and a small cart starting to roll, short", 1.2, -6, CARTOON),
+        "roll":       ("continuous steady soft rumble of small wooden cart wheels rolling over wooden planks, even, no bumps, no clicks", 3.0, -12, FOLEY, "loop"),
+        "creak":      ("a single long low creak of a wooden beam straining under weight, close mic", 0.8, -8, FOLEY),
+        "snap":       ("a wooden beam snapping in two with a sharp crack and a splintering crunch, close mic, short", 0.7, -4, FOLEY),
+        "snap_rope":  ("a taut rope snapping with a quick twang and a whip crack, short", 0.6, -5, FOLEY),
+        "whoa":       ("a short comic cartoon falling slide whistle going down, gentle", 0.8, -8, CARTOON),
+        "bump":       ("a small wooden cart landing with a soft thump and a wheel rattle, short", 0.5, -8, FOLEY),
+        "splash":     ("a small wooden cart falling into a river with a big cartoon splash and bubbles, short", 1.0, -5, CARTOON),
+        "fail":       ("a gentle short descending marimba phrase, a kind try again, soft and warm not sad", 1.4, -7),
+        "cross":      ("a small cart reaching the other side, two cheerful toy horn honks, short", 0.8, -6, CARTOON),
+        "solved":     ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+    },
 }
 
 
