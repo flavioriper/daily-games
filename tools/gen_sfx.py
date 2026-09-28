@@ -623,13 +623,11 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny hollow wooden clacks rolling in, stacks of rings on pegs appearing", 1.0, -9),
     },
-    # Drumbeat (puzzles/drumbeat2d.gd): the drum-festival rhythm game. don and ka are the player's own drum, struck on every note, so
-    # they are real foley and dead short -- a take with a slow attack would
-    # sound late. The songs themselves are synthesised by
-    # tools/gen_drumbeat.py, not generated here.
+    # Drumbeat (puzzles/drumbeat2d.gd): the drum-festival rhythm game. don
+    # and ka, the player's own drum, are synthesised by tools/gen_drumbeat.py
+    # with the songs, not generated here: the takes were late, too quiet
+    # under the music and did not sound like a drum.
     "drumbeat": {
-        "don":          ("a single hit on the skin of a big japanese taiko drum, deep round punchy boom, close mic, immediate attack, very short", 0.5, -3, FOLEY),
-        "ka":           ("one single isolated knock of a wooden drumstick on the hard wooden rim of a drum, one hit only, a crisp dry tock, immediate attack, instant decay", 0.5, -5, FOLEY),
         "balloon":      ("a tiny soft rubbery squeak of a balloon being squeezed, very short", 0.5, -12, CARTOON),
         "pop":          ("a balloon popping with a cheerful bang and a tiny confetti sparkle, short", 0.7, -4, CARTOON),
         "balloon_gone": ("a small balloon slowly deflating and flying off with a comic squeaky whistle, short", 0.9, -9, CARTOON),

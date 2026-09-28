@@ -4,8 +4,9 @@ own instruments and synthesised here note by note, with the drum chart of
 each written against the same bar grid, so the notes and the music can never
 drift apart.
 
-    python3 tools/gen_drumbeat.py            # every song
+    python3 tools/gen_drumbeat.py            # every song, and the drum
     python3 tools/gen_drumbeat.py parade     # only these
+    python3 tools/gen_drumbeat.py drums      # only the drum (don.ogg, ka.ogg)
 
 Writes assets/sfx/drumbeat/song_<id>.ogg (the music, a bar of wood-block
 count-in first) and content/drumbeat.json (every song's charts, bar lines and
@@ -144,6 +145,41 @@ def wood(m, vel=1.0):
     n = int(SR * 0.12)
     t = np.arange(n) / SR
     return vel * (np.sin(2 * np.pi * f * t) + 0.4 * np.sin(2 * np.pi * f * 2.7 * t)) * env(n, 0.001, 0.025)
+
+
+def don():
+    # the player's drum, struck on the skin: a taiko's membrane dropping in
+    # pitch as it settles, its second mode, and the stick's felt thump
+    n = int(SR * 0.45)
+    t = np.arange(n) / SR
+    f = 88 + 70 * np.exp(-t / 0.022)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    y = (np.sin(ph) * env(n, 0.001, 0.16)
+         + 0.35 * np.sin(1.59 * ph) * env(n, 0.001, 0.06)
+         + 0.18 * np.sin(2.14 * ph) * env(n, 0.001, 0.03))
+    k = int(SR * 0.012)
+    thump = np.random.default_rng(21).standard_normal(k)
+    thump = np.convolve(thump, np.ones(24) / 24, mode="same")
+    y[:k] += 2.2 * thump * np.linspace(1, 0, k)
+    return np.tanh(1.6 * y)
+
+
+def ka():
+    # struck on the rim: the stick's crack and the hard wood ringing short
+    n = int(SR * 0.2)
+    t = np.arange(n) / SR
+    y = (np.sin(2 * np.pi * 1180 * t) * env(n, 0.0005, 0.035)
+         + 0.7 * np.sin(2 * np.pi * 2090 * t) * env(n, 0.0005, 0.022)
+         + 0.4 * np.sin(2 * np.pi * 3350 * t) * env(n, 0.0005, 0.012))
+    k = int(SR * 0.004)
+    crack = np.random.default_rng(22).standard_normal(k)
+    crack = crack - np.convolve(crack, np.ones(3) / 3, mode="same")
+    y[:k] += 1.5 * crack * np.linspace(1, 0, k)
+    return np.tanh(1.4 * y)
+
+
+def normal(y, db=-1.0):
+    return y / np.max(np.abs(y)) * 10 ** (db / 20)
 
 
 def place(buf, y, at):
@@ -529,8 +565,16 @@ def entry(song):
 
 
 def main():
-    want = sys.argv[1:] or [s["id"] for s in SONGS]
+    want = sys.argv[1:] or [s["id"] for s in SONGS] + ["drums"]
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if "drums" in want:
+        # the player's own drum, synthesised rather than generated: it plays
+        # on every stroke over the song, so it must start on its first
+        # sample and be as loud as the music
+        for name, y in (("don", normal(don(), -1.0)), ("ka", normal(ka(), -4.5))):
+            out = OUT_DIR / f"{name}.ogg"
+            write_ogg(y, out)
+            print(f"drum -> {out.relative_to(ROOT)}")
     entries = [entry(s) for s in SONGS]
     CHART_OUT.write_text(json.dumps({"songs": entries}, separators=(",", ":")) + "\n")
     for e in entries:
