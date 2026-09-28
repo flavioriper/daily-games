@@ -197,9 +197,9 @@ be built.
       needs native plugins.
 
 ### Ads
-- [ ] **(you)** AdMob account, with one app per platform and a banner unit
-      for each. Until it exists, both plugins run on Google's published test
-      IDs (`project.godot`'s `ads/` keys).
+- [x] (2026-09-28) AdMob account, with one app per platform and a banner
+      unit for each, wired into `project.godot`; debug builds keep Google's
+      test banner. Link each AdMob app to its store listing once public.
 - [x] (2026-09-25) Add Godot AdMob plugins for Android and iOS: Poing's
       `godot-admob-plugin` v5.1.0, wired through `core/ads.gd`. Real
       `ads/app_id` and `ads/banner_unit_id` values still wait on the AdMob

@@ -2268,10 +2268,17 @@ stated before the 3D game left.
   (clearing `.godot/extension_list.cfg`, which the editor would otherwise
   error on next run) whichever way the export goes. It raises the **iOS
   minimum to 17.0**, dropping iPhones stuck on iOS 16 (8 and X).
-- **Both plugins run on Google's published test IDs until the user's AdMob
-  account exists** (`project.godot`'s `ads/` keys, per-platform overrides).
-  The AdMob app IDs are Poing's own registered *defaults* for those same
-  test values, not something this project set explicitly.
+- **Real AdMob IDs since 2026-09-28** (account pub-1208368368327333 on
+  flavio@hypertradeworx.xyz, one app per platform, "Bottom banner" on each):
+  the app IDs are `project.godot`'s `admob/general/{android,ios}/app_id`,
+  the units its `ads/banner_unit_id.*`. **A debug build always asks for
+  Google's test banner** (`core/ads.gd`'s `TEST_BANNER_*`), so App
+  Distribution and harnesses never request a real ad; only the release
+  builds the stores carry do. The apps are added as not yet on a store and
+  stay "requires review" (limited serving) until each is linked to its
+  store listing in AdMob once public. The iOS IDFA explainer is published;
+  the GDPR and US-states messages wait on a live privacy policy URL, and
+  `app-ads.txt` on the developer site.
 - **The Android template needs AGP 8.9.1, not Godot 4.7's stock 8.6.1**:
   `godot-iap`'s `openiap-google` 3.5.2 pulls `androidx.core:core:1.18.0`,
   which refuses an older AGP. Godot only honours

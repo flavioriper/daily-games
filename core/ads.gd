@@ -25,6 +25,12 @@ const Analytics = preload("res://core/analytics.gd")
 ## pixels whatever the banner's own unit: ui/safe_area.gd adds it to the
 ## bottom inset, unscaled, whenever a banner is up.
 const TAB_H := 56.0
+## Google's published test banners. A debug build (App Distribution, a
+## harness) always asks for these, so only the release builds the stores
+## carry ever request the real units in project.godot's ads/ keys: a click on
+## a real ad from a debug build would count as invalid traffic.
+const TEST_BANNER_ANDROID := "ca-app-pub-3940256099942544/9214589741"
+const TEST_BANNER_IOS := "ca-app-pub-3940256099942544/2435281174"
 
 var _ad_view: Object
 var _banner_visible := false
@@ -82,8 +88,10 @@ func _init_ads() -> void:
 func _load_banner() -> void:
 	if _removed:
 		return
-	var key := "ads/banner_unit_id.ios" if OS.get_name() == "iOS" else "ads/banner_unit_id.android"
-	var unit := str(ProjectSettings.get_setting(key, ""))
+	var ios := OS.get_name() == "iOS"
+	var unit := str(ProjectSettings.get_setting("ads/banner_unit_id.ios" if ios else "ads/banner_unit_id.android", ""))
+	if OS.is_debug_build():
+		unit = TEST_BANNER_IOS if ios else TEST_BANNER_ANDROID
 	if unit.is_empty():
 		push_warning("Ads: no banner unit for this platform")
 		return

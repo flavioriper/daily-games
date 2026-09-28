@@ -8,11 +8,16 @@
 
 config_version=5
 
+[admob]
+
+general/android/app_id="ca-app-pub-1208368368327333~1757126681"
+general/ios/app_id="ca-app-pub-1208368368327333~6103565803"
+
 [ads]
 
 banner_unit_id=""
-banner_unit_id.android="ca-app-pub-3940256099942544/9214589741"
-banner_unit_id.ios="ca-app-pub-3940256099942544/2435281174"
+banner_unit_id.android="ca-app-pub-1208368368327333/2355892480"
+banner_unit_id.ios="ca-app-pub-1208368368327333/2084429742"
 
 [application]
 
