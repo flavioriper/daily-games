@@ -1448,7 +1448,12 @@ pointing `seed_as` at them. Specs:
   budget) and the strip after the solve says how many of today's bridges
   cost more, the player's own bridge is kept with the completion, and after
   the solve there are a three-cart **Convoy** and a **Free build** with no
-  budget. The sim's lead cart is still its scalar fields, so one-cart runs
+  budget. **Polished and made loud on 2026-09-28** (the spec's section 10):
+  mountains, a turning sun, drifting clouds, trees, reeds, a leaping fish and
+  birds; prices float off each member, the budget bar slides, removed members
+  tumble into the river; Go!, Crack!, Splash! and a shake, riders that float;
+  a wave, bunting, a stamped three-star medal, fireworks and coins on the win.
+  87 building, 88 testing, 151 on the win, ~278 at its peak, ANGLE agreeing. The sim's lead cart is still its scalar fields, so one-cart runs
   are unchanged. The crowd needs `tools/deploy_functions.sh` run by a person.
 - **Balance is a seesaw since 2026-09-27** (`puzzles/balance2d.gd`,
   `balance_state.gd`, `balance_sim.gd`, `balance_gen.gd`, spec

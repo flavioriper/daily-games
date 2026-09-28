@@ -86,7 +86,17 @@ const SLOW_TIME := 0.9
 ## How many of the hardest-worked members carry their load in figures.
 const LOAD_TAGS := 5
 const LOAD_TAG_AT := 0.5
-const FIRST_KEYS := [["TR_FIRST_ROAD_ONE", "TR_FIRST_ROAD_N"], ["TR_FIRST_WOOD_ONE", "TR_FIRST_WOOD_N"], ["TR_FIRST_ROPE_ONE", "TR_FIRST_ROPE_N"]]
+## The polish: how hard a snap and a splash shake the scene (in `_u`), how
+## fast the shake dies, and the win's wave and medal.
+const SHAKE_SNAP := 0.1
+const SHAKE_SPLASH := 0.16
+const SHAKE_DECAY := 9.0
+const WAVE_TIME := 0.34
+const MEDAL_AT := 0.9
+const MEDAL_STEP := 0.3
+const PENNANTS := [Color("ff6f61"), Color("ffd84d"), Color("5cb8ff"), Color("7fd66a"), Color("b77be6")]
+const FIREWORKS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+const FIRST_KEYS :=[["TR_FIRST_ROAD_ONE", "TR_FIRST_ROAD_N"], ["TR_FIRST_WOOD_ONE", "TR_FIRST_WOOD_N"], ["TR_FIRST_ROPE_ONE", "TR_FIRST_ROPE_N"]]
 ## The strip after the solve and in the free build.
 enum Pill { CONVOY, FREE, GO, DONE }
 
@@ -168,6 +178,32 @@ var _cart2_mesh: ArrayMesh
 var _crowd_state := ""
 var _crowd_pct := -1
 var _crowd_count := 0
+## The polish (spec section 10): the sky's sun and clouds, moved by transform.
+var _sky_mesh: ArrayMesh
+var _sun_mesh: ArrayMesh
+var _cloud_mesh: ArrayMesh
+## The budget bar's fill, eased toward the cost and drawn over the strip
+## every frame so it can slide and flash.
+var _bar_mesh: ArrayMesh
+var _bar_shown := 0.0
+var _bar_hit := -100.0
+var _money_shake := -100.0
+## A chip just picked bounces.
+var _chip_at := -100.0
+## The screen's shake (px), decaying; never under reduce motion.
+var _shake := 0.0
+## Members taken down tumble into the river: {p, q, mat, vel, spin, rot, splashed}.
+var _falling: Array = []
+## Cost figures floating up off a member just laid: {text, at, t, col}.
+var _floats: Array = []
+## Bolts that just took a member pop: joint -> when.
+var _pops := {}
+## A dunked cart's passengers float where it went in.
+var _splash_at := -100.0
+var _splash_x := 0.0
+## The win: the wave along the bridge, and when the medal's stars stamp in.
+var _wave_at := -100.0
+var _dust_at := 0.0
 
 func puzzle_id() -> String: return "trestle"
 func title() -> String: return "Trestle"
@@ -232,6 +268,13 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_convoy_proof = false
 	_crowd_state = ""
 	state.free = false
+	_falling = []
+	_floats = []
+	_pops = {}
+	_shake = 0.0
+	_splash_at = -100.0
+	_wave_at = -100.0
+	_bar_shown = 0.0
 	_clear_trail()
 	if _rw != null:
 		_rw.clear()
@@ -274,6 +317,8 @@ func _layout() -> void:
 	var mid_y := _scene.position.y + _scene.size.y * 0.5
 	_origin = Vector2(mid_x - w * 0.5 * _u, mid_y + (VIEW_TOP + VIEW_BOTTOM) * 0.5 * _u)
 	_still = null
+	_sun_mesh = null
+	_cloud_mesh = null
 	_frame = null
 	_cart_mesh = null
 	_wheel_mesh = null
@@ -327,8 +372,9 @@ func _process(delta: float) -> void:
 	for key in _grow.keys():
 		if t - float(_grow[key]) > GROW_TIME * 2.0:
 			_grow.erase(key)
-	if _testing or not _grow.is_empty():
+	if _testing or not _grow.is_empty() or _waving(t):
 		_frame = null
+	_step_polish(t, delta)
 	_place_cart()
 	_rw.bounds = Rect2(Vector2.ZERO, size)
 	_rw.step(delta)
@@ -349,6 +395,95 @@ func _roll_sound(delta: float) -> void:
 		_roll.play()
 	elif now <= 0.002 and _roll.playing:
 		_roll.stop()
+
+## The polish's own clock: the shake dying away, members taken down falling
+## into the river, cost figures rising, bolts popping, dust off the wheels,
+## the budget bar sliding to the cost.
+func _step_polish(t: float, delta: float) -> void:
+	_shake *= exp(-delta * SHAKE_DECAY)
+	if _shake < 0.3:
+		_shake = 0.0
+	var water := px(Vector2(0.0, Sim.WATER)).y
+	if not _falling.is_empty():
+		var keep: Array = []
+		for f: Dictionary in _falling:
+			f.age += delta
+			var v: Vector2 = f.vel
+			v.y += _u * (3.0 if f.splashed else 16.0) * delta
+			if f.splashed:
+				v *= exp(-delta * 4.0)
+			f.vel = v
+			f.mid += v * delta
+			f.rot += float(f.spin) * delta * (0.3 if f.splashed else 1.0)
+			if not f.splashed and (f.mid as Vector2).y > water:
+				f.splashed = true
+				f.vel = Vector2(v.x * 0.3, _u * 0.6)
+				fx.cue("splash", randf_range(1.3, 1.6), -9.0)
+				_rw.spray(Vector2((f.mid as Vector2).x, water), Color("cfeefc"), 7, 520.0, "clod", 0.7)
+				_rw.ring(Vector2((f.mid as Vector2).x, water), _u * 0.6, Color(1, 1, 1, 0.7))
+			if f.age < 4.0 and (f.mid as Vector2).y < water + _u * 3.0:
+				keep.append(f)
+		_falling = keep
+	if not _floats.is_empty():
+		for f: Dictionary in _floats:
+			f.t += delta
+		_floats = _floats.filter(func(f: Dictionary) -> bool: return f.t < 1.1)
+	for j in _pops.keys():
+		if t - float(_pops[j]) > 0.4:
+			_pops.erase(j)
+	# dust off the back wheel while the cart rolls
+	if _testing and not Motion.reduce and sim.cart in [Sim.CART_BANK_L, Sim.CART_ROAD, Sim.CART_BANK_R] and t - _dust_at > 0.08:
+		_dust_at = t
+		var xf := _cart_xf()
+		var back: Vector2 = Parts.wheel_at(_u, _faces.size())[0]
+		_rw.spray(xf * (back + Vector2(-Parts.wheel_r(_u) * 0.6, Parts.wheel_r(_u))), Color("e9dcc4"), 1, 70.0, "mote", 0.8)
+	var target := clampf(float(state.cost()) / maxf(1.0, float(state.budget)), 0.0, 1.2)
+	_bar_shown = target if Motion.reduce else lerpf(_bar_shown, target, 1.0 - exp(-delta * 9.0))
+
+## A shake of `amount` grid units, adding to one already under way.
+func _kick(amount: float) -> void:
+	if Motion.reduce:
+		return
+	_shake = minf(_shake + amount * _u, _u * 0.3)
+
+func _shake_off() -> Vector2:
+	if _shake <= 0.0:
+		return Vector2.ZERO
+	var t := _now()
+	return Vector2(sin(t * 71.0) * _shake, cos(t * 53.0) * _shake * 0.8)
+
+## The win's wave along the bridge is running.
+func _waving(t: float) -> bool:
+	return not Motion.reduce and t - _wave_at < 1.6
+
+## How far the win's wave lifts a point of the bridge: a hump running from
+## the near bank to the far one.
+func _wave_off(p: Vector2, t: float) -> Vector2:
+	if not _waving(t):
+		return Vector2.ZERO
+	var x0 := px(Vector2.ZERO).x
+	var span := maxf(1.0, px(Vector2(float(state.level.w), 0.0)).x - x0)
+	var k := t - _wave_at - clampf((p.x - x0) / span, 0.0, 1.0) * 0.8
+	if k < 0.0 or k > WAVE_TIME:
+		return Vector2.ZERO
+	return Vector2(0.0, -sin(k / WAVE_TIME * PI) * _u * 0.24)
+
+## A member taken down: splinters where it was, and it tumbles into the river.
+func _drop(d: Dictionary) -> void:
+	_splinters(d)
+	if Motion.reduce or _falling.size() > 16:
+		return
+	var p := px(Vector2(d.a))
+	var q := px(Vector2(d.b))
+	_falling.append({"mid": (p + q) * 0.5, "half": (q - p) * 0.5, "mat": int(d.m), "rot": 0.0,
+		"spin": randf_range(-5.0, 5.0), "vel": Vector2(randf_range(-1.0, 1.0) * _u, -_u * randf_range(2.0, 3.5)),
+		"splashed": false, "age": 0.0})
+
+## A figure floating up off the scene: a member's price, and the like.
+func _float(text: String, at: Vector2, col: Color) -> void:
+	if _floats.size() > 8:
+		_floats.pop_front()
+	_floats.append({"text": text, "at": at, "t": 0.0, "col": col})
 
 func _after(seconds: float, what: Callable) -> void:
 	_later.append([_now() + seconds, what])
@@ -377,6 +512,9 @@ func _events(t: float) -> void:
 					_first_at = t
 					if not Motion.reduce:
 						_rw.ring(at, _u * 1.1, Color(Parts.BAD, 0.9))
+						_rw.ring(at, _u * 1.6, Color(1, 1, 1, 0.8), 0.08)
+					_rw.sticker(tr("TR_W_CRACK"), at + Vector2(0.0, -_u * 0.9), 76, 1.4, false, Color("ff6f61"), true, "crack", _u * 0.4)
+				_kick(SHAKE_SNAP)
 				fx.cue("snap_rope" if int(e.mat) == Sim.ROPE else "snap", randf_range(0.9, 1.1))
 				var col: Color = [Parts.ROAD, Parts.WOOD, Parts.ROPE][int(e.mat)]
 				_rw.spray(at, col, 10, 520.0, "confetti", 0.9)
@@ -395,12 +533,25 @@ func _events(t: float) -> void:
 				fx.ring(at, _u * 0.9, Pal.WATER_HI)
 				_rw.spray(at, Pal.WATER_HI, 14, 640.0, "spark", 1.1)
 				_rw.spray(at, Color.WHITE, 8, 520.0, "spark", 0.8)
+				_rw.spray(at, Color("cfeefc"), 18, 1100.0, "clod", 1.0)
 				_rw.ring(at, _u * 1.3, Color(Pal.WATER_HI, 0.8))
+				_rw.ring(at, _u * 2.0, Color(1, 1, 1, 0.6), 0.12, 0.6)
+				_kick(SHAKE_SPLASH)
+				if sim.cart == Sim.CART_WATER and _splash_at < _test_at:
+					# the lead cart went in: its riders bob up where it did
+					_splash_at = t
+					_splash_x = at.x
+					var far := clampf(sim.cart_pos.x / maxf(1.0, float(state.level.w)), 0.0, 1.0)
+					_rw.sticker(tr("TR_W_ALMOST" if far > 0.6 else "TR_W_SPLASH"), Vector2(at.x, at.y - _u * 1.6), 70, 1.6,
+						true, Color.WHITE, false, "splash", _u * 0.3)
 			"bank":
 				_mood(Face.Expr.JOY)
 			"over":
 				_mood(Face.Expr.JOY)
 			"cross":
+				var up := _cart_xf() * Vector2(0.0, -_u * 0.7)
+				_rw.spray(up, Color("ff7aa2"), 6, 420.0, "heart", 1.0)
+				_rw.spray(up, Pal.SUN, 4, 380.0, "note", 1.0)
 				_crossed(t)
 	sim.events.clear()
 	# a member nearing its limit creaks, once, and not too often
@@ -470,6 +621,7 @@ func _start_test(carts: int) -> void:
 		_trail_faces.append(cart)
 	_mood(Face.Expr.HAPPY)
 	fx.cue("go")
+	_rw.sticker(tr("TR_W_GO"), Vector2(size.x * 0.5, _scene.position.y + _u * 1.1), 80, 1.0, true, Color.WHITE, false, "go", _u * 0.3)
 	_toast = ""
 	_strip_mesh = null
 	focus_changed.emit()
@@ -600,30 +752,57 @@ func _on_solved() -> void:
 	_ask_crowd(true)
 	_strip_mesh = null
 	fx.cue("solved")
-	var at := Vector2(size.x * 0.5, _scene.position.y + _u * 1.2)
+	# the medal's row sits over the words, the words over the bridge
+	var at := Vector2(size.x * 0.5, _scene.position.y + 185.0)
 	_rw.sticker(tr("TR_W_CROSSED"), at, 104, WIN_HOLD, true, Color.WHITE, true, "crossed")
 	var left := state.left()
 	var stars := _stars()
 	_after(0.55, func():
-		_rw.sticker(tr("TR_W_UNDER") % Locale.number(left), at + Vector2(0.0, _u * 0.95), 44, WIN_HOLD - 0.6, false, Pal.SUN, false, "under"))
+		_rw.sticker(tr("TR_W_UNDER") % Locale.number(left), at + Vector2(0.0, 112.0), 44, WIN_HOLD - 0.6, false, Pal.SUN, false, "under", 0.0, true))
 	if stars == 3:
 		_after(1.0, func():
-			_rw.sticker(tr("TR_W_MASTER"), at + Vector2(0.0, _u * 1.7), 52, WIN_HOLD - 1.0, true, Color.WHITE, false, "master"))
+			_rw.sticker(tr("TR_W_MASTER"), at + Vector2(0.0, 198.0), 56, WIN_HOLD - 1.0, true, Color.WHITE, false, "master", 0.0, true))
 	elif state.hints_placed() == 0:
 		_after(1.0, func():
-			_rw.sticker(tr(WORDS[clampi(stars - 1, 0, 2)]), at + Vector2(0.0, _u * 1.7), 50, WIN_HOLD - 1.0, false, Color.WHITE, false, "word"))
+			_rw.sticker(tr(WORDS[clampi(stars - 1, 0, 2)]), at + Vector2(0.0, 198.0), 52, WIN_HOLD - 1.0, false, Color.WHITE, false, "word", 0.0, true))
+	# the medal: a star stamped in for each one earned, a hollow one else
+	for i in 3:
+		_after(MEDAL_AT + MEDAL_STEP * i, func():
+			var c := _medal_star(i)
+			if i < stars:
+				fx.cue("select", 1.15 + 0.2 * i)
+				_rw.spray(c, Pal.SUN, 8, 520.0, "star", 0.9)
+				_rw.ring(c, 70.0, Color(Pal.SUN, 0.9))
+				_kick(0.03))
 	if not Motion.reduce:
+		_wave_at = _solved_at
 		var bank := px(Vector2(float(state.level.w) + 1.0, float(state.level.dy)))
 		_rw.spray(bank, Pal.SUN, 16, 900.0, "star", 1.2)
 		_rw.spray(bank, Color("fffaf0"), 12, 760.0, "spark", 1.3)
+		_rw.spray(bank, Color("ff7aa2"), 8, 600.0, "heart", 1.1)
 		_rw.ring(bank, _u * 2.0, Color(Pal.SUN, 0.9))
 		_rw.rain(2.6, ["confetti", "star", "confetti"], Rewards.CONFETTI)
-		# every member of the bridge twinkles, from the far bank back
+		# every member of the bridge twinkles, from the near bank on, with
+		# the wave
 		var n := state.design.size()
+		var x0 := px(Vector2.ZERO).x
+		var span := maxf(1.0, px(Vector2(float(state.level.w), 0.0)).x - x0)
 		for i in n:
 			var d: Dictionary = state.design[i]
 			var mid := px(Vector2(d.a + d.b) * 0.5)
-			_after(0.1 + 0.05 * (n - i), func(): fx.sparkle(mid))
+			_after(0.1 + clampf((mid.x - x0) / span, 0.0, 1.0) * 0.8, func(): fx.sparkle(mid))
+		# fireworks over the sky
+		for k in 6:
+			var sky := Vector2(size.x * randf_range(0.15, 0.85), _scene.position.y + _scene.size.y * randf_range(0.08, 0.3))
+			var col: Color = FIREWORKS[k % FIREWORKS.size()]
+			var when := 0.35 + 0.38 * k
+			_rw.ring(sky, _u * randf_range(1.0, 1.5), Color(col, 0.9), when, 0.6)
+			_rw.spray(sky, col, 12, 820.0, "spark", 1.1, when)
+			_rw.spray(sky, col.lightened(0.4), 4, 500.0, "star", 0.8, when)
+		# what was left of the budget flies home to the tally as coins
+		var coins := clampi(int(left / 150), 3, 18)
+		var from := px(Vector2(float(state.level.w) * 0.5, 0.5))
+		_rw.spray(from, Rewards.GOLD, coins, 700.0, "coin", 1.1, 1.3, _rw.at(self, Vector2(size.x - PAD - 90.0, 50.0)))
 
 # --- the crowd ---
 
@@ -680,6 +859,38 @@ func flat_win() -> Dictionary:
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD
+
+## Where the medal's star `i` stands.
+func _medal_star(i: int) -> Vector2:
+	return Vector2(size.x * 0.5 + (i - 1) * 118.0, _scene.position.y + 62.0)
+
+## The medal's three stars, each stamping in on its beat and bowing out with
+## the cheer: gold for one earned, a hollow paper one else.
+func _draw_medal(b: Face.Builder, t: float) -> void:
+	if _solved_at < 0.0 or _free:
+		return
+	var since := t - _solved_at
+	if since > WIN_HOLD + 0.2:
+		return
+	var out := clampf((WIN_HOLD + 0.2 - since) / 0.3, 0.0, 1.0)
+	var stars := _stars()
+	for i in 3:
+		var k := (since - MEDAL_AT - MEDAL_STEP * i) / 0.32
+		if k <= 0.0:
+			continue
+		var c := _medal_star(i)
+		var s := (1.0 if Motion.reduce else Motion.back_out(clampf(k, 0.0, 1.0))) * out
+		# stamped from big, turning into place
+		var big := 1.0 + (0.0 if Motion.reduce else 1.2 * (1.0 - clampf(k, 0.0, 1.0)))
+		var turn := 0.0 if Motion.reduce else (1.0 - clampf(k, 0.0, 1.0)) * 1.4 + sin(since * 3.0 + i) * 0.06
+		var r := 50.0 * s * big
+		if i < stars:
+			b.disc(c, r * 1.25, Color(Pal.SUN, 0.22 * out))
+			Rewards.star(b, c, r * 1.1, Color(Pal.PLAQUE_DEEP, out), turn)
+			Rewards.star(b, c, r, Color(Rewards.GOLD, out), turn)
+		else:
+			Rewards.star(b, c, r * 1.1, Color(Pal.TEXT, 0.25 * out), turn)
+			Rewards.star(b, c, r, Color(Pal.SURFACE_HI, 0.9 * out), turn)
 
 ## The player's own bridge and how many tests it took, kept with the
 ## completion so a reopened daily shows what they built, not the proof.
@@ -765,7 +976,7 @@ func hint() -> bool:
 	_hint_key = Vector4i(d.a.x, d.a.y, d.b.x, d.b.y)
 	_grow[_hint_key] = _now()
 	for r in h.removed:
-		_splinters(r)
+		_drop(r)
 	var mid := px(Vector2(d.a + d.b) * 0.5)
 	if not Motion.reduce:
 		fx.ring(mid, _u * 0.8, Pal.SUN)
@@ -781,7 +992,9 @@ func reset_board() -> void:
 		_stop()
 	var gone := state.reset()
 	for d in gone:
-		_splinters(d)
+		_drop(d)
+	if not gone.is_empty():
+		_kick(0.06)
 	_last_broken = {}
 	_sel = Vector2i(-99, -99)
 	_solved_at = -1.0
@@ -981,6 +1194,7 @@ func _pick_mat(i: int) -> void:
 		return
 	if _mat != i:
 		_mat = i
+		_chip_at = _now()
 		fx.cue("select")
 
 func _drag(p: Vector2) -> void:
@@ -1025,8 +1239,11 @@ func _release(p: Vector2) -> void:
 			_tell("TR_HINTED")
 			fx.cue("refused")
 			return
+		var before := state.cost()
 		state.remove(_press_member)
-		_splinters(d)
+		_drop(d)
+		_float("+%s" % Locale.number(before - state.cost()), px(Vector2(d.a + d.b) * 0.5), Pal.GOOD)
+		_bar_hit = _now()
 		fx.cue("remove")
 		_frame = null
 		_last_broken = {}
@@ -1046,12 +1263,24 @@ func _lay(a: Vector2i, b: Vector2i) -> void:
 			State.Refusal.TOO_LONG: _tell("TR_TOO_LONG")
 			State.Refusal.OFF_ZONE: _tell("TR_OFF_ZONE")
 			State.Refusal.STEEP: _tell("TR_STEEP")
-			State.Refusal.BUDGET: _tell("TR_BUDGET_OUT")
+			State.Refusal.BUDGET:
+				_tell("TR_BUDGET_OUT")
+				_money_shake = _now()
 			_: _tell("TR_NO_ROPE")
 		return
+	var before := state.cost()
 	state.add(a, b, _mat)
 	_last_broken = {}
-	_grow[Vector4i(a.x, a.y, b.x, b.y)] = _now()
+	var now := _now()
+	_grow[Vector4i(a.x, a.y, b.x, b.y)] = now
+	# the new end lands with a pop, a puff, and its price floating off
+	_pops[a] = now
+	_pops[b] = now + GROW_TIME * 0.6
+	var pb := px(Vector2(b))
+	var col: Color = [Parts.ROAD, Parts.WOOD, Parts.ROPE][_mat]
+	_after(GROW_TIME * 0.6, func(): _rw.spray(pb, col.lightened(0.2), 5, 300.0, "confetti", 0.6))
+	_float("-%s" % Locale.number(state.cost() - before), (px(Vector2(a)) + pb) * 0.5 + Vector2(0.0, -_u * 0.3), Parts.PIN_DEEP)
+	_bar_hit = now
 	fx.cue(["place_road", "place_wood", "place_rope"][_mat], randf_range(0.95, 1.05))
 	_sel = b
 	_frame = null
@@ -1083,16 +1312,29 @@ func _place_cart() -> void:
 	var xf := _cart_xf()
 	var n := _faces.size()
 	var bob := 0.0
+	var t := _now()
 	if _testing and sim.cart != Sim.CART_AIR and not Motion.reduce:
-		bob = sin(_now() * 18.0) * _u * 0.015
+		bob = sin(t * 18.0) * _u * 0.015
+	var shake := _shake_off()
+	var floating := sim.cart == Sim.CART_WATER and _splash_at >= _test_at
+	var water := px(Vector2(0.0, Sim.WATER)).y
 	for i in n:
 		var at := xf * (Parts.seat(_u, n, i) + Vector2(0.0, bob))
-		if _solved_at >= 0.0:
+		var rot := xf.get_rotation()
+		if floating:
+			# they bob up where the cart went in and float, spread out
+			var since := t - _splash_at
+			var rise := clampf((since - 0.25 - 0.12 * i) / 0.5, 0.0, 1.0)
+			var spot := Vector2(_splash_x + (i - (n - 1) * 0.5) * _u * 0.62 + sin(since * 0.8 + i) * _u * 0.08,
+				water - _u * 0.12 + sin(since * 3.0 + i * 1.7) * _u * 0.05)
+			at = spot + Vector2(0.0, (1.0 - Motion.back_out(rise)) * _u * 0.9)
+			rot = sin(since * 2.2 + i) * 0.18
+		elif _solved_at >= 0.0:
 			# the passengers cheer, a hop each, one after another
-			at.y += Motion.hop_lift(fmod(_now() - _solved_at + 0.15 * i, 0.8), -_u * 0.3, 0.5)
-		_faces[i].position = at - _faces[i].size * 0.5
-		_faces[i].rotation = xf.get_rotation()
-		_faces[i].visible = sim.cart != Sim.CART_WATER or _now() - _fail_at < 0.35
+			at.y += Motion.hop_lift(fmod(t - _solved_at + 0.15 * i, 0.8), -_u * 0.3, 0.5)
+		_faces[i].position = at + shake - _faces[i].size * 0.5
+		_faces[i].rotation = rot
+		_faces[i].visible = sim.cart != Sim.CART_WATER or floating or t - _fail_at < 0.35
 
 ## The cart's frame on the screen: its origin on the road's top.
 func _cart_xf() -> Transform2D:
@@ -1126,50 +1368,82 @@ func _draw() -> void:
 		var b2 := Face.Builder.new()
 		Parts.cart_body(b2, _u, 2)
 		_cart2_mesh = b2.mesh()
-	draw_mesh(_still, null)
+	if _sun_mesh == null:
+		_build_sky()
+	var t := _now()
+	var still := 0.0 if Motion.reduce else 1.0
+	var shake := Transform2D(0.0, _shake_off())
+	# the sky behind everything: the sun turning, the clouds drifting by
+	draw_mesh(_sky_mesh, null)
+	draw_mesh(_sun_mesh, null, Transform2D(t * 0.12 * still, _sun_at()))
+	var cw := _u * 2.4
+	for k in 3:
+		var speed := _u * (0.1 + 0.05 * k) * still
+		var x := fposmod(size.x * (0.12 + 0.36 * k) + t * speed, size.x + 2.0 * cw) - cw
+		var y := _scene.position.y + _scene.size.y * (0.1 + 0.07 * ((k * 2) % 3))
+		var s := 0.8 + 0.25 * (k % 2)
+		draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2(s, s), 0.0, Vector2(x, y)))
+	draw_mesh(_still, null, shake)
 	if _halo != null:
-		var beat := 0.75 + 0.25 * sin(_now() * 4.5) if not Motion.reduce else 1.0
-		draw_mesh(_halo, null, Transform2D(), Color(1, 1, 1, beat))
-	draw_mesh(_frame, null)
-	var xf := _cart_xf()
+		var beat := 0.75 + 0.25 * sin(t * 4.5) if not Motion.reduce else 1.0
+		draw_mesh(_halo, null, shake, Color(1, 1, 1, beat))
+	draw_mesh(_frame, null, shake)
+	var xf := shake * _cart_xf()
 	draw_mesh(_cart_mesh, null, xf)
 	for w in Parts.wheel_at(_u, _faces.size()):
 		draw_mesh(_wheel_mesh, null, xf * Transform2D(_wheel_turn, w))
 	if _testing:
 		for c in sim.trail:
-			var txf := _xf_of(int(c.cart), c.pos, float(c.angle))
+			var txf := shake * _xf_of(int(c.cart), c.pos, float(c.angle))
 			draw_mesh(_cart2_mesh, null, txf)
 			for w in Parts.wheel_at(_u, 2):
 				draw_mesh(_wheel_mesh, null, txf * Transform2D(_wheel_turn, w))
-	_shown = [_still, _frame, _cart_mesh, _wheel_mesh, _halo, _cart2_mesh]
+	_shown = [_still, _frame, _cart_mesh, _wheel_mesh, _halo, _cart2_mesh, _sun_mesh, _cloud_mesh, _sky_mesh]
 
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var lv := state.level
 	var w := float(lv.w)
 	var dy := float(lv.dy)
-	var full := Rect2(Vector2.ZERO, size)
-	# the sky over the whole card, and the far hills
-	_grad(b, full, Color("bfe3f5"), Color("f3ecd9"))
+	# the far hills in two bands, trees on the nearer, then the valley's
+	# sides running down to the river through the gap
 	var horizon := px(Vector2(0.0, 0.8)).y
+	var far := PackedVector2Array()
+	for k in 25:
+		var x := size.x * k / 24.0
+		far.append(Vector2(x, horizon - _u * (1.2 + 0.45 * sin(k * 0.7 + 1.0) + 0.2 * sin(k * 1.9))))
+	far.append(Vector2(size.x, size.y))
+	far.append(Vector2(0.0, size.y))
+	b.polygon(far, Color("c3dcc7"))
 	var hills := PackedVector2Array()
 	for k in 25:
 		var x := size.x * k / 24.0
 		hills.append(Vector2(x, horizon - _u * (0.5 + 0.35 * sin(k * 0.9) + 0.2 * sin(k * 2.3))))
 	hills.append(Vector2(size.x, size.y))
 	hills.append(Vector2(0.0, size.y))
-	b.polygon(hills, Color("cfe2c0"))
-	for c in [Vector2(0.18, 0.23), Vector2(0.72, 0.16)]:
-		var at := Vector2(size.x * c.x, _scene.position.y + _scene.size.y * c.y)
-		for k in 3:
-			b.disc(at + Vector2((k - 1) * _u * 0.45, -_u * 0.1 * (1 - absi(k - 1))), _u * (0.35 + 0.12 * (1 - absi(k - 1))), Color(1, 1, 1, 0.85))
+	b.polygon(hills, Color("b9d7a4"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7 + int(lv.w) * 13 + int(dy) * 5
+	for k in 14:
+		var x := size.x * (k + rng.randf_range(0.1, 0.9)) / 14.0
+		var kk := x / size.x * 24.0
+		var ground := horizon - _u * (0.5 + 0.35 * sin(kk * 0.9) + 0.2 * sin(kk * 2.3)) + _u * 0.12
+		_tree(b, Vector2(x, ground), _u * rng.randf_range(0.26, 0.4), Color("8fb97a") if k % 3 else Color("a3c585"))
+	# the valley under the hills, darker as it falls to the river
+	_grad(b, Rect2(Vector2(0.0, horizon + _u * 0.2), Vector2(size.x, px(Vector2(0.0, Sim.WATER)).y - horizon)), Color("b9d7a4"), Color("93b88e"))
 	# the river: from the water line down, between the banks
 	var water := px(Vector2(0.0, Sim.WATER)).y
-	_grad(b, Rect2(Vector2(0.0, water), Vector2(size.x, size.y - water)), Color("7cc3e8"), Color("3f8fc4"))
-	for k in 6:
-		var y := water + _u * (0.3 + 0.35 * k)
-		var x0 := px(Vector2(0.4 + 0.7 * (k % 3), 0.0)).x
-		b.stroke(PackedVector2Array([Vector2(x0, y), Vector2(x0 + _u * 0.9, y)]), _u * 0.04, Color(1, 1, 1, 0.3))
+	_grad(b, Rect2(Vector2(0.0, water), Vector2(size.x, size.y - water)), Color("86cdef"), Color("3a86bd"))
+	# the far bank's reflection and the light on the water
+	b.fan(Face.Builder.round_rect(Vector2(0.0, water), Vector2(size.x, _u * 0.3), 0.0), Color("a9dcf2"))
+	for k in 7:
+		var y := water + _u * (0.45 + 0.38 * k)
+		var x0 := px(Vector2(0.3 + 0.8 * (k % 3) + 0.4 * (k % 2), 0.0)).x
+		b.stroke(PackedVector2Array([Vector2(x0, y), Vector2(x0 + _u * (0.6 + 0.3 * (k % 2)), y)]), _u * 0.045, Color(1, 1, 1, 0.26))
+	# pebbles on the bed, glimpsed deep down
+	for k in 9:
+		var at := Vector2(px(Vector2(rng.randf_range(0.2, w - 0.2), 0.0)).x, water + _u * rng.randf_range(0.6, 1.0))
+		b.ellipse(at, _u * rng.randf_range(0.1, 0.2), _u * 0.07, Color("4f93c0"))
 	# the banks: grass on top, rock faces down to the river bed
 	_bank(b, true, 0.0)
 	_bank(b, false, dy)
@@ -1220,22 +1494,109 @@ func _bank(b: Face.Builder, left: bool, top: float) -> void:
 		face.append(Vector2(lip.x - dir * _u * (0.08 + 0.1 * sin(k * 1.7 + (0.0 if left else 2.0))), y))
 	face.append(Vector2(edge, bed))
 	b.polygon(face, Color("b89a78"))
+	# strata: a paler band and a darker one across the face
+	for k in 3:
+		var y := lip.y + _u * (0.9 + 1.25 * k)
+		var band := PackedVector2Array()
+		for s in 9:
+			var x := lerpf(edge, lip.x - dir * _u * 0.12, s / 8.0)
+			band.append(Vector2(x, y + sin(s * 1.3 + k) * _u * 0.08))
+		b.stroke(band, _u * (0.28 if k % 2 == 0 else 0.16), Color("c7ab88") if k % 2 == 0 else Color("a88a68"), false, false)
 	for k in 5:
 		var y := lip.y + _u * (0.7 + 0.9 * k)
 		var x := lip.x - dir * _u * (0.5 + 0.4 * (k % 2))
 		b.stroke(PackedVector2Array([Vector2(x, y), Vector2(x - dir * _u * 0.6, y + _u * 0.1)]), _u * 0.04, Color("9c7f60"))
+	# stones set in the face
+	for k in 4:
+		var at := Vector2(lip.x - dir * _u * (0.9 + 0.55 * k), lip.y + _u * (1.4 + 0.95 * ((k * 3) % 4)))
+		b.ellipse(at + Vector2(0, _u * 0.04), _u * 0.2, _u * 0.13, Color("8d7358"))
+		b.ellipse(at, _u * 0.19, _u * 0.12, Color("cdb89a"))
+		b.ellipse(at + Vector2(-_u * 0.05, -_u * 0.04), _u * 0.07, _u * 0.035, Color(1, 1, 1, 0.35))
+	# reeds where the face meets the water
+	var water := px(Vector2(0.0, Sim.WATER)).y
+	for k in 5:
+		var x := lip.x - dir * _u * (0.05 + 0.13 * k)
+		var tall := _u * (0.35 + 0.18 * ((k * 2) % 3))
+		b.stroke(PackedVector2Array([Vector2(x, water + _u * 0.1), Vector2(x + dir * _u * 0.06, water - tall)]), _u * 0.035, Color("6f9440"))
+		if k % 2 == 0:
+			b.ellipse(Vector2(x + dir * _u * 0.05, water - tall + _u * 0.06), _u * 0.035, _u * 0.09, Color("8a5a3a"))
 	# grass and road on top
 	var grass := Rect2(Vector2(minf(edge, lip.x), lip.y - _u * 0.05), Vector2(absf(lip.x - edge), _u * 0.32))
 	b.fan(Face.Builder.round_rect(grass.position, grass.size, _u * 0.08), Color("8cb050"))
 	b.fan(Face.Builder.round_rect(grass.position + Vector2(0, _u * 0.18), Vector2(grass.size.x, _u * 0.14), _u * 0.04), Color("6f9440"))
 	var road := Rect2(Vector2(minf(edge, lip.x), lip.y - _u * 0.1), Vector2(absf(lip.x - edge), _u * 0.12))
 	b.fan(Face.Builder.round_rect(road.position, road.size, _u * 0.05), Color("d9c49a"))
+	# a bush and a tree back from the edge, and flowers in the grass
+	var reach := absf(lip.x - edge)
+	if reach > _u * 1.4:
+		var bush := Vector2(lip.x - dir * minf(reach - _u * 0.3, _u * 1.5), lip.y - _u * 0.12)
+		_tree(b, bush + Vector2(-dir * _u * 0.35, 0.0), _u * 0.5, Color("7fae62"))
+		for s in 3:
+			b.disc(bush + Vector2((s - 1) * _u * 0.2, -_u * (0.12 + 0.08 * (1 - absi(s - 1)))), _u * (0.2 + 0.05 * (1 - absi(s - 1))), Color("6f9f52"))
+		b.disc(bush + Vector2(-_u * 0.06, -_u * 0.26), _u * 0.1, Color("8fc070"))
+	for k in 6:
+		var x := lip.x - dir * _u * (0.35 + 0.42 * k)
+		if absf(x - edge) < _u * 0.2:
+			continue
+		var at := Vector2(x, lip.y + _u * 0.12)
+		var col: Color = PENNANTS[(k + (0 if left else 2)) % PENNANTS.size()]
+		for p in 4:
+			b.disc(at + Vector2.from_angle(TAU * p / 4.0) * _u * 0.035, _u * 0.03, Color(col.lightened(0.3), 0.9))
+		b.disc(at, _u * 0.022, Color("fff4c2"))
 	# tufts
 	for k in 4:
 		var x := lip.x - dir * _u * (0.6 + 0.6 * k)
 		var y := lip.y - _u * 0.1
 		for s in 3:
 			b.stroke(PackedVector2Array([Vector2(x + (s - 1) * _u * 0.05, y), Vector2(x + (s - 1) * _u * 0.09, y - _u * 0.14)]), _u * 0.03, Color("6f9440"))
+
+## A round tree standing on `foot`, its canopy `r` across.
+static func _tree(b: Face.Builder, foot: Vector2, r: float, col: Color) -> void:
+	b.stroke(PackedVector2Array([foot, foot + Vector2(0.0, -r * 1.3)]), r * 0.22, Color("8a6a4a"))
+	var c := foot + Vector2(0.0, -r * 1.55)
+	b.disc(c + Vector2(r * 0.05, r * 0.08), r * 0.95, col.darkened(0.15))
+	b.disc(c, r * 0.9, col)
+	b.disc(c + Vector2(-r * 0.3, -r * 0.3), r * 0.35, col.lightened(0.18))
+
+## Where the sun stands in the sky.
+func _sun_at() -> Vector2:
+	return Vector2(size.x * 0.84, _scene.position.y + _scene.size.y * 0.13)
+
+## The sky's three meshes: the sky itself with the far mountains, the sun
+## (built round its middle and turned by the transform), and one cloud
+## (drawn three times, drifting).
+func _build_sky() -> void:
+	var b := Face.Builder.new()
+	_grad(b, Rect2(Vector2.ZERO, size), Color("9fd4f0"), Color("f6ecd6"))
+	# a warm glow low in the sky
+	var horizon := px(Vector2(0.0, 0.8)).y
+	_grad(b, Rect2(Vector2(0.0, horizon - _u * 3.0), Vector2(size.x, _u * 3.0)), Color("f6ecd6", 0.0), Color("fbe3b8", 0.8))
+	# far blue mountains with snow on their heads
+	var peaks := [Vector2(0.1, 2.9), Vector2(0.33, 3.6), Vector2(0.55, 2.7), Vector2(0.78, 3.3), Vector2(1.0, 2.6)]
+	for p: Vector2 in peaks:
+		var top := Vector2(size.x * p.x, horizon - _u * p.y)
+		var half := _u * (2.2 + p.y * 0.5)
+		b.polygon(PackedVector2Array([top, top + Vector2(half, _u * p.y + _u * 0.2), top + Vector2(-half, _u * p.y + _u * 0.2)]), Color("b4cfe0"))
+		var cap := 0.26
+		b.polygon(PackedVector2Array([top, top + Vector2(half * cap, _u * p.y * cap), top + Vector2(half * cap * 0.4, _u * p.y * cap * 0.8),
+			top + Vector2(0.0, _u * p.y * cap * 1.1), top + Vector2(-half * cap * 0.5, _u * p.y * cap * 0.8), top + Vector2(-half * cap, _u * p.y * cap)]), Color("f4f8fb"))
+	_sky_mesh = b.mesh()
+	var s := Face.Builder.new()
+	var r := _u * 0.55
+	s.disc(Vector2.ZERO, r * 2.1, Color("fff4c2", 0.25))
+	Rewards.sunrays(s, Vector2.ZERO, r * 1.05, r * 1.75, 12, 0.0, Color("ffe39a", 0.75))
+	s.disc(Vector2.ZERO, r * 1.08, Color("f7c65a"))
+	s.disc(Vector2.ZERO, r, Color("ffd96e"))
+	s.disc(Vector2(-r * 0.3, -r * 0.3), r * 0.3, Color(1, 1, 1, 0.35))
+	_sun_mesh = s.mesh()
+	var c := Face.Builder.new()
+	var ch := _u
+	c.ellipse(Vector2(0.0, ch * 0.18), ch * 1.1, ch * 0.2, Color(0.55, 0.7, 0.85, 0.18))
+	for k in 4:
+		var at := Vector2((k - 1.5) * ch * 0.45, -ch * 0.12 * (1.0 - absf(k - 1.5) * 0.5))
+		c.disc(at, ch * (0.36 + 0.1 * (1.0 - absf(k - 1.5) * 0.6)), Color("fbfdff"))
+	c.fan(Face.Builder.round_rect(Vector2(-ch * 0.95, -ch * 0.05), Vector2(ch * 1.9, ch * 0.3), ch * 0.15), Color("fbfdff"))
+	_cloud_mesh = c.mesh()
 
 static func _grad(b: Face.Builder, r: Rect2, top: Color, bottom: Color) -> void:
 	var i0 := b.vertex(r.position, top)
@@ -1262,6 +1623,8 @@ func _build_frame() -> ArrayMesh:
 					continue
 				var p := px(sim.jp[sim.ma[k]])
 				var q := px(sim.jp[sim.mb[k]])
+				p += _wave_off(p, t)
+				q += _wave_off(q, t)
 				var tint := Parts.stress(sim.mratio[k]) if sim.mstub[k] == 0 else Color(Parts.BAD, 0.3)
 				Parts.member(b, p, q, pass_mat, _u, tint)
 				if sim.mstub[k] == 0:
@@ -1323,10 +1686,32 @@ func _draw_front() -> void:
 	var t := _now()
 	var shown: Array = []
 	var b := Face.Builder.new()
-	# the water's face, over anything that fell in
 	var water := px(Vector2(0.0, Sim.WATER)).y
 	var x0 := px(Vector2(0.0, 0.0)).x
 	var x1 := px(Vector2(float(state.level.w), 0.0)).x
+	var calm := not Motion.reduce
+	# members taken down, tumbling in and sinking under the water's face
+	for f: Dictionary in _falling:
+		var half := (f.half as Vector2).rotated(f.rot)
+		var fade := clampf(1.0 - ((f.mid as Vector2).y - water) / (_u * 2.5), 0.0, 1.0) if f.splashed else 1.0
+		Parts.member(b, f.mid - half, f.mid + half, int(f.mat), _u, Color(0, 0, 0, 0), fade)
+	# a fish leaps now and then while the river is quiet
+	if calm and not _testing:
+		var cycle := 6.3
+		var n := floori((t + 2.0) / cycle)
+		var k := (fmod(t + 2.0, cycle)) / 0.95
+		if k < 1.0:
+			var fx0 := lerpf(x0 + _u * 0.6, x1 - _u * 1.6, fposmod(float(n) * 0.618, 1.0))
+			var dirx := 1.0 if n % 2 == 0 else -1.0
+			var at := Vector2(fx0 + dirx * k * _u * 1.2, water - sin(k * PI) * _u * 1.1)
+			var ang := atan2(-cos(k * PI) * PI * 1.1, dirx * 1.2)
+			_fish(b, at, _u * 0.24, ang, dirx)
+			for e in [0.0, 1.0]:
+				var since := absf(k - e)
+				if since < 0.35:
+					var rr := _u * (0.15 + since * 1.4)
+					b.stroke(Face.Builder.ring(Vector2(fx0 + dirx * e * _u * 1.2, water), rr, rr * 0.3), _u * 0.03, Color(1, 1, 1, 0.7 * (1.0 - since / 0.35)), true)
+	# the water's face, over anything that fell in
 	var wave := PackedVector2Array()
 	for k in 17:
 		var x := lerpf(x0 - _u * 0.2, x1 + _u * 0.2, k / 16.0)
@@ -1334,6 +1719,37 @@ func _draw_front() -> void:
 	wave.append(Vector2(x1 + _u * 0.2, size.y))
 	wave.append(Vector2(x0 - _u * 0.2, size.y))
 	b.polygon(wave, Color(0.35, 0.62, 0.82, 0.55))
+	# glints on the water, winking in and out
+	for k in 9:
+		var ph := sin(t * (1.3 + 0.17 * k) + k * 2.1) if calm else 0.6
+		if ph <= 0.2:
+			continue
+		var gx := lerpf(x0, x1, fposmod(k * 0.377 + 0.05, 1.0))
+		var gy := water + _u * (0.12 + 0.13 * (k % 4))
+		var gl := _u * (0.12 + 0.1 * (k % 3)) * ph
+		b.stroke(PackedVector2Array([Vector2(gx - gl, gy), Vector2(gx + gl, gy)]), _u * 0.035, Color(1, 1, 1, 0.55 * ph))
+	# birds gliding over, now and then
+	if calm:
+		var fly := fmod(t + 5.0, 13.0)
+		if fly < 7.0:
+			for i in 2:
+				var bx := lerpf(-_u, size.x + _u, fly / 7.0) - i * _u * 0.7
+				var by := _scene.position.y + _scene.size.y * 0.2 + i * _u * 0.35 + sin(fly * 1.5 + i) * _u * 0.12
+				var flap := sin(t * 9.0 + i * 1.3) * _u * 0.12
+				b.stroke(PackedVector2Array([Vector2(bx - _u * 0.22, by - flap), Vector2(bx, by + _u * 0.04), Vector2(bx + _u * 0.22, by - flap)]),
+					_u * 0.045, Color("5a6070", 0.8))
+	# bunting over the solved deck, dropped in along the wave
+	if _crossed_at >= 0.0 and not _testing:
+		_bunting(b, t)
+	# the bolts a member was just laid to pop
+	for j in _pops:
+		var k := (t - float(_pops[j])) / 0.3
+		if k < 0.0 or k > 1.0:
+			continue
+		var s := 1.0 + 0.7 * sin(k * PI) if calm else 1.0
+		b.disc(px(Vector2(j)), _u * 0.1 * s, Color(1, 0.95, 0.75, 0.5 * (1.0 - k)))
+		Parts.joint(b, px(Vector2(j)), _u * s)
+	_draw_medal(b, t)
 	# building: where the finger reaches, the ghost member, the chosen joint
 	if not _testing and (not is_done() or _free):
 		var from := _from if _dragging and _from != NONE else _sel
@@ -1355,18 +1771,26 @@ func _draw_front() -> void:
 		b.fan(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), Color(Pal.SURFACE, 0.92))
 		b.stroke(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), 3.0, tag.col, true)
 	_front_mesh = b.mesh()
-	_front.draw_mesh(_front_mesh, null)
+	_front.draw_mesh(_front_mesh, null, Transform2D(0.0, _shake_off()))
 	shown.append(_front_mesh)
+	_draw_floats()
 	var tag_font: Font = CozyTheme.body(700)
 	for tag in tags:
 		_front.draw_string(tag_font, tag.rect.position + Vector2(10.0, tag.rect.size.y * 0.5 + tag_font.get_ascent(22) * 0.36), tag.text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.TEXT)
+	if t - _chip_at < 0.4:
+		# a chip just picked is bouncing
+		_strip_mesh = null
 	var strip_key := "%d|%d|%d|%s|%s|%s|%s|%s|%d" % [state.cost(), _mat, state.budget, size, _free, is_done(), _testing, _crowd_state, _pills().size()]
 	if _strip_mesh == null or _strip_for != strip_key:
 		_strip_mesh = _build_strip()
 		_strip_for = strip_key
 	_front.draw_mesh(_strip_mesh, null)
 	shown.append(_strip_mesh)
+	if not is_done() and not _free:
+		_bar_mesh = _build_bar(t)
+		_front.draw_mesh(_bar_mesh, null)
+		shown.append(_bar_mesh)
 	_draw_words()
 	_draw_toast(t, shown)
 	_front_shown = shown
@@ -1421,7 +1845,7 @@ func _build_strip() -> ArrayMesh:
 		var r := _chip_rect(i)
 		var on := i == _mat
 		var there := state.mats.has(i)
-		var lift := 4.0 if on else 0.0
+		var lift := _chip_lift(i)
 		b.fan(Face.Builder.round_rect(r.position + Vector2(0, 5), r.size, CHIP_R), Color(Pal.TEXT, 0.14 if there else 0.05))
 		b.fan(Face.Builder.round_rect(r.position - Vector2(0, lift), r.size, CHIP_R), Pal.SUN_TILE if on else Pal.SURFACE_HI)
 		if on:
@@ -1432,16 +1856,37 @@ func _build_strip() -> ArrayMesh:
 		return b.mesh()
 	# the budget bar
 	var bar := _budget_rect()
-	var spent := clampf(float(state.cost()) / maxf(1.0, float(state.budget)), 0.0, 1.0)
-	var left_col := Pal.GOOD if spent < 0.8 else (Parts.WARN if spent < 0.95 else Parts.BAD)
+	b.fan(Face.Builder.round_rect(bar.position + Vector2(0, 2), bar.size, bar.size.y * 0.5), Color(Pal.TEXT, 0.12))
 	b.fan(Face.Builder.round_rect(bar.position, bar.size, bar.size.y * 0.5), Pal.SURFACE_HI)
-	if spent > 0.0:
-		b.fan(Face.Builder.round_rect(bar.position, Vector2(maxf(bar.size.y, bar.size.x * spent), bar.size.y), bar.size.y * 0.5), left_col)
+	return b.mesh()
+
+## The budget bar's fill, eased to the cost, flashing as it moves, and the
+## proof's star, which shines while the bridge is as cheap as the proof.
+## Built every frame over the strip.
+func _build_bar(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var bar := _budget_rect()
+	var spent := clampf(_bar_shown, 0.0, 1.0)
+	var col := Pal.GOOD if spent < 0.8 else (Parts.WARN if spent < 0.95 else Parts.BAD)
+	if spent > 0.005:
+		var fill := Vector2(maxf(bar.size.y, bar.size.x * spent), bar.size.y)
+		b.fan(Face.Builder.round_rect(bar.position, fill, bar.size.y * 0.5), col)
+		b.fan(Face.Builder.round_rect(bar.position + Vector2(6.0, 3.0), Vector2(maxf(0.0, fill.x - 12.0), bar.size.y * 0.3), bar.size.y * 0.15), Color(1, 1, 1, 0.35))
+		var hit := t - _bar_hit
+		if hit < 0.4 and not Motion.reduce:
+			# the leading edge flashes as the bar moves
+			var edge := Vector2(bar.position.x + fill.x - bar.size.y * 0.5, bar.get_center().y)
+			b.disc(edge, bar.size.y * (0.6 + 0.8 * hit), Color(1, 1, 1, 0.6 * (1.0 - hit / 0.4)))
 	var proof := float(state.level.get("proof_cost", 0))
 	if proof > 0.0:
-		var px_x := bar.position.x + bar.size.x * clampf(proof / float(state.budget), 0.0, 1.0)
-		Rewards.star(b, Vector2(px_x, bar.position.y + bar.size.y * 0.5), 15.0, Pal.PLAQUE_DEEP)
-		Rewards.star(b, Vector2(px_x, bar.position.y + bar.size.y * 0.5), 12.0, Pal.SUN)
+		var at := Vector2(bar.position.x + bar.size.x * clampf(proof / float(state.budget), 0.0, 1.0), bar.get_center().y)
+		var cheap := state.cost() > 0 and state.cost() <= int(proof)
+		var turn := sin(t * 2.0) * 0.15 if cheap and not Motion.reduce else 0.0
+		var r := 12.0 + (2.0 + 1.5 * sin(t * 5.0) if cheap and not Motion.reduce else 0.0)
+		if cheap:
+			b.disc(at, r * 1.7, Color(Pal.SUN, 0.3))
+		Rewards.star(b, at, r + 3.0, Pal.PLAQUE_DEEP, turn)
+		Rewards.star(b, at, r, Pal.SUN, turn)
 	return b.mesh()
 
 func _draw_words() -> void:
@@ -1482,7 +1927,7 @@ func _draw_words() -> void:
 	for i in 3:
 		var r := _chip_rect(i)
 		var there := state.mats.has(i)
-		var lift := 4.0 if i == _mat else 0.0
+		var lift := _chip_lift(i)
 		var name := tr(["TR_MAT_ROAD", "TR_MAT_WOOD", "TR_MAT_ROPE"][i])
 		var fs := 24
 		var sz := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
@@ -1493,9 +1938,110 @@ func _draw_words() -> void:
 	var money := "%s / %s" % [Locale.number(state.cost()), Locale.number(state.budget)]
 	var mfs := 34
 	var msz := font.get_string_size(money, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs)
-	_front.draw_string(font, Vector2(bar.end.x - msz.x, bar.position.y - 18.0), money, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs, Pal.TEXT)
+	# the figure kicks when the cost moves and shakes red when it is out
+	var now := _now()
+	var shake := now - _money_shake
+	var kick := now - _bar_hit
+	var mcol := Pal.TEXT
+	var moff := Vector2.ZERO
+	if shake < 0.5:
+		mcol = Parts.BAD
+		if not Motion.reduce:
+			moff.x = sin(shake * 60.0) * 8.0 * (1.0 - shake / 0.5)
+	elif kick < 0.25 and not Motion.reduce:
+		moff.y = -sin(kick / 0.25 * PI) * 7.0
+	_front.draw_string(font, Vector2(bar.end.x - msz.x, bar.position.y - 18.0) + moff, money, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs, mcol)
 	var lbl := tr("TR_BUDGET")
 	_front.draw_string(CozyTheme.body(600), Vector2(bar.position.x, bar.position.y - 18.0), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Pal.TEXT_DIM)
+
+## How high chip `i` stands: the chosen one lifted, bouncing when just picked.
+func _chip_lift(i: int) -> float:
+	if i != _mat:
+		return 0.0
+	var k := (_now() - _chip_at) / 0.35
+	if Motion.reduce or k >= 1.0 or k < 0.0:
+		return 4.0
+	return 4.0 + sin(k * PI) * 12.0 * (1.0 - k * 0.5)
+
+## The cost figures rising off the scene and fading.
+func _draw_floats() -> void:
+	if _floats.is_empty():
+		return
+	var font: Font = CozyTheme.display(700)
+	for f: Dictionary in _floats:
+		var k := float(f.t) / 1.1
+		var a := clampf((1.0 - k) / 0.4, 0.0, 1.0)
+		var pop := Motion.back_out(clampf(k / 0.25, 0.0, 1.0)) if not Motion.reduce else 1.0
+		var fs := int(40 * maxf(0.3, pop))
+		var text: String = f.text
+		var sz := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		var at: Vector2 = (f.at as Vector2) + Vector2(-sz.x * 0.5, -_u * 0.9 * k + fs * 0.35)
+		_front.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color(Color("fffaf0"), a))
+		_front.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(f.col, a))
+
+## A leaping fish, facing `dirx`, turned by `ang`.
+static func _fish(b: Face.Builder, at: Vector2, r: float, ang: float, dirx: float) -> void:
+	# facing left the turn is near a half, so y is flipped back: belly down
+	var t := Transform2D(ang, Vector2(1.0, signf(dirx)), 0.0, at)
+	var body := PackedVector2Array()
+	for i in 14:
+		var a := TAU * i / 14.0
+		body.append(t * Vector2(cos(a) * r, sin(a) * r * 0.48))
+	var back := -1.0
+	b.polygon(PackedVector2Array([t * Vector2(back * r * 0.8, 0.0), t * Vector2(back * r * 1.45, -r * 0.45), t * Vector2(back * r * 1.3, 0.0), t * Vector2(back * r * 1.45, r * 0.45)]), Color("e0764f"))
+	b.polygon(body, Color("f2995f"))
+	b.ellipse(t * Vector2(-r * 0.1, r * 0.18), r * 0.55, r * 0.16, Color("fbd6a8"))
+	b.disc(t * Vector2(r * 0.52, -r * 0.1), r * 0.13, Color("3a2a22"))
+	b.disc(t * Vector2(r * 0.49, -r * 0.14), r * 0.05, Color.WHITE)
+
+## Bunting strung along the solved deck: a pole at every road joint, a
+## sagging cord between them and pennants waving on it, dropped in along the
+## win's wave.
+func _bunting(b: Face.Builder, t: float) -> void:
+	var calm := not Motion.reduce
+	var since := t - _solved_at if _solved_at >= 0.0 else 100.0
+	var x0 := px(Vector2.ZERO).x
+	var span := maxf(1.0, px(Vector2(float(state.level.w), 0.0)).x - x0)
+	# the deck where it stands: the sim's, bent under its weight, when it ran
+	var decks: Array = []
+	if sim.ma.size() > 0:
+		for k in sim.ma.size():
+			if sim.mmat[k] == Sim.ROAD and sim.malive[k] == 1 and sim.mstub[k] == 0:
+				decks.append([px(sim.jp[sim.ma[k]]), px(sim.jp[sim.mb[k]])])
+	else:
+		for d in state.design:
+			if int(d.m) == Sim.ROAD:
+				decks.append([px(Vector2(d.a)), px(Vector2(d.b))])
+	var n := 0
+	for pq in decks:
+		var p: Vector2 = pq[0]
+		var q: Vector2 = pq[1]
+		p += _wave_off(p, t)
+		q += _wave_off(q, t)
+		if p.x > q.x:
+			var s := p
+			p = q
+			q = s
+		var drop := clampf((since - 0.2 - clampf((p.x - x0) / span, 0.0, 1.0) * 0.8) / 0.35, 0.0, 1.0) if calm else 1.0
+		if drop <= 0.0:
+			continue
+		var h := _u * 0.62 * Motion.back_out(drop)
+		var up := Vector2(0.0, -h)
+		for e in [p, q]:
+			b.stroke(PackedVector2Array([e, e + up]), _u * 0.035, Color("8a6a4a"))
+		var sag := _u * 0.16
+		var cord := PackedVector2Array()
+		for k in 7:
+			var f := k / 6.0
+			cord.append(p.lerp(q, f) + up + Vector2(0.0, sin(f * PI) * sag))
+		b.stroke(cord, _u * 0.018, Color("7a6048"), false, false)
+		for k in 3:
+			var f := (k + 0.5) / 3.0
+			var top := p.lerp(q, f) + up + Vector2(0.0, sin(f * PI) * sag)
+			var sway := sin(t * 3.5 + n * 0.9 + k * 1.3) * _u * 0.05 if calm else 0.0
+			var col: Color = PENNANTS[(n * 3 + k) % PENNANTS.size()]
+			b.polygon(PackedVector2Array([top + Vector2(-_u * 0.1, 0.0), top + Vector2(_u * 0.1, 0.0), top + Vector2(sway, _u * 0.24 * drop)]), col)
+		n += 1
 
 func _budget_rect() -> Rect2:
 	var x := PAD + 3.0 * (CHIP.x + CHIP_GAP) + 16.0

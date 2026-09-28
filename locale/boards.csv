@@ -814,6 +814,10 @@ TR_W_MASTER,Master builder!,Mestre de obras!,¡Maestro de obras!
 TR_W_NICE,Nice!,Boa!,¡Bien!
 TR_W_GREAT,Great!,Ótimo!,¡Genial!
 TR_W_SUPERB,Superb!,Incrível!,¡Increíble!
+TR_W_GO,Go!,Vai!,¡Vamos!
+TR_W_CRACK,Crack!,Crac!,¡Crac!
+TR_W_SPLASH,Splash!,Tchibum!,¡Chof!
+TR_W_ALMOST,So close!,Quase!,¡Casi!
 TR_WIN,Built for %s of %s  %s,Construída por %s de %s  %s,Construido por %s de %s  %s
 TR_SHARE,Trestle: crossed for %s of %s in %d tries,Trestle: atravessou por %s de %s em %d tentativas,Trestle: cruzó por %s de %s en %d intentos
 TR_LOADS,Each member shows the most load it took in that test,Cada peça mostra a maior carga que aguentou nesse teste,Cada pieza muestra la mayor carga que soportó en esa prueba

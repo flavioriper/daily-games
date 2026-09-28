@@ -208,3 +208,43 @@ touch (and, with `crowd` and the emulator suite, the crowd);
 `tests/_probe_trestle_crowd.gd` submits to the emulator and reads a tally.
 Both touch `user://player.cfg` only under `FIREBASE_EMULATOR`, and it must be
 backed up and put back around them.
+
+## 10. Polish and loud rewards (2026-09-28)
+
+At the user's word ("polish and improve design and animation of trestle. The
+rewards even if silly should be way more visual"). Screen and art only; the
+sim, the state and the bank are untouched.
+
+- **The scene**: the sky is its own mesh with far snow-capped mountains and a
+  warm band at the horizon; a sun (turned by the transform) and one cloud
+  drawn three times, drifting; two hill bands with a row of trees; a green
+  valley falling to the river; the river lighter at its face, with glints
+  that wink and pebbles on its bed; the bank faces banded with strata and
+  set with stones, reeds and cattails at the water, a tree, a bush and
+  flowers on top. A fish leaps now and then while building, and two birds
+  glide over.
+- **Building**: a member's bolts pop as it lands, its end throws chips of
+  its own material, and its price floats up off it ("-150"; "+150" when one
+  comes down). The budget bar eases to the cost with a flash at its edge,
+  the figure kicks, and a refusal for money shakes it red. The proof's star
+  on the bar glows and sways while the bridge is as cheap as the proof. A
+  picked chip bounces. A member taken down (a tap, a Reset, a hint paying
+  for itself) tumbles into the river and splashes.
+- **The test**: "Go!" as it starts, dust off the back wheel, "Crack!" over
+  the first member to snap, a shake on every snap and a bigger one on the
+  splash, a crown of droplets, "Splash!" (or "So close!" past 60% of the
+  gap), and the riders bob up where the cart went in and float until the
+  board comes back. A crossing throws hearts and notes off the cart.
+- **The win**: a wave runs along the bridge from the near bank (the frame
+  rebuilt for its 1.6 s) with each member's twinkle on it; bunting drops in
+  along the wave and stays on the solved deck; three medal stars stamp in on
+  their own beats, gold for each earned and paper for the rest; six
+  fireworks over the sky; what was left of the budget flies to the tally as
+  coins. The words sit under the medal and do not overlap.
+- New keys `TR_W_GO`, `TR_W_CRACK`, `TR_W_SPLASH`, `TR_W_ALMOST`.
+
+Measured at 810x1440 (`tests/_shot_trestle.gd`): 87 building, 88 testing,
+151 at the win's shot (80 / 81 / 147 before), ANGLE agreeing on every count;
+idle at the vsync ceiling while building, ~11 ms mean over the win's first
+second on this Mac (fireworks, rain and the wave at once), and ~278 draw
+calls at the win's busiest frame.
