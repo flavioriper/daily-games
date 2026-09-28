@@ -345,6 +345,13 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   pictures are crops of existing vistas with the mock's props drawn over
   them in code (a heart signpost on a rock, the sprout on a rock): the
   vistas are the user's paintings, and nothing new is painted into them.
+  **Stats' boards are paged since 2026-09-28**: four across stopped fitting
+  at twenty-nine boards (a cell's lines spilled into the row under it), so
+  it is two across and four down, eight a page, with the home grid's pager
+  pill, a swipe and the page slide (`ui/menu/stats_tab.gd`'s `turn`). A
+  cell is its banner, the title, and Solved / Best / Average as a dim label
+  over a bold value, or "Not solved yet". Only the page's banners are shown:
+  **347** draw calls on Stats (619 with all twenty-nine standing).
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry
