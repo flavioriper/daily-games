@@ -2128,6 +2128,12 @@ buttons pack two to a row (`_pack_buttons`, re-run when Privacy's
 visibility changes). A switch row keeps its face while on: a CheckButton's
 "pressed" is its state, not a finger. Settings alone reads 371 draw calls
 over the menu at 810x1440.
+**A centred dialog is dressed like a sheet** (`ui/hud/dialog.gd`): the
+sheets' warm scrim, paper and sprigs (`Dialog.card`, or `dress()` on a panel
+of your own), the badge head, white tiles, and the sun button with a white
+pill under it at one width after the sprout divider (`Dialog.buttons`). The
+boost card, Second chance, Posy's offer, Lucky Thirteen's stuck card and
+every Arcade and Versus end card go through it.
 
 ## Playing on an Android phone
 

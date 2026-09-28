@@ -23,6 +23,7 @@ const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
@@ -1715,17 +1716,12 @@ func _show_end(better: bool) -> void:
 	_celebrate(better)
 
 func _build_end(better: bool) -> Control:
-	var scrim := ColorRect.new()
-	scrim.color = Color(Pal.OUTLINE, 0.35)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var scrim := Dialog.scrim()
 	var center := CenterContainer.new()
 	center.name = "Center"
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scrim.add_child(center)
-	var card := PanelContainer.new()
-	card.name = "Card"
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 40))
-	card.custom_minimum_size.x = 820
+	var card := Dialog.card(820)
 	center.add_child(card)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
@@ -1792,7 +1788,7 @@ func _build_end(better: bool) -> Control:
 	for pair in [[Record.grouped(sim.max_v), "SW_STAT_BLOCK"], [str(sim.merges), "SW_STAT_MERGES"], [str(sim.best_chain), "SW_STAT_CHAIN"]]:
 		var plate := PanelContainer.new()
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 26, 12))
+		plate.add_theme_stylebox_override("panel", Dialog.tile())
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.add_theme_constant_override("separation", -4)
@@ -1822,17 +1818,12 @@ func _build_end(better: bool) -> Control:
 	best_line.theme_type_variation = "SheetBodyDim"
 	best_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(best_line)
-	var again := IconButton.new("reset", tr("FF_AGAIN"), "SunButton")
+	var again := Dialog.primary("reset", tr("FF_AGAIN"))
 	again.name = "Again"
-	again.custom_minimum_size.y = 120
 	again.pressed.connect(_ask)
-	if _run_gold > 0:
-		col.add_child(BoosterIcon.gold_line(_run_gold))
-	col.add_child(again)
-	var back := IconButton.new("chevron_left", tr("FF_BACK"))
-	back.custom_minimum_size.y = 110
+	var back := Dialog.secondary("chevron_left", tr("FF_BACK"))
 	back.pressed.connect(_on_back)
-	col.add_child(back)
+	Dialog.buttons(col, again, back, BoosterIcon.gold_line(_run_gold) if _run_gold > 0 else null)
 	return scrim
 
 ## The end card's score runs up from nothing to what the game made, with

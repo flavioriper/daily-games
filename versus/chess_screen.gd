@@ -23,6 +23,7 @@ const Record = preload("res://versus/versus_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
@@ -603,17 +604,12 @@ func _finish(status: int) -> void:
 		_celebrate(outcome == "won"))
 
 func _build_end(outcome: String, reason: String) -> Control:
-	var scrim := ColorRect.new()
-	scrim.color = Color(Pal.OUTLINE, 0.35)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var scrim := Dialog.scrim()
 	var center := CenterContainer.new()
 	center.name = "Center"
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scrim.add_child(center)
-	var card := PanelContainer.new()
-	card.name = "Card"
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 40))
-	card.custom_minimum_size.x = 820
+	var card := Dialog.card(820)
 	center.add_child(card)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
@@ -643,17 +639,14 @@ func _build_end(outcome: String, reason: String) -> Control:
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(line)
-	var again := IconButton.new("reset", tr("SNK_AGAIN"), "SunButton")
-	again.custom_minimum_size.y = 120
+	var again := Dialog.primary("reset", tr("SNK_AGAIN"))
 	again.pressed.connect(func() -> void:
 		player = 1 - player
 		Record.set_last_colour(GAME, player)
 		_new_game())
-	col.add_child(again)
-	var back := IconButton.new("chevron_left", tr("SNK_BACK"))
-	back.custom_minimum_size.y = 110
+	var back := Dialog.secondary("chevron_left", tr("SNK_BACK"))
 	back.pressed.connect(_on_back)
-	col.add_child(back)
+	Dialog.buttons(col, again, back)
 	return scrim
 
 func _celebrate(won: bool) -> void:

@@ -13,6 +13,7 @@ const Boosters = preload("res://arcade/boosters.gd")
 const BoosterIcon = preload("res://arcade/booster_icon.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const Pal = preload("res://core/palette.gd")
@@ -38,32 +39,18 @@ func _init(g: String) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	z_index = 8
-	var scrim := ColorRect.new()
-	scrim.color = Color(Pal.OUTLINE, 0.4)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(scrim)
+	add_child(Dialog.scrim())
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var card := PanelContainer.new()
-	card.name = "Card"
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 36))
-	card.custom_minimum_size.x = 860
+	var card := Dialog.card(860)
 	center.add_child(card)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 22)
 	card.add_child(col)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
-	col.add_child(head)
-	var title := Label.new()
-	title.theme_type_variation = "SheetTitle"
-	title.text = "BOOST_TITLE"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
 	_pill = GoldPill.new()
 	_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	head.add_child(_pill)
+	col.add_child(Dialog.head("BOOST_TITLE", "sparkle", _pill))
 	var line := Label.new()
 	line.theme_type_variation = "SheetBodyDim"
 	line.text = "BOOST_LINE"
@@ -74,11 +61,10 @@ func _ready() -> void:
 		var t := _toggle(id)
 		col.add_child(t)
 		_toggles[id] = t
-	_go = IconButton.new("play", tr("VS_PLAY"), "SunButton")
+	_go = Dialog.primary("play", tr("VS_PLAY"))
 	_go.name = "Play"
-	_go.custom_minimum_size.y = 120
 	_go.pressed.connect(_on_play)
-	col.add_child(_go)
+	Dialog.buttons(col, _go)
 	_refresh()
 	if not Motion.reduce:
 		card.pivot_offset = Vector2(430, 300)
@@ -157,8 +143,11 @@ func _refresh() -> void:
 		# covers it on top of what is already owed
 		var afford := n > 0 or on or Wallet.gold() >= owed + Boosters.price(id)
 		b.disabled = not afford
-		var fill := Pal.SUN_TILE if on else Pal.SURFACE
-		var sb := CozyTheme.chip(fill, 30, Pal.SUN if on else Color(Pal.LINE, 0.6), 5 if on else 3)
+		# the gifts' tiles: white paper, and a picked one lit in the sun's colour
+		var sb := Dialog.tile(Pal.SUN_TILE if on else Pal.SURFACE, 0)
+		if on:
+			sb.set_border_width_all(4)
+			sb.border_color = Pal.SUN
 		for s in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 			b.add_theme_stylebox_override(s, sb)
 		b.modulate.a = 1.0 if afford else 0.5

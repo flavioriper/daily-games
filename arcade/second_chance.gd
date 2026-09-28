@@ -12,8 +12,7 @@ signal declined
 const Boosters = preload("res://arcade/boosters.gd")
 const BoosterIcon = preload("res://arcade/booster_icon.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
-const CozyTheme = preload("res://ui/theme.gd")
-const IconButton = preload("res://ui/hud/icon_button.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 
@@ -30,17 +29,11 @@ func _init(g: String) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	z_index = 8
-	var scrim := ColorRect.new()
-	scrim.color = Color(Pal.OUTLINE, 0.45)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(scrim)
+	add_child(Dialog.scrim())
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var card := PanelContainer.new()
-	card.name = "Card"
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 40))
-	card.custom_minimum_size.x = 800
+	var card := Dialog.card(800)
 	center.add_child(card)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 22)
@@ -63,23 +56,20 @@ func _ready() -> void:
 	col.add_child(line)
 	var held := Wallet.count(Boosters.CHANCE)
 	var use: Button
+	var pill: Control = null
 	if held > 0:
-		use = IconButton.new("reset", tr("CHANCE_USE") % held, "SunButton")
+		use = Dialog.primary("reset", tr("CHANCE_USE") % held)
 	else:
-		use = IconButton.new("coin", tr("CHANCE_BUY") % Locale.number(Boosters.price(Boosters.CHANCE)), "SunButton")
-		var pill := GoldPill.new()
+		use = Dialog.primary("coin", tr("CHANCE_BUY") % Locale.number(Boosters.price(Boosters.CHANCE)))
+		pill = GoldPill.new()
 		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		col.add_child(pill)
 	use.name = "Use"
-	use.custom_minimum_size.y = 120
 	use.pressed.connect(_on_use)
-	col.add_child(use)
-	var no := IconButton.new("chevron_right", tr("CHANCE_NO"))
+	var no := Dialog.secondary("chevron_right", tr("CHANCE_NO"))
 	no.name = "No"
-	no.custom_minimum_size.y = 110
 	no.pressed.connect(_on_no)
-	col.add_child(no)
+	Dialog.buttons(col, use, no, pill)
 	if not Motion.reduce:
 		card.pivot_offset = Vector2(400, 300)
 		card.scale = Vector2.ONE * 0.86
