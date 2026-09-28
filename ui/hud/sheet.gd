@@ -22,7 +22,12 @@ const SheetParts = preload("res://ui/hud/sheet_parts.gd")
 
 const SLIDE := 0.3
 const FADE := 0.2
+## The least a sheet slides; a card travels its own height past the screen's
+## bottom (_travel), because a fixed 300 left a tall card two thirds on the
+## screen when close() hid it -- it stopped mid-slide and blinked out.
 const OFFSET := 300.0
+## Past the card's foot, so its soft shadow leaves the screen too.
+const SHADOW_ROOM := 48.0
 const MARGIN := 40.0
 const ROW := 128.0
 ## Above anything a board lifts with z_index (its signs and Fx, at 1 and 2):
@@ -167,8 +172,23 @@ func open() -> void:
 	_fit_bottom()
 	_on_open()
 	Motion.stop(_tw)
-	_tw = Motion.slide(_slot, "position:y", OFFSET, 0.0, SLIDE)
+	# Eased out, not Motion.slide's overshoot: TRANS_BACK's bounce is a share
+	# of the travel, and over a whole card's height it threw the sheet 100
+	# px past its seat.
+	_slot.position.y = 0.0 if Motion.reduce else _travel()
+	if not Motion.reduce:
+		_tw = create_tween()
+		_tw.tween_property(_slot, "position:y", 0.0, SLIDE + 0.05).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 	Motion.appear(_scrim, 0.0, 1.0, FADE)
+
+## How far the slot has to move for the card to be wholly off the bottom of
+## the screen. At open() the rows a sheet has just rebuilt are not laid out
+## yet, so the card's minimum size stands in for its size; a wrapped label
+## can overstate that before its first layout, so it is capped at the screen.
+func _travel() -> float:
+	var h := maxf(_card.size.y, _card.get_combined_minimum_size().y)
+	var d := h - _card.offset_bottom + SHADOW_ROOM
+	return clampf(d, OFFSET, maxf(size.y, OFFSET))
 
 ## Stand clear of the bottom inset -- the banner and its tab included. A real
 ## banner is a native view over the whole app, so a card under it would have
@@ -189,8 +209,8 @@ func close() -> void:
 		return
 	_closing = true
 	Motion.stop(_tw)
-	var slide: Tween = Motion.slide(_slot, "position:y", 0.0, OFFSET, SLIDE, 0.0, false)
-	Motion.appear(_scrim, 1.0, 0.0, FADE)
+	var slide: Tween = Motion.slide(_slot, "position:y", _slot.position.y, _travel(), SLIDE, 0.0, false)
+	Motion.appear(_scrim, 1.0, 0.0, SLIDE)
 	if slide == null:
 		visible = false
 		closed.emit()
