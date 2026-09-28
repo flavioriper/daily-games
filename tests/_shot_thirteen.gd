@@ -33,6 +33,12 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_out = args[0]
+	# A throwaway wallet, so a run never spends or earns this Mac's gold.
+	var wallet: Node = root.get_node("Wallet")
+	var wallet_tmp := OS.get_user_data_dir() + "/_shot_wallet.cfg"
+	DirAccess.remove_absolute(wallet_tmp)
+	wallet.path = wallet_tmp
+	wallet.reload()
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -87,8 +93,21 @@ func _bot_move() -> void:
 	sim.commit()
 	_s._play_events()
 
+## A fresh wallet holds boosters, so the boost card stands before every run
+## and Second chance before every end card: play with none, and decline.
+func _skip_gold() -> void:
+	if _s == null:
+		return
+	var boost: Node = _s.get_node_or_null("BoostCard")
+	if boost != null and not boost.is_queued_for_deletion():
+		boost._on_play()
+	var chance: Node = _s.get_node_or_null("SecondChance")
+	if chance != null and not chance.is_queued_for_deletion():
+		chance._on_no()
+
 func _process(delta: float) -> bool:
 	_t += delta
+	_skip_gold()
 	match _step:
 		0:
 			if _t > 0.8:
