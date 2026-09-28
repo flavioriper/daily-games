@@ -15,7 +15,7 @@ const ITEMS := {
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
 	"mh_time": {"game": "molehill", "icon": "clock", "price": 120},
 	"mh_steady": {"game": "molehill", "icon": "shield", "price": 120},
-	"sw_acorns": {"game": "stackwood", "icon": "coin", "price": 120},
+	"sw_acorns": {"game": "stackwood", "icon": "acorn", "price": 120},
 	"sw_low": {"game": "stackwood", "icon": "minus", "price": 120},
 	"lt_clovers": {"game": "thirteen", "icon": "leaf", "price": 120},
 	"lt_head": {"game": "thirteen", "icon": "trend", "price": 120},

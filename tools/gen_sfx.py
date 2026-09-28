@@ -670,6 +670,14 @@ SETS = {
         "cross":      ("a small cart reaching the other side, two cheerful toy horn honks, short", 0.8, -6, CARTOON),
         "solved":     ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
     },
+    # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
+    # by the sheets' own puzzle_id "wallet"
+    "wallet": {
+        "claim":    ("a small gift box opening with a soft paper rustle then a bright shower of little gold coins jingling, cheerful, short", 1.2, -5),
+        "buy":      ("a few small gold coins dropped onto a wooden counter with a soft happy chime, short", 0.7, -7),
+        "coin":     ("a single tiny soft gold coin clink, very short", 0.5, -14),
+        "refused":  ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -10),
+    },
 }
 
 

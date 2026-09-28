@@ -91,7 +91,7 @@ func _toggle(id: String) -> Button:
 	b.name = id
 	b.focus_mode = Control.FOCUS_NONE
 	b.toggle_mode = true
-	b.custom_minimum_size.y = 150
+	b.custom_minimum_size.y = 190
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -115,12 +115,13 @@ func _toggle(id: String) -> Button:
 	var what := Label.new()
 	what.theme_type_variation = "CardBlurb"
 	what.text = Boosters.line_key(id)
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.custom_minimum_size.x = 480
 	words.add_child(what)
 	var status := Label.new()
 	status.name = "Status"
-	status.theme_type_variation = "CardBlurb"
-	status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(status)
+	status.theme_type_variation = "MenuKicker"
+	words.add_child(status)
 	# the tick on a picked one
 	var tick := Control.new()
 	tick.name = "Tick"

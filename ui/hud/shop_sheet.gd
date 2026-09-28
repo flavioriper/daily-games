@@ -56,7 +56,9 @@ func _build_sheet(col: VBoxContainer) -> void:
 		var chip := Button.new()
 		chip.text = NAMES[g]
 		chip.focus_mode = Control.FOCUS_NONE
-		chip.custom_minimum_size.y = 76
+		chip.custom_minimum_size = Vector2(150, 76)
+		chip.add_theme_font_override("font", CozyTheme.display(700))
+		chip.add_theme_font_size_override("font_size", 30)
 		chip.pressed.connect(func() -> void: _pick(g))
 		chips.add_child(chip)
 		_chips[g] = chip

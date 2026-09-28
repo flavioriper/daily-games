@@ -292,7 +292,8 @@ func _break(why: String, i: int) -> void:
 func revive(seconds: float) -> void:
 	if phase != Phase.OVER:
 		return
-	bonus += seconds
+	# fifteen more seconds on the clock from where it stopped
+	bonus = t - ROUND + seconds
 	phase = Phase.PLAY
 	phase_t = 0.0
 	events.append({"type": "revive", "seconds": seconds})

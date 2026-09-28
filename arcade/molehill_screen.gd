@@ -1359,6 +1359,9 @@ func _build_end(better: bool) -> Control:
 	head.text = "FF_NEW_BEST" if better else "MH_END_CARD"
 	head.theme_type_variation = "WellDone"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# the longer languages take two lines rather than widen the card
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.custom_minimum_size.x = 740
 	col.add_child(head)
 	var score := Label.new()
 	score.text = Record.grouped(sim.score) if Motion.reduce else "0"

@@ -54,7 +54,9 @@ func _cfg_now() -> ConfigFile:
 			_cfg.set_value("wallet", "gold", WELCOME_GOLD)
 			for id: String in Boosters.ITEMS:
 				_cfg.set_value("items", id, 1)
-			_cfg.save(path)
+			# not saved yet: the first real change saves it with everything
+			# else, so a screen that only reads the gold (a suite building
+			# the menu) leaves no file behind
 	return _cfg
 
 ## Forget what was read, so the next read comes from `path` (a harness that

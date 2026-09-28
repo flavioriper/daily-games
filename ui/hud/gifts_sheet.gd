@@ -130,7 +130,7 @@ func _tile(d: int) -> PanelContainer:
 	inner.add_child(icons)
 	var amount := Label.new()
 	amount.name = "Amount"
-	amount.theme_type_variation = "CardBlurb"
+	amount.theme_type_variation = "SheetBody"
 	amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	inner.add_child(amount)
 	# the tick over a claimed day

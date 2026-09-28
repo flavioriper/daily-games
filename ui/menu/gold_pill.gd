@@ -24,6 +24,9 @@ var _held := 0
 var _label: Label
 var _air: Control
 var _coins: Array = []   # {from, to, t, delay, share}
+## A tick for each coin that lands, a little higher each time.
+var _clink: AudioStreamPlayer
+var _landed := 0
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
@@ -48,6 +51,12 @@ func _ready() -> void:
 	_air.z_index = 20
 	_air.draw.connect(_draw_air)
 	add_child(_air)
+	_clink = AudioStreamPlayer.new()
+	_clink.bus = &"Master"
+	if ResourceLoader.exists("res://assets/sfx/wallet/coin.ogg"):
+		_clink.stream = load("res://assets/sfx/wallet/coin.ogg")
+	_clink.max_polyphony = 4
+	add_child(_clink)
 	_shown = Wallet.gold()
 	Wallet.changed.connect(_on_changed)
 	button_down.connect(func() -> void: Motion.squash(self, 0.08, 0.18))
@@ -71,6 +80,7 @@ func fly_from(global_at: Vector2, amount: int) -> void:
 		return
 	var n := clampi(amount / 15, 4, 12)
 	_held += amount
+	_landed = 0
 	var share := amount / n
 	var to := get_global_rect().position + Vector2(COIN + 16.0, H * 0.5)
 	for i in n:
@@ -86,6 +96,10 @@ func _process(delta: float) -> void:
 			c.done = true
 			_held = maxi(0, _held - int(c.share))
 			Motion.bump(self, 0.08, 0.16)
+			if _clink.stream != null:
+				_clink.pitch_scale = 1.0 + 0.05 * _landed
+				_clink.play()
+			_landed += 1
 	_coins = _coins.filter(func(c: Dictionary) -> bool: return not c.get("done", false))
 	_air.size = get_viewport_rect().size
 	_air.queue_redraw()
@@ -93,7 +107,7 @@ func _process(delta: float) -> void:
 	if Motion.reduce:
 		_shown = want
 	else:
-		_shown = move_toward(_shown, want, maxf(2.0, absf(want - _shown) * 6.0) * delta)
+		_shown = move_toward(_shown, want, (40.0 + absf(want - _shown) * 8.0) * delta)
 	_write()
 	if _coins.is_empty() and is_equal_approx(_shown, want):
 		_air.queue_redraw()
