@@ -9,7 +9,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
-	"coin", "gift", "clock", "shield", "acorn"]
+	"coin", "gift", "clock", "shield", "acorn", "run", "music", "globe"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -118,6 +118,18 @@ static func shape(name: String) -> Dictionary:
 		"shield":
 			return {"polys": [PackedVector2Array([Vector2(0.5, 0.12), Vector2(0.84, 0.24), Vector2(0.8, 0.54),
 				Vector2(0.66, 0.76), Vector2(0.5, 0.88), Vector2(0.34, 0.76), Vector2(0.2, 0.54), Vector2(0.16, 0.24)])], "lines": []}
+		"run":
+			return _run()
+		"music":
+			return _music()
+		"globe":
+			var g := circle(Vector2(0.5, 0.5), 0.36, 32)
+			g.append(g[0])
+			var m := PackedVector2Array()
+			for i in 33:
+				var t := TAU * i / 32.0
+				m.append(Vector2(0.5 + cos(t) * 0.15, 0.5 + sin(t) * 0.36))
+			return {"polys": [], "lines": [g, m, PackedVector2Array([Vector2(0.16, 0.5), Vector2(0.84, 0.5)])]}
 		"no_ads":
 			return {"polys": [], "lines": [
 				PackedVector2Array([Vector2(0.18, 0.3), Vector2(0.82, 0.3), Vector2(0.82, 0.7), Vector2(0.18, 0.7), Vector2(0.18, 0.3)]),
@@ -248,6 +260,31 @@ static func _pencil() -> Dictionary:
 	var nib := PackedVector2Array([nib_base + perp * half, tip, nib_base - perp * half, nib_base + perp * half])
 	var ink_tip := PackedVector2Array([tip, ink_back + perp * half * 0.4, ink_back - perp * half * 0.4])
 	return {"polys": [body, circle(cap, half, 16), ink_tip], "lines": [nib]}
+
+## A figure running to the right: a head, a leaning body, an arm swung back
+## and one forward, one leg reaching and one kicked up behind.
+static func _run() -> Dictionary:
+	var hip := Vector2(0.44, 0.58)
+	var neck := Vector2(0.56, 0.32)
+	return {"polys": [circle(Vector2(0.64, 0.15), 0.1, 16)], "lines": [
+		PackedVector2Array([neck, hip]),
+		PackedVector2Array([Vector2(0.28, 0.42), Vector2(0.4, 0.34), neck, Vector2(0.68, 0.46), Vector2(0.8, 0.4)]),
+		PackedVector2Array([hip, Vector2(0.6, 0.72), Vector2(0.56, 0.9)]),
+		PackedVector2Array([hip, Vector2(0.32, 0.72), Vector2(0.16, 0.7)])]}
+
+## Two quavers under one beam.
+static func _music() -> Dictionary:
+	var heads := []
+	for c in [Vector2(0.3, 0.76), Vector2(0.7, 0.68)]:
+		var h := PackedVector2Array()
+		for i in 16:
+			var a := TAU * i / 16.0
+			h.append(c + Vector2(cos(a) * 0.14, sin(a) * 0.1).rotated(-0.35))
+		heads.append(h)
+	var beam := PackedVector2Array([Vector2(0.36, 0.16), Vector2(0.86, 0.06), Vector2(0.86, 0.2), Vector2(0.36, 0.3)])
+	return {"polys": heads + [beam], "lines": [
+		PackedVector2Array([Vector2(0.42, 0.72), Vector2(0.42, 0.2)]),
+		PackedVector2Array([Vector2(0.82, 0.64), Vector2(0.82, 0.12)])]}
 
 ## A question mark: the hook runs from 9 o'clock over the top and down into a
 ## short stem, with a dot beneath.

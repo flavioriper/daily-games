@@ -23,11 +23,7 @@ func _card_style() -> StyleBox:
 	return CozyTheme.parchment_card()
 
 func _build_sheet(col: VBoxContainer) -> void:
-	var title := Label.new()
-	title.theme_type_variation = "SheetTitle"
-	title.text = "STORE_TITLE"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(title)
+	_title_row(col, "STORE_TITLE", "no_ads")
 	_body = Label.new()
 	_body.theme_type_variation = "SheetBody"
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

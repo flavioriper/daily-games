@@ -14,6 +14,9 @@ DIFF_HARD,Hard,Difícil,Difícil
 DIFF_INSANE,Insane,Insano,Demencial
 SETTINGS_TITLE,Settings,Configurações,Ajustes
 SETTINGS_REDUCE_MOTION,Reduce motion,Reduzir movimento,Reducir movimiento
+SETTINGS_REDUCE_MOTION_SUB,Fewer animations on screen,Diminui as animações da interface,Menos animaciones en pantalla
+SETTINGS_SOUND_SUB,Sound effects and the game's music,Efeitos e música do jogo,Efectos y música del juego
+SETTINGS_LANGUAGE_SUB,Choose the game's language,Escolha o idioma do jogo,Elige el idioma del juego
 SETTINGS_NEW_PUZZLE,New puzzle (prototype),Novo desafio (protótipo),Nuevo reto (prototipo)
 BTN_CLOSE,Close,Fechar,Cerrar
 RULES_TITLE,How to play,Como jogar,Cómo jugar

@@ -31,17 +31,12 @@ func _card_style() -> StyleBox:
 func _build_sheet(col: VBoxContainer) -> void:
 	_fx = Fx2D.new()
 	add_child(_fx)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
-	col.add_child(head)
-	var title := Label.new()
-	title.theme_type_variation = "SheetTitle"
-	title.text = "SHOP_TITLE"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
+	var head := _title_row(col, "SHOP_TITLE", "coin")
 	pill = GoldPill.new()
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(pill)
+	head.move_child(pill, x_button.get_index())
 	_line = Label.new()
 	_line.theme_type_variation = "SheetBodyDim"
 	_line.text = "SHOP_LINE"

@@ -2108,6 +2108,20 @@ card (`sheet.gd`), over a warm 0.42 scrim. The paper wash was calmed at the
 same time: its cool end had read as blue-grey clouds on every white face.
 Badges are coral with a cream ring.
 
+**Every sheet's head is one helper since the HUD mock of 2026-09-28**
+(`sheet.gd`'s `_title_row`): the sheet's icon in ink with a sprout, the
+title, and a round X that closes it; a sheet with a gold pill slots it
+before the X. `_wide_primary` is the wide sun button a sheet ends on.
+`ui/hud/sheet_parts.gd` holds the drawings: faint leaf sprigs on every
+card (one cached mesh a card, rebuilt only on a resize, the first-play card
+included), the badge, the sprout divider and a setting row's tinted icon
+plaque. The settings rows carry a plaque, a label and a dim sub-line
+(`SETTINGS_*_SUB`), the language sits on its own pill, and the secondary
+buttons pack two to a row (`_pack_buttons`, re-run when Privacy's
+visibility changes). A switch row keeps its face while on: a CheckButton's
+"pressed" is its state, not a finger. Settings alone reads 371 draw calls
+over the menu at 810x1440.
+
 ## Playing on an Android phone
 
 The game ships as a native APK through Firebase App Distribution (project

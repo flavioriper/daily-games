@@ -28,9 +28,8 @@ var _title: Label
 var _list: VBoxContainer
 
 func _build_sheet(col: VBoxContainer) -> void:
-	_title = Label.new()
-	_title.theme_type_variation = "SheetTitle"
-	col.add_child(_title)
+	_title_row(col, "", "puzzle")
+	_title = title_label
 	var blurb := Label.new()
 	blurb.theme_type_variation = "SheetBodyDim"
 	blurb.text = "DIFF_PICK"

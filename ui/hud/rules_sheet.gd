@@ -16,18 +16,11 @@ func _card_style() -> StyleBox:
 	return CozyTheme.parchment_card()
 
 func _build_sheet(col: VBoxContainer) -> void:
-	var heading := Label.new()
-	heading.theme_type_variation = "SheetTitle"
-	heading.text = "RULES_TITLE"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(heading)
+	_title_row(col, "RULES_TITLE", "help")
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 18)
 	col.add_child(_list)
-	close_button = IconButton.new("check", "RULES_GOT_IT", "PrimaryButton")
-	close_button.custom_minimum_size.y = ROW
-	# Its own width, centred, not the sheet's.
-	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_button = _wide_primary("check", "RULES_GOT_IT")
 	close_button.pressed.connect(close)
 	col.add_child(close_button)
 

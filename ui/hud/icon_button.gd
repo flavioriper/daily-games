@@ -18,6 +18,9 @@ const SQUASH_TIME := 0.18
 const SLAB_R := 28
 
 var icon_name := ""
+## The glyph's own ink, when a host wants it apart from the label's (the
+## settings sheet's maroon heart). Transparent means the label's colour.
+var glyph_colour := Color.TRANSPARENT
 var label_text := ""
 ## Count shown in the badge; 0 hides it.
 var badge: int = 0:
@@ -180,7 +183,8 @@ func _refresh_badge() -> void:
 
 func _draw_glyph() -> void:
 	var fill: Color = get_theme_stylebox("normal").bg_color if get_theme_stylebox("normal") is StyleBoxFlat else Color.TRANSPARENT
-	Icons.paint(_glyph, icon_name, Rect2(Vector2.ZERO, _glyph.size), _ink(), fill)
+	var ink := glyph_colour if glyph_colour.a > 0.0 and not disabled else _ink()
+	Icons.paint(_glyph, icon_name, Rect2(Vector2.ZERO, _glyph.size), ink, fill)
 
 func _draw_badge() -> void:
 	var c := Vector2(BADGE_R, BADGE_R)

@@ -10,6 +10,7 @@ const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Progress = preload("res://core/progress.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
+const SheetParts = preload("res://ui/hud/sheet_parts.gd")
 
 var _entry: Dictionary
 var _puzzle: Control
@@ -17,6 +18,8 @@ var _diagram: Control
 ## The room the card is centred in: the screen less the safe-area insets,
 ## the banner and its tab included, so the card never sits under the ad.
 var _area: Control
+var _decor: ArrayMesh
+var _decor_size := Vector2.ZERO
 
 func setup(entry: Dictionary, puzzle: Control) -> void:
 	_entry = entry
@@ -58,6 +61,12 @@ func _build() -> void:
 	dialog.grow_vertical = Control.GROW_DIRECTION_BOTH
 	dialog.custom_minimum_size = Vector2(900, 1360)
 	_area.add_child(dialog)
+	# The sheets' leaf sprigs, drawn on the card under its content.
+	dialog.draw.connect(func() -> void:
+		if dialog.size != _decor_size:
+			_decor_size = dialog.size
+			_decor = SheetParts.decor_mesh(dialog.size)
+		dialog.draw_mesh(_decor, null))
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 24)

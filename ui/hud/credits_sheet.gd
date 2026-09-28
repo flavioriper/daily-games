@@ -16,11 +16,7 @@ func _card_style() -> StyleBox:
 	return CozyTheme.parchment_card()
 
 func _build_sheet(col: VBoxContainer) -> void:
-	var heading := Label.new()
-	heading.theme_type_variation = "SheetTitle"
-	heading.text = "CREDITS_TITLE"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(heading)
+	_title_row(col, "CREDITS_TITLE", "heart")
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size.y = BODY_H
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -41,9 +37,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	licence.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	licence.text = Engine.get_license_text()
 	body.add_child(licence)
-	close_button = IconButton.new("check", "BTN_CLOSE", "PrimaryButton")
-	close_button.custom_minimum_size.y = ROW
-	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_button = _wide_primary("check", "BTN_CLOSE")
 	close_button.pressed.connect(close)
 	col.add_child(close_button)
 

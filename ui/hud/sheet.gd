@@ -18,6 +18,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Pal = preload("res://core/palette.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
+const SheetParts = preload("res://ui/hud/sheet_parts.gd")
 
 const SLIDE := 0.3
 const FADE := 0.2
@@ -34,6 +35,10 @@ const SHEET_INSET := 32.0
 ## pill, and the room above the content it takes.
 const HANDLE := Vector2(76.0, 8.0)
 const HANDLE_ROOM := 10.0
+## The round close at the title's right, and the wide primary button a sheet
+## ends on (the HUD mock, 2026-09-28).
+const X_SIZE := 84.0
+const WIDE := 460.0
 
 var _scrim: ColorRect
 var _slot: Control
@@ -42,6 +47,12 @@ var _tw: Tween
 ## Set from close() until the next open(): a second tap on a choice while the
 ## sheet slides away must not set the choice off twice.
 var _closing := false
+## The title row's label, for a sheet whose title changes (difficulty).
+var title_label: Label
+var x_button: Button
+## The card's sprigs, rebuilt only when the card changes size.
+var _decor: ArrayMesh
+var _decor_size := Vector2.ZERO
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -87,11 +98,49 @@ func _ready() -> void:
 	Ads.banner_changed.connect(_on_banner_changed)
 
 func _draw_handle() -> void:
+	if _card.size != _decor_size:
+		_decor_size = _card.size
+		_decor = SheetParts.decor_mesh(_card.size)
+	_card.draw_mesh(_decor, null)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(Pal.LINE, 0.45)
 	sb.set_corner_radius_all(int(HANDLE.y * 0.5))
 	sb.anti_aliasing_size = 1.0
 	_card.draw_style_box(sb, Rect2(Vector2((_card.size.x - HANDLE.x) * 0.5, 18.0), HANDLE))
+
+## The sheet's head: its icon badge, the title and a round X that closes it.
+## `key` is a translation key. A sheet with something to show beside the title
+## (the gold pill) adds it before the X.
+func _title_row(col: VBoxContainer, key: String, icon: String) -> HBoxContainer:
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 18)
+	col.add_child(head)
+	head.add_child(SheetParts.Badge.new(icon))
+	title_label = Label.new()
+	title_label.theme_type_variation = "SheetTitle"
+	title_label.text = key
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(title_label)
+	x_button = IconButton.new("cross", "", "IconButton")
+	x_button.custom_minimum_size = Vector2(X_SIZE, X_SIZE)
+	x_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var r := int(X_SIZE * 0.5)
+	var up := CozyTheme.soft_button(Pal.SURFACE, r, false, 0)
+	var down := CozyTheme.soft_button(Pal.SURFACE, r, true, 0)
+	for s in ["normal", "hover", "disabled"]:
+		x_button.add_theme_stylebox_override(s, up)
+	x_button.add_theme_stylebox_override("pressed", down)
+	x_button.pressed.connect(close)
+	head.add_child(x_button)
+	return head
+
+## The wide sun button a sheet ends on, centred.
+func _wide_primary(icon: String, key: String) -> Button:
+	var b := IconButton.new(icon, key, "PrimaryButton")
+	b.custom_minimum_size = Vector2(WIDE, ROW)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return b
 
 ## Fill the card's column. Called once from _ready.
 func _build_sheet(_col: VBoxContainer) -> void:
