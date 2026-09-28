@@ -89,7 +89,7 @@ static func make() -> Theme:
 	_label(theme, "MenuKicker", body(800, 3), 20, Pal.ACCENT_2)
 	_label(theme, "DayBig", display(700), 56, Pal.TEXT)
 	_label(theme, "NavLabel", body(600), 26, Pal.TEXT_DIM)
-	_label(theme, "NavLabelOn", body(800), 26, Pal.ACCENT_2)
+	_label(theme, "NavLabelOn", body(800), 26, Pal.TEXT)
 	# Bottom sheets share a larger type scale than the compact HUD cards. They
 	# sit close to the player and contain settings or instructions, so they
 	# should read like full-size controls rather than card captions.

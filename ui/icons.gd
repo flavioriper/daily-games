@@ -9,7 +9,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
-	"coin", "gift", "clock", "shield", "acorn", "run", "music", "globe"]
+	"coin", "gift", "clock", "shield", "acorn", "run", "music", "globe", "swords", "gamepad"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -88,6 +88,10 @@ static func shape(name: String) -> Dictionary:
 			return _arcade()
 		"versus":
 			return _versus()
+		"swords":
+			return _swords()
+		"gamepad":
+			return _gamepad()
 		"flame":
 			return _flame()
 		"cloud":
@@ -161,6 +165,9 @@ static func paint(ci: CanvasItem, name: String, rect: Rect2, colour: Color, hole
 		ci.draw_polyline(xf * line, colour, width, true)
 	if hole.a > 0.0 and s.has("hole"):
 		ci.draw_colored_polygon(xf * s.hole, hole)
+	if hole.a > 0.0 and s.has("holes"):
+		for h in s.holes:
+			ci.draw_colored_polygon(xf * h, hole)
 
 static func circle(centre: Vector2, radius: float, segments := SEGMENTS) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -572,6 +579,45 @@ static func _versus() -> Dictionary:
 		polys.append(cue)
 	polys.append(circle(Vector2(0.5, 0.66), 0.26))
 	return {"polys": polys, "lines": [], "hole": circle(Vector2(0.43, 0.59), 0.09)}
+
+## Two swords crossed: the bar's Versus tab since 2026-09-28 (the mock's
+## Duelos). Each is a tapered blade to a point, a crossguard, a grip and a
+## round pommel, laid corner to corner.
+static func _swords() -> Dictionary:
+	var polys: Array = []
+	for side in [-1.0, 1.0]:
+		var hilt := Vector2(0.5 - side * 0.37, 0.87)
+		var tip := Vector2(0.5 + side * 0.39, 0.1)
+		var d := tip - hilt
+		var u := d.normalized()
+		var n := Vector2(-u.y, u.x)
+		var at := func(t: float) -> Vector2: return hilt + d * t
+		var bw := 0.055
+		polys.append(PackedVector2Array([at.call(0.3) + n * bw, at.call(0.86) + n * bw, tip,
+			at.call(0.86) - n * bw, at.call(0.3) - n * bw]))
+		var g: Vector2 = at.call(0.27)
+		polys.append(PackedVector2Array([g + n * 0.15 + u * 0.035, g - n * 0.15 + u * 0.035,
+			g - n * 0.15 - u * 0.035, g + n * 0.15 - u * 0.035]))
+		polys.append(PackedVector2Array([at.call(0.08) + n * 0.035, at.call(0.26) + n * 0.035,
+			at.call(0.26) - n * 0.035, at.call(0.08) - n * 0.035]))
+		polys.append(circle(at.call(0.05), 0.06, 12))
+	return {"polys": polys, "lines": []}
+
+## A game pad: a wide body with a grip at each end, a cross on the left and
+## two buttons on the right, both cut out as holes -- the bar's Arcade tab
+## since 2026-09-28.
+static func _gamepad() -> Dictionary:
+	var pad := circle(Vector2(0.27, 0.56), 0.25)
+	var pad2 := circle(Vector2(0.73, 0.56), 0.25)
+	var mid := PackedVector2Array([Vector2(0.27, 0.31), Vector2(0.73, 0.31), Vector2(0.73, 0.74), Vector2(0.27, 0.74)])
+	var c := Vector2(0.27, 0.53)
+	var a := 0.11
+	var b := 0.036
+	var cross := PackedVector2Array([c + Vector2(-b, -a), c + Vector2(b, -a), c + Vector2(b, -b), c + Vector2(a, -b),
+		c + Vector2(a, b), c + Vector2(b, b), c + Vector2(b, a), c + Vector2(-b, a), c + Vector2(-b, b),
+		c + Vector2(-a, b), c + Vector2(-a, -b), c + Vector2(-b, -b)])
+	return {"polys": [pad, pad2, mid], "lines": [],
+		"holes": [cross, circle(Vector2(0.68, 0.6), 0.05, 10), circle(Vector2(0.79, 0.48), 0.05, 10)]}
 
 ## A joystick on its base with a fire button beside it: the bar's Arcade
 ## tab. The hole is the ball's shine.

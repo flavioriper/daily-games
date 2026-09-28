@@ -2121,6 +2121,13 @@ radius, a faint hairline, a deep soft shadow, a grab handle drawn on the
 card (`sheet.gd`), over a warm 0.42 scrim. The paper wash was calmed at the
 same time: its cool end had read as blue-grey clouds on every white face.
 Badges are coral with a cream ring.
+**The bottom bar was redrawn to the user's mock on 2026-09-28**
+(`ui/menu/bottom_bar.gd`): a hairline rim, a leaf sprig out of each round
+end (one mesh, rooted inside the 40 px margin), filled icons in a warm dark
+ink (`Icons` `swords` for Versus and `gamepad` for Arcade, whose buttons are
+`holes`), and the current tab in a raised gold pill lettered in ink, with a
+small sprig on its corner and a coral dot under it. 291 draw calls on page
+one (282 before).
 
 **Every sheet's head is one helper since the HUD mock of 2026-09-28**
 (`sheet.gd`'s `_title_row`): the sheet's icon in ink with a sprout, the
