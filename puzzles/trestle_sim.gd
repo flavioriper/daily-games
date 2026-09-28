@@ -21,6 +21,13 @@ extends RefCounted
 ## is drawn where the deflected deck puts it. At a member's end it takes the
 ## road member that carries straight on; with none, or when its member snaps,
 ## it flies and falls until it lands on a road or in the river.
+##
+## **A convoy** (after the solve) is more carts behind the first, each the
+## same moving mass. The lead cart is the scalar fields below, exactly as a
+## lone cart always was, so a one-cart run is the run the bank was proved
+## on; the others live in `trail` and are driven by swapping each into those
+## fields for its step (`_swap`). The test is over when every cart is over,
+## or any is in the river.
 ## Spec: docs/superpowers/specs/2026-09-28-trestle-flat-design.md.
 
 const DT := 1.0 / 120.0
@@ -40,6 +47,8 @@ const CART_EXIT := 1.6
 const WATER := -4.6
 const BED := -6.0
 const TIME_OUT := 30.0
+## A convoy's carts set off this far apart (grid units), one behind another.
+const CONVOY_GAP := 2.0
 
 enum { ROAD, WOOD, ROPE }
 ## cost a unit of length, mass a unit, stiffness (EA), tension and
@@ -90,6 +99,9 @@ var cart_pos := Vector2.ZERO
 var cart_vel := Vector2.ZERO
 var cart_angle := 0.0
 
+## The carts behind the lead: [{cart, seg, from, u, pos, vel, angle}].
+var trail: Array = []
+
 var t := 0.0
 var broken: Array[int] = []
 ## What happened this step, drained by the owner: {"kind": "snap"|"land"|
@@ -98,7 +110,7 @@ var events: Array = []
 
 ## `design` is [{"a": Vector2i, "b": Vector2i, "m": int}], `anchors` grid
 ## points that never move.
-func setup(level: Dictionary, design: Array) -> void:
+func setup(level: Dictionary, design: Array, carts := 1) -> void:
 	w = int(level.w)
 	dy = int(level.get("dy", 0))
 	cart_mass = float(level.cart)
@@ -142,6 +154,25 @@ func setup(level: Dictionary, design: Array) -> void:
 	cart_pos = Vector2(CART_START, 0.0)
 	cart_vel = Vector2(CART_V, 0.0)
 	cart_angle = 0.0
+	trail = []
+	_crossed_told = false
+	for i in range(1, carts):
+		trail.append({"cart": CART_BANK_L, "seg": -1, "from": -1, "u": 0.0,
+			"pos": Vector2(CART_START - CONVOY_GAP * i, 0.0), "vel": Vector2(CART_V, 0.0), "angle": 0.0})
+
+## Trades the lead's fields with trail cart `i`'s; a second call trades back.
+func _swap(i: int) -> void:
+	var c: Dictionary = trail[i]
+	var keep := {"cart": cart, "seg": cart_seg, "from": cart_from, "u": cart_u,
+		"pos": cart_pos, "vel": cart_vel, "angle": cart_angle}
+	cart = int(c.cart)
+	cart_seg = int(c.seg)
+	cart_from = int(c.from)
+	cart_u = float(c.u)
+	cart_pos = c.pos
+	cart_vel = c.vel
+	cart_angle = float(c.angle)
+	trail[i] = keep
 
 func _joint(p: Vector2i) -> int:
 	if _key.has(p):
@@ -170,10 +201,28 @@ func joint_at(p: Vector2i) -> int:
 	return _key.get(p, -1)
 
 func done() -> bool:
-	return cart == CART_WATER or cart == CART_OVER or t >= TIME_OUT
+	if t >= TIME_OUT or cart == CART_WATER:
+		return true
+	for c in trail:
+		if int(c.cart) == CART_WATER:
+			return true
+	return crossed()
 
 func crossed() -> bool:
-	return cart == CART_OVER
+	if cart != CART_OVER:
+		return false
+	for c in trail:
+		if int(c.cart) != CART_OVER:
+			return false
+	return true
+
+## How many carts are in the river.
+func in_water() -> int:
+	var n := 1 if cart == CART_WATER else 0
+	for c in trail:
+		if int(c.cart) == CART_WATER:
+			n += 1
+	return n
 
 ## One fixed step.
 func step() -> void:
@@ -182,24 +231,16 @@ func step() -> void:
 	var g := Vector2(0.0, -G * ramp)
 	var h := DT / SUB
 	var n := jp.size()
-	# the cart's mass rides on its member's two joints
-	var ca := -1
-	var cb := -1
-	var cu := 0.0
-	if cart == CART_ROAD:
-		ca = cart_from
-		cb = ma[cart_seg] if mb[cart_seg] == cart_from else mb[cart_seg]
-		cu = cart_u
+	# every cart's mass rides on its member's two joints
+	var lent := {}
+	_lend(lent, cart, cart_seg, cart_from, cart_u, ramp)
+	for c in trail:
+		_lend(lent, int(c.cart), int(c.seg), int(c.from), float(c.u), ramp)
 	for j in n:
 		if jfix[j] == 1:
 			_w[j] = 0.0
 		else:
-			var m := jm[j]
-			if j == ca:
-				m += cart_mass * (1.0 - cu) * ramp
-			elif j == cb:
-				m += cart_mass * cu * ramp
-			_w[j] = 1.0 / m
+			_w[j] = 1.0 / (jm[j] + float(lent.get(j, 0.0)))
 	var nm := ma.size()
 	for k in nm:
 		_fsum[k] = 0.0
@@ -260,6 +301,13 @@ func step() -> void:
 			_snap(k)
 	_drive()
 
+func _lend(lent: Dictionary, state: int, seg: int, from: int, u: float, ramp: float) -> void:
+	if state != CART_ROAD:
+		return
+	var other := ma[seg] if mb[seg] == from else mb[seg]
+	lent[from] = float(lent.get(from, 0.0)) + cart_mass * (1.0 - u) * ramp
+	lent[other] = float(lent.get(other, 0.0)) + cart_mass * u * ramp
+
 ## A member past its limit: two stubs from its ends, meeting where it broke.
 func _snap(k: int) -> void:
 	malive[k] = 0
@@ -283,6 +331,11 @@ func _snap(k: int) -> void:
 	events.append({"kind": "snap", "m": morigin[k], "at": mid, "mat": mmat[k]})
 	if cart == CART_ROAD and cart_seg == k:
 		_leave()
+	for i in trail.size():
+		if int(trail[i].cart) == CART_ROAD and int(trail[i].seg) == k:
+			_swap(i)
+			_leave()
+			_swap(i)
 
 func _leave() -> void:
 	var d := _seg_dir()
@@ -320,6 +373,19 @@ func _next_road(j: int, dir: Vector2, not_k: int) -> int:
 	return best
 
 func _drive() -> void:
+	_drive_one()
+	for i in trail.size():
+		_swap(i)
+		_drive_one()
+		_swap(i)
+	# the last cart over is the crossing
+	if crossed() and not _crossed_told:
+		_crossed_told = true
+		events.append({"kind": "cross"})
+
+var _crossed_told := false
+
+func _drive_one() -> void:
 	var step_len := CART_V * DT
 	match cart:
 		CART_BANK_L:
@@ -373,7 +439,10 @@ func _drive() -> void:
 			cart_pos.y = dy
 			if cart_pos.x >= w + CART_EXIT:
 				cart = CART_OVER
-				events.append({"kind": "cross"})
+				events.append({"kind": "over"})
+		CART_OVER:
+			# rolls on out of sight while the rest come over
+			cart_pos.x += step_len
 
 func _enter(k: int, from: int, u: float) -> void:
 	cart = CART_ROAD

@@ -816,3 +816,24 @@ TR_W_GREAT,Great!,Ótimo!,¡Genial!
 TR_W_SUPERB,Superb!,Incrível!,¡Increíble!
 TR_WIN,Built for %s of %s  %s,Construída por %s de %s  %s,Construido por %s de %s  %s
 TR_SHARE,Trestle: crossed for %s of %s in %d tries,Trestle: atravessou por %s de %s em %d tentativas,Trestle: cruzó por %s de %s en %d intentos
+TR_LOADS,Each member shows the most load it took in that test,Cada peça mostra a maior carga que aguentou nesse teste,Cada pieza muestra la mayor carga que soportó en esa prueba
+TR_FIRST_ROAD_ONE,A road plank gave way: it's ringed in red,Uma tábua da estrada cedeu: está circulada em vermelho,Una tabla de la carretera cedió: está marcada con un círculo rojo
+TR_FIRST_ROAD_N,"A road plank gave way first (ringed), then %d more","Uma tábua da estrada cedeu primeiro (circulada), depois mais %d","Una tabla de la carretera cedió primero (en el círculo), luego %d más"
+TR_FIRST_WOOD_ONE,A wood beam gave way: it's ringed in red,Uma viga de madeira cedeu: está circulada em vermelho,Una viga de madera cedió: está marcada con un círculo rojo
+TR_FIRST_WOOD_N,"A wood beam gave way first (ringed), then %d more","Uma viga de madeira cedeu primeiro (circulada), depois mais %d","Una viga de madera cedió primero (en el círculo), luego %d más"
+TR_FIRST_ROPE_ONE,A rope gave way: it's ringed in red,Uma corda cedeu: está circulada em vermelho,Una cuerda cedió: está marcada con un círculo rojo
+TR_FIRST_ROPE_N,"A rope gave way first (ringed), then %d more","Uma corda cedeu primeiro (circulada), depois mais %d","Una cuerda cedió primero (en el círculo), luego %d más"
+TR_CONVOY,Convoy,Comboio,Convoy
+TR_FREE,Free build,Construção livre,Construcción libre
+TR_DONE,Done,Pronto,Listo
+TR_CONVOY_TIP,Three carts at once: will it hold?,Três carrinhos de uma vez: vai aguentar?,Tres carritos a la vez: ¿aguantará?
+TR_FREE_TIP,"No budget here: build anything, then Go",Sem orçamento aqui: construa o que quiser e aperte Ir,Sin presupuesto aquí: construye lo que quieras y pulsa Ir
+TR_CONVOY_PROOF,Convoy-proof!,À prova de comboio!,¡A prueba de convoy!
+TR_CONVOY_OVER,Convoy over!,O comboio passou!,¡El convoy cruzó!
+TR_CONVOY_BUDGET,Now make it hold within the budget,Agora faça aguentar dentro do orçamento,Ahora haz que aguante dentro del presupuesto
+TR_CONVOY_FAIL_ONE,Too heavy for one member: it's ringed in red,Pesado demais para uma peça: está circulada em vermelho,Demasiado peso para una pieza: está marcada con un círculo rojo
+TR_CONVOY_FAIL_N,"Too heavy: %d members snapped, the first is ringed","Pesado demais: %d peças quebraram, a primeira está circulada","Demasiado peso: %d piezas se rompieron, la primera está en el círculo"
+TR_COST,Cost %s (budget %s),Custo %s (orçamento %s),Coste %s (presupuesto %s)
+TR_CROWD_WAIT,Asking today's builders…,Perguntando aos construtores de hoje…,Preguntando a los constructores de hoy…
+TR_CROWD_FIRST,One of today's first builders,Um dos primeiros construtores de hoje,Uno de los primeros constructores de hoy
+TR_CROWD_PCT,Cheaper than %d%% of today's %s bridges,Mais barata que %d%% das %s pontes de hoje,Más barato que el %d%% de los %s puentes de hoy

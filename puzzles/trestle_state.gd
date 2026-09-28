@@ -22,6 +22,8 @@ var mats: Array = []
 ## [{"a": Vector2i, "b": Vector2i, "m": int, "hint": bool}]
 var design: Array = []
 var proof: Array = []
+## The free build after the solve: no budget.
+var free := false
 var _undo: Array = []
 
 func setup(lv: Dictionary) -> void:
@@ -83,7 +85,7 @@ func why_not(a: Vector2i, b: Vector2i, m: int) -> int:
 		return Refusal.OFF_ZONE
 	if m == Sim.ROAD and not Gen.road_ok(a, b):
 		return Refusal.STEEP
-	if Sim.member_cost(a, b, m) > left():
+	if not free and Sim.member_cost(a, b, m) > left():
 		return Refusal.BUDGET
 	return Refusal.OK
 

@@ -1441,6 +1441,15 @@ pointing `seed_as` at them. Specs:
   testing, ~146 on the win, ANGLE agreeing, vsync-capped in every state
   once the bridge mesh stopped rebuilding on idle frames. 21 cues generated
   (`roll` a loop), one take a cue, awaiting the user's listen.
+  **Second pass on 2026-09-28** (the spec's section 9): the last test's
+  loads stay on the bridge while building (tint plus figures), the first
+  member to snap is ringed and plays slow, a daily's cost goes to the crowd
+  (`submitTurn` game `trestle_<difficulty>`, score = cost as a share of the
+  budget) and the strip after the solve says how many of today's bridges
+  cost more, the player's own bridge is kept with the completion, and after
+  the solve there are a three-cart **Convoy** and a **Free build** with no
+  budget. The sim's lead cart is still its scalar fields, so one-cart runs
+  are unchanged. The crowd needs `tools/deploy_functions.sh` run by a person.
 - **Balance is a seesaw since 2026-09-27** (`puzzles/balance2d.gd`,
   `balance_state.gd`, `balance_sim.gd`, `balance_gen.gd`, spec
   `2026-09-27-balance-seesaw-design.md`; built unattended at the user's word,

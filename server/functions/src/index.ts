@@ -55,6 +55,18 @@ export const GAMES: Record<string, (day: number) => unknown> = {
   },
 };
 
+/**
+ * Games that publish nothing and only keep a crowd: a daily board sends one
+ * score a solve and reads the day's histogram back. Trestle sends its
+ * bridge's cost as a share of the budget (0..100), one tally a difficulty,
+ * so the level every player of that tally built on is the same one
+ * (docs/superpowers/specs/2026-09-28-trestle-flat-design.md, section 9).
+ */
+export const SCORED = ["trestle_0", "trestle_1", "trestle_2", "trestle_3"];
+
+/** Every game a submit may name and the rollup totals. */
+export const TALLIED = [...Object.keys(GAMES), ...SCORED];
+
 /** The longest string a guess may be. A guess is client data written under
  *  the player's own document, and anonymous sign-up is free and
  *  self-service, so anything unbounded here is a free blob store. */
@@ -141,7 +153,7 @@ export const submitTurn = onRequest({
   const game = body.game;
   const day = body.day;
   const score = body.score;
-  if (typeof game !== "string" || !(game in GAMES)) {
+  if (typeof game !== "string" || !TALLIED.includes(game)) {
     res.status(400).json({error: "unknown game"});
     return;
   }
@@ -240,7 +252,7 @@ export const rollupTally = onSchedule("every 5 minutes", async () => {
   const now = new Date();
   const yesterday = new Date(now.getTime() - 86400000);
   for (const day of [dayKey(yesterday), dayKey(now)]) {
-    for (const game of Object.keys(GAMES)) {
+    for (const game of TALLIED) {
       const shards = await turnDoc(day, game).collection("shards").get();
       if (shards.empty) continue;
       const histogram = new Array<number>(BUCKETS).fill(0);

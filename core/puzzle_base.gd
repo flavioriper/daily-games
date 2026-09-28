@@ -33,6 +33,10 @@ var _done: bool = false
 ## What completion_record() handed back when this daily was solved, set by the
 ## host before restore_completed() on a reopened daily; {} when nothing was kept.
 var completed_record: Dictionary = {}
+## The daily's date key when this board is today's daily, 0 for a board
+## dealt from New; the flat host sets it after start(). A board that reports
+## to the crowd (core/backend.gd) only does for a daily.
+var daily_key := 0
 
 # --- to override ---
 func puzzle_id() -> String: return "unnamed"

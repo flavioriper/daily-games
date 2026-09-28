@@ -639,6 +639,7 @@ func _spawn(the_seed: int) -> void:
 		_enter()
 	_tray_given = false
 	super(the_seed)
+	_puzzle.daily_key = _day_key
 	day_card.set_hearts(Progress.hearts())
 	_fit_card()
 

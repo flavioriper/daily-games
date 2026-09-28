@@ -153,3 +153,58 @@ count; idle at the 120 Hz vsync ceiling in every state, including mid-test.
 Mining: 5-65 s a level; 76 levels (17 / 19 / 20 / 20), worst proof stress
 0.86 of a limit. `tests/_win.gd -- trestle` lays the proof by touch, takes a
 member off and back with Undo, and presses Go.
+
+## 9. The second pass (2026-09-28)
+
+After a web look at the genre (Poly Bridge 3's reviews, its manual, Build a
+Bridge!, Bridge Constructor Portal), six changes, all asked for by the user:
+
+1. **The stress view carries into building.** Poly Bridge 3's main
+   complaint is that the stress points are shown only while the test runs.
+   After every test each member keeps the highest share of its limit it
+   reached (`_peak`, keyed by its ends and material, so it survives edits to
+   the rest of the bridge), drawn as the live tint at 0.8, and the five
+   hardest-worked carry their figure on a paper tag (a tag that would sit on
+   a harder one is left out). The first time a test is stopped with nothing
+   snapped, a toast says what the colours are.
+2. **The first member to snap is the diagnosis.** After the first break the
+   rest usually fall because of it, so it is ringed (red and white, pulsing
+   with the other marks), the moment plays at 0.3 speed for 0.9 s (never
+   under reduce motion), and the toast names its material: "A wood beam gave
+   way first (ringed), then 3 more".
+3. **The crowd.** A daily's solve sends its cost as a share of the budget
+   (0-100) to `submitTurn` as game `trestle_<difficulty>`, one tally a
+   difficulty, and reads the day's histogram back; the strip after the solve
+   says "Cheaper than N% of today's M bridges" (the share of bridges that
+   cost more), or "One of today's first builders" under three. Nothing is
+   sent for a board dealt from New (`PuzzleBase.daily_key`, set by the flat
+   host). The server takes `SCORED` games that publish no content and rolls
+   them up with the rest (`TALLIED`). **Until the functions are deployed a
+   submit is answered 400 and dropped from the queue**, so the tally only
+   counts solves from the deploy on.
+4. **The player's own bridge is kept** (`completion_record`: the members and
+   the test count), so a reopened daily shows it, and its share line and
+   stars are the player's. A save from before falls back to the proof.
+5. **Convoy**, after the solve (Bridge Constructor Portal's convoys): three
+   carts at once, `Sim.CONVOY_GAP` 2.0 apart, each the same moving mass. The
+   lead cart is the sim's scalar fields as before and the others are swapped
+   through them a step at a time, so a one-cart run is bit-for-bit the run
+   the bank was proved on (re-proved: 76 of 76, worst 0.86). At 2.0 the
+   day's proof carries the convoy on 10 of 17 Easy, 5 of 19 Medium, 2 of 20
+   Hard and 1 of 20 Insane levels (`tests/_probe_trestle_convoy.gd`), so it
+   is a real second puzzle; a convoy over within the budget is
+   "Convoy-proof!" and puts three trucks on the share line.
+6. **Free build**, after the solve (Poly Bridge 3's and Build a Bridge!'s
+   sandbox): no budget, the strip becomes the three chips and Go, Convoy and
+   Done, the cost shows under it (red past the budget), and the edits are
+   not the daily's moves. Done puts the solved bridge back.
+
+The pills show once the solve's cheer is over (`WIN_HOLD`). The board card
+under the win screen takes taps, so both run there. Measured at 810x1440:
+building, testing and the win read 82 / 81 / 82 / 147 draw calls, the same
+as the code before this pass on the same harness; a convoy runs at ~76 and
+the free build at ~65. `tests/_shot_trestle_after.gd` drives all of it by
+touch (and, with `crowd` and the emulator suite, the crowd);
+`tests/_probe_trestle_crowd.gd` submits to the emulator and reads a tally.
+Both touch `user://player.cfg` only under `FIREBASE_EMULATOR`, and it must be
+backed up and put back around them.

@@ -26,8 +26,17 @@ extends "res://core/puzzle_base.gd"
 ##            passengers (ui/faces/fruit.gd) riding in it;
 ##   front -- the water's face over anything that fell in, the ghost member
 ##            under the finger, the chips and the budget, the toast.
-## Spec: docs/superpowers/specs/2026-09-28-trestle-flat-design.md.
+##
+## After a test the bridge keeps what it learned: every member is tinted by
+## the highest load it took (the stress view, carried into building), the
+## member that gave way first is ringed, and the moment it goes plays slow.
+## After the solve the strip offers a convoy (three carts at once, on the
+## bridge you built) and a free build with no budget, and says where the
+## bridge's cost stands among today's (the crowd, core/backend.gd).
+## Spec: docs/superpowers/specs/2026-09-28-trestle-flat-design.md (and its
+## section 9, the second pass).
 
+const Backend = preload("res://core/backend.gd")
 const Gen = preload("res://puzzles/trestle_gen.gd")
 const State = preload("res://puzzles/trestle_state.gd")
 const Sim = preload("res://puzzles/trestle_sim.gd")
@@ -69,6 +78,17 @@ const TOAST_FONT := 32
 const MAX_STEPS := 8
 const CREAK_AT := 0.8
 const WORDS := ["TR_W_NICE", "TR_W_GREAT", "TR_W_SUPERB"]
+## The convoy: this many carts, `Sim.CONVOY_GAP` apart.
+const CONVOY := 3
+## The first snap plays at this speed for this long.
+const SLOW := 0.3
+const SLOW_TIME := 0.9
+## How many of the hardest-worked members carry their load in figures.
+const LOAD_TAGS := 5
+const LOAD_TAG_AT := 0.5
+const FIRST_KEYS := [["TR_FIRST_ROAD_ONE", "TR_FIRST_ROAD_N"], ["TR_FIRST_WOOD_ONE", "TR_FIRST_WOOD_N"], ["TR_FIRST_ROPE_ONE", "TR_FIRST_ROPE_N"]]
+## The strip after the solve and in the free build.
+enum Pill { CONVOY, FREE, GO, DONE }
 
 var state: State = State.new()
 var sim: Sim = Sim.new()
@@ -125,9 +145,29 @@ var _later: Array = []
 var _hint_at := -100.0
 var _hint_key := Vector4i.ZERO
 var _tests := 0
+## This test's carts are all over (a solve, or a crossing after one).
+var _run_over := false
 ## The cart's wheels on the planks: a looping voice whose level follows
 ## whether the cart is rolling (snooker's `_roll_sound`).
 var _roll: AudioStreamPlayer
+## The stress view carried into building: member key -> the highest share
+## of its limit it reached in the last test that ran it (over 1: it snapped).
+var _peak := {}
+## The member that gave way first in the last test, and when (for the slow).
+var _first_key := ""
+var _first_at := -100.0
+var _loads_told := false
+## After the solve: a convoy or a free build running on the solved board.
+var _convoy := false
+var _free := false
+var _solved_design: Array = []
+var _convoy_proof := false
+var _trail_faces: Array = []
+var _cart2_mesh: ArrayMesh
+## Today's crowd: "" until asked, "wait", "ok" or "off"; and what came back.
+var _crowd_state := ""
+var _crowd_pct := -1
+var _crowd_count := 0
 
 func puzzle_id() -> String: return "trestle"
 func title() -> String: return "Trestle"
@@ -184,6 +224,15 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_later = []
 	_sel = Vector2i(-99, -99)
 	_tests = 0
+	_peak = {}
+	_first_key = ""
+	_loads_told = false
+	_convoy = false
+	_free = false
+	_convoy_proof = false
+	_crowd_state = ""
+	state.free = false
+	_clear_trail()
 	if _rw != null:
 		_rw.clear()
 	for f in _faces:
@@ -230,6 +279,9 @@ func _layout() -> void:
 	_wheel_mesh = null
 	for f in _faces:
 		Fruit.resize(f, _u * 0.62, Vector2.ZERO)
+	for cart in _trail_faces:
+		for f in cart:
+			Fruit.resize(f, _u * 0.62, Vector2.ZERO)
 	_place_cart()
 	queue_redraw()
 	_front.queue_redraw()
@@ -253,7 +305,7 @@ func _process(delta: float) -> void:
 	var t := _now()
 	_run_later(t)
 	if _testing:
-		_acc += minf(delta, 0.1)
+		_acc += minf(delta, 0.1) * (SLOW if t - _first_at < SLOW_TIME and not Motion.reduce else 1.0)
 		var steps := 0
 		while _acc >= Sim.DT and steps < MAX_STEPS:
 			_acc -= Sim.DT
@@ -263,7 +315,7 @@ func _process(delta: float) -> void:
 		if steps == MAX_STEPS:
 			_acc = 0.0
 		_wheel_turn += (Sim.CART_V * delta) / (Parts.wheel_r(1.0)) if sim.cart != Sim.CART_AIR and sim.cart != Sim.CART_WATER else delta * 2.0
-		if sim.done() and _fail_at < 0.0 and _crossed_at < 0.0:
+		if sim.done() and _fail_at < 0.0 and not _run_over:
 			_failed(t)
 	elif _solved_at >= 0.0:
 		# the cart rolls on off the card after the win
@@ -318,6 +370,13 @@ func _events(t: float) -> void:
 		match String(e.kind):
 			"snap":
 				var at := px(e.at)
+				if _first_key == "" and int(e.m) >= 0 and int(e.m) < state.design.size():
+					# the one that gave way first: ringed now and after, and
+					# the moment plays slow
+					_first_key = _key(state.design[int(e.m)])
+					_first_at = t
+					if not Motion.reduce:
+						_rw.ring(at, _u * 1.1, Color(Parts.BAD, 0.9))
 				fx.cue("snap_rope" if int(e.mat) == Sim.ROPE else "snap", randf_range(0.9, 1.1))
 				var col: Color = [Parts.ROAD, Parts.WOOD, Parts.ROPE][int(e.mat)]
 				_rw.spray(at, col, 10, 520.0, "confetti", 0.9)
@@ -339,6 +398,8 @@ func _events(t: float) -> void:
 				_rw.ring(at, _u * 1.3, Color(Pal.WATER_HI, 0.8))
 			"bank":
 				_mood(Face.Expr.JOY)
+			"over":
+				_mood(Face.Expr.JOY)
 			"cross":
 				_crossed(t)
 	sim.events.clear()
@@ -357,6 +418,9 @@ func _events(t: float) -> void:
 func _mood(e: int) -> void:
 	for f in _faces:
 		f.expression = e
+	for cart in _trail_faces:
+		for f in cart:
+			f.expression = e
 
 # --- the test ---
 
@@ -370,31 +434,80 @@ func check() -> int:
 		fx.cue("undo")
 		return -1
 	checks += 1
+	_start_test(1)
+	return -1
+
+## A test of the design as it stands, with `carts` carts.
+func _start_test(carts: int) -> void:
 	_tests += 1
 	_testing = true
+	_convoy = carts > 1
+	_run_over = false
 	_acc = 0.0
 	_test_at = _now()
 	_fail_at = -1.0
-	_crossed_at = -1.0
+	_solved_at = -1.0
 	_creaked = {}
 	_last_broken = {}
+	_first_key = ""
+	_first_at = -100.0
 	_sel = Vector2i(-99, -99)
 	_pressing = false
 	_dragging = false
-	sim.setup(state.level, state.for_sim())
+	sim.setup(state.level, state.for_sim(), carts)
+	_clear_trail()
+	for i in carts - 1:
+		var cart: Array[Control] = []
+		for k in 2:
+			var face := Fruit.make([1, 3, 0, 2][(2 * i + k) % 4], 60.0, Vector2.ZERO)
+			face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			face.shadowless = true
+			face.set_idle(true)
+			Fruit.resize(face, _u * 0.62, Vector2.ZERO)
+			add_child(face)
+			move_child(face, _front.get_index())
+			cart.append(face)
+		_trail_faces.append(cart)
 	_mood(Face.Expr.HAPPY)
 	fx.cue("go")
 	_toast = ""
+	_strip_mesh = null
 	focus_changed.emit()
-	return -1
+
+func _clear_trail() -> void:
+	for cart in _trail_faces:
+		for f in cart:
+			f.queue_free()
+	_trail_faces = []
 
 func _stop() -> void:
+	_keep_peaks()
 	_testing = false
+	_convoy = false
 	_fail_at = -1.0
 	sim.setup(state.level, [])
+	_clear_trail()
 	_mood(Face.Expr.HAPPY)
 	_frame = null
+	_strip_mesh = null
 	focus_changed.emit()
+	if not _loads_told and not _peak.is_empty() and _last_broken.is_empty():
+		_loads_told = true
+		_tell("TR_LOADS")
+
+## The highest load each member of the design took in the test just run,
+## kept for building (the stress view carried back).
+func _keep_peaks() -> void:
+	var n := state.design.size()
+	for k in sim.ma.size():
+		var o := sim.morigin[k]
+		if o < 0 or o >= n:
+			continue
+		_peak[_key(state.design[o])] = sim.mpeak[k]
+
+## A member's name for the maps that outlive a test: its ends and material.
+static func _key(d: Dictionary) -> String:
+	return "%d,%d,%d,%d,%d" % [d.a.x, d.a.y, d.b.x, d.b.y, int(d.m)]
 
 func _failed(t: float) -> void:
 	_fail_at = t
@@ -405,33 +518,67 @@ func _failed(t: float) -> void:
 	_mood(Face.Expr.WORRIED)
 	var snapped := _last_broken.size()
 	var run := _tests
-	var timed_out := sim.t >= Sim.TIME_OUT and sim.cart != Sim.CART_WATER
+	var convoy := _convoy
+	var timed_out := sim.t >= Sim.TIME_OUT and sim.in_water() == 0
+	var first_mat := -1
+	if not sim.broken.is_empty() and sim.broken[0] >= 0 and sim.broken[0] < state.design.size():
+		first_mat = int(state.design[sim.broken[0]].m)
 	_after(FAIL_HOLD, func():
 		# a Stop and a new Go inside the hold make this another test's
-		if not _testing or _crossed_at >= 0.0 or run != _tests:
+		if not _testing or _run_over or run != _tests:
 			return
 		_stop()
 		if timed_out:
 			_tell("TR_STUCK")
 		elif snapped == 0:
 			_tell("TR_NO_ROAD")
+		elif convoy:
+			_tell("TR_CONVOY_FAIL_ONE" if snapped == 1 else "TR_CONVOY_FAIL_N", [] if snapped == 1 else [snapped])
+		elif first_mat >= 0:
+			_tell(FIRST_KEYS[first_mat][0 if snapped == 1 else 1], [] if snapped == 1 else [snapped - 1])
 		elif snapped == 1:
 			_tell("TR_SNAPPED_ONE")
 		else:
 			_tell("TR_SNAPPED_N", [snapped]))
 
 func _crossed(t: float) -> void:
-	_crossed_at = t
+	_run_over = true
 	fx.cue("cross")
 	_mood(Face.Expr.JOY)
-	check_solved()
+	if not is_done():
+		_crossed_at = t
+		_keep_peaks()
+		check_solved()
+		return
+	# a crossing after the solve: the convoy, or a free build's test
+	var at := Vector2(size.x * 0.5, _scene.position.y + _u * 1.2)
+	var run := _tests
+	if _convoy:
+		var in_budget := state.cost() <= state.budget
+		if in_budget:
+			_convoy_proof = true
+		_rw.sticker(tr("TR_CONVOY_PROOF" if in_budget else "TR_CONVOY_OVER"), at, 84, WIN_HOLD - 0.8, true, Color.WHITE, in_budget)
+		if in_budget and not Motion.reduce:
+			_rw.rain(1.8, ["confetti", "star"], Rewards.CONFETTI)
+		if not in_budget:
+			_after(0.5, func(): _rw.sticker(tr("TR_CONVOY_BUDGET"), at + Vector2(0.0, _u * 0.9), 40, WIN_HOLD - 1.3, false, Pal.SUN))
+	else:
+		_rw.sticker(tr("TR_W_CROSSED"), at, 84, WIN_HOLD - 0.8, true, Color.WHITE)
+	_after(WIN_HOLD - 0.6, func():
+		if _testing and run == _tests:
+			_stop()
+			if not _free:
+				_rest_over())
 
 func is_solved() -> bool:
 	return _crossed_at >= 0.0
 
 func share_glyphs() -> String:
 	var stars := "⭐".repeat(_stars())
-	return "🌉 " + tr("TR_SHARE") % [Locale.number(state.cost()), Locale.number(state.budget), _tests] + " " + stars
+	var line := "🌉 " + tr("TR_SHARE") % [Locale.number(state.cost()), Locale.number(state.budget), _tests] + " " + stars
+	if _convoy_proof:
+		line += " 🚚🚚🚚"
+	return line
 
 ## Three for a bridge as cheap as the day's proof, two for one inside half
 ## the slack over it, one for any bridge that gets over.
@@ -449,6 +596,9 @@ func _stars() -> int:
 func _on_solved() -> void:
 	_solved_at = _now()
 	_testing = false
+	_solved_design = state.design.duplicate(true)
+	_ask_crowd(true)
+	_strip_mesh = null
 	fx.cue("solved")
 	var at := Vector2(size.x * 0.5, _scene.position.y + _u * 1.2)
 	_rw.sticker(tr("TR_W_CROSSED"), at, 104, WIN_HOLD, true, Color.WHITE, true, "crossed")
@@ -475,6 +625,53 @@ func _on_solved() -> void:
 			var mid := px(Vector2(d.a + d.b) * 0.5)
 			_after(0.1 + 0.05 * (n - i), func(): fx.sparkle(mid))
 
+# --- the crowd ---
+
+## Where this bridge's cost stands among today's: the share of `score` a
+## bucket of the budget, 0..100. A daily's solve sends it first
+## (core/backend.gd queues it, so a solve offline is sent on a later launch);
+## then the day's tally comes back and the strip says how many of today's
+## bridges cost more. Nothing is asked for a board dealt from New.
+func _ask_crowd(send: bool) -> void:
+	if daily_key == 0 or not Backend.started():
+		return
+	var game := "trestle_%d" % _difficulty
+	var score := _crowd_score()
+	_crowd_state = "wait"
+	_strip_mesh = null
+	if send:
+		await Backend.submit(game, daily_key, {"score": score, "locale": Locale.current()})
+	var got: Dictionary = await Backend.tally(game, daily_key)
+	if not is_inside_tree():
+		return
+	_crowd_state = "off"
+	if got.get("ok", false):
+		var data: Dictionary = got.data
+		var hist = data.get("histogram", [])
+		var count := int(data.get("count", 0))
+		if hist is Array:
+			var dearer := 0
+			for i in range(score + 1, (hist as Array).size()):
+				dearer += int(hist[i])
+			_crowd_count = count
+			_crowd_pct = int(round(100.0 * dearer / maxf(1.0, float(count))))
+			_crowd_state = "ok"
+	_strip_mesh = null
+	_front.queue_redraw()
+
+func _crowd_score() -> int:
+	return clampi(int(round(100.0 * float(state.cost()) / maxf(1.0, float(state.budget)))), 0, 100)
+
+func _crowd_line() -> String:
+	match _crowd_state:
+		"wait":
+			return tr("TR_CROWD_WAIT")
+		"ok":
+			if _crowd_count < 3:
+				return tr("TR_CROWD_FIRST")
+			return tr("TR_CROWD_PCT") % [_crowd_pct, Locale.number(_crowd_count)]
+	return ""
+
 func flat_win() -> Dictionary:
 	var faces: Array[Control] = []
 	for i in _faces.size():
@@ -484,18 +681,47 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD
 
+## The player's own bridge and how many tests it took, kept with the
+## completion so a reopened daily shows what they built, not the proof.
+func completion_record() -> Dictionary:
+	var rows: Array = []
+	for d in state.design:
+		rows.append([d.a.x, d.a.y, d.b.x, d.b.y, int(d.m), 1 if d.get("hint", false) else 0])
+	return {"design": rows, "tests": _tests}
+
 func restore_completed_board() -> void:
 	state.design = []
-	for p in state.proof:
-		state.design.append({"a": p.a, "b": p.b, "m": p.m, "hint": false})
+	var rows = completed_record.get("design", [])
+	if rows is Array and not (rows as Array).is_empty():
+		for r in rows:
+			state.design.append({"a": Vector2i(int(r[0]), int(r[1])), "b": Vector2i(int(r[2]), int(r[3])),
+				"m": int(r[4]), "hint": int(r[5]) == 1})
+		_tests = int(completed_record.get("tests", 1))
+	else:
+		# a save from before the design was kept
+		for p in state.proof:
+			state.design.append({"a": p.a, "b": p.b, "m": p.m, "hint": false})
+	_solved_design = state.design.duplicate(true)
+	_crossed_at = _now() - 100.0
+	_toast = ""
+	_rest_over()
+	_ask_crowd(false)
+
+## The solved bridge standing with the cart over on the far bank: how a
+## finished board rests between the post-solve runs.
+func _rest_over() -> void:
+	if not _solved_design.is_empty():
+		state.design = _solved_design.duplicate(true)
 	sim.setup(state.level, state.for_sim())
 	sim.cart = Sim.CART_OVER
 	sim.cart_pos = Vector2(float(state.level.w) + Sim.CART_EXIT, float(state.level.dy))
 	_testing = false
-	_crossed_at = _now() - 100.0
+	_convoy = false
+	_free = false
+	state.free = false
 	_solved_at = -1.0
-	_toast = ""
 	_frame = null
+	_strip_mesh = null
 	queue_redraw()
 
 # --- the HUD's actions ---
@@ -576,7 +802,15 @@ func _splinters(d: Dictionary) -> void:
 # --- input ---
 
 func _gui_input(event: InputEvent) -> void:
-	if _done or state.level.is_empty():
+	if state.level.is_empty():
+		return
+	if _done and not _free:
+		# after the solve only the strip's pills answer
+		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
+			if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+				return
+			_after_press(event.position)
+			accept_event()
 		return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
@@ -593,7 +827,84 @@ func _gui_input(event: InputEvent) -> void:
 const NONE := Vector2i(-99, -99)
 
 func _chip_rect(i: int) -> Rect2:
+	if _free:
+		return _slot(i)
 	return Rect2(Vector2(PAD + i * (CHIP.x + CHIP_GAP), (STRIP_H - CHIP.y) * 0.5 + 8.0), CHIP)
+
+## The free build's strip: six even slots, three chips and three pills.
+func _slot(i: int) -> Rect2:
+	var w := (size.x - 2.0 * PAD - 5.0 * CHIP_GAP) / 6.0
+	return Rect2(Vector2(PAD + i * (w + CHIP_GAP), (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
+
+## Where a pill stands: two wide ones after the solve, three slots in the
+## free build.
+func _pill_rect(p: int) -> Rect2:
+	if _free:
+		return _slot({Pill.GO: 3, Pill.CONVOY: 4, Pill.DONE: 5}.get(p, 5))
+	var font: Font = CozyTheme.body(700)
+	var x := PAD
+	for q in [Pill.CONVOY, Pill.FREE]:
+		var w := maxf(180.0, font.get_string_size(tr(_pill_label(q)), HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x + 44.0)
+		if q == p:
+			return Rect2(Vector2(x, (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
+		x += w + CHIP_GAP
+	return Rect2()
+
+## The pills the strip shows now.
+func _pills() -> Array:
+	if _free:
+		return [Pill.GO, Pill.CONVOY, Pill.DONE]
+	if is_done():
+		# not while the solve is still being cheered
+		if _solved_at >= 0.0 and _now() - _solved_at < WIN_HOLD:
+			return []
+		return [Pill.CONVOY, Pill.FREE]
+	return []
+
+func _pill_label(p: int) -> String:
+	match p:
+		Pill.CONVOY: return "TR_CONVOY"
+		Pill.FREE: return "TR_FREE"
+		Pill.GO: return "TR_STOP" if _testing else "TR_GO"
+	return "TR_DONE"
+
+## A tap after the solve: the convoy or the free build.
+func _after_press(p: Vector2) -> void:
+	for pill in _pills():
+		if _pill_rect(pill).has_point(p):
+			_pill(pill)
+			return
+
+func _pill(pill: int) -> void:
+	match pill:
+		Pill.CONVOY:
+			if _testing:
+				_stop()
+			_start_test(CONVOY)
+			_tell("TR_CONVOY_TIP")
+		Pill.FREE:
+			if _testing:
+				return
+			_free = true
+			state.free = true
+			sim.setup(state.level, [])
+			_solved_at = -1.0
+			_frame = null
+			_strip_mesh = null
+			fx.cue("select")
+			_tell("TR_FREE_TIP")
+		Pill.GO:
+			if _testing:
+				_stop()
+				fx.cue("undo")
+			else:
+				_start_test(1)
+		Pill.DONE:
+			if _testing:
+				_stop()
+			_last_broken = {}
+			_rest_over()
+			fx.cue("reset")
 
 func _hit() -> float:
 	return maxf(_u * HIT_JOINT, HIT_MIN)
@@ -649,6 +960,10 @@ func _press(p: Vector2) -> void:
 	for i in 3:
 		if _chip_rect(i).has_point(p):
 			_pick_mat(i)
+			return
+	for pill in _pills():
+		if _pill_rect(pill).has_point(p):
+			_pill(pill)
 			return
 	if _testing:
 		return
@@ -715,7 +1030,7 @@ func _release(p: Vector2) -> void:
 		fx.cue("remove")
 		_frame = null
 		_last_broken = {}
-		note_move()
+		_moved()
 		return
 	_sel = NONE
 
@@ -740,11 +1055,29 @@ func _lay(a: Vector2i, b: Vector2i) -> void:
 	fx.cue(["place_road", "place_wood", "place_rope"][_mat], randf_range(0.95, 1.05))
 	_sel = b
 	_frame = null
+	_moved()
+
+## A move while building; the free build's edits are not the daily's moves.
+func _moved() -> void:
+	if _free:
+		_strip_mesh = null
+		return
 	note_move()
 
 # --- the drawing ---
 
 func _place_cart() -> void:
+	for i in _trail_faces.size():
+		if i >= sim.trail.size():
+			break
+		var c: Dictionary = sim.trail[i]
+		var txf := _xf_of(int(c.cart), c.pos, float(c.angle))
+		var faces: Array = _trail_faces[i]
+		for k in faces.size():
+			var at := txf * Parts.seat(_u, faces.size(), k)
+			faces[k].position = at - faces[k].size * 0.5
+			faces[k].rotation = txf.get_rotation()
+			faces[k].visible = int(c.cart) != Sim.CART_WATER or _now() - _fail_at < 0.35
 	if _faces.is_empty():
 		return
 	var xf := _cart_xf()
@@ -763,11 +1096,14 @@ func _place_cart() -> void:
 
 ## The cart's frame on the screen: its origin on the road's top.
 func _cart_xf() -> Transform2D:
-	var at := px(sim.cart_pos)
-	var ang := -sim.cart_angle
+	return _xf_of(sim.cart, sim.cart_pos, sim.cart_angle)
+
+func _xf_of(state_: int, pos: Vector2, angle: float) -> Transform2D:
+	var at := px(pos)
+	var ang := -angle
 	var up := Vector2(0.0, -1.0).rotated(ang)
-	var lift := _u * 0.1 if sim.cart != Sim.CART_AIR else 0.0
-	if sim.cart == Sim.CART_WATER:
+	var lift := _u * 0.1 if state_ != Sim.CART_AIR else 0.0
+	if state_ == Sim.CART_WATER:
 		# sinking, and bobbing back up a little
 		var since := _now() - _fail_at if _fail_at >= 0.0 else 0.0
 		at.y += minf(since, 0.6) * _u * 0.6
@@ -787,6 +1123,9 @@ func _draw() -> void:
 		var wb := Face.Builder.new()
 		Parts.wheel(wb, _u)
 		_wheel_mesh = wb.mesh()
+		var b2 := Face.Builder.new()
+		Parts.cart_body(b2, _u, 2)
+		_cart2_mesh = b2.mesh()
 	draw_mesh(_still, null)
 	if _halo != null:
 		var beat := 0.75 + 0.25 * sin(_now() * 4.5) if not Motion.reduce else 1.0
@@ -796,7 +1135,13 @@ func _draw() -> void:
 	draw_mesh(_cart_mesh, null, xf)
 	for w in Parts.wheel_at(_u, _faces.size()):
 		draw_mesh(_wheel_mesh, null, xf * Transform2D(_wheel_turn, w))
-	_shown = [_still, _frame, _cart_mesh, _wheel_mesh, _halo]
+	if _testing:
+		for c in sim.trail:
+			var txf := _xf_of(int(c.cart), c.pos, float(c.angle))
+			draw_mesh(_cart2_mesh, null, txf)
+			for w in Parts.wheel_at(_u, 2):
+				draw_mesh(_wheel_mesh, null, txf * Transform2D(_wheel_turn, w))
+	_shown = [_still, _frame, _cart_mesh, _wheel_mesh, _halo, _cart2_mesh]
 
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
@@ -939,13 +1284,22 @@ func _build_frame() -> ArrayMesh:
 					_grow.erase(key)
 				else:
 					q = p.lerp(q, Motion.back_out(k) if not Motion.reduce else 1.0)
+			var k := _key(d)
 			if _last_broken.has(i):
 				hb.stroke(PackedVector2Array([p, q]), _u * 0.48, Color(Parts.BAD, 0.6))
 				halos += 1
+				if k == _first_key:
+					# the first to go: ringed at its middle
+					var mid := (p + q) * 0.5
+					hb.stroke(Face.Builder.arc_points(mid, _u * 0.42, 0.0, TAU), _u * 0.07, Parts.BAD, true)
+					hb.stroke(Face.Builder.arc_points(mid, _u * 0.3, 0.0, TAU), _u * 0.035, Color.WHITE, true)
 			if d.get("hint", false):
 				hb.stroke(PackedVector2Array([p, q]), _u * 0.32, Color(Pal.SUN, 0.35))
 				halos += 1
-			Parts.member(b, p, q, int(d.m), _u)
+			# the load it took in the last test, a little softer than live
+			var tint := Parts.stress(float(_peak.get(k, 0.0)))
+			tint.a *= 0.8
+			Parts.member(b, p, q, int(d.m), _u, tint)
 			joints[d.a] = p
 			joints[d.b] = px(Vector2(d.b))
 		for j in joints:
@@ -981,7 +1335,7 @@ func _draw_front() -> void:
 	wave.append(Vector2(x0 - _u * 0.2, size.y))
 	b.polygon(wave, Color(0.35, 0.62, 0.82, 0.55))
 	# building: where the finger reaches, the ghost member, the chosen joint
-	if not _testing and not is_done():
+	if not _testing and (not is_done() or _free):
 		var from := _from if _dragging and _from != NONE else _sel
 		if from != NONE:
 			for x in range(from.x - 2, from.x + 3):
@@ -996,10 +1350,18 @@ func _draw_front() -> void:
 			var good := ok == State.Refusal.OK
 			var tint := Color(0, 0, 0, 0) if good else Color(Parts.BAD, 0.7)
 			Parts.member(b, px(Vector2(_from)), px(Vector2(_to)), _mat, _u, tint, 0.75)
+	var tags := _load_tags() if not _testing and (not is_done() or _free or not _last_broken.is_empty()) else []
+	for tag in tags:
+		b.fan(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), Color(Pal.SURFACE, 0.92))
+		b.stroke(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), 3.0, tag.col, true)
 	_front_mesh = b.mesh()
 	_front.draw_mesh(_front_mesh, null)
 	shown.append(_front_mesh)
-	var strip_key := "%d|%d|%d|%s" % [state.cost(), _mat, state.budget, size]
+	var tag_font: Font = CozyTheme.body(700)
+	for tag in tags:
+		_front.draw_string(tag_font, tag.rect.position + Vector2(10.0, tag.rect.size.y * 0.5 + tag_font.get_ascent(22) * 0.36), tag.text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.TEXT)
+	var strip_key := "%d|%d|%d|%s|%s|%s|%s|%s|%d" % [state.cost(), _mat, state.budget, size, _free, is_done(), _testing, _crowd_state, _pills().size()]
 	if _strip_mesh == null or _strip_for != strip_key:
 		_strip_mesh = _build_strip()
 		_strip_for = strip_key
@@ -1009,12 +1371,52 @@ func _draw_front() -> void:
 	_draw_toast(t, shown)
 	_front_shown = shown
 
+## The hardest-worked members of the last test, in figures: a paper tag at
+## each one's middle saying the share of its limit it reached.
+func _load_tags() -> Array:
+	var ranked: Array = []
+	for d in state.design:
+		var r := float(_peak.get(_key(d), 0.0))
+		if r >= LOAD_TAG_AT:
+			ranked.append([r, d])
+	ranked.sort_custom(func(x: Array, y: Array) -> bool: return x[0] > y[0])
+	var out: Array = []
+	var font: Font = CozyTheme.body(700)
+	for e in ranked:
+		if out.size() >= LOAD_TAGS:
+			break
+		var r: float = e[0]
+		var d: Dictionary = e[1]
+		var text := "%d%%" % mini(999, int(round(r * 100.0)))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0
+		var mid := px(Vector2(d.a + d.b) * 0.5)
+		var col := Parts.stress(r)
+		var rect := Rect2(mid - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0))
+		# a tag that would sit on a harder-worked one's is left out
+		var clear := true
+		for o in out:
+			if (o.rect as Rect2).grow(4.0).intersects(rect):
+				clear = false
+				break
+		if clear:
+			out.append({"rect": rect, "text": text, "col": Color(col, 1.0) if col.a > 0.0 else Pal.TEXT_DIM})
+	return out
+
 ## The strip: a paper band, the chips, the budget bar and the proof's star.
 func _build_strip() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var strip := Rect2(Vector2(PAD * 0.5, 8.0), Vector2(size.x - PAD, STRIP_H))
 	b.fan(Face.Builder.round_rect(strip.position + Vector2(0, 4), strip.size, 30.0), Color(Pal.TEXT, 0.12))
 	b.fan(Face.Builder.round_rect(strip.position, strip.size, 30.0), Color(Pal.SURFACE, 0.94))
+	for pill in _pills():
+		var r := _pill_rect(pill)
+		var hot: bool = pill == Pill.CONVOY or (pill == Pill.GO and not _testing)
+		b.fan(Face.Builder.round_rect(r.position + Vector2(0, 5), r.size, CHIP_R), Color(Pal.TEXT, 0.14))
+		b.fan(Face.Builder.round_rect(r.position, r.size, CHIP_R), Pal.SUN_TILE if hot else Pal.SURFACE_HI)
+		if hot:
+			b.stroke(Face.Builder.round_rect(r.position, r.size, CHIP_R), 4.0, Pal.SUN, true)
+	if is_done() and not _free:
+		return b.mesh()
 	for i in 3:
 		var r := _chip_rect(i)
 		var on := i == _mat
@@ -1026,6 +1428,8 @@ func _build_strip() -> ArrayMesh:
 			b.stroke(Face.Builder.round_rect(r.position - Vector2(0, lift), r.size, CHIP_R), 4.0, Pal.SUN, true)
 		var mid := r.position + Vector2(r.size.x * 0.5, r.size.y * 0.36 - lift)
 		Parts.member(b, mid - Vector2(r.size.x * 0.3, 0), mid + Vector2(r.size.x * 0.3, 0), i, 70.0, Color(0, 0, 0, 0), 1.0 if there else 0.3)
+	if _free:
+		return b.mesh()
 	# the budget bar
 	var bar := _budget_rect()
 	var spent := clampf(float(state.cost()) / maxf(1.0, float(state.budget)), 0.0, 1.0)
@@ -1043,6 +1447,38 @@ func _build_strip() -> ArrayMesh:
 func _draw_words() -> void:
 	var bar := _budget_rect()
 	var font: Font = CozyTheme.body(700)
+	for pill in _pills():
+		var r := _pill_rect(pill)
+		var word := tr(_pill_label(pill))
+		var pfs := 28
+		while pfs > 18 and font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, pfs).x > r.size.x - 20.0:
+			pfs -= 2
+		var psz := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, pfs)
+		_front.draw_string(font, Vector2(r.position.x + (r.size.x - psz.x) * 0.5, r.get_center().y + font.get_ascent(pfs) * 0.36), word,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, pfs, Pal.TEXT)
+	if is_done() and not _free:
+		# the bridge's cost, its stars, and where it stands today
+		var right := size.x - PAD - 8.0
+		var left := _pill_rect(Pill.FREE).end.x + 20.0
+		var cost := "%s / %s  %s" % [Locale.number(state.cost()), Locale.number(state.budget), "★".repeat(_stars())]
+		var cfs := 32
+		var csz := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs)
+		_front.draw_string(font, Vector2(right - csz.x, 58.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs, Pal.TEXT)
+		var crowd := _crowd_line()
+		if crowd != "":
+			var body: Font = CozyTheme.body(600)
+			var fs := 22
+			while fs > 16 and body.get_string_size(crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > right - left:
+				fs -= 1
+			var sz := body.get_string_size(crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+			_front.draw_string(body, Vector2(right - sz.x, 96.0), crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT_DIM)
+		return
+	if _free:
+		var cost := tr("TR_COST") % [Locale.number(state.cost()), Locale.number(state.budget)]
+		var body: Font = CozyTheme.body(600)
+		var sz := body.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24)
+		_front.draw_string(body, Vector2(size.x - PAD - sz.x, STRIP_H + 44.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24,
+			Pal.TEXT_DIM if state.cost() <= state.budget else Parts.BAD)
 	for i in 3:
 		var r := _chip_rect(i)
 		var there := state.mats.has(i)
@@ -1052,6 +1488,8 @@ func _draw_words() -> void:
 		var sz := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 		_front.draw_string(font, Vector2(r.position.x + (r.size.x - sz.x) * 0.5, r.end.y - 16.0 - lift), name,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Pal.TEXT, 1.0 if there else 0.35))
+	if _free:
+		return
 	var money := "%s / %s" % [Locale.number(state.cost()), Locale.number(state.budget)]
 	var mfs := 34
 	var msz := font.get_string_size(money, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs)
