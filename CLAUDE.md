@@ -2276,9 +2276,15 @@ stated before the 3D game left.
   Distribution and harnesses never request a real ad; only the release
   builds the stores carry do. The apps are added as not yet on a store and
   stay "requires review" (limited serving) until each is linked to its
-  store listing in AdMob once public. The iOS IDFA explainer is published;
-  the GDPR and US-states messages wait on a live privacy policy URL, and
-  `app-ads.txt` on the developer site.
+  store listing in AdMob once public. Published in AdMob's Privacy & messaging:
+  the GDPR message (both apps, a Do not consent button in every country,
+  en plus pt-PT/es/de/fr/it), the US-states message (en, es) and the iOS
+  IDFA explainer (en, pt-BR, es-419). The privacy policy and `app-ads.txt`
+  are `server/site/`, served by Firebase Hosting
+  (`cd server && firebase deploy --only hosting`) at
+  https://daily-games-420bf.web.app/peeplet/privacy and
+  /app-ads.txt; the app-ads.txt only counts once Play's developer website
+  is that domain.
 - **The Android template needs AGP 8.9.1, not Godot 4.7's stock 8.6.1**:
   `godot-iap`'s `openiap-google` 3.5.2 pulls `androidx.core:core:1.18.0`,
   which refuses an older AGP. Godot only honours
