@@ -60,6 +60,7 @@ const SlideGen = preload("res://puzzles/slider_gen.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
+const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
 const Bead = preload("res://ui/faces/bead.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
@@ -210,6 +211,7 @@ var _slider_mesh: ArrayMesh
 var _hedgehogs_mesh: ArrayMesh
 var _marigold_mesh: ArrayMesh
 var _pixelgarden_mesh: ArrayMesh
+var _drumbeat_keep: Array = []
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -398,6 +400,7 @@ func _draw() -> void:
 		"hedgehogs": _draw_hedgehogs()
 		"marigold": _draw_marigold()
 		"pixelgarden": _draw_pixelgarden()
+		"drumbeat": _draw_drumbeat()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1301,6 +1304,47 @@ func _draw_marigold() -> void:
 			b.idx.append(base + i)
 	_marigold_mesh = b.mesh()
 	draw_mesh(_marigold_mesh, null)
+
+## Drumbeat: a strip of the board's wooden lane with the hit ring at the
+## left, a don, a ka, a big don and a drumroll riding in, and lanterns on a
+## cord over it, through `ui/faces/drumbeat_parts.gd`, the file
+## `puzzles/drumbeat2d.gd` draws with.
+func _draw_drumbeat() -> void:
+	_drumbeat_keep.clear()
+	var b := Face.Builder.new()
+	var lane_y := 18.0
+	b.polygon(Face.Builder.round_rect(at(-170.0, lane_y - 26.0), Vector2(340.0, 52.0) * _u, 0.0), Color("7a5134"))
+	b.polygon(Face.Builder.round_rect(at(-170.0, lane_y - 21.0), Vector2(340.0, 42.0) * _u, 8.0 * _u), Color("3f2c22"))
+	var ring := at(-118.0, lane_y)
+	b.disc(ring, 20.0 * _u, Color("5a463a"))
+	b.stroke(Face.Builder.arc_points(ring, 18.5 * _u, 0.0, TAU), 2.0 * _u, DbParts.CREAM, true)
+	b.stroke(Face.Builder.arc_points(ring, 13.5 * _u, 0.0, TAU), 1.2 * _u, Color(DbParts.CREAM, 0.55), true)
+	for k in 3:
+		var x := -60.0 + 68.0 * k
+		b.stroke(PackedVector2Array([at(x, lane_y - 18.0), at(x, lane_y + 18.0)]), 1.2 * _u, Color(1, 1, 1, 0.3))
+	var cord := PackedVector2Array()
+	for k in 17:
+		var t := k / 16.0
+		cord.append(at(-160.0 + 320.0 * t, -50.0 + sin(PI * t) * 12.0))
+	b.stroke(cord, 1.2 * _u, Color(DbParts.INK, 0.7))
+	var m := b.mesh()
+	_drumbeat_keep.append(m)
+	draw_mesh(m, null)
+	var cols := [Color("f59a6a"), Color("f2c14e"), Color("f08aa6"), Color("8cc8ec"), Color("f59a6a")]
+	for k in cols.size():
+		var t := k / float(cols.size() - 1)
+		var hang := at(-140.0 + 280.0 * t, -50.0 + sin(PI * (0.06 + 0.88 * t)) * 12.0)
+		var lm := DbParts.lantern(9.0 * _u, cols[k], 0.8)
+		_drumbeat_keep.append(lm)
+		draw_mesh(lm, null, Transform2D(0.0, hang))
+	var roll := DbParts.roll(48.0 * _u, 13.0 * _u)
+	_drumbeat_keep.append(roll)
+	draw_mesh(roll, null, Transform2D(0.0, at(96.0, lane_y)))
+	var notes := [[1, -8.0, 14.0], [2, 46.0, 19.0], [0, -66.0, 14.0]]
+	for n: Array in notes:
+		var nm := DbParts.note(int(n[0]), float(n[2]) * _u, DbParts.Mood.HAPPY)
+		_drumbeat_keep.append(nm)
+		draw_mesh(nm, null, Transform2D(0.0, at(float(n[1]), lane_y)))
 
 ## Pixel Garden: the board's own pegboard and beads, through
 ## `ui/faces/bead.gd`, the file `puzzles/pixel_garden2d.gd` draws with: a

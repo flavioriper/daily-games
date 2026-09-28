@@ -776,6 +776,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "PG_LVL_3"},
 		],
 	},
+	{
+		"id": "drumbeat",
+		"kind": "puzzle",
+		"title": "Drumbeat",
+		"blurb": "DB_BLURB",
+		"short": "DB_SHORT",
+		"motto": "DB_MOTTO",
+		"footer": "Listen · Strike · Clear",
+		# The drum is the board: strokes land on the card itself, so no tray
+		# and no actions row, and nothing to take back or check -- the song
+		# judges every note as it passes. Reset rides in the top bar.
+		"script": "res://puzzles/drumbeat2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Marigold: each level is its own daily with its own done
+		# mark, and the day's song is dealt from the seed.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "DB_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "DB_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "DB_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "DB_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

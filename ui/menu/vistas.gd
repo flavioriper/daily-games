@@ -60,6 +60,8 @@ const CARDS := {
 	"hedgehogs": ["autumn", 1.6, Vector2(0.60, 0.70)],
 	"slider": ["meadow", 1.5, Vector2(0.55, 0.45)],
 	"marigold": ["dusk", 1.5, Vector2(0.35, 0.35)],
+	# Drumbeat's festival stands in the dusk vista's lantern light.
+	"drumbeat": ["dusk", 1.4, Vector2(0.6, 0.45)],
 	"pixelgarden": ["meadow", 1.6, Vector2(0.30, 0.55)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.

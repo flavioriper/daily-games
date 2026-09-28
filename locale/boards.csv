@@ -735,3 +735,39 @@ PG_PIC_CATERPILLAR,Caterpillar,Lagarta,Oruga
 PG_PIC_BEEHIVE,Beehive,Colmeia,Colmena
 PG_PIC_DRAGONFLY,Dragonfly,Libélula,Libélula
 PG_PIC_FRUIT_BASKET,Fruit Basket,Cesta de Frutas,Cesta de Frutas
+DB_RULES,"Notes ride the lane into the ring in time with the song. When a red note reaches the ring, tap the drum's face; when a blue one does, tap its rim or anywhere off the drum. A big note scores twice if you strike it with two fingers at once. Drum as fast as you can on a yellow roll, and pop a balloon with that many taps on the face.\n\nEvery note is GOOD, OK or BAD by how close you were. GOOD and OK fill the soul gauge; a BAD, a wrong side or a note let past drains it and breaks your combo. Finish the song with the gauge at or over its line to clear it. Go-Go time scores a fifth more.\n\nIf the notes feel early or late on your phone, nudge the timing on the start card.","As notas vêm pela pista até o anel no ritmo da música. Quando uma nota vermelha chegar ao anel, toque no couro do tambor; quando for azul, toque na borda ou fora do tambor. Uma nota grande vale o dobro se você bater com dois dedos juntos. Toque o mais rápido que puder no rufar amarelo, e estoure o balão com aquele tanto de toques no couro.\n\nCada nota é BOM, OK ou RUIM conforme a sua precisão. BOM e OK enchem o medidor de alma; um RUIM, o lado errado ou uma nota que passa esvaziam o medidor e quebram o combo. Termine a música com o medidor na linha ou acima dela para passar. O Go-Go vale um quinto a mais.\n\nSe as notas parecerem adiantadas ou atrasadas no seu celular, ajuste o tempo no cartão de início.","Las notas llegan por la pista hasta el anillo al ritmo de la canción. Cuando una nota roja llegue al anillo, toca el parche del tambor; cuando sea azul, toca el aro o fuera del tambor. Una nota grande vale el doble si la golpeas con dos dedos a la vez. Toca lo más rápido que puedas en el redoble amarillo, y revienta el globo con esa cantidad de toques en el parche.\n\nCada nota es BIEN, OK o MAL según tu precisión. BIEN y OK llenan el medidor de alma; un MAL, el lado equivocado o una nota que pasa lo vacían y rompen el combo. Termina la canción con el medidor en la línea o por encima para superarla. El Go-Go vale una quinta parte más.\n\nSi las notas se sienten adelantadas o atrasadas en tu teléfono, ajusta el tiempo en la tarjeta de inicio."
+DB_BLURB,"Drum the day's song: red on the face, blue on the rim.","Toque a música do dia: vermelho no couro, azul na borda.","Toca la canción del día: rojo en el parche, azul en el aro."
+DB_SHORT,"Drum the song,\nfill the gauge.","Toque a música,\nencha o medidor.","Toca la canción,\nllena el medidor."
+DB_MOTTO,Keep the festival going,Mantenha a festa rolando,Que siga la fiesta
+DB_LVL_0,"A gentle beat, wide timing","Batida calma, tempo folgado","Ritmo suave, tiempo holgado"
+DB_LVL_1,Eighth notes and big notes,Colcheias e notas grandes,Corcheas y notas grandes
+DB_LVL_2,Sixteenths and quick runs,Semicolcheias e sequências rápidas,Semicorcheas y rachas rápidas
+DB_LVL_3,"Hard's chart, strict timing","A partitura do Difícil, tempo rigoroso","La partitura de Difícil, tiempo estricto"
+DB_TAP_START,Tap the drum to start,Toque no tambor para começar,Toca el tambor para empezar
+DB_TAP_AGAIN,Tap the drum to play again,Toque no tambor para tentar de novo,Toca el tambor para intentarlo otra vez
+DB_LEGEND_DON,Red: the face,Vermelho: o couro,Rojo: el parche
+DB_LEGEND_KA,Blue: the rim,Azul: a borda,Azul: el aro
+DB_LEGEND_BIG,Big: two fingers,Grande: dois dedos,Grande: dos dedos
+DB_LEGEND_ROLL,Yellow: drum fast,Amarelo: toque rápido,Amarillo: toca rápido
+DB_TIMING,Timing %s ms,Tempo %s ms,Tiempo %s ms
+DB_SCORE,SCORE,PONTOS,PUNTOS
+DB_SOUL,SOUL,ALMA,ALMA
+DB_COMBO,combo,combo,combo
+DB_GOOD,GOOD,BOM,BIEN
+DB_OK,OK,OK,OK
+DB_BAD,BAD,RUIM,MAL
+DB_GOGO,Go-Go time!,Hora do Go-Go!,¡Hora del Go-Go!
+DB_COMBO_CALL,%d combo!,%d combo!,¡%d combo!
+DB_POP,Pop!,Pou!,¡Pum!
+DB_HITS,%d hits!,%d toques!,¡%d toques!
+DB_SOUL_LINE,Clear line!,Linha alcançada!,¡Línea alcanzada!
+DB_SO_CLOSE,So close!,Quase!,¡Casi!
+DB_KEEP_GOING,Keep drumming!,Continue tocando!,¡Sigue tocando!
+DB_MISSED_LINE,Soul %d%%: reach the line to clear.,Alma %d%%: alcance a linha para passar.,Alma %d%%: alcanza la línea para superarla.
+DB_STATS,GOOD %d · OK %d · BAD %d · combo %d,BOM %d · OK %d · RUIM %d · combo %d,BIEN %d · OK %d · MAL %d · combo %d
+DB_CLEARED,Cleared!,Passou!,¡Superada!
+DB_FULL_COMBO,Full combo!,Combo completo!,¡Combo completo!
+DB_ALL_GOOD,All GOOD!,Tudo BOM!,¡Todo BIEN!
+DB_WIN,"%s points, best combo %d.","%s pontos, melhor combo %d.","%s puntos, mejor combo %d."
+DB_PAUSED,Paused,Pausado,En pausa
+DB_RESUME,Tap the drum to go on,Toque no tambor para continuar,Toca el tambor para seguir

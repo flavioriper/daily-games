@@ -1389,6 +1389,26 @@ pointing `seed_as` at them. Specs:
   peak, idle 3.2-3.6 ms; ANGLE agrees on 78 (frames within 1/255) and the
   reduce-motion pair is pixel-identical. 13 sounds generated (2026-09-27),
   one take a cue, awaiting the user's listen.
+- **Drumbeat is the twenty-eighth card** (2026-09-28,
+  `puzzles/drumbeat2d.gd`, `puzzles/drumbeat_state.gd`,
+  `ui/faces/drumbeat_parts.gd`, spec `2026-09-28-drumbeat-flat-design.md`,
+  no concept tab -- built while the user was away). The drum-festival
+  rhythm game the spec names once to forbid; **it is called Drumbeat**.
+  It is a grid board, not an Arcade game, by the user's word: clearing the
+  day's song (soul gauge at or over 80% when it ends) is the solve, and a
+  song under the line is played again. Red notes on the drum's skin, blue
+  anywhere else, big notes with two fingers, drumrolls, balloons, Go-Go.
+  Two things travel: **a rhythm game's music and charts come out of one
+  script** (`tools/gen_drumbeat.py` synthesises three original songs and
+  writes `content/drumbeat.json` off the same bar grid, charts written at
+  Hard and thinned to Medium/Easy by a minimum gap), and **a sound fired on
+  every note needs its own voice pool**: `Fx2D.cue` drops a repeat inside
+  60 ms. The clock is the music's playback position corrected by the mix
+  and the output latency, with a per-phone timing nudge on the start card
+  (`user://drumbeat.cfg`). `tests/_shot_drumbeat.gd` plays it with a bot;
+  `tests/_probe_drumbeat.gd` plays every chart headless. 63-73 draw calls
+  in play, ~124 in Go-Go, ANGLE agreeing. 16 cues generated, one take a
+  cue, and the songs, awaiting the user's listen.
 - **Balance is a seesaw since 2026-09-27** (`puzzles/balance2d.gd`,
   `balance_state.gd`, `balance_sim.gd`, `balance_gen.gd`, spec
   `2026-09-27-balance-seesaw-design.md`; built unattended at the user's word,

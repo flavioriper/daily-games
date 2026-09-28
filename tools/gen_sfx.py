@@ -623,6 +623,28 @@ SETS = {
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny hollow wooden clacks rolling in, stacks of rings on pegs appearing", 1.0, -9),
     },
+    # Drumbeat (puzzles/drumbeat2d.gd): the drum-festival rhythm game. don and ka are the player's own drum, struck on every note, so
+    # they are real foley and dead short -- a take with a slow attack would
+    # sound late. The songs themselves are synthesised by
+    # tools/gen_drumbeat.py, not generated here.
+    "drumbeat": {
+        "don":          ("a single hit on the skin of a big japanese taiko drum, deep round punchy boom, close mic, immediate attack, very short", 0.5, -3, FOLEY),
+        "ka":           ("one single isolated knock of a wooden drumstick on the hard wooden rim of a drum, one hit only, a crisp dry tock, immediate attack, instant decay", 0.5, -5, FOLEY),
+        "balloon":      ("a tiny soft rubbery squeak of a balloon being squeezed, very short", 0.5, -12, CARTOON),
+        "pop":          ("a balloon popping with a cheerful bang and a tiny confetti sparkle, short", 0.7, -4, CARTOON),
+        "balloon_gone": ("a small balloon slowly deflating and flying off with a comic squeaky whistle, short", 0.9, -9, CARTOON),
+        "gogo":         ("a festive rising whoosh with a bright shimmer and a small gong, the party begins, short", 1.4, -5, ARCADE),
+        "soul":         ("a bright short rising chime with a sparkle, a meter filling past its line", 0.8, -7, ARCADE),
+        "combo":        ("a short bright festival bell flourish, three quick rising notes", 0.7, -8, ARCADE),
+        "break":        ("a short soft comic descending wobble, a drumstick fumbled, gentle", 0.5, -12, CARTOON),
+        "select":       ("a single tiny soft wooden click, choosing a song, very short", 0.5, -12),
+        "start":        ("a short festival drum roll on a taiko building into one big hit, get ready", 1.6, -5, FOLEY),
+        "clear":        ("a festive celebratory jingle on marimba and small bells, a song cleared, joyful, about two seconds", 2.4, -4, ARCADE),
+        "full_combo":   ("a triumphant festive fanfare on bells and marimba ending on a big drum hit and sparkles, a perfect performance", 2.8, -3, ARCADE),
+        "fail":         ("a gentle short descending marimba phrase, a kind try again, soft and warm not sad", 2.0, -6, ARCADE),
+        "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        "tick":         ("a single soft wooden clock tick with a tiny bell, very short", 0.5, -9, ARCADE),
+    },
 }
 
 
