@@ -209,9 +209,9 @@ static func lifted(fill: Color, radius: int, margin: int) -> StyleBoxFlat:
 ## by the flat screen's chrome too. Pressed sinks onto a smaller shadow and
 ## darkens; disabled keeps the shape at 55 percent.
 static func lift_button(b: Button, fill: Color, radius: int, margin := 8) -> void:
-	# A labelled IconButton is a pill, whoever dresses it.
+	# A labelled IconButton is a soft slab, whoever dresses it.
 	if str(b.get("label_text")) not in ["", "<null>"]:
-		radius = 200
+		radius = 28
 	var up := soft_button(fill, radius, false, margin)
 	var down := soft_button(fill, radius, true, margin)
 	var off := soft_button(Color(fill, 0.55), radius, false, margin)

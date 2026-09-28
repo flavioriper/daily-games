@@ -14,6 +14,8 @@ const GLYPH := 44.0
 const BADGE_R := 22.0
 const SQUASH := 0.10
 const SQUASH_TIME := 0.18
+## A labelled button's corner, the settings rows' 26 plus a hair.
+const SLAB_R := 28
 
 var icon_name := ""
 var label_text := ""
@@ -135,9 +137,10 @@ func _apply_look() -> void:
 	_label.add_theme_color_override("font_color", colour)
 	_glyph.queue_redraw()
 
-## A labelled button is a pill (UI polish, 2026-09-28): its theme styleboxes
-## duplicated with a radius past half any height it will have, which
-## StyleBoxFlat clamps to a full round end. Icon-only buttons keep the
+## A labelled button is a soft slab (UI polish, 2026-09-28): its theme
+## styleboxes duplicated at `SLAB_R`, the settings rows' own corner, with
+## room either side of the label. A full round end (radius 200) was tried
+## first and read as a bubble at 108 tall. Icon-only buttons keep the
 ## theme's rounded square. Overrides a host set itself are left alone.
 func _pill() -> void:
 	# Each override below notifies THEME_CHANGED, which comes back here.
@@ -152,7 +155,7 @@ func _pill() -> void:
 		var sb := get_theme_stylebox(s)
 		if sb is StyleBoxFlat:
 			var round := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
-			round.set_corner_radius_all(200)
+			round.set_corner_radius_all(SLAB_R)
 			round.content_margin_left = maxf(round.content_margin_left, 36.0)
 			round.content_margin_right = maxf(round.content_margin_right, 36.0)
 			add_theme_stylebox_override(s, round)
