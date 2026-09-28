@@ -89,6 +89,9 @@ const CARDS := {
 const STREAK := ["meadow", 1.4, Vector2(0.85, 0.75)]
 const TODAY := ["meadow", 1.8, Vector2(0.25, 0.85)]
 const SIDE_SCRIM := Vector3(1.0, 0.0, 0.45)
+## The remove-ads sheet's picture (ui/hud/remove_ads_sheet.gd): the meadow
+## under a clear sky, since the banner that covered it is gone.
+const STORE := ["meadow", 1.25, Vector2(0.5, 0.7)]
 
 ## The difficulty sheet's rows (ui/menu/difficulty_sheet.gd), one picture a
 ## level whatever the board: the meadow's cottages, the autumn bridge, the
@@ -241,6 +244,12 @@ static func header_plate() -> ColorRect:
 
 ## A picture set into the side of a Streak card: `row` is [vista, zoom,
 ## focus], washed into `paper` (the card's own fill) along its left edge.
+## A plain plate on a vista row, rounded, with no scrim: a sheet's picture.
+static func picture(row: Array, radius: float) -> ColorRect:
+	var plate := _plate(radius)
+	point_at(plate, row[0], row[1], row[2], Pal.LEAF)
+	return plate
+
 static func side_plate(row: Array, radius: float, paper: Color) -> ColorRect:
 	var plate := _plate(radius)
 	var mat := plate.material as ShaderMaterial

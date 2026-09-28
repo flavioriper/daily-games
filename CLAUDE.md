@@ -2305,6 +2305,13 @@ stated before the 3D game left.
   every shot, but tap size wants a phone to judge it. iOS banner height
   (points vs. pixels) is unverified on a device. See "The first screen"
   above for the grid's own page-count change.
+- **The purchase sheet was redrawn on 2026-09-28** (`ui/hud/remove_ads_sheet.gd`):
+  a meadow picture (`Vistas.STORE`, `Vistas.picture()`) with the sprout on
+  its rock, three perk rows on tinted plaques (`STORE_PERK_*`) in place of
+  the paragraph, one wide sun button with the price, Restore as a quiet
+  text button, and no Close while there is something to buy (the X is
+  enough); with no store it keeps the button dimmed and says so in a line
+  under it (`STORE_UNAVAILABLE_NOTE`); owned, the thanks and a wide Close.
 - **The purchase sheet has three doors**: a paper "Remove ads" tab
   (`Ads.TAB_H` 56) `ui/ads/banner_host.gd` stands on the banner's top edge,
   a third header icon button, and a Remove ads row in settings (Restore

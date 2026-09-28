@@ -127,6 +127,10 @@ STORE_OWNED,Ads removed,Anúncios removidos,Anuncios quitados
 STORE_FAIL,The purchase didn't go through.,A compra não foi concluída.,La compra no se completó.
 STORE_PENDING,Waiting for the payment to clear.,Aguardando o pagamento ser confirmado.,Esperando a que se confirme el pago.
 STORE_NOTHING,No purchase to restore on this account.,Nenhuma compra para restaurar nesta conta.,No hay compras que restaurar en esta cuenta.
+STORE_PERK_1,"No banner, ever again","Nenhum banner, nunca mais","Ningún banner, nunca más"
+STORE_PERK_2,Every puzzle stays free,Todos os puzzles continuam grátis,Todos los puzzles siguen gratis
+STORE_PERK_3,"One purchase, for good","Uma compra, para sempre","Una compra, para siempre"
+STORE_UNAVAILABLE_NOTE,The store isn't available on this device.,A loja não está disponível neste aparelho.,La tienda no está disponible en este dispositivo.
 SETTINGS_PRIVACY,Privacy choices,Opções de privacidade,Opciones de privacidad
 BAR_VERSUS,Versus,Duelos,Duelos
 VS_AGAINST,VS COMPUTER,VS COMPUTADOR,VS ORDENADOR
