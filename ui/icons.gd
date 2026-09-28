@@ -8,7 +8,8 @@ extends RefCounted
 const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear", "check", "leaf", "island", "help",
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
-	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play"]
+	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
+	"coin", "gift", "clock", "shield"]
 const SEGMENTS := 24
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
@@ -98,6 +99,17 @@ static func shape(name: String) -> Dictionary:
 			return _trend()
 		"crown":
 			return _crown()
+		"coin":
+			return {"polys": [], "lines": [circle(Vector2(0.5, 0.5), 0.34, 32),
+				PackedVector2Array([Vector2(0.5, 0.32), Vector2(0.5, 0.68)])]}
+		"gift":
+			return _gift()
+		"clock":
+			return {"polys": [], "lines": [circle(Vector2(0.5, 0.52), 0.34, 32),
+				PackedVector2Array([Vector2(0.5, 0.32), Vector2(0.5, 0.52), Vector2(0.64, 0.62)])]}
+		"shield":
+			return {"polys": [PackedVector2Array([Vector2(0.5, 0.12), Vector2(0.84, 0.24), Vector2(0.8, 0.54),
+				Vector2(0.66, 0.76), Vector2(0.5, 0.88), Vector2(0.34, 0.76), Vector2(0.2, 0.54), Vector2(0.16, 0.24)])], "lines": []}
 		"no_ads":
 			return {"polys": [], "lines": [
 				PackedVector2Array([Vector2(0.18, 0.3), Vector2(0.82, 0.3), Vector2(0.82, 0.7), Vector2(0.18, 0.7), Vector2(0.18, 0.3)]),
@@ -454,6 +466,14 @@ static func _trend() -> Dictionary:
 	return {"polys": [], "lines": [
 		PackedVector2Array([Vector2(0.08, 0.78), Vector2(0.36, 0.48), Vector2(0.56, 0.64), Vector2(0.9, 0.28)]),
 		PackedVector2Array([Vector2(0.62, 0.26), Vector2(0.9, 0.26), Vector2(0.9, 0.54)])]}
+
+## A wrapped box with a bow: the menu's gifts button.
+static func _gift() -> Dictionary:
+	var box := PackedVector2Array([Vector2(0.16, 0.44), Vector2(0.84, 0.44), Vector2(0.84, 0.88), Vector2(0.16, 0.88)])
+	var lid := PackedVector2Array([Vector2(0.1, 0.3), Vector2(0.9, 0.3), Vector2(0.9, 0.42), Vector2(0.1, 0.42)])
+	var bow_l := PackedVector2Array([Vector2(0.5, 0.28), Vector2(0.3, 0.1), Vector2(0.22, 0.2), Vector2(0.3, 0.28)])
+	var bow_r := PackedVector2Array([Vector2(0.5, 0.28), Vector2(0.7, 0.1), Vector2(0.78, 0.2), Vector2(0.7, 0.28)])
+	return {"polys": [box, lid, bow_l, bow_r], "lines": [], "hole": PackedVector2Array([Vector2(0.45, 0.3), Vector2(0.55, 0.3), Vector2(0.55, 0.88), Vector2(0.45, 0.88)])}
 
 ## A crown: three points over a band (Streak's best-streak row).
 static func _crown() -> Dictionary:

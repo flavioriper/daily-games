@@ -456,3 +456,53 @@ PS_OFFER_END,End the game,Encerrar o jogo,Terminar la partida
 PS_GOAL_WEEDS,Pull the weeds!,Arranque as ervas daninhas!,¡Arranca las malas hierbas!
 PS_GOAL_STONES,Break the stones!,Quebre as pedras!,¡Rompe las piedras!
 PS_GOAL_MOSS,Clear the moss before it spreads!,Limpe o musgo antes que se espalhe!,¡Limpia el musgo antes de que se extienda!
+GOLD_WORD,gold,ouro,oro
+GIFT_TITLE,Daily gifts,Presentes do dia,Regalos del día
+GIFT_WEEK,"A gift every day you come back. Miss a day and the week waits for you; miss two and it starts again.","Um presente a cada dia que você volta. Se faltar um dia, a semana espera; se faltar dois, ela recomeça.","Un regalo cada día que vuelves. Si faltas un día, la semana te espera; si faltas dos, empieza de nuevo."
+GIFT_DAY,Day %d,Dia %d,Día %d
+GIFT_CLAIM,Claim,Pegar,Recoger
+GIFT_TOMORROW,Come back tomorrow,Volte amanhã,Vuelve mañana
+GIFT_CLAIMED,Claimed,Pego,Recogido
+GIFT_HEARTS,Three boards today,Três quebra-cabeças hoje,Tres tableros hoy
+GIFT_GOLD,%s gold,%s de ouro,%s de oro
+GIFT_READY,A gift is waiting,Um presente te espera,Un regalo te espera
+SHOP_TITLE,Shop,Loja,Tienda
+SHOP_LINE,"Gold comes from the daily boards, the gifts and a little from the Arcade. It is never sold.","O ouro vem dos quebra-cabeças do dia, dos presentes e um pouco do Arcade. Ele nunca é vendido.","El oro viene de los tableros del día, de los regalos y un poco del Arcade. Nunca se vende."
+SHOP_SHORT,Not enough gold yet,Ainda não há ouro suficiente,Aún no hay oro suficiente
+BOOST_TITLE,Boosters,Reforços,Refuerzos
+BOOST_LINE,Pick any to start this run with.,Escolha os que quiser para esta partida.,Elige los que quieras para esta partida.
+BOOST_HELD,You have %d,Você tem %d,Tienes %d
+CHANCE_TITLE,Keep going?,Continuar?,¿Seguir?
+CHANCE_USE,Second chance (%d),Segunda chance (%d),Segunda oportunidad (%d)
+CHANCE_BUY,Buy and use: %s,Comprar e usar: %s,Comprar y usar: %s
+CHANCE_NO,No thanks,"Não, obrigado","No, gracias"
+CHANCE_GO,Again!,De novo!,¡Otra vez!
+ARC_BOOSTED,Made with boosters,Feito com reforços,Hecho con refuerzos
+BST_FF_SPARE,Spare firefly,Vaga-lume extra,Luciérnaga extra
+BST_FF_SPARE_LINE,Start with four fireflies,Comece com quatro vaga-lumes,Empieza con cuatro luciérnagas
+BST_FF_TWIN,Twin start,Começo em dupla,Inicio doble
+BST_FF_TWIN_LINE,Start as a pair: two shots at once,Comece em dupla: dois tiros de uma vez,Empieza en pareja: dos disparos a la vez
+BST_MH_TIME,+10 seconds,+10 segundos,+10 segundos
+BST_MH_TIME_LINE,The round runs for seventy seconds,A rodada dura setenta segundos,La ronda dura setenta segundos
+BST_MH_STEADY,Steady hand,Mão firme,Mano firme
+BST_MH_STEADY_LINE,The first two slips keep your streak,Os dois primeiros deslizes não quebram a sequência,Los dos primeros fallos no rompen la racha
+BST_STEADY_POP,Steady!,Firme!,¡Firme!
+BST_SW_ACORNS,Acorn pouch,Saco de bolotas,Bolsa de bellotas
+BST_SW_ACORNS_LINE,Start with 200 acorns,Comece com 200 bolotas,Empieza con 200 bellotas
+BST_SW_LOW,Low start,Começo leve,Inicio suave
+BST_SW_LOW_LINE,The first ten blocks are 2s and 4s,Os dez primeiros blocos são 2 e 4,Los diez primeros bloques son 2 y 4
+BST_LT_CLOVERS,Clover pouch,Saco de trevos,Bolsa de tréboles
+BST_LT_CLOVERS_LINE,Start with 40 more clovers,Comece com 40 trevos a mais,Empieza con 40 tréboles más
+BST_LT_HEAD,Head start,Largada na frente,Ventaja inicial
+BST_LT_HEAD_LINE,Every pebble starts one number higher,Cada pedrinha começa um número acima,Cada piedrita empieza un número más alto
+BST_PO_KIT,Tool kit,Kit de ferramentas,Caja de herramientas
+BST_PO_KIT_LINE,One more of every tool,Uma a mais de cada ferramenta,Una más de cada herramienta
+BST_PO_BLOOM,Opening bloom,Florada inicial,Floración inicial
+BST_PO_BLOOM_LINE,A breeze and a seed bomb in the bed from the start,Uma brisa e uma bomba de sementes no canteiro desde o início,Una brisa y una bomba de semillas en el cantero desde el inicio
+BST_SECOND_CHANCE,Second chance,Segunda chance,Segunda oportunidad
+BST_SECOND_CHANCE_LINE,Keep going once when a run ends,Continue uma vez quando a partida acabar,Sigue una vez cuando termine la partida
+BST_CHANCE_FIREFLY,"One firefly back, on the stage you reached.",Um vaga-lume de volta na fase em que você estava.,Una luciérnaga de vuelta en la fase en la que estabas.
+BST_CHANCE_MOLEHILL,Fifteen more seconds on the clock.,Mais quinze segundos no relógio.,Quince segundos más en el reloj.
+BST_CHANCE_STACKWOOD,The top two rows of the shelf are cleared.,As duas fileiras de cima da prateleira são limpas.,Se vacían las dos filas de arriba del estante.
+BST_CHANCE_THIRTEEN,A free shuffle of the tray.,Um embaralhamento grátis da bandeja.,Una mezcla gratis de la bandeja.
+BST_CHANCE_POSY,Five more moves.,Mais cinco movimentos.,Cinco movimientos más.

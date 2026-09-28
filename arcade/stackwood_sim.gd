@@ -60,6 +60,8 @@ var tools_used := 0
 var events: Array = []
 ## The smallest number still dealt; it rises as the shelf's best block grows.
 var low_exp := 1
+## Blocks still to deal small (Low start, arcade/boosters.gd): 2s and 4s.
+var small_left := 0
 var _ids := 0
 ## Blocks moved or changed this round, which may merge next round.
 var _active: Array = []
@@ -136,6 +138,9 @@ func _next_piece() -> void:
 ## The number the next block carries: a power of two from `low_exp` up to a
 ## top that grows with the shelf's best block, the small ones likelier.
 func _spawn_value() -> int:
+	if small_left > 0:
+		small_left -= 1
+		return 2 if rng.randf() < 0.6 else 4
 	var best := _exp(max_v)
 	var top := clampi(best - 3, 2, SPAWN_TOP)
 	var low := mini(low_exp, top - 1)
@@ -335,6 +340,31 @@ func _finish_resolve() -> void:
 	_set_phase(Phase.FALL)
 	if _resume and not piece.is_empty():
 		return
+	_next_piece()
+
+## Low start: the next `n` blocks dealt are small, the two already queued
+## included.
+func start_small(n: int) -> void:
+	small_left = n
+	for i in queue.size():
+		queue[i] = _spawn_value()
+
+## The Second chance (arcade/boosters.gd): the top two rows of the shelf
+## are cleared, and the next block falls.
+func revive() -> void:
+	if phase != Phase.OVER:
+		return
+	var gone: Array = []
+	for c in COLS:
+		var col: Array = cols[c]
+		for i in range(col.size() - 1, -1, -1):
+			if i >= ROWS - 2:
+				gone.append({"id": col[i].id, "v": col[i].v, "col": c, "row": i})
+				col.remove_at(i)
+	events.append({"type": "blast", "blocks": gone})
+	events.append({"type": "revive"})
+	piece = {}
+	_set_phase(Phase.FALL)
 	_next_piece()
 
 # --- tools ---

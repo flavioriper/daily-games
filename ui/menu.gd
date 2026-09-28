@@ -32,6 +32,8 @@ const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const RemoveAdsSheet = preload("res://ui/hud/remove_ads_sheet.gd")
+const GiftsSheet = preload("res://ui/hud/gifts_sheet.gd")
+const ShopSheet = preload("res://ui/hud/shop_sheet.gd")
 const MenuHeader = preload("res://ui/menu/menu_header.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
@@ -175,6 +177,9 @@ var settings_sheet: Control
 ## (through world/main.gd) the banner's tab all open it.
 var remove_ads_sheet: Control
 var difficulty_sheet: Control
+## The daily gifts and the shop (spec 2026-09-28-gold-gifts-design.md).
+var gifts_sheet: Control
+var shop_sheet: Control
 var cards: Array = []
 ## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
 ## see _build_page().
@@ -252,6 +257,15 @@ func _ready() -> void:
 	add_child(remove_ads_sheet)
 	header.remove_ads.connect(func() -> void: remove_ads_sheet.open_from("header"))
 	settings_sheet.remove_ads.connect(func() -> void: remove_ads_sheet.open_from("settings"))
+	gifts_sheet = GiftsSheet.new()
+	gifts_sheet.name = "GiftsSheet"
+	add_child(gifts_sheet)
+	header.gifts.connect(func() -> void: gifts_sheet.open())
+	shop_sheet = ShopSheet.new()
+	shop_sheet.name = "ShopSheet"
+	add_child(shop_sheet)
+	arcade_tab.shop.connect(func(game: String) -> void: shop_sheet.open_for(game, "arcade"))
+	Wallet.changed.connect(func() -> void: header.set_gifts(Wallet.claimable()))
 	difficulty_sheet = DifficultySheet.new()
 	difficulty_sheet.name = "DifficultySheet"
 	difficulty_sheet.chose.connect(_open_at)
@@ -296,6 +310,7 @@ func _refresh_day() -> void:
 	var solves := Progress.solve_log()
 	day_row.set_hearts(Streak.hearts(solves.get(today, [])))
 	header.set_streak(int(Streak.compute(solves, today).current))
+	header.set_gifts(Wallet.claimable(today))
 
 func _build_list() -> void:
 	_list_root = Control.new()
@@ -948,6 +963,12 @@ func _show_list(tab := "home") -> void:
 		_tab = ""
 	_show_tab(tab)
 	_enter()
+	# The week's gift, once a day, by itself, once the menu has risen.
+	if tab == "home" and Wallet.calendar_open():
+		get_tree().create_timer(0.9).timeout.connect(func() -> void:
+			if is_instance_valid(gifts_sheet) and _list_root.visible and _tab == "home" \
+					and not gifts_sheet.is_open() and Wallet.should_auto_open():
+				gifts_sheet.open())
 
 func _enter() -> void:
 	header.enter(ENTER_HEADER, ENTER_FADE)

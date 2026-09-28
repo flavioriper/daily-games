@@ -798,5 +798,18 @@ func _check_clear() -> void:
 func is_over() -> bool:
 	return phase == Phase.OVER
 
+## The Second chance (arcade/boosters.gd): one firefly back, on the stage
+## the game ended on, rising in once the dives have gone home.
+func revive() -> void:
+	if phase != Phase.OVER:
+		return
+	ships = 1
+	ship = Ship.DEAD
+	respawn_t = 1.0
+	bullets.clear()
+	phase = Phase.PLAY
+	phase_t = 0.0
+	events.append({"type": "revive"})
+
 func challenge() -> bool:
 	return _challenge

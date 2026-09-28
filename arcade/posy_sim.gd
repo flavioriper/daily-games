@@ -1196,6 +1196,31 @@ func use(tool: int, a: Vector2i, b := Vector2i(-1, -1)) -> bool:
 	_after_move()
 	return true
 
+## Opening bloom (arcade/boosters.gd): a breeze and a seed bomb laid in a
+## fresh bed, before the screen reads the deal.
+func opening_bloom() -> void:
+	var spots: Array = []
+	for c in COLS:
+		for r in ROWS:
+			if not at(Vector2i(c, r)).is_empty() and special(Vector2i(c, r)) == Sp.NONE:
+				spots.append(Vector2i(c, r))
+	_shuffle(spots)
+	var sps := [Sp.ROW if rng.randf() < 0.5 else Sp.COL, Sp.BOMB]
+	for i in mini(sps.size(), spots.size()):
+		var p: Vector2i = spots[i]
+		(grid[p.x][p.y] as Dictionary).sp = sps[i]
+	for ev: Dictionary in events:
+		if String(ev.type) == "deal":
+			ev.tiles = _all_tiles()
+
+## The Second chance (arcade/boosters.gd): more moves on a day that ran out.
+func revive(more: int) -> void:
+	if phase != Phase.OVER:
+		return
+	moves_left += more
+	phase = Phase.PLAY
+	events.append({"type": "more_moves", "moves": more})
+
 ## Give up the day (the end card's way out of a game left running).
 func give_up() -> void:
 	if phase == Phase.OVER:

@@ -22,8 +22,13 @@ static func best_stage(game: String) -> int:
 static func plays(game: String) -> int:
 	return int(_load().get_value(game, "plays", 0))
 
+## Whether the best was made with a booster or a Second chance
+## (arcade/boosters.gd): the Arcade card marks it with a leaf.
+static func best_boosted(game: String) -> bool:
+	return bool(_load().get_value(game, "best_boosted", false))
+
 ## Records a finished game; true when it is a new best.
-static func add(game: String, score: int, stage: int) -> bool:
+static func add(game: String, score: int, stage: int, boosted := false) -> bool:
 	var cfg := _load()
 	var was := int(cfg.get_value(game, "best", 0))
 	cfg.set_value(game, "plays", int(cfg.get_value(game, "plays", 0)) + 1)
@@ -31,6 +36,7 @@ static func add(game: String, score: int, stage: int) -> bool:
 	var better := score > was
 	if better:
 		cfg.set_value(game, "best", score)
+		cfg.set_value(game, "best_boosted", boosted)
 	cfg.save(PATH)
 	return better
 

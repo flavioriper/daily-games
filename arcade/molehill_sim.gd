@@ -58,6 +58,10 @@ var missed := 0
 var bunnies := 0
 var taps := 0
 var golds := 0
+## Seconds added to the round (a booster, a Second chance), and streak
+## breaks still to forgive (Steady hand): arcade/boosters.gd.
+var bonus := 0.0
+var forgive := 0
 var events: Array = []
 ## One a hill: {kind, st, t (in this state), up (its time up), hp, rest}.
 var hills: Array = []
@@ -76,7 +80,7 @@ func is_over() -> bool:
 	return phase == Phase.OVER
 
 func time_left() -> float:
-	return maxf(0.0, ROUND - t)
+	return maxf(0.0, ROUND + bonus - t)
 
 func frenzy() -> bool:
 	return phase == Phase.PLAY and time_left() <= FRENZY
@@ -276,9 +280,22 @@ func whack(i: int) -> String:
 	return "hit"
 
 func _break(why: String, i: int) -> void:
+	if forgive > 0 and streak > 0:
+		forgive -= 1
+		events.append({"type": "forgiven", "hill": i, "why": why, "left": forgive})
+		return
 	if streak >= STEPS[0]:
 		events.append({"type": "streak_lost", "hill": i, "why": why, "streak": streak})
 	streak = 0
+
+## The Second chance (arcade/boosters.gd): the clock runs on a while.
+func revive(seconds: float) -> void:
+	if phase != Phase.OVER:
+		return
+	bonus += seconds
+	phase = Phase.PLAY
+	phase_t = 0.0
+	events.append({"type": "revive", "seconds": seconds})
 
 ## Up, as a fraction of a mole's height (0 in the hole, 1 standing), for
 ## drawing: eased on the way up and down, still while it stands or reels.

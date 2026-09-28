@@ -36,6 +36,10 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
+const Boosters = preload("res://arcade/boosters.gd")
+const BoostCard = preload("res://arcade/boost_card.gd")
+const SecondChance = preload("res://arcade/second_chance.gd")
+const BoosterIcon = preload("res://arcade/booster_icon.gd")
 
 const GAME := "posy"
 const MARGIN := 40
@@ -77,6 +81,13 @@ const BLOOM_STEP := 0.08
 const BLOOM_FLIGHT := 0.42
 
 var sim: RefCounted
+## The run's boosters and whether it was helped (arcade/boosters.gd): a best
+## made so is marked. The Second chance is offered once a run, and the gold
+## the run earned goes on the end card.
+var _boosts: Array = []
+var _boosted := false
+var _chance_used := false
+var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
 var field: Control
@@ -201,7 +212,7 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	_new_game()
+	_ask()
 
 # --- building ---
 
@@ -507,6 +518,10 @@ func _new_game() -> void:
 		_end = null
 	_seat = null
 	sim = Sim.new()
+	Boosters.apply(GAME, sim, _boosts)
+	_boosted = not _boosts.is_empty()
+	_chance_used = false
+	_run_gold = 0
 	_tiles.clear()
 	_dying.clear()
 	_beams.clear()
@@ -554,7 +569,7 @@ func _new_game() -> void:
 	top_bar.refresh(self)
 	_fx.cue("start")
 	_take_events()
-	Analytics.track("arcade_start", {"game": GAME})
+	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
 
 func capabilities() -> Array:
 	return []
@@ -2262,10 +2277,13 @@ func _draw_stickers(font: Font) -> void:
 # --- the end ---
 
 func _game_over() -> void:
+	if _offer_chance():
+		return
 	_disarm()
 	_press = Vector2i(-1, -1)
 	_selected = Vector2i(-1, -1)
-	var better := Record.add(GAME, sim.score, sim.day)
+	var better := Record.add(GAME, sim.score, sim.day, _boosted)
+	_run_gold = Wallet.pay_run(better)
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.day,
 		"seconds": secs, "moves": sim.moves, "made": sim.made, "cascade": sim.best_cascade,
@@ -2394,7 +2412,9 @@ func _build_end(better: bool) -> Control:
 	var again := IconButton.new("reset", tr("FF_AGAIN"), "SunButton")
 	again.name = "Again"
 	again.custom_minimum_size.y = 120
-	again.pressed.connect(_new_game)
+	again.pressed.connect(_ask)
+	if _run_gold > 0:
+		col.add_child(BoosterIcon.gold_line(_run_gold))
 	col.add_child(again)
 	var back := IconButton.new("chevron_left", tr("FF_BACK"))
 	back.custom_minimum_size.y = 110
@@ -2438,7 +2458,7 @@ func _celebrate(better: bool) -> void:
 func _on_reset() -> void:
 	if sim != null and not sim.is_over():
 		Analytics.track("board_reset", {"puzzle_id": GAME})
-	_new_game()
+	_ask()
 
 func _on_back() -> void:
 	if sim != null and not sim.is_over() and sim.moves > 0:
@@ -2457,3 +2477,45 @@ func go_back() -> void:
 		_disarm()
 		return
 	_on_back()
+
+# --- boosters (arcade/boosters.gd) ---
+
+## Before a run: the boost card, when a booster is held or the gold for one
+## is, else straight in. A run still going when it is asked for stops there.
+func _ask() -> void:
+	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
+		return
+	if _end != null:
+		_end.queue_free()
+		_end = null
+	if not BoostCard.wanted(GAME):
+		_boosts = []
+		_new_game()
+		return
+	if sim != null and not sim.is_over():
+		sim = null
+	var card := BoostCard.new(GAME)
+	card.name = "BoostCard"
+	card.play.connect(func(ids: Array) -> void:
+		_boosts = ids
+		_new_game())
+	add_child(card)
+
+## At game over, once a run: the Second chance, when one is held or the gold
+## for one is. True while it is up; No thanks ends the run as it would have.
+func _offer_chance() -> bool:
+	if _chance_used or not SecondChance.wanted():
+		return false
+	_chance_used = true
+	var card := SecondChance.new(GAME)
+	card.name = "SecondChance"
+	card.taken.connect(func() -> void:
+		_boosted = true
+		Boosters.revive(GAME, sim)
+		_show_banner(tr("CHANCE_GO"), "", 1.0)
+		_over_said = false
+		_take_events()
+		top_bar.refresh(self))
+	card.declined.connect(_game_over)
+	add_child(card)
+	return true

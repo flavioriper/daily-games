@@ -685,6 +685,12 @@ func _on_solved() -> void:
 			_hearts_line = tr("WIN_STREAK") % streak
 		event["hearts"] = after
 		event["streak"] = streak
+		# the day's first solve of this board pays gold (spec 2026-09-28-gold-gifts)
+		var paid := Wallet.pay_board(puzzle_id, day)
+		if paid > 0:
+			_hearts_line += "  ·  +%s %s" % [Locale.number(paid), tr("GOLD_WORD")]
+		if after >= Streak.KEPT and Wallet.hearts_ready(day):
+			_hearts_line += "  ·  " + tr("GIFT_READY")
 	daily_completed.emit(puzzle_id, _day_key if _day_key != 0 else DailySeed.date_key())
 	Analytics.track("puzzle_complete", event)
 	_refresh()

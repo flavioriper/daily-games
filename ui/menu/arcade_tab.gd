@@ -17,6 +17,8 @@ extends VBoxContainer
 ## and past that stands the cards two a row.
 
 signal play(game: String)
+## The strip's Shop button, or its gold pill: the shop sheet, on `game`.
+signal shop(game: String)
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -30,6 +32,8 @@ const MoleArt = preload("res://arcade/molehill_art.gd")
 const StackArt = preload("res://arcade/stackwood_art.gd")
 const PebbleArt = preload("res://arcade/thirteen_art.gd")
 const PosyArt = preload("res://arcade/posy_art.gd")
+const GoldPill = preload("res://ui/menu/gold_pill.gd")
+const Icons = preload("res://ui/icons.gd")
 
 const GAP := 20
 const PAD := 24
@@ -53,6 +57,11 @@ var _blurbs: Array[Label] = []
 var _arts: Array[Control] = []
 var _cards: Array[Control] = []
 var _goes: Array = []
+## The leaf beside a best made with boosters (spec 2026-09-28-gold-gifts).
+var _leaves := {}
+## The gold and the shop, above the cards (spec 2026-09-28-gold-gifts).
+var _strip: HBoxContainer
+var gold_pill: Button
 ## Two cards a row: six cards do not fit one above another on a phone even
 ## with the smallest pictures, so a short screen pairs them up.
 var _paired := false
@@ -61,6 +70,21 @@ func _init() -> void:
 	add_theme_constant_override("separation", GAP)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_strip = HBoxContainer.new()
+	_strip.name = "GoldStrip"
+	_strip.add_theme_constant_override("separation", GAP)
+	gold_pill = GoldPill.new()
+	gold_pill.pressed.connect(func() -> void: shop.emit(""))
+	_strip.add_child(gold_pill)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_strip.add_child(spacer)
+	var shop_b := IconButton.new("coin", "SHOP_TITLE", "IconButton")
+	shop_b.name = "Shop"
+	shop_b.custom_minimum_size.y = GoldPill.H
+	shop_b.pressed.connect(func() -> void: shop.emit(""))
+	_strip.add_child(shop_b)
 	for game: String in GAMES:
 		_cards.append(_game_card(game))
 	_rows(false)
@@ -71,9 +95,12 @@ func _rows(paired: bool) -> void:
 	for c in _cards:
 		if c.get_parent() != null:
 			c.get_parent().remove_child(c)
+	if _strip.get_parent() != null:
+		_strip.get_parent().remove_child(_strip)
 	for r in get_children():
 		remove_child(r)
 		r.queue_free()
+	add_child(_strip)
 	var per := 2 if paired else 1
 	var i := 0
 	while i < _cards.size():
@@ -136,6 +163,15 @@ func _game_card(game: String) -> Control:
 	best.theme_type_variation = "CardBlurb"
 	line.add_child(best)
 	_best[game] = best
+	var leaf := Control.new()
+	leaf.custom_minimum_size = Vector2(30, 30)
+	leaf.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	leaf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	leaf.tooltip_text = "ARC_BOOSTED"
+	leaf.draw.connect(func() -> void: Icons.paint(leaf, "leaf", Rect2(Vector2.ZERO, leaf.size), Pal.LEAF))
+	leaf.visible = false
+	line.add_child(leaf)
+	_leaves[game] = leaf
 	var stage := Label.new()
 	stage.theme_type_variation = "CardBlurb"
 	stage.modulate.a = 0.8
@@ -160,6 +196,7 @@ func refresh() -> void:
 	for game: String in GAMES:
 		var best := Record.best(game)
 		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
+		(_leaves[game] as Control).visible = best > 0 and Record.best_boosted(game)
 		var st := Record.best_stage(game)
 		(_stage[game] as Label).text = "· " + tr(FURTHEST[game]) % st if st > 0 else ""
 	_fit.call_deferred()
@@ -247,7 +284,7 @@ func _need(paired: bool) -> float:
 			i += 1
 		total += tall
 		rows += 1
-	return total + GAP * maxi(0, rows - 1)
+	return total + GAP * rows + _strip.get_combined_minimum_size().y
 
 func _compact(level: int) -> void:
 	for b in _blurbs:

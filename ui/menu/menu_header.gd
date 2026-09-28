@@ -3,7 +3,7 @@ extends Control
 ## The first screen's header: `Daily` lettered in ink with a golden sun for
 ## the dot of its i (ui/sun_dot.gd), the sprig growing out of the a beside
 ## it and the motto under; the sun and the moon sit beside it, with remove-ads,
-## settings and calendar above them. The remove-ads button is the purchase
+## gifts, settings and calendar above them. The remove-ads button is the purchase
 ## sheet's door from the first screen and goes for good once remove_ads is
 ## owned (spec 2026-09-25-ads-and-remove-ads-design.md, section 4).
 ##
@@ -29,6 +29,8 @@ extends Control
 
 signal settings
 signal remove_ads
+## The gift button: the daily gifts sheet (spec 2026-09-28-gold-gifts).
+signal gifts
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -94,6 +96,7 @@ const MOON_AT := 0.17
 var gear: Button
 var no_ads: Button
 var calendar: Button
+var gift: Button
 var _badge: Control
 var _streak := 0
 var _title: Label
@@ -144,10 +147,17 @@ func _build() -> void:
 	gear.offset_bottom = BUTTON.y
 	gear.pressed.connect(func() -> void: settings.emit())
 
+	gift = _button("gift")
+	gift.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	gift.offset_left = -BUTTON.x * 3.0 - BUTTON_GAP * 2.0
+	gift.offset_right = -BUTTON.x * 2.0 - BUTTON_GAP * 2.0
+	gift.offset_bottom = BUTTON.y
+	gift.pressed.connect(func() -> void: gifts.emit())
+
 	no_ads = _button("no_ads")
 	no_ads.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	no_ads.offset_left = -BUTTON.x * 3.0 - BUTTON_GAP * 2.0
-	no_ads.offset_right = -BUTTON.x * 2.0 - BUTTON_GAP * 2.0
+	no_ads.offset_left = -BUTTON.x * 4.0 - BUTTON_GAP * 3.0
+	no_ads.offset_right = -BUTTON.x * 3.0 - BUTTON_GAP * 3.0
 	no_ads.offset_bottom = BUTTON.y
 	no_ads.pressed.connect(func() -> void: remove_ads.emit())
 	no_ads.visible = not Store.owns_remove_ads()
@@ -263,6 +273,11 @@ func _smoothstep(edge_a: float, edge_b: float, value: float) -> float:
 	var t := clampf((value - edge_a) / (edge_b - edge_a), 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
 
+## Gifts waiting on the gift button's badge; hidden at 0.
+func set_gifts(n: int) -> void:
+	if gift != null:
+		gift.badge = maxi(n, 0)
+
 ## The current streak on the calendar; hidden at 0, a pill past one digit.
 func set_streak(n: int) -> void:
 	_streak = maxi(n, 0)
@@ -309,6 +324,7 @@ func enter(delay: float, fade: float) -> void:
 	_prepare_button(no_ads)
 	_prepare_button(gear)
 	_prepare_button(calendar)
+	_prepare_button(gift)
 	_sun.position = Vector2(0.0, FACE_RISE)
 	_sun.scale = Vector2.ONE * 0.76
 	_sun.modulate.a = 0.0
@@ -328,7 +344,8 @@ func enter(delay: float, fade: float) -> void:
 	_entrance_tw.tween_property(_motto, "modulate:a", 1.0, text_fade).set_delay(delay + MOTTO_AT)
 	_scale_in(gear, delay + BUTTON_AT, BUTTON_TIME)
 	_scale_in(calendar, delay + BUTTON_AT + 0.06, BUTTON_TIME)
-	_scale_in(no_ads, delay + BUTTON_AT + 0.12, BUTTON_TIME)
+	_scale_in(gift, delay + BUTTON_AT + 0.12, BUTTON_TIME)
+	_scale_in(no_ads, delay + BUTTON_AT + 0.18, BUTTON_TIME)
 	_entrance_tw.tween_property(self, "_sprig_progress", 1.0, SPRIG_TIME).set_delay(delay + SPRIG_AT_TIME) \
 		.set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
 	_rise_face(_sun, Vector2.ZERO, delay + SUN_AT, SUN_TIME)
@@ -361,7 +378,7 @@ func _set_entrance_final() -> void:
 	_title.modulate.a = 1.0
 	_motto.modulate.a = 1.0
 	_sprig_progress = 1.0
-	for button in [no_ads, gear, calendar]:
+	for button in [no_ads, gear, calendar, gift]:
 		button.scale = Vector2.ONE
 		button.modulate.a = 1.0
 	_sun.position = Vector2.ZERO

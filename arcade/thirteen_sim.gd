@@ -475,6 +475,40 @@ func _ids_at() -> Dictionary:
 				out[cell.id] = Vector2i(c, r)
 	return out
 
+## Head start (arcade/boosters.gd): every pebble of a fresh tray one
+## number higher.
+func head_start() -> void:
+	for c in COLS:
+		for r in ROWS:
+			var cell: Dictionary = grid[c][r]
+			if not cell.is_empty():
+				cell.v = int(cell.v) + 1
+	max_v = _biggest()
+
+## The Second chance (arcade/boosters.gd): a free shuffle of a tray that
+## ran out of moves, till it has one.
+func revive() -> void:
+	if phase != Phase.OVER:
+		return
+	path.clear()
+	var cells: Array = []
+	for c in COLS:
+		for r in ROWS:
+			cells.append(grid[c][r])
+	for attempt in 60:
+		_shuffle(cells)
+		var k := 0
+		for c in COLS:
+			for r in ROWS:
+				grid[c][r] = cells[k]
+				k += 1
+		if has_move():
+			break
+	phase = Phase.PLAY
+	events.append({"type": "tool", "tool": "shuffle"})
+	events.append({"type": "revive"})
+	_check()
+
 ## Give up a stuck tray.
 func give_up() -> void:
 	if phase == Phase.OVER:
