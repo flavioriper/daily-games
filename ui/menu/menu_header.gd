@@ -207,9 +207,7 @@ func _button(icon: String) -> Button:
 	b.custom_minimum_size = BUTTON
 	b.size = BUTTON
 	var r := int(BUTTON.x * 0.29)
-	b.add_theme_stylebox_override("normal", CozyTheme.lifted(Pal.SURFACE, r, 8))
-	b.add_theme_stylebox_override("hover", CozyTheme.lifted(Pal.SURFACE, r, 8))
-	b.add_theme_stylebox_override("pressed", CozyTheme.lifted(Pal.SURFACE_HI.darkened(0.06), r, 8))
+	CozyTheme.lift_button(b, Pal.SURFACE, r)
 	add_child(b)
 	return b
 

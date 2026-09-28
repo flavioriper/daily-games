@@ -96,7 +96,7 @@ func _pick(game: String) -> void:
 	for g: String in _chips:
 		var b: Button = _chips[g]
 		var on := g == game
-		var sb := CozyTheme.chip(Boosters.TINT[g] if on else Pal.SURFACE, 24, Boosters.TINT[g], 3)
+		var sb := CozyTheme.chip(Boosters.TINT[g] if on else Pal.SURFACE, 200, Color(Pal.LINE, 0.35), 0 if on else 2)
 		for s in ["normal", "hover", "pressed"]:
 			b.add_theme_stylebox_override(s, sb)
 		b.add_theme_color_override("font_color", Pal.SURFACE if on else Pal.TEXT)
@@ -114,7 +114,10 @@ func _pick(game: String) -> void:
 func _row(id: String) -> Control:
 	var panel := PanelContainer.new()
 	panel.name = id
-	panel.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 30, 18))
+	var box := CozyTheme.lifted(Pal.SURFACE, 30, 18)
+	box.set_border_width_all(2)
+	box.border_color = Color(Pal.LINE, 0.25)
+	panel.add_theme_stylebox_override("panel", box)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
 	panel.add_child(row)

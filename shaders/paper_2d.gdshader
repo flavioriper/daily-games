@@ -24,11 +24,14 @@ uniform float wash : hint_range(0.0, 1.0) = 1.0;
 uniform float wash_scale = 9.0;
 uniform float fine_scale = 30.0;
 uniform float tooth_scale = 220.0;
-uniform vec3 wash_warm = vec3(1.04, 1.0, 0.955);
-uniform vec3 wash_cool = vec3(0.96, 0.99, 1.04);
+uniform vec3 wash_warm = vec3(1.02, 1.0, 0.98);
+uniform vec3 wash_cool = vec3(0.99, 0.992, 1.0);
+// Calmed on 2026-09-28 (UI polish): the cool end had read as blue-grey
+// clouds on every white face, so it sits near neutral now and the value
+// swings are halved.
 // The fine drift's and the tooth's value swing, peak to peak.
-uniform float wash_value : hint_range(0.0, 0.3) = 0.06;
-uniform float tooth_value : hint_range(0.0, 0.2) = 0.03;
+uniform float wash_value : hint_range(0.0, 0.3) = 0.03;
+uniform float tooth_value : hint_range(0.0, 0.2) = 0.02;
 
 float paper_hash(vec2 p) {
 	p = mod(p, 289.0);

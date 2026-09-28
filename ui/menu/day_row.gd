@@ -90,9 +90,7 @@ func _build() -> void:
 	var go := IconButton.new("chevron_right")
 	go.custom_minimum_size = Vector2(CHEVRON, CHEVRON)
 	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	go.add_theme_stylebox_override("normal", CozyTheme.lifted(Pal.SURFACE, int(CHEVRON * 0.5), 8))
-	go.add_theme_stylebox_override("hover", CozyTheme.lifted(Pal.SURFACE, int(CHEVRON * 0.5), 8))
-	go.add_theme_stylebox_override("pressed", CozyTheme.lifted(Pal.SURFACE_HI.darkened(0.06), int(CHEVRON * 0.5), 8))
+	CozyTheme.lift_button(go, Pal.SURFACE, int(CHEVRON * 0.5))
 	go.pressed.connect(func() -> void: open_streak.emit())
 	row.add_child(go)
 

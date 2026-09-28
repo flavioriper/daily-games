@@ -123,7 +123,7 @@ func _tip_text() -> String:
 	return first.to_lower() + "." if first != "" else tr("HTP_FALLBACK_TIP").to_lower()
 
 func _card_style() -> StyleBoxFlat:
-	var sb := CozyTheme.card(Pal.PAPER, 34, Pal.LINE, 6, 36)
+	var sb := CozyTheme.sheet_card(Pal.PAPER, 44, 36)
 	sb.content_margin_top = 34
 	sb.content_margin_bottom = 34
 	return sb

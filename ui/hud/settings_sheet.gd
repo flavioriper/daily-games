@@ -130,8 +130,8 @@ func _build_language() -> Control:
 	lang_button.add_theme_font_size_override("font_size", 34)
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
 		lang_button.add_theme_color_override(state, Pal.TEXT)
-	var normal := CozyTheme.card(Pal.SURFACE_HI, 26, Pal.LINE, 6, 28)
-	var pressed := CozyTheme.card(Pal.SURFACE_HI.darkened(0.05), 26, Pal.LINE, 3, 28)
+	var normal := CozyTheme.soft_button(Pal.SURFACE, 26, false, 28)
+	var pressed := CozyTheme.soft_button(Pal.SURFACE, 26, true, 28)
 	lang_button.add_theme_stylebox_override("normal", normal)
 	lang_button.add_theme_stylebox_override("hover", normal)
 	lang_button.add_theme_stylebox_override("pressed", pressed)
@@ -232,8 +232,8 @@ func _switch_row(key: String, on: bool, changed: Callable) -> CheckButton:
 	var blank := ImageTexture.create_from_image(blank_image)
 	for state in ["checked", "unchecked", "checked_disabled", "unchecked_disabled"]:
 		row.add_theme_icon_override(state, blank)
-	var normal := CozyTheme.card(Pal.SURFACE_HI, 26, Pal.LINE, 6, 28)
-	var pressed := CozyTheme.card(Pal.SURFACE_HI.darkened(0.05), 26, Pal.LINE, 3, 28)
+	var normal := CozyTheme.soft_button(Pal.SURFACE, 26, false, 28)
+	var pressed := CozyTheme.soft_button(Pal.SURFACE, 26, true, 28)
 	row.add_theme_stylebox_override("normal", normal)
 	row.add_theme_stylebox_override("hover", normal)
 	row.add_theme_stylebox_override("pressed", pressed)

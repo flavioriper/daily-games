@@ -97,7 +97,7 @@ static func make() -> Theme:
 	_label(theme, "SheetBody", body(600), 34, Pal.TEXT)
 	_label(theme, "SheetBodyDim", body(500), 32, Pal.TEXT_DIM)
 	# Button variations.
-	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE_HI, Pal.LINE, 6, 28, Pal.TEXT)
+	_variant(theme, "IconButton", body(700), 34, Pal.SURFACE, Pal.LINE, 6, 28, Pal.TEXT)
 	_variant(theme, "PrimaryButton", display(700), 40, Pal.SUN, Pal.SUN_DEEP, 8, 32, Pal.TEXT)
 	_variant(theme, "DarkButton", display(700), 40, Pal.SLATE, Pal.SLATE_GIVEN, 8, 32, Pal.MOON)
 	# The flat screen's sun button: warm orange surface with the same ink
@@ -144,18 +144,42 @@ static func _variant(theme: Theme, name: String, font: Font, size: int, fill: Co
 	theme.set_font_size("font_size", name, size)
 	_button(theme, name, fill, border, border_w, radius, text)
 
-## The four button states for a type: normal and hover alike (touch has no
-## hover), pressed sinks onto a 2 px edge and darkens toward LINE, disabled
-## fades to 55 percent.
-static func _button(theme: Theme, type: String, fill: Color, border: Color, border_w: int, radius: int, text: Color) -> void:
-	theme.set_stylebox("normal", type, card(fill, radius, border, border_w, 24))
-	theme.set_stylebox("hover", type, card(fill, radius, border, border_w, 24))
-	theme.set_stylebox("pressed", type, card(fill.lerp(Pal.LINE, 0.15), radius, border, 2, 24))
-	theme.set_stylebox("disabled", type, card(Color(fill, 0.55), radius, Color(border, 0.55), border_w, 24))
+## The four button states for a type, on lifted paper since the UI polish
+## of 2026-09-28: a soft shadow tinted by the fill and a hairline a shade
+## darker than it, in place of the thick bottom edge the HUD first had.
+## Pressed sinks onto a short shadow and darkens; disabled fades the shape.
+## `border` and `border_w` are kept for the callers' signatures; the hairline
+## is derived from `fill`, which is what keeps every variant in one language.
+static func _button(theme: Theme, type: String, fill: Color, _border: Color, _border_w: int, radius: int, text: Color) -> void:
+	theme.set_stylebox("normal", type, soft_button(fill, radius))
+	theme.set_stylebox("hover", type, soft_button(fill, radius))
+	theme.set_stylebox("pressed", type, soft_button(fill, radius, true))
+	var off := soft_button(Color(fill, 0.55), radius)
+	off.shadow_color = Color(off.shadow_color, 0.0)
+	off.border_color = Color(off.border_color, 0.3)
+	theme.set_stylebox("disabled", type, off)
 	theme.set_stylebox("focus", type, StyleBoxEmpty.new())
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		theme.set_color(state, type, text)
 	theme.set_color("font_disabled_color", type, Color(text, 0.45))
+
+## One button face: `fill`, a 2 px hairline a shade darker all round, and a
+## soft shadow warmed toward the fill's own deep shade. `pressed` darkens it
+## a little and sinks it onto a short shadow.
+static func soft_button(fill: Color, radius: int, pressed := false, margin := 24) -> StyleBoxFlat:
+	var face := fill.darkened(0.07) if pressed else fill
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = face
+	sb.set_corner_radius_all(radius)
+	sb.set_content_margin_all(margin)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(fill.darkened(0.16), fill.a)
+	var tint := fill.darkened(0.55).lerp(Color(0.35, 0.23, 0.12), 0.5)
+	sb.shadow_color = Color(tint, 0.10 if pressed else 0.2)
+	sb.shadow_size = 3 if pressed else 10
+	sb.shadow_offset = Vector2(0.0, 1.0 if pressed else 4.0)
+	sb.anti_aliasing_size = 1.2
+	return sb
 
 ## A rounded card with a thick bottom edge, the HUD's paper.
 static func card(fill: Color, radius: int, border: Color, border_w: int, margin: int) -> StyleBoxFlat:
@@ -185,12 +209,14 @@ static func lifted(fill: Color, radius: int, margin: int) -> StyleBoxFlat:
 ## by the flat screen's chrome too. Pressed sinks onto a smaller shadow and
 ## darkens; disabled keeps the shape at 55 percent.
 static func lift_button(b: Button, fill: Color, radius: int, margin := 8) -> void:
-	var up := lifted(fill, radius, margin)
-	var down := lifted(fill.darkened(0.08), radius, margin)
-	down.shadow_size = 3
-	down.shadow_offset = Vector2(0.0, 2.0)
-	var off := lifted(Color(fill, 0.55), radius, margin)
-	off.shadow_color = Color(off.shadow_color, 0.06)
+	# A labelled IconButton is a pill, whoever dresses it.
+	if str(b.get("label_text")) not in ["", "<null>"]:
+		radius = 200
+	var up := soft_button(fill, radius, false, margin)
+	var down := soft_button(fill, radius, true, margin)
+	var off := soft_button(Color(fill, 0.55), radius, false, margin)
+	off.shadow_color = Color(off.shadow_color, 0.0)
+	off.border_color = Color(off.border_color, 0.3)
 	b.add_theme_stylebox_override("normal", up)
 	b.add_theme_stylebox_override("hover", up)
 	b.add_theme_stylebox_override("pressed", down)
@@ -218,15 +244,24 @@ static func chip(fill: Color, radius: int, border := Color.TRANSPARENT, border_w
 	return sb
 
 static func paper_card() -> StyleBoxFlat:
-	return card(Color(Pal.PAPER, 0.94), 28, Pal.LINE, 6, 24)
+	return sheet_card(Color(Pal.PAPER, 0.96))
+
+## A sheet or dialog's paper: a large radius, a faint hairline and a deep,
+## soft shadow instead of a thick bottom edge (UI polish, 2026-09-28).
+static func sheet_card(fill: Color, radius := 44, margin := 24) -> StyleBoxFlat:
+	var sb := lifted(fill, radius, margin)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(Pal.LINE, 0.28)
+	sb.shadow_color = Color(0.25, 0.16, 0.08, 0.22)
+	sb.shadow_size = 28
+	sb.shadow_offset = Vector2(0.0, 10.0)
+	return sb
 
 static func slate_card() -> StyleBoxFlat:
 	return card(Color(Pal.SLATE, 0.92), 24, Pal.SLATE_GIVEN, 0, 20)
 
 static func parchment_card() -> StyleBoxFlat:
-	var sb := card(Color(Pal.PARCHMENT, 0.96), 12, Pal.LINE, 0, 24)
-	sb.set_border_width_all(3)
-	return sb
+	return sheet_card(Color(Pal.PARCHMENT, 0.98))
 
 ## The painterly wash every paper face wears, as a Control `material`
 ## (shaders/paper_2d.gdshader): the same slow warm-to-cool drift the 3D

@@ -30,6 +30,10 @@ const ROW := 128.0
 const OVER_BOARD := 10
 const SHEET_GAP := 28
 const SHEET_INSET := 32.0
+## The grab handle at the top of the card (UI polish, 2026-09-28): a short
+## pill, and the room above the content it takes.
+const HANDLE := Vector2(76.0, 8.0)
+const HANDLE_ROOM := 10.0
 
 var _scrim: ColorRect
 var _slot: Control
@@ -44,7 +48,9 @@ func _ready() -> void:
 	z_index = OVER_BOARD
 	visible = false
 	_scrim = ColorRect.new()
-	_scrim.color = Color(Pal.OUTLINE, 0.35)
+	# Warm and a touch deeper than the ink at 0.35 it was: the sheet has to
+	# stand off a busy painting, not sit in a grey haze over it.
+	_scrim.color = Color(0.22, 0.14, 0.08, 0.42)
 	_scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_scrim.gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventScreenTouch and ev.pressed:
@@ -63,7 +69,7 @@ func _ready() -> void:
 		style = (style as StyleBoxFlat).duplicate()
 		(style as StyleBoxFlat).bg_color.a = 1.0
 		(style as StyleBoxFlat).content_margin_left = SHEET_INSET
-		(style as StyleBoxFlat).content_margin_top = SHEET_INSET
+		(style as StyleBoxFlat).content_margin_top = SHEET_INSET + HANDLE_ROOM
 		(style as StyleBoxFlat).content_margin_right = SHEET_INSET
 		(style as StyleBoxFlat).content_margin_bottom = SHEET_INSET
 	_card.add_theme_stylebox_override("panel", style)
@@ -73,11 +79,19 @@ func _ready() -> void:
 	_card.offset_right = -MARGIN
 	_card.offset_bottom = -MARGIN
 	_slot.add_child(_card)
+	_card.draw.connect(_draw_handle)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", SHEET_GAP)
 	_card.add_child(col)
 	_build_sheet(col)
 	Ads.banner_changed.connect(_on_banner_changed)
+
+func _draw_handle() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(Pal.LINE, 0.45)
+	sb.set_corner_radius_all(int(HANDLE.y * 0.5))
+	sb.anti_aliasing_size = 1.0
+	_card.draw_style_box(sb, Rect2(Vector2((_card.size.x - HANDLE.x) * 0.5, 18.0), HANDLE))
 
 ## Fill the card's column. Called once from _ready.
 func _build_sheet(_col: VBoxContainer) -> void:

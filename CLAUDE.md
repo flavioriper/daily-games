@@ -2095,6 +2095,19 @@ own material and keeps it, the way the wood trays do. Harnesses that build
 a screen without `main.tscn` show the faces flat; that is the harness, not
 a regression.
 
+**One button language since 2026-09-28 (UI polish).** Every button is
+lifted paper: `CozyTheme.soft_button()` -- the fill, a 2 px hairline a shade
+darker, a soft shadow warmed toward the fill -- and pressed sinks onto a
+short shadow. The theme's variations, `lift_button()`, the digit pad and
+the keyboard all go through it; the thick bottom edge (`card()`'s
+`border_w`) is not used for a button any more. A labelled `IconButton` is a
+pill (`_pill()`, radius clamped by StyleBoxFlat), an icon-only one keeps
+its rounded square. Sheets and dialogs are `CozyTheme.sheet_card()`: a 44
+radius, a faint hairline, a deep soft shadow, a grab handle drawn on the
+card (`sheet.gd`), over a warm 0.42 scrim. The paper wash was calmed at the
+same time: its cool end had read as blue-grey clouds on every white face.
+Badges are coral with a cream ring.
+
 ## Playing on an Android phone
 
 The game ships as a native APK through Firebase App Distribution (project

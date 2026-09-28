@@ -180,9 +180,15 @@ func _refresh() -> void:
 		var is_today := d == shown and open
 		var fill := Pal.SUN_TILE if is_today else (Pal.SURFACE_HI if claimed else Pal.SURFACE)
 		var box := CozyTheme.lifted(fill, 28, 12)
+		box.set_border_width_all(2)
+		box.border_color = Color(Pal.LINE, 0.25)
 		if is_today:
+			# A thin gold ring and a gold glow, not a thick frame.
 			box.border_color = Pal.SUN
-			box.set_border_width_all(6)
+			box.set_border_width_all(4)
+			box.shadow_color = Color(Pal.SUN, 0.35)
+			box.shadow_size = 16
+			box.shadow_offset = Vector2.ZERO
 		tile.add_theme_stylebox_override("panel", box)
 		tile.modulate.a = 0.6 if claimed else 1.0
 		(tile.get_node("Tick") as Control).visible = claimed

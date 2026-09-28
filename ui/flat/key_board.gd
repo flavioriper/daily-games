@@ -45,12 +45,6 @@ const ROWS := ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
 ## which makes that row ten keys -- the top row's width exactly.
 const ROWS_ES := ["qwertyuiop", "asdfghjklñ", "zxcvbnm"]
 const FONT_SIZE := 44
-## The bottom edge under every key's face, and how much a press darkens it --
-## the family's own ratios (ui/menu/puzzle_card_2d.gd's chips wear the same
-## pair on their own colours).
-const EDGE_DARKEN := 0.28
-const PRESS_DARKEN := 0.12
-const BORDER_W := 6
 
 ## True while the keyboard has been slid out of the way. The board asks,
 ## because a Reset or a new word has to bring it back and the board that
@@ -230,11 +224,12 @@ func _draw_erase(icon: Control) -> void:
 	icon.draw_line(c + Vector2(-0.02, -0.14) * s, c + Vector2(0.24, 0.14) * s, Pal.TEXT, w, true)
 	icon.draw_line(c + Vector2(0.24, -0.14) * s, c + Vector2(-0.02, 0.14) * s, Pal.TEXT, w, true)
 
-## A key's look: face, corner, a bottom edge in a darker shade of the same
-## face, and lettering in `ink` for every state a key can be in.
+## A key's look: the theme's soft button in the key's face (UI polish,
+## 2026-09-28; a thick bottom edge before), lettered in `ink` for every
+## state a key can be in.
 func _style(chip: Button, fill: Color, ink: Color) -> void:
-	var sb := CozyTheme.card(fill, RADIUS, fill.darkened(EDGE_DARKEN), BORDER_W, 0)
-	var pressed := CozyTheme.card(fill.darkened(PRESS_DARKEN), RADIUS, fill.darkened(EDGE_DARKEN), 2, 0)
+	var sb := CozyTheme.soft_button(fill, RADIUS, false, 0)
+	var pressed := CozyTheme.soft_button(fill, RADIUS, true, 0)
 	for state in ["normal", "hover", "focus"]:
 		chip.add_theme_stylebox_override(state, sb)
 	chip.add_theme_stylebox_override("pressed", pressed)

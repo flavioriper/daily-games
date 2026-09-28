@@ -52,10 +52,6 @@ const REMOVE := 9
 const COUNT := 10
 const RADIUS := 20
 const FONT_SIZE := 56
-## The family's own pair, the same two ui/menu/puzzle_card_2d.gd's chips wear.
-const EDGE_DARKEN := 0.28
-const PRESS_DARKEN := 0.12
-const BORDER_W := 7
 ## How far a spent chip fades. Not hidden: a gap in the row would move every
 ## chip after it, and a row that moves under a thumb is worse than a pale one.
 const SPENT_ALPHA := 0.35
@@ -175,10 +171,10 @@ func _paint() -> void:
 	for k in COUNT:
 		var face: Color = Pal.SURFACE
 		var ink: Color = Pal.TEXT
-		var edge: Color = face.darkened(EDGE_DARKEN)
-		_chips[k].add_theme_stylebox_override("normal", CozyTheme.card(face, RADIUS, edge, BORDER_W, 0))
-		_chips[k].add_theme_stylebox_override("hover", CozyTheme.card(face, RADIUS, edge, BORDER_W, 0))
-		_chips[k].add_theme_stylebox_override("pressed", CozyTheme.card(face.darkened(PRESS_DARKEN), RADIUS, edge, BORDER_W, 0))
-		_chips[k].add_theme_stylebox_override("disabled", CozyTheme.card(face, RADIUS, edge, BORDER_W, 0))
+		var rest := CozyTheme.soft_button(face, RADIUS, false, 0)
+		_chips[k].add_theme_stylebox_override("normal", rest)
+		_chips[k].add_theme_stylebox_override("hover", rest)
+		_chips[k].add_theme_stylebox_override("pressed", CozyTheme.soft_button(face, RADIUS, true, 0))
+		_chips[k].add_theme_stylebox_override("disabled", rest)
 		_chips[k].add_theme_color_override("font_color", ink)
 		_chips[k].add_theme_color_override("font_disabled_color", ink)

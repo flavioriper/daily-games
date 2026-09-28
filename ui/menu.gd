@@ -835,10 +835,7 @@ func _page_button(icon: String) -> Button:
 	btn.custom_minimum_size = PAGER_BTN
 	btn.focus_mode = Control.FOCUS_NONE
 	var r := int(PAGER_BTN.y * 0.5)
-	btn.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 3, 0))
-	btn.add_theme_stylebox_override("hover", CozyTheme.card(Pal.SURFACE_HI, r, Pal.LINE, 3, 0))
-	btn.add_theme_stylebox_override("pressed", CozyTheme.card(Pal.SURFACE_HI.darkened(0.08), r, Pal.LINE, 2, 0))
-	btn.add_theme_stylebox_override("disabled", CozyTheme.card(Color(Pal.SURFACE_HI, 0.55), r, Color(Pal.LINE, 0.55), 2, 0))
+	CozyTheme.lift_button(btn, Pal.SURFACE, r, 0)
 	var center := CenterContainer.new()
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

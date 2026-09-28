@@ -25,6 +25,7 @@ var badge: int = 0:
 ## Where the badge rests; the top bar's bounce hops from here.
 var badge_rest := Vector2.ZERO
 var _press_tw: Tween
+var _pilling := false
 var _row: HBoxContainer
 var _glyph: Control
 var _label: Label
@@ -111,6 +112,7 @@ func set_label(text_: String) -> void:
 	if _label != null:
 		_label.text = text_
 		_label.visible = text_ != ""
+		_pill()
 		_fit_content()
 
 ## The press squish: flatter and wider, then springs back. Restarts cleanly
@@ -126,11 +128,36 @@ func badge_node() -> Control:
 func _apply_look() -> void:
 	if _label == null:
 		return
+	_pill()
 	var colour := _ink()
 	_label.add_theme_font_override("font", get_theme_font("font"))
 	_label.add_theme_font_size_override("font_size", get_theme_font_size("font_size"))
 	_label.add_theme_color_override("font_color", colour)
 	_glyph.queue_redraw()
+
+## A labelled button is a pill (UI polish, 2026-09-28): its theme styleboxes
+## duplicated with a radius past half any height it will have, which
+## StyleBoxFlat clamps to a full round end. Icon-only buttons keep the
+## theme's rounded square. Overrides a host set itself are left alone.
+func _pill() -> void:
+	# Each override below notifies THEME_CHANGED, which comes back here.
+	if label_text == "" or _pilling:
+		return
+	_pilling = true
+	for s in ["normal", "hover", "pressed", "disabled"]:
+		# Already a pill, or dressed by its host: leave it.
+		if has_theme_stylebox_override(s):
+			continue
+		remove_theme_stylebox_override(s)
+		var sb := get_theme_stylebox(s)
+		if sb is StyleBoxFlat:
+			var round := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
+			round.set_corner_radius_all(200)
+			round.content_margin_left = maxf(round.content_margin_left, 36.0)
+			round.content_margin_right = maxf(round.content_margin_right, 36.0)
+			add_theme_stylebox_override(s, round)
+			set_meta("pill_" + s, true)
+	_pilling = false
 
 func _ink() -> Color:
 	return get_theme_color("font_disabled_color") if disabled else get_theme_color("font_color")
@@ -153,4 +180,6 @@ func _draw_glyph() -> void:
 	Icons.paint(_glyph, icon_name, Rect2(Vector2.ZERO, _glyph.size), _ink(), fill)
 
 func _draw_badge() -> void:
-	_badge.draw_circle(Vector2(BADGE_R, BADGE_R), BADGE_R, Pal.WATER)
+	var c := Vector2(BADGE_R, BADGE_R)
+	_badge.draw_circle(c, BADGE_R, Pal.SURFACE, true, -1.0, true)
+	_badge.draw_circle(c, BADGE_R - 4.0, Pal.ACCENT_2, true, -1.0, true)
