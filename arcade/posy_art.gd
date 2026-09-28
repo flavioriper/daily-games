@@ -3,8 +3,9 @@ extends RefCounted
 ## Posy's drawings (spec docs/superpowers/specs/2026-09-27-arcade-posy-design.md):
 ## the six garden tiles (a red flower, a leaf, a water drop, a yellow
 ## mushroom, a plum berry, an acorn), the rainbow posy, a breeze's streaks
-## and a seed bomb's glow laid over a tile, the four tools' pictures and the
-## day's sprout. Each is built once per look and size, its origin at the
+## and a seed bomb's glow laid over a tile, the bee who sits on a tile and
+## flies off it, the bed's weeds, stones and moss, the four tools' pictures
+## and the day's sprout. Each is built once per look and size, its origin at the
 ## centre, and moved by the draw transform; shared with the Arcade tab's
 ## banner.
 
@@ -28,9 +29,18 @@ const RAINBOW := [Color("ec5a4f"), Color("f59a3c"), Color("f6cf42"), Color("68c0
 
 static var _cache := {}
 
+const STONE := Color("a39d94")
+const MOSS := Color("6f9e3c")
+const WEED := Color("7cb342")
+const SOIL := Color("b89464")
+
 static func paint(k: int) -> Color:
 	if k < 0:
 		return GOLD
+	match k:
+		10: return WEED
+		11: return STONE
+		12: return MOSS
 	return PAINT[clampi(k, 0, PAINT.size() - 1)]
 
 static func _cached(key: String, build: Callable) -> ArrayMesh:
@@ -280,6 +290,9 @@ static func _build_tile(b: Face.Builder, k: int, s: float) -> void:
 		3: _mushroom(b, r)
 		4: _berry(b, r)
 		5: _acorn(b, r)
+		10: _weed_icon(b, r)
+		11: _stone(b, r, 2)
+		12: _moss(b, r)
 		_: _rainbow(b, r)
 
 static func _build_breeze(b: Face.Builder, s: float) -> void:
@@ -374,3 +387,121 @@ static func _build_sprout(b: Face.Builder, s: float) -> void:
 			leaf[i] += Vector2(side * r * 0.45, -r * 0.3)
 		b.polygon(leaf, LEAF)
 	b.ellipse(Vector2(0, r * 0.92), r * 0.5, r * 0.12, Color("8e6a3c"))
+
+# --- the bee and the bed's ground ---
+
+## A bee sitting on a tile (drawn over it, up in its corner), or on its own,
+## flying: `s` is the tile's size. Its wings are a second mesh, so they beat
+## by the transform.
+static func bee(s: float) -> ArrayMesh:
+	return _cached("bee%d" % roundi(s), func(b: Face.Builder) -> void: _build_bee(b, s * 0.5 * 0.5))
+
+static func bee_wings(s: float) -> ArrayMesh:
+	return _cached("bw%d" % roundi(s), func(b: Face.Builder) -> void: _build_wings(b, s * 0.5 * 0.5))
+
+static func _build_bee(b: Face.Builder, r: float) -> void:
+	var body := Color("f6c53d")
+	var ink := Color("3b3028")
+	b.ellipse(Vector2(r * 0.05, r * 0.12), r * 0.95, r * 0.72, Color(ink, 0.9))
+	b.ellipse(Vector2.ZERO, r * 0.9, r * 0.68, body)
+	# stripes, clipped to the body by keeping them short
+	for x in [-0.12, 0.3]:
+		var h := r * 0.66 * sqrt(maxf(0.0, 1.0 - pow(x / 0.9, 2.0)))
+		b.stroke(PackedVector2Array([Vector2(r * x, -h), Vector2(r * x, h)]), r * 0.2, ink)
+	# the sting and the head
+	b.polygon(PackedVector2Array([Vector2(r * 0.84, -r * 0.1), Vector2(r * 1.18, 0), Vector2(r * 0.84, r * 0.1)]), ink)
+	b.disc(Vector2(-r * 0.78, -r * 0.05), r * 0.46, ink)
+	b.disc(Vector2(-r * 0.9, -r * 0.14), r * 0.14, Color("fffaf0"))
+	b.disc(Vector2(-r * 0.93, -r * 0.14), r * 0.07, ink)
+	b.ellipse(Vector2(-r * 0.2, -r * 0.4), r * 0.3, r * 0.12, Color(1, 1, 1, 0.45))
+	# feelers
+	for side in [-1.0, 1.0]:
+		var base := Vector2(-r * 0.95, -r * 0.35)
+		var tip := base + Vector2(-r * 0.3 + side * r * 0.12, -r * 0.45)
+		b.stroke(PackedVector2Array([base, tip]), maxf(1.0, r * 0.07), ink)
+		b.disc(tip, r * 0.09, ink)
+
+static func _build_wings(b: Face.Builder, r: float) -> void:
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * r * 0.25 + r * 0.05, -r * 0.72)
+		b.ellipse(c, r * 0.36, r * 0.52, Color(1, 1, 1, 0.8))
+		b.stroke(Face.Builder.ring(c, r * 0.36, r * 0.52), maxf(1.0, r * 0.06), Color("9fc6e8"), true)
+
+## Weeds under a tile: tufts poking out round its edges, over a patch of
+## turned soil; two layers are thicker and darker.
+static func weeds(s: float, layers: int) -> ArrayMesh:
+	return _cached("w%d_%d" % [roundi(s), layers], func(b: Face.Builder) -> void: _build_weeds(b, s, layers))
+
+static func _build_weeds(b: Face.Builder, s: float, layers: int) -> void:
+	var r := s * 0.5
+	var soil := SOIL.lightened(0.25) if layers < 2 else SOIL
+	b.polygon(Face.Builder.round_rect(Vector2(-r, -r), Vector2(s, s), r * 0.36), Color(soil, 0.5 if layers < 2 else 0.7))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11 + layers
+	var green := WEED if layers < 2 else WEED.darkened(0.2)
+	var n := 12 if layers < 2 else 20
+	for i in n:
+		var a := TAU * i / n + rng.randf_range(-0.2, 0.2)
+		var at := Vector2(cos(a), sin(a)) * r * rng.randf_range(0.8, 0.98)
+		var up := Vector2(rng.randf_range(-0.25, 0.25), -1.0).normalized()
+		var tall := r * rng.randf_range(0.28, 0.42) * (1.2 if layers >= 2 else 1.0)
+		for k in 3:
+			var lean := up.rotated((k - 1) * 0.45)
+			b.polygon(PackedVector2Array([at + lean.orthogonal() * r * 0.05, at + lean * tall, at - lean.orthogonal() * r * 0.05]),
+				green.darkened(0.08 * k))
+
+static func _weed_icon(b: Face.Builder, r: float) -> void:
+	b.ellipse(Vector2(0, r * 0.55), r * 0.8, r * 0.26, SOIL)
+	for i in 7:
+		var x := lerpf(-0.6, 0.6, i / 6.0) * r
+		var tip := Vector2(x * 1.3, -r * (0.55 + 0.3 * sin(i * 1.7) * 0.5))
+		b.polygon(PackedVector2Array([Vector2(x - r * 0.1, r * 0.55), tip, Vector2(x + r * 0.1, r * 0.55)]), WEED.darkened(0.1 * (i % 2)))
+
+## A stone standing in a cell: `hp` 2 whole, 1 cracked.
+static func stone(s: float, hp: int) -> ArrayMesh:
+	return _cached("st%d_%d" % [roundi(s), hp], func(b: Face.Builder) -> void: _stone(b, s * 0.5, hp))
+
+static func _stone_outline(r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 14:
+		var a := TAU * i / 14.0
+		var wob := 1.0 + 0.07 * sin(a * 3.0 + 1.0) + 0.04 * cos(a * 5.0)
+		pts.append(Vector2(cos(a) * r * 0.86, sin(a) * r * 0.74 + r * 0.06) * wob)
+	return pts
+
+static func _stone(b: Face.Builder, r: float, hp: int) -> void:
+	b.ellipse(Vector2(r * 0.05, r * 0.68), r * 0.72, r * 0.16, Color(0.3, 0.22, 0.12, 0.2))
+	var under := _stone_outline(r)
+	for i in under.size():
+		under[i] += Vector2(r * 0.03, r * 0.08)
+	b.polygon(under, STONE.darkened(0.35))
+	b.polygon(_stone_outline(r), STONE)
+	b.ellipse(Vector2(-r * 0.2, -r * 0.24), r * 0.42, r * 0.24, STONE.lightened(0.18))
+	b.ellipse(Vector2(-r * 0.32, -r * 0.34), r * 0.14, r * 0.08, Color(1, 1, 1, 0.45))
+	b.disc(Vector2(r * 0.4, r * 0.2), r * 0.08, STONE.darkened(0.2))
+	b.disc(Vector2(-r * 0.1, r * 0.34), r * 0.06, STONE.darkened(0.2))
+	if hp <= 1:
+		var ink := STONE.darkened(0.5)
+		b.stroke(PackedVector2Array([Vector2(-r * 0.1, -r * 0.62), Vector2(r * 0.05, -r * 0.2), Vector2(-r * 0.12, r * 0.1), Vector2(r * 0.1, r * 0.5)]), maxf(1.5, r * 0.07), ink)
+		b.stroke(PackedVector2Array([Vector2(r * 0.05, -r * 0.2), Vector2(r * 0.42, -r * 0.3)]), maxf(1.0, r * 0.05), ink)
+	else:
+		# a whole stone wears a little tuft of grass at its foot
+		for i in 3:
+			var at := Vector2(r * (0.35 + 0.12 * i), r * 0.62)
+			b.polygon(PackedVector2Array([at + Vector2(-r * 0.05, 0), at + Vector2(r * 0.02 * (i - 1), -r * 0.24), at + Vector2(r * 0.05, 0)]), LEAF_DEEP)
+
+## Moss filling a cell: a soft green cushion with paler knots.
+static func moss(s: float) -> ArrayMesh:
+	return _cached("m%d" % roundi(s), func(b: Face.Builder) -> void: _moss(b, s * 0.5))
+
+static func _moss(b: Face.Builder, r: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	b.polygon(Face.Builder.round_rect(Vector2(-r * 0.92, -r * 0.8), Vector2(r * 1.84, r * 1.72), r * 0.6), MOSS.darkened(0.3))
+	for i in 9:
+		var at := Vector2(rng.randf_range(-0.55, 0.55), rng.randf_range(-0.45, 0.5)) * r
+		b.disc(at, r * rng.randf_range(0.3, 0.44), MOSS.darkened(0.08 * (i % 3)))
+	for i in 14:
+		var at := Vector2(rng.randf_range(-0.7, 0.7), rng.randf_range(-0.6, 0.6)) * r
+		b.disc(at, r * 0.07, MOSS.lightened(0.3))
+	b.ellipse(Vector2(-r * 0.3, -r * 0.4), r * 0.3, r * 0.12, Color(1, 1, 1, 0.22))

@@ -446,3 +446,13 @@ PS_END_CARD,The garden rests,O jardim descansa,El jardín descansa
 PS_STAT_DAY,day,dia,día
 PS_STAT_MADE,specials,especiais,especiales
 PS_STAT_CASCADE,best cascade,melhor cascata,mejor cascada
+PS_MADE_BEE,Bee!,Abelha!,¡Abeja!
+PS_MORE_MOVES,+%d moves!,+%d movimentos!,¡+%d movimientos!
+PS_OFFER_TITLE,So close!,Quase lá!,¡Casi!
+PS_OFFER_LINE_ONE,Just one more to finish the day.,Falta só um para completar o dia.,Solo falta uno para completar el día.
+PS_OFFER_LINE_N,Just %d more to finish the day.,Faltam só %d para completar o dia.,Solo faltan %d para completar el día.
+PS_OFFER_TAKE,Keep going: +%d moves,Continuar: +%d movimentos,Seguir: +%d movimientos
+PS_OFFER_END,End the game,Encerrar o jogo,Terminar la partida
+PS_GOAL_WEEDS,Pull the weeds!,Arranque as ervas daninhas!,¡Arranca las malas hierbas!
+PS_GOAL_STONES,Break the stones!,Quebre as pedras!,¡Rompe las piedras!
+PS_GOAL_MOSS,Clear the moss before it spreads!,Limpe o musgo antes que se espalhe!,¡Limpia el musgo antes de que se extienda!

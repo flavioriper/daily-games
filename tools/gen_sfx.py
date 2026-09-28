@@ -598,6 +598,17 @@ SETS = {
         "start":        ("a short cheerful retro arcade game start jingle, a bouncy flowery little tune, about two seconds", 2.2, -4, ARCADE),
         "game_over":    ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        # the genre pass (2026-09-28): the bee, the bed's ground, the offer
+        "made_bee":     ("a soft cheerful buzzy little trill, a tiny bee appearing, playful, short", 0.6, -8, CARTOON),
+        "bee":          ("a quick soft cartoon bee buzz zipping away, playful, short", 0.6, -8, CARTOON),
+        "bee_hit":      ("a tiny soft cartoon 'bop' as a bee lands on a flower, very short", 0.5, -10, CARTOON),
+        "weed":         ("a small tuft of grass pulled out of soft soil, a quick rip and a soft pop, short", 0.5, -9, CARTOON),
+        "stone":        ("a small soft cartoon knock on a garden stone, a light crack, short", 0.5, -9, CARTOON),
+        "stone_break":  ("a soft cartoon garden stone crumbling apart into pebbles, round not harsh, short", 0.7, -7, CARTOON),
+        "moss":         ("a soft squishy creeping sound, moss spreading over a tile, gentle and slightly sneaky, short", 0.6, -10, CARTOON),
+        "moss_clear":   ("a soft fluffy poof, a clump of moss plucked away, short", 0.5, -9, CARTOON),
+        "offer":        ("a gentle hopeful two-note question chime, so close, not sad", 0.8, -7, ARCADE),
+        "more_moves":   ("a bright cheerful rising sparkle, extra moves granted, short", 0.8, -6, ARCADE),
     },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.

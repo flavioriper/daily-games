@@ -1962,6 +1962,16 @@ bloom as breezes, then the next day is dealt. Its "furthest" is the day.
   stars, a petal rain, every spare move thrown from the moves plate as a gold
   star, and the gift flown to its tool. 148-200 draw calls in play, ~254 at
   the day's end peak, ANGLE agreeing.
+- **The genre pass on 2026-09-28** (the spec's section 7), from a look at
+  Royal Match and Gardenscapes: a **bee** from a square of four that flies
+  to the cell the goals want most, chosen when it goes off; **weeds, stones
+  and moss** from day three (one a day, taking a goal) and **shaped beds**
+  from day four -- tiles fall past holes, stones and moss, so gravity stays
+  a column compaction; **five more moves once a game** (`Phase.OFFER`);
+  **tap a special** to set it off for a move; and moves allowed while tiles
+  are still landing, with a tap hurrying the rest. A harness laying tiles by
+  hand (`_put`) must skip cells with no tile: a stone's `{}` written into
+  becomes a half tile the sim then trips on.
 
 ## Sound
 

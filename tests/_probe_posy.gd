@@ -40,6 +40,10 @@ func _play(seed_v: int, skill: int, use_tools: bool, verbose: bool):
 	var guard := 0
 	while not sim.is_over() and guard < 3000:
 		guard += 1
+		if sim.is_offered():
+			sim.keep_going()
+			_tally(sim, tally)
+			continue
 		# a tool when a day is about to be lost
 		if use_tools and sim.moves_left <= 2 and not sim.goals_met():
 			var used := false
@@ -69,8 +73,8 @@ func _play(seed_v: int, skill: int, use_tools: bool, verbose: bool):
 			break
 		_tally(sim, tally)
 	if verbose:
-		print("seed %d skill %d: day %d, score %d, moves %d, made %d, best cascade %d, tools used %d" % [
-			seed_v, skill, sim.day, sim.score, sim.moves, sim.made, sim.best_cascade, sim.tools_used])
+		print("seed %d skill %d: day %d, score %d, moves %d, made %d, best cascade %d, tools used %d, offers left %d" % [
+			seed_v, skill, sim.day, sim.score, sim.moves, sim.made, sim.best_cascade, sim.tools_used, sim.offers])
 		print(tally)
 	return sim
 

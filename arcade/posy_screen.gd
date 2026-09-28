@@ -8,7 +8,9 @@ extends Control
 ## with what is left of each.
 ##
 ## Play: drag a tile onto a neighbour (or tap one, then the other) to swap
-## them; a swap that lines up three or more is taken. The game is
+## them; a swap that lines up three or more (or a square of four) is taken.
+## Tap a special to set it off, for a move. A tap while the bed is playing
+## something out hurries it along. The game is
 ## arcade/posy_sim.gd, which resolves a move at once and leaves every
 ## cascade step as an event; this screen plays them in order off a queue,
 ## keeping its own picture of where every tile is, so the bed on screen
@@ -50,7 +52,11 @@ const GRAVITY := 60.0
 const FALL_V0 := 4.0
 ## How long a picked tile takes to go, and a step's wait with a blast in it.
 const PICK_T := 0.24
-const BLAST_T := 0.34
+const BLAST_T := 0.3
+## A bee's flight from its tile to its mark.
+const BEE_T := 0.3
+## How much faster everything plays while a tap hurries it.
+const HURRY := 2.6
 ## How far a drag has to go, in cells, before it is a swap.
 const DRAG := 0.32
 ## Seconds without a move before the bed shows one.
@@ -60,7 +66,7 @@ const CONFETTI := [Color("e8453c"), Color("f6c53d"), Color("3fa3ea"), Color("5db
 ## The words a long cascade earns, by its step.
 const WORDS := {3: "PS_WORD_1", 5: "PS_WORD_2", 7: "PS_WORD_3", 9: "PS_WORD_4"}
 ## What a special says when it is made.
-const MADE_WORDS := {Sim.Sp.ROW: "PS_MADE_BREEZE", Sim.Sp.COL: "PS_MADE_BREEZE", Sim.Sp.BOMB: "PS_MADE_BOMB", Sim.Sp.RAINBOW: "PS_MADE_RAINBOW"}
+const MADE_WORDS := {Sim.Sp.ROW: "PS_MADE_BREEZE", Sim.Sp.COL: "PS_MADE_BREEZE", Sim.Sp.BOMB: "PS_MADE_BOMB", Sim.Sp.RAINBOW: "PS_MADE_RAINBOW", Sim.Sp.BEE: "PS_MADE_BEE"}
 ## The stickers' letters, cycled for the big words.
 const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
 ## The most bits (petals, sparks, stars) alive at once, in each layer.
@@ -173,6 +179,14 @@ var _air_live: ArrayMesh
 var _seat_mesh: ArrayMesh
 var _end_score: Label
 var _end_at := 0.0
+## The bed's ground as the queue has it: cell -> {block, hp, weed, hit, grow}
+## (`hit` and `grow` seconds since a knock and since it came in, -1 at
+## rest). Changes a bee is still flying to wait in `_ground_later`.
+var _ground := {}
+var _ground_later: Array = []
+## The offer of more moves, while it is up.
+var _offer: Control
+var _hurry := false
 
 func puzzle_id() -> String:
 	return GAME
@@ -526,6 +540,12 @@ func _new_game() -> void:
 	_goal_cheer.clear()
 	_gift_owed.clear()
 	_end_score = null
+	_ground.clear()
+	_ground_later.clear()
+	_hurry = false
+	if _offer != null:
+		_offer.queue_free()
+		_offer = null
 	for tool: int in _tool_buttons:
 		_style_chip(_tool_buttons[tool], false)
 	_best = Record.best(GAME)
@@ -555,8 +575,11 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	_clock += delta
-	_animate(delta)
-	_run_queue(delta)
+	if _hurry and not busy():
+		_hurry = false
+	var d := delta * (HURRY if _hurry else 1.0)
+	_animate(d)
+	_run_queue(d)
 	_refresh_hud(delta)
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
@@ -636,6 +659,17 @@ func _animate(delta: float) -> void:
 			d.pos += (d.vel as Vector2) * delta
 	for b: Dictionary in _beams:
 		b.t += delta
+		if String(b.kind) == "bee" and b.t >= BEE_T and not b.get("home", false):
+			b.home = true
+			var to: Vector2i = b.to
+			if to.x >= 0:
+				var at := px(to.x, to.y)
+				_fx.puff(at, Color("f6c53d"), 8)
+				_spray(_bits, at, Color("f6c53d"), 6, 460.0, "star", 0.8)
+				_ring(_bits, at, _u * 1.1, Color("fff4c2"))
+				_fx.cue("bee_hit", randf_range(0.95, 1.1), -4.0)
+				if b.has("carry"):
+					_shake = maxf(_shake, 0.3)
 	_beams = _beams.filter(func(b: Dictionary) -> bool: return b.t < 0.6)
 	for p: Dictionary in _pops:
 		p.t += delta
@@ -660,6 +694,9 @@ func _animate(delta: float) -> void:
 	if sim.is_over() and not _over_said and not busy():
 		_over_said = true
 		_game_over()
+	if sim.is_offered() and _offer == null and not busy():
+		_show_offer()
+	_step_ground(delta)
 
 ## The rewards' own clocks: the bits in both layers, the stickers, the
 ## sunbursts, the flash, the cascade's glow, the day's stars and its rain.
@@ -869,11 +906,15 @@ func _on_field_input(event: InputEvent) -> void:
 		released = not pressed
 	elif event is InputEventMouseMotion:
 		at = (event as InputEventMouseMotion).position
-	if at == Vector2.INF or sim == null or sim.is_over() or settings_sheet.is_open():
+	if at == Vector2.INF or sim == null or sim.is_over() or sim.is_offered() or settings_sheet.is_open():
 		return
 	_idle = 0.0
 	if pressed:
-		if busy():
+		# a move may be made while tiles are still landing, once the queue
+		# has caught up with the sim; a tap before then hurries it
+		if not _queue.is_empty() or _wait > 0.0:
+			if not Motion.reduce:
+				_hurry = true
 			return
 		var cell := cell_at(at)
 		if cell.x < 0:
@@ -896,6 +937,11 @@ func _on_field_input(event: InputEvent) -> void:
 			_try_swap(a, cell)
 		elif _selected == cell:
 			_selected = Vector2i(-1, -1)
+		elif _selected.x < 0 and sim.special(cell) != Sim.Sp.NONE:
+			# a special tapped on its own goes off where it stands
+			_hint = []
+			sim.fire(cell)
+			_take_events()
 		else:
 			_selected = cell
 			_fx.cue("select", 1.0, -4.0)
@@ -1017,7 +1063,31 @@ func _apply(ev: Dictionary) -> void:
 		"clear":
 			_on_clear(ev)
 			var blast := not (ev.blasts as Array).is_empty()
-			_wait = 0.05 if quick else (BLAST_T if blast else PICK_T)
+			# a long cascade plays its later steps quicker
+			var pace := maxf(0.6, 1.0 - 0.07 * (int(ev.step) - 1))
+			_wait = 0.05 if quick else (BLAST_T if blast else PICK_T) * pace
+		"fire":
+			_fx.cue("select", 1.3, -2.0)
+			_shown_moves -= 1
+			if _tiles.has(ev.id):
+				_tiles[ev.id].bump = 0.0
+			if _shown_moves <= 5 and _shown_moves > 0:
+				_kick(_moves_plate, 0.16, 0.3)
+			_wait = 0.0 if quick else 0.1
+		"moss":
+			_on_moss(ev)
+			_wait = 0.05 if quick else 0.35
+		"offer":
+			pass
+		"more_moves":
+			_shown_moves += int(ev.moves)
+			_kick(_moves_plate, 0.35, 0.45)
+			var at := _in_air(_moves_plate, _moves_plate.size * 0.5)
+			_spray(_air_bits, at, Pal.SUN, 14, 560.0, "star", 1.1)
+			_ring(_air_bits, at, 120.0, Art.GOLD)
+			_sticker(tr("PS_MORE_MOVES") % int(ev.moves), at + Vector2(-80, 130), 56, 1.4, false, Pal.SUN)
+			_fx.cue("more_moves")
+			_wait = 0.0 if quick else 0.4
 		"fall":
 			var landed := false
 			for f: Dictionary in ev.falls:
@@ -1076,7 +1146,7 @@ func _apply(ev: Dictionary) -> void:
 			_flash_col = Color("fff4c2")
 			_flash = 0.6
 			_confetti()
-			_wait = 0.2 if quick else 1.6
+			_wait = 0.2 if quick else 1.3
 		"gift":
 			var tool: int = Sim.TOOL_KEYS.find_key(String(ev.tool))
 			var b: Control = _tool_buttons[tool]
@@ -1094,7 +1164,7 @@ func _apply(ev: Dictionary) -> void:
 					"to": to, "t": -0.15, "time": 0.8, "goal": -1, "k": 0})
 				_sticker(tr("PS_GIFT"), from + Vector2(0, -150), 58, 1.3, false, Pal.SUN)
 				_fx.cue("arm", 1.2, -4.0)
-				_wait = 1.0
+				_wait = 0.8
 		"tool":
 			_badges[Sim.TOOL_KEYS.find_key(String(ev.tool))].queue_redraw()
 			var cell: Vector2i = ev.cell
@@ -1125,6 +1195,12 @@ func _on_deal(ev: Dictionary) -> void:
 		var t := _new_tile(Vector2(cell.x, cell.y - Sim.ROWS - 1.0), cell, int(d.k), int(d.sp))
 		t.hold = 0.0 if Motion.reduce else 0.35 + 0.04 * cell.x + 0.025 * (Sim.ROWS - cell.y)
 		_tiles[d.id] = t
+	_ground.clear()
+	_ground_later.clear()
+	for g: Dictionary in ev.get("cells", []):
+		_ground[g.cell] = {"block": int(g.block), "hp": int(g.hp), "weed": int(g.weed), "hit": -1.0,
+			"grow": -1.0 if Motion.reduce else -0.3 - 0.03 * (g.cell as Vector2i).x, "pending": not Motion.reduce}
+	_bed = _build_bed()
 	_shown_day = int(ev.day)
 	_shown_moves = int(ev.moves)
 	_shown_goals = (ev.goals as Array).duplicate(true)
@@ -1138,6 +1214,179 @@ func _on_deal(ev: Dictionary) -> void:
 	_sticker(tr("PS_DAY") % _shown_day, _bed_at(0.5, 0.3), 104, 1.8, true, Color.WHITE, true, "day")
 	_show_banner("", _goal_line(), 1.3, 0.5)
 	_kick(_day_l, 0.2, 0.3)
+
+## A cell's ground changes: now, or after `wait` seconds while a bee flies
+## there. A weed pulled throws leaves; a stone knocked jolts and chips; a
+## stone broken or moss cleared bursts.
+func _ground_change(cell: Vector2i, change: Dictionary, wait := 0.0) -> void:
+	if wait > 0.0 and not Motion.reduce:
+		_ground_later.append({"cell": cell, "change": change, "wait": wait})
+		return
+	var g: Dictionary = _ground.get(cell, {"block": Sim.Block.NONE, "hp": 0, "weed": 0, "hit": -1.0, "grow": -1.0})
+	var at := px(cell.x, cell.y)
+	if change.has("weed"):
+		g.weed = int(change.weed)
+		_spray(_bits, at, Art.WEED, 7, 420.0, "leaf", 0.9)
+		_spray(_bits, at, Art.SOIL, 4, 300.0, "seed", 0.9)
+		_ring(_bits, at, _u * 0.7, Color(Art.WEED.lightened(0.4), 0.9))
+		_fx.cue("weed", randf_range(0.95, 1.1), -4.0)
+	if change.has("block"):
+		var was := int(change.get("was", g.block))
+		g.block = int(change.block)
+		g.hp = int(change.get("hp", 0))
+		g.hit = 0.0
+		if was == Sim.Block.STONE:
+			var broke := int(change.block) == Sim.Block.NONE
+			_spray(_bits, at, Art.STONE, 10 if broke else 5, 620.0 if broke else 420.0, "seed", 1.3 if broke else 1.0)
+			_spray(_bits, at, Color("fffaf0"), 3, 300.0, "spark", 0.8)
+			if broke:
+				_fx.puff(at, Art.STONE.lightened(0.3), 10)
+				_ring(_bits, at, _u * 1.1, Color(Art.STONE.lightened(0.4), 0.9))
+				_shake = maxf(_shake, 0.2)
+			_fx.cue("stone_break" if broke else "stone", randf_range(0.95, 1.1), -3.0)
+		elif was == Sim.Block.MOSS:
+			_fx.puff(at, Art.MOSS.lightened(0.2), 8)
+			_spray(_bits, at, Art.MOSS.lightened(0.15), 8, 460.0, "leaf", 1.0)
+			_fx.cue("moss_clear", randf_range(0.95, 1.1), -4.0)
+	g.pending = false
+	if int(g.block) == Sim.Block.NONE and int(g.weed) <= 0:
+		_ground.erase(cell)
+	else:
+		_ground[cell] = g
+
+## The ground's own clocks: a knock's jolt, things coming in, and the changes
+## waiting for a bee.
+func _step_ground(delta: float) -> void:
+	for cell: Vector2i in _ground:
+		var g: Dictionary = _ground[cell]
+		if float(g.hit) >= 0.0:
+			g.hit = float(g.hit) + delta if float(g.hit) < 0.8 else -1.0
+		if bool(g.get("pending", false)) or float(g.grow) >= 0.0:
+			g.grow = float(g.grow) + delta
+			if float(g.grow) >= 0.0:
+				g.pending = false
+			if float(g.grow) > 0.5:
+				g.grow = -1.0
+	if _ground_later.is_empty():
+		return
+	for w: Dictionary in _ground_later:
+		w.wait = float(w.wait) - delta
+	var due := _ground_later.filter(func(w: Dictionary) -> bool: return float(w.wait) <= 0.0)
+	_ground_later = _ground_later.filter(func(w: Dictionary) -> bool: return float(w.wait) > 0.0)
+	for w: Dictionary in due:
+		_ground_change(w.cell, w.change)
+
+## Moss left alone creeps into the tile beside it: the tile is swallowed and
+## a new cushion swells up in its place.
+func _on_moss(ev: Dictionary) -> void:
+	var cell: Vector2i = ev.cell
+	if _tiles.has(ev.id):
+		var t: Dictionary = _tiles[ev.id]
+		if not Motion.reduce:
+			_dying.append({"k": int(t.k), "sp": int(t.sp), "pos": t.pos, "into": Vector2.INF, "t": 0.0})
+		_tiles.erase(ev.id)
+	var old: Dictionary = _ground.get(cell, {})
+	_ground[cell] = {"block": Sim.Block.MOSS, "hp": 0, "weed": int(old.get("weed", 0)), "hit": -1.0,
+		"grow": -1.0 if Motion.reduce else 0.0, "pending": false}
+	var from: Vector2i = ev.from
+	if _ground.has(from):
+		_ground[from].hit = 0.0
+	var at := px(cell.x, cell.y)
+	_spray(_bits, at, Art.MOSS, 6, 300.0, "leaf", 0.9)
+	_fx.cue("moss", randf_range(0.95, 1.05), -3.0)
+	_shown_goals = (ev.goals as Array).duplicate(true)
+	for p: Dictionary in _goal_plates:
+		p.pic.queue_redraw()
+
+# --- the offer ---
+
+## Out of moves short of the day: a card offering five more moves, once a
+## game, with what the day still wants.
+func _show_offer() -> void:
+	_disarm()
+	_press = Vector2i(-1, -1)
+	_selected = Vector2i(-1, -1)
+	var short := 0
+	for g: Dictionary in sim.goals:
+		short += maxi(0, int(g.need) - int(g.got))
+	_fx.cue("offer")
+	var scrim := ColorRect.new()
+	scrim.name = "Offer"
+	scrim.color = Color(Pal.OUTLINE, 0.3)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := PanelContainer.new()
+	card.name = "Card"
+	card.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 44, 40))
+	card.custom_minimum_size.x = 780
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 18)
+	card.add_child(col)
+	# the day's goals as they stand, each with what is still wanted
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 26)
+	for g: Dictionary in sim.goals:
+		var left := maxi(0, int(g.need) - int(g.got))
+		var k := int(g.k)
+		var pic := _icon(func(ci: Control) -> void:
+			var sz := minf(ci.size.x, ci.size.y) * 0.8
+			ci.draw_mesh(Art.tile(k, sz), null, Transform2D(0.0, Vector2(ci.size.x * 0.5, ci.size.y * 0.42)))
+			var font := get_theme_font("font", "SheetTitle")
+			var text := "✓" if left == 0 else str(left)
+			var fs := 34
+			var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var at := Vector2(ci.size.x * 0.5 - w * 0.5, ci.size.y - 4)
+			ci.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color("fffaf0"))
+			ci.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.LEAF_DEEP if left == 0 else Color("d0503f")))
+		pic.custom_minimum_size = Vector2(120, 140)
+		row.add_child(pic)
+	col.add_child(row)
+	var head := Label.new()
+	head.text = "PS_OFFER_TITLE"
+	head.theme_type_variation = "WellDone"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(head)
+	var line := Label.new()
+	line.text = tr("PS_OFFER_LINE_ONE") if short == 1 else tr("PS_OFFER_LINE_N") % short
+	line.theme_type_variation = "SheetBody"
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(line)
+	var take := IconButton.new("reset", tr("PS_OFFER_TAKE") % Sim.MORE_MOVES, "SunButton")
+	take.name = "Take"
+	take.custom_minimum_size.y = 120
+	take.pressed.connect(_take_offer)
+	col.add_child(take)
+	var end := IconButton.new("chevron_right", tr("PS_OFFER_END"))
+	end.name = "End"
+	end.custom_minimum_size.y = 110
+	end.pressed.connect(_end_offer)
+	col.add_child(end)
+	_offer = scrim
+	add_child(scrim)
+	Motion.appear(scrim, 0.0, 1.0, 0.25)
+	if not Motion.reduce:
+		card.pivot_offset = Vector2(card.custom_minimum_size.x * 0.5, 200.0)
+		card.scale = Vector2.ONE * 0.8
+		card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _take_offer() -> void:
+	if _offer != null:
+		_offer.queue_free()
+		_offer = null
+	if sim.keep_going():
+		_take_events()
+
+func _end_offer() -> void:
+	if _offer != null:
+		_offer.queue_free()
+		_offer = null
+	sim.decline()
+	_take_events()
 
 ## Every tile the day's end turns gets a star thrown from the moves plate,
 ## one after another, and turns when it lands.
@@ -1156,6 +1405,11 @@ func _bloom_stars(tiles: Array) -> void:
 
 ## The day's goals in words: "12 flowers, 12 leaves".
 func _goal_line() -> String:
+	for g: Dictionary in _shown_goals:
+		match int(g.k):
+			Sim.GOAL_WEED: return tr("PS_GOAL_WEEDS")
+			Sim.GOAL_STONE: return tr("PS_GOAL_STONES")
+			Sim.GOAL_MOSS: return tr("PS_GOAL_MOSS")
 	return tr("PS_COLLECT")
 
 func _on_clear(ev: Dictionary) -> void:
@@ -1170,6 +1424,11 @@ func _on_clear(ev: Dictionary) -> void:
 	var old_goals := _shown_goals.duplicate(true)
 	var flown := 0
 	var centre := Vector2.ZERO
+	# a bee's mark waits for the bee to get there
+	var late := {}
+	for b: Dictionary in ev.blasts:
+		if String(b.kind) == "bee" and (b.to as Vector2i).x >= 0:
+			late[b.to] = true
 	for g: Dictionary in ev.tiles:
 		var id: int = g.id
 		var cell: Vector2i = g.cell
@@ -1178,7 +1437,8 @@ func _on_clear(ev: Dictionary) -> void:
 		_tiles.erase(id)
 		centre += Vector2(cell)
 		if not Motion.reduce:
-			_dying.append({"k": int(g.k), "sp": int(g.sp), "pos": pos, "into": into.get(cell, Vector2.INF), "t": 0.0})
+			_dying.append({"k": int(g.k), "sp": int(g.sp), "pos": pos, "into": into.get(cell, Vector2.INF),
+				"t": -BEE_T if late.has(cell) else 0.0})
 		# a tile the day wants flies up to its goal (a few a step)
 		for i in old_goals.size():
 			var gg: Dictionary = old_goals[i]
@@ -1199,6 +1459,32 @@ func _on_clear(ev: Dictionary) -> void:
 			if not many:
 				_spray(_bits, at, Color("fffaf0"), 2, 300.0, "spark", 0.7)
 				_ring(_bits, at, _u * 0.55, Color(Art.paint(int(g.k)).lightened(0.5), 0.9))
+	# weeds pulled, stones knocked and broken, moss cleared: the ground
+	# changes (late under a bee), and what a goal wants flies up to it
+	var cleared: Array = []
+	for w: Dictionary in ev.get("weeds", []):
+		_ground_change(w.cell, {"weed": int(w.left)}, BEE_T if late.has(w.cell) else 0.0)
+		cleared.append([Sim.GOAL_WEED, w.cell])
+	for bl: Dictionary in ev.get("blocks", []):
+		var gone := int(bl.hp) <= 0
+		_ground_change(bl.cell, {"block": Sim.Block.NONE if gone else int(bl.block), "hp": int(bl.hp), "was": int(bl.block)},
+			BEE_T if late.has(bl.cell) else 0.0)
+		if gone:
+			cleared.append([Sim.GOAL_STONE if int(bl.block) == Sim.Block.STONE else Sim.GOAL_MOSS, bl.cell])
+	for c: Array in cleared:
+		for i in old_goals.size():
+			var gg: Dictionary = old_goals[i]
+			if int(gg.k) == int(c[0]) and int(gg.got) < int(gg.need):
+				gg.got = int(gg.got) + 1
+				if flown < 12 and not Motion.reduce:
+					flown += 1
+					var cell: Vector2i = c[1]
+					var from := _in_air(field, px(cell.x, cell.y))
+					var to := _in_air(_goal_plates[i].pic, _goal_plates[i].pic.size * 0.5)
+					_flights.append({"k": int(c[0]), "from": from, "ctrl": from.lerp(to, 0.4) + Vector2(randf_range(-140.0, 140.0), -200.0),
+						"to": to, "t": -0.05 * flown - (BEE_T if late.has(cell) else 0.0), "goal": i})
+					_owed[i] = int(_owed.get(i, 0)) + 1
+				break
 	_shown_goals = (ev.goals as Array).duplicate(true)
 	for p: Dictionary in _goal_plates:
 		p.pic.queue_redraw()
@@ -1212,7 +1498,7 @@ func _on_clear(ev: Dictionary) -> void:
 		var at := px(m.cell.x, m.cell.y)
 		_fx.sparkle(at, Color("fffaf0"))
 		_fx.ring(at, 0.8 * _u, Art.GOLD)
-		var bright: Color = Art.RAINBOW[randi() % 6] if int(m.sp) == Sim.Sp.RAINBOW else (Art.GOLD if int(m.sp) == Sim.Sp.BOMB else Color("5cb8ff"))
+		var bright: Color = Art.RAINBOW[randi() % 6] if int(m.sp) == Sim.Sp.RAINBOW else (Art.GOLD if int(m.sp) == Sim.Sp.BOMB or int(m.sp) == Sim.Sp.BEE else Color("5cb8ff"))
 		_bursts.append({"pos": Vector2(m.cell), "t": 0.0, "col": bright})
 		_spray(_bits, at, Art.GOLD, 8, 520.0, "star", 0.9)
 		_ring(_bits, at, _u * 1.3, Color("fffaf0"))
@@ -1223,6 +1509,8 @@ func _on_clear(ev: Dictionary) -> void:
 				_fx.cue("made_rainbow")
 			Sim.Sp.BOMB:
 				_fx.cue("made_bomb")
+			Sim.Sp.BEE:
+				_fx.cue("made_bee")
 			_:
 				_fx.cue("made_breeze")
 	for id in ev.lit:
@@ -1236,6 +1524,8 @@ func _on_clear(ev: Dictionary) -> void:
 		beam.t = 0.0
 		if String(b.kind) == "rainbow":
 			beam.bend = randf_range(-0.5, 0.5)
+		elif String(b.kind) == "bee":
+			beam.bend = -1.0 if randf() < 0.5 else 1.0
 		_beams.append(beam)
 		var cell: Vector2i = b.cell
 		var at := px(cell.x, cell.y)
@@ -1270,6 +1560,9 @@ func _on_clear(ev: Dictionary) -> void:
 					_ring(_bits, at, _u * (1.2 + 0.5 * i), Art.RAINBOW[i], 0.04 * i)
 				_flash_col = Color("fff6ff")
 				_flash = maxf(_flash, 0.45)
+			"bee":
+				loud["bee"] = true
+				_spray(_bits, at, Color("f6c53d"), 5, 380.0, "petal", 0.8)
 			"dig":
 				pass
 	for k: String in loud:
@@ -1409,6 +1702,16 @@ func _build_bed() -> ArrayMesh:
 	var pad := _u * 0.05
 	for c in Sim.COLS:
 		for r in Sim.ROWS:
+			if int((_ground.get(Vector2i(c, r), {}) as Dictionary).get("block", 0)) == Sim.Block.HOLE:
+				# a hole in the bed's shape is lawn, with a daisy or two
+				var mid := _origin + Vector2(c + 0.5, r + 0.5) * _u
+				b.polygon(Face.Builder.round_rect(mid - Vector2(_u, _u) * 0.46, Vector2(_u, _u) * 0.92, _u * 0.3), Color(Art.LEAF, 0.28))
+				for i in 2:
+					var at := mid + Vector2(-0.18 + 0.36 * i, -0.12 + 0.24 * ((c + r + i) % 2)) * _u
+					for k in 5:
+						b.disc(at + Vector2.from_angle(TAU * k / 5.0) * _u * 0.07, _u * 0.055, Color("fffaf0"))
+					b.disc(at, _u * 0.045, Color("f2c14e"))
+				continue
 			var at := _origin + Vector2(c, r) * _u + Vector2(pad, pad)
 			var size := Vector2(_u, _u) - Vector2(pad, pad) * 2.0
 			var fill := Art.CELL if (c + r) % 2 == 0 else Art.CELL.darkened(0.035)
@@ -1461,6 +1764,7 @@ func _draw_field() -> void:
 		return
 	field.draw_mesh(_bed, null, Transform2D(0.0, _shake_off))
 	var s := _u * 0.8
+	_draw_weeds()
 	var under := Face.Builder.new()
 	_draw_under(under, s)
 	if not under.verts.is_empty():
@@ -1507,6 +1811,8 @@ func _draw_field() -> void:
 		if (cell == _selected or cell == _swap_a) and t.pos == Vector2(t.to) and not Motion.reduce:
 			sc *= 1.0 + 0.06 * sin(_clock * 8.0)
 		_draw_tile(int(t.k), int(t.sp), bool(t.lit), at, sc, rot, s, 1.0)
+	_draw_blocks()
+	_draw_bees(s)
 	var over := Face.Builder.new()
 	_draw_over(over, s)
 	if not over.verts.is_empty():
@@ -1531,7 +1837,93 @@ func _draw_tile(k: int, sp: int, lit: bool, at: Vector2, sc: Vector2, rot: float
 		var flow := 1.0 if Motion.reduce else 1.0 + 0.05 * sin(_clock * 6.0)
 		field.draw_set_transform(at, turn, sc * Vector2(flow, 1.0))
 		field.draw_mesh(Art.breeze(s), null, Transform2D.IDENTITY, col)
+	elif sp == Sim.Sp.BEE:
+		# the bee sits up in the tile's corner, bobbing, wings a-flutter
+		var bob := 0.0 if Motion.reduce else sin(_clock * 5.0 + at.x * 0.01) * s * 0.03
+		var perch := at + (Vector2(s * 0.26, -s * 0.26 + bob)).rotated(rot) * sc
+		field.draw_set_transform(perch, rot - 0.2, sc)
+		field.draw_mesh(Art.bee(s), null, Transform2D.IDENTITY, col)
+		var flap := 1.0 if Motion.reduce else 0.55 + 0.45 * absf(sin(_clock * 26.0))
+		field.draw_set_transform(perch, rot - 0.2, sc * Vector2(1.0, flap))
+		field.draw_mesh(Art.bee_wings(s), null, Transform2D.IDENTITY, col)
 	field.draw_set_transform(Vector2.ZERO)
+
+## Weeds under the tiles, each cell's patch drawn where it lies.
+func _draw_weeds() -> void:
+	for cell: Vector2i in _ground:
+		var g: Dictionary = _ground[cell]
+		if int(g.weed) <= 0:
+			continue
+		var sc := _grow_scale(g)
+		if sc <= 0.0:
+			continue
+		field.draw_set_transform(px(cell.x, cell.y) + _shake_off, 0.0, Vector2(sc, sc))
+		field.draw_mesh(Art.weeds(_u * 0.92, int(g.weed)), null, Transform2D.IDENTITY)
+	field.draw_set_transform(Vector2.ZERO)
+
+## Stones and moss over the tiles (a tile falls past them, behind), a
+## knocked stone jolting.
+func _draw_blocks() -> void:
+	for cell: Vector2i in _ground:
+		var g: Dictionary = _ground[cell]
+		var bl := int(g.block)
+		if bl != Sim.Block.STONE and bl != Sim.Block.MOSS:
+			continue
+		var sc := _grow_scale(g)
+		if sc <= 0.0:
+			continue
+		var rot := 0.0
+		var hit := float(g.hit)
+		if hit >= 0.0 and not Motion.reduce:
+			var k := exp(-hit * 9.0)
+			sc *= 1.0 + 0.12 * k * sin(hit * 30.0)
+			rot = 0.12 * k * sin(hit * 24.0)
+		var at := px(cell.x, cell.y) + _shake_off
+		if bl == Sim.Block.MOSS and not Motion.reduce:
+			sc *= 1.0 + 0.02 * sin(_clock * 1.8 + cell.x + cell.y)
+		field.draw_set_transform(at, rot, Vector2(sc, sc))
+		field.draw_mesh(Art.stone(_u * 0.9, int(g.hp)) if bl == Sim.Block.STONE else Art.moss(_u * 0.96), null, Transform2D.IDENTITY)
+	field.draw_set_transform(Vector2.ZERO)
+
+## A patch, stone or moss coming in pops up out of the ground once its
+## `grow` clock passes nought; before then it is not there yet.
+func _grow_scale(g: Dictionary) -> float:
+	var grow := float(g.grow)
+	if grow < 0.0:
+		return 0.0 if g.get("pending", false) else 1.0
+	return Motion.back_out(clampf(grow / 0.35, 0.0, 1.0))
+
+## Bees on the wing, from their tile to their mark on a little arc, wings a
+## blur.
+func _draw_bees(s: float) -> void:
+	for bm: Dictionary in _beams:
+		if String(bm.kind) != "bee" or Motion.reduce:
+			continue
+		var to: Vector2i = bm.to
+		if to.x < 0 or bm.t >= BEE_T:
+			continue
+		var p := _bee_at(bm, bm.t)
+		var ahead := _bee_at(bm, bm.t + 0.02)
+		var flip := ahead.x < p.x
+		var sc := Vector2(1.4, 1.4) * (1.0 + 0.25 * sin(clampf(bm.t / BEE_T, 0.0, 1.0) * PI))
+		if not flip:
+			sc.x = -sc.x
+		field.draw_set_transform(p + _shake_off, 0.0, sc)
+		field.draw_mesh(Art.bee(s), null, Transform2D.IDENTITY)
+		field.draw_set_transform(p + _shake_off, 0.0, sc * Vector2(1.0, 0.4 + 0.6 * absf(sin(_clock * 40.0))))
+		field.draw_mesh(Art.bee_wings(s), null, Transform2D.IDENTITY)
+	field.draw_set_transform(Vector2.ZERO)
+
+## Where a bee is `t` seconds into its flight.
+func _bee_at(bm: Dictionary, t: float) -> Vector2:
+	var from: Vector2i = bm.cell
+	var to: Vector2i = bm.to
+	var a := px(from.x, from.y)
+	var z := px(to.x, to.y)
+	var k := clampf(t / BEE_T, 0.0, 1.0)
+	k = k * k * (3.0 - 2.0 * k)
+	var ctrl := a.lerp(z, 0.5) + (z - a).orthogonal().normalized() * minf(_u * 1.6, a.distance_to(z) * 0.35) * float(bm.get("bend", 1.0))
+	return a.lerp(ctrl, k).lerp(ctrl.lerp(z, k), k)
 
 ## Under the tiles: the picked tile's glow, a tool's first pick, the hint.
 func _draw_under(b: Face.Builder, s: float) -> void:
@@ -1622,6 +2014,20 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 					Art.glint(b, head, _u * 0.3 * fade, t * 6.0 + i)
 				b.disc(at, _u * 0.7 * fade, Color(Color("fffaf0"), 0.5 * fade))
 				Art.rays(b, at, _u * 0.3, _u * 1.6 * (0.5 + k), 12, t * 3.0, Color(Color("fff6c8"), 0.5 * fade))
+			"bee":
+				var to: Vector2i = bm.to
+				if to.x < 0 or Motion.reduce:
+					continue
+				# a dotted trail behind the bee, fading from its tail
+				var head := minf(t, BEE_T)
+				var gone := 1.0 - clampf((t - BEE_T) / 0.3, 0.0, 1.0)
+				for j in 9:
+					var back := head - j * 0.03
+					if back < 0.0:
+						break
+					b.disc(_bee_at(bm, back), maxf(2.0, _u * 0.05) * (1.0 - j / 10.0), Color(Color("fff4c2"), 0.8 * (1.0 - j / 9.0) * gone))
+				if bm.has("carry") and t < BEE_T:
+					Art.glint(b, _bee_at(bm, t), _u * 0.5, t * 12.0, Color(1, 0.95, 0.7, 0.9))
 			"dig":
 				pass
 	for g: Dictionary in _glints:
@@ -1863,7 +2269,7 @@ func _game_over() -> void:
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.day,
 		"seconds": secs, "moves": sim.moves, "made": sim.made, "cascade": sim.best_cascade,
-		"picked": sim.picked, "tools": sim.tools_used, "best": better})
+		"picked": sim.picked, "tools": sim.tools_used, "best": better, "more_moves": Sim.OFFERS - int(sim.offers)})
 	_fx.cue("out_of_moves")
 	_show_banner(tr("PS_OUT"), "", 1.0)
 	top_bar.refresh(self)
@@ -2043,6 +2449,9 @@ func _on_back() -> void:
 func go_back() -> void:
 	if settings_sheet.is_open():
 		settings_sheet.close()
+		return
+	if _offer != null:
+		_end_offer()
 		return
 	if _armed >= 0:
 		_disarm()

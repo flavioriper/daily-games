@@ -159,3 +159,55 @@ Screen and art only; the sim is untouched.
   (the stars thrown) and 10c (the gift in flight).
 - Draw calls at 810x1440: 148 at the deal, 150-200 in play, ~254 at the
   peak of the day's end, 97 on the end card; ANGLE agreeing.
+
+## 7. The genre pass (2026-09-28)
+
+The user's ask: "check on web for same style games to see what we can do to
+improve posy game", then "build them all 5". Against the genre's leaders
+(Royal Match, Gardenscapes, the published deconstructions), Posy's specials
+and rewards were at par; what it lacked was variety, agency and a way back
+from a near miss. Five changes, sim and screen:
+
+- **The bee** (`Sp.BEE`, Royal Match's propeller): four in a square leave a
+  bee. Going off it picks the four round it and flies to the cell that does
+  the day most good (`_bee_mark`: a stone, moss or weed a goal wants, then a
+  tile a goal wants, then a special to set off), chosen when it goes, so it
+  never flies at a tile a cascade already took. A bee swapped with a breeze
+  or a bomb carries it off and sets it off at its mark; two bees send three;
+  a rainbow and a bee turn every tile of the kind into bees. A line of four
+  or more, or an L, still beats a square. A swap that only makes a square is
+  taken (`_takes`), and the deal bans squares as it bans lines.
+- **The bed's ground**, from day three, one obstacle a day in turn, taking
+  one of the three goals: **weeds** under tiles (a patch grown from three
+  roots; two layers from day six), pulled when the tile on them is picked;
+  **stones** in the lower rows (two knocks from day seven), knocked by a
+  match beside them or a blast over them; **moss**, knocked the same way,
+  which creeps into a plain tile beside it after any move that left it
+  alone. The moss goal is all of it (`need` is cleared plus standing).
+  **Shaped beds** from day four on even days: five templates of holes.
+  Tiles fall past holes, stones and moss (the genre's gaps), which keeps
+  gravity a column compaction. The trowel and the bomb reach stones and
+  moss.
+- **Five more moves, once a game** (`Phase.OFFER`, `keep_going()`,
+  `decline()`): out of moves short of the day, a card shows what each goal
+  still wants and offers five more; free, no ad. `arcade_end` carries
+  `more_moves` (0 or 1).
+- **Tap a special to set it off**, for a move (`fire()`), when no tile is
+  picked; a tap with a tile picked still swaps.
+- **Pace**: a move may be made while tiles are still landing once the queue
+  has caught up with the sim; a tap before then hurries everything 2.6x
+  (the day's end included); later cascade steps play quicker (to 0.6x); the
+  day's end and the gift wait less.
+
+Tuning (`tests/_probe_posy.gd`, 20 seeds, tools on, before and after): random
+play days 4-6 (unchanged), the hint-follower 5-7 (unchanged), the goal-aware
+bot 5-12 against 7-12 (obstacle days bite a little, the offer gives some
+back). Over 12 random games with taps mixed in, bees are made about as often
+as rainbows and more often than breezes.
+
+`tests/_shot_posy.gd` adds 14-22: day three's weeds, a bee made and tapped
+(through the viewport) in flight, day four's stones in a shaped bed, day
+five's moss before and after it creeps, the offer and the moves given. Draw
+calls at 810x1440: 150-250 in play. Ten new cues (`made_bee`, `bee`,
+`bee_hit`, `weed`, `stone`, `stone_break`, `moss`, `moss_clear`, `offer`,
+`more_moves`), one take each, awaiting the user's listen.
