@@ -345,6 +345,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   pictures are crops of existing vistas with the mock's props drawn over
   them in code (a heart signpost on a rock, the sprout on a rock): the
   vistas are the user's paintings, and nothing new is painted into them.
+  **Streak's calendar is a garden since 2026-09-28**: each week a soil
+  bed (grass fringe, specks) only as long as its days, and each day a plant
+  by its boards -- a sprout for one, a bud for two, a flower for three (kept)
+  -- a fallen leaf on a rest day, a sun glow and ring round today, a legend
+  under it; beds, plants and legend are one mesh built on repaint. The run's
+  flame, number and "day streak" stand centred as one group, the rest days
+  held are leaves, and the side picture narrowed to 220 so the pt list fits
+  at the true 1080 width. **220** draw calls on Streak.
   **Stats' boards are paged since 2026-09-28**: four across stopped fitting
   at twenty-nine boards (a cell's lines spilled into the row under it), so
   it is two across and four down, eight a page, with the home grid's pager

@@ -8,6 +8,11 @@ extends VBoxContainer
 ## of the run's card and today's, a best/days/solved list (plus rest days,
 ## which the mock left out and the user kept), and a calendar of paper tiles
 ## with the neighbouring months' days greyed in.
+## Redrawn on 2026-09-28 as a garden: every week of the calendar is a soil
+## bed and every day a plant in it that grows with that day's boards -- a
+## sprout for one, a bud for two, a flower for three (the day kept) -- with a
+## fallen leaf on a rest day, a sun glow round today and a legend under it.
+## The run's number, its flame and "day streak" stand centred as one group.
 ## Every figure is derived (core/streak.gd); refresh() re-reads the log.
 
 const Pal = preload("res://core/palette.gd")
@@ -20,6 +25,8 @@ const PlayerStats = preload("res://core/player_stats.gd")
 const Ink = preload("res://ui/menu/ink.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const SheetParts = preload("res://ui/hud/sheet_parts.gd")
+const Face = preload("res://ui/faces/face.gd")
 
 const GAP := 20
 const PAD := 20
@@ -31,13 +38,28 @@ const RADIUS := 36
 const FILL := Color("fcf7ef")
 const HEART := 62.0
 const HEART_STEP := 74.0
-const CHEVRON := 76.0
+const CHEVRON := 64.0
 ## The pictures set into the right of the run's card and today's.
-const STREAK_ART_W := 300.0
+const STREAK_ART_W := 220.0
 const TODAY_ART_W := 250.0
 const ART_R := 26.0
 const LIST_ROW := 62.0
-const TILE_GAP := 10.0
+## The run's own column, left of the divider.
+const RUN_W := 260.0
+## The calendar: where the day rows start, the tallest a row may be, and
+## the legend's strip under them.
+const CAL_TOP := 140.0
+const ROW_MAX := 118.0
+const LEGEND_H := 60.0
+## The garden's colours: a bed's soil, its darker lip, a plant's mound, and
+## the flower's petals.
+const BED := Color("efe3cc")
+const BED_LIP := Color("dcc7a2")
+const MOUND := Color("c9a77a")
+const PETAL := Color("ef8a68")
+const BUD := Color("f3a58c")
+const SPECK := Color("e0cfb0")
+const GRASS := Color("a9c47c")
 ## The mocks' paper is clean: a plain material keeps CozyTheme.dress()'s
 ## painterly wash, which blotches a card this large, off these cards.
 static var PLAIN := CanvasItemMaterial.new()
@@ -53,6 +75,7 @@ var _today_ci: Control
 var _cal_ci: Control
 var _prev: Button
 var _next: Button
+var _cal_keep: ArrayMesh
 var _big: Font
 var _head: Font
 var _body: Font
@@ -177,9 +200,11 @@ func _chevron(icon: String, step: int) -> Button:
 	var b := IconButton.new(icon)
 	b.custom_minimum_size = Vector2(CHEVRON, CHEVRON)
 	b.size = Vector2(CHEVRON, CHEVRON)
-	var up := CozyTheme.lifted(Pal.SUN_TILE, 22, 0)
+	var up := CozyTheme.lifted(Pal.SURFACE, int(CHEVRON * 0.5), 0)
 	up.shadow_size = 6
 	up.shadow_offset = Vector2(0.0, 3.0)
+	up.set_border_width_all(2)
+	up.border_color = Color(Pal.LINE, 0.3)
 	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 		b.add_theme_stylebox_override(state, up)
 	b.pressed.connect(func() -> void: _turn_month(step))
@@ -235,25 +260,30 @@ func _draw_streak(ci: Control) -> void:
 	var h := ci.size.y
 	var cur := int(_st.current)
 	var going := cur > 0
-	# The flame and the number, "day streak" under the number, and the pill.
-	var flame := Rect2(0, 18, 120, 150)
+	# The flame and the number as one group centred over "day streak", and
+	# the pill centred under both, all in the run's own column.
+	var num := str(cur)
+	var num_size := Ink.fit(_big, num, 140, RUN_W - 130.0)
+	var nw := _big.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, num_size).x
+	var fw := 96.0
+	var gx := (RUN_W - (fw + 14.0 + nw)) * 0.5
+	var flame := Rect2(gx, 20, fw, 124)
 	if going:
 		Icons.paint(ci, "flame", flame, Pal.ACCENT_2, Pal.SUN_RAY)
 	else:
-		Icons.paint(ci, "flame", flame, Color(Pal.LINE, 0.55), Pal.SURFACE_HI)
-	var num := str(cur)
-	var num_size := Ink.fit(_big, num, 150, 170)
-	Ink.text(ci, _big, num, Vector2(122, 140), num_size, Pal.ACCENT_2 if going else Pal.TEXT_DIM)
+		Icons.paint(ci, "flame", flame, Color(Pal.ACCENT_2, 0.28), Pal.SURFACE)
+	Ink.text(ci, _big, num, Vector2(gx + fw + 14.0, 136), num_size, Pal.ACCENT_2 if going else Pal.TEXT_DIM)
 	var days := tr("STREAK_DAYS")
-	Ink.text(ci, _head, days, Vector2(122, 186), Ink.fit(_head, days, 34, 186), Pal.TEXT)
+	Ink.text(ci, _head, days, Vector2(RUN_W * 0.5, 190), Ink.fit(_head, days, 32, RUN_W - 20.0), Pal.TEXT,
+		HORIZONTAL_ALIGNMENT_CENTER)
 	var pill_line := tr("STATS_KEEP_GOING" if going else "STATS_START_STREAK")
-	var pill_size := Ink.fit(_body, pill_line, 28, 210)
+	var pill_size := Ink.fit(_body, pill_line, 28, RUN_W - 100.0)
 	var pw := _body.get_string_size(pill_line, HORIZONTAL_ALIGNMENT_LEFT, -1, pill_size).x + 86
-	var pill := Rect2(20, h - 66, pw, 56)
+	var pill := Rect2((RUN_W - pw) * 0.5, h - 64, pw, 56)
 	ci.draw_style_box(CozyTheme.card(Pal.SUN_TILE, 28, Pal.LINE, 0, 0), pill)
 	Icons.paint(ci, "sparkle", Rect2(pill.position + Vector2(18, 12), Vector2(32, 32)), Pal.SUN)
 	Ink.text(ci, _body, pill_line, pill.position + Vector2(62, 38), pill_size, Pal.ACCENT_2)
-	var div := 318.0
+	var div := RUN_W + 18.0
 	_divider(ci, div)
 	# The list: best, days, solved, and the rest days held.
 	var x := div + 26.0
@@ -274,12 +304,11 @@ func _draw_streak(ci: Control) -> void:
 		if i < 3:
 			Ink.text(ci, _head, rows[i][3], Vector2(right, cy + 12), 34, Pal.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
 		else:
+			# A rest day held is a leaf in green; one not yet earned, a pale one.
 			for k in Streak.REST_CAP:
-				var c := Vector2(right - 14 - (Streak.REST_CAP - 1 - k) * 34, cy)
-				if k < int(_st.rest):
-					ci.draw_circle(c, 14, Pal.LEAF, true, -1.0, true)
-				else:
-					ci.draw_arc(c, 12, 0, TAU, 32, Pal.LINE, 3, true)
+				var c := Vector2(right - 16 - (Streak.REST_CAP - 1 - k) * 40, cy)
+				var col: Color = Pal.LEAF if k < int(_st.rest) else Color(Pal.LINE, 0.4)
+				Icons.paint(ci, "leaf", Rect2(c - Vector2(17, 17), Vector2(34, 34)), col)
 
 # --- today ---
 
@@ -305,6 +334,11 @@ func _draw_today(ci: Control) -> void:
 
 # --- the month ---
 
+## The month as a garden: a soil bed for each week, only as long as the
+## month's days in it, and a plant on every day that has been. The beds, the
+## plants, today's glow and the legend's plants are one mesh, built when
+## the calendar repaints (a month turn, a refresh, a resize); the numbers
+## and the words are text over it.
 func _draw_calendar(ci: Control) -> void:
 	if _month == 0:
 		return
@@ -312,69 +346,171 @@ func _draw_calendar(ci: Control) -> void:
 	var h := ci.size.y
 	var y := _month / 100
 	var m := _month % 100
-	Ink.text(ci, _head, "%s %d" % [tr("MONTH_%d" % m), y], Vector2(w * 0.5, 52), 44, Pal.TEXT,
+	Ink.text(ci, _head, "%s %d" % [tr("MONTH_%d" % m), y], Vector2(w * 0.5, 46), 42, Pal.TEXT,
 		HORIZONTAL_ALIGNMENT_CENTER)
 	var names := tr("WEEKDAY_SHORT").split(" ")
 	var cw := w / 7.0
 	for i in 7:
 		var name: String = names[i] if i < names.size() else ""
-		Ink.text(ci, _body, name, Vector2(cw * (i + 0.5), 124), 24, Pal.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+		Ink.text(ci, _body, name, Vector2(cw * (i + 0.5), 112), 22, Pal.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	# Monday-first column of the 1st: Godot's weekday is 0 = Sunday.
 	var first := Time.get_datetime_dict_from_unix_time(int(Time.get_unix_time_from_datetime_dict(
 		{"year": y, "month": m, "day": 1, "hour": 12})))
 	var lead := (int(first.weekday) + 6) % 7
 	var in_month := _days_in(_month)
 	var rows := int(ceil((lead + in_month) / 7.0))
-	var top := 146.0
-	var row_h := minf(120.0, (h - top) / rows)
-	var prev_days := _days_in(_shift(_month, -1))
-	for cell in rows * 7:
-		var r := Rect2(cw * (cell % 7) + TILE_GAP * 0.5, top + row_h * (cell / 7) + TILE_GAP * 0.5,
-			cw - TILE_GAP, row_h - TILE_GAP)
-		var d := cell - lead + 1
-		if d < 1 or d > in_month:
-			# A neighbouring month's day: a grey tile, its number faint.
-			var other := prev_days + d if d < 1 else d - in_month
-			ci.draw_style_box(CozyTheme.card(Color(Pal.SURFACE_HI, 0.55), 16, Pal.LINE, 0, 0), r)
-			Ink.text(ci, _body, str(other), r.get_center() + Vector2(0, 9), 26, Color(Pal.LINE, 0.7),
-				HORIZONTAL_ALIGNMENT_CENTER)
-			continue
-		_draw_day(ci, r, y * 10000 + m * 100 + d)
+	var row_h := minf(ROW_MAX, (h - CAL_TOP - LEGEND_H) / rows)
+	var b := Face.Builder.new()
+	var labels: Array = []
+	for row in rows:
+		var top := CAL_TOP + row * row_h
+		var c0 := maxi(0, lead - row * 7)
+		var c1 := mini(6, lead + in_month - 1 - row * 7)
+		var bed := Rect2(c0 * cw + 6.0, top + 40.0, (c1 - c0 + 1) * cw - 12.0, row_h - 44.0)
+		_bed(b, bed)
+		for col in range(c0, c1 + 1):
+			var d := row * 7 + col - lead + 1
+			var key := y * 10000 + m * 100 + d
+			var cell := Rect2(col * cw, top, cw, row_h)
+			labels.append(_day(b, cell, bed, key))
+	var ly := h - LEGEND_H * 0.5
+	var legend := _legend(b, w, ly)
+	_cal_keep = b.mesh()
+	ci.draw_mesh(_cal_keep, null)
+	for l in labels:
+		Ink.text(ci, l[0], l[1], l[2], l[3], l[4], HORIZONTAL_ALIGNMENT_CENTER)
+	for l in legend:
+		Ink.text(ci, _body, l[0], l[1], 22, Pal.TEXT_DIM)
 
-## One day of the month on show, by what the streak made of it.
-func _draw_day(ci: Control, r: Rect2, key: int) -> void:
-	var c := r.get_center()
-	var day := str(key % 100)
+## A week's bed: a rounded strip of soil with a darker lip along its foot,
+## a few specks of earth in it and a fringe of grass along its top edge.
+func _bed(b: Face.Builder, r: Rect2) -> void:
+	b.polygon(_rounded(r, 18.0), BED_LIP)
+	b.polygon(_rounded(Rect2(r.position, r.size - Vector2(0, 6)), 18.0), BED)
+	var i := 0
+	var x := r.position.x + 20.0
+	while x < r.end.x - 20.0:
+		# Fixed pseudo-random, so the garden looks the same every repaint.
+		var j := fposmod(sin(i * 12.9898 + r.position.y * 0.37) * 43758.5453, 1.0)
+		var sy := r.position.y + 12.0 + j * maxf(r.size.y - 34.0, 1.0)
+		b.disc(Vector2(x + j * 9.0, sy), 1.8 + j * 1.2, SPECK)
+		x += 23.0
+		i += 1
+	x = r.position.x + 14.0
+	i = 0
+	while x < r.end.x - 14.0:
+		var j := fposmod(sin(i * 78.233 + r.position.x * 0.11) * 12345.678, 1.0)
+		var tall := 4.0 + j * 5.0
+		var lean := (j - 0.5) * 6.0
+		b.polygon(PackedVector2Array([Vector2(x - 3.0, r.position.y + 3.0),
+			Vector2(x + lean, r.position.y - tall), Vector2(x + 3.0, r.position.y + 3.0)]), GRASS)
+		x += 9.0 + j * 6.0
+		i += 1
+
+static func _rounded(r: Rect2, rad: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	rad = minf(rad, minf(r.size.x, r.size.y) * 0.5)
+	var corners := [r.position + Vector2(r.size.x - rad, rad), r.end - Vector2(rad, rad),
+		r.position + Vector2(rad, r.size.y - rad), r.position + Vector2(rad, rad)]
+	for k in 4:
+		for i in 7:
+			var a := -PI * 0.5 + (k + i / 6.0) * PI * 0.5
+			pts.append(corners[k] + Vector2(cos(a), sin(a)) * rad)
+	return pts
+
+## One day: what grows in its bed by what the streak made of it, and its
+## number over it -- returned as a text label for after the mesh.
+func _day(b: Face.Builder, cell: Rect2, bed: Rect2, key: int) -> Array:
 	var n := Streak.hearts(_log.get(key, []))
 	var status := String(_st.days.get(key, ""))
-	var mark := Rect2(c + Vector2(-13, 8), Vector2(26, 26))
-	match status:
-		"kept":
-			ci.draw_style_box(CozyTheme.card(Pal.ACCENT_2, 18, Pal.ACCENT_2.darkened(0.15), 4, 0), r)
-			Ink.text(ci, _body, day, c + Vector2(0, -4), 26, Pal.SURFACE, HORIZONTAL_ALIGNMENT_CENTER)
-			Icons.paint(ci, "check", mark, Pal.SURFACE)
-		"rest":
-			ci.draw_style_box(CozyTheme.card(Pal.LEAF_TILE, 18, Pal.LINE, 0, 0), r)
-			Ink.text(ci, _body, day, c + Vector2(0, -4), 26, Pal.LEAF_DEEP, HORIZONTAL_ALIGNMENT_CENTER)
-			Icons.paint(ci, "leaf", mark, Pal.LEAF_DEEP)
-		_:
-			var today := key == _today
-			var future := key > _today
-			var fill: Color = Pal.SUN_TILE if today else Color(Pal.SURFACE, 0.6 if future else 1.0)
-			var box := CozyTheme.card(fill, 18, Pal.LINE, 0, 0)
-			if today:
-				box.set_border_width_all(4)
-				box.border_color = Pal.ACCENT_2
-			ci.draw_style_box(box, r)
-			var col: Color = Color(Pal.TEXT_DIM, 0.45) if future else Pal.TEXT
-			if n > 0:
-				# A partial day (or today, started): its count under the number.
-				Ink.text(ci, _body, day, c + Vector2(0, -4), 26, col, HORIZONTAL_ALIGNMENT_CENTER)
-				Ink.text(ci, _body, "%d/3" % n, c + Vector2(0, 30), 20, Pal.ACCENT_2, HORIZONTAL_ALIGNMENT_CENTER)
-			elif today:
-				Ink.text(ci, _head, day, c + Vector2(0, 13), 36, Pal.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-			else:
-				Ink.text(ci, _body, day, c + Vector2(0, 9), 26, col, HORIZONTAL_ALIGNMENT_CENTER)
+	var today := key == _today
+	var future := key > _today
+	var cx := cell.get_center().x
+	var foot := Vector2(cx, bed.end.y - 14.0)
+	# The tallest plant (the flower, ~62 at full size) fits the bed's height.
+	var s := clampf((bed.size.y - 16.0) / 62.0, 0.45, 1.0)
+	if today:
+		# A sun glow round today's whole cell, and a ring over it.
+		var glow := cell.grow(-4.0)
+		b.polygon(_rounded(glow, 22.0), Color(Pal.SUN_TILE, 0.95))
+		var ring := _rounded(glow, 22.0)
+		ring.append(ring[0])
+		b.stroke(ring, 3.0, Pal.ACCENT_2, false, false)
+		_bed_patch(b, bed, cell)
+	if not future:
+		var stage := 3 if status == "kept" else n
+		if status == "rest":
+			_mound(b, foot, s, Color(Pal.LEAF_TILE.darkened(0.12)))
+			SheetParts.Draw.leaf(b, foot + Vector2(-16, -4) * s, foot + Vector2(18, -10) * s, 14.0 * s, Pal.LEAF)
+		else:
+			_mound(b, foot, s, Color(MOUND, 0.55 if stage == 0 and status == "" else 1.0))
+			_plant(b, foot, stage, s)
+	var col: Color = Pal.TEXT
+	if future:
+		col = Color(Pal.TEXT_DIM, 0.45)
+	elif today:
+		col = Pal.ACCENT_2
+	return [_head if today else _body, str(key % 100), Vector2(cx, cell.position.y + 25.0), 22, col]
+
+## Today's glow runs under its bed; a patch of soil puts the bed back over it.
+func _bed_patch(b: Face.Builder, bed: Rect2, cell: Rect2) -> void:
+	var r := Rect2(maxf(bed.position.x, cell.position.x + 4.0), bed.position.y,
+		minf(bed.end.x, cell.end.x - 4.0) - maxf(bed.position.x, cell.position.x + 4.0), bed.size.y - 6.0)
+	b.polygon(_rounded(r, 14.0), BED)
+
+func _mound(b: Face.Builder, foot: Vector2, s: float, col: Color) -> void:
+	b.ellipse(foot + Vector2(0, 3) * s, 22.0 * s, 8.0 * s, col)
+
+## A plant at `stage`: nothing for none, a sprout for one board, a bud on a
+## leafy stem for two, and a flower for three.
+func _plant(b: Face.Builder, foot: Vector2, stage: int, s: float) -> void:
+	if stage <= 0:
+		return
+	var Draw = SheetParts.Draw
+	var tall: float = [0.0, 14.0, 28.0, 34.0][mini(stage, 3)] * s
+	var top := foot + Vector2(0, -tall)
+	b.stroke(PackedVector2Array([foot, top]), 3.0 * s, Pal.LEAF_DEEP)
+	var leaf_at := foot + Vector2(0, -minf(tall, 12.0 * s))
+	var leaf := 16.0 * s
+	Draw.leaf(b, leaf_at, leaf_at + Vector2(-leaf, -leaf * 0.6), leaf * 0.55, Pal.LEAF)
+	Draw.leaf(b, leaf_at, leaf_at + Vector2(leaf, -leaf * 0.7), leaf * 0.55, Pal.LEAF)
+	match stage:
+		2:
+			b.ellipse(top + Vector2(0, -6) * s, 7.0 * s, 10.0 * s, BUD)
+			Draw.leaf(b, top + Vector2(0, 2) * s, top + Vector2(-7, -6) * s, 6.0 * s, Pal.LEAF_DEEP)
+			Draw.leaf(b, top + Vector2(0, 2) * s, top + Vector2(7, -6) * s, 6.0 * s, Pal.LEAF_DEEP)
+		3:
+			var head := top + Vector2(0, -8) * s
+			for i in 5:
+				var a := TAU * i / 5.0 - PI * 0.5
+				b.disc(head + Vector2(cos(a), sin(a)) * 9.0 * s, 8.0 * s, PETAL)
+			b.disc(head, 6.0 * s, Pal.SUN_RAY)
+
+## The legend under the month: "Boards a day:" and the three plants with
+## their counts, then the fallen leaf for a rest day. Returns its words.
+func _legend(b: Face.Builder, w: float, y: float) -> Array:
+	var out: Array = []
+	var lead := tr("STREAK_LEGEND")
+	var rest := tr("STREAK_REST_SHORT")
+	var item := 70.0
+	var lead_w := _body.get_string_size(lead, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+	var rest_w := _body.get_string_size(rest, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+	var total := lead_w + 16.0 + item * 3.0 + 20.0 + 40.0 + rest_w
+	var x := (w - total) * 0.5
+	out.append([lead, Vector2(x, y + 8.0)])
+	x += lead_w + 16.0
+	for stage in [1, 2, 3]:
+		var foot := Vector2(x + 18.0, y + 14.0)
+		_mound(b, foot, 0.7, MOUND)
+		_plant(b, foot, stage, 0.7)
+		out.append([str(stage), Vector2(x + 40.0, y + 8.0)])
+		x += item
+	x += 20.0
+	var foot := Vector2(x + 16.0, y + 14.0)
+	_mound(b, foot, 0.7, Pal.LEAF_TILE.darkened(0.12))
+	SheetParts.Draw.leaf(b, foot + Vector2(-11, -3), foot + Vector2(13, -7), 10.0, Pal.LEAF)
+	out.append([rest, Vector2(x + 40.0, y + 8.0)])
+	return out
 
 func _days_in(ym: int) -> int:
 	var y := ym / 100

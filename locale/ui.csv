@@ -84,6 +84,8 @@ STREAK_TOTAL_DAYS,Total days played,Total de dias jogados,Total de días jugados
 STREAK_SOLVED,Puzzles solved,Quebra-cabeças resolvidos,Rompecabezas resueltos
 STREAK_BEST_STREAK,Best streak,Melhor sequência,Mejor racha
 TODAY_TITLE,Today,Hoje,Hoy
+STREAK_LEGEND,Boards a day:,Jogos do dia:,Juegos del día:
+STREAK_REST_SHORT,Rest day,Folga,Descanso
 MONTH_1,January,Janeiro,Enero
 MONTH_2,February,Fevereiro,Febrero
 MONTH_3,March,Março,Marzo
