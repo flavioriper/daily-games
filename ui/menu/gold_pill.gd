@@ -27,6 +27,11 @@ var _coins: Array = []   # {from, to, t, delay, share}
 ## A tick for each coin that lands, a little higher each time.
 var _clink: AudioStreamPlayer
 var _landed := 0
+## The running bump or squash. Motion.bump returns to the scale it found, so
+## coins landing 0.05 s apart inside a 0.16 s bump each took the last one's
+## swell as their rest and the pill was left stuck big; every kick kills the
+## last and starts from one.
+var _kick_tw: Tween
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
@@ -59,7 +64,7 @@ func _ready() -> void:
 	add_child(_clink)
 	_shown = Wallet.gold()
 	Wallet.changed.connect(_on_changed)
-	button_down.connect(func() -> void: Motion.squash(self, 0.08, 0.18))
+	button_down.connect(func() -> void: _kick(Motion.squash.bind(self, 0.08, 0.18)))
 	_write()
 	set_process(false)
 
@@ -71,6 +76,14 @@ func _write() -> void:
 	var w := _label.get_theme_font("font").get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		_label.get_theme_font_size("font_size")).x
 	custom_minimum_size.x = maxf(220.0, w + COIN * 2.0 + 30.0 + 40.0)
+
+## Runs `recipe` (a Motion scale recipe bound to this pill) from rest, about
+## the pill's centre.
+func _kick(recipe: Callable) -> void:
+	Motion.stop(_kick_tw)
+	scale = Vector2.ONE
+	pivot_offset = size * 0.5
+	_kick_tw = recipe.call()
 
 ## Throws `amount` gold's worth of coins from `global_at` into the pill.
 func fly_from(global_at: Vector2, amount: int) -> void:
@@ -95,7 +108,7 @@ func _process(delta: float) -> void:
 		if c.t - c.delay >= FLIGHT and not c.get("done", false):
 			c.done = true
 			_held = maxi(0, _held - int(c.share))
-			Motion.bump(self, 0.08, 0.16)
+			_kick(Motion.bump.bind(self, 0.08, 0.16))
 			if _clink.stream != null:
 				_clink.pitch_scale = 1.0 + 0.05 * _landed
 				_clink.play()
