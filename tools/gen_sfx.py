@@ -38,13 +38,18 @@ ARCADE = ("retro arcade video game sound effect, soft warm 8-bit chiptune "
 CARTOON = ("cute cartoon comedy sound effect, playful, rounded, soft, not harsh, "
            "clean, dry, no music bed, no voice")
 
+# The menu's page turn (2026-09-28): a hushed real-world brush, because the
+# house marimba turned a paper swish into a tonal whine the user heard as
+# robotic, and plain foley still came back thin.
+COZY = "cozy, warm, soft, intimate, close mic, quiet room, no music, no voice"
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
         "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
-        "page":     ("a single soft quick paper swish, a sheet of thick paper sliding sideways across a wooden table, airy whoosh, no click, no tap", 0.5, -14),
+        "page":     ("A soft hand brushing sideways across a linen tablecloth, one gentle muffled fabric swipe, warm and hushed", 0.5, -14, COZY),
     },
     "binairo": {
         "place":    ("a single soft wooden tile tap with a tiny bubbly pop, very short", 0.5, -6),

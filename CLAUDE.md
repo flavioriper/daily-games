@@ -142,7 +142,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   the offsets), and on let-go it lands past a quarter of the width or a
   700 px/s flick, else slides back; the ends rubber-band. The chevrons play
   the same slide. Draw calls at rest are unchanged (253 / 222). A turn sounds
-  a paper slide (`assets/sfx/ui/page.ogg`, `UiSound.page`), never the click:
+  a hushed linen brush (`assets/sfx/ui/page.ogg`, `UiSound.page`; a paper swish until 2026-09-28, which the house marimba style made tonal), never the click:
   the pager buttons carry the `silent` meta. Which cards stand on page one is therefore a property of the phone
   as well as of the card count -- the "eight on the first" figures in this
   file (twelve, before 2026-09-24) are the 1080x1920 page. **They are also
