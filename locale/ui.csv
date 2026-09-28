@@ -12,6 +12,10 @@ DIFF_EASY,Easy,Fácil,Fácil
 DIFF_MEDIUM,Medium,Médio,Medio
 DIFF_HARD,Hard,Difícil,Difícil
 DIFF_INSANE,Insane,Insano,Demencial
+DIFF_LINE_0,Perfect for unwinding.,Perfeito para relaxar.,Perfecto para relajarse.
+DIFF_LINE_1,A lovely challenge.,Um belo desafio.,Un bonito desafío.
+DIFF_LINE_2,For curious minds.,Para mentes curiosas.,Para mentes curiosas.
+DIFF_LINE_3,Only for the greatest masters.,Só para os maiores mestres.,Solo para los grandes maestros.
 SETTINGS_TITLE,Settings,Configurações,Ajustes
 SETTINGS_REDUCE_MOTION,Reduce motion,Reduzir movimento,Reducir movimiento
 SETTINGS_REDUCE_MOTION_SUB,Fewer animations on screen,Diminui as animações da interface,Menos animaciones en pantalla

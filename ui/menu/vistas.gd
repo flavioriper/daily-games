@@ -90,6 +90,16 @@ const STREAK := ["meadow", 1.4, Vector2(0.85, 0.75)]
 const TODAY := ["meadow", 1.8, Vector2(0.25, 0.85)]
 const SIDE_SCRIM := Vector3(1.0, 0.0, 0.45)
 
+## The difficulty sheet's rows (ui/menu/difficulty_sheet.gd), one picture a
+## level whatever the board: the meadow's cottages, the autumn bridge, the
+## dusk tower and the night's moon, so the ladder reads as a day going down.
+const LEVELS := [
+	["meadow", 1.6, Vector2(0.0, 0.5)],
+	["autumn", 1.6, Vector2(0.0, 0.5)],
+	["dusk", 1.6, Vector2(0.2, 0.4)],
+	["night", 1.5, Vector2(0.11, 0.3)],
+]
+
 ## Island key (core/progress.gd's ISLANDS) to the vista its name suggests.
 ## Keyed on the key, never the translated name, so every language sees the
 ## same picture.

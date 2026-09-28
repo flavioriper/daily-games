@@ -70,7 +70,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
 
 - **Insane is a fourth level on every sheet**, not a twentieth card
   (2026-09-23, difficulty 3, locale key `DIFF_INSANE`), drawn as the sheet's
-  one night row: ink fill, paper lettering, a sun-coloured crescent. Band 3
+  one night row: ink fill, paper lettering, a sun-coloured crescent. The
+  sheet itself (`ui/menu/difficulty_sheet.gd`) is drawn to the user's mock
+  since 2026-09-28: a tinted card a level with a plaque (sprout, sun, cloud,
+  moon), the name with a bare size beside it behind grid dots and a line of
+  its own (`DIFF_LINE_*`) under it -- a worded level line takes that line's
+  place -- a vista washed in from the right (`Vistas.LEVELS`) and a round
+  go; Insane has a gold rim. 335-343 draw calls with it up over the menu
+  (319 before). Band 3
   is a provisional generator row on every board -- the same generator, one
   step harder -- until that board's batch is mined into a bank
   (`core/insane_bank.gd`, `tools/mine_insane.gd`, `content/insane/`); a
