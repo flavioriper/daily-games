@@ -11,6 +11,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "globe"]
 const SEGMENTS := 24
+const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
 const STROKE := 0.12
 ## The two directions a pipe's tube runs in these icons.
@@ -148,6 +149,11 @@ static func paint(ci: CanvasItem, name: String, rect: Rect2, colour: Color, hole
 	var xf := Transform2D(0.0, rect.size, 0.0, rect.position)
 	for poly in s.polys:
 		ci.draw_colored_polygon(xf * poly, colour)
+		# A filled polygon has no antialiasing; a hairline in its own colour
+		# feathers the edge. Only where a stair-stepped edge showed (the
+		# filled heart), since it is one more draw command an icon.
+		if name in FEATHERED:
+			ci.draw_polyline(xf * poly, colour, 1.0, true)
 	# A mirrored rect (negative width) flips the icon through the transform;
 	# the stroke itself still has to be a positive width.
 	var width := STROKE * absf(rect.size.x)
@@ -428,17 +434,41 @@ static func _bars() -> Dictionary:
 	return {"polys": out, "lines": []}
 
 ## Two lobes over a point. Used filled on the day row and as a line for an
-## empty one.
+## empty one. The classic curve has a needle point and a hairline cusp, and
+## drawn as a line the cusp spiked; it is closed then opened by `HEART_ROUND`
+## (grown and shrunk, then shrunk and grown, round-joined), which rounds the
+## point and the notch between the lobes and leaves the lobes alone. Cached:
+## Icons.shape() runs on every paint.
+const HEART_ROUND := 0.07
+static var _heart_cache := PackedVector2Array()
+
 static func _heart() -> PackedVector2Array:
+	if not _heart_cache.is_empty():
+		return _heart_cache
+	# Worked at 100x: the offsets are round-joined on a clipper grid, and a
+	# unit-square shape would come out faceted.
+	var k := 100.0
 	var pts := PackedVector2Array()
-	var steps := 40
-	for i in steps + 1:
+	var steps := 72
+	for i in steps:
 		var t := TAU * i / steps
 		# The classic heart curve, scaled into the unit square.
 		var x := 16.0 * pow(sin(t), 3.0)
 		var y := 13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)
-		pts.append(Vector2(0.5 + x / 38.0, 0.46 - y / 38.0))
-	return pts
+		pts.append(Vector2(0.5 + x / 38.0, 0.46 - y / 38.0) * k)
+	var r := HEART_ROUND * k
+	for d in [r, -2.0 * r, r]:
+		var grown := Geometry2D.offset_polygon(pts, d, Geometry2D.JOIN_ROUND)
+		if grown.is_empty():
+			break
+		pts = grown[0]
+	var out := PackedVector2Array()
+	for p in pts:
+		out.append(p / k)
+	# Closed, so the line version meets itself.
+	out.append(out[0])
+	_heart_cache = out
+	return out
 
 
 # --- the Stats tab (ui/menu/stats_tab.gd) ---
