@@ -1335,13 +1335,17 @@ func _step_balance() -> void:
 			_begin_drag(from, to - from)
 			return
 
-## Untangle: touch the first free lantern's ring and start dragging it.
+## Untangle: touch the first peg that can move and drag it to the first hole
+## it can go to.
 func _begin_untangle_drag() -> void:
-	for i in _puzzle.nodes:
-		if _puzzle._locked[i]:
-			continue
-		_begin_drag(_puzzle.get_global_transform_with_canvas() * _puzzle.node_to_local(i), UNTANGLE_BY)
-		return
+	var st = _puzzle.state
+	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
+	for p in st.at.size():
+		for h in st.holes:
+			if st.drop_check(p, h) == 0:
+				var from: Vector2 = xf * _puzzle.peg_to_local(p)
+				_begin_drag(from, xf * _puzzle.hole_to_local(h) - from)
+				return
 
 ## Shikaku: draw the first solution plot, from the centre of its top-left
 ## cell to the centre of its bottom-right one.

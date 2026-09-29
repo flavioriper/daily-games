@@ -143,17 +143,18 @@ const PUZZLES := [
 		"blurb": "UT_BLURB",
 		"short": "UT_SHORT",
 		"motto": "UT_MOTTO",
-		"footer": "Drag · Loosen · Untangle",
-		# It picks nothing up, so it asks for no tray, and it has **no actions
-		# row**: capabilities() here is undo and hint, so there is no Check to
-		# put in one and Reset rides in the top bar instead.
+		"footer": "Lift · Drop · Untangle",
+		# It asks for no tray, and it has **no actions row**: capabilities()
+		# here is undo and hint, so there is no Check to put in one and Reset
+		# rides in the top bar instead.
 		"script": "res://puzzles/untangle2d.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): seven, ten or fourteen lanterns, and
-		# each is its own daily with its own done mark.
+		# Asks like Sudoku (2026-09-23): four, six, eight or nine ropes on a ring
+		# of pegs (untangle_gen.gd's BANDS; Hard and Insane run on thread and
+		# Insane has a kitten), and each is its own daily with its own done mark.
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "UT_LVL_0"},

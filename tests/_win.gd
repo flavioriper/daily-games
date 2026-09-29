@@ -106,7 +106,7 @@ func _note(id: String) -> String:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
 		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
 		"balance": return "weights %s, %d moves, board fit=%s, hud=%s" % [_puzzle.state.weights, _puzzle.moves, _fit_ok, _hud_ok]
-		"untangle": return "%d crossings, board fit=%s, hud=%s" % [_puzzle._crossings, _fit_ok, _hud_ok]
+		"untangle": return "%d holes, %d ropes, %d moves, board fit=%s, hud=%s" % [_puzzle.state.holes, _puzzle.state.ropes, _puzzle.moves, _fit_ok, _hud_ok]
 		"shikaku": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
 		"tents": return "%d tents, board fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
 		"lightup": return "%d lanterns, board fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
@@ -264,26 +264,31 @@ func _solve_balance_flat() -> void:
 				break
 	_puzzle.sim.snap()
 
-## Drives both Untangles: the flat board and the island answer the same
-## names, because the flat one keeps the state's positions under them.
+## Untangle: every peg is dragged along a shortest way home the board's own
+## solver finds, one drag at a time through touch, settling between them (the
+## harness plays a move a frame, the board takes a fraction of a second).
 func _solve_untangle() -> void:
-	# Fit check: every lantern must land inside the board slot.
+	var st = _puzzle.state
+	# Fit check: every hole must land inside the board slot.
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
 	_fit_ok = true
-	for i in _puzzle.nodes:
-		if not slot.has_point(_puzzle.node_to_local(i)):
+	for h in st.holes:
+		if not slot.has_point(_puzzle.hole_to_local(h)):
 			_fit_ok = false
-	# One hint through the HUD; it pins a post on its untangled spot.
+	# One hint through the HUD: it moves a peg along the way home.
 	_press(_host.top_bar.hint_button)
+	_puzzle.settle_now()
 	_hud_ok = _puzzle.hints_used == 1
-	for i in _puzzle._pos.size():
-		# Stop the moment it is won -- further taps land on the solved
-		# overlay's dismiss button, which is correct behaviour, not a bug.
-		if _puzzle.is_done():
-			return
-		if _puzzle._locked[i]:
-			continue
-		_drag_local(_puzzle.node_to_local(i), _puzzle.planar_to_local(i))
+	for step in 40:
+		if _puzzle.is_done() or st.is_solved():
+			break
+		var way = st.hint_step()
+		if way.is_empty():
+			break
+		_drag_local(_puzzle.peg_to_local(way[0]), _puzzle.hole_to_local(way[2]))
+		_puzzle.settle_now()
+	_puzzle.settle_now()
+	_puzzle.check_solved()
 
 ## Word Trail: a word is traced by dragging through its own cells, one
 ## side-adjacent step at a time, so this is the one board that needs a

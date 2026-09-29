@@ -146,19 +146,56 @@ SK_CHECK_N,%d numbers are not settled yet.,%d números ainda não estão certos.
 SK_CLEARED,"Cleared. The hints you spent are not refunded, only unpinned.","Limpo. As dicas usadas não voltam, só deixam de estar fixas.","Limpio. Las pistas usadas no se devuelven, solo se sueltan."
 SK_WIN,The whole field is planted.,O campo todo está plantado.,Todo el campo está plantado.
 SK_SHARE_PLOTS,%d plots,%d canteiros,%d parcelas
-UT_TIP_DRAG,Drag a lantern. No two cords may cross.,Arraste uma lanterna. Nenhum fio pode cruzar outro.,Arrastra un farol. Ningún cordón puede cruzar otro.
-UT_TIP_KNOT,A knot is drawn exactly where two cords meet. Pull one of them off it.,Um nó aparece bem onde dois fios se cruzam. Tire um deles de lá.,Aparece un nudo justo donde se cruzan dos cordones. Saca uno de ahí.
-UT_TIP_APART,Keep the lanterns apart. A heap in one corner is not an answer.,Deixe as lanternas separadas. Um monte num canto não é resposta.,Mantén los faroles separados. Un montón en una esquina no es respuesta.
-UT_RULES,Drag the lanterns until no two cords cross. A knot is drawn wherever two of them do. Keep the lanterns apart -- a heap in one corner does not count.,Arraste as lanternas até que nenhum fio cruze outro. Um nó aparece onde dois deles se cruzam. Deixe as lanternas separadas -- um monte num canto não vale.,Arrastra los faroles hasta que ningún cordón cruce otro. Aparece un nudo donde dos de ellos se cruzan. Mantén los faroles separados -- un montón en una esquina no cuenta.
-UT_CROWDED,"No cords cross, but give them room. A pile is not a solution.","Nenhum fio se cruza, mas dê espaço a eles. Um monte não é solução.","Ningún cordón se cruza, pero dales espacio. Un montón no es solución."
+UT_BLURB,Lift the pegs into empty holes until no ropes cross.,Mude os pinos para buracos vazios até nenhuma corda se cruzar.,Cambia las clavijas a huecos vacíos hasta que ninguna cuerda se cruce.
+UT_SHORT,Move the pegs\nuntil no rope crosses.,Mude os pinos\naté nada cruzar.,Mueve las clavijas\nsin que se crucen.
+UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace
+UT_LVL_0,4 ropes,4 cordas,4 cuerdas
+UT_LVL_1,6 ropes,6 cordas,6 cuerdas
+UT_LVL_2,8 ropes · runs out of thread,8 cordas · a linha acaba,8 cuerdas · el hilo se acaba
+UT_LVL_3,9 ropes · a kitten pounces,9 cordas · uma gatinha ataca,9 cuerdas · una gatita ataca
+UT_RULES,"Lift a peg out of its hole and drop it in an empty one; its rope comes with it. Untangle the ring until no two ropes cross. A short rope only reaches so far, and pulls tight when you ask too much.\n\nOn Hard and Insane every move uses a stitch of thread, and when it runs out the day is over. On Insane a kitten bats the marked peg after every third move.","Tire um pino do buraco e coloque em um buraco vazio; a corda vai junto. Desembarace o anel até nenhuma corda cruzar outra. Uma corda curta só alcança até certo ponto e estica quando você pede demais.\n\nNo Difícil e no Insano cada movimento gasta um ponto de linha, e quando ela acaba o dia termina. No Insano uma gatinha ataca o pino marcado a cada três movimentos.","Saca una clavija de su hueco y ponla en uno vacío; la cuerda va con ella. Desenreda el aro hasta que ninguna cuerda cruce a otra. Una cuerda corta solo llega hasta cierto punto y se tensa si pides demasiado.\n\nEn Difícil e Insano cada movimiento gasta una puntada de hilo, y cuando se acaba el día termina. En Insano una gatita ataca la clavija marcada cada tres movimientos."
+UT_TIP_DRAG,Lift a peg into an empty hole. No two ropes may cross.,Levante um pino para um buraco vazio. Nenhuma corda pode cruzar outra.,Lleva una clavija a un hueco vacío. Ninguna cuerda puede cruzar otra.
+UT_TIP_KNOT,A red knot marks where two ropes cross. Move one of their pegs away.,Um nó vermelho marca onde duas cordas se cruzam. Tire um dos pinos delas.,Un nudo rojo marca donde se cruzan dos cuerdas. Aparta una de sus clavijas.
+UT_TIP_REACH,"A short rope only stretches so far. If it pulls tight, try another hole.","Uma corda curta só estica até certo ponto. Se ela esticar, tente outro buraco.","Una cuerda corta solo se estira hasta cierto punto. Si se tensa, prueba otro hueco."
+UT_TIP_PICKED,Tap a glowing hole to drop it there.,Toque em um buraco brilhando para soltar lá.,Toca un hueco que brilla para soltarla ahí.
+UT_TIP_THREAD,Every move uses a stitch of thread. Watch the row at the top.,Cada movimento gasta um ponto de linha. Olhe a fileira no alto.,Cada movimiento gasta una puntada de hilo. Mira la fila de arriba.
+UT_TIP_CAT,"The kitten bats the marked peg every third move, into the hole you just left.","A gatinha ataca o pino marcado a cada três movimentos, no buraco que você acabou de deixar.","La gatita ataca la clavija marcada cada tres movimientos, en el hueco que acabas de dejar."
 UT_ONE_KNOT_LEFT,One knot left. Nearly there.,Falta um nó. Quase lá.,Queda un nudo. Ya casi.
 UT_GONE_ONE,One knot gone. %d still to go.,Um nó a menos. Faltam %d.,Un nudo menos. Quedan %d.
 UT_GONE_N,%d knots gone. %d still to go.,%d nós a menos. Faltam %d.,%d nudos menos. Quedan %d.
-UT_PINNED,That one is on its peg now. It will not move again.,Essa está presa no gancho agora. Não sai mais do lugar.,Ese ya está en su gancho. No se moverá más.
+UT_TAUT,That rope is pulled tight. It will not reach.,Essa corda esticou. Não alcança.,Esa cuerda se tensó. No llega.
+UT_STUCK,That peg has nowhere to go right now.,Esse pino não tem para onde ir agora.,Esa clavija no tiene adónde ir ahora.
+UT_HINT,Try this one.,Tente este.,Prueba este.
 UT_RESET,Back to the tangle you were given.,De volta ao emaranhado do começo.,De vuelta al enredo del principio.
+UT_THREAD_LOW,Only a few stitches of thread left.,Só restam alguns pontos de linha.,Solo quedan unas pocas puntadas de hilo.
+UT_THREAD_OUT,The thread has run out.,A linha acabou.,Se acabó el hilo.
+UT_OUT_TITLE,Out of thread,Sem linha,Sin hilo
+UT_OUT_BODY,"The needle has nothing left to sew with. Watch a short video for one more spool, or see how it untangles.","A agulha não tem mais com o que costurar. Assista a um vídeo curto e ganhe mais um carretel, ou veja como se desembaraça.","La aguja se quedó sin hilo. Mira un video corto para tener un carrete más, o mira cómo se desenreda."
+UT_OUT_BODY_REST,The needle has nothing left to sew with. See how it untangles; there is a new ring tomorrow.,A agulha não tem mais com o que costurar. Veja como se desembaraça; amanhã tem outro anel.,La aguja se quedó sin hilo. Mira cómo se desenreda; mañana hay otro aro.
+UT_ONE_SPOOL,One more spool,Mais um carretel,Un carrete más
+UT_SHOW_ANSWER,Show the answer,Mostrar a resposta,Mostrar la respuesta
+UT_SHOWN,Here is one way it untangles.,Aqui está um jeito de desembaraçar.,Aquí hay una forma de desenredarlo.
+UT_CAT_SWIPE,Mrrow! The kitten batted a peg.,Miau! A gatinha bateu num pino.,¡Miau! La gatita golpeó una clavija.
 UT_WIN_SUB,Not a knot left.,Nenhum nó sobrou.,No queda ni un nudo.
-UT_WIN,Not a knot left. The lights go on.,Nenhum nó sobrou. As luzes acendem.,No queda ni un nudo. Se encienden las luces.
-UT_SHARE,🏮 %d lanterns · %d cords,🏮 %d lanternas · %d fios,🏮 %d faroles · %d cordones
+UT_WIN,Not a knot left. The ring is calm.,Nenhum nó sobrou. O anel está em paz.,No queda ni un nudo. El aro está en paz.
+UT_SHARE,%d holes · %d ropes,%d buracos · %d cordas,%d huecos · %d cuerdas
+UT_W_2,Double untie!,Nó duplo desfeito!,¡Doble desnudo!
+UT_W_3,Triple untie!,Nó triplo desfeito!,¡Triple desnudo!
+UT_W_4,Knot-be-gone!,"Adeus, nós!","¡Adiós, nudos!"
+UT_W_6,Wowza wool!,Que lã!,¡Qué lana!
+UT_W_STREAK,Yarn streak!,Sequência de lã!,¡Racha de lana!
+UT_W_OOPS,"Oopsie, tangled!","Ops, emaranhou!","¡Ups, se enredó!"
+UT_W_LAST,One to go!,Falta um!,¡Uno más!
+UT_W_WIN,Untangled!,Desembaraçado!,¡Desenredado!
+UT_W_NO_HINTS,No hints!,Sem dicas!,¡Sin pistas!
+UT_W_SPOOL,New spool!,Carretel novo!,¡Carrete nuevo!
+UT_STAMP_1,Yarn wizard,Mago da lã,Mago de la lana
+UT_STAMP_2,Knot ninja,Ninja dos nós,Ninja de los nudos
+UT_STAMP_3,Tidy hands,Mãos de fada,Manos de hada
+UT_STAMP_4,Got there!,Chegou lá!,¡Lo logró!
+UT_STAMP_5,Cozy finish,Fim aconchegante,Final acogedor
+UT_STAMP_MORE,Second spool,Segundo carretel,Segundo carrete
+UT_CAT_SEAL,Kitten Tamer,Domadora de Gatinhas,Domadora de Gatitas
 TN_TIP_BESIDE,"One tent orthogonally beside every tree. Tents never touch, not even corner to corner.","Uma barraca ao lado de cada árvore, nunca na diagonal. Barracas nunca se tocam, nem pelas quinas.","Una carpa al lado de cada árbol, nunca en diagonal. Las carpas nunca se tocan, ni por las esquinas."
 TN_TIP_CAIRNS,Drag across the meadow to lay cairns on ground you have ruled out.,Arraste pelo campo para pôr pedrinhas onde você já descartou.,Arrastra por el prado para poner piedritas donde ya descartaste.
 TN_TIP_NUMBERS,The numbers count the tents in each line.,Os números contam as barracas de cada linha.,Los números cuentan las carpas de cada línea.
@@ -389,13 +426,6 @@ BAL_LVL_0,"6 fruit, 3 kinds","6 frutas, 3 tipos","6 frutas, 3 tipos"
 BAL_LVL_1,"8 fruit, 4 kinds","8 frutas, 4 tipos","8 frutas, 4 tipos"
 BAL_LVL_2,"8 fruit, 5 kinds, before sunset","8 frutas, 5 tipos, antes do pôr do sol","8 frutas, 5 tipos, antes del atardecer"
 BAL_LVL_3,"Weights to 12, springy bales","Pesos até 12, fardos de mola","Pesos hasta 12, pacas saltarinas"
-UT_BLURB,Drag the lanterns until no cords cross.,Arraste as lanternas até nenhum fio se cruzar.,Arrastra los faroles hasta que ningún cordón se cruce.
-UT_SHORT,Pull the lanterns\nuntil none cross.,Puxe as lanternas\naté nada cruzar.,Mueve los faroles\nsin que se crucen.
-UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace
-UT_LVL_0,7 lanterns,7 lanternas,7 faroles
-UT_LVL_1,10 lanterns,10 lanternas,10 faroles
-UT_LVL_2,14 lanterns,14 lanternas,14 faroles
-UT_LVL_3,20 lanterns,20 lanternas,20 faroles
 SK_BLURB,Cut the field into numbered plots.,Divida o campo em canteiros numerados.,Divide el campo en parcelas numeradas.
 SK_SHORT,Cut the field into\nnumbered plots.,Divida o campo em\ncanteiros numerados.,Divide el campo en\nparcelas numeradas.
 SK_MOTTO,Every plot has its number,"Cada canteiro, seu número","Cada parcela, su número"
@@ -522,7 +552,7 @@ HTP_FALLBACK_TIP,Look for the simplest move first.,Procure primeiro a jogada mai
 HTP_TWO_MOONS,Two moons need a sun,Duas luas pedem um sol,Dos lunas piden un sol
 HTP_LESSON_CB,"Place friends, then use the feedback",Posicione amigos e use as pistas,Coloca amigos y usa las pistas
 HTP_LESSON_BAL,"Weigh the fruit on the seesaw, then level it",Pese as frutas na gangorra e nivele,Pesa las frutas en el balancín y nivélalo
-HTP_LESSON_UT,Drag lanterns until no cords cross,Arraste lanternas até nenhum fio se cruzar,Arrastra faroles hasta que ningún cordón se cruce
+HTP_LESSON_UT,Move pegs until no ropes cross,Mude os pinos até nenhuma corda se cruzar,Cambia las clavijas hasta que ninguna cuerda se cruce
 HTP_LESSON_SK,Drag a rectangle around the right number of cells,Arraste um retângulo com o número certo de casas,Arrastra un rectángulo con el número justo de casillas
 HTP_LESSON_TN,Place one tent beside each tree,Ponha uma barraca ao lado de cada árvore,Pon una carpa junto a cada árbol
 HTP_LESSON_LU,Place lanterns so every open cell is lit,Ponha lanternas para iluminar cada casa livre,Pon faroles para iluminar cada casilla libre

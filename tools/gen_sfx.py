@@ -147,15 +147,36 @@ SETS = {
         "party":     ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
         "confetti":  ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
     },
-    # Untangle: paper lanterns joined by strings, dragged until no strings cross.
+    # Untangle: pegs in a wooden ring, a thick cotton rope from each to its twin,
+    # lifted into empty holes until no ropes cross. Re-prompted 2026-09-29
+    # (the ring rebuild): real wood and rope in FOLEY, the kalimba for the
+    # rewards; on Hard and Insane a needle and thread, and Insane's kitten.
     "untangle": {
-        "pick":     ("a tiny soft paper rustle, lifting a small paper lantern, very short and quiet", 0.5, -12),
-        "drop":     ("a soft gentle paper lantern landing with a tiny wooden tap, very short", 0.5, -8),
+        "pick":     ("a small smooth wooden peg pulled out of a snug wooden hole, one soft hollow pop with a light cotton rope rustle, cozy, close mic, very short", 0.5, -10, FOLEY),
+        "drop":     ("a small wooden peg pressed into a wooden hole, one soft round hollow thock, cozy, close mic, very short", 0.5, -6, FOLEY),
+        "put":      ("a tiny soft wooden peg tap, very quiet, very short", 0.5, -14, FOLEY),
+        "refused":  ("a soft muffled rubbery rope stretch ending in a tiny kind wobbly kalimba note, a gentle 'not that far', warm, very short", 0.6, -10),
+        "taut":     ("a thick cotton rope pulled tight, a soft creak and a low gentle twang, close mic, cozy", 0.7, -9, FOLEY),
+        "untie":    ("a tiny bright kalimba pluck going up with a soft rope loosening rustle, a knot coming undone, very short", 0.6, -8),
+        "combo":    ("two or three soft rising kalimba and glockenspiel notes, a cheerful cozy little fanfare", 0.9, -7),
+        "oops":     ("two soft wobbly descending marimba notes with a tiny cartoon slide, a gentle comic oops, not harsh", 0.7, -10),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft airy paper flutter, many small paper lanterns drifting back into place", 1.0, -8),
+        "reset":    ("many small wooden pegs and soft ropes sliding back into place, gentle clicks and a cloth rustle, close mic", 1.0, -9, FOLEY),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny paper and wooden pops, paper lanterns appearing one by one", 1.0, -9),
+        "enter":    ("a soft cascade of tiny wooden pegs popping into holes one after another, cozy marimba ticks, airy", 1.0, -9),
+        # Thread (Hard and Insane).
+        "stitch":      ("a tiny needle pulling thread through cloth, one very short soft zip, quiet, close mic", 0.5, -15, FOLEY),
+        "thread_low":  ("a single soft low warm kalimba note, gentle, a quiet 'the thread is getting short', very short", 0.5, -12),
+        "thread_out":  ("a sleepy three-note music box lullaby slowly descending with a soft yawn, calm and kind, maybe tomorrow", 1.6, -12),
+        "spool_back":  ("a warm rising pair of soft kalimba plucks with a tiny sparkle and a light wooden spool spinning, gentle and happy", 0.9, -9),
+        "reveal":      ("a soft curious kalimba shimmer with ropes sliding gently into place, a secret being revealed", 1.0, -6),
+        # The seal and the party.
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        # Insane's kitten.
+        "pounce":   ("a tiny playful kitten mrrp and a soft paw swat, cute and cozy, very short", 0.8, -8, CARTOON),
     },
     # Shikaku: garden beds drawn as rectangles in soil around number stakes.
     "shikaku": {

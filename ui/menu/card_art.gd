@@ -270,10 +270,8 @@ func _build() -> void:
 			add_child(Fruit.make(0, 52.0 * _u, at(-64.0, -24.0)))
 			add_child(Fruit.make(1, 44.0 * _u, at(66.0, -11.0)))
 		"untangle":
-			var seats := [Vector2(-78.0, -26.0), Vector2(70.0, -30.0), Vector2(-56.0, 30.0), Vector2(80.0, 24.0)]
-			for i in seats.size():
-				var lamp := LanternFace.new()
-				_seat(lamp, 56.0, seats[i].x, seats[i].y)
+			# The ring, its ropes and its pegs are all _draw's.
+			pass
 		"shikaku":
 			# Two plots, two numbers; the grid under them is _draw's.
 			var a := MarkerFace.new()
@@ -446,11 +444,27 @@ func _draw_beam() -> void:
 		mid - d * half - n * thick, mid + d * half - n * thick,
 		mid + d * half + n * thick, mid - d * half + n * thick]), Pal.WOOD)
 
-## Untangle: two cords that cross, under the four lanterns.
+## Untangle: a wooden ring with three pegs' ropes crossing over it, and one
+## empty hole waiting.
 func _draw_cords() -> void:
-	var p := [Vector2(-78.0, -26.0), Vector2(70.0, -30.0), Vector2(-56.0, 30.0), Vector2(80.0, 24.0)]
-	for e in [[0, 3], [1, 2], [0, 1], [2, 3]]:
-		_line([p[e[0]], p[e[1]]], 7.0, Color(Pal.WOOD, 0.75))
+	var r := 47.0
+	var c := at(0.0, 0.0)
+	draw_arc(c, r * _u, 0.0, TAU, 64, Color(Pal.WOOD_DEEP, 0.55), 15.0 * _u, true)
+	draw_arc(c, r * _u, 0.0, TAU, 64, Pal.WOOD, 11.0 * _u, true)
+	var hole := func(a: float) -> Vector2:
+		return Vector2(cos(a), sin(a)) * r
+	var ends := [[-2.2, 0.9, Color("f0b34a")], [-0.75, 2.35, Color("e8806a")], [0.2, 3.35, Color("8fc3a3")]]
+	for e in ends:
+		_line([hole.call(e[0]), hole.call(e[1])], 8.0, e[2])
+	for e in ends:
+		for a in [e[0], e[1]]:
+			var v: Vector2 = hole.call(a)
+			_disc(v.x, v.y + 2.0, 9.5, Color(Pal.TEXT, 0.18))
+			_disc(v.x, v.y, 9.0, Pal.WOOD_DEEP)
+			_disc(v.x, v.y, 7.0, Color("d7a56e"))
+			_disc(v.x, v.y, 3.0, e[2])
+	var gap: Vector2 = hole.call(1.55)
+	_disc(gap.x, gap.y, 8.0, Color("5f4229"))
 
 ## Shikaku: a field of five by three, with two plots ruled off on it.
 func _draw_field() -> void:

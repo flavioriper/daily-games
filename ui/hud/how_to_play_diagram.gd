@@ -10,7 +10,6 @@ const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Friends = preload("res://ui/faces/friends.gd")
 const Fruit = preload("res://ui/faces/fruit.gd")
-const LanternFace = preload("res://ui/faces/lantern_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const TentFace = preload("res://ui/faces/tent_face.gd")
 const ConiferFace = preload("res://ui/faces/conifer_face.gd")
@@ -59,8 +58,7 @@ func _build_pieces() -> void:
 			_add_piece(Fruit.make(0, 100.0, Vector2.ZERO))
 			_add_piece(Fruit.make(2, 100.0, Vector2.ZERO))
 		"untangle":
-			_add_piece(LanternFace.new())
-			_add_piece(LanternFace.new())
+			pass
 		"shikaku":
 			var marker := MarkerFace.new()
 			marker.number = 6
@@ -142,10 +140,15 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 	var p := _ease(_progress)
 	match puzzle_id:
 		"untangle":
-			var left := _centre(board, cell, 0, 0)
-			var right := _centre(board, cell, 3, 3)
-			draw_line(left, right, Pal.CORD if p > 0.5 else Pal.BAD, 7.0, true)
-			draw_line(_centre(board, cell, 3, 0), _centre(board, cell, 0, 3), Pal.CORD, 7.0, true)
+			# Two ropes that cross; one peg lifts from the top right into
+			# the empty hole below it and they no longer do.
+			var peg := _centre(board, cell, 3, 0).lerp(_centre(board, cell, 3, 2), p)
+			draw_line(_centre(board, cell, 0, 0), _centre(board, cell, 3, 1), Color("f0b34a"), 9.0, true)
+			draw_line(_centre(board, cell, 0, 1), peg, Color("e8806a") if p > 0.5 else Pal.BAD, 9.0, true)
+			draw_circle(_centre(board, cell, 3, 2), cell * 0.3, Color("5f4229"))
+			for point in [_centre(board, cell, 0, 0), _centre(board, cell, 3, 1), _centre(board, cell, 0, 1), peg]:
+				draw_circle(point, cell * 0.3, Pal.WOOD_DEEP)
+				draw_circle(point, cell * 0.24, Color("d7a56e"))
 		"shikaku":
 			_draw_outline(Rect2(_cell_at(board, cell, 0, 1), Vector2(cell * 3.0 + GAP * 2.0, cell * 2.0 + GAP)), Pal.GOOD, 7.0 * p)
 		"lightup":
