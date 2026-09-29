@@ -241,6 +241,37 @@ func _script() -> void:
 			_at(44.0, func() -> void:
 				var pz = _puzzle
 				print("soak: done=", pz.is_done(), " solved=", pz.state.is_solved(), " held=", pz._held, " sel=", pz._sel, " settled=", pz._settled(pz._now()), " out=", pz.out_of_hearts, " crossings=", pz.state.crossings(), " spent=", pz.state.spent, "/", pz.state.budget))
+		"swat":
+			# Insane: on the move before her swipe, move the very peg she is
+			# eyeing. Its drop flight must not be skipped by her swat.
+			_end = 8.0
+			_ms_from = 99.0
+			var plan: Array = _puzzle.state.plan
+			for k in 2:
+				var step := k
+				_drag(1.0 + k * 2.9, plan[step][0], plan[step][2], 0.3)
+			_at(7.0 - 0.9, func() -> void:
+				var pz = _puzzle
+				var p: int = pz.state.cat_next().peg
+				var hole := -1
+				for h in pz.state.holes:
+					if pz.state.drop_check(p, h) == 0:
+						hole = h
+				print("swat: peg ", p, " to hole ", hole, " in ", pz.state.cat_next()["in"])
+				if hole >= 0:
+					# Tap the peg, then tap the hole: a long flight from home.
+					_press(pz.peg_to_local(p))
+					_release(pz.peg_to_local(p))
+					_at(_t + 0.3, func() -> void:
+						print("swat: selected=", pz._sel, " moves_here=", pz.state.moves_here, " busy_left=", pz._busy_until - pz._now())
+						_press(pz.hole_to_local(hole))
+						_release(pz.hole_to_local(hole))
+						print("swat: after tap moves_here=", pz.state.moves_here))
+					for dt in [0.03, 0.06, 0.1, 0.2, 0.3, 0.45]:
+						_at(_t + 0.3 + dt, func() -> void:
+							print("swat: t+", dt, " peg_px=", pz._peg_px[p], " mv=", pz._mv[p], " lift=", pz._lift[p]))
+					_at(_t + 0.3 + 0.10, func() -> void:
+						print("swat: 0.10s after the drop the peg is ", pz.peg_to_local(p).distance_to(pz.hole_to_local(hole)), " px from its hole (flight length ", pz.peg_to_local(p).distance_to(pz.hole_to_local(hole)), ")")))
 		"toys":
 			# Pet the kitten, then pluck a rope.
 			_end = 4.0
@@ -274,6 +305,7 @@ func _script() -> void:
 			_drag(1.0, m[0], m[1], 0.4)
 			_at(4.9, func() -> void:
 				var pz = _puzzle
+				print("HUD after a settled move: undo disabled=", _host.top_bar.undo_button.disabled, " reset disabled=", _host.top_bar.reset_button.disabled)
 				print("animating=", pz._animating(pz._now()), " calm=", pz._calm, " held=", pz._held, " sel=", pz._sel, " dirty=", pz._dirty, " busy_left=", pz._busy_until - pz._now()))
 		"out":
 			# The thread poked down to one stitch, then one bad move.

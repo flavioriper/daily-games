@@ -175,8 +175,9 @@ func foresee(peg: int, hole: int) -> Array:
 ## Drops `peg` in `hole` (which must pass drop_check): its rope goes on top,
 ## the thread is used, and if this move is the one before a swipe -- and did
 ## not solve the board -- the kitten pounces. Returns {"peg", "from", "to",
-## "cleared" (crossings this move undid, negative when it made some),
-## "cat"}; {} when the drop is not allowed.
+## "cleared" (crossings this move undid, negative when it made some: the
+## player's move alone, before any swipe), "left" (crossings after the move,
+## before any swipe), "cat"}; {} when the drop is not allowed.
 func move(peg: int, hole: int) -> Dictionary:
 	if drop_check(peg, hole) != 0:
 		return {}
@@ -187,6 +188,7 @@ func move(peg: int, hole: int) -> Dictionary:
 	moves_here += 1
 	spent += 1
 	scan()
+	var after_move := crossings()
 	if cat and not is_solved() and moves_here % Gen.CAT_EVERY == 0:
 		var p := swipe_peg(moves_here)
 		var to := Gen.cat_hole(at, holes, reach, p)
@@ -195,7 +197,7 @@ func move(peg: int, hole: int) -> Dictionary:
 			at[p] = to
 			scan()
 	history.append(entry)
-	return {"peg": peg, "from": entry.from, "to": hole, "cleared": before - crossings(), "cat": entry.cat}
+	return {"peg": peg, "from": entry.from, "to": hole, "cleared": before - after_move, "left": after_move, "cat": entry.cat}
 
 func _raise(rope: int) -> void:
 	order.erase(rope)
@@ -226,9 +228,9 @@ func hint_step() -> Array:
 	var way = null
 	if cat:
 		var depth := mini(Gen.BEAM_DEPTH, maxi(thread_left() + 2, 4))
-		way = Gen.way_home(at, holes, ropes, reach, depth, Gen.BEAM, null, swipes, Gen.CAT_EVERY, moves_here)
+		way = Gen.way_home(at, holes, ropes, reach, depth, Gen.HINT_BEAM, null, swipes, Gen.CAT_EVERY, moves_here)
 	else:
-		way = Gen.way_home(at, holes, ropes, reach)
+		way = Gen.way_home(at, holes, ropes, reach, Gen.BEAM_DEPTH, Gen.HINT_BEAM)
 	if way == null or way.is_empty():
 		# No way home in reach of the search: the move that leaves fewest
 		# crossings, so a hint is still something.

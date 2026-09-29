@@ -246,6 +246,9 @@ var _knot_alpha := 0.0
 var _dirty := true
 
 var _stuck_key := PackedByteArray()
+var _was_settled := true
+var _rebuilt_at := 0.0
+var _restored := false
 var _toast := ""
 var _toast_at := -100.0
 var _toast_hold := TOAST_HOLD
@@ -317,6 +320,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_paw = {}
 	_later = []
 	_all_moves = 0
+	_restored = false
 	_streak = 0
 	_stuck_key = PackedByteArray()
 	_solved_at = -1.0
@@ -385,8 +389,11 @@ func _layout() -> void:
 	_kitten.pivot_offset = _kitten.size * 0.5
 	_yarn_at = _kitten_at + Vector2(-KITTEN_SIZE * 0.98, KITTEN_SIZE * 0.2)
 	_place_stamp()
+	# A flight is in the old geometry's pixels: the pegs settle where they belong.
 	for p in state.at.size():
+		_mv[p] = null
 		_peg_px[p] = _peg_home(p)
+	_paw = {}
 	for r in state.ropes:
 		var rope: Rope = _ropes[r]
 		rope.setup(_peg_px[2 * r], _peg_px[2 * r + 1], _span_px(state.reach[r]) * LENGTH_OVER, (6.0 if r % 2 == 0 else -6.0))
@@ -511,9 +518,22 @@ func _process(delta: float) -> void:
 	if _dirty:
 		_dirty = false
 		_rebuild(t)
+		_rebuilt_at = t
+		queue_redraw()
+	elif _sel >= 0 and t - _rebuilt_at >= 1.0 / 30.0:
+		# A peg selected by a tap only pulses the glow on the holes it can go
+		# to: half rate is plenty.
+		_rebuild(t)
+		_rebuilt_at = t
 		queue_redraw()
 	elif _pulses(t):
 		queue_redraw()
+	# The HUD reads can_undo() and can_reset(), which wait for the board to
+	# settle, and only re-reads when told: tell it when the board has settled.
+	var settled := _settled(t)
+	if settled and not _was_settled:
+		focus_changed.emit()
+	_was_settled = settled
 	_flow(t)
 
 ## Things to do later, on the board's own clock: [when, Callable].
@@ -543,7 +563,7 @@ func _dec(u: float) -> float:
 
 ## True while anything is in the air, in the hand or still finishing a pop.
 func _animating(t: float) -> bool:
-	if _held >= 0 or _sel >= 0 or not _paw.is_empty():
+	if _held >= 0 or not _paw.is_empty():
 		return true
 	if t < _opened + Motion.ENTER_DELAY + Motion.stagger(state.at.size(), Motion.ENTER_STAGGER) + Motion.POP_IN + ENTER_LAG + 0.3:
 		return true
@@ -682,6 +702,9 @@ func _idle_whip(t: float) -> void:
 # --- the picture ---
 
 func _draw() -> void:
+	# A board built before its card has a size has no geometry yet.
+	if _ro <= 0.0 or _rope_mesh.size() != state.ropes:
+		return
 	var t := _now()
 	# A canvas command holds its mesh by RID, so every mesh handed over stays
 	# referenced until the next draw replaces the list (see CLAUDE.md).
@@ -1014,7 +1037,7 @@ func _build_extras(b: Face.Builder, t: float) -> void:
 	for p in order:
 		var mode: int = _face[p]
 		var hat: bool = _hat_at[p] > -50.0
-		var paw: bool = state.cat and mode == 0 and target == p
+		var paw: bool = state.cat and mode == 0 and target == p and not is_done() and not _out_card
 		if mode == 0 and not hat and not paw:
 			continue
 		var R := _peg_r
@@ -1222,7 +1245,7 @@ func _gui_input(event: InputEvent) -> void:
 			_drag(event.position)
 
 func _can_touch() -> bool:
-	return not is_done() and not _out_card and not state.out_of_thread() and _now() >= _busy_until
+	return not is_done() and not _out_card and not state.is_solved() and not state.out_of_thread() and _now() >= _busy_until
 
 func _nearest_peg(at: Vector2) -> int:
 	var best := -1
@@ -1454,7 +1477,7 @@ func _drop(p: int, hole: int, from: Vector2, hint := false) -> void:
 	var rope := p >> 1
 	_wake(rope)
 	_later_call(dur * 0.85, func() -> void:
-		_landed(p, hole, int(res.cleared), hint))
+		_landed(p, hole, int(res.cleared), int(res.left), hint))
 	# Thread: a stitch is used.
 	if state.budget > 0:
 		_use_stitch(t + dur * 0.5)
@@ -1468,7 +1491,7 @@ func _drop(p: int, hole: int, from: Vector2, hint := false) -> void:
 	else:
 		note_move()
 
-func _landed(p: int, hole: int, cleared: int, hint: bool) -> void:
+func _landed(p: int, hole: int, cleared: int, left: int, hint: bool) -> void:
 	var t := _now()
 	_sq_at[p] = t
 	var at := _hole_px(hole)
@@ -1481,9 +1504,8 @@ func _landed(p: int, hole: int, cleared: int, hint: bool) -> void:
 	if cleared > 0:
 		fx.ring(at, _peg_r * 1.6, Pal.GOOD)
 		fx.sparkle(at, Pal.GOOD)
-		if state.crossings() > 0:
+		if left > 0:
 			fx.cue("untie", 1.0 + 0.06 * mini(cleared, 5), -6.0)
-	var left := state.crossings()
 	if _solved_at < 0.0 and left > 0:
 		_speak(cleared, left)
 	_rewards(p, cleared, left)
@@ -1833,7 +1855,7 @@ func _party_on(quiet := false) -> void:
 func stamp_key() -> String:
 	if completed_record.has("stamp") and _all_moves == 0:
 		return String(completed_record.stamp)
-	if _all_moves == 0 and is_done():
+	if _restored or (_all_moves == 0 and is_done()):
 		return ""
 	if state.bought:
 		return "UT_STAMP_MORE"
@@ -1909,6 +1931,7 @@ func win_delay() -> float:
 ## party hats and the seal on the ring.
 func restore_completed_board() -> void:
 	var t := _now()
+	_restored = true
 	_stop_all()
 	state.show_answer()
 	for p in _peg_px.size():

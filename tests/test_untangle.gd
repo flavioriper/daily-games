@@ -58,3 +58,41 @@ static func run(t) -> void:
 	t.eq(st.spent, 2, "undo is a stitch too")
 	st.reset()
 	t.eq(st.spent, 2, "reset gives no thread back")
+
+	# The dealer's answer, played through the state's own move (the kitten's
+	# swipes included), on the two bands that run on thread: it must win inside
+	# the budget without winning early, and end where the deal says it does.
+	for band in [2, 3]:
+		for i in 30:
+			var r := RandomNumberGenerator.new()
+			r.seed = 5000 + i
+			var sb := State.new()
+			sb.setup(r, band)
+			var name := "band %d seed %d through State.move" % [band, i]
+			var won_at := -1
+			for j in sb.plan.size():
+				var m: Array = sb.plan[j]
+				var moved := sb.move(m[0], m[2])
+				if moved.is_empty():
+					break
+				if sb.is_solved():
+					won_at = j
+					break
+			t.eq(won_at, sb.plan.size() - 1, name + " wins on its last step")
+			t.check(sb.spent <= sb.budget, name + " inside the thread")
+			t.check(sb.at == sb.goal_at, name + " ends on the deal's layout")
+
+	# The fallback board is a real one: distinct holes, tangled, and its answer wins.
+	for i in 40:
+		var r2 := RandomNumberGenerator.new()
+		r2.seed = 77 + i
+		var fb: Dictionary = Gen._fallback(r2)
+		var seen := {}
+		for h in fb.start:
+			seen[h] = true
+		t.eq(seen.size(), fb.start.size(), "fallback %d has distinct holes" % i)
+		t.check(not Gen.is_solved(fb.start, fb.ropes), "fallback %d starts tangled" % i)
+		var here: PackedInt32Array = fb.start.duplicate()
+		for m in fb.plan:
+			here[m[0]] = m[2]
+		t.check(Gen.is_solved(here, fb.ropes), "fallback %d answer wins" % i)

@@ -45,6 +45,8 @@ const TRIES := 16
 ## The beam search's width and how deep it goes.
 const BEAM := 36
 const BEAM_DEPTH := 14
+## A hint's search is narrower: a first step, not a par.
+const HINT_BEAM := 22
 
 # --- the rule, on a plain array `at`: peg (2 * rope + end) -> hole ---
 
@@ -412,6 +414,27 @@ static func _replays(start: PackedInt32Array, reach: PackedInt32Array, cfg: Dict
 			at[swipes[done]] = to
 	return is_solved(at, ropes)
 
+## The board dealt when every walk of a band was a dud (never seen in over a
+## thousand Hard and Insane deals): a band-0 walk that is really tangled and,
+## failing even that, two ropes that cross. Never unsolvable, never solved.
+static func _fallback(rng: RandomNumberGenerator) -> Dictionary:
+	var easy: Dictionary = BANDS[0]
+	for attempt in 200:
+		var goal := _goal(rng, easy)
+		var deal := _scramble(rng, goal, easy)
+		if deal.is_empty() or crossing_count(deal.start, easy.ropes) < 1:
+			continue
+		var plan = way_home(deal.start, easy.holes, easy.ropes, goal.reach)
+		if plan == null:
+			continue
+		var end: PackedInt32Array = deal.start.duplicate()
+		for m in plan:
+			end[m[0]] = m[2]
+		return {"holes": easy.holes, "ropes": easy.ropes, "start": deal.start, "goal": end,
+			"reach": goal.reach, "plan": plan, "par": plan.size(), "budget": 0, "cat": false, "swipes": {}}
+	return {"holes": 10, "ropes": 2, "start": PackedInt32Array([0, 2, 1, 3]), "goal": PackedInt32Array([0, 2, 4, 3]),
+		"reach": PackedInt32Array([5, 5]), "plan": [[2, 1, 4]], "par": 1, "budget": 0, "cat": false, "swipes": {}}
+
 ## One full board for `band`: {"holes", "ropes", "start", "goal", "reach",
 ## "plan", "par", "budget", "cat", "swipes", "order"}. `plan` is an answer,
 ## as [peg, from, to] moves.
@@ -456,21 +479,7 @@ static func generate(rng: RandomNumberGenerator, band: int) -> Dictionary:
 		if par >= int(cfg.par):
 			break
 	if best.is_empty():
-		# Every walk was a dud: fall back to the easiest honest board, one
-		# rope moved. Never an unsolvable one.
-		var goal := _goal(rng, BANDS[0])
-		var start: PackedInt32Array = goal.at.duplicate()
-		var occ := occupancy(start, 10)
-		for p in start.size():
-			for h in 10:
-				if occ[h] < 0 and fits(start, 10, goal.reach, p, h, occ):
-					start[p] = h
-					break
-			if not is_solved(start, 4):
-				break
-		var plan = way_home(start, 10, 4, goal.reach)
-		best = {"holes": 10, "ropes": 4, "start": start, "goal": goal.at, "reach": goal.reach,
-			"plan": plan if plan != null else [], "par": 1, "budget": 0, "cat": false, "swipes": {}}
+		best = _fallback(rng)
 	# The stack the ropes lie in, bottom to top.
 	var order: Array = range(best.ropes)
 	for i in range(order.size() - 1, 0, -1):
