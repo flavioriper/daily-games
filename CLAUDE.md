@@ -24,7 +24,7 @@ that area**, and add new history there rather than here.
 | Harness flags and what they measure | `docs/agents/harnesses.md` |
 | First screen: menu, cards, pager, header, Stats/Streak, registry | `docs/agents/first-screen.md` |
 | Flat boards: shared rules, motion, shell, trays, faces, meshes | `docs/agents/flat-screens.md` |
-| One board's own notes | `docs/agents/boards/<board>.md` |
+| One board's own notes | `docs/agents/boards/<board>.md` (Code Break: `code-break.md`) |
 | Versus (snooker, chess, checkers) | `docs/agents/versus.md` |
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy) | `docs/agents/arcade.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |

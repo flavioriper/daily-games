@@ -164,3 +164,15 @@ reprocessed for free.
   `! mkdir -p ~/.config/elevenlabs && pbpaste > ~/.config/elevenlabs/api_key`.
 - Harnesses and headless tests run through the same `cue()`; with the dummy
   audio driver that is harmless, and the suite stayed green.
+
+## Code Break's second set (2026-09-29)
+
+`full`, `locked`, `check` and `score` were re-prompted toward felt and
+kalimba, the same fix Binairo's `check` and `blush_in` got: a wooden bonk
+reads as a scold. A filling row plays a tune -- `note`, a kalimba pluck
+layered under `place` at -4 dB and pitched up the major pentatonic by the
+seat -- and each score pip lands with its own `pip` a step higher, in the
+pile's order (never the seats'), so a score can be heard counting. The
+rest (`warmer`, `so_close`, `all_here`, `cool`, `shuffle`, `peek`, `stamp`,
+`party`, `confetti`, `out_of_rows`, `row_back`) are one take each, not yet
+heard by the user. Details: `docs/agents/boards/code-break.md`.
