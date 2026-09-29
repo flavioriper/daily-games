@@ -18,10 +18,10 @@ general/ios/app_id="ca-app-pub-1208368368327333~6103565803"
 banner_unit_id=""
 banner_unit_id.android="ca-app-pub-1208368368327333/2355892480"
 banner_unit_id.ios="ca-app-pub-1208368368327333/2084429742"
-interstitial_unit_id.android=""
-interstitial_unit_id.ios=""
-rewarded_unit_id.android=""
-rewarded_unit_id.ios=""
+interstitial_unit_id.android="ca-app-pub-1208368368327333/2741005484"
+interstitial_unit_id.ios="ca-app-pub-1208368368327333/8387335403"
+rewarded_unit_id.android="ca-app-pub-1208368368327333/3155938459"
+rewarded_unit_id.ios="ca-app-pub-1208368368327333/8368911697"
 
 [application]
 
