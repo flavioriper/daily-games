@@ -181,12 +181,15 @@ on purpose).
 
 ## 9. Cost and checks
 
-Draw calls (the whole screen, `opengl3`, 810x1440): 77 at rest, peaks 98-123
-carrying a peg. Two static-ish meshes plus one per rope, one per peg and a
-soft shadow each; only a rope that is awake, lifted or fading is rebuilt
-(measured: the first version rebuilt everything per frame and cost 11-18 ms
-carrying a peg; cached ropes and pegs bring it to 5.7-6.9 ms against 3.4
-idle). `tests/_shot_untangle.gd` shoots and plays every mode
+Draw calls (the whole screen, `opengl3`, 810x1440): 99 at rest on Easy, 124 on
+Insane; the same carrying a peg. One static mesh for the ring, one per rope,
+one small extras mesh, and two draws per peg (the family's soft shadow and a
+cached cap under a scale transform); only a rope that is awake, lifted or
+fading is rebuilt. Measured: the first version rebuilt every rope and peg each
+frame with 77 draw calls and cost 11-18 ms carrying a peg; cached, it costs
+5.7-6.9 ms against 3.6-3.9 ms idle, for about 40 more commands, far under the
+855 budget.
+`tests/_shot_untangle.gd` shoots and plays every mode
 (`rest hold taut plan wrong answer out hint undo reset perf`). Suite green,
 `tests/_win.gd -- untangle` passes (hint through the HUD, then real drags
 along the search's answer). Not run: a phone, ANGLE, a listen.

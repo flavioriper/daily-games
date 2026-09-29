@@ -56,8 +56,8 @@ word, on `feat/untangle-rope`, with no concept tab.
   offer a video that gives nothing (Balance's Insane still does).
 - **Sound**: `tools/gen_sfx.py untangle`; `hover` deliberately has no file.
   Every other cue in the board has one. Awaiting the user's listen.
-- **Measured (this Mac, 810x1440)**: 77 draw calls at rest (whole screen),
-  peaks 98-123 carrying a peg; idle 3.4 ms; carrying a peg 5.7-6.9 ms.
+- **Measured (this Mac, 810x1440)**: 99 (Easy) to 124 (Insane) draw calls at
+  rest, whole screen; idle 3.6-3.9 ms; carrying a peg 5.7-6.9 ms.
   Generation mean/worst: Easy 2/3 ms, Medium 9/14, Hard 57/250, Insane 71/155.
 - **Open**: a lost day is not saved (reopening deals it fresh); no phone, ANGLE
   or listening pass yet.
