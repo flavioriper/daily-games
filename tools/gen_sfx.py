@@ -177,6 +177,7 @@ SETS = {
         "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
         # Insane's kitten.
         "pounce":   ("a tiny playful kitten mrrp and a soft paw swat, cute and cozy, very short", 0.8, -8, CARTOON),
+        "purr":     ("a soft contented kitten purr with one tiny happy mew, cute and cozy, gentle", 1.2, -9, CARTOON),
     },
     # Shikaku: garden beds drawn as rectangles in soil around number stakes.
     "shikaku": {

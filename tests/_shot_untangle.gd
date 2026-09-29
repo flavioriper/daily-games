@@ -50,6 +50,8 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://_shot_ut_progress.cfg"))
 	progress.path = "user://_shot_ut_progress.cfg"
 	for e in load("res://ui/registry.gd").PUZZLES:
+		if _mode == "howto" and e.id == "untangle":
+			continue
 		progress.mark_tutorial_seen(String(e.id))
 	if _reduce:
 		load("res://core/motion.gd").reduce = true
@@ -69,7 +71,7 @@ func _process(delta: float) -> bool:
 		_menu._open_at(entry, _level)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = _host._puzzle
-		if _host.has_node("HowToPlay"):
+		if _host.has_node("HowToPlay") and _mode != "howto":
 			_host.get_node("HowToPlay").free()
 		_script()
 		return false
@@ -192,6 +194,39 @@ func _script() -> void:
 				_at(1.1 + k * 0.045, func() -> void:
 					_motion(_puzzle._c + Vector2.from_angle(a) * _puzzle._ro * 0.45))
 			_at(5.3, func() -> void: _release(_puzzle._c))
+		"restore":
+			# A daily solved earlier, reopened: the answer laid down, hats, seal.
+			_end = 3.0
+			_ms_from = 9.0
+			_at(0.5, func() -> void:
+				_puzzle.completed_record = {"stamp": "UT_STAMP_2"}
+				_puzzle.restore_completed())
+			_at(1.5, _shot)
+		"toys":
+			# Pet the kitten, then pluck a rope.
+			_end = 4.0
+			_ms_from = 9.0
+			_at(1.0, func() -> void:
+				_press(_puzzle._kitten_at)
+				_release(_puzzle._kitten_at))
+			_at(1.25, _shot)
+			_at(1.8, func() -> void:
+				var chain: PackedVector2Array = _puzzle._ropes[0].p
+				var mid: Vector2 = chain[chain.size() / 2]
+				_press(mid)
+				_release(mid))
+			_at(2.0, _shot)
+		"howto":
+			# The first-play sheet, kept: two frames of its diagram.
+			_end = 4.0
+			_ms_from = 9.0
+			_at(1.2, _shot)
+			_at(2.0, _shot)
+		"enter":
+			_end = 2.0
+			_ms_from = 9.0
+			for k in [0.2, 0.32, 0.45, 0.6, 0.9]:
+				_at(k, _shot)
 		"idle":
 			# One move, then two quiet seconds: what a settled board costs.
 			_end = 8.0

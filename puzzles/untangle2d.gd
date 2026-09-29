@@ -665,7 +665,7 @@ func _draw() -> void:
 	# referenced until the next draw replaces the list (see CLAUDE.md).
 	var shown: Array = []
 	if _ring_mesh != null:
-		draw_mesh(_ring_mesh, null)
+		draw_mesh(_ring_mesh, null, Transform2D.IDENTITY, Color(1, 1, 1, _dec((t - _opened) / 0.3)))
 		shown.append(_ring_mesh)
 	if _under_mesh != null:
 		draw_mesh(_under_mesh, null)
@@ -747,7 +747,8 @@ func _enter_u(p: int, t: float) -> float:
 ## still swinging.
 func _refresh_rope(r: int, t: float) -> void:
 	var col: Array = _rope_col(r)
-	var alpha := minf(_enter_u(2 * r, t), _enter_u(2 * r + 1, t))
+	# The ropes come in a beat after the pegs they hang from.
+	var alpha := minf(_enter_u(2 * r, t - ENTER_LAG - 0.08), _enter_u(2 * r + 1, t - ENTER_LAG - 0.08))
 	if alpha <= 0.0:
 		_rope_mesh[r] = null
 		_rope_sig[r] = null
@@ -1179,6 +1180,11 @@ func _press(at: Vector2) -> void:
 	var p := _nearest_peg(at)
 	_press_peg = p
 	if p < 0:
+		# Nothing to lift: the kitten is petted, a rope is plucked.
+		if state.cat and _kitten.visible and Rect2(_kitten.position, _kitten.size).grow(-KITTEN_SIZE * 0.12).has_point(at):
+			_pet_kitten()
+		elif _sel < 0:
+			_pluck_at(at)
 		return
 	if not state.can_go(p) and p != _sel:
 		_press_peg = -1
@@ -1474,6 +1480,38 @@ func _schedule_swipe(entry: Dictionary, at_time: float) -> void:
 		_pounce(p, from_px, to_px))
 	_later_call(delay + 0.22 + POUNCE_FLY * 0.9, func() -> void:
 		_swiped(p, int(entry.to)))
+
+## A tap on the kitten: she squints with joy and purrs, hearts float up.
+func _pet_kitten() -> void:
+	if _now() < _kitten_mood_until:
+		return
+	_kitten.expression = Face.Expr.JOY
+	_kitten_mood_until = _now() + 1.2
+	fx.cue("purr")
+	if not Motion.reduce:
+		Motion.squash(_kitten, 0.12, 0.3)
+		_rw.spray(_kitten_at + Vector2(0.0, -KITTEN_SIZE * 0.2), Color("f2a7a0"), 5, 300.0, "heart", 0.9)
+	_later_call(1.2, func() -> void:
+		if _kitten.expression == Face.Expr.JOY and not is_done():
+			_kitten.expression = Face.Expr.HAPPY)
+	_dirty = true
+
+## A press on a rope plucks it like a string: it whips and rings once. Free.
+func _pluck_at(at: Vector2) -> void:
+	var best := -1
+	var closest := _wd * 0.9
+	for r in _ropes.size():
+		var chain: PackedVector2Array = (_ropes[r] as Rope).p
+		for i in chain.size() - 1:
+			var d := Geometry2D.get_closest_point_to_segment(at, chain[i], chain[i + 1]).distance_to(at)
+			if d < closest:
+				closest = d
+				best = r
+	if best < 0:
+		return
+	_whip(best, 6.0 * (1.0 if at.x < _c.x else -1.0), 0.012)
+	fx.cue("taut", 1.1, -10.0)
+	_dirty = true
 
 ## Where the kitten looks when she is not swatting: at her yarn.
 func _gaze() -> Vector2:
