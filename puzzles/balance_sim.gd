@@ -159,16 +159,18 @@ func release(f: int, x: int) -> void:
 	b.vel = v.limit_length(THROW_MAX * cup)
 
 ## A scripted hop from wherever the fruit is to cup `x` (0: the basket),
-## `delay` seconds from now. Undo, reset and a hint travel this way.
-func hop(f: int, x: int, delay := 0.0) -> void:
+## `delay` seconds from now. Undo, reset and a hint travel this way; a
+## springy bale's bounce (Insane) goes `high` times higher, `flips` whole
+## turns head over heels, and takes `long` times as long.
+func hop(f: int, x: int, delay := 0.0, high := 1.0, flips := 0.0, long := 1.0) -> void:
 	var b := bodies[f]
 	var from := position(f)
 	b.mode = ARC
 	b.cup = x
 	b.seated = false
 	b.landed = false
-	b.arc = {"from": from, "spin": wrapf(float(b.spin), -PI, PI), "at": t + delay, "dur": ARC_TIME,
-		"high": ARC_HIGH * cup * (0.7 if x == 0 else 1.0)}
+	b.arc = {"from": from, "spin": wrapf(float(b.spin), -PI, PI) + TAU * flips, "at": t + delay, "dur": ARC_TIME * long,
+		"high": ARC_HIGH * cup * (0.7 if x == 0 else 1.0) * high}
 
 # --- reading ---
 
@@ -268,10 +270,14 @@ func _swing(dt: float) -> void:
 			load_i += LOAD_I * weights[f] * float(b.s) * float(b.s)
 	var w := OMEGA / sqrt(load_i)
 	var acc := w * w * (live_torque() * cos(a) / K - sin(a)) - 2.0 * ZETA * w * av
+	# already lying on a bale: a heavy load presses it there, and one step's
+	# push is not a knock (with the pinned load of an Insane day, ~100 units,
+	# it was -- every step thudded and jolted the fruit up off the plank)
+	var lying := absf(a) >= A_MAX - 1e-6
 	av += acc * dt
 	a += av * dt
 	if absf(a) > A_MAX:
-		var hit := absf(av)
+		var hit := 0.0 if lying else absf(av)
 		a = signf(a) * A_MAX
 		if av * signf(a) > 0.0:
 			# a real knock bounces; anything less is the plank lying on the bale

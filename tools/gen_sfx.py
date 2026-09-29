@@ -113,12 +113,14 @@ SETS = {
         "out_of_rows": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -14),
         "row_back":    ("a warm rising pair of soft kalimba plucks, a little extra chance, gentle and happy", 0.6, -12),
     },
-    # Balance: fruit weights on little hanging scales; a tap steps a weight
-    # up or down, and a scale that comes level chimes.
+    # Balance: a seesaw of fruit with secret weights (the scales it began as
+    # are gone); a fruit settling in a cup, a beam that comes level chimes.
     "balance": {
-        "step":     ("a single tiny soft wooden click, a small weight nudged on a scale pan, very short", 0.5, -9),
+        # step and refused re-prompted 2026-09-29 (sunset pass): the wooden
+        # click and "bonk" read as a scold, as Binairo's and Code Break's did.
+        "step":     ("a tiny soft felt thump, a small round fruit settling into a little wooden cup, cozy and quiet, very short", 0.5, -11),
         "level":    ("a soft bright two-note kalimba chime going up, a hanging scale settling perfectly level", 0.7, -6),
-        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "refused":  ("a tiny soft felt pat with a gentle little kalimba wobble, a kind 'this one stays put', muffled and warm, very short", 0.5, -12),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         "reset":    ("a quick soft run of little fruit hopping back into a wicker basket, gentle bumps and a light rustle", 1.0, -8),
@@ -129,8 +131,21 @@ SETS = {
         # bumping down on a hay bale, and the tock of the beam coming to rest.
         "lift":     ("a tiny soft pluck, a small round fruit lifted out of a wicker basket, very short", 0.5, -12, FOLEY),
         "land":     ("a small round apple dropped onto a wooden plank, one soft hollow wooden thump, close mic, very short", 0.5, -6, FOLEY),
-        "thud":     ("the end of a wooden seesaw plank bumping down onto a hay bale, a soft muffled thud with a faint straw rustle", 0.6, -6, FOLEY),
+        "thud":     ("the end of a wooden seesaw plank bumping down onto a soft hay bale, a cushioned muffled thump with a gentle straw rustle, cozy", 0.6, -8, FOLEY),
         "tock":     ("a single soft muted wooden tock, a gentle settle, very short", 0.5, -12),
+        # The sunset pass (2026-09-29, docs/superpowers/specs/2026-09-29-balance-sunset-design.md):
+        # Insane's springy bales, the sun going down on Hard and Insane, and
+        # the silly rewards.
+        "boing":     ("a playful soft springy cartoon boing, a hay bale bouncing like a spring, with a tiny rising slide whistle, cute and cozy, not harsh", 0.9, -6, CARTOON),
+        "sunset":    ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.6, -12),
+        "hour_back": ("a warm rising pair of soft kalimba plucks with a tiny glockenspiel sparkle, the sun peeking back up, gentle and happy", 0.8, -10),
+        "sun_low":   ("a single soft low warm kalimba note, gentle, a quiet 'the day is getting late', very short", 0.5, -14),
+        "toss":      ("a light airy whoosh ending in a bright soft kalimba ting, a nice throw landing, playful", 0.7, -9),
+        "giggle":    ("a tiny cute high giggling trill on a soft glockenspiel and kalimba, the sun giggling when tickled, playful, very short", 0.7, -10),
+        "reveal":    ("a soft wooden box lid lifting with a small curious kalimba shimmer, a secret being uncovered", 1.0, -6),
+        "stamp":     ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":     ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
+        "confetti":  ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
     },
     # Untangle: paper lanterns joined by strings, dragged until no strings cross.
     "untangle": {

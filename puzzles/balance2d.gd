@@ -33,6 +33,13 @@ extends "res://core/puzzle_base.gd"
 ##   bubble, the reading sign and the toast. A fruit in the air or in the
 ##   hand is lifted over the front layer.
 ## Spec: docs/superpowers/specs/2026-09-27-balance-seesaw-design.md.
+##
+## **Sunset** (Hard and Insane, spec 2026-09-29-balance-sunset-design.md):
+## every move sinks the sun a step; when it is down the fruit nod off and
+## the card offers One more hour (a video, once) or Show the answer, which
+## ends the day unsolved. **Insane's bales are springs**: a beam that
+## bottoms out bounces every loose fruit on its low side home, so the glass
+## is the only safe window to weigh in.
 
 const Gen = preload("res://puzzles/balance_gen.gd")
 const State = preload("res://puzzles/balance_state.gd")
@@ -45,6 +52,11 @@ const Fruit = preload("res://ui/faces/fruit.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Rewards = preload("res://arcade/rewards.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const OUT_OF_SUN := "res://ui/hud/out_of_rows.gd"
+## The sunset card's words (ui/hud/out_of_rows.gd, Code Break's card).
+const OUT_WORDS := {"title": "BAL_OUT_TITLE", "body": "BAL_OUT_BODY", "body_rest": "BAL_OUT_BODY_REST",
+	"more": "BAL_ONE_HOUR", "show": "BAL_SHOW_ANSWER", "placement": "hour"}
 
 # --- layout, in the board card's pixels ---
 const PAD := 30.0
@@ -91,7 +103,8 @@ const TAP_PX := 16.0
 const TAP_TIME := 0.3
 const GLOW_TIME := 0.8
 const WIN_HOLD := 2.8
-const HINTS := 3
+## Hints per band: Easy, Medium, Hard, Insane.
+const HINTS_BY_BAND := [3, 3, 1, 0]
 const TOAST_HOLD := 2.8
 const TOAST_H := 84.0
 const TOAST_PAD := 80.0
@@ -115,6 +128,42 @@ const RAINBOW_TIME := 1.4
 const WORDS := ["BAL_W_CLOSER", "BAL_W_NICE", "BAL_W_GREAT", "BAL_W_SUPERB"]
 const RAINBOW := [Color("f4a7a0"), Color("f7c98b"), Color("f7e39c"), Color("a8d8a0"), Color("9cc9ec"), Color("b9a6e0")]
 const SUN_R := 0.42
+
+# --- the sunset pass (2026-09-29) ---
+## How fast the drawn sun follows the day, and the pill that counts it.
+const SUN_EASE := 2.6
+const PILL_W := 132.0
+const PILL_H := 64.0
+const PILL_FONT := 38
+## From this many moves left the pill warms and the toast says so.
+const SUN_LOW := 3
+## The card waits for the sunset to be seen.
+const CARD_AFTER := 1.8
+## A springy bale's bounce: how high and how long the fruit fly, and how
+## long they see stars in the basket after.
+const BOING_HIGH := 2.3
+const BOING_LONG := 1.7
+const BOING_TIME := 0.7
+const DIZZY_TIME := 2.6
+## A fruit let go at this speed (cups a second) from this far away (cups)
+## is a toss; landing in its cup earns sunglasses.
+const TOSS_V := 3.2
+const TOSS_FAR := 1.6
+const GLASSES_HOLD := 1.7
+## The solve: hats pop from the middle out, the stamp drops on the basket,
+## and weight tags swing down under the plank.
+const HAT_AT := 0.9
+const HAT_STAGGER := 0.07
+const STAMP_AT := 1.5
+const STAMP_R := 0.62
+const STAMP_DROP := 0.28
+const STAMP_FROM := 2.4
+const STAMP_TILT := -0.16
+const TAGS_AT := 1.1
+const TAG_STAGGER := 0.08
+const TAG_DROP := 0.28
+## Easy/Medium's stamp word by moves beyond one per loose fruit.
+const STAMP_STEPS := [0, 3, 7, 12]
 
 var state: State = State.new()
 var sim: Sim = Sim.new()
@@ -194,17 +243,74 @@ var _hint_f := -1
 var _hint_until := -1.0
 ## Things to do later, on the board's own clock: [when, Callable].
 var _later: Array = []
+## The sunset: out of moves, the card over the host, the drawn sun's
+## day (0 morning .. 1 set), and when night fell (for the stars).
+## The host's Back ends a board that says this unsolved: true from the step
+## that spent the last of the sun (the fruit may still be flying and the
+## card not up yet), not only once the card is.
+var out_of_hearts: bool:
+	get:
+		return _out_card or (state.out_of_sun() and not state.is_solved() and not _done)
+	set(v):
+		_out_card = v
+## The sunset has been run (night, sleepy fruit, the card).
+var _out_card := false
+var _card: Control
+var _sun_day := 0.0
+var _sun_pop_at := -100.0
+var _night_at := -1.0
+var _night := 0.0
+var _dusk_mesh: ArrayMesh
+var _stars_mesh: ArrayMesh
+var _stars_slot := -1
+var _pill_mesh: ArrayMesh
+## The day ended by Show the answer.
+var _shown_answer := false
+## Insane's bales: when each side last bounced (-1 left, +1 right).
+var _boing_l := -100.0
+var _boing_r := -100.0
+var _bale_mesh: ArrayMesh
+var _dizzy_until: Array[float] = []
+## Glances: where each face looks until when.
+var _look_dir: Array[Vector2] = []
+var _look_until: Array[float] = []
+## Tosses: the fruit let go as a toss and not landed yet, and the run.
+var _tossed: Array[bool] = []
+var _toss_run := 0
+var _glasses_tw: Array = []
+## The cup a held fruit would drop into, and its glow's level.
+var _aim_x := 0
+var _aim_a := 0.0
+var _aim_mesh: ArrayMesh
+## A tap on the sun: it giggles.
+var _giggle_at := -100.0
+## Every move this board, whatever Reset did to `moves`.
+var _all_moves := 0
+## The solve's weight tags under the plank, and the stamp on the basket.
+var _tags_at := -1.0
+var _tag_mesh: ArrayMesh
+var _stamp: Control
+var _party := false
 
 func puzzle_id() -> String: return "balance"
 func title() -> String: return "Balance"
 
 func rules() -> String:
-	return tr("BAL_RULES")
+	var out := tr("BAL_RULES")
+	if _difficulty >= 2:
+		out += "\n\n" + tr("BAL_RULES_SUN")
+	if _difficulty >= 3:
+		out += "\n\n" + tr("BAL_RULES_BOING")
+	return out
 
-## Undo and Hint (no Hint on Insane, where hints_left() is 0); Reset is the
-## host's. No Check: the beam is its own.
+## Undo and Hint (Hard has one hint); Insane has neither -- a bounce can
+## not be taken back and there is nothing to ask. Reset is the host's. No
+## Check: the beam is its own.
 func capabilities() -> Array[String]:
 	if _difficulty >= 3:
+		return []
+	# no bulb once the sun is down: a video hint then would be for nothing
+	if _out_card or state.out_of_sun():
 		return ["undo"]
 	return ["undo", "hint"]
 
@@ -258,6 +364,26 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_hint_f = -1
 	if _rw != null:
 		_rw.clear()
+	_close_card()
+	out_of_hearts = false
+	_sun_day = 0.0
+	_night_at = -1.0
+	_shown_answer = false
+	_boing_l = -100.0
+	_boing_r = -100.0
+	_dizzy_until = []
+	_look_dir = []
+	_look_until = []
+	_tossed = []
+	_toss_run = 0
+	_glasses_tw = []
+	_aim_a = 0.0
+	_all_moves = 0
+	_tags_at = -1.0
+	_party = false
+	if is_instance_valid(_stamp):
+		_stamp.queue_free()
+	_stamp = null
 	for f in state.fruit.size():
 		var face := Fruit.make(state.fruit[f], 100.0, Vector2.ZERO)
 		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -269,6 +395,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_squash_at.append(-100.0)
 		_stretch_at.append(-100.0)
 		_trails.append([])
+		_dizzy_until.append(-100.0)
+		_look_dir.append(Vector2.ZERO)
+		_look_until.append(-100.0)
+		_tossed.append(false)
+		_glasses_tw.append(null)
 	_held = -1
 	_solved_at = -1.0
 	_level_at = -100.0
@@ -278,7 +409,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	fx.cue("enter")
-	_tell("BAL_TIP_DRAG")
+	_tell("BAL_TIP_BOING" if state.boing else ("BAL_TIP_SUN" if state.has_sunset() else "BAL_TIP_DRAG"))
 
 ## Pinned fruit drop into their cups one after another -- the beam catching
 ## each one is the first thing on the screen, and the first lesson -- while
@@ -382,6 +513,12 @@ func _layout() -> void:
 	_cloud_meshes = []
 	_rainbow_mesh = null
 	_plank_gold = null
+	_dusk_mesh = null
+	_pill_mesh = null
+	_bale_mesh = null
+	_aim_mesh = null
+	_tag_mesh = null
+	_place_stamp()
 	_place_faces()
 	_redraw()
 
@@ -438,8 +575,29 @@ func _place_faces() -> void:
 		face.rotation = rot
 		if face.scale != Vector2.ZERO and not _popping(face):
 			face.scale = sc
+		if not Motion.reduce and t < _dizzy_until[f] and mode == Sim.BASKET:
+			# seeing stars after a bale's bounce: a slow woozy sway
+			var d := _dizzy_until[f] - t
+			face.rotation += sin(t * 7.0 + f) * 0.14 * minf(1.0, d)
 		face.z_index = 2 if (f == _held or mode == Sim.AIR or mode == Sim.GROUND or mode == Sim.ARC) else 0
-		face.expression = _mood(f, mode)
+		var mood := _mood(f, mode)
+		if face.expression != mood:
+			face.expression = mood
+		var look := _look_for(f, mode, pos, t)
+		if face.look != look:
+			face.look = look
+
+## Where a face looks: basket fruit follow a fruit in the hand; a fruit on
+## the plank glances at one that just landed by it; else straight ahead.
+func _look_for(f: int, mode: int, pos: Vector2, t: float) -> Vector2:
+	if Motion.reduce or _solved_at >= 0.0 or _out_card:
+		return Vector2.ZERO
+	if _held >= 0 and f != _held and mode == Sim.BASKET:
+		var d: Vector2 = sim.position(_held) - pos
+		return d.normalized() if d.length() > sim.r else Vector2.ZERO
+	if t < _look_until[f]:
+		return _look_dir[f]
+	return Vector2.ZERO
 
 ## How far below its centre a face's drawing reaches, cached per kind.
 var _drawn := {}
@@ -458,6 +616,12 @@ func t_since_open() -> float:
 func _mood(f: int, mode: int) -> int:
 	if _solved_at >= 0.0:
 		return Face.Expr.JOY
+	if _shown_answer:
+		return Face.Expr.HAPPY
+	if _out_card:
+		return Face.Expr.SLEEPY
+	if _now() < _dizzy_until[f]:
+		return Face.Expr.PUZZLED
 	if f == _held:
 		return Face.Expr.JOY
 	match mode:
@@ -496,6 +660,13 @@ func _process(delta: float) -> void:
 	_run_later(t)
 	_step_sign(delta)
 	_step_trails(t)
+	var day := _day_target()
+	var day_was := _sun_day
+	_sun_day = day if Motion.reduce else lerpf(_sun_day, day, 1.0 - exp(-delta * SUN_EASE))
+	var aim_was := _aim_a
+	_step_aim(delta)
+	var night_to := 1.0 if (_out_card or _shown_answer) else 0.0
+	_night = night_to if Motion.reduce else move_toward(_night, night_to, delta / 1.6)
 	_rw.bounds = Rect2(Vector2.ZERO, size)
 	_rw.step(delta)
 	if not Motion.reduce:
@@ -503,13 +674,46 @@ func _process(delta: float) -> void:
 		_air.queue_redraw()
 	var busy := not sim.calm() or _held >= 0 or absf(_bubble_x - was) > 0.001 or t - _level_at < GLOW_TIME \
 		or (_solved_at >= 0.0 and t - _solved_at < 3.0) or t - _opened < 1.5 or _squashing(t) or t < _fx_until \
-		or absf(_sign_av) > 0.002 or absf(_sign_a - sim.a * 0.5) > 0.002
+		or absf(_sign_av) > 0.002 or absf(_sign_a - sim.a * 0.5) > 0.002 \
+		or (_night > 0.0 and _night < 1.0) or absf(_sun_day - day_was) > 0.0005 or absf(_aim_a - aim_was) > 0.002 or _dizzy(t) \
+		or (_tags_at >= 0.0 and t - _tags_at < 3.0) \
+		or (state.has_sunset() and state.sun_left() <= SUN_LOW and not _out_card and not _done)
 	if busy or _moving:
 		_place_faces()
 		_redraw()
+		if Motion.reduce:
+			# the sky and the air only redraw on their own when things move;
+			# still, a step of the sun or nightfall has to show
+			_sky.queue_redraw()
+			_air.queue_redraw()
 	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
 		_front.queue_redraw()
 	_moving = busy
+
+## How far the day has gone: 0 all morning, 1 the sun down. Easy and
+## Medium never see an evening.
+func _day_target() -> float:
+	if not state.has_sunset():
+		return 0.0
+	if state.out_of_sun() and not state.is_solved():
+		return 1.0
+	return clampf(float(state.spent) / float(state.budget), 0.0, 1.0) * 0.92
+
+func _dizzy(t: float) -> bool:
+	for u in _dizzy_until:
+		if t < u:
+			return true
+	return false
+
+## The cup under a held fruit glows while it would drop there.
+func _step_aim(delta: float) -> void:
+	var want := 0.0
+	if _held >= 0:
+		var x := _aim(_held, sim.position(_held))
+		if x != State.BASKET:
+			_aim_x = x
+			want = 1.0
+	_aim_a = want if Motion.reduce else move_toward(_aim_a, want, delta * 6.0)
 
 func _squashing(t: float) -> bool:
 	for at in _squash_at:
@@ -576,6 +780,10 @@ func _after_physics() -> void:
 				fx.cue("land", lerpf(1.2, 0.78, clampf((w - 1.0) / 11.0, 0.0, 1.0)),
 					lerpf(-12.0, 0.0, clampf(speed / (_cup * 10.0), 0.0, 1.0)))
 				_landed(f, clampf(speed / (_cup * 8.0), 0.3, 1.0))
+				_glance_at(f, t)
+				if _tossed[f]:
+					_tossed[f] = false
+					_nice_toss(f)
 			"bump":
 				_squash_at[int(e.f)] = t
 			"seat":
@@ -592,6 +800,7 @@ func _after_physics() -> void:
 					fx.puff(sim.position(int(e.f)) + Vector2(0.0, sim.r), Pal.LEAF, 4)
 			"home":
 				_squash_at[int(e.f)] = t
+				_tossed[int(e.f)] = false
 				fx.cue("step", 0.85)
 	sim.events.clear()
 	var calm: bool = sim.calm() and _held < 0
@@ -600,6 +809,11 @@ func _after_physics() -> void:
 	elif calm and not _done and is_solved():
 		# solved without the beam ever being seen to move (a snap)
 		check_solved()
+	elif calm and not _done and state.boing and _bale_hit():
+		# a snapped board that ended on a bale (a harness) still bounces
+		_boing()
+	if not _done and not _out_card and state.out_of_sun() and sim.calm() and _held < 0 and not is_solved():
+		_run_out()
 	_was_calm = calm
 
 ## A fruit touching down on the plank: dust and a few leaves off it, and
@@ -617,6 +831,87 @@ func _landed(f: int, k: float) -> void:
 	_rw.spray(foot, Pal.FLOWER, int(1 + 2 * k), 360.0 * k + 120.0, "confetti", 0.55)
 	_rw.spray(foot, Color("fffaf0"), 2, 300.0, "spark", 0.6)
 
+## The fruit on the plank near one that just landed turn to look at it.
+func _glance_at(f: int, t: float) -> void:
+	var at: Vector2 = sim.position(f)
+	for o in state.fruit.size():
+		if o == f or int(sim.bodies[o].mode) != Sim.PLANK:
+			continue
+		var d: Vector2 = at - sim.position(o)
+		if d.length() < _cup * 3.2:
+			_look_dir[o] = d.normalized()
+			_look_until[o] = t + 0.9
+	_busy_for(1.0)
+
+## A fruit tossed from afar into its cup: sunglasses, and a word -- a
+## trick shot on the third in a row.
+func _nice_toss(f: int) -> void:
+	_toss_run += 1
+	var trick := _toss_run >= 3
+	fx.cue("toss", 1.0 + 0.06 * mini(_toss_run - 1, 4))
+	var at: Vector2 = sim.position(f) + Vector2(0.0, -sim.r * 2.2)
+	_rw.sticker(tr("BAL_W_TRICK" if trick else "BAL_W_TOSS"), at, 40 if trick else 34, 1.1, trick, Pal.SUN if not trick else Color.WHITE, trick, "toss", 18.0)
+	_rw.spray(sim.position(f), Pal.SUN, 4 if not trick else 9, 420.0, "star", 0.7)
+	if trick:
+		_toss_run = 0
+		_sun_kick_at = _now()
+	if Motion.reduce:
+		return
+	var face: Control = _faces[f]
+	Motion.stop(_glasses_tw[f])
+	var tw := face.create_tween()
+	tw.tween_property(face, "glasses", 1.0, 0.22).from(0.0).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(GLASSES_HOLD)
+	tw.tween_property(face, "glasses", 0.0, 0.3)
+	_glasses_tw[f] = tw
+
+## The beam lies on a bale (reads past the glass) with something loose on
+## its low side: Insane's springy bale is about to bounce it.
+func _bale_hit() -> bool:
+	var tq := state.torque()
+	if absi(tq) <= Gen.GLASS:
+		return false
+	for f in state.fruit.size():
+		if state.loose(f) and state.at[f] != State.BASKET and state.at[f] * tq > 0:
+			return true
+	return false
+
+## Insane: the bale under the low end springs, and every loose fruit on
+## that side goes flying head over heels home to the basket, seeing stars.
+func _boing() -> void:
+	var side := signf(state.torque())
+	var gone := state.tumble()
+	if gone.is_empty():
+		return
+	var t := _now()
+	if side < 0.0:
+		_boing_l = t
+	else:
+		_boing_r = t
+	_last_abs = -1
+	_closer = 0
+	_toss_run = 0
+	fx.cue("boing")
+	var k := 0
+	for f in gone:
+		if Motion.reduce:
+			sim.to_basket_now(f)
+		else:
+			sim.hop(f, 0, k * 0.06, BOING_HIGH, -side * (1.0 + k % 2), BOING_LONG)
+		_dizzy_until[f] = t + Sim.ARC_TIME * BOING_LONG + DIZZY_TIME
+		k += 1
+	if Motion.reduce:
+		sim.snap()
+	var foot := _bale_foot(side) + Vector2(0.0, -_cup * 1.2)
+	_rw.sticker(tr("BAL_W_BOING"), foot + Vector2(-side * _cup * 1.7, -_cup * 1.4), 58, 1.1, true, Color.WHITE, false, "boing", 20.0)
+	if not Motion.reduce:
+		_rw.spray(foot, Pal.STRAW, 10, 520.0, "confetti", 0.9)
+		_rw.spray(foot, Pal.STRAW.lerp(Pal.PAPER, 0.4), 6, 380.0, "confetti", 0.7)
+		fx.puff(_bale_foot(side) + Vector2(0.0, -_cup * 0.4), Pal.STRAW, 6)
+	_tell("BAL_BOING_SAID")
+	_busy_for(Sim.ARC_TIME * BOING_LONG + DIZZY_TIME)
+	_moving = true
+
 ## The beam has come to rest: the level moment, the solve, or a tock -- and
 ## a move that brought it nearer level is cheered, louder each time in a row.
 func _on_rest() -> void:
@@ -625,6 +920,9 @@ func _on_rest() -> void:
 	var level: bool = state.torque() == 0 and state.in_basket() < state.fruit.size()
 	if is_solved():
 		check_solved()
+		return
+	if state.boing and _bale_hit():
+		_boing()
 		return
 	var on := state.fruit.size() - state.in_basket()
 	var off := absi(state.torque())
@@ -712,6 +1010,13 @@ func _draw() -> void:
 		_live = _build_live()
 	var shown: Array = [_still, _keel, _plank]
 	draw_mesh(_still, null)
+	if _bale_mesh == null:
+		_bale_mesh = _build_bale()
+	if _bale_mesh != null:
+		for side: float in [-1.0, 1.0]:
+			var sy := _bale_scale(_boing_l if side < 0.0 else _boing_r)
+			draw_mesh(_bale_mesh, null, Transform2D(0.0, Vector2(2.0 - sy, sy), 0.0, _bale_foot(side)))
+		shown.append(_bale_mesh)
 	draw_mesh(_keel, null, _plank_xf())
 	if _live != null:
 		draw_mesh(_live, null)
@@ -742,6 +1047,16 @@ func _draw_front() -> void:
 		_gold_pin = _build_pin(Pal.SUN, Pal.SUN_DEEP)
 	var shown: Array = [_cups_front, _basket_front, _bubble, _glow, _pin, _gold_pin]
 	var xf := _plank_xf()
+	if _aim_a > 0.0:
+		if _aim_mesh == null:
+			var ab := Face.Builder.new()
+			Scenery.soft_disc(ab, Vector2.ZERO, sim.r * 1.5, sim.r * 0.9, Color(Pal.SUN, 0.5))
+			ab.stroke(Face.Builder.ring(Vector2.ZERO, sim.r * 0.95, sim.r * 0.4), 4.0, Color(Pal.PAPER, 0.9), true)
+			_aim_mesh = ab.mesh()
+		var pulse := 1.0 if Motion.reduce else 1.0 + 0.07 * sin(t * 9.0)
+		_front.draw_mesh(_aim_mesh, null, xf * Transform2D(0.0, Vector2.ONE * pulse, 0.0, Vector2(_aim_x * _cup, -sim.top - sim.r * 0.15)),
+			Color(1, 1, 1, _aim_a))
+		shown.append(_aim_mesh)
 	_front.draw_mesh(_cups_front, null, xf)
 	_front.draw_mesh(_basket_front, null)
 	# the spirit level's bubble, and its ring lit on a level
@@ -768,6 +1083,8 @@ func _draw_front() -> void:
 			var ang: float = _faces[f].rotation
 			var head := at + Vector2(0.0, -sim.r * 1.02).rotated(ang)
 			_front.draw_mesh(_gold_pin if state.hinted[f] else _pin, null, Transform2D(ang, head))
+	_draw_tags(t, shown)
+	_draw_pill(t, shown)
 	_draw_sign(t, shown)
 	_draw_toast(t, shown)
 	_front_shown = shown
@@ -814,6 +1131,24 @@ func _draw_sky() -> void:
 			_cloud_meshes.append(cb.mesh())
 	_sky.draw_mesh(_sky_mesh, null)
 	shown.append(_sky_mesh)
+	# evening: a warm wash from the horizon up as the sun goes, deeper at
+	# night, and the stars
+	var dusk := maxf(smoothstep(0.4, 1.0, _sun_day) * 0.55, _night * 0.8)
+	if dusk > 0.0:
+		if _dusk_mesh == null:
+			var db := Face.Builder.new()
+			_grad(db, Rect2(0.0, 0.0, w, _ground + 4.0), Color("6f63a8"), Color("f3a86b"))
+			_dusk_mesh = db.mesh()
+		_sky.draw_mesh(_dusk_mesh, null, Transform2D.IDENTITY, Color(1, 1, 1, dusk))
+		shown.append(_dusk_mesh)
+	if _night > 0.0:
+		# the twinkle is slow: a new mesh ten times a second is plenty
+		var slot := int(t * 10.0)
+		if _stars_mesh == null or slot != _stars_slot or _night < 1.0:
+			_stars_mesh = _build_stars(t, _night)
+			_stars_slot = slot
+		_sky.draw_mesh(_stars_mesh, null)
+		shown.append(_stars_mesh)
 	var calm := Motion.reduce
 	var tt := 0.0 if calm else t
 	# the rainbow, behind the sun and the clouds and under the hills
@@ -827,8 +1162,10 @@ func _draw_sky() -> void:
 	var sun := _sun_at()
 	var kick := 1.0 if calm else Motion.bump_scale(t - _sun_kick_at, 0.3, 0.5)
 	var big := 1.25 if _solved_at >= 0.0 else 1.0
-	_sky.draw_mesh(_rays_mesh, null, Transform2D(tt * 0.25 + 2.0 * maxf(0.0, 0.6 - (t - _sun_kick_at)), Vector2.ONE * kick * big, 0.0, sun))
-	_sky.draw_mesh(_sun_mesh, null, Transform2D(0.0, Vector2.ONE * (1.0 + (kick - 1.0) * 0.5), 0.0, sun))
+	var tint := _sun_tint()
+	var giggle := 0.0 if calm else sin((t - _giggle_at) * 30.0) * 0.12 * maxf(0.0, 1.0 - (t - _giggle_at) / 0.7)
+	_sky.draw_mesh(_rays_mesh, null, Transform2D(tt * 0.25 + 2.0 * maxf(0.0, 0.6 - (t - _sun_kick_at)), Vector2.ONE * kick * big, 0.0, sun), tint)
+	_sky.draw_mesh(_sun_mesh, null, Transform2D(giggle, Vector2.ONE * (1.0 + (kick - 1.0) * 0.5), 0.0, sun), tint)
 	shown.append_array([_rays_mesh, _sun_mesh])
 	var clouds := [Vector2(w * 0.8, SIGN_Y + SIGN_H * 0.9), Vector2(w * 0.3, SIGN_Y + SIGN_H + _cup * 1.35)]
 	for i in _cloud_meshes.size():
@@ -840,8 +1177,35 @@ func _draw_sky() -> void:
 	shown.append(_bunting_mesh)
 	_sky_shown = shown
 
+## The sun: high in the corner all morning; on Hard and Insane it sinks a
+## step a move, down behind the far hill at sunset.
 func _sun_at() -> Vector2:
-	return Vector2(size.x * 0.13, SIGN_Y + _cup * 0.2)
+	var hi := Vector2(size.x * 0.13, SIGN_Y + _cup * 0.2)
+	# fully behind the far hill (its top stands ~1.03 cups over the grass)
+	var lo := Vector2(size.x * 0.11, _ground - _cup * 1.03 + _cup * SUN_R * 1.4)
+	# the day walks it down to sitting on the hill by the last move (0.92);
+	# the sunset itself is the last dip
+	var d := _sun_day
+	var k := d / 0.92 * 0.74 if d <= 0.92 else lerpf(0.74, 1.0, (d - 0.92) / 0.08)
+	return hi.lerp(lo, k)
+
+## The sun warms toward orange as it goes down.
+func _sun_tint() -> Color:
+	return Color.WHITE.lerp(Color(1.0, 0.72, 0.55), smoothstep(0.35, 1.0, _sun_day))
+
+## A handful of twinkling stars in the evening sky, faded in by `k`.
+func _build_stars(t: float, k: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var spots := [Vector2(0.08, 0.3), Vector2(0.22, 0.12), Vector2(0.36, 0.42), Vector2(0.62, 0.36), Vector2(0.72, 0.1),
+		Vector2(0.9, 0.28), Vector2(0.52, 0.62), Vector2(0.14, 0.7), Vector2(0.84, 0.66), Vector2(0.3, 0.86), Vector2(0.94, 0.9)]
+	var top := SIGN_Y
+	var bottom := _ground - _cup * 1.4
+	for i in spots.size():
+		var sp: Vector2 = spots[i]
+		var at := Vector2(size.x * sp.x, lerpf(top, bottom, sp.y))
+		var tw := 0.6 + 0.4 * sin((0.0 if Motion.reduce else t) * (1.7 + 0.37 * i) + i * 1.9)
+		Rewards.star(b, at, _cup * (0.07 + 0.03 * (i % 3)) * (0.8 + 0.2 * tw), Color(Color("fff6d8"), k * tw))
+	return b.mesh()
 
 func _build_sun() -> ArrayMesh:
 	var b := Face.Builder.new()
@@ -930,6 +1294,24 @@ func _draw_air() -> void:
 			var d := sim.r * 0.13
 			b.polygon(PackedVector2Array([at + Vector2(0.0, -d * 2.0), at + Vector2(d, 0.0), at + Vector2(0.0, d), at + Vector2(-d, 0.0)]), Color(Pal.DEW.lerp(Pal.WATER, 0.3), 0.85 * a))
 			b.disc(at + Vector2(0.0, d * 0.1), d, Color(Pal.DEW.lerp(Pal.WATER, 0.3), 0.85 * a))
+	var now := _now()
+	for f in state.fruit.size():
+		var p: Vector2 = sim.position(f)
+		if now < _dizzy_until[f] and int(sim.bodies[f].mode) == Sim.BASKET:
+			# seeing stars: three circling over its head
+			var fade := clampf(_dizzy_until[f] - now, 0.0, 1.0)
+			for k in 3:
+				var a := t * 5.0 + TAU * k / 3.0 + f
+				var at := p + Vector2(cos(a) * sim.r * 0.75, -sim.r * 1.15 + sin(a) * sim.r * 0.22)
+				Rewards.star(b, at, sim.r * 0.16, Color(Pal.SUN, fade), a)
+		elif _out_card and not _shown_answer:
+			# nodded off: a z floats up off every fruit, now and then
+			var ph := fmod(t * 0.55 + f * 0.29, 1.0)
+			var zr := sim.r * (0.14 + 0.12 * ph)
+			var at := p + Vector2(sim.r * (0.6 + 0.5 * ph), -sim.r * (0.8 + 1.4 * ph))
+			var za := sin(PI * ph) * 0.9
+			b.stroke(PackedVector2Array([at + Vector2(-zr, -zr), at + Vector2(zr, -zr), at + Vector2(-zr, zr), at + Vector2(zr, zr)]),
+				maxf(2.5, zr * 0.35), Color(Pal.PAPER, za))
 	for i in 2:
 		var home := Vector2(size.x * (0.22 if i == 0 else 0.8), _ground + (_basket.position.y - _ground) * 0.35 - _cup * (0.6 + 0.8 * i))
 		var p := home + Vector2(sin(t * 0.43 + i * 2.1) * _cup * 1.2, sin(t * 0.71 + i) * _cup * 0.55 + sin(t * 2.3 + i) * _cup * 0.1)
@@ -972,21 +1354,10 @@ func _build_still() -> ArrayMesh:
 	b.fan(Face.Builder.round_rect(Vector2(0.0, _ground - 3.0), Vector2(w, 7.0), 3.0), Pal.LAWN_DEEP.lerp(Pal.LAWN, 0.4))
 	# the plank's shadow on the grass
 	Scenery.soft_disc(b, Vector2(_pivot.x, _ground + _cup * 0.06), _half * 0.95, _cup * 0.2, Color(Pal.TEXT, 0.12))
-	# bales under the ends: the stops the plank bottoms out on
+	# the bales' shadows; the bales themselves are _build_bale, drawn on
+	# their own so Insane's springy ones can bounce
 	for side: float in [-1.0, 1.0]:
-		var u := _half - _cup * 0.35
-		var bottom := _pivot.y + u * sin(Sim.A_MAX) + sim.top * cos(Sim.A_MAX)
-		var cx := _pivot.x + side * u * cos(Sim.A_MAX)
-		var bw := _cup * 0.95
-		var top := bottom + 2.0
-		var h := _ground + _cup * 0.12 - top
-		if h > 8.0:
-			Scenery.soft_disc(b, Vector2(cx, _ground + _cup * 0.1), bw * 0.7, _cup * 0.12, Color(Pal.TEXT, 0.14))
-			b.fan(Face.Builder.round_rect(Vector2(cx - bw * 0.5, top), Vector2(bw, h), _cup * 0.14), Pal.STRAW)
-			b.fan(Face.Builder.round_rect(Vector2(cx - bw * 0.5, top), Vector2(bw, h * 0.3), _cup * 0.12), Pal.STRAW.lerp(Pal.PAPER, 0.35))
-			for k in 2:
-				var sx := cx - bw * 0.22 + k * bw * 0.44
-				b.fan(Face.Builder.round_rect(Vector2(sx - 3.0, top), Vector2(6.0, h), 3.0), Pal.STRAP)
+		Scenery.soft_disc(b, Vector2(_bale_x(side), _ground + _cup * 0.1), _cup * 0.95 * 0.7, _cup * 0.12, Color(Pal.TEXT, 0.14))
 	# the trestle: two splayed legs, a cross bar, feet in the grass
 	var hub := _pivot
 	for side: float in [-1.0, 1.0]:
@@ -1023,6 +1394,50 @@ func _build_still() -> ArrayMesh:
 	var inner := Rect2(_basket.position + Vector2(_cup * 0.1, 0.0), Vector2(_basket.size.x - _cup * 0.2, _cup * 0.5))
 	b.ellipse(inner.get_center(), inner.size.x * 0.5, inner.size.y * 0.5, Pal.ACORN_DEEP.lerp(Pal.WOOD_DEEP, 0.4))
 	return b.mesh()
+
+## Where a bale stands: its centre's x, and its foot on the grass.
+func _bale_x(side: float) -> float:
+	return _pivot.x + side * (_half - _cup * 0.35) * cos(Sim.A_MAX)
+
+func _bale_foot(side: float) -> Vector2:
+	return Vector2(_bale_x(side), _ground + _cup * 0.12)
+
+## A bale under an end of the plank, the stop it bottoms out on, about the
+## middle of its foot. On Insane a coil spring sits in its top: those are
+## the bales that bounce.
+func _build_bale() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var u := _half - _cup * 0.35
+	var top := _pivot.y + u * sin(Sim.A_MAX) + sim.top * cos(Sim.A_MAX) + 2.0
+	var h := _ground + _cup * 0.12 - top
+	if h <= 8.0:
+		return null
+	var bw := _cup * 0.95
+	b.fan(Face.Builder.round_rect(Vector2(-bw * 0.5, -h), Vector2(bw, h), _cup * 0.14), Pal.STRAW)
+	b.fan(Face.Builder.round_rect(Vector2(-bw * 0.5, -h), Vector2(bw, h * 0.3), _cup * 0.12), Pal.STRAW.lerp(Pal.PAPER, 0.35))
+	for k in 2:
+		var sx := -bw * 0.22 + k * bw * 0.44
+		b.fan(Face.Builder.round_rect(Vector2(sx - 3.0, -h), Vector2(6.0, h), 3.0), Pal.STRAP)
+	if state.boing:
+		# a red coil across the bale's face, and a cap on it: this bale bounces
+		var y0 := -h + h * 0.36
+		var y1 := -h * 0.12
+		var n := 5
+		var pts := PackedVector2Array()
+		for i in n * 2 + 1:
+			var yy := lerpf(y0, y1, float(i) / (n * 2))
+			pts.append(Vector2((-1.0 if i % 2 == 0 else 1.0) * bw * 0.3, yy))
+		b.stroke(pts, maxf(5.0, _cup * 0.09), Pal.BERRY_DEEP)
+		b.stroke(pts, maxf(2.5, _cup * 0.04), Pal.BERRY.lerp(Pal.PAPER, 0.25))
+		b.fan(Face.Builder.round_rect(Vector2(-bw * 0.4, y0 - _cup * 0.07), Vector2(bw * 0.8, _cup * 0.09), _cup * 0.04), Pal.BRASS)
+	return b.mesh()
+
+## A bale's squash and spring after it bounced, as a vertical scale.
+func _bale_scale(at: float) -> float:
+	var u := _now() - at
+	if Motion.reduce or u < 0.0 or u > BOING_TIME:
+		return 1.0
+	return 1.0 - 0.28 * sin(u * 22.0) * exp(-u * 5.5)
 
 ## Red gingham under the basket, a little in perspective: wider at the foot.
 func _blanket(b: Face.Builder) -> void:
@@ -1284,6 +1699,79 @@ func _draw_sign(t: float, shown: Array) -> void:
 	_front.draw_circle(c + d + Vector2(0.0, -8.0) + Vector2(0.0, -7.0), 5.0, ink_icon)
 	_front.draw_set_transform_matrix(Transform2D.IDENTITY)
 
+## Hard and Insane: a paper pill in the top corner with a little sun and
+## the moves left before sunset. It pops on every move and warms when the
+## day is nearly gone.
+func _draw_pill(t: float, shown: Array) -> void:
+	if not state.has_sunset() or (is_done() and not _shown_answer):
+		return
+	if _pill_mesh == null:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(0.0, 4.0), Vector2(PILL_W, PILL_H), PILL_H * 0.5), Color(Pal.TEXT, 0.14))
+		b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(PILL_W, PILL_H), PILL_H * 0.5), Pal.PAPER)
+		var c := Vector2(PILL_H * 0.52, PILL_H * 0.5)
+		Rewards.sunrays(b, c, PILL_H * 0.2, PILL_H * 0.34, 8, 0.0, Pal.SUN)
+		b.disc(c, PILL_H * 0.2, Pal.SUN_DEEP)
+		b.disc(c + Vector2(-1.5, -1.5), PILL_H * 0.16, Pal.SUN)
+		_pill_mesh = b.mesh()
+	var left := state.sun_left()
+	var at := Vector2(size.x - PAD - PILL_W, SIGN_Y - 30.0)
+	var pop := 1.0 if Motion.reduce else Motion.bump_scale(t - _sun_pop_at, 0.22, 0.4)
+	var low := left <= SUN_LOW
+	if low and not Motion.reduce and not _out_card:
+		pop *= 1.0 + 0.04 * sin(t * 6.0)
+	var mid := Vector2(PILL_W, PILL_H) * 0.5
+	var xf := Transform2D(0.0, Vector2.ONE * pop, 0.0, at + mid) * Transform2D(0.0, -mid)
+	_front.draw_mesh(_pill_mesh, null, xf)
+	shown.append(_pill_mesh)
+	var font: Font = CozyTheme.display(700)
+	var text := str(left)
+	var tw: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, PILL_FONT).x
+	var ink := Pal.BERRY_DEEP if low else Pal.TEXT
+	_front.draw_set_transform_matrix(xf)
+	_front.draw_string(font, Vector2(PILL_H + (PILL_W - PILL_H - tw) * 0.5 - 4.0, PILL_H * 0.5 + font.get_ascent(PILL_FONT) * 0.36),
+		text, HORIZONTAL_ALIGNMENT_LEFT, -1, PILL_FONT, ink)
+	_front.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## Once the day is over -- solved or shown -- every fruit's weight swings
+## down on a paper tag under its cup, from the middle out: the reveal.
+func _draw_tags(t: float, shown: Array) -> void:
+	if _tags_at < 0.0 or t < _tags_at:
+		return
+	var string_l := _cup * 0.34
+	var tw_ := _cup * 0.5
+	var th := _cup * 0.4
+	if _tag_mesh == null:
+		var b := Face.Builder.new()
+		b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(0.0, string_l)]), 2.5, Pal.ROPE_HEMP.darkened(0.15))
+		b.fan(Face.Builder.round_rect(Vector2(-tw_ * 0.5, string_l + 3.0), Vector2(tw_, th), th * 0.25), Color(Pal.TEXT, 0.14))
+		b.fan(Face.Builder.round_rect(Vector2(-tw_ * 0.5, string_l), Vector2(tw_, th), th * 0.25), Pal.PAPER)
+		b.disc(Vector2(0.0, string_l + th * 0.16), th * 0.07, Pal.ROPE_HEMP.darkened(0.2))
+		_tag_mesh = b.mesh()
+	var font: Font = CozyTheme.display(700)
+	var fs := int(th * 0.62)
+	var xf := _plank_xf()
+	for f in state.fruit.size():
+		if int(sim.bodies[f].mode) != Sim.PLANK:
+			continue
+		var x := int(sim.bodies[f].cup)
+		var u := (t - _tags_at - Motion.stagger(absi(x), TAG_STAGGER, 1.0)) / TAG_DROP
+		if u <= 0.0:
+			continue
+		var k := 1.0 if Motion.reduce else Motion.back_out(minf(u, 1.0))
+		var anchor: Vector2 = xf * Vector2(x * _cup, sim.top * 0.6)
+		var swing := 0.0 if Motion.reduce else sin(t * 2.2 + x) * 0.07 + sin(u * 5.0) * 0.25 * exp(-u * 1.6)
+		var m := Transform2D(swing, Vector2(1.0, k), 0.0, anchor)
+		_front.draw_set_transform_matrix(Transform2D.IDENTITY)
+		_front.draw_mesh(_tag_mesh, null, m)
+		var text := str(sim.weights[f])
+		var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		_front.draw_set_transform_matrix(m)
+		_front.draw_string(font, Vector2(-w * 0.5, string_l + th * 0.62 + font.get_ascent(fs) * 0.3), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Fruit.colour(state.fruit[f]).darkened(0.35))
+	_front.draw_set_transform_matrix(Transform2D.IDENTITY)
+	shown.append(_tag_mesh)
+
 ## The toast under the sign -- Knight's `_draw_toast`.
 func _draw_toast(t: float, shown: Array) -> void:
 	if _toast == "":
@@ -1363,6 +1851,11 @@ func _fruit_at(p: Vector2) -> int:
 func _press(p: Vector2) -> void:
 	var f := _fruit_at(p)
 	if f < 0:
+		if p.distance_to(_sun_at()) < _cup * SUN_R * 1.6:
+			_giggle()
+		return
+	if state.out_of_sun():
+		_tell("BAL_SUN_SET")
 		return
 	if not state.loose(f):
 		_tell("BAL_PINNED")
@@ -1401,17 +1894,42 @@ func _release(p: Vector2) -> void:
 			# a tap on the plank: home to the basket
 			state.place(f, State.BASKET)
 			sim.hop(f, 0)
+			_toss_run = 0
+			_spend()
 			note_move()
 		_moving = true
 		return
 	var x := _aim(f, sim.position(f))
+	var v: Vector2 = sim.bodies[f].vel
+	var start: Vector2 = sim.position(f)
 	if x == State.BASKET and _basket.grow(_cup * 0.3).has_point(sim.position(f)):
 		sim.hop(f, 0, 0.0)
 	else:
 		sim.release(f, x)
+	# a toss: let go fast from well away from the cup it lands in
+	var far := x != State.BASKET and absf(start.x - (_plank_xf() * Vector2(x * _cup, 0.0)).x) > TOSS_FAR * _cup
+	var toss := far and v.length() > TOSS_V * _cup
+	_tossed[f] = false
 	if state.place(f, x):
+		_tossed[f] = toss
+		if not toss:
+			_toss_run = 0
+		_spend()
 		note_move()
 	_moving = true
+
+## The sun, tapped: it giggles, its rays spin and a few hearts float off.
+func _giggle() -> void:
+	var t := _now()
+	if t - _giggle_at < 0.5:
+		return
+	_giggle_at = t
+	_sun_kick_at = t
+	fx.cue("giggle", randf_range(0.95, 1.1))
+	if not Motion.reduce:
+		_rw.spray(_sun_at(), Pal.FLOWER, 4, 260.0, "heart", 0.8)
+		_rw.spray(_sun_at(), Pal.SUN, 3, 320.0, "star", 0.6)
+	_busy_for(0.8)
 
 ## Where a fruit let go at `p` is making for: the free cup nearest under it,
 ## or the basket when it is not over the plank.
@@ -1431,25 +1949,132 @@ func _aim(f: int, p: Vector2) -> int:
 			best_d = d
 	return best
 
+# --- the sunset (Hard and Insane) ---
+
+## A move made: counted, and on Hard and Insane a step of the sun. The
+## pill pops, and from SUN_LOW moves left the toast says the day is going.
+func _spend() -> void:
+	_all_moves += 1
+	if not state.has_sunset():
+		return
+	state.spend()
+	_sun_pop_at = _now()
+	_busy_for(0.5)
+	var left := state.sun_left()
+	if left > 0 and left <= SUN_LOW:
+		fx.cue("sun_low", 1.0 + 0.08 * (SUN_LOW - left), -4.0)
+		if left == SUN_LOW:
+			_tell("BAL_SUN_LOW")
+
+## The last move is spent and the beam has settled short of level: the sun
+## sinks behind the hill, the stars come out, the fruit nod off, and the
+## card asks.
+func _run_out() -> void:
+	out_of_hearts = true
+	_running = false
+	_held = -1
+	_night_at = _now()
+	fx.cue("sunset")
+	_tell("BAL_SUN_SET")
+	_busy_for(CARD_AFTER + 0.5)
+	_after(0.3 if Motion.reduce else CARD_AFTER, _open_card)
+	_moving = true
+
+## The card, over the whole screen: on the host so it covers the chrome, or
+## on the root when there is none (a probe).
+func _open_card() -> void:
+	if not _out_card or is_done() or is_instance_valid(_card):
+		return
+	var card: Control = load(OUT_OF_SUN).new(state.bought, OUT_WORDS)
+	_card = card
+	card.one_more_row.connect(hour_back)
+	card.show_code.connect(show_answer)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+func _close_card() -> void:
+	if is_instance_valid(_card) and not _card.is_queued_for_deletion():
+		_card.queue_free()
+	_card = null
+
+## One more hour (the card's video), once a board: the sun climbs back a
+## little, the stars go, the fruit wake.
+func hour_back() -> void:
+	if is_done() or not _out_card:
+		return
+	_close_card()
+	state.buy_hour()
+	out_of_hearts = false
+	_running = true
+	_night_at = -1.0
+	fx.cue("hour_back")
+	_sun_kick_at = _now()
+	_rw.sticker(tr("BAL_W_HOUR"), _word_at(), 64, 1.4, true, Color.WHITE, true, "hour", 24.0)
+	if not Motion.reduce:
+		_rw.spray(_sun_at(), Pal.SUN, 10, 520.0, "star", 0.9)
+	_busy_for(1.5)
+	_moving = true
+	moved.emit()
+
+## Show the answer: every loose fruit hops to its answer cup, the weights
+## swing down on tags under the plank, and the day ends unsolved.
+func show_answer() -> void:
+	if is_done():
+		return
+	_close_card()
+	out_of_hearts = false
+	_shown_answer = true
+	var before := state.at.duplicate()
+	state.show_answer()
+	var k := 0
+	for f in state.fruit.size():
+		if state.loose(f) and int(before[f]) != state.at[f]:
+			_hop(f, state.at[f], Motion.stagger(k, 0.12, 1.2))
+			k += 1
+	fx.cue("reveal")
+	_tell("BAL_SHOWN")
+	_tags_at = _now() + (0.0 if Motion.reduce else 0.9 + k * 0.12)
+	_busy_for(3.5)
+	_moving = true
+	# ends through finish_unsolved, so the host logs puzzle_complete
+	# {solved: false}; the check in _after_physics stays shut behind _done
+	finish_unsolved()
+
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return state.can_undo() and not is_done()
+	return state.can_undo() and not is_done() and not out_of_hearts and not state.out_of_sun()
 
-## The last move taken back: the fruit hop to where they were.
+## The last move taken back: the fruit hop to where they were. On Hard it is
+## a move like any other, so it costs the sun a step.
 func undo() -> bool:
-	if is_done():
+	if not can_undo():
 		return false
-	_held = -1
+	_drop_held()
 	var back: Array = state.undo()
 	if back.is_empty():
 		return false
 	for mv in back:
 		_hop(int(mv[0]), int(mv[1]), 0.0)
+	_toss_run = 0
+	_last_abs = -1
+	_spend()
 	fx.cue("undo")
 	_moving = true
 	moved.emit()
 	return true
+
+## A fruit in the hand when a HUD button takes over goes back where the
+## rules say it is, so nothing is left held (and the beam can come to rest).
+func _drop_held() -> void:
+	if _held < 0:
+		return
+	var f := _held
+	_held = -1
+	_hop(f, state.at[f], 0.0)
 
 func _hop(f: int, x: int, delay: float) -> void:
 	sim.hop(f, x, delay)
@@ -1457,20 +2082,24 @@ func _hop(f: int, x: int, delay: float) -> void:
 		sim.snap()
 
 func hints_left() -> int:
-	if _difficulty >= 3:
+	var budget: int = HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
+	if budget <= 0 or out_of_hearts or state.out_of_sun():
 		return 0
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, budget + hints_extra - hints_used)
 
 ## One fruit flies to its answer cup and is pinned there in gold; whatever
 ## was in that cup goes home first.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or hints_left() <= 0 or out_of_hearts or state.out_of_sun():
 		return false
-	_held = -1
+	_drop_held()
 	var m: Dictionary = state.apply_hint()
 	if m.is_empty():
 		return false
 	hints_used += 1
+	# on Hard a hint is a move too: the sun goes down a step for it, so
+	# video hints can not outlast the day
+	_spend()
 	var b: int = m.bumped
 	if b >= 0:
 		_hop(b, 0, 0.0)
@@ -1492,8 +2121,16 @@ func hint() -> bool:
 	moved.emit()
 	return true
 
+## Reset sends the loose fruit home, and costs no sun (it shows nothing new
+## and every fruit it sends home costs a move to bring back). Once the sun
+## is down or the day ended there is nothing to reset.
+func can_reset() -> bool:
+	return not (out_of_hearts or state.out_of_sun() or (is_done() and not state.is_solved()))
+
 func reset_board() -> void:
-	_held = -1
+	if not can_reset():
+		return
+	_drop_held()
 	var moved_fs := state.reset()
 	var k := 0
 	for f in moved_fs:
@@ -1503,6 +2140,7 @@ func reset_board() -> void:
 	_was_level = false
 	_last_abs = -1
 	_closer = 0
+	_toss_run = 0
 	moves = 0
 	_running = true
 	fx.cue("reset")
@@ -1515,7 +2153,111 @@ func is_solved() -> bool:
 	return state.is_solved() and sim.calm() and _held < 0
 
 func share_glyphs() -> String:
-	return "⚖️ " + tr("BAL_SHARE") % [state.fruit.size(), state.cups().size()]
+	var out := "⚖️ " + tr("BAL_SHARE") % [state.fruit.size(), state.cups().size()]
+	if state.is_solved() and not _shown_answer and stamp_key() != "":
+		var word: String = tr(stamp_key())
+		out += "\n" + (("🌙 %s · %s" % [tr("BAL_BOING_SEAL"), word]) if state.boing else ("🏅 " + word))
+	return out
+
+# --- the stamp and the party ---
+
+## The stamp's word: by moves beyond one per loose fruit (BAL_STAMP_1..5),
+## or BAL_STAMP_MORE when the day needed One more hour. A restored daily
+## reads it back from its record.
+func stamp_key() -> String:
+	if completed_record.has("stamp") and _all_moves == 0:
+		return String(completed_record.stamp)
+	if _all_moves == 0 and is_done():
+		# a daily solved before stamps: no word to give back
+		return ""
+	if state.bought:
+		return "BAL_STAMP_MORE"
+	# a hinted fruit needed no move of the player's, and a hint is worth a
+	# step on the stamp as well
+	var loose := 0
+	for f in state.fruit.size():
+		if state.loose(f):
+			loose += 1
+	var extra := _all_moves - loose - hints_used
+	for i in STAMP_STEPS.size():
+		if extra <= int(STAMP_STEPS[i]):
+			return "BAL_STAMP_%d" % (i + 1)
+	return "BAL_STAMP_5"
+
+func completion_record() -> Dictionary:
+	return {"stamp": stamp_key()} if stamp_key() != "" else {}
+
+## The seal drops onto the empty basket: gold with the word, or on Insane
+## the night-blue seal with "Boing Bales" over it. It is the result, so it
+## shows under reduce-motion too, standing still.
+func _stamp_down(quiet := false) -> void:
+	if is_instance_valid(_stamp) or not state.is_solved() or _shown_answer or stamp_key() == "":
+		return
+	var rad := STAMP_R * _cup
+	var insane := state.boing
+	var stamp := Control.new()
+	stamp.name = "Stamp"
+	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamp.z_index = 3
+	stamp.size = Vector2.ONE * rad * 2.0
+	stamp.pivot_offset = stamp.size * 0.5
+	stamp.rotation = STAMP_TILT
+	var mesh := Seal.mesh(rad, insane)
+	var word: String = tr(stamp_key())
+	var lines := [[Seal.tr_static("BAL_BOING_SEAL"), 0.24, 0.02], [word, 0.22, 0.36]] if insane \
+		else [[word, 0.28, 0.12]]
+	stamp.draw.connect(func() -> void:
+		stamp.draw_mesh(mesh, null, Transform2D(0.0, stamp.pivot_offset))
+		Seal.text(stamp, rad, lines))
+	add_child(stamp)
+	_stamp = stamp
+	_place_stamp()
+	if quiet or Motion.reduce:
+		return
+	fx.cue("stamp")
+	stamp.scale = Vector2.ONE * STAMP_FROM
+	stamp.modulate.a = 0.0
+	var tw := stamp.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(stamp, "scale", Vector2.ONE, STAMP_DROP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
+	tw.chain().tween_callback(func() -> void:
+		Motion.squash(stamp, 0.22, 0.26)
+		fx.ring(stamp.position + stamp.pivot_offset, rad * 0.9, Pal.MOON_INK if insane else Pal.SUN)
+		fx.puff(stamp.position + stamp.pivot_offset + Vector2(0.0, rad * 0.8), Pal.WHEAT, 5))
+
+## The seal sits on the basket's right, over its weave.
+func _place_stamp() -> void:
+	if not is_instance_valid(_stamp):
+		return
+	var rad := STAMP_R * _cup
+	_stamp.size = Vector2.ONE * rad * 2.0
+	_stamp.pivot_offset = _stamp.size * 0.5
+	var centre := Vector2(_basket.end.x - rad * 1.25, _basket.get_center().y + _cup * 0.1)
+	_stamp.position = centre - _stamp.pivot_offset
+	_stamp.queue_redraw()
+
+## After the hops: a party hat pops onto every fruit, from the middle out,
+## and confetti flies off the plank.
+func _party_on(quiet := false) -> void:
+	if _party or not state.is_solved():
+		return
+	_party = true
+	for f in state.fruit.size():
+		var face: Control = _faces[f]
+		face.hat_style = posmod(state.fruit[f] * 7 + f, 3)
+		if quiet or Motion.reduce:
+			face.hat = 1.0
+			continue
+		var tw := face.create_tween()
+		tw.tween_property(face, "hat", 1.0, 0.32).from(0.0) \
+			.set_delay(Motion.stagger(absi(state.at[f]), HAT_STAGGER, 0.8)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if quiet:
+		return
+	fx.cue("party")
+	if not Motion.reduce:
+		fx.confetti(_pivot + Vector2(0.0, -_cup), 44, _half * 1.6)
+		_after(0.25, fx.cue.bind("confetti"))
 
 # --- the win ---
 
@@ -1528,6 +2270,9 @@ func _on_solved() -> void:
 	_rainbow_at = _solved_at + 0.35
 	_rainbow_mesh = null
 	_busy_for(WIN_HOLD + 0.5)
+	_after(0.0 if Motion.reduce else HAT_AT, _party_on)
+	_after(0.0 if Motion.reduce else STAMP_AT, _stamp_down)
+	_tags_at = _now() + (0.0 if Motion.reduce else TAGS_AT)
 	var at := _vial_centre()
 	_rw.sticker(tr("BAL_W_BALANCED"), _word_at() + Vector2(0.0, -_cup * 0.15), 112, WIN_HOLD + 0.3, true, Color.WHITE, true, "closer")
 	if not state.hinted.has(true):
@@ -1561,7 +2306,7 @@ func flat_win() -> Dictionary:
 	return {"faces": faces, "labels": labels, "subtitle": tr("BAL_WIN")}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD + 0.6
 
 func restore_completed_board() -> void:
 	state.show_answer()
@@ -1574,6 +2319,9 @@ func restore_completed_board() -> void:
 	_rainbow_mesh = null
 	_held = -1
 	_toast = ""
+	_tags_at = _solved_at
+	_party_on(true)
+	_stamp_down(true)
 	_place_faces()
 	_redraw()
 

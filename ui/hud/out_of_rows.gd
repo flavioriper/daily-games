@@ -9,6 +9,9 @@ extends Control
 ## Binairo's out_of_hearts.gd is the pattern; the board owns what each
 ## answer does, and this only asks, once, and frees itself.
 ## Spec: docs/superpowers/specs/2026-09-29-codebreak-polish-design.md, section 1.
+##
+## Balance's sunset card is the same card in other words (`keys`, spec
+## 2026-09-29-balance-sunset-design.md): One more hour, or Show the answer.
 
 signal one_more_row
 signal show_code
@@ -16,16 +19,19 @@ signal show_code
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Motion = preload("res://core/motion.gd")
 
-## The rewarded placement the row's video goes through.
-const PLACEMENT := "row"
+## Code Break's words and placement; a board passes its own in `keys`.
+const WORDS := {"title": "CB_OUT_TITLE", "body": "CB_OUT_BODY", "body_rest": "CB_OUT_BODY_REST",
+	"more": "CB_ONE_ROW", "show": "CB_SHOW_CODE", "placement": "row"}
 
+var _keys: Dictionary = WORDS
 var _offer := false
 var _done := false
 var _watching := false
 
 ## `used`: whether this board has had its one extra row already.
-func _init(used: bool) -> void:
-	_offer = not used and Ads.can_reward(PLACEMENT)
+func _init(used: bool, keys := {}) -> void:
+	_keys = WORDS.merged(keys, true)
+	_offer = not used and Ads.can_reward(_keys.placement)
 
 func _ready() -> void:
 	name = "OutOfRows"
@@ -40,24 +46,24 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 22)
 	card.add_child(col)
-	col.add_child(Dialog.head("CB_OUT_TITLE", "help"))
+	col.add_child(Dialog.head(_keys.title, "help"))
 	var line := Label.new()
 	line.theme_type_variation = "SheetBody"
-	line.text = "CB_OUT_BODY" if _offer else "CB_OUT_BODY_REST"
+	line.text = _keys.body if _offer else _keys.body_rest
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line.custom_minimum_size.x = 720
 	col.add_child(line)
 	var first: Button
 	var second: Button = null
-	var show := Dialog.secondary("eye", tr("CB_SHOW_CODE")) if _offer else Dialog.primary("eye", tr("CB_SHOW_CODE"))
+	var show := Dialog.secondary("eye", tr(_keys.show)) if _offer else Dialog.primary("eye", tr(_keys.show))
 	show.name = "ShowCode"
 	show.pressed.connect(_answer.bind(1))
 	if _offer:
-		var more := Dialog.primary("play", tr("CB_ONE_ROW"))
+		var more := Dialog.primary("play", tr(_keys.more))
 		more.name = "OneMoreRow"
 		more.pressed.connect(_on_row)
-		Ads.offered(PLACEMENT)
+		Ads.offered(_keys.placement)
 		first = more
 		second = show
 	else:
@@ -75,7 +81,7 @@ func _on_row() -> void:
 	_watching = true
 	# The video can outlive the card, so the answer reaches it through a
 	# weakref from a static lambda, never a callback bound to a freed self.
-	Ads.show_rewarded(PLACEMENT, _reply(weakref(self)))
+	Ads.show_rewarded(_keys.placement, _reply(weakref(self)))
 
 static func _reply(me: WeakRef) -> Callable:
 	return func(earned: bool) -> void:

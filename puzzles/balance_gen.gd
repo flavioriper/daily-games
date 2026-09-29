@@ -19,12 +19,21 @@ extends RefCounted
 ## the answer's fruit are pinned at random before the greedy pins begin --
 ## the first counts on a wide board are the expensive ones, and those bands
 ## end with more pins than that anyway.
+##
+## Hard and Insane can be lost (spec 2026-09-29-balance-sunset-design.md):
+## `sun` is the day's moves beyond one per loose fruit before the sun sets,
+## `hour` what One more hour gives back. Insane's bales are springs
+## (`boing`): a beam that bottoms out bounces every loose fruit on its low
+## side home, so an Insane answer must also be placeable in some order that
+## never reads past the glass.
 const BANDS := [
 	{"kinds": 3, "fruit": 6, "reach": 3, "max_w": 5},
 	{"kinds": 4, "fruit": 8, "reach": 4, "max_w": 7},
-	{"kinds": 5, "fruit": 8, "reach": 4, "max_w": 9, "seed_pins": 1},
-	{"kinds": 5, "fruit": 9, "reach": 5, "max_w": 12, "seed_pins": 2},
+	{"kinds": 5, "fruit": 8, "reach": 4, "max_w": 9, "seed_pins": 1, "sun": 10, "hour": 4},
+	{"kinds": 5, "fruit": 9, "reach": 5, "max_w": 12, "seed_pins": 2, "sun": 8, "hour": 3, "boing": true, "min_loose": 4},
 ]
+## The most the glass reads either way; a heavier lean is the bale.
+const GLASS := 5
 const ATTEMPTS := 400
 const SCATTERS := 300
 ## The greedy pin only needs to rank candidates, so a count stops once it
@@ -90,12 +99,75 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 		if left != 1:
 			continue
 		# a board with nothing left to place is not a board
-		if pinned.count(false) < 2:
+		if pinned.count(false) < int(bd.get("min_loose", 2)):
 			continue
+		if bool(bd.get("boing", false)) and safe_order(weights, fruit, answer, pinned).is_empty():
+			# A unique board with no bale-safe order is usually one pin away
+			# from one, and a pin more never makes the answer less unique.
+			var fixed := false
+			for f in n:
+				if pinned[f] or pinned.count(false) <= int(bd.get("min_loose", 2)):
+					continue
+				pinned[f] = true
+				if not safe_order(weights, fruit, answer, pinned).is_empty():
+					fixed = true
+					break
+				pinned[f] = false
+			if not fixed:
+				continue
+		var sun: int = bd.get("sun", -1)
 		return {"weights": weights, "fruit": fruit, "answer": answer, "pinned": pinned,
-			"reach": reach, "unique": true}
+			"reach": reach, "unique": true,
+			"budget": pinned.count(false) + sun if sun >= 0 else 0,
+			"hour": int(bd.get("hour", 0)), "boing": bool(bd.get("boing", false))}
 	# unreachable in practice; a pinned-to-the-end board is still solvable
 	return {}
+
+## An order to put the loose fruit into their answer cups, one at a time
+## from an empty plank (the pinned ones already on it), such that no step
+## would bounce a placed fruit off a springy bale: after each step the beam
+## reads within GLASS, or nothing loose sits on its low side. [] if there is
+## none. `fixed` is pinned (or hinted) per fruit.
+static func safe_order(weights: Array[int], fruit: Array[int], answer: Array[int], fixed: Array[bool]) -> Array[int]:
+	var loose: Array[int] = []
+	var t0 := 0
+	for f in fruit.size():
+		if fixed[f]:
+			t0 += weights[fruit[f]] * answer[f]
+		else:
+			loose.append(f)
+	var dead := {}
+	var path: Array[int] = []
+	if _safe_walk(0, t0, loose, weights, fruit, answer, dead, path):
+		return path
+	return []
+
+static func _safe_walk(mask: int, tq: int, loose: Array[int], weights: Array[int], fruit: Array[int], answer: Array[int], dead: Dictionary, path: Array[int]) -> bool:
+	if mask == (1 << loose.size()) - 1:
+		return true
+	if dead.has(mask):
+		return false
+	for i in loose.size():
+		if mask & (1 << i):
+			continue
+		var f := loose[i]
+		var t2 := tq + weights[fruit[f]] * answer[f]
+		if absi(t2) > GLASS:
+			# a bale: safe only if no placed loose fruit is on the low side
+			var hit := false
+			var m2 := mask | (1 << i)
+			for j in loose.size():
+				if m2 & (1 << j) and answer[loose[j]] * t2 > 0:
+					hit = true
+					break
+			if hit:
+				continue
+		path.append(f)
+		if _safe_walk(mask | (1 << i), t2, loose, weights, fruit, answer, dead, path):
+			return true
+		path.pop_back()
+	dead[mask] = true
+	return false
 
 static func _weights(rng: RandomNumberGenerator, kinds: int, top: int) -> Array[int]:
 	var pool: Array = range(1, top + 1)

@@ -30,6 +30,14 @@ var reach := 3
 ## One entry per move, newest last: {"moves": [[f, from], ...]}, every fruit
 ## the move shifted and where it came from.
 var history: Array[Dictionary] = []
+## Hard and Insane: moves before the sun sets (0: no sunset, Easy and
+## Medium), moves spent against it, and whether One more hour was had.
+var budget := 0
+var spent := 0
+var hour := 0
+var bought := false
+## Insane's springy bales (tumble()).
+var boing := false
 
 func setup(out: Dictionary) -> void:
 	weights.assign(out.weights)
@@ -43,6 +51,11 @@ func setup(out: Dictionary) -> void:
 		hinted.append(false)
 		at.append(answer[f] if pinned[f] else BASKET)
 	history = []
+	budget = int(out.get("budget", 0))
+	hour = int(out.get("hour", 0))
+	boing = bool(out.get("boing", false))
+	spent = 0
+	bought = false
 
 func kinds() -> int:
 	return weights.size()
@@ -114,6 +127,64 @@ func reset() -> Array[int]:
 			moved.append(f)
 	history = []
 	return moved
+
+# --- the sun (Hard and Insane) ---
+
+func has_sunset() -> bool:
+	return budget > 0
+
+func sun_left() -> int:
+	return maxi(0, budget - spent) if budget > 0 else 999
+
+## One move's worth of the day gone. True when that was the last.
+func spend() -> bool:
+	if budget <= 0:
+		return false
+	spent += 1
+	return spent >= budget
+
+func out_of_sun() -> bool:
+	return budget > 0 and spent >= budget
+
+## One more hour: a few moves back, once.
+func buy_hour() -> void:
+	bought = true
+	budget = spent + hour
+
+# --- the springy bales (Insane) ---
+
+## When the beam reads past the glass, the bale under its low end bounces
+## every loose fruit on that side home, and the beam swings back -- maybe
+## onto the other bale. Returns the fruit bounced, in order; the move that
+## caused it keeps them in its history entry, so an undo puts them back.
+func tumble() -> Array[int]:
+	var out: Array[int] = []
+	if not boing:
+		return out
+	for _pass in 4:
+		var tq := torque()
+		if absi(tq) <= Gen.GLASS:
+			break
+		var hit: Array[int] = []
+		for f in fruit.size():
+			if loose(f) and at[f] != BASKET and at[f] * tq > 0:
+				hit.append(f)
+		if hit.is_empty():
+			break
+		for f in hit:
+			if not history.is_empty():
+				(history[-1].moves as Array).append([f, at[f]])
+			at[f] = BASKET
+			out.append(f)
+	return out
+
+## A bale-safe order for what is left to place, for harnesses: the loose
+## fruit in their answer cups one by one from the pinned and hinted alone.
+func safe_order() -> Array[int]:
+	var fixed: Array[bool] = []
+	for f in fruit.size():
+		fixed.append(not loose(f))
+	return Gen.safe_order(weights, fruit, answer, fixed)
 
 # --- help ---
 

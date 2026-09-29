@@ -96,6 +96,30 @@ BAL_FRUIT_4_ONE,one mushroom,um cogumelo,un hongo
 BAL_FRUIT_4_TWO,two mushrooms,dois cogumelos,dos hongos
 BAL_FRUIT_4_MANY,%s mushrooms,%s cogumelos,%s hongos
 BAL_NUM_3,three,três,tres
+BAL_RULES_SUN,"Hard and Insane: every move, undo and hint sinks the sun a little. Balance it before sunset.","Difícil e Insano: cada jogada, desfazer e dica baixa um pouco o sol. Equilibre antes do pôr do sol.","Difícil y Locura: cada jugada, deshacer y pista baja un poco el sol. Equilibra antes del atardecer."
+BAL_RULES_BOING,"Insane: the bales are springs. If the plank bumps down on one, every loose fruit on that side bounces back to the basket. Weigh inside the glass.","Insano: os fardos são molas. Se a tábua bater num deles, toda fruta solta daquele lado volta quicando para a cesta. Pese dentro do vidro.","Locura: las pacas son resortes. Si la tabla golpea una, toda fruta suelta de ese lado vuelve rebotando a la cesta. Pesa dentro del vidrio."
+BAL_TIP_SUN,Every move sinks the sun. Balance it before sunset!,Cada jogada baixa o sol. Equilibre antes do pôr do sol!,Cada jugada baja el sol. ¡Equilibra antes del atardecer!
+BAL_TIP_BOING,Springy bales! Bump one and that side bounces home.,"Fardos de mola! Bateu num, aquele lado volta quicando.","¡Pacas de resorte! Si golpeas una, ese lado vuelve rebotando."
+BAL_SUN_LOW,The sun is getting low...,O sol está baixando...,El sol está bajando...
+BAL_SUN_SET,The sun has set. The fruit are sleepy.,O sol se pôs. As frutas estão com sono.,Se puso el sol. Las frutas tienen sueño.
+BAL_BOING_SAID,Boing! The bale bounced them home.,Boing! O fardo mandou elas de volta.,¡Boing! La paca las mandó de vuelta.
+BAL_W_BOING,Boing!,Boing!,¡Boing!
+BAL_W_TOSS,Nice toss!,Belo arremesso!,¡Buen tiro!
+BAL_W_TRICK,Trick shot!,Que jogada!,¡Tiro de fantasía!
+BAL_W_HOUR,One more hour!,Mais uma hora!,¡Una hora más!
+BAL_OUT_TITLE,The sun has set,O sol se pôs,Se puso el sol
+BAL_OUT_BODY,"The fruit are nodding off. Watch a short video for one more hour of sun, or see how it balanced.","As frutas estão cochilando. Assista a um vídeo curto e ganhe mais uma hora de sol, ou veja como equilibrava.","Las frutas se están durmiendo. Mira un video corto para tener una hora más de sol, o mira cómo se equilibraba."
+BAL_OUT_BODY_REST,The fruit are nodding off. See how it balanced; there is a new seesaw tomorrow.,As frutas estão cochilando. Veja como equilibrava; amanhã tem outra gangorra.,Las frutas se están durmiendo. Mira cómo se equilibraba; mañana hay otro balancín.
+BAL_ONE_HOUR,One more hour,Mais uma hora,Una hora más
+BAL_SHOW_ANSWER,Show the answer,Mostrar a resposta,Mostrar la respuesta
+BAL_SHOWN,That is how it balanced. Tomorrow is a new day!,Era assim que equilibrava. Amanhã é outro dia!,Así se equilibraba. ¡Mañana es otro día!
+BAL_BOING_SEAL,Boing Bales,Fardos de mola,Pacas saltarinas
+BAL_STAMP_1,Mind reader,Lê mentes,Lee mentes
+BAL_STAMP_2,Sharp eye,Olho afiado,Buen ojo
+BAL_STAMP_3,Steady hands,Mãos firmes,Pulso firme
+BAL_STAMP_4,Well weighed,Bem pesado,Bien pesado
+BAL_STAMP_5,Got there!,Chegou lá!,¡Lo lograste!
+BAL_STAMP_MORE,Second wind,Fôlego extra,Segundo aire
 BAL_NUM_4,four,quatro,cuatro
 BAL_NUM_5,five,cinco,cinco
 BAL_NUM_6,six,seis,seis
@@ -363,8 +387,8 @@ BAL_SHORT,"Weigh the fruit,\nlevel the seesaw","Pese as frutas,\nnivele a gangor
 BAL_MOTTO,"Weigh it, then level it",Pese e depois nivele,Pésalo y luego nivélalo
 BAL_LVL_0,"6 fruit, 3 kinds","6 frutas, 3 tipos","6 frutas, 3 tipos"
 BAL_LVL_1,"8 fruit, 4 kinds","8 frutas, 4 tipos","8 frutas, 4 tipos"
-BAL_LVL_2,"8 fruit, 5 kinds","8 frutas, 5 tipos","8 frutas, 5 tipos"
-BAL_LVL_3,"9 fruit, weights to 12","9 frutas, pesos até 12","9 frutas, pesos hasta 12"
+BAL_LVL_2,"8 fruit, 5 kinds, before sunset","8 frutas, 5 tipos, antes do pôr do sol","8 frutas, 5 tipos, antes del atardecer"
+BAL_LVL_3,"Weights to 12, springy bales","Pesos até 12, fardos de mola","Pesos hasta 12, pacas saltarinas"
 UT_BLURB,Drag the lanterns until no cords cross.,Arraste as lanternas até nenhum fio se cruzar.,Arrastra los faroles hasta que ningún cordón se cruce.
 UT_SHORT,Pull the lanterns\nuntil none cross.,Puxe as lanternas\naté nada cruzar.,Mueve los faroles\nsin que se crucen.
 UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace

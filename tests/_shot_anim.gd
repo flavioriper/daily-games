@@ -373,9 +373,10 @@ func _initialize() -> void:
 	if _id == "balance" and _mode == "win":
 		# Every fruit but one seated on its answer, then the last dragged
 		# on: the landing, the rest, the solve and its rewards.
-		_shots = [0.35, 2.3, 5.0, 5.3, 5.7, 6.2, 6.9, 7.6]
+		# The last two catch the hats, the tags and the stamp on the basket.
+		_shots = [0.35, 2.3, 5.0, 5.3, 5.7, 6.2, 6.9, 7.7]
 		_idle_from = 5.0
-		_idle_to = 7.5
+		_idle_to = 8.0
 	elif _id == "balance" and _mode == "rest":
 		# The drag, then an idle window long after every sticker is gone.
 		_shots = [0.35, 2.4, 6.0]
@@ -383,6 +384,18 @@ func _initialize() -> void:
 		_idle_to = 8.5
 	elif _id == "balance" and _mode == "hint":
 		_shots = [0.35, 1.75, 1.85, 1.95, 2.1, 2.3, 2.6]
+	elif _id == "balance" and _mode == "sunset":
+		# d=2: the day spent but for one move, then a fruit dragged onto the
+		# plank: the sun sinking, the stars, the fruit nodding off, the card.
+		_shots = [0.35, 1.7, 2.6, 3.4, 4.2, 5.2, 6.4]
+		_idle_from = 6.6
+		_idle_to = 8.0
+	elif _id == "balance" and _mode == "boing":
+		# d=3: a fruit dropped where the beam bottoms out with it on the low
+		# side, so the springy bale bounces it home.
+		_shots = [0.35, 2.0, 2.6, 2.9, 3.2, 3.6, 4.4, 5.4]
+		_idle_from = 6.0
+		_idle_to = 8.0
 	elif _id == "balance" and _mode == "level":
 		# The level moment, called straight: its sticker, confetti and cheer.
 		_shots = [0.35, 1.72, 1.85, 2.0, 2.3, 2.7, 3.4]
@@ -393,7 +406,7 @@ func _initialize() -> void:
 		# shot well past the usual last one.
 		_shots.append_array([4.6, 5.6])
 		_idle_from = 5.8
-		_idle_to = 7.8
+		_idle_to = 8.0
 	if _id == "planes" and _mode == "long":
 		# The free plane with the longest lane, so the strip catches the dart
 		# lifted mid-lane, the contrail fading behind it and the leaves beside
@@ -423,7 +436,7 @@ func _initialize() -> void:
 		# to turn over, so the reveal lands well past the usual last shot.
 		_shots.append_array([4.6, 5.6])
 		_idle_from = 5.8
-		_idle_to = 7.8
+		_idle_to = 8.0
 	if _reduce:
 		_shots.append(float(_shots[_shots.size() - 1]) + RM_PAIR)
 		_idle_to = maxf(_idle_to, float(_shots[_shots.size() - 1]) + 0.2)
@@ -1283,6 +1296,21 @@ func _step_balance() -> void:
 		return
 	if _mode == "hint":
 		_puzzle.hint()
+		return
+	if _mode == "sunset":
+		st.spent = st.budget - 1
+		_puzzle._sun_day = 0.7
+	if _mode == "boing":
+		for f in st.fruit.size():
+			if not st.loose(f):
+				continue
+			for x in st.cups():
+				var t2: int = st.torque() + st.weights[st.fruit[f]] * x
+				if st.occupant(x) < 0 and absi(t2) > 5 and x * t2 > 0:
+					var xb: Transform2D = _puzzle.get_global_transform_with_canvas()
+					var fb: Vector2 = xb * _puzzle.fruit_to_local(f)
+					_begin_drag(fb, xb * (_puzzle.cup_to_local(x) + Vector2(0.0, -120.0)) - fb)
+					return
 		return
 	if _mode == "win":
 		var last := -1
