@@ -53,6 +53,14 @@ func _process(_dt: float) -> bool:
 			_check("2b done(true)", _got == 1)
 			_check("2c rewarded_left dropped by one", ads.pacing.rewarded_left(Daily.date_key()) == _left - 1)
 			_check("6b bus unmuted after", not AudioServer.is_bus_mute(0))
+			var prior: bool = ads.Sound.on
+			ads.Sound.on = false
+			ads.Sound.apply()
+			ads._quiet(true)
+			ads._quiet(false)
+			_check("6c Sound off stays muted after an ad", AudioServer.is_bus_mute(0))
+			ads.Sound.on = prior
+			ads.Sound.apply()
 			ads._fake_full = "skip"
 			_left = ads.pacing.rewarded_left(Daily.date_key())
 			_got = -1

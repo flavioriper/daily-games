@@ -24,6 +24,7 @@ signal banner_changed(visible: bool, height: float)
 
 const Analytics = preload("res://core/analytics.gd")
 const AgeGate = preload("res://core/age_gate.gd")
+const Sound = preload("res://core/sound.gd")
 const AdPacing = preload("res://core/ad_pacing.gd")
 const Backend = preload("res://core/backend.gd")
 ## The "Remove ads" tab BannerHost stands on the banner's top edge, in design
@@ -303,28 +304,40 @@ func leaving_game() -> void:
 	if not why.is_empty():
 		Analytics.track("ad_interstitial_skipped", {"reason": why})
 		return
-	pacing.note_interstitial(now, today)
-	_save_state()
-	Analytics.track("ad_interstitial_shown")
-	_quiet(true)
 	if not _fake_full.is_empty():
+		_record_interstitial(now, today)
+		_quiet(true)
 		_fake_show("interstitial", func(_earned: bool) -> void: _quiet(false))
 		return
 	var ad := _interstitial
 	_interstitial = null
+	# Spent only once the ad is really up: a failed show costs nothing.
+	ad.full_screen_content_callback.on_ad_showed_full_screen_content = func() -> void:
+		_record_interstitial(now, today)
 	ad.full_screen_content_callback.on_ad_dismissed_full_screen_content = func() -> void:
 		_quiet(false)
 		ad.destroy()
 		_load_interstitial()
 	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_e: AdError) -> void:
 		_quiet(false)
+		Analytics.track("ad_interstitial_skipped", {"reason": "show_failed"})
 		ad.destroy()
 		_load_interstitial()
+	_quiet(true)
 	ad.show()
 
-## Game sound off under a full-screen ad, back on when it goes.
+func _record_interstitial(now: float, today: int) -> void:
+	pacing.note_interstitial(now, today)
+	_save_state()
+	Analytics.track("ad_interstitial_shown")
+
+## Game sound off under a full-screen ad, back to the player's own Sound
+## setting when it goes (never simply on).
 func _quiet(on: bool) -> void:
-	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), on)
+	if on:
+		AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), true)
+	else:
+		Sound.apply()
 
 ## Placements: "hint", "double", "continue". Opt-in, so owners keep them.
 func can_reward(_placement: String) -> bool:
