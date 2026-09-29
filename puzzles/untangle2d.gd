@@ -1256,6 +1256,8 @@ func _press(at: Vector2) -> void:
 		_hot = -1
 		_hot_far = -1
 		_ghost = []
+		if _face[stale] == 3:
+			_face[stale] = 0
 		_go_home(stale, false)
 	_press_at = at
 	_finger = at
@@ -1349,6 +1351,9 @@ func _release() -> void:
 		var was_far := _hot_far >= 0
 		_held = -1
 		_ghost = []
+		# A strained face is for the hand; the peg lets go of it with the rope.
+		if _face[p] == 3:
+			_face[p] = 0
 		if _dragged:
 			var target := _hot
 			_hot = -1
@@ -1964,6 +1969,8 @@ func _drop_held() -> void:
 		_held = -1
 		_hot = -1
 		_hot_far = -1
+		if _face[p] == 3:
+			_face[p] = 0
 		_fly(p, _peg_px[p], _peg_home(p), 0.0, 0.1)
 	_sel = -1
 	_ghost = []
