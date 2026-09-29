@@ -41,7 +41,6 @@ const ENTER_FOOTER := 0.3
 const ENTER_FOOTER_FADE := 0.25
 
 var _puzzle: Control
-var _ad_hint_taken := false
 var _entry: Dictionary
 var _difficulty: int = 0
 var _bank_step := 0
@@ -177,7 +176,6 @@ func _enter() -> void:
 
 
 func _spawn(the_seed: int) -> void:
-	_ad_hint_taken = false
 	if is_instance_valid(_puzzle):
 		_puzzle.queue_free()
 	var script: GDScript = load(_entry.script)
@@ -221,9 +219,10 @@ func _on_undo() -> void:
 			Analytics.track("undo_used", {"puzzle_id": _entry.get("id", "")})
 		_refresh()
 
-## One video hint a board, once its own hints are spent.
+## A video hint whenever the board's own hints are spent, as many as the
+## player wants to watch (the user's call, 2026-09-29).
 func _hint_offer() -> bool:
-	return is_instance_valid(_puzzle) and not _ad_hint_taken and not _puzzle.is_done() \
+	return is_instance_valid(_puzzle) and not _puzzle.is_done() \
 		and _puzzle.capabilities().has("hint") and _puzzle.hints_left() <= 0 \
 		and Ads.can_reward("hint")
 
@@ -261,7 +260,6 @@ func _ask_hint_video() -> void:
 			if _puzzle.hints_left() <= 0:
 				_refresh()
 				return
-			_ad_hint_taken = true
 			_on_hint()))
 	add_child(p)
 

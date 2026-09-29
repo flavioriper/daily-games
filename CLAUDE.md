@@ -2343,9 +2343,11 @@ stated before the 3D game left.
   them by name and type, a bad document ignored. **An interstitial is only
   ever asked for through `Ads.leaving_game()` after a finished game --
   never before one**: not on `play_level`, not on Play again, not at
-  launch. **Rewarded videos are opt-in and asked, never pushed**, ten a day
-  in all: `hint` (one more per board once its own hints are spent,
-  `add_hint()`), `double` (an Arcade run's gold doubled on the end card --
+  launch. **Rewarded videos are opt-in and asked, never pushed**: `hint` (one
+  more hint a video once a board's own are spent, as many as the player
+  will watch, `add_hint()`; since 2026-09-29 hint videos neither count
+  toward nor stop at the ten-a-day cap, `Ads._capped()`, which binds only
+  the other two), `double` (an Arcade run's gold doubled on the end card --
   gold only, never score, and inside `Wallet.ARCADE_CAP`) and `continue`
   (a run kept going beside the gold Second chance, once a run, no timer, its
   best marked boosted). **Remove ads removes the banner and the

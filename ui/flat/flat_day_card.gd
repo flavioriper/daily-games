@@ -53,12 +53,29 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", -4)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(col)
+	# The title shares its row with the win's figures, so the line under it
+	# has the card's whole width: after a solve it carries the hearts, the
+	# streak, the gold and the gift, and pt-BR's runs ~880 px.
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 18)
+	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(title_row)
 	_day = Label.new()
 	_day.theme_type_variation = "CardTitle"
 	_day.add_theme_font_override("font", CozyTheme.display(700))
-	col.add_child(_day)
+	_day.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(_day)
 	_island = Label.new()
 	_island.theme_type_variation = "CardBodyDim"
+	# Never wider than the card: an unclipped label's minimum width is its
+	# whole text, which pushed the win column off the screen (2026-09-29).
+	_island.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A soft paper halo: the win's long line runs past the scrim onto the
+	# painting (a bright sea, a sunset), and the halo keeps it read there
+	# without veiling the picture. Unseen where the scrim is already paper.
+	_island.add_theme_color_override("font_outline_color", Color(Pal.SURFACE, 0.8))
+	_island.add_theme_constant_override("outline_size", 10)
+	_island.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_island)
 	_hearts_ci = Control.new()
 	_hearts_ci.custom_minimum_size = Vector2(HEARTS * HEART + (HEARTS - 1) * HEART_GAP, HEART) + PILL_PAD * 2.0
@@ -74,12 +91,12 @@ func _build() -> void:
 	var pill := CozyTheme.card(Color(Pal.SURFACE, 0.9), 30, Pal.LINE, 0, 0)
 	pill.content_margin_left = 20
 	pill.content_margin_right = 20
-	pill.content_margin_top = 8
-	pill.content_margin_bottom = 8
+	pill.content_margin_top = 4
+	pill.content_margin_bottom = 4
 	_stats.add_theme_stylebox_override("normal", pill)
 	_stats.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_stats.visible = false
-	row.add_child(_stats)
+	title_row.add_child(_stats)
 	set_day(1, "")
 
 func set_day(n: int, island: String) -> void:
@@ -93,12 +110,20 @@ func set_hearts(n: int) -> void:
 	_hearts = clampi(n, 0, HEARTS)
 	_hearts_ci.queue_redraw()
 
-## The win screen's figures at the card's right, in place of the hearts;
+## The win screen's figures beside "Day N", in place of the hearts;
 ## "" hides them and brings the hearts back.
 func set_stats(text: String) -> void:
 	_stats.text = text
 	_stats.visible = text != ""
 	_hearts_ci.visible = text == ""
+	# After a solve the line under "Day N" is news (the streak, the gold, a
+	# gift), not a caption, and it crosses the painting: full ink, in 600.
+	if text != "":
+		_island.theme_type_variation = "CardBody"
+		_island.add_theme_font_override("font", CozyTheme.body(600))
+	else:
+		_island.theme_type_variation = "CardBodyDim"
+		_island.remove_theme_font_override("font")
 
 func _draw_hearts() -> void:
 	var pill := Rect2(Vector2.ZERO, _hearts_ci.size)

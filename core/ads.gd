@@ -347,8 +347,10 @@ func _quiet(on: bool) -> void:
 		Sound.apply()
 
 ## Placements: "hint", "double", "continue". Opt-in, so owners keep them.
-func can_reward(_placement: String) -> bool:
-	if pacing.rewarded_left(Daily.date_key()) <= 0:
+## Hints are unlimited: they neither count against nor stop at the daily cap,
+## which is there for the videos that pay gold or keep a run alive.
+func can_reward(placement: String) -> bool:
+	if _capped(placement) and pacing.rewarded_left(Daily.date_key()) <= 0:
 		return false
 	if not _fake_full.is_empty():
 		return true
@@ -363,7 +365,7 @@ func offered(placement: String) -> void:
 ## game on dismissal, so the game never changes under the ad.
 func show_rewarded(placement: String, done: Callable) -> void:
 	var today := Daily.date_key()
-	if pacing.rewarded_left(today) <= 0:
+	if _capped(placement) and pacing.rewarded_left(today) <= 0:
 		_not_ready()
 		done.call(false)
 		return
@@ -371,7 +373,11 @@ func show_rewarded(placement: String, done: Callable) -> void:
 	var finish := func(earned: bool, shown: bool = true) -> void:
 		_quiet(false)
 		if earned:
-			pacing.note_rewarded(Time.get_unix_time_from_system(), Daily.date_key())
+			# A hint still spaces the next interstitial but is never counted.
+			if _capped(placement):
+				pacing.note_rewarded(Time.get_unix_time_from_system(), Daily.date_key())
+			else:
+				pacing.note_rewarded_seen(Time.get_unix_time_from_system())
 			_save_state()
 			Analytics.track("ad_rewarded_completed", {"placement": placement})
 		elif shown:
@@ -401,6 +407,9 @@ func show_rewarded(placement: String, done: Callable) -> void:
 	var listener := OnUserEarnedRewardListener.new()
 	listener.on_user_earned_reward = func(_item: RewardedItem) -> void: earned[0] = true
 	ad.show(listener)
+
+func _capped(placement: String) -> bool:
+	return placement != "hint"
 
 ## No video was shown (none loaded, or today's are spent): say so for a
 ## moment, over whatever asked, so a tap is never met with silence.

@@ -3,7 +3,7 @@ extends SceneTree
 ## The video hint through the real menu on Binairo, with the desktop stand-in
 ## ad (ADS_FAKE_FULL): spend the hints, the hint button shows the play badge,
 ## a tap asks, No thanks leaves the board as it was, Watch grants one hint and
-## the button greys (one per board); a "skip" ad grants nothing. Shoots the
+## the offer comes back (no limit a board); a "skip" ad grants nothing. Shoots the
 ## prompt in en, pt and es to /tmp/shot_hint_offer_<lang>.png. Throwaway
 ## progress, wallet and ads files; puts user://arcade.cfg back.
 ##   godot --resolution 810x1440 --always-on-top --script tests/_probe_hint_offer.gd
@@ -126,22 +126,29 @@ func _process(delta: float) -> bool:
 			_at = _t + 2.5
 		6:
 			_check(_host._puzzle.hints_used == _host.get_meta("used0"), "skip ad: nothing granted")
-			_check(not _host._ad_hint_taken, "skip ad: offer still open")
+			_check(_host._hint_offer(), "skip ad: offer still open")
 			ads._fake_full = "1"
 			_host._on_hint()
 			_step = 7
 			_at = _t + 0.6
 		7:
 			_host.set_meta("used0", _host._puzzle.hints_used)
+			_host.set_meta("counted0", int(ads.pacing.state.rewarded_today))
 			_host.get_node("RewardPrompt").find_child("Watch", true, false).pressed.emit()
 			_step = 8
 			_at = _t + 2.5
 		8:
 			_check(_host._puzzle.hints_used == _host.get_meta("used0") + 1, "watched: one hint landed")
 			var bar = _host.top_bar
-			_check(bar.hint_button.disabled and bar.hint_button.badge_glyph == "", "after: button disabled, no glyph")
+			_check(not bar.hint_button.disabled and bar.hint_button.badge_glyph == "play", "after: offer back, play badge")
 			_host._on_hint()
-			_check(not _host.has_node("RewardPrompt"), "after: no second offer")
+			_check(_host.has_node("RewardPrompt"), "after: a second offer")
+			_host.get_node("RewardPrompt").find_child("Watch", true, false).pressed.emit()
+			_step = 80
+			_at = _t + 2.5
+		80:
+			_check(_host._puzzle.hints_used == _host.get_meta("used0") + 2, "second video: a second hint landed")
+			_check(int(ads.pacing.state.rewarded_today) == _host.get_meta("counted0"), "hint videos never count against the daily cap")
 			# look at the prompt in each language on a fresh board
 			_open_or_reset_for_shots()
 			_step = 9
