@@ -5,6 +5,9 @@ extends SceneTree
 ## over once more with no second offer. Throwaway wallet; puts
 ## user://arcade.cfg back.
 ##   godot --headless --script tests/_probe_chance.gd
+## The video path (no gold, no chance held; the grey stand-in earns or not):
+##   ADS_FAKE_FULL=1 godot --headless --script tests/_probe_chance.gd
+##   ADS_FAKE_FULL=skip godot --headless --script tests/_probe_chance.gd
 
 const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy"]
 const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy"}
@@ -18,17 +21,31 @@ var _fails := 0
 var _backup := PackedByteArray()
 var _had := false
 var _tmp := ""
+var _video := ""
+var _ads_had := false
+var _ads_backup := PackedByteArray()
 
 func _initialize() -> void:
 	_had = FileAccess.file_exists("user://arcade.cfg")
 	if _had:
 		_backup = FileAccess.get_file_as_bytes("user://arcade.cfg")
+	_ads_had = FileAccess.file_exists("user://ads.cfg")   # pacing counts finished runs
+	if _ads_had:
+		_ads_backup = FileAccess.get_file_as_bytes("user://ads.cfg")
 	var wallet: Node = root.get_node("Wallet")
 	_tmp = OS.get_user_data_dir() + "/_probe_chance_wallet.cfg"
 	DirAccess.remove_absolute(_tmp)
 	wallet.path = _tmp
 	wallet.reload()
-	wallet.add_gold(5000, "probe")
+	_video = OS.get_environment("ADS_FAKE_FULL")
+	if _video == "":
+		wallet.add_gold(5000, "probe")
+	else:
+		# the welcome gift is gold and a chance of each: spend it all
+		wallet.spend(wallet.gold(), "probe")
+		for id: String in wallet.Boosters.ITEMS:
+			while wallet.count(id) > 0:
+				wallet.use(id, "probe")
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -65,6 +82,12 @@ func _finish(code: int) -> void:
 		f.close()
 	else:
 		DirAccess.remove_absolute(OS.get_user_data_dir() + "/arcade.cfg")
+	if _ads_had:
+		var a := FileAccess.open("user://ads.cfg", FileAccess.WRITE)
+		a.store_buffer(_ads_backup)
+		a.close()
+	else:
+		DirAccess.remove_absolute(OS.get_user_data_dir() + "/ads.cfg")
 	DirAccess.remove_absolute(_tmp)
 	print("FAILS: %d" % _fails)
 	quit(code)
@@ -92,7 +115,8 @@ func _process(delta: float) -> bool:
 			_at = _t + 0.5
 		1:
 			var card: Node = s.get_node_or_null("BoostCard")
-			_check(card != null, g + ": boost card up")
+			if _video == "":
+				_check(card != null, g + ": boost card up")
 			if card != null:
 				for id in card._toggles:
 					card._toggles[id].button_pressed = true
@@ -108,9 +132,29 @@ func _process(delta: float) -> bool:
 			var chance: Node = s.get_node_or_null("SecondChance")
 			_check(chance != null, g + ": second chance offered")
 			if chance != null:
-				chance._on_use()
+				if _video != "":
+					_check(chance.get_node_or_null("**/Use") == null and chance.find_child("Watch", true, false) != null, g + ": video button only")
+					var w: Button = chance.find_child("Watch", true, false)
+					w.pressed.emit()
+					w.pressed.emit()   # a double tap while the video is up
+					if _video == "skip":
+						_step = 6
+						_at = _t + 3.0
+						return false
+					_at = _t + 3.0
+				else:
+					chance._on_use()
 			_step = 4
-			_at = _t + 1.5
+			_at = maxf(_at, _t + 1.5)
+		6:
+			var c2: Node = s.get_node_or_null("SecondChance")
+			_check(c2 != null and s.sim.is_over(), g + ": skipped video leaves the card up")
+			var w2: Button = c2.find_child("Watch", true, false) if c2 != null else null
+			_check(w2 != null and not w2.disabled, g + ": Watch still usable")
+			if c2 != null:
+				c2._on_no()
+			_step = 5
+			_at = _t + 4.0
 		4:
 			_check(not s.sim.is_over() and s._boosted, g + ": going again")
 			_force_over(g, s)

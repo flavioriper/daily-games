@@ -492,6 +492,7 @@ CHANCE_TITLE,Keep going?,Continuar?,¿Seguir?
 CHANCE_USE,Second chance (%d),Segunda chance (%d),Segunda oportunidad (%d)
 CHANCE_BUY,Buy and use: %s,Comprar e usar: %s,Comprar y usar: %s
 CHANCE_NO,No thanks,"Não, obrigado","No, gracias"
+CHANCE_WATCH,Watch a video to keep going,Assista a um vídeo para continuar,Mira un video para seguir
 CHANCE_GO,Again!,De novo!,¡Otra vez!
 ARC_BOOSTED,Made with boosters,Feito com reforços,Hecho con refuerzos
 BST_FF_SPARE,Spare firefly,Vaga-lume extra,Luciérnaga extra
