@@ -352,7 +352,7 @@ func _on_ended() -> void:
 ## is_done() covers both, so this never double-fires.
 func _on_back() -> void:
 	# A board that has run out of hearts ended there, whichever way it leaves.
-	if is_instance_valid(_puzzle) and not _puzzle.is_done() and bool(_puzzle.get("out_of_hearts")):
+	if is_instance_valid(_puzzle) and not _puzzle.is_done() and _puzzle.get("out_of_hearts") == true:
 		_puzzle.finish_unsolved()
 	if is_instance_valid(_puzzle) and not _puzzle.is_done():
 		Analytics.track("puzzle_abandon", _stats())
