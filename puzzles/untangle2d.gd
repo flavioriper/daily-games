@@ -1174,6 +1174,16 @@ func _nearest_hole(at: Vector2, within: float) -> int:
 func _press(at: Vector2) -> void:
 	if not _can_touch():
 		return
+	# A press while a peg is still in the hand (a release that never came, a
+	# second finger) puts that peg back first, so a lost release cannot lock
+	# the board.
+	if _held >= 0:
+		var stale := _held
+		_held = -1
+		_hot = -1
+		_hot_far = -1
+		_ghost = []
+		_go_home(stale, false)
 	_press_at = at
 	_finger = at
 	_dragged = false
@@ -1914,7 +1924,7 @@ func reset_board() -> void:
 	moves = 0
 	_running = true
 	if not walking.is_empty():
-		_say(tr("UT_RESET"), Face.Expr.HAPPY)
+		_say(tr("UT_RESET_THREAD" if state.budget > 0 else "UT_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_busy_until = t + 0.4 + Motion.stagger(walking.size(), WALK_STEP, 1.0)
 	_dirty = true

@@ -167,6 +167,7 @@ UT_TAUT,That rope is pulled tight. It will not reach.,Essa corda esticou. Não a
 UT_STUCK,That peg has nowhere to go right now.,Esse pino não tem para onde ir agora.,Esa clavija no tiene adónde ir ahora.
 UT_HINT,Try this one.,Tente este.,Prueba este.
 UT_RESET,Back to the tangle you were given.,De volta ao emaranhado do começo.,De vuelta al enredo del principio.
+UT_RESET_THREAD,Back to the tangle you were given. The thread stays used.,De volta ao emaranhado do começo. A linha gasta continua gasta.,De vuelta al enredo del principio. El hilo gastado sigue gastado.
 UT_THREAD_LOW,Only a few stitches of thread left.,Só restam alguns pontos de linha.,Solo quedan unas pocas puntadas de hilo.
 UT_THREAD_OUT,The thread has run out.,A linha acabou.,Se acabó el hilo.
 UT_OUT_TITLE,Out of thread,Sem linha,Sin hilo

@@ -85,8 +85,10 @@ and the hint replays it.
 
 Generation is a walk out of a crossing-free layout (`_pick_away`: each step
 chosen to deepen the tangle most) followed by the search. Mean / worst on this
-Mac: Easy 2 / 3 ms, Medium 9 / 14, Hard 57 / 250, Insane 71 / 155; a deal
-stops looking for a better one after 350 ms (`DEAL_MS`).
+Mac: Easy 2 / 3 ms, Medium 9 / 14, Hard 57 / 250, Insane 71 / 155. A deal
+tries at most 16 walks and keeps the best: a count, not a clock, so a day is the
+same board on every device (an earlier draft cut it off after 350 ms, which
+would have dealt a slow phone a different board).
 
 ## 4. Thread: Hard and Insane can be lost
 

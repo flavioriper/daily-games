@@ -39,9 +39,9 @@ const BANDS := [
 ]
 ## The kitten swipes after every this many of the player's moves.
 const CAT_EVERY := 3
-const TRIES := 40
-## A deal stops looking for a better one after this long, in ms.
-const DEAL_MS := 350
+## A deal tries this many walks at most, then keeps the best. A count, not a
+## clock: the same day has to deal the same board on a slow phone and a fast one.
+const TRIES := 16
 ## The beam search's width and how deep it goes.
 const BEAM := 36
 const BEAM_DEPTH := 14
@@ -420,10 +420,7 @@ static func generate(rng: RandomNumberGenerator, band: int) -> Dictionary:
 	var ropes: int = cfg.ropes
 	var best: Dictionary = {}
 	var best_par := -1
-	var began := Time.get_ticks_msec()
 	for attempt in TRIES:
-		if not best.is_empty() and Time.get_ticks_msec() - began > DEAL_MS:
-			break
 		var goal := _goal(rng, cfg)
 		var deal: Dictionary = _cat_deal(rng, goal, cfg) if cfg.cat else _scramble(rng, goal, cfg)
 		if deal.is_empty():
