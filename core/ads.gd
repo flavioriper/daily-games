@@ -120,12 +120,19 @@ func _fetch_remote() -> void:
 
 ## Every request this app makes carries the player's band: a child is
 ## child-directed at rating G, a teen is under the age of consent, and
-## neither is ever sent a personalised ad; everyone is capped at PG.
+## neither is ever sent a personalised ad. A child is capped at G, a teen at
+## PG, an adult at T: never MA, and PG for adults too was measured by AdMob
+## at a third to two thirds of the revenue (2026-09-29).
 func _configure_requests() -> void:
 	var b := AgeGate.band()
 	var rc := RequestConfiguration.new()
-	rc.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_G if b == AgeGate.CHILD \
-		else RequestConfiguration.MAX_AD_CONTENT_RATING_PG
+	match b:
+		AgeGate.CHILD:
+			rc.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_G
+		AgeGate.ADULT:
+			rc.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_T
+		_:
+			rc.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_PG
 	rc.tag_for_child_directed_treatment = RequestConfiguration.TagForChildDirectedTreatment.TRUE \
 		if b == AgeGate.CHILD else RequestConfiguration.TagForChildDirectedTreatment.UNSPECIFIED
 	rc.tag_for_under_age_of_consent = RequestConfiguration.TagForUnderAgeOfConsent.TRUE \
