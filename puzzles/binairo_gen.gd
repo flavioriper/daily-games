@@ -18,6 +18,13 @@ extends RefCounted
 ## (they differ). They are read off the solution before the clues are
 ## stripped, so every sign is load-bearing for uniqueness in the same way a
 ## clue is, and the strip then leaves far fewer clues than a board without.
+##
+## Liars (2026-09-29): Insane's board shows one sign that lies -- its kind is
+## the opposite of the truth, and nothing marks which. `generate_liar` builds
+## those (see its comment), and `insane_board` reads the mined ones out of
+## the bank (content/insane/binairo.json, tools/insane/binairo_ladder.gd).
+
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 static func solve_count(grid: Array, limit: int, signs: Array = []) -> int:
 	var n: int = grid.size()
@@ -60,7 +67,137 @@ static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0, sig
 			clues -= 1
 		else:
 			puzzle[r][c] = kept
-	return {"solution": sol, "puzzle": puzzle, "clues": clues, "signs": signs}
+	return {"solution": sol, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": -1}
+
+## An Insane board: a size-`n` board with `sign_count` signs, exactly one of
+## which lies, stripped to minimal clues (a `min_clues` floor above 0 stops
+## the strip early, as in generate). Same dict as generate(), with `signs` as
+## shown (the liar's kind is the false one) and "liar" its index.
+##
+## The board is sound when believing every sign leaves no solution, and
+## flipping one sign at a time leaves exactly one solution over all the
+## flips together -- so the player can find the liar by reasoning, and the
+## grid is unique once it is found (`liar_valid`). It starts sound on the
+## full grid (only the liar's own flip keeps the solution) and every strip
+## step keeps it so. Removing a clue only ever adds solutions, so the strip
+## is minimal by construction exactly as generate()'s is. Too slow for the
+## phone at 10x10: it is mined off the phone (tools/mine_insane.gd).
+static func generate_liar(rng: RandomNumberGenerator, n: int = 10, sign_count: int = 12, min_clues: int = 0) -> Dictionary:
+	assert(n % 2 == 0, "Binairo needs an even board size")
+	assert(sign_count > 0, "a liar needs a sign to lie")
+	var sol: Array = _random_solution(rng, n)
+	var signs: Array = _pick_signs(rng, sol, n, sign_count)
+	var liar: int = rng.randi_range(0, signs.size() - 1)
+	signs[liar] = flip_sign(signs[liar])
+	var puzzle: Array = []
+	for r in n:
+		puzzle.append((sol[r] as Array).duplicate())
+
+	var cells: Array = []
+	for r in n:
+		for c in n:
+			cells.append(r * n + c)
+	_shuffle(cells, rng)
+
+	var clues: int = n * n
+	for idx in cells:
+		if min_clues > 0 and clues <= min_clues:
+			break
+		var r: int = idx / n
+		var c: int = idx % n
+		var kept = puzzle[r][c]
+		puzzle[r][c] = -1
+		if liar_valid(puzzle, signs, liar):
+			clues -= 1
+		else:
+			puzzle[r][c] = kept
+	return {"solution": sol, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": liar}
+
+## Whether `grid` with `signs` (as shown) is a sound liar board whose liar is
+## sign `liar`: every sign believed gives 0 solutions, and the solutions over
+## each single flip sum to exactly 1, all of them from flipping `liar`.
+## Checked cheapest-refusal first: the liar's own flip must be unique, then
+## every other reading must be dead.
+static func liar_valid(grid: Array, signs: Array, liar: int) -> bool:
+	if liar < 0 or liar >= signs.size():
+		return false
+	if solve_count(grid, 2, with_flipped(signs, liar)) != 1:
+		return false
+	if solve_count(grid, 1, signs) != 0:
+		return false
+	for i in signs.size():
+		if i != liar and solve_count(grid, 1, with_flipped(signs, i)) != 0:
+			return false
+	return true
+
+## The liar a board's signs imply, found without being told: -1 unless every
+## sign believed gives no solution and the single flips' solutions sum to
+## exactly 1, else the index of the flip that gave it. Stops as soon as the
+## running sum passes 1. For proving a mined board, not for play.
+static func find_liar(grid: Array, signs: Array) -> int:
+	if solve_count(grid, 1, signs) != 0:
+		return -1
+	var total := 0
+	var found := -1
+	for i in signs.size():
+		var k := solve_count(grid, 2 - total, with_flipped(signs, i))
+		if k > 0:
+			total += k
+			found = i
+			if total > 1:
+				return -1
+	return found if total == 1 else -1
+
+## Sign `s` telling the other story: "=" becomes "x" and back.
+static func flip_sign(s: Vector4i) -> Vector4i:
+	return Vector4i(s.x, s.y, s.z, 0 if s.w == 1 else 1)
+
+## A copy of `signs` with sign `i` flipped; `signs` itself is untouched.
+static func with_flipped(signs: Array, i: int) -> Array:
+	var out: Array = signs.duplicate()
+	out[i] = flip_sign(out[i])
+	return out
+
+## Today's banked Insane board (core/insane_bank.gd), in generate()'s dict
+## shape with "liar"; {} when the bank is empty or unreadable, and the board
+## falls back to its live row. `step` is PuzzleBase.bank_step (how many times
+## New was pressed since the card opened): the pick is by day and step, like
+## Rings', so `rng` is not drawn from -- it is taken so a board can swap this
+## in where it already holds one for generate().
+static func insane_board(_rng: RandomNumberGenerator = null, step: int = 0) -> Dictionary:
+	var b: Dictionary = InsaneBank.pick("binairo", step)
+	if not (b.get("puzzle") is Array and b.get("solution") is Array and b.get("signs") is Array):
+		return {}
+	return from_bank(b)
+
+## A bank entry (JSON: numbers arrive as floats, signs as [r, c, dir, same])
+## as generate()'s dict.
+static func from_bank(b: Dictionary) -> Dictionary:
+	var puzzle: Array = []
+	var solution: Array = []
+	var clues := 0
+	for r in (b["puzzle"] as Array).size():
+		var row: Array = []
+		var sol_row: Array = []
+		for c in (b["puzzle"][r] as Array).size():
+			var v := int(b["puzzle"][r][c])
+			row.append(v)
+			sol_row.append(int(b["solution"][r][c]))
+			if v != -1:
+				clues += 1
+		puzzle.append(row)
+		solution.append(sol_row)
+	var signs: Array = []
+	for s in b["signs"]:
+		signs.append(Vector4i(int(s[0]), int(s[1]), int(s[2]), int(s[3])))
+	return {"solution": solution, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": int(b.get("liar", -1))}
+
+## A generate_liar() dict in the bank's JSON encoding: signs as arrays.
+static func to_bank(out: Dictionary) -> Dictionary:
+	var signs: Array = []
+	for s: Vector4i in out["signs"]:
+		signs.append([s.x, s.y, s.z, s.w])
+	return {"puzzle": out["puzzle"], "solution": out["solution"], "signs": signs, "liar": out["liar"], "clues": out["clues"]}
 
 ## `count` distinct edges, each signed from the solution. Every edge of the
 ## board is a candidate, shuffled with the board's own rng so a day's signs
