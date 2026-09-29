@@ -65,6 +65,14 @@ const ARC_MAX := 256
 const EYE_LEVELS: Array[float] = [0.1, 0.4, 0.7, 1.0]
 ## R is rounded to this many pixels for the cache key.
 const R_STEP := 1.0
+## How far the eyes move toward `look`, in the face's R.
+const LOOK_SHIFT := 0.06
+## A party hat's cone, stripes and pom-pom, per style.
+const HAT_STYLES := [
+	[Pal.FLOWER, Pal.SURFACE, Pal.SUN_RAY],
+	[Pal.ACCENT, Pal.SUN_RAY, Pal.FLOWER],
+	[Pal.BERRY, Pal.SURFACE, Pal.ACCENT],
+]
 
 ## Every mesh built so far: "kind|layer|R[|expression|eye|plain]" -> ArrayMesh.
 ## Shared by every face; a mesh handed to draw_mesh has to stay referenced
@@ -115,6 +123,29 @@ var shadowless := false:
 ## Whether set_idle(true) rocks this face. Only a moon reads it, and the owner
 ## turns it on for about a third of them so a board sways rather than nods.
 var rocks := false
+## Where the eyes look, each axis -1 to 1; the eyes shift LOOK_SHIFT of R
+## toward it. Snapped to eight directions (or none) for the cache, so a
+## glance costs one mesh per direction and never a rebuild per frame.
+## Binairo's faces glance at a tapped tile.
+var look := Vector2.ZERO:
+	set(v):
+		look = v
+		queue_redraw()
+## Accessories, 0 off to 1 on, each its own cached mesh drawn over the face's
+## layers with the face layer's transform, so a moon's rock carries them. The
+## value is the arrival: a hat grows from its brim, sunglasses slide down
+## from above and fade in. Nothing is drawn at 0, so a board that never sets
+## them pays nothing. Binairo's solve party and silly lines wear them.
+var hat := 0.0:
+	set(v):
+		hat = v
+		queue_redraw()
+var glasses := 0.0:
+	set(v):
+		glasses = v
+		queue_redraw()
+## Which of HAT_STYLES the hat is.
+var hat_style := 0
 
 var _idle := false
 var _blink_tw: Tween
@@ -242,6 +273,86 @@ func _draw() -> void:
 			continue
 		var mesh := _mesh_for(layer[0], layer[1], R, eye)
 		draw_mesh(mesh, null, _layer_transform(layer[0], R, centre))
+	if hat > 0.0 or glasses > 0.0:
+		_draw_accessories(R, centre)
+
+## The accessories over the face, in the face layer's transform: the hat on
+## the head at _hat_place's seat, grown from its brim by `hat`; the glasses
+## over the eyes, slid down from above and faded in by `glasses`.
+func _draw_accessories(R: float, centre: Vector2) -> void:
+	var face_layer := "body"
+	for layer in _layers():
+		if layer[1]:
+			face_layer = layer[0]
+	var xf := _layer_transform(face_layer, R, centre)
+	var frame := _face_frame(R)
+	var fc: Vector2 = frame[0]
+	var fr: float = roundf(frame[1])
+	if glasses > 0.0 and not plain:
+		var g := clampf(glasses, 0.0, 1.0)
+		var at := fc + Vector2(0.0, -(1.0 - g) * 0.9 * fr)
+		draw_mesh(_accessory("glasses", fr, 0), null, xf * Transform2D(0.0, at),
+			Color(1.0, 1.0, 1.0, clampf(g * 2.5, 0.0, 1.0)))
+	if hat > 0.0:
+		var seat: Array = _hat_place(R)
+		var unit := roundf(float(seat[2]))
+		draw_mesh(_accessory("hat", unit, hat_style), null,
+			xf * Transform2D(float(seat[1]), Vector2.ONE * maxf(hat, 0.001), 0.0, seat[0]))
+
+## The face's own centre and radius inside the drawing, in the rect-centred
+## frame the layers use: where the glasses go. A face drawn off-centre (the
+## moon's) says where.
+func _face_frame(R: float) -> Array:
+	return [Vector2.ZERO, R]
+
+## Where the hat sits: [the brim's middle, its tilt, its size], in the same
+## frame. The base seats it on top of the head.
+func _hat_place(R: float) -> Array:
+	return [Vector2(0.0, -0.8 * R), 0.0, 0.6 * R]
+
+## An accessory's mesh at size `unit`, cached like the layers.
+func _accessory(kind: String, unit: float, style: int) -> ArrayMesh:
+	var key := "acc|%s|%d|%d" % [kind, int(unit), style]
+	var mesh: ArrayMesh = _mesh_cache.get(key)
+	if mesh == null:
+		var b := Builder.new()
+		if kind == "hat":
+			_build_hat(b, unit, HAT_STYLES[style % HAT_STYLES.size()])
+		else:
+			_build_glasses(b, unit)
+		mesh = b.mesh()
+		_mesh_cache[key] = mesh
+	return mesh
+
+## A party hat, brim at the origin and pointing up, `u` across the brim and
+## about 1.2 u tall: a cone, two stripes across it and a pom-pom on the tip.
+static func _build_hat(b: Builder, u: float, colours: Array) -> void:
+	var h := 1.2 * u
+	var half := 0.5 * u
+	var tip := Vector2(0.0, -h)
+	b.polygon(PackedVector2Array([tip, Vector2(-half, 0.0), Vector2(half, 0.0)]), colours[0])
+	for band: Vector2 in [Vector2(0.18, 0.32), Vector2(0.55, 0.68)]:
+		var w0 := half * (1.0 - band.x)
+		var w1 := half * (1.0 - band.y)
+		b.polygon(PackedVector2Array([Vector2(-w0, -h * band.x), Vector2(w0, -h * band.x),
+			Vector2(w1, -h * band.y), Vector2(-w1, -h * band.y)]), colours[1])
+	# A band of shade along the brim, so the cone sits on the head.
+	b.stroke(PackedVector2Array([Vector2(-half, 0.0), Vector2(half, 0.0)]), 0.1 * u, Color(colours[0].darkened(0.2)))
+	b.disc(tip, 0.16 * u, colours[2])
+	b.disc(tip + Vector2(-0.05, -0.05) * u, 0.06 * u, Color(1.0, 1.0, 1.0, 0.6))
+
+## Sunglasses over a face of radius `r` centred on the origin: two dark
+## rounded lenses over the eyes with a shine across each, the bridge and
+## short arms.
+static func _build_glasses(b: Builder, r: float) -> void:
+	var ink := Pal.OUTLINE
+	for sx: float in [-1.0, 1.0]:
+		var c := Vector2(sx * 0.34, -0.1) * r
+		var size := Vector2(0.46, 0.31) * r
+		b.polygon(Builder.round_rect(c - size * 0.5, size, 0.1 * r), ink)
+		b.stroke(PackedVector2Array([c + Vector2(-0.1, 0.05) * r, c + Vector2(0.0, -0.08) * r]), 0.05 * r, Color(1.0, 1.0, 1.0, 0.55))
+		b.stroke(PackedVector2Array([c + Vector2(sx * 0.2, -0.08) * r, c + Vector2(sx * 0.32, -0.14) * r]), 0.05 * r, ink)
+	b.stroke(Builder.arc_points(Vector2(0.0, -0.06) * r, 0.1 * r, PI * 1.15, PI * 1.85), 0.05 * r, ink)
 
 ## eye_open snapped to EYE_LEVELS and put through the expression's rule.
 func _eye_level() -> float:
@@ -258,7 +369,7 @@ func _eye_level() -> float:
 func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> ArrayMesh:
 	var key := "%s|%s|%d" % [_kind(), layer, int(R)]
 	if carries_face:
-		key += "|%d|%d|%d" % [expression, int(roundf(eye * 100.0)), int(plain)]
+		key += "|%d|%d|%d|%d" % [expression, int(roundf(eye * 100.0)), int(plain), _look_index()]
 	var mesh: ArrayMesh = _mesh_cache.get(key)
 	if mesh == null:
 		var b := Builder.new()
@@ -279,16 +390,26 @@ func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> Array
 func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) -> void:
 	if plain:
 		return
-	face_parts(b, R, centre, ink, eye, expression)
+	var i := _look_index()
+	var dir := Vector2.ZERO if i == 0 else Vector2.from_angle((i - 1) * PI * 0.25)
+	face_parts(b, R, centre, ink, eye, expression, dir)
+
+## `look` snapped: 0 for straight ahead, 1 to 8 for the eight directions
+## from the right, clockwise.
+func _look_index() -> int:
+	if look.length() < 0.3:
+		return 0
+	return posmod(roundi(look.angle() / (PI * 0.25)), 8) + 1
 
 ## The same face for a drawing that bakes one into its own mesh rather than
 ## standing a Control up for it (the caterpillar's head, ui/faces/caterpillar.gd).
-static func face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float, expression: int) -> void:
+## `look`, a unit direction or zero, moves the eyes LOOK_SHIFT of R toward it.
+static func face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float, expression: int, look := Vector2.ZERO) -> void:
 	var cheek := Color(Pal.CHEEK, 0.85)
 	b.ellipse(centre + Vector2(-0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
 	b.ellipse(centre + Vector2(0.46, 0.16) * R, 0.13 * R, 0.09 * R, cheek)
 	for sx: float in [-1.0, 1.0]:
-		var e := centre + Vector2(sx * 0.34, -0.1) * R
+		var e := centre + Vector2(sx * 0.34, -0.1) * R + look * LOOK_SHIFT * R
 		if expression == Expr.JOY:
 			b.stroke(Builder.arc_points(e + Vector2(0.0, 0.04 * R), 0.13 * R, PI * 1.1, PI * 1.9), 0.075 * R, ink)
 			continue

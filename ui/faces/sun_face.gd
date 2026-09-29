@@ -34,6 +34,13 @@ func _idle_motion() -> Tween:
 	tw.tween_property(self, "spin", from + TAU, SPIN_PERIOD).from(from)
 	return tw
 
+func _face_frame(R: float) -> Array:
+	return [Vector2(0.0, 0.02 * R), R]
+
+## The hat sits a touch right of the crown and tilts with it, over the top ray.
+func _hat_place(R: float) -> Array:
+	return [Vector2(0.18, -0.86) * R, 0.3, 0.7 * R]
+
 func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 	match name:
 		"shadow":

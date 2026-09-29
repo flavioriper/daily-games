@@ -40,6 +40,13 @@ func _idle_motion() -> Tween:
 		0.0, 1.0, ROCK_PERIOD)
 	return tw
 
+func _face_frame(R: float) -> Array:
+	return [Vector2(-0.34, 0.3) * R, 0.62 * R]
+
+## The hat sits on the crescent's back, up and to the left, tipped outward.
+func _hat_place(R: float) -> Array:
+	return [Vector2(-0.52, -0.7) * R, -0.55, 0.6 * R]
+
 func _build_layer(_name: String, R: float, eye: float, b: Builder) -> void:
 	_crescent(b, R, Vector2(0.04, 0.16) * R, Color(Pal.TEXT, SHADOW_ALPHA), UNDERBITE * R)
 	_crescent(b, R, Vector2(0.0, 0.07) * R, Pal.MOON_DEEP, UNDERBITE * R)

@@ -168,8 +168,9 @@ static func shiver(node: Control, px := SHIVER_PX, time := SHIVER_TIME) -> Tween
 ## Calls `setter(value)` along a ramp from `from` to `to`, quantised to
 ## `steps` equal levels and never repeating one, so a colour fade built on it
 ## yields a bounded set of colours for the toon material cache. Under
-## reduce-motion the setter is called once with `to`.
-static func fade(node: Node, setter: Callable, from: float, to: float, time: float, steps := 16, delay := 0.0) -> Tween:
+## reduce-motion the setter is called once with `to`. `eased` runs the ramp
+## on a sine in-out instead of straight (Binairo's blush).
+static func fade(node: Node, setter: Callable, from: float, to: float, time: float, steps := 16, delay := 0.0, eased := false) -> Tween:
 	if reduce:
 		setter.call(to)
 		return null
@@ -181,7 +182,9 @@ static func fade(node: Node, setter: Callable, from: float, to: float, time: flo
 			last[0] = v
 			setter.call(v)
 	var tw := node.create_tween()
-	tw.tween_method(step, 0.0, 1.0, time).set_delay(delay)
+	var ramp := tw.tween_method(step, 0.0, 1.0, time).set_delay(delay)
+	if eased:
+		ramp.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	return tw
 
 ## Delay for the i-th element of a wave: `per` seconds apart, never past `cap`.

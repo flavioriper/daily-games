@@ -28,8 +28,16 @@ const SPARKLE_POOL := 3
 const STAR_SCALE_MIN := 0.44
 const STAR_SCALE_MAX := 0.52
 
+## Confetti (Binairo's streak and solve party): tiny suns and moons tossed up
+## and fluttering down, a sun emitter and a moon emitter per burst.
+const CONFETTI_POOL := 2
+const CONFETTI_LIFE := 1.6
+
 var puffs: Array[CPUParticles2D] = []
 var sparkles: Array[CPUParticles2D] = []
+var confetti_suns: Array[CPUParticles2D] = []
+var confetti_moons: Array[CPUParticles2D] = []
+var _next_confetti := 0
 ## The most recent audio cue name. A later audio layer plays these.
 var last_cue := ""
 var _next_puff := 0
@@ -66,6 +74,53 @@ func _ready() -> void:
 		s.emission_sphere_radius = 18.0
 		add_child(s)
 		sparkles.append(s)
+	for i in CONFETTI_POOL:
+		confetti_suns.append(_confetti_emitter("ConfettiSun_%d" % i, sun_texture()))
+		confetti_moons.append(_confetti_emitter("ConfettiMoon_%d" % i, moon_texture()))
+
+## A confetti emitter: a wide toss upward, a strong pull back down with drag
+## so the pieces hang and flutter, a tumble, and a fade over the last fifth.
+func _confetti_emitter(nm: String, tex: Texture2D) -> CPUParticles2D:
+	var p := _emitter(nm, 12, CONFETTI_LIFE, 50.0, 420.0, 760.0, Vector2(0.0, 900.0))
+	p.texture = tex
+	p.damping_min = 180.0
+	p.damping_max = 260.0
+	p.angular_velocity_min = -360.0
+	p.angular_velocity_max = 360.0
+	p.angle_max = 360.0
+	p.scale_amount_min = 0.75
+	p.scale_amount_max = 1.05
+	var hold := Curve.new()
+	hold.add_point(Vector2(0.0, 1.0))
+	hold.add_point(Vector2(0.8, 1.0))
+	hold.add_point(Vector2(1.0, 0.3))
+	p.scale_amount_curve = hold
+	var fade := Gradient.new()
+	fade.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	fade.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	fade.add_point(0.8, Color(1.0, 1.0, 1.0, 1.0))
+	p.color_ramp = fade
+	add_child(p)
+	return p
+
+## Confetti of tiny suns and moons tossed up from `at` (along a line `width`
+## wide when it is not zero), tumbling and fluttering down and fading over
+## CONFETTI_LIFE. `count` is shared between the two shapes. Nothing under
+## reduce-motion.
+func confetti(at: Vector2, count := 24, width := 0.0) -> void:
+	if Motion.reduce or confetti_suns.is_empty():
+		return
+	var n := clampi(count, 2, 64)
+	for pair in [[confetti_suns, n / 2], [confetti_moons, n - n / 2]]:
+		var p: CPUParticles2D = pair[0][_next_confetti]
+		if width > 0.0:
+			p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+			p.emission_rect_extents = Vector2(width * 0.5, 6.0)
+		else:
+			p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+			p.emission_sphere_radius = 12.0
+		_fire(p, at, Color.WHITE, pair[1])
+	_next_confetti = (_next_confetti + 1) % CONFETTI_POOL
 
 ## Five to seven small stars burst from `at` in `colour`, mostly upward,
 ## drift, and shrink and fade to nothing over about half a second.
@@ -230,3 +285,38 @@ static func star_texture() -> ImageTexture:
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	_star = ImageTexture.create_from_image(img)
 	return _star
+
+## The confetti's sun: a 32 px disc in SUN with eight short rays in SUN_RAY.
+static var _sun_tex: ImageTexture
+## The confetti's moon: a 32 px crescent in MOON_INK, open to the upper right.
+static var _moon_tex: ImageTexture
+
+static func sun_texture() -> ImageTexture:
+	if _sun_tex == null:
+		_sun_tex = _shape_texture(func(p: Vector2) -> Color:
+			var d := p.length()
+			var body := clampf((0.52 - d) / 0.07, 0.0, 1.0)
+			var a := fposmod(p.angle(), PI * 0.25) - PI * 0.125
+			var ray := clampf((0.1 - absf(a) * d) / 0.06, 0.0, 1.0) * clampf((0.95 - d) / 0.07, 0.0, 1.0) \
+				* clampf((d - 0.6) / 0.05, 0.0, 1.0)
+			if body > 0.0:
+				return Color(Pal.SUN, body + (1.0 - body) * ray)
+			return Color(Pal.SUN_RAY, ray))
+	return _sun_tex
+
+static func moon_texture() -> ImageTexture:
+	if _moon_tex == null:
+		_moon_tex = _shape_texture(func(p: Vector2) -> Color:
+			var outer := clampf((0.85 - p.length()) / 0.07, 0.0, 1.0)
+			var bite := clampf(((p - Vector2(0.42, -0.42)).length() - 0.62) / 0.07, 0.0, 1.0)
+			return Color(Pal.MOON_INK, outer * bite))
+	return _moon_tex
+
+## A STAR_SIZE texture painted by `shade`, handed each pixel's centre in -1..1.
+static func _shape_texture(shade: Callable) -> ImageTexture:
+	var img := Image.create(STAR_SIZE, STAR_SIZE, false, Image.FORMAT_RGBA8)
+	for y in STAR_SIZE:
+		for x in STAR_SIZE:
+			var p := Vector2((x + 0.5) / STAR_SIZE * 2.0 - 1.0, (y + 0.5) / STAR_SIZE * 2.0 - 1.0)
+			img.set_pixel(x, y, shade.call(p))
+	return ImageTexture.create_from_image(img)
