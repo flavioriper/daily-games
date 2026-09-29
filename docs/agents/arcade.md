@@ -1,0 +1,213 @@
+<!-- Moved verbatim from CLAUDE.md on 2026-09-29. -->
+
+## Arcade
+
+**A fifth tab since 2026-09-27**, between Versus and Stats: games played
+alone for a score (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
+it is not a registry entry: `ui/menu/arcade_tab.gd` holds one card a game,
+`ui/menu.gd`'s `_open_arcade` mounts the game's own screen and closes back
+to the tab, and the screen joins the `versus_host` group so Android's back
+reaches it. Scores live in `user://arcade.cfg` (`arcade/arcade_record.gd`).
+
+**Three games left for a side project on 2026-09-27**: Hedgerow TD (a path
+tower defence), Henhouse (an egg-farm idle clicker, the one timed record)
+and Millstream (a factory builder), with Ant March (an incremental gate
+runner, built that afternoon and never merged here), went to
+`~/dev/garden-games`, a full copy of this repo at `9b55e2c` renamed "Garden
+Games" with no git remote, to become a game of its own for the longer
+genres (its `SIDE_PROJECT.md` says what is there). Their code, sounds,
+harnesses, specs, locale keys and `arcade_record.gd`'s `add_time()` went
+from here. Three lessons they taught every harness still apply: **a
+harness's mouse events are in window coordinates** (map a canvas point with
+`root.get_final_transform()`, or it lands 0.75x off at 810x1440); **a
+harness that sends a mouse press must send its release**, wheel included,
+or the next press lands on the old mouse-focus control; and **an
+autowrapping Label resized in the frame its text changed measures at its
+old width** and comes out thousands tall.
+
+**Firefly is the first**: a formation shooter after Namco's 1981 game,
+which the spec names once to forbid; **it is called Firefly and nothing
+else**. A firefly against gnats, ladybirds and moths in a night garden,
+with the arcade's rules kept (two volleys, looping entrances, escorted
+dives, a moth's silk beam that carries your ship off and a rescue that
+makes a pair, a flyby bonus stage third and every fourth after).
+
+- **The game is pure data** (`arcade/firefly_sim.gd`, field units, fixed
+  1/120 s). `tests/_probe_firefly.gd -- [seed] [minutes] [skill]` plays it
+  with a bot and tallies the events; run it after touching the sim.
+- **The cast is built once and turned by the transform**
+  (`arcade/firefly_art.gd`, cached per look, frame and scale), shared with
+  the tab's banner. One `draw_mesh` a bug; 101 draw calls with the swarm
+  seated since the polish (82 before), 101 on the tab (810x1440).
+- **Rewards made loud on 2026-09-27** (the spec's section 9) through
+  `arcade/rewards.gd`, the sticker-and-bits kit lifted into one layer that
+  Firefly and Molehill share: kill scraps and stars to the score, a chain
+  of kills worded (Nice! to Legendary!) with a warm edge glow, Escort bonus,
+  Saved!, Double fire!, Clear!, a flyby bonus, Extra firefly!, milestones,
+  a new best, and an end card that counts up. **Sunbursts over the night
+  sky are added (`set_additive`), not laid over**: laid over, pale gold
+  read as grey haze. 93-156 draw calls in play, ~420 at a forced pile-up.
+- **Polished on 2026-09-27** (the spec's section 8), screen-side only: a
+  leaning, recoiling firefly with a wake, bobbing and squashing seats, a
+  wriggle into a dive, kill bursts, shake and hit-stop on a lost firefly,
+  a better beam, a swaying, living garden. The grass, clouds and stars are
+  built once and moved by transform: laid into the live mesh they cost
+  4.65 ms a frame on this Mac, now about 1 ms.
+- **A slide, not a spot**: the firefly follows the finger's movement at
+  1.35x, and holding fires.
+- **A wrapped Label hidden before its first layout measures thousands of
+  pixels tall** (it has a width of one), so the tab's fit measures its lines
+  off the font instead. The Versus tab reads its labels and may have the
+  same trouble.
+- Sounds take a new style in `tools/gen_sfx.py`, `ARCADE` (soft 8-bit
+  synth), awaiting the user's listen. `tests/_shot_firefly.gd` shoots every
+  beat and puts `user://arcade.cfg` back.
+
+**Molehill is the second** (2026-09-27, spec
+`2026-09-27-arcade-molehill-design.md`): whack-a-mole after the boardwalk
+cabinet, whose trademark the spec names once to forbid; **it is called
+Molehill**. The brief said "puzzle game"; it went on the Arcade tab because
+it is a timed game for a score with no solve. Twelve molehills (3x4) and a
+minute: moles (10), golden ones (50), flowerpot moles that take two whacks
+(25), and a rabbit who must be left alone (-30). A streak multiplies (x2 at
+5, x3 at 12, x4 at 20) and breaks on a mole let go, an empty whack or the
+rabbit; the last ten seconds count double. The record's "furthest" is the
+best streak.
+
+- **The game is pure data** (`arcade/molehill_sim.gd`, fixed 1/60 s,
+  `whack(hill)` and `events`). `tests/_probe_molehill.gd -- [seed] [react
+  ms] [slips]` plays it with a bot: ~10,000 at 300 ms, ~1,400 at 800 ms.
+- **A mole sinks by a clip, not by a cut mesh**: each hill is a clipping
+  Control whose bottom edge is the hole's mouth, the mole lowered into it by
+  the draw transform, then the mound's front lip as a second child over it,
+  both in row order so a row stands in front of the one behind.
+- `tests/_shot_molehill.gd -- <outdir> [reduce]` shoots every beat, clicks a
+  mole through the viewport (prints whether it counted) and puts
+  `user://arcade.cfg` back. 134 draw calls on the tab with three cards, 55
+  on a bare lawn, 63 with the cast up, 72-75 on the end card, ANGLE agreeing.
+- 17 sounds, whacks in a new `CARTOON` style and jingles in `ARCADE`,
+  awaiting the user's listen.
+- **Rewards made loud on 2026-09-27** (the spec's last amendment), through
+  `arcade/rewards.gd`: clods, coins and shards off every whack, flurries
+  (Double!, Triple!), the streak worded, a big `x2!` over a sunburst at each
+  multiplier step, a warm glow round the lawn, Not the bunny! with hearts,
+  the last five seconds painted on the lawn under the moles, milestones, a
+  new best, and an end card that counts up. ~150-240 draw calls at a busy
+  moment.
+- **Polished on 2026-09-27** (the spec's section 7), screen and art only:
+  moles that look about, blink, overshoot and pancake, peek before the
+  round and jeer after it; mounds that heave; a mallet with a shadow, a
+  smear and an impact star; sticker numbers kept clear of the time bar; a
+  frenzy glow from the edges. 54-57 draw calls in play, 93 on the end card.
+
+**Stackwood is the third** (2026-09-27, spec
+`2026-09-27-arcade-stackwood-design.md`): a falling-block number merge
+after a drop-and-merge game the spec names once to forbid; **it is called
+Stackwood**. Numbered wooden blocks fall into a shelf 5 wide and 7 high;
+slide to steer, let go to drop, and a block merges with every touching
+block of its number, doubling once for each, the blocks above falling in
+and chaining. Topping out ends it. Acorns from merges buy a rainbow block,
+a bomb and a zap. Its "furthest" is the biggest block.
+
+- **The game is pure data** (`arcade/stackwood_sim.gd`, fixed 1/60 s).
+  `tests/_probe_stackwood.gd -- [seed] [skill 0-2] [tools 0/1]` plays it
+  with a bot; run it after touching the sim.
+- **Six cards do not stand one above another**: the Arcade tab's `_fit`
+  now ends in two cards a row (Play as a chevron alone). 194 draw calls on
+  the tab, 60-114 in play, 90 on the end card (810x1440).
+- **A new locale key reads as its key until the CSV is reimported**
+  (`godot --headless --import`), and a `%d` key then throws a string
+  formatting error rather than failing quietly.
+- 20 sounds (`CARTOON` wood, `ARCADE` jingles), awaiting the user's listen.
+  `tests/_shot_stackwood.gd` puts `user://arcade.cfg` back.
+- **Polished on 2026-09-27** (the spec's section 7), screen and art only:
+  bevelled blocks dressed up with the number (a frame from 128, gilt and
+  twinkles from 1024), a cabinet with posts, crown, ivy and bunting, a
+  falling block that glides and leans (an exactly solved spring, because
+  the explicit one blew up on a long frame), landing squash and column dip,
+  gravity settles, merge gulp and flash, acorns flying into the bank.
+  `Motion.bump` compounds when bumps overlap; the screen's `_kick` restarts
+  from one. 69-75 draw calls in play, ~135 at a chain's peak.
+- **Rewards made loud on 2026-09-27** (the spec's section 8): Lucky
+  Thirteen's sticker and bits kit carried over -- splinters and sparks off
+  every merge, hopping words (Nice! to Legendary!) with `Chain xN` and
+  `Combo xN` under them, a warm edge glow for a combo of merging drops, a
+  new biggest block lettered up top, a gold flash and acorn rain from 2048,
+  Phew! off the line, acorn comet trails, an end card that counts up.
+  81-127 draw calls in play, ~250 at a big chain's peak.
+
+**Lucky Thirteen is the fourth** (2026-09-27, spec
+`2026-09-27-arcade-thirteen-design.md`): a chain-merge number game after a
+browser game the spec names once to forbid; **it is called Lucky
+Thirteen** (id `thirteen`). Drag through three or more touching pebbles of a
+number (diagonals count) and they merge into the last, one higher; the aim
+is 13, and a tray with no three touching is stuck. Clovers buy five tools
+(undo, swap, pluck, shuffle, lift) whose prices climb with each purchase.
+
+- **The game is pure data with no clock** (`arcade/thirteen_sim.gd`): a
+  move resolves at once and the screen animates the settle after it.
+  `tests/_probe_thirteen.gd -- [seed] [skill 0-2] [tools 0/1] [games]`
+  plays it with a bot; run it after touching the spawn window or the
+  clovers. Random play reaches 9 in ~65% of games, 13 in ~2%.
+- **A connected group of three or more always holds a chain of three**, so
+  "stuck" is a flood fill (`groups_of`), but not every pebble of a group can
+  *end* one (the middle of a star cannot): `chain_through` may come back
+  short, and anything picking an end must try another.
+- 216 draw calls on the tab with seven cards, 125-148 in play, 99 on the end
+  card, ANGLE agreeing. 19 sounds (`CARTOON` pebbles, `ARCADE` jingles),
+  awaiting the user's listen. `tests/_shot_thirteen.gd` puts
+  `user://arcade.cfg` back.
+- **Polished on 2026-09-27** (the spec's section 6), screen and art only:
+  banded pebbles that glint and wiggle, a chain held up off the sand with
+  flowing beads and a tether to the finger, merges that knock their
+  neighbours, a new number from 7 revealed big and flown to the plate, words
+  on paper pills and a stuck card. 125-135 draw calls in play, ~143 on the
+  13's reveal.
+- **Rewards made loud on 2026-09-27** (the spec's section 7): Posy's
+  sticker and bits kit carried over -- tier rings while a chain is drawn,
+  chips and stars off every merge, chain words (Nice! to Legendary!), a
+  streak of long chains with a warm edge glow, a 13 that flashes gold and
+  rains coins, clover comet trails, an end card that counts up. 131-192
+  draw calls in play, 94 on the end card.
+
+**Posy is the fifth** (2026-09-27, spec
+`2026-09-27-arcade-posy-design.md`): a swap-three garden after the
+candy-swapping game the spec names once to forbid; **it is called Posy**
+(the user's mock said Pixel Garden, which the twenty-seventh board already
+is). Swap neighbours to line up three; four leave a breeze (row or column),
+an L or T a seed bomb that goes off twice, five a rainbow posy. Each day
+asks for so many of two or three kinds in so many moves; leftover moves
+bloom as breezes, then the next day is dealt. Its "furthest" is the day.
+
+- **The game is pure data** (`arcade/posy_sim.gd`, no clock): a move
+  resolves at once and leaves every cascade step as an event.
+  `tests/_probe_posy.gd -- [seed] [skill 0-2] [tools 0/1] [games]`; run it
+  after touching the sim or `day_plan()`.
+- **The screen plays the events off a queue and keeps its own picture of
+  the bed** (`_tiles`, id -> where it is going), and the paper row follows
+  the queue: the sim is a whole cascade ahead by the time the first step is
+  drawn, so nothing on screen may read the sim's grid while `busy()`.
+- **A harness must put `user://arcade.cfg` back on every exit path**, a
+  timeout included: the first `_shot_posy` run timed out after its bot had
+  lost a game and left a real Posy score in this Mac's save.
+- 236 draw calls on the tab with eight cards, 131-151 in play, 100-104 on
+  the end card, ANGLE agreeing. 26 sounds (`CARTOON` garden, `ARCADE`
+  shimmer and jingles), awaiting the user's listen.
+- **Polished on 2026-09-27** (the spec's section 6), screen and art only:
+  the rewards made loud -- words lettered a hopping letter at a time over
+  sunbursts (day, cascades, combos, specials made, last move), petals,
+  leaves, sparks and stars thrown by every pick and blast, a flashing bed and
+  a cascade's edge glow, stamped goal seals, and a day's end of one to three
+  stars, a petal rain, every spare move thrown from the moves plate as a gold
+  star, and the gift flown to its tool. 148-200 draw calls in play, ~254 at
+  the day's end peak, ANGLE agreeing.
+- **The genre pass on 2026-09-28** (the spec's section 7), from a look at
+  Royal Match and Gardenscapes: a **bee** from a square of four that flies
+  to the cell the goals want most, chosen when it goes off; **weeds, stones
+  and moss** from day three (one a day, taking a goal) and **shaped beds**
+  from day four -- tiles fall past holes, stones and moss, so gravity stays
+  a column compaction; **five more moves once a game** (`Phase.OFFER`);
+  **tap a special** to set it off for a move; and moves allowed while tiles
+  are still landing, with a tap hurrying the rest. A harness laying tiles by
+  hand (`_put`) must skip cells with no tile: a stone's `{}` written into
+  becomes a half tile the sim then trips on.
