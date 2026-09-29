@@ -117,7 +117,7 @@ CREDITS_SOUND,Sound,Som,Sonido
 CREDITS_ENGINE,Engine,Motor,Motor
 ADS_TAB,Remove ads,Remover anúncios,Quitar anuncios
 STORE_TITLE,No more ads,Sem anúncios,Sin anuncios
-STORE_BODY,"One purchase, for good. Every puzzle stays free, and the banner never comes back.","Uma compra, para sempre. Todos os puzzles continuam grátis e o banner nunca mais volta.","Una compra, para siempre. Todos los puzles siguen gratis y el banner no vuelve nunca."
+STORE_BODY,"One purchase, for good. No banner and no full-screen ads. Bonus videos are still there whenever you choose one.","Uma compra, para sempre. Sem banner e sem anúncios em tela cheia. Os vídeos de bônus continuam lá quando você quiser.","Una compra, para siempre. Sin banner ni anuncios a pantalla completa. Los videos de bonificación siguen ahí cuando quieras."
 STORE_BUY,Remove ads · %s,Remover anúncios · %s,Quitar anuncios · %s
 STORE_BUY_NO_PRICE,Remove ads,Remover anúncios,Quitar anuncios
 STORE_UNAVAILABLE,Not available here,Indisponível aqui,No disponible aquí
@@ -127,7 +127,7 @@ STORE_OWNED,Ads removed,Anúncios removidos,Anuncios quitados
 STORE_FAIL,The purchase didn't go through.,A compra não foi concluída.,La compra no se completó.
 STORE_PENDING,Waiting for the payment to clear.,Aguardando o pagamento ser confirmado.,Esperando a que se confirme el pago.
 STORE_NOTHING,No purchase to restore on this account.,Nenhuma compra para restaurar nesta conta.,No hay compras que restaurar en esta cuenta.
-STORE_PERK_1,"No banner, ever again","Nenhum banner, nunca mais","Ningún banner, nunca más"
+STORE_PERK_1,"No banner or full-screen ads, ever","Nenhum banner nem anúncio em tela cheia","Ni banner ni anuncios a pantalla completa"
 STORE_PERK_2,Every puzzle stays free,Todos os puzzles continuam grátis,Todos los puzzles siguen gratis
 STORE_PERK_3,"One purchase, for good","Uma compra, para sempre","Una compra, para siempre"
 STORE_UNAVAILABLE_NOTE,The store isn't available on this device.,A loja não está disponível neste aparelho.,La tienda no está disponible en este dispositivo.

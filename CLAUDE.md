@@ -2195,7 +2195,7 @@ see "Ads and the purchase" below.
   `store_opened` (with `door`: banner, header or settings), `purchase_started`,
   `purchase_complete`, `purchase_failed` (with `reason`), `restore_used` (with
   `found`), `consent_failed`, and `ad_banner_loaded` / `ad_banner_failed` /
-  `ad_banner_impression` -- see "Ads and the purchase" below. Since 2026-09-26
+  `ad_banner_impression`, and since 2026-09-29 `age_answered` (band), `ad_interstitial_shown`, `ad_interstitial_skipped` (`reason`), `ad_rewarded_offered` / `ad_rewarded_started` / `ad_rewarded_completed` (`placement`, `free`) and `ad_load_failed` (`format`, `error`) -- see "Ads and the purchase" below. Since 2026-09-26
   (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
   `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and
@@ -2325,6 +2325,43 @@ stated before the 3D game left.
   text button, and no Close while there is something to buy (the X is
   enough); with no store it keeps the button dimmed and says so in a line
   under it (`STORE_UNAVAILABLE_NOTE`); owned, the thanks and a wide Close.
+- **Fair ads since 2026-09-29** (branch `feat/fair-ads`, plan
+  `docs/superpowers/plans/2026-09-29-fair-ads.md`, research
+  `reports/Fair ad monetization for puzzles.md`). **The age gate**
+  (`core/age_gate.gd`, `ui/hud/age_screen.gd`): a birth year asked once at
+  first launch on a phone, kept in `user://age.cfg`, never sent -- only the
+  band leaves the device (child under 13, teen 13-17, adult; the younger
+  reading of the year wins). `Ads._configure_requests()` caps everyone at
+  PG and a child at G with the child-directed tag, tags anyone under 18
+  under-age-of-consent, and every request below 18 goes out `npa=1`. A
+  desktop debug run shows the screen with `AGE_SCREEN=1`. **Pacing**
+  (`core/ad_pacing.gd`, pure, saved by `Ads`): the interstitial waits out a
+  3-day grace, three hearts that day, six finished games, two games and 4
+  minutes since the last one and 4 after a video, at most 4 a day, and
+  never for a child; the defaults are the report's and `config/ads`
+  (`Backend.config`, written by `tools/set_ads_config.sh`) overrides any of
+  them by name and type, a bad document ignored. **An interstitial is only
+  ever asked for through `Ads.leaving_game()` after a finished game --
+  never before one**: not on `play_level`, not on Play again, not at
+  launch. **Rewarded videos are opt-in and asked, never pushed**, ten a day
+  in all: `hint` (one more per board once its own hints are spent,
+  `add_hint()`), `double` (an Arcade run's gold doubled on the end card --
+  gold only, never score, and inside `Wallet.ARCADE_CAP`) and `continue`
+  (a run kept going beside the gold Second chance, once a run, no timer, its
+  best marked boosted). **Remove ads removes the banner and the
+  interstitials and nothing else**: the videos stay for buyers too, by the
+  user's decision, so there is no free-reward path (`STORE_BODY` says so).
+  An ad mutes Master and puts the player's Sound setting back after.
+  `ADS_FAKE_FULL=1` (always earns) or `skip` (never does), debug builds
+  only, stands a grey card in for either ad. Probes: `tests/_probe_age_gate`,
+  `_probe_ad_pacing`, `_probe_ads_slots`, `_probe_ads_flow`,
+  `_probe_extra_hint`, `_probe_hint_offer`, `_probe_chance` (with
+  `ADS_FAKE_FULL`) and `_shot_doubler`. **Outside steps a person owns**:
+  the four interstitial/rewarded unit ids in `project.godot`
+  (`ads/interstitial_unit_id.*`, `ads/rewarded_unit_id.*`, still unset),
+  AdMob's maximum content rating set to PG, the Play target-audience and
+  App Store age-rating answers, and a Brazilian lawyer's word on whether a
+  self-declared year meets ECA Digital's "reliable" standard.
 - **The purchase sheet has three doors**: a paper "Remove ads" tab
   (`Ads.TAB_H` 56) `ui/ads/banner_host.gd` stands on the banner's top edge,
   a third header icon button, and a Remove ads row in settings (Restore
