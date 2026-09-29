@@ -200,3 +200,35 @@ A lost day is not saved, so reopening it deals it fresh with full thread (the
 same gap as Balance's and Code Break's; it needs the host to keep an
 unsolved ending per day). The kitten has one look (a ginger tabby). The
 tutorial sheet and menu card show the ring, not the kitten.
+
+## Review fixes (2026-09-29)
+
+An independent review of the branch (replaying the dealer's answer through the
+state on 500+ seeds a band, hint chains, the kitten's schedule in all five
+places) found the rules and the kitten sound and these bugs, all fixed:
+
+- **Undo and Reset stayed grey after a move.** `can_undo()` / `can_reset()`
+  wait for the board to settle, and the HUD only re-reads on `moved` or
+  `focus_changed`, which fired mid-flight. The board now emits `focus_changed`
+  on the edge into settled.
+- **The kitten's swat overwrote the player's own flight** when she batted the
+  peg just dropped (the yarn shows which peg, so it is a natural move): flights
+  now chain (`then`), the swat waits behind the drop.
+- **A won board could be un-won** by a press in the 0.1-0.2 s before it
+  settled (and a win on the last stitch turned into out-of-thread): no touch
+  once `state.is_solved()`.
+- **The kitten's swipe was credited to, or blamed on, the player**: `move()`
+  now returns the player's own `cleared` and the count `left` before any swipe.
+- A strained face stuck after release; `_draw` threw on a board built before
+  its card had a size; the "never unsolvable" fallback board could put two pegs
+  in one hole or start solved (now `Gen._fallback`, tested over 40 seeds); a
+  restored daily with no saved record showed the best seal; the hint-video
+  offer showed on a dead board (`ui/puzzle_host.gd` now asks `out_of_hearts`);
+  a relayout mid-flight left flights in the old pixels (now cancelled); the
+  paw print outlived the day; a tap-selected peg rebuilt every mesh every frame
+  (now half rate); a hint's search is narrower (22, ~40 ms).
+- `tests/test_untangle.gd` now replays the answer through `State.move` on
+  Hard and Insane (30 seeds each, kitten included) and checks the fallback.
+- Kept as designed: the stamp counts a hint as a move *and* a step
+  (`extra = moves - par + hints`), so a full-hint solve reads as par extra
+  moves, not twice par.
