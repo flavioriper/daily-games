@@ -146,16 +146,17 @@ SK_CHECK_N,%d numbers are not settled yet.,%d números ainda não estão certos.
 SK_CLEARED,"Cleared. The hints you spent are not refunded, only unpinned.","Limpo. As dicas usadas não voltam, só deixam de estar fixas.","Limpio. Las pistas usadas no se devuelven, solo se sueltan."
 SK_WIN,The whole field is planted.,O campo todo está plantado.,Todo el campo está plantado.
 SK_SHARE_PLOTS,%d plots,%d canteiros,%d parcelas
-UT_BLURB,Lift the pegs into empty holes until no ropes cross.,Mude os pinos para buracos vazios até nenhuma corda se cruzar.,Cambia las clavijas a huecos vacíos hasta que ninguna cuerda se cruce.
+UT_BLURB,Lift the pegs over the ropes until no rope crosses another.,Leve os pinos por cima das cordas até nenhuma cruzar outra.,Lleva las clavijas por encima de las cuerdas hasta que ninguna cruce otra.
 UT_SHORT,Move the pegs\nuntil no rope crosses.,Mude os pinos\naté nada cruzar.,Mueve las clavijas\nsin que se crucen.
 UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace
-UT_LVL_0,4 ropes,4 cordas,4 cuerdas
-UT_LVL_1,6 ropes,6 cordas,6 cuerdas
+UT_LVL_0,4 ropes · over and under,4 cordas · por cima e por baixo,4 cuerdas · por encima y por debajo
+UT_LVL_1,6 ropes · twisted pairs,6 cordas · pares torcidos,6 cuerdas · pares torcidos
 UT_LVL_2,8 ropes · runs out of thread,8 cordas · a linha acaba,8 cuerdas · el hilo se acaba
 UT_LVL_3,9 ropes · a kitten pounces,9 cordas · uma gatinha ataca,9 cuerdas · una gatita ataca
-UT_RULES,"Lift a peg out of its hole and drop it in an empty one; its rope comes with it. Untangle the ring until no two ropes cross. A short rope only reaches so far, and pulls tight when you ask too much.\n\nOn Hard and Insane every move uses a stitch of thread, and when it runs out the day is over. On Insane a kitten bats the marked peg after every third move.","Tire um pino do buraco e coloque em um buraco vazio; a corda vai junto. Desembarace o anel até nenhuma corda cruzar outra. Uma corda curta só alcança até certo ponto e estica quando você pede demais.\n\nNo Difícil e no Insano cada movimento gasta um ponto de linha, e quando ela acaba o dia termina. No Insano uma gatinha ataca o pino marcado a cada três movimentos.","Saca una clavija de su hueco y ponla en uno vacío; la cuerda va con ella. Desenreda el aro hasta que ninguna cuerda cruce a otra. Una cuerda corta solo llega hasta cierto punto y se tensa si pides demasiado.\n\nEn Difícil e Insano cada movimiento gasta una puntada de hilo, y cuando se acaba el día termina. En Insano una gatita ataca la clavija marcada cada tres movimientos."
+UT_RULES,"Lift a peg out of its hole and drop it in an empty one; it is carried over the top, and its rope comes with it. Where two ropes cross, one lies on top. Lift the rope on top and it slides off; move the one underneath and it wraps round the other once more. Untangle the ring until no two ropes cross. A short rope only reaches so far.\n\nOn Hard and Insane every move uses a stitch of thread, and when the thread runs out the day is lost. On Insane a kitten bats the marked peg every third move.","Tire um pino do buraco e solte num vazio; ele passa por cima de tudo, e a corda vai junto. Onde duas cordas se cruzam, uma fica por cima. Levante a de cima e ela se solta; mexa na de baixo e ela dá mais uma volta na outra. Desembarace o anel até nenhuma corda cruzar outra. Uma corda curta só alcança até certo ponto.\n\nNo Difícil e no Insano cada movimento gasta um ponto de linha, e quando a linha acaba o dia está perdido. No Insano uma gatinha bate no pino marcado a cada três movimentos.","Saca una clavija de su hueco y suéltala en uno vacío; pasa por encima de todo, y su cuerda va con ella. Donde dos cuerdas se cruzan, una queda encima. Levanta la de encima y se suelta; mueve la de abajo y da otra vuelta a la otra. Desenreda el aro hasta que ninguna cuerda cruce otra. Una cuerda corta solo llega hasta cierto punto.\n\nEn Difícil e Insano cada movimiento gasta una puntada de hilo, y cuando se acaba el hilo el día está perdido. En Insano una gatita golpea la clavija marcada cada tres movimientos."
 UT_TIP_DRAG,Lift a peg into an empty hole. No two ropes may cross.,Levante um pino para um buraco vazio. Nenhuma corda pode cruzar outra.,Lleva una clavija a un hueco vacío. Ninguna cuerda puede cruzar otra.
-UT_TIP_KNOT,A red knot marks where two ropes cross. Move one of their pegs away.,Um nó vermelho marca onde duas cordas se cruzam. Tire um dos pinos delas.,Un nudo rojo marca donde se cruzan dos cuerdas. Aparta una de sus clavijas.
+UT_TIP_KNOT,Lift the rope that lies on top. Moving the one underneath wraps it tighter.,Levante a corda que está por cima. Mexer na de baixo dá mais uma volta.,Levanta la cuerda que está encima. Mover la de abajo la enreda más.
+UT_TIP_WRAP,"Two ropes twisted together need the top one lifted, turn by turn.","Duas cordas torcidas juntas: levante a de cima, volta por volta.","Dos cuerdas retorcidas: levanta la de encima, vuelta a vuelta."
 UT_TIP_REACH,"A short rope only stretches so far. If it pulls tight, try another hole.","Uma corda curta só estica até certo ponto. Se ela esticar, tente outro buraco.","Una cuerda corta solo se estira hasta cierto punto. Si se tensa, prueba otro hueco."
 UT_TIP_PICKED,Tap a glowing hole to drop it there.,Toque em um buraco brilhando para soltar lá.,Toca un hueco que brilla para soltarla ahí.
 UT_TIP_THREAD,Every move uses a stitch of thread. Watch the row at the top.,Cada movimento gasta um ponto de linha. Olhe a fileira no alto.,Cada movimiento gasta una puntada de hilo. Mira la fila de arriba.
@@ -188,6 +189,9 @@ UT_W_6,Wowza wool!,Que lã!,¡Qué lana!
 UT_W_STREAK,Yarn streak!,Sequência de lã!,¡Racha de lana!
 UT_W_OOPS,"Oopsie, tangled!","Ops, emaranhou!","¡Ups, se enredó!"
 UT_W_LAST,One to go!,Falta um!,¡Uno más!
+UT_W_UNWOUND,Unwound!,Desenrolou!,¡Desenrollada!
+UT_W_FREE,Free rope!,Corda livre!,¡Cuerda libre!
+UT_W_WRAPPED,Wrapped!,Enrolou!,¡Se enrolló!
 UT_W_WIN,Untangled!,Desembaraçado!,¡Desenredado!
 UT_W_NO_HINTS,No hints!,Sem dicas!,¡Sin pistas!
 UT_W_SPOOL,New spool!,Carretel novo!,¡Carrete nuevo!

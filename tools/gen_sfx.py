@@ -45,7 +45,9 @@ COZY = "cozy, warm, soft, intimate, close mic, quiet room, no music, no voice"
 
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
-#                                     | "fall": the take, then itself 3 semitones lower]])
+#                                     | "fall": the take, then itself 3 semitones lower
+#                                     | "warm:<Hz>": rolled off above <Hz> and eased in
+#                                       over 4 ms, for a take that came back scratchy]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
@@ -151,22 +153,31 @@ SETS = {
     # lifted into empty holes until no ropes cross. Re-prompted 2026-09-29
     # (the ring rebuild): real wood and rope in FOLEY, the kalimba for the
     # rewards; on Hard and Insane a needle and thread, and Insane's kitten.
+    # The knots pass (same day): measured, not heard -- enter came back 94%
+    # hiss above 6 kHz and pick, put, taut, stitch and reset 30-60%, against
+    # a family (Balance, the rewards) mostly under 5%; those are warmed, enter
+    # is re-prompted, and the braids get cinch, unwind and free.
     "untangle": {
-        "pick":     ("a small smooth wooden peg pulled out of a snug wooden hole, one soft hollow pop with a light cotton rope rustle, cozy, close mic, very short", 0.5, -10, FOLEY),
+        "pick":     ("a small smooth wooden peg pulled out of a snug wooden hole, one soft hollow pop with a light cotton rope rustle, cozy, close mic, very short", 0.5, -10, FOLEY, "warm:4200"),
         "drop":     ("a small wooden peg pressed into a wooden hole, one soft round hollow thock, cozy, close mic, very short", 0.5, -6, FOLEY),
-        "put":      ("a tiny soft wooden peg tap, very quiet, very short", 0.5, -14, FOLEY),
+        "put":      ("a tiny soft wooden peg tap, very quiet, very short", 0.5, -14, FOLEY, "warm:3800"),
         "refused":  ("a soft muffled rubbery rope stretch ending in a tiny kind wobbly kalimba note, a gentle 'not that far', warm, very short", 0.6, -10),
-        "taut":     ("a thick cotton rope pulled tight, a soft creak and a low gentle twang, close mic, cozy", 0.7, -9, FOLEY),
+        "taut":     ("a thick cotton rope pulled tight, a soft creak and a low gentle twang, close mic, cozy", 0.7, -9, FOLEY, "warm:3500"),
+        # The knots: a wrap drawn tighter, a wrap spinning free, a rope left
+        # with nothing crossing it.
+        "cinch":    ("a thick soft cotton rope drawn snug around another rope, one short muffled woolly squeeze and creak, cozy, close mic", 0.5, -10, FOLEY, "warm:3500"),
+        "unwind":   ("a soft cotton rope unwinding and spinning loose with a gentle whirr, ending in one bright happy kalimba pluck, cozy", 0.8, -8, STYLE, "warm:6000"),
+        "free":     ("a soft springy cotton rope boing with a tiny happy two-note kalimba lift, cute and cozy, very short", 0.6, -9, STYLE, "warm:6000"),
         "untie":    ("a tiny bright kalimba pluck going up with a soft rope loosening rustle, a knot coming undone, very short", 0.6, -8),
         "combo":    ("two or three soft rising kalimba and glockenspiel notes, a cheerful cozy little fanfare", 0.9, -7),
         "oops":     ("two soft wobbly descending marimba notes with a tiny cartoon slide, a gentle comic oops, not harsh", 0.7, -10),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("many small wooden pegs and soft ropes sliding back into place, gentle clicks and a cloth rustle, close mic", 1.0, -9, FOLEY),
+        "reset":    ("many small wooden pegs and soft ropes sliding back into place, gentle clicks and a cloth rustle, close mic", 1.0, -9, FOLEY, "warm:4200"),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft cascade of tiny wooden pegs popping into holes one after another, cozy marimba ticks, airy", 1.0, -9),
+        "enter":    ("four or five soft low wooden marimba ticks one after another, like small round pegs settling into a wooden ring, warm and gentle, no hiss", 1.0, -9, STYLE, "warm:5000"),
         # Thread (Hard and Insane).
-        "stitch":      ("a tiny needle pulling thread through cloth, one very short soft zip, quiet, close mic", 0.5, -15, FOLEY),
+        "stitch":      ("a tiny needle pulling thread through cloth, one very short soft zip, quiet, close mic", 0.5, -15, FOLEY, "warm:4000"),
         "thread_low":  ("a single soft low warm kalimba note, gentle, a quiet 'the thread is getting short', very short", 0.5, -12),
         "thread_out":  ("a sleepy three-note music box lullaby slowly descending with a soft yawn, calm and kind, maybe tomorrow", 1.6, -12),
         "spool_back":  ("a warm rising pair of soft kalimba plucks with a tiny sparkle and a light wooden spool spinning, gentle and happy", 0.9, -9),
@@ -174,7 +185,7 @@ SETS = {
         # The seal and the party.
         "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
         "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9, STYLE, "warm:7000"),
         # Insane's kitten.
         "pounce":   ("a tiny playful kitten mrrp and a soft paw swat, cute and cozy, very short", 0.8, -8, CARTOON),
         "purr":     ("a soft contented kitten purr with one tiny happy mew, cute and cozy, gentle", 1.2, -9, CARTOON),
@@ -785,7 +796,7 @@ def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop
         sys.exit(f"ElevenLabs answered {e.code}: {e.read().decode(errors='replace')[:400]}")
 
 
-def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False) -> None:
+def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0) -> None:
     # Trim silence at both ends (reverse trick for the tail) with a low
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
@@ -800,10 +811,14 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False) 
     # in 16-bit and reads anything over full scale as exactly 0 dB.
     # A loop keeps every sample: a trim or a fade would put a gap in its seam.
     trim = "anull" if loop else "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01"
+    # Warm (2026-09-29, Untangle): a take whose hiss or scratch sits above the
+    # cozy family is rolled off -- two gentle low-pass poles and a high shelf
+    # -- and eased in so its first transient is a touch rather than a click.
+    soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4,afade=t=in:d=0.004" if warm else ""
     with tempfile.TemporaryDirectory() as tmp:
         mono = pathlib.Path(tmp) / "mono.wav"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
-                        "-af", f"{trim},areverse,{trim},areverse",
+                        "-af", f"{trim},areverse,{trim},areverse{soft}",
                         "-ac", "1", "-c:a", "pcm_f32le", str(mono)], check=True)
         probe = subprocess.run(["ffmpeg", "-i", str(mono), "-af",
                                 "astats=measure_overall=Peak_level:measure_perchannel=none",
@@ -846,13 +861,14 @@ def main() -> None:
         prompt, seconds, peak, *rest = SETS[board][cue]
         style = rest[0] if rest else STYLE
         loop = "loop" in rest[1:]
+        warm = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("warm:")), 0)
         raw = raw_dir / f"{cue}.mp3"
         if "--new" in flags or not raw.exists():
             raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
         if "fall" in rest[1:]:
             raw = fall(raw)
-        to_ogg(raw, out, peak, loop)
+        to_ogg(raw, out, peak, loop, warm)
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

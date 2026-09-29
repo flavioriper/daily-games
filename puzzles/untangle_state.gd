@@ -1,14 +1,15 @@
 extends RefCounted
 
 ## Untangle's rules, with no scene under them: which hole each rope end sits
-## in, which ropes cross, every move that can change that, the thread a Hard
+## in, how every pair of ropes crosses (how often, and which lies on top),
+## every move that can change that, the thread a Hard
 ## or Insane day is allowed, and Insane's kitten. The board
 ## (puzzles/untangle2d.gd) draws this and nothing else.
 ##
 ## A peg is numbered 2 * rope + end. `at[peg]` is its hole and `occ[hole]` the
 ## peg in it (-1 when empty). The rule itself lives in untangle_gen.gd so the
 ## dealer and the player read one definition of a crossing.
-## Spec: docs/superpowers/specs/2026-09-29-untangle-ring-design.md.
+## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md.
 
 const Gen = preload("res://puzzles/untangle_gen.gd")
 
@@ -23,6 +24,9 @@ var ropes := 4
 var at := PackedInt32Array()
 var occ := PackedInt32Array()
 var start_at := PackedInt32Array()
+## Per pair of ropes, how they cross (Gen: n * 2 + who is on top).
+var tw := PackedInt32Array()
+var start_tw := PackedInt32Array()
 ## The layout the dealer's answer ends in, which is what "Show the answer"
 ## walks the pegs to.
 var goal_at := PackedInt32Array()
@@ -45,7 +49,8 @@ var cat := false
 var swipes: Dictionary = {}
 var moves_here := 0
 ## One entry per move that can be taken back, newest last:
-## {"peg", "from", "to", "order", "cat": {} or {"peg", "from", "to"}}.
+## {"peg", "from", "to", "order", "at", "tw" (both from before it),
+## "cat": {} or {"peg", "from", "to"}}.
 var history: Array[Dictionary] = []
 
 ## Every crossing as a pair of ropes, and the ropes caught in one.
@@ -58,6 +63,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	holes = out.holes
 	ropes = out.ropes
 	start_at = out.start
+	start_tw = out.tw
 	goal_at = out.goal
 	reach = out.reach
 	plan = out.plan
@@ -67,6 +73,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	swipes = out.swipes
 	start_order = out.order
 	at = start_at.duplicate()
+	tw = start_tw.duplicate()
 	order = start_order.duplicate()
 	occ = Gen.occupancy(at, holes)
 	spent = 0
@@ -77,14 +84,37 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 
 func scan() -> void:
 	occ = Gen.occupancy(at, holes)
-	pairs = Gen.crossing_pairs(at, ropes)
+	pairs = Gen.crossing_pairs(tw, ropes)
 	bad = {}
 	for p in pairs:
 		bad[p.x] = true
 		bad[p.y] = true
 
+## Every crossing, a wrapped pair counting each time round.
 func crossings() -> int:
-	return pairs.size()
+	return Gen.crossing_count(tw)
+
+## How many times ropes `r` and `s` cross.
+func count(r: int, s: int) -> int:
+	return Gen.count(tw, Gen.pair_index(r, s, ropes))
+
+## 1 when rope `r`'s end `e` is on top at its nearest crossing with `s`, 0
+## under, -1 when they do not cross.
+func top_at(r: int, e: int, s: int) -> int:
+	return Gen.top_at(at, tw, ropes, r, e, s)
+
+## What dropping `peg` in `hole` would do to the crossings: the change, and how
+## many of the pairs it passes over it would wrap tighter. [delta, wraps].
+func preview(peg: int, hole: int) -> Array:
+	var a := at.duplicate()
+	var t := tw.duplicate()
+	var before := t.duplicate()
+	var delta := Gen.apply(a, t, ropes, peg, hole)
+	var wraps := 0
+	for k in t.size():
+		if (t[k] >> 1) > (before[k] >> 1) and (before[k] >> 1) > 0:
+			wraps += 1
+	return [delta, wraps]
 
 func is_solved() -> bool:
 	return pairs.is_empty()
@@ -162,8 +192,9 @@ func foresee(peg: int, hole: int) -> Array:
 	if nxt.is_empty() or int(nxt["in"]) != 1 or drop_check(peg, hole) != 0:
 		return []
 	var moved := at.duplicate()
-	moved[peg] = hole
-	if Gen.is_solved(moved, ropes):
+	var moved_tw := tw.duplicate()
+	Gen.apply(moved, moved_tw, ropes, peg, hole)
+	if Gen.is_solved(moved_tw):
 		return []
 	var target := Gen.cat_hole(moved, holes, reach, int(nxt.peg))
 	if target < 0:
@@ -177,27 +208,50 @@ func foresee(peg: int, hole: int) -> Array:
 ## not solve the board -- the kitten pounces. Returns {"peg", "from", "to",
 ## "cleared" (crossings this move undid, negative when it made some: the
 ## player's move alone, before any swipe), "left" (crossings after the move,
-## before any swipe), "cat"}; {} when the drop is not allowed.
+## before any swipe), "freed" (ropes it left with no crossing at all that had
+## some), "unwound" (pairs that were wrapped, two or more times round, and
+## now cross no more than once), "wrapped" (pairs it wrapped tighter), "cat",
+## "tw_mid" (the tangle after the player's move, before any swipe)};
+## {} when the drop is not allowed.
 func move(peg: int, hole: int) -> Dictionary:
 	if drop_check(peg, hole) != 0:
 		return {}
 	var before := crossings()
-	var entry := {"peg": peg, "from": at[peg], "to": hole, "order": order.duplicate(), "cat": {}}
-	at[peg] = hole
+	var entry := {"peg": peg, "from": at[peg], "to": hole, "order": order.duplicate(),
+		"at": at.duplicate(), "tw": tw.duplicate(), "cat": {}}
+	var was_tw := tw.duplicate()
+	var was_bad := bad.duplicate()
+	Gen.apply(at, tw, ropes, peg, hole)
 	_raise(peg >> 1)
 	moves_here += 1
 	spent += 1
 	scan()
 	var after_move := crossings()
+	var unwound := 0
+	var wrapped := 0
+	for k in tw.size():
+		var was := was_tw[k] >> 1
+		var now := tw[k] >> 1
+		if was >= 2 and now <= 1:
+			unwound += 1
+		if now > was and was > 0:
+			wrapped += 1
+	var mid := tw.duplicate()
+	var freed: Array[int] = []
+	for r in was_bad:
+		if not bad.has(r):
+			freed.append(int(r))
 	if cat and not is_solved() and moves_here % Gen.CAT_EVERY == 0:
 		var p := swipe_peg(moves_here)
 		var to := Gen.cat_hole(at, holes, reach, p)
 		if to >= 0:
 			entry["cat"] = {"peg": p, "from": at[p], "to": to}
-			at[p] = to
+			Gen.apply(at, tw, ropes, p, to)
+			_raise(p >> 1)
 			scan()
 	history.append(entry)
-	return {"peg": peg, "from": entry.from, "to": hole, "cleared": before - after_move, "left": after_move, "cat": entry.cat}
+	return {"peg": peg, "from": entry.from, "to": hole, "cleared": before - after_move, "left": after_move,
+		"freed": freed, "unwound": unwound, "wrapped": wrapped, "cat": entry.cat, "tw_mid": mid}
 
 func _raise(rope: int) -> void:
 	order.erase(rope)
@@ -212,9 +266,8 @@ func undo() -> Dictionary:
 	if history.is_empty():
 		return {}
 	var last: Dictionary = history.pop_back()
-	if not last.cat.is_empty():
-		at[int(last.cat.peg)] = int(last.cat.from)
-	at[int(last.peg)] = int(last.from)
+	at = (last.at as PackedInt32Array).duplicate()
+	tw = (last.tw as PackedInt32Array).duplicate()
 	order = last.order
 	moves_here = maxi(0, moves_here - 1)
 	spent += 1
@@ -223,23 +276,34 @@ func undo() -> Dictionary:
 
 ## The next step of a short way home from where the pegs are now, as
 ## [peg, from, to]; [] when there is none to give. The search plays the
-## kitten's swipes in, so her schedule is part of the hint.
+## kitten's swipes in, so her schedule is part of the hint. Without her, a
+## move taken back is a move made back, so when the search finds nothing the
+## last move undone is always a step toward the start, and the dealer's
+## answer from there.
 func hint_step() -> Array:
 	var way = null
 	if cat:
-		var depth := mini(Gen.BEAM_DEPTH, maxi(thread_left() + 2, 4))
-		way = Gen.way_home(at, holes, ropes, reach, depth, Gen.HINT_BEAM, null, swipes, Gen.CAT_EVERY, moves_here)
+		var depth := mini(Gen.BEAM_DEPTH, maxi(thread_left() + 2, 6))
+		way = Gen.way_home(at, tw, holes, ropes, reach, depth, Gen.HINT_BEAM, null, swipes, Gen.CAT_EVERY, moves_here)
 	else:
-		way = Gen.way_home(at, holes, ropes, reach, Gen.BEAM_DEPTH, Gen.HINT_BEAM)
+		if at == start_at and tw == start_tw and not plan.is_empty():
+			return plan[0]
+		way = Gen.way_home(at, tw, holes, ropes, reach, Gen.BEAM_DEPTH, Gen.HINT_BEAM)
+		if way == null and not history.is_empty():
+			var last: Dictionary = history.back()
+			var back_peg := int(last.peg)
+			if at[back_peg] == int(last.to) and drop_check(back_peg, int(last.from)) == 0:
+				return [back_peg, int(last.to), int(last.from)]
 	if way == null or way.is_empty():
 		# No way home in reach of the search: the move that leaves fewest
 		# crossings, so a hint is still something.
 		var best: Array = []
 		var fewest := crossings()
 		for m in Gen.legal_moves(at, holes, reach):
-			var t := at.duplicate()
-			t[m[0]] = m[1]
-			var c := Gen.crossing_count(t, ropes)
+			var a := at.duplicate()
+			var t := tw.duplicate()
+			Gen.apply(a, t, ropes, m[0], m[1])
+			var c := Gen.crossing_count(t)
 			if c < fewest:
 				fewest = c
 				best = [m[0], at[m[0]], m[1]]
@@ -255,6 +319,7 @@ func reset() -> Array[int]:
 		if at[p] != start_at[p]:
 			walking.append(p)
 	at = start_at.duplicate()
+	tw = start_tw.duplicate()
 	order = start_order.duplicate()
 	moves_here = 0
 	history = []
@@ -268,6 +333,7 @@ func show_answer() -> Array[int]:
 		if at[p] != goal_at[p]:
 			walking.append(p)
 	at = goal_at.duplicate()
+	tw = Gen.empty_tangle(ropes)
 	history = []
 	scan()
 	return walking
