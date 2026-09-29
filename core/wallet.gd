@@ -238,12 +238,25 @@ func pay_board(board: String, day: int = Daily.date_key()) -> int:
 
 ## Pays for a finished Arcade run, up to the day's cap; the gold paid.
 func pay_run(better: bool, today: int = Daily.date_key()) -> int:
+	return _pay_arcade(RUN_GOLD + (BEST_GOLD if better else 0), today)
+
+## The doubler's gold (a rewarded video, arcade/gold_doubler.gd): `amount`
+## more, still inside the day's cap.
+func pay_bonus(amount: int, today: int = Daily.date_key()) -> int:
+	return _pay_arcade(amount, today)
+
+## Gold the Arcade can still pay today.
+func arcade_room(today: int = Daily.date_key()) -> int:
 	var got := int(_cfg_now().get_value("earn", "arcade", 0))
 	if int(_cfg_now().get_value("earn", "arcade_day", 0)) != today:
 		got = 0
-	var pay := mini(RUN_GOLD + (BEST_GOLD if better else 0), ARCADE_CAP - got)
+	return maxi(0, ARCADE_CAP - got)
+
+func _pay_arcade(amount: int, today: int) -> int:
+	var pay := mini(amount, arcade_room(today))
 	if pay <= 0:
 		return 0
+	var got := ARCADE_CAP - arcade_room(today)
 	_cfg_now().set_value("earn", "arcade_day", today)
 	_cfg_now().set_value("earn", "arcade", got + pay)
 	add_gold(pay, "arcade")

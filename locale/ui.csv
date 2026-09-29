@@ -530,3 +530,4 @@ AD_HINT_BODY,Watch a short video to get one more hint on this puzzle.,Assista a 
 AD_WATCH,Watch video,Assistir vídeo,Ver video
 AD_NO,No thanks,"Não, obrigado","No, gracias"
 AD_NOT_READY,The video isn't ready yet. Try again in a moment.,O vídeo ainda não está pronto. Tente de novo daqui a pouco.,El video aún no está listo. Inténtalo de nuevo en un momento.
+AD_DOUBLE,Watch a video: +%s gold,Assista a um vídeo: +%s de ouro,Mira un video: +%s de oro

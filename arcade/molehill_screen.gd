@@ -39,7 +39,7 @@ const Analytics = preload("res://core/analytics.gd")
 const Boosters = preload("res://arcade/boosters.gd")
 const BoostCard = preload("res://arcade/boost_card.gd")
 const SecondChance = preload("res://arcade/second_chance.gd")
-const BoosterIcon = preload("res://arcade/booster_icon.gd")
+const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 
 const GAME := "molehill"
@@ -1409,7 +1409,7 @@ func _build_end(better: bool) -> Control:
 	again.pressed.connect(_ask)
 	var back := Dialog.secondary("chevron_left", tr("FF_BACK"))
 	back.pressed.connect(_on_back)
-	Dialog.buttons(col, again, back, BoosterIcon.gold_line(_run_gold) if _run_gold > 0 else null)
+	Dialog.buttons(col, again, back, GoldDoubler.new(_run_gold) if _run_gold > 0 else null)
 	return scrim
 
 ## The end card's score runs up from nothing to what the round made, with
