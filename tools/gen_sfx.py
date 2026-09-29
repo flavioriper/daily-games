@@ -83,16 +83,35 @@ SETS = {
     "mastermind": {
         "place":    ("a tiny soft bouncy boing and a wooden seat tap, a small round character hopping into a seat, very short", 0.5, -6),
         "clear":    ("a very short soft downward whoosh-pop, a small character hopping out of a wooden seat", 0.5, -9),
-        "full":     ("a tiny soft muffled wooden double bump, a row already full, gentle, very short", 0.5, -11),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        # full, locked and check re-prompted 2026-09-29 (Code Break polish):
+        # the wooden bumps and boops read as a scold, as Binairo's did.
+        "full":     ("a tiny soft felt pat, a gentle muffled 'hmm, all full', a small cushion being patted twice, warm and quiet, very short", 0.5, -13),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
-        "score":    ("a few small soft wooden beads dropping one after another into a cloth pouch, then a gentle marimba note", 1.0, -6),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        "score":    ("a soft cloth pouch settling on a wooden table, a tiny muffled flop, cozy and quiet", 0.6, -10),
         "reveal":   ("a soft wooden box lid lifting with a small curious kalimba shimmer, a secret being uncovered", 1.0, -6),
         "reset":    ("a quick ripple of many small soft wooden pops, pieces being swept off a board", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of seats appearing", 1.0, -9),
+        # The polish pass (2026-09-29, docs/superpowers/specs/2026-09-29-codebreak-polish-design.md).
+        # note: layered under place and pitched up the pentatonic by seat, so
+        # a filling row plays a little tune. pip: one per score pip, pitched
+        # up a step each as it lands.
+        "note":        ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "pip":         ("a single small glass bead dropping into a soft cloth pouch, a tiny muted clink, very short", 0.5, -9),
+        "warmer":      ("a warm rising three-note soft kalimba phrase, a happy little 'getting warmer', gentle", 0.8, -8),
+        "so_close":    ("an excited rising soft marimba and glockenspiel run with a tiny sparkle at the top, 'so close!', joyful and warm", 1.0, -6),
+        "all_here":    ("a playful bouncy soft wooden xylophone conga shuffle, small round characters dancing in a line, cute and cozy", 1.2, -7),
+        "cool":        ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
+        "shuffle":     ("two small wooden cups sliding and hopping over each other on a table, soft wooden shuffle and two gentle taps landing, playful, a magician's cup game", 0.9, -7),
+        "peek":        ("a tiny soft wooden lid lifting a crack and settling back with a very quiet tock, curious and cute", 0.6, -15),
+        "stamp":       ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":       ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
+        "confetti":    ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "out_of_rows": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -14),
+        "row_back":    ("a warm rising pair of soft kalimba plucks, a little extra chance, gentle and happy", 0.6, -12),
     },
     # Balance: fruit weights on little hanging scales; a tap steps a weight
     # up or down, and a scale that comes level chimes.
