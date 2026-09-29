@@ -105,6 +105,16 @@ func drop_check(peg: int, hole: int) -> int:
 		return 2
 	return 0
 
+## True when the board is not solved and no peg can go anywhere: every free
+## hole is out of every rope's reach. Undo (Hard) and Reset are the ways out.
+func stuck() -> bool:
+	if is_solved():
+		return false
+	for p in at.size():
+		if can_go(p):
+			return false
+	return true
+
 ## True when the peg has anywhere to go at all.
 func can_go(peg: int) -> bool:
 	for h in holes:

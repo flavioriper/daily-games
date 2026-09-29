@@ -245,6 +245,7 @@ var _knots_px: Array = []
 var _knot_alpha := 0.0
 var _dirty := true
 
+var _stuck_key := PackedByteArray()
 var _toast := ""
 var _toast_at := -100.0
 var _toast_hold := TOAST_HOLD
@@ -317,6 +318,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_later = []
 	_all_moves = 0
 	_streak = 0
+	_stuck_key = PackedByteArray()
 	_solved_at = -1.0
 	_last = -1.0
 	_opened = _now()
@@ -1650,6 +1652,13 @@ func _flow(t: float) -> void:
 		check_solved()
 	elif state.out_of_thread():
 		_run_out(t)
+	elif state.stuck():
+		# Every free hole is out of every rope's reach (the kitten can leave
+		# it so): say so once for this layout.
+		var key := state.at.to_byte_array()
+		if key != _stuck_key:
+			_stuck_key = key
+			_tell("UT_STUCK_ALL", Face.Expr.WORRIED, 4.2)
 
 # --- losing: the thread runs out ---
 

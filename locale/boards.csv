@@ -165,6 +165,7 @@ UT_GONE_ONE,One knot gone. %d still to go.,Um nó a menos. Faltam %d.,Un nudo me
 UT_GONE_N,%d knots gone. %d still to go.,%d nós a menos. Faltam %d.,%d nudos menos. Quedan %d.
 UT_TAUT,That rope is pulled tight. It will not reach.,Essa corda esticou. Não alcança.,Esa cuerda se tensó. No llega.
 UT_STUCK,That peg has nowhere to go right now.,Esse pino não tem para onde ir agora.,Esa clavija no tiene adónde ir ahora.
+UT_STUCK_ALL,No peg can reach a free hole. Undo a move or press Reset.,Nenhum pino alcança um buraco livre. Desfaça um movimento ou toque em Recomeçar.,Ninguna clavija llega a un hueco libre. Deshaz un movimiento o pulsa Reiniciar.
 UT_HINT,Try this one.,Tente este.,Prueba este.
 UT_RESET,Back to the tangle you were given.,De volta ao emaranhado do começo.,De vuelta al enredo del principio.
 UT_RESET_THREAD,Back to the tangle you were given. The thread stays used.,De volta ao emaranhado do começo. A linha gasta continua gasta.,De vuelta al enredo del principio. El hilo gastado sigue gastado.
