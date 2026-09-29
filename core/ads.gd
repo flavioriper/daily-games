@@ -357,15 +357,21 @@ func offered(placement: String) -> void:
 func show_rewarded(placement: String, done: Callable) -> void:
 	var today := Daily.date_key()
 	if pacing.rewarded_left(today) <= 0:
+		_not_ready()
 		done.call(false)
 		return
 	Analytics.track("ad_rewarded_started", {"placement": placement})
-	var finish := func(earned: bool) -> void:
+	var finish := func(earned: bool, shown: bool = true) -> void:
 		_quiet(false)
 		if earned:
 			pacing.note_rewarded(Time.get_unix_time_from_system(), Daily.date_key())
 			_save_state()
 			Analytics.track("ad_rewarded_completed", {"placement": placement})
+		elif shown:
+			pacing.note_rewarded_seen(Time.get_unix_time_from_system())
+			_save_state()
+		else:
+			_not_ready()
 		_load_rewarded()
 		rewards_changed.emit()
 		done.call(earned)
@@ -374,8 +380,7 @@ func show_rewarded(placement: String, done: Callable) -> void:
 		_fake_show("rewarded", finish)
 		return
 	if _rewarded == null:
-		_quiet(false)
-		done.call(false)
+		finish.call(false, false)
 		return
 	var ad := _rewarded
 	_rewarded = null
@@ -385,10 +390,29 @@ func show_rewarded(placement: String, done: Callable) -> void:
 		finish.call(earned[0])
 	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_e: AdError) -> void:
 		ad.destroy()
-		finish.call(false)
+		finish.call(false, false)
 	var listener := OnUserEarnedRewardListener.new()
 	listener.on_user_earned_reward = func(_item: RewardedItem) -> void: earned[0] = true
 	ad.show(listener)
+
+## No video was shown (none loaded, or today's are spent): say so for a
+## moment, over whatever asked, so a tap is never met with silence.
+func _not_ready() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	var label := Label.new()
+	label.text = tr("AD_NOT_READY")
+	label.add_theme_font_size_override("font_size", 34)
+	label.add_theme_color_override("font_color", Color.WHITE)
+	label.add_theme_color_override("font_outline_color", Color(0.15, 0.13, 0.12))
+	label.add_theme_constant_override("outline_size", 12)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(900, 0)
+	label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 260)
+	layer.add_child(label)
+	add_child(layer)
+	get_tree().create_timer(2.5).timeout.connect(layer.queue_free)
 
 ## ADS_FAKE_FULL (debug builds): a grey card saying which ad would be up,
 ## gone after 1.5 s. "skip" never earns, to check a video closed early.

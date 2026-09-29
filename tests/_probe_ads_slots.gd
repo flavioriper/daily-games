@@ -62,6 +62,7 @@ func _process(_dt: float) -> bool:
 			ads.Sound.on = prior
 			ads.Sound.apply()
 			ads._fake_full = "skip"
+			ads.pacing.state.last_rewarded = 0.0
 			_left = ads.pacing.rewarded_left(Daily.date_key())
 			_got = -1
 			ads.show_rewarded("hint", _cb)
@@ -72,6 +73,7 @@ func _process(_dt: float) -> bool:
 				return false
 			_check("3a skip gives done(false)", _got == 0)
 			_check("3b rewarded_left unchanged", ads.pacing.rewarded_left(Daily.date_key()) == _left)
+			_check("3c a skipped video starts the quiet", float(ads.pacing.state.last_rewarded) > 0.0)
 			ads._fake_full = "1"
 			ads._removed = true
 			ads.note_finished()

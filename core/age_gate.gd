@@ -47,6 +47,6 @@ static func band(year_now: int = int(Time.get_datetime_dict_from_system(true).ye
 static func band_name(b: int) -> String:
 	return ["child", "teen", "adult"][b] if b >= 0 and b <= 2 else "unknown"
 
-## Forget what was read (a probe that has just pointed `path` elsewhere).
-static func reload() -> void:
+## Forget what was read (a probe that has just pointed `path` elsewhere). Not called reload: that is Script.reload(), which recompiles and resets `path`.
+static func forget() -> void:
 	_year = -1

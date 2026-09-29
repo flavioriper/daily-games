@@ -28,6 +28,9 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	Analytics.start(self)
 	Analytics.track("game_open", {"day": Progress.day()})
+	# The backend wakes here and nowhere else, same as telemetry: the suite
+	# and the harnesses build these screens and stay offline.
+	Backend.start(self)  # first: Ads.start() reads remote config through it
 	if AgeScreen.wanted():
 		var age := AgeScreen.new()
 		age.name = "AgeScreen"
@@ -38,9 +41,6 @@ func _ready() -> void:
 		$UI.add_child(age)
 	else:
 		Ads.start()
-	# The backend wakes here and nowhere else, same as telemetry: the suite
-	# and the harnesses build these screens and stay offline.
-	Backend.start(self)
 	$UI/BannerHost.tapped.connect(_open_store)
 
 ## The banner's "Remove ads" tab: the purchase sheet over whatever is up --

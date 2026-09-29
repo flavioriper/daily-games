@@ -91,3 +91,8 @@ func note_rewarded(now: float, today: int) -> void:
 	_roll(today)
 	state.last_rewarded = now
 	state.rewarded_today = int(state.rewarded_today) + 1
+
+## A video was shown but not earned: it still starts the interstitial quiet,
+## and costs none of the day's videos.
+func note_rewarded_seen(now: float) -> void:
+	state.last_rewarded = now

@@ -2195,7 +2195,7 @@ see "Ads and the purchase" below.
   `store_opened` (with `door`: banner, header or settings), `purchase_started`,
   `purchase_complete`, `purchase_failed` (with `reason`), `restore_used` (with
   `found`), `consent_failed`, and `ad_banner_loaded` / `ad_banner_failed` /
-  `ad_banner_impression`, and since 2026-09-29 `age_answered` (band), `ad_interstitial_shown`, `ad_interstitial_skipped` (`reason`), `ad_rewarded_offered` / `ad_rewarded_started` / `ad_rewarded_completed` (`placement`, `free`) and `ad_load_failed` (`format`, `error`) -- see "Ads and the purchase" below. Since 2026-09-26
+  `ad_banner_impression`, and since 2026-09-29 `age_answered` (band), `ad_interstitial_shown`, `ad_interstitial_skipped` (`reason`), `ad_rewarded_offered` / `ad_rewarded_started` / `ad_rewarded_completed` (`placement`) and `ad_load_failed` (`format`, `error`) -- see "Ads and the purchase" below. Since 2026-09-26
   (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
   `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and

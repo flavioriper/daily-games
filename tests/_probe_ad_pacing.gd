@@ -135,6 +135,12 @@ func _process(_d: float) -> bool:
 	_check(p.rewarded_left(20261002) == 10,
 		"case 7c: next day rewarded_left resets to 10")
 
+	# Case 7d: a skipped video starts the quiet but not the count
+	p = AdPacing.new()
+	p.note_rewarded_seen(t)
+	_check(p.rewarded_left(D0) == 10, "case 7d: a skipped video costs no video")
+	_check(p.state.last_rewarded == t, "case 7e: a skipped video sets last_rewarded")
+
 	# Case 8: Merge with type checking
 	p = AdPacing.new()
 	p.merge({"interstitial_on": "yes", "max_per_day": 2, "unknown": 1})
