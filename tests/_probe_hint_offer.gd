@@ -19,6 +19,8 @@ var _files: Array = []
 var _backup := {}
 var _langs := ["en", "pt", "es"]
 var _li := 0
+var _insane_ids := ["balance", "trestle", "hiddenword"]
+var _ii := 0
 
 func _initialize() -> void:
 	for n in ["arcade.cfg", "progress.cfg"]:
@@ -158,9 +160,38 @@ func _process(delta: float) -> bool:
 			_at = _t + 0.4
 		11:
 			TranslationServer.set_locale("en")
-			_finish(1 if _fails > 0 else 0)
-			return true
+			_host.closed.emit()
+			_insane_at(_insane_ids[_ii])
+			_step = 12
+			_at = _t + 0.6
+		12:
+			# Insane on a board that has no hint gives no video offer either.
+			var caps: Array = _host._puzzle.capabilities()
+			_check(not caps.has("hint"), "%s Insane: no hint capability" % _insane_ids[_ii])
+			_check(_host._puzzle.hints_left() == 0, "%s Insane: hints_left is 0" % _insane_ids[_ii])
+			_check(not _host._hint_offer(), "%s Insane: no video offer" % _insane_ids[_ii])
+			_ii += 1
+			if _ii < _insane_ids.size():
+				_host.closed.emit()
+				_insane_at(_insane_ids[_ii])
+				_at = _t + 0.6
+			else:
+				_finish(1 if _fails > 0 else 0)
+				return true
 	return false
+
+func _insane_at(id: String) -> void:
+	var reg = load("res://ui/registry.gd")
+	var found := {}
+	for e in reg.PUZZLES:
+		if String(e.get("id", "")) == id:
+			found = e
+	_check(not found.is_empty(), "registry has %s" % id)
+	load("res://core/progress.gd").mark_tutorial_seen(id)
+	_menu._open_at(found, 3)
+	_host = _menu.get_child(_menu.get_child_count() - 1)
+	if _host.has_node("HowToPlay"):
+		_host.get_node("HowToPlay").free()
 
 func _open_or_reset_for_shots() -> void:
 	_host.closed.emit()

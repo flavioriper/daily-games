@@ -201,8 +201,11 @@ func title() -> String: return "Balance"
 func rules() -> String:
 	return tr("BAL_RULES")
 
-## Undo and Hint; Reset is the host's. No Check: the beam is its own.
+## Undo and Hint (no Hint on Insane, where hints_left() is 0); Reset is the
+## host's. No Check: the beam is its own.
 func capabilities() -> Array[String]:
+	if _difficulty >= 3:
+		return ["undo"]
 	return ["undo", "hint"]
 
 func _ready() -> void:

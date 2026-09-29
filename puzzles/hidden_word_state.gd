@@ -38,6 +38,8 @@ var marks: Array = []
 var typed := ""
 var given: Array[int] = []
 var hints_left := HINTS
+## True on Insane, where no hint is given at all (capabilities() reads it).
+var no_hints := false
 
 ## The accept list, read once per language and shared by every instance in
 ## the process: 15,921 keys is a few ms and half a megabyte, and a harness
@@ -74,7 +76,8 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	typed = ""
 	given = []
 	hints_left = HINTS
-	if difficulty >= 3:
+	no_hints = difficulty >= 3
+	if no_hints:
 		hints_left = 0
 	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()
 	written = String(_answers[rng.randi() % maxi(band, 1)]) if not _answers.is_empty() else "mossy"

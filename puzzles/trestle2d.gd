@@ -211,8 +211,11 @@ func title() -> String: return "Trestle"
 func rules() -> String:
 	return tr("TR_RULES")
 
-## Undo, Hint and Go (the Check button, relabelled); Reset is the host's.
+## Undo, Hint (not on Insane, where hints_left() is 0) and Go (the Check
+## button, relabelled); Reset is the host's.
 func capabilities() -> Array[String]:
+	if _difficulty >= 3:
+		return ["undo", "check"]
 	return ["undo", "hint", "check"]
 
 func check_label() -> String:

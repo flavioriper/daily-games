@@ -254,8 +254,14 @@ func _ask_hint_video() -> void:
 			if not earned or not is_instance_valid(_puzzle) or _puzzle.is_done():
 				_refresh()
 				return
-			_ad_hint_taken = true
 			_puzzle.add_hint()
+			# A board that can give no hint at all (structurally zero) takes
+			# the extra and still has none: nothing was earned, so nothing
+			# is spent -- the offer stays for a board that can use it.
+			if _puzzle.hints_left() <= 0:
+				_refresh()
+				return
+			_ad_hint_taken = true
 			_on_hint()))
 	add_child(p)
 

@@ -325,7 +325,7 @@ func tip_line() -> Dictionary:
 ## is not this game, so there is no Check and no Undo -- the top bar hides
 ## what is not named here.
 func capabilities() -> Array[String]:
-	return ["hint"]
+	return [] if state.no_hints else ["hint"]
 
 func _ready() -> void:
 	# The keyboard takes every tap; nothing on the card is touched.
