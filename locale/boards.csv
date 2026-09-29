@@ -316,11 +316,12 @@ BN_SHORT,"Suns and moons,\nnever three alike.","Sóis e luas,\nnunca três iguai
 BN_MOTTO,Balance brings harmony,Equilíbrio é harmonia,Equilibrio es armonía
 BN_OUT_TITLE,Out of hearts,Sem corações,Sin corazones
 BN_OUT_BODY,"The suns and moons need a nap. Start the board again, or watch a short video for one more heart.","Os sóis e as luas precisam de uma soneca. Recomece o tabuleiro ou assista a um vídeo curto e ganhe mais um coração.","Los soles y las lunas necesitan una siesta. Empieza el tablero de nuevo o mira un video corto para tener un corazón más."
-BN_OUT_BODY_FREE,"The suns and moons need a nap. Start the board again, or wake them with one more heart.","Os sóis e as luas precisam de uma soneca. Recomece o tabuleiro ou acorde-os com mais um coração.","Los soles y las lunas necesitan una siesta. Empieza el tablero de nuevo o despiértalos con un corazón más."
 BN_OUT_BODY_REST,The suns and moons need a nap. Start the board again whenever you like.,Os sóis e as luas precisam de uma soneca. Recomece o tabuleiro quando quiser.,Los soles y las lunas necesitan una siesta. Empieza el tablero de nuevo cuando quieras.
 BN_TRY_AGAIN,Try again,Tentar de novo,Intentar de nuevo
 BN_ONE_HEART,One more heart,Mais um coração,Un corazón más
 BN_CAUGHT,Caught you!,Te peguei!,¡Te atrapé!
+BN_FLAWLESS,Flawless,Impecável,Impecable
+BN_INSANE_SEAL,Insane,Insano,Demencial
 CB_BLURB,Crack the hidden row from the feedback.,Descubra a fileira oculta pelas pistas.,Descubre la fila oculta con las pistas.
 CB_SHORT,Crack the hidden\nrow of friends.,Descubra a fileira\nde amigos oculta.,Descubre la fila\nde amigos oculta.
 CB_MOTTO,Crack the hidden code,Quebre o código,Descifra el código

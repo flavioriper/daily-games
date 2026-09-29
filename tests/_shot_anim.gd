@@ -117,6 +117,11 @@ extends SceneTree
 ## and adds a seventh shot 1.5 s after the sixth, so the pair can be compared
 ## pixel for pixel: under reduce motion nothing on a settled board may move.
 ##
+## Binairo's `solve` lays every free cell but one through the state and taps
+## the last with the brush armed, so the window runs over the solve wave, the
+## flawless stamp and the party up to the win screen; with `d=3` the liar's
+## unmasking leads it. Its count is the board's peak.
+##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
 
 const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
@@ -343,6 +348,17 @@ func _initialize() -> void:
 		_shots = [0.35, 1.7, 2.0, 2.3, 2.6, 3.0, 4.2]
 		_idle_from = 4.4
 		_idle_to = 6.0
+	if _id == "binairo" and _mode == "solve":
+		# Every free cell but the last is laid through the state at TAP_AT
+		# and the last is tapped a frame later with the brush armed, so the
+		# window runs over the solve wave, the flawless stamp and the party
+		# (hats on every face, confetti, the big sun and moon's hug) up to
+		# the win screen -- the busiest the board gets. On Insane (d=3) the
+		# liar's unmasking leads by 1.6 s first. The count is the peak, the
+		# mean a moving frame's; neither is an idle.
+		_shots = [0.35, 1.75, 2.9, 3.4, 3.9, 4.4, 5.6]
+		_idle_from = TAP_AT + 0.05
+		_idle_to = TAP_AT + 4.1
 	if _id == "sudoku" and _mode == "solve":
 		# The answer goes in at TAP_AT, so the strip catches the diagonal
 		# wave hopping the digits, the tray warming, the glint part-way and
@@ -542,9 +558,16 @@ func _process(delta: float) -> bool:
 			_shots[3] = _t + 0.20
 			_shots[4] = _t + 0.40
 			_shots[5] = _t + 0.65
+		elif _entry.id == "binairo" and _mode == "solve":
+			_binairo_last = _fill_binairo_but_one()
 		elif _puzzle.get("_given") != null:
 			# The tap walks Binairo's givens; a board without them idles instead.
 			_tap_first_free()
+	elif _binairo_last.x >= 0:
+		var last := _binairo_last
+		_binairo_last = Vector2i(-1, -1)
+		_puzzle.set_brush(int(_puzzle._solution[last.y][last.x]))
+		_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(last.y, last.x))
 	if _t >= _reset_at:
 		_reset_at = INF
 		_press(_host.action_bar.reset_button)
@@ -592,6 +615,26 @@ func _process(delta: float) -> bool:
 		print("idle frames=%d mean_ms=%.2f max_draw_calls=%d" % [_idle.size(), mean, _draws])
 		return true
 	return false
+
+## Binairo's `solve`: every free cell but the last takes its answer through
+## the state, its face popped on, and the last is handed back as (col, row)
+## for a real tap on the next frame.
+var _binairo_last := Vector2i(-1, -1)
+
+func _fill_binairo_but_one() -> Vector2i:
+	var last := Vector2i(-1, -1)
+	for r in _puzzle.n:
+		for c in _puzzle.n:
+			if _puzzle._given[r][c]:
+				continue
+			if last.x < 0:
+				last = Vector2i(c, r)
+				continue
+			var v: int = _puzzle._solution[r][c]
+			_puzzle.state.place(r, c, v)
+			_puzzle._swap_face(r, c, v)
+	_puzzle._recolour(false)
+	return last
 
 ## One real touch on the first free cell, through the viewport like a thumb.
 func _tap_first_free() -> void:

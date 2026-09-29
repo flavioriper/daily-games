@@ -25,6 +25,13 @@ extends "res://core/puzzle_base.gd"
 ## and no history. The last heart gone puts the faces to sleep and raises
 ## ui/hud/out_of_hearts.gd. Insane is a banked 10x10 whose one sign lies; it
 ## looks like every other sign until the solve unmasks it.
+##
+## Motion and rewards (2026-09-29, the same spec's section 2): a change of
+## symbol turns the tile like a coin (each tile is a slot for the hops and
+## the press with a coin inside it for the turn), faces near a tap glance at
+## it, right tiles in a row build a streak with a paper bubble and confetti,
+## a clean line plays one of three gags, and the solve stamps a flawless run
+## and throws a party. Notes: docs/agents/boards/binairo.md.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 const State = preload("res://puzzles/binairo_state.gd")
@@ -98,8 +105,12 @@ const HEART_COUNTS := [0, 0, 3, 1]
 ## The strip kept over the grid for the hearts on a board that has them, and
 ## a heart's half-width and the air between two.
 const HEART_ROW := 64.0
-const HEART_R := 19.0
-const HEART_GAP := 14.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+## The paper pill the hearts sit on, like the signs' badges: its padding
+## round the row and its rim.
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
 ## Tapping cycles empty, sun, moon: a sun set by a tap may be on its way to a
 ## moon, so it is judged only once it has stood this long. A brush's symbol,
 ## and a moon, are judged at once.
@@ -137,6 +148,57 @@ const UNMASK_SHRINK := 1.6
 const UNMASK_TIME := 1.85
 const UNMASK_WAVE := 1.6
 const UNMASK_BLUSH := 0.65
+## Motion and rewards (the polish spec's section 2). A change of symbol turns
+## the tile like a coin: it narrows to its edge over FLIP_IN, the face changes
+## there, and it springs open over FLIP_OUT with the back ease's overshoot.
+const FLIP_IN := 0.1
+const FLIP_OUT := 0.14
+## Faces this many tiles (a king's move) from a tap look at it this long.
+const GLANCE_REACH := 2
+const GLANCE_TIME := 0.6
+## A hinted tile warms from white into the given sand over this long.
+const WARM_TIME := 0.3
+## The streak: its paper bubble shows from COMBO_FROM, the layered `combo`
+## pluck climbs the major pentatonic from the second in a row (semitones from
+## the sample's own pitch; the eighth and past hold the top), and confetti
+## flies at COMBO_CONFETTI. A broken streak's bubble deflates over
+## COMBO_DEFLATE.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## The silly line moments: the gag's punchline lands SILLY_AT after the hop
+## starts, and `line_silly` with it, a beat after `line` rather than on top.
+const SILLY_AT := 0.32
+const SILLY_DB := -3.0
+const GLASSES_IN := 0.28
+const GLASSES_HOLD := 0.75
+const GLASSES_OUT := 0.2
+const SNEEZE_WINDUP := 0.3
+const LEAN_ANGLE := 0.16
+const LEAN_PX := 7.0
+const LEAN_TIME := 0.34
+const LEAN_STEP := 0.09
+## The flawless stamp: it lands STAMP_AT after the wave's lead, dropping from
+## STAMP_FROM its size over STAMP_DROP; its radius, as a fraction of the grid.
+const STAMP_AT := 0.7
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.11
+const STAMP_TILT := -0.22
+## The solve party, after the wave's lead: hats pop on along the diagonal,
+## confetti, and a big sun and moon slide in from the edges (BIG tiles
+## across) and hug at the centre. The host's win screen waits PARTY_EXTRA
+## past its usual beat for the hug.
+const PARTY_AT := 0.9
+const PARTY_HAT := 0.3
+const PARTY_HAT_STAGGER := 0.02
+const PARTY_SLIDE := 0.55
+const PARTY_HUG := 0.28
+const PARTY_EXTRA := 1.7
+const BIG := 2.5
 
 ## The armed brush: -2 none (taps cycle), -1 clear, 0 sun, 1 moon.
 var brush: int = -2
@@ -169,7 +231,12 @@ var fx: Node2D
 var _sign_layer: Control
 var _signs_shown: ArrayMesh
 var _signs_tw: Tween
-var _tiles: Array = []      # [r][c] -> Panel
+var _tiles: Array = []      # [r][c] -> the tile's slot: hops, nudges, presses, sags
+var _coins: Array = []      # [r][c] -> the Panel inside it that turns like a coin
+var _flips: Array = []      # [r][c] -> the coin's turn
+var _outgoing: Array = []   # [r][c] -> the face the turn's edge takes away
+var _leans: Array = []      # [r][c] -> a high-five's lean on the coin
+var _warm: Array = []       # [r][c] -> 0 white to 1 given sand
 var _styles: Array = []     # [r][c] -> its StyleBoxFlat
 var _tints: Array = []      # [r][c] -> the focus tint Panel over the tile
 var _faces: Array = []      # [r][c] -> Face or null
@@ -209,6 +276,31 @@ var _caught: Control
 var _lead := 0.0
 ## Whether a liar hides on this unsolved board, read at every recolour.
 var _liar_hidden := false
+## The newest glance; an older one's end leaves the faces alone.
+var _glance_n := 0
+## The streak: how many right tiles in a row, which cells have counted once
+## already (a cell counts the first time it is right, so cycling one tile
+## never climbs), and the bubble: its count, cell, when it popped or bumped,
+## and when it began to deflate.
+var _streak := 0
+var _counted: Array = []
+var _combo_layer: Control
+var _combo_shown: ArrayMesh
+var _combo_n := 0
+var _combo_cell := Vector2i(-1, -1)
+var _combo_at := -INF
+var _combo_popped := false
+var _combo_out_at := -INF
+## Expressions a gag holds for a while over the state's: Vector2i(c, r) ->
+## [expression, msec until].
+var _acting := {}
+## Whether a heart was lost since the board was dealt, and whether the solve
+## was flawless (no heart lost and no hint; on Easy and Medium, no hint and
+## no check).
+var _lost_any := false
+var _flawless := false
+var _stamp: Control
+var _party: Array = []
 
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
@@ -240,6 +332,12 @@ func _ready() -> void:
 	_heart_layer.z_index = 1
 	_heart_layer.draw.connect(_draw_hearts)
 	add_child(_heart_layer)
+	_combo_layer = Control.new()
+	_combo_layer.name = "Combo"
+	_combo_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_combo_layer.z_index = 2
+	_combo_layer.draw.connect(_draw_combo)
+	add_child(_combo_layer)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	# Over the tiles, which are added after it: stars land on the board, not under it.
@@ -272,6 +370,12 @@ func _setup_board() -> void:
 	_back_index = -1
 	_unmask_i = -1
 	_lead = 0.0
+	_lost_any = false
+	_flawless = false
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_acting = {}
 	state.setup(_data)
 	brush = -2
 	focus_cell = Vector2i(-1, -1)
@@ -289,6 +393,12 @@ func _build_tiles() -> void:
 		for t in row:
 			t.queue_free()
 	_tiles = []
+	_coins = []
+	_flips = []
+	_outgoing = []
+	_leans = []
+	_warm = []
+	_counted = []
 	_styles = []
 	_tints = []
 	_faces = []
@@ -303,8 +413,16 @@ func _build_tiles() -> void:
 	_cracks = []
 	if is_instance_valid(_caught):
 		_caught.queue_free()
+	if is_instance_valid(_stamp):
+		_stamp.queue_free()
+	for node in _party:
+		if is_instance_valid(node):
+			node.queue_free()
+	_party = []
 	for r in n:
 		var tiles := []
+		var coins := []
+		var warm := []
 		var styles := []
 		var tints := []
 		var faces := []
@@ -312,15 +430,23 @@ func _build_tiles() -> void:
 			var sb := StyleBoxFlat.new()
 			sb.set_corner_radius_all(TILE_RADIUS)
 			sb.border_width_bottom = TILE_EDGE
-			var tile := Panel.new()
+			# The slot takes the hops, nudges, the press and the sag; the coin
+			# inside it takes the flip and a high-five's lean, so no two tweens
+			# ever write the same property (a card moving inside a container
+			# needs a slot, docs/agents/flat-screens.md).
+			var tile := Control.new()
 			tile.name = "tile_%d_%d" % [r, c]
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			tile.add_theme_stylebox_override("panel", sb)
 			add_child(tile)
+			var coin := Panel.new()
+			coin.name = "coin"
+			coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			coin.add_theme_stylebox_override("panel", sb)
+			tile.add_child(coin)
 			# CozyTheme.dress() hands every Panel the HUD's paper wash as it enters
 			# the tree; on a tile that small the wash reads as a blotch, and a
 			# board of them as a stain. The tiles stay flat.
-			tile.material = null
+			coin.material = null
 			# The focus tint over the tile, the symbol's colour at a few percent,
 			# shown for a moment on the tapped cell's row and column.
 			var tint := Panel.new()
@@ -330,13 +456,21 @@ func _build_tiles() -> void:
 			tsb.bg_color = Pal.LINE
 			tint.add_theme_stylebox_override("panel", tsb)
 			tint.modulate.a = 0.0
-			tile.add_child(tint)
+			coin.add_child(tint)
 			tint.material = null
 			tiles.append(tile)
+			coins.append(coin)
+			warm.append(1.0 if state.given[r][c] else 0.0)
 			styles.append(sb)
 			tints.append(tint)
 			faces.append(null)
 		_tiles.append(tiles)
+		_coins.append(coins)
+		_warm.append(warm)
+		_flips.append(_nulls())
+		_outgoing.append(_nulls())
+		_leans.append(_nulls())
+		_counted.append(_nulls())
 		_styles.append(styles)
 		_tints.append(tints)
 		_faces.append(faces)
@@ -378,16 +512,20 @@ func _layout() -> void:
 	if _tile <= 0.0:
 		return
 	_origin = Vector2((size.x - g) * 0.5, top + (size.y - top - g) * 0.5)
-	for layer: Control in [_sign_layer, _heart_layer]:
+	for layer: Control in [_sign_layer, _heart_layer, _combo_layer]:
 		layer.position = Vector2.ZERO
 		layer.size = size
 		layer.queue_redraw()
 	for r in n:
 		for c in n:
-			var tile: Panel = _tiles[r][c]
+			var tile: Control = _tiles[r][c]
 			tile.position = _rest(r, c) + (Vector2(0.0, SAG) if _asleep else Vector2.ZERO)
 			tile.size = Vector2(_tile, _tile)
 			tile.pivot_offset = tile.size * 0.5
+			var coin: Panel = _coins[r][c]
+			coin.position = Vector2.ZERO
+			coin.size = tile.size
+			coin.pivot_offset = tile.size * 0.5
 			var tint: Panel = _tints[r][c]
 			tint.position = Vector2.ZERO
 			tint.size = Vector2(_tile, _tile - TILE_EDGE)
@@ -416,7 +554,7 @@ func _make_face(r: int, c: int, v: int) -> Control:
 		face = MoonFace.new()
 		face.rocks = _hash(r, c) < ROCK_SHARE
 	face.name = "face"
-	_tiles[r][c].add_child(face)
+	_coins[r][c].add_child(face)
 	if _tile > 0.0:
 		_fit_face(face, v)
 	face.expression = _expression(r, c)
@@ -538,8 +676,8 @@ func _draw_liar(b, r: float, w: float, line: float) -> void:
 ## the heartbeat pushes on toward BAD.
 func _paint(blend: float, r: int, c: int) -> void:
 	_blend[r][c] = blend
-	var locked: bool = state.given[r][c]
-	var base: Color = Pal.STONE_GIVEN if locked else Pal.SURFACE
+	var warm: float = _warm[r][c]
+	var base: Color = Pal.SURFACE.lerp(Pal.STONE_GIVEN, warm)
 	var fill: Color
 	if blend <= 1.0:
 		fill = base.lerp(Pal.BAD_TILE, blend)
@@ -547,7 +685,12 @@ func _paint(blend: float, r: int, c: int) -> void:
 		fill = Pal.BAD_TILE.lerp(Pal.BAD, minf(1.0, (blend - 1.0) * 0.5))
 	var sb: StyleBoxFlat = _styles[r][c]
 	sb.bg_color = fill
-	sb.border_color = Pal.LINE if locked else Color(Pal.LINE, 0.5)
+	sb.border_color = Color(Pal.LINE, 0.5).lerp(Pal.LINE, warm)
+
+## The tile at (r, c) warms toward the given sand (1) or back to white (0).
+func _set_warm(w: float, r: int, c: int) -> void:
+	_warm[r][c] = w
+	_paint(_blend[r][c], r, c)
 
 ## Rule feedback. Cells whose line just broke blush with two heartbeats and
 ## shiver once, and their faces worry; cells whose line was fixed fade back.
@@ -572,7 +715,7 @@ func _recolour(animate := true) -> void:
 				continue
 			var setter := _paint.bind(r, c)
 			if target > _blend[r][c]:
-				var tw: Tween = Motion.fade(self, setter, _blend[r][c], target, BLUSH_IN, 16)
+				var tw: Tween = Motion.fade(self, setter, _blend[r][c], target, BLUSH_IN, 16, 0.0, true)
 				if tw != null:
 					for i in 2:
 						tw.tween_method(setter, target, target + BLUSH_BEAT_EXTRA, BLUSH_BEAT * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -581,7 +724,7 @@ func _recolour(animate := true) -> void:
 				Motion.shiver(_tiles[r][c])
 				fx.cue("blush_in")
 			else:
-				_fades[r][c] = Motion.fade(self, setter, _blend[r][c], target, BLUSH_OUT, 16)
+				_fades[r][c] = Motion.fade(self, setter, _blend[r][c], target, BLUSH_OUT, 16, 0.0, true)
 				fx.cue("blush_out")
 
 ## Whether (r, c) blushes. While a liar hides, the ends of a broken sign do
@@ -602,6 +745,9 @@ func _expression(r: int, c: int) -> int:
 		return Face.Expr.SLEEPY
 	if _ejecting[r][c] != null:
 		return Face.Expr.WORRIED
+	var act: Array = _acting.get(Vector2i(c, r), [])
+	if not act.is_empty() and Time.get_ticks_msec() < int(act[1]):
+		return int(act[0])
 	if Time.get_ticks_msec() < _joy_until[r][c]:
 		return Face.Expr.JOY
 	if _bad(r, c):
@@ -620,6 +766,108 @@ func _celebrate(cells: Array, r: int, c: int) -> void:
 		_hop(rr, cc, LINE_HOP, LINE_HOP_TIME, delay)
 		_beam(rr, cc, delay, JOY_TIME)
 	fx.cue("line")
+	_silly(cells, r, c)
+
+# --- silly line moments ---
+
+## A clean line's gag, one of three, picked by a hash of the completing cell
+## so a board replays the same: the line's suns slide on sunglasses while its
+## moons beam, one moon sneezes a puff of stars, or the line high-fives down
+## its length. `line_silly` lands on the punchline, a beat after `line`.
+## Decoration: none under reduce-motion, where the line keeps its beam.
+func _silly(cells: Array, r: int, c: int) -> void:
+	if Motion.reduce or is_done() or state.is_solved():
+		return
+	match posmod(hash(Vector3i(r, c, n)), 3):
+		0: _shades(cells, r, c)
+		1: _sneeze(cells, r, c)
+		_: _high_five(cells, r, c)
+	_later(SILLY_AT, fx.cue.bind("line_silly", 1.0, SILLY_DB))
+
+## Every sun in the line slides on sunglasses, holds them a moment and slides
+## them off again, in a wave from the tapped cell.
+func _shades(cells: Array, r: int, c: int) -> void:
+	for cell in cells:
+		var face: Control = _faces[cell.y][cell.x]
+		if face == null or state.grid[cell.y][cell.x] != 0:
+			continue
+		var delay := 0.1 + Motion.stagger(absi(cell.y - r) + absi(cell.x - c), LINE_STAGGER)
+		var tw := face.create_tween()
+		tw.tween_property(face, "glasses", 1.0, GLASSES_IN).from(0.0).set_delay(delay) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(GLASSES_HOLD)
+		tw.tween_property(face, "glasses", 0.0, GLASSES_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+## One moon in the line, picked by the hash, screws its eyes shut and
+## stretches ("ah-"), then squashes flat with a puff of stars ("choo!") and
+## beams.
+func _sneeze(cells: Array, r: int, c: int) -> void:
+	var moons := []
+	for cell in cells:
+		if state.grid[cell.y][cell.x] == 1 and _faces[cell.y][cell.x] != null:
+			moons.append(cell)
+	if moons.is_empty():
+		return
+	var at: Vector2i = moons[posmod(hash(Vector2i(c, r)), moons.size())]
+	var face: Control = _faces[at.y][at.x]
+	_act(at.y, at.x, Face.Expr.SLEEPY, SNEEZE_WINDUP + 0.12)
+	var tw := face.create_tween()
+	tw.tween_property(face, "scale", Vector2(0.9, 1.12), SNEEZE_WINDUP).set_delay(0.02) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		var tile := cell_to_local(at.y, at.x)
+		fx.puff(tile + Vector2(-0.12, 0.1) * _tile, Pal.SUN_RAY, 10)
+		fx.puff(tile + Vector2(-0.12, 0.1) * _tile, Pal.CHEEK, 6)
+		_act(at.y, at.x, Face.Expr.JOY, JOY_TIME))
+	tw.tween_property(face, "scale", Vector2(1.24, 0.76), 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(face, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## The line's tiles pair off along it and lean into each other one pair
+## after another, a clap of sparkle where they meet. In a row they tilt
+## their tops together; in a column they bump heads.
+func _high_five(cells: Array, r: int, c: int) -> void:
+	var row: bool = cells.size() > 1 and cells[0].y == cells[1].y
+	var line := cells.duplicate()
+	line.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return (a.x < b.x) if row else (a.y < b.y))
+	# Pairs run from the end nearer the tapped cell.
+	var near_start: bool = (c if row else r) < n / 2
+	if not near_start:
+		line.reverse()
+	for i in range(0, line.size() - 1, 2):
+		var a: Vector2i = line[i]
+		var b: Vector2i = line[i + 1]
+		var delay := 0.1 + (i / 2) * LEAN_STEP
+		var dir := Vector2(b.x - a.x, b.y - a.y)
+		_lean(a, dir, delay)
+		_lean(b, -dir, delay)
+		var mid := (cell_to_local(a.y, a.x) + cell_to_local(b.y, b.x)) * 0.5 - Vector2(0.0, _tile * 0.25)
+		_later(delay + LEAN_TIME * 0.5, fx.sparkle.bind(mid, Pal.SUN_RAY))
+
+## The coin at `cell` leans `dir` (a unit step toward its partner) and comes
+## back: along a row it tilts its top that way, down a column it only shifts.
+func _lean(cell: Vector2i, dir: Vector2, delay: float) -> void:
+	var coin: Panel = _coins[cell.y][cell.x]
+	Motion.stop(_leans[cell.y][cell.x])
+	var tilt := LEAN_ANGLE * dir.x
+	var lean := func(t: float) -> void:
+		var k := sin(PI * t) * (1.0 + 0.25 * sin(TAU * t))
+		coin.rotation = tilt * k
+		coin.position = dir * LEAN_PX * k
+	var tw := coin.create_tween()
+	tw.tween_method(lean, 0.0, 1.0, LEAN_TIME).set_delay(delay)
+	_leans[cell.y][cell.x] = tw
+
+## Holds `expr` on the face at (r, c) for `time` over what the state says,
+## then gives it back.
+func _act(r: int, c: int, expr: int, time: float) -> void:
+	_acting[Vector2i(c, r)] = [expr, Time.get_ticks_msec() + int(time * 1000.0)]
+	var face: Control = _faces[r][c]
+	if face != null:
+		face.expression = expr
+	_later(time + 0.02, func() -> void:
+		var now_face: Control = _faces[r][c]
+		if now_face != null:
+			now_face.expression = _expression(r, c))
 
 ## Sets the face at (r, c) to JOY after `delay` for `time` seconds (INF to
 ## keep it), then back to what the state says.
@@ -643,6 +891,7 @@ func _beam(r: int, c: int, delay: float, time: float) -> void:
 ## `v` arrives (pops with squash and stretch), or drops from above when
 ## `drop` is set (a hint). Under reduce-motion both happen at once.
 func _swap_face(r: int, c: int, v: int, delay := 0.0, drop := false) -> void:
+	_land_flip(r, c, true)
 	var old: Control = _faces[r][c]
 	_faces[r][c] = null
 	if old != null:
@@ -662,10 +911,83 @@ func _swap_face(r: int, c: int, v: int, delay := 0.0, drop := false) -> void:
 	else:
 		Motion.pop_in(face, Motion.POP_IN, start)
 
+## A change of symbol at (r, c): the coin narrows to its edge, the old face
+## goes and the new one shows there, and it springs open again with a small
+## overshoot. The new face is made at once, hidden, so everything that asks
+## for the cell's face (a wrong tile's yelp, a glance) finds it; the old one
+## is kept in _outgoing until the edge. A turn cut short by another lands
+## first. Under reduce-motion the faces swap at once.
+func _flip_face(r: int, c: int, v: int) -> void:
+	_land_flip(r, c, false)
+	var old: Control = _faces[r][c]
+	_faces[r][c] = null
+	if old != null:
+		old.set_idle(false)
+		_outgoing[r][c] = old
+	if v != -1:
+		var face := _make_face(r, c, v)
+		face.visible = false
+		_faces[r][c] = face
+	var coin: Panel = _coins[r][c]
+	if Motion.reduce:
+		_land_flip(r, c, true)
+		return
+	var tw := coin.create_tween()
+	tw.tween_property(coin, "scale:x", 0.0, FLIP_IN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(_edge.bind(r, c))
+	tw.tween_property(coin, "scale:x", 1.0, FLIP_OUT).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_flips[r][c] = tw
+
+## The coin's edge: the face it took away goes, the new one shows.
+func _edge(r: int, c: int) -> void:
+	var old: Control = _outgoing[r][c]
+	_outgoing[r][c] = null
+	if old != null:
+		old.queue_free()
+	var face: Control = _faces[r][c]
+	if face != null:
+		face.visible = true
+
+## Stops a turn on (r, c) where it is and lands its swap; `open` also opens
+## the coin fully (a pop or a rebuild follows, not another turn).
+func _land_flip(r: int, c: int, open: bool) -> void:
+	if _flips.is_empty():
+		return
+	Motion.stop(_flips[r][c])
+	_flips[r][c] = null
+	_edge(r, c)
+	if open:
+		_coins[r][c].scale = Vector2.ONE
+
+## Faces within GLANCE_REACH of a tapped (r, c) look toward it for
+## GLANCE_TIME; a newer glance takes over. Decoration: none under
+## reduce-motion.
+func _glance(r: int, c: int) -> void:
+	if Motion.reduce:
+		return
+	_glance_n += 1
+	var mine := _glance_n
+	_look_ahead()
+	for rr in range(maxi(0, r - GLANCE_REACH), mini(n, r + GLANCE_REACH + 1)):
+		for cc in range(maxi(0, c - GLANCE_REACH), mini(n, c + GLANCE_REACH + 1)):
+			var face: Control = _faces[rr][cc]
+			if face != null and (rr != r or cc != c):
+				face.look = Vector2(c - cc, r - rr).normalized()
+	_later(GLANCE_TIME, func() -> void:
+		if mine == _glance_n:
+			_look_ahead())
+
+## Every face looks straight ahead again.
+func _look_ahead() -> void:
+	for row in _faces:
+		for face in row:
+			if face != null and face.look != Vector2.ZERO:
+				face.look = Vector2.ZERO
+
 ## A hop (negative height lifts) on the tile, replacing any hop already on it.
 func _hop(r: int, c: int, height: float, time: float, delay := 0.0) -> void:
 	Motion.stop(_hops[r][c])
-	var tile: Panel = _tiles[r][c]
+	var tile: Control = _tiles[r][c]
 	var rest := (_origin + Vector2(c, r) * (_tile + GAP)).y
 	tile.position.y = rest
 	_hops[r][c] = Motion.hop(tile, height, time, delay, rest)
@@ -769,16 +1091,111 @@ func _tap(r: int, c: int) -> void:
 	if not changed:
 		return
 	var v: int = state.grid[r][c]
-	_swap_face(r, c, v)
+	_flip_face(r, c, v)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	_nudge_neighbours(r, c)
+	_glance(r, c)
 	if v != -1:
 		fx.puff(cell_to_local(r, c), Pal.SUN if v == 0 else Pal.MOON_INK, 5)
 	fx.cue("place" if v != -1 else "clear")
 	_focus(r, c)
 	_after_change(r, c)
 	note_move()
-	_judge(r, c, v == 0 and brush == -2)
+	var grace := v == 0 and brush == -2
+	if v != -1:
+		_score(r, c, grace)
+	_judge(r, c, grace)
+
+# --- the streak ---
+
+## A tile set at (r, c) by the player: it adds to the streak when it is right
+## and has not counted before. Right means the solution's own symbol on a
+## board with hearts, which a wrong tile says aloud anyway; on Easy and
+## Medium, where nothing else tells, it means no rule broken, so the bubble
+## never gives away more than the blush does. A wrong tile on a heart board
+## ends the streak through _wrong (after the grace for a tapped sun); a
+## blushing one on Easy or Medium ends it here.
+func _score(r: int, c: int, grace: bool) -> void:
+	var good: bool
+	if max_hearts > 0:
+		good = not state.is_wrong(r, c)
+	else:
+		good = not _bad(r, c)
+		if not good:
+			_break_streak()
+	if not good or _counted[r][c] != null:
+		return
+	_counted[r][c] = true
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB)
+	if _streak >= COMBO_FROM and not state.is_solved():
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_cell = Vector2i(c, r)
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak):
+		fx.confetti(cell_to_local(r, c), 22)
+		fx.cue("confetti")
+
+## The streak ends: its bubble, if it was up, deflates.
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		_combo_layer.queue_redraw()
+	if Motion.reduce:
+		_combo_n = 0
+
+## The streak's paper bubble at the upper right of its tile, "x3" and up in
+## ink: it pops in the first time, bumps at each step and deflates when the
+## streak ends. One mesh for the paper and one string, off the clock, like
+## Nonogram's clues.
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _tile <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var cell := cell_to_local(_combo_cell.y, _combo_cell.x)
+	var tail := cell + Vector2(_tile * 0.3, -_tile * 0.3)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.SUN_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
 
 # --- hearts ---
 
@@ -813,6 +1230,8 @@ func _wrong(r: int, c: int) -> void:
 		return
 	_ejecting[r][c] = true
 	hearts -= 1
+	_lost_any = true
+	_break_streak()
 	_split_index = hearts
 	_split_at = _now()
 	_heart_layer.queue_redraw()
@@ -832,7 +1251,7 @@ func _wrong(r: int, c: int) -> void:
 
 ## A crack drawn over tile (r, c): a jagged line of ink, its own path per cell.
 func _crack(r: int, c: int) -> void:
-	var tile: Panel = _tiles[r][c]
+	var tile: Panel = _coins[r][c]
 	var crack := Control.new()
 	crack.name = "crack"
 	crack.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -857,6 +1276,7 @@ func _crack(r: int, c: int) -> void:
 ## the state empties the cell with no move and no history. A tile a hint or
 ## an undo already put right only loses its crack.
 func _eject(r: int, c: int) -> void:
+	_land_flip(r, c, true)
 	_ejecting[r][c] = null
 	var crack: Control = _cracks[r][c]
 	_cracks[r][c] = null
@@ -941,7 +1361,7 @@ func try_again() -> void:
 	moved.emit()
 	fx.cue("reset")
 
-## One more heart (the card's video, or the purchase's): once a board. The
+## One more heart (the card's video): once a board. The
 ## faces wake along the diagonal and the tiles stand up again.
 func heart_back() -> void:
 	if is_done() or not out_of_hearts:
@@ -991,10 +1411,14 @@ func _process(delta: float) -> void:
 		_heart_layer.queue_redraw()
 	if _unmask_i >= 0 and now - _unmask_at < UNMASK_TIME + 0.1:
 		_sign_layer.queue_redraw()
+	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+		_combo_layer.queue_redraw()
 
-## The hearts over the grid as one mesh: a full heart for each left, an
-## outline where one was, the lost one's halves falling apart, and a heart
-## coming back popping in.
+## The hearts over the grid as one mesh, on a paper pill like the signs'
+## badges so they read as the board's own and not the day card's streak: each
+## heart is the board's two halves, sun on the left and moon on the right,
+## with a small face; a faint ghost of the halves where one was, the lost one's halves
+## falling apart (they are the same halves), and a heart coming back popping in.
 func _draw_hearts() -> void:
 	if max_hearts <= 0 or _tile <= 0.0:
 		return
@@ -1003,6 +1427,11 @@ func _draw_hearts() -> void:
 	var step := 2.0 * HEART_R + HEART_GAP
 	var y := _origin.y - HEART_ROW * 0.5
 	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
 	for i in max_hearts:
 		var at := Vector2(x0 + step * i, y)
 		if i < hearts:
@@ -1010,22 +1439,33 @@ func _draw_hearts() -> void:
 			if i == _back_index and not Motion.reduce:
 				s *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
 			if s > 0.5:
-				b.polygon(_heart(at, s, 0), Pal.HEART)
-				b.ellipse(at + Vector2(-0.42, -0.38) * s, 0.2 * s, 0.13 * s, Color(1.0, 1.0, 1.0, 0.45))
+				b.polygon(_heart(at, s, -1), Pal.SUN)
+				b.polygon(_heart(at, s, 1), Pal.MOON_INK)
+				_heart_face(b, at, s)
 			continue
-		b.stroke(_heart(at, HEART_R, 0), 3.0, Color(Pal.LINE, 0.55), true)
+		# A spent heart stays as its two halves' ghost, so even an empty row
+		# reads as the board's and never as the day card's outlined hearts.
+		b.polygon(_heart(at, HEART_R, -1), Color(Pal.SUN, 0.22))
+		b.polygon(_heart(at, HEART_R, 1), Color(Pal.MOON_INK, 0.22))
 		var u := (now - _split_at) / SPLIT_TIME
 		if i == _split_index and u < 1.0 and not Motion.reduce:
-			var colour := Color(Pal.HEART, 1.0 - u * u)
+			var fade := 1.0 - u * u
 			for side in [-1, 1]:
 				var turn: float = side * SPLIT_TURN * u
 				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
 				var pts := _heart(Vector2.ZERO, HEART_R, side)
 				for k in pts.size():
 					pts[k] = at + shift + pts[k].rotated(turn)
-				b.polygon(pts, colour)
+				b.polygon(pts, Color(Pal.SUN if side < 0 else Pal.MOON_INK, fade))
 	_hearts_shown = b.mesh()
 	_heart_layer.draw_mesh(_hearts_shown, null)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
 
 ## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
 ## half, split along a zigzag crack so the two halves fit together.
@@ -1044,7 +1484,11 @@ static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
 		pts.append(at + (p + off) * k)
 	if side == 0:
 		return pts
-	var zig := [Vector2(1.5, 11.0), Vector2(-1.5, 5.0), Vector2(1.5, -1.0)]
+	# The crack leaves the tip straight up the middle and meets the notch from
+	# the side, so neither half's outline crosses the curve it starts from (a
+	# first zig off to one side cut across the right half's tip, and the
+	# right half triangulated to nothing).
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
 	if side < 0:
 		zig.reverse()
 	for z: Vector2 in zig:
@@ -1080,7 +1524,7 @@ func undo() -> bool:
 	var r := got.x
 	var c := got.y
 	_pending[r][c] += 1
-	_swap_face(r, c, got.z)
+	_flip_face(r, c, got.z)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	fx.cue("undo")
 	_focus(r, c)
@@ -1105,7 +1549,8 @@ func hint() -> bool:
 	var r := cell.y
 	var c := cell.x
 	_swap_face(r, c, state.grid[r][c], 0.0, true)
-	_paint(_blend[r][c], r, c)
+	_counted[r][c] = true
+	Motion.fade(self, _set_warm.bind(r, c), _warm[r][c], 1.0, WARM_TIME, 16, 0.0, true)
 	_ring(r, c)
 	var at := cell_to_local(r, c)
 	for i in 6:
@@ -1132,7 +1577,7 @@ func check() -> int:
 	for cell in wrong:
 		var r: int = cell.y
 		var c: int = cell.x
-		var tile: Panel = _tiles[r][c]
+		var tile: Control = _tiles[r][c]
 		tile.rotation = 0.0
 		Motion.wobble2d(tile)
 		_flash(r, c)
@@ -1168,7 +1613,11 @@ func reset_board() -> void:
 			if _faces[r][c] != null:
 				_swap_face(r, c, -1, delay)
 	for cell in unlocked:
-		_paint(_blend[cell.y][cell.x], cell.y, cell.x)
+		_set_warm(0.0, cell.y, cell.x)
+	_streak = 0
+	_break_streak()
+	for row in _counted:
+		row.fill(null)
 	brush = -2
 	brush_changed.emit()
 	moves = 0
@@ -1200,8 +1649,13 @@ func restore_completed_board() -> void:
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The grid as ever, and a flawless solve adds one line under it.
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out := state.share_glyphs()
+	if _flawless:
+		out += ("🌙 %s · %s" % [tr("BN_INSANE_SEAL"), tr("BN_FLAWLESS")]) if _level >= 3 else ("🏅 " + tr("BN_FLAWLESS"))
+		out += "\n"
+	return out
 
 ## Every face hops along the diagonal and beams for good, with sparkles over
 ## the board. The host brings the win screen in after this wave.
@@ -1210,6 +1664,9 @@ func _on_solved() -> void:
 	_focus_clear()
 	brush = -2
 	brush_changed.emit()
+	_break_streak()
+	_look_ahead()
+	_flawless = hints_used == 0 and (not _lost_any if max_hearts > 0 else checks == 0)
 	_lead = 0.0
 	if state.liar >= 0:
 		_unmask()
@@ -1230,12 +1687,169 @@ func _on_solved() -> void:
 		_later(_lead, fx.cue.bind("solved"))
 	else:
 		fx.cue("solved")
+	if _flawless:
+		_later(_lead + (0.0 if Motion.reduce else STAMP_AT), _stamp_down)
+	if not Motion.reduce:
+		_later(_lead + PARTY_AT, _party_on)
+
+# --- the flawless stamp ---
+
+## The stamp drops onto the lower right of the grid from STAMP_FROM its size,
+## squashes as it lands and rings; gold "Flawless", or on Insane a night-blue
+## seal with a crescent. Under reduce-motion it is simply there. It is the
+## result, not decoration, so it shows either way.
+func _stamp_down() -> void:
+	if _tile <= 0.0 or is_instance_valid(_stamp):
+		return
+	var g := _tile * n + GAP * (n - 1)
+	var rad := g * STAMP_R
+	var stamp := Control.new()
+	stamp.name = "Stamp"
+	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamp.z_index = 3
+	stamp.size = Vector2.ONE * rad * 2.0
+	stamp.pivot_offset = stamp.size * 0.5
+	var centre := _origin + Vector2(g, g) - Vector2.ONE * rad * 0.8
+	stamp.position = centre - stamp.pivot_offset
+	stamp.rotation = STAMP_TILT
+	var insane := _level >= 3
+	var mesh := _seal_mesh(rad, insane)
+	stamp.draw.connect(func() -> void:
+		stamp.draw_mesh(mesh, null, Transform2D(0.0, stamp.pivot_offset))
+		_seal_text(stamp, rad, insane))
+	add_child(stamp)
+	_stamp = stamp
+	fx.cue("flawless")
+	if Motion.reduce:
+		return
+	stamp.scale = Vector2.ONE * STAMP_FROM
+	stamp.modulate.a = 0.0
+	var tw := stamp.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(stamp, "scale", Vector2.ONE, STAMP_DROP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
+	tw.chain().tween_callback(func() -> void:
+		Motion.squash(stamp, 0.22, 0.26)
+		fx.ring(centre, rad * 0.9, Pal.SUN if not insane else Pal.MOON_INK))
+
+## The seal as one mesh, about its centre: a scalloped disc, a pressed ring
+## inside it, and on Insane a crescent over the words.
+static func _seal_mesh(rad: float, insane: bool) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var body: Color = Pal.MOON_DEEP if insane else Pal.SUN
+	var deep: Color = Pal.MOON_DEEP.darkened(0.25) if insane else Pal.SUN_DEEP
+	var pts := PackedVector2Array()
+	const BUMPS := 18
+	const STEPS := 144
+	for i in STEPS:
+		var a := TAU * i / STEPS
+		pts.append(Vector2.from_angle(a) * rad * (0.93 + 0.07 * cos(a * BUMPS)))
+	b.polygon(pts, deep)
+	for i in pts.size():
+		pts[i] = pts[i] * 0.94
+	b.polygon(pts, body)
+	b.stroke(Face.Builder.arc_points(Vector2.ZERO, rad * 0.74, 0.0, TAU), maxf(2.0, rad * 0.04), Color(Pal.SURFACE, 0.7), true)
+	if insane:
+		# A crescent above the words, open to the upper right like the board's moons.
+		# The bite is a disc of the seal's own colour: the seal is flat there.
+		var c := Vector2(0.0, -rad * 0.44)
+		var cr := rad * 0.2
+		b.disc(c, cr, Pal.SUN_RAY)
+		b.disc(c + Vector2(cr * 0.5, -cr * 0.45), cr * 0.8, body)
+	else:
+		for sx in [-1.0, 1.0]:
+			b.polygon(_star(Vector2(sx * rad * 0.28, -rad * 0.4), rad * 0.1), Pal.SURFACE)
+		b.polygon(_star(Vector2(0.0, -rad * 0.46), rad * 0.13), Pal.SURFACE)
+	return b.mesh()
+
+## A five-point star's outline about `at`.
+static func _star(at: Vector2, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 10:
+		pts.append(at + Vector2.from_angle(-PI * 0.5 + i * PI / 5.0) * (r if i % 2 == 0 else r * 0.45))
+	return pts
+
+## The seal's words, fitted across it: "Flawless", or on Insane the seal's
+## name over a smaller "Flawless".
+static func _seal_text(item: CanvasItem, rad: float, insane: bool) -> void:
+	var font: Font = CozyTheme.display(700)
+	var centre := Vector2.ONE * rad
+	var lines := [[tr_static("BN_INSANE_SEAL"), 0.32, 0.02], [tr_static("BN_FLAWLESS"), 0.2, 0.36]] if insane \
+		else [[tr_static("BN_FLAWLESS"), 0.3, 0.12]]
+	for line in lines:
+		var text: String = line[0]
+		var fs := int(rad * float(line[1]))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		if w > rad * 1.5:
+			fs = int(fs * rad * 1.5 / w)
+			w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var base := centre + Vector2(-w * 0.5, rad * float(line[2]) + font.get_ascent(fs) * 0.35)
+		item.draw_string(font, base + Vector2(0.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Pal.OUTLINE, 0.25))
+		item.draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.SURFACE)
+
+static func tr_static(key: String) -> String:
+	return TranslationServer.translate(key)
+
+# --- the solve party ---
+
+## After the wave: every face pops a party hat on along the diagonal,
+## confetti of suns and moons flies over the board, and a big sun and a big
+## moon slide in from the edges, wearing hats, and hug at the centre.
+func _party_on() -> void:
+	if _tile <= 0.0 or not state.is_solved():
+		return
+	fx.cue("party")
+	for r in n:
+		for c in n:
+			var face: Control = _faces[r][c]
+			if face == null:
+				continue
+			face.hat_style = posmod(hash(Vector2i(r, c)), 3)
+			var tw := face.create_tween()
+			tw.tween_property(face, "hat", 1.0, PARTY_HAT).from(0.0) \
+				.set_delay(Motion.stagger(r + c, PARTY_HAT_STAGGER, 0.4)) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var g := _tile * n + GAP * (n - 1)
+	fx.confetti(_origin + Vector2(g * 0.5, g * 0.15), 48, g * 0.9)
+	_later(0.25, fx.confetti.bind(_origin + Vector2(g * 0.5, g * 0.55), 32, g * 0.6))
+	var mid := _origin + Vector2.ONE * g * 0.5
+	var sun: Control = SunFace.new()
+	var moon: Control = MoonFace.new()
+	sun.size = Vector2.ONE * BIG * _tile * 1.25
+	moon.size = Vector2.ONE * BIG * _tile * 0.85
+	var gap := BIG * _tile * 0.5
+	for pair in [[sun, -1.0, 0], [moon, 1.0, 1]]:
+		var face: Control = pair[0]
+		var side: float = pair[1]
+		face.name = "PartySun" if pair[2] == 0 else "PartyMoon"
+		face.z_index = 2
+		face.expression = Face.Expr.JOY
+		face.shadowless = true
+		face.hat = 1.0
+		face.hat_style = pair[2]
+		face.pivot_offset = face.size * 0.5
+		add_child(face)
+		face.set_idle(true)
+		_party.append(face)
+		var rest := mid + Vector2(side * gap, 0.0) - face.size * 0.5
+		var from := Vector2(size.x * 0.5 + side * (size.x * 0.5 + face.size.x), rest.y)
+		var hug := rest - Vector2(side * _tile * 0.22, 0.0)
+		face.position = from
+		var tw := face.create_tween()
+		# Out of a long slide the back ease overshoots by a tenth of the
+		# screen and the two cross; a cubic lands them without.
+		tw.tween_property(face, "position", rest, PARTY_SLIDE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(face, "position", hug, PARTY_HUG).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(face, "rotation", -side * 0.2, PARTY_HUG).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_callback(func() -> void: Motion.squash(face, 0.1, 0.3))
 
 ## How long the host waits before the win screen: its own beat, after the
 ## unmasking when there was one.
 func win_delay() -> float:
 	var host: GDScript = load(FLAT_HOST)
-	return _lead + float(host.WIN_AFTER_STILL if Motion.reduce else host.WIN_AFTER)
+	if Motion.reduce:
+		return _lead + float(host.WIN_AFTER_STILL)
+	return _lead + float(host.WIN_AFTER) + PARTY_EXTRA
 
 ## The liar is caught: its badge swells, blushes and turns over onto a
 ## sheepish face (_draw_liar, off the clock), and a paper bubble says so over
@@ -1298,7 +1912,7 @@ func _enter() -> void:
 	_stop_entrance()
 	for r in n:
 		for c in n:
-			var tile: Panel = _tiles[r][c]
+			var tile: Control = _tiles[r][c]
 			var delay := Motion.stagger(r + c, Motion.ENTER_STAGGER)
 			var pop: Tween = Motion.slide(tile, "scale", Vector2.ONE * 0.01, Vector2.ONE, Motion.ENTER_POP, delay)
 			if pop != null:
@@ -1331,7 +1945,12 @@ func _stop_entrance() -> void:
 func _stop_all() -> void:
 	_stop_entrance()
 	Motion.stop(_focus_tw)
-	for rows in [_fades, _hops, _scales]:
+	for rows in [_fades, _hops, _scales, _leans]:
 		for row in rows:
 			for tw in row:
 				Motion.stop(tw)
+	for r in _flips.size():
+		for c in _flips[r].size():
+			_land_flip(r, c, true)
+			_coins[r][c].rotation = 0.0
+			_coins[r][c].position = Vector2.ZERO
