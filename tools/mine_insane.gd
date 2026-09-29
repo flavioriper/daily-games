@@ -6,6 +6,8 @@ extends SceneTree
 ##
 ##   godot --headless --path . --script tools/mine_insane.gd -- <puzzle_id> <count> [tries]
 ##
+## The note it writes ends with the average ms a try (candidate plus grade).
+##
 ## tries defaults to count * 50. The ladder contract this script requires is
 ## in tools/insane/README.md; a ladder script never loads in the game.
 
@@ -47,12 +49,15 @@ func _run() -> int:
 	var hard_rung: int = ladder.HARD_RUNG
 	var kept: Array = []
 	var rng := RandomNumberGenerator.new()
+	var started := Time.get_ticks_msec()
 	for i in range(tries):
 		rng.seed = i
 		var board: Dictionary = ladder.candidate(rng)
 		var grade: Dictionary = ladder.grade(board)
 		if grade.get("unique", false) and int(grade.get("rung", -1)) > hard_rung:
 			kept.append({"board": board, "grade": grade})
+	# Candidate plus grade, averaged over every try: what one board costs to mine.
+	var ms_a_try: int = (Time.get_ticks_msec() - started) / maxi(1, tries)
 
 	kept.sort_custom(func(a, b) -> bool:
 		var ga: Dictionary = a["grade"]
@@ -85,8 +90,8 @@ func _run() -> int:
 			old_count = old_doc["boards"].size()
 		print("overwriting %s (had %d boards)" % [out_path, old_count])
 
-	var note := "%s Insane, mined %s, %d/%d kept, rungs %d-%d" % [
-		puzzle_id, Time.get_date_string_from_system(), kept.size(), tries, min_rung, max_rung
+	var note := "%s Insane, mined %s, %d/%d kept, rungs %d-%d, %d ms a try" % [
+		puzzle_id, Time.get_date_string_from_system(), kept.size(), tries, min_rung, max_rung, ms_a_try
 	]
 	var doc := {"version": 1, "note": note, "boards": out_boards}
 
