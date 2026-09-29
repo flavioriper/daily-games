@@ -222,6 +222,10 @@ func _initialize() -> void:
 		else:
 			_mode = args[i]
 	_empty = _mode == "empty"
+	if _id == "mastermind" and not _empty:
+		# The fill takes a couple of seconds a row now (the reactions and
+		# Insane's swaps hold each row), so the frames are spread over it.
+		_shots = [1.6, 2.4, 3.0, 4.2, 6.0, 8.5, 11.0, 14.0, 17.0]
 	if _id == "wordtrail" and not _empty:
 		# The trail is traced from TAP_AT and the lock wave runs off its
 		# release, so three frames go between the usual ones: the trail
@@ -1611,9 +1615,22 @@ func _fill_mastermind_step() -> void:
 		return
 	var tray = _host.tray
 	var played: int = _puzzle._guesses.size()
-	if played >= 7:
+	# Hard and Insane have seven rows since 2026-09-29, so the fullest board
+	# is one short of the band's own count. `solve` plays three rows and
+	# then the code as it sits, for the stamp and the party.
+	var stop: int = 3 if _mode == "solve" else _puzzle.max_guesses - 1
+	if _puzzle.state.is_solved() or _puzzle.is_done():
+		_filling = false
+		_idle_from = _t + 3.6
+		_idle_to = _idle_from + 1.0
+		return
+	if played >= stop:
 		if not _puzzle.state.full():
-			_press(tray.chips[0])
+			var s: int = _puzzle.state.free_slot()
+			_press(tray.chips[int(_puzzle.state.code[s]) if _mode == "solve" else 0])
+			return
+		if _mode == "solve":
+			_press(_host.action_bar.check_button)
 			return
 		_filling = false
 		_idle_from = _t + 0.6
