@@ -1903,7 +1903,7 @@ func hint() -> bool:
 ## the stitches already used stay used, and once the thread is gone or the day
 ## is over there is nothing to reset.
 func can_reset() -> bool:
-	return not (out_of_hearts or state.out_of_thread() or _shown_answer or (is_done() and not state.is_solved())) and _settled(_now())
+	return not (is_done() or out_of_hearts or state.out_of_thread()) and _settled(_now())
 
 func reset_board() -> void:
 	if not can_reset():

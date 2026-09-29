@@ -202,6 +202,45 @@ func _script() -> void:
 				_puzzle.completed_record = {"stamp": "UT_STAMP_2"}
 				_puzzle.restore_completed())
 			_at(1.5, _shot)
+		"soak":
+			# Random play through the real input path, then a check that the
+			# board is not stuck: 70 operations, one every 0.55 s.
+			_end = 48.0
+			_ms_from = 99.0
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 42 + _level
+			for k in 70:
+				_at(1.0 + k * 0.55, func() -> void:
+					var pz = _puzzle
+					var st = pz.state
+					var op := rng.randi() % 12
+					if op < 6:
+						var mv: Array = load("res://puzzles/untangle_gen.gd").legal_moves(st.at, st.holes, st.reach)
+						if not mv.is_empty():
+							var m: Array = mv[rng.randi() % mv.size()]
+							_press(pz.peg_to_local(m[0]))
+							_motion(pz.hole_to_local(m[1]))
+							_release(pz.hole_to_local(m[1]))
+					elif op == 6:
+						_press(pz.peg_to_local(rng.randi() % st.at.size()))
+						_motion(pz._c + Vector2(rng.randf_range(-600, 600), rng.randf_range(-600, 600)))
+						_release(pz._c)
+					elif op == 7:
+						_host.top_bar.hint_button.pressed.emit()
+					elif op == 8:
+						_host.top_bar.undo_button.pressed.emit()
+					elif op == 9 and rng.randi() % 3 == 0:
+						_host.top_bar.reset_button.pressed.emit()
+					elif op == 10:
+						_press(pz._c + Vector2(rng.randf_range(-300, 300), rng.randf_range(-300, 300)))
+						_release(pz._c)
+					else:
+						var chain: PackedVector2Array = pz._ropes[rng.randi() % st.ropes].p
+						_press(chain[chain.size() / 2])
+						_release(chain[chain.size() / 2]))
+			_at(44.0, func() -> void:
+				var pz = _puzzle
+				print("soak: done=", pz.is_done(), " solved=", pz.state.is_solved(), " held=", pz._held, " sel=", pz._sel, " settled=", pz._settled(pz._now()), " out=", pz.out_of_hearts, " crossings=", pz.state.crossings(), " spent=", pz.state.spent, "/", pz.state.budget))
 		"toys":
 			# Pet the kitten, then pluck a rope.
 			_end = 4.0
