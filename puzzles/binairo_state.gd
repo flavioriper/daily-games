@@ -23,6 +23,11 @@ var history: Array[Vector3i] = []
 ## The signs between side-by-side cells, as Gen hands them:
 ## Vector4i(r, c, dir, same), dir 0 rightward and 1 downward.
 var signs: Array = []
+## Insane's lying sign: an index into `signs`, whose shown kind is the false
+## one; -1 on every other board. The rules (bad lines, signs_ok, is_solved)
+## read it as its true kind, so the solution is what solves, and no sign
+## reads broken while it is hidden (sign_broken): a red badge would name it.
+var liar: int = -1
 ## Gen.bad_lines(grid, signs): {"rows": {r: true}, "cols": {c: true},
 ## "cells": {(c, r): true}} -- the last for the ends of a broken sign. Kept in
 ## Gen's shape so a board asks `bad.rows.has(r)` exactly as the island does.
@@ -35,6 +40,9 @@ func setup(out: Dictionary) -> void:
 	var puzzle: Array = out.puzzle
 	n = puzzle.size()
 	signs = (out.get("signs", []) as Array).duplicate()
+	liar = int(out.get("liar", -1))
+	if liar >= signs.size():
+		liar = -1
 	solution = []
 	grid = []
 	given = []
@@ -163,6 +171,26 @@ func apply_hint() -> Vector2i:
 	refresh_bad()
 	return cell
 
+## Whether (r, c) is a filled free cell that differs from the solution: the
+## tap that costs a heart on Hard and Insane.
+func is_wrong(r: int, c: int) -> bool:
+	return not given[r][c] and grid[r][c] != -1 and grid[r][c] != solution[r][c]
+
+## Empties (r, c) behind the player's back: a wrong tile ejecting itself.
+## Adds no history entry and counts as no move. The entry of the tap that
+## put it there stays, since undoing it can still bring back what the cell
+## held before -- unless that was an empty cell, when the undo would do
+## nothing and the entry is dropped with it.
+func clear_silent(r: int, c: int) -> void:
+	if given[r][c] or grid[r][c] == -1:
+		return
+	grid[r][c] = -1
+	if not history.is_empty():
+		var last: Vector3i = history.back()
+		if last.x == r and last.y == c and last.z == -1:
+			history.pop_back()
+	refresh_bad()
+
 ## Every filled free cell that differs from the solution, as (c, r). Check
 ## points at these; solving stays automatic.
 func wrong_cells() -> Array[Vector2i]:
@@ -177,15 +205,30 @@ func wrong_cells() -> Array[Vector2i]:
 # --- rules ---
 
 func refresh_bad() -> void:
-	bad = Gen.bad_lines(grid, signs)
+	bad = Gen.bad_lines(grid, true_signs())
+
+## The signs as they really are: `signs` with the liar, if any, told the
+## right way round. A copy when there is a liar; `signs` itself when not.
+func true_signs() -> Array:
+	return signs if liar < 0 else Gen.with_flipped(signs, liar)
+
+## The liar's index, for the solve's unmasking; -1 on a board without one.
+## Nothing changes: `signs` keeps showing the false kind, and a board that
+## turns the glyph reads the true one off true_signs().
+func unmask_liar() -> int:
+	return liar
 
 ## Whether the cell sits in a row or a column that breaks a rule right now,
 ## or at either end of a broken sign.
 func is_bad(r: int, c: int) -> bool:
 	return bad.rows.has(r) or bad.cols.has(c) or bad.cells.has(Vector2i(c, r))
 
-## Whether sign `i` of `signs` disagrees with the grid right now.
+## Whether sign `i` of `signs`, as shown, disagrees with the grid right now.
+## Never while a liar hides on an unsolved board, for any sign: a red badge
+## would give the liar away. Once solved, the liar reads broken -- it lied.
 func sign_broken(i: int) -> bool:
+	if liar >= 0 and not is_solved():
+		return false
 	return Gen.sign_broken(grid, signs[i])
 
 ## Which rule the board breaks, for the tip card: 0 none, 1 three alike side
@@ -272,7 +315,7 @@ func is_full() -> bool:
 	return true
 
 func is_solved() -> bool:
-	return Gen.is_valid_complete(grid) and Gen.signs_ok(grid, signs)
+	return Gen.is_valid_complete(grid) and Gen.signs_ok(grid, true_signs())
 
 # --- for the HUD ---
 
