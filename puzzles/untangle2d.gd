@@ -1836,7 +1836,9 @@ func _clear_stamp() -> void:
 func _stamp_down(quiet := false) -> void:
 	if is_instance_valid(_stamp) or not state.is_solved() or _shown_answer or stamp_key() == "":
 		return
-	var rad := minf(STAMP_R, _ri * 0.5)
+	# A board restored before its first layout has no ring yet: the seal is cut
+	# at full size and _place_stamp scales it once the ring is known.
+	var rad := STAMP_R if _ri <= 0.0 else minf(STAMP_R, _ri * 0.5)
 	var insane := state.cat
 	var stamp := Control.new()
 	stamp.name = "Stamp"
@@ -1873,7 +1875,7 @@ func _stamp_down(quiet := false) -> void:
 ## The seal sits over the ring's middle, sized to it, and follows the ring when
 ## the host lays the board out again for the win screen.
 func _place_stamp() -> void:
-	if not is_instance_valid(_stamp):
+	if not is_instance_valid(_stamp) or _stamp_rad <= 0.0 or _ri <= 0.0:
 		return
 	var rad := minf(STAMP_R, _ri * 0.5)
 	_stamp.scale = Vector2.ONE * (rad / _stamp_rad)
