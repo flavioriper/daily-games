@@ -5,8 +5,9 @@ extends Node
 ## bottom_inset() through ui/safe_area.gd and never see an ad object.
 ##
 ## start() runs from world/main.gd (and again once the age screen is
-## answered), so tests and harnesses never ask for an ad. Order: nothing at
-## all if remove_ads is owned; else the player's age must be known, then the
+## answered), so tests and harnesses never ask for an ad. Order: the player's
+## age must be known (an owner of remove_ads goes the same way: only the banner
+## and the interstitial are dropped, the opt-in rewarded videos stay), then the
 ## request configuration it sets, then UMP consent (update, then the form when it is required), then MobileAds.initialize,
 ## then an anchored adaptive banner at the bottom. A consent update that fails
 ## still goes on to the ads: the SDK serves non-personalised ads without
@@ -23,6 +24,8 @@ signal banner_changed(visible: bool, height: float)
 
 const Analytics = preload("res://core/analytics.gd")
 const AgeGate = preload("res://core/age_gate.gd")
+const AdPacing = preload("res://core/ad_pacing.gd")
+const Backend = preload("res://core/backend.gd")
 ## The "Remove ads" tab BannerHost stands on the banner's top edge, in design
 ## pixels whatever the banner's own unit: ui/safe_area.gd adds it to the
 ## bottom inset, unscaled, whenever a banner is up.
@@ -33,6 +36,14 @@ const TAB_H := 56.0
 ## a real ad from a debug build would count as invalid traffic.
 const TEST_BANNER_ANDROID := "ca-app-pub-3940256099942544/9214589741"
 const TEST_BANNER_IOS := "ca-app-pub-3940256099942544/2435281174"
+const TEST_INTERSTITIAL_ANDROID := "ca-app-pub-3940256099942544/1033173712"
+const TEST_INTERSTITIAL_IOS := "ca-app-pub-3940256099942544/4411468910"
+const TEST_REWARDED_ANDROID := "ca-app-pub-3940256099942544/5224354917"
+const TEST_REWARDED_IOS := "ca-app-pub-3940256099942544/1712485313"
+
+## A rewarded video finished loading, was used, or ownership changed: open
+## cards refresh their buttons.
+signal rewards_changed
 
 var _ad_view: Object
 var _banner_visible := false
@@ -40,22 +51,53 @@ var _banner_height := 0.0
 var _started := false
 var _removed := false
 var _fake := 0.0
+var state_path := "user://ads.cfg"
+var pacing := AdPacing.new()
+var _interstitial: InterstitialAd
+var _rewarded: RewardedAd
+var _loading_interstitial := false
+var _loading_rewarded := false
+var _finished_pending := false
+var _fake_full := ""   # "", "1" (always earns) or "skip" (never earns)
+var _retry: Timer
 
 func _ready() -> void:
+	reload_state()
 	if OS.is_debug_build():
 		_fake = maxf(0.0, OS.get_environment("ADS_FAKE_BANNER").to_float())
+		_fake_full = OS.get_environment("ADS_FAKE_FULL")
+	_retry = Timer.new()
+	_retry.one_shot = true
+	_retry.wait_time = 60.0
+	_retry.timeout.connect(func() -> void:
+		_load_interstitial()
+		_load_rewarded())
+	add_child(_retry)
 	Store.owned_changed.connect(func(owned: bool) -> void:
 		if owned:
-			remove())
+			remove()
+		rewards_changed.emit())
+
+func reload_state() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(state_path)
+	for k: String in pacing.state:
+		pacing.state[k] = cfg.get_value("pacing", k, pacing.state[k])
+
+func _save_state() -> void:
+	var cfg := ConfigFile.new()
+	for k: String in pacing.state:
+		cfg.set_value("pacing", k, pacing.state[k])
+	cfg.save(state_path)
 
 func start() -> void:
 	if _started:
 		return
+	# An owner still starts the SDK: the opt-in videos stay. Only the banner
+	# and the interstitial are dropped, by _removed.
 	if Store.owns_remove_ads():
-		_started = true
 		_removed = true
-		return
-	if _fake > 0.0:
+	if _fake > 0.0 and not _removed:
 		_started = true
 		_set_banner(true, _fake)
 		return
@@ -66,8 +108,14 @@ func start() -> void:
 	if not AgeGate.known():
 		return
 	_started = true
+	_fetch_remote()
 	_configure_requests()
 	_consent()
+
+func _fetch_remote() -> void:
+	var got: Dictionary = await Backend.config("ads")
+	if got.ok:
+		pacing.merge(got.data)
 
 ## Every request this app makes carries the player's band: a child is
 ## child-directed at rating G, a teen is under the age of consent, and
@@ -113,10 +161,11 @@ func _on_consent_updated() -> void:
 		_init_ads()
 
 func _init_ads() -> void:
-	if _removed:
-		return
 	var listener := OnInitializationCompleteListener.new()
-	listener.on_initialization_complete = func(_status: InitializationStatus) -> void: _load_banner()
+	listener.on_initialization_complete = func(_status: InitializationStatus) -> void:
+		_load_banner()
+		_load_interstitial()
+		_load_rewarded()
 	MobileAds.initialize(listener)
 
 func _load_banner() -> void:
@@ -151,6 +200,10 @@ func remove() -> void:
 		_ad_view.destroy()
 		_ad_view = null
 	_set_banner(false, 0.0)
+	if _interstitial != null:
+		_interstitial.destroy()
+		_interstitial = null
+	rewards_changed.emit()
 
 func privacy_options_required() -> bool:
 	if not OS.has_feature("mobile") or not _plugin_present():
@@ -179,3 +232,165 @@ func _set_banner(visible: bool, height: float) -> void:
 	_banner_height = height if visible else 0.0
 	if changed:
 		banner_changed.emit(_banner_visible, _banner_height)
+
+func _unit(kind: String) -> String:
+	var ios := OS.get_name() == "iOS"
+	if OS.is_debug_build():
+		match kind:
+			"interstitial": return TEST_INTERSTITIAL_IOS if ios else TEST_INTERSTITIAL_ANDROID
+			"rewarded": return TEST_REWARDED_IOS if ios else TEST_REWARDED_ANDROID
+	return str(ProjectSettings.get_setting("ads/%s_unit_id.%s" % [kind, "ios" if ios else "android"], ""))
+
+func _retry_soon() -> void:
+	if _retry != null and _retry.is_stopped():
+		_retry.start()
+
+func _load_interstitial() -> void:
+	if _removed or _interstitial != null or _loading_interstitial or AgeGate.band() == AgeGate.CHILD:
+		return
+	var unit := _unit("interstitial")
+	if unit.is_empty():
+		return
+	_loading_interstitial = true
+	var cb := InterstitialAdLoadCallback.new()
+	cb.on_ad_loaded = func(ad: InterstitialAd) -> void:
+		_loading_interstitial = false
+		_interstitial = ad
+	cb.on_ad_failed_to_load = func(error: LoadAdError) -> void:
+		_loading_interstitial = false
+		Analytics.track("ad_load_failed", {"format": "interstitial", "error": "%d" % error.code})
+		_retry_soon()
+	InterstitialAdLoader.new().load(unit, ad_request(), cb)
+
+func _load_rewarded() -> void:
+	if _rewarded != null or _loading_rewarded:
+		return
+	var unit := _unit("rewarded")
+	if unit.is_empty():
+		return
+	_loading_rewarded = true
+	var cb := RewardedAdLoadCallback.new()
+	cb.on_ad_loaded = func(ad: RewardedAd) -> void:
+		_loading_rewarded = false
+		_rewarded = ad
+		rewards_changed.emit()
+	cb.on_ad_failed_to_load = func(error: LoadAdError) -> void:
+		_loading_rewarded = false
+		Analytics.track("ad_load_failed", {"format": "rewarded", "error": "%d" % error.code})
+		_retry_soon()
+	RewardedAdLoader.new().load(unit, ad_request(), cb)
+
+## A game (board, Arcade run, Versus game) ended.
+func note_finished() -> void:
+	pacing.note_finished(Daily.date_key())
+	_finished_pending = true
+	_save_state()
+
+## The player just left a screen for the list: show the interstitial if a
+## finished game earned one since the last call and pacing allows.
+func leaving_game() -> void:
+	if not _finished_pending:
+		return
+	_finished_pending = false
+	if _removed:
+		return
+	var now := Time.get_unix_time_from_system()
+	var today := Daily.date_key()
+	var why := pacing.interstitial_verdict(now, today, Progress.hearts(today), AgeGate.band())
+	if why.is_empty() and _interstitial == null and _fake_full.is_empty():
+		why = "not_loaded"
+		_load_interstitial()
+	if not why.is_empty():
+		Analytics.track("ad_interstitial_skipped", {"reason": why})
+		return
+	pacing.note_interstitial(now, today)
+	_save_state()
+	Analytics.track("ad_interstitial_shown")
+	_quiet(true)
+	if not _fake_full.is_empty():
+		_fake_show("interstitial", func(_earned: bool) -> void: _quiet(false))
+		return
+	var ad := _interstitial
+	_interstitial = null
+	ad.full_screen_content_callback.on_ad_dismissed_full_screen_content = func() -> void:
+		_quiet(false)
+		ad.destroy()
+		_load_interstitial()
+	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_e: AdError) -> void:
+		_quiet(false)
+		ad.destroy()
+		_load_interstitial()
+	ad.show()
+
+## Game sound off under a full-screen ad, back on when it goes.
+func _quiet(on: bool) -> void:
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), on)
+
+## Placements: "hint", "double", "continue". Opt-in, so owners keep them.
+func can_reward(_placement: String) -> bool:
+	if pacing.rewarded_left(Daily.date_key()) <= 0:
+		return false
+	if not _fake_full.is_empty():
+		return true
+	return _rewarded != null
+
+## Analytics only: call once when a rewarded button is shown.
+func offered(placement: String) -> void:
+	Analytics.track("ad_rewarded_offered", {"placement": placement})
+
+## done.call(earned) exactly once, after the ad is dismissed (or at once on a
+## failure). The reward is recorded on the earned callback and handed to the
+## game on dismissal, so the game never changes under the ad.
+func show_rewarded(placement: String, done: Callable) -> void:
+	var today := Daily.date_key()
+	if pacing.rewarded_left(today) <= 0:
+		done.call(false)
+		return
+	Analytics.track("ad_rewarded_started", {"placement": placement})
+	var finish := func(earned: bool) -> void:
+		_quiet(false)
+		if earned:
+			pacing.note_rewarded(Time.get_unix_time_from_system(), Daily.date_key())
+			_save_state()
+			Analytics.track("ad_rewarded_completed", {"placement": placement})
+		_load_rewarded()
+		rewards_changed.emit()
+		done.call(earned)
+	_quiet(true)
+	if not _fake_full.is_empty():
+		_fake_show("rewarded", finish)
+		return
+	if _rewarded == null:
+		_quiet(false)
+		done.call(false)
+		return
+	var ad := _rewarded
+	_rewarded = null
+	var earned := [false]
+	ad.full_screen_content_callback.on_ad_dismissed_full_screen_content = func() -> void:
+		ad.destroy()
+		finish.call(earned[0])
+	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_e: AdError) -> void:
+		ad.destroy()
+		finish.call(false)
+	var listener := OnUserEarnedRewardListener.new()
+	listener.on_user_earned_reward = func(_item: RewardedItem) -> void: earned[0] = true
+	ad.show(listener)
+
+## ADS_FAKE_FULL (debug builds): a grey card saying which ad would be up,
+## gone after 1.5 s. "skip" never earns, to check a video closed early.
+func _fake_show(kind: String, then: Callable) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	var rect := ColorRect.new()
+	rect.color = Color(0.3, 0.3, 0.3, 0.96)
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var label := Label.new()
+	label.text = "AD (%s)" % kind
+	label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	rect.add_child(label)
+	layer.add_child(rect)
+	add_child(layer)
+	get_tree().create_timer(1.5).timeout.connect(func() -> void:
+		layer.queue_free()
+		then.call(_fake_full != "skip"))
