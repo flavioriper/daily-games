@@ -42,3 +42,20 @@ What has *not* been rechecked is every older recorded layout number taken
 from a frame at the old flag. Treat a pixel measurement in this file that
 predates 2026-09-19 as taken on a 1237-wide canvas until it is re-shot; a
 draw-call count, a budget figure or a design-space constant is fine.
+
+## Untangle's own harness (2026-09-29)
+
+`tests/_shot_untangle.gd` plays the ring through the board's real input path
+(press, motions, release) and shoots numbered frames to its `SHOT_DIR`
+(edit the constant or pass `out=<dir>`):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_untangle.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest hold taut plan wrong answer out hint undo reset perf idle enter
+restore howto toys`. `plan` plays the dealer's answer (kitten included on
+`d=3`, at 2.7 s a move, because she holds input for a second); `out` pokes the
+thread to one stitch and makes one bad move; `perf` and `idle` print the mean
+frame time and peak draw calls over a window with no screenshots (a
+`save_png` costs tens of ms and inflates any reading taken across one).
+`tests/_win.gd -- untangle` plays a move a frame and needs the board's
+`settle_now()` between drags (its flights and holds are on a clock).
