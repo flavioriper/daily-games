@@ -4,9 +4,10 @@ extends Node
 ## touches the AdMob plugin (Poing's godot-admob-plugin): screens read
 ## bottom_inset() through ui/safe_area.gd and never see an ad object.
 ##
-## start() runs once from world/main.gd, so tests and harnesses never ask for
-## an ad. Order: nothing at all if remove_ads is owned; else UMP consent
-## (update, then the form when it is required), then MobileAds.initialize,
+## start() runs from world/main.gd (and again once the age screen is
+## answered), so tests and harnesses never ask for an ad. Order: nothing at
+## all if remove_ads is owned; else the player's age must be known, then the
+## request configuration it sets, then UMP consent (update, then the form when it is required), then MobileAds.initialize,
 ## then an anchored adaptive banner at the bottom. A consent update that fails
 ## still goes on to the ads: the SDK serves non-personalised ads without
 ## consent, and a stuck form must not mean a blank band for ever. On iOS the
@@ -21,6 +22,7 @@ extends Node
 signal banner_changed(visible: bool, height: float)
 
 const Analytics = preload("res://core/analytics.gd")
+const AgeGate = preload("res://core/age_gate.gd")
 ## The "Remove ads" tab BannerHost stands on the banner's top edge, in design
 ## pixels whatever the banner's own unit: ui/safe_area.gd adds it to the
 ## bottom inset, unscaled, whenever a banner is up.
@@ -49,16 +51,44 @@ func _ready() -> void:
 func start() -> void:
 	if _started:
 		return
-	_started = true
 	if Store.owns_remove_ads():
+		_started = true
 		_removed = true
 		return
 	if _fake > 0.0:
+		_started = true
 		_set_banner(true, _fake)
 		return
 	if not OS.has_feature("mobile") or not _plugin_present():
 		return
+	# Nothing is asked of the ad SDK before the player's age is known: the
+	# age screen calls start() again once it is answered.
+	if not AgeGate.known():
+		return
+	_started = true
+	_configure_requests()
 	_consent()
+
+## Every request this app makes carries the player's band: a child is
+## child-directed at rating G, a teen is under the age of consent, and
+## neither is ever sent a personalised ad; everyone is capped at PG.
+func _configure_requests() -> void:
+	var b := AgeGate.band()
+	var rc := RequestConfiguration.new()
+	rc.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_G if b == AgeGate.CHILD \
+		else RequestConfiguration.MAX_AD_CONTENT_RATING_PG
+	rc.tag_for_child_directed_treatment = RequestConfiguration.TagForChildDirectedTreatment.TRUE \
+		if b == AgeGate.CHILD else RequestConfiguration.TagForChildDirectedTreatment.UNSPECIFIED
+	rc.tag_for_under_age_of_consent = RequestConfiguration.TagForUnderAgeOfConsent.TRUE \
+		if b != AgeGate.ADULT else RequestConfiguration.TagForUnderAgeOfConsent.UNSPECIFIED
+	MobileAds.set_request_configuration(rc)
+
+## The one way an ad request is built here: non-personalised below 18.
+func ad_request() -> AdRequest:
+	var r := AdRequest.new()
+	if AgeGate.band() != AgeGate.ADULT:
+		r.extras = {"npa": "1"}
+	return r
 
 ## FileAccess, not ResourceLoader: no resource loader recognises .cfg, so
 ## ResourceLoader.exists() answers false for it everywhere, and every launch
@@ -68,6 +98,7 @@ func _plugin_present() -> bool:
 
 func _consent() -> void:
 	var request := ConsentRequestParameters.new()
+	request.tag_for_under_age_of_consent = AgeGate.band() != AgeGate.ADULT
 	UserMessagingPlatform.consent_information.update(request, _on_consent_updated, func(error: FormError) -> void:
 		Analytics.track("consent_failed", {"error": error.message if error else ""})
 		_init_ads())
@@ -111,7 +142,7 @@ func _load_banner() -> void:
 		Analytics.track("ad_banner_failed", {"error": "%d %s" % [error.code, error.message]})
 	listener.on_ad_impression = func() -> void: Analytics.track("ad_banner_impression")
 	_ad_view.ad_listener = listener
-	_ad_view.load_ad(AdRequest.new())
+	_ad_view.load_ad(ad_request())
 
 ## remove_ads was bought: the banner goes now and is never asked for again.
 func remove() -> void:
