@@ -6,6 +6,9 @@ extends SceneTree
 ##
 ##   godot --headless --path . --script tools/mine_insane.gd -- <puzzle_id> <count> [tries]
 ##
+## Tries run in parallel on every core and print a line each as they land;
+## the note it writes ends with the average ms a try (candidate plus grade).
+##
 ## tries defaults to count * 50. The ladder contract this script requires is
 ## in tools/insane/README.md; a ladder script never loads in the game.
 
@@ -45,14 +48,43 @@ func _run() -> int:
 		return 1
 
 	var hard_rung: int = ladder.HARD_RUNG
-	var kept: Array = []
-	var rng := RandomNumberGenerator.new()
-	for i in range(tries):
+	# Every try is its own seed and touches nothing shared, so they run on
+	# every core at once; each prints a line as it lands (a long mine is
+	# otherwise silent until the file is written) and results are read back
+	# in seed order, so the kept set is the same as a one-thread run's.
+	var results: Array = []
+	results.resize(tries)
+	var took: Array = []
+	took.resize(tries)
+	var landed := [0]
+	var lock := Mutex.new()
+	var started := Time.get_ticks_msec()
+	var one_try := func(i: int) -> void:
+		var t0 := Time.get_ticks_msec()
+		var rng := RandomNumberGenerator.new()
 		rng.seed = i
 		var board: Dictionary = ladder.candidate(rng)
 		var grade: Dictionary = ladder.grade(board)
+		var ms := Time.get_ticks_msec() - t0
+		lock.lock()
+		results[i] = {"board": board, "grade": grade}
+		took[i] = ms
+		landed[0] += 1
+		print("try %d/%d: seed %d, %d ms, %s" % [landed[0], tries, i, ms, JSON.stringify(grade)])
+		lock.unlock()
+	var group := WorkerThreadPool.add_group_task(one_try, tries, -1, true)
+	WorkerThreadPool.wait_for_group_task_completion(group)
+	var kept: Array = []
+	var total_ms := 0
+	for i in range(tries):
+		total_ms += took[i]
+		var grade: Dictionary = results[i]["grade"]
 		if grade.get("unique", false) and int(grade.get("rung", -1)) > hard_rung:
-			kept.append({"board": board, "grade": grade})
+			kept.append(results[i])
+	# Candidate plus grade, averaged over every try: what one board costs to
+	# mine on one thread while the others run beside it.
+	var ms_a_try: int = total_ms / maxi(1, tries)
+	var wall_s: int = (Time.get_ticks_msec() - started) / 1000
 
 	kept.sort_custom(func(a, b) -> bool:
 		var ga: Dictionary = a["grade"]
@@ -85,8 +117,9 @@ func _run() -> int:
 			old_count = old_doc["boards"].size()
 		print("overwriting %s (had %d boards)" % [out_path, old_count])
 
-	var note := "%s Insane, mined %s, %d/%d kept, rungs %d-%d" % [
-		puzzle_id, Time.get_date_string_from_system(), kept.size(), tries, min_rung, max_rung
+	var note := "%s Insane, mined %s, %d/%d kept, rungs %d-%d, %d ms a try per thread (%d s wall on %d threads)" % [
+		puzzle_id, Time.get_date_string_from_system(), kept.size(), tries, min_rung, max_rung, ms_a_try,
+		wall_s, OS.get_processor_count()
 	]
 	var doc := {"version": 1, "note": note, "boards": out_boards}
 
