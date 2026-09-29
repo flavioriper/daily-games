@@ -33,12 +33,11 @@ static func run(t) -> void:
 					ok = false
 					break
 				here[m[0]] = m[2]
-				if out.swipes.has(j + 1) and not Gen.is_solved(here, out.ropes):
-					var to := Gen.cat_hole(here, out.holes, reach, out.swipes[j + 1])
-					if to < 0:
-						ok = false
-						break
-					here[out.swipes[j + 1]] = to
+				if out.cat and (j + 1) % Gen.CAT_EVERY == 0 and not Gen.is_solved(here, out.ropes):
+					var peg: int = out.swipes.get(j + 1, Gen.swipe_fallback(j + 1, here.size()))
+					var to := Gen.cat_hole(here, out.holes, reach, peg)
+					if to >= 0:
+						here[peg] = to
 			t.check(ok and Gen.is_solved(here, out.ropes), name + " the dealer's answer wins")
 			if band >= 2:
 				t.check(out.budget >= out.par, name + " the thread covers the answer")

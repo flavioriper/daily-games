@@ -1,3 +1,7 @@
+> **Superseded 2026-09-29** by `2026-09-29-untangle-ring-design.md`: Untangle is
+> now a wooden ring of pegs with physical rope; the lantern board below is its
+> history.
+
 # Untangle, flat: the fifth screen on trial
 
 Status: built, 2026-09-18; polished onto the flat vocabulary 2026-09-19 (section 11). Concept page:

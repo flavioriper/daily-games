@@ -106,7 +106,7 @@ const PEG_LIFT_SCALE := 1.16
 const WHIP_DROP := 5.5
 const WHIP_PICK := 2.2
 const WHIP_HOME := 3.0
-const SLACK_DROP := 0.03
+const SLACK_DROP := 0.022
 const IDLE_WHIP_EVERY := 7.0
 const SLEEP_ENERGY := 0.05
 const SLEEP_STEPS := 24
@@ -194,6 +194,8 @@ var _finger := Vector2.ZERO
 var _grab := Vector2.ZERO
 var _dragged := false
 var _held_pos := Vector2.ZERO
+## Where the finger says the held peg should be; the peg drawn chases it.
+var _held_want := Vector2.ZERO
 var _hot := -1
 var _hot_far := -1
 var _taut_sent := false
@@ -225,9 +227,15 @@ var _kitten_mood_until := 0.0
 
 # what is drawn
 var _ring_mesh: ArrayMesh
-var _dyn_mesh: ArrayMesh
-var _shown_ring: ArrayMesh
-var _shown_dyn: ArrayMesh
+var _under_mesh: ArrayMesh
+var _over_mesh: ArrayMesh
+var _extra_mesh: ArrayMesh
+var _paw_mesh: ArrayMesh
+var _rope_mesh: Array = []                   # [r] -> that rope's own mesh
+var _rope_sig: Array = []                    # [r] -> what it was built from
+var _peg_mesh: Array = []                    # [rope] -> [cap with inlay, cap blank]
+## The meshes the last _draw handed over, kept until the next replaces them.
+var _shown: Array = []
 var _knots_px: Array = []
 var _knot_alpha := 0.0
 var _dirty := true
@@ -328,6 +336,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_kitten.expression = Face.Expr.HAPPY
 		_kitten.look = _gaze()
 		_kitten.set_idle(true)
+	# Nothing of the last board's geometry outlives it, so a frame that runs
+	# before the layout has (a card with no size yet) draws nothing.
+	_ro = 0.0
 	_layout()
 	_tip_idx = 0
 	_say(tr("UT_TIP_DRAG"), Face.Expr.HAPPY)
@@ -363,6 +374,11 @@ func _layout() -> void:
 		rope.setup(_peg_px[2 * r], _peg_px[2 * r + 1], _span_px(state.reach[r]) * LENGTH_OVER, (6.0 if r % 2 == 0 else -6.0))
 		rope.snap(_peg_px[2 * r], _peg_px[2 * r + 1])
 	_ring_mesh = _build_ring()
+	_build_peg_meshes()
+	_rope_sig = []
+	_rope_sig.resize(state.ropes)
+	_rope_mesh = []
+	_rope_mesh.resize(state.ropes)
 	_dirty = true
 
 ## The straight length of a rope reaching `holes` holes round the ring.
@@ -476,7 +492,7 @@ func _process(delta: float) -> void:
 		_dirty = true
 	if _dirty:
 		_dirty = false
-		_dyn_mesh = _build_dynamic(t)
+		_rebuild(t)
 		queue_redraw()
 	elif _pulses(t):
 		queue_redraw()
@@ -530,9 +546,9 @@ func _animating(t: float) -> bool:
 	return false
 
 ## Anything that needs a redraw of the same mesh but not a rebuild: the
-## kitten's badge.
+## sleepers' z's rising.
 func _pulses(_t: float) -> bool:
-	return false
+	return _out_card and not Motion.reduce
 
 func _lift_goal(p: int) -> float:
 	return 1.0 if (p == _held or p == _sel) else 0.0
@@ -543,6 +559,9 @@ func _lift_goal(p: int) -> float:
 func _update_pegs(t: float, dt: float) -> void:
 	if _held >= 0:
 		_update_held()
+		# The peg drawn chases the finger a hair behind it, which is what
+		# gives it weight.
+		_held_pos = _held_want if Motion.reduce else _held_pos.lerp(_held_want, 1.0 - exp(-dt * 38.0))
 	for p in _peg_px.size():
 		var goal := _lift_goal(p)
 		_lift[p] = goal if Motion.reduce else move_toward(_lift[p], goal, dt / LIFT_TIME)
@@ -641,20 +660,53 @@ func _idle_whip(t: float) -> void:
 # --- the picture ---
 
 func _draw() -> void:
+	var t := _now()
+	# A canvas command holds its mesh by RID, so every mesh handed over stays
+	# referenced until the next draw replaces the list (see CLAUDE.md).
+	var shown: Array = []
 	if _ring_mesh != null:
 		draw_mesh(_ring_mesh, null)
-	_shown_ring = _ring_mesh
-	if _dyn_mesh != null:
-		draw_mesh(_dyn_mesh, null)
-	_shown_dyn = _dyn_mesh
+		shown.append(_ring_mesh)
+	if _under_mesh != null:
+		draw_mesh(_under_mesh, null)
+		shown.append(_under_mesh)
+	for r in _rope_stack():
+		var m: ArrayMesh = _rope_mesh[int(r)]
+		if m != null:
+			draw_mesh(m, null)
+			shown.append(m)
+	if _over_mesh != null:
+		draw_mesh(_over_mesh, null)
+		shown.append(_over_mesh)
+	_draw_peg_meshes(t, shown)
+	if _extra_mesh != null:
+		draw_mesh(_extra_mesh, null)
+		shown.append(_extra_mesh)
+	if _paw_mesh != null:
+		draw_mesh(_paw_mesh, null)
+		shown.append(_paw_mesh)
+	_shown = shown
 	_draw_numbers()
+	_draw_zzz(t)
 
-## Everything that moves, in the order it lies: the glow under the holes a
-## lifted peg can go to, the ropes bottom to top, the crossing marks, the
-## pegs, the thread.
-func _build_dynamic(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
-	_draw_targets(b, t)
+## The z's that rise off the sleeping pegs once the thread is gone.
+func _draw_zzz(t: float) -> void:
+	if not _out_card or _peg_px.is_empty():
+		return
+	var font: Font = CozyTheme.display(700)
+	var fs := int(_peg_r * 0.9)
+	for p in _peg_px.size():
+		if p % 2 != 0 or _face[p] != 2:
+			continue
+		var phase := fposmod(t * 0.55 + p * 0.37, 1.0)
+		var a := sin(PI * phase)
+		var at: Vector2 = _peg_px[p] + Vector2(_peg_r * 0.5 + phase * _peg_r * 0.6, -_peg_r * (1.1 + phase * 1.4))
+		var size_px := int(fs * (0.6 + 0.6 * phase))
+		draw_string_outline(font, at, "z", HORIZONTAL_ALIGNMENT_LEFT, -1, size_px, int(size_px * 0.25), Color(Pal.TEXT, 0.5 * a))
+		draw_string(font, at, "z", HORIZONTAL_ALIGNMENT_LEFT, -1, size_px, Color("dfe7ff", a))
+
+## The ropes bottom to top, the one in the hand last so it lies over the rest.
+func _rope_stack() -> Array:
 	var stack: Array = state.order.duplicate()
 	var lifted_rope := -1
 	if _held >= 0:
@@ -664,24 +716,41 @@ func _build_dynamic(t: float) -> ArrayMesh:
 	if lifted_rope >= 0:
 		stack.erase(lifted_rope)
 		stack.append(lifted_rope)
-	for r in stack:
-		_draw_rope(b, int(r), t)
-	_draw_knots(b, t)
-	_draw_pegs(b, t)
-	_draw_paw(b, t)
-	_draw_thread(b, t)
-	_draw_cat_badge(b, t)
-	if b.verts.is_empty():
-		return null
-	return b.mesh()
+	return stack
+
+## Rebuilds what changed: the glow under the holes, each rope that moved (a
+## rope at rest keeps the mesh it has), the crossing marks with the thread and
+## the kitten's yarn, the faces and hats on the pegs, and the paw.
+func _rebuild(t: float) -> void:
+	var b := Face.Builder.new()
+	_draw_targets(b, t)
+	_under_mesh = b.mesh() if not b.verts.is_empty() else null
+	for r in _ropes.size():
+		_refresh_rope(r, t)
+	var over := Face.Builder.new()
+	_draw_knots(over, t)
+	_draw_thread(over, t)
+	_draw_cat_badge(over, t)
+	_over_mesh = over.mesh() if not over.verts.is_empty() else null
+	var extra := Face.Builder.new()
+	_build_extras(extra, t)
+	_extra_mesh = extra.mesh() if not extra.verts.is_empty() else null
+	var paw := Face.Builder.new()
+	_draw_paw(paw, t)
+	_paw_mesh = paw.mesh() if not paw.verts.is_empty() else null
 
 func _enter_u(p: int, t: float) -> float:
 	return _dec((t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER)) / Motion.ENTER_POP)
 
-func _draw_rope(b: Face.Builder, r: int, t: float) -> void:
+## Rope `r`'s mesh, rebuilt only when what it is drawn from has changed: its
+## pegs, how far it is lifted or faded in, the light on it, or the rope itself
+## still swinging.
+func _refresh_rope(r: int, t: float) -> void:
 	var col: Array = _rope_col(r)
 	var alpha := minf(_enter_u(2 * r, t), _enter_u(2 * r + 1, t))
 	if alpha <= 0.0:
+		_rope_mesh[r] = null
+		_rope_sig[r] = null
 		return
 	var rope: Rope = _ropes[r]
 	var lift := 0.0
@@ -698,8 +767,14 @@ func _draw_rope(b: Face.Builder, r: int, t: float) -> void:
 			glow = Color(Color("fff2b8"), 0.6 * sin(PI * since))
 			from = clampf(since * 1.2 - 0.2, 0.0, 1.0)
 			to = clampf(since * 1.2 + 0.2, 0.0, 1.0)
-	var tight := rope.taut(_peg_px[2 * r], _peg_px[2 * r + 1])
-	rope.draw(b, _wd, col[0], col[1], col[2], lift, alpha, glow, from, to, clampf((tight - 0.965) / 0.035, 0.0, 1.0))
+	var tight := clampf((rope.taut(_peg_px[2 * r], _peg_px[2 * r + 1]) - 0.965) / 0.035, 0.0, 1.0)
+	var sig := [_peg_px[2 * r], _peg_px[2 * r + 1], lift, alpha, glow.a, from, to, tight]
+	if _calm[r] >= SLEEP_STEPS and _rope_sig[r] == sig and _rope_mesh[r] != null:
+		return
+	_rope_sig[r] = sig
+	var b := Face.Builder.new()
+	rope.draw(b, _wd, col[0], col[1], col[2], lift, alpha, glow, from, to, tight)
+	_rope_mesh[r] = b.mesh() if not b.verts.is_empty() else null
 
 ## The mark at each crossing, once few enough remain to read: a coral bead
 ## with a halo that beats. Read off the ropes as drawn, so a peg still in the
@@ -711,7 +786,7 @@ func _draw_knots(b: Face.Builder, t: float) -> void:
 	if _knot_alpha <= 0.0 or _solved_at >= 0.0 or _out_card:
 		return
 	for hit in hits:
-		var at: Vector2 = _crossing_at(int(hit[0]), int(hit[1]), hit[2])
+		var at: Vector2 = _on_ropes(int(hit[0]), int(hit[1]), hit[2])
 		_knots_px.append(at)
 		var beat := 1.0 if Motion.reduce else 0.5 + 0.5 * sin(t * 4.4 + int(hit[0]) * 1.7)
 		var r := _wd * (0.62 + 0.06 * beat)
@@ -732,17 +807,23 @@ func _shown_crossings() -> Array:
 				out.append([r, s, hit])
 	return out
 
-## Where two crossing ropes meet, read off the drawn ropes so the mark sits on
-## the picture and not on the rule's straight line.
-func _crossing_at(r: int, s: int, fallback: Vector2) -> Vector2:
-	var la: PackedVector2Array = (_ropes[r] as Rope).polyline()
-	var lb: PackedVector2Array = (_ropes[s] as Rope).polyline()
-	for i in la.size() - 1:
-		for j in lb.size() - 1:
-			var hit = Geometry2D.segment_intersects_segment(la[i], la[i + 1], lb[j], lb[j + 1])
-			if hit != null:
-				return hit
-	return fallback
+## The chord crossing pulled onto the two ropes as they hang: halfway between
+## the nearest points of each swinging chain.
+func _on_ropes(r: int, s: int, near: Vector2) -> Vector2:
+	var pa: Vector2 = _nearest_on((_ropes[r] as Rope).p, near)
+	var pb: Vector2 = _nearest_on((_ropes[s] as Rope).p, near)
+	return (pa + pb) * 0.5
+
+func _nearest_on(chain: PackedVector2Array, at: Vector2) -> Vector2:
+	var best := chain[0]
+	var closest := INF
+	for i in chain.size() - 1:
+		var c := Geometry2D.get_closest_point_to_segment(at, chain[i], chain[i + 1])
+		var d := c.distance_squared_to(at)
+		if d < closest:
+			closest = d
+			best = c
+	return best
 
 ## The glow on every empty hole the lifted peg can go to, and the reticle on
 ## the one it is over.
@@ -782,61 +863,103 @@ func _draw_targets(b: Face.Builder, t: float) -> void:
 		b.stroke(Face.Builder.arc_points(to, _peg_r * 1.05, 0.0, TAU), 4.0, Color(PAW, 0.9), true)
 		_paw_glyph(b, to, _peg_r * 0.6, Color(PAW, 0.95))
 
-## Every peg, held and flying ones last so they ride over the rest.
-func _draw_pegs(b: Face.Builder, t: float) -> void:
-	var order: Array = range(_peg_px.size())
-	order.sort_custom(func(a: int, c: int) -> bool:
-		return _peg_height(a, t) < _peg_height(c, t))
-	for p in order:
-		_draw_peg(b, int(p), t)
+## The peg meshes, built once per layout: for each rope the cap with its
+## coloured inlay, and the cap without it (under a face). Drawn scaled about the
+## peg's centre, so a squash or a lift is a transform and not a rebuild.
+func _build_peg_meshes() -> void:
+	_peg_mesh = []
+	var R := _peg_r
+	for r in state.ropes:
+		var col: Array = _rope_col(r)
+		var pair: Array = []
+		for inlay in [true, false]:
+			var b := Face.Builder.new()
+			b.ellipse(Vector2(0.0, R * 0.1), R, R, CAP_DEEP)
+			b.ellipse(Vector2.ZERO, R * 0.97, R * 0.97, CAP_SIDE)
+			b.ellipse(Vector2(0.0, -R * 0.06), R * 0.8, R * 0.78, CAP)
+			b.ellipse(Vector2(-0.27, -0.32) * R, R * 0.27, R * 0.19, Color(CAP_HI, 0.85))
+			if inlay:
+				# The inlay in the rope's own colour, so a peg's twin can be found.
+				b.disc(Vector2(0.0, -R * 0.06), R * 0.4, col[1])
+				b.disc(Vector2(0.0, -R * 0.08), R * 0.32, col[0])
+				b.disc(Vector2(-0.1, -0.16) * R, R * 0.1, Color(col[2], 0.9))
+			pair.append(b.mesh())
+		_peg_mesh.append(pair)
 
 func _peg_height(p: int, t: float) -> float:
 	return _lift[p] + _arc_lift(p, t) / maxf(_peg_r, 1.0)
 
-func _draw_peg(b: Face.Builder, p: int, t: float) -> void:
-	var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
-	if Motion.reduce:
-		pop = Vector2.ONE
-	if _enter_u(p, t) <= 0.0 and t < _opened + Motion.ENTER_DELAY + 0.2:
+## Every peg, held and flying ones last so they ride over the rest: its shadow
+## (the family's soft disc, parted from it while it is lifted) and its cap.
+func _draw_peg_meshes(t: float, shown: Array) -> void:
+	if _peg_mesh.is_empty() or _peg_px.is_empty():
 		return
-	var col: Array = _rope_col(p >> 1)
+	var order: Array = range(_peg_px.size())
+	order.sort_custom(func(a: int, c: int) -> bool:
+		return _peg_height(a, t) < _peg_height(c, t))
+	var soft := Scenery.shadow()
+	shown.append(soft)
 	var R := _peg_r
-	var up := _lift[p] + _arc_lift(p, t) / maxf(R, 1.0)
-	var c := _peg_px[p]
-	# A landing squashes it, a refusal shakes it.
-	var sq := 1.0
-	var since := t - _sq_at[p]
-	if since >= 0.0 and since < LAND_SQUASH and not Motion.reduce:
-		sq = 1.0 + 0.16 * sin(PI * since / LAND_SQUASH)
-	var shake := 0.0
-	var sh := t - _shake_at[p]
-	if sh >= 0.0 and sh < 0.4 and not Motion.reduce:
-		shake = sin(sh * 54.0) * (1.0 - sh / 0.4) * R * 0.22
-	var scale := (1.0 + (PEG_LIFT_SCALE - 1.0) * clampf(up, 0.0, 1.6))
-	var sx := scale * pop.x * (1.0 / sq if sq > 1.0 else 1.0)
-	var sy := scale * pop.y * sq
-	var lift_px := (HOLD_LIFT * R * _lift[p]) + _arc_lift(p, t)
-	var at := c + Vector2(shake, -lift_px)
-	var shadow_at := c + Vector2(0.1, 0.26) * R + Vector2(0.14, 0.3) * lift_px
-	var spread := 1.0 + 0.5 * clampf(up, 0.0, 1.5)
-	Scenery.soft_disc(b, shadow_at, R * 1.02 * spread * pop.x, R * 0.66 * spread * pop.y, Color(Pal.TEXT, (0.24 - 0.09 * clampf(up, 0.0, 1.0)) * clampf(pop.y, 0.0, 1.0)))
-	b.ellipse(at + Vector2(0.0, R * 0.1 * sy), R * sx, R * sy, CAP_DEEP)
-	b.ellipse(at, R * 0.97 * sx, R * 0.97 * sy, CAP_SIDE)
-	b.ellipse(at + Vector2(0.0, -R * 0.06 * sy), R * 0.8 * sx, R * 0.78 * sy, CAP)
-	b.ellipse(at + Vector2(-0.27, -0.32) * R * Vector2(sx, sy), R * 0.27 * sx, R * 0.19 * sy, Color(CAP_HI, 0.85))
-	var mode: int = _face[p]
-	if mode != 0:
-		_draw_face(b, at, R * Vector2(sx, sy), p, mode, t)
-	else:
-		# The inlay in the rope's own colour, so a peg's twin can be found.
-		b.disc(at + Vector2(0.0, -R * 0.06), R * 0.4 * sx, Color(col[1], 1.0))
-		b.disc(at + Vector2(0.0, -R * 0.08), R * 0.32 * sx, col[0])
-		b.disc(at + Vector2(-0.1, -0.16) * R, R * 0.1 * sx, Color(col[2], 0.9))
-	if _hat_at[p] > -50.0:
-		_draw_hat(b, at, R, p, t)
-	# The kitten has her eye on this one: a paw on its cap.
-	if state.cat and _face[p] == 0 and _target_peg() == p:
-		_paw_glyph(b, at + Vector2(0.0, R * 0.02), R * 0.5, Color(PAW, 0.95))
+	for p in order:
+		var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
+		if Motion.reduce:
+			pop = Vector2.ONE
+		if _enter_u(p, t) <= 0.0 and t < _opened + Motion.ENTER_DELAY + 0.2:
+			continue
+		var up := _peg_height(p, t)
+		var c := _peg_px[p]
+		var sq := 1.0
+		var since := t - _sq_at[p]
+		if since >= 0.0 and since < LAND_SQUASH and not Motion.reduce:
+			sq = 1.0 + 0.16 * sin(PI * since / LAND_SQUASH)
+		var shake := 0.0
+		var sh := t - _shake_at[p]
+		if sh >= 0.0 and sh < 0.4 and not Motion.reduce:
+			shake = sin(sh * 54.0) * (1.0 - sh / 0.4) * R * 0.22
+		var scale := 1.0 + (PEG_LIFT_SCALE - 1.0) * clampf(up, 0.0, 1.6)
+		var sx := scale * pop.x * (1.0 / sq if sq > 1.0 else 1.0)
+		var sy := scale * pop.y * sq
+		var lift_px := HOLD_LIFT * R * _lift[p] + _arc_lift(p, t)
+		var at := c + Vector2(shake, -lift_px)
+		var shadow_at := c + Vector2(0.1, 0.26) * R + Vector2(0.14, 0.3) * lift_px
+		var spread := 1.0 + 0.5 * clampf(up, 0.0, 1.5)
+		var alpha := (0.24 - 0.09 * clampf(up, 0.0, 1.0)) * clampf(pop.y, 0.0, 1.0)
+		draw_mesh(soft, null, Transform2D(0.0, Vector2(R * 1.02 * spread * pop.x, R * 0.66 * spread * pop.y) / Scenery.SHADOW_UNIT, 0.0, shadow_at), Color(Pal.TEXT, alpha))
+		var variant := 1 if _face[p] != 0 else 0
+		var m: ArrayMesh = _peg_mesh[p >> 1][variant]
+		draw_mesh(m, null, Transform2D(0.0, Vector2(sx, sy), 0.0, at))
+		shown.append(m)
+
+## Faces, hats and the kitten's paw print, over the caps: everything on a peg
+## that is not the cap.
+func _build_extras(b: Face.Builder, t: float) -> void:
+	if _peg_px.is_empty():
+		return
+	var order: Array = range(_peg_px.size())
+	var target := _target_peg()
+	for p in order:
+		var mode: int = _face[p]
+		var hat: bool = _hat_at[p] > -50.0
+		var paw: bool = state.cat and mode == 0 and target == p
+		if mode == 0 and not hat and not paw:
+			continue
+		var R := _peg_r
+		var up := _peg_height(p, t)
+		var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
+		if Motion.reduce:
+			pop = Vector2.ONE
+		var scale := 1.0 + (PEG_LIFT_SCALE - 1.0) * clampf(up, 0.0, 1.6)
+		var shake := 0.0
+		var sh := t - _shake_at[p]
+		if sh >= 0.0 and sh < 0.4 and not Motion.reduce:
+			shake = sin(sh * 54.0) * (1.0 - sh / 0.4) * R * 0.22
+		var at: Vector2 = _peg_px[p] + Vector2(shake, -(HOLD_LIFT * R * _lift[p] + _arc_lift(p, t)))
+		if mode != 0:
+			_draw_face(b, at, R * Vector2(scale * pop.x, scale * pop.y), p, mode, t)
+		if hat:
+			_draw_hat(b, at, R * scale, p, t)
+		if paw:
+			_paw_glyph(b, at + Vector2(0.0, R * 0.02), R * 0.5, Color(PAW, 0.95))
 
 func _target_peg() -> int:
 	var nxt: Dictionary = state.cat_next()
@@ -1064,6 +1187,7 @@ func _press(at: Vector2) -> void:
 	_held = p
 	_grab = _peg_px[p] - at
 	_held_pos = _peg_px[p]
+	_held_want = _peg_px[p]
 	_hot = -1
 	_hot_far = -1
 	_taut_sent = false
@@ -1087,8 +1211,9 @@ func _drag(at: Vector2) -> void:
 ## reach; and which hole it is over.
 func _update_held() -> void:
 	var p := _held
-	var want := _finger + _grab if _dragged else _peg_px[p]
-	want = Vector2(clampf(want.x, _peg_r, size.x - _peg_r), clampf(want.y, _peg_r, size.y - _peg_r))
+	var want := _finger + _grab if _dragged else _held_want
+	# A lifted peg hovers over the ring, not out on the cloth.
+	want = _c + (want - _c).limit_length(_ro * 1.06)
 	var other: Vector2 = _peg_px[p ^ 1]
 	var max_len: float = (_ropes[p >> 1] as Rope).length
 	var d := want.distance_to(other)
@@ -1098,7 +1223,7 @@ func _update_held() -> void:
 		var over := d - max_len
 		want = other + (want - other) / d * (max_len + over * 0.1)
 		strain = clampf(over / (_peg_r * 2.5), 0.0, 1.0)
-	_held_pos = want
+	_held_want = want
 	if strain > 0.05 and not _taut_sent:
 		_taut_sent = true
 		fx.cue("taut")
@@ -1115,7 +1240,7 @@ func _update_held() -> void:
 	_hot = -1
 	_hot_far = -1
 	if _dragged:
-		var h := _nearest_hole(_held_pos, _peg_r * SNAP_R)
+		var h := _nearest_hole(_held_want, _peg_r * SNAP_R)
 		if h >= 0 and state.occ[h] < 0:
 			var code := state.drop_check(p, h)
 			if code == 0:
@@ -1286,7 +1411,7 @@ func _rewards(p: int, cleared: int, left: int) -> void:
 			key = "UT_W_4"
 		elif cleared >= 3:
 			key = "UT_W_3"
-		_rw.sticker(tr(key), mid, 84, 1.3, true, Color.WHITE, cleared >= 3, "untie", 20.0)
+		_rw.sticker(tr(key), mid, 84, 1.3, true, Color.WHITE, cleared >= 4, "untie", 20.0)
 		if not Motion.reduce:
 			_rw.spray(_hole_px(state.at[p]), Pal.GOOD, 8 + cleared * 2, 640.0, "star", 1.0)
 			_rw.spray(_hole_px(state.at[p]), Color("fffaf0"), 6, 560.0, "spark", 1.2)
@@ -1568,7 +1693,7 @@ func stamp_key() -> String:
 		return ""
 	if state.bought:
 		return "UT_STAMP_MORE"
-	var extra := _all_moves - state.par - hints_used
+	var extra := _all_moves - state.par + hints_used
 	for i in STAMP_STEPS.size():
 		if extra <= int(STAMP_STEPS[i]):
 			return "UT_STAMP_%d" % (i + 1)
@@ -1702,9 +1827,11 @@ func _drop_held() -> void:
 	_sel = -1
 	_ghost = []
 
+## Insane gives none of its own; a video's (which cost thread, like any move)
+## are the only ones there.
 func hints_left() -> int:
 	var budget: int = State.HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
-	if budget <= 0 or out_of_hearts or state.out_of_thread():
+	if out_of_hearts or state.out_of_thread():
 		return 0
 	return maxi(0, budget + hints_extra - hints_used)
 

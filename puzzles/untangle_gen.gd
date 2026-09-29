@@ -35,7 +35,7 @@ const BANDS := [
 	{"holes": 10, "ropes": 4, "moves": 4, "cross": 2, "par": 2, "extra": 9, "min_reach": 1.0, "slack": 0, "cat": false},
 	{"holes": 13, "ropes": 6, "moves": 8, "cross": 5, "par": 4, "extra": 3, "min_reach": 0.6, "slack": 0, "cat": false},
 	{"holes": 17, "ropes": 8, "moves": 13, "cross": 8, "par": 6, "extra": 2, "min_reach": 0.5, "slack": 3, "cat": false},
-	{"holes": 19, "ropes": 9, "moves": 13, "cross": 8, "par": 13, "extra": 2, "min_reach": 0.5, "slack": 1, "cat": true},
+	{"holes": 19, "ropes": 9, "moves": 13, "cross": 8, "par": 6, "extra": 2, "min_reach": 0.5, "slack": 3, "cat": true},
 ]
 ## The kitten swipes after every this many of the player's moves.
 const CAT_EVERY := 3
@@ -156,33 +156,49 @@ static func cat_hole(at: PackedInt32Array, holes: int, reach: PackedInt32Array, 
 
 # --- a short way home ---
 
+## The peg the kitten bats after move number `j` when the deal did not name
+## one: a fixed stand-in, so her schedule never runs out.
+static func swipe_fallback(j: int, pegs: int) -> int:
+	return (j * 5 + 3) % pegs
+
 ## A beam search from `at` to any crossing-free layout: each depth keeps the
 ## `width` layouts with the fewest crossings, fewest ropes to move first. Not
 ## the shortest answer for certain, but always a real one. Returns the moves
 ## [[peg, from, to], ...] ([] when already solved), or null when none was
-## found within `depth` moves.
+## found within `depth` moves. With the kitten loose (`every` > 0) she swipes
+## after every `every`th move counted from `moves0`, as `swipes` says, and the
+## search plays her in.
 static func way_home(at: PackedInt32Array, holes: int, ropes: int, reach: PackedInt32Array,
-		depth := BEAM_DEPTH, width := BEAM, rng: RandomNumberGenerator = null) -> Variant:
+		depth := BEAM_DEPTH, width := BEAM, rng: RandomNumberGenerator = null,
+		swipes := {}, every := 0, moves0 := 0) -> Variant:
 	if is_solved(at, ropes):
 		return []
-	var seen := {at.to_byte_array(): true}
+	var seen := {_key(at, every, moves0): true}
 	# Each entry: [score, state, path].
 	var beam: Array = [[0, at, []]]
 	for d in depth:
 		var next: Array = []
+		var j := moves0 + d + 1
 		for entry in beam:
 			var here: PackedInt32Array = entry[1]
 			for m in legal_moves(here, holes, reach):
 				var nxt := here.duplicate()
 				nxt[m[0]] = m[1]
-				var key := nxt.to_byte_array()
-				if seen.has(key):
-					continue
-				seen[key] = true
 				var path: Array = (entry[2] as Array).duplicate()
 				path.append([m[0], here[m[0]], m[1]])
 				if is_solved(nxt, ropes):
 					return path
+				if every > 0 and j % every == 0:
+					var p: int = swipes.get(j, swipe_fallback(j, nxt.size()))
+					var to := cat_hole(nxt, holes, reach, p)
+					if to >= 0:
+						nxt[p] = to
+						if is_solved(nxt, ropes):
+							return path
+				var key := _key(nxt, every, j)
+				if seen.has(key):
+					continue
+				seen[key] = true
 				var jitter := rng.randi_range(0, 9) if rng != null else 0
 				next.append([min_cover(nxt, ropes) * 1000 + crossing_count(nxt, ropes) * 20 + jitter, nxt, path])
 		if next.is_empty():
@@ -190,6 +206,15 @@ static func way_home(at: PackedInt32Array, holes: int, ropes: int, reach: Packed
 		next.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		beam = next.slice(0, width)
 	return null
+
+## A layout as a dictionary key; with the kitten loose it carries where the
+## count stands in her cycle, since the same layout plays out differently
+## before a swipe and after one.
+static func _key(at: PackedInt32Array, every: int, j: int) -> PackedByteArray:
+	var k := at.to_byte_array()
+	if every > 0:
+		k.append(j % every)
+	return k
 
 # --- the deal ---
 
@@ -347,6 +372,22 @@ static func _cat_deal(rng: RandomNumberGenerator, goal: Dictionary, cfg: Diction
 				return {}
 	return {"start": at, "plan": plan, "swipes": swipes}
 
+## `plan` played forward from `start`, her swipes included, to the layout it ends in.
+static func _play(start: PackedInt32Array, plan: Array, cfg: Dictionary, reach: PackedInt32Array, swipes: Dictionary) -> PackedInt32Array:
+	var at := start.duplicate()
+	for j in plan.size():
+		at[plan[j][0]] = plan[j][2]
+		if is_solved(at, cfg.ropes):
+			break
+		if cfg.cat and (j + 1) % CAT_EVERY == 0:
+			var p: int = swipes.get(j + 1, swipe_fallback(j + 1, at.size()))
+			var to := cat_hole(at, cfg.holes, reach, p)
+			if to >= 0:
+				at[p] = to
+				if is_solved(at, cfg.ropes):
+					break
+	return at
+
 ## Plays the answer forward with the kitten, from the start, and says whether
 ## it ends solved after exactly the planned number of moves, and not before.
 static func _replays(start: PackedInt32Array, reach: PackedInt32Array, cfg: Dictionary, deal: Dictionary) -> bool:
@@ -396,6 +437,12 @@ static func generate(rng: RandomNumberGenerator, band: int) -> Dictionary:
 			if not _replays(start, goal.reach, cfg, deal):
 				continue
 			plan = deal.plan
+			# The deal's own answer is only one way; the search, with her
+			# swipes played in, usually finds one less than half as long, and
+			# that is what par and the thread are measured against.
+			var found = way_home(start, cfg.holes, ropes, goal.reach, BEAM_DEPTH, BEAM, rng, swipes, CAT_EVERY, 0)
+			if found != null and found.size() < plan.size():
+				plan = found
 		else:
 			var found = way_home(start, cfg.holes, ropes, goal.reach, BEAM_DEPTH, BEAM, rng)
 			if found == null:
@@ -404,9 +451,7 @@ static func generate(rng: RandomNumberGenerator, band: int) -> Dictionary:
 		var par := plan.size()
 		if par > best_par:
 			best_par = par
-			var end := start.duplicate()
-			for m in plan:
-				end[m[0]] = m[2]
+			var end := _play(start, plan, cfg, goal.reach, swipes)
 			best = {"holes": cfg.holes, "ropes": ropes, "start": start, "goal": end,
 				"reach": goal.reach, "plan": plan, "par": par,
 				"budget": (par + int(cfg.slack)) if int(cfg.slack) > 0 else 0,

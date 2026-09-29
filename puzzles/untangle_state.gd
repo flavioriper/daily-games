@@ -134,7 +134,7 @@ func buy_spool() -> void:
 func swipe_peg(j: int) -> int:
 	if swipes.has(j):
 		return int(swipes[j])
-	return (j * 5 + 3) % at.size()
+	return Gen.swipe_fallback(j, at.size())
 
 ## What she will do next: {"peg", "in"} (moves until she pounces), {} when the
 ## kitten is not loose.
@@ -210,13 +210,28 @@ func undo() -> Dictionary:
 	return {"peg": int(last.peg), "from": int(last.to), "to": int(last.from)}
 
 ## The next step of a short way home from where the pegs are now, as
-## [peg, from, to]; [] when there is none to give. Never used with the kitten.
+## [peg, from, to]; [] when there is none to give. The search plays the
+## kitten's swipes in, so her schedule is part of the hint.
 func hint_step() -> Array:
+	var way = null
 	if cat:
-		return []
-	var way = Gen.way_home(at, holes, ropes, reach)
+		var depth := mini(Gen.BEAM_DEPTH, maxi(thread_left() + 2, 4))
+		way = Gen.way_home(at, holes, ropes, reach, depth, Gen.BEAM, null, swipes, Gen.CAT_EVERY, moves_here)
+	else:
+		way = Gen.way_home(at, holes, ropes, reach)
 	if way == null or way.is_empty():
-		return []
+		# No way home in reach of the search: the move that leaves fewest
+		# crossings, so a hint is still something.
+		var best: Array = []
+		var fewest := crossings()
+		for m in Gen.legal_moves(at, holes, reach):
+			var t := at.duplicate()
+			t[m[0]] = m[1]
+			var c := Gen.crossing_count(t, ropes)
+			if c < fewest:
+				fewest = c
+				best = [m[0], at[m[0]], m[1]]
+		return best
 	return way[0]
 
 ## Back to the tangle the player was given. The thread stays spent (the

@@ -159,27 +159,21 @@ func _script() -> void:
 			_at(3.25, _shot)
 			_at(3.8, _shot)
 		"taut":
+			# The peg on the shortest rope that can move, dragged well past
+			# what the rope reaches, toward the ring's middle.
 			_end = 3.6
 			var st = _puzzle.state
 			var pick := -1
-			var far := -1
 			for p in st.at.size():
-				for h in st.holes:
-					if st.occ[h] < 0 and st.drop_check(p, h) == 2:
-						pick = p
-						far = h
-						break
-				if pick >= 0:
-					break
-			if pick < 0:
-				print("no rope is short enough to refuse anything on this board")
-				_end = 1.0
-				return
+				if st.can_go(p) and (pick < 0 or st.reach[p >> 1] < st.reach[pick >> 1]):
+					pick = p
+			var other: Vector2 = _puzzle.peg_to_local(pick ^ 1)
+			var far: Vector2 = other + (_puzzle._c - other).normalized() * (_puzzle._ropes[pick >> 1].length * 1.5)
 			_at(1.0, func() -> void: _press(_puzzle.peg_to_local(pick)))
-			_at(1.1, func() -> void: _motion(_puzzle.peg_to_local(pick).lerp(_puzzle.hole_to_local(far), 0.6)))
-			_at(1.5, func() -> void: _motion(_puzzle.hole_to_local(far)))
+			_at(1.1, func() -> void: _motion(_puzzle.peg_to_local(pick).lerp(far, 0.5)))
+			_at(1.5, func() -> void: _motion(far))
 			_at(2.0, _shot)
-			_at(2.4, func() -> void: _release(_puzzle.hole_to_local(far)))
+			_at(2.4, func() -> void: _release(far))
 			_at(2.6, _shot)
 		"plan":
 			_plan_script(1.2, 2.7 if _level == 3 else 1.1)
@@ -187,6 +181,26 @@ func _script() -> void:
 			_wrong_script(false)
 		"answer":
 			_wrong_script(true)
+		"perf":
+			# A peg carried round the ring's middle for four seconds, no shots.
+			_end = 6.0
+			_ms_from = 2.0
+			var m := _free_move()
+			_at(1.0, func() -> void: _press(_puzzle.peg_to_local(m[0])))
+			for k in 90:
+				var a := float(k) * 0.14
+				_at(1.1 + k * 0.045, func() -> void:
+					_motion(_puzzle._c + Vector2.from_angle(a) * _puzzle._ro * 0.45))
+			_at(5.3, func() -> void: _release(_puzzle._c))
+		"idle":
+			# One move, then two quiet seconds: what a settled board costs.
+			_end = 8.0
+			_ms_from = 5.0
+			var m := _free_move()
+			_drag(1.0, m[0], m[1], 0.4)
+			_at(4.9, func() -> void:
+				var pz = _puzzle
+				print("animating=", pz._animating(pz._now()), " calm=", pz._calm, " held=", pz._held, " sel=", pz._sel, " dirty=", pz._dirty, " busy_left=", pz._busy_until - pz._now()))
 		"out":
 			# The thread poked down to one stitch, then one bad move.
 			_end = 7.0
@@ -198,6 +212,10 @@ func _script() -> void:
 			_at(4.6, _shot)
 		"hint":
 			_end = 5.0
+			# Insane has no hints of its own; a video's is added first.
+			_at(1.2, func() -> void:
+				if _puzzle.hints_left() <= 0:
+					_puzzle.add_hint())
 			_at(1.5, func() -> void: _host.top_bar.hint_button.pressed.emit())
 			_at(1.7, _shot)
 			_at(2.4, _shot)
