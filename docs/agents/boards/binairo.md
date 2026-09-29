@@ -10,11 +10,11 @@ and `ui/hud/out_of_hearts.gd`.
   own layer in a `HEART_ROW` (64) strip the layout keeps over the grid only
   on a board that has hearts, so Easy and Medium lay out exactly as before.
   The day card's hearts at the top right are the day's streak, not these.
-- **A wrong tile** costs a heart at once when set with a brush or as a moon;
-  a sun set by a *tap* waits `WRONG_GRACE` (0.4 s) first, because tapping
-  cycles empty, sun, moon and every tapped moon passes through a sun. Without
-  the grace, half of all tapped moons would cost a heart. Any later change to
-  the cell cancels the wait. Then: crack, shiver, WORRIED + squash,
+- **A wrong tile** costs a heart at once when set with a brush; anything
+  set by a *tap* waits `WRONG_GRACE` (0.4 s) first, because tapping cycles
+  empty, sun, moon and every tapped moon passes through a sun (and every
+  cleared sun through a moon). Any later change to the cell cancels the wait
+  (grace for moons too since 2026-09-29, below). Then: crack, shiver, WORRIED + squash,
   `heart_lost`, and `EJECT_AFTER` later `state.clear_silent()` (no move, no
   history). Input on that tile is locked until it ejects.
 - **While a liar hides**, the board does not blush the ends of a broken sign
@@ -92,8 +92,8 @@ The polish spec's section 2, built on `feat/binairo-insane-polish`.
   they meet). `line` still plays at the hop and `line_silly` (-3 dB) 0.32 s
   later on the punchline, so the two follow rather than stack. None on the
   solving tap -- the party is coming.
-- **Flawless**: no heart lost since the deal (Try again deals afresh) and no
-  hint; on Easy and Medium, no hint and no check. A gold scalloped seal,
+- **Flawless**: no heart lost on the board ever (first try: Try again does
+  not reset it, since 2026-09-29) and no hint; on Easy and Medium, no hint and no check. A gold scalloped seal,
   "Flawless" (`BN_FLAWLESS`), drops from 1.8x onto the grid's lower right
   0.7 s after the wave's lead, squashes and rings; on Insane a night-blue seal
   with a crescent, `BN_INSANE_SEAL` over a smaller "Flawless". It shows
@@ -121,3 +121,23 @@ two readings**: idle Hard 204 and Insane 227 (unchanged); the new `solve`
 mode, whose window runs over the wave, stamp and party, peaks at **Hard 384
 and Insane 10x10 492** -- 100 hats and the big pair are most of it, and it
 is well under 855, so nothing was baked.
+
+### Review fixes (2026-09-29)
+
+- **Grace for every cycle intermediate**: clearing a right sun by tapping
+  passed through a wrong moon and cost a heart at once. Now every tap under
+  the cycle (no brush) is judged only after `WRONG_GRACE` with no further
+  change; only a brush's symbol is judged at once. An undo is judged like
+  the tap that set its value (charged and ejected when wrong, with the same
+  grace when no brush is armed), so no wrong tile ever stays uncharged.
+- **Running out** happens once (`_run_out` is idempotent; two wrong tiles in
+  one eject window used to open two cards), the card is tracked by instance,
+  and every wrong tile still in its grace leaves silently at run-out and
+  again after One more heart (`_sweep_wrong`).
+- **Flawless means first try**: `_lost_ever` survives Try again. A board
+  reopened solved (`restore_completed_board`) shows no Flawless line: the
+  tallies it was judged on are not saved with the completion.
+- `clear_silent` drops the wrong tap's history entry wherever it is (the
+  cell's latest), not only at the top; the hint's warm-up fade is tracked
+  and stopped by reset and rebuild; the streak scores before `note_move`, so
+  a solving tap's pluck and confetti come before the solve.

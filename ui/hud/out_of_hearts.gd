@@ -75,10 +75,19 @@ func _on_heart() -> void:
 	if _done or _watching:
 		return
 	_watching = true
-	Ads.show_rewarded(PLACEMENT, func(earned: bool) -> void:
-		_watching = false
+	# The video can outlive the card (Back, or the board torn down behind
+	# it), so the answer reaches it through a weakref from a static lambda,
+	# never a callback bound to a freed self.
+	Ads.show_rewarded(PLACEMENT, _reply(weakref(self)))
+
+static func _reply(me: WeakRef) -> Callable:
+	return func(earned: bool) -> void:
+		var card = me.get_ref()
+		if card == null or not is_instance_valid(card) or card.is_queued_for_deletion():
+			return
+		card._watching = false
 		if earned:
-			_answer(1))
+			card._answer(1)
 
 func _answer(which: int) -> void:
 	if _done:

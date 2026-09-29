@@ -177,18 +177,21 @@ func is_wrong(r: int, c: int) -> bool:
 	return not given[r][c] and grid[r][c] != -1 and grid[r][c] != solution[r][c]
 
 ## Empties (r, c) behind the player's back: a wrong tile ejecting itself.
-## Adds no history entry and counts as no move. The entry of the tap that
-## put it there stays, since undoing it can still bring back what the cell
-## held before -- unless that was an empty cell, when the undo would do
-## nothing and the entry is dropped with it.
+## Adds no history entry and counts as no move. The cell's latest entry is
+## the change that put the wrong value there; it stays when it can still
+## bring back what the cell held before, and goes when that was an empty
+## cell, since undoing it would then do nothing. It is found wherever it is,
+## not only at the top: other cells may have changed since the wrong tap.
 func clear_silent(r: int, c: int) -> void:
 	if given[r][c] or grid[r][c] == -1:
 		return
 	grid[r][c] = -1
-	if not history.is_empty():
-		var last: Vector3i = history.back()
-		if last.x == r and last.y == c and last.z == -1:
-			history.pop_back()
+	for i in range(history.size() - 1, -1, -1):
+		var h: Vector3i = history[i]
+		if h.x == r and h.y == c:
+			if h.z == -1:
+				history.remove_at(i)
+			break
 	refresh_bad()
 
 ## Every filled free cell that differs from the solution, as (c, r). Check

@@ -237,6 +237,7 @@ var _flips: Array = []      # [r][c] -> the coin's turn
 var _outgoing: Array = []   # [r][c] -> the face the turn's edge takes away
 var _leans: Array = []      # [r][c] -> a high-five's lean on the coin
 var _warm: Array = []       # [r][c] -> 0 white to 1 given sand
+var _warm_tws: Array = []   # [r][c] -> a hint's warm-up fade
 var _styles: Array = []     # [r][c] -> its StyleBoxFlat
 var _tints: Array = []      # [r][c] -> the focus tint Panel over the tile
 var _faces: Array = []      # [r][c] -> Face or null
@@ -297,8 +298,12 @@ var _acting := {}
 ## Whether a heart was lost since the board was dealt, and whether the solve
 ## was flawless (no heart lost and no hint; on Easy and Medium, no hint and
 ## no check).
-var _lost_any := false
+## A heart lost on this board ever, which Try again does not deal away:
+## Flawless means the first try.
+var _lost_ever := false
 var _flawless := false
+## The Out of hearts card while it is up, so it opens once and closes for sure.
+var _card: Control
 var _stamp: Control
 var _party: Array = []
 
@@ -370,7 +375,6 @@ func _setup_board() -> void:
 	_back_index = -1
 	_unmask_i = -1
 	_lead = 0.0
-	_lost_any = false
 	_flawless = false
 	_streak = 0
 	_combo_n = 0
@@ -398,6 +402,7 @@ func _build_tiles() -> void:
 	_outgoing = []
 	_leans = []
 	_warm = []
+	_warm_tws = []
 	_counted = []
 	_styles = []
 	_tints = []
@@ -467,6 +472,7 @@ func _build_tiles() -> void:
 		_tiles.append(tiles)
 		_coins.append(coins)
 		_warm.append(warm)
+		_warm_tws.append(_nulls())
 		_flips.append(_nulls())
 		_outgoing.append(_nulls())
 		_leans.append(_nulls())
@@ -1100,10 +1106,15 @@ func _tap(r: int, c: int) -> void:
 	fx.cue("place" if v != -1 else "clear")
 	_focus(r, c)
 	_after_change(r, c)
-	note_move()
-	var grace := v == 0 and brush == -2
+	# Every tap under the cycle is on its way somewhere: a sun to a moon, a
+	# moon (which always came from a sun) to empty. So either waits out the
+	# grace, and only a brush's symbol is judged at once.
+	var grace := brush == -2
+	# Scored before the move is counted, since the move may solve: the
+	# streak's pluck and confetti belong to the tap, not after the party.
 	if v != -1:
 		_score(r, c, grace)
+	note_move()
 	_judge(r, c, grace)
 
 # --- the streak ---
@@ -1230,7 +1241,7 @@ func _wrong(r: int, c: int) -> void:
 		return
 	_ejecting[r][c] = true
 	hearts -= 1
-	_lost_any = true
+	_lost_ever = true
 	_break_streak()
 	_split_index = hearts
 	_split_at = _now()
@@ -1281,10 +1292,7 @@ func _eject(r: int, c: int) -> void:
 	var crack: Control = _cracks[r][c]
 	_cracks[r][c] = null
 	if state.is_wrong(r, c):
-		state.clear_silent(r, c)
-		var face: Control = _faces[r][c]
-		_faces[r][c] = null
-		_drop_out(face)
+		_clear_wrong(r, c)
 		_recolour()
 		focus_changed.emit()
 	_drop_out(crack)
@@ -1292,8 +1300,34 @@ func _eject(r: int, c: int) -> void:
 	if still != null:
 		still.expression = _expression(r, c)
 	moved.emit()
-	if out_of_hearts:
+	if out_of_hearts and not _asleep:
 		_run_out()
+
+## Empties a wrong (r, c) with the eject's drop and no charge: the state
+## forgets it (no move, no history) and any judgement waiting on it lapses.
+func _clear_wrong(r: int, c: int) -> void:
+	_pending[r][c] += 1
+	_land_flip(r, c, true)
+	state.clear_silent(r, c)
+	var face: Control = _faces[r][c]
+	_faces[r][c] = null
+	_drop_out(face)
+
+## No wrong tile outlives running out or a heart given back: one still in
+## its grace, or one a heart could not be charged for, leaves quietly, so
+## the board the player wakes to (or leaves) holds only what could be right.
+## A tile mid-eject empties itself.
+func _sweep_wrong() -> void:
+	var any := false
+	for r in n:
+		for c in n:
+			if _ejecting[r][c] == null and state.is_wrong(r, c):
+				_clear_wrong(r, c)
+				any = true
+	if any:
+		_recolour()
+		focus_changed.emit()
+		moved.emit()
 
 ## Drops `node` EJECT_DROP while it fades, then frees it.
 func _drop_out(node: Control) -> void:
@@ -1312,7 +1346,11 @@ func _drop_out(node: Control) -> void:
 ## The last heart is gone: the faces nod off along the diagonal, the tiles
 ## sag, and the card comes up once they have.
 func _run_out() -> void:
+	# Two wrong tiles inside one eject window both land here; one sleep.
+	if _asleep:
+		return
 	_asleep = true
+	_sweep_wrong()
 	_focus_clear()
 	fx.cue("out_of_hearts")
 	for r in n:
@@ -1333,9 +1371,10 @@ func _nod(r: int, c: int) -> void:
 ## The card, over the whole screen: laid on the host so it covers the chrome,
 ## or on the board's own viewport when there is none (a probe).
 func _open_card() -> void:
-	if not out_of_hearts or is_done():
+	if not out_of_hearts or is_done() or is_instance_valid(_card):
 		return
 	var card: Control = load(OUT_OF_HEARTS).new(_heart_used)
+	_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
 	card.leave.connect(_leave)
@@ -1375,6 +1414,7 @@ func heart_back() -> void:
 	out_of_hearts = false
 	_asleep = false
 	_running = true
+	_sweep_wrong()
 	fx.cue("heart_back")
 	for r in n:
 		for c in n:
@@ -1393,11 +1433,9 @@ func _leave() -> void:
 	leave.emit()
 
 func _close_card() -> void:
-	for root_child in [get_tree().get_first_node_in_group("puzzle_host"), get_tree().root]:
-		if root_child != null:
-			var card: Node = root_child.get_node_or_null("OutOfHearts")
-			if card != null and not card.is_queued_for_deletion():
-				card.queue_free()
+	if is_instance_valid(_card) and not _card.is_queued_for_deletion():
+		_card.queue_free()
+	_card = null
 
 ## Seconds on a steady clock, for the drawn animations.
 static func _now() -> float:
@@ -1523,13 +1561,17 @@ func undo() -> bool:
 	var got: Vector3i = state.undo()
 	var r := got.x
 	var c := got.y
-	_pending[r][c] += 1
 	_flip_face(r, c, got.z)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	fx.cue("undo")
 	_focus(r, c)
 	_after_change(r, c)
 	moved.emit()
+	# The player chose what the undo brings back, so it is judged like a tap
+	# that set it: charged and ejected when wrong, after the same grace a
+	# cycling tap gets when no brush is armed (_judge bumps _pending, which
+	# also cancels any judgement the undone change was waiting on).
+	_judge(r, c, brush == -2)
 	return true
 
 func hints_left() -> int:
@@ -1550,7 +1592,8 @@ func hint() -> bool:
 	var c := cell.x
 	_swap_face(r, c, state.grid[r][c], 0.0, true)
 	_counted[r][c] = true
-	Motion.fade(self, _set_warm.bind(r, c), _warm[r][c], 1.0, WARM_TIME, 16, 0.0, true)
+	Motion.stop(_warm_tws[r][c])
+	_warm_tws[r][c] = Motion.fade(self, _set_warm.bind(r, c), _warm[r][c], 1.0, WARM_TIME, 16, 0.0, true)
 	_ring(r, c)
 	var at := cell_to_local(r, c)
 	for i in 6:
@@ -1613,6 +1656,8 @@ func reset_board() -> void:
 			if _faces[r][c] != null:
 				_swap_face(r, c, -1, delay)
 	for cell in unlocked:
+		Motion.stop(_warm_tws[cell.y][cell.x])
+		_warm_tws[cell.y][cell.x] = null
 		_set_warm(0.0, cell.y, cell.x)
 	_streak = 0
 	_break_streak()
@@ -1645,6 +1690,11 @@ func restore_completed_board() -> void:
 	_recolour(false)
 	brush = -2
 	brush_changed.emit()
+	# Whether that solve was flawless is not known here: the tallies it was
+	# judged on (hints, hearts, checks) belonged to the board that solved and
+	# are not saved with the completion, so a reopened board shares no
+	# Flawless line rather than guess one.
+	_flawless = false
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -1666,7 +1716,7 @@ func _on_solved() -> void:
 	brush_changed.emit()
 	_break_streak()
 	_look_ahead()
-	_flawless = hints_used == 0 and (not _lost_any if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
 	_lead = 0.0
 	if state.liar >= 0:
 		_unmask()
@@ -1945,7 +1995,7 @@ func _stop_entrance() -> void:
 func _stop_all() -> void:
 	_stop_entrance()
 	Motion.stop(_focus_tw)
-	for rows in [_fades, _hops, _scales, _leans]:
+	for rows in [_fades, _hops, _scales, _leans, _warm_tws]:
 		for row in rows:
 			for tw in row:
 				Motion.stop(tw)
