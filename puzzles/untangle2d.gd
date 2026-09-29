@@ -147,8 +147,13 @@ const POUNCE_LEAD := 0.34
 const POUNCE_FLY := 0.5
 const SWIPE_BUSY := 1.15
 
-const HINT_MOOD := Face.Expr.HAPPY
 const TIP_CYCLE := 9.0
+## The toast: a dark label over the ring's top for a few seconds.
+const TOAST_HOLD := 2.8
+const TOAST_H := 84.0
+const TOAST_PAD := 80.0
+const TOAST_RADIUS := 28.0
+const TOAST_FONT := 32
 
 var state: State = State.new()
 var nodes: int:
@@ -240,6 +245,11 @@ var _knots_px: Array = []
 var _knot_alpha := 0.0
 var _dirty := true
 
+var _toast := ""
+var _toast_at := -100.0
+var _toast_hold := TOAST_HOLD
+var _toast_mesh: ArrayMesh
+var _toast_mesh_for := ""
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -341,8 +351,14 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_ro = 0.0
 	_layout()
 	_tip_idx = 0
+	_toast = ""
 	_say(tr("UT_TIP_DRAG"), Face.Expr.HAPPY)
 	_tip_timer.start()
+	# The first thing to know about this day, once the pegs are in.
+	var first := "UT_TIP_CAT" if state.cat else ("UT_TIP_THREAD" if state.budget > 0 else "UT_TIP_DRAG")
+	_later_call(1.1, func() -> void:
+		if not is_done():
+			_tell(first, Face.Expr.HAPPY, 4.6))
 	fx.cue("enter")
 	_dirty = true
 
@@ -547,7 +563,9 @@ func _animating(t: float) -> bool:
 
 ## Anything that needs a redraw of the same mesh but not a rebuild: the
 ## sleepers' z's rising.
-func _pulses(_t: float) -> bool:
+func _pulses(t: float) -> bool:
+	if _toast != "" and t - _toast_at < _toast_hold + 0.1:
+		return true
 	return _out_card and not Motion.reduce
 
 func _lift_goal(p: int) -> float:
@@ -685,9 +703,60 @@ func _draw() -> void:
 	if _paw_mesh != null:
 		draw_mesh(_paw_mesh, null)
 		shown.append(_paw_mesh)
+	_draw_toast(t, shown)
 	_shown = shown
 	_draw_numbers()
 	_draw_zzz(t)
+
+## A line on a dark label over the ring's top, for `hold` seconds: what the
+## board wants to say that no sticker covers (a refusal, the thread running low,
+## the first hint of how it plays). The line also goes to the sprout.
+func _tell(key: String, mood := Face.Expr.HAPPY, hold := TOAST_HOLD) -> void:
+	_say(tr(key), mood)
+	_toast = key
+	_toast_at = _now()
+	_toast_hold = hold
+	queue_redraw()
+
+func _draw_toast(t: float, shown: Array) -> void:
+	if _toast == "":
+		return
+	var since := t - _toast_at
+	if since < 0.0 or since >= _toast_hold:
+		return
+	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE), Motion.appear_level(_toast_hold - since, Motion.DROP_FADE))
+	if alpha <= 0.0:
+		return
+	var line := tr(_toast)
+	var font: Font = CozyTheme.body(600)
+	# Under the ring, where the card is empty, clear of the corner flowers.
+	var room := maxf(TOAST_PAD, size.x - 280.0)
+	var text_room := room - TOAST_PAD
+	var one: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
+	var lines := 1
+	var text_w := one
+	if one > text_room:
+		var wrapped: Vector2 = font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, text_room, TOAST_FONT)
+		lines = maxi(1, int(round(wrapped.y / font.get_height(TOAST_FONT))))
+		text_w = minf(text_room, wrapped.x)
+	var w := minf(room, text_w + TOAST_PAD)
+	var h := TOAST_H + float(lines - 1) * font.get_height(TOAST_FONT)
+	var key := "%s|%d|%d" % [line, int(w), lines]
+	if _toast_mesh == null or _toast_mesh_for != key:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
+		_toast_mesh = b.mesh()
+		_toast_mesh_for = key
+	var mid := Vector2(size.x * 0.5, minf(_c.y + _ro + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - 24.0 - h * 0.5))
+	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
+	shown.append(_toast_mesh)
+	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
+	var left := mid.x - w * 0.5 + TOAST_PAD * 0.5
+	if lines == 1:
+		draw_string(font, Vector2(left, top), line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT, Color(Pal.PAPER, alpha))
+	else:
+		draw_multiline_string(font, Vector2(left, top), line, HORIZONTAL_ALIGNMENT_CENTER, w - TOAST_PAD,
+			TOAST_FONT, lines, Color(Pal.PAPER, alpha))
 
 ## The z's that rise off the sleeping pegs once the thread is gone.
 func _draw_zzz(t: float) -> void:
@@ -1295,7 +1364,7 @@ func _release() -> void:
 				_sel = p
 				_hot = -1
 				_hot_far = -1
-				_say(tr("UT_TIP_PICKED"), Face.Expr.HAPPY)
+				_tell("UT_TIP_PICKED", Face.Expr.HAPPY, 2.4)
 		_press_peg = -1
 		_dirty = true
 		return
@@ -1341,7 +1410,7 @@ func _go_home(p: int, refused: bool) -> void:
 	if refused:
 		_shake_at[p] = _now()
 		fx.cue("refused")
-		_say(tr("UT_TAUT"), Face.Expr.WORRIED)
+		_tell("UT_TAUT", Face.Expr.WORRIED)
 	else:
 		fx.cue("put", 1.0, -10.0)
 	_later_call(HOME_TIME, func() -> void:
@@ -1351,7 +1420,7 @@ func _go_home(p: int, refused: bool) -> void:
 func _refuse(p: int, key: String) -> void:
 	_shake_at[p] = _now()
 	fx.cue("refused")
-	_say(tr(key), Face.Expr.WORRIED)
+	_tell(key, Face.Expr.WORRIED)
 	_dirty = true
 
 # --- a move ---
@@ -1469,7 +1538,7 @@ func _use_stitch(when: float) -> void:
 			var left := state.thread_left()
 			if left == LOW_THREAD and _difficulty >= 2:
 				fx.cue("thread_low", 1.0, -8.0)
-				_say(tr("UT_THREAD_LOW"), Face.Expr.WORRIED)
+				_tell("UT_THREAD_LOW", Face.Expr.WORRIED)
 			_dirty = true)
 
 # --- the kitten ---
@@ -1593,7 +1662,7 @@ func _run_out(t: float) -> void:
 		_face[p] = 2
 		_face_at[p] = t + Motion.stagger(p, 0.04)
 	fx.cue("thread_out")
-	_say(tr("UT_THREAD_OUT"), Face.Expr.SLEEPY)
+	_tell("UT_THREAD_OUT", Face.Expr.SLEEPY, 2.4)
 	_kitten.expression = Face.Expr.SLEEPY
 	_busy_until = t + OUT_CARD_AFTER + 0.5
 	_later_call(0.3 if Motion.reduce else OUT_CARD_AFTER, _open_card)
@@ -1663,7 +1732,7 @@ func show_answer() -> void:
 	for p in _face.size():
 		_face[p] = 0
 	fx.cue("reveal")
-	_say(tr("UT_SHOWN"), Face.Expr.HAPPY)
+	_tell("UT_SHOWN")
 	_busy_until = t + 1.6
 	finish_unsolved()
 	_dirty = true
@@ -1924,7 +1993,7 @@ func reset_board() -> void:
 	moves = 0
 	_running = true
 	if not walking.is_empty():
-		_say(tr("UT_RESET_THREAD" if state.budget > 0 else "UT_RESET"), Face.Expr.HAPPY)
+		_tell("UT_RESET_THREAD" if state.budget > 0 else "UT_RESET")
 	fx.cue("reset")
 	_busy_until = t + 0.4 + Motion.stagger(walking.size(), WALK_STEP, 1.0)
 	_dirty = true
