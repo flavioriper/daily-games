@@ -69,7 +69,7 @@ rather than the live project (`daily-games-420bf`):
 | Code Break | tap-cycle | — calibration, not uniqueness |
 | Balance | tap-cycle | brute force over the domain |
 | Pipes | tap-a-mouth, tap-to-turn | the generator floods its own route |
-| Untangle | drag | — any planar embedding wins |
+| Untangle | lift a peg, drop it in a hole | — dealt backwards from a solved ring; a beam search sets par, any crossing-free layout wins |
 | Shikaku | drag rect | exact cover count to 2 |
 | Tents | tap-cycle | matching search count to 2 |
 | Light Up | tap-cycle | backtracking count to 2 |
