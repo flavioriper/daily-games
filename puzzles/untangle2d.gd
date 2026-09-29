@@ -596,7 +596,9 @@ func _update_pegs(t: float, dt: float) -> void:
 			else:
 				_peg_px[p] = (m.from as Vector2).lerp(m.to, _ease(u))
 			if u >= 1.0 and t >= float(m.t0):
-				_mv[p] = null
+				# A flight may have another queued behind it (the kitten
+				# batting the peg the player has just dropped).
+				_mv[p] = m.get("then")
 				_peg_px[p] = m.to
 		else:
 			_peg_px[p] = _peg_home(p)
@@ -1395,7 +1397,10 @@ func settle_now() -> void:
 	_paw = {}
 	for p in _mv.size():
 		if _mv[p] != null:
-			_peg_px[p] = _mv[p].to
+			var last: Dictionary = _mv[p]
+			while last.has("then"):
+				last = last.then
+			_peg_px[p] = last.to
 			_mv[p] = null
 	var pending := _later
 	_later = []
@@ -1553,9 +1558,17 @@ func _schedule_swipe(entry: Dictionary, at_time: float) -> void:
 	var to_px := _hole_px(int(entry.to))
 	# Until she swipes, the peg is drawn where she found it.
 	var delay := maxf(0.0, at_time - _now())
-	_mv[p] = {"from": from_px, "to": to_px, "t0": at_time + 0.22, "dur": POUNCE_FLY, "arc": _peg_r * 1.5}
+	var flight := {"from": from_px, "to": to_px, "t0": at_time + 0.22, "dur": POUNCE_FLY, "arc": _peg_r * 1.5}
 	if Motion.reduce:
-		_mv[p].dur = 0.001
+		flight.dur = 0.001
+	if _mv[p] == null:
+		_mv[p] = flight
+	else:
+		# The peg is still flying in from the player's drop: hers waits behind it.
+		var last: Dictionary = _mv[p]
+		while last.has("then"):
+			last = last.then
+		last["then"] = flight
 	_busy_until = maxf(_busy_until, at_time + SWIPE_BUSY)
 	_later_call(delay, func() -> void:
 		_pounce(p, from_px, to_px))
