@@ -1,6 +1,6 @@
 keys,en,pt,es
 BN_RULES,"Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each, and no two lines are identical.\n\nAn = between two cells means they hold the same symbol. An × means they hold opposite ones.","Preencha cada casa com um sol ou uma lua. Nunca três iguais em linha. Cada linha tem a mesma quantidade de cada um, e não há duas linhas iguais.\n\nUm = entre duas casas quer dizer que elas têm o mesmo símbolo. Um × quer dizer que têm símbolos opostos.","Llena cada casilla con un sol o una luna. Nunca tres iguales en línea. Cada línea tiene la misma cantidad de cada uno, y no hay dos líneas iguales.\n\nUn = entre dos casillas significa que tienen el mismo símbolo. Un × significa que tienen símbolos opuestos."
-CB_RULES,"Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. %s rows, three hints.","Descubra a fileira escondida de %s amigos. %s Toque num amigo para sentá-lo, e Conferir pontua a fileira: um ponto cheio é um amigo no lugar certo, um anel vazio é um amigo certo no lugar errado. Nenhum dos dois diz qual lugar. %s fileiras, três dicas.","Descifra la fila oculta de %s amigos. %s Toca un amigo para sentarlo, y Comprobar puntúa la fila: un punto lleno es un amigo en el lugar correcto, un aro vacío es un amigo correcto en el lugar equivocado. Ninguno dice qué lugar. %s filas, tres pistas."
+CB_RULES,"Crack the hidden row of %s friends. %s Tap a friend to seat them, and Check scores the row: a filled pip is a friend in the right seat, a hollow ring a right friend in the wrong seat. Neither says which seat. %s rows, %s.","Descubra a fileira escondida de %s amigos. %s Toque num amigo para sentá-lo, e Conferir pontua a fileira: um ponto cheio é um amigo no lugar certo, um anel vazio é um amigo certo no lugar errado. Nenhum dos dois diz qual lugar. %s fileiras, %s.","Descifra la fila oculta de %s amigos. %s Toca un amigo para sentarlo, y Comprobar puntúa la fila: un punto lleno es un amigo en el lugar correcto, un aro vacío es un amigo correcto en el lugar equivocado. Ninguno dice qué lugar. %s filas, %s."
 CB_REPEATS,A friend may sit in it twice.,Um amigo pode aparecer duas vezes.,Un amigo puede aparecer dos veces.
 CB_NO_REPEATS,No friend sits in it twice.,Nenhum amigo aparece duas vezes.,Ningún amigo aparece dos veces.
 CB_NUM_2,Two,Dois,Dos
@@ -27,6 +27,34 @@ CB_SCORE_RIGHT_N,%s sat in the right seat,%s estão no lugar certo,%s están en 
 CB_SCORE_REST_OUT,%s. The rest are not in the code.,%s. Os outros não estão no código.,%s. Los demás no están en el código.
 CB_SCORE_MORE_1,"%s, and one more belongs somewhere else.","%s, e mais um vai em outro lugar.","%s, y uno más va en otro lugar."
 CB_SCORE_MORE_N,"%s, and %s more belong somewhere else.","%s, e mais %s vão em outro lugar.","%s, y %s más van en otro lugar."
+CB_HINTS_3,three hints,três dicas,tres pistas
+CB_HINTS_1,one hint,uma dica,una pista
+CB_HINTS_0,no hints,nenhuma dica,ninguna pista
+CB_RULES_INK,Played rows are ink: Reset only clears the row you are filling.,Fileiras jogadas são tinta: Reiniciar só limpa a fileira que você está preenchendo.,Las filas jugadas son tinta: Reiniciar solo limpia la fila que estás llenando.
+CB_RULES_SHELL,"The Shell Game: after every row, two lids trade places in plain sight, and the friends under them go too. Each row is scored against the code where it sat then. The little arc under a row shows which two moved.","O Jogo dos Copinhos: depois de cada fileira, duas tampas trocam de lugar à vista de todos, e os amigos embaixo vão junto. Cada fileira é pontuada contra o código onde ele estava na hora. O arquinho sob a fileira mostra quais dois trocaram.","El Juego de los Vasitos: después de cada fila, dos tapas cambian de lugar a la vista, y los amigos debajo van con ellas. Cada fila se puntúa contra el código donde estaba entonces. El arquito bajo la fila muestra cuáles dos cambiaron."
+CB_OUT_TITLE,Out of rows,Sem fileiras,Sin filas
+CB_OUT_BODY,"The code is still hiding under its lids. Watch a short video for one more row, or lift the lids and see it.","O código ainda está escondido sob as tampas. Assista a um vídeo curto e ganhe mais uma fileira, ou levante as tampas e veja.","El código sigue escondido bajo sus tapas. Mira un video corto para tener una fila más, o levanta las tapas y míralo."
+CB_OUT_BODY_REST,The code is still hiding under its lids. Lift them and see it; there is a new one tomorrow.,O código ainda está escondido sob as tampas. Levante-as e veja; amanhã tem outro.,El código sigue escondido bajo sus tapas. Levántalas y míralo; mañana hay otro.
+CB_SHOW_CODE,Show the code,Mostrar o código,Mostrar el código
+CB_ONE_ROW,One more row,Mais uma fileira,Una fila más
+CB_OUT_TIP,Shh... something under the lids giggled.,Psiu... alguém riu embaixo das tampas.,Shh... algo se rió bajo las tapas.
+CB_ROW_BACK,One more row. You have got this.,Mais uma fileira. Você consegue.,Una fila más. Tú puedes.
+CB_ROW_CLEARED,Cleared the row. The played rows stay.,Fileira limpa. As jogadas ficam.,Fila limpia. Las jugadas se quedan.
+CB_SHUFFLED,Two lids just traded places. Watch them!,Duas tampas acabaram de trocar de lugar. De olho!,Dos tapas acaban de cambiar de lugar. ¡Atento!
+CB_COOL,Cool. %s crossed off.,Beleza. %s riscados.,Genial. %s descartados.
+CB_ALL_HERE,Everyone's here!,Estão todos aqui!,¡Están todos!
+CB_WARMER,Warmer!,Esquentando!,¡Caliente!
+CB_SO_CLOSE,So close!,Quase!,¡Casi!
+CB_SHELL_SEAL,Shell Game,Copinhos,Vasitos
+CB_STAMP_1,Mind reader,Lê mentes,Lee mentes
+CB_STAMP_2,Genius,Gênio,Genio
+CB_STAMP_3,Brilliant,Brilhante,Brillante
+CB_STAMP_4,Sharp,Afiado,Agudo
+CB_STAMP_5,Well read,Boa leitura,Buena lectura
+CB_STAMP_6,Steady,Firme,Firme
+CB_STAMP_7,Phew!,Ufa!,¡Uf!
+CB_STAMP_8,Just in time,Na hora H,Justo a tiempo
+CB_STAMP_MORE,Second wind,Fôlego extra,Segundo aire
 BAL_RULES,"Every fruit has a secret weight. Drag fruit into the seesaw's cups: a fruit further out pulls harder, and the level over the pivot moves one tick for every unit of pull, so a fruit alone in cup 1 reads its own weight. Put every fruit on the plank with the beam dead level. Pinned fruit stay where they are.","Cada fruta tem um peso secreto. Arraste as frutas para os encaixes da gangorra: quanto mais longe, mais ela puxa, e o nível sobre o eixo anda um risco por unidade de força, então uma fruta sozinha no encaixe 1 mostra o próprio peso. Coloque todas as frutas na tábua com a gangorra perfeitamente nivelada. As frutas presas com alfinete não saem do lugar.","Cada fruta tiene un peso secreto. Arrastra las frutas a los huecos del balancín: cuanto más lejos, más tira, y el nivel sobre el eje se mueve una marca por cada unidad de fuerza, así que una fruta sola en el hueco 1 muestra su propio peso. Pon todas las frutas en la tabla con el balancín perfectamente nivelado. Las frutas con alfiler no se mueven."
 BAL_TIP_DRAG,Drag a fruit onto the seesaw to weigh it,Arraste uma fruta para a gangorra para pesá-la,Arrastra una fruta al balancín para pesarla
 BAL_PINNED,That one is pinned in place,Essa está presa com alfinete,Esa está sujeta con un alfiler
@@ -315,7 +343,7 @@ BN_BLURB,Suns and moons. Never three alike in a line.,Sóis e luas. Nunca três 
 BN_SHORT,"Suns and moons,\nnever three alike.","Sóis e luas,\nnunca três iguais.","Soles y lunas,\nnunca tres iguales."
 BN_MOTTO,Balance brings harmony,Equilíbrio é harmonia,Equilibrio es armonía
 BN_OUT_TITLE,Out of hearts,Sem corações,Sin corazones
-BN_OUT_BODY,"The suns and moons need a nap. Start the board again, or watch a short video for one more heart.","Os sóis e as luas precisam de uma soneca. Recomece o tabuleiro ou assista a um vídeo curto e ganhe mais um coração.","Los soles y las lunas necesitan una siesta. Empieza el tablero de nuevo o mira un video corto para tener un corazón más."
+BN_OUT_BODY,"The suns and moons need a nap. Start the board again, or watch a short video for one more heart.",Os sóis e as luas precisam de uma soneca. Recomece o tabuleiro ou assista a um vídeo curto e ganhe mais um coração.,Los soles y las lunas necesitan una siesta. Empieza el tablero de nuevo o mira un video corto para tener un corazón más.
 BN_OUT_BODY_REST,The suns and moons need a nap. Start the board again whenever you like.,Os sóis e as luas precisam de uma soneca. Recomece o tabuleiro quando quiser.,Los soles y las lunas necesitan una siesta. Empieza el tablero de nuevo cuando quieras.
 BN_TRY_AGAIN,Try again,Tentar de novo,Intentar de nuevo
 BN_ONE_HEART,One more heart,Mais um coração,Un corazón más
@@ -327,8 +355,8 @@ CB_SHORT,Crack the hidden\nrow of friends.,Descubra a fileira\nde amigos oculta.
 CB_MOTTO,Crack the hidden code,Quebre o código,Descifra el código
 CB_LVL_0,"4 friends, all different","4 amigos, todos diferentes","4 amigos, todos distintos"
 CB_LVL_1,"4 friends, may repeat","4 amigos, podem repetir","4 amigos, pueden repetirse"
-CB_LVL_2,"5 friends, may repeat","5 amigos, podem repetir","5 amigos, pueden repetirse"
-CB_LVL_3,"5 friends of 7, 7 tries","5 amigos de 7, 7 tentativas","5 amigos de 7, 7 intentos"
+CB_LVL_2,"5 of 7 friends, 7 rows, 1 hint","5 de 7 amigos, 7 fileiras, 1 dica","5 de 7 amigos, 7 filas, 1 pista"
+CB_LVL_3,"7 rows, no hints, the code moves","7 fileiras, sem dicas, o código se mexe","7 filas, sin pistas, el código se mueve"
 BAL_BLURB,"Weigh the fruit, then level the seesaw.",Pese as frutas e nivele a gangorra.,Pesa las frutas y nivela el balancín.
 BAL_SHORT,"Weigh the fruit,\nlevel the seesaw","Pese as frutas,\nnivele a gangorra","Pesa las frutas,\nnivela el balancín"
 BAL_MOTTO,"Weigh it, then level it",Pese e depois nivele,Pésalo y luego nivélalo

@@ -41,6 +41,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Seal = preload("res://ui/flat/seal.gd")
 
 # --- the column, in design units (spec section 4) ---
 const COL_W := 1000.0
@@ -171,6 +172,57 @@ const RESET_STAGGER := 0.05
 const WIN_DELAY := 2.5
 const WIN_DELAY_STILL := 0.3
 
+# --- the polish pass (docs/superpowers/specs/2026-09-29-codebreak-polish-design.md) ---
+const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
+## A friend in flight leans this far (radians) into the run, and looks where
+## it is going; the friends already seated glance at it for GLANCE_TIME.
+const FLY_LEAN := 0.22
+const GLANCE_TIME := 0.6
+## The row-fill tune: the seat's step up the major pentatonic, in semitones,
+## layered under `place` at NOTE_DB. The pips climb the same scale.
+const PENTA := [0, 2, 4, 7, 9, 12, 14, 16]
+const NOTE_DB := -4.0
+## A reaction (Warmer!, Everyone's here!, the clean miss) starts at REACT_AT
+## and holds the row big until SLIDE_AT_REACT, so it is seen with faces on.
+const REACT_AT := 0.72
+const SLIDE_AT_REACT := 1.75
+const BUBBLE_HOLD := 1.15
+const GLASSES_HOLD := 1.0
+const CONGA_STEP := 0.07
+const CONGA_HOP := -18.0
+## Insane's Shell Game: the two lids lift, pass each other -- one high over,
+## one low under -- and land; the row slides once they have.
+const SWAP_AT := 0.95
+const SWAP_TIME := 0.62
+const SWAP_HIGH := 96.0
+const SWAP_LOW := 26.0
+const SLIDE_AT_SWAP := 1.7
+## The swap mark on a played row's hem: a little arc between the two columns.
+const MARK_RISE := 16.0
+const MARK_W := 5.0
+## The lids are alive: every PEEK_EVERY seconds (and up to PEEK_JITTER more)
+## one lifts a little, two eyes blink out of the dark, and it drops back.
+const PEEK_EVERY := 5.0
+const PEEK_JITTER := 4.0
+const PEEK_IDLE_LIFT := 22.0
+const PEEK_IDLE_TIME := 1.3
+## Out of rows: the lids rattle, the row nods off, then the card.
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.2
+## The stamp on the code, by the rows it took (CB_STAMP_1 .. CB_STAMP_8,
+## anything later CB_STAMP_MORE): it drops from STAMP_FROM after the reveal.
+const STAMP_AT := 1.25
+const STAMP_R := 80.0
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.28
+const STAMP_TILT := -0.2
+## Hats on the code and the cracking row, after the joint hop, and confetti.
+const PARTY_AT := 1.05
+const PARTY_HAT := 0.36
+const PARTY_STAGGER := 0.07
+## The win screen waits for the stamp and the hats too.
+const WIN_DELAY_PARTY := 3.3
+
 var state = State.new()
 var fx: Node2D
 
@@ -225,6 +277,19 @@ var _tip := ""
 var _tip_mood := Face.Expr.HAPPY
 ## Set while a check is playing out, so a tap cannot land mid-score.
 var _busy := false
+## The last row is scored and the code is still covered: the card is up (or
+## coming). The host reads this name on Back, as it does Binairo's hearts.
+var out_of_hearts := false
+var _row_bought := false
+var _card: Control
+## The best "right seat" count read so far, for Warmer!
+var _best_exact := 0
+var _bubble: Control
+var _stamp: Control
+var _mark: Array = []         # [g] -> the swap mark on row g's hem
+var _peeker: Array = []       # [s] -> the eyes under code lid s
+## True while a finished daily is laid back down: no party, no sounds.
+var _restoring := false
 
 ## Every mesh of dashes built so far, keyed by its shape. A dotted ring is
 ## a dozen draw commands and the rule under the code is fifty, and
@@ -237,10 +302,19 @@ func title() -> String: return "Code Break"
 func rules() -> String:
 	var count: String = _num(5 if length == 5 else 4).to_lower()
 	var twice: String = tr("CB_REPEATS") if state.repeats else tr("CB_NO_REPEATS")
-	var rows: String = _num(7 if state.tries == 7 else 8)
-	return tr("CB_RULES") % [count, twice, rows]
+	var rows: String = _num(clampi(state.tries, 2, 8))
+	var hints: String = tr("CB_HINTS_%d" % state.hints)
+	var out: String = tr("CB_RULES") % [count, twice, rows, hints]
+	if state.keeps_rows:
+		out += "\n\n" + tr("CB_RULES_INK")
+	if state.shell:
+		out += "\n\n" + tr("CB_RULES_SHELL")
+	return out
 
+## Insane gives no hints, so its bar has no bulb (and no video for one).
 func capabilities() -> Array[String]:
+	if state.hints <= 0:
+		return ["undo", "check", "palette"]
 	return ["undo", "hint", "check", "palette"]
 
 func _ready() -> void:
@@ -259,12 +333,17 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_busy = false
+	_close_card()
+	out_of_hearts = false
+	_row_bought = false
+	_best_exact = 0
 	_tip = ""
 	_say(tr("CB_TIP_SEAT"), Face.Expr.HAPPY)
 	_build_column()
 	_layout()
 	_refresh_seats()
 	_enter()
+	_schedule_peek()
 
 # --- the column ---
 
@@ -289,6 +368,8 @@ func _build_column() -> void:
 	_big = []
 	_seat_tw = []
 	_row_tw = []
+	_mark = []
+	_peeker = []
 
 	_code_label = Label.new()
 	_code_label.text = "CB_THE_CODE"
@@ -310,86 +391,102 @@ func _build_column() -> void:
 		friend.visible = false
 		seat.add_child(friend)
 		_code_face.append(friend)
+		# The eyes that blink out from under a lid lifted in idle: in the
+		# seat, under the lid, and drawing nothing while it is shut.
+		var peeker := Peeker.new()
+		seat.add_child(peeker)
+		_peeker.append(peeker)
 		var lid := Lid.new()
 		seat.add_child(lid)
 		_lid.append(lid)
 
 	for g in state.tries:
-		var row := Control.new()
-		row.name = "Row_%d" % g
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_column.add_child(row)
-		_rows.append(row)
-		var card := Panel.new()
-		var card_sb := CozyTheme.card(Pal.SURFACE, 28, Pal.LINE, 6, 0)
-		card.add_theme_stylebox_override("panel", card_sb)
-		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(card)
-		_row_sb.append(card_sb)
-		# The paper wash CozyTheme.dress() hands every Panel as it enters the
-		# tree reads as a stain across a column of eight, exactly as it does
-		# on the Binairo tiles. It has to be dropped after the add, which is
-		# when dress() puts it on.
-		card.material = null
-		_row_card.append(card)
-		var num := Label.new()
-		num.text = str(g + 1)
-		num.add_theme_font_override("font", CozyTheme.display(700))
-		num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		num.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(num)
-		_row_num.append(num)
-		var seats := []
-		var sockets := []
-		var sbs := []
-		var rings := []
-		var faces := []
-		var tws := []
-		for s in length:
-			var seat := Control.new()
-			seat.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			row.add_child(seat)
-			seats.append(seat)
-			var sb := StyleBoxFlat.new()
-			sb.border_width_bottom = 5
-			var socket := Panel.new()
-			socket.add_theme_stylebox_override("panel", sb)
-			socket.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			seat.add_child(socket)
-			socket.material = null
-			sockets.append(socket)
-			sbs.append(sb)
-			var ring := Dashed.new()
-			seat.add_child(ring)
-			rings.append(ring)
-			faces.append(null)
-			tws.append(null)
-		_seat.append(seats)
-		_socket.append(sockets)
-		_socket_sb.append(sbs)
-		_ring.append(rings)
-		_face.append(faces)
-		_seat_tw.append(tws)
-		var pouch := Pouch.new()
-		row.add_child(pouch)
-		_pouch.append(pouch)
-		# The dim "?" a full unscored row shows sits in its own pouch, where
-		# the score is about to land.
-		var ask := Label.new()
-		ask.text = "?"
-		ask.add_theme_font_override("font", CozyTheme.display(700))
-		ask.add_theme_font_size_override("font_size", 46)
-		ask.add_theme_color_override("font_color", Color(Pal.TEXT_DIM, 0.5))
-		ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		ask.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		ask.visible = false
-		ask.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		pouch.add_child(ask)
-		_row_ask.append(ask)
-		_big.append(1.0 if g == 0 else 0.0)
-		_row_tw.append(null)
+		_add_row(g)
+
+## One guess row, at the end of the column: its card, number, seats, pouch
+## and swap mark. `build` makes the band's rows; a bought row adds one more.
+func _add_row(g: int) -> void:
+	var row := Control.new()
+	row.name = "Row_%d" % g
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_column.add_child(row)
+	_rows.append(row)
+	var card := Panel.new()
+	var card_sb := CozyTheme.card(Pal.SURFACE, 28, Pal.LINE, 6, 0)
+	card.add_theme_stylebox_override("panel", card_sb)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(card)
+	_row_sb.append(card_sb)
+	# The paper wash CozyTheme.dress() hands every Panel as it enters the
+	# tree reads as a stain across a column of eight, exactly as it does
+	# on the Binairo tiles. It has to be dropped after the add, which is
+	# when dress() puts it on.
+	card.material = null
+	_row_card.append(card)
+	var num := Label.new()
+	num.text = str(g + 1)
+	num.add_theme_font_override("font", CozyTheme.display(700))
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(num)
+	_row_num.append(num)
+	var seats := []
+	var sockets := []
+	var sbs := []
+	var rings := []
+	var faces := []
+	var tws := []
+	for s in length:
+		var seat := Control.new()
+		seat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(seat)
+		seats.append(seat)
+		var sb := StyleBoxFlat.new()
+		sb.border_width_bottom = 5
+		var socket := Panel.new()
+		socket.add_theme_stylebox_override("panel", sb)
+		socket.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		seat.add_child(socket)
+		socket.material = null
+		sockets.append(socket)
+		sbs.append(sb)
+		var ring := Dashed.new()
+		seat.add_child(ring)
+		rings.append(ring)
+		faces.append(null)
+		tws.append(null)
+	_seat.append(seats)
+	_socket.append(sockets)
+	_socket_sb.append(sbs)
+	_ring.append(rings)
+	_face.append(faces)
+	_seat_tw.append(tws)
+	var pouch := Pouch.new()
+	row.add_child(pouch)
+	_pouch.append(pouch)
+	# The dim "?" a full unscored row shows sits in its own pouch, where
+	# the score is about to land.
+	var ask := Label.new()
+	ask.text = "?"
+	ask.add_theme_font_override("font", CozyTheme.display(700))
+	ask.add_theme_font_size_override("font_size", 46)
+	ask.add_theme_color_override("font_color", Color(Pal.TEXT_DIM, 0.5))
+	ask.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ask.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ask.visible = false
+	ask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pouch.add_child(ask)
+	_row_ask.append(ask)
+	# Insane's record of the Shell Game: which two columns traded after
+	# this row was scored. Drawn over the card's hem, empty on every other
+	# band.
+	var mark := SwapMark.new()
+	row.add_child(mark)
+	_mark.append(mark)
+	_big.append(1.0 if g == 0 else 0.0)
+	_row_tw.append(null)
 
 ## The column's own size, then one uniform scale to fit it in the card.
 func _layout() -> void:
@@ -422,6 +519,7 @@ func _layout() -> void:
 		seat.pivot_offset = seat.size * 0.5
 		seat.position = _code_rest(s)
 		_lid[s].fit(_piece_big)
+		_peeker[s].size = seat.size
 		Friends.resize(_code_face[s], _piece_big, seat.size * 0.5)
 	_place_rows()
 
@@ -479,6 +577,7 @@ func _fit_row(g: int, h: float) -> void:
 		if not Motion.running(_seat_tw[g][s]):
 			seat.position = _seat_rest(g, s)
 			seat.scale = Vector2.ONE * k
+			seat.rotation = 0.0
 			seat.z_index = 0
 		var sb: StyleBoxFlat = _socket_sb[g][s]
 		sb.set_corner_radius_all(int(_piece_big * 0.22))
@@ -491,6 +590,9 @@ func _fit_row(g: int, h: float) -> void:
 		ring.modulate.a = lerpf(RING_DIM, 1.0, b)
 		ring.mesh = _dash_ring(_piece_big * 0.28, 10.0, 12.0, 5.0, Color(Pal.LINE, 0.8))
 	_fit_faces(g)
+	var mark: SwapMark = _mark[g]
+	mark.position = Vector2.ZERO
+	mark.size = Vector2(COL_W, h)
 	var pouch: Pouch = _pouch[g]
 	pouch.fit(lerpf(POUCH_SMALL, 1.0, b))
 	pouch.position = Vector2(PIP_X - pouch.size.x * 0.5, cy - pouch.size.y * 0.5)
@@ -530,6 +632,14 @@ func _refresh_seats() -> void:
 			var m: Dictionary = state.marks[g]
 			pouch.set_score(int(m.exact), int(m.colour))
 		_row_ask[g].visible = g == state.active() and state.open() and state.full()
+		# The latest row's swap mark comes with the Shell Game's own motion;
+		# the rows before it already have theirs.
+		var mark: SwapMark = _mark[g]
+		var p: Vector2i = state.swap_after(g)
+		if g < state.guesses.size() - 1 and p.x >= 0:
+			mark.set_pair(_seat_x(p.x), _seat_x(p.y), false)
+		elif g >= state.guesses.size():
+			mark.clear()
 
 ## Seats friend `v` at (g, s), or clears the seat, with no motion of its
 ## own: the movers below make theirs and then call this.
@@ -603,8 +713,30 @@ func pick(i: int) -> bool:
 	_say(tr("CB_TIP_READY") if state.full() else tr("CB_TIP_SEAT"),
 		Face.Expr.HAPPY)
 	fx.cue("place")
+	_note(slot)
 	moved.emit()
 	return true
+
+## The row-fill tune: the seat's own step up the pentatonic, a kalimba pluck
+## under the hop. It is the seat's note, so a row filled left to right plays
+## a little run up; it says nothing about the score.
+func _note(slot: int) -> void:
+	fx.cue("note", pow(2.0, float(PENTA[slot % PENTA.size()]) / 12.0), NOTE_DB)
+
+## Every friend seated in row g looks toward seat `s` for a moment -- the
+## one who just arrived looks up at the row instead.
+func _glance(g: int, s: int) -> void:
+	for j in length:
+		var face: Control = _face[g][j]
+		if face == null or face.plain:
+			continue
+		var dir := Vector2(signf(float(s - j)), 0.0) if j != s else Vector2(0.0, -1.0)
+		face.look = dir
+		var n: int = int(face.get_meta("look_n", 0)) + 1
+		face.set_meta("look_n", n)
+		_after(GLANCE_TIME, func() -> void:
+			if is_instance_valid(face) and int(face.get_meta("look_n", 0)) == n:
+				face.look = Vector2.ZERO)
 
 ## Where a friend runs in from. The chips span the same column the board
 ## does, so chip `i` stands at about this fraction across it: the run keeps
@@ -630,16 +762,24 @@ func _fly(g: int, s: int, friend: int) -> void:
 	# The rows below are drawn after this one, so a friend running up from
 	# the tray would pass under their cards without this.
 	seat.z_index = 1
+	# The flier leans into the run and looks where it is going.
+	var side := signf(rest.x - from.x)
+	var flier: Control = _face[g][s]
+	if flier != null and not flier.plain:
+		flier.look = Vector2(side, -0.6).normalized()
 	var step := func(u: float) -> void:
 		var e := _back_out(u)
 		seat.position = from.lerp(rest, e) - Vector2(0.0, FLY_ARC * sin(PI * u))
 		seat.scale = Vector2.ONE * k * lerpf(FLY_FROM, 1.0, e)
+		seat.rotation = FLY_LEAN * side * (1.0 - e) * (1.0 if u < 0.85 else (1.0 - u) / 0.15)
 	var land := func() -> void:
 		seat.position = rest
 		seat.scale = Vector2.ONE * k
+		seat.rotation = 0.0
 		seat.z_index = 0
 		fx.puff(cell_to_local(g, s), Friends.colour(friend), 5)
 		_seat_tw[g][s] = Motion.squash(seat, LAND_SQUASH)
+		_glance(g, s)
 	var tw := create_tween()
 	tw.tween_method(step, 0.0, 1.0, FLY_TIME)
 	tw.tween_callback(land)
@@ -653,6 +793,7 @@ func _land_seat(g: int, s: int) -> void:
 	var seat: Control = _seat[g][s]
 	seat.position = _seat_rest(g, s)
 	seat.scale = Vector2.ONE * lerpf(_piece_small, _piece_big, _big[g]) / _piece_big
+	seat.rotation = 0.0
 	seat.z_index = 0
 
 ## The seats either side lean away from the landing and come back.
@@ -699,7 +840,7 @@ func _shiver(g: int, s: int) -> void:
 ## The friend that just left seat (g, s) plays out its exit as an orphan over
 ## the row, so the seat below is free at once and a place that follows never
 ## fights it.
-func _leave(g: int, s: int) -> void:
+func _leave(g: int, s: int, delay := 0.0) -> void:
 	var face: Control = _face[g][s]
 	if face == null:
 		return
@@ -711,7 +852,7 @@ func _leave(g: int, s: int) -> void:
 	_rows[g].add_child(face)
 	face.position = seat.position + face.position * k
 	face.scale = Vector2.ONE * k
-	var out: Tween = Motion.pop_out(face, Motion.POP_OUT, 0.0, OUT_LIFT * k)
+	var out: Tween = Motion.pop_out(face, Motion.POP_OUT, 0.0 if Motion.reduce else delay, OUT_LIFT * k)
 	if out == null:
 		face.queue_free()
 	else:
@@ -790,6 +931,7 @@ func check() -> int:
 		_say(tr("CB_NEED_FULL"), Face.Expr.WORRIED)
 		fx.cue("check")
 		return -1
+	var best_before := _best_exact
 	var m: Dictionary = state.commit()
 	if m.is_empty():
 		return -1
@@ -806,22 +948,296 @@ func check() -> int:
 	var exact := int(m.exact)
 	var colour := int(m.colour)
 	var cracked := exact == length
-	var over: bool = cracked or state.lost
-	if exact >= 2 and not over:
+	var ran_out: bool = state.lost
+	_best_exact = maxi(_best_exact, exact)
+	_pip_sounds(exact, colour)
+	if exact >= 2 and not cracked and not ran_out:
 		_peek()
 	_after(_beat(SAY_AT), func() -> void:
 		_say(_sentence(exact, colour), Face.Expr.WORRIED if exact + colour == 0 else Face.Expr.HAPPY))
-	if over:
-		_after(_beat(REVEAL_WIN if cracked else REVEAL_LOST), _reveal.bind(cracked))
+	if cracked:
+		_after(_beat(REVEAL_WIN), _reveal.bind(true))
+	elif ran_out:
+		_run_out(g)
 	else:
-		_after(_beat(SLIDE_AT), func() -> void:
+		var react := _react(g, exact, colour, best_before)
+		var swap: Vector2i = state.swap_after(g)
+		var slide_at := SLIDE_AT
+		if swap.x >= 0:
+			_after(_beat(SWAP_AT), _shell_swap.bind(g, swap))
+			slide_at = SLIDE_AT_SWAP
+		if react:
+			slide_at = maxf(slide_at, SLIDE_AT_REACT)
+		_after(_beat(slide_at), func() -> void:
 			_busy = false
 			_slide(g))
-	fx.cue("score")
 	# note_move ends the game when the code was cracked; _on_solved and
 	# _reveal do the rest.
 	note_move()
 	return length - exact
+
+## One bead per pip as it lands in the pouch, each a step higher up the
+## pentatonic -- in the pile's order, filled first, which is never the
+## seats'. A row that scored nothing gets the old soft pouch sound instead.
+func _pip_sounds(exact: int, colour: int) -> void:
+	var n := exact + colour
+	if n == 0:
+		_after(_beat(PIP_AT + PIP_POP * PIP_LAND), fx.cue.bind("score"))
+		return
+	if Motion.reduce:
+		fx.cue("pip", 1.0)
+		return
+	for i in n:
+		var pitch := pow(2.0, float(PENTA[i % PENTA.size()]) / 12.0)
+		_after(PIP_AT + i * PIP_STAGGER + PIP_POP * PIP_LAND, fx.cue.bind("pip", pitch))
+
+## What the whole row does about its score -- always the whole row, one
+## expression, never a seat's (the score is a count, never a map). Returns
+## whether it played something the row should stay big for.
+##   nothing at all: sunglasses on, "Cool." -- a clean miss is good news;
+##   every friend in the code: a conga, "Everyone's here!";
+##   a new best in the right seats: "Warmer!", at one short "So close!".
+func _react(g: int, exact: int, colour: int, best_before: int) -> bool:
+	# A clean miss is good news, so it smiles under its sunglasses.
+	var mood := Face.Expr.JOY if exact >= length - 1 else Face.Expr.HAPPY
+	_after(_beat(REACT_AT), func() -> void:
+		for s in length:
+			var face: Control = _face[g][s]
+			if face != null:
+				face.expression = mood)
+	if Motion.reduce:
+		return false
+	if exact + colour == 0:
+		_after(REACT_AT, func() -> void:
+			_bubble_at(g, tr("CB_COOL") % _num(length).to_lower())
+			fx.cue("cool")
+			for s in length:
+				var face: Control = _face[g][s]
+				if face == null:
+					continue
+				var tw := face.create_tween()
+				tw.tween_property(face, "glasses", 1.0, 0.22).set_delay(s * 0.05).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tw.tween_interval(GLASSES_HOLD)
+				tw.tween_property(face, "glasses", 0.0, 0.2))
+		return true
+	if exact + colour == length:
+		_after(REACT_AT, func() -> void:
+			_bubble_at(g, tr("CB_ALL_HERE"))
+			fx.cue("all_here")
+			_conga(g))
+		return true
+	if exact > best_before:
+		var close := exact == length - 1
+		_after(REACT_AT, func() -> void:
+			_bubble_at(g, tr("CB_SO_CLOSE") if close else tr("CB_WARMER"))
+			fx.cue("so_close" if close else "warmer")
+			_pouch[g].glow()
+			if close:
+				var left := cell_to_local(g, 0)
+				var right := cell_to_local(g, length - 1)
+				fx.confetti((left + right) * 0.5, 28, right.x - left.x))
+		return true
+	return false
+
+## Two hop waves left to right, the whole row dancing in a line.
+func _conga(g: int) -> void:
+	for lap in 2:
+		for s in length:
+			if _face[g][s] == null:
+				continue
+			var delay := (lap * length + s) * CONGA_STEP
+			_after(delay, func() -> void:
+				if _face[g][s] == null:
+					return
+				_land_seat(g, s)
+				_seat_tw[g][s] = Motion.hop(_seat[g][s], CONGA_HOP * _seat[g][s].scale.y, Motion.HOP_TIME,
+					0.0, _seat_rest(g, s).y))
+
+## A paper bubble by the row's pouch, popping in and fading after a hold.
+func _bubble_at(g: int, text: String) -> void:
+	if is_instance_valid(_bubble):
+		_bubble.queue_free()
+	var bubble := PanelContainer.new()
+	bubble.name = "Bubble"
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.z_index = 3
+	var paper := StyleBoxFlat.new()
+	paper.bg_color = Pal.SURFACE
+	paper.set_corner_radius_all(22)
+	paper.set_border_width_all(2)
+	paper.border_width_bottom = 5
+	paper.border_color = Pal.LINE
+	paper.content_margin_left = 20
+	paper.content_margin_right = 20
+	paper.content_margin_top = 6
+	paper.content_margin_bottom = 8
+	bubble.add_theme_stylebox_override("panel", paper)
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_override("font", CozyTheme.display(700))
+	label.add_theme_font_size_override("font_size", 34)
+	label.add_theme_color_override("font_color", Pal.ACORN_DEEP)
+	bubble.add_child(label)
+	add_child(bubble)
+	bubble.material = null
+	bubble.reset_size()
+	# Over the pouch's left shoulder, riding above the row.
+	var row: Control = _rows[g]
+	var pouch: Control = _pouch[g]
+	var top := _column.position + (row.position + pouch.position) * _scale
+	var pos := top + Vector2(pouch.size.x * _scale * 0.5 - bubble.size.x * 0.75, -bubble.size.y - 6.0)
+	pos.x = clampf(pos.x, 8.0, size.x - bubble.size.x - 8.0)
+	pos.y = maxf(pos.y, 4.0)
+	bubble.position = pos
+	bubble.pivot_offset = Vector2(bubble.size.x * 0.75, bubble.size.y)
+	_bubble = bubble
+	Motion.pop_in(bubble)
+	var gen := _gen
+	get_tree().create_timer(BUBBLE_HOLD).timeout.connect(func() -> void:
+		if not is_instance_valid(bubble):
+			return
+		var out: Tween = Motion.appear(bubble, 1.0, 0.0, Motion.POP_OUT * 2.0)
+		if out == null or gen != _gen:
+			bubble.queue_free()
+		else:
+			out.finished.connect(bubble.queue_free))
+
+## Insane's Shell Game: the two lids at `p` rise and pass each other -- the
+## left one high over, the right one low under -- and land in each other's
+## seat with a squash and a puff of sawdust; the row just scored takes its
+## swap mark. The lids are all alike, so once they land each seat simply
+## stands back at its own rest: what moved is the code in the state.
+func _shell_swap(g: int, p: Vector2i) -> void:
+	var mark: SwapMark = _mark[g]
+	mark.set_pair(_seat_x(p.x), _seat_x(p.y), not Motion.reduce)
+	fx.cue("shuffle")
+	_say(tr("CB_SHUFFLED"), Face.Expr.PUZZLED)
+	if Motion.reduce:
+		return
+	var a: Control = _lid_seat[p.x]
+	var b: Control = _lid_seat[p.y]
+	var ra := _code_rest(p.x)
+	var rb := _code_rest(p.y)
+	a.z_index = 3
+	b.z_index = 2
+	for pair in [[a, ra, rb, SWAP_HIGH, -1.0], [b, rb, ra, SWAP_LOW, 1.0]]:
+		var seat: Control = pair[0]
+		var from: Vector2 = pair[1]
+		var to: Vector2 = pair[2]
+		var lift: float = pair[3]
+		var tilt: float = pair[4]
+		var step := func(u: float) -> void:
+			var e := _sine_io(u)
+			seat.position = from.lerp(to, e) - Vector2(0.0, lift * sin(PI * u))
+			seat.rotation = 0.18 * tilt * sin(PI * u)
+		var tw := seat.create_tween()
+		tw.tween_method(step, 0.0, 1.0, SWAP_TIME)
+		tw.tween_callback(func() -> void:
+			seat.position = from
+			seat.rotation = 0.0
+			seat.z_index = 0
+			Motion.squash(seat, 0.14, 0.26))
+	for at_x: float in [_seat_x(p.x), _seat_x(p.y)]:
+		var at := _column.position + Vector2(at_x, CODE_TOP + _piece_big) * _scale
+		_after(SWAP_TIME, fx.puff.bind(at, Pal.WOOD, 5))
+	# The lids snap home to their own rests at the end, and look the same:
+	# swap which Control stands where, not the lids themselves.
+
+## The last row is scored and the code is still covered: the lids rattle,
+## the row nods off, and the card asks whether to try one more row or see
+## the code.
+func _run_out(g: int) -> void:
+	out_of_hearts = true
+	_running = false
+	_after(_beat(SAY_AT + 0.3), func() -> void:
+		_say(tr("CB_OUT_TIP"), Face.Expr.SLEEPY)
+		fx.cue("out_of_rows")
+		_rattle()
+		for s in length:
+			var face: Control = _face[g][s]
+			if face != null:
+				face.expression = Face.Expr.SLEEPY)
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER + SAY_AT, _open_card)
+
+## The lids shiver in place, all together: something under there giggled.
+func _rattle() -> void:
+	if Motion.reduce:
+		return
+	for s in length:
+		var seat: Control = _lid_seat[s]
+		var rest := _code_rest(s)
+		var step := func(u: float) -> void:
+			seat.rotation = 0.08 * sin(4.0 * TAU * u) * (1.0 - u)
+			seat.position = rest - Vector2(0.0, 6.0 * absf(sin(3.0 * PI * u)) * (1.0 - u))
+		var tw := seat.create_tween()
+		tw.tween_interval(s * 0.04)
+		tw.tween_method(step, 0.0, 1.0, 0.55)
+		tw.tween_callback(func() -> void:
+			seat.rotation = 0.0
+			seat.position = rest)
+
+## The card, over the whole screen: on the host so it covers the chrome, or
+## on the root when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_card):
+		return
+	var card: Control = load(OUT_OF_ROWS).new(_row_bought)
+	_card = card
+	card.one_more_row.connect(row_back)
+	card.show_code.connect(show_code)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+func _close_card() -> void:
+	if is_instance_valid(_card) and not _card.is_queued_for_deletion():
+		_card.queue_free()
+	_card = null
+
+## One more row (the card's video), once a board: a new row joins the foot
+## of the column, the last one shrinks as it grows, and the row wakes up.
+func row_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_row_bought = true
+	_busy = false
+	var g: int = state.guesses.size() - 1
+	var swap: Vector2i = state.swaps[mini(g, state.swaps.size() - 1)] if state.shell else Vector2i(-1, -1)
+	state.add_row()
+	out_of_hearts = false
+	_running = true
+	_add_row(state.tries - 1)
+	_layout()
+	_refresh_seats()
+	for s in length:
+		var face: Control = _face[g][s]
+		if face != null:
+			face.expression = Face.Expr.HAPPY
+	var fresh: Control = _rows[state.tries - 1]
+	Motion.pop_in(fresh, Motion.POP_IN)
+	fx.cue("row_back")
+	_say(tr("CB_ROW_BACK"), Face.Expr.JOY)
+	if swap.x >= 0:
+		_busy = true
+		_after(_beat(0.3), _shell_swap.bind(g, swap))
+		_after(_beat(0.3 + SWAP_TIME + 0.1), func() -> void:
+			_busy = false
+			_slide(g))
+	else:
+		_slide(g)
+	moved.emit()
+
+## Show the code: the old ending -- the lids slide off and the code stands
+## up looking worried for you -- and the board ends unsolved.
+func show_code() -> void:
+	if is_done():
+		return
+	_close_card()
+	out_of_hearts = false
+	_reveal(false)
 
 ## An empty seat asked to score blushes toward the bad tile and back, the
 ## way a Binairo cell that fails a check does.
@@ -909,6 +1325,11 @@ func _reveal(won: bool) -> void:
 	_busy = false
 	_sparks.flash(0.0, 1.6 if won else 1.0)
 	for s in length:
+		if _lid[s].has_meta("peek"):
+			Motion.stop(_lid[s].get_meta("peek"))
+		_lid[s].position = Vector2.ZERO
+		_lid[s].rotation = 0.0
+		_peeker[s].open = 0.0
 		if won:
 			_lid_flip(s, s * FLIP_STAGGER)
 		else:
@@ -928,16 +1349,23 @@ func _reveal(won: bool) -> void:
 				_after(0.25 + s * 0.1 + q * 0.07, func() -> void:
 					fx.sparkle(at + Vector2((randf() - 0.5) * 100.0 * _scale, 0.0), Pal.SUN))
 		_after(JOINT_HOP_AT, _joint_hop)
+		if not _restoring:
+			_after(0.0 if Motion.reduce else STAMP_AT, _stamp_down)
+		if not _restoring and not Motion.reduce:
+			_after(PARTY_AT, _party_on)
 		_say(tr("CB_SOLVED"), Face.Expr.JOY)
 	else:
 		# Out of tries ends the day: the board goes quiet under the answer,
-		# and the HUD reads it as done, so nothing stays live to press.
-		_done = true
-		_running = false
+		# and the HUD reads it as done, so nothing stays live to press. It
+		# ends through finish_unsolved, so the host logs puzzle_complete
+		# {solved: false} -- until 2026-09-29 it set _done by hand and the
+		# funnel never heard how a lost day ended.
 		_refresh_seats()
 		_say(tr("CB_LOST"), Face.Expr.WORRIED)
+		finish_unsolved()
 	focus_changed.emit()
-	fx.cue("reveal")
+	if not _restoring:
+		fx.cue("reveal")
 
 func _lid_away(s: int, delay: float) -> void:
 	var lid: Control = _lid[s]
@@ -1020,12 +1448,95 @@ func _pop_code(s: int, delay: float) -> void:
 		face.scale = Vector2.ONE
 		face.set_idle(true))
 
+# --- the stamp and the party ---
+
+## The stamp's word for a solve in `rows` rows: CB_STAMP_1 .. CB_STAMP_8, a
+## bought row's CB_STAMP_MORE.
+func stamp_key() -> String:
+	var rows: int = state.guesses.size()
+	if _row_bought or rows > 8:
+		return "CB_STAMP_MORE"
+	return "CB_STAMP_%d" % clampi(rows, 1, 8)
+
+## The seal drops onto the code's right shoulder from STAMP_FROM its size,
+## squashes and rings: gold with the stamp's word, or on Insane the night-blue
+## seal with "Shell Game" over it. It is the result, so it shows under
+## reduce-motion too, standing still.
+func _stamp_down() -> void:
+	if is_instance_valid(_stamp) or not state.is_solved():
+		return
+	var rad := STAMP_R
+	var insane: bool = state.shell
+	var stamp := Control.new()
+	stamp.name = "Stamp"
+	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamp.z_index = 3
+	stamp.size = Vector2.ONE * rad * 2.0
+	stamp.pivot_offset = stamp.size * 0.5
+	var centre := Vector2(CARD_X + CARD_W - rad * 0.95, CODE_TOP + _piece_big * 0.55)
+	stamp.position = centre - stamp.pivot_offset
+	stamp.rotation = STAMP_TILT
+	var mesh := Seal.mesh(rad, insane)
+	var word: String = tr(stamp_key())
+	var lines := [[Seal.tr_static("CB_SHELL_SEAL"), 0.26, 0.02], [word, 0.22, 0.36]] if insane \
+		else [[word, 0.3, 0.12]]
+	stamp.draw.connect(func() -> void:
+		stamp.draw_mesh(mesh, null, Transform2D(0.0, stamp.pivot_offset))
+		Seal.text(stamp, rad, lines))
+	_column.add_child(stamp)
+	_stamp = stamp
+	if _restoring or Motion.reduce:
+		return
+	fx.cue("stamp")
+	stamp.scale = Vector2.ONE * STAMP_FROM
+	stamp.modulate.a = 0.0
+	var tw := stamp.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(stamp, "scale", Vector2.ONE, STAMP_DROP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
+	tw.chain().tween_callback(func() -> void:
+		Motion.squash(stamp, 0.22, 0.26)
+		fx.ring(_column.position + centre * _scale, rad * 0.9 * _scale, Pal.MOON_INK if insane else Pal.SUN))
+
+## After the joint hop: party hats pop onto the code and the row that
+## cracked it, seat by seat, and confetti flies over both.
+func _party_on() -> void:
+	if not state.is_solved():
+		return
+	fx.cue("party")
+	var g: int = state.guesses.size() - 1
+	var faces: Array = []
+	for s in length:
+		faces.append([_code_face[s], s])
+		if g >= 0 and _face[g][s] != null:
+			faces.append([_face[g][s], s])
+	for pair in faces:
+		var face: Control = pair[0]
+		var s: int = pair[1]
+		if not is_instance_valid(face):
+			continue
+		face.hat_style = posmod(hash(Vector2i(s, int(face.get_meta("friend", s)))), 3)
+		var tw := face.create_tween()
+		tw.tween_property(face, "hat", 1.0, PARTY_HAT).from(0.0) \
+			.set_delay(s * PARTY_STAGGER).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var left := _column.position + Vector2(SEAT_L, CODE_TOP) * _scale
+	var width := (SEAT_R - SEAT_L) * _scale
+	fx.confetti(left + Vector2(width * 0.5, 0.0), 44, width)
+	if g >= 0:
+		_after(0.3, fx.confetti.bind((cell_to_local(g, 0) + cell_to_local(g, length - 1)) * 0.5, 30, width * 0.8))
+	_after(0.2, fx.cue.bind("confetti"))
+
 ## Reset clears the whole board, as the island's does and every other
 ## board's: the friends shrink out in a wave from the last row back, the
 ## pouches empty and the lids drop home. Hints already spent stay spent.
 func reset_board() -> void:
+	if state.keeps_rows:
+		_reset_row()
+		return
 	_stop_all()
 	_busy = false
+	_best_exact = 0
+	_clear_extras()
 	state.reset()
 	_done = false
 	_running = true
@@ -1035,7 +1546,7 @@ func reset_board() -> void:
 		for s in range(length - 1, -1, -1):
 			if _face[g][s] == null:
 				continue
-			_leave_after(g, s, Motion.stagger(k, RESET_STAGGER))
+			_leave(g, s, Motion.stagger(k, RESET_STAGGER))
 			k += 1
 	for s in length:
 		var lid: Control = _lid[s]
@@ -1051,13 +1562,33 @@ func reset_board() -> void:
 		_code_face[s].visible = false
 		_code_face[s].set_idle(false)
 		_lid_seat[s].position = _code_rest(s)
+		_lid_seat[s].rotation = 0.0
 	for g in state.tries:
 		_big[g] = 1.0 if g == 0 else 0.0
 		_pouch[g].clear()
+		_mark[g].clear()
 	_place_rows()
 	_refresh_seats()
 	_say(tr("CB_CLEARED"), Face.Expr.HAPPY)
 	fx.cue("reset")
+
+## Hard and Insane's Reset: played rows are ink, so only the row in hand
+## goes back to the palette, right to left. A hinted seat stays.
+func _reset_row() -> void:
+	if _busy or not state.open():
+		return
+	var g := state.active()
+	var gone: Array = state.reset_row()
+	if gone.is_empty():
+		return
+	var k := 0
+	for i in range(gone.size() - 1, -1, -1):
+		_leave(g, int(gone[i]), Motion.stagger(k, RESET_STAGGER))
+		k += 1
+	_refresh_seats()
+	_say(tr("CB_ROW_CLEARED"), Face.Expr.HAPPY)
+	fx.cue("reset")
+	moved.emit()
 
 ## The rows the player played, oldest first, each a list of friend indices,
 ## so a reopened daily can lay the same scorecard back down.
@@ -1081,16 +1612,24 @@ func completion_record() -> Dictionary:
 func restore_completed_board() -> void:
 	_stop_all()
 	_busy = false
+	_restoring = true
 	var rows := _recorded_rows()
 	if rows.is_empty():
-		var earlier: Array = state.code.duplicate()
-		# The first friend differs from the code, so this row cannot
-		# accidentally score as a solve, even when the day's code permits
-		# repeated friends.
-		earlier[0] = (int(earlier[0]) + 1) % state.palette_size
-		for _guess in state.tries - 1:
-			rows.append(earlier.duplicate())
-		rows.append(state.code.duplicate())
+		# The first friend differs from the code as it sat then, so these
+		# rows cannot accidentally score as a solve, even when the day's
+		# code permits repeated friends; on Insane each is read against the
+		# code the Shell Game had moved it to.
+		for g in state.tries - 1:
+			var earlier: Array = state.code_at(g)
+			earlier[0] = (int(earlier[0]) + 1) % state.palette_size
+			rows.append(earlier)
+		rows.append(state.code_at(state.tries - 1))
+	# A day finished on a bought row has one row more than the band.
+	while state.tries < rows.size():
+		state.tries += 1
+		_add_row(state.tries - 1)
+		_row_bought = true
+	_layout()
 	for row in rows:
 		state.row = row.duplicate()
 		state.commit()
@@ -1104,13 +1643,16 @@ func restore_completed_board() -> void:
 	_place_rows()
 	_refresh_seats()
 	_reveal(true)
+	_stamp_down()
+	_restoring = false
 
 ## The record's rows if they are a real ending for today's code -- at most
 ## TRIES full rows of friends in the palette, only the last one the code --
 ## and nothing otherwise, which sends the restore to its fabricated fallback.
 func _recorded_rows() -> Array:
 	var raw = completed_record.get("guesses", [])
-	if not raw is Array or raw.is_empty() or raw.size() > state.tries:
+	# One row more than the band is a bought row.
+	if not raw is Array or raw.is_empty() or raw.size() > state.tries + 1:
 		return []
 	var out: Array = []
 	for r in raw.size():
@@ -1125,24 +1667,22 @@ func _recorded_rows() -> Array:
 			row.append(friend)
 		# Only the last row may crack the code: one earlier would have ended
 		# the game there.
-		if (row == state.code) != (r == raw.size() - 1):
+		if (row == state.code_at(r)) != (r == raw.size() - 1):
 			return []
 		out.append(row)
 	return out
 
-func _leave_after(g: int, s: int, delay: float) -> void:
-	if delay <= 0.0 or Motion.reduce:
-		_leave(g, s)
-		return
-	_after(delay, func() -> void:
-		if _face[g][s] != null:
-			_leave(g, s))
-
 func is_solved() -> bool:
 	return state.is_solved()
 
+## Wordle's grid, and on a solve the stamp's line under it:
+## "🏅 Genius", or on Insane "🌙 Shell Game · Genius".
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.is_solved():
+		var word: String = tr(stamp_key())
+		out += ("🌙 %s · %s" % [tr("CB_SHELL_SEAL"), word]) if state.shell else ("🏅 " + word)
+	return out
 
 ## The Check pill keeps its word: a lost day stays lost, and a fresh code
 ## comes from the settings sheet's New puzzle, as on every other board.
@@ -1177,7 +1717,7 @@ func flat_win() -> Dictionary:
 ## How long the host waits before the win screen: the lids, the code's pop
 ## and its sparkles all have to land first.
 func win_delay() -> float:
-	return WIN_DELAY_STILL if Motion.reduce else WIN_DELAY
+	return WIN_DELAY_STILL if Motion.reduce else WIN_DELAY_PARTY
 
 ## Control-local point over the centre of seat (g, s). The win harness checks
 ## with this that the whole column lands inside the card.
@@ -1265,6 +1805,7 @@ func _stop_entrance() -> void:
 func _stop_all() -> void:
 	_gen += 1
 	_stop_entrance()
+	_clear_extras()
 	Motion.stop(_slide_tw)
 	Motion.stop(_press_tw)
 	_touch_seat = -1
@@ -1276,6 +1817,51 @@ func _stop_all() -> void:
 	for tw in _flash_tw.values():
 		Motion.stop(tw)
 	_flash_tw = {}
+
+## The pieces a board lays on top of itself for a moment or for good: the
+## bubble, the stamp, the card.
+func _clear_extras() -> void:
+	if is_instance_valid(_bubble):
+		_bubble.queue_free()
+	_bubble = null
+	if is_instance_valid(_stamp):
+		_stamp.queue_free()
+	_stamp = null
+	_close_card()
+
+## The lids are alive. Every PEEK_EVERY seconds or so one of them lifts a
+## little and a pair of eyes blinks out of the dark under it -- only eyes,
+## so no colour escapes -- and it settles back with a tock. Quiet while a
+## check plays or the day is over; a rebuild retires the loop (_gen).
+func _schedule_peek() -> void:
+	_after(PEEK_EVERY + randf() * PEEK_JITTER, func() -> void:
+		_idle_peek()
+		_schedule_peek())
+
+func _idle_peek() -> void:
+	if Motion.reduce or _busy or not state.open() or is_done() or _lid.is_empty():
+		return
+	var s := randi() % length
+	var lid: Control = _lid[s]
+	if not lid.visible or lid.has_meta("tw") or (lid.has_meta("peek") and Motion.running(lid.get_meta("peek"))):
+		return
+	var peeker: Peeker = _peeker[s]
+	peeker.look = [-1.0, 0.0, 1.0][randi() % 3]
+	var step := func(u: float) -> void:
+		# Up quickly, a held look with a blink in it, down with a bump.
+		var lift := _sine_io(minf(1.0, u / 0.22)) * (1.0 - _sine_io(clampf((u - 0.72) / 0.28, 0.0, 1.0)))
+		lid.position.y = -PEEK_IDLE_LIFT * lift
+		lid.rotation = 0.05 * lift * (1.0 if s % 2 == 0 else -1.0)
+		peeker.open = lift * (0.15 if absf(u - 0.5) < 0.05 else 1.0)
+	var tw := lid.create_tween()
+	tw.tween_method(step, 0.0, 1.0, PEEK_IDLE_TIME)
+	tw.tween_callback(func() -> void:
+		lid.position = Vector2.ZERO
+		lid.rotation = 0.0
+		peeker.open = 0.0
+		Motion.squash(_lid_seat[s], 0.06, 0.2))
+	lid.set_meta("peek", tw)
+	fx.cue("peek")
 
 ## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
 func _after(delay: float, what: Callable) -> void:
@@ -1573,6 +2159,15 @@ class Pouch extends Panel:
 		colours = co
 		queue_redraw()
 
+	## A new best: the pouch warms toward the sun and gives a beat.
+	func glow() -> void:
+		if Motion.reduce:
+			return
+		var tw := create_tween()
+		tw.tween_property(self, "self_modulate", Color(1.12, 1.04, 0.78), 0.14)
+		tw.tween_property(self, "self_modulate", Color.WHITE, 0.6).set_trans(Tween.TRANS_SINE)
+		Motion.bump(self, 0.16, 0.3)
+
 	func clear() -> void:
 		Motion.stop(_tw)
 		scored = false
@@ -1654,3 +2249,94 @@ class Pouch extends Panel:
 	## A fixed pseudo-random number per pip, so a pouch's pile never shifts.
 	static func _hash(a: int, b: int) -> float:
 		return float(posmod(hash(Vector2i(a, b)), 1000)) / 1000.0
+
+## Insane's record of one Shell Game move, over a played row's hem: a small
+## arc bowing down across the gap under the row, from one column to the
+## other, with a little head at each end. One cached mesh a shape; `grow`
+## draws it on from the middle out when the swap happens.
+class SwapMark extends Control:
+	static var _cache := {}
+	var x0 := -1.0
+	var x1 := -1.0
+	var grow := 1.0:
+		set(v):
+			grow = v
+			queue_redraw()
+	var _tw: Tween
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+
+	func set_pair(a: float, b: float, animate: bool) -> void:
+		if is_equal_approx(a, x0) and is_equal_approx(b, x1) and not animate:
+			return
+		x0 = minf(a, b)
+		x1 = maxf(a, b)
+		Motion.stop(_tw)
+		if animate and not Motion.reduce:
+			grow = 0.0
+			_tw = create_tween()
+			_tw.tween_property(self, "grow", 1.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		else:
+			grow = 1.0
+		queue_redraw()
+
+	func clear() -> void:
+		Motion.stop(_tw)
+		x0 = -1.0
+		x1 = -1.0
+		queue_redraw()
+
+	func _draw() -> void:
+		if x0 < 0.0 or grow <= 0.0:
+			return
+		var mesh := _mesh(x1 - x0)
+		# The arc's ends sit a little above the card's hem, its belly across
+		# the gap under it.
+		var at := Vector2((x0 + x1) * 0.5, size.y - 14.0)
+		draw_mesh(mesh, null, Transform2D(0.0, Vector2(grow, 1.0), 0.0, at), Color(1.0, 1.0, 1.0, minf(1.0, grow * 1.6)))
+
+	static func _mesh(w: float) -> ArrayMesh:
+		var key := int(w)
+		if _cache.has(key):
+			return _cache[key]
+		var b := Face.Builder.new()
+		var ink := Color(Pal.MOON_INK, 0.75)
+		var h := w * 0.5
+		var pts := Face.Builder.bezier2(Vector2(-h, 0.0), Vector2(0.0, MARK_RISE * 2.0), Vector2(h, 0.0), 22)
+		b.stroke(pts, MARK_W, ink)
+		# A head at each end, pointing up into the column it lands in.
+		for sx: float in [-1.0, 1.0]:
+			var tip := Vector2(sx * h, -2.0)
+			b.polygon(PackedVector2Array([tip + Vector2(0.0, -9.0), tip + Vector2(8.0, 5.0), tip + Vector2(-8.0, 5.0)]), ink)
+		var mesh := b.mesh()
+		_cache[key] = mesh
+		return mesh
+
+## The dark under a lid lifted in idle, and two eyes in it: `open` 0 shut
+## (draws nothing), 1 wide; `look` -1 left, 0 ahead, 1 right. White eyes on
+## ink, the same for every friend, so nothing of the code shows.
+class Peeker extends Control:
+	var open := 0.0:
+		set(v):
+			open = v
+			queue_redraw()
+	var look := 0.0
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		if open <= 0.01:
+			return
+		var w := size.x
+		var slit := Vector2(w * 0.5, w * 0.93)
+		draw_set_transform(slit, 0.0, Vector2(1.0, 0.32))
+		draw_circle(Vector2.ZERO, w * 0.36, Color(Pal.OUTLINE, 0.85))
+		draw_set_transform(Vector2.ZERO)
+		for sx: float in [-1.0, 1.0]:
+			var eye := slit + Vector2(sx * w * 0.12, -w * 0.035)
+			draw_set_transform(eye, 0.0, Vector2(1.0, maxf(0.1, open)))
+			draw_circle(Vector2.ZERO, w * 0.05, Color.WHITE)
+			draw_circle(Vector2(look * w * 0.02, w * 0.01), w * 0.026, Pal.OUTLINE)
+		draw_set_transform(Vector2.ZERO)

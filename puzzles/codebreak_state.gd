@@ -16,8 +16,10 @@ extends RefCounted
 const Gen = preload("res://puzzles/mastermind_gen.gd")
 
 const TRIES := 8
-## Not refunded by reset, as on every other board.
+## Not refunded by reset, as on every other board. Easy and Medium have
+## three; Hard one; Insane none (HINTS_BY_BAND).
 const HINTS := 3
+const HINTS_BY_BAND := [3, 3, 1, 0]
 
 ## What the row's seats are worth, once the row is scored. The pouch only
 ## ever shows how many of each; a seat's own kind is drawn on nobody's face
@@ -27,9 +29,21 @@ enum Kind { MISS, COLOUR, EXACT }
 var length := 4
 var palette_size := 6
 var repeats := false
-## Insane trims this to 7; every other band keeps TRIES.
+## Hard and Insane trim this to 7; a bought row (One more row) adds one.
 var tries := TRIES
-## The hidden row.
+## This band's hint budget (HINTS_BY_BAND).
+var hints := HINTS
+## Hard and Insane: played rows are ink, and Reset only clears the row in
+## hand. Easy and Medium: Reset clears the whole board, as ever.
+var keeps_rows := false
+## Insane's Shell Game: after every scored row that did not crack it, two
+## seats of the code trade places in plain sight (`swaps[g]`, the pair after
+## row g, drawn from the day's rng after the code). `code` is always the code
+## as it sits now; `code_at(g)` is what row g was scored against.
+var shell := false
+var swaps: Array = []
+var code0: Array = []
+## The hidden row, as it sits now.
 var code: Array = []
 ## The rows played, oldest first, and their scores as
 ## {"exact": int, "colour": int, "kinds": Array[Kind]}.
@@ -39,6 +53,10 @@ var marks: Array = []
 var row: Array = []
 ## Per seat: filled by a hint and fixed for the rest of the game.
 var locked: Array = []
+## Per seat: a hint has shown it, so every later row starts with it seated.
+## (Until 2026-09-29 a fresh row forgot it, and the next hint showed seat one
+## again.)
+var revealed: Array = []
 ## Places and pops in the active row, newest last; undo takes one back.
 var history: Array = []
 var hints_used := 0
@@ -50,23 +68,42 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	match difficulty:
 		0: length = 4; palette_size = 6; repeats = false; tries = TRIES
 		1: length = 4; palette_size = 6; repeats = true; tries = TRIES
-		3: length = 5; palette_size = 7; repeats = true; tries = 7
-		_: length = 5; palette_size = 7; repeats = true; tries = TRIES
+		_: length = 5; palette_size = 7; repeats = true; tries = 7
+	var band := clampi(difficulty, 0, 3)
+	hints = HINTS_BY_BAND[band]
+	keeps_rows = band >= 2
+	shell = band == 3
 	code = Gen.make_code(rng, length, palette_size, repeats)
+	code0 = code.duplicate()
+	# Drawn after the code, and only on Insane, so every other band's code
+	# comes off the same rng draws it always did. Two spare pairs for bought
+	# rows.
+	swaps = []
+	if shell:
+		for _g in tries + 2:
+			var i := rng.randi_range(0, length - 1)
+			var j := rng.randi_range(0, length - 2)
+			if j >= i:
+				j += 1
+			swaps.append(Vector2i(mini(i, j), maxi(i, j)))
 	guesses = []
 	marks = []
 	hints_used = 0
 	hints_extra = 0
 	lost = false
+	revealed = []
+	for _s in length:
+		revealed.append(false)
 	_fresh_row()
 
 func _fresh_row() -> void:
 	row = []
 	locked = []
 	history = []
-	for _s in length:
-		row.append(-1)
-		locked.append(false)
+	for s in length:
+		var known: bool = s < revealed.size() and revealed[s]
+		row.append(int(code[s]) if known else -1)
+		locked.append(known)
 
 ## Which row is being filled; it is also how many have been played.
 func active() -> int:
@@ -129,7 +166,7 @@ func undo() -> Dictionary:
 	return {"slot": s, "colour": row[s]}
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return hints + hints_extra - hints_used
 
 ## Seats the code's own friend in the leftmost seat no hint has claimed and
 ## locks it, as the island's `_locked` does, so every later row starts with
@@ -145,6 +182,7 @@ func hint() -> int:
 	if slot < 0:
 		return -1
 	locked[slot] = true
+	revealed[slot] = true
 	row[slot] = code[slot]
 	# A place or pop in that seat can no longer be taken back: the hint owns it.
 	var kept: Array = []
@@ -171,10 +209,45 @@ func commit() -> Dictionary:
 	if int(m.exact) < length and guesses.size() >= tries:
 		lost = true
 	if open():
+		if shell:
+			_swap(swaps[guesses.size() - 1])
 		_fresh_row()
 	else:
 		history = []
 	return m
+
+## The pair row g's scoring moved on Insane, or (-1, -1): none on any other
+## band, none after the row that cracked it or ran the rows out.
+func swap_after(g: int) -> Vector2i:
+	if not shell or g < 0 or g >= guesses.size():
+		return Vector2i(-1, -1)
+	if g == guesses.size() - 1 and not open():
+		return Vector2i(-1, -1)
+	return swaps[g]
+
+## The code as it sat when row g was played: the day's code with every swap
+## before row g applied.
+func code_at(g: int) -> Array:
+	var c: Array = code0.duplicate()
+	if shell:
+		for k in mini(g, swaps.size()):
+			var p: Vector2i = swaps[k]
+			var t = c[p.x]; c[p.x] = c[p.y]; c[p.y] = t
+	return c
+
+func _swap(p: Vector2i) -> void:
+	var t = code[p.x]; code[p.x] = code[p.y]; code[p.y] = t
+
+## One more row (the out-of-rows card's video): the day goes on, one row
+## longer, with the code moved as a played row would have moved it.
+func add_row() -> void:
+	if not lost:
+		return
+	lost = false
+	tries += 1
+	if shell:
+		_swap(swaps[mini(guesses.size() - 1, swaps.size() - 1)])
+	_fresh_row()
 
 ## The standard Mastermind score, plus which seat earned what: the counts are
 ## what the pouch shows, and the kinds are read only once the code is on the
@@ -205,7 +278,21 @@ func reset() -> void:
 	guesses = []
 	marks = []
 	lost = false
+	code = code0.duplicate()
 	_fresh_row()
+
+## Hard and Insane's Reset: only the row in hand goes back to the palette. A
+## hinted seat stays, as it does between rows. Returns the seats it cleared.
+func reset_row() -> Array:
+	var out: Array = []
+	if not open():
+		return out
+	for s in length:
+		if row[s] != -1 and not locked[s]:
+			row[s] = -1
+			out.append(s)
+	history = []
+	return out
 
 ## Wordle's exact share grid, with no language in it.
 func share_glyphs() -> String:
