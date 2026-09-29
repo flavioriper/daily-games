@@ -57,13 +57,25 @@ SETS = {
         "brush":    ("a tiny soft paper click, selecting a pencil, very short and quiet", 0.5, -12),
         "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
+        # check and blush_in re-prompted 2026-09-29 (insane polish): the low
+        # marimba boops and the wooden "bonk" read as a scold, not a shrug.
+        "check":    ("two soft muffled felt-mallet kalimba notes stepping gently down, a kind cozy 'not quite yet', warm and round, never a buzzer", 0.7, -6),
         "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
         "reset":    ("a quick ripple of many small soft wooden pops, tiles being swept off a board", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "line":     ("a short happy two-note soft kalimba pluck, a row completed", 0.6, -6),
-        "blush_in": ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
+        "blush_in": ("a tiny soft felt mallet tap on a small wooden block with a gentle little pitch dip, a shy muffled 'oops', very short and quiet", 0.5, -10),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of tiles appearing", 1.0, -9),
+        # Hearts, streaks and rewards (2026-09-29 insane polish, spec section 3).
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -8),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -6),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -7),
+        "combo":         ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti":      ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "line_silly":    ("a playful soft wooden boing, a springy muffled wood bounce with a tiny giggling kalimba trill on top, cute and short", 0.7, -7),
+        "flawless":      ("a soft paper rubber stamp thump then a warm glockenspiel chime ringing up, a gentle proud 'perfect'", 1.2, -5),
+        "liar":          ("a sneaky tiptoeing soft pizzicato plucked string phrase, caught red-handed, cheeky and playful, light", 1.0, -7),
+        "party":         ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
     },
     # Code Break (puzzle_id "mastermind"): little round friends fly into
     # seats, a Check drops score pips into a pouch, lids lift on the answer.
