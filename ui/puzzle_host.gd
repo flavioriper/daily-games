@@ -185,6 +185,9 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.solved.connect(_on_solved)
 	# Hidden Word's ending that is not a solve (PuzzleBase.finish_unsolved).
 	_puzzle.ended.connect(_on_ended)
+	# Binairo's out-of-hearts card leaves from itself, having ended the board.
+	if _puzzle.has_signal("leave"):
+		_puzzle.leave.connect(_on_back)
 	_puzzle.moved.connect(_refresh)
 	_puzzle.focus_changed.connect(_refresh)
 	var rng := RandomNumberGenerator.new()
@@ -348,6 +351,9 @@ func _on_ended() -> void:
 ## ended on its own (solved or run out) has sent its puzzle_complete;
 ## is_done() covers both, so this never double-fires.
 func _on_back() -> void:
+	# A board that has run out of hearts ended there, whichever way it leaves.
+	if is_instance_valid(_puzzle) and not _puzzle.is_done() and bool(_puzzle.get("out_of_hearts")):
+		_puzzle.finish_unsolved()
 	if is_instance_valid(_puzzle) and not _puzzle.is_done():
 		Analytics.track("puzzle_abandon", _stats())
 	# A finished board still needs to be able to leave its result screen. It
