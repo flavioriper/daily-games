@@ -23,6 +23,7 @@ extends Control
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md.
 
 const Pal = preload("res://core/palette.gd")
+const AgeGate = preload("res://core/age_gate.gd")
 const UiSound = preload("res://ui/ui_sound.gd")
 const Motion = preload("res://core/motion.gd")
 const Progress = preload("res://core/progress.gd")
@@ -964,7 +965,8 @@ func _show_list(tab := "home") -> void:
 	if tab == "home" and Wallet.calendar_open():
 		get_tree().create_timer(0.9).timeout.connect(func() -> void:
 			if is_instance_valid(gifts_sheet) and _list_root.visible and _tab == "home" \
-					and not gifts_sheet.is_open() and Wallet.should_auto_open():
+					and not gifts_sheet.is_open() and Wallet.should_auto_open() \
+					and (AgeGate.known() or not OS.has_feature("mobile")):
 				gifts_sheet.open())
 
 func _enter() -> void:
@@ -1056,6 +1058,9 @@ func _on_soon(entry: Dictionary) -> void:
 ## first-play card, then the board -- then Stats or Streak go Home, and only
 ## Home quits.
 func go_back() -> void:
+	# The age question (ui/hud/age_screen.gd) has no way out but an answer.
+	if get_node_or_null("../AgeScreen") != null:
+		return
 	var nodes := find_children("*", "", true, false)
 	nodes.reverse()
 	for node in nodes:

@@ -12,6 +12,8 @@ const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
 const Locale = preload("res://core/locale.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const AgeGate = preload("res://core/age_gate.gd")
+const AgeScreen = preload("res://ui/hud/age_screen.gd")
 
 func _enter_tree() -> void:
 	Motion.load_settings()
@@ -26,7 +28,16 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	Analytics.start(self)
 	Analytics.track("game_open", {"day": Progress.day()})
-	Ads.start()
+	if AgeScreen.wanted():
+		var age := AgeScreen.new()
+		age.name = "AgeScreen"
+		age.answered.connect(func(year: int) -> void:
+			AgeGate.set_birth_year(year)
+			Analytics.track("age_answered", {"band": AgeGate.band_name(AgeGate.band())})
+			Ads.start())
+		$UI.add_child(age)
+	else:
+		Ads.start()
 	# The backend wakes here and nowhere else, same as telemetry: the suite
 	# and the harnesses build these screens and stay offline.
 	Backend.start(self)

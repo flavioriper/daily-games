@@ -522,3 +522,6 @@ BST_CHANCE_MOLEHILL,Fifteen more seconds on the clock.,Mais quinze segundos no r
 BST_CHANCE_STACKWOOD,The top two rows of the shelf are cleared.,As duas fileiras de cima da prateleira são limpas.,Se vacían las dos filas de arriba del estante.
 BST_CHANCE_THIRTEEN,A free shuffle of the tray.,Um embaralhamento grátis da bandeja.,Una mezcla gratis de la bandeja.
 BST_CHANCE_POSY,Five more moves.,Mais cinco movimentos.,Cinco movimientos más.
+AGE_TITLE,What year were you born?,Em que ano você nasceu?,¿En qué año naciste?
+AGE_BODY,"We ask once, so the ads you see suit your age. Your answer stays on this phone.","Perguntamos só uma vez, para que os anúncios combinem com a sua idade. A resposta fica só neste aparelho.","Lo preguntamos una sola vez para que los anuncios sean adecuados a tu edad. La respuesta se queda en este teléfono."
+AGE_CONTINUE,Continue,Continuar,Continuar
