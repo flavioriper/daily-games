@@ -65,3 +65,18 @@ unattended on `feat/codebreak-polish` at the user's word.
 **Draw calls, `opengl3_angle`, 810x1440, `tests/_shot_anim.gd`**: fullest
 Insane board (six rows, marks) idle 257; Easy fullest 255; Insane `solve`
 window (after the party) 192. Far under 855.
+
+### Review fixes (2026-09-29)
+
+- **No Reset once the day is out of reach** (`can_reset()`, read by the
+  flat top bar and actions row when a board offers it): out of rows, after
+  Show the code, or on Easy/Medium past a bought row. It was a free replay
+  against a code the player had just seen -- older than this pass, since a
+  lost day was always Reset-able -- and it logged the day twice.
+- `completion_record()` carries `bought`, so an old Hard save solved on row
+  eight (Hard had eight rows) does not stamp "Second wind".
+- `hints_left()` is 0 once every seat is revealed, so no hint video is
+  offered for nothing. A full Reset restarts the idle peeks, and stops a
+  code pop still running (it could show a friend under a shut lid).
+- The clean miss counts the different friends it ruled out (`CB_COOL_1`,
+  `CB_COOL_N`).

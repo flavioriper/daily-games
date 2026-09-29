@@ -1009,7 +1009,7 @@ func _react(g: int, exact: int, colour: int, best_before: int) -> bool:
 		return false
 	if exact + colour == 0:
 		_after(REACT_AT, func() -> void:
-			_bubble_at(g, tr("CB_COOL") % _num(length).to_lower())
+			_bubble_at(g, _cool_line(g))
 			fx.cue("cool")
 			for s in length:
 				var face: Control = _face[g][s]
@@ -1038,6 +1038,16 @@ func _react(g: int, exact: int, colour: int, best_before: int) -> bool:
 				fx.confetti((left + right) * 0.5, 28, right.x - left.x))
 		return true
 	return false
+
+## "Cool. Five crossed off." -- counting the different friends the row
+## ruled out, which with repeats can be one.
+func _cool_line(g: int) -> String:
+	var seen := {}
+	for v in state.guesses[g]:
+		seen[int(v)] = true
+	if seen.size() == 1:
+		return tr("CB_COOL_1")
+	return tr("CB_COOL_N") % _num(seen.size())
 
 ## Two hop waves left to right, the whole row dancing in a line.
 func _conga(g: int) -> void:
@@ -1436,15 +1446,19 @@ func _pop_code(s: int, delay: float) -> void:
 		return
 	face.scale = Vector2.ZERO
 	var step := func(u: float) -> void:
-		if not is_instance_valid(face):
+		if not is_instance_valid(face) or not face.has_meta("popping"):
 			return
 		face.visible = true
 		var e := _back_out(u)
 		face.scale = Vector2(e * (1.0 + 0.12 * (1.0 - u)), e * (1.0 - 0.12 * (1.0 - u)))
+	face.set_meta("popping", true)
 	var tw := face.create_tween()
 	tw.tween_interval(delay)
 	tw.tween_method(step, 0.0, 1.0, CODE_POP_TIME)
 	tw.tween_callback(func() -> void:
+		if not face.has_meta("popping"):
+			return
+		face.remove_meta("popping")
 		face.scale = Vector2.ONE
 		face.set_idle(true))
 
@@ -1529,7 +1543,18 @@ func _party_on() -> void:
 ## Reset clears the whole board, as the island's does and every other
 ## board's: the friends shrink out in a wave from the last row back, the
 ## pouches empty and the lids drop home. Hints already spent stay spent.
+## Reset gives nothing once the rows ran out or a row was bought: on Easy
+## and Medium it would replay the day against a code the player has seen or
+## nearly read (there is no Try again, spec section 1), and on every band it
+## would retire the card. A live board resets.
+func can_reset() -> bool:
+	if out_of_hearts or state.lost or (is_done() and not state.is_solved()):
+		return false
+	return state.keeps_rows or not _row_bought
+
 func reset_board() -> void:
+	if not can_reset():
+		return
 	if state.keeps_rows:
 		_reset_row()
 		return
@@ -1559,6 +1584,8 @@ func reset_board() -> void:
 		lid.z_index = 0
 		lid.modulate.a = 1.0
 		lid.position = Vector2.ZERO
+		# A pop still running would show the friend under a shut lid.
+		_code_face[s].remove_meta("popping")
 		_code_face[s].visible = false
 		_code_face[s].set_idle(false)
 		_lid_seat[s].position = _code_rest(s)
@@ -1571,6 +1598,8 @@ func reset_board() -> void:
 	_refresh_seats()
 	_say(tr("CB_CLEARED"), Face.Expr.HAPPY)
 	fx.cue("reset")
+	# _stop_all retired the idle peeks with everything else.
+	_schedule_peek()
 
 ## Hard and Insane's Reset: played rows are ink, so only the row in hand
 ## goes back to the palette, right to left. A hinted seat stays.
@@ -1599,7 +1628,7 @@ func completion_record() -> Dictionary:
 		for v in guess:
 			row.append(int(v))
 		out.append(row)
-	return {"guesses": out}
+	return {"guesses": out, "bought": _row_bought}
 
 ## A completed daily is rebuilt from its seed, so its transient Code Break
 ## state is empty when the player opens it again. The player's own rows come
@@ -1628,7 +1657,9 @@ func restore_completed_board() -> void:
 	while state.tries < rows.size():
 		state.tries += 1
 		_add_row(state.tries - 1)
-		_row_bought = true
+	# Only a save that says so had a bought row: a Hard day finished on row
+	# eight before Hard went to seven rows did not.
+	_row_bought = bool(completed_record.get("bought", false))
 	_layout()
 	for row in rows:
 		state.row = row.duplicate()

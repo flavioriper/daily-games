@@ -54,6 +54,9 @@ func refresh(puzzle) -> void:
 	check_button.set_enabled(not done)
 	_check_label = puzzle.check_label() if puzzle != null else "ACT_CHECK"
 	check_button.set_icon(puzzle.check_icon() if puzzle != null else "check")
+	# A board may say its Reset has nothing to give (Code Break, out of rows
+	# or past a bought row: a Reset there would be a free replay).
+	reset_button.set_enabled(puzzle == null or not puzzle.has_method("can_reset") or puzzle.can_reset())
 	if not Motion.running(_all_good):
 		check_button.set_label(_check_label)
 

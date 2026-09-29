@@ -211,7 +211,8 @@ func refresh(puzzle) -> void:
 	# there to replay and Reset is the only way back to it: the win screen
 	# never comes, so there is no Back to camp button under it either. Every
 	# other board that is done is also solved, so nothing else moves.
-	reset_button.set_enabled(not done or (puzzle != null and not puzzle.is_solved()))
+	reset_button.set_enabled((not done or (puzzle != null and not puzzle.is_solved()))
+		and (puzzle == null or not puzzle.has_method("can_reset") or puzzle.can_reset()))
 	var left: int = puzzle.hints_left() if puzzle != null else 0
 	hint_button.set_enabled((left > 0 or hint_offer) and not done)
 	hint_button.badge = left

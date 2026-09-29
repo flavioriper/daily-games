@@ -41,7 +41,8 @@ CB_OUT_TIP,Shh... something under the lids giggled.,Psiu... alguém riu embaixo 
 CB_ROW_BACK,One more row. You have got this.,Mais uma fileira. Você consegue.,Una fila más. Tú puedes.
 CB_ROW_CLEARED,Cleared the row. The played rows stay.,Fileira limpa. As jogadas ficam.,Fila limpia. Las jugadas se quedan.
 CB_SHUFFLED,Two lids just traded places. Watch them!,Duas tampas acabaram de trocar de lugar. De olho!,Dos tapas acaban de cambiar de lugar. ¡Atento!
-CB_COOL,Cool. %s crossed off.,Beleza. %s riscados.,Genial. %s descartados.
+CB_COOL_1,Cool. That one is crossed off.,Beleza. Esse está riscado.,Genial. Ese queda descartado.
+CB_COOL_N,Cool. %s crossed off.,Beleza. %s riscados.,Genial. %s descartados.
 CB_ALL_HERE,Everyone's here!,Estão todos aqui!,¡Están todos!
 CB_WARMER,Warmer!,Esquentando!,¡Caliente!
 CB_SO_CLOSE,So close!,Quase!,¡Casi!

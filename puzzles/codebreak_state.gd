@@ -165,7 +165,11 @@ func undo() -> Dictionary:
 	row[s] = -1 if last.op == "place" else int(last.colour)
 	return {"slot": s, "colour": row[s]}
 
+## Zero once every seat is shown: a hint then has nothing to give, and a
+## video bought for one would be wasted.
 func hints_left() -> int:
+	if not revealed.has(false):
+		return 0
 	return hints + hints_extra - hints_used
 
 ## Seats the code's own friend in the leftmost seat no hint has claimed and
