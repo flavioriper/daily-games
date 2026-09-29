@@ -44,7 +44,8 @@ CARTOON = ("cute cartoon comedy sound effect, playful, rounded, soft, not harsh,
 COZY = "cozy, warm, soft, intimate, close mic, quiet room, no music, no voice"
 
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
-#       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade]])
+#       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
+#                                     | "fall": the take, then itself 3 semitones lower]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
@@ -59,7 +60,7 @@ SETS = {
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         # check and blush_in re-prompted 2026-09-29 (insane polish): the low
         # marimba boops and the wooden "bonk" read as a scold, not a shrug.
-        "check":    ("two soft muffled felt-mallet kalimba notes stepping gently down, a kind cozy 'not quite yet', warm and round, never a buzzer", 0.7, -6),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
         "reset":    ("a quick ripple of many small soft wooden pops, tiles being swept off a board", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
@@ -67,13 +68,13 @@ SETS = {
         "blush_in": ("a tiny soft felt mallet tap on a small wooden block with a gentle little pitch dip, a shy muffled 'oops', very short and quiet", 0.5, -10),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of tiles appearing", 1.0, -9),
         # Hearts, streaks and rewards (2026-09-29 insane polish, spec section 3).
-        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -8),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -6),
-        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -7),
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
         "combo":         ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
         "confetti":      ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
         "line_silly":    ("a playful soft wooden boing, a springy muffled wood bounce with a tiny giggling kalimba trill on top, cute and short", 0.7, -7),
-        "flawless":      ("a soft paper rubber stamp thump then a warm glockenspiel chime ringing up, a gentle proud 'perfect'", 1.2, -5),
+        "flawless":      ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, a gentle proud 'perfect'", 1.5, -5),
         "liar":          ("a sneaky tiptoeing soft pizzicato plucked string phrase, caught red-handed, cheeky and playful, light", 1.0, -7),
         "party":         ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
     },
@@ -760,6 +761,21 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False) 
                         "-ar", "44100", "-c:a", "libvorbis", "-q:a", "5", str(out)], check=True)
 
 
+def fall(mp3: pathlib.Path) -> pathlib.Path:
+    # A two-note "not yet" built from one note: the API gave Binairo's check a
+    # single kalimba hit three takes running (2026-09-29), however the prompt
+    # asked for two. The first note is cut at 0.22 s, the same take a minor
+    # third lower comes in at 0.2 s.
+    out = mp3.with_name(mp3.stem + "_fall.wav")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), "-filter_complex",
+                    "[0]asplit[a][b];"
+                    "[a]atrim=0:0.22,afade=t=out:st=0.17:d=0.05[n1];"
+                    "[b]asetrate=44100*0.8409,aresample=44100,adelay=200|200[n2];"
+                    "[n1][n2]amix=inputs=2:normalize=0:duration=longest",
+                    str(out)], check=True)
+    return out
+
+
 def main() -> None:
     if len(sys.argv) < 2 or sys.argv[1] not in SETS:
         sys.exit(f"usage: gen_sfx.py <{'|'.join(SETS)}> [cue ...]")
@@ -778,6 +794,8 @@ def main() -> None:
         if "--new" in flags or not raw.exists():
             raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
+        if "fall" in rest[1:]:
+            raw = fall(raw)
         to_ogg(raw, out, peak, loop)
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
