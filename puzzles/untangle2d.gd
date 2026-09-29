@@ -279,6 +279,8 @@ var _patch_mesh: ArrayMesh
 var _over_for: Array = []
 var _bound_for: Array = []
 var _stir_at := 0.0
+var _lines_moved := true
+var _cross_for := PackedInt32Array()
 var _hot_preview: Array = []                  # [crossing change, wraps] for the hole under the peg
 var _dirty := true
 
@@ -344,6 +346,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_wraps = {}
 	_cross = []
 	_hot_preview = []
+	_over_for = []
+	_bound_for = []
 	_stop_all()
 	_close_card()
 	_clear_stamp()
@@ -448,6 +452,7 @@ func _layout() -> void:
 	_rope_mesh.resize(state.ropes)
 	_look = []
 	_look.resize(state.ropes)
+	_over_for = []
 	_dirty = true
 
 ## The straight length of a rope reaching `holes` holes round the ring.
@@ -702,6 +707,7 @@ func _step_ropes(dt: float, t: float) -> bool:
 		_bound_for = key.duplicate(true)
 		_bind_all()
 		_stir_at = t
+		_lines_moved = true
 	if Motion.reduce:
 		# No swing: the ropes go straight to where they hang, a few still
 		# steps a frame while anything is moving.
@@ -728,6 +734,7 @@ func _step_ropes(dt: float, t: float) -> bool:
 				for i in Rope.SEGS:
 					rope.q[i] = rope.q[i].lerp(rope.p[i], 0.5)
 			rope.step(_peg_px[2 * r], _peg_px[2 * r + 1])
+			_lines_moved = true
 			if rope.energy() < SLEEP_ENERGY and rope.extra < 0.0005:
 				_calm[r] += 1
 			else:
@@ -750,6 +757,7 @@ func _settle_ropes(steps: int) -> void:
 			rope.step(_peg_px[2 * r], _peg_px[2 * r + 1])
 		rope.q = rope.p.duplicate()
 		rope.extra = 0.0
+	_lines_moved = true
 
 func _pegs_moved(r: int) -> bool:
 	return _held >= 0 and (_held >> 1) == r or _mv[2 * r] != null or _mv[2 * r + 1] != null
@@ -911,7 +919,12 @@ func _rope_stack() -> Array:
 ## rope at rest keeps the mesh it has), the crossing marks with the thread and
 ## the kitten's yarn, the faces and hats on the pegs, and the paw.
 func _rebuild(t: float) -> void:
-	_find_crossings()
+	# The crossings are found again only when a rope's line has moved (or
+	# the tangle drawn has changed); a frame that only beats a glow keeps them.
+	if _lines_moved or _cross_for != _tw_px:
+		_lines_moved = false
+		_cross_for = _tw_px.duplicate()
+		_find_crossings()
 	_stack = _rope_stack()
 	var b := Face.Builder.new()
 	_draw_knots(b, t)
@@ -1140,10 +1153,14 @@ func _bind_all() -> void:
 		for item in list:
 			var br: Dictionary = item[1]
 			var dir: float = item[3]
-			var half := (br.axis as Vector2) * dir * float(br.len) * 0.5
-			way.append((br.c as Vector2) - half)
+			# Each rope comes into the braid on its own side of its line and
+			# leaves on the side its turns bring it to, so the two never meet
+			# on the way in; the twist between is drawn (Rope._twist).
+			var enter := _braid_point(br, float(item[2]), 0.0 if dir > 0.0 else 1.0)
+			var leave := _braid_point(br, float(item[2]), 1.0 if dir > 0.0 else 0.0)
+			way.append(enter)
 			firm.append(false)
-			way.append((br.c as Vector2) + half)
+			way.append(leave)
 			firm.append(true)
 			most = maxf(most, float(br.w))
 			var turn := (1.0 - float(br.w)) * BRAID_SPIN * (1.0 if float(_wraps[br.k].goal) > 0.0 else -1.0)
@@ -1186,6 +1203,27 @@ func _find_crossings() -> void:
 			radius = float(br.len) * 0.55 + _wd * 1.2
 		else:
 			var hit = Geometry2D.segment_intersects_segment(_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1])
+			var bent := not (_ropes[pr.x] as Rope).wiggles.is_empty() or not (_ropes[pr.y] as Rope).wiggles.is_empty()
+			if bent:
+				# A rope bent round a braid of its own crosses this one
+				# somewhere else than the pegs' lines say (two to nine widths
+				# off, measured): search wide, and keep the meeting nearest
+				# where the lines cross.
+				var aim: Vector2 = hit if hit != null else (_peg_px[2 * pr.x] + _peg_px[2 * pr.x + 1] + _peg_px[2 * pr.y] + _peg_px[2 * pr.y + 1]) * 0.25
+				var all: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], aim, _wd * 10.0, BRAID_SIDE * _wd)
+				if all.is_empty():
+					continue
+				var best: Array = all[0]
+				for h in all:
+					if (h[2] as Vector2).distance_to(aim) < (best[2] as Vector2).distance_to(aim):
+						best = h
+				var top := _tw_px[k] & 1
+				var reach := _wd * PATCH_HALF * 2.0
+				if top == 1:
+					_cross.append([pr.x, pr.y, best[0], best[1], best[2], reach])
+				else:
+					_cross.append([pr.y, pr.x, best[1], best[0], best[2], reach])
+				continue
 			if hit == null:
 				continue
 			near = hit

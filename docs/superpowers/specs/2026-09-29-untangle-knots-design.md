@@ -163,3 +163,27 @@ moved, adaptive smoothing. Not run on a phone or ANGLE.
   top, so she wraps ropes as readily as she frees them -- on purpose.
 - Carrying a peg on Insane costs about 2 ms more than the ring build did; a
   phone reading is owed.
+
+## Review fixes (2026-09-29)
+
+An independent review (60,000 random steps: every move undone exactly, parity
+always right; the dealer's answer through `State.move` wins on its last move
+on 160 boards; the drawn tangle equals the state after chained drops, a swat
+behind a drop, a relayout mid-flight and `settle_now`) found, and this fixed:
+
+- **A once-crossing pair lost its drawn crossing when one rope was bent into
+  a braid** (27 of 131 pairs on 12 boards): the search looked only near where
+  the pegs' lines meet, and a bent rope crosses 2-9 widths away. Such pairs are
+  now searched wide and the meeting nearest the lines' crossing is taken; the
+  probe's miss count is 0. The search runs only when a line moved.
+- **An Insane hint could come back empty on a live board** (8 of ~240 calls):
+  the last fallback only took a move that crossed less, and undoing a wrap
+  usually crosses more first. It now takes the move the search scores nearest
+  home, so a watched video always moves a peg.
+- Each rope now comes into a braid on its own side of its line (the twist
+  drawn on top is the swing less the straight run), so the two no longer meet
+  on the way in.
+- Kept as designed, raised by the review: which of the other rope's ends meets
+  a wrapped pair's first crossing is read off the ring, so carrying a peg past
+  its own rope's other peg (crossing nothing) can turn a side-by-side braid
+  round -- the tangle stays consistent and reversible, the preview shows it.

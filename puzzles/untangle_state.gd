@@ -295,17 +295,18 @@ func hint_step() -> Array:
 			if at[back_peg] == int(last.to) and drop_check(back_peg, int(last.from)) == 0:
 				return [back_peg, int(last.to), int(last.from)]
 	if way == null or way.is_empty():
-		# No way home in reach of the search: the move that leaves fewest
-		# crossings, so a hint is still something.
+		# No way home in reach of the search: the move that looks nearest
+		# home, even one that crosses more first (undoing a wrap often
+		# does), so a hint is always a move while any move exists.
 		var best: Array = []
-		var fewest := crossings()
+		var lowest := 1 << 30
 		for m in Gen.legal_moves(at, holes, reach):
 			var a := at.duplicate()
 			var t := tw.duplicate()
 			Gen.apply(a, t, ropes, m[0], m[1])
-			var c := Gen.crossing_count(t)
-			if c < fewest:
-				fewest = c
+			var sc := Gen.score(t, ropes)
+			if sc < lowest:
+				lowest = sc
 				best = [m[0], at[m[0]], m[1]]
 		return best
 	return way[0]

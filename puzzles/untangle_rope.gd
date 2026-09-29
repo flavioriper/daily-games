@@ -231,18 +231,23 @@ func _twist(wg: Dictionary) -> void:
 	var perp: Vector2 = wg.perp
 	var L: float = wg.len
 	var n: float = wg.n
-	var swing: float = float(wg.swing) * float(wg.side) * float(wg.w)
+	var swing: float = float(wg.swing) * float(wg.side)
+	var w: float = wg.w
 	# A braid cinching in or letting go turns as it does: its crossings run
 	# along it, so an unwind reads as a spin and not a fade.
 	var spin: float = float(wg.get("spin", 0.0))
 	var near: float = absf(float(wg.swing)) * 3.0 + 4.0
+	# The chain already runs from its side at one end to its side at the
+	# other (straight between): what is laid on is the swing across and back
+	# less that straight run, so nothing moves at the ends.
+	var end_side := cos(PI * n)
 	for i in range(1, _line.size() - 1):
 		var d := _line[i] - c
 		var u := d.dot(axis) / L + 0.5
-		if u < -0.3 or u > 1.3 or absf(d.dot(perp)) > near:
+		if u <= 0.0 or u >= 1.0 or absf(d.dot(perp)) > near:
 			continue
-		var ramp := smoothstep(-0.3, 0.0, u) * smoothstep(1.3, 1.0, u)
-		_line[i] += perp * swing * cos(PI * n * clampf(u, 0.0, 1.0) + spin * ramp) * ramp
+		var shape := cos(PI * n * u + spin * sin(PI * u)) - lerpf(1.0, end_side, u)
+		_line[i] += perp * swing * shape * w
 
 func cum() -> PackedFloat32Array:
 	polyline()
