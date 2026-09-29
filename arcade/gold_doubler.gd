@@ -12,6 +12,7 @@ var _gold := 0
 var _line: Control
 var _button: Button
 var _used := false
+var _offered := false
 
 func _init(run_gold: int) -> void:
 	_gold = run_gold
@@ -34,7 +35,9 @@ func _sync() -> void:
 		_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_button.pressed.connect(_on_press)
 		add_child(_button)
-		Ads.offered("double")
+		if not _offered:
+			_offered = true
+			Ads.offered("double")
 	elif not show and _button != null:
 		_button.queue_free()
 		_button = null
@@ -51,6 +54,7 @@ func _on_press() -> void:
 			_used = false
 			if _button != null:
 				_button.disabled = false
+			_sync()
 			return
 		var got := Wallet.pay_bonus(_gold)
 		_line.queue_free()

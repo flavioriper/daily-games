@@ -106,6 +106,19 @@ func _process(delta: float) -> bool:
 				print("doubler ", d, " can_reward ", root.get_node("Ads").can_reward("double"), " fake ", root.get_node("Ads")._fake_full)
 				print("run gold ", _s._run_gold, " wallet ", _wallet.gold(), " room ", _wallet.arcade_room(), " button ", b.text if b != null else "none")
 				_shot("1_before")
+				# a skipped video first: the button must come back, gold unchanged
+				root.get_node("Ads")._fake_full = "skip"
+				if b != null:
+					b.pressed.emit()
+				_step = 25
+				_at = _t
+		25:
+			if _t > _at + 2.5:
+				var d := _find(root)
+				var b := _button(d) if d != null else null
+				print("skipped: wallet ", _wallet.gold(), " button ", ("present, disabled=%s" % b.disabled) if b != null else "GONE")
+				_shot("1b_skipped")
+				root.get_node("Ads")._fake_full = "1"
 				if b != null:
 					b.pressed.emit()
 				_step = 3
@@ -117,12 +130,11 @@ func _process(delta: float) -> bool:
 				_shot("2_after")
 				# a capped day: the run itself uses up the cap
 				_s.queue_free()
-				_wallet.pay_bonus(_wallet.arcade_room() - 0)  # spend the rest of the cap
 				_wallet.reload()
 				_wallet.path = OS.get_user_data_dir() + "/_shot_doubler_wallet2.cfg"
 				DirAccess.remove_absolute(_wallet.path)
 				_wallet.reload()
-				_wallet.pay_bonus(55)
+				_wallet.pay_bonus(_wallet.arcade_room() - 5)  # leaves 5: the run's own 5 uses it up
 				_menu._show_tab("arcade")
 				_menu._open_arcade("firefly")
 				_step = 4
