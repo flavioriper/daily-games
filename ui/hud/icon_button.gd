@@ -27,6 +27,12 @@ var badge: int = 0:
 	set(v):
 		badge = v
 		_refresh_badge()
+## An `Icons` name drawn in the badge in place of the number when `badge` is
+## 0 (the hint button's play mark: a video hint is on offer); "" hides it.
+var badge_glyph := "":
+	set(v):
+		badge_glyph = v
+		_refresh_badge()
 ## Where the badge rests; the top bar's bounce hops from here.
 var badge_rest := Vector2.ZERO
 var _press_tw: Tween
@@ -177,8 +183,8 @@ func _layout() -> void:
 func _refresh_badge() -> void:
 	if _badge == null:
 		return
-	_badge.visible = badge > 0
-	_badge_label.text = str(badge)
+	_badge.visible = badge > 0 or badge_glyph != ""
+	_badge_label.text = str(badge) if badge > 0 else ""
 	_badge.queue_redraw()
 
 func _draw_glyph() -> void:
@@ -190,3 +196,6 @@ func _draw_badge() -> void:
 	var c := Vector2(BADGE_R, BADGE_R)
 	_badge.draw_circle(c, BADGE_R, Pal.SURFACE, true, -1.0, true)
 	_badge.draw_circle(c, BADGE_R - 4.0, Pal.ACCENT_2, true, -1.0, true)
+	if badge == 0 and badge_glyph != "":
+		var inset := BADGE_R * 0.4
+		Icons.paint(_badge, badge_glyph, Rect2(Vector2(inset, inset), Vector2.ONE * (BADGE_R * 2.0 - inset * 2.0)), Pal.SURFACE)

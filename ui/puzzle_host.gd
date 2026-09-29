@@ -28,6 +28,7 @@ const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const RemoveAdsSheet = preload("res://ui/hud/remove_ads_sheet.gd")
 const RulesSheet = preload("res://ui/hud/rules_sheet.gd")
+const RewardPrompt = preload("res://ui/ads/reward_prompt.gd")
 const HowToPlay = preload("res://ui/hud/how_to_play.gd")
 
 const MARGIN := 40
@@ -40,6 +41,7 @@ const ENTER_FOOTER := 0.3
 const ENTER_FOOTER_FADE := 0.25
 
 var _puzzle: Control
+var _ad_hint_taken := false
 var _entry: Dictionary
 var _difficulty: int = 0
 var _bank_step := 0
@@ -69,6 +71,7 @@ func _ready() -> void:
 	theme = CozyTheme.make()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Ads.banner_changed.connect(func(_visible: bool, _height: float) -> void: _apply_insets())
+	Ads.rewards_changed.connect(_refresh)
 	var insets := SafeArea.insets(self)
 	_margins = MarginContainer.new()
 	var margins := _margins
@@ -174,6 +177,7 @@ func _enter() -> void:
 
 
 func _spawn(the_seed: int) -> void:
+	_ad_hint_taken = false
 	if is_instance_valid(_puzzle):
 		_puzzle.queue_free()
 	var script: GDScript = load(_entry.script)
@@ -205,6 +209,7 @@ func _spawn(the_seed: int) -> void:
 ## never builds it (ui/flat/flat_host.gd).
 func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
+	top_bar.hint_offer = _hint_offer()
 	top_bar.refresh(p)
 	rules_sheet.refresh(p)
 	if action_bar != null:
@@ -216,15 +221,43 @@ func _on_undo() -> void:
 			Analytics.track("undo_used", {"puzzle_id": _entry.get("id", "")})
 		_refresh()
 
+## One video hint a board, once its own hints are spent.
+func _hint_offer() -> bool:
+	return is_instance_valid(_puzzle) and not _ad_hint_taken and not _puzzle.is_done() \
+		and _puzzle.capabilities().has("hint") and _puzzle.hints_left() <= 0 \
+		and Ads.can_reward("hint")
+
 func _on_hint() -> void:
-	if is_instance_valid(_puzzle):
-		if _puzzle.hint():
-			Analytics.track("hint_used", {
-				"puzzle_id": _entry.get("id", ""),
-				"difficulty": _difficulty,
-				"hints": _puzzle.hints_used,
-			})
-		_refresh()
+	if not is_instance_valid(_puzzle):
+		return
+	if _puzzle.hints_left() <= 0 and _hint_offer():
+		_ask_hint_video()
+		return
+	if _puzzle.hint():
+		Analytics.track("hint_used", {
+			"puzzle_id": _entry.get("id", ""),
+			"difficulty": _difficulty,
+			"hints": _puzzle.hints_used,
+		})
+	_refresh()
+
+func _ask_hint_video() -> void:
+	if get_node_or_null("RewardPrompt") != null:
+		return
+	Ads.offered("hint")
+	var p := RewardPrompt.new("AD_HINT_TITLE", "AD_HINT_BODY", "bulb")
+	p.name = "RewardPrompt"
+	p.chosen.connect(func(watch: bool) -> void:
+		if not watch:
+			return
+		Ads.show_rewarded("hint", func(earned: bool) -> void:
+			if not earned or not is_instance_valid(_puzzle) or _puzzle.is_done():
+				_refresh()
+				return
+			_ad_hint_taken = true
+			_puzzle.add_hint()
+			_on_hint()))
+	add_child(p)
 
 func _on_check() -> void:
 	if is_instance_valid(_puzzle):

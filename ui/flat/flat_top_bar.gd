@@ -46,6 +46,9 @@ var back_button: Button
 var undo_button: Button
 var reset_button: Button
 var hint_button: Button
+## Set by the host before `refresh`: a video hint is on offer once the
+## board's own are spent (the badge then shows a play mark).
+var hint_offer := false
 var settings_button: Button
 var _title: Label
 var _motto: Label
@@ -210,8 +213,9 @@ func refresh(puzzle) -> void:
 	# other board that is done is also solved, so nothing else moves.
 	reset_button.set_enabled(not done or (puzzle != null and not puzzle.is_solved()))
 	var left: int = puzzle.hints_left() if puzzle != null else 0
-	hint_button.set_enabled(left > 0 and not done)
+	hint_button.set_enabled((left > 0 or hint_offer) and not done)
 	hint_button.badge = left
+	hint_button.badge_glyph = "play" if left <= 0 and hint_offer and not done else ""
 	_set_bounce(hint_button.visible and left > 0 and not done)
 
 ## The badge hops every BADGE_CYCLE seconds while hints remain, as on the

@@ -525,3 +525,8 @@ BST_CHANCE_POSY,Five more moves.,Mais cinco movimentos.,Cinco movimientos más.
 AGE_TITLE,What year were you born?,Em que ano você nasceu?,¿En qué año naciste?
 AGE_BODY,"We ask once, so the ads you see suit your age. Your answer stays on this phone.","Perguntamos só uma vez, para que os anúncios combinem com a sua idade. A resposta fica só neste aparelho.","Lo preguntamos una sola vez para que los anuncios sean adecuados a tu edad. La respuesta se queda en este teléfono."
 AGE_CONTINUE,Continue,Continuar,Continuar
+AD_HINT_TITLE,One more hint?,Mais uma dica?,¿Una pista más?
+AD_HINT_BODY,Watch a short video to get one more hint on this puzzle.,Assista a um vídeo curto e ganhe mais uma dica neste puzzle.,Mira un video corto y consigue una pista más en este puzle.
+AD_WATCH,Watch video,Assistir vídeo,Ver video
+AD_NO,No thanks,"Não, obrigado","No, gracias"
+AD_NOT_READY,The video isn't ready yet. Try again in a moment.,O vídeo ainda não está pronto. Tente de novo daqui a pouco.,El video aún no está listo. Inténtalo de nuevo en un momento.
