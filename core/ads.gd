@@ -60,8 +60,11 @@ func start() -> void:
 		return
 	_consent()
 
+## FileAccess, not ResourceLoader: no resource loader recognises .cfg, so
+## ResourceLoader.exists() answers false for it everywhere, and every launch
+## stopped here before consent or a banner was ever asked for.
 func _plugin_present() -> bool:
-	return ResourceLoader.exists("res://addons/admob/plugin.cfg")
+	return FileAccess.file_exists("res://addons/admob/plugin.cfg")
 
 func _consent() -> void:
 	var request := ConsentRequestParameters.new()
