@@ -1,5 +1,29 @@
 # Untangle
 
+**The knot rule (2026-09-29, evening)**: every pair of ropes keeps how many
+times it crosses and which lies on top; a peg carried over the top lifts its
+rope off where it lay on top and wraps it tighter where it lay under. Spec:
+`docs/superpowers/specs/2026-09-29-untangle-knots-design.md` -- read it
+first; the ring spec below it still holds for everything it does not change.
+
+- **The rule** is `Gen.apply(at, tw, ropes, peg, hole)` on int arrays
+  (`tw[pair] = n * 2 + t`). A move made back undoes it exactly -- the dealer,
+  the kitten's backwards deal and undo all lean on that; keep it true
+  (`tests/test_untangle.gd` walks it). `Gen.crosses` is now "a peg carried
+  from a to b passes over the rope c-d" as well as the chord test.
+- **Drawn tangle vs state.** `_tw_px` is the tangle as drawn: it takes the
+  player's change when the peg lands (`res.tw_mid`) and the kitten's when she
+  swats, so braids cinch on the landing. Anything that changes `state.tw`
+  outside a move (undo, reset, answer, restore) calls `_set_shown`.
+- **Braids** are laid out from peg positions only (`_braid`), bound into the
+  chains by `_bind_all` only when a peg or a braid moved (`_bound_for`), and
+  twisted on the drawn line (`Rope.wiggles`), not in the chain.
+- **Over and under** come from `_find_crossings` (drawn lines) and
+  `_build_patches`; the patch reach is per crossing (index 5 of a `_cross`
+  entry).
+- **Costs to watch**: crossing search, patches, and a rope mesh per moving
+  rope. A new per-frame pass over every rope's drawn line shows up at once.
+
 Rebuilt 2026-09-29 as a wooden ring of pegs with physical rope, thread on Hard
 and Insane, and an Insane kitten. Spec:
 `docs/superpowers/specs/2026-09-29-untangle-ring-design.md` (read it first; the

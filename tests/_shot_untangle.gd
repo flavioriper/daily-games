@@ -350,9 +350,7 @@ func _one_bad_move() -> void:
 		for h in st.holes:
 			if st.drop_check(p, h) != 0:
 				continue
-			var t: PackedInt32Array = st.at.duplicate()
-			t[p] = h
-			var c: int = load("res://puzzles/untangle_gen.gd").crossing_count(t, st.ropes)
+			var c: int = int(st.preview(p, h)[0])
 			if c > worst:
 				worst = c
 				best = [p, h]
@@ -403,9 +401,7 @@ func _wrong_script(show_answer: bool) -> void:
 				for h in st.holes:
 					if st.drop_check(p, h) != 0:
 						continue
-					var t: PackedInt32Array = st.at.duplicate()
-					t[p] = h
-					var c: int = load("res://puzzles/untangle_gen.gd").crossing_count(t, st.ropes)
+					var c: int = int(st.preview(p, h)[0])
 					if c > worst:
 						worst = c
 						best = [p, h]

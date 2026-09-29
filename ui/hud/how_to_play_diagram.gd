@@ -140,11 +140,17 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 	var p := _ease(_progress)
 	match puzzle_id:
 		"untangle":
-			# Two ropes that cross; one peg lifts from the top right into
-			# the empty hole below it and they no longer do.
+			# Two cords that cross, the coral one lying on top of the yellow;
+			# the top cord's peg lifts from the top right into the empty hole
+			# below and it slides off. Rims so over and under read.
 			var peg := _centre(board, cell, 3, 0).lerp(_centre(board, cell, 3, 2), p)
-			draw_line(_centre(board, cell, 0, 0), _centre(board, cell, 3, 1), Color("f0b34a"), 9.0, true)
-			draw_line(_centre(board, cell, 0, 1), peg, Color("e8806a") if p > 0.5 else Pal.BAD, 9.0, true)
+			var under := [_centre(board, cell, 0, 0), _centre(board, cell, 3, 1)]
+			var over := [_centre(board, cell, 0, 1), peg]
+			draw_line(under[0], under[1], Color("b98d2e"), 14.0, true)
+			draw_line(under[0], under[1], Color("f0c35a"), 9.0, true)
+			draw_line(over[0] + Vector2(1.5, 4.0), over[1] + Vector2(1.5, 4.0), Color(Pal.TEXT, 0.18), 13.0, true)
+			draw_line(over[0], over[1], Color("b9573f"), 14.0, true)
+			draw_line(over[0], over[1], Color("e8806a"), 9.0, true)
 			draw_circle(_centre(board, cell, 3, 2), cell * 0.3, Color("5f4229"))
 			for point in [_centre(board, cell, 0, 0), _centre(board, cell, 3, 1), _centre(board, cell, 0, 1), peg]:
 				draw_circle(point, cell * 0.3, Pal.WOOD_DEEP)
