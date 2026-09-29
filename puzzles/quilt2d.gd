@@ -1381,8 +1381,14 @@ func undo() -> bool:
 	moved.emit()
 	return true
 
+## One more hint beyond the budget (a rewarded video's), kept here and in
+## the state, which guards its own hint.
+func add_hint() -> void:
+	hints_extra += 1
+	_state.hints_extra += 1
+
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Sews one patch of the answer where the board has not got it, taking up
 ## anything in its way first. The patch it sews is a given from then on: it

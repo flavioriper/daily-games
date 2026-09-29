@@ -1147,6 +1147,10 @@ func undo() -> bool:
 	check_solved()
 	return true
 
+## One more hint beyond the budget (a rewarded video's), kept in the state.
+func add_hint() -> void:
+	_state.hints_extra += 1
+
 func hints_left() -> int:
 	return _state.hints_left()
 

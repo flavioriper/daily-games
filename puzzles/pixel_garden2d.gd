@@ -929,7 +929,7 @@ func _show_changes(before: PackedInt32Array, pegs: PackedInt32Array, per: float,
 	_busy_for(Motion.BUMP_TIME + Motion.stagger(pegs.size(), per))
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Puts one peg right and fuses it: a bead out of place is lifted (or turned
 ## the right colour), else a missing bead drops in, under the hint's ring.

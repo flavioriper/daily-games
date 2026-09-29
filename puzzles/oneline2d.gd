@@ -1024,7 +1024,7 @@ func _snapshot_caps() -> Dictionary:
 	return caps
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Shows the next safe step. Before the stroke begins that is a post it may
 ## begin at, and the walker drops onto it from above under a ring; after, it

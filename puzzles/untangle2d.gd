@@ -1065,7 +1065,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Hangs one lantern on its peg: it walks to the place the generator's own
 ## untangled drawing put it, and as it lands a green ring pulses out of the

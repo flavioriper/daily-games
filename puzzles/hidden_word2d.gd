@@ -1244,6 +1244,10 @@ func is_solved() -> bool:
 func share_glyphs() -> String:
 	return state.share_glyphs()
 
+## One more hint beyond the budget (a rewarded video's), kept in the state.
+func add_hint() -> void:
+	state.hints_left += 1
+
 func hints_left() -> int:
 	return state.hints_left
 

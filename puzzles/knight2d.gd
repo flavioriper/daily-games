@@ -1093,7 +1093,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Plays the next hop of the shortest line from here for you. From a lost
 ## position -- no line left, or none inside Insane's moves left -- it spends

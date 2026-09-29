@@ -2162,7 +2162,7 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## The sun finds the best line it can from here -- every angle played out on
 ## a copy of the garden -- turns to it, and shows the long guide.

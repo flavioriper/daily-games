@@ -956,7 +956,7 @@ func undo() -> bool:
 func hints_left() -> int:
 	if _difficulty >= 3:
 		return 0
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## One member of the day's proof, laid in gold; the player's own members
 ## furthest from it come down if the budget will not stretch to it.

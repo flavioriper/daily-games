@@ -1124,7 +1124,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Pitches one tent from the answer and pegs it down for good: a ring pulses
 ## out of the square, the tent drops in from above, sparkles rise. Counts no

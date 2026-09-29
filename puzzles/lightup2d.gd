@@ -1440,7 +1440,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Lights one lantern from the answer and pins it for good: a ring pulses out
 ## of the stone, the lamp drops in from above, sparkles rise, and the light

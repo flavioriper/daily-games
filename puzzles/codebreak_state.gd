@@ -42,6 +42,8 @@ var locked: Array = []
 ## Places and pops in the active row, newest last; undo takes one back.
 var history: Array = []
 var hints_used := 0
+## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
+var hints_extra := 0
 var lost := false
 
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
@@ -54,6 +56,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	guesses = []
 	marks = []
 	hints_used = 0
+	hints_extra = 0
 	lost = false
 	_fresh_row()
 
@@ -126,7 +129,7 @@ func undo() -> Dictionary:
 	return {"slot": s, "colour": row[s]}
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Seats the code's own friend in the leftmost seat no hint has claimed and
 ## locks it, as the island's `_locked` does, so every later row starts with

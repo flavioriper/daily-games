@@ -976,7 +976,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Plays the next move of a shortest way out, sliding its block along the
 ## way it goes.

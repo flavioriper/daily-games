@@ -1376,7 +1376,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Lights the next tile of the shortest unfound word's path -- its first
 ## tile, then its second. That is the one hint this game can give: the words

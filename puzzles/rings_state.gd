@@ -42,6 +42,8 @@ var held := -1
 var held_from := -1
 var colours := 6
 var hints_used := 0
+## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
+var hints_extra := 0
 ## Insane's move budget: moves the pegs may take from the deal, or 0 for no
 ## limit (every other band). `log.size()` is what it is spent against.
 var par := 0
@@ -78,6 +80,7 @@ func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	held = -1
 	held_from = -1
 	hints_used = 0
+	hints_extra = 0
 
 ## A peg nothing comes off again: full and all one colour.
 func locked(i: int) -> bool:
@@ -200,7 +203,7 @@ func reset_board() -> void:
 ## happened when it did not, nor lose a count for one that never played.
 func hint() -> Vector2i:
 	put_back()
-	if par > 0 or hints_used >= HINTS or is_solved():
+	if par > 0 or hints_used >= HINTS + hints_extra or is_solved():
 		return Vector2i(-1, -1)
 	var path: Array = Gen.solve(pegs)
 	if path.is_empty():

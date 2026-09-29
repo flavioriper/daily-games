@@ -1077,7 +1077,7 @@ func undo() -> bool:
 ## stored there is only one of several seatings, so it cannot be handed out
 ## as a hint, and the button stays disabled.
 func hints_left() -> int:
-	return 0 if not state.ok else HINTS - hints_used
+	return 0 if not state.ok else HINTS + hints_extra - hints_used
 
 ## Seats the answer's queen in the first row that lacks her and pins her: a
 ## wrong queen in her way pops out first, a ring pulses out of the cell, the

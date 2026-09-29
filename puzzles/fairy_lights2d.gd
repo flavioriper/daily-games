@@ -1396,7 +1396,7 @@ func undo() -> bool:
 ## Three of them, and the cap is this board's rather than the state's -- the
 ## state counts what it gave, the board decides how much it may give.
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Turns the first unsolved cell in reading order to its proven orientation
 ## and pins it there, so it can never be turned again. Reading order rather

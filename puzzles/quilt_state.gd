@@ -70,6 +70,8 @@ var locked := PackedByteArray()
 ## a hint "locked": int}.
 var history: Array = []
 var hints_used := 0
+## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
+var hints_extra := 0
 ## Derived: cell index -> the patch covering it, -1 for none. Rebuilt after
 ## every change, never stored and never in history, so an undo that moves a
 ## patch takes its cover with it without any bookkeeping of its own.
@@ -99,6 +101,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	locked.resize(shapes.size())
 	history = []
 	hints_used = 0
+	hints_extra = 0
 	recompute()
 
 # ------------------------------------------------------------- reading it
@@ -182,7 +185,7 @@ func is_solved() -> bool:
 	return quilt_cells > 0 and covered() == quilt_cells
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Rebuilds `cover` from where the patches are sitting.
 func recompute() -> void:

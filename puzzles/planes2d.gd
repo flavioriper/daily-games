@@ -1170,7 +1170,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Rings a plane that can go and leaves a wash under it until it does. It
 ## never launches it: **naming a legal move is the whole of the help this

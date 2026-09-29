@@ -23,6 +23,8 @@ signal ended
 var moves: int = 0
 var elapsed: float = 0.0
 var hints_used: int = 0
+## Hints given on top of the board's own budget (a rewarded video's, core/ads.gd).
+var hints_extra: int = 0
 var checks: int = 0
 ## How many times New was pressed since this board's card opened; a banked
 ## Insane board (core/insane_bank.gd) steps its pick by it. The host sets it
@@ -56,6 +58,10 @@ func can_undo() -> bool: return false
 ## Reverts the last move. True when something was undone.
 func undo() -> bool: return false
 func hints_left() -> int: return 0
+## One more hint beyond the budget. Boards that keep their count in a state
+## object override this to add it there.
+func add_hint() -> void:
+	hints_extra += 1
 ## Fills one cell from the solution. True when a cell was filled.
 func hint() -> bool: return false
 ## Marks the cells that differ from the solution. Returns how many; -1 when unsupported.
@@ -91,6 +97,7 @@ func start(rng: RandomNumberGenerator, difficulty: int) -> void:
 	moves = 0
 	elapsed = 0.0
 	hints_used = 0
+	hints_extra = 0
 	checks = 0
 	_done = false
 	build(rng, difficulty)

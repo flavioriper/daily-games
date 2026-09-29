@@ -1370,7 +1370,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Draws one plot from the answer and pins it: a ring pulses out of the bed,
 ## the bed drops in from above, sparkles rise and its number is recounted.

@@ -1076,7 +1076,7 @@ func _restored(t: float) -> void:
 	_refresh()
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Cuts back to the right stretch and grows the answer on to the next leaf.
 func hint() -> bool:

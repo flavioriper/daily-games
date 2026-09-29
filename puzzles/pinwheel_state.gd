@@ -76,6 +76,8 @@ var turned := PackedInt32Array()
 ## One entry a move, newest last: {"piece": int, "from": int, "to": int}.
 var history: Array = []
 var hints_used := 0
+## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
+var hints_extra := 0
 ## Derived: cell index -> how many pieces sit on it. Rebuilt by `recompute()`
 ## after every change, never stored and never in history.
 var cover := PackedInt32Array()
@@ -100,6 +102,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	turned = start.duplicate()
 	history = []
 	hints_used = 0
+	hints_extra = 0
 	_pin_of = []
 	_pinned_at = PackedInt32Array()
 	_pinned_at.resize(maxi(0, cols * rows))
@@ -201,7 +204,7 @@ func is_solved() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Rebuilds `cover` from where the pieces are sitting. Called after every
 ## change, and the reason no gesture has to remember what it stained.

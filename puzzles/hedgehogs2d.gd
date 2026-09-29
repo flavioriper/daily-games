@@ -1129,7 +1129,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## The next thing logic can prove from what the player can see: a bare cell
 ## raked, else a hedgehog flagged and pinned.

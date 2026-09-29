@@ -1000,7 +1000,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Lays one tile the picture wants and grouts it in for good: the first cell
 ## in reading order the player has not filled. It drops in from above under a

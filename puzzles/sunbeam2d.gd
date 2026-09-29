@@ -1144,7 +1144,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Slides the next piece along the answer's beam home and pins it there.
 func hint() -> bool:

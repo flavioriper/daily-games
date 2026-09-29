@@ -261,8 +261,14 @@ func capabilities() -> Array[String]:
 func can_undo() -> bool:
 	return not _state.log.is_empty()
 
+## One more hint beyond the budget (a rewarded video's), kept here and in
+## the state, which guards its own hint.
+func add_hint() -> void:
+	hints_extra += 1
+	_state.hints_extra += 1
+
 func hints_left() -> int:
-	return State.HINTS - hints_used
+	return State.HINTS + hints_extra - hints_used
 
 func card_height(available: float) -> float:
 	return available

@@ -1021,6 +1021,11 @@ func undo() -> bool:
 	moved.emit()
 	return true
 
+## One more hint beyond the budget (a rewarded video's), kept in the state.
+func add_hint() -> void:
+	if state != null:
+		state.hints_left += 1
+
 func hints_left() -> int:
 	return state.hints_left if state != null else 0
 

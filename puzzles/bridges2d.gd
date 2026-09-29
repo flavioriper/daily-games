@@ -1996,7 +1996,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## Lays one plank the answer has and the board lacks -- never an overshoot, so
 ## a hint can never itself be the thing that pushes an islet over its number.

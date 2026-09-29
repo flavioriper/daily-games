@@ -604,7 +604,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Fills one cell from the solution: a ring pulses, the face drops in with a
 ## bounce and sparkles, and the tile takes the given look. Counts no move but

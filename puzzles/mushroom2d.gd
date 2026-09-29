@@ -1483,7 +1483,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS - hints_used
+	return HINTS + hints_extra - hints_used
 
 ## Plants the answer's next mushroom in reading order and pins it: a ring
 ## pulses out of the cell, she drops in from above, sparkles rise, and she

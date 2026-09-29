@@ -1456,7 +1456,7 @@ func _hop(f: int, x: int, delay: float) -> void:
 func hints_left() -> int:
 	if _difficulty >= 3:
 		return 0
-	return maxi(0, HINTS - hints_used)
+	return maxi(0, HINTS + hints_extra - hints_used)
 
 ## One fruit flies to its answer cup and is pinned there in gold; whatever
 ## was in that cup goes home first.
