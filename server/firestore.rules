@@ -38,6 +38,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Settings the game reads and only a person writes (tools/set_ads_config.sh).
+    match /config/{doc} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

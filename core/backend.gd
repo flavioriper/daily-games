@@ -222,6 +222,45 @@ static func submit(game: String, date_key: int, payload: Dictionary) -> Dictiona
 	})
 	return await _flush_queue()
 
+## A small settings document (config/<name>), for numbers worth changing
+## without a release: the ad pacing's today. Cache first, network behind.
+static func config(name: String) -> Dictionary:
+	var cache := "%s/config-%s.json" % [CACHE_DIR, name]
+	var cached := {}
+	if FileAccess.file_exists(cache):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(cache))
+		cached = d if typeof(d) == TYPE_DICTIONARY else {}
+	if not cached.is_empty():
+		@warning_ignore("return_value_discarded")
+		_fetch_config(name)  # deliberately not awaited
+		return {"ok": true, "data": cached, "error": ""}
+	var got := await _fetch_config(name)
+	if got.ok:
+		return got
+	return {"ok": not cached.is_empty(), "data": cached, "error": got.error}
+
+## GETs one config document and unwraps its single `json` field. Returns
+## the parsed data or an error dict for use by config().
+static func _fetch_config(name: String) -> Dictionary:
+	if not started() or not await _ensure_token():
+		return {"ok": false, "data": {}, "error": "offline"}
+	var res := await _http("%s/config/%s" % [_docs(), name], HTTPClient.METHOD_GET,
+		["Authorization: Bearer %s" % _id_token], "")
+	if not res.ok:
+		return {"ok": false, "data": {}, "error": str(res.error)}
+	var doc = JSON.parse_string(str(res.body))
+	var fields = doc.get("fields", {}) if typeof(doc) == TYPE_DICTIONARY else {}
+	var raw = fields.get("json", {}).get("stringValue", "") if typeof(fields) == TYPE_DICTIONARY else ""
+	var parsed = JSON.parse_string(str(raw))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {"ok": false, "data": {}, "error": "bad payload"}
+	var cache := "%s/config-%s.json" % [CACHE_DIR, name]
+	DirAccess.make_dir_recursive_absolute(CACHE_DIR)
+	var f := FileAccess.open(cache, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(parsed))
+	return {"ok": true, "data": parsed, "error": ""}
+
 ## Where `score` stands in the day's crowd: the share of players it beats,
 ## 0 to 100, or -1 when there is no crowd yet. Computed here rather than
 ## asked of the server, so the reveal costs no round trip and survives
