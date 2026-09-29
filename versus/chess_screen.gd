@@ -588,6 +588,7 @@ func _finish(status: int) -> void:
 	Analytics.track("versus_end", {"game": GAME, "level": level, "won": outcome == "won",
 		"result": outcome, "moves": rules.fullmove, "undos": _undos,
 		"colour": "white" if player == Rules.WHITE else "black"})
+	Ads.note_finished()
 	_fx.cue({"won": "win", "lost": "lose", "draw": "draw"}[outcome])
 	_faces[0].expression = Face.Expr.JOY if outcome == "won" else (Face.Expr.WORRIED if outcome == "lost" else Face.Expr.SLEEPY)
 	_faces[1].expression = Face.Expr.JOY if outcome == "lost" else (Face.Expr.WORRIED if outcome == "won" else Face.Expr.SLEEPY)

@@ -594,6 +594,7 @@ func _finish(status: int) -> void:
 		"result": outcome, "moves": _move_number(), "undos": _undos,
 		"taken": rules.lost(1 - player), "lost": rules.lost(player),
 		"colour": "light" if player == Rules.LIGHT else "dark"})
+	Ads.note_finished()
 	_fx.cue({"won": "win", "lost": "lose", "draw": "draw"}[outcome])
 	_faces[0].expression = Face.Expr.JOY if outcome == "won" else (Face.Expr.WORRIED if outcome == "lost" else Face.Expr.SLEEPY)
 	_faces[1].expression = Face.Expr.JOY if outcome == "lost" else (Face.Expr.WORRIED if outcome == "won" else Face.Expr.SLEEPY)

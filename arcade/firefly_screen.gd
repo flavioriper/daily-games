@@ -1348,6 +1348,7 @@ func _game_over() -> void:
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.stage,
 		"seconds": secs, "fired": sim.fired, "hits": sim.hits, "kills": sim.kills, "best": better})
+	Ads.note_finished()
 	_show_banner(tr("FF_GAME_OVER"), "", 1.6)
 	top_bar.refresh(self)
 	get_tree().create_timer(1.8).timeout.connect(_show_end.bind(better))

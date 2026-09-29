@@ -1120,7 +1120,8 @@ func _open_versus(game: String, level: int) -> void:
 			return
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		_show_list("versus"))
+		_show_list("versus")
+		Ads.leaving_game())
 	add_child(screen)
 	_list_root.visible = false
 
@@ -1148,7 +1149,8 @@ func _open_arcade(game: String) -> void:
 			return
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		_show_list("arcade"))
+		_show_list("arcade")
+		Ads.leaving_game())
 	add_child(screen)
 	_list_root.visible = false
 
@@ -1163,7 +1165,8 @@ func _mount_host(host: Control) -> void:
 			_open_at(host._entry, difficulty))
 	host.closed.connect(func() -> void:
 		host.queue_free()
-		_show_list())
+		_show_list()
+		Ads.leaving_game())
 	add_child(host)
 	_list_root.visible = false
 

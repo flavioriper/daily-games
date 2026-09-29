@@ -693,6 +693,7 @@ func _on_solved() -> void:
 			_hearts_line += "  ·  " + tr("GIFT_READY")
 	daily_completed.emit(puzzle_id, _day_key if _day_key != 0 else DailySeed.date_key())
 	Analytics.track("puzzle_complete", event)
+	Ads.note_finished()
 	_refresh()
 	# A board whose win has an animation of its own to play out first says
 	# how long it needs; Code Break's lids and code take nearly two seconds.

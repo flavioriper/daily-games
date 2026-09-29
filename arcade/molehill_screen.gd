@@ -1280,6 +1280,7 @@ func _time_up() -> void:
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.best_streak,
 		"seconds": secs, "whacked": sim.whacked, "escaped": sim.escaped, "missed": sim.missed,
 		"bunnies": sim.bunnies, "best": better})
+	Ads.note_finished()
 	_fx.cue("time_up")
 	_show_banner(tr("MH_TIME_UP"), "", 1.2)
 	top_bar.refresh(self)

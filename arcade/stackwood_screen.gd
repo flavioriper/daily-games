@@ -1687,6 +1687,7 @@ func _topple() -> void:
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.max_v,
 		"seconds": secs, "drops": sim.drops, "merges": sim.merges, "chain": sim.best_chain,
 		"tools": sim.tools_used, "best": better})
+	Ads.note_finished()
 	_fx.cue("topple")
 	_show_banner(tr("SW_TOPPLED"), "", 1.0)
 	_shake = 1.0

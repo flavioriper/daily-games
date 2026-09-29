@@ -292,6 +292,7 @@ func _on_solved() -> void:
 	_overlay_label.text = (tr("HOST_STATS") % [_puzzle.elapsed, _puzzle.moves]) + "\n\n" + _puzzle.share_glyphs()
 	_overlay.visible = true
 	Analytics.track("puzzle_complete", _stats().merged({"solved": true}))
+	Ads.note_finished()
 	_refresh()
 
 ## Hidden Word's ending that runs out rather than solves
@@ -302,6 +303,7 @@ func _on_solved() -> void:
 ## is indistinguishable from a crash (a puzzle_start with nothing after it).
 func _on_ended() -> void:
 	Analytics.track("puzzle_complete", _stats().merged({"solved": false}))
+	Ads.note_finished()
 	_refresh()
 
 ## Leaving a board unsolved is the signal that it was too hard, too long

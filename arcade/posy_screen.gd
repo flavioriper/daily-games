@@ -2281,6 +2281,7 @@ func _game_over() -> void:
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.day,
 		"seconds": secs, "moves": sim.moves, "made": sim.made, "cascade": sim.best_cascade,
 		"picked": sim.picked, "tools": sim.tools_used, "best": better, "more_moves": Sim.OFFERS - int(sim.offers)})
+	Ads.note_finished()
 	_fx.cue("out_of_moves")
 	_show_banner(tr("PS_OUT"), "", 1.0)
 	top_bar.refresh(self)

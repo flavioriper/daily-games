@@ -1899,6 +1899,7 @@ func _game_over() -> void:
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.max_v,
 		"seconds": secs, "moves": sim.moves, "merges": sim.merges, "chain": sim.best_chain,
 		"tools": sim.tools_used, "reached": sim.max_v >= Sim.GOAL, "best": better})
+	Ads.note_finished()
 	_fx.cue("tumble")
 	_show_banner(tr("LT_OVER"), "", 1.0)
 	_shake = 0.8
