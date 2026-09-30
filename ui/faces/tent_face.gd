@@ -38,6 +38,9 @@ const EDGE_LIGHT := 0.35
 ## the lamp itself stands in.
 const LAMP_MIX := 0.25
 const LAMP_CORE := 0.45
+## A wrong tent wilting (a heart gone): the canvas fades toward grey.
+const WILT := Color(0.72, 0.68, 0.62)
+const WILT_MIX := 0.55
 
 ## A tent a hint pitched, pegged down for good. It is part of the cache key,
 ## because the arc is drawn into the same mesh as the fabric.
@@ -68,8 +71,19 @@ func _layers() -> Array:
 	layers.append(["body", true])
 	return layers
 
-## The fabric's two colours, from the state the expression carries.
+## Where the glasses and the party hat go: on the face low on the lit slope,
+## and on the ridge between the poles.
+func _face_frame(R: float) -> Array:
+	return [FACE_AT * R, FACE_R * R]
+
+func _hat_place(R: float) -> Array:
+	return [Vector2(0.0, -0.45) * R, 0.0, 0.28 * R]
+
+## The fabric's two colours, from the state the expression carries: rose in
+## trouble, faded and grey while a wrong tent wilts (WORRIED).
 func _skin() -> Array:
+	if expression == Expr.WORRIED:
+		return [Pal.TENT_CANVAS.lerp(WILT, WILT_MIX), Pal.TENT_DEEP.lerp(WILT, WILT_MIX)]
 	if expression == Expr.STRAIN:
 		return [Pal.TENT_CANVAS.lerp(Pal.BAD, BAD_MIX), Pal.TENT_DEEP.lerp(Pal.MARKER_DEEP, BAD_MIX)]
 	return [Pal.TENT_CANVAS, Pal.TENT_DEEP]

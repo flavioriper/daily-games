@@ -224,15 +224,35 @@ SETS = {
     },
     # Tents: pitch a tent beside each tree on a grassy campsite grid.
     "tents": {
-        "place":    ("a tiny soft canvas flap and a light wooden peg tap, a little tent pitched, very short", 0.5, -6),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
         "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
         "reset":    ("a quick soft ripple of canvas flaps and small wooden pops, tents being packed away", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a campsite of trees appearing", 1.0, -9),
+        # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-tents-polish-design.md):
+        # place, locked, undo and check re-prompted toward felt and kalimba,
+        # as Shikaku's were the same morning -- the bonk, the tape rewind and
+        # the wooden boops read as a scold or a toy.
+        "place":    ("a soft cozy canvas tent fabric whump with a tiny warm wooden peg tap, a little tent popping up, gentle and round, very short", 0.5, -7, COZY),
+        "strike":   ("a soft hushed canvas fabric fold and flop, a small tent gently folded down, warm and muffled, very short", 0.5, -11, COZY),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        # cairn / clear tick per square of a sweep, pitched up as it grows.
+        "cairn":    ("a single tiny soft click of two small smooth pebbles set on grass, very short and quiet", 0.5, -13, COZY),
+        "clear":    ("a tiny soft brush of a hand over grass, one hushed light sweep, very short and quiet", 0.5, -14, COZY),
+        # combo: layered over place and pitched up the pentatonic by the streak.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "peek":     ("a tiny cute soft zipper unzip then a small happy 'hoo!' like a cheerful little kalimba trill, a camper peeking out of a tent to wave, silly and sweet, no voice", 0.9, -9),
+        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
+        "bunny":    ("three tiny soft bouncy boings on grass getting quieter, a small bunny hopping past, cute and light", 0.9, -10),
+        "oak":      ("a warm soft rustle of big oak leaves with two small glockenspiel notes rising, a happy old tree, gentle", 0.8, -9),
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a tent sagging, never a buzzer", 0.6, -15),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn by a campfire, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
     },
     # Light Up: paper lamps set down in a stone courtyard light their rows.
     "lightup": {

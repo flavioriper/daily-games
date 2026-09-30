@@ -41,6 +41,14 @@ func _kind() -> String:
 func _radius_for(px: float) -> float:
 	return px * RATIO
 
+## Where the glasses and the party hat go: on the face on the lowest tier,
+## and on the tip.
+func _face_frame(R: float) -> Array:
+	return [FACE_AT * R, FACE_R * R]
+
+func _hat_place(R: float) -> Array:
+	return [Vector2(0.0, -0.5) * R, 0.0, 0.26 * R]
+
 func _layers() -> Array:
 	var layers: Array = []
 	if casts:

@@ -188,3 +188,14 @@ mid-run; `tools/gen_sfx.py` now retries a request once on a fallback key
 (`$ELEVENLABS_API_KEY_FALLBACK` or `~/.config/elevenlabs/api_key_fallback`)
 when the first answers `quota_exceeded`, and the last seven cues came from
 it. Not yet judged by ear.
+
+## Tents' polish (2026-09-30)
+
+`place`, `locked`, `undo` and `check` re-prompted toward felt, canvas and
+kalimba, like Shikaku's; `place` and the new `strike`, `cairn` and `clear`
+take the COZY style (real canvas, pebbles and grass rather than marimba). A
+sweep ticks `cairn` (laying) or `clear` (rubbing out) once per square it
+will change, 4% higher each, capped at 1.6. New: `combo`, `confetti`,
+`peek`, `cool`, `bunny`, `oak`, `heart_lost`, `out_of_hearts`,
+`heart_back`, `stamp`, `party`. All 18 came from the fallback key; none
+judged by ear. Details: `docs/agents/boards/tents.md`.

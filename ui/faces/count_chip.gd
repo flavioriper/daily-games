@@ -75,7 +75,9 @@ func _draw() -> void:
 	var px := int(roundf(NUM_SIZE * R))
 	if px <= 0:
 		return
-	var text := str(number)
+	# A count taken off its line (Tents' Insane) shows a soft question mark.
+	var text := str(number) if number >= 0 else "?"
 	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	var at := size * 0.5 + Vector2(-wide * 0.5, NUM_Y * R + font.get_ascent(px) * 0.5)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, _skin()[2])
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px,
+		_skin()[2] if number >= 0 else Color(Pal.TEXT, 0.35))

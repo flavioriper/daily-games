@@ -19,14 +19,24 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-18-tents-flat-design.md, section 2.
 
 const Gen = preload("res://puzzles/tents_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 const BLANK := 0
 const TENT := 1
 const GRASS := 2
 const HINTS := 3
+## Hints per difficulty: Insane has one.
+const HINTS_BY_BAND := [3, 3, 3, 1]
+## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
+## Insane (Binairo's and Shikaku's counts). A heart goes on a tent that breaks
+## no rule the board can show and is not the answer's.
+const HEARTS := [0, 0, 3, 1]
 ## Width, height and tents per difficulty: the island's ladder exactly.
-## Insane's provisional band, replaced by the bank in batch 2.
+## Insane reads the Old Oaks bank (content/insane/tents.json); this band is
+## only its fallback when the bank is empty.
 const SIZES := [[6, 6, 5], [7, 7, 7], [8, 8, 9], [10, 10, 14]]
+## A count taken off a line (Insane): its chip shows no number.
+const HIDDEN := Gen.HIDDEN
 
 ## A line's state, which is what its count chip wears.
 const LINE_IDLE := 0
@@ -37,6 +47,10 @@ var w: int = 6
 var h: int = 6
 var trees: Dictionary = {}       # Vector2i -> true
 var tree_list: Array = []
+## The old oaks among the trees (Insane): each takes two tents.
+var oaks: Dictionary = {}        # Vector2i -> true
+## The difficulty the board was built for, 0 to 3.
+var band := 0
 var solution: Array = []         # [Vector2i], the answer's tents
 var row_counts: Array = []
 var col_counts: Array = []
@@ -46,15 +60,23 @@ var locked: Dictionary = {}      # Vector2i -> true, a tent a hint pegged
 ## One entry per gesture, newest last: [{"cell": Vector2i, "prev": int}].
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var step: Array = SIZES[clampi(difficulty, 0, SIZES.size() - 1)]
-	w = step[0]
-	h = step[1]
-	var out: Dictionary = Gen.generate(rng, w, h, step[2])
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, SIZES.size() - 1)
+	var out: Dictionary = {}
+	if band == 3:
+		out = Gen.from_bank(InsaneBank.pick("tents", bank_step))
+	if out.is_empty():
+		var step: Array = SIZES[band]
+		out = Gen.generate(rng, step[0], step[1], step[2])
+	w = int(out.w)
+	h = int(out.h)
 	trees = {}
+	oaks = {}
 	tree_list = out.trees
 	for t in tree_list:
 		trees[t] = true
+	for o in out.get("oaks", []):
+		oaks[o] = true
 	solution = out.tents
 	row_counts = out.row_counts
 	col_counts = out.col_counts
@@ -97,6 +119,8 @@ func col_tents(c: int) -> int:
 	return n
 
 static func line_state(have: int, want: int) -> int:
+	if want < 0:
+		return LINE_IDLE
 	if have == want:
 		return LINE_OK
 	return LINE_OVER if have > want else LINE_IDLE
@@ -127,15 +151,48 @@ func bad_tents() -> int:
 func over_lines() -> int:
 	var n := 0
 	for r in h:
-		if row_tents(r) > int(row_counts[r]):
+		if int(row_counts[r]) >= 0 and row_tents(r) > int(row_counts[r]):
 			n += 1
 	for c in w:
-		if col_tents(c) > int(col_counts[c]):
+		if int(col_counts[c]) >= 0 and col_tents(c) > int(col_counts[c]):
 			n += 1
 	return n
 
+## How many tents the meadow wants in all: one a tree, two an oak.
+func tents_wanted() -> int:
+	return tree_list.size() + oaks.size()
+
 func tents_left() -> int:
-	return tree_list.size() - tents().size()
+	return tents_wanted() - tents().size()
+
+## How many tents `tree` wants beside it.
+func need(tree: Vector2i) -> int:
+	return 2 if oaks.has(tree) else 1
+
+## The tents standing beside `tree`. Not which are its own -- that is the
+## player's problem -- only how many it could call on.
+func tents_beside(tree: Vector2i) -> int:
+	var n := 0
+	for d in Gen.DIRS:
+		if mark_at(tree + d) == TENT:
+			n += 1
+	return n
+
+## A tent the board cannot fault: beside a tree, touching no tent, and in no
+## line holding more than its count. On Hard and Insane such a tent outside
+## the answer costs a heart -- the answer is unique, so it is wrong by proof.
+func tent_fair(cell: Vector2i) -> bool:
+	if mark_at(cell) != TENT or tent_bad(cell):
+		return false
+	var rc := int(row_counts[cell.y])
+	var cc := int(col_counts[cell.x])
+	return (rc < 0 or row_tents(cell.y) <= rc) and (cc < 0 or col_tents(cell.x) <= cc)
+
+func is_answer(cell: Vector2i) -> bool:
+	return solution.has(cell)
+
+func has_oaks() -> bool:
+	return not oaks.is_empty()
 
 func cairns() -> int:
 	var n := 0
@@ -147,6 +204,8 @@ func cairns() -> int:
 func is_solved() -> bool:
 	if trees.is_empty():
 		return false
+	if has_oaks() or row_counts.has(HIDDEN) or col_counts.has(HIDDEN):
+		return Gen.is_valid_oak_solution(tents(), tree_list, oaks.keys(), row_counts, col_counts, w, h)
 	return Gen.is_valid_solution(tents(), tree_list, row_counts, col_counts, w, h)
 
 func share_glyphs() -> String:
@@ -154,7 +213,9 @@ func share_glyphs() -> String:
 	for y in h:
 		for x in w:
 			var cell := Vector2i(x, y)
-			if trees.has(cell):
+			if oaks.has(cell):
+				out += "🌳"
+			elif trees.has(cell):
 				out += "🌲"
 			elif mark_at(cell) == TENT:
 				out += "⛺"

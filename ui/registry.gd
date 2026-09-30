@@ -207,7 +207,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
 			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
-			{"difficulty": 3, "name": "Insane", "line": "10 × 10"},
+			{"difficulty": 3, "name": "Insane", "line": "TN_LVL_3"},
 		],
 	},
 	{

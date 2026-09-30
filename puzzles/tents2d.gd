@@ -43,6 +43,12 @@ extends "res://core/puzzle_base.gd"
 ## Spec: docs/superpowers/specs/2026-09-18-tents-flat-design.md, sections 2
 ## to 7 and the amendment at its end, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#tents).
+##
+## The polish of 2026-09-30 (docs/superpowers/specs/2026-09-30-tents-polish-design.md)
+## added hearts on Hard and Insane (a fair tent that is not the answer's
+## wilts and is struck), Insane's Old Oaks with hidden counts, trees that
+## beam once they have their tents, lamp-lit right tents, the streak, gags,
+## butterflies, the seal and a party with hats and bunting.
 
 const State = preload("res://puzzles/tents_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -52,7 +58,11 @@ const Face = preload("res://ui/faces/face.gd")
 const TentFace = preload("res://ui/faces/tent_face.gd")
 const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const CountChip = preload("res://ui/faces/count_chip.gd")
+const OakFace = preload("res://ui/faces/oak_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the meadow ---
 const PAD := 34.0
@@ -147,6 +157,74 @@ const GLOW_RX := 0.36
 const GLOW_RY := 0.1
 const GLOW_ALPHA := 0.5
 
+# --- the polish of 2026-09-30 (docs/superpowers/specs/2026-09-30-tents-polish-design.md) ---
+## The hearts' strip over the counts, on Hard and Insane only; Shikaku's pill.
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong tent sags under a worried face, then is struck.
+const WILT_LAG := 0.2
+const EJECT_AFTER := 0.75
+const SLEEP_STAGGER := 0.05
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## The streak: right tents in a row, a pentatonic step each from the second.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Gags: three of every five right tents, by the square's own hash.
+const GAG_ODDS := 5
+const GAGS := 3
+const GAG_AT := 0.35
+const PEEK_TIME := 1.6
+const PEEK_RISE := 0.28
+const GLASSES_IN := 0.28
+const GLASSES_HOLD := 0.9
+const GLASSES_OUT := 0.2
+const BUNNY_TIME := 1.3
+const BUNNY_HOPS := 3
+const BUNNY_SIZE := 0.26
+## A tree that has just got the tents it wants gives a little hop.
+const CHEER_HOP := -5.0
+## Trees and tents within this many squares of the finger look at it.
+const GLANCE_REACH := 2
+## Butterflies perch on happy trees and lit tents.
+const BUTTERFLY_SECOND := 0.4
+const BUTTERFLY_SPEED := 1.6
+const BUTTERFLY_PERCH := 2.0
+const BUTTERFLY_JITTER := 2.5
+const BUTTERFLY_SIZE := 0.2
+const BUTTERFLY_PARTY := 4
+const FLIES_STAY := 5.0
+const BUTTERFLY_WINGS := [Pal.FLOWER, Pal.SUN_RAY, Pal.CLOUD, Pal.SHADOW_TINT]
+## The seal, the party and its bunting.
+const STAMP_AT := 0.35
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.14
+const STAMP_TILT := -0.22
+const PARTY_AT := 0.15
+const PARTY_HAT := 0.3
+const PARTY_HAT_STAGGER := 0.03
+const PARTY_EXTRA := 1.1
+const BUNTING_TIME := 0.6
+const BUNTING_FLAGS := 11
+const BUNTING_SAG := 0.28
+const BUNTING_COLOURS := [Pal.FLOWER, Pal.SUN, Pal.LEAF, Pal.MOON_DEEP, Pal.TENT_CANVAS]
+## The sweep ticks up a little per square, as Shikaku's drag does.
+const SWEEP_PITCH := 0.04
+const SWEEP_PITCH_MAX := 1.6
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 const TIPS := [
@@ -156,6 +234,8 @@ const TIPS := [
 ]
 
 var state = State.new()
+## Back to camp from the out-of-hearts card; the host listens for it.
+signal leave
 ## The names the win harness and the island board share.
 var w: int:
 	get: return state.w
@@ -165,6 +245,48 @@ var _solution_tents: Array:
 	get: return state.solution
 
 var fx: Node2D
+## Hearts (Hard 3, Insane 1) and failing.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _flawless := false
+var _asleep := false
+var _ejecting := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+## The tents wilting while a heart goes: Vector2i -> true.
+var _wilting: Dictionary = {}
+## The tents a tap was judged right on (or a hint pitched): Vector2i -> true.
+## Only these light their lamp. A tent that turns fair some other way -- a
+## neighbour taken off, an undo -- was never charged for, so lighting it would
+## tell the player for free what a heart is meant to cost.
+var _judged: Dictionary = {}
+## The streak and its bubble.
+var _streak := 0
+var _combo_n := 0
+var _combo_cell := Vector2i.ZERO
+var _combo_at := -INF
+var _combo_popped := false
+var _combo_out_at := -INF
+## The gags and the life on the meadow.
+var _peek: Dictionary = {}
+var _bunny: Dictionary = {}
+var _flies: Array = []
+var _stamp_at := INF
+var _bunting_at := INF
+var _seal_mesh: ArrayMesh
+var _heart_layer: Control
+var _combo_layer: Control
+var _life_layer: Control
+var _hearts_shown: ArrayMesh
+var _combo_shown: ArrayMesh
+var _life_shown: Array = []
+var _sweep_n := 0
 var _cell := 0.0
 var _grid := Vector2.ZERO
 var _card := Rect2()
@@ -226,7 +348,19 @@ func puzzle_id() -> String: return "tents"
 func title() -> String: return "Tents"
 
 func rules() -> String:
-	return tr("TN_RULES")
+	var out := tr("TN_RULES")
+	if state.has_oaks():
+		out += "\n\n" + tr("TN_RULES_OAK")
+	if max_hearts > 0:
+		out += "\n\n" + (tr("TN_RULES_HEARTS_1") if max_hearts == 1 else tr("TN_RULES_HEARTS_N") % max_hearts)
+	return out
+
+## The lines the sprout cycles: an oak meadow leads with its oaks.
+func _tips() -> Array:
+	var out: Array = TIPS
+	if state.has_oaks():
+		out = ["TN_TIP_OAK", "TN_TIP_HIDDEN"] + out
+	return out
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -238,6 +372,9 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_life_layer = _layer("Life", 1, _draw_life)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
+	_combo_layer = _layer("Combo", 2, _draw_combo)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -245,21 +382,60 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the pieces, drawn by `draw`.
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
-	state.setup(rng, difficulty)
-	_cairn_in = {}
-	_cairn_out = []
-	_blush = {}
-	_shade = {}
-	_clear_gesture()
+	state.setup(rng, difficulty, bank_step)
+	max_hearts = State.HEARTS[state.band]
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	_solved_at = -1.0
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
+
+## The meadow as it is dealt, and as Try again deals it back: every heart,
+## nothing on the ground, nothing in flight.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_ejecting = false
+	_flawless = false
+	_split_index = -1
+	_back_index = -1
+	_wilting = {}
+	_judged = {}
+	_cairn_in = {}
+	_cairn_out = []
+	_blush = {}
+	_shade = {}
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_peek = {}
+	_bunny = {}
+	_flies = []
+	_stamp_at = INF
+	_bunting_at = INF
+	_clear_gesture()
+	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
+		if layer != null:
+			layer.queue_redraw()
 
 # --- the cast ---
 
@@ -278,7 +454,7 @@ func _build_pieces() -> void:
 	for c in state.w:
 		_chips_col.append(_chip(int(state.col_counts[c]), "col_%d" % c))
 	for cell in state.tree_list:
-		var tree := ConiferFace.new()
+		var tree: ConiferFace = OakFace.new() if state.oaks.has(cell) else ConiferFace.new()
 		# The shadow is the board's, on the ground (see _build_ground).
 		tree.casts = false
 		# Nothing until the meadow is up; _enter pops each one in.
@@ -352,9 +528,33 @@ func _refresh_faces() -> void:
 		if tent.pegged != pegged:
 			tent.pegged = pegged
 		# The win writes JOY on each tent as the wave reaches it.
-		if _solved_at >= 0.0:
+		if _solved_at >= 0.0 or _wilting.has(cell):
 			continue
-		_set_expr(tent, Face.Expr.STRAIN if state.tent_bad(cell) else Face.Expr.HAPPY)
+		_set_expr(tent, _tent_expr(cell))
+	if _solved_at >= 0.0:
+		return
+	for cell in _trees:
+		_set_expr(_trees[cell], _tree_expr(cell))
+
+## A tent's look: asleep with the camp, rose in trouble, lamp-lit (JOY) on a
+## board with hearts once a tap on it was judged right and the board can
+## still fault nothing about it -- the judging is what a heart pays for, so
+## the lamp tells the player nothing new -- and otherwise simply pitched.
+func _tent_expr(cell: Vector2i) -> int:
+	if _asleep:
+		return Face.Expr.SLEEPY
+	if state.tent_bad(cell):
+		return Face.Expr.STRAIN
+	if max_hearts > 0 and _judged.has(cell) and state.tent_fair(cell):
+		return Face.Expr.JOY
+	return Face.Expr.HAPPY
+
+## A tree beams once it has as many tents beside it as it wants -- one, or an
+## oak's two. Which of them are its own is still the player's problem.
+func _tree_expr(cell: Vector2i) -> int:
+	if _asleep:
+		return Face.Expr.SLEEPY
+	return Face.Expr.JOY if state.tents_beside(cell) >= state.need(cell) else Face.Expr.HAPPY
 
 func _set_expr(face: Face, expr: int) -> void:
 	if face.expression != expr:
@@ -381,9 +581,10 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var grid := Vector2(_cell * (state.w + BAND), _cell * (state.h + BAND))
-	var tall := minf(size.y, grid.y + 2.0 * PAD)
+	var tall := minf(size.y, grid.y + 2.0 * PAD + _heart_row())
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - grid.x * 0.5, _card.position.y + (tall - grid.y) * 0.5) \
+	_grid = Vector2(size.x * 0.5 - grid.x * 0.5,
+		_card.position.y + _heart_row() + (tall - _heart_row() - grid.y) * 0.5) \
 		+ Vector2.ONE * (_cell * BAND)
 	for c in _chips_col.size():
 		_seat(_chips_col[c], Vector2(_grid.x + (c + 0.5) * _cell, _grid.y - _cell * BAND * 0.5), _cell)
@@ -395,6 +596,8 @@ func _layout() -> void:
 		_seat(_tents[cell], cell_to_local(cell.y, cell.x), _cell * TENT_SIZE, Vector2(0.5, FOOT))
 	_meadow = _build_meadow()
 	_refresh_faces()
+	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
+		layer.queue_redraw()
 	_redraw()
 
 ## Seats `face` `px` square about `centre`: its slot, when it stands in one,
@@ -418,7 +621,11 @@ func _cell_for(available: float) -> float:
 	if state.tree_list.is_empty():
 		return 0.0
 	return minf((size.x - 2.0 * PAD) / (state.w + BAND),
-		(available - 2.0 * PAD) / (state.h + BAND))
+		(available - 2.0 * PAD - _heart_row()) / (state.h + BAND))
+
+## The strip the hearts stand in over the counts, on a board with hearts.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## The host cuts its card to the meadow and centres it, which is what these
 ## two say. A board that wants neither says nothing and fills the slot.
@@ -426,7 +633,7 @@ func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * (state.h + BAND) + 2.0 * PAD)
+	return minf(available, cell * (state.h + BAND) + 2.0 * PAD + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -566,6 +773,13 @@ func _build_ground(now: float) -> Dictionary:
 		var tent: TentFace = _tents[cell]
 		if tent.visible:
 			_shadow(b, tent, cell, TENT_SIZE, TENT_SHADOW_AT, TENT_SHADOW_RX, TENT_SHADOW_RY)
+			# A lamp-lit tent throws its warm pool before the win does it for
+			# every tent.
+			if _solved_at < 0.0 and tent.expression == Face.Expr.JOY and state.mark_at(cell) == State.TENT:
+				var seat := _cell * TENT_SIZE
+				var seen := clampf(tent.scale.y, 0.0, 1.0)
+				Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + GLOW_AT * seat,
+					GLOW_RX * seat * seen, GLOW_RY * seat * seen, Color(Pal.SUN, GLOW_ALPHA * 0.8 * seen))
 	# Cairns on their way out, cap first, drawn from the shape the state has
 	# forgotten.
 	var still: Array = []
@@ -754,9 +968,10 @@ func _gui_input(event: InputEvent) -> void:
 ## this, including one that will refuse on release.
 func _press(cell: Vector2i) -> void:
 	_clear_gesture()
-	if is_done() or cell.x < 0:
+	if is_done() or cell.x < 0 or out_of_hearts or _ejecting:
 		return
 	_press_cell = cell
+	_glance(cell)
 	var now := _now()
 	var face := _face_on(cell)
 	if face != null:
@@ -783,6 +998,8 @@ func _drag(at: Vector2) -> void:
 	var cell := _cell_at(at)
 	if cell.x < 0:
 		return
+	if cell != _last_paint:
+		_glance(cell)
 	if not _dragged and cell != _press_cell:
 		_dragged = true
 		# Begin on a cairn and the sweep rubs out; begin anywhere else and it
@@ -820,6 +1037,10 @@ func _paint(cell: Vector2i) -> void:
 	if state.mark_at(cell) == to:
 		return
 	_pending.append(cell)
+	# The sweep ticks a little higher per square it will change, so a long row
+	# can be heard growing (Shikaku's drag does the same).
+	_sweep_n += 1
+	fx.cue("cairn" if _lay else "clear", minf(SWEEP_PITCH_MAX, 1.0 + SWEEP_PITCH * (_sweep_n - 1)))
 
 func _release() -> void:
 	var cell := _press_cell
@@ -831,6 +1052,7 @@ func _release() -> void:
 	# other order leaves a refused tree sunk at PRESS_SCALE for good.
 	_release_press()
 	_clear_gesture()
+	_glance(Vector2i(-1, -1))
 	if cell.x < 0 or is_done():
 		_end_shades(now)
 		_redraw()
@@ -858,6 +1080,8 @@ func _release() -> void:
 	var before: Dictionary = state.marks.duplicate()
 	var arrivals := _commit(before, state.tap(cell), 0.0, true)
 	_end_shades(now, arrivals)
+	if state.mark_at(cell) == State.TENT:
+		_judge(cell)
 	_redraw()
 
 ## Puts the squares `changed` by a move on the screen (see _transition) and
@@ -873,7 +1097,9 @@ func _commit(before: Dictionary, changed: Array, per: float, tapped: bool) -> Di
 		if state.mark_at(cell) == State.TENT:
 			fx.puff(cell_to_local(cell.y, cell.x), Pal.TENT_CANVAS)
 			_nudge_around(cell)
-	fx.cue("place")
+			fx.cue("place")
+		else:
+			fx.cue("strike")
 	_speak()
 	_redraw()
 	note_move()
@@ -884,6 +1110,7 @@ func _clear_gesture() -> void:
 	_pressed = null
 	_dragged = false
 	_lay = true
+	_sweep_n = 0
 	_swept = {}
 	_pending = []
 	_last_paint = Vector2i(-1, -1)
@@ -920,6 +1147,7 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 		if prev == State.GRASS:
 			_cairn_leaves(cell, at)
 		elif prev == State.TENT:
+			_judged.erase(cell)
 			_tent_down(cell, at - t)
 		if mark == State.GRASS:
 			_cairn_arrives(cell, at)
@@ -933,6 +1161,7 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 	for r in rows:
 		_bump(_chips_row[r])
 	_refresh_faces()
+	_want_flies()
 	return arrivals
 
 ## A tent goes up on `cell`: it is pitched up out of the ground after
@@ -1107,13 +1336,17 @@ func tip_line() -> Dictionary:
 
 # --- the HUD's actions ---
 
+## A wrong tent is wilting: the host holds a hint video until it has gone.
+func busy() -> bool:
+	return _ejecting
+
 func can_undo() -> bool:
-	return not is_done() and not state.history.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.history.is_empty()
 
 ## Takes back the last gesture, however many squares it swept: the reverse of
 ## Place, square by square along the same path. Counts no move.
 func undo() -> bool:
-	if is_done() or state.history.is_empty():
+	if not can_undo():
 		return false
 	var before: Dictionary = state.marks.duplicate()
 	_transition(before, state.undo(), _now(), Motion.ENTER_STAGGER)
@@ -1124,24 +1357,26 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
 
 ## Pitches one tent from the answer and pegs it down for good: a ring pulses
 ## out of the square, the tent drops in from above, sparkles rise. Counts no
 ## move but can finish the puzzle.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
 		return false
 	var before: Dictionary = state.marks.duplicate()
 	var target: Vector2i = state.hint()
 	if target.x < 0:
 		return false
 	hints_used += 1
+	_judged[target] = true
 	_transition(before, [target], _now(), 0.0, true)
 	var at := cell_to_local(target.y, target.x)
 	fx.ring(at, _cell * 0.5, Pal.LEAF)
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
+	_cheer_trees(target)
 	_say(tr("TN_PEGGED"), Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
@@ -1151,7 +1386,7 @@ func hint() -> bool:
 ## Every tent the answer does not put there wobbles and its cell blushes, and
 ## the sprout says how many.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return 0
 	checks += 1
 	var wrong: Array = state.wrong_tents()
@@ -1170,6 +1405,10 @@ func check() -> int:
 ## as the meadow clears around them. The hints a player spent are not
 ## refunded, only unpinned.
 func reset_board() -> void:
+	if is_done() or out_of_hearts or _ejecting:
+		return
+	_break_streak()
+	_wilting = {}
 	var now := _now()
 	_clear_gesture()
 	_release_press()
@@ -1202,6 +1441,7 @@ func reset_board() -> void:
 		Face.Expr.HAPPY)
 	_tip_timer.start()
 	fx.cue("reset")
+	_want_flies()
 	_redraw()
 
 ## A completed daily is rebuilt from its seed, so the meadow opens bare. Pitch
@@ -1239,6 +1479,14 @@ func restore_completed_board() -> void:
 		chip.scale = Vector2.ONE
 		chip.rotation = 0.0
 	_refresh_faces()
+	# The bunting stays up, and an Old Oaks board keeps its night seal; a
+	# restore cannot know whether the solve was flawless, so a gold seal is
+	# not claimed.
+	_flies = []
+	_bunting_at = now - 10.0
+	_stamp_at = now - 10.0 if state.has_oaks() else INF
+	_seal_mesh = null
+	_life_layer.queue_redraw()
 	_say(tr("TN_WIN"), Face.Expr.JOY)
 	_redraw()
 
@@ -1253,8 +1501,14 @@ func _settle_face(face: Face) -> void:
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The meadow, and the seal's words when one was stamped.
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.has_oaks():
+		out += "\n🌙 " + tr("TN_OAK_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += "\n🏅 " + tr("BN_FLAWLESS")
+	return out
 
 # --- the win ---
 
@@ -1264,7 +1518,7 @@ func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": tr("TN_WIN_SUB")}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
 
 ## Every tree and tent hops the solve wave along the diagonal, each tent
 ## grinning as the wave reaches it with a spark, and the cairns clear away in
@@ -1276,6 +1530,12 @@ func _on_solved() -> void:
 	_end_shades(now)
 	_tip_timer.stop()
 	_solved_at = now
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = now
+		_combo_layer.queue_redraw()
+	_peek = {}
+	_bunny = {}
 	var k := 0
 	for cell in _trees:
 		var tree: ConiferFace = _trees[cell]
@@ -1292,6 +1552,12 @@ func _on_solved() -> void:
 	_refresh_faces()
 	_say(tr("TN_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	var far := 0
+	for cell in _trees:
+		far = maxi(far, cell.x + cell.y)
+	for cell in state.tents():
+		far = maxi(far, cell.x + cell.y)
+	_party(_solve_delay(Vector2i(far, 0)))
 	_busy_for(CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)
 	_redraw()
 
@@ -1315,6 +1581,716 @@ func _spark_at(k: int, at: Vector2) -> void:
 		fx.sparkle(at, Pal.SUN)
 	else:
 		fx.puff(at, Pal.TENT_CANVAS, 4)
+
+# --- judging a tent, and the streak ---
+
+## A tent just pitched by a tap. On Hard and Insane a tent the board cannot
+## fault that is not the answer's costs a heart; anything else the board
+## cannot fault is right (the answer on a board with hearts, a fair tent on
+## Easy and Medium, which says no more than its face does). A right tent
+## builds the streak, cheers the trees beside it and may play a gag; a tent
+## in trouble ends the streak.
+func _judge(cell: Vector2i) -> void:
+	# The winning tap: the solve wave owns every hop and spark from here.
+	if is_done():
+		return
+	var fair: bool = state.tent_fair(cell)
+	if max_hearts > 0 and fair and not state.is_answer(cell):
+		_wrong_tent(cell)
+		return
+	_cheer_trees(cell)
+	if not fair:
+		_break_streak()
+		return
+	if max_hearts > 0:
+		_judged[cell] = true
+		_refresh_faces()
+		_redraw()
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB)
+	if _streak >= COMBO_FROM and not is_done():
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_cell = cell
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		fx.confetti(cell_to_local(cell.y, cell.x), 22)
+		fx.cue("confetti")
+	if not is_done():
+		_gag(cell)
+	_want_flies()
+
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		_combo_layer.queue_redraw()
+	else:
+		_combo_n = 0
+
+## Every tree beside `cell` that has just got the tents it wants gives a
+## little hop; an oak getting its second also sparkles and chimes.
+func _cheer_trees(cell: Vector2i) -> void:
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var tree_at: Vector2i = cell + d
+		if not _trees.has(tree_at):
+			continue
+		if state.tents_beside(tree_at) != state.need(tree_at):
+			continue
+		if not Motion.reduce:
+			_hop(_trees[tree_at], CHEER_HOP, Motion.HOP_TIME, Motion.NUDGE_LAG + 0.06)
+		if state.oaks.has(tree_at):
+			fx.sparkle(cell_to_local(tree_at.y, tree_at.x) - Vector2(0.0, _cell * 0.3), Pal.LEAF_LIGHT)
+			fx.cue("oak")
+
+## A wrong tent: a heart goes (its halves fall), the tent fades and sags
+## under a worried face, and after EJECT_AFTER it is struck as though never
+## pitched.
+func _wrong_tent(cell: Vector2i) -> void:
+	if out_of_hearts or hearts <= 0:
+		return
+	var now := _now()
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = now
+	_heart_layer.queue_redraw()
+	_ejecting = true
+	if hearts <= 0:
+		# Input stops now; the sleep waits for the tent to go.
+		out_of_hearts = true
+		_running = false
+	_wilting[cell] = true
+	var tent: TentFace = _tent_node(cell)
+	tent.expression = Face.Expr.WORRIED
+	_after(WILT_LAG, func() -> void:
+		Motion.stop(_look_tw.get(tent))
+		tent.scale = Vector2.ONE
+		_look_tw[tent] = Motion.squash(tent, 0.14, 0.2))
+	_blush_cell(cell)
+	_say(tr("TN_WRONG_TENT"), Face.Expr.WORRIED)
+	fx.cue("heart_lost")
+	_busy_for(EJECT_AFTER + STRIKE_TIME)
+	moved.emit()
+	_after(EJECT_AFTER, _eject.bind(cell))
+
+## The wrong tent is struck: its tap is taken back with no history left of
+## it, and a grey puff goes up where it stood.
+func _eject(cell: Vector2i) -> void:
+	_ejecting = false
+	# Left mid-wilt through the card or the host: the board is over.
+	if is_done():
+		return
+	var before: Dictionary = state.marks.duplicate()
+	var last: Array = [] if state.history.is_empty() else state.history.back()
+	if last.size() == 1 and last[0].cell == cell:
+		state.undo()
+	elif state.mark_at(cell) == State.TENT and not state.locked.has(cell):
+		state.marks.erase(cell)
+	_transition(before, [cell], _now(), 0.0)
+	_wilting.erase(cell)
+	if not Motion.reduce:
+		fx.puff(cell_to_local(cell.y, cell.x), Pal.TENT_DEEP.lerp(Pal.LINE, 0.5), 6)
+	if not out_of_hearts:
+		_speak()
+	moved.emit()
+	_redraw()
+	if out_of_hearts:
+		_run_out()
+
+## The last heart is gone: trees and tents nod off along the diagonal, the
+## butterflies go, and the card comes up once they have.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_clear_gesture()
+	_break_streak()
+	fx.cue("out_of_hearts")
+	_say(tr("TN_OUT"), Face.Expr.SLEEPY)
+	_nod_all()
+	for f in _flies:
+		f.leave = true
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+## Every tree and tent takes its look along the diagonal: asleep, or awake
+## again after a heart came back.
+func _nod_all() -> void:
+	for cell in _trees:
+		_after(Motion.stagger(cell.x + cell.y, SLEEP_STAGGER), func() -> void:
+			if _solved_at < 0.0:
+				_trees[cell].expression = _tree_expr(cell))
+	for cell in _tents:
+		_after(Motion.stagger(cell.x + cell.y, SLEEP_STAGGER), func() -> void:
+			if _solved_at < 0.0 and state.mark_at(cell) == State.TENT and not _wilting.has(cell):
+				_tents[cell].expression = _tent_expr(cell))
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["TN_OUT_BODY", "TN_OUT_BODY_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same meadow from the top, every heart back, the clock and
+## the moves from zero; hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	moves = 0
+	elapsed = 0.0
+	checks = 0
+	_running = true
+	var now := _now()
+	var before: Dictionary = state.marks.duplicate()
+	var cleared := state.reset()
+	_deal()
+	for cell in cleared:
+		var at := now + Motion.stagger((state.h - 1 - cell.y) + (state.w - 1 - cell.x), Motion.RESET_STAGGER)
+		if int(before[cell]) == State.GRASS:
+			_cairn_leaves(cell, at)
+		else:
+			_tent_down(cell, at - now)
+	for cell in _trees:
+		_hop(_trees[cell], Motion.RESET_HOP, Motion.HOP_TIME,
+			Motion.stagger((state.h - 1 - cell.y) + (state.w - 1 - cell.x), Motion.RESET_STAGGER))
+	for chip in _chips_row + _chips_col:
+		_bump(chip)
+	_refresh_faces()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+	_redraw()
+
+## One more heart (the card's video): once a board. The camp wakes along the
+## diagonal.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_nod_all()
+	_speak()
+	moved.emit()
+
+## Back to camp from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the hearts ---
+
+## The hearts over the counts as one mesh on a paper pill, Shikaku's and
+## Binairo's: pink with a small face and a leaf, a faint ghost where one was,
+## the lost one's halves falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _grid.y - _cell * BAND - HEART_ROW * 0.5
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts:
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_mesh(_hearts_shown, null)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- the streak's bubble ---
+
+## The streak's paper bubble at the upper right of its tent, "x3" and up in
+## ink: it pops in the first time, bumps at each step and deflates when the
+## streak ends. One mesh for the paper and one string (Binairo's).
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _cell <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var centre_cell := cell_to_local(_combo_cell.y, _combo_cell.x)
+	var tail := centre_cell + Vector2(_cell * 0.25, -_cell * 0.3)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
+
+# --- gags, glances and the life on the meadow ---
+
+## A right tent now and then plays a gag, picked by the square's own hash so a
+## board replays the same: a camper peeks out of the doorway and waves, the
+## tent slides on sunglasses, or a bunny hops past in front of it. Under
+## reduce-motion, none.
+func _gag(cell: Vector2i) -> void:
+	if Motion.reduce:
+		return
+	var roll := posmod(hash(cell * 13 + Vector2i(7, 3)), GAG_ODDS)
+	if roll >= GAGS:
+		return
+	var now := _now()
+	match roll:
+		0:
+			_peek = {"cell": cell, "at": now + GAG_AT, "hat": posmod(hash(cell), BUNTING_COLOURS.size())}
+			_after(GAG_AT, func() -> void: fx.cue("peek"))
+			_anim_until = maxf(_anim_until, now + GAG_AT + PEEK_TIME)
+		1:
+			var tent: TentFace = _tent_node(cell)
+			var tw := tent.create_tween()
+			tw.tween_property(tent, "glasses", 1.0, GLASSES_IN).from(0.0).set_delay(GAG_AT) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_interval(GLASSES_HOLD)
+			tw.tween_property(tent, "glasses", 0.0, GLASSES_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			_after(GAG_AT, func() -> void: fx.cue("cool"))
+		2:
+			_bunny = {"cell": cell, "at": now + GAG_AT, "dir": 1.0 if posmod(cell.x + cell.y, 2) == 0 else -1.0}
+			_after(GAG_AT, func() -> void: fx.cue("bunny"))
+			_anim_until = maxf(_anim_until, now + GAG_AT + BUNNY_TIME)
+
+## The trees and tents within GLANCE_REACH of `cell` look at it; (-1, -1) and
+## every one looks ahead again. One on the square itself looks up.
+func _glance(cell: Vector2i) -> void:
+	var faces: Dictionary = {}
+	for at in _trees:
+		faces[at] = _trees[at]
+	for at in _tents:
+		if _tents[at].visible:
+			faces[at] = _tents[at]
+	for at in faces:
+		var face: Face = faces[at]
+		var look := Vector2.ZERO
+		if cell.x >= 0 and not Motion.reduce:
+			var d := Vector2(cell - at)
+			if maxf(absf(d.x), absf(d.y)) <= GLANCE_REACH:
+				look = d.normalized() if d != Vector2.ZERO else Vector2(0.0, -1.0)
+		if face.look != look:
+			face.look = look
+
+## Where butterflies may perch: the top of every beaming tree and the ridge of
+## every lamp-lit tent.
+func _perches() -> Array:
+	var out: Array = []
+	if _asleep:
+		return out
+	for at in _trees:
+		if _trees[at].expression == Face.Expr.JOY:
+			out.append(cell_to_local(at.y, at.x) + Vector2(_cell * 0.1, -_cell * TREE_SIZE * 0.5))
+	for at in _tents:
+		var tent: TentFace = _tents[at]
+		if tent.visible and tent.expression == Face.Expr.JOY and state.mark_at(at) == State.TENT:
+			out.append(cell_to_local(at.y, at.x) + Vector2(0.0, -_cell * TENT_SIZE * 0.44))
+	return out
+
+## Butterflies come to a meadow with happy trees: one from the first, a second
+## past BUTTERFLY_SECOND of the trees, none under reduce-motion. One too many
+## flies off.
+func _want_flies() -> void:
+	if Motion.reduce or _cell <= 0.0 or _asleep or _solved_at >= 0.0:
+		return
+	var happy := 0
+	for at in _trees:
+		if state.tents_beside(at) >= state.need(at):
+			happy += 1
+	var want := 0
+	if happy > 0:
+		want = 1
+		if float(happy) / maxf(1.0, _trees.size()) >= BUTTERFLY_SECOND:
+			want = 2
+	var staying := 0
+	for f in _flies:
+		if not f.leave:
+			staying += 1
+	while staying < want:
+		_spawn_fly(_flies.size())
+		staying += 1
+	for f in _flies:
+		if staying > want and not f.leave:
+			f.leave = true
+			staying -= 1
+
+## A butterfly flying in from off the card's nearer side.
+func _spawn_fly(k: int) -> void:
+	var from_left := k % 2 == 0
+	var start := Vector2(-40.0 if from_left else size.x + 40.0, _grid.y + _cell * state.h * (0.2 + 0.25 * (k % 3)))
+	_flies.append({"pos": start, "to": start, "perch": -1, "perch_until": 0.0,
+		"wing": (k + posmod(hash(start), 7)) % BUTTERFLY_WINGS.size(), "phase": k * 1.7, "leave": false})
+	_life_layer.queue_redraw()
+
+## Moves every butterfly `dt` along: toward its perch, resting there a while,
+## then on to another; a leaving one flies off the top and is gone.
+func _fly(dt: float) -> void:
+	var now := _now()
+	var perches := _perches()
+	var speed := BUTTERFLY_SPEED * _cell
+	var keep: Array = []
+	for f in _flies:
+		if not f.leave and (f.perch < 0 or f.perch >= perches.size() or f.to.distance_to(perches[f.perch]) > 1.0):
+			if perches.is_empty():
+				f.leave = true
+			else:
+				f.perch = posmod(hash(Vector2i(int(now * 10.0), int(f.phase * 10.0))), perches.size())
+				f.to = perches[f.perch]
+				f.perch_until = -1.0
+		if f.leave:
+			f.to = Vector2(f.pos.x + (1.0 if f.pos.x > size.x * 0.5 else -1.0) * 60.0, -80.0)
+		var d: Vector2 = f.to - f.pos
+		if d.length() > 2.0:
+			var bob := Vector2(0.0, sin(now * 5.0 + f.phase) * _cell * 0.4)
+			var step := minf(d.length(), speed * dt)
+			f.pos += d.normalized() * step + bob * dt
+		elif not f.leave:
+			if f.perch_until < 0.0:
+				f.perch_until = now + BUTTERFLY_PERCH + fposmod(f.phase * 3.1, 1.0) * BUTTERFLY_JITTER
+			elif now >= f.perch_until and perches.size() > 1:
+				var pick := posmod(hash(Vector2i(int(now * 10.0), int(f.phase * 10.0))), perches.size() - 1)
+				if pick >= f.perch:
+					pick += 1
+				f.perch = pick
+				f.to = perches[pick]
+				f.perch_until = -1.0
+		if f.leave and f.pos.y < -60.0:
+			continue
+		keep.append(f)
+	_flies = keep
+
+## The life on the meadow, over the pieces, as one mesh a frame: the
+## butterflies, a camper peeking, a bunny hopping past and the party's
+## bunting; the seal after the solve, with its words.
+func _draw_life() -> void:
+	if _cell <= 0.0:
+		return
+	var now := _now()
+	var b := Face.Builder.new()
+	if now >= _bunting_at:
+		_draw_bunting(b, now - _bunting_at)
+	for f in _flies:
+		var perched: bool = not f.leave and f.pos.distance_to(f.to) <= 2.0
+		var beat: float = absf(sin(now * (5.0 if perched else 16.0) + f.phase))
+		_butterfly(b, f.pos, _cell * BUTTERFLY_SIZE, 0.25 + 0.75 * beat, BUTTERFLY_WINGS[f.wing])
+	if not _peek.is_empty():
+		var e: float = now - float(_peek.at)
+		if e > PEEK_TIME or state.mark_at(_peek.cell) != State.TENT:
+			_peek = {}
+		elif e > 0.0:
+			_draw_peek(b, e)
+	if not _bunny.is_empty():
+		var e: float = now - float(_bunny.at)
+		if e > BUNNY_TIME:
+			_bunny = {}
+		elif e > 0.0:
+			_draw_bunny(b, e)
+	var shown: Array = []
+	if not b.verts.is_empty():
+		var mesh := b.mesh()
+		shown.append(mesh)
+		_life_layer.draw_mesh(mesh, null)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_life_shown = shown
+
+## A butterfly at `at`, `s` its wingspan's half, its wings opened `open`.
+func _butterfly(b, at: Vector2, s: float, open: float, wing: Color) -> void:
+	for sx: float in [-1.0, 1.0]:
+		var w_ := s * open
+		b.ellipse(at + Vector2(sx * w_ * 0.55, -s * 0.28), w_ * 0.6, s * 0.5, wing)
+		b.ellipse(at + Vector2(sx * w_ * 0.4, s * 0.28), w_ * 0.42, s * 0.34, wing.darkened(0.12))
+		b.disc(at + Vector2(sx * w_ * 0.62, -s * 0.34), s * 0.13 * maxf(open, 0.3), Color(Pal.SURFACE, 0.8))
+	b.ellipse(at, s * 0.12, s * 0.5, Pal.OUTLINE)
+	for sx: float in [-1.0, 1.0]:
+		b.stroke(PackedVector2Array([at + Vector2(0.0, -s * 0.45), at + Vector2(sx * s * 0.3, -s * 0.85)]),
+			maxf(1.5, s * 0.06), Pal.OUTLINE)
+
+## A camper, `e` seconds into the gag: a round face in a bobble hat comes up
+## in the doorway, looks round, waves a mitten and ducks back in.
+func _draw_peek(b, e: float) -> void:
+	var cell: Vector2i = _peek.cell
+	var R := _cell * TENT_SIZE
+	var door := cell_to_local(cell.y, cell.x) + Vector2(0.0, 0.4 * R)
+	var up := Motion.back_out(clampf(e / PEEK_RISE, 0.0, 1.0))
+	var down := clampf((e - (PEEK_TIME - PEEK_RISE)) / PEEK_RISE, 0.0, 1.0)
+	var rise := up * (1.0 - down * down)
+	if rise <= 0.02:
+		return
+	var r := 0.12 * R
+	var head := door + Vector2(0.0, -r - 0.16 * R * rise)
+	var look := sin((e - PEEK_RISE) * 3.4) if e > PEEK_RISE else 0.0
+	var hat: Color = BUNTING_COLOURS[int(_peek.hat)]
+	# The doorway's dark behind it, so it comes out of the tent.
+	b.polygon(PackedVector2Array([door + Vector2(-0.14, 0.0) * R, door + Vector2(0.14, 0.0) * R,
+		door + Vector2(0.0, -0.46) * R]), Pal.TENT_DARK)
+	b.disc(head, r, Pal.SURFACE)
+	b.disc(head + Vector2(-0.45, 0.25) * r, r * 0.22, Color(Pal.CHEEK, 0.8))
+	b.disc(head + Vector2(0.45, 0.25) * r, r * 0.22, Color(Pal.CHEEK, 0.8))
+	for sx: float in [-1.0, 1.0]:
+		b.disc(head + Vector2(sx * 0.32 + look * 0.15, -0.05) * r, r * 0.12, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(head + Vector2(look * 0.15, 0.12) * r, r * 0.28, PI * 0.15, PI * 0.85),
+		maxf(1.2, r * 0.1), Pal.OUTLINE)
+	# The bobble hat.
+	b.polygon(Face.Builder.arc_points(head + Vector2(0.0, -0.15) * r, r * 1.02, PI, TAU), hat)
+	b.stroke(PackedVector2Array([head + Vector2(-1.0, -0.15) * r, head + Vector2(1.0, -0.15) * r]),
+		r * 0.3, hat.darkened(0.15))
+	b.disc(head + Vector2(0.0, -1.15) * r, r * 0.3, Pal.SURFACE)
+	# The wave: a mitten on a short arm, rocking once the camper is up.
+	if e > PEEK_RISE:
+		var wave := sin((e - PEEK_RISE) * 12.0) * 0.5
+		var shoulder := head + Vector2(0.9, 0.9) * r
+		var hand := shoulder + Vector2(0.0, -1.3 * r).rotated(0.5 + wave)
+		b.stroke(PackedVector2Array([shoulder, hand]), r * 0.32, hat)
+		b.disc(hand, r * 0.3, hat.darkened(0.1))
+
+## A bunny, `e` seconds into the gag: BUNNY_HOPS hops across the front of the
+## tent's square, ears back in the air and down on landing.
+func _draw_bunny(b, e: float) -> void:
+	var cell: Vector2i = _bunny.cell
+	var dir: float = _bunny.dir
+	var u := e / BUNNY_TIME
+	var centre := cell_to_local(cell.y, cell.x)
+	var ground := centre.y + _cell * 0.44
+	var x := centre.x + dir * lerpf(-0.9, 0.9, u) * _cell
+	var hop := absf(sin(u * BUNNY_HOPS * PI))
+	var s := _cell * BUNNY_SIZE
+	var at := Vector2(x, ground - s * 0.5 - hop * s * 0.9)
+	var fade := clampf(minf(u, 1.0 - u) * 8.0, 0.0, 1.0)
+	var fur := Color(Pal.SURFACE, fade)
+	var ink := Color(Pal.OUTLINE, fade)
+	Scenery.soft_disc(b, Vector2(x, ground), s * 0.5 * (1.0 - hop * 0.4), s * 0.12, Color(Pal.TEXT, 0.15 * fade))
+	# Body, head toward the way it goes, a tail behind.
+	b.ellipse(at, s * 0.5, s * 0.36, fur)
+	b.disc(at + Vector2(-dir * 0.5, -0.05) * s, s * 0.16, fur)
+	var head := at + Vector2(dir * 0.42, -0.3) * s
+	var lean := -dir * (0.35 + hop * 0.4)
+	for k: float in [-0.12, 0.12]:
+		var root := head + Vector2(k * s, -0.12 * s)
+		var tip := root + Vector2(0.0, -0.55 * s).rotated(lean + k)
+		b.stroke(PackedVector2Array([root, tip]), s * 0.14, fur)
+		b.stroke(PackedVector2Array([root.lerp(tip, 0.25), root.lerp(tip, 0.8)]), s * 0.06, Color(Pal.CHEEK, fade))
+	b.disc(head, s * 0.26, fur)
+	b.disc(head + Vector2(dir * 0.1, -0.03) * s, s * 0.05, ink)
+	b.disc(head + Vector2(dir * 0.24, 0.06) * s, s * 0.05, Color(Pal.CHEEK, fade))
+
+## The party's bunting: a garland of pennants strung across the top of the
+## meadow, dropping in and swinging to rest, `e` seconds after it began.
+func _draw_bunting(b, e: float) -> void:
+	var field := _field_px()
+	# Strung between the column counts and the meadow, so it hangs in front of
+	# the top row rather than through it.
+	var left := field.position + Vector2(-_cell * BAND * 0.3, -_cell * BAND * 0.12)
+	var right := Vector2(field.end.x + _cell * BAND * 0.1, left.y)
+	var drop := 1.0 if Motion.reduce else Motion.back_out(clampf(e / BUNTING_TIME, 0.0, 1.0))
+	var sag := _cell * BUNTING_SAG * drop
+	var swing := 0.0 if Motion.reduce else sin(e * 4.0) * 0.12 * maxf(0.0, 1.0 - e / 2.5)
+	var pts := PackedVector2Array()
+	const STEPS := 24
+	for i in STEPS + 1:
+		var u := float(i) / STEPS
+		pts.append(left.lerp(right, u) + Vector2(0.0, sag * 4.0 * u * (1.0 - u)))
+	b.stroke(pts, maxf(2.0, _cell * 0.03), Pal.TENT_DARK)
+	var flag := _cell * 0.22
+	for k in BUNTING_FLAGS:
+		var u := (k + 0.5) / BUNTING_FLAGS
+		var p := left.lerp(right, u) + Vector2(0.0, sag * 4.0 * u * (1.0 - u))
+		var slope := (right - left).normalized().rotated(4.0 * (1.0 - 2.0 * u) * sag / maxf(1.0, right.x - left.x))
+		var down := Vector2(-slope.y, slope.x).rotated(swing * (1.0 if k % 2 == 0 else -1.0))
+		var a := p - slope * flag * 0.45
+		var c := p + slope * flag * 0.45
+		var tip := p + down * flag * 1.1 * drop
+		var colour: Color = BUNTING_COLOURS[k % BUNTING_COLOURS.size()]
+		b.polygon(PackedVector2Array([a, c, tip]), colour)
+		b.polygon(PackedVector2Array([a, a.lerp(c, 0.5), a.lerp(tip, 0.5)]), colour.lightened(0.2))
+
+## After the solve wave (`lead` from now): the seal, when the solve earned one
+## (flawless, or any Old Oaks board), stamps onto the meadow's lower right;
+## hats pop onto every tree and tent along the diagonal, the bunting drops in
+## across the top, confetti sweeps the meadow and the butterflies come out.
+## Under reduce-motion the seal and the bunting stand still and there is no
+## more.
+func _party(lead: float) -> void:
+	var now := _now()
+	if _flawless or state.has_oaks():
+		_stamp_at = now if Motion.reduce else now + lead + CLEAR_TIME + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	_bunting_at = now if Motion.reduce else now + lead + PARTY_AT
+	_after(_bunting_at - now, func() -> void: _life_layer.queue_redraw())
+	if Motion.reduce:
+		return
+	var at := lead + PARTY_AT
+	var faces: Array = []
+	for cell in _trees:
+		faces.append([cell, _trees[cell]])
+	for cell in state.tents():
+		faces.append([cell, _tent_node(cell)])
+	for pair in faces:
+		var cell: Vector2i = pair[0]
+		var face: Face = pair[1]
+		face.hat_style = posmod(hash(cell), 7)
+		var tw: Tween = face.create_tween()
+		tw.tween_property(face, "hat", 1.0, PARTY_HAT).from(0.0) \
+			.set_delay(at + Motion.stagger(cell.x + cell.y, PARTY_HAT_STAGGER)) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_after(at, func() -> void:
+		var field := _field_px()
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell), 30, field.size.x * 0.8)
+		fx.cue("party")
+		for k in BUTTERFLY_PARTY:
+			_spawn_fly(_flies.size() + k))
+	_after(at + 0.45, func() -> void:
+		var field := _field_px()
+		fx.confetti(field.get_center(), 24, field.size.x * 0.6))
+	# The butterflies stay for the win screen's first look and then fly off,
+	# so the solved board goes quiet instead of redrawing for ever.
+	_after(at + FLIES_STAY, func() -> void:
+		for f in _flies:
+			f.leave = true)
+	_anim_until = maxf(_anim_until, now + at + PARTY_HAT + 1.0)
+
+## The seal on the meadow's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var field := _field_px()
+	var rad := field.size.x * STAMP_R
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, state.has_oaks())
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := field.end - Vector2(rad, rad) * 1.05
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if state.has_oaks():
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02], [tr("TN_OAK_SEAL") if not _flawless else tr("BN_FLAWLESS"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # --- entrance ---
 
@@ -1364,8 +2340,19 @@ func _busy_for(seconds: float) -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
-	if _now() < _anim_until:
+	var now := _now()
+	if now < _anim_until:
 		queue_redraw()
+	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+		_heart_layer.queue_redraw()
+	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+		_combo_layer.queue_redraw()
+	if not _flies.is_empty() or not _peek.is_empty() or not _bunny.is_empty() \
+			or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1) \
+			or (now >= _bunting_at and now - _bunting_at < BUNTING_TIME + 0.1):
+		_fly(delta)
+		_life_layer.queue_redraw()
 
 ## Something on the ground changed: rebuild it on the next draw.
 func _redraw() -> void:
