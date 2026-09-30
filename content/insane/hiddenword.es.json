@@ -1,0 +1,2054 @@
+{
+	"version": 1,
+	"note": "Hidden Word's Snail Mail bank: answers an answer-list-aware solver needs 5+ rows for when each row's colours arrive a row late (tools/insane/hiddenword_ladder.py). rung = rows, 7 = not in six.",
+	"boards": [
+		{
+			"answer": "ahora",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "forma",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bueno",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grupo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "juego",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "padre",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "dejar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "orden",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tomar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "apoyo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "llama",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ganar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fondo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jugar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "viejo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fuego",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "abajo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "error",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gusto",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "perro",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "honor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hogar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "lleno",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "venir",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "novia",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "playa",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "novio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vuelo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "dueño",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ángel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "linda",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "parar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pieza",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pista",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "obvio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "plano",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ánimo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "andar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "brazo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "huevo",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "conde",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "norma",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pleno",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "broma",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "feria",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rango",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ronda",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rumbo",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pollo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rueda",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "álbum",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "borde",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bravo",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "salsa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "palma",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "aldea",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "beber",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mover",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "placa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "envío",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "noble",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "himno",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bahía",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "golfo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "horno",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "notar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hueso",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "medir",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rubio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vapor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "barba",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "trono",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "guapo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ducha",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sucio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ficha",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fibra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grano",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "buque",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pegar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "barro",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "panel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fauna",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "funda",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rumor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "plomo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "prado",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "soñar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "armar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "dudar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "verbo",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "marea",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pluma",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ópera",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "araña",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "enojo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "anexo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "falda",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "trozo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fijar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bruja",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "burro",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jamón",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mango",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mutuo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cabra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rezar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "girar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "radar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "aguja",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "llano",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nadar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "aroma",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "besar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gorra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "optar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ídolo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cacao",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "polar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "torpe",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "valla",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hábil",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "panda",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "panza",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "parra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "zorro",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "agudo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "brisa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tutor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "monja",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "oveja",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "carpa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "guiar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "galán",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "abono",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gozar",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "denso",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "garza",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "audaz",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "avena",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "busto",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "menta",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rodeo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "yerno",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cerco",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "manía",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mudar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "garra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pizca",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "abeja",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hongo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jurar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "balde",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pinar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rampa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pulpo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "alzar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "guiño",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "potro",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bambú",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bingo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "folio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fugaz",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "melón",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "olivo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "buceo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "furor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grifo",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rogar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ancla",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ocaso",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "termo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "zanja",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cofre",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jarra",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sudar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "canoa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "trazo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ámbar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "manso",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pelar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "polen",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grava",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bazar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mojar",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tejer",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "andén",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grato",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cedro",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "atajo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cromo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ozono",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bañar",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "dardo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gruta",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tenaz",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tifón",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ameno",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "obrar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nuera",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "errar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "panal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "legua",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "opaco",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pulga",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vagar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "arado",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "brasa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tapiz",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "oruga",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "osado",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cojín",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nogal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fiero",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bruma",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "voraz",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ávido",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "boina",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "agrio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "caoba",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "palmo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "erizo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "morsa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rozar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "domar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hiena",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vivaz",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fogón",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ébano",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bulbo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "alfil",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cardo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "curvo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "peral",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "zarpa",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "podar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "abeto",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "diván",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "galgo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cirio",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "comba",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "virar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gnomo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ostra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pajar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nevar",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mirlo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mimar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rombo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tonel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ábaco",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rimar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "dedal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ópalo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rizar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "helar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		}
+	]
+}
