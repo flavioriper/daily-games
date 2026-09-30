@@ -37,9 +37,21 @@ const W := 8
 const DR := [-1, 0, 1, 0]
 const DC := [0, 1, 0, -1]
 
-## The field per band: easy, medium, hard, insane. Insane's row is
-## provisional, replaced by the bank in batch 2.
+## The field per band: easy, medium, hard, insane. Insane is Wish Tags on
+## 8x8, dealt from the bank (`from_bank`); its row here is the size of the
+## live fallback `build()` grows when the bank is empty or broken.
 const SIZES := [5, 6, 7, 8]
+## Wish Tags' field.
+const TAGS_N := 8
+## Trees `generate_tags` grows before it gives up and hands back `ok: false`.
+## Mined off the phone, so this only bounds a bad seed.
+const TAGS_BUDGET := 200
+## Per side bit d: the set of the sixteen piece masks that have that side
+## open, as a sixteen-bit set (bit m set when mask m opens side d). The tag
+## solver's candidates are sets of piece masks in this same shape, so "every
+## candidate agrees side d is open" is one AND.
+const OPEN := [0xAAAA, 0xCCCC, 0xF0F0, 0xFF00]
+const ALL16 := 0xFFFF
 ## Trees grown before the promise is given up on. Never approached in the
 ## 6,000 boards the spec measured (worst 8, at 7x7); it exists only so a
 ## pathological seed cannot hang the board opening, the way Sudoku's time
@@ -320,3 +332,516 @@ static func _live(n: int, post: int, cur: PackedInt32Array) -> int:
 			lit += 1
 			queue.append(j)
 	return lit
+
+# ------------------------------------------------------------- Wish Tags
+#
+# Insane. Some lanterns wear a paper tag with a number on it: how many
+# lengths of wire lie between that lantern and the post. The garden is 8x8
+# and one the propagate-only solver above cannot finish -- without the tags
+# it needs a guess or has more than one answer -- so the tags are the only
+# way in. Mined off the phone (tools/insane/fairylights_ladder.gd) and dealt
+# from content/insane/fairylights.json; `build()` at band 3 is the live
+# fallback, a propagate-proved 8x8 with every lantern tagged (`all_tags`).
+# Spec: docs/superpowers/specs/2026-09-30-fairylights-polish-design.md,
+# section 2.
+
+## How far every cell sits from the post along the tree's own wire: a
+## breadth-first walk over sides open from both ends. -1 where the walk never
+## arrives. Reads whatever masks it is handed -- the answer here, and the
+## state's `depths()` is the same walk over the board as it stands.
+static func tree_depths(n: int, post: int, masks: PackedInt32Array) -> PackedInt32Array:
+	var cells := n * n
+	var out := PackedInt32Array()
+	out.resize(cells)
+	out.fill(-1)
+	if cells == 0 or post < 0 or post >= cells or masks.size() != cells:
+		return out
+	out[post] = 0
+	var queue := PackedInt32Array([post])
+	var head := 0
+	while head < queue.size():
+		var i: int = queue[head]
+		head += 1
+		var r: int = i / n
+		var c: int = i % n
+		for d in range(4):
+			if masks[i] & (1 << d) == 0:
+				continue
+			var a: int = r + DR[d]
+			var b: int = c + DC[d]
+			if a < 0 or b < 0 or a >= n or b >= n:
+				continue
+			var j: int = a * n + b
+			if out[j] != -1 or masks[j] & (1 << ((d + 2) % 4)) == 0:
+				continue
+			out[j] = out[i] + 1
+			queue.append(j)
+	return out
+
+## Whether `masks` is a spanning tree over every cell, rooted at the post:
+## no stub points off the grid or at a closed side, there are exactly
+## cells - 1 edges, and the walk from the post reaches every cell -- which,
+## with that edge count, also rules out a loop.
+static func is_spanning_tree(n: int, post: int, masks: PackedInt32Array) -> bool:
+	var cells := n * n
+	if n < 2 or masks.size() != cells or post < 0 or post >= cells:
+		return false
+	var stubs := 0
+	for i in cells:
+		var m: int = masks[i]
+		if m < 0 or m > 15:
+			return false
+		for d in range(4):
+			if m & (1 << d) == 0:
+				continue
+			stubs += 1
+			var a: int = i / n + DR[d]
+			var b: int = i % n + DC[d]
+			if a < 0 or b < 0 or a >= n or b >= n:
+				return false
+			if masks[a * n + b] & (1 << ((d + 2) % 4)) == 0:
+				return false
+	if stubs != 2 * (cells - 1):
+		return false
+	for v in tree_depths(n, post, masks):
+		if v < 0:
+			return false
+	return true
+
+## Every lantern tagged with its depth: the live fallback's tags, and where
+## the miner starts before it strips.
+static func all_tags(n: int, post: int, sol: PackedInt32Array) -> Dictionary:
+	var dep := tree_depths(n, post, sol)
+	var out := {}
+	for i in n * n:
+		if degree(sol[i]) == 1:
+			out[i] = dep[i]
+	return out
+
+## The tag solver: the propagate-only rule above, plus three rules a player
+## uses, plus -- only when those stall -- one supposition at a time.
+##
+## Candidates are sets of piece masks, one sixteen-bit set a cell (bit m for
+## mask m; see OPEN). The rules, run to a fixpoint:
+## - **propagate**: a side every candidate agrees on is proven, and the
+##   neighbour is filtered to match (exactly `solvable()`).
+## - **no loop**: two proven-open edges may not close a ring, and an
+##   undecided edge between two cells already joined by proven-open wire is
+##   closed.
+## - **no island**: a group of cells joined by proven-open wire that is not
+##   the whole garden must reach out; with no undecided edge leading out it
+##   is a contradiction, with exactly one that edge is open.
+## - **tags are distances**: a tagged lantern whose proven run holds the post
+##   must sit at exactly its tag along it; otherwise the run has to leave by
+##   an undecided edge, from a cell `k` steps along to a neighbour `g`, with
+##   k + 1 + manhattan(g, post) <= tag and the same parity. None such is a
+##   contradiction; exactly one is open.
+##
+## When the fixpoint stalls short of one candidate a cell, **suppositions**:
+## for each cell still holding more than one, try each candidate alone,
+## propagate, and strike it on a contradiction. Loop while a pass strikes
+## anything. It never guesses: a candidate only goes when assuming it breaks
+## a rule, so a finish is a proof the answer is unique.
+##
+## {"ok": finished at exactly `sol`, "rung": suppositions that struck a
+## candidate, "work": candidates tried, and on a stall "left": the cells
+## still holding more than one candidate}. `suppose` false stops at the
+## fixpoint (rung and work 0).
+static func solve_tags(n: int, post: int, sol: PackedInt32Array, tags: Dictionary,
+		suppose := true) -> Dictionary:
+	var cells := n * n
+	var fail := {"ok": false, "rung": 0, "work": 0}
+	if n < 2 or sol.size() != cells or post < 0 or post >= cells:
+		return fail
+	var nb := PackedInt32Array()
+	nb.resize(cells * 4)
+	var md := PackedInt32Array()
+	md.resize(cells)
+	var cand := PackedInt32Array()
+	cand.resize(cells)
+	var pr: int = post / n
+	var pc: int = post % n
+	for i in cells:
+		var r: int = i / n
+		var c: int = i % n
+		md[i] = absi(r - pr) + absi(c - pc)
+		var set := 0
+		for m in rotations(sol[i]):
+			set |= 1 << int(m)
+		for d in range(4):
+			var a: int = r + DR[d]
+			var b: int = c + DC[d]
+			if a < 0 or b < 0 or a >= n or b >= n:
+				nb[i * 4 + d] = -1
+				set &= ~int(OPEN[d])
+			else:
+				nb[i * 4 + d] = a * n + b
+		if set == 0:
+			return fail
+		cand[i] = set
+	var keys: Array = tags.keys()
+	keys.sort()
+	var tl := PackedInt32Array()
+	var tv := PackedInt32Array()
+	for k in keys:
+		tl.append(int(k))
+		tv.append(int(tags[k]))
+	if not _tag_propagate(cells, nb, md, post, tl, tv, cand):
+		return fail
+	var rung := 0
+	var work := 0
+	while suppose and not _all_single(cand):
+		var struck := false
+		for i in cells:
+			var rest: int = cand[i]
+			if rest & (rest - 1) == 0:
+				continue
+			while rest != 0:
+				var low: int = rest & -rest
+				rest &= ~low
+				var now: int = cand[i]
+				if now & low == 0:
+					continue
+				if now & (now - 1) == 0:
+					break
+				work += 1
+				var trial := cand.duplicate()
+				trial[i] = low
+				if _tag_propagate(cells, nb, md, post, tl, tv, trial):
+					continue
+				cand[i] = now & ~low
+				rung += 1
+				struck = true
+				if not _tag_propagate(cells, nb, md, post, tl, tv, cand):
+					return {"ok": false, "rung": rung, "work": work}
+		if not struck:
+			break
+	if not _all_single(cand):
+		var left := 0
+		for c in cand:
+			if c & (c - 1) != 0:
+				left += 1
+		return {"ok": false, "rung": rung, "work": work, "left": left}
+	for i in cells:
+		if cand[i] != 1 << sol[i]:
+			# Every rule is meant to be sound, so the answer can never be
+			# struck; landing anywhere else is a solver bug, not a board.
+			push_error("Fairy Lights: the tag solver finished off the answer")
+			return {"ok": false, "rung": rung, "work": work}
+	return {"ok": true, "rung": rung, "work": work}
+
+static func _all_single(cand: PackedInt32Array) -> bool:
+	for c in cand:
+		if c & (c - 1) != 0:
+			return false
+	return true
+
+## The fixpoint of every rule. False on a contradiction.
+static func _tag_propagate(cells: int, nb: PackedInt32Array, md: PackedInt32Array, post: int,
+		tl: PackedInt32Array, tv: PackedInt32Array, cand: PackedInt32Array) -> bool:
+	while true:
+		if not _local(cells, nb, cand):
+			return false
+		var g := _global(cells, nb, md, post, tl, tv, cand)
+		if g < 0:
+			return false
+		if g == 0:
+			return true
+	return true
+
+## The propagate-only rule over a work stack: a cell whose candidates changed
+## goes back on it, and its neighbours are filtered off it.
+static func _local(cells: int, nb: PackedInt32Array, cand: PackedInt32Array) -> bool:
+	var stack := PackedInt32Array()
+	stack.resize(cells)
+	var inq := PackedByteArray()
+	inq.resize(cells)
+	inq.fill(1)
+	for i in cells:
+		stack[i] = i
+	var top := cells
+	while top > 0:
+		top -= 1
+		var i: int = stack[top]
+		inq[i] = 0
+		var c: int = cand[i]
+		for d in range(4):
+			var j: int = nb[i * 4 + d]
+			if j < 0:
+				continue
+			var o: int = OPEN[d]
+			var cj: int = cand[j]
+			var nj: int
+			if c & ~o == 0:
+				nj = cj & int(OPEN[(d + 2) & 3])
+			elif c & o == 0:
+				nj = cj & ~int(OPEN[(d + 2) & 3])
+			else:
+				continue
+			if nj == cj:
+				continue
+			if nj == 0:
+				return false
+			cand[j] = nj
+			if inq[j] == 0:
+				inq[j] = 1
+				if top < stack.size():
+					stack[top] = j
+				else:
+					stack.append(j)
+				top += 1
+	return true
+
+static func _find(parent: PackedInt32Array, x: int) -> int:
+	var r := x
+	while parent[r] != r:
+		r = parent[r]
+	while parent[x] != r:
+		var nx: int = parent[x]
+		parent[x] = r
+		x = nx
+	return r
+
+## Opens edge `e` (cell * 4 + side) from both ends.
+static func _force_open(nb: PackedInt32Array, cand: PackedInt32Array, e: int) -> void:
+	var i: int = e >> 2
+	var d: int = e & 3
+	cand[i] &= int(OPEN[d])
+	cand[nb[e]] &= int(OPEN[(d + 2) & 3])
+
+## The loop, island and tag rules, read once off the proven-open wire. -1 a
+## contradiction, 1 something was proven (run the propagate rule again), 0
+## nothing new. Called only at the propagate rule's fixpoint, where both
+## ends of an edge agree on it, so each edge is read from its west or north
+## cell alone.
+static func _global(cells: int, nb: PackedInt32Array, md: PackedInt32Array, post: int,
+		tl: PackedInt32Array, tv: PackedInt32Array, cand: PackedInt32Array) -> int:
+	var parent := PackedInt32Array()
+	parent.resize(cells)
+	for i in cells:
+		parent[i] = i
+	for i in cells:
+		var c: int = cand[i]
+		for d in [1, 2]:
+			var j: int = nb[i * 4 + d]
+			if j < 0:
+				continue
+			if c & ~int(OPEN[d]) == 0:
+				var a := _find(parent, i)
+				var b := _find(parent, j)
+				if a == b:
+					return -1
+				parent[a] = b
+	# No loop: an undecided edge inside one run is closed.
+	var changed := false
+	var exits := PackedInt32Array()
+	exits.resize(cells)
+	exits.fill(0)
+	var exit_edge := PackedInt32Array()
+	exit_edge.resize(cells)
+	var size := PackedInt32Array()
+	size.resize(cells)
+	size.fill(0)
+	for i in cells:
+		size[_find(parent, i)] += 1
+	for i in cells:
+		var c: int = cand[i]
+		for d in [1, 2]:
+			var j: int = nb[i * 4 + d]
+			if j < 0:
+				continue
+			var o: int = OPEN[d]
+			if c & o == 0 or c & ~o == 0:
+				continue
+			var a := _find(parent, i)
+			var b := _find(parent, j)
+			if a == b:
+				c &= ~o
+				cand[i] = c
+				cand[j] &= ~int(OPEN[(d + 2) & 3])
+				changed = true
+				continue
+			exits[a] += 1
+			exit_edge[a] = i * 4 + d
+			exits[b] += 1
+			exit_edge[b] = j * 4 + ((d + 2) & 3)
+	if changed:
+		return 1
+	# No island: a run that is not the whole garden has to reach out.
+	for r in cells:
+		if parent[r] != r or size[r] == cells:
+			continue
+		if exits[r] == 0:
+			return -1
+		if exits[r] == 1:
+			_force_open(nb, cand, exit_edge[r])
+			changed = true
+	if changed:
+		return 1
+	# Tags are distances.
+	var dist := PackedInt32Array()
+	dist.resize(cells)
+	dist.fill(-1)
+	var queue := PackedInt32Array()
+	for k in tl.size():
+		var lantern: int = tl[k]
+		var tag: int = tv[k]
+		queue.resize(0)
+		queue.append(lantern)
+		dist[lantern] = 0
+		var head := 0
+		var at_post := -1
+		var valid := 0
+		var last := -1
+		while head < queue.size():
+			var i: int = queue[head]
+			head += 1
+			var here: int = dist[i]
+			if i == post:
+				at_post = here
+			var c: int = cand[i]
+			for d in range(4):
+				var j: int = nb[i * 4 + d]
+				if j < 0:
+					continue
+				var o: int = OPEN[d]
+				if c & ~o == 0:
+					if dist[j] < 0:
+						dist[j] = here + 1
+						queue.append(j)
+				elif c & o != 0:
+					var need: int = here + 1 + md[j]
+					if need <= tag and (tag - need) & 1 == 0:
+						valid += 1
+						last = i * 4 + d
+		for q in queue:
+			dist[q] = -1
+		if at_post >= 0:
+			if at_post != tag:
+				return -1
+			continue
+		if valid == 0:
+			return -1
+		if valid == 1:
+			_force_open(nb, cand, last)
+			changed = true
+	return 1 if changed else 0
+
+## One Wish Tags garden, grown on the Mac by the miner: an 8x8 Prim tree
+## neither the propagate-only solver nor the tag solver with no tags can
+## finish, every lantern tagged, the tag solver
+## made to finish it, then tags stripped one at a time in a seeded order,
+## each removal kept only while the tag solver still finishes. Scrambled as
+## every band is. {"n", "post", "sol", "deal", "tags" (cell -> depth),
+## "rung", "work", "attempts", "ok"}; `ok` false when TAGS_BUDGET trees all
+## failed (the last one grown rides along untagged, never to be banked).
+static func generate_tags(rng: RandomNumberGenerator) -> Dictionary:
+	var n := TAGS_N
+	var lo: int = (n - 1) / 2
+	var hi: int = int(ceil((n - 1) / 2.0))
+	var post: int = rng.randi_range(lo, hi) * n + rng.randi_range(lo, hi)
+	var attempts := 0
+	var sol := PackedInt32Array()
+	while attempts < TAGS_BUDGET:
+		attempts += 1
+		sol = _tree(rng, n, post)
+		var lanterns := 0
+		for m in sol:
+			if degree(m) == 1:
+				lanterns += 1
+		if lanterns < int(ceil(n * n * LANTERN_SHARE)) or degree(sol[post]) < 2:
+			continue
+		# The ordinary rules must not be enough: that is Hard's garden. Nor
+		# may the player's own rules with no tag at all -- no loop, no
+		# island, suppositions -- or the tags are decoration. Only about one
+		# Prim tree in sixteen at 8x8 has more than one answer those rules
+		# cannot tell apart, which is the garden the tags are for.
+		if solvable(n, sol) or bool(solve_tags(n, post, sol, {}).ok):
+			continue
+		var tags := all_tags(n, post, sol)
+		if not bool(solve_tags(n, post, sol, tags).ok):
+			continue
+		var order: Array = tags.keys()
+		order.sort()
+		for k in range(order.size() - 1, 0, -1):
+			var s := rng.randi_range(0, k)
+			var t = order[k]
+			order[k] = order[s]
+			order[s] = t
+		for cell in order:
+			var depth: int = tags[cell]
+			tags.erase(cell)
+			if not bool(solve_tags(n, post, sol, tags).ok):
+				tags[cell] = depth
+		var proof := solve_tags(n, post, sol, tags)
+		return {"n": n, "post": post, "sol": sol, "deal": _scramble(rng, n, post, sol),
+			"tags": tags, "rung": int(proof.rung), "work": int(proof.work),
+			"attempts": attempts, "ok": true}
+	return {"n": n, "post": post, "sol": sol, "deal": _scramble(rng, n, post, sol),
+		"tags": {}, "rung": 0, "work": 0, "attempts": attempts, "ok": false}
+
+## A Wish Tags garden in the bank's plain-JSON shape: the masks as arrays and
+## the tags as [cell, depth] pairs in cell order. {} for a failed grow.
+static func to_bank(board: Dictionary) -> Dictionary:
+	if board.is_empty() or not bool(board.get("ok", false)):
+		return {}
+	var keys: Array = board.tags.keys()
+	keys.sort()
+	var pairs: Array = []
+	for k in keys:
+		pairs.append([int(k), int(board.tags[k])])
+	return {"n": int(board.n), "post": int(board.post), "sol": Array(board.sol),
+		"deal": Array(board.deal), "tags": pairs}
+
+## A banked garden back in `build()`'s shape plus its tags, **checked the way
+## the phone can afford**: `sol` is a spanning tree over n*n rooted at the
+## post, every tag sits on a lantern and equals its depth in `sol`, and every
+## dealt piece is a rotation of its own answer. That the tags pin the answer
+## down is the miner's proof and is trusted. {} when any of it fails (a value
+## of the wrong type included), and the board grows a live one instead.
+static func from_bank(entry: Dictionary) -> Dictionary:
+	if entry.is_empty() or not _is_num(entry.get("n")) or not _is_num(entry.get("post")) \
+			or not (entry.get("sol") is Array) or not (entry.get("deal") is Array) \
+			or not (entry.get("tags") is Array):
+		return {}
+	var n := int(entry.n)
+	var post := int(entry.post)
+	if n < 2 or n > 12:
+		return {}
+	var cells := n * n
+	var sol := _masks(entry.sol, cells)
+	var deal := _masks(entry.deal, cells)
+	if sol.is_empty() or deal.is_empty() or not is_spanning_tree(n, post, sol):
+		return {}
+	for i in cells:
+		if not rotations(sol[i]).has(deal[i]):
+			return {}
+	var dep := tree_depths(n, post, sol)
+	var tags := {}
+	for pair in entry.tags:
+		if not (pair is Array) or pair.size() != 2 or not _is_num(pair[0]) or not _is_num(pair[1]):
+			return {}
+		var cell := int(pair[0])
+		if cell < 0 or cell >= cells or tags.has(cell) or degree(sol[cell]) != 1 \
+				or int(pair[1]) != dep[cell]:
+			return {}
+		tags[cell] = dep[cell]
+	if tags.is_empty():
+		return {}
+	return {"n": n, "post": post, "sol": sol, "deal": deal, "tags": tags,
+		"attempts": 0, "proved": true}
+
+## A bank array of `cells` piece masks, or empty when any value is not one.
+static func _masks(values: Array, cells: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if values.size() != cells:
+		return out
+	for v in values:
+		if not _is_num(v) or float(v) != floorf(float(v)) or int(v) < 0 or int(v) > 15:
+			return PackedInt32Array()
+		out.append(int(v))
+	return out
+
+## Whether a bank value is a number (JSON reads every number as a float).
+static func _is_num(v: Variant) -> bool:
+	return v is int or v is float
