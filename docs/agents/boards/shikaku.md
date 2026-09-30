@@ -14,3 +14,9 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   on Insane. The sign *is* the shape (`marker_face.gd`'s `PLAQUES`), and a
   shaped sign carries an inked inner frame so a square never reads as the
   plain card. The win's flowers are coloured so no two touching beds match.
+- **A plot may not spill over another** (2026-09-30). `commit(rect, own)`
+  refuses a drag that overlaps any plot but `own`, the one the finger went
+  down in, with `{"kind": "taken", "plot": i}`: the board blushes that bed,
+  shivers its sign and says `SK_TAKEN`. Drawing from inside a plot still
+  redraws it. The pending wash turns rose while it overlaps another plot, so
+  the refusal is seen before the release. Hints still clear what they cover.

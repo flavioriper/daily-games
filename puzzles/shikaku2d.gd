@@ -233,6 +233,9 @@ var _enter_until := -1.0e9
 # --- the drag ---
 var _drag_from := Vector2i(-1, -1)
 var _drag_to := Vector2i(-1, -1)
+## The plot the finger went down in, or -1: a drag may redraw it, but never
+## spill over any other.
+var _drag_own := -1
 ## When the finger went down, and when the count last changed: the wash and
 ## the disc pop in from the first, the disc bumps from the second.
 var _drag_at := -1.0e9
@@ -1055,6 +1058,9 @@ func _pend_rect(now: float) -> Rect2:
 ## Green when the rectangle is the size and shape the single clue inside it
 ## asks for, rose when it is not, and plain ink when it holds no clue or two.
 func _pending_colour(pend: Rect2i) -> Color:
+	for i in state.rects.size():
+		if i != _drag_own and state.rects[i].intersects(pend):
+			return Pal.BAD
 	var inside: Array = []
 	for c in state.clues:
 		if pend.has_point(c.pos):
@@ -1093,6 +1099,7 @@ func _press(cell: Vector2i) -> void:
 		return
 	_drag_from = cell
 	_drag_to = cell
+	_drag_own = who
 	_drag_at = _now()
 	_count = 1
 	_count_at = -1.0e9
@@ -1139,16 +1146,19 @@ func _release() -> void:
 	var pend := _pending()
 	# The fence goes up from where the finger went down.
 	var start := Vector2(_drag_from) + Vector2(0.5, 0.5)
+	var own := _drag_own
 	_clear_drag()
 	if is_done():
 		_redraw()
 		return
 	var before := _snapshot()
-	var out: Dictionary = state.commit(pend)
+	var out: Dictionary = state.commit(pend, own)
 	match String(out.get("kind", "none")):
 		"locked":
 			var clue := int(out.get("clue", -1))
 			_refuse(state.owner_at(state.clues[clue].pos.y, state.clues[clue].pos.x) if clue >= 0 else -1)
+		"taken":
+			_refuse(int(out.plot), tr("SK_TAKEN"))
 		"plot":
 			var rect: Rect2i = out.rect
 			_leave_missing(before, _now())
@@ -1181,6 +1191,7 @@ func _pending() -> Rect2i:
 func _clear_drag() -> void:
 	_drag_from = Vector2i(-1, -1)
 	_drag_to = Vector2i(-1, -1)
+	_drag_own = -1
 
 ## Everything a change to the partition drives.
 func _after_move(from: Vector2) -> void:
@@ -1270,8 +1281,8 @@ func _hop(i: int, height: float, time: float, delay := 0.0) -> void:
 
 ## A refused drag on pinned bed `who`: its marker shivers, the bed blushes
 ## and the sprout says why.
-func _refuse(who: int) -> void:
-	_say(tr("SK_PINNED"), Face.Expr.PUZZLED)
+func _refuse(who: int, why := "") -> void:
+	_say(why if why != "" else tr("SK_PINNED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	if who < 0 or who >= state.rects.size():
 		return

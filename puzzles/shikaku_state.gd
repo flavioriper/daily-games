@@ -230,11 +230,12 @@ func fence_posts() -> Array[Vector2i]:
 # --- moves ---
 
 ## Turns `rect` into a plot, and says what happened so the board can answer
-## it: {"kind": "plot"|"clear"|"locked"|"none"} with "rect" on the first two
-## and "clue" on a refusal. Drawing over existing plots replaces them, which
-## is far more forgiving than refusing the drag; a single tap inside a plot
-## clears it; a plot a hint pinned blocks both.
-func commit(rect: Rect2i) -> Dictionary:
+## it: {"kind": "plot"|"clear"|"locked"|"taken"|"none"} with "rect" on the
+## first two, "clue" on a pinned refusal and "plot" on a taken one. A plot may
+## not spill over another: the drag is refused, save over `own`, the plot the
+## drag started in, which it redraws. A single tap inside a plot clears it; a
+## plot a hint pinned blocks both.
+func commit(rect: Rect2i, own := -1) -> Dictionary:
 	if rect.size == Vector2i(1, 1):
 		var who := owner_at(rect.position.y, rect.position.x)
 		if who >= 0:
@@ -252,6 +253,8 @@ func commit(rect: Rect2i) -> Dictionary:
 		if locked[i]:
 			# Hitting a pinned plot: nothing moves, and its number says why.
 			return {"kind": "locked", "clue": clue_index_in(i)}
+		if i != own:
+			return {"kind": "taken", "plot": i}
 		displaced.append(rects[i])
 	rects = keep
 	locked = keep_locked
