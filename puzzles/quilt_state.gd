@@ -18,7 +18,17 @@ extends RefCounted
 ## others, so "every cell of the quilt is covered" and "every patch is on the
 ## quilt" are the same statement. `is_solved()` asks the first one, because
 ## that is the rule as the player sees it -- a covered quilt -- and not the
-## bookkeeping behind it.
+## bookkeeping behind it. On Scrap Basket (Insane) the two part ways: three
+## patches are scraps that belong nowhere, so a covered quilt leaves them in
+## the basket, and the covered quilt is still the whole of the rule.
+##
+## **Hard and Insane judge every drop** (the polish, 2026-09-30). The tiling
+## is proved unique, so a patch sewn anywhere but an answer place is wrong by
+## proof: `drop` refuses it with `WRONG` and rules that spot for that shape
+## for good (`ruled`), and a right patch stays where it went (`STAYS`). The
+## hearts that a wrong drop costs are the board's to keep, as Bridges' are;
+## this class only says right or wrong. Only a board whose proof said unique
+## is judged (`ok`) -- a fallback board plays safe.
 ##
 ## **Patches never rotate.** Nothing here turns a shape, and the board offers
 ## no gesture that would; a patch's `shapes` entry is its one orientation for
@@ -33,9 +43,13 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-20-quilt-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/quilt_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
-## Three a board, as every flat board gives.
-const HINTS := 3
+## Hints and hearts by band (the polish): Easy and Medium get three hints and
+## cannot be lost; Hard gets one hint and three hearts, Insane none and two.
+## The hearts are the board's to count -- see `judged()`.
+const HINTS := [3, 3, 1, 0]
+const HEARTS := [0, 0, 3, 2]
 ## Why a drop or a lift was turned down.
 const OK := 0
 ## A cell of the patch falls off the quilt.
@@ -44,6 +58,14 @@ const OFF := 1
 const OVER := 2
 ## That patch was sewn by a hint and may not be moved.
 const PINNED := 3
+## A judged board: this patch was already tried on this spot and was wrong.
+## Refused for free -- the heart was spent the first time.
+const RULED := 4
+## A judged board: the patch is sewn on right, and a right patch stays.
+const STAYS := 5
+## A judged board: the drop fitted but is not where the answer has any patch
+## of this shape. Nothing is sewn, and the spot is ruled for good.
+const WRONG := 6
 ## The share's squares, one per patch index. Eight, because band 2 lays
 ## eight patches and no band lays more.
 const SQUARES := ["🟨", "🟦", "🟩", "🟥", "🟪", "🟧", "🟫", "⬜"]
@@ -79,9 +101,32 @@ var cover := PackedInt32Array()
 ## How many cells the quilt has. Cached because `is_solved()` asks on every
 ## move.
 var quilt_cells: int = 0
+## 0 Easy .. 3 Insane: which HINTS and HEARTS row this board reads.
+var band := 0
+## How many patches make the quilt: every patch but the scraps.
+var quilt_patches: int = 0
+## Judged boards only: patch -> Array of origins a heart proved wrong for it.
+## A spot is ruled for every patch of the same shape at once, because two
+## alike patches are one choice.
+var ruled: Dictionary = {}
+## Per patch: its shape key (Gen._shape_key), so alike patches can be found
+## without comparing offsets on every question.
+var _keys: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var out: Dictionary = Gen.generate(rng, difficulty)
+## `bank_step` is PuzzleBase.bank_step: how many times New has been pressed
+## since the board opened, which walks Insane through its bank.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, Gen.BANDS.size() - 1)
+	var out: Dictionary = {}
+	if band == 3:
+		# Scrap Basket is dealt from the bank: the miner keeps the boards whose
+		# proof walked furthest, which a live deal cannot look for in time. An
+		# empty bank or an entry that does not hold together grows a live one.
+		out = Gen.from_bank(InsaneBank.pick("quilt", bank_step))
+		if out.is_empty() and InsaneBank.size("quilt") > 0:
+			push_warning("Quilt: a banked board did not hold together; growing a live one")
+	if out.is_empty():
+		out = Gen.generate(rng, difficulty)
 	cols = int(out.cols)
 	rows = int(out.rows)
 	region = out.region
@@ -102,6 +147,8 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	history = []
 	hints_used = 0
 	hints_extra = 0
+	ruled = {}
+	_keys = []
 	recompute()
 
 # ------------------------------------------------------------- reading it
@@ -185,10 +232,167 @@ func is_solved() -> bool:
 	return quilt_cells > 0 and covered() == quilt_cells
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, hints_for(band) + hints_extra - hints_used)
+
+## The hints a band starts with.
+static func hints_for(b: int) -> int:
+	return int(HINTS[clampi(b, 0, HINTS.size() - 1)])
+
+## The hearts a band starts with; 0 is a band that cannot be lost.
+static func hearts_for(b: int) -> int:
+	return int(HEARTS[clampi(b, 0, HEARTS.size() - 1)])
+
+## The scraps: the patches the answer leaves out (answer -1). Empty on every
+## band but Scrap Basket.
+func scraps() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for p in answer.size():
+		if int(answer[p]) < 0:
+			out.append(p)
+	return out
+
+# ---------------------------------------------------------------- judging
+
+## Whether this board judges every drop: Hard and Insane, and only when the
+## generator proved its tiling unique -- without the proof a drop off the
+## stored answer might be a different right quilt.
+func judged() -> bool:
+	return hearts_for(band) > 0 and ok
+
+## Whether patch `p` with its origin on `origin` is where the answer has a
+## patch of the same shape. Alike patches are interchangeable, so it is the
+## shape that is asked about and not the patch; a scrap is never right. Pure:
+## it reads the answer and nothing on the board.
+func is_right(p: int, origin: int) -> bool:
+	if p < 0 or p >= shapes.size() or origin < 0 or int(answer[p]) < 0:
+		return false
+	var key := _key(p)
+	for q in shapes.size():
+		if int(answer[q]) == origin and _key(q) == key:
+			return true
+	return false
+
+## Rules `origin` wrong for `p` and for every patch of its shape.
+func rule(p: int, origin: int) -> void:
+	if p < 0 or p >= shapes.size() or origin < 0:
+		return
+	var key := _key(p)
+	for q in shapes.size():
+		if _key(q) != key:
+			continue
+		var list: Array = ruled.get(q, [])
+		if not list.has(origin):
+			list.append(origin)
+		ruled[q] = list
+
+func is_ruled(p: int, origin: int) -> bool:
+	return (ruled.get(p, []) as Array).has(origin)
+
+## Try again's half of it: every ruled spot forgotten.
+func clear_ruled() -> void:
+	ruled = {}
+
+func _key(p: int) -> String:
+	if _keys.size() != shapes.size():
+		_keys = []
+		for q in shapes.size():
+			_keys.append(Gen._shape_key(shapes[q]))
+	return String(_keys[p])
+
+# ------------------------------------------------------------ dead ends
+
+## The quilt's cells nothing covers yet, as a region mask.
+func _bare() -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(maxi(0, cols * rows))
+	for i in out.size():
+		if region[i] == 1 and int(cover[i]) < 0:
+			out[i] = 1
+	return out
+
+## Whether the patches still in the rack can cover the bare cells exactly --
+## some of them, so that a scrap left over does not count against it. An
+## exact cover counted to one on the bare cells alone, so it answers for the
+## board as it stands and not for the answer: a quilt the player is
+## finishing another way is finishable. Two cheap refusals go first, the
+## rack's cells falling short and a bare cell nothing can reach, because a
+## dead end is usually one of those and the search would walk to find it.
+##
+## Measured on this Mac (2026-09-30) over 1,293 positions of random legal
+## drops on all four bands, 1,240 of them dead ends: worst 3.9 ms, and
+## `dead_cells` worst 0.9 ms. The proof's own search took 39 ms on an empty
+## banked Scrap Basket, which is why this asks `Gen.can_cover` instead.
+func finishable() -> bool:
+	var bare := _bare()
+	var need := 0
+	for i in bare.size():
+		need += int(bare[i])
+	if need == 0:
+		return true
+	var rack: Array = []
+	var have := 0
+	for p in shapes.size():
+		if int(at[p]) < 0:
+			rack.append(shapes[p])
+			have += (shapes[p] as Array).size()
+	if have < need or not _dead(bare).is_empty():
+		return false
+	# Every sewn patch on an answer place of its shape: the answer's own
+	# remaining patches finish it, and no search is needed. That is every
+	# judged board, and most of an easy one that is going well.
+	var on_answer := true
+	for p in shapes.size():
+		if int(at[p]) >= 0 and not is_right(p, int(at[p])):
+			on_answer = false
+			break
+	if on_answer:
+		return true
+	return Gen.can_cover(cols, rows, bare, rack)
+
+## The bare cells no patch left in the rack can reach: no legal placement of
+## any of them covers the cell. What the board pulses at a dead end.
+func dead_cells() -> PackedInt32Array:
+	return _dead(_bare())
+
+func _dead(bare: PackedByteArray) -> PackedInt32Array:
+	var reach := PackedByteArray()
+	reach.resize(bare.size())
+	var seen := {}
+	for p in shapes.size():
+		if int(at[p]) >= 0:
+			continue
+		# Alike patches reach the same cells: one pass a shape.
+		var key := _key(p)
+		if seen.has(key):
+			continue
+		seen[key] = true
+		var offs: Array = shapes[p]
+		for origin in bare.size():
+			var oc := origin % cols
+			var orr := origin / cols
+			var fits := true
+			for off in offs:
+				var c: int = oc + off.x
+				var r: int = orr + off.y
+				if c >= cols or r >= rows or bare[r * cols + c] != 1:
+					fits = false
+					break
+			if not fits:
+				continue
+			for off in offs:
+				reach[(orr + off.y) * cols + oc + off.x] = 1
+	var out := PackedInt32Array()
+	for i in bare.size():
+		if bare[i] == 1 and reach[i] == 0:
+			out.append(i)
+	return out
 
 ## Rebuilds `cover` from where the patches are sitting.
 func recompute() -> void:
+	quilt_patches = 0
+	for p in answer.size():
+		if int(answer[p]) >= 0:
+			quilt_patches += 1
 	cover = PackedInt32Array()
 	cover.resize(maxi(0, cols * rows))
 	cover.fill(-1)
@@ -207,7 +411,8 @@ func recompute() -> void:
 ## half of a drag: the board lifts the patch under the finger before it can
 ## know where the finger will let go, and the gesture is not a move until it
 ## does. OK when it came off or was already in the rack, PINNED (and nothing
-## changed) when a hint sewed it.
+## changed) when a hint sewed it, STAYS (nothing changed) when a judged board
+## has it sewn on -- every patch on a judged quilt is right, and stays.
 ##
 ## `take` and `drop` are the pair, and the reason the pair exists: with
 ## `lift` and `place` both pushing, picking a patch up and putting it down
@@ -220,6 +425,8 @@ func take(p: int) -> int:
 		return PINNED
 	if int(at[p]) < 0:
 		return OK
+	if judged():
+		return STAYS
 	at[p] = -1
 	recompute()
 	return OK
@@ -228,6 +435,12 @@ func take(p: int) -> int:
 ## gesture. `origin` below zero sends it to the rack; `from` is the origin it
 ## was taken off, or -1 when it came out of the rack. OK when it went down,
 ## else the refusal code (`OFF`, `OVER`, `PINNED`) with nothing changed.
+##
+## On a judged board a drop that fits is then held against the answer: RULED
+## (free) on a spot already proved wrong for this shape, and WRONG on any
+## other spot the answer does not have -- the patch stays in the rack and the
+## spot is ruled, and the heart is the board's to take. Geometry is asked
+## first, so a spot a patch now covers is OVER and not RULED.
 ##
 ## Two gestures push nothing and still answer OK, because nothing happened:
 ## rack to rack, and back to exactly where it was taken from.
@@ -240,6 +453,12 @@ func drop(p: int, origin: int, from: int) -> int:
 		var why := fits(p, origin)
 		if why != OK:
 			return why
+		if judged():
+			if is_ruled(p, origin):
+				return RULED
+			if not is_right(p, origin):
+				rule(p, origin)
+				return WRONG
 	var to := origin if origin >= 0 else -1
 	at[p] = to
 	recompute()
@@ -270,7 +489,8 @@ func place(p: int, origin: int) -> int:
 	return why
 
 ## Sends patch `p` back to the rack. OK when it went home or was already
-## there; PINNED when a hint sewed it. Only a real lift pushes history.
+## there; PINNED when a hint sewed it; STAYS on a judged board. Only a real
+## lift pushes history.
 func lift(p: int) -> int:
 	if p < 0 or p >= shapes.size():
 		return OK
@@ -308,7 +528,12 @@ func hint() -> Dictionary:
 	var best := -1
 	var fewest := 0
 	for p in shapes.size():
-		if int(locked[p]) == 1 or int(at[p]) == int(answer[p]):
+		# A scrap has no place to be hinted to, and a patch already on an
+		# answer place of its shape is done whichever alike patch's place it
+		# took.
+		if int(locked[p]) == 1 or int(answer[p]) < 0:
+			continue
+		if int(at[p]) >= 0 and is_right(p, int(at[p])):
 			continue
 		var count := legal_origins(p).size()
 		if best < 0 or count < fewest:
@@ -316,7 +541,9 @@ func hint() -> Dictionary:
 			fewest = count
 	if best < 0:
 		return {}
-	var target := int(answer[best])
+	var target := _free_spot(best)
+	if target < 0:
+		return {}
 	var want := {}
 	for cell in patch_cells(best, target):
 		want[idx(cell.x, cell.y)] = true
@@ -339,12 +566,41 @@ func hint() -> Dictionary:
 	recompute()
 	return {"patch": best, "origin": target, "displaced": displaced}
 
+## The answer place of `p`'s shape no alike patch is sitting on right now:
+## its own answer when that is free, else the first free one of its shape's
+## in index order. -1 when they are all taken, which a quilt patch cannot
+## meet, since its shape has as many answer places as it has patches. Picking
+## a free place is what keeps a hint from displacing an alike patch that is
+## already right -- on a judged board, a patch that has to stay.
+func _free_spot(p: int) -> int:
+	var key := _key(p)
+	var held := {}
+	var spots: Array[int] = []
+	for q in shapes.size():
+		if _key(q) != key:
+			continue
+		if int(answer[q]) >= 0:
+			spots.append(int(answer[q]))
+		if q != p and int(at[q]) >= 0:
+			held[int(at[q])] = true
+	if not held.has(int(answer[p])):
+		return int(answer[p])
+	for s in spots:
+		if not held.has(s):
+			return s
+	return -1
+
+## Whether Undo has anything to take back. A judged board has nothing: every
+## patch on it is right and stays, so its history is never unwound.
+func can_undo() -> bool:
+	return not judged() and not history.is_empty()
+
 ## Takes back the last gesture, a hint's displacement included. Returns what
 ## changed, for the board to animate -- {"kind": the gesture undone, "moved":
 ## [{"patch", "from" (where it was), "to" (where it is now)}]} -- or {} when
 ## the history is empty.
 func undo() -> Dictionary:
-	if history.is_empty():
+	if not can_undo():
 		return {}
 	var entry: Dictionary = history.pop_back()
 	var moved: Array = []
@@ -362,7 +618,9 @@ func undo() -> Dictionary:
 ## Sends every patch the player sewed back to the rack; a hint's patches
 ## stay, and the history goes with it -- reset is not a gesture and cannot be
 ## undone, which is what Queens does. Returns the patches that went home, for
-## the board's wave.
+## the board's wave. On a judged board this is Try again's wave too -- the
+## right patches go home with the rest -- and `clear_ruled()` is its other
+## half.
 func reset() -> Array:
 	var home: Array[int] = []
 	for p in shapes.size():
