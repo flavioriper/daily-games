@@ -48,6 +48,10 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
+const BeeFace = preload("res://ui/faces/bee_face.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the floor ---
 const PAD := 30.0
@@ -121,10 +125,95 @@ const WIN_GLINT_AT := 1.1
 const WIN_GLINT_STEP := 0.06
 const WIN_GLINT_TIME := 0.3
 
+# --- the third polish (docs/superpowers/specs/2026-09-30-nonogram-polish-design.md) ---
+## The hearts over the floor: One Line's, Light Up's, Tents' and Shikaku's
+## pill.
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong tile on Hard or Insane lands, wobbles rose, and EJECT_AFTER later
+## turns out of its socket while a pebble drops in where it was.
+const EJECT_AFTER := 0.8
+## Out of hearts: the floor slips to dusk and the card comes up after.
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## The streak (Binairo's, Shikaku's, Tents', Light Up's, One Line's).
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Gags, three of every GAG_ODDS right strokes by the stroke's own hash.
+const GAG_ODDS := 5
+const GAGS := 3
+const LOVE_HEARTS := 4
+const LOVE_TIME := 1.3
+const LOVE_RISE := 0.7
+const LOVE_R := 0.14
+const MUSH_HOLD := 1.4
+const MUSH_SIZE := 0.8
+const BEE_SIZE := 0.62
+const BEE_TIME := 1.1
+const BEE_BOB := 0.12
+## A line that comes out right lays pebbles in its empty cells on Hard and
+## Insane (every tile there is judged, so a line reading right is done),
+## rippling out from the stroke AUTO_STEP a cell.
+const AUTO_STEP := 0.035
+## A line that reads right opens a daisy at the outer end of its tab.
+const DAISY_R := 0.2
+const DAISY_PETALS := 7
+const DAISY_TIME := 0.45
+const DAISY_FOLD := 0.2
+## Leaf Fall: each tumbled number rides a leaf, tilted by its hash up to
+## LEAF_TILT, and on the entrance flutters down LEAF_DROP cells onto its tab.
+const LEAF_TILT := 0.32
+const LEAF_LEN := 0.54
+const LEAF_WIDE := 0.38
+## How far below a number's origin its glyph's middle sits, in cells: the
+## leaf is centred on the glyph, not on the baseline arithmetic.
+const LEAF_DOWN := 0.05
+const LEAF_WASH := 0.62
+const LEAF_DROP := 0.9
+const LEAF_FALL := 0.7
+const LEAF_SWAY := 0.5
+## The party, after the reveal: the picture is framed like a painting, the
+## daisies let their petals go, confetti twice, and on Insane the leaves.
+const PARTY_AT := 1.35
+const PARTY_EXTRA := 1.7
+const FRAME_OUT := 0.1
+const FRAME_W := 0.16
+const FRAME_TIME := 0.35
+const PETALS := 4
+const PETAL_TIME := 1.8
+const PETAL_FALL := 1.3
+const LEAVES := 26
+const LEAF_TIME := 2.2
+## The seal: One Line's.
+const STAMP_AT := 0.5
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
+## What the sprout thinks the picture is, picked by the picture's hash.
+const LOOKS := 12
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 ## Translation keys (locale/ui.csv), read through tr() when said.
 const TIPS := ["NG_TIP_RUNS", "NG_TIP_DRAG", "NG_TIP_GREEN"]
+
+## Back to camp from the out-of-hearts card: the host leaves the board.
+signal leave
 
 var state = State.new()
 ## Which chip the tray has armed: State.FILL or State.MARK. The tray only
@@ -138,6 +227,52 @@ var h: int:
 	get: return state.h
 var _bitmap: Array:
 	get: return state.bitmap
+
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _asleep := false
+var _ejecting := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _dusk_tw: Tween
+## Cell -> when a wrong tile landed there: drawn until it is taken back.
+var _bad: Dictionary = {}
+var _flawless := false
+var _streak := 0
+var _combo_n := 0
+var _combo_cell := Vector2i.ZERO
+var _combo_at := -INF
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_layer: Control
+var _combo_shown: ArrayMesh
+## Line key -> {"at", "open"}: its daisy opening, or folding when not open.
+var _bloom: Dictionary = {}
+## The life over the floor: love hearts off a stroke, petals and leaves at
+## the party, and the seal.
+var _life_layer: Control
+var _life_shown: Array = []
+var _life_alive := false
+var _love: Array = []
+var _petals: Array = []
+var _falling: Array = []
+var _stamp_at := INF
+var _frame_at := INF
+var _seal_mesh: ArrayMesh
+var _love_mesh: ArrayMesh
+var _mushroom: MushroomFace
+var _mush_tw: Tween
+var _bee: BeeFace
+var _bee_tw: Tween
+var _card := Rect2()
 
 var fx: Node2D
 var _cell := 0.0
@@ -198,7 +333,20 @@ func puzzle_id() -> String: return "nonogram"
 func title() -> String: return "Nonogram"
 
 func rules() -> String:
-	return tr("NG_RULES")
+	var out := tr("NG_RULES")
+	if state.has_leaves():
+		out += "\n\n" + tr("NG_RULES_LEAF")
+	if max_hearts > 0:
+		out += "\n\n" + (tr("NG_RULES_HEARTS_1") if max_hearts == 1 else tr("NG_RULES_HEARTS_N") % max_hearts)
+	return out
+
+## The lines the sprout cycles: a leafy board leads with the wind's two.
+func _tips() -> Array:
+	if state.has_leaves():
+		return ["NG_TIP_LEAF", "NG_TIP_LEAF_2"] + TIPS
+	if max_hearts > 0:
+		return ["NG_TIP_HEARTS"] + TIPS
+	return TIPS
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -210,6 +358,21 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_mushroom = MushroomFace.new()
+	_mushroom.name = "Mushroom"
+	_mushroom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mushroom.z_index = 1
+	_mushroom.visible = false
+	add_child(_mushroom)
+	_bee = BeeFace.new()
+	_bee.name = "Bee"
+	_bee.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bee.z_index = 3
+	_bee.visible = false
+	add_child(_bee)
+	_life_layer = _layer("Life", 2, _draw_life)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
+	_combo_layer = _layer("Combo", 3, _draw_combo)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -217,9 +380,24 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the floor, drawn by `draw` (One Line's).
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, bank_step)
+	max_hearts = State.HEARTS[state.band]
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	brush = State.FILL
 	_arrive = {}
 	_leaving = []
@@ -238,8 +416,40 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The floor as it is dealt, and as Try again deals it back: every heart, the
+## day's light, nothing judged, blooming or partying.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_ejecting = false
+	_split_index = -1
+	_back_index = -1
+	_bad = {}
+	_flawless = false
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_love = []
+	_petals = []
+	_falling = []
+	_stamp_at = INF
+	_frame_at = INF
+	_seal_mesh = null
+	Motion.stop(_dusk_tw)
+	Motion.stop(_mush_tw)
+	Motion.stop(_bee_tw)
+	modulate = Color.WHITE
+	if _mushroom != null:
+		_mushroom.visible = false
+	if _bee != null:
+		_bee.visible = false
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
 
 # --- layout ---
 
@@ -257,9 +467,24 @@ func _layout() -> void:
 		return
 	_band = Vector2(_cell * state.gw * NUM, _cell * state.gh * NUM)
 	var floor_size := Vector2(_cell * state.w, _cell * state.h) + _band
+	var row := _heart_row()
+	var tall := minf(size.y, floor_size.y + 2.0 * PAD + row)
+	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	_grid = Vector2(size.x * 0.5 - floor_size.x * 0.5,
-		(size.y - floor_size.y) * 0.5) + _band
+		_card.position.y + row + (tall - row - floor_size.y) * 0.5) + _band
+	# The life's meshes are cut to the cell; a new cell cuts them again.
+	_love_mesh = null
+	_mushroom.size = Vector2.ONE * _cell * MUSH_SIZE
+	_mushroom.pivot_offset = _mushroom.size * 0.5
+	_bee.size = Vector2.ONE * _cell * BEE_SIZE
+	_bee.pivot_offset = _bee.size * 0.5
 	_refresh()
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		layer.queue_redraw()
+
+## The strip the hearts take over the floor, on a board that has them.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## The cell a slot of `available` height holds, capped by the width. The bands
 ## are measured from the puzzle in hand -- as the island measures its margin
@@ -268,13 +493,13 @@ func _cell_for(available: float) -> float:
 	if state.bitmap.is_empty():
 		return 0.0
 	return minf((size.x - 2.0 * PAD) / (state.w + state.gw * NUM),
-		(available - 2.0 * PAD) / (state.h + state.gh * NUM))
+		(available - 2.0 * PAD - _heart_row()) / (state.h + state.gh * NUM))
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * (state.h + state.gh * NUM) + 2.0 * PAD)
+	return minf(available, cell * (state.h + state.gh * NUM) + 2.0 * PAD + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -302,8 +527,20 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _cell <= 0.0 or state.bitmap.is_empty():
 		return
-	if _now() < _anim_until:
+	var now := _now()
+	if now < _anim_until:
 		_refresh()
+	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+		_heart_layer.queue_redraw()
+	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+		_combo_layer.queue_redraw()
+	# One more redraw once the life goes quiet, so its last frame is not left
+	# standing.
+	var alive := _tick_life(now)
+	if alive or _life_alive:
+		_life_layer.queue_redraw()
+	_life_alive = alive
 
 ## Keeps the floor redrawing for `seconds` more: something on it is moving. A
 ## floor left alone costs nothing: it has no character on it to sway or
@@ -340,13 +577,18 @@ func _build_floor(t: float) -> ArrayMesh:
 	var gone := _gone(t)
 	var focus := _focus_level(t)
 	_tabs(b, gone, focus, t)
+	_leaves(b, gone, t)
+	_daisies(b, t)
 	for y in state.h:
 		for x in state.w:
 			var cell := Vector2i(x, y)
 			var lit := focus if focus > 0.0 and (x == _focus_cell.x or y == _focus_cell.y) else 0.0
+			var tint := Color(Pal.SUN, FOCUS * lit)
+			# Check on Hard and Insane points at pebbles: the socket blushes.
+			if _wrong.has(cell) and state.mark_at(cell) == State.MARK:
+				tint = Color(Pal.BAD_TILE, Motion.flash_level(t - float(_wrong[cell])) * 0.85)
 			Mosaic.socket(b, _grid + Vector2(x, y) * _cell, _cell,
-				state.mark_at(cell) == State.MARK, 1.0 - gone, _sink(cell, t),
-				Color(Pal.SUN, FOCUS * lit))
+				state.mark_at(cell) == State.MARK, 1.0 - gone, _sink(cell, t), tint)
 	_guides(b, gone)
 	_build_leaving(b, t)
 	for cell in state.marks:
@@ -354,6 +596,8 @@ func _build_floor(t: float) -> ArrayMesh:
 			_draw_pebble(b, cell, t)
 		else:
 			_draw_tile(b, cell, t, gone)
+	_build_bad(b, t)
+	_frame(b, t)
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
@@ -398,6 +642,10 @@ func _tab_colour(key: String, line_state: int, t: float) -> Color:
 ## Every line's verdict as it stands, with no wash: a fresh or restored board.
 func _seed_verdicts() -> void:
 	_lines = {}
+	_bloom = {}
+	for k in state.h + state.w:
+		if _line_state(k) == State.LINE_OK:
+			_bloom[_key(k)] = {"at": -100.0, "open": true}
 	for y in state.h:
 		var ink := _verdict_ink(state.row_state(y))
 		_lines["r%d" % y] = {"state": state.row_state(y), "was": ink, "to": ink, "at": -100.0}
@@ -422,11 +670,22 @@ func _verdict(key: String, line_state: int, at: float, length: int) -> void:
 	var l: Dictionary = _lines[key]
 	if int(l.state) == line_state:
 		return
+	var was_ok := int(l.state) == State.LINE_OK
 	l.was = _tab_colour(key, int(l.state), _now())
 	l.to = _verdict_ink(line_state)
 	l.state = line_state
 	l.at = at
 	_busy_for(at - _now() + WASH_TIME)
+	# The daisy at the tab's end opens as the line comes out right, and
+	# folds when it stops being right.
+	if line_state == State.LINE_OK:
+		_bloom[key] = {"at": at, "open": true}
+		_busy_for(at - _now() + DAISY_TIME)
+		if not state.is_solved():
+			_after(at - _now(), fx.cue.bind("bloom"))
+	elif was_ok:
+		_bloom[key] = {"at": at, "open": false}
+		_busy_for(at - _now() + DAISY_FOLD)
 	if line_state != State.LINE_OK or Motion.reduce or state.is_solved():
 		return
 	var go := at + GLINT_DELAY
@@ -604,39 +863,88 @@ func _draw_clues() -> void:
 	if _cell <= 0.0 or state.bitmap.is_empty():
 		return
 	var t := _now()
-	var faded := 1.0 - _gone(t) * CLUE_GONE
+	var faded := 1.0 - _gone(t) * _clue_gone(t)
+	if faded <= 0.0:
+		return
 	var font: Font = CozyTheme.display(700)
 	var px := int(roundf(_cell * NUM_SIZE))
 	if px <= 0:
 		return
 	var rise := font.get_ascent(px) * 0.5
-	for y in state.h:
-		var key := "r%d" % y
-		var scale := _clue_scale(key, y, t)
+	for k in state.h + state.w:
+		var key := _key(k)
+		var index: int = k if k < state.h else k - state.h
+		var scale := _clue_scale(key, index, t)
 		if scale.x <= 0.0:
 			continue
-		var ink := Color(_clue_ink(state.row_state(y)), faded)
-		var clue: Array = state.row_clues[y] if not (state.row_clues[y] as Array).is_empty() else [0]
-		var centre := Vector2(_grid.x - _band.x * 0.5, _grid.y + (y + 0.5) * _cell + _clue_lift(key, t))
-		draw_set_transform(centre, 0.0, scale)
-		for i in clue.size():
-			var slot: int = clue.size() - 1 - i
-			_number(font, px, rise, str(clue[i]),
-				Vector2(_band.x * 0.5 - _cell * NUM * (slot + 0.5), 0.0), ink)
-	for x in state.w:
-		var key := "c%d" % x
-		var scale := _clue_scale(key, x, t)
-		if scale.x <= 0.0:
-			continue
-		var ink := Color(_clue_ink(state.col_state(x)), faded)
-		var clue: Array = state.col_clues[x] if not (state.col_clues[x] as Array).is_empty() else [0]
-		var centre := Vector2(_grid.x + (x + 0.5) * _cell, _grid.y - _band.y * 0.5 + _clue_lift(key, t))
-		draw_set_transform(centre, 0.0, scale)
-		for i in clue.size():
-			var slot: int = clue.size() - 1 - i
-			_number(font, px, rise, str(clue[i]),
-				Vector2(0.0, _band.y * 0.5 - _cell * NUM * (slot + 0.5)), ink)
+		var ink := Color(_clue_ink(_line_state(k)), faded)
+		for n in _numbers(k, t):
+			draw_set_transform_matrix(_line_xf(k, scale, t) * Transform2D(float(n.rot), n.at))
+			_number(font, px, rise, str(n.value), Vector2.ZERO, ink)
 	draw_set_transform(Vector2.ZERO)
+
+## Line `k` (rows, then columns) as a key and as a verdict.
+func _key(k: int) -> String:
+	return "r%d" % k if k < state.h else "c%d" % (k - state.h)
+
+func _line_state(k: int) -> int:
+	return state.row_state(k) if k < state.h else state.col_state(k - state.h)
+
+func _tumbled(k: int) -> bool:
+	return state.row_tumbled(k) if k < state.h else state.col_tumbled(k - state.h)
+
+## Line `k`'s numbers' frame: the middle of its band, popped, bumped and
+## hopped.
+func _line_xf(k: int, scale: Vector2, t: float) -> Transform2D:
+	var key := _key(k)
+	var centre: Vector2
+	if k < state.h:
+		centre = Vector2(_grid.x - _band.x * 0.5, _grid.y + (k + 0.5) * _cell + _clue_lift(key, t))
+	else:
+		centre = Vector2(_grid.x + (k - state.h + 0.5) * _cell, _grid.y - _band.y * 0.5 + _clue_lift(key, t))
+	return Transform2D(0.0, scale, 0.0, centre)
+
+## Line `k`'s numbers as drawn, each {"value", "at", "rot"} in the line's
+## frame: right-aligned along a row band, bottom-aligned up a column one, as a
+## nonogram's clues always are. A line with nothing in it says 0, so every
+## line speaks. A tumbled line (Leaf Fall) shows its numbers largest first --
+## an order that says nothing -- each on a leaf tilted by its own hash, and
+## on the entrance each flutters down onto the tab.
+func _numbers(k: int, t: float) -> Array:
+	var clue: Array = (state.row_clues[k] if k < state.h else state.col_clues[k - state.h]).duplicate()
+	if clue.is_empty():
+		clue = [0]
+	var tumble := _tumbled(k)
+	if tumble:
+		clue.sort()
+		clue.reverse()
+	var out: Array = []
+	var index: int = k if k < state.h else k - state.h
+	for i in clue.size():
+		var slot: int = clue.size() - 1 - i
+		var along := _band.x * 0.5 - _cell * NUM * (slot + 0.5) if k < state.h \
+			else _band.y * 0.5 - _cell * NUM * (slot + 0.5)
+		var at := Vector2(along, 0.0) if k < state.h else Vector2(0.0, along)
+		var rot := 0.0
+		if tumble:
+			var h := _hash(Vector2i(k * 7 + 3, i * 13 + 5))
+			rot = (h - 0.5) * 2.0 * LEAF_TILT
+			at += Vector2(_hash(Vector2i(i, k)) - 0.5, h - 0.5) * _cell * 0.06
+			if not Motion.reduce:
+				var e := t - _opened - _enter_clue_delay(index) - i * 0.07
+				var u := clampf(e / LEAF_FALL, 0.0, 1.0)
+				var settle := 1.0 - (1.0 - u) * (1.0 - u)
+				at.y -= LEAF_DROP * _cell * (1.0 - settle)
+				rot += sin(e * 9.0 + h * TAU) * LEAF_SWAY * (1.0 - u)
+		out.append({"value": clue[i], "at": at, "rot": rot})
+	return out
+
+## How far the numbers go on the win: CLUE_GONE, then all the way once the
+## frame is hung round the picture.
+func _clue_gone(t: float) -> float:
+	if _frame_at == INF:
+		return CLUE_GONE
+	return lerpf(CLUE_GONE, 1.0, _dec((t - _frame_at) / FRAME_TIME))
 
 ## A line's numbers' scale now: the entrance pop along the band, times the
 ## Count bump.
@@ -760,7 +1068,7 @@ func _nudge_around(cell: Vector2i, t: float) -> void:
 ## A press refused on `cell` (a tile a hint grouted in): it shivers and
 ## blushes toward the family's rose, and the sprout says why.
 func _refuse(cell: Vector2i) -> void:
-	_say(tr("NG_GROUTED"), Face.Expr.PUZZLED)
+	_say(tr("NG_GROUTED") if state.mark_at(cell) == State.FILL else tr("NG_SHOWN"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	if Motion.reduce:
 		return
@@ -800,7 +1108,7 @@ func _gui_input(event: InputEvent) -> void:
 func _press(cell: Vector2i) -> void:
 	_end_sinks(_now())
 	_clear_gesture()
-	if is_done() or cell.x < 0:
+	if is_done() or cell.x < 0 or out_of_hearts or _ejecting:
 		return
 	_press_cell = cell
 	_focus_cell = cell
@@ -881,18 +1189,38 @@ func _release() -> void:
 		_refresh()
 		return
 	if not pending.is_empty():
+		# Hard and Insane judge every tile as it goes down: the stroke stops
+		# at the first one the picture does not want, and the cells after it
+		# are let go (Nonogram.com's rule, and every phone picross's).
+		var bad := Vector2i(-1, -1)
+		if state.judged():
+			var kept: Array = []
+			for c in pending:
+				if int(c.to) == State.FILL and not state.wants(c.cell):
+					bad = c.cell
+					break
+				kept.append(c)
+			pending = kept
+		var settled := state.settled_lines()
 		var before: Dictionary = state.marks.duplicate()
 		var changed: Array = state.apply(pending)
+		var per := Motion.ENTER_STAGGER if was_drag else 0.0
 		# One stroke is one move, however many cells it painted, which is
 		# what makes a painted run come back on a single Undo. A sweep lays
 		# its pieces in a wave along the finger's path and puffs none; a
 		# single tap puffs and leans the neighbours.
-		var arrivals := _commit(before, changed, now,
-			Motion.ENTER_STAGGER if was_drag else 0.0, Vector2i(-1, -1) if was_drag else cell)
+		var arrivals := _commit(before, changed, now, per, Vector2i(-1, -1) if was_drag else cell)
+		if bad.x >= 0:
+			var land := now + (0.0 if Motion.reduce else Motion.stagger(changed.size(), per))
+			arrivals[bad] = land
+			_wrong_tile(bad, land)
+		elif not changed.is_empty():
+			_judge_stroke(before, changed, arrivals, settled)
 		_end_sinks(now, arrivals)
 		return
 	_end_sinks(now)
-	# Nothing changed: a hint has grouted the cell in.
+	# Nothing changed: a hint has grouted the cell in, or a heart showed it
+	# empty.
 	if state.locked.has(cell):
 		_refuse(cell)
 	_refresh()
@@ -971,8 +1299,8 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	_tip_idx = (_tip_idx + 1) % _tips().size()
+	_say(tr(_tips()[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -980,12 +1308,16 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return not is_done() and not state.history.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.history.is_empty()
+
+## The host holds its hint video while a wrong tile is being taken back.
+func busy() -> bool:
+	return _ejecting
 
 ## Takes back the last stroke, however many cells it painted, in the wave it
 ## was laid in: the reverse of Place. Counts no move.
 func undo() -> bool:
-	if is_done() or state.history.is_empty():
+	if is_done() or out_of_hearts or _ejecting or state.history.is_empty():
 		return false
 	var now := _now()
 	_end_sinks(now)
@@ -993,6 +1325,7 @@ func undo() -> bool:
 	var before: Dictionary = state.marks.duplicate()
 	var touched: Array = state.undo()
 	_transition(before, touched, now, Motion.ENTER_STAGGER)
+	_break_streak()
 	_speak()
 	fx.cue("undo")
 	_refresh()
@@ -1000,14 +1333,14 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
 
 ## Lays one tile the picture wants and grouts it in for good: the first cell
 ## in reading order the player has not filled. It drops in from above under a
 ## ring with a sparkle; a pebble there pops out first. Counts no move but can
 ## finish the puzzle.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
 		return false
 	var now := _now()
 	_end_sinks(now)
@@ -1017,7 +1350,8 @@ func hint() -> bool:
 	if target.x < 0:
 		return false
 	hints_used += 1
-	_transition(before, [target], now, 0.0, true)
+	var arrivals := _transition(before, [target], now, 0.0, true)
+	_auto_pebbles(arrivals)
 	var at := cell_to_local(target.y, target.x)
 	fx.ring(at, _cell * RING_R, Pal.MOSAIC_LOCK)
 	fx.sparkle(at, Pal.MOSAIC_LOCK)
@@ -1033,18 +1367,29 @@ func hint() -> bool:
 ## family's rose, and the sprout says how many. Crosses are left alone: a
 ## cross is a note, not a claim, so Check looks only at tiles.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return 0
 	checks += 1
 	var t := _now()
-	var wrong: Array = state.wrong_tiles()
+	# On Hard and Insane no wrong tile ever stays down, so Check looks at the
+	# pebbles instead: one on a cell the picture wants blushes its socket
+	# and shivers.
+	var pebbles := state.judged()
+	var wrong: Array = state.wrong_pebbles() if pebbles else state.wrong_tiles()
 	if not Motion.reduce and not wrong.is_empty():
 		for cell in wrong:
 			_wrong[cell] = t
+			if pebbles:
+				_shiver[cell] = t
 		_busy_for(maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
-	_say((tr("NG_WRONG_ONE") if wrong.size() == 1 else tr("NG_WRONG_N")) % wrong.size()
-		if not wrong.is_empty() else tr("NG_ALL_RIGHT"),
-		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
+	if pebbles:
+		_say((tr("NG_PEBBLE_ONE") if wrong.size() == 1 else tr("NG_PEBBLE_N")) % wrong.size()
+			if not wrong.is_empty() else tr("NG_PEBBLES_RIGHT"),
+			Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
+	else:
+		_say((tr("NG_WRONG_ONE") if wrong.size() == 1 else tr("NG_WRONG_N")) % wrong.size()
+			if not wrong.is_empty() else tr("NG_ALL_RIGHT"),
+			Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
 	_refresh()
 	return wrong.size()
@@ -1053,6 +1398,17 @@ func check() -> int:
 ## numbers hopping as the floor clears under them. The hints spent are not
 ## refunded, only unpinned.
 func reset_board() -> void:
+	if out_of_hearts or _ejecting:
+		return
+	_clear_floor()
+	_break_streak()
+	_say(tr("NG_RESET"),
+		Face.Expr.HAPPY)
+	fx.cue("reset")
+	_refresh()
+
+## Every tile and pebble goes in Reset's wave. Reset and Try again share it.
+func _clear_floor() -> void:
 	var now := _now()
 	_end_sinks(now)
 	_clear_gesture()
@@ -1079,13 +1435,10 @@ func reset_board() -> void:
 	_wrong = {}
 	_shiver = {}
 	_glint = {}
+	_bad = {}
 	_verdicts(now, {})
 	moves = 0
 	_running = true
-	_say(tr("NG_RESET"),
-		Face.Expr.HAPPY)
-	fx.cue("reset")
-	_refresh()
 
 ## A completed daily is rebuilt from its seed with an empty floor. Lay every
 ## tile of the picture and settle the board as a finished solve leaves it: the
@@ -1117,15 +1470,25 @@ func restore_completed_board() -> void:
 	_seed_verdicts()
 	_opened = t - 10.0
 	_solved_at = t - 10.0
+	_frame_at = t - 10.0
 	_anim_until = 0.0
-	_say(tr("NG_SOLVED"), Face.Expr.JOY)
+	_say(_looks(), Face.Expr.JOY)
+	# A restore keeps the seal on Insane: the day was won there.
+	if state.band == 3:
+		_stamp_at = t - 10.0
+		_life_layer.queue_redraw()
 	_refresh()
 
 func is_solved() -> bool:
 	return state.is_solved()
 
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.band == 3:
+		out += "🌙 " + (tr("NG_LEAF_SEAL") if state.has_leaves() else tr("BN_INSANE_SEAL")) + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += "🏅 " + tr("BN_FLAWLESS")
+	return out
 
 # --- the win ---
 
@@ -1136,7 +1499,7 @@ func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": tr("NG_WIN")}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
 
 ## The tiles hop in the family's wave along the diagonal; then the crosses
 ## clear, the sockets fade back to parchment and the grout lines close up. The
@@ -1161,6 +1524,14 @@ func _on_solved() -> void:
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
 		maxf(GONE_DELAY + GONE_TIME, CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)))
 	_busy_for(WIN_GLINT_AT + (state.w + state.h) * WIN_GLINT_STEP + WIN_GLINT_TIME)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = now
+		_combo_layer.queue_redraw()
+	for k in state.h + state.w:
+		if _line_state(k) == State.LINE_OK and not bool(_bloom.get(_key(k), {}).get("open", false)):
+			_bloom[_key(k)] = {"at": now, "open": true}
+	_party()
 	_refresh()
 
 # --- the stroke's count ---
@@ -1215,3 +1586,793 @@ static func _tone(cell: Vector2i) -> float:
 ## scatter rather than a wave.
 static func _hash(cell: Vector2i) -> float:
 	return float(posmod(hash(cell), 1000)) / 1000.0
+
+# --- the third polish: the floor's new pieces ---
+
+## A leaf under each tumbled number (Leaf Fall), in the line's own frame so
+## it pops, bumps and flutters with the number it carries. They leave with
+## the rest of the scaffolding on the win.
+func _leaves(b, gone: float, t: float) -> void:
+	if not state.has_leaves():
+		return
+	var alpha := 1.0 - gone
+	if alpha <= 0.0:
+		return
+	for k in state.h + state.w:
+		if not _tumbled(k):
+			continue
+		var index: int = k if k < state.h else k - state.h
+		var scale := _clue_scale(_key(k), index, t)
+		if scale.x <= 0.0:
+			continue
+		var xf := _line_xf(k, scale, t)
+		var i := 0
+		for n in _numbers(k, t):
+			var h := _hash(Vector2i(k * 5 + 1, i * 3 + 2))
+			var tint: Color = Pal.AUTUMN_LEAVES[int(h * 97.0) % Pal.AUTUMN_LEAVES.size()]
+			var leaf := xf * Transform2D(float(n.rot), n.at) * Transform2D(-0.55, Vector2(0.0, _cell * LEAF_DOWN))
+			var len := _cell * LEAF_LEN
+			var pts := _leaf_shape(len, _cell * LEAF_WIDE)
+			b.fan(leaf * pts, Color(tint.lerp(Pal.SURFACE, LEAF_WASH), alpha))
+			b.stroke(PackedVector2Array([leaf * Vector2(-len * 0.4, 0.0), leaf * Vector2(len * 0.56, 0.0)]),
+				maxf(1.5, _cell * 0.018), Color(tint.lerp(Pal.SURFACE, LEAF_WASH * 0.5), alpha * 0.8), false, false)
+			i += 1
+
+## A leaf `len` long and `wide` across, pointed at both ends, about the
+## origin along x.
+static func _leaf_shape(len: float, wide: float) -> PackedVector2Array:
+	const STEPS := 9
+	var pts := PackedVector2Array()
+	for k in STEPS + 1:
+		var u := float(k) / STEPS
+		pts.append(Vector2((u - 0.5) * len, -sin(u * PI) * wide * 0.5 * (1.0 - 0.25 * u)))
+	for k in range(STEPS - 1, 0, -1):
+		var u := float(k) / STEPS
+		pts.append(Vector2((u - 0.5) * len, sin(u * PI) * wide * 0.5 * (1.0 - 0.25 * u)))
+	return pts
+
+## The daisies at the outer end of every tab whose line reads right: they
+## open with a twist, fold when the line stops being right, and let their
+## petals go at the party.
+func _daisies(b, t: float) -> void:
+	for key in _bloom:
+		var d: Dictionary = _bloom[key]
+		var e: float = t - float(d.at)
+		var k := 0.0
+		if bool(d.open):
+			if Motion.reduce or e >= DAISY_TIME:
+				k = 1.0
+			elif e > 0.0:
+				k = Motion.back_out(e / DAISY_TIME)
+		elif not Motion.reduce and e < DAISY_FOLD:
+			k = 1.0 - clampf(e / DAISY_FOLD, 0.0, 1.0)
+		if _frame_at != INF and not Motion.reduce:
+			# The petals have gone to the party.
+			k *= 1.0 - clampf((t - _frame_at) / 0.3, 0.0, 1.0)
+		if k <= 0.01:
+			continue
+		var i := int((key as String).substr(1))
+		var at: Vector2
+		if (key as String).begins_with("r"):
+			at = Vector2(_grid.x - _band.x, _grid.y + (i + 0.5) * _cell)
+		else:
+			at = Vector2(_grid.x + (i + 0.5) * _cell, _grid.y - _band.y)
+		_daisy(b, at, _cell * DAISY_R * k, (1.0 - minf(k, 1.0)) * 1.2 + _hash(Vector2i(i, key.length())) * TAU)
+
+## One daisy of radius `r` about `at`, turned `turn`.
+func _daisy(b, at: Vector2, r: float, turn: float) -> void:
+	for p in DAISY_PETALS:
+		var a := turn + TAU * p / DAISY_PETALS
+		var dir := Vector2.from_angle(a)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.5, r * 0.26, a), Pal.PETAL_EDGE)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.44, r * 0.2, a), Pal.SURFACE)
+	b.fan(Face.Builder.ring(at, r * 0.3, r * 0.3), Pal.SUN)
+
+static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for k in 12:
+		var a := TAU * k / 12.0
+		pts.append(at + Vector2(cos(a) * rx, sin(a) * ry).rotated(angle))
+	return pts
+
+## The wrong tiles on Hard and Insane, before they are taken back: they pop
+## in like any tile, blushing, and wobble.
+func _build_bad(b, t: float) -> void:
+	for cell in _bad:
+		var at: float = _bad[cell]
+		if t < at and not Motion.reduce:
+			continue
+		var e := t - at
+		var grow := Motion.pop_in_scale(e) * _sink(cell, t)
+		Mosaic.tile(b, cell_to_local(cell.y, cell.x) + _offset(cell, t), _cell, grow, false, 0.0, 1.0,
+			Motion.wobble_angle(e), maxf(0.75, Motion.flash_level(e)), _tone(cell))
+
+## The frame hung round the finished picture: wood a FRAME_W of a cell wide,
+## FRAME_OUT clear of the tiles, with a darker lip inside and a brass nail at
+## each corner. It pops in wide about the picture's middle.
+func _frame(b, t: float) -> void:
+	if _frame_at == INF or t < _frame_at:
+		return
+	var grow := 1.0 if Motion.reduce else Motion.wide_pop_scale(t - _frame_at)
+	if grow <= 0.0:
+		return
+	var field := Rect2(_grid, Vector2(state.w, state.h) * _cell)
+	var c := field.get_center()
+	var out := _cell * FRAME_OUT
+	var wide := _cell * FRAME_W
+	var inner := field.grow(out)
+	var outer := inner.grow(wide)
+	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, c * (1.0 - grow))
+	var r := wide * 0.6
+	# A soft shadow under it, then the wood as four rails.
+	Scenery.soft_disc(b, xf * (c + Vector2(0.0, outer.size.y * 0.5 + wide * 0.6)), outer.size.x * 0.5 * grow,
+		wide * 0.8 * grow, Color(Pal.TEXT, 0.12))
+	for rail in [Rect2(outer.position, Vector2(outer.size.x, wide)),
+			Rect2(Vector2(outer.position.x, inner.end.y), Vector2(outer.size.x, wide)),
+			Rect2(outer.position, Vector2(wide, outer.size.y)),
+			Rect2(Vector2(inner.end.x, outer.position.y), Vector2(wide, outer.size.y))]:
+		b.fan(xf * Face.Builder.round_rect(rail.position, rail.size, r * 0.5), Pal.WOOD)
+	for rail in [Rect2(inner.position - Vector2.ONE * wide * 0.25, Vector2(inner.size.x + wide * 0.5, wide * 0.25)),
+			Rect2(inner.position - Vector2.ONE * wide * 0.25, Vector2(wide * 0.25, inner.size.y + wide * 0.5))]:
+		b.fan(xf * Face.Builder.round_rect(rail.position, rail.size, 1.0), Pal.WOOD_DEEP)
+	for corner in [outer.position, Vector2(outer.end.x, outer.position.y),
+			Vector2(outer.position.x, outer.end.y), outer.end]:
+		var toward: Vector2 = (c - corner).normalized() * wide * 0.7
+		b.fan(Face.Builder.ring(xf * (corner + toward), wide * 0.22 * grow, wide * 0.22 * grow), Pal.SUN_TILE.darkened(0.25))
+
+# --- judging a stroke ---
+
+## A stroke with nothing wrong in it: on Hard and Insane one that laid a
+## tile (each is judged as it lands); on Easy and Medium one that brought a
+## line to read right and left none over-filled, which the board already
+## shows. It builds the streak and may play a gag. Neutral strokes (pebbles,
+## a rub-out) leave the streak as it is; an over-filling one ends it.
+func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, settled: int) -> void:
+	_auto_pebbles(arrivals)
+	if state.is_solved():
+		return
+	var laid := false
+	for cell in changed:
+		if state.mark_at(cell) == State.FILL and int(before.get(cell, State.BLANK)) != State.FILL:
+			laid = true
+	var right := false
+	if state.judged():
+		right = laid
+	elif state.over_lines() > 0:
+		_break_streak()
+		return
+	else:
+		right = laid and state.settled_lines() > settled
+	if not right:
+		return
+	var last: Vector2i = changed[-1]
+	var land := 0.0
+	for cell in arrivals:
+		land = maxf(land, float(arrivals[cell]) - _now())
+	_on_right_stroke(changed, last, land)
+
+## On Hard and Insane, a line that has just come out right lays a pebble in
+## each of its empty cells, rippling out from where the stroke touched it:
+## every tile there was judged, so a line reading right is finished.
+func _auto_pebbles(arrivals: Dictionary) -> void:
+	if not state.judged() or arrivals.is_empty() or state.is_solved():
+		return
+	var cells: Array = []
+	var when: Dictionary = {}
+	for k in state.h + state.w:
+		if _line_state(k) != State.LINE_OK:
+			continue
+		var y: int = k if k < state.h else -1
+		var x: int = -1 if k < state.h else k - state.h
+		# Only a line this move touched.
+		var from := Vector2i(-1, -1)
+		var at := -1.0
+		for cell in arrivals:
+			if (y >= 0 and cell.y == y) or (y < 0 and cell.x == x):
+				if float(arrivals[cell]) > at:
+					at = float(arrivals[cell])
+					from = cell
+		if from.x < 0:
+			continue
+		for cell in state.blanks_in(y, x):
+			if when.has(cell):
+				continue
+			var d: int = absi(cell.x - from.x) + absi(cell.y - from.y)
+			when[cell] = at + Motion.POP_IN * 0.5 + (0.0 if Motion.reduce else d * AUTO_STEP)
+			cells.append({"cell": cell, "to": State.MARK})
+	if cells.is_empty():
+		return
+	var changed := state.apply_more(cells)
+	var first := INF
+	for cell in changed:
+		_arrive[cell] = {"at": float(when[cell]), "drop": false}
+		first = minf(first, float(when[cell]))
+		_busy_for(float(when[cell]) - _now() + Motion.POP_IN)
+	if not changed.is_empty():
+		_after(first - _now(), fx.cue.bind("pebbles"))
+
+## The streak (the combo pitched up the pentatonic from the second, the
+## bubble from the third, confetti at five and ten) and a gag now and then.
+func _on_right_stroke(cells: Array, last: Vector2i, land: float) -> void:
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		_after(land, fx.cue.bind("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if _streak >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_cell = last
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		_after(land, func() -> void:
+			fx.confetti(cell_to_local(last.y, last.x), 22)
+			fx.cue("confetti"))
+	_gag(cells, last, land)
+
+## The streak ends: an over-filled line, a wrong tile, an undo, a reset, the
+## hearts running out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		if _combo_layer != null:
+			_combo_layer.queue_redraw()
+	else:
+		_combo_n = 0
+
+# --- failing ---
+
+## A tile the picture does not want, on Hard or Insane: it lands like any
+## other, blushing, a heart goes (its halves fall), and EJECT_AFTER later the
+## tile turns out of its socket and a pebble drops in where it was, for good.
+func _wrong_tile(cell: Vector2i, land: float) -> void:
+	if hearts <= 0 or is_done():
+		return
+	var now := _now()
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = land
+	_ejecting = true
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+	_bad[cell] = land
+	_wrong[cell] = land
+	_sink_cell(cell)
+	var wait := land - now
+	_after(wait, func() -> void:
+		_heart_layer.queue_redraw()
+		fx.cue("place")
+		fx.cue("heart_lost")
+		if not Motion.reduce:
+			fx.puff(cell_to_local(cell.y, cell.x), Pal.BAD, 4)
+		_say(tr("NG_WRONG_TILE"), Face.Expr.WORRIED)
+		_refresh())
+	_busy_for(wait + EJECT_AFTER + Motion.DROP_TIME)
+	moved.emit()
+	_after(wait + (0.0 if Motion.reduce else EJECT_AFTER), _eject.bind(cell))
+
+## The wrong tile is taken back: it turns out of its socket, and a pebble
+## drops in where it was and stays -- the heart has shown the cell empty.
+func _eject(cell: Vector2i) -> void:
+	_ejecting = false
+	if is_done() or not _bad.has(cell):
+		return
+	var now := _now()
+	_bad.erase(cell)
+	_wrong.erase(cell)
+	_leave(cell, State.FILL, now)
+	var before: Dictionary = state.marks.duplicate()
+	state.reveal(cell)
+	_arrive[cell] = {"at": now + (0.0 if Motion.reduce else Motion.POP_OUT * 0.6), "drop": true}
+	_busy_for(Motion.POP_OUT + Motion.DROP_TIME)
+	_verdicts(now, {})
+	fx.cue("slip")
+	if before.get(cell, State.BLANK) != State.MARK and not Motion.reduce:
+		_after(Motion.POP_OUT * 0.6 + Motion.DROP_TIME * 0.6,
+			fx.puff.bind(cell_to_local(cell.y, cell.x), Pal.SOCKET_PEBBLE, 4))
+	moved.emit()
+	_refresh()
+	if out_of_hearts:
+		_after(0.0 if Motion.reduce else Motion.DROP_TIME, _run_out)
+	else:
+		_after(0.0 if Motion.reduce else Motion.DROP_TIME, _speak)
+
+## The last heart is gone: the floor slips to dusk, the sprout dozes off,
+## and the card comes up.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_end_sinks(_now())
+	_clear_gesture()
+	_break_streak()
+	fx.cue("out_of_hearts")
+	_say(tr("NG_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(DUSK)
+	_refresh()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["NG_OUT_BODY", "NG_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same picture from the top, every heart back, the day's
+## light, the clock and the moves from zero; hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	elapsed = 0.0
+	checks = 0
+	_clear_floor()
+	_deal()
+	# _deal() puts the light back at once; hold the dusk so it fades.
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_heart_layer.queue_redraw()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+	_refresh()
+
+## One more heart (the card's video): once a board. The light comes back.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_speak()
+	moved.emit()
+	_refresh()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the hearts ---
+
+## The hearts over the floor as one mesh on a paper pill (One Line's): pink
+## with a small face and a leaf, a faint ghost where one was, the lost one's
+## halves falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _card.position.y + 12.0 + HEART_ROW * 0.5
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_mesh(_hearts_shown, null)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- the streak's bubble ---
+
+## The streak's paper bubble at the upper right of the stroke's last cell,
+## "x3" and up in ink: it pops in the first time, bumps at each stroke and
+## deflates when the streak ends (One Line's).
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _cell <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var cell := cell_to_local(_combo_cell.y, _combo_cell.x)
+	var tail := cell + Vector2(_cell * 0.25, -_cell * 0.4)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
+
+# --- gags and the life over the floor ---
+
+## A right stroke now and then plays a gag, picked by its last cell's hash so
+## a picture replays the same: little hearts float up off the tiles just
+## laid; a mushroom pops up out of a pebble nearby and grins; or the queen
+## bee from Queens zooms along the line. Under reduce-motion, none.
+func _gag(cells: Array, last: Vector2i, land: float) -> void:
+	if Motion.reduce or is_done():
+		return
+	var roll := posmod(hash(Vector2i(last.x * 13 + 7, last.y * 5 + _streak)), GAG_ODDS)
+	if roll >= GAGS:
+		return
+	if roll == 1 and not _pop_mushroom(last, land):
+		roll = 0
+	match roll:
+		0:
+			var tiles: Array = []
+			for cell in cells:
+				if state.mark_at(cell) == State.FILL:
+					tiles.append(cell)
+			if tiles.is_empty():
+				tiles = [last]
+			var now := _now() + land
+			for k in LOVE_HEARTS:
+				var cell: Vector2i = tiles[mini(tiles.size() - 1, k * tiles.size() / LOVE_HEARTS)]
+				_love.append({"at": cell_to_local(cell.y, cell.x), "t": now + k * 0.08,
+					"phase": _hash(cell + Vector2i(k, 7)) * TAU})
+			_after(land, fx.cue.bind("love"))
+		2:
+			_fly_bee(cells, last, land)
+
+## The mushroom pops up out of the ruled-out cell nearest `near`, grins, and
+## sinks back after MUSH_HOLD. False when there is no pebble to grow from.
+func _pop_mushroom(near: Vector2i, land: float) -> bool:
+	var best := Vector2i(-1, -1)
+	var far := 1 << 30
+	for cell in state.marks:
+		if int(state.marks[cell]) != State.MARK:
+			continue
+		var d: int = absi(cell.x - near.x) + absi(cell.y - near.y)
+		if d < far:
+			far = d
+			best = cell
+	if best.x < 0 or far > 4:
+		return false
+	var at := cell_to_local(best.y, best.x) - Vector2(0.0, _cell * 0.18)
+	Motion.stop(_mush_tw)
+	_mushroom.position = at - _mushroom.size * 0.5
+	_mushroom.expression = Face.Expr.JOY
+	_mushroom.visible = true
+	_mushroom.scale = Vector2.ZERO
+	_mush_tw = Motion.pop_in(_mushroom, Motion.POP_IN, land)
+	_after(land, fx.cue.bind("mushroom"))
+	_after(land + MUSH_HOLD, func() -> void:
+		Motion.stop(_mush_tw)
+		_mush_tw = Motion.pop_out(_mushroom)
+		_after(Motion.POP_OUT, func() -> void: _mushroom.visible = false))
+	return true
+
+## The queen bee zooms along the stroke's line, from off the floor on one
+## side to off it on the other, bobbing.
+func _fly_bee(cells: Array, last: Vector2i, land: float) -> void:
+	var first: Vector2i = cells[0]
+	var across := first.y == last.y or cells.size() == 1
+	var dir := 1.0 if (last.x >= first.x if across else last.y >= first.y) else -1.0
+	var from: Vector2
+	var to: Vector2
+	if across:
+		var y := cell_to_local(last.y, 0).y - _cell * 0.3
+		from = Vector2(_grid.x - _cell if dir > 0 else _grid.x + (state.w + 1) * _cell, y)
+		to = Vector2(_grid.x + (state.w + 1) * _cell if dir > 0 else _grid.x - _cell, y)
+	else:
+		var x := cell_to_local(0, last.x).x + _cell * 0.3
+		from = Vector2(x, _grid.y + (state.h + 1) * _cell if dir < 0 else _grid.y - _cell)
+		to = Vector2(x, _grid.y - _cell if dir < 0 else _grid.y + (state.h + 1) * _cell)
+	Motion.stop(_bee_tw)
+	_bee.visible = true
+	_bee.set_idle(true)
+	_bee.position = from - _bee.size * 0.5
+	_bee.scale = Vector2(-1.0 if (to - from).x < 0.0 else 1.0, 1.0)
+	_bee.modulate.a = 0.0
+	_bee_tw = create_tween()
+	_bee_tw.tween_interval(land)
+	_bee_tw.tween_property(_bee, "modulate:a", 1.0, 0.12)
+	_bee_tw.parallel().tween_method(func(u: float) -> void:
+		var at := from.lerp(to, u) + Vector2(0.0, sin(u * TAU * 2.0) * _cell * BEE_BOB)
+		_bee.position = at - _bee.size * 0.5, 0.0, 1.0, BEE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_bee_tw.tween_callback(func() -> void: _bee.visible = false)
+	_after(land, fx.cue.bind("bee"))
+
+## Keeps the life layer drawing while anything on it moves.
+func _tick_life(now: float) -> bool:
+	var still: Array = []
+	for l in _love:
+		if now < float(l.t) + LOVE_TIME:
+			still.append(l)
+	_love = still
+	still = []
+	for p in _petals:
+		if now < float(p.t) + PETAL_TIME:
+			still.append(p)
+	_petals = still
+	still = []
+	for p in _falling:
+		if now < float(p.t) + LEAF_TIME:
+			still.append(p)
+	_falling = still
+	return not _love.is_empty() or not _petals.is_empty() or not _falling.is_empty() \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## The life over the floor: love hearts floating off a stroke, and petals
+## and leaves falling at the party, each group one mesh; and the seal after
+## the solve, with its words.
+func _draw_life() -> void:
+	if _cell <= 0.0:
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.08 * _cell,
+				-LOVE_RISE * _cell * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	if not _petals.is_empty() or not _falling.is_empty():
+		# Every petal and leaf in one mesh, rebuilt while they fall: one draw
+		# call for the whole shower.
+		var pb := Face.Builder.new()
+		var r := _cell * DAISY_R
+		for p in _petals:
+			var e: float = now - float(p.t)
+			if e <= 0.0:
+				continue
+			var u := e / PETAL_TIME
+			var v: Vector2 = p.v
+			var at: Vector2 = p.at + v * _cell * u + Vector2(sin(e * 4.0 + float(p.phase)) * 0.12 * _cell,
+				PETAL_FALL * _cell * u * u)
+			var spin: float = float(p.phase) + e * float(p.spin)
+			var flat := absf(cos(e * 5.0 + float(p.phase))) * 0.7 + 0.3
+			var fade := clampf((1.0 - u) / 0.35, 0.0, 1.0)
+			pb.fan(_oval(at, r * 0.5, r * 0.26 * flat, spin), Color(Pal.PETAL_EDGE, fade))
+			pb.fan(_oval(at, r * 0.44, r * 0.2 * flat, spin), Color(Pal.SURFACE, fade))
+		for p in _falling:
+			var e: float = now - float(p.t)
+			if e <= 0.0:
+				continue
+			var u := e / LEAF_TIME
+			var at: Vector2 = p.at + Vector2(sin(e * 2.2 + float(p.phase)) * 0.5 * _cell,
+				float(p.fall) * u)
+			var flat := absf(cos(e * 3.0 + float(p.phase))) * 0.6 + 0.4
+			var fade := clampf((1.0 - u) / 0.3, 0.0, 1.0)
+			var xf := Transform2D(float(p.phase) + e * float(p.spin), Vector2(1.0, flat), 0.0, at)
+			pb.fan(xf * _leaf_shape(_cell * LEAF_LEN * 0.8, _cell * LEAF_WIDE * 0.8), Color(p.tint, fade))
+		if not pb.verts.is_empty():
+			var mesh := pb.mesh()
+			shown.append(mesh)
+			_life_layer.draw_mesh(mesh, null)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_life_shown = shown
+
+## A little pink heart for the love gag, built once.
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := _cell * LOVE_R
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## After the reveal: the picture is hung in a frame, every daisy lets its
+## petals go, confetti sweeps the floor twice, on Insane the leaves come
+## down, the seal stamps when the solve earned one (flawless, or any Insane
+## picture), and the sprout says what the picture looks like to it. Under
+## reduce-motion only the frame and the seal, standing still.
+func _party() -> void:
+	var now := _now()
+	var lead := 0.0 if Motion.reduce else PARTY_AT
+	_frame_at = now + lead
+	_after(lead, func() -> void:
+		fx.cue("frame")
+		_say(_looks(), Face.Expr.JOY))
+	if _flawless or state.band == 3:
+		_stamp_at = now if Motion.reduce else now + lead + FRAME_TIME + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		return
+	_busy_for(lead + FRAME_TIME + 0.4)
+	var field := Rect2(_grid, Vector2(state.w, state.h) * _cell)
+	_after(lead + 0.15, func() -> void:
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell * 0.3), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_after(lead + 0.6, func() -> void:
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	var any := false
+	for key in _bloom:
+		if not bool(_bloom[key].open):
+			continue
+		any = true
+		var i := int((key as String).substr(1))
+		var at := Vector2(_grid.x - _band.x, _grid.y + (i + 0.5) * _cell) if (key as String).begins_with("r") \
+			else Vector2(_grid.x + (i + 0.5) * _cell, _grid.y - _band.y)
+		for k in PETALS:
+			var a := _hash(Vector2i(i * 11 + k, key.length())) * TAU
+			_petals.append({"at": at, "t": now + lead + k * 0.03 + i * 0.02, "v": Vector2.from_angle(a) * 0.6,
+				"phase": a, "spin": lerpf(-4.0, 4.0, _hash(Vector2i(k, i)))})
+	if any:
+		_after(lead, fx.cue.bind("petals"))
+	if state.has_leaves():
+		for k in LEAVES:
+			var hx := _hash(Vector2i(k, 91))
+			_falling.append({"at": Vector2(lerpf(field.position.x - _cell, field.end.x + _cell, hx),
+				_card.position.y - _cell * (0.5 + _hash(Vector2i(k, 3)))), "t": now + lead + 0.3 + k * 0.05,
+				"phase": hx * TAU, "spin": lerpf(-2.0, 2.0, _hash(Vector2i(3, k))),
+				"fall": _card.size.y + _cell * 2.0,
+				"tint": Pal.AUTUMN_LEAVES[k % Pal.AUTUMN_LEAVES.size()]})
+		_after(lead + 0.3, fx.cue.bind("leaves"))
+
+## What the sprout thinks the finished picture looks like: one of LOOKS
+## silly guesses, picked by the picture itself, so a day always gets the
+## same one.
+func _looks() -> String:
+	var bits := ""
+	for row in state.bitmap:
+		for v in row:
+			bits += str(v)
+	return tr("NG_LOOKS_%d" % posmod(hash(bits), LOOKS))
+
+## The seal on the card's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, state.band == 3)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := _card.end - Vector2(rad * 1.2, rad * 0.95)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if state.band == 3:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless or not state.has_leaves() else tr("NG_LEAF_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## Runs `what` after `delay` seconds unless the board has been dealt again
+## since.
+func _after(delay: float, what: Callable) -> void:
+	if delay <= 0.0:
+		what.call()
+		return
+	var gen := _gen
+	get_tree().create_timer(delay).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())

@@ -991,3 +991,34 @@ TN_OUT_BODY_REST,The camp needs a nap. Start the meadow again whenever you like.
 TN_OAK_SEAL,Old Oaks,Carvalhos,Robles
 TN_LVL_3,"10 × 10, old oaks","10 × 10, carvalhos","10 × 10, robles"
 TN_OAK_HAPPY,The old oak has both its tents.,O carvalho velho tem suas duas barracas.,El roble viejo tiene sus dos carpas.
+NG_LVL_0,"5 × 5, tall or wide","5 × 5, em pé ou deitado","5 × 5, alto o ancho"
+NG_LVL_1,"7 × 7, tall or wide","7 × 7, em pé ou deitado","7 × 7, alto o ancho"
+NG_LVL_2,"9 × 9, tall or wide","9 × 9, em pé ou deitado","9 × 9, alto o ancho"
+NG_LVL_3,"10 × 10 or so, leaf fall","10 × 10 ou quase, folhas ao vento","10 × 10 o casi, hojas al viento"
+NG_RULES_LEAF,"Leaf Fall: on a line whose numbers sit on leaves, the wind has tumbled them. Every run is there, but they can come in any order.","Folhas ao vento: numa linha cujos números estão sobre folhas, o vento os embaralhou. Todas as sequências estão lá, mas podem vir em qualquer ordem.","Hojas al viento: en una línea cuyos números están sobre hojas, el viento los revolvió. Todas las tiras están, pero pueden ir en cualquier orden."
+NG_RULES_HEARTS_1,You have one heart. A tile laid where the picture has none costs it.,Você tem um coração. Uma peça posta onde o desenho não tem nenhuma custa ele.,Tienes un corazón. Una ficha puesta donde el dibujo no tiene ninguna lo cuesta.
+NG_RULES_HEARTS_N,You have %d hearts. A tile laid where the picture has none costs one.,Você tem %d corações. Uma peça posta onde o desenho não tem nenhuma custa um.,Tienes %d corazones. Una ficha puesta donde el dibujo no tiene ninguna cuesta uno.
+NG_TIP_LEAF,"Numbers on leaves were tumbled by the wind: every run is there, in any order.","Números sobre folhas foram embaralhados pelo vento: todas as sequências estão lá, em qualquer ordem.","Los números sobre hojas los revolvió el viento: todas las tiras están, en cualquier orden."
+NG_TIP_LEAF_2,"When no line gives, suppose a cell and follow it. If it ends in a contradiction, it was the other way.","Quando nenhuma linha ajuda, suponha uma casa e siga. Se der em contradição, era o contrário.","Cuando ninguna línea ayuda, supón una casilla y síguela. Si acaba en contradicción, era al revés."
+NG_TIP_HEARTS,Every tile is judged as it lands. A wrong one costs a heart and shows the cell empty.,Cada peça é julgada ao cair. Uma errada custa um coração e mostra a casa vazia.,Cada ficha se juzga al caer. Una equivocada cuesta un corazón y muestra la casilla vacía.
+NG_SHOWN,That cell is empty for sure. A heart showed it.,Essa casa está vazia com certeza. Um coração mostrou.,Esa casilla está vacía seguro. Un corazón lo mostró.
+NG_WRONG_TILE,"Oops, the picture has nothing there. That cost a heart.","Ops, o desenho não tem nada ali. Isso custou um coração.","Uy, el dibujo no tiene nada ahí. Eso costó un corazón."
+NG_PEBBLE_ONE,%d pebble sits where the picture wants a tile.,%d pedrinha está onde o desenho quer uma peça.,%d piedrita está donde el dibujo quiere una ficha.
+NG_PEBBLE_N,%d pebbles sit where the picture wants tiles.,%d pedrinhas estão onde o desenho quer peças.,%d piedritas están donde el dibujo quiere fichas.
+NG_PEBBLES_RIGHT,Every pebble is where the picture is empty.,Todas as pedrinhas estão onde o desenho é vazio.,Todas las piedritas están donde el dibujo está vacío.
+NG_OUT,The floor has gone quiet for the evening.,O chão ficou quieto para a noite.,El suelo se ha quedado quieto por la noche.
+NG_OUT_BODY,"Out of hearts. Lay the picture again from the start, or watch a short video for one more heart.",Sem corações. Monte o desenho de novo desde o começo ou veja um vídeo curto por mais um coração.,Sin corazones. Arma el dibujo de nuevo desde el principio o mira un video corto para un corazón más.
+NG_OUT_REST,Out of hearts. Lay the picture again from the start whenever you like.,Sem corações. Monte o desenho de novo desde o começo quando quiser.,Sin corazones. Arma el dibujo de nuevo desde el principio cuando quieras.
+NG_LEAF_SEAL,Leaf Fall,Folhas ao vento,Hojas al viento
+NG_LOOKS_0,There it is! It looks a bit like a sleepy cloud.,Aí está! Parece um pouco uma nuvem sonolenta.,¡Ahí está! Se parece un poco a una nube dormilona.
+NG_LOOKS_1,There it is! Is that a teapot? It is definitely a teapot.,Aí está! Isso é um bule? Com certeza é um bule.,¡Ahí está! ¿Es una tetera? Seguro que es una tetera.
+NG_LOOKS_2,"There it is! A cat, if you squint. A loaf, if you don't.","Aí está! Um gato, se apertar os olhos. Um pão, se não.","¡Ahí está! Un gato, si entrecierras los ojos. Un pan, si no."
+NG_LOOKS_3,There it is! A very proud potato.,Aí está! Uma batata muito orgulhosa.,¡Ahí está! Una papa muy orgullosa.
+NG_LOOKS_4,There it is! A little island. Or a sandwich.,Aí está! Uma ilhazinha. Ou um sanduíche.,¡Ahí está! Una islita. O un sándwich.
+NG_LOOKS_5,There it is! Probably a dragon having a nap.,Aí está! Provavelmente um dragão tirando um cochilo.,¡Ahí está! Seguramente un dragón echando la siesta.
+NG_LOOKS_6,There it is! Some kind of hat. A nice one.,Aí está! Algum tipo de chapéu. Dos bonitos.,¡Ahí está! Algún tipo de sombrero. De los bonitos.
+NG_LOOKS_7,"There it is! A duck, from a certain angle.","Aí está! Um pato, de um certo ângulo.","¡Ahí está! Un pato, desde cierto ángulo."
+NG_LOOKS_8,There it is! Modern art. Very modern.,Aí está! Arte moderna. Bem moderna.,¡Ahí está! Arte moderno. Muy moderno.
+NG_LOOKS_9,"There it is! A tiny mountain, with a tiny view.","Aí está! Uma montanha minúscula, com uma vista minúscula.","¡Ahí está! Una montaña diminuta, con una vista diminuta."
+NG_LOOKS_10,"There it is! A bear hug, obviously.","Aí está! Um abraço de urso, obviamente.","¡Ahí está! Un abrazo de oso, obviamente."
+NG_LOOKS_11,There it is! A cloud that swallowed a cookie.,Aí está! Uma nuvem que engoliu um biscoito.,¡Ahí está! Una nube que se tragó una galleta.
