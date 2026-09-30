@@ -104,12 +104,10 @@ has a sign that counts its **neighbours**.
 
 `locked`, `check`, `clear`, `undo` re-prompted toward felt and kalimba (the
 bonk, the tape rewind and the wooden boops read as a scold or a toy, as
-Binairo's and Code Break's did). New: `sprout`, `combo`, `confetti`, `worm`
-(generated), and `cool`, `stamp`, `party` (Code Break's takes of the same
-prompts), `heart_lost`, `out_of_hearts`, `heart_back` (Binairo's), `twirl`
-(Binairo's `line_silly`) -- **copied because the ElevenLabs quota ran out
-mid-run**; the prompts are in `tools/gen_sfx.py` for a fresh take. None judged
-by ear.
+Binairo's and Code Break's did). New: `sprout`, `combo`, `confetti`, `worm`,
+`cool`, `twirl`, `stamp`, `party`, `heart_lost`, `out_of_hearts`,
+`heart_back`, all Shikaku's own takes (the last seven on the fallback key,
+after the main ElevenLabs key ran out). None judged by ear.
 
 ## 6. Numbers
 

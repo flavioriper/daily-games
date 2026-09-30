@@ -9,7 +9,9 @@ Each cue is one prompt below, rendered once (the raw take is cached in build/sfx
 only reprocesses it; --new asks ElevenLabs again), trimmed of leading and trailing
 silence, levelled to a peak and written to assets/sfx/<board>/<cue>.ogg, which
 is exactly where ui/fx2d.gd's cue() looks. The key is read from
-$ELEVENLABS_API_KEY or ~/.config/elevenlabs/api_key and never stored here.
+$ELEVENLABS_API_KEY or ~/.config/elevenlabs/api_key and never stored here; when
+it runs out of credits the request is retried once on
+$ELEVENLABS_API_KEY_FALLBACK or ~/.config/elevenlabs/api_key_fallback.
 Needs ffmpeg on the PATH.
 """
 import json, os, pathlib, re, subprocess, sys, tempfile, urllib.request
@@ -793,6 +795,17 @@ def key() -> str:
     return k
 
 
+def fallback_key() -> str:
+    """A second key for when the first runs out of credits:
+    $ELEVENLABS_API_KEY_FALLBACK or ~/.config/elevenlabs/api_key_fallback."""
+    k = os.environ.get("ELEVENLABS_API_KEY_FALLBACK", "").strip()
+    if not k:
+        p = pathlib.Path.home() / ".config/elevenlabs/api_key_fallback"
+        if p.exists():
+            k = p.read_text().strip()
+    return k
+
+
 def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop: bool = False) -> bytes:
     body = {
         "text": f"{prompt}. {style}",
@@ -809,7 +822,13 @@ def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop
         with urllib.request.urlopen(req, timeout=120) as r:
             return r.read()
     except urllib.error.HTTPError as e:
-        sys.exit(f"ElevenLabs answered {e.code}: {e.read().decode(errors='replace')[:400]}")
+        detail = e.read().decode(errors='replace')[:400]
+        # Out of credits on this key: go again on the fallback key, once.
+        spare = fallback_key()
+        if "quota_exceeded" in detail and spare and spare != api_key:
+            print("  quota exceeded, retrying on the fallback key")
+            return generate(spare, prompt, seconds, style, loop)
+        sys.exit(f"ElevenLabs answered {e.code}: {detail}")
 
 
 def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0) -> None:

@@ -183,8 +183,8 @@ heard by the user. Details: `docs/agents/boards/code-break.md`.
 for the same reason as Binairo's and Code Break's: the bonk, the tape rewind
 and the wooden boops read as a scold or a toy. New cues `sprout`, `combo`
 (layered and pitched up the pentatonic like Binairo's), `confetti` and `worm`
-were generated; the ElevenLabs quota ran out before `cool`, `twirl`,
-`heart_lost`, `out_of_hearts`, `heart_back`, `stamp` and `party`, so those are
-copies of Code Break's and Binairo's takes of the same prompts (`twirl` is
-Binairo's `line_silly`). Run `tools/gen_sfx.py shikaku <cue> --new` for
-Shikaku's own once there is quota. Not yet judged by ear.
+were generated with the rest. The main ElevenLabs key ran out of credits
+mid-run; `tools/gen_sfx.py` now retries a request once on a fallback key
+(`$ELEVENLABS_API_KEY_FALLBACK` or `~/.config/elevenlabs/api_key_fallback`)
+when the first answers `quota_exceeded`, and the last seven cues came from
+it. Not yet judged by ear.
