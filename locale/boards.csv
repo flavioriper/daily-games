@@ -815,6 +815,19 @@ FL_OUT,The garden has gone dark.,O jardim ficou no escuro.,El jardín se quedó 
 FL_OUT_BODY,"Out of hearts. Wire this garden again from the start, or watch a short video for one more heart.",Sem corações. Ligue este jardim de novo desde o começo ou veja um vídeo curto por mais um coração.,Sin corazones. Vuelve a cablear este jardín desde el principio o mira un video corto para un corazón más.
 FL_OUT_REST,Out of hearts. Wire this garden again from the start whenever you like.,Sem corações. Ligue este jardim de novo desde o começo quando quiser.,Sin corazones. Vuelve a cablear este jardín desde el principio cuando quieras.
 FL_HEART_BACK,The lights are back on. Mind the right ones.,As luzes voltaram. Cuidado com as certas.,Las luces volvieron. Cuidado con las correctas.
+FL_TAGS_SEAL,Wish Tags,Desejos,Deseos
+FL_CHEER_0,"Lantern wisdom: a lantern never forgets where it came from: the post.","Sabedoria de lanterna: uma lanterna nunca esquece de onde veio: o poste.","Sabiduría de farol: un farol nunca olvida de dónde viene: del poste."
+FL_CHEER_1,"Lantern wisdom: every loose end is just a hug that has not happened yet.","Sabedoria de lanterna: toda ponta solta é só um abraço que ainda não aconteceu.","Sabiduría de farol: cada punta suelta es solo un abrazo que aún no ha pasado."
+FL_CHEER_2,"Lantern wisdom: glow where you are hung.","Sabedoria de lanterna: brilhe onde te penduraram.","Sabiduría de farol: brilla donde te cuelguen."
+FL_CHEER_3,"Lantern wisdom: the moths are not fans, they are family.","Sabedoria de lanterna: as mariposas não são fãs, são família.","Sabiduría de farol: las polillas no son fans, son familia."
+FL_CHEER_4,"Lantern wisdom: a straight wire is nice, but an elbow knows how to turn things around.","Sabedoria de lanterna: fio reto é bom, mas o cotovelo sabe dar a volta por cima.","Sabiduría de farol: el cable recto está bien, pero el codo sabe darle la vuelta a todo."
+FL_CHEER_5,"Lantern wisdom: it takes a whole garden to raise a light.","Sabedoria de lanterna: é preciso um jardim inteiro para criar uma luz.","Sabiduría de farol: hace falta todo un jardín para criar una luz."
+FL_CHEER_6,"Lantern wisdom: never trust a snail who says the wire was like that when he got here.","Sabedoria de lanterna: nunca confie num caracol que diz que o fio já estava assim quando ele chegou.","Sabiduría de farol: nunca le creas a un caracol que dice que el cable ya estaba así cuando llegó."
+FL_CHEER_7,"Lantern wisdom: when in doubt, hum.","Sabedoria de lanterna: na dúvida, cantarole.","Sabiduría de farol: ante la duda, tararea."
+FL_CHEER_8,"Lantern wisdom: the dark is only the night's way of saying 'your turn'.","Sabedoria de lanterna: o escuro é só a noite dizendo 'sua vez'.","Sabiduría de farol: la oscuridad es solo la noche diciendo 'te toca'."
+FL_CHEER_9,"Lantern wisdom: a good glow is mostly paper and a little nerve.","Sabedoria de lanterna: um bom brilho é quase todo papel e um pouco de coragem.","Sabiduría de farol: un buen brillo es casi todo papel y un poco de valor."
+FL_CHEER_10,"Lantern wisdom: stay connected, but mind the tangles.","Sabedoria de lanterna: fique conectado, mas cuidado com os nós.","Sabiduría de farol: mantente conectado, pero cuidado con los enredos."
+FL_CHEER_11,"Lantern wisdom: the cat always gets the warmest seat.","Sabedoria de lanterna: o gato sempre fica com o lugar mais quentinho.","Sabiduría de farol: el gato siempre se queda con el sitio más calentito."
 HTP_TITLE,How to play %s,Como jogar %s,Cómo jugar %s
 HTP_BINAIRO_MOVE,Tap in the missing symbol,Toque o símbolo que falta,Toca el símbolo que falta
 HTP_START,Start with one move,Comece com uma jogada,Empieza con una jugada
