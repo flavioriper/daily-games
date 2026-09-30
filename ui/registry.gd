@@ -293,14 +293,15 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "queens",
 		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): a 7 by 7, 8 by 8 or 9 by 9 court,
-		# and each is its own daily with its own done mark.
+		# Asks like Sudoku (2026-09-23): a 7 by 7, 8 by 8 or 9 by 9 court, or
+		# Insane's 10 by 10 in the morning mist (2026-09-30), and each is its
+		# own daily with its own done mark.
 		"pick_difficulty": true,
 		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "7 × 7"},
-			{"difficulty": 1, "name": "Medium", "line": "8 × 8"},
-			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
-			{"difficulty": 3, "name": "Insane", "line": "9 × 9"},
+			{"difficulty": 0, "name": "Easy", "line": "QN_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "QN_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "QN_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "QN_LVL_3"},
 		],
 	},
 	{

@@ -341,6 +341,38 @@ QN_SEAT_FIRST,Seat a queen first.,Coloque uma rainha primeiro.,Coloca una reina 
 QN_ALL_RIGHT,Every queen you have seated is right.,Todas as rainhas que você colocou estão certas.,Todas las reinas que colocaste están bien.
 QN_RESET,The court is cleared. A given queen keeps her seat.,Tabuleiro limpo. Uma rainha dada fica no lugar.,Tablero limpio. Una reina dada conserva su lugar.
 QN_WIN,Every queen has her seat.,Cada rainha tem seu lugar.,Cada reina tiene su lugar.
+QN_LVL_0,7 × 7,7 × 7,7 × 7
+QN_LVL_1,8 × 8,8 × 8,8 × 8
+QN_LVL_2,"9 × 9, three hearts","9 × 9, três corações","9 × 9, tres corazones"
+QN_LVL_3,"10 × 10, morning mist","10 × 10, neblina da manhã","10 × 10, niebla matinal"
+QN_RULES_MIST,"Morning mist has faded some seams: a misty patch is two colours run together, and it takes two queens. Its seats are crossed only once both are seated.","A neblina da manhã apagou algumas divisas: um canteiro enevoado são duas cores misturadas, e ele leva duas rainhas. Suas casas só são riscadas quando as duas estão no lugar.","La niebla matinal borró algunas costuras: una parcela con niebla son dos colores fundidos, y lleva dos reinas. Sus casillas se tachan solo cuando las dos están sentadas."
+QN_RULES_HEARTS_1,You have one heart. A queen seated where the answer has none costs it.,Você tem um coração. Uma rainha posta onde a resposta não tem nenhuma custa ele.,Tienes un corazón. Una reina sentada donde la respuesta no tiene ninguna lo cuesta.
+QN_RULES_HEARTS_N,You have %d hearts. A queen seated where the answer has none costs one.,Você tem %d corações. Uma rainha posta onde a resposta não tem nenhuma custa um.,Tienes %d corazones. Una reina sentada donde la respuesta no tiene ninguna cuesta uno.
+QN_TIP_HEARTS,Every queen is judged as she sits. A wrong one costs a heart and leaves a cross behind.,Cada rainha é julgada ao sentar. Uma errada custa um coração e deixa um X no lugar.,Cada reina se juzga al sentarse. Una equivocada cuesta un corazón y deja una cruz.
+QN_TIP_MIST,A misty patch takes two queens. Its little crowns count them.,Um canteiro enevoado leva duas rainhas. As coroinhas dele contam.,Una parcela con niebla lleva dos reinas. Sus coronitas las cuentan.
+QN_TIP_MIST_2,"Stuck? Seat a queen in your head and follow her. If the court breaks, cross that seat.","Travou? Sente uma rainha na imaginação e siga. Se o tabuleiro quebrar, risque aquela casa.","¿Atascado? Sienta una reina en tu cabeza y síguela. Si el tablero se rompe, tacha esa casilla."
+QN_WRONG_SEAT,"Oh, she doesn't belong there. That cost a heart.","Ops, ela não é dali. Isso custou um coração.","Uy, ella no va ahí. Eso costó un corazón."
+QN_SHOWN,That seat is empty for sure. A heart showed it.,"Essa casa está vazia, com certeza. Um coração mostrou.","Esa casilla está vacía, seguro. Un corazón lo mostró."
+QN_CROSS_ONE,%d cross sits where a queen belongs.,%d X está onde uma rainha deveria sentar.,%d cruz está donde va una reina.
+QN_CROSS_N,%d crosses sit where queens belong.,%d X estão onde rainhas deveriam sentar.,%d cruces están donde van reinas.
+QN_CROSSES_RIGHT,Every cross is on a seat no queen wants.,Todos os X estão em casas que nenhuma rainha quer.,Todas las cruces están en casillas que ninguna reina quiere.
+QN_OUT,The bees have gone to bed.,As abelhas foram dormir.,Las abejas se fueron a dormir.
+QN_OUT_BODY,"Out of hearts. Seat the court again from the start, or watch a short video for one more heart.",Sem corações. Recomece o tabuleiro do começo ou veja um vídeo curto por mais um coração.,Sin corazones. Empieza el tablero desde el principio o mira un video corto para un corazón más.
+QN_OUT_REST,Out of hearts. Seat the court again from the start whenever you like.,Sem corações. Recomece o tabuleiro do começo quando quiser.,Sin corazones. Empieza el tablero desde el principio cuando quieras.
+QN_MIST_SEAL,Morning Mist,Neblina,Niebla
+QN_MIST_HALF,One queen in the mist. That patch wants one more.,Uma rainha na neblina. Esse canteiro quer mais uma.,Una reina en la niebla. Esa parcela quiere una más.
+QN_DECREE_0,By royal decree: every nap lasts five more minutes.,Por decreto real: toda soneca dura cinco minutinhos a mais.,Por decreto real: toda siesta dura cinco minutos más.
+QN_DECREE_1,By royal decree: honey on everything.,Por decreto real: mel em tudo.,Por decreto real: miel en todo.
+QN_DECREE_2,By royal decree: no buzzing before breakfast.,Por decreto real: nada de zumbir antes do café.,Por decreto real: nada de zumbar antes del desayuno.
+QN_DECREE_3,By royal decree: the garden gets the day off.,Por decreto real: o jardim tira o dia de folga.,Por decreto real: el jardín tiene el día libre.
+QN_DECREE_4,By royal decree: crowns may be worn slightly crooked.,Por decreto real: coroas podem ser usadas meio tortas.,Por decreto real: las coronas pueden llevarse un poco torcidas.
+QN_DECREE_5,By royal decree: every flower is hereby fabulous.,Por decreto real: toda flor fica declarada fabulosa.,Por decreto real: toda flor queda declarada fabulosa.
+QN_DECREE_6,By royal decree: snacks count as a hobby.,Por decreto real: lanchinho conta como hobby.,Por decreto real: picar algo cuenta como pasatiempo.
+QN_DECREE_7,By royal decree: the tallest daisy is now a duke.,Por decreto real: a margarida mais alta agora é duquesa.,Por decreto real: la margarita más alta ahora es duquesa.
+QN_DECREE_8,By royal decree: hugs are free today.,Por decreto real: abraços são grátis hoje.,Por decreto real: los abrazos son gratis hoy.
+QN_DECREE_9,By royal decree: puddles are for jumping.,Por decreto real: poças são para pular.,Por decreto real: los charcos son para saltar.
+QN_DECREE_10,By royal decree: you are an honorary bee.,Por decreto real: você é abelha honorária.,Por decreto real: eres abeja honoraria.
+QN_DECREE_11,By royal decree: the moon may stay up late.,Por decreto real: a lua pode ficar acordada até tarde.,Por decreto real: la luna puede trasnochar.
 MP_TIP_COUNT,A number counts the mushrooms in the eight cells touching it.,Um número conta os cogumelos nas oito casas ao redor dele.,Un número cuenta los hongos en las ocho casillas a su alrededor.
 MP_TIP_PLANT,Plant a mushroom where you are sure. Lay a pebble where you are not.,Plante um cogumelo onde tiver certeza. Ponha uma pedrinha onde não houver.,Planta un hongo donde estés seguro. Pon una piedrita donde no haya.
 MP_TIP_GREEN,A number goes green the moment it has all its mushrooms.,Um número fica verde assim que tem todos os seus cogumelos.,Un número se pone verde en cuanto tiene todos sus hongos.
