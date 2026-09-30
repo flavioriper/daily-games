@@ -6,10 +6,11 @@ extends "res://core/puzzle_base.gd"
 ## live in puzzles/bridges_state.gd, which this only draws.
 ##
 ## **The fourth rule is the puzzle.** Every number met is not a solve: the
-## islets have to end on one single network, and the board says nothing at
+## islets have to end on one single network. The first cut said nothing at
 ## all about the near-miss where the numbers are all met and the islets stand
-## in two rings. Seeing the split network is the thing being solved, and
-## Check is the only door to it (spec section 10).
+## in two groups (spec section 10), and players read the silence as a broken
+## board; since the polish (2026-09-30) the line names it and the stray
+## groups pulse.
 ##
 ## How it is drawn, and it is Word Trail's arrangement wholesale. A still
 ## mesh carries the sea (its basin, shallows, sandbars and ripples), a small
@@ -27,6 +28,21 @@ extends "res://core/puzzle_base.gd"
 ## under one**: the pool, the ripples, the lit lane and a refusal's band, the
 ## runs over those, the islets over them, and the numbers last.
 ##
+## **The polish of 2026-09-30** (spec 2026-09-30-bridges-polish-design.md).
+## Players could not tell what the game wanted, so it now says it: two planks
+## at most, as everywhere else; a ring of slots round every coin that fills a
+## slot per plank; a tap on the water between two islets lays a plank; a
+## ghost finger shows the drag on a first board; and the near-miss -- every
+## number met, the islets in two groups -- is named out loud. Hard and Insane
+## can be failed: every plank is judged as it lands, and a wrong one cracks
+## and sinks, costs a heart and leaves a buoy on that lane for good. Insane is
+## **Lantern Night**: a lantern counts the islets it is joined to rather than
+## its planks, and some islets are dark and show nothing. A right plank
+## builds a streak, a met islet raises a pennant and now and then plays a gag
+## (a fish leaps, hearts float, the coin twirls), and the solve throws a
+## party: the islets dance, confetti, a paper boat sails the pool, a bit of
+## bridge wisdom and the seal.
+##
 ## Spec: docs/superpowers/specs/2026-09-20-bridges-flat-design.md, sections 6
 ## and 7. Ported number for number from the canvas mock at
 ## docs/brainstorm/concepts.html#bridges, which is the reference for every
@@ -39,6 +55,108 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+
+## The out-of-hearts card's Back to camp.
+signal leave
+
+# --- the polish (2026-09-30) ---
+## The ring of slots round a coin, one per plank (or per friend on a
+## lantern) its number asks for, filling as they come: its radius off the
+## coin, its thickness in islet radii (with a floor for the 11x11), and the
+## gap between slots in radians.
+const SLOT_R := 1.22
+const SLOT_W := 0.17
+const SLOT_MIN := 4.5
+const SLOT_GAP := 0.28
+## The coin flips over COIN_FLIP when its number comes right.
+const COIN_FLIP := 0.34
+## A plank settles into place after it lands: it dips SETTLE of its thickness
+## and comes back over SETTLE_TIME.
+const SETTLE := 0.28
+const SETTLE_TIME := 0.2
+## The hearts, on the family's paper pill in a strip over the pool.
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong plank rolls out and lands like any other, stands CRACK_AFTER, then
+## cracks in two and sinks over SINK_TIME, tipping SINK_TURN, dropping
+## SINK_FALL of a cell and fading, with bubbles.
+const CRACK_AFTER := 0.45
+const SINK_TIME := 0.7
+const SINK_TURN := 0.35
+const SINK_FALL := 0.35
+## A lane a heart ruled carries a small buoy in its water for good: BUOY_R of
+## a cell, bobbing BUOY_BOB on its own slow clock.
+const BUOY_R := 0.13
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## The streak: a note up the pentatonic from the second right plank, the
+## bubble from the third, confetti at five and ten.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Three met islets in five play a gag, by the islet's hash.
+const GAG_ODDS := 5
+const GAGS := 3
+const LOVE_HEARTS := 4
+const LOVE_TIME := 1.3
+const LOVE_RISE := 0.7
+const LOVE_R := 0.14
+const TWIRL_TIME := 0.55
+const FISH_TIME := 0.9
+const FISH_LEAP := 0.9
+const FISH_SPAN := 1.4
+## A met islet raises a pennant on its back edge: FLAG_H of a radius tall,
+## popping up over FLAG_TIME, folding over FLAG_FOLD when it comes apart.
+const FLAG_H := 0.95
+const FLAG_TIME := 0.4
+const FLAG_FOLD := 0.2
+## The near-miss, named: every number met and the islets in groups. The
+## groups that are not the biggest pulse SPLIT_PULSES times.
+const SPLIT_PULSES := 3
+const SPLIT_BEAT := 0.34
+## The ghost finger that shows the drag on Easy and Medium until the first
+## plank: it waits COACH_AFTER, then drags over COACH_DRAG, holds, lifts, and
+## goes round again every COACH_LOOP.
+const COACH_AFTER := 1.6
+const COACH_DRAG := 0.9
+const COACH_LOOP := 2.6
+## Lantern Night: the night laid over the water, and the lantern's glow.
+const NIGHT_ALPHA := 0.42
+const NIGHT_STARS := 16
+const LANTERN_GLOW := 1.7
+const LANTERN_GLOW_ALPHA := 0.26
+## The party, PARTY_AT after the solve wave.
+const PARTY_AT := 0.5
+const PARTY_EXTRA := 1.8
+const DANCE_BEATS := 4
+const DANCE_BEAT := 0.22
+const DANCE_HOP := -9.0
+const BOAT_TIME := 3.2
+const BOAT_W := 0.9
+const CHEERS := 12
+const STAMP_AT := 1.0
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
+## The lines the tips cycle while nothing else is being said.
+const TIPS := ["BR_TIP_REST", "BR_TIP_SLOTS", "BR_TIP_TAP", "BR_TIP_TWO", "BR_TIP_ONE_NET"]
+const TIP_CYCLE := 7.0
 
 # --- the screen, measured (spec section 6) ---
 ## The sea pool's inset from the card, and the lattice's own inset inside the
@@ -54,8 +172,6 @@ const FIELD_PAD := 12.0
 ## enough to leave water either side.
 const PLANK := 0.115
 const PLANK_GAP := 0.095
-## Three, as every other board gives.
-const HINTS := 3
 ## This board's own two, and the only two it needs: how long the solve wave's
 ## front takes to cross one run, and how long it rests on an islet. The wave
 ## itself is the board's signature and lands with the motion pass; `win_delay`
@@ -452,27 +568,96 @@ var _press_up := -1.0
 ## and `win_delay()` spends, taken from the same `_last`, so the wave and the
 ## win screen can never disagree about how long the wave is. `_sparked` is
 ## the islets whose sparkle has already gone up.
-var _solved_at := -1.0
+var _solved_at := -INF
 var _depth: Dictionary = {}
 var _sparked: Dictionary = {}
 
 var _tip_text := tr(TIP_REST)
 var _tip_mood := Face.Expr.HAPPY
 
+# --- the polish's state ---
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _asleep := false
+var _sinking_busy := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _dusk_tw: Tween
+## Wrong planks: `[{"key", "count", "at", "src"}]` -- `count` the planks the
+## run held before, `at` when the wrong one was laid (it rolls, lands, cracks
+## and sinks on that clock).
+var _sinking: Array = []
+var _flawless := false
+var _streak := 0
+var _combo_n := 0
+var _combo_at := -INF
+var _combo_pos := Vector2.ZERO
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_layer: Control
+var _combo_shown: ArrayMesh
+var _life_layer: Control
+var _life_shown: Array = []
+var _life_alive := false
+var _love: Array = []
+var _love_mesh: ArrayMesh
+var _fish: Array = []
+var _stamp_at := INF
+var _seal_mesh: ArrayMesh
+var _twirl: Dictionary = {}      # islet -> at: its coin spins a turn then
+var _flip: Dictionary = {}       # islet -> at: its coin flips to met then
+var _flag: Dictionary = {}       # islet -> {"at", "open"}: its pennant rising or folding
+var _pulse: Dictionary = {}      # islet -> at: a split group pulsing then
+var _groups := 1
+var _dance_at := INF
+var _boat_at := INF
+var _glow_at := INF
+var _coach_lane := ""
+var _coach_from := State.NOWHERE
+var _tip_timer: Timer
+var _tip_idx := 0
+var _hold_until := 0.0
+## Bumped by every rebuild, so a callback owed to the last board does nothing.
+var _gen := 0
+
 func puzzle_id() -> String: return "bridges"
 func title() -> String: return "Bridges"
 
-## The four rules of the spec's section 1, in that order and **connectivity
-## last**, because it is the one the reference's own rules card leaves out and
-## the one this whole board rests on.
+## The rules in plain words, connectivity last and underlined, then the
+## night's two clues on Insane and what a heart is for on Hard and Insane.
 func rules() -> String:
-	return tr("BR_RULES")
+	var out: String = tr("BR_RULES")
+	if not state.lanterns.is_empty():
+		out += "\n\n" + tr("BR_RULES_LANTERNS")
+	if max_hearts > 0:
+		out += "\n\n" + tr("BR_RULES_HEARTS") % max_hearts
+	else:
+		out += "\n\n" + tr("BR_RULES_SAFE")
+	return out
 
-## Undo, Hint and Check: the plainest shape on the shelf. It picks nothing up,
-## so the registry gives it no tray, and it has a real Check, so unlike
-## Balance and Untangle it keeps the actions row.
+## Undo, Hint and Check on Easy and Medium. Hard and Insane judge every plank
+## as it lands, so no wrong one can stand and Check has nothing to find.
 func capabilities() -> Array[String]:
+	if max_hearts > 0:
+		return ["undo", "hint"]
 	return ["undo", "hint", "check"]
+
+## The lines the tips cycle: Lantern Night leads with its two, a judged board
+## with the hearts'.
+func _tips() -> Array:
+	if not state.lanterns.is_empty():
+		return ["BR_TIP_LANTERN", "BR_TIP_LANTERN_2", "BR_TIP_HEARTS"] + TIPS
+	if max_hearts > 0:
+		return ["BR_TIP_HEARTS"] + TIPS
+	return TIPS
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -481,11 +666,34 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_tip_timer = Timer.new()
+	_tip_timer.wait_time = TIP_CYCLE
+	_tip_timer.timeout.connect(_cycle_tip)
+	add_child(_tip_timer)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
+	_life_layer = _layer("Life", 3, _draw_life)
+	_combo_layer = _layer("Combo", 4, _draw_combo)
 	resized.connect(_resized)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the board, drawn by `draw` (One Line's).
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	state.build(rng, difficulty)
+	_gen += 1
+	state = State.new()
+	state.build(rng, difficulty, bank_step)
+	max_hearts = int(State.HEARTS[state.band])
+	_heart_used = false
+	_lost_ever = false
 	_from = State.NOWHERE
 	_aim = ""
 	_aim_dir = Vector2i.ZERO
@@ -507,20 +715,71 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_sea = null
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
-	_solved_at = -1.0
+	_solved_at = -INF
 	_depth = {}
 	_sparked = {}
 	_anim_until = 0.0
 	_lap_rng.seed = hash(state.islets)
-	_say(tr(TIP_REST), Face.Expr.HAPPY)
+	_deal()
+	_pick_coach()
+	_tip_idx = 0
+	_hold_until = 0.0
+	_say(_tip(0), Face.Expr.HAPPY)
+	if _tip_timer != null:
+		_tip_timer.start()
 	_enter()
 	_refresh()
+
+## The board as it is dealt, and as Try again deals it back: every heart,
+## the day's light, nothing judged, no streak, pennant or party.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_sinking_busy = false
+	_split_index = -1
+	_back_index = -1
+	_sinking = []
+	_flawless = false
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_love = []
+	_fish = []
+	_twirl = {}
+	_flip = {}
+	_flag = {}
+	_pulse = {}
+	_groups = state.islets.size()
+	_dance_at = INF
+	_boat_at = INF
+	_glow_at = INF
+	_stamp_at = INF
+	_seal_mesh = null
+	_love_mesh = null
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
 
 # --- the layout, ported from the mock ---
 
 ## The sea pool, inset from the card on every side.
 func _pool() -> Rect2:
-	return Rect2(INSET, INSET, maxf(0.0, size.x - 2.0 * INSET), maxf(0.0, size.y - 2.0 * INSET))
+	var row := _heart_row()
+	return Rect2(INSET, INSET + row, maxf(0.0, size.x - 2.0 * INSET),
+		maxf(0.0, size.y - 2.0 * INSET - row))
+
+## The strip the hearts take over the pool, on a board that has them. The
+## pool is taller than the lattice at every band, so it comes out of the
+## pool's slack and the cell does not shrink.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
+
+## Where the hearts' pill is centred: in the strip over the pool.
+func _hearts_y() -> float:
+	return INSET + HEART_ROW * 0.5
 
 ## The largest cell the pool holds, with the lattice's own pad inside it.
 ## **The width binds at every band** -- 920 of lattice against 1110 of pool
@@ -609,7 +868,12 @@ func _refresh() -> void:
 ## A new size moves every islet, so the still sea is rebuilt with the board.
 func _resized() -> void:
 	_sea = null
+	_love_mesh = null
+	_seal_mesh = null
 	_refresh()
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
 
 # --- the drawing ---
 
@@ -659,9 +923,142 @@ func _build(t: float) -> ArrayMesh:
 		_run(b, _aim, t)
 	for ghost: Dictionary in _ghosts:
 		_ghost(b, ghost, t)
+	for sink: Dictionary in _sinking:
+		_sink(b, sink, t)
+	for key in state.ruled:
+		# A wrong plank's buoy bobs up once it has gone under, not before.
+		if _sinking.any(func(k: Dictionary) -> bool: return String(k.key) == String(key)):
+			continue
+		_buoy(b, String(key))
 	for cell in state.islets:
 		_islet(b, cell, t)
 	return b.mesh() if not b.verts.is_empty() else null
+
+## A wrong plank on Hard or Insane: it rolls out from the islet the finger
+## left and lands like any other, stands a beat, then cracks in two and sinks
+## -- each half tipping away from the crack, dropping and fading -- while the
+## run's own right planks stand beside it.
+func _sink(b, sink: Dictionary, t: float) -> void:
+	var key := String(sink.key)
+	if not state.lanes.has(key) or Motion.reduce:
+		return
+	var e := t - float(sink.at)
+	var land := LAY_TIME
+	var count: int = int(sink.count) + 1
+	if e < land + CRACK_AFTER:
+		# Rolling out and standing: the plank drawn as the run's newest.
+		_planks_only(b, key, count, count - 1, e, sink.get("src", State.NOWHERE), 0.0, 0.0)
+		return
+	var u := clampf((e - land - CRACK_AFTER) / SINK_TIME, 0.0, 1.0)
+	if u >= 1.0:
+		return
+	_planks_only(b, key, count, count - 1, 1.0e9, State.NOWHERE, u, 1.0 - u * u)
+
+## The newest plank of a run of `count`, for a wrong one: `since` its roll,
+## and once `crack` is past zero, split into two halves that tip, sink and
+## fade to `alpha`. The run's right planks are drawn by `_run` as usual.
+func _planks_only(b, key: String, count: int, index: int, since: float, src: Vector2i,
+		crack: float, alpha: float) -> void:
+	var s := _cell()
+	var g := _lane_ends(key)
+	var horiz: bool = g.horiz
+	var thick := s * PLANK
+	var air := s * PLANK_GAP
+	# Beside the run's standing planks (`index` of them, centred as `_run`
+	# draws them), never on top of one.
+	var standing := float(index) * thick + float(maxi(index - 1, 0)) * air
+	var off := 0.0 if index <= 0 else standing * 0.5 + air + thick * 0.5
+	var lo: Vector2 = Vector2(minf(g.a.x, g.b.x), minf(g.a.y, g.b.y))
+	var run: float = absf(g.b.x - g.a.x) if horiz else absf(g.b.y - g.a.y)
+	var face: Color = Pal.DECK.lerp(Pal.BAD, 0.55 * minf(1.0, crack * 4.0 + (0.0 if since < 1.0e8 else 1.0)))
+	var deep: Color = Pal.WOOD_DEEP.lerp(Pal.BAD, 0.4)
+	if crack <= 0.0:
+		var u := _ease(since / LAY_TIME)
+		var side := _side(key, src)
+		var span := run * u
+		var shift := 0.0 if side > 0 else ((run - span) if side < 0 else (run - span) * 0.5)
+		var at: Vector2
+		var box: Vector2
+		if horiz:
+			at = Vector2(lo.x + shift, g.a.y + off - thick * 0.5)
+			box = Vector2(span, thick)
+		else:
+			at = Vector2(g.a.x + off - thick * 0.5, lo.y + shift)
+			box = Vector2(thick, span)
+		if span <= 0.5:
+			return
+		at.y -= thick * LAY_LIFT * (1.0 - u)
+		_plank(b, at, box, horiz, minf(box.x, box.y) * PLANK_RADIUS,
+			Pal.DECK, Pal.WOOD_DEEP, {})
+		return
+	# Cracked: two halves, each about its own middle, tipping away from the
+	# crack and sinking.
+	var shade: Color = Pal.WATER.lerp(Pal.TEXT, SEA_SHADE)
+	for h in 2:
+		var half := run * 0.5
+		var at: Vector2
+		var box: Vector2
+		if horiz:
+			at = Vector2(lo.x + half * h, g.a.y + off - thick * 0.5)
+			box = Vector2(half, thick)
+		else:
+			at = Vector2(g.a.x + off - thick * 0.5, lo.y + half * h)
+			box = Vector2(thick, half)
+		var mid := at + box * 0.5
+		var turn := SINK_TURN * crack * (1.0 if h == 1 else -1.0)
+		var drop := Vector2(0.0, s * SINK_FALL * crack * crack)
+		var shrink := 1.0 - 0.3 * crack
+		var pts := Face.Builder.round_rect(-box * 0.5 * shrink, box * shrink,
+			minf(box.x, box.y) * PLANK_RADIUS)
+		var lip := PackedVector2Array()
+		var top := PackedVector2Array()
+		for q in pts:
+			lip.append(mid + drop + (q + Vector2(0.0, PLANK_EDGE * 0.5)).rotated(turn))
+			top.append(mid + drop + q.rotated(turn))
+		b.polygon(lip, Color(deep, alpha))
+		b.polygon(top, Color(face, alpha))
+	# Bubbles where it went down.
+	var m := (Vector2(g.a) + Vector2(g.b)) * 0.5
+	for k in 3:
+		var bu := clampf(crack * 1.4 - float(k) * 0.2, 0.0, 1.0)
+		if bu <= 0.0 or bu >= 1.0:
+			continue
+		var p := m + Vector2((float(k) - 1.0) * s * 0.18, s * 0.1 - s * 0.35 * bu)
+		b.stroke(Face.Builder.ring(p, s * 0.05 * (0.6 + bu), s * 0.05 * (0.6 + bu)),
+			maxf(1.5, s * 0.015), Color(Pal.SURFACE, 0.8 * (1.0 - bu)), true)
+	b.stroke(Face.Builder.ring(m, s * (0.2 + 0.5 * crack), s * (0.12 + 0.3 * crack)),
+		maxf(2.0, s * 0.03), Color(shade.lerp(Pal.SURFACE, 0.6), 0.5 * (1.0 - crack)), true)
+
+## A heart's lesson, standing for good: a small red-and-white buoy in the
+## lane's water, a rope ring on the lane's middle. It says "no more planks
+## here" -- a lane ruled at 0 wears a cross on the buoy's band, one ruled at
+## 1 a single bar.
+func _buoy(b, key: String) -> void:
+	if not state.lanes.has(key):
+		return
+	var s := _cell()
+	var g := _lane_ends(key)
+	var m := (Vector2(g.a) + Vector2(g.b)) * 0.5
+	var laid := state.planks(key)
+	var total := _run_width(maxi(laid, 1)) if laid > 0 else 0.0
+	# Beside the run when it carries planks, on the lane when it is empty.
+	if laid > 0:
+		m += (Vector2(0.0, 1.0) if bool(g.horiz) else Vector2(1.0, 0.0)) * (total * 0.5 + s * BUOY_R * 1.3)
+	var r := s * BUOY_R
+	Scenery.soft_disc(b, m + Vector2(0.0, r * 0.7), r * 1.4, r * 0.55,
+		Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), 0.3))
+	b.stroke(Face.Builder.ring(m + Vector2(0.0, r * 0.55), r * 1.25, r * 0.5),
+		maxf(1.5, r * 0.14), Color(Pal.SURFACE, 0.7), true)
+	b.disc(m, r, Pal.SURFACE)
+	b.fan(Face.Builder.round_rect(m - Vector2(r, r * 0.34), Vector2(2.0 * r, r * 0.68), r * 0.2), Pal.BAD)
+	b.disc(m - Vector2(r * 0.3, r * 0.45), r * 0.22, Color(Pal.SURFACE, 0.8))
+	var ink := Pal.SURFACE
+	var w := maxf(1.5, r * 0.16)
+	if int(state.ruled[key]) <= 0:
+		b.stroke(PackedVector2Array([m + Vector2(-r * 0.3, -r * 0.2), m + Vector2(r * 0.3, r * 0.2)]), w, ink)
+		b.stroke(PackedVector2Array([m + Vector2(-r * 0.3, r * 0.2), m + Vector2(r * 0.3, -r * 0.2)]), w, ink)
+	else:
+		b.stroke(PackedVector2Array([m + Vector2(-r * 0.4, 0.0), m + Vector2(r * 0.4, 0.0)]), w, ink)
 
 ## The lane the finger is asking for, lit: a gold band down it and a gold ring
 ## round the islet at the far end. This is the drag's whole answer, and it is
@@ -767,6 +1164,12 @@ func _enter() -> void:
 	_next_lap = _anim_until + LAP_EVERY * 0.5
 	if fx != null:
 		fx.cue("enter")
+		if not state.lanterns.is_empty():
+			# The lanterns come on once the islets have risen. A reopened
+			# solved day has no entrance to follow (Sudoku's review finding).
+			_after(_anim_until - _opened, func() -> void:
+				if not is_done():
+					fx.cue("lanterns"))
 
 func _enter_delay(diagonal: int) -> float:
 	return Motion.ENTER_DELAY + Motion.ENTER_FACE_LAG \
@@ -783,6 +1186,9 @@ func _process(delta: float) -> void:
 	_sweep(t)
 	_spark(t)
 	_lap(t)
+	_tick_layers(t)
+	if _twirling(t) or _dancing(t):
+		_busy_for(0.05)
 	if t < _anim_until:
 		_refresh()
 	elif not _laps.is_empty():
@@ -858,7 +1264,27 @@ func _build_sea() -> ArrayMesh:
 			Color(Pal.SURFACE, FOOT_RING_ALPHA), true)
 	_ripples(b, water)
 	_dress(b, p, water)
+	if not state.lanterns.is_empty():
+		_night(b, water)
 	return b.mesh()
+
+## Lantern Night's sky on the water: a dusk-blue veil over the pool and a
+## scatter of reflected stars in the open water, kept off the islets. The
+## lanterns' own glow is drawn with them, over this.
+func _night(b, water: Rect2) -> void:
+	b.fan(Face.Builder.round_rect(water.position, water.size, POOL_RADIUS),
+		Color(Pal.MOON_DEEP, NIGHT_ALPHA))
+	var s := _cell()
+	var placed := 0
+	var i := 0
+	while placed < NIGHT_STARS and i < NIGHT_STARS * 10:
+		var at := water.position + Vector2(_hash(i, 91), _hash(i, 93)) * water.size
+		i += 1
+		if not water.grow(-s * 0.3).has_point(at) or _near_islet(at, _islet_r() * 1.6):
+			continue
+		var r := s * (0.025 + 0.03 * _hash(i, 95))
+		b.polygon(Seal.star(at, r * 1.6), Color(Pal.SUN_RAY, 0.55))
+		placed += 1
 
 ## A few deeper patches in the open water: soft blots of WATER, kept off
 ## the islets so none reads as an islet's shadow.
@@ -1224,6 +1650,13 @@ func _preview(key: String) -> int:
 		return -1
 	if state.blocked_by(key) != "":
 		return -1
+	if state.judged():
+		# Judged planks are only ever added: nothing past two, and nothing a
+		# heart has already ruled out.
+		var next := state.planks(key) + 1
+		if next > State.MAX_PLANKS or (state.ruled.has(key) and next > int(state.ruled[key])):
+			return -1
+		return next
 	return (state.planks(key) + 1) % (State.MAX_PLANKS + 1)
 
 ## A run that has gone, still leaving: drawn back into the islet the finger
@@ -1329,12 +1762,17 @@ func _planks(b, key: String, count: int, look: Dictionary) -> void:
 		# it rolls out or is drawn back, anchored at the islet it comes from.
 		var u := pull
 		var a := alpha * (PREVIEW_ALPHA if i >= faint_from else 1.0)
+		var settle := 0.0
 		if i >= first_new and i < faint_from and not Motion.reduce:
 			u = _ease(since / LAY_TIME)
 			a *= Motion.appear_level(since)
+			# Landed: it dips into the water a hair and bobs back up.
+			var e := since - LAY_TIME
+			if e > 0.0 and e < SETTLE_TIME:
+				settle = -thick * SETTLE * sin(PI * e / SETTLE_TIME)
 		if u <= 0.0 or a <= 0.0:
 			continue
-		var lift := 0.0
+		var lift := settle
 		if u < 1.0:
 			var span := run * u
 			var slack := run - span
@@ -1476,8 +1914,8 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	var mid := _at(cell) + _islet_off(cell, t)
 	var rx := r * sc.x
 	var ry := r * sc.y
-	var want: int = int(state.need[cell])
-	var got: int = state.degree(cell)
+	var want: int = state.need_of(cell)
+	var got: int = state.count(cell)
 	var over := got > want
 	var seed_i := cell.x * 17 + cell.y * 5
 	var top_y := ry * TOP_Y
@@ -1515,15 +1953,131 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	if _hash(seed_i, 67) < FLOWER_SHARE:
 		var side := -1.0 if _hash(seed_i, 69) < 0.5 else 1.0
 		_flower(b, mid + Vector2(side * rx * 0.72, top_y * 0.3), r * 0.16)
-	# The coin: its shadow on the moss, its edge, its face.
+	_pennant(b, cell, mid, rx, top_y, t)
+	# The coin: its shadow on the moss, its edge, its face. It flips over
+	# when its number comes right and spins a turn for the twirl gag, both
+	# read off its horizontal scale; a lantern stands a paper lantern on the
+	# moss instead, glowing.
 	var coin := _coin_colour(cell, t, want, got)
-	var cx := rx * COIN_R
+	var cx := rx * COIN_R * _coin_turn(cell, t)
 	var cy := ry * COIN_R
 	var at := mid - Vector2(0.0, ry * COIN_LIFT)
-	Scenery.soft_disc(b, mid + Vector2(0.0, ry * COIN_LIP * 0.8), cx * 1.14, cy * 1.08,
-		Color(Pal.TEXT, COIN_SHADOW))
-	b.ellipse(at + Vector2(0.0, ry * COIN_LIP), cx, cy, coin.lerp(Pal.TEXT, COIN_EDGE))
-	b.ellipse(at, cx, cy, coin)
+	if state.lanterns.has(cell):
+		_lantern(b, cell, at, rx, ry, coin, t)
+	else:
+		Scenery.soft_disc(b, mid + Vector2(0.0, ry * COIN_LIP * 0.8), absf(cx) * 1.14 + 1.0, cy * 1.08,
+			Color(Pal.TEXT, COIN_SHADOW))
+		if absf(cx) > 0.5:
+			b.ellipse(at + Vector2(0.0, ry * COIN_LIP), absf(cx), cy, coin.lerp(Pal.TEXT, COIN_EDGE))
+			b.ellipse(at, absf(cx), cy, coin)
+	if _solved_at == -INF:
+		_slots(b, at, rx * COIN_R * SLOT_R, ry * COIN_R * SLOT_R, want, got, r)
+
+## The slots round a coin: one arc per plank the number asks for (per islet,
+## on a lantern), set round its lower half and filled in wood as they come,
+## so a number reads as "this many planks, and this many are in". Over its
+## number they all go rose.
+func _slots(b, at: Vector2, rx: float, ry: float, want: int, got: int, r: float) -> void:
+	var w := maxf(SLOT_MIN, r * SLOT_W)
+	var over := got > want
+	# Round the whole coin, starting at the top, clockwise.
+	var step := TAU / float(want)
+	var gap := minf(SLOT_GAP, step * 0.4)
+	for k in want:
+		var a0 := -PI * 0.5 + step * float(k) + gap * 0.5
+		var a1 := a0 + step - gap
+		var pts := PackedVector2Array()
+		var segs := maxi(3, int(ceil((a1 - a0) / 0.2)))
+		for q in segs + 1:
+			var a := lerpf(a0, a1, float(q) / float(segs))
+			pts.append(at + Vector2(cos(a) * rx, sin(a) * ry))
+		# An empty slot is a socket pressed into the moss; a filled one is a
+		# plank's end in wood; a met islet's all go leaf; over, all rose.
+		var ink: Color
+		if over:
+			ink = Pal.BAD
+		elif k < got:
+			ink = Pal.DECK if got < want else Pal.LEAF_DEEP
+		else:
+			ink = Pal.BANK.lerp(Pal.TEXT, 0.38)
+		if k < got or over:
+			b.stroke(pts, w + 2.0, Pal.WOOD_DEEP if not over and got < want else ink.darkened(0.25))
+		b.stroke(pts, w, ink)
+
+## How wide the coin stands, 1 face on: it flips over (|cos|, through zero)
+## as its number comes right and spins a full turn for the twirl.
+func _coin_turn(cell: Vector2i, t: float) -> float:
+	if Motion.reduce:
+		return 1.0
+	var k := 1.0
+	if _flip.has(cell):
+		var e: float = t - float(_flip[cell])
+		if e > 0.0 and e < COIN_FLIP:
+			k *= absf(cos(PI * e / COIN_FLIP))
+	if _twirl.has(cell):
+		var e2: float = t - float(_twirl[cell])
+		if e2 > 0.0 and e2 < TWIRL_TIME:
+			k *= cos(TAU * _ease(e2 / TWIRL_TIME))
+	return k
+
+## Whether the coin is past the middle of its flip: the met wash shows from
+## there on, so it turns over into its new colour.
+func _flipped(cell: Vector2i, t: float) -> bool:
+	if Motion.reduce or not _flip.has(cell):
+		return true
+	return t - float(_flip[cell]) >= COIN_FLIP * 0.5
+
+## A lantern on the moss: a warm glow on the water round it, a paper body in
+## the coin's own wash, a cap and a foot in wood, ribs, and a little handle.
+## Its number goes on the paper like any coin's.
+func _lantern(b, cell: Vector2i, at: Vector2, rx: float, ry: float, paper: Color, t: float) -> void:
+	var glow := LANTERN_GLOW_ALPHA
+	if _glow_at < INF and t >= _glow_at:
+		glow += 0.3 * Motion.flash_level(t - _glow_at, 0.2, 0.8)
+	Scenery.soft_disc(b, at, rx * LANTERN_GLOW, ry * LANTERN_GLOW, Color(Pal.SUN_RAY, glow))
+	var k := absf(_coin_turn(cell, t))
+	var w := rx * 0.62 * k
+	var h := ry * 0.72
+	if w > 0.5:
+		b.fan(Face.Builder.round_rect(at - Vector2(w, h) + Vector2(0.0, ry * 0.08), Vector2(2.0 * w, 2.0 * h), w * 0.7),
+			paper.lerp(Pal.TEXT, COIN_EDGE))
+		b.fan(Face.Builder.round_rect(at - Vector2(w, h), Vector2(2.0 * w, 2.0 * h), w * 0.7),
+			paper.lerp(Pal.SUN_RAY, 0.35))
+		for sx in [-0.5, 0.5]:
+			b.stroke(PackedVector2Array([at + Vector2(w * sx, -h * 0.8), at + Vector2(w * sx * 1.1, 0.0),
+				at + Vector2(w * sx, h * 0.8)]), maxf(1.0, rx * 0.03), Color(Pal.SUN_DEEP, 0.35))
+	var cap := Vector2(rx * 0.42 * maxf(k, 0.3), ry * 0.14)
+	b.fan(Face.Builder.round_rect(at + Vector2(-cap.x, -h - cap.y), cap * Vector2(2.0, 1.6), cap.y * 0.5), Pal.WOOD_DEEP)
+	b.fan(Face.Builder.round_rect(at + Vector2(-cap.x, h - cap.y * 0.4), cap * Vector2(2.0, 1.4), cap.y * 0.5), Pal.WOOD_DEEP)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, -h - cap.y), cap.x * 0.6, PI, TAU),
+		maxf(1.5, rx * 0.05), Pal.WOOD_DEEP)
+
+## A met islet's pennant on the back of its moss: a little pole and a
+## triangular flag, popping up when the number comes right and folding back
+## down when it comes apart.
+func _pennant(b, cell: Vector2i, mid: Vector2, rx: float, top_y: float, t: float) -> void:
+	if not _flag.has(cell):
+		return
+	var f: Dictionary = _flag[cell]
+	var e: float = t - float(f.at)
+	var k := 1.0
+	if bool(f.open):
+		if not Motion.reduce:
+			k = Motion.pop_in_scale(e, FLAG_TIME).y
+	else:
+		if Motion.reduce or e >= FLAG_FOLD:
+			return
+		k = 1.0 - e / FLAG_FOLD
+	if k <= 0.01:
+		return
+	var foot := mid + Vector2(rx * 0.55, -top_y * 0.55)
+	var h := _islet_r() * FLAG_H * k
+	var top := foot - Vector2(0.0, h)
+	b.stroke(PackedVector2Array([foot, top]), maxf(1.5, rx * 0.06), Pal.WOOD_DEEP)
+	var fw := h * 0.55
+	var hue: Color = [Pal.FLOWER, Pal.SUN, Pal.ACCENT, Pal.BERRY][posmod(cell.x * 3 + cell.y, 4)]
+	b.polygon(PackedVector2Array([top, top + Vector2(fw, h * 0.16), top + Vector2(0.0, h * 0.34)]), hue)
+	b.disc(top, maxf(1.5, rx * 0.06), Pal.SUN_RAY)
 
 ## The moss's outline about `c`: an ellipse whose edge is lumpy off the hash,
 ## and, for the hanging lip (`drips`), a few tongues that run a little down
@@ -1555,7 +2109,7 @@ func _coin_colour(cell: Vector2i, t: float, want: int, got: int) -> Color:
 	var coin: Color = Pal.SURFACE
 	if got > want:
 		coin = Pal.BAD_TILE
-	elif got == want:
+	elif got == want and _flipped(cell, t):
 		coin = Pal.LEAF_TILE.lerp(Pal.GOOD, COIN_MET)
 	var arrived := _arrived(cell, t)
 	if arrived >= 0.0:
@@ -1566,12 +2120,12 @@ func _coin_colour(cell: Vector2i, t: float, want: int, got: int) -> Color:
 ## The ink an islet's number is drawn in: TEXT, LEAF_DEEP met, BAD over, and
 ## the plaque's brown once the wave has turned its coin gold.
 func _number_ink(cell: Vector2i, t: float) -> Color:
-	var want: int = int(state.need[cell])
-	var got: int = state.degree(cell)
+	var want: int = state.need_of(cell)
+	var got: int = state.count(cell)
 	var ink: Color = Pal.TEXT
 	if got > want:
 		ink = Pal.BAD
-	elif got == want:
+	elif got == want and _flipped(cell, t):
 		ink = Pal.LEAF_DEEP
 	var arrived := _arrived(cell, t)
 	if arrived >= 0.0:
@@ -1602,6 +2156,9 @@ func _islet_scale(cell: Vector2i, t: float) -> Vector2:
 	var arrived := _arrived(cell, t)
 	if arrived >= 0.0:
 		sc *= Motion.bump_scale(arrived)
+	if _pulse.has(cell) and not Motion.reduce:
+		for beat in SPLIT_PULSES:
+			sc *= Motion.bump_scale(t - float(_pulse[cell]) - beat * SPLIT_BEAT)
 	return sc
 
 ## Where an islet stands against its cell: the lean a refused drag gives the
@@ -1623,6 +2180,12 @@ func _islet_off(cell: Vector2i, t: float) -> Vector2:
 	var arrived := _arrived(cell, t)
 	if arrived >= 0.0:
 		off.y += Motion.hop_lift(arrived, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
+	if _dancing(t):
+		# The party: every islet hops on the beat, neighbours off by half a
+		# beat, so the sea bobs like a crowd.
+		var e := t - _dance_at - float((cell.x + cell.y) % 2) * DANCE_BEAT * 0.5
+		if e > 0.0:
+			off.y += DANCE_HOP * absf(sin(PI * e / DANCE_BEAT)) * (_cell() / 100.0)
 	return off
 
 ## The numbers, over the mesh, one `draw_string` each, standing on their
@@ -1641,10 +2204,14 @@ func _draw_numbers(t: float, page: Transform2D, seen: float) -> void:
 			continue
 		var ink := _number_ink(cell, t)
 		var mid := _at(cell) + _islet_off(cell, t)
-		draw_set_transform_matrix(page * Transform2D(0.0, sc, 0.0,
-			Vector2(mid.x * (1.0 - sc.x), mid.y * (1.0 - sc.y))))
+		var turn := _coin_turn(cell, t)
+		if absf(turn) < 0.08:
+			continue
+		var sx := sc.x * absf(turn)
+		draw_set_transform_matrix(page * Transform2D(0.0, Vector2(sx, sc.y), 0.0,
+			Vector2(mid.x * (1.0 - sx), mid.y * (1.0 - sc.y))))
 		drawn = true
-		_glyph(font, px, str(int(state.need[cell])), Color(ink, ink.a * seen),
+		_glyph(font, px, str(state.need_of(cell)), Color(ink, ink.a * seen),
 			mid + Vector2(0.0, r * (NUMBER_AT - COIN_LIFT)))
 	if drawn:
 		draw_set_transform_matrix(Transform2D.IDENTITY)
@@ -1705,14 +2272,18 @@ static func _hash(a: int, b: int) -> float:
 
 # --- the finger ---
 
-## Press an islet, drag at the one facing it, let go: the run cycles
-## 0-1-2-3-0. A tap on the water of a laid run wipes it in one go.
+## Press an islet, drag at the one facing it, let go: a plank goes in (on
+## Easy and Medium the run cycles 0-1-2-0). A tap on the water between two
+## islets does the same for that lane -- the way most tellings of the puzzle
+## are played -- and a tap on an islet reads its number out.
 ##
 ## The lit lane under the finger, the two refusals and everything they put on
 ## the tip card land with the rest of the gesture; this is the path the win
-## harness drives, and it goes through `state.cycle` exactly as a finger does.
+## harness drives, and it goes through the state exactly as a finger does.
 func _gui_input(event: InputEvent) -> void:
-	if _done:
+	if _done or out_of_hearts or _sinking_busy:
+		return
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event.pressed:
@@ -1720,7 +2291,7 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 		else:
 			if _from != State.NOWHERE or _on_run != "":
-				_release()
+				_release(event.position)
 				accept_event()
 	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) \
 			and _from != State.NOWHERE:
@@ -1748,15 +2319,20 @@ func _press(at: Vector2) -> bool:
 		_busy_for(Motion.PRESS_TIME)
 		_refresh()
 		return true
-	_on_run = _run_over(cell)
+	_on_run = _lane_over(cell)
 	return _on_run != ""
 
-## The laid run whose water covers `cell`, or "".
-func _run_over(cell: Vector2i) -> String:
-	for key in state.runs:
+## The lane whose water covers `cell`: the laid run there if there is one,
+## else the only lane through it. A cell two bare lanes cross belongs to
+## neither -- which one was meant is a guess, and the drag is there for it.
+func _lane_over(cell: Vector2i) -> String:
+	var through: Array = []
+	for key in state.lanes:
 		if (state.lanes[key].cells as Array).has(cell):
-			return String(key)
-	return ""
+			if state.planks(String(key)) > 0:
+				return String(key)
+			through.append(String(key))
+	return through[0] if through.size() == 1 else ""
 
 ## The drag takes its dominant axis and, once the travel has passed half a
 ## cell, names the lane to the first islet that way -- so the run the finger
@@ -1782,17 +2358,18 @@ func _aim_at(at: Vector2) -> void:
 	_aim = "" if other == State.NOWHERE else state.lane_at(_from, other)
 	_refresh()
 
-## Let go. The three ways it can end, and there is no fourth: the lit lane
-## cycles, a refused lane flashes and names its rule, or the tap wipes a run.
+## Let go. The ways it can end, and there is no other: the lit lane takes a
+## plank, a refused lane flashes and names its rule, a tap on the water lays
+## a plank on that lane, or a tap on an islet reads its number out.
 ##
 ## **A press that never travelled half a cell is not a gesture and is not
 ## refused** -- the finger went down on an islet and came up again, which is
-## how a player reads a number without meaning anything by it.
-func _release() -> void:
+## how a player reads a number, so the line reads it for them.
+func _release(at := Vector2(-1.0e9, -1.0e9)) -> void:
 	var from := _from
 	var lane := _aim
 	var dir := _aim_dir
-	var wipe := _on_run
+	var tapped := _on_run
 	_from = State.NOWHERE
 	_aim = ""
 	_aim_dir = Vector2i.ZERO
@@ -1802,6 +2379,7 @@ func _release() -> void:
 		_busy_for(Motion.RELEASE_TIME)
 	if from != State.NOWHERE:
 		if dir == Vector2i.ZERO:
+			_read_islet(from)
 			_refresh()
 			return
 		if lane == "":
@@ -1811,22 +2389,95 @@ func _release() -> void:
 		if blocker != "":
 			_refuse_at(from, dir, lane, blocker, TIP_CROSS)
 			return
-		var before: int = state.planks(lane)
-		var snap := _snapshot()
-		if state.cycle(lane) == before:
-			_refresh()
-			return
-		# The cycle runs 0-1-2-3 and back to 0: a plank laid, or the run lifted.
-		fx.cue("place" if state.planks(lane) > before else "remove")
-		_last = from
-		_after_move(snap, from)
+		_move(lane, from)
 		return
-	var wipe_snap := _snapshot()
-	if wipe != "" and state.clear_run(wipe):
-		fx.cue("remove")
-		_after_move(wipe_snap)
-	else:
+	# A tap on the water counts only where it lifts: a finger that slid off
+	# the lane has changed its mind, and on Hard that must not cost a heart.
+	if tapped != "" and at.x > -1.0e8 and _lane_over(local_to_cell(at)) != tapped:
+		tapped = ""
+	if tapped != "":
+		var blocked := state.blocked_by(tapped)
+		if blocked != "":
+			var la: Dictionary = state.lanes[tapped]
+			var d := Vector2i(signi(la.b.x - la.a.x), signi(la.b.y - la.a.y))
+			_refuse_at(la.a, d, tapped, blocked, TIP_CROSS)
+			return
+		_move(tapped, State.NOWHERE)
+		return
+	_refresh()
+
+## One plank's worth of move on `key`, laid across from `from` when a finger
+## dragged it (NOWHERE for a tap on the water): judged against the answer on
+## Hard and Insane, cycled 0-1-2-0 on Easy and Medium.
+func _move(key: String, from: Vector2i) -> void:
+	if state.judged():
+		_judged_move(key, from)
+		return
+	var before: int = state.planks(key)
+	var snap := _snapshot()
+	if state.cycle(key) == before:
 		_refresh()
+		return
+	var laid := state.planks(key) > before
+	# The cycle runs 0-1-2 and back to 0: a plank laid, or the run lifted.
+	fx.cue("place" if laid else "remove")
+	if from != State.NOWHERE:
+		_last = from
+	else:
+		_last = state.lanes[key].a
+	_after_move(snap, from, key)
+	if laid and not _pushed_over(key):
+		_on_right(key)
+	else:
+		_break_streak()
+
+## Whether either end of `key` now stands over its number.
+func _pushed_over(key: String) -> bool:
+	var lane: Dictionary = state.lanes[key]
+	for cell in [lane.a, lane.b]:
+		if state.count(cell) > state.need_of(cell):
+			return true
+	return false
+
+## Hard and Insane: a plank is only ever added, and it is held against the
+## answer as it lands. A right one stays; a wrong one rolls out, lands, cracks
+## and sinks and costs a heart; a full run, or a lane a heart already ruled,
+## is refused for free.
+func _judged_move(key: String, from: Vector2i) -> void:
+	var before: int = state.planks(key)
+	var snap := _snapshot()
+	var got: int = state.add(key)
+	match got:
+		State.Judged.RIGHT:
+			fx.cue("place")
+			_last = from if from != State.NOWHERE else state.lanes[key].a
+			_after_move(snap, from, key)
+			_on_right(key)
+		State.Judged.WRONG:
+			_wrong_plank(key, before, from)
+		State.Judged.FULL:
+			_speak(tr("BR_FULL"), Face.Expr.HAPPY)
+			fx.cue("locked")
+			_refresh()
+		State.Judged.RULED:
+			_speak(tr("BR_RULED"), Face.Expr.HAPPY)
+			fx.cue("ruled")
+			_refresh()
+		_:
+			_refresh()
+
+## A tap on an islet reads it out: how many planks it wants and has, or on a
+## lantern how many islets it wants to be joined to.
+func _read_islet(cell: Vector2i) -> void:
+	var want := state.need_of(cell)
+	var got := state.count(cell)
+	var line: String
+	var base := "BR_READ_LANTERN" if state.lanterns.has(cell) else "BR_READ"
+	if want == 1:
+		line = tr(base + "_ONE") % got
+	else:
+		line = tr(base + "_N") % [want, got]
+	_speak(line, Face.Expr.HAPPY)
 
 ## A refused drag: the rule on the tip card, and the flash and the lean that
 ## carry it. The two refusals are the whole list -- an islet pushed over its
@@ -1836,7 +2487,8 @@ func _release() -> void:
 ## and the board does not redraw for six tenths of a second to show nothing.
 func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 		line: String) -> void:
-	_say(tr(line), Face.Expr.STRAIN)
+	_speak(tr(line), Face.Expr.STRAIN)
+	_break_streak()
 	fx.cue("locked")
 	if not Motion.reduce:
 		_refuse = {"at": _now(), "from": from, "dir": dir, "key": key,
@@ -1848,13 +2500,63 @@ func _refuse_at(from: Vector2i, dir: Vector2i, key: String, blocker: String,
 ## them -- and the refusal standing over it, hands the pieces that changed
 ## their moments, and counts itself, which is what ends the puzzle when the
 ## last plank lands on one single network.
-func _after_move(snap: Dictionary, src := State.NOWHERE) -> void:
+func _after_move(snap: Dictionary, src := State.NOWHERE, key := "") -> void:
 	_wrong = {}
 	_refuse = {}
-	if _tip_text != tr(TIP_REST):
-		_say(tr(TIP_REST), Face.Expr.HAPPY)
+	_coach_lane = ""
+	_hold_until = 0.0
+	_resume_tips()
 	_settle(snap, Callable(), src)
+	_network(key)
 	note_move()
+
+## What the move did to the network: two groups joined by it sparkle along
+## the lane, and the near-miss -- every number met with the islets still in
+## groups -- is named, and the groups that are not the biggest pulse, so the
+## player can see what is left to join.
+func _network(key: String) -> void:
+	var groups := state.groups()
+	var was := _groups
+	_groups = groups.size()
+	if state.is_solved():
+		return
+	var land := 0.0 if Motion.reduce else LAY_TIME * LAND_AT
+	if _groups < was and key != "" and state.planks(key) > 0 and _groups > 1:
+		_after(land, func() -> void:
+			if is_done() or not state.lanes.has(key):
+				return
+			fx.sparkle(_lane_middle(key), Pal.SUN_RAY)
+			fx.cue("join"))
+	if _groups > 1 and state.numbers_met():
+		_near_miss(groups, land)
+
+## Every number met and the islets in `groups.size()` groups: the line says
+## so, and every islet outside the biggest group pulses a few beats with a
+## rose ring, so the split is on the board and not only in the words.
+func _near_miss(groups: Array, delay: float) -> void:
+	_pulse = {}
+	var biggest := 0
+	for k in groups.size():
+		if (groups[k] as Array).size() > (groups[biggest] as Array).size():
+			biggest = k
+	var t := _now() + delay
+	for k in groups.size():
+		if k == biggest:
+			continue
+		for cell in groups[k]:
+			_pulse[cell] = t
+	_busy_for(delay + SPLIT_BEAT * SPLIT_PULSES + Motion.BUMP_TIME)
+	_after(delay, func() -> void:
+		if is_done() or not state.numbers_met() or state.groups().size() <= 1:
+			return
+		_speak(tr("BR_SPLIT") % groups.size(), Face.Expr.WORRIED)
+		fx.cue("split")
+		for cell in _pulse:
+			if not Motion.reduce:
+				for beat in SPLIT_PULSES:
+					_after(beat * SPLIT_BEAT, func() -> void:
+						if not is_done():
+							fx.ring(_at(cell), _islet_r() * RING_R, Pal.FLOWER)))
 
 # --- what changed, and when each piece answers for it ---
 
@@ -1867,7 +2569,7 @@ func _snapshot() -> Dictionary:
 		runs[key] = int(state.runs[key])
 	var islets := {}
 	for cell in state.islets:
-		islets[cell] = state.degree(cell) - int(state.need[cell])
+		islets[cell] = state.count(cell) - state.need_of(cell)
 	return {"runs": runs, "islets": islets}
 
 ## Diffs the board against `snap` and hands every piece that changed the
@@ -1885,6 +2587,7 @@ func _settle(snap: Dictionary, when := Callable(), src := State.NOWHERE) -> void
 	var was_runs: Dictionary = snap["runs"]
 	var was_islets: Dictionary = snap["islets"]
 	var keys := {}
+	# `snap` may come from before a board the islets are no longer on.
 	for key in was_runs:
 		keys[key] = true
 	for key in state.runs:
@@ -1922,17 +2625,21 @@ func _settle(snap: Dictionary, when := Callable(), src := State.NOWHERE) -> void
 				_ghosts.append({"key": key, "count": was, "at": t + delay, "src": from})
 	for cell in state.islets:
 		var was_d := int(was_islets.get(cell, -999))
-		var now_d := state.degree(cell) - int(state.need[cell])
+		var now_d := state.count(cell) - state.need_of(cell)
 		if now_d == was_d:
 			continue
 		if now_d == 0:
 			_met_at[cell] = t + landed
+			_flip[cell] = t + landed
 			_glint[cell] = t + landed + GLINT_LAG
 			_later(t + landed, _met.bind(cell))
-		elif now_d > 0 and was_d <= 0:
-			_shiver_at[cell] = t
-			fx.cue("over")
-	_busy_for(maxf(longest + maxf(LAY_TIME, maxf(Motion.BUMP_TIME,
+		else:
+			if was_d == 0 and _flag.has(cell) and bool(_flag[cell].open):
+				_flag[cell] = {"at": t, "open": false}
+			if now_d > 0 and was_d <= 0:
+				_shiver_at[cell] = t
+				fx.cue("over")
+	_busy_for(maxf(longest + maxf(LAY_TIME + SETTLE_TIME, maxf(Motion.BUMP_TIME,
 		maxf(PULL_TIME, Motion.SHIVER_TIME))), landed + GLINT_LAG + GLINT_TIME))
 	_refresh()
 
@@ -1948,10 +2655,17 @@ func _splash(key: String, far: Vector2i) -> void:
 			else Vector2(g.b)
 	fx.puff(at, Pal.WATER_HI)
 
-## An islet that has just come right: its ring and its note.
+## An islet that has just come right: its ring and its note, its pennant
+## up, and three times in five a gag.
 func _met(cell: Vector2i) -> void:
+	# The solve has already raised every pennant and plays its own wave.
+	if is_done() or not state.is_islet(cell) or state.count(cell) != state.need_of(cell):
+		return
 	fx.ring(_at(cell), _islet_r() * RING_R, Pal.GOOD)
 	fx.cue("met")
+	_flag[cell] = {"at": _now(), "open": true}
+	_busy_for(FLAG_TIME)
+	_gag(cell)
 
 ## The middle of a lane in the board's own pixels: where a plank's puff goes.
 func _lane_middle(key: String) -> Vector2:
@@ -1970,10 +2684,37 @@ func _say(text: String, mood: int) -> void:
 	# host refreshes on this signal.
 	focus_changed.emit()
 
+## How long a spoken line owns the card before the tips come back.
+const SAY_HOLD := 3.2
+
+## A line that owns the card for SAY_HOLD seconds, after which the cycling
+## tips resume (Sudoku's).
+func _speak(line: String, mood: int) -> void:
+	_say(line, mood)
+	_hold_until = _now() + SAY_HOLD
+	if get_tree() == null:
+		return
+	get_tree().create_timer(SAY_HOLD).timeout.connect(_resume_tips)
+
+func _resume_tips() -> void:
+	if is_done() or out_of_hearts or _now() < _hold_until - 0.01:
+		return
+	_say(_tip(_tip_idx), Face.Expr.HAPPY)
+
+func _tip(k: int) -> String:
+	var tips := _tips()
+	return tr(tips[k % tips.size()])
+
+func _cycle_tip() -> void:
+	if is_done() or out_of_hearts or _now() < _hold_until:
+		return
+	_tip_idx = (_tip_idx + 1) % _tips().size()
+	_say(_tip(_tip_idx), Face.Expr.HAPPY)
+
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return state.can_undo()
+	return not is_done() and not out_of_hearts and not _sinking_busy and state.can_undo()
 
 ## An undo is not a move, so it does not go through `note_move()` and has to
 ## ask the contract itself -- `core/puzzle_base.gd` says hints and undos call
@@ -1981,27 +2722,29 @@ func can_undo() -> bool:
 ## already checked when it was made, so today it never fires; leaving the call
 ## out would make that invariant load-bearing and nothing states or tests it.
 func undo() -> bool:
-	if is_done():
+	if is_done() or out_of_hearts or _sinking_busy:
 		return false
 	var snap := _snapshot()
 	if not state.undo():
 		return false
 	_wrong = {}
 	_refuse = {}
-	_say(tr(TIP_REST), Face.Expr.HAPPY)
+	_break_streak()
+	_resume_tips()
 	_settle(snap)
+	_network("")
 	fx.cue("undo")
 	moved.emit()
 	check_solved()
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, int(State.HINTS[state.band]) + hints_extra - hints_used)
 
 ## Lays one plank the answer has and the board lacks -- never an overshoot, so
 ## a hint can never itself be the thing that pushes an islet over its number.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or hints_left() <= 0 or out_of_hearts or _sinking_busy:
 		return false
 	var snap := _snapshot()
 	var key := state.hint()
@@ -2011,8 +2754,10 @@ func hint() -> bool:
 	_given[key] = true
 	_wrong = {}
 	_refuse = {}
-	_say(tr("BR_HINT"), Face.Expr.HAPPY)
+	_speak(tr("BR_HINT"), Face.Expr.HAPPY)
+	_coach_lane = ""
 	_settle(snap)
+	_network(key)
 	fx.cue("hint")
 	# The hint's own pair, over the plank the answer wanted: a ring out of the
 	# lane and sparkles rising off it, which is the Hint row of the table.
@@ -2027,10 +2772,10 @@ func hint() -> bool:
 ## Marks the runs carrying more planks than the answer lays there. **An
 ## under-laid run is unfinished and not wrong**: marking every lane still
 ## missing would print the answer, which is the one thing this screen does not
-## do (spec section 10). The near-miss -- every number met and the islets in
-## two rings -- is left unsignposted on purpose, and this is its only door.
+## do (spec section 10). Easy and Medium only: Hard and Insane judge every
+## plank as it lands, so there is nothing left for Check to find.
 func check() -> int:
-	if is_done():
+	if is_done() or max_hearts > 0:
 		return 0
 	checks += 1
 	var wrong: Array = state.wrong_runs()
@@ -2041,7 +2786,7 @@ func check() -> int:
 		_wrong[key] = t
 	if not wrong.is_empty():
 		_busy_for(maxf(Motion.FLASH_IN + Motion.FLASH_OUT, Motion.SHIVER_TIME))
-	_say((tr("BR_CHECK_ONE") if wrong.size() == 1 else tr("BR_CHECK_N") % wrong.size())
+	_speak((tr("BR_CHECK_ONE") if wrong.size() == 1 else tr("BR_CHECK_N") % wrong.size())
 		if not wrong.is_empty() else tr("BR_CHECK_OK"),
 		Face.Expr.STRAIN if not wrong.is_empty() else Face.Expr.JOY)
 	fx.cue("check" if not wrong.is_empty() else "check_ok")
@@ -2052,6 +2797,19 @@ func check() -> int:
 ## it passes -- the table's Reset row, in this board's pieces. The hints a
 ## player spent are not refunded, only unpinned.
 func reset_board() -> void:
+	if out_of_hearts or _sinking_busy:
+		return
+	_wipe()
+	_break_streak()
+	_running = true
+
+## Reset's half that Try again shares: every plank carried off in a wave from
+## the far corner with the islets hopping as it passes, the state back to
+## bare water, every moment gone. The hints a player spent are not refunded,
+## only unpinned.
+func _wipe() -> void:
+	# Anything `_after` still owes the board being wiped does nothing.
+	_gen += 1
 	var snap := _snapshot()
 	var t := _now()
 	state.reset_board()
@@ -2071,12 +2829,17 @@ func reset_board() -> void:
 	_pending = []
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
-	_solved_at = -1.0
+	_solved_at = -INF
 	_depth = {}
 	_sparked = {}
+	_sinking = []
+	_pulse = {}
+	_flip = {}
+	for cell in _flag:
+		_flag[cell] = {"at": t, "open": false}
+	_groups = state.islets.size()
 	moves = 0
-	_running = true
-	_say(tr(TIP_REST), Face.Expr.HAPPY)
+	_resume_tips()
 	_settle(snap, _reset_wave)
 	fx.cue("reset")
 	for cell in state.islets:
@@ -2098,7 +2861,17 @@ func is_solved() -> bool:
 	return state.is_solved()
 
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.band == 3:
+		out += " · 🏮 " + tr("BR_LANTERN_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += " · 🏅 " + tr("BN_FLAWLESS")
+	return out
+
+## Whether the solve was flawless, so a reopened daily keeps its seal, and
+## how many hearts it kept.
+func completion_record() -> Dictionary:
+	return {"flawless": _flawless, "hearts": hearts}
 
 # --- the win ---
 
@@ -2115,7 +2888,7 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return _land_lag() + _wave_at(_wave_depth()) + Motion.SOLVE_TIME * 0.5
+	return _land_lag() + _wave_at(_wave_depth()) + Motion.SOLVE_TIME * 0.5 + PARTY_AT + PARTY_EXTRA
 
 ## How long after the last move the wave sets off: the last plank has to land
 ## before the light can run along it.
@@ -2125,6 +2898,13 @@ func _land_lag() -> float:
 ## The solve: the wave's graph is the network the player built, walked once
 ## from the islet the last plank was laid at and then never walked again.
 func _on_solved() -> void:
+	# A finger still down (a hint from a second touch solved it) lets go.
+	_from = State.NOWHERE
+	_aim = ""
+	_aim_dir = Vector2i.ZERO
+	_on_run = ""
+	if _press_cell != State.NOWHERE and _press_up < 0.0:
+		_press_up = _now()
 	_solved_at = _now() + _land_lag()
 	_depth = _wave_steps()
 	_sparked = {}
@@ -2141,6 +2921,13 @@ func _on_solved() -> void:
 			* WIN_GLINT_STEP
 	_busy_for(light - _now() + float(2 * state.n) * WIN_GLINT_STEP + GLINT_TIME)
 	fx.cue("solved")
+	_tip_timer.stop()
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_combo_out_at = _now() if _combo_n >= COMBO_FROM else -INF
+	for cell in state.islets:
+		if not _flag.has(cell) or not bool(_flag[cell].open):
+			_flag[cell] = {"at": _now(), "open": true}
+	_party(light - _now())
 	_refresh()
 
 ## A completed daily is rebuilt from its seed, so it opens on bare water. Lay
@@ -2182,7 +2969,20 @@ func restore_completed_board() -> void:
 	_depth = _wave_steps()
 	_sparked = _depth.duplicate()
 	_anim_until = 0.0
-	_say(tr(TIP_REST), Face.Expr.HAPPY)
+	_deal()
+	_groups = 1
+	var rec := completed_record
+	_flawless = bool(rec.get("flawless", false))
+	if rec.has("hearts") and max_hearts > 0:
+		hearts = int(rec.hearts)
+	for cell in state.islets:
+		_flag[cell] = {"at": t - 100.0, "open": true}
+	if _flawless or state.band == 3:
+		_stamp_at = t - 100.0
+	if not state.lanterns.is_empty():
+		_glow_at = t - 100.0
+	_tip_timer.stop()
+	_say(tr("BR_WIN"), Face.Expr.JOY)
 	_refresh()
 
 # --- the wave, and the one function that says where its front is ---
@@ -2198,7 +2998,7 @@ func restore_completed_board() -> void:
 ## Under reduce motion it answers INF: the lit state is applied at once and no
 ## front travels, which is what stilling this wave means.
 func _front(t: float) -> float:
-	if _solved_at < 0.0:
+	if _solved_at == -INF:
 		return -1.0
 	if Motion.reduce:
 		return INF
@@ -2218,7 +3018,7 @@ func _wave_at(d: int) -> float:
 ## `_front` itself, so an islet flares when the light arrives at it and not a
 ## frame before.
 func _arrived(cell: Vector2i, t: float) -> float:
-	if _solved_at < 0.0 or not _depth.has(cell):
+	if _solved_at == -INF or not _depth.has(cell):
 		return -1.0
 	var d := int(_depth[cell])
 	if _front(t) < float(d):
@@ -2251,7 +3051,7 @@ func _wave_of(key: String, t: float) -> Dictionary:
 ## apart. Nothing under reduce motion: `ui/fx2d.gd` draws neither a sparkle
 ## nor a ring there, and the front does not travel to have reached anything.
 func _spark(t: float) -> void:
-	if _solved_at < 0.0 or t < _solved_at or Motion.reduce or _sparked.size() >= _depth.size():
+	if _solved_at == -INF or t < _solved_at or Motion.reduce or _sparked.size() >= _depth.size():
 		return
 	var f := _front(t)
 	for cell in _depth:
@@ -2297,3 +3097,625 @@ func _wave_steps() -> Dictionary:
 			out[other] = step
 			queue.append(other)
 	return out
+
+# --- the ghost finger ---
+
+## On Easy and Medium, until the first plank, a ghost finger shows the drag
+## on a lane the answer lays: from one islet to the one facing it, a faint
+## plank following. It goes the moment anything is laid, and it never runs on
+## a judged board or under reduce motion.
+func _pick_coach() -> void:
+	_coach_lane = ""
+	_coach_from = State.NOWHERE
+	if state.band >= 2 or Motion.reduce or state.answer.is_empty():
+		return
+	var keys: Array = state.answer.keys()
+	keys.sort()
+	# The lane nearest the middle of the sea, so the hand is easy to follow.
+	var best := ""
+	var best_d := INF
+	var mid := Vector2(state.n, state.n) * 0.5
+	for key in keys:
+		var lane: Dictionary = state.lanes[key]
+		var d := (Vector2(lane.a + lane.b) * 0.5 + Vector2(0.5, 0.5)).distance_to(mid)
+		if d < best_d:
+			best_d = d
+			best = String(key)
+	_coach_lane = best
+	_coach_from = state.lanes[best].a
+
+## Where the ghost finger is and how solid, at `t`: {} while it rests.
+func _coach_at(t: float) -> Dictionary:
+	if _coach_lane == "" or not state.lanes.has(_coach_lane) or moves > 0 or is_done():
+		return {}
+	var e := t - _opened - Motion.ENTER_DELAY - COACH_AFTER
+	if e < 0.0:
+		return {}
+	var u := fmod(e, COACH_DRAG + COACH_LOOP) / COACH_DRAG
+	var lane: Dictionary = state.lanes[_coach_lane]
+	var a := _at(_coach_from)
+	var b := _at(lane.b if _coach_from == lane.a else lane.a)
+	var fade := clampf(u * 5.0, 0.0, 1.0) * clampf((1.6 - u) * 3.0, 0.0, 1.0)
+	return {"a": a, "at": a.lerp(b, _ease(clampf(u, 0.0, 1.0))), "alpha": fade,
+		"press": clampf(u * 8.0, 0.0, 1.0)}
+
+func _draw_coach(t: float) -> void:
+	var c := _coach_at(t)
+	if c.is_empty() or float(c.alpha) <= 0.01:
+		return
+	var s := _cell()
+	var al: float = c.alpha
+	var at: Vector2 = c.at
+	var a: Vector2 = c.a
+	# The trail: the plank it is laying, faint gold.
+	_life_layer.draw_line(a, at, Color(Pal.SUN, 0.45 * al), s * PLANK * 1.6, true)
+	# The fingertip: a soft shadow, a ring pressed into the water, the tip.
+	_life_layer.draw_circle(at + Vector2(4.0, 8.0), s * 0.2, Color(Pal.TEXT, 0.16 * al))
+	_life_layer.draw_arc(at, s * (0.26 + 0.06 * (1.0 - float(c.press))), 0.0, TAU, 32,
+		Color(Pal.SURFACE, 0.7 * al), maxf(2.0, s * 0.03), true)
+	_life_layer.draw_circle(at, s * 0.17, Color(Pal.SURFACE, 0.92 * al))
+	_life_layer.draw_arc(at, s * 0.17, 0.0, TAU, 32, Color(Pal.LINE, al), maxf(2.0, s * 0.025), true)
+	# A little hand: the finger's knuckle trailing down and right of the tip.
+	var palm := at + Vector2(s * 0.22, s * 0.34)
+	_life_layer.draw_line(at + Vector2(s * 0.04, s * 0.1), palm, Color(Pal.SURFACE, 0.92 * al), s * 0.2, true)
+	_life_layer.draw_circle(palm + Vector2(s * 0.08, s * 0.12), s * 0.22, Color(Pal.SURFACE, 0.92 * al))
+	_life_layer.draw_arc(palm + Vector2(s * 0.08, s * 0.12), s * 0.22, -PI * 0.9, PI * 0.6, 24,
+		Color(Pal.LINE, al), maxf(2.0, s * 0.025), true)
+
+# --- rewards ---
+
+## A right plank (on Hard and Insane the answer's; on Easy and Medium one
+## that pushes nothing over its number, which reveals nothing) builds the
+## streak -- a note up the pentatonic from the second, the bubble from the
+## third, confetti at five and ten.
+func _on_right(key: String) -> void:
+	if is_done() or state.is_solved():
+		return
+	var land := 0.0 if Motion.reduce else LAY_TIME * LAND_AT
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		_after(land, func() -> void:
+			if not is_done():
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if _streak >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_pos = _lane_middle(key)
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		_after(land, func() -> void:
+			if is_done() or not state.lanes.has(key):
+				return
+			fx.confetti(_lane_middle(key), 22)
+			fx.cue("confetti"))
+
+## The streak ends: a lift, a refusal, a wrong plank, an undo, a reset, the
+## hearts running out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		if _combo_layer != null:
+			_combo_layer.queue_redraw()
+	else:
+		_combo_n = 0
+
+## Three met islets in five play a gag, picked by the islet's hash so a day
+## replays the same: a little fish leaps over the water beside it; hearts
+## float up off it; or its coin twirls a whole turn. Under reduce motion,
+## none.
+func _gag(cell: Vector2i) -> void:
+	if Motion.reduce or is_done() or state.is_solved():
+		return
+	var roll := posmod(hash(Vector2i(cell.x * 13 + 7, cell.y * 5 + moves)), GAG_ODDS)
+	if roll >= GAGS:
+		return
+	var now := _now()
+	var r := _islet_r()
+	match roll:
+		0:
+			var side := -1.0 if cell.x * 2 >= state.n else 1.0
+			var from := _at(cell) + Vector2(side * r * 1.2, r * 0.9)
+			_fish.append({"a": from, "b": from + Vector2(side * _cell() * FISH_SPAN, 0.0), "t": now})
+			fx.puff(from, Pal.WATER_HI, 4)
+			fx.cue("fish")
+			_after(FISH_TIME, func() -> void:
+				if state.is_islet(cell):
+					fx.puff(from + Vector2(side * _cell() * FISH_SPAN, 0.0), Pal.WATER_HI, 4))
+		1:
+			var at := _at(cell) - Vector2(0.0, r * 0.6)
+			for n in LOVE_HEARTS:
+				var off := Vector2((n - (LOVE_HEARTS - 1) * 0.5) * 0.22, -0.2) * _cell()
+				_love.append({"at": at + off, "t": now + n * 0.08, "phase": _hash(cell.x + n, cell.y + 11) * TAU})
+			fx.cue("love")
+		2:
+			_twirl[cell] = now + COIN_FLIP
+			_busy_for(COIN_FLIP + TWIRL_TIME)
+			_after(COIN_FLIP, func() -> void:
+				if state.is_islet(cell):
+					fx.sparkle(_at(cell) - Vector2(0.0, r * 0.8), Pal.SUN)
+					fx.cue("twirl"))
+	_life_layer.queue_redraw()
+
+# --- failing ---
+
+## A plank the answer does not lay there, on Hard or Insane: it rolls out and
+## lands like any other, then its islets worry and a heart splits, and
+## CRACK_AFTER later it cracks in two and sinks. The state never kept it; the
+## lane now carries a buoy for good.
+func _wrong_plank(key: String, before: int, from: Vector2i) -> void:
+	if hearts <= 0 or is_done():
+		return
+	var land := 0.0 if Motion.reduce else LAY_TIME
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = _now() + land
+	_sinking_busy = true
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+	var lane: Dictionary = state.lanes[key]
+	var src := from if from == lane.a or from == lane.b else State.NOWHERE
+	if not Motion.reduce:
+		_sinking.append({"key": key, "count": before, "at": _now(), "src": src})
+	fx.cue("place")
+	_busy_for(land + CRACK_AFTER + SINK_TIME)
+	_after(land, func() -> void:
+		_heart_layer.queue_redraw()
+		fx.cue("heart_lost")
+		var t := _now()
+		for cell in [lane.a, lane.b]:
+			_shiver_at[cell] = t
+		_busy_for(Motion.SHIVER_TIME)
+		_speak(tr("BR_WRONG"), Face.Expr.WORRIED)
+		_refresh())
+	_after(land + (0.0 if Motion.reduce else CRACK_AFTER), func() -> void:
+		if not Motion.reduce and state.lanes.has(key):
+			fx.puff(_lane_middle(key), Pal.WATER_HI, 6)
+		fx.cue("sink"))
+	_after(land + (0.0 if Motion.reduce else CRACK_AFTER + SINK_TIME), func() -> void:
+		_sinking_busy = false
+		_sinking = []
+		fx.cue("ruled")
+		moved.emit()
+		_refresh()
+		if out_of_hearts:
+			_run_out())
+	_refresh()
+
+## The last heart is gone: the pool slips to dusk, the line yawns, and the
+## card comes up.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_break_streak()
+	_tip_timer.stop()
+	fx.cue("out_of_hearts")
+	_say(tr("BR_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(DUSK)
+	_refresh()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["BR_OUT_BODY", "BR_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same sea from bare water in Reset's wave, every heart back
+## and the buoys gone, the day's light, the clock and the moves from zero;
+## hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_wipe()
+	state.ruled = {}
+	_deal()
+	elapsed = 0.0
+	checks = 0
+	moves = 0
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_heart_layer.queue_redraw()
+	_running = true
+	_tip_idx = 0
+	_hold_until = 0.0
+	_say(_tip(0), Face.Expr.HAPPY)
+	_tip_timer.start()
+	moved.emit()
+	_refresh()
+
+## One more heart (the card's video): once a board. The light comes back.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_resume_tips()
+	_tip_timer.start()
+	moved.emit()
+	_refresh()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+## Holds the host's hint video while a wrong plank is still sinking.
+func busy() -> bool:
+	return _sinking_busy
+
+# --- the party ---
+
+## After the solve wave: the islets dance on the beat, confetti sweeps the
+## pool twice, a paper boat sails across it, on Insane the lanterns flare,
+## the seal stamps when the solve earned one (flawless, or any Insane sea),
+## and the line shares a silly bit of bridge wisdom. Under reduce motion the
+## glow and the seal stand at once.
+func _party(after_wave: float) -> void:
+	var now := _now()
+	var lead := 0.0 if Motion.reduce else maxf(0.0, after_wave) + PARTY_AT
+	_after(lead, func() -> void:
+		_say(_cheer(), Face.Expr.JOY))
+	if not state.lanterns.is_empty():
+		_glow_at = now + lead * 0.5
+		_busy_for(lead * 0.5 + 1.0)
+		_after(lead * 0.5, fx.cue.bind("lanterns_glow"))
+	if _flawless or state.band == 3:
+		_stamp_at = now if Motion.reduce else now + lead + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		return
+	var pool := _pool()
+	_after(lead + 0.15, func() -> void:
+		fx.confetti(Vector2(pool.get_center().x, pool.position.y + _cell() * 0.5), 30, pool.size.x * 0.9)
+		fx.cue("party"))
+	_after(lead + 0.6, func() -> void:
+		fx.confetti(pool.get_center(), 24, pool.size.x * 0.7))
+	_dance_at = now + lead + 0.35
+	_busy_for(lead + 0.35 + DANCE_BEAT * (DANCE_BEATS + 1))
+	_after(lead + 0.35, fx.cue.bind("dance"))
+	_boat_at = now + lead + 0.2
+	_after(lead + 0.2, fx.cue.bind("boat"))
+
+func _twirling(now: float) -> bool:
+	for cell in _twirl:
+		if now < float(_twirl[cell]) + TWIRL_TIME:
+			return true
+	for cell in _flip:
+		if now < float(_flip[cell]) + COIN_FLIP:
+			return true
+	return false
+
+func _dancing(now: float) -> bool:
+	return now >= _dance_at and now < _dance_at + DANCE_BEAT * (DANCE_BEATS + 1)
+
+## One of CHEERS silly bits of bridge wisdom, picked by the sea itself, so a
+## day always gets the same one.
+func _cheer() -> String:
+	return tr("BR_CHEER_%d" % posmod(hash(state.islets), CHEERS))
+
+## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	if get_tree() == null:
+		return
+	var gen := _gen
+	get_tree().create_timer(maxf(delay, 0.0)).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
+
+# --- the layers: hearts, the streak's bubble, and the life over the sea ---
+
+func _tick_layers(now: float) -> void:
+	if _heart_layer == null:
+		return
+	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
+		_heart_layer.queue_redraw()
+	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+		_combo_layer.queue_redraw()
+	var alive := _tick_life(now)
+	if alive or _life_alive:
+		_life_layer.queue_redraw()
+	_life_alive = alive
+
+## The hearts over the pool as one mesh on a paper pill (Queens'): pink with
+## a small face and a leaf, a faint ghost where one was, the lost one's halves
+## falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell() <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _hearts_y()
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for n in pts.size():
+					pts[n] = at + shift + pts[n].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	var c := Vector2(size.x * 0.5, y)
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+## The streak's paper bubble over the last right plank, "x3" and up in leaf
+## ink: it pops in the first time, bumps at each plank and deflates when the
+## streak ends (One Line's).
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _cell() <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var tail := _combo_pos + Vector2(0.0, -_cell() * 0.2)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
+
+## Keeps the life layer drawing while anything on it moves.
+func _tick_life(now: float) -> bool:
+	var still: Array = []
+	for l in _love:
+		if now < float(l.t) + LOVE_TIME:
+			still.append(l)
+	_love = still
+	var swim: Array = []
+	for f in _fish:
+		if now < float(f.t) + FISH_TIME:
+			swim.append(f)
+	_fish = swim
+	return not _love.is_empty() or not _fish.is_empty() \
+		or not _coach_at(now).is_empty() \
+		or (now >= _boat_at and now - _boat_at < BOAT_TIME) \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## The life over the sea: the ghost finger, love hearts floating off an
+## islet, a leaping fish, the party's paper boat, and the seal after the
+## solve, with its words.
+func _draw_life() -> void:
+	if _cell() <= 0.0 or state.islets.is_empty():
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	_draw_coach(now)
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.08 * _cell(),
+				-LOVE_RISE * _cell() * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	for f in _fish:
+		_draw_fish(f, now)
+	if now >= _boat_at and now - _boat_at < BOAT_TIME:
+		_draw_boat((now - _boat_at) / BOAT_TIME)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_life_shown = shown
+
+## A little orange fish leaping in an arc from `a` to `b`, nose along its
+## path.
+func _draw_fish(f: Dictionary, now: float) -> void:
+	var u := (now - float(f.t)) / FISH_TIME
+	if u <= 0.0 or u >= 1.0:
+		return
+	var s := _cell()
+	var a: Vector2 = f.a
+	var b: Vector2 = f.b
+	var h := s * FISH_LEAP
+	var at := a.lerp(b, u) - Vector2(0.0, h * 4.0 * u * (1.0 - u))
+	var dx := (b.x - a.x)
+	var slope := Vector2(dx, -h * 4.0 * (1.0 - 2.0 * u))
+	var ang := slope.angle()
+	var r := s * 0.13
+	_life_layer.draw_set_transform(at, ang, Vector2.ONE)
+	var tail := PackedVector2Array([Vector2(-r * 0.8, 0.0), Vector2(-r * 1.6, -r * 0.6), Vector2(-r * 1.6, r * 0.6)])
+	_life_layer.draw_colored_polygon(tail, Pal.SUN_DEEP)
+	var body := Face.Builder.ring(Vector2.ZERO, r * 1.05, r * 0.6)
+	_life_layer.draw_colored_polygon(body, Pal.SUN_DEEP.lerp(Pal.BERRY, 0.25))
+	_life_layer.draw_circle(Vector2(r * 0.5, -r * 0.12), r * 0.14, Pal.OUTLINE)
+	_life_layer.draw_set_transform(Vector2.ZERO)
+
+## The party's paper boat, sailing along the bottom of the pool and bobbing.
+func _draw_boat(u: float) -> void:
+	var pool := _pool()
+	var s := _cell()
+	var w := s * BOAT_W
+	var x := lerpf(pool.position.x - w, pool.end.x + w, u)
+	var y := pool.end.y - maxf(s * 0.5, (pool.size.y - _field_size()) * 0.25)
+	var bob := sin(u * TAU * 3.0) * s * 0.05
+	var tilt := sin(u * TAU * 3.0 + 0.6) * 0.08
+	_life_layer.draw_set_transform(Vector2(x, y + bob), tilt, Vector2.ONE)
+	var hull := PackedVector2Array([Vector2(-w * 0.6, 0.0), Vector2(w * 0.6, 0.0),
+		Vector2(w * 0.4, w * 0.28), Vector2(-w * 0.4, w * 0.28)])
+	var sail := PackedVector2Array([Vector2(-w * 0.05, -w * 0.05), Vector2(-w * 0.05, -w * 0.62),
+		Vector2(w * 0.42, -w * 0.05)])
+	_life_layer.draw_colored_polygon(sail, Pal.SURFACE)
+	_life_layer.draw_polyline(PackedVector2Array([sail[0], sail[1], sail[2], sail[0]]), Pal.LINE, 2.0, true)
+	_life_layer.draw_colored_polygon(hull, Pal.SURFACE.lerp(Pal.PAPER, 0.5))
+	_life_layer.draw_polyline(PackedVector2Array([hull[0], hull[1], hull[2], hull[3], hull[0]]), Pal.LINE, 2.0, true)
+	_life_layer.draw_circle(Vector2(w * 0.1, -w * 0.3), w * 0.05, Pal.FLOWER)
+	_life_layer.draw_set_transform(Vector2.ZERO)
+
+## A little pink heart for the love gag, built once a layout.
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := _cell() * LOVE_R
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## The seal on the pool's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	var insane: bool = state.band == 3
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, insane)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var pool := _pool()
+	var centre := pool.end - Vector2(rad * 0.9, rad * 0.8)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("BR_LANTERN_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)

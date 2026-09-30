@@ -39,7 +39,7 @@ static func _test_bands(t) -> void:
 
 ## Everything a grown board promises, over enough seeds that a rare layout
 ## cannot hide: the answer is legal, it is connected, no run crosses another,
-## every clue is the islet's own degree, and no clue passes the cap of 6.
+## every clue is the islet's own degree, and no clue passes the cap of 8.
 static func _test_grown_board_is_legal(t) -> void:
 	for difficulty in 3:
 		var b: Dictionary = Gen.band(difficulty)
@@ -47,12 +47,12 @@ static func _test_grown_board_is_legal(t) -> void:
 			var g := _built(s, difficulty)
 			t.eq(g.islets.size(), b.islets, "band %d seed %d stands its islets" % [difficulty, s])
 			var lanes: Dictionary = Gen.lanes_for(g.n, g.islets)
-			# Every run in the answer is a real lane, and 1..3 planks.
+			# Every run in the answer is a real lane, and 1..2 planks.
 			for key in g.answer:
 				t.check(lanes.has(key), "answer run %s is a lane" % key)
 				var k: int = int(g.answer[key])
-				t.check(k >= 1 and k <= 3, "answer run %s is 1..3 planks, got %d" % [key, k])
-			# The clue is the degree, and never over 6.
+				t.check(k >= 1 and k <= 2, "answer run %s is 1..2 planks, got %d" % [key, k])
+			# The clue is the degree, and never over 8.
 			for cell in g.islets:
 				var deg := 0
 				for key in g.answer:
@@ -60,7 +60,7 @@ static func _test_grown_board_is_legal(t) -> void:
 					if lane.a == cell or lane.b == cell:
 						deg += int(g.answer[key])
 				t.eq(int(g.need[cell]), deg, "clue at %s is its degree" % cell)
-				t.check(deg >= 1 and deg <= 6, "degree at %s is 1..6, got %d" % [cell, deg])
+				t.check(deg >= 1 and deg <= 8, "degree at %s is 1..8, got %d" % [cell, deg])
 			# No two laid runs cross.
 			var used := {}
 			for key in g.answer:
@@ -129,14 +129,14 @@ static func _state(seed_value: int, difficulty: int) -> State:
 	st.build(rng, difficulty)
 	return st
 
-## A drag cycles the run 0-1-2-3-0 and nothing else does.
+## A drag cycles the run 0-1-2-0 and nothing else does (two planks at most
+## since the polish, 2026-09-30).
 static func _test_cycle(t) -> void:
 	var st := _state(3, 0)
 	var key: String = st.answer.keys()[0]
 	t.eq(st.cycle(key), 1, "the first drag lays one plank")
 	t.eq(st.cycle(key), 2, "the second lays a second")
-	t.eq(st.cycle(key), 3, "the third lays a third")
-	t.eq(st.cycle(key), 0, "the fourth clears the run")
+	t.eq(st.cycle(key), 0, "the third clears the run")
 	t.check(not st.runs.has(key) or int(st.runs[key]) == 0, "a cleared run holds no planks")
 
 ## The two refusals of the spec's section 5, and the one thing that is not
@@ -274,21 +274,44 @@ static func _crossed_runs_are_not_solved(t) -> void:
 ## ended with two runs crossing, both frozen, a hint spent and a glow round an
 ## illegal run.
 ##
-## Band 0 at seed 259 is the position: the lane `1,2|1,6`, which the answer
-## wants two planks on, is crossed by `0,3|2,3` and `0,5|2,5`, neither of
-## which the answer names. Lay both, fill the rest of the answer so the hint
-## has nowhere else to go, and press Hint.
+## The position is searched for rather than pinned to a seed (the polish of
+## 2026-09-30 changed every board): a lane the answer wants two planks on,
+## crossed by two lanes the answer does not name. Lay both, fill the rest of
+## the answer so the hint has nowhere else to go, and press Hint.
 static func _hint_lifts_every_blocker(t) -> void:
-	var st := _state(259, 0)
-	var target := "1,2|1,6"
-	var blockers := ["0,3|2,3", "0,5|2,5"]
-	# The fixture, asserted rather than assumed: a regenerated board that no
-	# longer has this shape must say so instead of passing vacuously.
-	t.check(st.lanes.has(target), "seed 259 still has the lane %s" % target)
-	t.eq(int(st.answer.get(target, 0)), 2, "the answer still wants two planks on %s" % target)
+	var st: State = null
+	var target := ""
+	var blockers: Array = []
+	for seed_value in range(1, 3000):
+		var cand := _state(seed_value, seed_value % 3)
+		for key in cand.answer:
+			if int(cand.answer[key]) != 2:
+				continue
+			var free: Array = []
+			for other in cand.crossing.get(key, []):
+				if cand.answer.has(other):
+					continue
+				# A blocker that crosses no other answer lane, so the target is
+				# the only lane the hint can be left with.
+				var alone := true
+				for third in cand.crossing.get(other, []):
+					if third != key and cand.answer.has(third):
+						alone = false
+				if alone:
+					free.append(other)
+			# Two free blockers that do not cross each other (they are parallel).
+			if free.size() >= 2:
+				st = cand
+				target = String(key)
+				blockers = [free[0], free[1]]
+				break
+		if st != null:
+			break
+	t.check(st != null, "some seed has a lane crossed by two free lanes")
+	if st == null:
+		return
 	for b in blockers:
-		t.check(st.crossing.get(target, []).has(b), "%s still crosses %s" % [b, target])
-		t.check(not st.answer.has(b), "the answer still does not want %s" % b)
+		t.check(st.crossing.get(target, []).has(b), "%s crosses %s" % [b, target])
 		st.cycle(b)
 		t.eq(st.planks(b), 1, "the blocker %s is laid" % b)
 	# Every other lane the answer wants, laid full, so the hint must take the

@@ -21,9 +21,17 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-20-bridges-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/bridges_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
-## The cycle's top: a fourth drag wraps a full run back to nothing.
-const MAX_PLANKS := 3
+## The cycle's top: a third drag wraps a full run back to nothing. Two since
+## the polish (2026-09-30), as every other telling of the puzzle has it.
+const MAX_PLANKS := Gen.MAX_PLANKS
+## Hearts and hints by band (the polish): Easy and Medium cannot be lost;
+## Hard and Insane judge every plank as it lands.
+const HEARTS := [0, 0, 3, 2]
+const HINTS := [3, 3, 1, 0]
+## What a judged plank came to (`add`).
+enum Judged { BLOCKED, RIGHT, WRONG, FULL, RULED }
 ## Neither end of a lane, for a walk that met the edge instead of an islet.
 const NOWHERE := Vector2i(-1, -1)
 
@@ -50,11 +58,31 @@ var history: Array[Dictionary] = []
 ## when 200 attempts found none, which is playable but not a puzzle.
 var unique := true
 var guess_free := false
+var band := 0
+## Lantern Night (Insane): Vector2i -> true for every lantern, whose number
+## counts the islets it is joined to and not its planks.
+var lanterns: Dictionary = {}
+## lane key -> the most planks a lost heart proved that lane can take (the
+## answer's own count there). Hard and Insane only; a judged plank past it is
+## refused for free.
+var ruled: Dictionary = {}
 ## Vector2i -> true for every islet, so a walk can ask what it met.
 var _seat: Dictionary = {}
 
-func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var g: Dictionary = Gen.generate(rng, difficulty)
+func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, Gen.BANDS.size() - 1)
+	var g: Dictionary = {}
+	if band == 3:
+		# Lantern Night is dealt from the bank: a live deal cannot grade what
+		# a banked board asks of a player in time on a phone. An empty bank or
+		# an entry that does not hold together deals a quick live one.
+		g = Gen.from_bank(InsaneBank.pick("bridges", bank_step))
+		if g.is_empty():
+			if InsaneBank.size("bridges") > 0:
+				push_warning("Bridges: a banked board did not hold together; dealing a live one")
+			g = Gen.generate_lanterns(rng, true)
+	if g.is_empty():
+		g = Gen.generate(rng, difficulty)
 	var b: Dictionary = Gen.band(difficulty)
 	n = int(g.get("n", b.n))
 	var grown: Array = g.get("islets", [])
@@ -65,6 +93,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	answer = g.get("answer", {})
 	guess_free = bool(g.get("guess_free", false))
 	unique = bool(g.get("unique", false))
+	lanterns = g.get("lanterns", {})
+	ruled = {}
 	if islets.is_empty():
 		push_warning("Bridges: no board could be grown for this seed")
 	lanes = Gen.lanes_for(n, islets)
@@ -115,7 +145,7 @@ func planks(key: String) -> int:
 
 # --- moves ---
 
-## Advances the run 0-1-2-3-0 and returns the new count. Refused, unchanged
+## Advances the run 0-1-2-0 and returns the new count. Refused, unchanged
 ## and unrecorded when a laid run crosses the lane, or when the key is not a
 ## lane at all. It is **not** refused when it pushes an islet over its number:
 ## that is drawn wrong, not blocked, which is the house rule that feedback
@@ -131,7 +161,7 @@ func cycle(key: String) -> int:
 	_lay(key, after)
 	return after
 
-## Wipes a run to nothing in one go -- the tap's shortcut past three drags.
+## Wipes a run to nothing in one go: what a hint lifts a blocker with.
 ## True when there was something to wipe.
 func clear_run(key: String) -> bool:
 	var before := planks(key)
@@ -154,6 +184,32 @@ func reset_board() -> void:
 	runs = {}
 	history = []
 
+## Whether this band judges every plank as it lands (Hard and Insane).
+func judged() -> bool:
+	return int(HEARTS[band]) > 0
+
+## A judged plank, Hard and Insane's only gesture: planks are only ever
+## added there, and each one is held against the answer. BLOCKED when a laid
+## run crosses the lane or it is no lane; FULL when the run already carries
+## two (both right, since nothing wrong can stand); RULED when a heart has
+## already shown this lane takes no more; WRONG when the answer lays fewer --
+## nothing is laid, and the lane is ruled at the answer's count for good;
+## RIGHT when it lays the plank, recorded like any move.
+func add(key: String) -> Judged:
+	if not lanes.has(key) or blocked_by(key) != "":
+		return Judged.BLOCKED
+	var before := planks(key)
+	if before >= MAX_PLANKS:
+		return Judged.FULL
+	if ruled.has(key) and before >= int(ruled[key]):
+		return Judged.RULED
+	if before + 1 > int(answer.get(key, 0)):
+		ruled[key] = int(answer.get(key, 0))
+		return Judged.WRONG
+	history.append({"key": key, "was": before})
+	_lay(key, before + 1)
+	return Judged.RIGHT
+
 func can_undo() -> bool:
 	return not history.is_empty()
 
@@ -166,6 +222,33 @@ func _lay(key: String, count: int) -> void:
 		runs[key] = count
 
 # --- derived, and never stored ---
+
+## What an islet's number is held against: the islets it is joined to on a
+## lantern, its planks on any other.
+func count(cell: Vector2i) -> int:
+	return links(cell) if lanterns.has(cell) else degree(cell)
+
+## The number an islet shows.
+func need_of(cell: Vector2i) -> int:
+	return int(need.get(cell, 0))
+
+## How many islets `cell` is joined to by at least one plank.
+func links(cell: Vector2i) -> int:
+	var total := 0
+	for key in runs:
+		if int(runs[key]) <= 0:
+			continue
+		var lane: Dictionary = lanes[key]
+		if lane.a == cell or lane.b == cell:
+			total += 1
+	return total
+
+## Every shown number met, whatever the network looks like.
+func numbers_met() -> bool:
+	for cell in islets:
+		if count(cell) != need_of(cell):
+			return false
+	return true
 
 ## Summed from the runs every time it is asked. Storing it would be a second
 ## truth to keep in step, and undo would have to unwind it -- which is the
@@ -221,9 +304,8 @@ func groups() -> Array[Array]:
 ## predicate that does not cover a rule the board states is a bug waiting for
 ## the next way in.
 func is_solved() -> bool:
-	for cell in islets:
-		if degree(cell) != int(need[cell]):
-			return false
+	if not numbers_met():
+		return false
 	for key in runs:
 		if int(runs[key]) <= 0:
 			continue

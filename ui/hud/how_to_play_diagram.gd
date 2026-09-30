@@ -122,7 +122,8 @@ func _animate() -> void:
 		_progress = 1.0
 		return
 	_loop = create_tween().set_loops()
-	_loop.tween_property(self, "_progress", 1.0, 0.9).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Bridges lays three planks in its one loop, so it takes its time.
+	_loop.tween_property(self, "_progress", 1.0, 2.4 if puzzle_id == "bridges" else 0.9).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(1.35)
 	_loop.tween_property(self, "_progress", 0.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(0.55)
@@ -130,6 +131,9 @@ func _animate() -> void:
 func _draw() -> void:
 	var board := _board_rect()
 	var cell := (board.size.x - GAP * (GRID - 1)) / GRID
+	if puzzle_id == "bridges":
+		_draw_bridges(board, cell)
+		return
 	for r in GRID:
 		for c in GRID:
 			var rect := Rect2(board.position + Vector2(c, r) * (cell + GAP), Vector2(cell, cell))
@@ -176,12 +180,6 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 		"sudoku":
 			for i in 4: _draw_number(str(i + 1), _centre(board, cell, i, i), Pal.TEXT)
 			if p > 0.45: _draw_number("3", _centre(board, cell, 2, 0), Pal.ACCENT)
-		"bridges":
-			var a := _centre(board, cell, 0, 1)
-			var b := _centre(board, cell, 3, 1)
-			draw_circle(a, cell * 0.18, Pal.SURFACE)
-			draw_circle(b, cell * 0.18, Pal.SURFACE)
-			draw_line(a, a.lerp(b, p), Pal.WOOD, 10.0, true)
 		"quilt":
 			for i in 4:
 				var fill: Color = [Pal.BERRY_TILE, Pal.SUN_TILE, Pal.LEAF_TILE, Pal.MOON_TILE][i]
@@ -195,6 +193,66 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 		"rings":
 			var centre := _centre(board, cell, 1, 1)
 			for i in 3: draw_arc(centre, cell * (0.18 + i * 0.14), 0.0, TAU * p, 32, [Pal.BERRY, Pal.SUN, Pal.ACCENT][i], 8.0, true)
+
+## Bridges' lesson on its own sea (the polish, 2026-09-30; the first cut was
+## two white dots and a line with no numbers, which taught nothing). Three
+## islets, 2, 3 and 1: a finger lays two planks from the 2 to the 3, then one
+## down from the 3 to the 1, and every ring round a number fills a slot per
+## plank until all three coins turn green -- the whole rule in one loop.
+func _draw_bridges(board: Rect2, cell: float) -> void:
+	var p := _progress
+	draw_rect(board, Pal.WATER_HI.lerp(Pal.PAPER, 0.1), true)
+	draw_rect(board, Pal.WATER.lerp(Pal.TEXT, 0.18), false, 4.0)
+	var a := _centre(board, cell, 0, 0)
+	var b := _centre(board, cell, 3, 0)
+	var c := _centre(board, cell, 3, 3)
+	var r := cell * 0.36
+	var gap := cell * 0.13
+	# The three planks, each growing out of the islet the finger left.
+	var segs := [[a + Vector2(r, -gap), b + Vector2(-r, -gap), 0.0, 0.33],
+		[a + Vector2(r, gap), b + Vector2(-r, gap), 0.33, 0.66],
+		[b + Vector2(0.0, r), c + Vector2(0.0, -r), 0.66, 1.0]]
+	var tip := a
+	var laid := [0, 0, 0]
+	for i in segs.size():
+		var sg: Array = segs[i]
+		var u := clampf((p - float(sg[2])) / (float(sg[3]) - float(sg[2])), 0.0, 1.0)
+		if u <= 0.0:
+			continue
+		var from: Vector2 = sg[0]
+		var to: Vector2 = sg[1]
+		draw_line(from, from.lerp(to, _ease(u)), Pal.WOOD_DEEP, cell * 0.13, true)
+		draw_line(from, from.lerp(to, _ease(u)), Pal.DECK, cell * 0.09, true)
+		if u < 1.0:
+			tip = (a if i < 2 else b).lerp(b if i < 2 else c, _ease(u))
+		else:
+			tip = b if i < 2 else c
+			if i < 2:
+				laid[0] += 1
+				laid[1] += 1
+			else:
+				laid[1] += 1
+				laid[2] += 1
+	var islets := [[a, 2, laid[0]], [b, 3, laid[1]], [c, 1, laid[2]]]
+	for isl in islets:
+		var at: Vector2 = isl[0]
+		var want: int = isl[1]
+		var got: int = isl[2]
+		draw_circle(at + Vector2(0.0, r * 0.3), r, Pal.CAMP_SOIL)
+		draw_circle(at, r, Pal.BANK)
+		var met := got == want
+		draw_circle(at, r * 0.62, Pal.LEAF_TILE.lerp(Pal.GOOD, 0.22) if met else Pal.SURFACE)
+		var step := TAU / float(want)
+		for k in want:
+			var a0 := -PI * 0.5 + step * k + 0.12
+			draw_arc(at, r * 0.8, a0, a0 + step - 0.24, 16,
+				Pal.LEAF_DEEP if met else (Pal.WOOD_DEEP if k < got else Color(Pal.SURFACE, 0.9)), 6.0, true)
+		_draw_number(str(want), at, Pal.LEAF_DEEP if met else Pal.TEXT)
+	# The finger, riding the plank being laid.
+	if p > 0.0 and p < 1.0:
+		draw_circle(tip + Vector2(4.0, 8.0), cell * 0.2, Color(Pal.TEXT, 0.16))
+		draw_circle(tip, cell * 0.17, Color(Pal.SURFACE, 0.95))
+		draw_arc(tip, cell * 0.17, 0.0, TAU, 24, Pal.LINE, 3.0, true)
 
 func _lesson() -> String:
 	match puzzle_id:

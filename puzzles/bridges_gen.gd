@@ -10,16 +10,26 @@ extends RefCounted
 
 ## The four bands (spec section 4). `span` is the furthest a run may reach,
 ## `loops` how many already-facing pairs the second pass tries to join, and
-## `guess_free` whether propagation alone must finish the board. Insane's row
-## is provisional, replaced by the bank in this board's own batch.
+## `guess_free` whether propagation alone must finish the board. Insane is
+## **Lantern Night** (the polish, 2026-09-30): its row grows the network and
+## `generate_lanterns` then turns every islet it can into a lantern. It is
+## dealt from the bank (content/insane/bridges.json); the row is what the
+## miner and the live fallback grow from.
 const BANDS := [
 	{"n": 7, "islets": 11, "span": 5, "loops": 4, "guess_free": true},
 	{"n": 9, "islets": 16, "span": 5, "loops": 6, "guess_free": false},
 	{"n": 11, "islets": 24, "span": 5, "loops": 10, "guess_free": false},
-	{"n": 11, "islets": 30, "span": 6, "loops": 12, "guess_free": false},
+	{"n": 11, "islets": 30, "span": 6, "loops": 16, "guess_free": false},
 ]
-const MAX_DEGREE := 6
-const MAX_PLANKS := 3
+## **Two planks at most between the same two islets** (the polish,
+## 2026-09-30). The first cut allowed three, which no other telling of this
+## puzzle does; players who knew it from elsewhere laid two, found a third
+## and could not tell what the numbers wanted. With two, an islet's number
+## runs 1 to 8 -- two planks down each of its four sides.
+const MAX_DEGREE := 8
+const MAX_PLANKS := 2
+## Lantern Night: the fewest lanterns a board must end with to be kept.
+const LANTERN_MIN := 9
 ## The grow is cheap and the proof is not, so a board is regrown rather than
 ## repaired. The mock's worst case was 47 attempts on the hard band.
 const ATTEMPTS := 200
@@ -96,7 +106,7 @@ static func _vertical(lane: Dictionary) -> bool:
 # ---------------------------------------------------------------- the grow
 
 ## Place one islet, then repeatedly pick a standing islet, a direction, a
-## distance and a run of one to three planks. Returns {} when the walk wedged
+## distance and a run of one or two planks. Returns {} when the walk wedged
 ## before the band's islets stood. Runs are kept as index pairs, because
 ## centring moves every islet and a lane key would go stale.
 static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
@@ -320,26 +330,36 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 ## pass the board's own `n` -- and dropping it would be a rename of the one
 ## entry point outside this file.
 static func count_solutions(n: int, islets: Array, need: Dictionary,
-		lanes: Dictionary, cap: int) -> Dictionary:
-	var ed := _compile(n, islets, need, lanes)
-	var count: int = ed.lanes
+		lanes: Dictionary, cap: int, lanterns: Dictionary = {}) -> Dictionary:
+	var ed := _compile(n, islets, need, lanes, lanterns)
 	var lo := PackedByteArray()
 	var hi := PackedByteArray()
-	lo.resize(count)
-	hi.resize(count)
-	var nd: PackedInt32Array = ed.need
-	for e in count:
-		lo[e] = 0
-		hi[e] = mini(MAX_PLANKS, mini(nd[ed.ea[e]], nd[ed.eb[e]]))
+	_open_ranges(ed, lo, hi)
 	var state := {"count": 0, "branched": false}
 	_search(ed, lo, hi, cap, state)
 	return {"count": int(state.count), "guess_free": not bool(state.branched)}
+
+## Every lane's first range: nothing to as many planks as both ends allow. A
+## plain islet caps a lane at its number; a lantern counts islets and not
+## planks, so it caps nothing below the lane's own two.
+static func _open_ranges(ed: Dictionary, lo: PackedByteArray, hi: PackedByteArray) -> void:
+	var count: int = ed.lanes
+	lo.resize(count)
+	hi.resize(count)
+	var nd: PackedInt32Array = ed.need
+	var lit: PackedByteArray = ed.lit
+	for e in count:
+		var ca: int = MAX_PLANKS if lit[ed.ea[e]] else nd[ed.ea[e]]
+		var cb: int = MAX_PLANKS if lit[ed.eb[e]] else nd[ed.eb[e]]
+		lo[e] = 0
+		hi[e] = mini(MAX_PLANKS, mini(ca, cb))
 
 ## The lanes and the islets as flat arrays: the search copies its ranges on
 ## every branch, so it reads indices rather than dictionary keys. `_n` is
 ## carried from `count_solutions`' interface and deliberately unread -- see
 ## there.
-static func _compile(_n: int, islets: Array, need: Dictionary, lanes: Dictionary) -> Dictionary:
+static func _compile(_n: int, islets: Array, need: Dictionary, lanes: Dictionary,
+		lanterns: Dictionary = {}) -> Dictionary:
 	var cross := crossings(lanes)
 	var idx := {}
 	for i in islets.size():
@@ -354,8 +374,11 @@ static func _compile(_n: int, islets: Array, need: Dictionary, lanes: Dictionary
 	ea.resize(keys.size())
 	eb.resize(keys.size())
 	nd.resize(islets.size())
+	var lit := PackedByteArray()
+	lit.resize(islets.size())
 	for i in islets.size():
 		nd[i] = int(need[islets[i]])
+		lit[i] = 1 if lanterns.has(islets[i]) else 0
 	# Plain Arrays while they are being filled: a packed array is a value type,
 	# so appending through a subscript would append to a copy.
 	var raw_inc: Array = []
@@ -377,7 +400,7 @@ static func _compile(_n: int, islets: Array, need: Dictionary, lanes: Dictionary
 		inc.append(PackedInt32Array(row2))
 	return {
 		"lanes": keys.size(), "islets": islets.size(), "keys": keys,
-		"ea": ea, "eb": eb, "need": nd, "inc": inc, "cross": xs,
+		"ea": ea, "eb": eb, "need": nd, "inc": inc, "cross": xs, "lit": lit,
 	}
 
 ## Narrow every lane's lo..hi until nothing changes. False on a contradiction.
@@ -390,12 +413,39 @@ static func _propagate(ed: Dictionary, lo: PackedByteArray, hi: PackedByteArray)
 	var xs: Array = ed.cross
 	var ea: PackedInt32Array = ed.ea
 	var eb: PackedInt32Array = ed.eb
+	var lit: PackedByteArray = ed.lit
 	for _round in PROP_ROUNDS:
 		var changed := false
 		# 1. An islet narrows every lane it touches against its own number and
 		#    what its other lanes can still take.
 		for i in count:
 			var li: PackedInt32Array = inc[i]
+			if lit[i]:
+				# 1b. A lantern counts the islets it is joined to: a lane is a
+				#     sure join once it holds a plank, a maybe while it still
+				#     could. Too many sure or too few maybe is a contradiction;
+				#     exactly enough maybe must all be joined; exactly enough
+				#     sure closes the rest.
+				var sure := 0
+				var maybe := 0
+				for e in li:
+					if lo[e] >= 1:
+						sure += 1
+					if hi[e] >= 1:
+						maybe += 1
+				if sure > nd[i] or maybe < nd[i]:
+					return false
+				if maybe == nd[i] and sure < nd[i]:
+					for e in li:
+						if hi[e] >= 1 and lo[e] < 1:
+							lo[e] = 1
+							changed = true
+				elif sure == nd[i] and maybe > nd[i]:
+					for e in li:
+						if lo[e] < 1 and hi[e] != 0:
+							hi[e] = 0
+							changed = true
+				continue
 			var sum_lo := 0
 			var sum_hi := 0
 			for e in li:
@@ -520,15 +570,20 @@ static func _legal(ed: Dictionary, val: PackedByteArray) -> bool:
 	var eb: PackedInt32Array = ed.eb
 	var inc: Array = ed.inc
 	var xs: Array = ed.cross
+	var lit: PackedByteArray = ed.lit
 	var deg := PackedInt32Array()
 	deg.resize(count)
+	var links := PackedInt32Array()
+	links.resize(count)
 	for e in lanes:
 		if val[e] < 1:
 			continue
 		deg[ea[e]] += val[e]
 		deg[eb[e]] += val[e]
+		links[ea[e]] += 1
+		links[eb[e]] += 1
 	for i in count:
-		if deg[i] != nd[i]:
+		if (links[i] if lit[i] else deg[i]) != nd[i]:
 			return false
 	for e in lanes:
 		if val[e] < 1:
@@ -554,3 +609,278 @@ static func _legal(ed: Dictionary, val: PackedByteArray) -> bool:
 				reached += 1
 				stack.append(v)
 	return reached == count
+
+# ------------------------------------------------ Lantern Night (Insane)
+
+## **Lantern Night**, Insane since the polish (2026-09-30). A lantern islet
+## counts **the islets it is joined to, not the planks**: a lantern 2 is
+## joined to exactly two neighbours, by one plank or two each, so it says
+## nothing about how many planks it takes (two to four). Every other islet
+## still counts planks. Nothing in the puzzle's usual tellings mixes the two
+## counts on one board (a search on 2026-09-30 found none), and the mix is
+## what makes it nearly impossible: a lantern gives away the shape of the
+## network and hides its weight, a number gives away the weight and hides the
+## shape, and the player has to hold both.
+##
+## The deal: grow Insane's network, then light islets -- each one's number
+## becomes its link count -- **as long as the board stays unique**, best first
+## (or one shuffled walk when `quick`, the phone's fallback). `{}` when the
+## board kept fewer than LANTERN_MIN lanterns.
+##
+## (Dark islets that show no number at all were tried on 2026-09-30 and
+## dropped: the uniqueness proof over them took ~50 s a board and the boards
+## came out no harder -- the lanterns had already spent the slack.)
+static func generate_lanterns(rng: RandomNumberGenerator, quick := false) -> Dictionary:
+	var b := band(3)
+	for _attempt in ATTEMPTS:
+		var board := _grow_board(rng, b)
+		if board.is_empty():
+			continue
+		var islets: Array = board.islets
+		var lanes: Dictionary = lanes_for(b.n, islets)
+		var need: Dictionary = board.need
+		var links := _links(islets, lanes, board.answer)
+		var lanterns := {}
+		if quick:
+			# The live fallback: one shuffled walk, each islet lit if the board
+			# stays unique. Tens of ms rather than the miner's best-first pass.
+			var order: Array = islets.duplicate()
+			for i in range(order.size() - 1, 0, -1):
+				var j := rng.randi_range(0, i)
+				var t = order[i]
+				order[i] = order[j]
+				order[j] = t
+			for cell in order:
+				var was: int = int(need[cell])
+				need[cell] = int(links[cell])
+				lanterns[cell] = true
+				if int(count_solutions(b.n, islets, need, lanes, 2, lanterns).count) != 1:
+					need[cell] = was
+					lanterns.erase(cell)
+		else:
+			# Best first: every round lights whichever islet leaves the most
+			# lanes open after propagation, among those that keep the board
+			# unique, so the lanterns land where they hide the most. Ties go
+			# to the rng, so a seed is still a day.
+			while true:
+				var best: Variant = null
+				var best_open := -1
+				var tie := 0
+				for cell in islets:
+					if lanterns.has(cell):
+						continue
+					var was: int = int(need[cell])
+					need[cell] = int(links[cell])
+					lanterns[cell] = true
+					if int(count_solutions(b.n, islets, need, lanes, 2, lanterns).count) == 1:
+						var open := _open_after(b.n, islets, need, lanes, lanterns)
+						if open > best_open:
+							best_open = open
+							best = cell
+							tie = 1
+						elif open == best_open:
+							tie += 1
+							if rng.randi_range(1, tie) == 1:
+								best = cell
+					need[cell] = was
+					lanterns.erase(cell)
+				if best == null:
+					break
+				need[best] = int(links[best])
+				lanterns[best] = true
+		if lanterns.size() < LANTERN_MIN:
+			continue
+		board["need"] = need
+		board["lanterns"] = lanterns
+		board["unique"] = true
+		board["guess_free"] = false
+		return board
+	return {}
+
+## One grown, centred, clued and **proved** board at a band's knobs, or {}
+## when this grow did not hold -- `generate()`'s loop body, for Lantern Night.
+static func _grow_board(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
+	var g := _grow(rng, b)
+	if g.is_empty():
+		return {}
+	_close_loops(rng, g, b)
+	if not _centre_and_reach(g.islets, b.n):
+		return {}
+	var islets: Array = g.islets
+	var lanes := lanes_for(b.n, islets)
+	var answer := {}
+	for r in g.runs:
+		var key := lane_key(islets[int(r.a)], islets[int(r.b)])
+		if not lanes.has(key):
+			return {}
+		answer[key] = int(r.v)
+	var need := {}
+	for i in islets.size():
+		if int(g.deg[i]) < 1:
+			return {}
+		need[islets[i]] = int(g.deg[i])
+	if int(count_solutions(b.n, islets, need, lanes, 2).count) != 1:
+		return {}
+	return {"n": b.n, "islets": islets, "need": need, "answer": answer}
+
+## How many lanes propagation alone leaves undecided: the lantern pass's
+## measure of how much a board still hides.
+static func _open_after(n: int, islets: Array, need: Dictionary, lanes: Dictionary,
+		lanterns: Dictionary) -> int:
+	var ed := _compile(n, islets, need, lanes, lanterns)
+	var lo := PackedByteArray()
+	var hi := PackedByteArray()
+	_open_ranges(ed, lo, hi)
+	if not _propagate(ed, lo, hi):
+		return -1
+	var open := 0
+	for e in int(ed.lanes):
+		if lo[e] != hi[e]:
+			open += 1
+	return open
+
+## islet -> how many islets the answer joins it to.
+static func _links(islets: Array, lanes: Dictionary, answer: Dictionary) -> Dictionary:
+	var out := {}
+	for cell in islets:
+		out[cell] = 0
+	for key in answer:
+		if int(answer[key]) <= 0:
+			continue
+		out[lanes[key].a] = int(out[lanes[key].a]) + 1
+		out[lanes[key].b] = int(out[lanes[key].b]) + 1
+	return out
+
+## **Graded like a player**: propagation (the four rules), then suppositions
+## -- lay a lane's lowest or highest count in your head, follow the rules, and
+## cross that count off when the board breaks -- until the board is pinned or
+## nothing more gives. `ok` when it pinned the answer; `supposed` is the
+## suppositions that crossed something off, `probes` the ones tried. Hard's
+## own grade is propagation alone.
+static func solve_logic(n: int, islets: Array, need: Dictionary, lanterns: Dictionary,
+		deep: bool) -> Dictionary:
+	var lanes := lanes_for(n, islets)
+	var ed := _compile(n, islets, need, lanes, lanterns)
+	var lo := PackedByteArray()
+	var hi := PackedByteArray()
+	_open_ranges(ed, lo, hi)
+	var supposed := 0
+	var probes := 0
+	if not _propagate(ed, lo, hi):
+		return {"ok": false, "supposed": 0, "probes": 0}
+	while deep:
+		var gave := false
+		for e in int(ed.lanes):
+			if lo[e] == hi[e]:
+				continue
+			for end in 2:
+				if lo[e] == hi[e]:
+					break
+				var v: int = lo[e] if end == 0 else hi[e]
+				var l2 := lo.duplicate()
+				var h2 := hi.duplicate()
+				l2[e] = v
+				h2[e] = v
+				probes += 1
+				if _propagate(ed, l2, h2) and not _pinned_wrong(ed, l2, h2):
+					continue
+				supposed += 1
+				gave = true
+				if end == 0:
+					lo[e] = v + 1
+				else:
+					hi[e] = v - 1
+				if not _propagate(ed, lo, hi):
+					return {"ok": false, "supposed": supposed, "probes": probes}
+		if not gave:
+			break
+	for e in int(ed.lanes):
+		if lo[e] != hi[e]:
+			return {"ok": false, "supposed": supposed, "probes": probes}
+	return {"ok": _legal(ed, lo), "supposed": supposed, "probes": probes}
+
+## A supposition that pinned every lane into an illegal board also broke it:
+## propagation alone never checks the whole network once it is settled.
+static func _pinned_wrong(ed: Dictionary, lo: PackedByteArray, hi: PackedByteArray) -> bool:
+	for e in int(ed.lanes):
+		if lo[e] != hi[e]:
+			return false
+	return not _legal(ed, lo)
+
+## A board as the bank keeps it: plain arrays, islets by index.
+static func to_bank(board: Dictionary) -> Dictionary:
+	if board.is_empty():
+		return {}
+	var islets: Array = board.islets
+	var idx := {}
+	var cells: Array = []
+	var need: Array = []
+	var lit: Array = []
+	for i in islets.size():
+		idx[islets[i]] = i
+		cells.append([islets[i].x, islets[i].y])
+		need.append(int(board.need[islets[i]]))
+		if board.get("lanterns", {}).has(islets[i]):
+			lit.append(i)
+	var lanes := lanes_for(int(board.n), islets)
+	var runs: Array = []
+	var keys: Array = board.answer.keys()
+	keys.sort()
+	for key in keys:
+		runs.append([idx[lanes[key].a], idx[lanes[key].b], int(board.answer[key])])
+	return {"n": int(board.n), "islets": cells, "need": need, "lanterns": lit, "runs": runs}
+
+## A banked board back in the generator's own shape, **checked the way the
+## phone can afford**: the runs are real lanes and never cross, the answer is
+## one network, and every clue is its islet's own count (planks, or links on
+## a lantern). Uniqueness is the miner's proof and is trusted. {} when any of
+## that fails, and the board deals a live one instead.
+static func from_bank(entry: Dictionary) -> Dictionary:
+	if entry.is_empty() or not (entry.get("islets") is Array) or not (entry.get("runs") is Array):
+		return {}
+	var n := int(entry.get("n", 0))
+	var islets: Array = []
+	for c in entry.islets:
+		if not (c is Array) or c.size() != 2:
+			return {}
+		var cell := Vector2i(int(c[0]), int(c[1]))
+		if cell.x < 0 or cell.y < 0 or cell.x >= n or cell.y >= n:
+			return {}
+		islets.append(cell)
+	if not (entry.get("need") is Array) or not (entry.get("lanterns", []) is Array):
+		return {}
+	var nd: Array = entry.get("need", [])
+	if nd.size() != islets.size():
+		return {}
+	var lanes := lanes_for(n, islets)
+	var answer := {}
+	for r in entry.runs:
+		if not (r is Array) or r.size() != 3:
+			return {}
+		var i := int(r[0])
+		var j := int(r[1])
+		var v := int(r[2])
+		if i < 0 or j < 0 or i >= islets.size() or j >= islets.size() or v < 1 or v > MAX_PLANKS:
+			return {}
+		var key := lane_key(islets[i], islets[j])
+		if not lanes.has(key):
+			return {}
+		answer[key] = v
+	var lanterns := {}
+	for i in entry.get("lanterns", []):
+		if int(i) < 0 or int(i) >= islets.size():
+			return {}
+		lanterns[islets[int(i)]] = true
+	var need := {}
+	for i in islets.size():
+		need[islets[i]] = int(nd[i])
+	var ed := _compile(n, islets, need, lanes, lanterns)
+	var val := PackedByteArray()
+	val.resize(int(ed.lanes))
+	var keys: Array = ed.keys
+	for e in keys.size():
+		val[e] = int(answer.get(keys[e], 0))
+	if not _legal(ed, val):
+		return {}
+	return {"n": n, "islets": islets, "need": need, "answer": answer, "lanterns": lanterns,
+		"unique": true, "guess_free": false}
