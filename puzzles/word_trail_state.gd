@@ -16,9 +16,19 @@ const WORDS_PATH := "res://content/word_trail.json"
 ## a property of the band and never a dial: 7, 7, 11 and 19. One word per
 ## length would leave 16 walls on the 7x7, a third of the field, so the two
 ## larger bands repeat a length instead. Six words at most, which is what the
-## palette's six chip colours cover. Insane's row is provisional, replaced by
-## the bank in this board's own batch.
+## palette's six chip colours cover. Insane is the longest six on an 8x8, and
+## it is played in the dark (Night Walk, below).
 const BANDS := [[3, 4, 5, 6], [3, 4, 4, 5, 6, 7], [4, 5, 6, 7, 8, 8], [6, 7, 8, 8, 8, 8]]
+## The dandelion (polish spec 2026-09-30, section 1): how many wrong trails a
+## band forgives, 0 for as many as the player likes. A trail only spends a
+## wish when it could have been a word -- as long as some unfound word -- and
+## has not been tried before, so a slip, a stray tap or a second try of the
+## same trail is free.
+const WISHES := [0, 0, 7, 5]
+## What one more wish (the out card's video) gives back.
+const WISH_BACK := 3
+## Night Walk (Insane): the field is dark but for the lantern at the finger.
+const NIGHT_BAND := 3
 const ATTEMPTS := 60
 const RESTARTS := 120
 
@@ -31,6 +41,16 @@ var letters: Dictionary = {}
 var walls: Array[Vector2i] = []
 var order: Array[int] = []
 var given: Dictionary = {}
+## The band this board was built at.
+var band := 0
+## Wrong trails that cost a wish, the wishes this board has (0: unlimited),
+## and every wrong trail already tried, by its key, so trying one again is
+## free.
+var misses := 0
+var wishes := 0
+var tried: Dictionary = {}
+## The words shown on the out card's "Show the words", not found.
+var shown: Dictionary = {}
 
 static func lens_for(difficulty: int) -> Array:
 	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
@@ -59,7 +79,12 @@ static func word_bank() -> Dictionary:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var lens: Array = lens_for(difficulty)
-	n = 5 + clampi(difficulty, 0, BANDS.size() - 1)
+	band = clampi(difficulty, 0, BANDS.size() - 1)
+	n = 5 + band
+	misses = 0
+	wishes = int(WISHES[band])
+	tried = {}
+	shown = {}
 	var best: Array = []
 	var best_score := 1 << 30
 	var loose: Array = []
@@ -339,3 +364,60 @@ func hint_cell(index: int) -> Vector2i:
 	if shown >= path.size():
 		return Vector2i(-1, -1)
 	return path[shown]
+
+# --- the dandelion and the night (polish spec 2026-09-30) ---
+func night() -> bool:
+	return band == NIGHT_BAND
+
+## True when this band counts its wrong trails.
+func counts_wishes() -> bool:
+	return wishes > 0
+
+func wishes_left() -> int:
+	return maxi(0, wishes - misses) if counts_wishes() else -1
+
+func is_out() -> bool:
+	return counts_wishes() and misses >= wishes and not is_solved()
+
+func add_wishes(count := WISH_BACK) -> void:
+	wishes = misses + count
+
+static func _key(path: Array) -> String:
+	var parts: Array[String] = []
+	for c: Vector2i in path:
+		parts.append("%d.%d" % [c.x, c.y])
+	return " ".join(parts)
+
+## Whether a trail that did not lock could have been a word: at least three
+## tiles and as long as some unfound word.
+func could_be(path: Array) -> bool:
+	if path.size() < 3:
+		return false
+	for w in words:
+		if not w["found"] and (w["path"] as Array).size() == path.size():
+			return true
+	return false
+
+## A trail that did not lock. Returns true when it spent a wish: it could
+## have been a word, it was never tried before, and this band counts. Every
+## plausible miss is remembered on every band -- the seal reads them.
+func miss(path: Array) -> bool:
+	if not could_be(path):
+		return false
+	var k := _key(path)
+	if tried.has(k):
+		return false
+	tried[k] = true
+	misses += 1
+	return counts_wishes()
+
+## Show the words: the next unfound word locks as shown, not found. Returns
+## its index, or -1 when none is left.
+func reveal_next() -> int:
+	for i in words.size():
+		if not words[i]["found"]:
+			words[i]["found"] = true
+			shown[i] = true
+			order.append(i)
+			return i
+	return -1

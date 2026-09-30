@@ -440,14 +440,48 @@ SETS = {
     },
     # Word Trail (puzzle_id "wordtrail"): drag a trail through letter tiles;
     # only a right word locks, and a ribbon of colour runs along it.
+    # Re-prompted toward felt, paper and kalimba on 2026-09-30 (polish pass,
+    # docs/superpowers/specs/2026-09-30-word-trail-polish-design.md): the
+    # wooden pops read as clatter beside Hidden Word's new set. select fires
+    # on every tile a finger takes, 5% higher each, so it is the quietest and
+    # shortest. Hard and Insane spend a dandelion's seeds on wrong trails
+    # (wish, droop, out_of_wishes, wish_back); Insane is Night Walk, the
+    # field in the dark but for a little lantern (lantern, dawn).
     "wordtrail": {
-        "select":   ("a single tiny soft kalimba tick, one light plucked tine, very short and quiet, no reverb tail", 0.5, -12),
-        "place":    ("a short bright rising kalimba run of four soft notes with a gentle ribbon swish, a hidden word found", 0.8, -6),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a quick ripple of many small soft wooden pops, letter tiles being swept clean", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a field of letter tiles appearing", 1.0, -9),
+        "select":   ("a single tiny soft felt-tipped kalimba tick, one light muffled plucked tine, extremely short and hushed, no reverb tail", 0.5, -15),
+        "place":    ("a short bright rising soft kalimba run of four notes with a gentle silky ribbon swish, a hidden word found, warm and cozy", 0.8, -7),
+        "undo":     ("a soft short paper slide backwards with a tiny felt pat, a ribbon gently rolled back up, hushed and cozy", 0.6, -12, COZY),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a light paper rustle, cozy and kind", 1.0, -8),
+        "reset":    ("a soft quick ripple of tiny felt pats and a light flutter of paper, colourful ribbons swept gently off a parchment card, hushed and cozy", 1.0, -10, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        "enter":    ("a soft airy cascade of tiny paper cards settling and a light leafy rustle, a little field of letter tiles laid out in a meadow, cozy and hushed", 1.0, -11, COZY),
+        # Rewards: the streak, the word's reactions and its gags.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -9),
+        "streak":   ("a cheerful quick three-note rising kalimba and glockenspiel run, on a roll, bright and happy, short", 0.7, -9),
+        "big":      ("a pleased little 'ooh' on soft kalimba, two notes up then a third higher with a small glockenspiel sparkle, a big word found, warm", 0.8, -9),
+        "quick":    ("a tiny fast whoosh of air ending on one bright soft kalimba ping, quick as a wink, cute and short", 0.5, -11),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "conga":    ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, letters dancing in a line, cozy", 1.2, -10),
+        "flutter":  ("a tiny butterfly fluttering away, soft quick papery wing flaps with a light rising glockenspiel twinkle, delicate and sweet", 0.8, -12, COZY),
+        "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
+        # A wrong trail on Hard and Insane blows a dandelion seed away.
+        "miss":     ("a tiny soft kalimba note with a gentle little downward wobble, a kind 'not that one', muffled and warm, very short, never a buzzer", 0.5, -13),
+        "wish":     ("a soft little breath of air blowing a dandelion seed away, a gentle airy puff with a faint high glockenspiel shimmer drifting off, delicate and cozy", 0.8, -13, COZY),
+        "wish_low": ("two soft low kalimba notes, a gentle careful 'hmm', only a few wishes left, warm and kind, not worried", 0.6, -13),
+        "droop":    ("a soft slow descending felt-mallet marimba slide, sleepy and kind, little tiles sagging gently, warm and muffled, never a buzzer", 0.8, -13),
+        "out_of_wishes": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "wish_back": ("a warm rising pair of soft kalimba plucks with a tiny airy puff, a new dandelion clock growing back, gentle and happy", 0.7, -12),
+        "reveal":   ("a single soft low felt kalimba note with a light paper ribbon unrolling, a word shown gently, calm, not sad", 0.6, -13),
+        "lost":     ("a gentle warm three-note soft felt kalimba phrase slowly descending and resolving softly, a kind 'maybe tomorrow', calm, not sad, never a buzzer", 1.5, -9),
+        # The party.
+        "bloom":    ("a soft little flourish of flowers popping open, several tiny papery pops rising in pitch with a light glockenspiel twinkle, a meadow blooming, sweet", 1.0, -10),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little paper flags at the end, joyful and warm", 2.0, -4),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        # Insane: Night Walk.
+        "lantern":  ("a tiny soft warm glow switching on, a gentle hushed airy 'fwoom' of a little paper lantern being lit with one faint glockenspiel note, very short and quiet", 0.5, -16, COZY),
+        "dawn":     ("a slow soft sunrise swell, warm gentle glockenspiel and kalimba notes rising and brightening with a faint morning birdsong chirp, peaceful and cozy", 2.0, -8),
     },
     # Mushroom Patch: plant a mushroom where one must be, lay a pebble where
     # none can be; nothing is ever revealed by a tap.

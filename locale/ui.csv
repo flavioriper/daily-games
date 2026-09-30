@@ -49,7 +49,7 @@ WT_SHORT,"Trace the words,\nfill the field.","Ache as palavras,\nencha o campo."
 WT_TIP_DRAG,Drag from letter to letter. Never diagonally.,Arraste de letra em letra. Nunca na diagonal.,Arrastra de letra en letra. Nunca en diagonal.
 WT_TIP_ONE_WORD,Every open tile belongs to one word.,Cada casa aberta pertence a uma palavra.,Cada casilla abierta pertenece a una palabra.
 WT_TIP_LENGTHS,The lengths under the field are the only clue.,Os tamanhos embaixo do campo são a única pista.,Las longitudes bajo el campo son la única pista.
-WT_TIP_FREE,A wrong trail costs nothing. Try another.,Um caminho errado não custa nada. Tente outro.,Un camino equivocado no cuesta nada. Prueba otro.
+WT_TIP_FREE,On this level a wrong trail costs nothing.,Neste nível um caminho errado não custa nada.,En este nivel un camino equivocado no cuesta nada.
 WT_FILLED,That is the field filled.,O campo está completo.,El campo está completo.
 WT_ONE_LEFT,One word left.,Falta uma palavra.,Queda una palabra.
 WT_N_LEFT,%d words left.,Faltam %d palavras.,Quedan %d palabras.
@@ -65,8 +65,8 @@ HW_LVL_2,"Any word, every clue used","Qualquer palavra, toda pista usada","Cualq
 HW_LVL_3,Snail Mail: colours a row late,Correio Caracol: cores uma fileira depois,Correo Caracol: colores una fila después
 WT_LVL_0,"4 words, 5 × 5","4 palavras, 5 × 5","4 palabras, 5 × 5"
 WT_LVL_1,"6 words, 6 × 6","6 palavras, 6 × 6","6 palabras, 6 × 6"
-WT_LVL_2,"6 words, 7 × 7","6 palavras, 7 × 7","6 palabras, 7 × 7"
-WT_LVL_3,"6 words, 8 × 8","6 palavras, 8 × 8","6 palabras, 8 × 8"
+WT_LVL_2,"6 words, 7 × 7, 7 wishes","6 palavras, 7 × 7, 7 desejos","6 palabras, 7 × 7, 7 deseos"
+WT_LVL_3,"Night Walk: 8 × 8 in the dark","Passeio noturno: 8 × 8 no escuro","Paseo nocturno: 8 × 8 a oscuras"
 WIN_HEARTS,%d of 3 today,%d de 3 hoje,%d de 3 hoy
 WIN_DAY_KEPT,Day kept · streak %d,Dia garantido · sequência %d,Día conseguido · racha %d
 WIN_STREAK,Streak %d,Sequência %d,Racha %d
