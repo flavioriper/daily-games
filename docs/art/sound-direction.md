@@ -199,3 +199,16 @@ will change, 4% higher each, capped at 1.6. New: `combo`, `confetti`,
 `peek`, `cool`, `bunny`, `oak`, `heart_lost`, `out_of_hearts`,
 `heart_back`, `stamp`, `party`. All 18 came from the fallback key; none
 judged by ear. Details: `docs/agents/boards/tents.md`.
+
+## Light Up's polish (2026-09-30)
+
+`place`, `locked`, `undo` and `check` re-prompted toward paper, felt and
+kalimba, like Shikaku's and Tents': the bonk, the tape rewind and the wooden
+boops read as a scold or a toy. `place` (a paper lantern set down on stone,
+a warm glow) and the new `strike` (a lamp blown out), `chip` and `clear`
+(one tick per stone of a sweep, 4% higher each, capped at 1.6), `moth`,
+`purr` and `wake` (a cross little mew, never a hiss) take the COZY style.
+Also new: `combo`, `confetti`, `cool`, `puff`, `snail`, `heart_lost`,
+`out_of_hearts`, `heart_back`, `stamp`, `party` and `lanterns` (the sky
+lanterns rising). All 21 came from the fallback key; none judged by ear.
+Spec: `docs/superpowers/specs/2026-09-30-lightup-polish-design.md`.
