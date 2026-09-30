@@ -291,16 +291,41 @@ SETS = {
     },
     # One Line: a snail walks every line between posts exactly once.
     "oneline": {
-        "start":    ("a tiny soft bouncy boing and a wooden post tap, a small snail hopping onto a post, very short", 0.5, -6),
-        "lay":      ("a short soft kalimba pluck with a light gliding slide, a line drawn from one post to the next", 0.5, -7),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
         "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a soft quick backward swish with a few small wooden pops, a drawn trail wiped away", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden pops rolling in, little wooden posts appearing", 1.0, -9),
+        # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-oneline-polish-design.md):
+        # start, lay, locked, undo, check and reset re-prompted toward felt,
+        # wood and kalimba, as Shikaku's, Tents' and Light Up's were the same
+        # day -- the boing, the bonk, the tape rewind and the wooden boops
+        # read as a toy or a scold. lay plays on every step, pitched up a
+        # little with the streak, so it is the quietest and roundest.
+        "start":    ("a tiny soft snail settling onto a small wooden post, a gentle felt pat and a tiny warm kalimba note, very short and cozy", 0.5, -9, COZY),
+        "lay":      ("a single small wooden plank set down softly on a mossy path, a gentle hollow wooden tock with a tiny warm kalimba pluck, very short", 0.5, -9, COZY),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        "reset":    ("a soft quick ripple of small wooden planks being lifted and stacked gently, hollow soft wooden taps and a hushed brush, cozy", 1.0, -10, COZY),
+        # Sunny Spells: a sunny line refused, and a dewy one after the sun.
+        "sun":      ("a tiny warm 'phew, too hot' shimmer, a soft rising heat haze sound with one small muted kalimba note, gentle and cute, very short", 0.6, -12),
+        "dew":      ("two tiny soft water droplets falling into a leaf with a gentle bright plink, refreshing and cozy, very short", 0.5, -11, COZY),
+        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -13),
+        # The streak, the gags and the ladybugs.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "mushroom": ("a tiny cute mushroom popping out of soft moss, a soft squishy 'bloop' with a little happy rising boing, gentle and silly", 0.7, -10),
+        "ladybug":  ("a tiny ladybug buzzing in and landing softly, a short delicate wing flutter with a tiny happy glockenspiel ting, cute and light", 0.8, -11, COZY),
+        # Hearts, the wrong step's plank coming back up, and the party.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a plank sagging, never a buzzer", 0.6, -15),
+        "slip":     ("a small wooden plank lifting back up with a soft hollow creak and a gentle slide, warm and quiet, not scary, short", 0.6, -12, COZY),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk by a pond, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
+        "petals":   ("a gentle breeze carrying many soft flower petals, an airy warm whoosh with a light sprinkle of tiny glockenspiel twinkles, dreamy and cozy", 2.0, -8),
     },
     # Nonogram: mosaic tiles laid on a floor by row and column clues.
     "nonogram": {
