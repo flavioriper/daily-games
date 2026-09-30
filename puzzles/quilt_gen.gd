@@ -69,13 +69,17 @@ const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 ## the sizes a patch is drawn from. The sizes are deliberately tight against
 ## the box -- band 0's five patches want 20 to 25 cells of a 25-cell box --
 ## because a region that fills most of its box is a shape with a silhouette,
-## and one that fills a third of it is a blot. Insane's row is provisional,
-## replaced by the bank in this board's own batch.
+## and one that fills a third of it is a blot.
+##
+## Insane's row is **Scrap Basket** (the polish, 2026-09-30): nine patches
+## grow the quilt as on every other band, and `scraps` more are drawn that do
+## not belong to it at all -- see `generate_scraps`. It is dealt from the bank
+## (content/insane/quilt.json) and grown live only when the bank is empty.
 const BANDS := [
 	{"box": 5, "patches": 5, "sizes": [4, 5]},
 	{"box": 6, "patches": 6, "sizes": [4, 5, 6]},
 	{"box": 7, "patches": 8, "sizes": [4, 5, 6]},
-	{"box": 7, "patches": 10, "sizes": [3, 4, 5, 6]},
+	{"box": 7, "patches": 9, "sizes": [3, 4, 5, 6], "scraps": 3},
 ]
 ## A patch's bounding box may not run past this in either direction. Four
 ## is what the rack can hold at a legible size: its two shelves share the
@@ -152,6 +156,8 @@ static func band(difficulty: int) -> Dictionary:
 ## ever walked.
 static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	var d := clampi(difficulty, 0, BANDS.size() - 1)
+	if d == 3:
+		return generate_scraps(rng)
 	var b: Dictionary = BANDS[d]
 	var last := {}
 	var unique := {}
@@ -197,6 +203,272 @@ static func _proved(grown: Dictionary, attempt: int) -> Dictionary:
 		"attempts": attempt,
 		"nodes": int(proof.nodes),
 	}
+
+# ------------------------------------------------------------- Scrap Basket
+
+## How many quilts Scrap Basket grows live before handing back the best one
+## seen. Only the fallback walks this -- the day is dealt from the bank -- so
+## it is sized against the 194 ms gate rather than against a grade; see
+## `generate_scraps` for what it measured.
+const SCRAP_ATTEMPTS := 200
+## How many shapes a scrap draw may throw away (a repeat of a quilt patch or
+## of another scrap, or a shape that fits nowhere on the quilt) before the
+## whole quilt is regrown instead.
+const SCRAP_DRAWS := 60
+
+## Insane: **three scraps too many.** Grow nine patches in the 7x7 box as the
+## other bands do, then draw three scrap shapes -- sizes 3 to 6, no wider or
+## taller than MAX_SPAN, none identical to a quilt patch or to another scrap,
+## and every one able to lie somewhere on the quilt, because a scrap that
+## fits nowhere announces itself -- and shuffle all twelve into one basket
+## order. A scrap's `answer` is -1.
+##
+## The proof is `count_covers`: whether exactly one choice of patches tiles
+## the quilt exactly once. Every other telling of the genre deals exactly the
+## pieces the shape needs, so the sizes always add up and the first step is
+## free; here the set is a question too, and a region that is rigid with the
+## right nine must also refuse every other nine (or eight, or ten).
+##
+## `nodes` grades it as on every band. Live, the first unique board wins and
+## the best of SCRAP_ATTEMPTS is not looked for -- the miner does that
+## looking, off the phone. A board is `unique: false` only when every attempt
+## found a second cover, and it is still a quilt the answer finishes.
+##
+## Measured on this Mac (2026-09-30): 88% of grows wedge or are refused, and
+## about a third of the baskets that survive prove unique, so a live deal
+## takes some twenty grows. Over 100 seeds every one came back unique, in
+## 15.4 ms at the median and 82.4 at worst, against the 194 ms gate.
+static func generate_scraps(rng: RandomNumberGenerator, attempts := SCRAP_ATTEMPTS) -> Dictionary:
+	var b: Dictionary = BANDS[3]
+	var last := {}
+	for attempt in range(1, attempts + 1):
+		var grown := _grow(rng, b)
+		if grown.is_empty():
+			continue
+		var board := _with_scraps(rng, grown, int(b.get("scraps", 3)), attempt)
+		if board.is_empty():
+			continue
+		last = board
+		if bool(board.unique):
+			return board
+	if not last.is_empty():
+		return last
+	# Every grow wedged: the plain band 2 deal is still a quilt to play.
+	return generate(rng, 2)
+
+## The grown quilt with `count` scraps drawn beside it, shuffled and proved,
+## or {} when the scraps could not be drawn.
+static func _with_scraps(rng: RandomNumberGenerator, grown: Dictionary, count: int,
+		attempt: int) -> Dictionary:
+	var cols := int(grown.cols)
+	var rows := int(grown.rows)
+	var region: PackedByteArray = grown.region
+	var taken := {}
+	for offs in grown.shapes:
+		taken[_shape_key(offs)] = true
+	var sizes: Array = BANDS[3].sizes
+	var scraps: Array = []
+	var draws := 0
+	while scraps.size() < count:
+		draws += 1
+		if draws > SCRAP_DRAWS:
+			return {}
+		var offs := _random_shape(rng, int(sizes[rng.randi_range(0, sizes.size() - 1)]))
+		if offs.is_empty():
+			continue
+		var key := _shape_key(offs)
+		if taken.has(key) or not _fits_somewhere(cols, rows, region, offs):
+			continue
+		taken[key] = true
+		scraps.append(offs)
+	# One basket, shuffled: the patches came out of the grow in the order they
+	# were grown and the scraps last, and either order would give them away.
+	var all_shapes: Array = []
+	var all_answer: Array = []
+	for p in grown.shapes.size():
+		all_shapes.append(grown.shapes[p])
+		all_answer.append(int(grown.answer[p]))
+	for offs in scraps:
+		all_shapes.append(offs)
+		all_answer.append(-1)
+	for i in range(all_shapes.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var ts = all_shapes[i]
+		all_shapes[i] = all_shapes[j]
+		all_shapes[j] = ts
+		var ta = all_answer[i]
+		all_answer[i] = all_answer[j]
+		all_answer[j] = ta
+	var proof := count_covers(cols, rows, region, all_shapes, 2)
+	return {
+		"cols": cols, "rows": rows, "region": region,
+		"shapes": all_shapes, "answer": PackedInt32Array(all_answer),
+		"unique": int(proof.count) == 1,
+		"attempts": attempt, "nodes": int(proof.nodes),
+	}
+
+## One polyomino of `size` cells grown in a MAX_SPAN box, in the scan-order
+## normal form `_grow` gives its patches -- so a scrap and a patch of the same
+## shape key the same, which is what lets the draw refuse a repeat.
+static func _random_shape(rng: RandomNumberGenerator, size: int) -> Array:
+	var n := MAX_SPAN
+	var owner := PackedInt32Array()
+	owner.resize(n * n)
+	owner.fill(-1)
+	var cells := _grow_patch(rng, owner, n, 0, rng.randi_range(0, n * n - 1), size)
+	if cells.is_empty():
+		return []
+	cells.sort()
+	var px := n
+	var py := n
+	for idx in cells:
+		px = mini(px, idx % n)
+		py = mini(py, idx / n)
+	var offs: Array[Vector2i] = []
+	for idx in cells:
+		offs.append(Vector2i(idx % n - px, idx / n - py))
+	return offs
+
+## Whether `offs` can lie anywhere wholly on the quilt.
+static func _fits_somewhere(cols: int, rows: int, region: PackedByteArray, offs: Array) -> bool:
+	for origin in cols * rows:
+		var oc := origin % cols
+		var orr := origin / cols
+		var fits := true
+		for off in offs:
+			var c: int = oc + int(off.x)
+			var r: int = orr + int(off.y)
+			if c >= cols or r >= rows or region[r * cols + c] != 1:
+				fits = false
+				break
+		if fits:
+			return true
+	return false
+
+# ------------------------------------------------------------------ the bank
+
+## A board in the bank's plain-JSON shape: the region as one string of 0s and
+## 1s a row, each shape as [x, y] pairs, and the answer's origins (-1 for a
+## scrap). `nodes` rides along for the note.
+static func to_bank(board: Dictionary) -> Dictionary:
+	if board.is_empty() or int(board.get("cols", 0)) <= 0:
+		return {}
+	var cols := int(board.cols)
+	var rows := int(board.rows)
+	var lines: Array = []
+	for r in rows:
+		var line := ""
+		for c in cols:
+			line += "1" if int(board.region[r * cols + c]) == 1 else "0"
+		lines.append(line)
+	var shapes: Array = []
+	for offs in board.shapes:
+		var pairs: Array = []
+		for off in offs:
+			pairs.append([int(off.x), int(off.y)])
+		shapes.append(pairs)
+	return {"cols": cols, "rows": rows, "region": lines, "shapes": shapes,
+		"answer": Array(board.answer), "nodes": int(board.get("nodes", 0))}
+
+## A banked board back in the generator's own shape, **checked the way the
+## phone can afford**: every shape is a normalised polyomino inside MAX_SPAN,
+## the answer lays every non-scrap patch wholly on the quilt with no two
+## overlapping and every quilt cell covered, and a scrap is marked by -1
+## alone, and no scrap has a quilt patch's shape. Uniqueness is the miner's proof and
+## is trusted. {} when any of it fails (a value of the wrong type included), and the board
+## deals a live one instead.
+static func from_bank(entry: Dictionary) -> Dictionary:
+	# Every value is type-checked before it is converted: a bank is data from
+	# disk, and int(null) or String(7) is a script error, not a refusal.
+	if entry.is_empty() or not (entry.get("region") is Array) \
+			or not (entry.get("shapes") is Array) or not (entry.get("answer") is Array) \
+			or not _is_num(entry.get("cols")) or not _is_num(entry.get("rows")):
+		return {}
+	var cols := int(entry.get("cols"))
+	var rows := int(entry.get("rows"))
+	if cols <= 0 or rows <= 0 or cols * rows > MASK_CELLS or entry.region.size() != rows:
+		return {}
+	var region := PackedByteArray()
+	region.resize(cols * rows)
+	var cells := 0
+	for r in rows:
+		if not (entry.region[r] is String):
+			return {}
+		var line: String = entry.region[r]
+		if line.length() != cols:
+			return {}
+		for c in cols:
+			if line[c] == "1":
+				region[r * cols + c] = 1
+				cells += 1
+			elif line[c] != "0":
+				return {}
+	var shapes: Array = []
+	for pairs in entry.shapes:
+		if not (pairs is Array) or pairs.is_empty():
+			return {}
+		var offs: Array[Vector2i] = []
+		var lox := 99
+		var loy := 99
+		for pair in pairs:
+			if not (pair is Array) or pair.size() != 2 \
+					or not _is_num(pair[0]) or not _is_num(pair[1]):
+				return {}
+			var off := Vector2i(int(pair[0]), int(pair[1]))
+			if off.x < 0 or off.y < 0 or off.x >= MAX_SPAN or off.y >= MAX_SPAN or offs.has(off):
+				return {}
+			lox = mini(lox, off.x)
+			loy = mini(loy, off.y)
+			offs.append(off)
+		if lox != 0 or loy != 0:
+			return {}
+		offs.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+			return a.y < b.y or (a.y == b.y and a.x < b.x))
+		shapes.append(offs)
+	var answer := PackedInt32Array()
+	for v in entry.answer:
+		if not _is_num(v):
+			return {}
+		answer.append(int(v))
+	if answer.size() != shapes.size():
+		return {}
+	# A scrap shaped like a quilt patch is not a scrap: the two swap, and the
+	# quilt has a second tiling the proof never counted.
+	var quilt_keys := {}
+	for p in shapes.size():
+		if int(answer[p]) >= 0:
+			quilt_keys[_shape_key(shapes[p])] = true
+	for p in shapes.size():
+		if int(answer[p]) < 0 and quilt_keys.has(_shape_key(shapes[p])):
+			return {}
+	var cover := PackedByteArray()
+	cover.resize(cols * rows)
+	var laid := 0
+	for p in shapes.size():
+		var origin := int(answer[p])
+		if origin < 0:
+			continue
+		if origin >= cols * rows:
+			return {}
+		for off in shapes[p]:
+			var c: int = origin % cols + off.x
+			var r: int = origin / cols + off.y
+			if c >= cols or r >= rows:
+				return {}
+			var idx := r * cols + c
+			if region[idx] != 1 or cover[idx] == 1:
+				return {}
+			cover[idx] = 1
+			laid += 1
+	if laid != cells:
+		return {}
+	return {"cols": cols, "rows": rows, "region": region, "shapes": shapes,
+		"answer": answer, "unique": true, "attempts": 0,
+		"nodes": int(entry.get("nodes", 0)) if _is_num(entry.get("nodes", 0)) else 0}
+
+## Whether a bank value is a number (JSON reads every number as a float).
+static func _is_num(v: Variant) -> bool:
+	return v is int or v is float
 
 # ------------------------------------------------------------------ the grow
 
@@ -480,6 +752,140 @@ static func count_tilings(cols: int, rows: int, region: PackedByteArray, shapes:
 	var state := {"count": 0, "nodes": 0, "first": PackedInt32Array()}
 	_tile(ctx, 0, left, used, assign, cap, state)
 	return state
+
+## How many ways *some* of `shapes` cover `region` exactly, up to `cap`: an
+## exact cover in which a patch may be left out. It is `count_tilings` under
+## the name that says so -- that search already stops the moment the region
+## is covered, whatever is left over, and on a board whose patches' cells sum
+## to the region's the two questions are the same. Scrap Basket's proof and
+## the state's `finishable` ask this one, because for them a patch left over
+## is the point. `first` holds -1 for every patch the cover left out.
+static func count_covers(cols: int, rows: int, region: PackedByteArray, shapes: Array,
+		cap: int) -> Dictionary:
+	return count_tilings(cols, rows, region, shapes, cap)
+
+## Whether *some* of `shapes` cover `region` exactly -- `count_covers` asked
+## only for yes or no, and asked fast, because the board asks it after every
+## drop (the state's `finishable`). The proof's search is kept as it is,
+## since its node count is the grade every band and the bank are cut by; this
+## one is free to be clever:
+##
+## - it branches on the uncovered cell with the **fewest** placements left
+##   rather than the first in scan order, so a pocket nothing fits is found
+##   at the node it becomes one instead of after the search has walked to it;
+## - it remembers every (covered cells, patches left) it has seen fail, so a
+##   dead end reached by two orders of the same patches is walked once.
+##
+## See the state's `finishable` for what it measured.
+static func can_cover(cols: int, rows: int, region: PackedByteArray, shapes: Array) -> bool:
+	var total := cols * rows
+	if cols <= 0 or rows <= 0 or total > MASK_CELLS:
+		return false
+	var full := 0
+	var cells := PackedInt32Array()
+	for idx in total:
+		if region[idx] == 1:
+			full |= 1 << idx
+			cells.append(idx)
+	if full == 0:
+		return true
+	var group_id := {}
+	var counts := PackedInt32Array()
+	var offs_of: Array = []
+	for offs in shapes:
+		var key := _shape_key(offs)
+		if not group_id.has(key):
+			group_id[key] = counts.size()
+			counts.append(0)
+			offs_of.append(offs)
+		counts[int(group_id[key])] += 1
+	# Per cell: every placement covering it, as a group and a mask side by
+	# side. Plain Arrays while they fill, packed once they are done, as in
+	# `count_tilings`.
+	if counts.size() > 15:
+		# Past what the memo's code can pack: the proof's own search answers.
+		return int(count_covers(cols, rows, region, shapes, 1).count) >= 1
+	var opt_g: Array = []
+	var opt_m: Array = []
+	for _i in total:
+		opt_g.append(PackedInt32Array())
+		opt_m.append(PackedInt64Array())
+	var raw_g: Array = []
+	var raw_m: Array = []
+	for _i in total:
+		raw_g.append([])
+		raw_m.append([])
+	for g in offs_of.size():
+		var offs: Array = offs_of[g]
+		for origin in total:
+			var oc := origin % cols
+			var orr := origin / cols
+			var mask := 0
+			var fits := true
+			for off in offs:
+				var c: int = oc + int(off.x)
+				var r: int = orr + int(off.y)
+				if c >= cols or r >= rows or region[r * cols + c] != 1:
+					fits = false
+					break
+				mask |= 1 << (r * cols + c)
+			if not fits:
+				continue
+			for off in offs:
+				var idx: int = (orr + int(off.y)) * cols + oc + int(off.x)
+				raw_g[idx].append(g)
+				raw_m[idx].append(mask)
+	for idx in total:
+		opt_g[idx] = PackedInt32Array(raw_g[idx])
+		opt_m[idx] = PackedInt64Array(raw_m[idx])
+	# A group's count is at most the twelve patches of a basket, so four bits
+	# a group packs "which patches are left" into one int for the memo.
+	var code := 0
+	for g in counts.size():
+		code |= counts[g] << (4 * g)
+	var ctx := {"full": full, "cells": cells, "g": opt_g, "m": opt_m, "dead": {}}
+	return _cover(ctx, 0, counts, code)
+
+static func _cover(ctx: Dictionary, covered: int, counts: PackedInt32Array, code: int) -> bool:
+	var full: int = ctx.full
+	if covered == full:
+		return true
+	var dead: Dictionary = ctx.dead
+	var seen: Dictionary = dead.get(covered, {})
+	if seen.has(code):
+		return false
+	var cells: PackedInt32Array = ctx.cells
+	var best := -1
+	var fewest := 1 << 30
+	for idx in cells:
+		if (covered >> idx) & 1 == 1:
+			continue
+		var gs: PackedInt32Array = ctx.g[idx]
+		var ms: PackedInt64Array = ctx.m[idx]
+		var live := 0
+		for k in gs.size():
+			if counts[gs[k]] > 0 and covered & ms[k] == 0:
+				live += 1
+		if live < fewest:
+			fewest = live
+			best = idx
+			if live <= 1:
+				break
+	if fewest > 0:
+		var gs: PackedInt32Array = ctx.g[best]
+		var ms: PackedInt64Array = ctx.m[best]
+		for k in gs.size():
+			var g := gs[k]
+			if counts[g] <= 0 or covered & ms[k] != 0:
+				continue
+			counts[g] -= 1
+			var found := _cover(ctx, covered | ms[k], counts, code - (1 << (4 * g)))
+			counts[g] += 1
+			if found:
+				return true
+	seen[code] = true
+	dead[covered] = seen
+	return false
 
 ## The canonical key of a shape: its offsets in scan order, which `_grow`
 ## already put them in.

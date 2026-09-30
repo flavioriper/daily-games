@@ -325,7 +325,7 @@ static func _test_hint_displaces_and_undo_restores(t) -> void:
 	t.eq(int(st.at[0]), 0, "the hinted patch is sewn on")
 	t.eq(int(st.at[1]), -1, "and the displaced one is in the rack")
 	t.eq(int(st.locked[0]), 1, "the hinted patch is pinned")
-	t.eq(st.hints_left(), State.HINTS - 1, "and the hint is spent")
+	t.eq(st.hints_left(), State.hints_for(0) - 1, "and the hint is spent")
 	t.eq(st.lift(0), State.PINNED, "a pinned patch will not come off")
 	t.eq(st.place(0, 2), State.PINNED, "nor move")
 	t.eq(st.take(0), State.PINNED, "nor be picked up")
@@ -337,7 +337,7 @@ static func _test_hint_displaces_and_undo_restores(t) -> void:
 	t.eq(int(st.at[0]), -1, "undo takes the hinted patch back off")
 	t.eq(int(st.at[1]), 1, "and brings the displaced one home to where it was")
 	t.eq(int(st.locked[0]), 0, "the pin goes with it")
-	t.eq(st.hints_left(), State.HINTS - 1, "but the hint stays spent")
+	t.eq(st.hints_left(), State.hints_for(0) - 1, "but the hint stays spent")
 
 ## The same on a real board, over a few seeds: a hint always sews a patch
 ## where the answer has it, and a board hinted to the end is solved.
@@ -349,7 +349,7 @@ static func _test_hint_on_a_built_board(t) -> void:
 		t.eq(int(st.at[int(h.patch)]), int(st.answer[int(h.patch)]),
 			"seed %d: the hint sews the answer's patch" % s)
 		t.eq(h.displaced, [], "seed %d: an empty quilt displaces nothing" % s)
-		t.eq(st.hints_left(), State.HINTS - 1, "seed %d: one hint spent" % s)
+		t.eq(st.hints_left(), State.hints_for(0) - 1, "seed %d: one hint spent" % s)
 		# Spend the rest, then finish by hand; a hinted board still solves.
 		while st.hints_left() > 0:
 			st.hint()

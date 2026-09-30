@@ -609,16 +609,46 @@ SETS = {
         "lanterns_glow": ("a warm dreamy swell of soft celesta and glockenspiel notes rising and glowing, paper lanterns lit bright over night water, magical and cozy", 1.8, -9),
     },
     # Quilt: cloth patches dragged off a rack onto a backing; a patch that
-    # lands sews a running stitch along its seams.
+    # lands sews a running stitch along its seams. The first set was
+    # re-prompted 2026-09-30 (the polish) toward felt, cotton, a wooden spool,
+    # soft pins and kalimba: the tape-rewind undo and the cloth "bonk" read as
+    # a toy or a scold, as they did on Bridges and Sudoku. Hard and Insane
+    # judge a patch as it lands: a wrong one's thread snaps and it flutters
+    # home. Insane is Scrap Basket: three scraps that don't belong.
     "quilt": {
-        "lift":     ("a tiny soft fabric rustle, a small cloth patch picked up, very short and quiet", 0.5, -12),
-        "place":    ("a soft muffled cloth pat followed by a few quick tiny soft needle-and-thread stitch ticks, a patch sewn on", 0.7, -6),
-        "refused":  ("a tiny soft worried wobble, a muffled cloth 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft quick ripple of fabric rustles and small muffled pats, cloth patches gathered back onto a rack", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny muffled cloth pats and wooden pops, quilt patches appearing on a rack", 1.0, -9),
+        "lift":     ("a tiny soft cotton fabric rustle, a small felt patch picked up off a felt mat, hushed, very short and quiet", 0.5, -13, COZY),
+        "place":    ("a soft muffled felt patch patted down onto a cotton quilt, followed by a few quick tiny soft needle-and-thread stitch pulls, a patch sewn on, cozy and hushed", 0.7, -9, COZY),
+        "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft cotton rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny soft fabric rustle, cozy and kind", 1.0, -8),
+        "reset":    ("a soft quick ripple of cotton patches being gathered back onto a felt mat, gentle fabric rustles and a little wooden spool rolling, hushed and cozy", 1.0, -11, COZY),
+        "enter":    ("a soft airy cascade of tiny muffled felt pats and a small wooden spool tap, cloth patches laid out on a felt mat, cozy and hushed", 1.0, -11, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        # The rack patch tapped, and the dead end named (Easy and Medium).
+        "wiggle":   ("a tiny playful soft cloth wiggle, a quick little felt shuffle side to side with a soft muffled wooden spool tap, cute, very short", 0.5, -13, COZY),
+        "stuck":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'hmm, that gap won't fill', kind and curious, warm and round, never a buzzer", 1.0, -16, STYLE, "fall"),
+        # The streak and the gags.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "button":   ("a little button sewn onto cloth, a quick soft thread pull and a tiny cute round wooden pop, cheerful, very short", 0.6, -11, CARTOON),
+        "boing":    ("a tiny soft rubbery cartoon boing, a little cloth patch squashing and hopping happily on a quilt, cute and silly, gentle", 0.7, -13, CARTOON),
+        # A row or column of the quilt finished.
+        "row":      ("a quick soft sparkle running along in a line, a light rising glissando of tiny glockenspiel twinkles over a soft felt kalimba note, warm and happy", 0.9, -11),
+        # Hearts, the wrong patch snipped off and fluttering home, the quilt at dusk.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
+        "snip":     ("a single soft gentle scissors snip through cotton thread, a thread snapping, quiet and close, very short", 0.5, -13, COZY),
+        "flutter":  ("a small cloth patch peeling up and fluttering through the air, soft quick cotton fabric flaps, landing with a gentle muffled pat, a bit funny", 0.8, -13, COZY),
+        "ruled":    ("a very soft short chalk mark on fabric, a quiet little tailor's chalk scratch with a tiny low kalimba note, a gentle 'we already know that one', kind", 0.5, -14),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn by a warm fire, the quilters nodding off, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        # The party.
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of paper at the end, joyful and warm", 2.0, -4),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
+        "purr":     ("a sleepy little cat curling up on a soft quilt and purring briefly, cozy, soft and warm, short", 1.0, -10, COZY),
+        # Insane: Scrap Basket. The three scraps strung up as bunting at the solve.
+        "bunting":  ("little cloth flags strung up on a line and fluttering in a gentle breeze, soft fabric flaps with a cheerful rising three-note kalimba, happy and cozy", 1.3, -11, COZY),
     },
     # Paper Planes: tap a folded paper dart and it launches down its lane.
     "planes": {

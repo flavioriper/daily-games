@@ -502,10 +502,8 @@ BR_CHECK_N,%d runs are in the way.,%d pontes estão atrapalhando.,%d puentes est
 BR_CHECK_OK,Nothing you have laid is wrong.,Nada do que você colocou está errado.,Nada de lo que pusiste está mal.
 BR_WIN,"One network, every islet on it.","Uma rede só, com todas as ilhotas.","Una sola red, con todos los islotes."
 BR_SHARE,🌉 %dx%d · %d islets · %d planks,🌉 %dx%d · %d ilhotas · %d tábuas,🌉 %dx%d · %d islotes · %d tablas
-QL_TIP_DRAG,Drag a patch onto the quilt.,Arraste um retalho para a colcha.,Arrastra un retazo a la colcha.
-QL_TIP_EDGE,A patch may not hang off the edge.,Um retalho não pode sair pela borda.,Un retazo no puede salirse del borde.
-QL_TIP_SHARE,Two patches never share a cell.,Dois retalhos nunca dividem uma casa.,Dos retazos nunca comparten una casilla.
-QL_TIP_ALL,Every patch goes on. That is the whole of it.,Todos os retalhos entram. É só isso.,Todos los retazos entran. Eso es todo.
+QL_TIP_DRAG,Drag a patch from the rack up onto the quilt.,Arraste um retalho da prateleira para cima da colcha.,Arrastra un retazo del estante hasta la colcha.
+QL_TIP_ALL,Cover every square of the quilt. Every patch fits somewhere.,Cubra todos os quadradinhos da colcha. Todo retalho cabe em algum lugar.,Cubre todos los cuadritos de la colcha. Todo retazo cabe en algún lugar.
 QL_HINTED_FAST,That one was sewn on for you.,Esse foi costurado para você.,Ese lo cosimos por ti.
 QL_REFUSE_OVER,That cell already has a patch on it.,Essa casa já tem um retalho.,Esa casilla ya tiene un retazo.
 QL_REFUSE_OFF,Every square of a patch has to be on the quilt.,Cada quadradinho do retalho tem que ficar na colcha.,Cada cuadrito del retazo tiene que quedar en la colcha.
@@ -515,7 +513,19 @@ QL_N_LEFT,%d patches left.,Faltam %d retalhos.,Quedan %d retazos.
 QL_TAKEN_BACK,Taken back.,Desfeito.,Deshecho.
 QL_HINT,That one goes here.,Esse vai aqui.,Ese va aquí.
 QL_CLEAN,A clean quilt.,Colcha limpa.,Colcha limpia.
-QL_RULES,"Every patch on the rack goes onto the quilt. Drag one up and it snaps to the cells: it must lie wholly on the backing, with no corner hanging off, and it may not cover a patch already sewn on. Patches never turn -- each one goes on the way it is drawn. Drag a patch that is already on to take it off again. The patches hold exactly as many cells as the quilt does, so when the last one is sewn on the quilt is whole and the board is done; there is nothing to check along the way, only a fit to find.","Todos os retalhos da prateleira vão para a colcha. Arraste um para cima e ele se encaixa nas casas: precisa ficar inteiro sobre o forro, sem nenhum canto para fora, e não pode cobrir um retalho já costurado. Os retalhos nunca giram -- cada um entra do jeito que está desenhado. Arraste um retalho que já está na colcha para tirá-lo de novo. Os retalhos somam exatamente as casas da colcha, então, quando o último é costurado, a colcha fica completa e o tabuleiro termina; não há nada para conferir no caminho, só um encaixe para achar.","Todos los retazos del estante van a la colcha. Arrastra uno hacia arriba y se encaja en las casillas: debe quedar entero sobre el forro, sin ninguna esquina afuera, y no puede tapar un retazo ya cosido. Los retazos nunca giran -- cada uno entra tal como está dibujado. Arrastra un retazo que ya está en la colcha para quitarlo otra vez. Los retazos suman exactamente las casillas de la colcha, así que cuando coses el último la colcha queda completa y el tablero termina; no hay nada que comprobar por el camino, solo un encaje que encontrar."
+QL_RULES,"Cover the whole quilt with the patches from the rack.
+
+Drag a patch up onto the pale backing: an outline under it shows where it will land, and it snaps to the squares when you let go. Patches never turn -- each one goes on exactly as it is drawn. A patch has to lie wholly on the backing and can't cover another patch.
+
+The quilt is done when every square is covered.","Cubra a colcha inteira com os retalhos da prateleira.
+
+Arraste um retalho para cima do forro claro: um contorno embaixo mostra onde ele vai cair, e ele se encaixa nos quadradinhos quando você solta. Os retalhos nunca giram -- cada um entra do jeito que está desenhado. Um retalho precisa ficar inteiro sobre o forro e não pode cobrir outro retalho.
+
+A colcha fica pronta quando todos os quadradinhos estão cobertos.","Cubre toda la colcha con los retazos del estante.
+
+Arrastra un retazo sobre el forro claro: un contorno debajo muestra dónde va a caer, y se encaja en los cuadritos al soltarlo. Los retazos nunca giran -- cada uno entra tal como está dibujado. Un retazo tiene que quedar entero sobre el forro y no puede tapar otro retazo.
+
+La colcha está lista cuando todos los cuadritos están cubiertos."
 PP_TIP_TAP,Tap a plane and it flies out the way it points.,Toque num avião e ele sai voando para onde aponta.,Toca un avión y sale volando hacia donde apunta.
 PP_TIP_LANE,Its lane has to be clear all the way off the board.,O caminho dele tem que estar livre até sair do tabuleiro.,Su camino tiene que estar libre hasta salir del tablero.
 PP_TIP_SAFE,"Nothing here can go wrong. Any plane that can go, can go.","Aqui nada dá errado. Todo avião que pode sair, pode sair.","Aquí nada sale mal. Todo avión que puede salir, puede salir."
@@ -694,8 +704,39 @@ QL_SHORT,Fit every patch.\nLeave no gap.,"Cada retalho no\nlugar, sem vãos.",En
 QL_MOTTO,Make the blanket whole,Complete a colcha,Completa la colcha
 QL_LVL_0,"5 patches, 5 × 5","5 retalhos, 5 × 5","5 retazos, 5 × 5"
 QL_LVL_1,"6 patches, 6 × 6","6 retalhos, 6 × 6","6 retazos, 6 × 6"
-QL_LVL_2,"8 patches, 7 × 7","8 retalhos, 7 × 7","8 retazos, 7 × 7"
-QL_LVL_3,"10 patches, 7 × 7","10 retalhos, 7 × 7","10 retazos, 7 × 7"
+QL_LVL_2,"8 patches, three hearts","8 retalhos, três corações","8 retazos, tres corazones"
+QL_LVL_3,"Scrap Basket: 12 patches, 3 don't belong","Cesto de Retalhos: 12 retalhos, 3 sobram","Cesto de Retazos: 12 retazos, 3 sobran"
+QL_RULES_SAFE,"Nothing here can be lost: drag a patch off the quilt to take it back, and try again.",Aqui nada se perde: arraste um retalho para fora da colcha para tirá-lo e tente de novo.,Aquí nada se pierde: arrastra un retazo fuera de la colcha para quitarlo y vuelve a intentarlo.
+QL_RULES_HEARTS,"You have %d hearts. Every patch is judged as it lands: a right one stays for good, a wrong one costs a heart, pops its stitches and flutters back to the rack, and that spot is chalked off for it.","Você tem %d corações. Cada retalho é julgado ao pousar: um certo fica de vez, um errado custa um coração, solta os pontos e volta voando para a prateleira, e aquele lugar fica riscado de giz para ele.","Tienes %d corazones. Cada retazo se juzga al posarse: uno correcto se queda para siempre, uno equivocado cuesta un corazón, suelta sus puntadas y vuelve volando al estante, y ese lugar queda marcado con tiza para él."
+QL_RULES_SCRAPS,"Scrap Basket: the basket holds three scraps too many. They look just like the others, but they don't belong on this quilt -- find the nine that cover it. Count the squares: the label on the quilt says how many are still bare.","Cesto de Retalhos: o cesto tem três retalhos a mais. Eles parecem iguais aos outros, mas não são desta colcha -- descubra os nove que a cobrem. Conte os quadradinhos: a etiqueta na colcha diz quantos ainda faltam.","Cesto de Retazos: el cesto tiene tres retazos de más. Se ven igual que los otros, pero no son de esta colcha -- encuentra los nueve que la cubren. Cuenta los cuadritos: la etiqueta de la colcha dice cuántos quedan sin cubrir."
+QL_TIP_TURN,Patches never turn: each one goes on just as it's drawn.,Os retalhos nunca giram: cada um entra do jeito que está desenhado.,Los retazos nunca giran: cada uno entra tal como está dibujado.
+QL_TIP_GHOST,The outline under a held patch shows where it will land.,O contorno embaixo do retalho mostra onde ele vai cair.,El contorno debajo del retazo muestra dónde va a caer.
+QL_TIP_OFF,Drag a patch off the quilt to take it back.,Arraste um retalho para fora da colcha para tirá-lo.,Arrastra un retazo fuera de la colcha para quitarlo.
+QL_TIP_HEARTS,Every patch is judged as it lands. A wrong one costs a heart.,Cada retalho é julgado ao pousar. Um errado custa um coração.,Cada retazo se juzga al posarse. Uno equivocado cuesta un corazón.
+QL_TIP_SCRAPS,Three patches in the basket don't belong on this quilt.,Três retalhos do cesto não são desta colcha.,Tres retazos del cesto no son de esta colcha.
+QL_TIP_SCRAPS_2,Count the squares: the scraps are whatever the quilt doesn't need.,Conte os quadradinhos: os retalhos a mais são o que a colcha não precisa.,Cuenta los cuadritos: los retazos de más son lo que la colcha no necesita.
+QL_TAP,Drag it up onto the quilt. Patches never turn.,Arraste-o para cima da colcha. Os retalhos nunca giram.,Arrástralo hasta la colcha. Los retazos nunca giran.
+QL_STUCK,"Hmm, what's left can't cover that gap any more. Take a patch back.","Hmm, o que sobrou não consegue mais cobrir esse vão. Tire um retalho.","Hmm, lo que queda ya no puede cubrir ese hueco. Quita un retazo."
+QL_STAYS,That one's right. It stays.,Esse está certo. Ele fica.,Ese está bien. Se queda.
+QL_RULED,You already tried that one there.,Você já tentou esse aí.,Ya probaste ese ahí.
+QL_WRONG,"Oh, that patch doesn't go there. It cost a heart.","Ops, esse retalho não vai aí. Custou um coração.","Uy, ese retazo no va ahí. Costó un corazón."
+QL_WRONG_SCRAP,"Oh, that one's a scrap -- it doesn't go there. It cost a heart.","Ops, esse é um retalho a mais -- não vai aí. Custou um coração.","Uy, ese es un retazo de más -- no va ahí. Costó un corazón."
+QL_OUT,The quilters have nodded off.,As costureiras cochilaram.,Las costureras se quedaron dormidas.
+QL_OUT_BODY,"Out of hearts. Start this quilt again from a bare backing, or watch a short video for one more heart.",Sem corações. Comece esta colcha de novo do forro vazio ou veja um vídeo curto por mais um coração.,Sin corazones. Empieza esta colcha otra vez desde el forro vacío o mira un video corto para un corazón más.
+QL_OUT_REST,Out of hearts. Start this quilt again from a bare backing whenever you like.,Sem corações. Comece esta colcha de novo do forro vazio quando quiser.,Sin corazones. Empieza esta colcha otra vez desde el forro vacío cuando quieras.
+QL_SCRAP_SEAL,Scraps,Retalhos,Retazos
+QL_CHEER_0,Quilt wisdom: a quilt is just a hug that learned to lie down.,Sabedoria da colcha: uma colcha é só um abraço que aprendeu a deitar.,Sabiduría de colcha: una colcha es solo un abrazo que aprendió a acostarse.
+QL_CHEER_1,"Quilt wisdom: measure twice, cut once, nap immediately.","Sabedoria da colcha: meça duas vezes, corte uma, cochile em seguida.","Sabiduría de colcha: mide dos veces, corta una, duerme la siesta enseguida."
+QL_CHEER_2,Quilt wisdom: every scrap dreams of being a blanket.,Sabedoria da colcha: todo retalho sonha em ser um cobertor.,Sabiduría de colcha: todo retazo sueña con ser una manta.
+QL_CHEER_3,Quilt wisdom: the cat approves. The cat always approves of warm things.,Sabedoria da colcha: o gato aprovou. O gato sempre aprova coisas quentinhas.,Sabiduría de colcha: el gato lo aprueba. El gato siempre aprueba lo calentito.
+QL_CHEER_4,"Quilt wisdom: a needle is a very small, very brave sword.",Sabedoria da colcha: uma agulha é uma espada bem pequena e bem corajosa.,Sabiduría de colcha: una aguja es una espada muy pequeña y muy valiente.
+QL_CHEER_5,Quilt wisdom: there are no gaps. Only future pillows.,Sabedoria da colcha: não existem buracos. Só futuros travesseiros.,Sabiduría de colcha: no hay huecos. Solo futuras almohadas.
+QL_CHEER_6,Quilt wisdom: thread is just string with ambition.,Sabedoria da colcha: linha é só um barbante com ambição.,Sabiduría de colcha: el hilo es solo un cordel con ambición.
+QL_CHEER_7,Quilt wisdom: patches don't turn. They know who they are.,Sabedoria da colcha: retalhos não giram. Eles sabem quem são.,Sabiduría de colcha: los retazos no giran. Saben quiénes son.
+QL_CHEER_8,Quilt wisdom: the best stitch is the one you don't notice until bedtime.,Sabedoria da colcha: o melhor ponto é aquele que você só nota na hora de dormir.,Sabiduría de colcha: la mejor puntada es la que no notas hasta la hora de dormir.
+QL_CHEER_9,Quilt wisdom: a button is a tiny moon for your blanket.,Sabedoria da colcha: um botão é uma luazinha para o seu cobertor.,Sabiduría de colcha: un botón es una lunita para tu manta.
+QL_CHEER_10,Quilt wisdom: squares are just circles that sat up straight.,Sabedoria da colcha: quadrados são só círculos que sentaram direito.,Sabiduría de colcha: los cuadrados son solo círculos que se sentaron derechos.
+QL_CHEER_11,"Quilt wisdom: when in doubt, add another blanket.","Sabedoria da colcha: na dúvida, mais um cobertor.","Sabiduría de colcha: ante la duda, otra manta más."
 FL_BLURB,Turn the wire until every lantern is lit.,Gire o fio até acender todas as lanternas.,Gira el cable hasta encender todos los faroles.
 FL_SHORT,"Turn the wire,\nlight the garden.","Gire o fio,\nacenda o jardim.","Gira el cable,\nilumina el jardín."
 FL_MOTTO,Wake every lantern,Acenda cada lanterna,Enciende cada farol
@@ -784,7 +825,7 @@ HTP_LESSON_WT,Drag through neighbouring letters to make a word,Arraste por letra
 HTP_LESSON_MP,Mark the cells that hide mushrooms,Marque as casas que escondem cogumelos,Marca las casillas que esconden hongos
 HTP_LESSON_SD,"Use each number once in every row, column and box","Use cada número uma vez em cada linha, coluna e bloco","Usa cada número una vez en cada fila, columna y bloque"
 HTP_LESSON_BR,Each number is how many planks touch it,Cada número é quantas tábuas tocam nele,Cada número es cuántas tablas lo tocan
-HTP_LESSON_QL,Join matching patches into the shown shape,Junte os retalhos na forma mostrada,Junta los retazos en la forma indicada
+HTP_LESSON_QL,Drag every patch on until the quilt is covered,Arraste os retalhos até cobrir a colcha toda,Arrastra los retazos hasta cubrir la colcha
 HTP_LESSON_PP,Draw each plane from its head in a straight line,"Trace cada avião a partir da ponta, em linha reta","Traza cada avión desde su punta, en línea recta"
 HTP_LESSON_RG,Rotate rings until every colour lines up,Gire os anéis até alinhar cada cor,Gira los aros hasta alinear cada color
 HTP_LESSON_ANY,Make one clear move at a time,Faça uma jogada clara de cada vez,Haz una jugada clara a la vez

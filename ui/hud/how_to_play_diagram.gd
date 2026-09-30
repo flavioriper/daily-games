@@ -17,6 +17,7 @@ const CourtLantern = preload("res://ui/faces/court_lantern.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
+const Cloth = preload("res://ui/faces/patch_cloth.gd")
 
 const GRID := 4
 const GAP := 10.0
@@ -122,8 +123,9 @@ func _animate() -> void:
 		_progress = 1.0
 		return
 	_loop = create_tween().set_loops()
-	# Bridges lays three planks in its one loop, so it takes its time.
-	_loop.tween_property(self, "_progress", 1.0, 2.4 if puzzle_id == "bridges" else 0.9).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Bridges lays three planks and Quilt drags two patches in one loop, so
+	# they take their time.
+	_loop.tween_property(self, "_progress", 1.0, 2.4 if puzzle_id in ["bridges", "quilt"] else 0.9).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(1.35)
 	_loop.tween_property(self, "_progress", 0.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(0.55)
@@ -133,6 +135,9 @@ func _draw() -> void:
 	var cell := (board.size.x - GAP * (GRID - 1)) / GRID
 	if puzzle_id == "bridges":
 		_draw_bridges(board, cell)
+		return
+	if puzzle_id == "quilt":
+		_draw_quilt(board, cell)
 		return
 	for r in GRID:
 		for c in GRID:
@@ -180,11 +185,6 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 		"sudoku":
 			for i in 4: _draw_number(str(i + 1), _centre(board, cell, i, i), Pal.TEXT)
 			if p > 0.45: _draw_number("3", _centre(board, cell, 2, 0), Pal.ACCENT)
-		"quilt":
-			for i in 4:
-				var fill: Color = [Pal.BERRY_TILE, Pal.SUN_TILE, Pal.LEAF_TILE, Pal.MOON_TILE][i]
-				draw_rect(Rect2(_cell_at(board, cell, i, 1) + Vector2(7, 7), Vector2(cell - 14, cell - 14)), fill, true)
-			if p > 0.5: _draw_outline(Rect2(_cell_at(board, cell, 0, 1), Vector2(cell * 4.0 + GAP * 3.0, cell)), Pal.GOOD, 6.0)
 		"planes":
 			var from := _centre(board, cell, 0, 3)
 			var to := _centre(board, cell, 3, 0)
@@ -253,6 +253,78 @@ func _draw_bridges(board: Rect2, cell: float) -> void:
 		draw_circle(tip + Vector2(4.0, 8.0), cell * 0.2, Color(Pal.TEXT, 0.16))
 		draw_circle(tip, cell * 0.17, Color(Pal.SURFACE, 0.95))
 		draw_arc(tip, cell * 0.17, 0.0, TAU, 24, Pal.LINE, 3.0, true)
+
+## Quilt's lesson on its own little quilt (the polish, 2026-09-30; the first
+## cut was four squares in a row captioned "join matching patches", which is
+## not the game). A pale 3 x 2 backing, and under it a felt rack holding two
+## L-shaped patches. A finger drags the first one up -- it grows to the
+## quilt's size, its landing outline shows as it nears, and it snaps on --
+## then the second, and the covered quilt glows green: drag, snap, cover.
+func _draw_quilt(board: Rect2, cell: float) -> void:
+	var p := _progress
+	var q := cell * 0.92
+	var back_at := board.position + Vector2(board.size.x * 0.5 - q * 1.5, cell * 0.2)
+	var rack := Rect2(board.position + Vector2(0.0, board.size.y * 0.66), Vector2(board.size.x, board.size.y * 0.34))
+	var small := q * 0.55
+	var shapes := [[Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)],
+		[Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]]
+	var homes := [back_at, back_at + Vector2(q, 0.0)]
+	var bays := [rack.position + Vector2(rack.size.x * 0.28 - small, rack.size.y * 0.5 - small),
+		rack.position + Vector2(rack.size.x * 0.72 - small, rack.size.y * 0.5 - small)]
+	# The felt rack, and the backing with its faint rules.
+	draw_rect(rack, Color("e4e2c6"), true)
+	draw_rect(rack.grow(-8.0), Color("f7f3e4"), false, 2.5)
+	var cover := [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)]
+	var done := p >= 0.97
+	_quilt_shape(cover, back_at, q, Pal.QUILT_BACK, Pal.LINE)
+	for c in 3:
+		for r in 2:
+			draw_rect(Rect2(back_at + Vector2(c, r) * q + Vector2.ONE * q * 0.08, Vector2.ONE * q * 0.84), Color(Pal.SURFACE, 0.3), true)
+	var tip := Vector2(-1.0, -1.0)
+	for i in 2:
+		var u := clampf((p - 0.08 - 0.45 * i) / 0.36, 0.0, 1.0)
+		var e := _ease(u)
+		var size_now := lerpf(small, q, e)
+		var at: Vector2 = (bays[i] as Vector2).lerp(homes[i], e)
+		if u > 0.0 and u < 1.0:
+			# Lifted: held above the finger with its shadow under it, and the
+			# landing outline on the backing once it is near.
+			at.y -= sin(u * PI) * q * 0.25
+			if u > 0.6:
+				_quilt_outline(shapes[i], homes[i], q, Cloth.cloth_stitch(i))
+			_quilt_shape(shapes[i], at + Vector2(4.0, 9.0), size_now, Color(Pal.TEXT, 0.14), Color(Pal.TEXT, 0.0))
+			tip = at + Vector2(size_now * 0.5, size_now * 1.5)
+		_quilt_shape(shapes[i], at, size_now, Cloth.cloth(i), Cloth.cloth_deep(i))
+		if u >= 1.0:
+			_quilt_outline(shapes[i], at, size_now, Color(Cloth.cloth_thread(i), 0.9), 2.5)
+	if done:
+		_quilt_outline(cover, back_at, q, Pal.GOOD, 6.0)
+	if tip.x >= 0.0:
+		draw_circle(tip + Vector2(4.0, 8.0), cell * 0.2, Color(Pal.TEXT, 0.16))
+		draw_circle(tip, cell * 0.17, Color(Pal.SURFACE, 0.95))
+		draw_arc(tip, cell * 0.17, 0.0, TAU, 24, Pal.LINE, 3.0, true)
+
+func _quilt_shape(cells: Array, at: Vector2, cell: float, face: Color, deep: Color) -> void:
+	for loop: PackedVector2Array in Cloth.loops(cells):
+		var pts := PackedVector2Array()
+		for v in loop:
+			pts.append(at + v * cell)
+		pts = Cloth.round_loop(pts, cell * 0.16)
+		if deep.a > 0.0:
+			var low := PackedVector2Array()
+			for v in pts:
+				low.append(v + Vector2(0.0, cell * 0.07))
+			draw_colored_polygon(low, deep)
+		draw_colored_polygon(pts, face)
+
+func _quilt_outline(cells: Array, at: Vector2, cell: float, ink: Color, width := 3.5) -> void:
+	for loop: PackedVector2Array in Cloth.loops(cells):
+		var pts := PackedVector2Array()
+		for v in loop:
+			pts.append(at + v * cell)
+		pts = Cloth.round_loop(pts, cell * 0.16)
+		pts.append(pts[0])
+		draw_polyline(pts, ink, width, true)
 
 func _lesson() -> String:
 	match puzzle_id:

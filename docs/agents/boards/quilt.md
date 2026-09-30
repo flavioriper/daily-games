@@ -68,3 +68,118 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   only 2.5 to 4.7 percent of grown boards have a second tiling, because a
   region tiled by pieces that never rotate is almost always rigid; what
   costs attempts is grows that wedge (77 to 92 percent of them).
+
+## The polish, board side (2026-09-30, spec `2026-09-30-quilt-polish-design.md` sections 1-3)
+
+- **A press does not lift until the finger moves past `TAP_PX`** (14), and
+  time alone never makes it a drag: a press let go without moving that far is
+  a tap, however long it was held, which wiggles the patch where it lies and
+  says `QL_TAP` (a sewn patch on Easy and Medium says `QL_TIP_OFF`; it was
+  never taken, so its seams stay whole). `_hold_state()` answers CLEAR and
+  `_in_hand()` -1 until then, so a tap never flashes a ghost.
+- **Sticky snap lives in `_target()`**, not in `_held_origin()`:
+  `tests/test_quilt_board.gd` holds `_held_origin()` to the raw rounded cell
+  (the wrap regression), and the ghost and the release both read `_target()`.
+  A ruled spot is still a geometric fit, so it comes back from `_target()`
+  and the hold is `CROSSED`: the chalk X is drawn **on the held patch** in the
+  hand's mesh, because the footprint under it is hidden by the patch itself
+  (the first frame drew it on the footprint and it could not be seen).
+- **The wrong patch is drawn in the hand's mesh** for its whole way home
+  (`_peel_frame`, `_peel_stitch`), and its bay shows the chalk outline while
+  it is out. The heart splits at `SNIP_AT`, not at the release.
+- **The basket's weave is hundreds of strands**, and rebuilding it with the
+  rack on every frame of a flight cost 36 ms a frame on this Mac; the mat is
+  its own cached mesh now (`_mat_mesh`, one more draw call), mean back to
+  4.4 ms. The first basket, rounded bricks in a tan wicker, read as a wall
+  and swallowed the yellow cloths; it is pale straw with faint stakes and
+  weavers, a woven band at the foot and a twisted rim.
+- **Scrap Basket takes three shelves**: `_shelves()` tries two and three for
+  nine patches or more and keeps the bigger cell -- 38.7 on two, **48.6** on
+  three, against a field cell of 117.6. Easy 72.5 (field 150), Medium 62.5
+  (147.9), Hard 62.5 (117.6, hearts' strip taken). Card 1000 x 1480.
+- **The label** (`_tag_rect`) hangs off the right end of the backing's top
+  row -- in the bounding box's empty corner or the side margin -- so it never
+  covers a backing cell; mirrored left when the right has no room.
+- `tests/_shot_quilt.gd` modes `rest tap stuck wrong out restore` (`rm` for
+  reduce motion). Draw-call peaks at 810x1440: rest 95 (the ghost finger),
+  tap 83, stuck 83, wrong 84 (Hard) / 80 (Insane), out 106 (with the card),
+  restore 79-84, reduce motion 82-85; ANGLE 81 on Insane's wrong.
+
+## The rewards (2026-09-30, spec sections 4 and 5)
+
+- **The streak** counts good drops (Hard/Insane: a right patch; Easy/Medium:
+  a drop that leaves the quilt finishable) in `_on_good_drop`, which skips
+  the solving drop. `combo` from the second, pitched up `COMBO_STEPS`; the
+  "x3" bubble over the patch's top from the third (drawn on the life layer,
+  not a layer of its own); confetti at 4 and 7. `_break_streak` deflates it.
+- **Gags** by `_gag_roll(p)`: the day's quilt hashes a start and each patch
+  steps two along five rolls, so three gags share any five patches evenly.
+  **A plain per-patch hash clumped**: one Scrap Basket drew seven buttons out
+  of nine and the quilt read as a button quilt. Love hearts (life layer), a
+  **button** (`_buttons`, drawn inside `_patch`, so it rides a held or
+  flying patch and is baked into whichever mesh carries it; erased when the
+  patch's flight home retires), a **boing** (squash about the patch's foot,
+  hop `BOING_HOP`). Under reduce motion only the button, standing.
+- **Row glints**: `_rows_done` checks every row and column the patch
+  touches; a star and a soft white glow per cell, `ROW_STEP` a cell of
+  distance out from the patch. The first glow was `SUN_RAY` and read as a
+  grey disc on the blue and teal cloths.
+- **The party** (`_party`, `_party_lead()` after the solve): the dance
+  (`_dance_colours` hands two beat halves out greedily so neighbours are
+  half a beat apart), confetti twice, quilt wisdom by the quilt's hash, the
+  seal on the rack's lower right (Flawless; on Insane "Insane" over Flawless
+  or Scraps). **The nap cat** is Light Up's `ui/faces/nap_cat.gd` with its
+  tag showing "z": a node (`_cat`, z 3) placed each frame by `_place_cat`,
+  popping up at the rack's right end, three hops onto the 2x2 of backing
+  nearest the quilt's middle that has **no button under her** (the first
+  frame hid one behind her ears), a settle squash, then SLEEPY and `purr`.
+  **Scrap Basket's bunting**: twine across the top of the card at `BUNT_Y`
+  2, the scraps flying out of the basket in x order and pegged at
+  0.17 / 0.33 / 0.81 so none hangs over the hearts' pill, swinging down to
+  rest over `BUNT_SWING`; their bays show the chalk shape. `win_delay()` is
+  `WIN_WAIT + PARTY_AT + PARTY_EXTRA` (3.9 s) and the win card shows the
+  cat, the seal and the bunting in its thumbnail.
+- **Restore** puts the cat there asleep (quietly), the seal when the record
+  is flawless or Insane, the bunting still; no dance, no confetti.
+- `share_glyphs()` puts the seal on its own line under the square grid
+  (the grid ends in a newline): `🏅 Flawless` or `🧺 Scraps[ · Flawless]`.
+- `tests/_shot_quilt.gd` adds `right` (all but the last answer patch: the
+  streak, the gags, the glints) and `solve`. Peaks: right 90 Easy / 93 Hard,
+  solve 93 Easy / 91 Insane (92 on ANGLE), restore 88-90, reduce motion
+  86-88, out 105. No idle life was added beyond the curled cat's "z".
+
+
+## Review findings, fixed (2026-09-30)
+
+- **One finger holds the patch** (Hedgehogs' rule): `_drag.finger` is the
+  touch index (-1 mouse); another finger's press, drag and release are
+  ignored. Before, a second finger's release judged the first finger's patch
+  and cost a heart on Hard/Insane. A cancelled touch goes through
+  `_cancel_drag()` -- the patch back where it was taken from, unjudged, no
+  history -- and Undo, Hint and Reset call it first, so none strands a
+  patch that `take()` had lifted.
+- **Tap vs drag is distance only** (see above). The old pair (lift at 0.12 s,
+  tap judged at 0.3 s) let the outline promise a spot the release would not
+  use, and a still hold nudged a sewn patch a row up. `take()` now waits for
+  the drag (`_begin_lift`).
+- **SNAG off the left/top edge**: `_hold_state()` counts cells over the quilt
+  from the unclamped `_held_cells()`, not from `_held_origin()` (-1 whenever
+  the patch's (0, 0) is off the edge), so an L hanging off the left with
+  cells over the quilt halos and is refused instead of taken off quietly
+  (114 such holds probed across the four bands, all SNAG).
+- **Scrap Basket colours**: `State.cloth_of` (spec section 3); every
+  `Cloth.*` call on the board and the share's squares go through it. Probed
+  on all 150 banked boards: no touching quilt pair, no look-alike pair, no
+  scrap with a cloth of its own, no cloth past two. Bands of eight patches
+  or fewer keep `cloth_of[p] == p`.
+- **`from_bank`** type-checks every value before `int()`/`String()` and
+  refuses a scrap with a quilt patch's shape; malformed entries return {}
+  without a script error.
+- **Undo and reset** clear `_rows`, `_love`, `_boing` (`_clear_gags`), and
+  undo bumps `_gen` so a gag's or the streak's pending sound does not play
+  (only boards that cannot undo have `_after`s that must still run).
+- **The ghost finger is one mesh** (it was ~7 draw calls and a fresh
+  `Cloth.loops()` a frame) off the cached `_loops[p]`, and the life layer
+  stops redrawing while its alpha is 0; the streak's bubble is built once a
+  count and moved by its transform. Peaks at 810x1440: rest (Easy) **84**,
+  was 95; solve (Insane) 92.
