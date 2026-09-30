@@ -484,18 +484,46 @@ SETS = {
         "dawn":     ("a slow soft sunrise swell, warm gentle glockenspiel and kalimba notes rising and brightening with a faint morning birdsong chirp, peaceful and cozy", 2.0, -8),
     },
     # Mushroom Patch: plant a mushroom where one must be, lay a pebble where
-    # none can be; nothing is ever revealed by a tap.
+    # none can be; nothing is ever revealed by a tap. Re-prompted toward
+    # felt, moss, paper and kalimba on 2026-09-30 (the polish), as Queens'
+    # and Word Trail's were: the tape-rewind undo and the wooden "bonk" read
+    # as a toy or a scold. Hard and Insane judge a mushroom as she lands: a
+    # wrong one costs a heart and wilts back into the soil. Insane is Fairy
+    # Rings: some numbers count the ring two steps out.
     "mushroom": {
-        "place":    ("a tiny soft squishy pop with a light earthy wooden tap, a little mushroom popping up from moss, very short", 0.5, -6),
-        "remove":   ("a very short soft downward whoosh-pop, a small thing lifted out of soft moss", 0.5, -9),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a quick soft ripple of small squishy pops and a light leafy rustle, a forest patch cleared", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a mossy forest patch appearing", 1.0, -9),
+        "place":    ("a tiny soft squishy pop out of thick moss with a light felt tap, a little mushroom popping up, cute and hushed, very short", 0.5, -9, COZY),
+        "pebble":   ("a single tiny smooth pebble set down gently on soft moss, one muffled round little stone tap, very short and quiet", 0.5, -12, COZY),
+        "remove":   ("a very short soft felt brush and a tiny airy lift, a little mushroom pulled gently out of moss, quiet", 0.5, -12, COZY),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny leafy rustle, cozy and kind", 1.0, -8),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
+        "reset":    ("a soft quick ripple of tiny felt pats and a light leafy rustle, a mossy forest patch swept gently clear, hushed and cozy", 1.0, -10, COZY),
+        "enter":    ("a soft airy cascade of tiny moss pops and a light leafy rustle, a little forest patch laid out, cozy and hushed", 1.0, -11, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        # Pressing a number lights the cells it counts.
+        "reach":    ("a very soft short airy shimmer, one faint glockenspiel note with a hushed breath, a little glow switching on, extremely quiet and short", 0.5, -18, COZY),
+        # The streak, the gags, and the flower a finished number opens.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
+        "sneeze":   ("a tiny cute squeaky cartoon sneeze 'achoo' from a very small creature followed by a soft sparkly puff of dust, silly and adorable, very short", 0.8, -12, CARTOON),
+        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -14),
+        # Hearts, the wrong mushroom wilting, and the patch at dusk.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
+        "wilt":     ("a little mushroom wilting and sinking sheepishly back into soft moss, a slow soft descending slide whistle, very gentle and a bit funny, muffled", 0.8, -13, CARTOON),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        # The party.
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little leaves at the end, joyful and warm", 2.0, -4),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
+        "meadow":   ("a soft little flourish of flowers popping open, several tiny papery pops rising in pitch with a light glockenspiel twinkle, a meadow blooming, sweet", 1.0, -10),
+        # Insane: Fairy Rings. The rings grow in after the patch, and glow at the party.
+        "rings":    ("a soft magical twinkle circling around, tiny glockenspiel and celesta notes in a little ring with a faint airy shimmer, fairy dust in a mossy forest, dreamy and hushed", 1.5, -13, COZY),
+        "rings_glow": ("a warm dreamy swell of soft celesta and glockenspiel notes rising and glowing, fairy rings lighting up in a forest at dusk, magical and cozy", 1.8, -9),
     },
     # Sudoku: numerals in ink on a paper grid; a pencil mode for small notes,
     # and a row, column or region that fills lights up in a wave.

@@ -376,7 +376,7 @@ QN_DECREE_11,By royal decree: the moon may stay up late.,Por decreto real: a lua
 MP_TIP_COUNT,A number counts the mushrooms in the eight cells touching it.,Um número conta os cogumelos nas oito casas ao redor dele.,Un número cuenta los hongos en las ocho casillas a su alrededor.
 MP_TIP_PLANT,Plant a mushroom where you are sure. Lay a pebble where you are not.,Plante um cogumelo onde tiver certeza. Ponha uma pedrinha onde não houver.,Planta un hongo donde estés seguro. Pon una piedrita donde no haya.
 MP_TIP_GREEN,A number goes green the moment it has all its mushrooms.,Um número fica verde assim que tem todos os seus cogumelos.,Un número se pone verde en cuanto tiene todos sus hongos.
-MP_RULES,A number counts the mushrooms in the eight cells touching it. Plant a mushroom where you have proved one is; lay a pebble where you have proved one is not. A number turns green when it has exactly its mushrooms and rose when it has too many. Nothing is ever hidden from you and the patch can never be lost.,"Um número conta os cogumelos nas oito casas ao redor dele. Plante um cogumelo onde você provou que há um; ponha uma pedrinha onde provou que não há. Um número fica verde quando tem exatamente seus cogumelos e rosa quando tem demais. Nada fica escondido de você, e a horta nunca está perdida.","Un número cuenta los hongos en las ocho casillas a su alrededor. Planta un hongo donde demostraste que hay uno; pon una piedrita donde demostraste que no hay. Un número se pone verde cuando tiene justo sus hongos y rosa cuando tiene de más. Nada se te oculta, y la huerta nunca se pierde."
+MP_RULES,A number counts the mushrooms in the eight cells touching it. Plant a mushroom where you have proved one is; lay a pebble where you have proved one is not. A number turns green when it has exactly its mushrooms and rose when it has too many. Press a number to light the cells it counts.,Um número conta os cogumelos nas oito casas ao redor dele. Plante um cogumelo onde você provou que há um; ponha uma pedrinha onde provou que não há. Um número fica verde quando tem exatamente seus cogumelos e rosa quando tem demais. Toque num número para acender as casas que ele conta.,Un número cuenta los hongos en las ocho casillas a su alrededor. Planta un hongo donde demostraste que hay uno; pon una piedrita donde demostraste que no hay. Un número se pone verde cuando tiene justo sus hongos y rosa cuando tiene de más. Toca un número para iluminar las casillas que cuenta.
 MP_TALLY_ONE,one mushroom still hidden,um cogumelo ainda escondido,un hongo sigue escondido
 MP_TALLY_N,%s mushrooms still hidden,%s cogumelos ainda escondidos,%s hongos siguen escondidos
 MP_TALLY_ALL,every mushroom is planted,todos os cogumelos plantados,todos los hongos plantados
@@ -409,6 +409,34 @@ MP_NUM_11,eleven,onze,once
 MP_NUM_12,twelve,doze,doce
 MP_NUM_13,thirteen,treze,trece
 MP_NUM_14,fourteen,catorze,catorce
+MP_RULES_SAFE,"Nothing is ever hidden from you, and this patch can never be lost.","Nada fica escondido de você, e esta horta nunca está perdida.","Nada se te oculta, y esta huerta nunca se pierde."
+MP_RULES_HEARTS,"You have %s hearts. Every mushroom is judged as she is planted: one where none grows costs a heart and wilts, and a pebble stays there for good.","Você tem %s corações. Cada cogumelo é julgado ao ser plantado: um onde não nasce nenhum custa um coração e murcha, e uma pedrinha fica ali de vez.","Tienes %s corazones. Cada hongo se juzga al plantarlo: uno donde no crece ninguno cuesta un corazón y se marchita, y una piedrita se queda ahí para siempre."
+MP_RULES_RINGS,"Fairy Rings: a number inside a ring of little violet caps counts the sixteen cells two steps out, the ring around its eight neighbours, and says nothing at all about the eight touching it.","Anéis de Fada: um número dentro de um anel de chapeuzinhos lilás conta as dezesseis casas a dois passos, o anel em volta dos oito vizinhos, e não diz nada sobre as oito casas encostadas nele.","Anillos de Hadas: un número dentro de un anillo de sombreritos lilas cuenta las dieciséis casillas a dos pasos, el anillo alrededor de sus ocho vecinas, y no dice nada de las ocho que lo tocan."
+MP_TIP_HEARTS,Every mushroom is judged as she is planted. A wrong one costs a heart.,Cada cogumelo é julgado ao ser plantado. Um errado custa um coração.,Cada hongo se juzga al plantarlo. Uno equivocado cuesta un corazón.
+MP_TIP_RINGS,"A number in a violet ring counts the ring two steps out, not the cells touching it.","Um número num anel lilás conta o anel a dois passos, não as casas encostadas nele.","Un número en un anillo lila cuenta el anillo a dos pasos, no las casillas que lo tocan."
+MP_TIP_RINGS_2,Press any number to light the cells it counts.,Toque em qualquer número para acender as casas que ele conta.,Toca cualquier número para iluminar las casillas que cuenta.
+MP_REACH,This number counts the eight glowing cells around it.,Este número conta as oito casas acesas em volta dele.,Este número cuenta las ocho casillas iluminadas a su alrededor.
+MP_REACH_RING,"A fairy ring: it counts the glowing ring two steps out, and nothing touching it.","Um anel de fada: conta o anel aceso a dois passos, e nada encostado nele.","Un anillo de hadas: cuenta el anillo iluminado a dos pasos, y nada de lo que lo toca."
+MP_SHOWN,A heart showed that cell bare. Its pebble stays.,Um coração mostrou que essa casa é vazia. A pedrinha fica.,Un corazón mostró que esa casilla está vacía. Su piedrita se queda.
+MP_WRONG_PLANT,"Oh, no mushroom grows there. That cost a heart.","Ops, não nasce cogumelo ali. Isso custou um coração.","Uy, ahí no crece ningún hongo. Eso costó un corazón."
+MP_PEBBLES_ONE,One of your pebbles sits on a mushroom.,Uma das suas pedrinhas está em cima de um cogumelo.,Una de tus piedritas está sobre un hongo.
+MP_PEBBLES_N,%s of your pebbles sit on mushrooms.,%s das suas pedrinhas estão em cima de cogumelos.,%s de tus piedritas están sobre hongos.
+MP_OUT,The mushrooms have gone to sleep.,Os cogumelos foram dormir.,Los hongos se fueron a dormir.
+MP_OUT_BODY,"Out of hearts. Plant the patch again from the start, or watch a short video for one more heart.",Sem corações. Plante a horta de novo desde o começo ou veja um vídeo curto por mais um coração.,Sin corazones. Planta la huerta otra vez desde el principio o mira un video corto para un corazón más.
+MP_OUT_REST,Out of hearts. Plant the patch again from the start whenever you like.,Sem corações. Plante a horta de novo desde o começo quando quiser.,Sin corazones. Planta la huerta otra vez desde el principio cuando quieras.
+MP_RINGS_SEAL,Fairy Rings,Anéis de Fada,Anillos de Hadas
+MP_CHEER_0,Mushroom wisdom: a good nap is mostly about the moss.,Sabedoria de cogumelo: uma boa soneca depende do musgo.,Sabiduría de hongo: una buena siesta es cuestión de musgo.
+MP_CHEER_1,Mushroom wisdom: never trust a snail who says he's in a hurry.,Sabedoria de cogumelo: nunca confie num caracol que diz estar com pressa.,Sabiduría de hongo: nunca confíes en un caracol que dice tener prisa.
+MP_CHEER_2,Mushroom wisdom: rain is just the sky saying hi.,Sabedoria de cogumelo: chuva é só o céu dando oi.,Sabiduría de hongo: la lluvia es el cielo diciendo hola.
+MP_CHEER_3,Mushroom wisdom: a hat you grow yourself always fits.,Sabedoria de cogumelo: chapéu que você mesmo cultiva sempre serve.,Sabiduría de hongo: un sombrero que te crece solo siempre te queda bien.
+MP_CHEER_4,Mushroom wisdom: stand still long enough and the forest comes to you.,Sabedoria de cogumelo: fique quietinho e a floresta vem até você.,Sabiduría de hongo: quédate quieto y el bosque vendrá a ti.
+MP_CHEER_5,"Mushroom wisdom: spots are not a flaw, they are a fashion statement.","Sabedoria de cogumelo: pintinhas não são defeito, são estilo.","Sabiduría de hongo: las manchitas no son un defecto, son estilo."
+MP_CHEER_6,Mushroom wisdom: the best friends grow in rings.,Sabedoria de cogumelo: os melhores amigos crescem em roda.,Sabiduría de hongo: los mejores amigos crecen en ronda.
+MP_CHEER_7,"Mushroom wisdom: if in doubt, sit in the shade and think about it.","Sabedoria de cogumelo: na dúvida, sente na sombra e pense a respeito.","Sabiduría de hongo: si dudas, siéntate a la sombra y piénsalo."
+MP_CHEER_8,Mushroom wisdom: it is never too late for a little growth spurt.,Sabedoria de cogumelo: nunca é tarde para uma espichadinha.,Sabiduría de hongo: nunca es tarde para un estirón.
+MP_CHEER_9,"Mushroom wisdom: dew in the morning, gossip by noon.","Sabedoria de cogumelo: orvalho de manhã, fofoca ao meio-dia.","Sabiduría de hongo: rocío por la mañana, chismes al mediodía."
+MP_CHEER_10,Mushroom wisdom: everyone is a little fun-guy on the inside.,"Sabedoria de cogumelo: por dentro, todo mundo é um fungo divertido.","Sabiduría de hongo: por dentro, todos somos un hongo divertido."
+MP_CHEER_11,"Mushroom wisdom: roots first, dancing later. Now: dancing!","Sabedoria de cogumelo: primeiro as raízes, depois a dança. Agora: dança!","Sabiduría de hongo: primero raíces, después baile. Ahora: ¡baile!"
 SD_TIP_UNITS,"Every row, every column and every region holds 1 to %d once.","Cada linha, cada coluna e cada região tem de 1 a %d uma vez só.","Cada fila, cada columna y cada región tiene del 1 al %d una sola vez."
 SD_TIP_TAP,"Tap a cell, then a number. Tap that number again to take it out.","Toque numa casa, depois num número. Toque de novo para tirar.",Toca una casilla y luego un número. Tócalo otra vez para quitarlo.
 SD_TIP_CROSS,The cross takes out whatever is in the selected cell.,O X tira o que estiver na casa escolhida.,La X quita lo que haya en la casilla elegida.
@@ -574,8 +602,8 @@ MP_SHORT,The numbers count\nwhat is hidden.,Os números contam\no que se esconde
 MP_MOTTO,Every patch has its count,"Cada canteiro, sua conta","Cada parcela, su cuenta"
 MP_LVL_0,"6 mushrooms, 6 × 6","6 cogumelos, 6 × 6","6 hongos, 6 × 6"
 MP_LVL_1,"9 mushrooms, 7 × 7","9 cogumelos, 7 × 7","9 hongos, 7 × 7"
-MP_LVL_2,"12 mushrooms, 8 × 8","12 cogumelos, 8 × 8","12 hongos, 8 × 8"
-MP_LVL_3,"16 mushrooms, 9 × 9","16 cogumelos, 9 × 9","16 hongos, 9 × 9"
+MP_LVL_2,"12 mushrooms, 8 × 8, three hearts","12 cogumelos, 8 × 8, três corações","12 hongos, 8 × 8, tres corazones"
+MP_LVL_3,"Fairy Rings: 9 × 9, two hearts","Anéis de Fada: 9 × 9, dois corações","Anillos de Hadas: 9 × 9, dos corazones"
 SD_BLURB,"Every number once in every row, column and region.","Cada número uma vez em cada linha, coluna e região.","Cada número una vez en cada fila, columna y región."
 SD_SHORT,"Every number once,\nevery way you look.","Um de cada número,\nem todo sentido.","Un número de cada,\nen todo sentido."
 SD_MOTTO,Every number has its place,Cada número em seu lugar,Cada número en su lugar

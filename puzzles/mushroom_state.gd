@@ -21,6 +21,13 @@ extends RefCounted
 ## sections 3 and 9.
 
 const Gen = preload("res://puzzles/mushroom_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
+
+## The polish of 2026-09-30 (spec 2026-09-30-mushroom-polish-design.md):
+## Hard and Insane judge every mushroom as she is planted, and a wrong one
+## costs a heart; a board's own hints thin out as the bands climb.
+const HEARTS := [0, 0, 3, 2]
+const HINTS_BY_BAND := [3, 3, 1, 0]
 
 ## What the player has said about a covered cell.
 const BLANK := 0
@@ -37,31 +44,58 @@ const OK := 0
 const GIVEN := 1
 const PINNED := 2
 const COVERED := 3
+## A heart showed this cell bare; nothing lays anything else there.
+const SHOWN := 4
 
 ## share_glyphs()'s alphabet: a mushroom for a planted cell, a pale square
 ## for a covered one, and the numeral's own keycap square for a given --
 ## literally a numeral drawn inside its own square.
 const MUSHROOM_GLYPH := "🍄"
 const COVERED_GLYPH := "⬜"
+## A fairy ring's number has no keycap past eight, and its count is not the
+## eight touching it anyway, so it shares as a ring.
+const RING_GLYPH := "⭕"
 const NUMBER_SQUARES := ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣"]
 
 var n: int = 0
 var k: int = 0
+var band: int = 0
 var mushrooms: Dictionary = {}  # Vector2i -> true, the answer
 var given: Dictionary = {}      # Vector2i -> int, the turned-over numbers
+## Vector2i -> true: the givens that are fairy rings (Insane), counting the
+## sixteen cells two steps out rather than the eight touching.
+var rings: Dictionary = {}
+## Vector2i -> true: cells a heart showed bare, each with a pebble for good.
+## Out of every history entry, so no undo, sweep or reset lifts one.
+var shown: Dictionary = {}
 var marks: Dictionary = {}      # Vector2i -> FOUND | CLEAR
 var pinned: Dictionary = {}     # Vector2i -> true, what a hint gave
 ## One entry per gesture, newest last: [{"cell": Vector2i, "prev": int}].
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	var idx := clampi(difficulty, 0, Gen.SIZES.size() - 1)
+	band = idx
 	var size: Array = Gen.SIZES[idx]
 	n = int(size[0])
 	k = int(size[1])
-	var out: Dictionary = Gen.generate(rng, n, k, bool(Gen.SUBSETS[idx]), float(Gen.GIVE_BACK[idx]))
+	var out: Dictionary = {}
+	if idx == 3:
+		# Insane is mined on the Mac: carving with suppositions is too slow
+		# to run on a phone as the card opens. An empty bank or an entry
+		# that does not re-prove falls back to a live ring field.
+		out = Gen.from_bank(InsaneBank.pick("mushroom", bank_step))
+		if not out.is_empty() and not bool(out.ok):
+			push_warning("Mushroom: a banked field did not re-prove; dealing a live one")
+			out = {}
+	if out.is_empty():
+		out = Gen.generate(rng, n, k, bool(Gen.SUBSETS[idx]), float(Gen.GIVE_BACK[idx]),
+			float(Gen.RING_SHARE[idx]))
+	n = int(out.n)
+	k = int(out.k)
 	mushrooms = out.mushrooms
 	given = out.given
+	rings = out.get("rings", {})
 	# The generator carves a full, solved field down to a minimal set of
 	# givens and only keeps a cut while `solvable` still proves the whole
 	# field -- a board with a guess in it is never produced. Assert this for
@@ -77,25 +111,36 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 		k = 0
 		mushrooms = {}
 		given = {}
+		rings = {}
 	marks = {}
 	pinned = {}
+	shown = {}
 	history = []
+
+## Whether this band judges a mushroom as she lands (Hard and Insane).
+func judged() -> bool:
+	return HEARTS[band] > 0
 
 # --- reading the field ---
 
-## How many mushrooms neighbour `cell` in the answer -- the number a given
-## cell shows.
+## The cells a given on `cell` counts: its fairy ring when it is one, else
+## the eight touching it.
+func reach(cell: Vector2i) -> Array[Vector2i]:
+	return Gen.reach(cell, n, rings.has(cell))
+
+## How many mushrooms `cell`'s reach holds in the answer -- the number a
+## given cell shows.
 func count(cell: Vector2i) -> int:
 	var c := 0
-	for p in Gen.neighbours(cell, n):
+	for p in reach(cell):
 		if mushrooms.has(p):
 			c += 1
 	return c
 
-## How many mushrooms the *player* has planted around `cell`, given or not.
+## How many mushrooms the *player* has planted in `cell`'s reach, given or not.
 func around(cell: Vector2i) -> int:
 	var c := 0
-	for p in Gen.neighbours(cell, n):
+	for p in reach(cell):
 		if int(marks.get(p, BLANK)) == FOUND:
 			c += 1
 	return c
@@ -152,10 +197,32 @@ func wrong_marks() -> Array[Vector2i]:
 
 # --- private helpers, no history ---
 
+## Every pebble the player laid on a mushroom: what Check counts on Hard and
+## Insane, where no wrong mushroom ever stays.
+func wrong_pebbles() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for cell in marks:
+		if int(marks[cell]) == CLEAR and mushrooms.has(cell):
+			out.append(cell)
+	return out
+
+## Whether a given has every cell it counts marked and exactly its number of
+## mushrooms among them: done, read off the player's own marks. A number of
+## nought is never done this way -- it is settled from the start.
+func finished(cell: Vector2i) -> bool:
+	if not given.has(cell) or int(given[cell]) <= 0 or standing(cell) != SETTLED:
+		return false
+	for p in reach(cell):
+		if given.has(p):
+			continue
+		if int(marks.get(p, BLANK)) == BLANK:
+			return false
+	return true
+
 ## Lays a pebble on a bare, unmarked, uncovered cell. True and mutates when
 ## it did.
 func _lay_pebble(cell: Vector2i) -> bool:
-	if given.has(cell) or pinned.has(cell):
+	if given.has(cell) or pinned.has(cell) or shown.has(cell):
 		return false
 	if int(marks.get(cell, BLANK)) != BLANK:
 		return false
@@ -164,7 +231,7 @@ func _lay_pebble(cell: Vector2i) -> bool:
 
 ## Takes the player's own pebble off. True and mutates when it did.
 func _take_pebble(cell: Vector2i) -> bool:
-	if int(marks.get(cell, BLANK)) != CLEAR:
+	if shown.has(cell) or int(marks.get(cell, BLANK)) != CLEAR:
 		return false
 	marks.erase(cell)
 	return true
@@ -183,6 +250,8 @@ func _take_pebble(cell: Vector2i) -> bool:
 func place(cell: Vector2i, v: int) -> int:
 	if given.has(cell):
 		return GIVEN
+	if shown.has(cell):
+		return SHOWN
 	if pinned.has(cell):
 		# A hint's mushroom is a fact, not a suggestion: the board says so
 		# rather than letting either chip quietly do nothing to it. A
@@ -245,17 +314,41 @@ func undo() -> Array[Vector2i]:
 		touched.append(cell)
 	return touched
 
-## Lifts every mark the player laid; a hint's plant stays. Clears the
-## history along with it. Returns the cells cleared.
-func reset_board() -> Array[Vector2i]:
+## Lifts every mark the player laid; a hint's plant stays, and so does a
+## pebble a heart showed -- unless `all`, Try again's fresh start, which
+## takes those back too. Clears the history along with it. Returns the cells
+## cleared.
+func reset_board(all := false) -> Array[Vector2i]:
 	var cleared: Array[Vector2i] = []
 	for cell in marks.keys():
-		if not pinned.has(cell):
-			cleared.append(cell)
+		if pinned.has(cell):
+			continue
+		if shown.has(cell) and not all:
+			continue
+		cleared.append(cell)
 	for cell in cleared:
 		marks.erase(cell)
+	if all:
+		shown = {}
 	history = []
 	return cleared
+
+## A wrong mushroom on `cell` is taken back and a pebble laid there for good:
+## the heart has shown the cell bare. The cell leaves every history entry, so
+## no undo ever brings the mushroom back or lifts the pebble; an entry left
+## empty goes too.
+func reveal(cell: Vector2i) -> void:
+	marks[cell] = CLEAR
+	shown[cell] = true
+	var kept: Array = []
+	for entry in history:
+		var rest: Array = []
+		for e in entry:
+			if e.cell != cell:
+				rest.append(e)
+		if not rest.is_empty():
+			kept.append(rest)
+	history = kept
 
 ## Plants the next unfound mushroom in reading order (sorted by y then x),
 ## rubbing out a pebble there first, and pins it so it cannot be disturbed.
@@ -285,6 +378,8 @@ func share_glyphs() -> String:
 			var cell := Vector2i(x, y)
 			if int(marks.get(cell, BLANK)) == FOUND:
 				out += MUSHROOM_GLYPH
+			elif given.has(cell) and rings.has(cell):
+				out += RING_GLYPH
 			elif given.has(cell):
 				out += NUMBER_SQUARES[int(given[cell])]
 			else:

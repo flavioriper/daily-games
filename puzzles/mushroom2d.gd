@@ -44,6 +44,18 @@ extends "res://core/puzzle_base.gd"
 ## plant's own instant. **_settle is the wash's only entry point.**
 ## Spec: docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md.
 ## Concept page: docs/brainstorm/concepts.html#mushroom.
+##
+## **The polish of 2026-09-30** (spec 2026-09-30-mushroom-polish-design.md).
+## Hard and Insane can be failed: every mushroom is judged as she lands, and a
+## wrong one worries, costs a heart, wilts back into the soil and leaves a
+## pebble there for good (`state.shown`). Insane is **Fairy Rings**: some
+## numbers sit in a ring of little violet caps and count the sixteen cells two
+## steps out instead of the eight touching. Pressing any number lights the
+## cells it counts. A plant builds a streak (a note up the pentatonic, the x3
+## bubble, confetti), now and then plays a gag (hearts, a twirl, a sneeze), a
+## number whose every cell is marked and whose count holds opens a flower,
+## and the solve throws a party: a meadow, a dance, confetti, a silly bit of
+## mushroom wisdom and the seal.
 
 const State = preload("res://puzzles/mushroom_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -54,6 +66,8 @@ const Face = preload("res://ui/faces/face.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the patch ---
 ## The card's inset round the field.
@@ -164,7 +178,95 @@ const SWAY_TIME := 0.9
 const PILL_PAD := Vector2(22.0, 10.0)
 const PILL_EDGE := 4.0
 
+## A board's own hints, per band (State.HINTS_BY_BAND).
 const HINTS := 3
+
+# --- the polish (2026-09-30) ---
+## Pressing a number lights the cells it counts: in and out over these, at
+## this level, in leaf for a plain number and violet for a fairy ring.
+const REACH_IN := 0.12
+const REACH_OUT := 0.3
+const REACH_ALPHA := 0.62
+## A fairy ring: RING_CAPS little violet caps RING_CAP of a cell wide on a
+## circle RING_AT of a cell round the numeral, which is lettered RING_NUM of
+## the plain size. They grow in one by one RING_STEP apart after the patch's
+## entrance (RING_LEAD later), a ring RING_WAVE after its diagonal neighbour.
+const RING_CAPS := 10
+const RING_CAP := 0.06
+const RING_AT := 0.37
+const RING_NUM := 0.8
+const RING_LEAD := 0.25
+const RING_STEP := 0.035
+const RING_WAVE := 0.05
+const RING_GLOW := 0.6
+## The hearts' strip over the tally (Queens', One Line's).
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong mushroom stands worried this long after she lands, then wilts:
+## droops WILT_DROOP over the first third of WILT_TIME and sinks into the
+## soil over the rest, and her pebble drops in as she goes.
+const EJECT_AFTER := 0.75
+const WILT_TIME := 0.6
+const WILT_DROOP := 0.45
+## A pebble a heart showed stands on a rose halo this much of a cell across.
+const SHOWN_HALO := 0.4
+## A pebble drops this much of a cell as it pops in.
+const PEBBLE_DROP := 0.14
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## The streak: a plant that holds (the answer's on Hard and Insane, one that
+## sends no number over on Easy and Medium) plucks `combo` up the pentatonic
+## from the second; the bubble from COMBO_FROM; confetti at COMBO_CONFETTI.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Gags: GAGS of every GAG_ODDS plants, by the cell's hash.
+const GAG_ODDS := 5
+const GAGS := 3
+const LOVE_HEARTS := 4
+const LOVE_TIME := 1.3
+const LOVE_RISE := 0.7
+const LOVE_R := 0.14
+const TWIRL_TIME := 0.55
+const TWIRL_HOP := 0.16
+const SNEEZE_WIND := 0.22
+const SNEEZE_BLOW := 0.12
+const SNEEZE_BACK := 0.3
+## A finished number's flower, in the bed's upper right corner.
+const BLOOM_R := 0.12
+const BLOOM_AT := Vector2(0.3, -0.3)
+const BLOOM_PETALS := 5
+const BLOOM_TIME := 0.45
+const BLOOM_FOLD := 0.2
+## The party, PARTY_AT after the solve: the meadow along the diagonal
+## (MEADOW_STEP a diagonal), the dance, confetti twice, the seal STAMP_AT
+## later. win_delay() waits PARTY_EXTRA more for it.
+const PARTY_AT := 1.2
+const PARTY_EXTRA := 1.6
+const MEADOW_STEP := 0.04
+const MEADOW_R := 0.2
+const DANCE_BEATS := 4
+const DANCE_BEAT := 0.22
+const DANCE_TILT := 0.2
+const CHEERS := 12
+const STAMP_AT := 0.9
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
 ## How long a teaching line stands before the next, the family's own cycle.
 const TIP_CYCLE := 10.0
 ## Translation keys (locale/ui.csv), read through tr() when said.
@@ -183,6 +285,9 @@ const TALLY_GLYPH := 53.0
 const TALLY_GLYPH_X := 26.0
 const TALLY_TEXT_X := 70.0
 const TALLY_SIZE := 34
+
+## The out-of-hearts card's Back: the host takes the board away.
+signal leave
 
 var state = State.new()
 ## Which chip the tray has armed: State.FOUND or State.CLEAR. The tray only
@@ -203,6 +308,48 @@ var _pos_tw: Dictionary = {}   # face -> the hop, the shiver, the drop
 var _look_tw: Dictionary = {}  # face -> the pop, the press, the wobble
 var _tally_face: MushroomFace
 var _gen := 0
+var _card := Rect2()
+var _hearts_y := 0.0
+
+## The polish's state: hearts, the judged mushroom, the streak, the flowers,
+## the party and the life over the patch.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _asleep := false
+var _ejecting := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _dusk_tw: Tween
+var _bad: Dictionary = {}       # cell -> true: a wrong mushroom waiting to wilt
+var _flawless := false
+var _streak := 0
+var _combo_n := 0
+var _combo_cell := Vector2i.ZERO
+var _combo_at := -INF
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_layer: Control
+var _combo_shown: ArrayMesh
+var _bloom: Dictionary = {}     # given -> {"at", "open"}: its flower opening or folding
+var _meadow_at := INF
+var _rings_at := INF
+var _glow_at := INF
+var _reach: Dictionary = {}     # {"cell", "down", "up"}: a number held, its cells lit
+var _life_layer: Control
+var _life_shown: Array = []
+var _life_alive := false
+var _love: Array = []
+var _love_mesh: ArrayMesh
+var _stamp_at := INF
+var _seal_mesh: ArrayMesh
 
 ## Every drawn moment, each the second it begins, read off Motion's curve
 ## readers in _build_floor, _build_ground and _draw_numerals.
@@ -250,7 +397,23 @@ func puzzle_id() -> String: return "mushroom"
 func title() -> String: return "Mushroom Patch"
 
 func rules() -> String:
-	return tr("MP_RULES")
+	var out := tr("MP_RULES")
+	if not state.rings.is_empty():
+		out += "\n\n" + tr("MP_RULES_RINGS")
+	if max_hearts > 0:
+		out += "\n\n" + tr("MP_RULES_HEARTS") % _word(max_hearts)
+	else:
+		out += " " + tr("MP_RULES_SAFE")
+	return out
+
+## The lines the sprout cycles: Fairy Rings leads with the rings' two, a
+## judged patch with the hearts'.
+func _tips() -> Array:
+	if not state.rings.is_empty():
+		return ["MP_TIP_RINGS", "MP_TIP_RINGS_2", "MP_TIP_HEARTS"] + TIPS
+	if max_hearts > 0:
+		return ["MP_TIP_HEARTS"] + TIPS
+	return TIPS
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -270,12 +433,30 @@ func _ready() -> void:
 	_sway_timer.wait_time = SWAY_EVERY
 	_sway_timer.timeout.connect(_sway)
 	add_child(_sway_timer)
+	_life_layer = _layer("Life", 3, _draw_life)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
+	_combo_layer = _layer("Combo", 4, _draw_combo)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the patch, drawn by `draw` (One Line's).
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, bank_step)
+	max_hearts = State.HEARTS[state.band]
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	brush = State.FOUND
 	_pebble_in = {}
 	_pebble_out = []
@@ -293,10 +474,38 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_sway_timer.start()
 	_enter()
+
+## The patch as it is dealt, and as Try again deals it back: every heart, the
+## day's light, nothing judged, blooming or partying.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_ejecting = false
+	_split_index = -1
+	_back_index = -1
+	_bad = {}
+	_flawless = false
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_love = []
+	_bloom = {}
+	_meadow_at = INF
+	_rings_at = INF
+	_glow_at = INF
+	_stamp_at = INF
+	_seal_mesh = null
+	_reach = {}
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
 
 # --- the cast ---
 
@@ -361,7 +570,12 @@ func _refresh_faces() -> void:
 		# refusal's strain settles on its own clock.
 		if _solved_at >= 0.0 or face.expression == Face.Expr.STRAIN:
 			continue
-		_set_expr(face, Face.Expr.HAPPY)
+		if _asleep:
+			_set_expr(face, Face.Expr.SLEEPY)
+		elif _bad.has(cell):
+			_set_expr(face, Face.Expr.WORRIED)
+		else:
+			_set_expr(face, Face.Expr.HAPPY)
 
 func _set_expr(face: Face, expr: int) -> void:
 	if face.expression != expr:
@@ -381,15 +595,27 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var field: Vector2 = Vector2.ONE * (_cell * state.n)
-	var tall := minf(size.y, field.y + 2.0 * PAD + TALLY)
+	var row := _heart_row()
+	var tall := minf(size.y, field.y + 2.0 * PAD + TALLY + row)
 	var top := (size.y - tall) * 0.5
-	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + PAD + TALLY)
-	_tally_y = top + PAD + TALLY * 0.5
+	_card = Rect2(0.0, top, size.x, tall)
+	_hearts_y = top + PAD * 0.6 + row * 0.5
+	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + PAD + row + TALLY)
+	_tally_y = top + PAD + row + TALLY * 0.5
 	for cell in _caps:
 		_seat(_caps[cell], cell_centre(cell), _seat_px())
 	_layout_tally()
+	_love_mesh = null
+	_seal_mesh = null
 	_refresh_faces()
 	_redraw()
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
+
+## The strip the hearts take over the tally, on a patch that has them.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## Seats `face` `px` square about `centre`: her slot takes the place, and her
 ## own place inside it is left to the motion. She turns and scales about the
@@ -410,13 +636,13 @@ func _cell_for(available: float) -> float:
 	if state.n <= 0:
 		return 0.0
 	return minf((size.x - 2.0 * PAD) / state.n,
-		(available - 2.0 * PAD - TALLY) / state.n)
+		(available - 2.0 * PAD - TALLY - _heart_row()) / state.n)
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * state.n + 2.0 * PAD + TALLY)
+	return minf(available, cell * state.n + 2.0 * PAD + TALLY + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -448,7 +674,22 @@ func _field_centre() -> Vector2:
 
 func _process(delta: float) -> void:
 	super(delta)
-	if _now() < _anim_until:
+	var now := _now()
+	if _cell > 0.0 and _heart_layer != null:
+		# The pill pops in with the tally, then stands until a heart moves.
+		if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+				or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+				or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
+			_heart_layer.queue_redraw()
+		if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+			_combo_layer.queue_redraw()
+		# One more redraw once the life goes quiet, so its last frame is not
+		# left standing.
+		var alive := _tick_life(now)
+		if alive or _life_alive:
+			_life_layer.queue_redraw()
+		_life_alive = alive
+	if now < _anim_until:
 		_tail = true
 		queue_redraw()
 	elif _tail:
@@ -577,6 +818,8 @@ func _build_floor(now: float) -> ArrayMesh:
 			if sod.z > 0.0:
 				_turf(b, at + Vector2(0.0, sod.y * _cell), side, radius,
 					Vector2(sod.x, sod.z), cell, seen, shine)
+			if given and state.rings.has(cell):
+				_ring_caps(b, at, cell, now, seen * sink)
 	for cell in gone:
 		_sunk.erase(cell)
 	for cell in lifted:
@@ -669,6 +912,34 @@ func _shine(cell: Vector2i, now: float) -> float:
 		return 0.0
 	return sin(PI * e / GLINT_TIME)
 
+## A fairy ring about `at`: RING_CAPS little violet caps on a circle round
+## the numeral, each growing in on its own beat after the patch's entrance,
+## and all of them warming to gold at the party.
+func _ring_caps(b: Face.Builder, at: Vector2, cell: Vector2i, now: float, alpha: float) -> void:
+	var cap: Color = Pal.MG_PURPLE
+	var stem: Color = Pal.SURFACE
+	if now >= _glow_at:
+		var u := 1.0 if Motion.reduce else clampf((now - _glow_at - (cell.x + cell.y) * MEADOW_STEP) / RING_GLOW, 0.0, 1.0)
+		cap = cap.lerp(Pal.SUN, u)
+		stem = stem.lerp(Pal.SUN_TILE, u)
+	var r := _cell * RING_CAP
+	var spin := _hash(cell, 5) * TAU
+	for i in RING_CAPS:
+		var grow := 1.0
+		if not Motion.reduce:
+			var e := now - (_rings_at + (cell.x + cell.y) * RING_WAVE + i * RING_STEP)
+			grow = Motion.pop_in_scale(e).x
+		if grow <= 0.0:
+			continue
+		var a := spin + TAU * i / RING_CAPS
+		var p := at + Vector2(cos(a), sin(a)) * _cell * RING_AT
+		var k := r * grow
+		b.fan(Face.Builder.round_rect(p + Vector2(-k * 0.35, -k * 0.1), Vector2(k * 0.7, k * 1.0), k * 0.3),
+			Color(stem, alpha))
+		var dome := Face.Builder.arc_points(p, k, PI, TAU)
+		dome.append(p + Vector2(k, 0.0))
+		b.fan(dome, Color(cap, alpha))
+
 ## A steady 0-1 value per cell, so a sod's tone and tuft never change.
 static func _hash(cell: Vector2i, salt := 0) -> float:
 	var h := sin(float(cell.x) * 12.9898 + float(cell.y) * 78.233 + float(salt) * 37.719) * 43758.5453
@@ -687,7 +958,7 @@ func _wash_of(cell: Vector2i, now: float) -> Dictionary:
 ## what the number was wearing a moment ago, and the state's own standing()
 ## already describes the move that has just been made.
 func _worn(cell: Vector2i, now: float, standing: int) -> Dictionary:
-	var target := _wash_target(standing, int(state.given.get(cell, 0)))
+	var target := _wash_target(standing, int(state.given.get(cell, 0)), state.rings.has(cell))
 	if not _wash.has(cell):
 		return {"colour": target.colour, "level": target.level, "ink": target.ink,
 			"from_colour": target.colour, "from_level": 0.0, "moving": false}
@@ -704,12 +975,14 @@ func _worn(cell: Vector2i, now: float, standing: int) -> Dictionary:
 
 ## The wash a number of `value` standing `standing` asks for, with nothing
 ## moving. Nought takes no green, as the file comment says.
-static func _wash_target(standing: int, value: int) -> Dictionary:
+static func _wash_target(standing: int, value: int, is_ring := false) -> Dictionary:
 	if standing == State.OVER:
 		return {"colour": Pal.BAD, "level": WASH_OVER, "ink": Pal.BAD}
 	if standing == State.SETTLED and value > 0:
 		return {"colour": Pal.LEAF, "level": WASH_LEVEL, "ink": Pal.LEAF_DEEP}
-	return {"colour": Pal.LEAF, "level": 0.0, "ink": Pal.TEXT}
+	# A fairy ring's numeral is lettered in violet while it is short, so the
+	# ring and its number read as one thing.
+	return {"colour": Pal.LEAF, "level": 0.0, "ink": Pal.MG_PURPLE_DEEP if is_ring else Pal.TEXT}
 
 ## The numerals, over the floor's mesh and inside the entrance pop: one
 ## draw_set_transform a cell, so a numeral sinks with its cell, bumps when it
@@ -725,7 +998,9 @@ func _draw_numerals(now: float, grown: float) -> void:
 	var centre := _field_centre()
 	for cell in state.given:
 		var v: int = int(state.given[cell])
-		if v <= 0:
+		# A plain nought is bare and says so by being bare; a fairy ring's
+		# nought is a clue about cells two steps out, so it is lettered.
+		if v <= 0 and not state.rings.has(cell):
 			continue
 		var seen := _entered(cell, now)
 		if seen <= 0.0:
@@ -737,7 +1012,8 @@ func _draw_numerals(now: float, grown: float) -> void:
 		var at := cell_centre(cell) + Vector2(0.0, _cell * BED_LIP * 0.5)
 		at.x += Motion.shiver_offset(now - float(_shiver.get(cell, -100.0)), _cell * SHIVER)
 		at = centre + (at - centre) * grown
-		draw_set_transform(at, 0.0, Vector2.ONE * scale)
+		var ring: bool = state.rings.has(cell)
+		draw_set_transform(at, 0.0, Vector2.ONE * scale * (RING_NUM if ring else 1.0))
 		var text := str(v)
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 		draw_string(font, Vector2(-wide * 0.5, rise), text,
@@ -848,6 +1124,10 @@ func _build_ground(now: float) -> Dictionary:
 			Color(Pal.BAD, BLUSH_ALPHA * Motion.flash_level(e)))
 	for cell in gone:
 		_blush.erase(cell)
+	if _reach_glow(b, now):
+		busy = true
+	if _flowers(b, now):
+		busy = true
 	# The soft discs under the mushrooms, anchored at the cell and read off
 	# each face's own scale and alpha, so one arrives with the pop and stays
 	# put when she hops.
@@ -898,17 +1178,29 @@ func _build_ground(now: float) -> Dictionary:
 		if _solved_at >= 0.0:
 			# The pebbles clear away in the solve wave, leaving the patch to
 			# the mushrooms and their numbers.
-			grow *= Motion.pop_out_scale(now - _solved_at - _solve_delay(cell))
-			busy = true
+			var left := now - _solved_at - _solve_delay(cell)
+			grow *= Motion.pop_out_scale(left)
+			if left < Motion.POP_OUT:
+				busy = true
 		if grow.x <= 0.0 or grow.y <= 0.0:
 			continue
 		var at := cell_centre(cell)
+		if _pebble_in.has(cell):
+			at.y -= Motion.drop_in_lift(now - float(_pebble_in[cell]), _cell * PEBBLE_DROP, Motion.POP_IN)
 		var since: float = now - float(_shiver.get(cell, -100.0))
 		if since < Motion.SHIVER_TIME:
 			busy = true
 			at.x += Motion.shiver_offset(since, _cell * SHIVER)
 		elif _shiver.has(cell):
 			shook.append(cell)
+		if state.shown.has(cell):
+			# A heart showed this cell bare: its pebble stands on a rose halo,
+			# never a shade of its own colour.
+			var halo := _cell * SHOWN_HALO
+			b.fan(Face.Builder.ring(cell_centre(cell), halo * grow.x * 1.08, halo * grow.y * 1.08),
+				Color(Pal.BAD, 0.55 * seen))
+			b.fan(Face.Builder.ring(cell_centre(cell), halo * grow.x, halo * grow.y),
+				Color(Pal.BAD_TILE, seen))
 		var turn := Motion.wobble_angle(now - float(_wobble.get(cell, -100.0)))
 		if turn != 0.0:
 			busy = true
@@ -945,6 +1237,12 @@ func _enter() -> void:
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP
 		+ Motion.stagger(2 * state.n - 2, Motion.ENTER_STAGGER))
 	fx.cue("enter")
+	# Fairy Rings: once the patch is down, the rings grow in cap by cap in a
+	# diagonal wave.
+	_rings_at = _opened + Motion.ENTER_DELAY + Motion.ENTER_POP + RING_LEAD
+	if not state.rings.is_empty() and not Motion.reduce:
+		_busy_for(_rings_at - _opened + (2 * state.n) * RING_WAVE + RING_CAPS * RING_STEP + Motion.POP_IN)
+		_after(_rings_at - _opened, fx.cue.bind("rings"))
 
 ## The cell under the finger sinks (the Press moment) and stays down until the
 ## piece it is waiting for lands or the finger lets it go.
@@ -982,7 +1280,8 @@ func _snapshot() -> Dictionary:
 ## and takes its wash**: this is the wash's only entry point, so a number can
 ## never go green by any route but a move that was actually made. Returns the
 ## second each changed cell's piece arrives, for the sinks to wait on.
-func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false) -> Dictionary:
+func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false,
+		quiet: Dictionary = {}) -> Dictionary:
 	var arrivals: Dictionary = {}
 	var planted_before := 0
 	for cell in before:
@@ -991,7 +1290,7 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false) ->
 	for cell in before:
 		var prev := int(before[cell])
 		var mark := int(state.marks.get(cell, State.BLANK))
-		if prev == mark:
+		if prev == mark or quiet.has(cell):
 			continue
 		var going: float = t + float(delay_of.call(cell, true))
 		var coming: float = t + float(delay_of.call(cell, false))
@@ -1025,6 +1324,7 @@ func _settle(before: Dictionary, t: float, delay_of: Callable, drop := false) ->
 	if planted != planted_before:
 		_recount()
 	_refresh_faces()
+	_update_blooms(before, t, delay_of)
 	return arrivals
 
 ## The tally has a new count: its pill bumps and its little mushroom hops.
@@ -1066,7 +1366,7 @@ func _settle_wash(before: Dictionary, t: float, delay_of: Callable) -> void:
 func _standing_in(before: Dictionary, g: Vector2i) -> int:
 	var need: int = int(state.given[g])
 	var have := 0
-	for p in State.Gen.neighbours(g, state.n):
+	for p in state.reach(g):
 		if int(before.get(p, State.BLANK)) == State.FOUND:
 			have += 1
 	if have > need:
@@ -1207,14 +1507,13 @@ func _wobble_cap(face: Control) -> void:
 ## only reason this board ever turns a move down -- a *wrong* mark is never
 ## refused, or tapping every cell in turn would read the answer off what
 ## stuck.
+##
+## Since the polish a press on a number is not a refusal at all: it lights
+## the cells the number counts (_reach_glow) while the finger is down, and on
+## the tap the sprout says what it counts -- on Insane that is how a player
+## tells a fairy ring's sixteen from a plain number's eight.
 func _refuse_given(cell: Vector2i) -> void:
-	_say(tr("MP_TURNED"), Face.Expr.STRAIN)
-	fx.cue("locked")
-	if Motion.reduce:
-		return
-	_shiver[cell] = _now()
-	_blush_cell(cell)
-	_busy_for(Motion.SHIVER_TIME)
+	_say(tr("MP_REACH_RING") if state.rings.has(cell) else tr("MP_REACH"), Face.Expr.HAPPY)
 
 ## A press refused on a hint's mushroom, with either chip: she shivers and
 ## strains for a beat while her cell blushes, and the sprout says why.
@@ -1262,9 +1561,12 @@ func _press(cell: Vector2i) -> void:
 	_release_press()
 	_end_sinks(_now())
 	_clear_gesture()
-	if is_done() or cell.x < 0:
+	if is_done() or out_of_hearts or _ejecting or cell.x < 0:
 		return
 	_press_cell = cell
+	if state.given.has(cell):
+		_reach = {"cell": cell, "down": _now(), "up": INF}
+		fx.cue("reach")
 	var mark := int(state.marks.get(cell, State.BLANK))
 	# A mushroom under the finger sinks whichever chip is armed: every
 	# tappable piece takes the press, including one that will do nothing on
@@ -1331,7 +1633,7 @@ func _paint(cell: Vector2i, pressed := false) -> void:
 	_swept[cell] = true
 	if pressed:
 		_sink_cell(cell)
-	if state.given.has(cell) or state.pinned.has(cell):
+	if state.given.has(cell) or state.pinned.has(cell) or state.shown.has(cell):
 		return
 	var mark := int(state.marks.get(cell, State.BLANK))
 	if _lay:
@@ -1350,7 +1652,8 @@ func _release(at_cell: Vector2i) -> void:
 	var now := _now()
 	_release_press()
 	_clear_gesture()
-	if cell.x < 0 or is_done():
+	_end_reach(now)
+	if cell.x < 0 or is_done() or out_of_hearts or _ejecting:
 		_end_sinks(now)
 		_redraw()
 		return
@@ -1363,7 +1666,7 @@ func _release(at_cell: Vector2i) -> void:
 			if not changed.is_empty():
 				# One stroke is one move, however many cells it crossed, and
 				# a sweep puffs none of its pebbles.
-				fx.cue("place")
+				fx.cue("pebble" if lay else "remove")
 				_speak()
 				_redraw()
 				note_move()
@@ -1393,6 +1696,9 @@ func _tap(cell: Vector2i, now: float) -> void:
 		State.PINNED:
 			_refuse_pinned(cell)
 			return
+		State.SHOWN:
+			_refuse_shown(cell)
+			return
 		State.COVERED:
 			return
 	_settle(before, now, _at_once())
@@ -1400,17 +1706,35 @@ func _tap(cell: Vector2i, now: float) -> void:
 	var mark := int(state.marks.get(cell, State.BLANK))
 	# A mark on a covered cell throws its sod off in a puff of turf.
 	var dug: bool = int(before.get(cell, State.BLANK)) == State.BLANK
+	var land := 0.0 if Motion.reduce else SPROUT_LAG + SPROUT_PUSH + SPROUT_OPEN
 	if mark == State.FOUND:
 		fx.ring(at, _cell * RING_R, Pal.SUN_RAY)
 		fx.puff(at, Pal.TURF if dug else Pal.LEAF)
 		fx.cue("place")
+		if state.judged() and not state.mushrooms.has(cell):
+			_wrong_plant(cell, land)
+			note_move()
+			return
+		if state.judged() or not _sent_over(before):
+			_on_right_plant(cell, land)
+		else:
+			_break_streak()
 	elif mark == State.CLEAR:
 		fx.puff(at, Pal.TURF if dug else Pal.SOCKET_PEBBLE)
-		fx.cue("place")
+		fx.cue("pebble")
 	else:
 		fx.cue("remove")
+		_break_streak()
 	_speak()
 	note_move()
+
+## Whether the move just made sent some number over its count: a plant on
+## Easy or Medium that does is not a streak's.
+func _sent_over(before: Dictionary) -> bool:
+	for g in state.given:
+		if state.standing(g) == State.OVER and _standing_in(before, g) != State.OVER:
+			return true
+	return false
 
 func _clear_gesture() -> void:
 	_press_cell = Vector2i(-1, -1)
@@ -1434,7 +1758,8 @@ func _speak() -> void:
 	var planted: int = state.mushrooms.size() - state.left()
 	var left: int = state.left()
 	if planted <= 0:
-		_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+		var tips := _tips()
+		_say(tr(tips[_tip_idx % tips.size()]), Face.Expr.HAPPY)
 		return
 	if left > 0:
 		_say(tr("MP_FOUND_ONE") % _word(left) if planted == 1
@@ -1453,8 +1778,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1462,12 +1788,16 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return not is_done() and not state.history.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.history.is_empty()
+
+## The host holds its hint video while a wrong mushroom is wilting.
+func busy() -> bool:
+	return _ejecting
 
 ## Takes back the last gesture, however many cells it painted, in a wave along
 ## the cells it touched. Counts no move.
 func undo() -> bool:
-	if is_done() or state.history.is_empty():
+	if is_done() or out_of_hearts or _ejecting or state.history.is_empty():
 		return false
 	var now := _now()
 	_release_press()
@@ -1476,6 +1806,7 @@ func undo() -> bool:
 	var before := _snapshot()
 	var cells: Array = state.undo()
 	_settle(before, now, _along(cells) if cells.size() > 1 else _at_once())
+	_break_streak()
 	_speak()
 	fx.cue("undo")
 	_redraw()
@@ -1483,13 +1814,13 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
 
 ## Plants the answer's next mushroom in reading order and pins it: a ring
 ## pulses out of the cell, she drops in from above, sparkles rise, and she
 ## wears a leaf sprig from then on. Counts no move but can finish the patch.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
 		return false
 	var now := _now()
 	_release_press()
@@ -1517,9 +1848,14 @@ func hint() -> bool:
 ## nothing and rubs nothing out. The pebble counts for nothing towards the
 ## win, but it is still a claim, and Check answers claims.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return 0
 	checks += 1
+	# On Hard and Insane no wrong mushroom ever stays, so Check looks at the
+	# pebbles -- and only counts them, since pointing at a pebble on a
+	# mushroom would hand the mushroom over for nothing.
+	if state.judged():
+		return _check_pebbles()
 	var wrong: Array = state.wrong_marks()
 	for cell in wrong:
 		if int(state.marks.get(cell, State.BLANK)) == State.FOUND and _caps.has(cell):
@@ -1543,6 +1879,9 @@ func check() -> int:
 ## Everything the player laid shrinks out in a wave from the far corner; a
 ## hint's mushroom hops and stays. Hints spent are not refunded.
 func reset_board() -> void:
+	if out_of_hearts or _ejecting:
+		return
+	_break_streak()
 	var now := _now()
 	_release_press()
 	_clear_gesture()
@@ -1569,7 +1908,16 @@ func is_solved() -> bool:
 	return state.is_solved()
 
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.band == 3:
+		out += "🌙 " + tr("MP_RINGS_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += "🏅 " + tr("BN_FLAWLESS")
+	return out
+
+## Whether the solve was flawless, so a reopened daily keeps its seal.
+func completion_record() -> Dictionary:
+	return {"flawless": _flawless, "hearts": hearts}
 
 # --- the win ---
 
@@ -1579,7 +1927,7 @@ func flat_win() -> Dictionary:
 	return {"faces": [MushroomFace.new()], "subtitle": tr("MP_WIN")}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
 
 ## The mushrooms hop in the family's wave along the diagonal with JOY and a
 ## spark each, and the pebbles clear away in the same wave, leaving the patch
@@ -1611,6 +1959,12 @@ func _on_solved() -> void:
 	_say(tr("MP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = now
+		_combo_layer.queue_redraw()
+	_reach = {}
+	_party()
 	_redraw()
 
 ## A completed daily is rebuilt from its seed, so it opens on a bare patch.
@@ -1644,6 +1998,19 @@ func restore_completed_board() -> void:
 	_solved_at = now - 10.0
 	_anim_until = 0.0
 	_tail = false
+	# The meadow stands, the rings glow and the seal is down (a flawless solve
+	# kept that in its record; any Insane solve earns the night seal).
+	_deal()
+	_rings_at = now - 20.0
+	_meadow_at = now - 10.0
+	_glow_at = now - 10.0
+	_flawless = bool(completed_record.get("flawless", false))
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	for g in state.given:
+		if int(state.given[g]) > 0:
+			_bloom[g] = {"at": now - 10.0, "open": true}
+	if _flawless or state.band == 3:
+		_stamp_at = now - 10.0
 	for cell in state.mushrooms:
 		var face := _cap_node(cell)
 		face.visible = true
@@ -1678,6 +2045,738 @@ func _spark_at(k: int, at: Vector2) -> void:
 		fx.sparkle(at, Pal.SUN)
 	else:
 		fx.puff(at, Pal.SUN, 4)
+
+# --- a number's reach ---
+
+## The finger has let go: a held number's cells fade back out.
+func _end_reach(now: float) -> void:
+	if _reach.is_empty() or not is_inf(float(_reach.up)):
+		return
+	_reach.up = now
+	_busy_for(REACH_OUT)
+
+## The cells a held number counts, lit in leaf (violet for a fairy ring) while
+## the finger is down and fading after. True while it is still moving.
+func _reach_glow(b: Face.Builder, now: float) -> bool:
+	if _reach.is_empty():
+		return false
+	var cell: Vector2i = _reach.cell
+	var level := 1.0 if Motion.reduce else clampf((now - float(_reach.down)) / REACH_IN, 0.0, 1.0)
+	var moving := level < 1.0
+	if not is_inf(float(_reach.up)):
+		var u := 1.0 if Motion.reduce else clampf((now - float(_reach.up)) / REACH_OUT, 0.0, 1.0)
+		level *= 1.0 - u
+		moving = true
+		if u >= 1.0:
+			_reach = {}
+			return false
+	if level <= 0.0:
+		return moving
+	# Pale on the meadow's green, never a shade of it: sunlight for a plain
+	# number, a lilac haze for a ring.
+	var col: Color = Pal.MG_PURPLE_HI if state.rings.has(cell) else Pal.SUN_TILE
+	var side := _cell * (1.0 - 2.0 * CELL_INSET)
+	for p in state.reach(cell):
+		b.fan(Face.Builder.round_rect(cell_centre(p) - Vector2.ONE * (side * 0.5),
+			Vector2.ONE * side, _cell * CELL_RADIUS), Color(col, REACH_ALPHA * level))
+	return moving
+
+# --- flowers ---
+
+## After a move: every number that has just finished (each cell it counts
+## marked, its count holding) opens its flower as the move's piece lands, and
+## one that stopped being finished folds it. Read off the player's own marks,
+## never the answer.
+func _update_blooms(_before: Dictionary, t: float, delay_of: Callable) -> void:
+	var opened := false
+	for g in state.given:
+		var done: bool = _solved_at < 0.0 and state.finished(g) and not _judged_wrong_in(g)
+		var was: bool = bool(_bloom.get(g, {}).get("open", false))
+		if done and not was:
+			var at: float = t + float(delay_of.call(g, false)) + (0.0 if Motion.reduce else Motion.POP_IN)
+			_bloom[g] = {"at": at, "open": true}
+			opened = true
+		elif not done and was:
+			_bloom[g] = {"at": t, "open": false}
+	if opened and not is_done():
+		_after(0.0 if Motion.reduce else Motion.POP_IN, fx.cue.bind("bloom"))
+	_busy_for(Motion.POP_IN + BLOOM_TIME + 0.1)
+
+## Whether a mushroom the answer does not grow stands in `g`'s reach on a
+## judged band: she is about to wilt, and a flower for her would be a reward
+## for a wrong move.
+func _judged_wrong_in(g: Vector2i) -> bool:
+	if not state.judged():
+		return false
+	for p in state.reach(g):
+		if int(state.marks.get(p, State.BLANK)) == State.FOUND and not state.mushrooms.has(p):
+			return true
+	return false
+
+## The finished numbers' flowers, each in its bed's upper right corner, and
+## at the party the meadow: a flower on every bare cell along the diagonal.
+## True while any of them is still opening or folding.
+func _flowers(b: Face.Builder, now: float) -> bool:
+	var busy := false
+	for g in _bloom:
+		var d: Dictionary = _bloom[g]
+		var e: float = now - float(d.at)
+		var k := 0.0
+		if bool(d.open):
+			if e <= 0.0:
+				busy = true
+				continue
+			if Motion.reduce or e >= BLOOM_TIME:
+				k = 1.0
+			else:
+				busy = true
+				k = Motion.back_out(e / BLOOM_TIME)
+		elif not Motion.reduce and e < BLOOM_FOLD:
+			busy = true
+			k = 1.0 - clampf(e / BLOOM_FOLD, 0.0, 1.0)
+		if k <= 0.01:
+			continue
+		_flower(b, cell_centre(g) + BLOOM_AT * _cell, _cell * BLOOM_R * k,
+			(1.0 - minf(k, 1.0)) * 1.2 + _hash(g, 4) * TAU, Pal.SURFACE)
+	if now >= _meadow_at:
+		for y in state.n:
+			for x in state.n:
+				var cell := Vector2i(x, y)
+				if state.mushrooms.has(cell) or state.given.has(cell):
+					continue
+				var e: float = now - _meadow_at - (0.0 if Motion.reduce else (x + y) * MEADOW_STEP)
+				if e <= 0.0:
+					busy = true
+					continue
+				var kk := 1.0 if Motion.reduce or e >= BLOOM_TIME else Motion.back_out(e / BLOOM_TIME)
+				if kk < 1.0:
+					busy = true
+				var h := _hash(cell, 6)
+				var petal: Color = [Pal.SURFACE, Pal.FLOWER, Pal.SUN_TILE, Pal.SURFACE][int(h * 4.0) % 4]
+				var at := cell_centre(cell) + Vector2(h - 0.5, _hash(cell, 8) - 0.5) * _cell * 0.3
+				_flower(b, at, _cell * MEADOW_R * kk, h * TAU + (1.0 - kk) * 1.2, petal)
+	return busy
+
+## One flower of radius `r` about `at`, turned `turn`: BLOOM_PETALS petals
+## rimmed in the daisies' edge, and a sun-gold heart (Queens').
+func _flower(b: Face.Builder, at: Vector2, r: float, turn: float, petal: Color) -> void:
+	if r <= 0.5:
+		return
+	for p in BLOOM_PETALS:
+		var a := turn + TAU * p / BLOOM_PETALS
+		var dir := Vector2.from_angle(a)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.52, r * 0.3, a), Pal.PETAL_EDGE)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.45, r * 0.23, a), petal)
+	b.fan(Face.Builder.ring(at, r * 0.32, r * 0.32), Pal.SUN)
+
+static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for k in 12:
+		var a := TAU * k / 12.0
+		pts.append(at + Vector2(cos(a) * rx, sin(a) * ry).rotated(angle))
+	return pts
+
+# --- judging a mushroom ---
+
+## Check on Hard and Insane: how many of the player's pebbles sit on a
+## mushroom, counted and never pointed at.
+func _check_pebbles() -> int:
+	var wrong: Array = state.wrong_pebbles()
+	var count := wrong.size()
+	if count == 1:
+		_say(tr("MP_PEBBLES_ONE"), Face.Expr.WORRIED)
+	elif count > 1:
+		_say(tr("MP_PEBBLES_N") % _word(count).capitalize(), Face.Expr.WORRIED)
+	elif state.marks.size() == state.shown.size() + state.pinned.size():
+		_say(tr("MP_PLANT_FIRST"), Face.Expr.HAPPY)
+	else:
+		_say(tr("MP_ALL_RIGHT"), Face.Expr.JOY)
+	fx.cue("check" if count > 0 else "check_ok")
+	_redraw()
+	return count
+
+## A press on a pebble a heart showed: it shivers, and the sprout says why.
+func _refuse_shown(cell: Vector2i) -> void:
+	_say(tr("MP_SHOWN"), Face.Expr.WORRIED)
+	fx.cue("locked")
+	if Motion.reduce:
+		return
+	_shiver[cell] = _now()
+	_busy_for(Motion.SHIVER_TIME)
+	_redraw()
+
+## A plant that holds builds the streak (a note up the pentatonic from the
+## second, the bubble from the third, confetti at five and ten) and now and
+## then plays a gag. `land` is when she has opened, from now.
+func _on_right_plant(cell: Vector2i, land: float) -> void:
+	if is_done():
+		return
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		_after(land, func() -> void:
+			if not is_done():
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if _streak >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_cell = cell
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		_after(land, func() -> void:
+			if is_done():
+				return
+			fx.confetti(cell_centre(cell), 22)
+			fx.cue("confetti"))
+	_gag(cell, land)
+
+## The streak ends: a pull, a wrong mushroom, an undo, a reset, the hearts
+## running out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		if _combo_layer != null:
+			_combo_layer.queue_redraw()
+	else:
+		_combo_n = 0
+
+# --- failing ---
+
+## A mushroom the answer does not grow there, on Hard or Insane: she sprouts
+## like any other, then goes WORRIED as her cell blushes and a heart splits,
+## and EJECT_AFTER later she wilts back into the soil and a pebble drops in
+## where she stood, for good.
+func _wrong_plant(cell: Vector2i, land: float) -> void:
+	if hearts <= 0 or is_done():
+		return
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = _now() + land
+	_ejecting = true
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+	_bad[cell] = true
+	_after(land, func() -> void:
+		_heart_layer.queue_redraw()
+		fx.cue("heart_lost")
+		if not Motion.reduce:
+			fx.puff(cell_centre(cell), Pal.BAD, 4)
+		_blush_cell(cell)
+		_refresh_faces()
+		_say(tr("MP_WRONG_PLANT"), Face.Expr.WORRIED)
+		_redraw())
+	_busy_for(land + EJECT_AFTER + WILT_TIME)
+	moved.emit()
+	_after(land + (0.0 if Motion.reduce else EJECT_AFTER), _wilt.bind(cell))
+
+## The wrong mushroom wilts: she droops over, sinks into the soil and fades,
+## and a pebble drops in where she stood and stays -- the heart has shown the
+## cell bare. Every number she had counted settles back as she goes.
+func _wilt(cell: Vector2i) -> void:
+	_ejecting = false
+	if is_done() or not _bad.has(cell):
+		return
+	_bad.erase(cell)
+	var now := _now()
+	var before := _snapshot()
+	state.reveal(cell)
+	_wilt_away(cell)
+	var sink := 0.0 if Motion.reduce else WILT_TIME * 0.45
+	_settle(before, now, func(_c: Vector2i, _leaving: bool) -> float: return sink,
+		false, {cell: true})
+	_pebble_arrives(cell, now + sink)
+	fx.cue("wilt")
+	moved.emit()
+	_redraw()
+	if out_of_hearts:
+		_after(0.0 if Motion.reduce else WILT_TIME, _run_out)
+	else:
+		_after(0.0 if Motion.reduce else WILT_TIME, _speak)
+
+## Her own wilt: a droop to one side over the first third, then a sink into
+## the soil, squashing wide and fading; hidden and put back once gone.
+func _wilt_away(cell: Vector2i) -> void:
+	var face: MushroomFace = _caps.get(cell)
+	if face == null:
+		return
+	Motion.stop(_pos_tw.get(face))
+	Motion.stop(_look_tw.get(face))
+	var home := func() -> void:
+		if int(state.marks.get(cell, State.BLANK)) != State.FOUND:
+			face.visible = false
+		face.position = Vector2.ZERO
+		face.rotation = 0.0
+		face.scale = Vector2.ONE
+		face.modulate.a = 1.0
+	if Motion.reduce:
+		home.call()
+		return
+	_set_expr(face, Face.Expr.SLEEPY)
+	var side := -1.0 if _hash(cell, 9) < 0.5 else 1.0
+	var tw := face.create_tween()
+	tw.tween_property(face, "rotation", WILT_DROOP * side, WILT_TIME / 3.0) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(u: float) -> void:
+		face.scale = Vector2(1.0 + 0.3 * u, 1.0 - u)
+		face.modulate.a = 1.0 - u * u, 0.0, 1.0, WILT_TIME * 2.0 / 3.0) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(home)
+	_look_tw[face] = tw
+	_after(WILT_TIME * 0.4, func() -> void:
+		fx.puff(cell_centre(cell) + Vector2(0.0, _cell * SOIL_AT), Pal.PLOT_SOIL, 5))
+
+## The last heart is gone: the patch slips to dusk, the mushrooms doze off
+## along the diagonal, and the card comes up.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_release_press()
+	_clear_gesture()
+	_end_sinks(_now())
+	_break_streak()
+	fx.cue("out_of_hearts")
+	_say(tr("MP_OUT"), Face.Expr.SLEEPY)
+	for cell in _caps:
+		var face: MushroomFace = _caps[cell]
+		if face.visible and int(state.marks.get(cell, State.BLANK)) == State.FOUND:
+			_after(0.0 if Motion.reduce else (cell.x + cell.y) * 0.04, func() -> void:
+				if _asleep:
+					_set_expr(face, Face.Expr.SLEEPY))
+	_dusk_toward(DUSK)
+	_redraw()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["MP_OUT_BODY", "MP_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same patch from the top in Reset's wave, every heart back,
+## the shown pebbles gone, the day's light, the clock and the moves from
+## zero; hints spent stay spent, and a hint's mushrooms keep their places.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	elapsed = 0.0
+	checks = 0
+	moves = 0
+	var now := _now()
+	_release_press()
+	_clear_gesture()
+	_end_sinks(now)
+	var before := _snapshot()
+	state.reset_board(true)
+	_deal()
+	_settle(before, now, _from_far_corner())
+	_blush = {}
+	_shiver = {}
+	_wobble = {}
+	# _deal() puts the light back at once; hold the dusk so it fades.
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_refresh_faces()
+	_heart_layer.queue_redraw()
+	_running = true
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+	_redraw()
+
+## One more heart (the card's video): once a board. The light comes back and
+## the mushrooms wake.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_refresh_faces()
+	_speak()
+	moved.emit()
+	_redraw()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the hearts ---
+
+## The hearts over the tally as one mesh on a paper pill (Queens'): pink with
+## a small face and a leaf, a faint ghost where one was, the lost one's halves
+## falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _hearts_y
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	var c := Vector2(size.x * 0.5, y)
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- the streak's bubble ---
+
+## The streak's paper bubble at the upper right of the plant, "x3" and up in
+## ink: it pops in the first time, bumps at each plant and deflates when the
+## streak ends (One Line's).
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _cell <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var cell := cell_centre(_combo_cell)
+	var tail := cell + Vector2(_cell * 0.25, -_cell * 0.4)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
+
+# --- gags and the life over the patch ---
+
+## A plant that holds now and then plays a gag, picked by the cell's hash so
+## a day replays the same: little hearts float up off her; she twirls a whole
+## turn on a hop; or she winds up and sneezes a puff of glittering spores.
+## Under reduce-motion, none.
+func _gag(cell: Vector2i, land: float) -> void:
+	if Motion.reduce or is_done():
+		return
+	var roll := posmod(hash(Vector2i(cell.x * 13 + 7, cell.y * 5 + _streak)), GAG_ODDS)
+	if roll >= GAGS:
+		return
+	# The plant that solves the patch hands the stage to the party.
+	if state.is_solved():
+		return
+	match roll:
+		0:
+			var at := cell_centre(cell) - Vector2(0.0, _cell * 0.2)
+			var now := _now() + land
+			for k in LOVE_HEARTS:
+				var off := Vector2((k - (LOVE_HEARTS - 1) * 0.5) * 0.22, -0.2) * _cell
+				_love.append({"at": at + off, "t": now + k * 0.08, "phase": _hash(cell, k + 11) * TAU})
+			_after(land, fx.cue.bind("love"))
+		1:
+			_after(land, _twirl.bind(cell))
+		2:
+			_after(land, _sneeze.bind(cell))
+
+## She twirls a whole turn on a little hop with a sparkle.
+func _twirl(cell: Vector2i) -> void:
+	var face: MushroomFace = _caps.get(cell)
+	if face == null or is_done() or _bad.has(cell) \
+			or int(state.marks.get(cell, State.BLANK)) != State.FOUND:
+		return
+	Motion.stop(_look_tw.get(face))
+	face.scale = Vector2.ONE
+	face.eye_open = 1.0
+	var tw := face.create_tween()
+	tw.tween_property(face, "rotation", TAU, TWIRL_TIME).from(0.0) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func() -> void: face.rotation = 0.0)
+	_look_tw[face] = tw
+	_hop(face, _cell * TWIRL_HOP, TWIRL_TIME)
+	fx.sparkle(cell_centre(cell) - Vector2(0.0, _cell * 0.3), Pal.SUN)
+	fx.cue("twirl")
+
+## She winds up (a slow squash, her eyes shut), sneezes (a quick stretch up)
+## and a puff of glittering spores flies off her cap; then she settles.
+func _sneeze(cell: Vector2i) -> void:
+	var face: MushroomFace = _caps.get(cell)
+	if face == null or is_done() or _bad.has(cell) \
+			or int(state.marks.get(cell, State.BLANK)) != State.FOUND:
+		return
+	Motion.stop(_look_tw.get(face))
+	face.rotation = 0.0
+	var tw := face.create_tween()
+	tw.tween_property(face, "scale", Vector2(1.12, 0.86), SNEEZE_WIND) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(face, "eye_open", 0.0, SNEEZE_WIND)
+	tw.tween_property(face, "scale", Vector2(0.88, 1.16), SNEEZE_BLOW) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		var top := cell_centre(cell) - Vector2(0.0, _cell * 0.3)
+		fx.puff(top, Pal.SURFACE_HI, 6)
+		fx.sparkle(top, Pal.SUN_TILE))
+	tw.tween_property(face, "scale", Vector2.ONE, SNEEZE_BACK) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(face, "eye_open", 1.0, SNEEZE_BACK * 0.5)
+	_look_tw[face] = tw
+	_after(SNEEZE_WIND * 0.6, fx.cue.bind("sneeze"))
+
+## Keeps the life layer drawing while anything on it moves.
+func _tick_life(now: float) -> bool:
+	var still: Array = []
+	for l in _love:
+		if now < float(l.t) + LOVE_TIME:
+			still.append(l)
+	_love = still
+	return not _love.is_empty() or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## The life over the patch: love hearts floating off a mushroom, and the seal
+## after the solve, with its words.
+func _draw_life() -> void:
+	if _cell <= 0.0:
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.08 * _cell,
+				-LOVE_RISE * _cell * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_life_shown = shown
+
+## A little pink heart for the love gag, built once.
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := _cell * LOVE_R
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+# --- the party ---
+
+## After the solve wave: the patch turns into a meadow, a flower opening on
+## every bare cell along the diagonal; on Insane the fairy rings glow gold;
+## the mushrooms dance; confetti sweeps the patch twice; the seal stamps when
+## the solve earned one (flawless, or any Insane patch); and the sprout shares
+## a silly bit of mushroom wisdom. Under reduce-motion the meadow, the glow
+## and the seal stand at once.
+func _party() -> void:
+	var now := _now()
+	var lead := 0.0 if Motion.reduce else PARTY_AT
+	_meadow_at = now + lead
+	_busy_for(lead + BLOOM_TIME + 2.0 * state.n * MEADOW_STEP)
+	_after(lead, func() -> void:
+		_say(_cheer(), Face.Expr.JOY)
+		fx.cue("meadow"))
+	if not state.rings.is_empty():
+		_glow_at = now + lead * 0.5
+		_busy_for(lead * 0.5 + RING_GLOW + 2.0 * state.n * MEADOW_STEP)
+		_after(lead * 0.5, fx.cue.bind("rings_glow"))
+	if _flawless or state.band == 3:
+		_stamp_at = now if Motion.reduce else now + lead + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		return
+	var field := Rect2(_grid, Vector2.ONE * state.n * _cell)
+	_after(lead + 0.15, func() -> void:
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell * 0.3), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_after(lead + 0.6, func() -> void:
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	_after(lead + 0.35, _dance)
+
+## Every mushroom sways left and right on the beat, DANCE_BEATS times, and
+## settles -- about her foot, so she dances from the ground.
+func _dance() -> void:
+	fx.cue("dance")
+	for cell in state.mushrooms:
+		var face: MushroomFace = _caps.get(cell)
+		if face == null or not face.visible:
+			continue
+		Motion.stop(_look_tw.get(face))
+		face.scale = Vector2.ONE
+		var tw := face.create_tween()
+		for i in DANCE_BEATS:
+			var side := DANCE_TILT * (1.0 if (i + cell.x + cell.y) % 2 == 0 else -1.0)
+			tw.tween_property(face, "rotation", side, DANCE_BEAT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(face, "rotation", 0.0, DANCE_BEAT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_look_tw[face] = tw
+	_busy_for(DANCE_BEAT * (DANCE_BEATS + 1))
+
+## One of CHEERS silly bits of mushroom wisdom, picked by the patch itself, so
+## a day always gets the same one.
+func _cheer() -> String:
+	var cells: Array = state.mushrooms.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	return tr("MP_CHEER_%d" % posmod(hash(str(cells)), CHEERS))
+
+## The seal on the card's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, state.band == 3)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := _card.end - Vector2(rad * 1.2, rad * 0.95)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if state.band == 3:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("MP_RINGS_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # --- odds and ends ---
 
