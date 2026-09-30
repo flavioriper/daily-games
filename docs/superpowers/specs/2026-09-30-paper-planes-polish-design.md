@@ -107,18 +107,21 @@ the same tap, the same lanes, the same win.
   wind on one step** (`gust`) -- a count without a launch. Out of hearts while
   stuck, or out of hearts from crashes, is the card. Cloud taps do nothing
   when the sky is not stuck (no accidental heart).
-- **Why it is nearly impossible**: the sky is solvable (the generator builds
-  it forwards with the clouds' clock), but random or greedy play gets stuck
-  almost always. The miner keeps boards where a **random legal playout gets
-  stuck at least 95% of the time** and the greedy "launch the first free
-  plane" order gets stuck, and ranks them by how few orders survive (dead-end
-  states met by an exact search over launched sets). No hints, two hearts,
-  no undo.
+- **Why it is nearly impossible**: the sky is solvable (the generator carves
+  it backwards, as every band does, with the clouds' clock counted back from
+  the end: the plane placed `j`-th launches `j + 1` ticks before the last,
+  so its lane is kept clear of the clouds at exactly that tick), but random
+  or greedy play gets stuck almost always. The miner keeps boards where a
+  **random legal playout gets stuck at least 95% of the time** -- computed
+  exactly over every reachable launched set rather than sampled -- and the
+  greedy "launch the first free plane in reading order" play gets stuck,
+  and ranks them by that chance (then by doomed states met by the exact
+  search). No hints, two hearts, no undo.
 - **The deal** (mined off the phone, banked in
   `content/insane/planes.json` through `tools/mine_insane.gd` with
   `tools/insane/planes_ladder.gd`): a sky small enough to plan (the miner
-  picks the size where the exact search finishes and the playout gate holds;
-  target around 9x12 to 10x14, with 4-8 clouds). The phone checks an entry
+  picks the size where the exact search finishes and the playout gate holds:
+  **10x14 with 8 clouds**, planes of 3-7 cells, section 7). The phone checks an entry
   holds together (planes in bounds, no overlap, clouds in bounds, the stored
   order replays to an empty sky) and trusts the miner for the rest. An empty
   or broken bank deals a live Windy Day sky built with its clock and
@@ -181,7 +184,51 @@ ElevenLabs (the fallback key when the first is out); **unheard** by a person.
 
 ## 7. Numbers
 
-Filled in by the build.
+**The state and the deal** (2026-09-30, GDScript on this Mac, throwaway
+probes not kept). *Tighter skies* (section 2), forty seeds a band, before
+-> after. "Tight" is the share of steps with two or fewer legal launches
+over ten random legal playouts a board; the 22.0 / 16.6 / 12.6 % recorded in
+the board notes came from the flat build's Python probe and could not be
+reproduced by method, so both columns here are the same probe's:
+
+| band | planes | coverage (mean / worst) | tight | free a step | longest chain | ms a board |
+|---|---|---|---|---|---|---|
+| Easy | 25.4 -> 24.7 | 0.802 / 0.721 -> 0.812 / 0.736 | 14.8 -> **19.7 %** | 6.6 -> 6.2 | 4.3 -> **5.2** | 1.1 -> 2.5 |
+| Medium | 37.6 -> 34.5 | 0.779 / 0.726 -> 0.781 / 0.726 | 10.0 -> **19.1 %** | 9.0 -> 7.4 | 4.9 -> **7.3** | 1.9 -> 5.9 |
+| Hard | 51.8 -> 46.2 | 0.750 / 0.696 -> 0.754 / 0.722 | 7.5 -> **17.6 %** | 11.9 -> 8.7 | 5.7 -> **8.9** | 6.1 -> 20.0 |
+
+Hard's tight share is 2.35x, every chain is longer and no board now falls
+under the 0.72 floor (Hard's worst did before). The carve draws 3 / 6 / 10
+placements a step (`picks`) with 1.5 / 1.0 / 0.6 of random lift (`noise`;
+under 1 it only breaks ties, since the score is a whole count of lanes);
+a step stops drawing after `picks * 4` draws (`DRAWS_A_PICK`), which took
+Hard from 32 to 20 ms without loosening it. Medium came out as tight as
+Easy by this measure; its chain (7.3) and plane count still sit between.
+
+*Windy Day* (section 3): **10x14, 8 clouds, planes of 3-7 cells**, the
+carve at 16 picks with the lane-crossed-by-clouds weight `wind_w` 1.0. Tried
+and dropped: 9x12 with 6 clouds (17.8 planes, 1 in 20 passing the gate),
+10x14 with 6 or 10 clouds, `wind_w` 0-5, two-cell planes (more planes but
+the exact search overran its budget more often). Over 3,000 mined tries
+(`godot --headless --path . --script tools/mine_insane.gd -- planes 150
+3000`): 570 passed the gate (19 %), 3 overran the search budget of 400,000
+launched sets, 478 ms a try per thread, **180 s wall on 8 threads**. The
+bank keeps the hardest 150 (rungs 9-22, rung = floor(-log2 p)): 19-28
+planes (mean 22.8), **a random playout clears at most 0.19 % of them, median
+0.033 %** (stuck 99.8-99.99+ %), and greedy play sticks on every one. The
+exact chance agreed with 400 sampled playouts on every seed checked (seed
+5: 90.5 % stuck sampled against 87.7 % exact; seed 9: 50.2 % against
+52.4 %). The phone's check of a banked sky
+(`from_bank`, replay included) costs 0.27 ms; the exact search a hint would
+use took at most 75 ms from a sky one launch in. The live fallback carves in
+about 8 ms and is not gated. The whole bank is 276 KB.
+
+**Decisions off the spec**: the Windy Day sky is carved backwards with the
+clock counted from the end, not forwards; the playout gate is the exact
+probability, not 400 samples; a gust is refused by the state unless the sky
+is stuck (so no board bug can spend a heart on a free sky); undo stays in the
+state on Insane (Reset flies planes home through it) and `undo_allowed` is
+what the board offers.
 
 ## 8. Calls for the user
 
