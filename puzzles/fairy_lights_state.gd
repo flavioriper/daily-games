@@ -101,12 +101,11 @@ func start(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 		# the proof needs runs the tag solver dozens of times a garden, and
 		# the miner keeps the gardens that needed the most suppositions,
 		# which a live deal cannot look for as the card opens. The phone
-		# checks the entry holds together (Gen.from_bank) and re-runs the
-		# proof, which costs a few milliseconds; an empty bank or an entry
-		# that fails either grows a live garden.
+		# checks the entry holds together (Gen.from_bank, 0.3 ms on the Mac)
+		# and trusts the miner's proof: re-running the tag solver costs 2-8
+		# ms a banked garden on the Mac, a guessed 10-40 on a phone. An empty
+		# bank or an entry that fails grows a live garden.
 		out = Gen.from_bank(InsaneBank.pick("fairylights", bank_step))
-		if not out.is_empty() and not bool(Gen.solve_tags(out.n, out.post, out.sol, out.tags).ok):
-			out = {}
 		if out.is_empty() and InsaneBank.size("fairylights") > 0:
 			push_warning("Fairy Lights: a banked garden did not hold together; growing a live one")
 		banked = not out.is_empty()
