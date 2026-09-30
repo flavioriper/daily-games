@@ -174,6 +174,28 @@ one draw_string a tag. Suite passed=123054 failed=0; `tests/_win.gd --
 fairylights` winnable 1/1 (Medium; it now taps every piece round where a band
 has no hints).
 
+**The rewards (section 3), 2026-09-30.** Peak draw calls from
+`tests/_shot_fairylights.gd` at 810x1440, windowed one at a time, the second
+of two readings: `right` (six lanterns woken in a row: join sparks, x2 to x6,
+confetti at 4, moth, notes and love, then an undo deflating the bubble) 115
+(Easy), 137 (Insane), 109 (Easy, reduce motion: no sparks, gags or confetti,
+the bubble still counts); `solve` (three lanterns tapped home: chase, dance,
+fireflies, confetti twice, the cat hopping along the frame's foot and curling
+up, the seal) 139 (Easy, gold seal), 173 (Insane: night seal, tags fluttering
+gold), 173 on `--rendering-driver opengl3_angle`, 152 (Insane, reduce motion,
+over the win screen); `restore` with a flawless record 152 (Insane: cat
+asleep, gold tags, night seal, a clip, a heart gone); `tags` 144 and `fuse`
+124 (Hard) with the bigger paper and clip. Every one far under 855: each
+floating thing is one cached mesh (moth, note, heart, firefly, the twinkle's
+star for a join) under a transform, the bubble is rebuilt once a count, and
+the seal is one mesh and two strings. The tags are 1.7 times the first pass's
+(0.46 by 0.5 of a cell, the number 0.36 of a cell: 42 px at Insane's 118 px
+cell, overhanging the stone's lower right a little), the clip 1.5 times (0.45
+by 0.225). Suite passed=123054 failed=0; `tests/_win.gd -- fairylights`
+winnable 1/1 (6x6, 33 turns). Screenshots read: the moth, notes, love, x3,
+x4's confetti, the party frames, the night and gold seals, the cat avoiding
+the bottom row's lanterns, rose and gold tags.
+
 ## 7. Calls for the user
 
 1. **The fuse rule**: only turning a right piece costs, so exploring by
@@ -184,3 +206,8 @@ has no hints).
 3. **Two hearts on Insane, three on Hard** are guesses.
 4. **Twelve bits of lantern wisdom**: silly on purpose.
 5. **Sounds are unheard.**
+6. **The seal** hangs off the frame's lower right corner (a stamp on a
+   parcel) and on 8x8 still covers the corner lantern; the cat picks the
+   stretch of the bottom row that hides the fewest lanterns. Both are the
+   party's leavings over a finished garden, so nothing is hidden that the
+   player still needs.

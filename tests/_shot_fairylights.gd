@@ -13,9 +13,14 @@ extends SceneTree
 ## dark pulled back to the post, the dusk, the card, Try again), `tags`
 ## (Insane: the tags at rest, then most of the garden wired to its answer so
 ## tags read gold, and one tag poked to read rose), `howto` (the first-play
-## sheet's diagram) and `restore` (a solved day reopened with a clip and a
-## heart gone). Frames go to <dir>/fl_<mode>_d<level>_<n>.png. Every mode
-## prints the peak draw calls from 0.5 s on.
+## sheet's diagram), `restore` (a solved day reopened with a clip and a
+## heart gone, flawless in its record: the cat asleep, the seal, gold tags),
+## `right` (every lantern turned a quarter off its answer, then six of them
+## tapped home in a row: the streak's notes, the bubble from x3, confetti at
+## x4, a join's spark and the gags) and `solve` (three lanterns off, tapped
+## home: the chase and the party -- the dance, fireflies, confetti, the tags
+## gold, the cat and the seal). Frames go to <dir>/fl_<mode>_d<level>_<n>.png.
+## Every mode prints the peak draw calls from 0.5 s on.
 
 const SHOT_DIR := "/tmp"
 
@@ -164,6 +169,32 @@ func _prewire(depth: int) -> void:
 	_puzzle._settle(before, _puzzle._now())
 	_puzzle._refresh()
 
+## A probe's shortcut: the whole garden on its answer but every lantern (or
+## the first `keep` of them, -1 for all) a quarter turn short, so a tap on one
+## wakes it; the wash is run over it. Returns the lanterns turned off.
+func _lanterns_off(keep := -1) -> Array:
+	var st = _puzzle.state
+	var Gen = load("res://puzzles/fairy_lights_gen.gd")
+	var before: PackedInt32Array = st.depths()
+	st.grid = st.sol.duplicate()
+	var off: Array = []
+	for i in st.lanterns():
+		if keep >= 0 and off.size() >= keep:
+			break
+		if st.pinned[i] == 1:
+			continue
+		st.grid[i] = Gen.cw(Gen.cw(Gen.cw(st.sol[i])))
+		off.append(int(i))
+	_puzzle._settle(before, _puzzle._now())
+	_puzzle._dress(_puzzle._now())
+	_puzzle._refresh()
+	return off
+
+func _life() -> String:
+	return "streak %d bubble %d joins %d moths %d notes %d love %d flies %d" % [
+		_puzzle._streak, _puzzle._combo_n, _puzzle._joins.size(), _puzzle._moths.size(),
+		_puzzle._notes.size(), _puzzle._love.size(), _puzzle._flies.size()]
+
 ## A piece that is wrong, so a tap turns it.
 func _wrong_piece() -> int:
 	var st = _puzzle.state
@@ -252,7 +283,45 @@ func _script() -> void:
 		"restore":
 			_at(1.5, func() -> void:
 				var i := _right_piece()
-				_puzzle.completed_record = {"hearts": maxi(0, _puzzle.max_hearts - 1), "clips": [i] if i >= 0 else []}
+				_puzzle.completed_record = {"hearts": maxi(0, _puzzle.max_hearts - 1), "clips": [i] if i >= 0 else [],
+					"flawless": true}
 				_puzzle.restore_completed())
 			_at(2.0, _shot)
 			_end = 2.2
+		"right":
+			var off: Array = []
+			_at(0.9, func() -> void:
+				off.append_array(_lanterns_off())
+				print("lanterns off: %d" % off.size()))
+			for k in 6:
+				_at(1.6 + k * 0.9, func() -> void:
+					if k < off.size() - 1:
+						_tap(int(off[k]))
+						print("tap %d on lantern %d: %s" % [k, int(off[k]), _life()]))
+				_at(1.6 + k * 0.9 + 0.22, func() -> void: print("  +0.22: ", _life()))
+			_at(1.6 + 0.9 * 1 + 0.33, _shot.bind("_join"))
+			_at(1.6 + 0.9 * 1 + 0.75, _shot.bind("_x2"))
+			_at(1.6 + 0.9 * 2 + 0.75, _shot.bind("_x3"))
+			_at(1.6 + 0.9 * 3 + 0.8, _shot.bind("_x4"))
+			_at(1.6 + 0.9 * 4 + 0.9, _shot.bind("_x5"))
+			_at(1.6 + 0.9 * 5 + 1.1, _shot.bind("_x6"))
+			_at(7.5, func() -> void:
+				_puzzle.undo()
+				print("undo: ", _life()))
+			_at(7.62, _shot.bind("_undo"))
+			_end = 7.9
+		"solve":
+			var off: Array = []
+			_at(0.9, func() -> void:
+				off.append_array(_lanterns_off(3)))
+			for k in 3:
+				_at(1.6 + k * 0.8, func() -> void:
+					_tap(int(off[k]))
+					print("tap %d: %s" % [k, _life()]))
+			var last := 1.6 + 2 * 0.8
+			for dt in [0.6, 1.3, 1.6, 1.9, 2.2, 2.5, 2.8, 3.4]:
+				_at(last + dt, _shot.bind("_%03d" % int(dt * 100)))
+			_at(last + 3.5, func() -> void:
+				print("record ", _puzzle.completion_record(), " share ", _puzzle.share_glyphs().replace("\n", " / "),
+					" win_delay-ish flawless ", _puzzle._flawless, " cat ", is_instance_valid(_puzzle._cat)))
+			_end = last + 3.6
