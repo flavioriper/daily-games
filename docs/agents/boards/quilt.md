@@ -68,3 +68,38 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   only 2.5 to 4.7 percent of grown boards have a second tiling, because a
   region tiled by pieces that never rotate is almost always rigid; what
   costs attempts is grows that wedge (77 to 92 percent of them).
+
+## The polish, board side (2026-09-30, spec `2026-09-30-quilt-polish-design.md` sections 1-3)
+
+- **A press does not lift until the finger moves** (or `GROW_WAIT`, 0.12 s):
+  a press let go within `TAP_PX` 14 and `TAP_TIME` 0.3 s is a tap, which
+  wiggles the patch where it lies and says `QL_TAP` (a sewn patch on Easy and
+  Medium goes straight back with its seams whole and says `QL_TIP_OFF`).
+  `_hold_state()` answers CLEAR until then, so a tap never flashes a ghost.
+- **Sticky snap lives in `_target()`**, not in `_held_origin()`:
+  `tests/test_quilt_board.gd` holds `_held_origin()` to the raw rounded cell
+  (the wrap regression), and the ghost and the release both read `_target()`.
+  A ruled spot is still a geometric fit, so it comes back from `_target()`
+  and the hold is `CROSSED`: the chalk X is drawn **on the held patch** in the
+  hand's mesh, because the footprint under it is hidden by the patch itself
+  (the first frame drew it on the footprint and it could not be seen).
+- **The wrong patch is drawn in the hand's mesh** for its whole way home
+  (`_peel_frame`, `_peel_stitch`), and its bay shows the chalk outline while
+  it is out. The heart splits at `SNIP_AT`, not at the release.
+- **The basket's weave is hundreds of strands**, and rebuilding it with the
+  rack on every frame of a flight cost 36 ms a frame on this Mac; the mat is
+  its own cached mesh now (`_mat_mesh`, one more draw call), mean back to
+  4.4 ms. The first basket, rounded bricks in a tan wicker, read as a wall
+  and swallowed the yellow cloths; it is pale straw with faint stakes and
+  weavers, a woven band at the foot and a twisted rim.
+- **Scrap Basket takes three shelves**: `_shelves()` tries two and three for
+  nine patches or more and keeps the bigger cell -- 38.7 on two, **48.6** on
+  three, against a field cell of 117.6. Easy 72.5 (field 150), Medium 62.5
+  (147.9), Hard 62.5 (117.6, hearts' strip taken). Card 1000 x 1480.
+- **The label** (`_tag_rect`) hangs off the right end of the backing's top
+  row -- in the bounding box's empty corner or the side margin -- so it never
+  covers a backing cell; mirrored left when the right has no room.
+- `tests/_shot_quilt.gd` modes `rest tap stuck wrong out restore` (`rm` for
+  reduce motion). Draw-call peaks at 810x1440: rest 95 (the ghost finger),
+  tap 83, stuck 83, wrong 84 (Hard) / 80 (Insane), out 106 (with the card),
+  restore 79-84, reduce motion 82-85; ANGLE 81 on Insane's wrong.
