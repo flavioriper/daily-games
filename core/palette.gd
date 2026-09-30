@@ -314,6 +314,15 @@ const PLANK_LOST  := Color("8d94a3")   # a line the stroke can no longer reach
 const FORD_STONE  := Color("58606c")   # a line not walked yet, on the flat board
 const POST_STONE  := Color("c3b7a4")   # the drum a cap sits on
 const POST_DEEP   := Color("9c9083")
+## Sunny Spells (One Line's Insane, 2026-09-30): a sunny ford is baked
+## sand with gold sparkles, a dewy one the ford's own slate cooled toward the
+## pond, carrying drops of `DEW`. The daisy a spent post grows has a petal
+## edge so its white holds on the pale spent cap.
+const FORD_SUN    := Color("d9a54e")
+const FORD_DEW    := Color("4f6a78")
+const SUN_SPARK   := Color("fff4c2")
+const PETAL_EDGE  := Color("d8cbb4")
+const LADYBUG     := Color("e4574a")   # the riders on the snail's shell
 const SHELL       := Color("e0a257")   # the walker's shell, and its spiral
 const SHELL_DEEP  := Color("b87d3a")
 const SNAIL_FOOT  := Color("ecd6b0")

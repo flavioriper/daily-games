@@ -44,14 +44,46 @@ const EYE_R := 0.15
 ## The blush on the cheek, a shade of the family's rose.
 const CHEEK_A := 0.45
 
+## Ladybugs riding on the shell, 0 to RIDER_SPOTS.size(): One Line's right
+## steps on Hard and Insane bring them (the polish pass, 2026-09-30).
+var riders := 0:
+	set(v):
+		v = clampi(v, 0, RIDER_SPOTS.size())
+		if v != riders:
+			riders = v
+			queue_redraw()
+## Sunny Spells: the last line was sunny and she is dry -- a bead of sweat by
+## her head until she has crossed a dewy one.
+var dry := false:
+	set(v):
+		if v != dry:
+			dry = v
+			queue_redraw()
+## Where the ladybugs sit on the shell, and their turn, in R.
+const RIDER_SPOTS := [[Vector2(-0.5, -0.6), -0.5], [Vector2(-0.02, -0.46), 0.5], [Vector2(-0.78, -0.08), -1.3]]
+const RIDER_R := 0.21
+
 func _kind() -> String:
 	return "snail"
+
+## The glasses sit across the two eyes on the stalk tips; the party hat on
+## the shell's crown, tipped back.
+func _face_frame(R: float) -> Array:
+	return [Vector2(0.72, -0.63) * R, 0.36 * R]
+
+func _hat_place(R: float) -> Array:
+	return [Vector2(-0.34, -0.8) * R, -0.3, 0.62 * R]
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
 
 func _layers() -> Array:
-	return [["body", false], ["head", true]]
+	var out: Array = [["body", false], ["head", true]]
+	if riders > 0:
+		out.append(["riders%d" % riders, false])
+	if dry:
+		out.append(["sweat", false])
+	return out
 
 func _build_layer(layer: String, R: float, eye: float, b: Builder) -> void:
 	match layer:
@@ -59,6 +91,41 @@ func _build_layer(layer: String, R: float, eye: float, b: Builder) -> void:
 			_build_body(R, b)
 		"head":
 			_build_head(R, eye, b)
+		"sweat":
+			_build_sweat(R, b)
+		_:
+			if layer.begins_with("riders"):
+				for k in int(layer.substr(6)):
+					var spot: Array = RIDER_SPOTS[k]
+					ladybug(b, spot[0] * R, RIDER_R * R, float(spot[1]))
+
+## A ladybug about `at`, `r` across its shell, heading `turn` (0 is up): a
+## red shell parted down the middle with black spots, a black head and two
+## white dots of eyes. The shared shape of One Line's riders and its gag.
+static func ladybug(b: Builder, at: Vector2, r: float, turn: float) -> void:
+	var fwd := Vector2.from_angle(turn - PI * 0.5)
+	var side := Vector2(-fwd.y, fwd.x)
+	b.disc(at + fwd * r * 0.82, r * 0.44, Pal.TEXT)
+	for sx in [-1.0, 1.0]:
+		b.disc(at + fwd * r * 1.02 + side * sx * r * 0.2, r * 0.11, Color(1.0, 1.0, 1.0, 0.95))
+	b.disc(at, r * 1.0, Pal.TEXT.lerp(Pal.BAD, 0.3))
+	b.disc(at, r * 0.9, Pal.LADYBUG)
+	b.stroke(PackedVector2Array([at + fwd * r * 0.85, at - fwd * r * 0.85]), r * 0.09, Pal.TEXT)
+	for spot in [Vector2(0.45, 0.2), Vector2(0.38, -0.4)]:
+		for sx in [-1.0, 1.0]:
+			b.disc(at + side * sx * spot.x * r + fwd * spot.y * r, r * 0.13, Pal.TEXT)
+	b.ellipse(at + side * -0.35 * r + fwd * 0.35 * r, r * 0.22, r * 0.13, Color(1.0, 1.0, 1.0, 0.45))
+
+## A bead of sweat by her head: a pale blue drop with a shine.
+func _build_sweat(R: float, b: Builder) -> void:
+	var tip := Vector2(1.16, -0.34) * R
+	var pts := PackedVector2Array()
+	for i in 21:
+		var a := PI * 0.5 + (i / 20.0 - 0.5) * PI * 1.5
+		pts.append(tip + Vector2(0.0, 0.14 * R) + Vector2.from_angle(a).rotated(PI) * 0.09 * R)
+	pts.append(tip)
+	b.polygon(pts, Pal.DEW)
+	b.disc(tip + Vector2(-0.025, 0.13) * R, 0.025 * R, Color(1.0, 1.0, 1.0, 0.8))
 
 ## Everything that is the same whatever the walker is feeling: the shadow, the
 ## foot it slides on with its head raised at the front, the shell over it
@@ -107,6 +174,8 @@ func _build_head(R: float, eye: float, b: Builder) -> void:
 	var strain := expression == Expr.STRAIN or expression == Expr.WORRIED
 	if strain:
 		open = minf(open, 0.55)
+	if expression == Expr.SLEEPY:
+		open = minf(open, 0.12)
 	for s in STALKS:
 		var at: Vector2 = s[1] * R
 		b.disc(at, (EYE_R + 0.04) * R, Pal.SNAIL_DEEP)
