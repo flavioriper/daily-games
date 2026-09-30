@@ -31,6 +31,8 @@ extends RefCounted
 ## phone. Spec: docs/superpowers/specs/2026-09-19-queens-flat-design.md,
 ## section 4.
 
+const Logic = preload("res://puzzles/queens_logic.gd")
+
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 ## How many courts to try before giving the last one back unproved. Raised
 ## from 30 once repair could give up on a board early (see STALE) rather
@@ -64,7 +66,7 @@ const SMALL_CAP := 4
 ## Growth gives up rather than loop forever if the board never fills.
 const GROW_GUARD := 20000
 
-static func generate(rng: RandomNumberGenerator, n: int) -> Dictionary:
+static func generate(rng: RandomNumberGenerator, n: int, keep := 1) -> Dictionary:
 	var last: Dictionary = {}
 	for _attempt in ATTEMPTS:
 		var queens := _place_queens(rng, n)
@@ -74,7 +76,7 @@ static func generate(rng: RandomNumberGenerator, n: int) -> Dictionary:
 		if region.is_empty():
 			continue
 		last = {"region": region, "solution": queens, "n": n, "ok": false}
-		if _repair(rng, region, n, queens, REPAIRS):
+		if _repair(rng, region, n, queens, REPAIRS, false, keep):
 			last.ok = true
 			return last
 	# The quick pass above gives up on a slow board early; for the rare seed
@@ -87,7 +89,7 @@ static func generate(rng: RandomNumberGenerator, n: int) -> Dictionary:
 		if region.is_empty():
 			continue
 		last = {"region": region, "solution": queens, "n": n, "ok": false}
-		if _repair(rng, region, n, queens, REPAIRS, true):
+		if _repair(rng, region, n, queens, REPAIRS, true, keep):
 			last.ok = true
 			return last
 	if last.is_empty():
@@ -95,11 +97,11 @@ static func generate(rng: RandomNumberGenerator, n: int) -> Dictionary:
 	return last
 
 ## How many seatings `region` allows, up to `limit`.
-static func solve_count(region: Array, n: int, limit: int) -> int:
-	return _solutions(_flatten(region, n), n, limit).size()
+static func solve_count(region: Array, n: int, limit: int, quota := PackedInt32Array()) -> int:
+	return _solutions(_flatten(region, n), n, limit, quota).size()
 
 ## Whether `cols` (row -> column) is a full legal seating on `region`.
-static func legal(region: Array, n: int, cols: PackedInt32Array) -> bool:
+static func legal(region: Array, n: int, cols: PackedInt32Array, quota := PackedInt32Array()) -> bool:
 	if cols.size() != n:
 		return false
 	var flat := _flatten(region, n)
@@ -112,10 +114,11 @@ static func legal(region: Array, n: int, cols: PackedInt32Array) -> bool:
 		if r > 0 and absi(int(cols[r - 1]) - c) <= 1:
 			return false
 		var g := flat[r * n + c]
-		if used_reg.has(g):
+		var cap := int(quota[g]) if g < quota.size() else 1
+		if int(used_reg.get(g, 0)) >= cap:
 			return false
 		used_col[c] = true
-		used_reg[g] = true
+		used_reg[g] = int(used_reg.get(g, 0)) + 1
 	return true
 
 ## `region` ([r][c]) packed into one row-major array, `r * n + c` -> region.
@@ -140,10 +143,19 @@ static func _unflatten_into(flat: PackedInt32Array, n: int, region: Array) -> vo
 			row[c] = flat[r * n + c]
 
 ## Every full legal seating on flattened `region`, up to `limit` of them.
-static func _solutions(region: PackedInt32Array, n: int, limit: int) -> Array:
+## `quota` is how many queens each patch takes (Insane's misty patches take
+## two); empty means one each.
+static func _solutions(region: PackedInt32Array, n: int, limit: int, quota := PackedInt32Array()) -> Array:
 	var out: Array = []
+	# How many more queens each patch takes: the room left in it.
 	var used_reg := PackedByteArray()
 	used_reg.resize(n)
+	used_reg.fill(1)
+	for g in quota.size():
+		used_reg[g] = quota[g]
+	if not quota.is_empty():
+		for g in range(quota.size(), n):
+			used_reg[g] = 0
 	var cur := PackedInt32Array()
 	cur.resize(n)
 	var reach := _reach(region, n)
@@ -177,20 +189,20 @@ static func _search(region: PackedInt32Array, n: int, r: int, prev: int, cur: Pa
 		return out.size() >= limit
 	var base := r * n
 	for g in n:
-		if not used_reg[g] and reach[base + g] & ~cols == 0:
+		if used_reg[g] and reach[base + g] & ~cols == 0:
 			return false
 	for c in n:
 		if cols & (1 << c):
 			continue
 		var g := region[base + c]
-		if used_reg[g]:
+		if not used_reg[g]:
 			continue
 		if prev >= 0 and absi(c - prev) <= 1:
 			continue
-		used_reg[g] = 1
+		used_reg[g] -= 1
 		cur[r] = c
 		var stop := _search(region, n, r + 1, c, cur, cols | (1 << c), used_reg, reach, limit, out)
-		used_reg[g] = 0
+		used_reg[g] += 1
 		if stop:
 			return true
 	return false
@@ -241,9 +253,9 @@ static func _connected_without(region: PackedInt32Array, n: int, g: int, cell: V
 ## STALE's own line -- unless `patient` is true, in which case it runs the
 ## full `iters` regardless.
 static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: PackedInt32Array,
-		iters: int, patient: bool = false) -> bool:
+		iters: int, patient: bool = false, keep := 1, quota := PackedInt32Array()) -> bool:
 	var flat := _flatten(region, n)
-	var sols: Array = _solutions(flat, n, SOLUTIONS_SEEN)
+	var sols: Array = _solutions(flat, n, SOLUTIONS_SEEN, quota)
 	var count := sols.size()
 	var stale := 0
 	for _it in iters:
@@ -278,9 +290,11 @@ static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: Pack
 				neighbour_regions.append(g2)
 		if neighbour_regions.is_empty() or not _connected_without(flat, n, g, cell):
 			continue
+		if keep > 1 and _size_of(flat, g) <= keep:
+			continue
 		var g2: int = neighbour_regions[rng.randi_range(0, neighbour_regions.size() - 1)]
 		flat[idx] = g2
-		var s3: Array = _solutions(flat, n, SOLUTIONS_SEEN)
+		var s3: Array = _solutions(flat, n, SOLUTIONS_SEEN, quota)
 		if s3.size() <= count:
 			sols = s3
 			if s3.size() < count:
@@ -290,6 +304,13 @@ static func _repair(rng: RandomNumberGenerator, region: Array, n: int, sol: Pack
 			flat[idx] = g
 	_unflatten_into(flat, n, region)
 	return count == 1
+
+static func _size_of(flat: PackedInt32Array, g: int) -> int:
+	var k := 0
+	for v in flat:
+		if v == g:
+			k += 1
+	return k
 
 static func _same_seating(a: PackedInt32Array, b: PackedInt32Array) -> bool:
 	for i in a.size():
@@ -417,3 +438,172 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 		var tmp = arr[i]
 		arr[i] = arr[j]
 		arr[j] = tmp
+
+# --- the bands, graded ---
+
+## No patch is ever a single cell: a one-cell patch is a queen handed out
+## before the first thought, and seating her crosses enough to hand out the
+## next -- the chain players wrote in about ("too many starting single cells,
+## and filling them creates new single cells"). Measured 2026-09-30 before
+## this: 0.53, 0.45 and 0.93 free queens on the opening court of 7, 8 and 9.
+const KEEP := 2
+## How many courts a band draws, at most, looking for one that asks for the
+## thinking the band promises (`fits`); past that the first proved one is
+## dealt.
+const GRADED_TRIES := [6, 10, 14]
+
+## A court for `band` (0 Easy, 1 Medium, 2 Hard), graded by the logic solver
+## (puzzles/queens_logic.gd):
+## - Easy finishes on singles, one-line bands and reach, never a band over
+##   several lines or a supposition;
+## - Medium needs thinking at least five times, or a band over several lines;
+## - Hard needs two bands over several lines, or a supposition -- and every
+##   Hard court still finishes without a guess.
+static func graded(rng: RandomNumberGenerator, band: int, n: int) -> Dictionary:
+	var first: Dictionary = {}
+	var ones := PackedInt32Array()
+	ones.resize(n)
+	ones.fill(1)
+	for _t in GRADED_TRIES[clampi(band, 0, GRADED_TRIES.size() - 1)]:
+		var out := generate(rng, n, KEEP)
+		if not out.ok:
+			if first.is_empty():
+				first = out
+			continue
+		var g := Logic.grade(_flatten(out.region, n), n, ones, band >= 2)
+		out["grade"] = g
+		if first.is_empty() or not first.ok:
+			first = out
+		if fits(band, g):
+			return out
+	return first
+
+static func fits(band: int, g: Dictionary) -> bool:
+	match band:
+		0:
+			return bool(g.solved2) and int(g.wide) == 0
+		1:
+			return bool(g.solved2) and (int(g.wide) >= 1 or int(g.thinks) >= 5)
+		_:
+			return bool(g.solved) and (not bool(g.solved2) or int(g.wide) >= 2)
+
+# --- Insane: Morning Mist ---
+
+## A court where mist has faded the seam between `mists` pairs of
+## neighbouring patches: each such patch takes two queens, every row and
+## column still one. Grown as an ordinary unique court, then merged, then
+## repaired again (counting a misty patch as two) until one seating is left.
+## Returns the `generate` shape plus "quota" (patch -> queens) and "mist"
+## (the misty patches' ids); "ok" is false when repair never got it unique.
+static func mist(rng: RandomNumberGenerator, n: int, mists: int, keep := 2) -> Dictionary:
+	var base := generate(rng, n, keep)
+	if not base.ok:
+		return {}
+	var flat := _flatten(base.region, n)
+	# Which patches touch which, then `mists` disjoint touching pairs.
+	var touch: Dictionary = {}
+	for i in n * n:
+		var r := i / n
+		var c := i % n
+		for d in [Vector2i(1, 0), Vector2i(0, 1)]:
+			var x: int = c + d.x
+			var y: int = r + d.y
+			if x >= n or y >= n:
+				continue
+			var a := flat[i]
+			var b := flat[y * n + x]
+			if a != b:
+				touch[Vector2i(mini(a, b), maxi(a, b))] = true
+	var pairs: Array = touch.keys()
+	_shuffle(pairs, rng)
+	var used: Dictionary = {}
+	var merged: Array = []
+	for p in pairs:
+		if merged.size() >= mists:
+			break
+		if used.has(p.x) or used.has(p.y):
+			continue
+		used[p.x] = true
+		used[p.y] = true
+		merged.append(p)
+	if merged.size() < mists:
+		return {}
+	# Fold each pair's second patch into its first, then number the patches
+	# 0..m-1 again.
+	for p in merged:
+		for i in n * n:
+			if flat[i] == p.y:
+				flat[i] = p.x
+	var ids: Dictionary = {}
+	for i in n * n:
+		if not ids.has(flat[i]):
+			ids[flat[i]] = ids.size()
+		flat[i] = ids[flat[i]]
+	var quota := PackedInt32Array()
+	quota.resize(ids.size())
+	quota.fill(1)
+	var misty: Array = []
+	for p in merged:
+		quota[ids[p.x]] = 2
+		misty.append(ids[p.x])
+	var region: Array = []
+	for r in n:
+		var row: Array = []
+		row.resize(n)
+		region.append(row)
+	_unflatten_into(flat, n, region)
+	var ok := _repair(rng, region, n, base.solution, REPAIRS * 2, true, keep, quota)
+	return {"region": region, "solution": base.solution, "n": n, "ok": ok, "quota": quota,
+		"mist": misty}
+
+# --- the banks ---
+
+## The banks' encoding (content/insane/queens.json for Insane,
+## content/insane/queens_hard.json for Hard): the court row by row, one digit
+## a cell for its patch; the patches' quotas; the answer, row by row.
+static func to_bank(out: Dictionary) -> Dictionary:
+	var n: int = out.n
+	var cells := ""
+	for r in n:
+		for c in n:
+			cells += str(int(out.region[r][c]))
+	var quota := PackedInt32Array()
+	if out.has("quota"):
+		quota = out.quota
+	else:
+		quota.resize(n)
+		quota.fill(1)
+	var answer := ""
+	for r in n:
+		answer += str(int(out.solution[r]))
+	return {"n": n, "cells": cells, "quota": Array(quota), "answer": answer}
+
+## A bank entry back in `generate`'s shape, re-proved: "ok" only when the
+## logic solver finishes it without a guess and lands on the stored answer.
+static func from_bank(board: Dictionary) -> Dictionary:
+	if board.is_empty() or not board.has("cells"):
+		return {}
+	var n := int(board.n)
+	var cells: String = board.cells
+	var answer: String = board.answer
+	if cells.length() != n * n or answer.length() != n:
+		return {}
+	var region: Array = []
+	for r in n:
+		var row: Array = []
+		for c in n:
+			row.append(int(cells[r * n + c]))
+		region.append(row)
+	var quota := PackedInt32Array()
+	for q in board.quota:
+		quota.append(int(q))
+	var solution := PackedInt32Array()
+	for r in n:
+		solution.append(int(answer[r]))
+	var misty: Array = []
+	for g in quota.size():
+		if quota[g] > 1:
+			misty.append(g)
+	var proved := Logic.answer(_flatten(region, n), n, quota) == solution
+	return {"region": region, "solution": solution, "n": n, "ok": proved, "quota": quota,
+		"mist": misty}

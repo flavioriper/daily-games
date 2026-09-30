@@ -19,9 +19,16 @@ extends RefCounted
 ## back on one undo. The win is checked against the rules (one per row,
 ## column and region, no two touching) and not against the stored answer;
 ## the generator proves the two agree.
-## Spec: docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 3.
+## Spec: docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 3;
+## the polish (hearts, Morning Mist, graded courts):
+## docs/superpowers/specs/2026-09-30-queens-polish-design.md.
+##
+## Morning Mist (Insane): a misty patch takes two queens (`quota`). A queen
+## there does not cross her patch until its second queen sits; then the rest
+## of it is crossed at once.
 
 const Gen = preload("res://puzzles/queens_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## What is on a cell. AUTO is a cross a queen laid: seen, and not the
 ## player's own.
@@ -29,20 +36,31 @@ const BLANK := 0
 const QUEEN := 1
 const CROSS := 2
 const AUTO := 3
-## Three a board, as every flat board gives.
+## Three a board, as every flat board gives; Insane one.
 const HINTS := 3
-## The ladder: easy, medium, hard. The menu opens medium.
-## Insane's row is the same court as Hard: the bank in batch 2 is what makes
-## it insane, not the size.
-const SIZES := [7, 8, 9, 9]
+const HINTS_BY_BAND := [3, 3, 3, 1]
+## Hard and Insane can be failed: a queen seated where the answer has none
+## costs one.
+const HEARTS := [0, 0, 3, 1]
+## The ladder: easy, medium, hard, insane. The menu opens medium. Hard and
+## Insane are read from banks mined on the Mac (content/insane/queens_hard.json
+## and queens.json); these sizes are what an empty bank falls back to.
+const SIZES := [7, 8, 9, 10]
 ## Why a seat or a lift was turned down.
 const OK := 0
 const SEEN := 1
 const PINNED := 2
+## A cross a heart showed: that seat is empty for sure.
+const SHOWN := 3
 ## The share's squares, one per region index; a crown marks a queen.
 const SQUARES := ["🟫", "🟪", "🟦", "🟩", "🟧", "⬜", "🟨", "🟥", "⬛"]
 
 var n: int = 7
+var band := 0
+## Patch -> how many queens it takes: one, or two for a misty patch.
+var quota := PackedInt32Array()
+## The misty patches.
+var mist: Array = []
 ## Whether the generator proved the answer the only one; false is playable
 ## but not a puzzle.
 var ok := true
@@ -51,25 +69,73 @@ var solution := PackedInt32Array()  # row -> the answer's column
 var queens: Dictionary = {}         # Vector2i -> true
 var crosses: Dictionary = {}        # Vector2i -> true, the player's own
 var locked: Dictionary = {}         # Vector2i -> true, a queen a hint seated
+## Vector2i -> true: a cross a lost heart laid, where a wrong queen sat. It
+## stays for good: the heart bought the knowledge.
+var shown: Dictionary = {}
 ## Vector2i -> how many queens see it. Absent means none does. Derived.
 var seen: Dictionary = {}
 ## One entry per gesture, newest last: [{"cell": Vector2i, "prev": int}].
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	n = int(SIZES[clampi(difficulty, 0, SIZES.size() - 1)])
-	var out: Dictionary = Gen.generate(rng, n)
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, SIZES.size() - 1)
+	n = int(SIZES[band])
+	var out: Dictionary = {}
+	if band >= 2:
+		out = Gen.from_bank(InsaneBank.pick("queens" if band == 3 else "queens_hard", bank_step))
+		if not out.is_empty() and not out.ok:
+			push_warning("Queens: a banked court did not re-prove; dealing a live one")
+			out = {}
+	if out.is_empty():
+		out = Gen.graded(rng, mini(band, 2), n)
+	n = int(out.n)
 	region = out.region
 	solution = out.solution
 	ok = bool(out.ok)
+	quota = out.get("quota", PackedInt32Array())
+	if quota.is_empty():
+		quota.resize(n)
+		quota.fill(1)
+	mist = out.get("mist", [])
 	if region.is_empty():
 		n = 0
 		push_warning("Queens: no court could be built for this seed")
 	queens = {}
 	crosses = {}
 	locked = {}
+	shown = {}
 	history = []
 	recompute()
+
+## Hearts on this band: Hard and Insane judge every seat.
+func judged() -> bool:
+	return HEARTS[band] > 0
+
+func has_mist() -> bool:
+	return not mist.is_empty()
+
+func is_misty(g: int) -> bool:
+	return mist.has(g)
+
+func quota_of(g: int) -> int:
+	return int(quota[g]) if g >= 0 and g < quota.size() else 1
+
+## How many queens sit in patch `g`.
+func queens_in(g: int) -> int:
+	var k := 0
+	for q in queens:
+		if region_at(q) == g:
+			k += 1
+	return k
+
+## Whether patch `g` has every queen it takes.
+func patch_full(g: int) -> bool:
+	return queens_in(g) >= quota_of(g)
+
+## Whether a queen on `cell` is the answer's. On an unproved court nothing
+## can be said, and every seat passes.
+func right_seat(cell: Vector2i) -> bool:
+	return not ok or int(solution[cell.y]) == cell.x
 
 # --- reading the court ---
 
@@ -91,21 +157,36 @@ func mark_at(cell: Vector2i) -> int:
 func is_seen(cell: Vector2i) -> bool:
 	return int(seen.get(cell, 0)) > 0
 
-## Every cell a queen at `q` rules out: her row, her column, her region and
-## her eight neighbours, without herself.
+## Every cell a queen at `q` rules out on her own: her row, her column,
+## her eight neighbours and her patch -- unless the patch is misty, which a
+## queen crosses only once its second queen sits (`reach_of`).
 func sees(q: Vector2i) -> Array:
 	var out: Array = []
 	if not in_field(q):
 		return out
 	var g := region_at(q)
+	var whole := quota_of(g) <= 1
 	for y in n:
 		for x in n:
 			var cell := Vector2i(x, y)
 			if cell == q:
 				continue
-			if cell.y == q.y or cell.x == q.x or int(region[y][x]) == g \
+			if cell.y == q.y or cell.x == q.x or (whole and int(region[y][x]) == g) \
 					or (absi(cell.x - q.x) <= 1 and absi(cell.y - q.y) <= 1):
 				out.append(cell)
+	return out
+
+## What the court crosses because `q` sits, as it stands now: her own sight,
+## and her whole misty patch when she was its second queen. The wave's reach.
+func reach_of(q: Vector2i) -> Array:
+	var out := sees(q)
+	var g := region_at(q)
+	if quota_of(g) > 1 and queens.has(q) and patch_full(g):
+		for y in n:
+			for x in n:
+				var cell := Vector2i(x, y)
+				if int(region[y][x]) == g and not queens.has(cell) and not out.has(cell):
+					out.append(cell)
 	return out
 
 ## The king's move between two cells: the ring of the wave a cell is on.
@@ -121,6 +202,15 @@ func recompute() -> void:
 	for q in queens:
 		for cell in sees(q):
 			seen[cell] = int(seen.get(cell, 0)) + 1
+	# A misty patch with every queen it takes crosses the rest of itself.
+	for g in mist:
+		if not patch_full(g):
+			continue
+		for y in n:
+			for x in n:
+				var cell := Vector2i(x, y)
+				if int(region[y][x]) == g and not queens.has(cell):
+					seen[cell] = int(seen.get(cell, 0)) + 1
 
 # --- private helpers ---
 
@@ -135,7 +225,7 @@ func _lay_cross(cell: Vector2i) -> bool:
 ## Takes a cross off a player-owned cell. True and mutates when it did; does
 ## not touch history.
 func _take_cross(cell: Vector2i) -> bool:
-	if not crosses.has(cell):
+	if not crosses.has(cell) or shown.has(cell):
 		return false
 	crosses.erase(cell)
 	return true
@@ -148,6 +238,8 @@ func _take_cross(cell: Vector2i) -> bool:
 func seat(cell: Vector2i) -> Dictionary:
 	if not in_field(cell) or queens.has(cell):
 		return {"ok": false, "why": OK}
+	if shown.has(cell):
+		return {"ok": false, "why": SHOWN}
 	if is_seen(cell):
 		return {"ok": false, "why": SEEN}
 	history.append([{"cell": cell, "prev": mark_at(cell)}])
@@ -254,9 +346,22 @@ func hint() -> Dictionary:
 		for q in queens.keys():
 			if sees(q).has(target):
 				lifted.append(q)
+		# A full misty patch: its wrong queen makes room.
+		var g := region_at(target)
+		if quota_of(g) > 1:
+			var inside: Array = []
+			for q in queens.keys():
+				if region_at(q) == g and not lifted.has(q):
+					inside.append(q)
+			if inside.size() >= quota_of(g):
+				for q in inside:
+					if not right_seat(q):
+						lifted.append(q)
+						break
 		for q in lifted:
 			queens.erase(q)
 		crosses.erase(target)
+		shown.erase(target)
 		queens[target] = true
 		locked[target] = true
 		history = []
@@ -277,16 +382,51 @@ func wrong_queens() -> Array:
 			out.append(q)
 	return out
 
-## Clears the player's queens and crosses; a hint's queens stay, and the
-## history goes. Returns the cells cleared.
-func reset() -> Array:
+## Every cross the player laid where the answer seats a queen. Check points
+## at these on Hard and Insane, where no wrong queen ever stays to be found.
+func wrong_crosses() -> Array:
+	if not ok:
+		return []
+	var out: Array = []
+	for cell in crosses:
+		if not shown.has(cell) and int(solution[cell.y]) == cell.x:
+			out.append(cell)
+	return out
+
+## A wrong queen on `cell` goes, on Hard and Insane, and a cross takes her
+## place for good: the heart has shown the cell empty. Her seat leaves the
+## history (it was the newest entry), and so does every entry that touched
+## the cell, so no undo can take the cross back.
+func reveal(cell: Vector2i) -> void:
+	queens.erase(cell)
+	crosses[cell] = true
+	shown[cell] = true
+	var kept: Array = []
+	for entry in history:
+		var left: Array = []
+		for e in entry:
+			if e.cell != cell:
+				left.append(e)
+		if not left.is_empty():
+			kept.append(left)
+	history = kept
+	recompute()
+
+## Clears the player's queens and crosses; a hint's queens and the crosses a
+## heart showed stay, and the history goes. `all` (Try again, after the
+## hearts ran out) takes the shown crosses too. Returns the cells cleared.
+func reset(all := false) -> Array:
 	var cleared: Array = []
 	for q in queens.keys():
 		if not locked.has(q):
 			queens.erase(q)
 			cleared.append(q)
-	cleared.append_array(crosses.keys())
-	crosses = {}
+	for cell in crosses.keys():
+		if all or not shown.has(cell):
+			crosses.erase(cell)
+			cleared.append(cell)
+	if all:
+		shown = {}
 	history = []
 	recompute()
 	return cleared
@@ -303,7 +443,7 @@ func is_solved() -> bool:
 		if int(cols[q.y]) >= 0:
 			return false
 		cols[q.y] = q.x
-	return Gen.legal(region, n, cols)
+	return Gen.legal(region, n, cols, quota)
 
 ## One row per line: a bee for a queen and a coloured square for every
 ## other cell, by region, so a shared court carries its regions.
