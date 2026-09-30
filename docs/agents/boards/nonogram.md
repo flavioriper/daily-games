@@ -27,3 +27,18 @@ hold the rest).
   Insane, 117 at the party, 50 under reduce motion (ANGLE).
 - `tests/_shot_nonogram.gd -- d=<n> rest|right|wrong|solve|restore|perf [rm]`;
   in zsh pass the args through `${=args}` or they arrive as one word.
+- **Review findings (2026-09-30), fixed**: auto-pebbles fire only for lines
+  the move *brought* to read right (`_ok_lines()` before the move) -- an
+  empty line reads right from the start, and re-pebbling it undid a rub-out
+  and left two entries for one cell, which `undo()` (now newest first,
+  deduplicated) replayed wrong; a hint's pebbles are their own history entry
+  (the hint leaves none, so `apply_more` rode on the last stroke); a stroke
+  overshooting by one still pebbles the line it finished, skipping the wrong
+  cell; the Insane seal no longer says Flawless on the live fallback.
+- **Known, not fixed**: a day finished before this pass restores a different
+  picture (the shape draw moved the rng; Insane reads the bank), as every
+  polish pass that touched a generator has done.
+- **The same cold-launch trap elsewhere**: a restore that stamps `now - 10`
+  where the clock counts from launch reads as unsolved in the first ten
+  seconds when the board tests `_solved_at >= 0`. Pinwheel, Paper Planes,
+  Quilt, Queens and Untangle carry that test; not checked here.

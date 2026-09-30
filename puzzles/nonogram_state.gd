@@ -312,9 +312,12 @@ func undo() -> Array:
 		return []
 	var entry: Array = history.pop_back()
 	var touched: Array = []
-	for e in entry:
+	# Newest first, so a cell an entry touched twice ends as it began.
+	for i in range(entry.size() - 1, -1, -1):
+		var e: Dictionary = entry[i]
 		_put(e.cell, int(e.prev))
-		touched.append(e.cell)
+		if not touched.has(e.cell):
+			touched.append(e.cell)
 	return touched
 
 ## Lays the first tile the picture wants that the player has not, in reading

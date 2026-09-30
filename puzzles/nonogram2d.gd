@@ -1202,6 +1202,7 @@ func _release() -> void:
 				kept.append(c)
 			pending = kept
 		var settled := state.settled_lines()
+		var ok_before := _ok_lines()
 		var before: Dictionary = state.marks.duplicate()
 		var changed: Array = state.apply(pending)
 		var per := Motion.ENTER_STAGGER if was_drag else 0.0
@@ -1212,10 +1213,12 @@ func _release() -> void:
 		var arrivals := _commit(before, changed, now, per, Vector2i(-1, -1) if was_drag else cell)
 		if bad.x >= 0:
 			var land := now + (0.0 if Motion.reduce else Motion.stagger(changed.size(), per))
+			# A run painted one cell too far still finishes its line.
+			_auto_pebbles(arrivals, ok_before, false, bad)
 			arrivals[bad] = land
 			_wrong_tile(bad, land)
 		elif not changed.is_empty():
-			_judge_stroke(before, changed, arrivals, settled)
+			_judge_stroke(before, changed, arrivals, settled, ok_before)
 		_end_sinks(now, arrivals)
 		return
 	_end_sinks(now)
@@ -1346,12 +1349,15 @@ func hint() -> bool:
 	_end_sinks(now)
 	_clear_gesture()
 	var before: Dictionary = state.marks.duplicate()
+	var ok_before := _ok_lines()
 	var target: Vector2i = state.hint()
 	if target.x < 0:
 		return false
 	hints_used += 1
 	var arrivals := _transition(before, [target], now, 0.0, true)
-	_auto_pebbles(arrivals)
+	# A hint's pebbles are their own entry: the hint itself leaves none, and
+	# they must not ride on whatever stroke came last.
+	_auto_pebbles(arrivals, ok_before, true)
 	var at := cell_to_local(target.y, target.x)
 	fx.ring(at, _cell * RING_R, Pal.MOSAIC_LOCK)
 	fx.sparkle(at, Pal.MOSAIC_LOCK)
@@ -1727,8 +1733,9 @@ func _frame(b, t: float) -> void:
 ## line to read right and left none over-filled, which the board already
 ## shows. It builds the streak and may play a gag. Neutral strokes (pebbles,
 ## a rub-out) leave the streak as it is; an over-filling one ends it.
-func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, settled: int) -> void:
-	_auto_pebbles(arrivals)
+func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, settled: int,
+		ok_before: Dictionary) -> void:
+	_auto_pebbles(arrivals, ok_before)
 	if state.is_solved():
 		return
 	var laid := false
@@ -1754,13 +1761,17 @@ func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, set
 ## On Hard and Insane, a line that has just come out right lays a pebble in
 ## each of its empty cells, rippling out from where the stroke touched it:
 ## every tile there was judged, so a line reading right is finished.
-func _auto_pebbles(arrivals: Dictionary) -> void:
+func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := false,
+		skip := Vector2i(-1, -1)) -> void:
 	if not state.judged() or arrivals.is_empty() or state.is_solved():
 		return
 	var cells: Array = []
 	var when: Dictionary = {}
 	for k in state.h + state.w:
-		if _line_state(k) != State.LINE_OK:
+		# Only a line this move brought to read right: one that already did
+		# (an empty line does from the start) keeps whatever the player
+		# rubs out of it.
+		if _line_state(k) != State.LINE_OK or ok_before.has(k):
 			continue
 		var y: int = k if k < state.h else -1
 		var x: int = -1 if k < state.h else k - state.h
@@ -1775,14 +1786,14 @@ func _auto_pebbles(arrivals: Dictionary) -> void:
 		if from.x < 0:
 			continue
 		for cell in state.blanks_in(y, x):
-			if when.has(cell):
+			if when.has(cell) or cell == skip:
 				continue
 			var d: int = absi(cell.x - from.x) + absi(cell.y - from.y)
 			when[cell] = at + Motion.POP_IN * 0.5 + (0.0 if Motion.reduce else d * AUTO_STEP)
 			cells.append({"cell": cell, "to": State.MARK})
 	if cells.is_empty():
 		return
-	var changed := state.apply_more(cells)
+	var changed: Array = state.apply(cells) if own_entry else state.apply_more(cells)
 	var first := INF
 	for cell in changed:
 		_arrive[cell] = {"at": float(when[cell]), "drop": false}
@@ -1790,6 +1801,14 @@ func _auto_pebbles(arrivals: Dictionary) -> void:
 		_busy_for(float(when[cell]) - _now() + Motion.POP_IN)
 	if not changed.is_empty():
 		_after(first - _now(), fx.cue.bind("pebbles"))
+
+## The lines reading right now, as a set of line indices (rows, then columns).
+func _ok_lines() -> Dictionary:
+	var out: Dictionary = {}
+	for k in state.h + state.w:
+		if _line_state(k) == State.LINE_OK:
+			out[k] = true
+	return out
 
 ## The streak (the combo pitched up the pentatonic from the second, the
 ## bubble from the third, confetti at five and ten) and a gag now and then.
@@ -2360,7 +2379,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 	var lines: Array
 	if state.band == 3:
 		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
-			[tr("BN_FLAWLESS") if _flawless or not state.has_leaves() else tr("NG_LEAF_SEAL"), 0.17, 0.36]]
+			[tr("BN_FLAWLESS") if _flawless else (tr("NG_LEAF_SEAL") if state.has_leaves() else ""), 0.17, 0.36]]
 	else:
 		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
 	Seal.text(_life_layer, rad, lines)
