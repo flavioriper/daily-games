@@ -361,19 +361,40 @@ SETS = {
         "petals":   ("a gentle breeze carrying many soft flower petals, an airy warm whoosh with a light sprinkle of tiny glockenspiel twinkles, dreamy and cozy", 2.0, -8),
         "leaves":   ("a soft autumn breeze and a gentle shower of dry leaves drifting down and rustling, warm and cozy, with one tiny low kalimba note", 2.0, -9, COZY),
     },
-    # Queens: a little crowned bee seated on a garden court; crosses and
-    # pebbles are the player's own marks.
+    # Queens: a little crowned bee seated on a garden court; crosses are the
+    # player's own marks and the ones the queens lay. Re-prompted toward felt,
+    # wood, kalimba and soft wings on 2026-09-30, as Nonogram's were: the tape
+    # rewind and the marimba "bonk" read as a toy or a scold. place plays on
+    # every cross of a sweep, so it is the quietest and roundest.
     "queens": {
-        "place":    ("a tiny soft wooden tap with a quick gentle buzzy wing flutter, a little bee settling on a flower, very short", 0.5, -6),
-        "remove":   ("a very short soft downward whoosh with a tiny wing flutter, a little bee lifting off, gentle", 0.5, -9),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a quick soft ripple of small wooden pops and a light wing flutter, a garden court swept clear", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a garden court appearing", 1.0, -9),
+        "place":    ("a tiny soft felt tap on a wooden board with a very quick gentle wing flutter, a little bee settling on a flower, very short and hushed", 0.5, -9, COZY),
+        "remove":   ("a very short soft felt brush and a tiny airy wing lift, a little bee rising off a flower, gentle and quiet", 0.5, -11, COZY),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny wing flutter, cozy and kind", 1.0, -8),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
+        "reset":    ("a soft quick ripple of tiny felt pats and a light flutter of little wings, a garden court swept gently clear, hushed and cozy", 1.0, -10, COZY),
+        "enter":    ("a soft airy cascade of tiny wooden taps and a light leafy rustle, a little garden court laid out, cozy and hushed", 1.0, -11, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        # The streak, the gags, and the flowers a patch opens once it has its queen.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "drone":    ("a tiny cute bumblebee buzzing in a quick little loop around a flower, a soft fuzzy buzz rising and falling, with a tiny happy glockenspiel ting at the end, gentle and funny", 1.2, -12, COZY),
+        "twirl":    ("a tiny playful spin, a soft airy whirl with a light wing flutter ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
+        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -14),
+        # Hearts, the wrong queen flying off, and the party.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
+        "buzz_off": ("a little bee buzzing away sheepishly, a soft fuzzy buzz fading off into the distance with a tiny descending kalimba note, gentle and a bit funny", 0.8, -12, COZY),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little wings at the end, joyful and warm", 2.0, -4),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
+        # Insane: Morning Mist. The mist rolls in on the entrance and lifts at the party.
+        "mist":     ("a soft cool morning breeze, a hushed airy whoosh drifting slowly with a faint distant wind chime, calm and cozy", 1.5, -13, COZY),
+        "mist_lift": ("a soft warm breeze lifting away with a gentle rising shimmer of glockenspiel notes, sunlight breaking through, dreamy and cozy", 1.8, -9),
     },
     # Hidden Word (puzzle_id "hiddenword"): type a five-letter guess on a
     # keyboard, Enter turns the row over a tile at a time.
