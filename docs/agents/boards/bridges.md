@@ -62,3 +62,28 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   merged, so Bridges is simply **the fifteenth entry and the third card on
   page two**, and none of that bites. It is written down because the next
   board added without a pager in front of it will see exactly the same thing.
+
+- **The polish of 2026-09-30** (spec `2026-09-30-bridges-polish-design.md`)
+  started from "players can't understand the game". **Two planks, not
+  three** -- every other telling allows two, and our own How-to-play caption
+  already said so while the board took three. A ring of slots round each coin
+  fills per plank; a tap on a lane's water lays a plank; a tap on an islet
+  reads it out; the near-miss is **named now** (it was silent by decision,
+  and the silence read as a broken board); a ghost finger shows the drag on
+  Easy and Medium until the first plank; the How-to-play diagram got its own
+  sea. Hard and Insane judge every plank (`state.add`): a wrong one is never
+  laid in the state -- `_sinking` draws it rolling, landing, cracking and
+  sinking -- and the lane keeps a buoy (`state.ruled`). Insane is **Lantern
+  Night**: a lantern counts linked islets, not planks (`state.count()`), dealt
+  from `content/insane/bridges.json`.
+  **With two planks the proof is strong enough that uniqueness nearly
+  implies "propagation finishes it".** Lighting lanterns in a shuffled order
+  left 59 of 60 boards propagation-solvable; lighting them best first
+  (whichever leaves the most lanes open) and mining 4000 tries is what finds
+  boards needing suppositions (one in six). Dark islets with no number were
+  tried and dropped: ~50 s a proof and no harder boards.
+  **`restore_completed_board` used `now - 100` as "long solved", and
+  negative was the unsolved sentinel**, so a day reopened in the first 100 s
+  of a session came back unlit. The sentinel is `-INF` now; any board that
+  writes `t - 100.0` into a clock that is also checked `< 0.0` has the same
+  bug.

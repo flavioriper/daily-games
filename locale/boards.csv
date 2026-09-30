@@ -255,7 +255,7 @@ LU_WIN,Not a stone left in the dark.,Nenhuma pedra ficou no escuro.,Ni una piedr
 LU_RULES_CAT,"On Insane, cats nap on cushions on the floor. Light passes over a cat, but no lantern goes on her stone and it needs no light. Her tag says how many lanterns must shine on her: 1 or 2, or z for a napping cat who wants none at all.","No Insano, gatos cochilam em almofadas no chão. A luz passa por cima de um gato, mas nenhuma lanterna vai na pedra dele e ela não precisa de luz. A plaquinha diz quantas lanternas devem brilhar sobre ele: 1 ou 2, ou z para um gato cochilando que não quer nenhuma.","En Insano, los gatos duermen la siesta en cojines sobre el suelo. La luz pasa por encima de un gato, pero ningún farol va en su piedra y esta no necesita luz. Su placa dice cuántos faroles deben brillar sobre él: 1 o 2, o z para un gato dormido que no quiere ninguno."
 LU_RULES_HEARTS_1,You have one heart. A lantern the board can't fault that isn't the answer's gutters out and costs it.,Você tem um coração. Uma lanterna sem nenhum erro visível que não é a da resposta se apaga e custa esse coração.,Tienes un corazón. Un farol sin ningún error visible que no es el de la respuesta se apaga y lo cuesta.
 LU_RULES_HEARTS_N,You have %d hearts. A lantern the board can't fault that isn't the answer's gutters out and costs one.,Você tem %d corações. Uma lanterna sem nenhum erro visível que não é a da resposta se apaga e custa um.,Tienes %d corazones. Un farol sin ningún error visible que no es el de la respuesta se apaga y cuesta uno.
-LU_TIP_CAT,"A napping cat wants the dark. So what can never stand in her row or her column?","Um gato cochilando quer o escuro. Então o que nunca pode ficar na linha ou na coluna dele?","Un gato dormido quiere la oscuridad. Entonces, ¿qué nunca puede estar en su fila ni en su columna?"
+LU_TIP_CAT,A napping cat wants the dark. So what can never stand in her row or her column?,Um gato cochilando quer o escuro. Então o que nunca pode ficar na linha ou na coluna dele?,"Un gato dormido quiere la oscuridad. Entonces, ¿qué nunca puede estar en su fila ni en su columna?"
 LU_REFUSE_CAT,"A cat is napping there. Light may cross her, but no lantern goes on her cushion.","Tem um gato cochilando ali. A luz pode passar por ele, mas nenhuma lanterna vai na almofada.","Ahí duerme un gato. La luz puede pasar por encima, pero ningún farol va en su cojín."
 LU_CAT_OVER_ONE,A cat has more light on her than she wants.,Um gato está com mais luz do que quer.,Un gato tiene más luz de la que quiere.
 LU_CAT_OVER_N,%d cats have more light on them than they want.,%d gatos estão com mais luz do que querem.,%d gatos tienen más luz de la que quieren.
@@ -298,7 +298,7 @@ OL_RULES_HEARTS_1,You have one heart. A step that leaves the rest of the figure 
 OL_RULES_HEARTS_N,You have %d hearts. A step that leaves the rest of the figure impossible to walk costs one.,Você tem %d corações. Um passo que deixa o resto da figura impossível de percorrer custa um.,Tienes %d corazones. Un paso que deja el resto de la figura imposible de recorrer cuesta uno.
 OL_TIP_SUN,"Sunny lines dry the snail out. Every sunny line needs a dewy one on each side of it, except at the ends.","Linhas de sol ressecam a lesma. Cada linha de sol precisa de uma de orvalho de cada lado, menos nas pontas.","Las líneas de sol resecan al caracol. Cada línea de sol necesita una de rocío a cada lado, salvo en los extremos."
 OL_TIP_POSTS,"Look at each post: it needs at least as many dewy lines as sunny ones, or a sunny pair will meet there.","Olhe cada poste: ele precisa de pelo menos tantas linhas de orvalho quanto de sol, ou duas de sol vão se encontrar ali.","Mira cada poste: necesita al menos tantas líneas de rocío como de sol, o dos de sol se encontrarán ahí."
-OL_REFUSE_SUN,"Too sunny! I need a dewy line before another sunny one.","Sol demais! Preciso de uma linha de orvalho antes de outra de sol.","¡Demasiado sol! Necesito una línea de rocío antes de otra de sol."
+OL_REFUSE_SUN,Too sunny! I need a dewy line before another sunny one.,Sol demais! Preciso de uma linha de orvalho antes de outra de sol.,¡Demasiado sol! Necesito una línea de rocío antes de otra de sol.
 OL_WRONG_STEP,"Oh no, that step strands part of the figure. The plank comes back up.","Ah não, esse passo isola parte da figura. A tábua volta a subir.","Ay no, ese paso aísla parte de la figura. La tabla vuelve a subir."
 OL_WRONG_SUN,"Oh no, from there no walk finishes without two sunny lines in a row. The plank comes back up.","Ah não, dali nenhum caminho termina sem duas linhas de sol seguidas. A tábua volta a subir.","Ay no, desde ahí ningún camino termina sin dos líneas de sol seguidas. La tabla vuelve a subir."
 OL_DEW,Ahh... dew.,Ahh... orvalho.,Ahh... rocío.
@@ -480,10 +480,22 @@ SD_CHEER_8,Number wisdom: 2 always brings a friend.,Sabedoria dos números: o 2 
 SD_CHEER_9,"Number wisdom: 9 is the tallest, so 9 gets the top shelf.","Sabedoria dos números: o 9 é o mais alto, então fica com a prateleira de cima.","Sabiduría numérica: el 9 es el más alto, así que le toca el estante de arriba."
 SD_CHEER_10,"Number wisdom: if you count sheep, count them once per row.","Sabedoria dos números: se for contar carneirinhos, conte uma vez por fileira.","Sabiduría numérica: si cuentas ovejas, cuéntalas una vez por fila."
 SD_CHEER_11,Number wisdom: a tidy grid is a happy grid. The pencil agrees.,Sabedoria dos números: grade arrumada é grade feliz. O lápis concorda.,"Sabiduría numérica: cuadrícula ordenada, cuadrícula feliz. El lápiz está de acuerdo."
-BR_TIP_REST,Press an islet and drag at the one facing it.,Toque numa ilhota e arraste até a que fica de frente.,Toca un islote y arrastra hacia el que tiene enfrente.
+BR_TIP_REST,Drag from an islet to the one facing it to lay a plank.,Arraste de uma ilhota até a que fica de frente para pôr uma tábua.,Arrastra de un islote al que tiene enfrente para poner una tabla.
 BR_TIP_NONE,Nothing faces it across the water.,"Nada à frente, do outro lado da água.","Nada enfrente, al otro lado del agua."
 BR_TIP_CROSS,Another run crosses that lane.,Outra ponte cruza esse caminho.,Otro puente cruza ese camino.
-BR_RULES,"Join the islets with plank bridges.\nEach islet takes exactly its number of planks.\nBridges run across or down only, never over an islet.\nAt most three planks join the same two islets, and no two runs may cross.\nWhen you are done, every islet must be joined into one single network.","Ligue as ilhotas com pontes de tábuas.\nCada ilhota recebe exatamente o seu número de tábuas.\nAs pontes só correm na horizontal ou na vertical, nunca por cima de uma ilhota.\nNo máximo três tábuas ligam as mesmas duas ilhotas, e duas pontes nunca se cruzam.\nNo fim, todas as ilhotas precisam estar ligadas numa única rede.","Une los islotes con puentes de tablas.\nCada islote lleva exactamente su número de tablas.\nLos puentes van solo en horizontal o en vertical, nunca por encima de un islote.\nComo mucho tres tablas unen los mismos dos islotes, y dos puentes nunca se cruzan.\nAl terminar, todos los islotes deben quedar unidos en una sola red."
+BR_RULES,"Join the islets with plank bridges.
+The number on an islet is how many planks touch it. The ring round it fills as they come.
+Drag from an islet to the one facing it, or tap the water between them, to lay a plank. One or two planks per pair.
+Bridges run across or down, never over an islet, and never cross each other.
+Last and most important: every islet must end up joined into one single network.","Ligue as ilhotas com pontes de tábuas.
+O número de uma ilhota diz quantas tábuas tocam nela. O anel em volta enche conforme elas chegam.
+Arraste de uma ilhota até a que fica de frente, ou toque na água entre elas, para colocar uma tábua. Uma ou duas tábuas por par.
+As pontes correm na horizontal ou na vertical, nunca por cima de uma ilhota, e nunca se cruzam.
+Por último, e mais importante: todas as ilhotas precisam acabar ligadas numa única rede.","Une los islotes con puentes de tablas.
+El número de un islote dice cuántas tablas lo tocan. El anillo a su alrededor se llena a medida que llegan.
+Arrastra de un islote al que tiene enfrente, o toca el agua entre ellos, para poner una tabla. Una o dos tablas por pareja.
+Los puentes van en horizontal o en vertical, nunca por encima de un islote, y nunca se cruzan.
+Por último, y lo más importante: todos los islotes deben acabar unidos en una sola red."
 BR_HINT,A plank the answer wants is in.,Entrou uma tábua que a resposta pede.,Ya está una tabla que la respuesta pide.
 BR_CHECK_ONE,1 run is in the way.,1 ponte está atrapalhando.,1 puente está estorbando.
 BR_CHECK_N,%d runs are in the way.,%d pontes estão atrapalhando.,%d puentes están estorbando.
@@ -641,8 +653,42 @@ BR_SHORT,Plank every islet\nto its number.,Cada ilhota com\nas pontes certas.,Ca
 BR_MOTTO,Join every islet,Una todas as ilhotas,Une todos los islotes
 BR_LVL_0,"11 islets, 7 × 7","11 ilhotas, 7 × 7","11 islotes, 7 × 7"
 BR_LVL_1,"16 islets, 9 × 9","16 ilhotas, 9 × 9","16 islotes, 9 × 9"
-BR_LVL_2,"24 islets, 11 × 11","24 ilhotas, 11 × 11","24 islotes, 11 × 11"
-BR_LVL_3,"30 islets, 11 × 11","30 ilhotas, 11 × 11","30 islotes, 11 × 11"
+BR_LVL_2,"24 islets, three hearts","24 ilhotas, três corações","24 islotes, tres corazones"
+BR_LVL_3,"Lantern Night: 30 islets, two hearts","Noite das Lanternas: 30 ilhotas, dois corações","Noche de Faroles: 30 islotes, dos corazones"
+BR_RULES_LANTERNS,"Lantern Night: a lantern counts friends, not planks. Its number is how many islets it is joined to, by one plank or two each.","Noite das Lanternas: uma lanterna conta amigas, não tábuas. O número dela é quantas ilhotas estão ligadas a ela, com uma ou duas tábuas cada.","Noche de Faroles: un farol cuenta amigos, no tablas. Su número es a cuántos islotes está unido, con una o dos tablas cada uno."
+BR_RULES_HEARTS,"You have %d hearts. Every plank is judged as it lands: a wrong one costs a heart, cracks and sinks, and leaves a buoy on that lane for good. A right plank stays.","Você tem %d corações. Cada tábua é julgada ao pousar: uma errada custa um coração, racha e afunda, e deixa uma boia naquele caminho de vez. Uma tábua certa fica.","Tienes %d corazones. Cada tabla se juzga al posarse: una equivocada cuesta un corazón, se parte y se hunde, y deja una boya en ese camino para siempre. Una tabla correcta se queda."
+BR_RULES_SAFE,Nothing here can be lost: a wrong plank just waits for you to lift it. Tap a bridge to add a plank or take it away.,Nada aqui se perde: uma tábua errada só espera você tirá-la. Toque numa ponte para pôr ou tirar uma tábua.,Aquí nada se pierde: una tabla equivocada solo espera a que la quites. Toca un puente para añadir o quitar una tabla.
+BR_TIP_SLOTS,The ring round a number fills a slot for every plank that touches it.,O anel em volta de um número enche um espaço para cada tábua que toca nele.,El anillo alrededor de un número llena un hueco por cada tabla que lo toca.
+BR_TIP_TAP,Tap the water between two islets to lay a plank there too.,Tocar na água entre duas ilhotas também coloca uma tábua ali.,Tocar el agua entre dos islotes también pone una tabla ahí.
+BR_TIP_TWO,Two planks at most between the same two islets.,No máximo duas tábuas entre as mesmas duas ilhotas.,Como mucho dos tablas entre los mismos dos islotes.
+BR_TIP_ONE_NET,Every islet has to end up in one single network.,Todas as ilhotas precisam acabar numa rede só.,Todos los islotes deben acabar en una sola red.
+BR_TIP_LANTERN,"A lantern counts the islets it's joined to, not its planks.","Uma lanterna conta as ilhotas ligadas a ela, não as tábuas.","Un farol cuenta los islotes unidos a él, no sus tablas."
+BR_TIP_LANTERN_2,"A lantern 2 is joined to two islets: that could be two planks, three or four.","Uma lanterna 2 se liga a duas ilhotas: podem ser duas tábuas, três ou quatro.","Un farol 2 se une a dos islotes: pueden ser dos tablas, tres o cuatro."
+BR_TIP_HEARTS,Every plank is judged as it lands. A wrong one costs a heart.,Cada tábua é julgada ao pousar. Uma errada custa um coração.,Cada tabla se juzga al posarse. Una equivocada cuesta un corazón.
+BR_FULL,That bridge is right and already has two planks. It stays.,Essa ponte está certa e já tem duas tábuas. Ela fica.,Ese puente está bien y ya tiene dos tablas. Se queda.
+BR_RULED,A buoy already showed no more planks go there.,Uma boia já mostrou que ali não cabem mais tábuas.,Una boya ya mostró que ahí no caben más tablas.
+BR_READ_ONE,This islet wants 1 plank. It has %d.,Esta ilhota quer 1 tábua. Tem %d.,Este islote quiere 1 tabla. Tiene %d.
+BR_READ_N,This islet wants %d planks. It has %d.,Esta ilhota quer %d tábuas. Tem %d.,Este islote quiere %d tablas. Tiene %d.
+BR_READ_LANTERN_ONE,This lantern wants 1 friend. It is joined to %d.,Esta lanterna quer 1 amiga. Está ligada a %d.,Este farol quiere 1 amigo. Está unido a %d.
+BR_READ_LANTERN_N,This lantern wants %d friends. It is joined to %d.,Esta lanterna quer %d amigas. Está ligada a %d.,Este farol quiere %d amigos. Está unido a %d.
+BR_SPLIT,"Every number is happy, but the islets are in %d groups. Join them into one!","Todos os números estão felizes, mas as ilhotas estão em %d grupos. Junte tudo numa rede só!","Todos los números están felices, pero los islotes están en %d grupos. ¡Únelos en una sola red!"
+BR_WRONG,"Oh, that plank doesn't belong there. It cost a heart.","Ops, essa tábua não é dali. Custou um coração.","Uy, esa tabla no va ahí. Costó un corazón."
+BR_OUT,The islets have dozed off.,As ilhotas cochilaram.,Los islotes se quedaron dormidos.
+BR_OUT_BODY,"Out of hearts. Start this sea again from bare water, or watch a short video for one more heart.",Sem corações. Comece este mar de novo do zero ou veja um vídeo curto por mais um coração.,Sin corazones. Empieza este mar otra vez desde cero o mira un video corto para un corazón más.
+BR_OUT_REST,Out of hearts. Start this sea again from bare water whenever you like.,Sem corações. Comece este mar de novo do zero quando quiser.,Sin corazones. Empieza este mar otra vez desde cero cuando quieras.
+BR_LANTERN_SEAL,Lanterns,Lanternas,Faroles
+BR_CHEER_0,Bridge wisdom: a plank is just a tree that learned to swim.,Sabedoria das pontes: uma tábua é só uma árvore que aprendeu a nadar.,Sabiduría de puentes: una tabla es solo un árbol que aprendió a nadar.
+BR_CHEER_1,Bridge wisdom: never burn a bridge. Paint it yellow instead.,Sabedoria das pontes: nunca queime uma ponte. Pinte de amarelo.,Sabiduría de puentes: nunca quemes un puente. Píntalo de amarillo.
+BR_CHEER_2,Bridge wisdom: islands are just very shy continents.,Sabedoria das pontes: ilhas são só continentes muito tímidos.,Sabiduría de puentes: las islas son solo continentes muy tímidos.
+BR_CHEER_3,Bridge wisdom: two planks are a bridge. Three planks are a party.,Sabedoria das pontes: duas tábuas são uma ponte. Três são uma festa.,Sabiduría de puentes: dos tablas son un puente. Tres son una fiesta.
+BR_CHEER_4,Bridge wisdom: the fish have seen everything. They are not impressed. They are a little impressed.,"Sabedoria das pontes: os peixes já viram de tudo. Não estão impressionados. Tá, um pouquinho.","Sabiduría de puentes: los peces lo han visto todo. No están impresionados. Bueno, un poquito."
+BR_CHEER_5,Bridge wisdom: every islet wants friends. Some just want exactly three.,Sabedoria das pontes: toda ilhota quer amigas. Algumas querem exatamente três.,Sabiduría de puentes: todo islote quiere amigos. Algunos quieren exactamente tres.
+BR_CHEER_6,Bridge wisdom: a duck is a boat that quacks.,Sabedoria das pontes: um pato é um barco que faz quá.,Sabiduría de puentes: un pato es un barco que hace cuac.
+BR_CHEER_7,"Bridge wisdom: if the water looks deep, it is probably just very enthusiastic.","Sabedoria das pontes: se a água parece funda, ela provavelmente só está muito animada.","Sabiduría de puentes: si el agua parece profunda, seguramente solo está muy entusiasmada."
+BR_CHEER_8,"Bridge wisdom: the best bridges are the ones you cross twice. Once there, once for snacks.","Sabedoria das pontes: as melhores pontes a gente cruza duas vezes. Uma pra ir, outra pelo lanche.",Sabiduría de puentes: los mejores puentes se cruzan dos veces. Una para ir y otra por la merienda.
+BR_CHEER_9,Bridge wisdom: a lonely islet is just a network waiting to happen.,Sabedoria das pontes: uma ilhota sozinha é só uma rede esperando acontecer.,Sabiduría de puentes: un islote solitario es solo una red esperando pasar.
+BR_CHEER_10,Bridge wisdom: planks don't cross. It's rude.,Sabedoria das pontes: tábuas não se cruzam. É falta de educação.,Sabiduría de puentes: las tablas no se cruzan. Es de mala educación.
+BR_CHEER_11,Bridge wisdom: the sea said hello. It says hello a lot.,Sabedoria das pontes: o mar disse oi. Ele diz oi toda hora.,Sabiduría de puentes: el mar dijo hola. Dice hola muy seguido.
 QL_BLURB,"Fit every patch onto the quilt, with not a gap left.","Encaixe cada retalho na colcha, sem deixar vão.","Encaja cada retazo en la colcha, sin dejar huecos."
 QL_SHORT,Fit every patch.\nLeave no gap.,"Cada retalho no\nlugar, sem vãos.",Encaja cada retazo.\nSin dejar huecos.
 QL_MOTTO,Make the blanket whole,Complete a colcha,Completa la colcha
@@ -737,7 +783,7 @@ HTP_LESSON_HW,Type a word and use the colour clues,Digite uma palavra e use as c
 HTP_LESSON_WT,Drag through neighbouring letters to make a word,Arraste por letras vizinhas para formar uma palavra,Arrastra por letras vecinas para formar una palabra
 HTP_LESSON_MP,Mark the cells that hide mushrooms,Marque as casas que escondem cogumelos,Marca las casillas que esconden hongos
 HTP_LESSON_SD,"Use each number once in every row, column and box","Use cada número uma vez em cada linha, coluna e bloco","Usa cada número una vez en cada fila, columna y bloque"
-HTP_LESSON_BR,Connect islands with one or two bridges,Ligue as ilhas com uma ou duas pontes,Une las islas con uno o dos puentes
+HTP_LESSON_BR,Each number is how many planks touch it,Cada número é quantas tábuas tocam nele,Cada número es cuántas tablas lo tocan
 HTP_LESSON_QL,Join matching patches into the shown shape,Junte os retalhos na forma mostrada,Junta los retazos en la forma indicada
 HTP_LESSON_PP,Draw each plane from its head in a straight line,"Trace cada avião a partir da ponta, em linha reta","Traza cada avión desde su punta, en línea recta"
 HTP_LESSON_RG,Rotate rings until every colour lines up,Gire os anéis até alinhar cada cor,Gira los aros hasta alinear cada color
