@@ -67,6 +67,7 @@ const TIME_BUDGET_MS := 300
 
 static var _peers: Array = []
 static var _units: Array = []
+static var _beside: Array = []
 
 static func row_of(i: int) -> int:
 	return i / N
@@ -80,7 +81,10 @@ static func box_of(i: int) -> int:
 ## Switch the geometry to an `n` by `n` grid: 6 (regions two rows by three
 ## columns) or 9 (three by three). A no-op when it is already that size.
 static func use(n: int) -> void:
-	if n == N and not _units.is_empty():
+	if n == N:
+		# Never cleared when the size stands: the miner's threads all call
+		# this at once, and _tables() builds aside and assigns whole.
+		_tables()
 		return
 	N = n
 	CELLS = n * n
@@ -89,6 +93,7 @@ static func use(n: int) -> void:
 	BOX_C = 3
 	_units = []
 	_peers = []
+	_beside = []
 	_tables()
 
 ## The side of the grid band `difficulty` is played on.
@@ -134,10 +139,14 @@ static func _tables() -> void:
 			if row_of(j) == row_of(i) or col_of(j) == col_of(i) or box_of(j) == box_of(i):
 				p.append(j)
 		ps.append(p)
+	var bs: Array = []
+	for i in CELLS:
+		bs.append(beside(i))
 	# Assigned last and together, so a second thread or a re-entrant call
 	# cannot see half-built tables through the `_units.is_empty()` guard.
 	_peers = ps
 	_units = us
+	_beside = bs
 
 ## The day's puzzle. `graded` says whether the band's technique test was met
 ## within ATTEMPTS tries; the board plays either way and nothing reads it but
@@ -212,7 +221,9 @@ static func _fill(rng: RandomNumberGenerator, g: PackedByteArray, rm: PackedInt3
 ## How many solutions `puz` has, stopping at `cap`. Most-constrained cell
 ## first: a cell with no candidate kills the branch at once, and a cell with
 ## one is taken before any cell with two.
-static func count_solutions(puz: PackedByteArray, cap: int) -> int:
+static func count_solutions(puz: PackedByteArray, cap: int, hills := PackedInt32Array()) -> int:
+	if not hills.is_empty():
+		return _count_hills(puz, cap, hills)
 	var g := puz.duplicate()
 	var rm := PackedInt32Array()
 	rm.resize(N)
@@ -229,11 +240,23 @@ static func count_solutions(puz: PackedByteArray, cap: int) -> int:
 	# An Array, not an int: GDScript has no out-parameters and an Array is
 	# the cheapest box that survives the recursion.
 	var found: Array = [0]
-	_count(g, rm, cm, bm, cap, found)
+	_count(g, rm, cm, bm, cap, found, hills)
 	return int(found[0])
 
+## Whether the hills touching `i` -- its own and those beside it -- can still
+## come true once `i` holds a number. Always true on a grid with no hills.
+static func _hills_hold(g: PackedByteArray, hills: PackedInt32Array, i: int) -> bool:
+	if hills.is_empty():
+		return true
+	if not hill_ok(g, hills, i):
+		return false
+	for j in beside(i):
+		if not hill_ok(g, hills, j):
+			return false
+	return true
+
 static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Array,
-		bm: PackedInt32Array, cap: int, found: Array) -> bool:
+		bm: PackedInt32Array, cap: int, found: Array, hills := PackedInt32Array()) -> bool:
 	var best := -1
 	var best_mask := 0
 	var best_n := N + 1
@@ -261,10 +284,13 @@ static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Arra
 		if not (best_mask & bit):
 			continue
 		g[best] = d
+		if not _hills_hold(g, hills, best):
+			g[best] = 0
+			continue
 		rm[r] |= bit
 		cm[c] |= bit
 		bm[b] |= bit
-		var stop := _count(g, rm, cm, bm, cap, found)
+		var stop := _count(g, rm, cm, bm, cap, found, hills)
 		g[best] = 0
 		rm[r] &= ~bit
 		cm[c] &= ~bit
@@ -282,7 +308,8 @@ static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Arra
 ## committed was already proved unique, so the fallback is still a real,
 ## still-unique puzzle and not a hang. -1 (the default) means no deadline,
 ## for a caller with nothing to share one with.
-static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int, deadline_ms: int = -1) -> PackedByteArray:
+static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int, deadline_ms: int = -1,
+		hills := PackedInt32Array()) -> PackedByteArray:
 	var puz := sol.duplicate()
 	var order: Array = []
 	for i in CELLS:
@@ -325,7 +352,7 @@ static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int, d
 			removing += 1
 		puz[i] = 0
 		puz[j] = 0
-		if count_solutions(puz, 2) != 1:
+		if count_solutions(puz, 2, hills) != 1:
 			puz[i] = a
 			puz[j] = b
 		else:
@@ -408,3 +435,383 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 		var tmp = arr[k]
 		arr[k] = arr[j]
 		arr[j] = tmp
+
+# --- Insane: Hilltops (spec 2026-09-30-sudoku-polish-design.md, section 2) ---
+#
+# A **hill** sits in some cells and counts how many of the (up to) four cells
+# beside it -- up, down, left, right -- hold a smaller number. Those four
+# share a row or a column with it, so none can equal it: each is lower or
+# higher, and a hill of 0 is the lowest thing around it, a hill of 4 the
+# highest. The hills carry what the givens do not: a banked Insane grid has
+# fewer givens than any plain grid can have and stay unique (seventeen is the
+# floor there), and it only opens by supposing a number and following it.
+#
+# `hills` is one int a cell everywhere below: -1 for no hill, else its count.
+
+## How many hills a fresh grid is dealt before the dig, and the dig's floor.
+## The dig goes as low as the hills let it; the prune after it then takes out
+## every hill the answer can do without.
+const HILLS_DEALT := 34
+## Sixteen: one under the seventeen no plain grid can go below and stay
+## unique. Measured: digging to nought took over a minute a grid and left
+## six givens that suppositions could not finish.
+const HILL_TARGET := 16
+## Wall-clock ceiling on one live Hilltops deal (the fallback when the bank
+## is empty or unreadable), in milliseconds.
+const HILL_BUDGET_MS := 900
+
+## The cells beside `i`, up, down, left and right, as far as the grid goes.
+static func beside(i: int) -> PackedInt32Array:
+	if _beside.size() == CELLS:
+		return _beside[i]
+	var out := PackedInt32Array()
+	var r := row_of(i)
+	var c := col_of(i)
+	if r > 0:
+		out.append(i - N)
+	if r < N - 1:
+		out.append(i + N)
+	if c > 0:
+		out.append(i - 1)
+	if c < N - 1:
+		out.append(i + 1)
+	return out
+
+## What a hill at `i` would say over the full grid `g`.
+static func hill_count(g: PackedByteArray, i: int) -> int:
+	var n := 0
+	for j in beside(i):
+		if g[j] < g[i]:
+			n += 1
+	return n
+
+## Whether the hill at `h` can still come true over a part-filled grid: only
+## asked once `h` itself holds a number. An empty cell beside it can still be
+## lower only if the hill is above 1, and higher only if it is below N.
+static func hill_ok(g: PackedByteArray, hills: PackedInt32Array, h: int) -> bool:
+	var k := hills[h]
+	var v := int(g[h])
+	if k < 0 or v == 0:
+		return true
+	var lower := 0
+	var higher := 0
+	var open := 0
+	var near := beside(h)
+	for j in near:
+		if g[j] == 0:
+			open += 1
+		elif g[j] < v:
+			lower += 1
+		else:
+			higher += 1
+	var up := near.size() - k
+	return lower <= k and higher <= up \
+		and lower + (open if v > 1 else 0) >= k \
+		and higher + (open if v < N else 0) >= up
+
+## The deal: a full grid, HILLS_DEALT hills read off it, the symmetric dig as
+## low as the hills allow, and then every hill the answer can do without taken
+## out. {"puzzle", "solution", "hills", "ok"}; `ok` false when the deadline
+## cut the dig short (the grid is still unique, only easier).
+static func generate_hills(rng: RandomNumberGenerator, budget_ms: int = -1) -> Dictionary:
+	use(9)
+	var deadline := -1
+	if budget_ms >= 0:
+		deadline = Time.get_ticks_msec() + budget_ms
+	var sol := full_grid(rng)
+	var hills := PackedInt32Array()
+	hills.resize(CELLS)
+	hills.fill(-1)
+	var order: Array = []
+	for i in CELLS:
+		order.append(i)
+	_shuffle(order, rng)
+	for k in HILLS_DEALT:
+		var i: int = order[k]
+		hills[i] = hill_count(sol, i)
+	var puz := dig(rng, sol, HILL_TARGET, deadline, hills)
+	var ok := deadline < 0 or Time.get_ticks_msec() < deadline
+	# Every hill the answer can do without comes out, in a shuffled order.
+	_shuffle(order, rng)
+	for i in order:
+		if hills[i] < 0:
+			continue
+		if deadline >= 0 and Time.get_ticks_msec() >= deadline:
+			ok = false
+			break
+		var k := hills[i]
+		hills[i] = -1
+		if count_solutions(puz, 2, hills) != 1:
+			hills[i] = k
+	return {"puzzle": puz, "solution": sol, "hills": hills, "ok": ok}
+
+## How many hills a grid carries.
+static func hill_total(hills: PackedInt32Array) -> int:
+	var n := 0
+	for k in hills:
+		if k >= 0:
+			n += 1
+	return n
+
+# --- the logic solver: what the hills ask of a player ---
+
+## Solves `puz` under `hills` the way a player does, never guessing: singles
+## (a cell with one number left, a number with one cell left in a unit) and
+## the hills' own reckoning (a hill's number must leave exactly its count
+## lower beside it; a cell beside a hill keeps only the numbers some number of
+## the hill agrees with). With `deep`, it also **supposes**: puts a number in
+## a cell in its head, follows the rules, and crosses the number out when that
+## breaks the grid. {"ok": finished, "supposed": suppositions that crossed
+## something out, "probes": suppositions tried}.
+static func solve_logic(puz: PackedByteArray, hills: PackedInt32Array, deep: bool) -> Dictionary:
+	_tables()
+	var cand := PackedInt32Array()
+	cand.resize(CELLS)
+	for i in CELLS:
+		cand[i] = (1 << (puz[i] - 1)) if puz[i] > 0 else FULL
+	var out := {"ok": false, "supposed": 0, "probes": 0}
+	if not _propagate(cand, hills):
+		return out
+	while not _settled(cand):
+		if not deep:
+			return out
+		var crossed := false
+		# The cells with fewest numbers left first: where a player would try.
+		var cells: Array = []
+		for i in CELLS:
+			if popcount(cand[i]) > 1:
+				cells.append(i)
+		cells.sort_custom(func(a: int, b: int) -> bool: return popcount(cand[a]) < popcount(cand[b]))
+		for i in cells:
+			for d in range(1, N + 1):
+				var bit := 1 << (d - 1)
+				if (cand[i] & bit) == 0:
+					continue
+				out.probes += 1
+				var trial := cand.duplicate()
+				trial[i] = bit
+				if _propagate(trial, hills):
+					continue
+				cand[i] &= ~bit
+				out.supposed += 1
+				if not _propagate(cand, hills):
+					return out
+				crossed = true
+				break
+			if crossed:
+				break
+		if not crossed:
+			return out
+	out.ok = true
+	return out
+
+static func _settled(cand: PackedInt32Array) -> bool:
+	for m in cand:
+		if popcount(m) != 1:
+			return false
+	return true
+
+## Singles and the hills until nothing changes. False when the grid breaks.
+static func _propagate(cand: PackedInt32Array, hills: PackedInt32Array) -> bool:
+	var changed := true
+	while changed:
+		changed = false
+		for i in CELLS:
+			var m := cand[i]
+			if m == 0:
+				return false
+			if popcount(m) != 1:
+				continue
+			for j in _peers[i]:
+				if cand[j] & m:
+					cand[j] &= ~m
+					if cand[j] == 0:
+						return false
+					changed = true
+		for u in _units:
+			for d in range(1, N + 1):
+				var bit := 1 << (d - 1)
+				var seat := -1
+				var n := 0
+				for i in u:
+					if cand[i] & bit:
+						seat = i
+						n += 1
+				if n == 0:
+					return false
+				if n == 1 and cand[seat] != bit:
+					cand[seat] = bit
+					changed = true
+		if not hills.is_empty():
+			for h in CELLS:
+				if hills[h] < 0:
+					continue
+				var r := _hill_step(cand, hills[h], h)
+				if r < 0:
+					return false
+				if r > 0:
+					changed = true
+	return true
+
+## One hill's reckoning over the candidates: keeps only the hill's numbers
+## that can leave exactly `k` lower beside it, and only the neighbours'
+## numbers some kept hill number agrees with. 1 when something was crossed
+## out, 0 when nothing, -1 when the hill cannot come true.
+static func _hill_step(cand: PackedInt32Array, k: int, h: int) -> int:
+	var near := beside(h)
+	var lo := PackedInt32Array()
+	var hi := PackedInt32Array()
+	for j in near:
+		lo.append(_low_digit(cand[j]))
+		hi.append(_high_digit(cand[j]))
+	var did := 0
+	var keep := 0
+	for v in range(1, N + 1):
+		var bit := 1 << (v - 1)
+		if (cand[h] & bit) == 0:
+			continue
+		var must := 0
+		var may := 0
+		for x in near.size():
+			if hi[x] < v:
+				must += 1
+			if lo[x] < v:
+				may += 1
+		if must <= k and k <= may:
+			keep |= bit
+	if keep == 0:
+		return -1
+	if keep != cand[h]:
+		cand[h] = keep
+		did = 1
+	# A neighbour's number w stays only if some hill number v leaves room for
+	# the other neighbours to make up the count with w's own part in it.
+	for x in near.size():
+		var j: int = near[x]
+		var mask := 0
+		for w in range(1, N + 1):
+			var wb := 1 << (w - 1)
+			if (cand[j] & wb) == 0:
+				continue
+			for v in range(1, N + 1):
+				if v == w or (keep & (1 << (v - 1))) == 0:
+					continue
+				var need := k - (1 if w < v else 0)
+				var must := 0
+				var may := 0
+				for y in near.size():
+					if y == x:
+						continue
+					if hi[y] < v:
+						must += 1
+					if lo[y] < v:
+						may += 1
+				if must <= need and need <= may:
+					mask |= wb
+					break
+		if mask == 0:
+			return -1
+		if mask != cand[j]:
+			cand[j] = mask
+			did = 1
+	return did
+
+static func _low_digit(m: int) -> int:
+	for d in range(1, N + 1):
+		if m & (1 << (d - 1)):
+			return d
+	return N + 1
+
+static func _high_digit(m: int) -> int:
+	for d in range(N, 0, -1):
+		if m & (1 << (d - 1)):
+			return d
+	return 0
+
+## The count on a grid with hills: every node runs the logic solver's
+## propagation (singles and the hills' reckoning) before it branches on the
+## cell with fewest numbers left, which cuts the tree down far more than the
+## plain count's masks can when there are only a dozen givens.
+static func _count_hills(puz: PackedByteArray, cap: int, hills: PackedInt32Array) -> int:
+	_tables()
+	var cand := PackedInt32Array()
+	cand.resize(CELLS)
+	for i in CELLS:
+		cand[i] = (1 << (puz[i] - 1)) if puz[i] > 0 else FULL
+	var found: Array = [0]
+	_count_cand(cand, cap, hills, found)
+	return int(found[0])
+
+static func _count_cand(cand: PackedInt32Array, cap: int, hills: PackedInt32Array, found: Array) -> bool:
+	if not _propagate(cand, hills):
+		return false
+	var best := -1
+	var best_n := N + 1
+	for i in CELLS:
+		var n := popcount(cand[i])
+		if n > 1 and n < best_n:
+			best_n = n
+			best = i
+			if n == 2:
+				break
+	if best < 0:
+		found[0] = int(found[0]) + 1
+		return int(found[0]) >= cap
+	for d in range(1, N + 1):
+		var bit := 1 << (d - 1)
+		if (cand[best] & bit) == 0:
+			continue
+		var trial := cand.duplicate()
+		trial[best] = bit
+		if _count_cand(trial, cap, hills, found):
+			return true
+	return false
+
+# --- the bank (content/insane/sudoku.json) ---
+
+## A Hilltops grid as the bank keeps it: `puzzle` and `solution` one digit a
+## cell in reading order ('.' empty), `hills` one character a cell ('.' none,
+## else the count).
+static func to_bank(out: Dictionary) -> Dictionary:
+	var p := ""
+	var s := ""
+	var h := ""
+	for i in 81:
+		p += "." if out.puzzle[i] == 0 else str(out.puzzle[i])
+		s += str(out.solution[i])
+		h += "." if out.hills[i] < 0 else str(out.hills[i])
+	return {"puzzle": p, "solution": s, "hills": h}
+
+## The bank's grid back as generate_hills hands one over; {} for an entry that
+## does not hold together. The phone checks what is cheap -- a legal answer,
+## givens that agree with it, hills that are its own counts -- and trusts the
+## miner's uniqueness proof, which the ladder's grade re-runs on the Mac.
+static func from_bank(board: Dictionary) -> Dictionary:
+	var p := String(board.get("puzzle", ""))
+	var s := String(board.get("solution", ""))
+	var h := String(board.get("hills", ""))
+	if p.length() != 81 or s.length() != 81 or h.length() != 81:
+		return {}
+	use(9)
+	var puz := PackedByteArray()
+	var sol := PackedByteArray()
+	var hills := PackedInt32Array()
+	puz.resize(81)
+	sol.resize(81)
+	hills.resize(81)
+	for i in 81:
+		puz[i] = 0 if p[i] == "." else int(p[i])
+		sol[i] = int(s[i])
+		hills[i] = -1 if h[i] == "." else int(h[i])
+		if sol[i] < 1 or sol[i] > 9 or (puz[i] != 0 and puz[i] != sol[i]):
+			return {}
+	for u in units():
+		var mask := 0
+		for i in u:
+			mask |= 1 << (sol[i] - 1)
+		if mask != FULL:
+			return {}
+	for i in 81:
+		if hills[i] >= 0 and hills[i] != hill_count(sol, i):
+			return {}
+	return {"puzzle": puz, "solution": sol, "hills": hills, "ok": true}

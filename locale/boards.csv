@@ -452,6 +452,34 @@ SD_CHECK_ONE,One number to look at again.,Um número para olhar de novo.,Un núm
 SD_CHECK_N,%d numbers to look at again.,%d números para olhar de novo.,%d números para revisar.
 SD_RESET,The board is back to its givens. The hints you spent are not refunded.,O tabuleiro voltou ao início. As dicas usadas não voltam.,El tablero volvió al inicio. Las pistas usadas no se devuelven.
 SD_WIN,Every number in its place.,Cada número no seu lugar.,Cada número en su lugar.
+SD_RULES_SAFE,Nothing here can be lost: a wrong number just waits for you to find it.,Nada aqui se perde: um número errado só espera você achá-lo.,Aquí nada se pierde: un número equivocado solo espera a que lo encuentres.
+SD_RULES_HEARTS,"You have %d hearts. Every number is judged as it lands: a wrong one costs a heart, tumbles off the paper, and that number is crossed out of that cell for good.","Você tem %d corações. Cada número é julgado ao cair: um errado custa um coração, cai do papel, e aquele número fica riscado daquela casa de vez.","Tienes %d corazones. Cada número se juzga al caer: uno equivocado cuesta un corazón, se cae del papel y ese número queda tachado de esa casilla para siempre."
+SD_RULES_HILLS,"Hilltops: a little hill in a cell counts how many of the four cells beside it (up, down, left, right) hold a smaller number. A hill with no dots is lower than all its neighbours; a hill with four is higher than every one. There are fewer givens than any plain sudoku can have, so the hills are how you get in.","Colinas: uma colininha numa casa conta quantas das quatro casas ao lado (cima, baixo, esquerda, direita) têm um número menor. Uma colina sem pontinhos é menor que todas as vizinhas; uma com quatro é maior que todas. Há menos números dados do que qualquer sudoku comum pode ter, então as colinas são o caminho.","Colinas: una colinita en una casilla cuenta cuántas de las cuatro casillas a su lado (arriba, abajo, izquierda, derecha) tienen un número menor. Una colina sin puntitos es menor que todas sus vecinas; una con cuatro es mayor que todas. Hay menos números dados de los que cualquier sudoku común puede tener, así que las colinas son la entrada."
+SD_TIP_HEARTS,Every number is judged as it lands. A wrong one costs a heart.,Cada número é julgado ao cair. Um errado custa um coração.,Cada número se juzga al caer. Uno equivocado cuesta un corazón.
+SD_TIP_HILLS,A hill's dots count the cells beside it holding a smaller number.,Os pontinhos da colina contam as casas ao lado com número menor.,Los puntitos de la colina cuentan las casillas a su lado con un número menor.
+SD_TIP_HILLS_2,"Stuck? Suppose a number, follow it, and see if a hill breaks.","Travou? Suponha um número, siga em frente e veja se uma colina quebra.","¿Atascado? Supón un número, síguelo y mira si una colina se rompe."
+SD_HILL_SAYS,This hill sees %d lower beside it.,Esta colina vê %d menores ao lado.,Esta colina ve %d menores a su lado.
+SD_WRONG,"Oh, that one doesn't go there. That cost a heart.","Ops, esse não vai aí. Isso custou um coração.","Uy, ese no va ahí. Eso costó un corazón."
+SD_RULED,A heart already showed %d doesn't go there.,Um coração já mostrou que o %d não vai aí.,Un corazón ya mostró que el %d no va ahí.
+SD_KEPT,That one is right. It stays.,Esse está certo. Ele fica.,Ese está bien. Se queda.
+SD_ALL_HOME,All the %ds are home!,Todos os %d estão em casa!,¡Todos los %d están en casa!
+SD_OUT,The numbers have dozed off.,Os números cochilaram.,Los números se quedaron dormidos.
+SD_OUT_BODY,"Out of hearts. Start this grid again from the top, or watch a short video for one more heart.",Sem corações. Comece esta grade de novo do início ou veja um vídeo curto por mais um coração.,Sin corazones. Empieza esta cuadrícula otra vez desde el principio o mira un video corto para un corazón más.
+SD_OUT_REST,Out of hearts. Start this grid again from the top whenever you like.,Sem corações. Comece esta grade de novo do início quando quiser.,Sin corazones. Empieza esta cuadrícula otra vez desde el principio cuando quieras.
+SD_HILLS_SEAL,Hilltops,Colinas,Colinas
+SD_LVL_2,"9 × 9, three hearts","9 × 9, três corações","9 × 9, tres corazones"
+SD_CHEER_0,Number wisdom: 7 is only nervous because 7 ate 9.,Sabedoria dos números: o 7 só está nervoso porque o 7 comeu o 9.,Sabiduría numérica: el 7 solo está nervioso porque el 7 se comió al 9.
+SD_CHEER_1,Number wisdom: 6 is just 9 doing a handstand.,Sabedoria dos números: o 6 é só o 9 plantando bananeira.,Sabiduría numérica: el 6 es solo el 9 haciendo el pino.
+SD_CHEER_2,Number wisdom: 8 never worries. It has two naps' worth of loops.,Sabedoria dos números: o 8 nunca se preocupa. Tem voltinhas para duas sonecas.,Sabiduría numérica: el 8 nunca se preocupa. Tiene vueltas para dos siestas.
+SD_CHEER_3,"Number wisdom: 1 likes to stand alone, but it loves a good row.","Sabedoria dos números: o 1 gosta de ficar sozinho, mas adora uma boa fileira.","Sabiduría numérica: al 1 le gusta estar solo, pero adora una buena fila."
+SD_CHEER_4,"Number wisdom: every number has a place, and every place has a snack.","Sabedoria dos números: todo número tem seu lugar, e todo lugar tem um lanchinho.","Sabiduría numérica: cada número tiene su lugar, y cada lugar tiene un bocadillo."
+SD_CHEER_5,"Number wisdom: 0 wanted to come, but it had nothing to wear.","Sabedoria dos números: o 0 queria vir, mas não tinha nada para vestir.","Sabiduría numérica: el 0 quería venir, pero no tenía nada que ponerse."
+SD_CHEER_6,Number wisdom: 3 and 5 are not fighting. They are just odd.,Sabedoria dos números: o 3 e o 5 não estão brigando. Só são ímpares.,Sabiduría numérica: el 3 y el 5 no se pelean. Solo son impares.
+SD_CHEER_7,"Number wisdom: 4 is square, and proud of it.","Sabedoria dos números: o 4 é quadrado, e tem orgulho disso.","Sabiduría numérica: el 4 es cuadrado, y está orgulloso."
+SD_CHEER_8,Number wisdom: 2 always brings a friend.,Sabedoria dos números: o 2 sempre traz um amigo.,Sabiduría numérica: el 2 siempre trae a un amigo.
+SD_CHEER_9,"Number wisdom: 9 is the tallest, so 9 gets the top shelf.","Sabedoria dos números: o 9 é o mais alto, então fica com a prateleira de cima.","Sabiduría numérica: el 9 es el más alto, así que le toca el estante de arriba."
+SD_CHEER_10,"Number wisdom: if you count sheep, count them once per row.","Sabedoria dos números: se for contar carneirinhos, conte uma vez por fileira.","Sabiduría numérica: si cuentas ovejas, cuéntalas una vez por fila."
+SD_CHEER_11,Number wisdom: a tidy grid is a happy grid. The pencil agrees.,Sabedoria dos números: grade arrumada é grade feliz. O lápis concorda.,"Sabiduría numérica: cuadrícula ordenada, cuadrícula feliz. El lápiz está de acuerdo."
 BR_TIP_REST,Press an islet and drag at the one facing it.,Toque numa ilhota e arraste até a que fica de frente.,Toca un islote y arrastra hacia el que tiene enfrente.
 BR_TIP_NONE,Nothing faces it across the water.,"Nada à frente, do outro lado da água.","Nada enfrente, al otro lado del agua."
 BR_TIP_CROSS,Another run crosses that lane.,Outra ponte cruza esse caminho.,Otro puente cruza ese camino.
@@ -607,7 +635,7 @@ MP_LVL_3,"Fairy Rings: 9 × 9, two hearts","Anéis de Fada: 9 × 9, dois coraç�
 SD_BLURB,"Every number once in every row, column and region.","Cada número uma vez em cada linha, coluna e região.","Cada número una vez en cada fila, columna y región."
 SD_SHORT,"Every number once,\nevery way you look.","Um de cada número,\nem todo sentido.","Un número de cada,\nen todo sentido."
 SD_MOTTO,Every number has its place,Cada número em seu lugar,Cada número en su lugar
-SD_LVL_3,"9 × 9, 22 clues","9 × 9, 22 pistas","9 × 9, 22 pistas"
+SD_LVL_3,"Hilltops: 9 × 9, two hearts","Colinas: 9 × 9, dois corações","Colinas: 9 × 9, dos corazones"
 BR_BLURB,"Plank every islet to its number, and join them all.",Dê a cada ilhota suas pontes e ligue todas.,Dale a cada islote sus puentes y únelos todos.
 BR_SHORT,Plank every islet\nto its number.,Cada ilhota com\nas pontes certas.,Cada islote con\nsus puentes justos.
 BR_MOTTO,Join every islet,Una todas as ilhotas,Une todos los islotes

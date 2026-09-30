@@ -60,3 +60,29 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   driver to within 1/255 on edge antialiasing alone), 88 once with a hint's
   ring live, and 110 once on the win screen after a full solve -- all well
   inside the 855 budget.
+- **The polish pass** (2026-09-30, spec `2026-09-30-sudoku-polish-design.md`)
+  made Hard and Insane losable and gave Insane a rule of its own. Hard and
+  Insane judge every number as it lands (`State.HEARTS` 3 and 2): a wrong
+  one blushes, splits a heart and tumbles off the paper, and that number is
+  crossed out of that cell for good (`state.reject`, `state.ruled`, out of
+  the history; placing it again is refused free). A right number there is
+  kept (`State.KEPT`) and Check is left out (`capabilities()`), since no
+  wrong number can stand. Out of hearts is Queens' dusk and
+  `out_of_hearts.gd` with `SD_OUT_*`; hints are 3/3/1/0. **Insane is
+  Hilltops**: some cells carry a mound with 0 to 4 dots counting the
+  orthogonal neighbours holding a smaller number (`Gen.beside`,
+  `Gen.hill_count`, `state.hills`), 15-16 givens -- under the seventeen no
+  plain grid can reach -- dug by a count that propagates singles and the
+  hills' reckoning at every node (`_count_hills`; the plain backtracking
+  count took over a minute a grid at that depth), graded by a player-like
+  solver with suppositions (`Gen.solve_logic`) and **banked**
+  (`content/insane/sudoku.json`, `tools/insane/sudoku_ladder.gd`). The
+  miner's threads share Gen's static tables, so the ladder warms them on
+  load and `use()` never clears them when the size stands (it crashed with
+  `Array::_ref` before). Easy to Hard deal the very grids they dealt before
+  (0 of 60 seeds differ). Rewards: the streak with the x3 bubble and
+  confetti, three gags (hearts, a twirl, a boing), all of a number home
+  hops, a daisy sticker on every finished region, and a party (dance,
+  confetti, number wisdom, the seal; the night seal on Insane). The win
+  card got its own words (`flat_win`, no mascot). `tests/_shot_sudoku.gd`
+  drives every scenario.

@@ -79,6 +79,7 @@ rather than the live project (`daily-games-420bf`):
 | Hidden Word | type, Enter | — a word list, not a proof; Hard and Insane use every clue, and Insane (Snail Mail: a row's colours arrive a row late) draws from the words an answer-list-aware solver needs five or more rows for under that rule (`tools/insane/hiddenword_ladder.py`) |
 | Word Trail | drag trail | none needed: a path's shape puts no constraint on its letters, so every board is solvable by construction; Hard and Insane count wrong trails on a dandelion, and Insane (Night Walk) plays the field in the dark under a lantern |
 | Mushroom Patch | tap to plant, drag pebbles | carved backwards from a fully turned field, keeping a cut only while a no-guess solver (plain rules, the global count, subset subtraction on Hard up) still proves every cell; Insane (Fairy Rings: half the numbers count the ring two steps out) is carved again with suppositions allowed, banked, and re-proved by that solver on the Mac |
+| Sudoku | tap a cell, tap a number | seeded full grid, symmetric dig keeping a unique count; Easy must fall to singles, Hard must not; Insane (Hilltops: a hill counts its lower orthogonal neighbours, 15-16 givens) is dug under a count that propagates the hills, graded by a solver with suppositions, banked, and re-proved on the Mac |
 
 A daily puzzle that turns out to have two answers is the worst bug this product
 can ship, so every generator proves its instance is uniquely solvable before
