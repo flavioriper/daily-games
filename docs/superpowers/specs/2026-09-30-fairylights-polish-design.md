@@ -211,3 +211,10 @@ the bottom row's lanterns, rose and gold tags.
    stretch of the bottom row that hides the fewest lanterns. Both are the
    party's leavings over a finished garden, so nothing is hidden that the
    player still needs.
+7. **Review findings, fixed**: a slide from one piece to the next turned the
+   second, a second finger turned a second piece, and a cancelled touch or a
+   release with no press still turned whatever was under it -- on Hard and
+   Insane any of those can be a fuse (one finger now, and only a release on
+   the piece that went down turns it); an undo or Reset inside the wash still
+   rang a lantern awake and played its gag as it went dark; Reset stayed lit
+   through a fuse and out of hearts. Notes in `docs/agents/boards/fairy-lights.md`.
