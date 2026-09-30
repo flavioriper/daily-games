@@ -1093,3 +1093,43 @@ NG_LOOKS_8,There it is! Modern art. Very modern.,Aí está! Arte moderna. Bem mo
 NG_LOOKS_9,"There it is! A tiny mountain, with a tiny view.","Aí está! Uma montanha minúscula, com uma vista minúscula.","¡Ahí está! Una montaña diminuta, con una vista diminuta."
 NG_LOOKS_10,"There it is! A bear hug, obviously.","Aí está! Um abraço de urso, obviamente.","¡Ahí está! Un abrazo de oso, obviamente."
 NG_LOOKS_11,There it is! A cloud that swallowed a cookie.,Aí está! Uma nuvem que engoliu um biscoito.,¡Ahí está! Una nube que se tragó una galleta.
+WT_RULES_WISHES,"On this level a wrong trail blows a seed off the dandelion, and you have %d wishes. Only a trail as long as a hidden word counts, and never the same trail twice. Let go off the field to put a trail down for free. When the last seed is gone, the card asks what next.","Neste nível um caminho errado sopra uma semente do dente-de-leão, e você tem %d desejos. Só conta um caminho do tamanho de uma palavra escondida, e nunca o mesmo caminho duas vezes. Solte fora do campo para largar um caminho sem gastar nada. Quando a última semente voar, um cartão pergunta o que fazer.","En este nivel un camino equivocado sopla una semilla del diente de león, y tienes %d deseos. Solo cuenta un camino tan largo como una palabra oculta, y nunca el mismo camino dos veces. Suelta fuera del campo para dejar un camino sin gastar nada. Cuando vuela la última semilla, una tarjeta pregunta qué hacer."
+WT_RULES_NIGHT,"Night Walk: the field is dark, walls and all. Wherever your finger rests, a little lantern lights the tiles around it, and they fade back into the night once it moves on. Every word you find lights its own tiles and their neighbours for good.","Passeio noturno: o campo está escuro, paredes e tudo. Onde seu dedo estiver, uma lanterninha ilumina as casas em volta, e elas voltam para a noite quando ele se afasta. Cada palavra que você acha ilumina as próprias casas e as vizinhas para sempre.","Paseo nocturno: el campo está a oscuras, paredes incluidas. Donde esté tu dedo, un farolito ilumina las casillas de alrededor, y vuelven a la noche cuando se aleja. Cada palabra que encuentras ilumina sus casillas y las vecinas para siempre."
+WT_TIP_WISHES,A wrong trail blows away a wish.,Um caminho errado sopra um desejo.,Un camino equivocado sopla un deseo.
+WT_TIP_CANCEL,Let go off the field to put a trail down for free.,Solte fora do campo para largar um caminho de graça.,Suelta fuera del campo para dejar un camino gratis.
+WT_TIP_NIGHT,It's night. Hold a finger down to light the lantern.,É noite. Segure o dedo para acender a lanterna.,Es de noche. Mantén el dedo para encender el farol.
+WT_TIP_NIGHT_WORDS,Every word you find lights up its neighbours.,Cada palavra achada ilumina as vizinhas.,Cada palabra encontrada ilumina a sus vecinas.
+WT_TRIED,You tried that one already. No wish spent.,Você já tentou esse. Nenhum desejo gasto.,Ya probaste ese. Ningún deseo gastado.
+WT_WISH_GONE,Not that one. %d wishes left.,Não é esse. Restam %d desejos.,Ese no. Quedan %d deseos.
+WT_WISHES_N,Careful: %d wishes left.,Cuidado: restam %d desejos.,Cuidado: quedan %d deseos.
+WT_WISHES_ONE,Careful: your last wish.,Cuidado: seu último desejo.,Cuidado: tu último deseo.
+WT_OUT_LINE,The dandelion is bare.,O dente-de-leão ficou pelado.,El diente de león se quedó pelado.
+WT_OUT_TITLE,Out of wishes,Sem desejos,Sin deseos
+WT_OUT_BODY,"Words are still hiding. Watch a short video for three more wishes, or see the words.","Ainda há palavras escondidas. Assista a um vídeo curto e ganhe mais três desejos, ou veja as palavras.","Aún hay palabras escondidas. Mira un video corto para tres deseos más, o mira las palabras."
+WT_OUT_BODY_REST,Words are still hiding. See them now; there's a new trail tomorrow.,Ainda há palavras escondidas. Veja agora; amanhã tem outro caminho.,Aún hay palabras escondidas. Míralas ahora; mañana hay otro camino.
+WT_ONE_WISH,More wishes,Mais desejos,Más deseos
+WT_SHOW_WORDS,Show the words,Mostrar as palavras,Mostrar las palabras
+WT_WISH_BACK,A new dandelion! %d wishes.,Um dente-de-leão novo! %d desejos.,¡Un diente de león nuevo! %d deseos.
+WT_SHOWN_TITLE,Here they were.,Aqui estavam elas.,Aquí estaban.
+WT_SHOWN_LINE,A new trail tomorrow.,Amanhã tem outro caminho.,Mañana hay otro camino.
+WT_BIG,Big one!,Essa é das grandes!,¡Esa es de las grandes!
+WT_QUICK,Quick!,Rapidinho!,¡Rapidito!
+WT_STREAK,%d in a row!,%d seguidas!,¡%d seguidas!
+WT_STAMP_0,Flawless,Perfeito,Impecable
+WT_STAMP_1,Sharp eye,Olho afiado,Buen ojo
+WT_STAMP_2,Right track,Rumo certo,Buen rumbo
+WT_STAMP_3,Got there!,Chegou lá!,¡Llegaste!
+WT_STAMP_MORE,Second wind,Fôlego extra,Segundo aire
+WT_NIGHT_SEAL,Night Walk,Passeio noturno,Paseo nocturno
+WT_CHEER_0,Your finger deserves a medal.,Seu dedo merece uma medalha.,Tu dedo merece una medalla.
+WT_CHEER_1,The letters are clapping.,As letras estão aplaudindo.,Las letras están aplaudiendo.
+WT_CHEER_2,The walls are impressed.,As paredes ficaram impressionadas.,Las paredes están impresionadas.
+WT_CHEER_3,Even the ribbons are smiling.,Até as fitas estão sorrindo.,Hasta las cintas sonríen.
+WT_CHEER_4,You untangled the whole field!,Você desembaraçou o campo inteiro!,¡Desenredaste todo el campo!
+WT_CHEER_5,"Somewhere, a dictionary blushed.","Em algum lugar, um dicionário corou.","En algún lugar, un diccionario se sonrojó."
+WT_CHEER_6,"Letter whisperer, spotted.",Encantador de letras à vista.,Encantador de letras a la vista.
+WT_CHEER_7,The field says thank you.,O campo agradece.,El campo te da las gracias.
+WT_CHEER_8,That was the scenic route.,Esse foi o caminho mais bonito.,Ese fue el camino más bonito.
+WT_CHEER_9,Tiny trumpets for you: toot toot!,Trompetinhas para você: fom fom!,Trompetitas para ti: ¡tu tu!
+WT_CHEER_10,Words found. Snacks earned.,Palavras achadas. Lanchinho merecido.,Palabras encontradas. Merienda ganada.
+WT_CHEER_11,You traced it like a pro doodler.,Você traçou como um rabiscador profissional.,Lo trazaste como un garabateador profesional.

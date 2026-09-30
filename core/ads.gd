@@ -346,7 +346,7 @@ func _quiet(on: bool) -> void:
 	else:
 		Sound.apply()
 
-## Placements: "hint", "double", "continue", "heart" (Binairo), "hour" (Balance), "spool" (Untangle) and "row" (Code
+## Placements: "hint", "double", "continue", "heart" (Binairo), "hour" (Balance), "spool" (Untangle), "wish" (Word Trail) and "row" (Code
 ## Break). Opt-in, so owners keep them.
 ## Hints are unlimited: they neither count against nor stop at the daily cap,
 ## which is there for the videos that pay gold or keep a run alive.
