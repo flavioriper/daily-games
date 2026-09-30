@@ -293,6 +293,19 @@ OL_RESET,The jetty is taken up again. The hints you spent are not refunded.,O p�
 OL_WIN,"One stroke, and not a line missed.","Um traço só, e nenhuma linha esquecida.","Un solo trazo, y ninguna línea olvidada."
 OL_WIN_SUB,"One stroke, not a line missed.","Um traço só, nenhuma linha esquecida.","Un solo trazo, ninguna línea olvidada."
 OL_SHARE,✏️ %d lines in one stroke,✏️ %d linhas num traço só,✏️ %d líneas en un solo trazo
+OL_RULES_SUN,"On Insane, some lines are sunny and the rest are dewy. A sunny line dries the snail out, so she may never cross two sunny lines in a row: after one, the next has to be dewy.","No Insano, algumas linhas são de sol e o resto é de orvalho. Uma linha de sol resseca a lesma, então ela nunca pode cruzar duas linhas de sol seguidas: depois de uma, a próxima tem que ser de orvalho.","En Insano, algunas líneas son de sol y el resto de rocío. Una línea de sol reseca al caracol, así que nunca puede cruzar dos líneas de sol seguidas: después de una, la siguiente tiene que ser de rocío."
+OL_RULES_HEARTS_1,You have one heart. A step that leaves the rest of the figure impossible to walk costs it.,Você tem um coração. Um passo que deixa o resto da figura impossível de percorrer custa esse coração.,Tienes un corazón. Un paso que deja el resto de la figura imposible de recorrer lo cuesta.
+OL_RULES_HEARTS_N,You have %d hearts. A step that leaves the rest of the figure impossible to walk costs one.,Você tem %d corações. Um passo que deixa o resto da figura impossível de percorrer custa um.,Tienes %d corazones. Un paso que deja el resto de la figura imposible de recorrer cuesta uno.
+OL_TIP_SUN,"Sunny lines dry the snail out. Every sunny line needs a dewy one on each side of it, except at the ends.","Linhas de sol ressecam a lesma. Cada linha de sol precisa de uma de orvalho de cada lado, menos nas pontas.","Las líneas de sol resecan al caracol. Cada línea de sol necesita una de rocío a cada lado, salvo en los extremos."
+OL_TIP_POSTS,"Look at each post: it needs at least as many dewy lines as sunny ones, or a sunny pair will meet there.","Olhe cada poste: ele precisa de pelo menos tantas linhas de orvalho quanto de sol, ou duas de sol vão se encontrar ali.","Mira cada poste: necesita al menos tantas líneas de rocío como de sol, o dos de sol se encontrarán ahí."
+OL_REFUSE_SUN,"Too sunny! I need a dewy line before another sunny one.","Sol demais! Preciso de uma linha de orvalho antes de outra de sol.","¡Demasiado sol! Necesito una línea de rocío antes de otra de sol."
+OL_WRONG_STEP,"Oh no, that step strands part of the figure. The plank comes back up.","Ah não, esse passo isola parte da figura. A tábua volta a subir.","Ay no, ese paso aísla parte de la figura. La tabla vuelve a subir."
+OL_WRONG_SUN,"Oh no, from there no walk finishes without two sunny lines in a row. The plank comes back up.","Ah não, dali nenhum caminho termina sem duas linhas de sol seguidas. A tábua volta a subir.","Ay no, desde ahí ningún camino termina sin dos líneas de sol seguidas. La tabla vuelve a subir."
+OL_DEW,Ahh... dew.,Ahh... orvalho.,Ahh... rocío.
+OL_OUT,The snail has curled up for a nap.,A lesma se enrolou para uma soneca.,El caracol se acurrucó para una siesta.
+OL_OUT_BODY,"The snail needs a nap. Walk the figure again from the start, or watch a short video for one more heart.",A lesma precisa de uma soneca. Percorra a figura de novo desde o começo ou veja um vídeo curto para ganhar mais um coração.,El caracol necesita una siesta. Recorre la figura de nuevo desde el principio o mira un vídeo corto para un corazón más.
+OL_OUT_REST,The snail needs a nap. Walk the figure again from the start whenever you like.,A lesma precisa de uma soneca. Percorra a figura de novo desde o começo quando quiser.,El caracol necesita una siesta. Recorre la figura de nuevo desde el principio cuando quieras.
+OL_SUN_SEAL,Sunny Spells,Trechos de Sol,Tramos de Sol
 NG_TIP_RUNS,"The numbers count the runs of filled cells in each line, in order.","Os números contam as sequências de casas pintadas em cada linha, em ordem.","Los números cuentan las tiras de casillas pintadas en cada línea, en orden."
 NG_TIP_DRAG,Drag to paint with the chip you have picked. Drag back over your own paint to rub it out.,Arraste para pintar com a peça escolhida. Passe de novo por cima para apagar.,Arrastra para pintar con la ficha elegida. Vuelve a pasar por encima para borrar.
 NG_TIP_GREEN,A line's numbers turn green when its runs read exactly as they say.,Os números de uma linha ficam verdes quando as sequências batem com eles.,Los números de una línea se ponen verdes cuando sus tiras coinciden con ellos.
@@ -476,7 +489,7 @@ OL_MOTTO,"One stroke, no lifting","Um traço só, sem parar","Un trazo, sin leva
 OL_LVL_0,3 × 3 posts,3 × 3 postes,3 × 3 postes
 OL_LVL_1,4 × 3 posts,4 × 3 postes,4 × 3 postes
 OL_LVL_2,4 × 4 posts,4 × 4 postes,4 × 4 postes
-OL_LVL_3,5 × 4 posts,5 × 4 postes,5 × 4 postes
+OL_LVL_3,"5 × 5, sunny spells","5 × 5, trechos de sol","5 × 5, tramos de sol"
 NG_BLURB,Fill the runs and reveal the picture.,Preencha as sequências e revele a imagem.,Rellena las tiras y revela el dibujo.
 NG_SHORT,The numbers make\na picture.,Os números formam\numa imagem.,Los números forman\nun dibujo.
 NG_MOTTO,Numbers make a picture,Números formam imagens,Los números dibujan

@@ -47,6 +47,10 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Face = preload("res://ui/faces/face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
+const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the field ---
 ## The card's inset around the figure.
@@ -149,6 +153,75 @@ const BRIGHT_TIME := 0.35
 ## screen.
 const WIN_SETTLE := 0.3
 
+# --- the polish pass (docs/superpowers/specs/2026-09-30-oneline-polish-design.md) ---
+## The hearts over the figure: Light Up's, Tents' and Shikaku's pill.
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong step: the walker lands, worries, and EJECT_AFTER later the plank
+## comes back up under her as she slides home. The plank blushes meanwhile.
+const EJECT_AFTER := 0.85
+## Out of hearts: the figure slips to dusk and the card comes up after.
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## The streak (Binairo's, Shikaku's, Tents', Light Up's).
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Gags, three of every GAG_ODDS right steps by the line's own hash.
+const GAG_ODDS := 5
+const GAGS := 3
+const GLASSES_IN := 0.28
+const GLASSES_HOLD := 1.0
+const GLASSES_OUT := 0.2
+const LOVE_HEARTS := 4
+const LOVE_TIME := 1.3
+const LOVE_RISE := 0.55
+const LOVE_R := 0.11
+const MUSH_HOLD := 1.4
+const MUSH_SIZE := 0.62
+## Ladybugs that come to ride the shell on Hard and Insane: one at the first
+## judged step, then at these shares of the figure.
+const BUG_AT := [0.0, 0.4, 0.75]
+const BUG_FLY := 0.6
+const BUG_R := 0.075
+## A spent post blooms: a daisy opens on its pale cap.
+const DAISY_PETALS := 7
+const DAISY_R := 0.72
+const DAISY_TIME := 0.45
+## Sunny Spells: the sunny ford's sparkles and the dewy ford's drops, in
+## steps, and how far a refused sunny line fades while the snail is dry.
+const SUN_SPARK := 0.05
+const DEW_DROP := 0.04
+const DRY_FADE := 0.45
+## The landing squash each step ends in.
+const LAND_SQUASH := 0.1
+## The seal and the party.
+const STAMP_AT := 0.35
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
+const PARTY_AT := 0.1
+const PARTY_HAT := 0.3
+const PARTY_EXTRA := 1.4
+const PETALS := 5
+const PETAL_TIME := 1.8
+const PETAL_FALL := 1.1
+const PETAL_STAGGER := 0.04
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 ## The three lines that teach the board, cycled while there is nothing better
@@ -159,7 +232,56 @@ const TIPS := [
 	"OL_TIP_GREEN",
 ]
 
+## Back to camp from the out-of-hearts card: the host leaves the board.
+signal leave
+
 var state = State.new()
+
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _asleep := false
+var _ejecting := false
+var _worried := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _dusk_tw: Tween
+## Line -> when its plank blushed: a wrong step's plank before it comes up.
+var _bad_plank: Dictionary = {}
+var _flawless := false
+var _streak := 0
+var _combo_n := 0
+var _combo_post := 0
+var _combo_at := -INF
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_layer: Control
+var _combo_shown: ArrayMesh
+## Post -> when its daisy opened.
+var _bloom: Dictionary = {}
+## The life over the figure: the love hearts along a plank, ladybugs flying
+## in, petals falling at the party, and the seal.
+var _life_layer: Control
+var _life_shown: Array = []
+var _life_alive := false
+var _love: Array = []
+var _bugs: Array = []
+var _petals: Array = []
+var _stamp_at := INF
+var _seal_mesh: ArrayMesh
+var _love_mesh: ArrayMesh
+var _bug_mesh: ArrayMesh
+var _mushroom: MushroomFace
+var _mush_tw: Tween
+var _gag_tw: Tween
+var _squash_tw: Tween
 ## The names the win harness and the island board share, so one driver solves
 ## both twins: they are the state's own.
 var _edges: Array:
@@ -239,7 +361,18 @@ func puzzle_id() -> String: return "oneline"
 func title() -> String: return "One Line"
 
 func rules() -> String:
-	return tr("OL_RULES")
+	var out := tr("OL_RULES")
+	if state.has_sun():
+		out += "\n\n" + tr("OL_RULES_SUN")
+	if max_hearts > 0:
+		out += "\n\n" + (tr("OL_RULES_HEARTS_1") if max_hearts == 1 else tr("OL_RULES_HEARTS_N") % max_hearts)
+	return out
+
+## The lines the sprout cycles: a sunny figure leads with the sun's two.
+func _tips() -> Array:
+	if state.has_sun():
+		return ["OL_TIP_SUN", "OL_TIP_POSTS"] + TIPS
+	return TIPS
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -261,6 +394,15 @@ func _ready() -> void:
 	snail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_seat.add_child(snail)
 	snail.set_idle(true)
+	_mushroom = MushroomFace.new()
+	_mushroom.name = "Mushroom"
+	_mushroom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mushroom.z_index = 1
+	_mushroom.visible = false
+	add_child(_mushroom)
+	_life_layer = _layer("Life", 2, _draw_life)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
+	_combo_layer = _layer("Combo", 3, _draw_combo)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -268,9 +410,24 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the figure, drawn by `draw` (Tents', Light Up's).
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, bank_step)
+	max_hearts = State.HEARTS[state.band]
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	_stroke = {}
 	_post_press = {}
 	_post_hop = {}
@@ -289,8 +446,42 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The figure as it is dealt, and as Try again deals it back: every heart,
+## the day's light, nothing judged, blooming or riding.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_ejecting = false
+	_worried = false
+	_split_index = -1
+	_back_index = -1
+	_bad_plank = {}
+	_flawless = false
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_bloom = {}
+	_love = []
+	_bugs = []
+	_petals = []
+	_stamp_at = INF
+	_seal_mesh = null
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	if snail != null:
+		snail.riders = 0
+		snail.dry = false
+		snail.glasses = 0.0
+		snail.hat = 0.0
+	if _mushroom != null:
+		_mushroom.visible = false
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
 
 # --- layout ---
 
@@ -306,10 +497,17 @@ func _layout() -> void:
 	if _step <= 0.0:
 		return
 	var figure := Vector2(_step * (state.cols - 1), _step * (state.rows - 1))
-	var tall := minf(size.y, figure.y + 2.0 * PAD + _step * MARGIN)
+	var row := _heart_row()
+	var tall := minf(size.y, figure.y + 2.0 * PAD + _step * MARGIN + row)
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	_origin = Vector2(size.x * 0.5 - figure.x * 0.5,
-		_card.position.y + (tall - figure.y) * 0.5)
+		_card.position.y + row + (tall - row - figure.y) * 0.5)
+	# The life's meshes are cut to the step; a new step cuts them again.
+	_love_mesh = null
+	_bug_mesh = null
+	var mush := _step * MUSH_SIZE
+	_mushroom.size = Vector2.ONE * mush
+	_mushroom.pivot_offset = _mushroom.size * 0.5
 	var seat := _step * SNAIL_R * SnailFace.SEAT
 	_seat.size = Vector2.ONE * seat
 	_seat.pivot_offset = _seat.size * 0.5
@@ -324,7 +522,11 @@ func _step_for(available: float) -> float:
 	if state.nodes.is_empty():
 		return 0.0
 	return minf((size.x - 2.0 * PAD) / (float(state.cols) - 1.0 + MARGIN),
-		(available - 2.0 * PAD) / (float(state.rows) - 1.0 + MARGIN))
+		(available - 2.0 * PAD - _heart_row()) / (float(state.rows) - 1.0 + MARGIN))
+
+## The strip the hearts take over the figure, on a board that has them.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## The host cuts its card to the figure and centres it, which is what these
 ## two say.
@@ -332,7 +534,7 @@ func card_height(available: float) -> float:
 	var one := _step_for(available)
 	if one <= 0.0:
 		return available
-	return minf(available, one * (float(state.rows) - 1.0 + MARGIN) + 2.0 * PAD)
+	return minf(available, one * (float(state.rows) - 1.0 + MARGIN) + 2.0 * PAD + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -372,8 +574,20 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _step <= 0.0 or state.nodes.is_empty():
 		return
-	if _now() < _anim_until:
+	var now := _now()
+	if now < _anim_until:
 		_refresh()
+	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+		_heart_layer.queue_redraw()
+	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+		_combo_layer.queue_redraw()
+	# One more redraw once the life goes quiet, so the last frame of a
+	# landing ladybug or a fading heart is not left standing.
+	var alive := _tick_life(now)
+	if alive or _life_alive:
+		_life_layer.queue_redraw()
+	_life_alive = alive
 
 ## Keeps the figure redrawing for `seconds` more: something on it is moving.
 ## Nothing is rebuilt on a frame outside that, which is most of them: a
@@ -432,10 +646,20 @@ func _place_walker(t: float) -> void:
 	_seat.rotation = tilt + rock
 	if _joy:
 		snail.expression = Face.Expr.JOY
+	elif _asleep:
+		snail.expression = Face.Expr.SLEEPY
+	elif _worried:
+		snail.expression = Face.Expr.WORRIED
 	elif not state.stranded().is_empty():
 		snail.expression = Face.Expr.STRAIN
 	else:
 		snail.expression = Face.Expr.HAPPY
+	snail.dry = state.dry() and not is_done() and _stroke_landed(t)
+
+## Whether the line in flight (if any) has been crossed: the snail dries out
+## as she steps off a sunny line, not as she steps onto it.
+func _stroke_landed(t: float) -> bool:
+	return _stroke.is_empty() or Motion.reduce or t >= float(_stroke.at) + LAY_TIME
 
 ## Where the walker is, which way it faces, whether it is on the move, how far
 ## out on the line it is (0 on a post, 1 once it is CLIMB clear of both), and
@@ -519,14 +743,20 @@ func _build_figure(t: float) -> ArrayMesh:
 		var off: Vector2 = FORD_SHADOW * _step
 		b.stroke(PackedVector2Array([line.a + off, line.b + off]), _step * LINE_W * 1.2,
 			Color(Pal.TEXT, FORD_SHADOW_A * line.alpha))
+	var refused := _refused_now(t)
 	for i in lines:
 		var line: Dictionary = lines[i]
 		var stone: Color = Pal.PLANK_LOST if lost.has(i) else Pal.FORD_STONE
+		if state.has_sun() and not lost.has(i):
+			stone = Pal.FORD_SUN if state.is_sunny(i) else Pal.FORD_DEW
 		var blush := Motion.flash_level(t - float(_wrong.get(i, -100.0)))
 		if blush > 0.0:
 			stone = stone.lerp(Pal.BAD_TILE, blush)
+		var fade: float = line.alpha * (DRY_FADE if refused.has(i) else 1.0)
 		var ends := PackedVector2Array([line.a, line.b])
-		b.stroke(ends, _step * LINE_W, Color(stone, line.alpha))
+		b.stroke(ends, _step * LINE_W, Color(stone, fade))
+		if state.has_sun() and not state.walked.has(i):
+			_dress_ford(b, i, line, fade, t)
 		# The crest sits on whichever side faces up the page, so a light falls
 		# on every ford from the same sky.
 		var along: Vector2 = (line.b - line.a).normalized()
@@ -544,6 +774,40 @@ func _build_figure(t: float) -> ArrayMesh:
 	if b.verts.is_empty():
 		return null
 	return b.mesh()
+
+## The sunny lines the snail may not take from here while she is dry: they
+## fade back, so the rule is seen before it is broken.
+func _refused_now(t: float) -> Dictionary:
+	var out: Dictionary = {}
+	if not state.has_sun() or not state.dry() or not _stroke_landed(t) or is_done():
+		return out
+	for q in state.adj.get(state.current, []):
+		if state.is_sunny(int(q.i)) and not state.walked.has(int(q.i)):
+			out[int(q.i)] = true
+	return out
+
+## A Sunny Spells ford's dressing: a sunny line glints with little four-point
+## sparkles that twinkle, a dewy one carries drops of dew with a shine.
+func _dress_ford(b, i: int, line: Dictionary, alpha: float, t: float) -> void:
+	var a: Vector2 = line.a
+	var z: Vector2 = line.b
+	var span := a.distance_to(z)
+	var count := maxi(1, roundi(span / (_step * 0.45)))
+	for k in count:
+		var u := (k + 0.5) / count
+		var at := a.lerp(z, u)
+		if state.is_sunny(i):
+			var tw := 1.0 if Motion.reduce else 0.75 + 0.25 * sin(t * 3.0 + float(i * 7 + k * 3))
+			var r := _step * SUN_SPARK * tw
+			b.polygon(PackedVector2Array([at + Vector2(0, -r * 1.6), at + Vector2(r * 0.4, -r * 0.4),
+				at + Vector2(r * 1.6, 0), at + Vector2(r * 0.4, r * 0.4), at + Vector2(0, r * 1.6),
+				at + Vector2(-r * 0.4, r * 0.4), at + Vector2(-r * 1.6, 0), at + Vector2(-r * 0.4, -r * 0.4)]),
+				Color(Pal.SUN_SPARK, alpha * 0.95))
+		else:
+			var r := _step * DEW_DROP
+			b.disc(at + Vector2(0.0, r * 0.2), r * 1.15, Color(Pal.DEW_EDGE, alpha * 0.8))
+			b.disc(at, r, Color(Pal.DEW, alpha))
+			b.disc(at + Vector2(-0.35, -0.35) * r, r * 0.3, Color(1.0, 1.0, 1.0, alpha * 0.85))
 
 ## Line `i`'s two ends as drawn now, and its alpha: it pops in wide about its
 ## middle along the entrance stagger (rule 7 of the motion doc: a long thing
@@ -584,7 +848,11 @@ func _build_plank(b, i: int, t: float) -> void:
 	var from := node_to_local(anchor)
 	var to := node_to_local(edge.y if anchor == edge.x else edge.x)
 	var warm: Color = Pal.PLANK_LAID
+	if state.is_sunny(i):
+		warm = warm.lightened(0.14)
 	var glint := -1.0
+	if _bad_plank.has(i):
+		warm = warm.lerp(Pal.BAD_TILE, _dec((t - float(_bad_plank[i])) / 0.25) * 0.8)
 	if _bright.has(i):
 		var g := (t - float(_bright[i])) / BRIGHT_TIME
 		warm = warm.lerp(Pal.PLANK_HI, _dec(g))
@@ -746,6 +1014,34 @@ func _build_post(b, n: int, t: float) -> void:
 	b.ellipse(centre + Vector2(0.0, 0.07) * ry, 0.64 * rx * cap, 0.64 * ry * cap, colour.darkened(CAP_LIP))
 	b.ellipse(centre, 0.6 * rx * cap, 0.6 * ry * cap, colour)
 	b.ellipse(at + Vector2(-0.2, -0.26) * ry, 0.26 * rx * cap, 0.16 * ry * cap, Color(1.0, 1.0, 1.0, 0.28))
+	if _bloom.has(n) and n != state.current:
+		_daisy(b, centre, rx * DAISY_R, t - float(_bloom[n]), n)
+
+## An ellipse `rx` by `ry` about `at`, turned by `a`.
+static func _oval(b, at: Vector2, rx: float, ry: float, a: float, colour: Color) -> void:
+	var pts := PackedVector2Array()
+	for k in 14:
+		var u := TAU * k / 14.0
+		pts.append(at + Vector2(cos(u) * rx, sin(u) * ry).rotated(a))
+	b.polygon(pts, colour)
+
+## A daisy on a spent post's cap: white petals round a sun-yellow middle,
+## opening over DAISY_TIME with the back ease and turning a little as it
+## does, so a finished post is seen to be finished from across the figure.
+func _daisy(b, at: Vector2, r: float, e: float, n: int) -> void:
+	if e < 0.0:
+		return
+	var k := 1.0 if Motion.reduce else Motion.back_out(clampf(e / DAISY_TIME, 0.0, 1.0))
+	if k <= 0.01:
+		return
+	var turn := _hash(n) * TAU + (0.0 if Motion.reduce else (1.0 - clampf(e / DAISY_TIME, 0.0, 1.0)) * 0.8)
+	for p in DAISY_PETALS:
+		var a := turn + TAU * p / DAISY_PETALS
+		var dir := Vector2.from_angle(a)
+		_oval(b, at + dir * r * 0.55 * k, r * 0.36 * k, r * 0.17 * k, a, Pal.PETAL_EDGE)
+		_oval(b, at + dir * r * 0.55 * k, r * 0.32 * k, r * 0.13 * k, a, Pal.SURFACE)
+	b.disc(at, r * 0.3 * k, Pal.SUN_DEEP)
+	b.disc(at + Vector2(0.0, -0.04) * r, r * 0.25 * k, Pal.SUN_RAY)
 
 ## The post's entrance scale: pop_in's squash along the diagonal, a beat after
 ## the lines begin. Zero before it starts.
@@ -874,7 +1170,7 @@ func _gui_input(event: InputEvent) -> void:
 		_reach(event.position)
 
 func _press(at: Vector2) -> void:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return
 	var n := _nearest(at)
 	if n < 0:
@@ -884,7 +1180,7 @@ func _press(at: Vector2) -> void:
 	_take(n)
 
 func _reach(at: Vector2) -> void:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return
 	var n := _nearest(at)
 	if n < 0 or n == state.current:
@@ -924,10 +1220,17 @@ func _begin(n: int) -> void:
 
 ## Walks the line to post `n`, if there is one left to walk. A line already
 ## walked refuses with a shiver: every line takes exactly one crossing.
-func _walk_to(n: int) -> void:
+##
+## On Hard and Insane every step is judged before it is taken: one that leaves
+## the rest of the figure unwalkable (stranded on Hard, or on Insane with no
+## walk that keeps the sun apart) costs a heart, and its plank comes back up.
+## Anything else is right, and builds the streak.
+func _walk_to(n: int, judged := true) -> void:
 	var t := _now()
 	var from: int = state.current
 	var to_cap := _cap_of(n)
+	var was_dry: bool = state.dry()
+	var finishes: bool = state.may_step(n) and state.step_leaves_finish(n)
 	match state.step(n):
 		State.STEP_WALKED:
 			_refuse(n)
@@ -935,17 +1238,79 @@ func _walk_to(n: int) -> void:
 				Face.Expr.PUZZLED)
 			fx.cue("locked")
 			_refresh()
+		State.STEP_SUN:
+			_refuse(n)
+			var e := state.edge_between(from, n)
+			if not Motion.reduce and e >= 0:
+				_wrong[e] = t
+				_busy_for(maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
+			_say(tr("OL_REFUSE_SUN"), Face.Expr.STRAIN)
+			fx.cue("sun")
+			_refresh()
 		State.STEP_OK:
-			_stroke = {"edge": state.trail[-1], "from": from, "to": n,
+			var e: int = state.trail[-1]
+			var land := t + (0.0 if Motion.reduce else LAY_TIME)
+			_stroke = {"edge": e, "from": from, "to": n,
 				"at": t, "up": true, "to_cap": to_cap}
 			_release_walker()
 			_busy_for(LAY_TIME + SHEEN_FADE)
 			_depart(from)
-			_land(n, t + (0.0 if Motion.reduce else LAY_TIME), true)
+			_land(n, land, true)
+			_squash_on(land - t)
+			fx.cue("lay", 1.0 + 0.04 * float(mini(_streak, 8)))
+			if was_dry and not state.is_sunny(e):
+				_after(land - t, _drink.bind(n))
+			if max_hearts > 0 and judged and not finishes:
+				_refresh()
+				note_move()
+				_wrong_step(e, n)
+				return
+			_bloom_spent([from, n], land)
 			_speak()
-			fx.cue("lay")
 			_refresh()
 			note_move()
+			if is_done():
+				return
+			if finishes:
+				_on_right_step(e, n, judged and max_hearts > 0)
+			else:
+				_break_streak()
+
+## The snail lands with a little squash, as a thing with a soft foot does.
+func _squash_on(delay: float) -> void:
+	if Motion.reduce:
+		return
+	_after(delay, func() -> void:
+		Motion.stop(_squash_tw)
+		_squash_tw = Motion.squash(snail, LAND_SQUASH, 0.16))
+
+## A dewy line after a sunny one: the bead of sweat goes and a few drops of
+## dew spring off her, with a small "ahh".
+func _drink(n: int) -> void:
+	if is_done() and not _joy:
+		return
+	if not Motion.reduce:
+		fx.puff(node_to_local(n) - Vector2(0.0, _step * POST_LIFT), Pal.DEW, 5)
+	fx.cue("dew")
+	if not _worried and state.stranded().is_empty():
+		_say(tr("OL_DEW"), Face.Expr.HAPPY)
+
+## Posts in `posts` with no line left to walk open a daisy at `at`.
+func _bloom_spent(posts: Array, at: float) -> void:
+	var any := false
+	for p in posts:
+		if int(p) >= 0 and state.open_at(int(p)) == 0 and not _bloom.has(int(p)):
+			_bloom[int(p)] = at
+			any = true
+	if any:
+		_busy_for(at - _now() + DAISY_TIME)
+		_after(at - _now(), func() -> void: fx.cue("bloom"))
+
+## Daisies on posts that have lines to walk again (an undo, an eject) fold.
+func _unbloom() -> void:
+	for p in _bloom.keys():
+		if state.open_at(int(p)) > 0:
+			_bloom.erase(p)
 
 # --- the sprout's line ---
 
@@ -983,8 +1348,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY:
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -992,13 +1358,17 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return not is_done() and not state.trail.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.trail.is_empty()
+
+## The host holds its hint video while a wrong step is being taken back.
+func busy() -> bool:
+	return _ejecting
 
 ## Takes back the last line walked: the plank sinks to stone and the walker
 ## steps back onto the post it came from, which hops as it lands. Counts no
 ## move, as on the island.
 func undo() -> bool:
-	if is_done() or state.trail.is_empty():
+	if is_done() or out_of_hearts or _ejecting or state.trail.is_empty():
 		return false
 	var caps := _snapshot_caps()
 	var out: Dictionary = state.undo()
@@ -1010,6 +1380,8 @@ func undo() -> bool:
 	_busy_for(LAY_TIME)
 	_depart(int(out.from))
 	_land(int(out.to), t + (0.0 if Motion.reduce else LAY_TIME), false)
+	_unbloom()
+	_break_streak()
 	_speak(true)
 	fx.cue("undo")
 	_refresh()
@@ -1024,7 +1396,7 @@ func _snapshot_caps() -> Dictionary:
 	return caps
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
 
 ## Shows the next safe step. Before the stroke begins that is a post it may
 ## begin at, and the walker drops onto it from above under a ring; after, it
@@ -1034,7 +1406,7 @@ func hints_left() -> int:
 ## rather than inventing one, which is the island's behaviour exactly and the
 ## one place a hint is allowed to refuse.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0 or state.nodes.is_empty():
+	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0 or state.nodes.is_empty():
 		return false
 	var t := _now()
 	if state.current < 0:
@@ -1064,7 +1436,9 @@ func hint() -> bool:
 	_after(0.0 if Motion.reduce else LAY_TIME, _ring_at.bind(to))
 	fx.cue("hint")
 	# _walk_to counts the move and can finish the puzzle, as the island's does.
-	_walk_to(to)
+	# A hint's step is safe by construction, so it is judged right but earns
+	# no ladybug: only the player's own steps do.
+	_walk_to(to, false)
 	return true
 
 ## The hint's ring and sparkle, in the family's green, out of post `n`.
@@ -1078,7 +1452,7 @@ func _ring_at(n: int) -> void:
 ## sprout says how many. That is the only way to lose One Line, and it is the
 ## one thing this board will not draw in advance.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return 0
 	checks += 1
 	var t := _now()
@@ -1105,6 +1479,17 @@ func check() -> int:
 ## the far corner while the posts hop, and the walker pops out where it
 ## stood. The hints spent are not refunded.
 func reset_board() -> void:
+	if out_of_hearts or _ejecting:
+		return
+	_clear_figure()
+	_break_streak()
+	fx.cue("reset")
+	_refresh()
+
+## Every plank shrinks to nothing in a wave from the far corner while the
+## posts hop, the daisies fold, and the walker pops out where it stood.
+## Reset and Try again share it.
+func _clear_figure() -> void:
 	var now := _now()
 	_release_post()
 	_drawing = false
@@ -1137,12 +1522,12 @@ func reset_board() -> void:
 			_post_hop[n] = {"at": at, "height": Motion.RESET_HOP, "time": Motion.HOP_TIME}
 			_cap_bump[n] = at
 		_busy_for(_reset_wave(0.0) + maxf(Motion.HOP_TIME, maxf(Motion.BUMP_TIME, Motion.POP_OUT)))
+	_bloom = {}
+	_bad_plank = {}
 	moves = 0
 	_running = true
 	_say(tr("OL_RESET"),
 		Face.Expr.HAPPY)
-	fx.cue("reset")
-	_refresh()
 
 ## A completed daily is rebuilt from its seed with nothing walked. Walk the
 ## generator's own Eulerian trail through the state, then settle everything as
@@ -1156,7 +1541,7 @@ func restore_completed_board() -> void:
 	_pressed_post = -1
 	_walker_pressed = false
 	state.reset()
-	var path: Array = State.Gen.find_path(state.edges, state.nodes)
+	var path: Array = state.solution_path()
 	if path.is_empty() or not state.begin(int(path[0])):
 		return
 	for k in range(1, path.size()):
@@ -1175,6 +1560,8 @@ func restore_completed_board() -> void:
 		_bright[e] = t - 10.0
 	for n in state.nodes:
 		_warm[n] = t - 10.0
+		if n != state.current:
+			_bloom[n] = t - 10.0
 	_walker_out = -100.0
 	_opened = t - 10.0
 	_anim_until = 0.0
@@ -1182,13 +1569,22 @@ func restore_completed_board() -> void:
 	_joy = true
 	_tip_timer.stop()
 	_say(tr("OL_WIN"), Face.Expr.JOY)
+	# A restore keeps the seal on Insane: the day was won there.
+	if state.band == 3:
+		_stamp_at = t - 10.0
+		_life_layer.queue_redraw()
 	_refresh()
 
 func is_solved() -> bool:
 	return state.is_solved()
 
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.band == 3:
+		out += "\n🌙 " + (tr("OL_SUN_SEAL") if state.has_sun() else tr("BN_INSANE_SEAL")) + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += "\n🏅 " + tr("BN_FLAWLESS")
+	return out
 
 # --- the win ---
 
@@ -1203,7 +1599,7 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return _solve_delay(state.trail.size()) + Motion.SOLVE_TIME + WIN_SETTLE
+	return _solve_delay(state.trail.size()) + Motion.SOLVE_TIME + WIN_SETTLE + PARTY_EXTRA
 
 ## The k-th step of the solve wave, which runs the whole trail rather than
 ## capping at the family's 0.6: the stroke running back along itself is this
@@ -1242,9 +1638,608 @@ func _on_solved() -> void:
 		for n in state.nodes:
 			_warm[n] = t
 	_busy_for(last + maxf(Motion.SOLVE_TIME, BRIGHT_TIME))
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = t
+		_combo_layer.queue_redraw()
+	_bloom_spent(state.nodes, t + last)
 	_say(tr("OL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	_party(last)
 	_refresh()
+
+# --- judging a step ---
+
+## A step judged right: on Hard and Insane one that keeps the figure
+## finishable, on Easy and Medium one that strands nothing. It builds the
+## streak (the combo pitched up the pentatonic from the second, the bubble
+## from the third, confetti at five and ten) and may play a gag. `judged`
+## (Hard and Insane, the player's own step) also calls a ladybug to ride.
+func _on_right_step(e: int, n: int, judged: bool) -> void:
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		_after(0.0 if Motion.reduce else LAY_TIME, fx.cue.bind("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if _streak >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_post = n
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		_after(LAY_TIME, func() -> void:
+			fx.confetti(node_to_local(n), 22)
+			fx.cue("confetti"))
+	if judged:
+		_want_bug()
+	_gag(e, n)
+
+## The streak ends: a stranding step, a wrong one, an undo, a reset, the
+## hearts running out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		if _combo_layer != null:
+			_combo_layer.queue_redraw()
+	else:
+		_combo_n = 0
+
+## A wrong step on Hard or Insane: a heart goes (its halves fall), the snail
+## lands worried, the plank she laid blushes and on Hard the lines it
+## stranded wobble rose, and EJECT_AFTER later the plank comes back up under
+## her as she slides home -- taken back through state.undo(), leaving no
+## history of it.
+func _wrong_step(e: int, n: int) -> void:
+	if hearts <= 0:
+		return
+	var now := _now()
+	var land := 0.0 if Motion.reduce else LAY_TIME
+	# The finger is let go: still down on the wrong post, the next drag
+	# after the eject would take the same step again.
+	_drawing = false
+	_release_post()
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = now + land
+	_ejecting = true
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+	_bad_plank[e] = now + land
+	var lost := state.stranded()
+	_after(land, func() -> void:
+		_heart_layer.queue_redraw()
+		_worried = true
+		if not Motion.reduce:
+			var t := _now()
+			for i in lost:
+				_wrong[i] = t
+		_busy_for(maxf(Motion.WOBBLE_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
+		_say(tr("OL_WRONG_SUN") if state.has_sun() else tr("OL_WRONG_STEP"), Face.Expr.WORRIED)
+		fx.cue("heart_lost")
+		_refresh())
+	_busy_for(land + EJECT_AFTER + LAY_TIME)
+	moved.emit()
+	_after(land + EJECT_AFTER, _eject)
+
+## The wrong step is taken back: the plank sinks back to stone as the snail
+## slides home along it, and she is herself again when she lands.
+func _eject() -> void:
+	_ejecting = false
+	if is_done():
+		return
+	var caps := _snapshot_caps()
+	var out: Dictionary = state.undo()
+	if out.is_empty():
+		return
+	var t := _now()
+	_stroke = {"edge": int(out.edge), "from": int(out.from), "to": int(out.to),
+		"at": t, "up": false, "to_cap": caps.get(int(out.to), _cap_of(int(out.to)))}
+	_bad_plank.erase(int(out.edge))
+	_busy_for(LAY_TIME)
+	_depart(int(out.from))
+	_land(int(out.to), t + (0.0 if Motion.reduce else LAY_TIME), false)
+	_unbloom()
+	fx.cue("slip")
+	_after(0.0 if Motion.reduce else LAY_TIME, func() -> void:
+		_worried = false
+		if not out_of_hearts:
+			_speak()
+		_refresh())
+	moved.emit()
+	_refresh()
+	if out_of_hearts:
+		_after(0.0 if Motion.reduce else LAY_TIME, _run_out)
+
+## The last heart is gone: the figure slips to dusk, the snail curls up for
+## a nap, the ladybugs fly home, and the card comes up once she has.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_drawing = false
+	_release_post()
+	_break_streak()
+	fx.cue("out_of_hearts")
+	_say(tr("OL_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(DUSK)
+	_bugs_leave()
+	_refresh()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+## The whole figure and everything on it eases toward `tint`: DUSK when the
+## hearts run out, white again when a heart comes back or the figure is
+## walked again.
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["OL_OUT_BODY", "OL_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same figure from the top, every heart back, the day's
+## light, the clock and the moves from zero; hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	elapsed = 0.0
+	checks = 0
+	_clear_figure()
+	_deal()
+	# _deal() puts the light back at once; hold the dusk so it fades.
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_heart_layer.queue_redraw()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+	_refresh()
+
+## One more heart (the card's video): once a board. The light comes back and
+## the snail wakes where she stands.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	if state.current >= 0 and not Motion.reduce:
+		_walker_hop(Motion.HOP, Motion.HOP_TIME)
+	_speak()
+	moved.emit()
+	_refresh()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the hearts ---
+
+## The hearts over the figure as one mesh on a paper pill (Light Up's,
+## Tents', Shikaku's and Binairo's): pink with a small face and a leaf, a faint
+## ghost where one was, the lost one's halves falling apart, and one coming
+## back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _step <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _card.position.y + 12.0 + HEART_ROW * 0.5
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_mesh(_hearts_shown, null)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- the streak's bubble ---
+
+## The streak's paper bubble at the upper right of its post, "x3" and up in
+## ink: it pops in the first time, bumps at each step and deflates when the
+## streak ends. One mesh for the paper and one string (Light Up's).
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _step <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var post := node_to_local(_combo_post)
+	var tail := post + Vector2(_step * 0.25, -_step * 0.45)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
+
+# --- gags, ladybugs and the life over the figure ---
+
+## A right step now and then plays a gag, picked by the line's own hash so a
+## figure replays the same: the snail slides on sunglasses, little hearts
+## float up off the plank she just laid, or a mushroom pops up by the post
+## she lands on and grins. Under reduce-motion, none.
+func _gag(e: int, n: int) -> void:
+	if Motion.reduce or is_done():
+		return
+	var roll := posmod(hash(Vector2i(e * 13 + 7, n * 5 + 3)), GAG_ODDS)
+	if roll >= GAGS:
+		return
+	match roll:
+		0:
+			Motion.stop(_gag_tw)
+			_gag_tw = snail.create_tween()
+			_gag_tw.tween_property(snail, "glasses", 1.0, GLASSES_IN).from(0.0).set_delay(LAY_TIME) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			_gag_tw.tween_interval(GLASSES_HOLD)
+			_gag_tw.tween_property(snail, "glasses", 0.0, GLASSES_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			_after(LAY_TIME, fx.cue.bind("cool"))
+		1:
+			var edge: Vector2i = state.edges[e]
+			var now := _now() + LAY_TIME
+			for k in LOVE_HEARTS:
+				var u := (k + 0.5) / LOVE_HEARTS
+				_love.append({"at": node_to_local(edge.x).lerp(node_to_local(edge.y), u),
+					"t": now + k * 0.08, "phase": _hash(e * 5 + k) * TAU})
+			_after(LAY_TIME, fx.cue.bind("love"))
+		2:
+			_pop_mushroom(n)
+
+## The mushroom pops up beside post `n`, on the side away from the figure's
+## middle, grins, and sinks back after MUSH_HOLD.
+func _pop_mushroom(n: int) -> void:
+	var at := node_to_local(n)
+	# Beside the post, on the side away from the figure's middle, and never
+	# above it: the top row would put her over the hearts.
+	var middle: float = _origin.x + (state.cols - 1) * _step * 0.5
+	var side := 1.0 if at.x >= middle else -1.0
+	var spot := at + Vector2(side * 0.4, 0.14) * _step
+	Motion.stop(_mush_tw)
+	_mushroom.position = spot - _mushroom.size * 0.5
+	_mushroom.expression = Face.Expr.JOY
+	_mushroom.visible = true
+	_mushroom.scale = Vector2.ZERO
+	_mush_tw = Motion.pop_in(_mushroom, Motion.POP_IN, LAY_TIME)
+	_after(LAY_TIME, fx.cue.bind("mushroom"))
+	_after(LAY_TIME + MUSH_HOLD, func() -> void:
+		Motion.stop(_mush_tw)
+		_mush_tw = Motion.pop_out(_mushroom)
+		_after(Motion.POP_OUT, func() -> void: _mushroom.visible = false))
+
+## A judged step may call a ladybug: one at the first, then one past each of
+## BUG_AT's shares of the figure. She flies in from above the card and lands
+## on the shell.
+func _want_bug() -> void:
+	if snail.riders + _bugs.size() >= BUG_AT.size():
+		return
+	var share := float(state.walked.size()) / float(maxi(1, state.edges.size()))
+	var due := 0
+	for s in BUG_AT:
+		if share > float(s) or (float(s) == 0.0):
+			due += 1
+	if snail.riders + _bugs.size() >= due:
+		return
+	if Motion.reduce:
+		snail.riders += 1
+		return
+	var side := -1.0 if (_bugs.size() + snail.riders) % 2 == 0 else 1.0
+	_bugs.append({"from": Vector2(size.x * (0.5 + 0.45 * side), _card.position.y - _step * 0.4),
+		"t": _now() + LAY_TIME, "phase": randf() * TAU})
+	_after(LAY_TIME, fx.cue.bind("ladybug"))
+
+## Out of hearts: the riders fly home (they are simply gone; the dusk hides
+## the rest), and a heart back or Try again starts over without them.
+func _bugs_leave() -> void:
+	_bugs = []
+	if snail.riders > 0 and not Motion.reduce:
+		fx.puff(snail.global_position - global_position + snail.size * 0.5, Pal.BAD, 4)
+	snail.riders = 0
+
+## Keeps the life layer drawing while anything on it moves; lands arriving
+## ladybugs on the shell.
+func _tick_life(now: float) -> bool:
+	var still: Array = []
+	for l in _love:
+		if now < float(l.t) + LOVE_TIME:
+			still.append(l)
+	_love = still
+	still = []
+	for bug in _bugs:
+		if now >= float(bug.t) + BUG_FLY:
+			snail.riders += 1
+			if not Motion.reduce:
+				fx.sparkle(_seat.position + _seat.size * 0.5, Pal.BAD)
+		else:
+			still.append(bug)
+	_bugs = still
+	still = []
+	for p in _petals:
+		if now < float(p.t) + PETAL_TIME:
+			still.append(p)
+	_petals = still
+	return not _love.is_empty() or not _bugs.is_empty() or not _petals.is_empty() \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## The life over the figure: love hearts floating off a plank, ladybugs
+## flying in, petals falling at the party, each a mesh built once and drawn
+## under its own transform; and the seal after the solve, with its words.
+func _draw_life() -> void:
+	if _step <= 0.0:
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.06 * _step,
+				-LOVE_RISE * _step * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	if not _bugs.is_empty():
+		var mesh := _bug()
+		shown.append(mesh)
+		var to := _seat.position + _seat.size * 0.5 - Vector2(0.0, _seat.size.y * 0.3)
+		for bug in _bugs:
+			var e: float = now - float(bug.t)
+			if e <= 0.0:
+				continue
+			var u := clampf(e / BUG_FLY, 0.0, 1.0)
+			var from: Vector2 = bug.from
+			var mid := from.lerp(to, 0.5) + Vector2(0.0, -_step * 0.6)
+			var at := from.lerp(mid, u).lerp(mid.lerp(to, u), u)
+			at += Vector2(sin(e * 18.0 + float(bug.phase)), cos(e * 14.0)) * _step * 0.03 * (1.0 - u)
+			var head := (to - at).angle() + PI * 0.5
+			_life_layer.draw_mesh(mesh, null, Transform2D(head, at))
+	if not _petals.is_empty():
+		# Every petal in one mesh, rebuilt while they fall: one draw call for
+		# the whole shower rather than one a petal.
+		var pb := Face.Builder.new()
+		var r := _step * POST_R * DAISY_R
+		for p in _petals:
+			var e: float = now - float(p.t)
+			if e <= 0.0:
+				continue
+			var u := e / PETAL_TIME
+			var v: Vector2 = p.v
+			var at: Vector2 = p.at + v * _step * u + Vector2(sin(e * 4.0 + float(p.phase)) * 0.12 * _step,
+				PETAL_FALL * _step * u * u)
+			var spin: float = float(p.phase) + e * float(p.spin)
+			var flat := absf(cos(e * 5.0 + float(p.phase))) * 0.7 + 0.3
+			var fade := clampf((1.0 - u) / 0.35, 0.0, 1.0)
+			_oval(pb, at, r * 0.4, r * 0.2 * flat, spin, Color(Pal.PETAL_EDGE, fade))
+			_oval(pb, at, r * 0.36, r * 0.16 * flat, spin, Color(Pal.SURFACE, fade))
+		if not pb.verts.is_empty():
+			var mesh := pb.mesh()
+			shown.append(mesh)
+			_life_layer.draw_mesh(mesh, null)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_life_shown = shown
+
+## A little pink heart for the love gag, built once.
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := _step * LOVE_R
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## A flying ladybug, heading up, built once: the rider's own shape with its
+## wings out.
+func _bug() -> ArrayMesh:
+	if _bug_mesh == null:
+		var b := Face.Builder.new()
+		var r := _step * BUG_R
+		for sx in [-1.0, 1.0]:
+			_oval(b, Vector2(sx * r * 0.9, r * 0.1), r * 0.8, r * 0.4, sx * 0.5, Color(1.0, 1.0, 1.0, 0.55))
+		SnailFace.ladybug(b, Vector2.ZERO, r, 0.0)
+		_bug_mesh = b.mesh()
+	return _bug_mesh
+
+## After the retrace (`lead` from now): the snail puts on a party hat, every
+## daisy lets its petals go in a shower, confetti sweeps the figure twice,
+## and the seal, when the solve earned one (flawless, or any Insane figure),
+## stamps onto the card's lower right. Under reduce-motion only the seal,
+## standing still.
+func _party(lead: float) -> void:
+	var now := _now()
+	if _flawless or state.band == 3:
+		_stamp_at = now if Motion.reduce else now + lead + Motion.SOLVE_TIME + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		return
+	var at := lead + PARTY_AT
+	snail.hat_style = posmod(state.edges.size(), 7)
+	Motion.stop(_gag_tw)
+	snail.glasses = 0.0
+	_gag_tw = snail.create_tween()
+	_gag_tw.tween_property(snail, "hat", 1.0, PARTY_HAT).from(0.0).set_delay(at) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_after(at, func() -> void:
+		var field := _figure_rect()
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _step * 0.3), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_after(at + 0.45, func() -> void:
+		var field := _figure_rect()
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	var petals := at + PARTY_HAT
+	for n in state.nodes:
+		for k in PETALS:
+			var a := _hash(n * 11 + k) * TAU
+			_petals.append({"at": node_to_local(n), "t": now + petals + Motion.stagger(_diagonal(n), PETAL_STAGGER),
+				"v": Vector2.from_angle(a) * 0.5, "phase": a, "spin": lerpf(-4.0, 4.0, _hash(n * 3 + k))})
+	_after(petals, func() -> void: fx.cue("petals"))
+	_anim_until = maxf(_anim_until, now + petals + PETAL_TIME)
+
+## The figure's span on the card.
+func _figure_rect() -> Rect2:
+	return Rect2(_origin, Vector2(state.cols - 1, state.rows - 1) * _step)
+
+## The seal on the card's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, state.band == 3)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := _card.end - Vector2(rad * 1.2, rad * 0.95)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if state.band == 3:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless or not state.has_sun() else tr("OL_SUN_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # --- odds and ends ---
 
@@ -1254,6 +2249,11 @@ func _stop_all() -> void:
 	_gen += 1
 	Motion.stop(_look_tw)
 	Motion.stop(_pos_tw)
+	Motion.stop(_gag_tw)
+	Motion.stop(_mush_tw)
+	Motion.stop(_squash_tw)
+	Motion.stop(_dusk_tw)
+	_close_card()
 	if snail != null:
 		snail.scale = Vector2.ONE
 		snail.position = Vector2.ZERO
