@@ -2062,6 +2062,7 @@ func reset_board() -> void:
 ## cooling with it and the blocks and cats hopping as the court clears round
 ## them: Reset's and Try again's shared middle.
 func _clear_court() -> void:
+	_judged = {}
 	var now := _now()
 	_release_press()
 	_clear_gesture()
@@ -2440,7 +2441,7 @@ func _nod_all() -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["LU_OUT_BODY", "LU_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["LU_OUT_BODY", "LU_OUT_REST"] if state.has_cats() else ["LU_OUT_BODY_LAMPS", "LU_OUT_REST_LAMPS"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2464,7 +2465,9 @@ func try_again() -> void:
 	_clear_court()
 	var dusk := _dusk(_now())
 	_deal()
+	# _deal() put the day back at once; hold the dusk so _dusk_toward fades it.
 	_dusk_from = dusk
+	_dusk_to = dusk
 	_dusk_toward(0.0)
 	_nod_all()
 	_refresh_faces(true)

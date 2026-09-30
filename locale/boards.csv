@@ -265,6 +265,8 @@ LU_WRONG_LAMP,"That lantern looked fine, but it isn't the one. It went out.","Es
 LU_OUT,The court has gone to sleep.,O pátio foi dormir.,El patio se fue a dormir.
 LU_OUT_BODY,"The lanterns and the cats need a nap. Start the court again, or watch a short video for one more heart.",As lanternas e os gatos precisam de uma soneca. Recomece o pátio ou veja um vídeo curto para ganhar mais um coração.,Los faroles y los gatos necesitan una siesta. Empieza el patio de nuevo o mira un vídeo corto para un corazón más.
 LU_OUT_REST,The lanterns and the cats need a nap. Start the court again whenever you like.,As lanternas e os gatos precisam de uma soneca. Recomece o pátio quando quiser.,Los faroles y los gatos necesitan una siesta. Empieza el patio de nuevo cuando quieras.
+LU_OUT_BODY_LAMPS,"The lanterns need a nap. Start the court again, or watch a short video for one more heart.",As lanternas precisam de uma soneca. Recomece o pátio ou veja um vídeo curto para ganhar mais um coração.,Los faroles necesitan una siesta. Empieza el patio de nuevo o mira un vídeo corto para un corazón más.
+LU_OUT_REST_LAMPS,The lanterns need a nap. Start the court again whenever you like.,As lanternas precisam de uma soneca. Recomece o pátio quando quiser.,Los faroles necesitan una siesta. Empieza el patio de nuevo cuando quieras.
 LU_LVL_3,"10 × 10, cat naps","10 × 10, gatos na soneca","10 × 10, gatos en siesta"
 LU_CAT_SEAL,Cat Naps,Soneca dos Gatos,Siesta de Gatos
 OL_TIP_START,"Start on a green post and walk every line exactly once, without lifting your finger.","Comece num poste verde e passe por cada linha uma única vez, sem tirar o dedo.","Empieza en un poste verde y recorre cada línea una sola vez, sin levantar el dedo."
