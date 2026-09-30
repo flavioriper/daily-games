@@ -1,59 +1,135 @@
 extends RefCounted
 
 ## Paper Planes' rules, scene-free, as every flat board's are: the board, the
-## planes, their lanes, and the four moves. The board (puzzles/planes2d.gd)
-## only draws this.
+## planes, their lanes, the clouds and the moves. The board
+## (puzzles/planes2d.gd) only draws this.
 ## Spec: docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md,
-## sections 3 and 4.
+## sections 3 and 4; docs/superpowers/specs/2026-09-30-paper-planes-polish-
+## design.md, sections 1-3.
 ##
-## The one fact the whole screen rests on: **a launch only ever empties
-## cells, so it can never block another plane.** Launching a plane clears its
-## own cells and nothing else, and a lane is blocked only by occupied ones --
-## so a board that can be cleared at all can still be cleared after any legal
-## tap, in any order. That is what makes the solver below greedy and
-## complete, and what makes Undo and Reset pure convenience rather than
-## repair.
+## On Easy, Medium and Hard the one fact the screen was built on still
+## holds: **a launch only ever empties cells, so it can never block another
+## plane.** A board that can be cleared at all can still be cleared after any
+## legal tap, in any order, which is what makes `solve_order()` greedy and
+## complete there.
+##
+## **Insane is Windy Day** (polish spec section 3), and it breaks that fact
+## on purpose. The sky has a wind (`wind`, east or west along the rows) and a
+## few clouds, one cell each (`clouds`, where they stand at count 0). Every
+## launch is one tick of a clock (`count()`): after `k` ticks a cloud stands
+## `k` cells downwind of its start, wrapping round the row. A lane is clear
+## only when no plane **and no cloud at the current count** stands in it;
+## clouds sit over the sky, so a plane's body may be under one. A launch now
+## moves the clouds into other planes' lanes, so the order matters and the
+## sky can get **stuck** (`stuck()`): nothing can fly and nothing will move
+## until a `gust()` blows the clock on one tick without a launch.
+##
+## **Hard and Insane judge a tap** (`judged`): a tap on a blocked plane is a
+## crash and costs a heart. A crash changes nothing here -- `launch()` simply
+## refuses -- and the hearts are the board's to count, off `hearts_for`.
+## `blocker(i)` / `blocker_cell(i)` say what the plane would bonk its nose on.
 
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+const InsaneBank = preload("res://core/insane_bank.gd")
 
-## The bands (spec section 6). Hard is the reference's own 16 x 22. The
-## weights pick a plane's length: the middle lengths are the common ones,
-## because a board of two-cell darts reads as confetti and a board of
-## ten-cell ones cannot be packed. Insane keeps Hard's field and raises the
-## floor of a plane's length instead, so every plane reads as a real flight
-## rather than a two-cell hop; its row is provisional, replaced by the bank
-## in this board's own batch.
+## Per band, Easy .. Insane: the hints a sky starts with, and its hearts (0 is
+## a band that cannot be lost). Polish spec section 1.
+const HINTS := [3, 3, 1, 0]
+const HEARTS := [0, 0, 3, 2]
+
+## What `blocker()` returns when the first thing in a lane is a cloud (a
+## plane is its index, a clear lane -1).
+const CLOUD := -2
+
+## The bands. Hard is the reference's own 16 x 22. The weights pick a plane's
+## length: the middle lengths are the common ones, because a board of
+## two-cell darts reads as confetti and a board of ten-cell ones cannot be
+## packed.
+##
+## `picks` and `noise` are the tighter carve (polish spec section 2): each
+## step draws `picks` legal placements and keeps the one whose body covers
+## the most lanes of planes already placed, plus up to `noise` of random
+## lift so the skies do not all come out the same. Easy draws fewest and
+## shakes most -- it is where the rule is learnt.
+##
+## Insane is Windy Day: a small sky with `clouds` clouds, planes of three
+## cells or more (a two-cell hop leaves the clouds nothing to time), and
+## `wind_w` weighting a placement by how often the clouds cross its lane.
+## This row is the live fallback's and the miner's (tools/insane/
+## planes_ladder.gd); the phone deals Insane from content/insane/planes.json.
 const BANDS: Array[Dictionary] = [
-	{"cols": 10, "rows": 14, "min_len": 2, "max_len": 8, "weights": [2, 3, 4, 5, 5, 4, 3], "floor": 0.72},
-	{"cols": 13, "rows": 18, "min_len": 2, "max_len": 9, "weights": [2, 3, 4, 5, 5, 5, 4, 3], "floor": 0.72},
-	{"cols": 16, "rows": 22, "min_len": 2, "max_len": 10, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.72},
-	{"cols": 16, "rows": 22, "min_len": 4, "max_len": 12, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.80},
+	{"cols": 10, "rows": 14, "min_len": 2, "max_len": 8, "weights": [2, 3, 4, 5, 5, 4, 3], "floor": 0.72,
+		"picks": 3, "noise": 1.5},
+	{"cols": 13, "rows": 18, "min_len": 2, "max_len": 9, "weights": [2, 3, 4, 5, 5, 5, 4, 3], "floor": 0.72,
+		"picks": 6, "noise": 1.0},
+	{"cols": 16, "rows": 22, "min_len": 2, "max_len": 10, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.72,
+		"picks": 10, "noise": 0.6},
+	{"cols": 10, "rows": 14, "min_len": 3, "max_len": 7, "weights": [4, 5, 5, 4, 3], "floor": 0.70,
+		"picks": 16, "noise": 0.3, "clouds": 8, "wind_w": 1.0},
 ]
 ## How many boards to make before keeping the fullest, and how many failed
 ## placements in a row end a board.
 const CANDIDATES := 6
 const TRIES := 400
+## A carve step stops drawing after `picks * DRAWS_A_PICK` draws and lays the
+## best it has: late in a carve most draws fail, and waiting for a full
+## `picks` there costs time without tightening anything.
+const DRAWS_A_PICK := 4
+## A Windy Day sky's planes fit one 64-bit launched-set mask (the exact
+## search in `analyse()` and `_search()`).
+const MAX_WINDY_PLANES := 62
 
 static func band(difficulty: int) -> Dictionary:
 	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 
+## The hints a band starts with.
+static func hints_for(b: int) -> int:
+	return int(HINTS[clampi(b, 0, HINTS.size() - 1)])
+
+## The hearts a band starts with; 0 is a band that cannot be lost.
+static func hearts_for(b: int) -> int:
+	return int(HEARTS[clampi(b, 0, HEARTS.size() - 1)])
+
 var rows := 0
 var cols := 0
 var planes: Array[Dictionary] = []
+## The launch order the sky was built for (front first). On a Windy Day sky
+## it is the one order the phone knows replays to an empty sky.
 var order: Array[int] = []
+## 0 Easy .. 3 Insane.
+var difficulty := 0
+## A tap on a blocked plane is a crash (Hard and Insane).
+var judged := false
+## Undo is offered (not on Insane: a plane in the wind never comes back).
+var undo_allowed := true
+## Windy Day: the wind along the rows, (1, 0) east or (-1, 0) west, and the
+## clouds' cells at count 0. Vector2i.ZERO and [] on every other sky.
+var wind := Vector2i.ZERO
+var clouds: Array[Vector2i] = []
+## Ticks blown by `gust()` since the deal (or the last reset).
+var gusts := 0
+## Whether this Insane sky came off the bank rather than the live fallback.
+var banked := false
 var _occupant: Dictionary = {}   # Vector2i -> plane index, planes still on the board
 var _history: Array[int] = []
+## The carve's book: cell -> the planes already placed whose lane crosses it.
+var _lanes: Dictionary = {}
+## The carve's clouds, where they stand when the last plane has flown (the
+## carve places planes in reverse launch order, so it counts back from the
+## end); `carve()` turns them into `clouds` once the plane count is known.
+var _cloud_end: Array[Vector2i] = []
 
 func clear_occupancy() -> void:
 	_occupant = {}
 	_history = []
+	gusts = 0
 
 ## Lays one plane on the board. `cells` runs tail to head; the direction is
 ## the step into the head, so a plane's heading is a property of its shape
 ## and never a second field to keep in step. That derivation is why **a
 ## plane is never shorter than two cells**: a single cell has no last step
-## and so no heading, which is also why every band's `min_len` is 2. A
-## shorter body is refused rather than given a zero direction, because a
+## and so no heading, which is also why every band's `min_len` is 2 or more.
+## A shorter body is refused rather than given a zero direction, because a
 ## zero direction never advances -- `lane()` would loop on it forever.
 func add_plane(cells: Array[Vector2i]) -> int:
 	if cells.size() < 2:
@@ -73,6 +149,30 @@ func in_board(c: Vector2i) -> bool:
 func plane_at(cell: Vector2i) -> int:
 	return int(_occupant.get(cell, -1))
 
+## Whether this is a Windy Day sky.
+func windy() -> bool:
+	return wind != Vector2i.ZERO
+
+## The clock: launches plus gusts since the deal.
+func count() -> int:
+	return _history.size() + gusts
+
+## Where the clouds stand at `at_count` (the current count when negative),
+## in the order of `clouds`. After the next launch: `cloud_cells(count() + 1)`.
+func cloud_cells(at_count := -1) -> Array[Vector2i]:
+	var k := count() if at_count < 0 else at_count
+	var out: Array[Vector2i] = []
+	for c in clouds:
+		out.append(Vector2i(posmod(c.x + wind.x * k, cols), c.y))
+	return out
+
+## Whether a cloud stands on `cell` at `at_count` (the current count when
+## negative).
+func cloud_at(cell: Vector2i, at_count := -1) -> bool:
+	if clouds.is_empty():
+		return false
+	return cloud_cells(at_count).has(cell)
+
 ## Every cell beyond the head, in the dart's direction, out to the edge.
 func lane(i: int) -> Array[Vector2i]:
 	var p: Dictionary = planes[i]
@@ -85,13 +185,42 @@ func lane(i: int) -> Array[Vector2i]:
 		at += dir
 	return out
 
-## The first plane standing in the lane, or -1.
+## The first thing standing in the lane: a plane's index, CLOUD when a cloud
+## at the current count comes first, or -1 when the lane is clear.
 func blocker(i: int) -> int:
+	var here := _cloud_set(count())
 	for c in lane(i):
+		if here.has(c):
+			return CLOUD
 		var who := plane_at(c)
 		if who != -1:
 			return who
 	return -1
+
+## The cell of that first thing (where a crashing plane bonks its nose), or
+## (-1, -1) when the lane is clear.
+func blocker_cell(i: int) -> Vector2i:
+	var here := _cloud_set(count())
+	for c in lane(i):
+		if here.has(c) or plane_at(c) != -1:
+			return c
+	return Vector2i(-1, -1)
+
+## The planes left whose lane a cloud crosses at the current count (whether
+## or not a plane stands nearer): what the clouds are holding up right now.
+func cloud_blocked() -> Array[int]:
+	var out: Array[int] = []
+	if clouds.is_empty():
+		return out
+	var here := _cloud_set(count())
+	for i in planes.size():
+		if planes[i]["gone"]:
+			continue
+		for c in lane(i):
+			if here.has(c):
+				out.append(i)
+				break
+	return out
 
 func is_free(i: int) -> bool:
 	return not planes[i]["gone"] and blocker(i) == -1
@@ -103,6 +232,8 @@ func free_planes() -> Array[int]:
 			out.append(i)
 	return out
 
+## A tap on a blocked plane (a crash on a judged sky) changes nothing and
+## answers false; the board spends the heart.
 func launch(i: int) -> bool:
 	if planes[i]["gone"] or not is_free(i):
 		return false
@@ -112,6 +243,22 @@ func launch(i: int) -> bool:
 	_history.append(i)
 	return true
 
+## Planes are left and none can fly. Only a Windy Day sky can get here.
+func stuck() -> bool:
+	return not solved() and free_planes().is_empty()
+
+## Blows the wind on one tick without a launch -- only when the sky is stuck
+## (a cloud tap does nothing otherwise). The board spends the heart.
+func gust() -> bool:
+	if not windy() or not stuck():
+		return false
+	gusts += 1
+	return true
+
+## Calls the last launch back. The clock goes back with it: a sky is its set
+## of launched planes and its count, and undoing the last launch leaves
+## exactly the set and count it was launched from, gusts or not. The board
+## offers it only when `undo_allowed`; its Reset uses it on every band.
 func undo() -> int:
 	if _history.is_empty():
 		return -1
@@ -121,6 +268,7 @@ func undo() -> int:
 		_occupant[c] = i
 	return i
 
+## Every plane back, and the clock back to 0.
 func reset() -> void:
 	for i in planes.size():
 		if planes[i]["gone"]:
@@ -128,6 +276,7 @@ func reset() -> void:
 			for c in planes[i]["cells"]:
 				_occupant[c] = i
 	_history = []
+	gusts = 0
 
 func left() -> int:
 	var n := 0
@@ -139,10 +288,15 @@ func left() -> int:
 func solved() -> bool:
 	return left() == 0
 
-## Greedy, and complete: launching a plane only empties cells, so a board
-## that could be cleared before a tap can still be cleared after it. No
-## search, no backtracking. Returns [] when the board is stuck.
+## An order that clears the planes left, from the sky as it stands, or []
+## when there is none. Without clouds it is greedy and complete (a launch
+## only empties cells). On a Windy Day sky it is the exact search, taking no
+## gusts; from the deal it is the stored `order`, which is known to replay.
 func solve_order() -> Array[int]:
+	if windy():
+		if _history.is_empty() and gusts == 0 and order.size() == planes.size():
+			return order.duplicate()
+		return _search(-1)
 	var gone := {}
 	var out: Array[int] = []
 	var total := left()
@@ -165,130 +319,267 @@ func solve_order() -> Array[int]:
 			return []
 	return out
 
-## The hint's pick: the first plane of the generator's own order that is
-## still here and free, else any free one.
+## The hint's pick: a plane that can go. Without clouds, the first plane of
+## the generator's own order still here and free, else any free one. On a
+## Windy Day sky, the first launch of an order the exact search finds from
+## here (it gives up after a budget and names any free plane).
 func hint_plane() -> int:
-	for i in order:
-		if not planes[i]["gone"] and is_free(i):
-			return i
+	if windy():
+		var way := _search(200000)
+		if not way.is_empty():
+			return way[0]
+	else:
+		for i in order:
+			if not planes[i]["gone"] and is_free(i):
+				return i
 	var free := free_planes()
 	return -1 if free.is_empty() else free[0]
 
-## Carves a board backwards out of an empty sky (spec section 5, ported cell
-## for cell from the throwaway Python probe that validated it before this
-## file existed; that probe is not kept). Up to CANDIDATES attempts are
-## carved and thrown away except the winner: the first at or above the
-## band's coverage floor, else the fullest one made. `order` is set to the
-## reverse of the winner's placement order -- planes placed later are
-## launched earlier, so `hint_plane()` walks it front to back -- and the
-## result is asserted solvable, which the construction (section 3's "a
-## launch only ever empties cells") guarantees and has confirmed over 8,250
-## walk steps across 120 generated boards -- measured at 0.331 ms a hard
-## board, not the microsecond an earlier draft of this file guessed at.
-## There is deliberately no runtime fallback here: unlike mushroom_state.gd's
-## generator, which can genuinely fail and has to answer for it, this
-## invariant cannot fail by construction, so a fallback would be dead code
-## standing in for a bug that cannot occur.
-func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var b := band(difficulty)
+## Deals the sky for `difficulty`. Easy, Medium and Hard are carved live;
+## Insane is a Windy Day sky off the bank (`bank_step` is PuzzleBase's, how
+## many times New has been pressed since the board opened), or, when the bank
+## is empty or its entry does not hold together, a live Windy Day sky built
+## with its clock and replayed.
+func build(rng: RandomNumberGenerator, p_difficulty: int, bank_step := 0) -> void:
+	difficulty = clampi(p_difficulty, 0, BANDS.size() - 1)
+	banked = false
+	if difficulty == 3:
+		if from_bank(InsaneBank.pick("planes", bank_step)):
+			banked = true
+		elif InsaneBank.size("planes") > 0:
+			push_warning("Paper Planes: a banked Windy Day sky did not hold together; building a live one")
+	if not banked:
+		carve(rng, difficulty)
+	judged = hearts_for(difficulty) > 0
+	undo_allowed = difficulty < 3
+
+## Carves a board backwards out of an empty sky (the flat spec's section 5).
+## Up to CANDIDATES attempts are carved and thrown away except the winner:
+## the first at or above the band's coverage floor, else the fullest one
+## made. `order` is set to the reverse of the winner's placement order --
+## planes placed later are launched earlier, so `hint_plane()` walks it front
+## to back -- and the result is asserted to replay, which the construction
+## guarantees: each plane's lane was clear of every plane placed before it
+## (those launch after it) and, on a Windy Day sky, of every cloud at the
+## count it launches on. There is deliberately no runtime fallback: the
+## invariant cannot fail by construction. `knobs`, when given, overrides the
+## band's row key by key (the miner's and the probes' way to try a size).
+func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
+	difficulty = clampi(p_difficulty, 0, BANDS.size() - 1)
+	var b := band(difficulty).duplicate()
+	b.merge(knobs, true)
 	rows = int(b["rows"])
 	cols = int(b["cols"])
 	planes = []
 	order = []
+	wind = Vector2i.ZERO
+	clouds = []
 	clear_occupancy()
 	var area := float(rows * cols)
 	var floor_cov: float = float(b["floor"])
 	var best_planes: Array[Dictionary] = []
 	var best_occupant: Dictionary = {}
 	var best_cov := -1.0
+	var best_wind := Vector2i.ZERO
+	var best_end: Array[Vector2i] = []
+	var n_clouds := int(b.get("clouds", 0))
 	for attempt in CANDIDATES:
 		planes = []
 		clear_occupancy()
+		_cloud_end = []
+		wind = Vector2i.ZERO
+		if n_clouds > 0:
+			wind = Vector2i(1, 0) if rng.randi_range(0, 1) == 0 else Vector2i(-1, 0)
+			_cloud_end = _pick_clouds(rng, n_clouds)
 		_carve(rng, b)
 		var cov := float(_occupant.size()) / area
 		if cov > best_cov:
 			best_cov = cov
 			best_planes = planes.duplicate(true)
 			best_occupant = _occupant.duplicate()
+			best_wind = wind
+			best_end = _cloud_end.duplicate()
 		if cov >= floor_cov:
 			break
 	planes = best_planes
 	_occupant = best_occupant
+	wind = best_wind
+	clouds = []
+	# The carve counted the clouds back from the end; the deal counts them
+	# forward from 0, `planes.size()` launches before the end.
+	for e in best_end:
+		clouds.append(Vector2i(posmod(e.x - wind.x * planes.size(), cols), e.y))
+	_cloud_end = []
+	_lanes = {}
 	for i in range(planes.size() - 1, -1, -1):
 		order.append(i)
-	# solve_order() is called from inside the assert itself, not into a local
-	# first: `var check := solve_order()` is a statement, so a release export
-	# strips the assert() around it but still runs the solver and throws the
-	# result away for nothing (measured cost: 0.331 ms a hard board).
-	assert(solve_order().size() == planes.size(),
-		"PlanesState.build: generated board must be solvable")
+	# Called inside the assert itself so a release export strips the work.
+	assert(replays(order), "PlanesState.carve: the generated sky must replay to empty")
 
-## One candidate, laid straight onto `self` (rows/cols/planes/_occupant
-## already reset by `build()`). Loops while coverage is under 95% and no run
-## of TRIES placements in a row has failed: pick a random empty cell as the
-## head, shuffle the four directions and, for the first whose lane runs
-## entirely clear to the edge, grow a self-avoiding tail backwards to a
-## length drawn from the band's weights, never crossing the lane or itself.
-## A body that reaches the band's min_len is laid with `add_plane()` -- the
-## one place the direction is derived -- and a failed direction or a body
-## too short both count as one failed placement.
-func _carve(rng: RandomNumberGenerator, b: Dictionary) -> void:
-	var min_len: int = int(b["min_len"])
-	var area := float(rows * cols)
-	var fails := 0
-	while float(_occupant.size()) < 0.95 * area and fails < TRIES:
-		var cell := Vector2i(rng.randi_range(0, cols - 1), rng.randi_range(0, rows - 1))
-		if _occupant.has(cell):
-			fails += 1
+## Whether launching `seq` from the deal clears the sky, every launch legal
+## at its count. Puts every plane back afterwards (a reset), so it is for a
+## sky being dealt, not one being played.
+func replays(seq: Array) -> bool:
+	reset()
+	var ok := seq.size() == planes.size()
+	if ok:
+		for i in seq:
+			if typeof(i) != TYPE_INT or i < 0 or i >= planes.size() or not launch(i):
+				ok = false
+				break
+	ok = ok and solved()
+	reset()
+	return ok
+
+## `n` distinct cloud cells, never more than two in a row of the sky so the
+## clouds spread over it.
+func _pick_clouds(rng: RandomNumberGenerator, n: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var per_row := {}
+	var guard := 0
+	while out.size() < n and guard < 1000:
+		guard += 1
+		var c := Vector2i(rng.randi_range(0, cols - 1), rng.randi_range(0, rows - 1))
+		if out.has(c) or int(per_row.get(c.y, 0)) >= 2:
 			continue
-		var dirs: Array[Vector2i] = DIRS.duplicate()
-		_shuffle_dirs(dirs, rng)
-		var placed := false
-		for d in dirs:
-			var lane_set := {}
-			var at: Vector2i = cell + d
-			var clear := true
-			while in_board(at):
-				if _occupant.has(at):
-					clear = false
+		per_row[c.y] = int(per_row.get(c.y, 0)) + 1
+		out.append(c)
+	return out
+
+## Where the carve's clouds stand when plane number `j` of the carve (0 the
+## first placed, the last to launch) takes off: `j + 1` ticks before the end.
+func _clouds_for(j: int) -> Dictionary:
+	var out := {}
+	for e in _cloud_end:
+		out[Vector2i(posmod(e.x - wind.x * (j + 1), cols), e.y)] = true
+	return out
+
+## The clouds at count `k` as a set.
+func _cloud_set(k: int) -> Dictionary:
+	var out := {}
+	for c in clouds:
+		out[Vector2i(posmod(c.x + wind.x * k, cols), c.y)] = true
+	return out
+
+## One candidate, laid straight onto `self`. Loops while coverage is under
+## 95% and no run of TRIES failed draws has ended it. Each step draws up to
+## the band's `picks` legal placements (`_propose`) and lays the best by
+## `_score` -- the tighter carve of the polish spec's section 2.
+func _carve(rng: RandomNumberGenerator, b: Dictionary) -> void:
+	var area := float(rows * cols)
+	var picks := int(b.get("picks", 1))
+	var noise := float(b.get("noise", 0.0))
+	var wind_w := float(b.get("wind_w", 0.0))
+	var fails := 0
+	_lanes = {}
+	while float(_occupant.size()) < 0.95 * area and fails < TRIES:
+		var clouds_now := _clouds_for(planes.size())
+		var best: Array[Vector2i] = []
+		var best_score := -INF
+		var got := 0
+		var draws := 0
+		while got < picks and fails < TRIES and draws < picks * DRAWS_A_PICK:
+			draws += 1
+			var body := _propose(rng, b, clouds_now)
+			if body.is_empty():
+				fails += 1
+				continue
+			got += 1
+			var sc := _score(body, wind_w) + rng.randf() * noise
+			if sc > best_score:
+				best_score = sc
+				best = body
+		if best.is_empty():
+			continue
+		var idx := add_plane(best)
+		for c in lane(idx):
+			if not _lanes.has(c):
+				_lanes[c] = []
+			(_lanes[c] as Array).append(idx)
+		fails = 0
+
+## How many planes already placed would wait on this body (their lanes cross
+## it), plus, on a Windy Day sky, `wind_w` times the share of the clouds'
+## cycle during which a cloud stands in this plane's own lane -- a plane the
+## clouds cross often is one whose moment has to be picked.
+func _score(body: Array[Vector2i], wind_w: float) -> float:
+	var owners := {}
+	for c in body:
+		if _lanes.has(c):
+			for o in _lanes[c]:
+				owners[o] = true
+	var sc := float(owners.size())
+	if wind_w > 0.0 and not _cloud_end.is_empty():
+		var head: Vector2i = body[body.size() - 1]
+		var dir: Vector2i = head - body[body.size() - 2]
+		var lane_set := {}
+		var at := head + dir
+		while in_board(at):
+			lane_set[at] = true
+			at += dir
+		var hit := 0
+		for k in cols:
+			for e in _cloud_end:
+				if lane_set.has(Vector2i(posmod(e.x + k, cols), e.y)):
+					hit += 1
 					break
-				lane_set[at] = true
-				at += d
-			if not clear:
-				continue
-			var body: Array[Vector2i] = [cell]
-			var used := {cell: true}
-			var want := _pick_length(rng, b)
-			var prev: Vector2i = cell - d
-			if not in_board(prev) or _occupant.has(prev) or lane_set.has(prev):
-				continue
-			body.append(prev)
-			used[prev] = true
-			while body.size() < want:
-				var last: Vector2i = body[body.size() - 1]
-				var cand: Array[Vector2i] = []
-				for e in DIRS:
-					var q: Vector2i = last + e
-					if not in_board(q):
-						continue
-					if _occupant.has(q) or used.has(q) or lane_set.has(q):
-						continue
-					cand.append(q)
-				if cand.is_empty():
-					break
-				var pick: Vector2i = cand[rng.randi_range(0, cand.size() - 1)]
-				body.append(pick)
-				used[pick] = true
-			if body.size() < min_len:
-				continue
-			body.reverse()
-			add_plane(body)
-			placed = true
-			break
-		if placed:
-			fails = 0
-		else:
-			fails += 1
+		sc += wind_w * float(hit) / float(cols)
+	return sc
+
+## One legal placement, tail to head, or [] when this draw failed: a random
+## empty cell as the head, the four directions shuffled, and for the first
+## whose lane runs clear to the edge (of planes, and of the clouds at this
+## plane's launch count) a self-avoiding tail grown backwards to a length
+## drawn from the band's weights, never crossing the lane or itself. A body
+## short of the band's min_len is a failed draw.
+func _propose(rng: RandomNumberGenerator, b: Dictionary, clouds_now: Dictionary) -> Array[Vector2i]:
+	var min_len: int = int(b["min_len"])
+	var none: Array[Vector2i] = []
+	var cell := Vector2i(rng.randi_range(0, cols - 1), rng.randi_range(0, rows - 1))
+	if _occupant.has(cell):
+		return none
+	var dirs: Array[Vector2i] = DIRS.duplicate()
+	_shuffle_dirs(dirs, rng)
+	for d in dirs:
+		var lane_set := {}
+		var at: Vector2i = cell + d
+		var clear := true
+		while in_board(at):
+			if _occupant.has(at) or clouds_now.has(at):
+				clear = false
+				break
+			lane_set[at] = true
+			at += d
+		if not clear:
+			continue
+		var body: Array[Vector2i] = [cell]
+		var used := {cell: true}
+		var want := _pick_length(rng, b)
+		var prev: Vector2i = cell - d
+		if not in_board(prev) or _occupant.has(prev) or lane_set.has(prev):
+			continue
+		body.append(prev)
+		used[prev] = true
+		while body.size() < want:
+			var last: Vector2i = body[body.size() - 1]
+			var cand: Array[Vector2i] = []
+			for e in DIRS:
+				var q: Vector2i = last + e
+				if not in_board(q):
+					continue
+				if _occupant.has(q) or used.has(q) or lane_set.has(q):
+					continue
+				cand.append(q)
+			if cand.is_empty():
+				break
+			var pick: Vector2i = cand[rng.randi_range(0, cand.size() - 1)]
+			body.append(pick)
+			used[pick] = true
+		if body.size() < min_len:
+			continue
+		body.reverse()
+		return body
+	return none
 
 ## Weighted by `b["weights"]`, index `len - min_len` -- the middle lengths
 ## are the common ones (see BANDS above).
@@ -313,3 +604,277 @@ static func _shuffle_dirs(arr: Array[Vector2i], rng: RandomNumberGenerator) -> v
 		var tmp: Vector2i = arr[i]
 		arr[i] = arr[j]
 		arr[j] = tmp
+
+# --- the bank ---
+
+## This sky as a bank entry: {"cols", "rows", "wind" (1 east, -1 west),
+## "clouds" (cell indices y * cols + x at count 0), "planes" (each an array
+## of cell indices, tail to head), "order" (the launch order that replays)}.
+func to_bank() -> Dictionary:
+	var ps: Array = []
+	for p in planes:
+		var cells: Array = []
+		for c in p["cells"]:
+			cells.append(c.y * cols + c.x)
+		ps.append(cells)
+	var cs: Array = []
+	for c in clouds:
+		cs.append(c.y * cols + c.x)
+	return {"cols": cols, "rows": rows, "wind": wind.x, "clouds": cs, "planes": ps, "order": order.duplicate()}
+
+## Deals a banked Windy Day sky onto `self`, or answers false and leaves an
+## empty sky. The phone checks the entry holds together -- planes in bounds,
+## each a walk of at least two cells one step at a time, not standing in its
+## own lane, no two sharing a cell, clouds in bounds and distinct, the wind
+## east or west, and the stored order replaying to an empty sky -- and trusts
+## the miner for the rest (the gate is not re-run on the phone).
+func from_bank(entry: Dictionary) -> bool:
+	planes = []
+	order = []
+	clouds = []
+	wind = Vector2i.ZERO
+	rows = 0
+	cols = 0
+	clear_occupancy()
+	if entry.is_empty() or not _is_num(entry.get("cols")) or not _is_num(entry.get("rows")) \
+			or not _is_num(entry.get("wind")) or not (entry.get("clouds") is Array) \
+			or not (entry.get("planes") is Array) or not (entry.get("order") is Array):
+		return false
+	var c := int(entry.cols)
+	var r := int(entry.rows)
+	var w := int(entry.wind)
+	var ps: Array = entry.planes
+	var ok := c >= 3 and r >= 3 and c <= 32 and r <= 32 and (w == 1 or w == -1) \
+		and not ps.is_empty() and ps.size() <= MAX_WINDY_PLANES
+	if ok:
+		cols = c
+		rows = r
+	for raw in ps:
+		if not ok:
+			break
+		if not (raw is Array) or raw.size() < 2:
+			ok = false
+			break
+		var cells: Array[Vector2i] = []
+		for v in raw:
+			if not _is_num(v) or int(v) < 0 or int(v) >= c * r:
+				ok = false
+				break
+			var cell := Vector2i(int(v) % c, int(v) / c)
+			if _occupant.has(cell) or cells.has(cell):
+				ok = false
+				break
+			if not cells.is_empty():
+				var step: Vector2i = cell - cells[cells.size() - 1]
+				if absi(step.x) + absi(step.y) != 1:
+					ok = false
+					break
+			cells.append(cell)
+		if not ok:
+			break
+		var idx := add_plane(cells)
+		for q in lane(idx):
+			if cells.has(q):
+				ok = false
+				break
+	if ok:
+		for v in entry.clouds:
+			if not _is_num(v) or int(v) < 0 or int(v) >= c * r:
+				ok = false
+				break
+			var cell := Vector2i(int(v) % c, int(v) / c)
+			if clouds.has(cell):
+				ok = false
+				break
+			clouds.append(cell)
+		ok = ok and not clouds.is_empty()
+	if ok:
+		wind = Vector2i(w, 0)
+		for v in entry.order:
+			if not _is_num(v):
+				ok = false
+				break
+			order.append(int(v))
+		var seen := {}
+		for i in order:
+			seen[i] = true
+		ok = ok and seen.size() == planes.size() and replays(order)
+	if not ok:
+		planes = []
+		order = []
+		clouds = []
+		wind = Vector2i.ZERO
+		rows = 0
+		cols = 0
+		clear_occupancy()
+	return ok
+
+static func _is_num(v) -> bool:
+	return typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT
+
+# --- the exact search (Windy Day) ---
+#
+# A Windy Day sky is its launched set and its count, and with no gusts the
+# count is the set's size -- so the skies reachable from the deal are sets of
+# launched planes, one bit a plane in a 64-bit int. Planes' bodies never
+# move, so which planes stand in a lane is one mask a plane (`lane_mask`);
+# the clouds come back every `cols` ticks, so whether a cloud crosses a lane
+# is one byte a plane per tick of that cycle (`cloud_block`).
+
+## The search's tables for this sky: {"n", "lane_mask": PackedInt64Array,
+## "cloud_block": Array of PackedByteArray (one a plane, `cols` long, 1 when
+## a cloud stands in the lane at a count of that residue)}. They describe
+## the deal, whatever has flown since.
+func tables() -> Dictionary:
+	var n := planes.size()
+	var owner := {}
+	for j in n:
+		for c in planes[j]["cells"]:
+			owner[c] = j
+	var phases: Array = []
+	for k in cols:
+		phases.append(_cloud_set(k))
+	var lane_mask := PackedInt64Array()
+	lane_mask.resize(n)
+	var cloud_block: Array = []
+	for i in n:
+		var m := 0
+		var cb := PackedByteArray()
+		cb.resize(cols)
+		cb.fill(0)
+		for c in lane(i):
+			if owner.has(c):
+				m |= 1 << int(owner[c])
+			for k in cols:
+				if (phases[k] as Dictionary).has(c):
+					cb[k] = 1
+		lane_mask[i] = m
+		cloud_block.append(cb)
+	return {"n": n, "lane_mask": lane_mask, "cloud_block": cloud_block}
+
+## The launched set as a mask.
+func launched_mask() -> int:
+	var m := 0
+	for i in planes.size():
+		if planes[i]["gone"]:
+			m |= 1 << i
+	return m
+
+## An order clearing the planes left from the sky as it stands (no gusts),
+## by depth-first search remembering the sets that dead-end; [] when there is
+## none, or when `budget` sets (>= 0) have been met without finding one.
+func _search(budget: int) -> Array[int]:
+	var out: Array[int] = []
+	if planes.size() > MAX_WINDY_PLANES or solved():
+		return out
+	var ctx := {"t": tables(), "dead": {}, "budget": budget, "met": 0, "phase0": gusts}
+	var path: Array[int] = []
+	if _dfs(ctx, launched_mask(), path):
+		out = path
+	return out
+
+func _dfs(ctx: Dictionary, mask: int, path: Array[int]) -> bool:
+	var t: Dictionary = ctx.t
+	var n: int = t.n
+	if mask == (1 << n) - 1:
+		return true
+	if (ctx.dead as Dictionary).has(mask):
+		return false
+	ctx.met = int(ctx.met) + 1
+	if int(ctx.budget) >= 0 and int(ctx.met) > int(ctx.budget):
+		return false
+	var k := (_popcount(mask) + int(ctx.phase0)) % cols
+	var lm: PackedInt64Array = t.lane_mask
+	var cb: Array = t.cloud_block
+	for i in n:
+		var bit := 1 << i
+		if mask & bit != 0 or lm[i] & ~mask != 0 or (cb[i] as PackedByteArray)[k] != 0:
+			continue
+		path.append(i)
+		if _dfs(ctx, mask | bit, path):
+			return true
+		path.pop_back()
+	(ctx.dead as Dictionary)[mask] = true
+	return false
+
+static func _popcount(m: int) -> int:
+	var c := 0
+	while m != 0:
+		m &= m - 1
+		c += 1
+	return c
+
+## The miner's reading of a Windy Day sky from the deal, over every set of
+## launched planes reachable without a gust: {"ok" (false when more than
+## `budget` sets were reachable), "states" (sets reached), "dead" (sets with
+## planes left and no launch: stuck), "doomed" (sets from which the sky
+## cannot be cleared), "p" (the exact chance a random legal playout -- each
+## launch picked evenly among the free planes -- clears the sky without
+## getting stuck), "ways" (how many launch orders clear it)}.
+func analyse(budget: int) -> Dictionary:
+	if planes.size() > MAX_WINDY_PLANES:
+		return {"ok": false}
+	var ctx := {"t": tables(), "p": {}, "w": {}, "budget": budget, "over": false, "dead": 0, "doomed": 0}
+	var p := _analyse(ctx, 0, 0)
+	var w: float = (ctx.w as Dictionary).get(0, 0.0)
+	return {"ok": not bool(ctx.over), "states": (ctx.p as Dictionary).size(), "dead": int(ctx.dead),
+		"doomed": int(ctx.doomed), "p": p, "ways": w}
+
+func _analyse(ctx: Dictionary, mask: int, k: int) -> float:
+	var memo: Dictionary = ctx.p
+	if memo.has(mask):
+		return memo[mask]
+	var t: Dictionary = ctx.t
+	var n: int = t.n
+	if k == n:
+		memo[mask] = 1.0
+		(ctx.w as Dictionary)[mask] = 1.0
+		return 1.0
+	if bool(ctx.over) or memo.size() >= int(ctx.budget):
+		ctx.over = true
+		return 0.0
+	var lm: PackedInt64Array = t.lane_mask
+	var cb: Array = t.cloud_block
+	var ph := k % cols
+	var moves := 0
+	var sum := 0.0
+	var ways := 0.0
+	for i in n:
+		var bit := 1 << i
+		if mask & bit != 0 or lm[i] & ~mask != 0 or (cb[i] as PackedByteArray)[ph] != 0:
+			continue
+		moves += 1
+		sum += _analyse(ctx, mask | bit, k + 1)
+		ways += float((ctx.w as Dictionary).get(mask | bit, 0.0))
+	var p := sum / float(moves) if moves > 0 else 0.0
+	if moves == 0:
+		ctx.dead = int(ctx.dead) + 1
+	if p == 0.0:
+		ctx.doomed = int(ctx.doomed) + 1
+	memo[mask] = p
+	(ctx.w as Dictionary)[mask] = ways
+	return p
+
+## Whether launching the first free plane in reading order of the heads
+## (top row first), again and again, gets the sky stuck. Puts every plane
+## back afterwards.
+func greedy_stuck() -> bool:
+	reset()
+	var by_head: Array = range(planes.size())
+	by_head.sort_custom(func(a: int, b: int) -> bool:
+		var ha: Vector2i = (planes[a]["cells"] as Array).back()
+		var hb: Vector2i = (planes[b]["cells"] as Array).back()
+		return ha.y < hb.y or (ha.y == hb.y and ha.x < hb.x))
+	var stuck_out := false
+	while not solved():
+		var moved := false
+		for i in by_head:
+			if is_free(i):
+				launch(i)
+				moved = true
+				break
+		if not moved:
+			stuck_out = true
+			break
+	reset()
+	return stuck_out

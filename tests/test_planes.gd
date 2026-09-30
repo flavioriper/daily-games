@@ -10,6 +10,7 @@ extends RefCounted
 ## the newest suite rather than in a file of its own.
 
 const State = preload("res://puzzles/planes_state.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 const Registry = preload("res://ui/registry.gd")
 
 static func run(t) -> void:
@@ -21,6 +22,8 @@ static func run(t) -> void:
 	_test_degenerate_plane_refused(t)
 	_test_generator(t)
 	_test_repeatable(t)
+	_test_windy(t)
+	_test_windy_deal(t)
 
 ## Every board on the first screen has a script that parses.
 ##
@@ -179,3 +182,64 @@ static func _test_repeatable(t) -> void:
 		t.eq(a.planes.size(), b.planes.size(), "band %d: same seed, same plane count" % difficulty)
 		for i in a.planes.size():
 			t.eq(a.planes[i]["cells"], b.planes[i]["cells"], "band %d: plane %d is the same" % [difficulty, i])
+
+## Windy Day's clock on a hand-laid sky: a cloud blows one cell downwind a
+## launch, wrapping; a cloud in a lane blocks it and is named as the blocker;
+## the sky can get stuck, a gust ticks the clock only then, and reset puts
+## the clock back to 0.
+static func _test_windy(t) -> void:
+	var st := _empty(4, 4)
+	st.wind = Vector2i(1, 0)
+	# Plane a heads up column 0 from row 2; plane b heads up column 3.
+	var a := _add(st, [Vector2i(0, 3), Vector2i(0, 2)])
+	var b := _add(st, [Vector2i(3, 3), Vector2i(3, 2)])
+	st.clouds = [Vector2i(3, 0)]
+	t.eq(st.count(), 0, "the clock starts at 0")
+	t.eq(st.cloud_cells(1), [Vector2i(0, 0)] as Array[Vector2i], "a cloud wraps off the east edge")
+	t.eq(st.blocker(b), State.CLOUD, "a cloud in the lane is the blocker")
+	t.eq(st.blocker_cell(b), Vector2i(3, 0), "and it stands where the plane would bonk")
+	t.eq(st.cloud_blocked(), [b] as Array[int], "the clouds hold up b alone")
+	t.check(not st.launch(b), "a clouded lane refuses")
+	t.check(not st.gust(), "a gust needs a stuck sky")
+	t.check(st.launch(a), "a goes")
+	t.eq(st.count(), 1, "a launch ticks the clock")
+	t.check(st.is_free(b), "the wind blew the cloud off b's lane, round onto column 0")
+	st.reset()
+	st.clouds = [Vector2i(2, 0)]
+	# At count 1 the cloud stands on column 3: launching a strands b.
+	t.check(st.launch(a), "a goes first")
+	t.check(st.stuck(), "and the cloud now stands in b's lane: stuck")
+	t.check(st.gust(), "a stuck sky takes a gust")
+	t.eq(st.count(), 2, "which ticks the clock without a launch")
+	t.check(st.launch(b), "and the cloud has blown clear")
+	t.check(st.solved(), "an empty sky")
+	st.reset()
+	t.eq(st.count(), 0, "reset puts the clock back to 0")
+	t.eq(st.solve_order(), [b, a] as Array[int], "the exact search finds the order that keeps b clear")
+
+## Insane deals a Windy Day sky: every banked sky holds together on the
+## phone's own check, the live fallback replays its own order, and Insane
+## judges, has no undo and no hints.
+static func _test_windy_deal(t) -> void:
+	var pool := InsaneBank.boards("planes")
+	t.check(pool.size() > 0, "the Windy Day bank is not empty")
+	for k in pool.size():
+		var st := State.new()
+		t.check(st.from_bank(pool[k]), "banked sky %d holds together" % k)
+	var bad := State.new()
+	t.check(not bad.from_bank({"cols": 10, "rows": 14, "wind": 1, "clouds": [0], "planes": [[0, 1]], "order": []}),
+		"an order that does not replay is refused")
+	var dealt := _built(5, 3)
+	t.check(dealt.windy() and dealt.banked, "Insane deals a banked Windy Day sky")
+	t.check(dealt.judged and not dealt.undo_allowed, "judged, and no undo")
+	t.eq(State.hints_for(3), 0, "no hints on Insane")
+	t.eq(State.hearts_for(2), 3, "three hearts on Hard")
+	t.check(not _built(5, 1).judged, "Medium is not judged")
+	for s in range(1, 11):
+		var st := State.new()
+		var rng := RandomNumberGenerator.new()
+		rng.seed = s
+		st.carve(rng, 3)
+		t.check(st.windy() and st.clouds.size() == int(State.band(3)["clouds"]),
+			"live Windy Day %d: wind and clouds" % s)
+		t.check(st.replays(st.order), "live Windy Day %d: the stored order replays" % s)

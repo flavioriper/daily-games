@@ -312,7 +312,7 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.build(rng, difficulty)
+	_state.build(rng, difficulty, bank_step)
 	_hint_lit = -1
 	_anim_until = 0.0
 	_solved_at = -1.0
@@ -958,8 +958,9 @@ func _tap(i: int) -> void:
 	if _state.planes[i]["gone"]:
 		return
 	var t := _now()
+	# A plane's index, State.CLOUD on a Windy Day sky, or -1 when clear.
 	var blocked := _state.blocker(i)
-	if blocked >= 0:
+	if blocked != -1:
 		_refuse_tap(i, blocked, t)
 		_refresh()
 		return
@@ -1095,12 +1096,14 @@ func _refuse_tap(i: int, blocked: int, t: float) -> void:
 	if Motion.reduce:
 		return
 	var cells: Array[Vector2i] = []
+	var stop := _state.blocker_cell(i)
 	for c in _state.lane(i):
 		cells.append(c)
-		if _state.plane_at(c) == blocked:
+		if c == stop:
 			break
 	_refuse = {"cells": cells, "at": t}
-	_shiver[blocked] = t
+	if blocked >= 0:
+		_shiver[blocked] = t
 	_nudge[i] = t
 	_busy_for(maxf(BLOCK_FLASH, Motion.NUDGE_LAG + Motion.NUDGE_TIME))
 	fx.cue("refuse")
@@ -1146,7 +1149,7 @@ func is_solved() -> bool:
 ## launch history itself, and a plane is on the board or it is not, so this
 ## needs no book of its own.
 func can_undo() -> bool:
-	return _state.left() < _state.planes.size()
+	return _state.undo_allowed and _state.left() < _state.planes.size()
 
 ## Calls the last plane back, flying it home along the track it left on.
 ## Counts no move.
