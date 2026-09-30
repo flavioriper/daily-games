@@ -1,8 +1,10 @@
 extends "res://ui/hud/panel.gd"
 
 ## Hidden Word's keyboard tray: three rows of keys under the grid, QWERTY laid
-## out the way every player already knows it, with a backspace and an Enter
-## flanking the bottom row. A key is a **direct action, not a brush**, the
+## out the way every player already knows it, with Enter and a backspace
+## flanking the bottom row -- the backspace on the right, where every phone
+## keyboard keeps it (swapped 2026-09-30 at the user's request; it stood on
+## the left before). A key is a **direct action, not a brush**, the
 ## way Code Break's friend chips are -- tap it and it fires -- but repainted
 ## from the state rather than lit for a beat, because a keyboard has to keep
 ## telling the player what it learned about every letter.
@@ -17,8 +19,9 @@ extends "res://ui/hud/panel.gd"
 ## `(1000 - 9*GAP)/10` wide with the *key* gap -- 91 -- and the arithmetic
 ## closes on 1000 for all three rows: the top row is ten keys and nine gaps,
 ## the middle row is nine keys and eight gaps centred on its own 899, and the
-## bottom row spends what seven letters leave on a wider backspace and a
-## wider Enter, the one key that commits a guess and so wears `Pal.GOOD`.
+## bottom row spends what seven letters leave on a wider Enter and a
+## wider backspace; Enter is the one key that commits a guess and so wears
+## `Pal.GOOD`.
 ## Spec: docs/superpowers/specs/2026-09-19-hidden-word-flat-design.md, section 6.
 
 ## The letter tapped, lower-case.
@@ -106,11 +109,11 @@ func _build() -> void:
 
 		var letters: String = rows[r]
 		if r == 2:
-			_add_special(row, "erase", WIDE_BACK)
+			_add_special(row, "commit", WIDE_ENTER)
 		for i in letters.length():
 			_add_letter(row, letters[i])
 		if r == 2:
-			_add_special(row, "commit", WIDE_ENTER)
+			_add_special(row, "erase", WIDE_BACK)
 
 ## Lays the keys out again when the language has changed since they were
 ## laid: Spanish has an Ñ the others do not. Nothing to do otherwise.

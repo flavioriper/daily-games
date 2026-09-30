@@ -94,7 +94,7 @@ static func _test_play(t) -> void:
 	for ch in ["p", "l", "a", "n", "t", "x"]:
 		s.type_letter(ch)
 	t.eq(s.typed, "plant", "typing stops at five letters")
-	t.check(s.erase(), "erase takes a letter back")
+	t.check(s.erase() >= 0, "erase takes a letter back")
 	t.eq(s.typed, "plan", "four letters left")
 	t.eq(s.commit(), State.SHORT, "four letters will not commit")
 	s.type_letter("t")

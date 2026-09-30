@@ -80,3 +80,10 @@ window (after the party) 192. Far under 855.
   code pop still running (it could show a friend under a shut lid).
 - The clean miss counts the different friends it ruled out (`CB_COOL_1`,
   `CB_COOL_N`).
+- **A tapped seat is chosen** (2026-09-30, user request): tapping an empty
+  seat of the active row rims it in `Pal.ACCENT` all round (`TARGET_RIM`)
+  and the next chip fills it (`state.place(v, at)`); tapping it again lets
+  go. Tapping a seated friend still sends them back, and that seat is then
+  chosen. A pick, a Check and a Reset clear the choice; with none, a chip
+  fills the first free seat as before. The accent, not the sun: the sun rim
+  already means a hint's seat.

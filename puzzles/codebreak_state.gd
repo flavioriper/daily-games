@@ -129,12 +129,13 @@ func full() -> bool:
 			return false
 	return true
 
-## Seats friend `v` in the first free seat. Returns the seat, or -1 when the
-## row has no room (the board nudges instead).
-func place(v: int) -> int:
+## Seats friend `v` in seat `at` when the player chose one (an empty seat no
+## hint claimed), else in the first free seat. Returns the seat, or -1 when
+## the row has no room (the board nudges instead).
+func place(v: int, at := -1) -> int:
 	if not open() or v < 0 or v >= palette_size:
 		return -1
-	var slot := free_slot()
+	var slot := at if at >= 0 and at < length and row[at] == -1 and not locked[at] else free_slot()
 	if slot < 0:
 		return -1
 	row[slot] = v

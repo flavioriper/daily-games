@@ -73,3 +73,13 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   rows, a cheer and the seal) all wait for a row to show its colours.
   `tests/_shot_hiddenword.gd` drives every scenario; peaks 125 to 157 draw
   calls on `opengl3_angle`.
+- **A tapped bed takes the next letter** (2026-09-30, user request).
+  `state.typed` may hold a space for a skipped bed (trailing blanks trimmed,
+  so a row typed left to right is just its letters) and `state.cursor` is
+  the bed the next letter goes into: typing writes there, over whatever it
+  holds, and moves on to the next empty bed (wrapping; `LEN` when full).
+  Backspace clears the cursor's bed, or on an empty one the nearest letter to
+  its left. The board answers taps only over the row in hand (`_has_point`),
+  so the rest of the card lets them through. The keyboard's backspace moved
+  to the right end of the bottom row and Enter to the left, where phone
+  keyboards keep them. `_shot_hiddenword.gd select` taps bed five for real.

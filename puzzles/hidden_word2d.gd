@@ -398,6 +398,8 @@ var _deliver_at: Array[float] = []
 ## them from the count before (One more row).
 var _grow_from := float(State.ROWS)
 var _grow_at := -100.0
+## The bed a press went down on, or -1.
+var _touch_cell := -1
 ## Where the caret was, and when it left there.
 var _caret_from := 0
 var _caret_at := -100.0
@@ -484,8 +486,9 @@ func capabilities() -> Array[String]:
 	return [] if state.no_hints else ["hint"]
 
 func _ready() -> void:
-	# The keyboard takes every tap; nothing on the card is touched.
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The keyboard takes the letters; the card answers only a tap on a bed
+	# of the row in hand (_has_point), which moves the caret there.
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
@@ -933,7 +936,7 @@ func _build_grid(t: float) -> ArrayMesh:
 						_post_tile(b, up, cell, grow, fade, move.z)
 					_:
 						_paper_tile(b, up, cell, grow, fade, move.z)
-			elif r == work and c < state.typed.length():
+			elif r == work and state.letter_at(c) != "":
 				_paper_tile(b, at, cell, Motion.pop_in_scale(t - _typed_at[c], TYPE_POP), fade, move.z)
 			elif _party_at < INF and r > state.rows.size() - 1:
 				_bloom(b, seat + Vector2.ONE * (cell * 0.5), cell, r, c, t)
@@ -984,7 +987,7 @@ func _move(r: int, c: int, t: float) -> Vector3:
 	if Motion.reduce:
 		return out
 	var cell := _cell()
-	if r == _working_row() and state.typed.length() == State.LEN and c < State.LEN:
+	if r == _working_row() and state.filled() and c < State.LEN:
 		out.y += Motion.hop_lift(t - (_ready_at + float(c) * READY_STEP), READY_HOP, READY_TIME)
 	if _conga_at.has(r):
 		for lap in 2:
@@ -1023,10 +1026,11 @@ func _enter_rise(r: int, t: float) -> float:
 		since = t - _grow_at
 	return ENTER_RISE * (1.0 - Motion.back_out(clampf(since / Motion.ENTER_POP, 0.0, 1.0)))
 
-## The sun rim round the bed the next letter goes into, gliding there from
-## the bed it was round over CARET_GLIDE.
+## The sun rim round the bed the next letter goes into -- the next empty
+## one, or whichever the player tapped -- gliding there from the bed it was
+## round over CARET_GLIDE.
 func _caret(b, r: int, t: float, cell: float, alpha: float, shake: float, rise: float) -> void:
-	var to: int = state.typed.length()
+	var to: int = state.cursor
 	if to >= State.LEN or alpha <= 0.0:
 		return
 	var u := 1.0 if Motion.reduce else clampf((t - _caret_at) / CARET_GLIDE, 0.0, 1.0)
@@ -1218,9 +1222,9 @@ func _draw_letters(t: float) -> void:
 				_glyph(seat + Vector2(0.0, pose.z * cell * pop), cell, state.rows[r][c],
 					Vector2(pose.x, pose.y) * pop, move.z, ink, font, fade)
 			elif r == work:
-				if c < state.typed.length():
+				if state.letter_at(c) != "":
 					var grow := Motion.pop_in_scale(t - _typed_at[c], TYPE_POP)
-					_glyph(seat, cell, state.typed[c], grow * pop, move.z, Pal.TEXT, font, fade)
+					_glyph(seat, cell, state.letter_at(c), grow * pop, move.z, Pal.TEXT, font, fade)
 				elif _gone_at[c] > 0.0 and t - _gone_at[c] < Motion.POP_OUT and not Motion.reduce:
 					if t < _gone_at[c]:
 						_glyph(seat, cell, _gone_ch[c], Vector2.ONE * pop, 0.0, Pal.TEXT, font, fade)
@@ -1561,11 +1565,15 @@ func _working_row() -> int:
 	return state.rows.size() if state.rows.size() < state.tries else -1
 
 ## A letter off the keyboard. The tile takes it with the pop and the caret
-## glides on to the next bed; the fifth letter makes the row hop, ready.
+## glides on to the next empty bed; the letter that fills the row makes it
+## hop, ready.
 func type_letter(letter: String) -> void:
-	if out_of_hearts or not state.type_letter(letter):
+	if out_of_hearts:
 		return
-	var i: int = state.typed.length() - 1
+	var was_full: bool = state.filled()
+	var i: int = state.type_letter(letter)
+	if i < 0:
+		return
 	var now := _now()
 	_typed_at[i] = now
 	_gone_at[i] = -100.0
@@ -1574,31 +1582,79 @@ func type_letter(letter: String) -> void:
 	_caret_at = now
 	_busy_for(maxf(TYPE_POP, CARET_GLIDE))
 	fx.cue("type")
-	if state.typed.length() == State.LEN:
+	if state.filled() and not was_full:
 		_ready_at = now + TYPE_POP * 0.5
 		_busy_for(TYPE_POP * 0.5 + READY_TIME + float(State.LEN - 1) * READY_STEP)
 		fx.cue("ready")
 	_refresh()
 
-## Backspace. The letter shrinks out with the quarter turn; the tile it was
-## on stays where it is and goes back to being a bed, and the caret glides
-## back to it.
+## Backspace. The letter under the caret -- or, on an empty bed, the nearest
+## one to its left -- shrinks out with the quarter turn; the tile it was on
+## stays where it is and goes back to being a bed, and the caret glides to it.
 func erase_letter() -> void:
-	var i: int = state.typed.length() - 1
-	if i < 0 or out_of_hearts:
+	if out_of_hearts:
 		return
-	var ch: String = state.typed[i]
-	if not state.erase():
+	var from: int = mini(state.cursor, State.LEN - 1)
+	var before: String = state.typed
+	var i: int = state.erase()
+	if i < 0:
 		return
+	var ch: String = before[i]
 	var now := _now()
 	_typed_at[i] = -100.0
 	_gone_at[i] = now
 	_gone_ch[i] = ch
-	_caret_from = mini(i + 1, State.LEN - 1)
+	_caret_from = from
 	_caret_at = now
 	_busy_for(maxf(Motion.POP_OUT, CARET_GLIDE))
 	fx.cue("erase")
 	_refresh()
+
+## A tap on a bed of the row in hand: the caret glides there and the next
+## letter goes into it, over whatever it holds.
+func select_cell(c: int) -> void:
+	if out_of_hearts or is_done() or _working_row() < 0:
+		return
+	var from: int = mini(state.cursor, State.LEN - 1)
+	if not state.select(c):
+		return
+	_caret_from = from
+	_caret_at = _now()
+	_busy_for(CARET_GLIDE)
+	fx.cue("type")
+	_refresh()
+
+## The bed of the row in hand under a board-local point, or -1.
+func _cell_at(local: Vector2) -> int:
+	var r := _working_row()
+	if r < 0 or not _laid_out():
+		return -1
+	var cell := _cell()
+	for c in State.LEN:
+		if Rect2(_tile_at(r, c) - Vector2.ONE * GAP * 0.5, Vector2.ONE * (cell + GAP)).has_point(local):
+			return c
+	return -1
+
+## Only the row in hand takes a tap; everywhere else the card lets it
+## through to whatever lies under.
+func _has_point(point: Vector2) -> bool:
+	return _cell_at(point) >= 0
+
+## Press and release on the same bed selects it, as Code Break's seats do.
+func _gui_input(event: InputEvent) -> void:
+	if not (event is InputEventScreenTouch or event is InputEventMouseButton):
+		return
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var c := _cell_at(event.position)
+	if event.pressed:
+		_touch_cell = c
+		accept_event()
+		return
+	if _touch_cell >= 0 and c == _touch_cell:
+		select_cell(c)
+		accept_event()
+	_touch_cell = -1
 
 ## Enter. On OK the row turns over, a tile at a time; on any refusal nothing
 ## commits, nothing counts, and the row shivers where it is while the toast
@@ -2248,7 +2304,7 @@ func _reset_row() -> void:
 	for i in n:
 		_typed_at[i] = -100.0
 		_gone_at[i] = now + float(n - 1 - i) * Motion.RESET_STAGGER * 2.0
-		_gone_ch[i] = state.typed[i]
+		_gone_ch[i] = state.letter_at(i)
 	state.reset()
 	_caret_from = mini(n, State.LEN - 1)
 	_caret_at = now

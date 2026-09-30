@@ -124,6 +124,18 @@ func _type(word: String, enter := true) -> void:
 		print("typed %s -> rows %d (was %d), delivered %d, toast '%s'" % [word, _puzzle.state.rows.size(), before,
 			_puzzle.state.delivered(), _puzzle._toast_text if _puzzle._toast > 0 else ""])
 
+## A left press or release over bed `c` of the row in hand, in window
+## coordinates.
+func _tap_cell(c: int, down: bool) -> void:
+	var local: Vector2 = _puzzle.cell_to_local(_puzzle.state.rows.size(), c)
+	var at: Vector2 = _puzzle.get_viewport().get_screen_transform() * _puzzle.get_global_transform_with_canvas() * local
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = down
+	e.position = at
+	e.global_position = at
+	Input.parse_input_event(e)
+
 ## A wrong guess the board will take: an answer-list word, not the answer,
 ## not guessed yet, keeping every clue on Hard and Insane. Prefers one that
 ## shares no letter with the answer on `miss`, or shares every letter on
@@ -163,6 +175,18 @@ func _script() -> void:
 			_at(1.6, func() -> void: _type(_wrong().substr(0, 5), false))
 			_at(2.4, _shot)
 			_end = 2.6
+		"select":
+			# A real tap on the fifth bed of the row in hand, then a letter:
+			# it lands there and the caret goes back to the first empty bed.
+			_at(1.2, func() -> void: _type("pla", false))
+			_at(1.5, _tap_cell.bind(4, true))
+			_at(1.55, _tap_cell.bind(4, false))
+			_at(2.1, _shot.bind("_chosen"))
+			_at(2.2, func() -> void: _puzzle.type_letter("s"))
+			_at(2.8, func() -> void:
+				print("typed '%s' cursor %d" % [_puzzle.state.typed, _puzzle.state.cursor])
+				_shot("_typed"))
+			_end = 3.0
 		"refuse":
 			_at(1.0, func() -> void: _type("zzzqq"))
 			_at(1.25, _shot.bind("_notword"))

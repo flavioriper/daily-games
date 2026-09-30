@@ -54,7 +54,16 @@ var answer := ""
 var written := ""
 var rows: Array[String] = []
 var marks: Array = []
-var typed := ""
+## The row in hand. A cell the player skipped past by tapping another holds
+## a space; trailing blanks are trimmed, so a row typed left to right is
+## just its letters and an empty row is "". Setting it moves the cursor to
+## the first free cell.
+var typed := "":
+	set(v):
+		typed = v.rstrip(" ")
+		cursor = _first_free(0)
+## The cell the next letter goes into; LEN when the row is full.
+var cursor := 0
 var given: Array[int] = []
 var hints_left := HINTS
 ## True on Insane, where no hint is given at all (capabilities() reads it).
@@ -205,27 +214,73 @@ static func mark_guess(guess: String, word: String) -> Array[int]:
 			tally[guess[i]] = n - 1
 	return out
 
-func type_letter(letter: String) -> bool:
-	if is_solved() or is_over() or typed.length() >= LEN:
+## The letter in cell `c` of the row in hand, or "" when it is empty.
+func letter_at(c: int) -> String:
+	if c < 0 or c >= typed.length() or typed[c] == " ":
+		return ""
+	return typed[c]
+
+## Every cell of the row in hand holds a letter.
+func filled() -> bool:
+	return typed.length() == LEN and not typed.contains(" ")
+
+## The first empty cell at or after `from`, wrapping round; LEN when none.
+func _first_free(from: int) -> int:
+	for k in LEN:
+		var c := (from + k) % LEN
+		if c >= typed.length() or typed[c] == " ":
+			return c
+	return LEN
+
+func _put(c: int, ch: String) -> void:
+	var cells := typed.rpad(LEN)
+	cells = cells.substr(0, c) + ch + cells.substr(c + 1)
+	typed = cells
+
+## The player tapped cell `c` of the row in hand: the next letter goes there.
+func select(c: int) -> bool:
+	if is_solved() or is_over() or c < 0 or c >= LEN or c == cursor:
 		return false
-	if letter.length() != 1:
-		return false
-	var lower := letter.to_lower()
-	if not Locale.alphabet().contains(lower):
-		return false
-	typed += lower
+	cursor = c
 	return true
 
-func erase() -> bool:
-	if typed.is_empty():
-		return false
-	typed = typed.substr(0, typed.length() - 1)
-	return true
+## Writes a letter into the cursor's cell (over whatever it held) and moves
+## the cursor on to the next empty cell. Returns the cell written, or -1.
+func type_letter(letter: String) -> int:
+	if is_solved() or is_over() or cursor >= LEN:
+		return -1
+	if letter.length() != 1:
+		return -1
+	var lower := letter.to_lower()
+	if not Locale.alphabet().contains(lower):
+		return -1
+	var at := cursor
+	_put(at, lower)
+	cursor = _first_free(at + 1)
+	return at
+
+## Backspace: clears the cursor's cell when it holds a letter, or else the
+## nearest letter to its left, and the cursor lands on the cleared cell.
+## Returns the cell cleared, or -1.
+func erase() -> int:
+	var at := -1
+	if letter_at(cursor) != "":
+		at = cursor
+	else:
+		for c in range(mini(cursor, LEN) - 1, -1, -1):
+			if letter_at(c) != "":
+				at = c
+				break
+	if at < 0:
+		return -1
+	_put(at, " ")
+	cursor = at
+	return at
 
 func commit() -> int:
 	if is_solved() or is_over():
 		return SHORT
-	if typed.length() < LEN:
+	if not filled():
 		return SHORT
 	if rows.has(typed):
 		return REPEAT

@@ -80,6 +80,8 @@ const POUCH_SMALL := 0.74
 ## history reads by colour at a glance. It shows the guess, never the score.
 const SEAT_TINT := 0.14
 const SEAT_RIM := 0.45
+## The chosen seat's rim, all round, in the accent.
+const TARGET_RIM := 5
 ## A row wears faces only once it is more than this big; below it the
 ## friends are silhouettes, because 62 units is 22 pixels on a phone.
 const FACES_ABOVE := 0.35
@@ -262,6 +264,9 @@ var _row_tw: Array = []       # [g]
 var _flash_tw: Dictionary = {}  # g * 16 + s -> a socket's flash
 var _press_tw: Tween
 var _touch_seat := -1
+## The empty seat of the active row the player tapped, which the next chip
+## fills instead of the first free one; -1 for none.
+var _target := -1
 var _sparks: Control
 var _slide_tw: Tween
 var _entrance: Array = []
@@ -673,7 +678,12 @@ func _paint_sockets(g: int) -> void:
 		var v: int = int(face.get_meta("friend")) if filled else -1
 		var sb: StyleBoxFlat = _socket_sb[g][s]
 		sb.bg_color = _socket_fill(v)
-		if active and state.locked[s]:
+		var chosen := active and s == _target and not filled
+		sb.set_border_width_all(TARGET_RIM if chosen else 0)
+		sb.border_width_bottom = TARGET_RIM if chosen else 5
+		if chosen:
+			sb.border_color = Pal.ACCENT
+		elif active and state.locked[s]:
 			sb.border_color = Pal.SUN
 		elif filled:
 			sb.border_color = Color(Friends.colour(v), SEAT_RIM)
@@ -694,13 +704,15 @@ func _socket_fill(friend: int) -> Color:
 
 # --- the moves ---
 
-## A palette chip: the friend runs from it into the first free seat along a
-## low arc. With the row full the seated friends nudge and nothing is placed.
+## A palette chip: the friend runs from it along a low arc into the seat the
+## player tapped, or else the first free seat. With the row full the seated
+## friends nudge and nothing is placed.
 func pick(i: int) -> bool:
 	if _busy or not state.open():
 		return false
 	var g := state.active()
-	var slot := state.place(i)
+	var slot := state.place(i, _target)
+	_target = -1
 	if slot < 0:
 		for s in length:
 			if _face[g][s] != null and not Motion.running(_seat_tw[g][s]):
@@ -932,6 +944,7 @@ func check() -> int:
 		fx.cue("check")
 		return -1
 	var best_before := _best_exact
+	_target = -1
 	var m: Dictionary = state.commit()
 	if m.is_empty():
 		return -1
@@ -1555,6 +1568,7 @@ func can_reset() -> bool:
 func reset_board() -> void:
 	if not can_reset():
 		return
+	_target = -1
 	if state.keeps_rows:
 		_reset_row()
 		return
@@ -1949,8 +1963,17 @@ func _gui_input(event: InputEvent) -> void:
 		_press_tw = Motion.press(_seat[g][was], false)
 	if _busy or not state.open():
 		return
-	if _seat_at(event.position) == was:
+	if _seat_at(event.position) != was:
+		return
+	# A seated friend goes back and leaves the seat chosen; an empty seat is
+	# chosen, or let go when it already was.
+	if state.row[was] != -1:
 		_send_back(was)
+		if state.row[was] == -1:
+			_target = was
+	else:
+		_target = -1 if _target == was else was
+	_paint_sockets(g)
 
 ## The active row's seat under a board-local point, or -1.
 func _seat_at(local: Vector2) -> int:
