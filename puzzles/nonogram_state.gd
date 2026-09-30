@@ -20,15 +20,20 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/nonogram_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 const BLANK := 0
 const FILL := 1
 const MARK := 2
 const HINTS := 3
-## The ladder, the island's exactly. Nine is the island's cap -- a run of ten
-## has no stone face to sit on -- and this screen keeps it so the two boards
-## play the same game; widening it is a decision for after the verdict.
-## Insane's provisional band, replaced by the bank in batch 2.
+## Hints a board gets per band, and hearts: Hard and Insane can be failed
+## (docs/superpowers/specs/2026-09-30-nonogram-polish-design.md, section 1).
+const HINTS_BY_BAND := [3, 3, 3, 1]
+const HEARTS := [0, 0, 3, 1]
+## The square each band falls back to when its drawn shape (Gen.SHAPES)
+## will not line-solve. Insane is read from the bank
+## (content/insane/nonogram.json, tools/insane/nonogram_ladder.gd); 10 is its
+## live fallback, with nothing tumbled.
 const SIZES := [5, 7, 9, 10]
 
 ## A line's state, which is what its clue numbers wear.
@@ -36,6 +41,11 @@ const LINE_IDLE := 0
 const LINE_OK := 1
 const LINE_OVER := 2
 
+var band := 0
+## Leaf Fall (Insane): line index, rows then columns -> true when the wind
+## has tumbled its numbers and they may come in any order. All false on the
+## other bands.
+var tumbled: Array = []
 var w: int = 5
 var h: int = 5
 var bitmap: Array = []           # [y][x] -> 1 filled, 0 not: the picture
@@ -55,11 +65,18 @@ var locked: Dictionary = {}      # Vector2i -> true, a tile a hint grouted in
 ## One entry per stroke, newest last: [{"cell": Vector2i, "prev": int}].
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var n: int = SIZES[clampi(difficulty, 0, SIZES.size() - 1)]
-	w = n
-	h = n
-	var out: Dictionary = Gen.generate(rng, w, h)
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, SIZES.size() - 1)
+	var out: Dictionary = {}
+	if band == 3:
+		out = Gen.from_bank(InsaneBank.pick("nonogram", bank_step))
+	if out.is_empty():
+		var shape := Gen.shape_for(rng, band)
+		out = Gen.generate(rng, shape.x, shape.y)
+	if not bool(out.get("ok", false)):
+		out = Gen.generate(rng, SIZES[band], SIZES[band])
+	w = int(out.w)
+	h = int(out.h)
 	bitmap = out.bitmap
 	row_clues = out.rows
 	col_clues = out.cols
@@ -69,6 +86,11 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 			target += int(bitmap[y][x])
 	gw = 1
 	gh = 1
+	tumbled = out.get("tumbled", [])
+	if tumbled.size() != w + h:
+		tumbled = []
+		for i in w + h:
+			tumbled.append(false)
 	for clue in row_clues:
 		gw = maxi(gw, (clue as Array).size())
 	for clue in col_clues:
@@ -103,8 +125,8 @@ func col_line(x: int) -> Array:
 ## more filled cells than the clue can account for. Nothing here ever points
 ## at one cell -- the lines do the talking, and that is the island's decision
 ## kept unchanged.
-static func line_state(line: Array, clue: Array) -> int:
-	if Gen.clue_for(line) == clue:
+static func line_state(line: Array, clue: Array, tumble := false) -> int:
+	if Gen.reads(line, clue, tumble):
 		return LINE_OK
 	var have := 0
 	for v in line:
@@ -115,10 +137,30 @@ static func line_state(line: Array, clue: Array) -> int:
 	return LINE_OVER if have > want else LINE_IDLE
 
 func row_state(y: int) -> int:
-	return line_state(row_line(y), row_clues[y])
+	return line_state(row_line(y), row_clues[y], row_tumbled(y))
 
 func col_state(x: int) -> int:
-	return line_state(col_line(x), col_clues[x])
+	return line_state(col_line(x), col_clues[x], col_tumbled(x))
+
+func row_tumbled(y: int) -> bool:
+	return y >= 0 and y < tumbled.size() and bool(tumbled[y])
+
+func col_tumbled(x: int) -> bool:
+	return h + x < tumbled.size() and bool(tumbled[h + x])
+
+func has_leaves() -> bool:
+	return tumbled.has(true)
+
+func leaf_count() -> int:
+	return tumbled.count(true)
+
+## Hard and Insane judge every tile as it is laid.
+func judged() -> bool:
+	return HEARTS[band] > 0
+
+## Whether the picture wants a tile on `cell`.
+func wants(cell: Vector2i) -> bool:
+	return in_grid(cell) and int(bitmap[cell.y][cell.x]) == 1
 
 func filled_count() -> int:
 	var n := 0
@@ -204,6 +246,66 @@ func _put(cell: Vector2i, to: int) -> void:
 	else:
 		marks[cell] = to
 
+## Adds `cells` -- [{"cell", "to"}] -- to the last stroke's entry, so one
+## undo takes them back with it: the pebbles a finished line lays in its
+## empty cells on Hard and Insane. Returns the cells that changed.
+func apply_more(cells: Array) -> Array:
+	if history.is_empty():
+		return apply(cells)
+	var entry: Array = history[-1]
+	var changed: Array = []
+	for c in cells:
+		var cell: Vector2i = c.cell
+		var to: int = int(c.to)
+		if mark_at(cell) == to or locked.has(cell):
+			continue
+		entry.append({"cell": cell, "prev": mark_at(cell)})
+		_put(cell, to)
+		changed.append(cell)
+	return changed
+
+## A wrong tile on Hard or Insane was taken back: the cell is shown empty
+## for good, a pebble no stroke moves, and nothing in the history may put
+## anything else there again.
+func reveal(cell: Vector2i) -> void:
+	_forget(cell)
+	marks[cell] = MARK
+	locked[cell] = true
+
+## Drops `cell` from every stroke in the history.
+func _forget(cell: Vector2i) -> void:
+	var kept: Array = []
+	for entry in history:
+		var left: Array = []
+		for e in entry:
+			if e.cell != cell:
+				left.append(e)
+		if not left.is_empty():
+			kept.append(left)
+	history = kept
+
+## The cells of row `y` (or column `x` when `y` is negative) still blank.
+func blanks_in(y: int, x: int) -> Array:
+	var out: Array = []
+	if y >= 0:
+		for i in w:
+			if mark_at(Vector2i(i, y)) == BLANK:
+				out.append(Vector2i(i, y))
+	else:
+		for i in h:
+			if mark_at(Vector2i(x, i)) == BLANK:
+				out.append(Vector2i(x, i))
+	return out
+
+## Every pebble on a cell the picture wants: what Check points at on Hard
+## and Insane, where no wrong tile ever stays down.
+func wrong_pebbles() -> Array:
+	var out: Array = []
+	for cell in marks:
+		if int(marks[cell]) == MARK and not locked.has(cell) and wants(cell):
+			out.append(cell)
+	return out
+
 ## Takes back the last stroke, however many cells it painted. Returns them.
 func undo() -> Array:
 	if history.is_empty():
@@ -230,15 +332,7 @@ func hint() -> Vector2i:
 			break
 	if target_cell.x < 0:
 		return target_cell
-	var kept: Array = []
-	for entry in history:
-		var left: Array = []
-		for e in entry:
-			if e.cell != target_cell:
-				left.append(e)
-		if not left.is_empty():
-			kept.append(left)
-	history = kept
+	_forget(target_cell)
 	marks[target_cell] = FILL
 	locked[target_cell] = true
 	return target_cell
