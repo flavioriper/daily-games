@@ -234,6 +234,9 @@ static func _test_state(t) -> void:
 		# 9.
 		var fresh := State.new()
 		fresh.start(rng, d)
+		# Turning mechanics, unjudged: on Hard a turn of a right piece is a
+		# fuse instead (RIGHT) and never turns it.
+		fresh.judged = false
 		var tag := "band=%d" % d
 		t.check(not fresh.is_solved(), "%s a fresh state is not solved" % tag)
 		t.eq(fresh.grid, fresh.deal, "%s a fresh state's grid is the deal" % tag)
@@ -268,6 +271,7 @@ static func _test_state(t) -> void:
 		var solved := State.new()
 		solved.start(rng, d)
 		solved.grid = solved.sol.duplicate()
+		solved.judged = false
 		t.check(solved.is_solved(), "%s grid == sol is solved" % tag)
 		var i13 := _first_turnable(solved)
 		solved.turn(i13)
@@ -361,6 +365,7 @@ static func _test_state(t) -> void:
 		# 16.
 		var un := State.new()
 		un.start(rng, d)
+		un.judged = false
 		t.eq(un.undo(), -1, "%s undo() on an empty log returns -1" % tag)
 		var i16 := _first_turnable(un)
 		var prev16: int = un.grid[i16]

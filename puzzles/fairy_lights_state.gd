@@ -20,15 +20,47 @@ extends RefCounted
 ## reading order to its answer, pins it so it can never be turned again,
 ## counts itself and empties the undo log (Shikaku's rule) -- what it
 ## settled is not a move to take back. `reset_board()` respects the pin.
+##
+## **Hard and Insane judge one thing: a turn of a piece that is already
+## right** (`judged`, and only on a proved garden -- the rare unproved
+## fallback plays safe). Every judged garden has one answer, so a deducing
+## player never needs to touch a right piece. Such a tap changes nothing: the
+## piece is clipped for good (`clipped`), nothing goes in the undo log, no
+## turn is counted, and `turn()` says RIGHT so the board can blow a fuse and
+## take a heart. The hearts are the board's to count, off `hearts_for`.
+##
+## **Insane is Wish Tags**: some lanterns wear a tag with their distance
+## along the wire from the post (`tags`), dealt from the bank or, when it is
+## empty or broken, a live 8x8 with every lantern tagged. Solved then also
+## asks that every tag's lantern sits at its tag's depth.
 ## Spec: docs/superpowers/specs/2026-09-20-fairy-lights-flat-design.md,
-## sections 3, 3.1 and 8.
+## sections 3, 3.1 and 8; docs/superpowers/specs/2026-09-30-fairylights-
+## polish-design.md, sections 1 and 2.
 
 const Gen = preload("res://puzzles/fairy_lights_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
-## Why a turn was turned down.
+## Per band, Easy .. Insane: the hints a garden starts with, and its hearts
+## (0 is a band that cannot be lost).
+const HINTS := [3, 3, 1, 0]
+const HEARTS := [0, 0, 3, 2]
+
+## What a turn did, or why it was turned down.
 const OK := 0
 const CROSS := 1
 const PINNED := 2
+## A judged garden: the piece was already right. Nothing changed; it is
+## clipped now, and the board blows a fuse.
+const RIGHT := 3
+## A fuse already showed this piece was right: refused for free.
+const CLIPPED := 4
+
+## What a tag reads off the wire as it stands (`tag_state`), never off the
+## answer.
+const TAG_NONE := 0   # this cell wears no tag
+const TAG_UNLIT := 1  # its lantern is not joined to the post
+const TAG_MATCH := 2  # lit, and its depth is the tag
+const TAG_OFF := 3    # lit at some other depth
 
 var n: int = 0
 var post: int = 0
@@ -36,24 +68,78 @@ var grid: PackedInt32Array = PackedInt32Array()  # what is on the board now
 var deal: PackedInt32Array = PackedInt32Array()  # the scramble, for Reset
 var sol: PackedInt32Array = PackedInt32Array()   # the generator's answer
 var pinned: PackedByteArray = PackedByteArray()  # 1 where a hint settled a cell
+## 1 where a fuse showed the piece was already right. It holds its answer
+## for good: no turn, undo or reset moves it. Try again lifts every clip
+## (`clear_clips`).
+var clipped: PackedByteArray = PackedByteArray()
+## 0 Easy .. 3 Insane: which HINTS and HEARTS row this garden reads.
+var band: int = 0
+## Whether the garden's one answer is proved: the propagate-only solver's
+## `proved`, or a banked Wish Tags garden (the miner's proof).
+var proved: bool = false
+## Whether a turn of a right piece is judged (RIGHT): Hard and Insane, on a
+## proved garden only.
+var judged: bool = false
+## Whether this Insane garden came off the bank rather than the live fallback.
+var banked: bool = false
+## Wish Tags only: lantern cell -> the depth written on its tag. Empty on
+## every other band.
+var tags: Dictionary = {}
 var turns: int = 0
 var hints: int = 0
 ## Newest last: the cell a tap turned. One undo, one entry.
 var history: PackedInt32Array = PackedInt32Array()
 
-func start(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var out: Dictionary = Gen.build(rng, difficulty)
+## `bank_step` is PuzzleBase.bank_step: how many times New has been pressed
+## since the board opened, which walks Insane through its bank.
+func start(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, Gen.SIZES.size() - 1)
+	var out: Dictionary = {}
+	banked = false
+	if band == 3:
+		# Wish Tags is dealt from the bank: stripping tags down to the few
+		# the proof needs runs the tag solver dozens of times a garden, and
+		# the miner keeps the gardens that needed the most suppositions,
+		# which a live deal cannot look for as the card opens. The phone
+		# checks the entry holds together (Gen.from_bank) and re-runs the
+		# proof, which costs a few milliseconds; an empty bank or an entry
+		# that fails either grows a live garden.
+		out = Gen.from_bank(InsaneBank.pick("fairylights", bank_step))
+		if not out.is_empty() and not bool(Gen.solve_tags(out.n, out.post, out.sol, out.tags).ok):
+			out = {}
+		if out.is_empty() and InsaneBank.size("fairylights") > 0:
+			push_warning("Fairy Lights: a banked garden did not hold together; growing a live one")
+		banked = not out.is_empty()
+	if out.is_empty():
+		out = Gen.build(rng, band)
+		# The live Insane fallback: a propagate-proved 8x8 with every lantern
+		# wearing its tag.
+		out["tags"] = Gen.all_tags(out.n, out.post, out.sol) if band == 3 else {}
 	n = out.n
 	post = out.post
 	sol = out.sol
 	deal = out.deal
+	tags = out.tags
+	proved = bool(out.proved)
+	judged = hearts_for(band) > 0 and proved
 	grid = deal.duplicate()
 	pinned = PackedByteArray()
 	pinned.resize(n * n)
 	pinned.fill(0)
+	clipped = PackedByteArray()
+	clipped.resize(n * n)
+	clipped.fill(0)
 	history = PackedInt32Array()
 	turns = 0
 	hints = 0
+
+## The hints a band starts with.
+static func hints_for(b: int) -> int:
+	return int(HINTS[clampi(b, 0, HINTS.size() - 1)])
+
+## The hearts a band starts with; 0 is a band that cannot be lost.
+static func hearts_for(b: int) -> int:
+	return int(HEARTS[clampi(b, 0, HEARTS.size() - 1)])
 
 # --- reading the board. None of this is cached. ---
 
@@ -119,8 +205,9 @@ func depths() -> PackedInt32Array:
 			queue.append(j)
 	return out
 
-## Every stub meets a stub, and every cell has a depth. Never a comparison
-## against `sol` -- see the file header.
+## Every stub meets a stub, every cell has a depth, and on Wish Tags every
+## tag's lantern sits at its tag's depth. Never a comparison against `sol` --
+## see the file header.
 func is_solved() -> bool:
 	var cells := n * n
 	for i in cells:
@@ -130,7 +217,27 @@ func is_solved() -> bool:
 	for i in cells:
 		if d[i] == -1:
 			return false
+	for i in tags:
+		if d[i] != int(tags[i]):
+			return false
 	return true
+
+## What the tag on cell `i` reads off the wire as it stands: TAG_NONE for a
+## cell with no tag, TAG_UNLIT when its lantern is not joined to the post,
+## TAG_MATCH when it is and its depth is the tag, TAG_OFF at another depth.
+## Pass `d` (a `depths()` taken this frame) to read many tags off one walk.
+func tag_state(i: int, d := PackedInt32Array()) -> int:
+	if not tags.has(i):
+		return TAG_NONE
+	if d.size() != n * n:
+		d = depths()
+	if d[i] < 0:
+		return TAG_UNLIT
+	return TAG_MATCH if d[i] == int(tags[i]) else TAG_OFF
+
+## Whether this garden is Wish Tags (tags to draw and to read).
+func wish_tags() -> bool:
+	return not tags.is_empty()
 
 ## The degree-1 cells -- a paper lantern on a stub -- in reading order. A
 ## cell's degree does not change under rotation, so this reads `sol` rather
@@ -145,13 +252,27 @@ func lanterns() -> PackedInt32Array:
 # --- the moves ---
 
 ## One quarter turn clockwise. A cross has nowhere else to go (CROSS, no
-## change); a pinned cell is a given (PINNED, no change).
+## change); a pinned cell is a given (PINNED, no change); a clipped cell was
+## shown right by a fuse (CLIPPED, no change). On a judged garden a piece
+## that is already right is not turned at all: it is clipped for good, every
+## earlier turn of it leaves the undo log (so no undo can take it off its
+## answer), no turn is counted, and the answer is RIGHT -- the board's fuse.
 func turn(i: int) -> int:
 	if pinned[i] == 1:
 		return PINNED
 	var m: int = grid[i]
 	if m == Gen.N | Gen.E | Gen.S | Gen.W:
 		return CROSS
+	if i < clipped.size() and clipped[i] == 1:
+		return CLIPPED
+	if judged and m == sol[i]:
+		clipped[i] = 1
+		var kept := PackedInt32Array()
+		for h in history:
+			if h != i:
+				kept.append(h)
+		history = kept
+		return RIGHT
 	grid[i] = Gen.cw(m)
 	history.append(i)
 	turns += 1
@@ -168,7 +289,7 @@ func undo() -> int:
 	return i
 
 ## The first unsolved cell in reading order, settled to its answer and
-## pinned. Empties the undo log: what a hint gives is not a move to take
+## pinned. A clipped cell is always on its answer, so it is never the one. Empties the undo log: what a hint gives is not a move to take
 ## back. The cell, or -1 when the board is already solved.
 func hint() -> int:
 	for i in n * n:
@@ -181,13 +302,23 @@ func hint() -> int:
 		return i
 	return -1
 
-## Every unpinned cell back to the scramble it was dealt. A pinned cell is a
-## given and stays exactly where the hint left it.
+## Every unpinned, unclipped cell back to the scramble it was dealt. A
+## pinned cell is a given and stays exactly where the hint left it; a
+## clipped one keeps its answer, since it can no longer be turned.
 func reset_board() -> void:
 	for i in n * n:
-		if pinned[i] == 0:
+		if pinned[i] == 0 and clipped[i] == 0:
 			grid[i] = deal[i]
 	history = PackedInt32Array()
+
+## Lifts every clip, for Try again. Moves nothing: call it **before**
+## `reset_board()` so the once-clipped pieces go back to the deal too.
+func clear_clips() -> void:
+	clipped.fill(0)
+
+## How many pieces a fuse has clipped.
+func clips() -> int:
+	return clipped.count(1)
 
 ## The bit position (0..3) of a side mask (Gen.N/E/S/W), matching Gen.DR/DC.
 static func _dir(side: int) -> int:
