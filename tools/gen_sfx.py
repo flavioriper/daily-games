@@ -685,7 +685,7 @@ SETS = {
         "whoosh":   ("a quick soft airy whoosh of a paper plane passing close by, gentle and warm, short", 0.6, -12, BREEZE),
         "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, BREEZE),
         # Crashes and hearts (Hard and Insane).
-        "crash":    ("the soft paper nose of a small paper dart tapping into a feather pillow, a tiny muffled papery pat, gentle and cute, never an impact, very short", 0.5, -13, COZY),
+        "crash":    ("a small paper dart bumping its folded nose into a soft cushion and crumpling a little, a muffled papery pat followed by a soft crinkle of paper, gentle and cute, never an impact", 0.8, -13, COZY),
         "flutter":  ("a folded paper plane fluttering gently down, soft papery wobbles and a quiet little rustle settling, hushed", 0.9, -14, COZY),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, BREEZE),
         "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, paper planes resting for the day, calm and kind, maybe tomorrow", 1.6, -14, BREEZE),
