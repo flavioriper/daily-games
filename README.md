@@ -73,7 +73,7 @@ rather than the live project (`daily-games-420bf`):
 | Shikaku | drag rect | exact cover count to 2 |
 | Tents | tap-cycle | matching search count to 2 |
 | Light Up | tap-cycle | backtracking count to 2 |
-| One Line | drag path | degree parity, no search at all |
+| One Line | drag path | degree parity, no search at all; Insane (Sunny Spells) plants the sun on a real walk and a pruned search judges every step |
 | Nonogram | tap-cycle | line-solvable implies unique |
 
 A daily puzzle that turns out to have two answers is the worst bug this product

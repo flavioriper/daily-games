@@ -21,21 +21,40 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-18-oneline-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/oneline_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 const HINTS := 3
+## Hints a board gets per band, and hearts: Hard and Insane can be failed
+## (docs/superpowers/specs/2026-09-30-oneline-polish-design.md, section 1).
+const HINTS_BY_BAND := [3, 3, 3, 1]
+const HEARTS := [0, 0, 3, 1]
 ## The lattice and its fill per difficulty: the island's own ladder
 ## (puzzles/oneline3d.gd). Measured over 200 generated boards a step: easy is
 ## about 11.5 lines over 8.4 posts, 4.8 of them diagonal; medium 15.4 over
 ## 10.9; hard 20 over 13.8, 9.3 diagonal.
-## Insane's provisional band, replaced by the bank in batch 2.
-const DIMS := [[3, 3, 0.55], [4, 3, 0.5], [4, 4, 0.45], [5, 4, 0.45]]
+## Insane is Sunny Spells on a 5x5 lattice, read from the bank
+## (content/insane/oneline.json, tools/insane/oneline_ladder.gd); this last
+## row and SUN_ODDS are its live fallback when the bank is empty.
+const DIMS := [[3, 3, 0.55], [4, 3, 0.5], [4, 4, 0.45], [5, 5, 0.5]]
+const SUN_ODDS := 0.7
 
 ## What step() did, so the board knows whether to lay a plank, dip the post or
 ## say nothing at all.
-enum { STEP_NONE, STEP_OK, STEP_WALKED }
+## STEP_SUN is Sunny Spells refusing a second sunny line in a row.
+enum { STEP_NONE, STEP_OK, STEP_WALKED, STEP_SUN }
 
+var band := 0
 var cols := 3
 var rows := 3
+## Insane only: edge index -> true when the line is sun-baked. Empty on the
+## other bands, where no line is.
+var sunny: Array = []
+## A walk the figure was planted on (edge indices, from `answer_start`):
+## what restoring a finished Insane board walks, since the plain Eulerian
+## trail need not keep the sun apart.
+var answer: Array = []
+var answer_start := -1
+var _sun: Gen.Sun
 var edges: Array = []          # [Vector2i], one line each
 var nodes: Array = []          # the lattice indices the figure actually uses
 ## The odd-degree posts. Empty means the stroke may begin anywhere; otherwise
@@ -54,14 +73,30 @@ var current := -1
 var walk: Array[int] = []      # the posts in the order they were stood on
 var trail: Array[int] = []     # the edge indices in the order they were walked
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var d: Array = DIMS[clampi(difficulty, 0, DIMS.size() - 1)]
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, DIMS.size() - 1)
+	var d: Array = DIMS[band]
 	cols = d[0]
 	rows = d[1]
-	var out: Dictionary = Gen.generate(rng, cols, rows, d[2])
+	var out: Dictionary = {}
+	if band == 3:
+		out = Gen.from_bank(InsaneBank.pick("oneline", bank_step))
+		if not out.is_empty():
+			cols = int(out.cols)
+			rows = int(out.rows)
+		else:
+			out = Gen.generate_sun(rng, cols, rows, d[2], SUN_ODDS)
+		if out.is_empty():
+			out = Gen.generate(rng, cols, rows, d[2])
+	else:
+		out = Gen.generate(rng, cols, rows, d[2])
 	edges = out.edges
 	nodes = out.nodes
 	starts = out.starts
+	sunny = out.get("sunny", [])
+	answer = out.get("trail", [])
+	answer_start = int(out.get("start", -1))
+	_sun = Gen.Sun.new(edges, sunny) if not sunny.is_empty() else null
 	adj = {}
 	for i in edges.size():
 		var e: Vector2i = edges[i]
@@ -83,8 +118,12 @@ func may_start(n: int) -> bool:
 	return starts.is_empty() or starts.has(n)
 
 ## The post a hint begins at: the first odd one, which is also where
-## Gen.find_path starts its trail.
+## Gen.find_path starts its trail. On Sunny Spells, one a walk finishes from.
 func start_post() -> int:
+	if has_sun():
+		for n in ([answer_start] if answer_start >= 0 else []) + nodes:
+			if may_start(n) and _sun.can_finish(0, n, false):
+				return n
 	if not starts.is_empty():
 		return int(starts[0])
 	return int(nodes[0]) if not nodes.is_empty() else -1
@@ -95,6 +134,61 @@ func edge_between(a: int, b: int) -> int:
 		if int(q.to) == b:
 			return int(q.i)
 	return -1
+
+func has_sun() -> bool:
+	return not sunny.is_empty()
+
+func is_sunny(i: int) -> bool:
+	return i >= 0 and i < sunny.size() and bool(sunny[i])
+
+## Whether the last line walked was sunny: the snail is dry, and a sunny
+## line out of here is refused until she has crossed a dewy one.
+func dry() -> bool:
+	return not trail.is_empty() and is_sunny(trail[-1])
+
+## Whether the line from the current post to `n` would be taken: there is
+## one, it is not walked yet, and it is not a second sunny line in a row.
+func may_step(n: int) -> bool:
+	var e := edge_between(current, n)
+	return current >= 0 and e >= 0 and not walked.has(e) and not (dry() and is_sunny(e))
+
+## Whether every line left can still be walked from where the snail stands:
+## Fleury's question on the plain bands, the Sunny Spells search on Insane.
+func can_finish() -> bool:
+	if current < 0:
+		return true
+	if has_sun():
+		return _sun.can_finish(_mask(), current, dry())
+	return walkable_from(remaining(), current)
+
+## Whether the step to `n` (one may_step takes) leaves the figure finishable:
+## asked before the step, which is how Hard and Insane judge it.
+func step_leaves_finish(n: int) -> bool:
+	var e := edge_between(current, n)
+	if e < 0 or walked.has(e):
+		return false
+	if has_sun():
+		return _sun.can_finish(_mask() | (1 << e), n, is_sunny(e))
+	var rest := remaining()
+	rest.erase(e)
+	return walkable_from(rest, n)
+
+func _mask() -> int:
+	var m := 0
+	for i in walked:
+		m |= 1 << int(i)
+	return m
+
+## The posts of a finished walk, for restoring a solved day: the planted
+## walk on Sunny Spells, Gen.find_path otherwise.
+func solution_path() -> Array:
+	if has_sun() and answer.size() == edges.size() and answer_start >= 0:
+		var path: Array = [answer_start]
+		for i in answer:
+			var e: Vector2i = edges[i]
+			path.append(e.y if e.x == path[-1] else e.x)
+		return path
+	return Gen.find_path(edges, nodes)
 
 ## Every edge index still unwalked.
 func remaining() -> Array[int]:
@@ -189,12 +283,9 @@ func safe_step() -> int:
 	if current < 0:
 		return -1
 	for q in adj.get(current, []):
-		var i := int(q.i)
-		if walked.has(i):
+		if not may_step(int(q.to)):
 			continue
-		var rest := remaining()
-		rest.erase(i)
-		if walkable_from(rest, int(q.to)):
+		if step_leaves_finish(int(q.to)):
 			return int(q.to)
 	return -1
 
@@ -205,7 +296,14 @@ func is_solved() -> bool:
 	return not edges.is_empty() and walked.size() == edges.size()
 
 func share_glyphs() -> String:
-	return tr("OL_SHARE") % edges.size()
+	var out: String = tr("OL_SHARE") % edges.size()
+	if has_sun():
+		var n := 0
+		for f in sunny:
+			if f:
+				n += 1
+		out += " · ☀️ %d" % n
+	return out
 
 # --- moves ---
 
@@ -229,6 +327,8 @@ func step(n: int) -> int:
 		return STEP_NONE
 	if walked.has(e):
 		return STEP_WALKED
+	if dry() and is_sunny(e):
+		return STEP_SUN
 	walked[e] = true
 	lay_from[e] = current
 	trail.append(e)
