@@ -47,6 +47,9 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
+## A ruled-out cell takes Queens' X (2026-09-30, the user's call): the pebble
+## read as a dot rather than as the player's "not here".
+const CrossMark = preload("res://ui/faces/cross_mark.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
@@ -789,7 +792,7 @@ func _draw_pebble(b, cell: Vector2i, t: float) -> void:
 	var grow := _grow(cell, t)
 	if grow.x <= 0.0:
 		return
-	Mosaic.pebble(b, cell_to_local(cell.y, cell.x) + _offset(cell, t), _cell, grow, alpha)
+	CrossMark.draw(b, cell_to_local(cell.y, cell.x) + _offset(cell, t), _cell, grow, alpha)
 
 ## The pieces Reset, an undo or a fresh stroke took away: each shrinks to
 ## nothing with the quarter turn where it lay, after the state has forgotten
@@ -806,7 +809,7 @@ func _build_leaving(b, t: float) -> void:
 		var at := cell_to_local(cell.y, cell.x)
 		var angle := 0.0 if Motion.reduce else PI * 0.5 * clampf(elapsed / Motion.POP_OUT, 0.0, 1.0)
 		if int(g.kind) == State.MARK:
-			Mosaic.pebble(b, at, _cell, Vector2.ONE * grow, 1.0, angle)
+			CrossMark.draw(b, at, _cell, Vector2.ONE * grow, 1.0, angle)
 		else:
 			Mosaic.tile(b, at, _cell, Vector2.ONE * grow, bool(g.held), 0.0, 1.0, angle, 0.0, _tone(cell))
 	_leaving = keep
@@ -1240,7 +1243,7 @@ func _commit(before: Dictionary, changed: Array, t: float, per: float, tapped: V
 		var mark := state.mark_at(tapped)
 		if mark != State.BLANK:
 			fx.puff(cell_to_local(tapped.y, tapped.x),
-				Pal.MOSAIC if mark == State.FILL else Pal.SOCKET_PEBBLE)
+				Pal.MOSAIC if mark == State.FILL else Pal.BARK)
 			_nudge_around(tapped, t)
 	fx.cue("place")
 	_speak()
@@ -1893,7 +1896,7 @@ func _eject(cell: Vector2i) -> void:
 	fx.cue("slip")
 	if before.get(cell, State.BLANK) != State.MARK and not Motion.reduce:
 		_after(Motion.POP_OUT * 0.6 + Motion.DROP_TIME * 0.6,
-			fx.puff.bind(cell_to_local(cell.y, cell.x), Pal.SOCKET_PEBBLE, 4))
+			fx.puff.bind(cell_to_local(cell.y, cell.x), Pal.BARK, 4))
 	moved.emit()
 	_refresh()
 	if out_of_hearts:

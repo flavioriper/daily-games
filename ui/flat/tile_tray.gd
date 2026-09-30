@@ -66,7 +66,7 @@ const MOSAIC := {
 	"values": [NonogramState.FILL, NonogramState.MARK],
 	"labels": ["TRAY_TILE", "TRAY_CROSS"],
 	"names": ["TileChip", "CrossChip"],
-	"glyphs": ["tile", "pebble"],
+	"glyphs": ["tile", "cross"],
 }
 const QUEENS := {
 	"values": [QueensState.QUEEN, QueensState.CROSS],
