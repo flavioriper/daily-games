@@ -19,30 +19,50 @@ extends RefCounted
 ## comparison with the stored answer -- clues exact, no two lamps in sight of
 ## each other, every stone lit -- exactly as the island tests it.
 ## Spec: docs/superpowers/specs/2026-09-18-lightup-flat-design.md, section 3.
+##
+## Insane is Cat Naps (2026-09-30-lightup-polish-design.md, section 2): cats
+## sit on open stones (`Gen.CAT + n` in the grid), light crosses them, no lamp
+## or chip goes on them, they need no light, and each wants exactly n lamps
+## shining on her. `is_white` is still "a lamp may go here"; `lets_light` is
+## "a beam crosses here", which a cat's stone also does.
 
 const Gen = preload("res://puzzles/lightup_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## What is on an open stone. A bare stone is simply absent from `marks`.
 const BLANK := 0
 const LAMP := 1
 const CHIP := 2
 const HINTS := 3
+## Hints per difficulty: Insane has one.
+const HINTS_BY_BAND := [3, 3, 3, 1]
+## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
+## Insane (Tents' and Shikaku's counts). A heart goes on a lamp the board
+## cannot fault (`lamp_fair`) that is not the answer's.
+const HEARTS := [0, 0, 3, 1]
 ## The four ways out of a cell, and the ladder: width, height and how much of
 ## the court is sown with blocks. The island's own numbers.
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
-## Insane's row is the fallback: 9x9 missed the 194 ms gate (worst 978 ms
-## over 40 seeds on this Mac), replaced by the bank in batch 2.
+## Insane's row is only the fallback when the Cat Naps bank
+## (content/insane/lightup.json) is empty: live 9x9 missed the 194 ms gate
+## (worst 978 ms over 40 seeds on this Mac).
 const SIZES := [[5, 5, 0.24], [6, 6, 0.22], [7, 7, 0.20], [8, 8, 0.18]]
 
 ## What a numbered block wears.
 const BLOCK_IDLE := 0
 const BLOCK_OK := 1
 const BLOCK_OVER := 2
+## A cat wears the same three: short of her number, met, or over it. A
+## napping cat (0) is met while dark and over once lit.
+const CAT_IDLE := BLOCK_IDLE
+const CAT_OK := BLOCK_OK
+const CAT_OVER := BLOCK_OVER
 
 var w: int = 5
 var h: int = 5
 ## [y][x] -> Gen.WALL (a block with nothing on its crown), Gen.WHITE (an open
-## stone) or 0..4 (a block carrying that number).
+## stone), 0..4 (a block carrying that number) or Gen.CAT + n (a cat wanting
+## n lamps, Insane only).
 var grid: Array = []
 var solution: Array = []          # [Vector2i], the answer's lamps
 var marks: Dictionary = {}        # Vector2i -> LAMP or CHIP
@@ -53,16 +73,34 @@ var locked: Dictionary = {}       # Vector2i -> true, a lamp a hint lit
 ## drawing.
 var lit: Dictionary = {}
 var clash: Dictionary = {}        # Vector2i -> true, a lamp that can see another
+## Vector2i (a cat's stone) -> how many lamps shine on her, 0 to 2. Every cat
+## has an entry.
+var cat_seen: Dictionary = {}
+var cats: Array = []              # [Vector2i], every cat's stone
+## The difficulty the board was built for, 0 to 3.
+var band := 0
 ## One entry per gesture, newest last: [{"cell": Vector2i, "prev": int}].
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var step: Array = SIZES[clampi(difficulty, 0, SIZES.size() - 1)]
-	w = int(step[0])
-	h = int(step[1])
-	var out: Dictionary = Gen.generate(rng, w, h, float(step[2]))
+## Insane reads the Cat Naps bank, stepped by `bank_step` (the host's New
+## count), and falls back to its live band with no cats when the bank is empty.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, SIZES.size() - 1)
+	var out: Dictionary = {}
+	if band == 3:
+		out = Gen.from_bank(InsaneBank.pick("lightup", bank_step))
+	if out.is_empty():
+		var step: Array = SIZES[band]
+		out = Gen.generate(rng, int(step[0]), int(step[1]), float(step[2]))
+	w = int(out.w)
+	h = int(out.h)
 	grid = out.grid
 	solution = out.bulbs
+	cats = []
+	for y in h:
+		for x in w:
+			if Gen.is_cat(int(grid[y][x])):
+				cats.append(Vector2i(x, y))
 	marks = {}
 	locked = {}
 	history = []
@@ -73,14 +111,29 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 func in_field(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < w and cell.y < h
 
-## An open stone: somewhere a lamp or a chip may go.
+## An open stone: somewhere a lamp or a chip may go. Never a cat's.
 func is_white(cell: Vector2i) -> bool:
 	return in_field(cell) and int(grid[cell.y][cell.x]) == Gen.WHITE
+
+## A stone a beam crosses: an open one or a cat's.
+func lets_light(cell: Vector2i) -> bool:
+	return in_field(cell) and Gen.passes(int(grid[cell.y][cell.x]))
+
+func is_cat(cell: Vector2i) -> bool:
+	return in_field(cell) and Gen.is_cat(int(grid[cell.y][cell.x]))
+
+## How many lamps the cat on `cell` wants, or -1 where there is no cat.
+func cat_need(cell: Vector2i) -> int:
+	return int(grid[cell.y][cell.x]) - Gen.CAT if is_cat(cell) else -1
+
+func has_cats() -> bool:
+	return not cats.is_empty()
 
 func mark_at(cell: Vector2i) -> int:
 	return int(marks.get(cell, BLANK))
 
-## A stone nothing may be put on or taken off: a block's, or a lamp a hint lit.
+## A stone nothing may be put on or taken off: a block's, a cat's, or a lamp
+## a hint lit.
 func fixed(cell: Vector2i) -> bool:
 	return not is_white(cell) or locked.has(cell)
 
@@ -99,13 +152,17 @@ func white_cells() -> Array:
 				out.append(Vector2i(x, y))
 	return out
 
-## Fills `lit` and `clash` from the lamps that are down. The island's own
-## `_recompute`: every lamp walks its four lines until a block stops it,
-## keeping the shortest beam to each stone, and any lamp it meets on the way
-## is a clash for both of them.
+## Fills `lit`, `clash` and `cat_seen` from the lamps that are down. The
+## island's own `_recompute`: every lamp walks its four lines until a block
+## stops it (a cat does not), keeping the shortest beam to each stone, and any
+## lamp it meets on the way is a clash for both of them. A cat's stone is in
+## `lit` when a beam crosses it, and counts every lamp that does.
 func recompute() -> void:
 	lit = {}
 	clash = {}
+	cat_seen = {}
+	for c in cats:
+		cat_seen[c] = 0
 	if grid.is_empty():
 		return
 	var down: Array = lamps()
@@ -117,9 +174,11 @@ func recompute() -> void:
 		for d in DIRS:
 			var p: Vector2i = b + d
 			var n := 1
-			while is_white(p):
+			while lets_light(p):
 				if not lit.has(p) or int(lit[p]) > n:
 					lit[p] = n
+				if cat_seen.has(p):
+					cat_seen[p] = int(cat_seen[p]) + 1
 				if here.has(p):
 					clash[b] = true
 					clash[p] = true
@@ -147,7 +206,45 @@ func block_state(cell: Vector2i) -> int:
 		return BLOCK_OK
 	return BLOCK_OVER if have > need else BLOCK_IDLE
 
-## Stones no lamp reaches: the third rule, and the sprout's count.
+## A cat's state: short of her number, met, or over it.
+func cat_state(cell: Vector2i) -> int:
+	if not cat_seen.has(cell):
+		return CAT_IDLE
+	var need := cat_need(cell)
+	var have := int(cat_seen[cell])
+	if have == need:
+		return CAT_OK
+	return CAT_OVER if have > need else CAT_IDLE
+
+func over_cats() -> int:
+	var n := 0
+	for c in cats:
+		if cat_state(c) == CAT_OVER:
+			n += 1
+	return n
+
+## A lamp the board cannot fault: it sees no other lamp, pushes no numbered
+## block beside it over its number, and pushes no cat it shines on over hers.
+## On Hard and Insane such a lamp outside the answer costs a heart -- the
+## answer is unique, so it is wrong by proof.
+func lamp_fair(cell: Vector2i) -> bool:
+	if mark_at(cell) != LAMP or clash.has(cell):
+		return false
+	for d in DIRS:
+		if block_state(cell + d) == BLOCK_OVER:
+			return false
+		var p: Vector2i = cell + d
+		while lets_light(p):
+			if cat_state(p) == CAT_OVER:
+				return false
+			p += d
+	return true
+
+func is_answer(cell: Vector2i) -> bool:
+	return solution.has(cell)
+
+## Stones no lamp reaches: the third rule, and the sprout's count. A cat's
+## stone never counts; her number is her whole rule.
 func dark() -> int:
 	var n := 0
 	for cell in white_cells():
@@ -180,14 +277,18 @@ func is_solved() -> bool:
 		return false
 	if not Gen._clues_exact(grid, down, w, h):
 		return false
-	return Gen._all_lit(grid, down, w, h)
+	if not Gen._all_lit(grid, down, w, h):
+		return false
+	return not has_cats() or Gen.cats_exact(grid, down, w, h)
 
 func share_glyphs() -> String:
 	var out := ""
 	for y in h:
 		for x in w:
 			var cell := Vector2i(x, y)
-			if int(grid[y][x]) != Gen.WHITE:
+			if Gen.is_cat(int(grid[y][x])):
+				out += "🐈"
+			elif int(grid[y][x]) != Gen.WHITE:
 				out += "⬛"
 			elif mark_at(cell) == LAMP:
 				out += "💡"
