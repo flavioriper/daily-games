@@ -37,6 +37,9 @@ const HEARTS := [0, 0, 3, 1]
 ## row and SUN_ODDS are its live fallback when the bank is empty.
 const DIMS := [[3, 3, 0.55], [4, 3, 0.5], [4, 4, 0.45], [5, 5, 0.5]]
 const SUN_ODDS := 0.7
+## How far the Sunny Spells search may go judging a step before it gives the
+## player the benefit of the doubt (docs/agents/boards/oneline.md).
+const JUDGE_NODES := 3000
 
 ## What step() did, so the board knows whether to lay a plank, dip the post or
 ## say nothing at all.
@@ -163,12 +166,17 @@ func can_finish() -> bool:
 
 ## Whether the step to `n` (one may_step takes) leaves the figure finishable:
 ## asked before the step, which is how Hard and Insane judge it.
-func step_leaves_finish(n: int) -> bool:
+## `strict` is for a hint: an Insane search that runs out of JUDGE_NODES
+## counts as finishing when a heart hangs on it (an unknown must never cost
+## one, and a step must not stall the frame), but a hint searches to the end
+## and offers only a step it has proved.
+func step_leaves_finish(n: int, strict := false) -> bool:
 	var e := edge_between(current, n)
 	if e < 0 or walked.has(e):
 		return false
 	if has_sun():
-		return _sun.can_finish(_mask() | (1 << e), n, is_sunny(e))
+		var ok := _sun.can_finish(_mask() | (1 << e), n, is_sunny(e), 400000 if strict else JUDGE_NODES)
+		return ok and not (strict and _sun.spent)
 	var rest := remaining()
 	rest.erase(e)
 	return walkable_from(rest, n)
@@ -285,7 +293,7 @@ func safe_step() -> int:
 	for q in adj.get(current, []):
 		if not may_step(int(q.to)):
 			continue
-		if step_leaves_finish(int(q.to)):
+		if step_leaves_finish(int(q.to), true):
 			return int(q.to)
 	return -1
 

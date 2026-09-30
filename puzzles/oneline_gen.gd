@@ -293,10 +293,12 @@ class Sun:
 			return path
 		return []
 
+	## Whether a walk finishes from here. A search that runs out of budget
+	## says yes: an unknown must never cost the player a heart.
 	func can_finish(walked: int, at: int, dry: bool, cap := 400000) -> bool:
 		if walked == full:
 			return true
-		return not finish(walked, at, dry, cap).is_empty()
+		return not finish(walked, at, dry, cap).is_empty() or spent
 
 	func _go(walked: int, at: int, dry: bool, path: Array) -> bool:
 		if walked == full:
@@ -393,7 +395,8 @@ class Sun:
 ## {} when the lattice would not give one.
 static func generate_sun(rng: RandomNumberGenerator, cols: int, rows: int, fill: float, odds: float) -> Dictionary:
 	var out: Dictionary = generate(rng, cols, rows, fill)
-	if not out.ok:
+	# The search keeps the walked lines in one 64-bit mask.
+	if not out.ok or out.edges.size() > 60:
 		return {}
 	var starts: Array = out.starts
 	var start: int = int(starts[rng.randi_range(0, 1)]) if not starts.is_empty() \
@@ -499,7 +502,7 @@ static func from_bank(row: Dictionary) -> Dictionary:
 	for s in String(row.get("trail", "")).split(" ", false):
 		trail.append(int(s))
 	var nodes: Array = _used_nodes(edges)
-	if not has_eulerian_path(edges, nodes):
+	if edges.size() > 60 or not has_eulerian_path(edges, nodes):
 		return {}
 	return {"edges": edges, "nodes": nodes, "starts": odd_nodes(edges, nodes),
 		"sunny": sunny, "trail": trail, "start": int(row.get("start", -1)),

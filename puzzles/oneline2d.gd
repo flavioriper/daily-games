@@ -278,7 +278,6 @@ var _stamp_at := INF
 var _seal_mesh: ArrayMesh
 var _love_mesh: ArrayMesh
 var _bug_mesh: ArrayMesh
-var _petal_mesh: ArrayMesh
 var _mushroom: MushroomFace
 var _mush_tw: Tween
 var _gag_tw: Tween
@@ -503,6 +502,9 @@ func _layout() -> void:
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	_origin = Vector2(size.x * 0.5 - figure.x * 0.5,
 		_card.position.y + row + (tall - row - figure.y) * 0.5)
+	# The life's meshes are cut to the step; a new step cuts them again.
+	_love_mesh = null
+	_bug_mesh = null
 	var mush := _step * MUSH_SIZE
 	_mushroom.size = Vector2.ONE * mush
 	_mushroom.pivot_offset = _mushroom.size * 0.5
@@ -1694,6 +1696,10 @@ func _wrong_step(e: int, n: int) -> void:
 		return
 	var now := _now()
 	var land := 0.0 if Motion.reduce else LAY_TIME
+	# The finger is let go: still down on the wrong post, the next drag
+	# after the eject would take the same step again.
+	_drawing = false
+	_release_post()
 	hearts -= 1
 	_lost_ever = true
 	_break_streak()
@@ -2118,8 +2124,10 @@ func _draw_life() -> void:
 			var head := (to - at).angle() + PI * 0.5
 			_life_layer.draw_mesh(mesh, null, Transform2D(head, at))
 	if not _petals.is_empty():
-		var mesh := _petal()
-		shown.append(mesh)
+		# Every petal in one mesh, rebuilt while they fall: one draw call for
+		# the whole shower rather than one a petal.
+		var pb := Face.Builder.new()
+		var r := _step * POST_R * DAISY_R
 		for p in _petals:
 			var e: float = now - float(p.t)
 			if e <= 0.0:
@@ -2129,8 +2137,14 @@ func _draw_life() -> void:
 			var at: Vector2 = p.at + v * _step * u + Vector2(sin(e * 4.0 + float(p.phase)) * 0.12 * _step,
 				PETAL_FALL * _step * u * u)
 			var spin: float = float(p.phase) + e * float(p.spin)
-			_life_layer.draw_mesh(mesh, null, Transform2D(spin, Vector2(1.0, absf(cos(e * 5.0 + float(p.phase))) * 0.7 + 0.3), 0.0, at),
-				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.35, 0.0, 1.0)))
+			var flat := absf(cos(e * 5.0 + float(p.phase))) * 0.7 + 0.3
+			var fade := clampf((1.0 - u) / 0.35, 0.0, 1.0)
+			_oval(pb, at, r * 0.4, r * 0.2 * flat, spin, Color(Pal.PETAL_EDGE, fade))
+			_oval(pb, at, r * 0.36, r * 0.16 * flat, spin, Color(Pal.SURFACE, fade))
+		if not pb.verts.is_empty():
+			var mesh := pb.mesh()
+			shown.append(mesh)
+			_life_layer.draw_mesh(mesh, null)
 	if now >= _stamp_at:
 		_draw_stamp(now, shown)
 	_life_shown = shown
@@ -2157,16 +2171,6 @@ func _bug() -> ArrayMesh:
 		SnailFace.ladybug(b, Vector2.ZERO, r, 0.0)
 		_bug_mesh = b.mesh()
 	return _bug_mesh
-
-## A daisy petal for the party's shower, built once.
-func _petal() -> ArrayMesh:
-	if _petal_mesh == null:
-		var b := Face.Builder.new()
-		var r := _step * POST_R * DAISY_R
-		_oval(b, Vector2.ZERO, r * 0.4, r * 0.2, 0.0, Pal.PETAL_EDGE)
-		_oval(b, Vector2.ZERO, r * 0.36, r * 0.16, 0.0, Pal.SURFACE)
-		_petal_mesh = b.mesh()
-	return _petal_mesh
 
 ## After the retrace (`lead` from now): the snail puts on a party hat, every
 ## daisy lets its petals go in a shower, confetti sweeps the figure twice,
