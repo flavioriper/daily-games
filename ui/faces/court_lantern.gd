@@ -34,6 +34,15 @@ const PAPER := 0
 ## on the glow layer, so a flickering lamp rebuilds no mesh.
 const FLICKER := 0.05
 const FLICKER_PERIOD := 2.2
+## A wrong lamp guttering out (Hard and Insane, the polish spec's section 1):
+## at `gutter` 1 its halo has shrunk by GUTTER_SHRINK and sputtered
+## GUTTER_SPUTTERS times on the way, by up to GUTTER_SPUTTER of its size. The
+## body's warmth goes with the floor it stands on (the board draws the light
+## back along the beam), so this is only the flame: a transform on the glow
+## layer, which rebuilds nothing.
+const GUTTER_SHRINK := 0.75
+const GUTTER_SPUTTER := 0.12
+const GUTTER_SPUTTERS := 5.0
 
 ## A lamp that can see another lamp down a line.
 var bad: bool = false:
@@ -52,6 +61,12 @@ var flicker: float = 1.0:
 		flicker = v
 		queue_redraw()
 
+## 0 burning, 1 guttered out. The board tweens it on a wrong lamp.
+var gutter: float = 0.0:
+	set(v):
+		gutter = v
+		queue_redraw()
+
 func _idle_motion() -> Tween:
 	var phase := randf() * TAU
 	var tw := create_tween().set_loops()
@@ -66,7 +81,10 @@ func _stop_idle() -> void:
 
 func _layer_transform(name: String, R: float, centre: Vector2) -> Transform2D:
 	if name == "glow":
-		return Transform2D(0.0, Vector2.ONE * flicker, 0.0, centre)
+		var s := flicker
+		if gutter > 0.0:
+			s *= (1.0 - GUTTER_SHRINK * gutter) * (1.0 + GUTTER_SPUTTER * sin(TAU * GUTTER_SPUTTERS * gutter) * (1.0 - gutter))
+		return Transform2D(0.0, Vector2.ONE * s, 0.0, centre)
 	return super(name, R, centre)
 
 func _kind() -> String:

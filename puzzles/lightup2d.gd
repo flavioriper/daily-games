@@ -52,8 +52,10 @@ const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the court ---
 const PAD := 34.0
@@ -171,6 +173,47 @@ const CLEAR_SHRINK := 0.4
 ## clearing both have to run their length first.
 const WIN_WAIT := 1.6
 
+# --- the polish of 2026-09-30 (docs/superpowers/specs/2026-09-30-lightup-polish-design.md) ---
+## The hearts' strip over the court, on Hard and Insane only; Shikaku's and
+## Tents' pill, and their numbers.
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong lamp worries, and WILT_LAG later sags. Its light is let reach the
+## court first; GUTTER_FROM after the tap it draws back along the beam toward
+## the lamp, the far stones first, GUTTER_STEP per stone (capped at
+## GUTTER_CAP), each cooling over GUTTER_OUT, so the lamp's own stone goes
+## dark just before EJECT_AFTER, when it is taken up.
+const WILT_LAG := 0.2
+const EJECT_AFTER := 0.75
+const GUTTER_FROM := 0.26
+const GUTTER_STEP := 0.03
+const GUTTER_CAP := 0.2
+const GUTTER_OUT := 0.25
+## Out of hearts: the court slips to dusk over DUSK_TIME -- the floor keeps
+## DUSK_WARM of its warmth, every stone goes DUSK_SHADE toward its own deep
+## colour and the beams keep DUSK_BEAM of their strength -- and the lanterns
+## and cats nod off along the diagonal, SLEEP_STAGGER apart. The card comes
+## up CARD_AFTER later (CARD_AFTER_STILL under reduce motion).
+const DUSK_TIME := 0.8
+const DUSK_WARM := 0.45
+const DUSK_SHADE := 0.35
+const DUSK_BEAM := 0.35
+const SLEEP_STAGGER := 0.05
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## A cat's seat, in cells, and how much of a beam crossing her stone is drawn
+## over her (the light passes over her: she is on the floor).
+const CAT_SIZE := 0.98
+const VEIL_ALPHA := 0.55
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 const TIPS := [
@@ -180,6 +223,8 @@ const TIPS := [
 ]
 
 var state = State.new()
+## Back to the menu from the out-of-hearts card; the host listens for it.
+signal leave
 ## The names the win harness and the island board share, so one driver solves
 ## both twins.
 var w: int:
@@ -190,6 +235,45 @@ var _solution_bulbs: Array:
 	get: return state.solution
 
 var fx: Node2D
+## Hearts (Hard 3, Insane 1) and failing, Tents' names.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _asleep := false
+var _ejecting := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+## The lamps a tap was judged right on (fair and the answer's, on a board
+## with hearts), and every lamp a hint lit: Vector2i -> true. Only these may
+## be rewarded as right (JOY now; the moth and the flare hang on it). A lamp
+## that turns fair some other way -- a neighbour taken up, an undo -- was
+## never charged for, so rewarding it would tell the player for free what a
+## heart is meant to cost (Tents' review).
+var _judged: Dictionary = {}
+## Wrong lamps going out: Vector2i -> {"at": float, "reach": int}. Their light
+## draws back toward them from `at`, the far end of the longest beam first.
+var _guttering: Dictionary = {}
+## The dusk the court slips into out of hearts, 0 day to 1 dusk, moving from
+## `_dusk_from` to `_dusk_to` over DUSK_TIME from `_dusk_at`.
+var _dusk_from := 0.0
+var _dusk_to := 0.0
+var _dusk_at := -INF
+## Insane's cats: Vector2i -> NapCat, one in a slot on each cat's stone, and
+## the state each was last shown in (for the purr and the wake).
+var _cats: Dictionary = {}
+var _cat_was: Dictionary = {}
+var _heart_layer: Control
+var _veil_layer: Control
+var _hearts_shown: ArrayMesh
+## The stretches of beam that cross a cat's stone this frame, drawn again
+## over her by the veil layer: [from, to, half, c0, c1] each.
+var _veil_segs: Array = []
+var _veil_shown: ArrayMesh
 var _cell := 0.0
 var _grid := Vector2.ZERO
 var _card := Rect2()
@@ -275,7 +359,20 @@ func puzzle_id() -> String: return "lightup"
 func title() -> String: return "Light Up"
 
 func rules() -> String:
-	return tr("LU_RULES")
+	var out := tr("LU_RULES")
+	if state.has_cats():
+		out += "\n\n" + tr("LU_RULES_CAT")
+	if max_hearts > 0:
+		out += "\n\n" + (tr("LU_RULES_HEARTS_1") if max_hearts == 1 else tr("LU_RULES_HEARTS_N") % max_hearts)
+	return out
+
+## The lines the sprout cycles: a court with cats leads with the question
+## the napping cat asks.
+func _tips() -> Array:
+	var out: Array = TIPS
+	if state.has_cats():
+		out = ["LU_TIP_CAT"] + out
+	return out
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -287,6 +384,8 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_veil_layer = _layer("Veil", 1, _draw_veil)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -294,9 +393,24 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the pieces, drawn by `draw` (Tents').
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, bank_step)
+	max_hearts = State.HEARTS[state.band]
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	_beam_out = []
 	_chip_in = {}
 	_chip_out = []
@@ -315,18 +429,50 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_settle()
 	_layout()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
+## The court as it is dealt, and as Try again deals it back: every heart,
+## the day's light, nothing judged or going out.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_ejecting = false
+	_split_index = -1
+	_back_index = -1
+	_judged = {}
+	_guttering = {}
+	_dusk_from = 0.0
+	_dusk_to = 0.0
+	_dusk_at = -INF
+	_break_streak()
+	for layer: Control in [_heart_layer, _veil_layer]:
+		if layer != null:
+			layer.queue_redraw()
+
 # --- the cast ---
 
-## Only the lamps are nodes. The court, the blocks and the chips are drawn.
+## Only the lamps and the cats are nodes. The court, the blocks and the
+## chips are drawn. A cat is made once, with her board, and waits unseen
+## until the entrance pops her onto her cushion.
 func _build_pieces() -> void:
-	for lamp in _slots:
-		_slots[lamp].queue_free()
+	for piece in _slots:
+		_slots[piece].queue_free()
 	_slots = {}
 	_lamps = {}
+	_cats = {}
+	_cat_was = {}
+	for cell: Vector2i in state.cats:
+		var cat := NapCat.new()
+		cat.need = state.cat_need(cell)
+		cat.scale = Vector2.ZERO
+		_stand(cat, "cat_%d_%d" % [cell.x, cell.y])
+		cat.name = "cat"
+		cat.set_idle(true)
+		_cats[cell] = cat
+		_cat_was[cell] = state.cat_state(cell)
 
 ## Puts `lamp` in a slot of its own under the board. The slot takes the
 ## layout; the lamp inside it takes the motion.
@@ -358,9 +504,11 @@ func _lamp_node(cell: Vector2i) -> CourtLantern:
 		_seat(lamp, cell_to_local(cell.y, cell.x), _cell * LAMP_SIZE)
 	return lamp
 
-## Every lamp takes the look its state asks for. A lamp is written only when
-## its look changes -- a written face redraws.
-func _refresh_faces() -> void:
+## Every lamp and cat takes the look its state asks for. A face is written
+## only when its look changes -- a written face redraws. A cat whose number
+## has just been met purrs; a napping cat the light has just reached wakes
+## (unless `quiet`: a deal, a restore, Try again).
+func _refresh_faces(quiet := false) -> void:
 	for cell in _lamps:
 		var lamp: CourtLantern = _lamps[cell]
 		if state.mark_at(cell) != State.LAMP:
@@ -371,10 +519,68 @@ func _refresh_faces() -> void:
 		var bad: bool = not is_done() and state.clash.has(cell)
 		if lamp.bad != bad:
 			lamp.bad = bad
-		# The win writes JOY on each lamp as the wave reaches it.
+		# The win writes JOY on each lamp as the wave reaches it; a wrong lamp
+		# keeps its worry until it is taken up.
+		if _solved_at > NEVER or _guttering.has(cell):
+			continue
+		_set_expr(lamp, _lamp_expr(cell))
+	for cell in _cats:
+		var now_state: int = state.cat_state(cell)
+		var was := int(_cat_was.get(cell, now_state))
+		_cat_was[cell] = now_state
+		if now_state != was and not quiet and not is_done():
+			_cat_turns(cell, was, now_state)
 		if _solved_at > NEVER:
 			continue
-		_set_expr(lamp, Face.Expr.STRAIN if bad else Face.Expr.HAPPY)
+		_set_expr(_cats[cell], _cat_expr(cell))
+
+## A lamp's look: asleep with the court, straining in trouble, JOY on a board
+## with hearts once a tap on it was judged right and the board can still
+## fault nothing about it, and otherwise simply burning.
+func _lamp_expr(cell: Vector2i) -> int:
+	if _asleep:
+		return Face.Expr.SLEEPY
+	if state.clash.has(cell):
+		return Face.Expr.STRAIN
+	if max_hearts > 0 and _judged.has(cell) and state.lamp_fair(cell):
+		return Face.Expr.JOY
+	return Face.Expr.HAPPY
+
+## A cat's look: waiting while short of her number, JOY with her tail going
+## once it is met, cross (STRAIN, ears back) when more light reaches her than
+## she wants. A napping cat is asleep while she is dark and cross once lit.
+func _cat_expr(cell: Vector2i) -> int:
+	if _asleep:
+		return Face.Expr.SLEEPY
+	match state.cat_state(cell):
+		State.CAT_OVER:
+			return Face.Expr.STRAIN
+		State.CAT_OK:
+			return Face.Expr.SLEEPY if state.cat_need(cell) == 0 else Face.Expr.JOY
+	return Face.Expr.HAPPY
+
+## A cat's state has just changed under the player's hand: her number met
+## (not a napping cat going dark again, who simply sleeps on) purrs and
+## hops; a napping cat reached by the light wakes cross with a mew and a
+## shiver.
+func _cat_turns(cell: Vector2i, was: int, now_state: int) -> void:
+	var cat: NapCat = _cats[cell]
+	var napping := state.cat_need(cell) == 0
+	if now_state == State.CAT_OK and not napping:
+		fx.cue("purr")
+		_hop(cat, Motion.HOP, Motion.HOP_TIME, Motion.NUDGE_LAG)
+		_on_cat_happy(cell)
+	elif napping and now_state == State.CAT_OVER and was == State.CAT_OK:
+		fx.cue("wake")
+		Motion.stop(_pos_tw.get(cat))
+		cat.position = Vector2.ZERO
+		_pos_tw[cat] = Motion.shiver(cat, _cell * SHIVER)
+		_busy_for(Motion.SHIVER_TIME)
+
+## A seam for the rewards (spec section 3): a cat whose number has just been
+## met. The purr and the hop are above; little hearts rising go here.
+func _on_cat_happy(_cell_: Vector2i) -> void:
+	pass
 
 func _set_expr(face: Face, expr: int) -> void:
 	if face.expression != expr:
@@ -388,7 +594,7 @@ func _place_light(now: float) -> void:
 		var lamp: CourtLantern = _lamps[cell]
 		if not lamp.visible:
 			continue
-		var warm := _warmth(cell, now)
+		var warm := _shown_warmth(cell, now)
 		if absf(lamp.lit - warm) > 0.001:
 			lamp.lit = warm
 
@@ -407,12 +613,17 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var court := Vector2(_cell * state.w, _cell * state.h)
-	var tall := minf(size.y, court.y + 2.0 * PAD)
+	var tall := minf(size.y, court.y + 2.0 * PAD + _heart_row())
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - court.x * 0.5, _card.position.y + (tall - court.y) * 0.5)
+	_grid = Vector2(size.x * 0.5 - court.x * 0.5,
+		_card.position.y + _heart_row() + (tall - _heart_row() - court.y) * 0.5)
 	for cell in _lamps:
 		_seat(_lamps[cell], cell_to_local(cell.y, cell.x), _cell * LAMP_SIZE)
-	_refresh_faces()
+	for cell in _cats:
+		_seat(_cats[cell], cell_to_local(cell.y, cell.x), _cell * CAT_SIZE)
+	_refresh_faces(true)
+	for layer: Control in [_heart_layer, _veil_layer]:
+		layer.queue_redraw()
 	_redraw()
 
 ## Seats `lamp` `px` square about `centre`: its slot takes the place, and the
@@ -429,7 +640,11 @@ func _seat(lamp: Control, centre: Vector2, px: float) -> void:
 func _cell_for(available: float) -> float:
 	if state.grid.is_empty():
 		return 0.0
-	return minf((size.x - 2.0 * PAD) / state.w, (available - 2.0 * PAD) / state.h)
+	return minf((size.x - 2.0 * PAD) / state.w, (available - 2.0 * PAD - _heart_row()) / state.h)
+
+## The strip the hearts stand in over the court, on a board with hearts.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## The host cuts its card to the court and centres it, which is what these two
 ## say. A board that wants neither says nothing and fills the slot.
@@ -437,7 +652,7 @@ func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * state.h + 2.0 * PAD)
+	return minf(available, cell * state.h + 2.0 * PAD + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -478,9 +693,10 @@ func _warmth(cell: Vector2i, t: float) -> float:
 ## Sends every stone toward the light it now stands in, each waiting what
 ## `delay` says for it: the travel out from a changed lamp (_travel_from),
 ## nothing at all (_at_once: an undo, a swept run) or Reset's wave.
-func _relight(t: float, delay: Callable) -> void:
-	for cell in state.white_cells():
-		var target := 1.0 if state.lit.has(cell) else 0.0
+func _relight(t: float, delay: Callable, out_time := LIGHT_OUT) -> void:
+	var lit := _lit_now()
+	for cell in _floor_cells():
+		var target := 1.0 if lit.has(cell) else 0.0
 		var cur := _warmth(cell, t)
 		var rec: Dictionary = _warm.get(cell, {})
 		if rec.is_empty():
@@ -494,13 +710,84 @@ func _relight(t: float, delay: Callable) -> void:
 		rec.from = cur
 		rec.to = target
 		rec.at = t + float(delay.call(cell))
-		rec.dur = LIGHT_IN if target > cur else LIGHT_OUT
+		rec.dur = LIGHT_IN if target > cur else out_time
 		_anim_until = maxf(_anim_until, float(rec.at) + float(rec.dur))
 
 ## The light travelling out from `origin`: LIGHT_STEP per cell away, capped.
 func _travel_from(origin: Vector2i) -> Callable:
 	return func(cell: Vector2i) -> float:
 		return minf(LIGHT_STEP * float(absi(cell.x - origin.x) + absi(cell.y - origin.y)), LIGHT_CAP)
+
+## A wrong lamp's light drawing back toward it along its beams: the far end
+## of the longest first, the lamp's own stone last (see _gutter_delay).
+func _draw_back(origin: Vector2i) -> Callable:
+	return func(cell: Vector2i) -> float:
+		var g: Dictionary = _guttering.get(origin, {})
+		if g.is_empty():
+			return 0.0
+		return float(g.at) - _now() + _gutter_delay(g, absi(cell.x - origin.x) + absi(cell.y - origin.y))
+
+## How long after its lamp began to gutter the stone `dist` along its beam
+## begins to cool.
+static func _gutter_delay(g: Dictionary, dist: int) -> float:
+	return GUTTER_FROM + minf(GUTTER_STEP * float(maxi(0, int(g.reach) - dist)), GUTTER_CAP)
+
+## The stones light reaches right now, as the floor should show it: the
+## state's own `lit`, less whatever only a guttering lamp lights.
+func _lit_now() -> Dictionary:
+	if _guttering.is_empty():
+		return state.lit
+	var out: Dictionary = {}
+	for b: Vector2i in state.lamps():
+		if _guttering.has(b):
+			continue
+		out[b] = true
+		for d in State.DIRS:
+			var p: Vector2i = b + d
+			while state.lets_light(p):
+				out[p] = true
+				p += d
+	return out
+
+## The longest of `cell`'s four beams, in stones.
+func _reach(cell: Vector2i) -> int:
+	var far := 0
+	for d in State.DIRS:
+		var n := 0
+		var p: Vector2i = cell + d
+		while state.lets_light(p):
+			n += 1
+			p += d
+		far = maxi(far, n)
+	return far
+
+## Every stone of the floor: the open ones and the cats' (light crosses a
+## cat, and her stone warms under her like any other).
+func _floor_cells() -> Array:
+	return state.white_cells() + state.cats
+
+## A block's stone: neither open nor a cat's.
+func _is_block(cell: Vector2i) -> bool:
+	return state.in_field(cell) and not state.lets_light(cell)
+
+## How far into dusk the court is right now, 0 to 1.
+func _dusk(now: float) -> float:
+	if Motion.reduce:
+		return _dusk_to
+	return lerpf(_dusk_from, _dusk_to, _sine_io((now - _dusk_at) / DUSK_TIME))
+
+## The court slips toward dusk (1) or back into the day (0).
+func _dusk_toward(level: float) -> void:
+	var now := _now()
+	_dusk_from = _dusk(now)
+	_dusk_to = level
+	_dusk_at = now
+	_busy_for(DUSK_TIME)
+	_redraw()
+
+## The warmth as the court shows it: the light on the stone, dimmed by dusk.
+func _shown_warmth(cell: Vector2i, now: float) -> float:
+	return _warmth(cell, now) * (1.0 - (1.0 - DUSK_WARM) * _dusk(now))
 
 ## A change with no one place to travel from lands everywhere at once.
 func _at_once(_cell_: Vector2i) -> float:
@@ -514,7 +801,7 @@ func _reset_wave(cell: Vector2i) -> float:
 ## the entrance is the court arriving and not a wave crossing an empty one.
 func _settle() -> void:
 	_warm = {}
-	for cell in state.white_cells():
+	for cell in _floor_cells():
 		var target := 1.0 if state.lit.has(cell) else 0.0
 		_warm[cell] = {"from": target, "to": target, "at": -100.0, "dur": LIGHT_IN}
 
@@ -568,14 +855,17 @@ func _build_floor(now: float) -> ArrayMesh:
 	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
 		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), bed)
 	var gone: Array = []
+	var dusk := _dusk(now)
 	for y in state.h:
 		for x in state.w:
-			if int(state.grid[y][x]) != Gen.WHITE:
-				continue
 			var cell := Vector2i(x, y)
-			var warm := _warmth(cell, now)
+			if not state.lets_light(cell):
+				continue
+			var warm := _shown_warmth(cell, now)
 			var deep: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm)
 			var face: Color = Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm)
+			if dusk > 0.0:
+				face = face.lerp(deep, DUSK_SHADE * dusk)
 			var tone := (_hash(cell) - 0.5) * 2.0 * STONE_TONE
 			face = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
 			# A stone under the finger sinks, drawn (press_scale), and goes
@@ -686,6 +976,8 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 	var strength := 1.0
 	if _solved_at > NEVER:
 		strength = lerpf(1.0, WIN_BEAM, _sine_io(_dec((now - _solved_at - Motion.SOLVE_DELAY) / WARM_TIME)))
+	strength *= 1.0 - (1.0 - DUSK_BEAM) * _dusk(now)
+	_veil_segs = []
 	for cell in state.lamps():
 		_beam(b, cell, now, origin, strength)
 	var still: Array = []
@@ -696,6 +988,8 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 		still.append(out)
 		_beam(b, out.cell, now, origin, 1.0 - gone)
 	_beam_out = still
+	if _veil_layer != null:
+		_veil_layer.queue_redraw()
 
 ## One lamp's four shafts. Each cell's length of shaft fades from the strength
 ## it enters with to the strength it leaves with, so the fall along the line
@@ -704,10 +998,13 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> void:
 	var half := _cell * BEAM_HALF
 	var centre := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
+	# A wrong lamp's shafts draw back toward it with the floor it lit, even
+	# across stones another lamp keeps warm.
+	var g: Dictionary = _guttering.get(cell, {})
 	for d in State.DIRS:
 		var run: Array = []
 		var p: Vector2i = cell + d
-		while state.is_white(p):
+		while state.lets_light(p):
 			run.append(p)
 			p += d
 		var seen := run.size()
@@ -720,6 +1017,8 @@ func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> v
 		for i in run.size():
 			var q: Vector2i = run[i]
 			var warm := _warmth(q, now) * strength
+			if not g.is_empty():
+				warm *= 1.0 - _sine_io((now - float(g.at) - _gutter_delay(g, i + 1)) / GUTTER_OUT)
 			if warm <= BEAM_MIN:
 				continue
 			var n := float(i + 1)
@@ -732,6 +1031,10 @@ func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> v
 			_shaft(b, from, to, half, Color(tint, tint.a * a0), Color(tint, tint.a * a1))
 			_shaft(b, from, to, half * BEAM_CORE,
 				Color(1.0, 1.0, 1.0, CORE_ALPHA * a0), Color(1.0, 1.0, 1.0, CORE_ALPHA * a1))
+			if _cats.has(q):
+				# The light passes over her: the same stretch again, over the cat.
+				_veil_segs.append([from, to, half, Color(tint, tint.a * a0 * VEIL_ALPHA),
+					Color(tint, tint.a * a1 * VEIL_ALPHA)])
 
 ## A length of soft shaft from `from` to `to`, `half` wide each side: clear
 ## at both sides, `c0` down the middle where it starts and `c1` where it ends.
@@ -778,9 +1081,9 @@ func _build_ground(now: float) -> Dictionary:
 	# The blocks, each through whatever it is doing.
 	for y in state.h:
 		for x in state.w:
-			if int(state.grid[y][x]) == Gen.WHITE:
-				continue
 			var cell := Vector2i(x, y)
+			if not _is_block(cell):
+				continue
 			var pose := _block_pose(cell, now)
 			if pose.is_empty():
 				continue
@@ -959,9 +1262,9 @@ func _block(b, cell: Vector2i, pose: Dictionary, now: float) -> void:
 	# The light the lit stones beside it throw on its sides.
 	for d in State.DIRS:
 		var n: Vector2i = cell + d
-		if not state.is_white(n):
+		if not state.lets_light(n):
 			continue
-		var warm := _warmth(n, now)
+		var warm := _shown_warmth(n, now)
 		if warm <= BEAM_MIN:
 			continue
 		var along := Vector2(d).orthogonal() * 0.3
@@ -1068,16 +1371,18 @@ func _gui_input(event: InputEvent) -> void:
 func _press(cell: Vector2i) -> void:
 	_release_press()
 	_clear_gesture()
-	if is_done() or cell.x < 0:
+	# Nothing takes a finger while a wrong lamp goes out or the court sleeps.
+	if is_done() or cell.x < 0 or out_of_hearts or _ejecting:
 		return
 	_press_cell = cell
 	var now := _now()
-	if state.mark_at(cell) == State.LAMP and _lamps.has(cell):
-		_pressed = _lamps[cell]
+	var node: Control = _lamps.get(cell) if state.mark_at(cell) == State.LAMP else _cats.get(cell)
+	if node != null:
+		_pressed = node
 		Motion.stop(_look_tw.get(_pressed))
 		_look_tw[_pressed] = Motion.press(_pressed, true)
 		_busy_for(Motion.PRESS_TIME)
-	elif not state.is_white(cell):
+	elif _is_block(cell):
 		_block_press[cell] = {"down": now, "up": INF}
 		_busy_for(Motion.PRESS_TIME)
 	else:
@@ -1174,6 +1479,8 @@ func _release() -> void:
 	var before: Dictionary = state.marks.duplicate()
 	var arrivals := _commit(before, state.tap(cell), now, 0.0, cell)
 	_end_sinks(now, arrivals)
+	if state.mark_at(cell) == State.LAMP:
+		_judge(cell)
 	_redraw()
 
 ## Puts the stones `changed` by a move on the screen (see _transition), sends
@@ -1238,6 +1545,7 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 			_chip_leaves(cell, at)
 		elif prev == State.LAMP:
 			_lamp_down(cell, at - t)
+			_judged.erase(cell)
 		if mark == State.CHIP:
 			_chip_arrives(cell, at)
 		elif mark == State.LAMP:
@@ -1257,6 +1565,7 @@ func _lamp_up(cell: Vector2i, delay: float, drop: bool) -> void:
 	lamp.rotation = 0.0
 	lamp.position = Vector2.ZERO
 	lamp.modulate.a = 1.0
+	lamp.gutter = 0.0
 	if drop:
 		lamp.scale = Vector2.ONE
 		_pos_tw[lamp] = Motion.drop_in(lamp, Motion.DROP, Motion.DROP_TIME, delay)
@@ -1326,14 +1635,17 @@ func _nudge_around(cell: Vector2i, t: float) -> void:
 		var n: Vector2i = cell + d
 		if not state.in_field(n):
 			continue
-		if not state.is_white(n):
+		if _is_block(n):
 			if not Motion.reduce:
 				_block_nudge[n] = {"at": t, "dir": Vector2(d)}
-		elif state.mark_at(n) == State.LAMP and _lamps.has(n):
-			var lamp: CourtLantern = _lamps[n]
-			if Motion.running(_pos_tw.get(lamp)):
+			continue
+		var node: Control = _cats.get(n)
+		if node == null and state.mark_at(n) == State.LAMP:
+			node = _lamps.get(n)
+		if node != null:
+			if Motion.running(_pos_tw.get(node)):
 				continue
-			_pos_tw[lamp] = Motion.nudge(lamp, Vector2(d), Vector2.ZERO)
+			_pos_tw[node] = Motion.nudge(node, Vector2(d), Vector2.ZERO)
 	_busy_for(Motion.NUDGE_LAG + Motion.NUDGE_TIME)
 
 ## `lamp` hops `height` over `time` after `delay`; it rests at its slot's
@@ -1353,14 +1665,17 @@ func _wobble(lamp: Control) -> void:
 	_busy_for(Motion.WOBBLE_TIME)
 
 ## A tap refused on `cell`: a block shivers and flashes toward its rose; a
-## pinned lamp shivers while its stone blushes; the sprout says why.
+## pinned lamp or a cat shivers while its stone blushes; the sprout says why.
 func _refuse(cell: Vector2i) -> void:
-	_say(tr("LU_REFUSE_BLOCK")
-		if not state.is_white(cell)
-		else tr("LU_REFUSE_PINNED"), Face.Expr.PUZZLED)
+	var line := "LU_REFUSE_PINNED"
+	if _is_block(cell):
+		line = "LU_REFUSE_BLOCK"
+	elif state.is_cat(cell):
+		line = "LU_REFUSE_CAT"
+	_say(tr(line), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	var now := _now()
-	if not state.is_white(cell):
+	if _is_block(cell):
 		if Motion.reduce:
 			return
 		_block_shiver[cell] = now
@@ -1368,7 +1683,7 @@ func _refuse(cell: Vector2i) -> void:
 		_busy_for(maxf(Motion.SHIVER_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
 		return
 	_blush_stone(cell)
-	var lamp: CourtLantern = _lamps.get(cell)
+	var lamp: Control = _cats.get(cell, _lamps.get(cell))
 	if lamp == null:
 		return
 	Motion.stop(_pos_tw.get(lamp))
@@ -1396,10 +1711,23 @@ func _speak() -> void:
 			else tr("LU_OVER_N") % over,
 			Face.Expr.STRAIN)
 		return
+	var cross := state.over_cats()
+	if cross > 0:
+		_say(tr("LU_CAT_OVER_ONE") if cross == 1
+			else tr("LU_CAT_OVER_N") % cross, Face.Expr.STRAIN)
+		return
 	var dark := state.dark()
 	if dark > 0:
 		_say(tr("LU_DARK_ONE") if dark == 1
 			else tr("LU_DARK_N") % dark, Face.Expr.HAPPY)
+		return
+	var short := 0
+	for c: Vector2i in state.cats:
+		if state.cat_state(c) == State.CAT_IDLE:
+			short += 1
+	if short > 0:
+		_say(tr("LU_CAT_SHORT_ONE") if short == 1
+			else tr("LU_CAT_SHORT_N") % short, Face.Expr.HAPPY)
 		return
 	_say(tr("LU_UNSATISFIED"), Face.Expr.HAPPY)
 
@@ -1413,21 +1741,25 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	_tip_idx = (_tip_idx + 1) % _tips().size()
+	_say(tr(_tips()[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
 
 # --- the HUD's actions ---
 
+## A wrong lamp is going out: the host holds a hint video until it has gone.
+func busy() -> bool:
+	return _ejecting
+
 func can_undo() -> bool:
-	return not is_done() and not state.history.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.history.is_empty()
 
 ## Takes back the last gesture, however many stones it swept: the reverse of
 ## Place, stone by stone along the same path. Counts no move.
 func undo() -> bool:
-	if is_done() or state.history.is_empty():
+	if not can_undo():
 		return false
 	var now := _now()
 	var before: Dictionary = state.marks.duplicate()
@@ -1440,13 +1772,13 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
 
 ## Lights one lantern from the answer and pins it for good: a ring pulses out
 ## of the stone, the lamp drops in from above, sparkles rise, and the light
 ## travels out from it. Counts no move but can finish the puzzle.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
 		return false
 	var before: Dictionary = state.marks.duplicate()
 	var target: Vector2i = state.hint()
@@ -1454,6 +1786,7 @@ func hint() -> bool:
 		return false
 	var now := _now()
 	hints_used += 1
+	_judged[target] = true
 	_transition(before, [target], now, 0.0, true)
 	_relight(now, _travel_from(target))
 	var at := cell_to_local(target.y, target.x)
@@ -1469,7 +1802,7 @@ func hint() -> bool:
 ## Every lantern the answer does not put there wobbles and its stone blushes,
 ## and the sprout says how many.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return 0
 	checks += 1
 	var wrong: Array = state.wrong_lamps()
@@ -1488,6 +1821,23 @@ func check() -> int:
 ## in the same wave and the blocks hopping as the court clears around them.
 ## The hints a player spent are not refunded, only unpinned.
 func reset_board() -> void:
+	if is_done() or out_of_hearts or _ejecting:
+		return
+	_break_streak()
+	_clear_court()
+	moves = 0
+	_running = true
+	_refresh_faces()
+	_say(tr("LU_RESET"),
+		Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	_redraw()
+
+## Every lamp and chip goes in Reset's wave from the far corner, the light
+## cooling with it and the blocks and cats hopping as the court clears round
+## them: Reset's and Try again's shared middle.
+func _clear_court() -> void:
 	var now := _now()
 	_release_press()
 	_clear_gesture()
@@ -1504,10 +1854,12 @@ func reset_board() -> void:
 	if not Motion.reduce:
 		for y in state.h:
 			for x in state.w:
-				if int(state.grid[y][x]) != Gen.WHITE:
-					var cell := Vector2i(x, y)
+				var cell := Vector2i(x, y)
+				if _is_block(cell):
 					_block_hop[cell] = {"at": now + _reset_wave(cell), "height": Motion.RESET_HOP,
 						"time": Motion.HOP_TIME}
+		for cell in _cats:
+			_hop(_cats[cell], Motion.RESET_HOP, Motion.HOP_TIME, _reset_wave(cell))
 		_busy_for(_reset_wave(Vector2i.ZERO) + Motion.HOP_TIME)
 	_relight(now, _reset_wave)
 	_blush = {}
@@ -1515,14 +1867,6 @@ func reset_board() -> void:
 	_block_flash = {}
 	_flare = {}
 	_block_shiver = {}
-	moves = 0
-	_running = true
-	_refresh_faces()
-	_say(tr("LU_RESET"),
-		Face.Expr.HAPPY)
-	_tip_timer.start()
-	fx.cue("reset")
-	_redraw()
 
 ## A completed daily is rebuilt from its seed, so the court opens dark. Set the
 ## generator's lanterns back down and settle everything as the finished solve
@@ -1568,8 +1912,17 @@ func restore_completed_board() -> void:
 		lamp.rotation = 0.0
 		lamp.scale = Vector2.ONE
 		lamp.modulate.a = 1.0
+		lamp.gutter = 0.0
 		lamp.expression = Face.Expr.JOY
-	_refresh_faces()
+	_deal()
+	_judged = {}
+	for cell in _cats:
+		var cat: NapCat = _cats[cell]
+		cat.position = Vector2.ZERO
+		cat.rotation = 0.0
+		cat.scale = Vector2.ONE
+		cat.expression = _cat_won(cell)
+	_refresh_faces(true)
 	_say(tr("LU_WIN"), Face.Expr.JOY)
 	_redraw()
 
@@ -1611,16 +1964,28 @@ func _on_solved() -> void:
 	if not Motion.reduce:
 		for y in state.h:
 			for x in state.w:
-				if int(state.grid[y][x]) != Gen.WHITE:
-					var cell := Vector2i(x, y)
+				var cell := Vector2i(x, y)
+				if _is_block(cell):
 					_block_hop[cell] = {"at": now + _solve_delay(cell), "height": Motion.SOLVE_HOP,
 						"time": Motion.SOLVE_TIME}
+	# The cats hop the wave too, grinning -- all but a napping one, who
+	# sleeps through the party.
+	for cell in _cats:
+		var cat: NapCat = _cats[cell]
+		var delay := _solve_delay(cell)
+		if state.cat_need(cell) > 0:
+			_hop(cat, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
+		_after(delay, func() -> void: cat.expression = _cat_won(cell))
 	_refresh_faces()
 	_say(tr("LU_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + maxf(Motion.SOLVE_TIME, WIN_GLINT),
 		maxf(CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME, Motion.SOLVE_DELAY + WARM_TIME)))
 	_redraw()
+
+## A cat's look on a solved court: JOY, or asleep for a napping cat.
+func _cat_won(cell: Vector2i) -> int:
+	return Face.Expr.SLEEPY if state.cat_need(cell) == 0 else Face.Expr.JOY
 
 func _solve_delay(cell: Vector2i) -> float:
 	if Motion.reduce:
@@ -1643,6 +2008,307 @@ func _spark_at(k: int, at: Vector2) -> void:
 	else:
 		fx.puff(at, Pal.SUN, 4)
 
+# --- judging a lamp ---
+
+## A lamp just set down by a tap. On Hard and Insane a lamp the board cannot
+## fault (`state.lamp_fair`) that is not the answer's costs a heart -- the
+## answer is unique, so it is wrong by proof. A lamp the board already shows
+## as wrong (a rose beam, a rose block, a cross cat) costs nothing: the board
+## has said so. Anything else the board cannot fault is right: the answer's
+## on a board with hearts, where it joins `_judged`, or any fair lamp on Easy
+## and Medium, which says no more than its face does.
+func _judge(cell: Vector2i) -> void:
+	# The winning tap: the solve wave owns every hop and spark from here.
+	if is_done():
+		return
+	var fair: bool = state.lamp_fair(cell)
+	if max_hearts > 0 and fair and not state.is_answer(cell):
+		_wrong_lamp(cell)
+		return
+	if not fair:
+		_break_streak()
+		return
+	if max_hearts > 0:
+		_judged[cell] = true
+		_refresh_faces()
+		_redraw()
+	_on_right_lamp(cell)
+
+## A seam for the rewards (spec section 3): a lamp judged right -- on Hard
+## and Insane fair and the answer's (it is in `_judged` already), on Easy and
+## Medium simply fair. The streak, the combo bubble, the gags and the moth
+## hang here.
+func _on_right_lamp(_cell_: Vector2i) -> void:
+	pass
+
+## A seam for the rewards: the streak ends (a lamp in trouble, a wrong lamp,
+## a reset, a deal).
+func _break_streak() -> void:
+	pass
+
+## A wrong lamp: a heart goes (its halves fall), the lamp worries and sags,
+## its flame gutters while its light draws back along the beam toward it,
+## its stone blushes, and after EJECT_AFTER it is taken up as though never
+## set down.
+func _wrong_lamp(cell: Vector2i) -> void:
+	if out_of_hearts or hearts <= 0:
+		return
+	var now := _now()
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = now
+	_heart_layer.queue_redraw()
+	_ejecting = true
+	if hearts <= 0:
+		# Input stops now; the dusk waits for the lamp to go.
+		out_of_hearts = true
+		_running = false
+	var lamp: CourtLantern = _lamp_node(cell)
+	lamp.expression = Face.Expr.WORRIED
+	_guttering[cell] = {"at": now, "reach": _reach(cell)}
+	# The light is let land first; the floor is sent dark from GUTTER_FROM
+	# (the beam reads `_guttering` from now and fades on the same clock).
+	_after(GUTTER_FROM, func() -> void:
+		if _guttering.has(cell):
+			_relight(_now(), _draw_back(cell), GUTTER_OUT))
+	if not Motion.reduce:
+		_after(WILT_LAG, func() -> void:
+			Motion.stop(_look_tw.get(lamp))
+			lamp.scale = Vector2.ONE
+			_look_tw[lamp] = Motion.squash(lamp, 0.14, 0.2))
+		var tw := lamp.create_tween()
+		tw.tween_property(lamp, "gutter", 1.0, EJECT_AFTER).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	else:
+		lamp.gutter = 1.0
+	_blush_stone(cell)
+	_say(tr("LU_WRONG_LAMP"), Face.Expr.WORRIED)
+	fx.cue("heart_lost")
+	_busy_for(EJECT_AFTER + Motion.POP_OUT)
+	moved.emit()
+	_after(EJECT_AFTER, _eject.bind(cell))
+
+## The wrong lamp is taken up: its tap is taken back with no history left of
+## it, and a grey puff goes up where it stood.
+func _eject(cell: Vector2i) -> void:
+	_ejecting = false
+	_guttering.erase(cell)
+	# Left mid-gutter through the card or the host: the board is over.
+	if is_done():
+		return
+	var before: Dictionary = state.marks.duplicate()
+	var last: Array = [] if state.history.is_empty() else state.history.back()
+	if last.size() == 1 and last[0].cell == cell:
+		state.undo()
+	elif state.mark_at(cell) == State.LAMP and not state.locked.has(cell):
+		state.marks.erase(cell)
+		state.recompute()
+	var now := _now()
+	_transition(before, [cell], now, 0.0)
+	_relight(now, _at_once)
+	if not Motion.reduce:
+		fx.puff(cell_to_local(cell.y, cell.x), Pal.FLAGSTONE.lerp(Pal.LINE, 0.5), 6)
+	if not out_of_hearts:
+		_speak()
+	moved.emit()
+	_redraw()
+	if out_of_hearts:
+		_run_out()
+
+## The last heart is gone: the court slips to dusk, the lanterns and cats nod
+## off along the diagonal, and the card comes up once they have.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_clear_gesture()
+	_break_streak()
+	fx.cue("out_of_hearts")
+	_say(tr("LU_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(1.0)
+	_nod_all()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+## Every lamp and cat takes its look along the diagonal: asleep, or awake
+## again after a heart came back.
+func _nod_all() -> void:
+	for cell in _lamps:
+		_after(Motion.stagger(cell.x + cell.y, SLEEP_STAGGER), func() -> void:
+			if _solved_at == NEVER and state.mark_at(cell) == State.LAMP and not _guttering.has(cell):
+				_lamps[cell].expression = _lamp_expr(cell))
+	for cell in _cats:
+		_after(Motion.stagger(cell.x + cell.y, SLEEP_STAGGER), func() -> void:
+			if _solved_at == NEVER:
+				_cats[cell].expression = _cat_expr(cell))
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["LU_OUT_BODY", "LU_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same court from the top, every heart back, the day's light,
+## the clock and the moves from zero; hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	moves = 0
+	elapsed = 0.0
+	checks = 0
+	_running = true
+	_clear_court()
+	var dusk := _dusk(_now())
+	_deal()
+	_dusk_from = dusk
+	_dusk_toward(0.0)
+	_nod_all()
+	_refresh_faces(true)
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+	_redraw()
+
+## One more heart (the card's video): once a board. The court's light comes
+## back and it wakes along the diagonal.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(0.0)
+	_nod_all()
+	_speak()
+	moved.emit()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the hearts ---
+
+## The hearts over the court as one mesh on a paper pill, Shikaku's, Tents'
+## and Binairo's: pink with a small face and a leaf, a faint ghost where one
+## was, the lost one's halves falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _grid.y - MORTAR - HEART_ROW * 0.5 - 4.0
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts:
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_mesh(_hearts_shown, null)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- the light over the cats ---
+
+## The stretches of beam that cross a cat's stone, drawn again over her so
+## the light is seen to pass over her, in the floor's own transform.
+func _draw_veil() -> void:
+	if _veil_segs.is_empty() or _cell <= 0.0:
+		_veil_shown = null
+		return
+	var b := Face.Builder.new()
+	for seg: Array in _veil_segs:
+		_shaft(b, seg[0], seg[1], seg[2], seg[3], seg[4])
+	var since := _now() - _opened - Motion.ENTER_DELAY
+	var grown := Motion.wide_pop_scale(since)
+	_veil_shown = b.mesh()
+	_veil_layer.draw_mesh(_veil_shown, null,
+		Transform2D(0.0, Vector2(grown, grown), 0.0, _court_centre()),
+		Color(1.0, 1.0, 1.0, Motion.appear_level(since)))
+
 # --- entrance ---
 
 ## The chrome is the host's; here the court pops in wide and the blocks pop
@@ -1653,8 +2319,13 @@ func _enter() -> void:
 	var far := 0
 	for y in state.h:
 		for x in state.w:
-			if int(state.grid[y][x]) != Gen.WHITE:
+			if not state.is_white(Vector2i(x, y)):
 				far = maxi(far, x + y)
+	# The cats land on their cushions with the blocks, along the same diagonal.
+	for cell in _cats:
+		var cat: NapCat = _cats[cell]
+		Motion.stop(_look_tw.get(cat))
+		_look_tw[cat] = Motion.pop_in(cat, Motion.POP_IN, _enter_delay(cell.x + cell.y))
 	_busy_for(maxf(_enter_delay(far) + Motion.POP_IN, Motion.ENTER_DELAY + Motion.ENTER_POP))
 	fx.cue("enter")
 
@@ -1692,6 +2363,9 @@ func _process(delta: float) -> void:
 	if now < _anim_until:
 		_place_light(now)
 		queue_redraw()
+	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+		_heart_layer.queue_redraw()
 
 ## Something on the court changed: rebuild it on the next draw.
 func _redraw() -> void:
