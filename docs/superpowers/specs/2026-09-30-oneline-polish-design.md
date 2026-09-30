@@ -76,7 +76,7 @@ lines may come in. Sunny Spells does, and it is the snail's own need:
   one piece and on every post having dew enough to pair its sun with. On the
   banked boards it answers in 55 nodes or fewer and 3 ms or less, a proof of
   "no walk" included (1095 steps probed); `budget` bounds it anyway.
-- **Banked** (`content/insane/oneline.json`, mined by
+- **Banked** (`content/insane/oneline.json`, 187 figures, rungs 968-995, mined by
   `tools/insane/oneline_ladder.gd`). The rung is how often a player who
   knows the old rule and not the new one fails: `Gen.sun_blind_odds` walks
   the figure 400 times at random, never taking a refused line and never

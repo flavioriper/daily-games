@@ -29,7 +29,7 @@ so the game fails and celebrates one way.
   snail, the hearts and the fx dim with it), she goes SLEEPY, the ladybugs
   leave, and the card comes up. `try_again` runs Reset's wave
   (`_clear_figure`, shared with `reset_board`) and then `_deal`.
-- **Sunny Spells** (`content/insane/oneline.json`,
+- **Sunny Spells** (`content/insane/oneline.json`, 187 figures, rungs 968-995,
   `tools/insane/oneline_ladder.gd`): sunny fords `Pal.FORD_SUN` with
   twinkling `SUN_SPARK` stars, dewy fords `Pal.FORD_DEW` with `DEW` drops,
   both in the one figure mesh. While she is dry (`state.dry()`, and only
