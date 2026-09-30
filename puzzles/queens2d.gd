@@ -1239,7 +1239,7 @@ func _refuse_seen(cell: Vector2i) -> void:
 	# The queen who sees it answers too, so the refusal says whose reach the
 	# cell is in rather than only that it is taken.
 	for q in state.queens:
-		if (state.sees(q) as Array).has(cell) and _bees.has(q):
+		if (state.reach_of(q) as Array).has(cell) and _bees.has(q):
 			_wobble(_bees[q])
 
 ## A lift refused on a given queen: she shivers and strains for a beat while
@@ -1290,6 +1290,8 @@ func _press(cell: Vector2i) -> void:
 	if mark == State.QUEEN and _bees.has(cell):
 		_pressed = _bees[cell]
 		Motion.stop(_look_tw.get(_pressed))
+		# A twirl or a dance stopped halfway would leave her crooked.
+		_pressed.rotation = 0.0
 		_look_tw[_pressed] = Motion.press(_pressed, true)
 	_sink_cell(cell)
 	_redraw()
@@ -1523,7 +1525,7 @@ func undo() -> bool:
 		if int(before[cell]) == State.QUEEN or state.mark_at(cell) == State.QUEEN:
 			origin = cell
 	if origin.x >= 0:
-		var wash: Array = state.sees(origin) if state.queens.has(origin) else []
+		var wash: Array = state.reach_of(origin) if state.queens.has(origin) else []
 		_settle(before, now, _wave_from(origin), false, wash)
 	else:
 		_settle(before, now, _along(cells))

@@ -578,9 +578,12 @@ static func to_bank(out: Dictionary) -> Dictionary:
 		answer += str(int(out.solution[r]))
 	return {"n": n, "cells": cells, "quota": Array(quota), "answer": answer}
 
-## A bank entry back in `generate`'s shape, re-proved: "ok" only when the
-## logic solver finishes it without a guess and lands on the stored answer.
-static func from_bank(board: Dictionary) -> Dictionary:
+## A bank entry back in `generate`'s shape. With `prove` (the miner and the
+## ladders) "ok" only when the logic solver finishes it without a guess and
+## lands on the stored answer; without (the phone, on every open), only that
+## the stored answer is a legal seating -- the full proof cost up to 244 ms on
+## the Mac and was already paid when the court was mined.
+static func from_bank(board: Dictionary, prove := false) -> Dictionary:
 	if board.is_empty() or not board.has("cells"):
 		return {}
 	var n := int(board.n)
@@ -604,6 +607,7 @@ static func from_bank(board: Dictionary) -> Dictionary:
 	for g in quota.size():
 		if quota[g] > 1:
 			misty.append(g)
-	var proved := Logic.answer(_flatten(region, n), n, quota) == solution
+	var proved := Logic.answer(_flatten(region, n), n, quota) == solution if prove \
+		else legal(region, n, solution, quota)
 	return {"region": region, "solution": solution, "n": n, "ok": proved, "quota": quota,
 		"mist": misty}

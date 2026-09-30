@@ -281,14 +281,17 @@ class Court:
 				col_n[i % n] += 1
 				reg_n[region[i]] += 1
 		var moved := false
+		# One scratch mask for every cell, cleared as it is used: allocating one
+		# a cell was most of a Medium court's grading time.
+		var kill := PackedByteArray()
+		kill.resize(n * n)
 		for i in n * n:
 			if not cand[i]:
 				continue
 			var r := i / n
 			var c := i % n
 			var g := region[i]
-			var kill := PackedByteArray()
-			kill.resize(n * n)
+			kill.fill(0)
 			for k in n:
 				kill[r * n + k] = 1
 				kill[k * n + c] = 1

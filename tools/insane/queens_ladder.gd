@@ -26,7 +26,7 @@ static func candidate(rng: RandomNumberGenerator) -> Dictionary:
 	return Gen.to_bank(out)
 
 static func grade(board: Dictionary) -> Dictionary:
-	var b := Gen.from_bank(board)
+	var b := Gen.from_bank(board, true)
 	if b.is_empty():
 		return {"rung": -1, "work": 0, "unique": false}
 	var g := Logic.grade(Gen._flatten(b.region, b.n), b.n, b.quota)
