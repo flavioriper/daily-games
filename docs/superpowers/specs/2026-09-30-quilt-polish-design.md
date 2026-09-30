@@ -153,8 +153,36 @@ tape-rewind undo and the "bonk" read as a toy or a scold): `lift`, `place`,
 
 ## 7. Numbers
 
-Filled in after the build: the bank, band timings, draw-call peaks from
-`tests/_shot_quilt.gd`, the suite and `tests/_win.gd -- quilt`.
+- **The bank** (`content/insane/quilt.json`): 150 Scrap Basket boards, the
+  best of 6,000 tries, 42 s wall on 8 threads; the proof search walks 4,705
+  to 19,177 nodes a board, median 6,212.
+- **Live generation**, median / max per band: Easy 0.6 / 2.8 ms, Medium
+  0.9 / 3.6, Hard 5.1 / 25.1, Insane (the bank's fallback) 15.4 / 82.4.
+  `finishable()` worst 3.9 ms.
+- **Rack cells** 72.5 / 62.5 / 62.5 / 48.6 (Scrap Basket on three shelves),
+  against field cells 150 / 147.9 / 117.6 / 117.6.
+- **Draw-call peaks** at `--resolution 810x1440`, `tests/_shot_quilt.gd`,
+  against the 855 budget:
+
+| mode | band | peak |
+|---|---|---|
+| rest (the ghost finger) | 0-1 | 95 |
+| tap | 0 | 83 |
+| stuck | 0-1 | 83 |
+| wrong | Hard / Insane | 84 / 80 |
+| out (with the card) | Hard | 106 (105 after the rewards) |
+| restore | all | 79-84 before the rewards; 90 Easy, 88 Insane with cat, seal, bunting |
+| reduce motion | all | 82-85 before; right 86, solve Insane 88 |
+| right (streak, bubble, gags, row glints) | Easy / Hard | 90 / 93 |
+| solve (wave, dance, cat, seal) | Easy | 93 |
+| solve (and the bunting) | Insane | 91; 92 on `opengl3_angle` |
+
+  The rewards add at most about ten draw calls: the cat is five (base,
+  tail tip, head, tag, drifting "z"), the bubble two, the seal a mesh and
+  its words, the bunting, the love hearts and the row glints one mesh
+  each; a button is baked into the quilt mesh and costs nothing.
+- `tests/run_tests.gd`: passed 123,054, failed 0. `tests/_win.gd -- quilt`
+  windowed: PASS (solved, done, overlay, board fit, HUD).
 
 ## 8. Calls for the user
 

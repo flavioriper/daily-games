@@ -103,3 +103,47 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   reduce motion). Draw-call peaks at 810x1440: rest 95 (the ghost finger),
   tap 83, stuck 83, wrong 84 (Hard) / 80 (Insane), out 106 (with the card),
   restore 79-84, reduce motion 82-85; ANGLE 81 on Insane's wrong.
+
+## The rewards (2026-09-30, spec sections 4 and 5)
+
+- **The streak** counts good drops (Hard/Insane: a right patch; Easy/Medium:
+  a drop that leaves the quilt finishable) in `_on_good_drop`, which skips
+  the solving drop. `combo` from the second, pitched up `COMBO_STEPS`; the
+  "x3" bubble over the patch's top from the third (drawn on the life layer,
+  not a layer of its own); confetti at 4 and 7. `_break_streak` deflates it.
+- **Gags** by `_gag_roll(p)`: the day's quilt hashes a start and each patch
+  steps two along five rolls, so three gags share any five patches evenly.
+  **A plain per-patch hash clumped**: one Scrap Basket drew seven buttons out
+  of nine and the quilt read as a button quilt. Love hearts (life layer), a
+  **button** (`_buttons`, drawn inside `_patch`, so it rides a held or
+  flying patch and is baked into whichever mesh carries it; erased when the
+  patch's flight home retires), a **boing** (squash about the patch's foot,
+  hop `BOING_HOP`). Under reduce motion only the button, standing.
+- **Row glints**: `_rows_done` checks every row and column the patch
+  touches; a star and a soft white glow per cell, `ROW_STEP` a cell of
+  distance out from the patch. The first glow was `SUN_RAY` and read as a
+  grey disc on the blue and teal cloths.
+- **The party** (`_party`, `_party_lead()` after the solve): the dance
+  (`_dance_colours` hands two beat halves out greedily so neighbours are
+  half a beat apart), confetti twice, quilt wisdom by the quilt's hash, the
+  seal on the rack's lower right (Flawless; on Insane "Insane" over Flawless
+  or Scraps). **The nap cat** is Light Up's `ui/faces/nap_cat.gd` with its
+  tag showing "z": a node (`_cat`, z 3) placed each frame by `_place_cat`,
+  popping up at the rack's right end, three hops onto the 2x2 of backing
+  nearest the quilt's middle that has **no button under her** (the first
+  frame hid one behind her ears), a settle squash, then SLEEPY and `purr`.
+  **Scrap Basket's bunting**: twine across the top of the card at `BUNT_Y`
+  2, the scraps flying out of the basket in x order and pegged at
+  0.17 / 0.33 / 0.81 so none hangs over the hearts' pill, swinging down to
+  rest over `BUNT_SWING`; their bays show the chalk shape. `win_delay()` is
+  `WIN_WAIT + PARTY_AT + PARTY_EXTRA` (3.9 s) and the win card shows the
+  cat, the seal and the bunting in its thumbnail.
+- **Restore** puts the cat there asleep (quietly), the seal when the record
+  is flawless or Insane, the bunting still; no dance, no confetti.
+- `share_glyphs()` puts the seal on its own line under the square grid
+  (the grid ends in a newline): `🏅 Flawless` or `🧺 Scraps[ · Flawless]`.
+- `tests/_shot_quilt.gd` adds `right` (all but the last answer patch: the
+  streak, the gags, the glints) and `solve`. Peaks: right 90 Easy / 93 Hard,
+  solve 93 Easy / 91 Insane (92 on ANGLE), restore 88-90, reduce motion
+  86-88, out 105. No idle life was added beyond the curled cat's "z".
+

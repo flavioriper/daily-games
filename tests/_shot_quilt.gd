@@ -12,7 +12,11 @@ extends SceneTree
 ## and Insane: a wrong patch landing, snipped, peeling and fluttering home,
 ## then held over its chalked spot and let go there), `out` (wrong patches
 ## until the hearts run out: the dusk, the card, Try again), `restore` (a
-## solved day reopened). Frames go to <dir>/ql_<mode>_d<level>_<n>.png. Every
+## solved day reopened: the cat asleep, the seal, Scrap Basket's bunting),
+## `right` (right patches one after another short of the solve: the streak,
+## the bubble, the gags, a finished row's glint) and `solve` (every answer
+## patch: the wave, the dance, the cat hopping on and curling up, the
+## bunting and the seal). Frames go to <dir>/ql_<mode>_d<level>_<n>.png. Every
 ## mode prints the peak draw calls from 0.5 s on.
 
 const SHOT_DIR := "/tmp"
@@ -180,6 +184,17 @@ func _wrong_pick() -> Array:
 				return [p, origin]
 	return []
 
+## The quilt's own patches (never a scrap) in an order that leaves the
+## quilt finishable after each: the answer's, top row first.
+func _answer_order() -> Array:
+	var st = _puzzle._state
+	var order: Array = []
+	for p in st.shapes.size():
+		if int(st.answer[p]) >= 0:
+			order.append(p)
+	order.sort_custom(func(a: int, b: int) -> bool: return int(st.answer[a]) < int(st.answer[b]))
+	return order
+
 ## A drop on Easy or Medium that leaves the quilt unfinishable, with cells to
 ## pulse if there is one.
 func _stuck_pick() -> Array:
@@ -280,6 +295,33 @@ func _script() -> void:
 			_at(9.45, _shot.bind("_wave"))
 			_at(10.5, _shot)
 			_end = 10.7
+		"right":
+			var order := _answer_order()
+			var n := order.size() - 1
+			for k in n:
+				var p: int = order[k]
+				var t0 := 1.0 + k * 1.3
+				_drag(t0, p, int(st.answer[p]))
+				_at(t0 + 0.41, func() -> void:
+					print("patch %d gag roll %d, streak %d, rows %d" % [p,
+						_puzzle._gag_roll(p), _puzzle._streak, _puzzle._rows.size()]))
+				_at(t0 + 0.62, _shot.bind("_p%d_a" % k))
+				_at(t0 + 0.95, _shot.bind("_p%d_b" % k))
+			_end = 1.0 + n * 1.3 + 0.4
+		"solve":
+			var order := _answer_order()
+			for k in order.size():
+				var p: int = order[k]
+				_drag(1.0 + k * 0.7, p, int(st.answer[p]))
+			var t1 := 1.0 + (order.size() - 1) * 0.7 + 0.4
+			_at(t1 + 0.05, func() -> void:
+				print("solved %s, flawless %s, win_delay %.2f, share: %s" % [_puzzle.is_done(),
+					_puzzle._flawless, _puzzle.win_delay(), _puzzle.share_glyphs()]))
+			for dt in [0.6, 1.5, 1.8, 2.1, 2.4, 2.75, 3.1, 3.6]:
+				_at(t1 + dt, _shot.bind("_%02d" % int(dt * 10)))
+			_at(t1 + 3.65, func() -> void:
+				print("cat curled %s, tip: %s" % [_puzzle._cat_curled, _puzzle.tip_line().text]))
+			_end = t1 + 3.8
 		"restore":
 			_at(1.5, func() -> void:
 				_puzzle.completed_record = {"flawless": true, "hearts": 1}

@@ -35,7 +35,7 @@ extends "res://core/puzzle_base.gd"
 ## rewards'), each one mesh.
 ##
 ## Spec: docs/superpowers/specs/2026-09-20-quilt-flat-design.md, sections 6
-## and 7, and 2026-09-30-quilt-polish-design.md, sections 1 to 3. Ported from the canvas mock at
+## and 7, and 2026-09-30-quilt-polish-design.md, sections 1 to 5. Ported from the canvas mock at
 ## docs/brainstorm/concepts.html#quilt, which is the reference for every
 ## measure here.
 
@@ -53,6 +53,8 @@ const Face = preload("res://ui/faces/face.gd")
 ## bargain, and for the same reason).
 const Cloth = preload("res://ui/faces/patch_cloth.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The card's own inset, all round.
@@ -245,6 +247,76 @@ const RIM_H := 30.0
 const BAND_H := 32.0
 const STAKE := 38.0
 
+# --- the rewards (spec 2026-09-30-quilt-polish-design.md, section 4) ---
+## The streak: a note up the pentatonic from the second good drop, the
+## bubble from the third, confetti at four and seven (a quilt is small).
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [4, 7]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Three patches in five play a gag, by the patch's hash: love hearts, a
+## button sewn on its middle, or a boing.
+const GAG_ODDS := 5
+const GAGS := 3
+const LOVE_HEARTS := 4
+const LOVE_TIME := 1.3
+const LOVE_RISE := 0.8
+const LOVE_R := 0.14
+## The button: BUTTON_R of a cell, pearl with a deeper rim, four holes and
+## a cross of the patch's own thread. It pops on once the patch has landed.
+const BUTTON_R := 0.22
+const BUTTON := Color("fbf4e4")
+const BUTTON_DEEP := Color("d6c6a4")
+## The boing: a squash, a hop of BOING_HOP cells, a squash on landing.
+const BOING_TIME := 0.56
+const BOING_HOP := 0.32
+const BOING_SQUASH := 0.14
+## A finished row or column: a glint runs along it, ROW_STEP a cell, each
+## glint ROW_TIME long.
+const ROW_STEP := 0.055
+const ROW_TIME := 0.5
+const ROW_STAR := 0.2
+## The party, PARTY_AT after the solve wave: the dance, the cat, the seal.
+const PARTY_AT := 0.5
+const PARTY_EXTRA := 1.8
+const DANCE_BEATS := 4
+const DANCE_BEAT := 0.24
+const DANCE_HOP := 0.13
+const DANCE_TILT := 0.06
+const CHEERS := 12
+## The nap cat: CAT_SIZE cells across, popping up on the rack's mat and
+## hopping CAT_HOPS times onto the quilt, CAT_HOP_H cells high, then curling
+## up to sleep.
+const CAT_SIZE := 1.7
+const CAT_AT := 0.35
+const CAT_POP := 0.22
+const CAT_HOPS := 3
+const CAT_HOP_TIME := 0.34
+const CAT_HOP_H := 0.7
+const CAT_SETTLE := 0.25
+## The seal on the rack's lower right.
+const STAMP_AT := 1.0
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
+## Scrap Basket's bunting: the twine unrolls across the top of the card
+## over BUNT_TWINE, then the scraps hop out of the basket one by one and are
+## pegged along it at BUNT_CELL of a quilt cell, swinging down to rest over
+## BUNT_SWING.
+const BUNT_AT := 0.3
+const BUNT_TWINE := 0.35
+const BUNT_FLY := 0.62
+const BUNT_STAGGER := 0.2
+const BUNT_CELL := 0.28
+const BUNT_SAG := 30.0
+const BUNT_Y := 2.0
+const BUNT_SWING := 3.2
+const BUNT_ANGLE := 0.3
+const TWINE := Color("b88f5f")
+
 var _state = State.new()
 ## The board's own effects node: the hint's ring and every sparkle come
 ## through it and nowhere else.
@@ -357,6 +429,38 @@ var _life_alive := false
 ## The rack's shelves, cached per board (see `_shelves`).
 var _shelf_cache: Array = []
 
+## The rewards. The streak and its bubble (Bridges' names).
+var _streak := 0
+var _combo_n := 0
+var _combo_at := -INF
+var _combo_pos := Vector2.ZERO
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_shown: ArrayMesh
+## Love hearts floating up: [{"at", "t", "phase"}].
+var _love: Array = []
+var _love_mesh: ArrayMesh
+## patch -> when its button pops on. Drawn as part of the patch, so it goes
+## wherever the patch goes, and gone once the patch is home in the rack.
+var _buttons: Dictionary = {}
+## patch -> when its boing starts.
+var _boing: Dictionary = {}
+## Glints running along finished rows and columns: [{"points", "delays",
+## "at"}].
+var _rows: Array = []
+var _row_mesh_shown: ArrayMesh
+## The party: when the dance starts, when the seal drops, when the bunting
+## starts, and the cat.
+var _dance_at := INF
+var _dance_side: Dictionary = {}
+var _stamp_at := INF
+var _seal_mesh: ArrayMesh
+var _bunt_at := INF
+var _bunting: Array = []
+var _cat: Control
+var _cat_at := INF
+var _cat_curled := false
+
 func puzzle_id() -> String: return "quilt"
 func title() -> String: return "Quilt"
 
@@ -432,6 +536,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_pending = []
 	_anim_until = 0.0
 	_solved_at = -1.0
+	_reset_rewards()
 	_shape_cache()
 	_deal()
 	_layout()
@@ -675,6 +780,8 @@ func _layout() -> void:
 	_ground = null
 	_mat_mesh = null
 	_tag_mesh = null
+	_love_mesh = null
+	_seal_mesh = null
 	_shelf_cache = []
 	_refresh()
 	if _heart_layer != null:
@@ -690,6 +797,7 @@ func _process(delta: float) -> void:
 	_sway(delta)
 	_retire(t)
 	_fire_pending(t)
+	_place_cat(t)
 	_tick_layers(t)
 	if _animating(t):
 		_refresh()
@@ -741,6 +849,7 @@ func _retire(t: float) -> void:
 	for p in _flying.keys():
 		if t - float((_flying[p] as Dictionary)["at"]) >= FLY_TIME:
 			_flying.erase(p)
+			_buttons.erase(p)
 
 ## Whether anything on this card is still moving, asked wave by wave rather
 ## than by one deadline. **Every** wave has to be in here: One Line shipped
@@ -777,6 +886,16 @@ func _animating(t: float) -> bool:
 	if not _refused.is_empty() and t - float(_refused["at"]) < Motion.FLASH_IN + Motion.FLASH_OUT:
 		return true
 	if _solved_at >= 0.0 and t - _solved_at < Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME:
+		return true
+	# The rewards drawn in the patches themselves: a button popping on, a
+	# boing, the party's dance.
+	for p in _buttons:
+		if t - float(_buttons[p]) < Motion.POP_IN + 0.05:
+			return true
+	for p in _boing:
+		if t - float(_boing[p]) < BOING_TIME:
+			return true
+	if _dancing(t):
 		return true
 	return false
 
@@ -867,9 +986,17 @@ func _frame_of(p: int, t: float) -> Dictionary:
 		if not _refused.is_empty() and int(_refused["patch"]) == p:
 			pos.x += Motion.shiver_offset(t - float(_refused["at"]))
 		rot = _wiggle_angle(p, t)
+		if _boing.has(p):
+			var bo := _boing_at(p, t)
+			sc *= Vector2(1.0 + bo.x, 1.0 - bo.x)
+			# Squashed about its foot, not its middle: it sits on the quilt.
+			pos.y += float(_spans[p].y) * cell * 0.5 * bo.x + bo.y * cell
 		if _solved_at >= 0.0:
 			pos.y += _solve_hop(p, t)
 			face = face.lerp(Pal.SURFACE, SHEEN * _sheen(p, t))
+			var d := _dance(p, t)
+			pos.y += d.y * cell
+			rot += d.x
 	else:
 		pos = _bay_home(p)
 		cell = _rack_cell()
@@ -1332,7 +1459,8 @@ func _build_rack(t: float) -> ArrayMesh:
 	var chalk := Color(MAT_STITCH, 0.95)
 	for p in _state.shapes.size():
 		var held: bool = (not _drag.is_empty() and int(_drag["patch"]) == p) \
-			or (not _peel.is_empty() and int(_peel["patch"]) == p)
+			or (not _peel.is_empty() and int(_peel["patch"]) == p) \
+			or _bunted(p, t)
 		if held or (int(_state.at[p]) >= 0 and not _flying.has(p)):
 			for loop: PackedVector2Array in _loops[p]:
 				var pts := Cloth.laid(loop, _bay_home(p), cell, _spans[p])
@@ -1480,6 +1608,8 @@ func _patch(b, p: int, f: Dictionary, sewn := false, reach := -1.0) -> void:
 		float(f.get("rot", 0.0)))
 	Cloth.print_cloth(b, _state.shapes[p], p, f["pos"], cell, _spans[p],
 		f["sc"], float(f["alpha"]), float(f.get("rot", 0.0)))
+	if _buttons.has(p):
+		_button(b, p, f)
 	if sewn:
 		_quilting(b, p, f, reach)
 	_blush(b, p, f)
@@ -2191,6 +2321,7 @@ func restore_completed_board() -> void:
 	_solved_at = -1.0
 	_opened = t - 10.0
 	_deal()
+	_reset_rewards()
 	_coach_off = true
 	for p in _state.shapes.size():
 		_state.at[p] = int(_state.answer[p])
@@ -2204,15 +2335,35 @@ func restore_completed_board() -> void:
 	if rec.has("hearts") and max_hearts > 0:
 		hearts = clampi(int(rec.hearts), 0, max_hearts)
 	_tag_count = -1
+	# The party's leavings and none of its motion: the cat asleep on the
+	# quilt, the seal when the solve earned one, and on Scrap Basket the
+	# bunting, still.
+	_cat_at = t - 100.0
+	if _flawless or _state.band == 3:
+		_stamp_at = t - 100.0
+	if not _state.scraps().is_empty():
+		_start_bunting(t - 100.0)
 	_say(tr("QL_WIN"), Face.Expr.JOY)
 	_heart_layer.queue_redraw()
+	_life_layer.queue_redraw()
 	_refresh()
 
 func is_solved() -> bool:
 	return _state.is_solved()
 
+## The quilt's glyphs, a grid of squares, then the seal's words on a line
+## of their own: `🧺 Scraps` for any Scrap Basket (and ` · Flawless` when it
+## was), `🏅 Flawless` otherwise.
 func share_glyphs() -> String:
-	return _state.share_glyphs()
+	var out: String = _state.share_glyphs()
+	var seal := ""
+	if _state.band == 3 and not _state.scraps().is_empty():
+		seal = "🧺 " + tr("QL_SCRAP_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		seal = "🏅 " + tr("BN_FLAWLESS")
+	if seal.is_empty():
+		return out
+	return out.strip_edges(false, true) + "\n" + seal
 
 ## Whether the solve was flawless, so a reopened daily keeps its seal, and
 ## how many hearts it kept.
@@ -2227,8 +2378,11 @@ func flat_win() -> Dictionary:
 ## Long enough for the hem's stitch to run all the way round the finished
 ## quilt. Under reduce-motion there is no wave, so the win follows the last
 ## patch (spec section 9's reduce-motion row).
+##
+## The party comes after it: PARTY_AT on from the wave and PARTY_EXTRA to
+## let the cat curl up and the seal land before the win screen covers them.
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_AT + PARTY_EXTRA
 
 func _on_solved() -> void:
 	_solved_at = _now()
@@ -2250,22 +2404,536 @@ func _on_solved() -> void:
 	_busy_for(Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
 	_say(tr("QL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	# The streak's bubble goes; the party takes over.
+	_combo_out_at = _now() if _combo_n >= COMBO_FROM else -INF
+	_party()
 	_refresh()
 
-# --- rewards: the hooks (spec section 4 builds on these) ---
+# --- rewards (spec section 4) ---
+
+## Every reward's clock back to nothing: a new board, or a restored one.
+func _reset_rewards() -> void:
+	_streak = 0
+	_combo_n = 0
+	_combo_at = -INF
+	_combo_out_at = -INF
+	_love = []
+	_buttons = {}
+	_boing = {}
+	_rows = []
+	_dance_at = INF
+	_dance_side = {}
+	_stamp_at = INF
+	_seal_mesh = null
+	_bunt_at = INF
+	_bunting = []
+	_cat_at = INF
+	_cat_curled = false
+	if is_instance_valid(_cat):
+		_cat.queue_free()
+	_cat = null
+	if _life_layer != null:
+		_life_layer.queue_redraw()
 
 ## A good drop: on Hard and Insane a right patch, on Easy and Medium one that
 ## leaves the quilt finishable. Called once the patch is in the state and
-## before `note_move()`, so a drop that solves the quilt comes through here
-## too (check `_state.is_solved()`). The streak, the gags and the row
-## sparkle belong here.
-func _on_good_drop(_p: int) -> void:
-	pass
+## before `note_move()`. It builds the streak -- a note up the pentatonic
+## from the second, the bubble from the third, confetti at four and seven --
+## plays the patch's gag, and runs a glint along any row or column it
+## finished. The solving drop does none of it: the party is about to start.
+func _on_good_drop(p: int) -> void:
+	if is_done() or _state.is_solved():
+		return
+	var land := 0.0 if Motion.reduce else LAND_TIME * LAND_GLIDE
+	var mid := _origin() + _centroid(p) * _cell()
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		_after(land, func() -> void:
+			if not is_done():
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if _streak >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_pos = _patch_top(p)
+		_combo_at = _now()
+		_combo_out_at = -INF
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		_after(land, func() -> void:
+			if is_done():
+				return
+			fx.confetti(mid, 22)
+			fx.cue("confetti"))
+	_rows_done(p, land)
+	_gag(p)
+	_life_layer.queue_redraw()
 
 ## The streak ends: a refusal, a chalked spot, a wrong patch, a dead end, a
-## take-off, an undo, a reset, the hearts running out.
+## take-off, an undo, a reset, the hearts running out. The bubble deflates.
 func _break_streak() -> void:
-	pass
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+	else:
+		_combo_n = 0
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+## The top middle of a sewn patch, in local pixels: where the bubble points
+## and the love hearts rise from.
+func _patch_top(p: int) -> Vector2:
+	var origin := int(_state.at[p])
+	var top := 1 << 30
+	for c: Vector2i in (_state.shapes[p] as Array):
+		top = mini(top, c.y)
+	var mid := _centroid(p)
+	return _origin() + Vector2(mid.x, float(origin / _state.cols + top)) * _cell()
+
+## The cell of a patch nearest its own middle, in its own cell units: where a
+## button goes, so an L's button sits on cloth and not in its notch.
+func _middle_cell(p: int) -> Vector2:
+	var cells: Array = _state.shapes[p]
+	var sum := Vector2.ZERO
+	for c: Vector2i in cells:
+		sum += Vector2(c) + Vector2(0.5, 0.5)
+	sum /= float(maxi(cells.size(), 1))
+	var best := Vector2(0.5, 0.5)
+	var best_d := INF
+	for c: Vector2i in cells:
+		var at := Vector2(c) + Vector2(0.5, 0.5)
+		var d := at.distance_squared_to(sum)
+		if d < best_d - 0.001:
+			best_d = d
+			best = at
+	return best
+
+## Which gag patch `p` plays: GAG_ODDS rolls, the first GAGS of them a gag.
+## The day's quilt picks where the cycle starts and each patch steps two
+## along it, so a day replays the same and any five patches share the
+## three gags evenly. A plain hash per patch clumped: one Scrap Basket drew
+## seven buttons out of nine.
+func _gag_roll(p: int) -> int:
+	return posmod(hash(str(_state.answer) + str(_state.cols)) + p * 2, GAG_ODDS)
+
+## Three patches in five play a gag (`_gag_roll`): love hearts float up off
+## it, a button is sewn on its middle and stays there, or it boings. Under
+## reduce motion only the button, which simply stands.
+func _gag(p: int) -> void:
+	var roll := _gag_roll(p)
+	if roll >= GAGS:
+		return
+	var now := _now()
+	var land := LAND_TIME * LAND_GLIDE
+	match roll:
+		0:
+			if Motion.reduce:
+				return
+			var at := _patch_top(p) + Vector2(0.0, _cell() * 0.25)
+			for n in LOVE_HEARTS:
+				var off := Vector2((n - (LOVE_HEARTS - 1) * 0.5) * 0.24, 0.0) * _cell()
+				_love.append({"at": at + off, "t": now + land + n * 0.08,
+					"phase": float(posmod(hash([p, n]), 100)) / 100.0 * TAU})
+			_after(land, fx.cue.bind("love"))
+		1:
+			if Motion.reduce:
+				_buttons[p] = now
+				fx.cue("button")
+				return
+			var at := now + LAND_TIME
+			_buttons[p] = at
+			_after(LAND_TIME, func() -> void:
+				if not _buttons.has(p) or int(_state.at[p]) < 0:
+					return
+				fx.cue("button")
+				fx.puff(_origin() + (Vector2(_corner_cell(p)) + _middle_cell(p)) * _cell(), BUTTON, 4))
+		2:
+			if Motion.reduce:
+				return
+			_boing[p] = now + LAND_TIME
+			_busy_for(LAND_TIME + BOING_TIME)
+			_after(LAND_TIME, fx.cue.bind("boing"))
+
+## The top-left cell of a sewn patch's box, in cells of the quilt.
+func _corner_cell(p: int) -> Vector2i:
+	var origin := int(_state.at[p])
+	return Vector2i(origin % _state.cols, origin / _state.cols)
+
+## The boing at `t`: (squash, lift in cells). A squash down, a hop up tall
+## and thin, and a squash on landing.
+func _boing_at(p: int, t: float) -> Vector2:
+	var e := t - float(_boing[p])
+	if e <= 0.0 or e >= BOING_TIME:
+		return Vector2.ZERO
+	var u := e / BOING_TIME
+	if u < 0.18:
+		return Vector2(BOING_SQUASH * sin(u / 0.18 * PI), 0.0)
+	if u < 0.78:
+		var v := (u - 0.18) / 0.6
+		return Vector2(-BOING_SQUASH * 0.5 * sin(v * PI), -BOING_HOP * 4.0 * v * (1.0 - v))
+	var w := (u - 0.78) / 0.22
+	return Vector2(BOING_SQUASH * 0.7 * sin(w * PI) * (1.0 - w * 0.4), 0.0)
+
+## A button sewn on a patch's middle: a pearl disc over its deeper rim, a
+## pressed ring, four holes and a cross of the patch's own thread. It pops on
+## with the family's back ease and then simply stays.
+func _button(b, p: int, f: Dictionary) -> void:
+	var e := _now() - float(_buttons[p])
+	if e < 0.0:
+		return
+	var k := 1.0 if Motion.reduce else Motion.pop_in_scale(e).x
+	if k <= 0.01:
+		return
+	var cell := float(f["cell"])
+	var at := Cloth.place(_middle_cell(p), f["pos"], cell, _spans[p], f["sc"], float(f.get("rot", 0.0)))
+	var r := BUTTON_R * cell * k
+	var alpha := float(f["alpha"])
+	b.disc(at + Vector2(0.0, r * 0.14), r * 1.04, Color(Pal.TEXT, 0.18 * alpha))
+	b.disc(at, r, Color(BUTTON_DEEP, alpha))
+	b.disc(at + Vector2(0.0, -r * 0.05), r * 0.88, Color(BUTTON, alpha))
+	b.stroke(Face.Builder.ring(at, r * 0.66, r * 0.66), maxf(1.0, r * 0.08), Color(BUTTON_DEEP, 0.8 * alpha), true)
+	var thread := Cloth.cloth_deep(p)
+	var h := r * 0.26
+	b.stroke(PackedVector2Array([at + Vector2(-h, -h), at + Vector2(h, h)]), r * 0.13, Color(thread, alpha))
+	b.stroke(PackedVector2Array([at + Vector2(h, -h), at + Vector2(-h, h)]), r * 0.13, Color(thread, alpha))
+	for d: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+		b.disc(at + d * h, r * 0.1, Color(Pal.OUTLINE, 0.55 * alpha))
+	b.ellipse(at + Vector2(-0.45, -0.5) * r, r * 0.2, r * 0.1, Color(1.0, 1.0, 1.0, 0.6 * alpha))
+
+## Every row and column patch `p` has just finished -- each backing cell in
+## it covered -- runs a glint along it, cell by cell out from the patch.
+func _rows_done(p: int, land: float) -> void:
+	var corner := _corner_cell(p)
+	var rows_hit: Dictionary = {}
+	var cols_hit: Dictionary = {}
+	for c: Vector2i in (_state.shapes[p] as Array):
+		rows_hit[corner.y + c.y] = true
+		cols_hit[corner.x + c.x] = true
+	var runs: Array = []
+	for r: int in rows_hit:
+		var line: Array = []
+		var whole := true
+		for c in _state.cols:
+			if _state.in_region(c, r):
+				if _state.patch_at_cell(c, r) < 0:
+					whole = false
+					break
+				line.append(Vector2i(c, r))
+		if whole and line.size() >= 2:
+			runs.append(line)
+	for c: int in cols_hit:
+		var line: Array = []
+		var whole := true
+		for r in _state.rows:
+			if _state.in_region(c, r):
+				if _state.patch_at_cell(c, r) < 0:
+					whole = false
+					break
+				line.append(Vector2i(c, r))
+		if whole and line.size() >= 2:
+			runs.append(line)
+	if runs.is_empty():
+		return
+	var mine: Array = _state.patch_cells(p, int(_state.at[p]))
+	var now := _now()
+	var lead := land + LAND_TIME * 0.3
+	for line: Array in runs:
+		var points: Array = []
+		var delays: Array = []
+		for cell: Vector2i in line:
+			var near := INF
+			for m: Vector2i in mine:
+				near = minf(near, float(absi(m.x - cell.x) + absi(m.y - cell.y)))
+			points.append(Vector2(cell) + Vector2(0.5, 0.5))
+			delays.append(near * ROW_STEP)
+		_rows.append({"points": points, "delays": delays, "at": now + lead})
+	if Motion.reduce:
+		_rows = []
+		fx.cue("row")
+		return
+	_after(lead, fx.cue.bind("row"))
+
+## Whether a finished row's glints are still running.
+func _rows_running(now: float) -> bool:
+	for run: Dictionary in _rows:
+		var last := 0.0
+		for d in run.delays:
+			last = maxf(last, float(d))
+		if now < float(run.at) + last + ROW_TIME:
+			return true
+	return false
+
+## The party, after the solve wave: the patches dance on the beat with their
+## neighbours half a beat apart, confetti twice, the nap cat pops up on the
+## rack's mat and hops onto the finished quilt to curl up, on Scrap Basket
+## the scraps hop out of the basket onto a bunting across the top of the
+## card, the seal stamps when the solve earned one (flawless, or any Insane
+## quilt), and the line shares a bit of quilt wisdom. Under reduce motion the
+## cat, the bunting and the seal are simply there.
+func _party() -> void:
+	var now := _now()
+	var lead := 0.0 if Motion.reduce else _party_lead()
+	_after(lead, func() -> void:
+		_say(_cheer(), Face.Expr.JOY))
+	_cat_at = now if Motion.reduce else now + lead + CAT_AT
+	if not _state.scraps().is_empty():
+		_start_bunting(now if Motion.reduce else now + lead + BUNT_AT)
+	if _flawless or _state.band == 3:
+		_stamp_at = now if Motion.reduce else now + lead + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		_life_layer.queue_redraw()
+		return
+	var field := Rect2(_origin(), Vector2(float(_state.cols), float(_state.rows)) * _cell())
+	_after(lead + 0.15, func() -> void:
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell() * 0.5), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_after(lead + 0.6, func() -> void:
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	_dance_colours()
+	_dance_at = now + lead
+	_busy_for(lead + DANCE_BEAT * (DANCE_BEATS + 1))
+	_after(lead, fx.cue.bind("dance"))
+
+## When the party starts after the solve: the wave across the quilt, half
+## its last hop, and PARTY_AT.
+func _party_lead() -> float:
+	return Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME * 0.5 + PARTY_AT
+
+## Which half of the beat each patch dances on: two colours handed out
+## greedily across the patches that share a seam, so neighbours are half a
+## beat apart wherever the quilt allows it.
+func _dance_colours() -> void:
+	_dance_side = {}
+	var order: Array = []
+	for p in _state.shapes.size():
+		if int(_state.at[p]) >= 0:
+			order.append(p)
+	for p: int in order:
+		var seen := [0, 0]
+		for c: Vector2i in _state.patch_cells(p, int(_state.at[p])):
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var q := _state.patch_at_cell(c.x + d.x, c.y + d.y)
+				if q >= 0 and q != p and _dance_side.has(q):
+					seen[int(_dance_side[q])] += 1
+		_dance_side[p] = 1 if seen[0] > seen[1] else 0
+
+func _dancing(t: float) -> bool:
+	return t >= _dance_at and t < _dance_at + DANCE_BEAT * (DANCE_BEATS + 1)
+
+## A patch's dance at `t`: (tilt, lift in cells). A hop on every beat, its
+## lean swapping side each beat, on the patch's own half of the beat.
+func _dance(p: int, t: float) -> Vector2:
+	if not _dancing(t):
+		return Vector2.ZERO
+	var e := t - _dance_at - float(_dance_side.get(p, 0)) * DANCE_BEAT * 0.5
+	if e < 0.0 or e >= DANCE_BEAT * DANCE_BEATS:
+		return Vector2.ZERO
+	var beat := int(e / DANCE_BEAT)
+	var u := fmod(e, DANCE_BEAT) / DANCE_BEAT
+	var up := sin(u * PI)
+	return Vector2((1.0 if beat % 2 == 0 else -1.0) * DANCE_TILT * up, -DANCE_HOP * up)
+
+## One of CHEERS silly bits of quilt wisdom, picked by the quilt itself, so a
+## day always gets the same one.
+func _cheer() -> String:
+	return tr("QL_CHEER_%d" % posmod(hash([_state.shapes, _state.answer, _state.cols, _state.rows]), CHEERS))
+
+# --- the nap cat ---
+
+## Where the cat curls up: the middle of the 2x2 of backing nearest the
+## quilt's own middle, a little down and right, so she lies on cloth -- and
+## never on a button, which she would hide.
+func _cat_spot() -> Vector2:
+	var want := Vector2(float(_state.cols), float(_state.rows)) * 0.5 + Vector2(0.4, 0.5)
+	var studs: Array = []
+	for p in _buttons:
+		if int(_state.at[p]) >= 0:
+			studs.append(Vector2(_corner_cell(p)) + _middle_cell(p))
+	var best := Vector2(-1.0, -1.0)
+	var best_d := INF
+	for r in range(1, _state.rows):
+		for c in range(1, _state.cols):
+			if not (_state.in_region(c, r) and _state.in_region(c - 1, r)
+					and _state.in_region(c, r - 1) and _state.in_region(c - 1, r - 1)):
+				continue
+			var d := Vector2(float(c), float(r)).distance_squared_to(want)
+			for at: Vector2 in studs:
+				if at.distance_to(Vector2(float(c), float(r) - 0.2)) < 1.25:
+					d += 100.0
+			if d < best_d:
+				best_d = d
+				best = Vector2(float(c), float(r))
+	if best.x < 0.0:
+		best = _centroid(0) if int(_state.at[0]) >= 0 else want
+	return _origin() + best * _cell()
+
+## Where she pops up: the right end of the rack's mat.
+func _cat_start() -> Vector2:
+	var box := _rack_box()
+	var px := _cell() * CAT_SIZE
+	return Vector2(box.end.x - px * 0.45, box.position.y + px * 0.2)
+
+func _cat_walk() -> float:
+	return CAT_POP + CAT_HOPS * CAT_HOP_TIME
+
+## Puts the cat where her clock says: nowhere yet; popping up on the mat;
+## hopping, three arcs, onto the quilt; landing with a squash; curled up
+## asleep, purring. Under reduce motion she is simply curled up there.
+func _place_cat(t: float) -> void:
+	if t < _cat_at:
+		return
+	if not is_instance_valid(_cat):
+		_cat = NapCat.new()
+		_cat.name = "Cat"
+		_cat.need = 0
+		_cat.z_index = 3
+		_cat.expression = Face.Expr.JOY
+		add_child(_cat)
+		_cat.set_idle(true)
+		_cat_curled = false
+	var px := _cell() * CAT_SIZE
+	if _cat.size.x != px:
+		_cat.size = Vector2(px, px)
+	var e := t - _cat_at
+	var spot := _cat_spot()
+	var start := _cat_start()
+	var at := spot
+	var sc := Vector2.ONE
+	if Motion.reduce or e >= _cat_walk() + CAT_SETTLE:
+		if not _cat_curled:
+			_curl_cat(e > _cat_walk() + CAT_SETTLE + 1.0)
+	elif e < CAT_POP:
+		at = start
+		sc = Motion.pop_in_scale(e, CAT_POP)
+	elif e < _cat_walk():
+		var h := (e - CAT_POP) / CAT_HOP_TIME
+		var i := int(h)
+		var u := h - float(i)
+		var from := start.lerp(spot, float(i) / CAT_HOPS)
+		var to := start.lerp(spot, float(i + 1) / CAT_HOPS)
+		at = from.lerp(to, u) - Vector2(0.0, 4.0 * u * (1.0 - u) * CAT_HOP_H * _cell())
+		# Tall in the air, squashed at each take-off and landing.
+		var s := 0.1 * sin(u * PI)
+		sc = Vector2(1.0 - s, 1.0 + s)
+	else:
+		var u := (e - _cat_walk()) / CAT_SETTLE
+		var s := 0.14 * sin(u * PI)
+		sc = Vector2(1.0 + s, 1.0 - s)
+		at.y += px * 0.5 * s
+	_cat.position = at - _cat.size * 0.5
+	_cat.scale = sc
+
+## She curls up: the sleepy face and the drifting "z", and a purr -- unless
+## she was already asleep when the board opened (a restore), who is quiet.
+func _curl_cat(quiet: bool) -> void:
+	_cat_curled = true
+	_cat.expression = Face.Expr.SLEEPY
+	_cat.scale = Vector2.ONE
+	if not quiet:
+		fx.cue("purr")
+
+# --- Scrap Basket's bunting ---
+
+## The twine starts to unroll at `at`, and each scrap hops out of the
+## basket after it. The scraps are strung in basket order.
+func _start_bunting(at: float) -> void:
+	_bunt_at = at
+	_bunting = []
+	var scraps: Array = []
+	for p in _state.scraps():
+		scraps.append(int(p))
+	scraps.sort_custom(func(a: int, z: int) -> bool:
+		return _bay_home(a).x < _bay_home(z).x)
+	for k in scraps.size():
+		var p: int = scraps[k]
+		var leave := at + BUNT_TWINE + k * BUNT_STAGGER
+		_bunting.append({"patch": p, "x": (float(k) + 0.5) / float(scraps.size()), "leave": leave})
+		if not Motion.reduce and leave > _now():
+			_after(leave - _now(), func() -> void:
+				_refresh()
+				if k == 0:
+					fx.cue("bunting"))
+	_refresh()
+
+## Whether scrap `p` has left the basket for the bunting at `t`.
+func _bunted(p: int, t: float) -> bool:
+	for f: Dictionary in _bunting:
+		if int(f.patch) == p:
+			return t >= float(f.leave)
+	return false
+
+## The twine's line across the top of the card, as a function of x from 0
+## to 1: a sag between two pins in the card's top corners.
+func _twine(x: float) -> Vector2:
+	var a := Vector2(INSET * 1.5, BUNT_Y)
+	var z := Vector2(size.x - INSET * 1.5, BUNT_Y)
+	return a.lerp(z, x) + Vector2(0.0, BUNT_SAG * 4.0 * x * (1.0 - x))
+
+## Where a pennant hangs along the twine. The middle of the card is the
+## hearts' pill on a judged board, so the scraps hang either side of it.
+func _bunt_x(k: float) -> float:
+	return [0.17, 0.33, 0.81][clampi(int(k * 3.0), 0, 2)] if max_hearts > 0 and _bunting.size() == 3 else k
+
+func _bunting_running(now: float) -> bool:
+	if _bunting.is_empty() or Motion.reduce or now < _bunt_at:
+		return false
+	var last := 0.0
+	for f: Dictionary in _bunting:
+		last = maxf(last, float(f.leave))
+	return now < last + BUNT_FLY + BUNT_SWING
+
+## The bunting as one mesh: the twine unrolling, then each scrap flying out
+## of the basket on an arc, shrinking to the bunting's size, and pegged
+## under the twine by its top edge, swinging down to rest.
+func _draw_bunting(now: float, shown: Array) -> void:
+	if _bunting.is_empty() or now < _bunt_at:
+		return
+	var b := Face.Builder.new()
+	var u := 1.0 if Motion.reduce else clampf((now - _bunt_at) / BUNT_TWINE, 0.0, 1.0)
+	var pts := PackedVector2Array()
+	var steps := 24
+	for i in steps + 1:
+		pts.append(_twine(u * float(i) / float(steps)))
+	b.stroke(pts, 3.0, TWINE)
+	for end in [0.0, 1.0]:
+		b.disc(_twine(end), 6.0, TWINE.darkened(0.2))
+	var small := _cell() * BUNT_CELL
+	for f: Dictionary in _bunting:
+		var p := int(f.patch)
+		var e := now - float(f.leave)
+		if not Motion.reduce and e < 0.0:
+			continue
+		var span := Vector2(_spans[p])
+		var hang := _twine(_bunt_x(float(f.x)))
+		var k := 1.0 if Motion.reduce else clampf(e / BUNT_FLY, 0.0, 1.0)
+		var ease := k * k * (3.0 - 2.0 * k)
+		var cell := lerpf(_rack_cell(), small, ease)
+		var rot := 0.0
+		var pos: Vector2
+		if k < 1.0:
+			var from := _bay_home(p)
+			var to := hang - Vector2(span.x * 0.5, 0.0) * small
+			pos = from.lerp(to, ease) - Vector2(0.0, sin(k * PI) * _cell() * 1.2)
+			rot = sin(k * TAU) * 0.35
+		else:
+			var s := e - BUNT_FLY
+			var phase := float(f.x) * 2.3
+			rot = BUNT_ANGLE * exp(-s * 1.4) * sin(s * 5.5 + phase) if not Motion.reduce and s < BUNT_SWING else 0.0
+			# Swing about the peg at the top middle, not the patch's middle.
+			var mid := hang + Vector2(0.0, span.y * 0.5 * cell).rotated(rot)
+			pos = mid - span * cell * 0.5
+		var f2 := {"pos": pos, "cell": cell, "sc": Vector2.ONE, "alpha": 1.0, "rot": rot, "lift": 0.0}
+		_patch(b, p, f2)
+		if k >= 1.0:
+			b.disc(hang, 5.5, Pal.LINE)
+			b.disc(hang + Vector2(-1.2, -1.2), 2.2, Color(1.0, 1.0, 1.0, 0.5))
+	var mesh := _mesh(b)
+	if mesh != null:
+		_life_layer.draw_mesh(mesh, null)
+		shown.append(mesh)
 
 # --- failing ---
 
@@ -2525,20 +3193,171 @@ func _tick_layers(now: float) -> void:
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
 			or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
 		_heart_layer.queue_redraw()
-	var alive := not _coach_at(now).is_empty()
+	var alive := _tick_life(now)
 	if alive or _life_alive:
 		_life_layer.queue_redraw()
 	_life_alive = alive
 
-## The life over the card: today the ghost finger. The rewards (love hearts,
-## the cat, the bunting, the seal) draw here too.
+## Whether anything on the life layer is still moving.
+func _tick_life(now: float) -> bool:
+	var still: Array = []
+	for l in _love:
+		if now < float(l.t) + LOVE_TIME:
+			still.append(l)
+	_love = still
+	if not _rows.is_empty() and not _rows_running(now):
+		_rows = []
+		return true
+	return not _love.is_empty() or not _rows.is_empty() \
+		or not _coach_at(now).is_empty() \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or _bunting_running(now) \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## The life over the card: the ghost finger, the streak's bubble, love
+## hearts floating off a patch, a glint running along a finished row, and
+## after the solve the bunting and the seal. One mesh each, and the words.
 func _draw_life() -> void:
 	if _cell() <= 0.0 or _state.shapes.is_empty():
 		_life_shown = []
 		return
+	var now := _now()
 	var shown: Array = []
-	_draw_coach(_now(), shown)
+	_draw_coach(now, shown)
+	_draw_rows(now, shown)
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.08 * _cell(),
+				-LOVE_RISE * _cell() * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	_draw_bunting(now, shown)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_draw_combo(now, shown)
 	_life_shown = shown
+
+## The glints along finished rows and columns, one mesh: on each cell in
+## turn a soft warm glow and a four-point star that pops, turns and fades.
+func _draw_rows(now: float, shown: Array) -> void:
+	if _rows.is_empty():
+		return
+	var b := Face.Builder.new()
+	var cell := _cell()
+	var o := _origin()
+	for run: Dictionary in _rows:
+		for i in (run.points as Array).size():
+			var e: float = now - float(run.at) - float(run.delays[i])
+			if e <= 0.0 or e >= ROW_TIME:
+				continue
+			var u := e / ROW_TIME
+			var level := sin(u * PI)
+			var at: Vector2 = o + (run.points[i] as Vector2) * cell
+			b.disc(at, cell * 0.3 * level, Color(Pal.SURFACE, 0.28 * level))
+			var r := cell * ROW_STAR * (0.4 + 0.6 * level)
+			var turn := u * 0.8
+			var pts := PackedVector2Array()
+			for n in 8:
+				var ang := turn + n * PI / 4.0
+				pts.append(at + Vector2.from_angle(ang) * (r if n % 2 == 0 else r * 0.28))
+			b.polygon(pts, Color(Pal.SURFACE, level))
+			b.disc(at, r * 0.2, Color(Pal.SUN, level))
+	var mesh := _mesh(b)
+	if mesh != null:
+		_life_layer.draw_mesh(mesh, null)
+		shown.append(mesh)
+
+## A little pink heart for the love gag, built once a layout.
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := _cell() * LOVE_R
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## The streak's paper bubble over the last good patch, "x3" and up in leaf
+## ink: it pops in the first time, bumps at each patch and deflates when the
+## streak ends (Bridges').
+func _draw_combo(now: float, shown: Array) -> void:
+	if _combo_n < COMBO_FROM:
+		return
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var tail := _combo_pos + Vector2(0.0, _cell() * 0.12)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	shown.append(_combo_shown)
+	_life_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_life_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_life_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_life_layer.draw_set_transform(Vector2.ZERO)
+
+## The seal on the rack's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it: Flawless;
+## on Insane "Insane" over Flawless or Scraps.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	var insane: bool = _state.band == 3
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, insane)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := size - Vector2(INSET, INSET) - Vector2(rad * 1.1, rad * 1.0)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("QL_SCRAP_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 ## The hearts over the field as one mesh on a paper pill (Queens' and
 ## Bridges'): pink with a small face and a leaf, a faint ghost where one was,
