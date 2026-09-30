@@ -55,6 +55,12 @@ const GLYPH_X := 72.0
 const GLYPH_Y := 60.0
 const LABEL_X := 128.0
 const LABEL_Y := 62.0
+## The word's size, and the smallest it shrinks to: a word wider than the
+## chip's room (pt "Cogumelo" measured past it at 40, 2026-09-30) is
+## lettered down until it fits, LABEL_PAD short of the chip's right edge.
+const LABEL_SIZE := 40
+const LABEL_MIN := 26
+const LABEL_PAD := 16.0
 ## The cross chip's socket is drawn with the mock's own corner rather than the
 ## board's tenth of a cell: at 84 across, a tenth reads as a circle.
 const SOCKET_RADIUS := 12.0
@@ -153,6 +159,28 @@ func _build() -> void:
 		label.size = Vector2(CHIP.x - LABEL_X, CHIP.y)
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		chip.add_child(label)
+		_fit(label)
+
+## Letters `label`'s word as large as LABEL_SIZE while it fits the chip's
+## room, smaller when it does not.
+func _fit(label: Label) -> void:
+	# ChipLabel's own face (ui/theme.gd), read directly: the label may not be
+	# in the tree yet, where a theme lookup would hand back the default font.
+	var font: Font = CozyTheme.display(700)
+	var room := CHIP.x - LABEL_X - LABEL_PAD
+	var px := LABEL_SIZE
+	var word := tr(label.text)
+	while px > LABEL_MIN and font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > room:
+		px -= 1
+	label.add_theme_font_size_override("font_size", px)
+
+## The language changed under the tray: every word is fitted again.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		for chip in chips:
+			var label: Label = chip.get_node_or_null("Label")
+			if label != null:
+				_fit(label)
 
 ## The chip's picture: a tile as the board lays it, or the socket a cross
 ## rules out with its pebble on it -- the same two drawings, so what the tray
