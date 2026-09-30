@@ -130,3 +130,22 @@ Re-prompted toward felt, wood and kalimba, as the other three were: `start`,
 `combo`, `confetti`, `cool`, `love`, `mushroom`, `ladybug`, `heart_lost`,
 `slip`, `out_of_hearts`, `heart_back`, `stamp`, `party`, `petals`. Rendered
 on the fallback key; unheard.
+
+## 6. Numbers
+
+Draw-call peaks from `tests/_shot_oneline.gd -- d=<n> <mode> [rm]`
+(810x1440, `--always-on-top`, `opengl3_angle`), two readings each, matched
+within one:
+
+| mode | d=0 | d=1 | d=2 | d=3 |
+|---|---|---|---|---|
+| solve (petals in one mesh) | 111 | -- | 113 | 115 |
+| solve, petals a mesh each (before the review) | 136 | 150 | 171 | 218 |
+| solve, reduce motion | 51 | 51 | 53 | 51 |
+| right | -- | -- | 96 | 98 |
+| right, reduce motion | -- | -- | 90 | 91 |
+| wrong | -- | -- | 109 | 110 |
+| wrong, reduce motion | -- | -- | 109 | 109 |
+
+All far under the 855 budget. Suite: 122778 passed, 0 failed.
+`tests/_win.gd -- oneline`: PASS.
