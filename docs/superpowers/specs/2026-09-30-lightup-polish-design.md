@@ -146,6 +146,20 @@ the light that reaches it**.
 
 ## 6. Numbers
 
-Filled in when built: draw-call peaks from
-`tests/_shot_lightup.gd -- d=0..3 rest|right|wrong|sweep|solve|perf [rm]`
-(810x1440, `opengl3_angle`), the suite count and `tests/_win.gd -- lightup`.
+Draw-call peaks from `tests/_shot_lightup.gd -- d=<n> <mode> [rm]`
+(810x1440, `--always-on-top`, `opengl3_angle`), the second of two readings
+(each pair matched within one):
+
+| mode | d=0 | d=1 | d=2 | d=3 |
+|---|---|---|---|---|
+| solve | 138 | 146 | 157 | 213 |
+| solve, reduce motion | 64 | 68 | 73 | 107 |
+| right | 103 | 108 | 111 | 139 |
+| right, reduce motion | 98 | 102 | 105 | 127 |
+| wrong | -- | -- | 112 | 138 |
+| wrong, reduce motion | -- | -- | 111 | 136 |
+
+The peak is the Insane party (17 lamps: hats, garland, moths, a sky lantern
+each, the seal), 213 against the 855 budget. Before the rewards (part 1)
+the Insane solve read 165. Suite: 122778 passed, 0 failed.
+`tests/_win.gd -- lightup`: PASS (8 lanterns, board fit, HUD).

@@ -10,8 +10,11 @@ extends SceneTree
 ## the hearts run out: Hard and Insane; shots mid-gutter, after the eject,
 ## on the out-of-hearts card, then after Try again), `sweep` (a row of chips
 ## swept), `wake` (Insane: a lamp in a napping cat's line wakes her, then a
-## tap on her cushion is refused), `solve` (the answer to the win), `perf` (half the answer, then a
-## quiet window). Frames go to <dir>/lu_<mode>_d<level>_<n>.png. Every mode
+## tap on her cushion is refused), `solve` (the answer to the win, the party
+## run out: hats, garland, sky lanterns, seal), `perf` (half the answer, then a
+## quiet window). `right` sets down first one lamp of each gag (glasses,
+## smoke heart, snail) by the board's own hash; `sweep` sets two lamps down
+## first and shoots mid-sweep for the glance. Frames go to <dir>/lu_<mode>_d<level>_<n>.png. Every mode
 ## prints the peak draw calls from 0.5 s on (or its own window).
 
 const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/f721c072-aa1c-4e1e-a76c-14c94a593176/scratchpad"
@@ -128,6 +131,20 @@ func _tap(t: float, cell: Vector2i) -> void:
 	_at(t, func() -> void: _ev_press(_puzzle.cell_to_local(cell.y, cell.x), true))
 	_at(t + 0.06, func() -> void: _ev_press(_puzzle.cell_to_local(cell.y, cell.x), false))
 
+## `lamps` with one lamp of each gag roll first (0 glasses, 1 smoke, 2 snail),
+## by the board's own hash, the rest after in their order.
+func _gag_first(lamps: Array) -> Array:
+	var first: Array = []
+	for roll in 3:
+		for c: Vector2i in lamps:
+			if not first.has(c) and posmod(hash(c * 13 + Vector2i(7, 3)), 5) == roll:
+				first.append(c)
+				break
+	for c in lamps:
+		if not first.has(c):
+			first.append(c)
+	return first
+
 ## A stone where a lamp would be fair but is not the answer's.
 func _wrong_cell() -> Vector2i:
 	var st = _puzzle.state
@@ -151,7 +168,9 @@ func _script() -> void:
 			_at(2.5, _shot)
 			_end = 2.7
 		"right":
-			var lamps: Array = _puzzle.state.solution.duplicate()
+			# The answer's lamps, the first three picked so each gag plays once
+			# (glasses, smoke heart, snail: the board's own hash), one a second.
+			var lamps: Array = _gag_first(_puzzle.state.solution.duplicate())
 			var n := mini(lamps.size() - 1, 8)
 			for k in n:
 				_tap(1.5 + k * 0.9, lamps[k])
@@ -202,6 +221,12 @@ func _script() -> void:
 			_at(2.6, _shot)
 			_end = 2.8
 		"sweep":
+			# Two of the answer's lamps first, so the glance has faces to turn;
+			# a shot mid-sweep catches them looking at the finger.
+			var lamps: Array = _puzzle.state.solution.duplicate()
+			_tap(0.9, lamps[0])
+			_tap(1.1, lamps[1])
+			_at(1.52 + _puzzle.w * 0.025, _shot.bind("_mid"))
 			_at(1.5, func() -> void: _ev_press(_puzzle.cell_to_local(0, 0), true))
 			for k in range(1, _puzzle.w):
 				var x := k
@@ -215,10 +240,10 @@ func _script() -> void:
 			for k in lamps.size():
 				_tap(1.0 + k * 0.3, lamps[k])
 			var done := 1.0 + lamps.size() * 0.3
-			for k in 6:
+			for k in 9:
 				_at(done + 0.4 + k * 0.45, _shot)
 			_ms_from = done
-			_end = done + 3.2
+			_end = done + 4.4
 		"perf":
 			var lamps: Array = _puzzle.state.solution.duplicate()
 			for k in lamps.size() / 2:
