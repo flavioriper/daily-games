@@ -163,6 +163,17 @@ the first is out); **unheard** by a person.
 
 Filled in by the build (bank, generation, draw calls, suite, win harness).
 
+**The board side (sections 1, 2 and 4), 2026-09-30.** Peak draw calls from
+`tests/_shot_fairylights.gd` at 810x1440, windowed one at a time: rest 102
+(Easy), 118 (Hard), 125 (Insane); press 115 (Medium); fuse 124 (Hard), 133
+(Insane), 122 (Hard, reduce motion); out, dark, card and Try again 139 (Hard),
+138 (reduce motion); tags lit and read 144 (Insane); restore 134 -- every one
+far under the 855 budget. The sparks are a layer of their own over the
+lanterns (a lantern is a Control and hid its own fuse); the tag numbers are
+one draw_string a tag. Suite passed=123054 failed=0; `tests/_win.gd --
+fairylights` winnable 1/1 (Medium; it now taps every piece round where a band
+has no hints).
+
 ## 7. Calls for the user
 
 1. **The fuse rule**: only turning a right piece costs, so exploring by

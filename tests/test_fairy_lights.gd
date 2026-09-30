@@ -109,7 +109,7 @@ static func _test_promise(t) -> void:
 	# `solvable()` stubbed to `return true` leaves them all green, because
 	# `build()` only ever hands back trees that function has already
 	# approved, so asking it again re-runs a call that cannot disagree with
-	# itself. A 2x2 of straights is the smallest Netwalk board no amount of
+	# itself. A 2x2 of straights is the smallest garden no amount of
 	# propagation can settle -- every cell has two walls and a straight has
 	# only two rotations, so the candidate sets empty out -- and it must be
 	# refused.

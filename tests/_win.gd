@@ -955,10 +955,15 @@ func _solve_fairylights() -> void:
 	# A deal that came out all but solved would leave the hint nothing to do;
 	# the generator's 60% rule makes that impossible, and this is the guard
 	# rather than the plan.
-	if wrong.size() < 2:
+	# Insane has no hints: every piece is tapped round, and the HUD check is
+	# only that nothing was spent.
+	var hinted: bool = _puzzle.hints_left() > 0
+	if not hinted:
+		_hud_ok = _puzzle.hints_used == 0
+	if hinted and wrong.size() < 2:
 		_press(_host.top_bar.hint_button)
 		_hud_ok = _puzzle.hints_used == 1
-	for k in range(wrong.size() - 1):
+	for k in range(wrong.size() - (1 if hinted else 0)):
 		if _puzzle.is_done():
 			return
 		var i: int = wrong[k]
@@ -969,7 +974,7 @@ func _solve_fairylights() -> void:
 				break
 			_tap_local(_puzzle.cell_to_local(i / st.n, i % st.n))
 			m = Gen.cw(m)
-	if wrong.size() >= 2:
+	if hinted and wrong.size() >= 2:
 		_press(_host.top_bar.hint_button)
 		_hud_ok = _puzzle.hints_used == 1
 
