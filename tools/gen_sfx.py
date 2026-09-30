@@ -567,20 +567,46 @@ SETS = {
         "hills":    ("a soft rolling rise of tiny muffled felt thumps and a gentle breeze through grass, little green hills rising, with one faint warm glockenspiel note, cozy and hushed", 1.5, -13, COZY),
         "hills_glow": ("a warm dreamy swell of soft celesta and glockenspiel notes rising and glowing, little hills lit gold by a sunset, magical and cozy", 1.8, -9),
     },
-    # Bridges: wooden plank bridges laid between islets on a calm sea.
+    # Bridges: wooden plank bridges laid between islets on a calm sea. The
+    # first set was re-prompted 2026-09-30 (the polish) toward soft wood,
+    # felt, gentle water and kalimba: the hollow "bonk" and the tape-rewind
+    # undo read as a toy or a scold, as they did on Sudoku and Mushroom Patch.
     "bridges": {
-        "place":    ("a single soft hollow wooden plank knock with a tiny water lap, a small plank laid across, very short", 0.5, -6),
-        "remove":   ("a very short soft downward wooden slide with a tiny splash, planks lifted away", 0.5, -9),
-        "met":      ("a short happy two-note soft kalimba pluck, a little island complete", 0.6, -7),
-        "over":     ("a tiny soft worried wobble, a muffled hollow wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a quick soft ripple of hollow wooden plank knocks and gentle water laps, bridges being taken up", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a gentle water lap, little islands appearing on a calm sea", 1.0, -9),
+        "place":    ("a single soft muffled wooden plank laid down on a little dock with a tiny gentle water lap underneath, warm and hushed, very short", 0.5, -9, COZY),
+        "remove":   ("a soft short wooden plank lifted off a little dock with a tiny drip of water, gentle and quiet, very short", 0.5, -12, COZY),
+        "met":      ("a short happy two-note soft kalimba pluck rising, a little island complete, warm and round", 0.6, -8),
+        "over":     ("a tiny soft kalimba note with a gentle little wobble, a kind 'too many', muffled and warm, very short", 0.5, -13),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft wooden creak and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny water shimmer, cozy and kind", 1.0, -8),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
+        "reset":    ("a soft quick ripple of little wooden planks being gathered up with gentle water laps, hushed and cozy", 1.0, -11, COZY),
+        "enter":    ("a soft airy cascade of tiny muffled wooden pops and a gentle calm water lap, little islands rising out of a quiet pond, cozy and hushed", 1.0, -11, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        # The network: two groups joined, and the near-miss named.
+        "join":     ("a sweet little rising pair of soft music box notes with a tiny sparkle, two friends holding hands, warm and happy", 0.8, -11),
+        "split":    ("a gentle curious three-note kalimba question, rising at the end, 'hmm, almost', warm and kind, never a buzzer", 0.9, -13),
+        # The streak and the gags.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
+        "fish":     ("a tiny cute fish leaping out of a calm pond with a small soft splash and landing back with a gentle bloop, playful and silly", 0.9, -12, CARTOON),
+        # Hearts, the wrong plank sinking, the buoy, and the pond at dusk.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
+        "sink":     ("a small wooden plank cracking softly in two and sinking into a calm pond with a gentle bloop and a few tiny bubbles, a bit funny, muffled", 0.9, -13, CARTOON),
+        "ruled":    ("a small buoy bobbing up in calm water with a tiny soft bell ding, gentle and quiet, a kind reminder", 0.6, -15),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk over a still pond, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        # The party.
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of paper at the end, joyful and warm", 2.0, -4),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
+        "boat":     ("a tiny paper boat drifting across a calm pond, gentle water lapping and a soft little toy boat horn toot, cute and cozy", 2.0, -11, CARTOON),
+        # Insane: Lantern Night. The lanterns light after the islets rise, and flare at the party.
+        "lanterns": ("a soft warm hush of little paper lanterns glowing on one by one at night by a calm pond, gentle crickets far away and one faint warm celesta note, cozy and magical", 1.5, -13, COZY),
+        "lanterns_glow": ("a warm dreamy swell of soft celesta and glockenspiel notes rising and glowing, paper lanterns lit bright over night water, magical and cozy", 1.8, -9),
     },
     # Quilt: cloth patches dragged off a rack onto a backing; a patch that
     # lands sews a running stitch along its seams.
