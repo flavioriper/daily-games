@@ -316,7 +316,7 @@ var _last_paint := Vector2i(-1, -1)
 
 var _opened := 0.0
 var _anim_until := 0.0
-var _solved_at := -1.0
+var _solved_at := -INF
 var _gen := 0
 var _floor: ArrayMesh
 ## The mesh the last _draw actually handed to the canvas item. A canvas
@@ -411,7 +411,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_glint = {}
 	_focus_cell = Vector2i(-1, -1)
 	_clear_gesture()
-	_solved_at = -1.0
+	_solved_at = -INF
 	_seed_verdicts()
 	_layout()
 	_enter()
@@ -713,7 +713,7 @@ func _shine(cell: Vector2i, t: float) -> float:
 		out = _bell(t - float(_glint["r%d" % cell.y]) - cell.x * Motion.WAVE_STEP, GLINT_TIME)
 	if _glint.has("c%d" % cell.x):
 		out = maxf(out, _bell(t - float(_glint["c%d" % cell.x]) - cell.y * Motion.WAVE_STEP, GLINT_TIME))
-	if _solved_at >= 0.0:
+	if _solved_at > -INF:
 		out = maxf(out, _bell(t - _solved_at - WIN_GLINT_AT - (cell.x + cell.y) * WIN_GLINT_STEP,
 			WIN_GLINT_TIME))
 	return out
@@ -781,7 +781,7 @@ func _draw_tile(b, cell: Vector2i, t: float, gone: float) -> void:
 ## pebbles, and the picture has to be left standing on its own.
 func _draw_pebble(b, cell: Vector2i, t: float) -> void:
 	var alpha := _alpha(cell, t)
-	if _solved_at >= 0.0:
+	if _solved_at > -INF:
 		var clear := _dec((t - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 		if clear >= 1.0:
 			return
@@ -847,7 +847,7 @@ func _offset(cell: Vector2i, t: float) -> Vector2:
 ## How far the scaffolding has left on the win: the grout closes, the sockets
 ## and the guides fade back to parchment, and the clue numbers go faint.
 func _gone(t: float) -> float:
-	if _solved_at < 0.0:
+	if _solved_at == -INF:
 		return 0.0
 	return _dec((t - _solved_at - GONE_DELAY) / GONE_TIME)
 

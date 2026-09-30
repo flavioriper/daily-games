@@ -194,7 +194,10 @@ func _script() -> void:
 			_end = done + 5.4
 		"restore":
 			_at(1.5, func() -> void: _puzzle.restore_completed_board())
-			_at(2.0, _shot)
+			_at(2.0, func() -> void:
+				var now: float = _puzzle._now()
+				print("restore: solved_at %.2f now %.2f gone %.2f frame %.2f" % [_puzzle._solved_at, now, _puzzle._gone(now), _puzzle._frame_at])
+				_shot())
 			_end = 2.2
 		"perf":
 			for k in rows / 2:
