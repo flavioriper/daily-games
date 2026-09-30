@@ -74,6 +74,11 @@ var snail := false
 var broken: Dictionary = {}
 ## Snail Mail: how many rows the snail has brought (see delivered()).
 var sent := 0
+## How many rows the board has actually shown in colour, which trails
+## delivered() while a row is still turning; -1 (no board) means as many as
+## are delivered. The clue rule and the hint read it, so a refusal can never
+## name a green that is still face-down or sealed.
+var seen := -1
 
 ## The accept list, read once per language and shared by every instance in
 ## the process: 15,921 keys is a few ms and half a megabyte, and a harness
@@ -113,6 +118,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, banked := "") -> void:
 	given = []
 	broken = {}
 	sent = 0
+	seen = -1
 	tries = ROWS
 	hints_left = HINTS_BY_BAND[clampi(difficulty, 0, HINTS_BY_BAND.size() - 1)]
 	no_hints = difficulty >= 3
@@ -142,6 +148,10 @@ func delivered() -> int:
 	return rows.size() if not snail else mini(sent, rows.size())
 
 ## Brings Snail Mail's count up to date after a commit, and never back down.
+## The rows the clue rule and the hint may read: delivered and on screen.
+func clue_rows() -> int:
+	return delivered() if seen < 0 else mini(seen, delivered())
+
 func _post() -> void:
 	var due := rows.size() if is_solved() or rows.size() >= tries else maxi(0, rows.size() - 1)
 	sent = maxi(sent, due)
@@ -151,13 +161,13 @@ func _post() -> void:
 ## times as that row found it. Sets `broken` for the toast, leftmost first.
 func keeps_clues(word: String) -> int:
 	broken = {}
-	for r in delivered():
+	for r in clue_rows():
 		var row: String = rows[r]
 		for i in LEN:
 			if int(marks[r][i]) == HIT and word[i] != row[i]:
 				broken = {"letter": row[i], "at": i}
 				return KEEP_GREEN
-	for r in delivered():
+	for r in clue_rows():
 		var row: String = rows[r]
 		var need: Dictionary = {}
 		for i in LEN:
@@ -250,7 +260,7 @@ func hint() -> int:
 	if hints_left <= 0 or is_solved() or is_over():
 		return -1
 	var green: Array[bool] = [false, false, false, false, false]
-	for r in delivered():
+	for r in clue_rows():
 		for i in LEN:
 			if marks[r][i] == HIT:
 				green[i] = true
@@ -274,6 +284,7 @@ func reset() -> void:
 	rows = []
 	marks = []
 	sent = 0
+	seen = mini(seen, 0)
 
 func is_solved() -> bool:
 	if marks.is_empty():

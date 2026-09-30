@@ -501,6 +501,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	if difficulty >= 3:
 		banked = String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", ""))
 	state.setup(rng, difficulty, banked)
+	state.seen = 0
 	_gen += 1
 	if _tray != null:
 		_tray.match_locale()
@@ -686,6 +687,8 @@ func _process(delta: float) -> void:
 	_ride_sprout(now)
 	_deliver_reacts(now)
 	_ride_snail(now)
+	if now < _grow_at + GROW_TIME + 0.1:
+		_refit_card()
 	if _laid_out() and _animating(now):
 		queue_redraw()
 
@@ -1635,8 +1638,6 @@ func commit_row() -> void:
 			"pitch": 1.0 + 0.04 * float(c)})
 	# The rows this Enter shows the colours of, each with when it has landed.
 	var shown: Array = []
-	if not sealed:
-		shown.append([row, landed])
 	for r in row:
 		if not _sealed[r] or _deliver_at[r] > -50.0 or r >= state.delivered():
 			continue
@@ -1646,6 +1647,10 @@ func commit_row() -> void:
 		_deliver_at[r] = at
 		shown.append([r, at + _flip_length()])
 		_cue_due.append({"at": at, "cue": "snail" if sealed else "snail_hurry"})
+	# The new row after the ones the snail brought, so a row reacts against
+	# what the rows before it found and never the other way round.
+	if not sealed:
+		shown.append([row, landed])
 	if sealed and row > 0:
 		_snail_from_row = row - 1
 		_snail_to_row = row
@@ -1659,6 +1664,7 @@ func commit_row() -> void:
 	if not letters.is_empty():
 		var due := _keys_payload_rows(letters)
 		due["at"] = last
+		due["seen"] = state.delivered()
 		_keys_due.append(due)
 		if Motion.reduce:
 			_deliver_keys(last)
@@ -1678,7 +1684,8 @@ func commit_row() -> void:
 	else:
 		for pair in shown:
 			_react_due.append({"at": float(pair[1]) + REACT_AT, "r": int(pair[0])})
-		_react_due.sort_custom(func(a, b) -> bool: return float(a.at) < float(b.at))
+		_react_due.sort_custom(func(a, b) -> bool:
+			return float(a.at) < float(b.at) or (float(a.at) == float(b.at) and int(a.r) < int(b.r)))
 		if state.is_over():
 			_run_out(last)
 	_refresh()
@@ -1876,6 +1883,14 @@ func _close_card() -> void:
 		_card.queue_free()
 	_card = null
 
+## Asks the flat host to fit its parchment to card_height() again: it only
+## does on spawn and on resize, and a seventh row makes the card taller
+## wherever the width, not the height, binds the cell.
+func _refit_card() -> void:
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self) and host.has_method("_fit_card"):
+		host._fit_card()
+
 ## One more row (the card's video), once a word: the tiles perk back up, the
 ## grid makes room for a seventh row, and it rises into place.
 func row_back() -> void:
@@ -1959,7 +1974,7 @@ func _party_on() -> void:
 ## The seal's word for a solve in `rows` rows: HW_STAMP_1 .. HW_STAMP_6, and
 ## HW_STAMP_MORE for a word that needed the row the card gave.
 func stamp_key() -> String:
-	if _row_bought or state.rows.size() > State.ROWS:
+	if state.rows.size() > State.ROWS:
 		return "HW_STAMP_MORE"
 	return "HW_STAMP_%d" % clampi(state.rows.size(), 1, State.ROWS)
 
@@ -2077,6 +2092,8 @@ func _keys_payload_rows(rows: Array) -> Dictionary:
 func _deliver_keys(now: float) -> void:
 	while not _keys_due.is_empty() and now >= float(_keys_due[0].at):
 		var due: Dictionary = _keys_due.pop_front()
+		if due.has("seen"):
+			state.seen = maxi(state.seen, int(due.seen))
 		if _tray == null:
 			continue
 		_tray.set_marks(due.marks)
@@ -2274,6 +2291,7 @@ func restore_completed_board() -> void:
 		state.rows.append(word)
 		state.marks.append(State.mark_guess(word, state.answer))
 	state.sent = state.rows.size()
+	state.seen = state.rows.size()
 	var now := _now()
 	_gen += 1
 	_clear_rows()
@@ -2299,6 +2317,7 @@ func restore_completed_board() -> void:
 	_raise_sprout(Face.Expr.JOY, true)
 	_stamp_down()
 	_restoring = false
+	_refit_card.call_deferred()
 	_snail_from_row = state.rows.size() - 1
 	_snail_to_row = state.rows.size() - 1
 	if is_instance_valid(_snail):
