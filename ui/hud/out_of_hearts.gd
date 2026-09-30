@@ -23,11 +23,16 @@ const PLACEMENT := "heart"
 var _offer := false
 var _done := false
 var _watching := false
+## The body's two keys: with One more heart on offer, and without.
+var _body := ["BN_OUT_BODY", "BN_OUT_BODY_REST"]
 
 ## `used`: whether this board has had its one heart already. One more heart
-## is on the card when it has not and a video is ready.
-func _init(used: bool) -> void:
+## is on the card when it has not and a video is ready. `body` is a board's
+## own pair of lines (Shikaku's garden naps, not Binairo's suns and moons).
+func _init(used: bool, body: Array = []) -> void:
 	_offer = not used and Ads.can_reward(PLACEMENT)
+	if body.size() == 2:
+		_body = body
 
 func _ready() -> void:
 	name = "OutOfHearts"
@@ -45,7 +50,7 @@ func _ready() -> void:
 	col.add_child(Dialog.head("BN_OUT_TITLE", "heart_line"))
 	var line := Label.new()
 	line.theme_type_variation = "SheetBody"
-	line.text = "BN_OUT_BODY" if _offer else "BN_OUT_BODY_REST"
+	line.text = _body[0] if _offer else _body[1]
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line.custom_minimum_size.x = 720

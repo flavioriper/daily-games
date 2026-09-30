@@ -228,6 +228,7 @@ func _hint_offer() -> bool:
 	return is_instance_valid(_puzzle) and not _puzzle.is_done() \
 		and _puzzle.capabilities().has("hint") and _puzzle.hints_left() <= 0 \
 		and _puzzle.get("out_of_hearts") != true \
+		and not (_puzzle.has_method("busy") and _puzzle.busy()) \
 		and Ads.can_reward("hint")
 
 func _on_hint() -> void:

@@ -12,6 +12,7 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-18-shikaku-flat-design.md, section 2.
 
 const Gen = preload("res://puzzles/shikaku_gen.gd")
+const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## The largest area a clue can carry, and the smallest rectangle worth
 ## drawing: a 1 or a 2 is forced on sight. The island's own numbers, so the
@@ -22,6 +23,12 @@ const MAX_AREA := 9
 const MAX_AREA_INSANE := 12
 const MIN_AREA := 3
 const HINTS := 3
+## Hints per difficulty: Insane has one.
+const HINTS_BY_BAND := [3, 3, 3, 1]
+## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
+## Insane (Binairo's count). A heart goes on a plot that fits its sign but is
+## not the answer.
+const HEARTS := [0, 0, 3, 1]
 ## Width, height and the generator's area cap, per difficulty.
 # Insane's provisional band: Hard's own 7x9 frame with MAX_AREA_INSANE's
 # bigger plots -- 8x10 (either area cap) missed the 194 ms gate (worst
@@ -46,13 +53,23 @@ var owner_map: PackedInt32Array = PackedInt32Array()
 ## the move only cleared one) and the plots it displaced.
 var history: Array[Dictionary] = []
 
-## Builds a board for `difficulty`, the island's ladder exactly.
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var band := clampi(difficulty, 0, SIZES.size() - 1)
-	var step: Array = SIZES[band]
-	w = step[0]
-	h = step[1]
-	var out: Dictionary = Gen.generate(rng, w, h, step[2], MIN_AREA, SHAPES[band][0], SHAPES[band][1])
+## The difficulty the board was built for, 0 to 3.
+var band := 0
+
+## Builds a board for `difficulty`. Insane reads today's scarecrow board out
+## of the bank (content/insane/shikaku.json, tools/insane/shikaku_ladder.gd),
+## stepped by `bank_step`, and falls back to its live band with no
+## scarecrows when the bank is empty.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+	band = clampi(difficulty, 0, SIZES.size() - 1)
+	var out: Dictionary = {}
+	if band == 3:
+		out = Gen.from_bank(InsaneBank.pick("shikaku", bank_step))
+	if out.is_empty():
+		var step: Array = SIZES[band]
+		out = Gen.generate(rng, step[0], step[1], step[2], MIN_AREA, SHAPES[band][0], SHAPES[band][1])
+	w = out.w
+	h = out.h
 	clues = out.clues
 	solution = out.rects
 	rects = []
@@ -104,7 +121,9 @@ func clue_ok(i: int) -> bool:
 	if who < 0:
 		return false
 	var rect: Rect2i = rects[who]
-	return clues_in(who).size() == 1 and Gen.fits(clue, rect.size.x, rect.size.y)
+	if clues_in(who).size() != 1 or not Gen.fits(clue, rect.size.x, rect.size.y):
+		return false
+	return Gen.crow_of(clue) < 0 or crow_count(who) == [Gen.crow_of(clue), false]
 
 ## The index of a clue inside plot `i`, or -1 when it holds none.
 func clue_index_in(i: int) -> int:
@@ -124,7 +143,51 @@ func clue_state(i: int) -> int:
 	if plot_blushes(who):
 		return 3
 	var rect: Rect2i = rects[who]
-	return 1 if Gen.fits(clue, rect.size.x, rect.size.y) else 2
+	if not Gen.fits(clue, rect.size.x, rect.size.y):
+		return 2
+	var crow := Gen.crow_of(clue)
+	if crow >= 0:
+		# A scarecrow waits until its ring is decided, and strains the moment
+		# it can no longer be right.
+		var n := crow_count(who)
+		if int(n[0]) > crow or (not n[1] and int(n[0]) != crow):
+			return 2
+		return 0 if n[1] else 1
+	return 1
+
+## [the plots sharing a fence with plot `i`, whether any cell round it is
+## still bare].
+func crow_count(i: int) -> Array:
+	return Gen.fence_neighbours(rects[i], owner_map, w, h)
+
+## Whether any sign on this board is a scarecrow.
+func has_crows() -> bool:
+	for c in clues:
+		if Gen.crow_of(c) >= 0:
+			return true
+	return false
+
+## Whether `rect` is one of the answer's plots.
+func is_answer(rect: Rect2i) -> bool:
+	return solution.has(rect)
+
+## The one sign inside `rect` when the plot is the size and shape it asks
+## for (the green wash), or -1. A scarecrow's plot is any size.
+func fitted_clue(rect: Rect2i) -> int:
+	var found := -1
+	for i in clues.size():
+		if rect.has_point(clues[i].pos):
+			if found >= 0:
+				return -1
+			found = i
+	if found < 0 or not Gen.fits(clues[found], rect.size.x, rect.size.y):
+		return -1
+	return found
+
+## A plot that fits its sign and still is not the answer: what a heart pays
+## for on Hard and Insane.
+func is_wrong_plot(rect: Rect2i) -> bool:
+	return fitted_clue(rect) >= 0 and not is_answer(rect)
 
 ## Cells no plot claims.
 func bare_cells() -> int:
@@ -160,7 +223,12 @@ func is_solved() -> bool:
 				if covered.has(Vector2i(x, y)):
 					return false
 				covered[Vector2i(x, y)] = true
-	return covered.size() == w * h
+	if covered.size() != w * h:
+		return false
+	for i in clues.size():
+		if Gen.crow_of(clues[i]) >= 0 and not clue_ok(i):
+			return false
+	return true
 
 ## Whether any clue on this board carries a shape.
 func has_shapes() -> bool:

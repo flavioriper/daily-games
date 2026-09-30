@@ -176,3 +176,15 @@ pile's order (never the seats'), so a score can be heard counting. The
 rest (`warmer`, `so_close`, `all_here`, `cool`, `shuffle`, `peek`, `stamp`,
 `party`, `confetti`, `out_of_rows`, `row_back`) are one take each, not yet
 heard by the user. Details: `docs/agents/boards/code-break.md`.
+
+## Shikaku's polish (2026-09-30)
+
+`clear`, `locked`, `undo` and `check` re-prompted toward felt and kalimba,
+for the same reason as Binairo's and Code Break's: the bonk, the tape rewind
+and the wooden boops read as a scold or a toy. New cues `sprout`, `combo`
+(layered and pitched up the pentatonic like Binairo's), `confetti` and `worm`
+were generated; the ElevenLabs quota ran out before `cool`, `twirl`,
+`heart_lost`, `out_of_hearts`, `heart_back`, `stamp` and `party`, so those are
+copies of Code Break's and Binairo's takes of the same prompts (`twirl` is
+Binairo's `line_silly`). Run `tools/gen_sfx.py shikaku <cue> --new` for
+Shikaku's own once there is quota. Not yet judged by ear.

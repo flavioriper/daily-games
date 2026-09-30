@@ -83,8 +83,16 @@ var casts: bool = true:
 		casts = v
 		queue_redraw()
 
+## Insane's scarecrow: its number counts the plots round its own, so it
+## wears a straw hat and holds out stick arms with straw at the cuffs, and
+## no plain sign can be mistaken for it.
+var crow: bool = false:
+	set(v):
+		crow = v
+		queue_redraw()
+
 func _kind() -> String:
-	return "marker%d%s" % [shape, "" if number > 0 else "_"]
+	return "marker%d%s%s" % [shape, "" if number > 0 else "_", "c" if crow else ""]
 
 func _radius_for(px: float) -> float:
 	return px * RATIO
@@ -106,6 +114,10 @@ func _skin() -> Array:
 		Expr.STRAIN:
 			return [Pal.BAD, Pal.MARKER_DEEP, Pal.SURFACE]
 		_:
+			# A waiting scarecrow is straw-coloured, so it reads as one before
+			# its hat is looked at.
+			if crow:
+				return [Pal.SUN_TILE, Pal.ACORN, Pal.TEXT]
 			return [Pal.SURFACE, Pal.LINE, Pal.TEXT]
 
 func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
@@ -120,6 +132,8 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			var at: Vector2 = plaque[0]
 			var span: Vector2 = plaque[1]
 			var corner := PLAQUE_RADIUS if shape == 0 else SHAPED_RADIUS
+			if crow:
+				_crow_arms(b, R)
 			# The rim is the card at full height and the fill the same card
 			# short of its bottom edge, which is how every cream card on the
 			# flat screens gets its soft lip.
@@ -135,6 +149,40 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			var face: Vector2 = plaque[3] if number > 0 \
 				else at + (span - Vector2(0.0, PLAQUE_EDGE)) * 0.5
 			_face_parts(b, FACE_R * R * (1.0 if number > 0 else 1.25), face * R, skin[2], eye)
+			if crow:
+				_crow_hat(b, R, at.y)
+
+## A party hat sits on the plaque's top edge, a little to one side and
+## tipped, small against a sign that fills its cell; a scarecrow's sits on
+## its straw crown.
+func _hat_place(R: float) -> Array:
+	var top: float = PLAQUES[shape][0].y * R
+	if crow:
+		top -= 0.2 * R
+	return [Vector2(0.14 * R, top + 0.02 * R), 0.22, 0.34 * R]
+
+## The scarecrow's cross-stick behind the plaque, with a tuft of straw
+## fanned out of each cuff.
+func _crow_arms(b: Builder, R: float) -> void:
+	var y := -0.16 * R
+	b.stroke(PackedVector2Array([Vector2(-0.66 * R, y), Vector2(0.66 * R, y)]), 0.08 * R, Pal.FENCE_DARK)
+	for sx: float in [-1.0, 1.0]:
+		var cuff := Vector2(sx * 0.66 * R, y)
+		for k in 3:
+			var ang := (k - 1) * 0.45 + (0.0 if sx > 0 else PI)
+			b.stroke(PackedVector2Array([cuff, cuff + Vector2.from_angle(ang) * 0.16 * R]),
+				0.045 * R, Pal.SUN_RAY if k != 1 else Pal.ACORN)
+
+## The straw hat on the plaque's top edge: a wide brim, a round crown and a
+## red band.
+func _crow_hat(b: Builder, R: float, top: float) -> void:
+	var at := Vector2(0.0, top * R)
+	b.ellipse(at + Vector2(0.0, 0.02 * R), 0.46 * R, 0.09 * R, Pal.ACORN)
+	b.ellipse(at, 0.44 * R, 0.075 * R, Pal.SUN_RAY)
+	var crown := Builder.arc_points(at + Vector2(0.0, -0.01 * R), 0.24 * R, PI, TAU)
+	b.polygon(crown, Pal.SUN_RAY)
+	b.stroke(PackedVector2Array([at + Vector2(-0.235 * R, -0.05 * R), at + Vector2(0.235 * R, -0.05 * R)]),
+		0.06 * R, Pal.BERRY)
 
 ## The numeral, over the plaque's mesh. Centred on the mock's own baseline.
 func _draw() -> void:
