@@ -31,6 +31,17 @@ extends "res://core/puzzle_base.gd"
 ## sections 3, 5, 7 and 9. Ported number for number from the canvas mock at
 ## docs/brainstorm/concepts.html#hiddenword, which is the reference for every
 ## measure and every timing here.
+##
+## **The polish pass** (2026-09-30, spec 2026-09-30-hidden-word-polish-design.md)
+## put in failing, Snail Mail and the rewards. Hard and Insane keep their rows
+## (Reset clears only the row being typed) and ask for every clue to be used;
+## running out of rows brings Code Break's card -- one more row, or show the
+## word. Insane is **Snail Mail**: a row turns over sealed, as a pale envelope,
+## and the snail beside it brings its colours when the next row is committed.
+## Every row that shows its colours can earn a reaction (Warmer!, So close!,
+## Everyone's here!, a clean miss in sunglasses), a new green plucks a note up
+## the scale and three in five do something silly (little hearts, a twirl, a
+## sprig), and a solve dances, blooms the meadow, cheers and stamps a seal.
 
 const State = preload("res://puzzles/hidden_word_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -41,6 +52,9 @@ const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const SnailFace = preload("res://ui/faces/snail_face.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
 
 # --- this board's own three numbers (spec section 9) ---
 ## The flip: how far apart the five tiles start turning, and how long one
@@ -97,7 +111,10 @@ const TOAST_INK := 0.92
 ## The three lines a refusal can say, indexed by the state's own code, and no
 ## others. OK is index 0 and never shows one.
 ## Translation keys (locale/ui.csv), read through tr() when drawn.
-const TOAST_LINE := ["", "HW_TOAST_LENGTH", "HW_TOAST_NOT_WORD", "HW_TOAST_REPEAT"]
+const TOAST_LINE := ["", "HW_TOAST_LENGTH", "HW_TOAST_NOT_WORD", "HW_TOAST_REPEAT",
+	"HW_TOAST_KEEP", "HW_TOAST_USE"]
+## The ordinals the clue rule's toast names a place with ("Keep R 2nd").
+const PLACE := ["HW_PLACE_1", "HW_PLACE_2", "HW_PLACE_3", "HW_PLACE_4", "HW_PLACE_5"]
 
 # --- the hint (spec section 10) ---
 ## A hint's letter is a given and not a guess, so it is drawn ghosted.
@@ -221,6 +238,86 @@ const GLINT_STEP := 0.07
 const GLINT_TIME := 0.36
 const SHINE := 0.35
 
+# --- the polish pass (2026-09-30; its spec, sections 1 to 4) ---
+## A tile's three faces: the paper a typed letter stands on, Snail Mail's
+## sealed envelope, and its mark.
+enum { FACE_PAPER, FACE_POST, FACE_MARK }
+## The envelope: moonlit paper, a flap folded down to its middle in a shade
+## toward MOON_INK, and a berry wax seal where the flap meets. Cool on purpose:
+## the marks are green, amber and a warm grey, and a sealed row must never be
+## read as a colour it has not been given.
+const POST := Color("e6e8f7")
+const POST_FLAP := 0.16
+const POST_DEEP := 0.3
+const WAX_R := 0.085
+## The snail, beside the row it carries (in cells), how long it takes to crawl
+## down to the next one, and when the carried row turns: DELIVER_AFTER once
+## the newly sealed row has landed.
+const SNAIL_PX := 0.5
+const SNAIL_OFF := -0.02
+const SNAIL_CRAWL := 0.7
+const DELIVER_AFTER := 0.12
+## The caret glides to the next bed rather than jumping.
+const CARET_GLIDE := 0.12
+## Five letters typed: the row gives a little eager hop, a tile after a tile.
+const READY_HOP := -5.0
+const READY_STEP := 0.035
+const READY_TIME := 0.26
+## The entrance: the rows arrive top to bottom, each rising ENTER_RISE into
+## its seat ENTER_ROW apart, inside the grid's own wide pop.
+const ENTER_ROW := 0.035
+const ENTER_RISE := 16.0
+## Out of rows: every tile sags and leans, a tile after a tile, and stays
+## drooped until the card is answered; the card follows CARD_AFTER later.
+const DROOP := 0.07
+const DROOP_TILT := 0.07
+const DROOP_STEP := 0.03
+const DROOP_TIME := 0.5
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## One more row: the grid makes room for a seventh over GROW_TIME.
+const GROW_TIME := 0.45
+## A shown row's reaction waits REACT_AT after it lands; its bubble holds.
+const REACT_AT := 0.12
+const BUBBLE_HOLD := 1.5
+const BUBBLE_FONT := 34
+## A new green plucks `combo` up the major pentatonic, one step a green found.
+const COMBO_STEPS := [0, 2, 4, 7, 9, 12, 14, 16, 19, 21]
+## Three of every five new greens, by the cell's hash, do something silly.
+const GAG_ODDS := 5
+const GAGS := 3
+const LOVE_HEARTS := 4
+const LOVE_TIME := 1.3
+const LOVE_RISE := 0.8
+const LOVE_R := 0.12
+const TWIRL_TIME := 0.55
+const TWIRL_HOP := 0.14
+const SPRIG_TIME := 1.5
+const SPRIG_R := 0.16
+## A clean miss puts sunglasses on the row, and Everyone's here! congas.
+const GLASSES_TIME := 1.7
+const CONGA_STEP := 0.06
+const CONGA_HOP := -12.0
+## The party after a solve: PARTY_AT after the winning row lands the tiles
+## dance DANCE_BEATS beats, flowers bloom along the band, the sprout comes up
+## in a party hat with a cheer, and STAMP_AT later the seal drops.
+const PARTY_AT := 0.85
+const PARTY_EXTRA := 2.1
+const DANCE_BEATS := 4
+const DANCE_BEAT := 0.24
+const DANCE_TILT := 0.16
+const DANCE_HOP := -8.0
+const BLOOMS := 9
+const BLOOM_STEP := 0.05
+const BLOOM_TIME := 0.4
+const BLOOM_R := 9.0
+const CHEERS := 12
+const STAMP_AT := 1.1
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 62.0
+const STAMP_TILT := -0.22
+
 var state = State.new()
 ## The board's own effects node, as on every flat board: the hint's ring
 ## and sparkle (func hint(), below) come through it and nowhere else.
@@ -292,6 +389,54 @@ var _cue_due: Array = []
 ## Reset can put the board back into play and a second sixth row can come.
 var _sprout: Control = null
 
+# --- the polish pass ---
+## Per row, Snail Mail: whether it turned over sealed, and the second the
+## snail's delivery began turning it again (-100 until then).
+var _sealed: Array[bool] = []
+var _deliver_at: Array[float] = []
+## The rows the grid is laid out for, and the moment it began growing to
+## them from the count before (One more row).
+var _grow_from := float(State.ROWS)
+var _grow_at := -100.0
+## Where the caret was, and when it left there.
+var _caret_from := 0
+var _caret_at := -100.0
+## The second the working row filled its fifth bed.
+var _ready_at := -100.0
+## The second the rows ran out and every tile drooped (-100: they have not).
+var _droop_at := -100.0
+## Per tile, a gag and the second it began: {Vector2i(r, c): {"kind", "at"}}.
+var _gags: Dictionary = {}
+## Per row, a reaction still to come: [{"at", "r"}], and the bubble.
+var _react_due: Array = []
+var _bubble: Control = null
+## Per row: when it put its sunglasses on, and when it congaed.
+var _glasses_at: Dictionary = {}
+var _conga_at: Dictionary = {}
+## The most greens any shown row had, and every position ever greened.
+var _best := 0
+var _greened: Dictionary = {}
+## The party: when it began (INF until a solve's), and the seal.
+var _party_at := INF
+var _stamp: Control = null
+var _cheer := 0
+## Snail Mail's courier, and where it crawled from and when.
+var _snail: Control = null
+var _snail_from_row := 0
+var _snail_to_row := 0
+var _snail_at := -100.0
+## Out of rows: the host's hook (it reads `out_of_hearts`), the card, and
+## whether this word has had its one more row.
+var out_of_hearts := false
+var _card: Control = null
+var _row_bought := false
+## Set while restore_completed_board() lays a finished day back down, so the
+## stamp and the cheer stand rather than arrive.
+var _restoring := false
+## Bumped whenever the board is dealt or reset, so a timer `_after` set for
+## the board before it does nothing.
+var _gen := 0
+
 var _opened := 0.0
 var _anim_until := 0.0
 ## The band, built once per layout, and the grid, rebuilt while it moves.
@@ -301,7 +446,10 @@ var _grid_mesh: ArrayMesh
 ## line changes and when the reveal begins -- and drawn with a transform, so
 ## neither is rebuilt per frame while it moves.
 var _toast_mesh: ArrayMesh
-var _toast_mesh_for := -1
+var _toast_mesh_for := ""
+## The line the toast in hand says, settled when it is raised: the clue
+## rule's two name a letter, which the state forgets on the next refusal.
+var _toast_text := ""
 var _reveal_mesh: ArrayMesh
 ## The meshes the last _draw actually handed to the canvas item. A canvas
 ## command holds a mesh by RID and not by reference, so dropping the only
@@ -312,13 +460,21 @@ var _shown: Array = []
 func puzzle_id() -> String: return "hiddenword"
 func title() -> String: return "Hidden Word"
 
+## The rule, then Hard's clue rule, then Insane's snail.
 func rules() -> String:
-	return tr("HW_RULES")
+	var out := tr("HW_RULES")
+	if state.strict:
+		out += "\n\n" + tr("HW_RULES_STRICT")
+	if state.snail:
+		out += "\n\n" + tr("HW_RULES_SNAIL")
+	return out
 
 ## Hidden Word has no cycling tip, but it still uses the shared How to play
 ## card as the door to the rules sheet. Keep its resting line specific to this
 ## game instead of falling back to Binairo's default tip.
 func tip_line() -> Dictionary:
+	if state.snail:
+		return {"text": tr("HW_TIP_SNAIL"), "mood": Face.Expr.HAPPY}
 	return {"text": tr("HW_TIP"), "mood": Face.Expr.HAPPY}
 
 ## Hint alone. Every Enter *is* the check, and taking a committed guess back
@@ -338,14 +494,20 @@ func _ready() -> void:
 	resized.connect(_layout)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	state.setup(rng, difficulty)
+	# Insane's word comes out of the Snail Mail bank (content/insane/
+	# hiddenword.json, the words the delayed colours make hardest, graded by
+	# tools/insane/hiddenword_ladder.py); an empty bank falls back to the list.
+	var banked := ""
+	if difficulty >= 3:
+		banked = String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", ""))
+	state.setup(rng, difficulty, banked)
+	_gen += 1
 	if _tray != null:
 		_tray.match_locale()
-	_row_at = []
-	_shiver_at = []
-	for _r in State.ROWS:
-		_row_at.append(-100.0)
-		_shiver_at.append(-100.0)
+	_clear_rows()
+	_grow_from = float(state.tries)
+	_grow_at = -100.0
+	_row_bought = false
 	_clear_working()
 	_given_at = {}
 	_flip_at = -100.0
@@ -367,9 +529,45 @@ func _clear_endings() -> void:
 	_ghosts = []
 	_fx_due = []
 	_cue_due = []
+	_react_due = []
+	_droop_at = -100.0
+	_party_at = INF
+	out_of_hearts = false
+	_close_card()
+	_drop_bubble()
+	if is_instance_valid(_stamp):
+		_stamp.queue_free()
+	_stamp = null
 	if _sprout != null:
 		_sprout.visible = false
+		_sprout.hat = 0.0
+		_sprout.glasses = 0.0
 	_bring_keys_back()
+
+## Every row's moments, for a board whose rows are all going: a new word, a
+## Reset on Easy and Medium, a restore.
+func _clear_rows() -> void:
+	_row_at = []
+	_shiver_at = []
+	_sealed = []
+	_deliver_at = []
+	for _r in State.MAX_ROWS:
+		_row_at.append(-100.0)
+		_shiver_at.append(-100.0)
+		_sealed.append(false)
+		_deliver_at.append(-100.0)
+	_gags = {}
+	_glasses_at = {}
+	_conga_at = {}
+	_best = 0
+	_greened = {}
+	_caret_from = 0
+	_caret_at = -100.0
+	_ready_at = -100.0
+	_snail_from_row = 0
+	_snail_to_row = 0
+	_snail_at = -100.0
+	_seat_snail()
 
 ## Puts a keyboard that was sent away back on screen. `slide_out` is
 ## reversible: the same tray slides back from the same `enter_from`, fades in
@@ -400,8 +598,17 @@ func set_tray(t: Control) -> void:
 func _cell_for(available: float) -> float:
 	var w := size.x - INSET * 2.0
 	var h := available - INSET * 2.0 - BAND
+	var n := _rows_f()
 	return maxf(0.0, minf((w - GAP * float(State.LEN - 1)) / float(State.LEN),
-		(h - GAP * float(State.ROWS - 1)) / float(State.ROWS)))
+		(h - GAP * (n - 1.0)) / n))
+
+## The rows the grid is laid out for right now: the word's own count, or on
+## the way there from the count before while One more row makes room.
+func _rows_f() -> float:
+	var since := _now() - _grow_at
+	if Motion.reduce or since >= GROW_TIME or since < 0.0:
+		return float(state.tries)
+	return lerpf(_grow_from, float(state.tries), Motion.back_out(since / GROW_TIME))
 
 func _cell() -> float:
 	return _cell_for(size.y)
@@ -409,8 +616,9 @@ func _cell() -> float:
 ## The grid block's own size: five tiles across, six down, with the gaps.
 func _block() -> Vector2:
 	var c := _cell()
+	var n := _rows_f()
 	return Vector2(float(State.LEN) * c + GAP * float(State.LEN - 1),
-		float(State.ROWS) * c + GAP * float(State.ROWS - 1))
+		n * c + GAP * (n - 1.0))
 
 ## The card this board wants: the block, the band and the inset either side.
 ## At 1140 of slot that is 964 + 120 + 56 = 1140 again, so the card fills the
@@ -419,8 +627,8 @@ func card_height(available: float) -> float:
 	var c := _cell_for(available)
 	if c <= 0.0:
 		return available
-	return minf(available, float(State.ROWS) * c + GAP * float(State.ROWS - 1)
-		+ BAND + INSET * 2.0)
+	var n := _rows_f()
+	return minf(available, n * c + GAP * (n - 1.0) + BAND + INSET * 2.0)
 
 ## True, and honestly so: the height binds in a 9:16 slot with the band or
 ## without it, so **the slack is zero at 1080x1920 and this call does nothing
@@ -462,7 +670,7 @@ func _layout() -> void:
 	_band_mesh = null
 	_reveal_mesh = null
 	_toast_mesh = null
-	_toast_mesh_for = -1
+	_toast_mesh_for = ""
 	_refresh()
 
 # --- the frame ---
@@ -476,6 +684,8 @@ func _process(delta: float) -> void:
 	_expire(now)
 	_send_keys_away(now)
 	_ride_sprout(now)
+	_deliver_reacts(now)
+	_ride_snail(now)
 	if _laid_out() and _animating(now):
 		queue_redraw()
 
@@ -491,6 +701,14 @@ func _expire(now: float) -> void:
 	for i in range(_ghosts.size() - 1, -1, -1):
 		if now - float(_ghosts[i].at) >= Motion.POP_OUT:
 			_ghosts.remove_at(i)
+			dropped = true
+	for key in _gags.keys():
+		if now - float(_gags[key].at) >= maxf(LOVE_TIME + 0.5, SPRIG_TIME):
+			_gags.erase(key)
+			dropped = true
+	for r in _glasses_at.keys():
+		if now - float(_glasses_at[r]) >= GLASSES_TIME:
+			_glasses_at.erase(r)
 			dropped = true
 	# The frame that drops the last of them may be the first frame
 	# `_animating` has answered false on, and then nothing would ask for the
@@ -512,7 +730,7 @@ func _send_keys_away(now: float) -> void:
 ## tree; the board only exists once build() has been through and the host's
 ## layout has given it a rect.
 func _laid_out() -> bool:
-	return _row_at.size() == State.ROWS and _cell() > 0.0
+	return _row_at.size() == State.MAX_ROWS and _cell() > 0.0
 
 ## True while **any** wave on this board is still running. Two moments are
 ## named outright -- the entrance and the flip -- and every other one
@@ -548,6 +766,8 @@ func _animating(t: float) -> bool:
 		return true
 	if _flip_row >= 0 and t < _flip_at + _flip_length():
 		return true
+	if t < _grow_at + GROW_TIME:
+		return true
 	return t < _anim_until
 
 ## Keeps the board redrawing for `seconds` more: something on it is moving.
@@ -572,7 +792,9 @@ func _draw() -> void:
 		return
 	var now := _now()
 	var shown: Array = []
-	if _band_mesh == null:
+	# The band stands on the grid's foot, which moves while One more row
+	# makes room: rebuilt every frame of that and never otherwise.
+	if _band_mesh == null or now < _grow_at + GROW_TIME:
 		_band_mesh = _build_band()
 	if _band_mesh != null:
 		draw_mesh(_band_mesh, null)
@@ -590,6 +812,7 @@ func _draw() -> void:
 				Color(1.0, 1.0, 1.0, seen))
 			shown.append(_grid_mesh)
 	_draw_letters(now)
+	_draw_glasses(now, shown)
 	_draw_reveal(now, shown)
 	_draw_toast(now, shown)
 	_shown = shown
@@ -661,12 +884,16 @@ func _flower(b, at: Vector2) -> void:
 		b.disc(at + Vector2(cos(a), sin(a)) * FLOWER_R, PETAL_R, Pal.SURFACE)
 	b.disc(at, FLOWER_EYE_R, Pal.SUN)
 
-## The thirty cells, in one mesh. Every cell is a bed sunk into the card; a
-## typed letter stands on a paper piece popping into its bed, and a committed
-## tile is that piece turning over into its mark's colour, lifted off the card
-## while it turns and bumping as it lands. The row being typed is lit and the
-## bed its next letter goes into wears a caret. A refused row shivers as one,
-## so the offset is read per row and not per tile.
+## The cells, in one mesh. Every cell is a bed sunk into the card; a typed
+## letter stands on a paper piece popping into its bed, and a committed tile
+## is that piece turning over -- into its mark's colour, or on Insane into a
+## sealed envelope that turns again when the snail brings its colours --
+## lifted off the card while it turns and bumping as it lands. The row being
+## typed is lit and the bed its next letter goes into wears a caret that
+## glides there. A refused row shivers as one, so the offset is read per row
+## and not per tile; everything else a tile does (the ready hop, the solve's
+## hop and dance, a conga, a twirl, the droop) comes out of `_move`, which the
+## letters read too, so a glyph never leaves its tile.
 ##
 ## There is no `Mosaic.socket` here: a bed is this board's own, because the
 ## piece that lands in it is a card and not a tile, and it has to show under a
@@ -675,14 +902,18 @@ func _build_grid(t: float) -> ArrayMesh:
 	var cell := _cell()
 	var b := Face.Builder.new()
 	var work := _working_row()
-	var lit_row := -1 if state.is_solved() else work
-	for r in State.ROWS:
+	var lit_row := -1 if state.is_solved() or out_of_hearts else work
+	for r in state.tries:
 		var shake := Motion.shiver_offset(t - _shiver_at[r])
 		var fade := _row_alpha(r, t)
+		var rise := _enter_rise(r, t)
+		if r == lit_row:
+			_caret(b, r, t, cell, fade, shake, rise)
 		for c in State.LEN:
-			var at := _tile_at(r, c) + Vector2(shake, _solve_lift(r, c, t))
-			var caret: bool = r == lit_row and c == state.typed.length()
-			_bed(b, at, cell, fade, 1.0 if r == lit_row else 0.0, caret)
+			var seat := _tile_at(r, c) + Vector2(shake, rise)
+			_bed(b, seat, cell, fade, 1.0 if r == lit_row else 0.0)
+			var move := _move(r, c, t)
+			var at := seat + Vector2(move.x, move.y)
 			if r < state.rows.size():
 				var pose := _pose(r, c, t)
 				var up := at + Vector2(0.0, pose.z * cell)
@@ -691,13 +922,18 @@ func _build_grid(t: float) -> ArrayMesh:
 					Scenery.soft_disc(b, at + Vector2(cell * 0.5, cell * 0.96),
 						cell * 0.5, cell * 0.12, Color(Pal.TEXT, FLIP_SHADOW_A * swell * fade))
 				var grow := Vector2(pose.x, pose.y)
-				if _flip(r, c, t).y >= 1.0:
-					_mark_tile(b, up, cell, int(state.marks[r][c]), r, c, grow, fade,
-						0.0, _shine(r, c, t))
-				else:
-					_paper_tile(b, up, cell, grow, fade)
+				match _face_at(r, c, t):
+					FACE_MARK:
+						_mark_tile(b, up, cell, int(state.marks[r][c]), r, c, grow, fade,
+							move.z, _shine(r, c, t))
+					FACE_POST:
+						_post_tile(b, up, cell, grow, fade, move.z)
+					_:
+						_paper_tile(b, up, cell, grow, fade, move.z)
 			elif r == work and c < state.typed.length():
-				_paper_tile(b, at, cell, Motion.pop_in_scale(t - _typed_at[c], TYPE_POP), fade)
+				_paper_tile(b, at, cell, Motion.pop_in_scale(t - _typed_at[c], TYPE_POP), fade, move.z)
+			elif _party_at < INF and r > state.rows.size() - 1:
+				_bloom(b, seat + Vector2.ONE * (cell * 0.5), cell, r, c, t)
 	# Reset's wave, over the beds the tiles have just gone back to being: a
 	# committed tile keeps its mark's colour and turns out where it stood.
 	for g in _ghosts:
@@ -711,7 +947,91 @@ func _build_grid(t: float) -> ArrayMesh:
 			continue
 		_mark_tile(b, at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE * out, 1.0,
 			_turn_out(elapsed))
+	_draw_gags(b, t, cell)
 	return b.mesh() if not b.verts.is_empty() else null
+
+## The flip in effect on tile (r, c) at `t`: when it began, and the face it
+## turns from and to. A row turns once from paper into its marks -- or, on
+## Snail Mail, into a sealed envelope, and again when the snail brings it.
+func _turning(r: int, c: int, t: float) -> Array:
+	var step := float(c) * FLIP_STEP
+	if _sealed[r]:
+		if _deliver_at[r] > -50.0 and t >= _deliver_at[r] + step:
+			return [_deliver_at[r] + step, FACE_POST, FACE_MARK]
+		return [_row_at[r] + step, FACE_PAPER, FACE_POST]
+	return [_row_at[r] + step, FACE_PAPER, FACE_MARK]
+
+## The face a committed tile shows at `t`: the one it turns to once it is
+## past edge-on, the one it turns from before.
+func _face_at(r: int, c: int, t: float) -> int:
+	var turning := _turning(r, c, t)
+	return int(turning[2]) if _flip(r, c, t).y >= 1.0 else int(turning[1])
+
+## When row `r` began turning into its colours, or -100 while it is sealed.
+func _revealed_at(r: int) -> float:
+	return _deliver_at[r] if _sealed[r] else _row_at[r]
+
+## Everything a tile does on top of its seat: x and y its offset in pixels,
+## z its turn. The solve's hop and the party's dance on the winning row, the
+## eager hop of a full row, a conga, a twirl and the droop when the rows run
+## out. Nothing under reduce motion but the solve's own hop, which the
+## reader already answers zero to there.
+func _move(r: int, c: int, t: float) -> Vector3:
+	var out := Vector3(0.0, _solve_lift(r, c, t), 0.0)
+	if Motion.reduce:
+		return out
+	var cell := _cell()
+	if r == _working_row() and state.typed.length() == State.LEN and c < State.LEN:
+		out.y += Motion.hop_lift(t - (_ready_at + float(c) * READY_STEP), READY_HOP, READY_TIME)
+	if _conga_at.has(r):
+		for lap in 2:
+			out.y += Motion.hop_lift(t - (float(_conga_at[r]) + float(lap * State.LEN + c) * CONGA_STEP),
+				CONGA_HOP, Motion.HOP_TIME)
+	var gag: Dictionary = _gags.get(Vector2i(r, c), {})
+	if gag.get("kind", "") == "twirl":
+		var u := clampf((t - float(gag.at)) / TWIRL_TIME, 0.0, 1.0)
+		if u > 0.0 and u < 1.0:
+			out.z += TAU * _ease_io(u)
+			out.y -= TWIRL_HOP * cell * sin(PI * u)
+	if r == state.rows.size() - 1 and state.is_solved() and t >= _party_at:
+		var p := (t - _party_at) / DANCE_BEAT
+		if p < float(DANCE_BEATS):
+			var fall := 1.0 - p / float(DANCE_BEATS)
+			out.z += DANCE_TILT * sin(PI * p) * fall
+			out.y += DANCE_HOP * absf(sin(PI * (p + float(c) * 0.25))) * fall
+	if _droop_at > -50.0 and r < state.rows.size():
+		var u := clampf((t - _droop_at - float(r * State.LEN + c) * DROOP_STEP) / DROOP_TIME, 0.0, 1.0)
+		var sag := 1.0 - pow(1.0 - u, 3.0)
+		out.y += DROOP * cell * sag
+		out.z += DROOP_TILT * sag * (1.0 if _hash(r * State.LEN + c, 11) > 0.5 else -1.0)
+	return out
+
+static func _ease_io(u: float) -> float:
+	return 0.5 - 0.5 * cos(PI * u)
+
+## How far row `r` still is below its seat on the way in: the rows arrive top
+## to bottom inside the grid's own wide pop, and a row One more row has just
+## added rises the same way.
+func _enter_rise(r: int, t: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var since := t - (_opened + Motion.ENTER_DELAY + float(r) * ENTER_ROW)
+	if r >= State.ROWS and _grow_at > -50.0:
+		since = t - _grow_at
+	return ENTER_RISE * (1.0 - Motion.back_out(clampf(since / Motion.ENTER_POP, 0.0, 1.0)))
+
+## The sun rim round the bed the next letter goes into, gliding there from
+## the bed it was round over CARET_GLIDE.
+func _caret(b, r: int, t: float, cell: float, alpha: float, shake: float, rise: float) -> void:
+	var to: int = state.typed.length()
+	if to >= State.LEN or alpha <= 0.0:
+		return
+	var u := 1.0 if Motion.reduce else clampf((t - _caret_at) / CARET_GLIDE, 0.0, 1.0)
+	var col := lerpf(float(_caret_from), float(to), 1.0 - pow(1.0 - u, 3.0))
+	var at := _tile_at(r, 0) + Vector2(col * (cell + GAP) + shake, rise)
+	var w := cell * CARET
+	b.fan(Face.Builder.round_rect(at - Vector2.ONE * w, Vector2.ONE * (cell + w * 2.0), cell * RADIUS + w),
+		Color(Pal.SUN, CARET_A * alpha))
 
 ## A committed tile's pose at `t`: x and y its scale, z how far it has risen,
 ## in cells (negative is up). The flip squashes y; the swell grows both and
@@ -727,22 +1047,23 @@ func _pose(r: int, c: int, t: float) -> Vector3:
 func _swell(r: int, c: int, t: float) -> float:
 	if Motion.reduce:
 		return 0.0
-	var since := t - (_row_at[r] + float(c) * FLIP_STEP)
+	var since := t - float(_turning(r, c, t)[0])
 	if since <= 0.0 or since >= FLIP_TIME:
 		return 0.0
 	return sin(PI * since / FLIP_TIME)
 
 ## The bump a tile lands with, the family's own reader at this board's size.
 func _land(r: int, c: int, t: float) -> float:
-	return Motion.bump_scale(t - (_row_at[r] + float(c) * FLIP_STEP + FLIP_TIME), LAND_BUMP)
+	return Motion.bump_scale(t - (float(_turning(r, c, t)[0]) + FLIP_TIME), LAND_BUMP)
 
 ## How far a landed green tile is into its glint. Only HITs catch the light,
 ## a tile after the one before, once the whole row is face-up; a row put back
 ## by a restore has no moment and never glints.
 func _shine(r: int, c: int, t: float) -> float:
-	if Motion.reduce or _row_at[r] < -50.0 or int(state.marks[r][c]) != State.HIT:
+	var from := _revealed_at(r)
+	if Motion.reduce or from < -50.0 or int(state.marks[r][c]) != State.HIT:
 		return 0.0
-	var since := t - (_row_at[r] + _flip_length() + GLINT_DELAY + float(c) * GLINT_STEP)
+	var since := t - (from + _flip_length() + GLINT_DELAY + float(c) * GLINT_STEP)
 	if since <= 0.0 or since >= GLINT_TIME:
 		return 0.0
 	return sin(PI * since / GLINT_TIME)
@@ -759,13 +1080,16 @@ func _turn_out(elapsed: float) -> float:
 ## rows that came before it back to SOLVE_DIM, so the answer is the only
 ## thing burning; the reveal takes the whole grid to OVER_DIM, because there
 ## is no winning row to spare. An empty bed keeps its own light either way,
-## which is the mock's own reading: a bed is not a guess.
+## which is the mock's own reading: a bed is not a guess. A row One more row
+## has just added fades in as the grid makes room for it.
 func _row_alpha(r: int, t: float) -> float:
 	var a := 1.0
 	if _over_at > -50.0:
 		a = lerpf(1.0, OVER_DIM, Motion.appear_level(t - _over_at, DIM_TIME))
 	if _solved_at > -50.0 and r < state.rows.size() and r != state.rows.size() - 1:
 		a *= lerpf(1.0, SOLVE_DIM, Motion.appear_level(t - _solved_at, Motion.SOLVE_TIME))
+	if r >= State.ROWS and _grow_at > -50.0 and not Motion.reduce:
+		a *= clampf((t - _grow_at) / GROW_TIME, 0.0, 1.0)
 	return a
 
 ## The solve's hop: the winning row's tiles lift SOLVE_HOP letter by letter,
@@ -777,16 +1101,13 @@ func _solve_lift(r: int, c: int, t: float) -> float:
 	return Motion.hop_lift(t - (_solved_at + Motion.SOLVE_DELAY + float(c) * Motion.SOLVE_STAGGER),
 		Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 
-## A tile's turn at `t`: x is its scale.y, y is 1 once it has taken its
-## colour. `abs(cos(PI * u))` squashes it to nothing and back over FLIP_TIME,
-## and the colour arrives at the halfway point -- edge-on, so the answer comes
-## *with* the turn. Under reduce motion the row is coloured in one frame and
-## never turns.
+## A tile's turn at `t`: x is its scale.y, y is 1 once it has taken its new
+## face. `abs(cos(PI * u))` squashes it to nothing and back over FLIP_TIME,
+## and the face arrives at the halfway point -- edge-on, so the answer comes
+## *with* the turn. Under reduce motion the row turns in one frame.
 func _flip(r: int, c: int, t: float) -> Vector2:
-	if Motion.reduce:
-		return Vector2(1.0, 1.0)
-	var since := t - (_row_at[r] + float(c) * FLIP_STEP)
-	if since >= FLIP_TIME:
+	var since := t - float(_turning(r, c, t)[0])
+	if Motion.reduce or since >= FLIP_TIME:
 		return Vector2(1.0, 1.0)
 	if since <= 0.0:
 		return Vector2(1.0, 0.0)
@@ -795,15 +1116,11 @@ func _flip(r: int, c: int, t: float) -> Vector2:
 
 ## An empty bed at `at` (its top-left): the lip in BED_SHADE, the floor over
 ## it a little down, lit `lit` of ROW_LIT toward the sun on the row being
-## typed, and ringed in the sun when the next letter goes here.
-func _bed(b, at: Vector2, s: float, alpha: float, lit: float, caret: bool) -> void:
+## typed. The caret round the next one is `_caret`'s, drawn first.
+func _bed(b, at: Vector2, s: float, alpha: float, lit: float) -> void:
 	if alpha <= 0.0:
 		return
 	var r := s * RADIUS
-	if caret:
-		var w := s * CARET
-		b.fan(Face.Builder.round_rect(at - Vector2.ONE * w, Vector2.ONE * (s + w * 2.0), r + w),
-			Color(Pal.SUN, CARET_A * alpha))
 	var floor_col: Color = BED.lerp(Pal.SUN, ROW_LIT * lit)
 	var shade: Color = BED_SHADE.lerp(Pal.SUN, ROW_LIT * lit * 0.5)
 	var lip := s * BED_LIP
@@ -813,10 +1130,22 @@ func _bed(b, at: Vector2, s: float, alpha: float, lit: float, caret: bool) -> vo
 
 ## A typed letter's piece: paper with a lit rim round a crown a shade toward
 ## SURFACE_HI, over a lip toward LINE.
-func _paper_tile(b, at: Vector2, s: float, grow: Vector2, alpha: float) -> void:
+func _paper_tile(b, at: Vector2, s: float, grow: Vector2, alpha: float, angle := 0.0) -> void:
 	var crown: Color = Pal.SURFACE.lerp(Pal.SURFACE_HI, PAPER_CROWN)
 	var deep: Color = Pal.SURFACE_HI.lerp(Pal.LINE, PAPER_LIP)
-	_tile_face(b, at, s, crown, deep, grow, alpha, 0.0, Pal.SURFACE)
+	_tile_face(b, at, s, crown, deep, grow, alpha, angle, Pal.SURFACE)
+
+## Snail Mail's sealed tile: a moonlit envelope, its flap folded down in a
+## shade toward MOON_INK, a berry wax seal in its corner, the letter over it.
+func _post_tile(b, at: Vector2, s: float, grow: Vector2, alpha: float, angle := 0.0) -> void:
+	var deep: Color = POST.lerp(Pal.MOON_INK, POST_DEEP)
+	_tile_face(b, at, s, POST, deep, grow, alpha, angle, POST.lerp(Pal.SURFACE, 0.6))
+	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
+		return
+	var xf := Transform2D(angle, grow, 0.0, at + Vector2.ONE * (s * 0.5))
+	var flap := PackedVector2Array([Vector2(-0.4, -0.4) * s, Vector2(0.4, -0.4) * s, Vector2(0.0, -0.08) * s])
+	b.polygon(xf * flap, Color(POST.lerp(Pal.MOON_INK, POST_FLAP), alpha))
+	b.disc(xf * (Vector2(0.3, 0.27) * s), s * WAX_R * minf(grow.x, grow.y), Color(Pal.BERRY, alpha))
 
 ## A committed tile in mark `m`'s colour, toned off its cell's hash, bevelled,
 ## and shining `shine` of SHINE toward SURFACE at the top of a glint.
@@ -856,9 +1185,9 @@ func _tile_face(b, at: Vector2, s: float, fill: Color, deep: Color, grow: Vector
 
 ## The letters, over the grid's mesh and inside the same entrance: the
 ## working row's in ink, a committed row's in paper once its tile has turned
-## far enough to carry one, and the letter an erase took away turning out
-## where it stood. Thirty draw commands at the very most, and only when
-## something has changed -- the grid does not redraw per frame.
+## far enough to carry one (in ink on a sealed envelope), and the letter an
+## erase took away turning out where it stood. Every glyph takes its tile's
+## `_move`, so a dancing, drooping or twirling tile carries its letter.
 func _draw_letters(t: float) -> void:
 	var cell := _cell()
 	var since := t - _opened - Motion.ENTER_DELAY
@@ -869,27 +1198,31 @@ func _draw_letters(t: float) -> void:
 	var mid := _grid_centre()
 	var font: Font = CozyTheme.display(700)
 	var work := _working_row()
-	for r in State.ROWS:
+	for r in state.tries:
 		var shake := Motion.shiver_offset(t - _shiver_at[r])
 		var fade := _row_alpha(r, t) * seen
+		var rise := _enter_rise(r, t)
 		for c in State.LEN:
-			var seat := cell_to_local(r, c) + Vector2(shake, _solve_lift(r, c, t))
+			var move := _move(r, c, t)
+			var seat := cell_to_local(r, c) + Vector2(shake + move.x, move.y + rise)
 			seat = mid + (seat - mid) * pop
 			if r < state.rows.size():
 				var turn := _flip(r, c, t)
 				if absf(turn.x) <= LETTER_EDGE:
 					continue
 				var pose := _pose(r, c, t)
-				var ink: Color = Pal.PAPER if turn.y >= 1.0 else Pal.TEXT
-				Mosaic.letter(self, seat + Vector2(0.0, pose.z * cell * pop), cell,
-					state.rows[r][c], Vector2(pose.x, pose.y) * pop, ink, font, fade)
+				var ink: Color = Pal.PAPER if _face_at(r, c, t) == FACE_MARK else Pal.TEXT
+				_glyph(seat + Vector2(0.0, pose.z * cell * pop), cell, state.rows[r][c],
+					Vector2(pose.x, pose.y) * pop, move.z, ink, font, fade)
 			elif r == work:
 				if c < state.typed.length():
 					var grow := Motion.pop_in_scale(t - _typed_at[c], TYPE_POP)
-					Mosaic.letter(self, seat, cell, state.typed[c], grow * pop,
-						Pal.TEXT, font, fade)
+					_glyph(seat, cell, state.typed[c], grow * pop, move.z, Pal.TEXT, font, fade)
 				elif _gone_at[c] > 0.0 and t - _gone_at[c] < Motion.POP_OUT and not Motion.reduce:
-					_letter_out(seat, cell, _gone_ch[c], t - _gone_at[c], pop, fade, font)
+					if t < _gone_at[c]:
+						_glyph(seat, cell, _gone_ch[c], Vector2.ONE * pop, 0.0, Pal.TEXT, font, fade)
+					else:
+						_letter_out(seat, cell, _gone_ch[c], t - _gone_at[c], pop, fade, font)
 				elif state.given.has(c):
 					# What a hint gave: the answer's own letter, dropping into
 					# the column it belongs to and standing there ghosted
@@ -905,6 +1238,135 @@ func _draw_letters(t: float) -> void:
 			Mosaic.letter(self, seat, cell, String(g.ch), Vector2.ONE * pop, Pal.PAPER, font, seen)
 			continue
 		_letter_out(seat, cell, String(g.ch), elapsed, pop, seen, font, Pal.PAPER)
+
+## One letter seated on its tile's centre at `grow` and turned `angle` with
+## it -- Mosaic.letter's own measure, which takes no angle because nothing
+## else in the game turns a glyph.
+func _glyph(seat: Vector2, cell: float, ch: String, grow: Vector2, angle: float,
+		ink: Color, font: Font, alpha: float) -> void:
+	if absf(angle) < 0.0001:
+		Mosaic.letter(self, seat, cell, ch, grow, ink, font, alpha)
+		return
+	if ch.is_empty() or alpha <= 0.0 or grow.x <= 0.0 or grow.y <= 0.0:
+		return
+	var px := int(cell * Mosaic.LETTER_SIZE)
+	var text := ch.to_upper()
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	var where := Vector2(-w * 0.5, font.get_height(px) * 0.5 - font.get_descent(px))
+	draw_set_transform(seat, angle, grow)
+	font.draw_string(get_canvas_item(), where, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(ink, alpha))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# --- the gags, the sunglasses and the meadow (polish spec, section 3) ---
+
+## The gags still running, into the grid's mesh: little hearts floating up
+## off a new green, and a sprig of two leaves popping out of its shoulder and
+## waving. A twirl is the tile's own turn (`_move`). Spent ones are dropped
+## by `_expire`.
+func _draw_gags(b, t: float, cell: float) -> void:
+	if Motion.reduce:
+		return
+	for key in _gags:
+		var gag: Dictionary = _gags[key]
+		var since: float = t - float(gag.at)
+		if since < 0.0:
+			continue
+		var top := _tile_at(key.x, key.y) + Vector2(cell * 0.5, 0.0)
+		match String(gag.kind):
+			"love":
+				for k in LOVE_HEARTS:
+					var u := (since - float(k) * 0.14) / LOVE_TIME
+					if u <= 0.0 or u >= 1.0:
+						continue
+					var sway := sin(u * TAU * 1.5 + float(k)) * cell * 0.1
+					var x := (float(k) - 1.5) * cell * 0.18 + sway
+					var at := top + Vector2(x, -u * LOVE_RISE * cell)
+					var a := minf(1.0, (1.0 - u) * 2.5) * minf(1.0, u * 8.0)
+					_heart(b, at, LOVE_R * cell * (0.8 + 0.4 * _hash(k, key.y)), Color(Pal.BERRY, a))
+			"sprig":
+				var u := since / SPRIG_TIME
+				if u >= 1.0:
+					continue
+				var grow := Motion.back_out(clampf(since / 0.3, 0.0, 1.0))
+				var a := minf(1.0, (1.0 - u) * 4.0)
+				var wave := sin(since * 9.0) * 0.25 * (1.0 - u)
+				var foot := _tile_at(key.x, key.y) + Vector2(cell * 0.82, cell * 0.08)
+				_leaf(b, foot, SPRIG_R * cell * grow, -0.7 + wave, Color(Pal.LEAF, a))
+				_leaf(b, foot, SPRIG_R * cell * 0.8 * grow, 0.5 + wave, Color(Pal.LEAF_LIGHT, a))
+
+## A little heart, point down, centred on `at`.
+static func _heart(b, at: Vector2, r: float, colour: Color) -> void:
+	if colour.a <= 0.0 or r <= 0.0:
+		return
+	b.disc(at + Vector2(-r * 0.5, 0.0), r * 0.58, colour)
+	b.disc(at + Vector2(r * 0.5, 0.0), r * 0.58, colour)
+	b.polygon(PackedVector2Array([at + Vector2(-r * 1.04, r * 0.16), at + Vector2(r * 1.04, r * 0.16),
+		at + Vector2(0.0, r * 1.15)]), colour)
+
+## A leaf `len` long from `foot`, turned `angle` off straight up.
+static func _leaf(b, foot: Vector2, len: float, angle: float, colour: Color) -> void:
+	if len <= 0.5 or colour.a <= 0.0:
+		return
+	var dir := Vector2(sin(angle), -cos(angle))
+	var side := Vector2(-dir.y, dir.x) * len * 0.42
+	var tip := foot + dir * len
+	var pts := Face.Builder.bezier2(foot, foot + dir * len * 0.5 + side, tip, 6)
+	var back := Face.Builder.bezier2(tip, foot + dir * len * 0.5 - side, foot, 6)
+	for i in range(1, back.size()):
+		pts.append(back[i])
+	b.polygon(pts, colour)
+
+## A flower opening in bed (r, c) of a row the solve left unplayed -- the
+## meadow the party grows -- with a twist and a stagger down the grid.
+func _bloom(b, centre: Vector2, cell: float, r: int, c: int, t: float) -> void:
+	var order := float((r - state.rows.size()) * State.LEN + c)
+	var since := t - (_party_at + order * BLOOM_STEP)
+	var grow := 1.0 if Motion.reduce else Motion.back_out(clampf(since / BLOOM_TIME, 0.0, 1.0))
+	if grow <= 0.0 or (since < 0.0 and not Motion.reduce):
+		return
+	var petal: Color = [Pal.FLOWER, Pal.SUN_RAY, Pal.SURFACE, Pal.BERRY_TILE][posmod(r * 3 + c, 4)]
+	var rad := cell * 0.13 * grow
+	var turn := (1.0 - grow) * 1.2 + _hash(r, c) * TAU
+	for k in FLOWER_PETALS:
+		var a := turn + float(k) / float(FLOWER_PETALS) * TAU
+		b.disc(centre + Vector2(cos(a), sin(a)) * rad * 1.25, rad, petal)
+	b.disc(centre, rad * 0.75, Pal.SUN)
+	for k in 2:
+		_leaf(b, centre + Vector2(0.0, rad * 1.6), cell * 0.18 * grow, -0.9 + 1.8 * float(k), Pal.LEAF)
+
+## The sunglasses a clean miss puts on its row: two dark lenses over its
+## second and fourth tiles and a bridge between, dropping in and lifting off.
+## Their own small mesh, drawn after the letters so they cover two of them --
+## that is the joke.
+func _draw_glasses(t: float, shown: Array) -> void:
+	if _glasses_at.is_empty() or Motion.reduce:
+		return
+	var cell := _cell()
+	for r in _glasses_at:
+		var since: float = t - float(_glasses_at[r])
+		if since < 0.0 or since > GLASSES_TIME:
+			continue
+		var lift := Motion.drop_in_lift(since, cell * 0.6, 0.28)
+		var off := since - (GLASSES_TIME - 0.3)
+		if off > 0.0:
+			lift -= cell * 0.8 * (off / 0.3) * (off / 0.3)
+		var a := 1.0 - clampf(off / 0.3, 0.0, 1.0)
+		var left := cell_to_local(r, 1)
+		var right := cell_to_local(r, 3)
+		var b := Face.Builder.new()
+		var ink := Color(Pal.OUTLINE, 0.94 * a)
+		var lens := Vector2(cell * 0.86, cell * 0.5)
+		for at: Vector2 in [left, right]:
+			var tl := at - lens * 0.5 + Vector2(0.0, -cell * 0.04 - lift)
+			b.fan(Face.Builder.round_rect(tl, lens, cell * 0.2), ink)
+			b.fan(Face.Builder.round_rect(tl + Vector2(lens.x * 0.14, lens.y * 0.16),
+				Vector2(lens.x * 0.22, lens.y * 0.12), lens.y * 0.06), Color(Pal.SURFACE, 0.55 * a))
+		var bridge_y := left.y - cell * 0.16 - lift
+		b.fan(Face.Builder.round_rect(Vector2(left.x + lens.x * 0.45, bridge_y),
+			Vector2(right.x - left.x - lens.x * 0.9, cell * 0.08), cell * 0.04), ink)
+		var mesh := b.mesh()
+		draw_mesh(mesh, null)
+		shown.append(mesh)
 
 ## A hint's letter: it drops in from DROP above its column with the fade and
 ## then stands at GHOST in LEAF_DEEP, a given rather than a guess. Drawn
@@ -969,14 +1431,14 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var font: Font = CozyTheme.body(700)
-	var line: String = tr(TOAST_LINE[_toast])
+	var line: String = _toast_text
 	var w: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x + TOAST_PAD
-	if _toast_mesh == null or _toast_mesh_for != _toast:
+	if _toast_mesh == null or _toast_mesh_for != line:
 		var b := Face.Builder.new()
 		b.fan(Face.Builder.round_rect(Vector2(-w, -TOAST_H) * 0.5, Vector2(w, TOAST_H), TOAST_RADIUS),
 			Color(Pal.TEXT, TOAST_INK))
 		_toast_mesh = b.mesh() if not b.verts.is_empty() else null
-		_toast_mesh_for = _toast
+		_toast_mesh_for = line
 	if _toast_mesh == null:
 		return
 	var mid := Vector2(size.x * 0.5, _card_top() - TOAST_RISE + TOAST_H * 0.5)
@@ -996,9 +1458,10 @@ func _draw_toast(t: float, shown: Array) -> void:
 ## off the same two readers, because one is a node and the other is drawn and
 ## they have to arrive as one thing.
 func _draw_reveal(t: float, shown: Array) -> void:
-	if _over_at <= -50.0:
+	var from := _stage_at()
+	if from <= -50.0:
 		return
-	var since := t - _over_at - REVEAL_WAIT
+	var since := t - from - REVEAL_WAIT
 	var a := Motion.appear_level(since, REVEAL_FADE)
 	if a <= 0.0:
 		return
@@ -1017,6 +1480,13 @@ func _draw_reveal(t: float, shown: Array) -> void:
 		Color(1.0, 1.0, 1.0, a))
 	shown.append(_reveal_mesh)
 	var x := WORD_CARD_X + WORD_TEXT_X
+	if state.is_solved():
+		# The party's card: the word found, and the sprout's silly cheer.
+		_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_LABEL_Y + 2.0),
+			state.written.to_upper(), Color(Pal.GOOD, a))
+		_line(CozyTheme.body(500), WORD_LABEL_FONT - 4, Vector2(x, top + WORD_Y + 4.0),
+			tr("HW_CHEER_%d" % _cheer), Color(Pal.TEXT_DIM, a))
+		return
 	_line(CozyTheme.body(500), WORD_LABEL_FONT, Vector2(x, top + WORD_LABEL_Y),
 		tr("HW_WORD_WAS"), Color(Pal.TEXT_DIM, a))
 	_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_Y),
@@ -1045,15 +1515,24 @@ func _line(font: Font, px: int, at: Vector2, text: String, colour: Color) -> voi
 func _ride_sprout(t: float) -> void:
 	if _sprout == null or not _sprout.visible:
 		return
-	var since := t - _over_at - REVEAL_WAIT
+	var since := t - _stage_at() - REVEAL_WAIT
 	var seat := Vector2(SPROUT_AT.x, _reveal_top() + SPROUT_AT.y + _reveal_rise(since))
 	_sprout.position = seat - _sprout.size * 0.5
 	_sprout.modulate.a = Motion.appear_level(since, REVEAL_FADE)
 
+## When the band's stage -- the sprout and the card beside it -- came up: the
+## reveal's moment, or the party's, or -100 for neither.
+func _stage_at() -> float:
+	if _over_at > -50.0:
+		return _over_at
+	if _party_at < INF:
+		return _party_at
+	return -100.0
+
 ## The sprout the reveal brings, built on the first ending and kept after it.
 ## It is sized so R comes out at SPROUT_R once the face's own REACH -- the
 ## room its leaves need above the blob -- has been paid for.
-func _raise_sprout() -> void:
+func _raise_sprout(mood: int = Face.Expr.HAPPY, party := false) -> void:
 	if _sprout == null:
 		_sprout = SproutFace.new()
 		_sprout.name = "Sprout"
@@ -1061,95 +1540,131 @@ func _raise_sprout() -> void:
 		add_child(_sprout)
 	var px := SPROUT_R * 2.0 * SproutFace.REACH
 	_sprout.size = Vector2(px, px)
-	_sprout.expression = Face.Expr.HAPPY
+	_sprout.expression = mood
 	_sprout.visible = true
 	_sprout.modulate.a = 0.0
+	_sprout.hat = 1.0 if party and (Motion.reduce or _restoring) else 0.0
 	_ride_sprout(_now())
 	_sprout.set_idle(true)
+	if party and not Motion.reduce and not _restoring:
+		var tw := _sprout.create_tween()
+		tw.tween_interval(REVEAL_WAIT + REVEAL_TIME)
+		tw.tween_property(_sprout, "hat", 1.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 # --- the three moves ---
 
 ## The row being typed, or -1 once all six are committed.
 func _working_row() -> int:
-	return state.rows.size() if state.rows.size() < State.ROWS else -1
+	return state.rows.size() if state.rows.size() < state.tries else -1
 
-## A letter off the keyboard. The tile takes it with the pop.
+## A letter off the keyboard. The tile takes it with the pop and the caret
+## glides on to the next bed; the fifth letter makes the row hop, ready.
 func type_letter(letter: String) -> void:
-	if not state.type_letter(letter):
+	if out_of_hearts or not state.type_letter(letter):
 		return
 	var i: int = state.typed.length() - 1
-	_typed_at[i] = _now()
+	var now := _now()
+	_typed_at[i] = now
 	_gone_at[i] = -100.0
 	_gone_ch[i] = ""
-	_busy_for(TYPE_POP)
+	_caret_from = i
+	_caret_at = now
+	_busy_for(maxf(TYPE_POP, CARET_GLIDE))
 	fx.cue("type")
+	if state.typed.length() == State.LEN:
+		_ready_at = now + TYPE_POP * 0.5
+		_busy_for(TYPE_POP * 0.5 + READY_TIME + float(State.LEN - 1) * READY_STEP)
+		fx.cue("ready")
 	_refresh()
 
 ## Backspace. The letter shrinks out with the quarter turn; the tile it was
-## on stays where it is and goes back to being a bed.
+## on stays where it is and goes back to being a bed, and the caret glides
+## back to it.
 func erase_letter() -> void:
 	var i: int = state.typed.length() - 1
-	if i < 0:
+	if i < 0 or out_of_hearts:
 		return
 	var ch: String = state.typed[i]
 	if not state.erase():
 		return
+	var now := _now()
 	_typed_at[i] = -100.0
-	_gone_at[i] = _now()
+	_gone_at[i] = now
 	_gone_ch[i] = ch
-	_busy_for(Motion.POP_OUT)
+	_caret_from = mini(i + 1, State.LEN - 1)
+	_caret_at = now
+	_busy_for(maxf(Motion.POP_OUT, CARET_GLIDE))
 	fx.cue("erase")
 	_refresh()
 
-## Enter. On OK the row turns over, a tile at a time; on any of the three
-## refusals nothing commits, nothing counts, and the row shivers where it is
-## (`_draw_toast` raises the toast that names the rule).
+## Enter. On OK the row turns over, a tile at a time; on any refusal nothing
+## commits, nothing counts, and the row shivers where it is while the toast
+## names the rule.
+##
+## On Snail Mail an OK row turns over **sealed** -- unless it is the answer,
+## or the last row there is -- and the row the snail was carrying turns into
+## its colours once the new one has landed; then the snail crawls down to the
+## new one. The keyboard, the reactions and the ending all wait for the rows
+## they read to show their colours, never for the Enter.
 func commit_row() -> void:
-	if is_done():
+	if is_done() or out_of_hearts:
 		return
-	# The row that shivers is the one being typed. The is_done() guard above
-	# is why this can be read without a clamp: a commit that fills the sixth
-	# row always ends the board before commit_row returns (state.is_solved()
-	# or state.is_over(), below, one or the other always holds once
-	# rows.size() reaches State.ROWS), so a call that gets this far always
-	# finds rows.size() < State.ROWS.
+	# The row that shivers is the one being typed. A commit that fills the
+	# last row always ends the board or raises the card before commit_row
+	# returns, so a call that gets this far finds rows.size() < state.tries.
 	var row: int = state.rows.size()
 	var code := state.commit()
 	if code != State.OK:
-		_shiver_at[row] = _now()
-		_toast = code
-		_toast_at = _now()
-		_busy_for(maxf(Motion.SHIVER_TIME, TOAST_HOLD + Motion.POP_OUT))
-		fx.cue("refused")
-		_refresh()
+		_refuse(row, code)
 		return
-	_flip_row = state.rows.size() - 1
-	_flip_at = _now()
-	_row_at[_flip_row] = _flip_at
+	var now := _now()
+	_flip_row = row
+	_flip_at = now
+	_row_at[row] = now
+	var sealed: bool = state.snail and state.delivered() < state.rows.size()
+	_sealed[row] = sealed
 	_clear_working()
-	# The keyboard learns what the row learned only when the **last** tile of
-	# it has landed. Painted a beat early, the keys would give the row away
-	# while three of its tiles were still face-down. What it will be told is
-	# settled now, while the state still ends at this row; when it is told is
-	# `landed`, and a row committed on top of a row still turning queues
-	# behind it rather than replacing it.
-	var landed := _flip_at + _flip_length()
+	_caret_from = 0
+	_caret_at = -100.0
+	var landed := now + _flip_length()
 	# One flip a tile as it starts to turn, a touch higher each, so the row
-	# is heard going over the way it is seen; under reduce motion, one.
+	# is heard going over the way it is seen; under reduce motion, one. A
+	# sealed row folds like paper instead.
 	for c in (1 if Motion.reduce else State.LEN):
-		_cue_due.append({"at": _flip_at + float(c) * FLIP_STEP, "cue": "flip",
+		_cue_due.append({"at": now + float(c) * FLIP_STEP, "cue": "post" if sealed else "flip",
 			"pitch": 1.0 + 0.04 * float(c)})
-	var due := _keys_payload(_flip_row)
-	due["at"] = landed
-	_keys_due.append(due)
-	if Motion.reduce:
-		_deliver_keys(landed)
-	_busy_for(landed - _flip_at + maxf(Motion.BUMP_TIME, _glint_length()))
-	# The row that ends the game does it when it has **landed**, not when
-	# Enter was pressed: a sprout that named the word while the sixth row was
-	# still face-down would answer the board before it had finished asking.
-	# The solve is the one exception, and only for the signal -- `solved`
-	# fires now, because the host's own win_delay() is measured from here.
+	# The rows this Enter shows the colours of, each with when it has landed.
+	var shown: Array = []
+	if not sealed:
+		shown.append([row, landed])
+	for r in row:
+		if not _sealed[r] or _deliver_at[r] > -50.0 or r >= state.delivered():
+			continue
+		# Good news travels fast: with the answer or the last row, the snail
+		# brings the row it carries while the new one turns.
+		var at := now if not sealed or Motion.reduce else landed + DELIVER_AFTER
+		_deliver_at[r] = at
+		shown.append([r, at + _flip_length()])
+		_cue_due.append({"at": at, "cue": "snail" if sealed else "snail_hurry"})
+	if sealed and row > 0:
+		_snail_from_row = row - 1
+		_snail_to_row = row
+		_snail_at = (landed + DELIVER_AFTER if not Motion.reduce else now) + SNAIL_CRAWL * 0.3
+	_cue_due.sort_custom(func(a, b) -> bool: return float(a.at) < float(b.at))
+	var last := now
+	var letters: Array = []
+	for pair in shown:
+		last = maxf(last, float(pair[1]))
+		letters.append(int(pair[0]))
+	if not letters.is_empty():
+		var due := _keys_payload_rows(letters)
+		due["at"] = last
+		_keys_due.append(due)
+		if Motion.reduce:
+			_deliver_keys(last)
+	_busy_for(last - now + maxf(Motion.BUMP_TIME, _glint_length()))
+	if sealed:
+		_busy_for(landed - now + DELIVER_AFTER + SNAIL_CRAWL * 1.3)
 	if state.is_solved():
 		_solved_at = landed
 		_cue_due.append({"at": landed, "cue": "solved"})
@@ -1157,19 +1672,380 @@ func commit_row() -> void:
 			for c in State.LEN:
 				_fx_due.append({
 					"at": landed + Motion.SOLVE_DELAY + float(c) * Motion.SOLVE_STAGGER,
-					"r": _flip_row, "c": c, "colour": Pal.SUN,
+					"r": row, "c": c, "colour": Pal.SUN,
 				})
-		_busy_for(landed - _now() + Motion.SOLVE_DELAY
-			+ float(State.LEN - 1) * Motion.SOLVE_STAGGER + Motion.SOLVE_TIME)
-	elif state.is_over():
-		_over_at = landed
-		_keys_out_at = landed
-		_cue_due.append({"at": landed, "cue": "lost"})
-		_raise_sprout()
-		_busy_for(landed - _now() + REVEAL_WAIT + REVEAL_TIME)
-		finish_unsolved()
+		_party(landed)
+	else:
+		for pair in shown:
+			_react_due.append({"at": float(pair[1]) + REACT_AT, "r": int(pair[0])})
+		_react_due.sort_custom(func(a, b) -> bool: return float(a.at) < float(b.at))
+		if state.is_over():
+			_run_out(last)
 	_refresh()
 	note_move()
+
+## A refused Enter: the row shivers, the toast names the rule -- the clue
+## rule's two name the letter and the place -- and nothing counts.
+func _refuse(row: int, code: int) -> void:
+	_shiver_at[row] = _now()
+	_toast = code
+	_toast_at = _now()
+	_toast_text = tr(TOAST_LINE[code])
+	var broken: Dictionary = state.broken
+	if code == State.KEEP_GREEN and not broken.is_empty():
+		_toast_text = _toast_text % [String(broken.letter).to_upper(), tr(PLACE[int(broken.at)])]
+	elif code == State.USE_LETTER and not broken.is_empty():
+		_toast_text = _toast_text % String(broken.letter).to_upper()
+	_busy_for(maxf(Motion.SHIVER_TIME, TOAST_HOLD + Motion.POP_OUT))
+	fx.cue("refused")
+	_refresh()
+
+# --- what a row that shows its colours earns (polish spec, section 3) ---
+
+## Runs the reactions that have come due, oldest first.
+func _deliver_reacts(now: float) -> void:
+	while not _react_due.is_empty() and now >= float(_react_due[0].at):
+		var due: Dictionary = _react_due.pop_front()
+		_react(int(due.r))
+
+## Row `r` has landed face-up. Every green it found at a place no row had
+## greened plucks a note a step up the scale, and three in five of them do
+## something silly. Then the row as a whole may earn a word: a clean miss
+## puts on sunglasses ("Cool. Five crossed off."), every letter found congas
+## ("Everyone's here!"), and more greens than any row before is "Warmer!" --
+## "So close!" with confetti at four.
+func _react(r: int) -> void:
+	if r < 0 or r >= state.rows.size():
+		return
+	var now := _now()
+	var hits := 0
+	var near := 0
+	var fresh: Array[int] = []
+	for c in State.LEN:
+		var m := int(state.marks[r][c])
+		if m == State.HIT:
+			hits += 1
+			if not _greened.has(c):
+				fresh.append(c)
+		elif m == State.NEAR:
+			near += 1
+	var gagged := false
+	for i in fresh.size():
+		var c: int = fresh[i]
+		_greened[c] = true
+		var step: int = COMBO_STEPS[mini(_greened.size() - 1, COMBO_STEPS.size() - 1)]
+		_cue_due.append({"at": now + float(i) * 0.09, "cue": "combo", "pitch": pow(2.0, float(step) / 12.0)})
+		if Motion.reduce or gagged:
+			continue
+		var h := posmod(hash(Vector3i(r, c, state.answer.hash())), 1000)
+		if h % GAG_ODDS >= GAGS:
+			continue
+		# One gag a row, so a row of greens is funny and not a fairground.
+		gagged = true
+		var kind: String = ["love", "twirl", "sprig"][(h / GAG_ODDS) % 3]
+		var at := now + float(i) * 0.09 + 0.15
+		_gags[Vector2i(r, c)] = {"kind": kind, "at": at}
+		_cue_due.append({"at": at, "cue": {"love": "love", "twirl": "twirl", "sprig": "sprout"}[kind]})
+	_cue_due.sort_custom(func(a, b) -> bool: return float(a.at) < float(b.at))
+	var best_before := _best
+	_best = maxi(_best, hits)
+	_busy_for(maxf(LOVE_TIME + 0.6, SPRIG_TIME + 0.3))
+	if Motion.reduce or state.is_solved():
+		return
+	if hits + near == 0:
+		_glasses_at[r] = now
+		_bubble_at(r, tr("HW_COOL"))
+		fx.cue("cool")
+		_busy_for(GLASSES_TIME)
+	elif hits + near == State.LEN:
+		_conga_at[r] = now
+		_bubble_at(r, tr("HW_ALL_HERE"))
+		fx.cue("all_here")
+		_busy_for(float(State.LEN * 2) * CONGA_STEP + Motion.HOP_TIME)
+	elif hits > best_before:
+		var close := hits == State.LEN - 1
+		_bubble_at(r, tr("HW_SO_CLOSE") if close else tr("HW_WARMER"))
+		fx.cue("so_close" if close else "warmer")
+		if close:
+			var left := cell_to_local(r, 0)
+			var right := cell_to_local(r, State.LEN - 1)
+			fx.confetti((left + right) * 0.5, 28, right.x - left.x)
+			fx.cue("confetti")
+	_refresh()
+
+## A paper bubble over the row's right shoulder, popping in and fading after
+## a hold -- Code Break's, which says the same things about its rows.
+func _bubble_at(r: int, text: String) -> void:
+	_drop_bubble()
+	var bubble := PanelContainer.new()
+	bubble.name = "Bubble"
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.z_index = 3
+	var paper := StyleBoxFlat.new()
+	paper.bg_color = Pal.SURFACE
+	paper.set_corner_radius_all(22)
+	paper.set_border_width_all(2)
+	paper.border_width_bottom = 5
+	paper.border_color = Pal.LINE
+	paper.content_margin_left = 20
+	paper.content_margin_right = 20
+	paper.content_margin_top = 6
+	paper.content_margin_bottom = 8
+	bubble.add_theme_stylebox_override("panel", paper)
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_override("font", CozyTheme.display(700))
+	label.add_theme_font_size_override("font_size", BUBBLE_FONT)
+	label.add_theme_color_override("font_color", Pal.ACORN_DEEP)
+	bubble.add_child(label)
+	add_child(bubble)
+	bubble.reset_size()
+	var over := _tile_at(r, State.LEN - 1) + Vector2(_cell(), 0.0)
+	var pos := over + Vector2(-bubble.size.x + 16.0, -bubble.size.y + 8.0)
+	pos.x = clampf(pos.x, 8.0, size.x - bubble.size.x - 8.0)
+	pos.y = maxf(pos.y, 4.0)
+	bubble.position = pos
+	bubble.pivot_offset = Vector2(bubble.size.x * 0.75, bubble.size.y)
+	_bubble = bubble
+	Motion.pop_in(bubble)
+	var gen := _gen
+	get_tree().create_timer(BUBBLE_HOLD).timeout.connect(func() -> void:
+		if not is_instance_valid(bubble):
+			return
+		var out: Tween = Motion.appear(bubble, 1.0, 0.0, Motion.POP_OUT * 2.0)
+		if out == null or gen != _gen:
+			bubble.queue_free()
+		else:
+			out.finished.connect(bubble.queue_free))
+
+func _drop_bubble() -> void:
+	if is_instance_valid(_bubble):
+		_bubble.queue_free()
+	_bubble = null
+
+## Calls `fn` `seconds` from now, unless the board has been dealt or reset
+## again by then.
+func _after(seconds: float, fn: Callable) -> void:
+	if seconds <= 0.0:
+		fn.call()
+		return
+	var gen := _gen
+	get_tree().create_timer(seconds).timeout.connect(func() -> void:
+		if gen == _gen and is_instance_valid(self):
+			fn.call())
+
+# --- out of rows (polish spec, section 1) ---
+
+## The last row has landed and the word is still hiding: every tile sags and
+## leans a little, the snail (if there is one) nods off, and the card asks --
+## one more row, or show the word. Until it is answered the board takes no
+## keys; the host's Back ends it unsolved (it reads `out_of_hearts`).
+func _run_out(landed: float) -> void:
+	out_of_hearts = true
+	var now := _now()
+	_droop_at = landed + (0.0 if Motion.reduce else 0.25)
+	_cue_due.append({"at": _droop_at, "cue": "droop"})
+	_cue_due.append({"at": _droop_at + 0.5, "cue": "out_of_rows"})
+	_cue_due.sort_custom(func(a, b) -> bool: return float(a.at) < float(b.at))
+	_busy_for(_droop_at - now + float(state.tries * State.LEN) * DROOP_STEP + DROOP_TIME)
+	_after(landed - now + (CARD_AFTER_STILL if Motion.reduce else CARD_AFTER), func() -> void:
+		if is_instance_valid(_snail):
+			_snail.expression = Face.Expr.SLEEPY
+		_open_card())
+
+## The card, over the whole screen: on the host so it covers the chrome, or
+## on the root when there is none (a probe). Code Break's card in this
+## board's words.
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_card):
+		return
+	var card: Control = load(OUT_OF_ROWS).new(_row_bought, {
+		"title": "HW_OUT_TITLE", "body": "HW_OUT_BODY", "body_rest": "HW_OUT_BODY_REST",
+		"more": "HW_ONE_ROW", "show": "HW_SHOW_WORD", "placement": "row"})
+	_card = card
+	card.one_more_row.connect(row_back)
+	card.show_code.connect(show_word)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+func _close_card() -> void:
+	if is_instance_valid(_card) and not _card.is_queued_for_deletion():
+		_card.queue_free()
+	_card = null
+
+## One more row (the card's video), once a word: the tiles perk back up, the
+## grid makes room for a seventh row, and it rises into place.
+func row_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	if not state.add_row():
+		return
+	_row_bought = true
+	out_of_hearts = false
+	var now := _now()
+	_droop_at = -100.0
+	_grow_from = float(state.tries - 1)
+	_grow_at = now
+	_clear_working()
+	if is_instance_valid(_snail):
+		_snail.expression = Face.Expr.HAPPY
+	_band_mesh = null
+	_busy_for(GROW_TIME + Motion.ENTER_POP)
+	fx.cue("row_back")
+	_refresh()
+	moved.emit()
+
+## Show the word: the old ending -- the keyboard slides away and the sprout
+## rises with the word on its card -- and the board ends unsolved.
+func show_word() -> void:
+	if is_done():
+		return
+	_close_card()
+	out_of_hearts = false
+	var now := _now()
+	_over_at = now
+	_keys_out_at = now
+	fx.cue("lost")
+	_raise_sprout(Face.Expr.HAPPY)
+	_busy_for(REVEAL_WAIT + REVEAL_TIME + DIM_TIME)
+	finish_unsolved()
+	_refresh()
+
+## True while the board is between a thing and its answer -- a row still
+## turning, the card coming -- so the host holds its hint video back.
+func busy() -> bool:
+	return out_of_hearts or _now() < _flip_at + _flip_length() + DELIVER_AFTER + _flip_length()
+
+# --- the party and the seal (polish spec, section 3) ---
+
+## The solve's party, from the winning row's landing: after its hop the
+## tiles dance, the rows it never needed bloom into a meadow, the sprout comes
+## up on the band in a party hat with a silly cheer, confetti flies twice,
+## and the seal drops onto the cheer's card.
+func _party(landed: float) -> void:
+	var now := _now()
+	_party_at = landed + (0.0 if Motion.reduce else PARTY_AT)
+	_cheer = posmod(state.answer.hash(), CHEERS)
+	_after(_party_at - now, _party_on)
+	_after(_party_at - now + (0.0 if Motion.reduce else STAMP_AT), _stamp_down)
+	_busy_for(_party_at - now + maxf(float(DANCE_BEATS) * DANCE_BEAT,
+		float(State.MAX_ROWS * State.LEN) * BLOOM_STEP + BLOOM_TIME) + REVEAL_WAIT + REVEAL_TIME)
+
+func _party_on() -> void:
+	if not state.is_solved():
+		return
+	_raise_sprout(Face.Expr.JOY, true)
+	if Motion.reduce:
+		return
+	fx.cue("party")
+	_after(0.15, fx.cue.bind("dance"))
+	var row: int = state.rows.size() - 1
+	var left := cell_to_local(row, 0)
+	var right := cell_to_local(row, State.LEN - 1)
+	fx.confetti((left + right) * 0.5, 44, right.x - left.x)
+	_after(0.35, func() -> void:
+		fx.confetti(Vector2(size.x * 0.5, _reveal_top()), 30, size.x * 0.6)
+		fx.cue("confetti"))
+	if is_instance_valid(_snail):
+		_snail.expression = Face.Expr.JOY
+		var tw := _snail.create_tween()
+		tw.tween_property(_snail, "hat", 1.0, 0.3).from(0.0).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_refresh()
+
+## The seal's word for a solve in `rows` rows: HW_STAMP_1 .. HW_STAMP_6, and
+## HW_STAMP_MORE for a word that needed the row the card gave.
+func stamp_key() -> String:
+	if _row_bought or state.rows.size() > State.ROWS:
+		return "HW_STAMP_MORE"
+	return "HW_STAMP_%d" % clampi(state.rows.size(), 1, State.ROWS)
+
+## The seal drops onto the right end of the cheer's card from STAMP_FROM its
+## size, squashes and rings: gold with the stamp's word, or on Insane the
+## night-blue seal with "Snail Mail" over it. It is the result, so it shows
+## under reduce motion too, standing still.
+func _stamp_down() -> void:
+	if is_instance_valid(_stamp) or not state.is_solved():
+		return
+	var rad := STAMP_R
+	var insane: bool = state.snail
+	var stamp := Control.new()
+	stamp.name = "Stamp"
+	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamp.z_index = 3
+	stamp.size = Vector2.ONE * rad * 2.0
+	stamp.pivot_offset = stamp.size * 0.5
+	var centre := Vector2(size.x - WORD_CARD_RIGHT - rad * 0.9, _reveal_top() + WORD_CARD_H * 0.45)
+	stamp.position = centre - stamp.pivot_offset
+	stamp.rotation = STAMP_TILT
+	var mesh := Seal.mesh(rad, insane)
+	var word: String = tr(stamp_key())
+	var lines := [[Seal.tr_static("HW_SNAIL_SEAL"), 0.26, 0.02], [word, 0.22, 0.36]] if insane \
+		else [[word, 0.3, 0.12]]
+	stamp.draw.connect(func() -> void:
+		stamp.draw_mesh(mesh, null, Transform2D(0.0, stamp.pivot_offset))
+		Seal.text(stamp, rad, lines))
+	add_child(stamp)
+	_stamp = stamp
+	if _restoring or Motion.reduce:
+		return
+	fx.cue("stamp")
+	stamp.scale = Vector2.ONE * STAMP_FROM
+	stamp.modulate.a = 0.0
+	var tw := stamp.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(stamp, "scale", Vector2.ONE, STAMP_DROP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
+	tw.chain().tween_callback(func() -> void:
+		Motion.squash(stamp, 0.22, 0.26)
+		fx.ring(centre, rad * 0.9, Pal.MOON_INK if insane else Pal.SUN))
+
+# --- Snail Mail's courier (polish spec, section 2) ---
+
+## The snail stands in the side air to the right of the row it carries,
+## facing the grid; only Snail Mail has one. Built once and kept.
+func _seat_snail() -> void:
+	if not state.snail:
+		if is_instance_valid(_snail):
+			_snail.visible = false
+		return
+	if not is_instance_valid(_snail):
+		_snail = SnailFace.new()
+		_snail.name = "Courier"
+		_snail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_snail.z_index = 2
+		add_child(_snail)
+		_snail.set_idle(true)
+	_snail.visible = true
+	_snail.expression = Face.Expr.HAPPY
+	_snail.hat = 0.0
+
+## The snail's seat beside row `r`: in the side air right of the grid.
+func _snail_seat(r: int) -> Vector2:
+	var cell := _cell()
+	var right := _origin().x + _block().x
+	var x := right + (size.x - right) * 0.5 - cell * SNAIL_OFF
+	return Vector2(x, cell_to_local(r, 0).y + cell * 0.12)
+
+## Rides the board's clock: sat beside the row it carries, or crawling down
+## from the one it just delivered, stretching as it goes.
+func _ride_snail(t: float) -> void:
+	if not is_instance_valid(_snail) or not _snail.visible or not _laid_out():
+		return
+	var px := _cell() * SNAIL_PX
+	_snail.size = Vector2(px, px)
+	_snail.pivot_offset = _snail.size * 0.5
+	var u := 1.0 if Motion.reduce else clampf((t - _snail_at) / SNAIL_CRAWL, 0.0, 1.0)
+	var from := _snail_seat(_snail_from_row)
+	var to := _snail_seat(_snail_to_row)
+	var at := from.lerp(to, _ease_io(u))
+	var stretch := 0.0 if Motion.reduce or u <= 0.0 or u >= 1.0 else sin(u * PI * 3.0) * 0.06
+	_snail.scale = Vector2(-(1.0 + stretch), 1.0 - stretch)
+	_snail.position = at - _snail.size * 0.5
+	_snail.modulate.a = Motion.appear_level(t - _opened - Motion.ENTER_DELAY, Motion.ENTER_POP)
 
 ## How long a whole row takes to turn over: the last tile starts four steps
 ## after the first and turns for FLIP_TIME. Nothing under reduce motion.
@@ -1178,22 +2054,23 @@ func _flip_length() -> float:
 		return 0.0
 	return float(State.LEN - 1) * FLIP_STEP + FLIP_TIME
 
-## What the keys `row` touched should say, and which of them bump. The marks
-## are read back off the state (`key_mark`, which resolves best-mark-wins
-## across every committed row), so a letter amber on row one and green on row
-## three stays green. Called the moment `row` is committed, so `key_mark`
-## sees exactly the rows up to and including it.
-func _keys_payload(row: int) -> Dictionary:
+## What the keys the rows in `rows` touched should say, and which of them
+## bump. The marks are read back off the state (`key_mark`, which resolves
+## best-mark-wins across every row the snail has brought), so a letter amber
+## on row one and green on row three stays green. Called the moment the rows
+## are committed or brought, so `key_mark` sees exactly what they show.
+func _keys_payload_rows(rows: Array) -> Dictionary:
 	var marks: Dictionary = {}
 	var letters: Array = []
-	if row < 0 or row >= state.rows.size():
-		return {"marks": marks, "letters": letters}
-	var word: String = state.rows[row]
-	for i in State.LEN:
-		var ch := word[i]
-		if not marks.has(ch):
-			letters.append(ch)
-		marks[ch] = state.key_mark(ch)
+	for row in rows:
+		if row < 0 or row >= state.rows.size():
+			continue
+		var word: String = state.rows[row]
+		for i in State.LEN:
+			var ch := word[i]
+			if not marks.has(ch):
+				letters.append(ch)
+			marks[ch] = state.key_mark(ch)
 	return {"marks": marks, "letters": letters}
 
 ## Hands the keyboard every repaint that has come due, oldest first.
@@ -1241,8 +2118,14 @@ func _enter() -> void:
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The grid, and on a solve the seal's line under it: "🏅 Genius", or on
+## Insane "🌙 Snail Mail · Genius".
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if state.is_solved():
+		var word: String = tr(stamp_key())
+		out += "\n" + (("🌙 %s · %s" % [tr("HW_SNAIL_SEAL"), word]) if state.snail else ("🏅 " + word))
+	return out
 
 ## One more hint beyond the budget (a rewarded video's), kept in the state.
 func add_hint() -> void:
@@ -1306,6 +2189,11 @@ func hint() -> bool:
 ## to clear `_done`; a Reset that left it set would hand the player a board
 ## that took no keys and never ticked again.
 func reset_board() -> void:
+	if not can_reset():
+		return
+	if state.keeps_rows:
+		_reset_row()
+		return
 	var wave: Array = []
 	if not Motion.reduce:
 		for r in state.rows.size():
@@ -1315,10 +2203,9 @@ func reset_board() -> void:
 					"at": _now() + Motion.stagger(
 						(state.rows.size() - 1 - r) * State.LEN + c, Motion.RESET_STAGGER),
 				})
+	_gen += 1
 	state.reset()
-	for r in State.ROWS:
-		_row_at[r] = -100.0
-		_shiver_at[r] = -100.0
+	_clear_rows()
 	_clear_working()
 	_flip_at = -100.0
 	_flip_row = -1
@@ -1332,9 +2219,32 @@ func reset_board() -> void:
 	moves = 0
 	_done = false
 	_running = true
-	_busy_for(Motion.stagger(State.ROWS * State.LEN - 1, Motion.RESET_STAGGER) + Motion.POP_OUT)
+	_busy_for(Motion.stagger(state.tries * State.LEN - 1, Motion.RESET_STAGGER) + Motion.POP_OUT)
 	fx.cue("reset")
 	_refresh()
+
+## Hard and Insane: the rows are ink, so Reset sends back only the letters
+## typed into the row in hand, right to left, and the caret glides home.
+func _reset_row() -> void:
+	var now := _now()
+	var n: int = state.typed.length()
+	for i in n:
+		_typed_at[i] = -100.0
+		_gone_at[i] = now + float(n - 1 - i) * Motion.RESET_STAGGER * 2.0
+		_gone_ch[i] = state.typed[i]
+	state.reset()
+	_caret_from = mini(n, State.LEN - 1)
+	_caret_at = now
+	_busy_for(float(n) * Motion.RESET_STAGGER * 2.0 + Motion.POP_OUT + CARET_GLIDE)
+	fx.cue("reset")
+	_refresh()
+
+## Reset gives nothing once the rows have run out (the card is up, or the
+## word was shown): on every band it would retire the card, and on Easy and
+## Medium it would replay a word already all but read. A live board resets --
+## the whole of it on Easy and Medium, the row in hand on Hard and Insane.
+func can_reset() -> bool:
+	return not (out_of_hearts or state.is_over() or is_done())
 
 ## The rows the player committed, oldest first, so a reopened daily can lay
 ## the same ending back down. Plain strings, because it goes through a
@@ -1356,13 +2266,17 @@ func restore_completed_board() -> void:
 	state.rows.clear()
 	state.marks.clear()
 	state.typed = ""
+	state.tries = maxi(State.ROWS, guesses.size())
+	_row_bought = guesses.size() > State.ROWS
+	_grow_from = float(state.tries)
+	_grow_at = -100.0
 	for word in guesses:
 		state.rows.append(word)
 		state.marks.append(State.mark_guess(word, state.answer))
+	state.sent = state.rows.size()
 	var now := _now()
-	for r in State.ROWS:
-		_row_at[r] = -100.0
-		_shiver_at[r] = -100.0
+	_gen += 1
+	_clear_rows()
 	_clear_working()
 	_given_at = {}
 	_flip_at = -100.0
@@ -1374,9 +2288,22 @@ func restore_completed_board() -> void:
 	# leaves the card under the win screen. Ten seconds back and not a
 	# hundred: anything under -50 reads as "never solved" (`_row_alpha`).
 	_solved_at = now - 10.0
-	# The entrance has already played.
+	# The entrance has already played, and so has the party: the meadow
+	# stands in the rows it never needed, the sprout is up in its hat with the
+	# cheer, and the seal is on the card.
 	_opened = now - 10.0
 	_anim_until = 0.0
+	_party_at = now - 10.0
+	_cheer = posmod(state.answer.hash(), CHEERS)
+	_restoring = true
+	_raise_sprout(Face.Expr.JOY, true)
+	_stamp_down()
+	_restoring = false
+	_snail_from_row = state.rows.size() - 1
+	_snail_to_row = state.rows.size() - 1
+	if is_instance_valid(_snail):
+		_snail.expression = Face.Expr.JOY
+		_snail.hat = 1.0
 	if _tray != null:
 		_tray.clear_marks()
 		var marks: Dictionary = {}
@@ -1392,7 +2319,7 @@ func restore_completed_board() -> void:
 func _recorded_guesses() -> Array[String]:
 	var out: Array[String] = []
 	var raw = completed_record.get("guesses", [])
-	if raw is Array and not raw.is_empty() and raw.size() <= State.ROWS:
+	if raw is Array and not raw.is_empty() and raw.size() <= State.MAX_ROWS:
 		for w in raw:
 			var word := String(w).to_lower()
 			if word.length() != State.LEN or out.has(word):
@@ -1414,7 +2341,7 @@ func flat_win() -> Dictionary:
 ## solve's own hop (`_solve_lift`, above), which starts a quarter of a
 ## second after the landing and runs for 0.4.
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else _flip_length() + WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else _flip_length() + WIN_WAIT + PARTY_EXTRA
 
 # --- odds and ends ---
 

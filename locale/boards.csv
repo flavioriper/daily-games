@@ -529,6 +529,45 @@ QN_BLURB,"Seat one queen in every row, column and colour.","Ponha uma rainha em 
 QN_SHORT,"One queen per row,\ncolumn and colour.","Uma rainha por\nlinha, coluna e cor.","Una reina por fila,\ncolumna y color."
 QN_MOTTO,Every queen has her seat,Cada rainha em seu trono,Cada reina en su trono
 HW_BLURB,"Five letters, six tries. A new word every day.","Cinco letras, seis tentativas. Uma palavra nova por dia.","Cinco letras, seis intentos. Una palabra nueva cada día."
+HW_RULES_STRICT,"On Hard and Insane every clue must be used: a green letter stays in its place, and a letter the rows found goes in every guess after. Rows are ink, and Reset only clears the row you are typing.","No Difícil e no Insano, toda pista tem que ser usada: uma letra verde fica no lugar dela, e uma letra que as fileiras acharam entra em todo palpite depois. As fileiras são à tinta, e Recomeçar só limpa a fileira que você está digitando.","En Difícil y en Insano hay que usar cada pista: una letra verde se queda en su lugar, y una letra que las filas encontraron va en cada intento siguiente. Las filas son de tinta, y Reiniciar solo borra la fila que estás escribiendo."
+HW_RULES_SNAIL,"Insane is Snail Mail: a row turns over sealed, and the snail brings its colours when you commit the next one, so every guess is made without the row just before it. The answer, and the last row, arrive at once.","O Insano é o Correio Caracol: uma fileira vira lacrada, e o caracol traz as cores dela quando você confirma a próxima, então todo palpite é feito sem a fileira logo antes. A resposta, e a última fileira, chegam na hora.","Insano es Correo Caracol: una fila se da vuelta sellada, y el caracol trae sus colores cuando confirmas la siguiente, así que cada intento se hace sin la fila de justo antes. La respuesta, y la última fila, llegan al instante."
+HW_TIP_SNAIL,The snail brings each row's colours a row late,O caracol traz as cores de cada fileira uma fileira depois,El caracol trae los colores de cada fila una fila después
+HW_TOAST_KEEP,%s stays in the %s spot,O %s fica na %s casa,La %s va en la %s casilla
+HW_TOAST_USE,Use the %s,Use o %s,Usa la %s
+HW_PLACE_1,1st,1ª,1.ª
+HW_PLACE_2,2nd,2ª,2.ª
+HW_PLACE_3,3rd,3ª,3.ª
+HW_PLACE_4,4th,4ª,4.ª
+HW_PLACE_5,5th,5ª,5.ª
+HW_OUT_TITLE,Out of rows,Sem fileiras,Sin filas
+HW_OUT_BODY,"The word is still hiding. Watch a short video for one more row, or see the word.","A palavra ainda está escondida. Assista a um vídeo curto e ganhe mais uma fileira, ou veja a palavra.","La palabra sigue escondida. Mira un video corto para una fila más, o mira la palabra."
+HW_OUT_BODY_REST,The word is still hiding. See it now; there is a new one tomorrow.,A palavra ainda está escondida. Veja agora; amanhã tem outra.,La palabra sigue escondida. Mírala ahora; mañana hay otra.
+HW_ONE_ROW,One more row,Mais uma fileira,Una fila más
+HW_SHOW_WORD,Show the word,Mostrar a palavra,Mostrar la palabra
+HW_COOL,Cool. Five crossed off.,Beleza. Cinco riscadas.,Genial. Cinco descartadas.
+HW_ALL_HERE,Everyone's here!,Estão todas aqui!,¡Están todas!
+HW_WARMER,Warmer!,Esquentando!,¡Caliente!
+HW_SO_CLOSE,So close!,Quase!,¡Casi!
+HW_SNAIL_SEAL,Snail Mail,Correio Caracol,Correo Caracol
+HW_STAMP_1,Mind reader,Lê mentes,Lee mentes
+HW_STAMP_2,Genius,Gênio,Genio
+HW_STAMP_3,Brilliant,Brilhante,Brillante
+HW_STAMP_4,Sharp,Afiado,Agudo
+HW_STAMP_5,Steady,Firme,Firme
+HW_STAMP_6,Phew!,Ufa!,¡Uf!
+HW_STAMP_MORE,Second wind,Fôlego extra,Segundo aire
+HW_CHEER_0,Your brain did a cartwheel.,Seu cérebro deu uma estrelinha.,Tu cerebro dio una voltereta.
+HW_CHEER_1,The dictionary is blushing.,O dicionário ficou vermelho.,El diccionario se sonrojó.
+HW_CHEER_2,Snack break: earned.,Pausa pro lanche: merecida.,Merienda: bien ganada.
+HW_CHEER_3,The letters want your autograph.,As letras querem seu autógrafo.,Las letras piden tu autógrafo.
+HW_CHEER_4,A bee wrote a song about it.,Uma abelha fez uma música disso.,Una abeja le compuso una canción.
+HW_CHEER_5,"Word wizard, certified.","Mago das palavras, certificado.","Mago de palabras, certificado."
+HW_CHEER_6,The sprout is doing a happy dance.,O brotinho está dançando feliz.,El brote baila de alegría.
+HW_CHEER_7,"Somewhere, a librarian cheered.",Uma bibliotecária comemorou.,Una bibliotecaria aplaudió.
+HW_CHEER_8,"Five letters, one big hug.","Cinco letras, um abração.","Cinco letras, un gran abrazo."
+HW_CHEER_9,Even the snail is impressed.,Até o caracol ficou impressionado.,Hasta el caracol está impresionado.
+HW_CHEER_10,Tell the pigeons. They'll want to know.,Conte aos pombos. Eles vão querer saber.,Cuéntaselo a las palomas.
+HW_CHEER_11,"Gold star, and a cookie.",Estrelinha dourada e um biscoito.,Estrellita dorada y una galleta.
 WT_BLURB,Trace every hidden word. The lengths are the only clue.,Trace cada palavra escondida. Os tamanhos são a única pista.,Traza cada palabra oculta. Las longitudes son la única pista.
 MP_BLURB,Every number counts the mushrooms around it. Find them all.,Cada número conta os cogumelos ao redor. Ache todos.,Cada número cuenta los hongos a su alrededor. Encuéntralos todos.
 MP_SHORT,The numbers count\nwhat is hidden.,Os números contam\no que se esconde.,Los números cuentan\nlo que se esconde.
