@@ -188,6 +188,11 @@ static func _test_state(t) -> void:
 	var s := State.new()
 	# Hard, so the nine's digits below (7, 8, 9) exist on the board.
 	s.setup(rng, 2)
+	# The plain rules on a nine: since the polish (2026-09-30) Hard judges
+	# every number and keeps a right one, which is the board's business and
+	# not what these checks are about, so the state plays unjudged here.
+	s.band = 0
+	s.hints_left = State.HINTS
 
 	# The first empty cell, and the first given.
 	var empty := -1

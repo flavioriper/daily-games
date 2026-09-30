@@ -417,7 +417,7 @@ const PUZZLES := [
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
-			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
+			{"difficulty": 2, "name": "Hard", "line": "SD_LVL_2"},
 			{"difficulty": 3, "name": "Insane", "line": "SD_LVL_3"},
 		],
 	},
