@@ -76,6 +76,7 @@ rather than the live project (`daily-games-420bf`):
 | One Line | drag path | degree parity, no search at all; Insane (Sunny Spells) plants the sun on a real walk and a pruned search judges every step |
 | Nonogram | drag strokes | line-solvable implies unique; Insane (Leaf Fall) tumbles line clues and a bit-mask solver proves each banked board by line logic plus one-cell suppositions |
 | Queens | tap-cycle, drag crosses | repair to a unique seating (backtracking count to 2), then a hand-logic solver grades it (no one-cell patch, bands, suppositions); Hard and Insane (Morning Mist: misty patches take two queens) are banked and re-proved by that solver |
+| Hidden Word | type, Enter | — a word list, not a proof; Hard and Insane use every clue, and Insane (Snail Mail: a row's colours arrive a row late) draws from the words an answer-list-aware solver needs five or more rows for under that rule (`tools/insane/hiddenword_ladder.py`) |
 
 A daily puzzle that turns out to have two answers is the worst bug this product
 can ship, so every generator proves its instance is uniquely solvable before

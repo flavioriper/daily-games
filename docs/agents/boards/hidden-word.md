@@ -49,3 +49,27 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (`--rendering-driver opengl3_angle`): same 110 and 56, and the settled
   frames match the default driver to 21/255 on edge antialiasing alone, so
   nothing has reintroduced an `instance uniform`.
+- **The polish pass** (2026-09-30, spec
+  `2026-09-30-hidden-word-polish-design.md`) made Hard and Insane losable
+  and gave Insane a rule of its own. Rows are ink on Hard and Insane (Reset
+  clears only the row being typed) and every clue must be used (the genre's
+  hard mode, `State.keeps_clues`, toasts naming the letter). Running out of
+  rows on **any** band droops the tiles and brings Code Break's
+  `out_of_rows.gd` card in this board's keys -- One more row (a seventh,
+  `State.MAX_ROWS`, the grid regrows over `GROW_TIME`) or Show the word
+  (the old reveal, `finish_unsolved()`); `out_of_hearts` is the host's hook,
+  and `finish_unsolved()` no longer fires on the sixth row's commit.
+  **Insane is Snail Mail**: a row turns over sealed (a lavender envelope,
+  cool so it never reads as a mark) and its colours arrive when the next row
+  is committed, carried by One Line's snail; the answer and the last row come
+  at once. Everything that reads colours reads `State.delivered()`, which is
+  kept (`sent`) rather than derived so a bought row cannot take a shown
+  row's colours back. Insane's words are banked
+  (`content/insane/hiddenword*.json`, `tools/insane/hiddenword_ladder.py`,
+  Python because it grades a list rather than mining a generator): the
+  answers an answer-list-aware solver needs five or more rows for under the
+  rule. Rewards (a note up the scale per new green, three gags, row
+  reactions with sunglasses and a conga, a party with a meadow in the unused
+  rows, a cheer and the seal) all wait for a row to show its colours.
+  `tests/_shot_hiddenword.gd` drives every scenario; peaks 125 to 157 draw
+  calls on `opengl3_angle`.

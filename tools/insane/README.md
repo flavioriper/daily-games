@@ -19,3 +19,8 @@ Run: `godot --headless --path . --script tools/mine_insane.gd -- sudoku 400`
 A mined bank is not proven until its board's own `from_bank` path re-proves
 it unique and re-grades it, and Hard's own solver is shown to fail on it --
 the miner and the ladder run off the phone and can drift from what ships.
+
+**The exception**: Hidden Word's bank is `hiddenword_ladder.py`, Python and
+run directly (`python3 tools/insane/hiddenword_ladder.py [en pt es]`). A word
+board has no generator to mine -- it grades its own answer list under Snail
+Mail and keeps the hardest -- so `mine_insane.gd` never loads it.
