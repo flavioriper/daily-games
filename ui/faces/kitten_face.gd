@@ -31,23 +31,36 @@ func _build_layer(name: String, R: float, eye: float, b: Builder) -> void:
 			# The shoulders, a soft mound under the head.
 			b.ellipse(Vector2(0.0, 0.9 * R), 0.95 * R, 0.62 * R, FUR)
 			b.ellipse(Vector2(0.0, 1.02 * R), 0.5 * R, 0.4 * R, MUZZLE)
-			# The ears sit behind the head, so the head's edge covers their roots.
-			for sx in [-1.0, 1.0]:
-				var ear := PackedVector2Array([Vector2(sx * 0.98, -0.34) * R,
-					Vector2(sx * 0.72, -1.22) * R, Vector2(sx * 0.14, -0.86) * R])
-				b.polygon(ear, FUR_DEEP)
-				b.polygon(PackedVector2Array([Vector2(sx * 0.84, -0.42) * R,
-					Vector2(sx * 0.7, -1.0) * R, Vector2(sx * 0.3, -0.78) * R]), EAR_IN)
-			b.ellipse(Vector2.ZERO, 1.0 * R, 0.9 * R, FUR)
-			# Three brow stripes.
-			for k in [-1.0, 0.0, 1.0]:
-				var top := Vector2(k * 0.24, -0.86) * R
-				var len := 0.3 if k == 0.0 else 0.22
-				b.stroke(PackedVector2Array([top, top + Vector2(k * 0.03, len) * R]), 0.09 * R, FUR_DEEP)
-			b.ellipse(Vector2(0.0, 0.38 * R), 0.46 * R, 0.32 * R, MUZZLE)
-			_face_parts(b, 0.86 * R, Vector2(0.0, 0.06 * R), Pal.TEXT, eye)
-			b.polygon(PackedVector2Array([Vector2(-0.09, 0.22) * R, Vector2(0.09, 0.22) * R, Vector2(0.0, 0.32) * R]), NOSE)
-			for sx in [-1.0, 1.0]:
-				for dy in [-0.05, 0.08]:
-					b.stroke(PackedVector2Array([Vector2(sx * 0.4, 0.34 + dy) * R,
-						Vector2(sx * 0.98, 0.26 + dy * 2.4) * R]), 0.03 * R, Color(Pal.TEXT, 0.55))
+			_head(b, R, eye, Vector2.ZERO)
+
+## The kitten's head about `at`, R across: two pricked ears (laid back when
+## `ears_back`, a cross cat's), three brow stripes, a pale muzzle, the face,
+## the nose and the whiskers. Shared with the curled cat on Light Up's
+## cushions (ui/faces/nap_cat.gd), which is the same kitten asleep.
+func _head(b: Builder, R: float, eye: float, at: Vector2, ears_back := false) -> void:
+	# The ears sit behind the head, so the head's edge covers their roots.
+	for sx in [-1.0, 1.0]:
+		var tip := Vector2(sx * 0.72, -1.22)
+		var inner := Vector2(sx * 0.7, -1.0)
+		if ears_back:
+			tip = Vector2(sx * 1.18, -0.78)
+			inner = Vector2(sx * 1.0, -0.66)
+		var ear := PackedVector2Array([at + Vector2(sx * 0.98, -0.34) * R,
+			at + tip * R, at + Vector2(sx * 0.14, -0.86) * R])
+		b.polygon(ear, FUR_DEEP)
+		b.polygon(PackedVector2Array([at + Vector2(sx * 0.84, -0.42) * R,
+			at + inner * R, at + Vector2(sx * 0.3, -0.78) * R]), EAR_IN)
+	b.ellipse(at, 1.0 * R, 0.9 * R, FUR)
+	# Three brow stripes.
+	for k in [-1.0, 0.0, 1.0]:
+		var top := at + Vector2(k * 0.24, -0.86) * R
+		var len := 0.3 if k == 0.0 else 0.22
+		b.stroke(PackedVector2Array([top, top + Vector2(k * 0.03, len) * R]), 0.09 * R, FUR_DEEP)
+	b.ellipse(at + Vector2(0.0, 0.38 * R), 0.46 * R, 0.32 * R, MUZZLE)
+	_face_parts(b, 0.86 * R, at + Vector2(0.0, 0.06 * R), Pal.TEXT, eye)
+	b.polygon(PackedVector2Array([at + Vector2(-0.09, 0.22) * R, at + Vector2(0.09, 0.22) * R,
+		at + Vector2(0.0, 0.32) * R]), NOSE)
+	for sx in [-1.0, 1.0]:
+		for dy in [-0.05, 0.08]:
+			b.stroke(PackedVector2Array([at + Vector2(sx * 0.4, 0.34 + dy) * R,
+				at + Vector2(sx * 0.98, 0.26 + dy * 2.4) * R]), 0.03 * R, Color(Pal.TEXT, 0.55))

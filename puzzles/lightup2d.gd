@@ -44,6 +44,13 @@ extends "res://core/puzzle_base.gd"
 ## Spec: docs/superpowers/specs/2026-09-18-lightup-flat-design.md, sections 2
 ## to 7 and the amendment at its end, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#lightup).
+##
+## The polish of 2026-09-30 (docs/superpowers/specs/2026-09-30-lightup-polish-design.md)
+## added hearts on Hard and Insane (a fair lamp that is not the answer's
+## gutters out and is taken up), Insane's Cat Naps, blocks that hop and cats
+## that purr when their numbers are met, right lamps that flare and draw
+## moths, the streak, gags, the seal and a party with hats, a garland of
+## paper lanterns and sky lanterns (docs/agents/boards/lightup.md).
 
 const State = preload("res://puzzles/lightup_state.gd")
 const Gen = preload("res://puzzles/lightup_gen.gd")
@@ -52,8 +59,12 @@ const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
+const SnailFace = preload("res://ui/faces/snail_face.gd")
+const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the court ---
 const PAD := 34.0
@@ -171,6 +182,146 @@ const CLEAR_SHRINK := 0.4
 ## clearing both have to run their length first.
 const WIN_WAIT := 1.6
 
+# --- the polish of 2026-09-30 (docs/superpowers/specs/2026-09-30-lightup-polish-design.md) ---
+## The hearts' strip over the court, on Hard and Insane only; Shikaku's and
+## Tents' pill, and their numbers.
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## A wrong lamp worries, and WILT_LAG later sags. Its light is let reach the
+## court first; GUTTER_FROM after the tap it draws back along the beam toward
+## the lamp, the far stones first, GUTTER_STEP per stone (capped at
+## GUTTER_CAP), each cooling over GUTTER_OUT, so the lamp's own stone goes
+## dark just before EJECT_AFTER, when it is taken up.
+const WILT_LAG := 0.2
+const EJECT_AFTER := 0.75
+const GUTTER_FROM := 0.26
+const GUTTER_STEP := 0.03
+const GUTTER_CAP := 0.2
+const GUTTER_OUT := 0.25
+## Out of hearts: the court slips to dusk over DUSK_TIME -- the floor keeps
+## DUSK_WARM of its warmth, every stone goes DUSK_SHADE toward its own deep
+## colour and the beams keep DUSK_BEAM of their strength -- and the lanterns
+## and cats nod off along the diagonal, SLEEP_STAGGER apart. The card comes
+## up CARD_AFTER later (CARD_AFTER_STILL under reduce motion).
+const DUSK_TIME := 0.8
+const DUSK_WARM := 0.45
+const DUSK_SHADE := 0.35
+const DUSK_BEAM := 0.35
+const SLEEP_STAGGER := 0.05
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## A cat's seat, in cells, and how much of a beam crossing her stone is drawn
+## over her (the light passes over her: she is on the floor).
+const CAT_SIZE := 0.98
+const VEIL_ALPHA := 0.55
+## The streak (Binairo's, Shikaku's and Tents'): right lamps in a row, a
+## pentatonic step each from the second, the "x3" bubble from COMBO_FROM, and
+## confetti at COMBO_CONFETTI.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_CONFETTI := [5, 10]
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Gags: three of every five right lamps, by the stone's own hash (Tents').
+const GAG_ODDS := 5
+const GAGS := 3
+const GAG_AT := 0.35
+const GLASSES_IN := 0.28
+const GLASSES_HOLD := 0.9
+const GLASSES_OUT := 0.2
+## The lantern's smoke ring: a small heart of smoke puffed off its cap that
+## rises SMOKE_RISE cells, grows from SMOKE_FROM to 1 and fades over
+## SMOKE_TIME, swaying SMOKE_SWAY cells as it goes; SMOKE_R is its half-width
+## at full size, in cells.
+const SMOKE_TIME := 1.5
+const SMOKE_RISE := 0.9
+const SMOKE_FROM := 0.55
+const SMOKE_SWAY := 0.08
+const SMOKE_R := 0.26
+## The snail with her own tiny lantern, sliding across the front of the stone
+## over SNAIL_TIME, SNAIL_SIZE cells high.
+const SNAIL_TIME := 2.2
+const SNAIL_SIZE := 0.62
+const SNAIL_REACH := 0.95
+## A right lamp's candle flares: the halo swells FLARE_GROW over FLARE_UP and
+## settles over FLARE_DOWN.
+const FLARE_UP := 0.12
+const FLARE_DOWN := 0.45
+## A block that has just got its number hops CHEER_HOP cells, after
+## CHEER_LAG.
+const CHEER_HOP := -0.13
+const CHEER_LAG := 0.1
+## A cat whose number has just been met purrs PURR_HEARTS little hearts that
+## rise PURR_RISE cells over PURR_TIME, PURR_STAGGER apart, PURR_R cells wide.
+const PURR_HEARTS := 3
+const PURR_TIME := 1.1
+const PURR_RISE := 0.6
+const PURR_STAGGER := 0.16
+const PURR_R := 0.09
+## Lanterns and cats within this many stones of the finger look at it.
+const GLANCE_REACH := 2
+## Moths (Tents' butterflies, drawn to the light): they circle judged lamps
+## on Hard and Insane -- one from the first, a second past MOTH_SECOND of the
+## answer's lamps -- MOTH_PARTY more at the party on every board, and they go
+## FLIES_STAY after it. A moth circles its lamp on an ellipse MOTH_ORBIT
+## cells across (x, y), MOTH_LIFT above its centre, at MOTH_TURN radians a
+## second, and moves on after MOTH_STAY (plus up to MOTH_JITTER).
+const MOTH_SECOND := 0.4
+const MOTH_SPEED := 2.4
+const MOTH_ORBIT := Vector2(0.46, 0.2)
+const MOTH_LIFT := 0.12
+const MOTH_TURN := 2.6
+const MOTH_STAY := 3.0
+const MOTH_JITTER := 2.5
+const MOTH_SIZE := 0.2
+const MOTH_PARTY := 3
+const FLIES_STAY := 5.0
+## The moths' wings: pale and dusty, each with a faint tint of its own.
+const MOTH_WINGS := [Color("f4ecdc"), Color("ece6f4"), Color("f6e6dc")]
+const MOTH_BODY := Color("c9ab86")
+const MOTH_LEVELS := 4
+## The seal, stamped onto the court's lower right (Tents').
+const STAMP_AT := 0.35
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.14
+const STAMP_TILT := -0.22
+## The party: hats, then the garland of paper lanterns dropping in over the
+## top of the court and swinging to rest, then the sky lanterns.
+const PARTY_AT := 0.15
+const PARTY_HAT := 0.3
+const PARTY_HAT_STAGGER := 0.03
+const PARTY_EXTRA := 1.3
+const GARLAND_TIME := 0.6
+const GARLAND_SETTLE := 2.5
+const GARLAND_SAG := 0.3
+## A lantern on the garland every GARLAND_EVERY cells, GARLAND_SIZE cells
+## tall.
+const GARLAND_EVERY := 1.1
+const GARLAND_SIZE := 0.36
+## Every lamp lets a paper sky lantern go SKY_AT after the hats, along the
+## diagonal SKY_STAGGER apart: it rises SKY_RISE cells past the card's top
+## over SKY_TIME, swaying SKY_SWAY cells, and fades over its last SKY_FADE.
+const SKY_AT := 0.35
+const SKY_STAGGER := 0.05
+const SKY_TIME := 2.8
+const SKY_RISE := 1.5
+const SKY_SWAY := 0.12
+const SKY_FADE := 0.45
+const SKY_SIZE := 0.46
+## The sweep ticks up a little per stone, as Tents' does.
+const SWEEP_PITCH := 0.04
+const SWEEP_PITCH_MAX := 1.6
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 const TIPS := [
@@ -180,6 +331,8 @@ const TIPS := [
 ]
 
 var state = State.new()
+## Back to the menu from the out-of-hearts card; the host listens for it.
+signal leave
 ## The names the win harness and the island board share, so one driver solves
 ## both twins.
 var w: int:
@@ -190,6 +343,82 @@ var _solution_bulbs: Array:
 	get: return state.solution
 
 var fx: Node2D
+## Hearts (Hard 3, Insane 1) and failing, Tents' names.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _asleep := false
+var _ejecting := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -INF
+var _back_index := -1
+var _back_at := -INF
+## The lamps a tap was judged right on (fair and the answer's, on a board
+## with hearts), and every lamp a hint lit: Vector2i -> true. Only these may
+## be rewarded as right (JOY now; the moth and the flare hang on it). A lamp
+## that turns fair some other way -- a neighbour taken up, an undo -- was
+## never charged for, so rewarding it would tell the player for free what a
+## heart is meant to cost (Tents' review).
+var _judged: Dictionary = {}
+## Wrong lamps going out: Vector2i -> {"at": float, "reach": int}. Their light
+## draws back toward them from `at`, the far end of the longest beam first.
+var _guttering: Dictionary = {}
+## The dusk the court slips into out of hearts, 0 day to 1 dusk, moving from
+## `_dusk_from` to `_dusk_to` over DUSK_TIME from `_dusk_at`.
+var _dusk_from := 0.0
+var _dusk_to := 0.0
+var _dusk_at := -INF
+## Insane's cats: Vector2i -> NapCat, one in a slot on each cat's stone, and
+## the state each was last shown in (for the purr and the wake).
+var _cats: Dictionary = {}
+var _cat_was: Dictionary = {}
+var _heart_layer: Control
+var _veil_layer: Control
+var _hearts_shown: ArrayMesh
+## The stretches of beam that cross a cat's stone this frame, drawn again
+## over her by the veil layer: [from, to, half, c0, c1] each.
+var _veil_segs: Array = []
+var _veil_shown: ArrayMesh
+## The streak and its bubble (Tents').
+var _flawless := false
+var _streak := 0
+var _combo_n := 0
+var _combo_cell := Vector2i.ZERO
+var _combo_at := -INF
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_layer: Control
+var _combo_shown: ArrayMesh
+## The gags and the life on the court: the smoke heart {"cell", "at"}, the
+## snail {"cell", "at", "dir"}, the moths, a cat's purring hearts
+## [{"at": Vector2, "t": float}], the seal, the garland and the sky lanterns
+## ({"at": Vector2, "t": float} each).
+var _smoke: Dictionary = {}
+var _snail: Dictionary = {}
+var _snail_node: Control
+var _flies: Array = []
+var _purrs: Array = []
+var _stamp_at := INF
+var _garland_at := INF
+var _sky: Array = []
+var _seal_mesh: ArrayMesh
+var _life_layer: Control
+var _life_shown: Array = []
+## The life's own meshes, built once each and drawn under a transform: a moth
+## per wing and opening, the smoke heart, a purring heart, a sky lantern, and
+## the garland once it has come to rest.
+var _moth_meshes: Dictionary = {}
+var _smoke_mesh: ArrayMesh
+var _purr_mesh: ArrayMesh
+var _sky_mesh: ArrayMesh
+var _garland_mesh: ArrayMesh
+## The numbered blocks whose count is met, as last shown: a block joining
+## them hops.
+var _blocks_met: Dictionary = {}
+var _sweep_n := 0
 var _cell := 0.0
 var _grid := Vector2.ZERO
 var _card := Rect2()
@@ -200,6 +429,7 @@ var _lamps: Dictionary = {}      # Vector2i -> CourtLantern, kept once made
 var _slots: Dictionary = {}
 var _pos_tw: Dictionary = {}     # lamp -> the hop, the nudge, the shiver, the drop
 var _look_tw: Dictionary = {}    # lamp -> the pop, the press, the wobble
+var _gag_tw: Dictionary = {}     # face -> the glasses or the party hat
 ## Bumped on every rebuild; a pending callback from the last board checks it.
 var _gen := 0
 
@@ -275,7 +505,20 @@ func puzzle_id() -> String: return "lightup"
 func title() -> String: return "Light Up"
 
 func rules() -> String:
-	return tr("LU_RULES")
+	var out := tr("LU_RULES")
+	if state.has_cats():
+		out += "\n\n" + tr("LU_RULES_CAT")
+	if max_hearts > 0:
+		out += "\n\n" + (tr("LU_RULES_HEARTS_1") if max_hearts == 1 else tr("LU_RULES_HEARTS_N") % max_hearts)
+	return out
+
+## The lines the sprout cycles: a court with cats leads with the question
+## the napping cat asks.
+func _tips() -> Array:
+	var out: Array = TIPS
+	if state.has_cats():
+		out = ["LU_TIP_CAT"] + out
+	return out
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -287,6 +530,10 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_veil_layer = _layer("Veil", 1, _draw_veil)
+	_life_layer = _layer("Life", 1, _draw_life)
+	_heart_layer = _layer("Hearts", 1, _draw_hearts)
+	_combo_layer = _layer("Combo", 2, _draw_combo)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -294,9 +541,24 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## A full-rect layer over the pieces, drawn by `draw` (Tents').
+func _layer(nm: String, z: int, draw: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = nm
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = z
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draw)
+	add_child(layer)
+	return layer
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, bank_step)
+	max_hearts = State.HEARTS[state.band]
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	_beam_out = []
 	_chip_in = {}
 	_chip_out = []
@@ -315,18 +577,66 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_settle()
 	_layout()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 	_enter()
 
+## The court as it is dealt, and as Try again deals it back: every heart,
+## the day's light, nothing judged or going out.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_ejecting = false
+	_split_index = -1
+	_back_index = -1
+	_judged = {}
+	_guttering = {}
+	_dusk_from = 0.0
+	_dusk_to = 0.0
+	_dusk_at = -INF
+	_flawless = false
+	_streak = 0
+	_combo_n = 0
+	_combo_out_at = -INF
+	_smoke = {}
+	_snail = {}
+	_flies = []
+	_purrs = []
+	_sky = []
+	_stamp_at = INF
+	_garland_at = INF
+	_garland_mesh = null
+	_seal_mesh = null
+	_sweep_n = 0
+	_blocks_met = _met_blocks()
+	if _snail_node != null:
+		_snail_node.visible = false
+	for layer: Control in [_heart_layer, _veil_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
+
 # --- the cast ---
 
-## Only the lamps are nodes. The court, the blocks and the chips are drawn.
+## Only the lamps and the cats are nodes. The court, the blocks and the
+## chips are drawn. A cat is made once, with her board, and waits unseen
+## until the entrance pops her onto her cushion.
 func _build_pieces() -> void:
-	for lamp in _slots:
-		_slots[lamp].queue_free()
+	for piece in _slots:
+		_slots[piece].queue_free()
 	_slots = {}
 	_lamps = {}
+	_cats = {}
+	_cat_was = {}
+	for cell: Vector2i in state.cats:
+		var cat := NapCat.new()
+		cat.need = state.cat_need(cell)
+		cat.scale = Vector2.ZERO
+		_stand(cat, "cat_%d_%d" % [cell.x, cell.y])
+		cat.name = "cat"
+		cat.set_idle(true)
+		_cats[cell] = cat
+		_cat_was[cell] = state.cat_state(cell)
 
 ## Puts `lamp` in a slot of its own under the board. The slot takes the
 ## layout; the lamp inside it takes the motion.
@@ -358,9 +668,11 @@ func _lamp_node(cell: Vector2i) -> CourtLantern:
 		_seat(lamp, cell_to_local(cell.y, cell.x), _cell * LAMP_SIZE)
 	return lamp
 
-## Every lamp takes the look its state asks for. A lamp is written only when
-## its look changes -- a written face redraws.
-func _refresh_faces() -> void:
+## Every lamp and cat takes the look its state asks for. A face is written
+## only when its look changes -- a written face redraws. A cat whose number
+## has just been met purrs; a napping cat the light has just reached wakes
+## (unless `quiet`: a deal, a restore, Try again).
+func _refresh_faces(quiet := false) -> void:
 	for cell in _lamps:
 		var lamp: CourtLantern = _lamps[cell]
 		if state.mark_at(cell) != State.LAMP:
@@ -371,10 +683,101 @@ func _refresh_faces() -> void:
 		var bad: bool = not is_done() and state.clash.has(cell)
 		if lamp.bad != bad:
 			lamp.bad = bad
-		# The win writes JOY on each lamp as the wave reaches it.
+		# The win writes JOY on each lamp as the wave reaches it; a wrong lamp
+		# keeps its worry until it is taken up.
+		if _solved_at > NEVER or _guttering.has(cell):
+			continue
+		_set_expr(lamp, _lamp_expr(cell))
+	for cell in _cats:
+		var now_state: int = state.cat_state(cell)
+		var was := int(_cat_was.get(cell, now_state))
+		_cat_was[cell] = now_state
+		if now_state != was and not quiet and not is_done():
+			_cat_turns(cell, was, now_state)
 		if _solved_at > NEVER:
 			continue
-		_set_expr(lamp, Face.Expr.STRAIN if bad else Face.Expr.HAPPY)
+		_set_expr(_cats[cell], _cat_expr(cell))
+	_cheer_blocks(quiet)
+
+## The numbered blocks whose count is met right now.
+func _met_blocks() -> Dictionary:
+	var out: Dictionary = {}
+	for y in state.h:
+		for x in state.w:
+			var cell := Vector2i(x, y)
+			if _is_block(cell) and int(state.grid[y][x]) >= 0 and state.block_state(cell) == State.BLOCK_OK:
+				out[cell] = true
+	return out
+
+## Every numbered block that has just got its number hops, with a green
+## sparkle over it (unless `quiet`: a deal, a restore, a relayout).
+func _cheer_blocks(quiet: bool) -> void:
+	var met := _met_blocks()
+	if not quiet and not is_done() and not Motion.reduce and _cell > 0.0:
+		var now := _now()
+		for cell in met:
+			if _blocks_met.has(cell):
+				continue
+			_block_hop[cell] = {"at": now + CHEER_LAG, "height": CHEER_HOP * _cell, "time": Motion.HOP_TIME}
+			_after(CHEER_LAG, fx.sparkle.bind(cell_to_local(cell.y, cell.x) - Vector2(0.0, _cell * 0.3), Pal.LEAF_LIGHT))
+			_busy_for(CHEER_LAG + Motion.HOP_TIME)
+	_blocks_met = met
+
+## A lamp's look: asleep with the court, straining in trouble, JOY on a board
+## with hearts once a tap on it was judged right and the board can still
+## fault nothing about it, and otherwise simply burning.
+func _lamp_expr(cell: Vector2i) -> int:
+	if _asleep:
+		return Face.Expr.SLEEPY
+	if state.clash.has(cell):
+		return Face.Expr.STRAIN
+	if max_hearts > 0 and _judged.has(cell) and state.lamp_fair(cell):
+		return Face.Expr.JOY
+	return Face.Expr.HAPPY
+
+## A cat's look: waiting while short of her number, JOY with her tail going
+## once it is met, cross (STRAIN, ears back) when more light reaches her than
+## she wants. A napping cat is asleep while she is dark and cross once lit.
+func _cat_expr(cell: Vector2i) -> int:
+	if _asleep:
+		return Face.Expr.SLEEPY
+	match state.cat_state(cell):
+		State.CAT_OVER:
+			return Face.Expr.STRAIN
+		State.CAT_OK:
+			return Face.Expr.SLEEPY if state.cat_need(cell) == 0 else Face.Expr.JOY
+	return Face.Expr.HAPPY
+
+## A cat's state has just changed under the player's hand: her number met
+## (not a napping cat going dark again, who simply sleeps on) purrs and
+## hops; a napping cat reached by the light wakes cross with a mew and a
+## shiver.
+func _cat_turns(cell: Vector2i, was: int, now_state: int) -> void:
+	var cat: NapCat = _cats[cell]
+	var napping := state.cat_need(cell) == 0
+	if now_state == State.CAT_OK and not napping:
+		fx.cue("purr")
+		_hop(cat, Motion.HOP, Motion.HOP_TIME, Motion.NUDGE_LAG)
+		_on_cat_happy(cell)
+	elif napping and now_state == State.CAT_OVER and was == State.CAT_OK:
+		fx.cue("wake")
+		Motion.stop(_pos_tw.get(cat))
+		cat.position = Vector2.ZERO
+		_pos_tw[cat] = Motion.shiver(cat, _cell * SHIVER)
+		_busy_for(Motion.SHIVER_TIME)
+
+## A cat whose number has just been met: the purr and the hop are above, and
+## PURR_HEARTS little hearts rise off her head one after another.
+func _on_cat_happy(cell: Vector2i) -> void:
+	if Motion.reduce or _cell <= 0.0:
+		return
+	var now := _now()
+	var head := cell_to_local(cell.y, cell.x) + NapCat.HEAD_AT * _cell * CAT_SIZE * 0.5
+	for k in PURR_HEARTS:
+		var side := (-1.0 if k % 2 == 0 else 1.0) * (0.1 + 0.08 * k)
+		_purrs.append({"at": head + Vector2(side * _cell, -0.2 * _cell), "t": now + k * PURR_STAGGER,
+			"k": k})
+	_life_layer.queue_redraw()
 
 func _set_expr(face: Face, expr: int) -> void:
 	if face.expression != expr:
@@ -388,7 +791,7 @@ func _place_light(now: float) -> void:
 		var lamp: CourtLantern = _lamps[cell]
 		if not lamp.visible:
 			continue
-		var warm := _warmth(cell, now)
+		var warm := _shown_warmth(cell, now)
 		if absf(lamp.lit - warm) > 0.001:
 			lamp.lit = warm
 
@@ -407,12 +810,24 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var court := Vector2(_cell * state.w, _cell * state.h)
-	var tall := minf(size.y, court.y + 2.0 * PAD)
+	var tall := minf(size.y, court.y + 2.0 * PAD + _heart_row())
 	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - court.x * 0.5, _card.position.y + (tall - court.y) * 0.5)
+	_grid = Vector2(size.x * 0.5 - court.x * 0.5,
+		_card.position.y + _heart_row() + (tall - _heart_row() - court.y) * 0.5)
 	for cell in _lamps:
 		_seat(_lamps[cell], cell_to_local(cell.y, cell.x), _cell * LAMP_SIZE)
-	_refresh_faces()
+	for cell in _cats:
+		_seat(_cats[cell], cell_to_local(cell.y, cell.x), _cell * CAT_SIZE)
+	_refresh_faces(true)
+	# The life's meshes are drawn in cells: a new cell size builds them again.
+	_moth_meshes = {}
+	_smoke_mesh = null
+	_purr_mesh = null
+	_sky_mesh = null
+	_garland_mesh = null
+	_seal_mesh = null
+	for layer: Control in [_heart_layer, _veil_layer, _life_layer, _combo_layer]:
+		layer.queue_redraw()
 	_redraw()
 
 ## Seats `lamp` `px` square about `centre`: its slot takes the place, and the
@@ -429,7 +844,11 @@ func _seat(lamp: Control, centre: Vector2, px: float) -> void:
 func _cell_for(available: float) -> float:
 	if state.grid.is_empty():
 		return 0.0
-	return minf((size.x - 2.0 * PAD) / state.w, (available - 2.0 * PAD) / state.h)
+	return minf((size.x - 2.0 * PAD) / state.w, (available - 2.0 * PAD - _heart_row()) / state.h)
+
+## The strip the hearts stand in over the court, on a board with hearts.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## The host cuts its card to the court and centres it, which is what these two
 ## say. A board that wants neither says nothing and fills the slot.
@@ -437,7 +856,7 @@ func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * state.h + 2.0 * PAD)
+	return minf(available, cell * state.h + 2.0 * PAD + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -478,9 +897,10 @@ func _warmth(cell: Vector2i, t: float) -> float:
 ## Sends every stone toward the light it now stands in, each waiting what
 ## `delay` says for it: the travel out from a changed lamp (_travel_from),
 ## nothing at all (_at_once: an undo, a swept run) or Reset's wave.
-func _relight(t: float, delay: Callable) -> void:
-	for cell in state.white_cells():
-		var target := 1.0 if state.lit.has(cell) else 0.0
+func _relight(t: float, delay: Callable, out_time := LIGHT_OUT) -> void:
+	var lit := _lit_now()
+	for cell in _floor_cells():
+		var target := 1.0 if lit.has(cell) else 0.0
 		var cur := _warmth(cell, t)
 		var rec: Dictionary = _warm.get(cell, {})
 		if rec.is_empty():
@@ -494,13 +914,84 @@ func _relight(t: float, delay: Callable) -> void:
 		rec.from = cur
 		rec.to = target
 		rec.at = t + float(delay.call(cell))
-		rec.dur = LIGHT_IN if target > cur else LIGHT_OUT
+		rec.dur = LIGHT_IN if target > cur else out_time
 		_anim_until = maxf(_anim_until, float(rec.at) + float(rec.dur))
 
 ## The light travelling out from `origin`: LIGHT_STEP per cell away, capped.
 func _travel_from(origin: Vector2i) -> Callable:
 	return func(cell: Vector2i) -> float:
 		return minf(LIGHT_STEP * float(absi(cell.x - origin.x) + absi(cell.y - origin.y)), LIGHT_CAP)
+
+## A wrong lamp's light drawing back toward it along its beams: the far end
+## of the longest first, the lamp's own stone last (see _gutter_delay).
+func _draw_back(origin: Vector2i) -> Callable:
+	return func(cell: Vector2i) -> float:
+		var g: Dictionary = _guttering.get(origin, {})
+		if g.is_empty():
+			return 0.0
+		return float(g.at) - _now() + _gutter_delay(g, absi(cell.x - origin.x) + absi(cell.y - origin.y))
+
+## How long after its lamp began to gutter the stone `dist` along its beam
+## begins to cool.
+static func _gutter_delay(g: Dictionary, dist: int) -> float:
+	return GUTTER_FROM + minf(GUTTER_STEP * float(maxi(0, int(g.reach) - dist)), GUTTER_CAP)
+
+## The stones light reaches right now, as the floor should show it: the
+## state's own `lit`, less whatever only a guttering lamp lights.
+func _lit_now() -> Dictionary:
+	if _guttering.is_empty():
+		return state.lit
+	var out: Dictionary = {}
+	for b: Vector2i in state.lamps():
+		if _guttering.has(b):
+			continue
+		out[b] = true
+		for d in State.DIRS:
+			var p: Vector2i = b + d
+			while state.lets_light(p):
+				out[p] = true
+				p += d
+	return out
+
+## The longest of `cell`'s four beams, in stones.
+func _reach(cell: Vector2i) -> int:
+	var far := 0
+	for d in State.DIRS:
+		var n := 0
+		var p: Vector2i = cell + d
+		while state.lets_light(p):
+			n += 1
+			p += d
+		far = maxi(far, n)
+	return far
+
+## Every stone of the floor: the open ones and the cats' (light crosses a
+## cat, and her stone warms under her like any other).
+func _floor_cells() -> Array:
+	return state.white_cells() + state.cats
+
+## A block's stone: neither open nor a cat's.
+func _is_block(cell: Vector2i) -> bool:
+	return state.in_field(cell) and not state.lets_light(cell)
+
+## How far into dusk the court is right now, 0 to 1.
+func _dusk(now: float) -> float:
+	if Motion.reduce:
+		return _dusk_to
+	return lerpf(_dusk_from, _dusk_to, _sine_io((now - _dusk_at) / DUSK_TIME))
+
+## The court slips toward dusk (1) or back into the day (0).
+func _dusk_toward(level: float) -> void:
+	var now := _now()
+	_dusk_from = _dusk(now)
+	_dusk_to = level
+	_dusk_at = now
+	_busy_for(DUSK_TIME)
+	_redraw()
+
+## The warmth as the court shows it: the light on the stone, dimmed by dusk.
+func _shown_warmth(cell: Vector2i, now: float) -> float:
+	return _warmth(cell, now) * (1.0 - (1.0 - DUSK_WARM) * _dusk(now))
 
 ## A change with no one place to travel from lands everywhere at once.
 func _at_once(_cell_: Vector2i) -> float:
@@ -514,7 +1005,7 @@ func _reset_wave(cell: Vector2i) -> float:
 ## the entrance is the court arriving and not a wave crossing an empty one.
 func _settle() -> void:
 	_warm = {}
-	for cell in state.white_cells():
+	for cell in _floor_cells():
 		var target := 1.0 if state.lit.has(cell) else 0.0
 		_warm[cell] = {"from": target, "to": target, "at": -100.0, "dur": LIGHT_IN}
 
@@ -568,14 +1059,17 @@ func _build_floor(now: float) -> ArrayMesh:
 	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
 		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), bed)
 	var gone: Array = []
+	var dusk := _dusk(now)
 	for y in state.h:
 		for x in state.w:
-			if int(state.grid[y][x]) != Gen.WHITE:
-				continue
 			var cell := Vector2i(x, y)
-			var warm := _warmth(cell, now)
+			if not state.lets_light(cell):
+				continue
+			var warm := _shown_warmth(cell, now)
 			var deep: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm)
 			var face: Color = Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm)
+			if dusk > 0.0:
+				face = face.lerp(deep, DUSK_SHADE * dusk)
 			var tone := (_hash(cell) - 0.5) * 2.0 * STONE_TONE
 			face = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
 			# A stone under the finger sinks, drawn (press_scale), and goes
@@ -686,6 +1180,8 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 	var strength := 1.0
 	if _solved_at > NEVER:
 		strength = lerpf(1.0, WIN_BEAM, _sine_io(_dec((now - _solved_at - Motion.SOLVE_DELAY) / WARM_TIME)))
+	strength *= 1.0 - (1.0 - DUSK_BEAM) * _dusk(now)
+	_veil_segs = []
 	for cell in state.lamps():
 		_beam(b, cell, now, origin, strength)
 	var still: Array = []
@@ -696,6 +1192,8 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 		still.append(out)
 		_beam(b, out.cell, now, origin, 1.0 - gone)
 	_beam_out = still
+	if _veil_layer != null:
+		_veil_layer.queue_redraw()
 
 ## One lamp's four shafts. Each cell's length of shaft fades from the strength
 ## it enters with to the strength it leaves with, so the fall along the line
@@ -704,10 +1202,13 @@ func _build_beams(b, now: float, origin: Vector2) -> void:
 func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> void:
 	var half := _cell * BEAM_HALF
 	var centre := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
+	# A wrong lamp's shafts draw back toward it with the floor it lit, even
+	# across stones another lamp keeps warm.
+	var g: Dictionary = _guttering.get(cell, {})
 	for d in State.DIRS:
 		var run: Array = []
 		var p: Vector2i = cell + d
-		while state.is_white(p):
+		while state.lets_light(p):
 			run.append(p)
 			p += d
 		var seen := run.size()
@@ -720,6 +1221,8 @@ func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> v
 		for i in run.size():
 			var q: Vector2i = run[i]
 			var warm := _warmth(q, now) * strength
+			if not g.is_empty():
+				warm *= 1.0 - _sine_io((now - float(g.at) - _gutter_delay(g, i + 1)) / GUTTER_OUT)
 			if warm <= BEAM_MIN:
 				continue
 			var n := float(i + 1)
@@ -732,6 +1235,10 @@ func _beam(b, cell: Vector2i, now: float, origin: Vector2, strength: float) -> v
 			_shaft(b, from, to, half, Color(tint, tint.a * a0), Color(tint, tint.a * a1))
 			_shaft(b, from, to, half * BEAM_CORE,
 				Color(1.0, 1.0, 1.0, CORE_ALPHA * a0), Color(1.0, 1.0, 1.0, CORE_ALPHA * a1))
+			if _cats.has(q):
+				# The light passes over her: the same stretch again, over the cat.
+				_veil_segs.append([from, to, half, Color(tint, tint.a * a0 * VEIL_ALPHA),
+					Color(tint, tint.a * a1 * VEIL_ALPHA)])
 
 ## A length of soft shaft from `from` to `to`, `half` wide each side: clear
 ## at both sides, `c0` down the middle where it starts and `c1` where it ends.
@@ -778,9 +1285,9 @@ func _build_ground(now: float) -> Dictionary:
 	# The blocks, each through whatever it is doing.
 	for y in state.h:
 		for x in state.w:
-			if int(state.grid[y][x]) == Gen.WHITE:
-				continue
 			var cell := Vector2i(x, y)
+			if not _is_block(cell):
+				continue
 			var pose := _block_pose(cell, now)
 			if pose.is_empty():
 				continue
@@ -959,9 +1466,9 @@ func _block(b, cell: Vector2i, pose: Dictionary, now: float) -> void:
 	# The light the lit stones beside it throw on its sides.
 	for d in State.DIRS:
 		var n: Vector2i = cell + d
-		if not state.is_white(n):
+		if not state.lets_light(n):
 			continue
-		var warm := _warmth(n, now)
+		var warm := _shown_warmth(n, now)
 		if warm <= BEAM_MIN:
 			continue
 		var along := Vector2(d).orthogonal() * 0.3
@@ -1068,16 +1575,19 @@ func _gui_input(event: InputEvent) -> void:
 func _press(cell: Vector2i) -> void:
 	_release_press()
 	_clear_gesture()
-	if is_done() or cell.x < 0:
+	# Nothing takes a finger while a wrong lamp goes out or the court sleeps.
+	if is_done() or cell.x < 0 or out_of_hearts or _ejecting:
 		return
 	_press_cell = cell
+	_glance(cell)
 	var now := _now()
-	if state.mark_at(cell) == State.LAMP and _lamps.has(cell):
-		_pressed = _lamps[cell]
+	var node: Control = _lamps.get(cell) if state.mark_at(cell) == State.LAMP else _cats.get(cell)
+	if node != null:
+		_pressed = node
 		Motion.stop(_look_tw.get(_pressed))
 		_look_tw[_pressed] = Motion.press(_pressed, true)
 		_busy_for(Motion.PRESS_TIME)
-	elif not state.is_white(cell):
+	elif _is_block(cell):
 		_block_press[cell] = {"down": now, "up": INF}
 		_busy_for(Motion.PRESS_TIME)
 	else:
@@ -1104,6 +1614,8 @@ func _drag(at: Vector2) -> void:
 	var cell := _cell_at(at)
 	if cell.x < 0:
 		return
+	if cell != _last_paint:
+		_glance(cell)
 	if not _dragged and cell != _press_cell:
 		_dragged = true
 		# Begin on a chip and the sweep rubs out; begin anywhere else and it
@@ -1141,6 +1653,10 @@ func _paint(cell: Vector2i) -> void:
 	if state.mark_at(cell) == to:
 		return
 	_pending.append({"cell": cell, "to": to})
+	# The sweep ticks a little higher per stone it will change, so a long run
+	# can be heard growing (Tents' and Shikaku's).
+	_sweep_n += 1
+	fx.cue("chip" if _lay else "clear", minf(SWEEP_PITCH_MAX, 1.0 + SWEEP_PITCH * (_sweep_n - 1)))
 
 func _release() -> void:
 	var cell := _press_cell
@@ -1149,6 +1665,7 @@ func _release() -> void:
 	var now := _now()
 	_release_press()
 	_clear_gesture()
+	_glance(Vector2i(-1, -1))
 	if cell.x < 0 or is_done():
 		_end_sinks(now)
 		_redraw()
@@ -1174,6 +1691,8 @@ func _release() -> void:
 	var before: Dictionary = state.marks.duplicate()
 	var arrivals := _commit(before, state.tap(cell), now, 0.0, cell)
 	_end_sinks(now, arrivals)
+	if state.mark_at(cell) == State.LAMP:
+		_judge(cell)
 	_redraw()
 
 ## Puts the stones `changed` by a move on the screen (see _transition), sends
@@ -1187,12 +1706,18 @@ func _commit(before: Dictionary, changed: Array, t: float, per: float, from: Vec
 	var arrivals := _transition(before, changed, t, per)
 	if from.x >= 0:
 		_relight(t, _travel_from(from))
+		# A tap: a lantern set down, one blown out, or a chip taken up. A
+		# sweep has already ticked stone by stone.
 		if state.mark_at(from) == State.LAMP:
 			fx.puff(cell_to_local(from.y, from.x), Pal.SUN)
 			_nudge_around(from, t)
+			fx.cue("place")
+		elif int(before.get(from, State.BLANK)) == State.LAMP:
+			fx.cue("strike")
+		else:
+			fx.cue("clear")
 	else:
 		_relight(t, _at_once)
-	fx.cue("place")
 	_speak()
 	_redraw()
 	note_move()
@@ -1203,6 +1728,7 @@ func _clear_gesture() -> void:
 	_pressed = null
 	_dragged = false
 	_lay = true
+	_sweep_n = 0
 	_swept = {}
 	_pending = []
 	_last_paint = Vector2i(-1, -1)
@@ -1238,6 +1764,7 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 			_chip_leaves(cell, at)
 		elif prev == State.LAMP:
 			_lamp_down(cell, at - t)
+			_judged.erase(cell)
 		if mark == State.CHIP:
 			_chip_arrives(cell, at)
 		elif mark == State.LAMP:
@@ -1245,6 +1772,7 @@ func _transition(before: Dictionary, cells: Array, t: float, per: float, drop :=
 		if prev == State.LAMP or mark == State.LAMP:
 			_recount_around(cell, at)
 	_refresh_faces()
+	_want_flies()
 	return arrivals
 
 ## A lamp goes down on `cell`: it pops in with the squash after `delay`, or
@@ -1257,6 +1785,11 @@ func _lamp_up(cell: Vector2i, delay: float, drop: bool) -> void:
 	lamp.rotation = 0.0
 	lamp.position = Vector2.ZERO
 	lamp.modulate.a = 1.0
+	lamp.gutter = 0.0
+	Motion.stop(_gag_tw.get(lamp))
+	lamp.glasses = 0.0
+	lamp.hat = 0.0
+	lamp.flare = 0.0
 	if drop:
 		lamp.scale = Vector2.ONE
 		_pos_tw[lamp] = Motion.drop_in(lamp, Motion.DROP, Motion.DROP_TIME, delay)
@@ -1326,14 +1859,17 @@ func _nudge_around(cell: Vector2i, t: float) -> void:
 		var n: Vector2i = cell + d
 		if not state.in_field(n):
 			continue
-		if not state.is_white(n):
+		if _is_block(n):
 			if not Motion.reduce:
 				_block_nudge[n] = {"at": t, "dir": Vector2(d)}
-		elif state.mark_at(n) == State.LAMP and _lamps.has(n):
-			var lamp: CourtLantern = _lamps[n]
-			if Motion.running(_pos_tw.get(lamp)):
+			continue
+		var node: Control = _cats.get(n)
+		if node == null and state.mark_at(n) == State.LAMP:
+			node = _lamps.get(n)
+		if node != null:
+			if Motion.running(_pos_tw.get(node)):
 				continue
-			_pos_tw[lamp] = Motion.nudge(lamp, Vector2(d), Vector2.ZERO)
+			_pos_tw[node] = Motion.nudge(node, Vector2(d), Vector2.ZERO)
 	_busy_for(Motion.NUDGE_LAG + Motion.NUDGE_TIME)
 
 ## `lamp` hops `height` over `time` after `delay`; it rests at its slot's
@@ -1353,14 +1889,17 @@ func _wobble(lamp: Control) -> void:
 	_busy_for(Motion.WOBBLE_TIME)
 
 ## A tap refused on `cell`: a block shivers and flashes toward its rose; a
-## pinned lamp shivers while its stone blushes; the sprout says why.
+## pinned lamp or a cat shivers while its stone blushes; the sprout says why.
 func _refuse(cell: Vector2i) -> void:
-	_say(tr("LU_REFUSE_BLOCK")
-		if not state.is_white(cell)
-		else tr("LU_REFUSE_PINNED"), Face.Expr.PUZZLED)
+	var line := "LU_REFUSE_PINNED"
+	if _is_block(cell):
+		line = "LU_REFUSE_BLOCK"
+	elif state.is_cat(cell):
+		line = "LU_REFUSE_CAT"
+	_say(tr(line), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	var now := _now()
-	if not state.is_white(cell):
+	if _is_block(cell):
 		if Motion.reduce:
 			return
 		_block_shiver[cell] = now
@@ -1368,7 +1907,7 @@ func _refuse(cell: Vector2i) -> void:
 		_busy_for(maxf(Motion.SHIVER_TIME, Motion.FLASH_IN + Motion.FLASH_OUT))
 		return
 	_blush_stone(cell)
-	var lamp: CourtLantern = _lamps.get(cell)
+	var lamp: Control = _cats.get(cell, _lamps.get(cell))
 	if lamp == null:
 		return
 	Motion.stop(_pos_tw.get(lamp))
@@ -1396,10 +1935,23 @@ func _speak() -> void:
 			else tr("LU_OVER_N") % over,
 			Face.Expr.STRAIN)
 		return
+	var cross := state.over_cats()
+	if cross > 0:
+		_say(tr("LU_CAT_OVER_ONE") if cross == 1
+			else tr("LU_CAT_OVER_N") % cross, Face.Expr.STRAIN)
+		return
 	var dark := state.dark()
 	if dark > 0:
 		_say(tr("LU_DARK_ONE") if dark == 1
 			else tr("LU_DARK_N") % dark, Face.Expr.HAPPY)
+		return
+	var short := 0
+	for c: Vector2i in state.cats:
+		if state.cat_state(c) == State.CAT_IDLE:
+			short += 1
+	if short > 0:
+		_say(tr("LU_CAT_SHORT_ONE") if short == 1
+			else tr("LU_CAT_SHORT_N") % short, Face.Expr.HAPPY)
 		return
 	_say(tr("LU_UNSATISFIED"), Face.Expr.HAPPY)
 
@@ -1413,21 +1965,25 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not state.marks.is_empty():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	_tip_idx = (_tip_idx + 1) % _tips().size()
+	_say(tr(_tips()[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
 
 # --- the HUD's actions ---
 
+## A wrong lamp is going out: the host holds a hint video until it has gone.
+func busy() -> bool:
+	return _ejecting
+
 func can_undo() -> bool:
-	return not is_done() and not state.history.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.history.is_empty()
 
 ## Takes back the last gesture, however many stones it swept: the reverse of
 ## Place, stone by stone along the same path. Counts no move.
 func undo() -> bool:
-	if is_done() or state.history.is_empty():
+	if not can_undo():
 		return false
 	var now := _now()
 	var before: Dictionary = state.marks.duplicate()
@@ -1440,13 +1996,13 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return HINTS + hints_extra - hints_used
+	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
 
 ## Lights one lantern from the answer and pins it for good: a ring pulses out
 ## of the stone, the lamp drops in from above, sparkles rise, and the light
 ## travels out from it. Counts no move but can finish the puzzle.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
 		return false
 	var before: Dictionary = state.marks.duplicate()
 	var target: Vector2i = state.hint()
@@ -1454,6 +2010,7 @@ func hint() -> bool:
 		return false
 	var now := _now()
 	hints_used += 1
+	_judged[target] = true
 	_transition(before, [target], now, 0.0, true)
 	_relight(now, _travel_from(target))
 	var at := cell_to_local(target.y, target.x)
@@ -1469,7 +2026,7 @@ func hint() -> bool:
 ## Every lantern the answer does not put there wobbles and its stone blushes,
 ## and the sprout says how many.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _ejecting:
 		return 0
 	checks += 1
 	var wrong: Array = state.wrong_lamps()
@@ -1488,6 +2045,24 @@ func check() -> int:
 ## in the same wave and the blocks hopping as the court clears around them.
 ## The hints a player spent are not refunded, only unpinned.
 func reset_board() -> void:
+	if is_done() or out_of_hearts or _ejecting:
+		return
+	_break_streak()
+	_clear_court()
+	moves = 0
+	_running = true
+	_refresh_faces()
+	_say(tr("LU_RESET"),
+		Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	_redraw()
+
+## Every lamp and chip goes in Reset's wave from the far corner, the light
+## cooling with it and the blocks and cats hopping as the court clears round
+## them: Reset's and Try again's shared middle.
+func _clear_court() -> void:
+	_judged = {}
 	var now := _now()
 	_release_press()
 	_clear_gesture()
@@ -1504,10 +2079,12 @@ func reset_board() -> void:
 	if not Motion.reduce:
 		for y in state.h:
 			for x in state.w:
-				if int(state.grid[y][x]) != Gen.WHITE:
-					var cell := Vector2i(x, y)
+				var cell := Vector2i(x, y)
+				if _is_block(cell):
 					_block_hop[cell] = {"at": now + _reset_wave(cell), "height": Motion.RESET_HOP,
 						"time": Motion.HOP_TIME}
+		for cell in _cats:
+			_hop(_cats[cell], Motion.RESET_HOP, Motion.HOP_TIME, _reset_wave(cell))
 		_busy_for(_reset_wave(Vector2i.ZERO) + Motion.HOP_TIME)
 	_relight(now, _reset_wave)
 	_blush = {}
@@ -1515,14 +2092,6 @@ func reset_board() -> void:
 	_block_flash = {}
 	_flare = {}
 	_block_shiver = {}
-	moves = 0
-	_running = true
-	_refresh_faces()
-	_say(tr("LU_RESET"),
-		Face.Expr.HAPPY)
-	_tip_timer.start()
-	fx.cue("reset")
-	_redraw()
 
 ## A completed daily is rebuilt from its seed, so the court opens dark. Set the
 ## generator's lanterns back down and settle everything as the finished solve
@@ -1568,16 +2137,37 @@ func restore_completed_board() -> void:
 		lamp.rotation = 0.0
 		lamp.scale = Vector2.ONE
 		lamp.modulate.a = 1.0
+		lamp.gutter = 0.0
 		lamp.expression = Face.Expr.JOY
-	_refresh_faces()
+	_deal()
+	_judged = {}
+	for cell in _cats:
+		var cat: NapCat = _cats[cell]
+		cat.position = Vector2.ZERO
+		cat.rotation = 0.0
+		cat.scale = Vector2.ONE
+		cat.expression = _cat_won(cell)
+	_refresh_faces(true)
+	# The garland stays up, and an Insane court keeps its night seal; a
+	# restore cannot know whether the solve was flawless, so a gold seal is
+	# not claimed.
+	_garland_at = now - 10.0
+	_stamp_at = now - 10.0 if _insane() else INF
+	_life_layer.queue_redraw()
 	_say(tr("LU_WIN"), Face.Expr.JOY)
 	_redraw()
 
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The court, and the seal's words when one was stamped.
 func share_glyphs() -> String:
-	return state.share_glyphs()
+	var out: String = state.share_glyphs()
+	if _insane():
+		out += "\n🌙 " + tr("LU_CAT_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += "\n🏅 " + tr("BN_FLAWLESS")
+	return out
 
 # --- the win ---
 
@@ -1587,7 +2177,7 @@ func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": tr("LU_WIN")}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
 
 ## Every lamp and block hops the solve wave along the diagonal, each lamp
 ## grinning as the wave reaches it with a spark, and the chips clear away in
@@ -1599,8 +2189,17 @@ func _on_solved() -> void:
 	_end_sinks(now)
 	_tip_timer.stop()
 	_solved_at = now
+	_glance(Vector2i(-1, -1))
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = now
+		_combo_layer.queue_redraw()
+	_smoke = {}
+	_snail = {}
+	var far := 0
 	var k := 0
 	for cell in state.lamps():
+		far = maxi(far, cell.x + cell.y)
 		var lamp := _lamp_node(cell)
 		var delay := _solve_delay(cell)
 		_hop(lamp, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
@@ -1611,16 +2210,31 @@ func _on_solved() -> void:
 	if not Motion.reduce:
 		for y in state.h:
 			for x in state.w:
-				if int(state.grid[y][x]) != Gen.WHITE:
-					var cell := Vector2i(x, y)
+				var cell := Vector2i(x, y)
+				if _is_block(cell):
 					_block_hop[cell] = {"at": now + _solve_delay(cell), "height": Motion.SOLVE_HOP,
 						"time": Motion.SOLVE_TIME}
+	# The cats hop the wave too, grinning -- all but a napping one, who
+	# sleeps through the party.
+	for cell in _cats:
+		var cat: NapCat = _cats[cell]
+		var delay := _solve_delay(cell)
+		if state.cat_need(cell) > 0:
+			_hop(cat, Motion.SOLVE_HOP, Motion.SOLVE_TIME, delay)
+		_after(delay, func() -> void: cat.expression = _cat_won(cell))
+	for cell in _cats:
+		far = maxi(far, cell.x + cell.y)
 	_refresh_faces()
 	_say(tr("LU_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	_party(_solve_delay(Vector2i(far, 0)))
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + maxf(Motion.SOLVE_TIME, WIN_GLINT),
 		maxf(CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME, Motion.SOLVE_DELAY + WARM_TIME)))
 	_redraw()
+
+## A cat's look on a solved court: JOY, or asleep for a napping cat.
+func _cat_won(cell: Vector2i) -> int:
+	return Face.Expr.SLEEPY if state.cat_need(cell) == 0 else Face.Expr.JOY
 
 func _solve_delay(cell: Vector2i) -> float:
 	if Motion.reduce:
@@ -1643,6 +2257,938 @@ func _spark_at(k: int, at: Vector2) -> void:
 	else:
 		fx.puff(at, Pal.SUN, 4)
 
+# --- judging a lamp ---
+
+## A lamp just set down by a tap. On Hard and Insane a lamp the board cannot
+## fault (`state.lamp_fair`) that is not the answer's costs a heart -- the
+## answer is unique, so it is wrong by proof. A lamp the board already shows
+## as wrong (a rose beam, a rose block, a cross cat) costs nothing: the board
+## has said so. Anything else the board cannot fault is right: the answer's
+## on a board with hearts, where it joins `_judged`, or any fair lamp on Easy
+## and Medium, which says no more than its face does.
+func _judge(cell: Vector2i) -> void:
+	# The winning tap: the solve wave owns every hop and spark from here.
+	if is_done():
+		return
+	var fair: bool = state.lamp_fair(cell)
+	if max_hearts > 0 and fair and not state.is_answer(cell):
+		_wrong_lamp(cell)
+		return
+	if not fair:
+		_break_streak()
+		return
+	if max_hearts > 0:
+		_judged[cell] = true
+		_refresh_faces()
+		_redraw()
+	_on_right_lamp(cell)
+
+## A lamp judged right -- on Hard and Insane fair and the answer's (it is in
+## `_judged` already), on Easy and Medium simply fair. It builds the streak
+## (the combo pitched up the pentatonic from the second, the bubble from the
+## third, confetti at five and ten) and may play a gag. On a board with hearts
+## its candle flares and a moth comes to circle it: only there has the board
+## judged it, so only there may the light say "right".
+func _on_right_lamp(cell: Vector2i) -> void:
+	_streak += 1
+	if _streak >= 2:
+		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
+		fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB)
+	if _streak >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = _streak
+		_combo_cell = cell
+		_combo_at = _now()
+		_combo_out_at = -INF
+		_combo_layer.queue_redraw()
+	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
+		fx.confetti(cell_to_local(cell.y, cell.x), 22)
+		fx.cue("confetti")
+	if max_hearts > 0:
+		_flare_lamp(cell)
+		_want_flies(cell)
+	_gag(cell)
+
+## The streak ends: a lamp in trouble, a wrong lamp, a reset, a deal, the
+## hearts running out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+		if _combo_layer != null:
+			_combo_layer.queue_redraw()
+	else:
+		_combo_n = 0
+
+## A right lamp's candle flares: its halo swells and settles (a transform on
+## its glow), and the wick's warm disc blooms on the floor again under it.
+func _flare_lamp(cell: Vector2i) -> void:
+	if Motion.reduce:
+		return
+	var lamp: CourtLantern = _lamps.get(cell)
+	if lamp == null:
+		return
+	var tw := lamp.create_tween()
+	tw.tween_property(lamp, "flare", 1.0, FLARE_UP).from(0.0).set_delay(Motion.POP_IN * 0.5) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(lamp, "flare", 0.0, FLARE_DOWN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_flare_at(cell, _now() + Motion.POP_IN * 0.5)
+	_after(Motion.POP_IN * 0.5, fx.sparkle.bind(cell_to_local(cell.y, cell.x) - Vector2(0.0, _cell * 0.3), Pal.SUN_RAY))
+
+## A wrong lamp: a heart goes (its halves fall), the lamp worries and sags,
+## its flame gutters while its light draws back along the beam toward it,
+## its stone blushes, and after EJECT_AFTER it is taken up as though never
+## set down.
+func _wrong_lamp(cell: Vector2i) -> void:
+	if out_of_hearts or hearts <= 0:
+		return
+	var now := _now()
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	_split_at = now
+	_heart_layer.queue_redraw()
+	_ejecting = true
+	if hearts <= 0:
+		# Input stops now; the dusk waits for the lamp to go.
+		out_of_hearts = true
+		_running = false
+	var lamp: CourtLantern = _lamp_node(cell)
+	lamp.expression = Face.Expr.WORRIED
+	_guttering[cell] = {"at": now, "reach": _reach(cell)}
+	# The light is let land first; the floor is sent dark from GUTTER_FROM
+	# (the beam reads `_guttering` from now and fades on the same clock).
+	_after(GUTTER_FROM, func() -> void:
+		if _guttering.has(cell):
+			_relight(_now(), _draw_back(cell), GUTTER_OUT))
+	if not Motion.reduce:
+		_after(WILT_LAG, func() -> void:
+			Motion.stop(_look_tw.get(lamp))
+			lamp.scale = Vector2.ONE
+			_look_tw[lamp] = Motion.squash(lamp, 0.14, 0.2))
+		var tw := lamp.create_tween()
+		tw.tween_property(lamp, "gutter", 1.0, EJECT_AFTER).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	else:
+		lamp.gutter = 1.0
+	_blush_stone(cell)
+	_say(tr("LU_WRONG_LAMP"), Face.Expr.WORRIED)
+	fx.cue("heart_lost")
+	_busy_for(EJECT_AFTER + Motion.POP_OUT)
+	moved.emit()
+	_after(EJECT_AFTER, _eject.bind(cell))
+
+## The wrong lamp is taken up: its tap is taken back with no history left of
+## it, and a grey puff goes up where it stood.
+func _eject(cell: Vector2i) -> void:
+	_ejecting = false
+	_guttering.erase(cell)
+	# Left mid-gutter through the card or the host: the board is over.
+	if is_done():
+		return
+	var before: Dictionary = state.marks.duplicate()
+	var last: Array = [] if state.history.is_empty() else state.history.back()
+	if last.size() == 1 and last[0].cell == cell:
+		state.undo()
+	elif state.mark_at(cell) == State.LAMP and not state.locked.has(cell):
+		state.marks.erase(cell)
+		state.recompute()
+	var now := _now()
+	_transition(before, [cell], now, 0.0)
+	_relight(now, _at_once)
+	if not Motion.reduce:
+		fx.puff(cell_to_local(cell.y, cell.x), Pal.FLAGSTONE.lerp(Pal.LINE, 0.5), 6)
+	# The candle blown out: heart_lost has said what it cost, this is it going.
+	fx.cue("strike", 1.0, -5.0)
+	if not out_of_hearts:
+		_speak()
+	moved.emit()
+	_redraw()
+	if out_of_hearts:
+		_run_out()
+
+## The last heart is gone: the court slips to dusk, the lanterns and cats nod
+## off along the diagonal, and the card comes up once they have.
+func _run_out() -> void:
+	if _asleep:
+		return
+	_asleep = true
+	_clear_gesture()
+	_break_streak()
+	fx.cue("out_of_hearts")
+	_say(tr("LU_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(1.0)
+	_nod_all()
+	for f in _flies:
+		f.leave = true
+	_life_layer.queue_redraw()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+## Every lamp and cat takes its look along the diagonal: asleep, or awake
+## again after a heart came back.
+func _nod_all() -> void:
+	for cell in _lamps:
+		_after(Motion.stagger(cell.x + cell.y, SLEEP_STAGGER), func() -> void:
+			if _solved_at == NEVER and state.mark_at(cell) == State.LAMP and not _guttering.has(cell):
+				_lamps[cell].expression = _lamp_expr(cell))
+	for cell in _cats:
+		_after(Motion.stagger(cell.x + cell.y, SLEEP_STAGGER), func() -> void:
+			if _solved_at == NEVER:
+				_cats[cell].expression = _cat_expr(cell))
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["LU_OUT_BODY", "LU_OUT_REST"] if state.has_cats() else ["LU_OUT_BODY_LAMPS", "LU_OUT_REST_LAMPS"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same court from the top, every heart back, the day's light,
+## the clock and the moves from zero; hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	moves = 0
+	elapsed = 0.0
+	checks = 0
+	_running = true
+	_clear_court()
+	var dusk := _dusk(_now())
+	_deal()
+	# _deal() put the day back at once; hold the dusk so _dusk_toward fades it.
+	_dusk_from = dusk
+	_dusk_to = dusk
+	_dusk_toward(0.0)
+	_nod_all()
+	_refresh_faces(true)
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+	_redraw()
+
+## One more heart (the card's video): once a board. The court's light comes
+## back and it wakes along the diagonal.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(0.0)
+	_nod_all()
+	_speak()
+	moved.emit()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the hearts ---
+
+## The hearts over the court as one mesh on a paper pill, Shikaku's, Tents'
+## and Binairo's: pink with a small face and a leaf, a faint ghost where one
+## was, the lost one's halves falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _grid.y - MORTAR - HEART_ROW * 0.5 - 4.0
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts:
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_mesh(_hearts_shown, null)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top.
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's; its notes say why the crack leaves the tip straight up).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- the streak's bubble ---
+
+## The streak's paper bubble at the upper right of its lamp, "x3" and up in
+## ink: it pops in the first time, bumps at each step and deflates when the
+## streak ends. One mesh for the paper and one string (Binairo's, Tents').
+func _draw_combo() -> void:
+	if _combo_n < COMBO_FROM or _cell <= 0.0:
+		return
+	var now := _now()
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var centre_cell := cell_to_local(_combo_cell.y, _combo_cell.x)
+	var tail := centre_cell + Vector2(_cell * 0.25, -_cell * 0.3)
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var b := Face.Builder.new()
+	var tip := tail - centre
+	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+	_combo_shown = b.mesh()
+	_combo_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_combo_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_combo_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_combo_layer.draw_set_transform(Vector2.ZERO)
+
+# --- gags, glances and the life on the court ---
+
+## A right lamp now and then plays a gag, picked by the stone's own hash so a
+## court replays the same: the lantern slides on sunglasses, it puffs a small
+## heart of smoke off its cap, or a snail with a tiny lantern of her own
+## slides past in front of it. Under reduce-motion, none.
+func _gag(cell: Vector2i) -> void:
+	if Motion.reduce or is_done():
+		return
+	var roll := posmod(hash(cell * 13 + Vector2i(7, 3)), GAG_ODDS)
+	if roll >= GAGS:
+		return
+	var now := _now()
+	match roll:
+		0:
+			var lamp: CourtLantern = _lamp_node(cell)
+			Motion.stop(_gag_tw.get(lamp))
+			var tw := lamp.create_tween()
+			tw.tween_property(lamp, "glasses", 1.0, GLASSES_IN).from(0.0).set_delay(GAG_AT) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_interval(GLASSES_HOLD)
+			tw.tween_property(lamp, "glasses", 0.0, GLASSES_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			_gag_tw[lamp] = tw
+			_after(GAG_AT, func() -> void: fx.cue("cool"))
+		1:
+			_smoke = {"cell": cell, "at": now + GAG_AT}
+			_after(GAG_AT, func() -> void: fx.cue("puff"))
+			_life_layer.queue_redraw()
+		2:
+			_snail = {"cell": cell, "at": now + GAG_AT, "dir": 1.0 if posmod(cell.x + cell.y, 2) == 0 else -1.0}
+			_snail_face()
+			_after(GAG_AT, func() -> void: fx.cue("snail"))
+
+## The lanterns and cats within GLANCE_REACH of `cell` look at it; (-1, -1)
+## and every one looks ahead again. One on the stone itself looks up.
+func _glance(cell: Vector2i) -> void:
+	var faces: Dictionary = {}
+	for at in _lamps:
+		if _lamps[at].visible and state.mark_at(at) == State.LAMP:
+			faces[at] = _lamps[at]
+	for at in _cats:
+		faces[at] = _cats[at]
+	for at in faces:
+		var face: Face = faces[at]
+		var look := Vector2.ZERO
+		if cell.x >= 0 and not Motion.reduce:
+			var d := Vector2(cell - at)
+			if maxf(absf(d.x), absf(d.y)) <= GLANCE_REACH:
+				look = d.normalized() if d != Vector2.ZERO else Vector2(0.0, -1.0)
+		if face.look != look:
+			face.look = look
+
+## The snail, made the first time a gag wants her and kept: the One Line
+## walker (ui/faces/snail_face.gd) with a court lantern of her own, lit,
+## riding on her shell. She lives on the life layer, over the lamps, and
+## crossing a stone is her transform, never a rebuild.
+func _snail_face() -> Control:
+	if _snail_node != null:
+		return _snail_node
+	var snail := SnailFace.new()
+	snail.name = "Snail"
+	snail.visible = false
+	var lamp := CourtLantern.new()
+	lamp.name = "lamp"
+	lamp.casts = false
+	lamp.lit = 1.0
+	lamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	snail.add_child(lamp)
+	_life_layer.add_child(snail)
+	snail.set_idle(true)
+	lamp.set_idle(true)
+	_snail_node = snail
+	return snail
+
+## Where the snail is on her way across the stone, `e` seconds in: sliding
+## from one side of the stone's front to the other with a slow bob, fading in
+## and out at the ends, turned the way she goes.
+func _place_snail(now: float) -> void:
+	if _snail_node == null:
+		return
+	if _snail.is_empty():
+		_snail_node.visible = false
+		return
+	var e := now - float(_snail.at)
+	var snail := _snail_node
+	if e > SNAIL_TIME or state.mark_at(_snail.cell) != State.LAMP:
+		_snail = {}
+		snail.visible = false
+		return
+	if e < 0.0:
+		return
+	var px := SNAIL_SIZE * _cell * SnailFace.SEAT / 1.84
+	var sr := px * SnailFace.RATIO
+	if snail.size.x != px:
+		snail.size = Vector2.ONE * px
+		var lamp: Control = snail.get_node("lamp")
+		var lr := sr * 0.42
+		lamp.size = Vector2.ONE * lr * CourtLantern.SEAT
+		lamp.position = snail.size * 0.5 + Vector2(-0.26 * sr, -0.8 * sr - 1.02 * lr) - lamp.size * 0.5
+	var cell: Vector2i = _snail.cell
+	var dir: float = _snail.dir
+	var u := e / SNAIL_TIME
+	var centre := cell_to_local(cell.y, cell.x)
+	var at := Vector2(centre.x + dir * lerpf(-SNAIL_REACH, SNAIL_REACH, u) * _cell,
+		centre.y + _cell * 0.36 - absf(sin(u * PI * 5.0)) * _cell * 0.012)
+	snail.visible = true
+	snail.position = at - snail.size * 0.5
+	snail.scale = Vector2(dir, 1.0)
+	snail.modulate.a = clampf(minf(u, 1.0 - u) * 7.0, 0.0, 1.0)
+
+## Where moths may go: every lamp still standing that a tap was judged right
+## on, burning and fair; once the court is solved, every lamp.
+func _perches() -> Array:
+	var out: Array = []
+	if _asleep:
+		return out
+	for at in _lamps:
+		if state.mark_at(at) != State.LAMP or not _lamps[at].visible or _guttering.has(at):
+			continue
+		if _solved_at > NEVER or (_judged.has(at) and state.lamp_fair(at)):
+			out.append(at)
+	return out
+
+## Moths come to a court with judged lamps, on Hard and Insane only: one from
+## the first, a second past MOTH_SECOND of the answer's lamps, none under
+## reduce-motion. `fresh`, a lamp just judged right, gets a moth of its own
+## -- a new one, or the one that has circled its lamp longest. One too many
+## flies off.
+func _want_flies(fresh := Vector2i(-1, -1)) -> void:
+	if Motion.reduce or _cell <= 0.0 or _asleep or _solved_at > NEVER or max_hearts <= 0:
+		return
+	var judged := _perches().size()
+	var want := 0
+	if judged > 0:
+		want = 1
+		if float(judged) / maxf(1.0, state.solution.size()) >= MOTH_SECOND:
+			want = 2
+	var staying: Array = []
+	for f in _flies:
+		if not f.leave:
+			staying.append(f)
+	var arrived := false
+	while staying.size() < want:
+		staying.append(_spawn_fly(_flies.size(), fresh))
+		arrived = true
+	while staying.size() > want:
+		staying.pop_back().leave = true
+	if fresh.x >= 0 and not arrived and not staying.is_empty():
+		var pick: Dictionary = staying[0]
+		for f in staying:
+			if float(f.since) < float(pick.since):
+				pick = f
+		_send(pick, fresh)
+	if arrived:
+		fx.cue("moth")
+
+## A moth flying in from off the card's nearer side toward `to`'s lamp.
+func _spawn_fly(k: int, to := Vector2i(-1, -1)) -> Dictionary:
+	var from_left := k % 2 == 0
+	var start := Vector2(-40.0 if from_left else size.x + 40.0, _grid.y + _cell * state.h * (0.2 + 0.25 * (k % 3)))
+	var f := {"pos": start, "cell": to, "since": _now(), "until": -1.0, "angle": k * 2.1,
+		"wing": (k + posmod(hash(start), 7)) % MOTH_WINGS.size(), "phase": k * 1.7, "leave": false}
+	_flies.append(f)
+	_life_layer.queue_redraw()
+	return f
+
+## `f` goes to circle the lamp on `cell`.
+func _send(f: Dictionary, cell: Vector2i) -> void:
+	f.cell = cell
+	f.since = _now()
+	f.until = -1.0
+
+## Moves every moth `dt` along: toward a point going round its lamp, so it
+## flutters in and then circles; after a while on to another lamp. A leaving
+## one flies off the top and is gone.
+func _fly(dt: float) -> void:
+	var now := _now()
+	var perches := _perches()
+	var speed := MOTH_SPEED * _cell
+	var keep: Array = []
+	for f in _flies:
+		if not f.leave and not perches.has(f.cell):
+			if perches.is_empty():
+				f.leave = true
+			else:
+				_send(f, perches[posmod(hash(Vector2i(int(now * 10.0), int(f.phase * 10.0))), perches.size())])
+		var to: Vector2
+		if f.leave:
+			to = Vector2(f.pos.x + (1.0 if f.pos.x > size.x * 0.5 else -1.0) * 60.0, -80.0)
+		else:
+			f.angle += MOTH_TURN * dt * (1.0 if int(f.wing) % 2 == 0 else -1.0)
+			var c: Vector2 = cell_to_local(f.cell.y, f.cell.x) - Vector2(0.0, MOTH_LIFT * _cell)
+			to = c + Vector2(cos(f.angle) * MOTH_ORBIT.x, sin(f.angle) * MOTH_ORBIT.y) * _cell
+			if f.pos.distance_to(to) < _cell * 0.25:
+				if f.until < 0.0:
+					f.until = now + MOTH_STAY + fposmod(f.phase * 3.1, 1.0) * MOTH_JITTER
+				elif now >= f.until and perches.size() > 1:
+					var i := posmod(hash(Vector2i(int(now * 10.0), int(f.phase * 10.0))), perches.size())
+					if perches[i] == f.cell:
+						i = (i + 1) % perches.size()
+					_send(f, perches[i])
+		var d: Vector2 = to - f.pos
+		if d.length() > 0.5:
+			f.pos += d.normalized() * minf(d.length(), speed * dt)
+		if f.leave and f.pos.y < -60.0:
+			continue
+		keep.append(f)
+	_flies = keep
+
+## Forgets whatever on the life layer has finished. Returns whether anything
+## on it is still moving.
+func _tick_life(now: float) -> bool:
+	var still: Array = []
+	for p in _purrs:
+		if now < float(p.t) + PURR_TIME:
+			still.append(p)
+	_purrs = still
+	still = []
+	for s in _sky:
+		if now < float(s.t) + SKY_TIME:
+			still.append(s)
+	_sky = still
+	if not _smoke.is_empty() and now > float(_smoke.at) + SMOKE_TIME:
+		_smoke = {}
+	_place_snail(now)
+	return not _flies.is_empty() or not _purrs.is_empty() or not _sky.is_empty() \
+		or not _smoke.is_empty() or not _snail.is_empty() \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1) \
+		or (now >= _garland_at and now - _garland_at < GARLAND_SETTLE + 0.1 and not Motion.reduce)
+
+## The life on the court, over the pieces: the garland, the sky lanterns
+## going up, the smoke heart, a cat's purring hearts and the moths, each a
+## mesh built once and drawn under its own transform (the garland is rebuilt
+## only while it swings); and the seal after the solve, with its words.
+func _draw_life() -> void:
+	if _cell <= 0.0:
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	if now >= _garland_at:
+		_draw_garland(now - _garland_at, shown)
+	if not _sky.is_empty():
+		var mesh := _sky_lantern()
+		shown.append(mesh)
+		for s in _sky:
+			var e: float = now - float(s.t)
+			if e <= 0.0:
+				continue
+			var u := e / SKY_TIME
+			var from := cell_to_local(s.cell.y, s.cell.x) - Vector2(0.0, _cell * 0.2)
+			var top := _card.position.y - SKY_RISE * _cell
+			var sway := sin(e * 2.2 + float(s.phase)) * SKY_SWAY * _cell * minf(1.0, u * 3.0)
+			var at := Vector2(from.x + sway, lerpf(from.y, top, pow(u, 1.3)))
+			var grow := lerpf(0.5, 1.0, Motion.back_out(minf(1.0, u * 6.0))) * lerpf(1.0, 0.82, u)
+			var alpha := minf(1.0, u * 12.0) * clampf((1.0 - u) / SKY_FADE, 0.0, 1.0)
+			_life_layer.draw_mesh(mesh, null, Transform2D(cos(e * 2.2 + float(s.phase)) * 0.07,
+				Vector2(grow, grow), 0.0, at), Color(1.0, 1.0, 1.0, alpha))
+	if not _smoke.is_empty():
+		var e: float = now - float(_smoke.at)
+		if e > 0.0:
+			var u := e / SMOKE_TIME
+			var rise := 1.0 - (1.0 - u) * (1.0 - u)
+			var cell: Vector2i = _smoke.cell
+			var at := cell_to_local(cell.y, cell.x) + Vector2(sin(u * TAU) * SMOKE_SWAY * _cell,
+				-_cell * (0.5 + SMOKE_RISE * rise))
+			var k := lerpf(SMOKE_FROM, 1.0, rise)
+			var mesh := _smoke_heart()
+			shown.append(mesh)
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.12, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, minf(1.0, u * 8.0) * pow(1.0 - u, 1.4)))
+	if not _purrs.is_empty():
+		var mesh := _purr_heart()
+		shown.append(mesh)
+		for p in _purrs:
+			var e: float = now - float(p.t)
+			if e <= 0.0:
+				continue
+			var u := e / PURR_TIME
+			var at: Vector2 = p.at + Vector2(sin(u * TAU + int(p.k)) * 0.05 * _cell, -PURR_RISE * _cell * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.15, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	for f in _flies:
+		var circling: bool = not f.leave and f.until >= 0.0
+		var beat: float = absf(sin(now * (9.0 if circling else 15.0) + f.phase))
+		var level := roundi(beat * (MOTH_LEVELS - 1))
+		var mesh := _moth(int(f.wing), level)
+		shown.append(mesh)
+		var bob := Vector2(0.0, sin(now * 6.0 + f.phase) * _cell * 0.03)
+		_life_layer.draw_mesh(mesh, null, Transform2D(sin(now * 3.0 + f.phase) * 0.18, f.pos + bob))
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_life_shown = shown
+
+## A moth, `wing` its tint and `level` of MOTH_LEVELS how far its wings are
+## open: soft pale wings with a dusty spot and a deeper rim, a fluffy body, a
+## ruff at its neck, two dots of eyes and a pair of feathery antennae. Built
+## once per tint and opening.
+func _moth(wing: int, level: int) -> ArrayMesh:
+	var key := wing * 16 + level
+	if _moth_meshes.has(key):
+		return _moth_meshes[key]
+	var b := Face.Builder.new()
+	var s := _cell * MOTH_SIZE
+	var open := lerpf(0.3, 1.0, float(level) / float(MOTH_LEVELS - 1))
+	var col: Color = MOTH_WINGS[wing]
+	var rim := col.lerp(MOTH_BODY.darkened(0.25), 0.75)
+	for sx: float in [-1.0, 1.0]:
+		var w_ := s * open
+		b.ellipse(Vector2(sx * w_ * 0.4, s * 0.3), w_ * 0.5 + 1.5, s * 0.36 + 1.5, rim)
+		b.ellipse(Vector2(sx * w_ * 0.4, s * 0.3), w_ * 0.5, s * 0.36, col.darkened(0.04))
+		b.ellipse(Vector2(sx * w_ * 0.62, -s * 0.12), w_ * 0.7 + 1.5, s * 0.5 + 1.5, rim)
+		b.ellipse(Vector2(sx * w_ * 0.62, -s * 0.12), w_ * 0.7, s * 0.5, col)
+		b.ellipse(Vector2(sx * w_ * 0.78, -s * 0.18), w_ * 0.18, s * 0.16, Color(MOTH_BODY, 0.5))
+		b.ellipse(Vector2(sx * w_ * 0.42, -s * 0.34), w_ * 0.26, s * 0.12, Color(1.0, 1.0, 1.0, 0.45))
+	b.ellipse(Vector2(0.0, s * 0.12), s * 0.2, s * 0.5, MOTH_BODY)
+	for k in 2:
+		b.stroke(PackedVector2Array([Vector2(-s * 0.16, s * (0.18 + 0.18 * k)), Vector2(s * 0.16, s * (0.18 + 0.18 * k))]),
+			maxf(1.0, s * 0.05), MOTH_BODY.darkened(0.18))
+	b.disc(Vector2(0.0, -s * 0.34), s * 0.27, MOTH_BODY.lightened(0.35))
+	for sx: float in [-1.0, 1.0]:
+		b.disc(Vector2(sx * s * 0.1, -s * 0.38), maxf(1.2, s * 0.055), Pal.OUTLINE)
+		var foot := Vector2(sx * s * 0.08, -s * 0.56)
+		var tip := Vector2(sx * s * 0.42, -s * 0.9)
+		var arc := Face.Builder.bezier2(foot, Vector2(sx * s * 0.12, -s * 0.9), tip, 8)
+		arc.append(tip)
+		b.stroke(arc, maxf(1.2, s * 0.06), MOTH_BODY.darkened(0.3))
+		b.ellipse(tip, s * 0.1, s * 0.07, MOTH_BODY.darkened(0.15))
+	var mesh := b.mesh()
+	_moth_meshes[key] = mesh
+	return mesh
+
+## The heart of smoke a lantern puffs: a soft ring in the shape of a heart,
+## a wide faint stroke under a narrower pale one.
+func _smoke_heart() -> ArrayMesh:
+	if _smoke_mesh != null:
+		return _smoke_mesh
+	var b := Face.Builder.new()
+	var s := SMOKE_R * _cell
+	var pts := _heart(Vector2(0.0, 0.0), s, 0)
+	b.stroke(pts, s * 0.4, Color(Pal.SHADOW_TINT, 0.45), true)
+	b.stroke(pts, s * 0.2, Color(Pal.SURFACE, 0.95), true)
+	_smoke_mesh = b.mesh()
+	return _smoke_mesh
+
+## A purring cat's little heart: the hearts' pink with a shine.
+func _purr_heart() -> ArrayMesh:
+	if _purr_mesh != null:
+		return _purr_mesh
+	var b := Face.Builder.new()
+	var s := PURR_R * _cell
+	b.polygon(_heart(Vector2.ZERO, s * 1.14, 0), Pal.SURFACE)
+	b.polygon(_heart(Vector2.ZERO, s, 0), Pal.FLOWER)
+	b.ellipse(Vector2(-0.45, -0.5) * s, 0.2 * s, 0.13 * s, Color(1.0, 1.0, 1.0, 0.6))
+	_purr_mesh = b.mesh()
+	return _purr_mesh
+
+## A paper sky lantern, SKY_SIZE cells tall about its middle: a soft glow
+## round it, a paper body wider at the top with its ribs and a shaded side,
+## a cap, and the flame showing warm through the open foot.
+func _sky_lantern() -> ArrayMesh:
+	if _sky_mesh != null:
+		return _sky_mesh
+	var b := Face.Builder.new()
+	var s := SKY_SIZE * _cell
+	Scenery.soft_disc(b, Vector2(0.0, s * 0.05), s * 0.95, s * 0.95, Color(Pal.SUN_RAY, 0.42))
+	var paper: Color = (Pal.LANTERN_PAPER[0][0] as Color).lerp(Pal.LANTERN_LIT, 0.55)
+	var deep: Color = Pal.LANTERN_PAPER[0][1]
+	var body := PackedVector2Array([Vector2(-0.34, -0.46) * s, Vector2(0.34, -0.46) * s,
+		Vector2(0.25, 0.4) * s, Vector2(-0.25, 0.4) * s])
+	var rim := PackedVector2Array()
+	for p in body:
+		rim.append(p * 1.08 + Vector2(0.0, 0.01 * s))
+	b.fan(rim, deep)
+	b.fan(body, paper)
+	# The shaded right side and the ribs.
+	b.fan(PackedVector2Array([Vector2(0.14, -0.46) * s, Vector2(0.34, -0.46) * s,
+		Vector2(0.25, 0.4) * s, Vector2(0.1, 0.4) * s]), Color(deep, 0.35))
+	for x in [-0.12, 0.12]:
+		b.stroke(PackedVector2Array([Vector2(x * 1.3, -0.44) * s, Vector2(x, 0.38) * s]),
+			maxf(1.0, s * 0.03), Color(deep, 0.4))
+	b.fan(Face.Builder.round_rect(Vector2(-0.3, -0.5) * s, Vector2(0.6, 0.1) * s, 0.04 * s), deep)
+	# The glow from inside, strongest low where the flame is.
+	b.ellipse(Vector2(0.0, 0.14) * s, 0.2 * s, 0.24 * s, Color(Pal.LANTERN_LIT, 0.8))
+	b.ellipse(Vector2(0.0, 0.41) * s, 0.25 * s, 0.06 * s, Color(deep.darkened(0.2), 1.0))
+	b.ellipse(Vector2(0.0, 0.4) * s, 0.09 * s, 0.05 * s, Pal.SUN_RAY)
+	b.ellipse(Vector2(-0.18, -0.25) * s, 0.06 * s, 0.14 * s, Color(1.0, 1.0, 1.0, 0.35))
+	_sky_mesh = b.mesh()
+	return _sky_mesh
+
+## The party's garland: small round paper lanterns on a string across the top
+## of the court, `e` seconds after it began to drop in, swinging to rest. It
+## is rebuilt while it swings and kept once it has come to rest.
+func _draw_garland(e: float, shown: Array) -> void:
+	var still := Motion.reduce or e >= GARLAND_SETTLE
+	if still and _garland_mesh != null:
+		shown.append(_garland_mesh)
+		_life_layer.draw_mesh(_garland_mesh, null)
+		return
+	var b := Face.Builder.new()
+	_build_garland(b, GARLAND_SETTLE if still else e)
+	var mesh := b.mesh()
+	if still:
+		_garland_mesh = mesh
+	shown.append(mesh)
+	_life_layer.draw_mesh(mesh, null)
+
+func _build_garland(b, e: float) -> void:
+	var field := Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
+	var left := field.position + Vector2(-_cell * 0.12, -_cell * 0.1)
+	var right := Vector2(field.end.x + _cell * 0.12, left.y)
+	var drop := 1.0 if Motion.reduce else Motion.back_out(clampf(e / GARLAND_TIME, 0.0, 1.0))
+	var sag := _cell * GARLAND_SAG * drop
+	var calm := 0.0 if Motion.reduce else maxf(0.0, 1.0 - e / GARLAND_SETTLE)
+	var swing := sin(e * 4.0) * 0.22 * calm * calm
+	var pts := PackedVector2Array()
+	const STEPS := 28
+	for i in STEPS + 1:
+		var u := float(i) / STEPS
+		pts.append(left.lerp(right, u) + Vector2(0.0, sag * 4.0 * u * (1.0 - u)))
+	b.stroke(pts, maxf(2.0, _cell * 0.025), Pal.CORD_DEEP)
+	for p in [left, right]:
+		b.disc(p, _cell * 0.04, Pal.CORD_DEEP)
+	var n := maxi(5, int(field.size.x / (_cell * GARLAND_EVERY)))
+	var s := _cell * GARLAND_SIZE
+	for k in n:
+		var u := (k + 0.5) / n
+		var p := left.lerp(right, u) + Vector2(0.0, sag * 4.0 * u * (1.0 - u))
+		var turn := swing * (1.0 if k % 2 == 0 else -0.8) * (0.6 + 0.4 * sin(k * 1.7))
+		var xf := Transform2D(turn, Vector2(drop, drop), 0.0, p)
+		var paper: Array = Pal.LANTERN_PAPER[(k * 2) % Pal.LANTERN_PAPER.size()]
+		var skin: Color = (paper[0] as Color).lerp(Pal.LANTERN_LIT, 0.3)
+		var edge: Color = paper[1]
+		var mid := Vector2(0.0, 0.62 * s)
+		_shape(b, xf, PackedVector2Array([Vector2(-0.02 * s, 0.0), Vector2(0.02 * s, 0.0),
+			Vector2(0.02 * s, 0.2 * s), Vector2(-0.02 * s, 0.2 * s)]), Pal.CORD_DEEP)
+		_shape(b, xf, Face.Builder.ring(mid + Vector2(0.0, 0.03 * s), 0.42 * s, 0.4 * s), edge)
+		_shape(b, xf, Face.Builder.ring(mid, 0.42 * s, 0.37 * s), skin)
+		_shape(b, xf, Face.Builder.ring(mid + Vector2(0.0, 0.04 * s), 0.18 * s, 0.2 * s), Color(Pal.LANTERN_LIT, 0.85))
+		for sx: float in [-1.0, 1.0]:
+			var rib := PackedVector2Array()
+			for j in 7:
+				var a := lerpf(-1.2, 1.2, j / 6.0)
+				rib.append(xf * (mid + Vector2(sx * 0.22 * s * cos(a * 0.9), 0.37 * s * sin(a))))
+			b.stroke(rib, maxf(1.0, s * 0.04), Color(edge, 0.55))
+		_shape(b, xf, Face.Builder.round_rect(Vector2(-0.17, 0.17) * s, Vector2(0.34, 0.1) * s, 0.04 * s), Pal.LANTERN)
+		_shape(b, xf, Face.Builder.round_rect(Vector2(-0.14, 0.99) * s, Vector2(0.28, 0.09) * s, 0.04 * s), Pal.LANTERN)
+		_shape(b, xf, Face.Builder.ring(mid + Vector2(-0.18, -0.14) * s, 0.07 * s, 0.1 * s), Color(1.0, 1.0, 1.0, 0.4))
+
+## After the solve wave (`lead` from now): the seal, when the solve earned
+## one (flawless, or any Insane court), stamps onto the court's lower right;
+## hats pop onto every lantern and cat along the diagonal, the garland drops
+## in across the top, confetti sweeps the court, the moths come out, and every
+## lamp lets a paper sky lantern go. Under reduce-motion the seal and the
+## garland stand still and there is no more.
+func _party(lead: float) -> void:
+	var now := _now()
+	if _flawless or _insane():
+		_stamp_at = now if Motion.reduce else now + lead + CLEAR_TIME + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	_garland_at = now if Motion.reduce else now + lead + PARTY_AT
+	_garland_mesh = null
+	_after(_garland_at - now, func() -> void: _life_layer.queue_redraw())
+	if Motion.reduce:
+		return
+	var at := lead + PARTY_AT
+	var faces: Array = []
+	for cell in state.lamps():
+		faces.append([cell, _lamp_node(cell)])
+	for cell in _cats:
+		faces.append([cell, _cats[cell]])
+	for pair in faces:
+		var cell: Vector2i = pair[0]
+		var face: Face = pair[1]
+		face.hat_style = posmod(hash(cell), 7)
+		var tw: Tween = face.create_tween()
+		tw.tween_property(face, "hat", 1.0, PARTY_HAT).from(0.0) \
+			.set_delay(at + Motion.stagger(cell.x + cell.y, PARTY_HAT_STAGGER)) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_gag_tw[face] = tw
+	_after(at, func() -> void:
+		var field := Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell), 30, field.size.x * 0.8)
+		fx.cue("party")
+		for k in MOTH_PARTY:
+			_spawn_fly(_flies.size() + k))
+	_after(at + 0.45, func() -> void:
+		var field := Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
+		fx.confetti(field.get_center(), 24, field.size.x * 0.6))
+	var sky := at + PARTY_HAT + SKY_AT
+	for cell in state.lamps():
+		_sky.append({"cell": cell, "t": now + sky + Motion.stagger(cell.x + cell.y, SKY_STAGGER),
+			"phase": _hash(cell) * TAU})
+	_after(sky, func() -> void: fx.cue("lanterns"))
+	# The moths stay for the win screen's first look and then fly off, so the
+	# solved court goes quiet instead of redrawing for ever.
+	_after(at + FLIES_STAY, func() -> void:
+		for f in _flies:
+			f.leave = true)
+	_anim_until = maxf(_anim_until, now + at + PARTY_HAT + 1.0)
+
+## An Insane court: Cat Naps, or the old band 3 when the bank is empty.
+func _insane() -> bool:
+	return state.band == 3
+
+## The seal on the court's lower right, dropping in from STAMP_FROM its size
+## and settling with the back ease's overshoot, its words over it.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var field := Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
+	var rad := field.size.x * STAMP_R
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, _insane())
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := field.end - Vector2(rad, rad) * 1.05
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if _insane():
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02], [tr("LU_CAT_SEAL") if not _flawless else tr("BN_FLAWLESS"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+# --- the light over the cats ---
+
+## The stretches of beam that cross a cat's stone, drawn again over her so
+## the light is seen to pass over her, in the floor's own transform.
+func _draw_veil() -> void:
+	if _veil_segs.is_empty() or _cell <= 0.0:
+		_veil_shown = null
+		return
+	var b := Face.Builder.new()
+	for seg: Array in _veil_segs:
+		_shaft(b, seg[0], seg[1], seg[2], seg[3], seg[4])
+	var since := _now() - _opened - Motion.ENTER_DELAY
+	var grown := Motion.wide_pop_scale(since)
+	_veil_shown = b.mesh()
+	_veil_layer.draw_mesh(_veil_shown, null,
+		Transform2D(0.0, Vector2(grown, grown), 0.0, _court_centre()),
+		Color(1.0, 1.0, 1.0, Motion.appear_level(since)))
+
 # --- entrance ---
 
 ## The chrome is the host's; here the court pops in wide and the blocks pop
@@ -1653,8 +3199,13 @@ func _enter() -> void:
 	var far := 0
 	for y in state.h:
 		for x in state.w:
-			if int(state.grid[y][x]) != Gen.WHITE:
+			if not state.is_white(Vector2i(x, y)):
 				far = maxi(far, x + y)
+	# The cats land on their cushions with the blocks, along the same diagonal.
+	for cell in _cats:
+		var cat: NapCat = _cats[cell]
+		Motion.stop(_look_tw.get(cat))
+		_look_tw[cat] = Motion.pop_in(cat, Motion.POP_IN, _enter_delay(cell.x + cell.y))
 	_busy_for(maxf(_enter_delay(far) + Motion.POP_IN, Motion.ENTER_DELAY + Motion.ENTER_POP))
 	fx.cue("enter")
 
@@ -1671,8 +3222,11 @@ func _stop_all() -> void:
 		Motion.stop(tw)
 	for tw in _look_tw.values():
 		Motion.stop(tw)
+	for tw in _gag_tw.values():
+		Motion.stop(tw)
 	_pos_tw = {}
 	_look_tw = {}
+	_gag_tw = {}
 
 ## Runs `what` after `delay`, unless the board has been rebuilt meanwhile.
 func _after(delay: float, what: Callable) -> void:
@@ -1692,6 +3246,14 @@ func _process(delta: float) -> void:
 	if now < _anim_until:
 		_place_light(now)
 		queue_redraw()
+	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+		_heart_layer.queue_redraw()
+	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+		_combo_layer.queue_redraw()
+	if _tick_life(now):
+		_fly(delta)
+		_life_layer.queue_redraw()
 
 ## Something on the court changed: rebuild it on the next draw.
 func _redraw() -> void:

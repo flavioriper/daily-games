@@ -256,15 +256,38 @@ SETS = {
     },
     # Light Up: paper lamps set down in a stone courtyard light their rows.
     "lightup": {
-        "place":    ("a tiny soft wooden tap with a warm gentle glow shimmer, a little paper lamp set down and lit, very short", 0.5, -6),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
         "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
         "reset":    ("a soft quick ripple of small wooden pops and a gentle airy puff, little lamps being blown out", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
         "enter":    ("a soft airy cascade of tiny wooden and stone pops rolling in, a courtyard of stones appearing", 1.0, -9),
+        # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-lightup-polish-design.md):
+        # place, locked, undo and check re-prompted toward paper, felt and
+        # kalimba, as Shikaku's and Tents' were the same day -- the bonk, the
+        # tape rewind and the wooden boops read as a scold or a toy.
+        "place":    ("a soft paper lantern gently set down on smooth stone with a tiny papery rustle and a warm little glow swelling, gentle and round, very short", 0.5, -7, COZY),
+        "strike":   ("a lamp softly blown out, a tiny gentle breath and a small paper lantern settling, warm and hushed, very short", 0.5, -11, COZY),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        # chip / clear tick per stone of a sweep, pitched up as it grows.
+        "chip":     ("a single tiny soft click of a small slate chip set down on a stone floor, very short and quiet", 0.5, -13, COZY),
+        "clear":    ("a tiny soft brush of a hand over a smooth stone floor, one hushed light sweep, very short and quiet", 0.5, -14, COZY),
+        # combo: layered over place and pitched up the pentatonic by the streak.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
+        "puff":     ("a little paper lantern puffing out a small soft smoke ring shaped like a heart, a gentle round 'poof' with a tiny sweet kalimba twinkle, silly and cute", 0.8, -9),
+        "snail":    ("a tiny snail carrying a little lantern slides past, a soft slidey squeak and a tiny tinkling bell, cute and gentle", 1.0, -10),
+        "moth":     ("a soft papery flutter of a small moth's wings arriving at a lantern, with a tiny glockenspiel twinkle, light and delicate", 0.8, -11, COZY),
+        "purr":     ("a content little cat purring briefly on a soft cushion, cozy, soft and warm, short", 1.0, -10, COZY),
+        "wake":     ("a small cat woken by a light, one short cross little mew, cute and grumpy, not a hiss, short", 0.6, -10, COZY),
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a lantern dimming, never a buzzer", 0.6, -15),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn by lantern light, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little paper lanterns at the end, joyful and warm", 2.0, -4),
+        "lanterns": ("sky lanterns rising into the night, an airy warm whoosh drifting upward with a soft glockenspiel shimmer, gentle and magical", 2.0, -7),
     },
     # One Line: a snail walks every line between posts exactly once.
     "oneline": {

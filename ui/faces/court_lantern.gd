@@ -34,6 +34,18 @@ const PAPER := 0
 ## on the glow layer, so a flickering lamp rebuilds no mesh.
 const FLICKER := 0.05
 const FLICKER_PERIOD := 2.2
+## A wrong lamp guttering out (Hard and Insane, the polish spec's section 1):
+## at `gutter` 1 its halo has shrunk by GUTTER_SHRINK and sputtered
+## GUTTER_SPUTTERS times on the way, by up to GUTTER_SPUTTER of its size. The
+## body's warmth goes with the floor it stands on (the board draws the light
+## back along the beam), so this is only the flame: a transform on the glow
+## layer, which rebuilds nothing.
+const GUTTER_SHRINK := 0.75
+const GUTTER_SPUTTER := 0.12
+const GUTTER_SPUTTERS := 5.0
+## A right lamp's candle flaring (the polish spec's section 3): at `flare` 1
+## the halo is FLARE_GROW bigger. A transform on the glow, like the flicker.
+const FLARE_GROW := 0.45
 
 ## A lamp that can see another lamp down a line.
 var bad: bool = false:
@@ -52,6 +64,18 @@ var flicker: float = 1.0:
 		flicker = v
 		queue_redraw()
 
+## 0 burning, 1 guttered out. The board tweens it on a wrong lamp.
+var gutter: float = 0.0:
+	set(v):
+		gutter = v
+		queue_redraw()
+
+## 0 at rest, 1 at the top of a right lamp's flare. The board tweens it.
+var flare: float = 0.0:
+	set(v):
+		flare = v
+		queue_redraw()
+
 func _idle_motion() -> Tween:
 	var phase := randf() * TAU
 	var tw := create_tween().set_loops()
@@ -66,8 +90,18 @@ func _stop_idle() -> void:
 
 func _layer_transform(name: String, R: float, centre: Vector2) -> Transform2D:
 	if name == "glow":
-		return Transform2D(0.0, Vector2.ONE * flicker, 0.0, centre)
+		var s := flicker * (1.0 + FLARE_GROW * flare)
+		if gutter > 0.0:
+			s *= (1.0 - GUTTER_SHRINK * gutter) * (1.0 + GUTTER_SPUTTER * sin(TAU * GUTTER_SPUTTERS * gutter) * (1.0 - gutter))
+		return Transform2D(0.0, Vector2.ONE * s, 0.0, centre)
 	return super(name, R, centre)
+
+## The glasses sit on the paper's face, and the party hat on the iron cap.
+func _face_frame(R: float) -> Array:
+	return [Vector2(0.0, -0.02 * R), 0.88 * R]
+
+func _hat_place(R: float) -> Array:
+	return [Vector2(0.0, -1.06 * R), -0.14, 0.86 * R]
 
 func _kind() -> String:
 	return "courtlamp%d%d_%d" % [int(bad), int(pinned), int(_lit_level() * 4.0)]
