@@ -18,6 +18,7 @@ const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Cloth = preload("res://ui/faces/patch_cloth.gd")
+const LanternFace = preload("res://ui/faces/lantern_face.gd")
 
 const GRID := 4
 const GAP := 10.0
@@ -77,6 +78,13 @@ func _build_pieces() -> void:
 			var mushroom := MushroomFace.new()
 			mushroom.sprig = true
 			_add_piece(mushroom)
+		"fairylights":
+			var lantern := LanternFace.new()
+			lantern.iron = true
+			lantern.dims = true
+			lantern.hue = 2
+			lantern.plain = true
+			_add_piece(lantern)
 
 func _add_piece(piece: Control) -> void:
 	piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -98,6 +106,9 @@ func _layout_pieces() -> void:
 	if _pieces.is_empty() or size.x <= 0.0:
 		return
 	var board := _board_rect()
+	if puzzle_id == "fairylights":
+		_layout_fairylights(board)
+		return
 	var cell := (board.size.x - GAP * (GRID - 1)) / GRID
 	var a := board.position + Vector2(cell * 1.5 + GAP, cell * 1.5 + GAP)
 	var b := board.position + Vector2(cell * 2.5 + GAP * 2.0, cell * 2.5 + GAP * 2.0)
@@ -125,7 +136,9 @@ func _animate() -> void:
 	_loop = create_tween().set_loops()
 	# Bridges lays three planks and Quilt drags two patches in one loop, so
 	# they take their time.
-	_loop.tween_property(self, "_progress", 1.0, 2.4 if puzzle_id in ["bridges", "quilt"] else 0.9).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Fairy Lights taps, turns and then lets the light run, so it is between.
+	var span := 2.4 if puzzle_id in ["bridges", "quilt"] else (1.7 if puzzle_id == "fairylights" else 0.9)
+	_loop.tween_property(self, "_progress", 1.0, span).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(1.35)
 	_loop.tween_property(self, "_progress", 0.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(0.55)
@@ -138,6 +151,9 @@ func _draw() -> void:
 		return
 	if puzzle_id == "quilt":
 		_draw_quilt(board, cell)
+		return
+	if puzzle_id == "fairylights":
+		_draw_fairylights(board)
 		return
 	for r in GRID:
 		for c in GRID:
@@ -304,6 +320,120 @@ func _draw_quilt(board: Rect2, cell: float) -> void:
 		draw_circle(tip, cell * 0.17, Color(Pal.SURFACE, 0.95))
 		draw_arc(tip, cell * 0.17, 0.0, TAU, 24, Pal.LINE, 3.0, true)
 
+## Fairy Lights' lesson on its own little garden (the polish, 2026-09-30; it
+## had none and fell through to four blank squares and "make one clear move").
+## Three paving stones in a wooden frame: the lantern post on the left with its
+## wire running east, a straight piece in the middle standing the wrong way
+## with its ends stopping short, and a lantern on the right. A finger taps the
+## middle piece, it turns a quarter, the ends join, and the light runs gold
+## from the post along the wire to the lantern, which wakes: tap, turn, light.
+func _draw_fairylights(board: Rect2) -> void:
+	var p := _progress
+	var g := _fl_geometry(board)
+	var s: float = g.cell
+	var mids: Array = g.mids
+	var span := Rect2(Vector2(mids[0].x - s * 0.5, mids[0].y - s * 0.5), Vector2(s * 3.0, s))
+	# The wooden frame, the grout and three stones.
+	draw_style_box(_fl_box(Pal.PLAQUE_DEEP, 22), Rect2(span.position - Vector2(18.0, 13.0), span.size + Vector2(36.0, 36.0)))
+	draw_style_box(_fl_box(Pal.PLAQUE, 22), span.grow(18.0))
+	draw_style_box(_fl_box(Color("e2d5ba"), 14), span.grow(3.0))
+	for k in 3:
+		var stone := Rect2(mids[k] - Vector2.ONE * (s * 0.5 - 4.0), Vector2.ONE * (s - 8.0))
+		draw_style_box(_fl_box(Color("dccdb0"), 12), stone)
+		draw_style_box(_fl_box(Pal.SURFACE.lerp(Pal.PARCHMENT, 0.4 + 0.15 * k), 12), Rect2(stone.position, stone.size - Vector2(0.0, 4.0)))
+	# The middle piece turns a quarter between 0.3 and 0.5 of the loop.
+	var u := clampf((p - 0.3) / 0.2, 0.0, 1.0)
+	var angle := PI * 0.5 * (1.0 - Motion.back_out(u))
+	var joined := u >= 1.0
+	# How far along the wire the light has run, post to lantern, from 0.55.
+	var run := clampf((p - 0.55) / 0.3, 0.0, 1.0) if joined else 0.0
+	var w := s * 0.13
+	var half := s * 0.5
+	var pale := Pal.FLAGSTONE
+	var lit := Pal.SUN
+	var reach := half if joined else half * 0.7
+	var x0: float = mids[0].x
+	var x_end: float = mids[2].x
+	var run_to := lerpf(x0, x_end, run)
+	# The post's arm, always live; the lantern's arm and the middle piece gold
+	# where the run has reached.
+	var y: float = mids[0].y
+	_fl_wire(Vector2(x0, y), Vector2(x0 + reach, y), w, lit, 1.0)
+	var mid: Vector2 = mids[1]
+	var dir := Vector2.from_angle(angle)
+	var a_end := mid - dir * reach
+	var b_end := mid + dir * reach
+	_fl_wire(a_end, b_end, w, pale, 0.0)
+	if run > 0.0:
+		var from := Vector2(maxf(a_end.x, x0), y)
+		var to := Vector2(minf(run_to, b_end.x), y)
+		if to.x > from.x:
+			_fl_wire(from, to, w, lit, 1.0)
+	var l_end := Vector2(mids[2].x - reach, y)
+	_fl_wire(l_end, Vector2(mids[2].x, y), w, pale, 0.0)
+	if run_to > l_end.x:
+		_fl_wire(l_end, Vector2(minf(run_to, mids[2].x), y), w, lit, 1.0)
+	# The post: iron, and a sun in its glass that is never out.
+	var R := s * 0.34
+	var post: Vector2 = mids[0]
+	draw_circle(post + Vector2(0.0, -0.4) * R, R * 1.1, Color(Pal.SUN, 0.18))
+	draw_rect(Rect2(post + Vector2(-0.13, -0.1) * R, Vector2(0.26, 0.96) * R), Pal.LANTERN)
+	draw_rect(Rect2(post + Vector2(-0.46, 0.76) * R, Vector2(0.92, 0.22) * R), Pal.LANTERN)
+	draw_circle(post + Vector2(0.0, -0.42) * R, 0.52 * R, Pal.SUN_DEEP)
+	draw_circle(post + Vector2(0.0, -0.46) * R, 0.46 * R, Pal.SUN)
+	draw_rect(Rect2(post + Vector2(-0.34, -1.08) * R, Vector2(0.68, 0.24) * R), Pal.LANTERN)
+	# The finger: comes down on the middle piece, taps, and lifts as it turns.
+	if p > 0.05 and p < 0.45:
+		var down := clampf((p - 0.05) / 0.2, 0.0, 1.0)
+		var tip := mid + Vector2(s * 0.18, s * 0.26 + (1.0 - down) * s * 0.3)
+		if p > 0.25:
+			draw_arc(mid, s * (0.2 + (p - 0.25) * 1.2), 0.0, TAU, 32, Color(Pal.SUN_DEEP, 1.0 - (p - 0.25) / 0.2), 4.0, true)
+		draw_circle(tip + Vector2(4.0, 8.0), s * 0.15, Color(Pal.TEXT, 0.16))
+		draw_circle(tip, s * 0.13, Color(Pal.SURFACE, 0.95))
+		draw_arc(tip, s * 0.13, 0.0, TAU, 24, Pal.LINE, 3.0, true)
+
+## One length of garden wire from `a` to `b`, `w` wide, with round ends, a
+## soft glow under it when `glow` is up and a pale back along its top.
+func _fl_wire(a: Vector2, b: Vector2, w: float, colour: Color, glow: float) -> void:
+	if glow > 0.0:
+		draw_line(a, b, Color(Pal.SUN_RAY, 0.3 * glow), w * 2.6, true)
+		draw_circle(a, w * 1.3, Color(Pal.SUN_RAY, 0.3 * glow))
+		draw_circle(b, w * 1.3, Color(Pal.SUN_RAY, 0.3 * glow))
+	draw_line(a + Vector2(0.0, 4.0), b + Vector2(0.0, 4.0), Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, glow), w, true)
+	for at in [a, b]:
+		draw_circle(at + Vector2(0.0, 4.0), w * 0.5, Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, glow))
+		draw_circle(at, w * 0.5, colour)
+	draw_line(a, b, colour, w, true)
+	draw_line(a + Vector2(0.0, -w * 0.12), b + Vector2(0.0, -w * 0.12), Color(Pal.LANTERN_LIT, 0.35 + 0.45 * glow), w * 0.36, true)
+
+func _fl_box(fill: Color, radius: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(radius)
+	sb.anti_aliasing = true
+	return sb
+
+## The little garden's three cells: their size and centres, in a row across
+## the middle of the board rect.
+func _fl_geometry(board: Rect2) -> Dictionary:
+	var s := minf(board.size.x / 3.4, board.size.y * 0.5)
+	var c := board.get_center()
+	return {"cell": s, "mids": [c + Vector2(-s, 0.0), c, c + Vector2(s, 0.0)]}
+
+## The lantern on the right-hand stone: it wakes once the run reaches it.
+func _layout_fairylights(board: Rect2) -> void:
+	var g := _fl_geometry(board)
+	var s: float = g.cell
+	var at: Vector2 = (g.mids as Array)[2]
+	var lantern := _pieces[0] as LanternFace
+	lantern.size = Vector2.ONE * s * 0.27 * LanternFace.SEAT
+	lantern.pivot_offset = lantern.size * 0.5
+	lantern.position = at - lantern.size * 0.5
+	var lit := clampf((_progress - 0.83) / 0.08, 0.0, 1.0)
+	lantern.lit = lit
+	lantern.plain = lit <= 0.0
+	lantern.scale = Vector2.ONE * (1.0 + 0.12 * sin(lit * PI))
+
 func _quilt_shape(cells: Array, at: Vector2, cell: float, face: Color, deep: Color) -> void:
 	for loop: PackedVector2Array in Cloth.loops(cells):
 		var pts := PackedVector2Array()
@@ -345,6 +475,7 @@ func _lesson() -> String:
 		"quilt": return tr("HTP_LESSON_QL")
 		"planes": return tr("HTP_LESSON_PP")
 		"rings": return tr("HTP_LESSON_RG")
+		"fairylights": return tr("HTP_LESSON_FL")
 		_: return tr("HTP_LESSON_ANY")
 
 func _board_rect() -> Rect2:
