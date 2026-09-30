@@ -585,6 +585,8 @@ var _dark_at: PackedFloat64Array = PackedFloat64Array()
 var _press_cell := -1
 var _press_down := AGO
 var _press_up := -1.0
+## The touch index of the finger that is down (-1 for the mouse).
+var _press_finger := -1
 
 ## The rewards (polish section 3). Whether the solve was flawless and whether
 ## an undo was ever taken (Easy and Medium's measure of it); the streak, and a
@@ -1756,6 +1758,11 @@ func _settle(before: PackedInt32Array, at: float, by_turn := false) -> void:
 	var lanterns: Dictionary = {}
 	for i in state.lanterns():
 		lanterns[i] = true
+	# A chime still to come for a lantern this move put out is dropped with
+	# it: an undo or a reset that cuts a lantern off before the wash reached
+	# it would otherwise still ring it awake -- and play its gag -- over a
+	# lantern going dark.
+	_wake_cues = _wake_cues.filter(func(c): return now_d[int(c.cell)] >= 0)
 	var last := at
 	for i in cells:
 		var was := before[i] >= 0
@@ -1962,30 +1969,45 @@ func _enter() -> void:
 ## One tap, one quarter turn clockwise, and nothing else on the screen. No
 ## drag, no long press and no second direction. The press sinks and shades
 ## the piece under the finger (and springs it if the finger slides off); the
-## turn fires on the release, over whichever piece the finger lifted from.
+## turn fires on the release, and only over the piece the finger went down
+## on while it is still held -- a finger that slid off has let go, which is
+## what the spring already told it.
+##
+## **One finger turns a piece** (Quilt's review): the press keeps its touch
+## index (-1 for the mouse), and another finger's press, slide and release
+## are ignored outright, so a thumb resting on the garden neither turns a
+## second piece nor steals the dip -- on Hard and Insane a stray turn can be
+## a fuse. A touch the system cancels springs the piece and turns nothing. A
+## new press from the same finger replaces a press whose release never came.
 func _gui_input(event: InputEvent) -> void:
 	if _done or out_of_hearts:
 		return
 	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
+	var finger: int = event.index if (event is InputEventScreenTouch or event is InputEventScreenDrag) else -1
 	if event is InputEventScreenDrag or event is InputEventMouseMotion:
-		if _held() and _cell_at(event.position) != _press_cell:
+		if _held() and finger == _press_finger and _cell_at(event.position) != _press_cell:
 			_release_press()
 		return
 	if not (event is InputEventScreenTouch or event is InputEventMouseButton):
 		return
 	var i := _cell_at(event.position)
 	if event.pressed:
+		if _held() and finger != _press_finger:
+			accept_event()
+			return
+		# A fuse holds every tap until it has played out.
 		if i >= 0 and not _fusing():
 			accept_event()
+			_press_finger = finger
 			_press(i)
 		return
-	_release_press()
-	if i < 0:
+	if not _held() or finger != _press_finger:
 		return
+	var pressed_on := _press_cell
+	_release_press()
 	accept_event()
-	# A fuse holds every tap until it has played out.
-	if _fusing():
+	if event.is_canceled() or i != pressed_on or _fusing():
 		return
 	_turn(i)
 
@@ -2124,6 +2146,8 @@ func _run_out() -> void:
 	_asleep = true
 	_release_press()
 	_break_streak()
+	# The garden goes dark: no lantern still to wake chimes into it.
+	_wake_cues = []
 	_tip_timer.stop()
 	fx.cue("out_of_hearts")
 	_say(tr("FL_OUT"), Face.Expr.SLEEPY)
@@ -2393,7 +2417,7 @@ func _break_streak() -> void:
 ## hash per lantern clumps). None under reduce motion, and none on the
 ## winning turn, whose party is coming.
 func _on_lantern_woke(i: int, by_turn: bool) -> void:
-	if not by_turn or Motion.reduce or is_done() or _gag_turn == state.turns:
+	if not by_turn or Motion.reduce or is_done() or out_of_hearts or _gag_turn == state.turns:
 		return
 	var k: int = state.lanterns().find(i)
 	var roll := posmod(hash(str(state.sol) + str(state.post)) + k * 2, GAG_ODDS)
@@ -3075,11 +3099,17 @@ func hint() -> bool:
 	check_solved()
 	return true
 
+## Whether Reset can do anything now: the top bar greys it while a fuse plays
+## out and once the hearts are gone (Try again is the way back then), so the
+## host never logs a board_reset that did nothing.
+func can_reset() -> bool:
+	return not (is_done() or out_of_hearts or _fusing())
+
 ## Every unpinned piece back to the scramble it was dealt. A pinned piece
 ## stays, because a hint is a given.
 ## The hearts and the clips stay as they are: only Try again gives those back.
 func reset_board() -> void:
-	if out_of_hearts or _fusing():
+	if not can_reset():
 		return
 	_release_press()
 	_break_streak()
