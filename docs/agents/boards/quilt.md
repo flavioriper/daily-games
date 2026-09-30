@@ -71,11 +71,12 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 
 ## The polish, board side (2026-09-30, spec `2026-09-30-quilt-polish-design.md` sections 1-3)
 
-- **A press does not lift until the finger moves** (or `GROW_WAIT`, 0.12 s):
-  a press let go within `TAP_PX` 14 and `TAP_TIME` 0.3 s is a tap, which
-  wiggles the patch where it lies and says `QL_TAP` (a sewn patch on Easy and
-  Medium goes straight back with its seams whole and says `QL_TIP_OFF`).
-  `_hold_state()` answers CLEAR until then, so a tap never flashes a ghost.
+- **A press does not lift until the finger moves past `TAP_PX`** (14), and
+  time alone never makes it a drag: a press let go without moving that far is
+  a tap, however long it was held, which wiggles the patch where it lies and
+  says `QL_TAP` (a sewn patch on Easy and Medium says `QL_TIP_OFF`; it was
+  never taken, so its seams stay whole). `_hold_state()` answers CLEAR and
+  `_in_hand()` -1 until then, so a tap never flashes a ghost.
 - **Sticky snap lives in `_target()`**, not in `_held_origin()`:
   `tests/test_quilt_board.gd` holds `_held_origin()` to the raw rounded cell
   (the wrap regression), and the ghost and the release both read `_target()`.
@@ -147,3 +148,38 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   solve 93 Easy / 91 Insane (92 on ANGLE), restore 88-90, reduce motion
   86-88, out 105. No idle life was added beyond the curled cat's "z".
 
+
+## Review findings, fixed (2026-09-30)
+
+- **One finger holds the patch** (Hedgehogs' rule): `_drag.finger` is the
+  touch index (-1 mouse); another finger's press, drag and release are
+  ignored. Before, a second finger's release judged the first finger's patch
+  and cost a heart on Hard/Insane. A cancelled touch goes through
+  `_cancel_drag()` -- the patch back where it was taken from, unjudged, no
+  history -- and Undo, Hint and Reset call it first, so none strands a
+  patch that `take()` had lifted.
+- **Tap vs drag is distance only** (see above). The old pair (lift at 0.12 s,
+  tap judged at 0.3 s) let the outline promise a spot the release would not
+  use, and a still hold nudged a sewn patch a row up. `take()` now waits for
+  the drag (`_begin_lift`).
+- **SNAG off the left/top edge**: `_hold_state()` counts cells over the quilt
+  from the unclamped `_held_cells()`, not from `_held_origin()` (-1 whenever
+  the patch's (0, 0) is off the edge), so an L hanging off the left with
+  cells over the quilt halos and is refused instead of taken off quietly
+  (114 such holds probed across the four bands, all SNAG).
+- **Scrap Basket colours**: `State.cloth_of` (spec section 3); every
+  `Cloth.*` call on the board and the share's squares go through it. Probed
+  on all 150 banked boards: no touching quilt pair, no look-alike pair, no
+  scrap with a cloth of its own, no cloth past two. Bands of eight patches
+  or fewer keep `cloth_of[p] == p`.
+- **`from_bank`** type-checks every value before `int()`/`String()` and
+  refuses a scrap with a quilt patch's shape; malformed entries return {}
+  without a script error.
+- **Undo and reset** clear `_rows`, `_love`, `_boing` (`_clear_gags`), and
+  undo bumps `_gen` so a gag's or the streak's pending sound does not play
+  (only boards that cannot undo have `_after`s that must still run).
+- **The ghost finger is one mesh** (it was ~7 draw calls and a fresh
+  `Cloth.loops()` a frame) off the cached `_loops[p]`, and the life layer
+  stops redrawing while its alpha is 0; the streak's bubble is built once a
+  count and moved by its transform. Peaks at 810x1440: rest (Easy) **84**,
+  was 95; solve (Insane) 92.

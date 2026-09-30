@@ -55,7 +55,8 @@ const QUILT_OFF := 0.08
 const QUILT_THREAD := 0.62
 const SHADOW_ALPHA := 0.16
 
-## A patch's cloth, by patch index: `Pal.CLOTH`, and see the note there for
+## A patch's cloth, by cloth index -- on the board that is the state's
+## `cloth_of[p]`, never the patch index itself: `Pal.CLOTH`, and see the note there for
 ## why Queens' `REGION` was tried first and thrown out on a rendered frame.
 static func cloth(i: int) -> Color:
 	return Pal.CLOTH[i % Pal.CLOTH.size()]

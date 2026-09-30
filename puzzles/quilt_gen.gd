@@ -374,21 +374,27 @@ static func to_bank(board: Dictionary) -> Dictionary:
 ## phone can afford**: every shape is a normalised polyomino inside MAX_SPAN,
 ## the answer lays every non-scrap patch wholly on the quilt with no two
 ## overlapping and every quilt cell covered, and a scrap is marked by -1
-## alone. Uniqueness is the miner's proof and is trusted. {} when any of it fails, and the board
+## alone, and no scrap has a quilt patch's shape. Uniqueness is the miner's proof and
+## is trusted. {} when any of it fails (a value of the wrong type included), and the board
 ## deals a live one instead.
 static func from_bank(entry: Dictionary) -> Dictionary:
+	# Every value is type-checked before it is converted: a bank is data from
+	# disk, and int(null) or String(7) is a script error, not a refusal.
 	if entry.is_empty() or not (entry.get("region") is Array) \
-			or not (entry.get("shapes") is Array) or not (entry.get("answer") is Array):
+			or not (entry.get("shapes") is Array) or not (entry.get("answer") is Array) \
+			or not _is_num(entry.get("cols")) or not _is_num(entry.get("rows")):
 		return {}
-	var cols := int(entry.get("cols", 0))
-	var rows := int(entry.get("rows", 0))
+	var cols := int(entry.get("cols"))
+	var rows := int(entry.get("rows"))
 	if cols <= 0 or rows <= 0 or cols * rows > MASK_CELLS or entry.region.size() != rows:
 		return {}
 	var region := PackedByteArray()
 	region.resize(cols * rows)
 	var cells := 0
 	for r in rows:
-		var line := String(entry.region[r])
+		if not (entry.region[r] is String):
+			return {}
+		var line: String = entry.region[r]
 		if line.length() != cols:
 			return {}
 		for c in cols:
@@ -405,7 +411,8 @@ static func from_bank(entry: Dictionary) -> Dictionary:
 		var lox := 99
 		var loy := 99
 		for pair in pairs:
-			if not (pair is Array) or pair.size() != 2:
+			if not (pair is Array) or pair.size() != 2 \
+					or not _is_num(pair[0]) or not _is_num(pair[1]):
 				return {}
 			var off := Vector2i(int(pair[0]), int(pair[1]))
 			if off.x < 0 or off.y < 0 or off.x >= MAX_SPAN or off.y >= MAX_SPAN or offs.has(off):
@@ -420,9 +427,20 @@ static func from_bank(entry: Dictionary) -> Dictionary:
 		shapes.append(offs)
 	var answer := PackedInt32Array()
 	for v in entry.answer:
+		if not _is_num(v):
+			return {}
 		answer.append(int(v))
 	if answer.size() != shapes.size():
 		return {}
+	# A scrap shaped like a quilt patch is not a scrap: the two swap, and the
+	# quilt has a second tiling the proof never counted.
+	var quilt_keys := {}
+	for p in shapes.size():
+		if int(answer[p]) >= 0:
+			quilt_keys[_shape_key(shapes[p])] = true
+	for p in shapes.size():
+		if int(answer[p]) < 0 and quilt_keys.has(_shape_key(shapes[p])):
+			return {}
 	var cover := PackedByteArray()
 	cover.resize(cols * rows)
 	var laid := 0
@@ -446,7 +464,11 @@ static func from_bank(entry: Dictionary) -> Dictionary:
 		return {}
 	return {"cols": cols, "rows": rows, "region": region, "shapes": shapes,
 		"answer": answer, "unique": true, "attempts": 0,
-		"nodes": int(entry.get("nodes", 0))}
+		"nodes": int(entry.get("nodes", 0)) if _is_num(entry.get("nodes", 0)) else 0}
+
+## Whether a bank value is a number (JSON reads every number as a float).
+static func _is_num(v: Variant) -> bool:
+	return v is int or v is float
 
 # ------------------------------------------------------------------ the grow
 

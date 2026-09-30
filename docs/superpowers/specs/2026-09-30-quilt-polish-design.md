@@ -25,7 +25,7 @@ shadow shows where it lands, cover the whole shape, pieces never turn):
 |---|---|
 | **The How-to-play diagram was wrong.** Four coloured squares in a row and a green box, captioned "Join matching patches into the shown shape": nothing is joined or matched in this game, and no patch is dragged. | Its own little quilt: a pale 3x2 backing with two L-shaped patches on a felt rack under it; a finger drags one up, its landing outline shows, it snaps and sews, then the other; the backing is covered and glows green. Caption: "Drag every patch on until the quilt is covered". |
 | **Nothing said patches never turn.** Players used to other block games look for a rotate. | A tip of its own (`QL_TIP_TURN`), in the rules' second sentence, and in the line when a rack patch is tapped. |
-| **A tap on a rack patch did nothing visible** (it grew and flew straight back). | A tap (press and release within 14 px and 0.3 s) **wiggles** the patch where it lies and the line says "Drag it up onto the quilt. Patches never turn." |
+| **A tap on a rack patch did nothing visible** (it grew and flew straight back). | A tap (press and release without the finger moving past 14 px, however long it was held -- review, 2026-09-30) **wiggles** the patch where it lies and the line says "Drag it up onto the quilt. Patches never turn." |
 | **Sloppy fingers were refused.** The drop snapped to the rounded cell only, so a patch half a cell off a fit blushed and flew home. | **Sticky snap**: when the rounded origin does not fit, the nearest fitting origin within 0.75 cell of the held corner is taken instead (the ghost outline shows exactly that spot before the finger lifts, so it is never a surprise). |
 | **A dead end was silent.** On Easy and Medium you could leave a pocket no remaining patch fits and carry on for minutes. | After each drop on Easy and Medium the board asks the state whether the patches left can still cover the bare cells (`finishable()`, exact cover on what is left). When they cannot, the line says "Hmm, what's left can't cover that gap any more. Take a patch back." and every bare cell no remaining patch can reach **pulses rose** (three pulses). |
 | **Progress was hard to read** on the bigger quilts. | A **sewn-in label** on the backing's corner (a little cloth tag with a stitched edge) counts the bare squares still to cover, and bumps as it changes. On Scrap Basket it is the one number that tells you how many squares the scraps are not. |
@@ -100,6 +100,18 @@ anywhere is a wrong drop and costs one of your two hearts.
   miner's proof. An empty or broken bank deals a live one.
 - How it looks: the rack's felt mat becomes a **wicker basket** (a woven
   band and a rim), and the backing's corner label counts bare squares.
+- **Its colours** (review, 2026-09-30): twelve patches over eight cloths
+  must repeat, and `p % 8` put patch p and p + 8 in one cloth -- in 103 of
+  the 150 banked boards two of them sat side by side on the finished quilt,
+  and the share repeated a square. So each patch has a cloth of its own
+  choosing (`State.cloth_of`, identity on every band of eight or fewer),
+  seeded from the quilt: no two quilt patches that touch in the answer share
+  a cloth, the quilt wears all eight, look-alike patches differ, and each
+  scrap takes a cloth one quilt patch also wears, so a repeat never singles
+  out a scrap. **That leaves a tiny clue**: a same-cloth pair on Scrap Basket
+  never touches in the answer. Accepted, because the repeat is forced and a
+  pair that touches reads as one patch. A bank entry whose scrap has a quilt
+  patch's shape is refused too.
 - At the solve the three scraps **hop out of the basket and are strung into
   a bunting** across the top of the card, swinging (`bunting`).
 - Rules add `QL_RULES_SCRAPS`; tips lead with `QL_TIP_SCRAPS`,

@@ -66,9 +66,13 @@ const STAYS := 5
 ## A judged board: the drop fitted but is not where the answer has any patch
 ## of this shape. Nothing is sewn, and the spot is ruled for good.
 const WRONG := 6
-## The share's squares, one per patch index. Eight, because band 2 lays
-## eight patches and no band lays more.
+## The share's squares, one per cloth (`cloth_of`), in `Pal.CLOTH`'s order.
+## Eight for eight cloths: every band up to Hard lays eight patches or fewer
+## and wears them one a cloth, and Scrap Basket's twelve share them (see
+## `_assign_cloths`).
 const SQUARES := ["🟨", "🟦", "🟩", "🟥", "🟪", "🟧", "🟫", "⬜"]
+## How many cloths there are: `Pal.CLOTH`, and SQUARES one for one.
+const CLOTHS := 8
 ## The share's ground: everything that is not the quilt.
 const GROUND := "⬛"
 
@@ -112,6 +116,11 @@ var ruled: Dictionary = {}
 ## Per patch: its shape key (Gen._shape_key), so alike patches can be found
 ## without comparing offsets on every question.
 var _keys: Array = []
+## Per patch: which of the CLOTHS it is cut from -- its colour, print, stitch
+## and thread on the board and its square in the share. The patch's own index
+## on every band of eight patches or fewer, so those days look as they always
+## did; Scrap Basket's twelve are coloured by `_assign_cloths`.
+var cloth_of := PackedInt32Array()
 
 ## `bank_step` is PuzzleBase.bank_step: how many times New has been pressed
 ## since the board opened, which walks Insane through its bank.
@@ -150,6 +159,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	ruled = {}
 	_keys = []
 	recompute()
+	_assign_cloths()
 
 # ------------------------------------------------------------- reading it
 
@@ -298,6 +308,174 @@ func _key(p: int) -> String:
 		for q in shapes.size():
 			_keys.append(Gen._shape_key(shapes[q]))
 	return String(_keys[p])
+
+## The cloth patch `p` is cut from (see `cloth_of`); its own index on a
+## board that was never set up through `setup`.
+func cloth(p: int) -> int:
+	return int(cloth_of[p]) if p >= 0 and p < cloth_of.size() else p
+
+## Hands every patch a cloth. Eight patches or fewer: its own index. More
+## (Scrap Basket's nine and three) must repeat, and a repeat is chosen, not
+## left to `p % 8` -- which put patch p and p + 8 in one cloth and, in 103 of
+## the 150 banked boards, sewed two of them side by side, one patch to the
+## eye. So, seeded from the quilt itself so a day always looks the same:
+##
+## - two quilt patches that touch in the answer never share a cloth (a greedy
+##   colouring, backtracked; the quilt's own graph is small);
+## - the quilt wears every cloth, so its one repeat is the only one in it;
+## - two look-alike patches (one shape) never share one while that can hold;
+## - each scrap takes a cloth a quilt patch wears once, so the repeats are
+##   spread and a cloth seen twice never singles out a scrap.
+##
+## That leaves one tiny clue -- a same-cloth pair on Scrap Basket never
+## touches in the answer -- accepted, since twelve patches over eight cloths
+## must repeat somewhere (spec 2026-09-30-quilt-polish-design.md, section 3).
+func _assign_cloths() -> void:
+	var n := shapes.size()
+	cloth_of = PackedInt32Array()
+	cloth_of.resize(n)
+	for p in n:
+		cloth_of[p] = p
+	if n <= CLOTHS or answer.size() != n or cols <= 0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(str(region) + str(answer) + str(cols))
+	# Who touches whom on the finished quilt.
+	var owner := PackedInt32Array()
+	owner.resize(cols * rows)
+	owner.fill(-1)
+	var quilt: Array[int] = []
+	var scraps_list: Array[int] = []
+	for p in n:
+		if int(answer[p]) < 0:
+			scraps_list.append(p)
+			continue
+		quilt.append(p)
+		for cell in patch_cells(p, int(answer[p])):
+			var i := idx(cell.x, cell.y)
+			if i >= 0:
+				owner[i] = p
+	var touch: Array = []
+	for p in n:
+		touch.append({})
+	for r in rows:
+		for c in cols:
+			var a := int(owner[r * cols + c])
+			if a < 0:
+				continue
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var j := idx(c + d.x, r + d.y)
+				if j < 0:
+					continue
+				var z := int(owner[j])
+				if z >= 0 and z != a:
+					(touch[a] as Dictionary)[z] = true
+					(touch[z] as Dictionary)[a] = true
+	# The most-touching first, ties in the day's own order; each patch tries
+	# the cloths in its own shuffled order.
+	var rank := {}
+	var shuffled := quilt.duplicate()
+	for i in range(shuffled.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp: int = shuffled[i]
+		shuffled[i] = shuffled[j]
+		shuffled[j] = tmp
+	for i in shuffled.size():
+		rank[shuffled[i]] = i
+	quilt.sort_custom(func(a: int, z: int) -> bool:
+		var da := (touch[a] as Dictionary).size()
+		var dz := (touch[z] as Dictionary).size()
+		return da > dz if da != dz else int(rank[a]) < int(rank[z]))
+	var prefs: Array = []
+	for p in n:
+		var order: Array[int] = []
+		for c in CLOTHS:
+			order.append(c)
+		for i in range(order.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var tmp: int = order[i]
+			order[i] = order[j]
+			order[j] = tmp
+		prefs.append(order)
+	var cap := int(ceil(float(n) / float(CLOTHS)))
+	var got := PackedInt32Array()
+	got.resize(n)
+	got.fill(-1)
+	var solved := false
+	for strict in [true, false]:
+		got.fill(-1)
+		var used := PackedInt32Array()
+		used.resize(CLOTHS)
+		if _colour_quilt(quilt, 0, got, used, touch, prefs, cap, strict):
+			solved = true
+			break
+	if not solved:
+		return      # identity: a quilt no colouring fits keeps p's own cloth
+	# The scraps: cloths the quilt wears once, never two scraps alike.
+	var count := PackedInt32Array()
+	count.resize(CLOTHS)
+	for p in quilt:
+		count[got[p]] += 1
+	for s in scraps_list:
+		var best := -1
+		for want in [1, 0, cap - 1]:
+			for c: int in prefs[s]:
+				if int(count[c]) == want and int(count[c]) < cap:
+					best = c
+					break
+			if best >= 0:
+				break
+		if best < 0:
+			for c: int in prefs[s]:
+				if int(count[c]) < cap:
+					best = c
+					break
+		if best < 0:
+			best = int(prefs[s][0])
+		got[s] = best
+		count[best] += 1
+	cloth_of = got
+
+## The quilt's colouring, one patch at a time from `k`: touching patches
+## differ, no cloth past `cap`, every cloth worn while there are patches
+## enough to wear them, and under `strict` two alike shapes differ too.
+func _colour_quilt(quilt: Array[int], k: int, got: PackedInt32Array, used: PackedInt32Array,
+		touch: Array, prefs: Array, cap: int, strict: bool) -> bool:
+	if k >= quilt.size():
+		return true
+	var p: int = quilt[k]
+	var unused := 0
+	for c in CLOTHS:
+		if int(used[c]) == 0:
+			unused += 1
+	var left := quilt.size() - k
+	# Unworn cloths first, so the quilt wears all eight before any repeats.
+	for pass_unused in [true, false]:
+		for c: int in prefs[p]:
+			if (int(used[c]) == 0) != pass_unused or int(used[c]) >= cap:
+				continue
+			# A repeat now must still leave enough patches to wear the rest.
+			if int(used[c]) > 0 and unused > left - 1:
+				continue
+			var clash := false
+			for q in touch[p]:
+				if int(got[q]) == c:
+					clash = true
+					break
+			if not clash and strict:
+				for q in quilt:
+					if q != p and int(got[q]) == c and _key(q) == _key(p):
+						clash = true
+						break
+			if clash:
+				continue
+			got[p] = c
+			used[c] += 1
+			if _colour_quilt(quilt, k + 1, got, used, touch, prefs, cap, strict):
+				return true
+			got[p] = -1
+			used[c] -= 1
+	return false
 
 # ------------------------------------------------------------ dead ends
 
@@ -644,6 +822,6 @@ func share_glyphs() -> String:
 			if region[i] != 1 or p < 0:
 				out += GROUND
 			else:
-				out += str(SQUARES[p % SQUARES.size()])
+				out += str(SQUARES[cloth(p) % SQUARES.size()])
 		out += "\n"
 	return out

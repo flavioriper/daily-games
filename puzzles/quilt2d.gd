@@ -172,12 +172,14 @@ const TIPS := ["QL_TIP_DRAG", "QL_TIP_TURN", "QL_TIP_GHOST", "QL_TIP_OFF", "QL_T
 ## somewhere only on a board without scraps.
 const TIPS_HEARTS := ["QL_TIP_HEARTS", "QL_TIP_DRAG", "QL_TIP_TURN", "QL_TIP_GHOST", "QL_TIP_ALL"]
 const TIPS_SCRAPS := ["QL_TIP_SCRAPS", "QL_TIP_SCRAPS_2", "QL_TIP_HEARTS", "QL_TIP_TURN", "QL_TIP_GHOST"]
-## A tap: a press let go within TAP_PX of where it went down and inside
-## TAP_TIME. It wiggles the patch where it lies rather than lifting it, so a
-## patch pressed is not grown until the finger has moved or GROW_WAIT passed.
+## A tap: a press let go without the finger ever moving TAP_PX from where it
+## went down, **however long it was held**. It wiggles the patch where it
+## lies rather than lifting it. One rule, and distance alone: a patch is not
+## lifted, grown, outlined or judged until the finger has moved past TAP_PX,
+## and time never turns a press into a drag. (A lift at 0.12 s and a tap
+## judged at 0.3 s used to disagree: the outline could promise a spot the
+## release would not use, and a still hold nudged a sewn patch a row up.)
 const TAP_PX := 14.0
-const TAP_TIME := 0.3
-const GROW_WAIT := 0.12
 const WIGGLE_ANGLE := 0.16
 const WIGGLE_TIME := 0.5
 ## Sticky snap: when the rounded cell does not fit, the nearest cell that
@@ -324,8 +326,10 @@ var fx: Node2D
 
 ## The patch under the finger: {"patch": int, "grab": Vector2i (which of its
 ## own cells was taken hold of), "point": Vector2 (the finger, local),
-## "from": int (the origin it was lifted off, or -1 from the rack),
-## "since": float}. Empty when nothing is held.
+## "press": Vector2 (where it went down), "from": int (the origin it was
+## lifted off, or -1 from the rack), "since": float, "finger": int (the
+## touch's index, -1 for the mouse), "moved": bool (past TAP_PX: a drag, and
+## lifted), "go": float (when it was lifted)}. Empty when nothing is held.
 var _drag: Dictionary = {}
 ## Patches on their way home to the rack: patch -> {"from", "to", "c0", "c1",
 ## "at"}. A refused drop and a lift are the same flight.
@@ -437,6 +441,9 @@ var _combo_pos := Vector2.ZERO
 var _combo_popped := false
 var _combo_out_at := -INF
 var _combo_shown: ArrayMesh
+## What `_combo_shown` was built for: [its words, its tail], so the bubble is
+## rebuilt once a count and moved by a transform the rest of the time.
+var _combo_key: Array = []
 ## Love hearts floating up: [{"at", "t", "phase"}].
 var _love: Array = []
 var _love_mesh: ArrayMesh
@@ -950,10 +957,10 @@ func _frame_of(p: int, t: float) -> Dictionary:
 	var cell := _cell()
 	var rot := 0.0
 	var lift := 0.0
-	var face: Color = Cloth.cloth(p)
+	var face: Color = Cloth.cloth(_ci(p))
 	if not _peel.is_empty() and int(_peel["patch"]) == p:
 		return _peel_frame(t)
-	if not _drag.is_empty() and int(_drag["patch"]) == p:
+	if _in_hand() == p:
 		var g := _grow(t)
 		cell = lerpf(float(_drag["c0"]), _cell(), g)
 		pos = _held_corner_at(cell, g)
@@ -1010,10 +1017,12 @@ func _frame_of(p: int, t: float) -> Dictionary:
 ## How far the patch in the hand has grown from the cell it was picked up at
 ## to the quilt's, 0 to 1, with the back ease so it overshoots a touch.
 ##
-## It waits GROW_WAIT, or until the finger has moved, before it grows: a tap
-## is let go inside that and must not have lifted anything.
+## It grows from the moment the finger moved past TAP_PX (`go`) and not
+## before: a tap never moves that far and must not have lifted anything.
 func _grow(t: float) -> float:
-	var go := float(_drag.get("go", float(_drag["since"]) + GROW_WAIT))
+	if not _drag.has("go"):
+		return 1.0 if bool(_drag.get("moved", true)) else 0.0
+	var go := float(_drag["go"])
 	if Motion.reduce:
 		return 1.0 if t >= go else 0.0
 	return Motion.back_out(clampf((t - go) / GROW_TIME, 0.0, 1.0))
@@ -1033,7 +1042,7 @@ func _peel_frame(t: float) -> Dictionary:
 	var e := t - float(_peel["at"])
 	var corner := _corner_of(int(_peel["origin"]))
 	var cell := _cell()
-	var face: Color = Cloth.cloth(p)
+	var face: Color = Cloth.cloth(_ci(p))
 	var out := {"pos": corner, "cell": cell, "sc": Vector2.ONE, "alpha": 1.0, "rot": 0.0,
 		"lift": 0.0, "face": face}
 	if e < LAND_TIME:
@@ -1377,7 +1386,7 @@ func _build_quilt(t: float) -> ArrayMesh:
 	# on its way onto the quilt passes over its neighbours and not under.
 	var order: Array = []
 	for p in _state.shapes.size():
-		if int(_state.at[p]) < 0 or (not _drag.is_empty() and int(_drag["patch"]) == p):
+		if int(_state.at[p]) < 0 or _in_hand() == p:
 			continue
 		order.append(p)
 	order.sort_custom(func(a: int, z: int) -> bool:
@@ -1458,13 +1467,13 @@ func _build_rack(t: float) -> ArrayMesh:
 	var cell := _rack_cell()
 	var chalk := Color(MAT_STITCH, 0.95)
 	for p in _state.shapes.size():
-		var held: bool = (not _drag.is_empty() and int(_drag["patch"]) == p) \
+		var held: bool = _in_hand() == p \
 			or (not _peel.is_empty() and int(_peel["patch"]) == p) \
 			or _bunted(p, t)
 		if held or (int(_state.at[p]) >= 0 and not _flying.has(p)):
 			for loop: PackedVector2Array in _loops[p]:
 				var pts := Cloth.laid(loop, _bay_home(p), cell, _spans[p])
-				b.polygon(pts, Color(Cloth.cloth(p), GONE_ALPHA))
+				b.polygon(pts, Color(Cloth.cloth(_ci(p)), GONE_ALPHA))
 				Cloth.dash_loop(b, pts, CHALK_W * cell, CHALK_ON * cell, CHALK_OFF * cell, chalk)
 			continue
 		if not _flying.has(p):
@@ -1563,8 +1572,8 @@ func _build_hand(t: float) -> ArrayMesh:
 	if not _peel.is_empty():
 		var p := int(_peel["patch"])
 		_patch(b, p, _frame_of(p, t), true, _peel_stitch(t))
-	if not _drag.is_empty():
-		var p := int(_drag["patch"])
+	if _in_hand() >= 0:
+		var p := _in_hand()
 		var f := _frame_of(p, t)
 		_patch(b, p, f)
 		if _hold_state() == CROSSED:
@@ -1604,9 +1613,9 @@ func _patch(b, p: int, f: Dictionary, sewn := false, reach := -1.0) -> void:
 	Cloth.shadow(b, _loops[p], f["pos"], cell, _spans[p], HELD_SHADOW * cell * lift,
 		minf(lift * 1.5, 1.0) * float(f["alpha"]), f["sc"], float(f.get("rot", 0.0)))
 	Cloth.patch(b, _loops[p], f["pos"], cell, _spans[p],
-		f.get("face", Cloth.cloth(p)), Cloth.cloth_deep(p), f["sc"], float(f["alpha"]),
+		f.get("face", Cloth.cloth(_ci(p))), Cloth.cloth_deep(_ci(p)), f["sc"], float(f["alpha"]),
 		float(f.get("rot", 0.0)))
-	Cloth.print_cloth(b, _state.shapes[p], p, f["pos"], cell, _spans[p],
+	Cloth.print_cloth(b, _state.shapes[p], _ci(p), f["pos"], cell, _spans[p],
 		f["sc"], float(f["alpha"]), float(f.get("rot", 0.0)))
 	if _buttons.has(p):
 		_button(b, p, f)
@@ -1630,7 +1639,7 @@ func _quilting(b, p: int, f: Dictionary, reach := -1.0) -> void:
 	if u <= 0.0:
 		return
 	var cell := float(f["cell"])
-	var ink := Cloth.cloth_thread(p)
+	var ink := Cloth.cloth_thread(_ci(p))
 	if _solved_at >= 0.0:
 		ink = ink.lerp(Pal.SUN_RAY, _sheen(p, t))
 	for loop: PackedVector2Array in _insets[p]:
@@ -1663,7 +1672,7 @@ func _blush(b, p: int, f: Dictionary) -> void:
 	var level := 0.0
 	if not _refused.is_empty() and int(_refused["patch"]) == p and bool(_refused.get("halo", true)):
 		level = Motion.flash_level(_now() - float(_refused["at"]))
-	elif not _drag.is_empty() and int(_drag["patch"]) == p and _hold_state() == SNAG:
+	elif _in_hand() == p and _hold_state() == SNAG:
 		# Held over the quilt somewhere it will not go. The hand says so
 		# while it is held, rather than the board waiting for the release --
 		# a drag is a question, and this is the only moment the board can
@@ -1700,22 +1709,38 @@ const SNAG := 2
 const CROSSED := 3
 
 func _hold_state() -> int:
-	if _drag.is_empty():
-		return CLEAR
-	if not _drag.has("go") and _now() < float(_drag["since"]) + GROW_WAIT:
+	if _in_hand() < 0:
 		return CLEAR
 	var p := int(_drag["patch"])
 	var target := _target()
 	if target >= 0:
 		return CROSSED if _state.judged() and _state.is_ruled(p, target) else FITS
-	var origin := _held_origin()
-	if origin < 0:
-		return CLEAR
-	var over := 0
-	for c: Vector2i in (_state.patch_cells(p, origin) as Array):
+	# Counted from the unrounded-to-an-index cell, not from `_held_origin()`:
+	# that is -1 whenever the patch's own (0, 0) is off the left or top edge,
+	# and an L held that way with its other cells over the quilt is over it --
+	# a SNAG, not a quiet take-off. No origin index is encoded here, so the
+	# wrap `_held_origin()` guards against cannot happen.
+	for c: Vector2i in _held_cells(p):
 		if _state.in_region(c.x, c.y):
-			over += 1
-	return SNAG if over > 0 else CLEAR
+			return SNAG
+	return CLEAR
+
+## The grid cells the held patch's own cells are over, unclamped: cells off
+## the grid come back with negative or too-large coordinates, never wrapped.
+func _held_cells(p: int) -> Array:
+	var at := _held_cell()
+	var out: Array = []
+	for off: Vector2i in (_state.shapes[p] as Array):
+		out.append(at + off)
+	return out
+
+## The patch the hand has lifted: the drag's, once the finger has moved past
+## TAP_PX; -1 before that and when nothing is held. A press that may still be
+## a tap leaves its patch drawn where it lies, seams, stitch and all.
+func _in_hand() -> int:
+	if _drag.is_empty() or not bool(_drag.get("moved", true)):
+		return -1
+	return int(_drag["patch"])
 
 ## Where a release would sew the held patch: the rounded cell when the patch
 ## fits there, else **the nearest cell within STICKY that it fits at** --
@@ -1769,16 +1794,15 @@ func _ghost(b, _t: float) -> void:
 	if state == CLEAR:
 		return
 	var p := int(_drag["patch"])
-	var origin := _target() if state != SNAG else _held_origin()
-	var cells: Array = _state.patch_cells(p, origin)
+	var cells: Array = _held_cells(p) if state == SNAG else _state.patch_cells(p, _target())
 	if cells.is_empty():
 		return
 	var cell := _cell()
 	for loop: PackedVector2Array in Cloth.loops(cells):
 		var pts := Cloth.laid(loop, _origin(), cell, Vector2i.ZERO)
 		if state == FITS:
-			b.polygon(pts, Color(Cloth.cloth(p), GHOST_ALPHA))
-			b.stroke(pts, GHOST_W * cell, Cloth.cloth_stitch(p), true)
+			b.polygon(pts, Color(Cloth.cloth(_ci(p)), GHOST_ALPHA))
+			b.stroke(pts, GHOST_W * cell, Cloth.cloth_stitch(_ci(p)), true)
 		elif state == CROSSED:
 			Cloth.dash_loop(b, pts, CROSS_W * cell * 0.7, GHOST_DASH * cell,
 				GHOST_DASH * cell, Color(CROSS, 0.9))
@@ -1799,7 +1823,7 @@ func _stitches(b, t: float) -> void:
 		var u := clampf((t - float(s["at"]) - wait) / _stitch_time(), 0.0, 1.0)
 		if u <= 0.0:
 			continue
-		var ink := Cloth.cloth_stitch(owner)
+		var ink := Cloth.cloth_stitch(_ci(owner))
 		if bool(s["hem"]) and _solved_at >= 0.0:
 			# On the solve the hem warms all the way round, which is the one
 			# moment the quilt is spoken of as a whole thing.
@@ -1836,28 +1860,90 @@ func _enter() -> void:
 ## one sewn on the quilt first, then one waiting on the rack -- and takes
 ## hold of it by the cell it was pressed on, so a patch dragged by its corner
 ## stays held by that corner.
+##
+## **One finger holds the patch** (Hedgehogs'): the press stores its touch
+## index (-1 for the mouse), and a second finger's press, drag and release
+## are ignored outright. The project does not emulate the mouse from touch,
+## so before this a second finger's drag moved the held patch and its
+## release judged the first finger's patch -- a heart, on Hard and Insane,
+## for a thumb resting on the screen. A touch the system cancels sends the
+## patch home untouched and never judges it.
 func _gui_input(event: InputEvent) -> void:
 	if _done or out_of_hearts or not _peel.is_empty():
 		return
 	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
+	var finger: int = event.index if (event is InputEventScreenTouch or event is InputEventScreenDrag) else -1
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event.pressed:
+			if not _drag.is_empty():
+				accept_event()
+				return
 			_rest_at = _now()
-			_grab(event.position)
-		elif not _drag.is_empty():
-			_release()
+			_grab(event.position, finger)
+		elif not _drag.is_empty() and finger == int(_drag.get("finger", -1)):
+			if event is InputEventScreenTouch and event.canceled:
+				_cancel_drag()
+			else:
+				_drag["point"] = event.position
+				_release()
 			accept_event()
-	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and not _drag.is_empty():
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and not _drag.is_empty() \
+			and finger == int(_drag.get("finger", -1)):
 		_drag["point"] = event.position
-		if not _drag.has("go") and (event.position as Vector2).distance_to(_drag["press"]) > TAP_PX:
-			# The finger has left the tap's circle: grow it now, not later.
-			_drag["go"] = minf(_now(), float(_drag["since"]) + GROW_WAIT)
+		if not bool(_drag.get("moved", true)) \
+				and (event.position as Vector2).distance_to(_drag["press"]) > TAP_PX:
+			# The finger has left the tap's circle: now it is a drag.
+			_begin_lift()
 		_rest_at = _now()
 		_refresh()
 		accept_event()
 
-func _grab(local: Vector2) -> void:
+## The press became a drag: the patch comes off the quilt now (`take`, which
+## pushes no history -- the release's `drop` does), grows and rises.
+func _begin_lift() -> void:
+	var p := int(_drag["patch"])
+	var from := int(_drag["from"])
+	_drag["moved"] = true
+	_drag["go"] = _now()
+	if from >= 0:
+		_state.take(p)
+		_lifted[p] = _now()
+		_landed.erase(p)
+	_glide.erase(p)
+	_flying.erase(p)
+	_wiggle.erase(p)
+	fx.cue("lift")
+	_refresh()
+
+## Ends a live drag with nothing judged and nothing counted: the patch goes
+## back exactly where it was taken from -- down onto its spot on the quilt,
+## or home to its bay -- with no heart, no history and no streak broken. A
+## cancelled touch comes here, and so do Undo, Hint and Reset when they are
+## pressed with a patch still in the hand, so none of them can strand it.
+func _cancel_drag() -> void:
+	if _drag.is_empty():
+		return
+	var p := int(_drag["patch"])
+	var from := int(_drag["from"])
+	var moved := bool(_drag.get("moved", true))
+	var hand := _held_corner()
+	_drag = {}
+	if not moved:
+		_refresh()
+		return
+	_state.drop(p, from, from)
+	if from >= 0:
+		_landed[p] = _now()
+		_glide[p] = hand
+		_lifted.erase(p)
+		_busy_for(LAND_TIME + maxf(SEW_TIME, _seam_span(p)))
+	else:
+		_fly_home(p, hand)
+		_busy_for(FLY_TIME)
+	_refresh()
+
+func _grab(local: Vector2, finger := -1) -> void:
 	# One hand at a time. A second press while a patch is held -- a second
 	# finger on a phone, a second mouse button here -- used to overwrite
 	# `_drag` outright, and the patch it dropped had already been taken off
@@ -1879,7 +1965,7 @@ func _grab(local: Vector2) -> void:
 		_refresh()
 		return
 	var from := int(_state.at[p])
-	if from >= 0 and _state.take(p) == State.STAYS:
+	if from >= 0 and _state.judged():
 		# Hard and Insane: a right patch stays for good. It shivers where it
 		# lies, with no halo -- it is not wrong, it is simply staying.
 		_refused = {"patch": p, "at": _now(), "halo": false}
@@ -1892,20 +1978,13 @@ func _grab(local: Vector2) -> void:
 	# The cell it is picked up at: the quilt's, or the rack's smaller one, so
 	# it grows from exactly the size it was lying at.
 	var c0 := _cell() if from >= 0 else _rack_cell()
-	_glide.erase(p)
-	var landed_was := float(_landed.get(p, -100.0))
-	if from >= 0:
-		# Taken off the quilt (`take` above, which pushed no history): one
-		# gesture is one undo, so the entry is pushed when the hand lets go
-		# and knows where the patch ended up -- back on the quilt, or home.
-		_lifted[p] = _now()
-		_landed.erase(p)
+	# Nothing comes off yet: a press is a tap until the finger moves past
+	# TAP_PX (`_begin_lift`), so a tapped sewn patch keeps its seams and its
+	# stitch the whole time. One gesture is one undo, so the entry is pushed
+	# when the hand lets go and knows where the patch ended up.
 	_drag = {"patch": p, "grab": hit["cell"], "point": local, "press": local, "from": from,
-		"since": _now(), "c0": c0, "landed_was": landed_was}
+		"since": _now(), "c0": c0, "finger": finger, "moved": false}
 	_refused = {}
-	_flying.erase(p)
-	_wiggle.erase(p)
-	fx.cue("lift")
 	_refresh()
 	accept_event()
 
@@ -1932,11 +2011,10 @@ func _hit(local: Vector2) -> Dictionary:
 			return {"patch": i, "cell": cell}
 	return {}
 
-## Whether the press now ending was a tap: let go within TAP_PX of where it
-## went down and inside TAP_TIME.
+## Whether the press now ending was a tap: the finger never moved past
+## TAP_PX, however long it was down.
 func _was_tap() -> bool:
-	return (_drag["point"] as Vector2).distance_to(_drag["press"]) <= TAP_PX \
-		and _now() - float(_drag["since"]) <= TAP_TIME
+	return not bool(_drag.get("moved", true))
 
 ## Let go. The endings, and telling them apart is the whole of whether this
 ## board feels fair:
@@ -2015,16 +2093,11 @@ func _release() -> void:
 		# way the drop was judged.
 		note_move()
 
-## A tap on a patch: it goes back exactly as it was, wiggles where it lies,
-## and the line says what to do with it. A sewn patch on Easy and Medium was
-## taken off by the press, so it is put straight back with its seams whole.
+## A tap on a patch: nothing was lifted, so it simply wiggles where it lies,
+## and the line says what to do with it (how a sewn one comes off, on Easy
+## and Medium; how a waiting one goes on).
 func _tapped(p: int, from: int) -> void:
-	var landed_was := float(_drag.get("landed_was", -100.0))
 	_drag = {}
-	_state.drop(p, from, from)
-	if from >= 0:
-		_landed[p] = landed_was
-		_lifted.erase(p)
 	_wiggle[p] = _now()
 	_busy_for(WIGGLE_TIME)
 	fx.cue("wiggle")
@@ -2195,12 +2268,20 @@ func can_undo() -> bool:
 func undo() -> bool:
 	if is_done() or out_of_hearts or not _peel.is_empty():
 		return false
+	# A patch still in the hand goes back where it came from first, so the
+	# state is whole before the history is unwound.
+	_cancel_drag()
 	var before := _snapshot()
 	var back: Dictionary = _state.undo()
 	if back.is_empty():
 		return false
 	var t := _now()
-	_drag = {}
+	# What the undone gesture set going goes with it: a row's glint, love
+	# hearts, a boing, and any gag or streak sound still waiting (`_after`).
+	# Nothing an undo can reach has an `_after` that must still run: the
+	# party and the peel belong to boards that cannot undo.
+	_gen += 1
+	_clear_gags()
 	_refused = {}
 	_dead = {}
 	_break_streak()
@@ -2230,6 +2311,7 @@ func hints_left() -> int:
 func hint() -> bool:
 	if is_done() or hints_left() <= 0 or out_of_hearts or not _peel.is_empty():
 		return false
+	_cancel_drag()
 	var before := _snapshot()
 	var out: Dictionary = _state.hint()
 	if out.is_empty():
@@ -2268,6 +2350,8 @@ func reset_board() -> void:
 ## home in a wave from the far corner, the state back to a bare backing
 ## (bar the hints' givens), every moment gone.
 func _wipe() -> void:
+	# A patch in the hand is put back first, so it goes home with the rest.
+	_cancel_drag()
 	_gen += 1
 	# Where each of them is, and how far it stands from the far corner, both
 	# read before the state clears them.
@@ -2280,13 +2364,13 @@ func _wipe() -> void:
 		var r: int = origin / _state.cols
 		was[p] = {"at": _corner_of(origin),
 			"step": (_state.cols - 1 - c) + (_state.rows - 1 - r)}
-	_drag = {}
 	_flying = {}
 	_refused = {}
 	_pending = []
 	_peel = {}
 	_wiggle = {}
 	_dead = {}
+	_clear_gags()
 	_state.reset()
 	for p in was:
 		var e: Dictionary = was[p]
@@ -2468,6 +2552,15 @@ func _on_good_drop(p: int) -> void:
 	_gag(p)
 	_life_layer.queue_redraw()
 
+## The effects a drop set going that an undo or a reset takes back with it:
+## a finished row's glints, love hearts floating off, a boing.
+func _clear_gags() -> void:
+	_rows = []
+	_love = []
+	_boing = {}
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
 ## The streak ends: a refusal, a chalked spot, a wrong patch, a dead end, a
 ## take-off, an undo, a reset, the hearts running out. The bubble deflates.
 func _break_streak() -> void:
@@ -2591,7 +2684,7 @@ func _button(b, p: int, f: Dictionary) -> void:
 	b.disc(at, r, Color(BUTTON_DEEP, alpha))
 	b.disc(at + Vector2(0.0, -r * 0.05), r * 0.88, Color(BUTTON, alpha))
 	b.stroke(Face.Builder.ring(at, r * 0.66, r * 0.66), maxf(1.0, r * 0.08), Color(BUTTON_DEEP, 0.8 * alpha), true)
-	var thread := Cloth.cloth_deep(p)
+	var thread := Cloth.cloth_deep(_ci(p))
 	var h := r * 0.26
 	b.stroke(PackedVector2Array([at + Vector2(-h, -h), at + Vector2(h, h)]), r * 0.13, Color(thread, alpha))
 	b.stroke(PackedVector2Array([at + Vector2(h, -h), at + Vector2(-h, h)]), r * 0.13, Color(thread, alpha))
@@ -2978,7 +3071,7 @@ func _wrong_patch(p: int, origin: int, hand: Vector2) -> void:
 		fx.cue("heart_lost")
 		var cell := _cell()
 		var head := _corner_of(origin) + Vector2(_spans[p]) * cell * 0.5
-		fx.puff(head, Cloth.cloth_thread(p), 4)
+		fx.puff(head, Cloth.cloth_thread(_ci(p)), 4)
 		_heart_layer.queue_redraw()
 		_speak(line, Face.Expr.WORRIED))
 	_after(SNIP_AT + UNRAVEL_TIME + PEEL_TIME * 0.5, fx.cue.bind("flutter"))
@@ -3160,29 +3253,34 @@ func _draw_coach(t: float, shown: Array) -> void:
 	var cell := lerpf(_rack_cell(), _cell(), g)
 	var corner := at - (Vector2(first) + Vector2(0.5, 0.5 + HOLD_LIFT * g)) * cell
 	var b := Face.Builder.new()
+	var s := _cell()
 	if g > 0.98:
-		for loop: PackedVector2Array in Cloth.loops(_state.patch_cells(p, _coach_origin)):
-			b.stroke(Cloth.laid(loop, _origin(), _cell(), Vector2i.ZERO), GHOST_W * _cell(),
-				Color(Cloth.cloth_stitch(p), al), true)
-	Cloth.patch(b, _loops[p], corner, cell, _spans[p], Cloth.cloth(p), Cloth.cloth_deep(p),
+		# The landing outline: the patch's own cached loops laid on its place,
+		# not a fresh trace of its cells every frame.
+		for loop: PackedVector2Array in _loops[p]:
+			b.stroke(Cloth.laid(loop, _corner_of(_coach_origin), s, _spans[p]), GHOST_W * s,
+				Color(Cloth.cloth_stitch(_ci(p)), al), true)
+	Cloth.patch(b, _loops[p], corner, cell, _spans[p], Cloth.cloth(_ci(p)), Cloth.cloth_deep(_ci(p)),
 		Vector2.ONE, COACH_ALPHA * al)
+	# The fingertip, in the same mesh: a soft shadow, a ring pressed into the
+	# cloth, the tip, and a little hand -- the knuckle trailing down and right.
+	var skin := Color(Pal.SURFACE, 0.92 * al)
+	var ink := Color(Pal.LINE, al)
+	var line_w := maxf(2.0, s * 0.025)
+	b.disc(at + Vector2(4.0, 8.0), s * 0.2, Color(Pal.TEXT, 0.16 * al))
+	var ring_r := s * (0.26 + 0.06 * (1.0 - float(c.press)))
+	b.stroke(Face.Builder.ring(at, ring_r, ring_r), maxf(2.0, s * 0.03), Color(Pal.SURFACE, 0.7 * al), true)
+	b.disc(at, s * 0.17, skin)
+	b.stroke(Face.Builder.ring(at, s * 0.17, s * 0.17), line_w, ink, true)
+	var palm := at + Vector2(s * 0.22, s * 0.34)
+	b.stroke(PackedVector2Array([at + Vector2(s * 0.04, s * 0.1), palm]), s * 0.2, skin)
+	var knuckle := palm + Vector2(s * 0.08, s * 0.12)
+	b.disc(knuckle, s * 0.22, skin)
+	b.stroke(Face.Builder.arc_points(knuckle, s * 0.22, -PI * 0.9, PI * 0.6), line_w, ink)
 	var mesh := _mesh(b)
 	if mesh != null:
 		_life_layer.draw_mesh(mesh, null)
 		shown.append(mesh)
-	var s := _cell()
-	# The fingertip: a soft shadow, a ring pressed into the cloth, the tip.
-	_life_layer.draw_circle(at + Vector2(4.0, 8.0), s * 0.2, Color(Pal.TEXT, 0.16 * al))
-	_life_layer.draw_arc(at, s * (0.26 + 0.06 * (1.0 - float(c.press))), 0.0, TAU, 32,
-		Color(Pal.SURFACE, 0.7 * al), maxf(2.0, s * 0.03), true)
-	_life_layer.draw_circle(at, s * 0.17, Color(Pal.SURFACE, 0.92 * al))
-	_life_layer.draw_arc(at, s * 0.17, 0.0, TAU, 32, Color(Pal.LINE, al), maxf(2.0, s * 0.025), true)
-	# A little hand: the finger's knuckle trailing down and right of the tip.
-	var palm := at + Vector2(s * 0.22, s * 0.34)
-	_life_layer.draw_line(at + Vector2(s * 0.04, s * 0.1), palm, Color(Pal.SURFACE, 0.92 * al), s * 0.2, true)
-	_life_layer.draw_circle(palm + Vector2(s * 0.08, s * 0.12), s * 0.22, Color(Pal.SURFACE, 0.92 * al))
-	_life_layer.draw_arc(palm + Vector2(s * 0.08, s * 0.12), s * 0.22, -PI * 0.9, PI * 0.6, 24,
-		Color(Pal.LINE, al), maxf(2.0, s * 0.025), true)
 
 # --- the layers: the hearts, and the life over the card ---
 
@@ -3209,7 +3307,7 @@ func _tick_life(now: float) -> bool:
 		_rows = []
 		return true
 	return not _love.is_empty() or not _rows.is_empty() \
-		or not _coach_at(now).is_empty() \
+		or float(_coach_at(now).get("alpha", 0.0)) > 0.01 \
 		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
 		or _bunting_running(now) \
 		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
@@ -3313,14 +3411,20 @@ func _draw_combo(now: float, shown: Array) -> void:
 	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
 	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
 	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
-	var b := Face.Builder.new()
-	var tip := tail - centre
-	var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
-	b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
-	b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
-	b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
-	b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
-	_combo_shown = b.mesh()
+	var tip := (tail - centre).round()
+	# The bubble is built about its own middle and moved there by the
+	# transform, so it is rebuilt only when its words or its tail change --
+	# once a count, and not on every frame of its pop.
+	var key := [text, tip]
+	if _combo_shown == null or _combo_key != key:
+		var b := Face.Builder.new()
+		var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+		b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+		b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+		_combo_shown = b.mesh()
+		_combo_key = key
 	shown.append(_combo_shown)
 	_life_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
 	_life_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
@@ -3442,3 +3546,8 @@ static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+## The cloth patch `p` is cut from: the state's `cloth_of`, which is the
+## patch's own index on every band but Scrap Basket.
+func _ci(p: int) -> int:
+	return _state.cloth(p)
