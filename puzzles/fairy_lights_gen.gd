@@ -43,6 +43,11 @@ const DC := [0, 1, 0, -1]
 const SIZES := [5, 6, 7, 8]
 ## Wish Tags' field.
 const TAGS_N := 8
+## The fewest tags a Wish Tags garden keeps. Stripped all the way down, the
+## no-loop and no-island rules carry most gardens on a single tag (median 1
+## over the first bank), which leaves the tags invisible as a mechanic; the
+## strip stops at this floor instead.
+const TAGS_MIN := 4
 ## Trees `generate_tags` grows before it gives up and hands back `ok: false`.
 ## Mined off the phone, so this only bounds a bad seed.
 const TAGS_BUDGET := 200
@@ -731,7 +736,8 @@ static func _global(cells: int, nb: PackedInt32Array, md: PackedInt32Array, post
 ## neither the propagate-only solver nor the tag solver with no tags can
 ## finish, every lantern tagged, the tag solver
 ## made to finish it, then tags stripped one at a time in a seeded order,
-## each removal kept only while the tag solver still finishes. Scrambled as
+## each removal kept only while the tag solver still finishes, stopping at
+## TAGS_MIN (a garden with fewer lanterns keeps them all). Scrambled as
 ## every band is. {"n", "post", "sol", "deal", "tags" (cell -> depth),
 ## "rung", "work", "attempts", "ok"}; `ok` false when TAGS_BUDGET trees all
 ## failed (the last one grown rides along untagged, never to be banked).
@@ -769,6 +775,8 @@ static func generate_tags(rng: RandomNumberGenerator) -> Dictionary:
 			order[k] = order[s]
 			order[s] = t
 		for cell in order:
+			if tags.size() <= TAGS_MIN:
+				break
 			var depth: int = tags[cell]
 			tags.erase(cell)
 			if not bool(solve_tags(n, post, sol, tags).ok):

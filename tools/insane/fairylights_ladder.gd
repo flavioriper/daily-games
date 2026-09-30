@@ -5,8 +5,9 @@ extends RefCounted
 ## many lengths of wire lie between them and the post
 ## (puzzles/fairy_lights_gen.gd, `generate_tags`). The garden is one the
 ## propagate-only solver cannot finish, and one the tag solver cannot finish
-## with no tags either; the tags left are the fewest, in a seeded stripping
-## order, that let the tag solver finish without a guess.
+## with no tags either; tags are stripped in a seeded order while the tag
+## solver still finishes without a guess, down to Gen.TAGS_MIN and no
+## further, so the tags stay a mechanic rather than one lone label.
 ##
 ## The rung is 0 when the propagate-only solver (Hard's, `Gen.solvable`)
 ## finishes the garden, and otherwise 1 plus the suppositions the tag solver
