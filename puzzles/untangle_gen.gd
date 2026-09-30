@@ -137,18 +137,32 @@ static func run_of(tw: PackedInt32Array, k: int) -> PackedInt32Array:
 ## change in place. Returns the change in crossings (negative: some undone).
 ## The hole must be free; reach is the caller's.
 static func apply(at: PackedInt32Array, tw: PackedInt32Array, ropes: int, peg: int, hole: int) -> int:
+	var delta := apply_toward(at, tw, ropes, peg, float(hole))
+	at[peg] = hole
+	return delta
+
+## The rule for a peg still in the air: carried from its hole over the top
+## toward `to`, a place on the ring in holes (fractional: between two holes),
+## passing over only the ropes whose bit is set in `over` (-1: every rope the
+## chord to `to` crosses). `tw` changes in place, `at` does not. `apply` is
+## this with `to` a hole; the board runs it every frame a peg is carried, so
+## the ropes wrap and slide off under the hand, not at the drop.
+static func apply_toward(at: PackedInt32Array, tw: PackedInt32Array, ropes: int, peg: int, to: float, over := -1) -> int:
 	var x := peg >> 1
 	var e := peg & 1
-	var from := at[peg]
-	var before := at.duplicate()
-	at[peg] = hole
+	var from := float(at[peg])
+	var other := float(at[peg ^ 1])
 	var delta := 0
 	for y in ropes:
-		if y == x or not crosses(from, hole, at[2 * y], at[2 * y + 1]):
+		if y == x or (over >= 0 and (over >> y) & 1 == 0):
+			continue
+		var y0 := float(at[2 * y])
+		var y1 := float(at[2 * y + 1])
+		if not _crosses_f(from, to, y0, y1):
 			continue
 		var k := pair_index(x, y, ropes)
 		var n := tw[k] >> 1
-		var cur := top_at(before, tw, ropes, x, e, y)
+		var cur := top_at(at, tw, ropes, x, e, y)
 		var push := n == 0 or cur == 0
 		var n2 := n + 1 if push else n - 1
 		# The mover's own side of the crossing nearest its end, afterwards: on
@@ -165,10 +179,17 @@ static func apply(at: PackedInt32Array, tw: PackedInt32Array, ropes: int, peg: i
 				if n2 % 2 == 1:
 					t2 = 1 - req
 				else:
-					t2 = (1 - req) if _with_a0(at, y, x, e) else req
+					# _with_a0 with the mover's end at `to`.
+					var with0 := not _crosses_f(y0, to, y1, other)
+					t2 = (1 - req) if with0 else req
 		tw[k] = n2 * 2 + t2
 		delta += 1 if push else -1
 	return delta
+
+static func _crosses_f(a: float, b: float, c: float, d: float) -> bool:
+	var lo := minf(a, b)
+	var hi := maxf(a, b)
+	return (c > lo and c < hi) != (d > lo and d < hi)
 
 ## The tangle of a layout nobody has wrapped: each interleaving pair crosses
 ## once, the rope listed later on top.

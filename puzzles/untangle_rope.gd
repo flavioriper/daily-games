@@ -241,6 +241,24 @@ func _twist(wg: Dictionary) -> void:
 	# other (straight between): what is laid on is the swing across and back
 	# less that straight run, so nothing moves at the ends.
 	var end_side := cos(PI * n)
+	if wg.has("i0"):
+		# The stretch of chain held to the braid, by length along the line.
+		var j0 := _span_at[clampi(int(floor(float(wg.i0))), 0, SEGS - 1)]
+		var j1 := _span_at[clampi(int(ceil(float(wg.i1))), 0, SEGS - 1)]
+		if j1 - j0 < 2:
+			return
+		var along := PackedFloat32Array()
+		along.resize(j1 - j0 + 1)
+		for j in range(j0 + 1, j1 + 1):
+			along[j - j0] = along[j - j0 - 1] + _line[j - 1].distance_to(_line[j])
+		var span := along[along.size() - 1]
+		if span <= 0.0:
+			return
+		for j in range(j0 + 1, j1):
+			var u := along[j - j0] / span
+			var shape := cos(PI * n * u + spin * sin(PI * u)) - lerpf(1.0, end_side, u)
+			_line[j] += perp * swing * shape * w
+		return
 	for i in range(1, _line.size() - 1):
 		var d := _line[i] - c
 		var u := d.dot(axis) / L + 0.5
@@ -394,27 +412,54 @@ func draw(b: Face.Builder, w: float, fill: Color, deep: Color, light: Color, lif
 ## runs across it: `across` are the places across it (-1 the side the light
 ## comes from, 1 the far side, in halves) and `cols` the colour at each. One
 ## run of vertices per point, written straight into the builder.
+##
+## The side normal is carried along the line (never flipped point to point:
+## a flip folds the strip into shards wherever the rope turns across the
+## light), and which side is lit is blended in per point instead, so a rope
+## running along the light is lit evenly and the shading turns with the rope.
 static func _ribbon(b: Face.Builder, line: PackedVector2Array, off: Vector2, half: float,
 		across: PackedFloat32Array, cols: Array) -> void:
 	var n := line.size()
 	if n < 2:
 		return
 	var m := across.size()
+	# Each stop's colour as seen from the other side, for the blend.
+	var mirror: Array = []
+	for j in m:
+		mirror.append(_sample(across, cols, -across[j]))
 	var base := b.verts.size()
+	var prev := Vector2.ZERO
 	for i in n:
 		var t := line[mini(i + 1, n - 1)] - line[maxi(i - 1, 0)]
-		var nm := t.orthogonal().normalized() if t.length_squared() > 0.0 else Vector2.UP
-		if nm.dot(LIGHT) > 0.0:
+		var nm := t.orthogonal().normalized() if t.length_squared() > 0.0 else prev
+		if nm == Vector2.ZERO:
+			nm = Vector2.UP
+		if prev != Vector2.ZERO and nm.dot(prev) < 0.0:
 			nm = -nm
+		prev = nm
+		# 0: nm points away from the light (the stops as given), 1: toward it.
+		var flip := smoothstep(-0.35, 0.35, nm.dot(LIGHT))
 		var at := line[i] + off
 		for j in m:
 			b.verts.append(at + nm * (across[j] * half))
-			b.cols.append(cols[j])
+			b.cols.append((cols[j] as Color).lerp(mirror[j], flip))
 	for i in n - 1:
 		var r0 := base + i * m
 		var r1 := r0 + m
 		for j in m - 1:
 			b.idx.append_array([r0 + j, r1 + j, r1 + j + 1, r0 + j, r1 + j + 1, r0 + j + 1])
+
+## The colour of a band `across` / `cols` at the place `a` across it.
+static func _sample(across: PackedFloat32Array, cols: Array, a: float) -> Color:
+	var m := across.size()
+	if a <= across[0]:
+		return cols[0]
+	for j in range(1, m):
+		if a <= across[j]:
+			var span := across[j] - across[j - 1]
+			var u := (a - across[j - 1]) / span if span > 0.0 else 0.0
+			return (cols[j - 1] as Color).lerp(cols[j], u)
+	return cols[m - 1]
 
 ## `line` moved sideways by `d`: away from the light when `away`, toward it
 ## otherwise.

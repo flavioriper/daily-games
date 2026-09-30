@@ -5,7 +5,9 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_untangle.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the board as dealt), `hold` (a peg lifted over a glowing
+## Modes: `rest` (the board as dealt), `carry` (a peg carried over ropes in
+## steps, a frame each, then `_folds` -- any rope line turning back on
+## itself), `hold` (a peg lifted over a glowing
 ## hole), `taut` (a peg dragged past what its rope reaches), `plan` (the
 ## dealer's answer played move by move to the win), `wrong` (moves that make
 ## it worse until the thread runs out, Hard and Insane), `answer` (the same,
@@ -93,6 +95,31 @@ func _at(t: float, what: Callable) -> void:
 	_plan.append([t, what])
 	_plan.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 
+## Where a rope's drawn line turns back on itself (a turn over 100 degrees
+## between neighbouring pieces): what tears the ribbon into shards.
+func _folds() -> void:
+	for r in _puzzle._ropes.size():
+		var line: PackedVector2Array = _puzzle._ropes[r].polyline()
+		var n := 0
+		var worst := 0.0
+		for i in range(1, line.size() - 1):
+			var d0 := line[i] - line[i - 1]
+			var d1 := line[i + 1] - line[i]
+			if d0.length() < 0.01 or d1.length() < 0.01:
+				continue
+			var ang := rad_to_deg(absf(d0.angle_to(d1)))
+			worst = maxf(worst, ang)
+			if ang > 100.0:
+				n += 1
+		var cn := 0
+		var ch: PackedVector2Array = _puzzle._ropes[r].p
+		for i in range(1, ch.size() - 1):
+			var e0 := ch[i] - ch[i - 1]
+			var e1 := ch[i + 1] - ch[i]
+			if e0.length() > 0.01 and e1.length() > 0.01 and absf(e0.angle_to(e1)) > deg_to_rad(100.0):
+				cn += 1
+		print("rope ", r, " chain folds ", cn, " pts ", line.size(), " folds ", n, " worst turn ", snappedf(worst, 1.0), " wiggles ", _puzzle._ropes[r].wiggles.size())
+
 func _shot(tag := "") -> void:
 	RenderingServer.force_draw()
 	_n += 1
@@ -160,6 +187,35 @@ func _script() -> void:
 			_at(3.0, func() -> void: _release(_puzzle.hole_to_local(m[1])))
 			_at(3.25, _shot)
 			_at(3.8, _shot)
+		"carry":
+			# A peg carried slowly over ropes, a frame at each step: the ropes
+			# wrap and slide off under the hand, before the drop. Picks the
+			# move that wraps most, else the one that passes over most.
+			_end = 6.4
+			var st = _puzzle.state
+			var best: Array = []
+			var score := -1
+			for p in st.at.size():
+				for h in st.holes:
+					if st.drop_check(p, h) != 0:
+						continue
+					var pv: Array = st.preview(p, h)
+					var sc: int = int(pv[1]) * 100 + absi(int(pv[0]))
+					if sc > score:
+						score = sc
+						best = [p, h]
+			var pg: int = best[0]
+			var hl: int = best[1]
+			print("carry peg ", pg, " -> hole ", hl, " preview ", st.preview(pg, hl))
+			_at(1.0, func() -> void: _press(_puzzle.peg_to_local(pg)))
+			for i in 8:
+				var u := float(i + 1) / 8.0
+				_at(1.2 + i * 0.5, func() -> void: _motion(_puzzle.peg_to_local(pg).lerp(_puzzle.hole_to_local(hl), u)))
+				_at(1.55 + i * 0.5, _shot)
+			_at(5.4, func() -> void: _release(_puzzle.hole_to_local(hl)))
+			_at(6.2, _shot)
+			_at(6.25, _folds)
+			_at(0.9, _folds)
 		"taut":
 			# The peg on the shortest rope that can move, dragged well past
 			# what the rope reaches, toward the ring's middle.

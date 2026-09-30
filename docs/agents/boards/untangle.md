@@ -1,5 +1,42 @@
 # Untangle
 
+**Live carry and clean rope (2026-09-30)**, after the user: "the wire is not
+reacting live with other, it create nots only after releasing, and the
+notches are all pixeled".
+
+- **The tangle reacts under the hand.** `_carry_tangle` runs every frame a
+  peg is held: the straight carry from its hole to the hand passes over every
+  rope whose peg-to-peg chord it crosses, and `Gen.apply_toward` applies the
+  rule for just those ropes toward where that chord meets the ring (a
+  fractional hole). Each pair's result depends only on the two ropes' pegs,
+  which is why a fractional target is enough. Carried onto a hole, it is
+  exactly `Gen.apply` (`tests/_probe_ut_live.gd`: 1488/1488 moves over four
+  bands); `apply` is now `apply_toward` plus the `at` write. Put back
+  (`_go_home`, `_drop_held`) shows `state.tw` again. The cinch / unwind
+  cues play as the hand does it; `_landed` plays them only if the drop
+  changed what was already shown (a hint, a tapped drop).
+- **The shards were the ribbon flipping.** `Rope._ribbon` turned each
+  point's normal to face away from the light, so wherever a rope turned
+  across the light the strip folded over. The normal is now carried along
+  the line and the lit side is blended per point (`_sample` mirrors the
+  stops).
+- **Folds.** `_folds` in the harness (`carry` mode) counts turns over 100
+  degrees in the chain and the drawn line. They came from three places, now
+  closed: a rope's braids overlapping along it (`_space_braids` pushes them
+  apart along the rope and shortens them to fit, `BRAID_SHORTEST`); a
+  twist laid on every drawn point near a braid, including the next braid's
+  (a wiggle now carries `i0`/`i1`, the chain stretch held to it, and
+  `_twist` works only there); and a braid placed at the point nearest all
+  four pegs when a short rope could never reach it (`_braid` pulls it toward
+  the rope that is too short, `BRAID_WAY_OF_LENGTH`, and caps its length at
+  the gap between a rope's pegs). Wiggles without `i0` (none today) keep the
+  old projection. The crossing search and the rewards read the spaced braids
+  (`_laid`, `_braid_laid`).
+- **Cost**: carrying on Insane, same harness back to back, 13.9 ms against
+  12.1 before (both windows include the PNG saves): the braids now re-lay
+  and wrapped ropes stay awake during the carry. Draw calls unchanged (156
+  peak). Phone reading still owed.
+
 **The knot rule (2026-09-29, evening)**: every pair of ropes keeps how many
 times it crosses and which lies on top; a peg carried over the top lifts its
 rope off where it lay on top and wraps it tighter where it lay under. Spec:
