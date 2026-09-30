@@ -6,9 +6,11 @@ extends RefCounted
 ## until one fit. The contract is tools/insane/README.md's.
 ##
 ## A board is kept when it fits Hard (Gen.fits: two bands over several lines,
-## or a supposition, and still no guess). The rung ranks them for the cut:
-## a supposition counts most, then bands over several lines, then how often
-## the player had to think at all.
+## or a supposition, and still no guess). The rung ranks them for the cut and
+## is a score, not a share of the court: 300 for needing a supposition, 100 a
+## band over several lines, 10 each time the player had to think. Mined
+## 2026-09-30: 127 of the 200 need a supposition, the rest two to five wide
+## bands.
 
 const Gen = preload("res://puzzles/queens_gen.gd")
 const Logic = preload("res://puzzles/queens_logic.gd")

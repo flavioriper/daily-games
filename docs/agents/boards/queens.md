@@ -23,3 +23,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (71 on the strip with a queen seated and the chip alive, against 69). The
   tile tray takes a **chip set** now (`TileTray.MOSAIC`, `TileTray.QUEENS`;
   `"tray": "queens"`), so Nonogram's tray and Queens' are one class.
+- **The polish of 2026-09-30** (spec `2026-09-30-queens-polish-design.md`).
+  The players' "too many starting single cells" were one-cell patches: the
+  repair pass that drives a grown court to a unique answer could shrink a
+  patch to one cell, which is a queen handed out before the first thought.
+  `Gen.KEEP` forbids it, and `puzzles/queens_logic.gd` grades every court by
+  hand logic (singles; bands and reach, one-line and wide; suppositions).
+  **Hard is banked, not generated** (`content/insane/queens_hard.json`, mined
+  by `tools/mine_insane.gd -- queens_hard`): grading a live 9x9 until one
+  fitted cost 184 ms median and 914 ms worst on the Mac. Insane is **Morning
+  Mist** (`Gen.mist`): two pairs of neighbouring patches merged into misty
+  patches that take two queens; `state.quota` carries it everywhere (the
+  seating search, `legal`, `seen`, the hint, the solver), and a queen crosses
+  her misty patch only once its second queen sits (`reach_of`). Hard and
+  Insane judge every seat: a wrong queen costs a heart, buzzes off and leaves
+  a `shown` cross that nothing takes back (not undo, not a sweep, not a
+  seat). The misty patches' crown pips ride the life layer so a queen on the
+  patch's first cell cannot hide them. `tests/_shot_queens.gd` plays it
+  through the real taps (a bare seat takes a cross first); remember zsh's
+  `${=args}` when looping its modes.
