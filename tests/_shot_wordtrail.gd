@@ -15,7 +15,8 @@ extends SceneTree
 ## `restore` (a solved day reopened). Frames go to
 ## <dir>/wt_<mode>_d<level>_<n>.png. Every mode prints the peak draw calls.
 
-const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/32fddde2-dbd3-420a-8813-2959510dd38a/scratchpad"
+## Pass out=<dir> for a session scratchpad; this is only the fallback.
+const SHOT_DIR := "/tmp"
 
 var _t := 0.0
 var _level := 0

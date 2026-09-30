@@ -38,3 +38,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   same **65** twice, and the settled frame matches the default driver to
   5/255 on four pixels -- edge antialiasing, no `instance uniform`. The
   reduce-motion pair 1.5 s apart is pixel-identical again.
+- **The polish pass** (2026-09-30, spec
+  `2026-09-30-word-trail-polish-design.md`) made Hard and Insane losable
+  and gave Insane a rule of its own. A **dandelion** on the band holds the
+  wishes (Hard 7, Insane 5, `State.WISHES`); a wrong trail blows a seed
+  away only when it could have been a word (as long as a hiding word, three
+  tiles or more) and was never tried (`State.could_be`, `State.miss`,
+  `tried`), and letting go off the field puts a trail down free on every
+  band. The last seed droops the tiles and brings Code Break's
+  `out_of_rows.gd` card in `WT_OUT_*` keys (placement `"wish"`): More
+  wishes (three, once) or Show the words (`State.reveal_next`, a paler
+  ribbon, `finish_unsolved()`; `is_solved()` is false with any shown word).
+  Hints are 3/3/1/0 by band. **Insane is Night Walk**: the field is dark,
+  walls and tiles alike, a lantern (Untangle's `LanternFace`) lights the 3x3
+  round the finger with an afterglow, found words light their neighbours for
+  good, and the solve brings the dawn. Rewards: a note up the scale per word,
+  a bubble (big, quick, a streak), a gag (hearts, conga, butterfly, twirl),
+  and a party (dance, a flower on every wall, the stage with a cheer, the
+  seal by plausible misses). Every cell has one pose (`_cell_pose`) and a
+  tile adds its own (`_tile_xf`, with a turn its glyph follows).
+  `tests/_shot_wordtrail.gd` drives every scenario; peaks 82 to 111 draw
+  calls on `opengl3_angle`.

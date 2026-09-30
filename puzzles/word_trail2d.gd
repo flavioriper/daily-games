@@ -63,8 +63,9 @@ const BEAM_TIME := 0.18
 ## finish first.
 const WIN_WAIT := 1.4
 ## Three, as the mock's badge says (spec section 10) -- on Easy and Medium.
-## Hard has one and Insane none (polish spec 2026-09-30, section 1).
-const HINTS := 3
+## Hard has one and Insane none of its own (polish spec 2026-09-30, section
+## 1); a video hint is still offered once they are spent, as on every board
+## (the user's call of 2026-09-29).
 const HINTS_BY_BAND := [3, 3, 1, 0]
 ## A moment that has not happened: far enough back that no reader ever sees
 ## it, and never confused with "a while ago" (`_now() - 100`), which can be
@@ -412,6 +413,9 @@ var _streak := 0
 var _last_lock := -100.0
 var _gags: Dictionary = {}
 var _bubble: Control
+## Bumped for a word when it is lifted, so a lock's timers (note, bubble,
+## gag) that have not fired yet do nothing over a word taken back.
+var _lock_gen: Dictionary = {}
 ## The night: when each cell was last in the lantern's reach, whether a
 ## finger is down lighting, the cell it lights round, where the lantern
 ## hangs, and the dawn.
@@ -443,7 +447,7 @@ func title() -> String: return "Word Trail"
 func rules() -> String:
 	var out := tr("WT_RULES")
 	if _state.counts_wishes():
-		out += "\n\n" + tr("WT_RULES_WISHES") % _state.wishes
+		out += "\n\n" + tr("WT_RULES_WISHES") % int(State.WISHES[_state.band])
 	if _state.night():
 		out += "\n\n" + tr("WT_RULES_NIGHT")
 	return out
@@ -501,6 +505,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_streak = 0
 	_last_lock = -100.0
 	_gags = {}
+	_lock_gen = {}
 	_drop_bubble()
 	_light = {}
 	_lamp_on = false
@@ -713,7 +718,7 @@ func _animating(t: float) -> bool:
 			+ span * SLOT_HOP_STEP + Motion.HOP_TIME)
 		if _found_at.has(i) and t - float(_found_at[i]) < settled:
 			return true
-		if _lifted_at.has(i) and t - float(_lifted_at[i]) < span * WAVE_STEP:
+		if _lifted_at.has(i) and t - float(_lifted_at[i]) < span * WAVE_STEP + Motion.HOP_TIME:
 			return true
 	# The live beam growing to the finger, and the tile under it pressing or
 	# springing back.
@@ -1040,7 +1045,7 @@ func _tile_xf(cell: Vector2i, t: float) -> Transform2D:
 			var idx := (_state.words[owner]["path"] as Array).find(cell)
 			var span := (_state.words[owner]["path"] as Array).size()
 			var gone := float(_lifted_at[owner]) + float(span - 1 - idx) * WAVE_STEP
-			lift -= Motion.hop_lift(t - gone, LIFT_DIP * s)
+			lift += Motion.hop_lift(t - gone, LIFT_DIP * s)
 		if owner >= 0 and _gags.has(owner):
 			var g: Dictionary = _gags[owner]
 			var idx := (_state.words[owner]["path"] as Array).find(cell)
@@ -1679,7 +1684,10 @@ func _release(cancel := false) -> void:
 	var path := _trail
 	_trail = []
 	var t := _now()
-	var i := -1 if cancel else _state.trace(path)
+	# A right word always locks, even let go off the field: it never costs,
+	# and a finger drifting past an edge tile must not throw it away.
+	# Letting go off the field only spares a wrong trail its wish.
+	var i: int = _state.trace(path)
 	if i < 0:
 		if path.size() > 1 and not Motion.reduce:
 			_ghost = {"path": path, "at": t}
@@ -1798,9 +1806,14 @@ func undo() -> bool:
 	_pending = keep
 	_trail = []
 	_gags.erase(i)
+	_lock_gen[i] = int(_lock_gen.get(i, 0)) + 1
+	# Undo and lock again is no streak.
+	_streak = 0
+	_notes = maxi(_notes - 1, 0)
 	# The same wave backwards: the last tile the word took is the first it
 	# gives up, and its letters leave the slots with it.
-	_busy_for(float((_state.words[i]["path"] as Array).size()) * _wave_step())
+	_busy_for(float((_state.words[i]["path"] as Array).size()) * _wave_step()
+		+ (0.0 if Motion.reduce else Motion.HOP_TIME))
 	_say(tr("WT_TAKEN_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
@@ -1853,9 +1866,12 @@ func reset_board() -> void:
 	_gags = {}
 	_miss_path = []
 	_drop_bubble()
+	for i in _state.words.size():
+		_lock_gen[i] = int(_lock_gen.get(i, 0)) + 1
+	_streak = 0
 	# Every locked word unwinds at once, each on its own reversed wave, so
 	# the board is clear when the longest of them has run.
-	_busy_for(float(longest) * _wave_step())
+	_busy_for(float(longest) * _wave_step() + (0.0 if Motion.reduce else Motion.HOP_TIME))
 	moves = 0
 	_running = true
 	_say(tr("WT_CLEAN") + " " + _left_line(), Face.Expr.HAPPY)
@@ -2014,13 +2030,19 @@ func _rewards(i: int, t: float) -> void:
 	_streak += 1
 	var step: int = PENTA[mini(_notes, PENTA.size() - 1)]
 	_notes += 1
-	_after(land + 0.05, fx.cue.bind("combo", pow(2.0, float(step) / 12.0)))
+	var lock := int(_lock_gen.get(i, 0))
+	var live := func() -> bool: return int(_lock_gen.get(i, 0)) == lock and bool(_state.words[i]["found"])
+	_after(land + 0.05, func() -> void:
+		if live.call():
+			fx.cue("combo", pow(2.0, float(step) / 12.0)))
 	if _state.is_solved() or Motion.reduce:
 		return
 	var last: Vector2i = (_state.words[i]["path"] as Array)[-1]
 	var word: String = _state.words[i]["word"]
 	if span >= BIG:
 		_after(land + 0.1, func() -> void:
+			if not live.call():
+				return
 			_bubble_over(last, tr("WT_BIG"))
 			fx.cue("big")
 			var a := _centre((_state.words[i]["path"] as Array)[0])
@@ -2028,11 +2050,15 @@ func _rewards(i: int, t: float) -> void:
 			fx.confetti((a + z) * 0.5, 22, maxf(absf(z.x - a.x), _cell())))
 	elif quick:
 		_after(land + 0.1, func() -> void:
+			if not live.call():
+				return
 			_bubble_over(last, tr("WT_QUICK"))
 			fx.cue("quick"))
 	elif _streak >= STREAK:
 		var n := _streak
 		_after(land + 0.1, func() -> void:
+			if not live.call():
+				return
 			_bubble_over(last, tr("WT_STREAK") % n)
 			fx.cue("streak"))
 	var kind: String = ["love", "conga", "flutter", "twirl", ""][posmod(word.hash(), GAGS)]
@@ -2040,7 +2066,9 @@ func _rewards(i: int, t: float) -> void:
 		return
 	var at := t + land + _glint_length(i) * 0.5
 	_gags[i] = {"kind": kind, "at": at}
-	_after(at - t, fx.cue.bind(kind))
+	_after(at - t, func() -> void:
+		if live.call():
+			fx.cue(kind))
 	var long := {"love": LOVE_TIME + 0.4, "conga": float(span + 4) * CONGA_STEP + Motion.HOP_TIME,
 		"flutter": FLUTTER_TIME, "twirl": TWIRL_TIME}
 	_busy_for(at - t + float(long[kind]))
@@ -2281,7 +2309,8 @@ func show_words() -> void:
 	if is_done():
 		return
 	_close_card()
-	out_of_hearts = false
+	# out_of_hearts stays up through the reveal, so the host's Back still ends
+	# the board unsolved rather than logging an abandon.
 	_revealing = true
 	var t := _now()
 	_droop_at = NEVER
@@ -2301,6 +2330,7 @@ func show_words() -> void:
 	var end := 0.3 + float(left) * step + 8.0 * _wave_step()
 	_after(end, func() -> void:
 		_revealing = false
+		out_of_hearts = false
 		if _state.night():
 			_dawn_at = _now() if not Motion.reduce else _now() - 100.0
 			_busy_for(DAWN_TIME)
