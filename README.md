@@ -78,6 +78,7 @@ rather than the live project (`daily-games-420bf`):
 | Queens | tap-cycle, drag crosses | repair to a unique seating (backtracking count to 2), then a hand-logic solver grades it (no one-cell patch, bands, suppositions); Hard and Insane (Morning Mist: misty patches take two queens) are banked and re-proved by that solver |
 | Hidden Word | type, Enter | — a word list, not a proof; Hard and Insane use every clue, and Insane (Snail Mail: a row's colours arrive a row late) draws from the words an answer-list-aware solver needs five or more rows for under that rule (`tools/insane/hiddenword_ladder.py`) |
 | Word Trail | drag trail | none needed: a path's shape puts no constraint on its letters, so every board is solvable by construction; Hard and Insane count wrong trails on a dandelion, and Insane (Night Walk) plays the field in the dark under a lantern |
+| Mushroom Patch | tap to plant, drag pebbles | carved backwards from a fully turned field, keeping a cut only while a no-guess solver (plain rules, the global count, subset subtraction on Hard up) still proves every cell; Insane (Fairy Rings: half the numbers count the ring two steps out) is carved again with suppositions allowed, banked, and re-proved by that solver on the Mac |
 
 A daily puzzle that turns out to have two answers is the worst bug this product
 can ship, so every generator proves its instance is uniquely solvable before

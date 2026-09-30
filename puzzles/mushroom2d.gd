@@ -496,6 +496,7 @@ func _deal() -> void:
 	_love = []
 	_bloom = {}
 	_meadow_at = INF
+	_rings_at = INF
 	_glow_at = INF
 	_stamp_at = INF
 	_seal_mesh = null
@@ -1177,8 +1178,10 @@ func _build_ground(now: float) -> Dictionary:
 		if _solved_at >= 0.0:
 			# The pebbles clear away in the solve wave, leaving the patch to
 			# the mushrooms and their numbers.
-			grow *= Motion.pop_out_scale(now - _solved_at - _solve_delay(cell))
-			busy = true
+			var left := now - _solved_at - _solve_delay(cell)
+			grow *= Motion.pop_out_scale(left)
+			if left < Motion.POP_OUT:
+				busy = true
 		if grow.x <= 0.0 or grow.y <= 0.0:
 			continue
 		var at := cell_centre(cell)
@@ -1914,7 +1917,7 @@ func share_glyphs() -> String:
 
 ## Whether the solve was flawless, so a reopened daily keeps its seal.
 func completion_record() -> Dictionary:
-	return {"flawless": _flawless}
+	return {"flawless": _flawless, "hearts": hearts}
 
 # --- the win ---
 
@@ -2002,6 +2005,10 @@ func restore_completed_board() -> void:
 	_meadow_at = now - 10.0
 	_glow_at = now - 10.0
 	_flawless = bool(completed_record.get("flawless", false))
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	for g in state.given:
+		if int(state.given[g]) > 0:
+			_bloom[g] = {"at": now - 10.0, "open": true}
 	if _flawless or state.band == 3:
 		_stamp_at = now - 10.0
 	for cell in state.mushrooms:
@@ -2083,7 +2090,7 @@ func _reach_glow(b: Face.Builder, now: float) -> bool:
 func _update_blooms(_before: Dictionary, t: float, delay_of: Callable) -> void:
 	var opened := false
 	for g in state.given:
-		var done: bool = _solved_at < 0.0 and state.finished(g)
+		var done: bool = _solved_at < 0.0 and state.finished(g) and not _judged_wrong_in(g)
 		var was: bool = bool(_bloom.get(g, {}).get("open", false))
 		if done and not was:
 			var at: float = t + float(delay_of.call(g, false)) + (0.0 if Motion.reduce else Motion.POP_IN)
@@ -2094,6 +2101,17 @@ func _update_blooms(_before: Dictionary, t: float, delay_of: Callable) -> void:
 	if opened and not is_done():
 		_after(0.0 if Motion.reduce else Motion.POP_IN, fx.cue.bind("bloom"))
 	_busy_for(Motion.POP_IN + BLOOM_TIME + 0.1)
+
+## Whether a mushroom the answer does not grow stands in `g`'s reach on a
+## judged band: she is about to wilt, and a flower for her would be a reward
+## for a wrong move.
+func _judged_wrong_in(g: Vector2i) -> bool:
+	if not state.judged():
+		return false
+	for p in state.reach(g):
+		if int(state.marks.get(p, State.BLANK)) == State.FOUND and not state.mushrooms.has(p):
+			return true
+	return false
 
 ## The finished numbers' flowers, each in its bed's upper right corner, and
 ## at the party the meadow: a flower on every bare cell along the diagonal.
@@ -2196,7 +2214,9 @@ func _on_right_plant(cell: Vector2i, land: float) -> void:
 	_streak += 1
 	if _streak >= 2:
 		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
-		_after(land, fx.cue.bind("combo", pow(2.0, step / 12.0), COMBO_DB))
+		_after(land, func() -> void:
+			if not is_done():
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
 	if _streak >= COMBO_FROM:
 		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
 		_combo_n = _streak
@@ -2206,6 +2226,8 @@ func _on_right_plant(cell: Vector2i, land: float) -> void:
 		_combo_layer.queue_redraw()
 	if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
 		_after(land, func() -> void:
+			if is_done():
+				return
 			fx.confetti(cell_centre(cell), 22)
 			fx.cue("confetti"))
 	_gag(cell, land)
@@ -2562,6 +2584,9 @@ func _gag(cell: Vector2i, land: float) -> void:
 		return
 	var roll := posmod(hash(Vector2i(cell.x * 13 + 7, cell.y * 5 + _streak)), GAG_ODDS)
 	if roll >= GAGS:
+		return
+	# The plant that solves the patch hands the stage to the party.
+	if state.is_solved():
 		return
 	match roll:
 		0:
