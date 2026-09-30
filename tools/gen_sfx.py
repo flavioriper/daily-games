@@ -45,6 +45,12 @@ CARTOON = ("cute cartoon comedy sound effect, playful, rounded, soft, not harsh,
 # robotic, and plain foley still came back thin.
 COZY = "cozy, warm, soft, intimate, close mic, quiet room, no music, no voice"
 
+# Fairy Lights' garden at dusk (2026-09-30): glass chimes, a music box and
+# kalimba in place of the house marimba, which turns a lantern into a woodblock.
+DUSK = ("cozy casual mobile puzzle game sound, soft warm glass chimes, music "
+        "box and kalimba tones, gentle, rounded, no harsh transients, clean, "
+        "dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -843,15 +849,41 @@ SETS = {
     },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
+    # Re-prompted 2026-09-30 (the polish) toward glass chimes, soft felt taps,
+    # a music box and kalimba (DUSK in place of the house marimba): the
+    # tape-rewind undo and the wooden "bonk" read as a toy or a scold, as they
+    # did on Bridges, Sudoku and Quilt. Hard and Insane blow a fuse on a wrong
+    # join; Insane is Wish Tags.
     "fairylights": {
-        "place":    ("a single soft wooden click with a tiny light wire tick, a small piece of garden wire turned a quarter, very short", 0.5, -8),
-        "wake":     ("a single tiny warm glass twinkle, a little paper lantern softly lighting up, very short and delicate", 0.5, -12),
-        "refuse":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft quick descending ripple of tiny glass twinkles fading out, garden lanterns dimming one after another", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
+        "place":    ("a single soft muffled felt tap with a tiny delicate glass tick, a small piece of garden wire turned a quarter, hushed, very short", 0.5, -11, DUSK),
+        "join":     ("a tiny soft warm click and a faint little sparkle, two thin wires touching, very short and very quiet", 0.5, -15, DUSK),
+        "wake":     ("a single tiny warm glass chime twinkle, a little paper lantern softly lighting up, very short and delicate", 0.5, -13, DUSK),
+        "refuse":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12, DUSK),
+        "undo":     ("a tiny soft felt tap and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, DUSK),
+        "hint":     ("a gentle magical sparkle, three soft glass chime notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, DUSK),
+        "reset":    ("a soft quick descending ripple of tiny glass chimes fading out, garden lanterns dimming one after another, hushed and cozy", 1.0, -11, DUSK),
+        "enter":    ("a soft airy cascade of tiny glass chime twinkles and a light leafy rustle, a little evening garden appearing at dusk, hushed", 1.0, -11, DUSK),
+        "solved":   ("a warm short celebratory music box and glass chime flourish, rising arpeggio ending on a soft bright shimmer, a whole garden of lanterns lit, joyful and cozy", 2.0, -4, DUSK),
+        # The streak and the gags.
+        "combo":    ("a single short soft bright kalimba and glass chime pluck, one clean note, very short", 0.5, -8, DUSK),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glass twinkle, light and airy", 1.0, -9, DUSK),
+        "moth":     ("a small soft moth fluttering its papery wings close by, gentle quick delicate flaps, hushed", 0.8, -14, COZY),
+        "hum":      ("a little lantern humming a tiny tune, three soft music box notes, sweet and sleepy, quiet", 0.9, -12, DUSK),
+        "love":     ("a tiny soft sweet bubbly pop with a little two-note glass chime 'aww', cute and warm, short", 0.7, -10, DUSK),
+        # Hearts and the fuse (Hard and Insane).
+        "heart_lost":    ("a soft gentle glass chime two-note fall, a small sad 'oh', a delicate tink dropping, warm and muffled, never a buzzer", 0.6, -15, DUSK),
+        "fuse":     ("a tiny soft warm electric fizz and a small muffled pop, a little bulb flickering off and on, cozy and gentle, not scary, short", 0.6, -14, COZY),
+        "clip":     ("a small brass clip snapping onto a thin wire, a single soft little metallic click, close and quiet, very short", 0.5, -13, COZY),
+        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, garden lights dimming for the night, calm and kind, maybe tomorrow", 1.6, -14, DUSK),
+        "heart_back":    ("a warm rising pair of soft glass chime notes, a little heart coming back, gentle and happy", 0.6, -15, DUSK),
+        # The party.
+        "stamp":    ("a soft paper stamp thump followed by a clear warm glass chime sparkle, two bright rising notes ringing out and fading slowly, proud", 1.5, -5, DUSK),
+        "party":    ("a short joyful garden party flourish on a music box and glockenspiel, rising and bright with a flutter of paper at the end, warm and cozy", 2.0, -4, DUSK),
+        "dance":    ("a short cheerful bouncy kalimba tune, four playful light hopping notes, a tiny happy dance, cozy and cute", 1.2, -9, DUSK),
+        "fireflies":("an airy rising shimmer of many tiny soft twinkles, fireflies drifting up into a dusk sky, magical and gentle", 1.5, -11, DUSK),
+        "purr":     ("a sleepy little cat curled up in a warm garden purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
+        # Insane: Wish Tags.
+        "tags":     ("little paper wish tags fluttering on a string in a soft breeze with a warm golden glass chime shimmer, cozy and magical", 1.3, -11, DUSK),
     },
     # Firefly (Arcade, arcade/firefly_screen.gd): a formation shooter in a
     # night garden. `shoot` fires several times a second, so it is short
