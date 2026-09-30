@@ -397,17 +397,46 @@ SETS = {
         "mist_lift": ("a soft warm breeze lifting away with a gentle rising shimmer of glockenspiel notes, sunlight breaking through, dreamy and cozy", 1.8, -9),
     },
     # Hidden Word (puzzle_id "hiddenword"): type a five-letter guess on a
-    # keyboard, Enter turns the row over a tile at a time.
+    # paper keyboard, Enter turns the row over a tile at a time, on a
+    # parchment card in a little meadow. Insane is Snail Mail: a little snail
+    # carries each row's colours and delivers them one row late (the row
+    # turns over as sealed kraft-paper envelopes first). Re-prompted toward
+    # felt, paper, kalimba and glockenspiel on 2026-09-30, as Queens' were:
+    # the wooden "bonk" read as a scold. type fires on every key, so it is the
+    # quietest, roundest and shortest; flip plays five times a row, 4% higher
+    # per tile, so it is very short and soft.
     "hiddenword": {
-        "type":     ("a single tiny soft wooden letter tile click, typing on a cozy wooden keyboard, very short and quiet", 0.5, -12),
-        "erase":    ("a tiny soft short downward wooden tick, a letter tile taken back, very short and quiet", 0.5, -13),
-        "flip":     ("a single soft wooden tile flipping over with a light papery flick, very short", 0.5, -9),
-        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a quick ripple of many small soft wooden pops, tiles being swept off a board", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "lost":     ("a gentle warm three-note soft marimba phrase gently descending and resolving, a kind 'maybe tomorrow', calm, not sad, not a buzzer", 1.5, -6),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of letter tiles appearing", 1.0, -9),
+        "type":     ("a single tiny soft felt tap on a paper key, one muffled round little tick, typing on a cozy paper keyboard, extremely short and hushed", 0.5, -14, COZY),
+        "erase":    ("a tiny soft paper brush and a small felt pat, a letter gently taken back, very short and quiet", 0.5, -14, COZY),
+        "flip":     ("a single very short soft papery card flick, a small parchment tile turning over, light and hushed", 0.5, -12, COZY),
+        "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not quite a word', muffled and warm, very short, never a buzzer", 0.5, -12),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a light paper rustle, cozy and kind", 1.0, -8),
+        "reset":    ("a soft quick ripple of tiny felt pats and a light flutter of paper cards, a parchment card swept gently clear, hushed and cozy", 1.0, -10, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        "lost":     ("a gentle warm three-note soft felt kalimba phrase slowly descending and resolving softly, a kind 'maybe tomorrow', calm, not sad, never a buzzer", 1.5, -9),
+        "enter":    ("a soft airy cascade of tiny paper cards settling and a light leafy rustle, a little parchment card of letters laid out in a meadow, cozy and hushed", 1.0, -11, COZY),
+        # The streak, the row's reactions and the gags.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "warmer":   ("a cheerful little two-note rising kalimba 'ooh!', soft and warm, getting warmer, short", 0.6, -10),
+        "so_close": ("a slightly excited three-note rising melody on soft kalimba and glockenspiel, a happy 'so close!', warm and bright, short", 0.8, -8),
+        "all_here": ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, every friend has arrived, cozy", 1.2, -9),
+        "cool":     ("a laid-back cool little slide, a soft whistle-like kalimba glide gently down then back up, relaxed and pleased, cozy", 0.8, -10),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
+        "sprout":   ("a tiny leaf popping out of the soil, a soft papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -12),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little paper flags at the end, joyful and warm", 2.0, -4),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "ready":    ("a tiny soft two-note kalimba blip going up, a little 'ready', very short and quiet", 0.5, -13),
+        # Out of rows: the tiles sag, a lullaby, and a row given back.
+        "droop":    ("a soft slow descending felt-mallet marimba slide, sleepy and kind, little tiles sagging gently, warm and muffled, never a buzzer", 0.8, -13),
+        "out_of_rows": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "row_back": ("a warm rising pair of soft kalimba plucks, one more row, gentle and happy", 0.6, -12),
+        # Insane: Snail Mail.
+        "post":     ("a soft papery envelope folding shut and a tiny felt tap, a little letter sealed, very short and quiet", 0.5, -13, COZY),
+        "snail":    ("a tiny cute snail sliding slowly, a soft gentle squishy slide with a light paper rustle, ending on a small happy kalimba ting, a little letter delivered, cute and cozy", 1.2, -11, COZY),
+        "snail_hurry": ("a tiny cute snail scurrying quickly, a soft quick squishy patter ending in a bright little glockenspiel ding, good news travels fast, cute and funny", 0.8, -10, COZY),
     },
     # Word Trail (puzzle_id "wordtrail"): drag a trail through letter tiles;
     # only a right word locks, and a ribbon of colour runs along it.

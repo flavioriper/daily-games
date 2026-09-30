@@ -1,0 +1,2702 @@
+{
+	"version": 1,
+	"note": "Hidden Word's Snail Mail bank: answers an answer-list-aware solver needs 5+ rows for when each row's colours arrive a row late (tools/insane/hiddenword_ladder.py). rung = rows, 7 = not in six.",
+	"boards": [
+		{
+			"answer": "brown",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bunny",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "clown",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "drive",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "eagle",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "every",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fight",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "flour",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "funny",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "glass",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "glove",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hello",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "house",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "human",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "juice",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "lunch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "maple",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "money",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "month",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "night",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "paper",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "petal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "plane",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "power",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pride",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "puppy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "queen",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "quiet",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rainy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "river",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shell",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shine",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "short",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sleep",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "smell",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "speak",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spoon",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sport",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "story",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sugar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sweet",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "think",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tooth",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "where",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "white",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "whole",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "worry",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wrong",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ahead",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "alike",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "anger",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "apply",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "arena",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "baker",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "berry",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "blame",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "blaze",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "booth",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "bound",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "brake",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "brass",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "broke",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "brook",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "broom",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "chill",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cliff",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "cough",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "diver",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "dizzy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "doubt",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "drank",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "eager",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "elbow",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ember",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "entry",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "equal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "extra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fable",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ferry",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fever",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fiber",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fiery",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "flake",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "flesh",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "flock",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "flood",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "flown",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "foggy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "frame",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "fried",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "given",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "glade",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gleam",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "gloom",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "glory",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "goose",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grade",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grain",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grave",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "graze",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grief",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "group",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "grown",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "guilt",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "haven",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hazel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hedge",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hence",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hinge",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hippo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hobby",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "honor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hound",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hover",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "hurry",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "inner",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "input",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jelly",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jolly",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "judge",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "juicy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "jumbo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "kayak",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "kneel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "label",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "larva",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "leave",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "legal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "level",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "limit",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "liver",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "llama",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "lunar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "marsh",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mayor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "melon",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "merry",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "meter",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "might",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "minor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "minty",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mirth",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mixer",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "moody",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "moose",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mossy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "motel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "motor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mound",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "mower",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "named",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nanny",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "naval",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "navel",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nerve",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "never",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "newly",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "niche",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ninth",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "north",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "nudge",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "offer",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "organ",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "outer",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "owing",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "owner",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "paddy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "panel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "patch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "perky",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "picky",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pinch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "piney",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "pluck",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "plump",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "point",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "poppy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "prank",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "press",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "proof",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "prove",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "purse",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "quake",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "quilt",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "radar",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ranch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "raven",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "razor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "realm",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rebel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "regal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "reign",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "relay",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "renew",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "repay",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "reply",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rhyme",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rider",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rogue",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "roomy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "ropey",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rough",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rover",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rugby",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rumor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "rural",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "safer",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "seize",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "seven",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shake",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shame",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shape",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shark",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sharp",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shave",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sheen",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shelf",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shock",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shone",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shout",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "shown",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "silky",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sixty",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "skier",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sleek",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "slime",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spade",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spear",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spend",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spike",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spill",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spiny",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "spoke",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "staff",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stall",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stamp",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "start",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "state",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "steel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "steep",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stiff",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sting",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stock",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stony",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stoop",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stork",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stout",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stray",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "stump",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "super",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "surge",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sushi",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "swamp",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "swarm",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "sweep",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "swell",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "swift",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "swing",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "syrup",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tacky",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "taffy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tango",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tangy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "taper",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "taste",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tempo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tenor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tenth",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "theft",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "their",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "there",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "thief",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "thigh",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "thorn",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "threw",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "throw",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "thyme",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tight",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "timer",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "total",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "touch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tough",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "towel",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tramp",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "trout",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tummy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "turbo",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tutor",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "twist",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "tying",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "udder",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "undue",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "union",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "unite",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "unity",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "upper",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "upset",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "utter",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vapor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "verse",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vigor",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vinyl",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "virus",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vivid",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vocal",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vouch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "vowel",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wafer",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wagon",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "waste",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "watch",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "waved",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "weave",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wedge",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "weedy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "weigh",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "whale",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wheat",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "which",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "widen",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wider",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wince",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "winch",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wiper",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wired",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wispy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "witty",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "woken",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "worth",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "wound",
+			"grade": {
+				"rung": 7,
+				"work": 7,
+				"unique": true
+			}
+		},
+		{
+			"answer": "woven",
+			"grade": {
+				"rung": 6,
+				"work": 6,
+				"unique": true
+			}
+		},
+		{
+			"answer": "yacht",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "yeast",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "yield",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "youth",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "yummy",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		},
+		{
+			"answer": "zebra",
+			"grade": {
+				"rung": 5,
+				"work": 5,
+				"unique": true
+			}
+		}
+	]
+}
