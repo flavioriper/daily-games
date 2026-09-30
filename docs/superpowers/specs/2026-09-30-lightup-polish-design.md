@@ -72,7 +72,7 @@ the light that reaches it**.
   a little bell tag on her collar, and the napping cat shows a "z" there
   instead of "0". It is the kitten (`ui/faces/kitten_face.gd`), curled on a
   cushion (a body-and-tail pose of her own, not a new character).
-- **The board**: 9x9 (10x10 if the proofs allow), four to six cats with at
+- **The board**: 10x10 (the proofs were fast enough; 9x9 was the plan), four to six cats with at
   least one napping (0) and one greedy (2) cat, and every block number
   that can go while the answer stays unique taken off. A board is kept only
   when, read with its cats' numbers ignored (a cat's stone still takes no
@@ -86,7 +86,7 @@ the light that reaches it**.
   win test, `lit`, `clash` and the solver all learn that light crosses it.
   `State.is_solved` stays the rules, not the answer: numbers exact, no lamp
   sees another, every non-cat stone lit, every cat's count exact.
-- Level card: "9 × 9, cat naps" (`LU_LVL_3`).
+- Level card: "10 × 10, cat naps" (`LU_LVL_3`).
 
 ## 3. Rewards
 
