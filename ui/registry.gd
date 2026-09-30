@@ -273,10 +273,10 @@ const PUZZLES := [
 		# and each is its own daily with its own done mark.
 		"pick_difficulty": true,
 		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "5 × 5"},
-			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
-			{"difficulty": 2, "name": "Hard", "line": "9 × 9"},
-			{"difficulty": 3, "name": "Insane", "line": "10 × 10"},
+			{"difficulty": 0, "name": "Easy", "line": "NG_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "NG_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "NG_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "NG_LVL_3"},
 		],
 	},
 	{

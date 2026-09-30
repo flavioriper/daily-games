@@ -327,17 +327,39 @@ SETS = {
         "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
         "petals":   ("a gentle breeze carrying many soft flower petals, an airy warm whoosh with a light sprinkle of tiny glockenspiel twinkles, dreamy and cozy", 2.0, -8),
     },
-    # Nonogram: mosaic tiles laid on a floor by row and column clues.
+    # Nonogram: mosaic tiles laid on a floor by row and column clues. Re-
+    # prompted toward felt, wood and kalimba on 2026-09-30, as One Line's,
+    # Light Up's, Tents' and Shikaku's were: the tape rewind, the bonk and the
+    # marimba boops read as a toy or a scold. place plays on every stroke, so
+    # it is the quietest and roundest.
     "nonogram": {
-        "place":    ("a single soft ceramic mosaic tile tap on wood, a small tile laid down, very short", 0.5, -7),
-        "locked":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("two soft low wooden marimba boops going down, a kind 'not quite' sound, not a buzzer", 0.7, -6),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a quick ripple of many small soft ceramic and wooden clicks, mosaic tiles being swept off a floor", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny ceramic and wooden pops rolling in, a mosaic floor appearing", 1.0, -9),
+        "place":    ("a single small glazed ceramic tile set down softly into a wooden tray, a gentle muted clack with a tiny warm kalimba pluck, very short", 0.5, -9, COZY),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
+        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath, cozy and kind", 1.0, -8),
+        "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
+        "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
+        "reset":    ("a soft quick ripple of small ceramic tiles being lifted and stacked gently into a wooden box, hushed and cozy", 1.0, -10, COZY),
+        "enter":    ("a soft airy cascade of tiny ceramic and wooden taps settling gently, a little mosaic floor laid out, cozy and hushed", 1.0, -11, COZY),
+        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        # The streak, the gags, the daisies and the pebbles a finished line lays.
+        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
+        "mushroom": ("a tiny cute mushroom popping out of soft moss, a soft squishy 'bloop' with a little happy rising boing, gentle and silly", 0.7, -10),
+        "bee":      ("a tiny cute bumblebee zooming past from left to right, a soft fuzzy buzz rising and falling with a tiny happy glockenspiel ting, gentle and funny", 1.2, -12, COZY),
+        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -14),
+        "pebbles":  ("a quick soft ripple of tiny smooth pebbles set down one after another on wood, gentle little taps, cozy and satisfying", 0.8, -13, COZY),
+        # Hearts, the wrong tile turned out, and the party.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
+        "slip":     ("a small ceramic tile lifted out of its socket with a soft hollow wooden pop, and a tiny pebble set down in its place, warm and quiet", 0.6, -12, COZY),
+        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "frame":    ("a small wooden picture frame set gently on a wall, a soft hollow wooden knock and a tiny warm chime, cozy and proud", 0.8, -10, COZY),
+        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
+        "petals":   ("a gentle breeze carrying many soft flower petals, an airy warm whoosh with a light sprinkle of tiny glockenspiel twinkles, dreamy and cozy", 2.0, -8),
+        "leaves":   ("a soft autumn breeze and a gentle shower of dry leaves drifting down and rustling, warm and cozy, with one tiny low kalimba note", 2.0, -9, COZY),
     },
     # Queens: a little crowned bee seated on a garden court; crosses and
     # pebbles are the player's own marks.
