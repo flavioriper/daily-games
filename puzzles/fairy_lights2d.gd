@@ -77,6 +77,27 @@ extends "res://core/puzzle_base.gd"
 ## Analytics need nothing here: `ui/puzzle_host.gd` already sends every event
 ## this board has, and there is no `check_used` because there is no Check.
 ##
+## **The polish (2026-09-30, docs/superpowers/specs/2026-09-30-fairylights-
+## polish-design.md, sections 1, 2 and 4).** Hard and Insane judge one thing,
+## a turn of a piece that is already right (the state's RIGHT): **the fuse**.
+## The piece starts its quarter turn, sparks fly, the whole live run flickers
+## twice like a brown-out, a heart splits on the paper pill over the frame,
+## and the piece swings back and a brass clip snaps onto its stone for good.
+## All of it is one clock (`_fuse_at`), read by the curve readers in `_frame`,
+## `_flicker` and `_sparks`, and it holds the card through `_busy_for` like
+## every other wave; input, Undo, Hint and Reset wait on `_fusing()`. Out of
+## hearts, **the dark** runs the wash reversed to the post (`_dark_at`, one
+## more moment a cell, never a live set), dusk falls and the out-of-hearts
+## card comes up -- Quilt's and Mushroom Patch's machinery, copied rather than
+## reinvented. Insane's **Wish Tags** are paper labels tucked into each tagged
+## lantern's lower corner on a thread, drawn in the mesh with their number as
+## one draw_string each (Nonogram's clues). **The press dip** sinks and shades
+## the piece under the finger (press_scale) while the turn still fires on
+## release, and **the sway** rocks every lit lantern about the ring it hangs
+## by, as Control transforms only, so a settled board never rebuilds its mesh
+## for it. The rewards (section 3) hang off `_on_lantern_woke`, `_on_turned`
+## and `_break_streak`, which are stubs here.
+##
 ## Spec: docs/superpowers/specs/2026-09-20-fairy-lights-flat-design.md,
 ## sections 2, 2.1, 3, 5, 6 and 9. Ported number for number from the canvas
 ## mock at docs/brainstorm/concepts.html#fairylights, which is the reference
@@ -89,6 +110,7 @@ const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const LanternFace = preload("res://ui/faces/lantern_face.gd")
+const CozyTheme = preload("res://ui/theme.gd")
 
 # --- the screen, measured (spec section 2.1) ---
 ## The card's own inset. The grid is what is left of the card's width, cut
@@ -252,11 +274,86 @@ const CHASE_SPAN := 0.6
 ## the past that every curve reader is already past the end of it.
 const FAR := 1.0e9
 const AGO := -1.0e9
-## Three, as the mock's badge says (spec section 8). **The cap lives on the
-## board and not on the state**, the way binairo2d.gd, bridges2d.gd and
-## mushroom2d.gd keep theirs: the state counts the hints it gave, the board
-## decides how many it may give.
-const HINTS := 3
+
+# --- the hearts (polish section 1; Quilt's and Mushroom Patch's pill) ---
+## The strip the hearts take over the frame on Hard and Insane: the grid gives
+## up the room. The pill sits HEART_TOP under the card's top edge.
+const HEART_ROW := 76.0
+const HEART_TOP := 14.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+## The dark pulled back to the post never takes longer than this, however
+## deep the garden: the far end goes first and the post's own cell last.
+const DARK_SPAN := 0.8
+
+# --- the fuse (polish section 1), on its own clock from the tap ---
+## The piece gets FUSE_REACH of its quarter turn in FUSE_START, strains there
+## with a buzz of FUSE_BUZZ radians, and swings back from FUSE_BACK over
+## FUSE_BACK_TIME on back_out's overshoot. The sparks fly at FUSE_SPARK and the
+## live run flickers twice over FLICKER_TIME from then, down to 1 - FLICKER_DIP
+## at the bottom of each dip; the heart splits at FUSE_SPLIT and the clip
+## snaps on at FUSE_CLIP. Nothing takes a tap until FUSE_END.
+const FUSE_REACH := 0.38
+const FUSE_START := 0.12
+const FUSE_BUZZ := 0.035
+const FUSE_SPARK := 0.12
+const FLICKER_TIME := 0.46
+const FLICKER_DIP := 0.8
+const FUSE_SPLIT := 0.42
+const FUSE_BACK := 0.6
+const FUSE_BACK_TIME := 0.3
+const FUSE_CLIP := 0.9
+const FUSE_END := 1.15
+## The sparks: SPARKS streaks flying SPARK_REACH of a cell off the piece's
+## middle over SPARK_TIME, falling as they go.
+const SPARKS := 10
+const SPARK_TIME := 0.42
+const SPARK_REACH := 0.8
+## The brass clip on a fused piece's stone, at its upper-left corner where no
+## wire ever runs: CLIP_LEN by CLIP_W of a cell, across the corner.
+const CLIP_LEN := 0.3
+const CLIP_W := 0.15
+const CLIP_AT := 0.35
+const BRASS := Color("d6a940")
+const BRASS_DEEP := Color("97702a")
+const BRASS_HI := Color("f7e0a0")
+
+# --- Wish Tags (polish section 2) ---
+## A tag hangs on a thread from its lantern's base and is tucked into the
+## cell's lower-right corner, where no wire runs and no join sits: its middle
+## TAG_AT of a cell from the cell's centre, TAG_SIZE of a cell, tilted
+## TAG_TILT, its number TAG_FONT of a cell high.
+const TAG_AT := Vector2(0.335, 0.3)
+const TAG_SIZE := Vector2(0.28, 0.32)
+const TAG_TILT := -0.12
+const TAG_FONT := 0.21
+const TAG_PAPER := Color("fbf3df")
+const TAG_EDGE := Color("c9b48c")
+const TAG_WARM := Color("ffe7a6")
+
+# --- the hand, and the idle (polish section 4) ---
+## How far a piece's wire goes toward its own shade at the bottom of the press.
+const PRESS_SHADE := 0.55
+## A lit lantern sways SWAY radians about the ring it hangs by (HOOK of its R
+## above its middle), on a period of its own within SWAY_SPREAD of
+## SWAY_PERIOD, easing in over SWAY_IN from its wake.
+const SWAY := 0.06
+const SWAY_PERIOD := 2.8
+const SWAY_SPREAD := 0.5
+const SWAY_IN := 0.8
+const HOOK := 1.2
 
 const TIP_CYCLE := 8.0
 const TIPS := [
@@ -265,6 +362,11 @@ const TIPS := [
 	"FL_TIP_WARM",
 	"FL_TIP_DONE",
 ]
+const TIPS_HEARTS := ["FL_TIP_HEARTS", "FL_TIP_TAP", "FL_TIP_POST", "FL_TIP_WARM", "FL_TIP_DONE"]
+const TIPS_TAGS := ["FL_TIP_TAGS", "FL_TIP_TAGS_2", "FL_TIP_HEARTS", "FL_TIP_TAP", "FL_TIP_WARM"]
+
+## The out-of-hearts card's Back: the host takes the board away.
+signal leave
 
 ## The one truth this board draws. Named `state` because tests/_win.gd
 ## reaches for `_puzzle.state` on every other board.
@@ -343,11 +445,69 @@ var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
 var _tip_timer: Timer
 
+## The hearts (Hard and Insane): how many are left of how many, whether the
+## last is gone, and the pill's own moments -- Mushroom Patch's names.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+## Whether a fuse has ever blown on this deal (the seal reads it).
+var _lost_ever := false
+var _asleep := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := AGO
+var _back_index := -1
+var _back_at := AGO
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+## The sparks fly over the lanterns, so they are a layer of their own over the
+## board (a lantern is a Control and would hide its own fuse), drawn only
+## while a fuse blows.
+var _spark_layer: Control
+var _sparks_shown: ArrayMesh
+var _hearts_y := 0.0
+var _dusk_tw: Tween
+## Bumped on every deal, so an `_after` from the last one never lands.
+var _gen := 0
+## The fuse now blowing: its cell, when it was tapped, and when the card
+## takes taps again. -1 / AGO / 0 when there is none.
+var _fuse_cell := -1
+var _fuse_at := AGO
+var _fuse_end := 0.0
+## When each cell's clip snapped on (AGO for one that is simply there), and
+## when each cell goes dark as the hearts run out (FAR: it does not).
+var _clip_at: PackedFloat64Array = PackedFloat64Array()
+var _dark_at: PackedFloat64Array = PackedFloat64Array()
+## The press: the cell under the finger, when it landed, and when it lifted
+## (-1 while it is still down).
+var _press_cell := -1
+var _press_down := AGO
+var _press_up := -1.0
+
 func puzzle_id() -> String: return "fairylights"
 func title() -> String: return "Fairy Lights"
 
+## The rules in plain words, then the band's own closing: the tags on Wish
+## Tags, and either what a heart is for or that nothing here can be lost.
 func rules() -> String:
-	return tr("FL_RULES")
+	var out := tr("FL_RULES")
+	if state.wish_tags():
+		out += "\n\n" + tr("FL_RULES_TAGS")
+	if max_hearts > 0:
+		out += "\n\n" + tr("FL_RULES_HEARTS") % max_hearts
+	else:
+		out += "\n\n" + tr("FL_RULES_SAFE")
+	return out
+
+## The lines the tips cycle: Wish Tags leads with the tags' two and the
+## hearts', a judged garden with the hearts'.
+func _tips() -> Array:
+	if state.wish_tags():
+		return TIPS_TAGS
+	if max_hearts > 0:
+		return TIPS_HEARTS
+	return TIPS
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can exist on this board: a garden is unfinished or it is done. So the
@@ -367,11 +527,31 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	_heart_layer = Control.new()
+	_heart_layer.name = "Hearts"
+	_heart_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_heart_layer.z_index = 1
+	_heart_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_heart_layer.draw.connect(_draw_hearts)
+	add_child(_heart_layer)
+	_spark_layer = Control.new()
+	_spark_layer.name = "Sparks"
+	_spark_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spark_layer.z_index = 2
+	_spark_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_spark_layer.draw.connect(_draw_sparks)
+	add_child(_spark_layer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	state.start(rng, difficulty)
+	_gen += 1
+	_close_card()
+	state.start(rng, difficulty, bank_step)
+	max_hearts = State.hearts_for(state.band) if state.judged else 0
+	_heart_used = false
+	_lost_ever = false
+	_deal()
 	_clear_clocks()
 	_hue = {}
 	for i in state.lanterns():
@@ -383,8 +563,21 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The garden as it is dealt, and as Try again deals it back: every heart, the
+## day's light, nothing splitting and no card.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_split_index = -1
+	_back_index = -1
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
 
 ## Every clock on the board back to "has not happened yet". A cell that has
 ## never been lit waits FAR, so it is never seen lit; every other clock sits
@@ -410,6 +603,18 @@ func _clear_clocks() -> void:
 	_spin_q = PackedInt32Array()
 	_spin_q.resize(cells)
 	_spin_q.fill(0)
+	_clip_at = PackedFloat64Array()
+	_clip_at.resize(cells)
+	_clip_at.fill(AGO)
+	_dark_at = PackedFloat64Array()
+	_dark_at.resize(cells)
+	_dark_at.fill(FAR)
+	_fuse_cell = -1
+	_fuse_at = AGO
+	_fuse_end = 0.0
+	_press_cell = -1
+	_press_down = AGO
+	_press_up = -1.0
 	_anim_until = 0.0
 	_wash_end = 0.0
 	_moving = false
@@ -465,17 +670,22 @@ func _build_lanterns() -> void:
 func _cell_for(available: float) -> float:
 	if state.n <= 0:
 		return 0.0
-	var room := minf(size.x, available) - 2.0 * INSET
+	var room := minf(size.x, available - _heart_row()) - 2.0 * INSET
 	return floorf(maxf(0.0, room) / float(state.n))
 
-## The card this board wants: the grid and its two insets, and no more. The
-## 344 the card does not want is halved into air above and below by the host
-## -- Tents' and Queens' arrangement, not a new one.
+## The card this board wants: the grid and its two insets, and the hearts'
+## strip on a garden that has them, and no more. The air the card does not
+## want is halved above and below by the host -- Tents' and Queens'
+## arrangement, not a new one.
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * float(state.n) + 2.0 * INSET)
+	return minf(available, cell * float(state.n) + 2.0 * INSET + _heart_row())
+
+## The strip the hearts take over the frame, on a garden that has them.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 func card_centred() -> bool:
 	return true
@@ -490,8 +700,13 @@ func _layout() -> void:
 	# Centred in whatever height the card ended up with as well as across
 	# it, so the grid is square in its card whether or not the host trimmed
 	# the card to card_height().
-	var tall := minf(size.y, span + 2.0 * INSET)
-	_grid = Vector2(size.x * 0.5 - span * 0.5, (size.y - tall) * 0.5 + INSET)
+	var row := _heart_row()
+	var tall := minf(size.y, span + 2.0 * INSET + row)
+	var top := (size.y - tall) * 0.5
+	_grid = Vector2(size.x * 0.5 - span * 0.5, top + INSET + row)
+	_hearts_y = top + HEART_TOP + HEART_R + HEART_PILL_PAD.y
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
 	_still = null
 	var seat: float = _cell * LANTERN_R * LanternFace.SEAT
 	for i in _slots:
@@ -540,6 +755,14 @@ func _process(delta: float) -> void:
 	while not _wake_cues.is_empty() and t >= float(_wake_cues[0].at):
 		var due: Dictionary = _wake_cues.pop_front()
 		fx.cue("wake", float(due.pitch))
+		_on_lantern_woke(int(due.cell), bool(due.by_turn))
+	# The pill pops in with the grid, then stands until a heart moves.
+	if (_split_index >= 0 and t - _split_at < SPLIT_TIME + 0.1) \
+			or (_back_index >= 0 and t - _back_at < HEART_BACK_TIME + 0.1) \
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
+		_heart_layer.queue_redraw()
+	if _fuse_cell >= 0 and t - _fuse_at < FUSE_SPARK + SPARK_TIME + 0.1:
+		_spark_layer.queue_redraw()
 	if _animating(t):
 		_moving = true
 		_dress(t)
@@ -550,6 +773,39 @@ func _process(delta: float) -> void:
 		_refresh()
 	else:
 		_twinkle(t)
+		_sway_all(t)
+
+## At rest, every lit lantern sways on its own clock. Control transforms and
+## nothing else: the mesh is not rebuilt and nothing is redrawn for it.
+func _sway_all(t: float) -> void:
+	if Motion.reduce:
+		return
+	for i in _lanterns:
+		_hang(i, t, not (_lanterns[i] as LanternFace).plain)
+
+## Lantern `i` in its slot at `t`: level against the slot's turn, plus its
+## sway about the ring it hangs by. The paper's pivot is its middle (the
+## entrance's pop and the counter-turn need that), so a swing about the ring
+## is the same turn about the middle and the middle moved by what the ring
+## would have moved -- worked out in the slot's own turned frame.
+func _hang(i: int, t: float, live: bool) -> void:
+	var lantern: Control = _lanterns[i]
+	var slot: Control = _slots[i]
+	var s := _sway(i, t) if live else 0.0
+	lantern.rotation = -slot.rotation + s
+	var hook := Vector2(0.0, -HOOK * lantern.size.x * LanternFace.RATIO)
+	lantern.position = -lantern.size * 0.5 + (hook - hook.rotated(s)).rotated(-slot.rotation)
+
+## Lantern `i`'s sway at `t`: SWAY on a period and phase of its own off the
+## cell's hash, eased in from its wake so a waking lantern does not jump.
+func _sway(i: int, t: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var h: int = absi(hash(Vector2i(i, 977 + state.n)))
+	var period := SWAY_PERIOD * (1.0 + SWAY_SPREAD * (float(h % 100) / 100.0 - 0.5))
+	var phase := float((h / 100) % 628) / 100.0
+	var grow := clampf((t - _wake_at[i]) / SWAY_IN, 0.0, 1.0)
+	return SWAY * grow * sin(TAU * t / period + phase)
 
 ## At rest, one lit bead somewhere flares now and then. The board is not
 ## rebuilt for it: _draw lays the cached flare over the cached mesh, so a
@@ -641,6 +897,8 @@ func _draw() -> void:
 	draw_mesh(_mesh, null, at, Color(1.0, 1.0, 1.0, seen))
 	_shown = _mesh
 	_still_shown = _still
+	if state.wish_tags():
+		_draw_tag_numbers(at, now, seen)
 	var k := Motion.flash_level(now - _tw_at, TWINKLE_IN, TWINKLE_OUT)
 	if k > 0.0 and not _animating(now):
 		if _flare == null:
@@ -683,26 +941,24 @@ func _build(t: float) -> ArrayMesh:
 	levels.resize(cells)
 	var chase := PackedFloat32Array()
 	chase.resize(cells)
+	# The fuse's brown-out dims every live cell at once; the press shades the
+	# one piece under the finger.
+	var flicker := _flicker(t)
+	var shades := PackedFloat32Array()
+	shades.resize(cells)
 	for i in cells:
 		frames[i] = _frame(i, t)
 		pulls[i] = _spin_pull(i, t)
 		lifts[i] = _spin_lift(i, t)
-		levels[i] = _level(i, depths, t)
+		levels[i] = _level(i, depths, t) * flicker
 		chase[i] = _chase(i, depths, t)
+		shades[i] = _press_shade(i, t)
 	# The light spilling onto the stones: a wash over each lit stone's face,
 	# since the stones themselves are in the still mesh.
 	for i in cells:
 		var warm := WARM * levels[i] + WIN_WARM * chase[i]
 		if warm > 0.0:
-			# An octagon inside the stone's rounded face: a rounded rect's
-			# arcs cost more than everything else in the wash put together.
-			var at := _stone_at(i)
-			var sz := Vector2.ONE * (_cell - 2.0 * TILE_GAP) - Vector2(0.0, TILE_LIP)
-			var c := _cell * TILE_RADIUS * 0.6
-			b.fan(PackedVector2Array([at + Vector2(c, 0.0), at + Vector2(sz.x - c, 0.0),
-				at + Vector2(sz.x, c), at + Vector2(sz.x, sz.y - c), at + Vector2(sz.x - c, sz.y),
-				at + Vector2(c, sz.y), at + Vector2(0.0, sz.y - c), at + Vector2(0.0, c)]),
-				Color(Pal.SUN_RAY, warm))
+			_stone_wash(b, i, Color(Pal.SUN_RAY, warm))
 	for i in cells:
 		if state.pinned[i] == 1:
 			_pin(b, i)
@@ -717,7 +973,8 @@ func _build(t: float) -> ArrayMesh:
 	# neighbour's shade never lands on this cell's cable.
 	for i in cells:
 		var lv := levels[i]
-		var drop := Vector2(0.0, SHADE_DROP + LIFT_SHADE * lifts[i] / TURN_LIFT)
+		# A pressed piece sits closer to its stone: its lip shrinks with the dip.
+		var drop := Vector2(0.0, SHADE_DROP * (1.0 - 0.5 * shades[i]) + LIFT_SHADE * lifts[i] / TURN_LIFT)
 		var col: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv)
 		_arms(b, i, frames[i], pulls[i], 1.0, col, drop)
 		if Gen.degree(state.grid[i]) >= 3:
@@ -725,6 +982,12 @@ func _build(t: float) -> ArrayMesh:
 	for i in cells:
 		var lv := levels[i]
 		var col: Color = Pal.FLAGSTONE.lerp(Pal.SUN, lv)
+		if shades[i] > 0.0:
+			# The press shades what it sinks (a dip alone is 6%, and 6% of a
+			# wire is not seen): the stone darkens under it, the wire toward
+			# its own shade.
+			_stone_wash(b, i, Color(Pal.TEXT, 0.07 * shades[i]))
+			col = col.lerp(Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv), PRESS_SHADE * shades[i])
 		_arms(b, i, frames[i], pulls[i], 1.0, col)
 		if Gen.degree(state.grid[i]) >= 3:
 			_dot(b, frames[i].origin, _cell * WIRE * COLLAR, col)
@@ -734,10 +997,169 @@ func _build(t: float) -> ArrayMesh:
 	for i in cells:
 		if levels[i] > 0.0:
 			_beads(b, i, frames[i], pulls[i], levels[i], chase[i], depths, t)
+	# The clips a fuse left, each on its stone's corner, popping on as it
+	# snaps.
+	for i in cells:
+		if state.clipped[i] == 1 and t >= _clip_at[i]:
+			_clip(b, i, frames[i].origin, t - _clip_at[i])
 	# The post stands level however its own cell is turning, the way a lantern
 	# does: it takes the cell's place, not the cell's turn.
 	_post(b, frames[state.post].origin)
+	# Wish Tags' paper last, so no wire or bead crosses a tag; the lanterns are
+	# Controls and hang over their own threads.
+	if state.wish_tags():
+		for i in state.tags:
+			_tag(b, int(i), frames[int(i)].origin, _tag_seen(int(i), depths, t))
 	return b.mesh() if not b.verts.is_empty() else null
+
+## A wash over cell `i`'s stone face: an octagon inside its rounded face, a
+## rounded rect's arcs cost more than everything else in the wash together.
+func _stone_wash(b, i: int, colour: Color) -> void:
+	var at := _stone_at(i)
+	var sz := Vector2.ONE * (_cell - 2.0 * TILE_GAP) - Vector2(0.0, TILE_LIP)
+	var c := _cell * TILE_RADIUS * 0.6
+	b.fan(PackedVector2Array([at + Vector2(c, 0.0), at + Vector2(sz.x - c, 0.0),
+		at + Vector2(sz.x, c), at + Vector2(sz.x, sz.y - c), at + Vector2(sz.x - c, sz.y),
+		at + Vector2(c, sz.y), at + Vector2(0.0, sz.y - c), at + Vector2(0.0, c)]), colour)
+
+# --- the fuse's drawing, the clip and the tags ---
+
+## The brass clip a fuse leaves on cell `i`: a little bulldog clip gripping
+## its stone's upper-left corner, across it, with a wire handle, a lit edge and
+## a dark jaw. It pops on over POP_IN `since` seconds after it snaps.
+func _clip(b, i: int, centre: Vector2, since: float) -> void:
+	var k := Motion.pop_in_scale(since).x
+	if k <= 0.01:
+		return
+	var at := centre + Vector2(-1.0, -1.0) * _cell * CLIP_AT
+	var u := Vector2(1.0, -1.0).normalized()  # along the clip, across the corner
+	var v := Vector2(1.0, 1.0).normalized()   # into the stone
+	var L := _cell * CLIP_LEN * 0.5 * k
+	var W := _cell * CLIP_W * 0.5 * k
+	var quad := func(c: Vector2, hl: float, hw: float) -> PackedVector2Array:
+		return PackedVector2Array([c - u * hl - v * hw, c + u * hl - v * hw,
+			c + u * hl + v * hw, c - u * hl + v * hw])
+	# Its shade on the stone, the body, the jaw's dark lip and its lit back.
+	b.fan(quad.call(at + Vector2(0.0, 3.0), L, W), Color(Pal.TEXT, 0.18))
+	b.fan(quad.call(at + v * W * 0.35, L, W * 0.72), BRASS_DEEP)
+	b.fan(quad.call(at - v * W * 0.1, L * 0.96, W * 0.8), BRASS)
+	b.stroke(PackedVector2Array([at - u * L * 0.8 - v * W * 0.55, at + u * L * 0.8 - v * W * 0.55]),
+		maxf(1.5, W * 0.28), BRASS_HI)
+	b.stroke(PackedVector2Array([at - u * L * 0.9 + v * W * 0.62, at + u * L * 0.9 + v * W * 0.62]),
+		maxf(1.5, W * 0.22), Color(Pal.TEXT, 0.35))
+	# The wire handle folded back over it, away from the stone's middle.
+	var handle := PackedVector2Array([at - u * L * 0.55 - v * W * 0.7,
+		at - u * L * 0.45 - v * W * 2.0, at + u * L * 0.45 - v * W * 2.0, at + u * L * 0.55 - v * W * 0.7])
+	b.stroke(handle, maxf(2.0, W * 0.3), BRASS_DEEP)
+
+## The sparks layer: the fuse now blowing, if its sparks are in the air.
+func _draw_sparks() -> void:
+	if _fuse_cell < 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	_sparks(b, _fuse_cell, _frame(_fuse_cell, _now()).origin, _now())
+	if b.verts.is_empty():
+		return
+	_sparks_shown = b.mesh()
+	_spark_layer.draw_mesh(_sparks_shown, null)
+
+## The sparks off a fuse at cell `i`: a white-gold flash at its middle and
+## SPARKS streaks flying out and falling, each off the cell's hash.
+func _sparks(b, i: int, centre: Vector2, t: float) -> void:
+	var e := t - _fuse_at - FUSE_SPARK
+	if e < 0.0 or e > SPARK_TIME:
+		return
+	var u := e / SPARK_TIME
+	var fade := 1.0 - u * u
+	if u < 0.35:
+		_halo(b, centre, _cell * 0.05, _cell * (0.18 + 0.4 * u),
+			Color(Pal.LANTERN_LIT, 0.9 * (1.0 - u / 0.35)), BEAD_SEGMENTS)
+	for k in SPARKS:
+		var h: int = absi(hash(Vector2i(i * 31 + k, int(_fuse_at * 10.0))))
+		var ang := TAU * (float(k) + float(h % 100) / 140.0) / float(SPARKS)
+		var reach := _cell * SPARK_REACH * (0.6 + 0.4 * float((h / 100) % 100) / 100.0)
+		var dir := Vector2.from_angle(ang)
+		var go := 1.0 - (1.0 - u) * (1.0 - u)
+		var tip := centre + dir * reach * go + Vector2(0.0, _cell * 0.35 * u * u)
+		var tail := tip - (dir * reach * 0.22 + Vector2(0.0, _cell * 0.1 * u)) * (1.0 - 0.6 * u)
+		var w := maxf(2.0, _cell * 0.035 * (1.0 - 0.5 * u))
+		b.stroke(PackedVector2Array([tail, tip]), w, Color(Pal.SUN_RAY, fade))
+		_dot(b, tip, w * 0.8, Color(Color.WHITE, fade))
+
+## What a tag shows at `t`: what the wire says once the wash has lit its
+## lantern (the state's TAG_MATCH or TAG_OFF), plain while it is dark.
+func _tag_seen(i: int, depths: PackedInt32Array, t: float) -> int:
+	if not _shown_live(i, depths, t) or _flicker(t) < 0.6:
+		return State.TAG_UNLIT
+	return state.tag_state(i, depths)
+
+## Where tag `i` hangs, and its turn: tucked into the lower-right corner of
+## its cell (where no wire runs and no join sits), a little tilted.
+func _tag_frame(centre: Vector2) -> Transform2D:
+	return Transform2D(TAG_TILT, centre + TAG_AT * _cell)
+
+## Wish Tags' paper label for lantern `i`: a thread from its lantern's base to
+## the hole, a luggage tag with its top corners cut, and the reading once the
+## lantern is lit -- a gold tick and warm paper when its depth is the tag.
+## The number itself is drawn text (`_draw_tag_numbers`).
+func _tag(b, i: int, centre: Vector2, seen: int) -> void:
+	var xf := _tag_frame(centre)
+	var s := TAG_SIZE * _cell
+	var hole := xf * Vector2(0.0, -s.y * 0.3)
+	# The thread, tied to the lantern's base and sagging to the hole.
+	var tie := centre + Vector2(0.2, 0.2) * _cell
+	b.stroke(Face.Builder.bezier2(tie, (tie + hole) * 0.5 + Vector2(0.0, _cell * 0.05), hole, 8),
+		maxf(1.5, _cell * 0.016), Pal.CORD_DEEP)
+	var half := s * 0.5
+	var cut := s.x * 0.28
+	var shape := PackedVector2Array([Vector2(-half.x + cut, -half.y), Vector2(half.x - cut, -half.y),
+		Vector2(half.x, -half.y + cut), Vector2(half.x, half.y), Vector2(-half.x, half.y),
+		Vector2(-half.x, -half.y + cut)])
+	var paper: Color = TAG_WARM if seen == State.TAG_MATCH else TAG_PAPER
+	var edge := PackedVector2Array()
+	var face := PackedVector2Array()
+	var low := PackedVector2Array()
+	for p in shape:
+		low.append(xf * (p * 1.08) + Vector2(0.0, 3.0))
+		edge.append(xf * (p * 1.08))
+		face.append(xf * p)
+	b.fan(low, Color(Pal.TEXT, 0.16))
+	b.fan(edge, TAG_EDGE if seen != State.TAG_MATCH else Pal.SUN_DEEP)
+	b.fan(face, paper)
+	# The eyelet the thread goes through.
+	_dot(b, hole, _cell * 0.028, TAG_EDGE)
+	_dot(b, hole, _cell * 0.016, Pal.CORD_DEEP)
+	if seen == State.TAG_MATCH:
+		# The gold tick: a sun-gold seal on the top-right corner with a white
+		# check on it, so it never sits on the number.
+		var at := xf * Vector2(half.x * 0.78, -half.y * 0.72)
+		var r := _cell * 0.075
+		_dot(b, at + Vector2(0.0, 2.0), r, Color(Pal.TEXT, 0.18))
+		_dot(b, at, r, Pal.SUN_DEEP)
+		_dot(b, at, r * 0.8, Pal.SUN)
+		b.stroke(PackedVector2Array([at + Vector2(-0.45, 0.02) * r, at + Vector2(-0.12, 0.36) * r,
+			at + Vector2(0.48, -0.32) * r]), maxf(2.0, r * 0.28), Color.WHITE)
+
+## Each tag's number, inked brown on its paper (rose when the lit wire puts
+## its lantern at some other depth), one draw_string a tag through the same
+## transform as the mesh -- Nonogram's clues.
+func _draw_tag_numbers(at: Transform2D, t: float, seen: float) -> void:
+	var font: Font = CozyTheme.display(700)
+	var px := int(roundf(_cell * TAG_FONT))
+	var depths: PackedInt32Array = state.depths()
+	for key in state.tags:
+		var i := int(key)
+		var text := str(int(state.tags[key]))
+		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+		var rise := font.get_height(px) * 0.5 - font.get_descent(px)
+		var shown := _tag_seen(i, depths, t)
+		var ink: Color = Pal.BERRY_DEEP if shown == State.TAG_OFF else Pal.PLAQUE_DEEP
+		var centre := cell_centre(i)
+		centre.x += Motion.shiver_offset(t - _refuse_at[i], REFUSE_PX)
+		draw_set_transform_matrix(at * _tag_frame(centre))
+		draw_string(font, Vector2(-wide * 0.5, TAG_SIZE.y * _cell * 0.14 + rise), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, Color(ink, seen))
+	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 ## Cell `i`'s arms in its own `frame`, `weight` times the wire's width and
 ## `pull` of their full length, offset by `drop`. An arm runs from the cell's
@@ -961,7 +1383,54 @@ func _flower(b, at: Vector2, r: float) -> void:
 func _frame(i: int, t: float) -> Transform2D:
 	var at := cell_centre(i)
 	at.x += Motion.shiver_offset(t - _refuse_at[i], REFUSE_PX)
-	return Transform2D(_spin_angle(i, t), Vector2.ONE * (1.0 + _spin_lift(i, t)), 0.0, at)
+	var lift := 1.0 + _spin_lift(i, t)
+	var angle := _spin_angle(i, t)
+	if i == _fuse_cell:
+		var f := _fuse_angle(t)
+		angle += f
+		lift += TURN_LIFT * clampf(f / (FUSE_REACH * PI * 0.5), 0.0, 1.0)
+	return Transform2D(angle, Vector2.ONE * lift * _press_scale(i, t), 0.0, at)
+
+## How far round the fuse has the piece, `t` seconds in (clockwise is
+## positive): FUSE_REACH of a quarter turn on the sine over FUSE_START, a
+## strained buzz there while the sparks fly, and back home on back_out's
+## overshoot from FUSE_BACK. The grid never changed, so home is zero.
+func _fuse_angle(t: float) -> float:
+	if Motion.reduce or _fuse_cell < 0:
+		return 0.0
+	var e := t - _fuse_at
+	if e <= 0.0 or e >= FUSE_BACK + FUSE_BACK_TIME:
+		return 0.0
+	var reach := FUSE_REACH * PI * 0.5
+	if e < FUSE_START:
+		return reach * sin(e / FUSE_START * PI * 0.5)
+	if e < FUSE_BACK:
+		return reach + FUSE_BUZZ * sin(e * 90.0)
+	return reach * (1.0 - Motion.back_out((e - FUSE_BACK) / FUSE_BACK_TIME))
+
+## The brown-out, as a multiplier on every live cell's light at `t`: two dips
+## over FLICKER_TIME from the sparks, snapping down and easing back, and one
+## everywhere else.
+func _flicker(t: float) -> float:
+	if Motion.reduce or _fuse_cell < 0:
+		return 1.0
+	var e := t - _fuse_at - FUSE_SPARK
+	if e <= 0.0 or e >= FLICKER_TIME:
+		return 1.0
+	return 1.0 - FLICKER_DIP * sqrt(absf(sin(e / FLICKER_TIME * TAU)))
+
+## The press on cell `i` as a scale: down to PRESS_SCALE under the finger and
+## springing home once it lifts (Motion.press_scale), one on every other cell.
+func _press_scale(i: int, t: float) -> float:
+	if i != _press_cell:
+		return 1.0
+	return Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0)
+
+## The same press as a shade, 0 at rest to 1 at the bottom of the dip.
+func _press_shade(i: int, t: float) -> float:
+	if i != _press_cell:
+		return 0.0
+	return clampf((1.0 - _press_scale(i, t)) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
 
 ## How far cell `i` still has to turn, `t` seconds in. The piece is already
 ## where the turn put it, so the angle runs from a quarter turn *behind* (or
@@ -982,6 +1451,10 @@ func _spin_angle(i: int, t: float) -> float:
 ## middle of the turn and nothing at either end, so a full-length arm never
 ## sweeps through the piece next door.
 func _spin_pull(i: int, t: float) -> float:
+	if i == _fuse_cell and not Motion.reduce:
+		var f := clampf(_fuse_angle(t) / (FUSE_REACH * PI * 0.5), 0.0, 1.0)
+		if f > 0.0:
+			return 1.0 - ARM_PULL * f
 	if Motion.reduce or _spin_q[i] == 0:
 		return 1.0
 	var u := clampf((t - _spin_at[i]) / TURN_TIME, 0.0, 1.0)
@@ -1009,6 +1482,8 @@ func _level(i: int, depths: PackedInt32Array, t: float) -> float:
 	if Motion.reduce:
 		return 1.0 if _shown_live(i, depths, t) else 0.0
 	var on := clampf((t - _live_at[i]) / LIGHT_FADE, 0.0, 1.0)
+	# The hearts ran out: the dark pulls the light back to the post.
+	on = minf(on, 1.0 - clampf((t - _dark_at[i]) / LIGHT_FADE, 0.0, 1.0))
 	if depths[i] >= 0:
 		return on
 	return minf(on, 1.0 - clampf((t - _out_at[i]) / LIGHT_FADE, 0.0, 1.0))
@@ -1038,6 +1513,8 @@ func _spin(i: int, q: int, at: float) -> void:
 ## A cell that is live waits for the light to reach it; a cell that has been
 ## cut off keeps its light until the wave pulls it back.
 func _shown_live(i: int, depths: PackedInt32Array, t: float) -> bool:
+	if t >= _dark_at[i]:
+		return false
 	if depths[i] >= 0:
 		return t >= _live_at[i]
 	return t < _out_at[i]
@@ -1059,8 +1536,10 @@ func _lag() -> float:
 ## the light reads as pulled back down the branch rather than switched off.
 ## Queens' `_settle` with the tree's own depth in place of a queen's sight.
 ## Nothing derived is stored: only the moments, and the truth is read fresh
-## wherever it is wanted.
-func _settle(before: PackedInt32Array, at: float) -> void:
+## wherever it is wanted. `by_turn` marks the lanterns a player's turn woke
+## (the rewards' `_on_lantern_woke`), as against the entrance, Try again and
+## One more heart.
+func _settle(before: PackedInt32Array, at: float, by_turn := false) -> void:
 	var now_d: PackedInt32Array = state.depths()
 	var cells: int = state.n * state.n
 	# The far end of what *was* live, which is where a cut-off branch starts
@@ -1086,7 +1565,7 @@ func _settle(before: PackedInt32Array, at: float) -> void:
 				# arrives with the bump: seventeen of them in a ripple rather
 				# than together, because each is on its own depth.
 				_wake_at[i] = moment
-				_wake_cues.append({"at": moment,
+				_wake_cues.append({"at": moment, "cell": i, "by_turn": by_turn,
 					"pitch": minf(1.0 + 0.03 * float(now_d[i]), 1.5)})
 				last = maxf(last, moment + Motion.BUMP_TIME)
 		else:
@@ -1220,19 +1699,21 @@ func _dress(t: float) -> void:
 		return
 	var depths: PackedInt32Array = state.depths()
 	var done := is_done()
+	# The fuse's brown-out flickers the lanterns with the wire.
+	var flicker := _flicker(t)
 	for i in _lanterns:
 		var lantern: LanternFace = _lanterns[i]
 		var slot: Control = _slots[i]
 		var live := _shown_live(i, depths, t)
-		var want := 1.0 if live else 0.0
+		var want := (1.0 if live else 0.0) * flicker
 		if lantern.lit != want:
 			lantern.lit = want
+		if lantern.plain != (not live):
+			lantern.plain = not live
 			# A lit paper is alive and blinks on a clock of its own; an
 			# unlit one is plain paper with no eyes to blink. set_idle does
 			# nothing under reduce-motion.
 			lantern.set_idle(live)
-		if lantern.plain != (not live):
-			lantern.plain = not live
 		var expr := Face.Expr.JOY if done else Face.Expr.HAPPY
 		if live and lantern.expression != expr:
 			lantern.expression = expr
@@ -1245,7 +1726,10 @@ func _dress(t: float) -> void:
 			if _chase_at < FAR:
 				bump *= Motion.bump_scale(t - _chase_at - float(depths[i]) * _chase_step)
 		slot.scale = frame.get_scale() * bump
-		lantern.rotation = -slot.rotation
+		_hang(i, t, live)
+		# The press shades the paper too, not only the wire under it.
+		var shade := 1.0 - 0.12 * _press_shade(i, t)
+		lantern.modulate = Color(shade, shade, shade)
 
 # --- the moments ---
 
@@ -1271,25 +1755,64 @@ func _enter() -> void:
 # --- input ---
 
 ## One tap, one quarter turn clockwise, and nothing else on the screen. No
-## drag, no long press and no second direction.
+## drag, no long press and no second direction. The press sinks and shades
+## the piece under the finger (and springs it if the finger slides off); the
+## turn fires on the release, over whichever piece the finger lifted from.
 func _gui_input(event: InputEvent) -> void:
-	if _done:
+	if _done or out_of_hearts:
 		return
 	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
+	if event is InputEventScreenDrag or event is InputEventMouseMotion:
+		if _held() and _cell_at(event.position) != _press_cell:
+			_release_press()
+		return
 	if not (event is InputEventScreenTouch or event is InputEventMouseButton):
 		return
-	if event.pressed:
-		return
 	var i := _cell_at(event.position)
+	if event.pressed:
+		if i >= 0 and not _fusing():
+			accept_event()
+			_press(i)
+		return
+	_release_press()
 	if i < 0:
 		return
 	accept_event()
+	# A fuse holds every tap until it has played out.
+	if _fusing():
+		return
 	_turn(i)
 
-## A tap on cell `i`. A cross is already every way round and a pinned cell is
-## a given: neither turns, and a refusal is a line from the sprout and never
-## a silence (Hidden Word's rule).
+## Whether a finger is down on a piece now.
+func _held() -> bool:
+	return _press_cell >= 0 and _press_up < 0.0
+
+## The finger lands on cell `i`: it starts to sink.
+func _press(i: int) -> void:
+	_press_cell = i
+	_press_down = _now()
+	_press_up = -1.0
+	_busy_for(Motion.PRESS_TIME + 0.05)
+	_refresh()
+
+## The finger lifts or slides off: the piece springs home from wherever the
+## press had got to.
+func _release_press() -> void:
+	if not _held():
+		return
+	_press_up = _now()
+	_busy_for(Motion.RELEASE_TIME + 0.05)
+	_refresh()
+
+## Whether a fuse is still playing out (input, Undo, Hint and Reset wait).
+func _fusing() -> bool:
+	return _now() < _fuse_end
+
+## A tap on cell `i`. A cross is already every way round, a pinned cell is a
+## given and a clipped one was shown right by a fuse: none turns, and a
+## refusal is a line from the sprout and never a silence (Hidden Word's rule).
+## On a judged garden a piece that is already right blows a fuse.
 func _turn(i: int) -> void:
 	# Taken before the move: what the wash diffs against, and a local of this
 	# move rather than anything the board keeps.
@@ -1302,19 +1825,25 @@ func _turn(i: int) -> void:
 		State.CROSS:
 			_refuse(i, now, tr("FL_CROSS"))
 			return
+		State.CLIPPED:
+			_refuse(i, now, tr("FL_CLIPPED"))
+			return
+		State.RIGHT:
+			_fuse(i)
+			return
 	fx.cue("place")
 	_spin(i, 1, now)
-	_settle(before, now + _lag())
+	_settle(before, now + _lag(), true)
 	_dress(now)
 	_refresh()
 	_speak()
+	_on_turned(i, before)
 	# note_move() counts the turn and ends the board if that was the last
 	# loose end; the host raises the win screen after win_delay().
 	note_move()
 
 ## A move the rules will not take: the piece shivers where it stands and the
-## sprout says why, because a refusal is never a silence. Nothing else on
-## this board can refuse.
+## sprout says why, because a refusal is never a silence.
 func _refuse(i: int, now: float, line: String) -> void:
 	_say(line, Face.Expr.PUZZLED)
 	fx.cue("refuse")
@@ -1322,6 +1851,306 @@ func _refuse(i: int, now: float, line: String) -> void:
 		return
 	_refuse_at[i] = now
 	_busy_for(Motion.SHIVER_TIME)
+
+# --- the fuse, and running out ---
+
+## A tap on a piece that was already right, on Hard or Insane (the state has
+## clipped it and changed nothing else): the piece starts its quarter turn,
+## sparks fly off it, the live run flickers twice like a brown-out, a heart
+## splits, and the piece swings back and a brass clip snaps onto it. All of
+## it off one clock (`_fuse_at`) through `_busy_for`. Under reduce motion
+## there is no spin: the heart splits and the clip is simply there.
+func _fuse(i: int) -> void:
+	if hearts <= 0 or is_done():
+		return
+	var now := _now()
+	hearts -= 1
+	_lost_ever = true
+	_break_streak()
+	_split_index = hearts
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+	# The undo log lost this piece's turns; the HUD re-reads it.
+	moved.emit()
+	if Motion.reduce:
+		_split_at = now
+		_clip_at[i] = AGO
+		fx.cue("fuse")
+		fx.cue("heart_lost")
+		_after(0.2, fx.cue.bind("clip"))
+		_say(tr("FL_FUSE"), Face.Expr.WORRIED)
+		_heart_layer.queue_redraw()
+		_dress(now)
+		_refresh()
+		if out_of_hearts:
+			_after(0.25, _run_out)
+		return
+	_fuse_cell = i
+	_fuse_at = now
+	_fuse_end = now + FUSE_END
+	_split_at = now + FUSE_SPLIT
+	_clip_at[i] = now + FUSE_CLIP
+	_busy_for(FUSE_END + Motion.POP_IN)
+	fx.cue("place")
+	_after(FUSE_SPARK, func() -> void:
+		fx.cue("fuse")
+		fx.sparkle(cell_centre(i), Pal.SUN_RAY)
+		_say(tr("FL_FUSE"), Face.Expr.WORRIED))
+	_after(FUSE_SPLIT, func() -> void:
+		fx.cue("heart_lost")
+		_heart_layer.queue_redraw())
+	_after(FUSE_CLIP, func() -> void:
+		fx.cue("clip"))
+	_after(FUSE_END, func() -> void:
+		_fuse_cell = -1
+		moved.emit()
+		if out_of_hearts:
+			_run_out())
+	_dress(now)
+	_refresh()
+
+## The last heart is gone: the light is pulled back down every branch to the
+## post, the far end first (the wash reversed, on `_dark_at`), the lanterns
+## go plain, dusk falls on the card, and the out-of-hearts card comes up.
+func _run_out() -> void:
+	if _asleep or not out_of_hearts:
+		return
+	_asleep = true
+	_release_press()
+	_break_streak()
+	_tip_timer.stop()
+	fx.cue("out_of_hearts")
+	_say(tr("FL_OUT"), Face.Expr.SLEEPY)
+	var now := _now()
+	var depths: PackedInt32Array = state.depths()
+	var far := 1
+	for d in depths:
+		far = maxi(far, d)
+	var step := 0.0 if Motion.reduce else minf(WAVE_STEP, DARK_SPAN / float(far))
+	for i in state.n * state.n:
+		if depths[i] >= 0:
+			_dark_at[i] = now + float(far - depths[i]) * step
+	var span := float(far) * step + LIGHT_FADE
+	_busy_for(span + 0.05)
+	_dusk_toward(DUSK)
+	_dress(now)
+	_refresh()
+	_after(CARD_AFTER_STILL if Motion.reduce else maxf(CARD_AFTER, span + 0.3), _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The card, over the whole screen: laid on the host so it covers the chrome,
+## or on the board's own viewport when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["FL_OUT_BODY", "FL_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same garden in Reset's wave with every heart back and every
+## clip gone, the day's light, the clock and the moves from zero. Hints spent
+## stay spent, and a hint's pin stays. The light washes out from the post
+## again, since the garden went dark.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_gen += 1
+	var now := _now()
+	state.clear_clips()
+	var grid_before: PackedInt32Array = state.grid.duplicate()
+	state.reset_board()
+	_deal()
+	_dark_at.fill(FAR)
+	_clip_at.fill(AGO)
+	_fuse_cell = -1
+	_fuse_end = 0.0
+	_reset_spins(grid_before, now)
+	var dark := PackedInt32Array()
+	dark.resize(state.n * state.n)
+	dark.fill(-1)
+	_settle(dark, now + _lag())
+	elapsed = 0.0
+	moves = 0
+	_running = true
+	# _deal() puts the light back at once; hold the dusk so it fades.
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_dress(now)
+	_refresh()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+
+## One more heart (the card's video): once a garden. The light comes back out
+## from the post and the lanterns wake.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	var now := _now()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = now
+	_heart_layer.queue_redraw()
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_dark_at.fill(FAR)
+	var dark := PackedInt32Array()
+	dark.resize(state.n * state.n)
+	dark.fill(-1)
+	_settle(dark, now + (0.0 if Motion.reduce else ENTER_WASH))
+	_dress(now)
+	_refresh()
+	_say(tr("FL_HEART_BACK"), Face.Expr.HAPPY)
+	_tip_timer.start()
+	moved.emit()
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+## Holds the host's hint video while a fuse is still playing out.
+func busy() -> bool:
+	return _fusing()
+
+## Runs `what` after `delay`, unless the board has been dealt again meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	if not is_inside_tree():
+		return
+	var gen := _gen
+	get_tree().create_timer(maxf(delay, 0.0)).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
+
+# --- the rewards' hooks (polish section 3 builds on these) ---
+
+## Lantern `i` has just woken: the wash reached it this frame. `by_turn` is
+## true when a player's turn woke it, false for the entrance, Try again and
+## One more heart.
+func _on_lantern_woke(_i: int, _by_turn: bool) -> void:
+	pass
+
+## A turn of cell `i` went through (not refused, no fuse). `before` is
+## `state.depths()` as it stood before it; the state holds the result.
+func _on_turned(_i: int, _before: PackedInt32Array) -> void:
+	pass
+
+## The streak ends: a fuse, an undo, a reset, the hearts running out.
+func _break_streak() -> void:
+	pass
+
+# --- the hearts ---
+
+## The hearts over the frame as one mesh on a paper pill (Queens', Mushroom
+## Patch's): pink with a small face and a leaf, a faint ghost where one was,
+## the lost one's halves falling apart, and one coming back popping in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _hearts_y
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	var c := Vector2(size.x * 0.5, y)
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top left,
+## and a leaf on top (Mushroom Patch's).
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's, by way of Mushroom Patch).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
 
 # --- the sprout's line ---
 
@@ -1358,8 +2187,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or state.turns > 0:
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules.
 func tip_line() -> Dictionary:
@@ -1368,14 +2198,16 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return not state.history.is_empty()
+	return not is_done() and not out_of_hearts and not _fusing() and not state.history.is_empty()
 
 ## Turns the last tapped piece back a quarter turn, in tap order. Counts no
 ## move, and the wash comes back with it for free -- live is derived, so
 ## there is no highlight to put back.
 func undo() -> bool:
-	if is_done() or state.history.is_empty():
+	if is_done() or out_of_hearts or _fusing() or state.history.is_empty():
 		return false
+	_release_press()
+	_break_streak()
 	var before: PackedInt32Array = state.depths()
 	var i := state.undo()
 	if i < 0:
@@ -1393,10 +2225,10 @@ func undo() -> bool:
 	moved.emit()
 	return true
 
-## Three of them, and the cap is this board's rather than the state's -- the
-## state counts what it gave, the board decides how much it may give.
+## The band's own (3, 3, 1 and none, `State.hints_for`), less what was spent,
+## plus any a video bought.
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, State.hints_for(state.band) + hints_extra - hints_used)
 
 ## Turns the first unsolved cell in reading order to its proven orientation
 ## and pins it there, so it can never be turned again. Reading order rather
@@ -1405,7 +2237,7 @@ func hints_left() -> int:
 ## wrong. A hint also empties the undo log (Shikaku's rule) -- what it
 ## settled is not a move to take back.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or _fusing() or hints_left() <= 0:
 		return false
 	var before: PackedInt32Array = state.depths()
 	var grid_before: PackedInt32Array = state.grid.duplicate()
@@ -1433,19 +2265,17 @@ func hint() -> bool:
 
 ## Every unpinned piece back to the scramble it was dealt. A pinned piece
 ## stays, because a hint is a given.
+## The hearts and the clips stay as they are: only Try again gives those back.
 func reset_board() -> void:
+	if out_of_hearts or _fusing():
+		return
+	_release_press()
+	_break_streak()
 	var before: PackedInt32Array = state.depths()
 	var grid_before: PackedInt32Array = state.grid.duplicate()
 	state.reset_board()
 	var now := _now()
-	# Every piece that moved turns back at once, on the family's corner-out
-	# stagger: a cell goes its row plus its column steps after the top-left
-	# one. A pinned piece is a given and never moves, so it never spins.
-	for i in state.n * state.n:
-		if state.pinned[i] == 0 and grid_before[i] != state.grid[i]:
-			var wait := 0.0 if Motion.reduce else Motion.stagger(
-				i / state.n + i % state.n, Motion.RESET_STAGGER)
-			_spin(i, 1, now + wait)
+	_reset_spins(grid_before, now)
 	moves = 0
 	_running = true
 	_settle(before, now + _lag())
@@ -1454,17 +2284,37 @@ func reset_board() -> void:
 	_say(tr("FL_RESET") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
 
+## Every piece that moved turns back at once, on the family's corner-out
+## stagger: a cell goes its row plus its column steps after the top-left one.
+## A pinned or clipped piece never moves, so it never spins.
+func _reset_spins(grid_before: PackedInt32Array, now: float) -> void:
+	for i in state.n * state.n:
+		if grid_before[i] != state.grid[i]:
+			var wait := 0.0 if Motion.reduce else Motion.stagger(
+				i / state.n + i % state.n, Motion.RESET_STAGGER)
+			_spin(i, 1, now + wait)
+
 ## A completed daily is dealt again from its seed, so the fresh board comes up
 ## scrambled and mid-entrance. Put every piece on its answer, light the whole
 ## run with every clock in the past, and reseat the lanterns (new Controls, so
 ## the entrance's untracked pop_in tweens go with the old ones) already awake
 ## and grinning. Never check_solved(): the host owns the win for a restore.
+##
+## The hearts it kept and the clips its fuses left come back from the record.
 func restore_completed_board() -> void:
 	var t := _now()
+	_gen += 1
+	_close_card()
 	_tip_timer.stop()
 	state.grid = state.sol.duplicate()
 	state.pinned.fill(0)
+	state.clipped.fill(0)
+	for c in completed_record.get("clips", []):
+		if int(c) >= 0 and int(c) < state.clipped.size():
+			state.clipped[int(c)] = 1
 	state.history = PackedInt32Array()
+	_deal()
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	_clear_clocks()
 	# Every cell seen lit and every lantern long since woken.
 	_live_at.fill(AGO)
@@ -1495,6 +2345,16 @@ static func _quarters(from: int, to: int) -> int:
 ## cells at all and come back true.
 func is_solved() -> bool:
 	return state.n > 0 and state.is_solved()
+
+## What a reopened daily needs to look as it was left: the hearts kept and
+## the pieces a fuse clipped. Plain values only (it goes through a
+## ConfigFile). The rewards' pass adds `flawless`.
+func completion_record() -> Dictionary:
+	var clips: Array = []
+	for i in state.clipped.size():
+		if state.clipped[i] == 1:
+			clips.append(i)
+	return {"hearts": hearts, "clips": clips}
 
 ## One glyph a lantern, so a shared board shows how big the garden was and
 ## never how it was wired.
