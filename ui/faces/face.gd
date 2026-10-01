@@ -83,6 +83,9 @@ var expression: int = Expr.HAPPY:
 	set(v):
 		expression = v
 		queue_redraw()
+## While true, the face is read eyes open and looking ahead (bake_into's
+## `rest`).
+var _resting := false
 ## 0 shut to 1 open; a blink tweens it.
 var eye_open := 1.0:
 	set(v):
@@ -288,11 +291,18 @@ func _draw() -> void:
 ## Appends the face as it is drawn now to `b`, under `xf` (this Control's
 ## own space to the baker's) and tinted: for a board that bakes a still row
 ## of faces into one mesh (Code Break's played rows, checkup 2026-10-01).
-## Hats and glasses are not baked; a baker waits until they are off.
-func bake_into(b: Builder, xf: Transform2D, tint := Color.WHITE) -> void:
+## A hat or glasses is baked only when fully on (exactly 1); a baker waits
+## while one is arriving or leaving.
+## `rest` bakes it eyes open and looking ahead whatever it is doing now, so
+## a blink or a glance can be drawn by the face itself over its baked twin
+## rather than asking for a new bake (Shikaku's signs, checkup 2026-10-01);
+## `at_rest()` says whether the face as drawn is that twin. `b` is a Builder
+## or a FlatBuilder.
+func bake_into(b, xf: Transform2D, tint := Color.WHITE, rest := false) -> void:
 	var R := roundf(_R_for(minf(size.x, size.y)) / R_STEP) * R_STEP
 	if R <= 0.0:
 		return
+	_resting = rest
 	var eye := _eye_level()
 	var centre := size * 0.5
 	for layer in _layers():
@@ -301,6 +311,31 @@ func bake_into(b: Builder, xf: Transform2D, tint := Color.WHITE) -> void:
 		if skip_layers.has(layer[0]):
 			continue
 		b.append(_mesh_for(layer[0], layer[1], R, eye), xf * _layer_transform(layer[0], R, centre), tint)
+	_resting = false
+	# A hat or glasses fully on is baked as _draw_accessories draws it; one
+	# on its way is not, and its baker should wait.
+	if hat == 1.0 or glasses == 1.0:
+		var face_layer := "body"
+		for layer in _layers():
+			if layer[1]:
+				face_layer = layer[0]
+		var at := xf * _layer_transform(face_layer, R, centre)
+		var frame := _face_frame(R)
+		if glasses == 1.0 and not plain:
+			b.append(_accessory("glasses", roundf(frame[1]), 0), at * Transform2D(0.0, frame[0]), tint)
+		if hat == 1.0:
+			var seat: Array = _hat_place(R)
+			b.append(_accessory("hat", roundf(float(seat[2])), hat_style),
+				at * Transform2D(float(seat[1]), Vector2.ONE, 0.0, seat[0]), tint)
+
+func at_rest() -> bool:
+	if _look_index() != 0:
+		return false
+	var now := _eye_level()
+	_resting = true
+	var rest := _eye_level()
+	_resting = false
+	return now == rest
 
 ## The accessories over the face, in the face layer's transform: the hat on
 ## the head at _hat_place's seat, grown from its brim by `hat`; the glasses
@@ -384,9 +419,10 @@ static func _build_glasses(b: Builder, r: float) -> void:
 func _eye_level() -> float:
 	if expression == Expr.JOY:
 		return 1.0
+	var open := 1.0 if _resting else eye_open
 	var best: float = EYE_LEVELS[0]
 	for lv in EYE_LEVELS:
-		if absf(lv - eye_open) < absf(best - eye_open):
+		if absf(lv - open) < absf(best - open):
 			best = lv
 	if expression == Expr.SLEEPY:
 		best = minf(best, SLEEPY_EYE)
@@ -436,7 +472,7 @@ func _face_parts(b: Builder, R: float, centre: Vector2, ink: Color, eye: float) 
 ## `look` snapped: 0 for straight ahead, 1 to 8 for the eight directions
 ## from the right, clockwise.
 func _look_index() -> int:
-	if look.length() < 0.3:
+	if _resting or look.length() < 0.3:
 		return 0
 	return posmod(roundi(look.angle() / (PI * 0.25)), 8) + 1
 
@@ -723,6 +759,59 @@ class Builder:
 		arrays[Mesh.ARRAY_VERTEX] = verts
 		arrays[Mesh.ARRAY_COLOR] = cols
 		arrays[Mesh.ARRAY_INDEX] = idx
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		return m
+
+## A baker for meshes that are only ever appended whole, many times over:
+## each source mesh is flattened once into a plain triangle list, so an
+## append is two native array copies and no per-index loop. Builder.append
+## offsets every index in script, which was 4-8 ms a bake for an Insane
+## field's signs; this is a tenth of that (Shikaku's checkup, 2026-10-01).
+## The output has no index array, four times the vertices. The flattened
+## copies live in `cache`, which the caller owns and clears when the meshes
+## it bakes are thrown away (a static one would keep every mesh ever baked).
+class FlatBuilder:
+	var _flat: Dictionary   # ArrayMesh -> [verts, cols]
+	var verts := PackedVector2Array()
+	var cols := PackedColorArray()
+
+	func _init(cache = null) -> void:
+		_flat = cache if cache != null else {}
+
+	func append(m: ArrayMesh, xf: Transform2D, tint := Color.WHITE) -> void:
+		var f: Array = _flat.get(m, [])
+		if f.is_empty():
+			f = _flatten(m)
+			_flat[m] = f
+		verts.append_array(xf * (f[0] as PackedVector2Array))
+		if tint == Color.WHITE:
+			cols.append_array(f[1])
+		else:
+			for c: Color in f[1]:
+				cols.append(c * tint)
+
+	static func _flatten(m: ArrayMesh) -> Array:
+		var a := m.surface_get_arrays(0)
+		var src_v: PackedVector2Array = a[Mesh.ARRAY_VERTEX]
+		var src_c: PackedColorArray = a[Mesh.ARRAY_COLOR]
+		var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+		var v := PackedVector2Array()
+		var c := PackedColorArray()
+		v.resize(ix.size())
+		c.resize(ix.size())
+		for k in ix.size():
+			v[k] = src_v[ix[k]]
+			c[k] = src_c[ix[k]]
+		return [v, c]
+
+	func mesh() -> ArrayMesh:
+		if verts.is_empty():
+			return null
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_COLOR] = cols
 		var m := ArrayMesh.new()
 		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		return m

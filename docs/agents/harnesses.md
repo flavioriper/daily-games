@@ -75,6 +75,10 @@ spikes over 25 ms and any move whose script took over 4 ms:
 board); `x=board|host|hide:<Node>|nowash|faces|parts|undo|bal_warm` switches one
 thing off (or times the parts) to see what it costs; `howto shot=1.5`
 leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png.
+`fill` leaves two moves, or two whole gestures where a board's moves are a
+gesture's events (`_keep`; Shikaku's drags are five each). `x=log` prints
+every frame for a moment after each move; `x=confetti` fires one burst
+early; `x=sk_markers|sk_numbers|sk_count` are Shikaku's.
 A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
 (a click in board space) or `{do}` (a Callable, for a board played
 through its own methods, Code Break's `pick`/`check`); a move waits while

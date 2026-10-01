@@ -1732,3 +1732,31 @@ HTP_UT_CAT,Mind the kitten,Cuidado com a gatinha,Cuidado con la gatita
 HTP_UT_CAT_BODY,"After every third move the kitten bats the marked peg into the nearest empty hole. The number on her yarn counts the moves until she pounces, and the peg rings when she is about to.","A cada três movimentos a gatinha bate no pino marcado e o joga no buraco vazio mais perto. O número no novelo conta os movimentos até ela atacar, e o pino ganha um anel quando ela está prestes a atacar.","Cada tres movimientos la gatita golpea la clavija marcada y la lanza al hueco vacío más cercano. El número en su ovillo cuenta los movimientos hasta que ataca, y la clavija se rodea de un aro cuando está a punto."
 HTP_UT_CAT_CAP,One move until she pounces,Um movimento até ela atacar,Un movimiento hasta que ataque
 HTP_UT_SWAT_CAP,Swat! Into the nearest empty hole,Tapa! Para o buraco vazio mais perto,¡Zas! Al hueco vacío más cercano
+HTP_SK_DRAG,Draw a bed,Desenhe um canteiro,Dibuja una parcela
+HTP_SK_DRAG_BODY,Drag from corner to corner to draw a bed. The disc counts the squares it covers. A bed is right when it holds one sign and covers exactly that sign's number of squares. Fill the whole field.,Arraste de canto a canto para desenhar um canteiro. O disco conta as casas que ele cobre. Um canteiro está certo quando tem uma placa e cobre exatamente o número dela. Preencha o campo todo.,Arrastra de esquina a esquina para dibujar una parcela. El disco cuenta las casillas que cubre. Una parcela está bien cuando tiene un cartel y cubre exactamente su número de casillas. Llena todo el campo.
+HTP_SK_DRAG_CAP,Drag corner to corner round a sign,Arraste de canto a canto em volta de uma placa,Arrastra de esquina a esquina alrededor de un cartel
+HTP_SK_FIT_CAP,Four squares round a 4: a bed,Quatro casas em volta de um 4: um canteiro,Cuatro casillas alrededor de un 4: una parcela
+HTP_SK_DONE_CAP,Every square in a bed: done,Todas as casas num canteiro: pronto,Todas las casillas en una parcela: listo
+HTP_SK_ONE,One sign in every bed,Uma placa em cada canteiro,Un cartel en cada parcela
+HTP_SK_ONE_BODY,"A bed round two signs, or none, blushes. Tap inside a bed to clear it, or drag from inside it to draw it again. Beds never overlap. Undo takes back the last bed; Reset clears the field.","Um canteiro com duas placas, ou nenhuma, fica corado. Toque dentro de um canteiro para apagá-lo, ou arraste de dentro dele para desenhá-lo de novo. Canteiros nunca se sobrepõem. Desfazer volta o último canteiro; Recomeçar limpa o campo.","Una parcela con dos carteles, o ninguno, se sonroja. Toca dentro de una parcela para vaciarla, o arrastra desde dentro para dibujarla de nuevo. Las parcelas nunca se solapan. Deshacer quita la última parcela; Reiniciar vacía el campo."
+HTP_SK_TWO_CAP,Two signs in one bed: it blushes,Duas placas num canteiro: ele fica corado,Dos carteles en una parcela: se sonroja
+HTP_SK_CLEAR_CAP,Tap inside a bed to clear it,Toque dentro de um canteiro para apagá-lo,Toca dentro de una parcela para vaciarla
+HTP_SK_EACH_CAP,"One sign in each bed, and they beam","Uma placa em cada canteiro, e elas sorriem","Un cartel en cada parcela, y sonríen"
+HTP_SK_SHAPES,Signs with a shape,Placas com formato,Carteles con forma
+HTP_SK_SHAPES_BODY,"A square, tall or wide sign asks for a bed of that shape. A shaped sign with no number may be any size, so long as it is its shape.","Uma placa quadrada, alta ou larga pede um canteiro com esse formato. Uma placa com formato e sem número pode ter qualquer tamanho, desde que tenha o formato dela.","Un cartel cuadrado, alto o ancho pide una parcela con esa forma. Un cartel con forma y sin número puede tener cualquier tamaño, siempre que tenga su forma."
+HTP_SK_SQUARE_CAP,A square sign won't take a wide bed,Uma placa quadrada não aceita um canteiro largo,Un cartel cuadrado no acepta una parcela ancha
+HTP_SK_SQUARED_CAP,No number: any square will do,Sem número: qualquer quadrado serve,Sin número: cualquier cuadrado sirve
+HTP_SK_ANY_CAP,A wide sign takes a wide bed,Uma placa larga pede um canteiro largo,Un cartel ancho pide una parcela ancha
+HTP_SK_HINT,Stuck? Ask the bulb,Travou? Peça à lâmpada,¿Atascado? Pide a la bombilla
+HTP_SK_HINT_BODY_ONE,"The bulb draws one bed of the answer and pins it, so it can't be redrawn. Check shows which numbers aren't settled yet. You have one hint.","A lâmpada desenha um canteiro da resposta e o fixa, então ele não pode ser redesenhado. Conferir mostra quais números ainda não estão certos. Você tem uma dica.","La bombilla dibuja una parcela de la respuesta y la fija, así que no se puede redibujar. Comprobar muestra qué números aún no están resueltos. Tienes una pista."
+HTP_SK_HINT_BODY_N,"The bulb draws one bed of the answer and pins it, so it can't be redrawn. Check shows which numbers aren't settled yet. You have %d hints.","A lâmpada desenha um canteiro da resposta e o fixa, então ele não pode ser redesenhado. Conferir mostra quais números ainda não estão certos. Você tem %d dicas.","La bombilla dibuja una parcela de la respuesta y la fija, así que no se puede redibujar. Comprobar muestra qué números aún no están resueltos. Tienes %d pistas."
+HTP_SK_HINT_CAP,The bulb draws a bed and pins it,A lâmpada desenha um canteiro e o fixa,La bombilla dibuja una parcela y la fija
+HTP_SK_PINNED_CAP,A pinned bed can't be redrawn,Um canteiro fixo não pode ser redesenhado,Una parcela fija no se puede redibujar
+HTP_SK_HEARTS,Mind your hearts,Cuidado com os corações,Cuida tus corazones
+HTP_SK_FITS_CAP,This bed fits its 3...,Este canteiro cabe no 3...,Esta parcela encaja con su 3...
+HTP_SK_WILT_CAP,...but it isn't the answer: it wilts,...mas não é a resposta: ele murcha,...pero no es la respuesta: se marchita
+HTP_SK_RIGHT_CAP,The right bed costs nothing,O canteiro certo não custa nada,La parcela correcta no cuesta nada
+HTP_SK_CROW,Scarecrows count neighbours,Espantalhos contam vizinhos,Los espantapájaros cuentan vecinos
+HTP_SK_CROW_CAP,A scarecrow takes a bed of any size,Um espantalho aceita canteiro de qualquer tamanho,Un espantapájaros acepta una parcela de cualquier tamaño
+HTP_SK_COUNT_CAP,Sharing its fence: %d,Dividindo a cerca: %d,Comparten su cerca: %d
+HTP_SK_CROWED_CAP,Three neighbours: its 3 is right,Três vizinhos: o 3 dele está certo,Tres vecinos: su 3 es correcto
