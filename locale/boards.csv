@@ -1047,8 +1047,40 @@ SB_SHORT,"Every drop,\nthen the bud.","Cada gota,\ndepois o botão.","Cada gota,
 SB_MOTTO,"Every drop, then the bud","Cada gota, depois o botão","Cada gota, luego el capullo"
 SB_LVL_0,"5 × 6 floor, 3 pieces","Piso 5 × 6, 3 peças","Suelo 5 × 6, 3 piezas"
 SB_LVL_1,"6 × 7 floor, 4–5 pieces","Piso 6 × 7, 4–5 peças","Suelo 6 × 7, 4–5 piezas"
-SB_LVL_2,"7 × 8 floor, 6 pieces","Piso 7 × 8, 6 peças","Suelo 7 × 8, 6 piezas"
-SB_LVL_3,"7 × 8 floor, 7 pieces, crossing rails","Piso 7 × 8, 7 peças, trilhos cruzados","Suelo 7 × 8, 7 piezas, rieles cruzados"
+SB_LVL_2,"7 × 8 floor, 6 pieces, sleeping snails","Piso 7 × 8, 6 peças, caracóis dormindo","Suelo 7 × 8, 6 piezas, caracoles dormidos"
+SB_LVL_3,Shy Dew: light every drop at once,Orvalho Tímido: acenda todas as gotas de uma vez,Rocío Tímido: ilumina todas las gotas a la vez
+SB_RULES_SAFE,"Nothing can be lost here: slide back, or Undo a move.",Aqui não dá para perder: deslize de volta ou desfaça um movimento.,Aquí no se puede perder: desliza de vuelta o deshaz un movimiento.
+SB_RULES_SNAILS,"Snails are napping on the floor. You have %d hearts: let go of a piece with the light resting on a snail and it wakes up -- that costs a heart, and the piece slides back. While you hold a piece the light is only a peek, so look before you let go.","Caracóis estão cochilando no piso. Você tem %d corações: solte uma peça com a luz sobre um caracol e ele acorda -- isso custa um coração, e a peça volta. Enquanto você segura uma peça, a luz é só uma espiada, então olhe antes de soltar.","Hay caracoles echando la siesta en el suelo. Tienes %d corazones: suelta una pieza con la luz sobre un caracol y se despierta -- eso cuesta un corazón, y la pieza vuelve. Mientras sostienes una pieza, la luz es solo un vistazo, así que mira antes de soltar."
+SB_RULES_SHY,"Shy Dew: the dewdrops are shy. Let go of a piece with the light resting on any drop and it dries up -- unless that move lights every drop at once and ends in the bud. A dried drop costs one of your %d hearts, and the piece slides back. No hints, no Undo. Hold a piece to peek at where the light would go.","Orvalho Tímido: as gotas são tímidas. Solte uma peça com a luz sobre qualquer gota e ela seca -- a não ser que esse movimento acenda todas as gotas de uma vez e termine no botão. Uma gota seca custa um dos seus %d corações, e a peça volta. Sem dicas, sem Desfazer. Segure uma peça para espiar aonde a luz iria.","Rocío Tímido: las gotas son tímidas. Suelta una pieza con la luz sobre cualquier gota y se seca -- a menos que ese movimiento ilumine todas las gotas a la vez y termine en el capullo. Una gota seca cuesta uno de tus %d corazones, y la pieza vuelve. Sin pistas, sin Deshacer. Sostén una pieza para espiar adónde iría la luz."
+SB_TIP_SNAIL,Shh. Never let the light rest on a sleeping snail.,Psiu. Nunca deixe a luz parada sobre um caracol dormindo.,Shh. Nunca dejes la luz quieta sobre un caracol dormido.
+SB_TIP_HOLD,Holding a piece is free. Only letting go counts.,Segurar uma peça é de graça. Só soltar conta.,Sostener una pieza es gratis. Solo soltar cuenta.
+SB_TIP_ORDER,Stuck? Try moving the pieces in another order.,Travou? Tente mover as peças em outra ordem.,¿Atascado? Prueba a mover las piezas en otro orden.
+SB_TIP_HEARTS,Hearts are for moves you let go. Peek first.,Corações são para movimentos que você solta. Espie antes.,Los corazones son para los movimientos que sueltas. Mira antes.
+SB_TIP_SHY,The dew is shy: no drop may catch the light until all do.,O orvalho é tímido: nenhuma gota pode pegar a luz até que todas peguem.,El rocío es tímido: ninguna gota puede recibir la luz hasta que todas la reciban.
+SB_TIP_CURTAIN,"Close the light off first, set the floor in the shade, then open it.","Bloqueie a luz primeiro, arrume o piso na sombra, depois abra.","Corta la luz primero, prepara el suelo en la sombra, luego ábrela."
+SB_TIP_ONCE,The last move lights every drop at once. Plan for it.,O último movimento acende todas as gotas de uma vez. Planeje para isso.,El último movimiento ilumina todas las gotas a la vez. Planéalo.
+SB_SHY_WARN,Careful -- a drop would dry if you let go here.,Cuidado -- uma gota secaria se você soltasse aqui.,Cuidado -- una gota se secaría si sueltas aquí.
+SB_WOKE,"Oops, you woke a snail!","Ops, você acordou um caracol!","¡Uy, despertaste a un caracol!"
+SB_DRIED,Too soon -- the drop dried up!,Cedo demais -- a gota secou!,¡Demasiado pronto -- la gota se secó!
+SB_HEARTS_ONE,One heart left.,Resta um coração.,Queda un corazón.
+SB_HEARTS_N,%d hearts left.,Restam %d corações.,Quedan %d corazones.
+SB_OUT,The greenhouse dozes off for now.,A estufa cochilou por agora.,El invernadero se echa una siesta por ahora.
+SB_OUT_BODY,"Out of hearts. Start this floor again from the top, or watch a short video for one more heart.","Sem corações. Comece este piso de novo do início, ou veja um vídeo curto por mais um coração.","Sin corazones. Empieza este suelo de nuevo desde el principio, o mira un video corto por un corazón más."
+SB_OUT_REST,Out of hearts. Start this floor again from the top whenever you like.,Sem corações. Comece este piso de novo do início quando quiser.,Sin corazones. Empieza este suelo de nuevo desde el principio cuando quieras.
+SB_HEART_BACK,One more heart. Peek before you let go.,Mais um coração. Espie antes de soltar.,Un corazón más. Mira antes de soltar.
+SB_SHY_SEAL,Shy Dew,Orvalho Tímido,Rocío Tímido
+SB_CHEER_0,Sunny wisdom: every beam started as a little peek through the glass.,Sabedoria solar: todo raio começou como uma espiadinha pelo vidro.,Sabiduría soleada: todo rayo empezó como un vistazo por el cristal.
+SB_CHEER_1,"Sunny wisdom: bend a little, and you reach the whole garden.",Sabedoria solar: dobre um pouco e você alcança o jardim inteiro.,Sabiduría soleada: dóblate un poco y llegarás a todo el jardín.
+SB_CHEER_2,Sunny wisdom: even a dewdrop holds a rainbow.,Sabedoria solar: até uma gota de orvalho guarda um arco-íris.,Sabiduría soleada: hasta una gota de rocío guarda un arcoíris.
+SB_CHEER_3,"Sunny wisdom: the bud never hurries, and it still blooms.","Sabedoria solar: o botão nunca tem pressa, e mesmo assim floresce.","Sabiduría soleada: el capullo nunca tiene prisa, y aun así florece."
+SB_CHEER_4,Sunny wisdom: a mirror only shines when it shares the light.,Sabedoria solar: um espelho só brilha quando divide a luz.,Sabiduría soleada: un espejo solo brilla cuando comparte la luz.
+SB_CHEER_5,Sunny wisdom: let the snails sleep. They work hard all night.,Sabedoria solar: deixe os caracóis dormirem. Eles trabalham a noite toda.,Sabiduría soleada: deja dormir a los caracoles. Trabajan toda la noche.
+SB_CHEER_6,Sunny wisdom: the long way round is still a way.,Sabedoria solar: o caminho mais longo ainda é um caminho.,Sabiduría soleada: el camino largo sigue siendo un camino.
+SB_CHEER_7,"Sunny wisdom: warm tiles, warm toes, warm heart.","Sabedoria solar: piso quentinho, pés quentinhos, coração quentinho.","Sabiduría soleada: baldosas tibias, pies tibios, corazón tibio."
+SB_CHEER_8,"Sunny wisdom: a cup sends back what it gets, one lane kinder.","Sabedoria solar: uma concha devolve o que recebe, uma faixa mais gentil.","Sabiduría soleada: una copa devuelve lo que recibe, un carril más amable."
+SB_CHEER_9,Sunny wisdom: every greenhouse needs a nap cat.,Sabedoria solar: toda estufa precisa de um gato cochilando.,Sabiduría soleada: todo invernadero necesita un gato dormilón.
+SB_CHEER_10,"Sunny wisdom: one beam, many drops, one flower. Enough.","Sabedoria solar: um raio, muitas gotas, uma flor. Basta.","Sabiduría soleada: un rayo, muchas gotas, una flor. Basta."
+SB_CHEER_11,Sunny wisdom: tomorrow the sun comes back. It always does.,Sabedoria solar: amanhã o sol volta. Ele sempre volta.,Sabiduría soleada: mañana vuelve el sol. Siempre vuelve.
 KN_TIP_TAP,Tap a dot. Your knight hops in an L.,Toque num ponto. Seu cavalo salta em L.,Toca un punto. Tu caballo salta en L.
 KN_TIP_GOAL,Take the rose king to win.,Capture o rei rosa para vencer.,Captura al rey rosa para ganar.
 KN_TIP_ANSWER,"Every rose knight answers your move, hopping toward you.","Cada cavalo rosa responde ao seu lance, saltando na sua direção.","Cada caballo rosa responde a tu jugada, saltando hacia ti."
