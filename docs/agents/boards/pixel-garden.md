@@ -42,3 +42,5 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   draw calls; `tests/_shot_pixel_garden.gd`, `tests/_probe_pixel_garden.gd`.
   Amended the same day (spec section 11): hairline seams, every bead left
   drawn in its compartment, and a seated bead flies there from the box.
+  Then (section 12): a stroke locks to its row or column after 0.7 of a
+  cell, and a peg holding another colour refuses a bead (`taken`).

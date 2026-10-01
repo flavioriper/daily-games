@@ -222,3 +222,24 @@ the table".
   the header. Off under reduce motion.
 - Peaks after it: rest 91, wind 73, solve 123 draw calls. Probe, suite
   (`passed=122403 failed=0`) and `_win.gd -- pixelgarden` pass.
+
+## 12. Amendment: a run keeps its line, a peg keeps its colour (2026-10-01, the user's note)
+
+"When player hold it and move to place multiple in a line, we should keep
+the same row or column (base on the movement being x or y) ... since the
+finger is big ... pieces lands into different row or column, making it
+unusable. Also, don't let user place a piece in a slot that already have a
+different piece color."
+
+- **A stroke keeps to one line.** Until the finger has travelled
+  `AXIS_AFTER` 0.7 of a cell from where it pressed, a stroke stays on its
+  first peg; then it takes the row if it went farther across, the column if
+  farther down, and from there only the finger's position along that line
+  counts (`_line`, `_start`). A finger drifting half a peg either way stays
+  on its row (probe). Bends and diagonals need a second stroke.
+- **A peg holding another colour keeps it.** `State.put` returns "taken"
+  for a bead of another colour (the old swap is gone): the peg shivers,
+  `refuse`, and once a stroke `PG_TAKEN` ("That peg already has a bead. Pick
+  its colour and tap it to lift it first."). A lifting stroke lifts only the
+  chosen colour. A hint still turns a wrong bead the right colour itself.
+  `PG_RULES` says both.
